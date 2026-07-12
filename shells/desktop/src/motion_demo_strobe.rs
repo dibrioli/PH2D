@@ -62,12 +62,13 @@ const GOAL_PULSE_HZ: f32 = 0.35;
 const HOSE_JOINTS: f32 = 9.0;
 const HOSE_BONE: f32 = 0.36;
 
-/// The rain (O4): a 7x7 seed falling under gravity, dying as it leaves the disc. `radius` and
-/// `center_y` are WORLD units, and the seed sits at the origin — so the drops live for the
-/// length of the disc and then thin out.
-const RAIN_ROWS: f32 = 7.0;
-const RAIN_COLS: f32 = 7.0;
-const RAIN_GAP: f32 = 0.42;
+/// The snow (O4): flakes born along a line at the top of the disc, falling under gravity, dying
+/// as they leave it. Birth and death balance, so the population settles.
+const SNOW_SITES: f32 = 14.0;
+const SNOW_SITE_GAP: f32 = 0.36;
+const SNOW_SKY_Y: f32 = 2.6;
+const SNOW_RATE: f32 = 24.0;
+const SNOW_GUST: f32 = 0.35;
 const RAIN_QUAD: f32 = 0.18;
 const RAIN_GRAVITY: f32 = 4.0;
 /// The kill disc, around the seed's own centre: a LINEAR falloff of radius 3.4, culled at 0.05,
@@ -101,79 +102,94 @@ pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
     Some(vec![hose, flesh, dot_l, dot_r, rain])
 }
 
-/// **The Simulation Zone** (O4, doc 48) — rain that DIES when it leaves the circle.
+/// **The Simulation Zone** (O4, docs 48 + 49) — SNOW: it is born, it falls, it dies.
 ///
 /// ```text
-///   grid(7x7) ─→ init ┌──────────┐ out ─┬─→ scale ─→ move ─→ output
-///                     │ sim.zone │      │
-///            state ←──┴──────────┘      ⊙ (the state entry: last tick's state)
-///              ↑                        │
-///        motion.cull ← motion.falloff ← sim.step ← force.wind
+///                    ┌──────────┐ out ──┬──→ scale ──→ move ──→ output
+///                    │ sim.zone │       │
+///           state ←──┴──────────┘       ⊙  (the state entry: last tick's population)
+///             ↑                         │
+///   cull ← falloff ← sim.step ← wind ← combine(in0)
+///                                          ↑ in1
+///                     grid(1x14) → move → sim.spawn        (this tick's NEWBORNS)
 /// ```
 ///
-/// Every node in that interior chain already existed. The zone is what makes them a
-/// SIMULATION: the state carries the survivors from tick to tick, so
+/// **The zone's `init` is deliberately left UNWIRED**: the population starts at nothing and is
+/// entirely BORN. Every flake therefore has a unique identity from birth (`sim.spawn` stamps the
+/// birth ordinal), and the whole triangle of a particle system is on the canvas:
 ///
-/// - **`force.wind` + `sim.step`** are gravity — velocity accumulates instead of being
-///   recomputed from scratch every frame, so the drops *accelerate*.
-/// - **`motion.falloff` + `motion.cull`** are a KILL. Outside a zone that pair is a filter,
-///   and the frame after, every dropped element is back. Inside, what dies **stays dead** —
-///   the rain thins out as it falls past the circle, and it never comes back.
+/// - **BIRTH** — `sim.spawn` emits only *this tick's* newborns, and `motion.combine` merges them
+///   into the live state. (A `motion.emitter` cannot do this: it is stateless, so merging it
+///   would merge the same particles again, every frame, forever.)
+/// - **LIFE** — `force.wind` + `sim.step`: velocity ACCUMULATES in the state, so the flakes
+///   accelerate instead of drifting at a constant rate.
+/// - **DEATH** — `motion.falloff` + `motion.cull`: inside a zone that pair is not a filter but a
+///   KILL. What falls out of the circle stays out.
 ///
-/// That is the thing the forces branch (O1) cannot express at all: its interior may only
-/// ACCUMULATE acceleration, because `motion.integrate` owns the state. Here nothing does but
-/// the zone, so the interior may kill.
+/// Birth and death balance, so the snow reaches a **steady state** and stays there. Every node
+/// in the interior but the two `sim.*` ones already existed; the zone is what made them a
+/// simulation.
 fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
-    let seed = g.add_node("motion.grid");
     let zone = g.add_node("sim.zone");
+    let combine = g.add_node("motion.combine");
     let wind = g.add_node("force.wind");
     let step = g.add_node("sim.step");
     let falloff = g.add_node("motion.falloff");
     let cull = g.add_node("motion.cull");
+    let sky = g.add_node("motion.grid");
+    let lift = g.add_node("motion.move");
+    let spawn = g.add_node("sim.spawn");
     let scale = g.add_node("motion.scale");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
 
-    // Layout: the seed and the zone on the row, the interior on the row below it (it reads
-    // right-to-left, which is what a state loop looks like on a canvas that reads left-to-right).
-    chain(g, RAIN_ROW, 0, &[seed, zone])?;
+    // Three rows: the zone and its render chain · the interior (which reads right-to-left, the
+    // shape a state loop has on a canvas that reads left-to-right) · the birth chain under it.
+    chain(g, RAIN_ROW, 1, &[zone])?;
     chain(g, RAIN_ROW, 2, &[scale, mv, output])?;
     wire(g, (zone, 0), (scale, 0))?;
-    for (i, n) in [wind, step, falloff, cull].iter().enumerate() {
+    for (i, n) in [combine, wind, step, falloff, cull].iter().enumerate() {
         g.set_pos(
             *n,
             Pos {
-                x: (1 + i) as f32 * COL_W,
+                x: i as f32 * COL_W,
                 y: RAIN_ROW + RAIN_INTERIOR_DY,
             },
         );
     }
+    wire(g, (combine, 0), (wind, 0))?;
     wire(g, (wind, 0), (step, 0))?;
     wire(g, (step, 0), (falloff, 0))?;
     wire(g, (falloff, 0), (cull, 0))?;
     wire(g, (cull, 0), (zone, 1))?; // the interior's END lands on `state`
 
-    // **The state entry.** The zone's PREVIOUS output enters the interior at its head — the
-    // one `pre` edge in the scene, and the editor's plumbing is the thing that normally
-    // authors it (it draws as a portal badge, never as a spline). The demo writes the exact
-    // topology the plumbing would, so the boot document is already reconciled.
+    chain(g, RAIN_ROW + 2.0 * RAIN_INTERIOR_DY, 0, &[sky, lift, spawn])?;
+    wire(g, (spawn, 0), (combine, 1))?; // …the newborns join the population
+
+    // **The state entry.** The zone's PREVIOUS output enters the interior at its head — here the
+    // free `in0` of the merge, which is exactly where the editor's plumbing would put it (it is
+    // the one `pre` edge in the scene, and it draws as a portal badge, never as a spline). The
+    // demo writes the topology the plumbing would, so the boot document is already reconciled.
     g.connect(Edge {
         from: (zone, 0),
-        to: (wind, 0),
+        to: (combine, 0),
         delayed: true,
     })
     .ok()?;
 
-    g.set_param(seed, "rows", RAIN_ROWS);
-    g.set_param(seed, "cols", RAIN_COLS);
-    g.set_param(seed, "gap_x", RAIN_GAP);
-    g.set_param(seed, "gap_y", RAIN_GAP);
-    // Gravity: `force.wind`'s angle is degrees, 270 = straight down (y-up world).
+    // The sky: a wide, thin line of birth sites, lifted to the top of the disc.
+    g.set_param(sky, "rows", 1.0);
+    g.set_param(sky, "cols", SNOW_SITES);
+    g.set_param(sky, "gap_x", SNOW_SITE_GAP);
+    g.set_param(lift, "dy", SNOW_SKY_Y);
+    g.set_param(spawn, "rate", SNOW_RATE);
+    // Gravity: `force.wind`'s angle is degrees, 270 = straight down (y-up world). A little gust
+    // so the flakes do not fall in lockstep columns.
     g.set_param(wind, "angle", 270.0);
     g.set_param(wind, "strength", RAIN_GRAVITY);
-    g.set_param(wind, "gust", 0.0); // a steady pull, so the fall reads as acceleration
-    // The kill: `motion.falloff` writes a per-element mask from a disc around the seed, and
-    // `motion.cull` keeps only what is still inside it (Falloff mode, threshold 0.5).
+    g.set_param(wind, "gust", SNOW_GUST);
+    // The kill: `motion.falloff` writes a per-element mask from a disc around the origin, and
+    // `motion.cull` keeps only what is still inside it (Falloff mode).
     g.set_param(falloff, "radius", RAIN_KILL_R);
     g.set_param(falloff, "curve", 0.0); // 0 = Linear: the mask is 1 - d/radius
     g.set_param(cull, "mode", 1.0); // Falloff
@@ -184,12 +200,10 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     Some(output)
 }
 
-/// **A node wired to nothing** — deliberately, as the demo of the inline readouts (F2).
-///
-/// It is a real `motion.grid`, identical to the ones the scenes use, and it does exactly
-/// nothing: no sink consumes it, so the cook never pulls it, so it has **no reading** and
-/// the editor **veils it**. That is the whole feature in one card — the graph tells you, at
-/// a glance, which of its parts are alive.
+/// **A node wired to nothing** — deliberately, as the demo of the inline readouts (F2) and of
+/// the inert veil (F3): it is a real `motion.grid`, it does exactly nothing, no sink consumes
+/// it, so the cook never pulls it — and the editor veils it and leaves its reading blank. The
+/// whole feature in one card.
 fn build_inert_example(g: &mut Graph) {
     let orphan = g.add_node("motion.grid");
     g.set_pos(

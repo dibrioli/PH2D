@@ -88,6 +88,8 @@ pub struct EvalCtx<'a> {
     text_overrides: Option<&'a BTreeMap<String, String>>,
     /// Did THIS node emit anything on the previous tick? (`prev_outputs` holds it.)
     started: bool,
+    /// Seconds since the previous tick, on the ROOT clock (0 on the first tick).
+    dt: f64,
     outputs: Vec<CookValue>,
 }
 
@@ -135,6 +137,23 @@ impl<'a> EvalCtx<'a> {
     /// Current clock time; meaningful for `Temporal` nodes.
     pub fn playhead(&self) -> f64 {
         self.playhead
+    }
+
+    /// **Seconds since the previous tick** — `0.0` on the first tick of a cook (there is no
+    /// previous), and after any reset.
+    ///
+    /// The engine has always known this and never said it, so the nodes that needed it invented
+    /// it: `motion.integrate` carries a `sim_t` CLOCK COLUMN on its own state and subtracts. That
+    /// works (and stays, because a per-element clock is exactly right for elements born at
+    /// different times), but a node with no state of its own — a birth rate, a counter — had no
+    /// way to ask at all.
+    ///
+    /// It is the ROOT clock's step. Inside a **time scope** it is `0.0`: the lane's clock is
+    /// rewritten, so a delta across ticks is not a thing that exists there — and a node that
+    /// needs `dt` to hold state is sequential, which a time scope already refuses
+    /// (`CookError::SequentialInTimeScope`).
+    pub fn dt(&self) -> f64 {
+        self.dt
     }
 
     /// The current value of parameter `name`: the graph's per-instance override
@@ -303,6 +322,9 @@ struct Cached {
 pub struct CookCheckpoint {
     prev_outputs: BTreeMap<NodeId, Vec<CookValue>>,
     tick: u64,
+    /// The clock the last tick closed on — restored with the state, so a replayed tick takes
+    /// exactly the `dt` it took the first time.
+    prev_playhead: Option<f64>,
 }
 
 /// Incremental cook engine. Holds the memo cache and the previous-tick snapshot
@@ -315,6 +337,10 @@ pub struct Cook {
     /// every key is `(node, SCOPE_ROOT)`.
     cache: BTreeMap<(NodeId, ScopeKey), Cached>,
     prev_outputs: BTreeMap<NodeId, Vec<CookValue>>,
+    /// The playhead the last tick closed on (`None` before the first). `EvalCtx::dt` is the
+    /// step from it — the engine's own clock delta, which the stateful nodes used to have to
+    /// reconstruct from a column of their own.
+    prev_playhead: Option<f64>,
     /// Scope lanes touched since the last `advance_tick*`. A remap param edit
     /// (a slider drag!) mints a NEW `ScopeKey` every value it passes through,
     /// and each lane holds full `Stream`s: without pruning, one drag across a
@@ -370,6 +396,7 @@ impl Cook {
         for &src in &pre_sources {
             self.cook_node(graph, ops, src, playhead, SCOPE_ROOT, scopes)?;
         }
+        self.prev_playhead = Some(playhead);
         self.prev_outputs = self
             .cache
             .iter()
@@ -397,6 +424,7 @@ impl Cook {
     pub fn checkpoint(&self) -> CookCheckpoint {
         CookCheckpoint {
             prev_outputs: self.prev_outputs.clone(),
+            prev_playhead: self.prev_playhead,
             tick: self.tick,
         }
     }
@@ -411,6 +439,7 @@ impl Cook {
     /// redraws. Scope lanes are dropped with the cache.
     pub fn restore(&mut self, cp: &CookCheckpoint) {
         self.prev_outputs = cp.prev_outputs.clone();
+        self.prev_playhead = cp.prev_playhead;
         self.tick = cp.tick;
         self.cache.clear();
         self.live_keys.clear();
@@ -550,6 +579,13 @@ impl Cook {
             overrides: graph.node_param_overrides(node),
             text_overrides: graph.node_text_param_overrides(node),
             started: self.prev_outputs.contains_key(&node),
+            // The ROOT clock's step. A rewritten lane has no meaningful delta across ticks —
+            // and a node that needs one to hold state is sequential, which a scope refuses.
+            dt: if key == SCOPE_ROOT {
+                self.prev_playhead.map_or(0.0, |p| playhead - p)
+            } else {
+                0.0
+            },
             outputs: Vec::new(),
         };
         op.eval(&mut ctx);

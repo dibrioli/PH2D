@@ -69,8 +69,9 @@ fn new_builds_the_well_typed_rig_document() {
     // skin_deformer, scale, move, output} + the goal dots {scale, move, output, move,
     // output} + the ORPHAN that demos the inline readouts (doc 43: no sink consumes it, so
     // it never cooks, so it has no reading and the editor veils it) + the SIMULATION ZONE
-    // (doc 48: {grid, sim.zone, wind, sim.step, falloff, cull, scale, move, output} = 9).
-    assert_eq!(state.doc.graph.nodes().len(), 32);
+    // (docs 48/49 — the snow: {sim.zone, combine, wind, sim.step, falloff, cull} interior +
+    // {grid, move, sim.spawn} birth + {scale, move, output} render = 12).
+    assert_eq!(state.doc.graph.nodes().len(), 35);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -347,54 +348,74 @@ fn a_text_param_survives_a_text_round_trip() {
     );
 }
 
-/// **The rain: the Simulation Zone, in the boot document, end to end** (doc 48).
+/// **The snow: the Simulation Zone, in the boot document, end to end** (docs 48 + 49).
 ///
-/// Two things must be true, and neither is true of a graph without a zone:
+/// The whole triangle of a particle system, on the real graph, through the real cook:
 ///
-/// 1. **It ACCELERATES.** Each tick's fall is longer than the last, because the velocity is
-///    carried in the state and the wind keeps adding to it. A per-frame recompute (which is what
-///    every `Pure` chain outside a zone is) would fall at a constant rate, or not at all.
-/// 2. **What dies STAYS dead.** The population only ever falls as the drops leave the kill disc.
-///    The very same `motion.falloff` + `motion.cull` pair outside a zone is a filter, and every
-///    element it drops is back on the next frame.
-///
-/// FALSIFIED by a zone that re-seeds when its state empties (the count would climb back to 49),
-/// by a `sim.step` that reads a frame counter instead of the state's own clock, and by any wiring
-/// that leaves the `pre` state entry off the interior's head (the rain would freeze on frame 1).
+/// 1. **BIRTH** — the zone's `init` is unwired, so the population starts at NOTHING and is
+///    entirely born. If the spawn were dead, the scene would stay empty forever.
+/// 2. **LIFE** — a flake ACCELERATES: its velocity lives in the state, so each tick's fall is
+///    longer than the last. Measured on one identified flake (`id = 0`), because the population
+///    changes underneath any average — the survivorship trap this test walked into once already,
+///    when it tracked the LOWEST drop and found it *rising* (the lowest drop is the one the disc
+///    is about to kill).
+/// 3. **DEATH + STEADY STATE** — birth balances death, so the population climbs and then SETTLES
+///    instead of growing without bound. A zone that re-seeded when it emptied, or a cull that was
+///    only a filter, would both break the plateau.
 #[test]
-fn the_rain_accelerates_and_what_it_kills_stays_dead() {
+fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
     let state = MotionState::new();
-    let rain = *state.sinks.last().expect("the rain is the last sink");
-    let frames = run_scene(&state, rain, 120);
+    let snow = *state.sinks.last().expect("the snow is the last sink");
+    let mut cook = Cook::new();
 
-    assert_eq!(frames[0].len(), 49, "the 7x7 seed arrives on tick 1");
-
-    // 1. It accelerates: the fall from tick to tick GROWS. Measured on the MEAN height, and
-    //    only while every drop is still alive — the LOWEST drop is precisely the one the disc is
-    //    about to kill, so tracking it would show the minimum RISING as the bottom is culled,
-    //    which is the survivorship trap this measurement walked into first.
-    let mean_y = |f: &Vec<[f32; 2]>| f.iter().map(|p| p[1]).sum::<f32>() / f.len() as f32;
-    let (i, j, k) = (10, 20, 30);
-    for t in [i, j, k] {
-        assert_eq!(frames[t].len(), 49, "nobody has died yet at tick {t}");
+    let mut counts: Vec<usize> = Vec::new();
+    // The fall of flake `id = 0` — the first one ever born — tick by tick, while it lives.
+    let mut flake: Vec<f32> = Vec::new();
+    for k in 0..=240u64 {
+        let t = k as f64 / 60.0;
+        let out = cook
+            .cook(&state.doc.graph, &state.registry, snow, t)
+            .unwrap();
+        let s = out[0].as_stream();
+        counts.push(s.count());
+        if let (Some(Column::Vec2(p)), Some(Column::Scalar(ids))) = (s.get("P"), s.get("id"))
+            && let Some(i) = ids.iter().position(|id| *id == 0.0)
+        {
+            flake.push(p[i][1]);
+        }
+        cook.advance_tick(&state.doc.graph, &state.registry, t)
+            .unwrap();
     }
-    let (fall1, fall2) = (
-        mean_y(&frames[i]) - mean_y(&frames[j]),
-        mean_y(&frames[j]) - mean_y(&frames[k]),
-    );
+
+    // 1. BIRTH: nothing exists on the first tick (dt = 0), and then the sky fills.
+    assert_eq!(counts[0], 0, "the zone starts EMPTY - every flake is born");
     assert!(
-        fall2 > fall1 * 1.5 && fall1 > 0.0,
-        "gravity accumulates in the STATE: the drops fell {fall1} then {fall2}"
+        counts[60] > 10,
+        "a second in, it is snowing: {}",
+        counts[60]
     );
 
-    // 2. The population only ever falls, and it really does fall (the kill is live).
-    let counts: Vec<usize> = frames.iter().map(Vec::len).collect();
+    // 2. LIFE: flake 0 accelerates — each fall is longer than the one before.
+    assert!(flake.len() > 30, "flake 0 lived long enough to measure");
+    let falls: Vec<f32> = flake.windows(2).map(|w| w[0] - w[1]).collect();
     assert!(
-        counts.windows(2).all(|w| w[1] <= w[0]),
-        "a killed drop never comes back: {counts:?}"
+        falls.windows(2).all(|w| w[1] >= w[0] - 1e-4),
+        "gravity accumulates in the STATE: {falls:?}"
     );
     assert!(
-        *counts.last().unwrap() < 49,
-        "…and the disc did kill some of them: {counts:?}"
+        falls[falls.len() - 1] > falls[0] * 2.0,
+        "…and it really is accelerating, not drifting"
+    );
+
+    // 3. DEATH + STEADY STATE: the population settles instead of growing without bound.
+    let late = &counts[180..];
+    let (lo, hi) = (
+        *late.iter().min().unwrap() as f32,
+        *late.iter().max().unwrap() as f32,
+    );
+    assert!(lo > 0.0, "the snow does not die out: birth keeps up");
+    assert!(
+        hi < lo * 1.35,
+        "birth balances death - the population is a plateau, not a ramp: {lo}..{hi}"
     );
 }

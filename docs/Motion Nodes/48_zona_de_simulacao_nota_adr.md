@@ -34,8 +34,10 @@ transforma nós que a biblioteca **já tinha**:
 - **`motion.cull` vira um KILL.** Fora da zona, cull derruba elementos *deste frame* e o frame seguinte os
   reconstrói. Dentro, o estado carrega os sobreviventes — **o que morre fica morto**. (O POP Kill do Houdini, de um
   filtro que já existia.)
-- **`motion.combine` vira NASCIMENTO.** Funde recém-nascidos no estado vivo e eles **persistem**, com história
-  própria.
+- **`motion.combine` vira NASCIMENTO** — *mas só depois do doc 49*: fundir o `motion.emitter` (que é **stateless**)
+  no estado a cada tick funde **as mesmas partículas de novo**. Quem calcula "quem nasceu NESTE tick" é o
+  **`sim.spawn`** (doc 49); o `combine` funde. Esta linha foi escrita como fato antes de existir o nó que a torna
+  verdadeira — ver a lição do doc 49.
 
 **Nenhum maquinário novo comprou isso. A zona comprou.**
 

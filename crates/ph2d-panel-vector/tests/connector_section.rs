@@ -51,12 +51,14 @@ fn paint_frame(hero: &mut HeroScreen) {
     );
 }
 
-/// Os três campos do conector estão pintados (têm hit-rect) neste frame?
-fn connector_fields_painted(hero: &HeroScreen) -> [bool; 3] {
+/// Os campos do conector estão pintados (têm hit-rect) neste frame?
+/// `[Route, Jetty, Spread, Corner]`.
+fn connector_fields_painted(hero: &HeroScreen) -> [bool; 4] {
     [
         hero.hit_index.rect_for(ids::VECTOR_CONNECTOR_ROUTE),
         hero.hit_index.rect_for(ids::VECTOR_CONNECTOR_JETTY),
         hero.hit_index.rect_for(ids::VECTOR_CONNECTOR_SPREAD),
+        hero.hit_index.rect_for(ids::VECTOR_CONNECTOR_CORNER),
     ]
     .map(|r| r.is_some())
 }
@@ -74,7 +76,7 @@ fn the_connector_section_is_painted_only_when_a_connector_is_selected() {
     paint_frame(&mut hero);
     assert_eq!(
         connector_fields_painted(&hero),
-        [false, false, false],
+        [false; 4],
         "sem conector na selecao a secao Connector NAO pode existir — \
          ela esta pintando os campos de um objeto que nao e conector"
     );
@@ -84,13 +86,14 @@ fn the_connector_section_is_painted_only_when_a_connector_is_selected() {
         route: 1,
         jetty: 0.35,
         spread: 0.0,
+        corner: 0.0,
     }));
     paint_frame(&mut hero);
     assert_eq!(
         connector_fields_painted(&hero),
-        [true, true, true],
-        "com um conector selecionado os tres campos (Route/Jetty/Spread) tem de estar \
-         pintados E clicaveis — um deles sem hit-rect e um controle MORTO"
+        [true; 4],
+        "com um conector selecionado os quatro campos (Route/Jetty/Spread/Corner) tem de \
+         estar pintados E clicaveis — um deles sem hit-rect e um controle MORTO"
     );
 
     // 3. E a seção some de novo quando a seleção muda (não fica presa pintada).
@@ -98,7 +101,7 @@ fn the_connector_section_is_painted_only_when_a_connector_is_selected() {
     paint_frame(&mut hero);
     assert_eq!(
         connector_fields_painted(&hero),
-        [false, false, false],
+        [false; 4],
         "a secao ficou presa na tela depois que o conector saiu da selecao"
     );
 }
@@ -114,10 +117,13 @@ fn the_fields_are_born_showing_the_effective_value_not_zero() {
     // paralelo (que já nasce deslocado — e é esse deslocamento que o campo tem de mostrar).
     let effective_jetty = 0.7;
     let effective_spread = -0.35;
+    // A quina do PERCURSO: o valor autorado (nao ha automatico a resolver — `0` = afiado).
+    let effective_corner = 0.3;
     set_current_connector(Some(ConnectorSnapshot {
         route: 0,
         jetty: effective_jetty,
         spread: effective_spread,
+        corner: effective_corner,
     }));
     paint_frame(&mut hero);
 
@@ -138,6 +144,14 @@ fn the_fields_are_born_showing_the_effective_value_not_zero() {
         (spread - effective_spread).abs() < 1e-9,
         "o Spread nasceu em {spread}, e nao no EFETIVO ({effective_spread})"
     );
+    let corner = hero
+        .store
+        .number_value(ids::VECTOR_CONNECTOR_CORNER)
+        .expect("o campo Corner tem de estar registrado no populate");
+    assert!(
+        (corner - effective_corner).abs() < 1e-9,
+        "o Corner nasceu em {corner}, e nao no valor do conector ({effective_corner})"
+    );
 
     // E o valor publicado no frame SEGUINTE (a forma cresceu, o automático mudou) segue o
     // campo — o seed é por-frame, não uma vez só.
@@ -145,6 +159,7 @@ fn the_fields_are_born_showing_the_effective_value_not_zero() {
         route: 0,
         jetty: 0.9,
         spread: effective_spread,
+        corner: effective_corner,
     }));
     paint_frame(&mut hero);
     let jetty = hero

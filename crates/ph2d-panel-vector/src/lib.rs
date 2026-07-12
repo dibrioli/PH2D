@@ -39,6 +39,9 @@ mod paint_modes;
 mod paint_sections;
 mod paint_transform;
 pub mod populate;
+/// De QUEM são os campos de parâmetro deste frame — e quando eles não são de ninguém (a
+/// seção some). Irmão de `state` (teto de LOC).
+mod shape_focus;
 pub mod state;
 
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};

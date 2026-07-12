@@ -90,14 +90,17 @@ impl BodyCtx<'_> {
     /// (`paint_section_header` já pinta em MAIÚSCULAS), o que responde "de quem são estes
     /// campos?" sem gastar uma linha a mais.
     ///
-    /// A forma em foco é a VIVA selecionada, quando há uma (a shell publica) — assim os
-    /// campos editam a forma que está na tela, mesmo na ferramenta Select. Sem seleção, é
-    /// a forma ativa do catálogo (o default do próximo traço).
+    /// **De quem são os campos** é decidido em [`crate::shape_focus`] (as três respostas:
+    /// forma viva · catálogo · ninguém). `None` ⇒ a seção INTEIRA some — foi selecionado
+    /// algo que não é forma viva (um conector, uma curva comum), e um campo editável que
+    /// não edita nada é pior que campo nenhum.
     ///
     /// Formas sem campo (Rect / Decision / Terminal / Delay / Junction…) mostram uma
     /// linha "No parameters": a seção nunca parece quebrada.
     pub(crate) fn shape_params_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
-        let focus = state::shape_focus(state::current_shape_focus(), snap.shape);
+        let Some(focus) = crate::shape_focus::resolved(snap) else {
+            return y;
+        };
         let desc = shapes::desc(focus);
         let (mut y, collapsed) =
             self.section_header(ids::VECTOR_SECTION_SHAPE_PARAMS, desc.label, y);

@@ -136,6 +136,12 @@ pub struct VectorTool {
     /// (o bridge as reaplica no `take_apply_to_selected`).
     marker_start: Marker,
     marker_end: Marker,
+    /// **Tamanho** da ponta (múltiplo do que a largura dita) e **arredondamento** das
+    /// quinas dela. Style, como as pontas — o bridge os leva ao `StrokeSpec` de TODOS os
+    /// caminhos selecionados. **Não** há um flag "bidirecional": esse estado é derivado das
+    /// duas pontas ([`VectorStyleSnapshot::both_ends`]).
+    marker_scale: f64,
+    marker_round: f64,
     /// Set when a colour changes → the shell recolours the selected path.
     /// Drained by [`Self::take_apply_to_selected`].
     apply_to_selected: bool,
@@ -156,6 +162,8 @@ impl Default for VectorTool {
             gap: crate::params::GAP_DEFAULT,
             marker_start: Marker::None,
             marker_end: Marker::None,
+            marker_scale: crate::params::DEFAULT_MARKER_SCALE,
+            marker_round: crate::params::DEFAULT_MARKER_ROUND,
             apply_to_selected: false,
         }
     }
@@ -266,6 +274,59 @@ impl VectorTool {
         self.marker_end
     }
 
+    /// Tamanho da ponta (múltiplo) e arredondamento das quinas dela — o bridge os leva ao
+    /// `StrokeSpec` dos caminhos selecionados, ao lado das pontas.
+    #[must_use]
+    pub fn marker_scale(&self) -> f64 {
+        self.marker_scale
+    }
+    #[must_use]
+    pub fn marker_round(&self) -> f64 {
+        self.marker_round
+    }
+
+    /// **Dupla via — o estado é DERIVADO**: há ponta nos dois extremos.
+    #[must_use]
+    pub fn both_ends(&self) -> bool {
+        self.marker_start != Marker::None && self.marker_end != Marker::None
+    }
+
+    /// O clique em **Both Ends**. Não há flag a inverter — o que se inverte são as PONTAS:
+    ///
+    /// - **ligado → desligado:** limpa a ponta do COMEÇO (a linha volta a ser via única, com
+    ///   a seta no fim, que é o que "uma via" significa num diagrama).
+    /// - **desligado → ligado:** copia a ponta que existe para o outro extremo (o fim manda,
+    ///   por ser o lado default de uma seta); se **nenhuma** existe, as duas nascem
+    ///   [`Triangle`](Marker::Triangle) — senão o botão "acenderia" sem desenhar nada.
+    ///
+    /// Um `bool` guardado seria uma SEGUNDA verdade sobre "é bidirecional?", e divergiria no
+    /// instante em que o usuário trocasse uma ponta pelo chip de Start/End.
+    fn toggle_both_ends(&mut self) {
+        if self.both_ends() {
+            self.marker_start = Marker::None;
+        } else {
+            let head = match (self.marker_start, self.marker_end) {
+                (_, end) if end != Marker::None => end,
+                (start, _) if start != Marker::None => start,
+                _ => crate::params::DEFAULT_BOTH_ENDS_MARKER,
+            };
+            self.marker_start = head;
+            self.marker_end = head;
+        }
+        self.apply_to_selected = true;
+    }
+
+    /// Escreve o tamanho / o arredondamento da ponta (clampados à faixa que o painel
+    /// registra na caixa) + marca a seleção para reestilizar — são Style, como as pontas.
+    fn set_marker_scale(&mut self, v: f64) {
+        self.marker_scale = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, v);
+        self.apply_to_selected = true;
+    }
+    fn set_marker_round(&mut self, v: f64) {
+        self.marker_round = crate::shapes::clamp_to(&crate::params::MARKER_ROUND, v);
+        self.apply_to_selected = true;
+    }
+
     /// Set the cap / join + flag the selected path for restyle.
     fn set_cap(&mut self, cap: StrokeCap) {
         self.cap = cap;
@@ -294,9 +355,11 @@ impl VectorTool {
     /// [`Self::adopt_shape_values`], e pela mesma razão: sem isto o seletor mente sobre o
     /// que está na tela. **Não** marca `apply_to_selected` — adotar é LER o documento; se
     /// marcasse, o próprio ato de selecionar reescreveria o caminho.
-    pub fn adopt_markers(&mut self, start: Marker, end: Marker) {
+    pub fn adopt_markers(&mut self, start: Marker, end: Marker, scale: f64, round: f64) {
         self.marker_start = start;
         self.marker_end = end;
+        self.marker_scale = crate::shapes::clamp_to(&crate::params::MARKER_SCALE, scale);
+        self.marker_round = crate::shapes::clamp_to(&crate::params::MARKER_ROUND, round);
     }
 
     /// Mode + shape parameters the shell mirrors to drive the `ShapeTool`.
@@ -340,6 +403,8 @@ impl VectorTool {
             gap: self.gap,
             marker_start: self.marker_start,
             marker_end: self.marker_end,
+            marker_scale: self.marker_scale,
+            marker_round: self.marker_round,
         }
     }
 
@@ -460,6 +525,16 @@ impl Tool for VectorTool {
             PanelEvent::SetValue(id, v) if id == ids::VECTOR_MARKER_END_DD => {
                 self.set_marker_end(marker_from_value(v));
             }
+            // **Tamanho / arredondamento da ponta** — caixas numéricas (o valor chega
+            // autorado, não um track 0..1), como os campos de forma e os do conector.
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_MARKER_SCALE => {
+                self.set_marker_scale(v);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_MARKER_ROUND => {
+                self.set_marker_round(v);
+            }
+            // **Dupla via** — o clique reescreve as PONTAS (o estado é derivado delas).
+            PanelEvent::Click(id) if id == ids::VECTOR_MARKER_BOTH => self.toggle_both_ends(),
             _ => {}
         }
     }

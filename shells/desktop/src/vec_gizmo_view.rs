@@ -77,6 +77,14 @@ pub(crate) fn view(
     last_pointer: (f32, f32),
     pivot_tool_active: bool,
 ) -> Option<GizmoView> {
+    // **Um conector não tem gizmo.** Ele vive na identidade e o re-cook desfaz qualquer pose
+    // (`connector_live`, detalhe 3), então a caixa de transformação seria um controle que não
+    // controla nada — e, pior, o interior dela registra o hit "Translate" e **engoliria o
+    // clique nas alças de ponta** (`connector_handles`), que são os controles que o conector
+    // de fato tem. Publicar um gizmo aqui é publicar um ladrão de cliques.
+    if sim.world().get::<ph2d_ecs::VecConnector>(entity).is_some() {
+        return None;
+    }
     let (anchor, half_intrinsic) = anchor_half(sim, scene, entity)?;
     let wt = world_transform(sim, entity);
     let (sx, sy) = (wt.scale.x, wt.scale.y);

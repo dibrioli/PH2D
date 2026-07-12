@@ -52,7 +52,7 @@ impl App {
     /// Ligar um conector a outro conector é possível no draw.io; aqui não é: o alvo de uma
     /// ponta é uma FORMA. (Nada no motor impede — é uma decisão de gesto, e reverter é tirar
     /// o filtro.)
-    fn shape_under_cursor(&self, world: [f64; 2]) -> Option<VecPathId> {
+    pub(crate) fn shape_under_cursor(&self, world: [f64; 2]) -> Option<VecPathId> {
         let gfx = self.gfx.as_ref()?;
         let window_size = gfx.surface.size();
         let view = crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
@@ -117,6 +117,8 @@ impl App {
             marker_start: style.marker_start,
             // A ponta de seta é o que faz a linha ser um conector, e não um traço.
             marker_end: Marker::Triangle,
+            marker_scale: style.marker_scale,
+            marker_round: style.marker_round,
         });
         let id = gfx.vec_scene.push_path(path);
         self.vec_connect = Some(ConnectorDrag {
@@ -130,6 +132,7 @@ impl App {
                 // índice do feixe. Só o painel os fixa.
                 jetty: None,
                 spread: None,
+                corner_radius: 0.0,
             },
             start_world: world,
         });

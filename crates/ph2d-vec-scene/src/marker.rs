@@ -25,8 +25,35 @@
 //!   apareceria por dentro de uma ponta vazada (a `Open` e a `Bar` não têm o que esconder,
 //!   mas a `Triangle` e o `Diamond` têm). É a mesma razão pela qual um conector tem de parar
 //!   na borda da caixa, não no centro dela — e é o mesmo mecanismo.
+//!
+//! ## Os dois ajustes do usuário: `scale` e `round`
+//!
+//! **`scale`** ([`StrokeSpec::marker_scale`](crate::StrokeSpec::marker_scale)) multiplica o
+//! tamanho que a largura já dita — é `w_efetivo = w · scale`, e mais nada. O ponto delicado é
+//! que o **recuo tem de escalar junto** ([`Marker::inset`] recebe o mesmo `scale`): se a
+//! cabeça cresce e a linha continua parando onde parava, o traço reaparece **por dentro** da
+//! seta, atravessando-a. Recuo e geometria são a MESMA medida vista de dois lados, e o gate
+//! `the_line_always_stops_exactly_at_the_back_of_the_head` amarra os dois.
+//!
+//! **`round`** ([`StrokeSpec::marker_round`](crate::StrokeSpec::marker_round)) arredonda as
+//! quinas da ponta. Não é o `stroke-linejoin: round` do SVG — esse arredonda a junção de um
+//! traço, e aqui nós GERAMOS o contorno, não o traçamos. O certo é o **filete** de CAD, o
+//! mesmo de [`crate::corners`]: em cada quina recua-se `t` ao longo das duas arestas e
+//! ligam-se os dois pontos por uma cúbica cujos controles apontam para a quina original.
+//!
+//! Aqui o filete é parametrizado por **fração**, não por raio: `round = 1` significa "o
+//! máximo que esta ponta comporta", que é `t = metade da menor aresta adjacente`. É o mesmo
+//! clamp de [`crate::corners`], só que promovido de rede-de-segurança a **unidade da escala**
+//! — um raio absoluto não tem sentido aqui, porque a ponta muda de tamanho com a largura e
+//! com o `scale`, e o usuário quer "arredondado até o talo", não "arredondado 3 px". Sem esse
+//! teto o filete comeria a aresta inteira e a seta viraria uma pastilha.
+//!
+//! Uma ponta **sem quina** (o `Circle`) ignora o `round` — não há o que arredondar, e forçar
+//! algo ali seria inventar. A `Bar` é um risco reto: os extremos dela são pontas de traço (o
+//! `cap` da caneta), não quinas — também não têm filete. Já a `Open` TEM uma quina (o bico do
+//! "V"), e essa arredonda.
 
-use crate::{VecPath, VecVertex};
+use crate::{VecPath, VecVertex, VertexKind};
 
 /// A ponta de um traço. **Append-only**: o discriminante é gravado no documento.
 #[derive(
@@ -71,6 +98,8 @@ const HALF_W: f64 = 2.0;
 const LEN: f64 = 4.0;
 /// Raio de uma ponta redonda.
 const R: f64 = 2.0;
+/// Abaixo disto (unidades de mundo) um comprimento / recuo é tratado como zero.
+const EPS: f64 = 1e-9;
 
 impl Marker {
     /// O discriminante gravado no documento.
@@ -109,32 +138,60 @@ impl Marker {
     }
 
     /// **Quanto a linha tem de RECUAR**, em múltiplos da largura do traço, para não aparecer
-    /// por dentro da ponta.
+    /// por dentro da ponta — com a cabeça no tamanho `scale` (o mesmo que vai para o
+    /// [`Marker::build`]).
     ///
     /// Uma ponta VAZADA precisa do recuo INTEIRO (o traço cruzaria o vão e se veria por
     /// dentro dela); uma ponta CHEIA esconde a linha e pode recuar um pouco menos, mas ainda
     /// recua — senão a junção do traço com a base do triângulo forma uma bolha nas larguras
     /// grandes. A `Open` e a `Bar` não fecham região nenhuma: recuo zero.
+    ///
+    /// **O `scale` NÃO é opcional aqui.** O recuo é a profundidade da cabeça vista do outro
+    /// lado; deixá-lo para trás quando a cabeça cresce é fazer a linha reaparecer atravessando
+    /// a seta. Por isso não existe um `inset()` de conveniência: quem constrói a ponta e quem
+    /// encurta a linha passam o MESMO número, ou o desenho mente.
     #[must_use]
-    pub fn inset(self) -> f64 {
-        match self {
+    pub fn inset(self, scale: f64) -> f64 {
+        let base = match self {
             Marker::None | Marker::Open | Marker::Bar => 0.0,
             Marker::Triangle => LEN,
             Marker::Diamond | Marker::DiamondOpen => 2.0 * LEN,
             Marker::Circle | Marker::CircleOpen => 2.0 * R,
-        }
+        };
+        base * scale.max(0.0)
     }
 
     /// A geometria da ponta, em MUNDO: na ponta `tip`, apontando na direção `dir` (unitária,
-    /// a tangente da curva no extremo, apontando **para fora**), com o traço de largura `w`.
+    /// a tangente da curva no extremo, apontando **para fora**), com o traço de largura `w`,
+    /// a cabeça no tamanho `scale` e as quinas arredondadas por `round`.
     ///
-    /// A caixa é escalada por `w` (o `markerUnits = "strokeWidth"` do SVG): a ponta engrossa
-    /// junto com a linha. Contorno FECHADO nas cheias e nas vazadas de região (elas são
-    /// preenchidas ou traçadas conforme [`Marker::is_filled`]); ABERTO na `Open` e na `Bar`,
-    /// que são riscos.
+    /// A caixa é escalada por `w · scale` (o `markerUnits = "strokeWidth"` do SVG, mais o
+    /// ajuste do usuário): a ponta engrossa junto com a linha. Contorno FECHADO nas cheias e
+    /// nas vazadas de região (elas são preenchidas ou traçadas conforme [`Marker::is_filled`]);
+    /// ABERTO na `Open` e na `Bar`, que são riscos.
+    ///
+    /// `round ∈ [0, 1]` (clampado): `0` = quinas afiadas, e a saída é **byte-idêntica** à de
+    /// antes de existir este parâmetro; `1` = o filete máximo que a ponta comporta. Ver o
+    /// módulo. `scale ≤ 0` (ou `w ≤ 0`) = ponta invisível ⇒ `None`, que é o mesmo que não ter
+    /// ponta.
     #[must_use]
-    pub fn build(self, tip: [f64; 2], dir: [f64; 2], w: f64) -> Option<VecPath> {
-        let w = if w > 1e-9 { w } else { return None };
+    pub fn build(
+        self,
+        tip: [f64; 2],
+        dir: [f64; 2],
+        w: f64,
+        scale: f64,
+        round: f64,
+    ) -> Option<VecPath> {
+        // O `scale` entra na geometria pela largura EFETIVA — e só por ela. É o que garante
+        // que ele e o `inset` (que multiplica a mesma coisa) nunca possam divergir.
+        // (A comparação POSITIVA também barra o NaN, que passaria por um `<=`.)
+        let w = if w * scale > EPS {
+            w * scale
+        } else {
+            return None;
+        };
+        let round = round.clamp(0.0, 1.0);
         let (dx, dy) = (dir[0], dir[1]);
         let len = dx.hypot(dy);
         if len < 1e-12 {
@@ -154,37 +211,152 @@ impl Marker {
 
         let path = match self {
             Marker::None => return None,
-            Marker::Triangle => closed_poly(&[p(0.0, 0.0), p(LEN, HALF_W), p(LEN, -HALF_W)]),
-            // Duas riscas em "V": um contorno ABERTO que passa pela ponta.
-            Marker::Open => open_poly(&[p(LEN, HALF_W), p(0.0, 0.0), p(LEN, -HALF_W)]),
-            Marker::Diamond | Marker::DiamondOpen => closed_poly(&[
-                p(0.0, 0.0),
-                p(LEN, HALF_W),
-                p(2.0 * LEN, 0.0),
-                p(LEN, -HALF_W),
-            ]),
+            // A base do triângulo é uma ARESTA reta perpendicular ao eixo: filetar as duas
+            // quinas dela recua os cantos POR CIMA da base, sem mexer na profundidade do
+            // encosto. Nenhuma quina aqui é a de junção — todas arredondam.
+            Marker::Triangle => filleted(
+                &[p(0.0, 0.0), p(LEN, HALF_W), p(LEN, -HALF_W)],
+                true,
+                &[round; 3],
+            ),
+            // Duas riscas em "V": um contorno ABERTO que passa pela ponta. Só o BICO é quina
+            // (os dois extremos são pontas de traço) — e é ele que o filete arredonda.
+            Marker::Open => filleted(
+                &[p(LEN, HALF_W), p(0.0, 0.0), p(LEN, -HALF_W)],
+                false,
+                &[round; 3],
+            ),
+            // **A quina de TRÁS do losango não arredonda — e isso é uma decisão, não um
+            // esquecimento.** Ela é o ponto em que a LINHA ENCOSTA: o recuo do traço é
+            // `inset(scale)`, que por contrato depende só do `scale`, então a profundidade da
+            // cabeça TEM de ser invariante ao `round`. Um filete ali recua a traseira do
+            // losango (0.35·w a `round` 0.25, 1.38·w a `round` 1.0 — medido) enquanto a linha
+            // continua parando onde parava: abre-se um VÃO entre o fim do traço e a cabeça,
+            // maior que a própria largura da linha. Um losango com o bico de trás vivo é uma
+            // troca estética; uma linha partida é um bug. As outras três quinas arredondam.
+            Marker::Diamond | Marker::DiamondOpen => filleted(
+                &[
+                    p(0.0, 0.0),
+                    p(LEN, HALF_W),
+                    p(2.0 * LEN, 0.0),
+                    p(LEN, -HALF_W),
+                ],
+                true,
+                &[round, round, 0.0, round],
+            ),
+            // Um círculo não tem quina: o `round` não o afeta, e isso é o certo.
             Marker::Circle | Marker::CircleOpen => circle(p(R, 0.0), R * w),
-            // Perpendicular à linha, centrada na ponta.
-            Marker::Bar => open_poly(&[p(0.0, HALF_W), p(0.0, -HALF_W)]),
+            // Perpendicular à linha, centrada na ponta. Um risco reto: os extremos dele são
+            // `cap` de caneta, não quina — o `round` também não o afeta.
+            Marker::Bar => filleted(&[p(0.0, HALF_W), p(0.0, -HALF_W)], false, &[round; 2]),
         };
         Some(path)
     }
 }
 
-fn closed_poly(pts: &[[f64; 2]]) -> VecPath {
+/// O contorno de arestas retas `pts`, com a quina `i` **arredondada** por `rounds[i] ∈ [0, 1]`
+/// (fração do filete máximo — ver o módulo). O `round` é POR-VÉRTICE porque nem toda quina de
+/// uma ponta é decorativa: a de junção com a linha não pode se mexer (ver o losango, acima).
+///
+/// Num contorno ABERTO os dois extremos **não são quinas**: são pontas de traço, e saem crus.
+/// Só os vértices com vizinho dos dois lados arredondam.
+///
+/// `round ~ 0` (ou uma quina degenerada) devolve o vértice CRU: com o `round` zerado a saída
+/// é byte-idêntica ao polígono de entrada — **a identidade é sagrada** (é o que mantém as
+/// pontas afiadas de hoje exatamente como estão).
+fn filleted(pts: &[[f64; 2]], closed: bool, rounds: &[f64]) -> VecPath {
+    let n = pts.len();
+    let mut verts: Vec<VecVertex> = Vec::with_capacity(n * 2);
+    for i in 0..n {
+        // Os vizinhos GEOMÉTRICOS: num contorno aberto, o extremo não tem um dos dois.
+        let prev = (closed || i > 0).then(|| pts[(i + n - 1) % n]);
+        let next = (closed || i + 1 < n).then(|| pts[(i + 1) % n]);
+        let round = rounds.get(i).copied().unwrap_or(0.0);
+        match prev
+            .zip(next)
+            .and_then(|(a, b)| fillet(a, pts[i], b, round))
+        {
+            Some((v_in, v_out)) => {
+                verts.push(v_in);
+                verts.push(v_out);
+            }
+            None => verts.push(VecVertex::corner(pts[i])),
+        }
+    }
     VecPath {
-        verts: pts.iter().copied().map(VecVertex::corner).collect(),
-        closed: true,
+        verts,
+        closed,
         ..VecPath::default()
     }
 }
 
-fn open_poly(pts: &[[f64; 2]]) -> VecPath {
-    VecPath {
-        verts: pts.iter().copied().map(VecVertex::corner).collect(),
-        closed: false,
-        ..VecPath::default()
+/// Os DOIS vértices que substituem a quina `v` (entre `a` e `b`) filetada por `round`.
+/// `None` quando não há o que arredondar (`round` ~ 0, aresta degenerada, quina colinear) —
+/// aí o chamador mantém o vértice cru.
+///
+/// Mesma construção de [`crate::corners::round_closed_corners`] — recua `t` nas duas arestas e
+/// liga por uma cúbica cujos controles apontam para a quina original —, com duas diferenças:
+///
+/// 1. o parâmetro é a **fração do máximo** (`t = round · meia-aresta-menor`), não um raio: um
+///    raio absoluto não teria sentido numa ponta que muda de tamanho com a largura e com o
+///    `scale`. **O teto de meia-aresta é o que impede o filete de comer a ponta inteira** e a
+///    seta virar pastilha;
+/// 2. a trigonometria sai por identidades de meio-ângulo sobre `cos θ = ua·ub` — só `sqrt`,
+///    sem `acos`/`tan` (HR-5). No canto reto isto reproduz exatamente o `KAPPA` canônico, e o
+///    gate `the_fillet_agrees_with_the_crates_canonical_corner_rounding` prova a concordância
+///    com o `corners.rs` numérico, não de boca.
+fn fillet(a: [f64; 2], v: [f64; 2], b: [f64; 2], round: f64) -> Option<(VecVertex, VecVertex)> {
+    if round <= EPS {
+        return None;
     }
+    // Versores das duas arestas, SAINDO da quina.
+    let (ua, len_a) = unit(a[0] - v[0], a[1] - v[1])?;
+    let (ub, len_b) = unit(b[0] - v[0], b[1] - v[1])?;
+    // O recuo. **Teto = metade da aresta mais curta**: assim o filete satura em vez de
+    // atravessar a aresta que duas quinas vizinhas compartilham (o mesmo clamp do
+    // `corners.rs`, aqui promovido a unidade da escala).
+    let t = round * 0.5 * len_a.min(len_b);
+    if t <= EPS {
+        return None;
+    }
+    // Meio-ângulo interno sem transcendental: cos θ = ua·ub, e daí
+    // sin(θ/2) = √((1−cos θ)/2), cos(θ/2) = √((1+cos θ)/2).
+    let c = (ua[0] * ub[0] + ua[1] * ub[1]).clamp(-1.0, 1.0);
+    let half_sin = ((1.0 - c) * 0.5).max(0.0).sqrt();
+    let half_cos = ((1.0 + c) * 0.5).max(0.0).sqrt();
+    if half_sin <= EPS || half_cos <= EPS {
+        return None; // colinear (nada a arredondar), ou aresta dobrada sobre si
+    }
+    // Raio do arco que passa pelos dois recuos: r = t · tan(θ/2).
+    let r = t * half_sin / half_cos;
+    // Comprimento de handle exato da cúbica que segue esse arco: (4/3)·tan(α/4)·r, com
+    // α = π − θ o arco descrito. tan(α/4) = (1 − sin(θ/2)) / cos(θ/2) — de novo só √.
+    // (No canto reto: r = t e h = 0.5522847…·t, o KAPPA.)
+    let h = (4.0 / 3.0) * ((1.0 - half_sin) / half_cos) * r;
+    let p_in = [v[0] + ua[0] * t, v[1] + ua[1] * t];
+    let p_out = [v[0] + ub[0] * t, v[1] + ub[1] * t];
+    // Handles apontam para a quina ORIGINAL (o polo do arco); o outro lado fica nulo (a
+    // aresta é reta) — mesma forma do `corners.rs`, quinas independentes e editáveis.
+    Some((
+        VecVertex {
+            anchor: p_in,
+            in_handle: p_in,
+            out_handle: [p_in[0] - ua[0] * h, p_in[1] - ua[1] * h],
+            kind: VertexKind::Corner,
+        },
+        VecVertex {
+            anchor: p_out,
+            in_handle: [p_out[0] - ub[0] * h, p_out[1] - ub[1] * h],
+            out_handle: p_out,
+            kind: VertexKind::Corner,
+        },
+    ))
+}
+
+/// Versor + comprimento; `None` se o vetor é degenerado.
+fn unit(x: f64, y: f64) -> Option<([f64; 2], f64)> {
+    let len = x.hypot(y);
+    (len > EPS).then(|| ([x / len, y / len], len))
 }
 
 /// Círculo em quatro cúbicas exatas (o `KAPPA`) — não um polígono.

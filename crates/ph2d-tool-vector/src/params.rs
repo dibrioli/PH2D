@@ -7,7 +7,58 @@
 //! shell bridge → the panel reads it), and both sides agree on the affine
 //! slider mapping so a drag and the tool stay in lock-step.
 
+use crate::shapes::{FieldDesc, FieldUnit};
 use ph2d_vec_scene::{Marker, ShapeKind, ShapeValues};
+
+/// **Head Size** — o tamanho da ponta, como MÚLTIPLO do que a largura do traço já dita
+/// (`1.0` = o default). Um múltiplo, e não um tamanho absoluto: a ponta cresce com o traço,
+/// senão engrossar a linha encolheria a seta visualmente até virar um cotoco.
+pub const MARKER_SCALE: FieldDesc = FieldDesc {
+    label: "Head Size",
+    min: 0.25,
+    max: 4.0,
+    step: 0.05,
+    unit: FieldUnit::Ratio,
+};
+
+/// **Head Round** — o arredondamento das quinas da PRÓPRIA ponta (`0` = afiada, `1` = o
+/// máximo que a geometria dela comporta sem se descaracterizar).
+pub const MARKER_ROUND: FieldDesc = FieldDesc {
+    label: "Head Round",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    unit: FieldUnit::Ratio,
+};
+
+/// Defaults das duas (o que o `StrokeSpec` já usa: ponta de tamanho natural, quinas vivas).
+pub const DEFAULT_MARKER_SCALE: f64 = 1.0;
+pub const DEFAULT_MARKER_ROUND: f64 = 0.0;
+
+/// A ponta que a "dupla via" acende quando NENHUMA das duas existe — a seta canônica.
+pub const DEFAULT_BOTH_ENDS_MARKER: Marker = Marker::Triangle;
+
+/// Os dois rótulos do botão **Both Ends** (a "dupla via"), indexados pelo estado DERIVADO.
+pub const BOTH_ENDS_NAMES: &[&str] = &["Off", "On"];
+
+/// **Both Ends** — a dupla via, como o painel a rotula. Uma ESCOLHA de dois estados (não um
+/// número): o botão mostra o corrente e o clique alterna, como o Route do conector.
+///
+/// O estado NÃO é guardado em lugar nenhum — é derivado das duas pontas
+/// ([`VectorStyleSnapshot::both_ends`]). Este descritor é só o vocabulário da linha.
+pub const BOTH_ENDS: FieldDesc = FieldDesc {
+    label: "Both Ends",
+    min: 0.0,
+    max: 1.0,
+    step: 1.0,
+    unit: FieldUnit::Choice(BOTH_ENDS_NAMES),
+};
+
+/// O rótulo que o botão Both Ends mostra para o estado derivado `on`.
+#[must_use]
+pub fn both_ends_label(on: bool) -> &'static str {
+    BOTH_ENDS_NAMES.get(usize::from(on)).copied().unwrap_or("")
+}
 
 /// Minimum / maximum stroke width in screen pixels (inclusive range the Width
 /// slider spans).
@@ -437,6 +488,24 @@ pub struct VectorStyleSnapshot {
     /// uma tabela de conversão para manter em dia.
     pub marker_start: Marker,
     pub marker_end: Marker,
+    /// Tamanho da ponta ([`MARKER_SCALE`]) + arredondamento das quinas dela
+    /// ([`MARKER_ROUND`]). Viajam no snapshot porque as caixas do painel são semeadas com o
+    /// valor EFETIVO da tool a cada frame — um campo que nascesse em `0` daria uma seta
+    /// invisível ao primeiro toque.
+    pub marker_scale: f64,
+    pub marker_round: f64,
+}
+
+impl VectorStyleSnapshot {
+    /// **"É bidirecional?" é uma pergunta DERIVADA** — a linha tem ponta nos dois extremos.
+    ///
+    /// O botão Both Ends lê daqui e o clique reescreve as PONTAS (nunca um flag próprio):
+    /// um booleano guardado seria uma segunda verdade, e divergiria no instante em que o
+    /// usuário trocasse uma das pontas pelo chip de Start/End.
+    #[must_use]
+    pub fn both_ends(&self) -> bool {
+        self.marker_start != Marker::None && self.marker_end != Marker::None
+    }
 }
 
 impl Default for VectorStyleSnapshot {
@@ -454,6 +523,8 @@ impl Default for VectorStyleSnapshot {
             gap: GAP_DEFAULT,
             marker_start: Marker::None,
             marker_end: Marker::None,
+            marker_scale: DEFAULT_MARKER_SCALE,
+            marker_round: DEFAULT_MARKER_ROUND,
         }
     }
 }

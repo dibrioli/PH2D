@@ -26,7 +26,7 @@ use ph2d_tool_vector::params::{
     text_weight_to_slider,
 };
 use ph2d_tool_vector::shapes;
-use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, px_to_slider};
+use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, connector, params, px_to_slider};
 
 /// Linear-gradient Angle slider mapping: track `0..1` → `0..360` degrees.
 const GRAD_ANGLE_SLIDER_SCALE: f32 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
@@ -43,6 +43,32 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
             state: ButtonState::Normal,
         },
     );
+}
+
+/// Uma caixa numérica de faixa FIXA (as do conector + as das pontas do traço), semeada em
+/// `value`. **`set_number_range` não é opcional**: sem ela o arrasto escala errado — o
+/// gotcha conhecido da caixa limitada. (As caixas de parâmetro de FORMA não passam aqui: a
+/// faixa delas é por-forma, e a shell a re-registra quando o foco muda.)
+fn number_field(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    min: f64,
+    max: f64,
+    step: f64,
+    value: f64,
+) {
+    store.register(
+        id,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value,
+            buffer: format!("{value}"),
+            caret: 0,
+            last_committed: value,
+            selection_anchor: None,
+        },
+    );
+    store.set_number_range(id, min, max, step);
 }
 
 /// Register a slider + its linked value chip, seeded at `track` / `display`.
@@ -99,31 +125,15 @@ fn populate_connector(store: &mut WidgetStore) {
     // Route: um BOTÃO que CICLA (a rota corrente vem do snapshot que a shell publica, não do
     // store — a verdade é do documento, e o painel é stateless).
     button(store, ids::VECTOR_CONNECTOR_ROUTE);
-    // Jetty / Spread: caixas numéricas. A faixa é FIXA (ao contrário dos campos de forma, que
-    // mudam com a forma em foco), e sem `set_number_range` o arrasto escalaria errado — o
-    // gotcha conhecido da caixa limitada.
+    // Jetty / Spread / Corner: caixas numéricas de faixa FIXA (ao contrário dos campos de
+    // forma, que mudam com a forma em foco). O valor é re-semeado com o EFETIVO a cada frame
+    // (Fase B do paint) — aqui só nasce o slot.
     for (id, field) in [
-        (
-            ids::VECTOR_CONNECTOR_JETTY,
-            &ph2d_tool_vector::connector::JETTY,
-        ),
-        (
-            ids::VECTOR_CONNECTOR_SPREAD,
-            &ph2d_tool_vector::connector::SPREAD,
-        ),
+        (ids::VECTOR_CONNECTOR_JETTY, &connector::JETTY),
+        (ids::VECTOR_CONNECTOR_SPREAD, &connector::SPREAD),
+        (ids::VECTOR_CONNECTOR_CORNER, &connector::CORNER),
     ] {
-        store.register(
-            id,
-            InteractiveState::NumberInput {
-                state: TextInputState::Normal,
-                value: field.min,
-                buffer: format!("{}", field.min),
-                caret: 0,
-                last_committed: field.min,
-                selection_anchor: None,
-            },
-        );
-        store.set_number_range(id, field.min, field.max, field.step);
+        number_field(store, id, field.min, field.max, field.step, field.min);
     }
 }
 
@@ -454,6 +464,20 @@ fn populate_markers(store: &mut WidgetStore) {
             button(store, ids::vector_marker_option_id(slot, i));
         }
     }
+    // **Tamanho / arredondamento** da ponta: caixas numéricas de faixa FIXA. O
+    // `set_number_range` não é opcional — sem ele o arrasto escala errado (o gotcha da caixa
+    // limitada). O valor é re-semeado com o efetivo da tool a cada frame (Fase B do paint).
+    for (id, field) in [
+        (ids::VECTOR_MARKER_SCALE, &params::MARKER_SCALE),
+        (ids::VECTOR_MARKER_ROUND, &params::MARKER_ROUND),
+    ] {
+        number_field(store, id, field.min, field.max, field.step, field.min);
+    }
+    // **Both Ends** — um botão. Registrar aqui é o que o torna clicável: pintar e dar
+    // hit-rect não basta (a gate `architecture_panel_wiring_parity` exige o registro DENTRO
+    // do `populate.rs`, e ela tem razão — sem `InteractiveState` o widget nunca é focável e
+    // Down/Up jamais disparam).
+    button(store, ids::VECTOR_MARKER_BOTH);
 }
 
 /// Arrange (duplicate / z-order / flip / rotate), reshape de path, e o botão Close.

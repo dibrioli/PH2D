@@ -133,6 +133,17 @@ pub const VECTOR_MARKER_START_DD: NodeId = hash_node_id("vector.marker.start_dd"
 /// Chip da ponta no FIM do caminho.
 pub const VECTOR_MARKER_END_DD: NodeId = hash_node_id("vector.marker.end_dd");
 
+/// **Head Size** — o tamanho da ponta, como MÚLTIPLO do que a largura do traço já dita
+/// (`1.0` = o default). Múltiplo, e não tamanho absoluto: a ponta tem de crescer com o
+/// traço, senão engrossar a linha faz a seta encolher visualmente até virar um cotoco.
+pub const VECTOR_MARKER_SCALE: NodeId = hash_node_id("vector.marker.scale");
+/// **Head Round** — o arredondamento das quinas da PRÓPRIA ponta (`0` = afiada).
+pub const VECTOR_MARKER_ROUND: NodeId = hash_node_id("vector.marker.round");
+/// **Both Ends** — a "dupla via". O estado é **DERIVADO** (`start != None && end != None`),
+/// nunca guardado: duas fontes de verdade sobre "é bidirecional?" divergiriam no dia em que
+/// alguém trocasse uma das pontas pelo chip.
+pub const VECTOR_MARKER_BOTH: NodeId = hash_node_id("vector.marker.both");
+
 /// Quantos seletores de ponta existem: começo (`slot = 0`) e fim (`slot = 1`).
 pub const MARKER_SLOTS: usize = 2;
 
@@ -414,6 +425,10 @@ pub const VECTOR_CONNECTOR_ROUTE: NodeId = hash_node_id("vector.connector.route"
 pub const VECTOR_CONNECTOR_JETTY: NodeId = hash_node_id("vector.connector.jetty");
 /// **Spread** — o afastamento que separa dois conectores no mesmo par de formas.
 pub const VECTOR_CONNECTOR_SPREAD: NodeId = hash_node_id("vector.connector.spread");
+/// **Corner** — o raio das quinas do PERCURSO (as dobras do cotovelo), em unidades de
+/// mundo. `0` = afiado, o default do fluxograma clássico. Não confundir com o
+/// [`VECTOR_MARKER_ROUND`], que arredonda as quinas da SETA.
+pub const VECTOR_CONNECTOR_CORNER: NodeId = hash_node_id("vector.connector.corner");
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

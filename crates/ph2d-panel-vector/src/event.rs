@@ -78,26 +78,7 @@ pub(crate) fn apply_event(
         // id próprio, mas o valor mora no slot numérico do mesmo índice — então o `SetValue`
         // sai no id do CAMPO, e a shell segue tendo um caminho só para aplicar parâmetro.
         WidgetEvent::Click(id) if state::shape_choice_index(id).is_some() => {
-            seam_reset_button(host, id);
-            let i = state::shape_choice_index(id).unwrap_or(0);
-            let field = ids::vector_shape_field_id(i);
-            let cur = host.store().number_value(field).unwrap_or(0.0);
-            let active = state::current_snapshot().shape;
-            let focus = state::shape_focus(state::current_shape_focus(), active);
-            match ph2d_tool_vector::shapes::next_choice(focus, i, cur) {
-                Some(next) => {
-                    // O painel adianta o valor no store para o botão já pintar o rótulo
-                    // novo neste frame; a shell aplica e re-cozinha a forma viva.
-                    host.store_mut().set_number_value(field, next);
-                    host.bus_mut()
-                        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                            field, next,
-                        )));
-                    true
-                }
-                // O campo deste indice nao e uma escolha nesta forma: o clique nao existe.
-                None => false,
-            }
+            cycle_shape_choice(host, id)
         }
         // Variation-axis number field — forward the committed axis value; the shell
         // maps the slot index to the font's axis and re-cooks the glyphs.
@@ -215,12 +196,49 @@ pub(crate) fn apply_event(
             }
             true
         }
-        // A seção do CONECTOR (Route / Jetty / Spread) trata os seus três ids no módulo
-        // dela — que é onde o snapshot dela vive. Delegar AQUI (em vez de mais três arms)
-        // também é o que mantém `apply_event` sob o teto de 200 LOC por função.
-        other => crate::paint_connector::apply_event(host, other),
+        // As PONTAS (Head Size / Head Round) e o CONECTOR (Route / Jetty / Spread / Corner)
+        // tratam os seus ids nos módulos deles — que é onde o snapshot de cada um vive.
+        // Delegar AQUI (em vez de mais seis arms) é o que mantém `apply_event` sob o teto de
+        // 200 LOC por função.
+        other => {
+            crate::paint_markers::apply_event(host, other)
+                || crate::paint_connector::apply_event(host, other)
+        }
     };
     EventOutcome::from_bool(consumed)
+}
+
+/// O clique num **campo de ESCOLHA** de forma (o ponto de vista de um sólido isométrico, por
+/// exemplo): o botão CICLA pelas opções. Extraído de `apply_event` (teto de 200 LOC por
+/// função dos painéis).
+///
+/// O hit mora num widget (o botão) e o valor mora em outro (o slot numérico do mesmo índice),
+/// então o `SetValue` sai no id do **campo** — a shell segue tendo um caminho só para aplicar
+/// parâmetro.
+///
+/// **Sem forma em foco, recusa.** É a MESMA porta do paint (`shape_focus::resolved`): quando
+/// o selecionado não é forma viva, a seção nem foi pintada e este clique não existe — recusar
+/// aqui é o que impede um botão sobrevivente de um frame antigo de editar a forma errada.
+fn cycle_shape_choice(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    seam_reset_button(host, id);
+    let i = state::shape_choice_index(id).unwrap_or(0);
+    let field = ids::vector_shape_field_id(i);
+    let cur = host.store().number_value(field).unwrap_or(0.0);
+    let Some(focus) = crate::shape_focus::resolved(&state::current_snapshot()) else {
+        return false;
+    };
+    // O campo deste índice não é uma escolha nesta forma: o clique não existe.
+    let Some(next) = ph2d_tool_vector::shapes::next_choice(focus, i, cur) else {
+        return false;
+    };
+    // O painel adianta o valor no store para o botão já pintar o rótulo novo neste frame; a
+    // shell aplica e re-cozinha a forma viva.
+    host.store_mut().set_number_value(field, next);
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+            field, next,
+        )));
+    true
 }
 
 /// Escolheu uma **ponta de traço** no popover (Start ou End).
@@ -336,4 +354,8 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_DISTRIBUTE_V
         || id == ids::VECTOR_PIVOT_EDIT
         || id == ids::VECTOR_CONVERT_TO_CURVES
+        // **Both Ends** (a dupla via). Um `Click` puro — e não um `SetValue` com um booleano
+        // — porque o estado é DERIVADO das duas pontas: quem o resolve é a tool, que as
+        // possui. Fora daqui o botão pintaria e estaria MORTO.
+        || id == ids::VECTOR_MARKER_BOTH
 }

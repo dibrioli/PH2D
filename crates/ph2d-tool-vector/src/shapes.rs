@@ -662,7 +662,9 @@ pub const SHAPES: &[ShapeDesc] = &[
 
 // A travessia (descritor · unidade · clamp · escolhas) mora no módulo irmão, mas a porta é
 // aqui: `shapes::to_world`, `shapes::clamp`, … seguem existindo para quem consome.
-pub use crate::shapes_units::{choice_label, clamp, desc, next_choice, shapes_in, to_ui, to_world};
+pub use crate::shapes_units::{
+    choice_label, clamp, clamp_to, desc, next_choice, shapes_in, to_ui, to_world,
+};
 
 #[cfg(test)]
 #[path = "shapes_tests.rs"]

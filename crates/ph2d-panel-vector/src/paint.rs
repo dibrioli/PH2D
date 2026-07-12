@@ -142,6 +142,9 @@ fn seed_and_publish(
     // tamanho das caixas, então ele muda quando o usuário arrasta a forma. O campo em foco
     // é pulado lá dentro (senão o seed brigaria com a digitação).
     crate::paint_connector::seed(store);
+    // Idem para as caixas da PONTA (Head Size / Head Round): nascem no valor EFETIVO da tool,
+    // não em `0` — uma ponta de tamanho zero é uma ponta invisível.
+    crate::paint_markers::seed(store);
     store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
     store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
     // Clamp any stale scroll if the content shrank (e.g. a collapsed section) so we never

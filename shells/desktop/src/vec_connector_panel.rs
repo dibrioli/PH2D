@@ -72,8 +72,12 @@ pub(crate) fn effective(scene: &VecScene, xforms: &VecXforms, conn: &VecConnecto
     (conn.jetty_or(auto), conn.spread_or(connector::SPREAD_STEP))
 }
 
-/// O que a shell publica para o painel: `(route, jetty efetivo, spread efetivo)` do
+/// O que a shell publica para o painel: `(route, jetty efetivo, spread efetivo, corner)` do
 /// conector em foco. `None` = **nenhum conector na seleção** ⇒ a seção inteira some.
+///
+/// O `corner` não tem "efetivo" a resolver — é um `f32` no componente, não um `Option`: zero
+/// (quina afiada) já é a resposta certa do fluxograma clássico, e não existe raio automático
+/// que faça sentido.
 ///
 /// Devolve uma tupla crua (e não o tipo do painel) porque o painel é opcional na build
 /// (`feature = "panel-vector"`): o `vector_bridge` faz a conversão dentro do `cfg`.
@@ -84,14 +88,14 @@ pub(crate) fn selection_snapshot(
     scene: &VecScene,
     xforms: &VecXforms,
     selection: &[VecPathId],
-) -> Option<(u8, f64, f64)> {
+) -> Option<(u8, f64, f64, f64)> {
     let (_, conn) = panel_connector_target(sim, map, selection)?;
     let (jetty, spread) = effective(scene, xforms, &conn);
     let route = match conn.route {
         RouteKind::Straight => 0,
         RouteKind::Orthogonal => 1,
     };
-    Some((route, jetty, spread))
+    Some((route, jetty, spread, f64::from(conn.corner_radius)))
 }
 
 /// **Publica o conector em foco para o painel** — os valores já EFETIVOS. Chamado pelo
@@ -115,10 +119,11 @@ pub(crate) fn publish(
             .then(|| selection_snapshot(sim, map, scene, xforms, selection))
             .flatten()
             .map(
-                |(route, jetty, spread)| ph2d_panel_vector::ConnectorSnapshot {
+                |(route, jetty, spread, corner)| ph2d_panel_vector::ConnectorSnapshot {
                     route,
                     jetty,
                     spread,
+                    corner,
                 },
             ),
     );
@@ -127,12 +132,14 @@ pub(crate) fn publish(
     let _ = (sim, map, scene, xforms, selection, vector_active);
 }
 
-/// `true` se `id` é um dos três campos do conector (o que a shell captura no dreno).
+/// `true` se `id` é um dos campos do conector (o que a shell captura no dreno). Um campo
+/// novo entra AQUI e no [`apply_field`] — fora daqui ele pinta e está morto.
 #[must_use]
 pub(crate) fn is_connector_field_id(id: NodeId) -> bool {
     id == ph2d_editor::ids::VECTOR_CONNECTOR_ROUTE
         || id == ph2d_editor::ids::VECTOR_CONNECTOR_JETTY
         || id == ph2d_editor::ids::VECTOR_CONNECTOR_SPREAD
+        || id == ph2d_editor::ids::VECTOR_CONNECTOR_CORNER
 }
 
 /// Aplica a edição de um campo no componente. **Editar FIXA** — `None` vira `Some(v)`, e o
@@ -146,6 +153,10 @@ fn apply_field(conn: &mut VecConnector, id: NodeId, v: f64) -> bool {
         conn.jetty = Some(connector::clamp_to(&connector::JETTY, v) as f32);
     } else if id == ph2d_editor::ids::VECTOR_CONNECTOR_SPREAD {
         conn.spread = Some(connector::clamp_to(&connector::SPREAD, v) as f32);
+    } else if id == ph2d_editor::ids::VECTOR_CONNECTOR_CORNER {
+        // O raio das quinas do PERCURSO. Não é `Option` (não há automático que faça sentido):
+        // o campo é a única verdade, e `0` = quina afiada.
+        conn.corner_radius = connector::clamp_to(&connector::CORNER, v) as f32;
     } else if id == ph2d_editor::ids::VECTOR_CONNECTOR_ROUTE {
         // O botão cicla e emite o PRÓXIMO discriminante; um valor fora da tabela (não pode
         // acontecer) cai na rota default em vez de entrar em pânico.

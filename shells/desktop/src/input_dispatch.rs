@@ -2051,6 +2051,12 @@ impl App {
         if self.connector_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Alça de ponta (modo Select): a ponta agarrada segue o cursor. Durante o arrasto ela é
+        // uma ponta SOLTA no ponteiro, e o re-cook do frame já desenha a linha inteira seguindo
+        // a mão — não há caminho de preview separado, o preview é o conector.
+        if self.conn_handle_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
         // forwarding so widgets receive the move event but the camera
         // also follows.
@@ -2340,6 +2346,37 @@ impl App {
             && self.over_canvas_or_gizmo(evt.x, evt.y)
             && self.vec_text_double_click(evt.x, evt.y)
         {
+            return;
+        }
+        // **As alças de ponta do conector** (os dois círculos), no modo Select. Mesmo lugar e
+        // mesma razão do duplo-clique de texto acima: no Select a tool não captura o canvas, e
+        // sem este arm a pressão iria para o picking/gizmo — que selecionaria a forma ATRÁS da
+        // alça em vez de arrastá-la.
+        //
+        // O `conn_handle_down` só devolve `true` quando o cursor está mesmo sobre uma alça de
+        // um conector SELECIONADO; em qualquer outro caso o clique segue o caminho de sempre.
+        // É esse contrato que mantém o resto do editor intacto.
+        if self.vector_tool_active()
+            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && let Some(w) = self.vec_world_at((evt.x, evt.y))
+            && self.conn_handle_down(w)
+        {
+            return;
+        }
+        // O Up que FECHA o arrasto de alça (ele nasceu no Select, e é lá que morre).
+        if self.vec_conn_handle.is_some()
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Up
+        {
+            if let Some(w) = self.vec_world_at((evt.x, evt.y)) {
+                self.conn_handle_up(w);
+            } else {
+                self.conn_handle_cancel();
+            }
             return;
         }
         // ADR-0112: no modo **Select** a ferramenta não captura o canvas — o clique
@@ -2648,8 +2685,10 @@ impl App {
                 }
                 (ph2d_host::PointerButton::Secondary, PointerKind::Down) if on_canvas => {
                     // O botão direito ABORTA o conector em construção (a linha some) — o
-                    // mesmo que ele já faz com a caneta e a ferramenta de forma.
-                    if self.connector_cancel() {
+                    // mesmo que ele já faz com a caneta e a ferramenta de forma. E abortar o
+                    // arrasto de uma ALÇA devolve a ponta ao lugar de onde ela saiu (o
+                    // vínculo original, intacto): desistir não pode desligar a linha.
+                    if self.conn_handle_cancel() || self.connector_cancel() {
                         return;
                     }
                     if shape_kind_for_mode(&self.vec_draw_config).is_none() {

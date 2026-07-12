@@ -26,9 +26,11 @@
 use crate::ids;
 use crate::paint_sections::{BodyCtx, LABEL_COL_W};
 use crate::state;
-use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{
     DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, paint_dropdown_chip,
     paint_dropdown_popover_scrolled, scrollbar_is_needed, scrollbar_track_rect,
@@ -36,7 +38,7 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
-use ph2d_tool_vector::VectorStyleSnapshot;
+use ph2d_tool_vector::{VectorStyleSnapshot, params, shapes};
 use ph2d_vec_scene::{ALL_MARKERS, Marker};
 
 /// O chip do seletor `slot` (0 = começo, 1 = fim).
@@ -71,14 +73,92 @@ fn slot_i18n_key(slot: usize) -> &'static str {
     }
 }
 
+/// **Semeia as duas caixas da ponta com o valor EFETIVO da tool** (+ registra a FAIXA de
+/// cada uma — sem `set_number_range` o arrasto escala errado, o gotcha conhecido da caixa
+/// limitada). Chamado da Fase B do `paint`, ao lado do seed do conector.
+///
+/// O campo em FOCO nunca é semeado: senão o seed sobrescreveria, a cada frame, a tecla que o
+/// usuário acabou de digitar (ou o arrasto em curso). E uma caixa que nascesse em `0` daria
+/// uma ponta INVISÍVEL (`Head Size = 0`) ao primeiro toque — o mesmo salto que a seção do
+/// conector já resolve mostrando o efetivo.
+pub(crate) fn seed(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    let snap = state::current_snapshot();
+    let focus = store.focus_id();
+    for (id, field, value) in [
+        (
+            ids::VECTOR_MARKER_SCALE,
+            &params::MARKER_SCALE,
+            snap.marker_scale,
+        ),
+        (
+            ids::VECTOR_MARKER_ROUND,
+            &params::MARKER_ROUND,
+            snap.marker_round,
+        ),
+    ] {
+        store.set_number_range(id, field.min, field.max, field.step);
+        if focus != Some(id) {
+            store.set_number_value(id, shapes::clamp_to(field, value));
+        }
+    }
+}
+
+/// O evento de volta das duas caixas (Head Size / Head Round). Delegado do
+/// `event::apply_event`, que já está no teto de 200 LOC por função — e o assunto é deste
+/// módulo. O botão **Both Ends** não passa aqui: é um `Click` puro que a tool resolve
+/// (`forwards_plain_click`), porque o estado dele é DERIVADO das pontas.
+///
+/// Os dois saem como `SetValue` **no id do próprio campo**: a tool tem um braço por campo, e
+/// ela é a dona do Style (o bridge o leva ao `StrokeSpec` de todos os selecionados).
+pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let WidgetEvent::ValueChanged(id) = ev else {
+        return false;
+    };
+    let field = if id == ids::VECTOR_MARKER_SCALE {
+        &params::MARKER_SCALE
+    } else if id == ids::VECTOR_MARKER_ROUND {
+        &params::MARKER_ROUND
+    } else {
+        return false;
+    };
+    let v = shapes::clamp_to(field, host.store().number_value(id).unwrap_or(0.0));
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v)));
+    true
+}
+
 impl BodyCtx<'_> {
-    /// As duas linhas de ponta (`Start` / `End`), no fim da seção STROKE. Devolve o `y`
-    /// avançado.
+    /// As linhas de ponta no fim da seção STROKE: os dois chips (`Start` / `End`) + o
+    /// **tamanho** da cabeça, o **arredondamento** das quinas dela e a **dupla via**.
+    /// Devolve o `y` avançado.
     pub(crate) fn marker_rows(&mut self, snap: &VectorStyleSnapshot, mut y: f32) -> f32 {
         for slot in 0..ids::MARKER_SLOTS {
             y = self.marker_row(snap, slot, y);
         }
-        y
+        // As caixas leem o valor do STORE (semeado com o efetivo na Fase B do paint), como
+        // toda caixa numérica do painel — assim o dígito que está sendo digitado não é
+        // sobrescrito pelo snapshot do frame.
+        y = self.labeled_number_field(
+            params::MARKER_SCALE.label,
+            ids::VECTOR_MARKER_SCALE,
+            params::MARKER_SCALE.step,
+            y,
+        );
+        y = self.labeled_number_field(
+            params::MARKER_ROUND.label,
+            ids::VECTOR_MARKER_ROUND,
+            params::MARKER_ROUND.step,
+            y,
+        );
+        // **Dupla via.** O rótulo do botão é DERIVADO das pontas (`both_ends()`) — não há um
+        // flag a consultar. Reusa o mesmo desenho do campo de escolha (rótulo na coluna de
+        // rótulos + botão que alterna ao clique), então a linha é irmã das de cima.
+        self.labeled_choice_button(
+            params::BOTH_ENDS.label,
+            ids::VECTOR_MARKER_BOTH,
+            params::both_ends_label(snap.both_ends()),
+            y,
+        )
     }
 
     /// Uma linha: rótulo + chip de dropdown mostrando a ponta corrente. Mesmo desenho da

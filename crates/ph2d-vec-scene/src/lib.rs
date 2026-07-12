@@ -116,6 +116,11 @@ pub use marker::{ALL_MARKERS, Marker, end_tangent, trim_path};
 mod boundary;
 pub use boundary::{boundary_hit, outline};
 
+/// **O filete de quina de uma polilinha** — o que transforma o cotovelo duro de um
+/// fluxograma numa linha que dobra suave. Arco exato em qualquer ângulo, sem transcendental.
+mod polyline;
+pub use polyline::round_polyline;
+
 /// O CATÁLOGO de formas paramétricas: o enum único (`ShapeKind`), os valores de cada
 /// forma e o `cook` que os transforma em geometria. A forma é DADO — é o que faz uma
 /// forma nova custar uma linha de tabela em vez de oito lugares.
@@ -199,6 +204,24 @@ pub struct StrokeSpec {
     /// **Ponta no FIM** do caminho. Idem.
     #[serde(default)]
     pub marker_end: Marker,
+    /// **Tamanho da ponta**, como múltiplo do tamanho que a largura do traço já dita.
+    /// `1.0` = o default.
+    ///
+    /// Por que um MÚLTIPLO e não um tamanho absoluto: a ponta tem de crescer com o traço,
+    /// senão engrossar a linha faz a seta encolher visualmente até virar um cotoco. O
+    /// multiplicador dá o ajuste fino sem quebrar essa proporção.
+    #[serde(default = "unit_scale")]
+    pub marker_scale: f64,
+    /// **Arredondamento das quinas da ponta**: `0` = afiada, `1` = o máximo que a geometria
+    /// da ponta comporta sem se descaracterizar.
+    #[serde(default)]
+    pub marker_round: f64,
+}
+
+/// O default do [`StrokeSpec::marker_scale`]. Precisa ser uma função porque o default de
+/// `serde` para um `f64` é **zero** — e uma ponta de tamanho zero é uma ponta invisível.
+fn unit_scale() -> f64 {
+    1.0
 }
 
 impl StrokeSpec {
@@ -213,6 +236,8 @@ impl StrokeSpec {
             dash: None,
             marker_start: Marker::None,
             marker_end: Marker::None,
+            marker_scale: 1.0,
+            marker_round: 0.0,
         }
     }
 

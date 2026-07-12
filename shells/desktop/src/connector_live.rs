@@ -28,7 +28,9 @@ use std::collections::BTreeMap;
 
 use ph2d_ecs::{Anchor, ConnectorEnd, Entity, Name, SimWorld, Transform, VecConnector};
 use ph2d_vec_connect::{Aabb, Dir, EndSpec, RouteInput, RouteKind, route, side_towards};
-use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, VecXforms, boundary_hit, xform_of};
+use ph2d_vec_scene::{
+    VecPath, VecPathId, VecScene, VecXforms, boundary_hit, round_polyline, xform_of,
+};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -176,6 +178,12 @@ fn perp(v: [f64; 2]) -> [f64; 2] {
 
 /// O ponto de uma porta `(u, v)` normalizada na caixa LOCAL da forma, levado ao mundo. Local ⇒
 /// gira e escala com ela (ADR-0111), de graça.
+///
+/// **`u` e `v` NÃO são clampados a `[0, 1]`, e isso é a feature.** Um `u = 1.8` é um ponto além
+/// da borda direita, medido na régua da própria forma — é assim que a alça de ponta afasta a
+/// linha da forma **sem soltar o vínculo** (ver [`crate::connector_handles`]). Clampar aqui
+/// (que era o que este código fazia) grudava a ponta de volta na borda e tornava o afastamento
+/// impossível de expressar.
 fn port_world(
     scene: &VecScene,
     xforms: &VecXforms,
@@ -184,10 +192,7 @@ fn port_world(
     v: f64,
 ) -> Option<[f64; 2]> {
     let (lo, hi) = scene.path_curve_bbox(id)?;
-    let local = [
-        lo[0] + (hi[0] - lo[0]) * u.clamp(0.0, 1.0),
-        lo[1] + (hi[1] - lo[1]) * v.clamp(0.0, 1.0),
-    ];
+    let local = [lo[0] + (hi[0] - lo[0]) * u, lo[1] + (hi[1] - lo[1]) * v];
     Some(xform_of(xforms, id).apply(local))
 }
 
@@ -236,14 +241,18 @@ fn current_endpoints(scene: &VecScene, id: VecPathId) -> ([f64; 2], [f64; 2]) {
         .unwrap_or(([0.0, 0.0], [0.0, 0.0]))
 }
 
-/// Escreve a polilinha **em lugar** no path `id` — id, estilo e (portanto) entidade,
-/// seleção e ponta de seta preservados. Ver o detalhe 1 do doc do módulo.
-fn write_polyline(scene: &mut VecScene, id: VecPathId, pts: &[[f64; 2]]) {
+/// Escreve a rota **em lugar** no path `id` — id, estilo e (portanto) entidade, seleção e
+/// ponta de seta preservados. Ver o detalhe 1 do doc do módulo.
+///
+/// `radius > 0` arredonda as **dobras** do cotovelo ([`round_polyline`]). As duas PONTAS ficam
+/// afiadas de propósito: é do primeiro e do último segmento que sai a tangente que orienta a
+/// ponta de seta — arredondá-los faria a seta apontar para o lado.
+fn write_route(scene: &mut VecScene, id: VecPathId, pts: &[[f64; 2]], radius: f64) {
     let Some(p) = scene.path_mut(id) else {
         return;
     };
     p.verts.clear();
-    p.verts.extend(pts.iter().map(|&a| VecVertex::corner(a)));
+    p.verts.extend(round_polyline(pts, radius));
     p.closed = false;
     p.subpaths.clear();
 }
@@ -427,7 +436,7 @@ pub(crate) fn recook(
             continue;
         };
         cache.insert(id, cooked.sides);
-        write_polyline(scene, id, &cooked.pts);
+        write_route(scene, id, &cooked.pts, f64::from(conn.corner_radius));
 
         // 3. O conector vive na IDENTIDADE (detalhe 3 do doc): a geometria acima é MUNDO, e
         //    uma pose por cima a deslocaria. Devolver a identidade é o que torna o gizmo

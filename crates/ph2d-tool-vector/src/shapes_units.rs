@@ -4,7 +4,7 @@
 //! forma, como um valor cruza a fronteira UI↔mundo, onde ele satura, e — para um campo de
 //! ESCOLHA — qual é a próxima opção e como ela se chama.
 
-use crate::shapes::{FieldUnit, SHAPES, ShapeDesc, ShapeGroup};
+use crate::shapes::{FieldDesc, FieldUnit, SHAPES, ShapeDesc, ShapeGroup};
 use ph2d_vec_scene::{ShapeKind, ShapeValues};
 
 /// O descritor de `kind` (todo `ShapeKind` tem um — o gate abaixo garante).
@@ -47,6 +47,15 @@ pub fn to_ui(kind: ShapeKind, world: &ShapeValues, px_to_world: f64) -> ShapeVal
         }
     }
     out
+}
+
+/// Clampa UM valor autorado à faixa do campo dele — a porta única de todo campo descrito
+/// por um [`FieldDesc`]: os de forma, os do CONECTOR (`connector::clamp_to` delega aqui) e
+/// os das PONTAS do traço (Head Size / Head Round). Um clamp por família divergiria da
+/// faixa que o `set_number_range` registra na caixa, e o campo passaria a mentir.
+#[must_use]
+pub fn clamp_to(f: &FieldDesc, v: f64) -> f64 {
+    v.clamp(f.min, f.max)
 }
 
 /// Clampa cada campo à faixa dele (e arredonda as contagens). Aplicado a toda autoria,

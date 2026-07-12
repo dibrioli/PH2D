@@ -49,6 +49,12 @@ pub struct ConnectorSnapshot {
     pub jetty: f64,
     /// O spread EFETIVO (idem).
     pub spread: f64,
+    /// O raio das quinas do PERCURSO (as dobras do cotovelo), em unidades de mundo. Não tem
+    /// "efetivo" a resolver — não é `Option` no componente: `0` (afiado) já é a resposta
+    /// certa do fluxograma clássico, e não existe um raio automático que faça sentido.
+    ///
+    /// Não confundir com o `Head Round` da seção Stroke, que arredonda as quinas da SETA.
+    pub corner: f64,
 }
 
 /// Publica o conector em foco (a shell chama a cada frame; `None` esconde a seção).
@@ -80,11 +86,33 @@ pub(crate) fn seed(store: &mut WidgetStore) {
             &connector::SPREAD,
             snap.spread,
         ),
+        (
+            ids::VECTOR_CONNECTOR_CORNER,
+            &connector::CORNER,
+            snap.corner,
+        ),
     ] {
         store.set_number_range(id, field.min, field.max, field.step);
         if focus != Some(id) {
             store.set_number_value(id, connector::clamp_to(field, value));
         }
+    }
+}
+
+/// O [`FieldDesc`] da caixa numérica `id` desta seção (`None` = não é uma delas). Porta
+/// única do `seed` (que registra a faixa) e do `apply_event` (que clampa): duas tabelas
+/// divergiriam, e a caixa passaria a clampar numa faixa e a escalar noutra.
+///
+/// [`FieldDesc`]: ph2d_tool_vector::shapes::FieldDesc
+fn number_field_of(id: ph2d_a11y::NodeId) -> Option<&'static ph2d_tool_vector::shapes::FieldDesc> {
+    if id == ids::VECTOR_CONNECTOR_JETTY {
+        Some(&connector::JETTY)
+    } else if id == ids::VECTOR_CONNECTOR_SPREAD {
+        Some(&connector::SPREAD)
+    } else if id == ids::VECTOR_CONNECTOR_CORNER {
+        Some(&connector::CORNER)
+    } else {
+        None
     }
 }
 
@@ -96,13 +124,9 @@ pub(crate) fn seed(store: &mut WidgetStore) {
 /// emite o PRÓXIMO discriminante, calculado a partir do que está na tela: o clique cicla.
 pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
-        WidgetEvent::ValueChanged(id)
-            if id == ids::VECTOR_CONNECTOR_JETTY || id == ids::VECTOR_CONNECTOR_SPREAD =>
-        {
-            let field = if id == ids::VECTOR_CONNECTOR_JETTY {
-                &connector::JETTY
-            } else {
-                &connector::SPREAD
+        WidgetEvent::ValueChanged(id) if number_field_of(id).is_some() => {
+            let Some(field) = number_field_of(id) else {
+                return false;
             };
             let v = connector::clamp_to(field, host.store().number_value(id).unwrap_or(0.0));
             host.bus_mut()
@@ -126,9 +150,9 @@ pub(crate) fn apply_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> 
 }
 
 impl BodyCtx<'_> {
-    /// Seção **CONNECTOR** — Route (escolha) + Jetty + Spread (caixas numéricas). Só existe
-    /// com um conector na seleção: sem ele a seção INTEIRA some (nem cabeçalho), e o `step`
-    /// do orquestrador não emite separador.
+    /// Seção **CONNECTOR** — Route (escolha) + Jetty / Spread / **Corner** (caixas
+    /// numéricas). Só existe com um conector na seleção: sem ele a seção INTEIRA some (nem
+    /// cabeçalho), e o `step` do orquestrador não emite separador.
     ///
     /// Reusa os MESMOS desenhos de linha da seção de parâmetros de forma
     /// (`labeled_choice_button` / `labeled_number_field`) — a seção é irmã dela, não um
@@ -160,10 +184,18 @@ impl BodyCtx<'_> {
             connector::JETTY.step,
             y,
         );
-        self.labeled_number_field(
+        y = self.labeled_number_field(
             connector::SPREAD.label,
             ids::VECTOR_CONNECTOR_SPREAD,
             connector::SPREAD.step,
+            y,
+        );
+        // **Corner** — o raio das quinas do PERCURSO (as dobras do cotovelo). Irmã de
+        // Route/Jetty/Spread porque é a mesma pergunta: como esta linha é desenhada.
+        self.labeled_number_field(
+            connector::CORNER.label,
+            ids::VECTOR_CONNECTOR_CORNER,
+            connector::CORNER.step,
             y,
         )
     }
@@ -184,6 +216,7 @@ mod tests {
             route: 1,
             jetty: 0.3,
             spread: 0.0,
+            corner: 0.0,
         }));
         assert!(current_connector().is_some());
         set_current_connector(None); // não vaza para os outros testes da thread

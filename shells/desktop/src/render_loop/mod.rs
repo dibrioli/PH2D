@@ -2822,6 +2822,22 @@ impl crate::App {
             if overlay.snap_guides {
                 ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
             }
+            // **As alças de ponta do conector** — FORA do `overlay.edit`, e isso é a coisa toda:
+            // elas vivem no modo **Select**, que é exatamente onde `overlay.edit` é FALSO (lá
+            // quem fala é o gizmo, ADR-0112). Pô-las dentro do guard as tornaria invisíveis no
+            // único modo em que existem.
+            //
+            // O conector não publica gizmo (`vec_gizmo_view::view` o pula), então não há
+            // disputa: a caixa de transformação não cobre estas bolinhas.
+            if vector_active && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select {
+                let handles = crate::connector_handles::view(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    self.vec_pen.selected_paths(),
+                );
+                ph2d_vec_render::draw_connector_handles(&handles, cam_affine, vector_scene);
+            }
             // Cursor de texto (modo Text): na ponta da última linha em edição. Lê só o
             // campo `vec_text_edit` (fn livre), pra não colidir com o borrow de gfx.
             if let Some((a, b)) = crate::vec_text::caret_of(self.vec_text_edit.as_ref()) {

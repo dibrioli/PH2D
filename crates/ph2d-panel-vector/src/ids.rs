@@ -10,10 +10,11 @@
 /// O 6º pill de modo: **Connect** — a linha que gruda em duas formas e as segue.
 pub use ph2d_editor_core::ids::VECTOR_MODE_CONNECT;
 /// Pontas de traço (arrowheads): os dois chips + as opções do popover, por `slot`
-/// (0 = começo, 1 = fim) e índice em `ph2d_vec_scene::ALL_MARKERS`.
+/// (0 = começo, 1 = fim) e índice em `ph2d_vec_scene::ALL_MARKERS` — mais o TAMANHO da
+/// cabeça, o ARREDONDAMENTO das quinas dela e a DUPLA VIA (estado derivado das duas pontas).
 pub use ph2d_editor_core::ids::{
-    MARKER_SLOTS, MAX_MARKER_OPTIONS, VECTOR_MARKER_END_DD, VECTOR_MARKER_START_DD,
-    vector_marker_option_id,
+    MARKER_SLOTS, MAX_MARKER_OPTIONS, VECTOR_MARKER_BOTH, VECTOR_MARKER_END_DD,
+    VECTOR_MARKER_ROUND, VECTOR_MARKER_SCALE, VECTOR_MARKER_START_DD, vector_marker_option_id,
 };
 pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,
@@ -50,8 +51,8 @@ pub use ph2d_editor_core::ids::{
 };
 /// Os campos da RELAÇÃO do conector (a seção só existe com um conector na seleção).
 pub use ph2d_editor_core::ids::{
-    VECTOR_CONNECTOR_JETTY, VECTOR_CONNECTOR_ROUTE, VECTOR_CONNECTOR_SPREAD,
-    VECTOR_SECTION_CONNECTOR,
+    VECTOR_CONNECTOR_CORNER, VECTOR_CONNECTOR_JETTY, VECTOR_CONNECTOR_ROUTE,
+    VECTOR_CONNECTOR_SPREAD, VECTOR_SECTION_CONNECTOR,
 };
 /// Os cabeçalhos COLAPSÁVEIS (canon `section_header.md`) + o 5º pill de modo + o chip de
 /// categoria do catálogo. `VECTOR_SECTIONS` é a lista que o `populate` marca como

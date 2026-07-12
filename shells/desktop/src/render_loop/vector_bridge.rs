@@ -25,117 +25,18 @@ use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;
 use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
 use ph2d_vec_render::GradHandle;
-use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecScene};
-use std::cell::{Cell, RefCell};
+use ph2d_vec_scene::{LineCap, LineJoin, Paint, VecScene};
 
-fn rgba(c: [u8; 4]) -> Rgba8 {
-    Rgba8::new(c[0], c[1], c[2], c[3])
-}
-
-/// The colour the selected gradient handle addresses on `fill` — a multi-point
-/// point's colour, or the ramp stop at the START/END end the linear/radial handle
-/// sits on. Drives the Fill swatch, the picker seed, and the recolour. `None` if the
-/// handle doesn't match the fill kind (e.g. a stale selection after a kind switch).
-fn selected_grad_color(fill: &Paint, handle: GradHandle) -> Option<Rgba8> {
-    match (fill, handle) {
-        (Paint::MultiPoint { points }, GradHandle::Point(i)) => points.get(i).map(|gp| gp.color),
-        (Paint::Linear { stops, .. }, GradHandle::LinearStart)
-        | (Paint::Radial { stops, .. }, GradHandle::RadialCenter) => stops.first().map(|s| s.color),
-        (Paint::Linear { stops, .. }, GradHandle::LinearEnd)
-        | (Paint::Radial { stops, .. }, GradHandle::RadialEdge) => stops.last().map(|s| s.color),
-        (Paint::Linear { stops, .. }, GradHandle::Stop(i))
-        | (Paint::Radial { stops, .. }, GradHandle::Stop(i)) => stops.get(i).map(|s| s.color),
-        _ => None,
-    }
-}
-
-/// Recolour the slot the selected gradient handle addresses to `c`; returns whether
-/// it changed. Mirror of [`selected_grad_color`] on the mutable fill.
-fn set_selected_grad_color(fill: &mut Paint, handle: GradHandle, c: Rgba8) -> bool {
-    let slot = match (fill, handle) {
-        (Paint::MultiPoint { points }, GradHandle::Point(i)) => {
-            points.get_mut(i).map(|gp| &mut gp.color)
-        }
-        (Paint::Linear { stops, .. }, GradHandle::LinearStart)
-        | (Paint::Radial { stops, .. }, GradHandle::RadialCenter) => {
-            stops.first_mut().map(|s| &mut s.color)
-        }
-        (Paint::Linear { stops, .. }, GradHandle::LinearEnd)
-        | (Paint::Radial { stops, .. }, GradHandle::RadialEdge) => {
-            stops.last_mut().map(|s| &mut s.color)
-        }
-        (Paint::Linear { stops, .. }, GradHandle::Stop(i))
-        | (Paint::Radial { stops, .. }, GradHandle::Stop(i)) => {
-            stops.get_mut(i).map(|s| &mut s.color)
-        }
-        _ => None,
-    };
-    match slot {
-        Some(slot) if *slot != c => {
-            *slot = c;
-            true
-        }
-        _ => false,
-    }
-}
-
-/// Push `alpha` (0..255) onto an Opacity slider's stored value — unless the user
-/// is dragging it — so a colour-picker alpha change reflects on the panel and the
-/// drag baseline stays correct. The linked chip's display is driven from the
-/// slider track in `paint`, so it follows without a separate push.
-fn sync_opacity_slider(
-    store: &mut ph2d_editor::interaction::WidgetStore,
-    id: ph2d_editor::NodeId,
-    alpha: u8,
-) {
-    use ph2d_editor::InteractiveState;
-    use ph2d_editor::widget::SliderState;
-    if let Some(InteractiveState::Slider { state, value, .. }) = store.get_mut(id)
-        && !matches!(*state, SliderState::Dragging)
-    {
-        *value = f32::from(alpha) / 255.0;
-    }
-}
-
-thread_local! {
-    /// Pre-image of the scene captured at the START of a recolour gesture (the
-    /// first frame the colour actually changes the selected path). Committed to
-    /// `History` as ONE undo step when the gesture ends (the picker closes /
-    /// the discrete pick's frame finishes). `None` between gestures.
-    static RECOLOR_PRE: RefCell<Option<VecScene>> = const { RefCell::new(None) };
-    /// O caminho cujas PONTAS a tool adotou por último — o "alvo" dos dois seletores de
-    /// marker, no mesmo modelo do alvo dos campos de forma (`vec_shape_params`). Só a
-    /// MUDANÇA de alvo semeia; semear todo frame brigaria com a escolha que o usuário
-    /// acabou de fazer (o `SetValue` do popover chega DEPOIS deste passe, no frame
-    /// seguinte, e seria imediatamente desfeito).
-    static MARKER_TARGET: Cell<Option<ph2d_vec_scene::VecPathId>> = const { Cell::new(None) };
-}
-
-/// **Semeia os seletores de ponta a partir do caminho SELECIONADO** (quando a seleção
-/// muda). O painel pinta a partir da tool, então sem isto os dois chips mostrariam a
-/// última ponta autorada — não a do traço que está na tela. Espelho exato do
-/// `seed_shape_fields` + `adopt_shape_values` dos campos de forma.
-///
-/// Um caminho SEM traço (só preenchimento) não tem ponta nenhuma a doar: o alvo passa a
-/// ser ele, mas o Style da tool fica onde estava (o default do próximo traço).
-fn seed_markers_from_selection(
-    tool: &mut ph2d_tool_vector::VectorTool,
-    pen: &PenTool,
-    scene: &VecScene,
-) {
-    let target = pen.selected();
-    if MARKER_TARGET.with(Cell::get) == target {
-        return;
-    }
-    MARKER_TARGET.with(|c| c.set(target));
-    let Some(stroke) = target
-        .and_then(|id| scene.paths().iter().find(|p| p.id == id))
-        .and_then(|p| p.stroke)
-    else {
-        return;
-    };
-    tool.adopt_markers(stroke.marker_start, stroke.marker_end);
-}
+/// O estilo do traço (o registro que o painel edita, o detector e o escritor — juntos de
+/// propósito). Módulo irmão pelo teto de LOC; o doc dele explica por que os três não se
+/// separam.
+#[path = "vector_bridge_style.rs"]
+mod style;
+pub(crate) use style::restyle_selected_strokes;
+use style::{
+    RECOLOR_PRE, StrokeStyle, rgba, seed_markers_from_selection, selected_grad_color,
+    set_selected_grad_color, sync_opacity_slider,
+};
 
 /// Troca o modo de desenho da tool Vector (a tool é a dona; o shell só espelha). O
 /// downcast fica confinado a este bridge (allowlist da gate
@@ -256,6 +157,9 @@ pub(super) fn dispatch(
     let cap = line_cap(tool.cap());
     let join = line_join(tool.join());
     let (marker_start, marker_end) = (tool.marker_start(), tool.marker_end());
+    // Tamanho da cabeça + arredondamento das quinas dela: Style, como as pontas — valem para
+    // o próximo caminho desenhado (via `PenStyle`) E para TODOS os selecionados (abaixo).
+    let (marker_scale, marker_round) = (tool.marker_scale(), tool.marker_round());
     // Dash + gap are MULTIPLES of the stroke width (width-aware) — the render
     // scales them by the path's own width, so no px→world conversion here.
     // `dash = 0` ⇒ solid; otherwise `(dash, gap)` sizes the dash and the space.
@@ -271,6 +175,8 @@ pub(super) fn dispatch(
         dash,
         marker_start,
         marker_end,
+        marker_scale,
+        marker_round,
     };
     pen.set_style(style);
     shape.set_style(style);
@@ -307,15 +213,22 @@ pub(super) fn dispatch(
         let new_stroke = rgba(stroke);
         let new_fill = if fill[3] == 0 { None } else { Some(rgba(fill)) };
         let new_w = tool.stroke_width_px() * px_to_world;
+        // A ficha ÚNICA do traço: a mesma que detecta a mudança e a que a grava (as pontas,
+        // o tamanho e o arredondamento delas viajam aqui — um campo só num dos dois lados
+        // seria um controle que mexe no número e não muda nada na tela).
+        let stroke_style = StrokeStyle {
+            color: new_stroke,
+            cap,
+            join,
+            dash,
+            marker_start,
+            marker_end,
+            marker_scale,
+            marker_round,
+        };
         let differs = |p: &ph2d_vec_scene::VecPath| {
             let stroke_differs = p.stroke.is_some_and(|s| {
-                s.color != new_stroke
-                    || s.cap != cap
-                    || s.join != join
-                    || s.dash != dash
-                    // A ponta é Style: trocá-la no painel reestiliza o traço na tela.
-                    || s.marker_start != marker_start
-                    || s.marker_end != marker_end
+                stroke_style.differs_from(&s)
                     || (width_dragging && (s.width - new_w).abs() > f64::EPSILON)
             });
             let fill_differs = if let Some(h) = active_handle {
@@ -344,24 +257,18 @@ pub(super) fn dispatch(
                     *c.borrow_mut() = Some(scene.clone());
                 }
             });
+            // O TRAÇO de todos os selecionados, de uma vez (a largura só acompanha enquanto o
+            // slider é arrastado — uma escolha de cor nunca pode reengrossar a linha).
+            restyle_selected_strokes(
+                scene,
+                &sel_ids,
+                &stroke_style,
+                width_dragging.then_some(new_w),
+            );
             for &id in &sel_ids {
                 let Some(path) = scene.path_mut(id) else {
                     continue;
                 };
-                if let Some(old) = path.stroke {
-                    // Keep the path's width unless the Width slider is being dragged
-                    // (mirror of the pre-existing width behaviour); apply the rest.
-                    let width = if width_dragging { new_w } else { old.width };
-                    path.stroke = Some(StrokeSpec {
-                        color: new_stroke,
-                        width,
-                        cap,
-                        join,
-                        dash,
-                        marker_start,
-                        marker_end,
-                    });
-                }
                 if let Some(h) = active_handle {
                     // Recolour the selected gradient slot (never converts to solid).
                     if let Some(paint) = path.fill.as_mut() {
@@ -561,6 +468,10 @@ pub(super) fn dispatch(
     // canvas gestures (pen vs shape) + size the shapes without a downcast.
     tool.draw_config()
 }
+
+#[cfg(test)]
+#[path = "vector_bridge_tests.rs"]
+mod tests;
 
 /// Map the UI-facing `StrokeCap`/`StrokeJoin` to the geometry enums.
 fn line_cap(c: ph2d_tool_vector::StrokeCap) -> LineCap {

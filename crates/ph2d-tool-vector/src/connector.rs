@@ -86,11 +86,27 @@ pub const SPREAD: FieldDesc = FieldDesc {
     unit: FieldUnit::Ratio,
 };
 
+/// **Corner** — o raio das QUINAS DO PERCURSO (as dobras do cotovelo), em unidades de
+/// mundo. `0` = afiado: o default do fluxograma clássico, e a resposta certa na maioria
+/// dos diagramas — por isso não é `Option` como o jetty e o spread (não existe um "raio
+/// automático" que faça sentido; zero já é ele).
+///
+/// Não confundir com o arredondamento da SETA (`StrokeSpec::marker_round`): um alisa a
+/// dobra do caminho, o outro alisa as quinas da própria ponta.
+pub const CORNER: FieldDesc = FieldDesc {
+    label: "Corner",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    unit: FieldUnit::Ratio,
+};
+
 /// Clampa um valor autorado à faixa do seu campo — a mesma porta para o painel (que
-/// desenha) e para a shell (que aplica).
+/// desenha) e para a shell (que aplica). Delega ao catálogo: um clamp só, para campos de
+/// forma, de conector e de ponta (senão as três faixas divergiriam).
 #[must_use]
 pub fn clamp_to(f: &FieldDesc, v: f64) -> f64 {
-    v.clamp(f.min, f.max)
+    crate::shapes::clamp_to(f, v)
 }
 
 /// A **próxima** rota (o clique cicla). Espelho de `shapes::next_choice`, mas sobre o

@@ -81,6 +81,12 @@ pub struct VecConnector {
     /// dois conectores no mesmo par de caixas. `None` = automático (derivado do
     /// [`Self::parallel_index`]); `Some(v)` = fixado no painel.
     pub spread: Option<f32>,
+    /// **O raio das quinas da rota** — as dobras do cotovelo, em unidades de mundo. `0` =
+    /// afiado (o default do fluxograma clássico).
+    ///
+    /// Não é `Option` como os dois acima: não há um "raio automático" que faça sentido. Zero
+    /// já é a resposta certa, e é a que o desenho técnico espera.
+    pub corner_radius: f32,
 }
 
 impl SimComponent for VecConnector {}
@@ -102,6 +108,7 @@ impl VecConnector {
             parallel_index: 0,
             jetty: None,
             spread: None,
+            corner_radius: 0.0,
         }
     }
 

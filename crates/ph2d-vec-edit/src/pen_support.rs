@@ -39,6 +39,10 @@ pub struct PenStyle {
     /// (o default) nada muda — o `has_markers()` do render corta antes.
     pub marker_start: Marker,
     pub marker_end: Marker,
+    /// **Tamanho da ponta**, como múltiplo do que a largura já dita (`1.0` = default), e
+    /// **arredondamento das quinas dela** (`0` = afiada). Ver `StrokeSpec`.
+    pub marker_scale: f64,
+    pub marker_round: f64,
 }
 
 impl Default for PenStyle {
@@ -52,6 +56,8 @@ impl Default for PenStyle {
             dash: None,
             marker_start: Marker::None,
             marker_end: Marker::None,
+            marker_scale: 1.0,
+            marker_round: 0.0,
         }
     }
 }
@@ -68,6 +74,8 @@ impl PenStyle {
             dash: self.dash,
             marker_start: self.marker_start,
             marker_end: self.marker_end,
+            marker_scale: self.marker_scale,
+            marker_round: self.marker_round,
         }
     }
 }

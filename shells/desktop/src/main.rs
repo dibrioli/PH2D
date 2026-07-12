@@ -38,6 +38,7 @@ mod audio;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
+mod connector_handles;
 mod connector_live;
 mod cursor_pos;
 mod flip_demo;
@@ -263,6 +264,7 @@ impl App {
             flip_erasing: false,
             vec_marquee: None,
             vec_connect: None,
+            vec_conn_handle: None,
             vec_connect_pending: None,
             vec_connect_sides: crate::connector_live::SideCache::new(),
             vec_history: ph2d_vec_edit::History::new(),

@@ -95,13 +95,17 @@ fn a_pristine_connector_publishes_the_automatic_values_not_zero() {
     let (sim, scene, map, conns) = scene_with_connectors(2);
     let xf = xforms(&sim, &map);
 
-    let (route, jetty, spread) =
+    let (route, jetty, spread, corner) =
         selection_snapshot(&sim, &map, &scene, &xf, &conns[..1]).expect("ha conector");
     assert_eq!(
         route, 1,
         "o default e Orthogonal (o cotovelo do fluxograma)"
     );
     assert!(jetty > 0.0, "o jetty EFETIVO nao pode nascer em zero");
+    assert!(
+        corner.abs() < 1e-12,
+        "a quina do percurso nasce AFIADA (o default do fluxograma classico): {corner}"
+    );
     assert!(
         (jetty - expected_auto_jetty()).abs() < 1e-12,
         "o jetty exibido tem de ser o MESMO que o cozimento usa (semente = amostra): \
@@ -114,7 +118,7 @@ fn a_pristine_connector_publishes_the_automatic_values_not_zero() {
     );
     // O SEGUNDO conector do mesmo par (index 1) já nasce deslocado — e o painel mostra
     // esse deslocamento, não zero: é o valor que ele teria de fixar para não mudar nada.
-    let (_, _, spread1) =
+    let (_, _, spread1, _) =
         selection_snapshot(&sim, &map, &scene, &xf, &conns[1..2]).expect("ha conector");
     assert!(
         (spread1 - VecConnector::auto_spread(1, connector::SPREAD_STEP)).abs() < 1e-12,
@@ -300,7 +304,7 @@ fn the_value_the_panel_shows_is_the_value_the_cooked_line_actually_uses() {
     // 1. O conector AUTOMÁTICO (jetty e spread em `None`) — e o que o painel publica dele.
     let (mut sim, mut scene, map, c) = scene_with_a_wall();
     let xf = xforms(&sim, &map);
-    let (_, shown_jetty, shown_spread) =
+    let (_, shown_jetty, shown_spread, _) =
         selection_snapshot(&sim, &map, &scene, &xf, &[c]).expect("ha conector");
     let auto_line = cooked(&mut sim, &mut scene, &map, c);
     assert!(
@@ -365,11 +369,83 @@ fn a_free_end_still_publishes_a_usable_jetty() {
         .insert(conn);
 
     let xf = xforms(&sim, &map);
-    let (_, jetty, _) = selection_snapshot(&sim, &map, &scene, &xf, &conns).expect("ha conector");
+    let (_, jetty, _, _) =
+        selection_snapshot(&sim, &map, &scene, &xf, &conns).expect("ha conector");
     assert!(
         jetty.is_finite() && jetty > 0.0,
         "ponta solta publicou um jetty inutil: {jetty}"
     );
     // A caixa que sobrou (a forma A: meias-extensões 1.0 × 0.5) é quem dita.
     assert!((jetty - connector::auto_jetty((1.0, 0.5), (0.0, 0.0))).abs() < 1e-12);
+}
+
+/// **O Corner (a quina do PERCURSO) atinge TODOS os conectores selecionados** — e satura na
+/// faixa que o painel registra na caixa.
+///
+/// Mesmo pedido do Jetty/Spread, e mesmo gate: selecionar o diagrama e arredondar as dobras de
+/// uma vez. Um `apply` que parasse no primeiro passaria no teste de unidade do componente e
+/// falharia na mão do usuário. Diferente dos outros dois, o `corner_radius` **não** é `Option`:
+/// não há automático que faça sentido, e `0` (afiado) já é a resposta certa — então editar
+/// escreve direto, sem auto→override.
+#[test]
+fn editing_the_corner_reaches_every_selected_connector_and_clamps() {
+    let (mut sim, scene, map, conns) = scene_with_connectors(3);
+    let xf = xforms(&sim, &map);
+    let id = ph2d_editor::ids::VECTOR_CONNECTOR_CORNER;
+
+    let changed = edit_selected_connectors(&mut sim, &map, &conns, id, 0.4);
+    assert_eq!(changed, 3, "a edicao tem de atingir os TRES selecionados");
+    for &c in &conns {
+        let e = Entity::from_bits(*map.get(&c).expect("entidade"));
+        let conn = sim.world().get::<VecConnector>(e).expect("componente");
+        assert!(
+            (f64::from(conn.corner_radius) - 0.4).abs() < 1e-6,
+            "o conector {c} ficou para tras — a edicao so pegou o primeiro"
+        );
+    }
+    // E o painel passa a EXIBIR o que foi escrito (semente = amostra: o campo mostra o que a
+    // linha usa, senão o número saltaria no toque seguinte).
+    let (_, _, _, corner) = selection_snapshot(&sim, &map, &scene, &xf, &conns).expect("conector");
+    assert!((corner - 0.4).abs() < 1e-6, "o painel exibiu {corner}");
+
+    // Um valor fora da faixa (digitado, ou de um save corrompido) satura — nunca vira uma
+    // dobra maior que a própria rota.
+    edit_selected_connectors(&mut sim, &map, &conns, id, 99.0);
+    let e = Entity::from_bits(*map.get(&conns[0]).expect("entidade"));
+    let conn = sim.world().get::<VecConnector>(e).expect("componente");
+    assert!(
+        (f64::from(conn.corner_radius) - connector::CORNER.max).abs() < 1e-6,
+        "o Corner nao saturou no teto da faixa: {}",
+        conn.corner_radius
+    );
+    edit_selected_connectors(&mut sim, &map, &conns, id, -5.0);
+    let conn = sim.world().get::<VecConnector>(e).expect("componente");
+    assert!(
+        (f64::from(conn.corner_radius) - connector::CORNER.min).abs() < 1e-6,
+        "um raio negativo nao existe: {}",
+        conn.corner_radius
+    );
+}
+
+/// O Corner é um campo de CONECTOR: o dreno da shell tem de reconhecê-lo
+/// (`is_connector_field_id`). Fora dessa lista o controle pinta, o clique dispara, o evento
+/// viaja — e ninguém o aplica. É o "verde-e-morto" que só um gate no seam pega.
+#[test]
+fn the_corner_is_recognized_as_a_connector_field_by_the_drain() {
+    for id in [
+        ph2d_editor::ids::VECTOR_CONNECTOR_ROUTE,
+        ph2d_editor::ids::VECTOR_CONNECTOR_JETTY,
+        ph2d_editor::ids::VECTOR_CONNECTOR_SPREAD,
+        ph2d_editor::ids::VECTOR_CONNECTOR_CORNER,
+    ] {
+        assert!(
+            is_connector_field_id(id),
+            "o dreno nao reconhece este campo do conector: o controle nasceria MORTO"
+        );
+    }
+    // E não sequestra ids alheios (o Head Round da SETA não é a quina do PERCURSO).
+    assert!(!is_connector_field_id(
+        ph2d_editor::ids::VECTOR_MARKER_ROUND
+    ));
+    assert!(!is_connector_field_id(ph2d_editor::ids::VECTOR_WIDTH));
 }

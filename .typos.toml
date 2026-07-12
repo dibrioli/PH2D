@@ -65,6 +65,14 @@ autor = "autor"
 automatico = "automatico"
 Alternar = "Alternar"
 proposito = "proposito"
+# pt-BR do painel Vector (`shape_params_visibility.rs`): a seção de PARÂMETROS de forma some
+# quando o selecionado não é forma viva — senão um campo do catálogo FINGE editar o objeto
+# selecionado. Lidos como "parameters"/"finger" mal escritos; são as palavras portuguesas.
+parametros = "parametros"
+finge = "finge"
+# pt-BR das alças de ponta (`shells/desktop/src/connector_handles.rs`): o `Port` é medido no
+# REFERENCIAL da forma, e é por isso que a ponta afastada gira e escala com ela de graça.
+referencial = "referencial"
 # Audio/phonetics term (the resonant peaks of a vocal tract), read by typos-cli as a
 # misspelt "format". Used in `ph2d-audio-edit/src/fx/pitch.rs` to explain why the
 # granular shifter moves formants with the pitch (which is what makes a monster voice).

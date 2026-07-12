@@ -33,6 +33,12 @@ mod markers;
 mod guides;
 pub use guides::{Guide, draw_snap_guides, draw_text_caret};
 
+/// **As alças de ponta do conector** — os dois círculos que dizem onde a linha encosta na
+/// forma. O raio vive lá dentro, e o hit-test da shell o importa: desenhar num raio e agarrar
+/// noutro faz o usuário clicar no meio da bolinha e não pegar nada.
+mod connector;
+pub use connector::{HANDLE_R_PX, draw_connector_handles};
+
 /// Constrói o `BezPath` (world-space) de um path editável: para CADA contorno
 /// (primário + `subpaths`), `move_to` na 1ª âncora, depois uma cúbica por segmento
 /// usando `out_handle(i)` e `in_handle(i+1)`; fecha com uma cúbica final se

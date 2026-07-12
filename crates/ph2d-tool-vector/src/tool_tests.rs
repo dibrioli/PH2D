@@ -228,7 +228,12 @@ fn every_marker_in_the_catalog_reaches_the_tool_and_junk_is_none() {
 #[test]
 fn adopting_markers_does_not_arm_a_restyle() {
     let mut t = VectorTool::new();
-    t.adopt_markers(Marker::Circle, Marker::Open);
+    t.adopt_markers(
+        Marker::Circle,
+        Marker::Open,
+        crate::params::DEFAULT_MARKER_SCALE,
+        crate::params::DEFAULT_MARKER_ROUND,
+    );
     assert_eq!(t.marker_start(), Marker::Circle);
     assert_eq!(t.marker_end(), Marker::Open);
     assert!(
@@ -273,4 +278,142 @@ fn id_label_icon_stable() {
     assert_eq!(t.id(), ToolId::new("vector"));
     assert_eq!(t.label(), "Vector");
     assert_eq!(t.icon_slug(), "vector");
+}
+
+/// **O Head Size e o Head Round chegam à tool** (e saturam na faixa que o painel registra na
+/// caixa) — e marcam a seleção para reestilizar: são Style, como as pontas, então valem para
+/// o traço que está na TELA, não só para o próximo desenhado.
+#[test]
+fn the_head_size_and_round_reach_the_tool_and_clamp_to_their_range() {
+    let mut t = VectorTool::new();
+    assert!(
+        !t.take_apply_to_selected(),
+        "a tool nova nasce sem restyle pendente"
+    );
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, 2.5));
+    assert!((t.marker_scale() - 2.5).abs() < 1e-9);
+    assert!(
+        t.take_apply_to_selected(),
+        "mudar o tamanho da cabeca tem de reestilizar o traco SELECIONADO — senao o numero \
+         muda no painel e a seta continua igual na tela"
+    );
+
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_ROUND, 0.75));
+    assert!((t.marker_round() - 0.75).abs() < 1e-9);
+    assert!(t.take_apply_to_selected());
+
+    // A faixa satura nos dois extremos (o mesmo clamp que o `set_number_range` da caixa).
+    Tool::handle_panel_event(
+        &mut t,
+        PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, 999.0),
+    );
+    assert!((t.marker_scale() - crate::params::MARKER_SCALE.max).abs() < 1e-9);
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_SCALE, -5.0));
+    assert!(
+        (t.marker_scale() - crate::params::MARKER_SCALE.min).abs() < 1e-9,
+        "uma cabeca de tamanho zero (ou negativo) e uma seta invisivel"
+    );
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_MARKER_ROUND, 9.0));
+    assert!((t.marker_round() - crate::params::MARKER_ROUND.max).abs() < 1e-9);
+}
+
+/// **A dupla via alterna nos DOIS sentidos, e o estado é derivado.**
+///
+/// Sem flag próprio: `both_ends()` é `start != None && end != None`. O gate percorre o ciclo
+/// inteiro — inclusive o caso que o Enio nomeou (as duas pontas `None`), em que o botão
+/// precisa NASCER uma seta, senão ele "acende" sem desenhar nada.
+#[test]
+fn both_ends_toggles_in_both_directions_and_stays_derived() {
+    let mut t = VectorTool::new();
+    let click = |t: &mut VectorTool| {
+        Tool::handle_panel_event(t, PanelEvent::Click(ids::VECTOR_MARKER_BOTH));
+    };
+
+    // 1. Nasce sem ponta nenhuma ⇒ desligado.
+    assert_eq!(t.marker_start(), Marker::None);
+    assert_eq!(t.marker_end(), Marker::None);
+    assert!(!t.both_ends());
+
+    // 2. Desligado + as DUAS vazias ⇒ acende a seta canônica nos dois extremos.
+    click(&mut t);
+    assert!(t.both_ends(), "o clique tinha de ligar a dupla via");
+    assert_eq!(t.marker_start(), crate::params::DEFAULT_BOTH_ENDS_MARKER);
+    assert_eq!(t.marker_end(), crate::params::DEFAULT_BOTH_ENDS_MARKER);
+    assert!(
+        t.take_apply_to_selected(),
+        "a dupla via e Style: tem de reestilizar o traco selecionado"
+    );
+
+    // 3. Ligado ⇒ volta a VIA ÚNICA: limpa o COMEÇO (a seta fica no fim, que e o que "uma
+    //    via" significa num diagrama).
+    click(&mut t);
+    assert!(!t.both_ends());
+    assert_eq!(t.marker_start(), Marker::None, "a via unica limpa o COMECO");
+    assert_eq!(
+        t.marker_end(),
+        crate::params::DEFAULT_BOTH_ENDS_MARKER,
+        "a ponta do FIM sobrevive — senao a linha perderia a seta inteira"
+    );
+
+    // 4. Desligado com uma ponta ESCOLHIDA no fim ⇒ ela e copiada para o comeco (o fim manda;
+    //    o usuario nao perde o losango que escolheu).
+    Tool::handle_panel_event(
+        &mut t,
+        PanelEvent::SetValue(
+            ids::VECTOR_MARKER_END_DD,
+            f64::from(Marker::Diamond.as_u8()),
+        ),
+    );
+    assert!(!t.both_ends());
+    click(&mut t);
+    assert!(t.both_ends());
+    assert_eq!(t.marker_start(), Marker::Diamond);
+    assert_eq!(t.marker_end(), Marker::Diamond);
+
+    // 5. E o snapshot que o painel pinta concorda com a tool (uma verdade so).
+    assert!(t.ui_snapshot().both_ends());
+    click(&mut t);
+    assert!(!t.ui_snapshot().both_ends());
+}
+
+/// Só o COMEÇO tem ponta (o usuário escolheu no chip de Start): ligar a dupla via espelha
+/// ESSA ponta no fim, em vez de clobberá-la com a seta default.
+#[test]
+fn both_ends_mirrors_a_lone_start_marker_instead_of_clobbering_it() {
+    let mut t = VectorTool::new();
+    Tool::handle_panel_event(
+        &mut t,
+        PanelEvent::SetValue(ids::VECTOR_MARKER_START_DD, f64::from(Marker::Bar.as_u8())),
+    );
+    assert!(!t.both_ends());
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MARKER_BOTH));
+    assert!(t.both_ends());
+    assert_eq!(t.marker_start(), Marker::Bar);
+    assert_eq!(
+        t.marker_end(),
+        Marker::Bar,
+        "a ponta escolhida foi espelhada"
+    );
+}
+
+/// **Adotar as pontas do caminho selecionado leva TAMBÉM o tamanho e o arredondamento** — o
+/// painel pinta a partir da tool, então sem isso os campos mostrariam o último valor autorado
+/// em vez do do traço que está na tela. E adotar é LER: não pode marcar `apply_to_selected`
+/// (o próprio ato de selecionar reescreveria o caminho).
+#[test]
+fn adopting_a_paths_markers_also_adopts_its_head_size_and_round() {
+    let mut t = VectorTool::new();
+    let _ = t.take_apply_to_selected();
+    t.adopt_markers(Marker::None, Marker::Triangle, 3.0, 0.5);
+    assert_eq!(t.marker_end(), Marker::Triangle);
+    assert!((t.marker_scale() - 3.0).abs() < 1e-9);
+    assert!((t.marker_round() - 0.5).abs() < 1e-9);
+    assert!(
+        !t.take_apply_to_selected(),
+        "adotar e LER o documento — se marcasse, selecionar um caminho ja o reescreveria"
+    );
+    // Um save corrompido (escala absurda) e clampado na adocao, nao propagado.
+    t.adopt_markers(Marker::None, Marker::Triangle, 1e9, -1.0);
+    assert!((t.marker_scale() - crate::params::MARKER_SCALE.max).abs() < 1e-9);
+    assert!((t.marker_round() - crate::params::MARKER_ROUND.min).abs() < 1e-9);
 }

@@ -619,6 +619,9 @@ pub(crate) struct App {
     /// conector de verdade, re-cozido pela MESMA `route` a cada frame — o que se vê é o que
     /// se obtém, e não há um segundo caminho de desenho para divergir. `None` = sem gesto.
     pub(crate) vec_connect: Option<crate::connector_gesture::ConnectorDrag>,
+    /// O arrasto de uma **alça de ponta** de conector (os dois círculos que reposicionam onde a
+    /// linha encosta na forma). `None` fora do gesto.
+    pub(crate) vec_conn_handle: Option<crate::connector_handles::HandleDrag>,
     /// O conector recém-FECHADO (Up), esperando a entidade dele nascer no `vec_entities::sync`
     /// para receber o componente. Um clique rápido (Down e Up no mesmo frame) fecha o gesto
     /// antes de qualquer `sync` — sem esta fila de um item, a linha ficaria na cena sem

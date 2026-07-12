@@ -628,12 +628,15 @@ fn connector_fields_reach_the_bus_for_the_shell() {
         route: 1,
         jetty: 0.35,
         spread: 0.0,
+        corner: 0.0,
     }));
 
     // Jetty + Spread: caixas numéricas — o valor sai como está (não é um track 0..1).
     for (id, v) in [
         (ids::VECTOR_CONNECTOR_JETTY, 0.75),
         (ids::VECTOR_CONNECTOR_SPREAD, -0.5),
+        // A quina do PERCURSO: mesmo caminho de volta (SetValue no id do proprio campo).
+        (ids::VECTOR_CONNECTOR_CORNER, 0.25),
     ] {
         host.set_number_value(id, v);
         let outcome =
@@ -732,5 +735,88 @@ fn close_button_cancels_active_tool() {
     assert!(
         cancelled,
         "Close click never emitted CancelActiveTool through the seam"
+    );
+}
+
+/// **Os três controles de PONTA chegam à TOOL** — Head Size, Head Round e Both Ends.
+///
+/// Gate próprio, e não mais uma linha na tabela de sliders, porque os três atravessam
+/// caminhos DIFERENTES: as duas caixas passam pelo `paint_markers::apply_event` (delegado do
+/// roteador), e o Both Ends é um `Click` puro que só vive se o id estiver na allowlist
+/// `forwards_plain_click`. Tirar qualquer um desses dois sites deixa o controle **pintado,
+/// clicável e MORTO** — e todo unit test da tool continua verde. É a classe que matou o
+/// Line/Arc (Enio 2026-07-09).
+///
+/// Percorre o caminho inteiro da shell: populate → evento → `apply_event` → bus →
+/// `handle_panel_event` → o Style da tool.
+#[test]
+fn the_marker_head_controls_reach_the_tool() {
+    use ph2d_vec_scene::Marker;
+
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+
+    // 1. As duas CAIXAS (Head Size / Head Round): o valor sai como está (não é um track 0..1).
+    for (id, v) in [
+        (ids::VECTOR_MARKER_SCALE, 2.5),
+        (ids::VECTOR_MARKER_ROUND, 0.75),
+    ] {
+        host.set_number_value(id, v);
+        let outcome =
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::ValueChanged(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "campo da ponta ignorado — falta o arm em `paint_markers::apply_event`"
+        );
+        assert!(
+            drain_into_tool(&mut host, &mut tool),
+            "o campo da ponta nunca virou ToolPanelEvent — o seam painel->shell esta morto"
+        );
+    }
+    assert!(
+        (tool.marker_scale() - 2.5).abs() < 1e-9,
+        "o Head Size chegou ao bus mas nao ao Style — falta o arm em `handle_panel_event`"
+    );
+    assert!(
+        (tool.marker_round() - 0.75).abs() < 1e-9,
+        "idem o Head Round"
+    );
+
+    // 2. O botão BOTH ENDS: um `Click` puro. Fora da allowlist `forwards_plain_click` ele
+    //    pinta, dá hit e NAO faz nada.
+    assert!(!tool.both_ends(), "precondicao: a linha nasce de via unica");
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MARKER_BOTH),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o botao Both Ends nao foi consumido — falta o id na allowlist de `event.rs`"
+    );
+    assert!(
+        drain_into_tool(&mut host, &mut tool),
+        "o clique nunca virou ToolPanelEvent — o botao Both Ends esta MORTO"
+    );
+    assert!(
+        tool.both_ends(),
+        "o clique chegou ao bus mas nao ligou a dupla via — falta o arm em `handle_panel_event`"
+    );
+    assert_ne!(tool.marker_start(), Marker::None);
+    assert_ne!(tool.marker_end(), Marker::None);
+
+    // 3. E o clique de volta desliga (o estado é derivado das pontas, nos dois sentidos).
+    host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MARKER_BOTH),
+    );
+    drain_into_tool(&mut host, &mut tool);
+    assert!(!tool.both_ends(), "o segundo clique tinha de desligar");
+    assert_eq!(
+        tool.marker_start(),
+        Marker::None,
+        "a via unica limpa o COMECO"
     );
 }

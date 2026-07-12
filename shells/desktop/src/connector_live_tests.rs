@@ -415,3 +415,69 @@ fn a_pinned_jetty_survives_the_recook() {
         "o re-cook re-derivou o jetty por cima do valor que o usuario fixou"
     );
 }
+
+/// **O raio de quina chega na linha cozida** — e as PONTAS continuam afiadas.
+///
+/// A geometria do filete tem gates proprios (`ph2d_vec_scene::polyline`); o que este prova e o
+/// FIO: que o `corner_radius` do componente atravessa o re-cook e vira curva. E que ele nao
+/// arredonda as pontas — e do primeiro e do ultimo segmento que sai a tangente que orienta a
+/// ponta de seta, e arredonda-los faria a seta apontar para o lado.
+#[test]
+fn the_corner_radius_reaches_the_cooked_line_but_never_the_two_ends() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    // Desalinhadas: a rota e um "Z", com duas dobras de verdade para arredondar.
+    let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 1.0]));
+    let b = scene.push_path(rectangle([8.0, 5.0], [10.0, 6.0]));
+    let c = scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+
+    let mut cache = SideCache::new();
+    let sharp = VecConnector::between(a, b);
+    assert!(attach(&mut sim, &map, c, &sharp));
+    let xf = xforms(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut cache);
+    let n_sharp = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == c)
+        .expect("conector")
+        .verts
+        .len();
+    assert!(n_sharp >= 3, "a rota tem dobras para arredondar: {n_sharp}");
+
+    // Agora com raio.
+    let mut round = VecConnector::between(a, b);
+    round.corner_radius = 0.3;
+    assert!(attach(&mut sim, &map, c, &round));
+    let xf = xforms(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut cache);
+    let p = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == c)
+        .expect("conector")
+        .clone();
+
+    // Cada dobra virou DUAS tangencias: a contagem de vertices cresceu.
+    assert!(
+        p.verts.len() > n_sharp,
+        "o raio nao chegou na linha: {} vertices, os mesmos {n_sharp} de antes",
+        p.verts.len()
+    );
+    // E ha curvatura de verdade (algum handle descolou da ancora).
+    assert!(
+        p.verts
+            .iter()
+            .any(|v| v.in_handle != v.anchor || v.out_handle != v.anchor),
+        "nenhum handle descolou: a rota continua toda em quinas vivas"
+    );
+    // As duas PONTAS seguem afiadas — a tangente da seta sai limpa do segmento.
+    for (i, v) in [(0, &p.verts[0]), (1, p.verts.last().expect("ultimo"))] {
+        assert!(
+            v.in_handle == v.anchor && v.out_handle == v.anchor,
+            "a ponta {i} foi arredondada: a seta apontaria para o lado ({v:?})"
+        );
+    }
+}

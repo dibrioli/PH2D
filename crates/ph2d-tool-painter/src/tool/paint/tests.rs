@@ -3011,6 +3011,48 @@ fn editing_the_paper_re_renders_the_wet_wash_with_the_new_paper() {
 }
 
 #[test]
+fn switching_sprite_drops_the_compositor_cut_cache() {
+    // Sweep finding (2026-07-12) — the THIRD instance of the Bug #12 family, and the nastiest, because the
+    // same-size case does not crash: it corrupts in silence.
+    //
+    // The compositor caches a "cut point" per Adjustment layer: the composited accumulator BELOW it, a
+    // `Vec<[f32;4]>` sized for THAT document's canvas. `set_source` (bind another sprite) builds a fresh
+    // `LayerStack` — and `LayerStack::new()` restarts `next_id` at 1, so the new document's layer ids
+    // COLLIDE with the old one's by construction. The cut cache was never cleared, and its guard only asks
+    // "is there a cut for this id?", never "does that cut have the shape of THIS canvas?".
+    //
+    // The asymmetry is the tell: `restore_doc` clears compositor_cache / adjustment_cache_pending /
+    // dirty_rect / preview_upload_bbox — `set_source` cleared none of them. Same seam, two doors, one
+    // locked. Bigger sprite ⇒ the accumulator is indexed past its end (panic). Same size ⇒ the new sprite's
+    // Adjustment composites over the OLD sprite's cached layers-below: a silently wrong preview.
+    // RED without the fix: `cuts` is non-empty after the rebind (and the 1024² step panics).
+    use ph2d_painter_effects::adjustments::AdjustmentKind;
+    let mut t = PainterTool::default();
+    t.bind_document(1, vec![255u8; 256 * 256 * 4], 256, 256);
+    let adj = t
+        .add_adjustment_layer(AdjustmentKind::BrightnessContrast)
+        .expect("adjustment added");
+    t.set_adjustment_param(adj, 0, 0.8);
+    let _ = t.take_preview_arc(); // drains the composite → seeds the cut cache for sprite 1
+    assert!(
+        !t.compositor_cache.cuts.is_empty(),
+        "sprite 1 seeded a cut-point cache sized for its 256\u{b2} canvas"
+    );
+    // The user clicks a BIGGER sprite.
+    t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
+    assert!(
+        t.compositor_cache.cuts.is_empty(),
+        "the cut cache is DOCUMENT-scoped — binding another sprite must drop it"
+    );
+    // And the new document must composite without reading the old canvas's accumulator.
+    let adj2 = t
+        .add_adjustment_layer(AdjustmentKind::BrightnessContrast)
+        .expect("adjustment added on the new sprite");
+    t.set_adjustment_param(adj2, 0, 0.8); // same recycled LayerId as sprite 1's adjustment
+    let _ = t.take_preview_arc(); // panicked here before the fix (index past the 256² accumulator)
+}
+
+#[test]
 fn switching_sprite_does_not_carry_the_old_sprites_selection() {
     // Sweep finding (2026-07-12): the pixel Selection is TOOL-global — it is not in `StashedDoc` (which
     // stashes the LAYER selection) and was never registered in `reset_transient_edit_state`. And

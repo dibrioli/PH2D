@@ -28,6 +28,19 @@ impl RasterEditTool for PainterTool {
         let active = self.layers.active();
         self.bump_layer_pixels(active);
         self.composited = None;
+        // The compositor's cut-point cache is DOCUMENT-scoped: each entry is the accumulator BELOW an
+        // Adjustment layer, a buffer sized for THAT canvas — and `LayerStack::new()` above restarts
+        // `next_id` at 1, so the fresh stack's ids COLLIDE with the old document's by construction. The
+        // cache's guard only asks "is there a cut for this id?", never "does it have the shape of THIS
+        // canvas?", so a stale cut got reused: a bigger sprite indexes past the old accumulator (panic),
+        // and a SAME-SIZE sprite composites its adjustment over the OLD sprite's layers-below — wrong, and
+        // silent. `restore_doc` (the sibling rebind) has always cleared these four; `set_source` never did.
+        // Sweep 2026-07-12, `BUGS_painter.md` #15 — same root as Bug #12: a reuse guard that asks
+        // "initialised?" instead of "does the SHAPE match?".
+        self.compositor_cache = CompositorCache::new();
+        self.adjustment_cache_pending = false;
+        self.dirty_rect = None;
+        self.preview_upload_bbox = None;
         self.layers_revision = self.layers_revision.wrapping_add(1);
         // A different working canvas — undo/redo over the OLD model is meaningless on the NEW one.
         self.undo.clear();

@@ -74,7 +74,11 @@ fn splicing_a_reroute_does_not_move_a_single_pixel() {
         .expect("the wire into `move` still exists")
         .0;
     assert_ne!(dot, 0, "…but its source is the DOT now, not the grid");
-    assert_eq!(source_of(&motion, dot, 0), Some((0, 0)), "grid feeds the dot");
+    assert_eq!(
+        source_of(&motion, dot, 0),
+        Some((0, 0)),
+        "grid feeds the dot"
+    );
     assert_eq!(
         motion.doc.graph.node(NodeId(dot)).unwrap().type_name,
         "util.reroute",

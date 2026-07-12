@@ -208,6 +208,9 @@ mod tests {
                 .collect(),
             outputs: vec![],
             readout: None,
+            count: None,
+            hot: false,
+            is_sink: false,
         }
     }
 
@@ -218,6 +221,7 @@ mod tests {
             edges: vec![],
             backdrops: vec![],
             probe: None,
+            now: 0.0,
         };
         let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
         // Input 0 center: (100, HEADER_H + ROW_H*0.5) = (100, 37).
@@ -261,6 +265,7 @@ mod tests {
             edges: vec![],
             backdrops: vec![],
             probe: None,
+            now: 0.0,
         };
         assert_eq!(
             nodes_in_box(&snap, &view, band),

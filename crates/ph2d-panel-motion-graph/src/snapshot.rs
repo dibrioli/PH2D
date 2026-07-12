@@ -51,6 +51,18 @@ pub struct GraphNodeView {
     /// diagnosis. (The shell fills this from the cook's MEMO, so it costs a lookup, never a
     /// second evaluation — see `Cook::peek`.)
     pub readout: Option<String>,
+    /// **How many instances this node emitted** this frame (`None` = never cooked). The wires
+    /// leaving it are drawn thicker the heavier the stream (F3): a scatter that fans 12 points
+    /// into 5 000 says so in the WIDTH of its wire, with no number to read.
+    pub count: Option<u32>,
+    /// **Its output CHANGED since last frame** — data is flowing down its wires right now, and
+    /// they march (F3). TouchDesigner's reading: *"when you see the wires between nodes
+    /// animating, it means the upstream node is cooking"*. A constant branch is wired, alive,
+    /// and simply still — and it draws still.
+    pub hot: bool,
+    /// This node is a **sink** (`motion.output`). The graph is PULLED from the sinks, so this
+    /// is where "does anything consume me?" gets answered from (F3, [`crate::flow::live_set`]).
+    pub is_sink: bool,
 }
 
 /// One wire in the view. Its color is the source port's [`Domain`].
@@ -112,6 +124,11 @@ pub struct GraphViewSnapshot {
     /// `MotionDoc::backdrops` (not by [`snapshot_from`], which only sees the
     /// graph — the backdrops live on the document, not in the cook).
     pub backdrops: Vec<GraphBackdropView>,
+    /// The playhead, in seconds — the ONE clock the marching dashes read (F3). The panel has
+    /// no clock of its own and must not grow one: a flow animation driven by a paint counter
+    /// would keep marching on a paused graph, which is precisely the lie the dashes exist to
+    /// not tell.
+    pub now: f32,
 }
 
 /// An edit the panel asks the shell to apply to the document (M1.E10, reverse of
@@ -427,9 +444,13 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 y: pos.y,
                 inputs: manifest.map(|m| port_views(m.inputs)).unwrap_or_default(),
                 outputs: manifest.map(|m| port_views(m.outputs)).unwrap_or_default(),
-                // The readout needs the COOK, which only the shell owns; it fills this in
-                // afterwards, exactly as it does for the backdrops below.
+                // The readout, the stream's mass, whether it changed, and which nodes are
+                // sinks all need the COOK (or the shell's sink list), which only the shell
+                // owns; it fills them in afterwards, exactly as it does the backdrops below.
                 readout: None,
+                count: None,
+                hot: false,
+                is_sink: false,
             }
         })
         .collect();
@@ -454,6 +475,7 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
         edges,
         backdrops: Vec::new(),
         probe: None,
+        now: 0.0,
     }
 }
 

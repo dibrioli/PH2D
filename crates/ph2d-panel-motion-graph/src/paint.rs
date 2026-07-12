@@ -60,7 +60,6 @@ const TITLE_INSET_R: f32 = 12.0; // LITERAL-PX-OK: card title right inset
 const READOUT_SIZE: f32 = 11.0; // LITERAL-PX-OK: inline readout font size (below the title's)
 const READOUT_PAD_Y: f32 = 4.0; // LITERAL-PX-OK: inline readout top inset within its row
 const GRID_STEP: f32 = 32.0; // LITERAL-PX-OK: background grid spacing
-const WIRE_W: f32 = 2.4; // LITERAL-PX-OK: wire stroke width
 const WIRE_W_DELAYED: f32 = 1.6; // LITERAL-PX-OK: hover-ghost stroke width revealing a pre pair
 const WIRE_W_HOVER: f32 = 4.0; // LITERAL-PX-OK: hovered wire stroke width (targeted for alt-click)
 const PRE_RING_W: f32 = 1.4; // LITERAL-PX-OK: portal badge ring stroke width
@@ -143,17 +142,22 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // visibly pulling it out of that socket, and leaving it plugged in would say the gesture
     // had not taken. Its hit rects go with it — you cannot alt-click a wire you are holding.
     let detached = detached_edge(state);
+    // **What the cook actually pulls** (F3): reachability backwards from the sinks. Computed
+    // ONCE per paint and read by both the wires and the cards, so a dead branch fades as one
+    // thing — a veiled card still trailing a full-strength wire would be worse than no veil.
+    let live = crate::flow::live_set(&snap);
     for e in &snap.edges {
         if detached == Some((e.to_node, e.to_port)) {
             continue;
         }
         let is_hovered = hovered == Some(crate::hits::wire_hit_id(e.to_node, e.to_port));
-        draw_wire(ctx, &snap, e, &view, theme, is_hovered);
+        let e_live = crate::flow::edge_is_live(&live, e.to_node);
+        draw_wire(ctx, &snap, e, &view, theme, is_hovered, e_live);
         push_wire_hits(&mut hits, &snap, e, &view, rect);
     }
     // Cards, collecting body hits as we draw them.
     for n in &snap.nodes {
-        let body = draw_card(ctx, state, n, &view, theme);
+        let body = draw_card(ctx, state, n, &view, theme, live.contains(&n.id));
         push_card_hit(&mut hits, n.id, body, rect);
     }
     // Sockets last so they win the overlap with the node edge they sit on.
@@ -271,6 +275,7 @@ fn draw_card(
     n: &GraphNodeView,
     view: &View,
     theme: Theme,
+    live: bool,
 ) -> Rect {
     let (sx, sy) = view.pt(n.x, n.y);
     let w = geom::CARD_W * view.zoom;
@@ -321,33 +326,36 @@ fn draw_card(
     // The inline readout: what this card produced on this frame's cook, under its sockets.
     // Text2 (the muted tone), not Text1 — it is a live instrument reading, not a label the
     // artist authored, and it must not compete with the node's own name.
-    match &n.readout {
-        Some(text) => {
-            let row_y = sy + (geom::HEADER_H + geom::card_rows(n) * geom::ROW_H) * view.zoom;
-            paint_text_title(
-                ctx.text_system,
-                ctx.scene,
-                text,
-                sx + TITLE_PAD_X * view.zoom,
-                row_y + READOUT_PAD_Y * view.zoom,
-                READOUT_SIZE * view.zoom,
-                w - TITLE_INSET_R * view.zoom,
-                resolve(ColorToken::Text2, theme),
-            );
-        }
-        // **No readout = the cook never pulled this node** — nothing downstream consumes
-        // it. Veil it, so a dead branch reads across the WHOLE canvas at a glance instead
-        // of having to be inferred, card by card, from a number that is not there.
-        //
-        // A veil, not a repaint: the card keeps its category colour, its title and its
-        // sockets, and stays perfectly grabbable. It recedes; it does not become a
-        // different kind of thing. (The selection ring is drawn ABOVE it — a selected dead
-        // node must still look selected.)
-        None => {
-            fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::GraphInert, theme));
-            if state.selected.contains(&n.id) {
-                stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
-            }
+    if let Some(text) = &n.readout {
+        let row_y = sy + (geom::HEADER_H + geom::card_rows(n) * geom::ROW_H) * view.zoom;
+        paint_text_title(
+            ctx.text_system,
+            ctx.scene,
+            text,
+            sx + TITLE_PAD_X * view.zoom,
+            row_y + READOUT_PAD_Y * view.zoom,
+            READOUT_SIZE * view.zoom,
+            w - TITLE_INSET_R * view.zoom,
+            resolve(ColorToken::Text2, theme),
+        );
+    }
+
+    // **Inert = no sink reaches this card**, so the cook never pulls it and nothing it does
+    // reaches the canvas. Veil it, so a dead branch reads across the WHOLE canvas at a glance
+    // instead of having to be inferred, card by card, from a number that is not there.
+    //
+    // The reading is REACHABILITY (F3), not "has a readout" (F2): a node cooked inside a
+    // scoped lane (`motion.time_remap`) has no root-lane memo and therefore no number — it is
+    // consumed all the same, and veiling it would have been a lie the artist could not argue
+    // with.
+    //
+    // A veil, not a repaint: the card keeps its category colour, its title and its sockets, and
+    // stays perfectly grabbable. It recedes; it does not become a different kind of thing.
+    // (The selection ring is drawn ABOVE it — a selected dead node must still look selected.)
+    if !live {
+        fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::GraphInert, theme));
+        if state.selected.contains(&n.id) {
+            stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
         }
     }
     body

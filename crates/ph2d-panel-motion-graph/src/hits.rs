@@ -287,6 +287,9 @@ mod tests {
             }],
             outputs: vec![],
             readout: None,
+            count: None,
+            hot: false,
+            is_sink: false,
         }
     }
 
@@ -339,6 +342,7 @@ mod tests {
             edges: vec![],
             backdrops: vec![],
             probe: None,
+            now: 0.0,
         };
         let view = View::new(CANVAS, ViewState::default());
 

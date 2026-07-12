@@ -213,6 +213,9 @@ mod tests {
             inputs: vec![],
             outputs: vec![],
             readout: None,
+            count: None,
+            hot: false,
+            is_sink: false,
         }
     }
 

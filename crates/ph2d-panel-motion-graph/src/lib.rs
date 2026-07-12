@@ -13,6 +13,7 @@
 #![forbid(unsafe_code)]
 
 mod backdrop;
+mod flow;
 mod geom;
 mod hits;
 mod interact;

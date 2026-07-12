@@ -45,6 +45,9 @@ pub(super) fn two_node_snapshot() -> GraphViewSnapshot {
         inputs: ins,
         outputs: outs,
         readout: None,
+        count: None,
+        hot: false,
+        is_sink: false,
     };
     GraphViewSnapshot {
         nodes: vec![
@@ -54,6 +57,7 @@ pub(super) fn two_node_snapshot() -> GraphViewSnapshot {
         edges: vec![],
         backdrops: vec![],
         probe: None,
+        now: 0.0,
     }
 }
 

@@ -189,10 +189,14 @@ pub(super) fn dispatch(
                     title: b.title.clone(),
                 })
                 .collect();
-            // The inline readouts: what each card produced on THIS frame's cook, read out
-            // of the pump's memo (`Cook::peek`, never a second cook). A node no sink
+            // What each card is DOING this frame, read out of the pump's memo (`Cook::peek`,
+            // never a second cook): its readout, the mass of its stream (the wire's width),
+            // and whether that changed since last frame (the wire's march). A node no sink
             // consumes has no entry and stays blank — which is the diagnosis, not a gap.
             readout::stamp(motion, &mut snap);
+            // The ONE clock the marching dashes read. The panel has none of its own: a flow
+            // animation driven by a paint counter would keep marching on a paused graph.
+            snap.now = motion.transport.playhead(fixed_dt) as f32;
             snap
         }));
     }

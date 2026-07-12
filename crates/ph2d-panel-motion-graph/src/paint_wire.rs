@@ -6,6 +6,7 @@
 //! one curve and cut along another is the bug the waypoints slice had to prove was not there
 //! (doc 44), and keeping the three in one module is what keeps them honest.
 
+use crate::flow;
 use crate::geom::{View, socket_center};
 use crate::snapshot::{GraphEdgeView, GraphViewSnapshot};
 use crate::state::{Interaction, MotionGraphPanelState};
@@ -15,8 +16,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 
 use super::{
-    GHOST_W, PRE_DOT_R, PRE_RING_W, SOCKET_R, TARGET_RING_PAD, WIRE_TANGENT, WIRE_W,
-    WIRE_W_DELAYED, WIRE_W_HOVER, cubic_polyline, domain_token, highlight_socket, port_out_domain,
+    GHOST_W, PRE_DOT_R, PRE_RING_W, SOCKET_R, TARGET_RING_PAD, WIRE_TANGENT, WIRE_W_DELAYED,
+    WIRE_W_HOVER, cubic_polyline, domain_token, highlight_socket, port_out_domain,
 };
 
 pub(crate) fn draw_wire(
@@ -26,6 +27,7 @@ pub(crate) fn draw_wire(
     view: &View,
     theme: Theme,
     hovered: bool,
+    live: bool,
 ) {
     let Some((p0, p3)) = wire_endpoints(snap, e, view) else {
         return;
@@ -38,16 +40,52 @@ pub(crate) fn draw_wire(
         draw_pre_badges(ctx, e, p0, p3, view, theme, hovered);
         return;
     }
+    let src = snap.nodes.iter().find(|n| n.id == e.from_node);
     let pts = wire_polyline(p0, p3, view.zoom, 20);
-    // Hovered wires draw thicker and in a bright emphasis colour so the delete
-    // target is unmistakable regardless of the port domain hue; others keep
-    // their domain colour and normal width.
+    // Hovered wires draw thicker and in a bright emphasis colour so the delete target is
+    // unmistakable regardless of the port domain hue. Otherwise the wire keeps its domain
+    // colour and takes its WIDTH from the mass of the stream it carries (F3).
     let (base_w, token) = if hovered {
         (WIRE_W_HOVER, ColorToken::Text1)
     } else {
-        (WIRE_W, domain_token(e.out_domain))
+        (
+            flow::wire_width(src.and_then(|n| n.count)),
+            domain_token(e.out_domain),
+        )
     };
     stroke_polyline(ctx.scene, &pts, base_w * view.zoom, resolve(token, theme));
+
+    // **Data is moving through this wire right now** — the source's output changed since last
+    // frame (TouchDesigner's animated wire). Bright dashes march along it, source → target.
+    // They ride the SAME polyline, so they cannot drift off the wire they belong to.
+    if live && src.is_some_and(|n| n.hot) && !hovered {
+        let z = view.zoom;
+        for dash in flow::dashes(
+            &pts,
+            flow::DASH_PERIOD * z,
+            flow::DASH_ON * z,
+            snap.now * flow::DASH_SPEED * z,
+        ) {
+            stroke_polyline(
+                ctx.scene,
+                &dash,
+                base_w * z,
+                resolve(ColorToken::Text1, theme),
+            );
+        }
+    }
+
+    // **Inert**: no sink pulls this wire, so nothing runs through it. Veil it — the same veil
+    // the dead CARD gets, so a dead branch recedes as one thing instead of a faded card still
+    // trailing a wire at full strength. A veil, not a repaint: the domain hue survives, faintly.
+    if !live {
+        stroke_polyline(
+            ctx.scene,
+            &pts,
+            base_w * view.zoom,
+            resolve(ColorToken::GraphInert, theme),
+        );
+    }
 }
 
 /// The `pre` edge's visual: a ring-and-dot badge just outside each end's

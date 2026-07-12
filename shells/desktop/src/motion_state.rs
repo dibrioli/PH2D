@@ -65,6 +65,10 @@ pub(crate) struct MotionState {
     /// most recent readings (oldest first). UI-only — it never touches the cook.
     pub(crate) probe: Option<NodeId>,
     pub(crate) probe_ring: Vec<f32>,
+    /// F3 flow: last frame's digest of each cooked node's output, keyed by `NodeId.0`. A node
+    /// whose digest MOVED has data running down its wires, and the panel marches them
+    /// (TouchDesigner's animated wire). UI-only — the cook never reads it.
+    pub(crate) flow_digest: std::collections::BTreeMap<u32, u64>,
 }
 
 impl MotionState {
@@ -96,6 +100,7 @@ impl MotionState {
             default_size: ph2d_nodegraph::attr::SIZE_IDENTITY,
             probe: None,
             probe_ring: Vec::new(),
+            flow_digest: std::collections::BTreeMap::new(),
         }
     }
 }

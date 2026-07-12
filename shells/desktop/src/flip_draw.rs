@@ -111,28 +111,21 @@ pub(crate) fn bake_stroke(
     pressures: &[f32],
     px_to_world: f32,
     world_to_local: &Xform,
-) -> bool {
+) -> Option<(ph2d_flip::FlipObjectId, ph2d_flip::DrawingId, usize)> {
     if points.len() < 2 {
-        return false;
+        return None;
     }
     // **O autokey por-tool (W3.T3.4)**: quem decide o desenho-alvo — e se uma chave
     // nova nasce (em branco, ou como cópia sob *Additive*) — é o `flip_autokey`, o
     // mesmo ponto que a borracha usa. A caneta nunca resolve isso na mão.
-    let Some((oid, _lid, did)) = crate::flip_autokey::target_drawing(
+    let (oid, _lid, did) = crate::flip_autokey::target_drawing(
         flip,
         playhead,
         active_layer,
         strip,
         crate::flip_autokey::FlipEdit::Draw,
-    ) else {
-        return false;
-    };
-    let Some(obj) = flip.object_mut(oid) else {
-        return false;
-    };
-    let Some(drawing) = obj.drawing_mut(did) else {
-        return false;
-    };
+    )?;
+    let drawing = flip.object_mut(oid)?.drawing_mut(did)?;
 
     // Active smoothing (T2.7): assa EXATAMENTE o traço que o preview mostrou — o
     // mesmo `active_smooth`, sem decimar. O RDP do 1º corte (0.75px) deixava o
@@ -141,15 +134,34 @@ pub(crate) fn bake_stroke(
     // idênticos vale mais que "enxuto". As pressões seguem 1:1 (o smooth só move
     // posições). Uma decimação visualmente-perdida-zero (RDP fininho) tira só
     // pontos EXATAMENTE colineares, sem cortar curva.
+    drawing.strokes.push(stroke_from_samples(
+        style,
+        points,
+        pressures,
+        px_to_world,
+        world_to_local,
+    ));
+    Some((oid, did, drawing.strokes.len() - 1))
+}
+
+/// **Das amostras CRUAS ao traço** — smoothing + decimação invisível + estilo.
+///
+/// É `pub(crate)` porque o **alvo vivo** (`flip_live`) o chama de novo a cada ajuste do
+/// painel: mudar o Smoothing exige refazer *a partir das amostras*, não do traço assado
+/// (o smoothing filtra o insumo; um traço já filtrado não tem como "desfiltrar").
+pub(crate) fn stroke_from_samples(
+    style: &FlipStyleSnapshot,
+    points: &[Vec2],
+    pressures: &[f32],
+    px_to_world: f32,
+    world_to_local: &Xform,
+) -> FlipStroke {
     let smoothed = crate::flip_smooth::active_smooth(points, style.smoothing);
     let tol = 0.05 * px_to_world; // ~0.05px — só remove colinear puro (invisível)
     let keep = crate::flip_smooth::simplify_rdp(&smoothed, tol);
     let pts: Vec<Vec2> = keep.iter().map(|&i| smoothed[i]).collect();
     let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();
-    drawing
-        .strokes
-        .push(build_stroke(style, &pts, &prs, world_to_local));
-    true
+    build_stroke(style, &pts, &prs, world_to_local)
 }
 
 /// Constrói um `FlipStroke` a partir das amostras (MUNDO) + estilo. Compartilhado
@@ -288,23 +300,47 @@ impl crate::App {
         // Fronteira MUNDO→LOCAL (ADR-0111): num objeto já movido pelo gizmo o traço
         // é guardado no espaço local dele. Identidade num objeto novo (o comum).
         let w2l = self.flip_active_world_to_local();
+        let playhead = self.playhead;
+        let strip_ref = &self.flip_strip;
+        let mut live = None;
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(style) = style
         {
             let win = gfx.surface.size();
             let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-            bake_stroke(
+            if let Some((oid, did, index)) = bake_stroke(
                 &mut gfx.flip,
-                &self.playhead,
+                &playhead,
                 &style,
                 active_layer,
-                &self.flip_strip,
+                strip_ref,
                 &points,
                 &pressures,
                 px_to_world,
                 &w2l,
-            );
+            ) {
+                // O traço vira o **alvo vivo**: os controles do painel continuam mexendo
+                // NELE até o usuário fazer outra coisa. Guarda-se o INSUMO (as amostras
+                // cruas), não o resultado — sem elas o Smoothing seria inajustável.
+                let frame = gfx.flip.object(oid).map_or(0, |o| o.frame_at(&playhead));
+                live = Some(crate::flip_live::FlipLive {
+                    oid,
+                    did,
+                    frame,
+                    layer: active_layer,
+                    mode: style.mode,
+                    applied: style,
+                    px_to_world,
+                    w2l,
+                    kind: crate::flip_live::LiveKind::Stroke {
+                        index,
+                        points,
+                        pressures,
+                    },
+                });
+            }
         }
+        self.flip_live = live;
         true
     }
 }

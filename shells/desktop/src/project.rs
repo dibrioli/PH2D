@@ -152,6 +152,7 @@ impl crate::App {
         // nunca rodou mentiria sobre um estado que não existe.
         self.playhead.rewind();
         self.undo = ProjectUndo::default();
+        self.flip_live_clear(); // documento novo: o alvo vivo do anterior morreu
         eprintln!("[proj] carregado: {path}");
     }
 

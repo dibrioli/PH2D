@@ -25,6 +25,7 @@ extend-ignore-identifiers-re = [
 ]
 
 [default.extend-words]
+respondendo = "respondendo"  # pt-BR (comentario de codigo)
 # Project-specific names (not typos).
 ph2d = "ph2d"
 PH2D = "PH2D"

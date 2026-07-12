@@ -148,10 +148,24 @@ impl BodyCtx<'_> {
         )
     }
 
-    /// Brush section — Size / Hardness / Opacity / Smoothing sliders.
+    /// **Cada modo mostra SÓ os seus atributos** (Enio 2026-07-12).
+    ///
+    /// O painel é o da FERRAMENTA, não o da crate: exibir o Hardness do pincel enquanto o
+    /// usuário está no balde é oferecer um controle que não faz nada — e um controle que
+    /// não faz nada é pior que a ausência dele (o usuário mexe e conclui que o app está
+    /// quebrado).
+    ///
+    /// - **Draw**: o pincel inteiro (Size / Hardness / Opacity / Smoothing).
+    /// - **Erase**: só o que a borracha REALMENTE usa — o raio (`width_px`) e a força
+    ///   (`opacity`). Ela não tem dureza, nem alisamento, nem cor.
+    /// - **Select / Fill**: nada daqui.
     pub(crate) fn brush(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
-        y = self.section_label("Brush", y);
-        // Size (px).
+        let eraser = snap.mode == FlipMode::Erase;
+        if !eraser && snap.mode != FlipMode::Draw {
+            return y;
+        }
+        y = self.section_label(if eraser { "Eraser" } else { "Brush" }, y);
+        // Size (px) — o raio da borracha, no modo Erase.
         let track = self
             .store
             .slider(ids::FLIP_SIZE)
@@ -170,7 +184,24 @@ impl BodyCtx<'_> {
             &format!("{}", px.round() as i64),
             y,
         );
-        // Hardness (0..1).
+        // Hardness (0..1) — só o pincel tem borda; a borracha não.
+        if eraser {
+            let track = self
+                .store
+                .slider(ids::FLIP_OPACITY)
+                .map(|(_, v)| v)
+                .unwrap_or(snap.opacity);
+            let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
+            return self.slider_row(
+                "Strength", // é o que a opacidade SIGNIFICA para a borracha
+                ids::FLIP_OPACITY,
+                ids::FLIP_OPACITY_NUM,
+                track,
+                pct,
+                &format!("{}", pct.round() as i64),
+                y,
+            );
+        }
         let track = self
             .store
             .slider(ids::FLIP_HARDNESS)
@@ -219,7 +250,13 @@ impl BodyCtx<'_> {
     }
 
     /// Color section — a Stroke colour swatch (opens the shared OKLCH picker).
+    ///
+    /// **Só no modo Draw**: a cor do TRAÇO não é atributo da borracha nem do balde (que
+    /// tem a cor própria dele, na seção Fill).
     pub(crate) fn color(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
+        if snap.mode != FlipMode::Draw {
+            return y;
+        }
         y = self.section_label("Color", y);
         let swatch_w = SwatchSize::Md.px();
         paint_text(

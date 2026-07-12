@@ -216,3 +216,98 @@ fn every_number_box_has_a_registered_range() {
         assert!(step > 0.0, "step nao-positivo em {name}: {step}");
     }
 }
+
+/// **O painel de cada ferramenta não exibe os atributos das outras** (Enio 2026-07-12).
+///
+/// Um controle que não faz nada é pior que a ausência dele: o usuário mexe, nada muda, e
+/// conclui que o app está quebrado. O Hardness do pincel no modo balde era exatamente isso.
+///
+/// A tabela é a especificação viva. Mutação que sangra: pinte o Brush no modo Fill e este
+/// teste cai.
+#[test]
+fn each_mode_shows_only_its_own_attributes() {
+    let stroke_only = [
+        ("Hardness", ids::FLIP_HARDNESS),
+        ("Smoothing", ids::FLIP_SMOOTHING),
+        ("Stroke color", ids::FLIP_STROKE_SWATCH),
+    ];
+    let eraser_only = [
+        ("Erase soft", ids::FLIP_ERASE_SOFT),
+        ("Erase hard", ids::FLIP_ERASE_HARD),
+        ("Erase stroke", ids::FLIP_ERASE_STROKE),
+    ];
+    let bucket_only = [
+        ("Fill color", ids::FLIP_FILL_SWATCH),
+        ("Gap", ids::FLIP_GAP),
+        ("Grow", ids::FLIP_GROW),
+        ("Precision", ids::FLIP_PRECISION),
+    ];
+
+    // (modo, o que TEM de aparecer, o que NÃO pode aparecer)
+    #[allow(clippy::type_complexity)] // (modo, o que aparece, o que NAO pode aparecer)
+    let cases: [(
+        FlipMode,
+        &[(&str, ph2d_a11y::NodeId)],
+        &[&[(&str, ph2d_a11y::NodeId)]],
+    ); 4] = [
+        (FlipMode::Draw, &stroke_only, &[&eraser_only, &bucket_only]),
+        (FlipMode::Erase, &eraser_only, &[&stroke_only, &bucket_only]),
+        (FlipMode::Fill, &bucket_only, &[&stroke_only, &eraser_only]),
+        // Select move/gira o objeto: não tem atributo de pintura nenhum.
+        (
+            FlipMode::Select,
+            &[],
+            &[&stroke_only, &eraser_only, &bucket_only],
+        ),
+    ];
+
+    for (mode, expected, forbidden) in cases {
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut st = FlipPanelState;
+        ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+            mode,
+            ..Default::default()
+        }));
+        let painted = host.paint::<FlipPanel>(&mut st, viewport());
+        let on_screen = |id: ph2d_a11y::NodeId| painted.iter().any(|(w, r)| *w == id && r.w > 0.0);
+
+        for (name, id) in expected {
+            assert!(
+                on_screen(*id),
+                "modo {mode:?}: o proprio controle '{name}' NAO aparece"
+            );
+        }
+        for group in forbidden {
+            for (name, id) in *group {
+                assert!(
+                    !on_screen(*id),
+                    "modo {mode:?}: aparece '{name}', que e atributo de OUTRA ferramenta"
+                );
+            }
+        }
+    }
+}
+
+/// O **Size** é o único atributo compartilhado: é a espessura do pincel E o raio da
+/// borracha. Ele aparece nos dois — e some no balde e no Select.
+#[test]
+fn size_is_shared_by_brush_and_eraser_and_absent_elsewhere() {
+    for (mode, want) in [
+        (FlipMode::Draw, true),
+        (FlipMode::Erase, true),
+        (FlipMode::Fill, false),
+        (FlipMode::Select, false),
+    ] {
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut st = FlipPanelState;
+        ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+            mode,
+            ..Default::default()
+        }));
+        let painted = host.paint::<FlipPanel>(&mut st, viewport());
+        let shown = painted
+            .iter()
+            .any(|(w, r)| *w == ids::FLIP_SIZE && r.w > 0.0);
+        assert_eq!(shown, want, "modo {mode:?}: Size deveria aparecer? {want}");
+    }
+}

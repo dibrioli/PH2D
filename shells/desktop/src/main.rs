@@ -49,6 +49,7 @@ mod flip_erase;
 mod flip_fill;
 mod flip_gizmo_view;
 mod flip_layers;
+mod flip_live;
 mod flip_smooth;
 mod flip_strip;
 mod flip_transform;
@@ -267,6 +268,7 @@ impl App {
             flip_active_layer: None,
             flip_erasing: false,
             flip_strip: crate::flip_strip::FlipStrip::default(),
+            flip_live: None,
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,
@@ -380,6 +382,10 @@ impl App {
     /// for the rationale + the split-impl pattern.
     fn render_frame(&mut self) {
         self.run_render_frame();
+        // **O alvo VIVO** (`flip_live`): se o painel mudou, refaz a última coisa criada —
+        // o traço ou o preenchimento. Antes do retrato do undo, para o ajuste e o estado
+        // que o usuário vê serem o MESMO passo.
+        self.flip_live_refresh();
         // Depois do frame (estado já reconciliado pelo `sync`, `self` livre do borrow
         // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
         // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).

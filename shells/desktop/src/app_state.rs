@@ -614,6 +614,10 @@ pub(crate) struct App {
     /// inbetweens/seleção de chaves). O documento (frames, desenhos, ciclos) vive no
     /// `FlipDoc`; aqui só o que não é documento.
     pub(crate) flip_strip: crate::flip_strip::FlipStrip,
+    /// **O alvo VIVO** — a última coisa criada (traço ou preenchimento), que os controles
+    /// do painel continuam ajustando até o usuário fazer outra coisa. Enquanto não há
+    /// seleção de traço, é ele o alvo dos ajustes. Ver `flip_live`.
+    pub(crate) flip_live: Option<crate::flip_live::FlipLive>,
     /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.

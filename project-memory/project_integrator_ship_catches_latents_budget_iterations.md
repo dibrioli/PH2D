@@ -1,13 +1,25 @@
 ---
 name: project-integrator-ship-catches-latents-budget-iterations
 description: Modo L — o gate per-linha e o foundational-integrate NÃO rodam fmt/clippy-all-targets/machete/deny; o integrador orça 2-4 iterações de ship.sh pra drenar latentes das linhas
-metadata:
+metadata: 
+  node_type: memory
   type: project
+  originSessionId: ac6fba2f-c694-4c47-a142-9e06671dae88
 ---
 
 **Contexto:** integração de 5 linhas (MotionNodes/Painter/anim/Vector/audio),
 2026-07-11, todas fechadas "verde" pelo próprio gate batched. O integrador
 ainda drenou **~8 falhas latentes** antes do ship 100% verde.
+
+**Confirmado de novo (6 linhas + FLIP, 2026-07-12): 4 iterações de ship**, e o
+padrão se repetiu inteiro — typos (a linha FLIP declarou "risco baixo, o ship
+confirma" e NÃO rodou o gate: 3 typos reais + 6 palavras pt-BR) · LOC/fn de
+painel (`paint_brush_body` 222 > 200, estourando até uma **dispensa de 215** que
+já existia em `FN_OVERAGE_OK`) · e os 2 gates colaterais que o próprio split
+disparou (LOC de arquivo + HR-12 a11y do arquivo novo). **O split arrasta gates:
+orce isso.** Um latente que o `foundational-integrate` PEGOU: `assert_eq!(reg.len())`
+do `ComponentRegistry` em **3 sites** (ph2d-ecs / ph2d-render / ph2d-script) —
+duas linhas registraram um componente cada e uma delas só bumpou o primeiro.
 
 ## Por que verde-de-linha ≠ verde-de-ship
 
@@ -55,7 +67,13 @@ Fix = split (mover `watercolor_render_active` pro sibling), nunca allowlist.
 ## Infra: `/dev/shm/ph2d-target` some entre sessões
 
 O `target/` do primário é symlink pro tmpfs (`workstation`). O
-`/dev/shm/ph2d-target` **evapora no reboot** (2ª vez que aconteceu) → `cargo`
+`/dev/shm/ph2d-target` **evapora no reboot** (**3ª vez em 2026-07-12**) → `cargo`
 do primário falha com "failed to create directory target" / "Not a directory".
 As integrações não pegam isso (cada worktree tem `target/` real próprio); só o
 `ship.sh` (roda no primário) trava. Fix: `mkdir -p /dev/shm/ph2d-target`.
+
+**Cuidado — o modo como isso FALHA engana:** o `ship.sh` marca `✗ clippy` e
+`✗ nextest` como se fossem falhas de CÓDIGO, mas os dois **nem chegaram a
+rodar** (abortam ao criar o `target/`). Se você "corrigir" código com base
+nesse ✗, está caçando fantasma. Cheque a mensagem real no log antes.
+Ver [[feedback_pipe_masks_script_exit_code]].

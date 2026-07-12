@@ -211,6 +211,9 @@ impl PainterTool {
         // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back (rule 2).
 
         if erasing {
+            // The eraser scrubs the LAYER directly, so the live buffer's ground is no longer what it
+            // says it is — drop it rather than let a later Depth drag resurrect erased paint.
+            self.drop_live_relief();
             self.heights.insert(active, field);
         } else {
             self.paint.stroke_height = field;
@@ -239,32 +242,75 @@ impl PainterTool {
         if self.paint.stroke_height.is_empty() {
             return;
         }
-        let mut stroke = std::mem::take(&mut self.paint.stroke_height);
+        let stroke = std::mem::take(&mut self.paint.stroke_height);
         let Some(active) = self.layers.active() else {
             return;
         };
-        // **Smoothing** — thick paint settles. It relaxes the deposit ONCE, at stroke end (it is a
-        // property of the paint, not of the light), so the artist can lay a bristly stroke and let it
-        // slump like a heavy medium. Runs on the stroke's own envelope, so it softens what THIS stroke
-        // laid down without touching the relief that was already on the layer.
+        // Keep the stroke RAW (unsettled, at the depth it was laid with) and the layer's relief from
+        // BEFORE it. Between them, Depth and Smoothing can be re-derived after the fact — the artist
+        // lays a stroke, then dials the thickness in while looking at it, exactly like every other
+        // property in this panel. See [`Self::refresh_live_relief`].
+        let base = self.heights.get(&active).cloned().unwrap_or_default();
+        self.paint.live_relief_depth = self.paint.brush.effective_impasto_depth();
+        self.paint.live_relief_base = base;
+        self.paint.live_relief_layer = Some(active);
+        self.paint.live_relief = stroke;
+        self.rebuild_live_layer_relief();
+    }
+
+    /// Re-derive the live stroke's relief onto the layer at the CURRENT Depth / Smoothing.
+    ///
+    /// The stroke is stored unsettled and at its original depth, so a new Depth is a pure rescale and a
+    /// new Smoothing is a fresh settle — no re-stroking, no repainting. Called at commit, and again on
+    /// every Depth / Smoothing edit.
+    fn rebuild_live_layer_relief(&mut self) {
+        let (Some(layer), false) = (
+            self.paint.live_relief_layer,
+            self.paint.live_relief.is_empty(),
+        ) else {
+            return;
+        };
+        let old_depth = self.paint.live_relief_depth;
+        if old_depth == 0.0 {
+            return;
+        }
+        let scale = self.paint.brush.effective_impasto_depth() / old_depth;
+        let mut field: Vec<f32> = self.paint.live_relief.iter().map(|v| v * scale).collect();
         let smoothing = self.paint.brush.effective_impasto_smoothing();
         if smoothing > 0.0 {
             let (w, h) = self.source_size;
-            settle(&mut stroke, w, h, smoothing);
+            settle(&mut field, w, h, smoothing);
         }
-        let n = stroke.len();
-        let field = self.heights.entry(active).or_default();
-        if field.len() != n {
-            field.resize(n, 0.0);
+        let base = &self.paint.live_relief_base;
+        if base.len() == field.len() {
+            for (dst, add) in field.iter_mut().zip(base.iter()) {
+                *dst += add;
+            }
         }
-        for (dst, add) in field.iter_mut().zip(stroke.iter()) {
-            *dst += add;
-        }
-        // A layer whose relief is entirely flat carries no height at all — drop it so a layer that was
-        // never sculpted (or was fully erased) costs nothing downstream and the light pass can skip it.
         if field.iter().all(|&v| v == 0.0) {
-            self.heights.remove(&active);
+            self.heights.remove(&layer);
+        } else {
+            self.heights.insert(layer, field);
         }
+    }
+
+    /// Live Depth / Smoothing edit: re-derive the last stroke's relief in place. No-op unless that
+    /// stroke is on the layer the artist is looking at — dialling Depth after switching layers must not
+    /// reach back and re-sculpt a stroke on some other one.
+    pub(super) fn refresh_live_relief(&mut self) {
+        if !self.paint.brush.impasto || self.layers.active() != self.paint.live_relief_layer {
+            return;
+        }
+        self.rebuild_live_layer_relief();
+        self.invalidate_composite();
+    }
+
+    /// Forget the live stroke — its ground is no longer valid (an erase, an undo, a fresh document).
+    pub(crate) fn drop_live_relief(&mut self) {
+        self.paint.live_relief = Vec::new();
+        self.paint.live_relief_base = Vec::new();
+        self.paint.live_relief_layer = None;
+        self.paint.live_relief_depth = 0.0;
     }
 
     /// The relief the artist should SEE right now for `id`: the committed layer height plus the

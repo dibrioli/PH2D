@@ -105,18 +105,26 @@ impl PainterTool {
 
     /// Toggle the section's master switch.
     pub fn toggle_brush_impasto(&mut self) {
-        let on = !self.paint.brush.impasto;
-        self.paint.brush.impasto = on;
+        self.paint.brush.impasto = !self.paint.brush.impasto;
+        // Ticking it back ON re-derives the last stroke's body at the current Depth. Ticking it OFF does
+        // NOT delete relief that is already painted — the switch governs what the BRUSH deposits, and
+        // silently erasing an artist's sculpting because they unticked a checkbox would be indefensible.
+        self.refresh_live_relief();
     }
 
-    /// **Depth** — signed thickness one full-coverage dab lays down.
+    /// **Depth** — signed thickness one full-coverage dab lays down. Applies to the NEXT stroke and,
+    /// live, to the LAST one: the artist lays a stroke and then dials the thickness in while looking at
+    /// it, like every other property in this panel (Enio 2026-07-12). See `impasto::refresh_live_relief`.
     pub fn set_brush_impasto_depth(&mut self, v: f32) {
         self.paint.brush.impasto_depth = v.clamp(DEPTH_MIN, DEPTH_MAX);
+        self.refresh_live_relief();
     }
 
-    /// **Smoothing** — how far the deposit settles at stroke end.
+    /// **Smoothing** — how far the deposit settles at stroke end. Live on the last stroke too (the raw
+    /// envelope is kept unsettled precisely so a new value can be applied to it, not on top of the old).
     pub fn set_brush_impasto_smoothing(&mut self, v: f32) {
         self.paint.brush.impasto_smoothing = v.clamp(0.0, 1.0);
+        self.refresh_live_relief();
     }
 
     /// **Depth Source** from its wire discriminant (the segmented group's option).

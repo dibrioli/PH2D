@@ -55,6 +55,9 @@ impl PainterTool {
         self.layers = m.layers;
         self.images = m.images;
         self.heights = m.heights;
+        // The live-edit buffer describes a stroke on a ground that no longer exists — forget it, or the
+        // next Depth drag would rebuild an undone stroke out of thin air.
+        self.drop_live_relief();
         self.canvas_rgba = m.canvas_rgba;
         self.selection = m.selection;
         // Reinstate the Mask brush scratch + target so an undo/redo across a mask stroke restores the

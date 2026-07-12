@@ -18143,3 +18143,201 @@ fn sweep_probe_jitter_spacing() {
         println!("jitter_spacing {js:.1} → ripple {:.4}", hi - lo);
     }
 }
+
+#[test]
+#[ignore = "diagnostic — run with --ignored --nocapture"]
+fn spacing_probe_curved_full_field() {
+    // The strokes STILL differ with spacing on screen. My gate measured a straight stroke's peak and
+    // ripple — which is not the same as "the two paintings are the same painting". Compare the whole
+    // field, on a CURVE, and split it: is the difference in the COLOUR, in the RELIEF, or in the LIGHT?
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let size = 260u32;
+    let run = |spacing: f32| -> (Vec<u8>, Vec<f32>, Vec<u8>) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let mut b = BrushSpec {
+            radius_px: 40.0,
+            spacing,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: DepthSource::Grain,
+            impasto_smoothing: 0.15,
+            ..Default::default()
+        };
+        b.texture.kind = TextureKind::Noise;
+        b.texture.mapping = TextureMapping::Tiled;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        // A curve, like the smoke's S.
+        t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
+        for p in [[120.0, 90.0], [90.0, 140.0], [130.0, 190.0], [110.0, 225.0]] {
+            t.on_canvas_pointer(cp(p, PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([110.0, 225.0], PointerPhase::Up));
+        let canvas = (*t.canvas_rgba).clone();
+        let h = relief(&t);
+        let (comp, _, _) = t.take_preview_arc().expect("preview");
+        (canvas, h, (*comp).clone())
+    };
+    let (c_coarse, h_coarse, l_coarse) = run(0.10);
+    let (c_fine, h_fine, l_fine) = run(0.01);
+    let _ = (&h_coarse, &h_fine);
+
+    let du8 = |a: &[u8], b: &[u8]| {
+        let mut worst = 0i32;
+        let mut n = 0u32;
+        for i in (0..a.len()).step_by(4) {
+            let d = (0..3)
+                .map(|c| (i32::from(a[i + c]) - i32::from(b[i + c])).abs())
+                .max()
+                .unwrap_or(0);
+            if d > 8 {
+                n += 1;
+            }
+            worst = worst.max(d);
+        }
+        (n, worst)
+    };
+    let (cn, cw) = du8(&c_coarse, &c_fine);
+    let (ln, lw) = du8(&l_coarse, &l_fine);
+    let hw = h_coarse
+        .iter()
+        .zip(h_fine.iter())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f32, f32::max);
+    let hn = h_coarse
+        .iter()
+        .zip(h_fine.iter())
+        .filter(|(a, b)| (*a - *b).abs() > 0.05)
+        .count();
+    println!("COLOUR  (canvas_rgba): {cn} px differ >8 levels, worst {cw}");
+    println!("RELIEF  (height):      {hn} px differ >0.05,     worst {hw:.3}");
+    println!("LIGHT   (composite):   {ln} px differ >8 levels, worst {lw}");
+
+    // Is the colour difference the engine's ratified "spacing changes deposit density" — the thing
+    // "Adjust Strength for Spacing" exists to normalise, and which Enio turned OFF by default in
+    // 2026-06-24? Turn it back on and see whether the three strokes converge.
+    let run_att = |spacing: f32| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let mut b = BrushSpec {
+            radius_px: 40.0,
+            spacing,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: true, // <- the only change
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: DepthSource::Grain,
+            impasto_smoothing: 0.15,
+            ..Default::default()
+        };
+        b.texture.kind = TextureKind::Noise;
+        b.texture.mapping = TextureMapping::Tiled;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
+        for p in [[120.0, 90.0], [90.0, 140.0], [130.0, 190.0], [110.0, 225.0]] {
+            t.on_canvas_pointer(cp(p, PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([110.0, 225.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    let (an, aw) = du8(&run_att(0.10), &run_att(0.01));
+    println!("COLOUR with Adjust Strength ON: {an} px differ >8 levels, worst {aw}");
+}
+
+#[test]
+fn impasto_depth_and_smoothing_are_live_on_the_stroke_already_painted() {
+    // Enio 2026-07-12: "Depth e Smooth devem atualizar em tempo real após o traço ser feito como as
+    // outras propriedades fazem." An artist lays a stroke and then dials the thickness in while LOOKING
+    // at it — a knob that only affects the next stroke is a knob you have to guess with.
+    //
+    // The bar is not "something changes". It is: dragging Depth after the fact must land on EXACTLY the
+    // relief you would have got by painting with that Depth from the start. A live edit that merely
+    // approximates the real thing is a second, silently-divergent code path — and this line has already
+    // paid for one of those.
+    let paint = |depth: f32, smoothing: f32, retune: Option<(f32, f32)>| -> Vec<f32> {
+        let mut t = impasto_canvas(60);
+        let mut b = t.paint.brush;
+        b.radius_px = 8.0;
+        b.impasto_depth = depth;
+        b.impasto_smoothing = smoothing;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
+        if let Some((d, s)) = retune {
+            // The stroke is DONE. Now move the sliders, exactly as the panel would.
+            t.set_brush_impasto_depth(d);
+            t.set_brush_impasto_smoothing(s);
+        }
+        relief(&t)
+    };
+    // Painted at 0.3/0.0, then re-tuned to 0.8/0.6 — versus painted at 0.8/0.6 in the first place.
+    let retuned = paint(0.3, 0.0, Some((0.8, 0.6)));
+    let native = paint(0.8, 0.6, None);
+    assert!(
+        native.iter().fold(0.0f32, |m, &v| m.max(v)) > 0.3,
+        "sanity: the reference stroke has a real body"
+    );
+    let worst = retuned
+        .iter()
+        .zip(native.iter())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst < 1e-5,
+        "re-tuning Depth/Smoothing after the stroke must land on the same relief as painting with them \
+         from the start (worst divergence {worst})"
+    );
+
+    // Carving live, too — Depth is signed, and flipping it must flip the paint already down.
+    let carved = paint(0.5, 0.0, Some((-0.5, 0.0)));
+    assert!(
+        carved.iter().any(|&v| v < -0.1),
+        "dragging Depth negative carves the stroke that is already on the canvas"
+    );
+
+    // ...but a SECOND stroke ends the live edit: only the last one is re-derivable, and re-tuning must
+    // never resurrect or rescale the ones before it.
+    let mut t = impasto_canvas(60);
+    let mut b = t.paint.brush;
+    b.radius_px = 8.0;
+    b.impasto_depth = 0.5;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([15.0, 15.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([15.0, 15.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp([45.0, 45.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([45.0, 45.0], PointerPhase::Up));
+    let first_before = relief(&t)[(15 * 60 + 15) as usize];
+    // SANITY, and it is load-bearing: committing the second stroke must not have erased the first. I
+    // wrote this gate without it, and a mutation that made the live buffer FORGET its ground sailed
+    // straight through — because it destroyed the first stroke's relief BEFORE the reference was read,
+    // so the test compared zero against zero and approved. Read the reference, then check it is real.
+    assert!(
+        first_before > 0.2,
+        "the first stroke is still on the layer after the second one commits ({first_before})"
+    );
+    t.set_brush_impasto_depth(1.0);
+    let h = relief(&t);
+    assert!(
+        (h[(15 * 60 + 15) as usize] - first_before).abs() < 1e-5,
+        "the FIRST stroke is committed paint — a later Depth drag must not reach back and re-sculpt it"
+    );
+    assert!(
+        h[(45 * 60 + 45) as usize] > first_before * 1.5,
+        "...while the last stroke, the live one, does follow the slider"
+    );
+}

@@ -429,6 +429,19 @@ pub(crate) struct PaintState {
     /// per copy; cleared on pen-down. Mirrors `last_smear_pos` (which is the same idea, for the smear
     /// chain), but per-copy, because Symmetry paints several strokes at once.
     last_height_center: Vec<Option<[f32; 2]>>,
+    /// **Impasto live-edit** — the LAST stroke's relief, kept UNSETTLED and at the depth it was laid
+    /// with, so **Depth** and **Smoothing** can be re-derived after the fact instead of only affecting
+    /// the next stroke. (Enio 2026-07-12: "devem atualizar em tempo real após o traço ser feito como as
+    /// outras propriedades fazem." The same live-editability the watercolor wash has while the paper is
+    /// still wet.) Empty ⇒ nothing to re-derive.
+    live_relief: Vec<f32>,
+    /// The active layer's committed relief BEFORE that stroke — the ground the re-derived stroke is
+    /// added back onto. Empty ⇒ the layer had none (the common case: a first stroke).
+    live_relief_base: Vec<f32>,
+    /// Which layer [`Self::live_relief`] belongs to, and the Depth it was deposited with (the divisor
+    /// that turns it back into a unit envelope). `None` ⇒ nothing live.
+    live_relief_layer: Option<crate::tool::RtLayerId>,
+    live_relief_depth: f32,
     /// **Watercolor render-path** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the
     /// stroke's dabs (max-blended discs = wet_edges `stampCoverage`), the silhouette the optical composite
     /// reconstructs the wash from ([`super::watercolor_render`]). Empty unless the Watercolor section is

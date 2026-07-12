@@ -31,12 +31,17 @@
 //! - `spectrogram` — the cached, display-resolution picture, plus its RGBA rendering.
 //! - `repair` — spectral inpaint.
 //! - `denoise` — noise profile + decision-directed Wiener suppression.
+//! - `convolve` — fast convolution, which is what a **convolution reverb** is made of. The
+//!   second thing the FFT bought, and it cost no new dependency: an impulse response *is* a
+//!   room, and multiplying spectra is the only way to afford using one.
 
+pub mod convolve;
 pub mod denoise;
 pub mod repair;
 pub mod spectrogram;
 pub mod stft;
 
+pub use convolve::{convolve, normalize_ir};
 pub use denoise::{NoiseProfile, denoise};
 pub use repair::repair;
 pub use spectrogram::{Band, Spectrogram};

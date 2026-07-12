@@ -271,7 +271,7 @@ impl EditClip {
     /// Render a **tail-extending** [`TailEffect`] over the target range without
     /// committing. The ring-out bleeds onto the audio after the range, and the
     /// buffer **grows** when the range reaches the end (see [`in_range_tail`]).
-    pub fn render_tail_effect(&self, fx: TailEffect) -> SampleData {
+    pub fn render_tail_effect(&self, fx: &TailEffect) -> SampleData {
         let tail = fx.tail_frames(self.data.format().sample_rate);
         ops::in_range_tail(&self.data, self.target(), tail, |region, tail| {
             fx.render(region, tail)
@@ -292,7 +292,7 @@ impl EditClip {
 
     /// Render + commit a [`TailEffect`] in one step (one undo step). The clip
     /// **grows** when the target range reaches the end; the selection survives.
-    pub fn apply_tail_effect(&mut self, fx: TailEffect) {
+    pub fn apply_tail_effect(&mut self, fx: &TailEffect) {
         let out = self.render_tail_effect(fx);
         self.commit(out);
     }

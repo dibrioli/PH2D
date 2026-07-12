@@ -287,6 +287,20 @@ impl crate::App {
                 ed::set_fx_kind_defaults(&fx_params::all_default_norms());
                 let (kind, norms) = ed::fx_sel_stage();
                 ed::set_fx_param_views(&fx_params::views(kind, &norms));
+                // Does the selected stage want a ROOM? Derived from the effect the table
+                // builds, not from a new column in it: "needs an impulse response" is a fact
+                // ABOUT the effect, not a knob on it. Then drain the request.
+                ed::set_fx_ir(
+                    fx_params::needs_ir(kind),
+                    &crate::audio::editor::ir::readout(),
+                );
+                if ed::take_load_ir()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("impulse response", &["wav", "flac", "aiff", "aif", "ogg"])
+                        .pick_file()
+                {
+                    crate::audio::editor::ir::load(&path);
+                }
 
                 // Chain presets. Publish the factory names for the selector, then
                 // drain its three one-shots: Apply loads a factory preset into the

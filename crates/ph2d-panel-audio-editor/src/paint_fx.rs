@@ -14,7 +14,7 @@
 //! kind index, and the shell publishes each slot's label + already-formatted value
 //! (`audio/fx_params.rs`), so no DSP range or unit ever lands here.
 
-use crate::paint::{ClippedHits, button, toggle};
+use crate::paint::{ClippedHits, ROW_H, button, toggle};
 use crate::{
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS,
@@ -226,6 +226,51 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
             ctx.hit_index.register(id, track);
         }
         y += Spacing::Md.px() + gap;
+    }
+
+    // **The room.** Only the Convolution Reverb has one, and it is the one thing in the rack
+    // that is not a number — so it gets a control the parameter table cannot express. The row
+    // simply is not there for the other 38 effects: a permanently-dimmed "Load IR" button
+    // would be 38 kinds of noise to spare one kind of special case.
+    if snapshot::fx_needs_ir() {
+        let read = snapshot::fx_ir_readout();
+        button(
+            Rect::new(x, y, w, ROW_H),
+            if read.is_empty() {
+                "Load IR\u{2026}"
+            } else {
+                "Change IR\u{2026}"
+            },
+            loaded,
+            crate::AEDIT_FX_LOAD_IR,
+            ctx.scene,
+            ctx.text_system,
+            ctx.theme,
+            ctx.hit_index,
+        );
+        y += ROW_H + Spacing::Xs.px();
+        // Which room is loaded — an empty slot has to look empty, or the user is left
+        // wondering why a fully-wet reverb does nothing (it is bypassed: no room, no reverb).
+        paint_text_centered(
+            ctx.text_system,
+            ctx.scene,
+            if read.is_empty() {
+                "no room loaded"
+            } else {
+                &read
+            },
+            Rect::new(x, y, w, label_h),
+            TypeToken::Xs.px(),
+            resolve(
+                if read.is_empty() {
+                    ColorToken::Warn
+                } else {
+                    ColorToken::Text3
+                },
+                ctx.theme,
+            ),
+        );
+        y += label_h + gap;
     }
     y + Spacing::Xs.px()
 }

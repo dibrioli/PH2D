@@ -126,6 +126,10 @@ pub const AEDIT_SPEC_LEARN: NodeId = hash_node_id("audio_editor_spec_learn");
 pub const AEDIT_SPEC_AMOUNT: NodeId = hash_node_id("audio_editor_spec_amount");
 /// Apply the denoise across the clip.
 pub const AEDIT_SPEC_DENOISE: NodeId = hash_node_id("audio_editor_spec_denoise");
+/// **Load IR** — the impulse response for the Convolution Reverb. An IR is a *resource*, not
+/// a float, so it cannot ride the rack's parameter table; this button appears only when the
+/// selected stage is the one that needs a room.
+pub const AEDIT_FX_LOAD_IR: NodeId = hash_node_id("audio_editor_fx_load_ir");
 /// Gain −3 dB.
 pub const AEDIT_GAIN_DOWN: NodeId = hash_node_id("audio_editor_gain_down");
 /// Gain +3 dB.
@@ -435,6 +439,7 @@ pub use snapshot::take_export;
 /// Panel → shell: whether the user requested Load (one-shot; the shell opens a
 /// file picker + decodes).
 pub use snapshot::take_load;
+pub use snapshot::take_load_ir;
 /// Panel → shell: whether the user requested a play/pause toggle this frame
 /// (one-shot; the bridge drains it and flips the preview transport).
 pub use snapshot::take_play_pause;
@@ -448,7 +453,7 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 /// effect kind, each kind's **neutral** normalized defaults (so the panel can seed
 /// a fresh or reset stage), and the selected stage's per-parameter
 /// `(label, formatted value)` pairs.
-pub use snapshot::{set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
+pub use snapshot::{set_fx_ir, set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
 
 // Loop points + batch + force-mono (W6 asset-prep).
 /// Shell → panel: publish the loop region as `(start_secs, end_secs)` for the readout.

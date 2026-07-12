@@ -96,7 +96,7 @@ fn tail_effect_grows_the_clip_and_undo_restores_it() {
         mix: 0.5,
         tail_secs: 0.01, // 480 frames
     };
-    clip.apply_tail_effect(echo);
+    clip.apply_tail_effect(&echo);
     assert_eq!(
         clip.frame_count(),
         1_480,
@@ -112,7 +112,7 @@ fn tail_effect_grows_the_clip_and_undo_restores_it() {
 
     // A selection mid-clip: the tail bleeds in, the clip does NOT grow.
     clip.set_selection(Some(0..100));
-    clip.apply_tail_effect(echo);
+    clip.apply_tail_effect(&echo);
     assert_eq!(clip.frame_count(), 1_000, "tail fits inside → no growth");
 }
 
@@ -149,11 +149,11 @@ fn rendered_tail_audition_matches_apply() {
         tail_secs: 0.01,
     };
     let clip = EditClip::new(d.clone());
-    let heard = clip.render_tail_effect(fx);
+    let heard = clip.render_tail_effect(&fx);
     assert_eq!(clip.frame_count(), 1_000, "render must NOT mutate");
 
     let mut applied = EditClip::new(d);
-    applied.apply_tail_effect(fx);
+    applied.apply_tail_effect(&fx);
     assert_eq!(heard.samples(), applied.data().samples());
     assert_eq!(heard.frame_count(), 1_480);
 }

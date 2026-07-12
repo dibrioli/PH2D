@@ -15,3 +15,8 @@ authors.workspace = true
 # only, so HR-3 (no-alloc) and HR-5 (no transcendentals) do NOT apply here.
 [dependencies]
 ph2d-audio = { path = "../ph2d-audio" }
+# The convolution reverb (`fx/conv.rs`) needs a FAST convolution, and a fast convolution is an
+# FFT. ADR-0115 confines the FFT to `ph2d-audio-spectral`; this edge keeps that promise where it
+# actually matters — the dependency reaches the offline EDIT crate, never the RT mixer
+# (`ph2d-audio`), which is the whole point of the confinement.
+ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }

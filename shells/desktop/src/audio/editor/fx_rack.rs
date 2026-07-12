@@ -61,7 +61,7 @@ fn render_stage(base: &EditClip, stage: &FxStage) -> Option<EditClip> {
     }
     let data = match crate::audio::fx_params::build(stage.kind, &stage.norms)? {
         crate::audio::fx_params::FxCommand::Plain(fx) => base.render_effect(fx),
-        crate::audio::fx_params::FxCommand::Tail(fx) => base.render_tail_effect(fx),
+        crate::audio::fx_params::FxCommand::Tail(fx) => base.render_tail_effect(&fx),
     };
     let mut next = EditClip::new(data);
     next.set_selection(base.selection());

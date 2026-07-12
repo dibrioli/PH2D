@@ -14,7 +14,7 @@ use super::fx_params::{FxCommand, FxKind};
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space → modulation, the way a rack is laid out. Each row's `params` points at a
 /// spec array in the sibling [`super::fx_param_specs`].
-pub(crate) static KINDS: [FxKind; 38] = [
+pub(crate) static KINDS: [FxKind; 39] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -259,6 +259,23 @@ pub(crate) static KINDS: [FxKind; 38] = [
                 damp: v[1],
                 mix: v[2],
                 tail_secs: v[3],
+            })
+        },
+    },
+    // The rack's second reverb, and a different KIND of thing: Freeverb above is a plausible
+    // room, modelled. This one is a measured one — an impulse response IS a room, and the only
+    // knob is how much of it you want. The IR itself is a resource, not a parameter: `build`
+    // runs in the shell, so it bakes the loaded room into the effect value (see `editor::ir`).
+    FxKind {
+        name: "Conv Reverb",
+        params: &CONV_REVERB,
+        arms: &[0], // Mix
+        build: |v| {
+            FxCommand::Tail(TailEffect::Convolution {
+                ir: super::editor::ir::samples(),
+                ir_channels: super::editor::ir::channels(),
+                ir_rate: super::editor::ir::rate(),
+                mix: v[0],
             })
         },
     },

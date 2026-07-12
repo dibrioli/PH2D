@@ -23,6 +23,7 @@
 
 mod autowah;
 mod comb;
+mod conv;
 mod declick;
 mod declip;
 mod deess;

@@ -23,8 +23,8 @@ use ph2d_panel_audio_editor::{
     take_play_pause, take_save_preset, take_set_loop, take_stop, take_toggle_mono,
 };
 use ph2d_panel_audio_editor::{
-    AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW,
-    spectral_state,
+    AEDIT_FX_LOAD_IR, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR,
+    AEDIT_SPEC_VIEW, spectral_state, take_load_ir,
 };
 use ph2d_panel_audio_editor::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
@@ -998,4 +998,27 @@ fn every_spectral_control_is_registered() {
             "{name} is painted but never registered in populate — it is a dead control"
         );
     }
+}
+
+// ── Convolution reverb: the room ────────────────────────────────────────────────────
+
+/// **The Load IR button reaches the shell** — and it is registered, so it is not a painted
+/// corpse. (The fan-out's most common wiring miss: a control that paints, hit-tests, and does
+/// nothing, because nobody registered it in `populate`.)
+#[test]
+fn the_load_ir_button_asks_the_shell_for_a_room() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_load_ir();
+
+    assert!(
+        host.store().get(AEDIT_FX_LOAD_IR).is_some(),
+        "Load IR is painted but never registered in populate — it is a dead control"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_FX_LOAD_IR));
+    assert!(
+        take_load_ir(),
+        "clicking Load IR never asked the shell to open the picker"
+    );
+    assert!(!take_load_ir(), "the request is a one-shot; it fired twice");
 }

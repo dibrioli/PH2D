@@ -446,6 +446,40 @@ pub fn set_fx_kind_defaults(defaults: &[[f32; MAX_FX_PARAMS]]) {
     });
 }
 
+thread_local! {
+    /// Shell → panel: the selected stage is a Convolution Reverb (so it needs a room), and
+    /// which room is loaded. Derived by the shell from the built effect — no new column in the
+    /// kind table, because "needs an IR" is a fact ABOUT the effect, not a knob on it.
+    static FX_NEEDS_IR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static FX_IR_READOUT: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
+    /// Panel → shell: open the picker and load a room.
+    static LOAD_IR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Shell: publish whether the selected stage wants an impulse response, and the loaded one.
+pub fn set_fx_ir(needs: bool, readout: &str) {
+    FX_NEEDS_IR.with(|c| c.set(needs));
+    FX_IR_READOUT.with(|c| c.borrow_mut().replace_range(.., readout));
+}
+
+pub(crate) fn fx_needs_ir() -> bool {
+    FX_NEEDS_IR.with(std::cell::Cell::get)
+}
+
+pub(crate) fn fx_ir_readout() -> String {
+    FX_IR_READOUT.with(|c| c.borrow().clone())
+}
+
+/// Panel: the user asked for a room.
+pub(crate) fn request_load_ir() {
+    LOAD_IR.with(|c| c.set(true));
+}
+
+/// Shell: drain the request (one-shot).
+pub fn take_load_ir() -> bool {
+    LOAD_IR.with(|c| c.replace(false))
+}
+
 /// Shell → panel: `(label, formatted value)` per parameter of the SELECTED stage.
 /// Length = that effect's parameter count; the panel hides the rest.
 pub fn set_fx_param_views(views: &[(String, String)]) {

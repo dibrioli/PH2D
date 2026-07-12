@@ -473,7 +473,7 @@ mod tests {
                 let out = match super::super::fx_params::build(st.kind, &st.norms) {
                     Some(super::super::fx_params::FxCommand::Plain(fx)) => clip.render_effect(fx),
                     Some(super::super::fx_params::FxCommand::Tail(fx)) => {
-                        clip.render_tail_effect(fx)
+                        clip.render_tail_effect(&fx)
                     }
                     None => continue,
                 };

@@ -16,7 +16,7 @@ use ph2d_audio::{
 // generators live in descendant submodules (they still reach `AudioSystem`'s
 // private fields). `editor` is gated on the panel feature; `signals` is not.
 #[cfg(feature = "panel-audio-editor")]
-mod editor;
+pub(crate) mod editor;
 #[cfg(feature = "panel-audio-editor")]
 mod wave_view;
 #[cfg(feature = "panel-audio-editor")]

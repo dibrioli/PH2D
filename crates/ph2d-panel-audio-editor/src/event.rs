@@ -317,6 +317,12 @@ pub(crate) fn apply_event(
         if let Some(outcome) = spectral_click(id) {
             return outcome;
         }
+        // The Convolution Reverb's room. Only reachable when the panel painted the button,
+        // which it only does for the stage that needs one.
+        if id == crate::AEDIT_FX_LOAD_IR {
+            snapshot::request_load_ir();
+            return EventOutcome::Consumed;
+        }
         // Chain rows: the eye toggles a stage in/out of the render, the row selects it.
         if let Some(i) = AEDIT_FX_STAGE_ONS.iter().position(|s| *s == id) {
             snapshot::toggle_fx_stage_enabled(i);

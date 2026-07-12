@@ -10,6 +10,7 @@
 mod batch;
 pub(crate) mod delivery;
 mod fx_rack;
+pub(crate) mod ir;
 mod loops;
 mod markers;
 pub(crate) mod spectral;

@@ -208,6 +208,18 @@ impl FxCommand {
 }
 
 /// Build the effect for `kind` at the current slider positions.
+/// Whether `kind` is the effect that needs an impulse response.
+///
+/// **Derived, not declared.** The alternative was a `needs_ir: bool` column on all 39 rows of
+/// the kind table — 38 of them `false`, to describe one. Ask the table what it builds instead:
+/// if the answer is a convolution, it wants a room.
+pub(crate) fn needs_ir(kind: usize) -> bool {
+    matches!(
+        build(kind, &default_norms(kind)),
+        Some(FxCommand::Tail(TailEffect::Convolution { .. }))
+    )
+}
+
 pub(crate) fn build(kind: usize, norms: &[f32; MAX_FX_PARAMS]) -> Option<FxCommand> {
     let k = KINDS.get(kind)?;
     let mut v = [0.0f32; MAX_FX_PARAMS];
@@ -287,6 +299,7 @@ mod tests {
                 "Haas",
                 "Exciter",
                 "Reverb",
+                "Conv Reverb",
                 "Echo",
                 "Ping-Pong",
                 "Comb",
@@ -440,7 +453,7 @@ mod tests {
                         "{}: defaults are not the neutral point",
                         k.name
                     );
-                    clip.render_tail_effect(fx)
+                    clip.render_tail_effect(&fx)
                 }
             };
             assert_eq!(
@@ -459,6 +472,17 @@ mod tests {
     }
 
     /// Turn one knob to the far end of its travel, leave the rest at their defaults.
+    /// A tiny synthetic room for the rack gates — the Convolution Reverb's precondition.
+    fn seed_room() {
+        let ir: Vec<f32> = (0..2_000)
+            .map(|i| {
+                let t = i as f32 / 2_000.0;
+                ((i * 37 % 101) as f32 / 50.0 - 1.0) * (1.0 - t) * (1.0 - t)
+            })
+            .collect();
+        super::super::editor::ir::set(ir, 1, 48_000, "test-room");
+    }
+
     fn norms_with(kind: usize, i: usize) -> [f32; MAX_FX_PARAMS] {
         let mut norms = default_norms(kind);
         norms[i] = if norms[i] > 0.5 { 0.0 } else { 1.0 };
@@ -475,6 +499,12 @@ mod tests {
     #[test]
     fn turning_an_arming_knob_wakes_the_effect_up() {
         let d = probe();
+        // The Convolution Reverb needs a ROOM as well as a wet Mix — with no impulse response
+        // it is bypassed by design, whatever the knob says (there is nothing to convolve with,
+        // and convolving with an empty buffer would silence the clip rather than reverberate
+        // it). It is the one effect in the rack whose arming knob is not sufficient on its own,
+        // so the probe hands it a room: a short decaying burst, which is what a room is.
+        seed_room();
         for (kind, k) in KINDS.iter().enumerate() {
             for &arm in k.arms {
                 let clip = EditClip::new(d.clone());
@@ -485,7 +515,7 @@ mod tests {
                     }
                     FxCommand::Tail(fx) => {
                         assert!(!fx.is_bypass(), "{} still reads as neutral", k.name);
-                        clip.render_tail_effect(fx)
+                        clip.render_tail_effect(&fx)
                     }
                 };
                 assert_ne!(
@@ -497,6 +527,49 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// **Exactly one effect wants a room, and it is the right one.**
+    ///
+    /// `needs_ir` is DERIVED (ask the table what it builds) rather than declared in a column,
+    /// which is what keeps the other 38 rows from carrying a `false` to describe one. The price
+    /// of deriving is that a mistake is silent: the Load IR button would simply appear on the
+    /// wrong effect, or on none — and a Convolution Reverb with no way to load a room is a
+    /// reverb that can never be switched on.
+    #[test]
+    fn exactly_one_effect_wants_a_room() {
+        let wanting: Vec<&str> = KINDS
+            .iter()
+            .enumerate()
+            .filter(|(k, _)| needs_ir(*k))
+            .map(|(_, k)| k.name)
+            .collect();
+        assert_eq!(
+            wanting,
+            ["Conv Reverb"],
+            "the Load IR button follows this list, and it is wrong"
+        );
+    }
+
+    /// **No room = bypass, however wet the Mix.** Convolving with an empty buffer would not
+    /// reverberate the clip, it would SILENCE it — so the effect refuses instead of pretending.
+    /// This is the rack-level half of what `conv.rs` proves in the DSP.
+    #[test]
+    fn a_convolution_with_no_room_is_bypassed() {
+        let kind = KINDS.iter().position(|k| k.name == "Conv Reverb").unwrap();
+        super::super::editor::ir::set(Vec::new(), 1, 48_000, "");
+        let mut norms = default_norms(kind);
+        norms[0] = 1.0; // fully wet
+        let cmd = build(kind, &norms).expect("builds");
+        assert!(
+            cmd.is_bypass(),
+            "a fully-wet convolution with NO impulse response is not bypassed — it would \
+             convolve with nothing and silence the clip"
+        );
+        // …and with a room, the same knob wakes it. (Otherwise the assertion above would be
+        // satisfied by an effect that is simply always dead.)
+        seed_room();
+        assert!(!build(kind, &norms).expect("builds").is_bypass());
     }
 
     /// The rest of the knobs are inert while the arming ones sit at neutral. This is

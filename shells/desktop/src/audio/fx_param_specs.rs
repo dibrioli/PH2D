@@ -232,6 +232,10 @@ pub(super) static DE_CLICK: [FxParamSpec; 2] = [
     spec("Sensitivity", 0.0, 1.0, false, 0.0, "", false),
     spec("Width", 0.0001, 0.003, true, 0.001, "s", false),
 ];
+// Mix is the only knob: the ROOM carries everything else — its size, its colour, how long it
+// rings. That is the difference between a convolution reverb and an algorithmic one, and giving
+// it a "room size" slider would be pretending otherwise.
+pub(super) static CONV_REVERB: [FxParamSpec; 1] = [spec("Mix", 0.0, 1.0, false, 0.0, "", false)];
 // Amount is the arm (0 = off): a restoration tool has nothing to do in most clips, so it
 // starts inert like De-Click. Threshold is where a FLAT run starts counting as clipped —
 // just under full scale, which is where a converter actually runs out.

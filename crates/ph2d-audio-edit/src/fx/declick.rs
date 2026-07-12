@@ -63,6 +63,17 @@ const MAX_GAP: usize = 192;
 /// the model has nothing to say about it, so the audio is left untouched.
 const PIVOT_EPS: f64 = 1e-12;
 
+/// Audio on each side of a burst that the transient guard listens to (~11 ms at 48 kHz):
+/// long enough to fit a model and to hear whether a new sound has started, short enough
+/// to stay inside one musical event.
+const CONTEXT: usize = 512;
+
+/// How much worse the *before* model may explain the *after* audio before the burst is
+/// ruled a **signal onset** rather than damage. Measured on real material: a click's
+/// audio resumes at 1.8–2.4× its own residual, a percussive attack starts a new sound at
+/// 7.5–13.2×. Four is the ditch between them, with margin on both sides.
+const ONSET_RATIO: f64 = 4.0;
+
 /// Detect and repair clicks. `sensitivity` (0..1) sets the detection threshold;
 /// `width_secs` is the longest run that will be repaired.
 ///
@@ -118,10 +129,62 @@ fn repair_block(x: &mut [f64], block: Range<usize>, k: f64, max_gap: usize) {
     let limit = k * sigma;
     for gap in bursts(e, limit, max_gap, block.start) {
         // The interpolator needs `ORDER` real samples on each side to lean on.
-        if gap.start >= ORDER && gap.end + ORDER <= x.len() {
+        if gap.start >= ORDER && gap.end + ORDER <= x.len() && signal_resumes_after(x, &gap) {
             lsar_interpolate(x, &a, gap);
         }
     }
+}
+
+/// **The transient guard.** Whether the audio *resumes* after `gap` — which is the whole
+/// difference between damage and a sound that simply started.
+///
+/// A drum hit, a consonant, a note attack: to an AR model, the onset of any of them is
+/// exactly as unpredictable as a click, and the residual **cannot tell them apart**
+/// (measured on real material: clicks peak at 115–162 sigma, percussive attacks at
+/// 81–152 — the same range, and the residual *after* the event is the same too, so
+/// "the model stays wrong for longer" does not separate them either). A detector that
+/// stopped at "outlier" would interpolate away every attack in the take. It is *the*
+/// classic failure of this tool, and the reason a de-clicker that only reads the
+/// residual is a smearer.
+///
+/// What separates them is not the spike — it is **what follows it**:
+///
+/// - a **click** is damage *inside* a signal. Take it out and the same signal is still
+///   there on both sides, so a model fitted to the audio BEFORE it still explains the
+///   audio AFTER it (measured 1.8–2.4×);
+/// - an **onset** is where a *new* signal begins. The old model has never heard it, and
+///   fails (measured 7.5–13.2×).
+///
+/// So: fit on the before, score the after, and repair only what the model says came back.
+fn signal_resumes_after(x: &[f64], gap: &Range<usize>) -> bool {
+    // Without full context on both sides there is nothing to compare. The caller has
+    // already guaranteed the interpolator's own margins, so fall through and repair.
+    let Some(pre) = gap.start.checked_sub(CONTEXT + ORDER) else {
+        return true;
+    };
+    let post = gap.end + ORDER;
+    if post + CONTEXT > x.len() {
+        return true;
+    }
+    let Some((a, _)) = levinson(&autocorrelation(&x[pre..gap.start], ORDER)) else {
+        return true; // silence before the burst: no model, nothing to contradict
+    };
+    // Residual RMS of that model over a window. The `after` window starts `ORDER` past
+    // the burst so the damage itself never enters the prediction history.
+    let rms = |lo: usize, hi: usize| -> f64 {
+        let sum: f64 = (lo..hi)
+            .map(|i| {
+                let pred: f64 = a.iter().enumerate().map(|(k, &ak)| ak * x[i - k - 1]).sum();
+                (x[i] - pred).powi(2)
+            })
+            .sum();
+        (sum / (hi - lo) as f64).sqrt()
+    };
+    let base = rms(pre + ORDER, gap.start);
+    if base <= 0.0 {
+        return true;
+    }
+    rms(post, post + CONTEXT) / base <= ONSET_RATIO
 }
 
 /// Robust spread of the residual: `1.4826 × median(|e|)`. `None` when the median is
@@ -347,6 +410,62 @@ mod tests {
             .map(|(a, b)| (a - b).abs())
             .fold(0.0f32, f32::max);
         assert!(worst < 1e-3, "untouched audio drifted by {worst}");
+    }
+
+    /// A percussive hit riding on the tone: a sharp attack that then decays away. Its
+    /// onset is, to an AR model, exactly as unpredictable as a click.
+    fn with_hit(mut x: Vec<f32>, at: usize) -> Vec<f32> {
+        let tau = std::f32::consts::TAU;
+        for i in 0..3_000 {
+            let t = i as f32 / SR as f32;
+            x[at + i] += 0.45 * (-t * 60.0).exp() * (tau * 1_800.0 * t).sin();
+        }
+        x
+    }
+
+    /// **The transient guard, pinned.** A de-clicker that only hunts residual outliers
+    /// eats every attack in the take: the onset of a hit spikes the residual just as hard
+    /// as a click does (measured: attacks at 81–152 sigma, clicks at 115–162 — the same
+    /// range). This is THE classic failure of the tool, and it is what the Enio smoke
+    /// caught (2026-07-12): the de-clicker dented all five percussive hits.
+    ///
+    /// Red without `signal_resumes_after`: the attack is interpolated away and moves by
+    /// **0.26** — a quarter of full scale. The guard asks whether the audio *resumed*
+    /// (a click) or whether something *new began* (a hit), and repairs only the former.
+    #[test]
+    fn a_percussive_attack_is_not_mistaken_for_a_click() {
+        let at = 8_000usize;
+        let reference = with_hit(clean(24_000), at);
+        let out = declick(&mono(reference.clone()), 1.0, 0.001);
+
+        // The attack — the first few ms, where all the energy is — must survive intact.
+        let worst = out.samples()[at..at + 400]
+            .iter()
+            .zip(&reference[at..at + 400])
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0f32, f32::max);
+        assert!(
+            worst < 0.02,
+            "the de-clicker ate the attack: it moved by {worst}"
+        );
+    }
+
+    /// ...and the guard must not become an excuse to repair nothing: a click sitting in
+    /// the SAME take, a few thousand samples from that hit, is still damage and still
+    /// has to go.
+    #[test]
+    fn a_click_next_to_a_transient_is_still_repaired() {
+        let (hit, click) = (8_000usize, 14_000usize);
+        let reference = with_hit(clean(24_000), hit);
+        let damaged = with_clicks(reference.clone(), &[click], 3);
+        let before = peak_err(&reference, &damaged, &[click], 3);
+
+        let healed = declick(&mono(damaged), 0.8, 0.001);
+        let after = peak_err(&reference, healed.samples(), &[click], 3);
+        assert!(
+            after < before * 0.2,
+            "the guard swallowed a real click: peak error {before} before, {after} after"
+        );
     }
 
     /// A run longer than the Width slider is signal, not damage — leave it. Without

@@ -2915,6 +2915,67 @@ fn per_layer_color_route_flip_mid_stroke_reshapes_the_maps() {
 }
 
 #[test]
+fn switching_sprite_while_the_paint_is_still_wet_does_not_index_the_old_moisture_map() {
+    // Sweep finding (2026-07-12), same family as Bug #12: `canvas_wet` is the ONE canvas-sized buffer that
+    // SURVIVES pen-up (the moisture map dries on the heartbeat, over ~10 s). `dry_canvas_wet` guards it
+    // with `is_empty()` — "does it exist?" — and then indexes it with the CURRENT sprite's stride (`fw`)
+    // and a `canvas_wet_rect` recorded in the OLD sprite's coordinates. Bind a BIGGER sprite inside the
+    // drying window and the very next tick slices past the end of the old buffer.
+    // RED without the fix: `paint_tick` PANICS (`range end index … out of range for slice of length 4096`)
+    // — the same signature class as Enio's Rake crash, from the same root: a guard that asks "exists?"
+    // instead of "does the SHAPE match?".
+    let mut t = white_canvas(64, 8.0);
+    t.paint.brush.watercolor = true;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([34.0, 34.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([34.0, 34.0], PointerPhase::Up));
+    assert_eq!(
+        t.paint.canvas_wet.len(),
+        64 * 64,
+        "the wet stroke left a moisture map sized for the 64² sprite"
+    );
+    assert!(
+        t.paint.canvas_wet_rect.is_some(),
+        "and a wet rect in the 64² sprite's coordinates"
+    );
+    // The user clicks a BIGGER sprite while the paint is still drying — one click, nothing else.
+    t.bind_document(2, vec![255u8; 512 * 512 * 4], 512, 512);
+    t.paint_tick(0.1); // the heartbeat the shell runs every frame → dry_canvas_wet
+    assert!(
+        t.paint.canvas_wet.is_empty() || t.paint.canvas_wet.len() == 512 * 512,
+        "the new sprite must not inherit a moisture map shaped for the old one"
+    );
+}
+
+#[test]
+fn switching_sprite_does_not_carry_the_old_sprites_selection() {
+    // Sweep finding (2026-07-12): the pixel Selection is TOOL-global — it is not in `StashedDoc` (which
+    // stashes the LAYER selection) and was never registered in `reset_transient_edit_state`. And
+    // `selection_restricts_paint()` asks only "is the mask non-empty?", never "does it belong to THIS
+    // sprite?". So the new sprite silently inherited the old one's selection and every stroke outside it
+    // was reverted: the "it just doesn't paint and I don't know why" class.
+    // RED without the fix: the dab at (48,48) is restored to white by `restore_deselected_region`.
+    let mut t = white_canvas(64, 6.0);
+    t.set_rect_selection(0, 0, 16, 16); // select a corner of sprite 1
+    assert!(t.paint.selection_active);
+    t.bind_document(2, vec![255u8; 64 * 64 * 4], 64, 64); // click another sprite (same size = the silent case)
+    assert!(
+        !t.paint.selection_active,
+        "the new sprite starts unselected — the old sprite's selection must not gate its paint"
+    );
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down)); // far OUTSIDE sprite 1's selection
+    t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up));
+    assert_ne!(
+        px(&t, 64, 48, 48),
+        [255, 255, 255, 255],
+        "the stroke paints — it is not gated by a selection that belongs to another sprite"
+    );
+}
+
+#[test]
 fn per_layer_color_grain_rake_flip_mid_stroke_reshapes_the_maps() {
     // Enio (2026-07-12): "temos outro rake em grain e paper". The **Grain** Rake reaches the SAME route
     // predicate as the Shape Rake — `grain_has_per_dab_rotation()` is one of `per_dab_dynamic`'s disjuncts

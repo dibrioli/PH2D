@@ -30,5 +30,37 @@ impl PainterTool {
         self.paint.mask_scratch_rgba = std::sync::Arc::new(Vec::new()); // Mask scratch of the old sprite
         self.paint.mask_scratch_target = None;
         self.paint.eyedropper_armed = false; // don't leave a colour pick armed on the new sprite
+
+        // ── The three subsystems that were born AFTER this reset was written (2026-07-02) and never
+        //    registered here. Each one keeps canvas-sized state that OUTLIVES the gesture, so each one
+        //    walked straight onto the next sprite (sweep, 2026-07-12). Their own guards check only the
+        //    LENGTH of their buffers — which MATCHES when the two sprites happen to be the same size, so
+        //    "same-size sprites" is the case that corrupts in silence. See `BUGS_painter.md` #13.
+
+        // The wet session: `canvas_wet` is the one canvas-sized buffer that survives pen-up (it dries on
+        // the heartbeat, over ~10 s). Rebinding a BIGGER sprite inside that window made the next tick's
+        // `dry_canvas_wet` slice the old, smaller map with the new sprite's stride → SIGSEGV. This is the
+        // same teardown that undo/redo already runs for exactly this reason ("the canvas identity changed,
+        // so the moisture map is stale") — a document rebind IS the canvas identity changing. It drops the
+        // moisture map and the session buffers; the BAKED washes stay in `canvas_rgba` (no pixels touched).
+        self.dry_session_now();
+
+        // The Deform session: `deform.pre` is a "pristine" snapshot of the OLD sprite's pixels, validated
+        // only by its LENGTH — so a same-size sprite kept it, and the next reshape resampled the new canvas
+        // from the OLD sprite's pixels (the flood-the-new-sprite class this very reset was written to kill).
+        self.end_deform_session();
+
+        // The pixel Selection: tool-global (it is NOT in `StashedDoc`, which stashes the LAYER selection),
+        // and `selection_restricts_paint()` asks only "is the mask non-empty?". So the new sprite silently
+        // inherited the old one's selection and every stroke outside it was reverted — the "it just doesn't
+        // paint and I don't know why" report. Cleared field-by-field rather than via `clear_selection()`:
+        // that one records a structural UNDO entry, which must not land on the document being unbound.
+        self.paint.selection_active = false;
+        self.paint.selection_edit_mode = false;
+        self.paint.selection_grab = None;
+        self.paint.selection_mask = std::sync::Arc::new(Vec::new());
+        self.paint.selection_crisp = std::sync::Arc::new(Vec::new());
+        self.paint.selection_shapes.clear();
+        self.reset_selection_offset();
     }
 }

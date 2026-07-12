@@ -328,9 +328,17 @@ impl PainterTool {
         let Some((x0, y0, x1, y1)) = self.paint.canvas_wet_rect else {
             return;
         };
-        let (fw, _fh) = self.source_size;
+        let (fw, fh) = self.source_size;
         let fw = fw as usize;
-        if self.paint.canvas_wet.is_empty() {
+        // Belt-and-braces (sweep 2026-07-12): the moisture map OUTLIVES the gesture, so a document rebind
+        // can leave it shaped for the PREVIOUS sprite — and the loop below indexes it with the CURRENT
+        // sprite's stride and a rect in the OLD sprite's coordinates (a bigger sprite ⇒ slice past the end
+        // ⇒ SIGSEGV). `reset_transient_edit_state` now drops it at the rebind, so this is unreachable; it
+        // stays because the buffer is canvas-sized and the guard asked "does it exist?" instead of "does
+        // its SHAPE match?" — the exact hole that produced Bug #12. Physics untouched: when the shape
+        // matches (always, in every real path) this is byte-identical to the old `is_empty()` check.
+        if self.paint.canvas_wet.len() != fw * (fh as usize) {
+            self.paint.canvas_wet = Vec::new();
             self.paint.canvas_wet_rect = None;
             return;
         }

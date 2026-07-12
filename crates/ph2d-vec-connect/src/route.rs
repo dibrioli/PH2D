@@ -52,12 +52,12 @@ pub fn route(input: &RouteInput) -> Vec<[f64; 2]> {
     let attempts: [&[Aabb]; 2] = [&inflated, &[]];
     for obs in attempts {
         if let Some(path) = search(s0, d0, s1, d1, obs) {
-            return finish(p0, p1, &path, input.spread);
+            return finish(p0, p1, &path);
         }
     }
     // Ainda nada (caixas sobrepostas, uma dentro da outra): o "L" cru, ortogonalizado.
     let elbow = vec![s0, [s1[0], s0[1]], s1];
-    finish(p0, p1, &elbow, input.spread)
+    finish(p0, p1, &elbow)
 }
 
 /// Anda `d` unidades de `p` na direção `dir`.
@@ -323,30 +323,13 @@ fn unwind(
     out
 }
 
-/// Cola os stubs nas pontas, funde os segmentos colineares e aplica o deslocamento paralelo.
-fn finish(p0: [f64; 2], p1: [f64; 2], mid: &[[f64; 2]], spread: f64) -> Vec<[f64; 2]> {
+/// Cola os stubs nas pontas e funde os segmentos colineares.
+fn finish(p0: [f64; 2], p1: [f64; 2], mid: &[[f64; 2]]) -> Vec<[f64; 2]> {
     let mut pts = Vec::with_capacity(mid.len() + 2);
     pts.push(p0);
     pts.extend_from_slice(mid);
     pts.push(p1);
-    if spread.abs() > EPS {
-        offset_middle(&mut pts, spread);
-    }
     simplify(pts)
-}
-
-/// Desloca perpendicularmente os segmentos do MEIO — os endpoints são presos à forma e não
-/// podem sair do lugar. É o que separa dois conectores entre o mesmo par de caixas.
-fn offset_middle(pts: &mut [[f64; 2]], spread: f64) {
-    let n = pts.len();
-    if n < 4 {
-        return;
-    }
-    for p in &mut pts[2..n - 2] {
-        // Desloca no eixo em que o trecho do meio corre; qual é depende da rota, então usa-se
-        // o eixo de maior variação como proxy — barato e estável.
-        p[0] += spread;
-    }
 }
 
 /// Funde pontos duplicados e segmentos colineares: uma polilinha com uma dobra de 0° não é

@@ -361,3 +361,102 @@ fn a_self_loop_leaves_and_returns_without_entering_the_shape() {
         bbox.max[0]
     );
 }
+
+/// **O desvio de obstaculo.** Uma terceira forma plantada no corredor entre as duas caixas: a
+/// rota tem de contorna-la, por cima ou por baixo.
+///
+/// A segunda metade do teste e o que o torna honesto. Um teste de desvio que so afirma "a rota
+/// nao entrou na caixa" pode estar verde por acidente — bastaria a rota nunca ter passado por
+/// ali. Entao ele PROVA o contrario: com a mesma geometria e a parede FORA do slice de
+/// obstaculos, a rota atravessa a parede. O gate morde: e o slice que faz o desvio, e nao a
+/// sorte.
+#[test]
+fn a_wall_in_the_corridor_makes_the_route_go_around_it() {
+    let a = Aabb::new([0.0, 0.0], [4.0, 3.0]);
+    let b = Aabb::new([14.0, 0.0], [18.0, 3.0]);
+    // A parede: no meio do vao, mais alta que as duas — passar reto e impossivel.
+    let wall = Aabb::new([8.0, -2.0], [10.0, 5.0]);
+    let input = RouteInput {
+        start: EndSpec {
+            at: [4.0, 1.5],
+            dir: Dir::East,
+        },
+        end: EndSpec {
+            at: [14.0, 1.5],
+            dir: Dir::West,
+        },
+        kind: RouteKind::Orthogonal,
+        jetty: J,
+        obstacles: &[],
+        spread: 0.0,
+        self_loop: None,
+    };
+
+    let with_wall = route(&RouteInput {
+        obstacles: &[a, b, wall],
+        ..input
+    });
+    assert_orthogonal(&with_wall);
+    assert_avoids(&with_wall, &[a, b, wall]);
+    assert!(
+        with_wall.len() > 2,
+        "a rota tinha de DOBRAR para contornar a parede, e saiu reta: {with_wall:?}"
+    );
+
+    // A prova de que o gate morde: sem a parede no slice, a rota passa POR DENTRO dela.
+    let blind = route(&RouteInput {
+        obstacles: &[a, b],
+        ..input
+    });
+    let crosses = blind.windows(2).any(|w| {
+        (1..20).any(|k| {
+            let t = f64::from(k) / 20.0;
+            wall.contains([
+                w[0][0] + (w[1][0] - w[0][0]) * t,
+                w[0][1] + (w[1][1] - w[0][1]) * t,
+            ])
+        })
+    });
+    assert!(
+        crosses,
+        "teste VACUO: sem a parede no slice a rota ja a evitava, entao o verde acima nao prova \
+         nada. Reposicione a parede para que ela realmente bloqueie o caminho reto."
+    );
+}
+
+/// **Um corredor de obstaculos** — o caso que o grafo esparso existe para aguentar. Vinte e
+/// cinco caixas entre as duas pontas: a rota ainda sai, ainda e ortogonal, e nao encosta em
+/// nenhuma delas.
+///
+/// Serve tambem de piso de custo: se o roteador algum dia ficar lento, e aqui que se mede.
+#[test]
+fn the_route_threads_a_field_of_obstacles() {
+    let a = Aabb::new([-2.0, 8.0], [0.0, 10.0]);
+    let b = Aabb::new([22.0, 8.0], [24.0, 10.0]);
+    let mut obs = vec![a, b];
+    // Uma grade 5x5 de pilares, com folga entre eles.
+    for i in 0..5 {
+        for j in 0..5 {
+            let (x, y) = (2.0 + f64::from(i) * 4.0, 2.0 + f64::from(j) * 4.0);
+            obs.push(Aabb::new([x, y], [x + 2.0, y + 2.0]));
+        }
+    }
+    let r = route(&RouteInput {
+        start: EndSpec {
+            at: [0.0, 9.0],
+            dir: Dir::East,
+        },
+        end: EndSpec {
+            at: [22.0, 9.0],
+            dir: Dir::West,
+        },
+        kind: RouteKind::Orthogonal,
+        jetty: 0.5,
+        obstacles: &obs,
+        spread: 0.0,
+        self_loop: None,
+    });
+    assert_orthogonal(&r);
+    assert_avoids(&r, &obs);
+    assert!(r.len() >= 2);
+}

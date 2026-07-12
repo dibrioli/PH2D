@@ -242,3 +242,176 @@ fn a_connector_is_not_a_live_shape() {
     assert!(sim.world().get::<VecPathRef>(e).is_some());
     assert!(sim.world().get::<VecConnector>(e).is_some());
 }
+
+/// A menor distancia entre duas polilinhas (amostrada). E a medida do que o olho ve: duas
+/// linhas que se tocam sao, para o usuario, UMA linha.
+fn min_gap(p: &[[f64; 2]], q: &[[f64; 2]]) -> f64 {
+    let sample = |v: &[[f64; 2]]| -> Vec<[f64; 2]> {
+        v.windows(2)
+            .flat_map(|w| {
+                (0..=40).map(move |k| {
+                    let t = f64::from(k) / 40.0;
+                    [
+                        w[0][0] + (w[1][0] - w[0][0]) * t,
+                        w[0][1] + (w[1][1] - w[0][1]) * t,
+                    ]
+                })
+            })
+            .collect()
+    };
+    let (sp, sq) = (sample(p), sample(q));
+    sp.iter()
+        .flat_map(|a| sq.iter().map(move |b| (a[0] - b[0]).hypot(a[1] - b[1])))
+        .fold(f64::INFINITY, f64::min)
+}
+
+fn poly(scene: &VecScene, id: VecPathId) -> Vec<[f64; 2]> {
+    scene
+        .paths()
+        .iter()
+        .find(|p| p.id == id)
+        .expect("conector")
+        .verts
+        .iter()
+        .map(|v| v.anchor)
+        .collect()
+}
+
+/// **O desvio de obstaculo, no produto.** Uma terceira forma plantada entre as duas caixas
+/// ligadas: a linha tem de contorna-la.
+///
+/// O teste PROVA que morde: primeiro roda a cena SEM a parede e verifica que a rota passa
+/// exatamente por onde a parede vai ficar (ela e uma reta de A a B). So entao planta a parede e
+/// exige o desvio. Sem essa primeira metade, o verde do final nao distinguiria "a shell
+/// alimenta os obstaculos" de "a rota nunca passou por ali, de sorte".
+#[test]
+fn a_shape_planted_between_two_boxes_pushes_the_line_around_it() {
+    let (mut sim, mut scene, mut map, conn, _) = scene_with_connector();
+    let mut cache = SideCache::new();
+
+    // Sem a parede: a rota e a reta de A a B, na altura y = 0.5.
+    let xf = xforms(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut cache);
+    let straight = poly(&scene, conn);
+
+    // Onde a parede VAI ficar. A reta a atravessa — e e isso que da sentido ao teste.
+    let (lo, hi) = ([4.0, -2.0], [6.0, 3.0]);
+    let inside = |p: [f64; 2]| p[0] > lo[0] && p[0] < hi[0] && p[1] > lo[1] && p[1] < hi[1];
+    let crossed = straight.windows(2).any(|w| {
+        (1..40).any(|k| {
+            let t = f64::from(k) / 40.0;
+            inside([
+                w[0][0] + (w[1][0] - w[0][0]) * t,
+                w[0][1] + (w[1][1] - w[0][1]) * t,
+            ])
+        })
+    });
+    assert!(
+        crossed,
+        "teste VACUO: a rota ja nao passava por onde a parede vai entrar ({straight:?}), entao \
+         o desvio abaixo nao provaria nada"
+    );
+
+    // Planta a parede e re-cozinha.
+    scene.push_path(rectangle(lo, hi));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let xf = xforms(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut cache);
+    let around = poly(&scene, conn);
+
+    for w in around.windows(2) {
+        for k in 0..=40 {
+            let t = f64::from(k) / 40.0;
+            let p = [
+                w[0][0] + (w[1][0] - w[0][0]) * t,
+                w[0][1] + (w[1][1] - w[0][1]) * t,
+            ];
+            assert!(
+                !inside(p),
+                "a linha ATRAVESSOU a forma plantada em {p:?} — a shell nao esta alimentando o \
+                 roteador com as outras formas: {around:?}"
+            );
+        }
+    }
+    assert!(
+        around.len() > 2,
+        "a linha tinha de DOBRAR para contornar: {around:?}"
+    );
+}
+
+/// **Dois conectores no mesmo par de formas nunca se sobrepoem** — e este e o gate que a
+/// primeira versao do spread nao tinha, e por isso ela era um placebo.
+///
+/// As caixas aqui estao EMPILHADAS de proposito. Era o caso que expunha o bug: a rota entre
+/// elas tem quatro pontos (`p0, s0, s1, p1`), logo nao tem vertice "do meio" nenhum — e o
+/// deslocamento antigo, que mexia so nos vertices do meio, nao mexia em nada. Os dois
+/// conectores saiam identicos, um exatamente por baixo do outro, e o usuario juraria que o
+/// segundo nao foi criado.
+///
+/// A separacao acontece no PONTO DE SAIDA: as duas linhas encostam em pontos diferentes da
+/// face. Este teste mede o que o olho ve — a menor distancia entre as duas polilinhas.
+#[test]
+fn two_connectors_between_the_same_pair_never_overlap() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    // Empilhadas: A embaixo, B em cima. A rota direta e uma reta vertical.
+    let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 1.0]));
+    let b = scene.push_path(rectangle([0.0, 4.0], [2.0, 5.0]));
+    let c0 = scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
+    let c1 = scene.push_path(ph2d_vec_scene::line([0.0, 0.0], [0.0, 0.0]));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+
+    let first = VecConnector::between(a, b);
+    let mut second = VecConnector::between(a, b);
+    second.parallel_index = 1; // o gesto o numera assim ao criar o segundo do par
+    assert!(attach(&mut sim, &map, c0, &first));
+    assert!(attach(&mut sim, &map, c1, &second));
+
+    let mut cache = SideCache::new();
+    let xf = xforms(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut cache);
+
+    let (p0, p1) = (poly(&scene, c0), poly(&scene, c1));
+    let gap = min_gap(&p0, &p1);
+    assert!(
+        gap > 0.1,
+        "os dois conectores se SOBREPOEM (distancia minima {gap:.4}): o segundo desaparece por \
+         baixo do primeiro e o usuario jura que ele nao foi criado.\n  1o: {p0:?}\n  2o: {p1:?}"
+    );
+    // E as duas continuam encostando nas duas formas — separar nao pode soltar a linha.
+    for (id, p) in [(c0, &p0), (c1, &p1)] {
+        let (s, t) = ends(&scene, id);
+        assert!(
+            on_border([0.0, 0.0], [2.0, 1.0], s),
+            "{p:?} soltou de A: {s:?}"
+        );
+        assert!(
+            on_border([0.0, 4.0], [2.0, 5.0], t),
+            "{p:?} soltou de B: {t:?}"
+        );
+    }
+}
+
+/// O valor FIXADO no painel vence o automatico — e continua valendo no frame seguinte (o
+/// re-cook nao pode re-derivar por cima do que o usuario escolheu).
+#[test]
+fn a_pinned_jetty_survives_the_recook() {
+    let (mut sim, mut scene, map, conn, _) = scene_with_connector();
+    let mut cache = SideCache::new();
+    let e = Entity::from_bits(map[&conn]);
+
+    let mut c = VecConnector::between(scene.paths()[0].id, scene.paths()[1].id);
+    c.jetty = Some(2.5);
+    assert!(attach(&mut sim, &map, conn, &c));
+
+    for _ in 0..3 {
+        let xf = xforms(&sim, &map);
+        recook(&mut sim, &mut scene, &map, &xf, &mut cache);
+    }
+    assert_eq!(
+        sim.world().get::<VecConnector>(e).expect("conector").jetty,
+        Some(2.5),
+        "o re-cook re-derivou o jetty por cima do valor que o usuario fixou"
+    );
+}

@@ -28,7 +28,7 @@ use std::collections::BTreeMap;
 
 use ph2d_ecs::{Anchor, ConnectorEnd, Entity, Name, SimWorld, Transform, VecConnector};
 use ph2d_vec_connect::{Aabb, Dir, EndSpec, RouteInput, RouteKind, route, side_towards};
-use ph2d_vec_scene::{VecPathId, VecScene, VecVertex, VecXforms, boundary_hit, xform_of};
+use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, VecXforms, boundary_hit, xform_of};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -49,10 +49,19 @@ const JETTY_K: f64 = 0.35;
 const JETTY_MIN: f64 = 0.08;
 const JETTY_MAX: f64 = 1.0;
 
-/// Afastamento perpendicular por `parallel_index` — dois conectores no MESMO par de formas
-/// não podem se sobrepor (o segundo sumiria exatamente por baixo do primeiro, e o usuário
-/// juraria que ele não foi criado).
+/// O passo do spread automático (ver [`VecConnector::auto_spread`]) — dois conectores no MESMO
+/// par de formas não podem se sobrepor: o segundo sumiria exatamente por baixo do primeiro, e o
+/// usuário juraria que ele não foi criado.
 const SPREAD_STEP: f64 = 0.35;
+
+/// O quanto o spread pode deslizar ao longo da face, como fração da meia-extensão dela. A saída
+/// tem de continuar **na face**: passando disto o ponto escorrega pela quina, e a linha parece
+/// brotar do canto da caixa em vez de sair dela.
+const SPREAD_FACE_K: f64 = 0.45;
+
+/// O quanto a região de interesse se estende além das duas caixas, em múltiplos do jetty — a
+/// folga em que uma forma ainda consegue empurrar a rota.
+const ROI_PAD_K: f64 = 3.0;
 
 /// A folga entre a forma e a ponta da linha. **Zero**: a linha ENCOSTA no contorno — é o que
 /// faz a ponta de seta apontar para a forma, e não para perto dela. (O recuo visual da seta é
@@ -110,6 +119,14 @@ fn end_box(end: &ConnectorEnd, scene: &VecScene, xforms: &VecXforms) -> Option<E
 /// O raio: para a rota **reta**, do centro da forma rumo ao centro da outra (é por ali que a
 /// linha vai passar); para a **ortogonal**, ao longo do eixo escolhido (a linha sai
 /// perpendicular à face, e é essa a aparência de um fluxograma).
+///
+/// # O `spread` desliza a ORIGEM do raio, não o resultado
+///
+/// É o que separa dois conectores no mesmo par de formas. Deslocar o ponto de saída DEPOIS de
+/// achá-lo o tiraria do contorno — numa estrela ou numa nuvem ele passaria a flutuar ao lado da
+/// forma. Deslizando a origem e disparando o raio de novo, o ponto continua **no contorno, por
+/// construção**, seja qual for a forma. É de graça: o `boundary_hit` já parte de um ponto
+/// arbitrário.
 fn endpoint(
     scene: &VecScene,
     xforms: &VecXforms,
@@ -117,13 +134,14 @@ fn endpoint(
     other_center: [f64; 2],
     kind: RouteKind,
     prev: Option<Dir>,
+    spread: f64,
 ) -> ([f64; 2], Dir) {
     let c = me.center();
     let (hw, hh) = me.half();
     let d = [other_center[0] - c[0], other_center[1] - c[1]];
 
-    // Uma PORTA fixa (o ímã do Figma) já É um ponto na borda: ela não procura saída, e a
-    // face por onde sai é aquela em que ela mesma se apoia.
+    // Uma PORTA fixa (o ímã do Figma) já É um ponto na borda: ela não procura saída — e por
+    // isso o spread não a toca. Quem fixou a porta quer a linha exatamente ali.
     if let (Anchor::Port { u, v }, Some(id)) = (me.anchor, me.path)
         && let Some(p) = port_world(scene, xforms, id, f64::from(u), f64::from(v))
     {
@@ -132,23 +150,42 @@ fn endpoint(
     }
 
     let side = side_towards(d, hw, hh, prev);
-    let Some(id) = me.path else {
-        return (c, side); // ponta solta: o ponto É ela mesma
-    };
     let ray = if kind == RouteKind::Straight {
         d
     } else {
         side.vec()
     };
+    let n = perp(ray);
+
+    let Some(id) = me.path else {
+        // Ponta solta: não há face por onde deslizar, então o spread desloca o ponto direto.
+        return ([c[0] + n[0] * spread, c[1] + n[1] * spread], side);
+    };
+
+    // O deslize é limitado pela FACE: além disso a saída escorrega pela quina.
+    let limit = SPREAD_FACE_K * (n[0].abs() * hw + n[1].abs() * hh);
+    let s = spread.clamp(-limit, limit);
+    let from = [c[0] + n[0] * s, c[1] + n[1] * s];
+
     let at = scene
         .paths()
         .iter()
         .find(|p| p.id == id)
-        .and_then(|p| boundary_hit(p, xform_of(xforms, id).0, c, ray, BOUNDARY_GAP))
+        .and_then(|p| boundary_hit(p, xform_of(xforms, id).0, from, ray, BOUNDARY_GAP))
         // Forma degenerada (sem contorno fechado: uma reta, um traço da caneta) — o contorno
         // não cruza nada. Cai na caixa, que é o que o draw.io faz SEMPRE.
-        .unwrap_or_else(|| bbox_exit(me.bbox, c, ray));
+        .unwrap_or_else(|| bbox_exit(me.bbox, from, ray));
     (at, side)
+}
+
+/// A normal unitária de `v` (girada 90° à esquerda). `[0, 0]` para um vetor degenerado — e aí o
+/// spread simplesmente não desloca nada, que é o certo: não há face definida.
+fn perp(v: [f64; 2]) -> [f64; 2] {
+    let l = v[0].hypot(v[1]);
+    if l < 1e-12 {
+        return [0.0, 0.0];
+    }
+    [-v[1] / l, v[0] / l]
 }
 
 /// O ponto de uma porta `(u, v)` normalizada na caixa LOCAL da forma, levado ao mundo. Local ⇒
@@ -228,6 +265,86 @@ struct Cooked {
     sides: [Option<Dir>; 2],
 }
 
+/// **Toda forma que pode barrar uma linha**: a caixa de MUNDO de cada path com contorno
+/// fechado que não seja um conector.
+///
+/// Os dois filtros são a definição de "parede". Um **conector** não é obstáculo — se fosse,
+/// o primeiro cruzamento entre duas linhas empurraria todas as outras, e o diagrama
+/// desmancharia sozinho a cada traço novo. E um **contorno aberto** (um traço da caneta, uma
+/// aresta interna de um cubo) não tem interior: não há o que atravessar. É o mesmo critério
+/// do `boundary_hit`, e não por acaso — a borda em que a linha encosta e a parede de que ela
+/// desvia têm de ser a MESMA borda.
+///
+/// Calculado uma vez por frame, não uma vez por conector.
+fn shape_boxes(
+    sim: &SimWorld,
+    scene: &VecScene,
+    xforms: &VecXforms,
+    map: &VecEntityMap,
+) -> Vec<Aabb> {
+    let is_connector = |id: VecPathId| {
+        map.get(&id).is_some_and(|&bits| {
+            sim.world()
+                .get::<VecConnector>(Entity::from_bits(bits))
+                .is_some()
+        })
+    };
+    let has_interior = |p: &VecPath| {
+        (0..p.contour_count()).any(|c| matches!(p.contour(c), Some((v, true)) if v.len() >= 2))
+    };
+    scene
+        .paths()
+        .iter()
+        .filter(|p| has_interior(p) && !is_connector(p.id))
+        .filter_map(|p| {
+            let (lo, hi) = scene.path_world_curve_bbox(xforms, p.id)?;
+            Some(Aabb::new(lo, hi))
+        })
+        .collect()
+}
+
+/// **Os obstáculos que ESTA rota precisa enxergar.**
+///
+/// Passar o documento inteiro seria correto e caro: o grafo de visibilidade tem `(2n+3)²` nós,
+/// então cada forma do desenho encareceria TODA rota — inclusive a que liga duas caixas
+/// vizinhas no canto oposto da tela. A poda por região devolve o custo ao tamanho do problema:
+/// numa rota curta sobram duas ou três caixas, e o grafo volta a ter dezenas de nós.
+///
+/// # A região CRESCE — e é por isso que isto é um ponto fixo, não um filtro
+///
+/// O filtro ingênuo (pegue quem cruza o corredor entre as duas pontas) tem um furo: uma forma
+/// que atravessa a borda do corredor obriga a linha a **contorná-la**, e o contorno vai até a
+/// borda OPOSTA dessa forma — que está fora do corredor original, possivelmente colada em
+/// OUTRA forma, que o filtro descartou. A linha atravessaria essa segunda forma, e o desvio
+/// pareceria simplesmente quebrado.
+///
+/// Então a seleção é iterativa: quem cruza a região entra, a região engole a caixa de quem
+/// entrou, repete. Termina sempre (o conjunto só cresce, e é finito) e converge em uma ou duas
+/// passadas num diagrama de verdade. Num diagrama denso ela pega tudo — que é a resposta
+/// **certa**, e o preço de estar certo.
+fn obstacles_in_play(shapes: &[Aabb], a: Aabb, b: Aabb, pad: f64) -> Vec<Aabb> {
+    let mut roi = a.union(b).inflate(pad);
+    let mut taken = vec![false; shapes.len()];
+    loop {
+        let mut grew = false;
+        for (i, s) in shapes.iter().enumerate() {
+            if !taken[i] && roi.overlaps(*s) {
+                taken[i] = true;
+                roi = roi.union(s.inflate(pad));
+                grew = true;
+            }
+        }
+        if !grew {
+            break;
+        }
+    }
+    shapes
+        .iter()
+        .zip(&taken)
+        .filter_map(|(s, &t)| t.then_some(*s))
+        .collect()
+}
+
 /// A rota de `conn`, em MUNDO. Função TOTAL (o roteador é total): sempre uma polilinha
 /// não-vazia, mesmo com as caixas sobrepostas ou as duas pontas soltas no mesmo ponto.
 ///
@@ -237,6 +354,7 @@ fn cook(
     xforms: &VecXforms,
     conn: &VecConnector,
     prev: [Option<Dir>; 2],
+    shapes: &[Aabb],
 ) -> Option<Cooked> {
     let (a, b) = (
         end_box(&conn.start, scene, xforms)?,
@@ -246,22 +364,21 @@ fn cook(
         ph2d_ecs::RouteKind::Straight => RouteKind::Straight,
         ph2d_ecs::RouteKind::Orthogonal => RouteKind::Orthogonal,
     };
-    let (p0, d0) = endpoint(scene, xforms, &a, b.center(), kind, prev[0]);
-    let (p1, d1) = endpoint(scene, xforms, &b, a.center(), kind, prev[1]);
-    // Os obstáculos de hoje são as duas caixas terminais. Quando o desvio das OUTRAS formas
-    // chegar, é este slice que cresce — o roteador não muda (é a aposta do ADR do módulo).
-    let obstacles: Vec<Aabb> = [&a, &b]
-        .iter()
-        .filter(|e| e.path.is_some())
-        .map(|e| e.bbox)
-        .collect();
+    let jetty = conn.jetty_or(jetty_for(&a.bbox, &b.bbox));
+    let spread = conn.spread_or(SPREAD_STEP);
+    let (p0, d0) = endpoint(scene, xforms, &a, b.center(), kind, prev[0], spread);
+    let (p1, d1) = endpoint(scene, xforms, &b, a.center(), kind, prev[1], -spread);
+    // **As duas pontas deslizam para lados OPOSTOS da linha** (`spread` e `−spread`): as normais
+    // das duas faces apontam uma contra a outra, então o mesmo sinal as moveria em direções
+    // contrárias no mundo — e o conector sairia torto em vez de paralelo.
+    let obstacles = obstacles_in_play(shapes, a.bbox, b.bbox, ROI_PAD_K * jetty);
     let pts = route(&RouteInput {
         start: EndSpec { at: p0, dir: d0 },
         end: EndSpec { at: p1, dir: d1 },
         kind,
-        jetty: jetty_for(&a.bbox, &b.bbox),
+        jetty,
         obstacles: &obstacles,
-        spread: f64::from(conn.parallel_index) * SPREAD_STEP,
+        spread,
         // Fonte e destino na MESMA forma: não há rota a buscar — é um laço, e ele é
         // construído, não roteado.
         self_loop: conn.is_self_loop().then_some(a.bbox),
@@ -298,6 +415,10 @@ pub(crate) fn recook(
     }
     cache.retain(|id, _| conns.iter().any(|(c, _, _)| c == id));
 
+    // As paredes do diagrama — UMA vez por frame, não uma por conector (elas são as mesmas
+    // para todos; a poda por rota é que difere).
+    let shapes = shape_boxes(sim, scene, xforms, map);
+
     for (id, entity, mut conn) in conns {
         // 1. O alvo sumiu (o objeto foi apagado) ⇒ a ponta CONGELA onde estava. Apagar o
         //    conector junto destruiria trabalho; deixá-lo apontando para um id morto faria a
@@ -312,7 +433,7 @@ pub(crate) fn recook(
 
         // 2. A rota. Depois do congelamento, as duas pontas SEMPRE resolvem.
         let prev = cache.get(&id).copied().unwrap_or([None; 2]);
-        let Some(cooked) = cook(scene, xforms, &conn, prev) else {
+        let Some(cooked) = cook(scene, xforms, &conn, prev, &shapes) else {
             continue;
         };
         cache.insert(id, cooked.sides);

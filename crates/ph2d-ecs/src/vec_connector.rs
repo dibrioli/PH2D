@@ -69,6 +69,18 @@ pub struct VecConnector {
     /// para dois conectores paralelos não se sobreporem — sem ele, o segundo desaparece
     /// exatamente por baixo do primeiro, e o usuário jura que ele não foi criado.
     pub parallel_index: u8,
+    /// **O jetty**: o quanto a linha avança reta antes de poder dobrar (o que a faz "sair para
+    /// cima" antes de virar, em vez de dobrar colada na caixa).
+    ///
+    /// `None` = **automático**, derivado do tamanho das caixas — e é por isso que é um
+    /// `Option` e não um `f32` com default: uma forma do PH2D tem ~1 unidade de mundo, mas
+    /// nada impede uma de ter 50, e um jetty fixo ficaria invisível numa e gigante na outra.
+    /// `Some(v)` = o usuário fixou o valor no painel, e ele para de acompanhar o tamanho.
+    pub jetty: Option<f32>,
+    /// **O spread**: o deslocamento do ponto de saída ao longo da face da forma, que separa
+    /// dois conectores no mesmo par de caixas. `None` = automático (derivado do
+    /// [`Self::parallel_index`]); `Some(v)` = fixado no painel.
+    pub spread: Option<f32>,
 }
 
 impl SimComponent for VecConnector {}
@@ -88,7 +100,36 @@ impl VecConnector {
             },
             route: RouteKind::default(),
             parallel_index: 0,
+            jetty: None,
+            spread: None,
         }
+    }
+
+    /// **O spread automático**, a partir do [`Self::parallel_index`]: `0, +1, −1, +2, −2 …`
+    /// passos, em torno do centro da face.
+    ///
+    /// Alternar os lados (em vez de empilhar todos para o mesmo, que era o que o índice cru
+    /// fazia) mantém o feixe **centrado**: com três conectores, o do meio sai reto e os outros
+    /// dois o ladeiam. Empilhando, os três saíam tortos para o mesmo lado.
+    #[must_use]
+    pub fn auto_spread(index: u8, step: f64) -> f64 {
+        let k = f64::from(u32::from(index).div_ceil(2)); // 0, 1, 1, 2, 2, …
+        let sign = if index % 2 == 1 { 1.0 } else { -1.0 };
+        sign * k * step
+    }
+
+    /// O spread efetivo: o do painel, se o usuário o fixou; senão o automático.
+    #[must_use]
+    pub fn spread_or(&self, step: f64) -> f64 {
+        self.spread
+            .map_or_else(|| Self::auto_spread(self.parallel_index, step), f64::from)
+    }
+
+    /// O jetty efetivo: o do painel, se o usuário o fixou; senão o `auto` que o chamador
+    /// derivou do tamanho das caixas.
+    #[must_use]
+    pub fn jetty_or(&self, auto: f64) -> f64 {
+        self.jetty.map_or(auto, f64::from)
     }
 
     /// O objeto a que uma ponta se prende, se ela se prende a algum.
@@ -154,6 +195,36 @@ mod tests {
         ));
         assert!(!c.is_self_loop());
         assert!(VecConnector::between(7, 7).is_self_loop());
+    }
+
+    /// **O feixe de conectores paralelos nasce CENTRADO.** Os índices alternam os lados da
+    /// face (`0, +1, −1, +2, −2 …`), então com três conectores o do meio sai reto e os outros
+    /// dois o ladeiam. Empilhar todos para o mesmo lado — que é o que o índice cru fazia —
+    /// deixaria os três tortos, e o primeiro (o caso comum!) já sairia fora do centro.
+    #[test]
+    fn parallel_connectors_fan_out_around_the_centre_of_the_face() {
+        let s = |i| VecConnector::auto_spread(i, 0.5);
+        assert_eq!(s(0), 0.0, "o unico conector sai pelo CENTRO da face");
+        assert_eq!((s(1), s(2)), (0.5, -0.5), "o 2o e o 3o ladeiam o 1o");
+        assert_eq!((s(3), s(4)), (1.0, -1.0));
+        // A soma telescopa: o feixe é simétrico, logo seu centro de massa é o centro da face.
+        let sum: f64 = (0..=6).map(s).sum();
+        assert!(sum.abs() < 1e-12, "o feixe nao pode pender para um lado");
+    }
+
+    /// `None` = automático; `Some` = o valor que o usuário fixou no painel. É o que permite ao
+    /// jetty acompanhar o tamanho da forma até o dia em que alguém decide o contrário.
+    #[test]
+    fn a_pinned_value_wins_over_the_automatic_one() {
+        let mut c = VecConnector::between(1, 2);
+        assert_eq!(c.jetty_or(0.3), 0.3, "sem pino, vale o automatico");
+        assert_eq!(c.spread_or(0.5), 0.0);
+        // Valores exatos em binário: um `-0.2f32` alargado para `f64` NÃO é `-0.2f64`, e o
+        // teste falharia por causa do alargamento, não do código.
+        c.jetty = Some(0.75);
+        c.spread = Some(-0.25);
+        assert_eq!(c.jetty_or(0.3), 0.75);
+        assert_eq!(c.spread_or(0.5), -0.25);
     }
 
     /// **Apagar uma forma não pode matar o conector.** A ponta órfã CONGELA onde estava — a

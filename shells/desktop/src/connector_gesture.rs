@@ -126,6 +126,10 @@ impl App {
                 end: ConnectorEnd::Free { at: world },
                 route: ph2d_ecs::RouteKind::default(),
                 parallel_index: 0,
+                // Nascem AUTOMÁTICOS: o jetty acompanha o tamanho das caixas e o spread, o
+                // índice do feixe. Só o painel os fixa.
+                jetty: None,
+                spread: None,
             },
             start_world: world,
         });

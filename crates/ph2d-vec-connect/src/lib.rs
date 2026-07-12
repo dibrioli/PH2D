@@ -114,6 +114,25 @@ impl Aabb {
             (self.min[1] + self.max[1]) * 0.5,
         ]
     }
+
+    /// A menor caixa que contém as duas.
+    #[must_use]
+    pub fn union(self, o: Self) -> Self {
+        Self {
+            min: [self.min[0].min(o.min[0]), self.min[1].min(o.min[1])],
+            max: [self.max[0].max(o.max[0]), self.max[1].max(o.max[1])],
+        }
+    }
+
+    /// As duas caixas se tocam? (O encosto conta — uma forma rente à borda da região ainda
+    /// pode empurrar a linha.)
+    #[must_use]
+    pub fn overlaps(self, o: Self) -> bool {
+        self.min[0] <= o.max[0]
+            && o.min[0] <= self.max[0]
+            && self.min[1] <= o.max[1]
+            && o.min[1] <= self.max[1]
+    }
 }
 
 /// Uma direção cardeal — a saída de uma ponta, e o rumo de um passo do A\*.
@@ -180,11 +199,30 @@ pub struct RouteInput<'a> {
     /// O **jetty**: o quanto a linha avança em linha reta antes de poder dobrar. É o que faz
     /// um conector "sair para cima" antes de virar, em vez de dobrar colado na caixa.
     pub jetty: f64,
-    /// **Os obstáculos.** Hoje = as duas caixas terminais. Amanhã = + as outras formas do
-    /// diagrama. **O roteador não muda** — só este slice cresce. Era essa a aposta.
+    /// **Os obstáculos**: as duas caixas terminais **e as outras formas do diagrama**.
+    ///
+    /// A aposta do módulo era que o desvio de obstáculo sairia de graça — que bastaria este
+    /// slice crescer, sem tocar no algoritmo. Ela se pagou: o desvio landou sem uma linha de
+    /// diferença aqui dentro. O grafo já derivava seus nós das bordas dos obstáculos e já
+    /// recusava as arestas que os atravessam; ele nunca soube quantos eram.
+    ///
+    /// O chamador é que precisa **podar**: o grafo tem `(2n+3)²` nós, então uma forma no canto
+    /// oposto da tela encareceria toda rota do documento. Ver `connector_live::obstacles_in_play`.
     pub obstacles: &'a [Aabb],
-    /// Deslocamento perpendicular, para dois conectores no mesmo par de formas não se
-    /// sobreporem. `0` = o único.
+    /// Abertura do LAÇO, e **só** dele: dois conectores que voltam para a mesma forma saem em
+    /// leque em vez de um por baixo do outro.
+    ///
+    /// **A separação de conectores paralelos NÃO acontece aqui** — e essa é uma lição cara.
+    /// A primeira versão deslocava os vértices do MEIO da rota, o que parece razoável até
+    /// você contar os vértices: duas caixas empilhadas dão uma rota de quatro pontos
+    /// (`p0, s0, s1, p1`), que não tem meio nenhum. Os dois conectores se sobrepunham
+    /// inteiros, e o deslocamento era um **placebo** — código que roda, não faz nada, e passa
+    /// no teste porque ninguém escreveu o teste que morde.
+    ///
+    /// Quem separa é o **ponto de saída**: arestas paralelas encostam em pontos diferentes da
+    /// face (é o que o draw.io e o Visio fazem). Isso exige a FORMA — o contorno de verdade em
+    /// que o ponto desliza —, que esta crate não conhece de propósito. Logo é o chamador que o
+    /// aplica, deslizando a origem do raio antes de chamar o `boundary_hit`.
     pub spread: f64,
     /// Fonte e destino são a MESMA forma? Aí não há rota a buscar: é um laço, e ele é
     /// construído, não roteado.

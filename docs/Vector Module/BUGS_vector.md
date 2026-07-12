@@ -292,6 +292,81 @@ Bug #2, e a única asserção que a evita é a que compara a ordem vertical.
 
 ---
 
+## Bug #7 — O `spread` de conectores paralelos era um PLACEBO (2026-07-12) — **FECHADO**
+
+### Sintoma
+
+Nenhum. E é esse o ponto.
+
+O bug foi encontrado **lendo o código para expor o parâmetro no painel** — não por uma queixa.
+Ele teria aparecido para o Enio no instante em que ele arrastasse o slider e nada acontecesse.
+
+### Causa
+
+Dois conectores entre o mesmo par de formas nascem com um deslocamento para não se
+sobreporem. A primeira versão o aplicava aos **vértices do meio** da rota:
+
+```rust
+fn offset_middle(pts: &mut [[f64; 2]], spread: f64) {
+    let n = pts.len();
+    if n < 4 { return; }
+    for p in &mut pts[2..n - 2] { p[0] += spread; }   // ← range VAZIO quando n == 4
+}
+```
+
+Parece razoável até você contar os vértices. Duas caixas **empilhadas** dão uma rota de
+quatro pontos — `p0, s0, s1, p1` —, e `pts[2..2]` é **vazio**. O laço não itera. Os dois
+conectores saíam idênticos, um exatamente por baixo do outro, e o segundo era invisível.
+
+E quando `n > 4`, o deslocamento era em `x` **sempre** — mesmo quando o trecho do meio corria
+na horizontal, caso em que somar a `x` desliza o vértice *ao longo* do próprio segmento e não
+desloca linha nenhuma.
+
+### Por que passou por todos os gates
+
+Não passou: **nenhum gate olhava**. Havia seis testes de rota, todos com `spread: 0.0`. O
+parâmetro era exercitado por zero asserções — código que roda, não faz nada, e ninguém nota,
+porque a única prova de que ele funciona seria um teste que ninguém escreveu.
+
+### Correção
+
+A separação não é do **meio** da rota: é do **ponto de saída**. Arestas paralelas encostam em
+pontos diferentes da face (é o que o draw.io e o Visio fazem). Isso exige a FORMA — o contorno
+real em que o ponto desliza —, que o roteador não conhece de propósito; então quem aplica é o
+chamador, deslizando a **origem do raio** antes de chamar o `boundary_hit`:
+
+```rust
+let n = perp(ray);
+let limit = SPREAD_FACE_K * (n[0].abs() * hw + n[1].abs() * hh);   // não escorregar da face
+let from = [c[0] + n[0] * s, c[1] + n[1] * s];
+boundary_hit(p, xform, from, ray, GAP)      // o ponto continua NO contorno, por construção
+```
+
+Deslizar a origem em vez de deslocar o resultado não é preciosismo: mover o ponto *depois* de
+achá-lo o tiraria do contorno, e numa estrela ou numa nuvem ele passaria a flutuar ao lado da
+forma.
+
+Duas consequências que caíram de graça:
+
+- **As duas pontas deslizam com sinais OPOSTOS** (`spread` e `−spread`). As normais das duas
+  faces apontam uma contra a outra, então o mesmo sinal as moveria em direções contrárias no
+  mundo — e o conector sairia **torto** em vez de paralelo.
+- **O feixe nasce centrado** (`auto_spread`: `0, +1, −1, +2, −2 …`). O índice cru empilhava
+  todos para o mesmo lado, e o *primeiro* conector — o caso comum! — já saía fora do centro.
+
+### Gate
+
+`two_connectors_between_the_same_pair_never_overlap`, com as caixas **empilhadas de propósito**
+(é a geometria que expunha o bug), medindo a **menor distância entre as duas polilinhas** — que
+é o que o olho vê: duas linhas que se tocam são, para o usuário, uma linha só.
+
+### Lição
+
+Um parâmetro que nenhum teste exercita não está implementado — está **escrito**. `spread: 0.0`
+em todos os seis testes era o aviso, e ele estava à vista.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de
@@ -317,3 +392,8 @@ Bug #2, e a única asserção que a evita é a que compara a ordem vertical.
    já pulava contornos abertos; o renderer não. Duas implementações da mesma pergunta
    ("o que é o interior desta forma?") com respostas diferentes é sempre um bug. A maioria
    costuma estar certa, mas o valor está em *notar a discordância*, não em contar votos.
+
+7. **Um parâmetro que nenhum teste exercita não está implementado — está escrito** (Bug #7).
+   O sinal é visível a olho nu na suíte: se **todos** os testes passam o mesmo valor para um
+   campo (`spread: 0.0`, seis vezes), esse campo nunca foi testado. Grepar o nome do parâmetro
+   nos testes é mais rápido que ler a implementação, e encontra a mesma coisa.

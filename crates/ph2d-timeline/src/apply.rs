@@ -85,10 +85,12 @@ pub fn apply_from_doc_except(
             stack_eval::sample_stack(
                 doc,
                 &scratch,
-                b.entity,
-                b.target,
-                b.prop,
-                b.rest.unwrap_or(0.0),
+                stack_eval::Query {
+                    entity: b.entity,
+                    target: b.target,
+                    prop: b.prop,
+                    rest: b.rest.unwrap_or(0.0),
+                },
             )
             .map(AnimValue::Float)
         } else {
@@ -152,6 +154,30 @@ fn read_prop(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
 /// Zero-alloc (HR-3, the paused bridge path is gated).
 pub fn remapped_time(doc: &TimelineDoc, entity: u64, t: f64) -> f64 {
     crate::clock::remapped_time_in(doc.active_clip(), doc.bindings(), entity, t)
+}
+
+/// **Where a key authored right now lands**, in the active clip's own time — or
+/// `None` when there is no single answer and the key must be refused.
+///
+/// A track is authored in the clip's time, and the playhead runs in the
+/// timeline's. Without a stack the only gap between them is the entity's Time
+/// Remap, and [`remapped_time`] closes it. With a stack there is a second map on
+/// top (the strip's), and it can fail to be a function: if the clip you are
+/// editing is playing **twice** at this instant, "here" names two places in it,
+/// and choosing one silently would drop the key somewhere the animator never
+/// looked. If it is playing **zero** times, "here" names none.
+///
+/// Seeding and sampling go through the same composition — the strip's map, then
+/// the clip's own clock — because a derived coordinate written by one transform
+/// and read by another is the bug that has broken this module three times over.
+#[must_use]
+pub fn key_time(doc: &TimelineDoc, entity: u64, t: f64) -> Option<f64> {
+    if doc.stack().is_empty() {
+        return Some(remapped_time(doc, entity, t));
+    }
+    let scratch = doc.scratch();
+    let strip = stack_eval::sole_strip_of(scratch, doc.active_index())?;
+    stack_eval::strip_source_time(scratch, &strip, entity)
 }
 
 /// Write one resolved property value into an entity, via the sprite resolver.

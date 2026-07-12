@@ -65,27 +65,132 @@ pub fn autokey_props(
     world: &PoseSample,
     baseline: &PoseSample,
     allow_create: bool,
-) -> Vec<(PropKind, f32)> {
-    let mut out = Vec::new();
+) -> AutokeyPlan {
+    let mut plan = AutokeyPlan::default();
     for (i, &prop) in PropKind::ALL.iter().enumerate() {
         let Some(v) = world[i] else { continue };
-        match curve_value(doc, entity, prop, t_secs) {
+
+        // What the apply actually WROTE at this instant — the value the animator
+        // is looking at. With no stack that is the active clip's curve; with a
+        // stack it is the blend, and comparing against the active clip's curve
+        // instead would see a difference every single frame and mint a key every
+        // single frame. The diff must read what the eye reads.
+        let shown = shown_value(doc, entity, prop, t_secs);
+
+        let moved = match shown {
             // Bound: key when the pose left the curve it is drawn on.
-            Some(sampled) => {
-                if v != sampled {
-                    out.push((prop, v));
-                }
-            }
+            Some(sampled) => v != sampled,
             // Unbound: first-touch create, only if the UI actually moved it since
             // last frame and creation is allowed here.
-            None => {
-                if allow_create && baseline[i].is_some_and(|b| b != v) {
-                    out.push((prop, v));
-                }
-            }
+            None => allow_create && baseline[i].is_some_and(|b| b != v),
+        };
+        if !moved {
+            continue;
+        }
+
+        // What must the ACTIVE clip's track hold so the scene lands on `v`? With
+        // no stack, `v` itself. Under a stack, the inverse of the blend — and
+        // sometimes there is no inverse (ADR-0115 R9), in which case we refuse.
+        // Never write a key that moves the object.
+        match key_value_in_active_clip(doc, entity, prop, v) {
+            Some(stored) => plan.keys.push((prop, stored)),
+            None => plan.refused.push(prop),
         }
     }
-    out
+    plan
+}
+
+/// What auto-key decided: the keys to write, and the ones it **would not** write.
+///
+/// Refusals are a first-class result, not an empty list. Under a clip stack a
+/// pose can be genuinely unreachable by keying the clip you are editing — an
+/// `Override` lane at full weight above it owns the channel — and the only honest
+/// answers are "refuse" or "silently move the object". Handing the caller a
+/// refusal lets it say so.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct AutokeyPlan {
+    /// `(prop, value)` pairs the caller upserts into the active clip.
+    pub keys: Vec<(PropKind, f32)>,
+    /// Properties whose pose the active clip cannot express right now.
+    pub refused: Vec<PropKind>,
+}
+
+impl AutokeyPlan {
+    /// `true` when there is nothing to write and nothing to complain about.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.keys.is_empty() && self.refused.is_empty()
+    }
+}
+
+/// The value the scene is showing for `prop` right now — the same number the
+/// apply pass wrote. `None` when nothing drives it (the unbound path).
+fn shown_value(doc: &TimelineDoc, entity: u64, prop: PropKind, t_secs: f64) -> Option<f32> {
+    if doc.stack().is_empty() {
+        return curve_value(doc, entity, prop, t_secs);
+    }
+    let b = doc.binding_for(entity, prop)?;
+    crate::stack_eval::sample_stack(
+        doc,
+        doc.scratch(),
+        crate::stack_eval::Query {
+            entity,
+            target: b.target,
+            prop,
+            rest: b.rest.unwrap_or(0.0),
+        },
+    )
+}
+
+/// **The number to store in the active clip's track so the scene shows `want`.**
+///
+/// Without a stack this is the identity — the track IS the scene. With one, the
+/// track is one voice in a blend, and the key must be pre-compensated for the
+/// rest of it ([`crate::stack_eval::invert_stack`]). `None` = **refuse**: the pose
+/// is not reachable by keying this clip (an `Override` lane at full weight above
+/// owns the channel), and the alternatives are to refuse or to move the object
+/// behind the animator's back.
+///
+/// Every path that authors a key goes through here — auto-key, performing, and
+/// the manual `K` — because a value written by one rule and read by another is
+/// the bug this module has now shipped three times.
+#[must_use]
+pub fn key_value_in_active_clip(
+    doc: &TimelineDoc,
+    entity: u64,
+    prop: PropKind,
+    want: f32,
+) -> Option<f32> {
+    if doc.stack().is_empty() {
+        return Some(want);
+    }
+    let scratch = doc.scratch();
+    // The clip being edited must be playing exactly once right now, or "key it
+    // here" has no single answer (see `stack_eval::sole_strip_of`).
+    crate::stack_eval::sole_strip_of(scratch, doc.active_index())?;
+    // An unbound property has no target anywhere yet, so no clip can key it — a
+    // target no clip holds is exactly the right answer, and the probe supplies the
+    // active clip's contribution regardless. Targets are allocated up from 0, so
+    // this one is unreachable by construction.
+    let target = doc
+        .binding_for(entity, prop)
+        .map_or(ph2d_anim::AnimTarget::new(u64::MAX), |b| b.target);
+    let rest = doc
+        .binding_for(entity, prop)
+        .and_then(|b| b.rest)
+        .unwrap_or(want);
+    crate::stack_eval::invert_stack(
+        doc,
+        scratch,
+        crate::stack_eval::Query {
+            entity,
+            target,
+            prop,
+            rest,
+        },
+        doc.active_index(),
+        want,
+    )
 }
 
 /// The scalar `prop`'s track produces at `t_secs` for `entity`, or `None` when no
@@ -158,7 +263,7 @@ mod tests {
         // key it. The other props are None → never keyed.
         let st = doc_with_tx_track();
         let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), true);
-        assert_eq!(got, vec![(PropKind::TranslationX, 7.0)]);
+        assert_eq!(got.keys, vec![(PropKind::TranslationX, 7.0)]);
     }
 
     #[test]
@@ -184,7 +289,7 @@ mod tests {
             &pose(&[(ROT, 0.0)]),
             true,
         );
-        assert_eq!(got, vec![(PropKind::Rotation, 0.5)]);
+        assert_eq!(got.keys, vec![(PropKind::Rotation, 0.5)]);
     }
 
     #[test]
@@ -221,7 +326,7 @@ mod tests {
         // But a BOUND prop still auto-keys with creation off — updating an
         // existing channel is always allowed.
         let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), false);
-        assert_eq!(got, vec![(PropKind::TranslationX, 7.0)]);
+        assert_eq!(got.keys, vec![(PropKind::TranslationX, 7.0)]);
     }
 
     #[test]
@@ -255,7 +360,7 @@ mod tests {
             &pose(&[(TX, 0.0)]),
             true,
         );
-        assert_eq!(got, vec![(PropKind::TranslationX, 3.0)]);
+        assert_eq!(got.keys, vec![(PropKind::TranslationX, 3.0)]);
     }
 
     #[test]
@@ -272,7 +377,7 @@ mod tests {
             &pose(&[]),
             true,
         );
-        for (prop, v) in got {
+        for (prop, v) in got.keys {
             st.doc
                 .upsert_key(E, prop, t, AnimValue::Float(v), Interp::Linear);
         }

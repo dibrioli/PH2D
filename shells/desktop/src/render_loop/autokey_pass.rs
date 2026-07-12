@@ -204,18 +204,29 @@ pub(crate) fn apply_samples(
         // back. Identity (the common case, remapped == playhead) keeps the
         // frame-snapped playhead time byte-identical to before.
         let t_src = ph2d_timeline::remapped_time(&timeline.doc, entity, playhead.time());
-        // Where a key lands. Performing records in REAL (sub-frame) time: a mocap
-        // gesture is a continuous trajectory, and the simplify afterward places
-        // clean keys wherever the curve needs them — frame-snapping here would
-        // pin each key to a frame while its VALUE is the pose at the un-snapped
-        // instant, a mismatch of up to half a frame that the fit would chase
-        // (many spurious keys). Paused authoring still snaps (keys on whole
-        // frames); a Time Remap always keys at its source time.
-        let t_e = if playing || t_src != playhead.time() {
-            RationalTime::from_seconds(t_src)
-        } else {
-            t
-        };
+        // Where a key lands — the active clip's OWN time. Without a stack that is
+        // the entity's clock (above); with one, the strip's map composes on top,
+        // and it can have **no answer**: a clip playing twice right now offers two
+        // homes for "here", and a clip playing zero times offers none. `key_time`
+        // says so rather than guessing (ADR-0115 R9), and a key with no home is
+        // simply not written. Moving the object silently is the one outcome that
+        // is never acceptable.
+        //
+        // Performing records in REAL (sub-frame) time: a mocap gesture is a
+        // continuous trajectory, and the simplify afterward places clean keys
+        // wherever the curve needs them — frame-snapping here would pin each key
+        // to a frame while its VALUE is the pose at the un-snapped instant, a
+        // mismatch of up to half a frame that the fit would chase (many spurious
+        // keys). Paused authoring still snaps (keys on whole frames); a Time Remap
+        // always keys at its source time.
+        let t_key = ph2d_timeline::key_time(&timeline.doc, entity, playhead.time());
+        let t_e = t_key.map(|ts| {
+            if playing || ts != playhead.time() {
+                RationalTime::from_seconds(ts)
+            } else {
+                t
+            }
+        });
         // The diff's reference clock is the RAW `t_src` — the exact `f64` the
         // apply sampled the curve at to write this pose — NOT the frame-snapped
         // `t_e` a new key lands at, and NOT a `RationalTime` round-trip of it.
@@ -236,17 +247,22 @@ pub(crate) fn apply_samples(
             // curve; under a plain Play the drag is the sole source of an
             // off-curve pose, so this naturally captures just the dragged
             // entity's trajectory, key per display frame.
-            for (prop, v) in autokey_props(&timeline.doc, entity, t_diff, &pose, &base, true) {
-                to_key.push((entity, prop, v, t_e));
-                // Track the recorded span so the drag's end can simplify exactly
-                // what it recorded (playing = a performing session, not a paused
-                // one-off edit).
-                if playing {
-                    let (ts, vf) = (t_e.to_seconds(), f64::from(v));
-                    ak.record
-                        .entry((entity, prop))
-                        .and_modify(|s| s.extend(ts, vf))
-                        .or_insert_with(|| RecSpan::seed(ts, vf));
+            let plan = autokey_props(&timeline.doc, entity, t_diff, &pose, &base, true);
+            // `plan.refused` and a `None` landing time are the same verdict: the
+            // pose is not expressible in the clip being edited. Both drop the key.
+            if let Some(t_e) = t_e {
+                for (prop, v) in plan.keys {
+                    to_key.push((entity, prop, v, t_e));
+                    // Track the recorded span so the drag's end can simplify
+                    // exactly what it recorded (playing = a performing session,
+                    // not a paused one-off edit).
+                    if playing {
+                        let (ts, vf) = (t_e.to_seconds(), f64::from(v));
+                        ak.record
+                            .entry((entity, prop))
+                            .and_modify(|s| s.extend(ts, vf))
+                            .or_insert_with(|| RecSpan::seed(ts, vf));
+                    }
                 }
             }
         }

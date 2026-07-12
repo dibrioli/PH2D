@@ -132,24 +132,50 @@ impl StackScratch {
     }
 }
 
-/// The value `target` should hold at this instant, blended out of the whole
+/// One channel of one entity — everything a stack query is *about*, as opposed to
+/// the stack it is asked of. Four values that always travel together.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Query {
+    /// Whose channel (ECS bits).
+    pub entity: u64,
+    /// Which track, in every clip that keys it.
+    pub target: AnimTarget,
+    /// Which property — it decides the blend algebra.
+    pub prop: PropKind,
+    /// The channel's captured base (R5): the value it held when it was first
+    /// animated. It is what a lane fades in *from* when nothing is under it.
+    /// Without it, "the object sits where I put it and the animation eases in"
+    /// cannot be expressed — and blending toward a *type* default instead (0 for a
+    /// position) would fling the sprite to its parent's origin. Rive shipped
+    /// without this and had to add Capture Base State; Unreal calls it Base Pose.
+    pub rest: f32,
+}
+
+/// The value `q.target` should hold at this instant, blended out of the whole
 /// stack — or `None` when **no lane keys this channel**, in which case nothing is
 /// written and the scene's own value stands (R2).
+pub(crate) fn sample_stack(doc: &TimelineDoc, scratch: &StackScratch, q: Query) -> Option<f32> {
+    sample_stack_probed(doc, scratch, q, None)
+}
+
+/// [`sample_stack`], but with one clip's track value **forced** to a probe.
 ///
-/// `rest` is the channel's captured base (R5): the value the property held when
-/// it was first animated. It is what a lane fades in *from* when nothing is under
-/// it. Without it, "the object sits where I put it and the animation eases in"
-/// cannot be expressed — and blending toward a *type* default instead (0 for a
-/// position) would fling the sprite to its parent's origin. Rive shipped without
-/// this and had to add Capture Base State; Unreal calls it the Base Pose.
-pub(crate) fn sample_stack(
+/// The probe is how [`invert_stack`] measures the stack's response to the clip
+/// you are keying — including a clip that has **no track yet** for this channel,
+/// which is exactly the first-key case. A probed clip contributes whether or not
+/// it has a track: that is what "if this clip held value v" means.
+fn sample_stack_probed(
     doc: &TimelineDoc,
     scratch: &StackScratch,
-    entity: u64,
-    target: AnimTarget,
-    prop: PropKind,
-    rest: f32,
+    q: Query,
+    probe: Option<(usize, f64)>,
 ) -> Option<f32> {
+    let Query {
+        entity,
+        target,
+        prop,
+        rest,
+    } = q;
     let algebra = prop.algebra();
     let mut acc = f64::from(rest);
     let mut touched = false;
@@ -166,18 +192,28 @@ pub(crate) fn sample_stack(
             if a.lane != li {
                 continue;
             }
-            let Some(track) = doc.clips()[a.clip].clip.track(target) else {
-                continue; // this clip does not key this channel: sparsity (R2)
-            };
-            if track.is_empty() {
-                continue;
-            }
-            let t_src = scratch.clocks[i].get(entity, a.t_clip);
-            let Some(v) = as_f64(track.sample(t_src)) else {
-                continue;
+            let probed = probe.filter(|&(c, _)| c == a.clip).map(|(_, v)| v);
+            let track = doc.clips()[a.clip].clip.track(target);
+            // Sparsity (R2): a clip that does not key this channel contributes
+            // nothing — unless it is the probed one, whose whole purpose is to
+            // answer "what if it did".
+            let v = match (probed, track) {
+                (Some(v), _) => v,
+                (None, Some(tr)) if !tr.is_empty() => {
+                    let t_src = scratch.clocks[i].get(entity, a.t_clip);
+                    let Some(v) = as_f64(tr.sample(t_src)) else {
+                        continue;
+                    };
+                    v
+                }
+                _ => continue,
             };
             let x = if additive {
-                contribution(v, reference(track, a.src_in), algebra)
+                // The additive reference stays the REAL track's first frame: it is
+                // a fixed pose, not a function of the probe. That is precisely
+                // what keeps the stack affine in `v` and the inversion exact.
+                let base = track.map_or(v, |tr| reference(tr, a.src_in));
+                contribution(v, base, algebra)
             } else {
                 v
             };
@@ -214,6 +250,84 @@ pub(crate) fn sample_stack(
 /// The entity's clock for the solo (no-stack) path — the active clip at `t`.
 pub(crate) fn solo_source_time(scratch: &StackScratch, entity: u64, t: f64) -> f64 {
     scratch.solo_clock().get(entity, t)
+}
+
+/// The one live strip playing `clip`, or `None` when there are **zero or several**.
+///
+/// Several is not a detail to paper over: if the clip you are editing is playing
+/// twice at this instant, "key it here" has two answers, and picking one silently
+/// would put the key somewhere the animator did not look. Blender hits the same
+/// wall and says so — its keyframe remapping only works *"when the tweaked
+/// strip's underlying action occurs once in the current frame"*.
+pub(crate) fn sole_strip_of(scratch: &StackScratch, clip: usize) -> Option<ActiveStrip> {
+    let mut found = None;
+    for a in &scratch.active {
+        if a.clip != clip {
+            continue;
+        }
+        if found.is_some() {
+            return None; // it plays more than once right now: ambiguous
+        }
+        found = Some(*a);
+    }
+    found
+}
+
+/// The clip time a strip is reading, run through that clip's own Time Remap for
+/// this entity — the full outer-then-inner composition (R6).
+pub(crate) fn strip_source_time(
+    scratch: &StackScratch,
+    strip: &ActiveStrip,
+    entity: u64,
+) -> Option<f64> {
+    let i = scratch.active.iter().position(|a| {
+        a.lane == strip.lane && a.clip == strip.clip && a.t_clip.to_bits() == strip.t_clip.to_bits()
+    })?;
+    Some(scratch.clocks[i].get(entity, strip.t_clip))
+}
+
+/// What value `clip`'s track must hold so the whole stack lands on `want` — or
+/// `None` when the clip **cannot reach it**, in which case the key is REFUSED.
+///
+/// # The stack is affine in the value you are keying, and that is the whole trick
+///
+/// Every operation the stack performs is affine in one clip's contribution:
+/// `Override` is a `lerp`, additive `Sum` is an addition, and even additive
+/// `Ratio` is `acc * (1 + inf*(v/base - 1))` — affine in `v`, because the
+/// reference `base` is a fixed first-frame value, not a function of `v`.
+/// Composing affine maps gives an affine map. So the stack, as a function of the
+/// probed clip's value, is exactly `out(v) = A*v + B`, and **two evaluations
+/// pin it down**: `B = out(0)`, `A = out(1) - B`. Then `v = (want - B) / A`.
+///
+/// Exact, not iterative. It handles the clip appearing in several lanes at once,
+/// under any mix of modes, for free.
+///
+/// `A == 0` means the clip has no influence on what you are looking at — a full
+/// `Override` lane above it, or an additive lane whose reference cancels it. The
+/// pose you see is then simply not reachable by keying this clip, and the honest
+/// move is to **refuse and say so**, never to write a key that moves the object.
+/// (Blender's new layered system reaches the same conclusion: *"Blender will
+/// simply reject keying and issue an error."*)
+pub(crate) fn invert_stack(
+    doc: &TimelineDoc,
+    scratch: &StackScratch,
+    q: Query,
+    clip: usize,
+    want: f32,
+) -> Option<f32> {
+    let at = |probe: f64| sample_stack_probed(doc, scratch, q, Some((clip, probe)));
+    let (b, one) = (f64::from(at(0.0)?), f64::from(at(1.0)?));
+    let a = one - b;
+    // Not "a != 0": a coefficient this small is a lever too long to pull — the key
+    // would be astronomatical and the next frame's rounding would move the object.
+    if a.abs() < 1e-6 {
+        return None;
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the scene value is f32; f64 is the blend's working precision"
+    )]
+    Some(((f64::from(want) - b) / a) as f32)
 }
 
 /// What an additive strip measures its delta against: its clip's value at the

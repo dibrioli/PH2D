@@ -177,7 +177,16 @@ pub(crate) fn key_value_for(
         let source = ph2d_timeline::remapped_time(&timeline.doc, entity, t_secs);
         return Some(ph2d_anim::AnimValue::Float(source as f32));
     }
-    sample_prop_value(world, entity, prop)
+    // The live pose is what the animator SEES. Under a clip stack it is a blend,
+    // so the number the track must hold to produce it is the blend's inverse —
+    // never the pose itself, which would land the object somewhere else the moment
+    // the stack re-evaluated. `None` = the active clip cannot express this pose,
+    // and K refuses (ADR-0115 R9).
+    let ph2d_anim::AnimValue::Float(pose) = sample_prop_value(world, entity, prop)? else {
+        return None;
+    };
+    let stored = ph2d_timeline::key_value_in_active_clip(&timeline.doc, entity, prop, pose)?;
+    Some(ph2d_anim::AnimValue::Float(stored))
 }
 
 /// The track time a K-inserted key lands at, for playhead `t_secs`: scene
@@ -192,13 +201,17 @@ pub(crate) fn key_insert_time(
     entity: u64,
     prop: PropKind,
     t_secs: f64,
-) -> ph2d_anim::RationalTime {
+) -> Option<ph2d_anim::RationalTime> {
     let t = if prop == PropKind::TimeRemap {
         t_secs
     } else {
-        ph2d_timeline::remapped_time(&timeline.doc, entity, t_secs)
+        // `key_time`, not `remapped_time`: under a clip stack the strip's map
+        // composes on top of the entity's clock, and it can have NO answer (the
+        // clip is playing twice at this instant, or not at all). Refuse rather
+        // than drop the key at a time the animator never looked at.
+        ph2d_timeline::key_time(&timeline.doc, entity, t_secs)?
     };
-    ph2d_anim::RationalTime::from_seconds(t)
+    Some(ph2d_anim::RationalTime::from_seconds(t))
 }
 
 /// The default interpolation for a freshly inserted key (a gentle ease).
@@ -406,7 +419,11 @@ mod tests {
         let mut st = TimelineState::new();
         let mut ph = Playhead::new(1.0 / 60.0);
         // No remap: identity (a scene key lands at the playhead).
-        let at = |st: &TimelineState, prop, t: f64| key_insert_time(st, 1, prop, t).to_seconds();
+        let at = |st: &TimelineState, prop, t: f64| {
+            key_insert_time(st, 1, prop, t)
+                .expect("no stack: a key always has a home")
+                .to_seconds()
+        };
         assert_eq!(at(&st, PropKind::TranslationX, 1.0), 1.0);
         // 2x remap (0 → 0, 2 → 4): a TX key at playhead 1 lands at SOURCE 2 —
         // where the apply samples it — while the Time track itself keys at the
@@ -512,7 +529,7 @@ mod tests {
         // Two K presses through the SAME functions the shell's K handler uses.
         for playhead_t in [0.0f64, 2.0] {
             let v = key_value_for(&w, &st, eb, PropKind::TimeRemap, playhead_t).unwrap();
-            let t = key_insert_time(&st, eb, PropKind::TimeRemap, playhead_t);
+            let t = key_insert_time(&st, eb, PropKind::TimeRemap, playhead_t).unwrap();
             apply_intent(
                 &mut st,
                 &mut ph,
@@ -581,7 +598,9 @@ mod tests {
         );
         // Scene props key at the same frozen clock (where the apply samples).
         assert_eq!(
-            key_insert_time(&st, 1, PropKind::TranslationX, 3.0).to_seconds(),
+            key_insert_time(&st, 1, PropKind::TranslationX, 3.0)
+                .unwrap()
+                .to_seconds(),
             4.0,
             "scene keys land at the frozen source time"
         );

@@ -878,8 +878,17 @@ impl crate::App {
                     // Remap track keys ON its own curve (identity on an empty
                     // one), so K can author the retime too. `key_insert_time`:
                     // scene keys land at the entity's own (remapped) clock.
+                    // Both halves can REFUSE under a clip stack: the value when
+                    // the active clip has no influence on the pose, the time when
+                    // the clip is not playing exactly once right now. Either way
+                    // the key is not written — never written to the wrong place.
                     if let Some(value) = timeline_bridge::key_value_for(
                         sim.world(),
+                        &self.timeline,
+                        entity,
+                        prop,
+                        self.playhead.time(),
+                    ) && let Some(t) = timeline_bridge::key_insert_time(
                         &self.timeline,
                         entity,
                         prop,
@@ -889,12 +898,7 @@ impl crate::App {
                             .push(ph2d_timeline::TimelineIntent::AddKey {
                                 entity,
                                 prop,
-                                t: timeline_bridge::key_insert_time(
-                                    &self.timeline,
-                                    entity,
-                                    prop,
-                                    self.playhead.time(),
-                                ),
+                                t,
                                 value,
                                 interp: timeline_bridge::default_interp(),
                             });

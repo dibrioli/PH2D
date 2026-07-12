@@ -37,8 +37,8 @@ pub mod stack;
 mod stack_eval;
 pub mod state;
 
-pub use apply::{apply_from_doc, apply_from_doc_except, remapped_time};
-pub use autokey::{PoseSample, autokey_props};
+pub use apply::{apply_from_doc, apply_from_doc_except, key_time, remapped_time};
+pub use autokey::{AutokeyPlan, PoseSample, autokey_props, key_value_in_active_clip};
 pub use binding::{TargetBinding, WireId};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
 pub use doc::{DEFAULT_FPS, DOC_VERSION, MAX_CLIPS, Marker, NamedClip, TimelineDoc};

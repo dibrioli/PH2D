@@ -155,6 +155,13 @@ impl TimelineDoc {
         self.scratch = scratch;
     }
 
+    /// This frame's resolved strips + clocks, as the apply left them. Key
+    /// authoring runs AFTER the apply, on the same playhead, so what it reads
+    /// here is exactly what the scene is showing.
+    pub(crate) fn scratch(&self) -> &StackScratch {
+        &self.scratch
+    }
+
     /// All clips.
     #[must_use]
     pub fn clips(&self) -> &[NamedClip] {

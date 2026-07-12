@@ -233,9 +233,16 @@ ambiguidade de ±2π — sem isso, cruzar 350°→10° blendaria pelo caminho lo
    "somei o valor absoluto"). ✅ **(A4/A5)**
 5. Escala additive **multiplica**: dois clips de escala 1.0 dão **1.0**, não 2.0. ✅ **(A4)**
 6. Faixa **mutada** não contribui. A **ordem** de empilhamento importa, e o teste prova qual. ✅ **(A5)**
-7. **Autokey sob pilha**: com um `Override` de `w=1` acima, a key é **recusada** com toast; com `w<1`, a
-   key gravada **reproduz a pose vista** (round-trip pelo apply real).
-8. **Gate R7**: nenhum `PropKind` não-blendável alcança a pilha.
+7. **Autokey sob pilha**: com um `Override` de `w=1` acima, a key é **recusada**; com `w<1`, a key gravada
+   **reproduz a pose vista** (round-trip pelo apply real). ✅ **(A8)** — e mais duas que a implementação
+   revelou: pose **em cima do blend** não keya NADA (o diff lê o que o apply escreveu, não a curva do clip
+   ativo — senão minta uma key por frame com o objeto parado), e clip tocando **duas vezes** ao mesmo tempo
+   = "aqui" não tem resposta única → recusa (o mesmo muro que o Blender documenta). **Falta a superfície
+   visual da recusa** (toast) — vai na fatia B.
+8. **Gate R7**: nenhum `PropKind` não-blendável alcança a pilha. ✅ **(A9)** — executável: todo `PropKind`
+   no meio de um crossfade tem de cair na **média exata** dos dois clips (ou seja, interpolou). Um canal
+   discreto (frame de sprite-sheet, visibilidade, desenho do Flip) faria esse teste falhar, que é o ponto:
+   é o arame de tropeço.
 9. **Seam de UI**: criar strip, arrastar, redimensionar, **sobrepor** (o crossfade aparece), mudar modo/peso
    da faixa — cada um dirigido por `WidgetEvent` real, cada um **um** undo step.
 10. Smoke do Enio.

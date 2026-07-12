@@ -102,6 +102,37 @@ pub(crate) fn hit_input_socket(
     None
 }
 
+/// The rubber band's screen rect, normalised — the artist may drag in any
+/// direction, so the anchor is not necessarily the top-left corner.
+pub(crate) fn band_rect(anchor: (f32, f32), cur: (f32, f32)) -> Rect {
+    let (x0, x1) = (anchor.0.min(cur.0), anchor.0.max(cur.0));
+    let (y0, y1) = (anchor.1.min(cur.1), anchor.1.max(cur.1));
+    Rect::new(x0, y0, x1 - x0, y1 - y0)
+}
+
+/// A card's rect on screen — the same geometry `paint` draws and `hits` registers.
+pub(crate) fn card_rect(n: &GraphNodeView, view: &View) -> Rect {
+    let (sx, sy) = view.pt(n.x, n.y);
+    Rect::new(sx, sy, CARD_W * view.zoom, card_h(n) * view.zoom)
+}
+
+/// Every node the rubber band **touches** — its card INTERSECTS the band. Touch,
+/// not full containment: sweeping a band across a row of cards is the gesture
+/// people actually make, and demanding that each card be swallowed whole would
+/// silently miss the ones the band merely crossed. Blender and Nuke both select on
+/// intersection.
+pub(crate) fn nodes_in_box(snap: &GraphViewSnapshot, view: &View, band: Rect) -> Vec<u32> {
+    snap.nodes
+        .iter()
+        .filter(|n| intersects(card_rect(n, view), band))
+        .map(|n| n.id)
+        .collect()
+}
+
+fn intersects(a: Rect, b: Rect) -> bool {
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}
+
 /// The add-node popup's panel rect, clamped so a menu opened near the right/
 /// bottom edge stays fully on `canvas`.
 pub(crate) fn add_menu_panel(menu: &AddMenu, count: usize, canvas: Rect) -> Rect {

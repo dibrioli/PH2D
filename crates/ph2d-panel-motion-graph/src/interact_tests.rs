@@ -531,3 +531,141 @@ fn the_backdrop_body_registers_no_hit_rect() {
         "no hit rect covers the body: clicks reach the nodes beneath"
     );
 }
+
+// ── Buttons: middle pans, left selects (Enio, smoke 2026-07-12) ──────────────
+
+/// **The middle button pans — from anywhere**, including over a card (the graph
+/// slides under the cursor; it does not grab the node). FALSIFIED if the pan were
+/// still bound to the left button, or only worked over empty canvas.
+#[test]
+fn a_middle_drag_pans_from_anywhere_even_over_a_card() {
+    let _ = drain_intents();
+    let snap = backdrop_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    let mut g = gesture(
+        GraphHitKind::Node { node: 1 },
+        GesturePhase::Begin,
+        100.0,
+        100.0,
+    );
+    g.button = PointerButton::Middle;
+
+    apply_gesture(&mut st, g, RECT, CENTER, &snap);
+    g.phase = GesturePhase::Update;
+    g.x = 140.0;
+    g.y = 130.0;
+    apply_gesture(&mut st, g, RECT, CENTER, &snap);
+
+    assert_eq!(
+        (st.view.pan_x, st.view.pan_y),
+        (40.0, 30.0),
+        "the view panned"
+    );
+    assert!(
+        st.selected.is_empty(),
+        "a middle-drag never selects the card"
+    );
+    assert!(
+        drain_intents().is_empty(),
+        "and never moves it (no doc edit)"
+    );
+}
+
+/// **The left button rubber-band selects.** A band swept over node 1 (at x = 0)
+/// but not node 2 (at x = 600) takes exactly node 1 — and the view does NOT pan,
+/// which is what the left button used to do.
+#[test]
+fn a_left_drag_on_empty_canvas_band_selects_what_it_touches() {
+    let _ = drain_intents();
+    let snap = backdrop_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    let bg = GraphHitKind::Background;
+
+    apply_gesture(
+        &mut st,
+        gesture(bg, GesturePhase::Begin, 400.0, 300.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    // Sweep back over node 1's card (its rect starts at the origin).
+    apply_gesture(
+        &mut st,
+        gesture(bg, GesturePhase::Update, 10.0, 10.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    assert!(
+        matches!(st.interaction, Interaction::BoxSelect { .. }),
+        "the left-drag is a band, not a pan"
+    );
+    apply_gesture(
+        &mut st,
+        gesture(bg, GesturePhase::End, 10.0, 10.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+
+    assert_eq!(
+        st.selected.iter().copied().collect::<Vec<_>>(),
+        vec![1],
+        "exactly the card the band touched"
+    );
+    assert_eq!(
+        (st.view.pan_x, st.view.pan_y),
+        (0.0, 0.0),
+        "the left button no longer pans"
+    );
+}
+
+/// Shift makes the band ADDITIVE (it unions); without Shift it replaces.
+#[test]
+fn shift_makes_the_band_additive() {
+    let _ = drain_intents();
+    let mut snap = backdrop_snapshot();
+    snap.nodes[1].x = 300.0; // bring node 2 within reach of a second band
+    let bg = GraphHitKind::Background;
+
+    // Band 1 (plain): grabs node 1 only.
+    let mut st = MotionGraphPanelState::default();
+    for (phase, x, y) in [
+        (GesturePhase::Begin, 200.0, 200.0),
+        (GesturePhase::Update, 10.0, 10.0),
+        (GesturePhase::End, 10.0, 10.0),
+    ] {
+        apply_gesture(&mut st, gesture(bg, phase, x, y), RECT, CENTER, &snap);
+    }
+    assert_eq!(st.selected.iter().copied().collect::<Vec<_>>(), vec![1]);
+
+    // Band 2 over node 2, with Shift → both are selected.
+    for (phase, x, y) in [
+        (GesturePhase::Begin, 290.0, 5.0),
+        (GesturePhase::Update, 500.0, 60.0),
+        (GesturePhase::End, 500.0, 60.0),
+    ] {
+        let mut g = gesture(bg, phase, x, y);
+        g.mods.shift = true;
+        apply_gesture(&mut st, g, RECT, CENTER, &snap);
+    }
+    assert_eq!(
+        st.selected.iter().copied().collect::<Vec<_>>(),
+        vec![1, 2],
+        "Shift unions instead of replacing"
+    );
+
+    // A third band, WITHOUT Shift, over nothing → the selection is replaced (empty).
+    for (phase, x, y) in [
+        (GesturePhase::Begin, 700.0, 500.0),
+        (GesturePhase::Update, 780.0, 560.0),
+        (GesturePhase::End, 780.0, 560.0),
+    ] {
+        apply_gesture(&mut st, gesture(bg, phase, x, y), RECT, CENTER, &snap);
+    }
+    assert!(
+        st.selected.is_empty(),
+        "a plain band replaces the selection"
+    );
+    let _ = drain_intents();
+}

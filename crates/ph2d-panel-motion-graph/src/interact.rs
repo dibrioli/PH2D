@@ -3,11 +3,17 @@
 //! graph keys) and turns it into ephemeral view/selection/drag/menu state, plus
 //! the [`GraphIntent`]s the shell applies (doc mutations only).
 //!
-//! Coverage: pan (drag empty canvas), anchored wheel zoom, F = fit, Esc =
-//! deselect / cancel, click/shift-select, multi-drag (one `MoveNodes` undo at
-//! End), socket→socket **connect** (with a live compatibility ghost; the shell
-//! validates for real), alt-press a wire = **disconnect**, R-press (anywhere) /
-//! `A` = **add-node** menu, and Delete = **delete selection**.
+//! Coverage: **middle-drag = pan** (from anywhere on the surface), **left-drag on
+//! empty canvas = rubber-band select** (Shift = additive), anchored wheel zoom,
+//! F = fit, Esc = deselect / cancel, click/shift-select, multi-drag (one
+//! `MoveNodes` undo at End), socket→socket **connect** (with a live compatibility
+//! ghost; the shell validates for real), alt-press a wire = **disconnect**,
+//! R-press (anywhere) / `A` = **add-node** menu, Delete = **delete selection**,
+//! and the backdrop gestures (header drag / corner resize).
+//!
+//! **The buttons (Enio, smoke 2026-07-12).** Left used to pan the canvas, which
+//! left multi-select with nowhere to live. The node-editor convention — Blender,
+//! Nuke, Houdini — is middle-pans / left-selects, and that is what this is now.
 
 use crate::geom::{self, View};
 use crate::snapshot::{GraphIntent, GraphViewSnapshot, current_catalog, push_intent};
@@ -131,8 +137,15 @@ fn apply_gesture(
         }
         return;
     }
+    // The MIDDLE button pans, from anywhere on the surface — over a card, a wire, a
+    // backdrop, empty canvas. The node-editor convention (Blender / Nuke / Houdini),
+    // and it frees the left button for selecting, which is what it is for.
+    if g.button == PointerButton::Middle {
+        apply_pan(state, g);
+        return;
+    }
     match g.kind {
-        GraphHitKind::Background => apply_background(state, g, rect),
+        GraphHitKind::Background => apply_background(state, g, rect, snap),
         GraphHitKind::Node { node } => apply_node(state, g, node as u32),
         GraphHitKind::SocketOut { node, port } => {
             apply_socket_out(state, g, node as u32, port, rect, snap)
@@ -326,22 +339,45 @@ fn apply_backdrop_resize(state: &mut MotionGraphPanelState, g: GraphGesture, id:
 /// Empty-canvas gestures (primary button only — the secondary button is fully
 /// handled in [`apply_gesture`]): pan, selection clear, and resolving the
 /// add-node menu the right-press opened.
-fn apply_background(state: &mut MotionGraphPanelState, g: GraphGesture, rect: Rect) {
+/// Middle-button pan — any hit kind, any part of the surface.
+fn apply_pan(state: &mut MotionGraphPanelState, g: GraphGesture) {
     match g.phase {
-        GesturePhase::Begin => {
-            // A press while the menu is open consumes (no pan); the release
-            // resolves it. Otherwise begin a pan.
-            if state.add_menu.is_some() {
-                state.interaction = Interaction::Idle;
-            } else {
-                state.interaction = Interaction::Pan { last: (g.x, g.y) };
-            }
-        }
+        GesturePhase::Begin => state.interaction = Interaction::Pan { last: (g.x, g.y) },
         GesturePhase::Update => {
             if let Interaction::Pan { last } = &mut state.interaction {
                 state.view.pan_x += g.x - last.0;
                 state.view.pan_y += g.y - last.1;
                 *last = (g.x, g.y);
+            }
+        }
+        _ => state.interaction = Interaction::Idle,
+    }
+}
+
+fn apply_background(
+    state: &mut MotionGraphPanelState,
+    g: GraphGesture,
+    rect: Rect,
+    snap: &GraphViewSnapshot,
+) {
+    match g.phase {
+        GesturePhase::Begin => {
+            // A press while the menu is open consumes it (no band); the release
+            // resolves the menu. Otherwise start a rubber band — the LEFT button
+            // selects (panning is the middle button's job).
+            if state.add_menu.is_some() {
+                state.interaction = Interaction::Idle;
+            } else {
+                state.interaction = Interaction::BoxSelect {
+                    anchor: (g.x, g.y),
+                    cur: (g.x, g.y),
+                    additive: g.mods.shift,
+                };
+            }
+        }
+        GesturePhase::Update => {
+            if let Interaction::BoxSelect { cur, .. } = &mut state.interaction {
+                *cur = (g.x, g.y);
             }
         }
         GesturePhase::Click => {
@@ -358,8 +394,25 @@ fn apply_background(state: &mut MotionGraphPanelState, g: GraphGesture, rect: Re
             state.interaction = Interaction::Idle;
         }
         GesturePhase::End | GesturePhase::DoubleClick => {
-            // A primary drag over empty canvas dismisses an open menu.
-            state.add_menu = None;
+            // A left-drag over empty canvas dismisses an open menu; otherwise it
+            // was a rubber band — resolve it into the selection.
+            if state.add_menu.take().is_none()
+                && let Interaction::BoxSelect {
+                    anchor,
+                    cur,
+                    additive,
+                } = state.interaction
+            {
+                let band = geom::band_rect(anchor, cur);
+                let hit = geom::nodes_in_box(snap, &View::new(rect, state.view), band);
+                if !additive {
+                    state.selected.clear();
+                }
+                state.selected.extend(hit);
+                // A band selects NODES; a backdrop is picked by its header alone
+                // (its body is click-through, so the band swept right over it).
+                state.selected_backdrop = None;
+            }
             state.interaction = Interaction::Idle;
         }
     }

@@ -419,6 +419,11 @@ color_tokens! {
     /// `graph-backdrop-8` — translucent group-region tint.
     GraphBackdrop8 => "graph-backdrop-8",
 
+    /// `graph-marquee` — translucent fill of the node graph's box-select band
+    /// (the border uses `accent`). Translucent BY CONTRACT: the band is drawn over
+    /// the very cards it is selecting, and an opaque fill would hide them.
+    GraphMarquee => "graph-marquee",
+
     /// `attr-write` — gold badge for attribute-write on a node.
     AttrWrite => "attr-write",
 

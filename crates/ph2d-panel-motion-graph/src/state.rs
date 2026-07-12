@@ -28,7 +28,21 @@ pub(crate) enum Interaction {
     #[default]
     Idle,
     /// Panning the canvas — `last` is the previous pointer position (screen).
+    /// Driven by the **middle** button, from anywhere on the surface (over a card,
+    /// a wire, a backdrop — the graph moves under the cursor), which is the node-
+    /// editor convention (Blender / Nuke / Houdini). The LEFT button is for
+    /// selecting, never for panning (Enio, smoke 2026-07-12).
     Pan { last: (f32, f32) },
+    /// Rubber-band selection — a left-drag on empty canvas. `anchor` is the press
+    /// point and `cur` the live cursor (both SCREEN space, like the canvas's own
+    /// rubber band: the band must stay put under the cursor, and the graph cannot
+    /// pan mid-drag anyway since panning is on another button). `additive` (Shift
+    /// at press) unions with the current selection instead of replacing it.
+    BoxSelect {
+        anchor: (f32, f32),
+        cur: (f32, f32),
+        additive: bool,
+    },
     /// Dragging the selected nodes. `last` is the previous pointer (screen);
     /// each Update pushes an incremental `MoveNodes` delta the shell applies
     /// live (so the node tracks the cursor with no end-jump). `started` gates the

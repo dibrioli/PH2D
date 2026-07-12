@@ -60,6 +60,7 @@ const WIRE_W_HOVER: f32 = 4.0; // LITERAL-PX-OK: hovered wire stroke width (targ
 const PRE_RING_W: f32 = 1.4; // LITERAL-PX-OK: portal badge ring stroke width
 const PRE_DOT_R: f32 = 2.2; // LITERAL-PX-OK: portal badge inner dot radius
 const GHOST_W: f32 = 2.2; // LITERAL-PX-OK: in-progress ghost wire stroke width
+const BAND_W: f32 = 1.0; // LITERAL-PX-OK: rubber-band border stroke width
 const WIRE_TANGENT: f32 = 20.0; // LITERAL-PX-OK: horizontal bezier handle length
 const ZOOM_FIT_MIN: f32 = 0.35; // LITERAL-PX-OK: auto-fit zoom floor
 const ZOOM_FIT_MAX: f32 = 1.2; // LITERAL-PX-OK: auto-fit zoom ceiling
@@ -150,6 +151,24 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // add-menu (already clamped on-canvas).
     if let Interaction::DrawWire { .. } = &state.interaction {
         draw_wire_ghost(ctx, &snap, state, &view, theme);
+    }
+    // The rubber band (left-drag on empty canvas). Translucent fill — it is drawn
+    // OVER the very cards it is selecting, and an opaque one would hide them.
+    if let Interaction::BoxSelect { anchor, cur, .. } = state.interaction {
+        let band = geom::band_rect(anchor, cur);
+        fill_rounded_rect(
+            ctx.scene,
+            band,
+            0.0,
+            resolve(ColorToken::GraphMarquee, theme),
+        );
+        stroke_rounded_rect(
+            ctx.scene,
+            band,
+            0.0,
+            BAND_W,
+            resolve(ColorToken::Accent, theme),
+        );
     }
     if let Some(menu) = state.add_menu {
         draw_add_menu(ctx, &menu, rect, theme);

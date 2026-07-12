@@ -16,9 +16,9 @@
 | | |
 |---|---|
 | **Branch** | `line/FLIP` |
-| **HEAD** | `0e966416` |
+| **HEAD** | o tip da branch — `git rev-parse --short line/FLIP` (os 2–3 últimos commits são **só docs**; o último de código é `0e966416`) |
 | **Base (merge-base com `main`)** | `1c7c9a22` |
-| **Commits na linha** | **49** (todos `--no-verify`, fast mode) |
+| **Commits na linha** | ~51 (todos `--no-verify`, fast mode) |
 | **Escopo** | ADR-0113 — o 4º meio do PH2D (animação quadro-a-quadro, port 2D clean-room do Grease Pencil 5.2): W0 (modelo) + W1 (render GPU) + W2 (tool + painel + desenho + borracha + Select/gizmo) |
 
 **Ordem dos commits:** linear, sem interdependência frágil (W0 → W1 → W2 → smoke

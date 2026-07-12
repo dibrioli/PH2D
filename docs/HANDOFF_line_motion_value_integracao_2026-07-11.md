@@ -4,6 +4,21 @@
 > vai pro **agente integrador dedicado** que o Enio abrir. Worktree:
 > `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value`.
 
+> **ESTADO FINAL (2026-07-11) — pronto pra integrar:**
+> - Branch **`line/motion-value`** · **HEAD = `700c666a`** · **fork base = `1c7c9a22`** (merge-base com `main`,
+>   confirmado) · **25 commits** (18 fatias de nós/UI + 2 fixes perf voronoi + o plano GPU + docs).
+> - **Árvore LIMPA** (nada não-commitado). **Nenhum push feito** (aguarda ordem do Enio via integrador).
+> - **Certificado VERDE no HEAD** (gates locais, não o `ship.sh` — esse é do integrador): `architecture_
+>   contract_surface` **3/3 (NodeManifest=8 / NodeOp=2 / OpResolver=1)** · `staleness` **69 crates** · 6 gates
+>   de painel/workspace (no_tofu, workspace-loc, panel-loc 600/200, clamp, no_magic, wiring-parity) · nodegraph
+>   70 testes · panel-params 11 · expression 8 · shell motion 26.
+> - **Um único conflito mecânico esperado** na integração: o codegen `ph2d-node-registry-init` → resolve com
+>   `cargo run -p ph2d-node-sync` (§3). **Toca o substrato `ph2d-nodegraph` (fatia 32/33, ADITIVO)** — contrato
+>   provado intacto (§4). Caveat de ship: **replay-hash cross-máquina** da expression (§5).
+> - **Ação do integrador:** ler §1.5.9 (abaixo) → `git merge --ff-only line/motion-value` (se `main` não moveu)
+>   ou rebase + `node-sync` (se moveu) → `scripts/foundational-integrate.sh` → `./scripts/ship.sh` → push +
+>   babysit CI. **NÃO fundir o `registry-init` à mão.**
+
 > **⚠ MUDANÇA DE CARÁTER (fatia 32, autorizada pelo Enio "abre a expression"):** a linha **agora TOCA o
 > substrato** `ph2d-nodegraph` (Graph + EvalCtx + cook), de forma **ADITIVA**, pra dar o canal de *text param*
 > à `motion.expression`. **O contrato congelado foi PROVADO intacto** (`architecture_contract_surface` = 8/2/1

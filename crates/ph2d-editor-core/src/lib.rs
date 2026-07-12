@@ -43,6 +43,8 @@ pub mod image_edit;
 pub mod interaction;
 pub mod math;
 pub mod paint;
+/// Batched paint primitives (many shapes, one draw call) — see the module docs.
+pub mod paint_batch;
 pub mod panel;
 pub mod project;
 pub mod screens;

@@ -20,8 +20,11 @@
 //! tokens (HR-15); the add-menu is hit-tested panel-side against `Background`
 //! gestures (no menu-specific `GraphHitKind`). Sizes are logical.
 
+#[path = "paint_stamp.rs"]
+mod paint_stamp;
 #[path = "paint_wire.rs"]
 mod paint_wire;
+use paint_stamp::draw_preview;
 pub(crate) use paint_wire::{
     detached_edge, draw_wire, draw_wire_ghost, wire_endpoints, wire_hit_polyline, wires_crossed,
 };
@@ -172,13 +175,21 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         draw_wire(ctx, &snap, e, &view, theme, is_hovered, bright);
         push_wire_hits(&mut hits, &snap, e, &view, rect);
     }
-    // Cards, collecting body hits as we draw them.
-    for n in &snap.nodes {
+    // Cards, collecting body hits as we draw them. A card whose rect does not touch the panel is
+    // SKIPPED entirely: the clip layer already hides it, but Vello still has to bound and bin
+    // every path inside it — panning a big graph would pay for cards nobody can see. (Its hit
+    // rects are clipped away by `hits` anyway, so what is invisible stays unclickable.)
+    let on_screen: Vec<&GraphNodeView> = snap
+        .nodes
+        .iter()
+        .filter(|n| touches(geom::card_rect(n, &view), rect))
+        .collect();
+    for n in &on_screen {
         let body = draw_card(ctx, state, n, &view, theme, veiled(n.id));
         push_card_hit(&mut hits, n.id, body, rect);
     }
     // Sockets last so they win the overlap with the node edge they sit on.
-    for n in &snap.nodes {
+    for n in &on_screen {
         push_socket_hits(&mut hits, n, &view, rect);
     }
     // Overlays above the cards, still clipped: the in-progress wire ghost (it
@@ -285,6 +296,12 @@ fn draw_grid(ctx: &mut PaintCtx, rect: Rect, theme: Theme) {
     }
 }
 
+/// Do two rects overlap at all? (A card that merely touches the panel edge is still drawn: half a
+/// card is what tells the artist there is more canvas that way.)
+fn touches(a: Rect, b: Rect) -> bool {
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}
+
 /// Draw one node card; returns its screen-space body rect (for hit registration).
 fn draw_card(
     ctx: &mut PaintCtx,
@@ -381,69 +398,6 @@ fn draw_card(
         }
     }
     body
-}
-
-/// **The postage stamp**: what this node passes on, as a little scatter of its own positions
-/// (Nuke's thumbnails, for a node graph that carries points instead of pixels). It answers the
-/// one question no wire can, however well it is drawn: *where does the spiral become a grid?*
-///
-/// The points are fitted to the strip with a UNIFORM scale (aspect preserved) and drawn y-up,
-/// like the canvas — a stamp that stretched its contents to fill the box would show a circle as
-/// an ellipse and lie about the very thing it exists to show.
-fn draw_preview(ctx: &mut PaintCtx, n: &GraphNodeView, view: &View, theme: Theme) {
-    let (Some(pts), Some(rect)) = (n.preview.as_ref(), geom::preview_rect(n, view)) else {
-        return;
-    };
-    // Zoomed out, the strip is a few pixels tall: the dots would be sub-pixel mush that reads
-    // as noise. Draw the empty window instead — the card keeps its shape at every zoom.
-    fill_rounded_rect(
-        ctx.scene,
-        rect,
-        PREVIEW_RADIUS,
-        resolve(ColorToken::GraphBg, theme),
-    );
-    if rect.h < PREVIEW_MIN_H || pts.is_empty() {
-        return;
-    }
-
-    let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
-    for p in pts {
-        for k in 0..2 {
-            lo[k] = lo[k].min(p[k]);
-            hi[k] = hi[k].max(p[k]);
-        }
-    }
-    let (ex, ey) = (hi[0] - lo[0], hi[1] - lo[1]);
-    // A degenerate extent (every point on top of the others, or a single point) has no scale to
-    // speak of: centre it rather than dividing by zero.
-    let pad = PREVIEW_INSET * view.zoom;
-    let s = match (ex > 0.0 || ey > 0.0).then(|| {
-        ((rect.w - 2.0 * pad) / ex.max(f32::EPSILON))
-            .min((rect.h - 2.0 * pad) / ey.max(f32::EPSILON))
-    }) {
-        Some(s) if s.is_finite() => s,
-        _ => 0.0,
-    };
-    let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
-    let (mx, my) = ((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
-    let color = resolve(
-        n.outputs
-            .first()
-            .map(|p| domain_token(p.domain))
-            .unwrap_or(ColorToken::Text2),
-        theme,
-    );
-    let dot = (PREVIEW_DOT_R * view.zoom).max(PREVIEW_DOT_MIN);
-    for p in pts {
-        // y-up: the world's +y is the canvas's up, and the stamp is a window onto the canvas.
-        fill_circle(
-            ctx.scene,
-            cx + (p[0] - mx) * s,
-            cy - (p[1] - my) * s,
-            dot,
-            color,
-        );
-    }
 }
 
 /// The add-node popup: a `Bg2` panel with a header + one row per catalog entry,

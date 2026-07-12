@@ -47,11 +47,16 @@ const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 /// How many points a card's **postage stamp** may carry (F3). The cost of the stamps is then
 /// bounded by the number of CARDS, never by the size of the streams — which is what lets them
 /// be on by default. (Nuke's thumbnails render the real image, so a heavy script has to turn
-/// them off or freeze them to a static frame; a scatter of 96 dots has no such cliff.)
+/// them off or freeze them to a static frame; a scatter of a few dozen dots has no such cliff.)
 ///
-/// It is a SUBSAMPLE, and it says so: the stamp shows the shape of what a node emits, not every
-/// instance of it. At 96 dots a grid still reads as a grid and a spiral as a spiral.
-const PREVIEW_POINTS: usize = 96;
+/// It is a SUBSAMPLE, and it says so: the stamp shows the SHAPE of what a node emits, not every
+/// instance of it. At 48 dots a grid still reads as a grid and a spiral as a spiral.
+///
+/// It was 96, and the panel drew each dot as its own fill — ~4 000 draw objects a frame across a
+/// full canvas, which is where the frame rate went (doc 53). The panel now draws a whole stamp in
+/// ONE path, and halving the dots halves what is left of the cost for a preview nobody counts the
+/// dots of.
+const PREVIEW_POINTS: usize = 48;
 
 /// One node's reading, or `None` when this frame's cook never pulled it.
 ///
@@ -112,8 +117,8 @@ fn fold(h: &mut u64, x: u64) {
 }
 
 /// The card's postage stamp: up to `PREVIEW_POINTS` positions, evenly strided through the
-/// stream so the SHAPE survives the subsampling (taking the first 96 of a 5 000-point spiral
-/// would draw the first eighth of one turn and call it a spiral).
+/// stream so the SHAPE survives the subsampling (taking the FIRST 48 of a 5 000-point spiral would
+/// draw the first hundredth of one turn and call it a spiral).
 ///
 /// `None` when the node emits no positions — a VALUE node's stamp is the number it already
 /// shows, and drawing an empty box under it would be a promise of a picture that is not coming.

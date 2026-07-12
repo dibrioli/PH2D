@@ -11,6 +11,7 @@ use crate::geom::{View, socket_center};
 use crate::snapshot::{GraphEdgeView, GraphViewSnapshot};
 use crate::state::{Interaction, MotionGraphPanelState};
 use ph2d_editor_core::paint::{fill_circle, resolve, stroke_polyline, stroke_rounded_rect};
+use ph2d_editor_core::paint_batch::stroke_subpaths;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
@@ -60,19 +61,20 @@ pub(crate) fn draw_wire(
     // They ride the SAME polyline, so they cannot drift off the wire they belong to.
     if bright && src.is_some_and(|n| n.hot) && !hovered {
         let z = view.zoom;
-        for dash in flow::dashes(
+        // ONE draw call for the whole marching pattern: a dozen little strokes per wire, on every
+        // wire, every frame, is a dozen draw objects Vello has to bound and bin (doc 53).
+        let dashes = flow::dashes(
             &pts,
             flow::DASH_PERIOD * z,
             flow::DASH_ON * z,
             snap.now * flow::DASH_SPEED * z,
-        ) {
-            stroke_polyline(
-                ctx.scene,
-                &dash,
-                base_w * z,
-                resolve(ColorToken::Text1, theme),
-            );
-        }
+        );
+        stroke_subpaths(
+            ctx.scene,
+            &dashes,
+            base_w * z,
+            resolve(ColorToken::Text1, theme),
+        );
     }
 
     // **Veiled** — either nothing runs through this wire (no sink pulls it), or a selection is

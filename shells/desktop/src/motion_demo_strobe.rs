@@ -1,79 +1,58 @@
-//! The M4 rig-closing demo — the **default Motion document**: two limbs chasing the same
-//! breathing goal, showing the slice's two nodes.
-//!
-//! - **LEFT — `rig.rubber_hose`**: a limb with **no elbow**. Its curvature is constant, so
-//!   it curls into one smooth arc instead of hinging. Put it beside yesterday's `ik_2bone`
-//!   and the whole point of the style is visible at a glance.
-//! - **RIGHT — `rig.skin_deformer`**: a cloud of points **skinned** to a FABRIK tentacle.
-//!   The skeleton is never drawn; what you see is the *flesh* following it (Linear Blend
-//!   Skinning, envelope weights).
+//! **The default Motion document: the SNOW** — a whole particle system, on one canvas
+//! (Motion Nodes O4 — docs 48 · 49 · 50 · 51 · 52).
 //!
 //! ```text
-//!  goal:  grid(1) ─> move(2, 0) ─> oscillator(X) ─> orbit ─┬───────────┐
-//!  LEFT:  skeleton(9) ─> rubber_hose <─────────────────────┤           │
-//!                           └─> scale ─> move(−7) ─> output            │
-//!  RIGHT: skeleton(8) ─┬─────────────────────────> skin.rest           │
-//!                      └─> fabrik <───────────────┤                    │
-//!                            └──────────────────> skin.posed           │
-//!         grid(5×24) ─> move ─────────────────────> skin.in            │
-//!                            skin └─> scale ─> move(+7) ─> output       │
-//!  goal dots:                       scale(big) ─> move(∓7) ─> output <─┘
+//!                     ┌──────────┐ out ──┬──→ scale ──→ move ──→ output
+//!                     │ sim.zone │       │
+//!            state ←──┴──────────┘       ⊙  (the state entry: last tick's population)
+//!              ↑                         │
+//!   cull ← falloff ← drive(α) ← drive(size) ← ramp ← lifetime ← collide ← step ← wind ← combine
+//!                        ↑          ↑         ↑                                       ↑ in1
+//!                        └───── map_range ← attribute("life")    grid → move → sim.spawn
 //! ```
 //!
-//! **The bind pose is a WIRE.** `rig.skin_deformer` takes the skeleton twice — once as
-//! authored (`rest`) and once as solved (`posed`) — because a skin IS the difference
-//! between those two. Nothing is snapshotted behind your back at a moment you have to
-//! remember: the bind is a thing you can see in the graph, and cut.
+//! Every line of a particle system is on that canvas, and every one of them is a node you can cut:
 //!
-//! The goal BREATHES in and out (an oscillator on X upstream of the orbit, where +X is the
-//! radial direction). A goal at a fixed radius around a limb's own root would keep the
-//! reach constant — and a hose whose reach never changes never changes its curl, the same
-//! trap that made the elbow look frozen the day before (doc 41 §6-bis).
+//! - **BIRTH** — `sim.spawn` emits only *this tick's* newborns; `motion.combine` merges them into
+//!   the live state. The zone's `init` is left UNWIRED on purpose: the population starts at
+//!   NOTHING and is entirely born, so every flake has a unique identity from birth (doc 49).
+//! - **LIFE** — `force.wind` + `sim.step`: the velocity lives in the STATE, so the flakes
+//!   *accelerate* instead of drifting (doc 48).
+//! - **THE WORLD** — `sim.collide`: they land on the floor, hop, and slide (doc 52).
+//! - **AGE** — `sim.step` grows an `age`; `sim.lifetime` writes how far through life each flake is
+//!   and `value.attribute` reads that back out as a value field (doc 50), which drives THREE things
+//!   at once: the colour (`motion.color_ramp`), the size and the opacity (`motion.drive`, doc 51).
+//!   The flake melts: it whitens, it shrinks, it fades.
+//! - **DEATH** — twice, and a particle system has both: **old age** (`sim.lifetime`) and **place**
+//!   (`motion.falloff` + `motion.cull` — inside a zone that pair is not a filter but a KILL).
+//!
+//! Birth and death balance, so the snowfall reaches a **steady state** and stays there.
+//!
+//! The rig scenes that used to boot with the editor (a rubber hose, flesh skinned to a FABRIK
+//! tentacle, their shared breathing goal) and the deliberately-orphaned card that demoed the inert
+//! veil are **gone** (Enio, 2026-07-12: *"deixe só o grafo da chuva"*). They live in git history;
+//! every node they used is still registered and still tested — drop them from the add-menu and
+//! they work. A boot document is a demo, not an archive.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 const COL_W: f32 = 190.0;
-const GOAL_ROW: f32 = -170.0;
-const HOSE_ROW: f32 = 0.0;
-const SKIN_ROW: f32 = 200.0;
-const FLESH_ROW: f32 = 340.0;
-const DOT_ROW: f32 = 480.0;
-const RAIN_ROW: f32 = 640.0;
-/// The interior sits one card below the zone: a state loop reads right-to-left, and putting it
-/// on the same row would run it straight through the cards it feeds.
+/// The zone's row. The interior sits one card below it (a state loop reads right-to-left, which is
+/// the shape it has on a canvas that reads left-to-right); the birth chain sits below that.
+const RAIN_ROW: f32 = 0.0;
 const RAIN_INTERIOR_DY: f32 = 140.0;
 
-/// Quad sizes: the hose's joints, the flesh's points, and the fat goal dot. (The lowering's
-/// fallback for a stream with no `size` column is the IDENTITY — doc 39 — so a document
-/// that wants small quads says so, with a `motion.scale`.)
-const JOINT_QUAD: f32 = 0.28;
-const FLESH_QUAD: f32 = 0.16;
-const GOAL_QUAD: f32 = 0.6;
-
-/// The goal's orbit, and the pulse that makes its distance breathe (`motion.orbit`'s speed
-/// is DEGREES PER SECOND).
-const GOAL_RADIUS: f32 = 2.0;
-const GOAL_SPEED: f32 = 90.0;
-const GOAL_PULSE: f32 = 0.9;
-const GOAL_PULSE_HZ: f32 = 0.35;
-
-/// The hose: nine joints of 0.36 — a reach of 2.88, so the breathing goal (1.1 .. 2.9) has
-/// it curling from a tight coil to nearly straight.
-const HOSE_JOINTS: f32 = 9.0;
-const HOSE_BONE: f32 = 0.36;
-
-/// The snow (O4): flakes born along a line at the top of the disc, falling under gravity, dying
-/// as they leave it. Birth and death balance, so the population settles.
+/// The snow: flakes born along a line at the top of the kill disc, falling under gravity, landing
+/// on the floor, and melting of old age.
 const SNOW_SITES: f32 = 14.0;
 const SNOW_SITE_GAP: f32 = 0.36;
 const SNOW_SKY_Y: f32 = 2.6;
 const SNOW_RATE: f32 = 24.0;
 const SNOW_GUST: f32 = 0.35;
-/// A flake lives ~2.2 s (± the hashed variance), which is about the fall through the disc — so
-/// most melt of old age on the way down and the strays are culled at the rim.
+/// A flake lives ~2.2 s (± the hashed variance) — long enough to reach the floor and melt there.
 const SNOW_LIFE: f32 = 2.2;
 const SNOW_LIFE_VARIANCE: f32 = 0.4;
-/// The column the colour is driven by (`sim.lifetime` writes it: 0 at birth, 1 at the end).
+/// The column the fade is driven by (`sim.lifetime` writes it: 0 at birth, 1 at the end).
 const SNOW_ATTR: &str = "life";
 /// `motion.color_ramp`'s presets: 0 Rainbow · 1 Heat · **2 Ice** · 3 Grayscale · 4 Custom.
 const SNOW_RAMP_ICE: f32 = 2.0;
@@ -92,37 +71,50 @@ const SNOW_FLOOR_FRICTION: f32 = 0.35;
 const DRIVE_CH_SIZE: f32 = 3.0;
 const DRIVE_CH_OPACITY: f32 = 4.0;
 const DRIVE_MODE_SET: f32 = 1.0;
+/// The quad the lowering draws per flake. (The fallback for a stream with no `size` column is the
+/// IDENTITY — doc 39 — so a document that wants small quads says so.)
 const RAIN_QUAD: f32 = 0.18;
 const RAIN_GRAVITY: f32 = 4.0;
-/// The kill disc, around the seed's own centre: a LINEAR falloff of radius 3.4, culled at 0.05,
-/// so a drop dies at 0.95 x 3.4 = 3.2 world units out. The seed's own corners are 1.78 out, so
-/// every drop is born alive and dies only by falling — a seed that started outside its own kill
-/// mask would cull its corners on frame one, which is what the first numbers here did.
+/// The kill disc, around the birth line's own centre: a LINEAR falloff of radius 3.4, culled at
+/// 0.05, so a flake dies 0.95 x 3.4 = 3.2 world units out. The birth sites sit well inside it, so
+/// every flake is born alive and dies only by living.
 const RAIN_KILL_R: f32 = 3.4;
 const RAIN_KILL_KEEP: f32 = 0.05;
-/// Where the whole scene sits, so it does not land on the limbs.
+/// Where the scene sits in the world.
 const RAIN_X: f32 = 0.0;
 const RAIN_Y: f32 = 2.4;
 
-/// The skinned tentacle: eight joints of 0.42 (reach 2.94), with the flesh wrapped around
-/// its rest pose — a strip of points over the limb, which stands straight up from the root.
-const SKIN_JOINTS: f32 = 8.0;
-const SKIN_BONE: f32 = 0.42;
-const FLESH_COLS: f32 = 5.0;
-const FLESH_ROWS: f32 = 24.0;
-const FLESH_GAP_X: f32 = 0.16;
-const FLESH_GAP_Y: f32 = 0.13;
-
-/// Author every scene into `g`; returns the Output nodes (the sinks), in the order the tests
-/// read them: the hose · the flesh · the hose's goal dot · the tentacle's goal dot · the rain.
+/// Author the document into `g`; returns its Output node (the sink).
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    let goal = build_goal(g)?;
-    let hose = build_hose(g, goal)?;
-    let flesh = build_skinned_tentacle(g, goal)?;
-    let (dot_l, dot_r) = build_goal_dots(g, goal)?;
-    let rain = build_sim_zone(g)?;
-    build_inert_example(g);
-    Some(vec![hose, flesh, dot_l, dot_r, rain])
+    let snow = build_sim_zone(g)?;
+    Some(vec![snow])
+}
+
+/// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
+fn wire(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
+    g.connect(Edge {
+        from,
+        to,
+        delayed: false,
+    })
+    .ok()
+}
+
+/// Wire a straight chain left-to-right (port 0 to port 0), one card per column from `col`.
+fn chain(g: &mut Graph, row: f32, col: usize, nodes: &[NodeId]) -> Option<()> {
+    for (i, n) in nodes.iter().enumerate() {
+        g.set_pos(
+            *n,
+            Pos {
+                x: (col + i) as f32 * COL_W,
+                y: row,
+            },
+        );
+    }
+    for pair in nodes.windows(2) {
+        wire(g, (pair[0], 0), (pair[1], 0))?;
+    }
+    Some(())
 }
 
 /// **The Simulation Zone** (O4, docs 48 + 49) — SNOW: it is born, it falls, it dies.
@@ -288,142 +280,4 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     g.set_param(mv, "dx", RAIN_X);
     g.set_param(mv, "dy", RAIN_Y);
     Some(output)
-}
-
-/// **A node wired to nothing** — deliberately, as the demo of the inline readouts (F2) and of
-/// the inert veil (F3): it is a real `motion.grid`, it does exactly nothing, no sink consumes
-/// it, so the cook never pulls it — and the editor veils it and leaves its reading blank. The
-/// whole feature in one card.
-fn build_inert_example(g: &mut Graph) {
-    let orphan = g.add_node("motion.grid");
-    g.set_pos(
-        orphan,
-        Pos {
-            x: 6.0 * COL_W,
-            y: GOAL_ROW,
-        },
-    );
-}
-
-/// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
-fn wire(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
-    g.connect(Edge {
-        from,
-        to,
-        delayed: false,
-    })
-    .ok()
-}
-
-/// Wire a straight chain left-to-right (port 0 to port 0), one card per column from `col`.
-fn chain(g: &mut Graph, row: f32, col: usize, nodes: &[NodeId]) -> Option<()> {
-    for (i, n) in nodes.iter().enumerate() {
-        g.set_pos(
-            *n,
-            Pos {
-                x: (col + i) as f32 * COL_W,
-                y: row,
-            },
-        );
-    }
-    for pair in nodes.windows(2) {
-        wire(g, (pair[0], 0), (pair[1], 0))?;
-    }
-    Some(())
-}
-
-/// The shared goal: one point orbiting the origin, its distance breathing in and out.
-fn build_goal(g: &mut Graph) -> Option<NodeId> {
-    let grid = g.add_node("motion.grid");
-    let out = g.add_node("motion.move");
-    let pulse = g.add_node("motion.oscillator");
-    let orbit = g.add_node("motion.orbit");
-    chain(g, GOAL_ROW, 0, &[grid, out, pulse, orbit])?;
-
-    g.set_param(grid, "rows", 1.0);
-    g.set_param(grid, "cols", 1.0);
-    // Push the point off the pivot — an orbit around the point itself would stand still.
-    g.set_param(out, "dx", GOAL_RADIUS);
-    // Channel 0 = X. The point sits on the +x axis here, so an X wobble IS a change of
-    // RADIUS — which is what makes the limbs' reach (and so their curl) change at all.
-    g.set_param(pulse, "channel", 0.0);
-    g.set_param(pulse, "amplitude", GOAL_PULSE);
-    g.set_param(pulse, "frequency", GOAL_PULSE_HZ);
-    g.set_param(pulse, "phase_stagger", 0.0);
-    g.set_param(orbit, "speed", GOAL_SPEED);
-    Some(orbit)
-}
-
-/// LEFT: the elbowless limb. Returns its Output.
-fn build_hose(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
-    let skel = g.add_node("rig.skeleton");
-    let hose = g.add_node("rig.rubber_hose");
-    let scale = g.add_node("motion.scale");
-    let mv = g.add_node("motion.move");
-    let output = g.add_node("motion.output");
-    chain(g, HOSE_ROW, 1, &[skel, hose, scale, mv, output])?;
-    wire(g, (goal, 0), (hose, 1))?;
-
-    g.set_param(skel, "joints", HOSE_JOINTS);
-    g.set_param(skel, "length", HOSE_BONE);
-    g.set_param(skel, "root_angle", 90.0);
-    g.set_param(scale, "amount", JOINT_QUAD);
-    g.set_param(mv, "dx", -7.0);
-    Some(output)
-}
-
-/// RIGHT: a FABRIK tentacle with FLESH on it — the skeleton itself is never drawn.
-fn build_skinned_tentacle(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
-    let skel = g.add_node("rig.skeleton");
-    let solver = g.add_node("rig.fabrik");
-    let flesh = g.add_node("motion.grid");
-    let flesh_place = g.add_node("motion.move");
-    let skin = g.add_node("rig.skin_deformer");
-    let scale = g.add_node("motion.scale");
-    let mv = g.add_node("motion.move");
-    let output = g.add_node("motion.output");
-
-    chain(g, SKIN_ROW, 1, &[skel, solver])?;
-    chain(g, FLESH_ROW, 1, &[flesh, flesh_place])?;
-    chain(g, SKIN_ROW, 3, &[skin, scale, mv, output])?;
-    wire(g, (goal, 0), (solver, 1))?;
-    // The three wires that make a skin: the points, the BIND pose, the SOLVED pose.
-    wire(g, (flesh_place, 0), (skin, 0))?;
-    wire(g, (skel, 0), (skin, 1))?; // rest — the skeleton as authored
-    wire(g, (solver, 0), (skin, 2))?; // posed — the same skeleton, solved
-
-    g.set_param(skel, "joints", SKIN_JOINTS);
-    g.set_param(skel, "length", SKIN_BONE);
-    g.set_param(skel, "root_angle", 90.0);
-    g.set_param(solver, "iterations", 12.0);
-    // A strip of points laid over the limb's rest pose, which stands straight up from the
-    // origin — so the flesh starts wrapped around the bones it is bound to.
-    g.set_param(flesh, "rows", FLESH_ROWS);
-    g.set_param(flesh, "cols", FLESH_COLS);
-    g.set_param(flesh, "gap_x", FLESH_GAP_X);
-    g.set_param(flesh, "gap_y", FLESH_GAP_Y);
-    g.set_param(flesh_place, "dy", (SKIN_JOINTS - 1.0) * SKIN_BONE * 0.5);
-    g.set_param(scale, "amount", FLESH_QUAD);
-    g.set_param(mv, "dx", 7.0);
-    Some(output)
-}
-
-/// The goal, drawn as a fat dot beside each limb — the same point, moved by the same offset
-/// as the limb that chases it. Returns both Outputs.
-fn build_goal_dots(g: &mut Graph, goal: NodeId) -> Option<(NodeId, NodeId)> {
-    let scale = g.add_node("motion.scale");
-    let mv_l = g.add_node("motion.move");
-    let out_l = g.add_node("motion.output");
-    let mv_r = g.add_node("motion.move");
-    let out_r = g.add_node("motion.output");
-
-    chain(g, DOT_ROW, 2, &[scale, mv_l, out_l])?;
-    chain(g, DOT_ROW + 120.0, 3, &[mv_r, out_r])?;
-    wire(g, (goal, 0), (scale, 0))?;
-    wire(g, (scale, 0), (mv_r, 0))?;
-
-    g.set_param(scale, "amount", GOAL_QUAD);
-    g.set_param(mv_l, "dx", -7.0);
-    g.set_param(mv_r, "dx", 7.0);
-    Some((out_l, out_r))
 }

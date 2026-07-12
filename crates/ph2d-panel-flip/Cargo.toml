@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# Flip Style panel — typed `Panel<State>` (ADR-0113 W2). Right-docked (Inspector
+# Flip Style panel — typed `Panel<State>` (ADR-0114 W2). Right-docked (Inspector
 # slot); visible only while the `flip` tool is active. Mode row (Select/Draw/
 # Erase) + Brush section (size/hardness/opacity/smoothing) + Color swatch (OKLCH
 # picker) + Layers section (add/delete/reorder/visibility/lock/opacity/blend).

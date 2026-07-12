@@ -79,7 +79,7 @@ const DOWNCAST_ALLOWLIST: &[&str] = &[
     // selected path. Same documented-bridge exception class as painter_bridge;
     // keeps the central render loop downcast-free.
     "src/render_loop/vector_bridge.rs",
-    // Flip bridge (ADR-0113 W2): downcasts the single `FlipTool` to publish its
+    // Flip bridge (ADR-0114 W2): downcasts the single `FlipTool` to publish its
     // brush style + draw-mode to the App each frame, so `input_dispatch` routes
     // the drawing pointer without a downcast. Same documented-bridge exception
     // class as vector_bridge; keeps the central render loop downcast-free.

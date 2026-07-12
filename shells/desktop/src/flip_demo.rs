@@ -1,4 +1,4 @@
-//! Demo ready-to-smoke do Flip (ADR-0113 W1): um objeto animado para VER o render
+//! Demo ready-to-smoke do Flip (ADR-0114 W1): um objeto animado para VER o render
 //! do traço + a **composição por-camada** (T1.7) na hora. Flag-gated por
 //! `PH2D_FLIP_DEMO=1` (default = cena vazia, como a pipeline vetorial nova — o app
 //! normal não mostra nada do Flip até a tool do W2).

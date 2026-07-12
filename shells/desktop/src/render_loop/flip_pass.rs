@@ -1,4 +1,4 @@
-//! ADR-0113 W1 T1.4/T1.7/T1.8 — o passe que põe o Flip na tela, **compondo
+//! ADR-0114 W1 T1.4/T1.7/T1.8 — o passe que põe o Flip na tela, **compondo
 //! camada a camada** pelo compositor 22-modos do Painter, com a tesselação
 //! **cacheada por desenho** (troca de quadro barata).
 //!

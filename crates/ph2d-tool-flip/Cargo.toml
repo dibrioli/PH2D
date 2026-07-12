@@ -7,7 +7,7 @@ authors.workspace = true
 license.workspace = true
 publish.workspace = true
 
-# Flip drawing tool (ADR-0113 W2) — a first-class `flip_tools`-cluster pill that
+# Flip drawing tool (ADR-0114 W2) — a first-class `flip_tools`-cluster pill that
 # drives frame-by-frame 2D animation. Drop-crate per DIRETRIZ §3.A / ADR-0040:
 # the tool owns only its BRUSH style + draw-mode (Select/Draw/Erase). The
 # document (`FlipDoc`) + the pointer→world→stroke interaction live in the shell

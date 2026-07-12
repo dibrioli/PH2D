@@ -285,7 +285,7 @@ pub fn paint_hero_screen(
         // over the inspector slot while the `vector` tool is active. Its
         // `paint()` no-ops when hidden, so this is inert otherwise.
         ids::VECTOR_PANEL,
-        // Flip tool Style panel (ADR-0113 W2 docked `ph2d-panel-flip`): docks
+        // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`): docks
         // over the inspector slot while the `flip` tool is active (bridge-driven
         // visibility). Its `paint()` no-ops when hidden, so this is inert
         // otherwise. WITHOUT this entry the registered+visible panel is never

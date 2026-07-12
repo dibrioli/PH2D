@@ -1,4 +1,4 @@
-//! ADR-0113 W2 T2.9 — the Flip eraser (clean-room of GP `erase.cc`, 3 modes).
+//! ADR-0114 W2 T2.9 — the Flip eraser (clean-room of GP `erase.cc`, 3 modes).
 //!
 //! - **Soft** (default, most paint-like): reduces per-point opacity by
 //!   `strength · falloff(dist)` within the brush radius; on pen-up, points that

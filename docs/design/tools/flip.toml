@@ -1,4 +1,4 @@
-# Flip — a ferramenta de primeira classe do módulo Flip (ADR-0113), animação
+# Flip — a ferramenta de primeira classe do módulo Flip (ADR-0114), animação
 # quadro-a-quadro (port 2D do Grease Pencil). Modos Select/Draw/Erase; o painel
 # hospeda Brush/Color/Layers. Render + roteamento de ponteiro = o `flip_bridge`
 # sobre `AppGfx.flip` (`FlipDoc`).

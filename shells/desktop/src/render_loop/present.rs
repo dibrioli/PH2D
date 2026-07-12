@@ -23,7 +23,7 @@ impl crate::App {
     /// across the encode work (excluding the vsync-blocking
     /// `acquire_frame` call).
     pub(super) fn run_present_phase(&mut self, cpu_start: Instant, r: f64, g: f64, b: f64) {
-        // ADR-0113 W2: GPU-data do traço Flip em curso (preview ao vivo), construída
+        // ADR-0114 W2: GPU-data do traço Flip em curso (preview ao vivo), construída
         // ANTES do borrow de `self.gfx` (lê a câmera + o gesto; devolve owned).
         let flip_preview = self.flip_preview_data();
         let Some(gfx) = self.gfx.as_mut() else {
@@ -56,7 +56,7 @@ impl crate::App {
             // Motion Nodes M0.T13: read the center split to frame the scene into
             // its sub-rect (set by the bridge earlier this frame).
             hero_screen,
-            // ADR-0113 W1: a cena Flip + o rasterizador do traço + a composição
+            // ADR-0114 W1: a cena Flip + o rasterizador do traço + a composição
             // por-camada (compositor 22-modos), tudo no passe 1b abaixo.
             flip,
             flip_render,
@@ -135,7 +135,7 @@ impl crate::App {
                     motion_slice,
                     scene_viewport,
                 );
-                // Pass 1b: Flip (ADR-0113 W1) composto por-camada (blend/opacity via
+                // Pass 1b: Flip (ADR-0114 W1) composto por-camada (blend/opacity via
                 //   compositor 22-modos) no `game_rt`, amostrado pelo playhead,
                 //   MESMA câmera dos sprites. O blit final usa LoadOp::Load (preserva
                 //   os sprites por baixo). No-op sem camada Flip ativa (default).

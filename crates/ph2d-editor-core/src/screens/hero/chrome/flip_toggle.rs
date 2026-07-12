@@ -1,5 +1,5 @@
 // ph2d-chrome-sync:z=271 (dispatch priority, ADR-0107; lower = earlier)
-//! TopBar Flip pill — **toggle** para a ferramenta de desenho Flip (ADR-0113
+//! TopBar Flip pill — **toggle** para a ferramenta de desenho Flip (ADR-0114
 //! W2). Clicar ativa `flip` quando inativa; clicar de novo desativa (volta pra
 //! default). O drain do shell em `render_loop::mod` faz o `set_active` /
 //! `activate_default` (o `flip_tools` é direct-activate, como o Vector).

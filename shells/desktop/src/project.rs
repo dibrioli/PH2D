@@ -13,7 +13,7 @@
 use crate::undo::{ProjectState, ProjectUndo};
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
-/// v2 (ADR-0113): `ProjectState` ganhou o campo `flip: FlipDoc` (3º) — postcard é
+/// v2 (ADR-0114): `ProjectState` ganhou o campo `flip: FlipDoc` (3º) — postcard é
 /// posicional, então um arquivo v1 não desserializa. Sem custo real: a
 /// persistência ainda é stub (sem diálogo de arquivo), sem saves publicados.
 const PROJECT_SCHEMA: u32 = 2;
@@ -178,7 +178,7 @@ mod tests {
     fn project_file_round_trips_through_postcard() {
         let mut vec = VecScene::new();
         vec.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
-        // ADR-0113: o FlipDoc entra no ProjectState (3º campo) → o save o carrega
+        // ADR-0114: o FlipDoc entra no ProjectState (3º campo) → o save o carrega
         // de graça (mesma captura do undo).
         let mut flip = ph2d_flip::FlipDoc::new();
         flip.push_object("Anim");

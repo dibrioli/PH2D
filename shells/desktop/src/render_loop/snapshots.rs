@@ -96,7 +96,7 @@ pub(super) fn publish(
     // ADR-0112: …mas NÃO nos modos de desenho/edição de nós. As alças do gizmo
     // registram hit-rects e comeriam o clique da âncora.
     vec_gizmo_on: bool,
-    // ADR-0113/ADR-0111: um objeto Flip TAMBÉM publica `GizmoView` (mesma caixa/pivô/
+    // ADR-0114/ADR-0111: um objeto Flip TAMBÉM publica `GizmoView` (mesma caixa/pivô/
     // rotação, da bbox local da arte + `Transform`), fora dos modos Draw/Erase da
     // tool Flip (senão o gizmo comeria o clique do canvas).
     flip: &FlipDoc,

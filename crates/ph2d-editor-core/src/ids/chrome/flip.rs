@@ -1,4 +1,4 @@
-//! Flip module chrome NodeIds (ADR-0113 W2 — docked `ph2d-panel-flip`).
+//! Flip module chrome NodeIds (ADR-0114 W2 — docked `ph2d-panel-flip`).
 //!
 //! The `flip` tool's Brush / Color / Layers controls live in a right-docked
 //! `Panel<State>` (the tool `FloatingPanel` is unpainted, mirror of the Vector
@@ -56,7 +56,7 @@ pub const FLIP_LAYER_DELETE: NodeId = hash_node_id("flip.layer.delete");
 /// Runtime FNV-1a 64-bit over `s`, byte-identical to the `const fn`
 /// [`hash_node_id`] (which only accepts `&'static str`). Needed because the
 /// per-layer row ids are derived from a runtime `format!` (the `LayerId` is only
-/// known at runtime). Kept flip-local (isolation, ADR-0113) — its agreement with
+/// known at runtime). Kept flip-local (isolation, ADR-0114) — its agreement with
 /// `hash_node_id` is pinned by the test at the bottom of this module.
 fn flip_fnv_node_id(s: &str) -> NodeId {
     const FNV_OFFSET_BASIS_64: u64 = 0xcbf2_9ce4_8422_2325;

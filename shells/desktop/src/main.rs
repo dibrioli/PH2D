@@ -242,7 +242,7 @@ impl App {
             vec_pen: ph2d_vec_edit::PenTool::new(),
             vec_shape: ph2d_vec_edit::ShapeTool::new(),
             vec_draw_config: ph2d_tool_vector::VectorDrawConfig::default(),
-            // ADR-0113 W2: estado de desenho do Flip (publicado pelo flip_bridge).
+            // ADR-0114 W2: estado de desenho do Flip (publicado pelo flip_bridge).
             flip_active: false,
             flip_style: None,
             flip_draw: crate::flip_draw::FlipDraw::default(),

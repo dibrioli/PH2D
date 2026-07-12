@@ -240,7 +240,7 @@ impl crate::App {
                 {
                     audio.editor_export(&path);
                 }
-                // Export compressed Ogg Vorbis (ADR-0113).
+                // Export compressed Ogg Vorbis (ADR-0114).
                 if ed::take_export_ogg()
                     && audio.editor_loaded()
                     && let Some(path) = rfd::FileDialog::new()
@@ -487,10 +487,10 @@ impl crate::App {
             vello_pass,
             vector_scene,
             vec_scene,
-            // ADR-0113: cena Flip. A ponte objeto↔entidade é reconciliada todo
+            // ADR-0114: cena Flip. A ponte objeto↔entidade é reconciliada todo
             // frame (abaixo, ao lado do vetor). O RENDER é no present phase.
             flip,
-            // ADR-0113 W1: o rasterizador + a composição são usados no present.rs.
+            // ADR-0114 W1: o rasterizador + a composição são usados no present.rs.
             flip_render: _,
             flip_compose: _,
             flip_composite: _,
@@ -1310,7 +1310,7 @@ impl crate::App {
                         {
                             pending_vec_font_pick = val.parse::<usize>().ok();
                         }
-                        // ADR-0113 W2: Flip layer ops (add/delete/select/visibility/
+                        // ADR-0114 W2: Flip layer ops (add/delete/select/visibility/
                         // lock/reorder/opacity/blend) are DOCUMENT edits — apply to
                         // `gfx.flip` + the active-layer pointer (mirror of the vector
                         // Boolean/Arrange capture). No-op for non-Flip ids. Still
@@ -2414,7 +2414,7 @@ impl crate::App {
                     }
                 }
             }
-            // ADR-0113 W2: espelha o estado da tool Flip (ativa + estilo de brush)
+            // ADR-0114 W2: espelha o estado da tool Flip (ativa + estilo de brush)
             // pro input_dispatch decidir/assar o desenho sem downcast (o downcast
             // vive no flip_bridge, allowlistado).
             let (flip_active, flip_style) =
@@ -2563,7 +2563,7 @@ impl crate::App {
                     .flatten()
                     .collect();
             crate::vec_transform::settle_origins(sim, vec_scene, &self.vec_entities, &drawing);
-            // ADR-0113/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
+            // ADR-0114/ADR-0111: idem para os objetos Flip — o pivô nasce no centro do
             // MUNDO; assim que a arte pára de crescer, ele vai para o centro dela (e a
             // geometria vira LOCAL). O objeto EM GESTO (desenho/borracha ativos) NÃO é
             // assentado — a mão escreve MUNDO a cada frame e somar geometria+Transform

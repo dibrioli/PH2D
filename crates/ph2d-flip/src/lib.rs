@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! `ph2d-flip` — o modelo de documento do **Flip**, o meio de animação desenhada
 //! quadro-a-quadro do PH2D (o "Grease Pencil" do engine; ver `docs/Flip/` +
-//! ADR-0113).
+//! ADR-0114).
 //!
 //! Modelo **puro e serializável**, sem render nem ECS — testável headless. A
 //! hierarquia:

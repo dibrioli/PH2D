@@ -39,7 +39,7 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
     (
         "set_mode",
         "FlipTool canvas mode (Select/Draw/Erase): a single `mode` field write on a \
-         deliberately-thin tool (ADR-0113). No derived cache — the shell reads `mode()` \
+         deliberately-thin tool (ADR-0114). No derived cache — the shell reads `mode()` \
          fresh each frame from the published snapshot to route input + the gizmo.",
     ),
     (

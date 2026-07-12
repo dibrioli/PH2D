@@ -1,4 +1,4 @@
-//! ADR-0113 W2 T2.7 — **active smoothing** do traço do Flip (o "assentar" que
+//! ADR-0114 W2 T2.7 — **active smoothing** do traço do Flip (o "assentar" que
 //! separa uma mão de desenho premium de uma medíocre). Clean-room do
 //! `paint.cc:544-621` (Grease Pencil 5.2): a intenção, não o código.
 //!

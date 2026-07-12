@@ -1963,13 +1963,13 @@ impl App {
         if self.painter_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
-        // Flip stroke (ADR-0113 W2, SHELL-only): while a Flip canvas stroke is open,
+        // Flip stroke (ADR-0114 W2, SHELL-only): while a Flip canvas stroke is open,
         // every motion adds a world sample. Early-return so it doesn't also drive a
         // gizmo drag / pan. No-op unless a Flip stroke is in progress.
         if self.flip_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
-        // Flip eraser (ADR-0113 W2 T2.9): while an erase gesture is open, every
+        // Flip eraser (ADR-0114 W2 T2.9): while an erase gesture is open, every
         // motion erases under the cursor. Early-return like the stroke. No-op
         // unless a Flip erase is in progress.
         if self.flip_erase_canvas_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2196,7 +2196,7 @@ impl App {
                 h.store.panel_at(evt.x, evt.y).is_none() && h.hit_index.hit(evt.x, evt.y).is_none()
             })
             .unwrap_or(false);
-        // ADR-0113 W2: desenho do Flip. O pen-UP sempre encerra um traço em curso
+        // ADR-0114 W2: desenho do Flip. O pen-UP sempre encerra um traço em curso
         // (consome), mesmo que o modo tenha mudado no meio. O pen-DOWN começa um
         // traço só no modo Draw, em canvas vazio — em Select cai no gizmo/pick.
         if kind == PointerKind::Up
@@ -2723,7 +2723,7 @@ impl App {
                             world_pos,
                             crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         );
-                        // ADR-0113/ADR-0111: a arte Flip também compõe por cima dos
+                        // ADR-0114/ADR-0111: a arte Flip também compõe por cima dos
                         // sprites — entra na lista do clique-cíclico, sob o vetor.
                         hits.extend(crate::flip_gizmo_view::pick_all_at_world(
                             &gfx.sim,
@@ -3078,7 +3078,7 @@ impl App {
                             world_pos,
                             crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         );
-                        // ADR-0113/ADR-0111: a arte Flip também compõe por cima dos
+                        // ADR-0114/ADR-0111: a arte Flip também compõe por cima dos
                         // sprites — entra na lista do clique-cíclico, sob o vetor.
                         hits.extend(crate::flip_gizmo_view::pick_all_at_world(
                             &gfx.sim,
@@ -3317,7 +3317,7 @@ impl App {
                                 rmin,
                                 rmax,
                             );
-                            // ADR-0113/ADR-0111: o marquee também pega objetos Flip pela
+                            // ADR-0114/ADR-0111: o marquee também pega objetos Flip pela
                             // bbox de mundo.
                             bits.extend(crate::flip_gizmo_view::pick_in_world_rect(
                                 &gfx.sim,

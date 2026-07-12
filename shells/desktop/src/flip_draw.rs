@@ -1,4 +1,4 @@
-//! ADR-0113 W2 T2.5/T2.6 — a interação de DESENHO do Flip no shell (o documento
+//! ADR-0114 W2 T2.5/T2.6 — a interação de DESENHO do Flip no shell (o documento
 //! + a interação vivem aqui, não na tool; mesmo padrão do Vector).
 //!
 //! `FlipDraw` acumula as amostras do traço em curso (mundo + pressão); no pen-up

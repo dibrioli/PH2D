@@ -1,4 +1,4 @@
-//! ADR-0113 W2 T2.15/T2.16 — apply the Flip Layers-panel events to the document.
+//! ADR-0114 W2 T2.15/T2.16 — apply the Flip Layers-panel events to the document.
 //!
 //! The docked panel forwards layer edits as `ToolPanelEvent`s (the tool ignores
 //! them — they are DOCUMENT edits, mirror of the Vector Boolean/Arrange ops). The

@@ -1,4 +1,4 @@
-// Flip — rasterização de traço (ADR-0113, W1), clean-room do Grease Pencil 5.2
+// Flip — rasterização de traço (ADR-0114, W1), clean-room do Grease Pencil 5.2
 // (`draw_grease_pencil_lib.glsl`), adaptado ao 2D-ortográfico do PH2D: a matemática
 // 3D do GP COLAPSA — sem perspectiva, `thickness_px = raio·zoom`, e o plano do
 // traço É o plano da tela.

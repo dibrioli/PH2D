@@ -91,7 +91,7 @@ ph2d-painter-effects = { path = "../../crates/ph2d-painter-effects" }
 # routes the pointer to the shell-held Pen over `AppGfx.vec_scene`
 # (vector_bridge.rs). Replaces the retired Pen/Pencil/Shape/Select/Direct tools.
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
-# Flip drawing tool (ADR-0113 W2) — the shell's `flip_bridge` downcasts it for
+# Flip drawing tool (ADR-0114 W2) — the shell's `flip_bridge` downcasts it for
 # the brush style + routes canvas pointer → world → `FlipDoc` stroke.
 ph2d-tool-flip = { path = "../../crates/ph2d-tool-flip" }
 # Make Square one-shot — the shell drain calls
@@ -175,7 +175,7 @@ ph2d-panel-padding = { path = "../../crates/ph2d-panel-padding", optional = true
 # (Inspector slot takeover) while the `vector` tool is active. Shell publishes
 # the snapshot via `ph2d_panel_vector::set_current_vector_style` (vector_bridge).
 ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector", optional = true }
-# Flip Style panel (ADR-0113 W2) — typed panel with the `flip` tool's Mode /
+# Flip Style panel (ADR-0114 W2) — typed panel with the `flip` tool's Mode /
 # Brush / Color / Layers controls. Right-docked (Inspector slot takeover) while
 # the `flip` tool is active. Shell publishes the style + layers snapshots via
 # `ph2d_panel_flip::set_current_flip_*` (flip_bridge).

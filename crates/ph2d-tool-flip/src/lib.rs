@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! `ph2d-tool-flip` — a ferramenta de desenho do Flip (ADR-0113 W2).
+//! `ph2d-tool-flip` — a ferramenta de desenho do Flip (ADR-0114 W2).
 //!
 //! A ferramenta de primeira classe do módulo Flip (animação quadro-a-quadro): um
 //! pill do cluster `flip_tools` que ativa o desenho sobre o `FlipDoc`. Modos

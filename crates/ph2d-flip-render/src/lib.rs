@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 //! `ph2d-flip-render` — o pipeline **wgpu dedicado** que rasteriza os traços do
-//! Flip (ADR-0113, W1). Mesmo caminho para o editor e para o runtime do jogo.
+//! Flip (ADR-0114, W1). Mesmo caminho para o editor e para o runtime do jogo.
 //!
 //! Por que crate separada (e não dentro de `ph2d-render`): o `ph2d-render`
 //! deliberadamente **não depende de crates de documento** (o editor constrói a

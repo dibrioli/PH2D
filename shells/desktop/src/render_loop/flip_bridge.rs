@@ -1,4 +1,4 @@
-//! ADR-0113 W2 — Flip tool ⟷ shell bridge.
+//! ADR-0114 W2 — Flip tool ⟷ shell bridge.
 //!
 //! Per-frame jobs (mirror of the `vector_bridge`):
 //! 1. **Panel visibility** — show the docked `ph2d-panel-flip` iff the `flip`

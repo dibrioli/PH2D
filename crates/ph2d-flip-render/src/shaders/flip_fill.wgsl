@@ -1,4 +1,4 @@
-// Flip — preenchimento (fill) de traços fechados (ADR-0113, W1 T1.6). Triângulos
+// Flip — preenchimento (fill) de traços fechados (ADR-0114, W1 T1.6). Triângulos
 // já triangulados na CPU (ear-clipping): o vertex só transforma mundo→clip e
 // carrega a profundidade da ordem 2D; o fragment devolve a cor chapada premult.
 // Compartilha a MESMA câmera (group 0, binding 0) e o mesmo depth-buffer do

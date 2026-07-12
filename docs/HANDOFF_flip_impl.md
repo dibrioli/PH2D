@@ -93,7 +93,7 @@ componente é um arquivo irmão novo; o registro é append no fim de
 
 | Arquivo | Mudança | Por quê |
 |---|---|---|
-| `crates/ph2d-flip-render/**` (crate NOVA) | pipeline wgpu do traço + fill + composição por-camada | drop-crate isolada (glob `crates/*`); NÃO vai pela `vello::Scene` — passe wgpu dedicado (ADR-0113) |
+| `crates/ph2d-flip-render/**` (crate NOVA) | pipeline wgpu do traço + fill + composição por-camada | drop-crate isolada (glob `crates/*`); NÃO vai pela `vello::Scene` — passe wgpu dedicado (ADR-0114) |
 | `crates/ph2d-flip-render/Cargo.toml` | **dev-deps** `ph2d-render`/`ph2d-gpu`/`ph2d-painter-effects` | SÓ o teste e2e de T1.7 (compositor real). **Não** é dep de runtime — o reuso do compositor é orquestrado no shell |
 | `shells/desktop/src/render_loop/flip_pass.rs` (NOVO) | orquestração stage→inject→composite→blit + `TessCache` | o passe que compõe o Flip no `game_rt`; reusa o `LayerCompositor` 22-modos |
 | `shells/desktop/src/flip_demo.rs` (NOVO) | cena demo ready-to-smoke (gated `PH2D_FLIP_DEMO=1`) | ver o render + o blend Multiply na hora |
@@ -705,7 +705,7 @@ geometria; a forma redonda sai do fragment). GPU: novo
   bounded pelo documento, ok pro W1). W2 pode adicionar cap se necessário.
 - Persistir `flip` cross-sessão já funciona (entra no `ProjectState`); a UI real de
   Save/Open continua stub (herança do estado atual da persistência).
-- **Docs de planejamento** (`docs/Flip/`, `docs/architecture/decisions/0113-*.md`,
+- **Docs de planejamento** (`docs/Flip/`, `docs/architecture/decisions/0114-*.md`,
   `project-memory/project_flip_module_grease_pencil_2d.md`) estão **untracked na
   árvore primária** — NÃO os commitei nesta linha (senão o `merge --ff-only` da
   integração quebra com "untracked working tree files would be overwritten"). O Enio

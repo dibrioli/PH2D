@@ -1,6 +1,6 @@
 //! O `Transform` dos objetos Flip (ADR-0111 parity, espelho de [`crate::vec_transform`]).
 //!
-//! Desde o ADR-0113 cada objeto Flip é uma entidade ([`crate::flip_entities`]).
+//! Desde o ADR-0114 cada objeto Flip é uma entidade ([`crate::flip_entities`]).
 //! Aqui ela ganha **pose**: a geometria dos traços passa a ser LOCAL, e o afim que
 //! a leva ao mundo é `parent_world_transform ∘ Transform` — a MESMA cadeia de um
 //! sprite. Consequência: um objeto Flip é movido/girado/escalado pelo **gizmo de

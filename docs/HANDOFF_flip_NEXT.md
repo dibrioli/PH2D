@@ -1,7 +1,7 @@
 # HANDOFF — Linha FLIP, próximo agente (COMECE AQUI)
 
 > Você vai continuar a implementação da linha **FLIP** (o 4º meio do PH2D: animação
-> quadro-a-quadro, port 2D clean-room do Grease Pencil do Blender — ADR-0113).
+> quadro-a-quadro, port 2D clean-room do Grease Pencil do Blender — ADR-0114).
 > Leia este arquivo INTEIRO antes de tocar em código. O tracker exaustivo do que já
 > landou é [`HANDOFF_flip_impl.md`](HANDOFF_flip_impl.md) — leia depois deste.
 >
@@ -124,4 +124,4 @@ Desenhe zigzags/curvas com hardness alto E baixo; cruze o traço consigo mesmo. 
 3. Se o Enio pedir, escreva o **handoff de integração** (DIRETRIZ §1.5.9): símbolos novos grep-áveis, foundational tocado, contratos encostados, ordem de dependências, o que só o `ship.sh` pega. Veja a §3 do `HANDOFF_flip_impl.md` como modelo (já lista os símbolos das crates Flip).
 4. **PARE.** Não integre, não pushe, não rode `ship.sh`. Reporte o commit local pronto + o link do smoke e espere ordem do Enio.
 
-> Docs de planejamento (`docs/Flip/`, ADR-0113, memórias) estão **untracked na árvore primária** — NÃO os commite nesta linha (quebra o `merge --ff-only` da integração). O Enio os commita por fora.
+> Docs de planejamento (`docs/Flip/`, ADR-0114, memórias) estão **untracked na árvore primária** — NÃO os commite nesta linha (quebra o `merge --ff-only` da integração). O Enio os commita por fora.

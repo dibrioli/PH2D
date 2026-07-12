@@ -1,5 +1,5 @@
 //! `FlipObjectRef` — a entidade que representa um objeto Flip na árvore do editor
-//! (ADR-0110/0113).
+//! (ADR-0110/0114).
 //!
 //! O documento Flip (`ph2d-flip`) é puro e não conhece ECS: ele é dono das
 //! **camadas, frames e desenhos**. Esta componente é a única ponte, e carrega só

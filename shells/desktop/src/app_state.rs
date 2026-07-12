@@ -108,19 +108,19 @@ pub(crate) struct AppGfx {
     /// Vello compartilhada. Fase 0 = cena-demo (prova o seam ponta-a-ponta);
     /// Fase 1 = dirigida pelas ferramentas de desenho.
     pub(crate) vec_scene: ph2d_vec_scene::VecScene,
-    /// ADR-0113: cena Flip (animação quadro-a-quadro). Documento puro
+    /// ADR-0114: cena Flip (animação quadro-a-quadro). Documento puro
     /// (`ph2d-flip`); cada objeto vira uma entidade na Hierarquia via
     /// `FlipObjectRef`, ponte mantida por `flip_entities::sync`. Mirror do
     /// `vec_scene` — document ≠ tool. Guardada no `ProjectState` (undo/save).
     pub(crate) flip: ph2d_flip::FlipDoc,
-    /// ADR-0113 W1: o pipeline wgpu que rasteriza o traço do Flip no `game_rt`
+    /// ADR-0114 W1: o pipeline wgpu que rasteriza o traço do Flip no `game_rt`
     /// (HDR), amostrado pelo playhead. Criado 1× (device + formato do game_rt).
     pub(crate) flip_render: ph2d_flip_render::FlipRenderer,
-    /// ADR-0113 W1 T1.7: as passagens de espaço-de-cor (resolve 16F→sRGB8 e blit
+    /// ADR-0114 W1 T1.7: as passagens de espaço-de-cor (resolve 16F→sRGB8 e blit
     /// sRGB8→16F) que ligam o rasterizador ao `LayerCompositor` do Painter. Criado
     /// 1× (device + formato do game_rt). O compositor em si é o `flip_composite`.
     pub(crate) flip_compose: ph2d_flip_render::FlipCompose,
-    /// ADR-0113 W1 T1.7: a sessão de composição por-camada do Flip — o
+    /// ADR-0114 W1 T1.7: a sessão de composição por-camada do Flip — o
     /// `LayerCompositor` 22-modos do Painter + o buffer dummy que satisfaz o
     /// filtro de tamanho do `ensure_slice` (as fatias reais entram por
     /// `inject_slice_from_texture`, então o dummy nunca é subido). Lazy: só nasce
@@ -576,21 +576,21 @@ pub(crate) struct App {
     /// the `VectorTool` (the input dispatch can't downcast — that lives in the
     /// allowlisted bridge). Decides pen vs shape routing + sizes the shapes.
     pub(crate) vec_draw_config: ph2d_tool_vector::VectorDrawConfig,
-    /// ADR-0113 W2: a tool Flip está ativa? Cacheado do registry pelo `flip_bridge`
+    /// ADR-0114 W2: a tool Flip está ativa? Cacheado do registry pelo `flip_bridge`
     /// (o `input_dispatch` não pode fazer downcast — vive no bridge allowlistado).
     pub(crate) flip_active: bool,
-    /// ADR-0113 W2: o estilo de brush + modo espelhados do `FlipTool` a cada frame
+    /// ADR-0114 W2: o estilo de brush + modo espelhados do `FlipTool` a cada frame
     /// pelo `flip_bridge`. `None` quando a tool está inativa. O `input_dispatch` lê
     /// isto (sem downcast) pra decidir desenhar + assar o traço.
     pub(crate) flip_style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
-    /// ADR-0113 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
+    /// ADR-0114 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
     /// `FlipDoc` no pen-up. Vazio quando não há gesto.
     pub(crate) flip_draw: crate::flip_draw::FlipDraw,
-    /// ADR-0113 W2: a camada ATIVA do Flip (alvo do traço/borracha + destaque no
+    /// ADR-0114 W2: a camada ATIVA do Flip (alvo do traço/borracha + destaque no
     /// painel). Setada pela seleção de linha no painel (drain do shell); `None`
     /// ⇒ o bake usa a camada de topo (o `flip_bridge` também destaca a de topo).
     pub(crate) flip_active_layer: Option<ph2d_flip::LayerId>,
-    /// ADR-0113 W2 T2.9: uma borracha do Flip está em curso (Down..Up no modo
+    /// ADR-0114 W2 T2.9: uma borracha do Flip está em curso (Down..Up no modo
     /// Erase). Enquanto `true`, cada move apaga sob o cursor; o pen-up faz o
     /// cleanup do Soft. `false` quando não há gesto.
     pub(crate) flip_erasing: bool,
@@ -669,7 +669,7 @@ pub(crate) struct App {
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,
-    /// `FlipObjectId` → entidade ECS que o representa na Hierarquia (ADR-0113). O
+    /// `FlipObjectId` → entidade ECS que o representa na Hierarquia (ADR-0114). O
     /// invariante "um objeto ⟺ uma entidade" é mantido por `flip_entities::sync`.
     pub(crate) flip_entities: crate::flip_entities::FlipEntityMap,
     /// Espelho da última sincronia de seleção canvas ↔ Hierarquia (ADR-0110): diz

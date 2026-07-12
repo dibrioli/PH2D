@@ -1,4 +1,4 @@
-//! `ph2d-panel-flip` — typed `Panel<State>` for the Flip tool (ADR-0113 W2).
+//! `ph2d-panel-flip` — typed `Panel<State>` for the Flip tool (ADR-0114 W2).
 //!
 //! Right-docked in the Inspector slot; visible only while the `flip` tool is
 //! active (the shell's `flip_bridge` drives `panel_visible("flip")` from the

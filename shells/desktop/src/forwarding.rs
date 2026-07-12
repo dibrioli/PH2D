@@ -374,7 +374,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // Vector Style panel (right-dock takeover, ADR-0108). Same reason as
         // painter-layers: the canvas extends under the docked panel.
         || inside(VECTOR_PANEL)
-        // Flip Style panel (right-dock takeover, ADR-0113 W2). Publishes a
+        // Flip Style panel (right-dock takeover, ADR-0114 W2). Publishes a
         // scrollbar thumb (the Layers stack overflows), so it must intercept the
         // wheel — same bug otherwise (wheel zooms the camera under the panel).
         || inside(FLIP_PANEL)

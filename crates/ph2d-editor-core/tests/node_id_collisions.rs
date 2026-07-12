@@ -529,7 +529,7 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_FILL_RULE_EVENODD", ids::VECTOR_FILL_RULE_EVENODD),
     ("VECTOR_SNAP_OFF", ids::VECTOR_SNAP_OFF),
     ("VECTOR_SNAP_ON", ids::VECTOR_SNAP_ON),
-    // Flip tool Style panel (ADR-0113 W2 docked `ph2d-panel-flip`).
+    // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`).
     ("FLIP_PANEL", ids::FLIP_PANEL),
     ("FLIP_CLOSE", ids::FLIP_CLOSE),
     ("FLIP_MODE_SELECT", ids::FLIP_MODE_SELECT),
@@ -677,7 +677,7 @@ fn painter_dynamic_ids_dont_collide_with_chrome_or_each_other() {
     }
 }
 
-/// The Flip layers panel's per-row ids (ADR-0113 W2, from `flip_layer_widget_id`)
+/// The Flip layers panel's per-row ids (ADR-0114 W2, from `flip_layer_widget_id`)
 /// must collide neither with any fixed chrome const nor with each other — same
 /// guard the painter dynamic ids get, extended to the Flip per-row id space.
 #[test]

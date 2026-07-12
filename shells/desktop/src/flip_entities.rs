@@ -1,4 +1,4 @@
-//! A ponte entre o documento Flip e a árvore do editor (ADR-0113), espelhando
+//! A ponte entre o documento Flip e a árvore do editor (ADR-0114), espelhando
 //! [`crate::vec_entities`] (o vetor).
 //!
 //! Cada [`ph2d_flip::FlipObject`] tem uma entidade ECS que o referencia

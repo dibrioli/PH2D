@@ -106,7 +106,7 @@
 - [Norte node-centric](project_node_centric_decision_2026_05_21.md) — engine = sistema de nós multi-domínio; `ph2d-nodegraph`+`ph2d-expr`; FBP = unidade multi-agente
 - [Motion keyframes adiados p/ timeline](project_motion_keyframes_deferred_timeline_integration.md) — M2.W1 ADIADO 2026-07-09; pesquisa pré-impl preservada
 - [Vector cutover ADR-0108](project_vector_cutover_adr0108.md) — módulo REPOSICIONADO (Rive-ref, GPU/editor-first); `ph2d-vec-*`+`ph2d-tool-vector`; icon-sort=slug, gate-doc FICA
-- [Flip = port 2D do Grease Pencil](project_flip_module_grease_pencil_2d.md) — 4º meio (animação quadro-a-quadro), PLANEJADO 2026-07-11; 2D SEM 3D; ultra-perf wgpu; ADR-0113 + `docs/Flip/`
+- [Flip = port 2D do Grease Pencil](project_flip_module_grease_pencil_2d.md) — 4º meio (animação quadro-a-quadro), PLANEJADO 2026-07-11; 2D SEM 3D; ultra-perf wgpu; ADR-0114 + `docs/Flip/`
 - [Flip: traço = tripé do GP (mordida ABERTA)](project_flip_stroke_analytic_coverage_gp.md) — fita+miter_break · GREATER estrito · discard a<0.001 mataram acúmulo/spike/bead/escama; FALTA p0/p3 (quina mordida); oráculo que espelha o código só pega regressão
 - [Modelo multi-agente = função do HW](project_multiagent_modo_l_2026_07_05.md) — workstation=Modo L (worktree, sem coordenador); constrained=Modo C. ADR-0106/0107
 - [Tool isolation ADR-0040 frozen](project_tool_isolation_freeze_2026_05_22.md) — tools = drop-crates + tool-sync codegen; tool nova = fan-out drop-in

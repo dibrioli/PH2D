@@ -30,7 +30,7 @@ const UNDO_CAP: usize = 256;
 ///
 /// `WorldSnapshot` cobre toda entidade com componente registrado — pose, nome,
 /// árvore, trava, e as referências que ligam um path (`VecPathRef`) ou um objeto
-/// Flip (`FlipObjectRef`) à entidade (ADR-0110/0113). `VecScene` e `FlipDoc` são
+/// Flip (`FlipObjectRef`) à entidade (ADR-0110/0114). `VecScene` e `FlipDoc` são
 /// as geometrias, que vivem fora do ECS. Juntos são o projeto inteiro exceto os
 /// pixels dos sprites (estáveis, não mudam a cada ação — o save os anexa à parte).
 ///
@@ -457,7 +457,7 @@ mod tests {
         let again = capture(&mut sim, &rvec, &reg);
         assert_eq!(snap, again, "restore->capture != capture original");
     }
-    /// ADR-0113: o `FlipDoc` entra na captura como 3º campo. Round-trip por
+    /// ADR-0114: o `FlipDoc` entra na captura como 3º campo. Round-trip por
     /// capture→restore, a ponte objeto↔entidade é reconstruída, e capturar o
     /// mesmo estado 2× é idêntico (o flip é determinístico — sem diff espúrio).
     #[test]

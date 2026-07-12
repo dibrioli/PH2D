@@ -19,7 +19,7 @@
 | **HEAD** | o tip da branch — `git rev-parse --short line/FLIP` (os 2–3 últimos commits são **só docs**; o último de código é `0e966416`) |
 | **Base (merge-base com `main`)** | `1c7c9a22` |
 | **Commits na linha** | ~51 (todos `--no-verify`, fast mode) |
-| **Escopo** | ADR-0113 — o 4º meio do PH2D (animação quadro-a-quadro, port 2D clean-room do Grease Pencil 5.2): W0 (modelo) + W1 (render GPU) + W2 (tool + painel + desenho + borracha + Select/gizmo) |
+| **Escopo** | ADR-0114 — o 4º meio do PH2D (animação quadro-a-quadro, port 2D clean-room do Grease Pencil 5.2): W0 (modelo) + W1 (render GPU) + W2 (tool + painel + desenho + borracha + Select/gizmo) |
 
 **Ordem dos commits:** linear, sem interdependência frágil (W0 → W1 → W2 → smoke
 fixes → rodada 7 do raster). **Integre como UM bloco** — não faça cherry-pick
@@ -235,7 +235,7 @@ existe para pegar.)*
    ```
    cd /home/enio/Documentos/Projetos/PH2D && cargo run -p ph2d-host-desktop --release
    ```
-4. **Docs de planejamento untracked no primário** (`docs/Flip/`, ADR-0113,
+4. **Docs de planejamento untracked no primário** (`docs/Flip/`, ADR-0114,
    `project-memory/project_flip_*.md`): **não estão commitados nesta linha de propósito**
    (untracked no primário quebraria o `merge --ff-only` com "untracked working tree files
    would be overwritten"). **O Enio commita esses por fora**, antes ou depois da integração.

@@ -1,4 +1,4 @@
-//! Flip Style panel — the Layers section (ADR-0113 W2 T2.15).
+//! Flip Style panel — the Layers section (ADR-0114 W2 T2.15).
 //!
 //! Mirrors the Painter layers panel idiom: an Add / Delete toolbar + one block
 //! per layer (top→bottom) with an eye (visibility), a padlock (lock), the name

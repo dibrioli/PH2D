@@ -1,4 +1,4 @@
-//! ADR-0113 W1 T1.8 — o **cache de tesselação por (objeto, desenho)** do passe
+//! ADR-0114 W1 T1.8 — o **cache de tesselação por (objeto, desenho)** do passe
 //! Flip, extraído de `flip_pass` (HR-18 LOC). Puro CPU (sem GPU) — testável
 //! headless.
 //!

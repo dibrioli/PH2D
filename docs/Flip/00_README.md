@@ -13,7 +13,8 @@
 | [`02_referencia_algoritmos_blender_5.2.md`](02_referencia_algoritmos_blender_5.2.md) | os algoritmos do GP 5.2 por subsistema, com pseudocódigo, constantes e `arquivo:linha`: dados · engine · shader · AA · tween · curvas · draw/erase · fill · sculpt · frames/onion · materiais · VFX · seleção/cíclicas · GL→wgpu | antes de CADA tópico de implementação |
 | [`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) | o doc definitivo do traço: o tripé, o invariante, **a mordida (mecanismo provado + a evidência de que o GP tem o mesmo artefato, ABERTO)**, o fix de 4 peças que a matou, o oráculo de aparência + a bateria, kill-criteria, AA | antes de tocar `ph2d-flip-render` |
 | [`04_alem_do_blender.md`](04_alem_do_blender.md) | estado da arte além do GP (com fontes): stroke rendering, inbetweening (BetweenIT/espiral log), fill (LazyBrush/trapped-ball), a paisagem dos apps (TVPaint/Toonz/Harmony/Krita), lições do redesign GPv3, tabela lib GP→crate Rust | ao decidir "faz como o Blender ou melhor?" |
-| `../HANDOFF_flip_impl.md` | tracker do que LANDOU (W0-W2 + a saga das 7 rodadas do traço) | para saber o estado real do código |
+| [`BUGS_flip.md`](BUGS_flip.md) | **os bugs cuja causa ENGANAVA** (sintoma → causa-raiz → becos → solução → lições): a mordida, o oráculo verde-com-bug, o AA da linha fina, o NaN do ponto duplicado, o grid que perdia vizinhos | ANTES de caçar um bug parecido — e depois de resolver um |
+| `../HANDOFF_flip_impl.md` | tracker do que LANDOU (W0-W2 + WT + a saga das 8 rodadas do traço) | para saber o estado real do código |
 | `../HANDOFF_flip_NEXT.md` | onboarding do próximo agente da linha (Modo L + primeira tarefa) | ao abrir a linha |
 
 ## O que é

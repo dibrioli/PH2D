@@ -216,7 +216,11 @@ impl PainterTool {
         // zero-copy fast path. Any non-trivial stack (≥2 layers, or a layer with
         // opacity<1 / non-Normal blend / hidden / an adjustment) MUST be
         // composited here so per-layer opacity / blend / adjustments are visible.
-        if self.is_trivial_stack() && !self.mask_scratch_active() {
+        // Impasto forces the composite path: this lane hands back the RAW `canvas_rgba` Arc, which the
+        // light pass must never write into (those are the artist's PIXELS, not a preview buffer) — and a
+        // single-layer document is the common case, so without this guard the most ordinary way to use
+        // Impasto would show no relief at all.
+        if self.is_trivial_stack() && !self.mask_scratch_active() && !self.impasto_visible() {
             // Carry the accumulated dirty bbox into the bridge so a stroke uploads
             // only the touched sub-rect (B.1 partial lane), NOT the whole canvas
             // each frame. `None` here forced a full clone + premul + full texture
@@ -249,6 +253,13 @@ impl PainterTool {
                     };
                     composite_region(&self.layers, &src, w, h, bbox)
                 };
+                // Impasto: light the FRESHLY-composited region (never the cache — lighting is not
+                // idempotent, and re-lighting the cached pixels would compound the shading a little
+                // more every frame). The normal reads across the region's edge into the full height
+                // field, so the border is lit exactly as a full recompose would light it.
+                let mut region = region;
+                self.apply_impasto_light(&mut region, bbox);
+                let region = region;
                 self.compositor_cache.invalidate_from(active, &self.layers);
                 self.adjustment_cache_pending = false;
                 let cache = Arc::make_mut(self.composited.as_mut().expect("checked is_some"));
@@ -273,6 +284,8 @@ impl PainterTool {
                         self.compositor_cache.invalidate_from(active, &self.layers);
                         composite(&self.layers, &src, w, h)
                     };
+                // Impasto: light the whole freshly-composited canvas (see the dirty-rect lane above).
+                self.apply_impasto_light(&mut composed, Region { x: 0, y: 0, w, h });
                 // Mask overlay: tint the composite by the active mask's coverage (no-op otherwise).
                 self.apply_mask_overlay(&mut composed);
                 self.composited = Some(Arc::new(composed));

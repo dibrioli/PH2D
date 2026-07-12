@@ -176,10 +176,19 @@ impl PainterTool {
         if self.paint.stroke_height.is_empty() {
             return;
         }
-        let stroke = std::mem::take(&mut self.paint.stroke_height);
+        let mut stroke = std::mem::take(&mut self.paint.stroke_height);
         let Some(active) = self.layers.active() else {
             return;
         };
+        // **Smoothing** — thick paint settles. It relaxes the deposit ONCE, at stroke end (it is a
+        // property of the paint, not of the light), so the artist can lay a bristly stroke and let it
+        // slump like a heavy medium. Runs on the stroke's own envelope, so it softens what THIS stroke
+        // laid down without touching the relief that was already on the layer.
+        let smoothing = self.paint.brush.effective_impasto_smoothing();
+        if smoothing > 0.0 {
+            let (w, h) = self.source_size;
+            settle(&mut stroke, w, h, smoothing);
+        }
         let n = stroke.len();
         let field = self.heights.entry(active).or_default();
         if field.len() != n {
@@ -213,6 +222,48 @@ impl PainterTool {
                 Some(c.iter().zip(l.iter()).map(|(a, b)| a + b).collect())
             }
             (Some(c), Some(_)) => Some(c.clone()),
+        }
+    }
+}
+
+/// Radius, in pixels, of the settling blur at Smoothing = 1. Thick paint slumps a little, not into a
+/// puddle — past a few pixels the ridges stop reading as brush-marks. // CLAMP-OK
+const SETTLE_MAX_PX: f32 = 4.0;
+
+/// Let a height field **settle** under its own weight: a separable box blur, applied in place.
+///
+/// Binomial-ish by repetition (two box passes ≈ a triangle kernel), which is what a viscous medium
+/// relaxing actually looks like — and it is transcendental-free (HR-5) and O(n) in the radius, unlike
+/// a true Gaussian. The blur is signed, so a carved groove softens exactly as a raised ridge does.
+fn settle(field: &mut [f32], w: u32, h: u32, amount: f32) {
+    let r = (amount.clamp(0.0, 1.0) * SETTLE_MAX_PX).round() as i64;
+    if r < 1 || w == 0 || h == 0 || field.len() < (w as usize) * (h as usize) {
+        return;
+    }
+    let (wi, hi) = (w as i64, h as i64);
+    let mut tmp = vec![0.0f32; field.len()];
+    let inv = 1.0 / (2 * r + 1) as f32;
+    // Horizontal pass.
+    for y in 0..hi {
+        let row = (y * wi) as usize;
+        for x in 0..wi {
+            let mut sum = 0.0;
+            for k in -r..=r {
+                let sx = (x + k).clamp(0, wi - 1) as usize;
+                sum += field[row + sx];
+            }
+            tmp[row + x as usize] = sum * inv;
+        }
+    }
+    // Vertical pass.
+    for y in 0..hi {
+        for x in 0..wi {
+            let mut sum = 0.0;
+            for k in -r..=r {
+                let sy = (y + k).clamp(0, hi - 1) as usize;
+                sum += tmp[sy * (w as usize) + x as usize];
+            }
+            field[(y * wi + x) as usize] = sum * inv;
         }
     }
 }

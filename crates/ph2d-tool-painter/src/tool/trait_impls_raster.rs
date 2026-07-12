@@ -93,6 +93,11 @@ impl RasterEditTool for PainterTool {
     /// opacity / blend / visibility / adjustments) — exactly what the live preview shows.
     fn run_full(&mut self) -> (Vec<u8>, u32, u32) {
         let (w, h) = self.source_size;
+        // Apply flattens the stack into the SPRITE, which is RGBA and nothing else — the height field
+        // does not survive it. So the shading has to be baked in, or Apply would silently throw the
+        // relief away and hand back flat paint. (Bake the look, lose the editability: that is what Apply
+        // is, for every other non-destructive thing in this tool too.)
+        let full = Region { x: 0, y: 0, w, h };
         if !self.is_trivial_stack() {
             let active = self.layers.active().unwrap_or(RtLayerId(0));
             let src = ToolPixelSource {
@@ -100,12 +105,21 @@ impl RasterEditTool for PainterTool {
                 active_rgba: &self.canvas_rgba,
                 images: &self.images,
             };
-            return (composite(&self.layers, &src, w, h), w, h);
+            let mut rgba = composite(&self.layers, &src, w, h);
+            self.apply_impasto_light(&mut rgba, full);
+            return (rgba, w, h);
         }
         // Trivial single-layer fast path: take the Arc out so refcount==1 →
         // `unwrap_or_clone` returns the inner Vec without allocation.
+        let lit = self.impasto_visible();
         let canvas = std::mem::replace(&mut self.canvas_rgba, Arc::new(Vec::new()));
-        (Arc::unwrap_or_clone(canvas), w, h)
+        let mut rgba = Arc::unwrap_or_clone(canvas);
+        if lit {
+            // `canvas_rgba` was just moved out, so lighting it in place is safe — it is the bake's own
+            // buffer now, not the artist's live pixels.
+            self.apply_impasto_light(&mut rgba, full);
+        }
+        (rgba, w, h)
     }
 
     fn deactivate(&mut self) {

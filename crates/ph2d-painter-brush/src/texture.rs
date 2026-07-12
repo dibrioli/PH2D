@@ -605,8 +605,10 @@ pub fn sample_unit(
 // ── Rotation / RNG helpers (transcendental-free) ────────────────────────────────────────────
 
 /// Rotate the unit vector `(1, 0)` by `deg` whole degrees via repeated [`DEG_STEP`] application.
-/// `pub(crate)` so [`crate::jitter`] builds the per-dab Jitter Rotate vector from the same baked step.
-pub(crate) fn rotate_by_degrees(deg: u16) -> [f32; 2] {
+/// Transcendental-free (HR-5): the baked 1-degree step, applied `deg` times. Shared by [`crate::jitter`]
+/// (the per-dab Jitter Rotate vector) and by the Impasto light pass (the light direction) — one rotor,
+/// so every angle in the painter is built the same deterministic way.
+pub fn rotate_by_degrees(deg: u16) -> [f32; 2] {
     let d = deg % 360;
     let (cs, sn) = (DEG_STEP[0], DEG_STEP[1]);
     let (mut x, mut y) = (1.0_f32, 0.0_f32);

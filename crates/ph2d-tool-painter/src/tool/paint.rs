@@ -35,6 +35,7 @@ mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes +
 pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
+mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
@@ -447,6 +448,23 @@ pub(crate) struct PaintState {
     /// `PAINTER_WATERCOLOR_PAPER_COLOR_THUMB` edits it via the shared picker (Rebelle: canvas colour
     /// is a user-pickable document property). Tool-global (not persisted in the document yet).
     paper_color: [f32; 3],
+    /// **Impasto — Show** (canvas-level, like the paper colour / drying time): whether the relief is
+    /// LIT. Off ⇒ the light pass does not run and the composite is byte-identical to a build with no
+    /// Impasto at all. Default on — someone who sculpts wants to see it, and with no relief anywhere
+    /// the pass costs a single `is_empty()`.
+    impasto_show: bool,
+    /// **Light Angle** in whole degrees — the azimuth the light comes from. Default 135° (upper-left:
+    /// the convention every paint program and every human eye reads as "raised", not "engraved").
+    impasto_light_angle_deg: u16,
+    /// **Light Elevation** in whole degrees above the canvas plane. Low = long dramatic shadows across
+    /// the tooth; high = flat, even light. Clamped away from 0 (a grazing light divides by ~0).
+    impasto_light_elev_deg: u16,
+    /// **Amount** (`0..1`) — how strongly the relief bends the surface normal (height-to-slope). `0` =
+    /// the relief is there but invisible; `1` = thick, sculptural paint.
+    impasto_light_amount: f32,
+    /// **Shine** (`0..1`) — strength of the specular highlight riding the crests. `0` = matte paint
+    /// (watercolour/gouache), high = wet oil.
+    impasto_shine: f32,
     /// **Watercolor render-path** per-stroke water DWELL (1 byte/px, `w*h`): how long the held brush
     /// soaked each pixel (grown by [`PainterTool::grow_wet_soak`] on the tick heartbeat). The rewet
     /// reads it as a `0..1` field: more soak = the dissolve reaches FARTHER (blur-scale lerp) and the

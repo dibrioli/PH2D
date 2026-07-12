@@ -133,6 +133,15 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     if painter.preview_is_trivial_stack() {
         return None;
     }
+    // Impasto's light pass is CPU-side (it reads the height field, which the GPU compositor knows
+    // nothing about). Taking the GPU path with relief on screen would composite the layers correctly
+    // and drop the shading on the floor — the artist would sculpt and see nothing. Fall back to the
+    // CPU compositor, which is already the supported path and already what a mask scratch uses.
+    // (The GPU light pass is named and deferred: a new `LayerOp`, reconciled bit-for-bit against this
+    // CPU one — `docs/Painter/16…` §6.)
+    if painter.impasto_visible() {
+        return None;
+    }
     super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
 }
 

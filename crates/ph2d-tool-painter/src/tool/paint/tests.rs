@@ -17075,3 +17075,272 @@ fn impasto_per_layer_color_leaves_one_coherent_relief() {
         "the relief is ONE body of the brush's depth, not one step per shape layer (peak {peak})"
     );
 }
+
+// ── Impasto (#16) — the light pass ────────────────────────────────────────────────────────────────
+
+/// The composited, LIT preview.
+fn lit(t: &mut PainterTool) -> Vec<u8> {
+    let (rgba, _, _) = t.take_preview_arc().expect("a preview");
+    (*rgba).clone()
+}
+
+#[test]
+fn impasto_light_leaves_flat_paint_byte_identical() {
+    // THE contract of the whole pass (T2.3, and stronger than the plan asked). The shading is RELATIVE:
+    // a pixel's response is divided by a flat surface's response. So where there is no relief the pass
+    // multiplies by exactly 1 and adds exactly 0.
+    //
+    // The naive `rgb × (N·L)` would fail this: a flat surface lit from 45° returns 0.707, so switching
+    // the light on would darken the ENTIRE painting by 30%. That bug is in half the emboss filters ever
+    // shipped, and this is the assertion that refuses it.
+    let mut t = impasto_canvas(40);
+    let mut b = t.paint.brush;
+    b.impasto = false; // paint normally: pigment, no body
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    let unlit = lit(&mut t);
+
+    // Now switch the light on, with the relief still empty. Not one byte may move.
+    t.paint.impasto_show = true;
+    t.invalidate_composite();
+    let with_light = lit(&mut t);
+    assert_eq!(
+        unlit, with_light,
+        "no relief ⇒ the light pass is a no-op, to the byte"
+    );
+}
+
+#[test]
+fn impasto_light_reads_as_raised_not_engraved() {
+    // The APPEARANCE oracle ([[feedback_oracle_must_model_appearance_not_implementation]]): an oracle
+    // derived from the shader would go green with the relief inverted on screen. So assert the thing a
+    // human sees instead — a RIDGE lit from the left is BRIGHT on its left flank and DARK on its right.
+    // Get the sign wrong (the classic emboss bug) and the paint reads as a groove carved INTO the
+    // canvas; the arithmetic is just as self-consistent, and every shader-shaped oracle passes.
+    let size = 60u32;
+    let mut t = impasto_canvas(size);
+    // A SOFT brush, deliberately: `impasto_canvas` paints with a hard disk, whose relief is a plateau
+    // with vertical walls — h is identical at the centre and at both "flanks", so there is no gradient
+    // to light and the test would have been asserting about nothing. (The sanity check below caught
+    // exactly that on the first run.) A smooth falloff gives a real ridge with real flanks.
+    let mut soft = t.paint.brush;
+    soft.hardness = 0.0;
+    soft.falloff = Falloff::Smooth;
+    soft.radius_px = 10.0;
+    t.paint.brush = soft;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = soft;
+    }
+    t.paint.impasto_light_angle_deg = 180; // from the LEFT (-x)
+    t.paint.impasto_light_elev_deg = 30;
+    t.paint.impasto_light_amount = 1.0;
+    t.paint.impasto_shine = 0.0; // isolate the diffuse term — the highlight is a separate question
+    // A vertical ridge of paint down the middle.
+    t.on_canvas_pointer(cp([30.0, 10.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 50.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 50.0], PointerPhase::Up));
+
+    let h = relief(&t);
+    let img = lit(&mut t);
+    let lum = |x: u32, y: u32| {
+        let i = ((y * size + x) * 4) as usize;
+        (u32::from(img[i]) + u32::from(img[i + 1]) + u32::from(img[i + 2])) as f32 / 3.0
+    };
+    // Find the flanks: the ridge is ~6 px either side of x=30.
+    let hx = |x: u32| h[(30 * size + x) as usize];
+    assert!(hx(30) > 0.0, "the ridge is there");
+    let (left_flank, right_flank) = (25u32, 35u32); // inside the falloff, either side of the crest
+    assert!(
+        hx(left_flank) < hx(30) && hx(right_flank) < hx(30),
+        "the fixture really is a ridge (it falls away on both sides)"
+    );
+    let l = lum(left_flank, 30);
+    let r = lum(right_flank, 30);
+
+    // The reference is THE SAME PAINT WITH THE LIGHT OFF — not some other pixel. (My first attempt
+    // used the canvas at x=2 as "flat": that is bare white paper, not flat paint, so the comparison was
+    // meaningless and the assert failed for a reason that had nothing to do with the shading.)
+    t.paint.impasto_show = false;
+    t.invalidate_composite();
+    let base_img = lit(&mut t);
+    let base = |x: u32, y: u32| {
+        let i = ((y * size + x) * 4) as usize;
+        (u32::from(base_img[i]) + u32::from(base_img[i + 1]) + u32::from(base_img[i + 2])) as f32
+            / 3.0
+    };
+    let (bl, br) = (base(left_flank, 30), base(right_flank, 30));
+    t.paint.impasto_show = true;
+    t.invalidate_composite();
+
+    // THE appearance claim, stated the way an artist would: the flank turned TOWARD the light gets
+    // brighter than the paint really is, and the flank turned AWAY gets darker. That is what "raised"
+    // looks like. An implementation that merely darkened every edge would fail the first half; one with
+    // the normal's sign flipped would fail both, and would look like a groove carved into the canvas.
+    assert!(
+        l > bl,
+        "the flank facing the light is BRIGHTER than the paint under it ({l} vs {bl})"
+    );
+    assert!(
+        r < br,
+        "the flank turned away is DARKER than the paint under it ({r} vs {br})"
+    );
+    assert!(
+        l > r,
+        "so, lit from the left, the left flank beats the right ({l} vs {r})"
+    );
+
+    // Rotate the light 180° and the bright flank must SWAP. (A pass that merely darkened edges — any
+    // edge, regardless of the light — would sail through the assertion above and die here.)
+    t.paint.impasto_light_angle_deg = 0; // from the RIGHT (+x)
+    t.invalidate_composite();
+    let img = lit(&mut t);
+    let lum2 = |x: u32, y: u32| {
+        let i = ((y * size + x) * 4) as usize;
+        (u32::from(img[i]) + u32::from(img[i + 1]) + u32::from(img[i + 2])) as f32 / 3.0
+    };
+    let (l2, r2) = (lum2(left_flank, 30), lum2(right_flank, 30));
+    assert!(
+        r2 > l2,
+        "move the light to the RIGHT and the bright flank follows it ({l2} vs {r2})"
+    );
+}
+
+#[test]
+fn impasto_light_off_is_byte_identical_and_a_hidden_layer_casts_none() {
+    // T2.3: `Show Impasto` off ⇒ the pass does not run ⇒ the composite is what it always was.
+    // And the relief of a HIDDEN layer must go dark with it — otherwise the light keeps reporting a
+    // ridge over paint that is no longer on screen.
+    let mut t = impasto_canvas(40);
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+
+    t.paint.impasto_show = true;
+    t.invalidate_composite();
+    let shaded = lit(&mut t);
+
+    t.paint.impasto_show = false;
+    t.invalidate_composite();
+    let plain = lit(&mut t);
+    assert_ne!(shaded, plain, "the light pass is actually doing something");
+
+    // Hide the layer that carries the relief: with the light back ON, the composite must match the
+    // unlit one (no relief is visible, so none is lit).
+    t.paint.impasto_show = true;
+    let id = t.layers.active().expect("active layer");
+    t.set_layer_visible(id, false);
+    t.invalidate_composite();
+    let hidden_lit = lit(&mut t);
+    t.paint.impasto_show = false;
+    t.invalidate_composite();
+    let hidden_plain = lit(&mut t);
+    assert_eq!(
+        hidden_lit, hidden_plain,
+        "a hidden layer's relief catches no light"
+    );
+}
+
+#[test]
+#[ignore = "perf measurement — run with --release --ignored"]
+fn impasto_perf_kill_criterion() {
+    // The kill-criterion frozen BEFORE the build (plan §7, DIRETIVA §5): canvas 2048², r=100, a dragged
+    // stroke, Show Impasto on. Target ≤ 4 ms/move for the whole impasto cost (deposit + light over the
+    // dirty rect); KILL at 8 ms after two CPU optimisation attempts — at which point the feature is
+    // GPU-only or it does not exist in this form. Numbers, in ms, in --release. No verdict by vibes.
+    use std::time::Instant;
+    const MOVES: u32 = 20;
+    // The same stroke with the feature OFF and ON. The number that matters is the DELTA — the frame
+    // already costs something without Impasto, and charging that to Impasto would flatter it.
+    let run = |impasto: bool| -> (f64, f64) {
+        let size = 2048u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 100.0,
+            color: [0.2, 0.4, 0.8],
+            space_attenuation: false,
+            impasto,
+            impasto_depth: 0.7,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([200.0, 1024.0], PointerPhase::Down));
+        let _ = t.take_preview_arc();
+        let (mut worst, mut total) = (0.0f64, 0.0f64);
+        for i in 0..MOVES {
+            let x = 220.0 + f64::from(i) * 40.0;
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([x as f32, 1024.0], PointerPhase::Move));
+            let _ = t.take_preview_arc(); // deposit + composite + light: what a frame really costs
+            let ms = t0.elapsed().as_secs_f64() * 1000.0;
+            worst = worst.max(ms);
+            total += ms;
+        }
+        (total / f64::from(MOVES), worst)
+    };
+    let (off_mean, off_worst) = run(false);
+    let (on_mean, on_worst) = run(true);
+    println!(
+        "@2048² r100 — impasto OFF: mean {off_mean:.2} ms, worst {off_worst:.2} ms\n\
+         @2048² r100 — impasto  ON: mean {on_mean:.2} ms, worst {on_worst:.2} ms\n\
+         >>> IMPASTO COST: mean {:.2} ms/move, worst {:.2} ms/move (target ≤4, kill at 8)",
+        on_mean - off_mean,
+        on_worst - off_worst
+    );
+}
+
+#[test]
+fn impasto_smoothing_settles_the_paint_it_just_laid() {
+    // Smoothing is a knob I very nearly shipped DEAD — declared in the spec, threaded to the panel, and
+    // read by nothing. (That is the exact species the 2026-07-12 sweep spent itself exterminating, so
+    // shipping a fresh one would have been quite the joke.) It settles the deposit like a heavy medium
+    // relaxing: the ridges soften. Measured as what it IS — the peak gradient of the relief falls.
+    let ridge = |smoothing: f32| -> Vec<f32> {
+        let size = 60u32;
+        let mut t = impasto_canvas(size);
+        let mut b = t.paint.brush;
+        b.impasto_smoothing = smoothing;
+        b.radius_px = 8.0; // a hard disk ⇒ a sharp-walled slab: maximum gradient to soften
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([30.0, 15.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([30.0, 45.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([30.0, 45.0], PointerPhase::Up));
+        relief(&t)
+    };
+    let steepest = |h: &[f32]| {
+        let size = 60usize;
+        let mut m = 0.0f32;
+        for y in 1..size - 1 {
+            for x in 1..size - 1 {
+                let g = (h[y * size + x + 1] - h[y * size + x - 1]).abs();
+                m = m.max(g);
+            }
+        }
+        m
+    };
+    let sharp = ridge(0.0);
+    let settled = ridge(1.0);
+    let (gs, gt) = (steepest(&sharp), steepest(&settled));
+    assert!(gs > 0.0, "the sharp ridge has walls to soften");
+    assert!(
+        gt < gs * 0.7,
+        "Smoothing settles the paint: the steepest wall falls from {gs} to {gt}"
+    );
+    // Volume is conserved — settling SPREADS the paint, it does not evaporate it. (A blur that leaked
+    // volume would quietly flatten every stroke the artist smoothed.)
+    let vol = |h: &[f32]| h.iter().sum::<f32>();
+    let (vs, vt) = (vol(&sharp), vol(&settled));
+    assert!(
+        (vt - vs).abs() < vs * 0.05,
+        "the paint spreads, it does not vanish ({vs} → {vt})"
+    );
+}

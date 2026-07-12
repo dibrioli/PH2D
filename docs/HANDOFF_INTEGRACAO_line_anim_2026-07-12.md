@@ -13,8 +13,8 @@
 | **Branch** | `line/anim` |
 | **Worktree** | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim/` |
 | **Base** | `3805f650` (main de 2026-07-12) — rebasada, sem dívida de merge |
-| **HEAD** | `8874a2b7` — **1 commit** de código (+ `39beaf8c`, só o handoff de continuação) |
-| **Gate** | `nextest` **639/639** (`ph2d-anim` · `ph2d-timeline` · `ph2d-panel-timeline` · `ph2d-host-desktop`) · clippy `--all-targets` **0 warnings** · `fmt` (rustup 1.95) · LOC caps ok · `typos` ok |
+| **HEAD** | `c7e740b5` — **2 commits** de código (`8874a2b7` semântica de canal · `c7e740b5` raiz no gizmo) |
+| **Gate** | `nextest` **WORKSPACE INTEIRO 5609/5609** · clippy `--all-targets` **0 warnings** · `fmt` (rustup 1.95) · LOC caps ok · `typos` ok |
 | **Contratos congelados** | **NENHUM tocado** (`Tool`/`NodeOp`/`PanelEvent`/vector-doc intactos) |
 | **`DOC_VERSION` / `SCHEMA_VERSION`** | **NÃO mudaram** (nada novo é serializado) |
 
@@ -130,31 +130,35 @@ Rodei fmt (rustup 1.95), clippy `--all-targets`, nextest, typos, LOC caps. **Nã
 
 ---
 
-## §6 — DUAS DECISÕES SUAS (Enio)
+## §6 — A raiz (`c7e740b5`) e o smoke
 
-### 6.1 — O gizmo escreve rotação embrulhada: consertar na RAIZ?
+### 6.1 — RESOLVIDO: o gizmo agora acumula voltas (Enio autorizou 2026-07-12)
 
-O unwrap conserta o **record**. Mas a raiz — `gizmo/transform.rs:280` — segue lá, e ela quebra mais coisa:
+`Transform.rotation` era derivada de um **par** de `atan2` (`gizmo/transform.rs:280`), ambos em `(-π, π]`
+— então a diferença sozinha só descreve **menos de uma volta** e **salta 2π** no corte de ramo. O unwrap
+do `8874a2b7` tratava o sintoma no fit; **isto é a causa**, e ela quebrava mais que o record:
 
-- **Você não consegue autorar mais de ±180° num arrasto.** O valor embrulha; visualmente o sprite gira,
-  mas o `Transform.rotation` nunca sai de uma janela de 2π. Autorar um giro de 3 voltas na mão é
-  impossível hoje.
-- **Dois keys manuais atravessando o corte interpolam pelo caminho LONGO** (3.0 rad → −3.0 rad = −6 rad em
-  vez de +0.28).
-- **Resíduo de splice no record:** keys fitted (desembrulhadas, ex. 12.46 rad) coladas em keys vizinhas
-  fora do span (embrulhadas, ex. 0.0) → o giro desaba na fronteira. É a mesma ambiguidade que o Blender
-  expõe com o operador "Discontinuity (Euler) Filter".
+- impossível autorar **mais de ±180° num único arrasto**;
+- dois keys manuais atravessando o corte interpolam pelo **caminho longo**;
+- o giro gravado voltava como dente-de-serra.
 
-**Fix proposto (pequeno):** desembrulhar o resultado contra a rotação **viva** — as voltas acumuladas
-passam a morar no próprio `Transform.rotation`, sem estado novo:
-```rust
-t.rotation = cur + wrap_to_pi(new_rotation - cur);   // cur = valor do frame anterior
-```
-**Não fiz porque o raio de impacto é seu para decidir:** `compute_gizmo_transform` é **compartilhado**
-(sprite, vetor por ADR-0111, drags de grupo) e a mudança é **visível na UX** — o Inspector passaria a
-mostrar **430°** em vez de 70° depois de uma volta e um pouco. Isso é o que Blender/AE fazem (e é o
-correto para animação), mas é mudança de comportamento que você não pediu e que eu não consigo
-smoke-testar sozinho.
+**Fix:** uma função **pura** de (cursor inicial, cursor atual) **não consegue** recuperar a contagem de
+voltas — ela vive no **caminho** que o cursor percorreu. Então a contagem virou **estado do arrasto**:
+`GizmoDragState.turns` (i32, zero no Down), mantido por `GizmoDragState::advance_cursor` e consumido
+**dentro** de `compute_gizmo_transform` — assim nenhum chamador futuro pode esquecer dele. Os caminhos de
+grupo/global carregam as voltas de graça (já derivam o delta do resultado do compute).
+
+**Mudança de UX (autorizada):** o Inspector passa a mostrar **graus acumulados** (430° em vez de 70° após
+uma volta e pouco) — `snapshots.rs:610` alimenta o inspector com `t.rotation` direto. É o que Blender e AE
+fazem e o que animação exige. **A view do gizmo NÃO muda** (`snapshots.rs:326` deriva o ângulo do afim por
+`atan2`, invariante mod 2π).
+
+**Símbolos novos:** `GizmoDragState.turns` (campo, apendado por último) + `GizmoDragState::advance_cursor`
+(método). Os 3 construtores no shell e os 11 nos testes ganharam `turns: 0`.
+
+**O unwrap do fit FICA** e não é órfão: ele defende dados de outras fontes (projeto carregado, rotação
+derivada de matriz por `atan2` em `snapshots.rs:326`, `rotation` relativa a pai) e é a rede que faz um
+giro gravado sobreviver mesmo se algo voltar a embrulhar.
 
 ### 6.2 — Smoke (o que testar no app)
 
@@ -162,16 +166,22 @@ smoke-testar sozinho.
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim && cargo run -p ph2d-host-desktop
 ```
 
-1. **Giro gravado (o fix principal).** Bind a rotação de um objeto → arme **Record** → Play → gire o
+1. **Girar muitas voltas na mão (a raiz).** Sem gravar nada: pegue a alça de rotação e **rode 3 voltas
+   num único arrasto**, olhando o campo Rotation do Inspector.
+   **Esperado:** o número **passa de 360° e continua** (~1080°) em vez de voltar pra dentro de ±180°.
+   O sprite gira normal. Solte e gire de novo: continua de onde parou.
+2. **Giro gravado (o fix principal).** Bind a rotação de um objeto → arme **Record** → Play → gire o
    objeto **várias voltas** com o gizmo durante a reprodução → solte.
-   **Esperado:** o giro replica como giro — **não desgira**, não trava, não vira nada. Antes deste commit
-   o giro sumia por completo. *(Nota: por causa do §6.1, autorar >180° **num único arrasto** ainda é
-   limitado — gire com vários arrastos, ou solte o §6.1 primeiro.)*
-2. **Fade de opacidade.** Grave um fade que sobe rápido e **descansa em 1.0**. Abra o **graph editor**.
+   **Esperado:** o giro replica como giro — **não desgira**, não trava, não vira nada. Antes o giro sumia
+   por completo (span reconstruído de 0.00 rad).
+3. **Fade de opacidade.** Grave um fade que sobe rápido e **descansa em 1.0**. Abra o **graph editor**.
    **Esperado:** a curva **encosta** em 1.0 e não passa (antes desenhava um estufado acima do topo).
-3. **Regressão — gesto suave.** Grave um movimento suave qualquer (X/Y) e olhe a curva.
+4. **Regressão — gesto suave.** Grave um movimento suave qualquer (X/Y) e olhe a curva.
    **Esperado:** exatamente como antes desta linha — poucos keys nos extremos, curva limpa, **sem dobras
    novas**. (Era isto que o detector de quina teria estragado.)
+5. **Regressão — gizmo normal.** Rotação curta, escala, translação, gizmo global com vários objetos,
+   Shift para snap de ângulo. **Esperado:** tudo idêntico a antes (o workspace inteiro está verde, mas
+   gizmo é coisa de olho).
 
 ---
 

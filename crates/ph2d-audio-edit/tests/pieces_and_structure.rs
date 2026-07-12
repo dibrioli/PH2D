@@ -462,3 +462,23 @@ fn piece_lookup_and_drop_targets() {
     assert_eq!(clip.nearest_boundary(690), 2);
     assert_eq!(clip.nearest_boundary(990), 3);
 }
+
+/// **The outline must not promise what the release refuses.** A Scale drag is bounded, and the
+/// drag *preview* clamps through this same function — so a small piece dragged far to the right
+/// shows the length it will actually get, instead of snapping back when the user lets go.
+#[test]
+fn the_stretch_clamp_is_the_same_answer_for_the_preview_and_the_commit() {
+    let mut clip = EditClip::new(stamped(9_000));
+    clip.split_at(1_000); // piece 0 is 1_000 frames
+
+    // Asked for 20x; the bound is 8x.
+    let promised = clip.clamp_stretch(0, 20_000);
+    assert_eq!(promised, 8_000, "the preview is told the bounded length");
+
+    assert!(clip.stretch_piece(0, 20_000));
+    assert_eq!(
+        clip.pieces()[0].len(),
+        promised,
+        "the commit produced a different length than the outline drew"
+    );
+}

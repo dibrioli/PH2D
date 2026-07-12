@@ -209,6 +209,26 @@ impl EditClip {
         true
     }
 
+    /// What [`EditClip::stretch_piece`] would actually do with a request of `want` frames — the
+    /// length after the per-gesture bound (see [`MAX_STRETCH`]) is applied.
+    ///
+    /// The **drag outline calls this too**, so what the user is shown while dragging is what the
+    /// release produces. Clamping only on commit would let the ghost edge promise a length the
+    /// edit then refuses to make: the outline would be a lie, and a small piece dragged far right
+    /// would visibly snap back on release.
+    pub fn clamp_stretch(&self, idx: usize, want: usize) -> usize {
+        let Some(r) = self.pieces().get(idx).cloned() else {
+            return want;
+        };
+        let old_len = r.len();
+        if old_len == 0 {
+            return want;
+        }
+        let lo = ((old_len as f64 / MAX_STRETCH).ceil() as usize).max(1);
+        let hi = (old_len as f64 * MAX_STRETCH) as usize;
+        want.clamp(lo, hi)
+    }
+
     /// Time-stretch piece `idx` to `new_len` frames — the Scale tool.
     ///
     /// Same pitch, new length: the take gets shorter (or longer) **without being cut**. What
@@ -222,10 +242,7 @@ impl EditClip {
         if old_len == 0 {
             return false;
         }
-        // Bounded per gesture (see `MAX_STRETCH`), and never to nothing.
-        let lo = ((old_len as f64 / MAX_STRETCH).ceil() as usize).max(1);
-        let hi = (old_len as f64 * MAX_STRETCH) as usize;
-        let new_len = new_len.clamp(lo, hi);
+        let new_len = self.clamp_stretch(idx, new_len);
         if new_len == old_len {
             return false;
         }

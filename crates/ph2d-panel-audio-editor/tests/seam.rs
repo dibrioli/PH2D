@@ -1198,3 +1198,21 @@ fn the_structure_buttons_arm_their_edit_commands() {
     }
     tool_state::set_pieces(1);
 }
+
+/// **Move disarms itself when the pieces go away.** Refusing to *arm* it on an uncut clip is not
+/// enough: arm it with three pieces, then Clear Cuts, and the tool is still held over a clip where
+/// dragging can do nothing at all. A pointer with no legal gesture reads as a broken editor.
+#[test]
+fn move_disarms_itself_when_the_last_cut_is_cleared() {
+    tool_state::set_pieces(3);
+    tool_state::set_tool(EditTool::Move);
+    assert_eq!(tool_state::tool(), EditTool::Move);
+
+    // Clear Cuts (or Load, or an undo of the last split) — the shell republishes the count.
+    tool_state::set_pieces(1);
+    assert_eq!(
+        tool_state::tool(),
+        EditTool::Select,
+        "Move stayed armed over a clip with one piece — the pointer does nothing and says nothing"
+    );
+}

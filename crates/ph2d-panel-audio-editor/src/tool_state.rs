@@ -46,8 +46,19 @@ pub fn tool() -> EditTool {
 }
 
 /// Shell: publish how many pieces the clip is currently in.
+///
+/// **Disarms Move when the clip stops having pieces to trade.** Refusing to *arm* it on an uncut
+/// clip is not enough: arm Move with three pieces, then click Clear Cuts, and the tool is still
+/// held — over a clip where dragging can do nothing. A pointer with no legal gesture reads as a
+/// broken editor, not an empty one. This is the choke point every path runs through (Clear Cuts,
+/// Load, an undo that removes the last cut), so there is one place to get it right instead of
+/// three places to forget.
 pub fn set_pieces(n: usize) {
-    PIECES.with(|c| c.set(n.max(1)));
+    let n = n.max(1);
+    PIECES.with(|c| c.set(n));
+    if n < 2 && tool() == EditTool::Move {
+        set_tool(EditTool::Select);
+    }
 }
 
 /// How many pieces the clip is in (`1` = uncut).

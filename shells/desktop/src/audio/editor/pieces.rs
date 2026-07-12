@@ -99,10 +99,13 @@ impl AudioSystem {
             },
             PieceDrag::Scale { piece, .. } => {
                 // The edge follows the cursor: the new length is from the piece's START to here.
+                // Clamped through the SAME function the commit uses, so the outline cannot promise
+                // a length the release then refuses to make.
                 let start = clip.pieces().get(piece).map_or(0, |r| r.start);
+                let want = frame.saturating_sub(start).max(MIN_PIECE_FRAMES);
                 PieceDrag::Scale {
                     piece,
-                    new_len: frame.saturating_sub(start).max(MIN_PIECE_FRAMES),
+                    new_len: clip.clamp_stretch(piece, want),
                 }
             }
         });

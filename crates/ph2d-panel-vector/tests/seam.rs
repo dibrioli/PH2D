@@ -129,6 +129,8 @@ fn mode_button_click_switches_tool_mode_through_seam() {
         // fileira de modos ficava TODA apagada justamente enquanto se desenhava uma
         // forma. O botão novo é inútil se não chegar ao tool — este arm é o gate.
         (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
+        // O 6º pill: o CONECTOR.
+        (ids::VECTOR_MODE_CONNECT, DrawMode::Connect),
     ] {
         let outcome =
             host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));
@@ -144,6 +146,44 @@ fn mode_button_click_switches_tool_mode_through_seam() {
             "mode click never reached the tool through the seam"
         );
     }
+}
+
+/// **O pill do Conector chega à tool.** Gate próprio (e não só mais uma linha na tabela
+/// acima) porque o modo `Connect` é a porta de entrada de uma feature inteira: um pill que
+/// PINTA mas não despacha deixa o conector inalcançável, e todo unit test da crate de rota
+/// continua verde — foi exatamente assim que Line/Arc morreram (Enio 2026-07-09).
+///
+/// Percorre o caminho que a shell percorre: populate → clique → `apply_event` → bus →
+/// `handle_panel_event` → o modo da tool.
+#[test]
+fn clicking_connect_pill_reaches_the_tool() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+    assert_ne!(
+        tool.mode(),
+        DrawMode::Connect,
+        "precondition: nao e Connect"
+    );
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MODE_CONNECT),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o pill Connect nao foi consumido — falta o id na allowlist de `event.rs`"
+    );
+    assert!(
+        drain_into_tool(&mut host, &mut tool),
+        "o clique nunca virou ToolPanelEvent — o seam painel->shell esta morto"
+    );
+    assert_eq!(
+        tool.mode(),
+        DrawMode::Connect,
+        "o clique chegou ao bus mas nao virou modo — falta o arm em `handle_panel_event`"
+    );
 }
 
 /// A Cap button + the Dash and Gap sliders reach the tool through the seam —

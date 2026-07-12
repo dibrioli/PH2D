@@ -218,6 +218,9 @@ ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
 # ADR-0108 Fase 1: booleanas edit-time (union/intersect/subtract via linesweeper).
 ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
+# Conectores: o roteador (A*/OVG) da linha que gruda em duas formas e as segue. A
+# shell re-cozinha a rota a cada frame em `connector_live`.
+ph2d-vec-connect = { path = "../../crates/ph2d-vec-connect" }
 # ADR-0114: documento do Flip (animação quadro-a-quadro). W0 = dados + ponte ECS
 # (flip_entities) + undo/save; render e tool vêm nas waves seguintes.
 ph2d-flip = { path = "../../crates/ph2d-flip" }

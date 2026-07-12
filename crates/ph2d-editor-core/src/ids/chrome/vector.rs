@@ -362,6 +362,12 @@ pub const VECTOR_SNAP_ON: NodeId = hash_node_id("vector.snap.on");
 /// que modo estava.
 pub const VECTOR_MODE_SHAPE: NodeId = hash_node_id("vector.mode.shape");
 
+/// **Conector** — o 6º pill. Arrasta de uma forma a outra e cria uma LINHA que gruda nas
+/// duas e as segue (o conector do draw.io / Figma). Não é uma forma do catálogo: a
+/// geometria dele é uma função pura da RELAÇÃO (quem, e como), re-cozida a cada frame —
+/// por isso é um modo, e não mais um item na grade de tipos.
+pub const VECTOR_MODE_CONNECT: NodeId = hash_node_id("vector.mode.connect");
+
 /// Chip de **CATEGORIA** do catálogo de formas (`Dropdown`): a família (Basic / Round /
 /// Arrows / Flow / Bubbles / Symbols / 3D) escolhida numa LINHA, com um widget
 /// visualmente distinto da grade de tipos abaixo — é essa diferença de widget que separa

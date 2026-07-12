@@ -2045,6 +2045,12 @@ impl App {
         if self.vec_shape_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Conector (modo Connect): a 2ª ponta segue o cursor e GRUDA na forma sob ele — o
+        // que se vê é o conector de verdade, re-cozido pela mesma `route`. Mesma disciplina
+        // de early-return; no-op sem gesto vivo.
+        if self.connector_drag_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // M14.4b.bis: middle-drag camera pan. Applied BEFORE pointer
         // forwarding so widgets receive the move event but the camera
         // also follows.
@@ -2429,6 +2435,15 @@ impl App {
                         }
                         return;
                     }
+                    // Modo Connect: a pressão abre o gesto do CONECTOR (sobre uma forma, a
+                    // ponta nasce presa a ela; no vazio, solta ali). Nada de pen/shape —
+                    // a linha de um conector não é autorada, é derivada.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Connect {
+                        if let Some(w) = self.vec_world_at(self.last_pointer) {
+                            self.connector_down(w);
+                        }
+                        return;
+                    }
                     let shape_kind = shape_kind_for_mode(&self.vec_draw_config);
                     // Alt held → the Pen breaks the tangent when grabbing a handle.
                     let alt = self.modifiers.alt_key();
@@ -2527,6 +2542,18 @@ impl App {
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                     // Fim de gesto: as guias de snap não sobrevivem ao Up.
                     self.vec_clear_snap_guides();
+                    // Conector: o Up prende a 2ª ponta (na forma sob o cursor, ou solta ali).
+                    // Consome SÓ com gesto vivo — senão soltar sobre um botão do painel no
+                    // modo Connect engoliria o clique (a armadilha do `shape_up_consumes`).
+                    if self.vec_connect.is_some() {
+                        let w = self.vec_world_at(self.last_pointer);
+                        if let Some(w) = w {
+                            self.connector_up(w);
+                        } else {
+                            self.connector_cancel();
+                        }
+                        return;
+                    }
                     // Gradient group 3b: end a gradient-handle drag (commit iff moved).
                     if self.vec_grad_drag.take().is_some() {
                         if let Some(gfx) = self.gfx.as_ref() {
@@ -2620,6 +2647,11 @@ impl App {
                     // panel buttons receive their Up.
                 }
                 (ph2d_host::PointerButton::Secondary, PointerKind::Down) if on_canvas => {
+                    // O botão direito ABORTA o conector em construção (a linha some) — o
+                    // mesmo que ele já faz com a caneta e a ferramenta de forma.
+                    if self.connector_cancel() {
+                        return;
+                    }
                     if shape_kind_for_mode(&self.vec_draw_config).is_none() {
                         self.vec_pen.finish();
                     } else {

@@ -7,6 +7,8 @@
 //! internal modules (and the tool, via `handle_panel_event`) can write
 //! `crate::ids::VECTOR_*`.
 
+/// O 6º pill de modo: **Connect** — a linha que gruda em duas formas e as segue.
+pub use ph2d_editor_core::ids::VECTOR_MODE_CONNECT;
 /// Pontas de traço (arrowheads): os dois chips + as opções do popover, por `slot`
 /// (0 = começo, 1 = fim) e índice em `ph2d_vec_scene::ALL_MARKERS`.
 pub use ph2d_editor_core::ids::{

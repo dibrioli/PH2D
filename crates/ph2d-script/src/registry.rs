@@ -30,7 +30,7 @@ mod tests {
         // VecPathRef/FlipObjectRef + 1 Live Shapes: VecShape + 1 Painter
         // persistence: PaintedDoc)
         // + 1 script component (LuauScript).
-        assert_eq!(reg.len(), 28);
+        assert_eq!(reg.len(), 29);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

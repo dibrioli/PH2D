@@ -175,6 +175,14 @@ pub enum DrawMode {
     /// Texto: clica no canvas e digita; cada glyph vira um `VecPath` preenchido
     /// (ADR-0108). Não é uma shape-tool nem cria pelo Pen — o shell trata o gesto.
     Text,
+    /// **Conector**: pressiona sobre uma forma, arrasta, solta sobre outra — nasce uma
+    /// linha que gruda nas duas e as SEGUE (soltar no vazio deixa a ponta solta ali;
+    /// pressionar e soltar na mesma forma faz um laço).
+    ///
+    /// Não é uma forma do catálogo, e é por isso que é um MODO: a geometria de um
+    /// conector não é autorada, é **derivada** (uma função pura de a quem cada ponta se
+    /// prende), e a shell a re-cozinha a cada frame (`connector_live`).
+    Connect,
 }
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of

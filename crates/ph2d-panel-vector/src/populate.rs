@@ -138,6 +138,9 @@ fn populate_shape(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MODE_PEN);
     button(store, ids::VECTOR_MODE_SHAPE);
     button(store, ids::VECTOR_MODE_TEXT);
+    // O 6º: **Connect** (a linha que gruda em duas formas). Registrar aqui é o que o
+    // torna clicável — pintar e dar hit-rect não basta.
+    button(store, ids::VECTOR_MODE_CONNECT);
 
     // O CATÁLOGO: um botão por forma + uma opção de dropdown por família. Registrados por
     // ÍNDICE — uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.

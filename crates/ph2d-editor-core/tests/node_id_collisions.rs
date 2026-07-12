@@ -517,6 +517,8 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     // Vector panel UI rework: the 5th mode pill, the shape-category dropdown chip
     // and the 17 collapsible section headers.
     ("VECTOR_MODE_SHAPE", ids::VECTOR_MODE_SHAPE),
+    // O 6º pill: o CONECTOR (a linha que gruda em duas formas e as segue).
+    ("VECTOR_MODE_CONNECT", ids::VECTOR_MODE_CONNECT),
     ("VECTOR_SHAPE_GROUP_DD", ids::VECTOR_SHAPE_GROUP_DD),
     ("VECTOR_SECTION_TOOL", ids::VECTOR_SECTION_TOOL),
     ("VECTOR_SECTION_SHAPE", ids::VECTOR_SECTION_SHAPE),

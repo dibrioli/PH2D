@@ -421,6 +421,11 @@ impl Tool for VectorTool {
                 }
             }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_TEXT => self.mode = DrawMode::Text,
+            // **Conector** — o 6º pill. Arma o gesto forma→forma; a linha resultante é
+            // derivada da relação, não autorada (a shell a re-cozinha por frame).
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_CONNECT => {
+                self.mode = DrawMode::Connect;
+            }
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_BUTT => self.set_cap(StrokeCap::Butt),

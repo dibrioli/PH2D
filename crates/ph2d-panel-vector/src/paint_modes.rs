@@ -3,11 +3,13 @@
 //! Módulo irmão de `paint_sections` (teto de 600 LOC por arquivo de painel). O CATÁLOGO
 //! de formas (categoria + grade de thumbnails) mora em `paint_catalog`.
 //!
-//! **Cinco modos** (ADR-0112 + o 5º pill desta reforma): **Select** (o gizmo manda) ·
-//! **Node** (edita âncoras) · **Pen** (cria) · **Shape** (desenha a forma ATIVA do
-//! catálogo) · **Text**. As FORMAS não são modos — são um **catálogo**; escolher uma põe
-//! a tool em `Shape`, e por isso o modo Shape precisa de um pill: sem ele a fileira de
-//! modos ficava TODA apagada justamente enquanto se desenhava uma forma.
+//! **Seis modos** (ADR-0112 + o 5º pill da reforma + o **Connect**): **Select** (o gizmo
+//! manda) · **Node** (edita âncoras) · **Pen** (cria) · **Shape** (desenha a forma ATIVA
+//! do catálogo) · **Text** · **Connect** (liga duas formas com uma linha que as segue).
+//! As FORMAS não são modos — são um **catálogo**; escolher uma põe a tool em `Shape`, e
+//! por isso o modo Shape precisa de um pill: sem ele a fileira de modos ficava TODA
+//! apagada justamente enquanto se desenhava uma forma. O **conector**, ao contrário, É um
+//! modo: a geometria dele não é autorada, é derivada da relação entre duas formas.
 //!
 //! Os campos de parâmetro vivem numa seção IRMÃ cujo **título é o NOME da forma em foco**
 //! (`STAR`, `GEAR`, `SPEECH`…) — é assim que o usuário descobre a quem os campos
@@ -37,8 +39,8 @@ use ph2d_tool_vector::shapes;
 use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot};
 
 impl BodyCtx<'_> {
-    /// Seção **TOOL** — os cinco modos, numa grade de 3 colunas
-    /// (`Select | Node | Pen` · `Shape | Text`).
+    /// Seção **TOOL** — os seis modos, numa grade de 3 colunas
+    /// (`Select | Node | Pen` · `Shape | Text | Connect`).
     pub(crate) fn tool_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let (y, collapsed) =
             self.section_header(ids::VECTOR_SECTION_TOOL, tr("panel.vector.section.tool"), y);
@@ -70,6 +72,11 @@ impl BodyCtx<'_> {
                 ids::VECTOR_MODE_TEXT,
                 tr("panel.vector.mode.text"),
                 DrawMode::Text,
+            ),
+            (
+                ids::VECTOR_MODE_CONNECT,
+                tr("panel.vector.mode.connect"),
+                DrawMode::Connect,
             ),
         ];
         let cols = 3usize;

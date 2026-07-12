@@ -4974,6 +4974,7 @@ dependencies = [
  "ph2d-tool-upscale",
  "ph2d-tool-vector",
  "ph2d-vec-boolean",
+ "ph2d-vec-connect",
  "ph2d-vec-edit",
  "ph2d-vec-render",
  "ph2d-vec-scene",

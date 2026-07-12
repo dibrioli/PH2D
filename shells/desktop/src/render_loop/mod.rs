@@ -2686,6 +2686,21 @@ impl crate::App {
                     }
                 }
             }
+            // **Conectores, 1ª metade:** pendura o `VecConnector` na entidade (que nasceu no
+            // `sync` acima) do conector EM GESTO e do recém-fechado.
+            //
+            // **Antes do `settle`, e isso não é arrumação:** o `settle` pula os conectores
+            // (a geometria deles é MUNDO, reescrita a cada frame) — mas só pode pular o que
+            // ENXERGA. Sem o componente já pendurado, a linha recém-empurrada seria assentada
+            // como um path comum: origem no centro dela, geometria recuada, e a rota do frame
+            // seguinte sairia deslocada exatamente por esse delta.
+            crate::connector_live::upkeep(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                self.vec_connect.as_ref().map(|d| (d.path, &d.conn)),
+                &mut self.vec_connect_pending,
+            );
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
             // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e
@@ -2713,6 +2728,16 @@ impl crate::App {
             // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
             // o afim que a leva ao mundo (a cadeia de pais inclusa).
             let vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
+            // **Conectores, 2ª metade:** a geometria é uma função pura da RELAÇÃO — re-cozida
+            // aqui, todo frame, sobre os afins DESTE frame. É o que faz a linha SEGUIR a
+            // forma que o gizmo acabou de mover.
+            crate::connector_live::recook(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &vec_xf,
+                &mut self.vec_connect_sides,
+            );
             self.vec_pen.set_view(vec_view.clone());
             self.vec_pen.set_xforms(vec_xf.clone());
             // Seleção casada nos dois sentidos: clique na Hierarquia chega no canvas,

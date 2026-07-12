@@ -614,6 +614,19 @@ pub(crate) struct App {
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.
     pub(crate) vec_marquee: Option<((f32, f32), (f32, f32))>,
+    /// **O conector em construção** (modo `DrawMode::Connect`, Down..Up). O path já está na
+    /// cena desde o Down e o componente já está na entidade: o "preview" do arrasto É o
+    /// conector de verdade, re-cozido pela MESMA `route` a cada frame — o que se vê é o que
+    /// se obtém, e não há um segundo caminho de desenho para divergir. `None` = sem gesto.
+    pub(crate) vec_connect: Option<crate::connector_gesture::ConnectorDrag>,
+    /// O conector recém-FECHADO (Up), esperando a entidade dele nascer no `vec_entities::sync`
+    /// para receber o componente. Um clique rápido (Down e Up no mesmo frame) fecha o gesto
+    /// antes de qualquer `sync` — sem esta fila de um item, a linha ficaria na cena sem
+    /// `VecConnector`: um traço inerte que não segue ninguém.
+    pub(crate) vec_connect_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecConnector)>,
+    /// O lado por onde cada ponta de cada conector saiu no frame anterior — a memória da
+    /// histerese de `side_towards` (sem ela a saída pisca na diagonal). Runtime-only.
+    pub(crate) vec_connect_sides: crate::connector_live::SideCache,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
     /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via

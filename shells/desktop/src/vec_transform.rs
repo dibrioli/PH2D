@@ -155,6 +155,13 @@ pub(crate) fn settle_origins(
                 // parâmetros e re-cozinhada — assentar o pivô no meio brigaria com o
                 // re-cook (a origem fica onde a forma foi criada; "Set Center" move).
                 && sim.world().get::<ph2d_ecs::VecShape>(e).is_none()
+                // CONECTOR: pela MESMA razão, e ainda mais forte. A geometria dele é
+                // reescrita em MUNDO a cada frame (`connector_live`), como a de um gesto
+                // que nunca termina — assentar somaria geometria + `Transform` e a rota
+                // sairia deslocada das formas que ela liga. Ele vive na identidade, e é
+                // isso que o torna (corretamente) não-arrastável pelo gizmo: mover um
+                // conector não quer dizer nada; o que se move são as pontas dele.
+                && sim.world().get::<ph2d_ecs::VecConnector>(e).is_none()
                 && sim
                     .world()
                     .get::<Transform>(e)
@@ -313,6 +320,38 @@ mod tests {
         settle_origins(&mut sim, &mut scene, &map, &[]);
         let t = sim.world().get::<Transform>(e).copied().unwrap();
         assert!((t.translation.x - 40.0).abs() < 1e-4);
+    }
+
+    /// **Um CONECTOR nunca é assentado.** A geometria dele é reescrita em MUNDO a
+    /// cada frame (`connector_live`) — assentar o pivô somaria geometria e
+    /// `Transform`, e a rota sairia deslocada das duas formas que ela liga. Mesmo
+    /// motivo do gesto em curso, e da forma viva: geometria DERIVADA não tem pivô a
+    /// assentar. Ele fica na identidade — e é por isso que o gizmo não o arrasta.
+    #[test]
+    fn a_connector_is_never_settled() {
+        let mut sim = SimWorld::default();
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        let mut map = crate::vec_entities::VecEntityMap::new();
+        // Uma "rota" longe da origem: assentada, ela ganharia translação (20, 30).
+        let id = scene.push_path(ph2d_vec_scene::line([10.0, 20.0], [30.0, 40.0]));
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                VecPathRef(id),
+                ph2d_ecs::VecConnector::between(1, 2),
+            ))
+            .id();
+        map.insert(id, e.to_bits());
+
+        settle_origins(&mut sim, &mut scene, &map, &[]);
+
+        assert_eq!(
+            sim.world().get::<Transform>(e).copied().unwrap(),
+            Transform::IDENTITY,
+            "o conector tem de ficar na IDENTIDADE — a geometria dele ja e mundo"
+        );
+        assert!(build(&sim, &map).is_empty(), "afim identidade: sem offset");
     }
 
     /// O path que a caneta ainda constrói NÃO é assentado — a origem ficaria pulando

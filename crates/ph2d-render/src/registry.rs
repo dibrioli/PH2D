@@ -30,7 +30,7 @@ mod tests {
         // VecPathRef/FlipObjectRef + 1 Live Shapes: VecShape + 1 Painter
         // persistence: PaintedDoc)
         // + 1 render component (Sprite).
-        assert_eq!(reg.len(), 28);
+        assert_eq!(reg.len(), 29);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
     }
 }

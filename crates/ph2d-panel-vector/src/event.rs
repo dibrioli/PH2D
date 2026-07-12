@@ -272,6 +272,9 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // MORTO — exatamente o bug que o smoke do Line/Arc pegou (Enio 2026-07-09).
         || id == ids::VECTOR_MODE_SHAPE
         || id == ids::VECTOR_MODE_TEXT
+        // O 6º pill (Connect). Fora daqui, o botão pinta e está MORTO — é o gate do
+        // seam (`clicking_connect_pill_reaches_the_tool`).
+        || id == ids::VECTOR_MODE_CONNECT
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT
         || id == ids::VECTOR_TEXT_FONT_IMPORT

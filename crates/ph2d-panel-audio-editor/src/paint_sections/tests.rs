@@ -83,3 +83,42 @@ fn a_folded_section_still_paints_its_header() {
         "the headers vanished along with their blocks"
     );
 }
+
+/// The order the user reads down the panel, pinned.
+///
+/// **Loop sits with the transport, not with the asset-prep half** — it is a *playback*
+/// concept (Loop-on + Play is how you audition it), and Enio moved it there on sight
+/// (2026-07-12). Pinned because the fold state is looked up by ID, so a reorder is
+/// *safe* — which is exactly what makes it easy to do by accident.
+#[test]
+fn the_section_order_is_pinned() {
+    assert_eq!(
+        SECTIONS,
+        [
+            AEDIT_SEC_TRANSPORT,
+            AEDIT_SEC_LOOP,
+            AEDIT_SEC_EDIT,
+            AEDIT_SEC_FX,
+            AEDIT_SEC_MARKERS,
+            AEDIT_SEC_VARIATIONS,
+            AEDIT_SEC_DELIVERY,
+        ]
+    );
+}
+
+/// Fold state is resolved **by id**, never by position. Hand the body a fold array in
+/// which exactly one section is shut and ask that section whether it is open: if the
+/// lookup were positional, a reorder would quietly hand each section its neighbour's
+/// state, and the panel would paint perfectly while folding the wrong block.
+#[test]
+fn the_fold_state_follows_the_section_not_the_slot() {
+    for (i, id) in SECTIONS.iter().enumerate() {
+        let mut open = [true; 7];
+        open[i] = false;
+        let b = body(open);
+        assert!(!b.open(*id), "{id:?} lost its own fold state");
+        for other in SECTIONS.iter().filter(|s| *s != id) {
+            assert!(b.open(*other), "{other:?} was handed {id:?}'s fold state");
+        }
+    }
+}

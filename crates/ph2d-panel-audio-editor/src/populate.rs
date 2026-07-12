@@ -21,32 +21,7 @@ use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStor
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
-    // Collapsible section headers — bare hit rects (no `InteractiveState`); the
-    // dispatch folds them via `toggle_collapsed` on click. Same chrome as the Sprite
-    // Inspector and the Audio Mixer.
-    for id in [
-        AEDIT_SEC_TRANSPORT,
-        AEDIT_SEC_EDIT,
-        AEDIT_SEC_FX,
-        AEDIT_SEC_LOOP,
-        AEDIT_SEC_MARKERS,
-        AEDIT_SEC_VARIATIONS,
-        AEDIT_SEC_DELIVERY,
-    ] {
-        store.mark_collapsible_section(id);
-    }
-    // The asset-prep half (loop points, markers, variation sets, delivery) is what you
-    // reach for once per asset, not once per edit — it starts FOLDED so the panel opens
-    // on the three things you actually work in. `populate` runs once, at
-    // `HeroScreen::new`, so this is an initial state and not a per-frame override.
-    for id in [
-        AEDIT_SEC_LOOP,
-        AEDIT_SEC_MARKERS,
-        AEDIT_SEC_VARIATIONS,
-        AEDIT_SEC_DELIVERY,
-    ] {
-        store.set_collapsed(id, true);
-    }
+    populate_sections(store);
 
     // Floating waveform overlay drag/resize handles — registered as panel-agnostic
     // `BlenderHit`s keyed to `AUDIO_OVERLAY_PANEL`, so the shared dispatch moves +
@@ -219,4 +194,36 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
+}
+
+/// Register the collapsible section headers and their initial fold state. Split out of
+/// `populate` to keep it under the panel fn-LOC cap.
+fn populate_sections(store: &mut WidgetStore) {
+    // Collapsible section headers — bare hit rects (no `InteractiveState`); the
+    // dispatch folds them via `toggle_collapsed` on click. Same chrome as the Sprite
+    // Inspector and the Audio Mixer.
+    for id in [
+        AEDIT_SEC_TRANSPORT,
+        AEDIT_SEC_EDIT,
+        AEDIT_SEC_FX,
+        AEDIT_SEC_LOOP,
+        AEDIT_SEC_MARKERS,
+        AEDIT_SEC_VARIATIONS,
+        AEDIT_SEC_DELIVERY,
+    ] {
+        store.mark_collapsible_section(id);
+    }
+    // What you reach for once per ASSET (loop region, markers, variation sets, delivery)
+    // starts FOLDED, so the panel opens on what you touch on every pass. Each folded
+    // header still carries its readout, so nothing is hidden — only unstacked.
+    // `populate` runs once, at `HeroScreen::new`, so this is an initial state and not a
+    // per-frame override.
+    for id in [
+        AEDIT_SEC_LOOP,
+        AEDIT_SEC_MARKERS,
+        AEDIT_SEC_VARIATIONS,
+        AEDIT_SEC_DELIVERY,
+    ] {
+        store.set_collapsed(id, true);
+    }
 }

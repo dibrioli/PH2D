@@ -2,24 +2,26 @@
 //! and the chrome that separates them.
 //!
 //! The panel had grown into one unbroken column of controls. The app's canonical answer
-//! is a [`SectionHeader`] (chevron + uppercase label, darker plate when folded) with a
-//! [`Divider`] between blocks — exactly what the Sprite Inspector and the Audio Mixer
-//! do, and the reason this file exists rather than a bespoke layout.
+//! is a [`SectionHeader`] (chevron + uppercase label, darker plate when folded) with
+//! `paint_section_separator` — the 1 px **accent-coloured** rule — between blocks. Both
+//! come from the Widget Gallery, which is the single source of truth for chrome
+//! (DIRETRIZ §5.2); this file exists so the panel wears the app's clothes rather than
+//! its own.
 //!
 //! Split out of `paint.rs` to keep that file (and its `paint` fn) under the panel LOC
 //! caps.
 
 use crate::paint::{ClippedHits, button, fmt_time, toggle};
 use crate::{
-    AEDIT_BATCH_LUFS, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY,
+    AEDIT_BATCH_LUFS, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PLAY,
     AEDIT_SEC_DELIVERY, AEDIT_SEC_EDIT, AEDIT_SEC_FX, AEDIT_SEC_LOOP, AEDIT_SEC_MARKERS,
     AEDIT_SEC_TRANSPORT, AEDIT_SEC_VARIATIONS, AEDIT_STOP,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
+use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_editor_core::widget::{
-    Divider, SectionHeader, TextInput, TextInputState, paint_divider, paint_section_header,
-    paint_text_input_with_buffer,
+    SectionHeader, TextInput, TextInputState, paint_section_header, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -40,8 +42,21 @@ pub(crate) struct Body {
     pub name: NameBox,
 }
 
-/// Walk the sections: header, then the block if it is open, then a divider. Returns the
-/// `y` at the bottom of the painted content.
+impl Body {
+    /// Whether `id` is unfolded. **By id, never by index**: `open[2]` means whatever the
+    /// third entry of [`SECTIONS`] happens to be today, so reordering the panel would
+    /// silently hand every section somebody else's fold state — a bug that paints
+    /// perfectly and is invisible until a user clicks the wrong chevron.
+    fn open(&self, id: NodeId) -> bool {
+        SECTIONS
+            .iter()
+            .position(|s| *s == id)
+            .is_some_and(|i| self.open[i])
+    }
+}
+
+/// Walk the sections: header, then the block if it is open, then the accent separator.
+/// Returns the `y` at the bottom of the painted content.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_body(
     y: f32,
@@ -57,8 +72,11 @@ pub(crate) fn paint_body(
     paint_asset_sections(y, x, w, b, scene, text_system, theme, hit_index)
 }
 
-/// **Working on the sound**: transport, the edit ops, the effects rack. These open by
-/// default — they are the ones you are in on every pass.
+/// **Working on the sound**: transport, the loop region, the edit ops, the effects rack.
+///
+/// The loop sits here, right under the transport, because it is a *playback* thing —
+/// Loop-on + Play is how you audition it (Enio, 2026-07-12). Only it starts folded, and
+/// only because an unset loop has nothing to show; its header still says so.
 #[allow(clippy::too_many_arguments)]
 fn paint_sound_sections(
     mut y: f32,
@@ -70,14 +88,6 @@ fn paint_sound_sections(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    // when folded) with the block's readout on its right, then the block, then a
-    // `Divider`. The same chrome the Sprite Inspector and the Audio Mixer use — this
-    // panel had simply grown past the point where one unbroken column still reads.
-    //
-    // Order groups the two jobs: **work on the sound** (transport, edit, effects) first,
-    // then **prepare the asset** (loop, markers, variations, delivery), which is the half
-    // that starts folded.
-
     let (o, ny) = section(
         y,
         x,
@@ -85,7 +95,7 @@ fn paint_sound_sections(
         AEDIT_SEC_TRANSPORT,
         "Transport",
         None,
-        b.open[0],
+        b.open(AEDIT_SEC_TRANSPORT),
         scene,
         text_system,
         theme,
@@ -105,7 +115,38 @@ fn paint_sound_sections(
             hit_index,
         );
     }
-    y = divider(y, x, w, scene, theme);
+    y = separator(y, x, w, scene, theme);
+
+    let loop_read = crate::paint_loop::loop_readout();
+    let (o, ny) = section(
+        y,
+        x,
+        w,
+        AEDIT_SEC_LOOP,
+        "Loop",
+        Some(&loop_read),
+        b.open(AEDIT_SEC_LOOP),
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y = ny;
+    if o {
+        y = crate::paint_loop::paint_loop_section(
+            y,
+            x,
+            w,
+            b.loaded,
+            b.has_sel,
+            ROW_H,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+    y = separator(y, x, w, scene, theme);
 
     let (o, ny) = section(
         y,
@@ -114,7 +155,7 @@ fn paint_sound_sections(
         AEDIT_SEC_EDIT,
         "Edit",
         None,
-        b.open[1],
+        b.open(AEDIT_SEC_EDIT),
         scene,
         text_system,
         theme,
@@ -136,7 +177,7 @@ fn paint_sound_sections(
             hit_index,
         );
     }
-    y = divider(y, x, w, scene, theme);
+    y = separator(y, x, w, scene, theme);
 
     let (o, ny) = section(
         y,
@@ -145,7 +186,7 @@ fn paint_sound_sections(
         AEDIT_SEC_FX,
         "Effects",
         None,
-        b.open[2],
+        b.open(AEDIT_SEC_FX),
         scene,
         text_system,
         theme,
@@ -165,14 +206,14 @@ fn paint_sound_sections(
             hit_index,
         );
     }
-    y = divider(y, x, w, scene, theme);
+    y = separator(y, x, w, scene, theme);
 
     y
 }
 
-/// **Preparing the asset**: loop points, cue markers, variation sets, delivery. Reached
-/// for once per asset rather than once per edit, so these start FOLDED — which is what
-/// keeps the panel a panel instead of a wall.
+/// **Preparing the asset**: cue markers, variation sets, delivery. Reached for once per
+/// asset rather than once per edit, so these start FOLDED — which is what keeps the panel
+/// a panel instead of a wall.
 #[allow(clippy::too_many_arguments)]
 fn paint_asset_sections(
     mut y: f32,
@@ -184,37 +225,6 @@ fn paint_asset_sections(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let loop_read = crate::paint_loop::loop_readout();
-    let (o, ny) = section(
-        y,
-        x,
-        w,
-        AEDIT_SEC_LOOP,
-        "Loop",
-        Some(&loop_read),
-        b.open[3],
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y = ny;
-    if o {
-        y = crate::paint_loop::paint_loop_section(
-            y,
-            x,
-            w,
-            b.loaded,
-            b.has_sel,
-            ROW_H,
-            scene,
-            text_system,
-            theme,
-            hit_index,
-        );
-    }
-    y = divider(y, x, w, scene, theme);
-
     let mark_read = crate::paint_loop::markers_readout();
     let (o, ny) = section(
         y,
@@ -223,7 +233,7 @@ fn paint_asset_sections(
         AEDIT_SEC_MARKERS,
         "Markers",
         Some(&mark_read),
-        b.open[4],
+        b.open(AEDIT_SEC_MARKERS),
         scene,
         text_system,
         theme,
@@ -243,7 +253,7 @@ fn paint_asset_sections(
             hit_index,
         );
     }
-    y = divider(y, x, w, scene, theme);
+    y = separator(y, x, w, scene, theme);
 
     let var_read = crate::paint_variation::variation_readout();
     let (o, ny) = section(
@@ -253,7 +263,7 @@ fn paint_asset_sections(
         AEDIT_SEC_VARIATIONS,
         "Variations",
         Some(&var_read),
-        b.open[5],
+        b.open(AEDIT_SEC_VARIATIONS),
         scene,
         text_system,
         theme,
@@ -272,7 +282,7 @@ fn paint_asset_sections(
             hit_index,
         );
     }
-    y = divider(y, x, w, scene, theme);
+    y = separator(y, x, w, scene, theme);
 
     let del_read = crate::paint_delivery::delivery_readout();
     let (o, ny) = section(
@@ -282,7 +292,7 @@ fn paint_asset_sections(
         AEDIT_SEC_DELIVERY,
         "Delivery",
         Some(&del_read),
-        b.open[6],
+        b.open(AEDIT_SEC_DELIVERY),
         scene,
         text_system,
         theme,
@@ -309,9 +319,9 @@ fn paint_asset_sections(
 /// one array before the paint borrows, so the body never has to reach back into it.
 pub(crate) const SECTIONS: [NodeId; 7] = [
     AEDIT_SEC_TRANSPORT,
+    AEDIT_SEC_LOOP,
     AEDIT_SEC_EDIT,
     AEDIT_SEC_FX,
-    AEDIT_SEC_LOOP,
     AEDIT_SEC_MARKERS,
     AEDIT_SEC_VARIATIONS,
     AEDIT_SEC_DELIVERY,
@@ -374,12 +384,13 @@ fn section(
     (open, y + h + Spacing::Xs.px())
 }
 
-/// A 1 px rule between sections — the canonical `Divider`. Returns the `y` below it.
-fn divider(y: f32, x: f32, w: f32, scene: &mut VectorScene, theme: Theme) -> f32 {
-    let gap = Spacing::Sm.px();
-    let band = Rect::new(x, y + gap, w, 1.0); // LITERAL-PX-OK: the Divider widget's own 1 px rule
-    paint_divider(&Divider::new(AEDIT_PANEL), band, scene, theme);
-    y + gap * 2.0 + 1.0
+/// The rule between two sections — `paint_section_separator`, the SAME one the Sprite
+/// Inspector and the Widget Gallery draw: a 1 px accent-coloured line, not the neutral
+/// `Divider`. The Gallery is the single source of truth for chrome (DIRETRIZ §5.2), and
+/// a panel that invents its own line is a panel that looks like it belongs to a
+/// different app (Enio, 2026-07-12).
+fn separator(y: f32, x: f32, w: f32, scene: &mut VectorScene, theme: Theme) -> f32 {
+    paint_section_separator(scene, theme, x, w, y)
 }
 
 /// The shell's live transport readout, bundled so the section fits one arg list.

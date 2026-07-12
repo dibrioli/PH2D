@@ -89,6 +89,10 @@ pub use symbols::{banner, bolt, check, cross, drop, gear, heart, moon, shield, t
 mod bubbles;
 pub use bubbles::{brace, burst, cloud, speech_oval, speech_rect, thought};
 
+/// O motor comum dos balões (anel de vértices · costura de arcos · enxerto do rabo ·
+/// reajuste de bbox). Módulo irmão de `bubbles` (teto de LOC).
+mod bubbles_ring;
+
 /// Os sólidos ISOMÉTRICOS (cubo · cone · pirâmide). Módulo próprio porque a projeção é um
 /// assunto seu — dois parâmetros (`rise`/`skew`) governam os três, e as arestas internas
 /// são o que os faz ler como volume. Módulo irmão de `shapes`.

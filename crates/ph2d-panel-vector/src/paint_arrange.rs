@@ -10,6 +10,7 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
 /// Full turn in degrees (Angle slider track `0..1` maps to `0..FULL_TURN_DEG`).
@@ -61,9 +62,13 @@ impl BodyCtx<'_> {
     /// A grade **não mora aqui**: o editor tem um subsistema universal de grade
     /// (nove tipos, magnetismo, subdivisões) com painel próprio, e o Vector só
     /// pergunta a ele. Ligar/desligar a grade é lá.
-    pub(crate) fn snap_section(&mut self, mut y: f32) -> f32 {
+    pub(crate) fn snap_section(&mut self, y: f32) -> f32 {
         let on = state::current_snap();
-        y = self.section_label("Snap", y);
+        let (y, collapsed) =
+            self.section_header(ids::VECTOR_SECTION_SNAP, tr("panel.vector.section.snap"), y);
+        if collapsed {
+            return y;
+        }
         self.segmented2(
             "Shapes",
             [
@@ -115,14 +120,22 @@ impl BodyCtx<'_> {
         )
     }
 
-    /// Fill-type selector (Solid / Linear / Radial) + the Linear angle slider —
-    /// acts on the SELECTED path. Hidden when no path is selected / has no fill.
-    pub(crate) fn fill_type_controls(&mut self, mut y: f32) -> f32 {
+    /// Seção **FILL TYPE** — o seletor Solid / Linear / Radial / Multi + os controles de
+    /// gradiente (e a regra de preenchimento do compound). Age sobre o path SELECIONADO;
+    /// sem seleção (ou sem fill) a seção inteira some.
+    pub(crate) fn fill_type_section(&mut self, y: f32) -> f32 {
         let Some(kind) = state::current_fill_kind() else {
             return y;
         };
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_FILL_TYPE,
+            tr("panel.vector.section.fill_type"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
         y = self.fill_rule_row(y);
-        y = self.section_label("Fill Type", y);
         let kinds = [
             (ids::VECTOR_FILL_KIND_SOLID, "Solid", FillKind::Solid),
             (ids::VECTOR_FILL_KIND_LINEAR, "Linear", FillKind::Linear),
@@ -235,12 +248,19 @@ impl BodyCtx<'_> {
     /// "Align" + "Distribute" section — shown only with a multi-path OBJECT
     /// selection (≥2 for Align, ≥3 for Distribute). Two 3-col rows (X-align then
     /// Y-align) + a 2-col Distribute row. Buttons drive the shell drain.
-    pub(crate) fn align_section(&mut self, mut y: f32) -> f32 {
+    pub(crate) fn align_section(&mut self, y: f32) -> f32 {
         let count = state::current_selection_count();
         if count < 2 {
             return y;
         }
-        y = self.section_label("Align", y);
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_ALIGN,
+            tr("panel.vector.section.align"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
         let gap = Spacing::Sm.px();
         let cols = 3usize;
         let cw = ((self.inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
@@ -285,13 +305,22 @@ impl BodyCtx<'_> {
         y + self.row_gap
     }
 
-    /// "Path" section — reshape the whole selected path. Smooth / Sharpen are a
-    /// 2-col row; Simplify (fewer points) / Subdivide (more points) are the
-    /// point-density pair on a second 2-col row; then a full-width Close/Open
-    /// toggle (label from the published `closed` flag). `w`/`gap` are the shared
-    /// Arrange column metrics; returns the advanced `y`.
-    pub(crate) fn path_section(&mut self, w: f32, gap: f32, mut y: f32) -> f32 {
-        y = self.section_label("Path", y);
+    /// Seção **PATH** — remodela o path selecionado inteiro. Smooth / Sharpen numa linha
+    /// de 2 colunas; Simplify (menos pontos) / Subdivide (mais pontos) na segunda; o
+    /// toggle Close/Open (rótulo vindo do `closed` publicado); e, quando a seleção tem
+    /// uma forma VIVA (paramétrica / texto), o **Convert to Curves** — que é justamente
+    /// o que PRODUZ um path cru editável, e por isso mora aqui.
+    pub(crate) fn path_section(&mut self, y: f32) -> f32 {
+        let (mut y, collapsed) =
+            self.section_header(ids::VECTOR_SECTION_PATH, tr("panel.vector.section.path"), y);
+        if collapsed {
+            return y;
+        }
+        let gap = Spacing::Sm.px();
+        let w = ((self.inner_w - gap) / 2.0).max(1.0);
+        if state::convertible() {
+            y = self.action_button(ids::VECTOR_CONVERT_TO_CURVES, "Convert to Curves", y);
+        }
         y = self.row2(
             w,
             gap,

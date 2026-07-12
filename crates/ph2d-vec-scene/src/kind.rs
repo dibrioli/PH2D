@@ -217,19 +217,24 @@ impl ShapeKind {
                 v[2] = DEFAULT_ARROW_HEAD_W;
             }
             ShapeKind::ArrowBent => {
-                v[0] = DEFAULT_ARROW_TAIL;
-                v[1] = DEFAULT_ARROW_HEAD_LEN;
-                v[2] = 0.6;
+                v[0] = 0.25; // espessura do corpo (fração do lado curto)
+                v[1] = 0.3; // comprimento da cabeça
+                v[2] = 0.6; // largura cheia da cabeça
+                v[3] = 0.35; // raio EXTERNO do cotovelo (0 = quina quadrada)
             }
             ShapeKind::Chevron => {
                 v[0] = 0.3; // profundidade da ponta
                 v[1] = 0.2; // entalhe
             }
+            // A seta circular é a `circularArrow` do ECMA-376 em forma fechada. O sweep é
+            // COM SINAL (negativo = canhota), e a largura da cabeça governa o raio da
+            // faixa — é o transbordo dela que a caixa precisa acomodar.
             ShapeKind::ArrowCurved => {
-                v[0] = 270.0; // sweep
-                v[1] = 0.3; // espessura
-                v[2] = 0.25; // fração do sweep que a cabeça come
-                v[3] = 0.15; // o quanto a cabeça extravasa
+                v[0] = 270.0; // sweep total, cauda->ponta (com sinal)
+                v[1] = 180.0; // onde a cauda começa (0 = 3 horas)
+                v[2] = 0.125; // espessura radial da faixa
+                v[3] = 0.25; // largura cheia da cabeça
+                v[4] = 0.12; // quanto do sweep a cabeça consome
             }
             // Fluxograma: as medidas são frações da caixa.
             ShapeKind::Parallelogram => v[0] = 0.2,
@@ -241,31 +246,48 @@ impl ShapeKind {
             ShapeKind::PredefinedProcess => v[0] = 0.12,
             ShapeKind::OffPage => v[0] = 0.3,
             ShapeKind::NoteBracket => v[0] = 0.15,
-            // Balões: raio, rabicho (altura, posição, largura).
+            // Balões: o BICO é um ponto 2D livre (fração da caixa) — é o que os apps de
+            // verdade fazem, e o que o `wedgeRectCallout` do OOXML não tem (lá a base salta
+            // numa grade de 1/12). `room` é a faixa que o corpo cede ao rabo: ele vive
+            // DENTRO dela, então não tem como vazar a caixa.
             ShapeKind::SpeechRect => {
                 v[0] = DEFAULT_CORNER_RADIUS;
-                v[1] = 0.25;
-                v[2] = 0.3;
-                v[3] = 0.15;
+                v[1] = 0.30; // bico: u
+                v[2] = 0.97; // bico: v (embaixo — o rabo aponta para quem fala)
+                v[3] = 0.26; // largura da base
+                v[4] = 0.30; // faixa reservada ao rabo
             }
             ShapeKind::SpeechOval => {
-                v[0] = 0.25;
-                v[1] = 0.3;
-                v[2] = 0.12;
+                v[0] = 0.30;
+                v[1] = 0.97;
+                v[2] = 13.0; // meia-abertura da base na elipse (o spec usa 11°)
+                v[3] = 0.26;
             }
             ShapeKind::Thought => {
-                v[0] = 7.0;
-                v[1] = 3.0;
+                v[0] = 0.28;
+                v[1] = 0.95;
+                v[2] = 3.0; // bolhas da corrente (o `cloudCallout` usa 3)
+                v[3] = 11.0; // bolhas da nuvem (o spec usa 11 arcos)
             }
             ShapeKind::Burst => {
-                v[0] = 10.0;
-                v[1] = 0.55;
-                v[2] = 0.25;
+                v[0] = 12.0; // pontas (o `irregularSeal1` tem 12)
+                v[1] = 0.565; // razão interna, medida do spec
+                v[2] = 0.28;
+                v[3] = 0.55;
             }
-            ShapeKind::Brace => v[0] = 0.5,
+            ShapeKind::Brace => {
+                v[0] = 1.0 / 12.0; // o `adj1 = 8333` do spec
+                v[1] = 0.5;
+                v[2] = 0.5;
+            }
             // Símbolos.
             ShapeKind::Heart => v[0] = 0.2,
-            ShapeKind::Cloud => v[0] = 7.0,
+            ShapeKind::Cloud => {
+                v[0] = 11.0;
+                v[1] = 0.62; // raio da bolha ÷ passo da espinha (≤ 0,5 = sem sobreposição)
+                v[2] = 0.0; // vale: 0 = cúspide (OOXML), > 0 = contorno G1
+                v[3] = 1.0; // irregularidade (a tabela medida do spec, em escala cheia)
+            }
             ShapeKind::Bolt => v[0] = 0.4,
             ShapeKind::Moon => v[0] = 0.45,
             ShapeKind::Drop => v[0] = 0.5,
@@ -357,9 +379,11 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::Arc => crate::arc_open(c, rx, ry, f(v, 1), f(v, 0)),
         ShapeKind::ArrowRight => crate::arrow_block(a, b, f(v, 0), f(v, 1), f(v, 2)),
         ShapeKind::ArrowDouble => crate::arrow_double(a, b, f(v, 0), f(v, 1), f(v, 2)),
-        ShapeKind::ArrowBent => crate::arrow_bent(a, b, f(v, 0), f(v, 1), f(v, 2)),
+        ShapeKind::ArrowBent => crate::arrow_bent(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
         ShapeKind::Chevron => crate::chevron(a, b, f(v, 0), f(v, 1)),
-        ShapeKind::ArrowCurved => crate::arrow_curved(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
+        ShapeKind::ArrowCurved => {
+            crate::arrow_curved(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3), f(v, 4))
+        }
         ShapeKind::Diamond => crate::diamond(a, b),
         ShapeKind::Pill => crate::pill(a, b),
         ShapeKind::Parallelogram => crate::parallelogram(a, b, f(v, 0)),
@@ -374,13 +398,15 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::OffPage => crate::offpage(a, b, f(v, 0)),
         ShapeKind::Junction => crate::junction(a, b),
         ShapeKind::NoteBracket => crate::note_bracket(a, b, f(v, 0)),
-        ShapeKind::SpeechRect => crate::speech_rect(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
-        ShapeKind::SpeechOval => crate::speech_oval(a, b, f(v, 0), f(v, 1), f(v, 2)),
-        ShapeKind::Thought => crate::thought(a, b, f(v, 0), f(v, 1)),
-        ShapeKind::Burst => crate::burst(a, b, f(v, 0), f(v, 1), f(v, 2)),
-        ShapeKind::Brace => crate::brace(a, b, f(v, 0)),
+        ShapeKind::SpeechRect => {
+            crate::speech_rect(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3), f(v, 4))
+        }
+        ShapeKind::SpeechOval => crate::speech_oval(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
+        ShapeKind::Thought => crate::thought(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
+        ShapeKind::Burst => crate::burst(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
+        ShapeKind::Brace => crate::brace(a, b, f(v, 0), f(v, 1), f(v, 2)),
         ShapeKind::Heart => crate::heart(a, b, f(v, 0)),
-        ShapeKind::Cloud => crate::cloud(a, b, f(v, 0)),
+        ShapeKind::Cloud => crate::cloud(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
         ShapeKind::Bolt => crate::bolt(a, b, f(v, 0)),
         ShapeKind::Moon => crate::moon(a, b, f(v, 0)),
         ShapeKind::Drop => crate::drop(a, b, f(v, 0)),

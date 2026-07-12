@@ -123,14 +123,24 @@ pub(crate) fn apply_event(
         {
             true
         }
-        // **Botão do catálogo de formas**: o id carrega o índice; a tool o resolve e já
-        // arma o gesto. A ABA de família é estado só-do-painel (não vira evento).
+        // **Opção de CATEGORIA** (uma linha do popover do chip): a família é estado
+        // só-do-painel (não vira evento de tool). Fechamos o chip à mão — o light-dismiss
+        // genérico não dispara, porque o clique é DENTRO do popover (mesmo caminho do
+        // dropdown de fonte).
         WidgetEvent::Click(id) if state::shape_group_index(id).is_some() => {
             seam_reset_button(host, id);
-            if let Some(g) = state::shape_group_index(id)
-                .and_then(|i| ph2d_tool_vector::shapes::ALL_GROUPS.get(i))
-            {
+            let index = state::shape_group_index(id);
+            if let Some(g) = index.and_then(|i| ph2d_tool_vector::shapes::ALL_GROUPS.get(i)) {
                 state::set_current_shape_group(Some(*g));
+            }
+            if let Some(InteractiveState::Dropdown {
+                open,
+                selected_index,
+                ..
+            }) = host.store_mut().get_mut(ids::VECTOR_SHAPE_GROUP_DD)
+            {
+                *open = false;
+                *selected_index = index;
             }
             true
         }
@@ -191,6 +201,9 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_MODE_SELECT
         || id == ids::VECTOR_MODE_NODE
         || id == ids::VECTOR_MODE_PEN
+        // O 5º pill: re-arma o gesto de forma. Ausente daqui, o botão pintaria e estaria
+        // MORTO — exatamente o bug que o smoke do Line/Arc pegou (Enio 2026-07-09).
+        || id == ids::VECTOR_MODE_SHAPE
         || id == ids::VECTOR_MODE_TEXT
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT

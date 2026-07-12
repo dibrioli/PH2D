@@ -1,13 +1,17 @@
-//! O seletor de MODO + o seletor de FORMA do painel Vector — ambos data-driven.
+//! O seletor de MODO + os PARÂMETROS da forma em foco + as seções de TEXTO.
 //!
-//! Módulo irmão de `paint_sections` (teto de 600 LOC por arquivo de painel).
+//! Módulo irmão de `paint_sections` (teto de 600 LOC por arquivo de painel). O CATÁLOGO
+//! de formas (categoria + grade de thumbnails) mora em `paint_catalog`.
 //!
-//! Quatro modos, e só (ADR-0112): **Select** (o gizmo manda) · **Node** (edita âncoras)
-//! · **Pen** (cria) · **Text**. As FORMAS não são modos — são um **catálogo**: o painel
-//! itera `ph2d_tool_vector::shapes`, pinta um botão por forma (id gerado,
-//! `vector_shape_id(i)`) e, abaixo, um campo por parâmetro da forma em foco (rótulo,
-//! faixa e passo vindos do descritor). Nada aqui sabe que existe estrela, seta ou balão
-//! — e é por isso que uma forma nova custa uma linha de tabela, não uma seção de painel.
+//! **Cinco modos** (ADR-0112 + o 5º pill desta reforma): **Select** (o gizmo manda) ·
+//! **Node** (edita âncoras) · **Pen** (cria) · **Shape** (desenha a forma ATIVA do
+//! catálogo) · **Text**. As FORMAS não são modos — são um **catálogo**; escolher uma põe
+//! a tool em `Shape`, e por isso o modo Shape precisa de um pill: sem ele a fileira de
+//! modos ficava TODA apagada justamente enquanto se desenhava uma forma.
+//!
+//! Os campos de parâmetro vivem numa seção IRMÃ cujo **título é o NOME da forma em foco**
+//! (`STAR`, `GEAR`, `SPEECH`…) — é assim que o usuário descobre a quem os campos
+//! pertencem; soltos, como estavam, não diziam nada.
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
@@ -22,6 +26,7 @@ use ph2d_editor_core::widget::{
     paint_dropdown_chip, paint_number_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 use ph2d_tool_vector::params::{
     DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
@@ -32,72 +37,89 @@ use ph2d_tool_vector::shapes;
 use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot};
 
 impl BodyCtx<'_> {
-    /// A grade de modos (Select / Node / Pen / Text) + o catálogo de formas + os campos
-    /// da forma em foco.
-    pub(crate) fn draw_modes(&mut self, snap: &VectorStyleSnapshot, mut y: f32) -> f32 {
-        y = self.section_label("Tool", y);
+    /// Seção **TOOL** — os cinco modos, numa grade de 3 colunas
+    /// (`Select | Node | Pen` · `Shape | Text`).
+    pub(crate) fn tool_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        let (y, collapsed) =
+            self.section_header(ids::VECTOR_SECTION_TOOL, tr("panel.vector.section.tool"), y);
+        if collapsed {
+            return y;
+        }
         let modes = [
-            (ids::VECTOR_MODE_SELECT, "Select", DrawMode::Select),
-            (ids::VECTOR_MODE_NODE, "Node", DrawMode::Node),
-            (ids::VECTOR_MODE_PEN, "Pen", DrawMode::Pen),
-            (ids::VECTOR_MODE_TEXT, "Text", DrawMode::Text),
+            (
+                ids::VECTOR_MODE_SELECT,
+                tr("panel.vector.mode.select"),
+                DrawMode::Select,
+            ),
+            (
+                ids::VECTOR_MODE_NODE,
+                tr("panel.vector.mode.node"),
+                DrawMode::Node,
+            ),
+            (
+                ids::VECTOR_MODE_PEN,
+                tr("panel.vector.mode.pen"),
+                DrawMode::Pen,
+            ),
+            (
+                ids::VECTOR_MODE_SHAPE,
+                tr("panel.vector.mode.shape"),
+                DrawMode::Shape,
+            ),
+            (
+                ids::VECTOR_MODE_TEXT,
+                tr("panel.vector.mode.text"),
+                DrawMode::Text,
+            ),
         ];
-        y = self.button_grid(y, 2, modes.len(), |i| {
+        let cols = 3usize;
+        self.button_grid(y, cols, modes.len(), |i| {
             let (id, label, m) = modes[i];
             (id, label, snap.mode == m)
-        });
+        })
+    }
 
-        // ── O catálogo de formas ──────────────────────────────────────────────
-        // A família é uma aba; o grid mostra só as formas dela (com 25+ formas um grid
-        // plano seria ilegível). O botão da forma ATIVA fica aceso.
-        y = self.section_label("Shape", y);
-        let groups = shapes::ALL_GROUPS;
-        // Sem escolha explícita de aba, ela segue a forma ativa — voltar à tool mostra a
-        // família do que se está desenhando.
-        let active_group = state::current_shape_group().unwrap_or(shapes::desc(snap.shape).group);
-        if groups.len() > 1 {
-            y = self.button_grid(y, 3, groups.len(), |i| {
-                (
-                    ids::vector_shape_group_id(i),
-                    groups[i].label(),
-                    groups[i] == active_group,
-                )
-            });
-        }
-        let in_group: Vec<(usize, &shapes::ShapeDesc)> = shapes::SHAPES
-            .iter()
-            .enumerate()
-            .filter(|(_, d)| d.group == active_group)
-            .collect();
-        y = self.button_grid(y, 3, in_group.len(), |i| {
-            let (cat_index, d) = in_group[i];
-            (
-                ids::vector_shape_id(cat_index),
-                d.label,
-                snap.shape == d.kind && snap.mode == DrawMode::Shape,
-            )
-        });
-
-        // ── Os parâmetros da forma em foco ────────────────────────────────────
-        // A forma em foco é a VIVA selecionada, quando há uma (a shell publica) — assim
-        // os campos editam a forma que está na tela, mesmo na ferramenta Select. Sem
-        // seleção, é a forma ativa do catálogo (o default do próximo traço).
+    /// Seção dos **PARÂMETROS** da forma em foco — o cabeçalho É o nome dela
+    /// (`paint_section_header` já pinta em MAIÚSCULAS), o que responde "de quem são estes
+    /// campos?" sem gastar uma linha a mais.
+    ///
+    /// A forma em foco é a VIVA selecionada, quando há uma (a shell publica) — assim os
+    /// campos editam a forma que está na tela, mesmo na ferramenta Select. Sem seleção, é
+    /// a forma ativa do catálogo (o default do próximo traço).
+    ///
+    /// Formas sem campo (Rect / Decision / Terminal / Delay / Junction…) mostram uma
+    /// linha "No parameters": a seção nunca parece quebrada.
+    pub(crate) fn shape_params_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let focus = state::shape_focus(state::current_shape_focus(), snap.shape);
-        for (i, f) in shapes::desc(focus).fields.iter().enumerate() {
-            y = self.labeled_number_field(f.label, ids::vector_shape_field_id(i), f.step, y);
+        let desc = shapes::desc(focus);
+        let (mut y, collapsed) =
+            self.section_header(ids::VECTOR_SECTION_SHAPE_PARAMS, desc.label, y);
+        if collapsed {
+            return y;
         }
-
-        // A seção Text aparece no modo Text **ou** com um objeto de TEXTO selecionado (a
-        // shell publica a visibilidade).
-        if state::text_visible() {
-            y = self.text_size_and_string(y);
+        if desc.fields.is_empty() {
+            paint_text(
+                self.text_system,
+                self.scene,
+                tr("panel.vector.shape.no_params"),
+                self.inner_x,
+                y + (self.row_h - TypeToken::Sm.px()) * 0.5,
+                TypeToken::Sm.px(),
+                self.inner_w,
+                resolve(ColorToken::Text3, self.theme),
+            );
+            return y + self.row_h + self.row_gap;
+        }
+        for (i, f) in desc.fields.iter().enumerate() {
+            y = self.labeled_number_field(f.label, ids::vector_shape_field_id(i), f.step, y);
         }
         y
     }
 
     /// Uma grade de botões segmentados de `cols` colunas — o desenho compartilhado do
-    /// seletor de modo, das abas de família e do catálogo de formas.
-    fn button_grid(
+    /// seletor de modo e da grade de tipos do catálogo (que empilha o thumbnail por cima
+    /// da mesma chrome).
+    pub(crate) fn button_grid(
         &mut self,
         y: f32,
         cols: usize,
@@ -171,9 +193,18 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
-    /// Text-mode controls: the glyph Size slider + a read-only preview of the
-    /// active session's string (typed on the canvas — the editable field is A3).
-    fn text_size_and_string(&mut self, mut y: f32) -> f32 {
+    /// Seção **TEXT** — o Size + o Weight (variável) da sessão viva, e um preview
+    /// read-only da string (a digitação acontece no canvas). Aparece no modo Text **ou**
+    /// com um objeto de TEXTO selecionado (a shell publica a visibilidade).
+    pub(crate) fn text_section(&mut self, y: f32) -> f32 {
+        if !state::text_visible() {
+            return y;
+        }
+        let (mut y, collapsed) =
+            self.section_header(ids::VECTOR_SECTION_TEXT, tr("panel.vector.section.text"), y);
+        if collapsed {
+            return y;
+        }
         let track = self
             .store
             .slider(ids::VECTOR_TEXT_SIZE)
@@ -211,11 +242,7 @@ impl BodyCtx<'_> {
             &format!("{}", wval.round() as i64),
             y,
         );
-        y = self.font_picker_row(y);
-        y = self.paragraph_section(y);
-        y = self.axes_section(y);
         // Read-only string preview (the active session's text, or a hint when empty).
-        y = self.section_label("Text", y);
         let text = state::current_text().unwrap_or_default();
         let (shown, color) = if text.trim().is_empty() {
             ("Click the canvas and type".to_owned(), ColorToken::Text2)
@@ -235,11 +262,18 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
-    /// Font-family picker row: `<` prev | **dropdown chip** | `>` next. The arrows
-    /// cycle; the chip opens the styled popover (each family drawn in its own
-    /// outline — [`crate::font_dropdown`]). The shell owns the family list + fonts.
-    fn font_picker_row(&mut self, mut y: f32) -> f32 {
-        y = self.section_label("Font", y);
+    /// Seção **FONT** — `<` prev | **dropdown chip** | `>` next + Import. As setas
+    /// ciclam; o chip abre o popover estilizado (cada família no PRÓPRIO contorno —
+    /// [`crate::font_dropdown`]). A shell é dona da lista de famílias + das fontes.
+    pub(crate) fn font_section(&mut self, y: f32) -> f32 {
+        if !state::text_visible() {
+            return y;
+        }
+        let (mut y, collapsed) =
+            self.section_header(ids::VECTOR_SECTION_FONT, tr("panel.vector.section.font"), y);
+        if collapsed {
+            return y;
+        }
         let btn_w = self.row_h;
         let gap = Spacing::Sm.px();
         self.arrow_button(ids::VECTOR_TEXT_FONT_PREV, "<", self.inner_x, btn_w, y);
@@ -277,9 +311,19 @@ impl BodyCtx<'_> {
         self.action_button(ids::VECTOR_TEXT_FONT_IMPORT, "Import Font...", y)
     }
 
-    /// Paragraph controls (Text mode): alignment L / C / R + Line-height + Tracking.
-    fn paragraph_section(&mut self, mut y: f32) -> f32 {
-        y = self.section_label("Paragraph", y);
+    /// Seção **PARAGRAPH** — alinhamento L / C / R + Line-height + Tracking.
+    pub(crate) fn paragraph_section(&mut self, y: f32) -> f32 {
+        if !state::text_visible() {
+            return y;
+        }
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_PARAGRAPH,
+            tr("panel.vector.section.paragraph"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
         let align = state::current_text_align().unwrap_or(TextAlign::Left);
         y = self.segmented3(
             "Align",
@@ -340,15 +384,22 @@ impl BodyCtx<'_> {
         )
     }
 
-    /// Variation Axes (Text mode): one number field per non-`wght` axis the current
-    /// font exposes. Hidden for static fonts.
-    fn axes_section(&mut self, mut y: f32) -> f32 {
+    /// Seção **AXES** — um campo por eixo de variação (fora o `wght`, que tem slider
+    /// próprio) que a fonte corrente expõe. Some para fontes estáticas.
+    pub(crate) fn axes_section(&mut self, y: f32) -> f32 {
+        if !state::text_visible() {
+            return y;
+        }
         let names: Vec<String> =
             state::with_text_axes(|axes| axes.iter().map(|a| a.name.clone()).collect());
         if names.is_empty() {
             return y;
         }
-        y = self.section_label("Axes", y);
+        let (mut y, collapsed) =
+            self.section_header(ids::VECTOR_SECTION_AXES, tr("panel.vector.section.axes"), y);
+        if collapsed {
+            return y;
+        }
         for (i, name) in names.iter().enumerate() {
             y = self.labeled_number_field(name, ids::vector_text_axis_id(i), 1.0, y);
         }

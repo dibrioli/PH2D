@@ -52,12 +52,7 @@ pub fn trapezoid(a: [f64; 2], b: [f64; 2], slant: f64, flip: bool) -> VecPath {
     let (top, bot) = if flip { (0.0, s) } else { (s, 0.0) };
     poly(
         &u,
-        &[
-            (top, 0.0),
-            (1.0 - top, 0.0),
-            (1.0 - bot, 1.0),
-            (bot, 1.0),
-        ],
+        &[(top, 0.0), (1.0 - top, 0.0), (1.0 - bot, 1.0), (bot, 1.0)],
     )
 }
 

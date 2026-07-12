@@ -103,6 +103,9 @@ thread_local! {
     /// Chip rect stashed by the body paint when the font dropdown is open, taken by
     /// the deferred popover pass so the list paints ON TOP of every section.
     static PENDING_FONT_DD: Cell<Option<Rect>> = const { Cell::new(None) };
+    /// Idem para o chip de CATEGORIA do catálogo de formas. Sem o passe diferido o
+    /// `push_clip` do scroll cortaria o popover na borda da seção.
+    static PENDING_GROUP_DD: Cell<Option<Rect>> = const { Cell::new(None) };
 }
 
 /// Which kind of fill the selected path has (published by the shell each frame so
@@ -501,4 +504,35 @@ pub(crate) fn set_pending_font_dd(rect: Option<Rect>) {
 
 pub(crate) fn take_pending_font_dd() -> Option<Rect> {
     PENDING_FONT_DD.with(|c| c.take())
+}
+
+/// Idem para o chip de CATEGORIA (o popover das famílias de forma).
+pub(crate) fn set_pending_group_dd(rect: Option<Rect>) {
+    PENDING_GROUP_DD.with(|c| c.set(rect));
+}
+
+pub(crate) fn take_pending_group_dd() -> Option<Rect> {
+    PENDING_GROUP_DD.with(|c| c.take())
+}
+
+/// A família ATIVA do catálogo: a escolhida explicitamente, ou — sem escolha — a da forma
+/// ativa (voltar à tool mostra a família do que se está desenhando). Única verdade sobre
+/// isso: a grade, o chip e o popover leem daqui, senão os três discordariam.
+pub(crate) fn active_shape_group(active: ShapeKind) -> ShapeGroup {
+    current_shape_group().unwrap_or(ph2d_tool_vector::shapes::desc(active).group)
+}
+
+/// A chave i18n do rótulo de uma família. Vive AQUI (não em `ph2d-tool-vector::shapes`)
+/// porque a chave é vocabulário de UI do painel, e o catálogo é do domínio da tool.
+#[must_use]
+pub(crate) fn group_i18n_key(group: ShapeGroup) -> &'static str {
+    match group {
+        ShapeGroup::Basic => "panel.vector.group.basic",
+        ShapeGroup::Round => "panel.vector.group.round",
+        ShapeGroup::Arrows => "panel.vector.group.arrows",
+        ShapeGroup::Flow => "panel.vector.group.flow",
+        ShapeGroup::Bubbles => "panel.vector.group.bubbles",
+        ShapeGroup::Symbols => "panel.vector.group.symbols",
+        ShapeGroup::Iso => "panel.vector.group.iso",
+    }
 }

@@ -148,10 +148,7 @@ mod tests {
                 "{name}: o apice fica no eixo, nao no canto: {:?}",
                 apex.anchor
             );
-            let base = p
-                .verts_all()
-                .map(|v| v.anchor[1])
-                .fold(f64::MAX, f64::min);
+            let base = p.verts_all().map(|v| v.anchor[1]).fold(f64::MAX, f64::min);
             assert!(
                 apex.anchor[1] > base + 1.0,
                 "{name}: o apice ({}) tem de estar bem ACIMA da base ({base})",
@@ -196,7 +193,6 @@ mod tests {
         let lip = 0.25_f64;
         let (rx, ry) = (0.5, lip);
         let h = 1.0 - ry;
-        let phi = (ry / h).asin();
         // O ponto de tangência, em espaço de autoria (base centrada em (0.5, 1−lip)).
         let tx = 0.5 + rx * (h * h - ry * ry).sqrt() / h;
         let ty = (1.0 - ry) - ry * ry / h;

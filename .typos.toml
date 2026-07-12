@@ -39,6 +39,18 @@ diagramas = "diagramas"
 conector = "conector"
 Conector = "Conector"
 conectores = "conectores"
+# pt-BR do módulo de balões (`ph2d-vec-scene/src/bubbles.rs`): a nuvem é uma cadeia de
+# ELIPSES vizinhas, a volta inteira REPETE o primeiro vértice, e um gate que não pega nada
+# é DECORATIVO. Todos lidos como inglês mal escrito; são as palavras portuguesas.
+elipses = "elipses"
+repete = "repete"
+decorativo = "decorativo"
+# pt-BR da geometria: arestas INCIDENTES num vértice, um VERTICE (sem acento em
+# identificador), a seção RESPONDE a uma pergunta, e a faixa de VALIDADE de um parâmetro.
+incidentes = "incidentes"
+responde = "responde"
+vertice = "vertice"
+VALIDADE = "VALIDADE"
 # Audio/phonetics term (the resonant peaks of a vocal tract), read by typos-cli as a
 # misspelt "format". Used in `ph2d-audio-edit/src/fx/pitch.rs` to explain why the
 # granular shifter moves formants with the pitch (which is what makes a monster voice).

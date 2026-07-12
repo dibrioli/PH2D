@@ -125,6 +125,10 @@ fn mode_button_click_switches_tool_mode_through_seam() {
         (ids::VECTOR_MODE_PEN, DrawMode::Pen),
         (ids::VECTOR_MODE_TEXT, DrawMode::Text),
         (ids::VECTOR_MODE_NODE, DrawMode::Node),
+        // O 5º pill (reforma da UI): `DrawMode::Shape` não tinha botão nenhum, então a
+        // fileira de modos ficava TODA apagada justamente enquanto se desenhava uma
+        // forma. O botão novo é inútil se não chegar ao tool — este arm é o gate.
+        (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
     ] {
         let outcome =
             host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));
@@ -377,6 +381,85 @@ fn delete_node_button_click_forwards_to_the_bus_for_the_shell() {
         forwarded,
         "Delete-Node click never reached the bus as a ToolPanelEvent — the shell can't delete it"
     );
+}
+
+/// **Gate anti-cabeçalho-morto.** O collapse de uma seção é dispatch GENÉRICO e exige
+/// DOIS sites: a marca no `populate` (`mark_collapsible_section`) e o hit-rect do header
+/// no paint. Faltando a marca, `apply_click` nunca chama `toggle_collapsed` — o header
+/// pinta um chevron, promete dobrar, e não dobra. É o mesmo gênero de bug do botão
+/// pintado-e-morto, só que na chrome de seção.
+///
+/// O painel migrou 14 `section_label` caseiros para `SectionHeader` colapsáveis (canon
+/// `docs/UI_Padrao/components/section_header.md`): este teste prova que TODOS os 17
+/// nasceram vivos, e uma seção nova sem a marca sai vermelha.
+#[test]
+fn every_section_header_is_registered_as_collapsible() {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let host = MockPanelHost::with_panel::<VectorPanel>();
+    assert_eq!(
+        ids::VECTOR_SECTIONS.len(),
+        17,
+        "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
+    );
+    for &id in ids::VECTOR_SECTIONS {
+        assert!(
+            host.store().is_collapsible_section(id),
+            "{id:?}: header pintado mas NAO marcado colapsavel — o chevron nao dobra \
+             (falta `mark_collapsible_section` no populate)"
+        );
+    }
+}
+
+/// **A separação categoria ≠ tipo, pelo seam.** A categoria virou um `Dropdown` (widget
+/// visualmente distinto da grade de tipos). Escolher uma família no popover tem de (a)
+/// ser consumido pelo painel e (b) FECHAR o chip — o light-dismiss genérico não dispara
+/// aqui, porque o clique é DENTRO do popover. Sem o fecho manual o popover ficaria
+/// pendurado sobre o painel.
+#[test]
+fn picking_a_category_closes_the_dropdown_chip() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_tool_vector::shapes;
+
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+
+    for (i, _g) in shapes::ALL_GROUPS.iter().enumerate() {
+        // Abre o chip (o que o dispatch genérico faz num clique nele).
+        if let Some(InteractiveState::Dropdown { open, .. }) =
+            host.store_mut().get_mut(ids::VECTOR_SHAPE_GROUP_DD)
+        {
+            *open = true;
+        } else {
+            panic!("VECTOR_SHAPE_GROUP_DD nao esta registrado como Dropdown no populate");
+        }
+
+        let outcome = host.apply_panel_event::<VectorPanel>(
+            &mut panel_state,
+            WidgetEvent::Click(ids::vector_shape_group_id(i)),
+        );
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "opcao de categoria {i} ignorada pelo painel"
+        );
+
+        match host.store().get(ids::VECTOR_SHAPE_GROUP_DD) {
+            Some(InteractiveState::Dropdown {
+                open,
+                selected_index,
+                ..
+            }) => {
+                assert!(!open, "categoria {i}: o chip ficou ABERTO apos a escolha");
+                assert_eq!(
+                    *selected_index,
+                    Some(i),
+                    "categoria {i}: o chip nao registrou a familia escolhida"
+                );
+            }
+            _ => panic!("VECTOR_SHAPE_GROUP_DD deixou de ser um Dropdown"),
+        }
+    }
 }
 
 /// The Close (X) button must emit `CancelActiveTool` (deactivates the tool),

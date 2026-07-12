@@ -365,6 +365,11 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_SELECT => self.mode = DrawMode::Select,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_NODE => self.mode = DrawMode::Node,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PEN => self.mode = DrawMode::Pen,
+            // **Forma** — o 5º pill. Re-arma o gesto na forma ATIVA do catálogo (não a
+            // troca): é o caminho de volta ao desenho depois de um desvio pelo Select,
+            // e é o pill que ACENDE enquanto se desenha (antes o modo Shape não tinha
+            // botão nenhum e a fileira inteira ficava apagada).
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_SHAPE => self.mode = DrawMode::Shape,
             // **Botão de forma** — idem: o id carrega o índice no catálogo. Escolher a
             // forma JÁ arma o gesto de desenho (`set_shape` põe o modo em Shape).
             PanelEvent::Click(id) if shape_index(id).is_some() => {
@@ -483,6 +488,8 @@ mod tests {
             (ids::VECTOR_MODE_PEN, DrawMode::Pen),
             (ids::VECTOR_MODE_NODE, DrawMode::Node),
             (ids::VECTOR_MODE_TEXT, DrawMode::Text),
+            // O 5º pill: sem ele, desenhar uma forma deixava a fileira toda apagada.
+            (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
             (ids::VECTOR_MODE_SELECT, DrawMode::Select),
         ] {
             Tool::handle_panel_event(&mut t, PanelEvent::Click(id));

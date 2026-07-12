@@ -305,3 +305,70 @@ pub const VECTOR_FILL_RULE_EVENODD: NodeId = hash_node_id("vector.fill.rule.even
 /// (`grid_snap::ids`), and the Vector module just asks `GridSnapState::snap_world`.
 pub const VECTOR_SNAP_OFF: NodeId = hash_node_id("vector.snap.off");
 pub const VECTOR_SNAP_ON: NodeId = hash_node_id("vector.snap.on");
+
+// ── Reforma da UI do painel (categoria ≠ tipo) ───────────────────────────────
+// Bloco APPEND-ONLY (isolamento de linha): o 5º pill de modo, o chip de família do
+// catálogo e os cabeçalhos COLAPSÁVEIS de cada seção. O painel hand-rolava 14
+// rótulos de seção e ZERO `SectionHeader`, violando o canon
+// (`docs/UI_Padrao/components/section_header.md`: toda seção usa
+// `paint_section_header` e toda seção é colapsável).
+
+/// **Forma** — o 5º pill do seletor de modo. Escolher uma forma no catálogo já põe a
+/// tool em `DrawMode::Shape`, mas SEM este botão a fileira de modos ficava toda apagada
+/// enquanto se desenhava (nenhum pill correspondia ao modo vivo) — o usuário não via em
+/// que modo estava.
+pub const VECTOR_MODE_SHAPE: NodeId = hash_node_id("vector.mode.shape");
+
+/// Chip de **CATEGORIA** do catálogo de formas (`Dropdown`): a família (Basic / Round /
+/// Arrows / Flow / Bubbles / Symbols / 3D) escolhida numa LINHA, com um widget
+/// visualmente distinto da grade de tipos abaixo — é essa diferença de widget que separa
+/// "categoria" de "tipo" (antes os dois eram `paint_segmented_button` do mesmo tamanho,
+/// indistinguíveis). As OPÇÕES do popover reusam os ids já existentes
+/// [`vector_shape_group_id`].
+pub const VECTOR_SHAPE_GROUP_DD: NodeId = hash_node_id("vector.shape.group_dd");
+
+// Cabeçalhos de seção. Não têm `InteractiveState`: o collapse vem do dispatch genérico
+// (`WidgetStore::mark_collapsible_section` no populate + o hit-rect do header), e o
+// painter lê `store.is_collapsed(id)`.
+pub const VECTOR_SECTION_TOOL: NodeId = hash_node_id("vector.section.tool");
+pub const VECTOR_SECTION_SHAPE: NodeId = hash_node_id("vector.section.shape");
+/// A seção dos PARÂMETROS da forma em foco — o rótulo dela é o NOME da forma (`STAR`,
+/// `GEAR`…), que é como o usuário descobre a quem os campos pertencem.
+pub const VECTOR_SECTION_SHAPE_PARAMS: NodeId = hash_node_id("vector.section.shape_params");
+pub const VECTOR_SECTION_STROKE: NodeId = hash_node_id("vector.section.stroke");
+pub const VECTOR_SECTION_FILL: NodeId = hash_node_id("vector.section.fill");
+pub const VECTOR_SECTION_FILL_TYPE: NodeId = hash_node_id("vector.section.fill_type");
+pub const VECTOR_SECTION_SNAP: NodeId = hash_node_id("vector.section.snap");
+pub const VECTOR_SECTION_TRANSFORM: NodeId = hash_node_id("vector.section.transform");
+pub const VECTOR_SECTION_VERTEX: NodeId = hash_node_id("vector.section.vertex");
+pub const VECTOR_SECTION_BOOLEAN: NodeId = hash_node_id("vector.section.boolean");
+pub const VECTOR_SECTION_ALIGN: NodeId = hash_node_id("vector.section.align");
+pub const VECTOR_SECTION_ARRANGE: NodeId = hash_node_id("vector.section.arrange");
+pub const VECTOR_SECTION_PATH: NodeId = hash_node_id("vector.section.path");
+pub const VECTOR_SECTION_TEXT: NodeId = hash_node_id("vector.section.text");
+pub const VECTOR_SECTION_FONT: NodeId = hash_node_id("vector.section.font");
+pub const VECTOR_SECTION_PARAGRAPH: NodeId = hash_node_id("vector.section.paragraph");
+pub const VECTOR_SECTION_AXES: NodeId = hash_node_id("vector.section.axes");
+
+/// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
+/// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
+/// esquecer a marca faz o header virar um título MORTO, que não dobra).
+pub const VECTOR_SECTIONS: &[NodeId] = &[
+    VECTOR_SECTION_TOOL,
+    VECTOR_SECTION_SHAPE,
+    VECTOR_SECTION_SHAPE_PARAMS,
+    VECTOR_SECTION_STROKE,
+    VECTOR_SECTION_FILL,
+    VECTOR_SECTION_FILL_TYPE,
+    VECTOR_SECTION_SNAP,
+    VECTOR_SECTION_TRANSFORM,
+    VECTOR_SECTION_VERTEX,
+    VECTOR_SECTION_BOOLEAN,
+    VECTOR_SECTION_ALIGN,
+    VECTOR_SECTION_ARRANGE,
+    VECTOR_SECTION_PATH,
+    VECTOR_SECTION_TEXT,
+    VECTOR_SECTION_FONT,
+    VECTOR_SECTION_PARAGRAPH,
+    VECTOR_SECTION_AXES,
+];

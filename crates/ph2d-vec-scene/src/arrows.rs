@@ -1,271 +1,392 @@
-//! **Setas em bloco** — módulo irmão de [`crate::shapes`].
+//! **Setas** — módulo irmão de [`crate::shapes`], autorado no espaço unitário
+//! ([`crate::space`]: `u` 0→1 da esquerda para a direita, `v` 0→1 do TOPO para a base).
 //!
 //! Cuidado com a palavra "seta": num editor vetorial ela é **duas coisas diferentes**.
-//! Aqui estão as setas-FORMA — polígonos preenchíveis, que se escalam, giram e recebem
+//! Aqui estão as setas-FORMA — contornos preenchíveis, que se escalam, giram e recebem
 //! gradiente como qualquer outra forma. A outra é a *ponta de traço* (arrowhead), que é
 //! propriedade do **stroke** e vale para qualquer path aberto; essa não mora aqui.
 //!
-//! Todas são desenhadas apontando para **+X** dentro da caixa do gesto (o gizmo gira).
+//! ## As três leis que estas cinco formas obedecem
+//!
+//! A geometria vem da definição publicada do OOXML (ECMA-376, Parte 1, Apêndice D), lida
+//! como referência e re-derivada em forma fechada. Dela saem três invariantes que valem
+//! para as 24 setas do padrão — e que a versão anterior deste módulo violava:
+//!
+//! 1. **A ponta é UM ponto sobre a linha de centro**, e os flancos da cabeça são
+//!    **retas**. Nenhuma das 24 setas do ECMA-376 tem uma única `cubicBezTo`: todo `arcTo`
+//!    delas pertence a uma faixa ou a um cotovelo, nunca ao flanco de uma cabeça.
+//! 2. **A contenção na caixa é resolvida ANTES, encolhendo a faixa** pelo transbordo da
+//!    cabeça (`r_out = 0,5 + th/2 − hh`) — nunca clampando a cabeça depois. É a linha que
+//!    faz a esquina externa da cabeça pousar EXATAMENTE no círculo inscrito.
+//! 3. **Curva é CURVA.** Todo arco sai em cúbicas de Bézier de ≤45° ([`arc45`]). A versão
+//!    anterior amostrava o arco da seta circular em cordas retas de 15°: o desvio radial
+//!    de uma corda de 15° é `8,6e-3·r` — **8,6 px** num raio de 1000, visível a olho nu, e
+//!    foi exatamente o polígono que o Enio fotografou. A cúbica de 45° erra `4,2e-6·r`.
+//!
 //! Os parâmetros são **frações** da caixa, não medidas absolutas — assim a seta guarda a
 //! proporção ao ser redimensionada, que é o que se espera de uma forma paramétrica.
 
+use crate::space::{Unit, Uv, closed, fit, poly, straighten};
 use crate::{VecPath, VecVertex};
 
-/// Constrói um contorno fechado de quinas a partir de pontos crus.
-fn corners(pts: Vec<[f64; 2]>) -> VecPath {
-    VecPath {
-        verts: pts.into_iter().map(VecVertex::corner).collect(),
-        closed: true,
-        ..VecPath::default()
+/// O centro da caixa unitária — a origem de tudo que é radial aqui.
+const O: Uv = (0.5, 0.5);
+
+/// **Arco em cúbicas de ≤45°** — o antídoto da poligonização.
+///
+/// [`Unit::arc`] já emite cúbicas exatas, mas fatia em pedaços de 90° (desvio radial
+/// `2,7e-4·r`). Aqui os pedaços são de ≤45° (`4,2e-6·r`, ~60× melhor) — o número que a
+/// referência exige. Como cada chamada interna recebe um sweep de ≤45°, ela devolve **uma**
+/// cúbica (`n = ceil(|s|/90) = 1`), e o vértice de junção — que já vem completo, com os
+/// dois handles calculados pelo mesmo comprimento `h` — é reaproveitado, não duplicado.
+fn arc45(u: &Unit, c: Uv, ru: f64, rv: f64, start_deg: f64, sweep_deg: f64) -> Vec<VecVertex> {
+    let steps = arc_segments(sweep_deg);
+    let seg = sweep_deg / steps as f64;
+    let mut out = Vec::with_capacity(steps + 1);
+    for i in 0..steps {
+        let part = u.arc(c, ru, rv, start_deg + seg * i as f64, seg);
+        // O primeiro vértice de cada pedaço (menos o inicial) É o último do anterior.
+        out.extend(part.into_iter().skip(usize::from(i > 0)));
     }
+    out
 }
 
-/// **Seta reta.** Haste retangular + cabeça triangular apontando para +X.
+/// Quantas cúbicas [`arc45`] emite para este sweep. É a ÚNICA definição do fatiamento —
+/// o teste a usa para saber onde um arco acaba e o outro começa.
+#[expect(clippy::cast_sign_loss, reason = "ceil(|x|).max(1) e positivo")]
+fn arc_segments(sweep_deg: f64) -> usize {
+    (sweep_deg.abs() / 45.0).ceil().max(1.0) as usize
+}
+
+/// Um quarto de elipse — ou uma QUINA, quando o raio degenera. É o que faz
+/// `corner = 0` virar o cotovelo quadrado sem um caso especial espalhado pelo desenho.
+fn elbow(u: &Unit, c: Uv, ru: f64, rv: f64, start_deg: f64, sweep_deg: f64) -> Vec<VecVertex> {
+    if ru.abs() < 1e-9 && rv.abs() < 1e-9 {
+        return vec![u.corner(c)]; // os dois extremos do arco colapsam no centro
+    }
+    arc45(u, c, ru, rv, start_deg, sweep_deg)
+}
+
+/// Ponto na circunferência de raio `r` e ângulo `deg` em torno de [`O`] (espaço unitário).
+fn polar(r: f64, deg: f64) -> Uv {
+    let (s, c) = deg.to_radians().sin_cos();
+    (O.0 + r * c, O.1 + r * s)
+}
+
+/// O ângulo (graus) de um ponto visto de [`O`] — o inverso de [`polar`].
+fn angle_of(p: Uv) -> f64 {
+    (p.1 - O.1).atan2(p.0 - O.0).to_degrees()
+}
+
+/// O sweep COM SINAL que leva de `from` a `to` andando no sentido `dir` (±1). Sem isto,
+/// "de 337° para 180°" viraria +203° (a volta longa, pelo lado errado) em vez de −157°.
+fn signed_span(from: f64, to: f64, dir: f64) -> f64 {
+    let d = (to - from).rem_euclid(360.0);
+    if dir < 0.0 { d - 360.0 } else { d }
+}
+
+/// **Seta reta.** Haste retangular + cabeça triangular apontando para +X: a ponta é um
+/// ponto ÚNICO, encostada na borda direita da caixa e na linha de centro.
 ///
 /// - `tail` = espessura da haste (fração da altura);
 /// - `head_len` = comprimento da cabeça (fração da largura);
-/// - `head_w` = largura da cabeça (fração da altura) — `1.0` = a cabeça ocupa a caixa toda.
+/// - `head_w` = largura CHEIA da cabeça (fração da altura) — `1,0` = a cabeça ocupa a
+///   caixa toda. O OOXML fixa isto em 1,0; aqui é parâmetro.
 #[must_use]
 pub fn arrow_block(a: [f64; 2], b: [f64; 2], tail: f64, head_len: f64, head_w: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let ht = hh * tail.clamp(0.02, 1.0); // meia-espessura da haste
-    let hwd = hh * head_w.clamp(0.05, 1.0); // meia-largura da cabeça
-    // A cabeça nunca pode ser mais fina que a haste, senão o contorno inverte.
-    let hwd = hwd.max(ht);
-    let neck = cx + hw - 2.0 * hw * head_len.clamp(0.02, 1.0); // onde a cabeça começa
-    let (x0, x1) = (cx - hw, cx + hw);
-    corners(vec![
-        [x0, cy - ht],
-        [neck, cy - ht],
-        [neck, cy - hwd],
-        [x1, cy],
-        [neck, cy + hwd],
-        [neck, cy + ht],
-        [x0, cy + ht],
-    ])
+    let u = Unit::of(a, b);
+    let body = tail.clamp(0.02, 1.0);
+    // A cabeça nunca é mais estreita que a haste, senão o contorno inverte.
+    let span = head_w.clamp(0.05, 1.0).max(body);
+    let x1 = 1.0 - head_len.clamp(0.02, 1.0);
+    let (y1, y2) = (0.5 - body * 0.5, 0.5 + body * 0.5);
+    let (h1, h2) = (0.5 - span * 0.5, 0.5 + span * 0.5);
+    poly(
+        &u,
+        &[
+            (0.0, y1),
+            (x1, y1),
+            (x1, h1),
+            (1.0, 0.5), // a PONTA
+            (x1, h2),
+            (x1, y2),
+            (0.0, y2),
+        ],
+    )
 }
 
-/// **Seta dupla** (cabeça nas duas pontas) — a mesma haste, espelhada.
+/// **Seta dupla** (cabeça nas duas pontas) — a mesma haste, espelhada. As duas pontas
+/// encostam nas bordas esquerda e direita, ambas na linha de centro.
 #[must_use]
 pub fn arrow_double(a: [f64; 2], b: [f64; 2], tail: f64, head_len: f64, head_w: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let ht = hh * tail.clamp(0.02, 1.0);
-    let hwd = (hh * head_w.clamp(0.05, 1.0)).max(ht);
+    let u = Unit::of(a, b);
+    let body = tail.clamp(0.02, 1.0);
+    let span = head_w.clamp(0.05, 1.0).max(body);
     // Cada cabeça leva `head_len` da largura; juntas não podem passar da caixa.
-    let hl = (2.0 * hw * head_len.clamp(0.02, 0.5)).min(hw);
-    let (x0, x1) = (cx - hw, cx + hw);
-    let (nl, nr) = (x0 + hl, x1 - hl);
-    corners(vec![
-        [nl, cy - ht],
-        [nr, cy - ht],
-        [nr, cy - hwd],
-        [x1, cy],
-        [nr, cy + hwd],
-        [nr, cy + ht],
-        [nl, cy + ht],
-        [nl, cy + hwd],
-        [x0, cy],
-        [nl, cy - hwd],
-    ])
+    let l = head_len.clamp(0.02, 0.5);
+    let (x2, x3) = (l, 1.0 - l);
+    let (y1, y2) = (0.5 - body * 0.5, 0.5 + body * 0.5);
+    let (h1, h2) = (0.5 - span * 0.5, 0.5 + span * 0.5);
+    poly(
+        &u,
+        &[
+            (0.0, 0.5), // ponta ESQUERDA
+            (x2, h1),
+            (x2, y1),
+            (x3, y1),
+            (x3, h1),
+            (1.0, 0.5), // ponta DIREITA
+            (x3, h2),
+            (x3, y2),
+            (x2, y2),
+            (x2, h2),
+        ],
+    )
 }
 
-/// **Seta em L** (cotovelo): entra pela esquerda na base, dobra e sai para CIMA. É a seta
-/// de fluxo — a que liga uma caixa à de cima sem um conector de verdade.
+/// **Seta em L** (cotovelo): entra pela esquerda rente à base, dobra e sai para **CIMA**.
+/// É a seta de fluxo — a que liga uma caixa à de cima sem um conector de verdade.
+///
+/// O cotovelo é um par de arcos **concêntricos** (raios `corner` e `corner − espessura`),
+/// que é o que mantém a espessura constante ao longo da curva; `corner = 0` degenera no
+/// cotovelo quadrado (o `bentUpArrow` do OOXML) sem uma linha de código a mais.
+///
+/// - `tail` = espessura do corpo, fração do lado **CURTO** da caixa: os dois braços são
+///   perpendiculares, então medir cada um no seu próprio eixo os deixaria com espessuras
+///   diferentes numa caixa larga (é a normalização por `ss = min(w, h)` do OOXML). É
+///   também o que faz o cotovelo sair CIRCULAR, e não elíptico;
+/// - `head_len` = comprimento da cabeça (fração da altura);
+/// - `head_w` = largura CHEIA da cabeça (fração da largura);
+/// - `corner` = raio EXTERNO do cotovelo (fração do lado curto).
 #[must_use]
-pub fn arrow_bent(a: [f64; 2], b: [f64; 2], tail: f64, head_len: f64, head_w: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let t = (2.0 * hh * tail.clamp(0.02, 0.9)).min(hh); // espessura (cheia) do corpo
-    let hl = (2.0 * hh * head_len.clamp(0.02, 0.9)).min(hh); // comprimento da cabeça
-    let hwd = (2.0 * hw * head_w.clamp(0.05, 1.0) * 0.5).max(t * 0.5); // meia-largura da cabeça
-    let (x0, y0) = (cx - hw, cy - hh); // canto inferior-esquerdo
-    let (x1, y1) = (cx + hw, cy + hh);
-    // O eixo da haste vertical fica encostado à direita, com a cabeça cabendo na caixa.
-    let sx = x1 - hwd;
-    corners(vec![
-        [x0, y0],
-        [sx + t * 0.5, y0],
-        [sx + t * 0.5, y1 - hl],
-        [sx + hwd, y1 - hl],
-        [sx, y1],
-        [sx - hwd, y1 - hl],
-        [sx - t * 0.5, y1 - hl],
-        [sx - t * 0.5, y0 + t],
-        [x0, y0 + t],
-    ])
+pub fn arrow_bent(
+    a: [f64; 2],
+    b: [f64; 2],
+    tail: f64,
+    head_len: f64,
+    head_w: f64,
+    corner: f64,
+) -> VecPath {
+    let u = Unit::of(a, b);
+    // Uma medida de MUNDO vale `k.0` no eixo `u` e `k.1` no eixo `v`.
+    let s = u.aspect();
+    let k = (s.min(1.0), (1.0 / s).min(1.0));
+    let body = tail.clamp(0.02, 0.9);
+    let (bu, bv) = (body * k.0, body * k.1);
+
+    // A cabeça: mais larga que a haste (senão o contorno inverte) e curta o bastante para
+    // pousar ACIMA do braço horizontal (senão o braço a engoliria e o contorno cruzaria).
+    let span = head_w.clamp(0.05, 1.0).max(bu);
+    let l = head_len.clamp(0.05, 0.6).min((1.0 - bv) * 0.8);
+    let (hw, sx) = (span * 0.5, 1.0 - span * 0.5); // meia-largura + eixo da haste vertical
+    let (left, right) = (sx - bu * 0.5, sx + bu * 0.5); // as duas faces da haste
+
+    // O raio é UM número de mundo, projetado nos dois eixos (é isso que o deixa CIRCULAR).
+    // Os tetos vêm do desenho: o arco não pode furar a borda esquerda nem subir acima da
+    // base da cabeça — e as margens deixam sobrar um pedaço de cauda e um de haste, senão
+    // o extremo do slider colapsaria um lado reto em nada.
+    let r_max = (right * 0.95 / k.0.max(1e-9)).min((1.0 - l) * 0.9 / k.1.max(1e-9));
+    let r = corner.clamp(0.0, 1.0).min(r_max);
+    let (ru, rv) = (r * k.0, r * k.1);
+    let (iu, iv) = ((ru - bu).max(0.0), (rv - bv).max(0.0)); // o arco INTERNO, concêntrico
+    let c_out: Uv = (right - ru, 1.0 - rv);
+    let c_in: Uv = (left - iu, 1.0 - bv - iv);
+
+    let mut verts = vec![u.corner((0.0, 1.0))]; // a cauda, no canto inferior esquerdo
+    let tail_end = verts.len() - 1;
+    // Cotovelo EXTERNO: da base (90°) para a face direita da haste (0°).
+    verts.extend(elbow(&u, c_out, ru, rv, 90.0, -90.0));
+    let out_end = verts.len() - 1;
+
+    verts.push(u.corner((right, l)));
+    verts.push(u.corner((sx + hw, l))); // esquina direita da cabeça
+    verts.push(u.corner((sx, 0.0))); // a PONTA — para CIMA, na borda de cima
+    verts.push(u.corner((sx - hw, l))); // esquina esquerda da cabeça
+    verts.push(u.corner((left, l)));
+    let head_end = verts.len() - 1;
+    // Cotovelo INTERNO: da face esquerda da haste (0°) de volta para a aresta de cima do
+    // braço horizontal (90°) — mesmo centro do externo, deslocado pela espessura.
+    verts.extend(elbow(&u, c_in, iu, iv, 0.0, 90.0));
+    let in_end = verts.len() - 1;
+    verts.push(u.corner((0.0, 1.0 - bv)));
+
+    // Toda junção arco↔reta é QUINA: sem isto o vértice do arco leva a sua tangente para
+    // dentro da reta vizinha, que nasce com handles fantasmas que o usuário vê e arrasta.
+    for i in [tail_end, out_end, head_end, in_end] {
+        straighten(&mut verts, i);
+    }
+    closed(verts)
 }
 
 /// **Chevron** (seta-fita de processo): pentágono com um entalhe atrás, para encaixar no
-/// próximo — o vocabulário de "etapa 1 → etapa 2" de qualquer diagrama.
+/// próximo — o vocabulário de "etapa 1, etapa 2" de qualquer diagrama. Com `notch` igual a
+/// `point` os chevrons ladrilham sem folga; com `notch = 0` é o pentágono (`homePlate`).
 #[must_use]
-pub fn chevron(a: [f64; 2], b: [f64; 2], head_len: f64, notch: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let hl = 2.0 * hw * head_len.clamp(0.02, 0.9);
-    let nk = 2.0 * hw * notch.clamp(0.0, 0.9);
-    let (x0, x1) = (cx - hw, cx + hw);
-    corners(vec![
-        [x0, cy - hh],
-        [x1 - hl, cy - hh],
-        [x1, cy],
-        [x1 - hl, cy + hh],
-        [x0, cy + hh],
-        [x0 + nk, cy], // o entalhe (0 = pentágono liso)
-    ])
+pub fn chevron(a: [f64; 2], b: [f64; 2], point: f64, notch: f64) -> VecPath {
+    let u = Unit::of(a, b);
+    let x2 = 1.0 - point.clamp(0.02, 0.9);
+    // O entalhe entra pela traseira, mas nunca alcança o pescoço da ponta.
+    let x1 = notch.clamp(0.0, 0.9).min(x2 * 0.9);
+    poly(
+        &u,
+        &[
+            (0.0, 0.0),
+            (x2, 0.0),
+            (1.0, 0.5), // a PONTA
+            (x2, 1.0),
+            (0.0, 1.0),
+            (x1, 0.5), // o entalhe
+        ],
+    )
 }
 
-/// **Seta curva / circular**: um arco GROSSO com a cabeça na ponta. `sweep` grande dá a
-/// seta de "refazer"; pequeno, a curva suave entre dois pontos.
+/// Os números RESOLVIDOS da seta circular — clamps aplicados, a forma fechada da
+/// referência já avaliada. Existe como tipo (e não como um punhado de `let`) porque é a
+/// MESMA verdade que o desenho usa e que o teste mede: um teste que re-derivasse o raio
+/// estaria provando a si mesmo.
+#[derive(Copy, Clone, Debug)]
+struct Curved {
+    start: f64,
+    /// Raio EXTERNO da faixa. Já encolhido pelo transbordo da cabeça — é a normalização.
+    r_out: f64,
+    r_in: f64,
+    span_out: f64,
+    span_in: f64,
+    ang_c: f64,
+    tip: Uv,
+    corner_g: Uv,
+    corner_b: Uv,
+    flare: bool,
+}
+
+impl Curved {
+    /// A álgebra inteira da `circularArrow` do ECMA-376, em forma fechada (substitui ~90
+    /// linhas da linguagem de guias do padrão).
+    ///
+    /// A NORMALIZAÇÃO é o coração: `r_out = 0,5 + th/2 − hh` faz `r_c = 0,5 − hh`, e como
+    /// a cabeça é construída a ±`hh` da linha de CENTRO, o ponto mais externo dela cai em
+    /// `r_c + hh = 0,5` — exatamente o círculo inscrito na caixa. A forma inteira fica
+    /// contida por desigualdade triangular, **sem um único clamp de transbordo**.
+    ///
+    /// Duas armadilhas do padrão NÃO são portadas (ele erra as duas em parte do espaço de
+    /// parâmetros): o teto do sweep da cabeça é `asin(r_in / r_c)` — a construção `maxAng`
+    /// do OOXML escolhe o ramo OBTUSO em metade dos casos, e uma cabeça varrendo 174° não
+    /// é uma cabeça —, e a raiz da interseção interna é SEMPRE a mais próxima de `H` (o
+    /// padrão pega a mais próxima de `B`, e a cabeça auto-intersecta no extremo).
+    fn resolve(sweep_deg: f64, start_deg: f64, thickness: f64, head_w: f64, head_len: f64) -> Self {
+        let full = head_w.clamp(0.05, 0.5);
+        let hh = full * 0.5;
+        // O OOXML: a faixa nunca é mais grossa que a cabeça (`maxAdj1 = 2·adj5`).
+        let th = thickness.clamp(0.02, 0.5).min(full);
+        let r_out = 0.5 + th * 0.5 - hh;
+        let r_c = 0.5 - hh;
+        let r_in = (r_out - th).max(1e-3);
+
+        let mag = sweep_deg.abs().clamp(10.0, 350.0);
+        let dir = if sweep_deg < 0.0 { -1.0 } else { 1.0 };
+        // A linha da base da cabeça tem de CORTAR o círculo interno: é isso, e só isso,
+        // que limita o sweep dela.
+        let max_hs = (r_in / r_c).clamp(-1.0, 1.0).asin().to_degrees();
+        let hs = (head_len.clamp(0.02, 0.9) * mag).min(max_hs.min(mag * 0.9));
+
+        let start = start_deg;
+        let pt = start + mag * dir; // a ponta fica no FIM do sweep
+        let en = pt - dir * hs; // a base da cabeça, na linha de centro
+        let h = polar(r_c, en);
+        // A base da cabeça é a reta por `H` na direção RADIAL DA PONTA (não da base) — é o
+        // que o padrão faz, e é o que dá à cabeça a farpa levemente inclinada para trás.
+        let (us, uc) = pt.to_radians().sin_cos();
+
+        // |H + σ·u|² = R²  =>  σ = −r_c·cos(hs) ± sqrt(R² − r_c²·sin²(hs)). A raiz "+" é
+        // sempre a mais próxima de H — válida para o círculo externo (H está dentro) E
+        // para o interno (H está fora).
+        let (sp, cp) = hs.to_radians().sin_cos();
+        let base = r_c * sp;
+        let sigma = |r: f64| (r * r - base * base).max(0.0).sqrt() - r_c * cp;
+        let (sigma_f, sigma_c) = (sigma(r_out), sigma(r_in));
+
+        let along = |d: f64| (h.0 + d * uc, h.1 + d * us);
+        let (f_pt, c_pt) = (along(sigma_f), along(sigma_c));
+
+        Self {
+            start,
+            r_out,
+            r_in,
+            span_out: signed_span(start, angle_of(f_pt), dir),
+            span_in: signed_span(angle_of(c_pt), start, -dir),
+            ang_c: angle_of(c_pt),
+            tip: polar(r_c, pt), // a PONTA vive na linha de CENTRO, não na borda externa
+            corner_g: along(hh),
+            corner_b: along(-hh),
+            // Faixa mais grossa que a cabeça = cabeça sem aba: vira um corte inclinado.
+            flare: (sigma_f - sigma_c) * 0.5 < hh,
+        }
+    }
+
+    /// O contorno, ainda **sem** o ajuste à caixa — é o que o teste mede contra o círculo.
+    fn build(&self, u: &Unit) -> VecPath {
+        let mut verts = arc45(u, O, self.r_out, self.r_out, self.start, self.span_out);
+        let f = verts.len() - 1; // F: onde a base da cabeça corta o arco EXTERNO
+        if self.flare {
+            verts.push(u.corner(self.corner_g));
+        }
+        verts.push(u.corner(self.tip));
+        if self.flare {
+            verts.push(u.corner(self.corner_b));
+        }
+        let head_end = verts.len() - 1;
+        // O arco INTERNO já nasce em C (a outra interseção da base com a faixa).
+        verts.extend(arc45(u, O, self.r_in, self.r_in, self.ang_c, self.span_in));
+
+        // Os flancos da cabeça são RETAS: sem isto o vértice do arco levaria a sua tangente
+        // para dentro do triângulo e a cabeça sairia de barriga curva.
+        straighten(&mut verts, f);
+        straighten(&mut verts, head_end);
+        // O fecho é o corte RADIAL da cauda (a "cauda chata") — reto também.
+        let end = verts.len() - 1;
+        verts[end].out_handle = verts[end].anchor;
+        verts[0].in_handle = verts[0].anchor;
+        closed(verts)
+    }
+}
+
+/// **Seta circular** — uma faixa em arco com a cabeça na ponta. `sweep` grande dá a seta
+/// de "refazer"; pequeno, a curva suave entre dois pontos. O sweep é **COM SINAL**:
+/// negativo percorre ao contrário, o que dá de graça a seta circular canhota do OOXML.
 ///
-/// - `tail` = espessura do arco (fração do raio);
-/// - `head_len` = quanto do sweep a cabeça consome (fração);
-/// - `head_w` = o quanto a cabeça extravasa a espessura (fração do raio).
+/// Uma forma só substitui três presets do padrão (`circularArrow`, `leftCircularArrow`,
+/// `leftRightCircularArrow`) — e supera as quatro `curved*Arrow`, que são fitas pseudo-3D
+/// **auto-intersectantes**, legíveis apenas com uma dica de sombreamento (`darkenLess`)
+/// que nenhum compositor moderno tem.
+///
+/// - `sweep_deg` = o arco total, cauda→ponta (com sinal);
+/// - `start_deg` = onde a cauda começa (0 = 3 horas; cresce no sentido horário);
+/// - `thickness` = espessura radial da faixa (fração da caixa);
+/// - `head_w` = largura CHEIA da cabeça (fração da caixa) — governa também o raio da
+///   faixa (`r_c = 0,5 − head_w/2`), porque é o transbordo da cabeça que a caixa acomoda;
+/// - `head_len` = quanto do sweep a cabeça consome (fração).
 #[must_use]
 pub fn arrow_curved(
     a: [f64; 2],
     b: [f64; 2],
     sweep_deg: f64,
-    tail: f64,
-    head_len: f64,
+    start_deg: f64,
+    thickness: f64,
     head_w: f64,
+    head_len: f64,
 ) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let sweep = sweep_deg.clamp(10.0, 350.0);
-    let t = tail.clamp(0.05, 0.6); // espessura em fração do raio
-    let head_sweep = sweep * head_len.clamp(0.05, 0.6);
-    let body = sweep - head_sweep;
-    // Raios do corpo (o arco grosso) + a cabeça, que extravasa a faixa dos dois lados.
-    let ext = head_w.clamp(0.0, 0.5);
-    let (mut r_in, mut r_out) = (1.0 - t, 1.0);
-    let (mut h_in, mut h_out) = ((r_in - ext).max(0.02), r_out + ext);
-    // **Tudo é normalizado pelo MAIOR raio** (o da cabeça): sem isto a cabeça estouraria
-    // a caixa do gesto, a bbox mentiria e o gizmo ficaria desalinhado da forma. Quem
-    // encosta na borda é a parte mais externa — as demais encolhem na proporção.
-    let k = 1.0 / h_out;
-    r_in *= k;
-    r_out *= k;
-    h_in *= k;
-    h_out *= k;
-
-    let pt = |r: f64, deg: f64| {
-        let (s, c) = deg.to_radians().sin_cos();
-        [cx + hw * r * c, cy + hh * r * s]
-    };
-    let n = ((body / 15.0).ceil() as usize).max(2);
-    let mut pts: Vec<[f64; 2]> = Vec::with_capacity(2 * n + 4);
-    // Borda externa do corpo, do início até o pescoço.
-    for i in 0..=n {
-        pts.push(pt(r_out, body * i as f64 / n as f64));
-    }
-    // A cabeça: base larga no pescoço → ponta no fim do sweep.
-    pts.push(pt(h_out, body));
-    pts.push(pt((h_in + h_out) * 0.5, sweep)); // a ponta
-    pts.push(pt(h_in, body));
-    // Borda interna, de volta.
-    for i in (0..=n).rev() {
-        pts.push(pt(r_in, body * i as f64 / n as f64));
-    }
-    corners(pts)
-}
-
-/// Centro + semi-eixos da caixa do gesto.
-fn box_of(a: [f64; 2], b: [f64; 2]) -> (f64, f64, f64, f64) {
-    (
-        (a[0] + b[0]) * 0.5,
-        (a[1] + b[1]) * 0.5,
-        (b[0] - a[0]).abs() * 0.5,
-        (b[1] - a[1]).abs() * 0.5,
-    )
+    let u = Unit::of(a, b);
+    let c = Curved::resolve(sweep_deg, start_deg, thickness, head_w, head_len);
+    let mut p = c.build(&u);
+    // A contenção é de graça (tudo cabe no círculo inscrito), mas a caixa do gesto tem de
+    // ABRAÇAR a tinta — um sweep de 90° deixaria três quartos da caixa vazios e o gizmo
+    // longe do desenho. O `fit` mede a bbox da CURVA (âncoras **+ extremos das cúbicas**),
+    // nunca o casco dos controles: o casco estufa até 1,3% para fora da curva real, erro
+    // da mesma ordem do que estamos consertando aqui.
+    fit(&u, &mut p);
+    p
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const A: [f64; 2] = [-2.0, -1.0];
-    const B: [f64; 2] = [2.0, 1.0];
-
-    fn xs(p: &VecPath) -> (f64, f64) {
-        let lo = p.verts_all().map(|v| v.anchor[0]).fold(f64::MAX, f64::min);
-        let hi = p.verts_all().map(|v| v.anchor[0]).fold(f64::MIN, f64::max);
-        (lo, hi)
-    }
-
-    /// A seta APONTA: a ponta é o único vértice no extremo +X, e ela fica na linha do
-    /// meio. É o que distingue uma seta de um retângulo com um entalhe.
-    #[test]
-    fn the_block_arrow_has_a_single_tip_at_the_right_edge() {
-        let p = arrow_block(A, B, 0.4, 0.4, 1.0);
-        let (_, hi) = xs(&p);
-        let tips: Vec<&VecVertex> = p
-            .verts
-            .iter()
-            .filter(|v| (v.anchor[0] - hi).abs() < 1e-9)
-            .collect();
-        assert_eq!(tips.len(), 1, "uma ponta so");
-        assert!((tips[0].anchor[1]).abs() < 1e-9, "a ponta esta no eixo");
-        assert!((hi - 2.0).abs() < 1e-9, "a ponta encosta na borda da caixa");
-    }
-
-    /// A cabeça é mais LARGA que a haste — senão não é uma seta, é uma barra. O clamp
-    /// garante isso mesmo com um `head_w` menor que o `tail` (o usuário pode digitar).
-    #[test]
-    fn the_head_is_never_narrower_than_the_tail() {
-        let p = arrow_block(A, B, 0.9, 0.4, 0.1); // cabeça pedida MENOR que a haste
-        let ys: Vec<f64> = p.verts.iter().map(|v| v.anchor[1].abs()).collect();
-        let widest = ys.iter().cloned().fold(0.0, f64::max);
-        let tail = 1.0 * 0.9; // meia-espessura pedida
-        assert!(
-            widest >= tail - 1e-9,
-            "o contorno inverteria: cabeca {widest} < haste {tail}"
-        );
-    }
-
-    /// A seta dupla tem ponta nos DOIS extremos (e a caixa inteira entre elas).
-    #[test]
-    fn the_double_arrow_points_both_ways() {
-        let p = arrow_double(A, B, 0.4, 0.3, 1.0);
-        let (lo, hi) = xs(&p);
-        assert!((lo + 2.0).abs() < 1e-9 && (hi - 2.0).abs() < 1e-9);
-        let on_axis = p.verts.iter().filter(|v| v.anchor[1].abs() < 1e-9).count();
-        assert_eq!(on_axis, 2, "as duas pontas ficam no eixo");
-    }
-
-    /// O chevron tem entalhe: com `notch = 0` é um pentágono; acima disso, o vértice de
-    /// trás entra na caixa (é o encaixe do próximo chevron).
-    #[test]
-    fn the_chevron_notch_bites_into_the_back_edge() {
-        let flat = chevron(A, B, 0.3, 0.0);
-        let bitten = chevron(A, B, 0.3, 0.25);
-        let back_flat = flat.verts[5].anchor[0];
-        let back_bitten = bitten.verts[5].anchor[0];
-        assert!(
-            (back_flat + 2.0).abs() < 1e-9,
-            "sem entalhe, a traseira e reta"
-        );
-        assert!(back_bitten > back_flat, "o entalhe entra na forma");
-    }
-
-    /// Todas as setas cabem na caixa do gesto — nenhuma extravasa (o que faria a bbox
-    /// mentir e o gizmo desalinhar da forma).
-    #[test]
-    fn every_arrow_fits_inside_the_gesture_box() {
-        let shapes = [
-            arrow_block(A, B, 0.4, 0.4, 1.0),
-            arrow_double(A, B, 0.4, 0.3, 1.0),
-            arrow_bent(A, B, 0.3, 0.3, 0.6),
-            chevron(A, B, 0.3, 0.2),
-            arrow_curved(A, B, 270.0, 0.3, 0.25, 0.15),
-        ];
-        for (i, p) in shapes.iter().enumerate() {
-            for v in p.verts_all() {
-                assert!(
-                    v.anchor[0] >= -2.0 - 1e-6
-                        && v.anchor[0] <= 2.0 + 1e-6
-                        && v.anchor[1] >= -1.0 - 1e-6
-                        && v.anchor[1] <= 1.0 + 1e-6,
-                    "forma {i}: ancora {:?} fora da caixa",
-                    v.anchor
-                );
-            }
-        }
-    }
-}
+#[path = "arrows_tests.rs"]
+mod tests;

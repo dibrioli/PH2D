@@ -11,12 +11,14 @@ use crate::ids;
 use crate::state;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
+use ph2d_editor_core::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_button};
+use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, ColorSwatch, SwatchSize, paint_button, paint_color_swatch,
-    paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, ColorSwatch, SectionHeader, SwatchSize, paint_button,
+    paint_color_swatch, paint_section_header, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_tool_vector::params::{dash_to_slider, gap_to_slider, opacity_to_slider};
@@ -114,21 +116,77 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
-    /// A `Section` label line (Sm, Text2) + its advance.
-    pub(crate) fn section_label(&mut self, label: &str, mut y: f32) -> f32 {
-        let label_font = TypeToken::Sm.px();
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y,
-            label_font,
-            self.inner_w,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        y += label_font + Spacing::Xs.px();
-        y
+    /// O cabeçalho CANÔNICO de seção (`docs/UI_Padrao/components/section_header.md`:
+    /// "TODA seção usa `paint_section_header`" · "TODA seção é colapsável"). Chevron +
+    /// rótulo em MAIÚSCULAS; o clique DOBRA a seção. Retorna `(y, collapsed)` — o caller
+    /// sai cedo quando dobrada.
+    ///
+    /// O collapse é dispatch GENÉRICO e exige **dois** sites: o `populate` marca o id
+    /// (`mark_collapsible_section`) e aqui registramos o hit-rect. Sem os dois o header
+    /// vira um título morto que pinta um chevron e não dobra.
+    ///
+    /// Substituiu os 14 `section_label` caseiros do painel (`paint_text` em Sm/Text2):
+    /// eram tipograficamente idênticos aos botões abaixo deles, e é por isso que
+    /// categoria e tipo de forma se confundiam.
+    pub(crate) fn section_header(
+        &mut self,
+        id: ph2d_a11y::NodeId,
+        label: &str,
+        y: f32,
+    ) -> (f32, bool) {
+        let header_h = TypeToken::Md.px() + Spacing::Md.px();
+        let collapsed = self.store.is_collapsed(id);
+        let header = SectionHeader::new(id, label).collapsible(!collapsed);
+        let rect = Rect::new(self.inner_x, y, self.inner_w, header_h);
+        paint_section_header(&header, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, rect);
+        (y + header_h + SECTION_LABEL_TO_CONTROL_PX, collapsed)
+    }
+
+    /// **A ordem do corpo.** "O que estou fazendo" (modo · forma · parâmetros da forma)
+    /// vem ANTES de "com que cor" (stroke · fill) — o corpo abria em Stroke/Fill e o
+    /// seletor de ferramenta aparecia depois, invertido.
+    ///
+    /// Cada `step` pinta a seção e, só se ela pintou, fecha com o separador canônico: as
+    /// condicionais (Text, Axes, Fill Type, Transform, Vertex, Align) somem sem deixar uma
+    /// linha órfã. A última (Path) fecha sem separador de rodapé.
+    pub(crate) fn paint_body(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        let mut y = y;
+        y = self.step(y, |b, y| b.tool_section(snap, y));
+        y = self.step(y, |b, y| b.shape_catalog_section(snap, y));
+        y = self.step(y, |b, y| b.shape_params_section(snap, y));
+        y = self.step(y, Self::text_section);
+        y = self.step(y, Self::font_section);
+        y = self.step(y, Self::paragraph_section);
+        y = self.step(y, Self::axes_section);
+        y = self.step(y, |b, y| b.stroke_style(snap, y));
+        y = self.step(y, |b, y| b.fill_style(snap, y));
+        y = self.step(y, Self::fill_type_section);
+        y = self.step(y, Self::snap_section);
+        y = self.step(y, Self::transform_section);
+        y = self.step(y, Self::vertex_section);
+        y = self.step(y, Self::boolean_section);
+        y = self.step(y, Self::align_section);
+        y = self.step(y, Self::arrange_section);
+        self.path_section(y)
+    }
+
+    /// A linha canônica ENTRE seções (nunca dentro de uma).
+    pub(crate) fn separator(&mut self, y: f32) -> f32 {
+        paint_section_separator(self.scene, self.theme, self.inner_x, self.inner_w, y)
+    }
+
+    /// Um passo do corpo: pinta a seção e, **se ela pintou** (o `y` andou), fecha com o
+    /// separador. As seções condicionais (Vertex, Align, Text, Axes, Fill Type) somem
+    /// sem deixar uma linha órfã boiando no painel — que é o motivo de o separador ser
+    /// decidido AQUI, no orquestrador, e não dentro de cada seção.
+    pub(crate) fn step(&mut self, y: f32, f: impl FnOnce(&mut Self, f32) -> f32) -> f32 {
+        let after = f(self, y);
+        if after > y {
+            self.separator(after)
+        } else {
+            after
+        }
     }
 
     /// A full-width action button (Boolean / Vertex-delete / Duplicate).
@@ -142,7 +200,15 @@ impl BodyCtx<'_> {
     }
 
     /// Width + Stroke swatch + Stroke opacity + Cap / Join + Dash / Gap.
-    pub(crate) fn stroke_style(&mut self, snap: &VectorStyleSnapshot, mut y: f32) -> f32 {
+    pub(crate) fn stroke_style(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_STROKE,
+            tr("panel.vector.section.stroke"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
         // Width slider + px chip.
         let track = self
             .store
@@ -168,7 +234,7 @@ impl BodyCtx<'_> {
         paint_text(
             self.text_system,
             self.scene,
-            "Stroke",
+            tr("panel.vector.section.stroke"),
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
@@ -284,12 +350,17 @@ impl BodyCtx<'_> {
     }
 
     /// Fill swatch + Fill opacity (0 % = none).
-    pub(crate) fn fill_style(&mut self, snap: &VectorStyleSnapshot, mut y: f32) -> f32 {
+    pub(crate) fn fill_style(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        let (mut y, collapsed) =
+            self.section_header(ids::VECTOR_SECTION_FILL, tr("panel.vector.section.fill"), y);
+        if collapsed {
+            return y;
+        }
         let swatch_w = SwatchSize::Md.px();
         paint_text(
             self.text_system,
             self.scene,
-            "Fill",
+            tr("panel.vector.section.fill"),
             self.inner_x,
             y + (self.row_h - self.font) * 0.5,
             self.font,
@@ -315,7 +386,7 @@ impl BodyCtx<'_> {
             .map(|(_, v)| v)
             .unwrap_or_else(|| opacity_to_slider(snap.fill[3]));
         let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent for the opacity chip
-        y = self.slider_row(
+        self.slider_row(
             "Opacity",
             ids::VECTOR_FILL_OPACITY,
             ids::VECTOR_FILL_OPACITY_NUM,
@@ -323,57 +394,64 @@ impl BodyCtx<'_> {
             pct,
             &format!("{}", pct.round() as i64),
             y,
-        );
-        self.fill_type_controls(y)
+        )
     }
 
-    /// Vertex type (conditional) + Boolean ops + Arrange (Duplicate + z-order).
-    pub(crate) fn vertex_boolean_arrange(&mut self, mut y: f32) -> f32 {
-        // Convert to Curves — for a selected LIVE shape (text / parametric): bake it
-        // into raw paths (text explodes into a per-letter group). Only when the
-        // selection has something convertible.
-        if state::convertible() {
-            y = self.action_button(ids::VECTOR_CONVERT_TO_CURVES, "Convert to Curves", y);
-            y += self.row_gap - Spacing::Xs.px();
+    /// Seção **VERTEX** — o tipo do vértice selecionado (Corner / Smooth / Symm) + o
+    /// Delete Node. Só existe com um vértice selecionado: sem seleção a seção INTEIRA
+    /// some (nem cabeçalho), e o `step` do orquestrador não emite separador.
+    pub(crate) fn vertex_section(&mut self, y: f32) -> f32 {
+        let Some(vtype) = state::current_vertex_type() else {
+            return y;
+        };
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_VERTEX,
+            tr("panel.vector.section.vertex"),
+            y,
+        );
+        if collapsed {
+            return y;
         }
-        // Vertex type (rich handle editing) — only with a vertex selected.
-        if let Some(vtype) = state::current_vertex_type() {
-            y = self.section_label("Vertex", y);
-            let verts = [
-                (ids::VECTOR_VERT_CORNER, "Corner", VertexType::Corner),
-                (ids::VECTOR_VERT_SMOOTH, "Smooth", VertexType::Smooth),
-                (ids::VECTOR_VERT_SYMMETRIC, "Symm", VertexType::Symmetric),
-            ];
-            let vseg_gap = Spacing::Sm.px();
-            let vseg_w = ((self.inner_w - vseg_gap * (verts.len() as f32 - 1.0))
-                / verts.len() as f32)
-                .max(1.0);
-            for (i, (id, label, t)) in verts.iter().enumerate() {
-                let rx = self.inner_x + i as f32 * (vseg_w + vseg_gap);
-                let rect = Rect::new(rx, y, vseg_w, self.row_h);
-                let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
-                paint_segmented_button(
-                    rect,
-                    label,
-                    vtype == *t,
-                    bstate,
-                    self.scene,
-                    self.text_system,
-                    self.theme,
-                );
-                self.hit_index.register(*id, rect);
-            }
-            y += self.row_h + Spacing::Xs.px();
-
-            // Delete-node button (full width). Insert is a canvas gesture (click a
-            // segment) — no button.
-            y = self.action_button(ids::VECTOR_VERT_DELETE, "Delete Node", y);
-            y += self.row_gap - Spacing::Xs.px();
+        let verts = [
+            (ids::VECTOR_VERT_CORNER, "Corner", VertexType::Corner),
+            (ids::VECTOR_VERT_SMOOTH, "Smooth", VertexType::Smooth),
+            (ids::VECTOR_VERT_SYMMETRIC, "Symm", VertexType::Symmetric),
+        ];
+        let vseg_gap = Spacing::Sm.px();
+        let vseg_w =
+            ((self.inner_w - vseg_gap * (verts.len() as f32 - 1.0)) / verts.len() as f32).max(1.0);
+        for (i, (id, label, t)) in verts.iter().enumerate() {
+            let rx = self.inner_x + i as f32 * (vseg_w + vseg_gap);
+            let rect = Rect::new(rx, y, vseg_w, self.row_h);
+            let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+            paint_segmented_button(
+                rect,
+                label,
+                vtype == *t,
+                bstate,
+                self.scene,
+                self.text_system,
+                self.theme,
+            );
+            self.hit_index.register(*id, rect);
         }
+        y += self.row_h + Spacing::Xs.px();
+        // Delete-node button (full width). Insert is a canvas gesture (click a
+        // segment) — no button.
+        self.action_button(ids::VECTOR_VERT_DELETE, "Delete Node", y)
+    }
 
-        // Boolean ops — N-ary over the SELECTED closed regions (back-most is the
-        // base, front-most donates the style). Compound row lives in `paint_arrange`.
-        y = self.section_label("Boolean", y);
+    /// Seção **BOOLEAN** — ops N-árias sobre as regiões fechadas SELECIONADAS (a de trás
+    /// é a base, a da frente doa o estilo) + a linha Compound / Release.
+    pub(crate) fn boolean_section(&mut self, y: f32) -> f32 {
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_BOOLEAN,
+            tr("panel.vector.section.boolean"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
         for (id, label) in [
             (ids::VECTOR_BOOL_UNION, "Union"),
             (ids::VECTOR_BOOL_SUBTRACT, "Subtract"),
@@ -382,12 +460,20 @@ impl BodyCtx<'_> {
         ] {
             y = self.action_button(id, label, y);
         }
-        y = self.compound_row(y);
+        self.compound_row(y)
+    }
 
-        // Align + Distribute (multi-path object selection; sibling module for cap).
-        y = self.align_section(y);
-        // Arrange — Duplicate + z-order (act on the selected path).
-        y = self.section_label("Arrange", y);
+    /// Seção **ARRANGE** — Duplicate + z-order (2×2) + Flip + Rotate. Age sobre o path
+    /// selecionado (comandos de documento pelo dreno da shell).
+    pub(crate) fn arrange_section(&mut self, y: f32) -> f32 {
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_ARRANGE,
+            tr("panel.vector.section.arrange"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
         y = self.action_button(ids::VECTOR_ARRANGE_DUPLICATE, "Duplicate", y);
         // Z-order: 2×2 grid — To Back | To Front · Backward | Forward.
         let zorder = [
@@ -424,7 +510,7 @@ impl BodyCtx<'_> {
             ],
             y,
         );
-        y = self.row2(
+        self.row2(
             z_w,
             z_gap,
             [
@@ -432,11 +518,7 @@ impl BodyCtx<'_> {
                 (ids::VECTOR_ARRANGE_ROTATE_CCW, "Rotate CCW"),
             ],
             y,
-        );
-
-        // Path reshape (Smooth/Sharpen/Simplify/Subdivide) — in the sibling
-        // `paint_arrange` module (keeps this file under the 600-LOC panel cap).
-        self.path_section(z_w, z_gap, y)
+        )
     }
 
     /// A 2-column row of two half-width action buttons; returns the advanced `y`.

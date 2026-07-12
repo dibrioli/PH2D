@@ -81,6 +81,71 @@ fn seed_text_sliders(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     }
 }
 
+/// **Fase B** do frame (store MUTÁVEL — roda depois que o empréstimo imutável do corpo
+/// morre): marca as swatches como picker-swatch, semeia os campos derivados do que a shell
+/// publicou (bbox do Transform · faixas dos eixos de variação · sliders de texto) e publica
+/// as alturas do scroll.
+///
+/// **Regra:** o campo em FOCO nunca é semeado — senão o seed sobrescreveria a tecla que o
+/// usuário acabou de digitar / o arrasto em curso.
+fn seed_and_publish(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    content_h: f32,
+    body_h: f32,
+) {
+    // Mark the two colour swatches so a Down opens the shared OKLCH picker
+    // (generic `is_picker_swatch` dispatch). Idempotent — a set membership.
+    store.register_picker_swatch(ids::VECTOR_STROKE_SWATCH);
+    store.register_picker_swatch(ids::VECTOR_FILL_SWATCH);
+    // Seed the Transform fields from the published bbox. 1-frame post-commit lag, ok.
+    if let Some([tx, ty, tw, th]) = state::current_transform() {
+        let focus = store.focus_id();
+        for (id, v) in [
+            (ids::VECTOR_TRANSFORM_X, tx),
+            (ids::VECTOR_TRANSFORM_Y, ty),
+            (ids::VECTOR_TRANSFORM_W, tw),
+            (ids::VECTOR_TRANSFORM_H, th),
+        ] {
+            if focus != Some(id) {
+                store.set_number_value(id, v);
+            }
+        }
+        // The Angle field is a RELATIVE scrub: seed it to 0 (and reset the
+        // gesture accumulator) whenever it isn't being edited, so each new
+        // drag/type starts from 0 and the shell rotates by the reported delta.
+        if focus != Some(ids::VECTOR_TRANSFORM_R) {
+            store.set_number_value(ids::VECTOR_TRANSFORM_R, 0.0);
+            state::set_rot_last(0.0);
+        }
+    }
+    // Seed the variation-axis fields (value + range) from the published axes of the
+    // current font. Fixed slots adapt to whatever axes the font has (paint reads the
+    // seeded value; a change flows back as a `SetValue` the shell applies).
+    let focus = store.focus_id();
+    let axes: Vec<(f64, f64, f64)> =
+        state::with_text_axes(|a| a.iter().map(|s| (s.min, s.max, s.value)).collect());
+    for (i, (min, max, value)) in axes.into_iter().enumerate() {
+        let id = ids::vector_text_axis_id(i);
+        let step = ((max - min) / 40.0).max(0.01); // LITERAL-PX-OK: ~40 scrub steps across the axis range (drag granularity, not a metric)
+        store.set_number_range(id, min, max, step);
+        if focus != Some(id) {
+            store.set_number_value(id, value);
+        }
+    }
+    // Semente ONE-SHOT dos sliders de texto — publicada quando o ALVO muda (sessão nova /
+    // outro objeto de texto selecionado). Depois o store é a fonte, senão o seed brigaria
+    // com o arrasto do slider.
+    seed_text_sliders(store);
+    store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
+    store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
+    // Clamp any stale scroll if the content shrank (e.g. a collapsed section) so we never
+    // leave a blank gap below the last row.
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(ids::VECTOR_PANEL) > max_scroll {
+        store.set_panel_scroll(ids::VECTOR_PANEL, max_scroll);
+    }
+}
+
 pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(VectorPanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
@@ -121,7 +186,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // Canonical panel title — reserve room on the right for the X close button.
     let title_size = paint_panel_title(
         rect,
-        "Vector",
+        ph2d_i18n::tr("panel.vector.title"),
         PANEL_HEADER_CLOSE_RESERVE,
         ctx.scene,
         ctx.text_system,
@@ -181,13 +246,9 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             chip_w,
             font,
         };
-        let mut y = body_top_y;
-        y = b.stroke_style(&snap, y);
-        y = b.fill_style(&snap, y);
-        y = b.draw_modes(&snap, y);
-        y = b.snap_section(y);
-        y = b.transform_section(y);
-        y = b.vertex_boolean_arrange(y);
+        // A ORDEM das seções (e os separadores entre elas) vive em
+        // `BodyCtx::paint_body` — o orquestrador aqui só monta o contexto e mede.
+        let y = b.paint_body(&snap, body_top_y);
 
         // Total painted height (independent of scroll — both ends shift with it).
         let content_h = (y - body_top_y + PANEL_HEAD_PAD).max(0.0);
@@ -205,63 +266,9 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
         content_h
     };
 
-    // ── Phase B (mutable store) ─────────────────────────────────────────
-    // Mark the two colour swatches so a Down opens the shared OKLCH picker
-    // (generic `is_picker_swatch` dispatch). Idempotent — a set membership.
-    {
-        let store = ctx.host.store_mut();
-        store.register_picker_swatch(ids::VECTOR_STROKE_SWATCH);
-        store.register_picker_swatch(ids::VECTOR_FILL_SWATCH);
-        // Seed the Transform fields from the published bbox (skip the one being
-        // edited so a keystroke isn't clobbered). 1-frame post-commit lag, ok.
-        if let Some([tx, ty, tw, th]) = state::current_transform() {
-            let focus = store.focus_id();
-            for (id, v) in [
-                (ids::VECTOR_TRANSFORM_X, tx),
-                (ids::VECTOR_TRANSFORM_Y, ty),
-                (ids::VECTOR_TRANSFORM_W, tw),
-                (ids::VECTOR_TRANSFORM_H, th),
-            ] {
-                if focus != Some(id) {
-                    store.set_number_value(id, v);
-                }
-            }
-            // The Angle field is a RELATIVE scrub: seed it to 0 (and reset the
-            // gesture accumulator) whenever it isn't being edited, so each new
-            // drag/type starts from 0 and the shell rotates by the reported delta.
-            if focus != Some(ids::VECTOR_TRANSFORM_R) {
-                store.set_number_value(ids::VECTOR_TRANSFORM_R, 0.0);
-                state::set_rot_last(0.0);
-            }
-        }
-        // Seed the variation-axis fields (value + range) from the published axes of
-        // the current font — skip the field being edited so a keystroke/drag isn't
-        // clobbered. Fixed slots adapt to whatever axes the font has (paint reads the
-        // seeded value; a change flows back as a `SetValue` the shell applies).
-        let focus = store.focus_id();
-        let axes: Vec<(f64, f64, f64)> =
-            state::with_text_axes(|a| a.iter().map(|s| (s.min, s.max, s.value)).collect());
-        for (i, (min, max, value)) in axes.into_iter().enumerate() {
-            let id = ids::vector_text_axis_id(i);
-            let step = ((max - min) / 40.0).max(0.01); // LITERAL-PX-OK: ~40 scrub steps across the axis range (drag granularity, not a metric)
-            store.set_number_range(id, min, max, step);
-            if focus != Some(id) {
-                store.set_number_value(id, value);
-            }
-        }
-        // Semente ONE-SHOT dos sliders de texto — publicada quando o ALVO muda (sessão
-        // nova / outro objeto de texto selecionado). Depois o store é a fonte, senão o
-        // seed brigaria com o arrasto do slider.
-        seed_text_sliders(store);
-        store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
-        store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
-        // Clamp any stale scroll if the content shrank (e.g. a mode switch hid a
-        // section) so we never leave a blank gap below the last row.
-        let max_scroll = (content_h - body_h).max(0.0);
-        if store.panel_scroll(ids::VECTOR_PANEL) > max_scroll {
-            store.set_panel_scroll(ids::VECTOR_PANEL, max_scroll);
-        }
-    }
+    // ── Phase B (mutable store) — sibling fn: o corpo do `paint` estourava o teto de
+    // 200 LOC por função dos painéis.
+    seed_and_publish(ctx.host.store_mut(), content_h, body_h);
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
 
@@ -276,5 +283,10 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // open. Painted last so the floating list occludes the body + owns the clicks.
     if let Some(chip_rect) = state::take_pending_font_dd() {
         crate::font_dropdown::paint(ctx, chip_rect, theme);
+    }
+    // Idem para o popover de CATEGORIA do catálogo de formas: sem o passe diferido o
+    // `push_clip` do scroll o cortaria na borda da seção.
+    if let Some(chip_rect) = state::take_pending_group_dd() {
+        crate::paint_catalog::paint_group_popover(ctx, chip_rect, theme);
     }
 }

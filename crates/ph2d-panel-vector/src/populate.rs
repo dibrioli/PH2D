@@ -80,10 +80,24 @@ fn slider_chip(
 /// Registra os widgets do painel Vector. Delegado a helpers por seção — o corpo
 /// plano estourava o teto de 200 LOC por função dos painéis.
 pub fn populate(store: &mut WidgetStore) {
+    populate_sections(store);
     populate_shape(store);
     populate_ops(store);
     populate_style(store);
     populate_arrange(store);
+}
+
+/// **Os cabeçalhos colapsáveis.** O collapse é dispatch GENÉRICO e exige DOIS sites: a
+/// marca aqui (`mark_collapsible_section`) e o hit-rect do header no paint. Sem a marca,
+/// `apply_click` nunca chama `toggle_collapsed` e o chevron vira um enfeite morto — a
+/// seção pinta a promessa de dobrar e não dobra.
+///
+/// A lista é `ids::VECTOR_SECTIONS` (editor-core): uma seção nova entra lá e já nasce
+/// colapsável, sem tocar aqui.
+fn populate_sections(store: &mut WidgetStore) {
+    for &id in ids::VECTOR_SECTIONS {
+        store.mark_collapsible_section(id);
+    }
 }
 
 /// Width + os modos + o CATÁLOGO de formas (botões + campos genéricos).
@@ -115,21 +129,34 @@ fn populate_shape(store: &mut WidgetStore) {
         WIDTH_SLIDER_OFFSET,
     );
 
-    // Modos (Select / Node / Pen / Text) + Convert.
+    // Modos (Select / Node / Pen / Shape / Text) + Convert. O pill **Shape** é o 5º: sem
+    // ele, escolher uma forma punha a tool em `DrawMode::Shape` e a fileira de modos
+    // ficava TODA apagada — o usuário não via em que modo estava.
     button(store, ids::VECTOR_CONVERT_TO_CURVES);
     button(store, ids::VECTOR_MODE_SELECT);
     button(store, ids::VECTOR_MODE_NODE);
     button(store, ids::VECTOR_MODE_PEN);
+    button(store, ids::VECTOR_MODE_SHAPE);
     button(store, ids::VECTOR_MODE_TEXT);
 
-    // O CATÁLOGO: um botão por forma + uma aba por família. Registrados por ÍNDICE —
-    // uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.
+    // O CATÁLOGO: um botão por forma + uma opção de dropdown por família. Registrados por
+    // ÍNDICE — uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.
     for i in 0..shapes::SHAPES.len() {
         button(store, ids::vector_shape_id(i));
     }
     for i in 0..shapes::ALL_GROUPS.len() {
         button(store, ids::vector_shape_group_id(i));
     }
+    // O chip de CATEGORIA (um `Dropdown`): abrir / fechar / roda vêm de graça do dispatch
+    // genérico. As OPÇÕES do popover são os botões de família acima.
+    store.register_if_absent(
+        ids::VECTOR_SHAPE_GROUP_DD,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
 
     // Os campos de parâmetro (`MAX_SHAPE_FIELD_SLOTS`): caixas numéricas genéricas. A
     // FAIXA de cada uma depende da forma em foco, então a shell a re-registra quando o

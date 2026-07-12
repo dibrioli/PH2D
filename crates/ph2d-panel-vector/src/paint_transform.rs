@@ -10,16 +10,24 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{NumberInput, paint_number_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
 impl BodyCtx<'_> {
     /// Numeric Transform — X/Y (position) + W/H (size) of the selected path's
     /// anchor bbox, two 2-column rows. Hidden when no path is selected.
-    pub(crate) fn transform_section(&mut self, mut y: f32) -> f32 {
+    pub(crate) fn transform_section(&mut self, y: f32) -> f32 {
         if state::current_transform().is_none() {
             return y;
         }
-        y = self.section_label("Transform", y);
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_TRANSFORM,
+            tr("panel.vector.section.transform"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
         y = self.number_row(
             "X",
             ids::VECTOR_TRANSFORM_X,

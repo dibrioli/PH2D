@@ -177,7 +177,8 @@ fn extrema_1d(p0: f64, p1: f64, p2: f64, p3: f64) -> impl Iterator<Item = f64> {
             out[1] = (-b - s) / (2.0 * a);
         }
     }
-    out.into_iter().filter(|t| t.is_finite() && *t > 0.0 && *t < 1.0)
+    out.into_iter()
+        .filter(|t| t.is_finite() && *t > 0.0 && *t < 1.0)
 }
 
 /// Acumula um contorno na bbox: as âncoras **e** os extremos internos de cada cúbica.
@@ -193,18 +194,11 @@ fn eat_contour(verts: &[VecVertex], is_closed: bool, lo: &mut [f64; 2], hi: &mut
     for i in 0..last {
         let (a, b) = (&verts[i], &verts[(i + 1) % n]);
         for k in 0..2 {
-            let (p0, p1, p2, p3) = (
-                a.anchor[k],
-                a.out_handle[k],
-                b.in_handle[k],
-                b.anchor[k],
-            );
+            let (p0, p1, p2, p3) = (a.anchor[k], a.out_handle[k], b.in_handle[k], b.anchor[k]);
             for t in extrema_1d(p0, p1, p2, p3) {
                 let u = 1.0 - t;
-                let val = u * u * u * p0
-                    + 3.0 * u * u * t * p1
-                    + 3.0 * u * t * t * p2
-                    + t * t * t * p3;
+                let val =
+                    u * u * u * p0 + 3.0 * u * u * t * p1 + 3.0 * u * t * t * p2 + t * t * t * p3;
                 lo[k] = lo[k].min(val);
                 hi[k] = hi[k].max(val);
             }

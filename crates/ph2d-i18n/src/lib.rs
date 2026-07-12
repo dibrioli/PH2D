@@ -104,6 +104,41 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.prop.scale_y" => "Scale Y",
         "panel.timeline.prop.opacity" => "Opacity",
         "panel.timeline.prop.time" => "Time",
+        // ── Vector panel (ADR-0108/0112) — section headers, tool modes and the
+        // shape catalogue. The panel is a 17-section stack; every section title
+        // and every chrome word routes through here (the shape NAMES themselves
+        // stay in the `ph2d-tool-vector` catalogue, which is their single source).
+        "panel.vector.title" => "Vector",
+        "panel.vector.section.tool" => "Tool",
+        "panel.vector.section.shape" => "Shape",
+        "panel.vector.section.stroke" => "Stroke",
+        "panel.vector.section.fill" => "Fill",
+        "panel.vector.section.fill_type" => "Fill Type",
+        "panel.vector.section.snap" => "Snap",
+        "panel.vector.section.transform" => "Transform",
+        "panel.vector.section.vertex" => "Vertex",
+        "panel.vector.section.boolean" => "Boolean",
+        "panel.vector.section.align" => "Align",
+        "panel.vector.section.arrange" => "Arrange",
+        "panel.vector.section.path" => "Path",
+        "panel.vector.section.text" => "Text",
+        "panel.vector.section.font" => "Font",
+        "panel.vector.section.paragraph" => "Paragraph",
+        "panel.vector.section.axes" => "Axes",
+        "panel.vector.mode.select" => "Select",
+        "panel.vector.mode.node" => "Node",
+        "panel.vector.mode.pen" => "Pen",
+        "panel.vector.mode.shape" => "Shape",
+        "panel.vector.mode.text" => "Text",
+        "panel.vector.category" => "Category",
+        "panel.vector.shape.no_params" => "No parameters",
+        "panel.vector.group.basic" => "Basic",
+        "panel.vector.group.round" => "Round",
+        "panel.vector.group.arrows" => "Arrows",
+        "panel.vector.group.flow" => "Flow",
+        "panel.vector.group.bubbles" => "Bubbles",
+        "panel.vector.group.symbols" => "Symbols",
+        "panel.vector.group.iso" => "3D",
         // Pass-through for unknown keys so the missing entry is
         // visible in the UI (the rendered key is intentionally ugly).
         _ => leak_key(key),
@@ -134,6 +169,12 @@ mod tests {
         assert_eq!(tr("panel.timeline.title"), "Timeline");
         assert_eq!(tr("panel.timeline.loop"), "Loop");
         assert_eq!(tr("panel.timeline.prop.translate_x"), "Translate X");
+        // Vector panel chrome — section headers + the shape-catalogue words.
+        assert_eq!(tr("panel.vector.section.tool"), "Tool");
+        assert_eq!(tr("panel.vector.mode.shape"), "Shape");
+        assert_eq!(tr("panel.vector.category"), "Category");
+        assert_eq!(tr("panel.vector.shape.no_params"), "No parameters");
+        assert_eq!(tr("panel.vector.group.iso"), "3D");
     }
 
     #[test]

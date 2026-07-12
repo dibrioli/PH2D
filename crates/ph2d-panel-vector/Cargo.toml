@@ -31,6 +31,13 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# Os THUMBNAILS do catálogo de formas: cada célula pinta a forma DE VERDADE, cozida pela
+# MESMA porta que o canvas usa (`vec_scene::cook` → `vec_render::build_bezpath`). Um grid
+# de 48 NOMES ("Manual in", "Prepare", "Off-page") é ilegível — nenhum app de desenho faz
+# isso. `ph2d-vec-render` depende só de `ph2d-vector` + `ph2d-vec-scene`: sem ciclo.
+ph2d-vec-render = { path = "../ph2d-vec-render" }
+# HR-15: toda string NOVA do painel passa por `tr()` (e as antigas migraram junto).
+ph2d-i18n = { path = "../ph2d-i18n" }
 
 [dev-dependencies]
 # Blindagem Fase 1.2: headless behavioral seam harness (populate → apply_event

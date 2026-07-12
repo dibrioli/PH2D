@@ -146,6 +146,16 @@ const START: FieldDesc = FieldDesc {
     step: 1.0,
     unit: FieldUnit::Degrees,
 };
+/// Quantas bolhas tem a nuvem. A nuvem do ECMA-376 tem 11 arcos — daí o default; abaixo de
+/// 5 ela deixa de ler como nuvem. Compartilhada pela nuvem e pelo balão de pensamento (que
+/// é a mesma nuvem + a corrente de bolhas).
+const BUMPS: FieldDesc = FieldDesc {
+    label: "Bumps",
+    min: 5.0,
+    max: 24.0,
+    step: 1.0,
+    unit: FieldUnit::Count,
+};
 /// Quanto do miolo é FURO (fração do raio). `0` = cheio; `>0` = rosquinha / anel.
 const HOLE: FieldDesc = FieldDesc {
     label: "Hole",
@@ -269,14 +279,17 @@ pub const SHAPES: &[ShapeDesc] = &[
             frac("Head width", 0.05, 1.0),
         ],
     },
+    // `Corner` é o raio EXTERNO do cotovelo; o interno acompanha (arcos concêntricos, que
+    // é o que mantém a espessura constante na curva). `0` = a quina quadrada do OOXML.
     ShapeDesc {
         kind: ShapeKind::ArrowBent,
         label: "Bent",
         group: ShapeGroup::Arrows,
         fields: &[
             frac("Tail", 0.02, 0.9),
-            frac("Head len", 0.02, 0.9),
+            frac("Head len", 0.05, 0.6),
             frac("Head width", 0.05, 1.0),
+            frac("Corner", 0.0, 1.0),
         ],
     },
     ShapeDesc {
@@ -285,6 +298,10 @@ pub const SHAPES: &[ShapeDesc] = &[
         group: ShapeGroup::Arrows,
         fields: &[frac("Point", 0.02, 0.9), frac("Notch", 0.0, 0.9)],
     },
+    // A seta circular (a `circularArrow` do ECMA-376). O `Sweep` é **com sinal**: negativo
+    // percorre ao contrário e dá a seta canhota de graça — um campo, dois presets. O
+    // `Head width` governa também o RAIO da faixa: é o transbordo da cabeça que a caixa
+    // acomoda, e é por isso que a forma nunca precisa de clamp anti-transbordo.
     ShapeDesc {
         kind: ShapeKind::ArrowCurved,
         label: "Curved",
@@ -292,14 +309,15 @@ pub const SHAPES: &[ShapeDesc] = &[
         fields: &[
             FieldDesc {
                 label: "Sweep",
-                min: 10.0,
+                min: -350.0,
                 max: 350.0,
                 step: 1.0,
                 unit: FieldUnit::Degrees,
             },
-            frac("Thickness", 0.05, 0.6),
-            frac("Head len", 0.05, 0.6),
-            frac("Head width", 0.0, 0.5),
+            START,
+            frac("Thickness", 0.02, 0.5),
+            frac("Head width", 0.05, 0.5),
+            frac("Head len", 0.02, 0.9),
         ],
     },
     // ── Fluxograma ───────────────────────────────────────────────────────────
@@ -388,15 +406,19 @@ pub const SHAPES: &[ShapeDesc] = &[
         fields: &[frac("Lip", 0.05, 1.0)],
     },
     // ── Balões + símbolos ────────────────────────────────────────────────────
+    // O BICO dos balões é um ponto 2D livre na caixa (`Tip x`/`Tip y`) — o setor dele
+    // escolhe por qual lado o rabo sai. `Room` é a faixa que o corpo cede ao rabo: ele vive
+    // dentro dela, então nunca vaza a caixa (e o gizmo não mente).
     ShapeDesc {
         kind: ShapeKind::SpeechRect,
         label: "Speech",
         group: ShapeGroup::Bubbles,
         fields: &[
             radius("Radius"),
-            frac("Tail h", 0.05, 0.6),
-            frac("Tail x", 0.05, 0.95),
-            frac("Tail w", 0.02, 0.5),
+            frac("Tip x", 0.0, 1.0),
+            frac("Tip y", 0.0, 1.0),
+            frac("Base", 0.05, 0.6),
+            frac("Room", 0.05, 0.6),
         ],
     },
     ShapeDesc {
@@ -404,9 +426,16 @@ pub const SHAPES: &[ShapeDesc] = &[
         label: "Oval say",
         group: ShapeGroup::Bubbles,
         fields: &[
-            frac("Tail h", 0.05, 0.6),
-            frac("Tail x", 0.1, 0.9),
-            frac("Tail w", 0.02, 0.4),
+            frac("Tip x", 0.0, 1.0),
+            frac("Tip y", 0.0, 1.0),
+            FieldDesc {
+                label: "Wedge",
+                min: 2.0,
+                max: 45.0,
+                step: 1.0,
+                unit: FieldUnit::Degrees,
+            },
+            frac("Room", 0.05, 0.6),
         ],
     },
     ShapeDesc {
@@ -414,20 +443,16 @@ pub const SHAPES: &[ShapeDesc] = &[
         label: "Thought",
         group: ShapeGroup::Bubbles,
         fields: &[
-            FieldDesc {
-                label: "Bumps",
-                min: 4.0,
-                max: 12.0,
-                step: 1.0,
-                unit: FieldUnit::Count,
-            },
+            frac("Tip x", 0.0, 1.0),
+            frac("Tip y", 0.0, 1.0),
             FieldDesc {
                 label: "Bubbles",
                 min: 1.0,
-                max: 4.0,
+                max: 6.0,
                 step: 1.0,
                 unit: FieldUnit::Count,
             },
+            BUMPS,
         ],
     },
     ShapeDesc {
@@ -436,21 +461,26 @@ pub const SHAPES: &[ShapeDesc] = &[
         group: ShapeGroup::Bubbles,
         fields: &[
             FieldDesc {
-                label: "Points",
+                label: "Spikes",
                 min: 5.0,
-                max: 24.0,
+                max: 30.0,
                 step: 1.0,
                 unit: FieldUnit::Count,
             },
             frac("Inner", 0.2, 0.9),
-            frac("Jag", 0.0, 0.5),
+            frac("Radial", 0.0, 0.6),
+            frac("Angular", 0.0, 0.9),
         ],
     },
     ShapeDesc {
         kind: ShapeKind::Brace,
         label: "Brace",
         group: ShapeGroup::Bubbles,
-        fields: &[frac("Waist", 0.0, 1.0)],
+        fields: &[
+            frac("Arm", 0.01, 0.25),
+            frac("Pinch", 0.1, 0.9),
+            frac("Stem", 0.15, 0.85),
+        ],
     },
     ShapeDesc {
         kind: ShapeKind::Heart,
@@ -458,17 +488,26 @@ pub const SHAPES: &[ShapeDesc] = &[
         group: ShapeGroup::Symbols,
         fields: &[frac("Cleft", 0.0, 0.5)],
     },
+    // `Puff` é o raio da bolha em frações do passo da espinha — **abaixo de 0,5 as bolhas
+    // vizinhas não se sobrepõem** e o join (a interseção círculo-círculo) deixa de existir;
+    // daí o piso da faixa. `Smooth` é o raio do filete do vale: 0 = a cúspide escalopada do
+    // OOXML, > 0 = um contorno G1 de verdade.
     ShapeDesc {
         kind: ShapeKind::Cloud,
         label: "Cloud",
         group: ShapeGroup::Symbols,
-        fields: &[FieldDesc {
-            label: "Bumps",
-            min: 4.0,
-            max: 12.0,
-            step: 1.0,
-            unit: FieldUnit::Count,
-        }],
+        fields: &[
+            BUMPS,
+            frac("Puff", 0.52, 0.9),
+            FieldDesc {
+                label: "Smooth",
+                min: 0.0,
+                max: 0.06,
+                step: 0.005,
+                unit: FieldUnit::Ratio,
+            },
+            frac("Irregular", 0.0, 1.5),
+        ],
     },
     ShapeDesc {
         kind: ShapeKind::Bolt,
@@ -612,80 +651,5 @@ pub fn clamp(kind: ShapeKind, v: &mut ShapeValues) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_vec_scene::{ALL_SHAPES, MAX_SHAPE_FIELDS};
-
-    /// **Gate anti-forma-sem-UI:** toda forma que o `cook` desenha tem descritor aqui —
-    /// senão ela seria desenhável e invisível no painel (ou vice-versa: um descritor sem
-    /// forma). E nenhuma passa do teto de campos.
-    #[test]
-    fn every_cookable_shape_has_a_ui_descriptor_and_fits_the_field_cap() {
-        for &k in ALL_SHAPES {
-            let d = SHAPES.iter().find(|d| d.kind == k);
-            assert!(d.is_some(), "{k:?} cozinha mas não tem descritor de UI");
-            let d = d.unwrap();
-            assert!(
-                d.fields.len() <= MAX_SHAPE_FIELDS,
-                "{k:?}: {} campos > teto {MAX_SHAPE_FIELDS}",
-                d.fields.len()
-            );
-        }
-        assert_eq!(
-            SHAPES.len(),
-            ALL_SHAPES.len(),
-            "descritor órfão no catálogo"
-        );
-    }
-
-    /// O default de toda forma CABE na faixa declarada dos campos dela — senão a forma
-    /// nasceria já clampada, e o número do painel discordaria da geometria no 1º frame.
-    #[test]
-    fn the_geometry_defaults_sit_inside_the_ui_ranges() {
-        for &k in ALL_SHAPES {
-            let d = desc(k);
-            let defs = k.defaults();
-            for (i, f) in d.fields.iter().enumerate() {
-                // O raio de canto é o caso especial: o default é MUNDO, a faixa é PX.
-                if f.unit == FieldUnit::Px {
-                    continue;
-                }
-                assert!(
-                    defs[i] >= f.min && defs[i] <= f.max,
-                    "{k:?}.{}: default {} fora de [{}, {}]",
-                    f.label,
-                    defs[i],
-                    f.min,
-                    f.max
-                );
-            }
-        }
-    }
-
-    /// A fronteira de unidade fecha: px → mundo → px devolve o mesmo número. É o que
-    /// impede o raio de saltar de escala a cada clique.
-    #[test]
-    fn the_px_fields_round_trip_across_the_unit_boundary() {
-        const PTW: f64 = 0.01;
-        let mut ui: ShapeValues = [0.0; MAX_SHAPE_FIELDS];
-        ui[0] = 5.0; // Sides (Count — não viaja)
-        ui[1] = 30.0; // Radius (Px — viaja)
-        let world = to_world(ShapeKind::Polygon, &ui, PTW);
-        assert!((world[0] - 5.0).abs() < 1e-9, "contagem não vira mundo");
-        assert!((world[1] - 0.3).abs() < 1e-9, "30 px x 0.01 = 0.3 de mundo");
-        let back = to_ui(ShapeKind::Polygon, &world, PTW);
-        assert!((back[1] - 30.0).abs() < 1e-9, "voltou a 30 px");
-    }
-
-    /// O clamp respeita a faixa e arredonda as contagens (um polígono de 4.7 lados não
-    /// existe).
-    #[test]
-    fn clamp_bounds_the_fields_and_rounds_the_counts() {
-        let mut v: ShapeValues = [0.0; MAX_SHAPE_FIELDS];
-        v[0] = 4.7; // Sides
-        v[1] = 9_999.0; // Radius (px)
-        clamp(ShapeKind::Polygon, &mut v);
-        assert!((v[0] - 5.0).abs() < 1e-9, "lados arredondam");
-        assert!((v[1] - 500.0).abs() < 1e-9, "raio clampa no teto");
-    }
-}
+#[path = "shapes_tests.rs"]
+mod tests;

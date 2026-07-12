@@ -29,6 +29,8 @@ mod font_dropdown;
 pub mod ids;
 mod paint;
 mod paint_arrange;
+/// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
+mod paint_catalog;
 mod paint_modes;
 mod paint_sections;
 mod paint_transform;

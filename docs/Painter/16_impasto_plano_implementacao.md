@@ -193,3 +193,85 @@ sibling `event_brush_forward.rs`, que já tem o precedente `is_deform_click`, em
 
 Fecho a linha com gate batched + handoff de integração, e **PARO** — não integro nem faço ship (§0.7 do
 CLAUDE.md).
+
+---
+
+## 9. LANDOU (2026-07-12) — e onde a implementação DIVERGIU deste plano
+
+Fases 1–3 fechadas + smoke armado. Commits `217aa592` · `c5878926` · `beb8a631` · `37d2258f` · smoke.
+**As divergências abaixo são decisões, não desvios** — cada uma tem motivo e gate.
+
+### 9.1 `depth` → `impasto_depth` (o plano ia cruzar dois sistemas)
+
+O plano batizou o campo **`depth`**. Mas `BrushSpec` **já tem `depth`** — é a profundidade óptica
+**Beer–Lambert da AQUARELA** ([spec.rs:195](../../crates/ph2d-painter-brush/src/spec.rs#L195)). Um `depth`
+solto teria cruzado impasto com o wash em silêncio, exatamente o que a §2 proíbe. Todos os campos são
+`impasto_*`.
+
+### 9.2 `DepthSource`: 3 → **2** (o terceiro era um knob morto)
+
+O plano listava `Uniform` / `Grain` / **`Shape`**. Para **qualquer pincel real** o `Shape` é duplicata
+silenciosa do `Uniform`: sem slot Shape a silhueta **é** o falloff, e com Shape `Image` a imagem já
+**substitui** o falloff — "só a silhueta" e "grão neutro" são o mesmo número. Seria um knob que não faz
+nada: a espécie que a varredura de 2026-07-12 passou o dia inteiro exterminando (BUGS #13). **Cortado
+antes de ser escrito.** Gate: `depth_source_uniform_is_level_and_grain_is_not` (vermelho provado nos dois
+sentidos — Uniform comendo o grão *e* grão inerte).
+
+### 9.3 T1.7 (Per-Layer Color) saiu **de graça** — o plano dava como o único caso que não sairia
+
+A causa é a colocação do **choke point**: a altura é tomada em `stamp_dabs_inner` **acima de todo o
+dispatch de rotas**, da silhueta-**união** em que as N camadas já se achatam. O relevo é **UM corpo
+coerente**, não N degraus empilhados (o artefato que o plano temia). Gate:
+`impasto_per_layer_color_leaves_one_coherent_relief`.
+
+### 9.4 A REGRA que o plano não previa: **a altura não pode sortear do RNG vivo**
+
+O frame aleatório do grão sai de `tex_rng`, um fluxo **persistente**. Um segundo passe que sorteasse dele
+**adiantaria o fluxo** e a **COR** sairia com outro grão — marcar "Impasto" **repintaria o quadro**. O passe
+roda numa **cópia** do fluxo e a descarta. O gate de byte-identidade **não pegava isso** (com impasto OFF
+o passe nem chega no RNG); o gate que faltava é `impasto_on_does_not_disturb_the_pigment`, vermelho
+provado escrevendo o RNG de volta. Documentada como **regra 2** em
+[`impasto.rs`](../../crates/ph2d-tool-painter/src/tool/paint/impasto.rs).
+
+### 9.5 A luz é **RELATIVA**, não absoluta (§4.2 do doc 15 ficaria errada)
+
+A resposta do pixel é **dividida pela resposta de uma superfície PLANA**. Onde não há relevo o passe
+multiplica por 1 e soma 0 — **byte-idêntico**. O ingênuo (`rgb × N·L`) **escureceria o quadro inteiro** ao
+ligar a luz (plano a 45° devolve 0,707, não 1) — o bug de metade dos filtros de emboss já escritos. É essa
+propriedade que dá dente ao gate.
+
+### 9.6 Três furos que o código não denunciava (achados na costura, não na leitura)
+
+- O **atalho de stack trivial** (`take_preview_arc`) devolve `canvas_rgba` **cru**. Documento de 1 camada é
+  **o caso comum** ⇒ sem guard, o jeito mais ordinário de usar Impasto não mostraria relevo nenhum.
+- **`gpu_eligible`** mandava pro compositor GPU, que não sabe da altura ⇒ esculpir sem ver.
+- **`run_full`** (Apply) achata no sprite, que é só RGBA ⇒ sem assar a luz, Apply **jogava o relevo fora**.
+
+### 9.7 `Smoothing` quase foi entregue **morto**
+
+Declarado no spec, fiado até o painel, **lido por ninguém**. Agora assenta o depósito no fim do traço (box
+separável, HR-5). Gate: parede mais íngreme cai >30% **e o volume se conserva** (a tinta espalha, não
+evapora).
+
+### 9.8 Perf — kill-criterion **passa sem otimização**
+
+`@2048² r100`: custo do impasto **1,93 ms/move** médio, **2,13 ms** pior (frame inteiro: 2,98 ms).
+Alvo ≤4 ms, kill em 8. **Medido, em `--release`, isolando o delta** (o frame já custa ~1 ms sem impasto —
+cobrar isso do impasto o teria lisonjeado).
+
+### 9.9 Smoke pronto
+
+```bash
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
+  PH2D_IMPASTO_SMOKE=1 cargo run --release -p ph2d-host-desktop
+```
+Canvas branco 1024² já selecionado + pincel armado (Depth 0.7, source Grain sobre grão Noise). **Pegue o
+Painter e arraste.** A seção **Impasto** já aparece no painel Brush com Enable marcado; o card **Lighting**
+move a luz ao vivo, e **Depth negativo CAVA** em vez de levantar.
+
+### 9.10 Continua fora do 1º corte (§6, inalterado)
+
+`Plow` (arrastar relevo no Smear) · Composite Depth por camada (Subtract/Replace/Ignore) · passe de luz na
+GPU · relevo do PAPEL (acopla impasto↔aquarela — **exige ordem nova do Enio**) · múltiplas luzes ·
+persistência do `h` no `ProjectState` (herda o gap conhecido: o save já não persiste pixels de
+`SpriteSource::Individual`).

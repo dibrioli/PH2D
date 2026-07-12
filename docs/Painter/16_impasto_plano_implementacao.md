@@ -196,19 +196,18 @@ CLAUDE.md).
 
 ---
 
-## ⚠️ ESTADO (2026-07-12): a linha TROCOU DE DONO — leia o handoff primeiro
+## ⚠️ ESTADO (2026-07-12, dono novo): pesquisa 2 FEITA — o plano segue no §10
 
-Fases 1–3 fecharam e estão gateadas, mas o Enio, olhando o resultado, disse:
-**"Não sei se melhorou ou piorou. Ficou mais difícil de ajustar."**
+Fases 1–3 fecharam gateadas, mas o veredito do Enio (*"Não sei se melhorou ou piorou. Ficou mais
+difícil de ajustar"*) suspendeu o plano até uma pesquisa nova sobre o **modelo de depósito** e a
+**superfície de knobs**. A pesquisa foi feita (2026-07-12, 5 varreduras de fontes primárias) e está em
+[**17_impasto_deposito_pesquisa2.md**](17_impasto_deposito_pesquisa2.md). Resumo em uma linha: **a
+hipótese do handoff era certa — nenhum sistema sério deriva altura da opacidade macia da cor** (o nosso
+modelo era o caminho "Smooth" do PS, o documentadamente ruim); a correção é um **perfil de corpo**
+(platô + ombro) + **inclinação física** (sem gain mágico) + **matar o knob `Amount`**. O §10 abaixo é o
+plano dessa correção.
 
-Isso é veredito de **design**, não de defeito: a feature está tecnicamente correta e ergonomicamente
-errada. **Este plano está SUSPENSO até uma pesquisa nova** sobre (a) como o estado-da-arte *deriva altura
-de um traço* — o modelo de depósito aqui foi **inventado**, sem referência — e (b) qual é o **menor
-conjunto ortogonal de knobs** que dá controle real.
-
-> **→ [`docs/HANDOFF_line_Painter_impasto_2026-07-12.md`](../HANDOFF_line_Painter_impasto_2026-07-12.md)**
-> — o estado, a hipótese de que o modelo está errado na raiz (a altura herda o perfil MACIO da cor, então
-> o relevo é um domo e não um corpo com borda), as perguntas de pesquisa, e o protocolo Modo L.
+> Handoff da troca de dono: [`docs/HANDOFF_line_Painter_impasto_2026-07-12.md`](../HANDOFF_line_Painter_impasto_2026-07-12.md).
 
 ---
 
@@ -291,3 +290,33 @@ move a luz ao vivo, e **Depth negativo CAVA** em vez de levantar.
 GPU · relevo do PAPEL (acopla impasto↔aquarela — **exige ordem nova do Enio**) · múltiplas luzes ·
 persistência do `h` no `ProjectState` (herda o gap conhecido: o save já não persiste pixels de
 `SpriteSource::Individual`).
+
+---
+
+## 10. Fase 4 — o CORPO (redesign pós-pesquisa 2, 2026-07-12)
+
+> Fundamentação e fontes: [17_impasto_deposito_pesquisa2.md](17_impasto_deposito_pesquisa2.md).
+> A medição que abriu a fase (probe no harness real, r=40, Depth 0.7, defaults): pincel macio default
+> = domo puro com pico de shading de 7.3 níveis a 31% da meia-largura e 1 nível na borda visível;
+> disco duro = platô com pico de 10.3 níveis a 97% — corpo, mas parede de 1 px. O alvo é o que nenhum
+> dos dois é: **platô + ombro de largura orgânica, com a luz morando na borda.**
+
+| Task | O quê | Onde | Gate VERMELHO refutável |
+|---|---|---|---|
+| **T4.1** | **Curva de corpo** no kernel: `body(w) = smoothstep(W_TAIL=0.10, W_SOLID=0.35, w)` substitui `w` cru na altura (cor intocada; cover intocado). Grain segue entalhando o resultado | `height.rs` | o gate de aparência T4.5; e `depth_source_uniform_is_level_and_grain_is_not` continua verde (platô segue nivelado, em cheio) |
+| **T4.2** | **Teto de commit**: o Add entre traços satura em `±H_CEIL = 2.0` ("pressed against glass") | `impasto.rs::commit_stroke_height` | N traços de Depth 1.0 no mesmo ponto ⇒ `h == 2.0`, não `N` (RED: sem clamp, cresce sem teto) |
+| **T4.3** | **Inclinação física**: morre `SLOPE_GAIN` (e o `× body` dentro da normal); nasce `DEPTH_UNIT_PX` (quantos px de tinta h=1.0 representa — **medido** no probe). `body_eff = min(1, cover/COVER_SOLID)` pesa só o EFEITO | `impasto_light.rs` | byte-identidade do plano intacta; halo do branco não volta (o h já é 0 na cauda <10% — T4.1); gate T4.5 dá o número |
+| **T4.4** | **`Amount` morre** (o gêmeo acoplado do Depth): id, row, setter, rota, reset, snapshot, campo — o desmonte dos 7 sites, com as gates de wiring acusando resto | `painter_impasto.rs` (ids) · `paint_impasto.rs` · `impasto_settings.rs` · `paint.rs` | `architecture_panel_wiring_parity` + seam tests compilam sem o id; grep do id = 0 ocorrências |
+| **T4.5** | **Gate de APARÊNCIA (derivado da definição, não do shader):** um corpo tem borda iluminada — no traço soft default, o pico de \|Δ\| fica na **banda do ombro** (fora de 60% da meia-largura) e ≥ um piso de níveis; o interior é platô (`h` a 50% da meia-largura ≥ 0.9× o spine). RED provado com o kernel antigo (domo) | `tests.rs` (promove o probe) | é o próprio gate |
+| **T4.6** | Fixture de `impasto_light_reads_as_raised_not_engraved` acha os flancos pelo **gradiente real de h** (com platô, os flancos fixos de hoje caem no interior plano) | `tests.rs` | o teste continua provando claro-do-lado-da-luz/escuro-do-outro |
+| **T4.7** | Re-medir perf (§7 continua valendo: ≤4 ms/move, kill 8) + re-rodar o probe e registrar os números aqui | — | `impasto_perf_kill_criterion` |
+
+**Fora do corte (inalterado do §6):** `Plow` (agora com receita barata documentada — o deslocamento
+degenerado do Corel Thick Paint, pesquisa 2 §3.6) · Composite Depth por camada · luz na GPU · relevo do
+papel (ordem nova do Enio) · persistência do `h`.
+
+### 10.1 Números do fechamento — A PREENCHER quando T4.7 rodar
+
+O "antes" já está medido (probe da abertura, tabela no topo do §10). O "depois" entra aqui **somente
+com o probe re-rodado** — números inventados não entram em doc
+([[feedback_no_industrial_claims_without_verification]]).

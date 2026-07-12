@@ -146,12 +146,6 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         "unmasked by the 2026-07-10 parser fix; layer-stack paint orchestrator, per-section split deferred (needs smoke)",
     ),
     (
-        "ph2d-panel-painter-layers/src/paint_brush.rs",
-        "paint_brush_body",
-        215,
-        "unmasked by the 2026-07-10 parser fix; Brush/Stroke/Shape/Grain sections, per-section split deferred (needs smoke)",
-    ),
-    (
         "ph2d-panel-equalize-sizes/src/paint.rs",
         "paint_body_sections",
         255,

@@ -185,12 +185,22 @@ impl FlipObject {
     /// "Set Center" (sempre translação pura → largura/opacidade/cor intactas; a
     /// escala do gizmo vive no `Transform` e entra no render, não aqui).
     pub fn bake_affine(&mut self, m: [f64; 6]) {
+        let apply = |p: &mut ph2d_core::Vec2| {
+            let (x, y) = (f64::from(p.x), f64::from(p.y));
+            p.x = (m[0] * x + m[2] * y + m[4]) as f32;
+            p.y = (m[1] * x + m[3] * y + m[5]) as f32;
+        };
         for d in &mut self.drawings {
             for s in &mut d.strokes {
                 for p in s.positions_mut() {
-                    let (x, y) = (f64::from(p.x), f64::from(p.y));
-                    p.x = (m[0] * x + m[2] * y + m[4]) as f32;
-                    p.y = (m[1] * x + m[3] * y + m[5]) as f32;
+                    apply(p);
+                }
+                // Os buracos do fill (W4) andam junto — senão um "Set Center" deslocaria
+                // o contorno e deixaria os furos para trás.
+                for ring in &mut s.holes {
+                    for p in ring {
+                        apply(p);
+                    }
                 }
             }
         }

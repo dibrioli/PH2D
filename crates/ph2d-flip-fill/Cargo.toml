@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-flip-fill"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O BALDE do Flip (ADR-0114 W4) — o pixel solver do Grease Pencil, clean-room.
+#
+# CPU puro, sem GPU e sem render: entra a geometria dos traços + o ponto clicado,
+# sai a GEOMETRIA da região preenchida (contorno externo + buracos). É uma operação
+# de CLIQUE, não de frame — span fill na CPU é 10× o BFS por pixel e roda em poucos
+# ms em 4 Mpix; a GPU seria o primitivo errado (o JFA salta paredes: não é geodésico,
+# e o readback para o trace é inevitável). Racional: `docs/Flip/04 §3`.
+#
+# Crate SEPARADA (isolamento, ADR-0107): o modelo (`ph2d-flip`) não precisa carregar
+# um rasterizador, e o solver é testável headless sem nada gráfico.
+
+[dependencies]
+# Vec2 — a única dependência de verdade.
+ph2d-core = { path = "../ph2d-core" }

@@ -18,6 +18,7 @@
 
 mod composite;
 mod fill;
+mod fill_holes;
 mod neighbors;
 mod pack;
 mod pipeline;

@@ -1,0 +1,294 @@
+//! **Gap Closure** — a feature que faz o balde "funcionar de primeira".
+//!
+//! Line-art desenhado à mão quase nunca fecha: as pontas passam perto uma da outra e
+//! o preenchimento escapa pela fresta. O Grease Pencil resolve prolongando as PONTAS
+//! na tangente até que elas colidam com alguma linha (ou com outra extensão), e é
+//! isso que portamos.
+//!
+//! **O twist do Harmony (`04 §3`), adotado:** o fechamento que funcionou **vira um
+//! traço INVISÍVEL persistente** no desenho — não um estado efêmero da ferramenta.
+//! Consequência prática enorme: re-preencher depois de editar a cor, preencher o
+//! quadro vizinho, ou reabrir o arquivo amanhã **não depende de a ferramenta estar
+//! com os mesmos parâmetros**. O gap ficou fechado.
+//!
+//! Duas fontes de extensão (as duas do GP):
+//! 1. **Pontas** — cada extremidade de um traço aberto se prolonga na tangente.
+//! 2. **Quinas mid-stroke** — onde o traço vira mais apertado que a própria espessura
+//!    (raio de curvatura < espessura), o GP também estende. É por isso que ele fecha
+//!    cantos em "V" que outros baldes não fecham: num "V" as duas pernas se cruzam
+//!    *visualmente*, mas o vértice fica fora do preenchimento.
+//!
+//! **Corte por colisão:** uma extensão para onde encosta em outra linha (ou noutra
+//! extensão). Sem isso, as extensões varam o desenho e cortam regiões ao meio.
+
+use ph2d_core::Vec2;
+
+/// Um segmento de fechamento: a linha invisível que tapa o vão.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Closure {
+    pub a: Vec2,
+    pub b: Vec2,
+}
+
+/// Uma polilinha de fronteira (um traço do desenho), como o solver a vê.
+pub struct Boundary<'a> {
+    pub points: &'a [Vec2],
+    pub closed: bool,
+}
+
+/// Distância mínima (unidades do documento) para uma extensão valer a pena.
+const MIN_EXTENSION: f32 = 1e-4;
+
+/// **Gera os fechamentos** para os traços dados, com alcance `reach` (unidades do
+/// documento — o slider "Gap Closure" do painel; `0` = desligado).
+///
+/// Cada extensão é cortada onde encosta em qualquer OUTRA linha (ou noutra extensão),
+/// e só sobrevive se de fato colidiu: uma ponta que se estende no vazio não fecha vão
+/// nenhum, e uma linha solta atravessando o desenho só faria mal.
+#[must_use]
+pub fn closures(strokes: &[Boundary<'_>], reach: f32) -> Vec<Closure> {
+    if reach <= MIN_EXTENSION {
+        return Vec::new();
+    }
+    // As candidatas: os raios (origem + direção), com o índice do traço-dono (para não
+    // colidirem com a própria linha na origem).
+    let mut rays: Vec<(usize, Vec2, Vec2)> = Vec::new();
+    for (si, s) in strokes.iter().enumerate() {
+        if s.closed || s.points.len() < 2 {
+            continue; // cíclica nunca ganha extensão (é o GP; e ela já fecha)
+        }
+        let n = s.points.len();
+        // Ponta inicial: da 2ª ponto para o 1º (para FORA).
+        if let Some(d) = dir(s.points[1], s.points[0]) {
+            rays.push((si, s.points[0], d));
+        }
+        // Ponta final.
+        if let Some(d) = dir(s.points[n - 2], s.points[n - 1]) {
+            rays.push((si, s.points[n - 1], d));
+        }
+        // **Quinas apertadas** (o "V"): onde a virada é mais fechada que ~60°, a
+        // bissetriz EXTERNA vira um raio. É o que fecha o vértice de um "V" cujo bico
+        // ficou de fora da região.
+        for i in 1..n - 1 {
+            let (Some(d0), Some(d1)) = (
+                dir(s.points[i - 1], s.points[i]),
+                dir(s.points[i], s.points[i + 1]),
+            ) else {
+                continue;
+            };
+            let cos = d0.x * d1.x + d0.y * d1.y;
+            if cos > -0.5 {
+                continue; // virada < 120°: não é uma quina apertada
+            }
+            // A bissetriz EXTERNA — a direção do "bico". O ângulo interno é a soma das
+            // duas direções que SAEM da quina pelas pernas (`-d0` e `d1`); o bico é o
+            // oposto disso, `d0 - d1`. (Trocar o sinal aponta o raio para DENTRO da
+            // cunha, onde ele colide com a própria linha e não fecha vão nenhum.)
+            if let Some(b) = dir(Vec2::new(0.0, 0.0), Vec2::new(d0.x - d1.x, d0.y - d1.y)) {
+                rays.push((si, s.points[i], b));
+            }
+        }
+    }
+
+    // Corta cada raio na 1ª colisão com QUALQUER linha (menos a de origem, na ponta) —
+    // dois passes contra as linhas ORIGINAIS deixa o resultado independente da ordem.
+    let mut out = Vec::new();
+    for &(owner, origin, d) in &rays {
+        let far = Vec2::new(origin.x + d.x * reach, origin.y + d.y * reach);
+        let mut best = f32::INFINITY;
+        for (si, s) in strokes.iter().enumerate() {
+            let n = s.points.len();
+            if n < 2 {
+                continue;
+            }
+            let last = if s.closed { n } else { n - 1 };
+            for i in 0..last {
+                let (p, q) = (s.points[i], s.points[(i + 1) % n]);
+                // A própria linha, perto da origem, não conta (senão toda ponta colide
+                // consigo mesma no primeiro pixel).
+                if si == owner && near(origin, p, q) {
+                    continue;
+                }
+                if let Some(t) = ray_hit(origin, far, p, q)
+                    && t > 1e-3
+                    && t < best
+                {
+                    best = t;
+                }
+            }
+        }
+        // Só vale se COLIDIU dentro do alcance: uma extensão para o nada não fecha vão.
+        if best.is_finite() && best <= 1.0 {
+            out.push(Closure {
+                a: origin,
+                b: Vec2::new(
+                    origin.x + (far.x - origin.x) * best,
+                    origin.y + (far.y - origin.y) * best,
+                ),
+            });
+        }
+    }
+    out
+}
+
+/// Direção unitária `a → b`, ou `None` se coincidem (nunca `normalize(0)` = NaN — a
+/// lição do ponto duplicado, `BUGS_flip.md` #4).
+fn dir(a: Vec2, b: Vec2) -> Option<Vec2> {
+    let d = b - a;
+    let len = (d.x * d.x + d.y * d.y).sqrt();
+    (len > 1e-6).then(|| Vec2::new(d.x / len, d.y / len))
+}
+
+/// O segmento `p→q` passa a menos de um cabelo da origem do raio? (a exclusão do
+/// próprio segmento de origem).
+fn near(o: Vec2, p: Vec2, q: Vec2) -> bool {
+    let d = q - p;
+    let len2 = d.x * d.x + d.y * d.y;
+    let t = if len2 < 1e-9 {
+        0.0
+    } else {
+        (((o.x - p.x) * d.x + (o.y - p.y) * d.y) / len2).clamp(0.0, 1.0)
+    };
+    let c = Vec2::new(p.x + t * d.x, p.y + t * d.y);
+    let e = o - c;
+    e.x * e.x + e.y * e.y < 1e-6
+}
+
+/// Interseção do segmento `o→f` com o segmento `p→q`. Devolve o `t ∈ [0,1]` ao longo
+/// do raio, ou `None`. Puramente algébrico (sem transcendental — HR-5).
+fn ray_hit(o: Vec2, f: Vec2, p: Vec2, q: Vec2) -> Option<f32> {
+    let r = f - o;
+    let s = q - p;
+    let denom = r.x * s.y - r.y * s.x;
+    if denom.abs() < 1e-9 {
+        return None; // paralelos
+    }
+    let op = p - o;
+    let t = (op.x * s.y - op.y * s.x) / denom;
+    let u = (op.x * r.y - op.y * r.x) / denom;
+    ((0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u)).then_some(t)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn line(a: (f32, f32), b: (f32, f32)) -> Vec<Vec2> {
+        vec![Vec2::new(a.0, a.1), Vec2::new(b.0, b.1)]
+    }
+
+    /// **O caso de uso:** duas linhas que quase se encontram. A ponta de uma se
+    /// estende e ENCOSTA na outra — o vão fecha.
+    #[test]
+    fn a_tip_extends_until_it_hits_the_other_line() {
+        // Horizontal em y=0 (de x=0 a x=10) e vertical em x=12 (de y=-5 a y=5).
+        // A ponta direita da horizontal aponta para a vertical, a 2 unidades.
+        let h = line((0.0, 0.0), (10.0, 0.0));
+        let v = line((12.0, -5.0), (12.0, 5.0));
+        let strokes = [
+            Boundary {
+                points: &h,
+                closed: false,
+            },
+            Boundary {
+                points: &v,
+                closed: false,
+            },
+        ];
+        let cl = closures(&strokes, 5.0);
+        // A ponta da horizontal alcança a vertical em (12, 0).
+        let hit = cl
+            .iter()
+            .find(|c| (c.a - Vec2::new(10.0, 0.0)).x.abs() < 1e-3)
+            .expect("a ponta da horizontal tinha de fechar");
+        assert!(
+            (hit.b.x - 12.0).abs() < 1e-3 && hit.b.y.abs() < 1e-3,
+            "o fechamento para EM CIMA da outra linha: {:?}",
+            hit.b
+        );
+    }
+
+    /// Um alcance curto demais não fecha nada — e, principalmente, **não deixa uma
+    /// linha solta atravessando o desenho**: a extensão só sobrevive se COLIDIU.
+    #[test]
+    fn an_extension_that_hits_nothing_is_discarded() {
+        let h = line((0.0, 0.0), (10.0, 0.0));
+        let v = line((12.0, -5.0), (12.0, 5.0));
+        let strokes = [
+            Boundary {
+                points: &h,
+                closed: false,
+            },
+            Boundary {
+                points: &v,
+                closed: false,
+            },
+        ];
+        let cl = closures(&strokes, 1.0); // alcance 1 < os 2 de distância
+        assert!(
+            cl.iter().all(|c| (c.a.x - 10.0).abs() > 1e-3),
+            "a ponta não alcança: não pode virar linha solta"
+        );
+    }
+
+    /// Alcance zero = feature desligada.
+    #[test]
+    fn zero_reach_is_off() {
+        let h = line((0.0, 0.0), (10.0, 0.0));
+        let strokes = [Boundary {
+            points: &h,
+            closed: false,
+        }];
+        assert!(closures(&strokes, 0.0).is_empty());
+    }
+
+    /// Uma curva FECHADA nunca ganha extensão (já fecha; estendê-la só cortaria a
+    /// região ao meio).
+    #[test]
+    fn a_closed_stroke_gets_no_extensions() {
+        let sq = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 0.0),
+            Vec2::new(10.0, 10.0),
+            Vec2::new(0.0, 10.0),
+        ];
+        let strokes = [Boundary {
+            points: &sq,
+            closed: true,
+        }];
+        assert!(closures(&strokes, 5.0).is_empty());
+    }
+
+    /// **A quina em "V"**: as duas pernas se cruzam visualmente, mas o BICO fica de
+    /// fora. A quina apertada gera um raio pela bissetriz externa — é o que fecha o
+    /// vértice (e é a razão de o balde do GP fechar "V"s que outros não fecham).
+    #[test]
+    fn a_tight_corner_emits_a_ray_along_the_outer_bisector() {
+        // Um "V" agudo: desce até (0,0) e volta a subir. A virada é de ~160°.
+        let v = vec![
+            Vec2::new(-1.0, 10.0),
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 10.0),
+        ];
+        // Um teto em y=-2 para a extensão da quina colidir (senão ela é descartada).
+        let roof = line((-5.0, -2.0), (5.0, -2.0));
+        let strokes = [
+            Boundary {
+                points: &v,
+                closed: false,
+            },
+            Boundary {
+                points: &roof,
+                closed: false,
+            },
+        ];
+        let cl = closures(&strokes, 6.0);
+        let from_corner = cl.iter().find(|c| c.a == Vec2::new(0.0, 0.0));
+        let hit = from_corner.expect("a quina apertada tinha de emitir um raio");
+        assert!(
+            (hit.b.y + 2.0).abs() < 1e-3,
+            "o raio da quina desce e encosta no teto: {:?}",
+            hit.b
+        );
+    }
+}

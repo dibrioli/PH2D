@@ -15,6 +15,7 @@
 //! Puro (sem wgpu) — testável headless. O upload pra GPU envolve estas structs.
 
 use crate::fill::{FillVertex, triangulate};
+use crate::fill_holes;
 use crate::neighbors::{self, Seg};
 use ph2d_core::Vec2;
 use ph2d_flip::{Cap, FlipDrawing};
@@ -207,65 +208,91 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
         let sid = g.strokes.len() as u32;
         let first_point = g.points.len() as u32;
         let pos = s.positions();
-        let w = s.widths();
-        let op = s.opacities();
-        let col = s.colors();
-        for i in 0..pos.len() {
-            g.points.push(GpuPoint {
-                pos: [pos[i].x, pos[i].y],
-                width: w[i],
-                opacity: op[i],
-                color: col[i].0,
+
+        // **`hide_stroke`** (W4): o traço não é rasterizado — só o preenchimento dele.
+        // É o que o balde produz (a cor entra POR BAIXO do line-art, sem desenhar um
+        // segundo contorno em cima). A `GpuStroke` é empurrada mesmo assim, com ZERO
+        // pontos: ela não gera quad nenhum, e o `sid` (que dá a profundidade do fill)
+        // continua alinhado com a ordem de z dos traços.
+        if s.hide_stroke {
+            g.strokes.push(GpuStroke {
+                first_point,
+                point_count: 0,
+                flags: stroke_flags(s.closed, s.cap),
+                hardness: s.hardness,
+                material: s.material.0,
+                _pad: [0; 3],
             });
-            g.point_stroke.push(sid);
-            g.seg_extra_range.push([0, 0]); // preenchido abaixo
-        }
-        g.strokes.push(GpuStroke {
-            first_point,
-            point_count: pos.len() as u32,
-            flags: stroke_flags(s.closed, s.cap),
-            hardness: s.hardness,
-            material: s.material.0,
-            _pad: [0; 3],
-        });
-
-        // A janela de vizinhos GEOMÉTRICOS deste traço (a união global no fragment;
-        // vazia para traços que não voltam sobre si mesmos — o caso comum).
-        let segs = stroke_segments(g, first_point, pos.len() as u32, s.closed);
-        for (i, extras) in neighbors::extras_for_stroke(&segs).into_iter().enumerate() {
-            if extras.is_empty() {
-                continue;
+        } else {
+            let w = s.widths();
+            let op = s.opacities();
+            let col = s.colors();
+            for i in 0..pos.len() {
+                g.points.push(GpuPoint {
+                    pos: [pos[i].x, pos[i].y],
+                    width: w[i],
+                    opacity: op[i],
+                    color: col[i].0,
+                });
+                g.point_stroke.push(sid);
+                g.seg_extra_range.push([0, 0]); // preenchido abaixo
             }
-            let offset = g.seg_extras.len() as u32;
-            for j in &extras {
-                let sj = segs[*j as usize];
-                g.seg_extras.push(GpuSegRef { a: sj.a, b: sj.b });
+            g.strokes.push(GpuStroke {
+                first_point,
+                point_count: pos.len() as u32,
+                flags: stroke_flags(s.closed, s.cap),
+                hardness: s.hardness,
+                material: s.material.0,
+                _pad: [0; 3],
+            });
+
+            // A janela de vizinhos GEOMÉTRICOS deste traço (a união global no fragment;
+            // vazia para traços que não voltam sobre si mesmos — o caso comum).
+            let segs = stroke_segments(g, first_point, pos.len() as u32, s.closed);
+            for (i, extras) in neighbors::extras_for_stroke(&segs).into_iter().enumerate() {
+                if extras.is_empty() {
+                    continue;
+                }
+                let offset = g.seg_extras.len() as u32;
+                for j in &extras {
+                    let sj = segs[*j as usize];
+                    g.seg_extras.push(GpuSegRef { a: sj.a, b: sj.b });
+                }
+                // O range é indexado pelo PONTO INICIAL do segmento (a identidade do
+                // segmento no shader é o `gp` do seu primeiro ponto).
+                let owner = segs[i].a as usize;
+                g.seg_extra_range[owner] = [offset, extras.len() as u32];
             }
-            // O range é indexado pelo PONTO INICIAL do segmento (a identidade do
-            // segmento no shader é o `gp` do seu primeiro ponto).
-            let owner = segs[i].a as usize;
-            g.seg_extra_range[owner] = [offset, extras.len() as u32];
         }
 
-        // Fill: só traço FECHADO com preenchimento. Triangula os pontos e emite
-        // os triângulos com a cor premultiplicada + a profundidade do fill.
+        // Fill: só traço FECHADO com preenchimento. Sem buracos, o ear-clipping do W1
+        // (byte-idêntico ao que já estava). COM buracos, a decomposição trapezoidal
+        // even-odd (`fill_holes`) — ela devolve POSIÇÕES novas (os cantos dos
+        // trapézios), não índices de entrada.
         if s.closed
             && let Some(f) = s.fill
         {
-            let pts: Vec<Vec2> = pos.to_vec();
-            let tris = triangulate(&pts);
             let depth = (2 * sid + 1) as f32 * DEPTH_STEP;
             let a = f.color.a() * f.opacity;
             // Premultiplicado (o fragment de fill não multiplica de novo).
             let color = [f.color.r() * a, f.color.g() * a, f.color.b() * a, a];
-            for &vi in &tris {
-                let p = pts[vi as usize];
+            let mut emit = |p: Vec2| {
                 g.fills.push(FillVertex {
                     pos: [p.x, p.y],
                     depth,
                     _pad: 0.0,
                     color,
                 });
+            };
+            if s.holes.is_empty() {
+                let pts: Vec<Vec2> = pos.to_vec();
+                for &vi in &triangulate(&pts) {
+                    emit(pts[vi as usize]);
+                }
+            } else {
+                for p in fill_holes::triangulate_even_odd(pos, &s.holes) {
+                    emit(p);
+                }
             }
         }
     }

@@ -66,7 +66,8 @@ pub use ph2d_painter_effects::BlendMode;
 ///
 /// v2 (W3): a camada ganhou `cycle` (pre/post behavior) + `use_onion`, e o
 /// `OnionSettings` ganhou `kind_filter`.
-pub const FLIP_SCHEMA_VERSION: u32 = 2;
+/// v3 (W4): o traço ganhou `holes` (os buracos do preenchimento) + `hide_stroke`.
+pub const FLIP_SCHEMA_VERSION: u32 = 3;
 
 #[cfg(test)]
 mod tests {

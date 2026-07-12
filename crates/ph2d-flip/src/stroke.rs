@@ -91,6 +91,19 @@ pub struct FlipStroke {
     pub material: MaterialId,
     /// Preenchimento, se houver.
     pub fill: Option<Fill>,
+    /// **Os BURACOS do preenchimento** (W4): anéis fechados, no mesmo espaço dos
+    /// pontos, que são SUBTRAÍDOS da área preenchida. Vazio no caso comum.
+    ///
+    /// A letra "O" é o caso trivial que exige isto — e é por isso que o resultado do
+    /// balde é UM traço (o contorno externo) que carrega os seus buracos, e não N
+    /// traços agrupados por um `fill_id`: um fill é **uma** unidade de seleção, de
+    /// undo, de delete e de animação (a promessa do Grease Pencil, `02 §6`), e um
+    /// grupo em que apagar um anel destrói a forma não é isso.
+    pub holes: Vec<Vec<Vec2>>,
+    /// **Só o preenchimento aparece** — o contorno deste traço não é rasterizado
+    /// (`hide_stroke` do GP). É o que o balde produz: o preenchimento entra POR BAIXO
+    /// do line-art que já existe, sem desenhar um segundo contorno em cima dele.
+    pub hide_stroke: bool,
 }
 
 impl Default for FlipStroke {
@@ -105,6 +118,8 @@ impl Default for FlipStroke {
             hardness: DEFAULT_HARDNESS,
             material: MaterialId::default(),
             fill: None,
+            holes: Vec::new(),
+            hide_stroke: false,
         }
     }
 }
@@ -176,6 +191,8 @@ impl FlipStroke {
             hardness: self.hardness,
             material: self.material,
             fill: self.fill,
+            holes: self.holes.clone(),
+            hide_stroke: self.hide_stroke,
         }
     }
 

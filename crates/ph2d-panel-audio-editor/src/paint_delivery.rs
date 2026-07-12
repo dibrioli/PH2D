@@ -127,14 +127,12 @@ pub(crate) fn paint_delivery_section(
     // rather than by pretending to do something.
     let lossy = delivery_state::is_lossy();
     let live = loaded && lossy;
-    paint_text(
-        text_system,
-        scene,
+    y = text_row(
         "Quality",
         x,
         y,
-        label_h,
         w,
+        label_h,
         resolve(
             if live {
                 ColorToken::Text2
@@ -143,8 +141,9 @@ pub(crate) fn paint_delivery_section(
             },
             theme,
         ),
-    );
-    y += label_h + Spacing::Xs.px();
+        scene,
+        text_system,
+    ) + Spacing::Xs.px();
     let track = Rect::new(x, y, w, Spacing::Md.px());
     if live {
         let mut slider =
@@ -169,9 +168,7 @@ pub(crate) fn paint_delivery_section(
     let frac = delivery_state::budget_frac();
     let over = frac > BUDGET_WARN_FRAC;
     let ram = delivery_state::ram();
-    paint_text(
-        text_system,
-        scene,
+    y = text_row(
         if loaded && !ram.is_empty() {
             &ram
         } else {
@@ -179,8 +176,8 @@ pub(crate) fn paint_delivery_section(
         },
         x,
         y,
-        label_h,
         w,
+        label_h,
         resolve(
             match (loaded, over) {
                 (false, _) => ColorToken::Text3,
@@ -189,23 +186,100 @@ pub(crate) fn paint_delivery_section(
             },
             theme,
         ),
-    );
-    y += label_h + gap;
+        scene,
+        text_system,
+    ) + gap;
 
     // Loop points and cue markers live in WAV chunks. Exporting to Vorbis silently
     // loses them, so the panel says it out loud while the choice can still be changed.
     if loaded && delivery_state::drops_meta() {
-        paint_text(
-            text_system,
-            scene,
-            "This codec drops loop points and markers",
+        y = text_row(
+            "Drops loop points and markers",
             x,
             y,
-            label_h,
             w,
+            label_h,
             resolve(ColorToken::Warn, theme),
-        );
-        y += label_h + gap;
+            scene,
+            text_system,
+        ) + gap;
     }
     y
+}
+
+/// Paint one line of body text and return the `y` **below what was actually laid out**.
+///
+/// `paint_text`'s `max_width` is a *wrap budget*, not a clip: a string wider than the
+/// panel comes out as two rows. Advancing `y` by one line height then prints the next
+/// row **on top of the wrapped one** — which is exactly what Enio's smoke caught
+/// (2026-07-12), with the RAM readout and the codec warning stacked on each other.
+///
+/// So measure, do not assume. The strings are also kept short enough to fit on one line
+/// at the panel's width, but a readout is built from numbers and a translation can be
+/// longer than the English — the layout has to survive that on its own.
+#[allow(clippy::too_many_arguments)]
+fn text_row(
+    text: &str,
+    x: f32,
+    y: f32,
+    w: f32,
+    size: f32,
+    color: ph2d_vector::Color,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+) -> f32 {
+    let h = text_system.layout(text, size, w).height().max(size);
+    paint_text(text_system, scene, text, x, y, size, w, color);
+    y + h
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_editor_core::interaction::HitIndex;
+
+    /// Paint the section with `ram` published and report how tall it came out.
+    fn section_height(ram: &str) -> f32 {
+        delivery_state::set_codec_info(3, "Ogg Vorbis", true);
+        delivery_state::set_cost("25 KB", ram, 0.07, false);
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let mut hits = HitIndex::default();
+        let clip = Rect::new(0.0, 0.0, 220.0, 4_000.0);
+        let mut ch = ClippedHits::new(&mut hits, clip);
+        paint_delivery_section(
+            0.0,
+            0.0,
+            220.0, // the panel's real body width, near enough
+            true,
+            24.0,
+            &mut scene,
+            &mut text,
+            Theme::default(),
+            &mut ch,
+        )
+    }
+
+    /// **The readout must make room for what it actually printed.**
+    ///
+    /// `paint_text`'s `max_width` is a wrap budget, not a clip: a string too wide for the
+    /// panel comes back as TWO rows. The section used to advance `y` by one line height
+    /// regardless, so the next line printed on top of the wrapped one — Enio's smoke
+    /// showed the RAM readout and the codec warning stacked into an unreadable smear
+    /// (2026-07-12).
+    ///
+    /// Red with a fixed advance: both strings would report the same height.
+    #[test]
+    fn a_readout_that_wraps_makes_room_for_its_second_line() {
+        let short = section_height("RAM 2.2 MB");
+        let wraps = section_height(
+            "RAM 2.2 MB and then a great deal more text than could ever fit across one \
+             single line of this panel at any sane width",
+        );
+        assert!(
+            wraps > short,
+            "a wrapped readout did not push the section down: {short} vs {wraps} \
+             (the next line is printing on top of it)"
+        );
+    }
 }

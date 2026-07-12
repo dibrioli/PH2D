@@ -80,7 +80,7 @@ impl super::super::AudioSystem {
         };
         // RAM carries its share of the budget with it, or the number means nothing.
         let ram = format!(
-            "RAM {} \u{b7} {:.0}% of the audio budget",
+            "RAM {} \u{b7} {:.0}% of budget",
             format_bytes(cost.ram_bytes),
             cost.ram_budget_frac * 100.0
         );

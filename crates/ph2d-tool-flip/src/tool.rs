@@ -67,7 +67,9 @@ impl Default for FlipTool {
             fill_color: DEFAULT_FILL,
             fill_mode: FillMode::Paint,
             gap_px: 0.0,
-            grow: 2.0,
+            // Grow 0: a fronteira já é rasterizada a um QUARTO da espessura, então a cor
+            // nasce por baixo da linha. O +2 do 1º corte a empurrava para FORA do traço.
+            grow: 0.0,
             precision: 1.0,
         }
     }

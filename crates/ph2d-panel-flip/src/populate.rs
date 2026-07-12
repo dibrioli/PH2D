@@ -147,9 +147,11 @@ pub fn populate(store: &mut WidgetStore) {
         store,
         ids::FLIP_GROW,
         ids::FLIP_GROW_NUM,
-        // O default (+2px) na faixa [-8, +8].
-        ((2.0 - GROW_MIN) / (GROW_MAX - GROW_MIN)) as f32,
-        2.0,
+        // O default (0 px) na faixa [-8, +8]. NÃO é +2: com a fronteira a um quarto da
+        // espessura, o preenchimento já nasce POR BAIXO da linha, e +2 o empurrava
+        // 1 px para FORA dela — o halo que o Enio viu (BUGS #11).
+        ((0.0 - GROW_MIN) / (GROW_MAX - GROW_MIN)) as f32,
+        0.0,
         (GROW_MAX - GROW_MIN) as f32,
         GROW_MIN as f32,
         1.0, // step do dominio: unidades inteiras (px / %)

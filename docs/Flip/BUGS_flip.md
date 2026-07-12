@@ -543,3 +543,59 @@ região pintada) tem zero pontos → storage buffer de tamanho 0 → a wgpu recu
 e o app **cai**. O `seg_extras` já driblava isso com um dummy; os outros quatro buffers, não.
 > *A invariante ("um storage buffer nunca é vazio") pertence a quem CRIA o buffer, não a cada
 > chamador que precisa lembrar dela.*
+
+---
+
+## #11 — "Fill impreciso": o teto na unidade errada, e o zoom que estragava o balde
+
+**Sintoma (Enio, 2026-07-12, com screenshot):** o preenchimento **transborda a linha** por ~12px e
+o contorno vira um **polígono grosseiro** de ~15 lados.
+
+O solver, medido isoladamente com os números da câmera default, acertava a **1 px** e devolvia 42
+vértices. Não havia bug nele. O bug estava numa linha do orquestrador:
+
+```rust
+let scale = params.precision.clamp(0.5, 64.0);   // ← px de buffer por unidade de DOCUMENTO
+```
+
+**Um teto de resolução em "px por unidade de documento" é um teto na unidade errada.** O desenho
+vive em unidades de **mundo**, e aproximar a câmera faz a mesma forma ocupar *menos* unidades. Com
+zoom, o teto de 64 cortava a resolução em pedaços — **1 px de buffer chegou a valer 5 px de tela**.
+E como o `grow` e a tolerância do RDP vivem em px de **buffer**, os dois incharam junto: a cor
+transbordava a linha e o contorno virava um polígono.
+
+Medido (mesmo círculo, mesmo clique, só o zoom muda):
+
+| `height_world` | vértices | transborda |
+|---|---|---|
+| 10 (default) | 42 | +1,3 px |
+| 5 | 32 | +4,0 px |
+| 2 | **17** | **+12,3 px** |
+| 1 | 14 | +25,8 px |
+
+**Fix:** não há teto. Quem limita a memória é o `MAX_SIDE` do `Grid::new` — e ele cede
+**resolução**, não cobertura (#10b). Depois disso, o resultado é **invariante ao zoom**: 40
+vértices e precisão sub-pixel em qualquer aproximação. Gate: `the_fill_is_invariant_under_camera_zoom`.
+
+**Dois achados que vieram junto:**
+
+- **O `grow` era em px de BUFFER, e o usuário pensa em px de TELA.** Subir a Precision *encolhia* o
+  Grow em silêncio — dois controles nominalmente independentes que secretamente se multiplicavam. O
+  shell agora converte (`grow_buffer = grow_px × precision`).
+- **O default `grow = +2` era o próprio halo.** A fronteira é rasterizada a um **quarto** da
+  espessura (`radius_scale = 0.5` sobre a meia-espessura), então a cor **já nasce por baixo da
+  linha** — não há halo para matar. Medido: com `grow = 0`, a borda do fill fica **1,8 px DENTRO**
+  da borda externa de uma linha de 6 px; com `+2`, ela sai **1,0 px para FORA**. O default que
+  existia para evitar o defeito era a causa dele. Default agora é **0**.
+
+> **Lição — um clamp carrega uma unidade, e a unidade tem de ser a do usuário.** `clamp(0.5, 64.0)`
+> não diz em quê. O número que importava era "px de buffer por px de TELA" (uma razão estável), e o
+> que estava sendo capeado era "px de buffer por unidade de mundo" (uma razão que o zoom move). *Ao
+> escrever um limite, escreva a unidade ao lado — e pergunte se ela é estável sob as transformações
+> que o usuário controla (zoom, escala do objeto, DPI). Se não for, o limite vai morder em algum
+> lugar imprevisível.*
+
+> **E a lição de método:** o harness com a câmera default dizia "1 px de erro, 42 vértices" — verde.
+> O produto dizia "12 px, 17 vértices". A diferença era **um parâmetro que o teste nunca varreu**.
+> Varra o eixo que o usuário controla ([[feedback_test_with_product_numbers_not_convenient_ones]]):
+> não basta usar os números do produto, é preciso usar a **faixa** deles.

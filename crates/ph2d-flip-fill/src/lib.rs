@@ -46,6 +46,10 @@ const MARGIN_PX: usize = 20;
 const MAX_SIDE: usize = 4096;
 /// O filtro de vazamento cruzado, em pixels (o valor do GP).
 const LEAK_PX: usize = 3;
+/// Piso da resolução da grade: só impede um `scale` zero/negativo. **Não existe TETO** —
+/// ver o comentário no `fill_at` (um teto em unidades de documento é um teto na unidade
+/// errada, e foi ele que fez o zoom estragar o balde).
+const MIN_SCALE: f32 = 1e-3; // CLAMP-OK: guarda contra scale degenerado
 
 /// Como o balde trata o que já está pintado (`04 §3` — a semântica de balde de
 /// ANIMAÇÃO, do Toon Boom).
@@ -69,8 +73,10 @@ pub struct FillParams {
     pub precision: f32,
     /// Alcance do **Gap Closure** (unidades do documento). `0` = desligado.
     pub gap_reach: f32,
-    /// **Grow/Shrink**, em pixels do buffer. Positivo cresce (o preenchimento entra por
-    /// baixo da linha e o halo do anti-aliasing some); negativo encolhe.
+    /// **Grow/Shrink**, em pixels do BUFFER. Positivo cresce, negativo encolhe.
+    ///
+    /// O chamador converte de px de tela para px de buffer (multiplicando pela
+    /// `precision`) — senão subir a Precision encolheria o Grow em silêncio.
     pub grow: i32,
     /// O modo (Paint / Paint-Behind / Unpaint).
     pub mode: FillMode,
@@ -81,10 +87,13 @@ impl Default for FillParams {
         Self {
             precision: 4.0,
             gap_reach: 0.0,
-            // +2px por default: o contorno é traçado a MEIA espessura, então crescer 2px
-            // enfia a cor por baixo do corpo da linha em vez de deixar um fio claro
-            // entre o preenchimento e o traço (o halo).
-            grow: 2,
+            // **Zero, e não +2.** A fronteira é rasterizada a um QUARTO da espessura
+            // (`radius_scale = 0.5` sobre a meia-espessura), então o preenchimento já
+            // nasce por baixo do corpo da linha — não há halo para matar. O +2 do 1º
+            // corte empurrava a cor 1px para FORA do traço, que é exatamente o defeito
+            // que ele dizia estar evitando. Medido: com grow 0, a borda do fill fica
+            // 1,8px DENTRO da borda externa de uma linha de 6px.
+            grow: 0,
             mode: FillMode::Paint,
         }
     }
@@ -151,7 +160,17 @@ pub fn fill_at(
             hi = Vec2::new(hi.x.max(p.x + r), hi.y.max(p.y + r));
         }
     }
-    let scale = params.precision.clamp(0.5, 64.0);
+    // **NÃO se capeia a resolução aqui.** O 1º corte fazia `clamp(0.5, 64.0)` — um teto
+    // em "pixels de buffer por unidade de DOCUMENTO". Só que unidade de documento não é
+    // uma medida fixa: o desenho vive em unidades de mundo, e com a câmera aproximada uma
+    // forma de 500 px de tela ocupa POUCAS unidades. O teto então cortava a resolução em
+    // pedaços — 1 px de buffer virava 5 px de TELA — e como o `grow` e a tolerância do RDP
+    // vivem em pixels de buffer, o preenchimento inchava para fora da linha (12 px!) e o
+    // contorno virava um polígono de 17 lados. *Dar zoom estragava o balde.*
+    //
+    // Quem limita a memória é o `MAX_SIDE` do `Grid::new` — e ele cede RESOLUÇÃO, não
+    // cobertura. O `scale` aqui só não pode ser zero.
+    let scale = params.precision.max(MIN_SCALE);
     let mut grid = Grid::new(lo, hi, scale, MARGIN_PX, MAX_SIDE);
 
     // 3. Rasteriza as fronteiras a MEIA espessura + os fechamentos (1px, como o GP).
@@ -362,5 +381,98 @@ mod tests {
             fill_at(&[], Vec2::new(0.0, 0.0), FillParams::default()).unwrap_err(),
             FillError::Empty
         );
+    }
+
+    /// **O resultado do balde NÃO pode depender do ZOOM da câmera.**
+    ///
+    /// O desenho vive em unidades de mundo; aproximar a câmera faz a mesma forma ocupar
+    /// MENOS unidades. Um teto de resolução em "px de buffer por unidade de documento"
+    /// (o `clamp(0.5, 64.0)` do 1º corte) é um teto na unidade ERRADA: com zoom, ele
+    /// cortava a resolução em pedaços — 1 px de buffer chegou a valer 5 px de tela — e
+    /// como o `grow` e a tolerância do RDP vivem em px de buffer, o preenchimento inchava
+    /// 12 px para FORA da linha e o contorno virava um polígono de 17 lados.
+    ///
+    /// Aqui: o MESMO círculo, visto com quatro zooms. A geometria de saída, medida em
+    /// px de TELA, tem de ser a mesma nos quatro.
+    #[test]
+    fn the_fill_is_invariant_under_camera_zoom() {
+        let mut results = Vec::new();
+        for height_world in [10.0f32, 5.0, 2.0, 1.0] {
+            let px_to_world = height_world / 800.0;
+            // Um círculo de 250 px de RAIO na tela, com um traço de 6 px — em unidades
+            // de mundo, que encolhem quando a câmera aproxima.
+            let r = 250.0 * px_to_world;
+            let n = 64;
+            let pts: Vec<Vec2> = (0..n)
+                .map(|i| {
+                    // Polígono regular: sem transcendental no teste (HR-5), a forma exata
+                    // não importa — importa ela ser a MESMA em px de tela.
+                    let t = i as f32 / n as f32;
+                    let (x, y) = unit_circle(t);
+                    Vec2::new(r * x, r * y)
+                })
+                .collect();
+            let half = 6.0 * 0.5 * px_to_world; // meia-espessura de um traço de 6 px
+            let strokes = vec![(pts, vec![half; n], true)];
+
+            let res = fill_at(
+                &strokes,
+                Vec2::new(0.0, 0.0),
+                FillParams {
+                    precision: 1.0 / px_to_world, // 1 px de buffer por px de tela
+                    gap_reach: 0.0,
+                    grow: 0,
+                    mode: FillMode::Paint,
+                },
+            )
+            .expect("o circulo fechado preenche em qualquer zoom");
+
+            // O maior raio do contorno, em px de TELA.
+            let max_r_px = res
+                .outer
+                .iter()
+                .map(|p| (p.x * p.x + p.y * p.y).sqrt() / px_to_world)
+                .fold(0.0f32, f32::max);
+            results.push((height_world, res.outer.len(), max_r_px));
+        }
+        let (_, n0, r0) = results[0];
+        for &(h, n, r) in &results[1..] {
+            assert!(
+                (r - r0).abs() < 2.0,
+                "zoom h={h}: o contorno saiu a {r:.1} px do centro, mas com h=10 saiu a \
+                 {r0:.1} px — o balde depende do zoom"
+            );
+            // A contagem de vértices mede o FACETAMENTO: cair pela metade = polígono.
+            assert!(
+                n * 2 >= n0,
+                "zoom h={h}: o contorno desabou de {n0} para {n} vertices — o buffer \
+                 ficou grosseiro e o fill virou um poligono"
+            );
+        }
+        // E nenhum deles pode TRANSBORDAR a linha: o raio do contorno fica DENTRO do
+        // raio desenhado (250 px), porque a cor entra por baixo do traço.
+        for &(h, _, r) in &results {
+            assert!(
+                r <= 250.0,
+                "zoom h={h}: o preenchimento vazou {:.1} px para FORA da linha",
+                r - 250.0
+            );
+        }
+    }
+
+    /// Um ponto do círculo unitário em `t ∈ [0,1)`, sem `sin`/`cos` (HR-5): quatro arcos
+    /// pela parametrização racional. Só precisa ser uma curva fechada convexa estável.
+    fn unit_circle(t: f32) -> (f32, f32) {
+        // Parametrização racional do círculo: (1-u²)/(1+u²), 2u/(1+u²), por quadrante.
+        let q = (t * 4.0).floor() as i32 % 4;
+        let u = (t * 4.0).fract() * 2.0 - 1.0;
+        let d = 1.0 + u * u;
+        let (x, y) = ((1.0 - u * u) / d, 2.0 * u / d);
+        match q {
+            0 => (x, y),
+            1 => (-y, x),
+            2 => (-x, -y),
+            _ => (y, -x),
+        }
     }
 }

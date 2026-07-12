@@ -137,7 +137,7 @@ impl Default for FlipStyleSnapshot {
             fill_color: [230, 190, 120, 255],
             fill_mode: FillMode::Paint,
             gap_px: 0.0,
-            grow: 2.0,
+            grow: 0.0,
             precision: 1.0,
         }
     }

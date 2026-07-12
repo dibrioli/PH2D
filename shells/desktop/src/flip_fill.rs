@@ -159,15 +159,62 @@ pub(crate) fn fill_click(
     // A escala do objeto: a geometria é LOCAL (ADR-0111), e o zoom da câmera é em mundo.
     let obj_scale = world_to_local.mean_scale() as f32;
     let doc_per_px = px_to_world * obj_scale;
+    let precision = (style.precision as f32) / doc_per_px.max(1e-6);
     let params = FillParams {
         // `precision` = pixels do buffer por unidade do documento. Um px de tela vale
         // `doc_per_px` unidades, então "1 buffer-px por px de tela" é `1/doc_per_px`.
-        precision: (style.precision as f32) / doc_per_px.max(1e-6),
+        precision,
         gap_reach: (style.gap_px as f32) * doc_per_px,
-        grow: style.grow.round() as i32,
+        // **O Grow é em px de TELA** (é o que o usuário vê e ajusta), e o solver conta em
+        // px de BUFFER — que valem `1/style.precision` px de tela. Sem esta conversão,
+        // subir a Precision *encolhia* o Grow em silêncio: dois controles independentes
+        // que secretamente se multiplicavam.
+        grow: (style.grow * style.precision).round() as i32,
         mode,
     };
+    // `PH2D_FLIP_FILL_DEBUG=1` — a régua do balde no app REAL. A auditoria mostrou que um
+    // harness reproduz o mecanismo, não o contexto: os números que chegam aqui são os
+    // únicos que importam.
+    let debug = std::env::var("PH2D_FLIP_FILL_DEBUG").is_ok();
+    if debug {
+        let half0 = strokes
+            .first()
+            .and_then(|s| s.1.first().copied())
+            .unwrap_or(0.0);
+        eprintln!(
+            "[fill] px_to_world={px_to_world:.6} obj_scale={obj_scale:.3} \
+             style(precision={:.2} grow={:.1} gap={:.1}) \
+             => buffer {:.1} px/unid ({:.2} px de tela por px de buffer) \
+             | meia-espessura={half0:.4} unid ({:.1} px de tela) \
+             | grow={} px de buffer = {:.1} px de TELA",
+            style.precision,
+            style.grow,
+            style.gap_px,
+            params.precision,
+            1.0 / (params.precision * px_to_world).max(1e-9),
+            half0 / px_to_world,
+            params.grow,
+            params.grow as f32 / (params.precision * px_to_world).max(1e-9),
+        );
+    }
+
     let r = fill_at(&strokes, local, params)?;
+
+    if debug {
+        let n = r.outer.len();
+        let (mut lo, mut hi) = (Vec2::new(f32::MAX, f32::MAX), Vec2::new(f32::MIN, f32::MIN));
+        for p in &r.outer {
+            lo = Vec2::new(lo.x.min(p.x), lo.y.min(p.y));
+            hi = Vec2::new(hi.x.max(p.x), hi.y.max(p.y));
+        }
+        eprintln!(
+            "[fill] contorno: {n} vertices | bbox {:.1} x {:.1} px de tela | {} buracos | {} fechamentos",
+            (hi.x - lo.x) / px_to_world,
+            (hi.y - lo.y) / px_to_world,
+            r.holes.len(),
+            r.closures.len(),
+        );
+    }
 
     let color = crate::flip_draw::srgb8_to_linear(style.fill_color);
     let stroke = fill_stroke(&r.outer, r.holes, color, 1.0);

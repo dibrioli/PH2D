@@ -82,6 +82,8 @@
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — o miolo é onde não há bug; DC/Nyquist, 1ª/última coluna, 0 e 1 é onde o dado some
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — gate verde na mutação = ou o gate é frouxo, ou o seu COMENTÁRIO está errado
 - [Regra que não OBSERVA não dispara](feedback_a_rule_that_never_observes_cannot_fire.md) — HR-13 somava declarações no boot; editor chegou a 4351 MB sem piscar
+- [Faça a MESMA pergunta ao outro lado](feedback_ask_the_same_question_of_the_other_side.md) — gate do editor verde → mesmo gate no runtime nasceu VERMELHO (65,9 MB/música)
+- [Mesma conta, escrituração diferente = 1 ulp](feedback_same_math_different_bookkeeping_diverges.md) — residente faz wrap do cursor, stream não fazia; gate byte-idêntico pega, "soa igual" não
 - [Barra congelada vermelha? cheque a ARITMÉTICA dela](feedback_frozen_bar_check_the_arithmetic_before_gaming_it.md) — o piso pode já estourar a barra; e nunca passe pelo caminho que o produto não usa
 - [Refactor mecânico largo = impressão digital](feedback_wide_mechanical_refactor_use_a_fingerprint.md) — digest antes/depois na MESMA máquina; golden pinado = mina no CI (ulp de transcendental)
 - [Lens diversity](feedback_audit_lens_diversity.md) — rotacionar lentes; ≥2 paralelas; gates executáveis > claims verbais

@@ -799,6 +799,7 @@ Cada subsistema declara budget em `Plugin::init` (HR-13). Tabela default por pla
 | └─ Texture compression W2+ delta ([ADR-0055](docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md)) | ~−150 | ~−180 | ~−500 | ~−80 |
 | └─ **Effective render textures+meshes (W2+ post-ship)** | **~200** | **~220** | **~700** | **~120** |
 | Audio buffers (residência do mixer em RUNTIME) | 30 | 30 | 80 | 20 |
+| └─ **Voz por STREAMING** ([ADR-0118](docs/architecture/decisions/0118-audio-streaming-voices-residency.md)) — custa o **ring**, não o clipe: **0,06 MB** por voz, **independente do comprimento** (uma faixa de 3 min residente custava 65,9 MB = **2,2× o budget iPad inteiro**) | 0,06/voz | 0,06/voz | 0,06/voz | 0,06/voz |
 | └─ **Audio Editor** (working set OFFLINE: clipe + histórico + preview) — [ADR-0117](docs/architecture/decisions/0117-audio-editor-memory-is-measured-not-declared.md) | — | — | **2×clipe + 256** | — |
 | Physics state | 20 | 20 | 80 | 10 |
 | Lighting (RC) | 80 | 80 | 200 | 50 |

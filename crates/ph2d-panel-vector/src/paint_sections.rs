@@ -155,6 +155,10 @@ impl BodyCtx<'_> {
         y = self.step(y, |b, y| b.tool_section(snap, y));
         y = self.step(y, |b, y| b.shape_catalog_section(snap, y));
         y = self.step(y, |b, y| b.shape_params_section(snap, y));
+        // Os parâmetros do CONECTOR selecionado — irmã da seção acima (mesma estética,
+        // mesmos widgets), logo abaixo dela: as duas respondem "o que é este objeto que
+        // eu selecionei, e como o afino?". Some inteira sem conector na seleção.
+        y = self.step(y, Self::connector_section);
         y = self.step(y, Self::text_section);
         y = self.step(y, Self::font_section);
         y = self.step(y, Self::paragraph_section);

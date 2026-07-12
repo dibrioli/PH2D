@@ -215,7 +215,10 @@ pub(crate) fn apply_event(
             }
             true
         }
-        _ => false,
+        // A seção do CONECTOR (Route / Jetty / Spread) trata os seus três ids no módulo
+        // dela — que é onde o snapshot dela vive. Delegar AQUI (em vez de mais três arms)
+        // também é o que mantém `apply_event` sob o teto de 200 LOC por função.
+        other => crate::paint_connector::apply_event(host, other),
     };
     EventOutcome::from_bool(consumed)
 }

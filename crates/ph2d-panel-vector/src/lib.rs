@@ -31,6 +31,8 @@ mod paint;
 mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;
+/// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
+mod paint_connector;
 /// As pontas do traço (arrowheads) — dois chips na seção Stroke + o popover diferido.
 mod paint_markers;
 mod paint_modes;
@@ -39,6 +41,7 @@ mod paint_transform;
 pub mod populate;
 pub mod state;
 
+pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{
     FillKind, FontPreview, PathFillRule, TextAxisSlot, VectorPanelState, last_content_h,
     last_visible_h, set_current_convertible, set_current_fill, set_current_fill_rule,

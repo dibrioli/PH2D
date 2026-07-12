@@ -40,20 +40,6 @@ use crate::vec_entities::VecEntityMap;
 /// perdido causa é a linha escolher o lado do zero, uma vez.
 pub(crate) type SideCache = BTreeMap<VecPathId, [Option<Dir>; 2]>;
 
-/// O **jetty** (o quanto a linha avança reto antes de poder dobrar), como fração da menor
-/// meia-extensão da maior das duas caixas. Relativo, e não em unidades fixas: no PH2D uma
-/// forma tem ~1-2 unidades de mundo, mas nada impede uma de ter 50 — um jetty absoluto ficaria
-/// invisível numa e gigante na outra.
-const JETTY_K: f64 = 0.35;
-/// Piso/teto do jetty (duas pontas soltas não têm caixa de onde derivá-lo).
-const JETTY_MIN: f64 = 0.08;
-const JETTY_MAX: f64 = 1.0;
-
-/// O passo do spread automático (ver [`VecConnector::auto_spread`]) — dois conectores no MESMO
-/// par de formas não podem se sobrepor: o segundo sumiria exatamente por baixo do primeiro, e o
-/// usuário juraria que ele não foi criado.
-const SPREAD_STEP: f64 = 0.35;
-
 /// O quanto o spread pode deslizar ao longo da face, como fração da meia-extensão dela. A saída
 /// tem de continuar **na face**: passando disto o ponto escorrega pela quina, e a linha parece
 /// brotar do canto da caixa em vez de sair dela.
@@ -225,14 +211,18 @@ fn bbox_exit(b: Aabb, from: [f64; 2], dir: [f64; 2]) -> [f64; 2] {
     [from[0] + dir[0] * t, from[1] + dir[1] * t]
 }
 
-/// O jetty desta rota — ver [`JETTY_K`].
+/// O jetty automático desta rota.
+///
+/// **A fórmula mora em [`ph2d_tool_vector::connector::auto_jetty`], não aqui** — e isso não é
+/// arrumação. O painel precisa EXIBIR o valor efetivo (o automático, enquanto ninguém fixou
+/// nada), então o mesmo número tem dois leitores: quem coze a rota e quem a mostra. Duas cópias
+/// da fórmula significam que o painel passa a mentir no dia em que alguém mexer numa delas — é
+/// a lição do tempo remapeado, que quebrou três vezes assim
+/// ([[feedback_derived_coordinate_seed_must_match_sample]]): **semente e amostra saem da mesma
+/// função.**
 fn jetty_for(a: &Aabb, b: &Aabb) -> f64 {
-    let smallest_half = |x: &Aabb| {
-        let hw = (x.max[0] - x.min[0]) * 0.5;
-        let hh = (x.max[1] - x.min[1]) * 0.5;
-        hw.min(hh)
-    };
-    (JETTY_K * smallest_half(a).max(smallest_half(b))).clamp(JETTY_MIN, JETTY_MAX)
+    let half = |x: &Aabb| ((x.max[0] - x.min[0]) * 0.5, (x.max[1] - x.min[1]) * 0.5);
+    ph2d_tool_vector::connector::auto_jetty(half(a), half(b))
 }
 
 /// As pontas da polilinha ATUAL do conector (é onde elas "estavam" — a memória que uma ponta
@@ -365,7 +355,7 @@ fn cook(
         ph2d_ecs::RouteKind::Orthogonal => RouteKind::Orthogonal,
     };
     let jetty = conn.jetty_or(jetty_for(&a.bbox, &b.bbox));
-    let spread = conn.spread_or(SPREAD_STEP);
+    let spread = conn.spread_or(ph2d_tool_vector::connector::SPREAD_STEP);
     let (p0, d0) = endpoint(scene, xforms, &a, b.center(), kind, prev[0], spread);
     let (p1, d1) = endpoint(scene, xforms, &b, a.center(), kind, prev[1], -spread);
     // **As duas pontas deslizam para lados OPOSTOS da linha** (`spread` e `−spread`): as normais

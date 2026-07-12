@@ -136,6 +136,12 @@ fn seed_and_publish(
     // outro objeto de texto selecionado). Depois o store é a fonte, senão o seed brigaria
     // com o arrasto do slider.
     seed_text_sliders(store);
+    // Os campos do CONECTOR nascem no valor EFETIVO (o automático, enquanto ninguém fixou
+    // nada) — senão o campo mostraria 0 e SALTARIA no primeiro toque, longe da linha que o
+    // olho vê. Semeado TODO frame (e não uma vez, como o texto): o efetivo é derivado do
+    // tamanho das caixas, então ele muda quando o usuário arrasta a forma. O campo em foco
+    // é pulado lá dentro (senão o seed brigaria com a digitação).
+    crate::paint_connector::seed(store);
     store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
     store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
     // Clamp any stale scroll if the content shrank (e.g. a collapsed section) so we never

@@ -540,6 +540,11 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_SECTION_FONT", ids::VECTOR_SECTION_FONT),
     ("VECTOR_SECTION_PARAGRAPH", ids::VECTOR_SECTION_PARAGRAPH),
     ("VECTOR_SECTION_AXES", ids::VECTOR_SECTION_AXES),
+    // O CONECTOR: a seção + os três campos da relação (Route / Jetty / Spread).
+    ("VECTOR_SECTION_CONNECTOR", ids::VECTOR_SECTION_CONNECTOR),
+    ("VECTOR_CONNECTOR_ROUTE", ids::VECTOR_CONNECTOR_ROUTE),
+    ("VECTOR_CONNECTOR_JETTY", ids::VECTOR_CONNECTOR_JETTY),
+    ("VECTOR_CONNECTOR_SPREAD", ids::VECTOR_CONNECTOR_SPREAD),
     // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`).
     ("FLIP_PANEL", ids::FLIP_PANEL),
     ("FLIP_CLOSE", ids::FLIP_CLOSE),

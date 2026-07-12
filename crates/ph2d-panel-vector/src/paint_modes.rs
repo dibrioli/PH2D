@@ -137,7 +137,10 @@ impl BodyCtx<'_> {
 
     /// Um campo de ESCOLHA: rótulo + um botão que mostra a opção corrente e CICLA ao clique.
     /// Ocupa a mesma coluna da caixa numérica, então a seção continua alinhada.
-    fn labeled_choice_button(
+    ///
+    /// `pub(crate)`: a seção do CONECTOR (`paint_connector`) pinta o campo **Route** com este
+    /// mesmo desenho — ela é irmã da seção de parâmetros de forma, não um enxerto.
+    pub(crate) fn labeled_choice_button(
         &mut self,
         label: &str,
         id: ph2d_a11y::NodeId,
@@ -208,10 +211,10 @@ impl BodyCtx<'_> {
     }
 
     /// Um campo numérico rotulado (`<rótulo> [ valor ]`), largura cheia — os parâmetros
-    /// de forma e os eixos de variação da fonte compartilham este desenho. **Caixa, não
-    /// slider:** as faixas variam demais entre formas (3 lados · 500 px de raio · 360°)
-    /// para um knob servir a todas.
-    fn labeled_number_field(
+    /// de forma, os eixos de variação da fonte e os campos do CONECTOR (Jetty / Spread)
+    /// compartilham este desenho. **Caixa, não slider:** as faixas variam demais entre
+    /// formas (3 lados · 500 px de raio · 360°) para um knob servir a todas.
+    pub(crate) fn labeled_number_field(
         &mut self,
         label: &str,
         id: ph2d_a11y::NodeId,

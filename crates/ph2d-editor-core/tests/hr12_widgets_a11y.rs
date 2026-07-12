@@ -278,6 +278,15 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-vector/src/paint_arrange.rs",
         "delegates to row2/action_button (paint_button-backed) in paint_sections",
     ),
+    // Vector connector subsection (Route / Jetty / Spread) — mesmo caso do
+    // `paint_arrange` acima: a seção não tem widget PRÓPRIO. As três linhas dela são
+    // `BodyCtx::labeled_choice_button` / `labeled_number_field` (em `paint_modes`), que
+    // pintam pelos primitivos a11y-wired `paint_segmented_button` e
+    // `paint_number_input_with_buffer` — os MESMOS que desenham os parâmetros de forma.
+    (
+        "ph2d-panel-vector/src/paint_connector.rs",
+        "delegates to labeled_choice_button/labeled_number_field (paint_segmented/paint_number_input-backed) in paint_modes",
+    ),
     // CEQ histogram strip — pure RGB-bar visualization (read-only chart,
     // no widget interaction, no AccessKit semantics). Split out from
     // `paint.rs` to satisfy Wave 10 LOC cap.

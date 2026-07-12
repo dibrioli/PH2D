@@ -48,6 +48,11 @@ pub use ph2d_editor_core::ids::{
     VECTOR_TRANSFORM_X, VECTOR_TRANSFORM_Y, VECTOR_VERT_CORNER, VECTOR_VERT_DELETE,
     VECTOR_VERT_SMOOTH, VECTOR_VERT_SYMMETRIC, VECTOR_WIDTH, VECTOR_WIDTH_NUM,
 };
+/// Os campos da RELAÇÃO do conector (a seção só existe com um conector na seleção).
+pub use ph2d_editor_core::ids::{
+    VECTOR_CONNECTOR_JETTY, VECTOR_CONNECTOR_ROUTE, VECTOR_CONNECTOR_SPREAD,
+    VECTOR_SECTION_CONNECTOR,
+};
 /// Os cabeçalhos COLAPSÁVEIS (canon `section_header.md`) + o 5º pill de modo + o chip de
 /// categoria do catálogo. `VECTOR_SECTIONS` é a lista que o `populate` marca como
 /// colapsável — uma seção fora dela pinta um chevron que não dobra.

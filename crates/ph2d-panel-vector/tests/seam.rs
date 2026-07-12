@@ -543,7 +543,7 @@ fn every_section_header_is_registered_as_collapsible() {
     let host = MockPanelHost::with_panel::<VectorPanel>();
     assert_eq!(
         ids::VECTOR_SECTIONS.len(),
-        17,
+        18,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -605,6 +605,109 @@ fn picking_a_category_closes_the_dropdown_chip() {
             _ => panic!("VECTOR_SHAPE_GROUP_DD deixou de ser um Dropdown"),
         }
     }
+}
+
+/// **Gate do seam do CONECTOR.** Os três campos (Route / Jetty / Spread) editam a RELAÇÃO,
+/// que vive no `VecConnector` de cada conector SELECIONADO — não no Style da tool. Logo a
+/// prova do seam é a mesma dos botões de documento: cada edição tem de chegar ao bus como
+/// um `ToolPanelEvent::SetValue` **no id do campo**, com o VALOR (a shell é quem sabe quais
+/// conectores estão selecionados).
+///
+/// O Route é o caso que morde: ele é um BOTÃO que cicla, e o valor que ele emite é o
+/// PRÓXIMO discriminante — calculado a partir do que está na tela. Um clique que emitisse o
+/// valor corrente seria um botão que pinta, despacha e **não muda nada**.
+#[test]
+fn connector_fields_reach_the_bus_for_the_shell() {
+    use ph2d_panel_vector::{ConnectorSnapshot, set_current_connector};
+
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+
+    // Um conector selecionado (o que a shell publica a cada frame), em Orthogonal.
+    set_current_connector(Some(ConnectorSnapshot {
+        route: 1,
+        jetty: 0.35,
+        spread: 0.0,
+    }));
+
+    // Jetty + Spread: caixas numéricas — o valor sai como está (não é um track 0..1).
+    for (id, v) in [
+        (ids::VECTOR_CONNECTOR_JETTY, 0.75),
+        (ids::VECTOR_CONNECTOR_SPREAD, -0.5),
+    ] {
+        host.set_number_value(id, v);
+        let outcome =
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::ValueChanged(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "campo do conector ignorado — falta o arm em `paint_connector::apply_event`"
+        );
+        let forwarded = host.drained_actions().iter().any(|a| {
+            matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(fid, fv))
+                    if *fid == id && (*fv - v).abs() < 1e-9
+            )
+        });
+        assert!(
+            forwarded,
+            "a edicao nunca virou ToolPanelEvent — a shell nao pode fixar o valor"
+        );
+    }
+
+    // Route: o clique CICLA (Orthogonal = 1 → Straight = 0).
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_CONNECTOR_ROUTE),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o botao Route foi ignorado pelo painel"
+    );
+    let cycled = host.drained_actions().iter().any(|a| {
+        matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(fid, fv))
+                if *fid == ids::VECTOR_CONNECTOR_ROUTE && fv.abs() < 1e-9
+        )
+    });
+    assert!(
+        cycled,
+        "o clique no Route nao emitiu a PROXIMA rota (Orthogonal -> Straight) — \
+         um botao que despacha o valor corrente nao muda nada"
+    );
+
+    set_current_connector(None);
+}
+
+/// Sem conector na seleção a seção nem é pintada — e o botão Route, se um clique fantasma o
+/// alcançasse, não pode inventar uma rota para uma seleção que não tem conector nenhum.
+#[test]
+fn the_route_button_refuses_to_fire_without_a_connector_in_focus() {
+    use ph2d_panel_vector::set_current_connector;
+
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    set_current_connector(None);
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_CONNECTOR_ROUTE),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Ignored,
+        "sem conector em foco o Route nao pode ser consumido"
+    );
+    assert!(
+        !host
+            .drained_actions()
+            .iter()
+            .any(|a| matches!(a, EditorAction::ToolPanelEvent(_))),
+        "o Route despachou uma rota sem conector nenhum selecionado"
+    );
 }
 
 /// The Close (X) button must emit `CancelActiveTool` (deactivates the tool),

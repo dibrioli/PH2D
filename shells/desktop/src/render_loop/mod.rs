@@ -1187,6 +1187,10 @@ impl crate::App {
             // `(id, track 0..1)`. A tool já o consome como default de desenho; aqui ele
             // também edita a forma VIVA selecionada (Live Shape).
             let mut pending_vec_shape_param: Option<(ph2d_editor::NodeId, f64)> = None;
+            // Campo do CONECTOR (Route / Jetty / Spread): `(id, valor)`. Não é Style da tool
+            // — é a RELAÇÃO, que mora no `VecConnector` de cada conector SELECIONADO (todos
+            // eles: é assim que se calibra o diagrama inteiro de uma vez).
+            let mut pending_vec_connector: Option<(ph2d_editor::NodeId, f64)> = None;
             // Text Size slider (world units) — updates the active session + the
             // size a new session starts at.
             let mut pending_vec_text_size: Option<f64> = None;
@@ -1369,6 +1373,10 @@ impl crate::App {
                                 pending_vec_text_tracking = Some(
                                     ph2d_tool_vector::params::slider_to_text_tracking(*v as f32),
                                 );
+                            } else if crate::vec_connector_panel::is_connector_field_id(*id) {
+                                // Os três campos do conector: a shell os aplica em TODOS os
+                                // conectores selecionados (a tool os ignora — não são Style).
+                                pending_vec_connector = Some((*id, *v));
                             } else if crate::vec_shape_params::is_shape_field_id(*id) {
                                 // Sliders de forma: a tool os toma como default de
                                 // desenho (abaixo, no forward) E eles editam a forma
@@ -2144,6 +2152,20 @@ impl crate::App {
             // `vec_text_sel` é a seleção corrente para o caminho do objeto.
             let vec_text_sel: Vec<ph2d_vec_scene::VecPathId> =
                 self.vec_pen.selected_paths().to_vec();
+            // **O conector, pelo painel.** Editar um campo FIXA o valor (`None` → `Some`) em
+            // TODOS os conectores selecionados — é o que permite calibrar o diagrama inteiro
+            // de uma vez, em vez de linha por linha. A geometria não é escrita aqui: ela é
+            // função pura da relação, e o `connector_live::recook` deste mesmo frame (mais
+            // abaixo) a refaz. O undo global pega a mudança pelo diff do mundo ECS.
+            if let Some((id, v)) = pending_vec_connector {
+                crate::vec_connector_panel::edit_selected_connectors(
+                    sim,
+                    &self.vec_entities,
+                    &vec_text_sel,
+                    id,
+                    v,
+                );
+            }
             // Live Shapes: os sliders de forma editam a forma VIVA selecionada — muda o
             // parâmetro e RE-COZINHA in-place (id/estilo/pose preservados). Sem forma
             // viva na seleção, o slider só moveu o default de desenho (a tool já o
@@ -2482,6 +2504,8 @@ impl crate::App {
                 vec_px_to_world,
                 self.vec_grad_selected,
                 &vec_xf_ops,
+                sim,
+                &self.vec_entities,
                 self.vec_pivot_edit,
                 self.vec_snap.on,
             );

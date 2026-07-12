@@ -125,6 +125,10 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.font" => "Font",
         "panel.vector.section.paragraph" => "Paragraph",
         "panel.vector.section.axes" => "Axes",
+        // A seção do CONECTOR — só aparece com um conector na seleção. Os RÓTULOS dos três
+        // campos (Route / Jetty / Spread) vêm do catálogo em `ph2d-tool-vector::connector`,
+        // que é a fonte única deles (a mesma regra do catálogo de formas).
+        "panel.vector.section.connector" => "Connector",
         "panel.vector.mode.select" => "Select",
         "panel.vector.mode.node" => "Node",
         "panel.vector.mode.pen" => "Pen",

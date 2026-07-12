@@ -22,6 +22,10 @@
 //! path → the panel's Width slider + Stroke / Fill colour swatches (OKLCH
 //! picker) restyle new (and the selected) paths.
 
+/// O catálogo de apresentação do **CONECTOR** (Route / Jetty / Spread) + a derivação
+/// AUTOMÁTICA do jetty e do spread — a mesma função que o cozimento usa e que o painel
+/// exibe (semente = amostra; ver o doc do módulo).
+pub mod connector;
 pub mod icon;
 pub mod params;
 /// O catálogo de APRESENTAÇÃO das formas (rótulo, família, campos, unidade) — par do

@@ -85,6 +85,46 @@ pub fn populate(store: &mut WidgetStore) {
     populate_ops(store);
     populate_style(store);
     populate_arrange(store);
+    populate_connector(store);
+}
+
+/// Os três campos do **CONECTOR** (Route / Jetty / Spread).
+///
+/// Ficam AQUI, e não no módulo que os pinta, porque a gate `architecture_panel_wiring_parity`
+/// exige a chamada de registro dentro do `populate.rs` — e ela tem razão: um widget pintado e
+/// hit-testado mas NÃO registrado nunca vira focável, então Down/Up jamais disparam e o
+/// controle nasce morto (a classe de bug dos pills do vetor). A gate pegou exatamente isto
+/// quando o registro morava no módulo irmão.
+fn populate_connector(store: &mut WidgetStore) {
+    // Route: um BOTÃO que CICLA (a rota corrente vem do snapshot que a shell publica, não do
+    // store — a verdade é do documento, e o painel é stateless).
+    button(store, ids::VECTOR_CONNECTOR_ROUTE);
+    // Jetty / Spread: caixas numéricas. A faixa é FIXA (ao contrário dos campos de forma, que
+    // mudam com a forma em foco), e sem `set_number_range` o arrasto escalaria errado — o
+    // gotcha conhecido da caixa limitada.
+    for (id, field) in [
+        (
+            ids::VECTOR_CONNECTOR_JETTY,
+            &ph2d_tool_vector::connector::JETTY,
+        ),
+        (
+            ids::VECTOR_CONNECTOR_SPREAD,
+            &ph2d_tool_vector::connector::SPREAD,
+        ),
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: field.min,
+                buffer: format!("{}", field.min),
+                caret: 0,
+                last_committed: field.min,
+                selection_anchor: None,
+            },
+        );
+        store.set_number_range(id, field.min, field.max, field.step);
+    }
 }
 
 /// **Os cabeçalhos colapsáveis.** O collapse é dispatch GENÉRICO e exige DOIS sites: a

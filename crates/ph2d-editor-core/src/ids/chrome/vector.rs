@@ -399,6 +399,22 @@ pub const VECTOR_SECTION_FONT: NodeId = hash_node_id("vector.section.font");
 pub const VECTOR_SECTION_PARAGRAPH: NodeId = hash_node_id("vector.section.paragraph");
 pub const VECTOR_SECTION_AXES: NodeId = hash_node_id("vector.section.axes");
 
+// ── Conector: os campos da RELAÇÃO (bloco APPEND-ONLY) ───────────────────────
+// A seção só existe quando há um conector na seleção — os três campos editam
+// TODOS os selecionados de uma vez (é o que permite calibrar um diagrama inteiro
+// sem visitar linha por linha).
+/// Seção **CONNECTOR** — some quando nenhum conector está selecionado.
+pub const VECTOR_SECTION_CONNECTOR: NodeId = hash_node_id("vector.section.connector");
+/// **Route** — reta ou ortogonal. Um botão que CICLA (o gêmeo do campo de escolha do
+/// catálogo de formas): "Route: 1" não é UI; "Route: Orthogonal" é.
+pub const VECTOR_CONNECTOR_ROUTE: NodeId = hash_node_id("vector.connector.route");
+/// **Jetty** — o quanto a linha avança reta antes de poder dobrar. Caixa numérica: o
+/// valor pintado é o EFETIVO (o automático, quando o campo é `None`), então o campo
+/// nasce onde o olho vê a linha e não salta no primeiro toque.
+pub const VECTOR_CONNECTOR_JETTY: NodeId = hash_node_id("vector.connector.jetty");
+/// **Spread** — o afastamento que separa dois conectores no mesmo par de formas.
+pub const VECTOR_CONNECTOR_SPREAD: NodeId = hash_node_id("vector.connector.spread");
+
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
 /// esquecer a marca faz o header virar um título MORTO, que não dobra).
@@ -420,4 +436,5 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_FONT,
     VECTOR_SECTION_PARAGRAPH,
     VECTOR_SECTION_AXES,
+    VECTOR_SECTION_CONNECTOR,
 ];

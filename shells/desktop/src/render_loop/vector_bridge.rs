@@ -189,6 +189,10 @@ pub(super) fn dispatch(
     grad_handle: Option<GradHandle>,
     // Onde cada path ESTÁ (ADR-0111): o readout de posição/tamanho é em MUNDO.
     xforms: &ph2d_vec_scene::VecXforms,
+    // O mundo ECS + a ponte path↔entidade: é neles que mora o `VecConnector` da linha
+    // selecionada (a seção Connector do painel lê daqui).
+    sim: &ph2d_ecs::SimWorld,
+    vec_entities: &crate::vec_entities::VecEntityMap,
     // "Set Center" armado (ADR-0112): só muda o rótulo do botão.
     pivot_edit: bool,
     // Whether the transform gizmo's "Set Center" pivot-edit mode is armed.
@@ -435,6 +439,19 @@ pub(super) fn dispatch(
     } else {
         None
     });
+
+    // **O CONECTOR selecionado** — a seção Connector do painel (Route / Jetty / Spread).
+    // Publica os valores **EFETIVOS** (o automático, quando o usuário não fixou nada);
+    // `None` ⇒ nenhum conector na seleção ⇒ a seção inteira some. O corpo mora no módulo
+    // dono do assunto (teto de 600 LOC por arquivo da shell, HR-18).
+    crate::vec_connector_panel::publish(
+        sim,
+        vec_entities,
+        scene,
+        xforms,
+        pen.selected_paths(),
+        vector_active,
+    );
 
     // Publish the object-selection path count so the panel shows Align (≥2) /
     // Distribute (≥3).

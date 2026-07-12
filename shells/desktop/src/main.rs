@@ -71,6 +71,9 @@ mod sim_populate;
 mod theme;
 mod timeline_persist;
 mod undo;
+/// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
+/// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
+mod vec_connector_panel;
 mod vec_entities;
 mod vec_font;
 #[cfg(feature = "panel-vector")]

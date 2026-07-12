@@ -143,6 +143,30 @@ impl Unit {
     }
 }
 
+/// **Clamp numa janela que pode COLAPSAR** — a única forma segura de clampar entre dois
+/// limites CALCULADOS.
+///
+/// `f64::clamp` entra em pânico se `lo > hi`, e isso não é um caso improvável: sempre que
+/// os dois limites saem da mesma conta, o ponto flutuante os cruza por 1 ulp na fronteira.
+/// Foi o que derrubou o editor no primeiro smoke do catálogo (`min = 0.5,
+/// max = 0.49999999999999994`): o balão de fala calculava o piso `q + hb` e o teto
+/// `1 − q − hb` com `hb = (1 − 2q)/2`, que são **o mesmo número em matemática real**.
+///
+/// Quando a janela colapsa não existe intervalo onde clampar — existe um PONTO. É o que
+/// esta função devolve (o meio da janela invertida), em vez de entrar em pânico.
+#[must_use]
+pub(crate) fn clamp_window(x: f64, lo: f64, hi: f64) -> f64 {
+    // O NaN entra explicitamente: é o OUTRO jeito de o `f64::clamp` explodir, e uma
+    // comparação com NaN é sempre falsa (`lo > hi` sozinho o deixaria passar).
+    if lo.is_nan() || hi.is_nan() {
+        return 0.0;
+    }
+    if lo > hi {
+        return (lo + hi) * 0.5; // a janela colapsou: não há intervalo, há um PONTO
+    }
+    x.clamp(lo, hi)
+}
+
 /// Achata a junção entre `verts[i]` e `verts[i+1]` numa RETA: sem isto, um lado reto que
 /// nasce ao lado de um arco herda a tangente do arco nos handles — a reta continua reta
 /// (os controles ficam colineares), mas o vértice fica com handles fantasmas que o usuário
@@ -356,6 +380,48 @@ mod tests {
             (handle - crate::corners::KAPPA).abs() < 1e-9,
             "handle de 90 graus e o KAPPA: {handle}"
         );
+    }
+
+    /// **A janela que colapsa.** O `f64::clamp` entra em pânico quando `lo > hi` — e dois
+    /// limites que saem da MESMA conta se cruzam por 1 ulp na fronteira, o tempo todo.
+    /// Aqui estão os três casos que derrubam o `clamp` cru, com os números exatos que
+    /// mataram o editor no smoke do balão de fala.
+    #[test]
+    fn a_collapsed_window_yields_a_point_instead_of_a_panic() {
+        // O caso REAL, e ele é procurado, não postulado: `hb = (1 − 2q)/2` faz o piso
+        // `q + hb` e o teto `1 − q − hb` valerem 0,5 os dois — em matemática real. Em f64
+        // isso depende de `q`: para muitos valores as contas fecham exatas, para outros o
+        // teto cai 1 ulp abaixo do piso. A varredura acha um dos que cruzam (se nenhum
+        // cruzasse, o pânico do smoke não teria acontecido, e é isto que o teste checa).
+        let crossing = (1..200_000)
+            .map(|i| f64::from(i) / 450_000.0) // q vive em [0, 0.45]
+            .find(|&q| {
+                let hb = 0.5 * (1.0 - 2.0 * q);
+                q + hb > 1.0 - q - hb
+            });
+        let q = crossing.expect("f64 TEM de cruzar esta janela em algum q — foi o panico do smoke");
+        let hb = 0.5 * (1.0 - 2.0 * q);
+        let (lo, hi) = (q + hb, 1.0 - q - hb);
+        assert!(lo > hi, "a janela cruzou: {lo} > {hi}");
+        assert!(
+            (lo - hi).abs() < 1e-15,
+            "e cruzou por 1 ulp — nao e erro de logica, e ponto flutuante: {}",
+            lo - hi
+        );
+        let got = clamp_window(0.9, lo, hi);
+        assert!(
+            (got - 0.5).abs() < 1e-9,
+            "janela colapsada tem de virar o PONTO, nao um panico: {got}"
+        );
+
+        // Invertida de longe: o meio ainda é a resposta.
+        assert!((clamp_window(0.0, 0.8, 0.2) - 0.5).abs() < 1e-9);
+        // NaN nos limites: o outro jeito de o clamp cru explodir.
+        assert_eq!(clamp_window(0.3, f64::NAN, 1.0), 0.0);
+        assert_eq!(clamp_window(0.3, 0.0, f64::NAN), 0.0);
+        // E a janela SÃ segue sendo um clamp normal.
+        assert!((clamp_window(0.9, 0.1, 0.6) - 0.6).abs() < 1e-12);
+        assert!((clamp_window(0.3, 0.1, 0.6) - 0.3).abs() < 1e-12);
     }
 
     /// Sweep negativo percorre ao contrário — e os handles acompanham (sem isso o contorno

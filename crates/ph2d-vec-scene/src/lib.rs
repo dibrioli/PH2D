@@ -120,6 +120,13 @@ mod tests;
 #[path = "orient_tests.rs"]
 mod orient_tests;
 
+/// **O gate de ROBUSTEZ do `cook`**: o usuário arrasta sliders, então o teste arrasta
+/// também. Varre milhares de vetores de parâmetros × caixas de gesto (inclusive as
+/// degeneradas) e exige que nada exploda nem saia `NaN`. Arquivo irmão (teto de LOC).
+#[cfg(test)]
+#[path = "robust_tests.rs"]
+mod robust_tests;
+
 /// Cor de estilo (sRGB 8-bit). Fase 0: representação mínima; a cor canônica
 /// OKLCH (via `ph2d-color`) é refinamento de Fase 1.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

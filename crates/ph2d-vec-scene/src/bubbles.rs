@@ -44,7 +44,7 @@ use crate::bubbles_ring::{
     Uvv, place, refit, rot_q, seal, sector, sharp, stitch, tail_flanks, uv_arc, uv_straighten,
     v_add, v_len, v_mul, v_norm, v_sub,
 };
-use crate::space::{Unit, Uv, add_sub, closed, fit, open};
+use crate::space::{Unit, Uv, add_sub, clamp_window, closed, fit, open};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Balão de fala retangular
@@ -94,7 +94,7 @@ pub fn speech_rect(
 
     let k = sector((tip_u.clamp(0.0, 1.0), tip_v.clamp(0.0, 1.0)));
     let mut t = rot_q((tip_u.clamp(0.0, 1.0), tip_v.clamp(0.0, 1.0)), (4 - k) % 4);
-    t.0 = t.0.clamp(w, 1.0); // A FAIXA: o bico não tem como sair da caixa
+    t.0 = clamp_window(t.0, w, 1.0); // A FAIXA: o bico não tem como sair da caixa
 
     // O raio vem em MUNDO; nos dois eixos de autoria ele vira um par (para a quina ser
     // circular na tela). O quarto-de-volta troca os eixos, então os raios trocam junto.
@@ -115,8 +115,14 @@ pub fn speech_rect(
 
     // Base do rabo na aresta direita. Nunca cavalga as quinas arredondadas, e ela SEGUE o
     // bico lateralmente — é o que mantém o rabo perpendicular ao corpo (e sem gancho).
+    //
+    // **A janela COLAPSA** quando a base pedida é maior que a aresta reta que sobrou entre
+    // as duas quinas: aí `hb = (1 − 2q)/2`, e o piso `q + hb` e o teto `1 − q − hb` são o
+    // MESMO número — em matemática real. Em ponto flutuante o teto cai 1 ulp abaixo do
+    // piso e o `f64::clamp` explode (foi o pânico do smoke: `0.5` vs `0.49999999999999994`).
+    // Com a janela colapsada não há intervalo, há um PONTO: a base ocupa a aresta inteira.
     let hb = 0.5 * base_w.clamp(0.05, 0.6).min(1.0 - 2.0 * q);
-    let cy = t.1.clamp(q + hb, 1.0 - q - hb);
+    let cy = clamp_window(t.1, q + hb, 1.0 - q - hb);
     let (pa, pb) = ((w, cy - hb), (w, cy + hb));
     let n_out: Uv = (1.0, 0.0);
     let (a_out, tip, b_in) = tail_flanks(pa, pb, t, n_out, n_out);
@@ -189,7 +195,7 @@ pub fn speech_oval(
     let w = 1.0 - room;
     let k = sector((tip_u.clamp(0.0, 1.0), tip_v.clamp(0.0, 1.0)));
     let mut t = rot_q((tip_u.clamp(0.0, 1.0), tip_v.clamp(0.0, 1.0)), (4 - k) % 4);
-    t.0 = t.0.clamp(w, 1.0);
+    t.0 = clamp_window(t.0, w, 1.0);
 
     let half = wedge.clamp(2.0, 45.0).to_radians();
     let c: Uv = (w * 0.5, 0.5);
@@ -440,7 +446,7 @@ pub fn thought(
     );
     let k = sector(tip0);
     let mut t = rot_q(tip0, (4 - k) % 4);
-    t.0 = t.0.clamp(w, 1.0 - BUBBLE_R_MIN);
+    t.0 = clamp_window(t.0, w, 1.0 - BUBBLE_R_MIN);
 
     let mut ring = cloud_ring(n_bump, CLOUD_PUFF, 0.0, 1.0);
     refit(&mut ring, [0.0, 0.0], [w, 1.0]);

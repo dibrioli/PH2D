@@ -25,6 +25,10 @@ mod gradient;
 use gradient::fill_multipoint;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
 
+/// **As pontas de traço** (setas / losangos / bolinhas), likewise a sibling: a geometria é
+/// pura (`ph2d_vec_scene::marker`); aqui mora só o encurtamento da linha e a emissão.
+mod markers;
+
 /// Smart guides (o feedback visual do snap), likewise a sibling.
 mod guides;
 pub use guides::{Guide, draw_snap_guides, draw_text_caret};
@@ -154,13 +158,29 @@ pub fn dispatch(
             }
         }
         if let Some(s) = path.stroke {
-            target.inner_mut().stroke(
-                &kurbo_stroke(&s),
-                transform,
-                &Brush::Solid(color(s.color)),
-                None,
-                &bp,
-            );
+            // Com PONTAS, a linha é encurtada para caber nelas — senão o traço aparece por
+            // dentro de uma seta vazada e faz uma bolha na base de uma cheia. Sem pontas
+            // (o caso de 99% dos paths) nada disto roda: `bp` vai direto.
+            //
+            // `None` = a linha é mais curta que os recuos somados (uma linha de 2 px com uma
+            // seta gorda): aí NÃO se desenha linha nenhuma — só as pontas. Cair de volta na
+            // linha inteira seria desenhar exatamente o traço que o recuo existe para
+            // esconder.
+            let line = if s.has_markers() {
+                markers::stroked_line(path, &s).map(|p| build_bezpath(&p))
+            } else {
+                Some(bp.clone())
+            };
+            if let Some(line) = line {
+                target.inner_mut().stroke(
+                    &kurbo_stroke(&s),
+                    transform,
+                    &Brush::Solid(color(s.color)),
+                    None,
+                    &line,
+                );
+            }
+            markers::draw(target, path, &s, transform);
         }
     }
 }
@@ -290,7 +310,7 @@ pub fn draw_marquee(min: [f64; 2], max: [f64; 2], target: &mut VectorScene) {
 
 /// `StrokeSpec` → `kurbo::Stroke` (ponta/junção + dash). Larguras/dashes ficam em
 /// world-units; o `transform` do render escala p/ screen.
-fn kurbo_stroke(s: &StrokeSpec) -> Stroke {
+pub(crate) fn kurbo_stroke(s: &StrokeSpec) -> Stroke {
     let cap = match s.cap {
         LineCap::Butt => Cap::Butt,
         LineCap::Round => Cap::Round,
@@ -439,7 +459,7 @@ mod open_contour_tests {
     /// segunda asserção passa a valer para o primeiro path e o teste cai.
     #[test]
     fn an_open_contour_never_punches_a_hole_in_the_fill() {
-        let cube = ph2d_vec_scene::iso_cube([-1.0, -1.0], [1.0, 1.0], 0.5, 0.5);
+        let cube = ph2d_vec_scene::iso_cube([-1.0, -1.0], [1.0, 1.0], 0.5, 0.5, false);
         // As três arestas internas vivem no sub-contorno; o vértice central é o do meio.
         let inner = &cube.subpaths[0].verts;
         let (v1, m, v3) = (inner[0].anchor, inner[1].anchor, inner[2].anchor);

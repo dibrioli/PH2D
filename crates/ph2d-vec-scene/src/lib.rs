@@ -99,6 +99,12 @@ mod bubbles_ring;
 mod iso;
 pub use iso::{iso_cone, iso_cube, iso_pyramid};
 
+/// **As pontas de traço** (setas, losangos, bolinhas). NÃO são formas do catálogo: são
+/// propriedade do STROKE — nascem na ponta de qualquer caminho aberto, herdam a cor e a
+/// largura dele, e giram sozinhas com a tangente da curva.
+mod marker;
+pub use marker::{ALL_MARKERS, Marker, end_tangent, trim_path};
+
 /// O CATÁLOGO de formas paramétricas: o enum único (`ShapeKind`), os valores de cada
 /// forma e o `cook` que os transforma em geometria. A forma é DADO — é o que faz uma
 /// forma nova custar uma linha de tabela em vez de oito lugares.
@@ -174,10 +180,18 @@ pub struct StrokeSpec {
     /// Width-aware: engrossar o traço alonga dash e vão na proporção, então a
     /// projeção da ponta nunca engole o vão.
     pub dash: Option<(f64, f64)>,
+    /// **Ponta no COMEÇO** do caminho (arrowhead). Só vale em caminho aberto.
+    /// Apendado por ÚLTIMO: o postcard é posicional, então um save anterior a este campo
+    /// segue legível e lê `Marker::None` (que é o default — uma linha é uma linha).
+    #[serde(default)]
+    pub marker_start: Marker,
+    /// **Ponta no FIM** do caminho. Idem.
+    #[serde(default)]
+    pub marker_end: Marker,
 }
 
 impl StrokeSpec {
-    /// Traço sólido, ponta/junção default (Butt/Miter), sem tracejado.
+    /// Traço sólido, ponta/junção default (Butt/Miter), sem tracejado, sem setas.
     #[must_use]
     pub fn new(color: Rgba8, width: f64) -> Self {
         Self {
@@ -186,7 +200,15 @@ impl StrokeSpec {
             cap: LineCap::Butt,
             join: LineJoin::Miter,
             dash: None,
+            marker_start: Marker::None,
+            marker_end: Marker::None,
         }
+    }
+
+    /// `true` se o traço tem alguma ponta — o render então precisa recuar a linha.
+    #[must_use]
+    pub fn has_markers(&self) -> bool {
+        self.marker_start != Marker::None || self.marker_end != Marker::None
     }
 }
 

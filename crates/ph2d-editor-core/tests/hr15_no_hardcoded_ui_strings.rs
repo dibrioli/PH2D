@@ -49,7 +49,9 @@ const BASELINE: &[(&str, usize)] = &[
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
     // The Audio Editor's empty-state TextInput placeholder ("No clip loaded").
     // Generic English fallback — replaced when Fluent runtime ships.
-    ("ph2d-panel-audio-editor/src/paint.rs", 1),
+    // The clip-name placeholder moved to `paint_sections.rs` when the panel was split
+    // into collapsible sections (2026-07-12); same one string, new file.
+    ("ph2d-panel-audio-editor/src/paint_sections.rs", 1),
 ];
 
 #[test]

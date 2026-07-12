@@ -24,6 +24,7 @@ mod paint_delivery;
 mod paint_edit;
 mod paint_fx;
 mod paint_loop;
+mod paint_sections;
 mod paint_variation;
 mod populate;
 pub mod presets;
@@ -43,6 +44,26 @@ use ph2d_tool_registry::hash_node_id;
 pub const AEDIT_PANEL: NodeId = ph2d_editor_core::ids::AUDIO_EDITOR_PANEL;
 /// Header close (X) — hides the dock (also toggled by the TopBar pill).
 pub const AEDIT_CLOSE: NodeId = hash_node_id("audio_editor_close");
+
+// Collapsible section headers. The panel had grown into one unbroken column of
+// controls; the app's canonical chrome for that is a `SectionHeader` (chevron +
+// uppercase label, darker plate when folded) with a `Divider` between blocks — exactly
+// how the Sprite Inspector and the Audio Mixer do it. Each id is
+// `mark_collapsible_section`-registered in `populate`; the dispatch folds it on click.
+/// Transport: name, play/stop/loop, position, Load/Export.
+pub const AEDIT_SEC_TRANSPORT: NodeId = hash_node_id("audio_editor_sec_transport");
+/// Edit: whole-clip + selection ops.
+pub const AEDIT_SEC_EDIT: NodeId = hash_node_id("audio_editor_sec_edit");
+/// Effects: the rack + its chain presets.
+pub const AEDIT_SEC_FX: NodeId = hash_node_id("audio_editor_sec_fx");
+/// Loop points.
+pub const AEDIT_SEC_LOOP: NodeId = hash_node_id("audio_editor_sec_loop");
+/// Cue markers.
+pub const AEDIT_SEC_MARKERS: NodeId = hash_node_id("audio_editor_sec_markers");
+/// Variation containers.
+pub const AEDIT_SEC_VARIATIONS: NodeId = hash_node_id("audio_editor_sec_variations");
+/// Delivery: codec + cost readout.
+pub const AEDIT_SEC_DELIVERY: NodeId = hash_node_id("audio_editor_sec_delivery");
 /// Clip name field — an editable `TextInput` (mirror of the Inspector's entity
 /// name box). The shell publishes the loaded clip's name; the paint step syncs
 /// it into the box on a new load (unless the user is editing it).

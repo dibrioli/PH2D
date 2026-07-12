@@ -8,10 +8,7 @@
 //! + timeline are the separate floating overlay on the canvas.
 
 use crate::state::AudioEditorState;
-use crate::{
-    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_FX_PARAMS, AEDIT_LOAD, AEDIT_LOOP,
-    AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel, snapshot,
-};
+use crate::{AEDIT_CLOSE, AEDIT_FX_PARAMS, AEDIT_NAME, AEDIT_PANEL, AudioEditorPanel, snapshot};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
@@ -22,8 +19,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
-    AUDIO_EDITOR_SCROLLBAR_ID, SCROLLBAR_W, TextInput, TextInputState, paint_scrollbar,
-    paint_text_input_with_buffer, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
+    AUDIO_EDITOR_SCROLLBAR_ID, SCROLLBAR_W, TextInputState, paint_scrollbar, scrollbar_is_needed,
+    scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -105,6 +102,9 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     let undo_ok = snapshot::can_undo();
     let redo_ok = snapshot::can_redo();
     let has_sel = snapshot::has_selection();
+    // Fold state, read BEFORE the mutable store/hit borrows below (same reason as the
+    // scroll above): the paint pass cannot reach the store once `hit_index` holds it.
+    let open = crate::paint_sections::SECTIONS.map(|id| !ctx.host.store().is_collapsed(id));
 
     sync_widget_buffers(ctx);
 
@@ -126,99 +126,29 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     scene.push_clip(&rect_to_vello(body_rect));
     let hit_index = &mut ClippedHits::new(ctx.host.hit_index_mut(), body_rect);
 
-    let name_box = NameBox {
-        state: name_state,
-        text: name_text,
-        caret: name_caret,
-        anchor: name_anchor,
-    };
-    let y = paint_transport_section(
-        y,
-        x,
-        w,
-        Transport {
+    // The body is a stack of collapsible SECTIONS — see `paint_sections`.
+    let body = crate::paint_sections::Body {
+        open,
+        loaded,
+        undo_ok,
+        redo_ok,
+        has_sel,
+        transport: crate::paint_sections::Transport {
             loaded,
             playing,
             looping,
             pos,
             dur,
         },
-        &name_box,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-
-    // Loop points (W6) — sits under the transport (a playback/asset concept). Set
-    // from the selection, snap, audition click-free, and export to the `smpl` chunk.
-    let y = crate::paint_loop::paint_loop_section(
-        y,
-        x,
-        w,
-        loaded,
-        has_sel,
-        ROW_H,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    // Markers (W6) — named cue points at the playhead, exported to `cue`+`adtl`.
-    let y = crate::paint_loop::paint_markers_section(
-        y,
-        x,
-        w,
-        loaded,
-        ROW_H,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    // Variation containers (W6) — a set of clips the runtime plays one of per trigger.
-    // Independent of the loaded clip (its own file set), so it is not gated on `loaded`.
-    let y = crate::paint_variation::paint_variation_section(
-        y,
-        x,
-        w,
-        ROW_H,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-
-    // Delivery (W6) — what the asset costs to ship and to run, priced before the
-    // export rather than discovered after it.
-    let y = crate::paint_delivery::paint_delivery_section(
-        y,
-        x,
-        w,
-        loaded,
-        ROW_H,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-
-    // Edit ops (W2) — whole-clip, one-shot; each commits an undo step. Then the
-    // effects rack. `final_y` is the bottom of the painted content, still carrying
-    // the `- scroll` offset.
-    let final_y = crate::paint_edit::paint_edit_section(
-        y,
-        x,
-        w,
-        loaded,
-        undo_ok,
-        redo_ok,
-        has_sel,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
+        name: crate::paint_sections::NameBox {
+            state: name_state,
+            text: name_text,
+            caret: name_caret,
+            anchor: name_anchor,
+        },
+    };
+    let final_y =
+        crate::paint_sections::paint_body(y, x, w, &body, scene, text_system, theme, hit_index);
 
     // Total scrollable height in body-local coords (undo the `- scroll` offset).
     let content_h = (final_y + scroll) - body_top + bottom_pad;
@@ -229,154 +159,6 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
     ctx.host
         .hit_index_mut()
         .register(AEDIT_CLOSE, panel_close_button_rect(rect));
-}
-
-/// The shell's live transport readout, bundled so the section fits one arg list.
-struct Transport {
-    loaded: bool,
-    playing: bool,
-    looping: bool,
-    pos: f64,
-    dur: f64,
-}
-
-/// The clip-name `TextInput`'s live buffer, cloned out of the store so the scene
-/// borrow below is free of it.
-struct NameBox {
-    state: TextInputState,
-    text: String,
-    caret: usize,
-    anchor: Option<usize>,
-}
-
-/// Clip name · position/duration readout · Play/Pause · Stop | Loop · Load | Export.
-/// Returns the `y` below the block.
-#[allow(clippy::too_many_arguments)]
-fn paint_transport_section(
-    mut y: f32,
-    x: f32,
-    w: f32,
-    t: Transport,
-    name: &NameBox,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut ClippedHits,
-) -> f32 {
-    // Clip name — an editable TextInput (mirror of the sprite name box). The widget
-    // clips its own overflow to the field, so a long filename no longer wraps/crams
-    // the header.
-    let name_h = TypeToken::Sm.px() + Spacing::Sm.px() * 2.0;
-    let name_rect = Rect::new(x, y, w, name_h);
-    hit_index.register(AEDIT_NAME, name_rect);
-    let input = TextInput::new(AEDIT_NAME, "")
-        .placeholder("No clip loaded")
-        .state(name.state);
-    // Clip to the field: the TextInput lays its text out with word-wrap at the inner
-    // width, so a long filename spills onto a 2nd line below the box. A clip to the
-    // single-line box crops that overflow instead of letting it extrapolate.
-    scene.push_clip(&rect_to_vello(name_rect));
-    paint_text_input_with_buffer(
-        &input,
-        Some(name.text.as_str()),
-        Some(name.caret),
-        name.anchor,
-        name_rect,
-        scene,
-        text_system,
-        theme,
-    );
-    scene.pop_layer();
-    y += name_h + Spacing::Sm.px();
-
-    // Position / duration readout.
-    let time_line = format!("{} / {}", fmt_time(t.pos), fmt_time(t.dur));
-    paint_text_centered(
-        text_system,
-        scene,
-        &time_line,
-        Rect::new(x, y, w, TypeToken::Xs.px()),
-        TypeToken::Xs.px(),
-        resolve(ColorToken::Text2, theme),
-    );
-    y += TypeToken::Xs.px() + Spacing::Md.px();
-
-    // Transport: Play/Pause (full width toggle, active while playing).
-    let play_label = if t.playing { "Pause" } else { "Play" };
-    toggle(
-        Rect::new(x, y, w, ROW_H),
-        play_label,
-        t.playing,
-        t.loaded,
-        AEDIT_PLAY,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += ROW_H + Spacing::Sm.px();
-
-    // Stop | Loop side by side.
-    let gap = Spacing::Sm.px();
-    let half = ((w - gap) * 0.5).max(1.0);
-    button(
-        Rect::new(x, y, half, ROW_H),
-        "Stop",
-        t.loaded,
-        AEDIT_STOP,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    toggle(
-        Rect::new(x + half + gap, y, half, ROW_H),
-        "Loop",
-        t.looping,
-        true,
-        AEDIT_LOOP,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += ROW_H + Spacing::Md.px();
-
-    // Load | Export WAV side by side.
-    button(
-        Rect::new(x, y, half, ROW_H),
-        "Load\u{2026}",
-        true,
-        AEDIT_LOAD,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    button(
-        Rect::new(x + half + gap, y, half, ROW_H),
-        "Export WAV\u{2026}",
-        t.loaded,
-        AEDIT_EXPORT,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += ROW_H + Spacing::Sm.px();
-
-    // Batch LUFS — a FOLDER op (independent of the loaded clip), so always enabled.
-    button(
-        Rect::new(x, y, w, ROW_H),
-        "Batch LUFS\u{2026}",
-        true,
-        AEDIT_BATCH_LUFS,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y + ROW_H + Spacing::Lg.px()
 }
 
 /// Push shell-owned values into the widget buffers the shared dispatch also writes.
@@ -455,7 +237,7 @@ fn paint_scroll_chrome(
 const SECS_PER_MIN: f64 = 60.0; // LITERAL-PX-OK: seconds per minute (time math)
 
 /// Format seconds as `m:ss.d` (one decimal), clamped at zero.
-fn fmt_time(secs: f64) -> String {
+pub(crate) fn fmt_time(secs: f64) -> String {
     let s = secs.max(0.0);
     let m = (s / SECS_PER_MIN) as u64;
     let rem = s - (m as f64) * SECS_PER_MIN;

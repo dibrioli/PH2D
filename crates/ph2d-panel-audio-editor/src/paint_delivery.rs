@@ -46,38 +46,8 @@ pub(crate) fn paint_delivery_section(
     let gap = Spacing::Sm.px();
     let label_h = TypeToken::Xs.px();
 
-    // Header: "Delivery" left, the download size right — the number people came for.
-    paint_text(
-        text_system,
-        scene,
-        "Delivery",
-        x,
-        y,
-        label_h,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let disk = delivery_state::disk();
-    paint_text_centered(
-        text_system,
-        scene,
-        if loaded && !disk.is_empty() {
-            &disk
-        } else {
-            "\u{2014}"
-        },
-        Rect::new(x, y, w, label_h),
-        label_h,
-        resolve(
-            if loaded {
-                ColorToken::Text1
-            } else {
-                ColorToken::Text2
-            },
-            theme,
-        ),
-    );
-    y += label_h + gap;
+    // No title row: the section header above carries the name AND the download size —
+    // the number people came for, readable without unfolding the section.
 
     // Codec selector: ◀ | name | ▶. It drives both the readout and the Export button,
     // so there is exactly one place the codec is decided.
@@ -205,6 +175,16 @@ pub(crate) fn paint_delivery_section(
         ) + gap;
     }
     y
+}
+
+/// The download size, for the section header. Empty when there is nothing to price.
+pub(crate) fn delivery_readout() -> String {
+    let disk = delivery_state::disk();
+    if disk.is_empty() {
+        "\u{2014}".to_string()
+    } else {
+        disk
+    }
 }
 
 /// Paint one line of body text and return the `y` **below what was actually laid out**.

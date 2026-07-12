@@ -15,7 +15,7 @@ use crate::paint::{ClippedHits, button};
 use crate::{
     AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD, AEDIT_MARK_DEL, loop_state,
 };
-use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -40,34 +40,9 @@ pub(crate) fn paint_loop_section(
     let gap = Spacing::Sm.px();
     let has_loop = loop_state::has_loop();
 
-    // Header: "Loop" left, the region readout right.
+    // No title row: the section header above carries the name AND the readout. Printing
+    // "Loop" twice is what turned this panel into a wall of text (Enio, 2026-07-12).
     let label_h = TypeToken::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        "Loop",
-        x,
-        y,
-        label_h,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    paint_text_centered(
-        text_system,
-        scene,
-        &readout(),
-        Rect::new(x, y, w, label_h),
-        label_h,
-        resolve(
-            if has_loop {
-                ColorToken::Text1
-            } else {
-                ColorToken::Text2
-            },
-            theme,
-        ),
-    );
-    y += label_h + Spacing::Sm.px();
 
     // Set (from selection) | Clear.
     let half = ((w - gap) * 0.5).max(1.0);
@@ -125,19 +100,18 @@ pub(crate) fn paint_loop_section(
 }
 
 /// The region readout: `1.20\u{2013}3.40s`, or `No loop` when unset.
-fn readout() -> String {
+pub(crate) fn loop_readout() -> String {
     match loop_state::loop_span() {
         Some((s, e)) => format!("{s:.2}\u{2013}{e:.2}s"),
         None => "No loop".to_string(),
     }
 }
 
-/// The Markers section (W6): a header + count readout, then **Add Marker** (at the
-/// playhead) | **Delete** (nearest). Cue points exported to the WAV `cue`+`adtl` so a
+/// The Markers section (W6): **Add Marker** (at the playhead) | **Delete** (nearest). Cue points exported to the WAV `cue`+`adtl` so a
 /// game runtime can react to them. Returns the `y` below it.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_markers_section(
-    mut y: f32,
+    y: f32,
     x: f32,
     w: f32,
     loaded: bool,
@@ -149,40 +123,6 @@ pub(crate) fn paint_markers_section(
 ) -> f32 {
     let gap = Spacing::Sm.px();
     let count = loop_state::marker_count();
-    let label_h = TypeToken::Xs.px();
-
-    // Header: "Markers" left, count right.
-    paint_text(
-        text_system,
-        scene,
-        "Markers",
-        x,
-        y,
-        label_h,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let readout = match count {
-        0 => "No markers".to_string(),
-        1 => "1 marker".to_string(),
-        n => format!("{n} markers"),
-    };
-    paint_text_centered(
-        text_system,
-        scene,
-        &readout,
-        Rect::new(x, y, w, label_h),
-        label_h,
-        resolve(
-            if count > 0 {
-                ColorToken::Text1
-            } else {
-                ColorToken::Text2
-            },
-            theme,
-        ),
-    );
-    y += label_h + Spacing::Sm.px();
 
     // Add (at playhead) | Delete (nearest).
     let half = ((w - gap) * 0.5).max(1.0);
@@ -207,4 +147,14 @@ pub(crate) fn paint_markers_section(
         hit_index,
     );
     y + row_h + Spacing::Md.px()
+}
+
+/// The Markers readout, for the section header: the panel says how many cue points the
+/// clip carries without being unfolded.
+pub(crate) fn markers_readout() -> String {
+    match loop_state::marker_count() {
+        0 => "No markers".to_string(),
+        1 => "1 marker".to_string(),
+        n => format!("{n} markers"),
+    }
 }

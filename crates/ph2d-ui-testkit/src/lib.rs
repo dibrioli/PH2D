@@ -106,6 +106,13 @@ impl MockPanelHost {
     /// Set a registered slider's stored value — what a pointer drag writes
     /// into the store *before* the dispatch emits `ValueChanged(id)`. Panics
     /// (never silently no-ops) if `id` is absent or not a slider.
+    /// Read-only view of the widget store — so a seam test can assert on the state a
+    /// panel's `populate` seeded (collapsed sections, default values, …), not just on
+    /// what an event did to it. Additive: nothing in the testkit changes shape.
+    pub fn store(&self) -> &WidgetStore {
+        &self.store
+    }
+
     pub fn set_slider_value(&mut self, id: NodeId, value: f32) {
         match self.store.get_mut(id) {
             Some(InteractiveState::Slider { value: v, .. }) => *v = value,

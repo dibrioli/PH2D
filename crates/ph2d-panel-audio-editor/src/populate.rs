@@ -9,16 +9,45 @@ use crate::{
     AEDIT_LOOP_XFADE, AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NAME, AEDIT_NORM_LUFS,
     AEDIT_NORMALIZE, AEDIT_OGG_QUALITY, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD,
     AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO, AEDIT_REVERSE,
-    AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER,
-    AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE,
-    AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT, AEDIT_VAR_STRATEGY_PREV,
-    AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, delivery_state, loop_state, variation_state,
+    AEDIT_SEC_DELIVERY, AEDIT_SEC_EDIT, AEDIT_SEC_FX, AEDIT_SEC_LOOP, AEDIT_SEC_MARKERS,
+    AEDIT_SEC_TRANSPORT, AEDIT_SEC_VARIATIONS, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO,
+    AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
+    AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT,
+    AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, delivery_state,
+    loop_state, variation_state,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
+    // Collapsible section headers — bare hit rects (no `InteractiveState`); the
+    // dispatch folds them via `toggle_collapsed` on click. Same chrome as the Sprite
+    // Inspector and the Audio Mixer.
+    for id in [
+        AEDIT_SEC_TRANSPORT,
+        AEDIT_SEC_EDIT,
+        AEDIT_SEC_FX,
+        AEDIT_SEC_LOOP,
+        AEDIT_SEC_MARKERS,
+        AEDIT_SEC_VARIATIONS,
+        AEDIT_SEC_DELIVERY,
+    ] {
+        store.mark_collapsible_section(id);
+    }
+    // The asset-prep half (loop points, markers, variation sets, delivery) is what you
+    // reach for once per asset, not once per edit — it starts FOLDED so the panel opens
+    // on the three things you actually work in. `populate` runs once, at
+    // `HeroScreen::new`, so this is an initial state and not a per-frame override.
+    for id in [
+        AEDIT_SEC_LOOP,
+        AEDIT_SEC_MARKERS,
+        AEDIT_SEC_VARIATIONS,
+        AEDIT_SEC_DELIVERY,
+    ] {
+        store.set_collapsed(id, true);
+    }
+
     // Floating waveform overlay drag/resize handles — registered as panel-agnostic
     // `BlenderHit`s keyed to `AUDIO_OVERLAY_PANEL`, so the shared dispatch moves +
     // resizes the overlay exactly like the Inspector dock (the shell bridge

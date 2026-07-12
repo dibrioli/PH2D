@@ -831,3 +831,53 @@ fn the_quality_slider_reaches_the_shell() {
         "the quality slider did not reach the shell: {q}"
     );
 }
+
+// ---------------------------------------------------------------------------------
+// Collapsible sections — the panel's spine.
+// ---------------------------------------------------------------------------------
+
+/// **Every section header must be registered as collapsible.** The fold is done by the
+/// editor-core dispatch, not by the panel: a click on `id` only folds it if `id` is in
+/// the store's `collapsible_sections` set. A header that is painted (chevron and all)
+/// but never `mark_collapsible_section`-registered is a chevron that does nothing —
+/// the exact "painted but not wired" failure the panel gates exist to stop.
+#[test]
+fn every_section_header_is_registered_as_collapsible() {
+    let host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    for id in [
+        ph2d_panel_audio_editor::AEDIT_SEC_TRANSPORT,
+        ph2d_panel_audio_editor::AEDIT_SEC_EDIT,
+        ph2d_panel_audio_editor::AEDIT_SEC_FX,
+        ph2d_panel_audio_editor::AEDIT_SEC_LOOP,
+        ph2d_panel_audio_editor::AEDIT_SEC_MARKERS,
+        ph2d_panel_audio_editor::AEDIT_SEC_VARIATIONS,
+        ph2d_panel_audio_editor::AEDIT_SEC_DELIVERY,
+    ] {
+        assert!(
+            host.store().is_collapsible_section(id),
+            "a section header the dispatch will not fold: {id:?}"
+        );
+    }
+}
+
+/// ...and the asset-prep half starts FOLDED, so the panel opens on the three blocks you
+/// actually work in rather than on the whole wall.
+#[test]
+fn the_asset_prep_sections_start_folded() {
+    let host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    for (id, name) in [
+        (ph2d_panel_audio_editor::AEDIT_SEC_LOOP, "Loop"),
+        (ph2d_panel_audio_editor::AEDIT_SEC_MARKERS, "Markers"),
+        (ph2d_panel_audio_editor::AEDIT_SEC_VARIATIONS, "Variations"),
+        (ph2d_panel_audio_editor::AEDIT_SEC_DELIVERY, "Delivery"),
+    ] {
+        assert!(host.store().is_collapsed(id), "{name} should start folded");
+    }
+    for (id, name) in [
+        (ph2d_panel_audio_editor::AEDIT_SEC_TRANSPORT, "Transport"),
+        (ph2d_panel_audio_editor::AEDIT_SEC_EDIT, "Edit"),
+        (ph2d_panel_audio_editor::AEDIT_SEC_FX, "Effects"),
+    ] {
+        assert!(!host.store().is_collapsed(id), "{name} should start open");
+    }
+}

@@ -43,42 +43,10 @@ pub(crate) fn paint_variation_section(
     hit_index: &mut ClippedHits,
 ) -> f32 {
     let gap = Spacing::Sm.px();
-    let label_h = TypeToken::Xs.px();
     let count = variation_state::count();
     let has_any = count > 0;
 
-    // Header: "Variations" left, the count right.
-    paint_text(
-        text_system,
-        scene,
-        "Variations",
-        x,
-        y,
-        label_h,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let readout = match count {
-        0 => "No clips".to_string(),
-        1 => "1 clip".to_string(),
-        n => format!("{n} clips"),
-    };
-    paint_text_centered(
-        text_system,
-        scene,
-        &readout,
-        Rect::new(x, y, w, label_h),
-        label_h,
-        resolve(
-            if has_any {
-                ColorToken::Text1
-            } else {
-                ColorToken::Text2
-            },
-            theme,
-        ),
-    );
-    y += label_h + Spacing::Sm.px();
+    // No title row: the section header above carries the name AND the count.
 
     // Strategy selector: ◀ | name | ▶.
     button(
@@ -328,4 +296,14 @@ fn paint_jitter_slider(
     paint_slider(&slider, track, scene, theme);
     hit_index.register(id, track);
     y + Spacing::Md.px() + Spacing::Sm.px()
+}
+
+/// The Variations readout, for the section header — how many clips the set holds,
+/// visible without unfolding it.
+pub(crate) fn variation_readout() -> String {
+    match variation_state::count() {
+        0 => "No clips".to_string(),
+        1 => "1 clip".to_string(),
+        n => format!("{n} clips"),
+    }
 }

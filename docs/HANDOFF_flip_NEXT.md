@@ -4,7 +4,17 @@
 > quadro-a-quadro, port 2D clean-room do Grease Pencil do Blender — ADR-0113).
 > Leia este arquivo INTEIRO antes de tocar em código. O tracker exaustivo do que já
 > landou é [`HANDOFF_flip_impl.md`](HANDOFF_flip_impl.md) — leia depois deste.
-> **Sua PRIMEIRA TAREFA é o §3 (bug da rasterização do traço).**
+>
+> **🟩 O §3 (bug da rasterização do traço) foi RESOLVIDO em 2026-07-11 (Rodada 7,
+> pendente só o smoke visual do Enio).** A receita vencedora foi o caminho
+> recomendado abaixo, com 2 achados: com corner ROUND (o default do GP) o fragment
+> NÃO precisa de p0/p3; e a peça que explicava o beco #3 era o **`discard` de
+> alpha < 0.001 do fragment do GP** (sem ele, fragmento transparente escreve depth
+> e fura o vizinho = o "escamado"). Detalhe + oráculo de paridade CPU↔GPU + as 2
+> mutações provadas: `HANDOFF_flip_impl.md` §"Rodada 7". O §3 abaixo fica como
+> HISTÓRICO da investigação.
+> **Sua PRIMEIRA TAREFA agora é o W3 (Frames · Ghost · Tween)** — guia em
+> `HANDOFF_flip_impl.md` §W3-NEXT.
 
 ---
 

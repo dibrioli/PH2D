@@ -33,5 +33,10 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    // GP `gpencil_frag.glsl`: fragmento ~transparente descarta (a < 0.001) — um
+    // fill invisível não pode escrever depth e ocultar o que está abaixo.
+    if (in.color.a < 0.001) {
+        discard;
+    }
     return in.color; // premult over (blend One, OneMinusSrcAlpha)
 }

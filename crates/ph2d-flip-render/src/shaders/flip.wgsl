@@ -5,13 +5,30 @@
 //
 // **Cobertura ANALÍTICA (como o GP).** Cada segmento vira um quad que só precisa
 // COBRIR a fita (retângulo + tampas); a forma EXATA sai no fragment, da **distância
-// do pixel à linha-de-centro** (`gpencil_stroke_segment_mask`). Clampar o parâmetro
-// ao segmento dá **junções e tampas REDONDAS de graça** — sem miter, sem spikes, e
-// (crucial) sem double-blend nas quinas: dois quads adjacentes calculam a MESMA
-// distância à mesma reta, então a cobertura é consistente e o depth só escolhe um.
-// Era o bug das quinas/curvas com hardness baixo (a coordenada `v_perp` por-quad
-// distorcia nas junções). O perfil de hardness é o do GP (`pow` + smoothstep), com
-// AA de ~1px por `fwidth` (o GP conta com MSAA; aqui não há).
+// do pixel à linha-de-centro** (`gpencil_stroke_segment_mask`, corner type ROUND —
+// o default do GP, `GP_CORNER_TYPE_ROUND_BITS = 0`). Clampar o parâmetro ao
+// segmento dá **junções e tampas REDONDAS de graça** — sem spikes, e (crucial) com
+// cobertura CONSISTENTE onde dois quads cobrem o mesmo pixel (ambos medem a
+// distância ao MESMO ponto de junção), então o depth só escolhe um. O perfil de
+// hardness é o do GP (`pow` + smoothstep), com AA de ~1px por `fwidth` (o GP conta
+// com MSAA; aqui não há).
+//
+// **O tripé anti-artefato (estado EXATO do GP 2D — cada perna é obrigatória):**
+// 1. **Fita CONECTADA por miter + `miter_break`** (`gpencil_vertex`, ~l.705):
+//    segmentos adjacentes compartilham o vértice de junção (abutam, não sobrepõem
+//    → sem bead/escama); numa quina AFIADA (virada > 120°) a fita NÃO mitra — o
+//    offset fica na perpendicular do próprio segmento e o quad ESTENDE `r` ao
+//    longo da linha (cobre o disco da junção sem nunca dobrar sobre si → fim do
+//    bowtie/spike que o miter puro cuspia na bissetriz).
+// 2. **Depth GREATER estrito + write-depth** (`gpencil_cache_utils.cc:449`),
+//    depth por-STROKE: a 2ª face no MESMO pixel (sobreposição na quina quebrada,
+//    auto-cruzamento) é DESCARTADA, não misturada → zero acúmulo. É o default do
+//    GP ("the stroke cannot overlap itself", `gpencil_vert.glsl`); o modo
+//    per-ponto (`GP_STROKE_OVERLAP`) que deixa o traço acumular sobre si é opção
+//    de material, não o default.
+// 3. **Discard de fragmento ~transparente** (`gpencil_frag.glsl`: `a < 0.001`):
+//    sem ele, o canto transparente de um quad escreve depth e FURA a geometria
+//    que chega depois (era o "escamado"/corrente-de-ovais do stadium+GREATER).
 
 struct Camera {
     world_to_clip: mat4x4<f32>,
@@ -46,9 +63,11 @@ struct GpuStroke {
 const FLAG_CLOSED: u32 = 1u;
 const FLAG_START_FLAT: u32 = 2u;
 const FLAG_END_FLAT: u32 = 4u;
-// Miter clampado (o vértice da junção não dispara além de r·LIMIT numa quina afiada;
-// o fragment carrega a forma redonda por dentro, então isto é só o teto da geometria).
-const MITER_LIMIT: f32 = 4.0;
+// `miter_break` do GP (`gpencil_vertex` ~l.696): a quina deixa de mitrar quando
+// `cos_angle > 0.5` (virada > 120°). cos_angle = -dot(dir_in, dir_out): -1 numa
+// reta, +1 num hairpin. Abaixo do limite o esticão do miter é ≤ 1/cos(60°) = 2 —
+// bounded por construção (o clamp MITER_LIMIT antigo saiu junto com a dobra).
+const MITER_BREAK_COS: f32 = 0.5;
 
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
@@ -109,8 +128,8 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     // clamp (aberto) / wrap (fechado). Segmentos adjacentes computam o MESMO vértice
     // de junção (compartilham prev/nn) → a fita não se sobrepõe nas junções, logo NÃO
     // há double-blend (o "mastigado" com hardness baixo era o over-blend de quads
-    // sobrepostos). Só cruzamentos REAIS (segmentos não-adjacentes) se sobrepõem, e aí
-    // o GreaterEqual mantém a parte mais nova por cima.
+    // sobrepostos). Onde quads SE sobrepõem (quina quebrada, cruzamento real), o
+    // depth GREATER estrito descarta a 2ª face — pinta uma vez, nunca acumula.
     var prev_gp = gp;
     if (li > 0u) { prev_gp = gp - 1u; }
     else if (closed) { prev_gp = last; }
@@ -133,35 +152,46 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     let dir = seg / seg_len;
     let n_seg = perp(dir);
 
-    // Miter em a (bisetriz de prev→a→b): compartilhado com o segmento anterior. Sem
-    // prev (início) = a perpendicular reta. `scale` estica pra alcançar o vértice da
-    // junção, clampado a MITER_LIMIT.
+    // Tampas: um EXTREMO de traço aberto marcado `Flat` corta reto (sem estender além
+    // do ponto). Tampa Round estende `r` ao longo da reta → a distância clampada
+    // desenha a meia-lua. Junções internas mitradas NÃO estendem (o miter conecta a
+    // fita); junções QUEBRADAS (miter_break) estendem como uma tampa redonda.
+    let is_start = (li == 0u) && !closed;
+    let is_end = (next_gp == last) && !closed;
+    let round_start = is_start && ((st.flags & FLAG_START_FLAT) == 0u);
+    let round_end = is_end && ((st.flags & FLAG_END_FLAT) == 0u);
+    var ext_a = select(0.0, r_a, round_start);
+    var ext_b = select(0.0, r_b, round_end);
+
+    // Junção em a (compartilhada com o segmento anterior; sem prev = perpendicular
+    // reta). Miter na bisetriz de prev→a→b, esticado 1/cos(θ/2) pra alcançar o
+    // vértice — MAS numa quina afiada (miter_break, GP ~l.705) NÃO mitra: o offset
+    // fica em n_seg e o quad estende `r` ao longo da linha (`screen_ofs += line·x`
+    // do GP) — cobre o disco da junção sem a fita jamais dobrar sobre si (bowtie).
     var miter_a = n_seg;
     var scale_a = 1.0;
     if (prev_gp != gp) {
         let d_prev = normalize(sa - sp);
-        let m = perp(normalize(d_prev + dir));
-        miter_a = m;
-        scale_a = 1.0 / max(dot(m, n_seg), 1.0 / MITER_LIMIT);
+        if (-dot(dir, d_prev) > MITER_BREAK_COS) {
+            ext_a = r_a;
+        } else {
+            let m_tan = normalize(d_prev + dir);
+            miter_a = perp(m_tan);
+            scale_a = 1.0 / max(dot(m_tan, d_prev), MITER_BREAK_COS);
+        }
     }
     var miter_b = n_seg;
     var scale_b = 1.0;
     if (nn_gp != next_gp) {
         let d_next = normalize(sn - sb);
-        let m = perp(normalize(dir + d_next));
-        miter_b = m;
-        scale_b = 1.0 / max(dot(m, n_seg), 1.0 / MITER_LIMIT);
+        if (-dot(dir, d_next) > MITER_BREAK_COS) {
+            ext_b = r_b;
+        } else {
+            let m_tan = normalize(dir + d_next);
+            miter_b = perp(m_tan);
+            scale_b = 1.0 / max(dot(m_tan, d_next), MITER_BREAK_COS);
+        }
     }
-
-    // Tampas: um EXTREMO de traço aberto marcado `Flat` corta reto (sem estender além
-    // do ponto). Tampa Round estende `r` ao longo da reta → a distância clampada
-    // desenha a meia-lua. Junções internas NÃO estendem (o miter conecta a fita).
-    let is_start = (li == 0u) && !closed;
-    let is_end = (next_gp == last) && !closed;
-    let round_start = is_start && ((st.flags & FLAG_START_FLAT) == 0u);
-    let round_end = is_end && ((st.flags & FLAG_END_FLAT) == 0u);
-    let ext_a = select(0.0, r_a, round_start);
-    let ext_b = select(0.0, r_b, round_end);
 
     // Quad = 2 triângulos [0,1,2, 2,1,3]; idx 0=(a,esq) 1=(a,dir) 2=(b,esq) 3=(b,dir).
     var idx = ci;
@@ -185,9 +215,11 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
         out.thickness = 2.0 * r_a;
     }
 
-    // Ordem 2D (GP §2): profundidade por-traço = (2·sid+2)·2e-7, teste GreaterEqual.
-    // O sid maior tem depth estritamente maior e ganha; no MESMO depth (auto-overlap)
-    // a parte desenhada depois compõe por cima. Fill do traço em (2·sid+1), abaixo.
+    // Ordem 2D (GP §2): profundidade por-traço = (2·sid+2)·2e-7, teste GREATER
+    // estrito. O sid maior tem depth estritamente maior e ganha; no MESMO depth
+    // (sobreposição do próprio traço) a 2ª face é descartada — o traço pinta uma
+    // vez, nunca acumula ("the stroke cannot overlap itself", gpencil_vert.glsl).
+    // Fill do traço em (2·sid+1), abaixo.
     out.clip = to_clip(corner);
     out.clip.z = f32(2u * sid + 2u) * 2e-7;
     out.ss_p1 = sa;
@@ -229,6 +261,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let aa = max(fwidth(dn), 1e-4);
     let mask = hardness_mask(dn, in.hardness, aa);
     let alpha = in.color.a * in.opacity * mask;
+    // Fragmento ~transparente é DESCARTADO (GP `gpencil_frag.glsl`: a < 0.001) —
+    // senão ele ESCREVE depth e fura a geometria sobreposta que chega depois (o
+    // canto vazio do quad viraria um buraco no traço vizinho).
+    if (alpha < 0.001) {
+        discard;
+    }
     // Saída PREMULTIPLICADA (blend = One, OneMinusSrcAlpha).
     return vec4<f32>(in.color.rgb * alpha, alpha);
 }

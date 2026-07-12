@@ -572,6 +572,59 @@ fix); candidato natural a W3/edit-mode. NÃO foi feito nesta rodada.
 > redonda sem miter, sem double-blend, e alpha correto com hardness baixo. Ref viva:
 > `/home/enio/Downloads/blender-5.2-grease-pencil-ref` → `draw_grease_pencil_lib.glsl`.
 
+## Rodada 7 (2026-07-11, sessão posterior) — rasterização do traço **FECHADA** (o tripé do GP)
+
+**A 1ª tarefa do `HANDOFF_flip_NEXT.md` §3 está resolvida.** O caminho recomendado
+lá (fita conectada + bevel/miter_break + GREATER estrito + fragment analítico) era
+o certo, com uma correção: com corner type **ROUND** (o default do GP,
+`GP_CORNER_TYPE_ROUND_BITS = 0`) o fragment **não precisa de p0/p3** — a distância
+clampada que já tínhamos É a junção redonda; p0/p3 só serve aos corner types
+bevel/miter por-ponto, que não portamos. O que faltava eram DUAS peças no resto do
+tripé:
+
+1. **`miter_break` no vertex** (`gpencil_vertex`, `draw_grease_pencil_lib.glsl:696-724`):
+   virada > 120° (`-dot(dir_in, dir_out) > 0.5`) NÃO mitra — o offset fica na
+   perpendicular do próprio segmento e o quad **estende `r` ao longo da linha**
+   (o `screen_ofs += line * x` do GP). A fita nunca dobra (fim do bowtie/spike);
+   o esticão do miter nas quinas ≤ 120° é ≤ 2 por construção (o clamp
+   `MITER_LIMIT=4` antigo saiu). `flip.wgsl` vertex.
+2. **`discard` de fragmento ~transparente** (`gpencil_frag.glsl:548`:
+   `a < 0.001`): sem ele, fragmento com alpha≈0 ESCREVE depth e fura a geometria
+   sobreposta que chega depois — **era o mecanismo exato do "escamado" do beco #3**
+   (stadium + GREATER), que a matriz do handoff dava como beco sem explicação.
+   `flip.wgsl` fragment + `flip_fill.wgsl` (paridade: o frag do GP é compartilhado).
+3. **GREATER estrito** (era GreaterEqual): `pipeline.rs::depth_greater`
+   (renomeada). Estado EXATO do GP 2D (`gpencil_cache_utils.cc:449`).
+
+**Mudança de semântica DELIBERADA (flag pro smoke):** auto-cruzamento agora pinta
+**uma vez** — a parte desenhada PRIMEIRO fica por cima ("the stroke cannot overlap
+itself", `gpencil_vert.glsl:92-96` — o default do GP; com cor sólida é união
+invisível). O "parte nova por cima" da 3ª rodada é **incompatível** com
+zero-acúmulo no mesmo depth; o GP resolve com o modo opcional de material
+`GP_STROKE_OVERLAP` (depth por-PONTO, aceita acumular) — não portado; se o Enio
+quiser, é um flag de stroke + 1 linha no depth do vertex.
+
+**Oráculo novo (a alavanca que faltava): paridade CPU↔GPU pixel-a-pixel.**
+`gpu_render.rs::assert_matches_analytic` replica a geometria do vertex (quads
+miter/break/ext, ponto-no-triângulo como o raster) + a máscara do fragment na CPU
+e compara TODO o alvo (fundo incluso; pula só faixa de aresta e limiar de
+discard). Qualquer classe de artefato — bead, escama, spike, acúmulo, furo —
+diverge. **Mutações provadas** (asserção-vermelha real): `GreaterEqual` de volta →
+hairpin desvio 248 + cruzamento 191 (o acúmulo 0.75); `discard` removido →
+desvio 254 no canto estendido que o traço cruza de volta.
+
+**Gate:** 23 verdes em debug E `--release` (12 unit + 2 composite e2e + 9 GPU:
+oráculo hairpin-com-cross-back + oráculo arco-suave + união do auto-cruzamento +
+os 6 anteriores adaptados). `rustup run 1.95 cargo fmt --check` + clippy
+`--all-targets` limpos. Diff: só `ph2d-flip-render` (flip.wgsl, flip_fill.wgsl,
+pipeline.rs, tests/gpu_render.rs) — zero shell, zero foundational, zero contrato.
+
+**Pendente do fechamento: smoke visual do Enio** (zigzag/curva/cruzamento com
+hardness alto E baixo):
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && cargo run -p ph2d-host-desktop --release
+```
+
 ## Smoke do Enio (2026-07-11, 6ª rodada) — acúmulo de cor nas QUINAS (spikes/estrelas)
 
 **Quinas afiadas acumulavam cor (spike/estrela na bissetriz); cruzamentos não** ✅ — o Enio

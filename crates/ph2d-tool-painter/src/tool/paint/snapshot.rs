@@ -248,7 +248,6 @@ impl PainterTool {
             impasto_show: self.paint.impasto_show,
             impasto_light_angle_deg: self.paint.impasto_light_angle_deg,
             impasto_light_elev_deg: self.paint.impasto_light_elev_deg,
-            impasto_light_amount: self.paint.impasto_light_amount,
             impasto_shine: self.paint.impasto_shine,
         }
     }

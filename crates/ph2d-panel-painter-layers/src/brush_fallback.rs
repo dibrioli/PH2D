@@ -204,6 +204,5 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     impasto_show: true,
     impasto_light_angle_deg: 135,
     impasto_light_elev_deg: 45,
-    impasto_light_amount: 0.5, // LITERAL-PX-OK: default height-to-slope (mirrors PaintState::default)
     impasto_shine: 0.3, // LITERAL-PX-OK: default specular strength (mirrors PaintState::default)
 };

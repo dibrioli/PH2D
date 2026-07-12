@@ -27,14 +27,21 @@
 use super::Region;
 use crate::tool::PainterTool;
 
-/// Slope gain at Amount = 1: how steep a wall a height step of 1.0 across one pixel becomes.
+/// How many CANVAS PIXELS of physical paint height `h = 1.0` (one full-Depth stroke) represents.
 ///
-/// **Measured, not guessed.** The first cut used `8.0`, chosen by taste, and the relief came out
-/// FLAT — because a real stroke's steepest slope is only ~0.026 height-units per pixel, which at
-/// gain 8 tilts the normal about 6°: nothing. Calibrated against an actual dragged stroke
-/// (`flat_probe_exact_smoke_arming`): at 40 the shading moves the pixels ~90 levels, which reads as
-/// thick paint. The relative-shading bounds (`AMBIENT`..2×) keep it from blowing out. // CLAMP-OK
-const SLOPE_GAIN: f32 = 40.0;
+/// This is the industry's decomposition of the height-to-slope gain — *a physical height over the
+/// texel size*, the Blender Bump node's `Distance`, Substance's "Height Depth (cm)", HDRP's
+/// amplitude-in-centimetres (`docs/Painter/17_impasto_deposito_pesquisa2.md` §4) — instead of a
+/// unitless fudge. The slope is then geometry: `∇h × DEPTH_UNIT_PX` height-pixels per pixel, no
+/// gain knob multiplying it (Substance Painter exposes none either; the deposit value is the knob).
+///
+/// The number itself is perceptual and MEASURED on the probe (`probe`-family tests): the default
+/// soft brush at r=40 lays its wall over the falloff's `W_TAIL..W_SOLID` band, ~11 px — so at 16,
+/// a Depth 0.7 stroke is ~11 px of paint falling over ~11 px of wall: the classic 45° bevel, and
+/// the probe's shading peak sits ON that wall (42% → edge band) instead of inside the stroke. It
+/// has a way to be wrong now: if strokes read taller or flatter than `DEPTH_UNIT_PX` pixels of
+/// real paint would, this constant is lying. // CLAMP-OK
+const DEPTH_UNIT_PX: f32 = 16.0;
 
 /// Blinn-Phong shininess exponent. Tight enough that the highlight rides the *crest* of a ridge
 /// instead of washing over its flanks. // CLAMP-OK
@@ -61,20 +68,37 @@ const AMBIENT: f32 = 0.35;
 ///
 /// The pass multiplies the composited pixel — and at a stroke's translucent edge that pixel is mostly
 /// **paper showing through the paint**. Shading it in full means shading the paper: on a white canvas
-/// `×1.65` bleaches a pale pink straight to white, which is the halo Enio photographed (2026-07-12),
-/// and which measured HARDER at the edge (81 levels at 20–60% ink) than at the core (55 at 80–100%).
-/// It vanished on a black canvas, because there is nothing white to bleach — the tell that gave it away.
+/// that bleach was the halo Enio photographed (2026-07-12; 81 levels at the 20–60%-ink edge vs 55 at
+/// the core, gone on black canvas). So the effect is weighted by the paint's own coverage, and bare
+/// paper gets exactly none — the pass stays a strict no-op there.
 ///
-/// So the effect is weighted by the paint's own coverage: at 30% paint, 30% of the shading. Bare paper
-/// gets exactly none, and the pass is a strict no-op there. The coverage also scales the SLOPE — a film
-/// of paint drapes, it does not stand up in ridges — so a thin tail with a per-texel grain, whose
-/// micro-slopes are as steep as a real ridge's, dies off quadratically instead of catching hard shadows.
-///
-/// Height cannot stand in for this: height is `Depth × coverage`, so a small value cannot tell thin
-/// paint from a lot of paint laid thinly. That conflation is what the first cut got wrong.
+/// But the weight is the deposit's own [`ph2d_painter_brush::height::body_profile`], on the SAME
+/// thresholds: nothing over the stain (≤ `W_TAIL` coverage — where the wall does not stand, the
+/// light does not push), full over solid paint (≥ `W_SOLID`), the ramp between. One curve, one
+/// definition of "solid paint", both sides of the pipeline. The first cut instead weighted linearly
+/// to 100% AND multiplied the slope by the same factor — a quadratic mute that melted the shoulder
+/// of every soft brush (the "hard to adjust" verdict; measured in §10 of the plan). The slope no
+/// longer carries any mute: the body curve already ends the relief where the paint gets thin, so
+/// the geometry is real wherever it is nonzero.
 #[inline]
 fn paint_body(cover: u8) -> f32 {
-    f32::from(cover) / 255.0
+    ph2d_painter_brush::height::body_profile(f32::from(cover) / 255.0)
+}
+
+/// How the SPECULAR scales with the paint — a harder curve than [`paint_body`]: the glint rides the
+/// **film** (the crests on solid paint), never the wall or the stain.
+///
+/// The diffuse term models the wall fine — its multiply is bounded and fades with the body. The
+/// highlight is an ADD of near-white, and on a semi-translucent pixel it whitens the paper showing
+/// through: with the slope now unmuted, `Shine` at its default put the glint on the shoulder and
+/// bleached the rim — the photographed white halo, back through the other door
+/// (`impasto_light_shades_the_paint_not_the_paper_showing_through_it` went red at 20% survival).
+/// Zero below solid coverage, full only where the film is complete.
+#[inline]
+fn gloss_body(cover: u8) -> f32 {
+    let w_solid = ph2d_painter_brush::height::W_SOLID;
+    let t = ((f32::from(cover) / 255.0 - w_solid) / (1.0 - w_solid)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
 }
 
 /// The relief + coverage the light reads, sampled straight out of the layer store — no composed buffer,
@@ -92,7 +116,9 @@ struct ReliefFields<'a> {
 
 impl ReliefFields<'_> {
     /// Height at a canvas pixel, clamped to the canvas (so the central difference can read across the
-    /// dirty rect's edge exactly as a full recompose would).
+    /// dirty rect's edge exactly as a full recompose would) — and to the glass ceiling, so the LIVE
+    /// stroke over an already-full pile shows the same paint the commit is about to store (no pop at
+    /// pen-up), and stacked layers top out exactly as stacked strokes do.
     #[inline]
     fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
@@ -100,7 +126,7 @@ impl ReliefFields<'_> {
         for (field, _) in &self.committed {
             h += field[i];
         }
-        h
+        h.clamp(-super::impasto::H_CEIL, super::impasto::H_CEIL)
     }
 
     /// Paint coverage at a canvas pixel — the MAX over the layers, not the sum.
@@ -136,14 +162,12 @@ struct Light {
     spec_lut: [f32; SPEC_LUT],
     /// Half-vector between the light and the (orthographic) view direction `(0, 0, 1)`.
     half: [f32; 3],
-    /// Slope gain (Amount × [`SLOPE_GAIN`]).
-    gain: f32,
     /// Specular strength (Shine).
     shine: f32,
 }
 
 impl Light {
-    fn new(angle_deg: u16, elev_deg: u16, amount: f32, shine: f32) -> Self {
+    fn new(angle_deg: u16, elev_deg: u16, shine: f32) -> Self {
         // Transcendental-free (HR-5): the shared 1°-step rotor, the same one the brush's Jitter Rotate
         // and per-slot Angle are built from.
         let elev = elev_deg.clamp(MIN_ELEV_DEG, 90);
@@ -173,24 +197,25 @@ impl Light {
             flat_spec,
             spec_lut,
             half,
-            gain: amount.clamp(0.0, 1.0) * SLOPE_GAIN,
             shine: shine.clamp(0.0, 1.0),
         }
     }
 
-    /// Shade one pixel from its height gradient and the amount of paint (`h`) actually there. Returns
+    /// Shade one pixel from its height gradient and the paint actually there: `body` weights the
+    /// diffuse modelling ([`paint_body`]), `gloss` the highlight ([`gloss_body`] — film only). Returns
     /// `(multiply, add)`: the composite's RGB is `rgb × multiply + add`. A FLAT pixel — or one with no
     /// real body of paint — returns exactly `(1.0, 0.0)`.
     #[inline]
-    fn shade(&self, body: f32, dhx: f32, dhy: f32) -> (f32, f32) {
+    fn shade(&self, body: f32, gloss: f32, dhx: f32, dhy: f32) -> (f32, f32) {
         if (dhx == 0.0 && dhy == 0.0) || body <= 0.0 {
             return (1.0, 0.0); // flat paint — or bare paper — is untouched, to the byte
         }
-        // Surface normal from the gradient: a rising slope tilts the normal AGAINST the rise. The slope
-        // is scaled by the BODY — a film of paint drapes, it does not stand up in ridges — so the
-        // brush's invisible falloff tail flattens out quadratically instead of catching hard shadows.
+        // Surface normal from the gradient: a rising slope tilts the normal AGAINST the rise. The
+        // slope is GEOMETRY — the height buffer's unit converted to pixels ([`DEPTH_UNIT_PX`]) — with
+        // no gain and no coverage mute: the body curve already ends the relief where the paint thins,
+        // so wherever the gradient is nonzero there is real paint standing there.
         let n = {
-            let v = [-dhx * self.gain * body, -dhy * self.gain * body, 1.0];
+            let v = [-dhx * DEPTH_UNIT_PX, -dhy * DEPTH_UNIT_PX, 1.0];
             let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-6);
             [v[0] / len, v[1] / len, v[2] / len]
         };
@@ -203,9 +228,10 @@ impl Light {
         let ndh = n[0] * self.half[0] + n[1] * self.half[1] + n[2] * self.half[2];
         let i = (ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize;
         let mut add = self.shine * (self.spec_lut[i] - self.flat_spec).max(0.0);
-        // Fade the whole effect in with the body, so the pass is a strict no-op on bare canvas.
+        // Fade the modelling in with the body — and the glint with the FILM — so the pass is a
+        // strict no-op on bare canvas and the highlight never lands on paper seen through paint.
         mul = 1.0 + (mul - 1.0) * body;
-        add *= body;
+        add *= gloss;
         (mul, add)
     }
 }
@@ -297,7 +323,6 @@ impl PainterTool {
         let light = Light::new(
             self.paint.impasto_light_angle_deg,
             self.paint.impasto_light_elev_deg,
-            self.paint.impasto_light_amount,
             self.paint.impasto_shine,
         );
         let at = |x: i64, y: i64| fields.height_at(x, y);
@@ -310,7 +335,8 @@ impl PainterTool {
                 // dirty-rect update lights its border exactly as a full recompose would.
                 let dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
                 let dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
-                let (mul, add) = light.shade(paint_body(cover_at(gx, gy)), dhx, dhy);
+                let cover = cover_at(gx, gy);
+                let (mul, add) = light.shade(paint_body(cover), gloss_body(cover), dhx, dhy);
                 if mul == 1.0 && add == 0.0 {
                     continue; // flat: byte-identical, and not even a rounding trip through f32
                 }

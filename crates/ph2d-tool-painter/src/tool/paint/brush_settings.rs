@@ -376,8 +376,6 @@ pub struct BrushSettings {
     pub impasto_light_angle_deg: u16,
     /// Light **Elevation** (whole degrees above the canvas plane) — canvas-level.
     pub impasto_light_elev_deg: u16,
-    /// Light **Amount** (`0..1`, height-to-slope) — canvas-level.
-    pub impasto_light_amount: f32,
     /// **Shine** (`0..1`, specular strength) — canvas-level.
     pub impasto_shine: f32,
 }

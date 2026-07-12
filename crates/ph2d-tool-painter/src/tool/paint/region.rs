@@ -56,3 +56,18 @@ impl PainterTool {
         self.mark_dirty(*rect);
     }
 }
+
+/// Smallest region covering both `a` and `b` — the routes' dirty-rect fold (every stamp route
+/// imports it as `super::union_region`; moved here from `paint.rs` for the workspace file-LOC cap).
+pub(super) fn union_region(a: Region, b: Region) -> Region {
+    let x0 = a.x.min(b.x);
+    let y0 = a.y.min(b.y);
+    let x1 = (a.x + a.w).max(b.x + b.w);
+    let y1 = (a.y + a.h).max(b.y + b.h);
+    Region {
+        x: x0,
+        y: y0,
+        w: x1 - x0,
+        h: y1 - y0,
+    }
+}

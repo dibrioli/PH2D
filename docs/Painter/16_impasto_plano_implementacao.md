@@ -315,8 +315,48 @@ persistência do `h` no `ProjectState` (herda o gap conhecido: o save já não p
 degenerado do Corel Thick Paint, pesquisa 2 §3.6) · Composite Depth por camada · luz na GPU · relevo do
 papel (ordem nova do Enio) · persistência do `h`.
 
-### 10.1 Números do fechamento — A PREENCHER quando T4.7 rodar
+### 10.1 LANDOU (2026-07-12) — números medidos do fechamento, e onde a implementação DIVERGIU do §10
 
-O "antes" já está medido (probe da abertura, tabela no topo do §10). O "depois" entra aqui **somente
-com o probe re-rodado** — números inventados não entram em doc
-([[feedback_no_industrial_claims_without_verification]]).
+Probe re-rodado (mesmo cenário da abertura — soft default r=40, Depth 0.7, elev 45°, diffuse-only,
+`--release`; a probe varre **só o lado iluminado**, em tinta escura — o teto físico desse lado a
+elev 45° é mul ≤ 1/0.707, ~14 níveis em tinta escura; o range do look mora no lado da sombra, −65%,
+e no glint):
+
+| métrica | antes (domo) | depois (corpo) |
+|---|---|---|
+| pico de \|Δ\| no soft | 7.3 níveis a **31%** da meia-largura | **13.0 níveis a 42%** — em cima da PAREDE |
+| \|Δ\| na borda visível (15% cover) | 1.0 nível | **0.0** (o véu não carrega relevo — halo impossível) |
+| concentração (linhas com \|Δ\|≥3) | 62% da largura (borrão) | **22%** (borda) |
+| perfil de h (spine→50%→75%→90% da meia-largura) | 0.70 → 0.39 → 0.16 → 0.07 | **0.70 → 0.37 (meio da parede) → 0.00 → 0.00** |
+| disco duro | pico 10.3 a 97%, interior 0 | **12.0 a 97%, interior 0** (intacto) |
+
+**Perf:** impasto **1.79 ms/move** @2048² r100 (`impasto_perf_kill_criterion`; alvo ≤4, kill 8).
+**Suítes:** 239 `ph2d-painter-brush` + 584 `ph2d-tool-painter` + painel + editor-core, tudo verde;
+byte-identidade OFF, barreira do Watercolor, Tiling/Symmetry, RNG, eraser, undo — intactos.
+
+**Divergências do §10 (decisões, não desvios — cada uma tem motivo e gate):**
+
+1. **Os knots subiram: `W_TAIL/W_SOLID = 0.35/0.75`** (o §10 propunha 0.10/0.35). Com a parede no
+   véu translúcido (10–35% de tinta), a iluminação forte dela multiplicava pixels que são
+   majoritariamente PAPEL — o gate do halo (`impasto_light_shades_the_paint_not_the_paper…`) ficou
+   vermelho em 20% de sobrevivência. O bevel do Photoshop é **inner** (corre da borda do matte para
+   dentro, sobre pixels sólidos) pelo mesmo motivo: a parede sobe em tinta pigmentada (35–75%), e o
+   véu fica plano com o pigmento intacto.
+2. **O glint ganhou curva própria (`gloss_body`): specular SÓ no filme** (cobertura ≥ `W_SOLID`,
+   rampa até 1). Com a inclinação sem mute, o Shine default punha o brilho na parede
+   semi-translúcida e branqueava o véu — o halo voltando pela porta do specular. O diffuse continua
+   modelando a parede; o glint cavalga a crista, que é a frase que já estava no comentário do
+   `SHININESS`.
+3. **`DEPTH_UNIT_PX = 16`** (Depth 0.7 ≈ 11 px de tinta sobre ~11 px de parede = bevel de 45°).
+4. **O corduroy do ViewPlane foi ATENUADO, não morto** (fase-variância 1.0 → 0.70): com o corpo, os
+   dabs sobrepostos ofertam platô cheio e o envelope guarda mais grão e menos fase — mas grão
+   dab-relativo continua errado para `Depth Source: Grain` (gate re-derivada com os dois números e
+   anti-vacuidade de textura na spine, medida 0.043).
+5. **`paint.rs` estourou o teto de LOC do workspace (709/700) — dívida herdada** (o gate já estava
+   vermelho no HEAD recebido, 712): `union_region` movido para o irmão `region.rs` (697/700).
+
+**Gates novas (vermelho provado por mutação):** `impasto_soft_stroke_reads_as_a_body_with_an_edge`
+(4 claims da definição de corpo — platô ≥0.98·spine a 25%, véu 0.0, concentração ≤40%, pico ≥8 na
+parede; mutação A = `body_profile→identidade` reprova no platô) ·
+`impasto_strokes_pile_up_only_to_the_glass` (3 cargas cheias = 2.0; mutação B = sem clamp reprova
+em 3.0).

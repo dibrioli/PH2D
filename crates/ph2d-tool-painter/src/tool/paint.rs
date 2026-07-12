@@ -482,9 +482,6 @@ pub(crate) struct PaintState {
     /// **Light Elevation** in whole degrees above the canvas plane. Low = long dramatic shadows across
     /// the tooth; high = flat, even light. Clamped away from 0 (a grazing light divides by ~0).
     impasto_light_elev_deg: u16,
-    /// **Amount** (`0..1`) — how strongly the relief bends the surface normal (height-to-slope). `0` =
-    /// the relief is there but invisible; `1` = thick, sculptural paint.
-    impasto_light_amount: f32,
     /// **Shine** (`0..1`) — strength of the specular highlight riding the crests. `0` = matte paint
     /// (watercolour/gouache), high = wet oil.
     impasto_shine: f32,
@@ -691,22 +688,10 @@ impl PainterTool {
     // the sibling `stamp_preview` module (workspace file-LOC cap).
 }
 
-/// Smallest region covering both `a` and `b`.
-fn union_region(a: Region, b: Region) -> Region {
-    let x0 = a.x.min(b.x);
-    let y0 = a.y.min(b.y);
-    let x1 = (a.x + a.w).max(b.x + b.w);
-    let y1 = (a.y + a.h).max(b.y + b.h);
-    Region {
-        x: x0,
-        y: y0,
-        w: x1 - x0,
-        h: y1 - y0,
-    }
-}
-
 // The `impl CanvasPaintTool` pointer entry point (`on_canvas_pointer`) lives in the sibling
 // `canvas_pointer` module (workspace file-LOC cap); it drives the private stroke-lifecycle methods above.
+// `union_region` (the routes' dirty-rect fold) lives in the sibling `region` for the same reason.
+use region::union_region;
 
 #[cfg(test)]
 mod tests;

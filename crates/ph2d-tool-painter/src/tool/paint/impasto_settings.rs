@@ -75,10 +75,6 @@ impl PainterTool {
                 self.set_impasto_light_elevation(*v as f32);
                 true
             }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_AMOUNT => {
-                self.set_impasto_light_amount(*v as f32);
-                true
-            }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_SHINE => {
                 self.set_impasto_shine(*v as f32);
                 true
@@ -156,12 +152,6 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
-    /// **Amount** — how strongly the relief bends the normal.
-    pub fn set_impasto_light_amount(&mut self, v: f32) {
-        self.paint.impasto_light_amount = v.clamp(0.0, 1.0);
-        self.invalidate_composite();
-    }
-
     /// **Shine** — the specular highlight on the crests.
     pub fn set_impasto_shine(&mut self, v: f32) {
         self.paint.impasto_shine = v.clamp(0.0, 1.0);
@@ -183,7 +173,6 @@ impl PainterTool {
         self.paint.impasto_show = true;
         self.paint.impasto_light_angle_deg = 135;
         self.paint.impasto_light_elev_deg = 45;
-        self.paint.impasto_light_amount = 0.5;
         self.paint.impasto_shine = 0.3;
         self.invalidate_composite();
     }

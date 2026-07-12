@@ -55,9 +55,9 @@ pub const PAINTER_IMPASTO_LIGHT_ANGLE: NodeId = hash_node_id("painter_brush.impa
 /// **Elevation** in whole degrees (`5..90`) above the canvas plane. Low = long raking shadows.
 /// `SetValue` → `set_impasto_light_elevation`.
 pub const PAINTER_IMPASTO_LIGHT_ELEV: NodeId = hash_node_id("painter_brush.impasto_light_elev");
-/// **Amount** (`0..1`) — how strongly the relief bends the normal (height-to-slope).
-/// `SetValue` → `set_impasto_light_amount`.
-pub const PAINTER_IMPASTO_LIGHT_AMOUNT: NodeId = hash_node_id("painter_brush.impasto_light_amount");
+// (There deliberately is NO "Amount" here: it was a second gain over the same percept as the brush's
+// Depth — the two scaled one another and the panel read as "hard to adjust". The slope is now pure
+// geometry, `DEPTH_UNIT_PX` in the light pass; `docs/Painter/17_impasto_deposito_pesquisa2.md` §5–6.)
 /// **Shine** (`0..1`) — the specular highlight riding the crests. `0` = matte, high = wet oil.
 /// `SetValue` → `set_impasto_shine`.
 pub const PAINTER_IMPASTO_SHINE: NodeId = hash_node_id("painter_brush.impasto_shine");
@@ -77,11 +77,10 @@ pub const PAINTER_IMPASTO_CLICKS: [NodeId; 8] = [
 
 /// The Impasto **SetValue** number-fields — one membership check for the panel's number-field forward
 /// (`is_param_field`) and its register loop.
-pub const PAINTER_IMPASTO_FIELDS: [NodeId; 6] = [
+pub const PAINTER_IMPASTO_FIELDS: [NodeId; 5] = [
     PAINTER_IMPASTO_DEPTH,
     PAINTER_IMPASTO_SMOOTHING,
     PAINTER_IMPASTO_LIGHT_ANGLE,
     PAINTER_IMPASTO_LIGHT_ELEV,
-    PAINTER_IMPASTO_LIGHT_AMOUNT,
     PAINTER_IMPASTO_SHINE,
 ];

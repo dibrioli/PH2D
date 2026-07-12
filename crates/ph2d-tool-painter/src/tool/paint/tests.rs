@@ -17152,7 +17152,6 @@ fn impasto_light_reads_as_raised_not_engraved() {
     }
     t.paint.impasto_light_angle_deg = 180; // from the LEFT (-x)
     t.paint.impasto_light_elev_deg = 30;
-    t.paint.impasto_light_amount = 1.0;
     t.paint.impasto_shine = 0.0; // isolate the diffuse term — the highlight is a separate question
     // A vertical ridge of paint down the middle.
     t.on_canvas_pointer(cp([30.0, 10.0], PointerPhase::Down));
@@ -17165,10 +17164,20 @@ fn impasto_light_reads_as_raised_not_engraved() {
         let i = ((y * size + x) * 4) as usize;
         (u32::from(img[i]) + u32::from(img[i + 1]) + u32::from(img[i + 2])) as f32 / 3.0
     };
-    // Find the flanks: the ridge is ~6 px either side of x=30.
+    // The flanks are FOUND from the relief itself — its steepest wall on each side of the crest. With
+    // the body curve the interior is a PLATEAU, so a fixed offset (the old `25`/`35`) lands on flat
+    // paint and asserts about nothing.
     let hx = |x: u32| h[(30 * size + x) as usize];
     assert!(hx(30) > 0.0, "the ridge is there");
-    let (left_flank, right_flank) = (25u32, 35u32); // inside the falloff, either side of the crest
+    let steepest = |xs: std::ops::Range<u32>| {
+        xs.max_by(|&a, &b| {
+            let ga = (hx(a + 1) - hx(a - 1)).abs();
+            let gb = (hx(b + 1) - hx(b - 1)).abs();
+            ga.partial_cmp(&gb).unwrap()
+        })
+        .expect("a non-empty search band")
+    };
+    let (left_flank, right_flank) = (steepest(2..30), steepest(31..size - 2));
     assert!(
         hx(left_flank) < hx(30) && hx(right_flank) < hx(30),
         "the fixture really is a ridge (it falls away on both sides)"
@@ -17565,7 +17574,6 @@ fn impasto_shadowed_paint_is_dark_but_never_black() {
     for slot in &mut t.paint.brush_by_mode {
         *slot = b;
     }
-    t.paint.impasto_light_amount = 1.0;
     t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Up));
@@ -17671,39 +17679,52 @@ fn dab_phase_variance(mapping: ph2d_painter_brush::TextureMapping) -> f32 {
 
 #[test]
 fn impasto_grain_relief_corrugates_unless_the_grain_is_anchored_to_the_canvas() {
-    // The ribs Enio saw across every stroke (2026-07-12), quantified — and NOT an engine bug, which is
-    // exactly why it needs a gate rather than a fix.
+    // The ribs Enio saw across every stroke (2026-07-12), quantified — and NOT an engine bug, which
+    // is exactly why it needs a gate rather than a fix.
     //
     // A **ViewPlane** grain is DAB-relative: each dab stamps the identical noise in its own frame. At
-    // 10% spacing the dabs overlap tenfold, so the height envelope repeats at exactly the dab pitch and
-    // the relief comes out CORRUGATED across the travel. Measured: **100%** of the height variance along
-    // the stroke is a pure function of `x mod spacing`. The colour path does this too — nobody notices,
-    // because coverage saturates; the relief keeps the envelope, so it shows.
+    // 10% spacing the dabs overlap tenfold, so the height envelope repeats at the dab pitch and the
+    // relief corrugates across the travel. Under the dome kernel that was ~100% of the along-stroke
+    // variance; the body curve attenuates it (every dab whose SOLID band covers the pixel bids full
+    // body, so the envelope keeps more of the grain and less of the silhouette's phase) — measured
+    // **0.70** now. Still corduroy, still the wrong arming for `DepthSource::Grain`.
     //
-    // Anchor the grain to the CANVAS (Tiled) and consecutive dabs bite different noise: **~2%**, and the
-    // marks read as bristle streaks ALONG the path — which is what a loaded brush actually leaves.
-    //
-    // So: `DepthSource::Grain` wants a canvas-anchored Grain. The smoke arms it that way, and this gate
-    // is here so that the day someone "simplifies" the mapping, the corduroy does not come back silently.
+    // Anchor the grain to the CANVAS (Tiled) and consecutive dabs bite different noise: **~0.02** —
+    // the marks read as bristle streaks ALONG the path, which is what a loaded brush leaves. The
+    // smoke arms it that way; this gate is here so the day someone "simplifies" the mapping, the
+    // corduroy does not come back silently.
     use ph2d_painter_brush::TextureMapping;
-    // ANTI-VACUITY, first. `dab_phase_variance` divides by the total variance — so if the relief were
-    // zero (which is EXACTLY what the Grain source was doing before the `GRAIN_GROOVE` fix), it returns
-    // 0 and the "must not corrugate" assertion below passes while proving nothing. This gate shipped
-    // green in that state for one commit. Never again: check there is relief to talk about.
+    // ANTI-VACUITY, twice. (1) `dab_phase_variance` divides by the total variance — a zero relief
+    // returns 0 and the "must not corrugate" assertions pass while proving nothing (this gate shipped
+    // green in exactly that state for one commit, pre-`GRAIN_GROOVE`). (2) A relief SATURATED flat by
+    // the envelope-of-many-bids would also pass them — so the centreline must still carry real groove
+    // texture, not a ceiling.
     assert!(
         relief_peak(TextureMapping::ViewPlane) > 0.15 && relief_peak(TextureMapping::Tiled) > 0.15,
         "sanity: both configurations actually lay down relief — else the ratios below are vacuous"
     );
+    let (line, _) = grain_relief_stroke(TextureMapping::Tiled);
+    let (lo, hi) = line
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(lo, hi), &v| (lo.min(v), hi.max(v)));
+    assert!(
+        hi - lo > 0.02,
+        "sanity: the canvas-anchored grooves are alive on the centreline (spread {:.3}) — a saturated \
+         ceiling would sit at ~0.000 and make the phase ratios below vacuous. (Measured 0.043 — the \
+         same under the dome kernel, since on the spine w = 1 and body(1) = 1: the grain-coverage fold \
+         compresses Noise more than a first guess says.)",
+        hi - lo
+    );
     let dab_relative = dab_phase_variance(TextureMapping::ViewPlane);
     let canvas_anchored = dab_phase_variance(TextureMapping::Tiled);
     assert!(
-        dab_relative > 0.8,
-        "a dab-relative grain DOES corrugate at the dab pitch — that is the physics this gate records \
-         (got {dab_relative:.2}, expected ~1.0)"
+        dab_relative > 0.5,
+        "a dab-relative grain DOES still corrugate at the dab pitch — that is the physics this gate \
+         records (got {dab_relative:.2}; ~1.0 under the dome kernel, 0.70 under the body curve)"
     );
     assert!(
         canvas_anchored < 0.2,
-        "a canvas-anchored grain must NOT corrugate: consecutive dabs have to bite different noise \
+        "a canvas-anchored grain must NOT corrugate: consecutive dabs bite different noise \
          (got {canvas_anchored:.2}, expected ~0.02)"
     );
 }
@@ -17866,7 +17887,8 @@ fn impasto_grain_textures_the_body_instead_of_removing_it() {
     // paint; it deposits the paint, with GROOVES in it.
     //
     // (The other half was `SLOPE_GAIN`, which I had picked by taste at 8 — a real stroke's steepest
-    // slope is 0.026/px, so it tilted the normal 6° and lit nothing. Both were mine.)
+    // slope is 0.026/px, so it tilted the normal 6° and lit nothing. Both were mine. `SLOPE_GAIN` has
+    // since been retired for the physical `DEPTH_UNIT_PX` — impasto_light.rs tells that story.)
     use ph2d_painter_brush::{TextureKind, TextureMapping};
     let body = |grain: bool| -> (f32, f32) {
         let size = 240u32;
@@ -18496,5 +18518,137 @@ fn impasto_light_shades_the_paint_not_the_paper_showing_through_it() {
          the PAPER showing through, and it is the white halo Enio photographed (it vanished on a black \
          canvas, because there was nothing white to bleach)",
         worst_survival * 100.0
+    );
+}
+
+#[test]
+fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
+    // THE appearance gate of the Fase 4 redesign (plan §10, T4.5) — derived from the DEFINITION of
+    // thick paint, not from the shader ([[feedback_oracle_must_model_appearance_not_implementation]]):
+    // a body of paint has a level top, a wall at its edge, and a stain that carries no relief. The
+    // DEFAULT brush (hardness 0, Smooth — the one Enio actually smokes with) must read that way.
+    //
+    // Every threshold here was RED under the dome kernel, by the opening measurements (plan §10):
+    // the dome curved everywhere (no plateau, tail relief 0.07, shading smeared over 62% of the
+    // stroke's width with its weak peak — 7.3 levels — at 31%, nothing at the edge).
+    let size = 160u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.radius_px = 40.0;
+    b.impasto_depth = 0.7;
+    b.impasto_source = DepthSource::Uniform; // isolate the body curve — grain is another gate
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.paint.impasto_light_angle_deg = 90; // straight across a horizontal stroke
+    t.paint.impasto_light_elev_deg = 45;
+    t.paint.impasto_shine = 0.0; // the diffuse modelling is the claim; the glint has its own gates
+    t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+    for i in 1..=8 {
+        t.on_canvas_pointer(cp(
+            [40.0 + 10.0 * f32::from(i as u8), 80.0],
+            PointerPhase::Move,
+        ));
+    }
+    t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+
+    let h = relief(&t);
+    let img = lit(&mut t);
+    t.paint.impasto_show = false;
+    t.invalidate_composite();
+    let base = lit(&mut t);
+    let active = t.layers.active().unwrap();
+    let cov = t.covers.get(&active).cloned().unwrap_or_default();
+
+    // Cross-section at mid-stroke, from the spine outward.
+    let x = 80u32;
+    let lum = |img: &[u8], y: u32| {
+        let i = ((y * size + x) * 4) as usize;
+        (u32::from(img[i]) + u32::from(img[i + 1]) + u32::from(img[i + 2])) as f32 / 3.0
+    };
+    let rows: Vec<(u32, u8, f32, f32)> = (80..160u32)
+        .map(|y| {
+            let i = (y * size + x) as usize;
+            (y - 80, cov[i], h[i], lum(&img, y) - lum(&base, y))
+        })
+        .collect();
+    let painted: Vec<&(u32, u8, f32, f32)> = rows.iter().filter(|r| r.1 > 4).collect();
+    let half_width = painted.last().expect("a painted cross-section").0;
+    let spine_h = rows[0].2;
+    assert!(spine_h > 0.6, "sanity: the stroke laid its full depth");
+
+    // 1. The top is a PLATEAU: at 25% of the half-width the paint is as thick as at the spine.
+    //    (Dome: ~0.86 of the spine there — curved from the very centre.)
+    let at = |frac: f32| {
+        let d = (frac * half_width as f32) as u32;
+        rows.iter().find(|r| r.0 == d).expect("inside the canvas")
+    };
+    assert!(
+        at(0.25).2 >= 0.98 * spine_h,
+        "the interior is a level film, not a dome (h {} at 25% vs spine {spine_h})",
+        at(0.25).2
+    );
+
+    // 2. The stain carries NO body: past 85% of the painted half-width the relief is zero.
+    //    (Dome: 0.065 there — relief over near-invisible paint, the halo's raw material.)
+    assert!(
+        at(0.85).2 == 0.0 && at(0.95).2 == 0.0,
+        "the translucent rim is FLAT ({} / {})",
+        at(0.85).2,
+        at(0.95).2
+    );
+
+    // 3. The light lives on the WALL: the response is concentrated (≤ 40% of the painted width moves
+    //    ≥ 3 levels; the dome smeared 62%), and its peak is a real edge, not a haze (≥ 8 levels;
+    //    the dome managed 7.3 with everything on).
+    let visible = painted.iter().filter(|r| r.3.abs() >= 3.0).count();
+    let concentration = visible as f32 / painted.len().max(1) as f32;
+    assert!(
+        concentration <= 0.40,
+        "the shading is concentrated at the edge, not smeared over the stroke ({:.0}% of the width)",
+        concentration * 100.0
+    );
+    let peak = rows
+        .iter()
+        .max_by(|a, b| a.3.abs().partial_cmp(&b.3.abs()).unwrap())
+        .unwrap();
+    assert!(
+        peak.3.abs() >= 8.0,
+        "the wall actually catches the light ({:.1} levels)",
+        peak.3.abs()
+    );
+    // …and the peak sits ON the wall (where the height is falling), not on the plateau.
+    let peak_h = rows.iter().find(|r| r.0 == peak.0).unwrap().2;
+    assert!(
+        peak_h < 0.95 * spine_h && peak_h > 0.0,
+        "the brightest response is on the wall itself (h {peak_h} at the peak, spine {spine_h})"
+    );
+}
+
+#[test]
+fn impasto_strokes_pile_up_only_to_the_glass() {
+    // T4.2 — Corel Painter documents the same limit: accumulated impasto "top[s] out and appear[s]
+    // as if the strokes are pressed against glass". Strokes ADD (a second stroke genuinely piles
+    // more on — `impasto_one_stroke_is_one_thickness_but_two_strokes_add` pins that), but not
+    // forever: without the ceiling, five loads make a mesa whose walls dwarf every brush-mark on
+    // top of it, which is the other road back to unreadable relief. RED without the clamp: h = 3.
+    let mut t = impasto_canvas(40);
+    let mut b = t.paint.brush;
+    b.impasto_depth = 1.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    for _ in 0..3 {
+        t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    }
+    let h = relief(&t)[(20 * 40 + 20) as usize];
+    assert!(
+        (h - 2.0).abs() < 1e-5,
+        "three full loads stop at the glass (two): got {h}"
     );
 }

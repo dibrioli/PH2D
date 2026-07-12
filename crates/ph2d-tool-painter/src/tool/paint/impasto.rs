@@ -307,7 +307,9 @@ impl PainterTool {
         let base = &self.paint.live_relief_base;
         if base.len() == field.len() {
             for (dst, add) in field.iter_mut().zip(base.iter()) {
-                *dst += add;
+                // Strokes ADD — up to the glass ceiling (see [`H_CEIL`]). A lone stroke never reaches
+                // it (`|depth| ≤ 1`), so the clamp only ever bites where strokes genuinely pile up.
+                *dst = (*dst + add).clamp(-H_CEIL, H_CEIL);
             }
         }
         if field.iter().all(|&v| v == 0.0) {
@@ -362,6 +364,15 @@ impl PainterTool {
         }
     }
 }
+
+/// The **glass ceiling** of accumulated paint, in units of a full-Depth stroke: two full loads.
+///
+/// Strokes ADD across each other (more paint IS thicker), but not forever — Corel Painter documents
+/// the same limit for its impasto buffer: *"the accumulated artwork will begin to top out and appear
+/// as if the strokes are pressed against glass"*. Unbounded stacking was the other road back to mush:
+/// the walls of a 5-stroke pile dwarf every brush-mark on top of it. Symmetric, so carving bottoms
+/// out at the same depth. // CLAMP-OK
+pub(super) const H_CEIL: f32 = 2.0;
 
 /// Radius, in pixels, of the settling blur at Smoothing = 1. Thick paint slumps a little, not into a
 /// puddle — past a few pixels the ridges stop reading as brush-marks. // CLAMP-OK

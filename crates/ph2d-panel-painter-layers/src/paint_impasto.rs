@@ -155,7 +155,9 @@ fn paint_lighting_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Lighting", 5);
+    // No "Amount" row: it was a second gain over the same percept as the brush's Depth (the pair that
+    // made the section read as "hard to adjust"). The slope is geometry now — see the light pass.
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Lighting", 4);
     ry = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,
@@ -193,20 +195,6 @@ fn paint_lighting_card(
         ELEV_MAX_DEG,
         DEG_STEP,
         0,
-    );
-    ry = card_row(
-        ctx,
-        theme,
-        ix,
-        iw,
-        ry,
-        "Amount",
-        core_ids::PAINTER_IMPASTO_LIGHT_AMOUNT,
-        brush.impasto_light_amount,
-        0.0,
-        UNIT_MAX,
-        number_field::FINE_STEP,
-        2,
     );
     let _ = card_row(
         ctx,

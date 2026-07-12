@@ -13,7 +13,8 @@
 //!
 //! Then: click the white canvas → the **Painter** pill → drag. The Impasto section (Brush panel) is
 //! already open with Enable ticked; the Lighting card drives the light live (Angle / Elevation /
-//! Amount / Shine), and **Depth** goes negative to carve instead of lift.
+//! Shine — there is no Amount any more: thickness is the brush's Depth, the slope is geometry), and
+//! **Depth** goes negative to carve instead of lift.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;

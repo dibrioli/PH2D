@@ -23,11 +23,10 @@
 /// its length exterminating. Cut before it was written.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DepthSource {
-    /// **Uniform** (default) — the Grain does *not* bite: the relief takes the dab's own silhouette
-    /// profile (`w`). A soft round brush lays a smooth ridge; a hard tip or a Shape image lays that
-    /// tip's profile. Constant across the falloff's plateau, so the interior of a stroke is level —
-    /// paint laid by a loaded, smooth brush. The Grain still textures the *pigment*; it just doesn't
-    /// shape the *body*.
+    /// **Uniform** (default) — the Grain does *not* bite: the relief is the dab's **body** — the
+    /// silhouette pushed through [`body_profile`], a level film with its wall at the paint's edge.
+    /// Corel Painter documents its Uniform the same way: *"applies brushstrokes with even depth and
+    /// little texture"*. The Grain still textures the *pigment*; it just doesn't carve the *body*.
     #[default]
     Uniform,
     /// **Grain** — the full dab mask (`w × g`): the Grain's striations become bristle marks in the
@@ -135,6 +134,45 @@ impl DrawTo {
     }
 }
 
+/// Coverage below which the paint carries NO body: everything thinner is the STAIN — pigment rubbed
+/// into the paper, not paint you could stand a wall on. It is deliberately high: the wall must rise
+/// INSIDE the pigmented part of the stroke (Photoshop's bevel runs from the matte's edge *inward*,
+/// over solid pixels, for the same reason) — a wall standing on the translucent rim gets its strong
+/// lighting multiplied into pixels that are mostly PAPER, which is the white-canvas halo all over
+/// again (`impasto_light_shades_the_paint_not_the_paper_showing_through_it` refuses it). // CLAMP-OK
+pub const W_TAIL: f32 = 0.35;
+
+/// Coverage at which the paint is a SOLID film: full thickness from here inward. Shared with the
+/// light pass (its coverage weighting rides the same [`body_profile`]), so "solid paint" is one
+/// concept with one pair of numbers on both sides of the pipeline. // CLAMP-OK
+pub const W_SOLID: f32 = 0.75;
+
+/// The **body curve**: how the dab's silhouette becomes the paint's *body*.
+///
+/// `h = depth × coverage × w` copies the colour's own soft profile into the relief — and for the
+/// default brush (hardness 0) that is a dome the full width of the stroke, which reads as a blur, not
+/// as paint (measured: shading peak 7.3 levels at 31% of the half-width; 1 level at the visible
+/// edge). Nobody in the state of the art does that: Photoshop's bevel is a distance profile from the
+/// coverage EDGE (Chisel), Blender's Layer brush caps at a fixed height ("creates the appearance of a
+/// flat layer"), Hertzmann (NPAR 2002) gives height its own texture, and Painter documents Uniform as
+/// "even depth". See `docs/Painter/17_impasto_deposito_pesquisa2.md` §3.
+///
+/// So the height gets its own profile: a **plateau** wherever the paint is solid (`w ≥ W_SOLID`),
+/// **nothing** over the stain (`w ≤ W_TAIL` — the translucent rim keeps its pigment and stays flat),
+/// and the **shoulder** — the wall the light lives on — in between, standing on pigment-backed
+/// pixels a little inside the stain's edge, the way a real paint film ends inside its own smear.
+/// Because a falloff is monotone in distance, remapping `w` IS a profile-in-distance (the bevel), it
+/// commutes with the stroke envelope's `max`, and rule 1 still holds: the height consumes exactly
+/// the silhouette the colour consumes. The shoulder's width follows the brush's own softness — a
+/// soft brush lays a softer body edge — which is the coupling that should exist; the dome was the
+/// one that shouldn't.
+#[inline]
+#[must_use]
+pub fn body_profile(w: f32) -> f32 {
+    let t = ((w - W_TAIL) / (W_SOLID - W_TAIL)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
 /// How deep the Grain's grooves cut into the body, with [`DepthSource::Grain`].
 ///
 /// The grain must **carve grooves out of a full body**, not scale the body away. The naive
@@ -230,9 +268,10 @@ pub fn envelope(a: f32, b: f32) -> f32 {
 /// [`crate::dab::silhouette_at`] / [`crate::dab::grain_at`]. Returns the touched rect, or `None` if
 /// the dab is off-canvas / deposits nothing.
 ///
-/// The deposited height is `depth × coverage × w` (or `× w × g` for [`DepthSource::Grain`]) — thickness
-/// is proportional to how much paint the dab actually lays down, which is why every knob that shapes
-/// the dab shapes the relief.
+/// The deposited height is `depth × coverage × body_profile(w)` (with the Grain notching grooves into
+/// that body for [`DepthSource::Grain`]) — thickness follows how much paint the dab lays down, through
+/// the paint's OWN profile (plateau + shoulder, [`body_profile`]), which is why every knob that shapes
+/// the dab still shapes the relief without the relief inheriting the colour's soft dome.
 ///
 /// ## The body is SWEPT along the path, not stamped as a disc
 ///
@@ -306,29 +345,35 @@ pub fn accumulate_dab_height(
             if w <= 0.0 {
                 continue;
             }
-            let mut a = w;
-            if use_grain && let Some(b) = dab.grain {
+            // The silhouette becomes the BODY through its own profile (plateau + shoulder) — the §10
+            // fix. The colour keeps the raw `w`; only the thickness is reshaped.
+            let mut a = body_profile(w);
+            if use_grain
+                && a > 0.0
+                && let Some(b) = dab.grain
+            {
                 // Grooves cut out of a FULL body — never `a *= g`. A grain's samples average well under
                 // half, so multiplying by it does not texture the paint, it removes two thirds of it.
-                // See [`GRAIN_GROOVE`].
+                // See [`GRAIN_GROOVE`]. With the body curve the grooves now notch a PLATEAU — bristle
+                // marks in a level film, the Painter/ArtRage signature — instead of mushing a dome.
                 let g = crate::dab::grain_at(spec, b, dab.grain_image, px, py, dab.center, radius);
                 a *= 1.0 - GRAIN_GROOVE * (1.0 - g.clamp(0.0, 1.0));
             }
-            let h = depth * coverage * a;
-            if h == 0.0 {
-                continue;
-            }
             let i = (py as usize) * (width as usize) + px as usize;
-            dst[i] = envelope(dst[i], h);
+            let h = depth * coverage * a;
+            if h != 0.0 {
+                dst[i] = envelope(dst[i], h);
+            }
             // How much PAINT is at this pixel — the silhouette × the dynamics, i.e. the coverage the
-            // colour path deposits. NOT the height: height mixes coverage with Depth, and the light needs
-            // to know how much of the pixel is paint and how much is the paper showing through it.
+            // colour path deposits. NOT the height (that now stops at the body's edge; the stain's tail
+            // keeps its pigment), and NOT `body`: the light needs to know how much of the pixel is paint
+            // and how much is the paper showing through it, over the whole stain.
             let c = (w * coverage).clamp(0.0, 1.0);
             let cb = (c * 255.0 + 0.5) as u8;
             if cb > cover[i] {
                 cover[i] = cb; // an envelope: paint coverage saturates, it does not accumulate
             }
-            touched = true;
+            touched = true; // a `w > 0` pixel was visited — the rect must cover the stain and the body
         }
     }
     if !touched {

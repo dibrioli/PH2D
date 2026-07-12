@@ -156,7 +156,6 @@ impl Default for PaintState {
             impasto_show: true,
             impasto_light_angle_deg: 135,
             impasto_light_elev_deg: 45,
-            impasto_light_amount: 0.5,
             impasto_shine: 0.3,
             stroke_coverage: Vec::new(),
             stroke_color: Vec::new(),

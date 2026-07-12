@@ -3,6 +3,7 @@
 //! `tool/mod.rs` via `pub(crate) use internal::*`.
 
 use super::*;
+use std::sync::Arc;
 
 /// Blit a freshly-composited `region` (its own `bbox.w × bbox.h` RGBA8 buffer)
 /// into the full-canvas composite `cache` at `bbox`, row by row.
@@ -22,7 +23,10 @@ pub(crate) fn blit_region(cache: &mut [u8], canvas_w: u32, region: &[u8], bbox: 
 pub(crate) struct ToolPixelSource<'a> {
     pub(crate) active_id: RtLayerId,
     pub(crate) active_rgba: &'a [u8],
-    pub(crate) images: &'a BTreeMap<RtLayerId, LayerImage>,
+    /// The NON-active layers' pixels. `Arc` because an undo snapshot must not deep-copy the pixels of
+    /// layers the stroke never touched — see [`crate::undo::ModelSnapshot`]. It derefs, so the compositor
+    /// below never learns about it.
+    pub(crate) images: &'a BTreeMap<RtLayerId, Arc<LayerImage>>,
 }
 
 impl LayerPixelSource for ToolPixelSource<'_> {
@@ -33,4 +37,10 @@ impl LayerPixelSource for ToolPixelSource<'_> {
             self.images.get(&id).map(|img| img.rgba8.as_slice())
         }
     }
+}
+
+/// Take a layer's pixels out of the shared store: free when nobody else holds them (the common case), a
+/// copy when an undo snapshot does. The copy-on-write the `Arc` buys — see [`ToolPixelSource::images`].
+pub(crate) fn own_image(img: Arc<LayerImage>) -> LayerImage {
+    Arc::try_unwrap(img).unwrap_or_else(|shared| shared.as_ref().clone())
 }

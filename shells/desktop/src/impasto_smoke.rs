@@ -1,10 +1,10 @@
 //! `PH2D_IMPASTO_SMOKE` — a ready-to-paint Impasto canvas (#16).
 //!
-//! Spawns a white 1024² paint canvas AND pre-arms the brush with a thick, bristly impasto (the Grain
-//! depth source over a noise grain, so the relief carries brush-marks). Run it, pick the Painter, drag:
-//! the paint comes out thick and lit. No knob hunting — a new feature ships with the example that
-//! demonstrates it, it does not ask the artist to assemble one
-//! ([[feedback_ready_to_smoke_example]]).
+//! Spawns a white 1024² paint canvas AND pre-arms the brush with impasto ON — **and nothing else**
+//! (Grain = None; Enio 2026-07-12). Run it, pick the Painter, drag: the paint comes out thick and lit.
+//! No knob hunting — a new feature ships with the example that demonstrates it, it does not ask the artist
+//! to assemble one ([[feedback_ready_to_smoke_example]]). And the example shows the DEFAULTS, so a bad
+//! default has nowhere to hide.
 //!
 //! ```text
 //! cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
@@ -60,7 +60,7 @@ pub(crate) fn spawn_if_enabled(
         Ok((label, bits)) => {
             println!(
                 "PH2D_IMPASTO_SMOKE: canvas '{label}' ready — pick the Painter tool and drag. \
-                 The brush is armed with impasto ON (Grain source); everything else is the default."
+                 The brush is armed with impasto ON and Grain = None; everything else is the default."
             );
             Some(bits)
         }
@@ -79,21 +79,19 @@ pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     if !enabled() || ARMED.swap(true, Ordering::Relaxed) {
         return;
     }
-    // A loaded bristle brush: thick paint, the grain's striations carried into the relief.
+    // A brush with BODY, and nothing else: Grain stays at **None** (Enio, 2026-07-12). The smoke used to
+    // arm a Noise grain + the Grain depth source, and that was a demo lying about a default — it showed a
+    // bristly relief no fresh brush produces. Everything below the size is now the shipped default, so
+    // what the smoke shows IS what the artist gets on a clean install: if the default is bad, the smoke
+    // says so instead of hiding it.
+    //
+    // (The mapping note the old code carried is preserved because it will bite whoever turns a grain ON:
+    // a ViewPlane grain is DAB-relative — every dab stamps the identical noise in its own frame, and at
+    // 10% spacing the dabs overlap tenfold, so the relief comes out corrugated at exactly the dab pitch.
+    // Anchor it to the canvas — `TextureMapping::Tiled` — and the marks read as bristle streaks along the
+    // path instead of ribs across it. The first smoke shipped with the default ViewPlane and Enio saw the
+    // corduroy immediately.)
     painter.set_brush_size_px(40.0);
-    painter.set_brush_texture_kind(ph2d_tool_painter::TextureKind::Noise.to_u8());
-    // CANVAS-ANCHORED grain, and this is not a detail. A ViewPlane grain is DAB-relative: every dab
-    // stamps the identical noise in its own frame, and at 10% spacing the dabs overlap tenfold — so the
-    // relief comes out corrugated at exactly the dab pitch (measured: 100% of the height variance along
-    // the stroke is a function of the dab phase). Anchored to the canvas it drops to ~2%, and the marks
-    // read as bristle streaks along the path instead of ribs across it. The first smoke shipped with the
-    // default ViewPlane and Enio saw the corduroy immediately.
-    painter.set_brush_texture_mapping(ph2d_tool_painter::TextureMapping::Tiled.to_u8());
-    // Only the master switch and the Grain source are armed here: Depth / Body / Smoothing and the whole
-    // Lighting card now come from the DEFAULTS Enio dialled in on the smoke itself (2026-07-12), so what
-    // the smoke shows is what a fresh brush does — arming them again would hide a bad default behind a
-    // good demo.
     painter.toggle_brush_impasto();
-    painter.set_brush_impasto_source(ph2d_tool_painter::DepthSource::Grain.to_u8());
-    println!("PH2D_IMPASTO_SMOKE: brush armed — drag on the canvas.");
+    println!("PH2D_IMPASTO_SMOKE: brush armed (impasto ON, Grain = None) — drag on the canvas.");
 }

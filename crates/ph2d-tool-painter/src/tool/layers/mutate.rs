@@ -197,7 +197,7 @@ impl PainterTool {
                 .layers
                 .active()
                 .and_then(|a| self.images.remove(&a))
-                .map(|img| img.rgba8)
+                .map(|img| own_image(img).rgba8)
                 .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
             self.canvas_rgba = Arc::new(buf);
         }
@@ -247,11 +247,11 @@ impl PainterTool {
             let (w, h) = self.source_size;
             self.images.insert(
                 active,
-                LayerImage {
+                Arc::new(LayerImage {
                     width: w,
                     height: h,
                     rgba8: self.canvas_rgba.as_ref().clone(),
-                },
+                }),
             );
         }
     }
@@ -372,7 +372,7 @@ impl PainterTool {
         let Some(mask_px) = self.images.get(&mask_id).map(|img| img.rgba8.clone()) else {
             return false;
         };
-        let Some(parent_img) = self.images.get_mut(&parent) else {
+        let Some(parent_img) = self.images.get_mut(&parent).map(Arc::make_mut) else {
             return false;
         };
         if parent_img.rgba8.len() < n * 4 || mask_px.len() < n * 4 {
@@ -404,7 +404,7 @@ impl PainterTool {
         let buf = self
             .images
             .remove(&new_active)
-            .map(|img| img.rgba8)
+            .map(|img| own_image(img).rgba8)
             .unwrap_or_else(|| vec![0u8; n * 4]);
         self.canvas_rgba = Arc::new(buf);
         self.commit_structural_edit(undo_before);
@@ -444,7 +444,7 @@ impl PainterTool {
         let buf = self
             .images
             .remove(&id)
-            .map(|img| img.rgba8)
+            .map(|img| own_image(img).rgba8)
             .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
         self.canvas_rgba = Arc::new(buf);
         self.layers.set_active(id);

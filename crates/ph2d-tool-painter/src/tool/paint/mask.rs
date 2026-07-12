@@ -141,11 +141,11 @@ impl PainterTool {
             Some(mask_id) => {
                 self.images.insert(
                     mask_id,
-                    crate::compositor::LayerImage {
+                    Arc::new(crate::compositor::LayerImage {
                         width: w,
                         height: h,
                         rgba8: scratch,
-                    },
+                    }),
                 );
                 Some(mask_id)
             }
@@ -154,7 +154,7 @@ impl PainterTool {
             None => {
                 let existing = self.layers.get(target).and_then(|l| l.mask);
                 if let Some(mask_id) = existing
-                    && let Some(img) = self.images.get_mut(&mask_id)
+                    && let Some(img) = self.images.get_mut(&mask_id).map(std::sync::Arc::make_mut)
                     && img.rgba8.len() >= n * 4
                 {
                     for i in 0..n {

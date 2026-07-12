@@ -36,7 +36,7 @@ use crate::layers::{LayerId as RtLayerId, LayerStack};
 #[derive(Clone, Debug)]
 pub struct ModelSnapshot {
     pub layers: LayerStack,
-    pub images: BTreeMap<RtLayerId, LayerImage>,
+    pub images: BTreeMap<RtLayerId, Arc<LayerImage>>,
     /// **Impasto** relief per layer — captured with the pixels so undoing a stroke takes back the
     /// thickness it laid down, not just the colour (a snapshot that forgot it would leave the light
     /// pass reporting a ridge over paint that is no longer there). Empty for every layer that was

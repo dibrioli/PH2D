@@ -58,7 +58,11 @@ impl PainterTool {
                 id,
                 layers: self.layers.clone(),
                 canvas_rgba: self.canvas_rgba.as_ref().clone(),
-                images: self.images.clone(),
+                images: self
+                    .images
+                    .iter()
+                    .map(|(k, v)| (*k, v.as_ref().clone()))
+                    .collect(),
                 // Plain vectors on the disk: the `Arc` is a runtime sharing device (an undo snapshot is
                 // a refcount bump, not an 80 MB copy at 4096 px), never a wire format.
                 heights: self

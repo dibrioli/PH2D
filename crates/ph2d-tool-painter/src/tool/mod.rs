@@ -77,7 +77,7 @@ pub struct PainterTool {
     layers: LayerStack,
     /// Per-(non-active-)layer pixel buffers (canvas-sized straight sRGB8).
     /// `BTreeMap` per HR-5 (deterministic iteration).
-    images: BTreeMap<RtLayerId, LayerImage>,
+    images: BTreeMap<RtLayerId, Arc<LayerImage>>,
     /// **Impasto** relief per layer (canvas-sized `f32`, signed: `+` lifts paint off the canvas, `-`
     /// carves into it). A sibling of [`Self::images`], and LAZY — a layer with no entry has no relief
     /// and costs nothing, which is every layer until someone ticks Impasto. Unlike the colour, the

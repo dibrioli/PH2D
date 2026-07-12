@@ -17,7 +17,7 @@ use super::*;
 pub(crate) struct StashedDoc {
     canvas_rgba: Arc<Vec<u8>>,
     layers: LayerStack,
-    images: BTreeMap<RtLayerId, LayerImage>,
+    images: BTreeMap<RtLayerId, Arc<LayerImage>>,
     /// **Impasto**: the document's relief and paint coverage, per layer. They travel with the document
     /// for the same reason `images` does — and they MUST, for a sharper one: they are keyed by
     /// [`RtLayerId`], and `LayerStack::new()` restarts `next_id` at 1, so two documents' ids collide by
@@ -47,7 +47,11 @@ impl StashedDoc {
             id,
             layers: self.layers.clone(),
             canvas_rgba: self.canvas_rgba.as_ref().clone(),
-            images: self.images.clone(),
+            images: self
+                .images
+                .iter()
+                .map(|(k, v)| (*k, v.as_ref().clone()))
+                .collect(),
             // The disk holds plain vectors — the `Arc` is a RUNTIME sharing device (it makes an undo
             // snapshot a refcount bump instead of an 80 MB copy at 4096²), not a wire format. Same
             // boundary the `canvas_rgba` above already crosses.
@@ -63,7 +67,11 @@ impl StashedDoc {
         Self {
             canvas_rgba: crate::tool::persist::arc_pixels(doc.canvas_rgba),
             layers: doc.layers,
-            images: doc.images,
+            images: doc
+                .images
+                .into_iter()
+                .map(|(k, v)| (k, Arc::new(v)))
+                .collect(),
             heights: reshare(doc.heights),
             covers: reshare(doc.covers),
             // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps

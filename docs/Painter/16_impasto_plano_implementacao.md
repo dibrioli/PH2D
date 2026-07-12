@@ -794,3 +794,41 @@ crescimento) = **vermelha**, pior texel errado por 0,009.
 
 **Continua fora:** conservação de volume real (a fase que a medição adiou) · luz na GPU (a perf não pede) ·
 múltiplas luzes / IBL · relevo do PAPEL (**exige ordem nova do Enio**).
+
+---
+
+## 12. Fase 10 — o undo do Painter copiava as camadas que ninguém tocou (2026-07-12)
+
+**Isto NÃO é um bug do impasto.** É o undo do próprio Painter (`ph2d-tool-painter/src/undo.rs`), e está lá
+desde sempre. Foi achado ao fechar a §11, e a correção anterior de `heights`/`covers` só o deixou visível.
+
+Uma pincelada toca **exatamente uma camada** — a ativa, cujos pixels vivem no `canvas_rgba` (já `Arc`). Os
+pixels de todas as outras vivem em `images` e **não se mexem**. O `ModelSnapshot` clonava **fundo, todas,
+a cada traço**. Medido em 4096², regime permanente:
+
+| documento | pen-up | `images` copiado por snapshot |
+|---|---|---|
+| 1 camada | 7,6 ms | 0 MB |
+| 3 camadas | 31,6 ms | **128 MB** |
+| 5 camadas | **56 ms** | **256 MB** |
+
+E um **passo** de undo guarda **dois** snapshots (antes + depois), com cap de **300 passos**. Uma pintura de
+5 camadas em 4K gastava **meio giga por pincelada** duplicando camadas em que ninguém pintou. Não sobrevive a
+uma pintura real: **acaba a memória muito antes de acabar o undo.**
+
+**Fix:** `images: BTreeMap<RtLayerId, Arc<LayerImage>>` — copy-on-write. O snapshot vira bump de refcount; a
+mutação (aplicar máscara, trocar de camada ativa) usa `Arc::make_mut`/`own_image` e só copia se um passo de
+undo estiver segurando o buffer. O `LayerImage` em si **não muda** — o `Arc` é um dispositivo de partilha de
+RUNTIME, e o formato de disco fica intacto (a conversão mora na fronteira, como o `canvas_rgba` já fazia).
+O compositor nunca fica sabendo: o `Arc` desreferencia no `ToolPixelSource`.
+
+**Gate:** `an_undo_snapshot_never_copies_the_pixels_of_a_layer_the_stroke_did_not_touch` — asserta
+`Arc::ptr_eq` entre o buffer vivo e o do snapshot: **a MESMA alocação**, não "igual". Um gate de tempo seria
+dependente de máquina; um gate de igualdade passaria com uma cópia profunda. Mutação (voltar ao clone fundo)
+= **vermelha**.
+
+**Resultado: o pen-up fica PLANO em ~8 ms, seja com 1 ou 5 camadas** (era 7,6 / 31,6 / 56).
+
+**Nota de escopo:** eu havia dito que este problema "não era meu" e que seria reportado a outra linha. **Era
+meu** — é a crate do Painter. O que era verdade é que ele **precede o impasto** e é peça de trabalho distinta.
+Não há outra linha a quem reportar.

@@ -72,11 +72,11 @@ impl PainterTool {
         } else {
             self.images.insert(
                 id,
-                LayerImage {
+                Arc::new(LayerImage {
                     width: w,
                     height: h,
                     rgba8: buf,
-                },
+                }),
             );
         }
         self.bump_layer_pixels(Some(id));

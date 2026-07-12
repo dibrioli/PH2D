@@ -19678,3 +19678,55 @@ fn impasto_the_stroke_commit_is_cropped_to_the_stroke_and_byte_identical() {
         "the cropped commit must be BIT-FOR-BIT the whole-canvas one (worst texel off by {worst})"
     );
 }
+
+#[test]
+fn an_undo_snapshot_never_copies_the_pixels_of_a_layer_the_stroke_did_not_touch() {
+    // Found while closing the Impasto pen-up (2026-07-12) and NOT an impasto bug — it is the Painter's
+    // own undo, and it has been there the whole time. A stroke touches exactly ONE layer (the active one,
+    // whose pixels live in `canvas_rgba`); every other layer's pixels sit in `images` and do not move.
+    // The snapshot deep-cloned them anyway — all of them, on every stroke.
+    //
+    // Measured at 4096², steady state:
+    //
+    //     1 layer  ->  pen-up  7.6 ms, 0 MB copied
+    //     3 layers ->  pen-up 31.6 ms, 128 MB copied per snapshot
+    //     5 layers ->  pen-up 56.1 ms, 256 MB copied per snapshot
+    //
+    // …and an undo ENTRY keeps two snapshots (before + after), with a cap of 300 entries. A 5-layer 4K
+    // painting was spending half a gigabyte per brush stroke duplicating layers nobody had painted on.
+    // It does not survive a real painting; it runs out of memory long before it runs out of undo.
+    //
+    // The fix is the `Arc`, and this is the claim that says so — in the only terms that cannot drift:
+    // the snapshot's buffer must be the SAME ALLOCATION as the live one. Not "equal": the same. A gate
+    // on timing would be machine-dependent and a gate on equality would pass a deep copy.
+    let size = 64u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.add_raster_layer("B");
+    t.add_raster_layer("C");
+    let ids: Vec<_> = t.layers.all_ids().collect();
+
+    // Paint something on each layer, so `images` really holds pixels for the inactive ones…
+    t.set_brush_size_px(8.0);
+    for &id in &ids {
+        t.select_layer(id);
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    }
+    assert!(
+        !t.images.is_empty(),
+        "the inactive layers carry pixels — otherwise this gate is about nothing"
+    );
+
+    // …then snapshot, exactly as a stroke's undo entry does.
+    let snap = t.snapshot_model();
+
+    for (id, live) in &t.images {
+        let taken = snap.images.get(id).expect("the snapshot keeps every layer");
+        assert!(
+            std::sync::Arc::ptr_eq(live, taken),
+            "layer {id:?}: the snapshot must SHARE the pixels of a layer the stroke never touched, not \
+             copy them (this is 64 MB per layer per stroke at 4096, twice per undo entry, 300 entries deep)"
+        );
+    }
+}

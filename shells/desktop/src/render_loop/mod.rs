@@ -401,6 +401,10 @@ impl crate::App {
                 {
                     audio.editor_add_variation_folder(&dir);
                 }
+                if ed::take_toggle_enabled() {
+                    audio.editor_toggle_variation_enabled();
+                }
+                ed::set_selected_enabled(audio.editor_variation_enabled());
                 if ed::take_remove_variation() {
                     audio.editor_remove_variation(ed::variation_sel());
                 }

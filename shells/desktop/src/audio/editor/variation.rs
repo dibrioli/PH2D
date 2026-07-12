@@ -129,8 +129,17 @@ impl AudioSystem {
     }
 
     /// Save the current set to `path` as a manifest.
+    ///
+    /// The entries are rewritten **relative to the manifest** on the way out (see
+    /// `manifest_path`): a set that records where its clips were on *this* machine works
+    /// exactly once, on this machine — and PH2D is deliberately multi-machine.
     pub(crate) fn editor_save_variation_set(&self, path: &Path) {
-        let text = ph2d_audio_edit::serialize_variation_set(&self.editor.variation_set);
+        let base = path.parent().unwrap_or(Path::new("."));
+        let mut portable = self.editor.variation_set.clone();
+        for e in &mut portable.entries {
+            e.path = super::manifest_path::to_manifest(Path::new(&e.path), base);
+        }
+        let text = ph2d_audio_edit::serialize_variation_set(&portable);
         if let Err(e) = std::fs::write(path, text) {
             eprintln!(
                 "audio: variation-set save failed for {}: {e}",
@@ -155,6 +164,15 @@ impl AudioSystem {
         };
         let mut set = ph2d_audio_edit::parse_variation_set(&text);
         set.entries.truncate(MAX_VARIATIONS);
+        // Resolve every entry against the manifest's own directory, and keep the ABSOLUTE path
+        // in memory: the model is what the audition and a later Save read from, and both want a
+        // path that opens from wherever the app happens to be running.
+        let base = path.parent().unwrap_or(Path::new(".")).to_path_buf();
+        for e in &mut set.entries {
+            e.path = super::manifest_path::from_manifest(&e.path, &base)
+                .to_string_lossy()
+                .into_owned();
+        }
         self.editor.variation_clips = set
             .entries
             .iter()
@@ -162,6 +180,26 @@ impl AudioSystem {
             .collect();
         self.editor.variation_set = set;
         self.editor.variation_picker = ph2d_audio_edit::VariationPicker::default();
+    }
+
+    /// Toggle the selected entry in or out of the pick. The picker already skips disabled
+    /// entries and the manifest already round-trips the flag — this is the UI finally being
+    /// able to turn what the model always carried.
+    pub(crate) fn editor_toggle_variation_enabled(&mut self) {
+        let sel = ph2d_panel_audio_editor::variation_sel();
+        if let Some(e) = self.editor.variation_set.entries.get_mut(sel) {
+            e.enabled = !e.enabled;
+        }
+    }
+
+    /// Whether the SELECTED entry is enabled — published so the toggle shows its state.
+    pub(crate) fn editor_variation_enabled(&self) -> bool {
+        let sel = ph2d_panel_audio_editor::variation_sel();
+        self.editor
+            .variation_set
+            .entries
+            .get(sel)
+            .is_none_or(|e| e.enabled)
     }
 
     /// The row labels for the panel: `stem  ×weight` (a `(off)` prefix when disabled).

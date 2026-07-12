@@ -126,6 +126,13 @@ pub const AEDIT_SPEC_LEARN: NodeId = hash_node_id("audio_editor_spec_learn");
 pub const AEDIT_SPEC_AMOUNT: NodeId = hash_node_id("audio_editor_spec_amount");
 /// Apply the denoise across the clip.
 pub const AEDIT_SPEC_DENOISE: NodeId = hash_node_id("audio_editor_spec_denoise");
+/// **Enable / disable** the selected variation — take it out of the pick WITHOUT deleting it.
+///
+/// The model has always carried the flag (the picker skips disabled entries, the row already
+/// paints `(off)`, the manifest already round-trips it) — but nothing in the UI could turn it.
+/// It is the A/B of a variation set: mute the take you are unsure about, hear the set without
+/// it, and put it back — instead of removing it and re-adding the file.
+pub const AEDIT_VAR_ENABLED: NodeId = hash_node_id("audio_editor_var_enabled");
 /// **Load IR** — the impulse response for the Convolution Reverb. An IR is a *resource*, not
 /// a float, so it cannot ride the rack's parameter table; this button appears only when the
 /// selected stage is the one that needs a room.
@@ -454,6 +461,7 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 /// a fresh or reset stage), and the selected stage's per-parameter
 /// `(label, formatted value)` pairs.
 pub use snapshot::{set_fx_ir, set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
+pub use variation_state::{set_selected_enabled, take_toggle_enabled};
 
 // Loop points + batch + force-mono (W6 asset-prep).
 /// Shell → panel: publish the loop region as `(start_secs, end_secs)` for the readout.

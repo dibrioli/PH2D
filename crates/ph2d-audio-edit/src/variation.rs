@@ -515,6 +515,46 @@ mod tests {
     }
 
     #[test]
+    fn a_disabled_entry_is_never_picked() {
+        // Three takes; the middle one is the one you are unsure about.
+        let mut set = VariationSet::default();
+        for n in ["a.wav", "b.wav", "c.wav"] {
+            set.entries.push(Variation::new(n));
+        }
+        set.entries[1].enabled = false;
+
+        // Every strategy, many draws: the disabled entry must never come up. (Random would
+        // otherwise hit it ~1/3 of the time, so a single draw would prove nothing.)
+        for strategy in [
+            PickStrategy::Random,
+            PickStrategy::Sequence,
+            PickStrategy::Shuffle,
+        ] {
+            set.strategy = strategy;
+            let mut picker = VariationPicker::with_seed(0xABCD);
+            for _ in 0..200 {
+                let i = picker.pick(&set).expect("two entries are enabled");
+                assert_ne!(
+                    i,
+                    1,
+                    "{}: picked the DISABLED entry — the toggle would be decorative",
+                    strategy.name()
+                );
+            }
+        }
+    }
+
+    /// …and disabling everything leaves nothing to pick, rather than picking a disabled one.
+    #[test]
+    fn a_set_with_nothing_enabled_picks_nothing() {
+        let mut set = VariationSet::default();
+        set.entries.push(Variation::new("a.wav"));
+        set.entries[0].enabled = false;
+        let mut picker = VariationPicker::with_seed(1);
+        assert!(picker.pick(&set).is_none());
+    }
+
+    #[test]
     fn manifest_round_trips() {
         let set = VariationSet {
             entries: vec![

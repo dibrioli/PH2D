@@ -24,7 +24,7 @@ use ph2d_panel_audio_editor::{
 };
 use ph2d_panel_audio_editor::{
     AEDIT_FX_LOAD_IR, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR,
-    AEDIT_SPEC_VIEW, spectral_state, take_load_ir,
+    AEDIT_SPEC_VIEW, AEDIT_VAR_ENABLED, spectral_state, take_load_ir, take_toggle_enabled,
 };
 use ph2d_panel_audio_editor::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
@@ -1021,4 +1021,41 @@ fn the_load_ir_button_asks_the_shell_for_a_room() {
         "clicking Load IR never asked the shell to open the picker"
     );
     assert!(!take_load_ir(), "the request is a one-shot; it fired twice");
+}
+
+/// **The Enabled toggle reaches the shell, and refuses without an entry.**
+///
+/// The flag was always in the model — the picker skips disabled entries, the row paints
+/// `(off)`, the manifest round-trips it — and nothing in the UI could turn it. This is the
+/// seam that finally connects them, so it is the seam worth gating.
+#[test]
+fn the_enabled_toggle_reaches_the_shell() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_toggle_enabled();
+
+    assert!(
+        host.store().get(AEDIT_VAR_ENABLED).is_some(),
+        "the Enabled toggle is painted but never registered — it is a dead control"
+    );
+
+    // No variations: a per-entry action has no entry to act on, and the seam refuses (the
+    // panel dims it, but a dim is cosmetic).
+    set_variation_names(&[]);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_ENABLED));
+    assert!(
+        !take_toggle_enabled(),
+        "the toggle fired with no variation to toggle"
+    );
+
+    set_variation_names(&["step_01.wav".to_string()]);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_VAR_ENABLED));
+    assert!(
+        take_toggle_enabled(),
+        "clicking Enabled never reached the shell"
+    );
+    assert!(
+        !take_toggle_enabled(),
+        "the request is a one-shot; it fired twice"
+    );
 }

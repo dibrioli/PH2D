@@ -97,9 +97,9 @@ fn asset_click(id: NodeId) -> Option<EventOutcome> {
 /// [`asset_click`], to keep `apply_event` under the panel fn-LOC cap.
 fn variation_click(id: NodeId) -> Option<EventOutcome> {
     use crate::{
-        AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_LOAD, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE,
-        AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT, AEDIT_VAR_STRATEGY_PREV,
-        AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP,
+        AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_ENABLED, AEDIT_VAR_LOAD, AEDIT_VAR_PLAY,
+        AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT,
+        AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP,
     };
     if let Some(i) = AEDIT_VAR_ROWS.iter().position(|r| *r == id) {
         variation_state::select(i);
@@ -123,6 +123,13 @@ fn variation_click(id: NodeId) -> Option<EventOutcome> {
     } else if id == AEDIT_VAR_PLAY {
         if has_any {
             variation_state::request_play();
+        }
+    } else if id == AEDIT_VAR_ENABLED {
+        // Take the entry out of the pick (or put it back) without deleting it. Needs an entry,
+        // like every other per-entry action — and the seam refuses without one, because the
+        // panel's dim is cosmetic.
+        if has_any {
+            variation_state::request_toggle_enabled();
         }
     } else if id == AEDIT_VAR_REMOVE {
         if has_any {

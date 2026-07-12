@@ -12,6 +12,7 @@ pub(crate) mod delivery;
 mod fx_rack;
 pub(crate) mod ir;
 mod loops;
+mod manifest_path;
 mod markers;
 pub(crate) mod spectral;
 mod variation;

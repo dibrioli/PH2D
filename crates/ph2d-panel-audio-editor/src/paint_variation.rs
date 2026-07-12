@@ -10,12 +10,12 @@
 //! The row labels + strategy name come from `variation_state` (the shell publishes
 //! labels; the panel owns the selected row and the jitter slider positions).
 
-use crate::paint::{ClippedHits, button};
+use crate::paint::{ClippedHits, button, toggle};
 use crate::{
-    AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
-    AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT,
-    AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, MAX_VARIATIONS,
-    variation_state,
+    AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_ENABLED, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD,
+    AEDIT_VAR_PITCH, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE,
+    AEDIT_VAR_STRATEGY_NEXT, AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP,
+    MAX_VARIATIONS, variation_state,
 };
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
@@ -111,9 +111,24 @@ pub(crate) fn paint_variation_section(
     );
     y += row_h + gap;
 
-    // Remove the selected variation.
+    // The two things you do to ONE entry — one of them reversible, one not, side by side so
+    // the difference is obvious. Enabled takes an entry out of the pick without deleting it:
+    // the A/B of a variation set (mute the take you are unsure about, hear the set without it,
+    // put it back) rather than removing the file and having to find it again.
+    let on = variation_state::selected_enabled();
+    toggle(
+        Rect::new(x, y, half, row_h),
+        if on { "Enabled" } else { "Disabled" },
+        on,
+        has_any,
+        AEDIT_VAR_ENABLED,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
     button(
-        Rect::new(x, y, w, row_h),
+        Rect::new(x + half + gap, y, half, row_h),
         "Remove",
         has_any,
         AEDIT_VAR_REMOVE,

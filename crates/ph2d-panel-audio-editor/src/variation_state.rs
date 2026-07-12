@@ -28,6 +28,11 @@ thread_local! {
     static ADD_REQ: Cell<bool> = const { Cell::new(false) };
     static ADD_FOLDER_REQ: Cell<bool> = const { Cell::new(false) };
     static REMOVE_REQ: Cell<bool> = const { Cell::new(false) };
+    /// Panel → shell: toggle the selected entry in/out of the pick (one-shot).
+    static TOGGLE_ENABLED: Cell<bool> = const { Cell::new(false) };
+    /// Shell → panel: is the selected entry enabled? (So the toggle shows its state instead
+    /// of being a button whose effect is invisible.)
+    static SEL_ENABLED: Cell<bool> = const { Cell::new(true) };
     static PLAY_REQ: Cell<bool> = const { Cell::new(false) };
     static SAVE_REQ: Cell<bool> = const { Cell::new(false) };
     static LOAD_REQ: Cell<bool> = const { Cell::new(false) };
@@ -114,6 +119,25 @@ pub(crate) fn request_add_folder() {
 /// Shell: take the pending add-folder request (one-shot).
 pub fn take_add_variation_folder() -> bool {
     ADD_FOLDER_REQ.with(|c| c.replace(false))
+}
+
+/// Panel: toggle the selected variation in or out of the pick.
+pub(crate) fn request_toggle_enabled() {
+    TOGGLE_ENABLED.with(|c| c.set(true));
+}
+
+/// Shell: drain the toggle (one-shot).
+pub fn take_toggle_enabled() -> bool {
+    TOGGLE_ENABLED.with(|c| c.replace(false))
+}
+
+/// Shell → panel: whether the SELECTED entry is currently enabled.
+pub fn set_selected_enabled(v: bool) {
+    SEL_ENABLED.with(|c| c.set(v));
+}
+
+pub(crate) fn selected_enabled() -> bool {
+    SEL_ENABLED.with(Cell::get)
 }
 
 /// Panel: arm "remove the selected variation".

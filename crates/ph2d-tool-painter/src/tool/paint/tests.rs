@@ -19303,25 +19303,22 @@ fn impasto_the_panel_learns_a_layer_has_relief_the_moment_it_does() {
 }
 
 #[test]
-fn impasto_smoothing_settles_the_stroke_the_moment_the_pen_leaves_the_canvas() {
-    // Enio's smoke, 2026-07-12: *"smoothing nem sempre se aplica no fim do traço"*.
+fn impasto_smoothing_settles_every_stroke_the_moment_the_pen_leaves_the_canvas() {
+    // Enio, 2026-07-12, the SECOND report and the sharper one: *"o primeiro traço aplica o smoothing
+    // automaticamente. A partir do segundo não aplica até que mova o slider."*
     //
-    // Smoothing is applied in exactly ONE place — `rebuild_live_layer_relief`, at commit — and it is
-    // applied unconditionally, so the arithmetic was never the suspect. What the pen-up does is SWAP
-    // the relief under the painting: the raw envelope the stroke was drawn with becomes the settled
-    // field. Nothing about the PIXELS changed, so nothing marked the canvas dirty — and the composite
-    // cache went on showing the last frame it drew, which was lit by the UNSETTLED relief.
+    // The settle was running — it always was. What was missing is that nobody asked for the pixels to be
+    // LIT again. At pen-up the relief under the painting is swapped (the raw envelope the stroke was
+    // drawn with becomes the settled field), and **no pixel changed**, so nothing on that path marked
+    // the canvas dirty: the composite cache went on showing the lighting it drew during the stroke, from
+    // the UNSETTLED relief. Move any Body knob and `refresh_live_relief` invalidates the composite — and
+    // the smoothing appears, late. Exactly what he described.
     //
-    // Hence "sometimes": whatever region the final dab happened to dirty got re-lit with the settled
-    // relief, and the rest of the stroke kept the raw one — until some unrelated edit (a slider, a
-    // layer click) invalidated the composite and the smoothing appeared *late*.
-    //
-    // The gate is therefore NOT "settle changes the buffer" (that was always green, and green for the
-    // wrong reason). It is the product's own contract: **after the pen leaves the canvas, what the
-    // artist SEES equals a full recompose.** And it must run at the app's real cadence — one preview
-    // drain per frame, including a drain of the last Move — or the fixture will not contain the bug
-    // (a test that never drains starts `preview_dirty` and full-recomposes at the end, which is
-    // exactly how this shipped green).
+    // Why the FIRST stroke worked, and why that is the whole lesson: it flips the layer's `has_relief`
+    // (§10.8), and that flag change invalidates the composite as a side effect. The first stroke was
+    // being rescued **by accident**. A one-stroke fixture therefore CANNOT contain this bug — and the
+    // one I wrote yesterday did not, and shipped green over a live defect. The phenomenon lives in the
+    // second stroke, so the gate paints three.
     let size = 120u32;
     let mut t = impasto_canvas(size);
     let mut b = t.paint.brush;
@@ -19336,41 +19333,42 @@ fn impasto_smoothing_settles_the_stroke_the_moment_the_pen_leaves_the_canvas() {
         *slot = b;
     }
 
-    // The stroke, at the app's cadence: a drain after every pointer event, as a frame would.
-    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
-    let _ = t.take_preview_arc();
-    for i in 1..=6 {
-        let x = 30.0 + 10.0 * i as f32;
-        t.on_canvas_pointer(cp([x, 60.0], PointerPhase::Move));
+    for (n, y) in [(1u32, 30.0f32), (2, 60.0), (3, 90.0)] {
+        // The stroke, at the app's real cadence: a preview drain after every pointer event, as a frame
+        // would. (A test that never drains starts `preview_dirty` and full-recomposes at the end — which
+        // is a fixture that has quietly removed the bug it was written to catch.)
+        t.on_canvas_pointer(cp([30.0, y], PointerPhase::Down));
         let _ = t.take_preview_arc();
-    }
-    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
-
-    // The frame AFTER the pen-up — the one the artist is looking at when they say it did not settle.
-    let (seen, w, h) = t.take_preview_arc().expect("a preview after the stroke");
-
-    // …against the truth: the same document, composited from scratch.
-    t.composited = None;
-    t.preview_dirty = true;
-    let (truth, _, _) = t.take_preview_arc().expect("a full recompose");
-
-    let mut differing = 0usize;
-    let mut worst = 0i32;
-    for p in 0..(w * h) as usize {
-        for c in 0..3 {
-            let d = i32::from(seen[p * 4 + c]) - i32::from(truth[p * 4 + c]);
-            if d != 0 {
-                differing += 1;
-            }
-            worst = worst.max(d.abs());
+        for i in 1..=6 {
+            t.on_canvas_pointer(cp([30.0 + 10.0 * i as f32, y], PointerPhase::Move));
+            let _ = t.take_preview_arc();
         }
+        t.on_canvas_pointer(cp([90.0, y], PointerPhase::Up));
+
+        // The frame the artist is looking at when they say it did not settle…
+        let (seen, w, h) = t.take_preview_arc().expect("a preview after the stroke");
+        // …against the truth: the same document, composited from scratch.
+        t.composited = None;
+        t.preview_dirty = true;
+        let (truth, _, _) = t.take_preview_arc().expect("a full recompose");
+
+        let (mut differing, mut worst) = (0usize, 0i32);
+        for p in 0..(w * h) as usize {
+            for c in 0..3 {
+                let d = i32::from(seen[p * 4 + c]) - i32::from(truth[p * 4 + c]);
+                if d != 0 {
+                    differing += 1;
+                }
+                worst = worst.max(d.abs());
+            }
+        }
+        assert_eq!(
+            differing, 0,
+            "stroke {n}: the frame after pen-up must already BE the settled painting — {differing} \
+             channels differ from a full recompose, worst {worst} levels. The relief was swapped for \
+             its settled self and nobody asked for the pixels to be lit again."
+        );
     }
-    assert_eq!(
-        differing, 0,
-        "the frame after pen-up must already BE the settled painting: {differing} channels differ, \
-         worst {worst} levels — the relief was swapped for its settled self and nobody asked for the \
-         pixels to be lit again"
-    );
 }
 
 /// Drive one stroke of `method` and make it PERMANENT the way the artist does — pen-up for the freehand

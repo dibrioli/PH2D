@@ -419,12 +419,82 @@ impl PainterTool {
                 *dst = (*dst + add).clamp(-H_CEIL, H_CEIL);
             }
         }
+        // What the light was showing until this instant is the relief this call is REPLACING — during
+        // the stroke, the raw envelope; on a knob edit, the previous setting's field. Nothing about the
+        // PIXELS changed, so nothing else on this path will mark the canvas dirty, and the composite
+        // cache would go on showing the lighting it last drew. That is the whole of Enio's second
+        // report (2026-07-12): *"o primeiro traço aplica o smoothing automaticamente; a partir do
+        // segundo não aplica até que mova o slider"* — the FIRST stroke was rescued by accident (it
+        // flips the layer's `has_relief`, and that invalidates the composite), and from the second on
+        // only whatever the final dab happened to dirty got re-lit with the settled relief.
+        //
+        // So dirty exactly what MOVED, by diffing the field against the one it replaces. Not the dab
+        // bbox — the settle is a blur, it spreads beyond the paint — and not a full invalidate either,
+        // which would drop every adjustment cut-cache once per stroke (the 55 ms path on a heavy
+        // document). The diff knows the blur's reach without anyone having to hard-code it.
+        if let Some(rect) = self.relief_diff_rect(layer, &field) {
+            self.mark_dirty(rect);
+        }
         if field.iter().all(|&v| v == 0.0) {
             self.heights.remove(&layer);
         } else {
             self.heights.insert(layer, field);
         }
         self.sync_relief_flags();
+    }
+
+    /// The bounding box of the texels where `next` differs from the relief `layer` carries now
+    /// (`None` when nothing moved — a re-derive that lands on the same field costs no repaint).
+    ///
+    /// A missing entry reads as zeros, which is exactly right: the first stroke on a layer changes
+    /// every texel it touches.
+    fn relief_diff_rect(&self, layer: crate::tool::RtLayerId, next: &[f32]) -> Option<Region> {
+        let (w, h) = self.source_size;
+        if next.len() != (w as usize) * (h as usize) {
+            return None;
+        }
+        let cur = self.heights.get(&layer);
+        if cur.is_some_and(|c| c.len() != next.len()) {
+            return None; // a stale, differently-sized field: the shape guard, not an index panic
+        }
+        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+        for y in 0..h {
+            for x in 0..w {
+                let i = (y as usize) * (w as usize) + x as usize;
+                let was = cur.map_or(0.0, |c| c[i]);
+                // A texel that moved by less than a 16-bit tick of the height range cannot change a
+                // single output byte; chasing it would repaint the canvas for nothing.
+                if (next[i] - was).abs() <= RELIEF_EPS {
+                    continue;
+                }
+                x0 = x0.min(x);
+                y0 = y0.min(y);
+                x1 = x1.max(x);
+                y1 = y1.max(y);
+            }
+        }
+        if x0 == u32::MAX {
+            return None;
+        }
+        // Grow by one: the light reads a pixel's NEIGHBOURS (the normal is a central difference), so a
+        // texel just outside the changed box is lit by a slope that changed inside it.
+        //
+        // Stated plainly: **no gate catches this one.** Deleting the grow leaves the suite green, and I
+        // could not build a red for it — the only caller re-derives through a BLUR, so the height change
+        // decays smoothly to `RELIEF_EPS` at the box's edge and the neighbour's normal shifts by less
+        // than an output byte. It is kept as a correctness margin (a hard-edged relief edit arriving on
+        // this path would need it), not as an observed fix, and it is written here rather than left for
+        // a reader to mistake for something the tests defend.
+        let x0 = x0.saturating_sub(1);
+        let y0 = y0.saturating_sub(1);
+        let x1 = (x1 + 1).min(w - 1);
+        let y1 = (y1 + 1).min(h - 1);
+        Some(Region {
+            x: x0,
+            y: y0,
+            w: x1 - x0 + 1,
+            h: y1 - y0 + 1,
+        })
     }
 
     /// Publish onto the layer stack the one fact about relief the PANEL cannot derive: which layers
@@ -517,6 +587,11 @@ pub(super) const H_CEIL: f32 = 2.0;
 
 /// Radius, in pixels, of the settling blur at Smoothing = 1. Thick paint slumps a little, not into a
 /// puddle — past a few pixels the ridges stop reading as brush-marks. // CLAMP-OK
+/// Below this, a change in relief cannot move an output byte — the threshold of [`relief_diff_rect`].
+/// A 16-bit tick of the height range: finer than any 8-bit composite can show, so nothing visible is
+/// ever missed, and the float noise of a re-derive that landed on the same field costs no repaint.
+const RELIEF_EPS: f32 = 1.0 / 65_536.0; // CLAMP-OK: sub-visible threshold, not a design value
+
 const SETTLE_MAX_PX: f32 = 4.0;
 
 /// Let a height field **settle** under its own weight: a separable box blur, applied in place.

@@ -688,3 +688,38 @@ esteve nos **caminhos que ninguém conectou**. Uma 6ª forma amanhã, sem commit
 **Lição de fixture (a 6ª desta linha):** o `Line` é uma **polilinha** (clique-a-clique), não um arrasto —
 dirigi-lo com um drag não pinta **nada**, pigmento incluso. O gate nasceu vermelho por isso, e a fixture
 estava errada, não o tool.
+
+---
+
+### 10.10 **"O 1º traço assenta; do 2º em diante, só quando mexo no slider"** (2ª volta do smoke, 2026-07-12)
+
+O §10.9 fechou **quais** traços comitam. Este fecha **se alguém repinta o que o commit trocou** — e é a
+falha que o gate do §10.9 **não continha**, porque a fixture tinha **um traço só**.
+
+**A causa.** No pen-up o relevo debaixo da pintura é **trocado**: o envelope cru com que o traço foi
+desenhado vira o campo **assentado**. **Nenhum pixel mudou** — então nada naquele caminho marcava o canvas
+sujo, e o cache do composite seguia mostrando a iluminação que desenhou **durante** o traço, feita do relevo
+**não-assentado**. Mexer em qualquer knob do Body chama `refresh_live_relief`, que **invalida o composite** —
+e aí o smoothing aparece, **atrasado**. Exatamente o que o Enio descreveu.
+
+**Por que o PRIMEIRO traço funcionava — e é aqui que mora a lição.** Ele vira o `has_relief` da camada
+(§10.8), e essa troca de flag invalida o composite **de efeito colateral**. O primeiro traço estava sendo
+salvo **por acidente**. Logo uma fixture de **um traço** não pode conter este bug — e a que escrevi no §10.9
+não continha, e passou **verde por cima de um defeito vivo**. O fenômeno mora no **segundo** traço; o gate
+agora pinta **três**.
+
+> **Lição durável (nova):** quando o 1º caso é salvo por um efeito colateral (uma invalidação de cache vinda
+> de outra mudança), ele passa e os seguintes falham. **Teste a REPETIÇÃO, não a primeira ocorrência.**
+
+**O fix.** `rebuild_live_layer_relief` suja **exatamente o que moveu**, diferindo o campo novo contra o que
+ele substitui (`relief_diff_rect`). Não a bbox das dabs — **o settle é um blur, ele se espalha para fora da
+tinta** — e não um `invalidate_composite`, que largaria todo cut-cache de ajuste **uma vez por traço** (o
+caminho de 55 ms num documento pesado). O diff conhece o alcance do blur sem ninguém ter de codificá-lo.
+
+**Gates:** (H) o re-derive sem sujar nada — **vermelho** (1574 canais divergem no 2º traço, pior caso 101
+níveis). (I) o grow de 1 px — **não gateável, e está escrito assim no código**: apagá-lo deixa a suíte verde
+e não consegui construir vermelho (o único chamador re-deriva por um blur, então a mudança decai a
+`RELIEF_EPS` na borda da caixa e o vizinho muda menos que um byte). Fica como **margem de correção**, não
+como fix observado.
+
+Perf: **2.17 ms/move**.

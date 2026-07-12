@@ -14,7 +14,7 @@ use super::fx_params::{FxCommand, FxKind};
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space → modulation, the way a rack is laid out. Each row's `params` points at a
 /// spec array in the sibling [`super::fx_param_specs`].
-pub(crate) static KINDS: [FxKind; 37] = [
+pub(crate) static KINDS: [FxKind; 38] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -139,7 +139,9 @@ pub(crate) static KINDS: [FxKind; 37] = [
             })
         },
     },
-    // The rack's one restoration tool, next to the other "take the damage out" pair.
+    // The rack's two restoration tools, next to the other "take the damage out" pair.
+    // Both are gap-fillers over the same LSAR core: De-Click rebuilds what the signal could
+    // not have meant, De-Clip rebuilds what it never got to write.
     FxKind {
         name: "De-Click",
         params: &DE_CLICK,
@@ -148,6 +150,17 @@ pub(crate) static KINDS: [FxKind; 37] = [
             FxCommand::Plain(Effect::DeClick {
                 sensitivity: v[0],
                 width_secs: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "De-Clip",
+        params: &DE_CLIP,
+        arms: &[0], // Amount
+        build: |v| {
+            FxCommand::Plain(Effect::DeClip {
+                threshold: v[1],
+                amount: v[0],
             })
         },
     },

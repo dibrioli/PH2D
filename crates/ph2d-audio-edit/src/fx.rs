@@ -24,6 +24,7 @@
 mod autowah;
 mod comb;
 mod declick;
+mod declip;
 mod deess;
 mod deplosive;
 mod dynamics;
@@ -35,6 +36,7 @@ mod space;
 mod tail;
 mod tone;
 mod transient;
+mod warmup;
 mod wsola;
 
 pub use tail::TailEffect;
@@ -45,6 +47,7 @@ use ph2d_audio::dsp::BiquadCoeffs;
 use autowah::auto_wah;
 use comb::comb;
 use declick::declick;
+use declip::declip;
 use deess::deess;
 use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
@@ -95,6 +98,10 @@ const LEVELER_BYPASS_AMOUNT: f32 = 0.0;
 /// A de-clicker at `sensitivity` 0 detects nothing, so it repairs nothing. Off is the
 /// neutral point rather than "very insensitive": a repair tool must be *asked* for.
 const DECLICK_BYPASS_SENS: f32 = 0.0;
+
+/// De-Clip is inert until the user asks for a repair. Same shape as De-Click's: a
+/// restoration tool starts OFF, because there is nothing to restore in most clips.
+const DECLIP_BYPASS_AMOUNT: f32 = 0.0;
 
 /// A single length-preserving offline effect. Each variant has a **neutral point**
 /// at which [`Effect::apply`] returns its input untouched (see
@@ -351,6 +358,18 @@ pub enum Effect {
         /// signal, and rewriting it would hallucinate audio.
         width_secs: f32,
     },
+    /// **De-Clip**: puts back the peaks a converter cut off. Clipping is *destruction* —
+    /// the samples above the ceiling were replaced by the ceiling, so the waveform grows a
+    /// flat top and nothing in the file remembers how high it was going. Which makes it the
+    /// same problem as a click (a gap the signal never got to write), and it is repaired by
+    /// the same LSAR interpolation. Neutral at `amount` 0.
+    DeClip {
+        /// Level (0..1 of full scale) at or above which a FLAT run counts as clipped. The
+        /// flatness is what separates a clipped peak from a merely hot one.
+        threshold: f32,
+        /// How much of the reconstruction to blend in (0 = off).
+        amount: f32,
+    },
 }
 
 impl Effect {
@@ -503,95 +522,10 @@ impl Effect {
                 sensitivity,
                 width_secs,
             } if sensitivity > DECLICK_BYPASS_SENS => declick(data, sensitivity, width_secs),
+            Effect::DeClip { threshold, amount } if amount > DECLIP_BYPASS_AMOUNT => {
+                declip(data, threshold, amount)
+            }
             _ => data.clone(),
-        }
-    }
-
-    /// Frames of *preceding* audio this effect needs to enter a mid-clip region
-    /// already settled — see [`crate::in_range_warm`]. Zero for memoryless effects
-    /// and for the compressor, which settles its own envelope via `prime()`.
-    ///
-    /// A 2nd-order section rings for roughly `Q / (π·f0)` seconds per time
-    /// constant, so a low cutoff at high `Q` needs a long pre-roll; the cap keeps
-    /// the extra render bounded. The limiter needs its whole look-ahead window, or
-    /// its gain curve starts flat at 1.0 and lets the region's first peak through.
-    pub fn warmup_frames(&self, sample_rate: u32) -> usize {
-        /// Time constants of pre-roll: `1 - e^-8` ≈ 0.9997 of the way settled.
-        const TAUS: f32 = 8.0;
-        if self.is_bypass() {
-            return 0;
-        }
-        let cap = sample_rate as usize; // 1 s
-        match *self {
-            Effect::LowPass { cutoff, q } | Effect::HighPass { cutoff, q } => {
-                biquad_warmup(cutoff, q, sample_rate, TAUS).min(cap)
-            }
-            Effect::Peak { freq, q, .. }
-            | Effect::LowShelf { freq, q, .. }
-            | Effect::HighShelf { freq, q, .. } => {
-                biquad_warmup(freq, q, sample_rate, TAUS).min(cap)
-            }
-            // The de-esser's band split is a biquad too. Without a pre-roll its
-            // sidechain opens on a filter transient and ducks audio that never had
-            // an "S" in it.
-            Effect::DeEss { freq, .. } | Effect::DePlosive { freq, .. } => {
-                biquad_warmup(freq, deess::SPLIT_Q, sample_rate, TAUS).min(cap)
-            }
-            // Narrow (high-Q) cuts at a low frequency ring for a while; pre-roll the
-            // fundamental's notch (the longest). Harmonics settle faster.
-            Effect::DeHum { freq, .. } => biquad_warmup(freq, HUM_Q, sample_rate, TAUS).min(cap),
-            Effect::Limiter { release_secs, .. } => {
-                ((release_secs.max(0.0) * sample_rate as f32) as usize).min(cap)
-            }
-            // Chorus / flanger read a delay line that starts empty at the region
-            // edge; without a pre-roll their first `base + depth` ms of wet signal is
-            // silence, so the effect swells in (an audible edge). Fill it.
-            Effect::Chorus { depth_ms, .. } => {
-                (((CHORUS_BASE_MS + depth_ms) * 0.001 * sample_rate as f32) as usize).min(cap)
-            }
-            Effect::Flanger { depth_ms, .. } => {
-                (((FLANGER_BASE_MS + depth_ms) * 0.001 * sample_rate as f32) as usize).min(cap)
-            }
-            // Same as chorus/flanger — the doubler's delay line starts empty.
-            Effect::Doubler {
-                delay_ms,
-                detune_ms,
-                ..
-            } => (((delay_ms + detune_ms) * 0.001 * sample_rate as f32) as usize).min(cap),
-            // The pitch shifter's delay line starts empty; without a pre-roll its taps
-            // read silence for the first grain and the region swells in. Fill it.
-            // The harmonizer is two of them.
-            Effect::PitchShift { .. } | Effect::Harmonizer { .. } => wsola::WINDOW.min(cap),
-            // Block-based, so the region's first block would otherwise be modelled
-            // against assumed silence: for the formant shifter that means an envelope
-            // fitted to a fade-in, and for the de-clicker it means the edge itself
-            // looks like damage and gets "repaired". Pre-roll one analysis block.
-            Effect::FormantShift { .. } => formant::BLOCK.min(cap),
-            Effect::DeClick { .. } => declick::BLOCK.min(cap),
-            // Distortion's post low-pass would click at a selection edge without a
-            // pre-roll; size it on the darkest (longest-ringing) tone.
-            Effect::Distortion { .. } => {
-                biquad_warmup(tone::DISTORT_TONE_MIN_HZ, 0.707, sample_rate, TAUS).min(cap)
-            }
-            // The exciter's high-pass is a biquad — same edge-click risk.
-            Effect::Exciter { freq, .. } => biquad_warmup(freq, 0.707, sample_rate, TAUS).min(cap),
-            // The auto-wah's band-pass rings longest at its base (lowest) cut-off.
-            Effect::AutoWah { base_freq, .. } => {
-                biquad_warmup(base_freq, autowah::WAH_Q, sample_rate, TAUS).min(cap)
-            }
-            // The Haas widener reads `delay_ms` frames of the right channel before the
-            // region; pre-roll them so a mid-clip selection's right side isn't silence.
-            Effect::Haas { delay_ms } => {
-                ((delay_ms.max(0.0) * 0.001 * sample_rate as f32) as usize).min(cap)
-            }
-            // Vibrato is a modulated delay line that starts empty (like chorus/flanger).
-            Effect::Vibrato { depth_ms, .. } => {
-                (((VIBRATO_BASE_MS + depth_ms) * 0.001 * sample_rate as f32) as usize).min(cap)
-            }
-            // The compressor and the gate prime their own envelope on the region's
-            // first frame; the phaser's all-pass state settles in a handful of
-            // samples; tremolo is memoryless. None need a pre-roll.
-            _ => 0,
         }
     }
 
@@ -649,6 +583,7 @@ impl Effect {
             || matches!(*self, Effect::Harmonizer { mix, .. } if mix <= MOD_BYPASS)
             || matches!(*self, Effect::DeClick { sensitivity, .. }
                 if sensitivity <= DECLICK_BYPASS_SENS)
+            || matches!(*self, Effect::DeClip { amount, .. } if amount <= DECLIP_BYPASS_AMOUNT)
             || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)
             || matches!(*self, Effect::Leveler { amount, .. } if amount <= LEVELER_BYPASS_AMOUNT)
             || matches!(*self, Effect::Transient { attack, sustain }

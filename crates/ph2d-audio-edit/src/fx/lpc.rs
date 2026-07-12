@@ -1,4 +1,4 @@
-//! **Linear prediction (LPC)** — the shared core under De-Click and Formant Shift.
+//! **Linear prediction (LPC)** — the shared core under De-Click, De-Clip and Formant Shift.
 //!
 //! Fit an all-pole model to a block of audio: `x[n] ≈ Σ a[k]·x[n−k]`. What the model
 //! captures is the **spectral envelope** (the resonances — a voice's formants, an
@@ -32,6 +32,8 @@ const RIDGE: f64 = 1e-9;
 /// The plain (unwindowed-lag) estimator: `r[lag] = Σ_n x[n]·x[n+lag]`, summed over
 /// the samples that exist. This is what makes the resulting Toeplitz matrix positive
 /// semi-definite — the property Levinson leans on.
+use std::ops::Range;
+
 pub(super) fn autocorrelation(x: &[f64], order: usize) -> Vec<f64> {
     (0..=order)
         .map(|lag| {
@@ -115,6 +117,104 @@ pub(super) fn impulse_response(a: &[f64], len: usize) -> Vec<f64> {
             .sum();
     }
     h
+}
+
+/// A pivot smaller than this means the linear system is singular; bail rather than divide
+/// by dust.
+const PIVOT_EPS: f64 = 1e-12;
+
+/// Replace `gap` with the samples that minimise the AR residual energy across it
+/// (Janssen et al. 1986). The known audio on both sides pins the solution.
+///
+/// Writing the error filter as `b = [1, −a₀, −a₁, …]`, the residual energy is
+/// quadratic in the unknowns, so setting its derivative to zero gives one linear
+/// equation per missing sample:
+///
+/// ```text
+///   Σ_{m' ∈ gap} R(m − m')·x[m']  =  − Σ_{j ∉ gap} R(m − j)·x[j]      ∀ m ∈ gap
+/// ```
+///
+/// where `R` is the autocorrelation of `b`. Small (`gap ≤ MAX_GAP`) and solved
+/// exactly by Gaussian elimination.
+pub(super) fn lsar_interpolate(x: &mut [f64], a: &[f64], gap: Range<usize>) {
+    let p = a.len();
+    let m = gap.len();
+    if m == 0 {
+        return;
+    }
+    // The error filter, then its own autocorrelation R(0..=p).
+    let mut b = vec![0.0f64; p + 1];
+    b[0] = 1.0;
+    for (k, &ak) in a.iter().enumerate() {
+        b[k + 1] = -ak;
+    }
+    let rr: Vec<f64> = (0..=p)
+        .map(|d| (0..=(p - d)).map(|i| b[i] * b[i + d]).sum())
+        .collect();
+    let r = |d: isize| -> f64 {
+        let d = d.unsigned_abs();
+        if d <= p { rr[d] } else { 0.0 }
+    };
+
+    let mut mat = vec![0.0f64; m * m];
+    let mut rhs = vec![0.0f64; m];
+    for (i, mi) in gap.clone().enumerate() {
+        for (j, mj) in gap.clone().enumerate() {
+            mat[i * m + j] = r(mi as isize - mj as isize);
+        }
+        // Everything within `p` of the gap that is NOT missing pins this equation.
+        let lo = mi.saturating_sub(p);
+        let hi = (mi + p + 1).min(x.len());
+        let known: f64 = (lo..hi)
+            .filter(|j| !gap.contains(j))
+            .map(|j| r(mi as isize - j as isize) * x[j])
+            .sum();
+        rhs[i] = -known;
+    }
+    if let Some(sol) = solve(&mut mat, &mut rhs, m) {
+        for (i, mi) in gap.enumerate() {
+            x[mi] = sol[i];
+        }
+    }
+}
+
+/// Gaussian elimination with partial pivoting. `None` when the system is singular —
+/// the caller then leaves the audio alone rather than writing NaNs into it.
+fn solve(mat: &mut [f64], rhs: &mut [f64], n: usize) -> Option<Vec<f64>> {
+    for col in 0..n {
+        let mut piv = col;
+        for row in col + 1..n {
+            if mat[row * n + col].abs() > mat[piv * n + col].abs() {
+                piv = row;
+            }
+        }
+        if mat[piv * n + col].abs() < PIVOT_EPS {
+            return None;
+        }
+        if piv != col {
+            for c in 0..n {
+                mat.swap(col * n + c, piv * n + c);
+            }
+            rhs.swap(col, piv);
+        }
+        let diag = mat[col * n + col];
+        for row in col + 1..n {
+            let f = mat[row * n + col] / diag;
+            if f == 0.0 {
+                continue;
+            }
+            for c in col..n {
+                mat[row * n + c] -= f * mat[col * n + c];
+            }
+            rhs[row] -= f * rhs[col];
+        }
+    }
+    let mut sol = vec![0.0f64; n];
+    for i in (0..n).rev() {
+        let acc: f64 = rhs[i] - (i + 1..n).map(|c| mat[i * n + c] * sol[c]).sum::<f64>();
+        sol[i] = acc / mat[i * n + i];
+    }
+    sol.iter().all(|v| v.is_finite()).then_some(sol)
 }
 
 #[cfg(test)]

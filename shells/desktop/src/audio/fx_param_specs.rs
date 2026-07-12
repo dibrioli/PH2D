@@ -232,3 +232,10 @@ pub(super) static DE_CLICK: [FxParamSpec; 2] = [
     spec("Sensitivity", 0.0, 1.0, false, 0.0, "", false),
     spec("Width", 0.0001, 0.003, true, 0.001, "s", false),
 ];
+// Amount is the arm (0 = off): a restoration tool has nothing to do in most clips, so it
+// starts inert like De-Click. Threshold is where a FLAT run starts counting as clipped —
+// just under full scale, which is where a converter actually runs out.
+pub(super) static DE_CLIP: [FxParamSpec; 2] = [
+    spec("Amount", 0.0, 1.0, false, 0.0, "", false),
+    spec("Threshold", 0.5, 1.0, false, 0.95, "", false),
+];

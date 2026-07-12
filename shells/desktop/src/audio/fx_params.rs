@@ -276,6 +276,7 @@ mod tests {
                 "De-Esser",
                 "De-Plosive",
                 "De-Click",
+                "De-Clip",
                 "Limiter",
                 "Leveler",
                 "Transient",

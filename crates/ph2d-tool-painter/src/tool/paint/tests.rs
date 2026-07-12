@@ -18341,3 +18341,160 @@ fn impasto_depth_and_smoothing_are_live_on_the_stroke_already_painted() {
         "...while the last stroke, the live one, does follow the slider"
     );
 }
+
+#[test]
+#[ignore = "diagnostic — run with --ignored --nocapture"]
+fn halo_probe_translucent_edge() {
+    // Enio 2026-07-12, white canvas vs black: a whitish halo rims the LIT flank on white and vanishes on
+    // black. The light is a MULTIPLY on the composite — and at the stroke's translucent edge the
+    // composite is mostly PAPER. So the pass is brightening the paper showing THROUGH the paint, and on
+    // white paper `×1.65` bleaches a pale pink straight to white. Bucket the pixels by how much paint
+    // they carry and see where the shift lands.
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let size = 200u32;
+    let run = |paper: u8| -> (Vec<u8>, Vec<u8>, Vec<f32>) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![paper; (size * size * 4) as usize], size, size);
+        let mut b = BrushSpec {
+            radius_px: 40.0,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: DepthSource::Grain,
+            impasto_smoothing: 0.15,
+            ..Default::default()
+        };
+        b.texture.kind = TextureKind::Noise;
+        b.texture.mapping = TextureMapping::Tiled;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([80.0, 160.0], PointerPhase::Up));
+        let canvas = (*t.canvas_rgba).clone();
+        let h = relief(&t);
+        t.paint.impasto_show = true;
+        t.invalidate_composite();
+        let lit_px = (*t.take_preview_arc().unwrap().0).clone();
+        t.paint.impasto_show = false;
+        t.invalidate_composite();
+        let plain = (*t.take_preview_arc().unwrap().0).clone();
+        let _ = canvas;
+        (lit_px, plain, h)
+    };
+    for (name, paper) in [("WHITE paper", 255u8), ("BLACK paper", 0u8)] {
+        let (litp, plain, h) = run(paper);
+        // "Ink" = how far the pixel is from bare paper: 0 = untouched, 1 = fully covered.
+        let core = plain
+            .chunks_exact(4)
+            .map(|p| (i32::from(p[0]) - i32::from(p[1])).abs())
+            .max()
+            .unwrap_or(1)
+            .max(1) as f32;
+        let mut buckets = [(0u32, 0i32); 5]; // 0-20 / 20-40 / 40-60 / 60-80 / 80-100 % ink
+        for i in (0..plain.len()).step_by(4) {
+            let ink = (i32::from(plain[i]) - i32::from(plain[i + 1])).abs() as f32 / core;
+            if ink <= 0.02 {
+                continue;
+            }
+            let b = ((ink * 5.0) as usize).min(4);
+            let shift = (i32::from(litp[i + 1]) - i32::from(plain[i + 1])).abs();
+            buckets[b].0 += 1;
+            buckets[b].1 = buckets[b].1.max(shift);
+        }
+        let hmax = h.iter().fold(0.0f32, |m, &v| m.max(v.abs()));
+        println!("{name} (relief peak {hmax:.2}):");
+        for (i, (n, worst)) in buckets.iter().enumerate() {
+            println!(
+                "   ink {:>3}-{:>3}%: {n:>6} px, light shifts up to {worst:>3} levels",
+                i * 20,
+                (i + 1) * 20
+            );
+        }
+    }
+}
+
+#[test]
+fn impasto_light_shades_the_paint_not_the_paper_showing_through_it() {
+    // Enio, 2026-07-12, two photographs: the same three strokes on a WHITE canvas and on a BLACK one. On
+    // white, a bleached halo rimmed the lit flank of every stroke. On black it was simply not there.
+    //
+    // That contrast is the whole diagnosis. The pass MULTIPLIES the composited pixel — and at a stroke's
+    // translucent edge that pixel is mostly PAPER, seen through the paint. Shading it in full shades the
+    // paper: on white, ×1.65 bleaches a pale pink straight to white. On black there is nothing white to
+    // bleach, so the bug was invisible. Measured, it was worse at the EDGE (81 levels at 20–60% ink) than
+    // at the CORE (55 at 80–100%) — backwards, since the paint is thickest at the core.
+    //
+    // The fix is to weight the shading by the paint's own coverage, which is why the tool now carries a
+    // coverage field beside the height. Height could not stand in for it: height is `Depth × coverage`,
+    // so a small value cannot tell thin paint from a lot of paint laid thinly.
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let size = 200u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size); // WHITE paper: the hard case
+    let mut b = BrushSpec {
+        radius_px: 40.0,
+        color: [0.9, 0.1, 0.1],
+        space_attenuation: false,
+        impasto: true,
+        impasto_depth: 0.7,
+        impasto_source: DepthSource::Grain,
+        impasto_smoothing: 0.15,
+        ..Default::default()
+    };
+    b.texture.kind = TextureKind::Noise;
+    b.texture.mapping = TextureMapping::Tiled;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([80.0, 160.0], PointerPhase::Up));
+
+    t.paint.impasto_show = true;
+    t.invalidate_composite();
+    let shaded = lit(&mut t);
+    t.paint.impasto_show = false;
+    t.invalidate_composite();
+    let plain = lit(&mut t);
+
+    // The defect is not "the flank shades" — a ridge's flanks are exactly where a surface tilts, so of
+    // course they shade; the core is a plateau and shades least. The defect is that the flank shades so
+    // hard it BLEACHES: a 30%-ink pixel multiplied by 1.65 lands on white, indistinguishable from the
+    // paper. The halo is a GAP — the light erasing the paint's own presence at the edge.
+    //
+    // So: how much of the paint survives the lighting, where the paint is translucent?
+    let ink = |img: &[u8], i: usize| (i32::from(img[i]) - i32::from(img[i + 1])).max(0);
+    let core_ink = (0..plain.len())
+        .step_by(4)
+        .map(|i| ink(&plain, i))
+        .max()
+        .unwrap_or(1)
+        .max(1) as f32;
+    let mut worst_survival = f32::MAX;
+    let mut n = 0u32;
+    for i in (0..plain.len()).step_by(4) {
+        let before = ink(&plain, i) as f32 / core_ink;
+        if !(0.2..0.6).contains(&before) {
+            continue; // only the translucent rim — where the composite is mostly paper
+        }
+        n += 1;
+        let after = ink(&shaded, i) as f32 / core_ink;
+        worst_survival = worst_survival.min(after / before);
+    }
+    assert!(
+        n > 500,
+        "sanity: the fixture has a real translucent rim ({n} px)"
+    );
+    assert!(
+        worst_survival > 0.55,
+        "the light bleached the translucent edge down to {:.0}% of its paint — that is the pass shading \
+         the PAPER showing through, and it is the white halo Enio photographed (it vanished on a black \
+         canvas, because there was nothing white to bleach)",
+        worst_survival * 100.0
+    );
+}

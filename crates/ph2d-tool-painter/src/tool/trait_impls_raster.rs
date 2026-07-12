@@ -45,6 +45,7 @@ impl RasterEditTool for PainterTool {
         // none of it. (Same species as the four above: state whose shape is tied to a document that is
         // no longer bound.)
         self.heights.clear();
+        self.covers.clear();
         self.drop_live_relief();
         self.layers_revision = self.layers_revision.wrapping_add(1);
         // A different working canvas — undo/redo over the OLD model is meaningless on the NEW one.

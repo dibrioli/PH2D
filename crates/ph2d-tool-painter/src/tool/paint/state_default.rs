@@ -145,6 +145,7 @@ impl Default for PaintState {
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
             stroke_height: Vec::new(),
+            stroke_cover: Vec::new(),
             last_height_center: Vec::new(),
             live_relief: Vec::new(),
             live_relief_base: Vec::new(),

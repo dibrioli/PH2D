@@ -423,6 +423,9 @@ pub(crate) struct PaintState {
     /// (zero cost); sized lazily by the first dab, cleared on down and on each shape-editor re-stamp.
     /// See [`super::impasto`].
     stroke_height: Vec<f32>,
+    /// **Impasto** per-stroke PAINT-coverage envelope (1 byte/px) — the sibling of [`Self::stroke_height`].
+    /// Merged into the layer's `covers` at stroke end. See `PainterTool::covers`.
+    stroke_cover: Vec<u8>,
     /// **Impasto**: where each Symmetry copy of the stroke was when the LAST pointer batch ended, so the
     /// first dab of the next batch can sweep back to it. Without it the relief would bead at every
     /// pointer event — a beading chosen by the artist's mouse polling rate, not by their hand. One slot

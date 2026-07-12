@@ -60,19 +60,26 @@ impl PainterTool {
         let Some(active) = self.layers.active() else {
             return;
         };
-        let mut field = if erasing {
+        let (mut field, mut cover) = if erasing {
             match self.heights.remove(&active) {
-                Some(f) if f.len() == n => f,
+                Some(f) if f.len() == n => {
+                    let c = self.covers.remove(&active).filter(|c| c.len() == n);
+                    (f, c.unwrap_or_else(|| vec![0u8; n]))
+                }
                 // Nothing to erase (no relief on this layer) — and a stale, differently-sized field is
                 // dropped rather than indexed into (the shape guard the sweep taught us to write).
                 _ => return,
             }
         } else {
             let mut f = std::mem::take(&mut self.paint.stroke_height);
+            let mut c = std::mem::take(&mut self.paint.stroke_cover);
             if f.len() != n {
                 f = vec![0.0; n]; // lazily sized by the first dab of the stroke; zero cost when unused
             }
-            f
+            if c.len() != n {
+                c = vec![0u8; n];
+            }
+            (f, c)
         };
 
         // Resolve each dab's frames EXACTLY as the colour route will — same `d.dir` (Rake), same
@@ -182,9 +189,9 @@ impl PainterTool {
                 grain_image: grain_image.as_ref(),
             };
             let hit = if erasing {
-                erase_dab_height(&mut field, w, h, &spec, &hd)
+                erase_dab_height(&mut field, &mut cover, w, h, &spec, &hd)
             } else {
-                accumulate_dab_height(&mut field, w, h, &spec, &hd)
+                accumulate_dab_height(&mut field, &mut cover, w, h, &spec, &hd)
             };
             if let Some(r) = hit {
                 let rect = Region {
@@ -215,8 +222,10 @@ impl PainterTool {
             // says it is — drop it rather than let a later Depth drag resurrect erased paint.
             self.drop_live_relief();
             self.heights.insert(active, field);
+            self.covers.insert(active, cover);
         } else {
             self.paint.stroke_height = field;
+            self.paint.stroke_cover = cover;
         }
         if let Some(rect) = touched {
             self.mark_dirty(rect);
@@ -229,6 +238,7 @@ impl PainterTool {
     /// relief of every shape the artist dragged THROUGH, and a curve would leave a trail of ghosts).
     pub(super) fn reset_stroke_height(&mut self) {
         self.paint.stroke_height.clear();
+        self.paint.stroke_cover.clear();
         self.paint.last_height_center.clear(); // the sweep chain restarts with the stroke
     }
 
@@ -250,6 +260,19 @@ impl PainterTool {
         // BEFORE it. Between them, Depth and Smoothing can be re-derived after the fact — the artist
         // lays a stroke, then dials the thickness in while looking at it, exactly like every other
         // property in this panel. See [`Self::refresh_live_relief`].
+        // Coverage merges by MAX, not by sum: two strokes over the same spot do not make the pixel
+        // "200% paint". (The HEIGHT does add — more paint IS thicker. The two are different quantities,
+        // which is the whole reason the light needs both.)
+        let stroke_cover = std::mem::take(&mut self.paint.stroke_cover);
+        if !stroke_cover.is_empty() {
+            let dst = self.covers.entry(active).or_default();
+            if dst.len() != stroke_cover.len() {
+                dst.resize(stroke_cover.len(), 0);
+            }
+            for (d, s) in dst.iter_mut().zip(stroke_cover.iter()) {
+                *d = (*d).max(*s);
+            }
+        }
         let base = self.heights.get(&active).cloned().unwrap_or_default();
         self.paint.live_relief_depth = self.paint.brush.effective_impasto_depth();
         self.paint.live_relief_base = base;
@@ -315,7 +338,12 @@ impl PainterTool {
 
     /// The relief the artist should SEE right now for `id`: the committed layer height plus the
     /// in-progress stroke's envelope. They are separate buffers (the envelope is what stops a stroke
-    /// stacking on itself), so anything that displays relief has to add them — this is that one place.
+    /// stacking on itself), so anything that reads the relief as a whole has to add them.
+    ///
+    /// This MATERIALISES the sum. The light pass deliberately does not use it — it samples the layers in
+    /// place (`ReliefFields`), because building a canvas-sized buffer every frame cost twice the whole
+    /// impasto budget while the pass only ever lights the dirty rect. Kept as the accessor for anything
+    /// that genuinely wants the field (the gates do), not as the hot path.
     #[must_use]
     pub fn layer_height_view(&self, id: crate::tool::RtLayerId) -> Option<Vec<f32>> {
         let committed = self.heights.get(&id);

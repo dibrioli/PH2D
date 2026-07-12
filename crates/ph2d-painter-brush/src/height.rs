@@ -258,6 +258,7 @@ pub fn envelope(a: f32, b: f32) -> f32 {
 #[must_use]
 pub fn accumulate_dab_height(
     dst: &mut [f32],
+    cover: &mut [u8],
     width: u32,
     height: u32,
     spec: &crate::BrushSpec,
@@ -265,7 +266,8 @@ pub fn accumulate_dab_height(
 ) -> Option<crate::dab::DirtyRect> {
     // Contract guard — a real early-out, not a `debug_assert` that vanishes from the build the artist
     // runs (the lesson of the 2026-07-12 SIGSEGV).
-    if dst.len() < (width as usize) * (height as usize) || width == 0 || height == 0 {
+    let n = (width as usize) * (height as usize);
+    if dst.len() < n || cover.len() < n || width == 0 || height == 0 {
         return None;
     }
     let depth = spec.effective_impasto_depth();
@@ -318,6 +320,14 @@ pub fn accumulate_dab_height(
             }
             let i = (py as usize) * (width as usize) + px as usize;
             dst[i] = envelope(dst[i], h);
+            // How much PAINT is at this pixel — the silhouette × the dynamics, i.e. the coverage the
+            // colour path deposits. NOT the height: height mixes coverage with Depth, and the light needs
+            // to know how much of the pixel is paint and how much is the paper showing through it.
+            let c = (w * coverage).clamp(0.0, 1.0);
+            let cb = (c * 255.0 + 0.5) as u8;
+            if cb > cover[i] {
+                cover[i] = cb; // an envelope: paint coverage saturates, it does not accumulate
+            }
             touched = true;
         }
     }
@@ -341,12 +351,14 @@ pub fn accumulate_dab_height(
 #[must_use]
 pub fn erase_dab_height(
     dst: &mut [f32],
+    cover: &mut [u8],
     width: u32,
     height: u32,
     spec: &crate::BrushSpec,
     dab: &HeightDab<'_>,
 ) -> Option<crate::dab::DirtyRect> {
-    if dst.len() < (width as usize) * (height as usize) || width == 0 || height == 0 {
+    let n = (width as usize) * (height as usize);
+    if dst.len() < n || cover.len() < n || width == 0 || height == 0 {
         return None;
     }
     let coverage =
@@ -378,10 +390,12 @@ pub fn erase_dab_height(
                 continue;
             }
             let i = (py as usize) * (width as usize) + px as usize;
-            if dst[i] == 0.0 {
+            if dst[i] == 0.0 && cover[i] == 0 {
                 continue;
             }
-            dst[i] *= 1.0 - (w * coverage).clamp(0.0, 1.0);
+            let scrub = 1.0 - (w * coverage).clamp(0.0, 1.0);
+            dst[i] *= scrub;
+            cover[i] = (f32::from(cover[i]) * scrub) as u8; // the paint goes, so does its presence
             touched = true;
         }
     }
@@ -448,7 +462,8 @@ mod tests {
             grain_image: None,
             prev_center: None, // a lone stamped dab — nothing to sweep back to
         };
-        let _ = accumulate_dab_height(&mut dst, W, W, spec, &dab);
+        let mut cov = vec![0u8; (W * W) as usize];
+        let _ = accumulate_dab_height(&mut dst, &mut cov, W, W, spec, &dab);
         dst
     }
 
@@ -565,8 +580,9 @@ mod tests {
             grain_image: None,
             prev_center: None,
         };
-        let rect =
-            erase_dab_height(&mut field, W, W, &spec, &dab).expect("the eraser touched relief");
+        let mut cov = vec![255u8; (W * W) as usize];
+        let rect = erase_dab_height(&mut field, &mut cov, W, W, &spec, &dab)
+            .expect("the eraser touched relief");
         assert!(rect.w > 0 && rect.h > 0);
         let centre = field[(16 * W + 16) as usize];
         assert!(

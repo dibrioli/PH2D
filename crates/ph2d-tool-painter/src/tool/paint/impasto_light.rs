@@ -57,16 +57,72 @@ const MIN_ELEV_DEG: u16 = 5;
 /// returns exactly `1.0` — the byte-identity contract survives. // CLAMP-OK
 const AMBIENT: f32 = 0.35;
 
-/// Height (in deposit units) below which the relief is a *film*, not a *body*.
+/// How the relief's effect scales with how much PAINT is at a pixel.
 ///
-/// The normal comes from the **slope**, not the height — so a vanishingly thin layer of paint whose
-/// grain swings per texel has micro-slopes as steep as a real ridge's, and would be shaded just as
-/// hard, drawing a halo of shadow over paint the eye cannot even see. The `body` factor below this
-/// height scales the SLOPE (a film drapes; it does not stand up in ridges) *and* fades the effect, so
-/// the tail dies quadratically. Calibrated: with the slope scaled and this at 0.20, exactly zero
-/// unpainted pixels are shaded, while the relief still reads at full strength — fading the effect
-/// alone could not do both (`impasto_light_does_not_shade_paint_that_is_not_there`). // CLAMP-OK
-const BODY_MIN: f32 = 0.20;
+/// The pass multiplies the composited pixel — and at a stroke's translucent edge that pixel is mostly
+/// **paper showing through the paint**. Shading it in full means shading the paper: on a white canvas
+/// `×1.65` bleaches a pale pink straight to white, which is the halo Enio photographed (2026-07-12),
+/// and which measured HARDER at the edge (81 levels at 20–60% ink) than at the core (55 at 80–100%).
+/// It vanished on a black canvas, because there is nothing white to bleach — the tell that gave it away.
+///
+/// So the effect is weighted by the paint's own coverage: at 30% paint, 30% of the shading. Bare paper
+/// gets exactly none, and the pass is a strict no-op there. The coverage also scales the SLOPE — a film
+/// of paint drapes, it does not stand up in ridges — so a thin tail with a per-texel grain, whose
+/// micro-slopes are as steep as a real ridge's, dies off quadratically instead of catching hard shadows.
+///
+/// Height cannot stand in for this: height is `Depth × coverage`, so a small value cannot tell thin
+/// paint from a lot of paint laid thinly. That conflation is what the first cut got wrong.
+#[inline]
+fn paint_body(cover: u8) -> f32 {
+    f32::from(cover) / 255.0
+}
+
+/// The relief + coverage the light reads, sampled straight out of the layer store — no composed buffer,
+/// no per-frame allocation. See [`PainterTool::impasto_fields`].
+struct ReliefFields<'a> {
+    /// Every visible layer that carries relief: its height, and its coverage when it has one.
+    committed: Vec<(&'a [f32], Option<&'a [u8]>)>,
+    /// The open stroke's envelope on the active layer (`None` outside a stroke, or while erasing —
+    /// an erase mutates the layer in place, so there is nothing separate to add).
+    live_h: Option<&'a [f32]>,
+    live_c: Option<&'a [u8]>,
+    width: usize,
+    height: usize,
+}
+
+impl ReliefFields<'_> {
+    /// Height at a canvas pixel, clamped to the canvas (so the central difference can read across the
+    /// dirty rect's edge exactly as a full recompose would).
+    #[inline]
+    fn height_at(&self, x: i64, y: i64) -> f32 {
+        let i = self.index(x, y);
+        let mut h = self.live_h.map_or(0.0, |l| l[i]);
+        for (field, _) in &self.committed {
+            h += field[i];
+        }
+        h
+    }
+
+    /// Paint coverage at a canvas pixel — the MAX over the layers, not the sum.
+    #[inline]
+    fn cover_at(&self, x: i64, y: i64) -> u8 {
+        let i = self.index(x, y);
+        let mut c = self.live_c.map_or(0, |l| l[i]);
+        for (_, cover) in &self.committed {
+            if let Some(cv) = cover {
+                c = c.max(cv[i]);
+            }
+        }
+        c
+    }
+
+    #[inline]
+    fn index(&self, x: i64, y: i64) -> usize {
+        let cx = x.clamp(0, self.width as i64 - 1) as usize;
+        let cy = y.clamp(0, self.height as i64 - 1) as usize;
+        cy * self.width + cx
+    }
+}
 
 /// The lighting environment, resolved once per pass.
 struct Light {
@@ -126,16 +182,9 @@ impl Light {
     /// `(multiply, add)`: the composite's RGB is `rgb × multiply + add`. A FLAT pixel — or one with no
     /// real body of paint — returns exactly `(1.0, 0.0)`.
     #[inline]
-    fn shade(&self, h: f32, dhx: f32, dhy: f32) -> (f32, f32) {
-        if dhx == 0.0 && dhy == 0.0 {
-            return (1.0, 0.0); // flat paint is untouched, to the byte
-        }
-        // How much of a BODY is here. The normal comes from the slope, so without this a film of paint
-        // one thousandth deep — but with a per-texel grain — would shade as hard as a real ridge, and
-        // draw shadows over the brush's invisible falloff tail. No body, no relief.
-        let body = (h.abs() / BODY_MIN).min(1.0);
-        if body <= 0.0 {
-            return (1.0, 0.0);
+    fn shade(&self, body: f32, dhx: f32, dhy: f32) -> (f32, f32) {
+        if (dhx == 0.0 && dhy == 0.0) || body <= 0.0 {
+            return (1.0, 0.0); // flat paint — or bare paper — is untouched, to the byte
         }
         // Surface normal from the gradient: a rising slope tilts the normal AGAINST the rise. The slope
         // is scaled by the BODY — a film of paint drapes, it does not stand up in ridges — so the
@@ -184,48 +233,53 @@ impl PainterTool {
         true
     }
 
-    /// Total relief over the VISIBLE layers, canvas-sized. `None` when nothing is lit.
+    /// The relief and the paint coverage the light must read, as BORROWED slices — never materialised.
     ///
-    /// Fase 1 composites the heights by **Add** (per-layer Subtract / Replace / Ignore is named and
-    /// deferred). A hidden layer contributes nothing — hide the layer and its paint stops catching the
-    /// light, which is the only behaviour that would not surprise anyone.
-    fn impasto_height_total(&self) -> Option<Vec<f32>> {
+    /// Building the composed fields into two canvas-sized buffers is the obvious thing, and it is what
+    /// this did first: it cost an `O(canvas)` allocate-and-sum on **every frame**, while the pass itself
+    /// only ever lights the dirty rect. At 2048² that is the difference between 3.9 ms and 2.1 ms per
+    /// move — most of the impasto budget spent composing pixels nobody was going to look at.
+    ///
+    /// Heights **add** across layers (more paint IS thicker); coverage takes the **max** (it is a
+    /// presence, not a quantity — two layers of paint over one pixel do not make it 200% paint). Per-layer
+    /// Subtract / Replace / Ignore is named and deferred. A hidden layer contributes neither: hide it and
+    /// its paint stops catching the light.
+    fn impasto_fields(&self) -> Option<ReliefFields<'_>> {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
         if n == 0 {
             return None;
         }
-        // Only layers that were actually sculpted have an entry — the map is lazy, so this loop is empty
-        // for every document nobody has used Impasto on. The in-progress stroke rides on the active
-        // layer's entry (`layer_height_view`), so it must be considered even before the layer HAS one.
-        let mut ids: Vec<crate::tool::RtLayerId> = self.heights.keys().copied().collect();
-        if let Some(a) = self.layers.active()
-            && !self.paint.stroke_height.is_empty()
-            && !ids.contains(&a)
-        {
-            ids.push(a);
-        }
-        let mut total: Option<Vec<f32>> = None;
-        for id in ids {
-            if !self.layer_effectively_visible(id) {
-                continue;
-            }
-            let Some(field) = self.layer_height_view(id) else {
-                continue;
-            };
-            if field.len() != n {
-                continue; // a field shaped for a document that is no longer bound
-            }
-            match total.as_mut() {
-                None => total = Some(field),
-                Some(acc) => {
-                    for (a, b) in acc.iter_mut().zip(field.iter()) {
-                        *a += b;
-                    }
-                }
+        let active = self.layers.active();
+        let mut committed: Vec<(&[f32], Option<&[u8]>)> = Vec::new();
+        // Only layers that were actually sculpted have an entry — the map is lazy, so this is empty for
+        // every document nobody has used Impasto on.
+        for (id, field) in &self.heights {
+            if field.len() == n && self.layer_effectively_visible(*id) {
+                let cover = self
+                    .covers
+                    .get(id)
+                    .map(Vec::as_slice)
+                    .filter(|c| c.len() == n);
+                committed.push((field.as_slice(), cover));
             }
         }
-        total.filter(|t| t.iter().any(|&v| v != 0.0))
+        // The open stroke rides on the active layer — which may not have a committed entry yet.
+        let live_visible = active.is_some_and(|a| self.layer_effectively_visible(a));
+        let live_h = (live_visible && self.paint.stroke_height.len() == n && !self.paint.eraser)
+            .then_some(self.paint.stroke_height.as_slice());
+        let live_c = (live_visible && self.paint.stroke_cover.len() == n && !self.paint.eraser)
+            .then_some(self.paint.stroke_cover.as_slice());
+        if committed.is_empty() && live_h.is_none() {
+            return None;
+        }
+        Some(ReliefFields {
+            committed,
+            live_h,
+            live_c,
+            width: w as usize,
+            height: h as usize,
+        })
     }
 
     /// Light `rgba` — the pixels of `region`, freshly composited and NOT yet lit (`rgba` is
@@ -234,10 +288,9 @@ impl PainterTool {
         if !self.impasto_visible() {
             return;
         }
-        let Some(height) = self.impasto_height_total() else {
+        let Some(fields) = self.impasto_fields() else {
             return;
         };
-        let (w, h) = self.source_size;
         if rgba.len() < (region.w as usize) * (region.h as usize) * 4 {
             return; // shape guard — bail rather than index out of a mis-sized buffer
         }
@@ -247,11 +300,8 @@ impl PainterTool {
             self.paint.impasto_light_amount,
             self.paint.impasto_shine,
         );
-        let at = |x: i64, y: i64| -> f32 {
-            let cx = x.clamp(0, w as i64 - 1) as usize;
-            let cy = y.clamp(0, h as i64 - 1) as usize;
-            height[cy * (w as usize) + cx]
-        };
+        let at = |x: i64, y: i64| fields.height_at(x, y);
+        let cover_at = |x: i64, y: i64| fields.cover_at(x, y);
         for ry in 0..region.h {
             let gy = i64::from(region.y + ry);
             for rx in 0..region.w {
@@ -260,7 +310,7 @@ impl PainterTool {
                 // dirty-rect update lights its border exactly as a full recompose would.
                 let dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
                 let dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
-                let (mul, add) = light.shade(at(gx, gy), dhx, dhy);
+                let (mul, add) = light.shade(paint_body(cover_at(gx, gy)), dhx, dhy);
                 if mul == 1.0 && add == 0.0 {
                     continue; // flat: byte-identical, and not even a rounding trip through f32
                 }

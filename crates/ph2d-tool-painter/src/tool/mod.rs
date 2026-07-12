@@ -85,6 +85,13 @@ pub struct PainterTool {
     /// the in-progress stroke's contribution is the separate `PaintState::stroke_height` envelope.
     /// Captured by the structural-undo snapshot, so undoing a stroke restores the relief with it.
     heights: BTreeMap<RtLayerId, Vec<f32>>,
+    /// **Impasto** paint-coverage per layer (canvas-sized, `0..=255`) — how much of each pixel is PAINT
+    /// rather than the paper showing through it. The light needs this and the height is not a substitute:
+    /// height is `Depth × coverage`, so it cannot say whether a low value means thin paint or a lot of
+    /// paint laid thinly. Without it, the pass shades the paper at the stroke's translucent edge, and on
+    /// a white canvas ×1.65 bleaches a pale pink straight to white — the halo Enio photographed
+    /// (2026-07-12), which measured HARDER at the edge than at the core.
+    covers: BTreeMap<RtLayerId, Vec<u8>>,
     /// Cached composite output (non-trivial stacks only), behind an `Arc` so the
     /// bridge drain is zero-copy. Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,
@@ -165,6 +172,7 @@ impl Default for PainterTool {
             layers: LayerStack::new(),
             images: BTreeMap::new(),
             heights: BTreeMap::new(),
+            covers: BTreeMap::new(),
             composited: None,
             preview_upload_bbox: None,
             layers_revision: 0,

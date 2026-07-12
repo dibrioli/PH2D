@@ -42,6 +42,8 @@ pub struct ModelSnapshot {
     /// pass reporting a ridge over paint that is no longer there). Empty for every layer that was
     /// never sculpted, which is the norm — the map is lazy.
     pub heights: BTreeMap<RtLayerId, Vec<f32>>,
+    /// Paint coverage per layer, captured with the relief it belongs to (see `PainterTool::covers`).
+    pub covers: BTreeMap<RtLayerId, Vec<u8>>,
     pub canvas_rgba: Arc<Vec<u8>>,
     pub selection: BTreeSet<RtLayerId>,
     /// The open on-canvas shape editor (Curve / Ellipse / Polygon), captured so a structural undo/redo
@@ -383,6 +385,7 @@ mod tests {
             layers: LayerStack::new(),
             images: BTreeMap::new(),
             heights: BTreeMap::new(),
+            covers: BTreeMap::new(),
             canvas_rgba: Arc::new(vec![active_px; 16]),
             selection: BTreeSet::new(),
             shape: None,

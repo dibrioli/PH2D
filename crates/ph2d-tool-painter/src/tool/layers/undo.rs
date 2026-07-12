@@ -20,6 +20,7 @@ impl PainterTool {
             layers: self.layers.clone(),
             images: self.images.clone(),
             heights: self.heights.clone(),
+            covers: self.covers.clone(),
             canvas_rgba: Arc::clone(&self.canvas_rgba),
             selection: self.selection.clone(),
             // Layer ops carry no open shape / live preview; the shape paths override these via
@@ -55,6 +56,7 @@ impl PainterTool {
         self.layers = m.layers;
         self.images = m.images;
         self.heights = m.heights;
+        self.covers = m.covers;
         // The live-edit buffer describes a stroke on a ground that no longer exists — forget it, or the
         // next Depth drag would rebuild an undone stroke out of thin air.
         self.drop_live_relief();

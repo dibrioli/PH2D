@@ -424,6 +424,13 @@ color_tokens! {
     /// the very cards it is selecting, and an opaque fill would hide them.
     GraphMarquee => "graph-marquee",
 
+    /// `graph-inert` — translucent scrim laid over a node the cook never pulled: a card
+    /// nothing downstream consumes. Translucent BY CONTRACT (it is a veil over a card that
+    /// must stay legible and grabbable, not a repaint of it), and the PANEL's own
+    /// background hue, so a dead card reads as *receding into the canvas* rather than as a
+    /// new colour that has to be learnt.
+    GraphInert => "graph-inert",
+
     /// `attr-write` — gold badge for attribute-write on a node.
     AttrWrite => "attr-write",
 

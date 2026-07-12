@@ -64,11 +64,12 @@ fn new_builds_the_well_typed_rig_document() {
             "motion.output"
         );
     }
-    // 22 nodes: the goal {grid, move, oscillator, orbit} + the hose {skeleton, rubber_hose,
+    // 23 nodes: the goal {grid, move, oscillator, orbit} + the hose {skeleton, rubber_hose,
     // scale, move, output} + the skinned tentacle {skeleton, fabrik, grid, move,
     // skin_deformer, scale, move, output} + the goal dots {scale, move, output, move,
-    // output}. The newest nodes (doc 42).
-    assert_eq!(state.doc.graph.nodes().len(), 22);
+    // output} + the ORPHAN that demos the inline readouts (doc 43: no sink consumes it, so
+    // it never cooks, so it has no reading and the editor veils it).
+    assert_eq!(state.doc.graph.nodes().len(), 23);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 

@@ -394,6 +394,27 @@ impl Cook {
         self.live_keys.clear();
     }
 
+    /// **Read `node`'s memoized outputs WITHOUT cooking anything** — `None` if this
+    /// frame's cook never pulled it (root time lane).
+    ///
+    /// This is what makes an editor's inline readouts free: the frame's cook has already
+    /// evaluated every node that feeds a sink, and their results are sitting right here.
+    /// A reader that called [`Self::cook`] instead would be *correct* and still wrong — it
+    /// would evaluate nodes the render never needed, once per card per frame, and turn a
+    /// glance at the graph into a second full evaluation of it.
+    ///
+    /// **`None` is information, not a failure.** A node that no sink consumes was never
+    /// cooked and has nothing to show — which is precisely the fact the artist wants to see
+    /// (a card sitting there with no reading is a card wired to nothing).
+    ///
+    /// Root lane only: a node inside a `motion.time_remap` scope cooks on another clock and
+    /// holds a reading per scope, so there is no single "the" value to report.
+    pub fn peek(&self, node: NodeId) -> Option<&[CookValue]> {
+        self.cache
+            .get(&(node, SCOPE_ROOT))
+            .map(|c| c.outputs.as_slice())
+    }
+
     /// Cook `target`'s outputs at `playhead`, pulling upstream on demand and
     /// reusing memoized results whose inputs are unchanged.
     pub fn cook(

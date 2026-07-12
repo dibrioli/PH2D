@@ -45,6 +45,10 @@ mod backdrops;
 #[path = "motion_bridge_edit.rs"]
 mod edit;
 
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_readout.rs"]
+mod readout;
+
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
@@ -177,6 +181,10 @@ pub(super) fn dispatch(
                     title: b.title.clone(),
                 })
                 .collect();
+            // The inline readouts: what each card produced on THIS frame's cook, read out
+            // of the pump's memo (`Cook::peek`, never a second cook). A node no sink
+            // consumes has no entry and stays blank — which is the diagnosis, not a gap.
+            readout::stamp(motion, &mut snap);
             snap
         }));
     }

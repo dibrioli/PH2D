@@ -70,8 +70,15 @@ pub(crate) fn card_rows(n: &GraphNodeView) -> f32 {
     (n.inputs.len().max(n.outputs.len()).max(1)) as f32
 }
 
+/// The card's height. A node with a live **readout** is one row taller — the number sits
+/// under the sockets, in the space the bottom padding used to hold.
+///
+/// This lives in `geom` (not in `paint`) because the hit-test and the paint MUST agree: a
+/// card that is drawn taller than it is clickable has a dead strip along its bottom edge,
+/// and a card clickable past its own border steals from the canvas behind it.
 pub(crate) fn card_h(n: &GraphNodeView) -> f32 {
-    HEADER_H + card_rows(n) * ROW_H + PAD_BOTTOM
+    let readout = if n.readout.is_some() { ROW_H } else { 0.0 };
+    HEADER_H + card_rows(n) * ROW_H + readout + PAD_BOTTOM
 }
 
 /// Screen center of a socket (`output` picks the right vs left edge; `i` is the
@@ -181,6 +188,7 @@ mod tests {
                 })
                 .collect(),
             outputs: vec![],
+            readout: None,
         }
     }
 
@@ -201,6 +209,45 @@ mod tests {
         assert_eq!(hit_input_socket(&snap, &view, n1, p1), Some((7, 1)));
         // Far from any socket → no hit.
         assert_eq!(hit_input_socket(&snap, &view, 400.0, 400.0), None);
+    }
+
+    /// **A readout makes the card taller — and the HIT geometry grows with it.**
+    ///
+    /// `card_h` is the one source of truth for both the paint and the hit-test, which is
+    /// why the readout's row is added here and not in `paint`. FALSIFIED by adding the row
+    /// only where the card is drawn: the card would gain a dead strip along its bottom edge
+    /// — a place that looks like the node and does not answer the mouse.
+    #[test]
+    fn a_readout_grows_the_card_and_its_hit_rect_together() {
+        let bare = node_with_inputs(1, 0.0, 2);
+        let mut with_readout = node_with_inputs(2, 0.0, 2);
+        with_readout.readout = Some("12 inst".into());
+
+        assert_eq!(
+            card_h(&with_readout) - card_h(&bare),
+            ROW_H,
+            "one row taller"
+        );
+
+        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+        let (bare_r, read_r) = (card_rect(&bare, &view), card_rect(&with_readout, &view));
+        assert_eq!(read_r.h - bare_r.h, ROW_H, "…and so is what the mouse hits");
+
+        // A point in the readout's own row is INSIDE the card that has one, and outside the
+        // card that does not. That is the strip that would have gone dead.
+        let y = bare_r.y + bare_r.h + ROW_H * 0.5;
+        let band = Rect::new(0.0, y - 1.0, 10.0, 2.0);
+        let snap = GraphViewSnapshot {
+            nodes: vec![bare, with_readout],
+            edges: vec![],
+            backdrops: vec![],
+            probe: None,
+        };
+        assert_eq!(
+            nodes_in_box(&snap, &view, band),
+            vec![2],
+            "only the taller card reaches down into that row"
+        );
     }
 
     #[test]

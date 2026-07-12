@@ -53,6 +53,8 @@ const TITLE_PAD_X: f32 = 8.0; // LITERAL-PX-OK: card title left inset
 const TITLE_PAD_Y: f32 = 5.0; // LITERAL-PX-OK: card title top inset
 const TITLE_SIZE: f32 = 13.0; // LITERAL-PX-OK: card title font size
 const TITLE_INSET_R: f32 = 12.0; // LITERAL-PX-OK: card title right inset
+const READOUT_SIZE: f32 = 11.0; // LITERAL-PX-OK: inline readout font size (below the title's)
+const READOUT_PAD_Y: f32 = 4.0; // LITERAL-PX-OK: inline readout top inset within its row
 const GRID_STEP: f32 = 32.0; // LITERAL-PX-OK: background grid spacing
 const WIRE_W: f32 = 2.4; // LITERAL-PX-OK: wire stroke width
 const WIRE_W_DELAYED: f32 = 1.6; // LITERAL-PX-OK: hover-ghost stroke width revealing a pre pair
@@ -303,6 +305,39 @@ fn draw_card(
             SOCKET_R * view.zoom,
             resolve(domain_token(p.domain), theme),
         );
+    }
+
+    // The inline readout: what this card produced on this frame's cook, under its sockets.
+    // Text2 (the muted tone), not Text1 — it is a live instrument reading, not a label the
+    // artist authored, and it must not compete with the node's own name.
+    match &n.readout {
+        Some(text) => {
+            let row_y = sy + (geom::HEADER_H + geom::card_rows(n) * geom::ROW_H) * view.zoom;
+            paint_text_title(
+                ctx.text_system,
+                ctx.scene,
+                text,
+                sx + TITLE_PAD_X * view.zoom,
+                row_y + READOUT_PAD_Y * view.zoom,
+                READOUT_SIZE * view.zoom,
+                w - TITLE_INSET_R * view.zoom,
+                resolve(ColorToken::Text2, theme),
+            );
+        }
+        // **No readout = the cook never pulled this node** — nothing downstream consumes
+        // it. Veil it, so a dead branch reads across the WHOLE canvas at a glance instead
+        // of having to be inferred, card by card, from a number that is not there.
+        //
+        // A veil, not a repaint: the card keeps its category colour, its title and its
+        // sockets, and stays perfectly grabbable. It recedes; it does not become a
+        // different kind of thing. (The selection ring is drawn ABOVE it — a selected dead
+        // node must still look selected.)
+        None => {
+            fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::GraphInert, theme));
+            if state.selected.contains(&n.id) {
+                stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
+            }
+        }
     }
     body
 }

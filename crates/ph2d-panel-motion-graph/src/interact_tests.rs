@@ -44,6 +44,7 @@ fn two_node_snapshot() -> GraphViewSnapshot {
         y: 0.0,
         inputs: ins,
         outputs: outs,
+        readout: None,
     };
     GraphViewSnapshot {
         nodes: vec![

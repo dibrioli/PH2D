@@ -286,6 +286,7 @@ mod tests {
                 clock: Clock::Frame,
             }],
             outputs: vec![],
+            readout: None,
         }
     }
 

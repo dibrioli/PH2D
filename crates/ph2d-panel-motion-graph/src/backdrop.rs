@@ -212,6 +212,7 @@ mod tests {
             y,
             inputs: vec![],
             outputs: vec![],
+            readout: None,
         }
     }
 

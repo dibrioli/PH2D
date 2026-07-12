@@ -41,6 +41,16 @@ pub struct GraphNodeView {
     pub y: f32,
     pub inputs: Vec<PortView>,
     pub outputs: Vec<PortView>,
+    /// **The inline readout** (F2): what this node produced on THIS frame's cook — the
+    /// number the artist would otherwise have to aim the probe at, on every card at once.
+    ///
+    /// **`None` means the node was never cooked**, which is not an error but the single
+    /// most useful thing a node graph can tell you: *nothing downstream consumes this
+    /// card*. A freshly dropped node, a chain the artist forgot to wire into the Output, a
+    /// branch orphaned by the knife — all of them are blank, and the blankness is the
+    /// diagnosis. (The shell fills this from the cook's MEMO, so it costs a lookup, never a
+    /// second evaluation — see `Cook::peek`.)
+    pub readout: Option<String>,
 }
 
 /// One wire in the view. Its color is the source port's [`Domain`].
@@ -390,6 +400,9 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 y: pos.y,
                 inputs: manifest.map(|m| port_views(m.inputs)).unwrap_or_default(),
                 outputs: manifest.map(|m| port_views(m.outputs)).unwrap_or_default(),
+                // The readout needs the COOK, which only the shell owns; it fills this in
+                // afterwards, exactly as it does for the backdrops below.
+                readout: None,
             }
         })
         .collect();

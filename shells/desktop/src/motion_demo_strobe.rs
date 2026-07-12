@@ -74,7 +74,25 @@ pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
     let hose = build_hose(g, goal)?;
     let flesh = build_skinned_tentacle(g, goal)?;
     let (dot_l, dot_r) = build_goal_dots(g, goal)?;
+    build_inert_example(g);
     Some(vec![hose, flesh, dot_l, dot_r])
+}
+
+/// **A node wired to nothing** — deliberately, as the demo of the inline readouts (F2).
+///
+/// It is a real `motion.grid`, identical to the ones the scenes use, and it does exactly
+/// nothing: no sink consumes it, so the cook never pulls it, so it has **no reading** and
+/// the editor **veils it**. That is the whole feature in one card — the graph tells you, at
+/// a glance, which of its parts are alive.
+fn build_inert_example(g: &mut Graph) {
+    let orphan = g.add_node("motion.grid");
+    g.set_pos(
+        orphan,
+        Pos {
+            x: 6.0 * COL_W,
+            y: GOAL_ROW,
+        },
+    );
 }
 
 /// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.

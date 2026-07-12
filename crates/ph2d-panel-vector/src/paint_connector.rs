@@ -31,6 +31,7 @@ use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_i18n::tr;
 use ph2d_tool_vector::connector;
+use ph2d_tool_vector::shapes::FieldDesc;
 
 thread_local! {
     /// O conector em FOCO (o primeiro da seleção), com os valores já EFETIVOS. `None` =
@@ -60,6 +61,63 @@ pub struct ConnectorSnapshot {
     pub curve: f64,
 }
 
+/// Os discriminantes de `RouteKind` — a rota que o snapshot traz.
+pub(crate) const STRAIGHT: u8 = 0;
+pub(crate) const ORTHOGONAL: u8 = 1;
+pub(crate) const CURVED: u8 = 2;
+
+/// **TODOS os campos numéricos do conector** — a tabela ÚNICA que o registro (`populate`), a
+/// semente, o paint e o gate leem.
+///
+/// Ela existe porque a alternativa já falhou: o campo **Curve** nasceu com id, desenho e
+/// evento, e **sem a linha de registro no `populate.rs`**. Ele pintava, aceitava o arrasto e
+/// não despachava nada — um controle morto, e a suíte inteira verde. Com uma tabela só, esquecer
+/// um lugar deixa de ser possível: quem registra e quem desenha iteram a MESMA lista, e o gate
+/// exige que ela esteja inteira no store.
+pub(crate) const NUMBER_FIELDS: &[(ph2d_a11y::NodeId, &FieldDesc)] = &[
+    (ids::VECTOR_CONNECTOR_JETTY, &connector::JETTY),
+    (ids::VECTOR_CONNECTOR_SPREAD, &connector::SPREAD),
+    (ids::VECTOR_CONNECTOR_CORNER, &connector::CORNER),
+    (ids::VECTOR_CONNECTOR_CURVE, &connector::CURVE),
+];
+
+/// **Os campos que ESTA rota mostra.** Um parâmetro que não faz nada na rota corrente não
+/// aparece — um campo inerte é pior que um campo ausente, porque ele *promete*.
+///
+/// - **Jetty** (o quanto a linha avança antes de dobrar): só onde há dobra. Numa reta não há.
+/// - **Spread** (o afastamento de conectores paralelos): em TODAS — dois conectores se separam
+///   no ponto de SAÍDA, e isso vale para a reta também.
+/// - **Corner** (o raio das QUINAS): só na ortogonal. A reta não tem quina, e o spline também
+///   não — ele já é curvo em todo ponto.
+/// - **Curve** (o braço dos handles): só na curva, pela mesma razão ao contrário.
+pub(crate) fn visible_fields(route: u8) -> Vec<(ph2d_a11y::NodeId, &'static FieldDesc)> {
+    let mut v: Vec<(ph2d_a11y::NodeId, &'static FieldDesc)> = Vec::with_capacity(3);
+    if route != STRAIGHT {
+        v.push((ids::VECTOR_CONNECTOR_JETTY, &connector::JETTY));
+    }
+    v.push((ids::VECTOR_CONNECTOR_SPREAD, &connector::SPREAD));
+    if route == ORTHOGONAL {
+        v.push((ids::VECTOR_CONNECTOR_CORNER, &connector::CORNER));
+    }
+    if route == CURVED {
+        v.push((ids::VECTOR_CONNECTOR_CURVE, &connector::CURVE));
+    }
+    v
+}
+
+/// O valor efetivo de um campo, no snapshot.
+pub(crate) fn value_of(snap: &ConnectorSnapshot, id: ph2d_a11y::NodeId) -> f64 {
+    if id == ids::VECTOR_CONNECTOR_JETTY {
+        snap.jetty
+    } else if id == ids::VECTOR_CONNECTOR_SPREAD {
+        snap.spread
+    } else if id == ids::VECTOR_CONNECTOR_CORNER {
+        snap.corner
+    } else {
+        snap.curve
+    }
+}
+
 /// Publica o conector em foco (a shell chama a cada frame; `None` esconde a seção).
 pub fn set_current_connector(snapshot: Option<ConnectorSnapshot>) {
     CURRENT_CONNECTOR.with(|c| c.set(snapshot));
@@ -82,20 +140,10 @@ pub(crate) fn seed(store: &mut WidgetStore) {
         return;
     };
     let focus = store.focus_id();
-    for (id, field, value) in [
-        (ids::VECTOR_CONNECTOR_JETTY, &connector::JETTY, snap.jetty),
-        (
-            ids::VECTOR_CONNECTOR_SPREAD,
-            &connector::SPREAD,
-            snap.spread,
-        ),
-        (
-            ids::VECTOR_CONNECTOR_CORNER,
-            &connector::CORNER,
-            snap.corner,
-        ),
-        (ids::VECTOR_CONNECTOR_CURVE, &connector::CURVE, snap.curve),
-    ] {
+    // Semeia TODOS (não só os visíveis): trocar de rota tem de mostrar o campo já com o valor
+    // certo, e não com o resíduo da última vez que ele apareceu.
+    for &(id, field) in NUMBER_FIELDS {
+        let value = value_of(&snap, id);
         store.set_number_range(id, field.min, field.max, field.step);
         if focus != Some(id) {
             store.set_number_value(id, connector::clamp_to(field, value));
@@ -108,18 +156,11 @@ pub(crate) fn seed(store: &mut WidgetStore) {
 /// divergiriam, e a caixa passaria a clampar numa faixa e a escalar noutra.
 ///
 /// [`FieldDesc`]: ph2d_tool_vector::shapes::FieldDesc
-fn number_field_of(id: ph2d_a11y::NodeId) -> Option<&'static ph2d_tool_vector::shapes::FieldDesc> {
-    if id == ids::VECTOR_CONNECTOR_JETTY {
-        Some(&connector::JETTY)
-    } else if id == ids::VECTOR_CONNECTOR_SPREAD {
-        Some(&connector::SPREAD)
-    } else if id == ids::VECTOR_CONNECTOR_CORNER {
-        Some(&connector::CORNER)
-    } else if id == ids::VECTOR_CONNECTOR_CURVE {
-        Some(&connector::CURVE)
-    } else {
-        None
-    }
+fn number_field_of(id: ph2d_a11y::NodeId) -> Option<&'static FieldDesc> {
+    NUMBER_FIELDS
+        .iter()
+        .find(|(fid, _)| *fid == id)
+        .map(|&(_, f)| f)
 }
 
 /// O evento de volta: os dois campos numéricos + o botão de rota. Delegado do
@@ -181,39 +222,15 @@ impl BodyCtx<'_> {
             connector::route_label(f64::from(snap.route)),
             y,
         );
-        // Os valores pintados vêm do STORE (semeado com o efetivo na Fase B do paint), como
-        // em toda caixa numérica do painel — assim o dígito que o usuário está digitando não
-        // é sobrescrito pelo snapshot do frame.
-        y = self.labeled_number_field(
-            connector::JETTY.label,
-            ids::VECTOR_CONNECTOR_JETTY,
-            connector::JETTY.step,
-            y,
-        );
-        y = self.labeled_number_field(
-            connector::SPREAD.label,
-            ids::VECTOR_CONNECTOR_SPREAD,
-            connector::SPREAD.step,
-            y,
-        );
-        // **Corner** — o raio das quinas do PERCURSO (as dobras do cotovelo). Irmã de
-        // Route/Jetty/Spread porque é a mesma pergunta: como esta linha é desenhada.
-        y = self.labeled_number_field(
-            connector::CORNER.label,
-            ids::VECTOR_CONNECTOR_CORNER,
-            connector::CORNER.step,
-            y,
-        );
-        // **Curve** — o braço dos handles: o quanto o controle da cúbica se afasta do ponto.
-        // Só faz efeito na rota Curved, e fica aqui mesmo assim: escondê-lo conforme a rota
-        // faria a seção pular de altura a cada clique no botão, e um campo que some é mais
-        // confuso que um campo inerte.
-        self.labeled_number_field(
-            connector::CURVE.label,
-            ids::VECTOR_CONNECTOR_CURVE,
-            connector::CURVE.step,
-            y,
-        )
+        // **Só os campos que a rota corrente USA.** Um Corner numa linha reta é um controle que
+        // não controla nada — e um campo inerte é pior que um campo ausente, porque ele promete.
+        // Os valores pintados vêm do STORE (semeado com o efetivo na Fase B do paint), como em
+        // toda caixa numérica do painel: assim o dígito que o usuário está digitando não é
+        // sobrescrito pelo snapshot do frame.
+        for (id, field) in visible_fields(snap.route) {
+            y = self.labeled_number_field(field.label, id, field.step, y);
+        }
+        y
     }
 }
 
@@ -237,6 +254,55 @@ mod tests {
         }));
         assert!(current_connector().is_some());
         set_current_connector(None); // não vaza para os outros testes da thread
+    }
+
+    /// **TODO campo numérico da tabela nasce REGISTRADO no store.**
+    ///
+    /// É o gate da classe de bug que o campo Curve estreou: ele tinha id, desenho e evento, e
+    /// nenhuma linha de registro no `populate.rs`. Pintava, aceitava o arrasto, e não despachava
+    /// nada — um controle morto, com a suíte inteira VERDE, porque nenhum teste perguntava se o
+    /// store o conhecia.
+    ///
+    /// O gate não olha um campo: ele varre a tabela. Um campo novo que esqueça o registro fica
+    /// vermelho aqui, sem que ninguém precise lembrar de escrever um teste para ele.
+    #[test]
+    fn every_connector_field_is_registered_in_the_store_not_just_painted() {
+        let mut store = WidgetStore::default();
+        crate::populate::populate(&mut store);
+        for &(id, field) in NUMBER_FIELDS {
+            assert!(
+                store.number_value(id).is_some(),
+                "o campo {} nao foi REGISTRADO no store — ele pinta, aceita o arrasto e nao \
+                 despacha nada",
+                field.label
+            );
+        }
+    }
+
+    /// **Um campo que a rota não usa NÃO aparece.** Um Corner numa linha reta é um controle que
+    /// não controla nada, e um campo inerte é pior que um campo ausente: ele promete.
+    #[test]
+    fn each_route_shows_only_the_fields_it_actually_uses() {
+        let ids_of = |r: u8| -> Vec<ph2d_a11y::NodeId> {
+            visible_fields(r).into_iter().map(|(i, _)| i).collect()
+        };
+        // Reta: nem jetty (nao ha dobra), nem corner (nao ha quina), nem curve.
+        let straight = ids_of(STRAIGHT);
+        assert!(!straight.contains(&ids::VECTOR_CONNECTOR_CORNER));
+        assert!(!straight.contains(&ids::VECTOR_CONNECTOR_JETTY));
+        assert!(!straight.contains(&ids::VECTOR_CONNECTOR_CURVE));
+        // Ortogonal: corner SIM, curve NAO.
+        let ortho = ids_of(ORTHOGONAL);
+        assert!(ortho.contains(&ids::VECTOR_CONNECTOR_CORNER));
+        assert!(!ortho.contains(&ids::VECTOR_CONNECTOR_CURVE));
+        // Curva: curve SIM, corner NAO (o spline nao tem quina).
+        let curved = ids_of(CURVED);
+        assert!(curved.contains(&ids::VECTOR_CONNECTOR_CURVE));
+        assert!(!curved.contains(&ids::VECTOR_CONNECTOR_CORNER));
+        // Spread vale em TODAS: dois conectores paralelos se separam no ponto de saida.
+        for r in [STRAIGHT, ORTHOGONAL, CURVED] {
+            assert!(ids_of(r).contains(&ids::VECTOR_CONNECTOR_SPREAD));
+        }
     }
 
     /// O clique na rota emite o PRÓXIMO discriminante — e o rótulo do botão nunca é o número.

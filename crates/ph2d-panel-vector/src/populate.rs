@@ -26,7 +26,7 @@ use ph2d_tool_vector::params::{
     text_weight_to_slider,
 };
 use ph2d_tool_vector::shapes;
-use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, connector, params, px_to_slider};
+use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, params, px_to_slider};
 
 /// Linear-gradient Angle slider mapping: track `0..1` → `0..360` degrees.
 const GRAD_ANGLE_SLIDER_SCALE: f32 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
@@ -128,11 +128,11 @@ fn populate_connector(store: &mut WidgetStore) {
     // Jetty / Spread / Corner: caixas numéricas de faixa FIXA (ao contrário dos campos de
     // forma, que mudam com a forma em foco). O valor é re-semeado com o EFETIVO a cada frame
     // (Fase B do paint) — aqui só nasce o slot.
-    for (id, field) in [
-        (ids::VECTOR_CONNECTOR_JETTY, &connector::JETTY),
-        (ids::VECTOR_CONNECTOR_SPREAD, &connector::SPREAD),
-        (ids::VECTOR_CONNECTOR_CORNER, &connector::CORNER),
-    ] {
+    // A tabela é ÚNICA (`paint_connector::NUMBER_FIELDS`): quem registra e quem desenha iteram a
+    // MESMA lista. A alternativa já falhou — o campo Curve nasceu com id, desenho e evento, e
+    // SEM a linha de registro aqui: ele pintava, aceitava o arrasto e não despachava nada. Um
+    // controle morto, com a suíte inteira verde.
+    for &(id, field) in crate::paint_connector::NUMBER_FIELDS {
         number_field(store, id, field.min, field.max, field.step, field.min);
     }
 }

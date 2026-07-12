@@ -216,3 +216,29 @@ fn a_waypoint_dropped_back_onto_the_line_removes_itself() {
         "um waypoint que dobra a rota nao pode ser apagado como se fosse ruido"
     );
 }
+
+/// **O clique e o arrasto nao sao o mesmo gesto** — e este e o gate do conflito que o Enio viu.
+///
+/// O duplo-clique num conector abre o ROTULO dele; o arrasto do corpo finca um WAYPOINT. Os dois
+/// comecam com a mesma pressao, no mesmo lugar. Criar o waypoint ja na pressao (que era o que o
+/// modulo fazia) fincava um ponto de passagem debaixo de TODO duplo-clique, antes de o texto
+/// sequer abrir. O que separa os dois gestos e o MOVIMENTO.
+#[test]
+fn a_press_on_the_body_only_becomes_a_waypoint_after_it_actually_moves() {
+    let r = 0.1; // raio da alca, em mundo
+    let p = [5.0, 5.0];
+    // Um clique: o cursor nao anda (ou anda o tremor de sempre).
+    assert!(
+        !body_became_a_drag(p, p, r),
+        "uma pressao sem movimento virou arrasto — todo duplo-clique fincaria um waypoint"
+    );
+    assert!(
+        !body_became_a_drag(p, [5.0 + r * 0.3, 5.0], r),
+        "o tremor da mao entre os dois cliques nao pode fincar um ponto"
+    );
+    // Um arrasto de verdade.
+    assert!(
+        body_became_a_drag(p, [5.0 + r * 2.0, 5.0], r),
+        "arrastar o corpo da linha TEM de criar o waypoint"
+    );
+}

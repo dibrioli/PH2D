@@ -358,10 +358,17 @@ impl BrushSpec {
     /// opt out of all per-dab jitter, so they never trigger it.
     #[must_use]
     pub fn has_per_dab_rotation(&self) -> bool {
+        // Jitter Rotate spins the WHOLE dab footprint (falloff + Shape + View-Grain) about the centre. It
+        // only *shows* when the footprint is not rotation-invariant — i.e. an anisotropic footprint
+        // (`dab_flatten > 0`) OR a texture that rides the dab frame. This used to require
+        // `texture.is_active()`, so a FLATTENED, untextured dab with Jitter Rotate looked constant to the
+        // guard and Smear/Blur/Clone served it the cached (constant-orientation) mask: every dab came out
+        // with the SAME ellipse angle and the knob did nothing (sweep 2026-07-12). The paint path never had
+        // the bug — with both slots off it has no cache to serve and resolves `d.rotation` per pixel.
         self.jitter_rotate > 0.0
             && self.stroke_method.allows_jitter()
-            && self.texture.is_active()
-            && self.texture.mapping.uses_dab_rotation()
+            && (self.dab_flatten > 0.0
+                || (self.texture.is_active() && self.texture.mapping.uses_dab_rotation()))
     }
 
     /// Whether the **Shape** slot supplies the silhouette (else the [`Self::falloff`] does). True when

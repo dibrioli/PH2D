@@ -3011,6 +3011,167 @@ fn editing_the_paper_re_renders_the_wet_wash_with_the_new_paper() {
 }
 
 #[test]
+fn jitter_rotate_reaches_smear_on_a_flattened_untextured_dab() {
+    // Sweep (2026-07-12): `has_per_dab_rotation()` demanded `texture.is_active()`, so a FLATTENED dab with
+    // no Shape and no Grain looked "constant" to the guard — and Smear/Blur/Clone served it the cached,
+    // constant-orientation StampMask. Every dab smeared with the SAME ellipse angle: Jitter Rotate did
+    // nothing there. (The paint path never had it — with both slots off it has no cache to serve, so
+    // `jitter_rotate_spins_a_flattened_falloff_with_no_texture` has always passed. This is its Smear twin.)
+    // Jitter Rotate spins the whole FOOTPRINT, so an anisotropic footprint alone makes it visible.
+    // RED without the fix: the two canvases are byte-identical.
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_painter_brush::StrokeMethod;
+    let size = 48u32;
+    let smear = |seed: u64| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        // Left half black, right half white — the SAME fixture the working Smear gate uses: the dab has to
+        // straddle a BOUNDARY, because smearing inside a uniform region is a no-op at any angle.
+        let mut src = vec![255u8; (size * size * 4) as usize];
+        for y in 0..size {
+            for x in 0..size / 2 {
+                let i = ((y * size + x) * 4) as usize;
+                src[i..i + 4].copy_from_slice(&[0, 0, 0, 255]);
+            }
+        }
+        t.set_source(src, size, size);
+        t.paint.brush = BrushSpec {
+            radius_px: 8.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            space_attenuation: false,
+            stroke_method: StrokeMethod::Space, // allows_jitter
+            dab_flatten: 0.6,                   // anisotropic ⇒ a per-dab rotation is VISIBLE
+            jitter_rotate: 1.0,
+            ..Default::default()
+        };
+        // The tool keeps a brush PER MODE — seed every slot, or selecting Smear swaps the settings out.
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        t.paint.seed = seed; // the jitter draw
+        t.handle_panel_event(PanelEvent::SelectOption(
+            core_ids::PAINTER_PAINT_MODE,
+            "smear".to_string(),
+        ));
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([(size / 2 - 6) as f32, mid], PointerPhase::Down));
+        t.on_canvas_pointer(cp([(size / 2 + 8) as f32, mid], PointerPhase::Move));
+        t.on_canvas_pointer(cp([(size / 2 + 8) as f32, mid], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    // Guard against a no-op fixture proving nothing: the smear must actually have dragged the boundary.
+    let mut pristine = vec![255u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size / 2 {
+            let i = ((y * size + x) * 4) as usize;
+            pristine[i..i + 4].copy_from_slice(&[0, 0, 0, 255]);
+        }
+    }
+    let a = smear(1);
+    assert_ne!(a, pristine, "the smear actually dragged pixels");
+    assert_ne!(
+        a,
+        smear(999),
+        "Jitter Rotate must reach the Smear of a flattened, untextured dab"
+    );
+}
+
+#[test]
+fn granulation_re_bakes_the_coloured_stamp() {
+    // Sweep (2026-07-12): `render_color_stamp_mask` folds `effective_granulation()` into the baked Grain
+    // coverage — so Granulation is an INPUT of the bake — but `ColorStampKey` did not carry it. The
+    // grayscale `StampKey` always has (with a comment saying exactly why); the coloured twin was written
+    // without it. Dragging Granulation left the coloured stamp STALE until some other field moved the key.
+    //
+    // ★ The test MUST reuse ONE tool. Baking on two fresh tools proves nothing — each starts with a cold
+    // cache, so it re-bakes either way and the test goes green with the bug alive (it did, for me, until I
+    // ran the RED). A cache-key gate has to exercise the CACHE HIT.
+    // RED without the fix: the second bake is byte-identical — the key matched and the stale stamp was reused.
+    use ph2d_painter_brush::{TextureKind, TextureSettings};
+    let mut t = white_canvas(64, 9.0);
+    t.paint.brush.watercolor = true; // `effective_granulation()` is 0 unless watercolor is on
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Noise,
+        size: [6.0, 6.0],
+        ..t.paint.brush.texture
+    };
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    let stamp_bytes = |t: &PainterTool| -> Vec<u8> {
+        t.paint
+            .color_stamp_cache
+            .as_ref()
+            .expect("stamp baked")
+            .0
+            .iter()
+            .flat_map(|s| s.data().to_vec())
+            .collect()
+    };
+    t.paint.brush.granulation = 0.0;
+    let brush = t.paint.brush;
+    t.ensure_color_stamp_cache(&brush, 64);
+    let before = stamp_bytes(&t);
+    // The user drags Granulation — nothing else moves.
+    t.paint.brush.granulation = 0.9;
+    let brush = t.paint.brush;
+    t.ensure_color_stamp_cache(&brush, 64); // must MISS the cache and re-bake
+    assert_ne!(
+        before,
+        stamp_bytes(&t),
+        "Granulation is folded into the baked Grain coverage — it MUST be in the stamp's key"
+    );
+}
+
+#[test]
+fn per_layer_color_grain_random_offset_takes_the_per_dab_route() {
+    // Sweep (2026-07-12): the per-layer route hand-rolled its "can the constant coloured stamp express this
+    // Grain?" test as `Rake || Random-Angle || canvas-fixed`. Grain **Mapping = Random Offset** randomises
+    // the per-dab OFFSET, not the angle — it matched none of those clauses, so the CONSTANT stamp was baked
+    // once and blitted for every dab: the texture "sticks" to the dab instead of jittering. The canonical
+    // predicate is `!texture.is_cacheable()`, which the grayscale routes had always used and which covers
+    // Rake, Random-Angle, Random-Offset, Tiled and Stencil in one place.
+    //
+    // ORACLE = the ROUTE, read from real state, not a re-derived predicate: the per-layer maps are 4 B/px
+    // premul RGBA on the per-dab dynamic route and 1 B/px coverage on the constant cached one (the very
+    // asymmetry behind Bug #12). Asserting the canvas instead would be nicer, but a full-opacity two-layer
+    // silhouette swamps the grain's contribution in this fixture — and a test whose green I cannot explain
+    // is worse than one that pins exactly the defect.
+    // RED without the fix: the maps come back 1 B/px — the constant stamp served a per-dab Grain.
+    use ph2d_painter_brush::{Dab, StrokeMethod, TextureKind, TextureMapping, TextureSettings};
+    let mut t = white_canvas(64, 9.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.texture = TextureSettings {
+        kind: TextureKind::Noise,
+        mapping: TextureMapping::Random, // randomises the OFFSET per dab — no angle involved
+        size: [6.0, 6.0],
+        ..t.paint.brush.texture
+    };
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
+    t.set_brush_shape_layer_color(1, [0.0, 1.0, 0.0]);
+    let dab = |cx: f32| Dab {
+        center: [cx, 32.0],
+        radius_px: 9.0,
+        coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+    };
+    t.stamp_dabs(&[dab(18.0), dab(46.0)]);
+    assert_eq!(
+        t.paint
+            .per_layer_stroke
+            .cov
+            .first()
+            .map_or(0, std::vec::Vec::len),
+        64 * 64 * 4,
+        "Random Offset must route to the per-dab dynamic path (4 B/px maps), not the constant cached stamp"
+    );
+}
+
+#[test]
 fn under_the_wash_accumulate_is_inert_but_strength_is_not() {
     // Enio (2026-07-12): "no modo aquarela, faz sentido ter Strength e Accumulate no painel?"
     // The answer differs for the two, and this pins BOTH — a hidden knob must be provably dead, and a

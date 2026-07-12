@@ -85,6 +85,11 @@ pub(super) struct ColorStampKey {
     texture: TextureSettings,
     grain_image_version: u64,
     grain_depth: f32,
+    /// **Granulation** — `render_color_stamp_mask` folds `effective_granulation()` into the baked Grain
+    /// coverage, so it is an INPUT of the bake and belongs in the key. It was missing (the grayscale
+    /// `StampKey` has always carried it, with a comment saying exactly why): dragging Granulation left the
+    /// coloured stamp stale until something else moved the key. Sweep 2026-07-12.
+    granulation: f32,
     /// The baked Grain Colour Ramp LUT version (`ramp_lut_version`), or `0` when no Grain ramp tints.
     grain_ramp_version: u64,
     dab_flatten: f32,
@@ -415,6 +420,7 @@ impl PainterTool {
             texture: brush.texture,
             grain_image_version: self.paint.texture_image_version,
             grain_depth: brush.grain_depth,
+            granulation: brush.effective_granulation(),
             grain_ramp_version: if grain_ramp_active {
                 self.paint.ramp_lut_version
             } else {
@@ -483,6 +489,7 @@ impl PainterTool {
             texture: brush.texture,
             grain_image_version: self.paint.texture_image_version,
             grain_depth: brush.grain_depth,
+            granulation: brush.effective_granulation(),
             grain_ramp_version: if grain_ramp_active {
                 self.paint.ramp_lut_version
             } else {

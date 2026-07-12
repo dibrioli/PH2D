@@ -445,11 +445,16 @@ impl PainterTool {
             // rect entirely, so the colour leaked OUTSIDE it (worst with a big Anchored dab). The per-pixel
             // dynamic path samples the Grain at each canvas pixel through its canvas-fixed basis, so it
             // masks the rect correctly (Enio 2026-06-27).
+            // The Grain half is `!texture.is_cacheable()` — the SAME predicate the grayscale routes use.
+            // Hand-rolling the disjunction here (Rake / Random-Angle / canvas-fixed) left a hole: Grain
+            // **Mapping = Random Offset** randomises the OFFSET, not the angle, so it matched none of the
+            // clauses and was served by the constant-orientation coloured stamp — every dab got the SAME
+            // texture offset and the knob did nothing (sweep 2026-07-12). `is_cacheable()` covers Rake,
+            // Random-Angle, Random-Offset, Tiled and Stencil in one place, so the hole cannot re-open.
             let per_dab_dynamic = brush.shape_has_per_dab_rotation(has_shape_image)
-                || brush.grain_has_per_dab_rotation()
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()
-                || (brush.texture.is_active() && brush.texture.mapping.is_canvas_fixed());
+                || (brush.texture.is_active() && !brush.texture.is_cacheable());
             if per_dab_dynamic {
                 self.stamp_dabs_per_layer_dynamic(dabs, &brush, alpha_locked, w, h);
             } else if self.paint.shape_layers.any_texture_color() {

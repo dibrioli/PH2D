@@ -542,6 +542,31 @@ o **Edit Mode do Grease Pencil** — um modo à parte com hit-test por-stroke, e
 seleção de traço/ponto, realce e transform do subconjunto. É um pacote próprio (não um
 fix); candidato natural a W3/edit-mode. NÃO foi feito nesta rodada.
 
+## Smoke do Enio (2026-07-11, 4ª rodada) — cobertura analítica GP + brush absoluto
+
+1. **Artefatos de sobreposição nas junções/curvas com hardness baixo** ✅ — a
+   cobertura vinha de uma coordenada `v_perp` **por-quad**, que DISTORCE nas junções
+   (o miter deforma a perpendicular) → spikes + double-blend. Reescrito pra
+   **cobertura ANALÍTICA como o GP** (`gpencil_stroke_segment_mask` em
+   `draw_grease_pencil_lib.glsl`): o quad só COBRE a fita; a forma exata sai no
+   fragment, da **distância do pixel à linha-de-centro**, clampada ao segmento →
+   junções/tampas REDONDAS de graça, sem miter/spike, e **sem double-blend** (quads
+   adjacentes calculam a mesma distância → cobertura consistente, o depth só escolhe
+   um). `flip.wgsl` reescrito (vertex = quad-stadium; fragment = distância + perfil GP
+   `pow`+smoothstep + AA `fwidth`). Camera uniform agora visível ao FRAGMENT
+   (`viewport.y` p/ o flip-Y). **8 testes GPU verdes** (novo
+   `a_sharp_corner_is_a_round_join_without_an_outward_spike`).
+2. **Tamanho de brush relativo ao zoom → ABSOLUTO** ✅ — a largura era MUNDO e o
+   render multiplicava pelo zoom. Agora `camera_raw` passa escala de espessura `1.0`
+   e `build_stroke` guarda `width_px` de tela → espessura constante na tela em
+   qualquer zoom. Escalar o OBJETO pelo gizmo ainda engrossa (`fold_model` ×
+   `mean_scale`); só o zoom da câmera não. `flip_pass::camera_raw` + `flip_draw::build_stroke`.
+
+> **Técnica durável:** a cobertura de traço estilo GP é ANALÍTICA (distância à
+> linha-de-centro no fragment), NÃO uma coordenada por-quad. É o que dá junção
+> redonda sem miter, sem double-blend, e alpha correto com hardness baixo. Ref viva:
+> `/home/enio/Downloads/blender-5.2-grease-pencil-ref` → `draw_grease_pencil_lib.glsl`.
+
 ## Aberto (fora do W0/W1/W2, por design)
 
 - **W3 (próximo):** Frames · Ghost Frames · Tween — guia em **§W3-NEXT** acima.

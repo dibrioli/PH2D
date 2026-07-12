@@ -104,6 +104,21 @@ trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
   **a linha reportou verde**. `nextest-impacted` não os toca — só `cargo test --workspace` pega. Ambos
   corrigidos neste commit; a lição já estava catalogada ([`feedback_ship_parity_gaps_ci_only`]), e desta
   vez ela cobrou. **Integrador: rode o workspace inteiro, não o impacted.**
+- **FIX do smoke: "smoothing nem sempre se aplica no fim do traço" (Fase 8).** A palavra era ***nem
+  sempre***. O settle roda num único lugar e **incondicionalmente** — a aritmética nunca foi a suspeita; o
+  que varia é **se o commit roda**. As cinco tools de **FORMA** (Line·Arc·Ellipse·Polygon·**Free Hand**)
+  mantêm o traço **ABERTO** no pen-up de propósito (a forma segue editável até o Apply), então
+  `close_stroke` — e com ele `commit_stroke_height` — **nunca disparava para elas**. Três consequências, e
+  o Smoothing era só a visível: (1) Smoothing morto nas 5 formas (a luz lia o **envelope cru**); (2) o card
+  Body **inteiro** morto nelas (os ingredientes nunca eram entregues); (3) **pior, e medido:** o relevo
+  ficava em `stroke_height` **sem dono** e o próximo pen-down o **apagava** — aplique uma curva, comece
+  outro traço, e a espessura da primeira **evaporava** (o pigmento ficava, o corpo não). Fix em **dois
+  chokepoints, não cinco call-sites**: `commit_drag_preview()` (onde um desenho vira canvas) passa a comitar
+  o relevo — um ponto, todos os métodos, Apply **e** Apply & Keep; e `cancel_open_shape()`/
+  `discard_open_shape()` **largam o envelope** (Esc devolve os pixels ao pristino ⇒ crista sem tinta é o
+  fantasma que o gate da borracha já recusa, entrando pela tecla Esc). Gate principal = **tabela sobre os 10
+  métodos de traço** — o bug nunca esteve no código escrito, esteve nos **caminhos que ninguém conectou**;
+  uma 6ª forma sem commit fica vermelha. 2 mutações provadas vermelhas. Plano §10.9.
 - **Smoke do Enio: PENDENTE** (validar: os defaults novos · **Shine** acende a crista · girar
   Depth/Body/Source/Smoothing DEPOIS do traço e ver o relevo mudar ao vivo · pintar relevo, trocar de
   sprite e voltar — a escultura tem de estar lá · **pintar, Ctrl+S, fechar, reabrir, Ctrl+O — a pintura

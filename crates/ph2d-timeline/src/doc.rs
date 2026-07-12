@@ -172,6 +172,26 @@ impl TimelineDoc {
         &self.scratch
     }
 
+    /// **Make the stack's scratch describe `t`.** Idempotent, and free when it
+    /// already does (the apply built it at this same `t` a moment ago).
+    ///
+    /// Every reader of the scratch — where a key lands, whether a pose is even
+    /// reachable — is asking "what is the stack doing *now*", and was being
+    /// answered "what was it doing when the apply last ran". In production those
+    /// are the same instant, which is exactly what makes the coupling invisible
+    /// and exactly the shape of bug that has broken this module three times over
+    /// ([[feedback_derived_coordinate_seed_must_match_sample]]). A caller that
+    /// authors keys calls this first and is simply right, whether or not an apply
+    /// ran before it.
+    pub fn prime_stack(&mut self, t: f64) {
+        if self.scratch.built_at().to_bits() == t.to_bits() {
+            return;
+        }
+        let mut scratch = self.take_scratch();
+        scratch.rebuild(self, t);
+        self.put_scratch(scratch);
+    }
+
     /// All clips.
     #[must_use]
     pub fn clips(&self) -> &[NamedClip] {

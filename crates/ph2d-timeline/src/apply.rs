@@ -172,12 +172,27 @@ pub fn remapped_time(doc: &TimelineDoc, entity: u64, t: f64) -> f64 {
 /// and read by another is the bug that has broken this module three times over.
 #[must_use]
 pub fn key_time(doc: &TimelineDoc, entity: u64, t: f64) -> Option<f64> {
+    key_home(doc, entity, t).ok()
+}
+
+/// [`key_time`], with the **reason** when there is no answer.
+///
+/// The refusal is the whole point (ADR-0115 R9), and a refusal nobody can see is
+/// indistinguishable from a bug: the animator drags, the object snaps back, and
+/// nothing says why. The evaluator is the only place that knows which of the three
+/// things went wrong, so it is the place that names it — the shell only speaks it.
+///
+/// `key_time` is this, thrown away: every caller that does not surface the reason
+/// says so by calling that one instead.
+pub fn key_home(doc: &TimelineDoc, entity: u64, t: f64) -> Result<f64, crate::KeyRefusal> {
     if doc.stack().is_empty() {
-        return Some(remapped_time(doc, entity, t));
+        return Ok(remapped_time(doc, entity, t));
     }
     let scratch = doc.scratch();
     let strip = stack_eval::sole_strip_of(scratch, doc.active_index())?;
-    stack_eval::strip_source_time(scratch, &strip, entity)
+    // The strip is live (`sole_strip_of` said so), so its clock has an entry —
+    // `NotPlaying` here would mean the scratch disagreed with itself.
+    stack_eval::strip_source_time(scratch, &strip, entity).ok_or(crate::KeyRefusal::NotPlaying)
 }
 
 /// Write one resolved property value into an entity, via the sprite resolver.

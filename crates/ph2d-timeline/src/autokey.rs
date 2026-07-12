@@ -167,7 +167,7 @@ pub fn key_value_in_active_clip(
     let scratch = doc.scratch();
     // The clip being edited must be playing exactly once right now, or "key it
     // here" has no single answer (see `stack_eval::sole_strip_of`).
-    crate::stack_eval::sole_strip_of(scratch, doc.active_index())?;
+    crate::stack_eval::sole_strip_of(scratch, doc.active_index()).ok()?;
     // An unbound property has no target anywhere yet, so no clip can key it — a
     // target no clip holds is exactly the right answer, and the probe supplies the
     // active clip's contribution regardless. Targets are allocated up from 0, so

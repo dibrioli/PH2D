@@ -107,6 +107,11 @@ pub(crate) struct AutokeyState {
     /// The playhead time `displaced` was collected at (the bridge clears the
     /// set when the time changes).
     pub displaced_t: f64,
+    /// The refusal the animator has already been told about. A drag against an
+    /// overriding lane refuses on EVERY frame — sixty identical toasts a second is
+    /// not information, it is noise. The toast fires on the rising edge, again if
+    /// the REASON changes, and re-arms once the refusals stop.
+    pub refusal: Option<ph2d_timeline::KeyRefusal>,
     /// Per `(entity, prop)` recorded span of the in-flight performing session —
     /// what to simplify (and over what tolerance) when the record drag ends.
     /// Empty outside a performing drag.
@@ -136,6 +141,7 @@ pub(crate) fn run(
     timeline: &mut TimelineState,
     playhead: &Playhead,
     ak: &mut AutokeyState,
+    toasts: &mut ph2d_editor::ToastQueue,
     hero: &HeroScreen,
     world: &World,
 ) {
@@ -152,7 +158,7 @@ pub(crate) fn run(
         .map(|e| (e, sample_pose(world, e)))
         .collect();
     apply_samples(
-        timeline, playhead, &samples, drag_now, armed, performing, ak,
+        timeline, playhead, &samples, drag_now, armed, performing, ak, toasts,
     );
 }
 
@@ -160,6 +166,7 @@ pub(crate) fn run(
 /// left its curve and bracket the undo step. Separated from [`run`] (which owns
 /// the `HeroScreen`/`World` sampling) so the frame logic — the diff, the
 /// auto-create, the bracket — is testable headless.
+#[allow(clippy::too_many_arguments)] // the frame's inputs; bundling them hides them
 pub(crate) fn apply_samples(
     timeline: &mut TimelineState,
     playhead: &Playhead,
@@ -168,7 +175,15 @@ pub(crate) fn apply_samples(
     armed: bool,
     performing: bool,
     ak: &mut AutokeyState,
+    toasts: &mut ph2d_editor::ToastQueue,
 ) {
+    // The stack's scratch must describe THIS instant before anything asks it where
+    // a key lands or whether a pose is reachable. In production the apply built it
+    // a moment ago at this very playhead, so this costs a compare — but the pass no
+    // longer DEPENDS on that having happened, which is the difference between right
+    // and accidentally right.
+    timeline.doc.prime_stack(playhead.time());
+
     // Whether this frame CAPTURES the pose into keys.
     //  - Paused: ordinary auto-key (`armed`) — a UI edit off the curve keys.
     //  - Playing: ONLY performing, and ONLY with a live gizmo drag. The pose
@@ -196,6 +211,9 @@ pub(crate) fn apply_samples(
     // upsert, so the whole selection is judged against one consistent state.
     let mut to_key: Vec<(u64, PropKind, f32, RationalTime)> = Vec::new();
     let mut next_baseline: BTreeMap<u64, PoseSample> = BTreeMap::new();
+    // The first refusal this frame, if any (they share a cause far more often than
+    // not — one stack, one playhead).
+    let mut refused_now: Option<ph2d_timeline::KeyRefusal> = None;
     for &(entity, pose) in samples {
         // The entity's own clock: under a Time Remap its scene tracks are
         // authored in SOURCE time — the diff must compare (and a key must
@@ -219,8 +237,12 @@ pub(crate) fn apply_samples(
         // mismatch of up to half a frame that the fit would chase (many spurious
         // keys). Paused authoring still snaps (keys on whole frames); a Time Remap
         // always keys at its source time.
-        let t_key = ph2d_timeline::key_time(&timeline.doc, entity, playhead.time());
-        let t_e = t_key.map(|ts| {
+        //
+        // `key_home`, not `key_time`: the two differ only in that this one carries
+        // the REASON, and a refusal the animator cannot see is indistinguishable
+        // from a bug (they drag, the object snaps back, nothing says why).
+        let home = ph2d_timeline::key_home(&timeline.doc, entity, playhead.time());
+        let t_e = home.ok().map(|ts| {
             if playing || ts != playhead.time() {
                 RationalTime::from_seconds(ts)
             } else {
@@ -248,8 +270,16 @@ pub(crate) fn apply_samples(
             // off-curve pose, so this naturally captures just the dragged
             // entity's trajectory, key per display frame.
             let plan = autokey_props(&timeline.doc, entity, t_diff, &pose, &base, true);
-            // `plan.refused` and a `None` landing time are the same verdict: the
-            // pose is not expressible in the clip being edited. Both drop the key.
+            // **A refusal is a result, not an absence.** The pose was moved and the
+            // clip being edited cannot express it (ADR-0115 R9) — so no key is
+            // written, the apply snaps the object back next frame, and the animator
+            // is owed a reason. `plan.refused` is non-empty exactly when something
+            // was wanted and could not be stored; `home` names WHY when the cause is
+            // the strip's map (the clip does not play here, or plays twice), and an
+            // Override lane above is what remains.
+            if !plan.refused.is_empty() {
+                refused_now = Some(home.err().unwrap_or(ph2d_timeline::KeyRefusal::Overridden));
+            }
             if let Some(t_e) = t_e {
                 for (prop, v) in plan.keys {
                     to_key.push((entity, prop, v, t_e));
@@ -285,6 +315,16 @@ pub(crate) fn apply_samples(
         next_baseline.insert(entity, pose);
     }
     ak.baseline = next_baseline;
+
+    // Say it once. On the rising edge, again if the REASON changes, and re-armed
+    // when the refusals stop — a drag against an overriding lane refuses on every
+    // frame, and sixty identical toasts a second is not information.
+    if refused_now != ak.refusal {
+        if let Some(r) = refused_now {
+            toasts.push(ph2d_editor::Toast::warning(r.message()));
+        }
+        ak.refusal = refused_now;
+    }
 
     if capturing {
         // A gizmo drag opens one step on its first frame; a discrete edit brackets
@@ -415,6 +455,9 @@ fn value_tol(samples: &[(f64, f64)]) -> f64 {
 #[cfg(test)]
 #[path = "autokey_performing_tests.rs"]
 mod performing_tests;
+#[cfg(test)]
+#[path = "autokey_refusal_tests.rs"]
+mod refusal_tests;
 #[cfg(test)]
 #[path = "autokey_test_helpers.rs"]
 mod test_helpers;

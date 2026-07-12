@@ -424,7 +424,16 @@ fn scrubbing_an_animated_object_with_autokey_armed_creates_no_keys() {
         ph2d_timeline::apply_from_doc(&mut w, &mut st.doc, ph.time());
         // …then read the settled pose back and let auto-key judge it.
         let pose = super::sample_pose(&w, e);
-        apply_samples(&mut st, &ph, &[(e, pose)], false, true, false, &mut ak);
+        apply_samples(
+            &mut st,
+            &ph,
+            &[(e, pose)],
+            false,
+            true,
+            false,
+            &mut ak,
+            &mut ph2d_editor::ToastQueue::new(),
+        );
 
         assert_eq!(
             st.doc.active_clip().track(target).unwrap().len(),
@@ -453,7 +462,16 @@ fn a_real_pose_edit_while_scrubbed_off_grid_still_keys() {
     ph2d_timeline::apply_from_doc(&mut w, &mut st.doc, ph.time());
     // Settle the baseline first (this frame the pose IS the curve).
     let on_curve = super::sample_pose(&w, e);
-    apply_samples(&mut st, &ph, &[(e, on_curve)], false, true, false, &mut ak);
+    apply_samples(
+        &mut st,
+        &ph,
+        &[(e, on_curve)],
+        false,
+        true,
+        false,
+        &mut ak,
+        &mut ph2d_editor::ToastQueue::new(),
+    );
     assert_eq!(st.doc.active_clip().track(target).unwrap().len(), before);
 
     // Now the user drags the object off its curve.
@@ -465,6 +483,7 @@ fn a_real_pose_edit_while_scrubbed_off_grid_still_keys() {
         true,
         false,
         &mut ak,
+        &mut ph2d_editor::ToastQueue::new(),
     );
     assert_eq!(
         st.doc.active_clip().track(target).unwrap().len(),

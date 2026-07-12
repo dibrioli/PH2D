@@ -2913,6 +2913,7 @@ impl crate::App {
                 &mut self.timeline,
                 &self.playhead,
                 &mut self.autokey,
+                toasts,
                 hero,
                 sim.world(),
             );

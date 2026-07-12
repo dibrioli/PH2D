@@ -29,6 +29,7 @@ use ph2d_anim::{AnimTarget, AnimValue, AttributeEvaluator, Track};
 use crate::clock::ClockIndex;
 use crate::doc::TimelineDoc;
 use crate::prop::{Algebra, PropKind};
+use crate::refusal::KeyRefusal;
 use crate::stack::LaneMode;
 
 /// One strip that is live at the current time, with everything the per-binding
@@ -57,11 +58,23 @@ pub(crate) struct ActiveStrip {
 ///
 /// Zero-alloc in steady state (HR-3): both vectors are cleared and refilled, and
 /// the clock indices are retained so their own buffers stay warm.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct StackScratch {
     active: Vec<ActiveStrip>,
     /// Parallel to `active`.
     clocks: Vec<ClockIndex>,
+    /// The timeline time this was built at. `NaN` until the first rebuild — and
+    /// `NaN != NaN`, so a fresh scratch is never mistaken for a valid one.
+    ///
+    /// It exists because the scratch is a CACHE, and every reader of it (the
+    /// autokey's refusal, the key's landing time) implicitly asks "what is the
+    /// stack doing at t?" while actually being answered "what was it doing at
+    /// whatever t the apply last used". Those coincide in production — the apply
+    /// runs first, same frame, same playhead — and that is precisely the shape of
+    /// coupling that keeps breaking this module. Recording `t` lets a caller
+    /// PRIME (`TimelineDoc::prime_stack`) and turns the invisible dependency into
+    /// a checked one.
+    t: f64,
 }
 
 /// Scratch is not identity — see [`ClockIndex`]'s own note.
@@ -71,7 +84,22 @@ impl PartialEq for StackScratch {
     }
 }
 
+impl Default for StackScratch {
+    fn default() -> Self {
+        Self {
+            active: Vec::new(),
+            clocks: Vec::new(),
+            t: f64::NAN, // never equal to a real time: the first prime always builds
+        }
+    }
+}
+
 impl StackScratch {
+    /// The time this scratch describes (`NaN` if never built).
+    pub(crate) fn built_at(&self) -> f64 {
+        self.t
+    }
+
     /// Resolve the live strips at `t` and every remapped entity's clock inside
     /// each one. Call once per frame, after the liveness pass.
     ///
@@ -79,6 +107,7 @@ impl StackScratch {
     /// at the playhead. That is not a special case bolted on — it is what "no
     /// stack" *means*, and it keeps the single-clip path on the same code.
     pub(crate) fn rebuild(&mut self, doc: &TimelineDoc, t: f64) {
+        self.t = t;
         self.active.clear();
         if doc.stack().is_empty() {
             self.active.push(ActiveStrip {
@@ -259,18 +288,21 @@ pub(crate) fn solo_source_time(scratch: &StackScratch, entity: u64, t: f64) -> f
 /// would put the key somewhere the animator did not look. Blender hits the same
 /// wall and says so — its keyframe remapping only works *"when the tweaked
 /// strip's underlying action occurs once in the current frame"*.
-pub(crate) fn sole_strip_of(scratch: &StackScratch, clip: usize) -> Option<ActiveStrip> {
+pub(crate) fn sole_strip_of(
+    scratch: &StackScratch,
+    clip: usize,
+) -> Result<ActiveStrip, KeyRefusal> {
     let mut found = None;
     for a in &scratch.active {
         if a.clip != clip {
             continue;
         }
         if found.is_some() {
-            return None; // it plays more than once right now: ambiguous
+            return Err(KeyRefusal::PlaysTwice); // "here" names two places in it
         }
         found = Some(*a);
     }
-    found
+    found.ok_or(KeyRefusal::NotPlaying)
 }
 
 /// The clip time a strip is reading, run through that clip's own Time Remap for

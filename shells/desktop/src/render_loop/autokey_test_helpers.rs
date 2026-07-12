@@ -56,7 +56,15 @@ pub(super) fn frame(
     armed: bool,
     ak: &mut AutokeyState,
 ) {
-    apply_samples(st, ph, samples, drag_now, armed, false, ak);
+    frame_toasts(
+        st,
+        ph,
+        samples,
+        drag_now,
+        armed,
+        ak,
+        &mut ph2d_editor::ToastQueue::new(),
+    );
 }
 
 /// One frame with performing (record) armed — for the record-during-play tests.
@@ -68,7 +76,16 @@ pub(super) fn frame_perf(
     armed: bool,
     ak: &mut AutokeyState,
 ) {
-    apply_samples(st, ph, samples, drag_now, armed, true, ak);
+    apply_samples(
+        st,
+        ph,
+        samples,
+        drag_now,
+        armed,
+        true,
+        ak,
+        &mut ph2d_editor::ToastQueue::new(),
+    );
 }
 
 pub(super) fn track_len(st: &TimelineState) -> usize {
@@ -78,4 +95,18 @@ pub(super) fn track_len(st: &TimelineState) -> usize {
         .unwrap()
         .target;
     st.doc.active_clip().track(target).unwrap().len()
+}
+
+/// One auto-key frame that KEEPS its toasts — the refusal surface is the only
+/// thing the animator sees when a key is dropped, so it has to be assertable.
+pub(super) fn frame_toasts(
+    st: &mut TimelineState,
+    ph: &Playhead,
+    samples: &[(u64, PoseSample)],
+    drag_now: bool,
+    armed: bool,
+    ak: &mut AutokeyState,
+    toasts: &mut ph2d_editor::ToastQueue,
+) {
+    apply_samples(st, ph, samples, drag_now, armed, false, ak, toasts);
 }

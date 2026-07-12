@@ -435,3 +435,111 @@ Duas transforms com nomes honestos > uma transform "unificada" que mente para me
 Agora escolher Loop/Ping-Pong **materializa a exposição da última célula** (igual à da anterior),
 visível na tira e editável no Hold. *Um default derivado de um valor "infinito" precisa virar um
 número real no momento em que alguém depende dele.*
+
+---
+
+## #8 — "Não existe botão fill": o gate que faltava no projeto INTEIRO
+
+**Sintoma (Enio, 2026-07-12):** *"não existe botão fill"*, depois de a W4 ser declarada fechada
+e verde.
+
+**O botão existe.** O `mode_row` pinta os quatro modos; o `atime` do binário provou que o
+executável da W4 **nunca foi rodado** (o Enio estava olhando o app da W3). Mas o relato foi o
+melhor da linha, porque a auditoria que ele provocou achou coisa muito pior — e uma pergunta que
+nenhum teste do projeto sabia fazer.
+
+**A pergunta que ninguém fazia: o widget é PINTADO?**
+
+Existiam dois tipos de prova, e nenhuma cobria isso:
+
+| prova | o que ela responde |
+|---|---|
+| `tests/seam.rs` (blindagem Fase 1.2) | "o clique CHEGA na tool?" — roda `populate → apply_event → bus → tool` |
+| `architecture_panel_wiring_parity` | lê o **texto-fonte**: o id é hit-indexado e registrado? |
+
+**Nenhuma das duas roda o `paint`.** Então um widget pode estar registrado, wirado, unit-testado e
+contract-limpo enquanto a chamada que o desenha mora atrás de um `return` — ou nunca foi escrita.
+O usuário relata *"esse botão não existe"*, e **todos os gates continuam verdes**.
+
+**O gate:** `MockPanelHost::paint::<P>()` roda o `Panel::paint` REAL, headless (cena Vello sem GPU
++ `TextSystem::without_system_fonts()`), e devolve **o que ficou clicável** — os `(id, rect)` que a
+pintura registrou no hit index. *O que o usuário pode clicar é o que a PINTURA registrou; é isso
+que um teste tem de ler.*
+
+**E ele pegou um bug de verdade, no primeiro uso** — não no Fill, mas na **tira da W3** (#9).
+
+---
+
+## #9 — A barra que escondia metade de si mesma (W3)
+
+`Bar::fits()` na tira: *"a barra nunca transborda: um item que não cabe simplesmente não é pintado
+nem registrado"*. Parecia prudente. Era o pior dos dois mundos.
+
+Num viewport de **1280px, NOVE dos dezoito controles sumiam**: as ops de chave (+, duplicar,
+apagar), o Hold, o ciclo e o **tween inteiro**. Sem scroll, sem overflow, sem qualquer sinal de que
+existiam. E como o teste era por-item (`x + w <= right`), uma caixa **estreita entrava depois** que
+um botão largo fora descartado — a barra saía com **buracos, fora de ordem**.
+
+O Enio conseguiu clicar o tween no smoke da W3 só porque o monitor dele é largo. Num laptop, a
+metade de autoria da tira simplesmente não existiria.
+
+**Fix:** a barra **QUEBRA em linhas** e a tira **cresce** para caber. Nada é escondido. Um item
+mais largo que a linha inteira transborda — melhor um controle cortado (que o usuário vê e alcança
+redimensionando) do que um controle ausente (que ele conclui que não existe).
+
+> **Lição.** *Esconder um controle é pior que deixá-lo transbordar.* Um layout que "nunca quebra"
+> porque descarta o que não cabe não é robusto — é **mentiroso**: ele reporta sucesso enquanto
+> entrega um app mutilado, e o único jeito de descobrir é alguém abrir numa tela menor. Se um
+> layout precisa ceder, que ceda em **espaço** (mais linhas, scroll), nunca em **existência**.
+
+---
+
+## #10 — A W4 estava morta no produto, e os testes diziam que não
+
+A auditoria de 3 lentes (solver · costura · modelo/render) achou **12 bugs**, três deles matando o
+balde no uso mais banal. O padrão que os une é mais importante que qualquer um deles.
+
+**(a) O teste que escolhe o único valor que esconde o bug.** A espessura do traço é em **px de
+tela**; os pontos, em **unidades de documento**. A conversão nunca foi aplicada — no zoom padrão um
+traço de 6px virava uma linha de **3 unidades de mundo (~324px!)** atravessando um desenho de 2,8
+unidades, e o clique caía sempre *dentro* do traço: **"Fill: clicked on a line", sempre**. Os cinco
+unit tests do `flip_fill` passavam `px_to_world = 1.0` — o **único** valor em que px de tela ==
+unidade de documento. Eles não testavam o produto; testavam um mundo onde o bug não existe.
+> *Um teste que escolhe as constantes mais convenientes não é um teste: é uma tautologia. Use os
+> números do PRODUTO (a câmera real, a janela real) — foi o `the_bucket_fills_at_the_real_camera_scale`
+> que virou vermelho.*
+
+**(b) O teto que corta em vez de ceder.** `MAX_SIDE` clampava as **dimensões** da grade e mantinha
+o `scale` — a grade cobria só um pedaço do bbox e a arte além dele **nem era rasterizada**. Bastava
+dar **zoom** para o balde recusar uma forma perfeitamente fechada com "Fill leaked". O doc prometia
+"a resolução cai, o fill fica mais grosseiro, não quebra"; o código não fazia isso.
+> *Quando bater num teto, decida CONSCIENTEMENTE o que cede. Cortar a cobertura é sempre a resposta
+> errada — e um comentário que descreve o comportamento certo não o implementa.*
+
+**(c) Os pontos de estrangulamento da cópia.** Três helpers definem o que sobrevive a uma operação:
+`FlipStroke::clone_attrs`, `flip_erase::new_like` e o `cleanup_soft`. A W4 acrescentou dois campos
+ao modelo (`holes`, `hide_stroke`) e atualizou **um**. Consequências: o tween deixava o furo do "O"
+para trás (uma mancha solta viajava pela tela); a borracha picava o fill e o Unpaint não reconhecia
+mais os pedaços; e o `cleanup_soft`, que coleta lixo por **opacidade de ponto**, apagava **TODOS os
+fechamentos de gap** do desenho a cada toque de borracha macia — em qualquer lugar do canvas —
+porque um fechamento nasce com opacidade 0.
+> *Ao acrescentar um campo ao modelo, ache os choke points de CÓPIA e audite cada um. "Funciona de
+> graça, sem código novo" só vale se todo ponto de cópia acompanhar o crescimento — e nenhum gate
+> força isso. O `cleanup_soft` é o mais traiçoeiro: um GC que decide por um campo (opacidade) que,
+> para a classe nova, não significa visibilidade.*
+
+**(d) A ambiguidade resolvida sem memória.** No marching squares, a quina onde duas células cheias
+se tocam **só pela diagonal** tem DUAS trilhas passando por ela. Resolvê-la com uma escolha fixa
+jogava quem chegava por um lado na trilha do outro: o anel nunca fechava, o `guard` estourava, e o
+monstro auto-sobreposto resultante — com |área| inflada por dar voltas — podia **vencer a ordenação
+por área e virar o contorno externo**. A saída certa depende da **direção de chegada** (vira à
+esquerda: mantém a mesma célula à esquerda).
+> *Numa bifurcação ambígua, a informação que desempata quase nunca está no estado LOCAL — está em
+> como você chegou ali. E um anel que não fechou é LIXO, não um contorno mais pobre: descarte, nunca
+> exporte.*
+
+**(e) O buffer de tamanho zero.** Um desenho **só de preenchimento** (apague o line-art de uma
+região pintada) tem zero pontos → storage buffer de tamanho 0 → a wgpu recusa o bind group inteiro
+e o app **cai**. O `seg_extras` já driblava isso com um dummy; os outros quatro buffers, não.
+> *A invariante ("um storage buffer nunca é vazio") pertence a quem CRIA o buffer, não a cada
+> chamador que precisa lembrar dela.*

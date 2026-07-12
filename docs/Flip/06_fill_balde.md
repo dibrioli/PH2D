@@ -1,8 +1,14 @@
 # Flip W4 — Fill (o balde): o doc definitivo
 
-> **Estado: FECHADA em 2026-07-12** (pendente o smoke do Enio). Clean-room do *pixel solver* do
-> Grease Pencil 5.2 ([`02 §6`](02_referencia_algoritmos_blender_5.2.md)), com os quatro upgrades
-> que a [`04 §3`](04_alem_do_blender.md) mandou adotar.
+> **Estado: fechada 2026-07-12, AUDITADA e re-fechada no mesmo dia** (pendente o smoke do Enio).
+> Clean-room do *pixel solver* do Grease Pencil 5.2
+> ([`02 §6`](02_referencia_algoritmos_blender_5.2.md)), com os quatro upgrades que a
+> [`04 §3`](04_alem_do_blender.md) mandou adotar.
+>
+> ⚠️ **A 1ª versão desta wave estava MORTA no produto** — verde em 1251 testes e incapaz de
+> preencher um círculo. A auditoria de 3 lentes achou 12 bugs (3 deles matavam o balde no uso mais
+> banal); a saga e as lições estão em [`BUGS_flip.md` #8-#10](BUGS_flip.md). O que segue descreve o
+> estado **corrigido**.
 >
 > Código: `crates/ph2d-flip-fill/` (o solver, CPU puro) · `shells/desktop/src/flip_fill.rs` (a
 > fronteira modelo↔solver) · `crates/ph2d-flip-render/src/fill_holes.rs` (a triangulação).
@@ -15,11 +21,21 @@ Um preenchimento **é um traço**. Não é uma camada de pixels, não é um obje
 é um `FlipStroke` fechado, com `hide_stroke` (o contorno dele não é rasterizado) e `fill`
 (a cor). Consequência direta, e é o motivo de o GP fazer assim:
 
-- **selecionar / mover / apagar** um fill = as mesmas ops de qualquer traço;
+- **selecionar / mover** um fill = as mesmas ops de qualquer traço;
 - **animar** um fill = ele entra no `tween` como qualquer traço (pareamento por índice);
 - **undo** = a fila global, sem nada especial.
 
-Nenhum sistema paralelo. Zero código novo para as cinco coisas acima.
+> **"De graça, sem código novo" era MENTIRA — e a auditoria cobrou.** Mover e o undo saíram de
+> graça (a geometria viaja no `Transform`/snapshot). **Tweenar e apagar, não:** os dois passam por
+> helpers de cópia de atributos escritos *antes* da W4, que nunca ganharam `holes`/`hide_stroke`. O
+> tween deixava o furo do "O" para trás; a borracha picava a região e o Unpaint não reconhecia mais
+> os pedaços. Ver [BUGS #10c](BUGS_flip.md). **A regra que ficou:** ao acrescentar um campo ao
+> `FlipStroke`, audite os **três pontos de estrangulamento da cópia** —
+> `FlipStroke::clone_attrs`, `flip_erase::new_like` e o `cleanup_soft` (que decide o que é lixo).
+
+**Apagar tinta ≠ apagar região.** As borrachas de PONTO (Soft/Hard) **não mordem** um fill: ele não
+tem tinta visível (o contorno não é rasterizado), e mordê-lo só produzia lixo. Uma região se remove
+pelo **Unpaint** do balde, ou de uma vez pela borracha de **traço**.
 
 **Os buracos vivem NO traço** (`FlipStroke.holes: Vec<Vec<Vec2>>`), não em traços irmãos
 agrupados por um `fill_id` (que é como o GP faz). A razão: um fill é **uma** unidade de seleção,
@@ -116,7 +132,12 @@ e **Precision** (resolução do buffer).
 
 ---
 
-## §5 — Os dois bugs que os testes pegaram (e a lição de cada um)
+## §5 — Os bugs que os testes pegaram (e a lição de cada um)
+
+> Os **doze** que os testes NÃO pegaram — e que a auditoria de 3 lentes achou depois — estão em
+> [`BUGS_flip.md` #8-#10](BUGS_flip.md), com a lição de cada padrão. Os dois abaixo são os que
+> morreram durante a implementação.
+
 
 **A bissetriz apontava para dentro.** O raio da quina saía por `d1 - d0` — que é a bissetriz
 *interna*, apontando para DENTRO da cunha, onde ele colide com a própria linha e não fecha vão
@@ -159,6 +180,22 @@ zoom afastado, as linhas ficam relativamente mais grossas e os vãos fecham sozi
 Isso não é um bug — é a mesma dependência que o GP tem (lá o solver também é em espaço de tela), e
 é o que um artista espera: "eu vejo o vão fechado, então ele preenche". O **Precision** multiplica a
 resolução do buffer por cima disso.
+
+> **A conversão é `half = width × 0,5 × px_to_world`** — e é o `px_to_world`, **não** o
+> `doc_per_px`: a escala do objeto já está embutida no `width` que o `build_stroke` guarda
+> (`width_px × mean_scale`), e multiplicá-la de novo a aplicaria duas vezes. É a mesma fórmula da
+> borracha. **Omitir essa linha é o que matou a wave inteira** (BUGS #10a): sem ela, no zoom padrão
+> um traço de 6px vira uma linha de 3 unidades de mundo (~324px) e o clique cai sempre *dentro* do
+> traço. Gate: `the_bucket_fills_at_the_real_camera_scale` — com os números da câmera REAL, não com
+> `px_to_world = 1.0`.
+
+### §7.1 — O teto de resolução CEDE, não corta
+
+Quando o `scale` pedido estoura o `MAX_SIDE`, quem cede é a **resolução** (o `scale` efetivo cai) —
+**nunca a cobertura**. Truncar as dimensões e manter o `scale` (o 1º corte) fazia a grade cobrir só
+um pedaço do bbox: a arte além do corte não era rasterizada, o flood corria até a borda, e **bastava
+dar zoom** para o balde recusar uma forma fechada com "Fill leaked". Gate:
+`hitting_the_size_cap_lowers_resolution_instead_of_cropping_the_art`.
 
 ---
 

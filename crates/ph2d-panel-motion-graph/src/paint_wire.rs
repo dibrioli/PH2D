@@ -41,7 +41,7 @@ pub(crate) fn draw_wire(
         return;
     }
     let src = snap.nodes.iter().find(|n| n.id == e.from_node);
-    let pts = wire_polyline(p0, p3, view.zoom, 20);
+    let pts = wire_polyline(p0, p3, view.zoom);
     // Hovered wires draw thicker and in a bright emphasis colour so the delete target is
     // unmistakable regardless of the port domain hue. Otherwise the wire keeps its domain
     // colour and takes its WIDTH from the mass of the stream it carries (F3).
@@ -109,7 +109,7 @@ fn draw_pre_badges(
     let color = resolve(token, theme);
     if hovered {
         // Reveal the pair: a thin ghost of the path the state actually takes.
-        let pts = wire_polyline(p0, p3, view.zoom, 20);
+        let pts = wire_polyline(p0, p3, view.zoom);
         stroke_polyline(ctx.scene, &pts, WIRE_W_DELAYED * view.zoom, color);
     }
     let self_loop = e.from_node == e.to_node;
@@ -158,7 +158,7 @@ pub(crate) fn draw_wire_ghost(
                 Some((_, _, false)) => resolve(ColorToken::Border, theme),
                 _ => resolve(domain_token(port_out_domain(src, *from_port)), theme),
             };
-            let pts = wire_polyline(p0, *cur, view.zoom, 18);
+            let pts = wire_polyline(p0, *cur, view.zoom);
             stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
 
             if let Some((tn, tp, true)) = target
@@ -196,7 +196,7 @@ pub(crate) fn draw_wire_ghost(
                 }
                 None => resolve(ColorToken::Border, theme),
             };
-            let pts = wire_polyline(*cur, p3, view.zoom, 18);
+            let pts = wire_polyline(*cur, p3, view.zoom);
             stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
 
             if let Some((fnode, fport, true)) = target
@@ -241,22 +241,67 @@ pub(crate) fn wire_endpoints(
     ))
 }
 
-/// Sample a horizontal-tangent cubic between two socket centers into `n+1`
-/// polyline points (shared by draw + hit-path so they never diverge).
-pub(crate) fn wire_polyline(
-    p0: (f32, f32),
-    p3: (f32, f32),
-    zoom: f32,
-    n: usize,
-) -> Vec<(f32, f32)> {
-    let dx = ((p3.0 - p0.0).abs() * 0.5 + WIRE_TANGENT * zoom).max(WIRE_TANGENT * zoom);
-    cubic_polyline(p0, (p0.0 + dx, p0.1), (p3.0 - dx, p3.1), p3, n)
+/// **The wire, as a polyline** — a horizontal-tangent cubic between two socket centres,
+/// flattened to a SUB-PIXEL tolerance rather than to a fixed number of segments.
+///
+/// There is no `n`, and that is the point. It used to take one: the draw asked for 20, the
+/// ghost for 18, the knife for 24, the hit path for 16 — four different curves, in a module
+/// whose whole premise is that the wire you see is the wire you cut. And a fixed count is wrong
+/// on both ends anyway: it facets a long or zoomed-in wire (Enio saw the straights), and it
+/// over-samples a short one.
+///
+/// The count now comes from the CURVE, in screen space, so zooming in refines it for free.
+pub(crate) fn wire_polyline(p0: (f32, f32), p3: (f32, f32), zoom: f32) -> Vec<(f32, f32)> {
+    let (c1, c2) = wire_handles(p0, p3, zoom);
+    cubic_polyline(p0, c1, c2, p3, flatten_steps(p0, c1, c2, p3))
 }
 
-/// How finely a wire is sampled when testing it against the knife. Denser than the
-/// draw sampling, for the same reason the hit path is: a coarse polyline can pass a
-/// stroke that visibly crosses the curve between two samples.
-const KNIFE_SAMPLES: usize = 24;
+/// The two control points: horizontal tangents, their length scaled with the horizontal span.
+fn wire_handles(p0: (f32, f32), p3: (f32, f32), zoom: f32) -> ((f32, f32), (f32, f32)) {
+    let dx = ((p3.0 - p0.0).abs() * 0.5 + WIRE_TANGENT * zoom).max(WIRE_TANGENT * zoom);
+    ((p0.0 + dx, p0.1), (p3.0 - dx, p3.1))
+}
+
+/// How far the drawn polyline may stray from the true cubic, in screen px.
+///
+/// Deep sub-pixel, and deliberately tighter than "you cannot see the error": the marching
+/// dashes (F3) are SHORT straight sub-paths cut out of this very polyline, so what the eye
+/// reads as faceting is not the chord error — it is the vertex DENSITY. At the old fixed 20
+/// segments a long wire strayed only ~0.5 px from its curve and still looked like a chain of
+/// sticks, because every dash landed inside one 12-px straight. The tolerance is what buys the
+/// density (Enio's screenshot).
+const FLATTEN_TOL: f32 = 0.1; // LITERAL-PX-OK: max deviation of the flattened wire from the curve
+const FLATTEN_MIN: usize = 6; // LITERAL-PX-OK: segments, even for a stub of a wire
+const FLATTEN_MAX: usize = 192; // LITERAL-PX-OK: segments, even for a wire across a 4K canvas
+
+/// **Wang's formula** — the segment count that holds a uniformly-sampled cubic within `tol`.
+///
+/// The error of an `n`-segment uniform flattening is bounded by `max|B''(t)| / (8n²)`, and for
+/// a cubic `max|B''| ≤ 6·max(|p0 − 2c1 + c2|, |c1 − 2c2 + p3|)` (the second differences of the
+/// control polygon). Invert it for `n`. Clamped, because a wire is not worth an unbounded
+/// vertex budget — and `FLATTEN_MAX` is the one place that budget is written down.
+fn flatten_steps(p0: (f32, f32), c1: (f32, f32), c2: (f32, f32), p3: (f32, f32)) -> usize {
+    let second = |a: (f32, f32), b: (f32, f32), c: (f32, f32)| {
+        let (x, y) = (a.0 - 2.0 * b.0 + c.0, a.1 - 2.0 * b.1 + c.1);
+        (x * x + y * y).sqrt()
+    };
+    let six = 6.0; // LITERAL-PX-OK: Wang's bound max|B''| <= 6·max(second differences) — math
+    let eight = 8.0; // LITERAL-PX-OK: Wang's error bound max|B''| / (8n²) — math, not design
+    let m = six * second(p0, c1, c2).max(second(c1, c2, p3));
+    let n = (m / (eight * FLATTEN_TOL)).sqrt().ceil();
+    (n as usize).clamp(FLATTEN_MIN, FLATTEN_MAX) // CLAMP-OK: const bounds, min < max
+}
+
+/// The wire's HIT boxes ride a deliberately COARSER sampling than the drawing: each segment
+/// becomes an axis-aligned box padded by `WIRE_HIT_R` (8 px), so a handful of fat boxes cover
+/// the curve conservatively. Sampling the hit path at the DRAWN tolerance would multiply the
+/// rect count per wire for no accuracy at all — the padding already dwarfs the chord error, and
+/// a guard pins exactly that (`the_coarse_hit_boxes_still_cover_the_drawn_wire`).
+pub(crate) fn wire_hit_polyline(p0: (f32, f32), p3: (f32, f32), zoom: f32) -> Vec<(f32, f32)> {
+    const HIT_SAMPLES: usize = 16; // LITERAL-PX-OK: segments per wire in the hit-box list
+    let (c1, c2) = wire_handles(p0, p3, zoom);
+    cubic_polyline(p0, c1, c2, p3, HIT_SAMPLES)
+}
 
 /// Every wire the knife stroke `a → b` crosses, as its target input `(to_node,
 /// to_port)` — the same identity `Disconnect` uses (an input takes exactly one
@@ -276,7 +321,7 @@ pub(crate) fn wires_crossed(
         .filter(|e| !e.delayed)
         .filter(|e| {
             wire_endpoints(snap, e, view).is_some_and(|(p0, p3)| {
-                wire_polyline(p0, p3, view.zoom, KNIFE_SAMPLES)
+                wire_polyline(p0, p3, view.zoom)
                     .windows(2)
                     .any(|s| segments_cross(a, b, s[0], s[1]))
             })
@@ -297,3 +342,7 @@ fn segments_cross(p: (f32, f32), q: (f32, f32), r: (f32, f32), s: (f32, f32)) ->
     let (d3, d4) = (cross(r, s, p), cross(r, s, q));
     ((d1 > 0.0) != (d2 > 0.0)) && ((d3 > 0.0) != (d4 > 0.0))
 }
+
+#[cfg(test)]
+#[path = "paint_wire_tests.rs"]
+mod tests;

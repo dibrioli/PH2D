@@ -253,6 +253,10 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-motion-graph/src/paint_wire.rs",
         "pure spline drawing — the wires' AccessKit nodes are registered in hits.rs",
     ),
+    (
+        "ph2d-panel-motion-graph/src/paint_wire_tests.rs",
+        "the flattening guards for paint_wire.rs — a test module, it paints nothing",
+    ),
     // Painter Brush appearance sections (6–11) — a thin ORCHESTRATOR split from
     // `paint_brush.rs` for the 200-LOC/fn + 600-LOC/file caps. It owns no widget:
     // every row it paints is a call into a section module (`paint_shape`,

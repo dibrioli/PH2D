@@ -73,6 +73,29 @@ uma leitura, não uma constante.
 | shell | `MotionState.flow_digest: BTreeMap<u32,u64>` (**não** `HashMap` — HR-5/ADR-0022) · `readout::stamp` agora é `&mut` |
 | removido | `paint::WIRE_W` (a espessura virou leitura) |
 
+## 3-bis. 46.1 — o fio era um POLÍGONO (smoke do Enio)
+
+> *"coloque um pouco mais de resolução nos links pois eles mostram segmentos retos"*
+
+O fio era achatado num número **FIXO** de segmentos — e não em um: o desenho pedia 20, o ghost 18, a faca 24, o
+hit-path 16. **Quatro curvas diferentes**, num módulo cuja premissa escrita é *"o fio que você vê é o fio que você
+corta"*.
+
+**A medição corrigiu a minha hipótese.** Com 20 segmentos o fio desviava só **~0.5 px** da cúbica — desvio que
+ninguém enxerga num traço de 2 px. O que o olho lia era a **DENSIDADE de vértices**: os dashes da marcha (F3) são
+retas curtas recortadas *dessa mesma polilinha*, então cada faceta virava um risquinho reto. Se eu tivesse guardado
+só o erro de corda, teria declarado o bug morto com ele na tela.
+
+**Fix:** achatamento por **tolerância**, não por contagem — **fórmula de Wang** (`erro ≤ max|B''|/(8n²)`, com
+`max|B''| ≤ 6·max(|p0−2c1+c2|, |c1−2c2+p3|)`), invertida para `n`, com `FLATTEN_TOL = 0.1 px` em espaço de TELA
+(logo o zoom refina de graça). O fio da captura do Enio passa de 20 para ~58 segmentos. **O `n` sumiu da
+assinatura** — desenho, dashes e faca leem `wire_polyline(p0, p3, zoom)`, e agora é *estruturalmente impossível*
+discordarem.
+
+O hit-path fica **propositalmente grosso** (16 chords, caixas AABB com padding de 8 px): amostrar na tolerância do
+desenho multiplicaria as caixas por nada. Guarda que legitima: `the_coarse_hit_boxes_still_cover_the_drawn_wire`
+(o erro de corda grosso é menor que o padding).
+
 ## 4. A lição
 
 **Um editor que desenha só a topologia esconde metade do bug.** As três coisas que o artista precisa saber — roda /

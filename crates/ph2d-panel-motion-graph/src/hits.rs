@@ -11,7 +11,7 @@
 //! keeps "what you see" and "what you can click" the same set.
 
 use crate::geom::{self, View, socket_center};
-use crate::paint::{fnv_id, wire_handle, wire_polyline};
+use crate::paint::{fnv_id, wire_handle, wire_hit_polyline};
 use crate::snapshot::{GraphEdgeView, GraphNodeView, GraphViewSnapshot};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -23,10 +23,9 @@ use ph2d_editor_core::zones::Rect;
 /// each segment becomes one padded hit rect sharing the wire's id. Denser than
 /// the draw sampling so the padded segment boxes hug the curve (fewer gaps /
 /// off-curve false hits) now that the band is wider.
-const WIRE_HIT_SAMPLES: usize = 16;
 /// Half-thickness (screen px) of a wire's hit rects — a forgiving hover / alt-
 /// click zone (a full band of `2 × WIRE_HIT_R`, independent of zoom).
-const WIRE_HIT_R: f32 = 8.0; // LITERAL-PX-OK: wire hit half-thickness
+pub(crate) const WIRE_HIT_R: f32 = 8.0; // LITERAL-PX-OK: wire hit half-thickness
 
 // Portal-badge geometry for `pre` edges — shared by paint and the hit path so
 // the clickable thing is exactly the visible thing (docs/Motion Nodes/03: a
@@ -153,7 +152,7 @@ pub(crate) fn push_wire_hits(
         }
         return;
     }
-    let pts = wire_polyline(p0, p3, view.zoom, WIRE_HIT_SAMPLES);
+    let pts = wire_hit_polyline(p0, p3, view.zoom);
     for seg in pts.windows(2) {
         let (ax, ay) = seg[0];
         let (bx, by) = seg[1];

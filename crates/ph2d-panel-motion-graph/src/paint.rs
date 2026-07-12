@@ -23,7 +23,7 @@
 #[path = "paint_wire.rs"]
 mod paint_wire;
 pub(crate) use paint_wire::{
-    detached_edge, draw_wire, draw_wire_ghost, wire_endpoints, wire_polyline, wires_crossed,
+    detached_edge, draw_wire, draw_wire_ghost, wire_endpoints, wire_hit_polyline, wires_crossed,
 };
 
 use crate::geom::{self, View, card_h, socket_center};

@@ -1,6 +1,7 @@
 # ADR-0115 — FFT para o módulo espectral de áudio (W5): `realfft`, em crate isolada
 
-- **Status:** PROPOSTO — **aguarda decisão do Enio** (é dep nova; a linha não adiciona sozinha)
+- **Status:** **ACEITO** — Enio autorizou a dep em 2026-07-12. O conjunto de aceitação do §4 está
+  **congelado** e o W5 abriu sobre ele.
 - **Data:** 2026-07-12
 - **Contexto:** [`docs/Audio/02_plano_implementacao_completo.md`](../../Audio/02_plano_implementacao_completo.md) §W5
 - **Relacionado:** [ADR-0113](0113-audio-export-ogg-vorbis-via-vorbis-rs-opus-deferred.md) (o precedente de dep de áudio)

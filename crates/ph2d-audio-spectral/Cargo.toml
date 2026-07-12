@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-audio-spectral"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Frequency-domain audio work (ADR-0115, W5): STFT, spectrogram, spectral repair
+# and denoise. The FFT dependency is CONFINED here — the same containment that
+# keeps Symphonia inside `ph2d-audio-decode` and libvorbis inside
+# `ph2d-audio-encode`, so no heavy DSP dep ever reaches the RT mixer
+# (`ph2d-audio`). Control thread only: HR-3 (no-alloc) and HR-5 (no
+# transcendentals) do NOT apply here.
+[dependencies]
+ph2d-audio = { path = "../ph2d-audio" }
+# Real-input FFT: a thin shell over `rustfft` that halves the work and the memory
+# of a complex FFT on a real signal. Audio is real. (ADR-0115 §3.)
+realfft = "3.5"

@@ -213,6 +213,34 @@ const fn radius(label: &'static str) -> FieldDesc {
     }
 }
 
+/// **Desvio** do raio de um canto do round-rect (px, COM SINAL) — `0` = o canto segue o raio
+/// base. Não é raio absoluto de propósito: o vetor de parâmetros é posicional e campo ausente
+/// lê ZERO, então um campo apendado só é seguro se zero for o seu NEUTRO — e o neutro de "o
+/// raio deste canto" é "o mesmo dos outros", não "canto vivo" (senão todo save anterior
+/// passaria a desenhar três cantos vivos). Ver `ph2d_vec_scene::round_rect_radii`. A faixa
+/// espelha a do raio, então qualquer quádrupla de cantos é alcançável.
+const fn corner_offset(label: &'static str) -> FieldDesc {
+    FieldDesc {
+        label,
+        min: -500.0,
+        max: 500.0,
+        step: 1.0,
+        unit: FieldUnit::Px,
+    }
+}
+
+/// **Suavização de canto** (o *corner smoothing* do Figma / o canto contínuo da Apple): `0` =
+/// o arco de círculo de sempre (a curvatura SALTA da reta para o arco); `1` = o squircle
+/// cheio (o arco some e duas asas de Bézier fazem a curvatura subir em rampa). É neutro em
+/// zero — obrigatório, para um campo apendado.
+const SMOOTHING: FieldDesc = FieldDesc {
+    label: "Smoothing",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    unit: FieldUnit::Ratio,
+};
+
 /// **O catálogo.** Uma linha por forma; a ordem dos `fields` é a ordem dos valores.
 pub const SHAPES: &[ShapeDesc] = &[
     ShapeDesc {
@@ -221,11 +249,21 @@ pub const SHAPES: &[ShapeDesc] = &[
         group: ShapeGroup::Basic,
         fields: &[],
     },
+    // O raio é o MESTRE (move os quatro cantos); cada canto pode se afastar dele por um
+    // desvio, e `Smoothing` troca o arco de círculo pelo squircle. Os quatro campos foram
+    // APENDADOS depois do raio, e todos são neutros em zero — o round-rect de um save antigo
+    // (só `Radius`) cozinha exatamente como cozinhava.
     ShapeDesc {
         kind: ShapeKind::RoundRect,
         label: "Round",
         group: ShapeGroup::Basic,
-        fields: &[radius("Radius")],
+        fields: &[
+            radius("Radius"),
+            corner_offset("TR offset"),
+            corner_offset("BR offset"),
+            corner_offset("BL offset"),
+            SMOOTHING,
+        ],
     },
     // A elipse carrega a FAMÍLIA inteira: fechar o `Sweep` faz a pizza, abrir o `Hole`
     // faz a rosquinha, e os dois juntos fazem o anel parcial (ver `ph2d_vec_scene::round`).

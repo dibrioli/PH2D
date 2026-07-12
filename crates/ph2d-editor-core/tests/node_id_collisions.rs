@@ -454,6 +454,11 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_DASH_NUM", ids::VECTOR_DASH_NUM),
     ("VECTOR_GAP", ids::VECTOR_GAP),
     ("VECTOR_GAP_NUM", ids::VECTOR_GAP_NUM),
+    // Stroke markers (arrowheads): the two dropdown chips. Their popover OPTIONS
+    // are runtime ids (`vector_marker_option_id`), like the shape catalogue's —
+    // outside this const table by construction.
+    ("VECTOR_MARKER_START_DD", ids::VECTOR_MARKER_START_DD),
+    ("VECTOR_MARKER_END_DD", ids::VECTOR_MARKER_END_DD),
     ("VECTOR_MODE_SELECT", ids::VECTOR_MODE_SELECT),
     ("VECTOR_MODE_NODE", ids::VECTOR_MODE_NODE),
     ("VECTOR_MODE_PEN", ids::VECTOR_MODE_PEN),

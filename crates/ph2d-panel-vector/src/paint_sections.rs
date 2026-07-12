@@ -338,7 +338,7 @@ impl BodyCtx<'_> {
             .store
             .number_value(ids::VECTOR_GAP_NUM)
             .unwrap_or(snap.gap);
-        self.slider_row(
+        y = self.slider_row(
             "Gap",
             ids::VECTOR_GAP,
             ids::VECTOR_GAP_NUM,
@@ -346,7 +346,13 @@ impl BodyCtx<'_> {
             px,
             &format!("{}", px.round() as i64),
             y,
-        )
+        );
+
+        // As PONTAS do traço (Start / End). Ficam aqui, e não no catálogo de formas,
+        // porque uma ponta é propriedade do stroke: herda a cor e a largura dele e gira
+        // com a tangente da curva — a quarta decisão sobre como a caneta termina, ao lado
+        // de cap, join e dash. Desenho em `paint_markers` (teto de LOC por arquivo).
+        self.marker_rows(snap, y)
     }
 
     /// Fill swatch + Fill opacity (0 % = none).

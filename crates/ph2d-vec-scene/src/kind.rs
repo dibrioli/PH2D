@@ -180,6 +180,9 @@ impl ShapeKind {
     pub fn defaults(self) -> ShapeValues {
         let mut v: ShapeValues = [0.0; MAX_SHAPE_FIELDS];
         match self {
+            // Só o raio BASE: os três desvios por canto e a suavização são **neutros em
+            // zero** (canto = raio base, arco de círculo puro). Um round-rect novo nasce,
+            // portanto, exatamente o de sempre — e um save antigo lê a mesma coisa.
             ShapeKind::RoundRect => v[0] = DEFAULT_CORNER_RADIUS,
             ShapeKind::Polygon => {
                 v[0] = DEFAULT_POLYGON_SIDES;
@@ -354,7 +357,16 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
     let ry = (b[1] - a[1]).abs() * 0.5;
     match kind {
         ShapeKind::Rectangle => crate::rectangle(a, b),
-        ShapeKind::RoundRect => crate::rounded_rect(a, b, f(v, 0)),
+        // O raio BASE + os três desvios por canto + a suavização (o *corner smoothing*).
+        // Os quatro campos novos foram APENDADOS e todos são **neutros em zero**, então um
+        // save de ontem (`[r]`) cozinha o round-rect uniforme de sempre — ver
+        // `crate::round_rect_radii`.
+        ShapeKind::RoundRect => crate::rounded_rect_corners(
+            a,
+            b,
+            crate::round_rect_radii(f(v, 0), [f(v, 1), f(v, 2), f(v, 3)]),
+            f(v, 4),
+        ),
         // A família do círculo: `sweep` + `start` + `inner` dão elipse, pizza, rosquinha
         // e anel parcial (crate::round). Pie é a mesma forma com outros defaults.
         ShapeKind::Ellipse | ShapeKind::Pie => {

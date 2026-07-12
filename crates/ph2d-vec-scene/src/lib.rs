@@ -46,12 +46,18 @@ mod reshape;
 mod shapes;
 pub use shapes::{
     MAX_ARC_DEGREES, MAX_POLYGON_SIDES, MAX_SPIRAL_TURNS, arc, ellipse, line, rectangle,
-    regular_polygon, regular_polygon_rounded, rounded_rect, spiral, star, star_rounded,
+    regular_polygon, regular_polygon_rounded, round_rect_radii, rounded_rect, rounded_rect_corners,
+    spiral, star, star_rounded,
 };
 
 /// Arredondamento de quinas com raio por-vértice (o motor do canto redondo do polígono
 /// e dos dois raios da estrela) — módulo irmão de `shapes` (LOC cap).
 pub mod corners;
+
+/// **Suavização de quina** (o *squircle*): o arco de círculo vira `asa + arco curto + asa`,
+/// e a curvatura sobe em rampa a partir do lado reto em vez de saltar. Motor de
+/// `corners::round_closed_corners_smooth` — módulo irmão de `corners` (LOC cap).
+pub(crate) mod smooth;
 
 /// **O espaço de autoria do catálogo**: caixa unitária com `v` para BAIXO (convenção
 /// SVG/OOXML), mapeada para o mundo (Y-para-CIMA) num lugar só. As referências de onde as

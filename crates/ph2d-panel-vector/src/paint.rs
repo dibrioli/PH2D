@@ -289,4 +289,9 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     if let Some(chip_rect) = state::take_pending_group_dd() {
         crate::paint_catalog::paint_group_popover(ctx, chip_rect, theme);
     }
+    // Idem para o popover da PONTA do traço aberta (o slot diz qual dos dois seletores —
+    // começo ou fim; só um pode estar aberto por vez).
+    if let Some((slot, chip_rect)) = state::take_pending_marker_dd() {
+        crate::paint_markers::paint_marker_popover(ctx, slot, chip_rect, theme);
+    }
 }

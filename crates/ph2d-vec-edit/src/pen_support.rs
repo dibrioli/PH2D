@@ -4,7 +4,7 @@
 //! undo/redo stack over `VecScene`. Both are `pub` and re-exported by `lib.rs`, so `crate::PenStyle`
 //! / `crate::History` keep resolving for `shape.rs` and the tests. No `PenTool` coupling.
 
-use ph2d_vec_scene::{LineCap, LineJoin, Rgba8, StrokeSpec, VecScene};
+use ph2d_vec_scene::{LineCap, LineJoin, Marker, Rgba8, StrokeSpec, VecScene};
 
 /// Cor do traço do Pen (claro, sobre o canvas escuro).
 const PEN_STROKE: Rgba8 = Rgba8::new(240, 240, 245, 255);
@@ -34,6 +34,11 @@ pub struct PenStyle {
     /// de `dash·width`/`gap·width`; `None` = contínuo. O render multiplica pela
     /// largura do path.
     pub dash: Option<(f64, f64)>,
+    /// **Pontas** (arrowheads) do começo e do fim. Propriedade do traço, como o
+    /// cap: um caminho novo já nasce com a ponta que a tool tem armada. Sem ponta
+    /// (o default) nada muda — o `has_markers()` do render corta antes.
+    pub marker_start: Marker,
+    pub marker_end: Marker,
 }
 
 impl Default for PenStyle {
@@ -45,12 +50,14 @@ impl Default for PenStyle {
             cap: LineCap::Butt,
             join: LineJoin::Miter,
             dash: None,
+            marker_start: Marker::None,
+            marker_end: Marker::None,
         }
     }
 }
 
 impl PenStyle {
-    /// `StrokeSpec` do traço para `width` world-units (aplica cap/join/dash).
+    /// `StrokeSpec` do traço para `width` world-units (aplica cap/join/dash + pontas).
     #[must_use]
     pub fn stroke_spec(&self, width: f64) -> StrokeSpec {
         StrokeSpec {
@@ -59,6 +66,8 @@ impl PenStyle {
             cap: self.cap,
             join: self.join,
             dash: self.dash,
+            marker_start: self.marker_start,
+            marker_end: self.marker_end,
         }
     }
 }

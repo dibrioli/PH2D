@@ -118,6 +118,37 @@ pub const VECTOR_DASH_NUM: NodeId = hash_node_id("vector.dash_num");
 pub const VECTOR_GAP: NodeId = hash_node_id("vector.gap");
 pub const VECTOR_GAP_NUM: NodeId = hash_node_id("vector.gap_num");
 
+// ── Pontas de traço / markers (arrowheads) ───────────────────────────────────
+// Bloco APPEND-ONLY. A ponta é propriedade do **stroke** (herda cor e largura do
+// traço, gira com a tangente da curva), então os dois seletores moram na seção
+// STROKE, ao lado de cap/join/dash — não são formas do catálogo.
+//
+// São **chips de dropdown**, não botões que ciclam: oito opções (`ALL_MARKERS`) é
+// o mesmo tamanho de lista da CATEGORIA do catálogo (sete famílias), que já virou
+// chip pela mesma razão — ciclar às cegas por oito nomes para achar o que se quer
+// é pior que ler os oito e apontar. O popover pinta no passe DIFERIDO do painel
+// (dentro do corpo, o `push_clip` do scroll o cortaria).
+/// Chip da ponta no COMEÇO do caminho.
+pub const VECTOR_MARKER_START_DD: NodeId = hash_node_id("vector.marker.start_dd");
+/// Chip da ponta no FIM do caminho.
+pub const VECTOR_MARKER_END_DD: NodeId = hash_node_id("vector.marker.end_dd");
+
+/// Quantos seletores de ponta existem: começo (`slot = 0`) e fim (`slot = 1`).
+pub const MARKER_SLOTS: usize = 2;
+
+/// Teto de pontas que o painel registra por seletor — espelha
+/// `ph2d_vec_scene::ALL_MARKERS` com folga (o editor-core não depende da crate de
+/// geometria; um marcador novo entra lá e já nasce clicável, sem tocar aqui).
+pub const MAX_MARKER_OPTIONS: usize = 16;
+
+/// [`NodeId`] da opção `index` no popover do seletor `slot` (0 = começo, 1 = fim).
+/// Runtime `format!` (a lista de pontas é dado), gêmeo FNV no mesmo espaço de ids —
+/// espelho das fábricas do catálogo de formas.
+#[must_use]
+pub fn vector_marker_option_id(slot: usize, index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.marker.opt.{slot}.{index}"))
+}
+
 // ── Seletor de MODO (ADR-0108/0112) ──────────────────────────────────────────
 // Quatro modos, e só: Select (gizmo) · Node (âncoras) · Pen (cria) · Text. As
 // FORMAS não são modos — são um catálogo (`vector_shape_id`), e escolher uma põe a

@@ -31,6 +31,8 @@ mod paint;
 mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;
+/// As pontas do traço (arrowheads) — dois chips na seção Stroke + o popover diferido.
+mod paint_markers;
 mod paint_modes;
 mod paint_sections;
 mod paint_transform;

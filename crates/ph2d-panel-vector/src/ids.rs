@@ -7,6 +7,12 @@
 //! internal modules (and the tool, via `handle_panel_event`) can write
 //! `crate::ids::VECTOR_*`.
 
+/// Pontas de traço (arrowheads): os dois chips + as opções do popover, por `slot`
+/// (0 = começo, 1 = fim) e índice em `ph2d_vec_scene::ALL_MARKERS`.
+pub use ph2d_editor_core::ids::{
+    MARKER_SLOTS, MAX_MARKER_OPTIONS, VECTOR_MARKER_END_DD, VECTOR_MARKER_START_DD,
+    vector_marker_option_id,
+};
 pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,
     vector_shape_id,

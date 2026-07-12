@@ -6673,6 +6673,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-vec-connect"
+version = "0.0.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "ph2d-vec-edit"
 version = "0.0.0"
 dependencies = [

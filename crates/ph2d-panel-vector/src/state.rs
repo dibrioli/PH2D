@@ -106,6 +106,11 @@ thread_local! {
     /// Idem para o chip de CATEGORIA do catálogo de formas. Sem o passe diferido o
     /// `push_clip` do scroll cortaria o popover na borda da seção.
     static PENDING_GROUP_DD: Cell<Option<Rect>> = const { Cell::new(None) };
+    /// Idem para os chips de PONTA do traço — mas guardando também o SLOT (0 = começo,
+    /// 1 = fim): os dois seletores compartilham o passe diferido, e o popover precisa
+    /// saber de quem ele é. Só um fica aberto por vez (abrir o outro fecha este, pelo
+    /// dispatch genérico do dropdown).
+    static PENDING_MARKER_DD: Cell<Option<(usize, Rect)>> = const { Cell::new(None) };
 }
 
 /// Which kind of fill the selected path has (published by the shell each frame so
@@ -518,6 +523,26 @@ pub(crate) fn set_pending_group_dd(rect: Option<Rect>) {
 
 pub(crate) fn take_pending_group_dd() -> Option<Rect> {
     PENDING_GROUP_DD.with(|c| c.take())
+}
+
+/// Idem para o chip de PONTA aberto (`slot` = 0 começo / 1 fim, + o rect do chip).
+pub(crate) fn set_pending_marker_dd(slot_rect: Option<(usize, Rect)>) {
+    PENDING_MARKER_DD.with(|c| c.set(slot_rect));
+}
+
+pub(crate) fn take_pending_marker_dd() -> Option<(usize, Rect)> {
+    PENDING_MARKER_DD.with(|c| c.take())
+}
+
+/// `(slot, índice)` da opção de ponta cujo id é `id` (`None` se não for uma). Casa contra
+/// o espaço FIXO de slots, como as outras fábricas de id do painel — a resolução não
+/// depende de quantas pontas existem hoje.
+pub(crate) fn marker_option(id: NodeId) -> Option<(usize, usize)> {
+    (0..crate::ids::MARKER_SLOTS).find_map(|slot| {
+        (0..crate::ids::MAX_MARKER_OPTIONS)
+            .find(|&i| crate::ids::vector_marker_option_id(slot, i) == id)
+            .map(|i| (slot, i))
+    })
 }
 
 /// A família ATIVA do catálogo: a escolhida explicitamente, ou — sem escolha — a da forma

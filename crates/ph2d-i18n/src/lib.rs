@@ -132,6 +132,12 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.mode.text" => "Text",
         "panel.vector.category" => "Category",
         "panel.vector.shape.no_params" => "No parameters",
+        // Stroke markers (arrowheads) — the two selectors in the STROKE section.
+        // Only the ROW labels live here: the marker NAMES ("Arrow", "Diamond",
+        // "Bar"…) come from `ph2d_vec_scene::Marker::label()`, which is their
+        // single source — the same rule the shape catalogue follows.
+        "panel.vector.marker.start" => "Start",
+        "panel.vector.marker.end" => "End",
         "panel.vector.group.basic" => "Basic",
         "panel.vector.group.round" => "Round",
         "panel.vector.group.arrows" => "Arrows",

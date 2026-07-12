@@ -7,7 +7,7 @@
 //! shell bridge → the panel reads it), and both sides agree on the affine
 //! slider mapping so a drag and the tool stay in lock-step.
 
-use ph2d_vec_scene::{ShapeKind, ShapeValues};
+use ph2d_vec_scene::{Marker, ShapeKind, ShapeValues};
 
 /// Minimum / maximum stroke width in screen pixels (inclusive range the Width
 /// slider spans).
@@ -420,6 +420,15 @@ pub struct VectorStyleSnapshot {
     pub dash: f64,
     /// Gap between dashes as a multiple of stroke width.
     pub gap: f64,
+    /// **Pontas do traço** (arrowheads) — a do começo e a do fim do caminho. São
+    /// propriedade do STROKE (herdam cor e largura, giram com a tangente), não formas
+    /// do catálogo: por isso viajam no snapshot ao lado de cap/join/dash, e o painel
+    /// as pinta na seção Stroke. Aqui usamos o tipo do DOCUMENTO
+    /// (`ph2d_vec_scene::Marker`) em vez de um espelho de UI — a tool já depende da
+    /// crate de geometria (`ShapeKind`/`ShapeValues`), e um espelho a mais só criaria
+    /// uma tabela de conversão para manter em dia.
+    pub marker_start: Marker,
+    pub marker_end: Marker,
 }
 
 impl Default for VectorStyleSnapshot {
@@ -435,8 +444,26 @@ impl Default for VectorStyleSnapshot {
             join: StrokeJoin::Miter,
             dash: 0.0,
             gap: GAP_DEFAULT,
+            marker_start: Marker::None,
+            marker_end: Marker::None,
         }
     }
+}
+
+/// Os dois seletores de ponta, como o painel os endereça: `0` = começo, `1` = fim.
+/// Um `usize` (e não um enum) porque é exatamente o que o id de opção carrega
+/// (`ph2d_editor_core::ids::vector_marker_option_id(slot, index)`) — a tool, o painel
+/// e o teste de seam falam o mesmo índice.
+pub const MARKER_SLOT_START: usize = 0;
+pub const MARKER_SLOT_END: usize = 1;
+
+/// A ponta cujo discriminante é `v` (o valor que o `SetValue` do painel carrega). Um
+/// discriminante desconhecido (versão futura) vira [`Marker::None`] — "sem ponta" —
+/// em vez de entrar em pânico, que é a mesma regra do `Marker::from_u8`.
+#[must_use]
+pub fn marker_from_value(v: f64) -> Marker {
+    // `f64 as u8` satura em Rust (NaN → 0), então nenhum valor doido escapa.
+    Marker::from_u8(v as u8).unwrap_or(Marker::None)
 }
 
 #[cfg(test)]

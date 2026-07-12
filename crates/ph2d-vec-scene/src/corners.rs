@@ -34,6 +34,19 @@ pub const KAPPA: f64 = 0.552_284_75;
 /// identidade. Ver o módulo para a construção e os clamps.
 #[must_use]
 pub fn round_closed_corners(pts: &[[f64; 2]], radii: &[f64]) -> VecPath {
+    round_closed_corners_smooth(pts, radii, 0.0)
+}
+
+/// Como [`round_closed_corners`], mas com **suavização de quina** (`smoothing ∈ [0, 1]`, o
+/// *corner smoothing* do Figma): cada arco de círculo vira `asa + arco curto + asa`, e a
+/// curvatura passa a subir em RAMPA a partir do lado reto em vez de saltar. A construção
+/// (e por que a superelipse não serve) está em [`crate::smooth`].
+///
+/// **`smoothing <= 0` é a IDENTIDADE**: cai na quina de arco puro, byte-a-byte a de sempre —
+/// é o que mantém polígono, estrela e round-rect sem suavização exatamente como estavam.
+/// Uma quina de raio ~0 fica CRUA mesmo com suavização: não há arco para suavizar.
+#[must_use]
+pub fn round_closed_corners_smooth(pts: &[[f64; 2]], radii: &[f64], smoothing: f64) -> VecPath {
     let n = pts.len();
     let mut verts: Vec<VecVertex> = Vec::with_capacity(n * 2);
     for i in 0..n {
@@ -41,6 +54,13 @@ pub fn round_closed_corners(pts: &[[f64; 2]], radii: &[f64]) -> VecPath {
         let a = pts[(i + n - 1) % n];
         let b = pts[(i + 1) % n];
         let r = radii.get(i).copied().unwrap_or(0.0).max(0.0);
+        // A quina SUAVE só existe com `smoothing > 0` E raio > 0 — `smooth_corner` devolve
+        // `None` nos dois casos, e aí o caminho é o arco puro de sempre: a saída fica
+        // byte-idêntica à de antes desta feature. **A identidade é sagrada.**
+        if let Some(smooth) = crate::smooth::smooth_corner(a, v, b, r, smoothing) {
+            verts.extend(smooth);
+            continue;
+        }
         match rounded_corner(a, v, b, r) {
             Some((v_in, v_out)) => {
                 verts.push(v_in);

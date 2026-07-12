@@ -275,6 +275,55 @@ pub fn rounded_rect(a: [f64; 2], b: [f64; 2], radius: f64) -> VecPath {
     }
 }
 
+/// **Os quatro raios efetivos** de um round-rect, na ordem `[TL, TR, BR, BL]`, a partir do
+/// raio BASE + os três desvios do catálogo (`values[1..3]`).
+///
+/// ## Por que DESVIO e não raio absoluto
+///
+/// O vetor de parâmetros é posicional e append-only, e a regra do catálogo é que **campo
+/// ausente lê ZERO** ([`crate::cook`]): um save de ontem tem `[r, 0, 0, 0]`. Se os três
+/// campos novos fossem raios ABSOLUTOS, esse save passaria a cozinhar um retângulo com um
+/// canto redondo e três vivos — a forma mudaria sozinha na tela do usuário. Um campo
+/// apendado só é seguro se **zero for o seu neutro**, e o neutro de "raio deste canto" é
+/// "o mesmo dos outros", não "canto vivo".
+///
+/// Daí o desvio (px, com sinal): `0` ⇒ o canto segue o raio base (o que o usuário que nunca
+/// tocou nos campos vê — exatamente a forma de sempre); negativo afina até o canto vivo
+/// (satura em 0); positivo engorda. E a expressividade é TOTAL: qualquer quádrupla
+/// `(tl, tr, br, bl)` sai de `base = tl` + os três desvios `(tr − tl, br − tl, bl − tl)`.
+/// De quebra, o campo "Radius" continua sendo o mestre — mexer nele move os quatro cantos
+/// juntos, que é o gesto comum.
+#[must_use]
+pub fn round_rect_radii(base: f64, offsets: [f64; 3]) -> [f64; 4] {
+    let base = base.max(0.0);
+    let off = |o: f64| (base + o).max(0.0);
+    [base, off(offsets[0]), off(offsets[1]), off(offsets[2])]
+}
+
+/// Round-rect **por canto** (`[TL, TR, BR, BL]`, unidades de MUNDO) + **suavização**
+/// (`smoothing ∈ [0, 1]`, o *corner smoothing* do Figma — ver [`crate::smooth`]).
+///
+/// **Raios iguais + suavização 0 ⇒ [`rounded_rect`], byte a byte.** Não é um atalho de
+/// performance: é a IDENTIDADE, e ela é sagrada — todo save anterior a esta feature
+/// (`values = [r, 0, 0, 0, 0]`) cai exatamente aqui e cozinha a geometria que já cozinhava.
+/// O caminho geral (via [`crate::corners`]) concorda com ele a menos de 1 ulp de trig, e o
+/// teste `the_general_corner_engine_agrees_with_the_hand_built_round_rect` prende isso.
+#[must_use]
+pub fn rounded_rect_corners(a: [f64; 2], b: [f64; 2], radii: [f64; 4], smoothing: f64) -> VecPath {
+    let uniform = radii.iter().all(|r| (r - radii[0]).abs() < f64::EPSILON);
+    if smoothing <= 0.0 && uniform {
+        return rounded_rect(a, b, radii[0]); // a identidade, literalmente a mesma função
+    }
+    let (x0, x1) = (a[0].min(b[0]), a[0].max(b[0]));
+    let (y0, y1) = (a[1].min(b[1]), a[1].max(b[1]));
+    // A volta do `rectangle`/`rounded_rect` (anti-horária no mundo Y-para-CIMA, começando no
+    // canto de baixo à esquerda) — trocá-la inverteria o winding de toda forma já salva.
+    // `y1` é o TOPO (mundo Y-para-cima), então BL = (x0, y0) e TL = (x0, y1).
+    let pts = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    let [tl, tr, br, bl] = radii;
+    crate::corners::round_closed_corners_smooth(&pts, &[bl, br, tr, tl], smoothing)
+}
+
 /// Segmento reto de `a` a `b`: dois vértices de quina, **aberto** (sem fill — uma
 /// linha não tem interior). A primitiva mais básica de um editor vetorial.
 #[must_use]
@@ -405,3 +454,9 @@ impl VecScene {
         scene
     }
 }
+
+/// **Os gates do canto rico** (raio por-canto + suavização): compatibilidade de save,
+/// localidade dos quatro campos e a rampa de curvatura. Arquivo irmão (teto de LOC).
+#[cfg(test)]
+#[path = "corner_tests.rs"]
+mod corner_tests;

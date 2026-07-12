@@ -175,6 +175,8 @@ pub(crate) fn apply_event(
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
+        // **Opção de PONTA** (uma linha do popover de Start / End) — ver [`pick_marker`].
+        WidgetEvent::Click(id) if state::marker_option(id).is_some() => pick_marker(host, id),
         // Draw-mode buttons + Boolean buttons: forward the Click over the generic
         // tool channel. Mode clicks land on `VectorTool::handle_panel_event`
         // (sets the mode); Boolean clicks are picked up by the shell drain, which
@@ -216,6 +218,46 @@ pub(crate) fn apply_event(
         _ => false,
     };
     EventOutcome::from_bool(consumed)
+}
+
+/// Escolheu uma **ponta de traço** no popover (Start ou End).
+///
+/// Duas coisas, nesta ordem:
+///
+/// 1. **Fecha o chip à mão.** O light-dismiss genérico não dispara — o clique é DENTRO do
+///    popover (a mesma armadilha do dropdown de categoria e do de fonte). Sem isto o
+///    popover ficaria pendurado sobre o painel depois da escolha.
+/// 2. **Emite o DISCRIMINANTE da ponta no id do CHIP** (`SetValue`), não um `Click` no id
+///    da opção: a tool tem UM braço por seletor, e uma ponta nova (`ALL_MARKERS` cresce)
+///    não pode exigir um braço novo lá. É o mesmo desenho do campo de escolha das formas
+///    — o hit mora num widget, o valor mora em outro.
+///
+/// `false` = o índice não é uma ponta que exista (não pode acontecer pelo guard do
+/// chamador, mas o caminho recusa em vez de adivinhar).
+fn pick_marker(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    seam_reset_button(host, id);
+    let Some((slot, index)) = state::marker_option(id) else {
+        return false;
+    };
+    let Some(marker) = ph2d_vec_scene::ALL_MARKERS.get(index).copied() else {
+        return false; // slot de id vazio (o espaço é fixo, o catálogo é menor)
+    };
+    let dd = crate::paint_markers::marker_dd_id(slot);
+    if let Some(InteractiveState::Dropdown {
+        open,
+        selected_index,
+        ..
+    }) = host.store_mut().get_mut(dd)
+    {
+        *open = false;
+        *selected_index = Some(index);
+    }
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+            dd,
+            f64::from(marker.as_u8()),
+        )));
+    true
 }
 
 /// Ids dos botões cujo `Click` o painel apenas ENCAMINHA (`PanelEvent::Click`) para o

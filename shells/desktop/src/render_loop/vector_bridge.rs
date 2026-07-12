@@ -26,7 +26,7 @@ use ph2d_tool_vector::VectorDrawConfig;
 use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
 use ph2d_vec_render::GradHandle;
 use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecScene};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 fn rgba(c: [u8; 4]) -> Rgba8 {
     Rgba8::new(c[0], c[1], c[2], c[3])
@@ -103,6 +103,38 @@ thread_local! {
     /// `History` as ONE undo step when the gesture ends (the picker closes /
     /// the discrete pick's frame finishes). `None` between gestures.
     static RECOLOR_PRE: RefCell<Option<VecScene>> = const { RefCell::new(None) };
+    /// O caminho cujas PONTAS a tool adotou por último — o "alvo" dos dois seletores de
+    /// marker, no mesmo modelo do alvo dos campos de forma (`vec_shape_params`). Só a
+    /// MUDANÇA de alvo semeia; semear todo frame brigaria com a escolha que o usuário
+    /// acabou de fazer (o `SetValue` do popover chega DEPOIS deste passe, no frame
+    /// seguinte, e seria imediatamente desfeito).
+    static MARKER_TARGET: Cell<Option<ph2d_vec_scene::VecPathId>> = const { Cell::new(None) };
+}
+
+/// **Semeia os seletores de ponta a partir do caminho SELECIONADO** (quando a seleção
+/// muda). O painel pinta a partir da tool, então sem isto os dois chips mostrariam a
+/// última ponta autorada — não a do traço que está na tela. Espelho exato do
+/// `seed_shape_fields` + `adopt_shape_values` dos campos de forma.
+///
+/// Um caminho SEM traço (só preenchimento) não tem ponta nenhuma a doar: o alvo passa a
+/// ser ele, mas o Style da tool fica onde estava (o default do próximo traço).
+fn seed_markers_from_selection(
+    tool: &mut ph2d_tool_vector::VectorTool,
+    pen: &PenTool,
+    scene: &VecScene,
+) {
+    let target = pen.selected();
+    if MARKER_TARGET.with(Cell::get) == target {
+        return;
+    }
+    MARKER_TARGET.with(|c| c.set(target));
+    let Some(stroke) = target
+        .and_then(|id| scene.paths().iter().find(|p| p.id == id))
+        .and_then(|p| p.stroke)
+    else {
+        return;
+    };
+    tool.adopt_markers(stroke.marker_start, stroke.marker_end);
 }
 
 /// Troca o modo de desenho da tool Vector (a tool é a dona; o shell só espelha). O
@@ -211,10 +243,15 @@ pub(super) fn dispatch(
         }
     }
 
+    // As PONTAS do caminho selecionado viram as correntes quando a seleção muda (antes de
+    // qualquer leitura do Style abaixo, senão o frame da seleção ainda pintaria as antigas).
+    seed_markers_from_selection(tool, pen, scene);
+
     let stroke = tool.stroke_rgba();
     let fill = tool.fill_rgba();
     let cap = line_cap(tool.cap());
     let join = line_join(tool.join());
+    let (marker_start, marker_end) = (tool.marker_start(), tool.marker_end());
     // Dash + gap are MULTIPLES of the stroke width (width-aware) — the render
     // scales them by the path's own width, so no px→world conversion here.
     // `dash = 0` ⇒ solid; otherwise `(dash, gap)` sizes the dash and the space.
@@ -228,6 +265,8 @@ pub(super) fn dispatch(
         cap,
         join,
         dash,
+        marker_start,
+        marker_end,
     };
     pen.set_style(style);
     shape.set_style(style);
@@ -270,6 +309,9 @@ pub(super) fn dispatch(
                     || s.cap != cap
                     || s.join != join
                     || s.dash != dash
+                    // A ponta é Style: trocá-la no painel reestiliza o traço na tela.
+                    || s.marker_start != marker_start
+                    || s.marker_end != marker_end
                     || (width_dragging && (s.width - new_w).abs() > f64::EPSILON)
             });
             let fill_differs = if let Some(h) = active_handle {
@@ -312,6 +354,8 @@ pub(super) fn dispatch(
                         cap,
                         join,
                         dash,
+                        marker_start,
+                        marker_end,
                     });
                 }
                 if let Some(h) = active_handle {

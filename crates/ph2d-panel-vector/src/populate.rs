@@ -388,6 +388,29 @@ fn populate_style(store: &mut WidgetStore) {
         GAP_SLIDER_SCALE,
         GAP_SLIDER_OFFSET,
     );
+    populate_markers(store);
+}
+
+/// As **pontas do traço**: os dois chips (`Dropdown` — abrir/fechar/roda vêm de graça do
+/// dispatch genérico) + as opções do popover, uma por ponta de `ALL_MARKERS` e por slot.
+///
+/// Registradas por ÍNDICE, como as formas do catálogo: uma ponta nova entra em
+/// `ALL_MARKERS` e já nasce clicável, sem tocar aqui. Os slots existem sempre (o
+/// `populate` é estático); o PAINT decide quais registram hit.
+fn populate_markers(store: &mut WidgetStore) {
+    for slot in 0..ids::MARKER_SLOTS {
+        store.register_if_absent(
+            crate::paint_markers::marker_dd_id(slot),
+            InteractiveState::Dropdown {
+                state: DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
+        for i in 0..ids::MAX_MARKER_OPTIONS {
+            button(store, ids::vector_marker_option_id(slot, i));
+        }
+    }
 }
 
 /// Arrange (duplicate / z-order / flip / rotate), reshape de path, e o botão Close.

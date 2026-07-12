@@ -256,6 +256,111 @@ fn every_shape_and_every_field_in_the_catalog_reaches_the_tool() {
     }
 }
 
+/// **Gate do seam das PONTAS de traço** (markers / arrowheads).
+///
+/// Os dois seletores (Start / End) são chips de dropdown: o clique numa linha do popover
+/// tem de (a) ser consumido pelo painel, (b) FECHAR o chip — o light-dismiss genérico não
+/// dispara, porque o clique é DENTRO do popover — e (c) chegar à tool como a ponta
+/// escolhida. Um controle que pinta e não despacha é exatamente o bug que este arquivo
+/// existe para pegar.
+///
+/// Cobre TODA ponta de `ALL_MARKERS` nos DOIS slots: uma ponta nova entra na tabela e já
+/// nasce coberta, e um id de opção trocado entre começo e fim sai vermelho.
+#[test]
+fn every_marker_option_reaches_the_tool_and_closes_its_chip() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_vec_scene::{ALL_MARKERS, Marker};
+
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+    assert_eq!(
+        tool.marker_start(),
+        Marker::None,
+        "precondition: uma linha nasce sem ponta"
+    );
+
+    for (slot, dd) in [
+        (0_usize, ids::VECTOR_MARKER_START_DD),
+        (1_usize, ids::VECTOR_MARKER_END_DD),
+    ] {
+        for (i, &want) in ALL_MARKERS.iter().enumerate() {
+            // Abre o chip (o que o dispatch genérico faz num clique nele).
+            match host.store_mut().get_mut(dd) {
+                Some(InteractiveState::Dropdown { open, .. }) => *open = true,
+                _ => panic!("o chip de ponta {slot} nao esta registrado como Dropdown no populate"),
+            }
+
+            let outcome = host.apply_panel_event::<VectorPanel>(
+                &mut panel_state,
+                WidgetEvent::Click(ids::vector_marker_option_id(slot, i)),
+            );
+            assert_eq!(
+                outcome,
+                EventOutcome::Consumed,
+                "slot {slot} / {want:?}: opcao de ponta ignorada pelo painel"
+            );
+            assert!(
+                drain_into_tool(&mut host, &mut tool),
+                "slot {slot} / {want:?}: o clique nunca virou ToolPanelEvent — o seletor esta MORTO"
+            );
+
+            let got = if slot == 0 {
+                tool.marker_start()
+            } else {
+                tool.marker_end()
+            };
+            assert_eq!(
+                got, want,
+                "slot {slot}: a ponta escolhida nao chegou na tool"
+            );
+
+            match host.store().get(dd) {
+                Some(InteractiveState::Dropdown {
+                    open,
+                    selected_index,
+                    ..
+                }) => {
+                    assert!(
+                        !open,
+                        "slot {slot} / {want:?}: o chip ficou ABERTO apos a escolha"
+                    );
+                    assert_eq!(
+                        *selected_index,
+                        Some(i),
+                        "slot {slot} / {want:?}: o chip nao registrou a ponta escolhida"
+                    );
+                }
+                _ => panic!("o chip de ponta {slot} deixou de ser um Dropdown"),
+            }
+        }
+    }
+
+    // Os dois seletores são INDEPENDENTES: o último loop deixou End na última ponta, e o
+    // Start na mesma — mas escolher no Start não pode mexer no End.
+    let end_before = tool.marker_end();
+    match host.store_mut().get_mut(ids::VECTOR_MARKER_START_DD) {
+        Some(InteractiveState::Dropdown { open, .. }) => *open = true,
+        _ => unreachable!(),
+    }
+    host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::vector_marker_option_id(0, 1)), // Triangle
+    );
+    drain_into_tool(&mut host, &mut tool);
+    assert_eq!(tool.marker_start(), Marker::Triangle);
+    assert_eq!(
+        tool.marker_end(),
+        end_before,
+        "escolher a ponta do COMECO mexeu na do FIM — os ids de opcao colidiram"
+    );
+    assert!(
+        tool.take_apply_to_selected(),
+        "a ponta e Style: a escolha tem de reestilizar o caminho selecionado"
+    );
+}
+
 #[test]
 fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();

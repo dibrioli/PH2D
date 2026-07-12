@@ -51,6 +51,10 @@ incidentes = "incidentes"
 responde = "responde"
 vertice = "vertice"
 VALIDADE = "VALIDADE"
+# pt-BR do roteador de conectores (`ph2d-vec-connect`): "o A* propriamente DITO", e os dois
+# PROBLEMAS que o grafo de visibilidade resolve de uma vez.
+dito = "dito"
+problemas = "problemas"
 # pt-BR do gate de orientação (`ph2d-vec-scene/src/orient_tests.rs`): quem escreve a forma
 # nova é o AUTOR dela — e o gate existe justamente para obrigá-lo a declarar para que lado
 # ela fica de pé. Lido como um "author" mal escrito; é a palavra portuguesa.

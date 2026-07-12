@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-vec-connect"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O ROTEADOR de conectores — deliberadamente PURO: sem ECS, sem kurbo, sem vello,
+# nem mesmo `ph2d-vec-scene`. Entra uma descrição de rota (dois pontos + duas
+# direções + uma lista de caixas), sai uma polilinha. É uma função total, e é
+# testável sem montar um mundo.
+serde = { version = "1", features = ["derive"] }

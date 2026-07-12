@@ -177,11 +177,15 @@ pub(crate) fn draw_wire_ghost(
 /// A wire still drawn into the socket you are visibly pulling it out of is a wire that has
 /// not moved: the artist would be dragging a ghost while the original sat there, and would
 /// have no way to tell whether the gesture had taken.
+///
+/// It stays suppressed for one frame PAST the drop (`pending_detach`), because the shell only
+/// answers on the next frame — see `MotionGraphPanelState::pending_detach`.
 pub(crate) fn detached_edge(state: &MotionGraphPanelState) -> Option<(u32, u16)> {
     match &state.interaction {
         Interaction::DrawWire { detached, .. } => *detached,
         _ => None,
     }
+    .or(state.pending_detach)
 }
 
 /// Screen endpoints `(output socket, input socket)` of a wire, or `None` if

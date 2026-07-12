@@ -44,6 +44,8 @@ pub(crate) fn process(
 ) {
     let panel = ids::MOTION_GRAPH_PANEL;
 
+    settle_pending_detach(state);
+
     // The shell hands back a selection after it mints ids the panel could not know
     // (Ctrl+D's duplicates). Taken FIRST, so this frame's gestures act on the copies.
     if let Some(nodes) = crate::snapshot::take_selection_request() {
@@ -62,6 +64,20 @@ pub(crate) fn process(
     for g in gestures {
         apply_gesture(state, g, rect, center, snap);
     }
+}
+
+/// **The frame boundary a released wire-end has to survive** (doc 45.1).
+///
+/// The shell applies the panel's intents at the TOP of a frame and republishes the snapshot
+/// after — so the frame in which the drop happens still paints from a snapshot where the wire
+/// is plugged in exactly where the artist just tore it out of. Suppressing it only while the
+/// pointer is down made the end **snap back to its old socket for one frame** before vanishing.
+///
+/// So the suppression outlives the gesture by one frame, and dies HERE, on the next pass: by
+/// now the snapshot IS the shell's answer — moved, unplugged, or (an illegal landing) refused
+/// with the original wire intact — and the answer is the truth to paint, whatever it is.
+fn settle_pending_detach(state: &mut MotionGraphPanelState) {
+    state.pending_detach = None;
 }
 
 // Wheel-zoom tuning (canvas-interaction constants, not chrome tokens).

@@ -333,6 +333,119 @@ fn grabbing_an_occupied_input_picks_up_the_wires_end_and_moves_it() {
     );
 }
 
+/// **A released wire-end is never painted back onto the socket it was torn off** (doc 45.1).
+///
+/// The shell answers a drop on the NEXT frame (it applies intents at the top of the frame and
+/// republishes the snapshot after), so the frame the drop lands in still paints from a snapshot
+/// where the wire is plugged in where it was. Suppressing it only while the pointer is down
+/// made the end **snap back to its old socket for one frame** and then vanish — Enio saw the
+/// pop. The suppression has to outlive the gesture by exactly one frame.
+///
+/// FALSIFIED by clearing the suppression at End (the wire reappears on the old socket) and by
+/// never clearing it (a REFUSED move would hide a wire that is still there, forever).
+#[test]
+fn a_released_wire_end_is_not_painted_back_onto_its_old_socket() {
+    let mut state = MotionGraphPanelState::default();
+    let mut snap = two_node_snapshot();
+    snap.edges.push(crate::snapshot::GraphEdgeView {
+        from_node: 1,
+        from_port: 0,
+        to_node: 2,
+        to_port: 0,
+        delayed: false,
+        out_domain: Domain::Instances,
+    });
+    let _ = drain_intents();
+
+    // Grab the end, drag it out over empty canvas, let go.
+    for (phase, x, y) in [
+        (GesturePhase::Begin, 200.0, 37.0),
+        (GesturePhase::Update, 340.0, 260.0),
+        (GesturePhase::End, 340.0, 260.0),
+    ] {
+        apply_gesture(
+            &mut state,
+            gesture(GraphHitKind::SocketIn { node: 2, port: 0 }, phase, x, y),
+            RECT,
+            CENTER,
+            &snap,
+        );
+    }
+    let _ = drain_intents();
+
+    // THE FRAME OF THE DROP: the shell has not answered yet and the snapshot still shows the
+    // wire on that socket. The panel must keep hiding it — no snap-back.
+    assert_eq!(
+        crate::paint::detached_edge(&state),
+        Some((2, 0)),
+        "the released end is still suppressed while the shell has not answered"
+    );
+
+    // THE NEXT FRAME: the snapshot is now the shell's answer, whatever it says, and the panel
+    // stops hiding anything. (A refused move shows the original wire again — it never moved.)
+    settle_pending_detach(&mut state);
+    assert_eq!(
+        crate::paint::detached_edge(&state),
+        None,
+        "the shell has answered: the snapshot is the truth again"
+    );
+}
+
+/// Dropped back where it came from, the wire never moved — so it must not blink out for a
+/// frame either. Nothing changed, so nothing is hidden.
+///
+/// It also pins the landing to the DROP's own coordinates: this gesture ends on the socket it
+/// began on, and the wire stays. FALSIFIED by resolving the landing from the last `Update`'s
+/// cached target, which is `None` here — the wire would be UNPLUGGED by a gesture that put it
+/// back exactly where it was.
+#[test]
+fn dropping_a_wire_end_back_home_hides_nothing() {
+    let mut state = MotionGraphPanelState::default();
+    let mut snap = two_node_snapshot();
+    snap.edges.push(crate::snapshot::GraphEdgeView {
+        from_node: 1,
+        from_port: 0,
+        to_node: 2,
+        to_port: 0,
+        delayed: false,
+        out_domain: Domain::Instances,
+    });
+    let _ = drain_intents();
+
+    for phase in [GesturePhase::Begin, GesturePhase::End] {
+        apply_gesture(
+            &mut state,
+            gesture(
+                GraphHitKind::SocketIn { node: 2, port: 0 },
+                phase,
+                200.0,
+                37.0,
+            ),
+            RECT,
+            CENTER,
+            &snap,
+        );
+    }
+    let intents = drain_intents();
+    assert!(
+        matches!(
+            intents.as_slice(),
+            [GraphIntent::MoveWireEnd {
+                old_to_node: 2,
+                old_to_port: 0,
+                new_to: Some((2, 0)),
+                ..
+            }]
+        ),
+        "the drop landed where the button came up - back home: {intents:?}"
+    );
+    assert_eq!(
+        crate::paint::detached_edge(&state),
+        None,
+        "dropped home: the wire is drawn again this very frame"
+    );
+}
+
 /// **An EMPTY input draws a wire backwards** — the mirror of dragging out of an output. The
 /// drop on an output makes the same connection, from the other end.
 #[test]

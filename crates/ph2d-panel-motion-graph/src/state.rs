@@ -152,4 +152,19 @@ pub struct MotionGraphPanelState {
     /// of rubber-band selecting. Disarmed by the stroke itself, by Esc, or by a
     /// second `K` — a mode that cannot be left is a trap, so it has three exits.
     pub(crate) knife_armed: bool,
+    /// The input a wire's end was just pulled off, held for the ONE frame between
+    /// the drop and the shell's answer (doc 45.1).
+    ///
+    /// The shell applies the panel's intents at the top of the next frame and only
+    /// then republishes the snapshot — so the frame in which the drop happens still
+    /// paints from a snapshot where the wire is plugged in where it was. Without
+    /// this, the released end **snapped back to its old socket for one frame** before
+    /// vanishing: a wire the artist had just torn out, drawn back where it no longer
+    /// is. Keeping the suppression alive across that boundary means the end is never
+    /// drawn anywhere it is not.
+    ///
+    /// Cleared at the top of the next `interact::apply` — by then the snapshot is the
+    /// shell's answer, whatever it was, and it is the truth to paint. (A REFUSED move
+    /// therefore shows the original wire again, which is exactly right: it never moved.)
+    pub(crate) pending_detach: Option<(u32, u16)>,
 }

@@ -99,46 +99,65 @@ pub(super) fn apply_socket_in(
                 _ => {}
             }
         }
-        GesturePhase::End => match std::mem::take(&mut state.interaction) {
-            // A wire whose end was grabbed: it MOVES. Dropped on an input, it lands there;
-            // dropped on empty canvas, it is unplugged. Either way, one undo step — and the
-            // shell keeps the original if the new landing is illegal.
-            Interaction::DrawWire {
-                from_node,
-                from_port,
-                target,
-                detached: Some((old_to_node, old_to_port)),
-                ..
-            } => {
-                push_intent(GraphIntent::MoveWireEnd {
+        // The landing is resolved from the DROP's own coordinates — not from the last
+        // `Update`'s cached target. Where the button came up is where the wire lands, and a
+        // gesture that ends without a preceding move (or a hair away from the last one) must
+        // not fall back to a stale answer: reading a `None` there would UNPLUG a wire the
+        // artist merely touched.
+        GesturePhase::End => {
+            let view = View::new(rect, state.view);
+            match std::mem::take(&mut state.interaction) {
+                // A wire whose end was grabbed: it MOVES. Dropped on an input, it lands there;
+                // dropped on empty canvas, it is unplugged. Either way, one undo step — and
+                // the shell keeps the original if the new landing is illegal.
+                Interaction::DrawWire {
                     from_node,
                     from_port,
-                    old_to_node,
-                    old_to_port,
-                    new_to: target.map(|(n, p, _)| (n, p)),
-                });
+                    detached: Some((old_to_node, old_to_port)),
+                    ..
+                } => {
+                    let new_to = target_socket(snap, &view, from_node, from_port, g.x, g.y)
+                        .map(|(n, p, _)| (n, p));
+                    // KEEP HIDING the old wire until the shell answers. The shell applies
+                    // intents at the top of the NEXT frame, so this frame would otherwise
+                    // paint the wire back onto the socket it was just torn off — a snap-back
+                    // to a place the wire no longer is. Dropped back home is the exception:
+                    // nothing changed, so hiding it would only blink it out for a frame.
+                    if new_to != Some((old_to_node, old_to_port)) {
+                        state.pending_detach = Some((old_to_node, old_to_port));
+                    }
+                    push_intent(GraphIntent::MoveWireEnd {
+                        from_node,
+                        from_port,
+                        old_to_node,
+                        old_to_port,
+                        new_to,
+                    });
+                }
+                // Drawn backwards onto an output: the same connection, made from the other
+                // end. The shell is the authority (cycle / occupied / typing / membrane).
+                //
+                // Dropped on nothing: no wire, no intent, no undo step. (Smart-connect is the
+                // forward gesture's answer to that — it knows what the wire would FEED. A
+                // backwards drop would have to guess what should feed it, which is a menu of
+                // the whole library: the add-menu the artist already has.)
+                Interaction::DrawWireBack {
+                    to_node, to_port, ..
+                } => {
+                    if let Some((from_node, from_port, _compat)) =
+                        output_target(snap, &view, to_node, to_port, g.x, g.y)
+                    {
+                        push_intent(GraphIntent::Connect {
+                            from_node,
+                            from_port,
+                            to_node,
+                            to_port,
+                        });
+                    }
+                }
+                _ => {}
             }
-            // Drawn backwards onto an output: the same connection, made from the other end.
-            // The shell is the authority (cycle / occupied / typing / membrane), as always.
-            Interaction::DrawWireBack {
-                to_node,
-                to_port,
-                target: Some((from_node, from_port, _compat)),
-                ..
-            } => {
-                push_intent(GraphIntent::Connect {
-                    from_node,
-                    from_port,
-                    to_node,
-                    to_port,
-                });
-            }
-            // Dropped on nothing: no wire, no intent, no undo step. (Smart-connect is the
-            // forward gesture's answer to this — it knows what the wire would FEED. A
-            // backwards drop would have to guess what should feed it, which is a menu of the
-            // whole library, i.e. the add-menu the artist already has.)
-            _ => {}
-        },
+        }
         GesturePhase::Click | GesturePhase::DoubleClick => {
             state.interaction = Interaction::Idle;
         }

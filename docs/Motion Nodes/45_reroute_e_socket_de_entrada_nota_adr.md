@@ -92,6 +92,31 @@ que não mudou nada.
 | shell | `motion_bridge_rewire.rs` (novo) · `motion_bridge_waypoints.rs` **removido** |
 | `ph2d-motion-doc` | `Waypoints` + o registro `w` **REMOVIDOS** — o formato voltou ao que era |
 
+## 4-bis. O pulo do fio solto (45.1 — smoke do Enio)
+
+> *"ao arrastar um socket de entrada ocupado e soltar no vazio, ele antes de se apagar dá um pulo pro socket que
+> estava e depois se apaga."*
+
+**Causa:** o shell aplica os intents no **topo** do frame e só então republica o snapshot. O frame em que o botão
+sobe ainda pinta do snapshot **anterior** — onde o fio está plugado onde estava. Eu suprimia o fio arrancado só
+**enquanto o ponteiro estava em baixo**; no instante do drop a supressão morria e o fio era redesenhado **no
+socket velho por um frame**, antes do snapshot novo o apagar. Um fio que o artista acabou de arrancar, pintado de
+volta onde ele já não está.
+
+**Fix:** a supressão **sobrevive ao gesto por um frame** (`MotionGraphPanelState.pending_detach`) e morre no
+`settle_pending_detach` do frame seguinte — quando o snapshot **já é a resposta do shell** (movido, desligado ou
+**recusado**, com o fio original intacto). Qualquer que seja a resposta, ela é a verdade a pintar. Soltar **em
+casa** é exceção: nada muda, então esconder o fio só o faria piscar.
+
+**E o teste vermelho desenterrou um segundo bug:** o `End` lia o alvo do **último `Update`**, não da coordenada
+onde o botão subiu — um gesto que pega o socket e solta **sem mover** via alvo `None` e **DESLIGAVA** o fio. O
+pouso agora é resolvido no drop (`target_socket(g.x, g.y)`). Guardas: `a_released_wire_end_is_not_painted_back_onto_its_old_socket`
+e `dropping_a_wire_end_back_home_hides_nothing`.
+
+**A lição (a mesma de sempre, num traje novo):** um painel que pinta de um snapshot de **um frame atrás** tem de
+carregar seu próprio estado através da fronteira do frame. Toda supressão presa ao *gesto* vaza exatamente um
+frame — e um frame é visível.
+
 ## 5. A lição
 
 **Um afordance que parece uma coisa e não é, é um bug — mesmo quando o código está certo.** O waypoint fazia

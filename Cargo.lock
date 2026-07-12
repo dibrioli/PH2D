@@ -5239,6 +5239,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-fx-drop-shadow"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-fx-rgb-split"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-bend"
 version = "0.0.0"
 dependencies = [
@@ -5731,6 +5747,8 @@ dependencies = [
  "ph2d-node-force-drag",
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
+ "ph2d-node-fx-drop-shadow",
+ "ph2d-node-fx-rgb-split",
  "ph2d-node-motion-bend",
  "ph2d-node-motion-boids",
  "ph2d-node-motion-clone",

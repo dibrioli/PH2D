@@ -22,6 +22,8 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_force_drag::register(reg)?;
     ph2d_node_force_vortex::register(reg)?;
     ph2d_node_force_wind::register(reg)?;
+    ph2d_node_fx_drop_shadow::register(reg)?;
+    ph2d_node_fx_rgb_split::register(reg)?;
     ph2d_node_motion_bend::register(reg)?;
     ph2d_node_motion_boids::register(reg)?;
     ph2d_node_motion_clone::register(reg)?;

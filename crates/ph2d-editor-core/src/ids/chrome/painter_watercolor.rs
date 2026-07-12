@@ -108,12 +108,6 @@ pub const PAINTER_WATERCOLOR_PAPER_ANGLE: NodeId =
 /// [`painter_paper_mapping_option_id`].
 pub const PAINTER_WATERCOLOR_PAPER_MAPPING: NodeId =
     hash_node_id("painter_brush.watercolor_paper_mapping");
-/// **Paper** Rake toggle. `Click` → `toggle_brush_paper_rake`.
-pub const PAINTER_WATERCOLOR_PAPER_RAKE: NodeId =
-    hash_node_id("painter_brush.watercolor_paper_rake");
-/// **Paper** Random-Angle toggle. `Click` → `toggle_brush_paper_random`.
-pub const PAINTER_WATERCOLOR_PAPER_RANDOM: NodeId =
-    hash_node_id("painter_brush.watercolor_paper_random");
 /// **Paper** Offset X. `SetValue` → `set_brush_paper_offset`(0).
 pub const PAINTER_WATERCOLOR_PAPER_OFFSET_X: NodeId =
     hash_node_id("painter_brush.watercolor_paper_offset_x");
@@ -155,8 +149,13 @@ pub fn painter_paper_kind_option_id(k: u8) -> NodeId {
 /// Granulation "Same as Paper" + the Paper section reset) — forwarded as a `PanelEvent::Click` by the
 /// panel's `event.rs` (a single membership check) and routed by `route_brush_watercolor_event`. The old
 /// Pigment toggle merged into the [`PAINTER_WATERCOLOR_MIX`] slider (redesign 2026-07-07); Paper
-/// Rake/Random were dropped from the UI (no app rotates paper per-dab) — their tool setters + route arms
-/// stay for the API, just no widget forwards them.
+/// The Paper slot has **no Rake / Random-Angle** — deliberately, and there is nothing left to wire. Rake
+/// means "the rotation follows the stroke" and Random means "a fresh angle per dab": both are **per-dab**
+/// concepts, and the paper is the canvas-anchored substrate UNDER the paint — it has no dab. The widgets
+/// were dropped when the section was written; the ids/setters/route arms were kept "for the API" and rotted
+/// into a trap (an audit read the leftover setters as live knobs). Removed 2026-07-12 — the per-dab
+/// rake/random live on the **Grain** slot, which is a stamp. `TextureSettings::rake` itself stays: it is
+/// shared with Shape/Grain, where it is real.
 pub const PAINTER_WATERCOLOR_CLICKS: [NodeId; 6] = [
     PAINTER_WATERCOLOR_ENABLE,
     PAINTER_WATERCOLOR_RESET,

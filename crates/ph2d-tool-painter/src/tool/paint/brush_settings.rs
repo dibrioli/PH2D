@@ -327,10 +327,6 @@ pub struct BrushSettings {
     pub paper_kind: u8,
     /// **Paper** slot Mapping (`TextureMapping` wire u8).
     pub paper_mapping: u8,
-    /// **Paper** slot Rake (rotation follows the stroke).
-    pub paper_rake: bool,
-    /// **Paper** slot Random-Angle (per-dab random rotation).
-    pub paper_random: bool,
     /// **Paper** slot Angle in whole degrees (fibre orientation).
     pub paper_angle: u16,
     /// **Paper** slot Offset (x, y).

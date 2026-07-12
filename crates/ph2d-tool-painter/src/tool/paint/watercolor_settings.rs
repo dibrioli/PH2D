@@ -69,14 +69,6 @@ impl PainterTool {
                 self.reset_brush_paper();
                 true
             }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RAKE => {
-                self.toggle_brush_paper_rake();
-                true
-            }
-            PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_PAPER_RANDOM => {
-                self.toggle_brush_paper_random();
-                true
-            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_WATERCOLOR_DRY_NOW => {
                 self.dry_session_now();
                 true
@@ -378,16 +370,6 @@ impl PainterTool {
     /// Set the **Paper** slot Mapping (`TextureMapping` wire u8).
     pub fn set_brush_paper_mapping(&mut self, m: u8) {
         self.paint.brush.paper.mapping = TextureMapping::from_u8(m);
-    }
-
-    /// Toggle the **Paper** slot Rake (rotation follows the stroke).
-    pub fn toggle_brush_paper_rake(&mut self) {
-        self.paint.brush.paper.rake = !self.paint.brush.paper.rake;
-    }
-
-    /// Toggle the **Paper** slot Random-Angle (per-dab random rotation).
-    pub fn toggle_brush_paper_random(&mut self) {
-        self.paint.brush.paper.random_angle = !self.paint.brush.paper.random_angle;
     }
 
     /// Set the **Paper** slot Offset on `axis` (0 = x, 1 = y), clamped to `[-1, 1]`.

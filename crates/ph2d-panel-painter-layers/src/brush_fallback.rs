@@ -185,8 +185,6 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wet_preview: 0.3, // LITERAL-PX-OK: default wetness-preview veil strength (mirrors WET_PREVIEW_DEFAULT)
     paper_kind: 0,    // None (TextureKind wire 0)
     paper_mapping: 1, // Tiled (canvas-anchored)
-    paper_rake: false,
-    paper_random: false,
     paper_angle: 0,
     paper_offset: [0.0, 0.0],
     paper_size: [1.0, 1.0], // LITERAL-PX-OK: default paper Size (one tile)

@@ -35,6 +35,15 @@ pub(crate) struct AppearanceSig {
     shape_offset: f32,
     /// The Offset **Trim** checkbox — toggling it must re-fill (it cuts the spine's self-intersections).
     offset_trim: bool,
+    /// The two ramps' **Alpha Mode**. Their setters deliberately skip the LUT dirty flag ("the mode is
+    /// applied at STAMP time, no re-bake needed") — correct for the LUT, and the reason this signature was
+    /// written without them. But an OPEN shape editor's preview *is* a pending stamp: changing Alpha Mode
+    /// with a Curve on screen changed nothing until some other knob moved (sweep 2026-07-12).
+    tex_ramp_alpha: ph2d_painter_brush::RampAlphaMode,
+    shape_ramp_alpha: ph2d_painter_brush::RampAlphaMode,
+    /// **Tiling** — same story: "it only affects future stamps" is true of the canvas, but the open shape's
+    /// preview is a stamp that has not landed yet, and Tiling wraps it across the sprite edges.
+    tiling: [bool; 2],
 }
 
 /// The rotate ring reaches this multiple of the scale-grab radius PAST each corner — a click inside the
@@ -299,6 +308,9 @@ impl PainterTool {
             ramp_dirty: self.paint.texture_ramp_dirty || self.paint.shape_ramp_dirty,
             shape_offset: self.paint.shape_offset_norm,
             offset_trim: self.paint.offset_trim,
+            tex_ramp_alpha: self.paint.texture_ramp_alpha_mode,
+            shape_ramp_alpha: self.paint.shape_color_ramp_alpha_mode,
+            tiling: self.paint.tiling,
         }
     }
 

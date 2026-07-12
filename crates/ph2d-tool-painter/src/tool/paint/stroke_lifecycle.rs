@@ -190,8 +190,7 @@ impl PainterTool {
         if self.paint.stroke.is_none()
             && self.watercolor_render_active()
             && self.paint.wet_editable_base.is_some()
-            && self.paint.wet_editable_tex
-                != Some((self.paint.brush.texture, self.paint.brush.paper))
+            && self.paint.wet_editable_tex != Some(self.wet_editable_sig())
         {
             self.rerender_editable_wash();
         }
@@ -288,8 +287,7 @@ impl PainterTool {
                 self.paint.wet_editable_base = Some(base);
                 self.paint.wet_editable_backdrop = editable_backdrop;
                 self.paint.wet_editable_region = Some(region);
-                self.paint.wet_editable_tex =
-                    Some((self.paint.brush.texture, self.paint.brush.paper));
+                self.paint.wet_editable_tex = Some(self.wet_editable_sig());
             }
         }
         self.close_stroke();

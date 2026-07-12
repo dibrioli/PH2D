@@ -475,7 +475,7 @@ impl PainterTool {
         self.paint.watercolor_base = None;
         self.paint.wet_backdrop = None;
         self.paint.wet_session_canvas = Some(Arc::clone(&self.canvas_rgba));
-        self.paint.wet_editable_tex = Some((self.paint.brush.texture, self.paint.brush.paper));
+        self.paint.wet_editable_tex = Some(self.wet_editable_sig());
     }
 
     /// EDGE-1 (doc 13 #10 + doc 14 #3): **Wet the layer** (Rebelle). Re-moisten the whole canvas WITHOUT

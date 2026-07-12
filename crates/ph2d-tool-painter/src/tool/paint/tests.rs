@@ -3078,6 +3078,143 @@ fn jitter_rotate_reaches_smear_on_a_flattened_untextured_dab() {
 }
 
 #[test]
+fn appearance_signature_tracks_tiling_and_ramp_alpha() {
+    // Sweep (2026-07-12): `AppearanceSig` is the change detector that re-fills an OPEN shape editor's
+    // preview (`on_panel_event` compares it and calls `refill_open_shape`). It missed the two ramps'
+    // **Alpha Mode** and **Tiling** — both because their setters deliberately say "no re-bake needed, it
+    // only affects future stamps". True of the LUT and of the canvas; NOT true of an open shape, whose
+    // preview IS a stamp that has not landed yet. Toggling Tiling (or Alpha Mode) with a Curve on screen
+    // changed nothing until some unrelated knob moved.
+    //
+    // The gate is on the SIGNATURE, which is precisely the defect: if it does not move, the refill is never
+    // even called. (Driving the repaint end-to-end needs an open-shape state this harness does not
+    // reproduce, and a test whose behaviour I cannot explain is worth less than one that pins the cause.)
+    // RED without the fix: the signature is unchanged and the preview stays stale.
+    use ph2d_painter_brush::RampAlphaMode;
+    let mut t = white_canvas(64, 8.0);
+    let sig = t.appearance_sig();
+    t.toggle_brush_tiling(0);
+    assert!(
+        sig != t.appearance_sig(),
+        "Tiling wraps an open shape's stamp — it MUST be in the appearance signature"
+    );
+    let sig = t.appearance_sig();
+    t.set_texture_ramp_alpha_mode(RampAlphaMode::Strength.to_u8());
+    assert!(
+        sig != t.appearance_sig(),
+        "the Grain ramp's Alpha Mode is applied at STAMP time — it MUST be in the appearance signature"
+    );
+    let sig = t.appearance_sig();
+    t.set_shape_ramp_alpha_mode(RampAlphaMode::Strength.to_u8());
+    assert!(
+        sig != t.appearance_sig(),
+        "the Shape ramp's Alpha Mode is applied at STAMP time — it MUST be in the appearance signature"
+    );
+}
+
+#[test]
+fn paper_depth_and_granulation_re_render_the_wet_wash() {
+    // Sweep (2026-07-12): the live-editable wash's change detector was `(Grain, Paper)` `TextureSettings`
+    // only. But `apply_watercolor` also reads **Paper Depth** and **Granulation**, which live on
+    // `BrushSpec`, NOT inside `TextureSettings`. So dragging Paper *Size* re-rendered the wet pool and
+    // dragging Paper *Depth* — the slider right next to it — did nothing: the same gesture, two different
+    // behaviours, side by side. (Swapping the Paper/Grain IMAGE while keeping `kind: Image` was invisible
+    // too: no setting changes, only the pixel version.)
+    // RED without the fix: the canvas is byte-identical after moving Paper Depth.
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let mut t = white_canvas(64, 10.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 10.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.5,
+        depth: 1.5,
+        granulation: 0.9,
+        paper_depth: 1.0,
+        ..Default::default()
+    };
+    t.paint.brush.paper.kind = TextureKind::Voronoi;
+    t.paint.brush.paper.mapping = TextureMapping::Tiled;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    let before = (*t.canvas_rgba).clone();
+    // The paper is still wet. The user drags Paper Depth — nothing else moves.
+    t.set_brush_paper_depth(0.0);
+    t.paint_tick(0.016); // the heartbeat → rerender_editable_wash
+    assert_ne!(
+        before,
+        (*t.canvas_rgba).clone(),
+        "Paper Depth is read by the composite — it must re-render the wet pool like Paper Size does"
+    );
+}
+
+#[test]
+fn grain_rake_and_random_are_inert_under_the_wash() {
+    // Enio asked to close the sweep's open findings. This one is the Grain twin of the Paper Rake removal.
+    // With Watercolor on, the Grain slot IS the granulation map — a CANVAS-ANCHORED substrate saying where
+    // pigment settles — not a stamp the dab carries. The composite samples it through
+    // `angle_basis(texture.angle_deg)`: no `d.dir`, no rng. So "Rake" (follow the stroke) and "Random
+    // Angle" (fresh angle per dab) have nothing to rotate, and the same checkbox meant two different things
+    // depending on the Watercolor tick — one of them being "nothing".
+    // This pins the deadness that justifies hiding them (a hidden knob must be PROVABLY inert), and it
+    // fails the day someone wires per-dab Grain frames into the wash — at which point the panel must
+    // show them again.
+    use ph2d_painter_brush::{TextureKind, TextureSettings};
+    let wash = |rake: bool, random: bool| -> Vec<u8> {
+        let mut t = white_canvas(64, 9.0);
+        t.paint.brush = BrushSpec {
+            radius_px: 9.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.85, 0.1, 0.1],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.5,
+            depth: 1.5,
+            granulation: 0.9, // the Grain has to WEIGH on the bake, else the test proves nothing
+            texture: TextureSettings {
+                kind: TextureKind::Noise,
+                size: [6.0, 6.0],
+                rake,
+                random_angle: random,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Down));
+        for i in 1..10u16 {
+            t.on_canvas_pointer(cp([16.0 + 4.0 * f32::from(i), 32.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([52.0, 32.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    let plain = wash(false, false);
+    assert!(
+        plain.chunks_exact(4).any(|p| p[0] != 255 || p[1] != 255),
+        "the wash actually painted (guard against a fixture that proves nothing)"
+    );
+    assert_eq!(
+        plain,
+        wash(true, false),
+        "Grain Rake is inert under the wash"
+    );
+    assert_eq!(
+        plain,
+        wash(false, true),
+        "Grain Random Angle is inert under the wash"
+    );
+}
+
+#[test]
 fn shape_layer_opacity_reaches_the_flattened_silhouette() {
     // Sweep (2026-07-12): `ShapeLayers::flatten()` scales each layer by `opacity[i]` — but `set_layers()`
     // RESETS the opacities to 1.0, and the capture only installs the real ones afterwards

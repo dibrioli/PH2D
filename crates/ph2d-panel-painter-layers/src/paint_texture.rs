@@ -131,9 +131,16 @@ pub(crate) fn paint_texture_section(
         if is_stencil {
             y = crate::paint_stencil::paint_stencil_card(ctx, theme, x, content_w, y, brush);
         }
-        // ── Rake + Random checkboxes — only the per-dab rotation mappings (Stencil has a fixed
-        //    frame). Placed under Mapping and above Angle (Enio 2026-06-24). ──
-        if mapping.uses_dab_rotation() {
+        // ── Rake + Random checkboxes — only the per-dab rotation mappings (Stencil has a fixed frame).
+        //    Placed under Mapping and above Angle (Enio 2026-06-24). ALSO hidden under the optical wash
+        //    (sweep 2026-07-12): with Watercolor on, the Grain slot IS the granulation map — a
+        //    canvas-anchored substrate that says where pigment settles, not a stamp carried by the dab.
+        //    There is no dab to follow, so "Rake" (rotation follows the stroke) and "Random Angle" (a fresh
+        //    angle per dab) have nothing to rotate: both were provably inert (byte-identical washes, gate
+        //    `grain_rake_and_random_are_inert_under_the_wash`). Same argument that removed them from the
+        //    **Paper** slot. Keyed off `watercolor_active` (the REAL predicate), so Eraser/Mask/Smear bring
+        //    them back — there the dab stamps again. ──
+        if mapping.uses_dab_rotation() && !brush.watercolor_active {
             y = crate::paint_brush_top::paint_checkbox_row(
                 ctx,
                 theme,

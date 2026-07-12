@@ -74,6 +74,7 @@ mod tool_link; // "Sync with other tools": per-mode brush-settings swap + the li
 pub(crate) use symmetry::SymmetryPick;
 /// Seamless Tiling (wrap-around painting) — dab replication across sprite edges + the toggles.
 mod tiling;
+mod wet_editable;
 pub use curve::CurveOverlay;
 pub use curve_gizmo::TransformGizmo;
 pub use curve_tangent::TangentHandles;
@@ -527,12 +528,16 @@ pub(crate) struct PaintState {
     /// The committed wash's footprint (already full-axis on a tiled axis, from `dab_batch_region`), so the
     /// live re-render touches exactly the wash + its Tiling copies, not the whole canvas.
     wet_editable_region: Option<Region>,
-    /// The `(Grain, Paper)` texture settings the editable wash was last rendered with — the paint tick
-    /// re-renders when the live brush's slots differ (a param moved), then refreshes this. `None` ⇒ inert.
-    wet_editable_tex: Option<(
-        ph2d_painter_brush::TextureSettings,
-        ph2d_painter_brush::TextureSettings,
-    )>,
+    /// The **substrate signature** the editable wash was last rendered with — the paint tick re-renders
+    /// when the live brush differs (a param moved), then refreshes this. `None` ⇒ inert.
+    ///
+    /// It used to be just `(Grain, Paper)` `TextureSettings`, which left the rest of the substrate OUT of
+    /// the detector (sweep 2026-07-12): **Paper Depth** and **Granulation** are read by `apply_watercolor`
+    /// but live on `BrushSpec`, not inside `TextureSettings`, and swapping the Paper/Grain IMAGE while
+    /// keeping `kind: Image` changes no setting at all — only the pixel version. So dragging Paper *Size*
+    /// re-rendered the wet pool and dragging Paper *Depth*, right next to it, did nothing: the same gesture,
+    /// two different behaviours, side by side.
+    wet_editable_tex: Option<wet_editable::WetEditableSig>,
     /// Manual Shape stamp (Automatic OFF): the tip image's luminance NORMALISER (`1 / max_lum`,
     /// `1.0` when no image / all-black). The watercolor coverage is WETNESS GEOMETRY (a max-blend
     /// union that must SATURATE in the wash core — `cw → 1` gives the body, `inner → 1` confines the

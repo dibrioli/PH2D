@@ -123,17 +123,13 @@ fmt/clippy-all/machete/deny), **rodei esses gates aqui pra não queimar tuas ite
 
 **Sem ordem interna** (commits lineares), **sem dependência de outra linha**.
 
-### Já smoke-aprovado pelo Enio nesta jornada ✅
+### Smoke — **TUDO APROVADO pelo Enio** ✅ (zero pendência)
 Tiling seamless (imagem + presets Paper + procedurais lattice + analíticos + Dots/Scales hash-wrap) ·
 formas dinâmicas atravessando a costura · edit-in-tile multi-shape · overlay contínuo · overlay na costura
 (z-order) · Smudge wrapando · wash re-renderizando ao vivo · escala do Grain · reset de params do Paper.
 
-### ⚠️ NÃO smoke-confirmado — **peça ao Enio antes do ship**
-- **`e3ff4f27` — Paper procedural: default de Size 1 → 12.** Reportei e o Enio mudou de assunto (foi pro
-  per-layer color) **sem confirmar o smoke**. É mudança **visível** (o default do Paper procedural nasce
-  com tooth fino em vez de blobs de 256px). **Smoke:** selecionar Voronoi no slot **Paper** → deve nascer
-  em Size 12 (celular fino), não blobs gigantes; trocar entre dois procedurais **preserva** um Size ajustado
-  à mão; preset (Cold/Rough/Hot) volta a Size 1.
+- **`e3ff4f27` — Paper procedural: default de Size 1 → 12: ✅ SMOKE-APROVADO (Enio, 2026-07-11)**, já
+  pós-integração. Era o único item que tinha ficado sem confirmação. Fechado.
 - **`1f430d17` / `373821a3`** — só testes + doc + instrumentação env-gated ⇒ **nada a smokar**.
 
 ## 8. O que a linha entrega (contexto de 1 parágrafo)

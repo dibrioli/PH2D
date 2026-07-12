@@ -77,15 +77,11 @@ Paper **reseta params** ao trocar kind · Paper procedural ganhou **default de S
 
 ## 3. BACKLOG — o que fazer (com recomendação)
 
-### 🥇 PRIORIDADE 1 — **Smoke pendente que JÁ ESTÁ NO MAIN** (risco real)
+> **Zero pendência de smoke.** O último item aberto (`e3ff4f27` — default de Size do Paper procedural
+> 1 → 12) foi **smoke-APROVADO pelo Enio em 2026-07-11**. Tudo que está no main desta linha está
+> validado. Você começa limpo.
 
-**`e3ff4f27` — default de Size do Paper procedural: 1 → 12.** Foi integrado **SEM o Enio confirmar o
-smoke** (ele mudou de assunto). É mudança **visível**. **Peça o smoke antes de qualquer coisa:**
-selecionar **Voronoi no slot Paper** deve nascer em **Size 12** (tooth fino, celular), não blobs de
-256px; trocar entre dois procedurais **preserva** um Size ajustado à mão; preset (Cold/Rough/Hot) volta
-a Size 1. Se o Enio reprovar, é um revert de 1 commit (`watercolor_settings.rs`).
-
-### 🥈 PRIORIDADE 2 (recomendada) — **#16 PESQUISA: traço de aspecto 3D**
+### 🥇 PRIORIDADE 1 (recomendada) — **#16 PESQUISA: traço de aspecto 3D**
 
 **Por que esta é a jogada estratégica.** O objetivo REAL do Enio com o Per-Layer Color é *"pintar brushes
 com aspecto 3D como os artistas do Procreate fazem"*. Só que o Per-Layer Color é **exatamente** onde
@@ -94,7 +90,7 @@ moram os dois problemas abertos (o muro de perf `O(D·N·S)` e o Bug #11). A alt
 `×N` e **sem** o caminho que produz o retângulo. **Atacar #16 pode tornar #11 e #15 irrelevantes.**
 Comece por **pesquisa** (como Procreate/Rebelle/Painter fazem) → proposta → só então código.
 
-### 🥉 PRIORIDADE 3 — **Bug #11 (retângulos per-layer)** — **só quando REPRODUZIR**
+### 🥈 PRIORIDADE 2 — **Bug #11 (retângulos per-layer)** — **só quando REPRODUZIR**
 
 **Leia [`Painter/BUGS_painter.md` #11 INTEIRO antes de tocar** — ele tem a tabela do que **já foi
 descartado** (composite CPU · upload parcial · tiling · slot GPU · upload por versão) e economiza rounds.

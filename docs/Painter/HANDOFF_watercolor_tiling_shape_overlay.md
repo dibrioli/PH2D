@@ -10,8 +10,12 @@
 
 ## 0. Estado da linha (commits locais desta jornada, do mais novo pro mais velho)
 
+> **INTEGRADO ao `main` em 2026-07-11** — todos os commits abaixo estão no main, e **TODO o smoke foi
+> aprovado pelo Enio** (o último pendente, o default de Size do Paper, foi aprovado pós-integração).
+> Nada aqui está em aberto. A fila que RESTA está no §2.
+
 ```
-<novo> feat(watercolor): Paper procedural default de Size fino (~21px, não blobs de 256) ← ÚLTIMO
+e3ff4f27 feat(watercolor): Paper procedural default de Size fino (~21px, não blobs de 256) ← ✅ smoke OK
 <novo> test(watercolor): guard all-kinds Paper==Grain params (fecha a classe do bug)
 <novo> fix(watercolor): Paper reseta params ao trocar kind (Voronoi casa Grain)
 <novo> fix(watercolor): grain casa a ESCALA do brush (ViewPlane→canvas por radius)

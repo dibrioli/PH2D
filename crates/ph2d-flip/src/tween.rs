@@ -27,12 +27,9 @@ use crate::frame::{Hold, KeyKind};
 use crate::ids::{Frame, LayerId};
 use crate::object::FlipObject;
 use crate::stroke::{FlipStroke, Point};
+use crate::tween_flip::should_flip;
 use ph2d_anim::Interp;
 use ph2d_core::Vec2;
-
-/// `sin(15°)` — o limiar de "cordas quase paralelas" do auto-flip, em forma
-/// polinomial (comparar senos, nunca chamar `acos` — HR-5).
-const SIN_15: f32 = 0.258_819_04;
 
 /// Limites do fator de mistura. Fora de `[0,1]` é EXTRAPOLAÇÃO deliberada
 /// (overshoot); o GP clampa em `[-1, 2]` e nós também.
@@ -79,8 +76,16 @@ pub fn tween_drawing(a: &FlipDrawing, b: &FlipDrawing, t: f32, opts: TweenOption
         // inteiros no último quadro).
         for sb in b.strokes.iter().skip(a.strokes.len()) {
             let mut s = sb.clone();
+            let k = u.clamp(0.0, 1.0);
             for o in s.opacities_mut() {
-                *o *= u.clamp(0.0, 1.0);
+                *o *= k;
+            }
+            // Um PREENCHIMENTO não é visível pela opacidade dos pontos (eles nem são
+            // rasterizados) — quem manda é o `fill.opacity`. Sem isto, uma região
+            // colorida nova "pipocava" inteira no 1º inbetween, que é exatamente o que o
+            // fade_orphans existe para evitar.
+            if let Some(f) = s.fill.as_mut() {
+                f.opacity *= k;
             }
             out.strokes.push(s);
         }
@@ -121,7 +126,46 @@ fn tween_stroke(a: &FlipStroke, b: &FlipStroke, u: f32, auto_flip: bool) -> Flip
         }),
         (fa, _) => fa,
     };
+
+    // **Os BURACOS também têm de andar.** O `clone_attrs` traz os furos de A verbatim —
+    // e um furo parado enquanto o contorno externo se move sai de dentro da forma: o "O"
+    // fica sólido no meio do tween e uma mancha de cor solta viaja pelo caminho (o
+    // even-odd conta o anel órfão como região preenchida).
+    //
+    // Os furos são pareados por índice, como os traços. Quem não tem par fica onde está:
+    // é a mesma escolha do traço sem par (cópia estática, não pisca nem some).
+    out.holes = a
+        .holes
+        .iter()
+        .enumerate()
+        .map(|(i, ha)| match b.holes.get(i) {
+            Some(hb) => tween_ring(ha, hb, u),
+            None => ha.clone(),
+        })
+        .collect();
     out
+}
+
+/// Interpola um anel de buraco (pareamento por índice + padding ao maior, exatamente
+/// como o contorno — um furo é uma polilinha fechada como qualquer outra).
+fn tween_ring(a: &[Vec2], b: &[Vec2], u: f32) -> Vec<Vec2> {
+    if a.is_empty() || b.is_empty() {
+        return a.to_vec();
+    }
+    let n = a.len().max(b.len());
+    let at = |ring: &[Vec2], i: usize| -> Vec2 {
+        // Amostragem por proporção: um anel de m pontos "estica" para n reamostrando os
+        // índices (o mesmo espírito do `sample_padded`, que é o do contorno).
+        let m = ring.len();
+        let j = if n <= 1 { 0 } else { i * (m - 1) / (n - 1) };
+        ring[j.min(m - 1)]
+    };
+    (0..n)
+        .map(|i| {
+            let (p, q) = (at(a, i), at(b, i));
+            Vec2::new(lerp(p.x, q.x, u), lerp(p.y, q.y, u))
+        })
+        .collect()
 }
 
 /// Lerp NÃO-clampado (o overshoot é a ferramenta).
@@ -236,57 +280,6 @@ fn lerp_point(p: Point, q: Point, f: f32) -> Point {
         opacity: lerp(p.opacity, q.opacity, f),
         color: lerp_rgba(p.color, q.color, f),
     }
-}
-
-/// **O traço `b` está invertido em relação a `a`?** (o auto-flip do GP).
-///
-/// Se as cordas ponta-a-ponta (`a.first→b.first` e `a.last→b.last`) se CRUZAM, os
-/// traços estão trocados de ponta. Cordas quase paralelas (< 15°) não decidem nada
-/// — aí vale a distância: emparelhar as pontas mais próximas. Sem cruzamento,
-/// inverte se as direções apontam para lados opostos.
-#[must_use]
-fn should_flip(a: &FlipStroke, b: &FlipStroke) -> bool {
-    let (Some(a0), Some(a1)) = (a.point(0), a.point(a.len().saturating_sub(1))) else {
-        return false;
-    };
-    let (Some(b0), Some(b1)) = (b.point(0), b.point(b.len().saturating_sub(1))) else {
-        return false;
-    };
-    let (a0, a1, b0, b1) = (a0.pos, a1.pos, b0.pos, b1.pos);
-    let (c1, c2) = (b0 - a0, b1 - a1); // as duas cordas, como vetores
-
-    if segments_cross(a0, b0, a1, b1) {
-        // Quase paralelas: o cruzamento é ruído numérico — decide a distância.
-        if nearly_parallel(c1, c2) {
-            return dist2(a0, b1) + dist2(a1, b0) < dist2(a0, b0) + dist2(a1, b1);
-        }
-        return true;
-    }
-    let (da, db) = (a1 - a0, b1 - b0);
-    da.x * db.x + da.y * db.y < 0.0
-}
-
-/// Cordas com ângulo < 15° entre si (mesmo sentido): `|sin| < sin15` e `cos > 0`.
-fn nearly_parallel(u: Vec2, v: Vec2) -> bool {
-    let cross = (u.x * v.y - u.y * v.x).abs();
-    let dot = u.x * v.x + u.y * v.y;
-    let mag = (u.x * u.x + u.y * u.y).sqrt() * (v.x * v.x + v.y * v.y).sqrt();
-    dot > 0.0 && cross < SIN_15 * mag
-}
-
-fn dist2(p: Vec2, q: Vec2) -> f32 {
-    let d = q - p;
-    d.x * d.x + d.y * d.y
-}
-
-/// Os segmentos `p→q` e `r→s` se cruzam? (teste de orientação 2D, sem divisão.)
-fn segments_cross(p: Vec2, q: Vec2, r: Vec2, s: Vec2) -> bool {
-    fn orient(a: Vec2, b: Vec2, c: Vec2) -> f32 {
-        (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
-    }
-    let (d1, d2) = (orient(p, q, r), orient(p, q, s));
-    let (d3, d4) = (orient(r, s, p), orient(r, s, q));
-    (d1 * d2 < 0.0) && (d3 * d4 < 0.0)
 }
 
 // ── a operação de documento ──────────────────────────────────────────────────
@@ -624,5 +617,65 @@ mod tests {
         // E parado EM CIMA de um inbetween, o extremo A é a chave 0 (não o breakdown).
         assert_eq!(layer.keyframe_at_or_before(4), Some(0));
         assert_eq!(layer.next_keyframe_key(4), Some(8));
+    }
+
+    /// **O buraco anda junto com o contorno.**
+    ///
+    /// O `clone_attrs` traz os furos de A verbatim. Num "O" que atravessa a tela com dois
+    /// keys + tween, o contorno externo interpolava e o furo ficava PARADO em A: os
+    /// inbetweens mostravam um "O" sólido (o furo saiu de dentro da forma) mais uma
+    /// mancha de cor solta viajando pelo caminho — o even-odd conta o anel órfão como
+    /// região preenchida.
+    #[test]
+    fn a_hole_travels_with_its_outer_contour() {
+        let ring = |cx: f32, r: f32| -> Vec<Vec2> {
+            vec![
+                Vec2::new(cx - r, -r),
+                Vec2::new(cx + r, -r),
+                Vec2::new(cx + r, r),
+                Vec2::new(cx - r, r),
+            ]
+        };
+        let make = |cx: f32| -> FlipDrawing {
+            let mut d = FlipDrawing::new();
+            let mut s = FlipStroke::new();
+            for p in ring(cx, 10.0) {
+                s.push_point(Point {
+                    pos: p,
+                    width: 0.0,
+                    opacity: 1.0,
+                    color: Rgba::BLACK,
+                });
+            }
+            s.closed = true;
+            s.hide_stroke = true;
+            s.fill = Some(crate::stroke::Fill {
+                color: Rgba::BLACK,
+                opacity: 1.0,
+            });
+            s.holes = vec![ring(cx, 4.0)];
+            d.strokes.push(s);
+            d
+        };
+        let a = make(0.0);
+        let b = make(100.0);
+        let mid = tween_drawing(&a, &b, 0.5, TweenOptions::default());
+        let s = &mid.strokes[0];
+
+        // O contorno externo está no meio do caminho…
+        let cx_outer: f32 =
+            s.positions().iter().map(|p| p.x).sum::<f32>() / s.positions().len() as f32;
+        assert!(
+            (cx_outer - 50.0).abs() < 1.0,
+            "o contorno externo deveria estar em x=50, esta em {cx_outer}"
+        );
+        // … e o FURO tem de estar no meio do caminho TAMBÉM (senão saiu da forma).
+        assert_eq!(s.holes.len(), 1, "o furo sumiu");
+        let cx_hole: f32 = s.holes[0].iter().map(|p| p.x).sum::<f32>() / s.holes[0].len() as f32;
+        assert!(
+            (cx_hole - 50.0).abs() < 1.0,
+            "o furo ficou para tras em x={cx_hole} (o contorno foi para 50): ele saiu de \
+             dentro da forma e virou uma mancha solta"
+        );
     }
 }

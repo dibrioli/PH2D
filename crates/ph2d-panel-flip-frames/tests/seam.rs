@@ -167,3 +167,78 @@ fn picking_a_cycle_option_reaches_the_bus() {
         "a escolha do ciclo não chegou ao barramento"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PINTADO ≠ REGISTRADO. Tudo acima prova que o clique CHEGA. Nada acima prova que
+// o controle está NA TELA para ser clicado — nenhum destes testes roda o `paint`.
+// Um botão cujo desenho foi esquecido (ou mora atrás de um `return`) passa em
+// TODOS eles e o usuário relata, com razão, "esse botão não existe".
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **Todo controle da barra é PINTADO com área clicável.**
+///
+/// Mutação que sangra: remova qualquer botão do `paint_toolbar.rs` e este teste
+/// cai — enquanto `every_toolbar_button_reaches_the_bus` segue verde, porque a
+/// costura do evento continua intacta. São perguntas diferentes.
+#[test]
+fn every_toolbar_control_is_actually_painted() {
+    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut state = FlipStripState;
+
+    // A tira só desenha os controles com uma camada viva — é o estado que o
+    // `flip_bridge` publica quando a tool está ativa.
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
+        has_layer: true,
+        layer_name: "L".into(),
+        cells: vec![FlipCell {
+            key: 0,
+            exposure: 1,
+            breakdown: false,
+            instanced: false,
+        }],
+        fps: 12.0,
+        ..Default::default()
+    });
+
+    let painted = host.paint::<FlipFramesPanel>(
+        &mut state,
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
+    );
+
+    let controls = [
+        ("play", ids::FLIP_PLAY),
+        ("prev drawing", ids::FLIP_PREV_DRAWING),
+        ("next drawing", ids::FLIP_NEXT_DRAWING),
+        ("ghost", ids::FLIP_GHOST),
+        ("autokey", ids::FLIP_AUTOKEY),
+        ("additive", ids::FLIP_ADDITIVE),
+        ("key add", ids::FLIP_KEY_ADD),
+        ("key duplicate", ids::FLIP_KEY_DUP),
+        ("key delete", ids::FLIP_KEY_DELETE),
+        ("key left", ids::FLIP_KEY_LEFT),
+        ("key right", ids::FLIP_KEY_RIGHT),
+        ("tween add", ids::FLIP_TWEEN_ADD),
+        ("fps", ids::FLIP_FPS_NUM),
+        ("hold", ids::FLIP_HOLD_NUM),
+        ("tween count", ids::FLIP_TWEEN_NUM),
+        ("cycle", ids::FLIP_CYCLE_DD),
+    ];
+    for (name, id) in controls {
+        let hit = painted
+            .iter()
+            .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0);
+        assert!(
+            hit.is_some(),
+            "o controle '{name}' NAO e pintado com area clicavel: nao existe na tela"
+        );
+    }
+
+    // E a célula do quadro 0 tem de estar lá — é o alvo de clique do usuário.
+    let cell = ph2d_editor_core::ids::flip_cell_id(0);
+    assert!(
+        painted
+            .iter()
+            .any(|(w, r)| *w == cell && r.w > 0.0 && r.h > 0.0),
+        "a celula do quadro 0 nao e pintada: a tira esta vazia na tela"
+    );
+}

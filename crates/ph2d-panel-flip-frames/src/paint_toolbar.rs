@@ -1,9 +1,13 @@
 //! A barra da tira: transporte · Ghost Frames · autoria · ops de chave · tween ·
-//! ciclo. Um cursor da esquerda para a direita ([`Bar`]) — cada item pinta no
-//! cursor, registra o hit e avança.
+//! ciclo.
+//!
+//! A barra **não decide** onde os controles caem — quem decide é
+//! [`crate::toolbar_plan`], para que a MEDIDA (de quantas linhas a tira precisa)
+//! e a PINTURA nunca divirjam. Aqui só se pinta o que o plano posicionou.
 
-use crate::ids;
 use crate::state::FlipStripSnapshot;
+use crate::toolbar_plan::{self, Item};
+use crate::{ids, toolbar_plan::CYCLE_W};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -16,20 +20,7 @@ use ph2d_editor_core::widget::{
     paint_dropdown_chip, paint_dropdown_popover, paint_icon_button, paint_number_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
-
-/// Largura de um botão de ícone (quadrado, altura da linha).
-const ICON_W: f32 = 28.0; // LITERAL-PX-OK: strip toolbar icon slot
-/// Largura de uma caixa numérica pequena da barra.
-const NUM_W: f32 = 46.0; // LITERAL-PX-OK: strip toolbar number chip
-/// Largura de um toggle de texto (Ghost / Auto / Additive).
-const TOGGLE_W: f32 = 62.0; // LITERAL-PX-OK: strip toolbar toggle
-/// Largura do chip do ciclo.
-const CYCLE_W: f32 = 84.0; // LITERAL-PX-OK: strip cycle dropdown chip
-/// Largura média de um glifo em fração do tamanho da fonte — só para RESERVAR o
-/// espaço de um rótulo curto da barra (não é métrica de design; a medida real do
-/// texto sai do shaper, que aqui seria caro por um "FPS").
-const GLYPH_W_RATIO: f32 = 0.62; // LITERAL-PX-OK: estimativa de largura de glifo
+use ph2d_tokens::{ColorToken, Theme, TypeToken};
 
 /// Os 4 modos de ciclo, na ordem do enum (`CycleMode as u8`).
 const CYCLE_NAMES: [&str; 4] = ["No Cycle", "Hold", "Loop", "Ping-Pong"];
@@ -39,158 +30,33 @@ pub(crate) struct PendingCycle {
     pub(crate) chip: Rect,
 }
 
-/// Um cursor de barra: pinta da esquerda para a direita e vai consumindo `x`.
-struct Bar {
-    x: f32,
-    y: f32,
-    h: f32,
-    right: f32,
-    gap: f32,
-}
-
-impl Bar {
-    /// Sobra espaço para um item de largura `w`? (A barra nunca transborda: um
-    /// item que não cabe simplesmente não é pintado nem registrado — e um widget
-    /// não-registrado não pode ser clicado às cegas.)
-    fn fits(&self, w: f32) -> bool {
-        self.x + w <= self.right
-    }
-
-    fn take(&mut self, w: f32) -> Rect {
-        let r = Rect::new(self.x, self.y, w, self.h);
-        self.x += w + self.gap;
-        r
-    }
-
-    fn space(&mut self, w: f32) {
-        self.x += w;
-    }
-}
-
-/// Pinta a barra; devolve o chip do ciclo se o popover estiver aberto.
+/// Pinta a barra a partir do plano; devolve o chip do ciclo se o popover estiver
+/// aberto. `first_row` é a faixa da PRIMEIRA linha — as demais descem a partir
+/// dela (a tira já reservou a altura, via [`toolbar_plan::rows`]).
 pub(crate) fn paint(
     ctx: &mut PaintCtx,
     theme: Theme,
-    rect: Rect,
+    first_row: Rect,
     snap: &FlipStripSnapshot,
 ) -> Option<PendingCycle> {
-    let mut bar = Bar {
-        x: rect.x,
-        y: rect.y,
-        h: rect.h,
-        right: rect.x + rect.w,
-        gap: Spacing::Xs.px(),
-    };
+    let items = toolbar_plan::items(snap);
+    let (rects, _rows) = toolbar_plan::plan(&items, first_row, first_row.h);
 
-    // ── Transporte: ◀ desenho · play/pause · desenho ▶ ──
-    icon(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_PREV_DRAWING,
-        IconId::SkipBack,
-    );
-    let play_icon = if snap.playing {
-        IconId::Pause
-    } else {
-        IconId::Play
-    };
-    icon(ctx, theme, &mut bar, ids::FLIP_PLAY, play_icon);
-    icon(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_NEXT_DRAWING,
-        IconId::SkipForward,
-    );
-    label(ctx, theme, &mut bar, "FPS");
-    number(ctx, theme, &mut bar, ids::FLIP_FPS_NUM, f64::from(snap.fps));
-    bar.space(Spacing::Md.px());
-
-    // ── Ghost Frames: liga/desliga + quantos antes/depois ──
-    toggle(ctx, theme, &mut bar, ids::FLIP_GHOST, "Ghost", snap.ghost);
-    number(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_GHOST_BEFORE_NUM,
-        f64::from(snap.ghost_before),
-    );
-    number(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_GHOST_AFTER_NUM,
-        f64::from(snap.ghost_after),
-    );
-    bar.space(Spacing::Md.px());
-
-    // ── Autoria: o que nasce ao desenhar depois do hold ──
-    toggle(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_AUTOKEY,
-        "Auto",
-        snap.autokey,
-    );
-    toggle(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_ADDITIVE,
-        "Add.",
-        snap.additive,
-    );
-    bar.space(Spacing::Md.px());
-
-    // ── Ops de chave: + · duplicar · apagar · exposição · mover ±1 ──
-    icon(ctx, theme, &mut bar, ids::FLIP_KEY_ADD, IconId::Plus);
-    icon(ctx, theme, &mut bar, ids::FLIP_KEY_DUP, IconId::Copy);
-    icon(ctx, theme, &mut bar, ids::FLIP_KEY_DELETE, IconId::Trash);
-    label(ctx, theme, &mut bar, "Hold");
-    let hold = snap
-        .current_key
-        .and_then(|k| snap.cells.iter().find(|c| c.key == k))
-        .map_or(1, |c| c.exposure);
-    number(ctx, theme, &mut bar, ids::FLIP_HOLD_NUM, f64::from(hold));
-    icon(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_KEY_LEFT,
-        IconId::ChevronLeft,
-    );
-    icon(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_KEY_RIGHT,
-        IconId::ChevronRight,
-    );
-    bar.space(Spacing::Md.px());
-
-    // ── Tween: quantos inbetweens + gerar ──
-    label(ctx, theme, &mut bar, "Tween");
-    number(
-        ctx,
-        theme,
-        &mut bar,
-        ids::FLIP_TWEEN_NUM,
-        f64::from(snap.tween_count),
-    );
-    toggle(ctx, theme, &mut bar, ids::FLIP_TWEEN_ADD, "Add", false);
-    bar.space(Spacing::Md.px());
-
-    // ── Ciclo (post behavior da camada ativa) ──
-    cycle_chip(ctx, theme, &mut bar, snap.cycle)
+    let mut pending = None;
+    for (item, r) in items.iter().zip(rects) {
+        match item {
+            Item::Icon(id, glyph) => icon(ctx, theme, r, *id, *glyph),
+            Item::Toggle(id, text, active) => toggle(ctx, theme, r, *id, text, *active),
+            Item::Number(id, value) => number(ctx, theme, r, *id, *value),
+            Item::Label(text) => label(ctx, theme, r, text),
+            Item::Cycle(cur) => pending = cycle_chip(ctx, theme, r, *cur),
+            Item::Gap => {}
+        }
+    }
+    pending
 }
 
-fn icon(ctx: &mut PaintCtx, theme: Theme, bar: &mut Bar, id: NodeId, glyph: IconId) {
-    if !bar.fits(ICON_W) {
-        return;
-    }
-    let r = bar.take(ICON_W);
+fn icon(ctx: &mut PaintCtx, theme: Theme, r: Rect, id: NodeId, glyph: IconId) {
     let st = ctx
         .host
         .store()
@@ -209,11 +75,7 @@ fn icon(ctx: &mut PaintCtx, theme: Theme, bar: &mut Bar, id: NodeId, glyph: Icon
 
 /// Um toggle de texto — o botão segmentado (mesmo idioma do Mode row do painel de
 /// estilo): `active` acende.
-fn toggle(ctx: &mut PaintCtx, theme: Theme, bar: &mut Bar, id: NodeId, text: &str, active: bool) {
-    if !bar.fits(TOGGLE_W) {
-        return;
-    }
-    let r = bar.take(TOGGLE_W);
+fn toggle(ctx: &mut PaintCtx, theme: Theme, r: Rect, id: NodeId, text: &str, active: bool) {
     let st = ctx
         .host
         .store()
@@ -224,11 +86,7 @@ fn toggle(ctx: &mut PaintCtx, theme: Theme, bar: &mut Bar, id: NodeId, text: &st
 }
 
 /// Uma caixa numérica (com drag-scrub e digitação — o range vem do `populate`).
-fn number(ctx: &mut PaintCtx, theme: Theme, bar: &mut Bar, id: NodeId, doc_value: f64) {
-    if !bar.fits(NUM_W) {
-        return;
-    }
-    let r = bar.take(NUM_W);
+fn number(ctx: &mut PaintCtx, theme: Theme, r: Rect, id: NodeId, doc_value: f64) {
     // Espelha o valor do DOCUMENTO na store enquanto a caixa não está em edição
     // (mesma sincronia das caixas do Inspector) — senão a caixa mostraria o valor
     // velho depois de um undo ou de uma edição vinda de outro caminho.
@@ -261,13 +119,8 @@ fn fmt_num(v: f64) -> String {
     format!("{}", v.round() as i64)
 }
 
-fn label(ctx: &mut PaintCtx, theme: Theme, bar: &mut Bar, text: &str) {
+fn label(ctx: &mut PaintCtx, theme: Theme, r: Rect, text: &str) {
     let font = TypeToken::Sm.px();
-    let w = font * GLYPH_W_RATIO * text.len() as f32 + Spacing::Xs.px();
-    if !bar.fits(w) {
-        return;
-    }
-    let r = bar.take(w);
     paint_text(
         ctx.text_system,
         ctx.scene,
@@ -289,11 +142,8 @@ fn cycle_options() -> Vec<DropdownOption<u8>> {
 }
 
 /// O chip do ciclo (dropdown genérico: o open/close é do dispatch).
-fn cycle_chip(ctx: &mut PaintCtx, theme: Theme, bar: &mut Bar, cur: u8) -> Option<PendingCycle> {
-    if !bar.fits(CYCLE_W) {
-        return None;
-    }
-    let r = bar.take(CYCLE_W);
+fn cycle_chip(ctx: &mut PaintCtx, theme: Theme, r: Rect, cur: u8) -> Option<PendingCycle> {
+    debug_assert!((r.w - CYCLE_W).abs() < 1.0, "o plano mediu outro chip");
     let id = ids::FLIP_CYCLE_DD;
     ctx.host.store_mut().register_if_absent(
         id,

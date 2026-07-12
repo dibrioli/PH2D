@@ -34,7 +34,7 @@ use ph2d_vec_scene::Xform;
 /// entrar por baixo da 1ª. Mas um fechamento de gap persistente (que também é
 /// `hide_stroke`) **é** — é exatamente para isso que ele existe. Os dois se distinguem
 /// pelo `fill`: o preenchimento tem cor; o fechamento não.
-fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
+fn boundaries(drawing: &FlipDrawing, px_to_world: f32) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
     drawing
         .strokes
         .iter()
@@ -42,9 +42,17 @@ fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
         .filter(|s| s.len() >= 2)
         .map(|s| {
             let pts = s.positions().to_vec();
-            // Meia-espessura de cada ponto, em unidades do DOCUMENTO. A largura é
-            // guardada em px de tela; um fechamento invisível tem largura ~0.
-            let half: Vec<f32> = s.widths().iter().map(|w| w * 0.5).collect();
+            // **A conversão de unidade que faltava** (e que matava o balde no produto):
+            // `width` é guardado em px de TELA já recuados pela escala do objeto
+            // (`width_px × mean_scale`, `flip_draw::build_stroke`), enquanto os PONTOS
+            // são unidades do documento. Misturar os dois punha uma linha de 3 unidades
+            // de mundo (≈324 px!) num desenho de 2,8 unidades: o clique caía sempre
+            // DENTRO do traço e o balde respondia "clicked on a line", sempre.
+            //
+            // `× px_to_world` — NÃO `× doc_per_px`: o `mean_scale` já está embutido no
+            // `width`, e multiplicá-lo de novo aplicaria a escala do objeto duas vezes.
+            // É exatamente o que a borracha faz (`flip_erase`: raio = w·0,5·px_to_world).
+            let half: Vec<f32> = s.widths().iter().map(|w| w * 0.5 * px_to_world).collect();
             (pts, half, s.closed)
         })
         .collect()
@@ -144,7 +152,7 @@ pub(crate) fn fill_click(
         }
     };
 
-    let strokes = boundaries(drawing);
+    let strokes = boundaries(drawing, px_to_world);
     if strokes.is_empty() {
         return Err(FillError::Empty);
     }
@@ -233,7 +241,15 @@ impl crate::App {
             strip,
             crate::flip_autokey::FlipEdit::Modify,
         ) else {
-            return true; // sem camada/desenho: consumido, mas nada a fazer
+            // Sem desenho-alvo — camada TRAVADA, ou sem chave com o AutoKey desligado.
+            // Também aqui o balde tem de DIZER: consumir o clique e não fazer nada é
+            // exatamente o que faz uma ferramenta parecer quebrada (é o mesmo princípio
+            // dos erros do solver, logo abaixo — só que este caminho tinha escapado).
+            gfx.toasts.push(ph2d_editor::Toast::warning(
+                "Fill: the layer is locked, or has no drawing on this frame",
+            ));
+            self.title_dirty = true;
+            return true;
         };
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
             return true;
@@ -446,5 +462,71 @@ mod tests {
         plain.gap_px = 0.0;
         fill_click(&mut d, &plain, Vec2::new(10.0, 10.0), 1.0, &Xform::IDENTITY)
             .expect("o vão já está fechado: re-preencher não precisa do Gap Closure");
+    }
+
+    /// **O bug que matou o balde no produto (auditoria 2026-07-12).**
+    ///
+    /// Todos os testes acima passam `px_to_world = 1.0` — o ÚNICO valor em que um px
+    /// de tela vale uma unidade de documento. Foi exatamente esse valor que escondeu a
+    /// conversão faltante: com a câmera de verdade (`height_world = 10` numa janela de
+    /// 1080p, `px_to_world ≈ 0,0093`), a meia-espessura de um traço de 6 px era lida
+    /// como **3 unidades de mundo** — uma linha de ~324 px atravessando um desenho de
+    /// 2,8 unidades. O clique caía sempre dentro do traço.
+    ///
+    /// Este teste usa os números do PRODUTO. Mutação que sangra: tire o `px_to_world`
+    /// do `boundaries` e ele volta a `OnBoundary`.
+    #[test]
+    fn the_bucket_fills_at_the_real_camera_scale() {
+        // Câmera default: 10 unidades de mundo na altura de uma janela de 1080p.
+        let px_to_world = 10.0 / 1080.0;
+        // Um quadrado de ~300 px na tela, desenhado com o pincel de 6 px.
+        let side = 300.0 * px_to_world;
+        let mut d = FlipDrawing::new();
+        let mut s = FlipStroke::new();
+        for p in [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(side, 0.0),
+            Vec2::new(side, side),
+            Vec2::new(0.0, side),
+        ] {
+            s.push_point(Point {
+                pos: p,
+                width: 6.0, // px de TELA (o que o `build_stroke` guarda)
+                opacity: 1.0,
+                color: Rgba::BLACK,
+            });
+        }
+        s.closed = true;
+        d.strokes.push(s);
+
+        fill_click(
+            &mut d,
+            &style(ToolFillMode::Paint),
+            Vec2::new(side * 0.5, side * 0.5),
+            px_to_world,
+            &Xform::IDENTITY,
+        )
+        .expect("um quadrado fechado no zoom PADRAO tem de preencher");
+
+        assert!(is_fill(&d.strokes[0]), "o fill entra atras do line-art");
+        // E a regiao preenchida cobre a maior parte do quadrado (nao uma casquinha).
+        let area = {
+            let r = d.strokes[0].positions();
+            let n = r.len();
+            (0..n)
+                .map(|i| {
+                    let (a, b) = (r[i], r[(i + 1) % n]);
+                    a.x * b.y - b.x * a.y
+                })
+                .sum::<f32>()
+                .abs()
+                * 0.5
+        };
+        let full = side * side;
+        assert!(
+            area > full * 0.8,
+            "o fill cobriu so {:.0}% do quadrado (a espessura ainda esta em unidade errada)",
+            area / full * 100.0
+        );
     }
 }

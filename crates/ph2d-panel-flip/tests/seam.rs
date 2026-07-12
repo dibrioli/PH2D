@@ -83,3 +83,136 @@ fn draw_mode_button_switches_the_tool_mode() {
         "mode button never switched the tool mode through the seam"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAINTED ≠ POPULATED (a auditoria do "não existe botão fill")
+//
+// Tudo acima prova que o clique CHEGA na tool. Nada acima prova que o botão está
+// NA TELA. O gate `architecture_panel_wiring_parity` lê o TEXTO-FONTE; os seams
+// leem o barramento. Nenhum dos dois roda `paint`. Então um widget pode estar
+// registrado, wirado, unit-testado e contract-limpo enquanto a chamada de pintura
+// dele mora atrás de um `return` — e o relato do usuário é "o botão não existe",
+// com todos os gates verdes.
+//
+// O que o usuário pode clicar é o que a PINTURA registrou. É isso que se lê aqui.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Um viewport de desktop plausível — o painel ancora no dock direito do layout.
+fn viewport() -> ph2d_editor_core::zones::Rect {
+    ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0)
+}
+
+/// **Todo botão de MODO é pintado e clicável** — inclusive o Fill (W4).
+///
+/// Mutação que sangra: apague a entrada do Fill do `mode_row` e este teste fica
+/// vermelho, enquanto TODOS os outros gates do projeto seguem verdes.
+#[test]
+fn every_mode_button_is_painted_and_clickable() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState;
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+
+    for (id, name) in [
+        (ids::FLIP_MODE_SELECT, "Select"),
+        (ids::FLIP_MODE_DRAW, "Draw"),
+        (ids::FLIP_MODE_ERASE, "Erase"),
+        (ids::FLIP_MODE_FILL, "Fill"),
+    ] {
+        let hit = painted.iter().find(|(w, _)| *w == id);
+        let Some((_, r)) = hit else {
+            panic!("o botao de modo {name} NAO e pintado: nao existe na tela");
+        };
+        assert!(
+            r.w > 0.0 && r.h > 0.0,
+            "o botao de modo {name} foi pintado com area ZERO: invisivel e inclicavel ({r:?})"
+        );
+    }
+}
+
+/// A seção do balde é **modal**: só aparece no modo Fill. Fora dele, os widgets do
+/// balde não podem estar clicáveis (um widget clicável e invisível é uma armadilha).
+///
+/// O snapshot vive num global (o shell publica; o painel lê), então o teste o
+/// escreve como o `flip_bridge` escreve.
+#[test]
+fn the_bucket_widgets_appear_only_in_fill_mode() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState;
+    let bucket = [
+        ids::FLIP_FILL_SWATCH,
+        ids::FLIP_FILL_PAINT,
+        ids::FLIP_FILL_BEHIND,
+        ids::FLIP_FILL_UNPAINT,
+        ids::FLIP_GAP,
+        ids::FLIP_GROW,
+        ids::FLIP_PRECISION,
+    ];
+
+    // Modo Draw: o balde não existe na tela.
+    let mut snap = ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Draw,
+        ..Default::default()
+    };
+    ph2d_panel_flip::set_current_flip_style(Some(snap));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    for id in bucket {
+        assert!(
+            !painted.iter().any(|(w, _)| *w == id),
+            "widget do balde {id:?} pintado FORA do modo Fill"
+        );
+    }
+
+    // Modo Fill: todos existem, com área.
+    snap.mode = FlipMode::Fill;
+    ph2d_panel_flip::set_current_flip_style(Some(snap));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    for id in bucket {
+        let hit = painted
+            .iter()
+            .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0);
+        assert!(
+            hit.is_some(),
+            "widget do balde {id:?} NAO e pintado no modo Fill: a secao esta morta"
+        );
+    }
+}
+
+/// **Toda caixa numérica registra o seu RANGE.**
+///
+/// Sem `set_number_range`, a caixa continua pintando, aceitando digitação e passando no
+/// gate de wiring — mas o ARRASTO deriva o passo do texto do buffer e anda ~50 unidades
+/// por pixel: um pixel de gesto vai do mínimo ao máximo. O widget parece vivo e é
+/// inutilizável. Nenhum teste via isso, porque todos digitavam o valor.
+///
+/// Mutação que sangra: tire o `set_number_range` do `slider_chip` e este teste cai.
+#[test]
+fn every_number_box_has_a_registered_range() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::panel::PanelHostInternal; // traz o `store()`
+    let host = MockPanelHost::with_panel::<FlipPanel>();
+    let store = host.store();
+
+    let boxes = [
+        ("Size", ids::FLIP_SIZE_NUM),
+        ("Hardness", ids::FLIP_HARDNESS_NUM),
+        ("Opacity", ids::FLIP_OPACITY_NUM),
+        ("Smoothing", ids::FLIP_SMOOTHING_NUM),
+        ("Gap", ids::FLIP_GAP_NUM),
+        ("Grow", ids::FLIP_GROW_NUM),
+        ("Precision", ids::FLIP_PRECISION_NUM),
+    ];
+    for (name, id) in boxes {
+        assert!(
+            matches!(store.get(id), Some(InteractiveState::NumberInput { .. })),
+            "a caixa {name} nem esta registrada"
+        );
+        let range = store.number_range(id);
+        let Some((min, max, step)) = range else {
+            panic!(
+                "a caixa {name} nao registrou range: o arrasto vai andar ~50 unidades por pixel"
+            );
+        };
+        assert!(max > min, "range invertido em {name}: [{min}, {max}]");
+        assert!(step > 0.0, "step nao-positivo em {name}: {step}");
+    }
+}

@@ -31,6 +31,7 @@ mod paint_cells;
 mod paint_toolbar;
 pub mod populate;
 pub mod state;
+mod toolbar_plan;
 
 pub use state::{FlipCell, FlipStripSnapshot, current_flip_strip, set_current_flip_strip};
 

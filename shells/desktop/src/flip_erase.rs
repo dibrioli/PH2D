@@ -40,6 +40,13 @@ fn active_drawing_mut<'a>(
 }
 
 /// A fresh stroke carrying `src`'s per-curve attributes (empty points).
+///
+/// **Todo campo novo do `FlipStroke` tem de passar por aqui.** Este é um dos três
+/// pontos de estrangulamento que definem o que sobrevive a uma operação (os outros são
+/// `FlipStroke::clone_attrs` e o `cleanup_soft`); a W4 acrescentou `holes` e
+/// `hide_stroke` ao modelo e atualizou só o primeiro — e a borracha passou a devolver
+/// fragmentos de preenchimento SEM os furos (o "O" ficava sólido) e SEM o `hide_stroke`
+/// (o fragmento virava fronteira do próximo balde e o Unpaint não o reconhecia mais).
 fn new_like(src: &FlipStroke) -> FlipStroke {
     let mut s = FlipStroke::new();
     s.closed = src.closed;
@@ -47,7 +54,20 @@ fn new_like(src: &FlipStroke) -> FlipStroke {
     s.hardness = src.hardness;
     s.material = src.material;
     s.fill = src.fill;
+    s.holes = src.holes.clone();
+    s.hide_stroke = src.hide_stroke;
     s
+}
+
+/// Um traço SEM tinta visível: um preenchimento (região) ou um fechamento de gap.
+///
+/// A borracha morde **tinta**, e um traço destes não tem nenhuma: o contorno de um fill
+/// não é rasterizado, e um fechamento é invisível de propósito. Deixar as borrachas de
+/// PONTO (Soft/Hard) mordê-los produzia só lixo — fragmentos de região com o furo
+/// perdido, apagados num lugar onde o usuário não vê linha alguma. Uma região se remove
+/// pelo **Unpaint** do balde, ou de uma vez pela borracha de traço.
+fn is_region(s: &FlipStroke) -> bool {
+    s.hide_stroke
 }
 
 /// Whether any point of `s` lies within `radius` of `center`.
@@ -107,6 +127,9 @@ pub(crate) fn erase_at(
             let mut changed = false;
             let r = radius.max(f32::EPSILON);
             for s in dr.strokes.iter_mut() {
+                if is_region(s) {
+                    continue; // região: não tem tinta para amaciar (ver `is_region`)
+                }
                 let ps: Vec<Vec2> = s.positions().to_vec();
                 let ops = s.opacities_mut();
                 for (i, p) in ps.iter().enumerate() {
@@ -128,6 +151,10 @@ pub(crate) fn erase_at(
             let mut changed = false;
             let mut out: Vec<FlipStroke> = Vec::new();
             for s in std::mem::take(&mut dr.strokes) {
+                if is_region(&s) {
+                    out.push(s); // região: não se corta em pedaços (ver `is_region`)
+                    continue;
+                }
                 let inside: Vec<bool> = s
                     .positions()
                     .iter()
@@ -166,8 +193,14 @@ pub(crate) fn cleanup_soft(
         return false;
     };
     let before = dr.strokes.len();
+    // **Uma REGIÃO nunca é coletada por opacidade de ponto.** A visibilidade dela não vem
+    // dali (o contorno não é rasterizado): um fechamento de gap nasce com opacidade 0
+    // porque é invisível de propósito — e este `retain` então o removia SEMPRE, a cada
+    // pen-up da borracha macia, em qualquer lugar do canvas. O vão reabria sozinho e o
+    // balde seguinte vazava; o fechamento persistente (o twist do Harmony) era desfeito
+    // em silêncio por um toque de borracha do outro lado do desenho.
     dr.strokes
-        .retain(|s| s.opacities().iter().any(|o| *o >= OPACITY_REMOVE_THRESHOLD));
+        .retain(|s| is_region(s) || s.opacities().iter().any(|o| *o >= OPACITY_REMOVE_THRESHOLD));
     dr.strokes.len() != before
 }
 
@@ -377,5 +410,148 @@ mod tests {
             1.0,
         );
         assert!(!hit, "locked layer preserved");
+    }
+
+    /// Um desenho com line-art + um PREENCHIMENTO (com furo) + um FECHAMENTO de gap.
+    fn doc_with_fill_and_closure() -> (FlipDoc, LayerId) {
+        let (mut doc, l) = doc_with_line();
+        let oid = doc.objects().first().unwrap().id;
+        let obj = doc.object_mut(oid).unwrap();
+        let did = obj.layer(l).unwrap().drawing_at(0).unwrap();
+        let dr = obj.drawing_mut(did).unwrap();
+
+        // O preenchimento: contorno invisível, com um furo.
+        let mut fill = FlipStroke::new();
+        for p in [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 0.0),
+            Vec2::new(10.0, 10.0),
+            Vec2::new(0.0, 10.0),
+        ] {
+            fill.push_point(Point {
+                pos: p,
+                width: 0.0,
+                opacity: 1.0,
+                color: Rgba::WHITE,
+            });
+        }
+        fill.closed = true;
+        fill.hide_stroke = true;
+        fill.holes = vec![vec![
+            Vec2::new(3.0, 3.0),
+            Vec2::new(7.0, 3.0),
+            Vec2::new(7.0, 7.0),
+            Vec2::new(3.0, 7.0),
+        ]];
+        fill.fill = Some(ph2d_flip::Fill {
+            color: Rgba::WHITE,
+            opacity: 1.0,
+        });
+        dr.strokes.push(fill);
+
+        // O fechamento de gap: invisível, sem cor, opacidade ZERO (é assim que nasce).
+        let mut clo = FlipStroke::new();
+        for p in [Vec2::new(20.0, 20.0), Vec2::new(22.0, 20.0)] {
+            clo.push_point(Point {
+                pos: p,
+                width: 0.0,
+                opacity: 0.0,
+                color: Rgba::TRANSPARENT,
+            });
+        }
+        clo.hide_stroke = true;
+        dr.strokes.push(clo);
+        (doc, l)
+    }
+
+    fn strokes_of(doc: &FlipDoc) -> Vec<FlipStroke> {
+        let obj = doc.objects().first().unwrap();
+        let l = obj.layers().first().unwrap().id;
+        let did = obj.layer(l).unwrap().drawing_at(0).unwrap();
+        obj.drawing(did).unwrap().strokes.clone()
+    }
+
+    /// **A borracha macia NÃO pode apagar os fechamentos de gap.**
+    ///
+    /// Um fechamento nasce com opacidade 0 (é invisível de propósito), e o `cleanup_soft`
+    /// coletava lixo por opacidade de ponto: `retain(any opacity >= 0.05)` matava TODOS
+    /// eles — a cada pen-up, em qualquer lugar do canvas. O vão reabria e o balde seguinte
+    /// vazava. O "fechamento persistente" (o twist do Harmony) era desfeito em silêncio.
+    #[test]
+    fn the_soft_eraser_does_not_delete_gap_closures_anywhere_on_the_canvas() {
+        let (mut doc, l) = doc_with_fill_and_closure();
+        let ph = Playhead::new(1.0 / 12.0);
+        let strip = crate::flip_strip::FlipStrip::default();
+        let before = strokes_of(&doc).len();
+
+        // Um toque de borracha macia LONGE de tudo (em (100, 100)).
+        erase_at(
+            &mut doc,
+            &ph,
+            Some(l),
+            &strip,
+            EraseMode::Soft,
+            Vec2::new(100.0, 100.0),
+            1.0,
+            1.0,
+        );
+        cleanup_soft(&mut doc, &ph, Some(l), &strip);
+
+        let after = strokes_of(&doc);
+        assert_eq!(
+            after.len(),
+            before,
+            "a borracha apagou tracos do outro lado do canvas (o fechamento de gap sumiu)"
+        );
+        assert!(
+            after.iter().any(|s| s.hide_stroke && s.fill.is_none()),
+            "o fechamento de gap invisivel foi coletado como lixo"
+        );
+    }
+
+    /// **A borracha de PONTO não morde uma região.** Um preenchimento não tem tinta
+    /// visível (o contorno não é rasterizado): mordê-lo produzia fragmentos com o furo
+    /// PERDIDO (o "O" ficava sólido) e sem `hide_stroke` — o fragmento virava fronteira
+    /// do próximo balde e o Unpaint não o reconhecia mais.
+    #[test]
+    fn a_point_eraser_does_not_shred_a_filled_region() {
+        for mode in [EraseMode::Soft, EraseMode::Hard] {
+            let (mut doc, l) = doc_with_fill_and_closure();
+            let ph = Playhead::new(1.0 / 12.0);
+            let strip = crate::flip_strip::FlipStrip::default();
+
+            // Apaga bem no MEIO da região preenchida.
+            erase_at(
+                &mut doc,
+                &ph,
+                Some(l),
+                &strip,
+                mode,
+                Vec2::new(5.0, 5.0),
+                4.0,
+                1.0,
+            );
+            cleanup_soft(&mut doc, &ph, Some(l), &strip);
+
+            let fills: Vec<FlipStroke> = strokes_of(&doc)
+                .into_iter()
+                .filter(|s| s.hide_stroke && s.fill.is_some())
+                .collect();
+            assert_eq!(
+                fills.len(),
+                1,
+                "{mode:?}: a regiao foi picada em {} pedacos",
+                fills.len()
+            );
+            assert_eq!(
+                fills[0].holes.len(),
+                1,
+                "{mode:?}: o furo do \"O\" foi perdido (a regiao virou solida)"
+            );
+            assert!(
+                fills[0].hide_stroke,
+                "{mode:?}: o fill perdeu o hide_stroke"
+            );
+        }
     }
 }

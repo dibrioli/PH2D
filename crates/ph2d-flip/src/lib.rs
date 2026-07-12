@@ -38,6 +38,7 @@ mod object;
 mod onion;
 mod stroke;
 mod tween;
+mod tween_flip;
 
 pub use autokey::AutokeyPolicy;
 pub use color::Rgba;

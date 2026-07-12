@@ -90,11 +90,10 @@ pub fn closures(strokes: &[Boundary<'_>], reach: f32) -> Vec<Closure> {
         }
     }
 
-    // Corta cada raio na 1ª colisão com QUALQUER linha (menos a de origem, na ponta) —
-    // dois passes contra as linhas ORIGINAIS deixa o resultado independente da ordem.
-    let mut out = Vec::new();
-    for &(owner, origin, d) in &rays {
-        let far = Vec2::new(origin.x + d.x * reach, origin.y + d.y * reach);
+    // **Passe 1** — corta cada raio na 1ª colisão com as linhas ORIGINAIS. Fazer os dois
+    // passes contra o estado original (e não contra o resultado parcial) deixa o
+    // resultado independente da ordem dos traços — determinismo (HR-5).
+    let cut_against_lines = |owner: usize, origin: Vec2, far: Vec2| -> f32 {
         let mut best = f32::INFINITY;
         for (si, s) in strokes.iter().enumerate() {
             let n = s.points.len();
@@ -115,6 +114,42 @@ pub fn closures(strokes: &[Boundary<'_>], reach: f32) -> Vec<Closure> {
                 {
                     best = t;
                 }
+            }
+        }
+        best
+    };
+
+    // O raio inteiro de cada extensão, com o corte contra as linhas já aplicado.
+    let stretched: Vec<(usize, Vec2, Vec2, f32)> = rays
+        .iter()
+        .map(|&(owner, origin, d)| {
+            let far = Vec2::new(origin.x + d.x * reach, origin.y + d.y * reach);
+            (owner, origin, far, cut_against_lines(owner, origin, far))
+        })
+        .collect();
+
+    // **Passe 2 — extensão contra EXTENSÃO.** Sem ele, uma quina em "L" aberta cujas
+    // duas pontas se cruzam NO AR (cada uma passa longe da *linha* da outra) não fechava
+    // vão nenhum: `closures()` devolvia vazio e o balde vazava. É justamente a quina que
+    // o GP fecha, e a razão de o Extend existir.
+    let mut out = Vec::new();
+    for (i, &(_, origin, far, best_lines)) in stretched.iter().enumerate() {
+        let mut best = best_lines;
+        for (j, &(_, o2, f2, b2)) in stretched.iter().enumerate() {
+            if i == j {
+                continue;
+            }
+            // A outra extensão, já cortada onde ela de fato termina.
+            let end2 = if b2.is_finite() && b2 <= 1.0 {
+                Vec2::new(o2.x + (f2.x - o2.x) * b2, o2.y + (f2.y - o2.y) * b2)
+            } else {
+                f2
+            };
+            if let Some(t) = ray_hit(origin, far, o2, end2)
+                && t > 1e-3
+                && t < best
+            {
+                best = t;
             }
         }
         // Só vale se COLIDIU dentro do alcance: uma extensão para o nada não fecha vão.
@@ -289,6 +324,34 @@ mod tests {
             (hit.b.y + 2.0).abs() < 1e-3,
             "o raio da quina desce e encosta no teto: {:?}",
             hit.b
+        );
+    }
+
+    /// **Duas extensões que se cruzam NO AR fecham o vão.**
+    ///
+    /// Quina em "L" aberta: a ponta horizontal aponta para +x, a vertical para +y, e as
+    /// duas se cruzam em (12, 0). Nenhuma das duas encosta na *linha* da outra — só na
+    /// extensão dela. Cortando os raios apenas contra as linhas originais (o 1º corte),
+    /// `closures` devolvia VAZIO e o balde vazava justamente na quina que o Extend
+    /// existe para fechar.
+    #[test]
+    fn two_extensions_that_cross_in_mid_air_close_the_gap() {
+        let a = [Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0)]; // termina apontando +x
+        let b = [Vec2::new(12.0, -10.0), Vec2::new(12.0, -2.0)]; // termina apontando +y
+        let lines = [
+            Boundary {
+                points: &a,
+                closed: false,
+            },
+            Boundary {
+                points: &b,
+                closed: false,
+            },
+        ];
+        let cs = closures(&lines, 6.0);
+        assert!(
+            !cs.is_empty(),
+            "as duas extensoes se cruzam em (12,0): tem de sair um fechamento"
         );
     }
 }

@@ -64,6 +64,11 @@ pub fn trace_contours(g: &Grid) -> Vec<Vec<Vec2>> {
             // Teto de segurança: um contorno não pode ser maior que o perímetro da
             // grade (nenhum canto é visitado duas vezes na mesma direção).
             let mut guard = 4 * (g.w + g.h) + 16;
+            // A direção de CHEGADA. Numa quina ambígua ela é a única informação que
+            // diz qual das duas trilhas é a nossa; no começo, semeia-se a direção que
+            // torna a saída inicial válida (leste p/ o código 6, sul p/ o 9).
+            let mut din: (i32, i32) = if c == 9 { (0, -1) } else { (1, 0) };
+            let mut closed = false;
             loop {
                 seen[y as usize * cw + x as usize] = true;
                 ring.push(corner_to_doc(g, x, y));
@@ -74,29 +79,41 @@ pub fn trace_contours(g: &Grid) -> Vec<Vec<Vec2>> {
                 //   oeste  (−x): esquerda = SW, direita = NW
                 //   norte  (+y): esquerda = NW, direita = NE
                 //   sul    (−y): esquerda = SE, direita = SW
-                // (Os bits: 1=SW, 2=SE, 4=NW, 8=NE.) Os códigos 6 e 9 são as
-                // diagonais AMBÍGUAS — duas escolhas válidas; fixar uma delas é o que
-                // separa duas regiões que se tocam na quina em vez de fundi-las.
-                let (dx, dy) = match code(x, y) {
-                    1 | 3 | 11 => (-1, 0),  // oeste
-                    2 | 10 | 14 => (0, -1), // sul
-                    4 | 5 | 7 => (0, 1),    // norte
-                    8 | 12 | 13 => (1, 0),  // leste
-                    6 => (0, -1),           // ambíguo: sul (escolha fixa)
-                    9 => (1, 0),            // ambíguo: leste (escolha fixa)
+                // (Os bits: 1=SW, 2=SE, 4=NW, 8=NE.)
+                //
+                // **Os códigos 6 e 9 são as quinas AMBÍGUAS, e a escolha NÃO pode ser
+                // fixa.** Por uma quina dessas passam DUAS trilhas (as duas células
+                // cheias se tocam só pela diagonal, e o flood é 4-conexo: são blobs
+                // SEPARADOS). Uma escolha fixa jogava quem chegava por um lado na
+                // trilha do outro — o anel nunca voltava ao início e só o `guard`
+                // parava o laço, cuspindo um anel-lixo de centenas de pontos com área
+                // inflada, que podia até VENCER a ordenação por área e virar o contorno
+                // externo. A saída certa é a que mantém à esquerda a MESMA célula que
+                // já estava à esquerda — e essa é, sempre, a curva à ESQUERDA.
+                let d = match code(x, y) {
+                    1 | 3 | 11 => (-1, 0),    // oeste
+                    2 | 10 | 14 => (0, -1),   // sul
+                    4 | 5 | 7 => (0, 1),      // norte
+                    8 | 12 | 13 => (1, 0),    // leste
+                    6 | 9 => (-din.1, din.0), // ambíguo: vira à ESQUERDA (rot. 90° CCW)
                     _ => break,
                 };
-                x += dx;
-                y += dy;
+                x += d.0;
+                y += d.1;
+                din = d;
                 guard -= 1;
-                if guard == 0 || (x == sx && y == sy) {
+                if x == sx && y == sy {
+                    closed = true;
                     break;
                 }
-                if x < 0 || y < 0 || x > g.w as i32 || y > g.h as i32 {
+                if guard == 0 || x < 0 || y < 0 || x > g.w as i32 || y > g.h as i32 {
                     break;
                 }
             }
-            if ring.len() >= 3 {
+            // **Um anel que não fechou é LIXO** — não um contorno mais pobre. Empurrá-lo
+            // para a saída era o que deixava a ordenação por área escolher um monstro
+            // auto-sobreposto como `outer`.
+            if closed && ring.len() >= 3 {
                 out.push(ring);
             }
         }
@@ -350,5 +367,47 @@ mod tests {
         );
         let a = signed_area(&out).abs();
         assert!((a - 100.0).abs() < 6.0, "a forma sobrevive: área {a}");
+    }
+
+    /// **A quina AMBÍGUA não pode desviar o caminhante para a outra trilha.**
+    ///
+    /// Duas células cheias que se tocam SÓ pela diagonal são blobs separados (o flood é
+    /// 4-conexo). Por essa quina passam duas trilhas de contorno; resolvê-la com uma
+    /// escolha FIXA jogava quem chegava por um lado na trilha do outro — o anel nunca
+    /// fechava, o `guard` estourava, e saía um monstro auto-sobreposto de centenas de
+    /// pontos cuja |área| inflada podia VENCER a ordenação e virar o contorno externo.
+    ///
+    /// Aqui: dois quadrados 2×2 encostados pela quina. Têm de sair DOIS anéis, cada um
+    /// com a área de um quadrado — e nenhum anel-lixo.
+    #[test]
+    fn a_diagonal_touch_traces_two_separate_rings_not_a_runaway() {
+        let mut g = Grid::new(Vec2::new(0.0, 0.0), Vec2::new(8.0, 8.0), 1.0, 0, 32);
+        // Marca FILLED na mão (o trace lê FILLED, não BOUNDARY).
+        let mut fill = |x: usize, y: usize| {
+            g.flags[y * 8 + x] |= crate::raster::FILLED;
+        };
+        for (x, y) in [(1, 1), (2, 1), (1, 2), (2, 2)] {
+            fill(x, y); // blob A
+        }
+        for (x, y) in [(3, 3), (4, 3), (3, 4), (4, 4)] {
+            fill(x, y); // blob B — encosta em A só pela quina (2,2)-(3,3)
+        }
+        let rings = trace_contours(&g);
+        assert_eq!(
+            rings.len(),
+            2,
+            "esperados 2 aneis (um por blob), vieram {}: {:?}",
+            rings.len(),
+            rings.iter().map(Vec::len).collect::<Vec<_>>()
+        );
+        for r in &rings {
+            let a = signed_area(r).abs();
+            assert!(
+                (a - 4.0).abs() < 0.01,
+                "cada blob 2x2 tem area 4; veio {a} (anel de {} pts = LIXO do guard)",
+                r.len()
+            );
+            assert!(r.len() <= 12, "anel com {} pontos: nao fechou", r.len());
+        }
     }
 }

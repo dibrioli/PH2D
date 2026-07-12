@@ -190,8 +190,10 @@ pub fn fill_at(
         grid.grow(params.grow);
     }
 
-    // 6. Vetoriza. O contorno de MAIOR área é o externo; os demais são buracos.
-    let eps = RDP_EPSILON_PX / scale; // a tolerância é em px do buffer
+    // 6. Vetoriza. O contorno de MAIOR área é o externo; os demais são candidatos a
+    //    buraco. A tolerância do RDP é em px do BUFFER, então usa a resolução EFETIVA
+    //    da grade (que pode ter cedido ao teto de tamanho), não a que se pediu.
+    let eps = RDP_EPSILON_PX / grid.scale;
     let mut rings: Vec<Vec<Vec2>> = trace_contours(&grid)
         .into_iter()
         .map(|r| simplify_ring(&r, eps, 2))
@@ -209,12 +211,26 @@ pub fn fill_at(
             .then(a[0].y.total_cmp(&b[0].y))
     });
     let outer = rings.remove(0);
-    if signed_area(&outer).abs() < 1e-6 {
+    let outer_area = signed_area(&outer);
+    if outer_area.abs() < 1e-6 {
         return Err(FillError::Degenerate);
     }
+    // **Buraco é ORIENTAÇÃO, não tamanho.** Classificar "todo anel que não é o maior é
+    // buraco" estava errado: um `grow` negativo pode PARTIR a região em componentes
+    // desconexos (um halter erodido no meio), e a segunda ilha — que é área PREENCHIDA —
+    // virava um buraco a ser subtraído da primeira.
+    //
+    // O traçado anda com o preenchido à esquerda, então o contorno externo de um blob e
+    // a borda de um furo têm sinais OPOSTOS, e uma ilha tem o MESMO sinal do externo.
+    // Só os de sinal oposto são furos; as ilhas soltas ficam de fora do resultado (o
+    // preenchimento é a região sob o CLIQUE, e o clique está numa só).
+    let holes: Vec<Vec<Vec2>> = rings
+        .into_iter()
+        .filter(|r| signed_area(r).signum() != outer_area.signum())
+        .collect();
     Ok(FillResult {
         outer,
-        holes: rings,
+        holes,
         closures,
     })
 }

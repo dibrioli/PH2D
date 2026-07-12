@@ -46,11 +46,13 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::{ActionBus, EditorAction};
 use ph2d_editor_core::grid_snap::GridSnapState;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHost, PanelHostInternal};
+use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHost, PanelHostInternal};
 use ph2d_editor_core::project::ProjectSettings;
-use ph2d_editor_core::screens::HeroSelection;
+use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
 use ph2d_editor_core::zones::Rect;
+use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
+use ph2d_vector::VectorScene;
 
 /// A throwaway [`PanelHostInternal`] for tests. Holds the real widget
 /// store + action bus a panel reads/writes; the grid-snap / selection /
@@ -147,6 +149,54 @@ impl MockPanelHost {
     /// the panel actually emitted the right [`EditorAction`].
     pub fn drained_actions(&mut self) -> Vec<EditorAction> {
         self.bus.drain().collect()
+    }
+
+    /// **Run panel `P`'s REAL paint pass, headless, and return what it made
+    /// clickable** — every `(id, rect)` the paint registered in the hit index.
+    ///
+    /// This closes the last hole in the "green-but-dead" family. The seam test
+    /// above proves `populate → apply_event → tool`; the wiring-parity gate
+    /// reads *source text*. **Neither one runs `paint`.** So a widget can be
+    /// registered, wired, unit-tested and contract-clean while its paint call
+    /// sits behind an early `return` (or was never written at all) — and the
+    /// user's report is simply *"the button doesn't exist"*, with every gate
+    /// green. What a user can click is what the PAINT registered, so that is
+    /// what a test must read.
+    ///
+    /// The panel is forced visible first (a paint gated on `panel_visible`
+    /// would otherwise return before drawing anything).
+    pub fn paint<P: Panel>(&mut self, state: &mut P::State, viewport: Rect) -> Vec<(NodeId, Rect)> {
+        self.set_panel_visible(P::ID, true);
+        self.hit_index.clear_for_frame();
+        let layout = HeroLayout::for_viewport(viewport);
+        let mut scene = VectorScene::new();
+        let mut text_system = TextSystem::without_system_fonts();
+        {
+            let mut ctx = PaintCtx {
+                host: self,
+                layout: &layout,
+                viewport,
+                scene: &mut scene,
+                text_system: &mut text_system,
+            };
+            P::paint(state, &mut ctx);
+        }
+        self.hit_index.iter_registrations().collect()
+    }
+
+    /// Sugar over [`Self::paint`] for the common assertion: *is this widget on
+    /// screen and clickable?* A widget painted with a degenerate (zero-area)
+    /// rect is NOT clickable, so it does not count as painted.
+    pub fn painted_rect<P: Panel>(
+        &mut self,
+        state: &mut P::State,
+        viewport: Rect,
+        id: NodeId,
+    ) -> Option<Rect> {
+        self.paint::<P>(state, viewport)
+            .into_iter()
+            .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| r)
     }
 }
 

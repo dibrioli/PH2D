@@ -14,7 +14,7 @@
 //!
 //! Puro (sem wgpu) — testável headless. O upload pra GPU envolve estas structs.
 
-use crate::fill::{FillVertex, triangulate};
+use crate::fill::FillVertex;
 use crate::fill_holes;
 use crate::neighbors::{self, Seg};
 use ph2d_core::Vec2;
@@ -284,15 +284,15 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                     color,
                 });
             };
-            if s.holes.is_empty() {
-                let pts: Vec<Vec2> = pos.to_vec();
-                for &vi in &triangulate(&pts) {
-                    emit(pts[vi as usize]);
-                }
-            } else {
-                for p in fill_holes::triangulate_even_odd(pos, &s.holes) {
-                    emit(p);
-                }
+            // **Even-odd SEMPRE** — inclusive sem buracos. O ear-clipping era o caminho
+            // do caso comum, e é justamente ele que trava: um contorno traçado de raster
+            // encosta em si mesmo, o teste da orelha (inclusivo na borda) rejeita orelhas
+            // legítimas, o laço sai por `break` e a triangulação sai PARCIAL — um fill com
+            // um pedaço faltando, em silêncio, num desenho a cada vinte. A decomposição
+            // trapezoidal é exata, trata furo e auto-interseção pela mesma regra e não tem
+            // como travar; não há motivo para manter dois caminhos.
+            for p in fill_holes::triangulate_even_odd(pos, &s.holes) {
+                emit(p);
             }
         }
     }

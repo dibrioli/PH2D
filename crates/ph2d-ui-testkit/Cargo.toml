@@ -20,3 +20,8 @@ authors.workspace = true
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
+# O harness de PINTURA (`MockPanelHost::paint`) roda o `Panel::paint` real, que
+# exige a cena Vello + o shaper. Sem GPU: a cena é um buffer de comandos, e o
+# TextSystem::without_system_fonts() não varre o SO (é o que mantém o gate rápido).
+ph2d-vector      = { path = "../ph2d-vector" }
+ph2d-text        = { path = "../ph2d-text" }

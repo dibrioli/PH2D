@@ -27,7 +27,12 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v6 (ADR-0114 W3): a `FlipDoc` — que vive DENTRO do `ProjectState` — mudou de forma: a camada
 /// ganhou `cycle` + `use_onion` e o `OnionSettings` ganhou `kind_filter` (`FLIP_SCHEMA_VERSION` 1→2).
 /// Não é campo novo no ARQUIVO, é o MESMO campo com outro layout — e posicional é posicional.
-const PROJECT_SCHEMA: u32 = 6;
+/// v7 (ADR-0114 W4): o `FlipStroke` ganhou `holes` + `hide_stroke` (o balde —
+/// `FLIP_SCHEMA_VERSION` 2→3). Mesma regra: a forma mudou, então a versão sobe.
+/// Sem o bump, um arquivo v6 passaria na checagem de versão e seria lido com o
+/// layout NOVO — postcard não tem nomes de campo para reclamar, e o que sai é
+/// geometria embaralhada em vez de um erro honesto.
+const PROJECT_SCHEMA: u32 = 7;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -273,6 +278,28 @@ mod tests {
         assert!(
             ph2d_motion_doc::MotionDoc::from_text(&back.motion).is_ok(),
             "…e ainda parseável do outro lado do arquivo"
+        );
+    }
+
+    /// **Estopim de esquema.** O `ProjectState` embute o `FlipDoc` inteiro, e o
+    /// postcard é POSICIONAL: qualquer campo novo em qualquer struct do Flip muda
+    /// o layout do arquivo de projeto. Sem bump, o loader aceita o arquivo velho
+    /// (a versão bate) e o lê com o layout novo — sai geometria embaralhada, não
+    /// um erro. Foi o que quase aconteceu na W4 (`holes`/`hide_stroke`).
+    ///
+    /// Este par existe para que bumpar UM sem pensar no OUTRO fique vermelho.
+    ///
+    /// O `PROJECT_SCHEMA` é 7 (e não o 4 que a linha Flip trazia sozinha) porque na
+    /// árvore integrada ele conta TODAS as quebras de layout, não só as do Flip: v3/v4
+    /// do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 do Flip. Cada
+    /// linha subiu o mesmo contador por um motivo diferente — e o contador é um só.
+    #[test]
+    fn a_flip_schema_bump_must_bump_the_project_schema() {
+        assert_eq!(
+            (PROJECT_SCHEMA, ph2d_flip::FLIP_SCHEMA_VERSION),
+            (7, 3),
+            "a forma do FlipDoc mudou (ou o esquema do projeto): suba o PROJECT_SCHEMA \
+             junto e atualize este par. Postcard nao avisa - ele so le errado."
         );
     }
 }

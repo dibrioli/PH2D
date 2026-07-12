@@ -29,6 +29,17 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 }
 
 /// Register a slider + its linked value chip, seeded at `track` / `display`.
+///
+/// **O range da caixa é registrado aqui, e isso não é opcional.** Sem
+/// `set_number_range`, o drag-scrub deriva o passo do texto do buffer e anda a
+/// ~50 unidades por PIXEL: um pixel de arrasto já bate no teto, e a caixa vira um
+/// liga/desliga min↔max em vez de um controle. As setas do stepper também erram (a
+/// Precision andaria de 1 em 1 numa faixa de 0,5 a 4). Nenhum teste pegava isso —
+/// digitar o valor e dar Enter sempre funcionou; só o ARRASTO estava quebrado.
+///
+/// O domínio sai do próprio mapeamento: `display = track·scale + offset`, com
+/// `track ∈ [0,1]` → `display ∈ [offset, offset + scale]`.
+#[allow(clippy::too_many_arguments)] // slider + chip + mapeamento + range: um registro só
 fn slider_chip(
     store: &mut WidgetStore,
     slider: ph2d_a11y::NodeId,
@@ -37,6 +48,7 @@ fn slider_chip(
     display: f64,
     scale: f32,
     offset: f32,
+    step: f64,
 ) {
     store.register(
         slider,
@@ -58,6 +70,12 @@ fn slider_chip(
         },
     );
     store.link_slider_number_mapped(slider, chip, scale, offset);
+    store.set_number_range(
+        chip,
+        f64::from(offset),
+        f64::from(offset) + f64::from(scale),
+        step,
+    );
 }
 
 /// Registra os widgets fixos do painel Flip.
@@ -76,6 +94,7 @@ pub fn populate(store: &mut WidgetStore) {
         DEFAULT_WIDTH_PX,
         WIDTH_SLIDER_SCALE,
         WIDTH_SLIDER_OFFSET,
+        1.0, // step do dominio: unidades inteiras (px / %)
     );
     slider_chip(
         store,
@@ -85,6 +104,7 @@ pub fn populate(store: &mut WidgetStore) {
         f64::from(DEFAULT_HARDNESS),
         1.0, // track 0..1 → 0..1 (identity)
         0.0,
+        0.01, // LITERAL-PX-OK: passo do dominio (fracao 0..1), nao metrica de design
     );
     slider_chip(
         store,
@@ -94,6 +114,7 @@ pub fn populate(store: &mut WidgetStore) {
         f64::from(DEFAULT_OPACITY) * 100.0, // LITERAL-PX-OK: fraction→percent display
         OPACITY_SLIDER_SCALE,
         0.0,
+        1.0, // step do dominio: unidades inteiras (px / %)
     );
     slider_chip(
         store,
@@ -103,6 +124,7 @@ pub fn populate(store: &mut WidgetStore) {
         f64::from(DEFAULT_SMOOTHING),
         1.0,
         0.0,
+        0.01, // LITERAL-PX-OK: passo do dominio (fracao 0..1), nao metrica de design
     );
 
     // Fill (W4): modo, sub-modos do balde e os 3 sliders. Registrados sempre (só
@@ -119,6 +141,7 @@ pub fn populate(store: &mut WidgetStore) {
         0.0,
         GAP_MAX_PX as f32,
         0.0,
+        1.0, // step do dominio: unidades inteiras (px / %)
     );
     slider_chip(
         store,
@@ -129,6 +152,7 @@ pub fn populate(store: &mut WidgetStore) {
         2.0,
         (GROW_MAX - GROW_MIN) as f32,
         GROW_MIN as f32,
+        1.0, // step do dominio: unidades inteiras (px / %)
     );
     slider_chip(
         store,
@@ -138,6 +162,7 @@ pub fn populate(store: &mut WidgetStore) {
         1.0,
         (PRECISION_MAX - PRECISION_MIN) as f32,
         PRECISION_MIN as f32,
+        0.1, // LITERAL-PX-OK: passo do dominio (Precision 0,5..4), nao metrica de design
     );
 
     // Erase sub-mode buttons (painted only in Erase mode, registered always).

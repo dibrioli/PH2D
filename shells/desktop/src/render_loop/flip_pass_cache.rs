@@ -108,6 +108,19 @@ fn drawing_hash(d: &FlipDrawing) -> u64 {
             }
             None => h = fnv(h, 0),
         }
+        // Os buracos e o `hide_stroke` MUDAM o que a GPU desenha (a tesselação e a
+        // existência do contorno), então entram no hash. Sem eles, uma edição que só
+        // mexesse nesses campos renderizaria a tesselação velha — hoje inalcançável (todo
+        // fill/unpaint mexe também nas posições), mas a W4 os tornou carga estrutural, e
+        // um cache que ignora um campo carregado é uma armadilha esperando o próximo.
+        h = fnv(h, u32::from(s.hide_stroke));
+        for ring in &s.holes {
+            for p in ring {
+                h = fnv(h, p.x.to_bits());
+                h = fnv(h, p.y.to_bits());
+            }
+            h = fnv(h, 0xFFFE_FFFF); // separa anéis
+        }
         // separa strokes adjacentes (evita colisão por concatenação).
         h = fnv(h, 0xFFFF_FFFF);
     }

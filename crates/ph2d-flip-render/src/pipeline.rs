@@ -295,39 +295,20 @@ impl FlipRenderer {
             ));
             self.fill_count = data.fills.len() as u32;
         }
-        let points = storage_buffer(
-            device,
-            queue,
-            "ph2d-flip points",
-            bytemuck::cast_slice(&data.points),
-        );
-        let strokes = storage_buffer(
-            device,
-            queue,
-            "ph2d-flip strokes",
-            bytemuck::cast_slice(&data.strokes),
-        );
-        let point_stroke = storage_buffer(
-            device,
-            queue,
-            "ph2d-flip point_stroke",
-            bytemuck::cast_slice(&data.point_stroke),
-        );
-        let seg_range = storage_buffer(
+        // Todos passam pelo `storage_slice`, que garante o buffer não-vazio: um desenho
+        // só de preenchimento (sem line-art) tem `points`/`point_stroke` VAZIOS e é
+        // perfeitamente válido — o fill continua sendo desenhado.
+        let points = storage_slice(device, queue, "ph2d-flip points", &data.points);
+        let strokes = storage_slice(device, queue, "ph2d-flip strokes", &data.strokes);
+        let point_stroke =
+            storage_slice(device, queue, "ph2d-flip point_stroke", &data.point_stroke);
+        let seg_range = storage_slice(
             device,
             queue,
             "ph2d-flip seg_extra_range",
-            bytemuck::cast_slice(&data.seg_extra_range),
+            &data.seg_extra_range,
         );
-        // A lista de vizinhos geométricos é VAZIA no caso comum (traço que não volta
-        // sobre si mesmo). Um storage buffer de tamanho 0 é inválido — sobe uma
-        // entrada dummy; nenhum fragment a lê (todos os `count` são 0).
-        let extras_bytes: &[u8] = if data.seg_extras.is_empty() {
-            bytemuck::bytes_of(&crate::pack::GpuSegRef { a: 0, b: 0 })
-        } else {
-            bytemuck::cast_slice(&data.seg_extras)
-        };
-        let seg_extras = storage_buffer(device, queue, "ph2d-flip seg_extras", extras_bytes);
+        let seg_extras = storage_slice(device, queue, "ph2d-flip seg_extras", &data.seg_extras);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-flip bind group"),
@@ -496,12 +477,28 @@ fn storage_entry_for(binding: u32, visibility: wgpu::ShaderStages) -> wgpu::Bind
 }
 
 /// Cria um storage buffer e escreve os bytes (v1: recriado a cada upload).
-fn storage_buffer(
+///
+/// **Um storage buffer de tamanho ZERO é inválido** — a wgpu recusa o bind group
+/// inteiro ("binding size is zero"), e o app cai. E um desenho legítimo PODE não ter
+/// ponto nenhum: um desenho só de PREENCHIMENTO (todos os traços `hide_stroke`) é o
+/// que sobra assim que a borracha remove o line-art de uma região já pintada, ou
+/// depois de um fill com Gap Closure cujo contorno foi apagado.
+///
+/// A invariante mora AQUI, não em cada chamador: um buffer vazio sobe com um
+/// elemento zerado. O shader nunca o lê (todos os `count` são 0), mas ele existe.
+/// Antes, só o `seg_extras` lembrava disso — e os outros quatro buffers caíam.
+fn storage_slice<T: bytemuck::Pod + bytemuck::Zeroable>(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     label: &str,
-    bytes: &[u8],
+    data: &[T],
 ) -> wgpu::Buffer {
+    let dummy = [T::zeroed()];
+    let bytes: &[u8] = if data.is_empty() {
+        bytemuck::cast_slice(&dummy)
+    } else {
+        bytemuck::cast_slice(data)
+    };
     let buf = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
         size: bytes.len() as u64,

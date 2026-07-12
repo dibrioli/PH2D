@@ -998,3 +998,55 @@ fn a_ghost_is_the_same_silhouette_recoloured_and_faded() {
         "o traço normal continua vermelho: {n:?}"
     );
 }
+
+/// **Um desenho SÓ DE PREENCHIMENTO renderiza — não derruba o app.**
+///
+/// Um traço `hide_stroke` não empurra ponto nenhum (só o `GpuStroke` com
+/// `point_count: 0`, para manter o alinhamento do `sid`). Se TODOS os traços são
+/// assim — e isso acontece de verdade: preencha uma região e apague o line-art com
+/// a borracha, ou apague o "C" depois de fechá-lo com o Gap Closure — o buffer de
+/// pontos fica VAZIO. Um storage buffer de tamanho zero é inválido na wgpu, e o
+/// bind group inteiro explodia: "binding size is zero".
+///
+/// O fill tem de continuar aparecendo (ele é o desenho todo, agora).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_fill_only_drawing_renders_instead_of_crashing() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    // Um quadrado, sem contorno visível — só a cor.
+    for p in [
+        Vec2::new(16.0, 16.0),
+        Vec2::new(48.0, 16.0),
+        Vec2::new(48.0, 48.0),
+        Vec2::new(16.0, 48.0),
+    ] {
+        s.push_point(Point {
+            pos: p,
+            width: 0.0,
+            opacity: 1.0,
+            color: Rgba::new(0.0, 1.0, 0.0, 1.0),
+        });
+    }
+    s.closed = true;
+    s.hide_stroke = true;
+    s.fill = Some(Fill {
+        color: Rgba::new(0.0, 1.0, 0.0, 1.0),
+        opacity: 1.0,
+    });
+    d.strokes.push(s);
+
+    // Se o buffer vazio voltar a ser criado com tamanho 0, isto entra em pânico.
+    let px = render(&device, &queue, &d);
+
+    assert!(
+        alpha_at(&px, 32, 32) > 200,
+        "o miolo do preenchimento tem de estar pintado"
+    );
+    let c = rgb_at(&px, 32, 32);
+    assert!(c[1] > 200 && c[0] < 60, "o miolo e verde: {c:?}");
+    assert_eq!(alpha_at(&px, 4, 4), 0, "fora do quadrado, vazio");
+}

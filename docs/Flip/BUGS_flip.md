@@ -693,3 +693,60 @@ descreve o que você acha que descreve.
 **Erosão isotrópica, de brinde:** a dilatação/erosão puramente 8-conexa cresce em métrica de
 Chebyshev — um **quadrado** —, e um recuo de N px sairia 41% mais fundo nas diagonais. Alternando
 passes 4-conexos e 8-conexos, a forma acumulada é um octógono: visualmente, um disco.
+
+---
+
+## #14 — 🟥 **ABERTO** — a referência do fill vs. a espessura da linha (o bug que sobreviveu a #12 e #13)
+
+**Sintoma (Enio, 4º smoke):** *"Piorou. Linhas finas nem têm valor no slider para ajustar. Aí grow 0
+e −1."* — com `Grow = 0` a cor **transborda** a linha fina; com `−1` abre um **vão escuro** de vários
+pixels. Não há valor intermediário.
+
+**A causa está PROVADA, e é mais funda que #12 e #13.** Duas grandezas vivem em espaços diferentes:
+
+- a **espessura do traço é em px de TELA** — absoluta, **invariante ao zoom** (Enio, 2026-07-11);
+- a **geometria do fill é assada em unidades de DOCUMENTO** — congelada no clique.
+
+Então **a relação entre as duas muda quando se dá zoom depois de preencher**: a meia-espessura da
+linha, em unidades de documento, encolhe quando a câmera aproxima; a borda do fill não se mexe.
+
+```
+transbordo ≈ (w/2) · (zoom − 1)      [px de tela]
+```
+
+| linha | zoom 1× | zoom 2× | zoom 4× |
+|---|---|---|---|
+| 3 px | +0,4 px | +2,2 px | **+5,9 px** |
+| 6 px | +0,3 px | +3,7 px | **+10,3 px** |
+| 16 px | +0,2 px | +8,4 px | **+24,9 px** |
+
+E o vão do `grow = −1` é o **mesmo** erro pelo outro lado (o `strip_ink` descola a cor de uma faixa
+de tinta larga demais). **Os dois quadros são um bug só.**
+
+### A solução recomendada (é a intuição do Enio, e ela se confirma)
+
+> *"Será que a referência para o fill é o meio da espessura da linha?"*
+
+O **eixo** da linha é **geometria pura** — não depende do zoom nem da espessura — e a linha
+renderizada **sempre o cavalga**. Um fill que termina no eixo, portanto, **nunca transborda e nunca
+abre vão, em qualquer zoom e qualquer espessura**. Medido (negativo = a cor está por baixo da linha):
+
+| linha | zoom 1× | zoom 2× | zoom 4× |
+|---|---|---|---|
+| 3 px | −1,7 | −1,9 | −2,2 px |
+| 6 px | −3,2 | −3,4 | −3,7 px |
+| 16 px | −8,2 | −8,4 | −8,7 px |
+
+Sempre negativo, sempre estável. O plano completo (o que muda, o que fica em aberto, como medir)
+está em **[`HANDOFF_flip_NEXT.md` §C](../HANDOFF_flip_NEXT.md)**.
+
+> **Lição — a âncora tem de ser INVARIANTE sob o que o usuário mexe.** #13 já dizia que um controle
+> mede a partir de uma âncora e que a âncora tem de ser o que o usuário vê. Faltava a metade
+> seguinte: **o que ele vê muda com o zoom.** Das três âncoras possíveis — borda externa, borda
+> interna, eixo — **só o eixo é geometria**; as outras duas são *aparência*, e aparência é função da
+> câmera. *Quando você ancora numa quantidade derivada, herda todas as dependências dela.*
+>
+> **E a lição de método, de novo:** o harness media o transbordo em **um** zoom (o default) e dizia
+> +0,3 px. O produto mostrava +10. A diferença não era o número — era o **eixo não varrido**. Usar
+> os números do produto não basta: é preciso varrer a **faixa** de cada parâmetro que o usuário
+> controla. Foi a terceira vez, hoje, que essa mesma armadilha funcionou.

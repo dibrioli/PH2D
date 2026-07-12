@@ -1,9 +1,9 @@
 # HANDOFF — linha `line/FLIP`, Waves W0 (dados) + W1 (render GPU) + W2 (tool + painel + desenho + borracha, **COMPLETA**)
 
-> 🟥 **PRÓXIMO AGENTE: comece por [`HANDOFF_flip_NEXT.md`](HANDOFF_flip_NEXT.md)** — Modo L +
-> sua 1ª tarefa (o bug da rasterização do traço: quinas acumulam cor com hardness baixo;
-> a matriz de trade-offs já explorada; o caminho recomendado; o harness de teste GPU). Este
-> arquivo aqui é o tracker exaustivo do estado — leia-o DEPOIS.
+> 🟥 **PRÓXIMO AGENTE: comece por [`HANDOFF_flip_NEXT.md`](HANDOFF_flip_NEXT.md)** — o Modo L
+> (o seu contrato), o estado da linha, as seis lições que custaram caro, e a **sua 1ª tarefa**: o
+> problema aberto do balde (a referência do fill vs. a espessura da linha — causa já PROVADA, com
+> os números). Este arquivo aqui é o tracker exaustivo do estado — leia-o DEPOIS.
 
 > **Dois leitores:** (a) o **integrador** (§1.5.9) — o que fundir, símbolos que
 > colidem, gates; (b) o **próximo implementador desta linha** — W2 fechou; o

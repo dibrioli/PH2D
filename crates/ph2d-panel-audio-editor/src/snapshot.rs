@@ -51,6 +51,11 @@ thread_local! {
     static CAN_REDO: Cell<bool> = const { Cell::new(false) };
     // Shell → panel: whether a waveform selection exists (enables range ops).
     static HAS_SELECTION: Cell<bool> = const { Cell::new(false) };
+    /// Whether the clipboard holds anything — a Paste button that lights up with nothing to paste
+    /// is a button that lies.
+    static HAS_CLIPBOARD: Cell<bool> = const { Cell::new(false) };
+    /// Panel → shell: split the clip at its markers (needs a folder, so the shell drives it).
+    static SPLIT_REQ: Cell<bool> = const { Cell::new(false) };
     // Panel → shell persistent.
     static LOOPING: Cell<bool> = const { Cell::new(false) };
     // Shell → panel display.
@@ -508,6 +513,26 @@ pub fn set_has_selection(v: bool) {
 
 pub(crate) fn has_selection() -> bool {
     HAS_SELECTION.with(Cell::get)
+}
+
+/// Shell → panel: whether the clipboard holds audio (enables Paste).
+pub fn set_has_clipboard(v: bool) {
+    HAS_CLIPBOARD.with(|c| c.set(v));
+}
+
+pub(crate) fn has_clipboard() -> bool {
+    HAS_CLIPBOARD.with(Cell::get)
+}
+
+/// Panel: ask the shell to split the clip at its markers. The shell drives it because the pieces
+/// become FILES, and picking where they land is a dialog — the panel never touches the filesystem.
+pub(crate) fn request_split() {
+    SPLIT_REQ.with(|c| c.set(true));
+}
+
+/// Shell: drain the split request.
+pub fn take_split() -> bool {
+    take(&SPLIT_REQ)
 }
 
 /// Panel: flip the loop flag; returns the new value.

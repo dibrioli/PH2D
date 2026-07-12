@@ -143,11 +143,30 @@ impl App {
     /// canvas tool palette + Image Tools chrome pills — they were the
     /// loudest source of the text-input conflict (Color Equalization
     /// "Tile Grid" chip swallows digits all day).
+    /// Whether the Audio Editor owns Cmd/Ctrl+X / +C / +V right now: its panel is open and a clip
+    /// is loaded.
+    ///
+    /// Read **before** the `&mut gfx` borrow below (the same dance `over_motion_graph` does), and
+    /// used as a match **guard** rather than a check inside the arm. An arm that matched
+    /// unconditionally would *consume* the chord even with the editor closed — swallowing it so
+    /// that nothing at all happens, which is the most confusing possible outcome and exactly how a
+    /// clipboard shortcut ends up "sometimes not working". Not owning it means not matching it.
+    #[cfg(feature = "panel-audio-editor")]
+    fn audio_editor_owns_clipboard(&self) -> bool {
+        self.gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.is_panel_visible("audio_editor"))
+            && self.audio.as_ref().is_some_and(|a| a.editor_loaded())
+    }
+
     pub(crate) fn handle_editor_key(&mut self, code: KeyCode) {
         // Computed before the `&mut gfx` borrow (Motion Nodes M1): F over the
         // graph fits the graph, not the scene. Same for the timeline (W2.E6).
         let over_motion_graph = self.cursor_over_motion_graph();
         let over_timeline = self.cursor_over_timeline();
+        #[cfg(feature = "panel-audio-editor")]
+        let audio_clipboard = self.audio_editor_owns_clipboard();
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -250,6 +269,28 @@ impl App {
             // shell-downcast arch gate stays green; the actual stroke
             // undo runs in `painter_bridge::dispatch`, the downcast-
             // allowed site, via the transient flags set here.
+            // The Audio Editor owns Cmd/Ctrl+X / +C / +V while its panel is open with a clip
+            // loaded — the same ownership rule as its Ctrl+Z below, and for the same reason: a
+            // focused modal editor that does not answer to the clipboard chords is an editor
+            // people assume is broken. They are the first thing anyone tries.
+            //
+            // Consumed unconditionally (the op runs only when it can), so the chord never falls
+            // through to a global handler and does something surprising to the scene.
+            #[cfg(feature = "panel-audio-editor")]
+            KeyCode::KeyX | KeyCode::KeyC | KeyCode::KeyV
+                if (self.modifiers.super_key() || self.modifiers.control_key())
+                    && audio_clipboard =>
+            {
+                use ph2d_panel_audio_editor::AudioEditCmd as Cmd;
+                let cmd = match code {
+                    KeyCode::KeyX => Cmd::Cut,
+                    KeyCode::KeyC => Cmd::Copy,
+                    _ => Cmd::Paste,
+                };
+                if let Some(a) = self.audio.as_mut() {
+                    a.editor_apply(cmd);
+                }
+            }
             KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
                 // Audio Editor owns Cmd/Ctrl+Z (undo) / +Shift (redo) while its WAVE
                 // panel is open with a clip loaded: the user is editing audio there, so

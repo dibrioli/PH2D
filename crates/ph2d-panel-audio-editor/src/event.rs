@@ -2,16 +2,17 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN,
+    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_COPY, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN,
     AEDIT_FADE_OUT, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
     AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET,
     AEDIT_FX_STAGE_ONS, AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT,
     AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
-    AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
-    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO,
-    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN,
-    AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
-    AudioEditorPanel, loop_state, presets, snapshot, spectral_state, variation_state,
+    AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY,
+    AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE,
+    AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE,
+    AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, AEDIT_SPLIT, AEDIT_STOP, AEDIT_TRIM,
+    AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, loop_state, presets, snapshot, spectral_state,
+    variation_state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -175,6 +176,15 @@ fn edit_cmd_for(id: NodeId) -> Option<AudioEditCmd> {
         Some(AudioEditCmd::GainDown)
     } else if id == AEDIT_GAIN_UP {
         Some(AudioEditCmd::GainUp)
+    } else if id == AEDIT_SPLIT {
+        // Not an AudioEditCmd: the pieces become FILES, so the shell has to pick a folder. The
+        // panel never touches the filesystem.
+        snapshot::request_split();
+        None
+    } else if id == AEDIT_COPY {
+        Some(AudioEditCmd::Copy)
+    } else if id == AEDIT_PASTE {
+        Some(AudioEditCmd::Paste)
     } else if id == AEDIT_TRIM {
         Some(AudioEditCmd::Trim)
     } else if id == AEDIT_CUT {

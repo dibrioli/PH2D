@@ -146,8 +146,14 @@ pub const AEDIT_GAIN_UP: NodeId = hash_node_id("audio_editor_gain_up");
 // one exists).
 /// Crop to the selection.
 pub const AEDIT_TRIM: NodeId = hash_node_id("audio_editor_trim");
-/// Delete the selection (ripple).
+/// Cut the selection to the clipboard, rippling the rest closed.
 pub const AEDIT_CUT: NodeId = hash_node_id("audio_editor_cut");
+/// Copy the selection to the clipboard (non-destructive).
+pub const AEDIT_COPY: NodeId = hash_node_id("audio_editor_copy");
+/// Paste the clipboard over the selection, or at the playhead when nothing is selected.
+pub const AEDIT_PASTE: NodeId = hash_node_id("audio_editor_paste");
+/// Split the clip at its markers into one file per piece.
+pub const AEDIT_SPLIT: NodeId = hash_node_id("audio_editor_split");
 /// Silence the selection.
 pub const AEDIT_SILENCE: NodeId = hash_node_id("audio_editor_silence");
 /// Fade in across the selection.
@@ -363,8 +369,12 @@ pub enum AudioEditCmd {
     GainUp,
     /// Crop to the selection.
     Trim,
-    /// Delete the selection (ripple).
+    /// Cut the selection to the clipboard, rippling the rest closed.
     Cut,
+    /// Copy the selection to the clipboard. Not an edit — costs no undo step.
+    Copy,
+    /// Paste the clipboard over the selection, or at the playhead when nothing is selected.
+    Paste,
     /// Silence the selection.
     Silence,
     /// Fade in across the selection.
@@ -435,8 +445,6 @@ pub use snapshot::set_fx_auditioning;
 /// Shell → panel: replace the whole chain (the preset-load path); it auditions at
 /// once and Apply commits it.
 pub use snapshot::set_fx_chain;
-/// Shell → panel: publish whether a waveform selection exists (range-op buttons).
-pub use snapshot::set_has_selection;
 /// Panel → shell: the pending edit command (one-shot; the shell applies it to the
 /// `EditClip`).
 pub use snapshot::take_edit_cmd;
@@ -461,6 +469,8 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 /// a fresh or reset stage), and the selected stage's per-parameter
 /// `(label, formatted value)` pairs.
 pub use snapshot::{set_fx_ir, set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
+/// Shell → panel: publish whether a waveform selection exists (range-op buttons).
+pub use snapshot::{set_has_clipboard, set_has_selection, take_split};
 pub use variation_state::{set_selected_enabled, take_toggle_enabled};
 
 // Loop points + batch + force-mono (W6 asset-prep).

@@ -8,13 +8,16 @@
 //! trick, one level deeper) — this file is the transport, the clip and the edits.
 
 mod batch;
+mod clipboard;
 pub(crate) mod delivery;
+mod export;
 mod fx_rack;
 pub(crate) mod ir;
 mod loops;
 mod manifest_path;
 mod markers;
 pub(crate) mod spectral;
+mod split;
 mod variation;
 
 use super::AudioSystem;
@@ -45,6 +48,9 @@ pub(super) struct AudioEditorRuntime {
     last_loop: std::cell::Cell<bool>,
     /// Display name of the loaded clip (file stem).
     name: String,
+    /// The clipboard (W2). It **outlives the clip** — copy from one take, `Load` another, paste —
+    /// which is exactly why `apply_paste` conforms it to the destination's rate and layout first.
+    clipboard: Option<ph2d_audio::SampleData>,
     /// The effects rack's **live audition** (W3 blocks 3a/3b): the whole chain
     /// rendered over `clip` but NOT committed. While present it is what sounds and
     /// what the waveform shows; `clip` stays pristine so Cancel is free. Apply
@@ -313,98 +319,6 @@ impl AudioSystem {
         self.editor.scrub_frame = Some(0);
     }
 
-    /// Write the loaded clip out to `path` as a PCM WAV at `depth`.
-    pub(crate) fn editor_export(&self, path: &std::path::Path, depth: ph2d_audio_encode::BitDepth) {
-        // Export what is SOUNDING and SHOWN — the live audition when the rack is
-        // previewing, else the committed clip. `editor_clip` / `editor_duration_secs`
-        // already report the audition, so exporting `self.editor.clip` here silently
-        // wrote a dry, shorter file than the waveform on screen (2026-07-09 audit).
-        let Some(clip) = self.editor_sounding() else {
-            return;
-        };
-        // Carry the loop region into the WAV's `smpl` chunk so the loop is sample-exact
-        // on re-import / in a game runtime. The loop is metadata on the COMMITTED clip;
-        // clamp it to the exported buffer (a length-preserving audition keeps the frame
-        // indices, a reverb tail only extends past the loop end).
-        let frames = clip.frame_count() as u32;
-        let loops: Vec<_> = self
-            .editor
-            .clip
-            .as_ref()
-            .and_then(|c| c.loop_region())
-            .and_then(|lp| {
-                let start = (lp.start as u32).min(frames);
-                let end = (lp.end as u32).min(frames);
-                (start < end).then_some(ph2d_audio_encode::LoopRegion { start, end })
-            })
-            .into_iter()
-            .collect();
-        // Carry the cue markers too (clamped to the exported buffer).
-        let markers: Vec<_> = self
-            .editor
-            .clip
-            .as_ref()
-            .map(|c| {
-                c.markers()
-                    .iter()
-                    .filter(|m| (m.frame as u32) < frames)
-                    .map(|m| ph2d_audio_encode::Marker {
-                        frame: m.frame as u32,
-                        name: m.name.clone(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        let meta = ph2d_audio_encode::WavMeta { loops, markers };
-        match ph2d_audio_encode::write_wav_with_meta(path, clip.data(), depth, &meta) {
-            Ok(()) => println!(
-                "audio: exported {} (WAV {depth:?}{})",
-                path.display(),
-                if meta.loops.is_empty() {
-                    ""
-                } else {
-                    ", smpl loop"
-                }
-            ),
-            Err(e) => eprintln!("audio: export failed for {}: {e}", path.display()),
-        }
-    }
-
-    /// Write the loaded clip out to `path` as compressed **Ogg Vorbis** (VBR, ADR-0113).
-    /// Like [`Self::editor_export`], it writes what is SOUNDING (audition / mono view /
-    /// bypass), so the file matches the waveform. Ogg Vorbis carries no `smpl`/`cue`
-    /// side-car, so loop points + markers are a WAV-only feature — the audio is exported;
-    /// re-import the loop from the source WAV if you need sample-exact looping.
-    /// Write the clip out as **Opus** (ADR-0116) — the best quality per byte here, and the one
-    /// format the app has to be able to read back itself, which it now can (`decode_any`).
-    pub(crate) fn editor_export_opus(&self, path: &std::path::Path, quality: f32) {
-        let Some(clip) = self.editor_sounding() else {
-            return;
-        };
-        let bitrate = ph2d_audio_encode::opus_bitrate(quality);
-        match ph2d_audio_encode::encode_opus(clip.data(), quality)
-            .map_err(|e| e.to_string())
-            .and_then(|bytes| std::fs::write(path, bytes).map_err(|e| e.to_string()))
-        {
-            Ok(()) => println!(
-                "audio: exported {} (Opus, {} kbps)",
-                path.display(),
-                bitrate / 1_000
-            ),
-            Err(e) => eprintln!("audio: opus export failed for {}: {e}", path.display()),
-        }
-    }
-
-    pub(crate) fn editor_export_ogg(&self, path: &std::path::Path, quality: f32) {
-        let Some(clip) = self.editor_sounding() else {
-            return;
-        };
-        match ph2d_audio_encode::write_ogg(path, clip.data(), quality) {
-            Ok(()) => println!("audio: exported {} (Ogg Vorbis VBR)", path.display()),
-            Err(e) => eprintln!("audio: ogg export failed for {}: {e}", path.display()),
-        }
-    }
-
     /// Advance transport state on a natural end-of-clip (a non-looping preview
     /// that finished). Call once per frame from the bridge.
     pub(crate) fn editor_poll(&mut self) {
@@ -509,7 +423,7 @@ impl AudioSystem {
                 Cmd::GainUp => clip.apply_gain(GAIN_UP),
                 // Range ops (act on the selection).
                 Cmd::Trim => clip.apply_trim(),
-                Cmd::Cut => clip.apply_delete(),
+                Cmd::Cut | Cmd::Copy | Cmd::Paste => {} // the clipboard needs `self`, below
                 Cmd::Silence => clip.apply_silence(),
                 Cmd::FadeIn => clip.apply_fade(
                     ph2d_audio_edit::FadeShape::SCurve,
@@ -526,6 +440,12 @@ impl AudioSystem {
                 Cmd::SpectralRepair | Cmd::LearnNoise | Cmd::Denoise => {}
             }
         }
+        // The clipboard ops (W2) live in `editor/clipboard.rs`. `Copy` changes nothing, so it
+        // returns before the hot-swap below; Cut and Paste fall through to it like any other edit.
+        if self.editor_clipboard_cmd(cmd) {
+            return;
+        }
+
         match cmd {
             Cmd::SpectralRepair => {
                 self.editor_spectral_repair();

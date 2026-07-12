@@ -13,7 +13,8 @@
 
 use crate::paint::{ClippedHits, button};
 use crate::{
-    AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD, AEDIT_MARK_DEL, loop_state,
+    AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD, AEDIT_MARK_DEL,
+    AEDIT_SPLIT, loop_state,
 };
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
@@ -121,6 +122,7 @@ pub(crate) fn paint_markers_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
+    let mut y = y;
     let gap = Spacing::Sm.px();
     let count = loop_state::marker_count();
 
@@ -141,6 +143,21 @@ pub(crate) fn paint_markers_section(
         "Delete",
         count > 0,
         AEDIT_MARK_DEL,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += row_h + gap;
+
+    // **Split at Markers** — one file per piece. It lives here and not in Edit because the markers
+    // ARE the cuts: a session of N takes with N-1 markers between them falls into N assets, and
+    // `<stem>_01..NN` is exactly what the variation importer reads back as one group.
+    button(
+        Rect::new(x, y, w, row_h),
+        "Split at Markers",
+        loaded && count > 0,
+        AEDIT_SPLIT,
         scene,
         text_system,
         theme,

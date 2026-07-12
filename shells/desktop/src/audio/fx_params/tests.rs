@@ -334,7 +334,10 @@ fn the_rack_fingerprint() {
 
     let d = probe();
     seed_room();
-    println!("\n=== ADR-0117 rack fingerprint ({} effects) ===", KINDS.len());
+    println!(
+        "\n=== ADR-0117 rack fingerprint ({} effects) ===",
+        KINDS.len()
+    );
     for (kind, k) in KINDS.iter().enumerate() {
         // The first arming knob, at the far end of its travel: the setting the rack's own
         // "the arm wakes it" gate already trusts to make each effect audible.

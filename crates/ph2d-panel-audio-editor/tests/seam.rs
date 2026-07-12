@@ -10,17 +10,18 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::{
-    AEDIT_BATCH_LUFS, AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS,
-    AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE,
-    AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP,
-    AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORMALIZE,
-    AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV,
-    AEDIT_PRESET_SAVE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel,
-    MAX_FX_STAGES, clear_fx_dirty, fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping,
-    preset_sel, reset_fx_chain, set_fx_kind_defaults, set_fx_kind_names, set_has_selection,
-    set_loop_span, set_marker_count, set_preset_names, take_add_marker, take_apply_preset,
-    take_batch_lufs, take_clear_loop, take_del_marker, take_edit_cmd, take_load, take_load_preset,
-    take_play_pause, take_save_preset, take_set_loop, take_stop, take_toggle_mono,
+    AEDIT_BATCH_LUFS, AEDIT_COPY, AEDIT_CUT, AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY,
+    AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV,
+    AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD,
+    AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO,
+    AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD,
+    AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE, AEDIT_SPLIT,
+    AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
+    fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel, reset_fx_chain,
+    set_fx_kind_defaults, set_fx_kind_names, set_has_clipboard, set_has_selection, set_loop_span,
+    set_marker_count, set_preset_names, take_add_marker, take_apply_preset, take_batch_lufs,
+    take_clear_loop, take_del_marker, take_edit_cmd, take_load, take_load_preset, take_play_pause,
+    take_save_preset, take_set_loop, take_split, take_stop, take_toggle_mono,
 };
 use ph2d_panel_audio_editor::{
     AEDIT_FX_LOAD_IR, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR,
@@ -1058,4 +1059,51 @@ fn the_enabled_toggle_reaches_the_shell() {
         !take_toggle_enabled(),
         "the request is a one-shot; it fired twice"
     );
+}
+
+/// **The clipboard reaches the shell** (W2).
+///
+/// A button that is painted and hit-indexed but never dispatched is the classic dead item on this
+/// panel — it looks alive, it highlights, and it does nothing. Cut/Copy/Paste each have to arm
+/// their command through the seam, or the editor grows three buttons that lie.
+#[test]
+fn clipboard_clicks_reach_the_edit_command() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+    set_has_selection(true);
+    set_has_clipboard(true);
+
+    for (id, want, what) in [
+        (AEDIT_CUT, AudioEditCmd::Cut, "Cut"),
+        (AEDIT_COPY, AudioEditCmd::Copy, "Copy"),
+        (AEDIT_PASTE, AudioEditCmd::Paste, "Paste"),
+    ] {
+        host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            take_edit_cmd(),
+            Some(want),
+            "{what} click never armed the edit command — the button is dead"
+        );
+    }
+}
+
+/// **Split at Markers reaches the shell** (W2).
+///
+/// It does not ride `AudioEditCmd`: the pieces become FILES, so the shell has to pick a folder, and
+/// the panel never touches the filesystem. It arms its own one-shot instead — and that one-shot has
+/// to actually fire.
+#[test]
+fn split_click_reaches_the_split_request() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_split();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPLIT));
+    assert!(
+        take_split(),
+        "Split at Markers click never armed the split request — the button is dead"
+    );
+    // A one-shot: it must not still be armed on the next frame, or one click splits forever.
+    assert!(!take_split(), "the split request did not drain");
 }

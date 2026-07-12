@@ -7,9 +7,9 @@
 
 use crate::paint::{ClippedHits, ROW_H, button, toggle};
 use crate::{
-    AEDIT_CUT, AEDIT_DC, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP,
-    AEDIT_INVERT, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_REDO, AEDIT_REVERSE,
-    AEDIT_SILENCE, AEDIT_TRIM, AEDIT_UNDO, loop_state,
+    AEDIT_COPY, AEDIT_CUT, AEDIT_DC, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP,
+    AEDIT_INVERT, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_REDO,
+    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_TRIM, AEDIT_UNDO, loop_state, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::zones::Rect;
@@ -94,8 +94,15 @@ pub(crate) fn paint_edit_section(
 
     // Selection range ops — enabled only when a waveform selection exists (drag on
     // the overlay to make one).
-    let range_rows: [[(&str, NodeId, bool); 2]; 2] = [
+    // Paste is the one op here that does NOT need a selection — it needs something to paste. A
+    // Paste button lit with an empty clipboard is a button that lies.
+    let has_clip = snapshot::has_clipboard();
+    let range_rows: [[(&str, NodeId, bool); 2]; 3] = [
         [("Trim", AEDIT_TRIM, has_sel), ("Cut", AEDIT_CUT, has_sel)],
+        [
+            ("Copy", AEDIT_COPY, has_sel),
+            ("Paste", AEDIT_PASTE, has_clip),
+        ],
         [
             ("Fade In", AEDIT_FADE_IN, has_sel),
             ("Fade Out", AEDIT_FADE_OUT, has_sel),

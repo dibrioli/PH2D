@@ -22,6 +22,7 @@
 //!
 //! Plan: `docs/Audio/02_plano_implementacao_completo.md`.
 
+mod clipboard;
 mod fx;
 mod history;
 mod loops;
@@ -48,6 +49,8 @@ use std::ops::Range;
 use ph2d_audio::SampleData;
 
 use history::History;
+
+pub use clipboard::{conform, insert, split_at};
 
 /// A named cue point on the clip's timeline (W6 asset-prep) — a transition / sync /
 /// sustain marker a game runtime can react to. Written to the WAV's `cue`+`LIST/adtl`
@@ -314,6 +317,65 @@ impl EditClip {
             self.commit(ops::delete(&self.data, sel));
             self.selection = None;
         }
+    }
+
+    /// The selection, as a clip of its own — the **copy** half of the clipboard (W2).
+    ///
+    /// Non-destructive, so it costs no undo step: copying is not an edit.
+    pub fn copy_selection(&self) -> Option<SampleData> {
+        let sel = self.selection.clone()?;
+        (sel.start < sel.end).then(|| ops::trim(&self.data, sel))
+    }
+
+    /// **Cut**: take the selection *with you*, and ripple the rest closed. One undo step.
+    ///
+    /// Returns what was taken, for the caller's clipboard. The button that says "Cut" used to do
+    /// only the second half — it deleted the selection rather than cutting it, which is the one
+    /// thing the word rules out.
+    pub fn apply_cut(&mut self) -> Option<SampleData> {
+        let taken = self.copy_selection()?;
+        self.apply_delete();
+        Some(taken)
+    }
+
+    /// **Paste** `clip`: over the selection when there is one (replacing it), otherwise **at
+    /// `at`** — the playhead. One undo step.
+    ///
+    /// `at` is a parameter and not derived from the selection because **a selection cannot express
+    /// a caret**: an empty range is stored as `None` (see [`EditClip::install`]), so "insert here,
+    /// selecting nothing" has nowhere to live. The insertion point of a paste is the *playhead*, as
+    /// it is in every DAW, and only the caller knows where that is.
+    ///
+    /// `clip` is **conformed** to this clip's rate and channel layout first. The clipboard outlives
+    /// the document — copy from a 44.1 kHz stereo take, `Load` a 48 kHz mono one, paste — and raw
+    /// samples would go in 8 % sharp and in the wrong channels. Nobody hears that as a bug; they
+    /// hear it as "the paste sounds off", which is worse.
+    pub fn apply_paste(&mut self, clip: &SampleData, at: usize) {
+        if clip.is_empty() {
+            return;
+        }
+        let fitted = clipboard::conform(clip, self.data.format());
+        // A selection is a replacement target, as it is in every DAW: the pasted audio takes its
+        // place rather than shoving it aside.
+        let (base, source) = match self.selection.clone() {
+            Some(sel) if sel.start < sel.end => (sel.start, ops::delete(&self.data, sel)),
+            _ => (at.min(self.frame_count()), self.data.clone()),
+        };
+        let out = clipboard::insert(&source, base, &fitted);
+        self.commit(out);
+        self.selection = Some(base..base + fitted.frame_count());
+    }
+
+    /// Split the clip at its markers — the pieces a recording of N takes falls into (W2).
+    ///
+    /// Non-destructive: the clip is untouched and the caller decides what the pieces become (files,
+    /// variation entries). Empty when there are no markers to split on.
+    pub fn split_at_markers(&self) -> Vec<SampleData> {
+        let cuts: Vec<usize> = self.markers.iter().map(|m| m.frame).collect();
+        if cuts.is_empty() {
+            return Vec::new();
+        }
+        clipboard::split_at(&self.data, &cuts)
     }
 
     /// Current selection (frames), if any.

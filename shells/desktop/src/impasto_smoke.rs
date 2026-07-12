@@ -60,7 +60,7 @@ pub(crate) fn spawn_if_enabled(
         Ok((label, bits)) => {
             println!(
                 "PH2D_IMPASTO_SMOKE: canvas '{label}' ready — pick the Painter tool and drag. \
-                 The brush is armed with thick impasto (Depth 0.7, Grain source)."
+                 The brush is armed with impasto ON (Grain source); everything else is the default."
             );
             Some(bits)
         }
@@ -89,9 +89,11 @@ pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     // read as bristle streaks along the path instead of ribs across it. The first smoke shipped with the
     // default ViewPlane and Enio saw the corduroy immediately.
     painter.set_brush_texture_mapping(ph2d_tool_painter::TextureMapping::Tiled.to_u8());
+    // Only the master switch and the Grain source are armed here: Depth / Body / Smoothing and the whole
+    // Lighting card now come from the DEFAULTS Enio dialled in on the smoke itself (2026-07-12), so what
+    // the smoke shows is what a fresh brush does — arming them again would hide a bad default behind a
+    // good demo.
     painter.toggle_brush_impasto();
-    painter.set_brush_impasto_depth(0.7);
     painter.set_brush_impasto_source(ph2d_tool_painter::DepthSource::Grain.to_u8());
-    painter.set_brush_impasto_smoothing(0.15);
     println!("PH2D_IMPASTO_SMOKE: brush armed — drag on the canvas.");
 }

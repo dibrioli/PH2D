@@ -460,3 +460,42 @@ de croma não sabe distinguir um glint honesto do halo. O look default fica prot
 (que roda no Shine default 0.3); Shine alto sobre canvas branco lava mesmo — é escolha do artista.
 
 Perf: **1.67 ms/move**. Byte-identidade preservada (screen com `add = 0` e `mul = 1` devolve o pixel).
+
+### 10.5 Defaults do artista + o relevo viaja com o documento (2026-07-12)
+
+**Defaults (ordem do Enio, dialed-in no smoke):** brush `Depth 1.0` · `Body 0.0` (o relevo obedece o
+falloff — o arredondado) · `Smoothing 1.0`; canvas `Angle 230°` · `Elevation 30°` · `Shine 0.7`.
+Espelhados nos 4 sites (`BrushSpec::default`, `PaintState::default`, `reset_brush_impasto`,
+`brush_fallback` do painel). O `impasto_smoke` deixou de re-armar Depth/Smoothing: **arma só o switch e
+o Grain source**, para que o smoke mostre o que um pincel novo faz — arma-lo escondiria um default ruim
+atrás de uma demo boa.
+
+**BUG achado no caminho (meu, da Fase 1) — o relevo não viajava com o documento.** `StashedDoc`
+guardava `images` mas **não** `heights`/`covers`, e as chaves são `RtLayerId`, que `LayerStack::new()`
+reinicia em 1 ⇒ **os ids de dois documentos colidem por construção**. Consequências: (a) trocar de
+sprite e voltar **perdia** a escultura (o `is_trivial_stack` chamava de "descartável" um doc de 1 camada
+COM relevo — mas o sprite é só RGBA, não reconstrói canal de altura); (b) ir para um sprite **cacheado**
+passava por `restore_doc`, que não re-sourceia, então o relevo do sprite anterior **ficava** e iluminava
+a tinta do novo. É a espécie do Bug #13.c. Fix: `heights`/`covers` entram no `StashedDoc` (take no
+stash, **replace** no restore) + `doc_is_disposable() = is_trivial_stack() && heights.is_empty()`.
+Gate `relief_travels_with_its_document_and_is_never_lent_to_another` — as duas barreiras são **defesa em
+profundidade** (cada uma sozinha já bloqueia o empréstimo; o gate só fica vermelho quando as DUAS caem,
+o que a varredura de mutação mostrou — nenhuma das duas linhas é decoração).
+
+**O halo, de novo — e a gate reescrita (esta é a lição):** com `Body 0` o relevo passa a existir sobre a
+tinta translúcida, e ali o realce difuso encontra um pixel cujo canal do pigmento **já está no teto** —
+só os outros sobem, e o rosa vira branco. Medido: 21% de sobrevivência do pigmento na orla (e **23% com
+Shine 0** — logo **não é o specular**). Tentei pesar o GANHO mais duro que a sombra (`body²`): comprou
+5 pontos e **matou o modelado** (o flanco iluminado empatou com a tinta sob ele). Revertido, e a
+conclusão é honesta: **clarear tinta translúcida sobre papel branco custa saturação, em tinta como na
+física** — não é defeito, é a luz. O que continua indefensável é outra coisa, e é isso que a gate agora
+mede: **tinta SEM corpo (`cover < W_TAIL`) não recebe nem um byte de luz, em qualquer setting** (`Depth
+1` / `Body 0` / `Shine` no talo). RED por mutação (piso na curva de corpo → 900 canais movidos).
+
+**E o screen ganhou gate EXATO, em álgebra, sem limiar de imagem:** `screen(v) = v(1−add) + add` ⇒
+`screen(R) − screen(G) = (R − G)(1 − add)` — o matiz é preservado **exatamente** e o croma só escala,
+para todo `add < 1`. O aditivo plano clampa e aniquila. A tentativa anterior (contar pixels lavados)
+separava mal (69 vs 131) e teria sido um gate frágil; a álgebra separa sempre.
+`the_highlight_scales_chroma_and_never_annihilates_it` (unit em `impasto_light`), RED com `v*mul + add`.
+
+Perf: 1.94 ms/move. 43 suítes verdes, clippy 0.

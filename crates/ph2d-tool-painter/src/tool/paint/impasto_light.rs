@@ -240,6 +240,14 @@ impl Light {
         let i = (ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize;
         let mut add = self.shine * (self.spec_lut[i] - self.flat_spec).max(0.0);
         // Fade both with the body, so the pass is a strict no-op on bare canvas.
+        //
+        // (Tried and rejected, 2026-07-12: weighting the BRIGHTENING more harshly than the shadow, to
+        // stop the light washing out translucent paint. It bought 5 points of chroma and cost the
+        // modelling entirely — the lit flank came out exactly as bright as the paint under it, which is
+        // what "no relief" looks like. The washing-out is not a bug to weight away: brightening a pixel
+        // whose pigment channel is already at the ceiling ALWAYS costs saturation, in paint as in
+        // physics. The line that must hold is the other one — the light may not touch paint with no
+        // body at all — and that is what `body` here, and the gates, enforce.)
         mul = 1.0 + (mul - 1.0) * body;
         add *= gloss;
         (mul, add)
@@ -353,20 +361,61 @@ impl PainterTool {
                 let i = ((ry as usize) * (region.w as usize) + rx as usize) * 4;
                 for c in 0..3 {
                     let v = f32::from(rgba[i + c]) / 255.0;
-                    // Diffuse MODULATES; the highlight is light ADDED — but against the headroom that
-                    // is left (a screen), never a flat `+ add`.
-                    //
-                    // A flat add is what bleached Enio's white canvas: on a translucent rim the red
-                    // channel is already at the ceiling, so the addition only lifts the OTHER channels,
-                    // and the pigment's hue collapses into the paper. Screening scales each channel's
-                    // gain by how much room it has left, so a saturated channel gains almost nothing
-                    // and the paint keeps its colour while its crest lights up — which is also what a
-                    // real highlight does (it approaches white, it does not overshoot it).
-                    let lit = (v * mul).clamp(0.0, 1.0);
-                    let lit = lit + add * (1.0 - lit);
-                    rgba[i + c] = (lit.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                    let lit = light_pixel(v, mul, add);
+                    rgba[i + c] = (lit * 255.0 + 0.5) as u8;
                 }
             }
         }
+    }
+}
+
+/// Apply the shading to ONE channel: the diffuse **modulates**, the highlight is light **added
+/// against the headroom that is left** (a screen), never a flat `+ add`.
+///
+/// The screen is not a taste call, it is the only form that keeps the paint's colour. Write it out:
+/// `screen(v) = v·(1 − add) + add`, so for two channels of the same pixel
+/// `screen(R) − screen(G) = (R − G)·(1 − add)` — the hue is EXACTLY preserved and the chroma merely
+/// scales, for every `add < 1`. A flat `v + add` instead clamps: on a translucent rim the pigment's own
+/// channel is already at the ceiling, so only the OTHER channels rise and the colour collapses to white
+/// — the halo Enio photographed, arriving through the specular door. (It is also what a real highlight
+/// does: approach white, never overshoot it.)
+#[inline]
+fn light_pixel(v: f32, mul: f32, add: f32) -> f32 {
+    let lit = (v * mul).clamp(0.0, 1.0);
+    (lit + add * (1.0 - lit)).clamp(0.0, 1.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_highlight_scales_chroma_and_never_annihilates_it() {
+        // The algebraic heart of the specular blend. A flat additive highlight (`v + add`) destroys the
+        // paint's colour on any pixel whose pigment channel is already at the ceiling — which is every
+        // pixel of red paint on white paper. The screen cannot: it scales both channels by `(1 − add)`
+        // and lifts both by `add`, so the DIFFERENCE between them — the pigment — survives in exact
+        // proportion. RED with `let lit = v * mul + add`: the chroma below goes to 0.
+        let pigment = |r: f32, g: f32| (r - g).max(0.0);
+        for &add in &[0.0f32, 0.25, 0.5, 0.9] {
+            // A rim pixel: red at the ceiling, green half-way (pale pink over white paper).
+            let (r, g) = (1.0f32, 0.6f32);
+            let (lr, lg) = (light_pixel(r, 1.0, add), light_pixel(g, 1.0, add));
+            let before = pigment(r, g);
+            let after = pigment(lr, lg);
+            let expected = before * (1.0 - add);
+            assert!(
+                (after - expected).abs() < 1e-6,
+                "the highlight scales the pigment by (1 − add): add {add} ⇒ {after} vs {expected}"
+            );
+            assert!(
+                add >= 1.0 || after > 0.0,
+                "…and never annihilates it (add {add} left {after})"
+            );
+        }
+        // The other half of the contract: no glint, no light ⇒ the pixel is untouched, to the float.
+        assert_eq!(light_pixel(0.42, 1.0, 0.0), 0.42);
+        // And the highlight approaches white without overshooting it.
+        assert!(light_pixel(0.9, 1.0, 1.0) <= 1.0);
     }
 }

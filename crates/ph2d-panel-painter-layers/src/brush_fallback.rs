@@ -196,14 +196,14 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // Impasto section — the `impasto` gate (off) guarantees neutrality; the params carry the
     // when-enabled defaults (mirrors BrushSpec::default).
     impasto: false,
-    impasto_depth: 0.5, // LITERAL-PX-OK: default relief depth (mirrors BrushSpec::default)
+    impasto_depth: 1.0, // LITERAL-PX-OK: default relief depth (mirrors BrushSpec::default)
     impasto_source: 0,  // Uniform (DepthSource wire 0)
     impasto_draw_to: 0, // Color + Depth (DrawTo wire 0)
-    impasto_smoothing: 0.2, // LITERAL-PX-OK: default relief settling (mirrors BrushSpec::default)
-    impasto_body: 1.0,  // LITERAL-PX-OK: default full body (mirrors BrushSpec::default)
+    impasto_smoothing: 1.0, // LITERAL-PX-OK: default relief settling (mirrors BrushSpec::default)
+    impasto_body: 0.0,  // LITERAL-PX-OK: the relief obeys the falloff (mirrors BrushSpec::default)
     impasto_applies: true, // plain Paint mode in the pre-publish fallback
     impasto_show: true,
-    impasto_light_angle_deg: 135,
-    impasto_light_elev_deg: 45,
-    impasto_shine: 0.3, // LITERAL-PX-OK: default specular strength (mirrors PaintState::default)
+    impasto_light_angle_deg: 230,
+    impasto_light_elev_deg: 30,
+    impasto_shine: 0.7, // LITERAL-PX-OK: default specular strength (mirrors PaintState::default)
 };

@@ -187,9 +187,9 @@ impl PainterTool {
         b.impasto_smoothing = d.impasto_smoothing;
         b.impasto_body = d.impasto_body;
         self.paint.impasto_show = true;
-        self.paint.impasto_light_angle_deg = 135;
-        self.paint.impasto_light_elev_deg = 45;
-        self.paint.impasto_shine = 0.3;
+        self.paint.impasto_light_angle_deg = 230;
+        self.paint.impasto_light_elev_deg = 30;
+        self.paint.impasto_shine = 0.7;
         self.invalidate_composite();
     }
 }

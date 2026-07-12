@@ -51,9 +51,21 @@ trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
   highlight vira **screen** (`lit + add·(1−lit)`) em vez de aditivo puro — o aditivo plano ressuscitava
   o halo pelo canal saturado (gate do halo vermelha em 19%). Gate novo com **3 claims, 3 vermelhos por
   mutação**: `impasto_shine_glints_on_the_wall_without_bleaching_the_rim`. Perf 1.67 ms/move. Plano §10.4.
-- **Smoke do Enio: PENDENTE** (validar: **Shine** acende a crista · Body 0 = arredondado · girar
-  Depth/Body/Source/Smoothing DEPOIS do traço e ver o relevo mudar ao vivo). Comando do §5 inalterado;
-  card Lighting 4 linhas (sem Amount), card Body 5.
+- **Defaults do artista + BUG do relevo por documento (Fase 4.4).** Defaults (ordem do Enio): brush
+  `Depth 1` · `Body 0` · `Smoothing 1`; canvas `Angle 230°` · `Elevation 30°` · `Shine 0.7` — nos 4
+  sites espelhados; o smoke passou a NÃO re-armar Depth/Smoothing (mostra o pincel default de verdade).
+  **Bug meu, da Fase 1, achado no caminho:** `StashedDoc` não levava `heights`/`covers`, e os
+  `RtLayerId` colidem entre documentos ⇒ trocar de sprite **perdia** a escultura, e voltar a um sprite
+  cacheado fazia o relevo do anterior **iluminar** o novo (espécie do #13.c). Fix + gate
+  `relief_travels_with_its_document_and_is_never_lent_to_another` (duas barreiras, defesa em
+  profundidade — provado por mutação). **Gate do halo reescrita** para a propriedade indefensável
+  (tinta sem corpo não recebe luz **nenhuma**, em qualquer setting) — a métrica de croma antiga não
+  distinguia luz honesta de halo sob `Body 0`; e o screen ganhou **gate algébrico exato**
+  (`screen(R)−screen(G) = (R−G)(1−add)`), sem limiar de imagem. Perf 1.94 ms/move. Plano §10.5.
+- **Smoke do Enio: PENDENTE** (validar: os defaults novos · **Shine** acende a crista · girar
+  Depth/Body/Source/Smoothing DEPOIS do traço e ver o relevo mudar ao vivo · pintar relevo, trocar de
+  sprite e voltar — a escultura tem de estar lá). Comando do §5 inalterado; card Lighting 4 linhas,
+  card Body 5.
 
 Os §§ 1–8 abaixo descrevem as entregas anteriores da linha e continuam válidos; números de gates
 ficam superseded pelos desta seção.

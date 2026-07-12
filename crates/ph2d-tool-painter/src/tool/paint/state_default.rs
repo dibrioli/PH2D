@@ -155,9 +155,10 @@ impl Default for PaintState {
             // Impasto lighting (canvas-level). Upper-left at 45 deg: the reading every eye resolves as
             // raised rather than engraved. Inert until some layer actually has relief.
             impasto_show: true,
-            impasto_light_angle_deg: 135,
-            impasto_light_elev_deg: 45,
-            impasto_shine: 0.3,
+            // Enio's dialled-in light (2026-07-12, after the smoke). Mirrors `reset_brush_impasto`.
+            impasto_light_angle_deg: 230,
+            impasto_light_elev_deg: 30,
+            impasto_shine: 0.7,
             stroke_coverage: Vec::new(),
             stroke_color: Vec::new(),
             watercolor_base: None,

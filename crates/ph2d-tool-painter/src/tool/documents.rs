@@ -18,6 +18,14 @@ pub(crate) struct StashedDoc {
     canvas_rgba: Arc<Vec<u8>>,
     layers: LayerStack,
     images: BTreeMap<RtLayerId, LayerImage>,
+    /// **Impasto**: the document's relief and paint coverage, per layer. They travel with the document
+    /// for the same reason `images` does — and they MUST, for a sharper one: they are keyed by
+    /// [`RtLayerId`], and `LayerStack::new()` restarts `next_id` at 1, so two documents' ids collide by
+    /// construction. Left behind, the outgoing sprite's relief would light the incoming one's paint
+    /// (`restore_doc` never re-sourced, so nothing cleared them) — the exact shape of Bug #13.c, which
+    /// this line exists to keep dead.
+    heights: BTreeMap<RtLayerId, Vec<f32>>,
+    covers: BTreeMap<RtLayerId, Vec<u8>>,
     layer_pixel_versions: BTreeMap<RtLayerId, u64>,
     source_size: (u32, u32),
     undo: crate::undo::UndoController,
@@ -38,16 +46,16 @@ impl PainterTool {
         height: u32,
     ) {
         if self.bound_doc == Some(entity) {
-            // Same sprite re-pushed: only re-seed when there are no layers to lose (a trivial stack), so
-            // an external image-tool edit still updates the canvas without flattening our own layers.
-            if self.is_trivial_stack() {
+            // Same sprite re-pushed: only re-seed when there is no work to lose, so an external
+            // image-tool edit still updates the canvas without flattening our own layers.
+            if self.doc_is_disposable() {
                 self.set_source(rgba, width, height);
             }
             return;
         }
-        // Stash the OUTGOING document (keep its multi-layer work) before we replace it.
+        // Stash the OUTGOING document (keep its work) before we replace it.
         if let Some(old) = self.bound_doc
-            && !self.is_trivial_stack()
+            && !self.doc_is_disposable()
         {
             let stashed = self.stash_current_doc();
             self.doc_cache.insert(old, stashed);
@@ -64,13 +72,28 @@ impl PainterTool {
         }
     }
 
+    /// Whether the working document can simply be THROWN AWAY on a rebind, because the sprite's own
+    /// pixels reconstruct it: a single plain raster layer AND no impasto relief.
+    ///
+    /// The relief is the reason this is not just [`Self::is_trivial_stack`]. A one-layer document that
+    /// has been sculpted is *not* reconstructable from the sprite: the height field is a channel of its
+    /// own, and the sprite is only RGBA. Treating it as disposable silently threw the sculpting away on
+    /// the next sprite switch — the pixels came back (baked, with the light in them) and the relief did
+    /// not, so the artist could no longer edit the thickness of paint they were looking at.
+    fn doc_is_disposable(&self) -> bool {
+        self.is_trivial_stack() && self.heights.is_empty()
+    }
+
     /// Move the current working document out into a [`StashedDoc`] (leaving the painter's live fields
     /// empty — the caller restores or re-sources immediately after).
     fn stash_current_doc(&mut self) -> StashedDoc {
+        self.drop_live_relief(); // the open stroke's ground belongs to the document being put away
         StashedDoc {
             canvas_rgba: std::mem::take(&mut self.canvas_rgba),
             layers: std::mem::take(&mut self.layers),
             images: std::mem::take(&mut self.images),
+            heights: std::mem::take(&mut self.heights),
+            covers: std::mem::take(&mut self.covers),
             layer_pixel_versions: std::mem::take(&mut self.layer_pixel_versions),
             source_size: self.source_size,
             undo: std::mem::take(&mut self.undo),
@@ -87,6 +110,14 @@ impl PainterTool {
         self.canvas_rgba = doc.canvas_rgba;
         self.layers = doc.layers;
         self.images = doc.images;
+        // The relief comes back WITH its document. Note this is a REPLACE, not a merge: together with
+        // the `mem::take` in `stash_current_doc` it is defence in depth against the outgoing sprite's
+        // maps lingering (their layer ids collide with the incoming document's by construction — Bug
+        // #13.c's shape). Either one alone already blocks it; the gate goes red only when BOTH fall,
+        // which is exactly what the mutation run showed, so neither line is decoration.
+        self.heights = doc.heights;
+        self.covers = doc.covers;
+        self.drop_live_relief();
         self.layer_pixel_versions = doc.layer_pixel_versions;
         self.source_size = doc.source_size;
         self.resolve_symmetry_geometry(); // re-pin the auto-centre symmetry pivot to the restored canvas
@@ -215,6 +246,82 @@ mod tests {
             t.source_size,
             (64, 64),
             "sprite 1's canvas size is restored"
+        );
+    }
+
+    /// A sculpted document keeps its RELIEF across sprite switches — and, the sharper half, does not
+    /// LEND it to the sprite the artist switches to.
+    ///
+    /// The relief is keyed by [`RtLayerId`], and `LayerStack::new()` restarts `next_id` at 1, so two
+    /// documents' ids collide by construction. Before this, `stash_current_doc` did not take the height
+    /// maps and `restore_doc` did not replace them: switching to a stashed sprite left the OUTGOING
+    /// sprite's relief in place, and it lit the incoming one's paint through the colliding ids. Same
+    /// species as Bug #13.c (a cache that outlives the document that produced it).
+    ///
+    /// And a one-layer sculpted document is NOT disposable: the sprite is only RGBA, so its pixels
+    /// cannot reconstruct a height channel. Treating it as trivial threw the sculpting away.
+    #[test]
+    fn relief_travels_with_its_document_and_is_never_lent_to_another() {
+        // Sculpt through the PUBLIC setters + the real pointer path — the same seam the artist drives.
+        let paint_a_ridge = |t: &mut PainterTool| {
+            use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+            t.set_brush_size_px(6.0);
+            t.toggle_brush_impasto();
+            t.set_brush_impasto_depth(0.8);
+            let cp = |p: [f32; 2], phase| CanvasPointer {
+                pos: p,
+                pressure: 1.0,
+                tilt: [0.0, 0.0],
+                phase,
+            };
+            t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+            t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+        };
+
+        let mut t = PainterTool::default();
+        // Sprite 1: ONE layer, sculpted. (Deliberately trivial — that is the case the old predicate
+        // called "disposable".)
+        t.bind_document(1, vec![255u8; 32 * 32 * 4], 32, 32);
+        paint_a_ridge(&mut t);
+        assert!(!t.heights.is_empty(), "sprite 1 carries relief");
+        let relief_1: Vec<f32> = t.heights.values().next().expect("a height map").clone();
+        assert!(relief_1.iter().any(|&h| h.abs() > 0.1), "and it is real");
+
+        // Switch to sprite 2, a fresh canvas the artist has never sculpted.
+        t.bind_document(2, vec![255u8; 32 * 32 * 4], 32, 32);
+        assert!(
+            t.heights.is_empty(),
+            "sprite 2 must inherit NO relief — the ids collide, so a leftover map would light its paint"
+        );
+
+        // …and back to sprite 1: its relief is exactly what it was.
+        t.bind_document(1, vec![0u8; 4], 1, 1);
+        let back: Vec<f32> = t
+            .heights
+            .values()
+            .next()
+            .cloned()
+            .expect("sprite 1's relief came back with it");
+        assert_eq!(back, relief_1, "the sculpting survived the round trip");
+
+        // The LENDING path proper: switching to a sprite that is itself CACHED goes through
+        // `restore_doc`, which never re-sources — so nothing there would clear a leftover map. Give
+        // sprite 2 a second layer so it gets stashed, then bounce 2 → 1 → 2 and check that sprite 1's
+        // relief did not ride along. (Without the assignment in `restore_doc` this is where the ids
+        // collide and the wrong sprite lights up; the round-trip assertions above sail past it.)
+        t.bind_document(2, vec![255u8; 32 * 32 * 4], 32, 32);
+        t.layers.add_raster("Layer 2", 32, 32); // now non-trivial ⇒ stashed on the way out
+        assert!(
+            t.heights.is_empty(),
+            "sprite 2 still has no relief of its own"
+        );
+        t.bind_document(1, vec![0u8; 4], 1, 1); // 2 is stashed; 1 is restored (with its relief)
+        assert!(!t.heights.is_empty(), "…and 1 still has its own");
+        t.bind_document(2, vec![0u8; 4], 1, 1); // 2 comes back through `restore_doc`
+        assert!(
+            t.heights.is_empty(),
+            "sprite 2 must come back with ITS relief (none) — not with sprite 1's, whose layer ids \
+             collide with its own by construction"
         );
     }
 }

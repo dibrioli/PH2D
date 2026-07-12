@@ -364,11 +364,15 @@ impl Default for BrushSpec {
             // params below carry sensible *when-enabled* values (a visible ridge the moment the
             // artist ticks the box), not neutral zeros. `impasto_off_is_byte_identical` locks that.
             impasto: false,
-            impasto_depth: 0.5,
+            // Enio's dialled-in defaults (2026-07-12, after the smoke): thick paint (Depth 1) whose
+            // relief OBEYS the falloff (Body 0 — the rounded ridge he asked back for), settled soft
+            // (Smoothing 1). They are the artist's numbers, not the engine's: the `impasto` gate below
+            // is what keeps the brush byte-identical until he ticks the box.
+            impasto_depth: 1.0,
             impasto_source: DepthSource::Uniform,
             impasto_draw_to: DrawTo::ColorAndDepth,
-            impasto_smoothing: 0.2,
-            impasto_body: 1.0, // full body-with-a-wall; 0 = the relief obeys the falloff (round)
+            impasto_smoothing: 1.0,
+            impasto_body: 0.0,
         }
     }
 }

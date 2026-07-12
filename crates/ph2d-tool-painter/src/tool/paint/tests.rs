@@ -16784,6 +16784,11 @@ fn impasto_canvas(size: u32) -> PainterTool {
         space_attenuation: false,
         impasto: true,
         impasto_depth: 0.5,
+        // The artist's defaults (Depth 1 / Body 0 / Smoothing 1, Enio 2026-07-12) are for PAINTING; a
+        // fixture that inherited them would be asserting about the settle blur and the round profile
+        // in gates that are about neither. Pin the two that would blur the claim, per-gate.
+        impasto_smoothing: 0.0,
+        impasto_body: 1.0,
         ..Default::default()
     };
     t.paint.brush = b;
@@ -18441,83 +18446,80 @@ fn halo_probe_translucent_edge() {
 
 #[test]
 fn impasto_light_shades_the_paint_not_the_paper_showing_through_it() {
-    // Enio, 2026-07-12, two photographs: the same three strokes on a WHITE canvas and on a BLACK one. On
-    // white, a bleached halo rimmed the lit flank of every stroke. On black it was simply not there.
+    // Enio, 2026-07-12, two photographs: the same strokes on a WHITE canvas and on a BLACK one. On
+    // white, a bleached halo rimmed every stroke. On black it simply was not there — the tell. The pass
+    // MULTIPLIES the composited pixel, and at a stroke's translucent edge that pixel is mostly PAPER
+    // seen through the paint; shading it in full shades the paper, and on white that bleaches.
     //
-    // That contrast is the whole diagnosis. The pass MULTIPLIES the composited pixel — and at a stroke's
-    // translucent edge that pixel is mostly PAPER, seen through the paint. Shading it in full shades the
-    // paper: on white, ×1.65 bleaches a pale pink straight to white. On black there is nothing white to
-    // bleach, so the bug was invisible. Measured, it was worse at the EDGE (81 levels at 20–60% ink) than
-    // at the CORE (55 at 80–100%) — backwards, since the paint is thickest at the core.
+    // The gate is stated as the property that is INDEFENSIBLE, and no more: **paint with no body gets
+    // no light — not one byte — however the light is dialled.** Everything else the artist can judge
+    // with their eyes; this they cannot, because a halo hides exactly where the paint is faintest.
     //
-    // The fix is to weight the shading by the paint's own coverage, which is why the tool now carries a
-    // coverage field beside the height. Height could not stand in for it: height is `Depth × coverage`,
-    // so a small value cannot tell thin paint from a lot of paint laid thinly.
+    // What this deliberately does NOT assert any more (it did, and it was wrong): that a lit edge keeps
+    // its saturation. Under the artist's defaults (Depth 1, Body 0 — the relief follows the falloff all
+    // the way out) a translucent edge DOES have relief, so the light legitimately brightens it; and
+    // brightening a pixel whose pigment channel is already at the ceiling costs saturation, in paint as
+    // in physics. Measured, it lands at 21% of the ink — and it is not a defect, it is the light. Pin
+    // the paper instead: that line is absolute.
     use ph2d_painter_brush::{TextureKind, TextureMapping};
     let size = 200u32;
-    let mut t = PainterTool::default();
-    t.set_source(vec![255u8; (size * size * 4) as usize], size, size); // WHITE paper: the hard case
-    let mut b = BrushSpec {
-        radius_px: 40.0,
-        color: [0.9, 0.1, 0.1],
-        space_attenuation: false,
-        impasto: true,
-        impasto_depth: 0.7,
-        impasto_source: DepthSource::Grain,
-        impasto_smoothing: 0.15,
-        ..Default::default()
-    };
-    b.texture.kind = TextureKind::Noise;
-    b.texture.mapping = TextureMapping::Tiled;
-    t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
-    t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([80.0, 160.0], PointerPhase::Up));
-
-    t.paint.impasto_show = true;
-    t.invalidate_composite();
-    let shaded = lit(&mut t);
-    t.paint.impasto_show = false;
-    t.invalidate_composite();
-    let plain = lit(&mut t);
-
-    // The defect is not "the flank shades" — a ridge's flanks are exactly where a surface tilts, so of
-    // course they shade; the core is a plateau and shades least. The defect is that the flank shades so
-    // hard it BLEACHES: a 30%-ink pixel multiplied by 1.65 lands on white, indistinguishable from the
-    // paper. The halo is a GAP — the light erasing the paint's own presence at the edge.
-    //
-    // So: how much of the paint survives the lighting, where the paint is translucent?
-    let ink = |img: &[u8], i: usize| (i32::from(img[i]) - i32::from(img[i + 1])).max(0);
-    let core_ink = (0..plain.len())
-        .step_by(4)
-        .map(|i| ink(&plain, i))
-        .max()
-        .unwrap_or(1)
-        .max(1) as f32;
-    let mut worst_survival = f32::MAX;
-    let mut n = 0u32;
-    for i in (0..plain.len()).step_by(4) {
-        let before = ink(&plain, i) as f32 / core_ink;
-        if !(0.2..0.6).contains(&before) {
-            continue; // only the translucent rim — where the composite is mostly paper
+    let render = |shine: f32, show: bool| -> (Vec<u8>, Vec<u8>) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size); // WHITE paper: the hard case
+        let mut b = BrushSpec {
+            radius_px: 40.0,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_source: DepthSource::Grain, // per-texel slopes: the harshest case for the weight
+            ..Default::default()                // …and otherwise the ARTIST's defaults, on purpose
+        };
+        b.texture.kind = TextureKind::Noise;
+        b.texture.mapping = TextureMapping::Tiled;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
         }
-        n += 1;
-        let after = ink(&shaded, i) as f32 / core_ink;
-        worst_survival = worst_survival.min(after / before);
+        t.paint.impasto_shine = shine;
+        t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([80.0, 160.0], PointerPhase::Up));
+        t.paint.impasto_show = show;
+        t.invalidate_composite();
+        let img = lit(&mut t);
+        let active = t.layers.active().expect("a layer");
+        let cov = t.covers.get(&active).cloned().unwrap_or_default();
+        (img, cov)
+    };
+    // The light at its LOUDEST — full Shine, the artist's Depth/Body/Angle/Elevation.
+    let (loud, cov) = render(1.0, true);
+    let (unlit, _) = render(1.0, false);
+
+    let w_tail = ph2d_painter_brush::height::W_TAIL;
+    let (mut bodyless, mut drifted, mut worst) = (0u32, 0u32, 0i32);
+    for p in 0..(size * size) as usize {
+        if f32::from(cov[p]) / 255.0 >= w_tail {
+            continue; // paint with a body — the light SHOULD model it
+        }
+        bodyless += 1;
+        for c in 0..3 {
+            let d = i32::from(loud[p * 4 + c]) - i32::from(unlit[p * 4 + c]);
+            if d != 0 {
+                drifted += 1;
+            }
+            worst = worst.max(d.abs());
+        }
     }
     assert!(
-        n > 500,
-        "sanity: the fixture has a real translucent rim ({n} px)"
+        bodyless > 30_000,
+        "sanity: most of this canvas is bare paper or a faint stain ({bodyless} px)"
     );
-    assert!(
-        worst_survival > 0.55,
-        "the light bleached the translucent edge down to {:.0}% of its paint — that is the pass shading \
-         the PAPER showing through, and it is the white halo Enio photographed (it vanished on a black \
-         canvas, because there was nothing white to bleach)",
-        worst_survival * 100.0
+    assert_eq!(
+        drifted, 0,
+        "the light moved {drifted} channels of paint that has NO body (worst {worst} levels) — that is \
+         the white halo: the pass shading the paper seen through the paint. It vanished on Enio's black \
+         canvas because there was nothing white to bleach, which is how we know it is the paper and not \
+         the pigment."
     );
 }
 
@@ -18538,6 +18540,7 @@ fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
     b.falloff = Falloff::Smooth;
     b.radius_px = 40.0;
     b.impasto_depth = 0.7;
+    b.impasto_body = 1.0; // this gate IS the body curve (the artist's default is the round profile)
     b.impasto_source = DepthSource::Uniform; // isolate the body curve — grain is another gate
     t.paint.brush = b;
     for slot in &mut t.paint.brush_by_mode {

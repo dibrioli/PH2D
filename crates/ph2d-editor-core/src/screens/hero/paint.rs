@@ -291,6 +291,11 @@ pub fn paint_hero_screen(
         // otherwise. WITHOUT this entry the registered+visible panel is never
         // reached by the z-order walk → never painted.
         ids::FLIP_PANEL,
+        // Flip frame strip (ADR-0114 W3 docked `ph2d-panel-flip-frames`): a faixa
+        // INFERIOR da tool Flip (células + transporte). Mesma disciplina: sem esta
+        // entrada o painel registrado e visível nunca é alcançado pelo walk — e
+        // nunca é pintado.
+        ids::FLIP_STRIP_PANEL,
         // Motion Nodes docked panels (M0.T9): the graph-editor panel fills the
         // `motion_graph` split region, the params panel takes the inspector slot.
         // Both `paint()` no-op when the `motion` tool is inactive (bridge-driven

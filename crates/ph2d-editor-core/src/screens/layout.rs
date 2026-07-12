@@ -162,10 +162,19 @@ pub struct HeroLayout {
     /// of the scene. Painted only while `panel_visible("timeline")` (the shell
     /// drives that from the timeline toggle). Height [`TIMELINE_DOCK_H`].
     pub timeline: Rect,
+    /// Flip frame-strip slot (ADR-0114 W3) — a low bottom-docked band spanning the
+    /// same column as the timeline. Painted only while the `flip` tool is active
+    /// (`panel_visible("flip_frames")`, bridge-driven). Height [`FLIP_STRIP_H`].
+    pub flip_strip: Rect,
 }
 
 /// Default docked height of the general timeline panel (px).
 pub const TIMELINE_DOCK_H: f32 = 240.0; // LITERAL-PX-OK: timeline dock default height
+
+/// Docked height of the Flip frame strip (px): title + toolbar row + the cells
+/// row. It is a STRIP (one layer's cells), not a dope-sheet — the multi-layer
+/// view is the global timeline's job (W6, deferred).
+pub const FLIP_STRIP_H: f32 = 132.0; // LITERAL-PX-OK: Flip frame strip dock height
 
 impl HeroLayout {
     pub fn for_viewport(viewport: Rect) -> Self {
@@ -286,6 +295,18 @@ impl HeroLayout {
             timeline_w,
             TIMELINE_DOCK_H.min(chrome_h),
         );
+        // Flip frame strip (ADR-0114 W3): a BAIXA faixa inferior do Flip — a tira de
+        // quadros da camada ativa + transporte. Compartilha a coluna do timeline
+        // (mesma largura, entre as colunas de chrome), mas é MUITO mais baixa: é uma
+        // tira, não um dope-sheet. Só é pintada com a tool Flip ativa; quando o
+        // timeline global está aberto, o painel se empilha ACIMA dele (o offset é
+        // decidido no `paint`, que é quem sabe da visibilidade).
+        let flip_strip = Rect::new(
+            timeline_x,
+            (chrome_bot - FLIP_STRIP_H).max(chrome_top),
+            timeline_w,
+            FLIP_STRIP_H.min(chrome_h),
+        );
         Self {
             viewport,
             top_bar,
@@ -302,6 +323,7 @@ impl HeroLayout {
             motion_graph,
             motion_timeline_slot,
             timeline,
+            flip_strip,
         }
     }
 }

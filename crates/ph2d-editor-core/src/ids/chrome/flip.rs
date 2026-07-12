@@ -141,6 +141,78 @@ pub fn flip_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
     flip_fnv_node_id(&format!("flip_layer.blendopt.{layer_id}.{mode}"))
 }
 
+// ── Frame strip (bottom-docked `ph2d-panel-flip-frames`, ADR-0114 W3) ────────
+// The animator's inner loop: the cells of the active layer, the transport, Ghost
+// Frames, autokey and the tween. Bottom dock (its own band — the global timeline
+// is a separate, deferred integration, W6).
+
+/// Frame-strip panel outer rect id (z-order + hit-barrier).
+pub const FLIP_STRIP_PANEL: NodeId = hash_node_id("flip.strip.panel");
+/// Frame-strip close (X) button.
+pub const FLIP_STRIP_CLOSE: NodeId = hash_node_id("flip.strip.close");
+
+// ── Transport ────────────────────────────────────────────────────────────────
+/// Play / pause toggle.
+pub const FLIP_PLAY: NodeId = hash_node_id("flip.strip.play");
+/// Previous DRAWING (skips holds — the animator's flip, not a frame step).
+pub const FLIP_PREV_DRAWING: NodeId = hash_node_id("flip.strip.prev");
+/// Next DRAWING.
+pub const FLIP_NEXT_DRAWING: NodeId = hash_node_id("flip.strip.next");
+/// Frames-per-second chip (the object's own FPS).
+pub const FLIP_FPS_NUM: NodeId = hash_node_id("flip.strip.fps_num");
+
+// ── Ghost Frames ─────────────────────────────────────────────────────────────
+/// Ghost Frames on/off (per object).
+pub const FLIP_GHOST: NodeId = hash_node_id("flip.strip.ghost");
+/// How many drawings BEFORE to ghost.
+pub const FLIP_GHOST_BEFORE_NUM: NodeId = hash_node_id("flip.strip.ghost_before_num");
+/// How many drawings AFTER to ghost.
+pub const FLIP_GHOST_AFTER_NUM: NodeId = hash_node_id("flip.strip.ghost_after_num");
+
+// ── Autokey (per-tool semantics — see `ph2d_flip::AutokeyPolicy`) ────────────
+/// Autokey on/off: drawing past a key's hold creates a new key.
+pub const FLIP_AUTOKEY: NodeId = hash_node_id("flip.strip.autokey");
+/// Additive: a new key born of DRAWING starts as a copy (not blank).
+pub const FLIP_ADDITIVE: NodeId = hash_node_id("flip.strip.additive");
+
+// ── Key ops ──────────────────────────────────────────────────────────────────
+/// Add a blank key after the current one.
+pub const FLIP_KEY_ADD: NodeId = hash_node_id("flip.strip.key_add");
+/// Duplicate the current key (deep copy).
+pub const FLIP_KEY_DUP: NodeId = hash_node_id("flip.strip.key_dup");
+/// Delete the current key.
+pub const FLIP_KEY_DELETE: NodeId = hash_node_id("flip.strip.key_del");
+/// Exposure (hold) of the selected key, in frames.
+pub const FLIP_HOLD_NUM: NodeId = hash_node_id("flip.strip.hold_num");
+/// Move the selected key one frame earlier / later.
+pub const FLIP_KEY_LEFT: NodeId = hash_node_id("flip.strip.key_left");
+pub const FLIP_KEY_RIGHT: NodeId = hash_node_id("flip.strip.key_right");
+
+// ── Tween ────────────────────────────────────────────────────────────────────
+/// How many inbetweens to generate.
+pub const FLIP_TWEEN_NUM: NodeId = hash_node_id("flip.strip.tween_num");
+/// Generate the inbetweens between the two selected keys (or the current key and
+/// the next one).
+pub const FLIP_TWEEN_ADD: NodeId = hash_node_id("flip.strip.tween_add");
+
+// ── Cycle (post behavior of the active layer) ────────────────────────────────
+/// The cycle dropdown chip (None / Hold / Loop / Ping-Pong).
+pub const FLIP_CYCLE_DD: NodeId = hash_node_id("flip.strip.cycle_dd");
+
+/// Derive the id of cycle option `mode` (`CycleMode as u8`) in the open cycle
+/// dropdown popover.
+#[must_use]
+pub fn flip_cycle_option_id(mode: u8) -> NodeId {
+    flip_fnv_node_id(&format!("flip.strip.cycleopt.{mode}"))
+}
+
+/// Derive the id of the strip cell at `index` (position in the active layer's
+/// cell list, NOT the frame number — the index is bounded by what is painted).
+#[must_use]
+pub fn flip_cell_id(index: usize) -> NodeId {
+    flip_fnv_node_id(&format!("flip.strip.cell.{index}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

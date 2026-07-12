@@ -50,6 +50,17 @@ fn pixel_camera() -> CameraRaw {
 /// Rasteriza `drawing` num alvo `Rgba8Unorm` `W×H`, limpo transparente, e devolve
 /// os pixels RGBA (sem padding de linha).
 fn render(device: &wgpu::Device, queue: &wgpu::Queue, drawing: &FlipDrawing) -> Vec<u8> {
+    render_with(device, queue, drawing, pixel_camera())
+}
+
+/// O mesmo, com a câmera dada — o que deixa o teste de Ghost Frames rasterizar o
+/// MESMO desenho com e sem o tint de fantasma.
+fn render_with(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    drawing: &FlipDrawing,
+    camera: CameraRaw,
+) -> Vec<u8> {
     let format = wgpu::TextureFormat::Rgba8Unorm;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ph2d-flip test target"),
@@ -68,7 +79,7 @@ fn render(device: &wgpu::Device, queue: &wgpu::Queue, drawing: &FlipDrawing) -> 
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
     let mut fr = FlipRenderer::new(device, format);
-    fr.upload(device, queue, &pixel_camera(), &pack_drawing(drawing));
+    fr.upload(device, queue, &camera, &pack_drawing(drawing));
     fr.ensure_depth(device, (W, H));
 
     let mut encoder =
@@ -925,4 +936,65 @@ fn a_subpixel_thin_stroke_fades_instead_of_flickering() {
     );
     // A grossa é opaca (o fade não pode tocar em traço normal).
     assert!(a_thick > 240, "traço normal fica intacto: {a_thick}");
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_ghost_is_the_same_silhouette_recoloured_and_faded() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Ghost Frames (W3.T3.3): o fantasma NÃO é a arte com opacidade baixa — é a
+    // SILHUETA dela, 100% recolorida na cor do lado (verde = passado) e esmaecida
+    // pelo fade. Duas coisas têm de valer ao mesmo tempo:
+    //   (a) a COBERTURA é idêntica à do passe normal (é o mesmo desenho);
+    //   (b) a COR é a do tint, não a do traço (que aqui é vermelho puro).
+    let art = horizontal_stroke(6.0, 0.4); // borda macia: pega o perfil todo
+    let normal = render(&device, &queue, &art);
+
+    let green = [0.145, 0.420, 0.137];
+    let fade = 0.5;
+    let cam = pixel_camera().with_ghost_tint(green, fade);
+    let ghost = render_with(&device, &queue, &art, cam);
+
+    // (a) A silhueta: em cada coluna do traço, o alpha do fantasma é o alpha normal
+    // × fade — o perfil inteiro (núcleo E queda macia), não só o miolo.
+    for y in 28..37 {
+        let a_n = f32::from(alpha_at(&normal, 32, y));
+        let a_g = f32::from(alpha_at(&ghost, 32, y));
+        assert!(
+            (a_g - a_n * fade).abs() <= 3.0,
+            "y={y}: o fantasma tem de ser a MESMA cobertura × {fade} (normal {a_n}, ghost {a_g})"
+        );
+    }
+    // (b) A cor: o traço é VERMELHO, o fantasma sai VERDE. Num traço DURO o núcleo é
+    // chapado (alpha = fade), então a des-multiplicação do alvo premultiplicado é
+    // exata — sem ruído de quantização.
+    let hard_cam = pixel_camera().with_ghost_tint(green, fade);
+    let hard = horizontal_stroke(6.0, 1.0);
+    let normal = render(&device, &queue, &hard);
+    let ghost = render_with(&device, &queue, &hard, hard_cam);
+    let a = f32::from(alpha_at(&ghost, 32, 32)) / 255.0;
+    assert!(
+        (a - fade).abs() < 0.02,
+        "o núcleo do fantasma é o fade puro: {a} vs {fade}"
+    );
+    let rgb = rgb_at(&ghost, 32, 32);
+    let straight = [
+        f32::from(rgb[0]) / 255.0 / a,
+        f32::from(rgb[1]) / 255.0 / a,
+        f32::from(rgb[2]) / 255.0 / a,
+    ];
+    for (i, want) in green.iter().enumerate() {
+        assert!(
+            (straight[i] - want).abs() < 0.05,
+            "canal {i}: fantasma sai na cor do TINT ({straight:?} vs {green:?})"
+        );
+    }
+    // E o passe normal segue vermelho (o tint não vaza para quem não é fantasma).
+    let n = rgb_at(&normal, 32, 32);
+    assert!(
+        n[0] > 200 && n[1] < 40,
+        "o traço normal continua vermelho: {n:?}"
+    );
 }

@@ -342,8 +342,8 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     };
     use ph2d_editor::screens::hero::ids::{
         AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL, FLIP_PANEL,
-        GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL, UPS_PANEL,
-        VECTOR_PANEL,
+        FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL,
+        UPS_PANEL, VECTOR_PANEL,
     };
     let inside = |panel_id| {
         hero.store
@@ -378,6 +378,10 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // scrollbar thumb (the Layers stack overflows), so it must intercept the
         // wheel — same bug otherwise (wheel zooms the camera under the panel).
         || inside(FLIP_PANEL)
+        // Flip frame strip (bottom dock, W3): sem isto um clique numa CÉLULA cairia
+        // no canvas atrás dela (o objeto Flip se estende por baixo da faixa) e o
+        // gesto viraria um traço — a tira ficaria intocável.
+        || inside(FLIP_STRIP_PANEL)
         // Audio Mixer + Audio Editor (Inspector-slot docks). Both publish a
         // scrollbar thumb, so both must intercept the wheel — a panel that scrolls
         // by thumb but zooms the camera on the wheel is the same bug twice. Missing

@@ -52,6 +52,11 @@ struct Camera {
     viewport: vec2<f32>,   // px
     px_per_world: f32,     // escala de espessura (1 = tela absoluta; object scale quando escalado)
     _pad: f32,
+    // Ghost Frames (W3): `a > 0` = este passe é um FANTASMA — a arte vira SILHUETA
+    // 100% recolorida em `rgb` (não é um blend da cor original: é o look clássico do
+    // onion) e o alpha inteiro é multiplicado por `a` (o fade 1/|Δ|). `a == 0` = passe
+    // normal, e o `if` nem toca a cor.
+    ghost_tint: vec4<f32>,
 }
 
 struct GpuPoint {
@@ -401,7 +406,16 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // energia é preservada e a linha desbota suavemente. `thickness` é a espessura
     // em px de tela, sem clamp.
     mask *= smoothstep(0.0, 1.0, in.thickness);
-    let alpha = in.color.a * in.opacity * mask;
+    // Ghost Frames: a SILHUETA da arte, chapada na cor do lado (verde = passado,
+    // azul = futuro) e esmaecida pelo fade. A cobertura (`mask`) é a mesma — só a
+    // cor e o alpha mudam, então o fantasma tem exatamente a forma do desenho.
+    var rgb = in.color.rgb;
+    var a = in.color.a * in.opacity;
+    if (cam.ghost_tint.a > 0.0) {
+        rgb = cam.ghost_tint.rgb;
+        a = a * cam.ghost_tint.a;
+    }
+    let alpha = a * mask;
     // Fragmento ~transparente é DESCARTADO (GP `gpencil_frag.glsl`: a < 0.001) —
     // senão ele ESCREVE depth e fura a geometria sobreposta que chega depois (o
     // canto vazio do quad viraria um buraco no traço vizinho).
@@ -409,5 +423,5 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         discard;
     }
     // Saída PREMULTIPLICADA (blend = One, OneMinusSrcAlpha).
-    return vec4<f32>(in.color.rgb * alpha, alpha);
+    return vec4<f32>(rgb * alpha, alpha);
 }

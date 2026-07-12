@@ -349,10 +349,12 @@ impl FlipObject {
 
     // ── amostragem por playhead ──────────────────────────────────────────────
 
-    /// O desenho ativo da camada `layer_id` no quadro `frame` (semântica de hold).
+    /// O desenho ativo da camada `layer_id` no quadro `frame` — semântica de hold
+    /// **e do ciclo da camada** (é o que o render amostra; a autoria usa o caminho
+    /// cru `FlipLayer::drawing_at`, W3.T3.2).
     #[must_use]
     pub fn drawing_at(&self, layer_id: LayerId, frame: Frame) -> Option<DrawingId> {
-        self.layer(layer_id)?.drawing_at(frame)
+        self.layer(layer_id)?.drawing_at_cycled(frame)
     }
 
     /// O quadro (número inteiro) em que o playhead está, dado o FPS deste objeto.
@@ -362,13 +364,14 @@ impl FlipObject {
         f.clamp(i32::MIN as i64, i32::MAX as i64) as i32
     }
 
-    /// Amostra todas as camadas no quadro `frame`: `(camada, desenho ativo)`. A
-    /// visibilidade/lock é decisão de render/edição, não desta amostragem.
+    /// Amostra todas as camadas no quadro `frame`: `(camada, desenho ativo)` —
+    /// honrando o ciclo de cada camada. A visibilidade/lock é decisão de render/
+    /// edição, não desta amostragem.
     #[must_use]
     pub fn sample(&self, frame: Frame) -> Vec<(LayerId, Option<DrawingId>)> {
         self.layers
             .iter()
-            .map(|l| (l.id, l.drawing_at(frame)))
+            .map(|l| (l.id, l.drawing_at_cycled(frame)))
             .collect()
     }
 

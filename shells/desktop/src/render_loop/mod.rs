@@ -28,6 +28,7 @@ mod equalize_sizes_bridge;
 pub(crate) mod flip_bridge;
 pub(crate) mod flip_pass;
 mod flip_pass_cache;
+mod flip_pass_ghosts;
 mod gizmo_prune;
 mod hierarchy;
 mod image_edit;
@@ -1410,6 +1411,17 @@ impl crate::App {
                             &ev,
                             flip,
                             &mut self.flip_active_layer,
+                            &self.playhead,
+                        );
+                        // ADR-0114 W3: e os eventos da TIRA (transporte, ops de
+                        // chave, exposição, tween, ciclo, Ghost Frames) — documento
+                        // + playhead, aplicados aqui pelo mesmo drain.
+                        crate::flip_strip::apply_panel_event(
+                            &ev,
+                            flip,
+                            self.flip_active_layer,
+                            &mut self.playhead,
+                            &mut self.flip_strip,
                         );
                         if let Some(t) = tools.active_mut() {
                             t.handle_panel_event(ev);
@@ -2546,8 +2558,14 @@ impl crate::App {
             // ADR-0114 W2: espelha o estado da tool Flip (ativa + estilo de brush)
             // pro input_dispatch decidir/assar o desenho sem downcast (o downcast
             // vive no flip_bridge, allowlistado).
-            let (flip_active, flip_style) =
-                flip_bridge::publish(hero, tools, flip, self.flip_active_layer);
+            let (flip_active, flip_style) = flip_bridge::publish(
+                hero,
+                tools,
+                flip,
+                self.flip_active_layer,
+                &self.playhead,
+                &self.flip_strip,
+            );
             self.flip_active = flip_active;
             self.flip_style = flip_style;
 

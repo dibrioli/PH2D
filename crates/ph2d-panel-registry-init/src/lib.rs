@@ -54,6 +54,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-flip")]
     reg.push(ErasedPanel::new::<ph2d_panel_flip::FlipPanel>());
+    #[cfg(feature = "panel-flip-frames")]
+    reg.push(ErasedPanel::new::<ph2d_panel_flip_frames::FlipFramesPanel>());
     #[cfg(feature = "panel-grid-snap")]
     reg.push(ErasedPanel::new::<ph2d_panel_grid_snap::GridSnapPanel>());
     #[cfg(feature = "panel-hierarchy")]
@@ -123,6 +125,10 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-flip")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-flip-frames")]
         {
             n += 1;
         }

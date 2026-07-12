@@ -13,6 +13,7 @@
 | [`02_referencia_algoritmos_blender_5.2.md`](02_referencia_algoritmos_blender_5.2.md) | os algoritmos do GP 5.2 por subsistema, com pseudocódigo, constantes e `arquivo:linha`: dados · engine · shader · AA · tween · curvas · draw/erase · fill · sculpt · frames/onion · materiais · VFX · seleção/cíclicas · GL→wgpu | antes de CADA tópico de implementação |
 | [`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) | o doc definitivo do traço: o tripé, o invariante, **a mordida (mecanismo provado + a evidência de que o GP tem o mesmo artefato, ABERTO)**, o fix de 4 peças que a matou, o oráculo de aparência + a bateria, kill-criteria, AA | antes de tocar `ph2d-flip-render` |
 | [`04_alem_do_blender.md`](04_alem_do_blender.md) | estado da arte além do GP (com fontes): stroke rendering, inbetweening (BetweenIT/espiral log), fill (LazyBrush/trapped-ball), a paisagem dos apps (TVPaint/Toonz/Harmony/Krita), lições do redesign GPv3, tabela lib GP→crate Rust | ao decidir "faz como o Blender ou melhor?" |
+| [`05_frames_ghost_tween.md`](05_frames_ghost_tween.md) | o doc da W3: o modelo de tempo (chave/hold/sentinela/vão), os ciclos, o algoritmo dos Ghost Frames, o autokey por-tool (e por que a borracha SEMPRE duplica), o tween (pareamento/padding/auto-flip), a tira | antes de tocar frames/tempo/tween |
 | [`BUGS_flip.md`](BUGS_flip.md) | **os bugs cuja causa ENGANAVA** (sintoma → causa-raiz → becos → solução → lições): a mordida, o oráculo verde-com-bug, o AA da linha fina, o NaN do ponto duplicado, o grid que perdia vizinhos | ANTES de caçar um bug parecido — e depois de resolver um |
 | `../HANDOFF_flip_impl.md` | tracker do que LANDOU (W0-W2 + WT + a saga das 8 rodadas do traço) | para saber o estado real do código |
 | `../HANDOFF_flip_NEXT.md` | onboarding do próximo agente da linha (Modo L + primeira tarefa) | ao abrir a linha |
@@ -40,9 +41,14 @@ no `04 §2`), o pós-processo do fill (Schneider > smooth 20×).
 - **Wave WT (o traço) FECHADA em 2026-07-12** — a "mordida" morreu: a cobertura é a **união
   global da polilinha** num único passe (janela `p0`/`p3` + vizinhos geométricos por broadphase
   + `capsule_dn` única + par clamp/fade sub-pixel). 15 testes GPU, 5 mutações provadas, custo
-  real de 1.7 ms num traço de 4000 pontos. Detalhe: [`03`](03_traco_rasterizacao.md). **Pendente
-  só o smoke do Enio.**
-- Próximas waves: **W3 (Frames/Ghost/Tween)** → W4 (Fill) → W5 (Reshape) → W6 (Timeline global).
+  real de 1.7 ms num traço de 4000 pontos. Smoke **aprovado pelo Enio**. Detalhe:
+  [`03`](03_traco_rasterizacao.md).
+- **Wave W3 (Frames · Ghost Frames · Tween) FECHADA em 2026-07-12** — o Flip virou app de
+  ANIMAÇÃO: tira de frames com exposição, transporte + ciclos por camada, Ghost Frames,
+  autokey por-tool, flip por desenho (↑/↓) e tween com auto-flip. Detalhe: [`05`](05_frames_ghost_tween.md).
+  **Pendente o smoke do Enio.**
+- Próximas waves: **W4 (Fill)** → W5 (Reshape) → W6 (Timeline global, **adiada até a timeline
+  principal ficar pronta** — Enio 2026-07-12).
 
 ## Princípios deste módulo (inegociáveis)
 

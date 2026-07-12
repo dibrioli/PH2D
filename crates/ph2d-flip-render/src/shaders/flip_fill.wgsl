@@ -9,6 +9,10 @@ struct Camera {
     viewport: vec2<f32>,
     px_per_world: f32,
     _pad: f32,
+    // Ghost Frames (W3) — o mesmo uniform do passe de traço: `a > 0` = fantasma,
+    // e o fill entra na SILHUETA junto (senão o ghost sairia com o miolo colorido
+    // e só o contorno tingido).
+    ghost_tint: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> cam: Camera;
@@ -33,10 +37,17 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    // A cor chega PREMULTIPLICADA; o fantasma recolore a silhueta e reaplica o fade
+    // (com o alpha premultiplicado, o tint entra como `tint.rgb · alpha`).
+    var c = in.color;
+    if (cam.ghost_tint.a > 0.0) {
+        let a = c.a * cam.ghost_tint.a;
+        c = vec4<f32>(cam.ghost_tint.rgb * a, a);
+    }
     // GP `gpencil_frag.glsl`: fragmento ~transparente descarta (a < 0.001) — um
     // fill invisível não pode escrever depth e ocultar o que está abaixo.
-    if (in.color.a < 0.001) {
+    if (c.a < 0.001) {
         discard;
     }
-    return in.color; // premult over (blend One, OneMinusSrcAlpha)
+    return c; // premult over (blend One, OneMinusSrcAlpha)
 }

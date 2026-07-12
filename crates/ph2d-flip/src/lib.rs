@@ -24,25 +24,37 @@
 //! irmão. Deps só de `ph2d-core` (Vec2), `ph2d-painter-effects` (BlendMode
 //! canônico de 22 modos), serde e postcard.
 
+mod autokey;
 mod color;
+mod cycle;
 mod doc;
 mod drawing;
+mod expose;
 mod frame;
 mod ids;
 mod layer;
 mod object;
 mod onion;
 mod stroke;
+mod tween;
 
+pub use autokey::AutokeyPolicy;
 pub use color::Rgba;
+pub use cycle::{CycleMode, LayerCycle, map_frame};
 pub use doc::{FlipDoc, SceneSample};
 pub use drawing::FlipDrawing;
 pub use frame::{FlipFrame, Hold, KeyKind};
 pub use ids::{DrawingId, FlipObjectId, Frame, LayerId, MaterialId};
 pub use layer::{FlipLayer, LayerMask};
 pub use object::{DEFAULT_FPS, DupMode, FlipObject};
-pub use onion::{OnionMode, OnionSettings};
+pub use onion::{GHOST_MIN_ALPHA, Ghost, OnionMode, OnionSettings, ghosts};
 pub use stroke::{Cap, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_WIDTH, Fill, FlipStroke, Point};
+pub use tween::{TweenOptions, TweenRequest, tween_drawing};
+
+/// A curva de easing do tween — o MESMO enum que a timeline/graph editor usam
+/// (`ph2d-anim`), re-exportado para o painel/shell não dependerem da crate de
+/// animação só por causa de um preset.
+pub use ph2d_anim::Interp;
 
 /// O compositor de blend do Painter, re-exportado para os consumidores do Flip
 /// (render/painel) casarem o tipo sem depender de `ph2d-painter-effects`
@@ -51,7 +63,10 @@ pub use ph2d_painter_effects::BlendMode;
 
 /// Versão do schema de serialização da [`FlipDoc`]. Bump ⇒ migração ou hard-break
 /// (postcard é posicional — mudança de campo quebra saves antigos, HR-14).
-pub const FLIP_SCHEMA_VERSION: u32 = 1;
+///
+/// v2 (W3): a camada ganhou `cycle` (pre/post behavior) + `use_onion`, e o
+/// `OnionSettings` ganhou `kind_filter`.
+pub const FLIP_SCHEMA_VERSION: u32 = 2;
 
 #[cfg(test)]
 mod tests {

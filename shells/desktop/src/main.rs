@@ -41,6 +41,7 @@ mod connector_gesture;
 mod connector_handles;
 mod connector_live;
 mod cursor_pos;
+mod flip_autokey;
 mod flip_demo;
 mod flip_draw;
 mod flip_entities;
@@ -48,6 +49,7 @@ mod flip_erase;
 mod flip_gizmo_view;
 mod flip_layers;
 mod flip_smooth;
+mod flip_strip;
 mod flip_transform;
 mod forwarding;
 mod hero_bridge;
@@ -263,6 +265,7 @@ impl App {
             flip_draw: crate::flip_draw::FlipDraw::default(),
             flip_active_layer: None,
             flip_erasing: false,
+            flip_strip: crate::flip_strip::FlipStrip::default(),
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,

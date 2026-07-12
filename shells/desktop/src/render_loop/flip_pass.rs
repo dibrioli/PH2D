@@ -23,7 +23,7 @@
 
 use super::flip_pass_cache::TessCache;
 use ph2d_core::Playhead;
-use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, LayerId};
+use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, Frame, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
@@ -113,6 +113,10 @@ pub(crate) fn render(
     active_layer: Option<LayerId>,
     models: &[(FlipObjectId, Xform)],
     playhead: &Playhead,
+    // Ghost Frames: `Some(chaves selecionadas)` = a tool Flip está ativa (fantasmas
+    // ligados, sujeitos aos gates do objeto/camada e ao "some no play"); `None` =
+    // outra tool no comando — a cena Flip aparece limpa, sem fantasma.
+    ghosts: Option<&[Frame]>,
     game_rt: &GameRt,
     camera: &Camera2d,
     window: WindowSize,
@@ -122,11 +126,29 @@ pub(crate) fn render(
     // sobra quando a camada-alvo é invisível/irresolvível — aí cai no overlay
     // Normal (o usuário nunca desenha às cegas).
     let (layers, unfolded) = collect_layers(flip, playhead, preview, active_layer, models);
-    if layers.is_empty() && unfolded.is_none() {
+    if layers.is_empty() && unfolded.is_none() && ghosts.is_none() {
         return;
     }
     let (w, h) = (window.width.max(1), window.height.max(1));
     let cam = camera_raw(camera, window);
+
+    // Os fantasmas vão PRIMEIRO: o blit do composite é premult-over, então a arte do
+    // quadro atual cai por cima deles (e não o contrário).
+    if let Some(selected) = ghosts {
+        let comp = flip_composite.get_or_insert_with(|| FlipComposite::new(gpu));
+        super::flip_pass_ghosts::draw(
+            flip,
+            flip_render,
+            &mut comp.tess,
+            models,
+            playhead,
+            selected,
+            game_rt,
+            &cam,
+            (w, h),
+            gpu,
+        );
+    }
 
     if !layers.is_empty() {
         composite_layers(
@@ -254,7 +276,7 @@ fn composite_layers(
 /// Rasteriza `data` DIRETO no `game_rt` (premult-over, `LoadOp::Load`) com o depth
 /// próprio do Flip — o overlay do preview ao vivo. Uma passagem simples (sem o
 /// compositor 22-modos): o traço em curso é sempre Normal por cima.
-fn draw_overlay(
+pub(super) fn draw_overlay(
     flip_render: &mut FlipRenderer,
     data: &FlipGpuData,
     cam: &CameraRaw,
@@ -381,7 +403,7 @@ fn layer_key(object_id: u64, layer_id: u32) -> u64 {
 /// model`, e a espessura escalada pela escala média do objeto (`px_per_world ·
 /// mean_scale`) — para o traço engrossar junto quando o gizmo escala. É isto que
 /// deixa o gizmo de sprite mover/girar/escalar a arte SEM reescrever geometria.
-fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
+pub(super) fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
     let [a, b, c, d, e, f] = model.0;
     // `model` como 4×4 col-major (`m[col][row]`): local (x, y, 0, 1) → mundo.
     let m: [[f32; 4]; 4] = [

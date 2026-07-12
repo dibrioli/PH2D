@@ -6,10 +6,12 @@
 > **O traço (bug aberto + fix):** [`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) ·
 > **Estado da arte além do Blender:** [`04_alem_do_blender.md`](04_alem_do_blender.md).
 >
-> **Estado (2026-07-12):** W0+W1+W2 **integrados ao main** · **WT (o traço) FECHADA** — a
-> mordida morreu; a cobertura é a UNIÃO GLOBAL da polilinha (15 testes GPU + 5 mutações
-> provadas; `docs/Flip/03`). Pendente só o smoke do Enio. **A wave atual é a W3
-> (Frames · Ghost · Tween).**
+> **Estado (2026-07-12):** W0+W1+W2 **integrados ao main** · **WT (o traço) FECHADA** (smoke
+> APROVADO pelo Enio) · **W3 (Frames · Ghost · Tween) FECHADA** — o Flip virou app de
+> ANIMAÇÃO (tira com exposição, ciclos, Ghost Frames, autokey por-tool, flip por desenho,
+> tween). Doc: [`05_frames_ghost_tween.md`](05_frames_ghost_tween.md). Pendente o smoke.
+> **A wave atual é a W4 (Fill).** A **W6 (timeline global) está ADIADA** até a timeline
+> principal ficar pronta (Enio 2026-07-12).
 
 ## Regras permanentes (valem em TODA task)
 
@@ -80,9 +82,14 @@ morreu em todas as suas formas. Detalhe completo em
 
 ---
 
-# W3 — Frames · Ghost Frames · Tween
+# W3 — Frames · Ghost Frames · Tween (FECHADA 2026-07-12 · pendente o smoke)
 
-**Objetivo:** a tira de frames própria (não a timeline global), transporte com ciclos, Ghost
+**Entregue:** o modelo de tempo completo (vão/exposição/ciclos), os Ghost Frames como função
+pura + passe de silhueta tingida, o autokey POR TOOL (a borracha sempre duplica), o flip por
+desenho, o tween com auto-flip, e a **tira** (`ph2d-panel-flip-frames`). Detalhe e gotchas:
+[`05_frames_ghost_tween.md`](05_frames_ghost_tween.md).
+
+**Objetivo (batido):** a tira de frames própria (não a timeline global), transporte com ciclos, Ghost
 Frames e Tween. Nomes intuitivos (README §nomes). Referências: `02` §1 (frames/invariantes),
 §3 (tween), §8 (onion EXATO, autokey, primitivas); `04` §2 (tween v2) e §4 (UX dos apps).
 
@@ -90,39 +97,47 @@ Frames e Tween. Nomes intuitivos (README §nomes). Referências: `02` §1 (frame
 add/duplicate/hold por gesto) + os aprendizados TVPaint/Harmony (04 §4: flip como inner loop,
 células de exposição, pre/post behavior).
 
-- [ ] **T3.1 — Tira de frames.** Célula por keyframe (nº de exposições visível na célula, à
+- [x] **T3.1 — Tira de frames.** Célula por keyframe (nº de exposições visível na célula, à
       TVPaint), quadro atual destacado, Add/Duplicate/Delete/Reorder, drag de **Hold**.
       Respeitar os invariantes do mapa (02 §1 — tabela; delete-vira-sentinel, duplicate
       transacional). Aceite: manipular quadros pela tira; testes tabelados dos invariantes.
-- [ ] **T3.2 — Transporte + ciclos.** play/pause/FPS + **pre/post behavior por camada**
+- [x] **T3.2 — Transporte + ciclos.** play/pause/FPS + **pre/post behavior por camada**
       (None/Loop/PingPong/Hold) como wrap-mode do sampler (04 §4). Aceite: loop e pingpong
       reproduzem sem duplicar frames.
-- [ ] **T3.3 — Ghost Frames.** Port EXATO do `get_frame_id` (02 §8: RELATIVE default,
+- [x] **T3.3 — Ghost Frames.** Port EXATO do `get_frame_id` (02 §8: RELATIVE default,
       ABSOLUTE opcional, filtro por tipo, before-first Δ++, wrap SHOW_LOOP corrigido p/
       `first..last`) como **função pura testável** no `ph2d-flip`; tint = silhueta 100%
       recolorida (tokens `FlipGhostBefore`/`After` verde/azul GP) + alpha `1/|Δ|` piso 0.1;
       1 draw + 2 uniforms por ghost no passe existente; **some no play**; flag por camada.
       Aceite: goldens dos 3 modos + smoke com 2/2 ghosts.
-- [ ] **T3.4 — Autokey por-tool** (02 §5): desenhar sem chave no frame → cria em branco (ou
+- [x] **T3.4 — Autokey por-tool** (02 §5): desenhar sem chave no frame → cria em branco (ou
       duplicata com "Additive"); **borracha/reshape → SEMPRE duplicata**. Aceite: teste do
       trio needs_new + smoke.
-- [ ] **T3.5 — Flip de desenho (atalhos).** Prev/next **por DESENHO** (pula holds; F/G do
+- [x] **T3.5 — Flip de desenho (atalhos).** Prev/next **por DESENHO** (pula holds; F/G do
       Harmony) + por frame; cels vizinhas residentes na GPU (latência zero — é o inner loop
       do animador, 04 §4). Aceite: flip instantâneo em doc com holds.
-- [ ] **T3.6 — Tween (dados).** GP literal (02 §3): pareamento por índice/seleção + auto-flip
+- [x] **T3.6 — Tween (dados).** GP literal (02 §3): pareamento por índice/seleção + auto-flip
       (cruzamento + desempate 15°) + `sample_curve_padded` (padding ao MAX preservando pontos
       originais — NÃO reamostragem uniforme) + lerp não-clampado com fator POR CAMADA + easing
       (`ph2d-anim::Interp`) + BREAKDOWN kind + `exclude_breakdowns` (re-tween idempotente).
       Fills POR FATIA (bug do original — 02 §3). Aceite: testes tabelados (extremos
       pixel-idênticos em t=0/1; auto-flip nos 3 ramos; órfãos estáveis).
-- [ ] **T3.7 — Tween (UI).** Selecionar A→B, "Add Tween" → N inbetweens; slider + easing;
-      scrub por posição absoluta; auto-flip on. Órfãos de B: fade-in opcional. Aceite: gerar
-      3 inbetweens e reproduzir.
-- [ ] **T3.8 — Cache de playback.** Ring de texturas GPU (frames compostos) keyed
-      por (frame, escala), invalidação por (camada, desenho) sujo, **drop de frame no relógio**
-      (04 §4/Krita). Bench do budget (60fps, 200k pontos + 4 ghosts). Aceite: bench registrado.
-- [ ] **T3.9 — (Se o escopo aguentar) Marcadores fixos (light table)** — `Vec<FrameRef>` no
-      mesmo passe de ghost. Senão: carry-over explícito.
+- [x] **T3.7 — Tween (UI).** Caixa de contagem + botão **Add Tween** na tira: gera N inbetweens
+      entre a chave atual e a seguinte, auto-flip ligado, fator por posição absoluta.
+      **Parcial e declarado:** o *picker de easing* e o toggle de *fade-in dos órfãos* NÃO estão
+      na UI (o motor suporta os dois — `TweenOptions`); hoje a UI usa Linear + sem fade.
+      Carry-over de UI, não de motor.
+- [ ] **T3.8 — Cache de playback.** **NÃO foi feito, e por escolha:** a tesselação já é cacheada
+      por DESENHO (T1.8) e é ela o custo real da troca de quadro; o ring de texturas COMPOSTAS só
+      compensa se o composite virar o gargalo — e isso se **mede** antes (memória
+      `feedback_measure_perf_symptom_scale`). Fica como carry-over COM bench: ring keyed por
+      (frame, escala), invalidação por (camada, desenho) sujo, drop de frame no relógio (04 §4).
+- [ ] **T3.9 — Marcadores fixos (light table)** — carry-over explícito (o passe de ghost já
+      aceita a lista; falta a UI de marcar).
+
+**Carry-overs da W3 (conscientes, não esquecidos):** drag de célula/borda na tira (mover chave e
+esticar hold por arrasto — hoje pelos botões ◀/▶ e pela caixa Hold) · multi-seleção de chaves
+(destrava o modo `Selected` dos fantasmas, já pronto no modelo) · light table.
 
 **Gate W3:** smoke — 2 desenhos-chave, ghosts ligados, Add Tween, play com loop; goldens do
 onion; bench do cache.
@@ -185,7 +200,12 @@ paint-behind, multiframe.
 
 ---
 
-# W6 — Integração com a Timeline principal (DEFERIDA — última)
+# W6 — Integração com a Timeline principal (ADIADA — Enio 2026-07-12)
+
+> **A timeline principal ainda está em desenvolvimento.** A integração espera ela ficar pronta;
+> até lá a tira do W3 é a UI de tempo do Flip (e o playhead JÁ é o global — não há relógio a
+> reconciliar quando a hora chegar).
+
 
 **Objetivo:** plugar os frames do Flip na `ph2d-timeline`/dope-sheet/`Playhead` globais.
 **Coordenar com o dono da timeline** (`PropKind` é enum fechado).

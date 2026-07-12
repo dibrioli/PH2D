@@ -12,7 +12,7 @@
 use crate::fill::FillVertex;
 use crate::pack::FlipGpuData;
 
-/// A câmera do passe, no layout do uniform WGSL (80 bytes, align 16).
+/// A câmera do passe, no layout do uniform WGSL (96 bytes, align 16).
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraRaw {
@@ -23,10 +23,16 @@ pub struct CameraRaw {
     /// Pixels por unidade de mundo (`thickness_px = raio · px_per_world`).
     pub px_per_world: f32,
     pub _pad: f32,
+    /// **Ghost Frames** (W3): `[r, g, b, alpha]`. `alpha > 0` transforma o passe
+    /// num FANTASMA — a arte sai como silhueta recolorida em `rgb`, com todo o
+    /// alpha multiplicado por `alpha` (o fade `1/|Δ|`). `alpha == 0` (o default,
+    /// e o que [`CameraRaw::new`] produz) = passe normal, byte a byte como antes.
+    pub ghost_tint: [f32; 4],
 }
 
 impl CameraRaw {
     /// Constrói a câmera a partir do afim mundo→clip, do viewport e do zoom.
+    /// Passe NORMAL (sem tint de fantasma).
     #[must_use]
     pub fn new(world_to_clip: [[f32; 4]; 4], viewport: [f32; 2], px_per_world: f32) -> Self {
         Self {
@@ -34,7 +40,17 @@ impl CameraRaw {
             viewport,
             px_per_world,
             _pad: 0.0,
+            ghost_tint: [0.0; 4],
         }
+    }
+
+    /// A mesma câmera, marcada como **fantasma**: a arte vira silhueta na cor
+    /// `rgb` e todo o alpha é multiplicado por `alpha` (que deve ser `> 0`, senão
+    /// o passe volta a ser normal).
+    #[must_use]
+    pub fn with_ghost_tint(mut self, rgb: [f32; 3], alpha: f32) -> Self {
+        self.ghost_tint = [rgb[0], rgb[1], rgb[2], alpha];
+        self
     }
 }
 

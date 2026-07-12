@@ -24,7 +24,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// Rejeitar é a única leitura honesta.
 /// v5 (doc 56): `ProjectFile` ganhou `motion` (o grafo de Motion Nodes, em texto) — 4º campo. Pelo
 /// mesmo motivo posicional, um v4 não desserializa aqui.
-const PROJECT_SCHEMA: u32 = 5;
+/// v6 (ADR-0114 W3): a `FlipDoc` — que vive DENTRO do `ProjectState` — mudou de forma: a camada
+/// ganhou `cycle` + `use_onion` e o `OnionSettings` ganhou `kind_filter` (`FLIP_SCHEMA_VERSION` 1→2).
+/// Não é campo novo no ARQUIVO, é o MESMO campo com outro layout — e posicional é posicional.
+const PROJECT_SCHEMA: u32 = 6;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

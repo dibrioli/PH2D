@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-panel-flip-frames"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Flip FRAME STRIP — typed `Panel<State>` (ADR-0114 W3). Bottom-docked band,
+# visible only while the `flip` tool is active: as células da camada ativa (com a
+# exposição de cada uma), o transporte (play + flip por DESENHO), Ghost Frames,
+# autokey e o tween. É a tira do animador (Procreate Animation Assist / TVPaint),
+# NÃO o dope-sheet global (esse é a timeline, W6 — integração deferida).
+#
+# O painel é STATELESS: o shell publica um `FlipStripSnapshot` por frame
+# (`set_current_flip_strip`) e as edições saem por `ToolPanelEvent` (o drain do
+# shell aplica no `FlipDoc` + no playhead). Mesmo contrato do `ph2d-panel-flip`.
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+
+[dev-dependencies]
+# Blindagem Fase 1.2: seam headless (populate → apply_event → barramento). Dev-dep
+# só — o gate anti-ciclo lê `[dependencies]`, então isto não cria ciclo em runtime.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

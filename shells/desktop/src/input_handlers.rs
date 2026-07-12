@@ -384,17 +384,26 @@ impl App {
                     "Timeline · pause"
                 }));
             }
-            KeyCode::Comma => {
+            KeyCode::Comma | KeyCode::Period => {
+                let back = code == KeyCode::Comma;
+                // Com a tool Flip ativa o passo é UM QUADRO DO OBJETO (12/24 fps),
+                // não um tick de simulação (60 Hz): senão "avançar um quadro" andaria
+                // um quinto de desenho e o animador nunca cairia numa chave.
+                let fps = self
+                    .flip_active
+                    .then(|| self.flip_fps())
+                    .flatten()
+                    .unwrap_or_else(|| 1.0 / self.playhead.fixed_dt());
                 self.playhead.pause();
-                let fps = 1.0 / self.playhead.fixed_dt();
                 let f = self.playhead.frame(fps);
-                self.playhead.seek_frame((f - 1).max(0), fps);
+                let to = if back { (f - 1).max(0) } else { f + 1 };
+                self.playhead.seek_frame(to, fps);
             }
-            KeyCode::Period => {
-                self.playhead.pause();
-                let fps = 1.0 / self.playhead.fixed_dt();
-                let f = self.playhead.frame(fps);
-                self.playhead.seek_frame(f + 1, fps);
+            // ADR-0114 W3.T3.5 — **o flip do animador**: as setas pulam por DESENHO
+            // (não por quadro), atravessando os holds. É o inner loop da profissão:
+            // ir e voltar entre os dois desenhos que se está comparando.
+            KeyCode::ArrowUp | KeyCode::ArrowDown if self.flip_active => {
+                self.flip_step_drawing(code == KeyCode::ArrowDown);
             }
             _ => {}
         }

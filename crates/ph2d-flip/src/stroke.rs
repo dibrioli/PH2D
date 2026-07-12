@@ -161,6 +161,24 @@ impl FlipStroke {
         &mut self.color
     }
 
+    /// Um traço VAZIO com os mesmos atributos de curva (fechado, caps, hardness,
+    /// material, fill) — o molde para reconstruir a polilinha ponto a ponto (o
+    /// tween, o offset, o refit). Os arrays SoA saem vazios, invariante intacto.
+    #[must_use]
+    pub fn clone_attrs(&self) -> Self {
+        Self {
+            pos: Vec::new(),
+            width: Vec::new(),
+            opacity: Vec::new(),
+            color: Vec::new(),
+            closed: self.closed,
+            cap: self.cap,
+            hardness: self.hardness,
+            material: self.material,
+            fill: self.fill,
+        }
+    }
+
     /// Lê o ponto `i` (view). `None` fora do range.
     #[must_use]
     pub fn point(&self, i: usize) -> Option<Point> {

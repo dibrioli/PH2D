@@ -49,6 +49,77 @@ fn layers_snapshot(flip: &FlipDoc, active: Option<LayerId>) -> ph2d_panel_flip::
     }
 }
 
+/// Build the frame-strip snapshot (W3): the cells of the ACTIVE layer + the
+/// transport + the authoring flags. The panel paints exactly this and knows
+/// nothing about frames — the model stays in one place.
+#[cfg(feature = "panel-flip-frames")]
+fn strip_snapshot(
+    flip: &FlipDoc,
+    active_layer: Option<LayerId>,
+    playhead: &ph2d_core::Playhead,
+    strip: &crate::flip_strip::FlipStrip,
+) -> ph2d_panel_flip_frames::FlipStripSnapshot {
+    use ph2d_panel_flip_frames::{FlipCell, FlipStripSnapshot};
+    let Some(obj) = flip.objects().first() else {
+        return FlipStripSnapshot::default();
+    };
+    let layer = active_layer
+        .and_then(|id| obj.layer(id))
+        .or_else(|| obj.layers().last());
+    let Some(layer) = layer else {
+        return FlipStripSnapshot {
+            fps: obj.fps,
+            playing: playhead.is_playing(),
+            ..Default::default()
+        };
+    };
+    let frame = obj.frame_at(playhead);
+    let cells = layer
+        .cells()
+        .into_iter()
+        .map(|(key, drawing, exposure)| FlipCell {
+            key,
+            exposure,
+            breakdown: layer
+                .frames()
+                .get(&key)
+                .is_some_and(|f| f.kind == ph2d_flip::KeyKind::Breakdown),
+            instanced: obj.drawing(drawing).is_some_and(|d| d.is_instanced()),
+        })
+        .collect();
+    FlipStripSnapshot {
+        has_layer: true,
+        layer_name: layer.name.clone(),
+        cells,
+        current_frame: frame,
+        // A chave ATIVA (a que está na tela) — no meio de um hold é a que começou
+        // antes, não o quadro corrente. É ela que a tira destaca.
+        current_key: layer
+            .active_key(frame)
+            .filter(|k| layer.frames().get(k).is_some_and(|f| f.drawing.is_some())),
+        playing: playhead.is_playing(),
+        fps: obj.fps,
+        ghost: obj.onion.enabled,
+        ghost_before: obj.onion.frames_before,
+        ghost_after: obj.onion.frames_after,
+        autokey: strip.autokey,
+        additive: strip.additive,
+        tween_count: strip.tween_count,
+        cycle: cycle_wire(layer.cycle.post),
+    }
+}
+
+/// `CycleMode` → o discriminante que o chip do painel mostra (a ordem do enum).
+#[cfg(feature = "panel-flip-frames")]
+fn cycle_wire(post: ph2d_flip::CycleMode) -> u8 {
+    match post {
+        ph2d_flip::CycleMode::None => 0,
+        ph2d_flip::CycleMode::Hold => 1,
+        ph2d_flip::CycleMode::Loop => 2,
+        ph2d_flip::CycleMode::PingPong => 3,
+    }
+}
+
 /// `(flip_active, style)` — `flip_active` = the Flip tool is ACTIVE; `style` =
 /// the brush/mode snapshot (present whenever the tool is registered). Also
 /// drives panel visibility + publishes the style/layers snapshots the panel
@@ -59,6 +130,8 @@ pub(crate) fn publish(
     tools: &mut ToolRegistry,
     flip: &FlipDoc,
     active_layer: Option<LayerId>,
+    playhead: &ph2d_core::Playhead,
+    strip: &crate::flip_strip::FlipStrip,
 ) -> (bool, Option<FlipStyleSnapshot>) {
     let flip_active = tools
         .active()
@@ -66,6 +139,8 @@ pub(crate) fn publish(
 
     // ── 1. Panel visibility (mirror of the Vector dock takeover). ──
     hero.panel_visibility.insert("flip", flip_active);
+    // A tira (faixa inferior) acompanha a tool — é chrome de autoria.
+    hero.panel_visibility.insert("flip_frames", flip_active);
     {
         use std::sync::atomic::{AtomicBool, Ordering};
         static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -107,6 +182,14 @@ pub(crate) fn publish(
             ph2d_panel_flip::FlipLayersSnapshot::default()
         });
     }
+
+    // ── 5. Publish the frame-strip snapshot (W3). ──
+    #[cfg(feature = "panel-flip-frames")]
+    ph2d_panel_flip_frames::set_current_flip_strip(if flip_active {
+        strip_snapshot(flip, active_layer, playhead, strip)
+    } else {
+        ph2d_panel_flip_frames::FlipStripSnapshot::default()
+    });
 
     (flip_active, style)
 }

@@ -18,6 +18,9 @@ ph2d-core = { path = "../ph2d-core" }
 # paralelo de 22 variantes (DIRETIVA_IMPLEMENTACAO §5). Deps leves: serde +
 # ph2d-color, sem bevy/gpu.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# `Interp` — a MESMA curva de easing da timeline/graph editor (o tween do W3 reusa
+# o solver de bézier em vez de recriar 10 equações de easing).
+ph2d-anim = { path = "../ph2d-anim" }
 # Modelo puro serializável: undo por snapshot + save (mesma disciplina do
 # ph2d-vec-scene). postcard = wire format canônico do repo.
 serde = { version = "1", features = ["derive"] }

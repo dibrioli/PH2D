@@ -18,24 +18,25 @@ use ph2d_tool_flip::EraseMode;
 /// Below this opacity a soft-erased point is dropped on pen-up (GP `erase.cc`).
 const OPACITY_REMOVE_THRESHOLD: f32 = 0.05;
 
-/// Resolve the active drawing for erasing (active layer → fallback top), unless
-/// the layer is locked or the frame has no key. Returns `&mut FlipDrawing`.
+/// O desenho que a borracha edita — via o **autokey por-tool** (W3.T3.4): no rabo
+/// de um hold, a borracha SEMPRE trabalha numa DUPLICATA do desenho que está na
+/// tela (nunca num quadro em branco novo, que apagaria o nada e deixaria a arte
+/// que o usuário vê intacta num quadro anterior). Camada travada e canvas vazio
+/// continuam recusando (`None`) — a borracha nunca inventa um quadro.
 fn active_drawing_mut<'a>(
     flip: &'a mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<LayerId>,
+    strip: &crate::flip_strip::FlipStrip,
 ) -> Option<&'a mut FlipDrawing> {
-    let oid = flip.objects().first().map(|o| o.id)?;
-    let obj = flip.object_mut(oid)?;
-    let layer = active_layer
-        .filter(|id| obj.layer(*id).is_some())
-        .or_else(|| obj.layers().last().map(|l| l.id))?;
-    if obj.layer(layer).is_some_and(|l| l.locked) {
-        return None;
-    }
-    let frame = obj.frame_at(playhead);
-    let did = obj.layer(layer).and_then(|l| l.drawing_at(frame))?;
-    obj.drawing_mut(did)
+    let (oid, _lid, did) = crate::flip_autokey::target_drawing(
+        flip,
+        playhead,
+        active_layer,
+        strip,
+        crate::flip_autokey::FlipEdit::Modify,
+    )?;
+    flip.object_mut(oid)?.drawing_mut(did)
 }
 
 /// A fresh stroke carrying `src`'s per-curve attributes (empty points).
@@ -82,16 +83,18 @@ fn split_by<F: Fn(usize) -> bool>(s: &FlipStroke, keep: F) -> Vec<FlipStroke> {
 
 /// Erase once at `center` (world) with `radius` (world) + `strength` (Soft only).
 /// Returns `true` if the document changed.
+#[allow(clippy::too_many_arguments)] // doc+playhead+camada+tira+modo+círculo+força
 pub(crate) fn erase_at(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<LayerId>,
+    strip: &crate::flip_strip::FlipStrip,
     mode: EraseMode,
     center: Vec2,
     radius: f32,
     strength: f32,
 ) -> bool {
-    let Some(dr) = active_drawing_mut(flip, playhead, active_layer) else {
+    let Some(dr) = active_drawing_mut(flip, playhead, active_layer, strip) else {
         return false;
     };
     match mode {
@@ -157,8 +160,9 @@ pub(crate) fn cleanup_soft(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<LayerId>,
+    strip: &crate::flip_strip::FlipStrip,
 ) -> bool {
-    let Some(dr) = active_drawing_mut(flip, playhead, active_layer) else {
+    let Some(dr) = active_drawing_mut(flip, playhead, active_layer, strip) else {
         return false;
     };
     let before = dr.strokes.len();
@@ -212,7 +216,12 @@ impl crate::App {
         if soft {
             let active_layer = self.flip_active_layer;
             if let Some(gfx) = self.gfx.as_mut() {
-                cleanup_soft(&mut gfx.flip, &self.playhead, active_layer);
+                cleanup_soft(
+                    &mut gfx.flip,
+                    &self.playhead,
+                    active_layer,
+                    &self.flip_strip,
+                );
             }
         }
         true
@@ -240,6 +249,7 @@ impl crate::App {
                 &mut gfx.flip,
                 &self.playhead,
                 active_layer,
+                &self.flip_strip,
                 style.erase,
                 Vec2::new(local[0] as f32, local[1] as f32),
                 radius_local,
@@ -283,6 +293,7 @@ mod tests {
             &mut doc,
             &Playhead::default(),
             Some(l),
+            &crate::flip_strip::FlipStrip::default(),
             EraseMode::Stroke,
             Vec2::new(2.0, 0.0),
             0.5,
@@ -302,6 +313,7 @@ mod tests {
             &mut doc,
             &Playhead::default(),
             Some(l),
+            &crate::flip_strip::FlipStrip::default(),
             EraseMode::Hard,
             Vec2::new(2.0, 0.0),
             0.5,
@@ -322,6 +334,7 @@ mod tests {
                 &mut doc,
                 &Playhead::default(),
                 Some(l),
+                &crate::flip_strip::FlipStrip::default(),
                 EraseMode::Soft,
                 Vec2::new(2.0, 0.0),
                 10.0,
@@ -339,7 +352,12 @@ mod tests {
             min_op < OPACITY_REMOVE_THRESHOLD,
             "center faded below threshold"
         );
-        assert!(cleanup_soft(&mut doc, &Playhead::default(), Some(l)));
+        assert!(cleanup_soft(
+            &mut doc,
+            &Playhead::default(),
+            Some(l),
+            &crate::flip_strip::FlipStrip::default(),
+        ));
     }
 
     #[test]
@@ -352,6 +370,7 @@ mod tests {
             &mut doc,
             &Playhead::default(),
             Some(l),
+            &crate::flip_strip::FlipStrip::default(),
             EraseMode::Stroke,
             Vec2::new(2.0, 0.0),
             0.5,

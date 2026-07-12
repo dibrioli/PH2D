@@ -183,6 +183,7 @@ ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector", optional = true }
 # the `flip` tool is active. Shell publishes the style + layers snapshots via
 # `ph2d_panel_flip::set_current_flip_*` (flip_bridge).
 ph2d-panel-flip = { path = "../../crates/ph2d-panel-flip", optional = true }
+ph2d-panel-flip-frames = { path = "../../crates/ph2d-panel-flip-frames", optional = true }
 # Motion Nodes graph-editor panel — the shell's `motion_bridge` publishes the
 # graph view via `ph2d_panel_motion_graph::set_current_motion_graph` (M1.E10),
 # so the shell needs a direct optional dep beyond the registry-init feature.
@@ -313,6 +314,7 @@ default = [
     "panel-painter-layers",
     "panel-vector",
     "panel-flip",
+    "panel-flip-frames",
     "panel-audio-mixer",
     "panel-audio-editor",
     "panel-motion-graph",
@@ -347,6 +349,7 @@ panel-vector         = ["ph2d-panel-registry-init/panel-vector", "dep:ph2d-panel
 # layers snapshots via `ph2d_panel_flip::set_current_flip_*` + reads the OKLCH
 # picker back into the tool), so the shell needs the direct dep too.
 panel-flip           = ["ph2d-panel-registry-init/panel-flip", "dep:ph2d-panel-flip"]
+panel-flip-frames    = ["ph2d-panel-registry-init/panel-flip-frames", "dep:ph2d-panel-flip-frames"]
 panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # Direct dep too: the render_loop bridge publishes live levels via
 # `set_snapshot` + reads `master_muted` to drive the engine's master gain.

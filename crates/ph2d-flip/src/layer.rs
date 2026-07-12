@@ -10,6 +10,7 @@
 //! portada 1:1 do Grease Pencil 5.2 (`blenkernel/intern/grease_pencil.cc`, ver
 //! `02_referencia §1`), clean-room.
 
+use crate::cycle::{LayerCycle, map_frame};
 use crate::frame::{FlipFrame, Hold, KeyKind};
 use crate::ids::{DrawingId, Frame, LayerId};
 use ph2d_painter_effects::BlendMode;
@@ -47,6 +48,13 @@ pub struct FlipLayer {
     pub locked: bool,
     /// Máscaras que agem sobre esta camada (vazio = sem máscara).
     pub masks: Vec<LayerMask>,
+    /// Ciclo (pre/post behavior) — o wrap-mode do amostrador FORA do vão da
+    /// camada. O default reproduz o comportamento pré-W3 (nada antes, segura
+    /// depois): ver [`crate::CycleMode`].
+    pub cycle: LayerCycle,
+    /// Esta camada participa dos Ghost Frames (W3.T3.3). Ligada por padrão — o
+    /// artista desliga nas camadas de fundo/referência, que só poluiriam.
+    pub use_onion: bool,
 }
 
 impl FlipLayer {
@@ -62,6 +70,8 @@ impl FlipLayer {
             visible: true,
             locked: false,
             masks: Vec::new(),
+            cycle: LayerCycle::default(),
+            use_onion: true,
         }
     }
 
@@ -115,6 +125,90 @@ impl FlipLayer {
             .range((Bound::Excluded(key), Bound::Unbounded))
             .next()
             .map(|(&k, _)| k)
+    }
+
+    // ── vão + ciclos (W3.T3.2) ───────────────────────────────────────────────
+
+    /// O **vão** da camada: `[primeira chave, fim)`, ou `None` se ela não tem
+    /// nenhuma chave REAL (só sentinelas / vazia). `fim` = a sentinela de fim, se
+    /// a última chave for uma; senão `última chave + 1` (a última chave real expõe
+    /// um quadro — esticar esse hold na tira cria a sentinela e fixa a duração).
+    ///
+    /// É o intervalo que os ciclos repetem/espelham (`crate::cycle::map_frame`).
+    #[must_use]
+    pub fn span(&self) -> Option<(Frame, Frame)> {
+        let (&first, _) = self.frames.iter().find(|(_, f)| !f.is_end())?;
+        let (&last, last_f) = self.frames.iter().next_back()?;
+        let end = if last_f.is_end() {
+            last
+        } else {
+            last.saturating_add(1)
+        };
+        (end > first).then_some((first, end))
+    }
+
+    /// **O desenho ativo no quadro `frame`, honrando o ciclo da camada** — o que o
+    /// RENDER amostra. Dentro do vão é idêntico a [`Self::drawing_at`]; fora, o
+    /// pre/post behavior decide (nada / segura / repete / vai-e-volta).
+    ///
+    /// A **autoria** (desenhar, apagar, keyar) usa o caminho CRU
+    /// ([`Self::drawing_at`]): editar o quadro 30 de um `Loop` não pode escrever no
+    /// desenho do quadro 6 — ele cria uma chave em 30 (que passa a ser o fim do
+    /// vão). Amostrar ≠ autorar.
+    /// (O ciclo default reproduz o caminho cru EXATAMENTE — mas o mapeamento roda
+    /// sempre, porque uma camada com **sentinela de fim** precisa dele: no cru, o
+    /// quadro depois da sentinela é vazio, e é o `post` que decide se aquilo é o
+    /// fim do desenho ou um hold. Atalhar por "ciclo == default" faria a exposição
+    /// fixa da última chave apagar a arte.)
+    #[must_use]
+    pub fn drawing_at_cycled(&self, frame: Frame) -> Option<DrawingId> {
+        let span = self.span()?;
+        self.drawing_at(map_frame(self.cycle, span, frame)?)
+    }
+
+    // ── navegação por DESENHO (o "flip" do animador, W3.T3.5) ────────────────
+
+    /// A chave REAL anterior a `frame` (estritamente) — o desenho anterior. Estando
+    /// no meio de um hold, cai no INÍCIO da exposição atual (e o toque seguinte vai
+    /// ao desenho de verdade anterior); é a semântica de F/G do Harmony.
+    #[must_use]
+    pub fn prev_drawing_key(&self, frame: Frame) -> Option<Frame> {
+        self.frames
+            .range((Bound::Unbounded, Bound::Excluded(frame)))
+            .rev()
+            .find(|(_, f)| !f.is_end())
+            .map(|(&k, _)| k)
+    }
+
+    /// A próxima chave REAL depois de `frame` (estritamente) — o desenho seguinte.
+    #[must_use]
+    pub fn next_drawing_key(&self, frame: Frame) -> Option<Frame> {
+        self.frames
+            .range((Bound::Excluded(frame), Bound::Unbounded))
+            .find(|(_, f)| !f.is_end())
+            .map(|(&k, _)| k)
+    }
+
+    /// A chave ATIVA em `frame` (a maior `≤ frame`, sentinela inclusa) — o que a
+    /// tira destaca e o autokey consulta.
+    #[must_use]
+    pub fn active_key(&self, frame: Frame) -> Option<Frame> {
+        self.frames.range(..=frame).next_back().map(|(&k, _)| k)
+    }
+
+    /// As chaves REAIS em ordem, com a exposição (nº de quadros) de cada uma — a
+    /// própria tira de frames. A exposição da última chave real é `1` quando nada a
+    /// delimita (o hold implícito é infinito; a tira mostra 1 e o usuário estica).
+    #[must_use]
+    pub fn cells(&self) -> Vec<(Frame, DrawingId, u32)> {
+        self.frames
+            .iter()
+            .filter_map(|(&k, f)| f.drawing.map(|d| (k, d)))
+            .map(|(k, d)| {
+                let dur = self.duration_at(k).max(1);
+                (k, d, dur)
+            })
+            .collect()
     }
 
     /// Remove as end-frames CONSECUTIVAS logo após `after` (na ordem de chaves).
@@ -249,6 +343,36 @@ impl FlipLayer {
         true
     }
 
+    /// Fixa o fim do vão da camada em `end`: move (ou cria) a **sentinela de fim**
+    /// que vem depois de `key`, e marca a chave como duração FIXA. É como a última
+    /// chave ganha exposição (`crate::FlipObject::set_exposure`).
+    ///
+    /// `false` se `key` não é uma chave real, se `end <= key`, ou se há uma chave
+    /// REAL em `end` (aí o vão já está delimitado por ela).
+    pub(crate) fn set_end_sentinel(&mut self, key: Frame, end: Frame) -> bool {
+        if end <= key || self.frames.get(&key).is_none_or(|f| f.drawing.is_none()) {
+            return false;
+        }
+        if self.frames.get(&end).is_some_and(|f| !f.is_end()) {
+            return false;
+        }
+        // A sentinela antiga (se houver) some — só uma fecha o vão.
+        let old: Vec<Frame> = self
+            .frames
+            .range((Bound::Excluded(key), Bound::Unbounded))
+            .filter(|(_, f)| f.is_end())
+            .map(|(&k, _)| k)
+            .collect();
+        for k in old {
+            self.frames.remove(&k);
+        }
+        if let Some(f) = self.frames.get_mut(&key) {
+            f.implicit_hold = false; // duração fixa: a sentinela é quem manda
+        }
+        self.frames.insert(end, FlipFrame::end());
+        true
+    }
+
     /// Mata todas as chaves (usado ao remover a camada — o objeto zera o refcount
     /// via `recompute_users` depois).
     pub(crate) fn clear_frames(&mut self) {
@@ -259,6 +383,7 @@ impl FlipLayer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cycle::CycleMode;
 
     fn d(n: u32) -> Option<DrawingId> {
         Some(DrawingId(n))
@@ -266,6 +391,75 @@ mod tests {
 
     fn layer() -> FlipLayer {
         FlipLayer::new(LayerId(0), "L")
+    }
+
+    /// Camada com chaves em `keys` (desenhos 0..n), holds implícitos.
+    fn keyed(keys: &[Frame]) -> FlipLayer {
+        let mut l = layer();
+        for (i, &k) in keys.iter().enumerate() {
+            l.add_frame(k, d(i as u32), KeyKind::Keyframe, Hold::Implicit);
+        }
+        l
+    }
+
+    /// O vão: da 1ª chave real ao fim. Sem sentinela, a última chave expõe UM
+    /// quadro (a tira mostra 1 e deixa esticar — o hold implícito é infinito e não
+    /// pode definir sozinho o fim do ciclo).
+    #[test]
+    fn span_ends_at_the_sentinel_or_one_past_the_last_key() {
+        assert_eq!(layer().span(), None, "camada vazia não tem vão");
+        assert_eq!(keyed(&[0, 4, 8]).span(), Some((0, 9)));
+        let mut l = keyed(&[0, 4]);
+        l.add_frame(8, None, KeyKind::Keyframe, Hold::Implicit); // sentinela
+        assert_eq!(l.span(), Some((0, 8)), "a sentinela FECHA o vão");
+    }
+
+    /// O ciclo é o wrap-mode do amostrador — e o DEFAULT não muda nada (nada antes
+    /// da 1ª chave, o último desenho segura depois).
+    #[test]
+    fn cycles_wrap_the_sampler_without_duplicating_frames() {
+        let mut l = keyed(&[0, 4]); // vão [0, 5)
+        assert_eq!(l.drawing_at_cycled(-1), None, "default: nada antes");
+        assert_eq!(l.drawing_at_cycled(99), d(1), "default: segura depois");
+
+        l.cycle = LayerCycle {
+            pre: CycleMode::None,
+            post: CycleMode::Loop,
+        };
+        assert_eq!(l.drawing_at_cycled(5), d(0), "5 → 0 (o vão tem 5 quadros)");
+        assert_eq!(l.drawing_at_cycled(9), d(1), "9 → 4");
+        assert_eq!(l.drawing_at_cycled(-1), None, "o outro lado não ciclou");
+    }
+
+    /// Navegação por DESENHO (o flip do animador): pula os holds, e a partir do
+    /// meio de um hold "anterior" cai no início da exposição atual.
+    #[test]
+    fn drawing_navigation_skips_holds() {
+        let l = keyed(&[0, 12, 24]);
+        assert_eq!(l.next_drawing_key(5), Some(12));
+        assert_eq!(
+            l.prev_drawing_key(18),
+            Some(12),
+            "início da exposição atual"
+        );
+        assert_eq!(l.prev_drawing_key(12), Some(0), "e daí, o desenho anterior");
+        assert_eq!(l.next_drawing_key(24), None);
+        assert_eq!(l.active_key(18), Some(12));
+    }
+
+    /// As células da tira: cada chave real com sua EXPOSIÇÃO. A última mostra 1
+    /// (nada a delimita ainda).
+    #[test]
+    fn cells_carry_the_exposure_of_each_key() {
+        let l = keyed(&[0, 4, 6]);
+        assert_eq!(
+            l.cells(),
+            vec![
+                (0, DrawingId(0), 4),
+                (4, DrawingId(1), 2),
+                (6, DrawingId(2), 1),
+            ]
+        );
     }
 
     /// T0.3: a tabela canônica do GP `{0:d0, 5:d1, 10:end, 12:d2}` — d1 aparece

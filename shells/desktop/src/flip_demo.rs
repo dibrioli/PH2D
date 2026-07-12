@@ -1,13 +1,18 @@
-//! Demo ready-to-smoke do Flip (ADR-0114 W1): um objeto animado para VER o render
-//! do traço + a **composição por-camada** (T1.7) na hora. Flag-gated por
-//! `PH2D_FLIP_DEMO=1` (default = cena vazia, como a pipeline vetorial nova — o app
-//! normal não mostra nada do Flip até a tool do W2).
+//! Demo ready-to-smoke do Flip (ADR-0114): um objeto animado para VER o render do
+//! traço, a **composição por-camada** (W1.T1.7) e agora a **tira de frames + os
+//! Ghost Frames** (W3) na hora. Flag-gated por `PH2D_FLIP_DEMO=1` (default = cena
+//! vazia — o app normal não mostra nada do Flip até a tool ser ativada).
 //!
 //! Coordenadas em mundo (a `Camera2d` default enquadra ~10 unidades de altura em
-//! torno da origem). Ligue `PH2D_FLIP_DEMO=1` e dê play (o transporte) para ver a
-//! camada FG saltar entre os 3 quadros-chave. A camada FG usa blend **Multiply**:
-//! onde o quadrado que se move cruza o retângulo amarelo do BG, a sobreposição
-//! **escurece** (amarelo × magenta) — a prova visual de T1.7.
+//! torno da origem). Ligue `PH2D_FLIP_DEMO=1`, ative a tool **Flip** e:
+//! - a **tira** (faixa inferior) mostra as 3 células da camada ativa com a
+//!   exposição de cada uma (8, 8, 1 quadros);
+//! - pare em cima de uma chave e os **Ghost Frames** aparecem — o desenho anterior
+//!   em verde, o seguinte em azul (eles somem no play);
+//! - `↑`/`↓` pulam por DESENHO; `Tween` gera os inbetweens entre duas chaves;
+//! - **play** (Space ou o botão) roda a animação. A camada FG usa blend
+//!   **Multiply**: onde o quadrado que se move cruza o retângulo amarelo do BG, a
+//!   sobreposição **escurece** — a prova visual de T1.7.
 
 use ph2d_core::Vec2;
 use ph2d_flip::{Fill, FlipDoc, FlipStroke, Hold, KeyKind, Point, Rgba};
@@ -20,7 +25,7 @@ pub(crate) fn demo_scene() -> FlipDoc {
         return doc;
     }
     eprintln!(
-        "[ph2d-flip] PH2D_FLIP_DEMO ativo — objeto 'Demo Flip' (BG amarelo + FG Multiply 3 quadros @12fps)"
+        "[ph2d-flip] PH2D_FLIP_DEMO ativo — 'Demo Flip': BG amarelo + FG Multiply, 3 chaves @12fps. Ative a tool Flip: tira embaixo, Ghost Frames ligados (verde/azul), setas pulam por desenho."
     );
     let oid = doc.push_object("Demo Flip");
     let obj = doc.object_mut(oid).expect("objeto recém-criado existe");

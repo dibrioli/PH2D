@@ -732,9 +732,43 @@ da 3ª rodada preservado). O fragment analítico segue igual (o miter é só o t
 geometria; a forma redonda sai do fragment). GPU: novo
 `a_soft_stroke_has_no_bead_at_the_joints` + 6 anteriores + 2 composite verdes.
 
-## Aberto (fora do W0/W1/W2, por design)
+## W3 — Frames · Ghost Frames · Tween (LANDOU 2026-07-12, pendente o smoke)
 
-- **W3 (próximo):** Frames · Ghost Frames · Tween — guia em **§W3-NEXT** acima.
+O Flip virou um app de **animação** (antes era um app de desenho com playhead). O doc
+definitivo — modelo de tempo, ciclos, algoritmo do onion, autokey por-tool, tween — é
+[`docs/Flip/05_frames_ghost_tween.md`](Flip/05_frames_ghost_tween.md). Resumo do que existe agora:
+
+- **Modelo** (`ph2d-flip`): `span`/`cells`/`set_exposure` (a exposição EMPURRA o resto) ·
+  `cycle.rs` (pre/post behavior None/Hold/Loop/PingPong — os defaults reproduzem o
+  pré-W3 byte a byte) · `onion.rs::ghosts()` (função PURA, port do `get_frame_id`) ·
+  `autokey.rs::ensure_key` (política por ferramenta) · `tween.rs` (pareamento por índice +
+  padding ao MAX + auto-flip + breakdowns idempotentes). **`FLIP_SCHEMA_VERSION` 1→2**
+  (camada ganhou `cycle`+`use_onion`; `OnionSettings` ganhou `kind_filter`) e
+  **`PROJECT_SCHEMA` 2→3** por tabela.
+- **Render**: `CameraRaw::with_ghost_tint` + `ghost_tint: vec4` nos DOIS shaders (traço e
+  fill) — o fantasma é a silhueta 100% recolorida, alpha `1/|Δ|` piso 0.1. Passe em
+  `render_loop/flip_pass_ghosts.rs` (antes do composite; some no play; usa o cache de
+  tesselação por desenho — custo ~zero).
+- **Tira** (`ph2d-panel-flip-frames`, painel NOVO, faixa inferior `layout.flip_strip`):
+  células = botões canônicos com a exposição, transporte (play + flip por DESENHO), Ghost,
+  Auto/Additive, Add/Dup/Delete/Hold/±1, Tween, Cycle. Sobe acima do timeline global quando
+  ele está aberto.
+- **Shell**: `flip_strip.rs` (estado de autoria + drain dos eventos) · `flip_autokey.rs` (o
+  ponto ÚNICO que decide o desenho-alvo — caneta = branco/Additive; borracha = SEMPRE
+  duplicata) · atalhos `↑`/`↓` (flip por desenho) e `,`/`.` (±1 quadro **no FPS do objeto**).
+- **Gates novos**: `ph2d-panel-flip-frames/tests/seam.rs` (todo controle chega ao barramento —
+  botão novo sem braço = vermelho) + 1 teste GPU do fantasma + ~30 unit no modelo/shell.
+
+**Carry-overs declarados:** drag de célula/borda na tira · multi-seleção de chaves (destrava o
+modo `Selected` dos fantasmas, já pronto no modelo) · picker de easing + fade-in de órfãos na UI
+do tween (o motor suporta) · cache de playback (só com bench antes) · light table.
+
+## Aberto (fora do W0/W1/W2/W3, por design)
+
+- **W4 (próximo):** Fill (balde) — plano em `docs/Flip/01_plano_waves.md`.
+- **W6 (timeline global): ADIADA** — a timeline principal ainda está em desenvolvimento
+  (Enio 2026-07-12). O playhead do Flip JÁ é o global, então a integração não terá relógio a
+  reconciliar.
 - **Refinos do Select (não-bloqueantes):** escala NÃO-uniforme engrossa o traço pela
   escala MÉDIA (`mean_scale`) — aproximação; espessura anisotrópica exigiria passar o
   afim ao shader. Persistência da pose Flip no `ProjectState` (o `Transform` é ECS →

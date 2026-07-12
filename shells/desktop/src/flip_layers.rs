@@ -32,6 +32,7 @@ pub(crate) fn apply_panel_event(
     ev: &PanelEvent,
     flip: &mut FlipDoc,
     active_layer: &mut Option<LayerId>,
+    playhead: &ph2d_core::Playhead,
 ) -> bool {
     let Some(oid) = flip.objects().first().map(|o| o.id) else {
         return false;
@@ -41,6 +42,16 @@ pub(crate) fn apply_panel_event(
             if let Some(obj) = flip.object_mut(oid) {
                 let name = format!("Layer {}", obj.layers().len() + 1);
                 let new = obj.add_layer(name);
+                // Camada nova ganha uma chave EM BRANCO no quadro atual (regra do
+                // GP): senão ela nasce sem célula nenhuma e a tira fica muda até o
+                // primeiro traço.
+                let frame = obj.frame_at(playhead);
+                obj.insert_frame(
+                    new,
+                    frame,
+                    ph2d_flip::Hold::Implicit,
+                    ph2d_flip::KeyKind::Keyframe,
+                );
                 *active_layer = Some(new);
                 return true;
             }
@@ -151,7 +162,8 @@ mod tests {
         assert!(apply_panel_event(
             &PanelEvent::Click(ids::FLIP_LAYER_ADD),
             &mut doc,
-            &mut active
+            &mut active,
+            &ph2d_core::Playhead::default(),
         ));
         assert_eq!(doc.object(oid).unwrap().layers().len(), 3);
         assert!(active.is_some(), "new layer becomes active");
@@ -159,7 +171,8 @@ mod tests {
         assert!(apply_panel_event(
             &PanelEvent::Click(ids::FLIP_LAYER_DELETE),
             &mut doc,
-            &mut active
+            &mut active,
+            &ph2d_core::Playhead::default(),
         ));
         assert_eq!(doc.object(oid).unwrap().layers().len(), 2);
     }
@@ -172,7 +185,8 @@ mod tests {
         assert!(!apply_panel_event(
             &PanelEvent::Click(wid(a, FlipLayerWidget::Row)),
             &mut doc,
-            &mut active
+            &mut active,
+            &ph2d_core::Playhead::default(),
         ));
         assert_eq!(active, Some(a));
     }
@@ -185,13 +199,15 @@ mod tests {
         assert!(apply_panel_event(
             &PanelEvent::Click(wid(a, FlipLayerWidget::Visibility)),
             &mut doc,
-            &mut active
+            &mut active,
+            &ph2d_core::Playhead::default(),
         ));
         assert!(!doc.object(oid).unwrap().layer(a).unwrap().visible);
         assert!(apply_panel_event(
             &PanelEvent::Click(wid(a, FlipLayerWidget::Lock)),
             &mut doc,
-            &mut active
+            &mut active,
+            &ph2d_core::Playhead::default(),
         ));
         assert!(doc.object(oid).unwrap().layer(a).unwrap().locked);
     }
@@ -205,7 +221,8 @@ mod tests {
         assert!(apply_panel_event(
             &PanelEvent::Click(wid(a, FlipLayerWidget::MoveUp)),
             &mut doc,
-            &mut active
+            &mut active,
+            &ph2d_core::Playhead::default(),
         ));
         let ids_now: Vec<LayerId> = doc
             .object(oid)
@@ -226,14 +243,16 @@ mod tests {
         assert!(apply_panel_event(
             &PanelEvent::SetValue(wid(b, FlipLayerWidget::Opacity), 0.4),
             &mut doc,
-            &mut active
+            &mut active,
+            &ph2d_core::Playhead::default(),
         ));
         assert!((doc.object(oid).unwrap().layer(b).unwrap().opacity - 0.4).abs() < 1e-6);
         // Blend dropdown option → SelectOption(blend_chip_id, mode). Mode 1 = Multiply.
         assert!(apply_panel_event(
             &PanelEvent::SelectOption(wid(b, FlipLayerWidget::Blend), "1".to_string()),
             &mut doc,
-            &mut active
+            &mut active,
+            &ph2d_core::Playhead::default(),
         ));
         assert_eq!(
             doc.object(oid).unwrap().layer(b).unwrap().blend,

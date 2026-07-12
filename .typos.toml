@@ -96,6 +96,22 @@ levl = "levl"
 # `tpic` = a legitimate Truevision TGA file-extension alias (alongside .tga/.icb/
 # .vda/.vst), matched by `ph2d-imageio-tga::supports`. Not a typo of "topic".
 tpic = "tpic"
+# pt-BR nos doc-comments do módulo Flip (`crates/ph2d-flip`, `ph2d-panel-flip-frames`,
+# `shells/desktop/src/flip_*`, `docs/Flip/`), lidas pelo typos-cli como inglês torto.
+# São as palavras portuguesas, escritas de propósito (o código do Flip é comentado em
+# pt-BR; a UI, essa sim, é 100% inglês).
+ative = "ative"
+Ative = "Ative"
+comando = "comando"
+denominador = "denominador"
+devolvendo = "devolvendo"
+discreto = "discreto"
+discriminante = "discriminante"
+distribuem = "distribuem"
+polinomial = "polinomial"
+repete = "repete"
+Repete = "Repete"
+responde = "responde"
 # Library/crate names.
 rquickjs = "rquickjs"
 flecs = "flecs"

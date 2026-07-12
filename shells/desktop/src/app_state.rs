@@ -610,6 +610,10 @@ pub(crate) struct App {
     /// Erase). Enquanto `true`, cada move apaga sob o cursor; o pen-up faz o
     /// cleanup do Soft. `false` quando não há gesto.
     pub(crate) flip_erasing: bool,
+    /// ADR-0114 W3: o estado de autoria da TIRA de frames (autokey/additive/quantos
+    /// inbetweens/seleção de chaves). O documento (frames, desenhos, ciclos) vive no
+    /// `FlipDoc`; aqui só o que não é documento.
+    pub(crate) flip_strip: crate::flip_strip::FlipStrip,
     /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.

@@ -11,7 +11,7 @@
 //! premium) é T2.7; RDP no pen-up é T2.8.
 
 use ph2d_core::Vec2;
-use ph2d_flip::{FlipDoc, FlipDrawing, FlipStroke, Hold, KeyKind, LayerId, Point, Rgba};
+use ph2d_flip::{FlipDoc, FlipDrawing, FlipStroke, LayerId, Point, Rgba};
 use ph2d_flip_render::{FlipGpuData, pack_drawing};
 use ph2d_tool_flip::{FlipMode, FlipStyleSnapshot};
 use ph2d_vec_scene::Xform;
@@ -106,6 +106,7 @@ pub(crate) fn bake_stroke(
     playhead: &ph2d_core::Playhead,
     style: &FlipStyleSnapshot,
     active_layer: Option<LayerId>,
+    strip: &crate::flip_strip::FlipStrip,
     points: &[Vec2],
     pressures: &[f32],
     px_to_world: f32,
@@ -114,32 +115,20 @@ pub(crate) fn bake_stroke(
     if points.len() < 2 {
         return false;
     }
-    let Some(oid) = flip.objects().first().map(|o| o.id) else {
+    // **O autokey por-tool (W3.T3.4)**: quem decide o desenho-alvo — e se uma chave
+    // nova nasce (em branco, ou como cópia sob *Additive*) — é o `flip_autokey`, o
+    // mesmo ponto que a borracha usa. A caneta nunca resolve isso na mão.
+    let Some((oid, _lid, did)) = crate::flip_autokey::target_drawing(
+        flip,
+        playhead,
+        active_layer,
+        strip,
+        crate::flip_autokey::FlipEdit::Draw,
+    ) else {
         return false;
     };
     let Some(obj) = flip.object_mut(oid) else {
         return false;
-    };
-    // A camada ATIVA (setada pela seleção de linha no painel), com fallback pra a
-    // camada de topo (última do slice) quando nenhuma foi selecionada.
-    let Some(layer_id) = active_layer
-        .filter(|id| obj.layer(*id).is_some())
-        .or_else(|| obj.layers().last().map(|l| l.id))
-    else {
-        return false;
-    };
-    // Camada travada não aceita traço (mesma regra do GP; materiais travados).
-    if obj.layer(layer_id).is_some_and(|l| l.locked) {
-        return false;
-    }
-    let frame = obj.frame_at(playhead);
-    // Desenho ativo no quadro; se não há (antes da 1ª chave / sentinela), cria uma.
-    let did = match obj.layer(layer_id).and_then(|l| l.drawing_at(frame)) {
-        Some(d) => d,
-        None => match obj.insert_frame(layer_id, frame, Hold::Implicit, KeyKind::Keyframe) {
-            Some(d) => d,
-            None => return false,
-        },
     };
     let Some(drawing) = obj.drawing_mut(did) else {
         return false;
@@ -309,6 +298,7 @@ impl crate::App {
                 &self.playhead,
                 &style,
                 active_layer,
+                &self.flip_strip,
                 &points,
                 &pressures,
                 px_to_world,

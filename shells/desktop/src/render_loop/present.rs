@@ -140,6 +140,10 @@ impl crate::App {
                 //   MESMA câmera dos sprites. O blit final usa LoadOp::Load (preserva
                 //   os sprites por baixo). No-op sem camada Flip ativa (default).
                 let flip_models = crate::flip_transform::build(sim, &self.flip_entities);
+                // Ghost Frames só existem enquanto a tool Flip está no comando (é
+                // chrome de autoria, não da cena) — e só fora do play.
+                let ghost_selection: Option<&[ph2d_flip::Frame]> =
+                    self.flip_active.then(|| self.flip_strip.selected_keys());
                 super::flip_pass::render(
                     flip,
                     flip_render,
@@ -149,6 +153,7 @@ impl crate::App {
                     self.flip_active_layer,
                     &flip_models,
                     &self.playhead,
+                    ghost_selection,
                     game_rt,
                     camera,
                     window_size,

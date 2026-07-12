@@ -565,6 +565,27 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("FLIP_ERASE_STROKE", ids::FLIP_ERASE_STROKE),
     ("FLIP_LAYER_ADD", ids::FLIP_LAYER_ADD),
     ("FLIP_LAYER_DELETE", ids::FLIP_LAYER_DELETE),
+    // Frame strip (W3) — the bottom-docked cells + transport + tween.
+    ("FLIP_STRIP_PANEL", ids::FLIP_STRIP_PANEL),
+    ("FLIP_STRIP_CLOSE", ids::FLIP_STRIP_CLOSE),
+    ("FLIP_PLAY", ids::FLIP_PLAY),
+    ("FLIP_PREV_DRAWING", ids::FLIP_PREV_DRAWING),
+    ("FLIP_NEXT_DRAWING", ids::FLIP_NEXT_DRAWING),
+    ("FLIP_FPS_NUM", ids::FLIP_FPS_NUM),
+    ("FLIP_GHOST", ids::FLIP_GHOST),
+    ("FLIP_GHOST_BEFORE_NUM", ids::FLIP_GHOST_BEFORE_NUM),
+    ("FLIP_GHOST_AFTER_NUM", ids::FLIP_GHOST_AFTER_NUM),
+    ("FLIP_AUTOKEY", ids::FLIP_AUTOKEY),
+    ("FLIP_ADDITIVE", ids::FLIP_ADDITIVE),
+    ("FLIP_KEY_ADD", ids::FLIP_KEY_ADD),
+    ("FLIP_KEY_DUP", ids::FLIP_KEY_DUP),
+    ("FLIP_KEY_DELETE", ids::FLIP_KEY_DELETE),
+    ("FLIP_HOLD_NUM", ids::FLIP_HOLD_NUM),
+    ("FLIP_KEY_LEFT", ids::FLIP_KEY_LEFT),
+    ("FLIP_KEY_RIGHT", ids::FLIP_KEY_RIGHT),
+    ("FLIP_TWEEN_NUM", ids::FLIP_TWEEN_NUM),
+    ("FLIP_TWEEN_ADD", ids::FLIP_TWEEN_ADD),
+    ("FLIP_CYCLE_DD", ids::FLIP_CYCLE_DD),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200

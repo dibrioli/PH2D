@@ -100,105 +100,167 @@ pub fn smooth_values(samples: &mut [(f64, f64)], passes: usize) {
 /// endpoints. Deterministic; runs once, off the hot path (end of a record drag).
 #[must_use]
 pub fn fit_fcurve(samples: &[(f64, f64)], tol: f64) -> Vec<FitKey> {
-    // Sort by time and drop duplicate-time samples (a parked cursor records the
-    // same frame twice); a fit needs strictly increasing time.
+    let Some(prep) = Prep::new(samples) else {
+        return trivial_keys(samples);
+    };
+    let tol_n = (tol / prep.v_span).max(1e-9);
+    // Key at every prominent peak/valley (+ the two ends) and NOTHING between —
+    // see the module docs. `min_prom` is the least value swing (normalised) for a
+    // turn to count as a real extremum.
+    let min_prom = (4.0 * tol_n).max(0.02);
+    let anchors = anchor_indices(&prep.norm, min_prom);
+    prep.build_keys(&anchors, tol_n, RUN_SPLIT_DEPTH)
+}
+
+/// Fit `samples` with the key times FORCED to `times` — the **aligned-columns**
+/// path. Every track of one recording session is re-fitted at the SAME set of
+/// times, so the dope sheet reads as clean columns (an animator can then grab a
+/// whole column and re-time every channel together, which is why hand-keyed
+/// animation is column-aligned in the first place).
+///
+/// Each run between consecutive forced times gets ONE least-squares cubic and is
+/// never split — a split would insert a key OFF the shared column grid and break
+/// the alignment. Times outside the samples' range are ignored; the two
+/// endpoints are always pinned. `times` need not be sorted or unique.
+#[must_use]
+pub fn fit_fcurve_at(samples: &[(f64, f64)], times: &[f64]) -> Vec<FitKey> {
+    let Some(prep) = Prep::new(samples) else {
+        return trivial_keys(samples);
+    };
+    let anchors = prep.indices_for_times(times);
+    // No split (`depth = 0`): the keys land exactly on the shared columns.
+    prep.build_keys(&anchors, f64::INFINITY, 0)
+}
+
+/// Fewer than 3 distinct-time samples (or a degenerate span): pass them through.
+fn trivial_keys(samples: &[(f64, f64)]) -> Vec<FitKey> {
     let mut pts: Vec<(f64, f64)> = samples.to_vec();
     pts.sort_by(|a, b| a.0.total_cmp(&b.0));
     pts.dedup_by(|a, b| a.0 == b.0);
-    let n = pts.len();
-    if n < 3 {
-        return pts
-            .iter()
-            .map(|&(t, v)| FitKey {
-                t,
-                v,
-                interp: Interp::Linear,
-            })
-            .collect();
+    if pts.len() > 2 {
+        // A dead-flat / zero-span run: just its two ends.
+        pts = vec![pts[0], pts[pts.len() - 1]];
     }
-
-    let t0 = pts[0].0;
-    let t_span = pts[n - 1].0 - t0;
-    let (mut v_min, mut v_max) = (pts[0].1, pts[0].1);
-    for &(_, v) in &pts {
-        v_min = v_min.min(v);
-        v_max = v_max.max(v);
-    }
-    let v_span = v_max - v_min;
-    if t_span <= 0.0 || v_span <= 0.0 {
-        // No time extent (impossible after dedup) or a dead-flat value run: two
-        // endpoints, no curve to fit.
-        return vec![
-            FitKey {
-                t: pts[0].0,
-                v: pts[0].1,
-                interp: Interp::Linear,
-            },
-            FitKey {
-                t: pts[n - 1].0,
-                v: pts[n - 1].1,
-                interp: Interp::Linear,
-            },
-        ];
-    }
-
-    // Normalise both axes to [0, 1]. The x-ratio of a handle is scale-invariant,
-    // so `x1/x2` come straight from normalised coordinates; `dy` denormalises by
-    // `v_span`. The value tolerance becomes a fraction of the value range.
-    let norm: Vec<P> = pts
-        .iter()
-        .map(|&(t, v)| [(t - t0) / t_span, (v - v_min) / v_span])
-        .collect();
-    let tol_n = (tol / v_span).max(1e-9);
-
-    // Key at every prominent peak/valley (+ the two ends) and NOTHING between:
-    // one least-squares cubic per monotone run between anchors — no recursive
-    // split. This is what an animator draws by hand (a key at each turn) and what
-    // the recursive Schneider fit fails to give: on a multi-turn wave its
-    // split-on-error scatters many keys along the slopes. The low-pass already
-    // removed the jitter that would spawn spurious extrema; `min_prom` is the
-    // least value swing (normalised) for a turn to count as a real extremum.
-    // Fidelity comes from the cubic's own tangents (which are ~flat at each
-    // extremum, so a wave's half-cycle is tracked closely); a run that a single
-    // cubic still misses badly is split ONCE more at its worst point, no deeper.
-    let min_prom = (4.0 * tol_n).max(0.02);
-    let anchors = anchor_indices(&norm, min_prom);
-    let mut segs: Vec<[P; 4]> = Vec::new();
-    for w in anchors.windows(2) {
-        fit_run(&norm[w[0]..=w[1]], tol_n, RUN_SPLIT_DEPTH, &mut segs);
-    }
-
-    // Each fitted cubic → a BezierW key. `denorm` maps a normalised coordinate
-    // back to (seconds, value); the handle x is the time ratio within the
-    // segment (clamped so the curve stays a function of time).
-    let denorm_t = |tn: f64| t0 + tn * t_span;
-    let denorm_v = |vn: f64| v_min + vn * v_span;
-    let mut out = Vec::with_capacity(segs.len() + 1);
-    for seg in &segs {
-        let [p0, c0, c1, p1] = *seg;
-        let dt = p1[0] - p0[0];
-        let (x1, x2) = if dt.abs() > 1e-12 {
-            (((c0[0] - p0[0]) / dt), ((c1[0] - p0[0]) / dt))
-        } else {
-            (1.0 / 3.0, 2.0 / 3.0)
-        };
-        let dy1 = (c0[1] - p0[1]) * v_span;
-        let dy2 = (c1[1] - p1[1]) * v_span;
-        out.push(FitKey {
-            t: denorm_t(p0[0]),
-            v: denorm_v(p0[1]),
-            interp: Interp::bezier_w(x1, dy1, x2, dy2),
-        });
-    }
-    // The trailing anchor (last segment's P1): pins the end, no outgoing segment.
-    if let Some(last) = segs.last() {
-        out.push(FitKey {
-            t: denorm_t(last[3][0]),
-            v: denorm_v(last[3][1]),
+    pts.iter()
+        .map(|&(t, v)| FitKey {
+            t,
+            v,
             interp: Interp::Linear,
-        });
+        })
+        .collect()
+}
+
+/// The sorted, de-duplicated samples plus the normalisation both fit paths share.
+struct Prep {
+    pts: Vec<(f64, f64)>,
+    norm: Vec<P>,
+    t0: f64,
+    t_span: f64,
+    v_min: f64,
+    v_span: f64,
+}
+
+impl Prep {
+    /// `None` when there is nothing to fit (fewer than 3 distinct times, no time
+    /// extent, or a dead-flat value run) — the caller emits [`trivial_keys`].
+    fn new(samples: &[(f64, f64)]) -> Option<Self> {
+        // Sort by time and drop duplicate-time samples (a parked cursor records
+        // the same frame twice); a fit needs strictly increasing time.
+        let mut pts: Vec<(f64, f64)> = samples.to_vec();
+        pts.sort_by(|a, b| a.0.total_cmp(&b.0));
+        pts.dedup_by(|a, b| a.0 == b.0);
+        let n = pts.len();
+        if n < 3 {
+            return None;
+        }
+        let t0 = pts[0].0;
+        let t_span = pts[n - 1].0 - t0;
+        let (mut v_min, mut v_max) = (pts[0].1, pts[0].1);
+        for &(_, v) in &pts {
+            v_min = v_min.min(v);
+            v_max = v_max.max(v);
+        }
+        let v_span = v_max - v_min;
+        if t_span <= 0.0 || v_span <= 0.0 {
+            return None;
+        }
+        // Normalise both axes to [0, 1]. A handle's x-ratio is scale-invariant,
+        // so `x1/x2` come straight from normalised coordinates; `dy` denormalises
+        // by `v_span`. The tolerance becomes a fraction of the value range.
+        let norm: Vec<P> = pts
+            .iter()
+            .map(|&(t, v)| [(t - t0) / t_span, (v - v_min) / v_span])
+            .collect();
+        Some(Self {
+            pts,
+            norm,
+            t0,
+            t_span,
+            v_min,
+            v_span,
+        })
     }
-    out
+
+    /// Sample indices closest to each of `times` (plus both endpoints), sorted and
+    /// de-duplicated — the forced anchors of [`fit_fcurve_at`].
+    fn indices_for_times(&self, times: &[f64]) -> Vec<usize> {
+        let n = self.pts.len();
+        let mut idx: Vec<usize> = vec![0, n - 1];
+        for &t in times {
+            // Nearest sample by time (the samples are dense — one per frame — so
+            // a shared column lands within half a frame of a real sample).
+            let i = self
+                .pts
+                .iter()
+                .enumerate()
+                .min_by(|(_, a), (_, b)| (a.0 - t).abs().total_cmp(&(b.0 - t).abs()))
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            idx.push(i);
+        }
+        idx.sort_unstable();
+        idx.dedup();
+        idx
+    }
+
+    /// Fit each run between consecutive `anchors` and convert to [`FitKey`]s.
+    fn build_keys(&self, anchors: &[usize], tol_n: f64, depth: u32) -> Vec<FitKey> {
+        let mut segs: Vec<[P; 4]> = Vec::new();
+        for w in anchors.windows(2) {
+            fit_run(&self.norm[w[0]..=w[1]], tol_n, depth, &mut segs);
+        }
+        // Each fitted cubic → a BezierW key. `denorm` maps a normalised coordinate
+        // back to (seconds, value); the handle x is the time ratio within the
+        // segment (clamped so the curve stays a function of time).
+        let denorm_t = |tn: f64| self.t0 + tn * self.t_span;
+        let denorm_v = |vn: f64| self.v_min + vn * self.v_span;
+        let mut out = Vec::with_capacity(segs.len() + 1);
+        for seg in &segs {
+            let [p0, c0, c1, p1] = *seg;
+            let dt = p1[0] - p0[0];
+            let (x1, x2) = if dt.abs() > 1e-12 {
+                (((c0[0] - p0[0]) / dt), ((c1[0] - p0[0]) / dt))
+            } else {
+                (1.0 / 3.0, 2.0 / 3.0)
+            };
+            let dy1 = (c0[1] - p0[1]) * self.v_span;
+            let dy2 = (c1[1] - p1[1]) * self.v_span;
+            out.push(FitKey {
+                t: denorm_t(p0[0]),
+                v: denorm_v(p0[1]),
+                interp: Interp::bezier_w(x1, dy1, x2, dy2),
+            });
+        }
+        // The trailing anchor (last segment's P1): pins the end, no outgoing segment.
+        if let Some(last) = segs.last() {
+            out.push(FitKey {
+                t: denorm_t(last[3][0]),
+                v: denorm_v(last[3][1]),
+                interp: Interp::Linear,
+            });
+        }
+        out
+    }
 }
 
 /// Indices of the prominent local extrema (peaks + valleys) of the value axis,

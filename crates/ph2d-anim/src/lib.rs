@@ -69,10 +69,10 @@ pub const SCHEMA_VERSION: u32 = 1;
 
 pub use clip::{AnimTarget, Clip};
 pub use curve::{AnimCurve, CurveKey, Interp};
-pub use curve_fit::{FitKey, fit_fcurve, smooth_values};
+pub use curve_fit::{FitKey, fit_fcurve, fit_fcurve_at, smooth_values};
 pub use easing::{Easing, EasingFamily, EasingMode};
 pub use time::RationalTime;
-pub use track::{Key, KeyId, Track};
+pub use track::{Key, KeyId, RangeSamples, Track};
 
 // Ergonomic re-export of the contracts this crate implements, so consumers can
 // import the trait + value type from one place. The traits themselves stay

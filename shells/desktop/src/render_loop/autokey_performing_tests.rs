@@ -235,3 +235,77 @@ fn simplify_only_fires_for_a_performing_session_not_a_paused_drag() {
         "a paused drag records no performing span"
     );
 }
+
+#[test]
+fn a_session_aligns_every_track_of_an_object_on_shared_key_times() {
+    // Enio (2026-07-11): "keys for x and y of translate and scale created at the
+    // same point in time". Record TWO channels of one object with DIFFERENT
+    // shapes (so their own extrema fall at different times) and assert the
+    // cleanup lands them on ONE shared set of columns.
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    for prop in [PropKind::TranslationX, PropKind::TranslationY] {
+        for (t, v) in [(0.0, 0.0f32), (4.0, 0.0)] {
+            apply_intent(
+                &mut st,
+                &mut ph,
+                I::AddKey {
+                    entity: E,
+                    prop,
+                    t: RationalTime::from_seconds(t),
+                    value: AnimValue::Float(v),
+                    interp: ph2d_anim::Interp::Linear,
+                },
+            );
+        }
+    }
+    ph.play();
+    let mut ak = AutokeyState::default();
+    // X is a 2-cycle wave, Y a 3-cycle one — their turns do NOT coincide.
+    let frames = 120;
+    for i in 0..frames {
+        let t = 4.0 * f64::from(i) / f64::from(frames - 1);
+        ph.seek(t);
+        let x = 40.0 * (t * 3.0).sin();
+        let y = 25.0 * (t * 4.4).sin();
+        let mut p: PoseSample = [None; 6];
+        p[0] = Some(x as f32);
+        p[1] = Some(y as f32);
+        frame_perf(&mut st, &ph, &[(E, p)], true, false, &mut ak);
+    }
+    // Release → the session ends, tracks are fitted and column-aligned.
+    frame_perf(
+        &mut st,
+        &ph,
+        &[(E, pose(&[(TX, 0.0)]))],
+        false,
+        false,
+        &mut ak,
+    );
+
+    let times = |prop| -> Vec<f64> {
+        let target = st.doc.binding_for(E, prop).unwrap().target;
+        st.doc
+            .active_clip()
+            .track(target)
+            .unwrap()
+            .keys()
+            .iter()
+            .map(|k| k.t.to_seconds())
+            .collect()
+    };
+    let tx = times(PropKind::TranslationX);
+    let ty = times(PropKind::TranslationY);
+    assert!(tx.len() > 2 && ty.len() > 2, "both tracks were simplified");
+    assert_eq!(
+        tx.len(),
+        ty.len(),
+        "both channels key at the same COUNT of columns: {tx:?} vs {ty:?}"
+    );
+    for (a, b) in tx.iter().zip(&ty) {
+        assert!(
+            (a - b).abs() < 1e-6,
+            "every key shares a column: {tx:?} vs {ty:?}"
+        );
+    }
+}

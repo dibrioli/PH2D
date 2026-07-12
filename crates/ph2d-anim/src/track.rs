@@ -28,6 +28,7 @@ use ph2d_vector_traits::{AnimValue, AttributeEvaluator};
 use serde::{Deserialize, Serialize};
 
 use crate::curve::{Interp, interpolate};
+use crate::curve_fit::FitKey;
 use crate::time::RationalTime;
 
 /// Stable identity of a key within its [`Track`] — monotonic, never reused, so
@@ -50,6 +51,10 @@ impl KeyId {
         self.0
     }
 }
+
+/// The keys of a time range as fit input: their ids, and their `(time, value)`
+/// samples (low-passed). Returned by [`Track::range_samples`].
+pub type RangeSamples = (Vec<KeyId>, Vec<(f64, f64)>);
 
 /// One keyframe: a time, a value, and the interpolation leaving it.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -411,6 +416,25 @@ impl Track {
         tol: f64,
         smooth_passes: usize,
     ) -> bool {
+        let Some((ids, samples)) = self.range_samples(t_min, t_max, smooth_passes) else {
+            return false;
+        };
+        let fitted = crate::fit_fcurve(&samples, tol);
+        self.apply_fit(&ids, &samples, &fitted)
+    }
+
+    /// The low-passed `(time, value)` samples of the non-roving scalar keys in
+    /// `[t_min, t_max]`, with their ids — the input a fit consumes. `None` when
+    /// there is nothing to fit (fewer than 3 in-range keys, or a non-scalar key
+    /// in range). Public so a caller can fit SEVERAL tracks together and align
+    /// their key times ([`Track::simplify_range_at`]).
+    #[must_use]
+    pub fn range_samples(
+        &self,
+        t_min: f64,
+        t_max: f64,
+        smooth_passes: usize,
+    ) -> Option<RangeSamples> {
         let mut ids = Vec::new();
         let mut samples = Vec::new();
         for i in 0..self.keys.len() {
@@ -419,22 +443,45 @@ impl Track {
                 // Only scalar keys fit; a non-scalar in range would break the
                 // (t, value) sampling, so leave the whole range alone.
                 let AnimValue::Float(v) = self.keys[i].value else {
-                    return false;
+                    return None;
                 };
                 ids.push(self.ids[i]);
                 samples.push((ts, f64::from(v)));
             }
         }
         if samples.len() < 3 {
-            return false;
+            return None;
         }
         crate::smooth_values(&mut samples, smooth_passes);
-        let fitted = crate::fit_fcurve(&samples, tol);
+        Some((ids, samples))
+    }
+
+    /// Like [`Track::simplify_range`], but the fitted keys land at the GIVEN
+    /// times — the aligned-columns path ([`crate::fit_fcurve_at`]). Every track of
+    /// one recording session re-fitted at the same times reads as clean dope-sheet
+    /// columns, so an animator can grab a column and re-time every channel at once.
+    pub fn simplify_range_at(
+        &mut self,
+        t_min: f64,
+        t_max: f64,
+        times: &[f64],
+        smooth_passes: usize,
+    ) -> bool {
+        let Some((ids, samples)) = self.range_samples(t_min, t_max, smooth_passes) else {
+            return false;
+        };
+        let fitted = crate::fit_fcurve_at(&samples, times);
+        self.apply_fit(&ids, &samples, &fitted)
+    }
+
+    /// Swap the keys `ids` (the fitted range) for `fitted`. No-op when the fit did
+    /// not reduce the count.
+    fn apply_fit(&mut self, ids: &[KeyId], samples: &[(f64, f64)], fitted: &[FitKey]) -> bool {
         if fitted.len() >= samples.len() {
             return false; // nothing to gain — keep the originals
         }
-        self.remove_keys(&ids);
-        for fk in &fitted {
+        self.remove_keys(ids);
+        for fk in fitted {
             self.insert_key(
                 RationalTime::from_seconds(fk.t),
                 AnimValue::Float(fk.v as f32),

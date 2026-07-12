@@ -57,6 +57,11 @@ const REC_SIMPLIFY_FLOOR: f64 = 1e-4;
 /// um pouco" symptom). A binomial `[1,2,1]` kernel ×8 ≈ a ~9-sample window,
 /// which at 60 fps is ~150 ms — removes jitter, keeps the gesture's shape.
 const REC_SMOOTH_PASSES: usize = 8;
+/// Two key times closer than this collapse into ONE dope-sheet column when the
+/// session's tracks are aligned — so a channel that turns a frame or two after
+/// another still shares its column instead of sitting beside it. ~2 frames at
+/// 24 fps: tight enough that genuinely separate beats stay separate.
+const COLUMN_MERGE_S: f64 = 0.08;
 
 /// The recorded time+value span of one `(entity, prop)` track during a performing
 /// session — enough to simplify exactly the recorded range at a proportional
@@ -290,22 +295,78 @@ pub(crate) fn apply_samples(
     if ak.drag_active && !drag_now {
         // A performing session just ended: simplify the dense per-frame keys it
         // recorded into clean minimal Bézier curves — WITHIN this same undo step,
-        // so one Ctrl+Z reverts the whole record + cleanup. `simplify_range`
-        // pins the range's endpoints, so keys outside it are untouched.
-        for (&(entity, prop), span) in &ak.record {
-            let Some(target) = timeline.doc.binding_for(entity, prop).map(|b| b.target) else {
-                continue;
-            };
-            let tol = (REC_SIMPLIFY_REL * (span.v_max - span.v_min)).max(REC_SIMPLIFY_FLOOR);
-            if let Some(track) = timeline.doc.active_clip_mut().track_mut(target) {
-                track.simplify_range(span.t_min, span.t_max, tol, REC_SMOOTH_PASSES);
-            }
-        }
+        // so one Ctrl+Z reverts the whole record + cleanup.
+        simplify_recorded(timeline, &ak.record);
         ak.record.clear();
         let doc = timeline.doc.clone();
         timeline.history.commit_if_changed(&doc);
     }
     ak.drag_active = drag_now;
+}
+
+/// Clean up everything one performing session recorded, **per entity**: fit each
+/// of its tracks, then re-fit them all at ONE shared set of key times so the dope
+/// sheet reads as aligned columns (Enio: "keys for x and y of translate and scale
+/// created at the same point in time"). Column-aligned keys are what hand-keyed
+/// animation looks like — the animator grabs a column and re-times every channel
+/// of the object together.
+///
+/// The shared times are the union of each track's own extrema, with near-coincident
+/// times merged ([`COLUMN_MERGE_S`]) so two channels that turn at *almost* the same
+/// instant land on one column instead of two a frame apart. `simplify_range_at`
+/// then pins every track's keys to those times (no splitting — a split would land
+/// off the column grid).
+fn simplify_recorded(timeline: &mut TimelineState, record: &BTreeMap<(u64, PropKind), RecSpan>) {
+    // Group the session's tracks by entity — alignment is per OBJECT (two objects
+    // recorded at once keep independent timing).
+    let mut by_entity: BTreeMap<u64, Vec<(PropKind, RecSpan)>> = BTreeMap::new();
+    for (&(entity, prop), &span) in record {
+        by_entity.entry(entity).or_default().push((prop, span));
+    }
+    for (entity, props) in by_entity {
+        // Pass 1 — each track's own fit proposes the times it wants (its extrema).
+        let mut times: Vec<f64> = Vec::new();
+        for &(prop, span) in &props {
+            let Some(target) = timeline.doc.binding_for(entity, prop).map(|b| b.target) else {
+                continue;
+            };
+            let Some(track) = timeline.doc.active_clip().track(target) else {
+                continue;
+            };
+            let Some((_, samples)) = track.range_samples(span.t_min, span.t_max, REC_SMOOTH_PASSES)
+            else {
+                continue;
+            };
+            let tol = value_tol(&span);
+            times.extend(ph2d_anim::fit_fcurve(&samples, tol).iter().map(|k| k.t));
+        }
+        if times.is_empty() {
+            continue;
+        }
+        // Pass 2 — merge near-coincident times into single columns.
+        times.sort_by(f64::total_cmp);
+        let mut columns: Vec<f64> = Vec::with_capacity(times.len());
+        for t in times {
+            if columns.last().is_none_or(|&c| t - c > COLUMN_MERGE_S) {
+                columns.push(t);
+            }
+        }
+        // Pass 3 — re-fit every track of this entity AT those columns.
+        for &(prop, span) in &props {
+            let Some(target) = timeline.doc.binding_for(entity, prop).map(|b| b.target) else {
+                continue;
+            };
+            if let Some(track) = timeline.doc.active_clip_mut().track_mut(target) {
+                track.simplify_range_at(span.t_min, span.t_max, &columns, REC_SMOOTH_PASSES);
+            }
+        }
+    }
+}
+
+/// The fit tolerance for one recorded track: a fraction of ITS value range, with
+/// an absolute floor so a near-constant channel is not held to an impossible bar.
+fn value_tol(span: &RecSpan) -> f64 {
+    (REC_SIMPLIFY_REL * (span.v_max - span.v_min)).max(REC_SIMPLIFY_FLOOR)
 }
 
 #[cfg(test)]

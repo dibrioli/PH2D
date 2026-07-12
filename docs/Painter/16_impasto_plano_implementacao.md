@@ -196,6 +196,22 @@ CLAUDE.md).
 
 ---
 
+## ⚠️ ESTADO (2026-07-12): a linha TROCOU DE DONO — leia o handoff primeiro
+
+Fases 1–3 fecharam e estão gateadas, mas o Enio, olhando o resultado, disse:
+**"Não sei se melhorou ou piorou. Ficou mais difícil de ajustar."**
+
+Isso é veredito de **design**, não de defeito: a feature está tecnicamente correta e ergonomicamente
+errada. **Este plano está SUSPENSO até uma pesquisa nova** sobre (a) como o estado-da-arte *deriva altura
+de um traço* — o modelo de depósito aqui foi **inventado**, sem referência — e (b) qual é o **menor
+conjunto ortogonal de knobs** que dá controle real.
+
+> **→ [`docs/HANDOFF_line_Painter_impasto_2026-07-12.md`](../HANDOFF_line_Painter_impasto_2026-07-12.md)**
+> — o estado, a hipótese de que o modelo está errado na raiz (a altura herda o perfil MACIO da cor, então
+> o relevo é um domo e não um corpo com borda), as perguntas de pesquisa, e o protocolo Modo L.
+
+---
+
 ## 9. LANDOU (2026-07-12) — e onde a implementação DIVERGIU deste plano
 
 Fases 1–3 fechadas + smoke armado. Commits `217aa592` · `c5878926` · `beb8a631` · `37d2258f` · smoke.

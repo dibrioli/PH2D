@@ -12,6 +12,7 @@
 ## Comunicação & decisão
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — decida no padrão-ouro e execute, reporte a decisão
 - [Estilo](feedback_communication_style.md) — pt-BR direto, opções concretas, recomendação primeiro
+- ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — pare de calibrar; questione o modelo
 - [Simplicidade](feedback_communication_simplicity.md) — sem AskUserQuestion-spam; não antecipe decisões
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md) — smoke/`cargo run` com `cd <worktree> &&` junto
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = exemplo auto-play no doc demo; não peça pro Enio montar

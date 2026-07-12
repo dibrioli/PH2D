@@ -23,16 +23,14 @@
 //!    Smoothing — re-derives the LAST stroke live, and none of them is a special case (Enio,
 //!    2026-07-12: *"coloque todos os parâmetros vivos em tempo real para ajustes depois do traço"*).
 
-use super::impasto_settle::{
-    PUSH_REACH_PX, RELIEF_EPS, SETTLE_REACH_PX, for_each_in, owned, push_ground, settle,
-};
+use super::impasto_settle::{RELIEF_EPS, SETTLE_REACH_PX, for_each_in, owned, settle, union_dirty};
 use super::region::grow_region;
 use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::height::{
     HeightDab, HeightFields, accumulate_dab_height, derive_height, erase_dab_height,
-    plow_dab_height,
 };
+use ph2d_painter_brush::height_push::{PUSH_REACH_MAX_PX, PushBite, bank_dab_push};
 use ph2d_painter_brush::{BrushSpec, Dab};
 
 impl PainterTool {
@@ -111,6 +109,19 @@ impl PainterTool {
             field = h;
             (p, g)
         };
+        // The displacement's own plane, and the GROUND it bites into — the layer's relief as the stroke
+        // found it. Recorded whenever there IS paint to shove, NOT only when the knob is up: Push has to
+        // be dialable AFTER the stroke like every other knob in the Body card, and it cannot be if the
+        // ingredient was never written down. A first stroke on bare canvas has no ground, so it pays
+        // nothing — the cost falls exactly where the feature is, on paint laid over paint.
+        let ground = (!erasing)
+            .then(|| self.heights.get(&active).cloned())
+            .flatten();
+        let mut push_plane = std::mem::take(&mut self.paint.stroke_push);
+        if ground.is_some() && push_plane.len() != n {
+            push_plane = vec![0.0; n];
+        }
+        let mut scratch = std::mem::take(&mut self.paint.push_scratch);
 
         // Resolve each dab's frames EXACTLY as the colour route will — same `d.dir` (Rake), same
         // footprint (Jitter Rotate), same Random draws, same order (Shape before Grain). The RNG is a
@@ -221,12 +232,45 @@ impl PainterTool {
             let hit = if erasing {
                 erase_dab_height(&mut field, &mut cover, w, h, &spec, &hd)
             } else {
+                // The BITE rides inside the deposit's own walk (which already knows the silhouette and the
+                // envelope-so-far); the BANK is a separate pass over the RIM, which the deposit never
+                // touches. Two halves of one conservation law, each walked exactly once — doing the bite
+                // in a kernel of its own meant evaluating the silhouette twice per texel, and that alone
+                // put the impasto cost at 5.0 ms/move, past its budget, on every stroke.
+                let mut bite = ground.as_ref().map(|g0| PushBite {
+                    ground: g0,
+                    plane: &mut push_plane,
+                    displaced: 0.0,
+                });
                 let mut fields = HeightFields {
                     height: &mut field,
                     paint: &mut paint,
                     grain: &mut grain,
                 };
-                accumulate_dab_height(&mut fields, w, h, &spec, &hd)
+                let laid = accumulate_dab_height(&mut fields, w, h, &spec, &hd, bite.as_mut());
+                let displaced = bite.map_or(0.0, |b| b.displaced);
+                let banked = ground.as_ref().and_then(|_| {
+                    bank_dab_push(&mut push_plane, &paint, &mut scratch, w, h, &hd, displaced)
+                });
+                // The relief the artist SEES while dragging is `field` (the light's `live_h`). The deposit
+                // wrote itself in; the displacement has to be folded in too, or the ridge would appear
+                // only at pen-up — which is exactly what Enio's smoke found (2026-07-12).
+                let push = spec.effective_impasto_push();
+                if let (Some(r), true) = (banked, push > 0.0) {
+                    for py in r.y..r.y + r.h {
+                        let row = (py as usize) * (w as usize);
+                        for px in r.x..r.x + r.w {
+                            let i = row + px as usize;
+                            let deposit =
+                                derive_height(&spec, paint[i], f32::from(grain[i]) / 255.0);
+                            field[i] = deposit + push * push_plane[i];
+                        }
+                    }
+                }
+                match (laid, banked) {
+                    (Some(a), Some(b)) => Some(union_dirty(a, b)),
+                    (a, b) => a.or(b),
+                }
             };
             if let Some(r) = hit {
                 let rect = Region {
@@ -259,6 +303,8 @@ impl PainterTool {
             }
         }
         // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back (rule 2).
+        self.paint.stroke_push = push_plane; // the displacement banked so far, at Push = 1
+        self.paint.push_scratch = scratch;
 
         if erasing {
             // The eraser scrubs the LAYER directly, so the live stroke's ground is no longer what it
@@ -277,87 +323,6 @@ impl PainterTool {
         }
     }
 
-    /// **Plow** — the Smear route drags the relief along with the colour (the palette knife).
-    ///
-    /// Called from the smear route with the SAME dab list and the SAME `from`/`to` chain the colour
-    /// uses, so pigment and body move as one thing. The knife *displaces*; it never deposits — so it
-    /// needs no Depth, and there is nothing to commit: it edits the layer's relief in place, exactly as
-    /// the colour smear edits the layer's pixels in place.
-    ///
-    /// No-op unless the layer HAS relief. That is what makes this free for everyone else: a painter who
-    /// never touched Impasto smears through here and pays a map lookup.
-    pub(super) fn plow_dabs(&mut self, dabs: &[Dab], brush: &BrushSpec, strength: f32) {
-        if dabs.is_empty() || !brush.impasto_plow_active() {
-            return;
-        }
-        let (w, h) = self.source_size;
-        let n = (w as usize) * (h as usize);
-        let Some(active) = self.layers.active() else {
-            return;
-        };
-        // Nothing sculpted here ⇒ nothing to plow. (And a stale, differently-sized field is dropped
-        // rather than indexed into — the shape guard the 2026-07-12 sweep taught us to write.)
-        let Some(mut field) = self
-            .heights
-            .remove(&active)
-            .map(owned)
-            .filter(|f| f.len() == n)
-        else {
-            return;
-        };
-        let mut cover = self
-            .covers
-            .remove(&active)
-            .map(owned)
-            .filter(|c| c.len() == n)
-            .unwrap_or_else(|| vec![0u8; n]);
-
-        // The smear's own displacement chain — the same `last_smear_pos` the colour route advances, so
-        // the two cannot drift apart. (Reading it here rather than keeping a second chain is the whole
-        // reason a plowed ridge stays under its own paint.)
-        let mut from = self.paint.last_smear_pos;
-        let mut touched: Option<Region> = None;
-        for d in dabs {
-            if let Some(prev) = from {
-                let spec = BrushSpec {
-                    radius_px: d.radius_px,
-                    ..*brush
-                };
-                let amount = strength * d.coverage;
-                if let Some(r) = plow_dab_height(
-                    &mut field,
-                    &mut cover,
-                    w,
-                    h,
-                    &spec,
-                    prev,
-                    d.center,
-                    d.radius_px,
-                    amount,
-                ) {
-                    let rect = Region {
-                        x: r.x,
-                        y: r.y,
-                        w: r.w,
-                        h: r.h,
-                    };
-                    touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
-                }
-            }
-            from = Some(d.center);
-        }
-        // The plow rewrites the committed relief, so a live stroke's ground (which is the relief BEFORE
-        // that stroke) is no longer what it says it is — drop it rather than let a later Depth drag
-        // resurrect the un-plowed ridge.
-        self.drop_live_relief();
-        self.heights.insert(active, std::sync::Arc::new(field));
-        self.covers.insert(active, std::sync::Arc::new(cover));
-        self.sync_relief_flags();
-        if let Some(rect) = touched {
-            self.mark_dirty(rect);
-        }
-    }
-
     /// Drop the in-progress stroke's relief. Called at pen-down, and again before each re-stamp of the
     /// shape editors' live preview (Line / Curve / Ellipse / Polygon / Free Hand re-stamp the WHOLE
     /// shape every pointer move over a restored canvas — without this the envelope would keep the
@@ -366,6 +331,7 @@ impl PainterTool {
         self.paint.stroke_height.clear();
         self.paint.stroke_paint.clear();
         self.paint.stroke_grain.clear();
+        self.paint.stroke_push.clear(); // the displacement is per-stroke; a re-stamp starts it over
         self.paint.stroke_relief_bbox = None; // the commit's window is per-stroke too
         self.paint.last_height_center.clear(); // the sweep chain restarts with the stroke
     }
@@ -396,7 +362,7 @@ impl PainterTool {
         // border is already zero replicates the same zero the whole-canvas pass would have read. The
         // result is byte-identical, and it is gated as byte-identical.
         let (w, h) = self.source_size;
-        let Some(rect) = grow_region(bbox, SETTLE_REACH_PX + PUSH_REACH_PX, w, h) else {
+        let Some(rect) = grow_region(bbox, SETTLE_REACH_PX + PUSH_REACH_MAX_PX as u32, w, h) else {
             return;
         };
 
@@ -434,6 +400,9 @@ impl PainterTool {
         self.paint.live_relief_layer = Some(active);
         self.paint.live_paint = paint;
         self.paint.live_grain = grain;
+        // The displacement at Push = 1 — the third ingredient. The whole displacement is LINEAR in Push,
+        // so keeping it lets the knob stay live after the stroke without replaying a single dab.
+        self.paint.live_push = std::mem::take(&mut self.paint.stroke_push);
         self.rebuild_live_layer_relief();
     }
 
@@ -487,30 +456,17 @@ impl PainterTool {
         let base = std::mem::take(&mut self.paint.live_relief_base);
         let has_base = base.len() == cells;
 
-        // 2b. PUSH — volume conservation. The brush shoves the paint that was already there out of its
-        //     way, and it has to go somewhere: it stands up as a ridge along the edges of the stroke.
-        //     This is what separates paint from a bump map (`push_ground`).
+        // 2b. PUSH — volume conservation. The brush shoved the paint it found out of its way, and that
+        //     paint banked up as a ridge just outside the cut (`bank_dab_push`, dab by dab, AS THE BRUSH
+        //     MOVED). What is stored is the displacement at `Push = 1` — negative where paint was taken,
+        //     positive where it was banked, summing to exactly zero — and the whole thing is LINEAR in
+        //     Push, so the knob stays alive after the stroke and re-deriving it costs one multiply.
         //
-        //     It works on a COPY of the ground; the stored one stays pristine. That is what makes the
-        //     whole card idempotent — raise Push, lower it, raise it again, and the ground is never
-        //     eroded twice. A destructive plough would have been eaten alive by the SHAPE editors, which
-        //     re-stamp the whole shape on every pointer move.
-        let pushed = if has_base && brush.effective_impasto_push() > 0.0 {
-            let mut g = base.clone();
-            let mut footprint: Vec<f32> = Vec::with_capacity(cells);
-            for_each_in(rect, w, |i| footprint.push(self.paint.live_paint[i]));
-            push_ground(
-                &mut g,
-                &footprint,
-                rect.w,
-                rect.h,
-                brush.effective_impasto_push(),
-            )
-            .then_some(g)
-        } else {
-            None
-        };
-        let ground = pushed.as_ref().unwrap_or(&base);
+        //     The GROUND is never mutated: `ground' = ground + push·R₁`. Idempotent by construction, which
+        //     is what lets the SHAPE editors re-stamp the whole shape on every pointer move without
+        //     carving a canyon.
+        let push = brush.effective_impasto_push();
+        let has_push = push > 0.0 && self.paint.live_push.len() == n;
         let target = std::sync::Arc::make_mut(
             self.heights
                 .entry(layer)
@@ -527,7 +483,14 @@ impl PainterTool {
                 let i = (rect.y as usize + ry) * (w as usize) + rect.x as usize + rx;
                 // Strokes ADD — up to the glass ceiling (see [`H_CEIL`]). A lone stroke never reaches it
                 // (`|depth| ≤ 1`), so the clamp only ever bites where strokes genuinely pile up.
-                let under = if has_base { ground[c] } else { 0.0 };
+                let g0 = if has_base { base[c] } else { 0.0 };
+                // `R₁` IS the displacement (it sums to zero), so the ground plus a scaled copy of it is
+                // the whole story — and it is linear in Push, which is what keeps the knob live.
+                let under = if has_push {
+                    g0 + push * self.paint.live_push[i]
+                } else {
+                    g0
+                };
                 let next = (field[c] + under).clamp(-H_CEIL, H_CEIL);
                 if next != 0.0 {
                     any_relief = true;
@@ -544,7 +507,6 @@ impl PainterTool {
                 target[i] = next;
             }
         }
-        drop(pushed);
         self.paint.live_relief_base = base; // PRISTINE — the ground is re-read on every knob edit
 
         // 4. A layer that carried nothing before this stroke and carries nothing now (Depth 0) drops its
@@ -629,6 +591,7 @@ impl PainterTool {
     pub(crate) fn drop_live_relief(&mut self) {
         self.paint.live_paint = Vec::new();
         self.paint.live_grain = Vec::new();
+        self.paint.live_push = Vec::new();
         self.paint.live_relief_base = Vec::new();
         self.paint.live_relief_rect = None;
         self.paint.live_relief_had_entry = false;

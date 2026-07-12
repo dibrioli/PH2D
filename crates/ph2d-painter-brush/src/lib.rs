@@ -39,6 +39,8 @@ pub mod falloff_curve;
 pub mod footprint;
 pub mod heading;
 pub mod height;
+/// **Impasto — volume conservation**: the paint the brush shoves aside, and the ridge it banks it into.
+pub mod height_push;
 pub(crate) mod jitter;
 pub mod mask_ops;
 pub mod ramp_alpha;

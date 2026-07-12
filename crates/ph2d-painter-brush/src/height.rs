@@ -212,14 +212,14 @@ pub struct HeightDab<'a> {
 
 /// How far back the body sweeps, in pixels (0 when there is no previous dab).
 #[inline]
-fn sweep_len(dab: &HeightDab<'_>) -> f32 {
+pub(crate) fn sweep_len(dab: &HeightDab<'_>) -> f32 {
     sweep_axis(dab).map_or(0.0, |(_, l)| l)
 }
 
 /// The dab's **sweep axis**: the unit vector back toward the previous dab and the distance to it.
 /// `None` for the first dab of a stroke (nothing to sweep back to) or a degenerate zero-length step.
 #[inline]
-fn sweep_axis(dab: &HeightDab<'_>) -> Option<([f32; 2], f32)> {
+pub(crate) fn sweep_axis(dab: &HeightDab<'_>) -> Option<([f32; 2], f32)> {
     let prev = dab.prev_center?;
     let v = [prev[0] - dab.center[0], prev[1] - dab.center[1]];
     let len2 = v[0] * v[0] + v[1] * v[1];
@@ -234,7 +234,7 @@ fn sweep_axis(dab: &HeightDab<'_>) -> Option<([f32; 2], f32)> {
 /// residual the falloff is then evaluated on. With no previous dab this is the plain offset from the
 /// centre (byte-identical to a stamped disc).
 #[inline]
-fn sweep_residual(dx: f32, dy: f32, sweep: Option<([f32; 2], f32)>) -> (f32, f32) {
+pub(crate) fn sweep_residual(dx: f32, dy: f32, sweep: Option<([f32; 2], f32)>) -> (f32, f32) {
     match sweep {
         None => (dx, dy),
         Some((u, back)) => {
@@ -353,6 +353,7 @@ pub fn accumulate_dab_height(
     height: u32,
     spec: &crate::BrushSpec,
     dab: &HeightDab<'_>,
+    mut bite: Option<&mut crate::height_push::PushBite<'_>>,
 ) -> Option<crate::dab::DirtyRect> {
     let n = (width as usize) * (height as usize);
     if !fields.fits(n) || width == 0 || height == 0 {
@@ -423,6 +424,18 @@ pub fn accumulate_dab_height(
             } else {
                 NO_GRAIN
             };
+            // **Volume conservation, riding along** (`crate::height_push`): the ground this dab's advance
+            // covers is ground it SHOVES, and it is taken here — inside the walk that already knows `m`,
+            // `paint[i]` and the silhouette. Doing it in a kernel of its own meant evaluating
+            // `silhouette_at` twice per texel, and that alone put the impasto cost at 5.0 ms/move, over
+            // budget, on every stroke. Three operations, folded into a loop that was already running.
+            if let Some(b) = bite.as_deref_mut() {
+                let take = b.ground[i] * (m - fields.paint[i]);
+                if take != 0.0 {
+                    b.plane[i] -= take;
+                    b.displaced += take;
+                }
+            }
             fields.paint[i] = m;
             fields.grain[i] = gq;
             // Derived from the STORED (quantised) grain, so the buffer and the re-derivation always
@@ -626,3 +639,7 @@ pub fn erase_dab_height(
 #[cfg(test)]
 #[path = "height_tests.rs"]
 mod tests;
+
+// **Volume conservation** — the brush shoving the paint it finds out of its way — lives in the sibling
+// [`crate::height_push`]: the deposit and the displacement are different physics, and the file-LOC cap
+// agrees. Re-exported from the crate root, so callers see one `height` surface.

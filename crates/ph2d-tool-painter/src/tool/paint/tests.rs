@@ -19657,9 +19657,13 @@ fn impasto_the_stroke_commit_is_cropped_to_the_stroke_and_byte_identical() {
 
     // The window really is a window — this is the perf claim, made executable. The ground is kept as a
     // PATCH of it, so its size IS the crop.
+    // The window is the stroke's own footprint plus a CONSTANT pad (the settle's reach and the
+    // displacement's widest bank) — so it is a function of the STROKE, never of the canvas, which is what
+    // keeps the commit `O(stroke)`. On this 200² fixture a short stroke plus that pad lands around a fifth
+    // of the canvas; on a 4096² one it is the same window.
     let cells = t.paint.live_relief_base.len();
     assert!(
-        cells > 0 && cells * 8 < n,
+        cells > 0 && cells * 3 < n,
         "the commit works in a window, not on the canvas: the ground patch is {cells} of {n} texels"
     );
 
@@ -19760,7 +19764,11 @@ fn slab_canvas(size: u32) -> (PainterTool, RtLayerId) {
     b.radius_px = 30.0;
     b.hardness = 1.0;
     b.falloff = Falloff::Constant; // a flat slab: a level ground makes the ridge unambiguous
-    b.impasto_depth = 1.0;
+    // Depth 0.3, not 1.0, and that is not timidity. A narrow rim receiving the bite of a wide brush can
+    // pile past the GLASS CEILING (`H_CEIL` — Corel's "pressed against glass"), and paint clamped at the
+    // ceiling is paint LOST. That ceiling is real and deliberate; conservation is a statement about the
+    // displacement, and it can only be made where the ceiling is not in the way.
+    b.impasto_depth = 0.3;
     b.impasto_body = 1.0;
     b.impasto_smoothing = 0.0;
     t.paint.brush = b;
@@ -19797,6 +19805,15 @@ fn impasto_push_conserves_the_paint_it_shoves() {
     let (mut t, layer) = slab_canvas(size);
     let before = volume(&t, layer);
     assert!(before > 100.0, "there is a real slab to plough ({before})");
+    let ceiling = super::impasto::H_CEIL;
+    assert!(
+        t.heights
+            .get(&layer)
+            .expect("relief")
+            .iter()
+            .all(|h| h.abs() < ceiling * 0.9),
+        "…and it is nowhere near the glass ceiling, so nothing can be clamped away"
+    );
 
     // A second stroke, crossing it, with the brush shoving everything aside.
     let mut b = t.paint.brush;
@@ -19836,9 +19853,9 @@ fn impasto_push_ploughs_a_channel_and_stands_the_paint_up_at_its_edges() {
             .get(&layer)
             .map_or(0.0, |f| f[(y * size + x) as usize])
     };
-    let (in_path, at_rim) = (at(&t, 80, 80), at(&t, 80 + 18, 80));
+    let (in_path, at_rim) = (at(&t, 80, 80), at(&t, 80 + 14, 80));
     assert!(
-        in_path > 0.5 && at_rim > 0.5,
+        in_path > 0.2 && at_rim > 0.2,
         "the slab is level to begin with ({in_path} in the path, {at_rim} beside it)"
     );
 
@@ -19857,9 +19874,9 @@ fn impasto_push_ploughs_a_channel_and_stands_the_paint_up_at_its_edges() {
     t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
 
     let channel = at(&t, 80, 80);
-    let ridge = at(&t, 80 + 18, 80);
+    let ridge = at(&t, 80 + 14, 80);
     assert!(
-        channel < in_path * 0.2,
+        channel < in_path * 0.25,
         "the brush ploughs a CHANNEL where it passed ({in_path} → {channel})"
     );
     assert!(
@@ -19901,7 +19918,7 @@ fn impasto_push_is_a_live_knob_and_never_erodes_the_ground_twice() {
     t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
 
     let off: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
-    let rim = |f: &[f32]| f[(80 * size + 80 + 18) as usize];
+    let rim = |f: &[f32]| f[(80 * size + 80 + 14) as usize];
     let vol = |f: &[f32]| f.iter().sum::<f32>();
 
     // Reach for the knob — AFTER the stroke.
@@ -19935,5 +19952,107 @@ fn impasto_push_is_a_live_knob_and_never_erodes_the_ground_twice() {
          {} vs {})",
         vol(&back),
         vol(&off)
+    );
+}
+
+#[test]
+fn impasto_push_banks_the_ridge_while_the_brush_is_still_moving() {
+    // Enio's smoke, 2026-07-12: *"funcionou mas não em tempo real. Apenas no mouse up. Precisa ser em
+    // tempo real."*
+    //
+    // He is right, and it was a direct consequence of the design, not an oversight: the first build
+    // derived the displacement from the stroke's whole FOOTPRINT at commit — pure, idempotent, live — and
+    // a footprint only exists once the stroke is over. The artist was painting blind and finding out what
+    // they had done at pen-up.
+    //
+    // The rebuild banks per DAB, into a plane that is the displacement at `Push = 1`. Because the whole
+    // thing is LINEAR in Push, that plane is an ingredient like any other: the ridge appears under the
+    // brush as it moves, AND the knob stays live afterwards. This gate is the first half — mid-drag, with
+    // the pen still down, the ridge is already standing.
+    let size = 200u32;
+    let (mut t, _layer) = slab_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.impasto_depth = 0.0; // a dry brush: what changes is the GROUND, and only the ground
+    b.impasto_push = 1.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    let rim_before = t.composed_relief_at(80 + 14, 80);
+    assert!(rim_before > 0.2, "the slab is there ({rim_before})");
+
+    // Drag ACROSS the slab — and stop, with the pen still DOWN.
+    t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
+    for y in 1..=6 {
+        t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
+    }
+
+    assert!(
+        t.composed_relief_at(80, 80) < 0.25 * rim_before,
+        "mid-drag, the channel is already cut ({})",
+        t.composed_relief_at(80, 80)
+    );
+    assert!(
+        t.composed_relief_at(80 + 14, 80) > rim_before * 1.05,
+        "…and the ridge is already standing beside it ({} → {}). The pen has NOT been lifted.",
+        rim_before,
+        t.composed_relief_at(80 + 14, 80)
+    );
+}
+
+#[test]
+fn impasto_push_banks_a_smooth_ridge_with_no_crease_scored_along_it() {
+    // Enio's smoke, same day: *"a tinta deslocada ficou com bordas duras."*
+    //
+    // The first build shaped the rim as `blur(footprint) − footprint`, with a BOX blur. A box blur of a
+    // step is a *linear ramp*: continuous, but with a **discontinuous derivative**. The light reads the
+    // derivative of the height — so the ridge came out with a hard crease scored along it, exactly at the
+    // blur's radius. The rim is now an analytic `C¹` profile (`push_rim_weight`), which has no line to
+    // draw and costs no blur at all.
+    //
+    // The gate measures what the LIGHT measures: the second difference of the height across the bank. A
+    // crease is a spike in it, and no amount of squinting at the first difference would find one.
+    let size = 200u32;
+    let (mut t, layer) = slab_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    // A SOFT brush — the one an artist actually holds, and the one Enio was holding. (The slab was laid
+    // with a hard disk on purpose, to give a level ground; ploughing with a hard disk would cut a
+    // hard-edged channel *by construction*, which is physically right and would say nothing about the
+    // rim. The claim here is about the BANK's own profile.)
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.impasto_depth = 0.0;
+    b.impasto_smoothing = 0.0; // no settle to hide behind: the RIM's own shape is on trial
+    b.impasto_push = 1.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
+    for y in 1..=6 {
+        t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
+
+    // A cut straight across the stroke, through the bank, at the stroke's mid-height.
+    let f = t.heights.get(&layer).expect("relief");
+    let row: Vec<f32> = (80..110).map(|x| f[(80 * size + x) as usize]).collect();
+    let ridge = row.iter().cloned().fold(0.0f32, f32::max);
+    assert!(ridge > 0.2, "there IS a bank to inspect ({ridge})");
+
+    // The crease: the largest kink in the profile. A box-blurred rim scores one at its radius; a C¹
+    // profile has none. Stated relative to the ridge, so it says nothing about how TALL the bank is.
+    let mut worst_kink = 0.0f32;
+    for w in row.windows(3) {
+        worst_kink = worst_kink.max((w[0] - 2.0 * w[1] + w[2]).abs());
+    }
+    assert!(
+        worst_kink < ridge * 0.10,
+        "the bank must be SMOOTH — the worst kink across it is {worst_kink} against a ridge of {ridge} \
+         ({:.0}% of it). The light reads the derivative of the height: a kink is a hard line drawn on \
+         the paint.",
+        worst_kink / ridge * 100.0
     );
 }

@@ -898,3 +898,59 @@ real do rim (tinta empurrada contra a borda do canvas se redistribui no rim que 
 | Push 1 (máximo, arando tinta grossa) | 2,47 ms | 33,2 ms |
 
 Default `0` ⇒ **byte-idêntico** a um build sem Push.
+
+---
+
+### 13.6 Refazendo o Push — o smoke do Enio (2026-07-12): *"não em tempo real"* + *"bordas duras"*
+
+Duas queixas, duas causas **distintas**, e ambas eram consequências diretas do desenho da §13, não descuidos.
+
+**1. Não era em tempo real.** Eu derivei o deslocamento da **pegada inteira**, no commit — o que me deu
+idempotência e o knob vivo, mas **uma pegada só existe depois que o traço acaba**. O artista pintava às
+cegas e descobria o que tinha feito no pen-up.
+
+**A formulação que resolve as duas sem perder nada.** O campo de deslocamento é **LINEAR em Push**. Então o
+que se acumula, **dab a dab e localmente**, é `R₁` — o deslocamento a `Push = 1`: **negativo onde o pincel
+tirou, positivo onde bancou, somando exatamente zero**. O relevo comitado é simplesmente `chão + push·R₁`.
+
+⇒ **tempo real** (por-dab, `O(dab)`) · **conservativo** (Σ R₁ = 0 *por construção*) · **e ainda vivo** (uma
+multiplicação) · **e ainda idempotente** (o chão nunca é mutado) · **e imune ao re-stamp** das shape tools.
+
+**Três bugs no caminho, cada um com o seu vermelho:**
+
+- **Dois livros que não fechavam.** O commit recalculava a *mordida* da cobertura final enquanto o *banco*
+  era acumulado por-dab — e um dab que não achava rim bancava nada, mas o commit cobrava assim mesmo:
+  **5% da tinta evaporava**. Um livro só, e ele não pode discordar de si mesmo (MUT R = 14,8%).
+- **O banco tem de ser LATERAL.** Bancando radialmente, cada dab deposita **à frente de si** — e a própria
+  pincelada atropela aquilo no dab seguinte. Metade da tinta ficava **dentro do próprio canal** (o canal
+  saía a 55% da laje). Uma lâmina em movimento não deixa tinta em pé na sua frente. (MUT S = vermelha.)
+- **A tinta bancada nunca vai onde o traço já passou** — bancar sob a própria pincelada é bancar no próprio
+  canal. Com um fallback: se **não houver onde bancar**, banca no swath mesmo. Tinta sem lugar é tinta
+  **destruída**, e a coisa toda existe para afirmar que tinta nunca é destruída.
+
+**2. Bordas duras.** O rim era `blur(pegada) − pegada` com um **box blur**, e um box blur de um degrau é uma
+**rampa linear**: contínua, mas de **derivada descontínua** — e a luz lê a derivada. Ele desenhava um vinco
+a exatamente `reach` px do traço. O rim agora é um perfil **analítico C¹**, sem blur nenhum.
+
+> **Mas o gate é honesto sobre o que ele prova, e isso importa:** trocar o perfil C¹ por um triangular
+> (kinkado) **NÃO** derruba o gate — não pode, porque o banco é acumulado **dab a dab** e dabs vizinhos
+> sobrepõem-se, apagando qualquer kink do kernel. O que a luz de fato lia como *borda dura* era o **banco
+> ESTREITO**: `reach = 0.35 × raio` = 4 texels segurando a mordida de um pincel de 12 px não é um banco, é
+> uma **espícula**. Agora é `0.8 × raio` (cap 24 px). **MUT T** (voltar a 0.35) = **vermelha, 40% de kink**.
+> O perfil C¹ é a forma certa a buscar; **a largura é o que os testes defendem**, e está escrito assim no
+> código.
+
+**Perf — e uma otimização que era obrigatória, não enfeite.** O `R₁` é gravado **sempre que há chão para
+empurrar** (não só com o knob levantado), senão Push seria um knob morto num card cujo propósito é o
+oposto. Isso custa. O primeiro corte avaliava `silhouette_at` **duas vezes por texel** (uma para depositar,
+outra para tirar) e pôs o impasto em **5,0 ms/move — acima do orçamento, em todo traço**. A mordida passou a
+**andar dentro do passe do depósito** (3 operações num laço que já rodava) e o banco ficou só com o **anel**,
+com os pesos **cacheados** entre os dois passes e sem `sqrt`:
+
+| @4096² | por-movimento | pen-up |
+|---|---|---|
+| Push 0 | **3,63 ms** | 28,1 ms |
+| Push 1 | **3,74 ms** | 27,3 ms |
+
+Alvo ≤4, kill 8. Em canvas limpo o custo é **zero** (`displaced == 0` curto-circuita antes dos laços): o
+preço cai exatamente onde a feature vive — tinta sobre tinta.

@@ -36,8 +36,9 @@ pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
-mod impasto_settings; // Impasto: section setters + the panel-event route (mirror of watercolor_settings)
-mod impasto_settle; // Impasto: the deposit settling under its own weight (the box blur) + its bounds
+mod impasto_plow; // Impasto: the palette knife (the Smear drags the relief along with the colour)
+mod impasto_settings; // Impasto: section setters + the panel-event route (mirrors watercolor_settings)
+mod impasto_settle; // Impasto: the deposit settling under its own weight + the material constants
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
@@ -172,11 +173,7 @@ pub use brush_settings::{
 pub use shape_layers::MAX_SHAPE_LAYERS;
 pub use snapshot::brush_falloff_weight_at;
 
-/// A Drag Dot's restore record: pristine pixels under the dab footprint (RGBA8 over `rect`), saved before stamping so the next move erases it (no trail).
-struct DragPreview {
-    rect: Region,
-    pixels: Vec<u8>,
-}
+use stamp_preview::DragPreview;
 
 pub(crate) struct PaintState {
     /// The active brush.
@@ -417,15 +414,18 @@ pub(crate) struct PaintState {
     ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
-    /// **Impasto** per-stroke relief (f32, `w*h`) — always exactly
-    /// [`ph2d_painter_brush::height::derive_height`] of the two ingredient planes below. Merged into the
-    /// layer's committed height at `close_stroke` (separate strokes DO add). Empty ⇒ no impasto this
-    /// stroke (zero cost); sized lazily, cleared on down and on each shape-editor re-stamp.
+    /// **Impasto** per-stroke relief (f32, `w*h`) — the deposit ([`ph2d_painter_brush::height::
+    /// derive_height`] of the ingredient planes below) plus the displacement the brush banked. Merged
+    /// into the layer at `close_stroke`. Empty ⇒ no impasto this stroke (zero cost).
     stroke_height: Vec<f32>,
     /// **Impasto** per-stroke PAINT envelope (f32, `0..1`, by `max` — the heaviest dab owns the pixel,
     /// so one pass leaves one thickness). Both the stroke's coverage (what the light weighs its shading
     /// by; merged into the layer's `covers` at stroke end) and the first ingredient of the relief.
     stroke_paint: Vec<f32>,
+    /// **Impasto** per-stroke DISPLACEMENT at `Push = 1` (f32, `w*h`; `ph2d_painter_brush::height_push`)
+    /// — negative where the brush took paint, positive where it banked it, summing to zero. Linear in
+    /// Push, so it is an INGREDIENT: the ridge appears under the moving brush *and* the knob stays live.
+    stroke_push: Vec<f32>,
     /// **Impasto** per-stroke GRAIN (1 byte/px, `255` = none): the grain sample of the dab that won each
     /// pixel. The second ingredient — what lets `Depth Source` be flipped AFTER the stroke and re-carve
     /// the very grooves that dab would have left.
@@ -437,13 +437,14 @@ pub(crate) struct PaintState {
     /// chain), but per-copy, because Symmetry paints several strokes at once.
     last_height_center: Vec<Option<[f32; 2]>>,
     /// **Impasto live-edit** — the LAST stroke's ingredients, so the whole Body card re-derives that
-    /// stroke after the fact instead of only affecting the next one (Enio 2026-07-12: *"coloque todos
-    /// os parâmetros vivos em tempo real para ajustes depois do traço"*). Storing the HEIGHT instead
-    /// bakes Body and Depth Source into it, leaving nothing to re-derive them from — the first cut's
-    /// bug. Empty ⇒ nothing live.
+    /// stroke after the fact instead of only affecting the next one (Enio 2026-07-12). Storing the
+    /// HEIGHT instead bakes Body and Depth Source into it, leaving nothing to re-derive them from — the
+    /// first cut's bug. Empty ⇒ nothing live.
     live_paint: Vec<f32>,
     /// That stroke's grain plane — the second ingredient (see [`Self::stroke_grain`]).
     live_grain: Vec<u8>,
+    live_push: Vec<f32>, // that stroke's displacement at `Push = 1` — see [`Self::stroke_push`]
+    push_scratch: Vec<f32>, // per-dab rim weights, reused (so `bank_dab_push` allocates nothing)
     /// The active layer's committed relief BEFORE that stroke — the ground the re-derived stroke is
     /// added back onto. **A PATCH over [`Self::live_relief_rect`], not the canvas**: outside that rect
     /// the stroke contributes nothing, so the layer's relief there is its own and never re-derived.
@@ -454,10 +455,9 @@ pub(crate) struct PaintState {
     /// The union of this stroke's dab footprints, in canvas texels — accumulated as the relief is
     /// deposited, cleared with the stroke.
     ///
-    /// The commit used to re-derive, settle, diff and re-base over the **whole canvas** for a stroke
-    /// that touched a corner of it: 258 ms of box-blur on 16 M texels at 4096², i.e. a **one-second
-    /// freeze at every pen-up** (measured 2026-07-12; the kill-criterion had only ever timed the
-    /// `Move`). This is what makes that work `O(stroke)`.
+    /// The commit used to re-derive, settle, diff and re-base over the **whole canvas** for a stroke that
+    /// touched a corner of it — a one-SECOND freeze at every pen-up at 4096² (§11). This is the window
+    /// that makes that work `O(stroke)`.
     stroke_relief_bbox: Option<Region>,
     /// [`Self::stroke_relief_bbox`] grown by the settle's reach and clipped to the canvas — the window
     /// the live re-derive owns. Every buffer above that is "per-stroke" is indexed against THIS.

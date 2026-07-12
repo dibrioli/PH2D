@@ -110,81 +110,19 @@ fn transpose(src: &[f32], dst: &mut [f32], w: usize, h: usize) {
     }
 }
 
-/// How far displaced paint travels, in pixels — the radius of the rim it piles into.
-///
-/// A **material** constant, not a function of the brush: shove a knife through oil paint and the ridge
-/// stands right at the edge of the cut, whether the knife is wide or narrow. Making it scale with the
-/// brush would also make the commit's window scale with it, and the window is what keeps the commit
-/// `O(stroke)` (§11). // CLAMP-OK
-pub(super) const PUSH_REACH_PX: u32 = 12;
-
-/// **Volume conservation** — the brush shoves the paint that was already there out of its way, and that
-/// paint has to GO somewhere.
-///
-/// This is the difference between paint and a bump map. Until now a stroke over existing thick paint
-/// simply piled onto it, as if the two occupied the same space; real paint cannot interpenetrate, so the
-/// brush ploughs a channel and the displaced material stands up as a **ridge along the edges of the
-/// stroke**. It is the single most recognisable thing about impasto, and it was the one mechanism the
-/// research mapped that the product did not have (`17_impasto_deposito_pesquisa2.md`).
-///
-/// **Derived from the FOOTPRINT, not driven along the PATH** — and that is the load-bearing decision:
-///
-///  * A per-dab, destructive plough (the obvious build) cannot survive the SHAPE editors, which re-stamp
-///    the whole shape on every pointer move: the displacement would compound every frame into a canyon.
-///  * And it could not be re-derived, so `Push` would be the one dead knob in a card whose entire point
-///    is that every knob stays live after the stroke (§10.3).
-///
-/// As a pure function of `(ground, footprint)` it is **idempotent**, it re-derives with the rest of the
-/// card, and the re-stamp problem does not exist. The price is that the stroke displaces as one shape
-/// rather than as a moving blade: **no bow wave running ahead of the tip.** Named, not forgotten.
-///
-/// The arithmetic conserves **exactly**: what is bitten out of the footprint is what is added to the rim,
-/// and the rim is normalised by its own weight — so paint shoved against the canvas edge redistributes
-/// into whatever rim is left rather than vanishing.
-///
-/// `ground` is the layer's relief BEFORE the stroke (mutated in place); `footprint` is the stroke's paint
-/// coverage (`0..1`); both are `rw × rh` windows. Returns whether anything moved.
-pub(super) fn push_ground(
-    ground: &mut [f32],
-    footprint: &[f32],
-    rw: u32,
-    rh: u32,
-    push: f32,
-) -> bool {
-    let n = (rw as usize) * (rh as usize);
-    let push = push.clamp(0.0, 1.0);
-    if push <= 0.0 || ground.len() != n || footprint.len() != n {
-        return false;
+/// The union of two dab dirty-rects (the deposit's and the displacement's — the latter reaches further).
+pub(super) fn union_dirty(
+    a: ph2d_painter_brush::dab::DirtyRect,
+    b: ph2d_painter_brush::dab::DirtyRect,
+) -> ph2d_painter_brush::dab::DirtyRect {
+    let x0 = a.x.min(b.x);
+    let y0 = a.y.min(b.y);
+    let x1 = (a.x + a.w).max(b.x + b.w);
+    let y1 = (a.y + a.h).max(b.y + b.h);
+    ph2d_painter_brush::dab::DirtyRect {
+        x: x0,
+        y: y0,
+        w: x1 - x0,
+        h: y1 - y0,
     }
-    // The RIM: the footprint blurred outward, minus the footprint itself — the halo of texels the paint
-    // is shoved into. (A distance transform would be tidier; this is not one. It is a WEIGHT, and a
-    // blurred mask is a perfectly good weight — the conservation does not depend on its shape, only on
-    // its normalisation.)
-    let mut rim: Vec<f32> = footprint.iter().map(|c| c.clamp(0.0, 1.0)).collect();
-    box_blur(&mut rim, rw, rh, PUSH_REACH_PX);
-    let mut weight = 0.0f32;
-    for (r, c) in rim.iter_mut().zip(footprint.iter()) {
-        *r = (*r - c.clamp(0.0, 1.0)).max(0.0);
-        weight += *r;
-    }
-    if weight <= 0.0 {
-        return false; // a footprint with no outside — then nothing is displaced, rather than lost
-    }
-
-    // The BITE: the brush displaces the ground in proportion to how much of it it covers.
-    let mut removed = 0.0f32;
-    for (g, c) in ground.iter_mut().zip(footprint.iter()) {
-        let take = *g * c.clamp(0.0, 1.0) * push;
-        *g -= take;
-        removed += take;
-    }
-    if removed == 0.0 {
-        return false; // bare canvas under the stroke: there was nothing to shove
-    }
-    // …and it lands in the rim. Signed, so a carved groove pushes a groove outward, not a ridge.
-    let scale = removed / weight;
-    for (g, r) in ground.iter_mut().zip(rim.iter()) {
-        *g += r * scale;
-    }
-    true
 }

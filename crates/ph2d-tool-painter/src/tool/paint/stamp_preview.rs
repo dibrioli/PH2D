@@ -5,6 +5,13 @@
 
 use super::*;
 
+/// A Drag Dot's restore record: the pristine pixels under the dab footprint (RGBA8 over `rect`), saved
+/// before stamping so the next move can erase it and leave no trail.
+pub(super) struct DragPreview {
+    pub(super) rect: Region,
+    pub(super) pixels: Vec<u8>,
+}
+
 impl PainterTool {
     /// Flag `rect` dirty for the next GPU preview upload + bump the active layer's pixel epoch.
     pub(super) fn mark_dirty(&mut self, rect: Region) {

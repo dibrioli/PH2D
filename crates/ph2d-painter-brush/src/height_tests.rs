@@ -62,7 +62,7 @@ fn deposit_fields(spec: &BrushSpec) -> (Vec<f32>, Vec<f32>, Vec<u8>) {
         paint: &mut paint,
         grain: &mut grain,
     };
-    let _ = accumulate_dab_height(&mut fields, W, W, spec, &dab);
+    let _ = accumulate_dab_height(&mut fields, W, W, spec, &dab, None);
     (dst, paint, grain)
 }
 

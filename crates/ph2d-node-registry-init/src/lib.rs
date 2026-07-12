@@ -83,7 +83,9 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_pulse_on_change::register(reg)?;
     ph2d_node_pulse_sample_hold::register(reg)?;
     ph2d_node_pulse_threshold::register(reg)?;
+    ph2d_node_rig_fabrik::register(reg)?;
     ph2d_node_rig_fk::register(reg)?;
+    ph2d_node_rig_ik_2bone::register(reg)?;
     ph2d_node_rig_skeleton::register(reg)?;
     ph2d_node_value_instance_field::register(reg)?;
     ph2d_node_value_lfo::register(reg)?;

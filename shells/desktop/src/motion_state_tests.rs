@@ -8,10 +8,11 @@ use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 
-/// Both demo limbs: 14 joints, bones of 0.55 (see `motion_demo_strobe`).
-const JOINTS: usize = 14;
-const BONE: f32 = 0.55;
-const TIP: usize = JOINTS - 1;
+/// The demo's arm (law of cosines) and tentacle (FABRIK) — see `motion_demo_strobe`.
+const ARM_JOINTS: usize = 3;
+const ARM_BONE: f32 = 1.5;
+const TENTACLE_JOINTS: usize = 10;
+const TENTACLE_BONE: f32 = 0.34;
 
 /// Drive `ticks` fixed steps of the real cook (advancing the `pre` edges, exactly as the
 /// shell's pump does) and return every tick's positions for `sink`. The wave scene only
@@ -50,93 +51,105 @@ fn bone_lengths(joints: &[[f32; 2]]) -> Vec<f32> {
 #[test]
 fn new_builds_the_well_typed_rig_document() {
     let state = MotionState::new();
-    assert_eq!(state.sinks.len(), 2, "two scenes -> two sinks");
+    assert_eq!(
+        state.sinks.len(),
+        4,
+        "arm, tentacle, and a goal dot beside each"
+    );
     for sink in &state.sinks {
         assert_eq!(
             state.doc.graph.node(*sink).unwrap().type_name,
             "motion.output"
         );
     }
-    // 10 nodes: {skeleton, scale, move, output}
-    // + {skeleton, oscillator, rig.fk, scale, move, output}. The newest nodes (doc 40).
-    assert_eq!(state.doc.graph.nodes().len(), 10);
+    // 18 nodes: the shared goal {grid, move, orbit} + the arm {skeleton, ik_2bone, scale,
+    // move, output} + the tentacle {skeleton, fabrik, scale, move, output} + the goal dots
+    // {scale, move, output, move, output}. The newest nodes (doc 41).
+    assert_eq!(state.doc.graph.nodes().len(), 18);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
-/// **The skeleton, through the whole chain** (doc 40): the rest limb reaches
-/// `motion.output` as 14 joints, strung end-to-end by bones of exactly `BONE` — and it
-/// CURLS (each joint's bend is relative to the last one, which is what makes a chain a
-/// chain rather than a fan out of the root).
+/// **Both solvers, through the whole chain** (doc 41): each limb's TIP lands on the goal
+/// dot that is drawn beside it — measured on what actually reaches `motion.output`, not on
+/// the solver's internal arithmetic. The goal orbits, so this is a moving target: it holds
+/// at every tick, from every direction of approach.
 ///
-/// FALSIFIED three ways: the seam never wired (no joints arrive) · the chain fanned from
-/// the root instead of stacking (the bones would not measure `BONE` end-to-end) · a limb
-/// that moves when nothing poses it.
+/// The oracle is the OTHER SINK. The goal dot is its own little scene (the same orbiting
+/// point, moved by the same offset as the limb that chases it), so "the hand is on the
+/// goal" is literally "these two rendered dots coincide" — no recomputation of the
+/// solver's own maths to check the solver's own maths.
+///
+/// FALSIFIED five ways: the `target` port never wired (the limb sits at its rest pose and
+/// never tracks) · the solver writing positions instead of a pose (the bones would drift
+/// off their lengths through the FK downstream) · the root not nailed (the whole limb
+/// would walk toward the goal) · a solver that stretches to reach · the goal dot moved by
+/// a different offset than its limb (they would never coincide).
 #[test]
-fn the_rest_skeleton_is_a_curling_chain_of_rigid_bones() {
+fn both_limbs_land_their_tip_on_the_orbiting_goal() {
     let state = MotionState::new();
-    let frames = run_scene(&state, state.sinks[0], 10);
-    let limb = &frames[0];
-    assert_eq!(limb.len(), JOINTS, "the whole chain reaches the sink");
+    let ticks = 90;
+    let arm = run_scene(&state, state.sinks[0], ticks);
+    let tentacle = run_scene(&state, state.sinks[1], ticks);
+    let arm_goal = run_scene(&state, state.sinks[2], ticks);
+    let tentacle_goal = run_scene(&state, state.sinks[3], ticks);
 
-    for (i, len) in bone_lengths(limb).iter().enumerate() {
-        assert!(
-            (len - BONE).abs() < 1e-3,
-            "bone {i} measures {len}, not {BONE}"
-        );
-    }
-    // It curls: the direction of the last bone differs from the first (a straight rod
-    // would keep the same heading, a fan would not keep its bone lengths at all).
-    let first = [limb[1][0] - limb[0][0], limb[1][1] - limb[0][1]];
-    let last = [
-        limb[TIP][0] - limb[TIP - 1][0],
-        limb[TIP][1] - limb[TIP - 1][1],
-    ];
-    let turned = dist(first, last);
-    assert!(turned > 0.5, "the chain curls (heading change {turned})");
+    assert_eq!(arm[0].len(), ARM_JOINTS, "the arm reaches the sink");
+    assert_eq!(tentacle[0].len(), TENTACLE_JOINTS);
+    assert_eq!(arm_goal[0].len(), 1, "the goal is one dot");
 
-    // Nothing poses this limb, so it must not move.
-    assert_eq!(frames[9], frames[0], "the rest pose is at rest");
-}
-
-/// **FK, through the whole chain** (doc 40) — the node's whole reason to exist.
-///
-/// The oscillator is a GENERIC node: it writes the joints' `rot` column and knows nothing
-/// about bones, so it leaves every joint exactly where it was. `rig.fk` is what turns
-/// those posed angles into a pose. So the limb waves — and it waves *rigidly*: the bones
-/// keep their length at every tick, and the root, which nothing can move, stays nailed.
-///
-/// FALSIFIED four ways: **`rig.fk` cut out of the chain** (the joints stay bent-but-still
-/// — the tip never travels: the seam bug this whole module keeps re-learning) · a resolve
-/// that rebuilds from the origin (the root would drift) · a resolve that moves `P`
-/// directly instead of through the bones (they would stretch) · the oscillator not wired
-/// (the wave never starts).
-#[test]
-fn the_posed_limb_waves_rigidly_from_a_nailed_root() {
-    let state = MotionState::new();
-    let frames = run_scene(&state, state.sinks[1], 90);
-    assert_eq!(frames[0].len(), JOINTS);
-
-    // The root is nailed: nothing in the chain can move it.
-    for (k, f) in frames.iter().enumerate() {
-        assert_eq!(f[0], frames[0][0], "the root drifted at tick {k}");
-    }
-
-    // The tip travels — this is the assertion that dies if FK is not there.
-    let swing = frames
-        .iter()
-        .map(|f| dist(f[TIP], frames[0][TIP]))
+    // The goal really moves (otherwise "it tracks" is a vacuous claim).
+    let travel = (0..ticks)
+        .map(|k| dist(arm_goal[k][0], arm_goal[0][0]))
         .fold(0.0, f32::max);
-    assert!(swing > 0.5, "the limb waves (tip travelled {swing})");
+    assert!(travel > 2.0, "the goal orbits (travelled {travel})");
 
-    // And it waves RIGIDLY: no bone stretches, at any tick of the wave.
-    for (k, f) in frames.iter().enumerate() {
-        for (i, len) in bone_lengths(f).iter().enumerate() {
+    for k in 0..ticks {
+        // The tolerance is the pose round trip (approximate atan2 + cos/sin), not slack in
+        // the solvers: the law of cosines is exact and FABRIK converges to 1e-4.
+        let arm_miss = dist(arm[k][ARM_JOINTS - 1], arm_goal[k][0]);
+        assert!(arm_miss < 0.03, "tick {k}: the hand missed by {arm_miss}");
+        let tip_miss = dist(tentacle[k][TENTACLE_JOINTS - 1], tentacle_goal[k][0]);
+        assert!(
+            tip_miss < 0.03,
+            "tick {k}: the tentacle missed by {tip_miss}"
+        );
+
+        // Nailed roots, rigid bones — at every tick of the chase.
+        assert_eq!(arm[k][0], arm[0][0], "tick {k}: the arm's root walked");
+        assert_eq!(
+            tentacle[k][0], tentacle[0][0],
+            "tick {k}: the tentacle's root walked"
+        );
+        for (i, len) in bone_lengths(&arm[k]).iter().enumerate() {
             assert!(
-                (len - BONE).abs() < 1e-3,
-                "tick {k}: bone {i} stretched to {len}"
+                (len - ARM_BONE).abs() < 1e-3,
+                "tick {k}: arm bone {i} = {len}"
+            );
+        }
+        for (i, len) in bone_lengths(&tentacle[k]).iter().enumerate() {
+            assert!(
+                (len - TENTACLE_BONE).abs() < 1e-3,
+                "tick {k}: tentacle bone {i} = {len}"
             );
         }
     }
+
+    // The arm's elbow BENDS — it is not just pointing straight at the goal (which is what
+    // a solver that only ever extends would do, and would still pass every assertion above
+    // whenever the goal happens to sit at full reach).
+    let off_line = (0..ticks)
+        .map(|k| {
+            let (a, e, h) = (arm[k][0], arm[k][1], arm[k][2]);
+            let (dx, dy) = (h[0] - a[0], h[1] - a[1]);
+            let reach = (dx * dx + dy * dy).sqrt().max(f32::EPSILON);
+            // The elbow's distance from the root-to-hand line.
+            ((e[0] - a[0]) * dy - (e[1] - a[1]) * dx).abs() / reach
+        })
+        .fold(f32::MAX, f32::min);
+    assert!(
+        off_line > 0.4,
+        "the elbow bends off the reach line ({off_line})"
+    );
 }
 
 /// **A node dropped at its DEFAULT params may not change a single instance** — the

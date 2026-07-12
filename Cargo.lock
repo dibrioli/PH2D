@@ -5809,7 +5809,9 @@ dependencies = [
  "ph2d-node-pulse-sample-hold",
  "ph2d-node-pulse-threshold",
  "ph2d-node-registry",
+ "ph2d-node-rig-fabrik",
  "ph2d-node-rig-fk",
+ "ph2d-node-rig-ik-2bone",
  "ph2d-node-rig-skeleton",
  "ph2d-node-sync",
  "ph2d-node-value-instance-field",
@@ -5820,7 +5822,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-rig-fabrik"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-rig-fk"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-rig-ik-2bone"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

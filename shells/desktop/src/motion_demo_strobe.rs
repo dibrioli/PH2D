@@ -1,45 +1,68 @@
-//! The M4 rig demo — the **default Motion document**, showing the slice's two new
-//! nodes: on the LEFT a **skeleton at rest** (a chain of joints, curling by its Bend);
-//! on the RIGHT the same skeleton **posed and resolved** — an oscillator writes the
-//! joints' angles and `rig.fk` turns them into a pose, so the limb waves. Two
-//! independent scenes (each its own `motion.output` sink), kept small so each new node
-//! reads on its own. A `#[path]` sibling of `motion_state`, kept out for the LOC cap.
+//! The M4 IK demo — the **default Motion document**: two limbs **chasing the same
+//! orbiting goal**. On the LEFT a three-joint arm solved in closed form by the law of
+//! cosines (`rig.ik_2bone`); on the RIGHT a ten-joint tentacle solved iteratively by
+//! **FABRIK** (`rig.fabrik`). The goal itself is drawn as a fat dot beside each limb, so
+//! what the limbs are reaching for is visible and not a matter of faith.
 //!
 //! ```text
-//! LEFT  (rest):  skeleton ─> scale ─> move(−7) ─> output
-//! RIGHT (wave):  skeleton ─> oscillator (Rotation) ─> rig.fk ─> scale ─> move(+7) ─> output
+//!  goal:      grid(1) ─> move(2.4, 0) ─> orbit ─┬─────────────────────────────────┐
+//!                                               │                                 │
+//!  LEFT  arm: skeleton(3) ─> ik_2bone <─────────┤                                 │
+//!                              └─> scale ─> move(−7) ─> output                    │
+//!  RIGHT tentacle: skeleton(10) ─> fabrik <─────┘                                 │
+//!                              └─> scale ─> move(+7) ─> output                    │
+//!  goal dots:                             scale(big) ─> move(−7) ─> output  <─────┤
+//!                                                    ─> move(+7) ─> output  <─────┘
 //! ```
 //!
-//! **The contrast IS the lesson** (doc 40). The oscillator is a *generic* node: it writes
-//! the `rot` column and knows nothing about bones — it leaves every joint exactly where
-//! it was. **`rig.fk` is what turns posed angles into a pose.** Cut it out of the right
-//! chain and the limb goes as still as the left one, with all its joints secretly bent.
+//! **Four sinks, no merge node.** Every `motion.output` in the document lowers onto the
+//! same draw buffer, so the goal dot is its own little scene rather than something
+//! concatenated into the limb's stream. (`motion.combine` would have worked too — but it
+//! zero-fills the columns an input lacks, so merging a tinted goal into an untinted
+//! skeleton would paint the whole limb transparent black. Sinks compose without that.)
 //!
-//! That works at all because **a skeleton is an ordinary instance stream** (M4.N3): its
-//! joints are elements, `parent`/`len`/`rot` are ordinary columns, so every generic node
-//! already works on a rig — no `Domain::Rig`, no contract change.
+//! The limbs are solved at the ORIGIN and moved apart afterwards, so both can chase the
+//! same goal; each goal dot is moved by the same offset as the limb it belongs to.
 //!
-//! The `motion.scale` in each chain is how a document asks for **small quads**: the
-//! lowering's fallback for a stream with no `size` column is the IDENTITY (doc 39).
+//! Both solvers write a **pose** (angles), never positions — so the bones are rigid, the
+//! root stays nailed, and an unreachable goal extends the limb instead of stretching it
+//! (doc 41). Drag `Iterations` on FABRIK down to 1 and watch it lag behind the goal.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 const COL_W: f32 = 190.0;
-const REST_ROW: f32 = 0.0;
-const WAVE_ROW: f32 = 360.0;
-/// The quad size both scenes ask for — small enough that the joints read as distinct
-/// beads on the chain rather than a merged blob.
-const QUAD: f32 = 0.35;
-/// Both limbs: long enough to read as a chain, short enough to stay on screen.
-const JOINTS: f32 = 14.0;
-const BONE: f32 = 0.55;
+const GOAL_ROW: f32 = -170.0;
+const ARM_ROW: f32 = 0.0;
+const TENTACLE_ROW: f32 = 200.0;
+const DOT_ROW: f32 = 400.0;
 
-/// Author both scenes into `g`; returns their Output nodes (the sinks), the rest
-/// scene's first so the sink order is stable (id-ascending).
+/// The quad size the limbs ask for, and the fatter one the goal gets — the lowering's
+/// fallback for a stream with no `size` column is the IDENTITY (doc 39), so a document
+/// that wants small quads says so.
+const JOINT_QUAD: f32 = 0.28;
+const GOAL_QUAD: f32 = 0.6;
+
+/// How far the goal orbits from the limbs' shared root, and how fast (`motion.orbit`'s
+/// speed is DEGREES PER SECOND — 90 is a quarter turn a second, a lap every four).
+const GOAL_RADIUS: f32 = 2.4;
+const GOAL_SPEED: f32 = 90.0;
+
+/// The arm: three joints, two bones — reach 3.0, comfortably past the goal's orbit, so
+/// the elbow really has to bend rather than sitting at full stretch.
+const ARM_BONE: f32 = 1.5;
+/// The tentacle: ten joints of 0.34 — reach 3.06, about the same, so the two solvers are
+/// answering the same question with very different machinery.
+const TENTACLE_JOINTS: f32 = 10.0;
+const TENTACLE_BONE: f32 = 0.34;
+
+/// Author every scene into `g`; returns the four Output nodes (the sinks), in the order
+/// the tests read them: arm · tentacle · the arm's goal dot · the tentacle's goal dot.
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    let rest = build_rest_scene(g)?;
-    let wave = build_wave_scene(g)?;
-    Some(vec![rest, wave])
+    let goal = build_goal(g)?;
+    let arm = build_arm(g, goal)?;
+    let tentacle = build_tentacle(g, goal)?;
+    let (dot_l, dot_r) = build_goal_dots(g, goal)?;
+    Some(vec![arm, tentacle, dot_l, dot_r])
 }
 
 /// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
@@ -52,13 +75,14 @@ fn wire(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
     .ok()
 }
 
-/// Wire a straight chain left-to-right, and lay it out one card per column.
-fn chain(g: &mut Graph, row: f32, nodes: &[NodeId]) -> Option<()> {
-    for (col, n) in nodes.iter().enumerate() {
+/// Wire a straight chain left-to-right (port 0 to port 0), laying one card per column
+/// starting at `col`.
+fn chain(g: &mut Graph, row: f32, col: usize, nodes: &[NodeId]) -> Option<()> {
+    for (i, n) in nodes.iter().enumerate() {
         g.set_pos(
             *n,
             Pos {
-                x: col as f32 * COL_W,
+                x: (col + i) as f32 * COL_W,
                 y: row,
             },
         );
@@ -69,48 +93,78 @@ fn chain(g: &mut Graph, row: f32, nodes: &[NodeId]) -> Option<()> {
     Some(())
 }
 
-/// LEFT: the skeleton as authored — a limb curling by its `Bend`. Returns its Output.
-fn build_rest_scene(g: &mut Graph) -> Option<NodeId> {
+/// The shared goal: a single point orbiting the origin. Returns the node both solvers
+/// (and both goal dots) read.
+fn build_goal(g: &mut Graph) -> Option<NodeId> {
+    let grid = g.add_node("motion.grid");
+    let out = g.add_node("motion.move");
+    let orbit = g.add_node("motion.orbit");
+    chain(g, GOAL_ROW, 0, &[grid, out, orbit])?;
+
+    g.set_param(grid, "rows", 1.0);
+    g.set_param(grid, "cols", 1.0);
+    // Push the point off the pivot — an orbit around the point itself would stand still.
+    g.set_param(out, "dx", GOAL_RADIUS);
+    g.set_param(out, "dy", 0.0);
+    g.set_param(orbit, "speed", GOAL_SPEED);
+    Some(orbit)
+}
+
+/// LEFT: the three-joint arm, solved by the law of cosines. Returns its Output.
+fn build_arm(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
     let skel = g.add_node("rig.skeleton");
+    let ik = g.add_node("rig.ik_2bone");
     let scale = g.add_node("motion.scale");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
-    chain(g, REST_ROW, &[skel, scale, mv, output])?;
+    chain(g, ARM_ROW, 1, &[skel, ik, scale, mv, output])?;
+    wire(g, (goal, 0), (ik, 1))?; // the goal feeds the solver's `target` port
 
-    g.set_param(skel, "joints", JOINTS);
-    g.set_param(skel, "length", BONE);
-    // A gentle bend per joint — the chain curls into an arc instead of a straight rod.
-    g.set_param(skel, "angle", 9.0);
-    g.set_param(skel, "root_angle", 100.0);
-    g.set_param(scale, "amount", QUAD);
+    g.set_param(skel, "joints", 3.0);
+    g.set_param(skel, "length", ARM_BONE);
+    g.set_param(skel, "angle", 0.0);
+    g.set_param(skel, "root_angle", 90.0);
+    g.set_param(scale, "amount", JOINT_QUAD);
     g.set_param(mv, "dx", -7.0);
-    g.set_param(mv, "dy", -3.0);
     Some(output)
 }
 
-/// RIGHT: the same limb, posed by a generic oscillator and RESOLVED by `rig.fk` — it
-/// waves. Returns its Output.
-fn build_wave_scene(g: &mut Graph) -> Option<NodeId> {
+/// RIGHT: the ten-joint tentacle, solved by FABRIK. Returns its Output.
+fn build_tentacle(g: &mut Graph, goal: NodeId) -> Option<NodeId> {
     let skel = g.add_node("rig.skeleton");
-    let osc = g.add_node("motion.oscillator");
-    let fk = g.add_node("rig.fk");
+    let solver = g.add_node("rig.fabrik");
     let scale = g.add_node("motion.scale");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
-    chain(g, WAVE_ROW, &[skel, osc, fk, scale, mv, output])?;
+    chain(g, TENTACLE_ROW, 1, &[skel, solver, scale, mv, output])?;
+    wire(g, (goal, 0), (solver, 1))?;
 
-    g.set_param(skel, "joints", JOINTS);
-    g.set_param(skel, "length", BONE);
-    g.set_param(skel, "angle", 0.0); // a straight limb at rest — the wave is the pose
+    g.set_param(skel, "joints", TENTACLE_JOINTS);
+    g.set_param(skel, "length", TENTACLE_BONE);
+    g.set_param(skel, "angle", 0.0);
     g.set_param(skel, "root_angle", 90.0);
-    // Channel 2 = Rotation: the oscillator writes the joints' LOCAL angles. The stagger
-    // gives each joint a later phase, so the bend travels down the limb like a whip.
-    g.set_param(osc, "channel", 2.0);
-    g.set_param(osc, "amplitude", 14.0); // degrees per joint
-    g.set_param(osc, "frequency", 0.5);
-    g.set_param(osc, "phase_stagger", 0.06);
-    g.set_param(scale, "amount", QUAD);
+    g.set_param(solver, "iterations", 10.0);
+    g.set_param(scale, "amount", JOINT_QUAD);
     g.set_param(mv, "dx", 7.0);
-    g.set_param(mv, "dy", -3.0);
     Some(output)
+}
+
+/// The goal, drawn as a fat dot beside each limb — the same point, moved by the same
+/// offset as the limb that chases it. Returns both Outputs.
+fn build_goal_dots(g: &mut Graph, goal: NodeId) -> Option<(NodeId, NodeId)> {
+    let scale = g.add_node("motion.scale");
+    let mv_l = g.add_node("motion.move");
+    let out_l = g.add_node("motion.output");
+    let mv_r = g.add_node("motion.move");
+    let out_r = g.add_node("motion.output");
+
+    chain(g, DOT_ROW, 2, &[scale, mv_l, out_l])?;
+    chain(g, DOT_ROW + 120.0, 3, &[mv_r, out_r])?;
+    wire(g, (goal, 0), (scale, 0))?;
+    wire(g, (scale, 0), (mv_r, 0))?;
+
+    g.set_param(scale, "amount", GOAL_QUAD);
+    g.set_param(mv_l, "dx", -7.0);
+    g.set_param(mv_r, "dx", 7.0);
+    Some((out_l, out_r))
 }

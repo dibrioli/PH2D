@@ -83,7 +83,9 @@ ph2d-node-pulse-counter = { path = "../ph2d-node-pulse-counter" }
 ph2d-node-pulse-on-change = { path = "../ph2d-node-pulse-on-change" }
 ph2d-node-pulse-sample-hold = { path = "../ph2d-node-pulse-sample-hold" }
 ph2d-node-pulse-threshold = { path = "../ph2d-node-pulse-threshold" }
+ph2d-node-rig-fabrik = { path = "../ph2d-node-rig-fabrik" }
 ph2d-node-rig-fk = { path = "../ph2d-node-rig-fk" }
+ph2d-node-rig-ik-2bone = { path = "../ph2d-node-rig-ik-2bone" }
 ph2d-node-rig-skeleton = { path = "../ph2d-node-rig-skeleton" }
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }

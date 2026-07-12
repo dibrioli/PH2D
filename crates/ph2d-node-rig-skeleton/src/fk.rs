@@ -31,7 +31,8 @@
 //! [`resolve`] rebuilds the world pose — which is exactly what `rig.fk` is for.
 //!
 //! **The bones can therefore never stretch**: `|P[i] − P[parent]| == len[i]`, by
-//! construction, whatever anyone did to `rot`.
+//! construction, whatever anyone did to `rot` — see the normalisation in [`resolve`],
+//! which is what makes that literally true and not merely almost true.
 
 use crate::trig;
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -102,7 +103,15 @@ pub(crate) fn resolve(input: &Stream) -> Stream {
             Some(j) => {
                 w[i] = w[j] + rot[i];
                 let (cos, sin) = trig::cos_sin_cycles(w[i] / DEGREES_PER_TURN);
-                p[i] = [p[j][0] + len[i] * cos, p[j][1] + len[i] * sin];
+                // NORMALISE the direction before stepping along it. The parabolic
+                // `cos/sin` pair (HR-5) is ~0.1 % off the unit circle, and an
+                // un-normalised step would make the bone ~0.1 % long or short — so
+                // "the bones never stretch" would be a claim that is only ALMOST
+                // true, and a limb's total reach would drift with its pose. One
+                // `sqrt` (which HR-5 allows) makes it exactly true; the residual
+                // ~0.05° of angle error is invisible, a stretching bone is not.
+                let inv = 1.0 / (cos * cos + sin * sin).sqrt();
+                p[i] = [p[j][0] + len[i] * cos * inv, p[j][1] + len[i] * sin * inv];
             }
         }
     }
@@ -178,15 +187,19 @@ mod tests {
     }
 
     /// **Bones never stretch**, no matter the pose — the invariant the whole
-    /// representation rests on.
+    /// representation rests on, held to a tenth of a per-mille.
+    ///
+    /// FALSIFIED by stepping along the raw parabolic `(cos, sin)` without normalising it:
+    /// the pair is ~0.1 % off the unit circle, so every bone would come out ~0.1 % long or
+    /// short DEPENDING ON ITS ANGLE — a limb whose reach quietly changes as it moves.
     #[test]
     fn every_bone_keeps_its_length_whatever_the_pose() {
-        for rot in [0.0, 17.0, 90.0, -140.0, 400.0] {
+        for rot in [0.0, 17.0, 43.0, 90.0, -140.0, 400.0] {
             let p = ps(&resolve(&chain(6, 0.7, rot, [1.0, 1.0])));
             for i in 1..6 {
                 let (dx, dy) = (p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
                 let d = (dx * dx + dy * dy).sqrt();
-                assert!((d - 0.7).abs() < 1e-3, "bone {i} at rot {rot} measured {d}");
+                assert!((d - 0.7).abs() < 1e-4, "bone {i} at rot {rot} measured {d}");
             }
         }
     }

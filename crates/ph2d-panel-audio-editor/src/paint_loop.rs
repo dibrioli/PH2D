@@ -150,9 +150,13 @@ pub(crate) fn paint_markers_section(
     );
     y += row_h + gap;
 
-    // **Split at Markers** — one file per piece. It lives here and not in Edit because the markers
-    // ARE the cuts: a session of N takes with N-1 markers between them falls into N assets, and
-    // `<stem>_01..NN` is exactly what the variation importer reads back as one group.
+    // **Split at Markers** — cut the clip at every marker, and nothing else. It lives here and not
+    // in Edit because the markers ARE the cuts: a session of N takes with N-1 markers between them
+    // falls into N pieces you can then select, drag and stretch.
+    //
+    // It used to encode those pieces to disk and adopt them as a variation set — an emitting verb
+    // wearing an edit verb's name. That is **Export Pieces** now, in Delivery, where emitting
+    // lives.
     button(
         Rect::new(x, y, w, row_h),
         "Split at Markers",

@@ -32,6 +32,7 @@ pub mod presets;
 pub mod snapshot;
 pub mod spectral_state;
 pub mod state;
+pub mod tool_state;
 pub mod variation_state;
 
 pub use state::AudioEditorState;
@@ -154,6 +155,21 @@ pub const AEDIT_COPY: NodeId = hash_node_id("audio_editor_copy");
 pub const AEDIT_PASTE: NodeId = hash_node_id("audio_editor_paste");
 /// Split the clip at its markers into one file per piece.
 pub const AEDIT_SPLIT: NodeId = hash_node_id("audio_editor_split");
+
+/// Edit toolbar (the basic operations, at the top of the section): the three **tools** — exactly
+/// one armed — then Split at the playhead and Clear Cuts.
+pub const AEDIT_TOOL_SELECT: NodeId = hash_node_id("audio_editor_tool_select");
+/// Arm the Move tool: drag a piece onto another seam.
+pub const AEDIT_TOOL_MOVE: NodeId = hash_node_id("audio_editor_tool_move");
+/// Arm the Scale tool: drag a piece's edge to time-stretch it.
+pub const AEDIT_TOOL_SCALE: NodeId = hash_node_id("audio_editor_tool_scale");
+/// Cut the clip at the playhead.
+pub const AEDIT_SPLIT_PLAYHEAD: NodeId = hash_node_id("audio_editor_split_playhead");
+/// Remove every cut — the clip is one piece again (the audio stays where you dragged it).
+pub const AEDIT_CUTS_CLEAR: NodeId = hash_node_id("audio_editor_cuts_clear");
+/// **Delivery**: write one file per piece and adopt them as a variation set. An emitting verb, in
+/// the emitting section — this used to be what "Split at Markers" did.
+pub const AEDIT_EXPORT_PIECES: NodeId = hash_node_id("audio_editor_export_pieces");
 /// Silence the selection.
 pub const AEDIT_SILENCE: NodeId = hash_node_id("audio_editor_silence");
 /// Fade in across the selection.
@@ -375,6 +391,13 @@ pub enum AudioEditCmd {
     Copy,
     /// Paste the clipboard over the selection, or at the playhead when nothing is selected.
     Paste,
+    /// Cut the clip at the playhead — the Split button.
+    SplitAtPlayhead,
+    /// Cut the clip at every marker. Splits, and nothing else: one recording of N takes becomes
+    /// N pieces you can select, drag and stretch.
+    SplitAtMarkers,
+    /// Remove every cut.
+    ClearCuts,
     /// Silence the selection.
     Silence,
     /// Fade in across the selection.
@@ -470,7 +493,7 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 /// `(label, formatted value)` pairs.
 pub use snapshot::{set_fx_ir, set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
 /// Shell → panel: publish whether a waveform selection exists (range-op buttons).
-pub use snapshot::{set_has_clipboard, set_has_selection, take_split};
+pub use snapshot::{set_has_clipboard, set_has_selection, take_export_pieces};
 pub use variation_state::{set_selected_enabled, take_toggle_enabled};
 
 // Loop points + batch + force-mono (W6 asset-prep).

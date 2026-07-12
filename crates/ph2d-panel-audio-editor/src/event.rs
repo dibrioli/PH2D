@@ -1,18 +1,20 @@
 //! Audio Editor panel event routing.
 
 use crate::state::AudioEditorState;
+use crate::tool_state::{self, EditTool};
 use crate::{
-    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_COPY, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN,
-    AEDIT_FADE_OUT, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
-    AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET,
-    AEDIT_FX_STAGE_ONS, AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT,
-    AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
-    AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY,
-    AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE,
-    AEDIT_REDO, AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE,
-    AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, AEDIT_SPLIT, AEDIT_STOP, AEDIT_TRIM,
-    AEDIT_UNDO, AudioEditCmd, AudioEditorPanel, loop_state, presets, snapshot, spectral_state,
-    variation_state,
+    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_COPY, AEDIT_CUT, AEDIT_CUTS_CLEAR, AEDIT_DC, AEDIT_EXPORT,
+    AEDIT_EXPORT_PIECES, AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_ADD, AEDIT_FX_APPLY,
+    AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV,
+    AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_STAGE_ONS, AEDIT_FX_STAGES, AEDIT_FX_UP,
+    AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR,
+    AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORM_LUFS,
+    AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD,
+    AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO, AEDIT_REVERSE,
+    AEDIT_SILENCE, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR,
+    AEDIT_SPEC_VIEW, AEDIT_SPLIT, AEDIT_SPLIT_PLAYHEAD, AEDIT_STOP, AEDIT_TOOL_MOVE,
+    AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd, AudioEditorPanel,
+    loop_state, presets, snapshot, spectral_state, variation_state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -37,6 +39,30 @@ fn loop_click(id: NodeId) -> Option<EventOutcome> {
         return Some(EventOutcome::Consumed);
     }
     None
+}
+
+/// Edit-toolbar tool clicks: arm one of the three. A **group**, not three toggles — clicking the
+/// armed one re-arms it rather than turning it off, because a pointer that means nothing over the
+/// waveform is a pointer that does nothing.
+///
+/// Move is refused without a second piece to trade places with: the panel dims it, but a dim is
+/// cosmetic, and a tool armed with no legal gesture is a mode the user cannot get out of by
+/// dragging.
+fn tool_click(id: NodeId) -> Option<EventOutcome> {
+    let t = if id == AEDIT_TOOL_SELECT {
+        EditTool::Select
+    } else if id == AEDIT_TOOL_MOVE {
+        if tool_state::pieces() < 2 {
+            return Some(EventOutcome::Consumed);
+        }
+        EditTool::Move
+    } else if id == AEDIT_TOOL_SCALE {
+        EditTool::Scale
+    } else {
+        return None;
+    };
+    tool_state::set_tool(t);
+    Some(EventOutcome::Consumed)
 }
 
 /// Spectral clicks (W5). The view toggle is free; the three tools each need something
@@ -177,9 +203,15 @@ fn edit_cmd_for(id: NodeId) -> Option<AudioEditCmd> {
     } else if id == AEDIT_GAIN_UP {
         Some(AudioEditCmd::GainUp)
     } else if id == AEDIT_SPLIT {
+        Some(AudioEditCmd::SplitAtMarkers)
+    } else if id == AEDIT_SPLIT_PLAYHEAD {
+        Some(AudioEditCmd::SplitAtPlayhead)
+    } else if id == AEDIT_CUTS_CLEAR {
+        Some(AudioEditCmd::ClearCuts)
+    } else if id == AEDIT_EXPORT_PIECES {
         // Not an AudioEditCmd: the pieces become FILES, so the shell has to pick a folder. The
         // panel never touches the filesystem.
-        snapshot::request_split();
+        snapshot::request_export_pieces();
         None
     } else if id == AEDIT_COPY {
         Some(AudioEditCmd::Copy)
@@ -331,6 +363,9 @@ pub(crate) fn apply_event(
             return outcome;
         }
         // Spectral (W5) — the view toggle and the two repair tools.
+        if let Some(outcome) = tool_click(id) {
+            return outcome;
+        }
         if let Some(outcome) = spectral_click(id) {
             return outcome;
         }

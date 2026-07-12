@@ -1,16 +1,22 @@
-//! **Split at Markers** (W2) — one recording, N takes, N files.
+//! **Export Pieces** — one recording, N takes, N files.
 //!
-//! In an editor whose document is a single buffer there is no multi-clip track to split *into*.
-//! There is, however, an asset pipeline to split *out to*, and that is what makes the verb mean
-//! something here: the markers are the cuts, the pieces become files, and files named
-//! `<stem>_01..NN` are **exactly what the variation importer already reads back as one group**
-//! (`variation.rs`, import-by-convention).
+//! The clip is already cut into pieces (Split, or Split at Markers); this writes them out. Files
+//! named `<stem>_01..NN` are **exactly what the variation importer already reads back as one
+//! group** (`variation.rs`, import-by-convention), so the loop closes on itself: record eight
+//! footsteps in one pass, drop seven markers, Split at Markers, Export Pieces — and the eight
+//! assets come back as a ready-made variation container with round-robin and weights.
 //!
-//! So the loop closes on itself: record eight footsteps in one pass, drop seven markers, Split —
-//! and the eight assets come back as a ready-made variation container with round-robin and weights.
+//! ## Why this is not called Split
+//!
+//! It used to be. The button said "Split at Markers" and it encoded audio to disk, picked a
+//! folder, and adopted a variation set — an *emitting* verb wearing an *editing* verb's name, in
+//! the Markers section, doing none of what it said. Enio's correction (2026-07-12) was that Split
+//! should split the clip; so splitting became structure (`ph2d_audio_edit::pieces`), and the file
+//! writing kept the behaviour, took the honest name, and moved to **Delivery** — where emitting
+//! lives, and where the codec it emits in was priced.
 //!
 //! The pieces are written in the codec the **Delivery** section is currently showing, because that
-//! is the one the panel just priced. Splitting into a format the user did not choose would be a
+//! is the one the panel just priced. Emitting a format the user did not choose would be a
 //! surprise, and the whole point of Delivery is that there are none.
 
 use ph2d_audio::SampleData;
@@ -24,20 +30,19 @@ impl AudioSystem {
         self.editor.clipboard.is_some()
     }
 
-    /// Split the loaded clip at its markers and write one file per piece into `dir`, then adopt them
-    /// as the variation set.
+    /// Write one file per piece into `dir`, then adopt them as the variation set.
     ///
-    /// Non-destructive: the clip on screen is untouched. Splitting is a way of *emitting* assets,
-    /// not of editing the one you have — undo has nothing to undo, and the user's take survives its
-    /// own export.
-    pub(crate) fn editor_split_at_markers(&mut self, dir: &std::path::Path) {
+    /// Non-destructive: the clip on screen is untouched. Emitting assets is not editing the one you
+    /// have — undo has nothing to undo, and the user's take survives its own export.
+    pub(crate) fn editor_export_pieces(&mut self, dir: &std::path::Path) {
         let Some(clip) = self.editor.clip.as_ref() else {
             return;
         };
-        let pieces = clip.split_at_markers();
+        let pieces = clip.piece_clips();
         if pieces.len() < 2 {
-            // One piece is not a split. Markers at the very edges produce nothing to separate, and
-            // writing a single file called `_01` would be a confusing way to say "nothing happened".
+            // One piece is not a set. An uncut clip has nothing to emit that plain Export does not
+            // already do, and writing a single file called `_01` would be a confusing way to say
+            // "nothing happened".
             return;
         }
 

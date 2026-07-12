@@ -1896,6 +1896,23 @@ impl App {
         true
     }
 
+    /// Update the piece drag (Move / Scale) to the cursor. Returns `true` while one is live, so
+    /// the caller early-returns and the drag does not also pan the camera.
+    ///
+    /// Nothing is committed here — the overlay draws an outline and the release does the edit
+    /// (`audio/editor/pieces.rs`). A per-frame WSOLA stretch of a three-minute piece is not a
+    /// thing to attempt sixty times a second.
+    #[cfg(feature = "panel-audio-editor")]
+    fn audio_piece_drag_move(&mut self, x: f32) -> bool {
+        let Some(view) = crate::audio::wave_view() else {
+            return false;
+        };
+        let frame = crate::audio::frame_at_x(&view, x) as usize;
+        self.audio
+            .as_mut()
+            .is_some_and(|a| a.editor_piece_drag_to(frame))
+    }
+
     /// The clip frame under `(x, y)` if it's inside the overlay's time RULER — for
     /// starting a playhead scrub (seek). The ruler is the strip below the waveform;
     /// dragging it scrubs, while the wave body above it makes a selection.
@@ -1945,6 +1962,11 @@ impl App {
         // also drive a gizmo drag / panel slider.
         if self.eyedropper_dragging {
             self.try_eyedropper_sample(self.last_pointer.0, self.last_pointer.1);
+            return;
+        }
+        // Audio Editor piece drag (SHELL-only): Move / Scale own the pointer while they are live.
+        #[cfg(feature = "panel-audio-editor")]
+        if self.audio_piece_drag_move(self.last_pointer.0) {
             return;
         }
         // Audio Editor waveform selection drag (SHELL-only): while a selection is
@@ -2151,14 +2173,44 @@ impl App {
                 }
                 return;
             }
-            // Press on the WAVE body → start a selection (cleared to a point).
+            // Press on the WAVE body → what it means depends on the armed tool (the Edit
+            // section's toolbar). Select drags a time range, which is what the waveform has
+            // always done; Move drags a piece onto another seam; Scale drags a piece's edge.
             PointerKind::Down
                 if let Some(hit) =
                     self.audio_wave_frame_at(self.last_pointer.0, self.last_pointer.1) =>
             {
-                self.audio_sel_drag = Some(hit);
+                use ph2d_panel_audio_editor::tool_state::{EditTool, tool};
+                let frame = hit.0 as usize;
+                match tool() {
+                    EditTool::Move => {
+                        if let Some(a) = self.audio.as_mut() {
+                            a.editor_piece_grab(frame);
+                        }
+                    }
+                    EditTool::Scale => {
+                        if let Some(a) = self.audio.as_mut() {
+                            a.editor_piece_scale_grab(frame);
+                        }
+                    }
+                    EditTool::Select => {
+                        self.audio_sel_drag = Some(hit);
+                        if let Some(a) = self.audio.as_mut() {
+                            a.editor_clear_selection();
+                        }
+                    }
+                }
+                return;
+            }
+            // Let go of a piece: THIS is where the reorder / stretch lands, as one undo step.
+            PointerKind::Up
+                if self
+                    .audio
+                    .as_ref()
+                    .is_some_and(|a| a.editor_piece_drag().is_some()) =>
+            {
                 if let Some(a) = self.audio.as_mut() {
-                    a.editor_clear_selection();
+                    a.editor_piece_release();
                 }
                 return;
             }

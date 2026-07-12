@@ -145,6 +145,11 @@ pub(super) fn draw_audio_overlay(
     if let Some((ls, le)) = audio.editor_loop_frames() {
         draw_loop_region(scene, wave, frames as u64, ls, le, theme);
     }
+    // The cuts, and the drag in flight. Painted AFTER the bands (they are structure — a break in
+    // the material — and must stay legible over a translucent selection) and BEFORE the markers,
+    // which carry labels and should win the very top.
+    super::audio_pieces::draw_cuts(scene, audio, wave, ruler, frames as u64);
+    super::audio_pieces::draw_piece_drag(scene, audio, wave, frames as u64, theme);
     // Cue markers (W6) — named points written to the `cue`+`adtl` chunks. Purple
     // flags in the ruler with a thin line down the wave, distinct from every band.
     draw_markers(

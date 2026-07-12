@@ -38,6 +38,12 @@ const CLICKABLE: &[(NodeId, &str)] = &[
     (AEDIT_MONO, "Force Mono"),
     (AEDIT_GAIN_UP, "Gain +"),
     (AEDIT_GAIN_DOWN, "Gain -"),
+    // The Edit toolbar: the three tools, then the structure.
+    (AEDIT_TOOL_SELECT, "Select tool"),
+    (AEDIT_TOOL_MOVE, "Move tool"),
+    (AEDIT_TOOL_SCALE, "Scale tool"),
+    (AEDIT_SPLIT_PLAYHEAD, "Split"),
+    (AEDIT_CUTS_CLEAR, "Clear Cuts"),
     // Range ops + the clipboard (W2).
     (AEDIT_TRIM, "Trim"),
     (AEDIT_CUT, "Cut"),
@@ -57,6 +63,7 @@ const CLICKABLE: &[(NodeId, &str)] = &[
     (AEDIT_FX_CANCEL, "Cancel Effect"),
     // Delivery.
     (AEDIT_EXPORT, "Export"),
+    (AEDIT_EXPORT_PIECES, "Export Pieces"),
     (AEDIT_BATCH_LUFS, "Batch LUFS"),
 ];
 

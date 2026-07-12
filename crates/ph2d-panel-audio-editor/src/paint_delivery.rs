@@ -177,7 +177,23 @@ pub(crate) fn paint_delivery_section(
             text_system,
         ) + gap;
     }
-    y
+
+    // **Export Pieces** — one file per piece, in the codec priced above, named `<stem>_01..NN`:
+    // exactly what the variation importer reads back as one group. Record eight footsteps in one
+    // pass, split, export — and the eight assets come back as a ready-made variation container.
+    //
+    // It is dim until the clip is actually cut, because with one piece this is just Export.
+    button(
+        Rect::new(x, y, w, row_h),
+        "Export Pieces",
+        loaded && crate::tool_state::has_cuts(),
+        crate::AEDIT_EXPORT_PIECES,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y + row_h + Spacing::Md.px()
 }
 
 /// The download size, for the section header. Empty when there is nothing to price.

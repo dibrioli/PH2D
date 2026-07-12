@@ -11,13 +11,14 @@ mod batch;
 mod clipboard;
 pub(crate) mod delivery;
 mod export;
+mod export_pieces;
 mod fx_rack;
 pub(crate) mod ir;
 mod loops;
 mod manifest_path;
 mod markers;
+pub(crate) mod pieces;
 pub(crate) mod spectral;
-mod split;
 mod variation;
 
 use super::AudioSystem;
@@ -51,6 +52,9 @@ pub(super) struct AudioEditorRuntime {
     /// The clipboard (W2). It **outlives the clip** — copy from one take, `Load` another, paste —
     /// which is exactly why `apply_paste` conforms it to the destination's rate and layout first.
     clipboard: Option<ph2d_audio::SampleData>,
+    /// A piece drag in flight (Move / Scale). Nothing is committed while this exists — the overlay
+    /// draws the outline and the release does the edit. See `editor/pieces.rs`.
+    piece_drag: Option<pieces::PieceDrag>,
     /// The effects rack's **live audition** (W3 blocks 3a/3b): the whole chain
     /// rendered over `clip` but NOT committed. While present it is what sounds and
     /// what the waveform shows; `clip` stays pristine so Cancel is free. Apply
@@ -134,6 +138,13 @@ impl AudioSystem {
         self.editor.playing_loop_region = false;
         self.editor.loop_sig = None;
         self.editor.scrub_frame = Some(0);
+        // A fresh clip has no cuts, so a Move tool left armed from the last one is a pointer with
+        // no legal gesture — and a drag that does nothing reads as a broken editor, not an empty
+        // one. Back to Select, which always means something.
+        self.editor.piece_drag = None;
+        ph2d_panel_audio_editor::tool_state::set_tool(
+            ph2d_panel_audio_editor::tool_state::EditTool::Select,
+        );
         // A fresh clip starts un-mono'd.
         self.editor.force_mono = false;
         self.editor.mono_view = None;
@@ -421,6 +432,15 @@ impl AudioSystem {
                 Cmd::Invert => clip.apply_invert(),
                 Cmd::GainDown => clip.apply_gain(GAIN_DOWN),
                 Cmd::GainUp => clip.apply_gain(GAIN_UP),
+                // Structure: the cuts that divide the clip into pieces.
+                Cmd::SplitAtMarkers => {
+                    clip.split_at_markers();
+                }
+                Cmd::ClearCuts => {
+                    clip.clear_cuts();
+                }
+                // Handled below — it needs the playhead, which lives on the runtime, not the clip.
+                Cmd::SplitAtPlayhead => {}
                 // Range ops (act on the selection).
                 Cmd::Trim => clip.apply_trim(),
                 Cmd::Cut | Cmd::Copy | Cmd::Paste => {} // the clipboard needs `self`, below
@@ -440,6 +460,15 @@ impl AudioSystem {
                 Cmd::SpectralRepair | Cmd::LearnNoise | Cmd::Denoise => {}
             }
         }
+        // Split at the playhead. The frame comes from the transport (or the scrub), which the clip
+        // knows nothing about — so it is resolved out here and handed in.
+        if matches!(cmd, Cmd::SplitAtPlayhead) {
+            let at = self.editor_playhead_frame() as usize;
+            if let Some(clip) = self.editor.clip.as_mut() {
+                clip.split_at(at);
+            }
+        }
+
         // The clipboard ops (W2) live in `editor/clipboard.rs`. `Copy` changes nothing, so it
         // returns before the hot-swap below; Cut and Paste fall through to it like any other edit.
         if self.editor_clipboard_cmd(cmd) {

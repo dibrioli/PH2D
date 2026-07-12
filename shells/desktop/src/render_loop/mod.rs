@@ -18,6 +18,7 @@
 
 #[cfg(feature = "panel-audio-editor")]
 mod audio_overlay;
+mod audio_pieces;
 mod audio_spectrogram;
 pub(crate) mod autokey_pass;
 pub(crate) mod bgremoval_preview;
@@ -251,12 +252,12 @@ impl crate::App {
                 {
                     audio.editor_batch_lufs(&dir, -16.0); // LITERAL-PX-OK: −16 LUFS target
                 }
-                // Split at Markers (W2) — pick a folder; the pieces land as `<stem>_01..NN`, which
-                // is exactly the naming the variation importer reads back as one group.
-                if ed::take_split()
+                // Export Pieces (Delivery) — pick a folder; the pieces land as `<stem>_01..NN`,
+                // which is exactly the naming the variation importer reads back as one group.
+                if ed::take_export_pieces()
                     && let Some(dir) = rfd::FileDialog::new().pick_folder()
                 {
-                    audio.editor_split_at_markers(&dir);
+                    audio.editor_export_pieces(&dir);
                 }
                 // Cache the loop crossfade the panel asks for BEFORE Play reads it —
                 // Play plays the click-free region when Loop is on and a region is set.
@@ -284,6 +285,8 @@ impl crate::App {
                 ed::set_can_redo(audio.editor_can_redo());
                 ed::set_has_selection(audio.editor_selection().is_some());
                 ed::set_has_clipboard(audio.editor_has_clipboard());
+                // How many pieces the clip is in — what dims Move, Clear Cuts and Export Pieces.
+                ph2d_panel_audio_editor::tool_state::set_pieces(audio.editor_piece_count());
                 // Effects rack (W3 blocks 3a/3b): the panel owns the effect CHAIN as
                 // kind indices + raw 0..1 slider positions; the shell owns the real
                 // DSP ranges. Publish the kind table (names + each kind's NEUTRAL

@@ -9,19 +9,22 @@
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_panel_audio_editor::state::AudioEditorState;
+use ph2d_panel_audio_editor::tool_state::{self, EditTool};
 use ph2d_panel_audio_editor::{
-    AEDIT_BATCH_LUFS, AEDIT_COPY, AEDIT_CUT, AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY,
-    AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV,
-    AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO,
-    AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD,
-    AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE, AEDIT_SPLIT,
-    AEDIT_STOP, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
+    AEDIT_BATCH_LUFS, AEDIT_COPY, AEDIT_CUT, AEDIT_CUTS_CLEAR, AEDIT_EXPORT_PIECES, AEDIT_FADE_IN,
+    AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
+    AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1,
+    AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MARK_ADD,
+    AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
+    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE,
+    AEDIT_SPLIT, AEDIT_SPLIT_PLAYHEAD, AEDIT_STOP, AEDIT_TOOL_MOVE, AEDIT_TOOL_SCALE,
+    AEDIT_TOOL_SELECT, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
     fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel, reset_fx_chain,
     set_fx_kind_defaults, set_fx_kind_names, set_has_clipboard, set_has_selection, set_loop_span,
     set_marker_count, set_preset_names, take_add_marker, take_apply_preset, take_batch_lufs,
-    take_clear_loop, take_del_marker, take_edit_cmd, take_load, take_load_preset, take_play_pause,
-    take_save_preset, take_set_loop, take_split, take_stop, take_toggle_mono,
+    take_clear_loop, take_del_marker, take_edit_cmd, take_export_pieces, take_load,
+    take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_stop,
+    take_toggle_mono,
 };
 use ph2d_panel_audio_editor::{
     AEDIT_FX_LOAD_IR, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR,
@@ -1088,22 +1091,110 @@ fn clipboard_clicks_reach_the_edit_command() {
     }
 }
 
-/// **Split at Markers reaches the shell** (W2).
+/// **Split at Markers is an EDIT** — it splits the clip, and that is all it does.
+///
+/// It used to arm a file-writing one-shot: the button called "Split" encoded the pieces to disk and
+/// adopted them as a variation set. Emitting files is a delivery verb, and it moved to one
+/// (`Export Pieces`, below). This gate is the difference, and it fails if they are ever rejoined.
+#[test]
+fn split_at_markers_is_an_edit_and_writes_no_files() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_export_pieces();
+    let _ = take_edit_cmd();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPLIT));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::SplitAtMarkers),
+        "Split at Markers click never armed the edit command — the button is dead"
+    );
+    assert!(
+        !take_export_pieces(),
+        "splitting must not write files: that is Export Pieces, in Delivery"
+    );
+}
+
+/// **Export Pieces reaches the shell** (Delivery).
 ///
 /// It does not ride `AudioEditCmd`: the pieces become FILES, so the shell has to pick a folder, and
 /// the panel never touches the filesystem. It arms its own one-shot instead — and that one-shot has
-/// to actually fire.
+/// to actually fire, exactly once.
 #[test]
-fn split_click_reaches_the_split_request() {
+fn export_pieces_click_reaches_the_export_request() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
-    let _ = take_split();
+    let _ = take_export_pieces();
 
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPLIT));
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_EXPORT_PIECES));
     assert!(
-        take_split(),
-        "Split at Markers click never armed the split request — the button is dead"
+        take_export_pieces(),
+        "Export Pieces click never armed the request — the button is dead"
     );
-    // A one-shot: it must not still be armed on the next frame, or one click splits forever.
-    assert!(!take_split(), "the split request did not drain");
+    // A one-shot: it must not still be armed on the next frame, or one click exports forever.
+    assert!(!take_export_pieces(), "the export request did not drain");
+}
+
+/// The Edit toolbar's three tools are a **group**: clicking one arms it, and the other two go
+/// quiet. Clicking the armed one leaves it armed — a tool group with an "off" state is a pointer
+/// that means nothing over the waveform.
+#[test]
+fn the_tool_buttons_are_a_group_with_no_off_state() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    tool_state::set_pieces(3); // Move needs somewhere to drop a piece
+    tool_state::set_tool(EditTool::Select);
+
+    for (id, want) in [
+        (AEDIT_TOOL_MOVE, EditTool::Move),
+        (AEDIT_TOOL_SCALE, EditTool::Scale),
+        (AEDIT_TOOL_SELECT, EditTool::Select),
+    ] {
+        host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(tool_state::tool(), want, "the click did not arm the tool");
+        // Clicking it again does not turn it off.
+        host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(tool_state::tool(), want, "an armed tool must stay armed");
+    }
+}
+
+/// **Move is refused with nothing to trade places with.** The panel dims it, but a dim is
+/// cosmetic: arming Move on an uncut clip is a mode the user cannot drag their way out of.
+#[test]
+fn move_cannot_be_armed_on_an_uncut_clip() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    tool_state::set_pieces(1); // uncut — one piece, nowhere to move it
+    tool_state::set_tool(EditTool::Select);
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_TOOL_MOVE));
+    assert_eq!(
+        tool_state::tool(),
+        EditTool::Select,
+        "Move armed itself with a single piece — there is nowhere to drop it"
+    );
+    tool_state::set_pieces(1);
+}
+
+/// Split at the playhead and Clear Cuts are ordinary edit commands (the document changes; no
+/// dialog, no filesystem).
+#[test]
+fn the_structure_buttons_arm_their_edit_commands() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    tool_state::set_pieces(2); // Clear Cuts refuses on an uncut clip
+
+    for (id, want, what) in [
+        (AEDIT_SPLIT_PLAYHEAD, AudioEditCmd::SplitAtPlayhead, "Split"),
+        (AEDIT_CUTS_CLEAR, AudioEditCmd::ClearCuts, "Clear Cuts"),
+    ] {
+        let _ = take_edit_cmd();
+        host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            take_edit_cmd(),
+            Some(want),
+            "{what} click never armed the edit command — the button is dead"
+        );
+    }
+    tool_state::set_pieces(1);
 }

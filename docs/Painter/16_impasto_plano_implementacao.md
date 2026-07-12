@@ -424,3 +424,39 @@ morto). No kernel: `every_body_knob_is_a_pure_function_of_the_stored_ingredients
 
 **Perf: 1.66 ms/move** (melhorou — o kernel escreve menos por pixel). `height.rs` 761→511 LOC (testes
 p/ `height_tests.rs`, precedente `spec_tests.rs`); `paint.rs` em 700/700.
+
+### 10.4 Fase 4.3 — **Shine estava morto** (smoke do Enio: *"shine não funciona"*)
+
+Ele estava certo, e a causa era **geométrica, criada por mim na Fase 4**: o relevo só tem declive na
+faixa de cobertura `W_TAIL..W_SOLID` (isso *é* a parede) — e eu tinha gateado o glint **acima** de
+`W_SOLID`, ou seja, permitido só no **platô**, que é plano, onde o passe faz early-out e não adiciona
+nada. Medido antes de mexer (regra da casa): **94% dos pixels com declive ficavam abaixo do gate**, e
+Shine 0 → 1 movia o pixel mais brilhante **1 nível**. Knob morto por construção — a espécie que a
+varredura de 2026-07-12 passou o dia exterminando, e eu a reintroduzi.
+
+**Fix em duas partes** (as duas necessárias — consertar uma sozinha foi como o knob morreu):
+
+1. **O glint usa a MESMA curva de corpo do difuso** (`gloss_body = paint_body`): sobe pela parede e
+   senta na crista, que é onde tinta a óleo brilha. Ganho: 1 → **160 níveis**.
+2. **O highlight deixa de ser aditivo puro e passa a somar contra o headroom (screen):**
+   `lit = lit + add·(1 − lit)`. O aditivo plano era o que trazia o halo de volta pela porta do
+   specular: num pixel do véu o canal vermelho já está no teto, então a soma só levantava os OUTROS
+   canais e o pigmento colapsava para branco (gate do halo vermelha em **19%** de sobrevivência).
+   Screen escala o ganho de cada canal pelo espaço que sobra — canal saturado quase não muda, a tinta
+   guarda a cor, e a crista acende. É também o que um highlight real faz: aproxima-se do branco, não o
+   ultrapassa.
+
+**Gate novo:** `impasto_shine_glints_on_the_wall_without_bleaching_the_rim` — 3 claims, **cada uma com
+vermelho provado**: (a) o glint é visível (≥40 níveis; mutação F = glint no platô → **1 nível**, o bug
+do Enio reproduzido); (b) ele pousa em tinta **com declive e com corpo** (não no platô nem no véu);
+(c) em Shine **máximo** o passe é **no-op estrito sobre o véu translúcido** (`cover < W_TAIL`) —
+mutação H' (piso na curva de corpo) → **900 canais movidos**. A mutação G (aditivo plano) é pega pela
+gate do halo (19%), e o comentário do teste diz explicitamente qual gate é dona de qual claim.
+
+**O que o gate deliberadamente NÃO afirma:** que um highlight nunca lava uma parede iluminada em
+direção ao branco. Ele lava — *é isso que highlight é*. O pior pixel de uma versão mais estrita desta
+asserção era tinta a **70% de cobertura** cujo vermelho o **difuso** já tinha levado a 255; a métrica
+de croma não sabe distinguir um glint honesto do halo. O look default fica protegido pela gate do halo
+(que roda no Shine default 0.3); Shine alto sobre canvas branco lava mesmo — é escolha do artista.
+
+Perf: **1.67 ms/move**. Byte-identidade preservada (screen com `add = 0` e `mul = 1` devolve o pixel).

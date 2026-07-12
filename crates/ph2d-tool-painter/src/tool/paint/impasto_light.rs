@@ -85,20 +85,26 @@ fn paint_body(cover: f32) -> f32 {
     ph2d_painter_brush::height::body_profile(cover)
 }
 
-/// How the SPECULAR scales with the paint — a harder curve than [`paint_body`]: the glint rides the
-/// **film** (the crests on solid paint), never the wall or the stain.
+/// How the SPECULAR scales with the paint.
 ///
-/// The diffuse term models the wall fine — its multiply is bounded and fades with the body. The
-/// highlight is an ADD of near-white, and on a semi-translucent pixel it whitens the paper showing
-/// through: with the slope now unmuted, `Shine` at its default put the glint on the shoulder and
-/// bleached the rim — the photographed white halo, back through the other door
-/// (`impasto_light_shades_the_paint_not_the_paper_showing_through_it` went red at 20% survival).
-/// Zero below solid coverage, full only where the film is complete.
+/// It is the **same body curve** the diffuse uses ([`paint_body`]) — and that is not laziness, it is
+/// the only place the glint can live. The relief's slope exists exactly where the wall is, i.e. over
+/// the coverage band `W_TAIL..W_SOLID`; gating the highlight *above* `W_SOLID` (the first cut, to kill
+/// the halo) therefore allowed it only on the plateau, which is FLAT — the pass early-outs there and
+/// adds nothing. Measured: Shine 0 → 1 moved the brightest pixel by **1 level**. A knob that does
+/// nothing (Enio: *"shine não funciona"*), and the exact species the 2026-07-12 sweep exterminated.
+///
+/// The halo the gate is guarding against is a bleach of the PAPER seen through translucent paint, and
+/// the body curve already refuses that: it is zero over the stain and only reaches full on solid
+/// paint. So the glint climbs the wall with the body and peaks on the crest — where oil paint glints —
+/// while the rim, which has barely any body, gets barely any highlight.
+///
+/// (`impasto_shine_glints_on_the_wall_without_bleaching_the_rim` pins BOTH halves: the glint must be
+/// visible, and it must not bleach. Fixing one by breaking the other is how this knob died the first
+/// time.)
 #[inline]
 fn gloss_body(cover: f32) -> f32 {
-    let w_solid = ph2d_painter_brush::height::W_SOLID;
-    let t = ((cover - w_solid) / (1.0 - w_solid)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
+    paint_body(cover)
 }
 
 /// The relief + coverage the light reads, sampled straight out of the layer store — no composed buffer,
@@ -206,9 +212,10 @@ impl Light {
     }
 
     /// Shade one pixel from its height gradient and the paint actually there: `body` weights the
-    /// diffuse modelling ([`paint_body`]), `gloss` the highlight ([`gloss_body`] — film only). Returns
-    /// `(multiply, add)`: the composite's RGB is `rgb × multiply + add`. A FLAT pixel — or one with no
-    /// real body of paint — returns exactly `(1.0, 0.0)`.
+    /// diffuse modelling ([`paint_body`]), `gloss` the highlight ([`gloss_body`]). Returns
+    /// `(multiply, glint)`: the composite's RGB is `screen(rgb × multiply, glint)` — see
+    /// [`PainterTool::apply_impasto_light`]. A FLAT pixel — or one with no real body of paint —
+    /// returns exactly `(1.0, 0.0)`.
     #[inline]
     fn shade(&self, body: f32, gloss: f32, dhx: f32, dhy: f32) -> (f32, f32) {
         if (dhx == 0.0 && dhy == 0.0) || body <= 0.0 {
@@ -232,8 +239,7 @@ impl Light {
         let ndh = n[0] * self.half[0] + n[1] * self.half[1] + n[2] * self.half[2];
         let i = (ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize;
         let mut add = self.shine * (self.spec_lut[i] - self.flat_spec).max(0.0);
-        // Fade the modelling in with the body — and the glint with the FILM — so the pass is a
-        // strict no-op on bare canvas and the highlight never lands on paper seen through paint.
+        // Fade both with the body, so the pass is a strict no-op on bare canvas.
         mul = 1.0 + (mul - 1.0) * body;
         add *= gloss;
         (mul, add)
@@ -347,8 +353,18 @@ impl PainterTool {
                 let i = ((ry as usize) * (region.w as usize) + rx as usize) * 4;
                 for c in 0..3 {
                     let v = f32::from(rgba[i + c]) / 255.0;
-                    let lit = (v * mul + add).clamp(0.0, 1.0);
-                    rgba[i + c] = (lit * 255.0 + 0.5) as u8;
+                    // Diffuse MODULATES; the highlight is light ADDED — but against the headroom that
+                    // is left (a screen), never a flat `+ add`.
+                    //
+                    // A flat add is what bleached Enio's white canvas: on a translucent rim the red
+                    // channel is already at the ceiling, so the addition only lifts the OTHER channels,
+                    // and the pigment's hue collapses into the paper. Screening scales each channel's
+                    // gain by how much room it has left, so a saturated channel gains almost nothing
+                    // and the paint keeps its colour while its crest lights up — which is also what a
+                    // real highlight does (it approaches white, it does not overshoot it).
+                    let lit = (v * mul).clamp(0.0, 1.0);
+                    let lit = lit + add * (1.0 - lit);
+                    rgba[i + c] = (lit.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
                 }
             }
         }

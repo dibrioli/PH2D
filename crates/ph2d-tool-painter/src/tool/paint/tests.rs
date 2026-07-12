@@ -18830,3 +18830,159 @@ fn impasto_every_body_knob_edits_the_last_stroke_live() {
         );
     }
 }
+
+#[test]
+fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
+    // Enio, 2026-07-12: "shine não funciona." He was right, and the cause was geometric: the relief's
+    // slope exists ONLY over the coverage band `W_TAIL..W_SOLID` (that IS the wall), while the glint
+    // had been gated ABOVE `W_SOLID` — i.e. allowed only on the plateau, which is flat, where the pass
+    // early-outs. Measured: 94% of the sloped pixels sat below the gate, and Shine 0 → 1 moved the
+    // brightest pixel by ONE level. A knob that does nothing.
+    //
+    // This gate pins BOTH halves, because fixing either one alone is how it broke: the glint must be
+    // VISIBLE (it was not) and it must not BLEACH the translucent rim (the white halo of the first
+    // photograph — which came back the moment the glint was let onto the wall as a flat `+ add`, since
+    // on a rim pixel the red channel is already at the ceiling and only the other channels move).
+    let size = 160u32;
+    let paint_with = |shine: f32| -> (Vec<u8>, Vec<f32>, Vec<u8>) {
+        let mut t = impasto_canvas(size);
+        let mut b = t.paint.brush;
+        b.hardness = 0.0;
+        b.falloff = Falloff::Smooth;
+        b.radius_px = 40.0;
+        b.impasto_depth = 0.7;
+        // RED paint on white paper: the rim's "ink" is measured as `R − G`, so the canvas fixture's own
+        // dark blue would read as zero ink and the bleach half of this gate would be vacuous. (It said
+        // so out loud on the first run — which is the anti-vacuity clause earning its keep.)
+        b.color = [0.9, 0.1, 0.1];
+        // And the SMOKE's own arming — a grain-sourced brush over noise. Not decoration: with a plain
+        // Uniform brush the highlight never reaches the translucent rim at all, so the bleach half of
+        // this gate passed even with a flat additive highlight (proved by mutation). The grain carves
+        // crests everywhere, including out on the thin paint, which is precisely the condition that
+        // photographed as a halo.
+        b.impasto_source = DepthSource::Grain;
+        b.impasto_smoothing = 0.15;
+        b.texture.kind = ph2d_painter_brush::TextureKind::Noise;
+        b.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.paint.impasto_light_angle_deg = 90;
+        t.paint.impasto_light_elev_deg = 45;
+        t.paint.impasto_shine = shine;
+        t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp(
+                [40.0 + 10.0 * f32::from(i as u8), 80.0],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+        let img = lit(&mut t);
+        let h = relief(&t);
+        let active = t.layers.active().expect("a layer");
+        let cov = t.covers.get(&active).cloned().unwrap_or_default();
+        (img, h, cov)
+    };
+    let (matte, h, cov) = paint_with(0.0);
+    let (glossy, _, _) = paint_with(1.0);
+
+    // 1. The glint is VISIBLE. (RED with the glint gated to the plateau: the brightest gain was 1.)
+    let (mut best, mut best_i) = (0i32, 0usize);
+    for i in (0..matte.len()).step_by(4) {
+        let gain = i32::from(glossy[i + 1]) - i32::from(matte[i + 1]); // green: the pigment is red
+        if gain > best {
+            best = gain;
+            best_i = i / 4;
+        }
+    }
+    assert!(
+        best >= 40,
+        "Shine must actually light the paint (brightest gain {best} levels)"
+    );
+
+    // 2. It lands on the WALL — sloped paint with a real body — not on the flat plateau or the stain.
+    let px = |i: usize| (i % size as usize, i / size as usize);
+    let (bx, by) = px(best_i);
+    let gx = (h[best_i + 1] - h[best_i - 1]).abs();
+    let gy = (h[best_i + size as usize] - h[best_i - size as usize]).abs();
+    assert!(
+        gx.max(gy) > 0.005,
+        "the brightest glint sits on SLOPED paint (grad {gx:.4}/{gy:.4} at {bx},{by})"
+    );
+    assert!(
+        f32::from(cov[best_i]) / 255.0 > 0.4,
+        "…and on paint with a body, not on the translucent stain (coverage {})",
+        f32::from(cov[best_i]) / 255.0
+    );
+
+    // 3. And at FULL Shine the pass is still a STRICT NO-OP on the translucent stain — the paint too
+    //    thin to have a body (`cover < W_TAIL`). That is the halo's actual door, and it is now nailed
+    //    shut by construction: no body ⇒ no relief AND no lighting weight, so those pixels come out
+    //    byte-identical no matter how the light is dialled.
+    //
+    //    What this deliberately does NOT claim: that a highlight never washes a *lit wall* toward
+    //    white. It does — that is what a highlight is (the worst "bleached" pixel under an earlier,
+    //    stricter version of this assertion turned out to be paint at 70% coverage whose red channel
+    //    the DIFFUSE had already driven to 255; the chroma metric could not tell an honest glint from
+    //    the halo). The default look is guarded instead by
+    //    `impasto_light_shades_the_paint_not_the_paper_showing_through_it`, which is the gate that
+    //    catches a flat additive highlight (proved: it goes red at 19% survival).
+    let w_tail = ph2d_painter_brush::height::W_TAIL;
+    let unlit = {
+        let mut t = impasto_canvas(size);
+        let mut b = t.paint.brush;
+        b.hardness = 0.0;
+        b.falloff = Falloff::Smooth;
+        b.radius_px = 40.0;
+        b.impasto_depth = 0.7;
+        b.color = [0.9, 0.1, 0.1];
+        b.impasto_source = DepthSource::Grain;
+        b.impasto_smoothing = 0.15;
+        b.texture.kind = ph2d_painter_brush::TextureKind::Noise;
+        b.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.paint.impasto_show = false; // the light pass does not run at all
+        t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp(
+                [40.0 + 10.0 * f32::from(i as u8), 80.0],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+        lit(&mut t)
+    };
+    let _ = &h;
+    let (mut stain_px, mut drifted, mut worst_drift) = (0u32, 0u32, 0i32);
+    for p in 0..(size * size) as usize {
+        let c = f32::from(cov[p]) / 255.0;
+        if c == 0.0 || c >= w_tail {
+            continue; // bare paper, or paint with a body — not the stain
+        }
+        stain_px += 1;
+        // (The stain CAN carry a little height — `Smoothing` settles the paint and the blur spreads it
+        // past the body's edge, which is what settling paint does. What must not happen is the LIGHT
+        // reading it: the weight is the body curve, which is zero here, so the pixels stay untouched.)
+        for ch in 0..3 {
+            let d = i32::from(glossy[p * 4 + ch]) - i32::from(unlit[p * 4 + ch]);
+            if d != 0 {
+                drifted += 1;
+            }
+            worst_drift = worst_drift.max(d.abs());
+        }
+    }
+    assert!(
+        stain_px > 300,
+        "sanity: the fixture HAS a translucent stain ({stain_px} px) — else this claim is vacuous"
+    );
+    assert_eq!(
+        drifted, 0,
+        "at full Shine the pass moved {drifted} channels of the translucent stain (worst {worst_drift} \
+         levels) — the light must not touch paint too thin to have a body"
+    );
+}

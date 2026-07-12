@@ -44,9 +44,16 @@ trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
   `impasto_every_body_knob_edits_the_last_stroke_live` (RED em 2 mutações) + o unit de pureza no
   kernel. `height.rs` 761→511 (testes p/ `height_tests.rs` — **arquivo NOVO**); `paint.rs` 700/700.
   Perf 1.66 ms/move. Plano §10.3.
-- **Smoke do Enio: PENDENTE** (validar: Body 0 = arredondado · girar Depth/Body/Source/Smoothing
-  DEPOIS do traço e ver o relevo mudar ao vivo). Comando do §5 inalterado; card Lighting 4 linhas
-  (sem Amount), card Body 5.
+- **Fase 4.3 — `Shine` estava MORTO** (3ª rodada do smoke). Causa **minha, da Fase 4**: o relevo só tem
+  declive na faixa `W_TAIL..W_SOLID` (a parede) e eu tinha gateado o glint **acima** de `W_SOLID` — só
+  no platô, que é plano. Medido: 94% dos pixels com declive ficavam fora do gate; Shine 0→1 movia
+  **1 nível**. Fix duplo: o glint usa a **mesma curva de corpo do difuso** (1 → **160 níveis**) e o
+  highlight vira **screen** (`lit + add·(1−lit)`) em vez de aditivo puro — o aditivo plano ressuscitava
+  o halo pelo canal saturado (gate do halo vermelha em 19%). Gate novo com **3 claims, 3 vermelhos por
+  mutação**: `impasto_shine_glints_on_the_wall_without_bleaching_the_rim`. Perf 1.67 ms/move. Plano §10.4.
+- **Smoke do Enio: PENDENTE** (validar: **Shine** acende a crista · Body 0 = arredondado · girar
+  Depth/Body/Source/Smoothing DEPOIS do traço e ver o relevo mudar ao vivo). Comando do §5 inalterado;
+  card Lighting 4 linhas (sem Amount), card Body 5.
 
 Os §§ 1–8 abaixo descrevem as entregas anteriores da linha e continuam válidos; números de gates
 ficam superseded pelos desta seção.

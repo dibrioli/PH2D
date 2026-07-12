@@ -563,16 +563,37 @@ pub(super) fn build_params_snapshot(
                     integer: h.widget.is_integer(),
                 }
             }
-            // No hint → a plain float slider over a neutral range.
-            None => ScalarRow {
-                name: spec.name,
-                label: spec.name.to_string(),
-                value,
-                min: 0.0,
-                max: (value * 4.0).max(10.0),
-                step: 0.1,
-                integer: false,
-            },
+            // No hint → a neutral range around the param's manifest DEFAULT.
+            //
+            // **A range must never be a function of the value it ranges over.** A slider's
+            // range is the SCALE the value is measured against, and a scale that grows with
+            // what it measures is a positive feedback loop. This branch used to read
+            // `max = value * 4`, whose fixed point sits at a quarter of the track: drag above
+            // it and the value multiplied every frame — to billions in about a second — and
+            // drag below it and it collapsed to zero. Neither is a drag; both are a runaway.
+            // (Enio, smoke 2026-07-12: *"sliders chegam a bilhões e não arrastam linearmente"*.)
+            //
+            // The DEFAULT is a manifest constant, so the scale holds still while the knob
+            // moves across it. `contain` may still widen the range to hold an out-of-range doc
+            // value, which is idempotent — widening for a value the range already holds is a
+            // no-op, so a drag inside the range never moves it.
+            //
+            // Every registered param is hinted (`every_scalar_row_comes_from_a_declared_hint`
+            // is the gate), so this branch is the backstop for a node type that forgets one —
+            // and a backstop must be INERT, not armed.
+            None => {
+                let neutral = (spec.default.abs() * 4.0).max(10.0);
+                let (min, max) = contain(0.0, neutral, value_of(spec.name));
+                ScalarRow {
+                    name: spec.name,
+                    label: spec.name.to_string(),
+                    value,
+                    min: f64::from(min),
+                    max: f64::from(max),
+                    step: 0.1,
+                    integer: false,
+                }
+            }
         }));
     }
     Some(ParamsSnapshot {

@@ -253,16 +253,15 @@ fn every_row_range_contains_its_value_for_every_node_and_param() {
     use ph2d_panel_motion_params::ParamRow;
     let mut motion = MotionState::new();
 
-    // Every registered motion node type (the real registry, not a stub list).
-    let types: Vec<&'static str> = motion
-        .registry
-        .manifests()
-        .map(|m| m.name)
-        .filter(|n| n.starts_with("motion."))
-        .collect();
+    // EVERY registered node type — the real registry, not a stub list, and no prefix
+    // filter. This used to keep only `motion.*`, which quietly excluded `sim.*`,
+    // `value.*`, `force.*` and `pulse.*` from a gate whose name promised "every node
+    // and param" — so the entire `sim.*` family shipped with no hints and a runaway
+    // slider range, under a green test. A filter inside a gate is a hole in it.
+    let types: Vec<&'static str> = motion.registry.manifests().map(|m| m.name).collect();
     assert!(
-        types.len() >= 10,
-        "the registry really has the motion nodes"
+        types.len() >= 80,
+        "the registry really has the node library"
     );
 
     for ty in types {

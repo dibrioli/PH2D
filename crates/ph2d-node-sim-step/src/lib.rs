@@ -40,7 +40,7 @@
 //! have to guess the frame rate, and the age is what `sim.lifetime` kills by and what
 //! `value.attribute` hands to a colour ramp.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -182,8 +182,19 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
+
+/// Param UI hints.
+static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
+    param: "damping",
+    label: "Damping",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    widget: ParamWidget::Slider,
+}];
 
 #[cfg(test)]
 #[path = "tests.rs"]

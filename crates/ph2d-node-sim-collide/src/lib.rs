@@ -38,7 +38,7 @@
 //! Transcendental-free (HR-5): the normals are geometry, not angles — a floor's normal is up, a
 //! disc's is the radial direction. Nothing here needs a sine.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -249,8 +249,72 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
+
+/// Param UI hints. `shape` is a NAMED enum — a float slider would make the artist decode
+/// "2" into Bowl, which is exactly the decode the segmented selector exists to abolish.
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "shape",
+        label: "Shape",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Floor", "Disc", "Bowl"],
+        },
+    },
+    ParamUiHint {
+        param: "height",
+        label: "Height",
+        min: -10.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "center_x",
+        label: "Center X",
+        min: -10.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "center_y",
+        label: "Center Y",
+        min: -10.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "radius",
+        label: "Radius",
+        min: 0.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "restitution",
+        label: "Bounce",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "friction",
+        label: "Friction",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+];
 
 #[cfg(test)]
 #[path = "tests.rs"]

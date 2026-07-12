@@ -50,7 +50,7 @@
 
 mod hash;
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -219,8 +219,39 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::TrapezoidDown,
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
+
+/// Param UI hints. `scatter` is a BOOLEAN (round-robin vs a hashed draw), so it is a
+/// checkbox, not a 0..1 slider; `seed` is a Seed box + re-roll, because an artist wants
+/// ANOTHER seed, never a BIGGER one.
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "rate",
+        label: "Rate",
+        min: 0.0,
+        max: 60.0,
+        step: 0.5,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "scatter",
+        label: "Scatter",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    ParamUiHint {
+        param: "seed",
+        label: "Seed",
+        min: 0.0,
+        max: 9999.0,
+        step: 1.0,
+        widget: ParamWidget::Seed,
+    },
+];
 
 #[cfg(test)]
 #[path = "tests.rs"]

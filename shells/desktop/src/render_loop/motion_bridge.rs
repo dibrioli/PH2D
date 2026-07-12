@@ -66,6 +66,10 @@ mod tests;
 mod param_tests;
 
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_range_tests.rs"]
+mod range_tests;
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_plumbing_tests.rs"]
 mod plumbing_tests;
 

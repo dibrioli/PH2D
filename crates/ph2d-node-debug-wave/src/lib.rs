@@ -19,7 +19,7 @@
 //! panics (caught by the golden test), never a silent `0.0`.
 
 use ph2d_expr::{BinOp, Expr, Func, eval_column};
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -84,8 +84,20 @@ impl NodeOp for DebugWave {
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
-    reg.register(Box::new(DebugWave))
+    reg.register(Box::new(DebugWave))?;
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    Ok(())
 }
+
+/// Param UI hints.
+static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
+    param: "gain",
+    label: "Gain",
+    min: 0.0,
+    max: 4.0,
+    step: 0.05,
+    widget: ParamWidget::Slider,
+}];
 
 #[cfg(test)]
 mod tests {

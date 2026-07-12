@@ -31,7 +31,7 @@
 
 mod hash;
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -166,8 +166,37 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::TrapezoidUp,
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
+
+/// Param UI hints.
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "life",
+        label: "Life",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "variance",
+        label: "Variance",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "seed",
+        label: "Seed",
+        min: 0.0,
+        max: 9999.0,
+        step: 1.0,
+        widget: ParamWidget::Seed,
+    },
+];
 
 #[cfg(test)]
 #[path = "tests.rs"]

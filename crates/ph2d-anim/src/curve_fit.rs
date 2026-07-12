@@ -1,24 +1,34 @@
 //! **F-curve simplification** — fit dense recorded `(time, value)` samples (one
 //! key per frame, from record-during-play) to a MINIMAL chain of cubic-Bézier
-//! keyframes within a value tolerance. The industry-standard pipeline every
-//! serious editor uses for this (Inkscape simplify, paper.js `path.simplify()`,
-//! the brush tool's Free-Hand fit) is **Schneider**, "An Algorithm for
-//! Automatically Fitting Digitized Curves", Graphics Gems I (1990): least-squares
-//! cubic fit + Newton reparameterisation + adaptive splitting at the worst point.
+//! keyframes: a key at each PEAK and VALLEY and (almost) nothing between, the way
+//! an animator draws by hand.
 //!
-//! Two adaptations make it an *F-curve* fit rather than a generic 2D curve fit:
+//! The building block is a **Schneider** least-squares cubic fit ("An Algorithm
+//! for Automatically Fitting Digitized Curves", Graphics Gems I 1990), but the
+//! classic recursive split-on-error is NOT the top-level strategy: on a
+//! multi-turn wave it over-subdivides badly, scattering keys along the slopes (a
+//! 6-extremum sine → ~40 keys). Instead:
 //!
-//! 1. **Axis normalisation.** Time (seconds) and value (metres, radians, a 0..1
+//! 1. **Anchor at the extrema.** Detect the prominent peaks/valleys of the value
+//!    axis ([`anchor_indices`], a prominence / swinging-door detector), then fit
+//!    ONE least-squares cubic per monotone run between consecutive extrema
+//!    ([`fit_run`] → [`one_cubic`]). A run's ends are turns, where the gesture's
+//!    tangent is ~flat, so a single cubic tracks a wave's half-cycle closely.
+//!    Result: a key per turn (a 6-extremum sine → ~9 keys). A genuinely complex
+//!    run splits, but only to a bounded depth ([`RUN_SPLIT_DEPTH`]), never the
+//!    Schneider blow-up. Fidelity is therefore APPROXIMATE (a few percent of the
+//!    range) — the deliberate trade the user asked for: few clean keys over
+//!    sub-percent precision.
+//! 2. **Axis normalisation.** Time (seconds) and value (metres, radians, a 0..1
 //!    opacity…) live on wildly different scales; a raw 2D fit would be dominated
 //!    by whichever axis is larger. We fit in a space where both axes are scaled
 //!    to `[0, 1]` by the session's extent, so the tolerance is a clean *fraction
 //!    of the value range* and the least-squares stays balanced.
-//! 2. **Error measured in VALUE at the correct time.** The classic Schneider
+//! 3. **Error measured in VALUE at the correct time.** The classic Schneider
 //!    error is the 2D distance from the sample to the nearest curve point — which
 //!    charges for being early/late in *time*, meaningless for an F-curve (the
 //!    sample IS at its time). We instead solve the curve's time axis for `s` such
-//!    that `T(s) = tᵢ` and compare `V(s)` to `vᵢ`: the true vertical error. This
-//!    is what makes the result "very precise in value with few keys".
+//!    that `T(s) = tᵢ` and compare `V(s)` to `vᵢ`: the true vertical error.
 //!
 //! The output is [`Interp::BezierW`] keys — a weighted tangent pair IS exactly a
 //! cubic Bézier in the `(u, value)` plane, so the conversion is exact; the handle

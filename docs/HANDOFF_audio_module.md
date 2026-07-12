@@ -28,6 +28,19 @@ receita em [`docs/Audio/BUGS_audio.md`](Audio/BUGS_audio.md) (Bug #1). O §4
 abaixo é histórico — não re-investigue.
 
 **O que já landou:**
+- **W4 (voz + reparo) — FECHADO 2026-07-12** (handoff de integração:
+  [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md); rack **34 → 37**,
+  presets **15 → 21**, **zero dep nova**). Núcleo LPC comum (`fx/lpc.rs`):
+  **De-Click** (o único *reparo* da rack — detecta o clique como outlier do resíduo AR e
+  re-deriva as amostras por LSAR; runs longos ficam intactos) · **Formant Shift** (move o
+  trato vocal sem tocar no pitch; warp do envelope por reamostragem da resposta impulsiva,
+  sem FFT) · **Harmonizer** (2 vozes afinadas). Presets `Voice EQ`/`Whisper`/`Shout` +
+  `Restore`/`Giant`/`Choir` (demos de 1 clique dos novos).
+  **BUG CORRIGIDO no caminho:** o pitch shifter granular estava **desafinado** (−54 cents
+  numa oitava — todo wrap de grão de tamanho fixo injetava o MESMO erro de fase, que vira
+  desvio de frequência). Trocado por **WSOLA** (`fx/wsola.rs`; `fx/pitch.rs` deletado),
+  preservando o caráter documentado (formantes viajam junto).
+
 - **W1** — `ph2d-audio-encode` (WAV writer) + `ph2d-audio-edit` (`PeakCache`,
   `EditClip`) + painel docado `ph2d-panel-audio-editor` + **overlay flutuante do
   waveform** (drag/resize) + **preview transport** na `AudioEngine` (voz

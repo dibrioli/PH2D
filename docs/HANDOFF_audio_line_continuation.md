@@ -1,8 +1,9 @@
 # HANDOFF DE CONTINUAÇÃO — linha `line/audio`
 
-> **Para o próximo agente-de-linha.** A jornada anterior **foi integrada ao `main`**
-> (2026-07-12, 37 commits). O worktree já foi **rebaseado e está limpo, 0 commits à
-> frente do main**. Você continua daqui.
+> **Para o próximo agente-de-linha.** A jornada do **W4 fechou** (2026-07-12) e está
+> **commitada localmente, à espera de integração** — que é ordem exclusiva do Enio.
+> Entregável dela: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md).
+> O worktree está limpo. Você continua daqui (rebase no main primeiro — §1).
 >
 > Leia **este doc inteiro** + os obrigatórios do §1 antes de escrever a primeira linha
 > de código.
@@ -46,10 +47,20 @@ cargo check -p ph2d-audio-edit      # warm-up
 
 ## 2. Onde a linha parou (estado real, verificado)
 
-- **Worktree:** rebaseado no main (`3805f650`), **0 commits à frente**, **árvore limpa**.
-- **Gate na base nova:** `ph2d-audio-edit` **122** testes · painel **20 lib + 29 seam** ·
-  shell **7 suites** — **todos verdes**.
-- **A jornada passada entregou:** rack **14 → 34 efeitos**, presets **7 → 15**, containers
+- **Worktree:** rebaseado no main (`3805f650`), **árvore limpa**. Commits à frente: o
+  bloco do **W4** (`64fcf4d7`) + o commit de docs.
+- **Gate:** `ph2d-audio-edit` **145** testes · painel **20 lib + 29 seam** · shell **284** ·
+  `ph2d-editor-core` **32 arch-gates** — **todos verdes**. clippy 0 warnings, fmt/typos limpos.
+- **A jornada W4 entregou** (handoff de integração: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md)):
+  rack **34 → 37 efeitos**, presets **15 → 21**, **zero dep nova**, zero foundational.
+  - **De-Click** (reparo: LPC + interpolação LSAR) · **Formant Shift** (trato vocal sem
+    mexer no pitch) · **Harmonizer** (2 vozes) — os três sobre um núcleo LPC comum (`fx/lpc.rs`).
+  - **BUG CORRIGIDO: o pitch shifter estava desafinado.** O motor granular de grão fixo
+    saía **baixo** (−54 cents numa oitava) porque toda emenda de grão injetava o MESMO erro
+    de fase. Trocado por **WSOLA** (`fx/wsola.rs`; `fx/pitch.rs` **deletado**). O caráter
+    documentado (formantes viajam junto) foi preservado. Detalhe + os 4 pontos medidos: §2.1
+    do handoff de integração.
+- **A jornada anterior entregou:** rack **14 → 34 efeitos**, presets **7 → 15**, containers
   de variação, import por convenção, export **Ogg Vorbis** (ADR-0113), e 3 bugfixes de
   auditoria (undo/redo/invert intermitentes).
 
@@ -60,7 +71,7 @@ cargo check -p ph2d-audio-edit      # warm-up
 São **5 pontos**, sempre os mesmos:
 
 1. **DSP** num módulo de `crates/ph2d-audio-edit/src/fx/` (`tone.rs`, `dynamics.rs`,
-   `modulation.rs`, `space.rs`, `pitch.rs`, `comb.rs`, `autowah.rs`, `transient.rs`…).
+   `modulation.rs`, `space.rs`, `wsola.rs`, `lpc.rs`, `declick.rs`, `formant.rs`, `comb.rs`…).
 2. **Variant** em `Effect` (ou `TailEffect`, se estende a duração) — `fx.rs` / `fx/tail.rs`.
 3. **Braço `apply`** com o **guard do ponto neutro** + **cláusula `is_bypass`** + (se tiver
    estado) **braço `warmup_frames`**.
@@ -80,8 +91,20 @@ nos 5, ele está costurado.**
 
 ### Gotchas que já custaram tempo (não repita)
 
-- **`fx/dynamics.rs` está em 662/700** — o **próximo** efeito de dinâmica **exige split**
+- **⚠️ `fx.rs` está em 666/700** — o **próximo** efeito que ganhar variante ali **exige split**
+  antes. O candidato natural é o `warmup_frames` (~70 linhas, sai limpo pra um `fx/warmup.rs`
+  irmão). **`fx/dynamics.rs` está em 662/700** — o **próximo** efeito de dinâmica **exige split**
   (módulo irmão, como fiz com `deplosive.rs`/`transient.rs`).
+- **Um oráculo com folga esconde um viés sistemático.** O pitch shifter passou o próprio teste
+  por 3 jornadas estando **54 cents baixo** numa oitava: o teste media cruzamentos por zero e
+  aceitava `up > dry * 1.6` para uma oitava (que deveria dar 2.0) — 1.94× passava folgado.
+  **Meça na unidade que o usuário ouve** (cents, Hz) e **fixe o valor exato**, não uma faixa
+  cuja folga é da ordem do próprio efeito.
+- **Ferramenta de reparo precisa de fixture com dano.** A probe compartilhada dos gates da
+  rack (`fx_params.rs::probe()`) agora carrega um clique — sem ele, o gate
+  `turning_an_arming_knob_wakes_the_effect_up` só passaria se o de-clicker **borrasse áudio
+  íntegro**. Se você adicionar outro efeito condicional (só age sob condição X), pergunte se a
+  probe contém X.
 - **Tetos de LOC:** `crates/**` ≤ **700** · `shells/desktop/src` ≤ **600** · painel ≤ 600
   arquivo / 200 fn. **Split, nunca allowlist.** Meça **DEPOIS** do `fmt` (ele re-expande).
 - **⚠️ O gate de LOC do shell e o `typos` NÃO rodam em `cargo test --bins`.** Eu descobri
@@ -104,23 +127,11 @@ Ordem do plano: W1 → W2 → W3 → (W4 ∥ W5) → W6 → W7.
 
 ### ✅ Fechado
 **W1** (esqueleto/transporte/waveform/WAV) · **W2** (edição offline + undo) ·
-**W3** (rack + cadeia editável).
+**W3** (rack + cadeia editável) · **W4** (voz + reparo — fechado nesta jornada:
+De-Click, Formant Shift, Harmonizer, presets Voice EQ/Whisper/Shout, e o fix do pitch
+shifter desafinado; ver [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md)).
 
-### 🔵 ETAPA 1 (recomendada) — **W4 restante, tudo SEM dep nova**
-O W4 está majoritariamente fechado. Falta (verifiquei por grep — **0 arquivos** hoje):
-
-| Item | Abordagem sugerida | Dep? |
-|---|---|---|
-| **De-click / mouth-declick / de-crackle** | **LPC + interpolação** (o plano já manda isso). Detecta o clique pelo erro de predição linear, substitui a amostra pela predição dos vizinhos. **É tempo-domínio → NÃO precisa de FFT.** | **Não** |
-| **Formant shift** (separado do pitch) | **PSOLA** (tempo-domínio, clean-room — o plano diz "PSOLA/phase-vocoder próprio; **Rubber Band é GPL**, não copie"). Reaproveita a linha de delay/grãos que o `fx/pitch.rs` já tem. | **Não** |
-| **Harmonizer** | Barato: **N cópias do `pitch_shift` existente** nos graus (3ª/5ª/oitava), misturadas. O motor já está lá e testado. | **Não** |
-| **EQ-voz** (HPF + presença + de-mud + air) | **Preset de fábrica** (puro data em `fx_presets.rs`) — os 5 filtros já existem. Barato, alto valor. | **Não** |
-| **Whisper / shout** | Presets combinando os efeitos existentes (exciter + compress + saturate + EQ). | **Não** |
-
-**Por que começar aqui:** zero fricção (sem dep, sem ADR), o motor já existe, e fecha a
-wave. O **de-click (LPC)** é o de maior valor real — é o único item de *reparo* que sobrou.
-
-### 🟡 ETAPA 2 — **W5 Espectral (FFT)** — ⚠️ **PRECISA DO OK DO ENIO**
+### 🟡 ETAPA 1 (a próxima grande) — **W5 Espectral (FFT)** — ⚠️ **PRECISA DO OK DO ENIO**
 A wave grande que sobrou. **Bloqueada por decisão do Enio:**
 - **Exige dep nova:** `realfft` (ou `rustfft`) → **ADR obrigatório** + **autorização
   explícita do Enio** antes de adicionar.
@@ -129,11 +140,12 @@ A wave grande que sobrou. **Bloqueada por decisão do Enio:**
   bins vizinhos, remove tosse/bipe pontual) · **spectral denoise** (subtração espectral /
   Wiener por bin, aprende profile) · de-clip.
 - **Gate do plano:** métricas de **SNR antes/depois** em fixtures.
-- **Nota minha:** eu **deliberadamente evitei FFT** no pitch shift (usei granular, que é a
-  ferramenta *certa* pra voz de personagem). Mas o W5 **realmente precisa** de FFT — não dá
-  pra fingir. **Escreva o ADR primeiro, mostre ao Enio, espere o OK.**
+- **Nota:** o pitch shift segue **sem FFT** (WSOLA, tempo-domínio) e o Formant Shift também
+  (LPC + warp da resposta impulsiva) — as duas são as ferramentas *certas* pro trabalho, não
+  atalhos. Mas o W5 **realmente precisa** de FFT: spectrogram e repair por bin não dá pra
+  fingir no tempo. **Escreva o ADR primeiro, mostre ao Enio, espere o OK.**
 
-### 🟢 ETAPA 3 — **W6 restante**
+### 🟢 ETAPA 2 — **W6 restante**
 Loop points, markers, variação, import e OGG **já landaram**. Falta:
 - **Opus** — ADR-0113 §Opus já analisou: recomendação = **crate irmão isolado
   `ph2d-audio-opus`** (puro-Rust, `unsafe` contido). **Decisão do Enio.**
@@ -141,7 +153,7 @@ Loop points, markers, variação, import e OGG **já landaram**. Falta:
 - **Force-to-mono** p/ 3D (+ warn se estéreo).
 - **Batch LUFS** não-destrutivo (o `normalize` LUFS já existe — falta o batch).
 
-### ⚪ ETAPA 4 — **W7 AI/ML** (opt-in, feature `audio-ml`)
+### ⚪ ETAPA 3 — **W7 AI/ML** (opt-in, feature `audio-ml`)
 DeepFilterNet (denoise) · Demucs via ONNX. **Tudo atrás de feature-flag** (build default
 não puxa deps pesadas). Longe; só depois do W5.
 

@@ -44,6 +44,15 @@ const DIGEST_SAMPLES: usize = 48;
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 
+/// How many points a card's **postage stamp** may carry (F3). The cost of the stamps is then
+/// bounded by the number of CARDS, never by the size of the streams — which is what lets them
+/// be on by default. (Nuke's thumbnails render the real image, so a heavy script has to turn
+/// them off or freeze them to a static frame; a scatter of 96 dots has no such cliff.)
+///
+/// It is a SUBSAMPLE, and it says so: the stamp shows the shape of what a node emits, not every
+/// instance of it. At 96 dots a grid still reads as a grid and a spiral as a spiral.
+const PREVIEW_POINTS: usize = 96;
+
 /// One node's reading, or `None` when this frame's cook never pulled it.
 ///
 /// **What the number is**, mirroring the probe (F2) so the two never disagree: a VALUE
@@ -102,6 +111,24 @@ fn fold(h: &mut u64, x: u64) {
     *h = (*h ^ x).wrapping_mul(FNV_PRIME);
 }
 
+/// The card's postage stamp: up to `PREVIEW_POINTS` positions, evenly strided through the
+/// stream so the SHAPE survives the subsampling (taking the first 96 of a 5 000-point spiral
+/// would draw the first eighth of one turn and call it a spiral).
+///
+/// `None` when the node emits no positions — a VALUE node's stamp is the number it already
+/// shows, and drawing an empty box under it would be a promise of a picture that is not coming.
+fn preview_of(outputs: &[CookValue]) -> Option<Vec<[f32; 2]>> {
+    let stream = outputs.first()?.as_stream();
+    let Some(Column::Vec2(p)) = stream.get("P") else {
+        return None;
+    };
+    if p.is_empty() {
+        return None;
+    }
+    let step = p.len().div_ceil(PREVIEW_POINTS).max(1);
+    Some(p.iter().step_by(step).copied().collect())
+}
+
 /// Stamp every card with what it produced this frame: its readout, the MASS of its stream (the
 /// wire's width), whether the value CHANGED since last frame (the wire's march), and whether it
 /// is a sink (where the panel's reachability walk starts).
@@ -120,6 +147,7 @@ pub(super) fn stamp(
             .and_then(|o| o.first())
             .map(|v| v.as_stream().count() as u32);
         node.is_sink = motion.sinks.contains(&id);
+        node.preview = cooked.and_then(preview_of);
 
         // A node the cook never pulled is NEVER hot — no data flows through a wire nothing
         // consumes, and a dead branch flickering with dashes would be the loudest lie on the

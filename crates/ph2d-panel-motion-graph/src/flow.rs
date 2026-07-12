@@ -83,6 +83,50 @@ pub(crate) fn edge_is_live(live: &BTreeSet<u32>, to_node: u32) -> bool {
     live.contains(&to_node)
 }
 
+/// **Everything the selection touches**: what feeds it (its ancestors) and what it changes (its
+/// descendants), plus the selection itself. The rest of the canvas recedes.
+///
+/// This is the question you ask a big graph before you dare edit it — *if I change this, what
+/// moves?* — and the one that is hardest to answer by eye, because the wire you must follow is
+/// exactly the one that disappears behind three other cards.
+///
+/// It is a STRUCTURAL walk over the edges, not the per-attribute walk the F3 plan sketched
+/// ("BFS por AttrAccess"): which attributes a node reads and writes is not in `NodeManifest`,
+/// and `NodeManifest` is a FROZEN contract (§6). A finer influence would buy "this node moves P
+/// but not tint" — worth an ADR one day, worth nothing to buy by breaking the freeze today.
+///
+/// **Two DIRECTED walks, not one undirected one.** Walking "both ways" from every node reached
+/// is the connected COMPONENT, not the influence: it climbs to the Output and then walks right
+/// back down every other branch that feeds it, and lights up a graph the selection cannot touch
+/// (the guard caught exactly this). Ancestors expand only upstream; descendants only
+/// downstream; the influence is their union with the selection.
+pub(crate) fn influence_set(snap: &GraphViewSnapshot, selected: &BTreeSet<u32>) -> BTreeSet<u32> {
+    let mut inf: BTreeSet<u32> = selected.clone();
+    for up in [true, false] {
+        let mut frontier: Vec<u32> = selected.iter().copied().collect();
+        while let Some(n) = frontier.pop() {
+            for e in &snap.edges {
+                let next = match up {
+                    true if e.to_node == n => e.from_node,  // what feeds n
+                    false if e.from_node == n => e.to_node, // what n feeds
+                    _ => continue,
+                };
+                if inf.insert(next) {
+                    frontier.push(next);
+                }
+            }
+        }
+    }
+    inf
+}
+
+/// A wire belongs to the influence iff **both its ends do**. A wire leaving an ancestor towards
+/// something unrelated carries data the selection never sees, and lighting it up would be the
+/// answer to a question nobody asked.
+pub(crate) fn edge_in_influence(inf: &BTreeSet<u32>, from_node: u32, to_node: u32) -> bool {
+    inf.contains(&from_node) && inf.contains(&to_node)
+}
+
 /// Wire width from the mass of the stream it carries. `None` (never cooked) draws as a thread:
 /// an inert wire carries nothing, and pretending otherwise would give a dead branch presence.
 pub(crate) fn wire_width(count: Option<u32>) -> f32 {

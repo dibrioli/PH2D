@@ -289,6 +289,7 @@ mod tests {
             count: None,
             hot: false,
             is_sink: false,
+            preview: None,
         }
     }
 

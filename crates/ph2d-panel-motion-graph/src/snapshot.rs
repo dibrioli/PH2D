@@ -63,6 +63,17 @@ pub struct GraphNodeView {
     /// This node is a **sink** (`motion.output`). The graph is PULLED from the sinks, so this
     /// is where "does anything consume me?" gets answered from (F3, [`crate::flow::live_set`]).
     pub is_sink: bool,
+    /// **The postage stamp** (F3): a bounded SUBSAMPLE of the positions this node emitted, in
+    /// world units — drawn as a little scatter on the card. Nuke's reading: the thumbnails
+    /// *"show what each node passes onto the next node in the tree"*, which is the question a
+    /// wire cannot answer no matter how well it is drawn (*where does the spiral become a
+    /// grid?*).
+    ///
+    /// `None` for a node with no positions (a VALUE node's stamp is its number) and for a node
+    /// the cook never pulled. The shell caps the point count, so the cost is bounded by the
+    /// number of CARDS, never by the size of the stream — which is why this can be on by
+    /// default, where Nuke has to tell you to switch its thumbnails off on a heavy script.
+    pub preview: Option<Vec<[f32; 2]>>,
 }
 
 /// One wire in the view. Its color is the source port's [`Domain`].
@@ -451,6 +462,7 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 count: None,
                 hot: false,
                 is_sink: false,
+                preview: None,
             }
         })
         .collect();

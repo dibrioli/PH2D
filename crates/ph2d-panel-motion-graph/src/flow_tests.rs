@@ -19,6 +19,7 @@ fn node(id: u32, is_sink: bool, count: Option<u32>) -> GraphNodeView {
         count,
         hot: false,
         is_sink,
+        preview: None,
     }
 }
 
@@ -167,4 +168,67 @@ fn dashes_follow_the_bend_and_light_the_duty_cycle() {
 fn a_degenerate_wire_has_no_dashes() {
     assert!(dashes(&[(5.0, 5.0), (5.0, 5.0)], 20.0, 8.0, 0.0).is_empty());
     assert!(dashes(&[(5.0, 5.0)], 20.0, 8.0, 0.0).is_empty());
+}
+
+// ── Influence: what the selection touches (doc 47) ───────────────────────────
+
+/// **Selecting a node lights what feeds it and what it changes** — its ancestors AND its
+/// descendants — and everything else recedes. This is the question you ask before you dare
+/// edit a big graph: *if I touch this, what moves?*
+///
+/// FALSIFIED by walking only downstream (the artist would not see what feeds the node, so
+/// "what will break if I unplug this" stays unanswered) and by walking only upstream.
+#[test]
+fn selecting_a_node_lights_what_feeds_it_and_what_it_changes() {
+    //  1 -> 2 -> 3 -> OUT(9)      and a parallel branch  5 -> 6 -> OUT(9)
+    let s = snap(
+        vec![
+            node(1, false, None),
+            node(2, false, None),
+            node(3, false, None),
+            node(9, true, None),
+            node(5, false, None),
+            node(6, false, None),
+        ],
+        vec![
+            edge(1, 2, false),
+            edge(2, 3, false),
+            edge(3, 9, false),
+            edge(5, 6, false),
+            edge(6, 9, false),
+        ],
+    );
+    let inf = influence_set(&s, &BTreeSet::from([2]));
+
+    assert!(inf.contains(&1), "what feeds 2 is in the influence");
+    assert!(inf.contains(&3) && inf.contains(&9), "…and what 2 changes");
+    // The sibling branch reaches the SAME output, and node 2 still cannot touch it. (It is
+    // reachable through the sink if you ignore direction — which is the mutant.)
+    assert!(
+        !inf.contains(&5) && !inf.contains(&6),
+        "the parallel branch is untouched by node 2: {inf:?}"
+    );
+
+    // A wire belongs to the influence only if BOTH ends do: 6 -> OUT lands on a node in the
+    // set, and still carries nothing that 2 can change.
+    assert!(edge_in_influence(&inf, 2, 3));
+    assert!(
+        !edge_in_influence(&inf, 6, 9),
+        "a wire into the influence from outside is not part of it"
+    );
+}
+
+/// With NOTHING selected, nothing is dimmed for influence — the canvas only ever veils what is
+/// genuinely inert. (A graph that went grey the moment you clicked empty canvas would punish
+/// the most common gesture there is.)
+#[test]
+fn an_empty_selection_dims_nothing() {
+    let s = snap(
+        vec![node(1, false, None), node(9, true, None)],
+        vec![edge(1, 9, false)],
+    );
+    assert!(
+        influence_set(&s, &BTreeSet::new()).is_empty(),
+        "no selection, no focus"
+    );
 }

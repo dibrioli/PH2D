@@ -59,6 +59,11 @@ const TITLE_SIZE: f32 = 13.0; // LITERAL-PX-OK: card title font size
 const TITLE_INSET_R: f32 = 12.0; // LITERAL-PX-OK: card title right inset
 const READOUT_SIZE: f32 = 11.0; // LITERAL-PX-OK: inline readout font size (below the title's)
 const READOUT_PAD_Y: f32 = 4.0; // LITERAL-PX-OK: inline readout top inset within its row
+const PREVIEW_RADIUS: f32 = 3.0; // LITERAL-PX-OK: postage-stamp window corner radius
+const PREVIEW_INSET: f32 = 4.0; // LITERAL-PX-OK: margin between the stamp's points and its frame
+const PREVIEW_DOT_R: f32 = 1.3; // LITERAL-PX-OK: postage-stamp point radius
+const PREVIEW_DOT_MIN: f32 = 0.6; // LITERAL-PX-OK: point radius floor, so a zoomed-out dot survives
+const PREVIEW_MIN_H: f32 = 18.0; // LITERAL-PX-OK: below this the stamp is sub-pixel mush; draw the empty window
 const GRID_STEP: f32 = 32.0; // LITERAL-PX-OK: background grid spacing
 const WIRE_W_DELAYED: f32 = 1.6; // LITERAL-PX-OK: hover-ghost stroke width revealing a pre pair
 const WIRE_W_HOVER: f32 = 4.0; // LITERAL-PX-OK: hovered wire stroke width (targeted for alt-click)
@@ -146,18 +151,30 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // ONCE per paint and read by both the wires and the cards, so a dead branch fades as one
     // thing — a veiled card still trailing a full-strength wire would be worse than no veil.
     let live = crate::flow::live_set(&snap);
+    // **What the selection touches** — its ancestors and its descendants (F3). `None` when
+    // nothing is selected: an empty selection dims NOTHING (a canvas that goes grey the moment
+    // you click empty space would punish the most common gesture there is).
+    let focus =
+        (!state.selected.is_empty()).then(|| crate::flow::influence_set(&snap, &state.selected));
+    let veiled = |id: u32| !live.contains(&id) || focus.as_ref().is_some_and(|f| !f.contains(&id));
     for e in &snap.edges {
         if detached == Some((e.to_node, e.to_port)) {
             continue;
         }
         let is_hovered = hovered == Some(crate::hits::wire_hit_id(e.to_node, e.to_port));
-        let e_live = crate::flow::edge_is_live(&live, e.to_node);
-        draw_wire(ctx, &snap, e, &view, theme, is_hovered, e_live);
+        // A wire is drawn full-strength only if it is live AND (with a selection up) inside the
+        // influence. The wire and the cards it joins fade together — the whole point of the
+        // reading is that a region of the canvas recedes as ONE region.
+        let bright = crate::flow::edge_is_live(&live, e.to_node)
+            && focus
+                .as_ref()
+                .is_none_or(|f| crate::flow::edge_in_influence(f, e.from_node, e.to_node));
+        draw_wire(ctx, &snap, e, &view, theme, is_hovered, bright);
         push_wire_hits(&mut hits, &snap, e, &view, rect);
     }
     // Cards, collecting body hits as we draw them.
     for n in &snap.nodes {
-        let body = draw_card(ctx, state, n, &view, theme, live.contains(&n.id));
+        let body = draw_card(ctx, state, n, &view, theme, veiled(n.id));
         push_card_hit(&mut hits, n.id, body, rect);
     }
     // Sockets last so they win the overlap with the node edge they sit on.
@@ -275,7 +292,7 @@ fn draw_card(
     n: &GraphNodeView,
     view: &View,
     theme: Theme,
-    live: bool,
+    veiled: bool,
 ) -> Rect {
     let (sx, sy) = view.pt(n.x, n.y);
     let w = geom::CARD_W * view.zoom;
@@ -340,25 +357,93 @@ fn draw_card(
         );
     }
 
-    // **Inert = no sink reaches this card**, so the cook never pulls it and nothing it does
-    // reaches the canvas. Veil it, so a dead branch reads across the WHOLE canvas at a glance
-    // instead of having to be inferred, card by card, from a number that is not there.
+    draw_preview(ctx, n, view, theme);
+
+    // **Veiled** — the card is not part of what the artist is looking at. Two reasons, ONE
+    // veil (a card veiled twice is just darker, and the artist cannot read "why" out of a
+    // shade):
     //
-    // The reading is REACHABILITY (F3), not "has a readout" (F2): a node cooked inside a
-    // scoped lane (`motion.time_remap`) has no root-lane memo and therefore no number — it is
-    // consumed all the same, and veiling it would have been a lie the artist could not argue
-    // with.
+    // - **Inert**: no sink reaches it, so the cook never pulls it and nothing it does reaches
+    //   the canvas. The reading is REACHABILITY (F3), not "has a readout" (F2): a node cooked
+    //   inside a scoped lane (`motion.time_remap`) has no root-lane memo and therefore no
+    //   number — it is consumed all the same, and veiling it would be a lie it could not argue
+    //   with.
+    // - **Out of the influence**: something is selected, and this card neither feeds it nor is
+    //   fed by it. Esc drops the selection and the whole canvas comes back.
     //
     // A veil, not a repaint: the card keeps its category colour, its title and its sockets, and
     // stays perfectly grabbable. It recedes; it does not become a different kind of thing.
-    // (The selection ring is drawn ABOVE it — a selected dead node must still look selected.)
-    if !live {
+    // (The selection ring is drawn ABOVE it — a selected node must still look selected.)
+    if veiled {
         fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::GraphInert, theme));
         if state.selected.contains(&n.id) {
             stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
         }
     }
     body
+}
+
+/// **The postage stamp**: what this node passes on, as a little scatter of its own positions
+/// (Nuke's thumbnails, for a node graph that carries points instead of pixels). It answers the
+/// one question no wire can, however well it is drawn: *where does the spiral become a grid?*
+///
+/// The points are fitted to the strip with a UNIFORM scale (aspect preserved) and drawn y-up,
+/// like the canvas — a stamp that stretched its contents to fill the box would show a circle as
+/// an ellipse and lie about the very thing it exists to show.
+fn draw_preview(ctx: &mut PaintCtx, n: &GraphNodeView, view: &View, theme: Theme) {
+    let (Some(pts), Some(rect)) = (n.preview.as_ref(), geom::preview_rect(n, view)) else {
+        return;
+    };
+    // Zoomed out, the strip is a few pixels tall: the dots would be sub-pixel mush that reads
+    // as noise. Draw the empty window instead — the card keeps its shape at every zoom.
+    fill_rounded_rect(
+        ctx.scene,
+        rect,
+        PREVIEW_RADIUS,
+        resolve(ColorToken::GraphBg, theme),
+    );
+    if rect.h < PREVIEW_MIN_H || pts.is_empty() {
+        return;
+    }
+
+    let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
+    for p in pts {
+        for k in 0..2 {
+            lo[k] = lo[k].min(p[k]);
+            hi[k] = hi[k].max(p[k]);
+        }
+    }
+    let (ex, ey) = (hi[0] - lo[0], hi[1] - lo[1]);
+    // A degenerate extent (every point on top of the others, or a single point) has no scale to
+    // speak of: centre it rather than dividing by zero.
+    let pad = PREVIEW_INSET * view.zoom;
+    let s = match (ex > 0.0 || ey > 0.0).then(|| {
+        ((rect.w - 2.0 * pad) / ex.max(f32::EPSILON))
+            .min((rect.h - 2.0 * pad) / ey.max(f32::EPSILON))
+    }) {
+        Some(s) if s.is_finite() => s,
+        _ => 0.0,
+    };
+    let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    let (mx, my) = ((lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5);
+    let color = resolve(
+        n.outputs
+            .first()
+            .map(|p| domain_token(p.domain))
+            .unwrap_or(ColorToken::Text2),
+        theme,
+    );
+    let dot = (PREVIEW_DOT_R * view.zoom).max(PREVIEW_DOT_MIN);
+    for p in pts {
+        // y-up: the world's +y is the canvas's up, and the stamp is a window onto the canvas.
+        fill_circle(
+            ctx.scene,
+            cx + (p[0] - mx) * s,
+            cy - (p[1] - my) * s,
+            dot,
+            color,
+        );
+    }
 }
 
 /// The add-node popup: a `Bg2` panel with a header + one row per catalog entry,

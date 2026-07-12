@@ -27,7 +27,7 @@ pub(crate) fn draw_wire(
     view: &View,
     theme: Theme,
     hovered: bool,
-    live: bool,
+    bright: bool,
 ) {
     let Some((p0, p3)) = wire_endpoints(snap, e, view) else {
         return;
@@ -58,7 +58,7 @@ pub(crate) fn draw_wire(
     // **Data is moving through this wire right now** — the source's output changed since last
     // frame (TouchDesigner's animated wire). Bright dashes march along it, source → target.
     // They ride the SAME polyline, so they cannot drift off the wire they belong to.
-    if live && src.is_some_and(|n| n.hot) && !hovered {
+    if bright && src.is_some_and(|n| n.hot) && !hovered {
         let z = view.zoom;
         for dash in flow::dashes(
             &pts,
@@ -75,10 +75,11 @@ pub(crate) fn draw_wire(
         }
     }
 
-    // **Inert**: no sink pulls this wire, so nothing runs through it. Veil it — the same veil
-    // the dead CARD gets, so a dead branch recedes as one thing instead of a faded card still
-    // trailing a wire at full strength. A veil, not a repaint: the domain hue survives, faintly.
-    if !live {
+    // **Veiled** — either nothing runs through this wire (no sink pulls it), or a selection is
+    // up and this wire is outside its influence. The SAME veil the card gets, so a region of the
+    // canvas recedes as one region instead of leaving faded cards strung together by
+    // full-strength wires. A veil, not a repaint: the domain hue survives, faintly.
+    if !bright {
         stroke_polyline(
             ctx.scene,
             &pts,

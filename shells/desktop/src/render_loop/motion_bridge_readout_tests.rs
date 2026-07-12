@@ -274,3 +274,70 @@ fn the_readout_tracks_the_frame_it_was_taken_on() {
     assert_eq!(before.as_deref(), Some("12 inst"));
     assert_eq!(readout(&snap, 0), Some("20 inst"), "5x4 after the edit");
 }
+
+/// **The postage stamp is a bounded, STRIDED subsample** — bounded so the cost of the stamps is
+/// a function of how many cards there are, never of how big the streams are (Nuke has to tell
+/// you to switch its thumbnails off on a heavy script; a scatter of 96 dots has no such cliff);
+/// strided so the SHAPE survives.
+///
+/// FALSIFIED by `take(96)`: the first 96 points of a 5 000-point spiral are the first eighth of
+/// one turn, and the card would show a comma and call it a spiral.
+#[test]
+fn the_postage_stamp_is_a_bounded_strided_subsample() {
+    let mut motion = MotionState::new();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .expect("wire");
+    // 40 x 40 = 1600 points: far more than the stamp may carry.
+    g.set_param(grid, "rows", 40.0);
+    g.set_param(grid, "cols", 40.0);
+    motion.doc.graph = g;
+    motion.sinks = vec![out];
+
+    let s = frame(&mut motion, 0, 0.0);
+    let stamp = s.nodes[0].preview.as_ref().expect("the grid has a stamp");
+    assert!(
+        stamp.len() <= PREVIEW_POINTS,
+        "bounded: {} points",
+        stamp.len()
+    );
+
+    // The stamp SPANS the grid: a `take(96)` of a 1600-point grid would cover the first few
+    // rows only, and the stamp's vertical extent would collapse.
+    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+    for p in stamp {
+        lo = lo.min(p[1]);
+        hi = hi.max(p[1]);
+    }
+    let full: Vec<f32> = motion
+        .pump
+        .instances
+        .iter()
+        .map(|i| i.world_pos[1])
+        .collect();
+    let (fl, fh) = (
+        full.iter().copied().fold(f32::MAX, f32::min),
+        full.iter().copied().fold(f32::MIN, f32::max),
+    );
+    assert!(
+        (hi - lo) > (fh - fl) * 0.8,
+        "the stamp spans the shape ({lo}..{hi} of {fl}..{fh})"
+    );
+}
+
+/// A VALUE node has no positions, so it gets no stamp — its number IS its stamp. An empty box
+/// under it would promise a picture that is not coming.
+#[test]
+fn a_value_node_has_no_postage_stamp() {
+    let (mut motion, [_, lfo, _, _]) = flow_scene();
+    let s = frame(&mut motion, 0, 0.0);
+    let node = s.nodes.iter().find(|n| n.id == lfo.0).expect("in view");
+    assert!(node.preview.is_none(), "a value node's stamp is its number");
+    assert!(node.readout.is_some(), "…and it has one");
+}

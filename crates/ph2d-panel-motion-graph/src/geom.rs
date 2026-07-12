@@ -70,15 +70,37 @@ pub(crate) fn card_rows(n: &GraphNodeView) -> f32 {
     (n.inputs.len().max(n.outputs.len()).max(1)) as f32
 }
 
-/// The card's height. A node with a live **readout** is one row taller — the number sits
-/// under the sockets, in the space the bottom padding used to hold.
+/// The postage stamp's strip (F3): the little scatter of what the node emits, under its
+/// readout. Wide as the card, tall enough to tell a spiral from a grid.
+pub(crate) const PREVIEW_H: f32 = 52.0; // LITERAL-PX-OK: postage-stamp strip height
+const PREVIEW_PAD: f32 = 6.0; // LITERAL-PX-OK: inset of the stamp inside its strip
+
+/// The card's height. A node with a live **readout** is one row taller (the number sits under
+/// the sockets), and a node with a **postage stamp** carries the strip under that.
 ///
 /// This lives in `geom` (not in `paint`) because the hit-test and the paint MUST agree: a
 /// card that is drawn taller than it is clickable has a dead strip along its bottom edge,
 /// and a card clickable past its own border steals from the canvas behind it.
 pub(crate) fn card_h(n: &GraphNodeView) -> f32 {
     let readout = if n.readout.is_some() { ROW_H } else { 0.0 };
-    HEADER_H + card_rows(n) * ROW_H + readout + PAD_BOTTOM
+    let preview = if n.preview.is_some() { PREVIEW_H } else { 0.0 };
+    HEADER_H + card_rows(n) * ROW_H + readout + preview + PAD_BOTTOM
+}
+
+/// The postage stamp's rect in SCREEN space, inset inside the card — or `None` when the node
+/// has no stamp. Shared by the paint (there is no hit path: the stamp is part of the card body,
+/// and clicking a card must select it wherever you click it).
+pub(crate) fn preview_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
+    n.preview.as_ref()?;
+    let readout = if n.readout.is_some() { ROW_H } else { 0.0 };
+    let top = n.y + HEADER_H + card_rows(n) * ROW_H + readout;
+    let (sx, sy) = view.pt(n.x + PREVIEW_PAD, top);
+    Some(Rect::new(
+        sx,
+        sy,
+        (CARD_W - 2.0 * PREVIEW_PAD) * view.zoom,
+        (PREVIEW_H - PREVIEW_PAD) * view.zoom,
+    ))
 }
 
 /// Screen center of a socket (`output` picks the right vs left edge; `i` is the
@@ -211,6 +233,7 @@ mod tests {
             count: None,
             hot: false,
             is_sink: false,
+            preview: None,
         }
     }
 

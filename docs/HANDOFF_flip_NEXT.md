@@ -5,16 +5,29 @@
 > Leia este arquivo INTEIRO antes de tocar em código. O tracker exaustivo do que já
 > landou é [`HANDOFF_flip_impl.md`](HANDOFF_flip_impl.md) — leia depois deste.
 >
-> **🟩 O §3 (bug da rasterização do traço) foi RESOLVIDO em 2026-07-11 (Rodada 7,
-> pendente só o smoke visual do Enio).** A receita vencedora foi o caminho
-> recomendado abaixo, com 2 achados: com corner ROUND (o default do GP) o fragment
-> NÃO precisa de p0/p3; e a peça que explicava o beco #3 era o **`discard` de
-> alpha < 0.001 do fragment do GP** (sem ele, fragmento transparente escreve depth
-> e fura o vizinho = o "escamado"). Detalhe + oráculo de paridade CPU↔GPU + as 2
-> mutações provadas: `HANDOFF_flip_impl.md` §"Rodada 7". O §3 abaixo fica como
-> HISTÓRICO da investigação.
-> **Sua PRIMEIRA TAREFA agora é o W3 (Frames · Ghost · Tween)** — guia em
-> `HANDOFF_flip_impl.md` §W3-NEXT.
+> **🟨 ESTADO DO §3 (rasterização do traço) — atualizado 2026-07-11 (Rodada 7).**
+> **Acabaram** (verificados em GPU + smoke): acúmulo nas quinas, spike/estrela, bead
+> ("mastigado"), escama. **Sobrou UM artefato novo: a quina sai MORDIDA** com
+> hardness < 1 (um bocado reto arrancado do lado interno da virada). O Enio smokou,
+> reprovou, e mandou **integrar assim mesmo** — o fix fica pra depois.
+>
+> **Sua PRIMEIRA TAREFA é a MORDIDA** — o mecanismo e o fix já estão deduzidos em
+> `HANDOFF_flip_impl.md` §"Rodada 7" → §"A mordida": com depth first-wins, o
+> fragmento vencedor precisa da distância à **polilinha** (p0/p3 no fragment — o
+> refino que a rodada 7 descartou por engano). **E ANTES de codar: conserte o
+> oráculo** (`assert_matches_analytic`) para esperar o **máximo** da máscara sobre os
+> segmentos (a união real), não o first-wins — hoje ele modela a implementação e
+> fica verde COM o bug na tela. Oráculo consertado = vermelho hoje = alvo
+> irrefutável.
+>
+> Depois da mordida, o próximo tópico é o **W3 (Frames · Ghost · Tween)** —
+> guia em `HANDOFF_flip_impl.md` §W3-NEXT.
+>
+> O §3 abaixo (a matriz de becos) fica como **HISTÓRICO** — os 3 becos que ele lista
+> estão explicados: `GEQUAL`+stadium = BEAD e `GEQUAL`+fita = SPIKE são **acúmulo**
+> (o premult-over compondo 2× no mesmo pixel); `GREATER`+stadium = ESCAMADO era a
+> **falta do `discard`** de alpha<0.001 (fragmento transparente escrevia depth e
+> furava o vizinho), não culpa do GREATER.
 
 ---
 

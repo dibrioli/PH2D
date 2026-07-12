@@ -572,15 +572,19 @@ fix); candidato natural a W3/edit-mode. NÃO foi feito nesta rodada.
 > redonda sem miter, sem double-blend, e alpha correto com hardness baixo. Ref viva:
 > `/home/enio/Downloads/blender-5.2-grease-pencil-ref` → `draw_grease_pencil_lib.glsl`.
 
-## Rodada 7 (2026-07-11, sessão posterior) — rasterização do traço **FECHADA** (o tripé do GP)
+## Rodada 7 (2026-07-11) — 2 artefatos MORTOS, 1 NOVO (quina "mordida") — **REPROVADA no smoke**
 
-**A 1ª tarefa do `HANDOFF_flip_NEXT.md` §3 está resolvida.** O caminho recomendado
-lá (fita conectada + bevel/miter_break + GREATER estrito + fragment analítico) era
-o certo, com uma correção: com corner type **ROUND** (o default do GP,
-`GP_CORNER_TYPE_ROUND_BITS = 0`) o fragment **não precisa de p0/p3** — a distância
-clampada que já tínhamos É a junção redonda; p0/p3 só serve aos corner types
-bevel/miter por-ponto, que não portamos. O que faltava eram DUAS peças no resto do
-tripé:
+> 🟥 **Veredito do Enio: "não ficou bom".** O acúmulo/spike/bead/escama **acabaram**
+> (isso é ganho real e permanente), mas apareceu um artefato NOVO: **as quinas saem
+> MORDIDAS** — um bocado reto arrancado do lado interno de cada virada afiada (o
+> zigzag do smoke). **Diagnóstico + o fix, abaixo (§"A mordida").** O Enio decidiu
+> **integrar assim mesmo** (o bug é cosmético e confinado a `flip.wgsl`) e resolver
+> depois.
+
+O caminho recomendado no `HANDOFF_flip_NEXT.md` §3 (fita conectada + bevel/miter_break
++ GREATER estrito + fragment analítico) estava certo — e a parte que eu **descartei**
+dele (o refino **p0/p3 no fragment**) é justamente o que falta. Portei DUAS das três
+peças do tripé:
 
 1. **`miter_break` no vertex** (`gpencil_vertex`, `draw_grease_pencil_lib.glsl:696-724`):
    virada > 120° (`-dot(dir_in, dir_out) > 0.5`) NÃO mitra — o offset fica na
@@ -604,23 +608,49 @@ zero-acúmulo no mesmo depth; o GP resolve com o modo opcional de material
 `GP_STROKE_OVERLAP` (depth por-PONTO, aceita acumular) — não portado; se o Enio
 quiser, é um flag de stroke + 1 linha no depth do vertex.
 
-**Oráculo novo (a alavanca que faltava): paridade CPU↔GPU pixel-a-pixel.**
+**Oráculo novo: paridade CPU↔GPU pixel-a-pixel.**
 `gpu_render.rs::assert_matches_analytic` replica a geometria do vertex (quads
 miter/break/ext, ponto-no-triângulo como o raster) + a máscara do fragment na CPU
 e compara TODO o alvo (fundo incluso; pula só faixa de aresta e limiar de
-discard). Qualquer classe de artefato — bead, escama, spike, acúmulo, furo —
-diverge. **Mutações provadas** (asserção-vermelha real): `GreaterEqual` de volta →
+discard). **Mutações provadas** (asserção-vermelha real): `GreaterEqual` de volta →
 hairpin desvio 248 + cruzamento 191 (o acúmulo 0.75); `discard` removido →
 desvio 254 no canto estendido que o traço cruza de volta.
 
-**Gate:** 23 verdes em debug E `--release` (12 unit + 2 composite e2e + 9 GPU:
-oráculo hairpin-com-cross-back + oráculo arco-suave + união do auto-cruzamento +
-os 6 anteriores adaptados). `rustup run 1.95 cargo fmt --check` + clippy
-`--all-targets` limpos. Diff: só `ph2d-flip-render` (flip.wgsl, flip_fill.wgsl,
-pipeline.rs, tests/gpu_render.rs) — zero shell, zero foundational, zero contrato.
+> 🔴 **LEIA ANTES DE CONFIAR NO ORÁCULO:** ele modela a **implementação**
+> (first-wins por depth), **não a aparência DESEJADA**. Por isso ficou verde com a
+> mordida na tela — a mordida É o first-wins. **Primeira coisa a fazer no fix:**
+> troque o `expected_alpha` para o **máximo** da máscara sobre TODOS os segmentos
+> que cobrem o pixel (= a distância à POLILINHA, a união real). Aí ele fica
+> **VERMELHO no código de hoje** e vira o alvo irrefutável do fix.
 
-**Pendente do fechamento: smoke visual do Enio** (zigzag/curva/cruzamento com
-hardness alto E baixo):
+### A mordida (o bug do smoke) — mecanismo e fix
+
+**Mecanismo (deduzido, ainda não instrumentado):** numa quina QUEBRADA, os quads dos
+segmentos A (anterior) e B (seguinte) **se sobrepõem** no disco da junção (ambos
+estendem `r`). Mesmo `sid` → **mesmo depth** → com `GREATER` estrito **A vence TODOS
+os pixels compartilhados** (chega primeiro). Mas a máscara que A pinta ali é a
+**queda RADIAL** dele (distância ao seu próprio ponto final, clampada) — enquanto os
+pixels que estão sobre o **eixo de B** deveriam ter cobertura ~1 (são o núcleo de B).
+Com hardness < 1 a queda radial é < 1 → **um "mordido" macio no lado interno da
+quina**. Com hardness = 1 a máscara é degrau (1 dentro do disco) → invisível — por
+isso os testes de geometria com borda dura passam.
+
+**O fix (é o refino p0/p3 que eu descartei — o handoff anterior estava certo):** com
+depth first-wins, **o fragmento vencedor precisa conhecer a vizinhança** — ele tem de
+computar a distância à **polilinha** (mín. entre os segmentos p0→p1, p1→p2, p2→p3),
+não só ao seu próprio segmento. É exatamente por isso que o GP passa `p0`/`p3` ao
+`gpencil_stroke_segment_mask`. Passe os 2 vizinhos (já dá pra ler do storage buffer
+no vertex, como o `sp`/`sn` do miter) e use `dist = min(...)` na região de quina.
+**Alternativa** (se o p0/p3 não fechar): render do traço em 2 passes — cobertura numa
+scratch com blend **MAX** (união sem acúmulo, sem truque de depth) + 1 composite —
+é o jeito padrão de traço macio; custa um alvo a mais.
+
+**Gate:** 23 verdes em debug E `--release` (12 unit + 2 composite e2e + 9 GPU).
+`rustup run 1.95 cargo fmt --check` + clippy `--all-targets` limpos. Diff: só
+`ph2d-flip-render` (flip.wgsl, flip_fill.wgsl, pipeline.rs, tests/gpu_render.rs) —
+zero shell, zero foundational, zero contrato.
+
+**Smoke (reprovado):**
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && cargo run -p ph2d-host-desktop --release
 ```

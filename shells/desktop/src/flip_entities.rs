@@ -86,8 +86,8 @@ pub(crate) fn sync(sim: &mut SimWorld, doc: &mut FlipDoc, map: &mut FlipEntityMa
 pub(crate) fn rebuild_map(sim: &mut SimWorld) -> FlipEntityMap {
     let mut map = FlipEntityMap::new();
     let mut q = sim.world_mut().query::<(Entity, &FlipObjectRef)>();
-    for (e, fo) in q.iter(sim.world()) {
-        map.insert(FlipObjectId(fo.0), e.to_bits());
+    for (e, obj_ref) in q.iter(sim.world()) {
+        map.insert(FlipObjectId(obj_ref.0), e.to_bits());
     }
     map
 }

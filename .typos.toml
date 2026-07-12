@@ -251,6 +251,18 @@ fiel = "fiel"
 progressiva = "progressiva"
 progressivo = "progressivo"
 resolvendo = "resolvendo"
+# pt-BR nos comments do módulo Flip (ADR-0114, port 2D do Grease Pencil):
+# "passagens" (the color-space passes of the render), "colide" (collides — a key
+# clash in the frame map), "Mata" (kills — dropping every key of a layer),
+# "definitivos" (conclusive In/Out verdicts in the point-in-triangle oracle),
+# "convencional" (the conventional fill-first order) e "envolve" (involves — the
+# GPU upload path). Palavras portuguesas, lidas como typos pelo dicionário en-US.
+passagens = "passagens"
+colide = "colide"
+Mata = "Mata"
+definitivos = "definitivos"
+convencional = "convencional"
+envolve = "envolve"
 
 [files]
 extend-exclude = [

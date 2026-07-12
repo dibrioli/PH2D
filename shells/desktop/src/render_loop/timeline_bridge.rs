@@ -385,7 +385,7 @@ mod tests {
     }
 
     #[test]
-    fn k_keys_scene_props_at_the_entitys_remapped_clock() {
+    fn k_keys_scene_props_at_the_entity_remapped_clock() {
         use ph2d_anim::AnimValue::Float;
         let mut st = TimelineState::new();
         let mut ph = Playhead::new(1.0 / 60.0);

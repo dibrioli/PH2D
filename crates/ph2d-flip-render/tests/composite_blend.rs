@@ -95,7 +95,7 @@ fn half_to_f32(h: u16) -> f32 {
 
 /// Lê o alvo 16F de volta como `W*H*4` floats lineares.
 fn readback(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<f32> {
-    let bytes_per_row = W * 8; // 4 halfs = 8 bytes; 64*8 = 512 (256-alinhado)
+    let bytes_per_row = W * 8; // 4 halves = 8 bytes; 64*8 = 512 (256-alinhado)
     let size = (bytes_per_row * H) as u64;
     let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("flip e2e readback"),
@@ -133,8 +133,8 @@ fn readback(gpu: &GpuContext, tex: &wgpu::Texture) -> Vec<f32> {
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
     let data = buf.slice(..).get_mapped_range();
-    let halfs: &[u16] = bytemuck::cast_slice(&data[..]);
-    halfs.iter().map(|&h| half_to_f32(h)).collect()
+    let halves: &[u16] = bytemuck::cast_slice(&data[..]);
+    halves.iter().map(|&h| half_to_f32(h)).collect()
 }
 
 /// Alvo 16F limpo (transparente) — o `game_rt` antes do Flip.

@@ -40,14 +40,25 @@ pub(super) const BLOCK: usize = 2_048;
 /// wrong reconstruction is worse than an honest flat top.
 const MAX_RUN: usize = 192;
 
-/// The shortest run that counts as clipping. Two samples at the ceiling is a peak; a
-/// converter that has actually run out of headroom holds there.
-const MIN_RUN: usize = 3;
+/// The shortest run that counts as clipping. A converter that has actually run out of
+/// headroom *holds* there — and requiring it to hold is half of what separates a clipped
+/// plateau from the crest of a clean bass note, which is flat for only a few samples (see
+/// [`flat_runs`]). 6 samples is 0.13 ms at 48 kHz.
+const MIN_RUN: usize = 6;
 
-/// How still a run has to be to count as flat, relative to the ceiling. A clipped plateau
-/// is not perfectly constant (dither, DC, a lossy codec's ringing), so "flat" has to mean
-/// *nearly*, not *exactly* — an exact test would find nothing in a real file.
-const FLATNESS: f64 = 0.02;
+/// How still a run has to be to count as flat: the total **excursion** across it (its
+/// highest sample minus its lowest), as a fraction of full scale.
+///
+/// **-86 dB**: a hard-clipped plateau is pinned at the ceiling, so its samples are equal to
+/// within the file's quantisation — in a 16-bit file, *exactly* equal. This is deliberately
+/// far tighter than "looks flat", and the reason is in [`flat_runs`]: anything loose enough
+/// to be comfortable is loose enough to call the crest of a clean bass note flat, and then
+/// De-Clip rewrites it.
+///
+/// The price is honest and worth naming: a plateau that has been *smeared* — by a lossy
+/// codec, by resampling, by noise added after the clipping — is no longer pinned, and this
+/// will not see it. Missing a soft case beats destroying a clean one.
+const FLATNESS: f64 = 5e-5;
 
 /// Restore clipped peaks. `threshold` is the level (0..1, of full scale) at or above which
 /// a flat run counts as clipped; `amount` blends the reconstruction in — **0 is a
@@ -114,13 +125,28 @@ fn repair_block(x: &mut [f64], block: Range<usize>, threshold: f64) {
 }
 
 /// The flat tops in `x`: runs of at least [`MIN_RUN`] samples, at or above `threshold`, in
-/// which the signal has stopped moving.
+/// which the signal has **stopped moving**.
 ///
-/// The flatness test is what separates clipping from a loud peak. A peak passing through
-/// full scale is still *climbing* — sample to sample it changes. A clipped one is pinned:
-/// the converter had nowhere left to put it.
+/// ## Why flatness is measured across the RUN, not between samples
+///
+/// The obvious test — "consecutive samples barely differ" — does not work, and it took a
+/// measurement to see why. Near its crest a low-frequency sine is *genuinely* flat between
+/// adjacent samples: at 220 Hz the step from one sample to the next at the peak is 4e-4,
+/// which is below any tolerance loose enough to still accept a real (dithered, codec-rung)
+/// clipped plateau. The step scales with frequency (`Δ ≈ A·ω²`), so **no constant separates
+/// them** — the test was frequency-dependent by construction, and De-Clip was quietly
+/// rewriting every crest of every voice and bass note below ~2 kHz (audit 2026-07-12).
+///
+/// The **excursion across the whole run** does separate them, and it does so at every
+/// frequency, because it does not depend on frequency at all:
+///
+/// - a **clipped** plateau is pinned at the ceiling → excursion ≈ 0 (measured: 0.000)
+/// - a **clean** crest climbs from the threshold to the peak → excursion ≈ peak − threshold
+///   (measured: 0.15 at 80 Hz, at 220 Hz, at 1 kHz — the same, as the algebra says)
+///
+/// The per-sample step still bounds how the run *grows*, so a run tracks the plateau instead
+/// of climbing the flank into it — but what makes a run count is the excursion.
 fn flat_runs(x: &[f64], threshold: f64) -> Vec<Range<usize>> {
-    let flat_eps = FLATNESS * threshold;
     let mut runs = Vec::new();
     let mut i = 0;
     while i < x.len() {
@@ -129,16 +155,19 @@ fn flat_runs(x: &[f64], threshold: f64) -> Vec<Range<usize>> {
             continue;
         }
         let sign = x[i].is_sign_positive();
+        let (mut lo, mut hi) = (x[i].abs(), x[i].abs());
         let mut j = i + 1;
         while j < x.len()
             && x[j].abs() >= threshold
             && x[j].is_sign_positive() == sign
-            && (x[j] - x[j - 1]).abs() <= flat_eps
+            && (x[j] - x[j - 1]).abs() <= FLATNESS
         {
+            lo = lo.min(x[j].abs());
+            hi = hi.max(x[j].abs());
             j += 1;
         }
         let len = j - i;
-        if (MIN_RUN..=MAX_RUN).contains(&len) {
+        if (MIN_RUN..=MAX_RUN).contains(&len) && hi - lo <= FLATNESS {
             runs.push(i..j);
         }
         i = j.max(i + 1);
@@ -213,29 +242,76 @@ mod tests {
         );
     }
 
-    /// **A hot but CLEAN master is left alone.** This is the failure that would make the
-    /// tool unusable: a peak that merely touches full scale is intact, and "fixing" it would
-    /// invent an overshoot that was never in the recording.
+    /// **THE gate: the DETECTOR must not fire on clean audio.**
     ///
-    /// The run requirement ([`MIN_RUN`]) plus the flatness test are what tell the two apart.
-    /// Red if either is dropped: a normalized sine touches 1.0 at every crest.
+    /// This tests `flat_runs` directly, because the behavioural test below cannot: a pure
+    /// sine is reconstructed *exactly* by the AR model, so even when the detector fires on
+    /// every crest, the output comes back unchanged and the test passes. The first version
+    /// of this gate was exactly that — it measured the INTERPOLATOR and claimed to be
+    /// measuring the detector, and it stayed green while De-Clip mangled clean audio
+    /// (audit 2026-07-12, [[feedback_mutate_the_code_not_just_the_test]]).
+    ///
+    /// The crest of a low-frequency sine is genuinely flat *between adjacent samples* — at
+    /// 220 Hz the sample-to-sample step near the peak is 4e-4, far below any tolerance that
+    /// would still accept a real (dithered, codec-rung) clipped plateau. So no per-sample
+    /// test can separate them, at any constant. What separates them is the **excursion
+    /// across the whole run**: a clipped plateau is pinned (~0), while a clean crest climbs
+    /// from the threshold to the peak (~peak − threshold) — a figure that does not depend on
+    /// frequency at all. Measured: clean sine 0.15, clipped plateau 0.000.
+    #[test]
+    fn the_detector_does_not_fire_on_clean_audio() {
+        for hz in [80.0f32, 150.0, 220.0, 440.0, 1_000.0] {
+            let clean: Vec<f64> = (0..8_192)
+                .map(|i| f64::from((std::f32::consts::TAU * hz * (i as f32 / SR)).sin()))
+                .collect();
+            let runs = flat_runs(&clean, 0.85);
+            assert!(
+                runs.is_empty(),
+                "{hz} Hz, full-scale and NEVER clipped: the detector found {} plateaux — \
+                 De-Clip would rewrite every crest of it",
+                runs.len()
+            );
+        }
+    }
+
+    /// …and it DOES fire on a real clipped plateau. (The other half: a detector that finds
+    /// nothing is trivially safe and completely useless.)
+    #[test]
+    fn the_detector_fires_on_a_real_plateau() {
+        let (_, cut) = clipped(8_192, 220.0, 1.4, 0.9);
+        let x: Vec<f64> = cut.iter().map(|v| f64::from(*v)).collect();
+        assert!(
+            !flat_runs(&x, 0.85).is_empty(),
+            "a sine driven 3 dB into a 0.9 ceiling has flat tops, and the detector missed them"
+        );
+    }
+
+    /// **A hot but CLEAN master is left alone — byte for byte.**
+    ///
+    /// Deliberately NOT a pure sine: the AR model reconstructs one exactly, which hides a
+    /// firing detector behind a perfect interpolation. This is a hot, harmonically rich
+    /// signal with a little noise — the kind of thing a real normalized master is — and here
+    /// a firing detector leaves a mark. Measured: with the old per-sample flatness test it
+    /// moved by **0.0220**; with the excursion test it is byte-identical.
     #[test]
     fn a_hot_but_clean_peak_is_left_alone() {
-        // Exactly full scale, never clipped: a normalized master.
+        let mut seed = 0x1234_5678u64;
         let clean: Vec<f32> = (0..8_192)
-            .map(|i| (std::f32::consts::TAU * 220.0 * (i as f32 / SR)).sin())
+            .map(|i| {
+                let t = i as f32 / SR;
+                seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+                let dither = ((seed >> 40) as f32 / 8_388_608.0 - 1.0) * 0.002;
+                let v = (std::f32::consts::TAU * 150.0 * t).sin() * 0.985
+                    + (std::f32::consts::TAU * 450.0 * t).sin() * 0.01;
+                v + dither
+            })
             .collect();
         let before = mono(clean);
         let after = declip(&before, 0.85, 1.0);
-        let moved = before
-            .samples()
-            .iter()
-            .zip(after.samples())
-            .map(|(a, b)| (a - b).abs())
-            .fold(0.0f32, f32::max);
-        assert!(
-            moved < 0.01,
-            "a clean peak was 'restored' by {moved} — the tool is inventing overshoot"
+        assert_eq!(
+            before.samples(),
+            after.samples(),
+            "a clean, never-clipped master was 'restored' — the tool is inventing overshoot"
         );
     }
 

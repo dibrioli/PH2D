@@ -399,8 +399,18 @@ mod tests {
                 0.4 * (tau * 220.0 * t).sin() + 0.3 * (tau * 9_000.0 * t).sin() + 0.05
             })
             .collect();
+        // A click: six alternating samples, for De-Click's residual detector.
         for (n, s) in samples.iter_mut().skip(2_400).take(6).enumerate() {
             *s = if n % 2 == 0 { 0.95 } else { -0.95 };
+        }
+        // A CLIPPED plateau, for De-Clip: 20 interleaved samples pinned at the ceiling =
+        // 10 consecutive frames per channel, flat to the bit. The click above will not do:
+        // its samples alternate sign, so per channel it is only three frames long — and a
+        // three-frame plateau is what the crest of a clean bass note looks like, which is
+        // exactly what De-Clip's detector now (correctly) refuses to touch (audit
+        // 2026-07-12). A probe for a restoration tool has to carry the damage it restores.
+        for s in samples.iter_mut().skip(3_000).take(20) {
+            *s = 0.97;
         }
         SampleData::from_interleaved(samples, AudioFormat::stereo(48_000))
     }

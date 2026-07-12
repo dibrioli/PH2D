@@ -149,6 +149,28 @@ impl Stft {
             // The inverse SCRAMBLES its input, so hand it a copy: the caller's spectrum has
             // to survive for whatever looks back at it (denoise smooths across columns).
             tmp.copy_from_slice(spec);
+            // **DC and Nyquist are REAL.** A real signal's spectrum is conjugate-symmetric,
+            // which pins those two bins to the real axis — they have a sign, not a phase.
+            // `realfft` enforces it: hand it a spectrum with `im != 0` there and it REFUSES
+            // the whole column (`FftError::InputValues`). The `is_err()` below then dropped
+            // that column from the overlap-add entirely; at 75 % overlap all four columns
+            // covering a sample get dropped together, the window sum comes out zero, and the
+            // WOLA writes **digital silence**. That is what a user got for dragging the
+            // repair box down to the bottom of the spectrogram — which is the natural gesture
+            // for killing a rumble (audit 2026-07-12).
+            //
+            // So the projection happens HERE, once, for every caller present and future: an
+            // edit that touches the edges of the spectrum is a normal thing to want, and it
+            // must not be able to silently destroy the audio.
+            //
+            // The last bin is Nyquist only when the window is EVEN; on an odd window it is
+            // an ordinary bin with a real phase, and zeroing it would destroy real data.
+            tmp[0].im = 0.0;
+            if n.is_multiple_of(2)
+                && let Some(last) = tmp.last_mut()
+            {
+                last.im = 0.0;
+            }
             if s.inv.process(&mut tmp, &mut s.time).is_err() {
                 return;
             }

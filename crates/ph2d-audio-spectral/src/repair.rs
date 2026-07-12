@@ -85,10 +85,11 @@ pub fn repair(data: &SampleData, band: &Band) -> SampleData {
                 post.copy_from_slice(spec);
             }
         });
-        // A region flush against the start or end of the clip has only one anchor; lean on
-        // the one that exists rather than fading into nothing.
+        // A region flush against the START of the clip has no column before it to lean on.
+        // (There is always one AFTER: `c1` was clamped to `cols - 1` above, so `post_col`
+        // is a real column. An earlier version guarded for its absence and the guard was
+        // dead code — audit 2026-07-12.)
         let have_pre = c0 > 0;
-        let have_post = post_col < cols;
 
         let n = stft.window_size();
         let hop = stft.hop();
@@ -102,12 +103,7 @@ pub fn repair(data: &SampleData, band: &Band) -> SampleData {
                 // Estimate 1 — along TIME: this bin, before and after. Tonal content that
                 // was passing through the region continues through it.
                 let (ma, mb) = (magnitude(pre[b]), magnitude(post[b]));
-                let time_mag = match (have_pre, have_post) {
-                    (true, true) => ma + (mb - ma) * t,
-                    (true, false) => ma,
-                    (false, true) => mb,
-                    (false, false) => 0.0,
-                };
+                let time_mag = if have_pre { ma + (mb - ma) * t } else { mb };
                 // Estimate 2 — along FREQUENCY: the bins just outside the region, now.
                 // Broadband content present at this instant.
                 let below = (b0 > 0).then(|| magnitude(spec[b0 - 1]));
@@ -126,21 +122,35 @@ pub fn repair(data: &SampleData, band: &Band) -> SampleData {
                 // surroundings — the failure mode that turns a fix into a new artefact.
                 let mag = (time_mag.max(0.0) * freq_mag.max(0.0)).sqrt();
 
+                let base = if have_pre { pre[b] } else { post[b] };
+                // **DC and Nyquist have a SIGN, not a phase.** A real signal's spectrum is
+                // conjugate-symmetric, which pins those two bins to the real axis. Rotating a
+                // phase into them is meaningless — and `Stft::process` must project it back
+                // out before the inverse, or `realfft` refuses the column outright. Say it
+                // here as well, so the estimate that reaches the transform is the one we
+                // meant: the magnitude, carrying the anchor's sign.
+                if b == 0 || (b == bins - 1 && n.is_multiple_of(2)) {
+                    let sign = if base.re < 0.0 { -1.0 } else { 1.0 };
+                    spec[b] = Complex32::new(mag * sign, 0.0);
+                    continue;
+                }
                 // Phase: continue this bin's natural advance from the anchor, so the fill
                 // is a coherent continuation of what was there rather than a fresh burst
                 // with an arbitrary phase (which reads as a click).
                 let advance = std::f32::consts::TAU * (b as f32) * (hop as f32) / (n as f32);
-                let base = if have_pre { pre[b] } else { post[b] };
                 let phase = base.im.atan2(base.re) + advance * (col - pre_col) as f32;
                 spec[b] = Complex32::new(mag * phase.cos(), mag * phase.sin());
             }
         });
 
         // Splice: only the samples the edited columns actually reach are replaced. The rest
-        // of the clip comes through bit-identical, which is the promise the tool makes.
+        // of the clip comes through bit-identical, which is the promise the tool makes — so
+        // the bounds have to be exactly right, not merely generous. The edited columns are
+        // `c0..c1` EXCLUSIVE, so the last one is `c1 - 1`; using `c1` here spliced one hop
+        // (5 ms) of resynthesis past anything an edit could reach (audit 2026-07-12).
         let pad = n - hop;
         let lo = (c0 * hop).saturating_sub(pad);
-        let hi = ((c1 * hop + n).saturating_sub(pad)).min(frames);
+        let hi = (((c1 - 1) * hop + n).saturating_sub(pad)).min(frames);
         for f in lo..hi {
             out[f * channels + ch] = y[f];
         }
@@ -264,6 +274,52 @@ mod tests {
                 "sample {f} changed, and it is nowhere near the selection"
             );
         }
+    }
+
+    /// **A band that reaches DC must not punch a hole in the audio.**
+    ///
+    /// Dragging the box down to the bottom of the spectrogram is the natural gesture for
+    /// killing a rumble or a hum — and it clamps `freq_at_y` to exactly 0.0, so `b0` is the
+    /// DC bin. A REAL signal has no phase at DC (nor at Nyquist): both bins must be real.
+    /// Write a phase into one and `realfft` refuses the whole column — which used to be
+    /// swallowed by an `is_err()` early-return, so all four columns covering a sample were
+    /// dropped, the window sum came out zero, and the WOLA wrote **digital silence**.
+    ///
+    /// Found by audit 2026-07-12. Every repair test before it used a band in the middle of
+    /// the spectrum (1-5.4 kHz), where `b0 >= 1` — all green, all blind to the edge.
+    #[test]
+    fn a_band_that_reaches_dc_does_not_punch_a_hole() {
+        let before = mono(speech(48_000));
+        let after = repair(
+            &before,
+            &Band {
+                frames: 20_000..24_000,
+                hz: 0.0..800.0,
+            },
+        );
+        let inside = &after.samples()[20_000..24_000];
+        let zeros = inside.iter().filter(|v| **v == 0.0).count();
+        assert_eq!(
+            zeros, 0,
+            "{zeros}/4000 samples of the selection were replaced by digital silence"
+        );
+    }
+
+    /// The same hole at the other end of the spectrum: Nyquist is real too.
+    #[test]
+    fn a_band_pinned_at_nyquist_does_not_punch_a_hole() {
+        let before = mono(speech(48_000));
+        let ny = SR * 0.5;
+        let after = repair(
+            &before,
+            &Band {
+                frames: 20_000..24_000,
+                hz: (ny - 5.0)..ny,
+            },
+        );
+        let inside = &after.samples()[20_000..24_000];
+        let zeros = inside.iter().filter(|v| **v == 0.0).count();
+        assert_eq!(zeros, 0, "{zeros}/4000 samples became digital silence");
     }
 
     /// An empty selection is a no-op, not a crash and not a silent clip.

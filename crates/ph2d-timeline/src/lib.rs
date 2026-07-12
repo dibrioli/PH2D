@@ -33,6 +33,7 @@ pub mod prop;
 pub mod snapshot;
 pub mod speed;
 pub mod sprite;
+pub mod stack;
 pub mod state;
 
 pub use apply::{apply_from_doc, apply_from_doc_except, remapped_time};
@@ -50,6 +51,7 @@ pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::PropKind;
 pub use snapshot::{KeyView, TimelineViewSnapshot, TrackView};
 pub use speed::{sample_speed, segment_endpoint_speed, speed_extent};
+pub use stack::{ClipLane, ClipStrip, LaneMode, StripLoop};
 // The anim vocab the public snapshot/doc API names, re-exported so consumers of
 // `KeyView`/`TrackView`/`SelectedKey` don't need a direct `ph2d-anim` dep.
 pub use ph2d_anim::{AnimTarget, AnimValue, Easing, EasingFamily, EasingMode, Interp, KeyId};

@@ -136,10 +136,16 @@ ClipLane  { name, muted, weight: f32, mode: Override | Additive, strips: Vec<Cli
 ClipStrip { clip: u16,                      // índice em doc.clips()
             t_start, t_end,                 // onde toca na timeline
             src_in, src_out,                // que fatia do clip é usada
-            speed: f32,
-            loop_mode: Once | Loop | PingPong | Hold,
+            speed: f64,
+            loop_mode: Once | Loop | PingPong,
             ease_in, ease_out }             // = blend_in/out quando há vizinho (R1)
 ```
+
+**`StripLoop` tem TRÊS variants, não quatro** (corrigido na implementação, A1): `Hold` seria idêntico a
+`Once` (as duas seguram o último valor quando a fonte acaba antes do span), e o `Nothing` do Blender — o
+strip **para de contribuir** enquanto ainda cobre o tempo — é justamente o buraco por onde a pilha cai pro
+default e puxa o sprite. Um strip que cobre tempo que não consegue preencher é um strip mal-aparado, não um
+recurso: **apare o strip**. Variant morto = o que os nossos gates existem pra impedir.
 
 Faixas empilham **de baixo para cima**. O join key é **de graça**: bindings são *document-wide*, então o
 mesmo `AnimTarget` significa o mesmo `(entity, prop)` em **todo** clip ([doc.rs:140](../../../crates/ph2d-timeline/src/doc.rs)).
@@ -221,8 +227,8 @@ ambiguidade de ±2π — sem isso, cruzar 350°→10° blendaria pelo caminho lo
 1. Documento com `stack` vazia é **byte-idêntico** ao de hoje (gate executável).
 2. Dois strips sobrepostos na mesma faixa: crossfade **contínuo, sem salto e sem afundar** — incluindo o
    caso *"o clip A keya X, o clip B não keya X"* → X segue A (R2), **não** cai pro default.
-3. `src_in`/`src_out` recorta; `speed` retima; `Once`/`Loop`/`PingPong`/`Hold` extrapolam. Cada um provado
-   no **valor amostrado**, não na existência do campo.
+3. `src_in`/`src_out` recorta; `speed` retima; `Once`/`Loop`/`PingPong` dobram a fonte. Cada um provado
+   no **valor amostrado**, não na existência do campo. ✅ **(A1-A3, `tests/clip_stack.rs`)**
 4. Faixa `Additive` soma **DELTA**: um clip de pose **constante** contribui **ZERO** (o teste que pega
    "somei o valor absoluto").
 5. Escala additive **multiplica**: dois clips de escala 1.0 dão **1.0**, não 2.0.

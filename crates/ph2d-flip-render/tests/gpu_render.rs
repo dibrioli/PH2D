@@ -366,6 +366,50 @@ fn a_sharp_corner_is_a_round_join_without_an_outward_spike() {
 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_soft_stroke_has_no_bead_at_the_joints() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Um traço reto SOFT com várias amostras (junções em x=25 e x=40). A fita
+    // CONECTADA (miter compartilhado) não sobrepõe os segmentos nas junções, então a
+    // opacidade FORA do eixo é UNIFORME ao longo do traço — sem o "bead"/mastigado que
+    // o double-blend de quads sobrepostos criava (Enio 2026-07-11). Com o bug, o pixel
+    // na junção era bem mais opaco que o do meio do segmento.
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    let c = Rgba::new(0.9, 0.9, 0.1, 1.0);
+    for x in [10.0_f32, 25.0, 40.0, 55.0] {
+        s.push_point(Point {
+            pos: Vec2::new(x, 32.0),
+            width: 12.0,
+            opacity: 1.0,
+            color: c,
+        });
+    }
+    s.hardness = 0.7; // macio o bastante p/ ter alpha fora do eixo (o bead vivia aqui)
+    d.strokes.push(s);
+
+    let px = render(&device, &queue, &d);
+    // Fora do eixo (y=34, ~2px do centro numa banda de raio 6): junções (x=25, x=40)
+    // vs meios (x=17, x=32, x=48). Numa reta a distância à linha-de-centro é constante,
+    // então SEM bead o alpha é uniforme; COM bead as junções ficam mais opacas.
+    let joint_a = i32::from(alpha_at(&px, 25, 34));
+    let joint_b = i32::from(alpha_at(&px, 40, 34));
+    let mid_a = i32::from(alpha_at(&px, 17, 34));
+    let mid_b = i32::from(alpha_at(&px, 32, 34));
+    let mid_c = i32::from(alpha_at(&px, 48, 34));
+    let vals = [joint_a, joint_b, mid_a, mid_b, mid_c];
+    let hi = *vals.iter().max().unwrap();
+    let lo = *vals.iter().min().unwrap();
+    assert!(lo > 20, "a fita pinta fora do eixo (não some): {vals:?}");
+    assert!(
+        hi - lo <= 24,
+        "opacidade UNIFORME (sem bead nas junções): {vals:?}"
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
 fn filled_closed_stroke_renders_fill_under_stroke() {
     let Some((device, queue)) = device() else {
         return;

@@ -18652,3 +18652,81 @@ fn impasto_strokes_pile_up_only_to_the_glass() {
         "three full loads stop at the glass (two): got {h}"
     );
 }
+
+#[test]
+fn impasto_body_zero_obeys_the_falloff() {
+    // Enio's smoke on the Fase 4 body (2026-07-12): "parece ter perdido a capacidade de obedecer
+    // toda a suavidade do falloff — não consigo relevos perfeitamente arredondados como antes."
+    // He is right: the body curve crushed EVERY profile to plateau + wall, and the plan §0 promise
+    // ("a Shape-Tone ramp vira escultura") died with it. The state of the art ships both schools
+    // behind a control (PS Technique Smooth↔Chisel; Blender Draw vs Layer brushes) — so does the
+    // brush now: **Body = 0** must hand the cross-section back to the silhouette, exactly.
+    let size = 160u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.radius_px = 40.0;
+    b.impasto_depth = 0.7;
+    b.impasto_source = DepthSource::Uniform;
+    b.impasto_smoothing = 0.0; // the raw deposit IS the claim — no settling on top
+    b.impasto_body = 0.0; // the round school
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+    for i in 1..=8 {
+        t.on_canvas_pointer(cp(
+            [40.0 + 10.0 * f32::from(i as u8), 80.0],
+            PointerPhase::Move,
+        ));
+    }
+    t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+
+    let h = relief(&t);
+    let at = |d: u32| h[((80 + d) * size + 80) as usize];
+    let spine = at(0);
+    assert!(spine > 0.6, "sanity: full depth on the spine");
+    // A dome, not a mesa: the height falls from the very centre (no plateau)...
+    assert!(
+        at(10) < 0.97 * spine,
+        "no plateau — the falloff's curve starts at the spine ({} vs {spine})",
+        at(10)
+    );
+    // ...keeps falling monotonically...
+    assert!(
+        at(10) > at(20) && at(20) > at(30),
+        "monotone rounded flank ({} > {} > {})",
+        at(10),
+        at(20),
+        at(30)
+    );
+    // ...and the soft tail CARRIES relief again (the wall is gone; body 1 zeroes this pixel).
+    assert!(
+        at(30) > 0.01,
+        "the falloff's soft tail sculpts the relief at Body 0 ({})",
+        at(30)
+    );
+    // And the round school must not resurrect the halo: the tail has height now, but the light
+    // still ignores paint that is not there — bare-white pixels do not move.
+    t.paint.impasto_light_angle_deg = 90;
+    t.paint.impasto_light_elev_deg = 45;
+    t.paint.impasto_shine = 0.0;
+    t.invalidate_composite();
+    let img = lit(&mut t);
+    t.paint.impasto_show = false;
+    t.invalidate_composite();
+    let base = lit(&mut t);
+    let mut worst = 0i32;
+    for i in (0..base.len()).step_by(4) {
+        if 255 - i32::from(base[i + 1]) > 10 {
+            continue; // real paint — allowed to shade
+        }
+        worst = worst.max((i32::from(img[i + 1]) - i32::from(base[i + 1])).abs());
+    }
+    assert!(
+        worst <= 8,
+        "rounded relief must not shade the near-invisible tail (worst drift {worst} levels)"
+    );
+}

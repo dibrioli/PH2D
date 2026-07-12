@@ -85,7 +85,7 @@ fn paint_body_card(
     y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Body", 4);
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Body", 5);
     ry = card_row(
         ctx,
         theme,
@@ -97,6 +97,22 @@ fn paint_body_card(
         brush.impasto_depth,
         DEPTH_MIN,
         DEPTH_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    // Body = the cross-section dial: 1 = level film with a wall, 0 = the relief obeys the falloff
+    // (the perfectly rounded ridge Enio asked back for, 2026-07-12).
+    ry = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Body",
+        core_ids::PAINTER_IMPASTO_BODY,
+        brush.impasto_body,
+        0.0,
+        UNIT_MAX,
         number_field::FINE_STEP,
         2,
     );

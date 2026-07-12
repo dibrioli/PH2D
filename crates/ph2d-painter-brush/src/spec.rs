@@ -283,6 +283,15 @@ pub struct BrushSpec {
     /// raw dab profile (crisp ridges, every grain striation lit); higher settles the paint like a
     /// thick medium relaxing under its own weight. Purely a property of the deposit, not of the light.
     pub impasto_smoothing: f32,
+    /// **Body**, `0..1`: the relief's cross-section, between the two schools the state of the art
+    /// ships (Photoshop's bevel *Technique*, Smooth ↔ Chisel Hard; Blender's Draw vs Layer brushes —
+    /// `docs/Painter/17_impasto_deposito_pesquisa2.md` §3). `1` (default) = a **body of paint**: a
+    /// level film with its wall a little inside the paint's edge ([`crate::height::body_profile`]).
+    /// `0` = the relief **obeys the silhouette exactly** — falloff, Shape image and Shape-Tone ramp
+    /// sculpt the cross-section, so a soft brush lays a perfectly rounded ridge (Enio's smoke,
+    /// 2026-07-12: the roundness must stay reachable). Between the two, a mesa with a soft crown —
+    /// the Chisel-Soft family.
+    pub impasto_body: f32,
 }
 
 impl Default for BrushSpec {
@@ -359,6 +368,7 @@ impl Default for BrushSpec {
             impasto_source: DepthSource::Uniform,
             impasto_draw_to: DrawTo::ColorAndDepth,
             impasto_smoothing: 0.2,
+            impasto_body: 1.0, // full body-with-a-wall; 0 = the relief obeys the falloff (round)
         }
     }
 }
@@ -482,6 +492,14 @@ impl BrushSpec {
         } else {
             0.0
         }
+    }
+
+    /// Effective impasto **Body** `[0, 1]` — how far the deposit is pushed through the body curve
+    /// (`1` = plateau + wall; `0` = the silhouette's own cross-section). No master-switch gate: with
+    /// impasto off the kernel is never reached, and the value has no other reader.
+    #[must_use]
+    pub fn effective_impasto_body(&self) -> f32 {
+        self.impasto_body.clamp(0.0, 1.0)
     }
 
     /// Compose the dab silhouette from a Shape sample `shape_val` and the round `falloff` envelope. The

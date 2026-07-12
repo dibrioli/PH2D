@@ -67,6 +67,10 @@ impl PainterTool {
                 self.set_brush_impasto_smoothing(*v as f32);
                 true
             }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_BODY => {
+                self.set_brush_impasto_body(*v as f32);
+                true
+            }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_ANGLE => {
                 self.set_impasto_light_angle(*v as f32);
                 true
@@ -123,6 +127,14 @@ impl PainterTool {
         self.refresh_live_relief();
     }
 
+    /// **Body** — the cross-section dial (`1` = level film with a wall; `0` = the relief obeys the
+    /// falloff: the perfectly rounded ridge of Enio's smoke). Applies from the NEXT stroke: the
+    /// profile is baked into the deposit per pixel, and the stored envelope no longer carries the
+    /// raw silhouette to re-derive it from (unlike Depth, which is a pure rescale).
+    pub fn set_brush_impasto_body(&mut self, v: f32) {
+        self.paint.brush.impasto_body = v.clamp(0.0, 1.0);
+    }
+
     /// **Depth Source** from its wire discriminant (the segmented group's option).
     pub fn set_brush_impasto_source(&mut self, wire: u8) {
         self.paint.brush.impasto_source = DepthSource::from_u8(wire);
@@ -170,6 +182,7 @@ impl PainterTool {
         b.impasto_source = d.impasto_source;
         b.impasto_draw_to = d.impasto_draw_to;
         b.impasto_smoothing = d.impasto_smoothing;
+        b.impasto_body = d.impasto_body;
         self.paint.impasto_show = true;
         self.paint.impasto_light_angle_deg = 135;
         self.paint.impasto_light_elev_deg = 45;

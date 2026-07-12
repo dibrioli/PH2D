@@ -28,8 +28,14 @@ trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
 - Gates: **584** `ph2d-tool-painter` (2 novas com RED por mutação: body-with-an-edge + glass
   ceiling; halo/does-not-shade/corrugação re-derivadas — corduroy ViewPlane 1.0→0.70, atenuado) +
   **239** brush; clippy `--all-targets` 0; perf **1.79 ms/move** (alvo ≤4).
-- **Smoke do Enio: PENDENTE sobre o modelo novo** — comando do §5 vale inalterado; o card Lighting
-  agora tem 4 linhas (sem Amount).
+- **Fase 4.1 (pós-smoke, mesmo dia):** o Enio aprovou o corpo mas apontou a perda do arredondado —
+  a curva esmagava todo falloff. Nasceu o dial **`Body`** (`impasto_body`, 0..1, default 1.0 = look
+  da Fase 4; **0 = o relevo obedece a silhueta por inteiro**, o domo redondo sob a luz nova; meio =
+  família mesa). É o `Technique` do PS como contínuo. `PAINTER_IMPASTO_BODY` entrou em
+  `PAINTER_IMPASTO_FIELDS` (5→6, append). Gate com RED por mutação:
+  `impasto_body_zero_obeys_the_falloff`. Perf 1.87 ms/move. Plano §10.2.
+- **Smoke do Enio: PENDENTE de novo** (2ª rodada — validar o Body 0 = arredondado que ele pediu);
+  comando do §5 vale inalterado; card Lighting com 4 linhas (sem Amount), card Body com 5.
 
 Os §§ 1–8 abaixo descrevem as entregas anteriores da linha e continuam válidos; números de gates
 ficam superseded pelos desta seção.

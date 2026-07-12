@@ -13,8 +13,9 @@
 //!
 //! Then: click the white canvas → the **Painter** pill → drag. The Impasto section (Brush panel) is
 //! already open with Enable ticked; the Lighting card drives the light live (Angle / Elevation /
-//! Shine — there is no Amount any more: thickness is the brush's Depth, the slope is geometry), and
-//! **Depth** goes negative to carve instead of lift.
+//! Shine — there is no Amount any more: thickness is the brush's Depth, the slope is geometry),
+//! **Depth** goes negative to carve instead of lift, and **Body** dials the cross-section: 1 = a
+//! level film with a wall (default), 0 = the relief obeys the falloff — the perfectly rounded ridge.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;

@@ -220,7 +220,7 @@ byte-identidade) · perf por amostragem in-place · Watercolor intocado (short-c
 
 | onde | fica | morre |
 |---|---|---|
-| Brush | Enable · **Depth** (−1..1) · Smoothing · Depth Source (Uniform/Grain) · Draw To | — |
+| Brush | Enable · **Depth** (−1..1) · **Body** (0..1 — adicionado na Fase 4.1: o smoke do Enio cobrou o arredondado de volta; é o `Technique` Smooth↔Chisel do PS como contínuo, percepção de FORMA, não um segundo ganho) · Smoothing · Depth Source (Uniform/Grain) · Draw To | — |
 | Canvas | Show Impasto · Light Angle · Elevation · Shine | **Amount** |
 | constantes | `DEPTH_UNIT_PX` (medida, com dimensão) · `W_TAIL/W_SOLID` (a definição de "borda") · `H_CEIL` · `AMBIENT`/`SHININESS` (modelo de luz; Painter também não expõe) · `GRAIN_GROOVE` · `SETTLE_MAX_PX` | `SLOPE_GAIN` (vira `DEPTH_UNIT_PX`) · o `body` dentro da normal |
 

@@ -583,7 +583,7 @@ fn impasto_click_controls_forward_their_click() {
     }
 }
 
-/// Every Impasto number-field (Depth / Smoothing / Angle / Elevation / Amount / Shine) forwards
+/// Every Impasto number-field (Depth / Body / Smoothing / Angle / Elevation / Shine) forwards
 /// `SetValue(id, _)` — the `is_param_field` route.
 #[test]
 fn impasto_sliders_forward_setvalue() {

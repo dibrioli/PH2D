@@ -363,6 +363,9 @@ pub struct BrushSettings {
     pub impasto_draw_to: u8,
     /// **Smoothing** (`0..1`) — how much the deposited relief is settled before it is lit.
     pub impasto_smoothing: f32,
+    /// **Body** (`0..1`) — the relief's cross-section: `1` = level film with a wall, `0` = the
+    /// silhouette's own profile (perfectly rounded).
+    pub impasto_body: f32,
     /// Whether the Impasto section APPLIES in the current mode (`PainterTool::impasto_applies`) — the
     /// §1.2 matrix, published as ONE predicate instead of re-derived in the panel. False under the
     /// Watercolor wash / Eraser / Mask / Inpaint / Smear / Blur / Clone, where the card is not painted

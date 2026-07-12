@@ -360,3 +360,24 @@ byte-identidade OFF, barreira do Watercolor, Tiling/Symmetry, RNG, eraser, undo 
 parede; mutação A = `body_profile→identidade` reprova no platô) ·
 `impasto_strokes_pile_up_only_to_the_glass` (3 cargas cheias = 2.0; mutação B = sem clamp reprova
 em 3.0).
+
+### 10.2 Fase 4.1 — o dial **Body** (smoke do Enio, 2026-07-12, mesmo dia)
+
+O smoke sobre a Fase 4 aprovou o corpo mas achou a perda: *"parece ter perdido a capacidade de
+obedecer toda a suavidade do falloff — não consigo relevos perfeitamente arredondados como antes."*
+Ele está certo: a curva de corpo esmagava TODO perfil para platô+parede — a promessa do §0 ("a ramp
+vira escultura") morreu junto, e o estado-da-arte não faz isso: o perfil é ESCOLHA (PS `Technique`
+Smooth↔Chisel; Blender Draw vs Layer brush — pesquisa 2 §3).
+
+**Fix:** `BrushSpec.impasto_body` (0..1, default **1.0** = o look da Fase 4) — slider **Body** no
+card, entre Depth e Smoothing. `a = lerp(w, body_profile(w), body)`: em **0** o relevo obedece a
+silhueta por inteiro (falloff, Shape image e Shape-Tone ramp esculpem — o arredondado perfeito; e
+sob a LUZ NOVA, sem o mute quadrático antigo, o domo sombreia de verdade — a combinação
+domo+luz-física nunca tinha existido); em valores médios, a família mesa (Chisel Soft). Blend
+monótono de remaps monótonos ⇒ continua comutando com o envelope. Aplica do PRÓXIMO traço (o
+envelope armazenado não carrega o `w` cru para re-derivar — diferente do Depth, que é rescale puro).
+
+Gate: `impasto_body_zero_obeys_the_falloff` (domo sem platô + flanco monótono + cauda com relevo +
+o véu quase-invisível segue sem sombra — RED provado por mutação `body_mix→1`). Superfície: brush
+agora `Enable · Depth · Body · Smoothing · Source · Draw To` (o Body é percepção de FORMA, não um
+segundo ganho — não reabre o acoplamento que matou o Amount). Perf re-medida: **1.87 ms/move**.

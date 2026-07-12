@@ -58,6 +58,10 @@ pub const PAINTER_IMPASTO_LIGHT_ELEV: NodeId = hash_node_id("painter_brush.impas
 // (There deliberately is NO "Amount" here: it was a second gain over the same percept as the brush's
 // Depth — the two scaled one another and the panel read as "hard to adjust". The slope is now pure
 // geometry, `DEPTH_UNIT_PX` in the light pass; `docs/Painter/17_impasto_deposito_pesquisa2.md` §5–6.)
+/// **Body** (`0..1`) — the relief's cross-section: `1` = level film with a wall (the body of paint),
+/// `0` = the relief obeys the falloff exactly (the perfectly rounded ridge). A SHAPE percept, not a
+/// gain — orthogonal to Depth. `SetValue` → `set_brush_impasto_body`.
+pub const PAINTER_IMPASTO_BODY: NodeId = hash_node_id("painter_brush.impasto_body");
 /// **Shine** (`0..1`) — the specular highlight riding the crests. `0` = matte, high = wet oil.
 /// `SetValue` → `set_impasto_shine`.
 pub const PAINTER_IMPASTO_SHINE: NodeId = hash_node_id("painter_brush.impasto_shine");
@@ -77,8 +81,9 @@ pub const PAINTER_IMPASTO_CLICKS: [NodeId; 8] = [
 
 /// The Impasto **SetValue** number-fields — one membership check for the panel's number-field forward
 /// (`is_param_field`) and its register loop.
-pub const PAINTER_IMPASTO_FIELDS: [NodeId; 5] = [
+pub const PAINTER_IMPASTO_FIELDS: [NodeId; 6] = [
     PAINTER_IMPASTO_DEPTH,
+    PAINTER_IMPASTO_BODY,
     PAINTER_IMPASTO_SMOOTHING,
     PAINTER_IMPASTO_LIGHT_ANGLE,
     PAINTER_IMPASTO_LIGHT_ELEV,

@@ -334,6 +334,7 @@ pub fn accumulate_dab_height(
     let inv_radius = 1.0 / radius;
     let use_grain = matches!(spec.impasto_source, DepthSource::Grain) && dab.grain.is_some();
     let sweep = sweep_axis(dab);
+    let body_mix = spec.effective_impasto_body();
     let mut touched = false;
     for py in y0..y1 {
         let dy = (py as f32 + 0.5) - cy;
@@ -345,9 +346,12 @@ pub fn accumulate_dab_height(
             if w <= 0.0 {
                 continue;
             }
-            // The silhouette becomes the BODY through its own profile (plateau + shoulder) — the §10
-            // fix. The colour keeps the raw `w`; only the thickness is reshaped.
-            let mut a = body_profile(w);
+            // The silhouette becomes the paint's cross-section under the artist's **Body** dial:
+            // at 1 the full body curve (plateau + wall — the §10 fix), at 0 the silhouette itself
+            // (falloff / Shape image / Shape-Tone ramp sculpt the relief — a soft brush lays a
+            // perfectly rounded ridge), in between the mesa family. The colour keeps the raw `w`.
+            // A monotone blend of two monotone remaps, so it still commutes with the envelope.
+            let mut a = w + (body_profile(w) - w) * body_mix;
             if use_grain
                 && a > 0.0
                 && let Some(b) = dab.grain

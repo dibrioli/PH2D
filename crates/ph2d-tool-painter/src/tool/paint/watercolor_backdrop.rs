@@ -450,6 +450,19 @@ impl PainterTool {
         {
             return;
         }
+        // The paper-tooth memo is keyed by canvas pixel and NOTHING else — its only invalidation is the
+        // NaN-reset at pen-down, on the premise (written into the field's doc) that "the paper cannot
+        // change mid-stroke". THIS function is what made that premise false: it exists precisely to
+        // re-render when a Paper param moved. `fill_substrate_cache` fills only the NaN misses, so without
+        // this reset every already-memoised pixel keeps the tooth of the OLD paper — the pool re-renders
+        // and the paper does not change, which defeats this feature's whole purpose for the Paper slot.
+        // (The Grain is sampled live, which is why the Grain half worked and the smoke passed.)
+        // Sweep 2026-07-12, `BUGS_painter.md` #14. Same root as Bug #12: a reuse guard that never asks
+        // whether the cached value still belongs to the inputs that produced it.
+        self.paint
+            .wet_substrate
+            .iter_mut()
+            .for_each(|v| *v = f32::NAN);
         // `close_stroke` dropped the live base + ground; point the render at the kept snapshot and force the
         // committed footprint dirty, then reconstruct the wash with the CURRENT texture (`apply_watercolor`
         // reads `brush.texture`/`paper`). `commit=false` keeps the base for the next edit.

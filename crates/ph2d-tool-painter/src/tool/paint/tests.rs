@@ -2951,6 +2951,66 @@ fn switching_sprite_while_the_paint_is_still_wet_does_not_index_the_old_moisture
 }
 
 #[test]
+fn editing_the_paper_re_renders_the_wet_wash_with_the_new_paper() {
+    // Sweep finding (2026-07-12), found INDEPENDENTLY by two lenses. The live-editable wash (2026-07-11)
+    // re-renders the committed pool when a Grain/Paper param moves while the paper is still wet —
+    // `rerender_editable_wash`'s own doc says it reconstructs "with the CURRENT brush texture". But the
+    // paper-tooth memo (`wet_substrate`) is only NaN-reset at PEN-DOWN, and `fill_substrate_cache` fills
+    // only the NaN misses — so every pixel of the pool keeps the paper height computed for the OLD paper.
+    // The field's doc-comment asserts "the paper cannot change mid-stroke, so there is no in-stroke
+    // invalidation to get wrong" — the live-edit feature made that premise false, and defeated ITSELF for
+    // the Paper slot (the Grain works, which is why the smoke passed).
+    // RED without the fix: the canvas is byte-identical after moving Paper Size.
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let mut t = white_canvas(64, 10.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 10.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.85, 0.1, 0.1],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.5,
+        depth: 1.5,
+        granulation: 0.9, // the substrate has to WEIGH on the bake, else nothing is observable
+        ..Default::default()
+    };
+    t.paint.brush.paper.kind = TextureKind::Voronoi; // a lattice paper: Size genuinely changes the tooth
+    t.paint.brush.paper.mapping = TextureMapping::Tiled;
+    t.paint.brush.paper_depth = 1.0;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = t.paint.brush;
+    }
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+    let memo_before: Vec<f32> = t.paint.wet_substrate.clone();
+    let memoised = memo_before.iter().filter(|v| !v.is_nan()).count();
+    assert!(
+        memoised > 0,
+        "the wash memoised the paper tooth under its footprint"
+    );
+    // The paper is still wet. The user drags Paper Size — the live-edit feature's whole reason to exist.
+    t.set_brush_paper_size(0, 24.0);
+    t.set_brush_paper_size(1, 24.0);
+    t.paint_tick(0.016); // the heartbeat → rerender_editable_wash
+    // THE ORACLE IS THE MEMO, not the pixels. A pixel-level `assert_ne!` goes GREEN for the wrong reason:
+    // the re-render forces a bigger dirty region, so freshly-filled (NaN) pixels move bytes around even
+    // while every ALREADY-memoised pixel keeps the old paper. Compare only the pixels that were already
+    // memoised — those are the ones the staleness hides in.
+    let stale = t
+        .paint
+        .wet_substrate
+        .iter()
+        .zip(memo_before.iter())
+        .filter(|(now, was)| !was.is_nan() && now.to_bits() == was.to_bits())
+        .count();
+    assert_eq!(
+        stale, 0,
+        "every memoised paper-tooth sample must be rebuilt for the new Paper          ({stale}/{memoised} still hold the OLD paper's tooth)"
+    );
+}
+
+#[test]
 fn switching_sprite_does_not_carry_the_old_sprites_selection() {
     // Sweep finding (2026-07-12): the pixel Selection is TOOL-global — it is not in `StashedDoc` (which
     // stashes the LAYER selection) and was never registered in `reset_transient_edit_state`. And

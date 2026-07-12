@@ -2423,7 +2423,7 @@ impl crate::App {
                 hero,
                 tools,
                 motion,
-                report.ticks,
+                &mut self.playhead,
                 self.fixed_step.fixed_dt(),
                 self.last_pointer,
                 toasts,

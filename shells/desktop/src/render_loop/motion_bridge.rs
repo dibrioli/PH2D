@@ -9,8 +9,9 @@
 //! 2. **Center split** — split the center into scene ⟂ graph on activate
 //!    (remembered orientation, default `Horizontal { t: 0.55 }`), restore to
 //!    `None` on deactivate.
-//! 3. **Per-frame cook** — advance the transport by this frame's fixed steps,
-//!    then cook the graph's sink into the reused `MotionState.instances` buffer.
+//! 3. **Per-frame cook** — cook the graph's sink, at the tick the editor's ONE
+//!    clock (`ph2d_core::Playhead`, W4.T7) is standing on, into the reused
+//!    `MotionState.instances` buffer. Motion keeps NO transport of its own.
 //!    The render loop injects that slice via `SpriteRenderer::render_with_extra`
 //!    (`present.rs`) — the cooked stream draws without being spawned into the
 //!    ECS `PresentWorld` (stream ≠ ECS, ADR-0035).
@@ -51,9 +52,10 @@ mod plumbing_tests;
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).
 ///
-/// - `frame_ticks`: fixed steps this frame (`FixedStepReport::ticks`) — advances
-///   the transport when playing.
-/// - `fixed_dt`: the fixed timestep in seconds (playhead = `tick × fixed_dt`).
+/// - `playhead`: the editor's ONE clock (`ph2d_core::Playhead`, W4.T7). Motion
+///   READS it for the tick to cook and WRITES it for transport intents (Space,
+///   auto-play on entry) — it no longer keeps a transport of its own.
+/// - `fixed_dt`: the fixed timestep in seconds (`tick × fixed_dt` = seconds).
 /// - `cursor`: the latest pointer position (screen px) — drives the cursor-gated
 ///   graph keyboard focus (Blender-style F acts on the hovered area).
 /// - `toasts`: the shell toast queue — the connect authority raises a refusal
@@ -64,7 +66,7 @@ pub(super) fn dispatch(
     hero: &mut HeroScreen,
     tools: &ToolRegistry,
     motion: &mut MotionState,
-    frame_ticks: u32,
+    playhead: &mut ph2d_core::Playhead,
     fixed_dt: f64,
     cursor: (f32, f32),
     toasts: &mut ToastQueue,
@@ -107,7 +109,9 @@ pub(super) fn dispatch(
                 // Auto-play on entry so time-driven behaviours animate live the
                 // moment the tool opens (Cavalry/AE preview semantics). Space
                 // toggles pause; nothing moves until a `Temporal` node is wired.
-                motion.transport.play();
+                // This plays the EDITOR's clock (W4.T7) — the timeline runs with
+                // the graph, which is the point of there being only one.
+                playhead.play();
             } else {
                 hero.view.center_split = CenterSplit::None;
             }
@@ -122,7 +126,7 @@ pub(super) fn dispatch(
     #[cfg(feature = "panel-motion-graph")]
     {
         if motion_active {
-            apply_graph_intents(motion, toasts, &mut hero.view.center_split);
+            apply_graph_intents(motion, playhead, toasts, &mut hero.view.center_split);
             // Publish the addable-node catalog for the add-menu. Rebuilt each
             // active frame (cheap: ~dozens of `Copy` entries) alongside the
             // snapshot; memoizing it is a follow-up like the snapshot's own
@@ -164,30 +168,18 @@ pub(super) fn dispatch(
         return;
     }
 
-    // ── 3. Advance transport + cook the sink (skipped when paused/unchanged) ──
+    // ── 3. Cook the sink at the tick the PLAYHEAD is on (W4.T7: one clock) ────
     // The render output IS the Output node — the sink follows the graph (wire a
     // chain into an Output node and it draws). `None` (no Output node) → the pump
     // renders nothing. Recomputed each frame so add/delete/rewire just works.
     motion.sinks = output_nodes(&motion.doc.graph);
-    // One cook + `pre`-advance per FIXED TICK, never per frame (M2-dynamics): a
-    // slow frame that produced 2 fixed steps must re-sim BOTH, or a sequential
-    // node's trajectory (integrate / spring) would depend on the frame rate —
-    // non-deterministic (plan §1.4: dt fixo). The common frame is 1 tick, same
-    // cost as before; while paused `advance` is a no-op and the pump
-    // early-returns at the unchanged tick, so the loop costs nothing
-    // (zero-alloc paused frame, M0.T12).
     // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
     // its upstream subtree. Rebuilt per frame — one pass over the node list, and
     // empty for a graph with no remapper (the common case), so the cook takes
     // its unscoped path unchanged.
     let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
-    for _ in 0..frame_ticks {
-        motion.transport.advance(1);
-        let tick = motion.transport.tick;
-        // `advance_or_scrub` (not a plain forward pump): `advance(1)` may WRAP
-        // backwards inside a `loop_range`, and that jump must replay the sim from
-        // the loop's start (restore + re-sim) instead of reading the marching
-        // future — the M2.N2 scrub path, transparently (a spring loops correctly).
+    let target = motion_tick(playhead, fixed_dt);
+    for tick in ticks_owed(motion.pump.last_cooked_tick(), target) {
         motion.pump.advance_or_scrub_scoped(
             &motion.doc.graph,
             &motion.registry,
@@ -199,21 +191,55 @@ pub(super) fn dispatch(
             &scopes,
         );
     }
-    // Catch-up for a frame with no fixed step or a paused transport: a dirty
-    // edit (param drag, rewire) still re-cooks this frame; a transport tick set
-    // directly (a future ruler seek, `reset`) is rendered here — `advance_or_scrub`
-    // restores + re-sims if that tick jumped. No-op when clean and unchanged.
-    let tick = motion.transport.tick;
-    motion.pump.advance_or_scrub_scoped(
-        &motion.doc.graph,
-        &motion.registry,
-        &motion.sinks,
-        tick,
-        |t| t as f64 * fixed_dt,
-        motion.default_uv_rect,
-        motion.default_size,
-        &scopes,
-    );
+}
+
+/// The ticks the cook still owes to reach `target`, given the last one it rendered.
+///
+/// **Forward: every tick, never a skip.** One cook + `pre`-advance per FIXED TICK,
+/// never per frame (M2-dynamics). A sequential node's trajectory (`integrate`,
+/// `spring`, `verlet_rope`) is the SUM of its steps, so a slow frame that produced
+/// two fixed steps — or a playhead running at `rate 2` — must sim BOTH, or the
+/// motion would depend on the frame rate (plan §1.4: dt fixo). The common frame
+/// owes exactly one tick, which takes the pump's cheap forward path.
+///
+/// **Backwards or a jump: one call.** The playhead was scrubbed, seeked, or wrapped
+/// its loop. [`MotionCookPump::advance_or_scrub_scoped`] restores the newest
+/// checkpoint at or before the target and re-sims forward, bit-exact (M2.N2) —
+/// walking there tick by tick would instead re-cook from the ring on every step.
+/// Reading the marching future would show a spring mid-flight at a time it never
+/// was in.
+///
+/// **Standing still: the same tick.** A paused playhead re-issues its current tick,
+/// which the pump early-returns on unless a param drag / rewire dirtied the cook
+/// (zero-alloc paused frame, M0.T12).
+fn ticks_owed(last_cooked: Option<u64>, target: u64) -> std::ops::RangeInclusive<u64> {
+    match last_cooked {
+        Some(last) if target > last => last + 1..=target,
+        _ => target..=target,
+    }
+}
+
+/// The fixed tick the playhead is standing on — the Motion cook's clock, DERIVED
+/// (W4.T7). Motion keeps no transport of its own: it used to, and two clocks that
+/// each advance themselves are two clocks that drift.
+///
+/// The cook is tick-based on purpose (a fixed `dt` is what makes a spring
+/// deterministic, plan §1.4) while the playhead is a continuous position in
+/// seconds — so the seam rounds. At `rate == 1` the playhead's time is an exact
+/// multiple of `fixed_dt` and the rounding is a no-op; a seek to mid-tick lands on
+/// the nearest one.
+fn motion_tick(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> u64 {
+    if fixed_dt <= 0.0 {
+        return 0;
+    }
+    // `Playhead::time` is `>= 0` by construction; the clamp is belt-and-braces
+    // against a NaN reaching the cast, which would saturate to 0 silently.
+    let t = playhead.time() / fixed_dt;
+    if t.is_finite() && t > 0.0 {
+        t.round() as u64
+    } else {
+        0
+    }
 }
 
 /// Apply the panel's queued [`GraphIntent`]s to the shell-owned document (M1.E10).
@@ -229,7 +255,12 @@ pub(super) fn dispatch(
 ///   membrane), and the edit is kept only when the new edge is legal — else a
 ///   refusal toast is raised and the document is untouched.
 #[cfg(feature = "panel-motion-graph")]
-fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split: &mut CenterSplit) {
+fn apply_graph_intents(
+    motion: &mut MotionState,
+    playhead: &mut ph2d_core::Playhead,
+    toasts: &mut ToastQueue,
+    split: &mut CenterSplit,
+) {
     use ph2d_nodegraph::graph::{NodeId, Pos};
     use ph2d_panel_motion_graph::GraphIntent;
     for intent in ph2d_panel_motion_graph::drain_intents() {
@@ -288,10 +319,11 @@ fn apply_graph_intents(motion: &mut MotionState, toasts: &mut ToastQueue, split:
                     split.to_horizontal()
                 };
             }
-            // Transport play/pause (Space) — the shell owns the transport; no
-            // doc edit / undo. The per-frame cook advances only while playing.
+            // Transport play/pause (Space) — no doc edit / undo. Toggles the
+            // EDITOR's clock (W4.T7), so pausing the graph pauses the timeline
+            // and vice versa; the cook simply follows wherever the playhead is.
             GraphIntent::TogglePlay => {
-                motion.transport.toggle();
+                playhead.toggle_play();
             }
         }
     }

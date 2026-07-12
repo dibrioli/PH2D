@@ -72,28 +72,80 @@ fn grid_stagger_oscillator_cook_through_the_real_registry() {
     }
 }
 
-/// The animation enabler (ask "when do we see animation?"): playing advances
-/// the playhead — so any `Temporal` behaviour moves — and pausing freezes it.
-/// The default transport is paused, which is why nothing moved before.
+// ── W4.T7: the editor has ONE clock ────────────────────────────────────────
+//
+// Motion used to run a `MotionTransport` of its own, advanced by the frame's fixed
+// steps, while the timeline ran `ph2d_core::Playhead`. Two clocks that each advance
+// themselves are two clocks that drift — and every feature crossing Motion and the
+// timeline was built on that sand. The transport is gone: the tick Motion cooks is
+// now DERIVED from the playhead, so they cannot disagree by construction.
+
+/// The animation enabler (ask "when do we see animation?"): the playhead advances
+/// — so any `Temporal` behaviour moves — and pausing freezes it. Now asserted on
+/// the ONE clock, because Motion no longer has one to assert on.
 #[test]
-fn transport_play_advances_time_and_pause_freezes_it() {
-    let mut motion = MotionState::new();
+fn the_cook_clock_is_the_playhead_and_pausing_freezes_it() {
     let dt = 1.0 / 60.0;
-    assert_eq!(motion.transport.playhead(dt), 0.0, "starts paused at t=0");
-    motion.transport.play();
-    motion.transport.advance(30);
-    let t = motion.transport.playhead(dt);
-    assert!(
-        t > 0.0,
-        "playing advances the playhead -> behaviours animate"
-    );
-    motion.transport.toggle(); // -> paused
-    motion.transport.advance(30);
+    let mut ph = ph2d_core::Playhead::new(dt);
+    ph.pause();
+    assert_eq!(super::motion_tick(&ph, dt), 0, "paused at t = 0 -> tick 0");
+
+    ph.play();
+    ph.advance_ticks(30);
     assert_eq!(
-        motion.transport.playhead(dt),
-        t,
-        "paused freezes the playhead"
+        super::motion_tick(&ph, dt),
+        30,
+        "playing advances the cook's clock -> behaviours animate"
     );
+
+    ph.pause();
+    ph.advance_ticks(30);
+    assert_eq!(super::motion_tick(&ph, dt), 30, "paused freezes it");
+
+    // …and the timeline's ruler now moves the graph, for free: there is only one
+    // thing to move. This is what the second transport made impossible.
+    ph.seek(1.0);
+    assert_eq!(super::motion_tick(&ph, dt), 60, "a seek to 1 s is tick 60");
+}
+
+/// A playhead at double rate covers two fixed ticks per frame — the cook's clock
+/// must follow it there, not run at its own pace.
+#[test]
+fn the_cook_clock_follows_the_playheads_rate() {
+    let dt = 1.0 / 60.0;
+    let mut ph = ph2d_core::Playhead::new(dt);
+    ph.set_rate(2.0);
+    ph.advance_ticks(10);
+    assert_eq!(super::motion_tick(&ph, dt), 20, "rate 2 -> twice the ticks");
+}
+
+/// **The determinism guard.** A sequential node's trajectory (integrate / spring /
+/// verlet) is the SUM of its steps, so the cook may never SKIP a tick — a slow
+/// frame that produced three fixed steps owes all three, or the motion would depend
+/// on the frame rate. A jump backwards is the opposite: one call, so the pump
+/// restores a checkpoint and re-sims (walking it tick by tick would re-cook from
+/// the ring on every step).
+#[test]
+fn a_slow_frame_owes_every_tick_it_skipped_and_a_jump_owes_one() {
+    let owed = |last, target| super::ticks_owed(last, target).collect::<Vec<u64>>();
+
+    assert_eq!(owed(Some(10), 11), vec![11], "the common frame: one tick");
+    assert_eq!(
+        owed(Some(10), 13),
+        vec![11, 12, 13],
+        "a slow frame sims EVERY step it owes -- a spring may not skip one"
+    );
+    assert_eq!(
+        owed(Some(10), 5),
+        vec![5],
+        "backwards (a scrub, a loop wrap) is ONE call -> restore + re-sim"
+    );
+    assert_eq!(
+        owed(Some(10), 10),
+        vec![10],
+        "standing still re-issues the tick (a dirty param edit re-cooks it)"
+    );
+    assert_eq!(owed(None, 0), vec![0], "a fresh pump starts at tick 0");
 }
 
 /// The #1->#2 producer/consumer seam through the REAL registry: the grid's
@@ -278,16 +330,13 @@ fn a_loop_range_replays_the_simulation_from_its_start() {
     // Cook one lap, capturing each frame's strobe silhouette (max instance size).
     let lap = |pump: &mut MotionCookPump| -> Vec<f32> {
         let mut sig = Vec::new();
-        let mut transport = ph2d_motion_doc::MotionTransport {
-            playing: true,
-            loop_range: Some((0, LAP)),
-            ..Default::default()
-        };
-        // Drive the wrap: `advance` moves the transport (wrapping at LAP), and the
-        // pump's `advance_or_scrub` restores + re-sims on the backwards jump.
+        // Drive the wrap directly on the tick, the way the shell now does (W4.T7:
+        // there is no MotionTransport any more — the tick is derived from the ONE
+        // playhead, and a looping playhead wraps it backwards). The pump's
+        // `advance_or_scrub` restores + re-sims on that backwards jump.
+        let mut tick = 0u64;
         for _ in 0..LAP {
-            transport.advance(1);
-            let tick = transport.tick;
+            tick = (tick + 1) % LAP;
             pump.advance_or_scrub_scoped(
                 &g,
                 registry,

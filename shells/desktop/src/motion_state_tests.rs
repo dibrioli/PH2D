@@ -75,7 +75,6 @@ fn new_builds_the_well_typed_value_document() {
     // formula in the graph's text channel.
     assert_eq!(state.doc.graph.nodes().len(), 12);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
-    assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
 /// `motion.expression` is alive end to end (doc 32): the cos/sin formulas plot a 144-point

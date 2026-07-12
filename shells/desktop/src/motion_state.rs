@@ -3,11 +3,18 @@
 //! `render_loop::motion_bridge` while the `motion` tool is active.
 //!
 //! Bundles the persistable document ([`MotionDoc`], with undo [`MotionHistory`])
-//! with the runtime pieces that never persist: the [`MotionTransport`] (play /
-//! pause / tick), the **persistent** [`Cook`] (its memo + `pre` feedback must
-//! survive across frames), the node [`NodeRegistry`] (the `OpResolver`), the
-//! current sink node, and a reused `Vec<RenderInstance>` lowering buffer (so the
-//! steady-state cook path is zero-alloc — gated by M0.T12).
+//! with the runtime pieces that never persist: the **persistent** [`Cook`] (its
+//! memo + `pre` feedback must survive across frames), the node [`NodeRegistry`]
+//! (the `OpResolver`), the current sink node, and a reused `Vec<RenderInstance>`
+//! lowering buffer (so the steady-state cook path is zero-alloc — gated by M0.T12).
+//!
+//! **No transport (W4.T7).** Motion used to keep a `MotionTransport` of its own
+//! here, advanced by each frame's fixed steps, while the timeline ran
+//! `ph2d_core::Playhead` — two clocks that each advanced themselves, and so two
+//! clocks that could drift. The editor now has ONE: the bridge DERIVES the tick it
+//! cooks from the playhead (`motion_bridge::motion_tick`), and the pump's own
+//! `last_cooked_tick` is the only record of where the sim stands. Do not add a
+//! tick back here.
 //!
 //! Document ≠ tool (ADR-0040): the `MotionTool` is a thin activation handle; all
 //! the state lives here in the shell, mirroring `AppGfx.vec_scene`.
@@ -16,7 +23,7 @@
 mod strobe;
 
 use ph2d_eval_motion::MotionCookPump;
-use ph2d_motion_doc::{MotionDoc, MotionHistory, MotionTransport};
+use ph2d_motion_doc::{MotionDoc, MotionHistory};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Graph, NodeId};
 
@@ -28,8 +35,6 @@ pub(crate) struct MotionState {
     /// Phase 1b: connect / disconnect / add / delete / drag), and Ctrl+Z/Y drive
     /// [`MotionHistory::undo`]/[`redo`] from the shell (Phase 1b-3).
     pub(crate) history: MotionHistory,
-    /// Playback transport (playhead = `tick × fixed_dt`).
-    pub(crate) transport: MotionTransport,
     /// Per-frame cook driver (persistent [`Cook`] + reused instance buffer). Its
     /// [`MotionCookPump::pump`] re-cooks only on a dirty frame, so a paused frame
     /// is zero-alloc (M0.T12). The rendered slice is `pump.instances`.
@@ -72,7 +77,6 @@ impl MotionState {
         Self {
             doc,
             history: MotionHistory::new(),
-            transport: MotionTransport::new(),
             pump: MotionCookPump::new(),
             registry,
             sinks,

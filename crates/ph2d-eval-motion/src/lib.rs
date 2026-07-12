@@ -485,6 +485,20 @@ impl MotionCookPump {
         }
     }
 
+    /// The tick this pump last rendered, if any — the ONE record of where the
+    /// cook stands. A caller driving the pump from an external clock (the
+    /// editor's `ph2d_core::Playhead`, W4.T7) reads this to know which ticks it
+    /// still owes: every tick between here and its target must be simmed, because
+    /// a sequential node's trajectory (`integrate`, `spring`, `verlet_rope`) is
+    /// the sum of its steps and may not skip one.
+    ///
+    /// Exposed so the shell does **not** keep a tick of its own. It used to, and
+    /// that copy was a second clock that could drift from the first.
+    #[must_use]
+    pub fn last_cooked_tick(&self) -> Option<u64> {
+        self.last_cooked_tick
+    }
+
     /// The error from the last cook, if a sink refused. `None` when every sink
     /// cooked. Lets the shell explain a dark scene rather than leave the artist
     /// staring at an empty viewport.

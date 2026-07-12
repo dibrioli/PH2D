@@ -208,6 +208,90 @@ exige que ele a pegue. Sem isso, um detector quebrado passaria verde sem detecta
 
 ---
 
+## Bug #5 — Contorno ABERTO recortava o preenchimento ("cubo 3D imperfeito", 2026-07-12) — **FECHADO**
+
+### Sintoma
+
+Um triângulo **escuro** comendo metade da face direita do cubo isométrico. A silhueta e as
+arestas estavam certas; faltava tinta no meio.
+
+### Causa
+
+O cubo é uma silhueta hexagonal **fechada** + três arestas internas, que são contornos
+**abertos**. O renderer construía **um** `BezPath` com tudo e o usava para preencher *e*
+traçar.
+
+Preenchimento **fecha contorno aberto implicitamente** — é a semântica de fill de qualquer
+rasterizador, não um bug do Vello. A corda que fecha a polilinha `V1 → M → V3` recorta um
+triângulo com winding próprio que, sob `NonZero`, **cancela** o hexágono onde coincide. O
+triângulo escuro é literalmente a aresta interna do cubo, fechada.
+
+**Era uma classe, não um caso.** A mesma doença, em forma de lente, atingia a boca da base
+do cone e a tampa do cilindro (arcos abertos fechados pelas suas cordas) — só que menos
+visível. As barras da sub-rotina e a cruz da junção escapavam por acidente: sendo segmentos
+de 2 pontos, a corda tem área zero.
+
+### Correção
+
+Uma regra semântica, não um remendo: **um contorno aberto não tem interior — ele é uma linha
+de construção.** Em [`ph2d-vec-render`](../../crates/ph2d-vec-render/src/lib.rs):
+
+- `build_fill_bezpath` — só os contornos FECHADOS. É o que se preenche.
+- `build_lines_bezpath` — só os ABERTOS. É o que dá volume ao sólido.
+- `build_bezpath` — tudo. É o que se traça.
+
+**Corroboração de que a regra é a certa, e não uma invenção:** `path_contains_point` (o
+hit-test do gizmo) **já** pulava os contornos abertos (`if !closed { continue; }`). O resto
+do código sempre tratou "aberto = sem interior" como a semântica correta. O renderer é que
+estava fora do passo.
+
+### Gates
+
+`open_contour_tests::an_open_contour_never_punches_a_hole_in_the_fill` mede o **winding no
+baricentro do triângulo** — o miolo exato da mancha da foto. Ele prova as duas metades da
+história:
+
+1. o path do preenchimento cobre a face (`winding ≠ 0`);
+2. o path COMPLETO — que era o que se preenchia antes — **a perfura** (`winding = 0`).
+
+A segunda asserção é o que impede o teste de perder o poder de discriminar: se um dia os
+dois paths coincidirem, ela cai e avisa.
+
+Mais `fill_and_lines_partition_every_shape_in_the_catalogue`: para as 48 formas, os dois
+caminhos **particionam** o path inteiro, e toda forma aberta tem preenchimento vazio.
+
+---
+
+## Bug #6 — Previews do painel espelhados (2026-07-12) — **FECHADO**
+
+### Sintoma
+
+As formas certas no canvas, **de cabeça para baixo na grade de thumbnails** do painel.
+
+### Causa
+
+**A mesma fronteira do Bug #2, do outro lado.** O mundo é Y-para-CIMA; a tela é
+Y-para-baixo. No canvas, a câmera faz a inversão (`world_to_screen_affine` = `scale(k, −k)`).
+O painel pinta **direto em coordenadas de tela** e montava a transformação do thumbnail com
+`Affine::scale(s)` — uniforme e **positiva**. Faltava o sinal.
+
+É o jeito mais confuso possível de o bug se apresentar: a geometria está certa, o canvas
+está certo, e só o preview mente.
+
+### Correção
+
+`Affine::scale_non_uniform(s, −s)` (e o `+ scale·bcy` na translação). Extraído para
+`thumb_affine`, uma função pura — para poder ser testada.
+
+### Gate
+
+`the_thumbnail_flips_y_so_the_preview_is_not_upside_down` exige que **o ápice do cone seja
+pintado ACIMA da base na célula**. Um teste que conferisse apenas a ESCALA (que a forma cabe
+na célula) passaria feliz com o preview invertido — é a mesma armadilha de vacuidade do
+Bug #2, e a única asserção que a evita é a que compara a ordem vertical.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de
@@ -223,3 +307,13 @@ exige que ele a pegue. Sem isso, um detector quebrado passaria verde sem detecta
 4. **Renderize.** O agente do padrão-ouro dos balões descobriu três defeitos *desenhando* as
    formas, com todos os testes verdes. O do banner idem — a dobra tinha um buraco e nenhuma
    asserção olhava para lá.
+
+5. **Uma fronteira mundo↔tela é sempre DUAS.** O Bug #2 (formas espelhadas) e o Bug #6
+   (previews espelhados) são o mesmo `−1` faltando, em dois lugares diferentes. Ao corrigir
+   uma travessia de coordenadas, **procure as outras**: quem mais pinta geometria de mundo
+   sem passar pela câmera? (Resposta: o painel. E qualquer export futuro.)
+
+6. **Quando um subsistema discorda dos outros, ele é o errado — mas confirme.** O hit-test
+   já pulava contornos abertos; o renderer não. Duas implementações da mesma pergunta
+   ("o que é o interior desta forma?") com respostas diferentes é sempre um bug. A maioria
+   costuma estar certa, mas o valor está em *notar a discordância*, não em contar votos.

@@ -21,7 +21,7 @@
 //! 3. Os valores são sempre em **unidades de MUNDO** (a geometria é mundo). A
 //!    conversão de/para pixels é da UI, na fronteira.
 
-use crate::VecPath;
+use crate::{FULL_TURN, VecPath};
 
 /// Teto de parâmetros por forma. Fixo (não é `Vec`) para todo o caminho — tool,
 /// snapshot do painel, componente ECS — seguir `Copy` e zero-alloc por frame.
@@ -45,6 +45,54 @@ pub enum ShapeKind {
     Spiral = 5,
     Line = 6,
     Arc = 7,
+    /// Pizza / rosquinha / anel parcial — a mesma forma da elipse, com `sweep` e
+    /// `inner` já abertos por default (o atalho para quem quer a fatia direto).
+    Pie = 8,
+    /// Segmento circular: o arco fechado pela CORDA (não pelo centro).
+    Segment = 9,
+    // ── Setas (formas preenchíveis; a ponta de TRAÇO é outra coisa) ──────────
+    ArrowRight = 10,
+    ArrowDouble = 11,
+    ArrowBent = 12,
+    Chevron = 13,
+    ArrowCurved = 14,
+    // ── Fluxograma (ANSI/ISO 5807) ───────────────────────────────────────────
+    Diamond = 15,
+    Pill = 16,
+    Parallelogram = 17,
+    Trapezoid = 18,
+    TrapezoidFlip = 19,
+    HexagonFlat = 20,
+    Cylinder = 21,
+    Document = 22,
+    Delay = 23,
+    Display = 24,
+    PredefinedProcess = 25,
+    OffPage = 26,
+    Junction = 27,
+    NoteBracket = 28,
+    // ── Balões ───────────────────────────────────────────────────────────────
+    SpeechRect = 29,
+    SpeechOval = 30,
+    Thought = 31,
+    Burst = 32,
+    Brace = 33,
+    // ── Símbolos ─────────────────────────────────────────────────────────────
+    Heart = 34,
+    Cloud = 35,
+    Bolt = 36,
+    Moon = 37,
+    Drop = 38,
+    Shield = 39,
+    Tag = 40,
+    Gear = 41,
+    Cross = 42,
+    Check = 43,
+    Banner = 44,
+    // ── Isométricas (2.5D) ───────────────────────────────────────────────────
+    IsoCube = 45,
+    IsoCone = 46,
+    IsoPyramid = 47,
 }
 
 /// Todas as formas, na ordem do enum — a fonte de verdade que a UI itera.
@@ -57,6 +105,46 @@ pub const ALL_SHAPES: &[ShapeKind] = &[
     ShapeKind::Spiral,
     ShapeKind::Line,
     ShapeKind::Arc,
+    ShapeKind::Pie,
+    ShapeKind::Segment,
+    ShapeKind::ArrowRight,
+    ShapeKind::ArrowDouble,
+    ShapeKind::ArrowBent,
+    ShapeKind::Chevron,
+    ShapeKind::ArrowCurved,
+    ShapeKind::Diamond,
+    ShapeKind::Pill,
+    ShapeKind::Parallelogram,
+    ShapeKind::Trapezoid,
+    ShapeKind::TrapezoidFlip,
+    ShapeKind::HexagonFlat,
+    ShapeKind::Cylinder,
+    ShapeKind::Document,
+    ShapeKind::Delay,
+    ShapeKind::Display,
+    ShapeKind::PredefinedProcess,
+    ShapeKind::OffPage,
+    ShapeKind::Junction,
+    ShapeKind::NoteBracket,
+    ShapeKind::SpeechRect,
+    ShapeKind::SpeechOval,
+    ShapeKind::Thought,
+    ShapeKind::Burst,
+    ShapeKind::Brace,
+    ShapeKind::Heart,
+    ShapeKind::Cloud,
+    ShapeKind::Bolt,
+    ShapeKind::Moon,
+    ShapeKind::Drop,
+    ShapeKind::Shield,
+    ShapeKind::Tag,
+    ShapeKind::Gear,
+    ShapeKind::Cross,
+    ShapeKind::Check,
+    ShapeKind::Banner,
+    ShapeKind::IsoCube,
+    ShapeKind::IsoCone,
+    ShapeKind::IsoPyramid,
 ];
 
 impl ShapeKind {
@@ -76,7 +164,14 @@ impl ShapeKind {
     /// Formas ABERTAS não têm interior — nunca recebem preenchimento.
     #[must_use]
     pub fn is_closed(self) -> bool {
-        !matches!(self, ShapeKind::Line | ShapeKind::Arc | ShapeKind::Spiral)
+        !matches!(
+            self,
+            ShapeKind::Line
+                | ShapeKind::Arc
+                | ShapeKind::Spiral
+                | ShapeKind::NoteBracket
+                | ShapeKind::Brace
+        )
     }
 
     /// Os valores default desta forma (o que uma forma nova nasce valendo). É a MESMA
@@ -97,8 +192,104 @@ impl ShapeKind {
                 v[3] = 0.0; // vale vivo
             }
             ShapeKind::Spiral => v[0] = DEFAULT_SPIRAL_TURNS,
-            ShapeKind::Arc => v[0] = DEFAULT_ARC_DEGREES,
-            ShapeKind::Rectangle | ShapeKind::Ellipse | ShapeKind::Line => {}
+            // A elipse nasce INTEIRA e sem furo; abrir `sweep`/`inner` a leva a pizza,
+            // rosquinha ou anel parcial sem trocar de forma.
+            ShapeKind::Ellipse => {
+                v[0] = FULL_TURN;
+                v[1] = 0.0;
+                v[2] = 0.0;
+            }
+            // A pizza é a mesma forma, já aberta (o atalho do catálogo).
+            ShapeKind::Pie => {
+                v[0] = DEFAULT_ARC_DEGREES;
+                v[1] = 0.0;
+                v[2] = 0.0;
+            }
+            ShapeKind::Arc | ShapeKind::Segment => {
+                v[0] = DEFAULT_ARC_DEGREES;
+                v[1] = 0.0;
+            }
+            // Setas: as medidas são FRAÇÕES da caixa (a seta guarda a proporção ao
+            // redimensionar, que é o que se espera de uma forma paramétrica).
+            ShapeKind::ArrowRight | ShapeKind::ArrowDouble => {
+                v[0] = DEFAULT_ARROW_TAIL;
+                v[1] = DEFAULT_ARROW_HEAD_LEN;
+                v[2] = DEFAULT_ARROW_HEAD_W;
+            }
+            ShapeKind::ArrowBent => {
+                v[0] = DEFAULT_ARROW_TAIL;
+                v[1] = DEFAULT_ARROW_HEAD_LEN;
+                v[2] = 0.6;
+            }
+            ShapeKind::Chevron => {
+                v[0] = 0.3; // profundidade da ponta
+                v[1] = 0.2; // entalhe
+            }
+            ShapeKind::ArrowCurved => {
+                v[0] = 270.0; // sweep
+                v[1] = 0.3; // espessura
+                v[2] = 0.25; // fração do sweep que a cabeça come
+                v[3] = 0.15; // o quanto a cabeça extravasa
+            }
+            // Fluxograma: as medidas são frações da caixa.
+            ShapeKind::Parallelogram => v[0] = 0.2,
+            ShapeKind::Trapezoid | ShapeKind::TrapezoidFlip => v[0] = 0.2,
+            ShapeKind::HexagonFlat => v[0] = 0.2,
+            ShapeKind::Cylinder => v[0] = 0.2,
+            ShapeKind::Document => v[0] = 0.15,
+            ShapeKind::Display => v[0] = 0.2,
+            ShapeKind::PredefinedProcess => v[0] = 0.12,
+            ShapeKind::OffPage => v[0] = 0.3,
+            ShapeKind::NoteBracket => v[0] = 0.15,
+            // Balões: raio, rabicho (altura, posição, largura).
+            ShapeKind::SpeechRect => {
+                v[0] = DEFAULT_CORNER_RADIUS;
+                v[1] = 0.25;
+                v[2] = 0.3;
+                v[3] = 0.15;
+            }
+            ShapeKind::SpeechOval => {
+                v[0] = 0.25;
+                v[1] = 0.3;
+                v[2] = 0.12;
+            }
+            ShapeKind::Thought => {
+                v[0] = 7.0;
+                v[1] = 3.0;
+            }
+            ShapeKind::Burst => {
+                v[0] = 10.0;
+                v[1] = 0.55;
+                v[2] = 0.25;
+            }
+            ShapeKind::Brace => v[0] = 0.5,
+            // Símbolos.
+            ShapeKind::Heart => v[0] = 0.2,
+            ShapeKind::Cloud => v[0] = 7.0,
+            ShapeKind::Bolt => v[0] = 0.4,
+            ShapeKind::Moon => v[0] = 0.45,
+            ShapeKind::Drop => v[0] = 0.5,
+            ShapeKind::Shield => v[0] = 0.6,
+            ShapeKind::Tag => {
+                v[0] = 0.25;
+                v[1] = 0.18;
+            }
+            ShapeKind::Gear => {
+                v[0] = 8.0;
+                v[1] = 0.2;
+                v[2] = 0.35;
+            }
+            ShapeKind::Cross => v[0] = 0.35,
+            ShapeKind::Check => v[0] = 0.25,
+            ShapeKind::Banner => v[0] = 0.15,
+            ShapeKind::IsoCube | ShapeKind::IsoPyramid => v[0] = 0.3,
+            ShapeKind::IsoCone => v[0] = 0.2,
+            ShapeKind::Rectangle
+            | ShapeKind::Line
+            | ShapeKind::Diamond
+            | ShapeKind::Pill
+            | ShapeKind::Delay
+            | ShapeKind::Junction => {}
         }
         v
     }
@@ -112,6 +303,10 @@ pub const DEFAULT_STAR_POINTS: f64 = 5.0;
 pub const DEFAULT_STAR_INNER: f64 = 0.5;
 pub const DEFAULT_SPIRAL_TURNS: f64 = 3.0;
 pub const DEFAULT_ARC_DEGREES: f64 = 180.0;
+/// Setas: espessura da haste, comprimento e largura da cabeça (frações da caixa).
+pub const DEFAULT_ARROW_TAIL: f64 = 0.4;
+pub const DEFAULT_ARROW_HEAD_LEN: f64 = 0.4;
+pub const DEFAULT_ARROW_HEAD_W: f64 = 1.0;
 
 /// Lê o campo `i` (0 se não veio) — tolerante a arrays curtos, que é o que permite uma
 /// forma ganhar parâmetros sem invalidar o que já está salvo.
@@ -132,7 +327,12 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
     match kind {
         ShapeKind::Rectangle => crate::rectangle(a, b),
         ShapeKind::RoundRect => crate::rounded_rect(a, b, f(v, 0)),
-        ShapeKind::Ellipse => crate::ellipse(c, rx, ry),
+        // A família do círculo: `sweep` + `start` + `inner` dão elipse, pizza, rosquinha
+        // e anel parcial (crate::round). Pie é a mesma forma com outros defaults.
+        ShapeKind::Ellipse | ShapeKind::Pie => {
+            crate::ellipse_sweep(c, rx, ry, f(v, 1), f(v, 0), f(v, 2))
+        }
+        ShapeKind::Segment => crate::ellipse_chord(c, rx, ry, f(v, 1), f(v, 0)),
         ShapeKind::Polygon => {
             crate::regular_polygon_rounded(c, rx, ry, f(v, 0).round().max(3.0) as u32, f(v, 1))
         }
@@ -148,7 +348,45 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::Spiral => crate::spiral(c, rx, ry, f(v, 0).round().max(1.0) as u32),
         // A reta guarda a DIREÇÃO (a caixa com sinal), não a bbox.
         ShapeKind::Line => crate::line(a, b),
-        ShapeKind::Arc => crate::arc(c, rx, ry, f(v, 0)),
+        ShapeKind::Arc => crate::arc_open(c, rx, ry, f(v, 1), f(v, 0)),
+        ShapeKind::ArrowRight => crate::arrow_block(a, b, f(v, 0), f(v, 1), f(v, 2)),
+        ShapeKind::ArrowDouble => crate::arrow_double(a, b, f(v, 0), f(v, 1), f(v, 2)),
+        ShapeKind::ArrowBent => crate::arrow_bent(a, b, f(v, 0), f(v, 1), f(v, 2)),
+        ShapeKind::Chevron => crate::chevron(a, b, f(v, 0), f(v, 1)),
+        ShapeKind::ArrowCurved => crate::arrow_curved(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
+        ShapeKind::Diamond => crate::diamond(a, b),
+        ShapeKind::Pill => crate::pill(a, b),
+        ShapeKind::Parallelogram => crate::parallelogram(a, b, f(v, 0)),
+        ShapeKind::Trapezoid => crate::trapezoid(a, b, f(v, 0), false),
+        ShapeKind::TrapezoidFlip => crate::trapezoid(a, b, f(v, 0), true),
+        ShapeKind::HexagonFlat => crate::hexagon_flat(a, b, f(v, 0)),
+        ShapeKind::Cylinder => crate::cylinder(a, b, f(v, 0)),
+        ShapeKind::Document => crate::document(a, b, f(v, 0)),
+        ShapeKind::Delay => crate::delay(a, b),
+        ShapeKind::Display => crate::display(a, b, f(v, 0)),
+        ShapeKind::PredefinedProcess => crate::predefined_process(a, b, f(v, 0)),
+        ShapeKind::OffPage => crate::offpage(a, b, f(v, 0)),
+        ShapeKind::Junction => crate::junction(a, b),
+        ShapeKind::NoteBracket => crate::note_bracket(a, b, f(v, 0)),
+        ShapeKind::SpeechRect => crate::speech_rect(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
+        ShapeKind::SpeechOval => crate::speech_oval(a, b, f(v, 0), f(v, 1), f(v, 2)),
+        ShapeKind::Thought => crate::thought(a, b, f(v, 0), f(v, 1)),
+        ShapeKind::Burst => crate::burst(a, b, f(v, 0), f(v, 1), f(v, 2)),
+        ShapeKind::Brace => crate::brace(a, b, f(v, 0)),
+        ShapeKind::Heart => crate::heart(a, b, f(v, 0)),
+        ShapeKind::Cloud => crate::cloud(a, b, f(v, 0)),
+        ShapeKind::Bolt => crate::bolt(a, b, f(v, 0)),
+        ShapeKind::Moon => crate::moon(a, b, f(v, 0)),
+        ShapeKind::Drop => crate::drop(a, b, f(v, 0)),
+        ShapeKind::Shield => crate::shield(a, b, f(v, 0)),
+        ShapeKind::Tag => crate::tag(a, b, f(v, 0), f(v, 1)),
+        ShapeKind::Gear => crate::gear(a, b, f(v, 0), f(v, 1), f(v, 2)),
+        ShapeKind::Cross => crate::cross(a, b, f(v, 0)),
+        ShapeKind::Check => crate::check(a, b, f(v, 0)),
+        ShapeKind::Banner => crate::banner(a, b, f(v, 0)),
+        ShapeKind::IsoCube => crate::iso_cube(a, b, f(v, 0)),
+        ShapeKind::IsoCone => crate::iso_cone(a, b, f(v, 0)),
+        ShapeKind::IsoPyramid => crate::iso_pyramid(a, b, f(v, 0)),
     }
 }
 
@@ -169,6 +407,14 @@ mod tests {
         assert_eq!(ShapeKind::Spiral.as_u16(), 5);
         assert_eq!(ShapeKind::Line.as_u16(), 6);
         assert_eq!(ShapeKind::Arc.as_u16(), 7);
+        assert_eq!(ShapeKind::Pie.as_u16(), 8);
+        assert_eq!(ShapeKind::Segment.as_u16(), 9);
+        assert_eq!(ShapeKind::ArrowRight.as_u16(), 10);
+        assert_eq!(ShapeKind::ArrowCurved.as_u16(), 14);
+        assert_eq!(ShapeKind::Diamond.as_u16(), 15);
+        assert_eq!(ShapeKind::NoteBracket.as_u16(), 28);
+        assert_eq!(ShapeKind::SpeechRect.as_u16(), 29);
+        assert_eq!(ShapeKind::Banner.as_u16(), 44);
         // E o ida-e-volta fecha para TODA forma do catálogo.
         for &k in ALL_SHAPES {
             assert_eq!(ShapeKind::from_u16(k.as_u16()), Some(k));

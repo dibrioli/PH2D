@@ -131,6 +131,9 @@ fn every_declared_field_of_every_shape_moves_its_geometry() {
                 "{k:?}.{}: o campo nao foi aceito",
                 f.label
             );
+            // A geometria são as âncoras E os handles: um parâmetro que só encurva (o
+            // bico da gota, a cintura da chave) mexe nos handles sem mover uma âncora —
+            // comparar só âncoras acusaria um campo vivo de estar morto.
             let cook = |v: ShapeValues| {
                 let s = VecShape::Param {
                     kind: k.as_u16(),
@@ -139,7 +142,9 @@ fn every_declared_field_of_every_shape_moves_its_geometry() {
                     values: v,
                 };
                 let p = recook_shape(&s).expect("cozinha");
-                p.verts_all().map(|x| x.anchor).collect::<Vec<_>>()
+                p.verts_all()
+                    .map(|x| (x.anchor, x.in_handle, x.out_handle))
+                    .collect::<Vec<_>>()
             };
             assert_ne!(
                 cook(lo),

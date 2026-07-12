@@ -49,6 +49,19 @@ pub struct FieldDesc {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ShapeGroup {
     Basic,
+    /// A família do círculo (pizza, rosquinha, segmento) — a elipse fica em `Basic`
+    /// porque é uma primitiva, mas os atalhos dela vivem aqui.
+    Round,
+    /// Setas em BLOCO (formas preenchíveis). As pontas de traço são outra coisa.
+    Arrows,
+    /// O vocabulário de FLUXOGRAMA (ANSI/ISO): cada silhueta tem um significado fixo.
+    Flow,
+    /// Balões de fala / pensamento / grito + a chave de anotação.
+    Bubbles,
+    /// Símbolos (coração, nuvem, raio, escudo, engrenagem, cruz…).
+    Symbols,
+    /// Isométricas 2.5D (cubo, cone, pirâmide) — polígonos em perspectiva, não 3D.
+    Iso,
 }
 
 impl ShapeGroup {
@@ -57,12 +70,26 @@ impl ShapeGroup {
     pub fn label(self) -> &'static str {
         match self {
             ShapeGroup::Basic => "Basic",
+            ShapeGroup::Round => "Round",
+            ShapeGroup::Arrows => "Arrows",
+            ShapeGroup::Flow => "Flow",
+            ShapeGroup::Bubbles => "Bubbles",
+            ShapeGroup::Symbols => "Symbols",
+            ShapeGroup::Iso => "3D",
         }
     }
 }
 
 /// Todas as famílias, na ordem do seletor.
-pub const ALL_GROUPS: &[ShapeGroup] = &[ShapeGroup::Basic];
+pub const ALL_GROUPS: &[ShapeGroup] = &[
+    ShapeGroup::Basic,
+    ShapeGroup::Round,
+    ShapeGroup::Arrows,
+    ShapeGroup::Flow,
+    ShapeGroup::Bubbles,
+    ShapeGroup::Symbols,
+    ShapeGroup::Iso,
+];
 
 /// A forma, do ponto de vista da UI: rótulo, família e os parâmetros dela.
 #[derive(Copy, Clone, Debug)]
@@ -101,13 +128,43 @@ const TURNS: FieldDesc = FieldDesc {
     step: 1.0,
     unit: FieldUnit::Count,
 };
-const DEGREES: FieldDesc = FieldDesc {
-    label: "Degrees",
+/// Quanto o corte ABRE (graus). É o parâmetro que leva a elipse a pizza / anel parcial.
+const SWEEP: FieldDesc = FieldDesc {
+    label: "Sweep",
     min: 1.0,
     max: 360.0,
     step: 1.0,
     unit: FieldUnit::Degrees,
 };
+/// ONDE o corte começa (graus, 0 = 3h) — gira a fatia sem girar a caixa. O teto é 359:
+/// 360° é o MESMO ângulo que 0°, e um campo cujos extremos dão a mesma forma é um campo
+/// que não faz nada (o gate do catálogo pega isso).
+const START: FieldDesc = FieldDesc {
+    label: "Start",
+    min: 0.0,
+    max: 359.0,
+    step: 1.0,
+    unit: FieldUnit::Degrees,
+};
+/// Quanto do miolo é FURO (fração do raio). `0` = cheio; `>0` = rosquinha / anel.
+const HOLE: FieldDesc = FieldDesc {
+    label: "Hole",
+    min: 0.0,
+    max: 0.95,
+    step: 0.01,
+    unit: FieldUnit::Ratio,
+};
+/// Uma fração da caixa (`0..1`) — as medidas das setas são relativas, não absolutas.
+const fn frac(label: &'static str, min: f64, max: f64) -> FieldDesc {
+    FieldDesc {
+        label,
+        min,
+        max,
+        step: 0.01,
+        unit: FieldUnit::Ratio,
+    }
+}
+
 /// Raio de canto (px). A faixa vai a 500 porque o teto antigo (40) não alcançava formas
 /// grandes; o arredondamento satura na geometria, então pedir demais achata, nunca inverte.
 const fn radius(label: &'static str) -> FieldDesc {
@@ -134,11 +191,13 @@ pub const SHAPES: &[ShapeDesc] = &[
         group: ShapeGroup::Basic,
         fields: &[radius("Radius")],
     },
+    // A elipse carrega a FAMÍLIA inteira: fechar o `Sweep` faz a pizza, abrir o `Hole`
+    // faz a rosquinha, e os dois juntos fazem o anel parcial (ver `ph2d_vec_scene::round`).
     ShapeDesc {
         kind: ShapeKind::Ellipse,
         label: "Oval",
         group: ShapeGroup::Basic,
-        fields: &[],
+        fields: &[SWEEP, START, HOLE],
     },
     ShapeDesc {
         kind: ShapeKind::Polygon,
@@ -173,7 +232,326 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::Arc,
         label: "Arc",
         group: ShapeGroup::Basic,
-        fields: &[DEGREES],
+        fields: &[SWEEP, START],
+    },
+    // Atalhos da mesma família (defaults já abertos) — quem quer a fatia não devia ter
+    // de descobrir que ela mora dentro da elipse.
+    ShapeDesc {
+        kind: ShapeKind::Pie,
+        label: "Pie",
+        group: ShapeGroup::Round,
+        fields: &[SWEEP, START, HOLE],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Segment,
+        label: "Segment",
+        group: ShapeGroup::Round,
+        fields: &[SWEEP, START],
+    },
+    // ── Setas ────────────────────────────────────────────────────────────────
+    ShapeDesc {
+        kind: ShapeKind::ArrowRight,
+        label: "Arrow",
+        group: ShapeGroup::Arrows,
+        fields: &[
+            frac("Tail", 0.02, 1.0),
+            frac("Head len", 0.02, 1.0),
+            frac("Head width", 0.05, 1.0),
+        ],
+    },
+    ShapeDesc {
+        kind: ShapeKind::ArrowDouble,
+        label: "Double",
+        group: ShapeGroup::Arrows,
+        fields: &[
+            frac("Tail", 0.02, 1.0),
+            frac("Head len", 0.02, 0.5),
+            frac("Head width", 0.05, 1.0),
+        ],
+    },
+    ShapeDesc {
+        kind: ShapeKind::ArrowBent,
+        label: "Bent",
+        group: ShapeGroup::Arrows,
+        fields: &[
+            frac("Tail", 0.02, 0.9),
+            frac("Head len", 0.02, 0.9),
+            frac("Head width", 0.05, 1.0),
+        ],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Chevron,
+        label: "Chevron",
+        group: ShapeGroup::Arrows,
+        fields: &[frac("Point", 0.02, 0.9), frac("Notch", 0.0, 0.9)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::ArrowCurved,
+        label: "Curved",
+        group: ShapeGroup::Arrows,
+        fields: &[
+            FieldDesc {
+                label: "Sweep",
+                min: 10.0,
+                max: 350.0,
+                step: 1.0,
+                unit: FieldUnit::Degrees,
+            },
+            frac("Thickness", 0.05, 0.6),
+            frac("Head len", 0.05, 0.6),
+            frac("Head width", 0.0, 0.5),
+        ],
+    },
+    // ── Fluxograma ───────────────────────────────────────────────────────────
+    ShapeDesc {
+        kind: ShapeKind::Diamond,
+        label: "Decision",
+        group: ShapeGroup::Flow,
+        fields: &[],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Pill,
+        label: "Terminal",
+        group: ShapeGroup::Flow,
+        fields: &[],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Parallelogram,
+        label: "Data",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Slant", 0.0, 0.9)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Trapezoid,
+        label: "Manual in",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Slant", 0.0, 0.49)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::TrapezoidFlip,
+        label: "Manual op",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Slant", 0.0, 0.49)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::HexagonFlat,
+        label: "Prepare",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Cut", 0.02, 0.49)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Cylinder,
+        label: "Database",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Lip", 0.05, 0.9)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Document,
+        label: "Document",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Wave", 0.02, 0.5)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Delay,
+        label: "Delay",
+        group: ShapeGroup::Flow,
+        fields: &[],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Display,
+        label: "Display",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Nose", 0.02, 0.45)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::PredefinedProcess,
+        label: "Subroutine",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Bars", 0.02, 0.4)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::OffPage,
+        label: "Off-page",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Tip", 0.05, 0.9)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Junction,
+        label: "Junction",
+        group: ShapeGroup::Flow,
+        fields: &[],
+    },
+    ShapeDesc {
+        kind: ShapeKind::NoteBracket,
+        label: "Note",
+        group: ShapeGroup::Flow,
+        fields: &[frac("Lip", 0.05, 1.0)],
+    },
+    // ── Balões + símbolos ────────────────────────────────────────────────────
+    ShapeDesc {
+        kind: ShapeKind::SpeechRect,
+        label: "Speech",
+        group: ShapeGroup::Bubbles,
+        fields: &[
+            radius("Radius"),
+            frac("Tail h", 0.05, 0.6),
+            frac("Tail x", 0.05, 0.95),
+            frac("Tail w", 0.02, 0.5),
+        ],
+    },
+    ShapeDesc {
+        kind: ShapeKind::SpeechOval,
+        label: "Oval say",
+        group: ShapeGroup::Bubbles,
+        fields: &[
+            frac("Tail h", 0.05, 0.6),
+            frac("Tail x", 0.1, 0.9),
+            frac("Tail w", 0.02, 0.4),
+        ],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Thought,
+        label: "Thought",
+        group: ShapeGroup::Bubbles,
+        fields: &[
+            FieldDesc {
+                label: "Bumps",
+                min: 4.0,
+                max: 12.0,
+                step: 1.0,
+                unit: FieldUnit::Count,
+            },
+            FieldDesc {
+                label: "Bubbles",
+                min: 1.0,
+                max: 4.0,
+                step: 1.0,
+                unit: FieldUnit::Count,
+            },
+        ],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Burst,
+        label: "Burst",
+        group: ShapeGroup::Bubbles,
+        fields: &[
+            FieldDesc {
+                label: "Points",
+                min: 5.0,
+                max: 24.0,
+                step: 1.0,
+                unit: FieldUnit::Count,
+            },
+            frac("Inner", 0.2, 0.9),
+            frac("Jag", 0.0, 0.5),
+        ],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Brace,
+        label: "Brace",
+        group: ShapeGroup::Bubbles,
+        fields: &[frac("Waist", 0.0, 1.0)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Heart,
+        label: "Heart",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Cleft", 0.0, 0.5)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Cloud,
+        label: "Cloud",
+        group: ShapeGroup::Symbols,
+        fields: &[FieldDesc {
+            label: "Bumps",
+            min: 4.0,
+            max: 12.0,
+            step: 1.0,
+            unit: FieldUnit::Count,
+        }],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Bolt,
+        label: "Bolt",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Waist", 0.05, 0.8)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Moon,
+        label: "Moon",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Phase", 0.05, 0.95)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Drop,
+        label: "Drop",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Tip", 0.1, 0.9)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Shield,
+        label: "Shield",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Curve", 0.0, 1.0)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Tag,
+        label: "Tag",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Point", 0.05, 0.6), frac("Hole", 0.0, 0.4)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Gear,
+        label: "Gear",
+        group: ShapeGroup::Symbols,
+        fields: &[
+            FieldDesc {
+                label: "Teeth",
+                min: 4.0,
+                max: 30.0,
+                step: 1.0,
+                unit: FieldUnit::Count,
+            },
+            frac("Depth", 0.05, 0.5),
+            frac("Hole", 0.0, 0.8),
+        ],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Cross,
+        label: "Cross",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Arm", 0.05, 0.95)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Check,
+        label: "Check",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Weight", 0.05, 0.6)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::Banner,
+        label: "Banner",
+        group: ShapeGroup::Symbols,
+        fields: &[frac("Notch", 0.02, 0.4)],
+    },
+    // ── Isométricas ──────────────────────────────────────────────────────────
+    ShapeDesc {
+        kind: ShapeKind::IsoCube,
+        label: "Cube",
+        group: ShapeGroup::Iso,
+        fields: &[frac("Depth", 0.05, 0.6)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::IsoCone,
+        label: "Cone",
+        group: ShapeGroup::Iso,
+        fields: &[frac("Lip", 0.05, 0.45)],
+    },
+    ShapeDesc {
+        kind: ShapeKind::IsoPyramid,
+        label: "Pyramid",
+        group: ShapeGroup::Iso,
+        fields: &[frac("Depth", 0.05, 0.6)],
     },
 ];
 

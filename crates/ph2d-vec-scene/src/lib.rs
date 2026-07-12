@@ -53,6 +53,32 @@ pub use shapes::{
 /// e dos dois raios da estrela) — módulo irmão de `shapes` (LOC cap).
 pub mod corners;
 
+/// A família do CÍRCULO (elipse · arco · pizza · rosquinha · segmento) — pontos do
+/// mesmo espaço de três parâmetros, não cinco primitivas. Módulo irmão de `shapes`.
+pub(crate) mod round;
+pub use round::{FULL_TURN, arc_open, ellipse_chord, ellipse_sweep};
+
+/// As setas em BLOCO (forma preenchível) — não confundir com as pontas de traço
+/// (arrowheads), que são propriedade do stroke. Módulo irmão de `shapes`.
+mod arrows;
+pub use arrows::{arrow_bent, arrow_block, arrow_curved, arrow_double, chevron};
+
+/// O vocabulário de FLUXOGRAMA (ANSI/ISO 5807) — losango, pílula, cilindro, documento…
+/// Módulo irmão de `shapes`.
+mod flow;
+pub use flow::{
+    cylinder, delay, diamond, display, document, hexagon_flat, junction, note_bracket, offpage,
+    parallelogram, pill, predefined_process, trapezoid,
+};
+
+/// Balões (fala / pensamento / explosão) + os símbolos (coração, nuvem, raio, escudo,
+/// engrenagem, cruz…). Módulo irmão de `shapes`.
+mod symbols;
+pub use symbols::{
+    banner, bolt, brace, burst, check, cloud, cross, drop, gear, heart, iso_cone, iso_cube,
+    iso_pyramid, moon, shield, speech_oval, speech_rect, tag, thought,
+};
+
 /// O CATÁLOGO de formas paramétricas: o enum único (`ShapeKind`), os valores de cada
 /// forma e o `cook` que os transforma em geometria. A forma é DADO — é o que faz uma
 /// forma nova custar uma linha de tabela em vez de oito lugares.

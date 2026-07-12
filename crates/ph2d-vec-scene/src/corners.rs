@@ -23,6 +23,10 @@ use crate::{VecPath, VecVertex, VertexKind};
 /// Abaixo disto (unidades de mundo) um raio / aresta / recuo é tratado como zero.
 const EPS: f64 = 1e-9;
 
+/// O comprimento de handle (fração do raio) que faz uma cúbica seguir um quarto de
+/// círculo. Compartilhado por quem monta arco à mão (round-rect, cilindro, "D"…).
+pub const KAPPA: f64 = 0.552_284_75;
+
 /// Arredonda as quinas de um contorno FECHADO de arestas retas: `pts[i]` recebe o raio
 /// `radii[i]` (extra ignorado; faltante = 0). Devolve o path fechado, sem estilo.
 ///

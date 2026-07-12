@@ -49,6 +49,7 @@ pub fn render_stamp_mask(
     let grain_active = spec.texture.is_active();
     let shape_active = spec.shape_silhouette_active(shape_image.is_some());
     let depth = spec.grain_depth();
+    let lays_body = spec.deposits_height();
     // The dab flatten/rotate — folded into the bases (Shape + Grain) and the falloff `t` so the cached
     // stamp is an elliptical, rotated tip exactly like the per-pixel path.
     let footprint = spec.footprint_deform();
@@ -95,6 +96,10 @@ pub fn render_stamp_mask(
                     spec.falloff_weight(t)
                 }
             };
+            // The FILM ([`crate::height::film_coverage`]): a brush laying body lays no pigment where it
+            // lays no body. On the SILHOUETTE, before the Grain — a Grain textures the pigment and does
+            // not carve the body, so cutting through it would strand the light on bare paper.
+            w = crate::height::film_coverage(lays_body, w);
             if w > 0.0 && grain_active {
                 let g = crate::texture::sample_unit(&spec.texture, &grain_basis, u, v, grain_image);
                 w *= crate::texture::grain_coverage(g, depth, spec.effective_granulation());
@@ -435,6 +440,8 @@ fn canvas_blit_band(
                 tex[mi] = encode(tv);
                 ready[mi] = 1;
             }
+            // The FILM, on the silhouette, before the Grain (see `render_stamp_mask`).
+            w = crate::height::film_coverage(ctx.spec.deposits_height(), w);
             // GRAIN Depth + watercolor Granulation (the shared combine); byte-identical at Depth 1 / Gran 0.
             let g = f32::from(tex[mi]) / 255.0;
             w *= crate::texture::grain_coverage(g, depth, ctx.spec.effective_granulation());

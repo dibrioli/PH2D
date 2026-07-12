@@ -11,6 +11,11 @@
 //!
 //! Not a lighting module — the light pass is the compositor's (`impasto_pass`). This is only the
 //! *material*: what the brush deposits.
+//!
+//! Where a body of paint ENDS — [`W_TAIL`] / [`W_SOLID`] / [`body_profile`] / [`film_coverage`] — lives in
+//! the sibling [`crate::height_film`], re-exported here so callers still see one `height` surface.
+
+pub use crate::height_film::{W_SOLID, W_TAIL, body_profile, film_coverage};
 
 /// Where a dab's height comes from — which part of the dab mask the colour path already built
 /// (`silhouette × grain`) sculpts the relief.
@@ -134,45 +139,6 @@ impl DrawTo {
     }
 }
 
-/// Coverage below which the paint carries NO body: everything thinner is the STAIN — pigment rubbed
-/// into the paper, not paint you could stand a wall on. It is deliberately high: the wall must rise
-/// INSIDE the pigmented part of the stroke (Photoshop's bevel runs from the matte's edge *inward*,
-/// over solid pixels, for the same reason) — a wall standing on the translucent rim gets its strong
-/// lighting multiplied into pixels that are mostly PAPER, which is the white-canvas halo all over
-/// again (`impasto_light_shades_the_paint_not_the_paper_showing_through_it` refuses it). // CLAMP-OK
-pub const W_TAIL: f32 = 0.35;
-
-/// Coverage at which the paint is a SOLID film: full thickness from here inward. Shared with the
-/// light pass (its coverage weighting rides the same [`body_profile`]), so "solid paint" is one
-/// concept with one pair of numbers on both sides of the pipeline. // CLAMP-OK
-pub const W_SOLID: f32 = 0.75;
-
-/// The **body curve**: how the dab's silhouette becomes the paint's *body*.
-///
-/// `h = depth × coverage × w` copies the colour's own soft profile into the relief — and for the
-/// default brush (hardness 0) that is a dome the full width of the stroke, which reads as a blur, not
-/// as paint (measured: shading peak 7.3 levels at 31% of the half-width; 1 level at the visible
-/// edge). Nobody in the state of the art does that: Photoshop's bevel is a distance profile from the
-/// coverage EDGE (Chisel), Blender's Layer brush caps at a fixed height ("creates the appearance of a
-/// flat layer"), Hertzmann (NPAR 2002) gives height its own texture, and Painter documents Uniform as
-/// "even depth". See `docs/Painter/17_impasto_deposito_pesquisa2.md` §3.
-///
-/// So the height gets its own profile: a **plateau** wherever the paint is solid (`w ≥ W_SOLID`),
-/// **nothing** over the stain (`w ≤ W_TAIL` — the translucent rim keeps its pigment and stays flat),
-/// and the **shoulder** — the wall the light lives on — in between, standing on pigment-backed
-/// pixels a little inside the stain's edge, the way a real paint film ends inside its own smear.
-/// Because a falloff is monotone in distance, remapping `w` IS a profile-in-distance (the bevel), it
-/// commutes with the stroke envelope's `max`, and rule 1 still holds: the height consumes exactly
-/// the silhouette the colour consumes. The shoulder's width follows the brush's own softness — a
-/// soft brush lays a softer body edge — which is the coupling that should exist; the dome was the
-/// one that shouldn't.
-#[inline]
-#[must_use]
-pub fn body_profile(w: f32) -> f32 {
-    let t = ((w - W_TAIL) / (W_SOLID - W_TAIL)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
-
 /// How deep the Grain's grooves cut into the body, with [`DepthSource::Grain`].
 ///
 /// The grain must **carve grooves out of a full body**, not scale the body away. The naive
@@ -266,6 +232,20 @@ pub(crate) fn sweep_residual(dx: f32, dy: f32, sweep: Option<([f32; 2], f32)>) -
 /// the light weighs its shading by, so the wall stands exactly where the light says the paint becomes
 /// solid — geometry and shading cannot disagree. It also makes a light touch lay thinner, softer-edged
 /// paint, which is what a light touch does.
+///
+/// ## The relief is the thickness of the FILM, not of the raw paint
+///
+/// [`film_coverage`] cuts the pigment at the body's edge, and the relief has to be cut at the SAME place
+/// or the fix just swaps one seam for its mirror: the raw paint still reaches out past the film (the
+/// coverage ramps on down to zero), so at Body 0 (`h = depth × paint`) a rim of relief goes on standing
+/// over pixels that no longer carry any pigment — and `impasto_light_does_not_shade_paint_that_is_not_there`
+/// caught exactly that, a 120-px ring of lit bare paper. So the profile runs on the paint's own film.
+///
+/// It is not an extra curve bolted on; it is the same statement from the other side. **The paint IS the
+/// film, so the relief is the film's thickness.** At Body 0 the relief follows the film exactly — which is
+/// the literal reading of Enio's *"a tinta corresponde ao relevo"* — and Body then flattens that film into
+/// a slab. What the raw paint keeps doing, unchanged, is being the INGREDIENT: it is what the whole Body
+/// card re-derives from, so Depth / Body / Depth Source / Smoothing / Push all stay live.
 #[inline]
 #[must_use]
 pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {

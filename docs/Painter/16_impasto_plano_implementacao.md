@@ -954,3 +954,107 @@ com os pesos **cacheados** entre os dois passes e sem `sqrt`:
 
 Alvo ≤4, kill 8. Em canvas limpo o custo é **zero** (`displaced == 0` curto-circuita antes dos laços): o
 preço cai exatamente onde a feature vive — tinta sobre tinta.
+
+---
+
+## 14. O FILME — *"pinta tinta fora do relevo"* (Enio, 2026-07-12)
+
+> *"o efeito leva em consideração os limites do pincel e não o peso do relevo. Este falloff (smooth)
+> pinta tinta fora do relevo. Veja que usando o falloff Sphere fica mais preciso e a tinta corresponde
+> ao relevo."*
+
+### 14.1 O diagnóstico (e por que o falloff era o mensageiro, não o culpado)
+
+Duas coisas **já** concordavam sobre onde a tinta deixa de ter corpo:
+
+- o **relevo** — `body_profile`, zero abaixo de `W_TAIL = 0.35` de cobertura;
+- a **luz** — pesa a sombra pela *mesma* curva, para não branquear o papel que aparece através de uma
+  borda translúcida (o halo que o Enio fotografou; gate `impasto_light_shades_the_paint_not_the_paper_showing_through_it`).
+
+O **pigmento** não sabia de nada disso: depositava até o limite geométrico do disco. Todo traço de
+impasto vestia uma saia de tinta que a luz estava **certa** em recusar — e isso lê como névoa em volta
+da crista.
+
+A largura dessa saia é função pura do falloff, que é exatamente por que o falloff parecia o culpado:
+`W_TAIL` cai em **t = 0,61** no `Smooth` (39% do raio — 16 px num pincel de 40) e em **t = 0,94** no
+`Sphere` (6%). Sphere não é mais *preciso*; ele simplesmente quase não tem saia.
+
+### 14.2 A regra
+
+> **Um pincel que não deposita corpo não deposita tinta.**
+> Uma curva, um limiar, uma definição de "tinta": onde a luz não dá sombra, o pincel não dá pigmento.
+
+`ph2d_painter_brush::height_film::film_coverage` (módulo-irmão novo). Fecha *exatamente* porque o peso
+da luz é `body_profile(cover)` e `cover` é a tinta CRUA (`silhueta × dinâmica`), que o filme **não
+toca**: o filme é a mesma curva sobre a mesma quantidade, então o suporte do pigmento e a região
+iluminada são o **mesmo conjunto**. O traço não fica mais estreito — a crista iluminada já era só
+`t < 0,61`; o que sai é a névoa em volta dela.
+
+### 14.3 Onde o corte mora: na SILHUETA — nem no grão, nem nas dinâmicas
+
+Os dois foram pagos com vermelho:
+
+- **Não nas dinâmicas.** Cortar a cobertura *completa* do dab mata o pincel em silêncio: a Strength 0,5
+  o pico é 0,25, abaixo de `W_TAIL`, então a curva devolve zero em todo texel e **o traço não deposita
+  nada** (`the_film_never_starves_the_brush_at_low_strength`). A física concorda: a borda de um filme é
+  da ponta, não da força com que se aperta. Toque leve deposita filme mais **fino**, não filme com
+  outro contorno.
+- **Não no grão.** O `cover` que a luz pesa é silhueta × dinâmica — o Grain está fora dele de propósito
+  (grão texturiza o pigmento, não escava o corpo: `DepthSource::Uniform`). Cortar o filme *através* do
+  grão faz os vales perderem o pigmento mantendo o corpo cheio: a luz então brilha, com força total,
+  sobre papel nu. Medido em **124 níveis sobre 1694 px** antes de mover o corte.
+
+Então o filme remodela a **silhueta**, uma vez, assado nas duas máscaras cacheadas
+(`render_stamp_mask` / `render_color_stamp_mask`) e aplicado uma vez nos caminhos por-pixel. Todo o
+resto a jusante — grão, dinâmicas, o teto do Accumulate-OFF, as rampas, a cor por-camada — consome a
+silhueta já remodelada e **não precisa de aritmética nenhuma**. O `StampKey` ganha `lays_body` (senão a
+máscara velha fica pendurada ao ligar o Impasto).
+
+O relevo segue derivando da tinta CRUA (`stroke_paint`) — então **Depth, Body, Depth Source, Smoothing
+e Push continuam vivos** depois do traço.
+
+### 14.4 Gates (2 mutações provadas vermelhas)
+
+| Gate | Afirma | MUT vermelha |
+|---|---|---|
+| `impasto_lays_no_pigment_where_the_light_lays_no_shading` | todo pixel que o pincel pigmenta, a luz modela — em `Smooth` **e** `Sphere` | filme = identidade → **6483 px**, até 82% de tinta |
+| `the_film_never_starves_the_brush_at_low_strength` | Strength 0,5 / 0,3 / 0,15 ainda pintam | cortar `tip × dynamics` → **0 px** |
+| `the_film_binds_only_a_brush_that_lays_body` | Impasto OFF / `DrawTo::Color` / Depth 0 = byte-idêntico | (anti-vacuidade: um pincel COM corpo **tem** de diferir) |
+
+### 14.5 Três gates antigos foram **reformulados**, não "consertados"
+
+O filme quebrou a premissa de três gates. Nenhum perdeu os dentes:
+
+1. **`impasto_on_does_not_disturb_the_pigment`** dizia *"ligar o Impasto não muda um pixel de
+   pigmento"* — a premissa que o Enio mandou matar. Os dentes reais são outros: **o passe de altura não
+   pode consumir o fluxo aleatório da cor** (`tex_rng`). Reformulado sobre um pincel cujo passe de
+   altura **roda** (Push levantado) e que **não deposita corpo** (`DrawTo::Color`, logo sem filme) — o
+   kernel resolve cada frame de grão como sempre; se consumisse o fluxo, o pigmento andaria. Mais uma
+   cláusula anti-vacuidade: um pincel com corpo **tem** de cortar seu pigmento.
+2. **`impasto_light_does_not_shade_paint_that_is_not_there`** isolava a luz alternando `impasto` —
+   o que só isola enquanto o impasto não mexe no pigmento. Passou a alternar **a luz**
+   (`impasto_show`). E a barra de "papel" era *≥96% branco*, um proxy que o grão quebra: um vale fundo
+   tem o pigmento raspado a poucos níveis com o corpo cheio embaixo — isso é tinta **fina**, não papel,
+   e a luz está certa em modelá-la. Barra agora é **tinta == 0** (papel de verdade). Os dentes ficam
+   intactos e mais afiados: a varredura em cápsula não pode derramar relevo — nem sombra — em tela que
+   o traço nunca tocou (26 px de sombra, na primeira vez).
+3. **`impasto_shine_glints_on_the_wall_without_bleaching_the_rim`** voltou sozinho ao verde quando o
+   corte saiu do grão.
+
+### 14.6 O que isto **não** alcança (nomeado, não escondido)
+
+A luz pesa a sombra por `body_profile(cover)`, e `cover` é a tinta = `silhueta × dinâmica`. Então
+**abaixo de Flow × Strength × pressão ≈ `W_TAIL` a luz já não modela nada em traço nenhum** — e isso
+**precede o filme** (confira revertendo `film_coverage` para a identidade: um traço a Strength 0,5
+também não pega luz nenhuma). A regra do §14.2 é portanto exata onde a luz está viva, e vazia onde ela
+não está: um traço de impasto fraco é uma **velatura** — pigmento, sem corpo visível.
+
+Fechar isso de verdade exige que o `cover` da luz passe a ser o **alpha do filme** e que o peso vire
+linear — o que reabre a porta do halo e obriga a rederivar o guard contra branqueamento. É trabalho
+próprio, com um smoke próprio. **Não foi feito aqui.**
+
+### 14.7 Perf
+
+Grátis: o filme é assado na máscara cacheada. `impasto_perf_kill_criterion` em `--release`:
+**3,10 ms/movimento @2048² · 3,28 ms @4096²** (alvo ≤4, kill 8). Workspace: **5676 testes, 0 falhas**;
+clippy 0.

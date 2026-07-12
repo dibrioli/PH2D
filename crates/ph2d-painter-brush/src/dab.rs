@@ -495,7 +495,13 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
             let t = ctx
                 .footprint
                 .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius);
-            let w = silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius);
+            // The FILM ([`crate::height::film_coverage`]): a brush laying body lays no pigment where it
+            // lays no body. Applied to the SILHOUETTE — before the Grain, before the dynamics — so every
+            // funnel below (grain, Accumulate-OFF cap, ramps) inherits the cut with no arithmetic.
+            let w = crate::height::film_coverage(
+                ctx.spec.deposits_height(),
+                silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
+            );
             // Skip pixels the silhouette already zeroes BEFORE the grain sample — the grain only
             // modulates where the dab paints, so sampling it there is pure waste (large Anchored).
             if w <= 0.0 {
@@ -573,6 +579,11 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
                     // Accumulate OFF: cap each pixel at the TEXTURE-WEIGHTED target `coverage × g`, so a
                     // grain texel tops at `g·Strength` however many dabs cross it (`w` builds toward the
                     // cap). `g = 1` (no texture) ⇒ byte-identical to the old flat cap (Enio 2026-06-27).
+                    //
+                    //
+                    // The FILM needs nothing here: `w` is already the reshaped silhouette, so at the rim it
+                    // is exactly zero and `add = w · (cap − m)` adds exactly nothing — the cut survives the
+                    // build-toward-a-cap model for free.
                     Some(m_buf) => {
                         let mi = r * (ctx.stride / 4) + px as usize;
                         let m = f32::from(m_buf[mi]) / 255.0;

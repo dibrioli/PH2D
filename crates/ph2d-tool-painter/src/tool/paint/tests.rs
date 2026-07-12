@@ -17008,16 +17008,21 @@ fn impasto_on_does_not_disturb_the_pigment() {
     // the pigment would carry different grain, and the artist would see the texture change the moment
     // they ticked Impasto — a checkbox for RELIEF silently repainting the COLOUR.
     //
-    // So: turning Impasto ON must add thickness and change not one pixel of pigment.
-    let stroke = |impasto: bool| -> Vec<u8> {
-        use ph2d_painter_brush::{TextureKind, TextureMapping};
+    // **The isolation had to move** (Enio 2026-07-12). The gate used to say "turning Impasto ON changes
+    // not one pixel of pigment", and that premise died the day a body-laying brush began cutting its own
+    // pigment to the film it lays (`film_coverage`): Enio's whole complaint was that the pigment DIDN'T
+    // follow the body. So the rule is now stated where it is still true and still sharp — on a brush whose
+    // height pass RUNS (it must, or the gate is vacuous) but which lays no BODY, so no film: Impasto on,
+    // `DrawTo::Color`, Push up. The height kernel resolves every grain frame exactly as before; if it
+    // consumed the stream, the pigment would shift. It may not move one byte.
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let stroke = |arm: &dyn Fn(&mut BrushSpec)| -> Vec<u8> {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; 48 * 48 * 4], 48, 48);
         let mut b = BrushSpec {
             radius_px: 7.0,
             color: [0.2, 0.6, 0.3],
             space_attenuation: false,
-            impasto,
             impasto_depth: 1.0,
             impasto_source: DepthSource::Grain,
             ..Default::default()
@@ -17027,6 +17032,7 @@ fn impasto_on_does_not_disturb_the_pigment() {
         b.texture.kind = TextureKind::Noise;
         b.texture.mapping = TextureMapping::ViewPlane;
         b.texture.random_angle = true;
+        arm(&mut b);
         t.paint.brush = b;
         for slot in &mut t.paint.brush_by_mode {
             *slot = b;
@@ -17036,16 +17042,28 @@ fn impasto_on_does_not_disturb_the_pigment() {
         t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
         (*t.canvas_rgba).clone()
     };
-    let without = stroke(false);
-    let with = stroke(true);
+    let without = stroke(&|b| b.impasto = false);
+    // The height pass RUNS (Push makes it touch the field) and lays NO body (`DrawTo::Color`) ⇒ no film.
+    let running_no_body = stroke(&|b| {
+        b.impasto = true;
+        b.impasto_draw_to = DrawTo::Color;
+        b.impasto_push = 0.5;
+    });
     assert!(
         without.iter().any(|&b| b != 255),
         "sanity: the fixture painted"
     );
     assert_eq!(
-        without, with,
-        "Impasto adds THICKNESS, not a different painting — the height pass must not consume the \
-         colour's random stream"
+        without, running_no_body,
+        "the height pass must not consume the colour's random stream: it resolved every grain frame here \
+         (Push is up), and the pigment moved anyway — every colour dab is drawing the NEXT frame"
+    );
+    // …and the gate is not vacuous the other way: a brush that DOES lay body cuts its pigment to the film,
+    // on purpose (Enio 2026-07-12). If this ever stops being true, the film is gone and nobody noticed.
+    assert_ne!(
+        without,
+        stroke(&|b| b.impasto = true),
+        "a body-laying brush lays its pigment as a FILM — the cut is the fix, not a regression"
     );
 }
 
@@ -17572,14 +17590,19 @@ fn impasto_light_does_not_shade_paint_that_is_not_there() {
     // Measured: 53 offending pixels before, 0 after.
     use ph2d_painter_brush::{TextureKind, TextureMapping};
     let size = 200u32;
-    let paint = |impasto: bool| -> (Vec<u8>, Vec<u8>) {
+    // Isolate the light by toggling THE LIGHT (`impasto_show`), never the brush. Toggling `impasto`
+    // was the original isolation and it stopped isolating anything the day the brush began to cut its
+    // own pigment to the film it lays (`film_coverage`, Enio 2026-07-12): the two runs then differ by
+    // the PIGMENT as well, and this gate was reading the paint the film removed as "the light shading
+    // bare paper". Same brush, same pigment, light on vs off — that is the only clean seam.
+    let paint = |show: bool| -> (Vec<u8>, Vec<u8>) {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         let mut b = BrushSpec {
             radius_px: 20.0,
             color: [0.9, 0.1, 0.1],
             space_attenuation: false,
-            impasto,
+            impasto: true,
             impasto_depth: 0.7,
             impasto_source: DepthSource::Grain, // the per-texel grain is what makes the slopes steep
             impasto_smoothing: 0.15,
@@ -17598,6 +17621,8 @@ fn impasto_light_does_not_shade_paint_that_is_not_there() {
             t.on_canvas_pointer(cp(*p, PointerPhase::Move));
         }
         t.on_canvas_pointer(cp(path[3], PointerPhase::Up));
+        t.paint.impasto_show = show;
+        t.invalidate_composite();
         let canvas = (*t.canvas_rgba).clone();
         let (comp, _, _) = t.take_preview_arc().expect("preview");
         (canvas, (*comp).clone())
@@ -17605,11 +17630,22 @@ fn impasto_light_does_not_shade_paint_that_is_not_there() {
     let (canvas, unlit) = paint(false);
     let (_, litc) = paint(true);
 
-    // Where the canvas is still ≥ 96% white, there is nothing the eye reads as painted.
+    // BARE CANVAS — the paper the brush never touched at all. The bar was "≥ 96% white", and that is a
+    // proxy that the Grain breaks: a deep grain VALLEY has its pigment scrubbed down to a few levels while
+    // the body under it stands full (`DepthSource` decides whether the grain carves the relief; it always
+    // textures the pigment). Such a pixel is thin PAINT, not paper, and the light is right to model it —
+    // but the proxy filed it under "carries no paint" and then complained that the light had shaded it.
+    // Invisible until `film_coverage` (Enio 2026-07-12) thinned those valleys by the few levels it took to
+    // cross the bar; the shading itself is byte-identical to what it always was.
+    //
+    // The teeth this gate exists for are UNCHANGED and sharper for it: the height kernel sweeps a CAPSULE
+    // back to the previous dab's centre, and if that sweep ever overshoots the paint it lays relief — and
+    // shadow — on canvas the stroke never touched (26 px of it, the first time). That is bare paper: ink
+    // exactly zero. `jitter_spacing` is here to stretch the sweep and hunt for it.
     let (mut faint, mut drifted, mut worst) = (0u32, 0u32, 0i32);
     for i in (0..canvas.len()).step_by(4) {
-        if 255 - i32::from(canvas[i + 1]) > 10 {
-            continue; // real paint — the light SHOULD shade this
+        if canvas[i + 1] != 255 {
+            continue; // the brush left pigment here — however little. The light SHOULD model it.
         }
         faint += 1;
         let d = (i32::from(litc[i + 1]) - i32::from(unlit[i + 1])).abs();
@@ -17624,8 +17660,8 @@ fn impasto_light_does_not_shade_paint_that_is_not_there() {
     );
     assert_eq!(
         drifted, 0,
-        "the light pass shaded {drifted} pixels that carry no paint (worst drift {worst} levels) — \
-         relief where there is no paint"
+        "the light pass shaded {drifted} pixels of BARE CANVAS (worst drift {worst} levels) — the \
+         height sweep overshot the paint and laid relief where the brush never went"
     );
 }
 
@@ -20055,4 +20091,200 @@ fn impasto_push_banks_a_smooth_ridge_with_no_crease_scored_along_it() {
          the paint.",
         worst_kink / ridge * 100.0
     );
+}
+
+/// **The film**: a brush that lays BODY lays no pigment where the light lays no shading.
+///
+/// Enio, 2026-07-12, two screenshots of the same crossing strokes: *"o efeito leva em consideração os
+/// limites do pincel e não o peso do relevo. Este falloff (smooth) pinta tinta fora do relevo. Usando o
+/// falloff Sphere fica mais preciso e a tinta corresponde ao relevo."*
+///
+/// Two things already agreed on where paint stops carrying a body — the relief (`body_profile`, zero
+/// below `W_TAIL`) and the light (it weighs its shading by the same curve, so it will not bleach the
+/// paper showing through a translucent rim). The PIGMENT knew nothing about it and ran all the way out
+/// to the dab's geometric rim, so every impasto stroke wore a skirt of paint the light was RIGHT to
+/// refuse to model. `ph2d_painter_brush::height::film_coverage` cuts it.
+///
+/// Stated as the property, not as a number: **every pixel the brush pigments, the light models.** Run on
+/// BOTH falloffs — Smooth (where the skirt was 39% of the radius) and Sphere (6%, which is the whole
+/// reason Sphere "looked more precise") — because the rule must not depend on the falloff. That is what
+/// makes it a rule and not a preset.
+#[test]
+fn impasto_lays_no_pigment_where_the_light_lays_no_shading() {
+    use ph2d_painter_brush::height::body_profile;
+    let size = 200u32;
+    // Paint one stroke and return (canvas, cover) — the pigment that landed and the paint the light sees.
+    let stroke = |falloff: Falloff, strength: f32| -> (Vec<u8>, Vec<u8>) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size); // WHITE paper
+        let b = BrushSpec {
+            radius_px: 40.0,
+            color: [0.9, 0.1, 0.1],
+            falloff,
+            strength, // < 1 ⇒ Accumulate OFF: a DIFFERENT alpha funnel (build-toward-a-cap), same rule
+            space_attenuation: false,
+            impasto: true,
+            ..Default::default() // …and otherwise the ARTIST's defaults (Depth 1, Body 0), on purpose
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([80.0, 160.0], PointerPhase::Up));
+        let active = t.layers.active().expect("a layer");
+        let cover = t
+            .covers
+            .get(&active)
+            .map(|c| c.as_ref().clone())
+            .unwrap_or_default();
+        (t.canvas_rgba.to_vec(), cover)
+    };
+
+    // At FULL dynamics — where the light is live. Its own coverage threshold is on the PAINT
+    // (`body_profile(cover)`, `cover = tip × dynamics`), so under Flow × Strength × pressure below
+    // ~`W_TAIL` it already models nothing anywhere on the stroke, and has since long before the film
+    // (verify by reverting `film_coverage` to the identity: a Strength-0.5 impasto stroke gets no light
+    // then either). Asserting the rule there would be asserting that the brush paints NOTHING. So the
+    // rule is stated where it has content, and the light's own threshold is named as the open seam —
+    // `docs/Painter/16_impasto_plano_implementacao.md` §14.
+    for falloff in [
+        Falloff::Smooth, // the default brush — where Enio saw the haze
+        Falloff::Sphere, // his workaround: the rule must not depend on the falloff
+    ] {
+        let (canvas, cover) = stroke(falloff, 1.0);
+        let falloff = format!("{falloff:?}");
+        assert_eq!(cover.len(), (size * size) as usize, "{falloff}: a cover map");
+        let (mut pigmented, mut orphan, mut worst) = (0u32, 0u32, 0.0f32);
+        for p in 0..(size * size) as usize {
+            // Did the brush leave pigment here? (White paper: any channel below 255 is paint.)
+            let ink = (0..3).map(|c| 255 - canvas[p * 4 + c]).max().unwrap_or(0);
+            if ink == 0 {
+                continue;
+            }
+            pigmented += 1;
+            // Then the light MUST model it: its coverage weight is `body_profile(cover)`, and a zero
+            // there is the light declaring this pixel bodyless — paper showing through a stain.
+            let weight = body_profile(f32::from(cover[p]) / 255.0);
+            if weight <= 0.0 {
+                orphan += 1;
+                worst = worst.max(f32::from(ink) / 255.0);
+            }
+        }
+        assert!(pigmented > 500, "{falloff}: the stroke must actually paint ({pigmented} px)");
+        assert_eq!(
+            orphan, 0,
+            "{falloff}: {orphan} px of pigment outside the relief the light will model \
+             (worst {:.0}% ink) — the haze Enio photographed",
+            worst * 100.0
+        );
+    }
+}
+
+/// …and the film binds ONLY a brush that lays body: an ordinary brush is byte-identical.
+///
+/// The other half of the rule, and the one that would rot silently. `film_coverage` sits in the alpha
+/// funnel of EVERY deposit path (cached blit, per-pixel, canvas-cached, ramped, per-layer colour), so a
+/// leak there would re-cut every brush in the app — hardening the edge of a soft airbrush that never
+/// asked for a body. The gate: the same stroke with Impasto off, and with Impasto on but `DrawTo::Color`
+/// (pigment, no thickness — a glaze over relief), must both come out exactly as they did before the film
+/// existed. Compared against a THIRD run whose brush is plainly non-impasto: byte for byte.
+#[test]
+fn the_film_binds_only_a_brush_that_lays_body() {
+    let size = 120u32;
+    let stroke = |mutate: &dyn Fn(&mut BrushSpec)| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let mut b = BrushSpec {
+            radius_px: 30.0,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            ..Default::default()
+        };
+        mutate(&mut b);
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([80.0, 90.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([40.0, 90.0], PointerPhase::Up));
+        t.canvas_rgba.to_vec()
+    };
+    let plain = stroke(&|_b| {});
+    assert_eq!(
+        stroke(&|b| b.impasto = false),
+        plain,
+        "Impasto OFF: the film must not touch an ordinary brush"
+    );
+    assert_eq!(
+        stroke(&|b| {
+            b.impasto = true;
+            b.impasto_draw_to = DrawTo::Color; // pigment, no thickness — a glaze
+        }),
+        plain,
+        "DrawTo::Color: a brush that lays no body lays its pigment untouched"
+    );
+    assert_eq!(
+        stroke(&|b| {
+            b.impasto = true;
+            b.impasto_depth = 0.0; // no depth ⇒ no body ⇒ no film
+        }),
+        plain,
+        "Depth 0: no body, no cut"
+    );
+    // …and the film DOES bite when the brush lays body — else the three assertions above are vacuous.
+    assert_ne!(
+        stroke(&|b| b.impasto = true),
+        plain,
+        "a body-laying brush must lay a DIFFERENT (cut) pigment — otherwise this gate proves nothing"
+    );
+}
+
+/// The film may never STARVE the brush: an impasto stroke at low Strength still paints.
+///
+/// The first cut of `film_coverage` ran `body_profile` on the dab's FULL coverage — silhouette × grain ×
+/// (pressure × Flow × Strength). At Strength 0.5 the dab's peak coverage is 0.25, which is under `W_TAIL`,
+/// so the curve returned zero for every texel and **the stroke deposited nothing at all**. A brush that
+/// paints nothing is not a fix; it is a worse bug than the one being fixed, and it would have shipped.
+///
+/// The rule it teaches: **a film's edge is a property of the TIP, not of how hard you press.** A light
+/// touch of a loaded brush lays a thinner film, not a film with a different outline — so the curve runs on
+/// the tip and the dynamics scale the result. MUT (revert to `body_profile(tip * dynamics)`): RED here.
+#[test]
+fn the_film_never_starves_the_brush_at_low_strength() {
+    let size = 120u32;
+    let ink = |strength: f32| -> u32 {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 30.0,
+            color: [0.9, 0.1, 0.1],
+            strength,
+            space_attenuation: false,
+            impasto: true,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([80.0, 90.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([40.0, 90.0], PointerPhase::Up));
+        (0..(size * size) as usize)
+            .filter(|p| (0..3).any(|c| t.canvas_rgba[p * 4 + c] != 255))
+            .count() as u32
+    };
+    let full = ink(1.0);
+    assert!(full > 500, "sanity: the full-strength stroke paints ({full} px)");
+    for strength in [0.5f32, 0.3, 0.15] {
+        let faint = ink(strength);
+        assert!(
+            faint > full / 2,
+            "Strength {strength}: an impasto brush laid {faint} px against {full} at full — the film cut \
+             the DYNAMICS instead of the tip, and starved the brush"
+        );
+    }
 }

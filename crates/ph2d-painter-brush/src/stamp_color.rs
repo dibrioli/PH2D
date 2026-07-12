@@ -224,6 +224,9 @@ pub fn render_ramp_color_stamp(
                 }
                 None => spec.falloff_weight(t),
             };
+            // The FILM, on the silhouette (see `render_stamp_mask`) — the per-layer-colour tip is a
+            // pigment path like any other, so the rule binds it too.
+            let w = crate::height::film_coverage(spec.deposits_height(), w);
             if w <= 0.0 {
                 continue; // leaves the texel transparent (premul [0,0,0,0])
             }

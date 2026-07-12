@@ -69,10 +69,11 @@ fn new_builds_the_well_typed_rig_document() {
     // skin_deformer, scale, move, output} + the goal dots {scale, move, output, move,
     // output} + the ORPHAN that demos the inline readouts (doc 43: no sink consumes it, so
     // it never cooks, so it has no reading and the editor veils it) + the SIMULATION ZONE
-    // (docs 48/49/50 — the snow: {sim.zone, combine, wind, sim.step, sim.lifetime,
-    // value.attribute, motion.color_ramp, falloff, cull} interior + {grid, move, sim.spawn}
-    // birth + {scale, move, output} render = 15).
-    assert_eq!(state.doc.graph.nodes().len(), 38);
+    // (docs 48/49/50/51 — the snow: {sim.zone, combine, wind, sim.step, sim.lifetime,
+    // color_ramp, drive(size), drive(opacity), falloff, cull} interior + {value.attribute,
+    // value.map_range} the fade + {grid, move, sim.spawn} birth + {scale, move, output}
+    // render = 18).
+    assert_eq!(state.doc.graph.nodes().len(), 41);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -446,6 +447,45 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
     assert!(
         spread > 0.05,
         "the flakes are coloured by their AGE, not all alike: blue spread {spread}"
+    );
+
+    // …and it does not merely get LIGHTER: an old flake is SMALLER and more TRANSPARENT (doc 51 —
+    // Enio's smoke: *"ficou claro mas não menor nem transparente"*). Size and alpha are driven by
+    // the same life fraction, so the oldest flake on screen is the smallest AND the faintest.
+    let sizes = match s.get("size") {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => panic!("the shrink never wrote a size"),
+    };
+    let pick = |cmp: fn(&f32, &f32) -> std::cmp::Ordering| {
+        lifes
+            .iter()
+            .enumerate()
+            .max_by(|a, b| cmp(a.1, b.1))
+            .map(|(i, _)| i)
+            .expect("the snow is not empty")
+    };
+    let (oldest, youngest) = (pick(|a, b| a.total_cmp(b)), pick(|a, b| b.total_cmp(a)));
+    assert!(
+        tints[oldest][3] < tints[youngest][3] * 0.5,
+        "the old flake is FADED: alpha {} vs {}",
+        tints[oldest][3],
+        tints[youngest][3]
+    );
+    assert!(
+        sizes[oldest][0] < sizes[youngest][0] * 0.5,
+        "…and SMALLER: {:?} vs {:?}",
+        sizes[oldest],
+        sizes[youngest]
+    );
+    // **`Set`, not `Multiply`.** `size` and `tint` RIDE THE STATE, so a multiplying drive would
+    // compound every tick: after four seconds the flakes would be 1e-30 across — a fade that is a
+    // function of FRAME COUNT rather than of age, and invisible in any test that only checks
+    // "does the old one look different". `Set` is idempotent, so nothing ever falls below the
+    // floor its own life maps to.
+    assert!(
+        sizes.iter().all(|q| q[0] > 0.01),
+        "the drive is Set, not Multiply: nothing compounded away ({:?})",
+        sizes.iter().map(|q| q[0]).fold(f32::MAX, f32::min)
     );
 
     // 4. DEATH + STEADY STATE: the population settles instead of growing without bound.

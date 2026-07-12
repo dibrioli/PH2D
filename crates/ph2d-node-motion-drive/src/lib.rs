@@ -66,7 +66,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     effect: Effect::Pure,
     clock: Clock::Frame,
     params: &[
-        // 0 X · 1 Y · 2 Rotation · 3 Size — the shared channel vocabulary.
+        // 0 X · 1 Y · 2 Rotation · 3 Size · 4 Opacity — the shared channel vocabulary.
         ParamSpec {
             name: "channel",
             default: 0.0,
@@ -129,10 +129,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "channel",
         label: "Channel",
         min: 0.0,
-        max: 3.0,
+        max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
+            labels: &["X", "Y", "Rotation", "Size", "Opacity"],
         },
     },
     ParamUiHint {
@@ -335,4 +335,39 @@ mod tests {
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
+    /// **Opacity is a channel** (doc 51): the drive writes the ALPHA of the tint, so a particle
+    /// can FADE — which is what "fades away" means, and what the library could not do at all.
+    ///
+    /// An uncoloured stream starts from opaque white, so driving the opacity of a stream nobody
+    /// tinted does exactly what it says instead of silently doing nothing.
+    #[test]
+    fn the_opacity_channel_fades_the_tint_and_starts_from_opaque_white() {
+        let plain = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0]; 2]));
+        let out = channel::drive_channel(&plain, channel::CH_OPACITY, &[0.25, 0.75], 1.0, Combine::Set);
+        match out.get("tint") {
+            Some(Column::Vec4(v)) => {
+                assert_eq!(v[0], [1.0, 1.0, 1.0, 0.25], "white, a quarter opaque");
+                assert_eq!(v[1][3], 0.75);
+            }
+            _ => panic!("the opacity drive minted a tint"),
+        }
+
+        // Multiply against an existing colour: the hue survives, the alpha bleeds.
+        let red = Stream::new(1)
+            .with("P", Column::Vec2(vec![[0.0, 0.0]]))
+            .with("tint", Column::Vec4(vec![[1.0, 0.0, 0.0, 1.0]]));
+        let faded = channel::drive_channel(&red, channel::CH_OPACITY, &[0.5], 1.0, Combine::Multiply);
+        match faded.get("tint") {
+            Some(Column::Vec4(v)) => assert_eq!(v[0], [1.0, 0.0, 0.0, 0.5]),
+            _ => panic!("tint"),
+        }
+
+        // An alpha the renderer cannot use is not a brighter particle — it is a bug. Clamped.
+        let over = channel::drive_channel(&plain, channel::CH_OPACITY, &[4.0, -2.0], 1.0, Combine::Set);
+        match over.get("tint") {
+            Some(Column::Vec4(v)) => assert_eq!((v[0][3], v[1][3]), (1.0, 0.0)),
+            _ => panic!("tint"),
+        }
+    }
+
 }

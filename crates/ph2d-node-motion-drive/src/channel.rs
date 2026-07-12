@@ -62,12 +62,16 @@ impl Combine {
     }
 }
 
+/// The channel index of Opacity — the alpha of the `tint` column.
+pub(crate) const CH_OPACITY: i32 = 4;
+
 /// The stream column a channel index writes to: X/Y → `P`, Rotation → `rot`,
-/// Size (or any out-of-range value) → `size`.
+/// Opacity → `tint` (its alpha), Size (or any out-of-range value) → `size`.
 fn channel_column(channel: i32) -> &'static str {
     match channel {
         0 | 1 => "P",
         2 => "rot",
+        CH_OPACITY => "tint",
         _ => "size",
     }
 }
@@ -75,6 +79,14 @@ fn channel_column(channel: i32) -> &'static str {
 fn base_vec2(input: &Stream, name: &str, n: usize, identity: [f32; 2]) -> Vec<[f32; 2]> {
     let mut v = match input.get(name) {
         Some(Column::Vec2(v)) => v.clone(),
+        _ => Vec::new(),
+    };
+    v.resize(n, identity);
+    v
+}
+fn base_vec4(input: &Stream, name: &str, n: usize, identity: [f32; 4]) -> Vec<[f32; 4]> {
+    let mut v = match input.get(name) {
+        Some(Column::Vec4(v)) => v.clone(),
         _ => Vec::new(),
     };
     v.resize(n, identity);
@@ -135,6 +147,20 @@ pub(crate) fn drive_channel(
                 *ri = blend(*ri, driven, falloff_at(input, i));
             }
             out.set("rot", Column::Scalar(r));
+        }
+        // **Opacity** — the ALPHA of the tint, and the reason a particle can fade out at all
+        // (doc 51). An element with no tint starts from opaque white, so driving the opacity of
+        // an uncoloured stream does exactly what it says instead of silently doing nothing.
+        //
+        // Clamped to `[0, 1]`: the renderer alpha-blends, and an alpha of 1.4 or -0.2 is not a
+        // brighter or a darker particle — it is a particle that reads as a bug.
+        CH_OPACITY => {
+            let mut t = base_vec4(input, "tint", n, [1.0, 1.0, 1.0, 1.0]);
+            for (i, ti) in t.iter_mut().enumerate() {
+                let driven = mode.apply(ti[3], value_at(vals, i) * scale);
+                ti[3] = blend(ti[3], driven, falloff_at(input, i)).clamp(0.0, 1.0); // CLAMP-OK: alpha
+            }
+            out.set("tint", Column::Vec4(t));
         }
         _ => {
             let mut s = base_vec2(input, "size", n, [1.0, 1.0]);

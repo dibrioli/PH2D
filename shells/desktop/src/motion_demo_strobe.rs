@@ -77,6 +77,14 @@ const SNOW_LIFE_VARIANCE: f32 = 0.4;
 const SNOW_ATTR: &str = "life";
 /// `motion.color_ramp`'s presets: 0 Rainbow · 1 Heat · **2 Ice** · 3 Grayscale · 4 Custom.
 const SNOW_RAMP_ICE: f32 = 2.0;
+/// What a flake is worth at the very end of its life: a tenth of its size and a tenth of its
+/// opacity. Not zero — a flake that shrank to nothing a frame before dying reads as a pop.
+const SNOW_FADE_FLOOR: f32 = 0.1;
+/// `motion.drive`'s channels: 0 X · 1 Y · 2 Rotation · 3 Size · 4 Opacity (doc 51). Modes:
+/// 0 Add · 1 Set · 2 Multiply.
+const DRIVE_CH_SIZE: f32 = 3.0;
+const DRIVE_CH_OPACITY: f32 = 4.0;
+const DRIVE_MODE_SET: f32 = 1.0;
 const RAIN_QUAD: f32 = 0.18;
 const RAIN_GRAVITY: f32 = 4.0;
 /// The kill disc, around the seed's own centre: a LINEAR falloff of radius 3.4, culled at 0.05,
@@ -149,7 +157,10 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     let step = g.add_node("sim.step");
     let life = g.add_node("sim.lifetime");
     let attr = g.add_node("value.attribute");
+    let fade = g.add_node("value.map_range");
     let ramp = g.add_node("motion.color_ramp");
+    let shrink = g.add_node("motion.drive");
+    let dim = g.add_node("motion.drive");
     let falloff = g.add_node("motion.falloff");
     let cull = g.add_node("motion.cull");
     let sky = g.add_node("motion.grid");
@@ -164,7 +175,7 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     chain(g, RAIN_ROW, 1, &[zone])?;
     chain(g, RAIN_ROW, 2, &[scale, mv, output])?;
     wire(g, (zone, 0), (scale, 0))?;
-    for (i, n) in [combine, wind, step, life, ramp, falloff, cull]
+    for (i, n) in [combine, wind, step, life, ramp, shrink, dim, falloff, cull]
         .iter()
         .enumerate()
     {
@@ -180,7 +191,9 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     wire(g, (wind, 0), (step, 0))?;
     wire(g, (step, 0), (life, 0))?;
     wire(g, (life, 0), (ramp, 0))?;
-    wire(g, (ramp, 0), (falloff, 0))?;
+    wire(g, (ramp, 0), (shrink, 0))?;
+    wire(g, (shrink, 0), (dim, 0))?;
+    wire(g, (dim, 0), (falloff, 0))?;
     wire(g, (falloff, 0), (cull, 0))?;
     wire(g, (cull, 0), (zone, 1))?; // the interior's END lands on `state`
 
@@ -188,19 +201,39 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     // `sim.lifetime` just wrote (0 at birth, 1 at the end) and hands it to the ramp's `t`. A
     // diamond — the ramp reads the same stream twice, once as geometry and once as a value — and
     // the cook memoizes the shared branch, so it costs one evaluation, not two.
-    g.set_pos(
-        attr,
-        Pos {
-            x: 3.0 * COL_W,
-            y: RAIN_ROW + 2.0 * RAIN_INTERIOR_DY,
-        },
-    );
+    for (i, n) in [attr, fade].iter().enumerate() {
+        g.set_pos(
+            *n,
+            Pos {
+                x: (3 + i) as f32 * COL_W,
+                y: RAIN_ROW + 2.0 * RAIN_INTERIOR_DY,
+            },
+        );
+    }
     wire(g, (life, 0), (attr, 0))?;
-    wire(g, (attr, 0), (ramp, 1))?;
+    wire(g, (attr, 0), (ramp, 1))?; // colour by age…
+    wire(g, (attr, 0), (fade, 0))?;
+    wire(g, (fade, 0), (shrink, 1))?; // …and SHRINK by it…
+    wire(g, (fade, 0), (dim, 1))?; // …and FADE OUT by it
     g.set_text_param(attr, "attr", SNOW_ATTR);
     g.set_param(life, "life", SNOW_LIFE);
     g.set_param(life, "variance", SNOW_LIFE_VARIANCE);
     g.set_param(ramp, "preset", SNOW_RAMP_ICE);
+    // `life` runs 0 → 1 over a flake's life; the fade runs the other way, and never all the way
+    // to nothing (a flake that shrank to a true zero would pop out of existence a frame before
+    // it died, which reads as a glitch rather than a melt).
+    g.set_param(fade, "in_lo", 0.0);
+    g.set_param(fade, "in_hi", 1.0);
+    g.set_param(fade, "out_lo", 1.0);
+    g.set_param(fade, "out_hi", SNOW_FADE_FLOOR);
+    // **`Set`, not `Multiply`.** Both columns RIDE THE STATE, so a multiply would compound every
+    // tick — the flakes would collapse to nothing in a second and the fade would be a function of
+    // how many frames had passed, not of age. `Set` is idempotent: the channel is a pure function
+    // of the flake's life, re-derived each tick.
+    g.set_param(shrink, "channel", DRIVE_CH_SIZE);
+    g.set_param(shrink, "mode", DRIVE_MODE_SET);
+    g.set_param(dim, "channel", DRIVE_CH_OPACITY);
+    g.set_param(dim, "mode", DRIVE_MODE_SET);
 
     chain(g, RAIN_ROW + 3.0 * RAIN_INTERIOR_DY, 0, &[sky, lift, spawn])?;
     wire(g, (spawn, 0), (combine, 1))?; // …the newborns join the population

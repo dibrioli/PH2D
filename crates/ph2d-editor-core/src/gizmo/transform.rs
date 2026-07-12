@@ -271,13 +271,25 @@ pub fn compute_gizmo_transform(
             }
         }
         GizmoDragKind::Rotate => {
-            // atan2 in world coords; subtract start angle from now
-            // angle, add to start rotation.
+            // atan2 in world coords; subtract start angle from now angle, add to
+            // start rotation — plus the whole turns the cursor has already swept.
+            //
+            // Both `atan2`s live in `(-π, π]`, so their difference alone can only
+            // ever describe LESS THAN ONE TURN, and it JUMPS by 2π the instant the
+            // cursor crosses the branch cut. On screen that was invisible (a
+            // rotation is mod 2π) — but `Transform.rotation` is the value the
+            // Inspector shows and the timeline animates, and it was a sawtooth: a
+            // recorded two-turn spin replayed as a net rotation of zero, and no
+            // drag could author past ±180°. `GizmoDragState::turns` counts the
+            // crossings as they happen (the turn count lives in the cursor's PATH,
+            // which no pure function of its endpoints can recover) and restores the
+            // continuous angle exactly.
             let start_angle = (drag.start_cursor_world[1] - drag.pivot_world[1])
                 .atan2(drag.start_cursor_world[0] - drag.pivot_world[0]);
             let now_angle =
                 (now_world[1] - drag.pivot_world[1]).atan2(now_world[0] - drag.pivot_world[0]);
-            let mut rotation = drag.start_transform.rotation + (now_angle - start_angle);
+            let swept = (now_angle - start_angle) + drag.turns as f32 * core::f32::consts::TAU;
+            let mut rotation = drag.start_transform.rotation + swept;
             // Shift: snap to `snap.rotate_deg` increments. Converts
             // degrees to radians once before quantize.
             if modifiers.shift && snap.rotate_deg > 0.0 {

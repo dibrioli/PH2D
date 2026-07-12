@@ -74,7 +74,19 @@ impl App {
             && let Some(hero) = gfx.hero_screen.as_mut()
             && let Some(mut drag) = hero.gizmo.drag
         {
-            drag.cursor_screen = (self.last_pointer.0, self.last_pointer.1);
+            // Advance the cursor THROUGH the drag, not around it: on a Rotate the
+            // step also counts any revolution the cursor just completed, which is
+            // the only record of it (`atan2` cannot see past one turn). Skipping
+            // this and assigning `cursor_screen` directly is exactly the bug —
+            // rotation would silently jump 2π at the branch cut.
+            let size = gfx.surface.size();
+            let cam = ph2d_editor::GizmoCamera {
+                center: gfx.camera.center,
+                height_world: gfx.camera.height_world,
+                window_w: size.width as f32,
+                window_h: size.height as f32,
+            };
+            drag.advance_cursor((self.last_pointer.0, self.last_pointer.1), &cam);
             hero.gizmo.drag = Some(drag);
             if matches!(drag.kind, ph2d_editor::GizmoDragKind::MovePivot) {
                 // TOOL_PIVOT: relocate the pivot to the cursor while the

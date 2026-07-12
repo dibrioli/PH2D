@@ -4,6 +4,8 @@
 
 // ───────────── M14.7 C: state machine + math helpers ─────────────
 
+use super::camera::GizmoCamera;
+
 /// Which interaction the user opened by mousing down on a gizmo
 /// element. Each variant maps to a specific math path in
 /// [`compute_gizmo_transform`].
@@ -144,4 +146,45 @@ pub struct GizmoDragState {
     /// Populated via `ph2d_ecs::parent_world_transform` at the Down
     /// handler.
     pub parent_world: TransformSnapshot,
+    /// Whole revolutions the cursor has swept around [`Self::pivot_world`]
+    /// since Down — signed, CCW positive. **Zero at Down**; maintained by
+    /// [`Self::advance_cursor`], consumed by [`compute_gizmo_transform`].
+    ///
+    /// Without it a Rotate drag cannot express more than one turn. The angle is
+    /// read with `atan2`, whose range is `(-π, π]`, so the moment the cursor
+    /// crosses the branch cut the derived rotation **jumps by 2π** — invisible on
+    /// screen (a rotation is mod 2π) but a lie in the data: `Transform.rotation`
+    /// could never leave a 2π window, so a multi-turn spin was impossible to
+    /// author and a recorded one came back as a sawtooth. A pure function of
+    /// (start cursor, current cursor) CANNOT recover the turn count — it lives in
+    /// the PATH the cursor took, which is exactly what this counter remembers.
+    pub turns: i32,
+}
+
+impl GizmoDragState {
+    /// Move the cursor to `screen`, counting any revolution it completed around
+    /// the pivot on the way. Call once per frame with the latest pointer, BEFORE
+    /// [`compute_gizmo_transform`] — it is the only thing that keeps a Rotate
+    /// drag's angle continuous.
+    ///
+    /// A crossing is detected the standard way: the raw `atan2` angle can only
+    /// change by more than half a turn between two frames by wrapping, so a step
+    /// beyond ±π is a branch crossing, not motion (a hand would have to spin the
+    /// cursor 30 times a second at 60 fps for that to be real). Non-Rotate drags
+    /// just take the cursor.
+    pub fn advance_cursor(&mut self, screen: (f32, f32), camera: &GizmoCamera) {
+        if matches!(self.kind, GizmoDragKind::Rotate) {
+            let angle_at = |px: (f32, f32)| {
+                let w = camera.screen_to_world(px);
+                (w[1] - self.pivot_world[1]).atan2(w[0] - self.pivot_world[0])
+            };
+            let step = angle_at(screen) - angle_at(self.cursor_screen);
+            if step > core::f32::consts::PI {
+                self.turns -= 1; // wrapped +π → −π going clockwise
+            } else if step < -core::f32::consts::PI {
+                self.turns += 1; // …and counter-clockwise
+            }
+        }
+        self.cursor_screen = screen;
+    }
 }

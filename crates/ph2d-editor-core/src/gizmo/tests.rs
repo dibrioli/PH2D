@@ -103,6 +103,7 @@ fn translate_drag_moves_by_world_delta() {
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     let t = compute_gizmo_transform(
         &drag,
@@ -147,6 +148,7 @@ fn scale_corner_doubling_distance_doubles_scale() {
         anchor_is_center: true,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     // We bypass the screen→world projection by overriding the
     // computed `now_world` via cursor_screen → its projection.
@@ -206,6 +208,7 @@ fn scale_edge_axis_only() {
         anchor_is_center: true,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     let target_world = [3.0, 0.0];
     let aspect = c.window_w / c.window_h;
@@ -250,6 +253,7 @@ fn rotate_quarter_turn_adds_pi_over_two() {
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     let target_world = [0.0, 1.0];
     let aspect = c.window_w / c.window_h;
@@ -298,6 +302,7 @@ fn translate_with_ctrl_snaps_to_grid() {
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     let t = compute_gizmo_transform(
         &drag,
@@ -348,6 +353,7 @@ fn scale_corner_with_shift_locks_aspect_ratio() {
         anchor_is_center: true,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     // Drag to (3, -1.5) world → ratio_x = 3, ratio_y = 1.5.
     // With Shift, both axes lock to the largest deviation, ratio_x=3.
@@ -403,6 +409,7 @@ fn rotate_with_shift_snaps_to_step() {
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     // Target angle ~32° (between 30° and 45°). Snap to 15° →
     // 30° = π/6 ≈ 0.5236.
@@ -681,6 +688,7 @@ fn scale_corner_default_anchor_keeps_opposite_corner_fixed() {
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     let target_corner = [13.0_f32, 10.0_f32];
     drag.cursor_screen = cursor_for_world(&c, target_corner);
@@ -727,6 +735,7 @@ fn scale_corner_center_anchor_keeps_translation_unchanged() {
         anchor_is_center: true,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     drag.cursor_screen = cursor_for_world(&c, [13.0, 10.0]);
     let t = compute_gizmo_transform(
@@ -766,6 +775,7 @@ fn scale_edge_default_anchor_keeps_opposite_edge_fixed() {
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     drag.cursor_screen = cursor_for_world(&c, [13.0, 5.0]);
     let t = compute_gizmo_transform(
@@ -812,6 +822,7 @@ fn scale_corner_with_snap_closure_quantizes_cursor() {
         anchor_is_center: false,
         target: super::GizmoTarget::PrimaryIndividual,
         parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
     };
     drag.cursor_screen = cursor_for_world(&c, [2.6, 2.6]);
     // Closure snaps each axis to nearest integer meter.
@@ -933,4 +944,146 @@ fn pivot_snap_candidates_offset_center() {
     assert_eq!(c[0], [10.0, 5.0]);
     assert_eq!(c[2], [11.0, 6.0]); // TR
     assert_eq!(c[3], [9.0, 4.0]); // BL
+}
+
+// ── Multi-turn rotation: the cursor's PATH, which `atan2` cannot see ─────────
+
+/// Screen pixels of a world point, under `cam()`.
+fn to_screen(c: &GizmoCamera, world: [f32; 2]) -> (f32, f32) {
+    let aspect = c.window_w / c.window_h;
+    let half_w = c.height_world * 0.5 * aspect;
+    let half_h = c.height_world * 0.5;
+    let nx = (world[0] - c.center[0]) / half_w;
+    let ny = (c.center[1] - world[1]) / half_h;
+    ((nx + 1.0) * 0.5 * c.window_w, (ny + 1.0) * 0.5 * c.window_h)
+}
+
+/// A Rotate drag opened at world `(1, 0)` about the origin, sprite unrotated.
+fn rotate_drag(c: &GizmoCamera) -> GizmoDragState {
+    GizmoDragState {
+        kind: GizmoDragKind::Rotate,
+        entity_bits: 1,
+        start_screen: to_screen(c, [1.0, 0.0]),
+        cursor_screen: to_screen(c, [1.0, 0.0]),
+        start_transform: TransformSnapshot {
+            translation: [0.0, 0.0],
+            rotation: 0.0,
+            scale: [1.0, 1.0],
+        },
+        pivot_world: [0.0, 0.0],
+        start_cursor_world: [1.0, 0.0],
+        sprite_half_intrinsic: [0.0, 0.0],
+        anchor_is_center: false,
+        target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
+    }
+}
+
+/// Sweep the cursor CONTINUOUSLY from `from` to `to` radians about the origin, in
+/// small steps — exactly as a real drag arrives (one `advance_cursor` per frame).
+/// The path matters: it is the only place the turn count can come from.
+fn sweep(drag: &mut GizmoDragState, c: &GizmoCamera, from: f32, to: f32) {
+    let steps = (((to - from).abs() / 0.3).ceil() as i32).max(1);
+    for i in 1..=steps {
+        let a = from + (to - from) * i as f32 / steps as f32;
+        drag.advance_cursor(to_screen(c, [a.cos(), a.sin()]), c);
+    }
+}
+
+fn rotation_of(drag: &GizmoDragState, c: &GizmoCamera) -> f32 {
+    compute_gizmo_transform(
+        drag,
+        c,
+        GizmoModifiers::default(),
+        GizmoSnap::default(),
+        None,
+    )
+    .rotation
+}
+
+#[test]
+fn a_two_turn_drag_really_rotates_two_turns() {
+    // THE bug. `Transform.rotation` is derived from a pair of `atan2`s, whose
+    // range is one turn — so the value could never leave a 2π window and JUMPED by
+    // 2π at the branch cut. Sweeping the cursor twice around used to land back on
+    // ~0 rad: the sprite looked right (rotation is mod 2π) while the DATA said it
+    // had not turned at all. That data is what the Inspector shows and what the
+    // timeline animates, so a recorded spin replayed as nothing.
+    let c = cam();
+    let tau = std::f32::consts::TAU;
+    let mut drag = rotate_drag(&c);
+    sweep(&mut drag, &c, 0.0, 2.0 * tau); // two full turns, counter-clockwise
+
+    assert_eq!(drag.turns, 2, "the drag counted both revolutions");
+    assert!(
+        (rotation_of(&drag, &c) - 2.0 * tau).abs() < 1e-2,
+        "two turns is {:.3} rad; got {:.3}",
+        2.0 * tau,
+        rotation_of(&drag, &c)
+    );
+
+    // RED without the counter: the same cursor, with the turns discarded, reads as
+    // a sprite that never moved.
+    let mut blind = drag;
+    blind.turns = 0;
+    assert!(
+        rotation_of(&blind, &c).abs() < 1e-2,
+        "…which is exactly what the old code saw: {:.3} rad",
+        rotation_of(&blind, &c)
+    );
+}
+
+#[test]
+fn rotation_is_continuous_across_the_branch_cut() {
+    // The cut is the -X ray from the pivot, where `atan2` flips +π → −π. Stepping
+    // ACROSS it must move the rotation by the small angle actually travelled — a 2π
+    // jump here is the whole bug, and it is invisible on screen.
+    let c = cam();
+    let mut drag = rotate_drag(&c);
+    let mut prev = rotation_of(&drag, &c);
+    let steps = 240u16;
+    for i in 1..=steps {
+        let a = std::f32::consts::TAU * 1.5 * f32::from(i) / f32::from(steps);
+        drag.advance_cursor(to_screen(&c, [a.cos(), a.sin()]), &c);
+        let now = rotation_of(&drag, &c);
+        assert!(
+            (now - prev).abs() < 0.2,
+            "rotation jumped {:.3} rad in one frame at step {i} ({prev:.3} -> {now:.3})",
+            now - prev
+        );
+        assert!(now >= prev - 1e-4, "a CCW drag never rotates backward");
+        prev = now;
+    }
+    assert!(
+        (prev - std::f32::consts::TAU * 1.5).abs() < 1e-2,
+        "and it ends a turn and a half around: {prev:.3}"
+    );
+}
+
+#[test]
+fn turning_back_unwinds_the_count() {
+    // Spin forward past the cut and then back to where it started: the count must
+    // come home to zero, not keep accumulating.
+    let c = cam();
+    let mut drag = rotate_drag(&c);
+    let tau = std::f32::consts::TAU;
+    sweep(&mut drag, &c, 0.0, tau * 1.25);
+    assert_eq!(drag.turns, 1, "one crossing on the way out");
+    sweep(&mut drag, &c, tau * 1.25, 0.0); // …and all the way back
+    assert_eq!(drag.turns, 0, "unwound — the count is a path, not a tally");
+    assert!(
+        rotation_of(&drag, &c).abs() < 1e-2,
+        "back at the start pose: {:.3}",
+        rotation_of(&drag, &c)
+    );
+}
+
+#[test]
+fn a_non_rotate_drag_never_counts_turns() {
+    let c = cam();
+    let mut drag = rotate_drag(&c);
+    drag.kind = GizmoDragKind::Translate;
+    sweep(&mut drag, &c, 0.0, std::f32::consts::TAU * 2.0);
+    assert_eq!(drag.turns, 0, "only a Rotate sweeps revolutions");
 }

@@ -2917,6 +2917,7 @@ impl App {
                                 anchor_is_center: false,
                                 target: ph2d_editor::GizmoTarget::PrimaryIndividual,
                                 parent_world,
+                                turns: 0,
                             });
                             began_pivot = true;
                         }
@@ -3012,6 +3013,7 @@ impl App {
                                 anchor_is_center: use_center_anchor,
                                 target: effective_target,
                                 parent_world,
+                                turns: 0,
                             });
                             // Onda 1 + 2C.4: snapshot every OTHER selected
                             // sprite's full start_transform so
@@ -3221,6 +3223,7 @@ impl App {
                                     anchor_is_center: false,
                                     target: ph2d_editor::GizmoTarget::PrimaryIndividual,
                                     parent_world,
+                                    turns: 0,
                                 });
                                 // Onda 1 + 2C.4: snapshot every OTHER
                                 // selected sprite's full start_transform

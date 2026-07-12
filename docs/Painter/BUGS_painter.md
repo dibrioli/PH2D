@@ -19,6 +19,106 @@
 | [10](#bug-10--borda-dura-na-junção-ao-mudar-params-de-wash-e-cruzar-traço-úmido--params-por-dono-degrauavam) | Borda dura na junção ao mudar params de Wash (Body/Concentration/Edge/Opacity/RaggedEdge) e cruzar traço úmido | Watercolor render (params por-dono discretos) | ✅ Resolvido (campo suavizado `build_style_field`; grad 118→13) | 2026-07-11 |
 | [11](#bug-11--per-layer-color-linhas-retangulares-intermitentes-aberto) | Per-Layer Color — "linhas nas bordas de retângulos" nas cores do brush, **intermitente** | Preview (produtor CPU↔GPU / overlay) — **NÃO** o composite CPU | 🔎 **ABERTO** (dormente; composite CPU provado limpo, espaço de busca reduzido, **armadilha armada**) | 2026-07-11 |
 | [12](#bug-12--panicsigsegv-ao-apertar-rake-com-um-traço-per-layer-color-vivo) | **PANIC/SIGSEGV** ao apertar Shape **Rake** com um traço Per-Layer Color vivo | Roteamento de stamp (troca de rota **no meio do traço**) | ✅ Resolvido (guard de forma único; RED verificado nas 2 direções) | 2026-07-12 |
+| [13](#bug-13--varredura-a-família-do-12-o-guard-que-pergunta-existe-em-vez-de-que-forma-tem) | **Varredura**: +1 PANIC (trocar de sprite com tinta molhada) + 4 vazamentos silenciosos entre sprites | Lifecycle de rebind de documento · compositor · aquarela | ✅ 3 fixes (RED verificado em cada) | 2026-07-12 |
+
+---
+
+## Bug #13 — VARREDURA: a família do #12 (o guard que pergunta "existe?" em vez de "que FORMA tem?")
+
+> **Estado: ✅ 3 bugs RESOLVIDOS na linha `line/Painter` (2026-07-12).** Varredura pedida pelo Enio após o
+> #12, com 4 lentes independentes. Achados **abertos** listados no fim — nenhum é crash.
+
+### A raiz única
+
+O #12 não era um bug isolado: era uma **espécie**. O guard de reuso pergunta *"já inicializei?"*
+(`pre.is_empty()`, `cov.len() != n`, `is_empty()`, `cuts.contains_key(&id)`) quando deveria perguntar
+**"esse dado ainda pertence às entradas que o produziram?"**. Quatro lentes independentes convergiram nela.
+
+**O caso que corrompe em silêncio é o SPRITE DO MESMO TAMANHO** — é justamente quando o guard de
+comprimento *bate*.
+
+### #13.a — PANIC: trocar de sprite com a tinta ainda molhada (`2e5e8444`)
+
+`reset_transient_edit_state` (`tool/paint/lifecycle.rs`) é o choke point **declarado** do "abandone tudo em
+progresso ao trocar de documento" — o doc-comment dele diz que *"fecha essa classe inteira"*. Foi escrito em
+2026-07-02 e lista 8 itens. **Três subsistemas nasceram depois e nunca se registraram nele:** a sessão
+molhada da aquarela, o **Deform** e a **Seleção**. Todos guardam estado canvas-sized que **sobrevive ao gesto**.
+
+- **PANIC:** `canvas_wet` é o único buffer canvas-sized que sobrevive ao pen-up (seca no heartbeat, ~10 s).
+  `dry_canvas_wet` guardava com `is_empty()` e então indexava com o stride do sprite **atual** e um
+  `canvas_wet_rect` em coordenadas do sprite **antigo**. Pintar aquarela → clicar num sprite **maior** dentro
+  da janela de secagem → **SIGSEGV no tick seguinte**, sem mais nenhuma interação.
+- **Deform:** `deform.pre` é um snapshot "pristino" validado só pelo **comprimento** ⇒ sprite do mesmo tamanho
+  o mantinha, e o próximo reshape reamostrava o canvas novo **a partir dos pixels do sprite antigo**.
+- **Seleção:** é tool-global (não está no `StashedDoc`, que guarda a seleção de *camada*), e
+  `selection_restricts_paint()` só pergunta *"a máscara está não-vazia?"*. O sprite novo herdava a seleção do
+  antigo e **toda pincelada fora dela era revertida** — o clássico *"não pinta e eu não sei por quê"*.
+
+**Fix:** registrar os 3 no choke point + guard de **forma** em `dry_canvas_wet` (defesa em profundidade,
+bounds-only, física intacta). Os dois fecham o panic **independentemente**.
+
+### #13.b — Editar o Paper com wash molhado não re-texturizava a poça (`8a0de875`)
+
+`wet_substrate` (o memo do dente do papel) é chaveado pelo **pixel do canvas e nada mais**; sua única
+invalidação é o `NaN`-reset no **pen-down**, sob a premissa escrita no doc do campo: *"o papel não pode mudar
+no meio do traço"*. **A feature live-editable wash (2026-07-11) tornou essa premissa falsa** — ela existe
+justamente para re-renderizar quando um param de Paper/Grain se move. Como `fill_substrate_cache` só preenche
+os `NaN`, todo pixel já memoizado mantinha o papel **antigo**: a poça re-renderizava e o papel não mudava.
+**A feature derrotava a si mesma no slot Paper.** (O Grain é amostrado ao vivo — por isso a metade que
+funcionava passou no smoke.)
+
+> **★ LIÇÃO DE ORÁCULO (o teste ficou VERDE com o bug vivo):** meu 1º RED afirmava *"os pixels mudam"*.
+> Passou — porque o re-render suja uma região **maior**, e os pixels recém-preenchidos (`NaN` → valor) mexem
+> bytes **mesmo com 100% dos já-memoizados stale**. O oráculo certo é o **memo**, não o sintoma: comparar só
+> os pixels que **já estavam** memoizados. Com o oráculo certo: **2304/2304 stale**.
+> Ver [[feedback_oracle_must_model_appearance_not_implementation]] — aqui a variante: *oráculo largo demais
+> fica verde por um caminho que não é o do bug*.
+
+### #13.c — O cache de cut-points do compositor sobrevivia à troca de sprite (`3ef7be66`)
+
+O compositor cacheia um **cut point** por camada de Adjustment: o acumulador **abaixo** dela, um buffer
+dimensionado para **aquele** canvas. `set_source` constrói um `LayerStack` novo — e `LayerStack::new()`
+**reinicia `next_id` em 1**, então os ids do documento novo **colidem com os do antigo por construção**. O
+cache nunca era limpo, e o guard só pergunta *"existe um cut para esse id?"*.
+
+- sprite **maior** ⇒ indexa além do fim do acumulador antigo (**panic**);
+- sprite do **mesmo tamanho** ⇒ a Adjustment do sprite novo compõe sobre as **camadas-de-baixo cacheadas do
+  sprite antigo** — preview errado, e **silencioso**.
+
+**A assimetria denunciava o bug:** `restore_doc` (o rebind irmão) **sempre** limpou os 4 campos; `set_source`
+nunca limpou nenhum. *Mesmo seam, duas portas, uma trancada.*
+
+### Lições generalizáveis
+
+1. **Um guard de reuso deve validar a PROCEDÊNCIA, não a existência.** "Já aloquei?" ≠ "isto pertence às
+   entradas de agora?". Comprimento é a dimensão mais fraca da forma — **o mesmo tamanho é exatamente o caso
+   que corrompe calado**.
+2. **Um comentário que declara uma premissa é uma dívida com data de vencimento.** *"O papel não pode mudar
+   no meio do traço"* era verdade quando foi escrito; a feature seguinte o desmentiu e **ninguém releu o
+   comentário**. Toda premissa escrita num campo deveria virar `debug_assert` ou gate.
+3. **Um choke point só protege quem se registra nele.** `reset_transient_edit_state` foi criado para matar
+   esta classe, e a classe voltou por **três subsistemas novos que não sabiam que ele existia**. Choke point
+   precisa de um **gate que force o registro**, não de boa vontade.
+4. **Assimetria entre irmãos é o cheiro mais barato de bug.** `restore_doc` reseta 6 campos, `set_source`
+   resetava 2 — os dois são o MESMO seam. Comparar caminhos-irmãos acha bug mais rápido que ler qualquer um
+   deles a fundo.
+5. **Auditores concordando não é prova.** Duas lentes apontaram o `wet_substrate`; meu primeiro probe
+   **refutou** (mediu errado) e o segundo **confirmou**. Sempre execute — dos dois lados.
+
+### ⚠️ ABERTOS na varredura (nenhum é crash) — precisam de decisão ou fila
+
+| Achado | Gravidade | Nota |
+|---|---|---|
+| **Paper Rake / Paper Random são knobs MORTOS** | knob morto | Escritos pelo setter, ecoados ao painel, **lidos por ninguém**. O Paper é ancorado no canvas (não há dab) ⇒ "Rake" (a rotação segue o traço) **não tem significado físico**. Pior: como `TextureSettings` compara `rake`, clicar dispara um **re-render de wash inteiro** que devolve bytes idênticos. **Decisão do Enio: remover os 2 botões (recomendado) ou dar-lhes semântica.** |
+| **Tiling + Random Angle: a costura não fecha** | corrupção silenciosa | As cópias wrapped do dab sacam do RNG **uma vez cada** ⇒ o mesmo dab visto pelos dois lados da borda sorteia **ângulos diferentes**. Smear/Blur/Clone **fazem certo e documentam**; as rotas de *paint* não. Quebra a promessa do seamless. |
+| **Grain Rake/Random ignorados DENTRO da aquarela** | knob morto | O short-circuit da aquarela desvia das rotas de stamp; a granulação amostra o Grain **ancorado no canvas**. O mesmo botão significa duas coisas conforme o checkbox Watercolor — e uma delas é "nada". |
+| **Jitter Rotate morto em Smear/Blur/Clone** | knob morto | Com Shape=None, Grain=None e `dab_flatten>0`, a máscara constante é servida e `d.rotation` não chega ao blit. A rota de *pintura* não tem o bug — assimetria pura. |
+| **Grain `Random Offset` servido pelo cache constante no Per-Layer Color** | knob morto | O `per_dab_dynamic` esqueceu `randomises_offset()`. O gate correto seria `!texture.is_cacheable()`. |
+| **Opacity por-camada inerte no Shape achatado** | knob morto | `flatten()` roda **antes** de `set_layers_meta` (opacidades ainda todas 1.0) e `set_opacity` **nunca re-achata**. Funciona só com Per-Layer Color ON. |
+| **`ColorStampKey` sem `granulation`** | latente | O `StampKey` cinza **tem** o campo (e comenta por quê). Alcançável por Mask/Eraser com Watercolor ON. |
+| **`wet_editable_tex` / `AppearanceSig` incompletos** | knob morto (parcial) | Paper Depth · Granulation · versão das imagens · Ramp Alpha Mode · Tiling **não** disparam o re-render que deveriam. |
+| **Flip de MODO no meio do traço apaga tinta** | corrupção silenciosa | Desligar/religar Per-Layer Color (ou Watercolor) no meio do traço faz o recomposite reconstruir de `pre` e **evaporar** o que foi pintado no intervalo. Exige decidir a semântica ("fechar o traço no flip?"), não é bug mecânico. |
+| **Kernels `pub` do brush validam só em `debug_assert`** | hardening | O CI e o app do Enio rodam em **release**. O choke point protege hoje; o contrato da crate, não. |
 
 ---
 

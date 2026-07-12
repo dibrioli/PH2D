@@ -236,6 +236,10 @@ impl crate::App {
         // continua lá, editável pela seleção).
         self.vec_text_edit = None;
         self.vec_text_last_target = None;
+        // A mesma forma (mesmo id) pode voltar com OUTROS parâmetros — zerar o alvo
+        // força a re-semente dos sliders, senão o painel seguiria mostrando o valor
+        // que o undo acabou de desfazer.
+        self.vec_shape_last_target = None;
         self.undo_baseline = Some(state.clone());
         self.title_dirty = true;
     }

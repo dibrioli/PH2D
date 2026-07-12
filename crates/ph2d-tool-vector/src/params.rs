@@ -7,6 +7,8 @@
 //! shell bridge → the panel reads it), and both sides agree on the affine
 //! slider mapping so a drag and the tool stay in lock-step.
 
+use ph2d_vec_scene::{ShapeKind, ShapeValues};
+
 /// Minimum / maximum stroke width in screen pixels (inclusive range the Width
 /// slider spans).
 pub const WIDTH_MIN_PX: f64 = 1.0;
@@ -165,14 +167,11 @@ pub enum DrawMode {
     Node,
     /// Caneta: cria path novo e edita os nós que ela mesma pôs. Sem gizmo.
     Pen,
-    Rectangle,
-    Ellipse,
-    Polygon,
-    Star,
-    RoundRect,
-    Spiral,
-    Line,
-    Arc,
+    /// **Forma**: arrasta para dimensionar a forma ATIVA do catálogo
+    /// (`VectorTool::shape_kind`). É UM modo para todas as formas — retângulo, estrela,
+    /// seta, balão… — porque a forma é dado, não código. Antes cada forma era um modo, e
+    /// vinte e cinco formas seriam vinte e cinco variantes aqui, no painel e no dispatch.
+    Shape,
     /// Texto: clica no canvas e digita; cada glyph vira um `VecPath` preenchido
     /// (ADR-0108). Não é uma shape-tool nem cria pelo Pen — o shell trata o gesto.
     Text,
@@ -305,22 +304,23 @@ pub fn star_inner_to_slider(r: f64) -> f32 {
         as f32
 }
 
-/// Rounded-rect corner radius range in **screen pixels** (the Radius slider spans this).
+/// Faixa dos RAIOS DE CANTO (round-rect, polígono, pontas/vales da estrela), em
+/// **PIXELS** — a unidade em que o usuário pensa (a de mundo é pequena: a viewport
+/// inteira tem ~10 unidades, então um raio útil seria `0.3`, ilegível numa caixa).
+///
+/// Era um SLIDER de 0..40 px, e o teto não alcançava formas grandes. Agora é uma
+/// **caixa numérica** de 0..500 px: faixa ampla demais para um knob, e o que se quer é
+/// digitar/arrastar o número exato. A conversão px → mundo é feita na fronteira (a
+/// geometria é mundo), como sempre foi.
 pub const RADIUS_MIN_PX: f64 = 0.0;
-pub const RADIUS_MAX_PX: f64 = 40.0;
-pub const RADIUS_SLIDER_SCALE: f32 = (RADIUS_MAX_PX - RADIUS_MIN_PX) as f32;
-pub const RADIUS_SLIDER_OFFSET: f32 = RADIUS_MIN_PX as f32;
+pub const RADIUS_MAX_PX: f64 = 500.0;
+/// Passo do arrasto/setas na caixa de raio (px).
+pub const RADIUS_STEP_PX: f64 = 1.0;
 
-/// Normalized track `0..=1` → corner radius px `MIN..=MAX`.
+/// Clampa um raio de canto autorado (px) à faixa da caixa.
 #[must_use]
-pub fn slider_to_radius(track: f32) -> f64 {
-    RADIUS_MIN_PX + f64::from(track.clamp(0.0, 1.0)) * (RADIUS_MAX_PX - RADIUS_MIN_PX)
-}
-/// Corner radius px → normalized track (inverse of [`slider_to_radius`]).
-#[must_use]
-pub fn radius_to_slider(px: f64) -> f32 {
-    ((px.clamp(RADIUS_MIN_PX, RADIUS_MAX_PX) - RADIUS_MIN_PX) / (RADIUS_MAX_PX - RADIUS_MIN_PX))
-        as f32
+pub fn clamp_radius_px(v: f64) -> f64 {
+    v.clamp(RADIUS_MIN_PX, RADIUS_MAX_PX)
 }
 
 /// Spiral turn count range (the Turns slider spans this).
@@ -383,24 +383,19 @@ pub fn opacity_to_slider(a: u8) -> f32 {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VectorDrawConfig {
     pub mode: DrawMode,
-    pub polygon_sides: u32,
-    pub star_points: u32,
-    pub star_inner_ratio: f64,
-    pub corner_radius_px: f64,
-    pub spiral_turns: u32,
-    pub arc_degrees: f64,
+    /// A forma ATIVA do catálogo (só importa no modo [`DrawMode::Shape`]).
+    pub shape: ShapeKind,
+    /// Os parâmetros dela, na unidade em que o usuário os autora (px para raios). A
+    /// shell converte para MUNDO na fronteira (`shapes::to_world`) antes de cozinhar.
+    pub values: ShapeValues,
 }
 
 impl Default for VectorDrawConfig {
     fn default() -> Self {
         Self {
             mode: DrawMode::Select,
-            polygon_sides: super::tool::DEFAULT_POLYGON_SIDES,
-            star_points: super::tool::DEFAULT_STAR_POINTS,
-            star_inner_ratio: super::tool::DEFAULT_STAR_INNER,
-            corner_radius_px: super::tool::DEFAULT_CORNER_RADIUS_PX,
-            spiral_turns: super::tool::DEFAULT_SPIRAL_TURNS,
-            arc_degrees: super::tool::DEFAULT_ARC_DEGREES,
+            shape: ShapeKind::Rectangle,
+            values: ShapeKind::Rectangle.defaults(),
         }
     }
 }
@@ -415,20 +410,16 @@ pub struct VectorStyleSnapshot {
     pub fill: [u8; 4],
     pub stroke_width_px: f64,
     pub mode: DrawMode,
-    pub polygon_sides: u32,
-    pub star_points: u32,
-    pub star_inner_ratio: f64,
-    pub corner_radius_px: f64,
+    /// A forma ATIVA do catálogo + os parâmetros dela (unidade de UI) — o painel pinta o
+    /// seletor e os campos a partir disto, sem saber que formas existem.
+    pub shape: ShapeKind,
+    pub values: ShapeValues,
     pub cap: StrokeCap,
     pub join: StrokeJoin,
     /// Dash as a multiple of stroke width (`0` = solid).
     pub dash: f64,
     /// Gap between dashes as a multiple of stroke width.
     pub gap: f64,
-    /// Turn count for `DrawMode::Spiral`.
-    pub spiral_turns: u32,
-    /// Span in degrees for `DrawMode::Arc`.
-    pub arc_degrees: f64,
 }
 
 impl Default for VectorStyleSnapshot {
@@ -438,16 +429,12 @@ impl Default for VectorStyleSnapshot {
             fill: [90, 150, 230, 255],
             stroke_width_px: super::tool::DEFAULT_STROKE_WIDTH_PX,
             mode: DrawMode::Pen,
-            polygon_sides: super::tool::DEFAULT_POLYGON_SIDES,
-            star_points: super::tool::DEFAULT_STAR_POINTS,
-            star_inner_ratio: super::tool::DEFAULT_STAR_INNER,
-            corner_radius_px: super::tool::DEFAULT_CORNER_RADIUS_PX,
+            shape: ShapeKind::Rectangle,
+            values: ShapeKind::Rectangle.defaults(),
             cap: StrokeCap::Butt,
             join: StrokeJoin::Miter,
             dash: 0.0,
             gap: GAP_DEFAULT,
-            spiral_turns: super::tool::DEFAULT_SPIRAL_TURNS,
-            arc_degrees: super::tool::DEFAULT_ARC_DEGREES,
         }
     }
 }

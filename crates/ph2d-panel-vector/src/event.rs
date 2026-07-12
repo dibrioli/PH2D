@@ -66,6 +66,14 @@ pub(crate) fn apply_event(
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
             true
         }
+        // **Campo de forma** (genérico): o id carrega o ÍNDICE do parâmetro no catálogo;
+        // a forma em foco diz o que ele significa. Encaminha o VALOR (não um track).
+        WidgetEvent::ValueChanged(id) if state::shape_field_index(id).is_some() => {
+            let val = host.store().number_value(id).unwrap_or(0.0);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
+            true
+        }
         // Variation-axis number field — forward the committed axis value; the shell
         // maps the slot index to the font's axis and re-cooks the glyphs.
         WidgetEvent::ValueChanged(id) if state::text_axis_index(id).is_some() => {
@@ -74,16 +82,10 @@ pub(crate) fn apply_event(
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
             true
         }
-        // Shape-parameter sliders — same shape as Width (track 0..1 → the tool
-        // projects to a side/point count, inner ratio, or radius).
+        // Sliders de TEXTO (track 0..1) + opacidade/dash/gradiente — o mesmo formato do
+        // Width. Os parâmetros de FORMA não passam aqui: são caixas numéricas (acima).
         WidgetEvent::ValueChanged(id)
-            if id == ids::VECTOR_SIDES
-                || id == ids::VECTOR_STAR_POINTS
-                || id == ids::VECTOR_STAR_INNER
-                || id == ids::VECTOR_RRECT_RADIUS
-                || id == ids::VECTOR_SPIRAL_TURNS
-                || id == ids::VECTOR_ARC_DEGREES
-                || id == ids::VECTOR_TEXT_SIZE
+            if id == ids::VECTOR_TEXT_SIZE
                 || id == ids::VECTOR_TEXT_WEIGHT
                 || id == ids::VECTOR_TEXT_LINE_HEIGHT
                 || id == ids::VECTOR_TEXT_TRACKING
@@ -107,11 +109,6 @@ pub(crate) fn apply_event(
         // ValueChanged, handled above): swallow to avoid a double notify.
         WidgetEvent::ValueChanged(id)
             if id == ids::VECTOR_WIDTH_NUM
-                || id == ids::VECTOR_SIDES_NUM
-                || id == ids::VECTOR_STAR_POINTS_NUM
-                || id == ids::VECTOR_STAR_INNER_NUM
-                || id == ids::VECTOR_RRECT_RADIUS_NUM
-                || id == ids::VECTOR_SPIRAL_TURNS_NUM
                 || id == ids::VECTOR_TEXT_SIZE_NUM
                 || id == ids::VECTOR_TEXT_WEIGHT_NUM
                 || id == ids::VECTOR_TEXT_LINE_HEIGHT_NUM
@@ -124,6 +121,23 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_GRAD_INFLUENCE_NUM
                 || id == ids::VECTOR_GRAD_JITTER_NUM =>
         {
+            true
+        }
+        // **Botão do catálogo de formas**: o id carrega o índice; a tool o resolve e já
+        // arma o gesto. A ABA de família é estado só-do-painel (não vira evento).
+        WidgetEvent::Click(id) if state::shape_group_index(id).is_some() => {
+            seam_reset_button(host, id);
+            if let Some(g) = state::shape_group_index(id)
+                .and_then(|i| ph2d_tool_vector::shapes::ALL_GROUPS.get(i))
+            {
+                state::set_current_shape_group(Some(*g));
+            }
+            true
+        }
+        WidgetEvent::Click(id) if state::shape_index(id).is_some() => {
+            seam_reset_button(host, id);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             true
         }
         // Draw-mode buttons + Boolean buttons: forward the Click over the generic
@@ -177,14 +191,6 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_MODE_SELECT
         || id == ids::VECTOR_MODE_NODE
         || id == ids::VECTOR_MODE_PEN
-        || id == ids::VECTOR_MODE_RECT
-        || id == ids::VECTOR_MODE_ELLIPSE
-        || id == ids::VECTOR_MODE_POLYGON
-        || id == ids::VECTOR_MODE_STAR
-        || id == ids::VECTOR_MODE_RRECT
-        || id == ids::VECTOR_MODE_SPIRAL
-        || id == ids::VECTOR_MODE_LINE
-        || id == ids::VECTOR_MODE_ARC
         || id == ids::VECTOR_MODE_TEXT
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT

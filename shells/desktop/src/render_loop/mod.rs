@@ -1183,6 +1183,10 @@ impl crate::App {
                 None;
             // Transform Angle field (R) — a relative rotation delta (degrees).
             let mut pending_vec_rotate_by: Option<f64> = None;
+            // Slider de parâmetro de forma (Sides/Points/Inner/Radius/Turns/Degrees):
+            // `(id, track 0..1)`. A tool já o consome como default de desenho; aqui ele
+            // também edita a forma VIVA selecionada (Live Shape).
+            let mut pending_vec_shape_param: Option<(ph2d_editor::NodeId, f64)> = None;
             // Text Size slider (world units) — updates the active session + the
             // size a new session starts at.
             let mut pending_vec_text_size: Option<f64> = None;
@@ -1365,6 +1369,12 @@ impl crate::App {
                                 pending_vec_text_tracking = Some(
                                     ph2d_tool_vector::params::slider_to_text_tracking(*v as f32),
                                 );
+                            } else if crate::vec_shape_params::is_shape_field_id(*id) {
+                                // Sliders de forma: a tool os toma como default de
+                                // desenho (abaixo, no forward) E eles editam a forma
+                                // VIVA selecionada — o track cru vai junto, porque a
+                                // conversão depende da variante da forma.
+                                pending_vec_shape_param = Some((*id, *v));
                             } else {
                                 // Variation-axis field carries the axis VALUE directly
                                 // (not a 0..1 track): match the slot to its font axis.
@@ -2134,6 +2144,28 @@ impl crate::App {
             // `vec_text_sel` é a seleção corrente para o caminho do objeto.
             let vec_text_sel: Vec<ph2d_vec_scene::VecPathId> =
                 self.vec_pen.selected_paths().to_vec();
+            // Live Shapes: os sliders de forma editam a forma VIVA selecionada — muda o
+            // parâmetro e RE-COZINHA in-place (id/estilo/pose preservados). Sem forma
+            // viva na seleção, o slider só moveu o default de desenho (a tool já o
+            // guardou) — é o que fecha o ciclo paramétrico: um polígono de 5 lados vira
+            // de 7 depois de desenhado.
+            if let Some((id, v)) = pending_vec_shape_param {
+                crate::vec_shape_params::edit_selected_shape(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &vec_text_sel,
+                    |kind, values| {
+                        crate::vec_shape_params::apply_shape_field(
+                            kind,
+                            values,
+                            id,
+                            v,
+                            vec_px_to_world,
+                        )
+                    },
+                );
+            }
             let editing_session = self.vec_text_edit.is_some();
             if let Some(size) = pending_vec_text_size {
                 crate::vec_text::apply_text_size(
@@ -2625,6 +2657,34 @@ impl crate::App {
                     })
                 });
                 ph2d_panel_vector::set_current_convertible(convertible);
+            }
+            // Live Shapes: o ALVO dos campos de forma do painel é a forma paramétrica
+            // SELECIONADA — os campos DELA aparecem (mesmo na ferramenta Select) e a
+            // editam. Sem alvo, valem os da forma ativa do catálogo (default do traço).
+            #[cfg(feature = "panel-vector")]
+            {
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                let target =
+                    crate::vec_shape_params::panel_shape_target(sim, &self.vec_entities, &sel);
+                ph2d_panel_vector::set_current_shape_focus(target.as_ref().map(|(_, _, k, _)| *k));
+                // Semente ONE-SHOT: só quando o alvo MUDA (senão brigaria com o arrasto).
+                // Além dos campos, a TOOL adota os params — assim painel, tool e objeto
+                // concordam, e a próxima forma desenhada herda (modelo Figma).
+                let target_id = target.as_ref().map(|(id, _, _, _)| *id);
+                if target_id != self.vec_shape_last_target {
+                    self.vec_shape_last_target = target_id;
+                    if let Some((_, _, kind, world)) = target.as_ref() {
+                        crate::vec_shape_params::seed_shape_fields(
+                            &mut hero.store,
+                            *kind,
+                            world,
+                            vec_px_to_world,
+                        );
+                        let ui =
+                            crate::vec_shape_params::ui_values_of(*kind, world, vec_px_to_world);
+                        vector_bridge::adopt_shape_values(tools, *kind, ui);
+                    }
+                }
             }
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.

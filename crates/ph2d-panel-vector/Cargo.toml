@@ -30,6 +30,7 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 # panel names them directly now that `paint.rs` delegates section drawing.
 ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 
 [dev-dependencies]
 # Blindagem Fase 1.2: headless behavioral seam harness (populate → apply_event

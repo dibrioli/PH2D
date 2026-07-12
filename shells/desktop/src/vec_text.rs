@@ -83,10 +83,20 @@ impl crate::app_state::App {
         self.vec_draw_config.mode = mode;
     }
 
-    /// Clique no canvas em modo Text: finaliza a edição anterior (se houver) e começa
-    /// uma nova com a baseline no ponto clicado.
+    /// Clique no canvas em modo Text: finaliza a edição anterior (se houver) e, se o
+    /// clique caiu **sobre um texto existente**, REABRE aquele objeto para digitação
+    /// (padrão Illustrator: a ferramenta de texto sobre um texto entra nele). Caiu no
+    /// vazio ⇒ começa um texto novo com a baseline no ponto clicado.
+    ///
+    /// Sem isto a string de um texto finalizado era imutável — só as propriedades eram
+    /// editáveis pela seleção, e um typo ficava para sempre.
     pub(crate) fn vec_text_click(&mut self, world: [f64; 2]) {
         self.vec_text_finish();
+        if let Some(edit) = self.vec_text_reopen_at(world) {
+            self.vec_text_edit = Some(edit);
+            self.vec_text_regen();
+            return;
+        }
         // O texto herda o Style ATIVO do painel do vetor (fill/stroke/width/cap/join)
         // — a mesma regra das formas — capturado no clique.
         let (fill, stroke) = resolve_style(&self.vec_pen.style(), self.vec_px_to_world());
@@ -142,7 +152,7 @@ impl crate::app_state::App {
 
     /// Regenera os glyphs da sessão: remove os antigos da cena e empurra os novos a
     /// partir do texto corrente. O `vec_entities::sync` reconcilia as entidades.
-    fn vec_text_regen(&mut self) {
+    pub(crate) fn vec_text_regen(&mut self) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };

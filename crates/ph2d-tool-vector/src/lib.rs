@@ -24,6 +24,10 @@
 
 pub mod icon;
 pub mod params;
+/// O catálogo de APRESENTAÇÃO das formas (rótulo, família, campos, unidade) — par do
+/// `ph2d_vec_scene::kind`, que sabe desenhar. É o que faz uma forma nova custar uma
+/// linha de tabela em vez de oito lugares.
+pub mod shapes;
 pub mod tool;
 
 pub use params::{
@@ -31,8 +35,10 @@ pub use params::{
     px_to_slider, slider_to_px,
 };
 pub use tool::{
-    DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS,
-    DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS, DEFAULT_STROKE_WIDTH_PX, PALETTE, VectorTool,
+    DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_RADIUS_PX,
+    DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS, DEFAULT_STAR_INNER, DEFAULT_STAR_INNER_RADIUS_PX,
+    DEFAULT_STAR_OUTER_RADIUS_PX, DEFAULT_STAR_POINTS, DEFAULT_STROKE_WIDTH_PX, PALETTE,
+    VectorTool,
 };
 
 use ph2d_a11y::Role;

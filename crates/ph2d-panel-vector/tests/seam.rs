@@ -21,7 +21,7 @@ use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::{PanelEvent, Tool}; // brings `handle_panel_event` into scope
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, ids};
-use ph2d_tool_vector::params::{SIDES_MAX, slider_to_px};
+use ph2d_tool_vector::params::slider_to_px;
 use ph2d_tool_vector::{DrawMode, VectorTool};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -122,9 +122,8 @@ fn mode_button_click_switches_tool_mode_through_seam() {
     // que falhou (Enio 2026-07-09): pintados + registrados, mas ausentes da
     // allowlist de `event.rs` → o clique nunca virava `ToolPanelEvent`.
     for (id, want) in [
-        (ids::VECTOR_MODE_RECT, DrawMode::Rectangle),
-        (ids::VECTOR_MODE_LINE, DrawMode::Line),
-        (ids::VECTOR_MODE_ARC, DrawMode::Arc),
+        (ids::VECTOR_MODE_PEN, DrawMode::Pen),
+        (ids::VECTOR_MODE_TEXT, DrawMode::Text),
         (ids::VECTOR_MODE_NODE, DrawMode::Node),
     ] {
         let outcome =
@@ -181,62 +180,78 @@ fn stroke_cap_dash_and_gap_reach_the_tool() {
 }
 
 /// The Star mode button switches the mode, and the Star "Points" slider reaches
-/// the tool's `star_points` through the seam — proving the new shape controls.
+/// **Gate do seam do CATÁLOGO** — o que substitui um teste por forma.
+///
+/// Para TODA forma do catálogo: o botão dela chega ao tool pelo seam (escolhe a forma e
+/// arma o gesto), e CADA campo que ela declara chega ao tool como valor. Uma forma nova
+/// entra na tabela e este teste já a cobre — nenhum botão e nenhum campo pode nascer
+/// pintado-e-morto, que é exatamente o bug que o smoke do Line/Arc pegou (Enio
+/// 2026-07-09): registrado, desenhado, e ausente da allowlist do `event.rs`.
 #[test]
-fn star_mode_and_points_slider_reach_the_tool() {
-    use ph2d_tool_vector::params::STAR_POINTS_MAX;
+fn every_shape_and_every_field_in_the_catalog_reaches_the_tool() {
+    use ph2d_tool_vector::shapes;
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
 
-    let m = host.apply_panel_event::<VectorPanel>(
-        &mut panel_state,
-        WidgetEvent::Click(ids::VECTOR_MODE_STAR),
-    );
-    assert_eq!(m, EventOutcome::Consumed, "Star mode button not wired");
-    drain_into_tool(&mut host, &mut tool);
-    assert_eq!(tool.mode(), DrawMode::Star);
+    for (i, d) in shapes::SHAPES.iter().enumerate() {
+        let outcome = host.apply_panel_event::<VectorPanel>(
+            &mut panel_state,
+            WidgetEvent::Click(ids::vector_shape_id(i)),
+        );
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "{:?}: botao do catalogo ignorado pelo painel",
+            d.kind
+        );
+        assert!(
+            drain_into_tool(&mut host, &mut tool),
+            "{:?}: o clique nunca virou ToolPanelEvent",
+            d.kind
+        );
+        assert_eq!(
+            tool.shape(),
+            d.kind,
+            "{:?}: a tool nao trocou de forma",
+            d.kind
+        );
+        assert_eq!(
+            tool.mode(),
+            DrawMode::Shape,
+            "{:?}: escolher a forma tem de armar o gesto",
+            d.kind
+        );
 
-    host.set_slider_value(ids::VECTOR_STAR_POINTS, 1.0);
-    let s = host.apply_panel_event::<VectorPanel>(
-        &mut panel_state,
-        WidgetEvent::ValueChanged(ids::VECTOR_STAR_POINTS),
-    );
-    assert_eq!(s, EventOutcome::Consumed, "Star Points slider not wired");
-    drain_into_tool(&mut host, &mut tool);
-    assert_eq!(tool.draw_config().star_points, STAR_POINTS_MAX);
+        // E cada campo declarado chega ao tool com o VALOR (nao um track 0..1).
+        for (fi, f) in d.fields.iter().enumerate() {
+            let id = ids::vector_shape_field_id(fi);
+            host.set_number_value(id, f.max);
+            let outcome = host
+                .apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::ValueChanged(id));
+            assert_eq!(
+                outcome,
+                EventOutcome::Consumed,
+                "{:?}.{}: campo ignorado pelo painel",
+                d.kind,
+                f.label
+            );
+            assert!(
+                drain_into_tool(&mut host, &mut tool),
+                "{:?}.{}: a edicao nunca virou ToolPanelEvent",
+                d.kind,
+                f.label
+            );
+            assert!(
+                (tool.draw_config().values[fi] - f.max).abs() < 1e-9,
+                "{:?}.{}: o valor nao chegou na tool",
+                d.kind,
+                f.label
+            );
+        }
+    }
 }
 
-/// The Polygon Sides slider must reach the tool's `polygon_sides` through the
-/// seam (same shape as the Width slider).
-#[test]
-fn sides_slider_drag_reaches_tool_through_seam() {
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-    let mut tool = VectorTool::default();
-
-    host.set_slider_value(ids::VECTOR_SIDES, 1.0);
-    let outcome = host.apply_panel_event::<VectorPanel>(
-        &mut panel_state,
-        WidgetEvent::ValueChanged(ids::VECTOR_SIDES),
-    );
-    assert_eq!(
-        outcome,
-        EventOutcome::Consumed,
-        "Sides slider edit ignored — `event.rs` arm for VECTOR_SIDES is missing"
-    );
-
-    drain_into_tool(&mut host, &mut tool);
-    assert_eq!(
-        tool.polygon_sides(),
-        SIDES_MAX,
-        "Sides slider→tool seam delivered the wrong side count"
-    );
-}
-
-/// A Boolean button (Union) is a DOCUMENT command, not a Style edit — the tool
-/// ignores it, so the seam proof is that the panel forwards the `Click` onto the
-/// bus as a `ToolPanelEvent` for the shell drain to apply.
 #[test]
 fn boolean_button_click_forwards_to_the_bus_for_the_shell() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();

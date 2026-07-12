@@ -84,6 +84,26 @@ pub fn regular_polygon(center: [f64; 2], rx: f64, ry: f64, sides: u32) -> VecPat
     }
 }
 
+/// Polígono regular com **canto redondo**: o mesmo de [`regular_polygon`], com cada
+/// quina arredondada por `corner_radius` (unidades de MUNDO). `0` ⇒ idêntico ao
+/// polígono de quinas vivas. O raio satura em meia-aresta (ver [`crate::corners`]).
+#[must_use]
+pub fn regular_polygon_rounded(
+    center: [f64; 2],
+    rx: f64,
+    ry: f64,
+    sides: u32,
+    corner_radius: f64,
+) -> VecPath {
+    let base = regular_polygon(center, rx, ry, sides);
+    if corner_radius <= 0.0 {
+        return base;
+    }
+    let pts: Vec<[f64; 2]> = base.verts.iter().map(|v| v.anchor).collect();
+    let radii = vec![corner_radius; pts.len()];
+    crate::corners::round_closed_corners(&pts, &radii)
+}
+
 /// Teto de pontas de uma estrela (clamp defensivo; o slider real fica em 3..12).
 pub const MAX_STAR_POINTS: u32 = 60;
 
@@ -114,6 +134,39 @@ pub fn star(center: [f64; 2], rx: f64, ry: f64, points: u32, inner_ratio: f64) -
         closed: true,
         ..VecPath::default()
     }
+}
+
+/// Estrela com as quinas arredondadas por DOIS raios independentes (unidades de
+/// MUNDO): `outer_radius` nas **pontas** (quinas convexas, os vértices de raio externo)
+/// e `inner_radius` nos **vales** (côncavas). Ambos `0` ⇒ idêntica a [`star`]. Cada
+/// raio satura em meia-aresta (ver [`crate::corners`]), então nem uma estrela fina
+/// consegue inverter.
+#[must_use]
+pub fn star_rounded(
+    center: [f64; 2],
+    rx: f64,
+    ry: f64,
+    points: u32,
+    inner_ratio: f64,
+    outer_radius: f64,
+    inner_radius: f64,
+) -> VecPath {
+    let base = star(center, rx, ry, points, inner_ratio);
+    if outer_radius <= 0.0 && inner_radius <= 0.0 {
+        return base;
+    }
+    let pts: Vec<[f64; 2]> = base.verts.iter().map(|v| v.anchor).collect();
+    // `star` alterna ponta (índice par) e vale (ímpar) — o raio segue a mesma paridade.
+    let radii: Vec<f64> = (0..pts.len())
+        .map(|i| {
+            if i % 2 == 0 {
+                outer_radius
+            } else {
+                inner_radius
+            }
+        })
+        .collect();
+    crate::corners::round_closed_corners(&pts, &radii)
 }
 
 /// Teto de voltas de uma espiral (clamp defensivo; o slider real fica em 1..8).

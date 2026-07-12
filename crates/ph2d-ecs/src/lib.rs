@@ -85,7 +85,7 @@ pub use transform_versioned::{
     TransformV1, TransformVersioned, load_transform, migrate_v1_to_v2, save_transform,
 };
 pub use vec_path_ref::VecPathRef;
-pub use vec_shape::{VecShape, VecTextParams};
+pub use vec_shape::{MAX_SHAPE_VALUES, VecShape, VecTextParams};
 pub use visibility::Visibility;
 pub use visibility_layer::{EnableMode, OnScreenEnabler, VisibilityLayer};
 

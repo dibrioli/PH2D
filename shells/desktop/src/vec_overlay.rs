@@ -55,13 +55,7 @@ mod tests {
     /// Nos modos de desenho/edição de nó, os dois overlays aparecem.
     #[test]
     fn draw_and_node_modes_show_both_overlays() {
-        for mode in [
-            DrawMode::Pen,
-            DrawMode::Node,
-            DrawMode::Rectangle,
-            DrawMode::Line,
-            DrawMode::Arc,
-        ] {
+        for mode in [DrawMode::Pen, DrawMode::Node, DrawMode::Shape] {
             let plan = vec_overlay_plan(true, mode);
             assert!(plan.edit, "{mode:?} desenha âncoras/handles");
             assert!(plan.snap_guides, "{mode:?} desenha guias de snap");

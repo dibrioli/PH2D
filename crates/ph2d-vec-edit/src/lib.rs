@@ -12,7 +12,8 @@
 //!   path novo. Botão direito finaliza o desenho ativo.
 
 pub mod shape;
-pub use shape::{ShapeKind, ShapeParams, ShapeTool};
+mod shape_constraint;
+pub use shape::{ShapeConstraint, ShapeTool};
 
 /// Pen STYLE + edit HISTORY (sibling module, HR-18 file-LOC cap).
 mod pen_support;

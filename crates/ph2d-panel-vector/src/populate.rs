@@ -16,24 +16,17 @@ use ph2d_editor_core::widget::{
     ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
 use ph2d_tool_vector::params::{
-    ARC_DEGREES_SLIDER_OFFSET, ARC_DEGREES_SLIDER_SCALE, DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE,
-    DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
-    GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE, OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE,
-    RADIUS_SLIDER_OFFSET, RADIUS_SLIDER_SCALE, SIDES_SLIDER_OFFSET, SIDES_SLIDER_SCALE,
-    SPIRAL_TURNS_SLIDER_OFFSET, SPIRAL_TURNS_SLIDER_SCALE, STAR_INNER_SLIDER_OFFSET,
-    STAR_INNER_SLIDER_SCALE, STAR_POINTS_SLIDER_OFFSET, STAR_POINTS_SLIDER_SCALE,
-    TEXT_LINE_HEIGHT_SLIDER_OFFSET, TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET,
-    TEXT_SIZE_SLIDER_SCALE, TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE,
-    TEXT_WEIGHT_SLIDER_OFFSET, TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
-    arc_degrees_to_slider, gap_to_slider, radius_to_slider, sides_to_slider,
-    spiral_turns_to_slider, star_inner_to_slider, star_points_to_slider,
+    DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE, DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE,
+    DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
+    OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, TEXT_LINE_HEIGHT_SLIDER_OFFSET,
+    TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE,
+    TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE, TEXT_WEIGHT_SLIDER_OFFSET,
+    TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, gap_to_slider,
     text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
     text_weight_to_slider,
 };
-use ph2d_tool_vector::{
-    DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS_PX, DEFAULT_POLYGON_SIDES, DEFAULT_SPIRAL_TURNS,
-    DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS, DEFAULT_STROKE_WIDTH_PX, px_to_slider,
-};
+use ph2d_tool_vector::shapes;
+use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, px_to_slider};
 
 /// Linear-gradient Angle slider mapping: track `0..1` → `0..360` degrees.
 const GRAD_ANGLE_SLIDER_SCALE: f32 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
@@ -93,7 +86,7 @@ pub fn populate(store: &mut WidgetStore) {
     populate_arrange(store);
 }
 
-/// Width + modos de desenho + os sliders per-forma (Sides / Star / RoundRect / Spiral).
+/// Width + os modos + o CATÁLOGO de formas (botões + campos genéricos).
 fn populate_shape(store: &mut WidgetStore) {
     // Width slider — seeded at the tool's default (`px_to_slider(3px)`).
     store.register(
@@ -104,7 +97,6 @@ fn populate_shape(store: &mut WidgetStore) {
             orientation: SliderOrientation::Horizontal,
         },
     );
-    // Px chip paired with the Width slider.
     store.register(
         ids::VECTOR_WIDTH_NUM,
         InteractiveState::NumberInput {
@@ -123,97 +115,38 @@ fn populate_shape(store: &mut WidgetStore) {
         WIDTH_SLIDER_OFFSET,
     );
 
-    // Draw-mode segmented buttons (Pen / Rect / Oval / Poly / Star / Round).
+    // Modos (Select / Node / Pen / Text) + Convert.
     button(store, ids::VECTOR_CONVERT_TO_CURVES);
     button(store, ids::VECTOR_MODE_SELECT);
     button(store, ids::VECTOR_MODE_NODE);
     button(store, ids::VECTOR_MODE_PEN);
-    button(store, ids::VECTOR_MODE_RECT);
-    button(store, ids::VECTOR_MODE_ELLIPSE);
-    button(store, ids::VECTOR_MODE_POLYGON);
-    button(store, ids::VECTOR_MODE_STAR);
-    button(store, ids::VECTOR_MODE_RRECT);
-    button(store, ids::VECTOR_MODE_SPIRAL);
-    button(store, ids::VECTOR_MODE_LINE);
-    button(store, ids::VECTOR_MODE_ARC);
     button(store, ids::VECTOR_MODE_TEXT);
 
-    // Polygon Sides slider — seeded at the tool's default (`sides_to_slider(5)`).
-    // Registered unconditionally (the store is mode-agnostic); the panel only
-    // paints/hit-registers it in Polygon mode.
-    store.register(
-        ids::VECTOR_SIDES,
-        InteractiveState::Slider {
-            state: SliderState::Normal,
-            value: sides_to_slider(DEFAULT_POLYGON_SIDES),
-            orientation: SliderOrientation::Horizontal,
-        },
-    );
-    store.register(
-        ids::VECTOR_SIDES_NUM,
-        InteractiveState::NumberInput {
-            state: TextInputState::Normal,
-            value: f64::from(DEFAULT_POLYGON_SIDES),
-            buffer: format!("{DEFAULT_POLYGON_SIDES}"),
-            caret: 0,
-            last_committed: f64::from(DEFAULT_POLYGON_SIDES),
-            selection_anchor: None,
-        },
-    );
-    store.link_slider_number_mapped(
-        ids::VECTOR_SIDES,
-        ids::VECTOR_SIDES_NUM,
-        SIDES_SLIDER_SCALE,
-        SIDES_SLIDER_OFFSET,
-    );
+    // O CATÁLOGO: um botão por forma + uma aba por família. Registrados por ÍNDICE —
+    // uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.
+    for i in 0..shapes::SHAPES.len() {
+        button(store, ids::vector_shape_id(i));
+    }
+    for i in 0..shapes::ALL_GROUPS.len() {
+        button(store, ids::vector_shape_group_id(i));
+    }
 
-    // Star Points + Inner sliders (shown in Star mode) and RoundRect Radius
-    // slider (shown in RoundRect mode) — seeded at the tool defaults.
-    slider_chip(
-        store,
-        ids::VECTOR_STAR_POINTS,
-        ids::VECTOR_STAR_POINTS_NUM,
-        star_points_to_slider(DEFAULT_STAR_POINTS),
-        f64::from(DEFAULT_STAR_POINTS),
-        STAR_POINTS_SLIDER_SCALE,
-        STAR_POINTS_SLIDER_OFFSET,
-    );
-    slider_chip(
-        store,
-        ids::VECTOR_STAR_INNER,
-        ids::VECTOR_STAR_INNER_NUM,
-        star_inner_to_slider(DEFAULT_STAR_INNER),
-        DEFAULT_STAR_INNER,
-        STAR_INNER_SLIDER_SCALE,
-        STAR_INNER_SLIDER_OFFSET,
-    );
-    slider_chip(
-        store,
-        ids::VECTOR_RRECT_RADIUS,
-        ids::VECTOR_RRECT_RADIUS_NUM,
-        radius_to_slider(DEFAULT_CORNER_RADIUS_PX),
-        DEFAULT_CORNER_RADIUS_PX,
-        RADIUS_SLIDER_SCALE,
-        RADIUS_SLIDER_OFFSET,
-    );
-    slider_chip(
-        store,
-        ids::VECTOR_SPIRAL_TURNS,
-        ids::VECTOR_SPIRAL_TURNS_NUM,
-        spiral_turns_to_slider(DEFAULT_SPIRAL_TURNS),
-        f64::from(DEFAULT_SPIRAL_TURNS),
-        SPIRAL_TURNS_SLIDER_SCALE,
-        SPIRAL_TURNS_SLIDER_OFFSET,
-    );
-    slider_chip(
-        store,
-        ids::VECTOR_ARC_DEGREES,
-        ids::VECTOR_ARC_DEGREES_NUM,
-        arc_degrees_to_slider(DEFAULT_ARC_DEGREES),
-        DEFAULT_ARC_DEGREES,
-        ARC_DEGREES_SLIDER_SCALE,
-        ARC_DEGREES_SLIDER_OFFSET,
-    );
+    // Os campos de parâmetro (`MAX_SHAPE_FIELD_SLOTS`): caixas numéricas genéricas. A
+    // FAIXA de cada uma depende da forma em foco, então a shell a re-registra quando o
+    // foco muda (`set_number_range`) — aqui só existem os slots.
+    for i in 0..ids::MAX_SHAPE_FIELD_SLOTS {
+        store.register(
+            ids::vector_shape_field_id(i),
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::from("0"),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+    }
 
     // Text "Size" slider (world units) — shown only in Text mode; seeded at the
     // default glyph size. The shell drain maps the track back to a size.

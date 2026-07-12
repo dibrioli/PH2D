@@ -118,29 +118,16 @@ pub const VECTOR_DASH_NUM: NodeId = hash_node_id("vector.dash_num");
 pub const VECTOR_GAP: NodeId = hash_node_id("vector.gap");
 pub const VECTOR_GAP_NUM: NodeId = hash_node_id("vector.gap_num");
 
-// ── Draw-mode selector (ADR-0108 Fase 1 — Pen / shape tools) ─────────────────
-// A segmented row that switches the canvas gesture: Pen (draw + edit anchors)
-// vs a drag-to-size shape (Rectangle / Ellipse / Polygon). The tool owns the
-// mode (`VectorTool::mode`); each button's `Click` routes through the seam to
-// `handle_panel_event`, mirror of the retired `vector_inspector.shape.*` ids.
+// ── Seletor de MODO (ADR-0108/0112) ──────────────────────────────────────────
+// Quatro modos, e só: Select (gizmo) · Node (âncoras) · Pen (cria) · Text. As
+// FORMAS não são modos — são um catálogo (`vector_shape_id`), e escolher uma põe a
+// tool no modo Shape. Sem isso, cada forma nova exigiria um id e um variante de modo.
 /// Seta preta — seleciona/transforma a forma pelo gizmo (ADR-0112).
 pub const VECTOR_MODE_SELECT: NodeId = hash_node_id("vector.mode.select");
 /// Seta branca — edita âncoras/handles, sem gizmo (ADR-0112).
 pub const VECTOR_MODE_NODE: NodeId = hash_node_id("vector.mode.node");
-/// Linha reta (segmento aberto).
-pub const VECTOR_MODE_LINE: NodeId = hash_node_id("vector.mode.line");
-/// Arco de elipse (aberto), span em `VECTOR_ARC_DEGREES`.
-pub const VECTOR_MODE_ARC: NodeId = hash_node_id("vector.mode.arc");
-/// Slider do span do arco (graus).
-pub const VECTOR_ARC_DEGREES: NodeId = hash_node_id("vector.arc.degrees");
-pub const VECTOR_ARC_DEGREES_NUM: NodeId = hash_node_id("vector.arc.degrees_num");
+/// Caneta — cria paths.
 pub const VECTOR_MODE_PEN: NodeId = hash_node_id("vector.mode.pen");
-pub const VECTOR_MODE_RECT: NodeId = hash_node_id("vector.mode.rect");
-pub const VECTOR_MODE_ELLIPSE: NodeId = hash_node_id("vector.mode.ellipse");
-pub const VECTOR_MODE_POLYGON: NodeId = hash_node_id("vector.mode.polygon");
-pub const VECTOR_MODE_STAR: NodeId = hash_node_id("vector.mode.star");
-pub const VECTOR_MODE_RRECT: NodeId = hash_node_id("vector.mode.rrect");
-pub const VECTOR_MODE_SPIRAL: NodeId = hash_node_id("vector.mode.spiral");
 /// Text mode: clica no canvas e digita (glyphs viram VecPaths). Botão do mode row.
 pub const VECTOR_MODE_TEXT: NodeId = hash_node_id("vector.mode.text");
 /// Text "Size" slider (world units) — shown only in Text mode; drives the glyph
@@ -201,24 +188,38 @@ pub const MAX_TEXT_VARIATION_AXES: usize = 6;
 pub fn vector_text_axis_id(index: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.text.axis.{index}"))
 }
-/// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
-/// `VectorTool::polygon_sides`.
-pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");
-/// Integer chip paired with [`VECTOR_SIDES`].
-pub const VECTOR_SIDES_NUM: NodeId = hash_node_id("vector.sides_num");
-/// Star "Points" slider (3..12) + "Inner" ratio slider (0.1..0.9) — shown only
-/// in Star mode. Rounded-rect "Radius" slider (0..40 px) — shown only in
-/// RoundRect mode. Each drives the matching `VectorTool` field.
-pub const VECTOR_STAR_POINTS: NodeId = hash_node_id("vector.star_points");
-pub const VECTOR_STAR_POINTS_NUM: NodeId = hash_node_id("vector.star_points_num");
-pub const VECTOR_STAR_INNER: NodeId = hash_node_id("vector.star_inner");
-pub const VECTOR_STAR_INNER_NUM: NodeId = hash_node_id("vector.star_inner_num");
-pub const VECTOR_RRECT_RADIUS: NodeId = hash_node_id("vector.rrect_radius");
-pub const VECTOR_RRECT_RADIUS_NUM: NodeId = hash_node_id("vector.rrect_radius_num");
-/// Spiral "Turns" slider (1..8) — shown only in Spiral mode; drives
-/// `VectorTool::spiral_turns`.
-pub const VECTOR_SPIRAL_TURNS: NodeId = hash_node_id("vector.spiral_turns");
-pub const VECTOR_SPIRAL_TURNS_NUM: NodeId = hash_node_id("vector.spiral_turns_num");
+// ── Formas: seletor + campos GENÉRICOS (catálogo data-driven) ───────────────
+// Com 25+ formas, um id por forma e um id por parâmetro seria insustentável (e o
+// painel, um pântano de `match`). Os ids são GERADOS por índice: o painel itera o
+// catálogo (`ph2d_tool_vector::shapes`) e pinta o botão `i` e o campo `j`; a tool
+// resolve o índice de volta para a forma / o parâmetro. Uma forma nova não precisa
+// de id nenhum.
+
+/// Botão da forma `index` no catálogo (o seletor de formas do painel).
+#[must_use]
+pub fn vector_shape_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.shape.{index}"))
+}
+
+/// Aba da família `index` (Basic / Round / Arrows / Flow / Bubbles / Symbols…).
+#[must_use]
+pub fn vector_shape_group_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.shape.group.{index}"))
+}
+
+/// Campo numérico do parâmetro `index` da forma ativa (o rótulo e a faixa vêm do
+/// catálogo). Teto = `ph2d_vec_scene::MAX_SHAPE_FIELDS`.
+#[must_use]
+pub fn vector_shape_field_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.shape.field.{index}"))
+}
+
+/// Teto de campos de forma que o painel registra (espelha `MAX_SHAPE_FIELDS`).
+pub const MAX_SHAPE_FIELD_SLOTS: usize = 8;
+/// Teto de botões de forma que o painel registra (o catálogo pode crescer até aqui).
+pub const MAX_SHAPE_SLOTS: usize = 64;
+/// Teto de abas de família.
+pub const MAX_SHAPE_GROUP_SLOTS: usize = 12;
 
 // ── Boolean ops (ADR-0108 Fase 1 — edit-time union/subtract/intersect) ───────
 // Act on the DOCUMENT (shell-owned `vec_scene`), NOT the tool's Style: the

@@ -10,7 +10,9 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::zones::Rect;
+use ph2d_tool_vector::shapes::ShapeGroup;
 use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot, VertexType};
+use ph2d_vec_scene::ShapeKind;
 use ph2d_vector::BezPath;
 use std::cell::{Cell, RefCell};
 
@@ -55,6 +57,12 @@ thread_local! {
     /// Mostrar a seção Text: modo Text OU um objeto de TEXTO selecionado (as configs
     /// do texto ficam visíveis enquanto ele for texto — não-curva — mesmo no Select).
     static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
+    /// A forma cujos PARÂMETROS o painel desenha: a da forma VIVA selecionada, quando há
+    /// uma (os campos então a editam — Live Shape). `None` = sem forma viva na seleção;
+    /// o foco vira a forma ATIVA do catálogo (o default do próximo traço).
+    static CURRENT_SHAPE_FOCUS: Cell<Option<ShapeKind>> = const { Cell::new(None) };
+    /// A aba de família aberta no seletor. `None` = segue a forma ativa.
+    static CURRENT_SHAPE_GROUP: Cell<Option<ShapeGroup>> = const { Cell::new(None) };
     /// Semente ONE-SHOT dos sliders de texto `[size, weight, line_height, tracking]`,
     /// publicada quando o ALVO muda (sessão nova / outro objeto selecionado). O paint
     /// a consome e escreve no store — depois o store é a fonte (senão o seed brigaria
@@ -291,6 +299,69 @@ pub(crate) fn text_visible() -> bool {
     CURRENT_TEXT_VISIBLE.with(Cell::get)
 }
 
+/// Publica a forma em FOCO: `Some(kind)` = há uma forma VIVA selecionada (os campos
+/// dela aparecem e a editam, mesmo na ferramenta Select); `None` = os campos são os da
+/// forma ativa do catálogo. A shell resolve o alvo e semeia os campos.
+pub fn set_current_shape_focus(kind: Option<ShapeKind>) {
+    CURRENT_SHAPE_FOCUS.with(|c| c.set(kind));
+}
+
+/// A forma em foco deste frame (`None` ⇒ cai na forma ativa do catálogo).
+pub(crate) fn current_shape_focus() -> Option<ShapeKind> {
+    CURRENT_SHAPE_FOCUS.with(Cell::get)
+}
+
+/// A aba de família aberta (o painel a define no clique; `None` = segue a forma ativa).
+pub(crate) fn current_shape_group() -> Option<ShapeGroup> {
+    CURRENT_SHAPE_GROUP.with(Cell::get)
+}
+
+pub(crate) fn set_current_shape_group(g: Option<ShapeGroup>) {
+    CURRENT_SHAPE_GROUP.with(|c| c.set(g));
+}
+
+/// **A seleção manda sobre o catálogo:** os campos que o painel desenha são os da forma
+/// VIVA selecionada, quando há uma; senão, os da forma ativa. É o que faz os parâmetros
+/// aparecerem — e editarem a forma da tela — mesmo na ferramenta **Select** (que não tem
+/// forma nenhuma de si). Sem esta regra o ciclo paramétrico fica invisível: o motor
+/// re-cozinha, mas nenhum campo é pintado para acioná-lo.
+#[must_use]
+pub(crate) fn shape_focus(published: Option<ShapeKind>, active: ShapeKind) -> ShapeKind {
+    published.unwrap_or(active)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ShapeKind, shape_focus};
+
+    /// O caso que define a feature: em Select (que não tem forma própria), a forma viva
+    /// selecionada traz os campos dela — é assim que se edita um polígono já desenhado.
+    #[test]
+    fn a_selected_live_shape_shows_its_fields_even_in_select() {
+        assert_eq!(
+            shape_focus(Some(ShapeKind::Polygon), ShapeKind::Rectangle),
+            ShapeKind::Polygon
+        );
+    }
+
+    /// Sem forma viva selecionada, os campos são os da forma ATIVA do catálogo — o
+    /// default do próximo traço.
+    #[test]
+    fn without_a_live_shape_the_fields_are_the_active_shapes() {
+        assert_eq!(shape_focus(None, ShapeKind::Star), ShapeKind::Star);
+    }
+
+    /// Conflito (catálogo em Polygon, estrela selecionada): a SELEÇÃO manda — o painel
+    /// mostra o que está na tela, não o que a caneta faria a seguir.
+    #[test]
+    fn the_selection_wins_over_the_active_shape() {
+        assert_eq!(
+            shape_focus(Some(ShapeKind::Star), ShapeKind::Polygon),
+            ShapeKind::Star
+        );
+    }
+}
+
 /// Publica a semente ONE-SHOT dos sliders de texto (só quando o alvo muda).
 pub fn set_current_text_seed(seed: Option<[f64; 4]>) {
     TEXT_SEED.with(|c| c.set(seed));
@@ -354,6 +425,22 @@ pub fn set_current_text_axes(axes: Vec<TextAxisSlot>) {
 /// Roda `f` com os eixos publicados (sem clonar o `Vec`).
 pub(crate) fn with_text_axes<R>(f: impl FnOnce(&[TextAxisSlot]) -> R) -> R {
     CURRENT_TEXT_AXES.with(|c| f(&c.borrow()))
+}
+
+/// Índice do parâmetro de forma cujo id de campo é `id` (`None` se não for um).
+pub(crate) fn shape_field_index(id: NodeId) -> Option<usize> {
+    (0..crate::ids::MAX_SHAPE_FIELD_SLOTS).find(|&i| crate::ids::vector_shape_field_id(i) == id)
+}
+
+/// Índice da forma no catálogo cujo id de botão é `id`.
+pub(crate) fn shape_index(id: NodeId) -> Option<usize> {
+    (0..ph2d_tool_vector::shapes::SHAPES.len()).find(|&i| crate::ids::vector_shape_id(i) == id)
+}
+
+/// Índice da família cujo id de aba é `id`.
+pub(crate) fn shape_group_index(id: NodeId) -> Option<usize> {
+    (0..ph2d_tool_vector::shapes::ALL_GROUPS.len())
+        .find(|&i| crate::ids::vector_shape_group_id(i) == id)
 }
 
 /// Índice do eixo de variação cujo id de campo é `id` (`None` se não for um). Casa

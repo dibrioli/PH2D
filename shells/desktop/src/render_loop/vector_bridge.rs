@@ -118,6 +118,23 @@ pub(crate) fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMod
     }
 }
 
+/// A tool ADOTA os parâmetros (unidade de UI) da forma `kind`. A shell chama isto quando
+/// o usuário seleciona uma forma VIVA: eles viram os correntes DAQUELA forma, então o
+/// painel (que pinta a partir da tool) para de mentir e a próxima desenhada os herda.
+/// Downcast confinado a este bridge, como o [`set_mode`].
+pub(crate) fn adopt_shape_values(
+    tools: &mut ToolRegistry,
+    kind: ph2d_vec_scene::ShapeKind,
+    values: ph2d_vec_scene::ShapeValues,
+) {
+    if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_vector::VectorTool>()
+    }) {
+        tool.adopt_shape_values(kind, values);
+    }
+}
+
 /// Per-frame Vector-tool plumbing. Safe to call every frame; a no-op when the
 /// Vector tool is absent from the registry.
 /// Returns the tool's current [`VectorDrawConfig`] so the shell can mirror it

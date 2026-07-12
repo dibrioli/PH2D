@@ -47,49 +47,34 @@ pub struct VecTextParams {
     pub axes: Vec<([u8; 4], f32)>,
 }
 
+/// Teto de parâmetros de uma forma. **Espelha `ph2d_vec_scene::MAX_SHAPE_FIELDS`** — o
+/// ECS não depende do vetor (usa só primitivos), então o número é duplicado aqui e um
+/// gate na shell prova que os dois nunca divergem.
+pub const MAX_SHAPE_VALUES: usize = 8;
+
 /// Os parâmetros de uma forma vetorial viva. A geometria LOCAL do `VecPath` é uma
-/// função pura destes parâmetros (a pose fica no `Transform` da entidade, ADR-0111);
-/// `w`/`h` são as extensões locais em mundo. Ausência do componente = path cru.
+/// função pura destes parâmetros (a pose fica no `Transform` da entidade, ADR-0111).
+/// Ausência do componente = path cru (desenhado com a caneta, ou já convertido).
 #[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum VecShape {
-    Rectangle {
+    /// Forma paramétrica (retângulo, elipse, polígono, estrela, seta, balão, …) —
+    /// **uma variante só**, porque a forma é DADO:
+    ///
+    /// - `kind` = o discriminante do catálogo (`ph2d_vec_scene::ShapeKind as u16`;
+    ///   append-only, é o que fica gravado no save);
+    /// - `w`/`h` = a caixa AUTORADA pelo gesto, **com sinal** (a reta precisa da direção);
+    /// - `values` = os parâmetros da forma em unidades de **MUNDO**, na ordem que o
+    ///   catálogo declara. Campos não usados ficam em zero.
+    ///
+    /// Uma forma nova não acrescenta variante aqui: entra no catálogo e já é salva,
+    /// desfeita e re-cozida de graça.
+    Param {
+        kind: u16,
         w: f64,
         h: f64,
+        values: [f64; MAX_SHAPE_VALUES],
     },
-    RoundRect {
-        w: f64,
-        h: f64,
-        radius: f64,
-    },
-    Ellipse {
-        w: f64,
-        h: f64,
-    },
-    Polygon {
-        w: f64,
-        h: f64,
-        sides: u32,
-    },
-    Star {
-        w: f64,
-        h: f64,
-        points: u32,
-        inner_ratio: f64,
-    },
-    Spiral {
-        w: f64,
-        h: f64,
-        turns: u32,
-    },
-    Line {
-        w: f64,
-        h: f64,
-    },
-    Arc {
-        w: f64,
-        h: f64,
-        degrees: f64,
-    },
+    /// O texto é a exceção: os parâmetros dele não são números (string, família, eixos).
     Text(VecTextParams),
 }
 

@@ -67,7 +67,7 @@ pub(crate) fn upsert_text_shape(sim: &mut SimWorld, map: &VecEntityMap, edit: &V
 
 /// `TextLayout` + a `location` de eixos ([wght] ++ extras) a partir dos parâmetros
 /// primitivos — o inverso de [`text_params`], para re-cozinhar no Convert.
-fn layout_of_params(p: &VecTextParams) -> TextLayout {
+pub(crate) fn layout_of_params(p: &VecTextParams) -> TextLayout {
     TextLayout {
         size: p.size,
         line_height: p.line_height,
@@ -80,7 +80,7 @@ fn layout_of_params(p: &VecTextParams) -> TextLayout {
     }
 }
 
-fn axes_of_params(p: &VecTextParams) -> Vec<(AxisTag, f32)> {
+pub(crate) fn axes_of_params(p: &VecTextParams) -> Vec<(AxisTag, f32)> {
     let mut axes = Vec::with_capacity(1 + p.axes.len());
     axes.push((AxisTag::WEIGHT, p.weight));
     axes.extend(p.axes.iter().map(|(b, v)| (AxisTag::new(*b), *v)));
@@ -338,6 +338,7 @@ mod tests {
     fn black() -> Paint {
         Paint::solid(Rgba8::new(0, 0, 0, 255))
     }
+
     /// O texto vivo é UM objeto (compound + `VecShape::Text`); "Convert to Curves"
     /// explode num grupo de paths por-letra, some com o compound e re-seleciona os
     /// glyphs. É o coração do modelo Live Shapes para texto.

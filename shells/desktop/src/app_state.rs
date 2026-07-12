@@ -678,10 +678,20 @@ pub(crate) struct App {
     /// Família de fonte corrente do texto (`None` = InterVariable embutida). Os botões
     /// `<`/`>` do painel ciclam; persiste entre sessões.
     pub(crate) vec_text_family: Option<String>,
+    /// Último clique primário no canvas (instante + posição de tela) — só para detectar
+    /// o DUPLO-clique que reabre um texto no modo Select. O canvas não emite
+    /// `DoubleClick` (o evento do chrome é por-widget), então o par é rastreado aqui.
+    pub(crate) vec_last_canvas_click: Option<(std::time::Instant, (f32, f32))>,
     /// O último ALVO das configs de texto do painel (sessão ou objeto selecionado).
     /// Quando muda, a shell publica a semente dos sliders — uma vez (senão o seed
     /// brigaria com o arrasto).
     pub(crate) vec_text_last_target: Option<ph2d_vec_scene::VecPathId>,
+    /// O último ALVO das seções de FORMA do painel (a forma viva paramétrica
+    /// selecionada). Mesma regra do texto: quando muda, a shell semeia os sliders e a
+    /// tool adota os params — uma vez. Zerado no restore (undo/load) porque a forma
+    /// pode ter voltado com outros params sob o MESMO id: sem re-semear, o painel
+    /// mostraria o valor desfeito.
+    pub(crate) vec_shape_last_target: Option<ph2d_vec_scene::VecPathId>,
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,

@@ -1135,34 +1135,23 @@ pub(crate) fn apply_vec_transform(
 
 /// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape
 /// gesture). Lets the canvas dispatch route Down/Move/Up to the pen or the
-/// shape tool.
-fn shape_kind_for_mode(mode: ph2d_tool_vector::DrawMode) -> Option<ph2d_vec_edit::ShapeKind> {
-    use ph2d_tool_vector::DrawMode;
-    use ph2d_vec_edit::ShapeKind;
-    match mode {
-        // Select/Node não desenham (ADR-0112); Pen desenha à mão livre; Text é
-        // digitação (tratada à parte no shell), não uma shape-tool.
-        DrawMode::Select | DrawMode::Node | DrawMode::Pen | DrawMode::Text => None,
-        DrawMode::Rectangle => Some(ShapeKind::Rectangle),
-        DrawMode::Ellipse => Some(ShapeKind::Ellipse),
-        DrawMode::Polygon => Some(ShapeKind::Polygon),
-        DrawMode::Star => Some(ShapeKind::Star),
-        DrawMode::RoundRect => Some(ShapeKind::RoundRect),
-        DrawMode::Spiral => Some(ShapeKind::Spiral),
-        DrawMode::Line => Some(ShapeKind::Line),
-        DrawMode::Arc => Some(ShapeKind::Arc),
-    }
+/// A forma que o gesto de canvas desenha: só no modo **Shape**, e é a forma ATIVA do
+/// catálogo. Antes cada forma era um modo (e este `match` crescia com o catálogo).
+#[must_use]
+fn shape_kind_for_mode(
+    cfg: &ph2d_tool_vector::VectorDrawConfig,
+) -> Option<ph2d_vec_scene::ShapeKind> {
+    (cfg.mode == ph2d_tool_vector::DrawMode::Shape).then_some(cfg.shape)
 }
 
-/// The shape parameters (sides / star / radius / spiral) from the mirrored tool config.
-fn shape_params(cfg: &ph2d_tool_vector::VectorDrawConfig) -> ph2d_vec_edit::ShapeParams {
-    ph2d_vec_edit::ShapeParams {
-        sides: cfg.polygon_sides,
-        star_points: cfg.star_points,
-        star_inner_ratio: cfg.star_inner_ratio,
-        corner_radius_px: cfg.corner_radius_px,
-        spiral_turns: cfg.spiral_turns,
-        arc_degrees: cfg.arc_degrees,
+/// As restrições do gesto de forma a partir do teclado — as de todo editor vetorial:
+/// **Shift** trava a proporção **1:1** (quadrado / círculo; numa reta, snap de 45°) e
+/// **Alt** desenha **a partir do centro**. Combinam.
+#[must_use]
+fn shape_constraint(mods: winit::keyboard::ModifiersState) -> ph2d_vec_edit::ShapeConstraint {
+    ph2d_vec_edit::ShapeConstraint {
+        uniform: mods.shift_key(),
+        from_center: mods.alt_key(),
     }
 }
 
@@ -1172,7 +1161,7 @@ fn shape_params(cfg: &ph2d_tool_vector::VectorDrawConfig) -> ph2d_vec_edit::Shap
 /// a panel button (mode switch / boolean / close) while in a shape mode would
 /// silently swallow the click, leaving every button dead.
 fn shape_up_consumes(mode: ph2d_tool_vector::DrawMode, shape_active: bool) -> bool {
-    shape_kind_for_mode(mode).is_some() && shape_active
+    mode == ph2d_tool_vector::DrawMode::Shape && shape_active
 }
 
 /// O `anchor` e o meio-tamanho **intrínsecos** de um objeto do canvas, na linguagem
@@ -1289,6 +1278,13 @@ impl App {
             // Motion Nodes M0.T3 — Alt cache, folded into `GestureMods.alt` for
             // graph gestures (mirror of shift/cmd; pointer events carry no mods).
             hero.store.set_alt_held(self.modifiers.alt_key());
+        }
+        // Shift (1:1) / Alt (do centro) durante um gesto de FORMA: reconstrói o preview
+        // na hora, sem esperar o próximo Move — apertar a tecla e a forma não reagir é
+        // o comportamento errado (o usuário costuma apertar com o mouse parado).
+        let c = shape_constraint(self.modifiers);
+        if let Some(gfx) = self.gfx.as_mut() {
+            self.vec_shape.set_constraint(&mut gfx.vec_scene, c);
         }
     }
 
@@ -1847,7 +1843,8 @@ impl App {
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
-        self.vec_shape.on_drag(&mut gfx.vec_scene, p)
+        self.vec_shape
+            .on_drag(&mut gfx.vec_scene, p, shape_constraint(self.modifiers))
     }
 
     /// The clip frame under `(x, y)` if it's inside the overlay waveform — for
@@ -2319,6 +2316,26 @@ impl App {
                 return;
             }
         }
+        // Duplo-clique num TEXTO no modo Select ⇒ entra na edição dele (o gesto padrão
+        // de todo editor vetorial). Antes do bloco abaixo porque no Select a tool NÃO
+        // captura o canvas — sem isto a pressão iria para o gizmo e arrastaria a forma.
+        //
+        // **NÃO use `on_canvas` aqui**: ele exige o `hit_index` VAZIO sob o cursor, e o
+        // gizmo REGISTRA os hits dele no `hit_index` (as alças + o interior "Translate").
+        // Como o 1º clique do par SELECIONA o objeto, o gizmo passa a cobrir a forma —
+        // então no 2º clique `on_canvas` é falso e o duplo-clique nunca dispararia (o bug
+        // do 1º smoke). O que vale aqui é: fora de painel, e o único widget sob o cursor
+        // pode ser o gizmo — que é exatamente o que está por cima do texto.
+        if self.vector_tool_active()
+            && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && kind == PointerKind::Down
+            && !menu_open_before
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
+            && self.vec_text_double_click(evt.x, evt.y)
+        {
+            return;
+        }
         // ADR-0112: no modo **Select** a ferramenta não captura o canvas — o clique
         // cai no caminho de sempre (picking de sprite + gizmo), e é assim que uma
         // forma vetorial se transforma. Só Node e os modos de desenho entram aqui.
@@ -2412,8 +2429,7 @@ impl App {
                         }
                         return;
                     }
-                    let params = shape_params(&self.vec_draw_config);
-                    let shape_kind = shape_kind_for_mode(self.vec_draw_config.mode);
+                    let shape_kind = shape_kind_for_mode(&self.vec_draw_config);
                     // Alt held → the Pen breaks the tangent when grabbing a handle.
                     let alt = self.modifiers.alt_key();
                     // Snap targets for THIS gesture: the whole scene as it stands.
@@ -2468,12 +2484,21 @@ impl App {
                                 // A ferramenta de forma não faz hit-test: o canto pode
                                 // ser encaixado antes de entrar.
                                 let p = snap([w[0] as f64, w[1] as f64]);
+                                // Os parâmetros cruzam a fronteira de unidade AQUI: a
+                                // tool os guarda como o usuário os digita (px nos
+                                // raios), a geometria só fala mundo.
+                                let values = ph2d_tool_vector::shapes::to_world(
+                                    kind,
+                                    &self.vec_draw_config.values,
+                                    px_to_world,
+                                );
                                 self.vec_shape.on_press(
                                     &mut gfx.vec_scene,
                                     kind,
-                                    params,
+                                    values,
                                     p,
                                     px_to_world,
+                                    shape_constraint(self.modifiers),
                                 );
                             }
                         }
@@ -2523,7 +2548,7 @@ impl App {
                         }
                         return;
                     }
-                    if shape_kind_for_mode(self.vec_draw_config.mode).is_none() {
+                    if shape_kind_for_mode(&self.vec_draw_config).is_none() {
                         // Pen: the release ends a handle drag / grab.
                         let consumed = self.vec_pen.on_release();
                         if let Some(gfx) = self.gfx.as_mut() {
@@ -2595,7 +2620,7 @@ impl App {
                     // panel buttons receive their Up.
                 }
                 (ph2d_host::PointerButton::Secondary, PointerKind::Down) if on_canvas => {
-                    if shape_kind_for_mode(self.vec_draw_config.mode).is_none() {
+                    if shape_kind_for_mode(&self.vec_draw_config).is_none() {
                         self.vec_pen.finish();
                     } else {
                         if let Some(gfx) = self.gfx.as_mut() {
@@ -3649,7 +3674,7 @@ mod tests {
     };
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_boolean::BoolOp;
-    use ph2d_vec_edit::ShapeKind;
+    use ph2d_vec_scene::ShapeKind;
     use ph2d_vec_scene::{FlipAxis, Rotate90, VertexKind, ZOrder};
 
     #[test]
@@ -3915,14 +3940,15 @@ mod tests {
         assert!(!shape_up_consumes(DrawMode::Pen, false));
         assert!(!shape_up_consumes(DrawMode::Pen, true));
         // In a shape mode, a live drag consumes the Up (finalize the shape)...
-        assert!(shape_up_consumes(DrawMode::Rectangle, true));
-        assert!(shape_up_consumes(DrawMode::Polygon, true));
+        assert!(shape_up_consumes(DrawMode::Shape, true));
         // ...but with NO active drag the Up must fall through so a panel-button
         // click (mode switch / boolean / close) is not swallowed. This is the
         // exact regression that made every button dead after entering Rect mode.
-        assert!(!shape_up_consumes(DrawMode::Rectangle, false));
-        assert!(!shape_up_consumes(DrawMode::Ellipse, false));
-        assert!(!shape_up_consumes(DrawMode::Polygon, false));
+        assert!(!shape_up_consumes(DrawMode::Shape, false));
+        assert!(
+            !shape_up_consumes(DrawMode::Pen, true),
+            "a caneta nao e forma"
+        );
     }
 
     #[test]
@@ -3947,26 +3973,27 @@ mod tests {
         assert_eq!(vec_bool_op_for_id(ph2d_editor::ids::VECTOR_MODE_PEN), None);
     }
 
+    /// O gesto de canvas só desenha no modo **Shape**, e o que ele desenha é a forma
+    /// ATIVA do catálogo — não há mais um modo por forma. Com vinte e cinco formas, o
+    /// `match` antigo (um braço por forma) seria o pior lugar para esquecer uma.
     #[test]
-    fn draw_mode_maps_to_shape_kind_pen_is_none() {
-        assert_eq!(shape_kind_for_mode(DrawMode::Pen), None);
-        assert_eq!(
-            shape_kind_for_mode(DrawMode::Rectangle),
-            Some(ShapeKind::Rectangle)
-        );
-        assert_eq!(
-            shape_kind_for_mode(DrawMode::Ellipse),
-            Some(ShapeKind::Ellipse)
-        );
-        assert_eq!(
-            shape_kind_for_mode(DrawMode::Polygon),
-            Some(ShapeKind::Polygon)
-        );
-        assert_eq!(shape_kind_for_mode(DrawMode::Star), Some(ShapeKind::Star));
-        assert_eq!(
-            shape_kind_for_mode(DrawMode::RoundRect),
-            Some(ShapeKind::RoundRect)
-        );
+    fn only_shape_mode_draws_and_it_draws_the_active_shape() {
+        use ph2d_tool_vector::VectorDrawConfig;
+        let mut cfg = VectorDrawConfig::default();
+        for m in [
+            DrawMode::Select,
+            DrawMode::Node,
+            DrawMode::Pen,
+            DrawMode::Text,
+        ] {
+            cfg.mode = m;
+            assert_eq!(shape_kind_for_mode(&cfg), None, "{m:?} nao desenha forma");
+        }
+        cfg.mode = DrawMode::Shape;
+        for k in [ShapeKind::Rectangle, ShapeKind::Star, ShapeKind::Arc] {
+            cfg.shape = k;
+            assert_eq!(shape_kind_for_mode(&cfg), Some(k));
+        }
     }
 
     // ─── boolean/compound: a costura shell ↔ documento ────────────────────────

@@ -23,11 +23,45 @@
 use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
+use ph2d_vec_scene::{ALL_SHAPES, MAX_SHAPE_FIELDS, ShapeKind, ShapeValues};
+
+/// Teto de formas no catálogo (o array de valores por-forma é indexado pelo
+/// discriminante). Cresce quando o catálogo cresce; um gate prova que cabe.
+const MAX_SHAPES: usize = 64;
+
+/// Os valores default de cada forma, indexados pelo discriminante — o estado inicial do
+/// "último usado" de cada uma. Os raios chegam do catálogo em MUNDO e a tool os guarda
+/// em UI (px), então a semente do painel os converte na fronteira (a tool não conhece a
+/// câmera): o default de raio nasce ZERO em px e o usuário digita o que quiser.
+fn default_shape_values() -> [ShapeValues; MAX_SHAPES] {
+    let mut out = [[0.0; MAX_SHAPE_FIELDS]; MAX_SHAPES];
+    for &k in ALL_SHAPES {
+        let mut v = k.defaults();
+        // Campos em px: o default do catálogo é mundo — não faz sentido em px sem a
+        // câmera. Nasce em 0 (canto vivo) e o usuário autora.
+        for (i, f) in crate::shapes::desc(k).fields.iter().enumerate() {
+            if f.unit == crate::shapes::FieldUnit::Px {
+                v[i] = 0.0;
+            }
+        }
+        out[k.as_u16() as usize] = v;
+    }
+    out
+}
+
+/// O índice do parâmetro cujo id de campo é `id` (`None` se não for um).
+fn shape_field_index(id: ph2d_a11y::NodeId) -> Option<usize> {
+    (0..MAX_SHAPE_FIELDS).find(|&i| ids::vector_shape_field_id(i) == id)
+}
+
+/// O índice da forma no catálogo cujo id de botão é `id` (`None` se não for um).
+fn shape_index(id: ph2d_a11y::NodeId) -> Option<usize> {
+    (0..crate::shapes::SHAPES.len()).find(|&i| ids::vector_shape_id(i) == id)
+}
 
 use crate::params::{
-    DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, slider_to_arc_degrees,
-    slider_to_dash, slider_to_gap, slider_to_opacity, slider_to_px, slider_to_radius,
-    slider_to_sides, slider_to_spiral_turns, slider_to_star_inner, slider_to_star_points,
+    DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, slider_to_dash,
+    slider_to_gap, slider_to_opacity, slider_to_px,
 };
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
@@ -56,6 +90,10 @@ pub const DEFAULT_POLYGON_SIDES: u32 = 5;
 pub const DEFAULT_STAR_POINTS: u32 = 5;
 pub const DEFAULT_STAR_INNER: f64 = 0.5;
 pub const DEFAULT_CORNER_RADIUS_PX: f64 = 12.0;
+/// Polígono e estrela nascem de quinas VIVAS (o canto redondo é opt-in).
+pub const DEFAULT_POLYGON_RADIUS_PX: f64 = 0.0;
+pub const DEFAULT_STAR_OUTER_RADIUS_PX: f64 = 0.0;
+pub const DEFAULT_STAR_INNER_RADIUS_PX: f64 = 0.0;
 /// Default spiral turn count.
 pub const DEFAULT_SPIRAL_TURNS: u32 = 3;
 /// Default span de um arco novo (semicírculo).
@@ -80,18 +118,12 @@ pub struct VectorTool {
     /// Canvas gesture: Pen (draw + edit) vs a drag-to-size shape. The shell
     /// mirrors this each frame to route canvas input (`vector_bridge`).
     mode: DrawMode,
-    /// Sides for `DrawMode::Polygon`, held in `SIDES_MIN..=SIDES_MAX`.
-    polygon_sides: u32,
-    /// Points for `DrawMode::Star`.
-    star_points: u32,
-    /// Inner/outer radius ratio for `DrawMode::Star`.
-    star_inner_ratio: f64,
-    /// Corner radius (screen px) for `DrawMode::RoundRect`.
-    corner_radius_px: f64,
-    /// Turn count for `DrawMode::Spiral`.
-    spiral_turns: u32,
-    /// Span in degrees for `DrawMode::Arc`, held in `1..=360`.
-    arc_degrees: f64,
+    /// A forma ATIVA do catálogo (o que o modo `Shape` desenha).
+    shape: ShapeKind,
+    /// Os parâmetros de CADA forma, na unidade de UI (px para raios), indexados pelo
+    /// discriminante. Guardar por-forma é o que faz cada uma lembrar do "último usado":
+    /// mexer no raio da estrela não mexe no do retângulo.
+    shape_values: [ShapeValues; MAX_SHAPES],
     /// Stroke cap / join + dash & gap as multiples of the stroke width
     /// (`dash = 0` = solid; `gap` is the space between dashes).
     cap: StrokeCap,
@@ -110,12 +142,8 @@ impl Default for VectorTool {
             fill: color_of("blue").unwrap_or([90, 150, 230, 255]),
             stroke_width_px: DEFAULT_STROKE_WIDTH_PX,
             mode: DrawMode::Select,
-            polygon_sides: DEFAULT_POLYGON_SIDES,
-            star_points: DEFAULT_STAR_POINTS,
-            star_inner_ratio: DEFAULT_STAR_INNER,
-            corner_radius_px: DEFAULT_CORNER_RADIUS_PX,
-            spiral_turns: DEFAULT_SPIRAL_TURNS,
-            arc_degrees: DEFAULT_ARC_DEGREES,
+            shape: ShapeKind::default(),
+            shape_values: default_shape_values(),
             cap: StrokeCap::Butt,
             join: StrokeJoin::Miter,
             dash: 0.0,
@@ -162,10 +190,43 @@ impl VectorTool {
         self.mode = mode;
     }
 
-    /// Current polygon side count (only meaningful in `DrawMode::Polygon`).
+    /// A forma ativa do catálogo.
     #[must_use]
-    pub fn polygon_sides(&self) -> u32 {
-        self.polygon_sides
+    pub fn shape(&self) -> ShapeKind {
+        self.shape
+    }
+
+    /// Escolhe a forma ativa E entra no modo de desenho de forma — é o que o clique num
+    /// botão do catálogo faz (escolher a forma sem armar o gesto seria um clique morto).
+    pub fn set_shape(&mut self, shape: ShapeKind) {
+        self.shape = shape;
+        self.mode = DrawMode::Shape;
+    }
+
+    /// Os parâmetros da forma `k` na unidade de UI (px para raios).
+    #[must_use]
+    pub fn shape_values(&self, k: ShapeKind) -> ShapeValues {
+        self.shape_values[k.as_u16() as usize]
+    }
+
+    /// Escreve o parâmetro `i` da forma ATIVA (o valor vem da caixa do painel, já na
+    /// unidade de UI) — clampado à faixa que o catálogo declara.
+    pub fn set_shape_field(&mut self, i: usize, v: f64) {
+        if i >= MAX_SHAPE_FIELDS {
+            return;
+        }
+        let k = self.shape;
+        let slot = &mut self.shape_values[k.as_u16() as usize];
+        slot[i] = v;
+        crate::shapes::clamp(k, slot);
+    }
+
+    /// ADOTA os parâmetros de uma forma (a shell chama ao selecionar uma forma viva):
+    /// eles viram os correntes daquela forma, então o painel para de mentir e a próxima
+    /// desenhada os herda (modelo Figma "último usado").
+    pub fn adopt_shape_values(&mut self, k: ShapeKind, v: ShapeValues) {
+        self.shape_values[k.as_u16() as usize] = v;
+        crate::shapes::clamp(k, &mut self.shape_values[k.as_u16() as usize]);
     }
 
     /// Stroke cap / join / dash (multiple of width) — the shell maps cap/join to
@@ -202,12 +263,8 @@ impl VectorTool {
     pub fn draw_config(&self) -> VectorDrawConfig {
         VectorDrawConfig {
             mode: self.mode,
-            polygon_sides: self.polygon_sides,
-            star_points: self.star_points,
-            star_inner_ratio: self.star_inner_ratio,
-            corner_radius_px: self.corner_radius_px,
-            spiral_turns: self.spiral_turns,
-            arc_degrees: self.arc_degrees,
+            shape: self.shape,
+            values: self.shape_values(self.shape),
         }
     }
 
@@ -234,12 +291,8 @@ impl VectorTool {
             fill: self.fill,
             stroke_width_px: self.stroke_width_px,
             mode: self.mode,
-            polygon_sides: self.polygon_sides,
-            star_points: self.star_points,
-            star_inner_ratio: self.star_inner_ratio,
-            corner_radius_px: self.corner_radius_px,
-            spiral_turns: self.spiral_turns,
-            arc_degrees: self.arc_degrees,
+            shape: self.shape,
+            values: self.shape_values(self.shape),
             cap: self.cap,
             join: self.join,
             dash: self.dash,
@@ -289,23 +342,13 @@ impl Tool for VectorTool {
                 // the next one drawn.
                 self.apply_to_selected = true;
             }
-            PanelEvent::SetValue(id, v) if id == ids::VECTOR_SIDES => {
-                self.polygon_sides = slider_to_sides(v as f32);
-            }
-            PanelEvent::SetValue(id, v) if id == ids::VECTOR_STAR_POINTS => {
-                self.star_points = slider_to_star_points(v as f32);
-            }
-            PanelEvent::SetValue(id, v) if id == ids::VECTOR_STAR_INNER => {
-                self.star_inner_ratio = slider_to_star_inner(v as f32);
-            }
-            PanelEvent::SetValue(id, v) if id == ids::VECTOR_RRECT_RADIUS => {
-                self.corner_radius_px = slider_to_radius(v as f32);
-            }
-            PanelEvent::SetValue(id, v) if id == ids::VECTOR_SPIRAL_TURNS => {
-                self.spiral_turns = slider_to_spiral_turns(v as f32);
-            }
-            PanelEvent::SetValue(id, v) if id == ids::VECTOR_ARC_DEGREES => {
-                self.arc_degrees = slider_to_arc_degrees(v as f32);
+            // **Campo de forma** — um braço só para TODAS as formas: o id carrega o
+            // ÍNDICE do parâmetro no catálogo, e a forma ativa diz o que ele significa.
+            // Antes era um braço por parâmetro por forma; com 25 formas seria um pântano.
+            PanelEvent::SetValue(id, v) if shape_field_index(id).is_some() => {
+                if let Some(i) = shape_field_index(id) {
+                    self.set_shape_field(i, v);
+                }
             }
             // Opacity sliders own the fill/stroke alpha (the single source). The
             // picker only sets RGB. `0 %` alpha ⇒ invisible (no fill).
@@ -322,20 +365,13 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_SELECT => self.mode = DrawMode::Select,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_NODE => self.mode = DrawMode::Node,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PEN => self.mode = DrawMode::Pen,
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_LINE => self.mode = DrawMode::Line,
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_ARC => self.mode = DrawMode::Arc,
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_RECT => self.mode = DrawMode::Rectangle,
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_ELLIPSE => {
-                self.mode = DrawMode::Ellipse
+            // **Botão de forma** — idem: o id carrega o índice no catálogo. Escolher a
+            // forma JÁ arma o gesto de desenho (`set_shape` põe o modo em Shape).
+            PanelEvent::Click(id) if shape_index(id).is_some() => {
+                if let Some(k) = shape_index(id).and_then(|i| crate::shapes::SHAPES.get(i)) {
+                    self.set_shape(k.kind);
+                }
             }
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_POLYGON => {
-                self.mode = DrawMode::Polygon
-            }
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_STAR => self.mode = DrawMode::Star,
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_RRECT => {
-                self.mode = DrawMode::RoundRect
-            }
-            PanelEvent::Click(id) if id == ids::VECTOR_MODE_SPIRAL => self.mode = DrawMode::Spiral,
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_TEXT => self.mode = DrawMode::Text,
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
@@ -444,30 +480,67 @@ mod tests {
         let mut t = VectorTool::new();
         assert_eq!(t.mode(), DrawMode::Select); // default
         for (id, want) in [
-            (ids::VECTOR_MODE_RECT, DrawMode::Rectangle),
-            (ids::VECTOR_MODE_ELLIPSE, DrawMode::Ellipse),
-            (ids::VECTOR_MODE_POLYGON, DrawMode::Polygon),
             (ids::VECTOR_MODE_PEN, DrawMode::Pen),
             (ids::VECTOR_MODE_NODE, DrawMode::Node),
+            (ids::VECTOR_MODE_TEXT, DrawMode::Text),
             (ids::VECTOR_MODE_SELECT, DrawMode::Select),
-            (ids::VECTOR_MODE_LINE, DrawMode::Line),
-            (ids::VECTOR_MODE_ARC, DrawMode::Arc),
         ] {
             Tool::handle_panel_event(&mut t, PanelEvent::Click(id));
             assert_eq!(t.mode(), want);
         }
-        // Mode change is NOT a Style edit → never flags a recolour.
+        // Trocar de modo NAO e edicao de Style -> nunca marca recolor.
         assert!(!t.take_apply_to_selected());
     }
 
+    /// **Gate do seam do catálogo:** o botão de CADA forma escolhe aquela forma E arma o
+    /// gesto (modo Shape). Uma forma nova entra no catálogo e este teste já a cobre —
+    /// nenhum botão pode nascer morto.
     #[test]
-    fn sides_slider_maps_normalized_to_sides() {
-        use crate::params::{SIDES_MAX, SIDES_MIN};
+    fn every_catalog_button_selects_its_shape_and_arms_the_gesture() {
         let mut t = VectorTool::new();
-        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_SIDES, 0.0));
-        assert_eq!(t.polygon_sides(), SIDES_MIN);
-        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_SIDES, 1.0));
-        assert_eq!(t.polygon_sides(), SIDES_MAX);
+        for (i, d) in crate::shapes::SHAPES.iter().enumerate() {
+            Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::vector_shape_id(i)));
+            assert_eq!(t.shape(), d.kind, "botao {i} nao escolheu {:?}", d.kind);
+            assert_eq!(t.mode(), DrawMode::Shape, "escolher a forma arma o desenho");
+            assert_eq!(t.draw_config().shape, d.kind, "o cfg espelha a forma");
+        }
+    }
+
+    /// **Gate do campo genérico:** o campo `i` escreve o parâmetro `i` da forma ATIVA,
+    /// clampado à faixa do catálogo — e os valores são POR-FORMA (mexer no raio da
+    /// estrela não mexe no do retângulo: é o "último usado" de cada uma).
+    #[test]
+    fn a_shape_field_writes_the_active_shapes_parameter_and_is_per_shape() {
+        let mut t = VectorTool::new();
+        t.set_shape(ShapeKind::Star);
+        // Campo 0 da estrela = Points (contagem: clampa e arredonda).
+        Tool::handle_panel_event(
+            &mut t,
+            PanelEvent::SetValue(ids::vector_shape_field_id(0), 7.4),
+        );
+        assert!(
+            (t.draw_config().values[0] - 7.0).abs() < 1e-9,
+            "7.4 pontas -> 7"
+        );
+        Tool::handle_panel_event(
+            &mut t,
+            PanelEvent::SetValue(ids::vector_shape_field_id(0), 9_999.0),
+        );
+        assert!(
+            (t.draw_config().values[0] - 60.0).abs() < 1e-9,
+            "clampa no teto"
+        );
+        // Campo 2 da estrela = raio da ponta (px).
+        Tool::handle_panel_event(
+            &mut t,
+            PanelEvent::SetValue(ids::vector_shape_field_id(2), 30.0),
+        );
+        assert!((t.shape_values(ShapeKind::Star)[2] - 30.0).abs() < 1e-9);
+        // O poligono NAO foi tocado (os valores sao por-forma).
+        assert!(
+            (t.shape_values(ShapeKind::Polygon)[1] - 0.0).abs() < 1e-9,
+            "o raio do poligono ficou onde estava"
+        );
     }
 
     #[test]
@@ -500,44 +573,26 @@ mod tests {
     }
 
     #[test]
-    fn star_and_roundrect_modes_and_their_sliders() {
-        use crate::params::{RADIUS_MAX_PX, STAR_INNER_MAX, STAR_POINTS_MAX, STAR_POINTS_MIN};
-        let mut t = VectorTool::new();
-        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_STAR));
-        assert_eq!(t.mode(), DrawMode::Star);
-        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_RRECT));
-        assert_eq!(t.mode(), DrawMode::RoundRect);
-
-        // Star sliders.
-        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_STAR_POINTS, 0.0));
-        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_STAR_INNER, 1.0));
-        let cfg = t.draw_config();
-        assert_eq!(cfg.star_points, STAR_POINTS_MIN);
-        assert!((cfg.star_inner_ratio - STAR_INNER_MAX).abs() < 1e-6);
-
-        // Radius slider.
-        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_RRECT_RADIUS, 1.0));
-        assert!((t.draw_config().corner_radius_px - RADIUS_MAX_PX).abs() < 1e-6);
-
-        // draw_config mirrors the mode + a maxed points slider.
-        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_STAR_POINTS, 1.0));
-        assert_eq!(t.draw_config().star_points, STAR_POINTS_MAX);
-    }
-
-    #[test]
     fn ui_snapshot_round_trips_style() {
         let mut t = VectorTool::new();
         t.set_stroke_rgba([1, 2, 3, 255]);
         t.set_fill_rgba([4, 5, 6, 255]);
         Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 0.5));
-        Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_POLYGON));
-        Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_SIDES, 1.0));
+        t.set_shape(ShapeKind::Polygon);
+        Tool::handle_panel_event(
+            &mut t,
+            PanelEvent::SetValue(ids::vector_shape_field_id(0), 7.0),
+        );
         let s = t.ui_snapshot();
         assert_eq!(s.stroke, [1, 2, 3, 255]);
         assert_eq!(s.fill, [4, 5, 6, 255]);
         assert_eq!(s.stroke_width_px, t.stroke_width_px());
-        assert_eq!(s.mode, DrawMode::Polygon);
-        assert_eq!(s.polygon_sides, t.polygon_sides());
+        assert_eq!(s.mode, DrawMode::Shape, "escolher a forma arma o desenho");
+        assert_eq!(s.shape, ShapeKind::Polygon);
+        assert!(
+            (s.values[0] - 7.0).abs() < 1e-9,
+            "o snapshot leva os valores"
+        );
     }
 
     #[test]

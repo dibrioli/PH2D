@@ -77,9 +77,11 @@ mod vec_glyph_build;
 mod vec_overlay;
 mod vec_selection;
 mod vec_shape_live;
+mod vec_shape_params;
 mod vec_snap;
 mod vec_text;
 mod vec_text_object;
+mod vec_text_reopen;
 mod vec_transform;
 mod winit_host;
 
@@ -273,7 +275,9 @@ impl App {
             vec_text_align: ph2d_tool_vector::TextAlign::Left,
             vec_text_extra_axes: vec_font::seed_extra_axes(None),
             vec_text_family: None,
+            vec_last_canvas_click: None,
             vec_text_last_target: None,
+            vec_shape_last_target: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),

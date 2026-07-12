@@ -31,3 +31,4 @@ ph2d-core = { path = "../ph2d-core" }
 
 # Vello / kurbo via ph2d-vector for the icon BezPath.
 ph2d-vector = { path = "../ph2d-vector" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }

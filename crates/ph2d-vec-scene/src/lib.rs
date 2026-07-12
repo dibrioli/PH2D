@@ -46,7 +46,21 @@ mod reshape;
 mod shapes;
 pub use shapes::{
     MAX_ARC_DEGREES, MAX_POLYGON_SIDES, MAX_SPIRAL_TURNS, arc, ellipse, line, rectangle,
-    regular_polygon, rounded_rect, spiral, star,
+    regular_polygon, regular_polygon_rounded, rounded_rect, spiral, star, star_rounded,
+};
+
+/// Arredondamento de quinas com raio por-vértice (o motor do canto redondo do polígono
+/// e dos dois raios da estrela) — módulo irmão de `shapes` (LOC cap).
+pub mod corners;
+
+/// O CATÁLOGO de formas paramétricas: o enum único (`ShapeKind`), os valores de cada
+/// forma e o `cook` que os transforma em geometria. A forma é DADO — é o que faz uma
+/// forma nova custar uma linha de tabela em vez de oito lugares.
+mod kind;
+pub use kind::{
+    ALL_SHAPES, DEFAULT_ARC_DEGREES, DEFAULT_CORNER_RADIUS, DEFAULT_POLYGON_SIDES,
+    DEFAULT_SPIRAL_TURNS, DEFAULT_STAR_INNER, DEFAULT_STAR_POINTS, MAX_SHAPE_FIELDS, ShapeKind,
+    ShapeValues, cook,
 };
 
 #[cfg(test)]

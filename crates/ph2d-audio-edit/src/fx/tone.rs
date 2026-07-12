@@ -13,14 +13,14 @@ pub(super) fn biquad_all(data: &SampleData, coeffs: BiquadCoeffs) -> SampleData 
     let ch = channels(data);
     let mut filters: Vec<Biquad> = (0..ch).map(|_| Biquad::new(coeffs)).collect();
     let frames = data.frame_count();
-    let mut out = data.samples().to_vec();
-    for f in 0..frames {
-        for (c, filt) in filters.iter_mut().enumerate() {
-            let i = f * ch + c;
-            out[i] = filt.process(out[i]);
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            for (c, filt) in filters.iter_mut().enumerate() {
+                let i = f * ch + c;
+                out[i] = filt.process(out[i]);
+            }
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// Full-depth mains-hum attenuation, in dB — a deep, narrow peaking cut is a de-facto
@@ -53,30 +53,30 @@ pub(super) fn dehum(data: &SampleData, freq: f32, depth: f32, harmonics: u32) ->
         .map(|_| bands.iter().map(|&c| Biquad::new(c)).collect())
         .collect();
     let frames = data.frame_count();
-    let mut out = data.samples().to_vec();
-    for f in 0..frames {
-        for (c, chain) in chains.iter_mut().enumerate() {
-            let i = f * ch + c;
-            let mut s = out[i];
-            for filt in chain.iter_mut() {
-                s = filt.process(s);
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            for (c, chain) in chains.iter_mut().enumerate() {
+                let i = f * ch + c;
+                let mut s = out[i];
+                for filt in chain.iter_mut() {
+                    s = filt.process(s);
+                }
+                out[i] = s;
             }
-            out[i] = s;
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// `tanh` soft-clip normalized so full-scale in ≈ full-scale out.
 pub(super) fn saturate(data: &SampleData, drive: f32) -> SampleData {
     let k = drive.max(0.1);
     let norm = 1.0 / k.tanh();
-    let out: Vec<f32> = data
-        .samples()
-        .iter()
-        .map(|&x| (k * x).tanh() * norm)
-        .collect();
-    SampleData::from_interleaved(out, data.format())
+    SampleData::map_in_place(data, |out| {
+        for s in out.iter_mut() {
+            let x = *s;
+            *s = (k * x).tanh() * norm;
+        }
+    })
 }
 
 /// Quantize to `bits` levels + hold each channel's value for `downsample` frames.
@@ -88,17 +88,17 @@ pub(super) fn bitcrush(data: &SampleData, bits: u32, downsample: u32) -> SampleD
     let levels = (1u32 << bits.clamp(1, 24)) as f32;
     let quant = |x: f32| ((x * 0.5 + 0.5) * levels).round() / levels * 2.0 - 1.0;
     let src = data.samples();
-    let mut out = src.to_vec();
     let mut held = vec![0.0f32; ch];
-    for f in 0..frames {
-        for c in 0..ch {
-            if f % hold == 0 {
-                held[c] = quant(src[f * ch + c]);
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            for c in 0..ch {
+                if f % hold == 0 {
+                    held[c] = quant(src[f * ch + c]);
+                }
+                out[f * ch + c] = held[c].clamp(-1.0, 1.0);
             }
-            out[f * ch + c] = held[c].clamp(-1.0, 1.0);
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// Mid/Side width on stereo clips; mono is returned unchanged.
@@ -108,16 +108,16 @@ pub(super) fn stereo_width(data: &SampleData, width: f32) -> SampleData {
         return data.clone();
     }
     let frames = data.frame_count();
-    let mut out = data.samples().to_vec();
-    for f in 0..frames {
-        let base = f * ch;
-        let (l, r) = (out[base], out[base + 1]);
-        let mid = (l + r) * 0.5;
-        let side = (l - r) * 0.5 * width;
-        out[base] = (mid + side).clamp(-1.0, 1.0);
-        out[base + 1] = (mid - side).clamp(-1.0, 1.0);
-    }
-    SampleData::from_interleaved(out, data.format())
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            let base = f * ch;
+            let (l, r) = (out[base], out[base + 1]);
+            let mid = (l + r) * 0.5;
+            let side = (l - r) * 0.5 * width;
+            out[base] = (mid + side).clamp(-1.0, 1.0);
+            out[base + 1] = (mid - side).clamp(-1.0, 1.0);
+        }
+    })
 }
 
 /// Distortion's darkest / brightest post-filter cutoff (Hz), swept by `tone`.
@@ -138,10 +138,9 @@ pub(super) fn distortion(data: &SampleData, drive: f32, tone: f32) -> SampleData
     let pre = 1.0 + drive * DISTORT_MAX_PRE;
     // Cubic soft-clip scaled by 1.5 so its ±2/3 plateau reaches full scale — a loud,
     // saturated output rather than an attenuated one.
-    let shaped: Vec<f32> = data
-        .samples()
-        .iter()
-        .map(|&x| {
+    let shaped = SampleData::map_in_place(data, |out| {
+        for s in out.iter_mut() {
+            let x = *s;
             let d = pre * x;
             let f = if d >= 1.0 {
                 2.0 / 3.0
@@ -151,16 +150,18 @@ pub(super) fn distortion(data: &SampleData, drive: f32, tone: f32) -> SampleData
                 d - d * d * d / 3.0
             };
             // Blend by drive: at drive→0 this is the dry signal (a smooth onset).
-            (1.0 - drive) * x + drive * (f * 1.5)
-        })
-        .collect();
-    let shaped = SampleData::from_interleaved(shaped, data.format());
+            *s = (1.0 - drive) * x + drive * (f * 1.5);
+        }
+    });
     let cutoff = DISTORT_TONE_MIN_HZ * (DISTORT_TONE_MAX_HZ / DISTORT_TONE_MIN_HZ).powf(tone);
     // The low-pass rings past ±1 on the clipped square (Gibbs overshoot); clamp back —
     // a distortion hitting the ceiling is expected, not a bug.
     let lp = biquad_all(&shaped, BiquadCoeffs::lowpass(sr, cutoff, 0.707));
-    let out: Vec<f32> = lp.samples().iter().map(|v| v.clamp(-1.0, 1.0)).collect();
-    SampleData::from_interleaved(out, data.format())
+    SampleData::map_in_place(&lp, |out| {
+        for v in out.iter_mut() {
+            *v = v.clamp(-1.0, 1.0);
+        }
+    })
 }
 
 /// **Haas widener**: delays the right channel by `delay_ms` relative to the left. Under
@@ -177,12 +178,15 @@ pub(super) fn haas(data: &SampleData, delay_ms: f32) -> SampleData {
     }
     let frames = data.frame_count();
     let src = data.samples();
-    let mut out = src.to_vec(); // left channel already correct
-    for f in 0..frames {
-        // Right channel reads `d` frames back (silence before the start).
-        out[f * ch + 1] = if f >= d { src[(f - d) * ch + 1] } else { 0.0 };
-    }
-    SampleData::from_interleaved(out, data.format())
+    // `out` starts as a copy of `src` (left channel already correct) and is a *distinct*
+    // buffer, so the reads below still see the pristine input — the delay line must never
+    // feed on its own output.
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            // Right channel reads `d` frames back (silence before the start).
+            out[f * ch + 1] = if f >= d { src[(f - d) * ch + 1] } else { 0.0 };
+        }
+    })
 }
 
 /// Makeup on the exciter's generated harmonics — they come out well below the band
@@ -199,18 +203,15 @@ pub(super) fn exciter(data: &SampleData, freq: f32, amount: f32) -> SampleData {
     let sr = data.format().sample_rate as f32;
     // The high band whose overtones we will generate.
     let hb = biquad_all(data, BiquadCoeffs::highpass(sr, freq, 0.707));
-    let src = data.samples();
-    let out: Vec<f32> = src
-        .iter()
-        .zip(hb.samples())
-        .map(|(&x, &h)| {
+    SampleData::map_in_place(data, |out| {
+        for (s, &h) in out.iter_mut().zip(hb.samples()) {
+            let x = *s;
             // `h·|h|`: sign-preserving, so it adds no DC for a symmetric band, and its
             // energy lands in overtones above the crossover.
             let harm = h * h.abs();
-            (x + amount * EXCITER_DRIVE * harm).clamp(-1.0, 1.0)
-        })
-        .collect();
-    SampleData::from_interleaved(out, data.format())
+            *s = (x + amount * EXCITER_DRIVE * harm).clamp(-1.0, 1.0);
+        }
+    })
 }
 
 #[cfg(test)]

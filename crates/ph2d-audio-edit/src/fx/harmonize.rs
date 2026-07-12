@@ -36,20 +36,18 @@ pub(super) fn harmonize(data: &SampleData, v1: f32, v2: f32, mix: f32) -> Sample
     let a = pitch_shift(data, v1, 1.0);
     let b = pitch_shift(data, v2, 1.0);
 
-    let dry = data.samples();
-    let out: Vec<f32> = dry
-        .iter()
-        .zip(a.samples())
-        .zip(b.samples())
-        .map(|((&d, &x), &y)| {
+    // One allocation, not two (ADR-0117 D2). The buffer arrives holding the DRY signal, which is
+    // exactly the `d` the blend wants — read and written at the same index.
+    SampleData::map_in_place(data, |out| {
+        for ((s, &x), &y) in out.iter_mut().zip(a.samples()).zip(b.samples()) {
+            let d = *s;
             // The wet side is the AVERAGE of the three voices, so it is bounded by
             // full scale even when all three peak together — and the crossfade to it
             // is convex, so the sum is too.
             let chord = (d + x + y) / 3.0;
-            (1.0 - mix) * d + mix * chord
-        })
-        .collect();
-    SampleData::from_interleaved(out, data.format())
+            *s = (1.0 - mix) * d + mix * chord;
+        }
+    })
 }
 
 #[cfg(test)]

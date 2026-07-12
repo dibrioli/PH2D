@@ -87,21 +87,24 @@ pub(super) fn declick(data: &SampleData, sensitivity: f32, width_secs: f32) -> S
     let max_gap = ((f64::from(width_secs) * sr) as usize).clamp(1, MAX_GAP);
 
     let src = data.samples();
-    let mut out = src.to_vec();
-    for c in 0..ch {
-        let mut x: Vec<f64> = (0..frames).map(|f| f64::from(src[f * ch + c])).collect();
-        let mut block = 0;
-        while block < frames {
-            let end = (block + BLOCK).min(frames);
-            repair_block(&mut x, block..end, k, max_gap);
-            block = end;
+    // One allocation, not two (ADR-0117 D2). Safe in place: each channel's working copy `x` is
+    // built from the PRISTINE `src`, never from the output, so writing channel 0 cannot colour
+    // channel 1.
+    SampleData::map_in_place(data, |out| {
+        for c in 0..ch {
+            let mut x: Vec<f64> = (0..frames).map(|f| f64::from(src[f * ch + c])).collect();
+            let mut block = 0;
+            while block < frames {
+                let end = (block + BLOCK).min(frames);
+                repair_block(&mut x, block..end, k, max_gap);
+                block = end;
+            }
+            for (f, &v) in x.iter().enumerate() {
+                // A failed repair must never be louder than the click it replaced.
+                out[f * ch + c] = (v as f32).clamp(-1.0, 1.0);
+            }
         }
-        for (f, &v) in x.iter().enumerate() {
-            // A failed repair must never be louder than the click it replaced.
-            out[f * ch + c] = (v as f32).clamp(-1.0, 1.0);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// Model one block, flag the outliers in its residual, and repair the short runs.

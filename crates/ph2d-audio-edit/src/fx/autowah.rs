@@ -43,7 +43,6 @@ pub(super) fn auto_wah(data: &SampleData, base_freq: f32, sens: f32, mix: f32) -
     let max_hz = WAH_MAX_HZ.min(sr * 0.45);
 
     let src = data.samples();
-    let mut out = src.to_vec();
     let mut filters: Vec<Biquad> = (0..ch)
         .map(|_| Biquad::new(BiquadCoeffs::bandpass(sr, base_freq, WAH_Q)))
         .collect();
@@ -51,25 +50,28 @@ pub(super) fn auto_wah(data: &SampleData, base_freq: f32, sens: f32, mix: f32) -
     let mut env = frame_peak(src, ch, 0);
     let mut last_cut = 0.0f32; // force the first retune
 
-    for f in 0..frames {
-        let a = frame_peak(src, ch, f);
-        env += (a - env) * if a > env { attack } else { release };
-        let cut = (base_freq * (sens * WAH_SWEEP_OCT * env).exp2()).clamp(base_freq, max_hz);
-        if (cut - last_cut).abs() > last_cut * WAH_RECALC_RATIO {
-            let c = BiquadCoeffs::bandpass(sr, cut, WAH_Q);
-            for filt in &mut filters {
-                filt.set_coeffs(c);
+    // One allocation (ADR-0117 D2): same length, and every sample is written at the index it
+    // was read from. The envelope reads the pristine `src`, never the output.
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            let a = frame_peak(src, ch, f);
+            env += (a - env) * if a > env { attack } else { release };
+            let cut = (base_freq * (sens * WAH_SWEEP_OCT * env).exp2()).clamp(base_freq, max_hz);
+            if (cut - last_cut).abs() > last_cut * WAH_RECALC_RATIO {
+                let c = BiquadCoeffs::bandpass(sr, cut, WAH_Q);
+                for filt in &mut filters {
+                    filt.set_coeffs(c);
+                }
+                last_cut = cut;
             }
-            last_cut = cut;
+            for (c, filt) in filters.iter_mut().enumerate() {
+                let i = f * ch + c;
+                let x = src[i];
+                let wet = filt.process(x);
+                out[i] = ((1.0 - mix) * x + mix * wet).clamp(-1.0, 1.0);
+            }
         }
-        for (c, filt) in filters.iter_mut().enumerate() {
-            let i = f * ch + c;
-            let x = src[i];
-            let wet = filt.process(x);
-            out[i] = ((1.0 - mix) * x + mix * wet).clamp(-1.0, 1.0);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 #[cfg(test)]

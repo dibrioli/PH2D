@@ -21,29 +21,33 @@ pub(super) fn render_wet(
     let src = data.samples();
     let mix = mix.clamp(0.0, 1.0);
     let dry_gain = 1.0 - mix;
-    let mut out = Vec::with_capacity((frames + tail_frames) * ch);
-    for f in 0..frames + tail_frames {
-        // Past the region the dry signal is silence — the processor keeps ringing.
-        let (dry_l, dry_r) = if f < frames {
-            let b = f * ch;
-            if ch >= 2 {
-                (src[b], src[b + 1])
+    // One allocation (ADR-0117 D2). The output is *longer* than the input (the tail), and
+    // the dry signal is read from the pristine `src` — so this builds, it does not map.
+    // Each frame writes exactly `ch` samples (`ch` is 1 or 2), starting at `f * ch`.
+    SampleData::build((frames + tail_frames) * ch, data.format(), |out| {
+        for f in 0..frames + tail_frames {
+            // Past the region the dry signal is silence — the processor keeps ringing.
+            let (dry_l, dry_r) = if f < frames {
+                let b = f * ch;
+                if ch >= 2 {
+                    (src[b], src[b + 1])
+                } else {
+                    (src[b], src[b])
+                }
             } else {
-                (src[b], src[b])
+                (0.0, 0.0)
+            };
+            let (wet_l, wet_r) = wet(dry_l, dry_r);
+            let o = f * ch;
+            if ch >= 2 {
+                out[o] = (dry_l * dry_gain + wet_l * mix).clamp(-1.0, 1.0);
+                out[o + 1] = (dry_r * dry_gain + wet_r * mix).clamp(-1.0, 1.0);
+            } else {
+                let w = (wet_l + wet_r) * 0.5;
+                out[o] = (dry_l * dry_gain + w * mix).clamp(-1.0, 1.0);
             }
-        } else {
-            (0.0, 0.0)
-        };
-        let (wet_l, wet_r) = wet(dry_l, dry_r);
-        if ch >= 2 {
-            out.push((dry_l * dry_gain + wet_l * mix).clamp(-1.0, 1.0));
-            out.push((dry_r * dry_gain + wet_r * mix).clamp(-1.0, 1.0));
-        } else {
-            let w = (wet_l + wet_r) * 0.5;
-            out.push((dry_l * dry_gain + w * mix).clamp(-1.0, 1.0));
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// **Ping-pong delay**: a plain feedback delay whose repeats **alternate channels**.

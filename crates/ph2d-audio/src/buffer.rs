@@ -25,8 +25,86 @@ impl SampleData {
     }
 
     /// Wrap an owned interleaved `Vec`.
+    ///
+    /// **This copies.** `Arc::from(Vec)` cannot reuse the `Vec`'s allocation: an `Arc` stores its
+    /// refcount inline, immediately before the data, and a `Vec`'s buffer has no room for one. So
+    /// it allocates a second buffer and memcpy's the whole thing — two blocks, twice the peak.
+    ///
+    /// Prefer [`SampleData::from_fn`] when the samples can be produced by index; it writes each
+    /// one exactly once. This constructor stays for callers that genuinely hold a `Vec` already
+    /// (decoders hand us one).
     pub fn from_interleaved(samples: Vec<Sample>, format: AudioFormat) -> Self {
         Self::new(samples, format)
+    }
+
+    /// Build a buffer by writing each sample **exactly once** — no intermediate `Vec`, no memcpy
+    /// (ADR-0117 D2).
+    ///
+    /// `Arc<[T]>: FromIterator<T>` specializes on `TrustedLen`, and `Map<Range<usize>, F>` is
+    /// `TrustedLen`: the `ArcInner` is allocated once, at the right size, and `f` writes straight
+    /// into it. One block instead of two, half the peak.
+    ///
+    /// That specialization is an implementation detail of the standard library, so it is
+    /// **measured, not assumed** — `ph2d-audio-edit/tests/measure_arc_build.rs` fails if a future
+    /// std stops allocating once, rather than letting the copy creep back in silently.
+    pub fn from_fn(len: usize, format: AudioFormat, f: impl FnMut(usize) -> Sample) -> Self {
+        Self {
+            samples: (0..len).map(f).collect(),
+            format,
+        }
+    }
+
+    /// Allocate `len` samples of silence and let `f` fill them — **one allocation** (ADR-0117 D2).
+    ///
+    /// The third of the three shapes the rack builds output in, and the one for effects whose
+    /// output is a **different length** than their input: a reverb's ring-out, a pitch shift, a
+    /// time-stretch. `vec![0.0; n]` followed by [`SampleData::from_interleaved`] allocates the
+    /// buffer twice and memcpy's it once for nothing.
+    pub fn build(len: usize, format: AudioFormat, f: impl FnOnce(&mut [Sample])) -> Self {
+        // `RepeatN` is `TrustedLen` — one allocation, zeroed, no `Vec`.
+        let mut samples: Arc<[Sample]> = std::iter::repeat_n(0.0, len).collect();
+        // Always `Some`: nothing else can hold an `Arc` created on the line above.
+        if let Some(slice) = Arc::get_mut(&mut samples) {
+            f(slice);
+        }
+        Self { samples, format }
+    }
+
+    /// Copy `src` and let `f` rewrite it in place — **one allocation** (ADR-0117 D2).
+    ///
+    /// The shape most of the rack's effects have: start from the input, walk it with a filter's
+    /// state, write over it. Done with a `Vec` that is then handed to [`SampleData::from_interleaved`]
+    /// it costs **two** buffers and an extra full memcpy; done here it costs one.
+    ///
+    /// `f` sees exactly the buffer the `Vec` version saw, in the same order, so an effect ported to
+    /// this computes bit-for-bit what it computed before. The container changed; the arithmetic did
+    /// not.
+    pub fn map_in_place(src: &SampleData, f: impl FnOnce(&mut [Sample])) -> Self {
+        // `Copied<slice::Iter>` is `TrustedLen`, so this allocates the `Arc` once, at the right
+        // size, and copies straight into it — no `Vec` in between.
+        let mut samples: Arc<[Sample]> = src.samples().iter().copied().collect();
+        // Always `Some`: the `Arc` was created on the line above and nothing else can hold it yet.
+        if let Some(slice) = Arc::get_mut(&mut samples) {
+            f(slice);
+        }
+        Self {
+            samples,
+            format: src.format(),
+        }
+    }
+
+    /// Mutable access to the samples **iff nothing else holds them**.
+    ///
+    /// `SampleData` is an `Arc<[Sample]>` precisely so that handing a clip to a voice on the audio
+    /// thread is a refcount bump. The flip side is that the editor cannot scribble on a buffer a
+    /// voice might be reading. So: `Some` when this is the sole owner (the ordinary editing case —
+    /// nothing is playing it), `None` when it is shared, and the caller copies.
+    ///
+    /// That is copy-on-write, and it is not a fallback — it is the correct semantics. The RT
+    /// thread never sees a half-written buffer, and the editor never pays for a copy it did not
+    /// need.
+    pub fn samples_mut(&mut self) -> Option<&mut [Sample]> {
+        Arc::get_mut(&mut self.samples)
     }
 
     /// Raw interleaved samples.

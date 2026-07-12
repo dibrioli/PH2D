@@ -20,3 +20,8 @@ ph2d-audio = { path = "../ph2d-audio" }
 # actually matters — the dependency reaches the offline EDIT crate, never the RT mixer
 # (`ph2d-audio`), which is the whole point of the confinement.
 ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
+
+[dev-dependencies]
+# The memory the editor actually holds is a MEASUREMENT, not a declaration — dhat is how the
+# ceiling gate observes it (ADR-0117). Same tool the HR-3 zero-alloc gates already use.
+dhat = "0.3"

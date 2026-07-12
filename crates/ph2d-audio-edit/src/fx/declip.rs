@@ -75,13 +75,14 @@ pub(super) fn declip(data: &SampleData, threshold: f32, amount: f32) -> SampleDa
     // Blend, so Amount is a real control and 0 is exactly the input. The reconstruction only
     // ever *raises* a clipped sample away from the ceiling; blending it back in partially is
     // a legitimate "restore some of the peak" and never an artefact.
-    let dry = data.samples();
-    let out: Vec<f32> = dry
-        .iter()
-        .zip(full.samples())
-        .map(|(d, w)| (f64::from(*d) + (f64::from(*w) - f64::from(*d)) * amount) as f32)
-        .collect();
-    SampleData::from_interleaved(out, data.format())
+    // One allocation, not two (ADR-0117 D2). The buffer arrives holding the DRY signal, which is
+    // exactly what the blend reads — same index in, same index out.
+    SampleData::map_in_place(data, |out| {
+        for (s, w) in out.iter_mut().zip(full.samples()) {
+            let d = f64::from(*s);
+            *s = (d + (f64::from(*w) - d) * amount) as f32;
+        }
+    })
 }
 
 /// The clip with **every** clipped plateau rebuilt — the `amount = 1` reconstruction, which
@@ -116,22 +117,24 @@ fn reconstruct(data: &SampleData, threshold: f64) -> SampleData {
 
     let ch = channels(data);
     let frames = data.frame_count();
-    let mut out = data.samples().to_vec();
-    for c in 0..ch {
-        let mut x: Vec<f64> = (0..frames)
-            .map(|f| f64::from(data.samples()[f * ch + c]))
-            .collect();
-        let mut start = 0;
-        while start < frames {
-            let end = (start + BLOCK).min(frames);
-            repair_block(&mut x, start..end, threshold);
-            start = end;
+    // One allocation, not two (ADR-0117 D2). Safe in place: each channel's working copy `x` reads
+    // the PRISTINE `data.samples()`, never the output being written.
+    let built = SampleData::map_in_place(data, |out| {
+        for c in 0..ch {
+            let mut x: Vec<f64> = (0..frames)
+                .map(|f| f64::from(data.samples()[f * ch + c]))
+                .collect();
+            let mut start = 0;
+            while start < frames {
+                let end = (start + BLOCK).min(frames);
+                repair_block(&mut x, start..end, threshold);
+                start = end;
+            }
+            for f in 0..frames {
+                out[f * ch + c] = x[f] as f32;
+            }
         }
-        for f in 0..frames {
-            out[f * ch + c] = x[f] as f32;
-        }
-    }
-    let built = SampleData::from_interleaved(out, data.format());
+    });
     CACHE.with(|c| *c.borrow_mut() = Some((key.0, key.1, key.2, built.clone())));
     built
 }

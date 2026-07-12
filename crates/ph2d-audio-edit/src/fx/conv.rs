@@ -91,25 +91,28 @@ pub(super) fn render_convolution(
     let dry_gain = 1.0 - mix;
     let src = data.samples();
 
-    let mut out = vec![0.0f32; total * ch];
-    for c in 0..ch {
-        let dry: Vec<f32> = (0..frames).map(|f| src[f * ch + c]).collect();
-        // Unity-gain: a raw IR is a recording at whatever level the microphone saw, and an
-        // unnormalised one would make the Mix knob a volume knob in disguise.
-        let raw = resample(
-            &ir_channel(ir, ir_channels, c),
-            ir_rate,
-            data.format().sample_rate,
-        );
-        let h = ph2d_audio_spectral::normalize_ir(&raw);
-        let wet = ph2d_audio_spectral::convolve(&dry, &h);
-        for f in 0..total {
-            let d = if f < frames { dry[f] } else { 0.0 };
-            let w = wet.get(f).copied().unwrap_or(0.0);
-            out[f * ch + c] = (d * dry_gain + w * mix).clamp(-1.0, 1.0);
+    // One allocation, not two (ADR-0117 D2). `build` and not `map_in_place`: the ring-out makes
+    // the output LONGER than the input, so there is no input buffer to rewrite — the IR is the
+    // tail, and the tail is new audio.
+    SampleData::build(total * ch, data.format(), |out| {
+        for c in 0..ch {
+            let dry: Vec<f32> = (0..frames).map(|f| src[f * ch + c]).collect();
+            // Unity-gain: a raw IR is a recording at whatever level the microphone saw, and an
+            // unnormalised one would make the Mix knob a volume knob in disguise.
+            let raw = resample(
+                &ir_channel(ir, ir_channels, c),
+                ir_rate,
+                data.format().sample_rate,
+            );
+            let h = ph2d_audio_spectral::normalize_ir(&raw);
+            let wet = ph2d_audio_spectral::convolve(&dry, &h);
+            for f in 0..total {
+                let d = if f < frames { dry[f] } else { 0.0 };
+                let w = wet.get(f).copied().unwrap_or(0.0);
+                out[f * ch + c] = (d * dry_gain + w * mix).clamp(-1.0, 1.0);
+            }
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 #[cfg(test)]

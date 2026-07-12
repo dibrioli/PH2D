@@ -79,47 +79,49 @@ pub(super) fn formant_shift(data: &SampleData, semitones: f32, mix: f32) -> Samp
         .collect();
 
     let src = data.samples();
-    let mut out = src.to_vec();
-    for c in 0..ch {
-        let x: Vec<f64> = (0..frames).map(|f| f64::from(src[f * ch + c])).collect();
-        let mut acc = vec![0.0f64; frames];
-        let mut wsum = vec![0.0f64; frames];
+    // One allocation, not two (ADR-0117 D2). Safe in place: `x` is taken from the PRISTINE `src`,
+    // so the dry side of the crossfade is never a sample the loop already wrote.
+    SampleData::map_in_place(data, |out| {
+        for c in 0..ch {
+            let x: Vec<f64> = (0..frames).map(|f| f64::from(src[f * ch + c])).collect();
+            let mut acc = vec![0.0f64; frames];
+            let mut wsum = vec![0.0f64; frames];
 
-        let mut start = 0;
-        while start < frames {
-            let len = BLOCK.min(frames - start);
-            let w: Vec<f64> = (0..BLOCK)
-                .map(|i| if i < len { x[start + i] * hann[i] } else { 0.0 })
-                .collect();
+            let mut start = 0;
+            while start < frames {
+                let len = BLOCK.min(frames - start);
+                let w: Vec<f64> = (0..BLOCK)
+                    .map(|i| if i < len { x[start + i] * hann[i] } else { 0.0 })
+                    .collect();
 
-            // A silent block has no envelope: it still owns its slice of the window
-            // sum (so the seam stays unity) but contributes no audio.
-            if let Some((a, _)) = levinson(&autocorrelation(&w, ORDER)) {
-                let excitation = residual(&w, &a);
-                let envelope = warp(&impulse_response(&a, IR_LEN), alpha);
-                let mut y = convolve(&excitation, &envelope);
-                match_energy(&mut y, &w);
-                for i in 0..len {
-                    acc[start + i] += y[i] * hann[i];
+                // A silent block has no envelope: it still owns its slice of the window
+                // sum (so the seam stays unity) but contributes no audio.
+                if let Some((a, _)) = levinson(&autocorrelation(&w, ORDER)) {
+                    let excitation = residual(&w, &a);
+                    let envelope = warp(&impulse_response(&a, IR_LEN), alpha);
+                    let mut y = convolve(&excitation, &envelope);
+                    match_energy(&mut y, &w);
+                    for i in 0..len {
+                        acc[start + i] += y[i] * hann[i];
+                    }
                 }
+                for i in 0..len {
+                    wsum[start + i] += hann[i] * hann[i];
+                }
+                start += HOP;
             }
-            for i in 0..len {
-                wsum[start + i] += hann[i] * hann[i];
-            }
-            start += HOP;
-        }
 
-        for f in 0..frames {
-            let wet = if wsum[f] > WSUM_EPS {
-                acc[f] / wsum[f]
-            } else {
-                x[f]
-            };
-            let v = (1.0 - mix) * x[f] + mix * wet;
-            out[f * ch + c] = (v as f32).clamp(-1.0, 1.0);
+            for f in 0..frames {
+                let wet = if wsum[f] > WSUM_EPS {
+                    acc[f] / wsum[f]
+                } else {
+                    x[f]
+                };
+                let v = (1.0 - mix) * x[f] + mix * wet;
+                out[f * ch + c] = (v as f32).clamp(-1.0, 1.0);
+            }
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// Resample the envelope's impulse response by `alpha` — `g[n] = h[n·α]` — which

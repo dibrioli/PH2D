@@ -63,30 +63,32 @@ pub(super) fn transient_shape(data: &SampleData, attack: f32, sustain: f32) -> S
     let mut ef = first;
     let mut es = first;
 
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        let a = frame_peak(src, ch, f);
-        ef += (a - ef) * if a > ef { fast_atk } else { fast_rel };
-        es += (a - es) * if a > es { slow_atk } else { slow_rel };
+    // One allocation (ADR-0117 D2): same length, and every sample is written at the index it
+    // was read from. Both followers read the pristine `src`, never the output.
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            let a = frame_peak(src, ch, f);
+            ef += (a - ef) * if a > ef { fast_atk } else { fast_rel };
+            es += (a - es) * if a > es { slow_atk } else { slow_rel };
 
-        let g = if es < NOISE_FLOOR {
-            1.0
-        } else {
-            let r = ef / es;
-            if r >= 1.0 {
-                1.0 + attack * (r - 1.0) // fast leads → onset
+            let g = if es < NOISE_FLOOR {
+                1.0
             } else {
-                1.0 + sustain * (1.0 - r) // slow leads → body
+                let r = ef / es;
+                if r >= 1.0 {
+                    1.0 + attack * (r - 1.0) // fast leads → onset
+                } else {
+                    1.0 + sustain * (1.0 - r) // slow leads → body
+                }
+            }
+            .clamp(GAIN_MIN, GAIN_MAX);
+
+            for c in 0..ch {
+                let i = f * ch + c;
+                out[i] = (src[i] * g).clamp(-1.0, 1.0);
             }
         }
-        .clamp(GAIN_MIN, GAIN_MAX);
-
-        for c in 0..ch {
-            let i = f * ch + c;
-            out[i] = (src[i] * g).clamp(-1.0, 1.0);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 #[cfg(test)]

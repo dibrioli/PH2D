@@ -302,6 +302,58 @@ fn turning_an_arming_knob_wakes_the_effect_up() {
     }
 }
 
+/// **The transcription check for ADR-0117 D2** — run it before the refactor, run it after, diff.
+///
+/// D2 changes how every effect *builds* its output buffer (one allocation, instead of a `Vec` that
+/// is then copied into an `Arc`). It must not change a single sample any of them **computes**. The
+/// arithmetic is untouched by construction — the same loop, in the same order, writing into a
+/// different container — so the only real risk across 69 sites is a **slip of the hand**, and a
+/// before/after diff catches that completely.
+///
+/// Deliberately a printout and not a pinned golden: the editor's DSP uses transcendentals
+/// (`tanh`/`sin`/`exp` — HR-5 does not apply off the RT thread), and those can differ in the last
+/// ulp between platform libms. Pinned hashes would be a CI landmine on the linux/macOS/windows
+/// matrix, red for a reason that has nothing to do with the code.
+///
+/// ```text
+/// cargo test -p ph2d-desktop --release --lib audio::fx_params::tests::the_rack_fingerprint \
+///   -- --nocapture
+/// ```
+#[test]
+fn the_rack_fingerprint() {
+    /// FNV-1a over the sample BITS — a sign flip on a zero is a real difference, and a NaN must
+    /// compare equal to itself.
+    fn digest(samples: &[f32]) -> u64 {
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for s in samples {
+            h ^= u64::from(s.to_bits());
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+        h
+    }
+
+    let d = probe();
+    seed_room();
+    println!("\n=== ADR-0117 rack fingerprint ({} effects) ===", KINDS.len());
+    for (kind, k) in KINDS.iter().enumerate() {
+        // The first arming knob, at the far end of its travel: the setting the rack's own
+        // "the arm wakes it" gate already trusts to make each effect audible.
+        let arm = k.arms.first().copied().unwrap_or(0);
+        let clip = EditClip::new(d.clone());
+        let out = match build(kind, &norms_with(kind, arm)).expect("builds") {
+            FxCommand::Plain(fx) => clip.render_effect(fx),
+            FxCommand::Tail(fx) => clip.render_tail_effect(&fx),
+        };
+        println!(
+            "{:<24} {:>7} frames  {:016x}",
+            k.name,
+            out.frame_count(),
+            digest(out.samples())
+        );
+    }
+    println!();
+}
+
 /// **Exactly one effect wants a room, and it is the right one.**
 ///
 /// `needs_ir` is DERIVED (ask the table what it builds) rather than declared in a column,

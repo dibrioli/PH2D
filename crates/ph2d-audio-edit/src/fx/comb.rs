@@ -32,18 +32,20 @@ pub(super) fn comb(data: &SampleData, freq: f32, feedback: f32, mix: f32) -> Sam
     let mut bufs: Vec<Vec<f32>> = (0..ch).map(|_| vec![0.0f32; d]).collect();
     let mut idx = 0usize;
     let src = data.samples();
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        for (c, buf) in bufs.iter_mut().enumerate() {
-            let delayed = buf[idx]; // y[n − D]
-            let x = src[f * ch + c];
-            let y = x + g * delayed;
-            buf[idx] = y;
-            out[f * ch + c] = ((1.0 - mix) * x + mix * (y * norm)).clamp(-1.0, 1.0);
+    // One allocation (ADR-0117 D2): same length, and each sample is written at the index it
+    // was read from. The ring lives in `bufs`, not in the output, so nothing reads ahead.
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            for (c, buf) in bufs.iter_mut().enumerate() {
+                let delayed = buf[idx]; // y[n − D]
+                let x = src[f * ch + c];
+                let y = x + g * delayed;
+                buf[idx] = y;
+                out[f * ch + c] = ((1.0 - mix) * x + mix * (y * norm)).clamp(-1.0, 1.0);
+            }
+            idx = (idx + 1) % d;
         }
-        idx = (idx + 1) % d;
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 #[cfg(test)]

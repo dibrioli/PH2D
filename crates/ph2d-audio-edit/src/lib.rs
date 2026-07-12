@@ -23,6 +23,7 @@
 //! Plan: `docs/Audio/02_plano_implementacao_completo.md`.
 
 mod fx;
+mod history;
 mod loops;
 mod ops;
 mod peaks;
@@ -46,8 +47,7 @@ use std::ops::Range;
 
 use ph2d_audio::SampleData;
 
-/// Maximum retained undo snapshots (each is a cheap `Arc` clone of the clip).
-const MAX_HISTORY: usize = 64;
+use history::History;
 
 /// A named cue point on the clip's timeline (W6 asset-prep) — a transition / sync /
 /// sustain marker a game runtime can react to. Written to the WAV's `cue`+`LIST/adtl`
@@ -77,11 +77,11 @@ pub struct EditClip {
     /// Named cue points, kept sorted by frame. Metadata like `loop_region` (survives
     /// undo, clamps/drops when an edit shrinks the clip). Exported to `cue`+`adtl`.
     markers: Vec<Marker>,
-    /// Undo timeline — snapshots of `data`; `cursor` is the current one. Cheap:
-    /// each snapshot is an `Arc<[f32]>` refcount bump. A fresh clip / `set_data`
-    /// resets it; every edit `commit`s a new snapshot (truncating the redo tail).
-    history: Vec<SampleData>,
-    cursor: usize,
+    /// Undo timeline — **deltas, capped by bytes** (ADR-0117). Each step holds only the samples
+    /// its edit displaced, so fixing one second of a three-minute clip costs a second. It used to
+    /// hold 64 whole clips: on a 3-minute stereo clip that peaked at **4351 MB**, against a
+    /// 3500 MB budget for the entire application.
+    history: History,
 }
 
 impl EditClip {
@@ -94,8 +94,7 @@ impl EditClip {
     pub fn with_bin_size(data: SampleData, bin_size: usize) -> Self {
         let peaks = PeakCache::build(&data, bin_size);
         Self {
-            history: vec![data.clone()],
-            cursor: 0,
+            history: History::new(),
             data,
             peaks,
             selection: None,
@@ -150,54 +149,48 @@ impl EditClip {
     /// Replace the clip and **reset** the undo timeline (the load path — a new
     /// clip starts a fresh history + a fresh loop + no markers).
     pub fn set_data(&mut self, data: SampleData) {
-        self.history = vec![data.clone()];
-        self.cursor = 0;
+        self.history.clear();
         self.loop_region = None;
         self.markers.clear();
         self.install(data);
     }
 
-    /// Commit an edited buffer as a new undo snapshot (truncating any redo tail),
-    /// capping the timeline at [`MAX_HISTORY`].
+    /// Commit an edited buffer as one undo step (truncating any redo tail).
+    ///
+    /// The step records **only what changed** (`history::History` diffs the two buffers), and the
+    /// timeline is capped by **bytes**, not by a count of edits — see ADR-0117. An edit that
+    /// changed nothing records no step, so a no-op never lights the Undo button.
     fn commit(&mut self, data: SampleData) {
-        self.history.truncate(self.cursor + 1);
-        self.history.push(data.clone());
-        if self.history.len() > MAX_HISTORY {
-            let drop = self.history.len() - MAX_HISTORY;
-            self.history.drain(0..drop);
-        }
-        self.cursor = self.history.len() - 1;
+        self.history.push(&self.data, &data);
         self.install(data);
     }
 
     /// Step back one edit. Returns `false` at the start of the timeline.
     pub fn undo(&mut self) -> bool {
-        if self.cursor == 0 {
+        let Some(data) = self.history.undo(&self.data) else {
             return false;
-        }
-        self.cursor -= 1;
-        self.install(self.history[self.cursor].clone());
+        };
+        self.install(data);
         true
     }
 
     /// Step forward one edit. Returns `false` at the tip of the timeline.
     pub fn redo(&mut self) -> bool {
-        if self.cursor + 1 >= self.history.len() {
+        let Some(data) = self.history.redo(&self.data) else {
             return false;
-        }
-        self.cursor += 1;
-        self.install(self.history[self.cursor].clone());
+        };
+        self.install(data);
         true
     }
 
     /// Whether an [`EditClip::undo`] would do anything.
     pub fn can_undo(&self) -> bool {
-        self.cursor > 0
+        self.history.can_undo()
     }
 
     /// Whether an [`EditClip::redo`] would do anything.
     pub fn can_redo(&self) -> bool {
-        self.cursor + 1 < self.history.len()
+        self.history.can_redo()
     }
 
     /// The range edits act on: the selection, or the whole clip when none.
@@ -441,5 +434,7 @@ impl EditClip {
     }
 }
 
+#[cfg(test)]
+mod ops_oracle;
 #[cfg(test)]
 mod tests;

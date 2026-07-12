@@ -79,13 +79,46 @@ pub fn in_range(
     }
     let region = trim(data, r.clone());
     let processed = op(&region);
+    splice(data, &r, processed.samples(), 0)
+}
+
+/// Write the spliced buffer in **one pass**: head from `data`, then `processed[skip..]`, then the
+/// tail from `data` (ADR-0117 D2).
+///
+/// The old shape of this — `Vec::with_capacity(src.len())`, three `extend_from_slice`, then
+/// `SampleData::from_interleaved` — copied every untouched sample **twice**: once into the `Vec`,
+/// and once more when `Arc::from(Vec)` reallocated (an `Arc` keeps its refcount inline before the
+/// data, so a `Vec`'s buffer can never become one). Editing 1 s of a 3-minute clip cost 133 MB in
+/// 6 blocks to touch 0.37 MB of audio. This writes each output sample exactly once, into the `Arc`
+/// itself.
+///
+/// `skip` drops that many **frames** off the front of `processed` — the warm-up pre-roll, whose
+/// only job was to settle a filter's state before the region proper.
+///
+/// The output length is derived from what `op` actually returned, not from what it promised, so a
+/// length-breaking op produces the same buffer it always did rather than an out-of-bounds read.
+pub(crate) fn splice(
+    data: &SampleData,
+    r: &Range<usize>,
+    processed: &[f32],
+    skip_frames: usize,
+) -> SampleData {
     let ch = channels(data);
     let src = data.samples();
-    let mut out = Vec::with_capacity(src.len());
-    out.extend_from_slice(&src[..r.start * ch]);
-    out.extend_from_slice(processed.samples());
-    out.extend_from_slice(&src[r.end * ch..]);
-    SampleData::from_interleaved(out, data.format())
+    let lo = (r.start * ch).min(src.len());
+    let hi = (r.end * ch).min(src.len());
+    let off = (skip_frames * ch).min(processed.len());
+    let mid = processed.len() - off;
+
+    SampleData::from_fn(lo + mid + (src.len() - hi), data.format(), |i| {
+        if i < lo {
+            src[i]
+        } else if i < lo + mid {
+            processed[off + i - lo]
+        } else {
+            src[hi + (i - lo - mid)]
+        }
+    })
 }
 
 /// Like [`in_range`], but first hands the op `warmup` frames of the audio
@@ -113,7 +146,6 @@ pub fn in_range_warm(
     if warm == 0 || r.start >= r.end {
         return in_range(data, r, op);
     }
-    let ch = channels(data);
     let region_len = r.end - r.start;
     let extended = trim(data, r.start - warm..r.end);
     let processed = op(&extended);
@@ -122,12 +154,8 @@ pub fn in_range_warm(
     if processed.frame_count() != warm + region_len {
         return in_range(data, r, op);
     }
-    let src = data.samples();
-    let mut out = Vec::with_capacity(src.len());
-    out.extend_from_slice(&src[..r.start * ch]);
-    out.extend_from_slice(&processed.samples()[warm * ch..]);
-    out.extend_from_slice(&src[r.end * ch..]);
-    SampleData::from_interleaved(out, data.format())
+    // Drop the pre-roll and splice the region proper — one pass, one allocation.
+    splice(data, &r, processed.samples(), warm)
 }
 
 /// Apply a **tail-extending** op to `range`, ringing the tail out over whatever
@@ -164,23 +192,40 @@ pub fn in_range_tail(
         .min(tail_frames);
 
     let src = data.samples();
-    let out_frames = data.frame_count().max(r.end + tail);
-    let mut out = vec![0.0f32; out_frames * ch];
-    out[..src.len()].copy_from_slice(src);
-
     let p = processed.samples();
-    out[r.start * ch..r.end * ch].copy_from_slice(&p[..region_len * ch]);
-    for i in 0..tail * ch {
-        let dst = r.end * ch + i;
-        out[dst] = (out[dst] + p[region_len * ch + i]).clamp(-1.0, 1.0);
-    }
-    SampleData::from_interleaved(out, data.format())
+    let out_frames = data.frame_count().max(r.end + tail);
+    let lo = r.start * ch;
+    let hi = r.end * ch;
+    let ring = tail * ch;
+
+    // One pass (ADR-0117 D2). The old shape zeroed a whole `Vec`, memcpy'd the source over the
+    // zeros, memcpy'd the region over that, added the ring-out, and then let `Arc::from(Vec)`
+    // copy the entire thing a final time. Every output sample is now written exactly once.
+    SampleData::from_fn(out_frames * ch, data.format(), |i| {
+        // Inside the range: the processed region REPLACES the original.
+        if (lo..hi).contains(&i) {
+            return p[i - lo];
+        }
+        // Everywhere else: the original audio, or silence past the old end — which is where the
+        // clip grows.
+        let base = src.get(i).copied().unwrap_or(0.0);
+        // Just after the range: the ring-out is ADDED on top of whatever follows.
+        if (hi..hi + ring).contains(&i) {
+            (base + p[region_len * ch + (i - hi)]).clamp(-1.0, 1.0)
+        } else {
+            base
+        }
+    })
 }
 
 /// Scale every sample by `linear` gain.
 pub fn gain(data: &SampleData, linear: f32) -> SampleData {
-    let out: Vec<f32> = data.samples().iter().map(|s| s * linear).collect();
-    SampleData::from_interleaved(out, data.format())
+    // One allocation (ADR-0117 D2): the buffer arrives holding the input.
+    SampleData::map_in_place(data, |out| {
+        for s in out.iter_mut() {
+            *s *= linear;
+        }
+    })
 }
 
 /// Negate every sample (polarity invert).
@@ -240,13 +285,15 @@ pub fn reverse(data: &SampleData) -> SampleData {
     let ch = channels(data);
     let frames = data.frame_count();
     let src = data.samples();
-    let mut out = vec![0.0f32; src.len()];
-    for f in 0..frames {
-        let s = (frames - 1 - f) * ch;
-        let d = f * ch;
-        out[d..d + ch].copy_from_slice(&src[s..s + ch]);
-    }
-    SampleData::from_interleaved(out, data.format())
+    // One allocation (ADR-0117 D2). `build` and not `map_in_place`: this reads the input BACKWARDS
+    // while writing forwards, so a buffer being overwritten in place would feed on itself.
+    SampleData::build(src.len(), data.format(), |out| {
+        for f in 0..frames {
+            let s = (frames - 1 - f) * ch;
+            let d = f * ch;
+            out[d..d + ch].copy_from_slice(&src[s..s + ch]);
+        }
+    })
 }
 
 /// Remove any DC offset by subtracting each channel's mean.
@@ -266,32 +313,36 @@ pub fn remove_dc_offset(data: &SampleData) -> SampleData {
     for m in &mut mean {
         *m /= frames as f64;
     }
-    let mut out = vec![0.0f32; src.len()];
-    for f in 0..frames {
-        for c in 0..ch {
-            out[f * ch + c] = src[f * ch + c] - mean[c] as f32;
+    // One allocation (ADR-0117 D2).
+    SampleData::build(src.len(), data.format(), |out| {
+        for f in 0..frames {
+            for c in 0..ch {
+                out[f * ch + c] = src[f * ch + c] - mean[c] as f32;
+            }
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// Keep only `range`, discarding the rest (crop).
 pub fn trim(data: &SampleData, range: Range<usize>) -> SampleData {
     let r = clamp_range(data, range);
     let ch = channels(data);
-    let out = data.samples()[r.start * ch..r.end * ch].to_vec();
-    SampleData::from_interleaved(out, data.format())
+    let src = &data.samples()[r.start * ch..r.end * ch];
+    // One allocation (ADR-0117 D2). `trim` runs on EVERY selection edit — it is how the region is
+    // handed to the effect — so its second copy was being paid on every knob-move.
+    SampleData::from_fn(src.len(), data.format(), |i| src[i])
 }
 
 /// Zero the samples in `range` (replace with silence, same length).
 pub fn silence(data: &SampleData, range: Range<usize>) -> SampleData {
     let r = clamp_range(data, range);
     let ch = channels(data);
-    let mut out = data.samples().to_vec();
-    for s in &mut out[r.start * ch..r.end * ch] {
-        *s = 0.0;
-    }
-    SampleData::from_interleaved(out, data.format())
+    // One allocation (ADR-0117 D2).
+    SampleData::map_in_place(data, |out| {
+        for s in &mut out[r.start * ch..r.end * ch] {
+            *s = 0.0;
+        }
+    })
 }
 
 /// Delete `range`, closing the gap (ripple — the clip gets shorter).

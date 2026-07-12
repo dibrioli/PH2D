@@ -44,25 +44,25 @@ pub(super) fn leveler(
     let amount = amount.clamp(0.0, 1.0);
     let mut ms = target * target; // prime at target → first gain ≈ 1.0
     let frames = data.frame_count();
-    let mut out = data.samples().to_vec();
-    for f in 0..frames {
-        // Mean square across channels for a single, phase-coherent gain.
-        let mut frame_ms = 0.0;
-        for c in 0..ch {
-            let x = out[f * ch + c];
-            frame_ms += x * x;
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            // Mean square across channels for a single, phase-coherent gain.
+            let mut frame_ms = 0.0;
+            for c in 0..ch {
+                let x = out[f * ch + c];
+                frame_ms += x * x;
+            }
+            frame_ms /= ch as f32;
+            ms += coeff * (frame_ms - ms);
+            let rms = ms.sqrt().max(LEVELER_FLOOR);
+            let gain = (target / rms).clamp(LEVELER_MIN_GAIN, LEVELER_MAX_GAIN);
+            let g = 1.0 + amount * (gain - 1.0);
+            for c in 0..ch {
+                let i = f * ch + c;
+                out[i] = (out[i] * g).clamp(-1.0, 1.0);
+            }
         }
-        frame_ms /= ch as f32;
-        ms += coeff * (frame_ms - ms);
-        let rms = ms.sqrt().max(LEVELER_FLOOR);
-        let gain = (target / rms).clamp(LEVELER_MIN_GAIN, LEVELER_MAX_GAIN);
-        let g = 1.0 + amount * (gain - 1.0);
-        for c in 0..ch {
-            let i = f * ch + c;
-            out[i] = (out[i] * g).clamp(-1.0, 1.0);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// The interleaved peak of frame `f` across every channel. Dynamics are
@@ -104,40 +104,42 @@ pub(super) fn compress(
         time_coeff(attack_secs, sr),
         time_coeff(release_secs, sr),
     );
-    let mut out = data.samples().to_vec();
-    // Offline: settle the envelope on the first frame. Otherwise the very first
-    // sample escapes uncompressed, which both clicks at a selection edge and makes
-    // `peak_out == peak_in` (so the make-up below would have nothing to give back)
-    // for any region that starts at its loudest.
-    if frames > 0 {
-        let (l, r) = if ch >= 2 {
-            (out[0], out[1])
-        } else {
-            (out[0], out[0])
-        };
-        comp.prime(l, r);
-    }
-    for f in 0..frames {
-        let base = f * ch;
-        if ch >= 2 {
-            let (l, r) = comp.process(out[base], out[base + 1]);
-            out[base] = l;
-            out[base + 1] = r;
-        } else {
-            let (l, _) = comp.process(out[base], out[base]);
-            out[base] = l;
-        }
-    }
-
+    // The make-up reads the PRISTINE peak of `data`, which `map_in_place` leaves
+    // untouched (it rewrites its own copy) — so it stays the input's peak, as before.
     let peak_in = crate::peak(data);
-    let peak_out = out.iter().fold(0.0f32, |m, s| m.max(s.abs()));
-    if peak_out > f32::EPSILON && peak_in > f32::EPSILON {
-        let makeup = (peak_in / peak_out).clamp(1.0, COMPRESS_MAX_MAKEUP);
-        for s in &mut out {
-            *s = (*s * makeup).clamp(-1.0, 1.0);
+    SampleData::map_in_place(data, |out| {
+        // Offline: settle the envelope on the first frame. Otherwise the very first
+        // sample escapes uncompressed, which both clicks at a selection edge and makes
+        // `peak_out == peak_in` (so the make-up below would have nothing to give back)
+        // for any region that starts at its loudest.
+        if frames > 0 {
+            let (l, r) = if ch >= 2 {
+                (out[0], out[1])
+            } else {
+                (out[0], out[0])
+            };
+            comp.prime(l, r);
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+        for f in 0..frames {
+            let base = f * ch;
+            if ch >= 2 {
+                let (l, r) = comp.process(out[base], out[base + 1]);
+                out[base] = l;
+                out[base + 1] = r;
+            } else {
+                let (l, _) = comp.process(out[base], out[base]);
+                out[base] = l;
+            }
+        }
+
+        let peak_out = out.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+        if peak_out > f32::EPSILON && peak_in > f32::EPSILON {
+            let makeup = (peak_in / peak_out).clamp(1.0, COMPRESS_MAX_MAKEUP);
+            for s in out.iter_mut() {
+                *s = (*s * makeup).clamp(-1.0, 1.0);
+            }
+        }
+    })
 }
 
 /// The quietest a gated passage can get: −80 dB. A true zero would make a gated
@@ -178,7 +180,6 @@ pub(super) fn gate(
     let threshold = threshold.max(1e-6);
     let exponent = ratio - 1.0;
 
-    let src = data.samples();
     let target_for = |level: f32| {
         if level >= threshold {
             1.0
@@ -187,17 +188,20 @@ pub(super) fn gate(
         }
     };
 
-    let mut gain = target_for(frame_peak(src, ch, 0));
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        let target = target_for(frame_peak(src, ch, f));
-        let coeff = if target > gain { open } else { close };
-        gain += (target - gain) * coeff;
-        for c in 0..ch {
-            out[f * ch + c] *= gain;
+    // The detector reads frame `f` before the gain is applied to frame `f`, and never
+    // looks at any other frame — so reading it out of the buffer being written reads
+    // exactly the pristine input, as the `src` copy did.
+    SampleData::map_in_place(data, |out| {
+        let mut gain = target_for(frame_peak(out, ch, 0));
+        for f in 0..frames {
+            let target = target_for(frame_peak(out, ch, f));
+            let coeff = if target > gain { open } else { close };
+            gain += (target - gain) * coeff;
+            for c in 0..ch {
+                out[f * ch + c] *= gain;
+            }
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// A look-ahead **true-peak** brickwall limiter.
@@ -249,14 +253,14 @@ pub(super) fn limit(data: &SampleData, ceiling_db: f32, release_secs: f32) -> Sa
     let r1 = radius / 2;
     let smoothed = box_average(&box_average(&dipped, r1), radius - r1);
 
-    let mut out = data.samples().to_vec();
-    for (f, &g) in smoothed.iter().enumerate() {
-        for c in 0..ch {
-            let i = f * ch + c;
-            out[i] = (out[i] * g).clamp(-1.0, 1.0);
+    SampleData::map_in_place(data, |out| {
+        for (f, &g) in smoothed.iter().enumerate() {
+            for c in 0..ch {
+                let i = f * ch + c;
+                out[i] = (out[i] * g).clamp(-1.0, 1.0);
+            }
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// Sliding minimum over `[n-radius, n+radius]`, clamped at the ends. `O(n)` via a

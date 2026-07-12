@@ -91,32 +91,34 @@ pub(super) fn deess(
     // Primed on the first frame, so a region that opens on an "S" is caught rather
     // than faded into.
     let mut env = frame_peak(&band, ch, 0);
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        let level = frame_peak(&band, ch, f);
-        let coeff = if level > env { attack } else { release };
-        env += (level - env) * coeff;
+    // One allocation (ADR-0117 D2): same length, and every sample is written at the index it
+    // was read from. The sidechain reads the separate `band` buffer, never the output.
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            let level = frame_peak(&band, ch, f);
+            let coeff = if level > env { attack } else { release };
+            env += (level - env) * coeff;
 
-        let shelf_db = if env > threshold {
-            // The compressor law, in dB: cut = (1 − 1/ratio) × the overshoot.
-            let cut = 20.0 * (threshold / env).log10() * exponent;
-            cut.max(MAX_CUT_DB)
-        } else {
-            0.0
-        };
-        if (shelf_db - coeff_db).abs() > RECALC_STEP_DB {
-            let c = BiquadCoeffs::highshelf(sr, freq, SPLIT_Q, shelf_db);
-            for s in &mut shelves {
-                s.set_coeffs(c);
+            let shelf_db = if env > threshold {
+                // The compressor law, in dB: cut = (1 − 1/ratio) × the overshoot.
+                let cut = 20.0 * (threshold / env).log10() * exponent;
+                cut.max(MAX_CUT_DB)
+            } else {
+                0.0
+            };
+            if (shelf_db - coeff_db).abs() > RECALC_STEP_DB {
+                let c = BiquadCoeffs::highshelf(sr, freq, SPLIT_Q, shelf_db);
+                for s in &mut shelves {
+                    s.set_coeffs(c);
+                }
+                coeff_db = shelf_db;
             }
-            coeff_db = shelf_db;
+            for (c, s) in shelves.iter_mut().enumerate() {
+                let i = f * ch + c;
+                out[i] = s.process(src[i]);
+            }
         }
-        for (c, s) in shelves.iter_mut().enumerate() {
-            let i = f * ch + c;
-            out[i] = s.process(src[i]);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 #[cfg(test)]

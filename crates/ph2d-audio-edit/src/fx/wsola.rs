@@ -80,29 +80,31 @@ pub(super) fn pitch_shift(data: &SampleData, semitones: f32, mix: f32) -> Sample
     let sr = f64::from(data.format().sample_rate);
 
     let src = data.samples();
-    let mut out = src.to_vec();
-    for c in 0..ch {
-        let dry: Vec<f64> = (0..frames).map(|f| f64::from(src[f * ch + c])).collect();
-        // Reading the signal FASTER than it was written folds everything above
-        // `Nyquist/ratio` back down as alias. Filter it off first — the fold is
-        // inharmonic, so it does not sound like the note, it sounds like grit.
-        //
-        // On a COPY: the anti-alias filter belongs to the shifted voice, not to the
-        // dry one. Filtering in place would darken the dry side of the crossfade too,
-        // so `mix` would fade between the wet voice and a muffled ghost of the input
-        // rather than the input itself.
-        let mut source = dry.clone();
-        if ratio > 1.0 {
-            lowpass_in_place(&mut source, sr, 0.45 * sr / ratio);
+    // One allocation, not two (ADR-0117 D2). Safe in place: `dry` is taken from the PRISTINE
+    // `src`, so the crossfade never reads a sample the loop has already written.
+    SampleData::map_in_place(data, |out| {
+        for c in 0..ch {
+            let dry: Vec<f64> = (0..frames).map(|f| f64::from(src[f * ch + c])).collect();
+            // Reading the signal FASTER than it was written folds everything above
+            // `Nyquist/ratio` back down as alias. Filter it off first — the fold is
+            // inharmonic, so it does not sound like the note, it sounds like grit.
+            //
+            // On a COPY: the anti-alias filter belongs to the shifted voice, not to the
+            // dry one. Filtering in place would darken the dry side of the crossfade too,
+            // so `mix` would fade between the wet voice and a muffled ghost of the input
+            // rather than the input itself.
+            let mut source = dry.clone();
+            if ratio > 1.0 {
+                lowpass_in_place(&mut source, sr, 0.45 * sr / ratio);
+            }
+            // Resample (pitch and formants move, length changes), then put the length back
+            // without disturbing either.
+            let wet = time_scale(&resample(&source, ratio), ratio, frames);
+            for (f, &w) in wet.iter().enumerate().take(frames) {
+                out[f * ch + c] = (((1.0 - mix) * dry[f] + mix * w) as f32).clamp(-1.0, 1.0);
+            }
         }
-        // Resample (pitch and formants move, length changes), then put the length back
-        // without disturbing either.
-        let wet = time_scale(&resample(&source, ratio), ratio, frames);
-        for (f, &w) in wet.iter().enumerate().take(frames) {
-            out[f * ch + c] = (((1.0 - mix) * dry[f] + mix * w) as f32).clamp(-1.0, 1.0);
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// Read `x` at `ratio` times its written speed: the pitch (and the formants with it)

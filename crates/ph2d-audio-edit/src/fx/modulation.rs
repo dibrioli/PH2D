@@ -67,21 +67,20 @@ pub(super) fn modulated_delay(
 
     let mut bufs: Vec<Vec<f32>> = (0..ch).map(|_| vec![0.0f32; len]).collect();
     let mut write = 0usize;
-    let src = data.samples();
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        for (c, buf) in bufs.iter_mut().enumerate() {
-            let phase = step * f as f32 + STEREO_PHASE * c as f32;
-            // LFO 0..1 → tap sweeps base .. base+depth.
-            let delay = base + depth * (0.5 + 0.5 * phase.sin());
-            let delayed = frac_read(buf, write, delay);
-            let x = src[f * ch + c];
-            buf[write] = x + feedback * delayed;
-            out[f * ch + c] = ((1.0 - mix) * x + mix * delayed).clamp(-1.0, 1.0);
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            for (c, buf) in bufs.iter_mut().enumerate() {
+                let phase = step * f as f32 + STEREO_PHASE * c as f32;
+                // LFO 0..1 → tap sweeps base .. base+depth.
+                let delay = base + depth * (0.5 + 0.5 * phase.sin());
+                let delayed = frac_read(buf, write, delay);
+                let x = out[f * ch + c];
+                buf[write] = x + feedback * delayed;
+                out[f * ch + c] = ((1.0 - mix) * x + mix * delayed).clamp(-1.0, 1.0);
+            }
+            write = (write + 1) % len;
         }
-        write = (write + 1) % len;
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// Number of first-order all-pass sections. Four gives two moving notches — the
@@ -106,30 +105,29 @@ pub(super) fn phaser(data: &SampleData, rate_hz: f32, depth: f32, mix: f32) -> S
     // Per-channel all-pass state: the input and output of each stage last frame.
     let mut xprev = vec![[0.0f32; PHASER_STAGES]; ch];
     let mut yprev = vec![[0.0f32; PHASER_STAGES]; ch];
-    let src = data.samples();
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        for c in 0..ch {
-            let phase = step * f as f32 + STEREO_PHASE * c as f32;
-            // Corner sweeps log-symmetrically around the band, `depth` sets the span.
-            let lfo = 0.5 + 0.5 * phase.sin(); // 0..1
-            let fc = PHASER_FC_MIN * (PHASER_FC_MAX / PHASER_FC_MIN).powf(depth * lfo);
-            // First-order all-pass coefficient for corner `fc` (bilinear).
-            let t = (std::f32::consts::PI * fc / sr).tan();
-            let a = (t - 1.0) / (t + 1.0);
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            for c in 0..ch {
+                let phase = step * f as f32 + STEREO_PHASE * c as f32;
+                // Corner sweeps log-symmetrically around the band, `depth` sets the span.
+                let lfo = 0.5 + 0.5 * phase.sin(); // 0..1
+                let fc = PHASER_FC_MIN * (PHASER_FC_MAX / PHASER_FC_MIN).powf(depth * lfo);
+                // First-order all-pass coefficient for corner `fc` (bilinear).
+                let t = (std::f32::consts::PI * fc / sr).tan();
+                let a = (t - 1.0) / (t + 1.0);
 
-            let x = src[f * ch + c];
-            let mut sig = x;
-            for s in 0..PHASER_STAGES {
-                let y = a * sig + xprev[c][s] - a * yprev[c][s];
-                xprev[c][s] = sig;
-                yprev[c][s] = y;
-                sig = y;
+                let x = out[f * ch + c];
+                let mut sig = x;
+                for s in 0..PHASER_STAGES {
+                    let y = a * sig + xprev[c][s] - a * yprev[c][s];
+                    xprev[c][s] = sig;
+                    yprev[c][s] = y;
+                    sig = y;
+                }
+                out[f * ch + c] = ((1.0 - mix) * x + mix * sig).clamp(-1.0, 1.0);
             }
-            out[f * ch + c] = ((1.0 - mix) * x + mix * sig).clamp(-1.0, 1.0);
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// **Tremolo**: amplitude modulation. The gain rides `1 .. 1-depth` at `rate_hz`, so
@@ -142,16 +140,15 @@ pub(super) fn tremolo(data: &SampleData, rate_hz: f32, depth: f32) -> SampleData
     let frames = data.frame_count();
     let depth = depth.clamp(0.0, 1.0);
     let step = TAU * rate_hz / sr;
-    let src = data.samples();
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        let lfo = (step * f as f32).sin(); // -1..1
-        let gain = 1.0 - depth * (0.5 - 0.5 * lfo); // 1 .. 1-depth
-        for c in 0..ch {
-            out[f * ch + c] = src[f * ch + c] * gain;
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            let lfo = (step * f as f32).sin(); // -1..1
+            let gain = 1.0 - depth * (0.5 - 0.5 * lfo); // 1 .. 1-depth
+            for c in 0..ch {
+                out[f * ch + c] *= gain;
+            }
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// **Ring modulator**: multiplies the signal by a sine **carrier** at `freq` — the
@@ -169,23 +166,22 @@ pub(super) fn ring_mod(data: &SampleData, freq: f32, mix: f32) -> SampleData {
     let frames = data.frame_count();
     let mix = mix.clamp(0.0, 1.0);
     let step = TAU * freq / sr;
-    let src = data.samples();
-    let mut out = src.to_vec();
     // Accumulate and wrap the phase instead of `sin(step * f)`: over a long clip the
     // bare argument grows large enough to lose carrier precision.
     let mut phase = 0.0f32;
-    for f in 0..frames {
-        let carrier = phase.sin();
-        for c in 0..ch {
-            let x = src[f * ch + c];
-            out[f * ch + c] = (1.0 - mix) * x + mix * (x * carrier);
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            let carrier = phase.sin();
+            for c in 0..ch {
+                let x = out[f * ch + c];
+                out[f * ch + c] = (1.0 - mix) * x + mix * (x * carrier);
+            }
+            phase += step;
+            if phase >= TAU {
+                phase -= TAU;
+            }
         }
-        phase += step;
-        if phase >= TAU {
-            phase -= TAU;
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// **Auto-pan**: a stereo LFO that walks the signal left↔right. Where tremolo dips
@@ -204,20 +200,19 @@ pub(super) fn auto_pan(data: &SampleData, rate_hz: f32, depth: f32) -> SampleDat
     let frames = data.frame_count();
     let depth = depth.clamp(0.0, 1.0);
     let step = TAU * rate_hz / sr;
-    let src = data.samples();
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        // Pan position in [-depth, depth]: negative = left, positive = right.
-        let p = depth * (step * f as f32).sin();
-        // Balance law: the side you pan toward stays at unity, the other ducks.
-        let gain_l = 1.0 - p.max(0.0);
-        let gain_r = 1.0 + p.min(0.0);
-        for c in 0..ch {
-            let g = if c == 0 { gain_l } else { gain_r };
-            out[f * ch + c] = src[f * ch + c] * g;
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            // Pan position in [-depth, depth]: negative = left, positive = right.
+            let p = depth * (step * f as f32).sin();
+            // Balance law: the side you pan toward stays at unity, the other ducks.
+            let gain_l = 1.0 - p.max(0.0);
+            let gain_r = 1.0 + p.min(0.0);
+            for c in 0..ch {
+                let g = if c == 0 { gain_l } else { gain_r };
+                out[f * ch + c] *= g;
+            }
         }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// **Trance gate**: chops the signal into a rhythmic on/off pulse at `rate_hz`. A 50%
@@ -237,23 +232,22 @@ pub(super) fn trance_gate(
     let depth = depth.clamp(0.0, 1.0);
     let coeff = time_coeff(smooth_secs, sr);
     let step = rate_hz / sr; // cycles per sample
-    let src = data.samples();
-    let mut out = src.to_vec();
     let mut phase = 0.0f32; // 0..1 through one on/off cycle
     let mut sm = 1.0f32; // smoothed gate, primed open so the region starts unmuted
-    for f in 0..frames {
-        let target = if phase < 0.5 { 1.0 } else { 0.0 };
-        sm += (target - sm) * coeff;
-        let gain = 1.0 - depth * (1.0 - sm);
-        for c in 0..ch {
-            out[f * ch + c] = src[f * ch + c] * gain;
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            let target = if phase < 0.5 { 1.0 } else { 0.0 };
+            sm += (target - sm) * coeff;
+            let gain = 1.0 - depth * (1.0 - sm);
+            for c in 0..ch {
+                out[f * ch + c] *= gain;
+            }
+            phase += step;
+            if phase >= 1.0 {
+                phase -= 1.0;
+            }
         }
-        phase += step;
-        if phase >= 1.0 {
-            phase -= 1.0;
-        }
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 /// A doubler's slow LFO — a drift, not a warble.
@@ -278,26 +272,25 @@ pub(super) fn doubler(data: &SampleData, delay_ms: f32, detune_ms: f32, mix: f32
 
     let mut bufs: Vec<Vec<f32>> = (0..ch).map(|_| vec![0.0f32; len]).collect();
     let mut write = 0usize;
-    let src = data.samples();
-    let mut out = src.to_vec();
-    for f in 0..frames {
-        for (c, buf) in bufs.iter_mut().enumerate() {
-            // The right voice trails a longer delay and sweeps in counter-phase — the
-            // two takes drift apart, which is the width.
-            let (vbase, ph0) = if c % 2 == 0 {
-                (base, 0.0)
-            } else {
-                (base * DOUBLER_SPREAD, TAU * 0.5)
-            };
-            let delay = vbase + depth * (0.5 + 0.5 * (step * f as f32 + ph0).sin());
-            let delayed = frac_read(buf, write, delay);
-            let x = src[f * ch + c];
-            buf[write] = x;
-            out[f * ch + c] = ((1.0 - mix) * x + mix * delayed).clamp(-1.0, 1.0);
+    SampleData::map_in_place(data, |out| {
+        for f in 0..frames {
+            for (c, buf) in bufs.iter_mut().enumerate() {
+                // The right voice trails a longer delay and sweeps in counter-phase — the
+                // two takes drift apart, which is the width.
+                let (vbase, ph0) = if c % 2 == 0 {
+                    (base, 0.0)
+                } else {
+                    (base * DOUBLER_SPREAD, TAU * 0.5)
+                };
+                let delay = vbase + depth * (0.5 + 0.5 * (step * f as f32 + ph0).sin());
+                let delayed = frac_read(buf, write, delay);
+                let x = out[f * ch + c];
+                buf[write] = x;
+                out[f * ch + c] = ((1.0 - mix) * x + mix * delayed).clamp(-1.0, 1.0);
+            }
+            write = (write + 1) % len;
         }
-        write = (write + 1) % len;
-    }
-    SampleData::from_interleaved(out, data.format())
+    })
 }
 
 #[cfg(test)]

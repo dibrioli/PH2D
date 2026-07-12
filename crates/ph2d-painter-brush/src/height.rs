@@ -160,12 +160,55 @@ pub struct HeightDab<'a> {
     pub coverage: f32,
     /// This dab's flatten/rotate footprint (incl. Jitter Rotate).
     pub footprint: crate::footprint::FootprintDeform,
+    /// Centre of the PREVIOUS dab along the path (with this dab's Tiling wrap already applied), or
+    /// `None` for the first dab of a stroke. The body is swept along the segment between the two — see
+    /// [`accumulate_dab_height`].
+    pub prev_center: Option<[f32; 2]>,
     /// The Shape slot's resolved frame + pixels, or `None` when the falloff is the silhouette.
     pub shape: Option<crate::dab::ShapeInput<'a>>,
     /// The Grain's resolved frame — read only when [`DepthSource::Grain`] is selected.
     pub grain: Option<&'a crate::texture::TexDabBasis>,
     /// The Grain's pixels (an `Image` Grain).
     pub grain_image: Option<&'a crate::texture::ImageMask<'a>>,
+}
+
+/// How far back the body sweeps, in pixels (0 when there is no previous dab).
+#[inline]
+fn sweep_len(dab: &HeightDab<'_>) -> f32 {
+    sweep_axis(dab).map_or(0.0, |(_, l)| l)
+}
+
+/// The dab's **sweep axis**: the unit vector back toward the previous dab and the distance to it.
+/// `None` for the first dab of a stroke (nothing to sweep back to) or a degenerate zero-length step.
+#[inline]
+fn sweep_axis(dab: &HeightDab<'_>) -> Option<([f32; 2], f32)> {
+    let prev = dab.prev_center?;
+    let v = [prev[0] - dab.center[0], prev[1] - dab.center[1]];
+    let len2 = v[0] * v[0] + v[1] * v[1];
+    if len2 <= 1e-6 {
+        return None;
+    }
+    let len = len2.sqrt();
+    Some(([v[0] / len, v[1] / len], len))
+}
+
+/// Offset from the pixel to the nearest point on the segment `[previous centre → this centre]` — the
+/// residual the falloff is then evaluated on. With no previous dab this is the plain offset from the
+/// centre (byte-identical to a stamped disc).
+#[inline]
+fn sweep_residual(dx: f32, dy: f32, sweep: Option<([f32; 2], f32)>) -> (f32, f32) {
+    match sweep {
+        None => (dx, dy),
+        Some((u, back)) => {
+            // The segment ENDS on the previous dab's centre — a point the stroke certainly painted — so
+            // the swept body can never reach past the paint, at any spacing and under any Jitter. That is
+            // why the sweep is defined by the real chord and not by a heading and a nominal pitch: the
+            // heading is SMOOTHED, so on a curve it cuts across the arc and the far end of the capsule
+            // escapes off the convex side (26 pixels of shadow on bare canvas, the first time I tried it).
+            let s = (dx * u[0] + dy * u[1]).clamp(0.0, back);
+            (dx - s * u[0], dy - s * u[1])
+        }
+    }
 }
 
 /// Combine an existing height with a newly-deposited one — the **stroke envelope**.
@@ -190,6 +233,28 @@ pub fn envelope(a: f32, b: f32) -> f32 {
 /// The deposited height is `depth × coverage × w` (or `× w × g` for [`DepthSource::Grain`]) — thickness
 /// is proportional to how much paint the dab actually lays down, which is why every knob that shapes
 /// the dab shapes the relief.
+///
+/// ## The body is SWEPT along the path, not stamped as a disc
+///
+/// The relief must be a property of the brush and the PATH — never of how finely the engine happened to
+/// sample that path. A per-dab disc breaks this: the envelope is a `max` of discrete domes, and between
+/// two centres the distance to either one grows, so the maximum DIPS. The stroke comes out corrugated,
+/// with a ripple whose depth is set by the spacing. Enio proved it with one image: the same brush at
+/// spacing 0.1 / 0.05 / 0.01 gave heavy ribs, mild ribs, and a smooth tube.
+///
+/// So the dab's body is swept back along the segment to the PREVIOUS dab's centre — a capsule, not a
+/// disc — and the union of capsules is the stroke's true distance field. Flat at any spacing.
+///
+/// The segment ends on a centre the stroke certainly painted, so the swept body can never reach past
+/// the paint — at any spacing, under any Jitter. (Sweeping a *nominal* pitch along the *smoothed*
+/// heading is the obvious cheaper thing, and it is wrong: on a curve that chord cuts across the arc and
+/// the far end escapes off the convex side, laying shadow on bare canvas.)
+///
+/// No new geometry is generated: the previous centre comes from the dab list itself, so Rule 1 holds —
+/// the height still consumes exactly the dab list the colour consumes.
+///
+/// A **Shape image** silhouette is deliberately unaffected: `silhouette_at` samples an Image tip at the
+/// pixel, so it stays a STAMP. A stamp brush is supposed to leave stamps.
 #[must_use]
 pub fn accumulate_dab_height(
     dst: &mut [f32],
@@ -216,21 +281,25 @@ pub fn accumulate_dab_height(
     }
     let radius = dab.radius.max(0.5);
     let (cx, cy) = (dab.center[0], dab.center[1]);
-    let x0 = (cx - radius).floor().max(0.0) as i64;
-    let y0 = (cy - radius).floor().max(0.0) as i64;
-    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
+    // The bbox has to cover the whole SWEPT body, not just the disc at the centre.
+    let reach = radius + sweep_len(dab);
+    let x0 = (cx - reach).floor().max(0.0) as i64;
+    let y0 = (cy - reach).floor().max(0.0) as i64;
+    let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + reach).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 {
         return None;
     }
     let inv_radius = 1.0 / radius;
     let use_grain = matches!(spec.impasto_source, DepthSource::Grain) && dab.grain.is_some();
+    let sweep = sweep_axis(dab);
     let mut touched = false;
     for py in y0..y1 {
         let dy = (py as f32 + 0.5) - cy;
         for px in x0..x1 {
             let dx = (px as f32 + 0.5) - cx;
-            let t = dab.footprint.falloff_t(dx * inv_radius, dy * inv_radius);
+            let (rx, ry) = sweep_residual(dx, dy, sweep);
+            let t = dab.footprint.falloff_t(rx * inv_radius, ry * inv_radius);
             let w = crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius);
             if w <= 0.0 {
                 continue;
@@ -287,20 +356,23 @@ pub fn erase_dab_height(
     }
     let radius = dab.radius.max(0.5);
     let (cx, cy) = (dab.center[0], dab.center[1]);
-    let x0 = (cx - radius).floor().max(0.0) as i64;
-    let y0 = (cy - radius).floor().max(0.0) as i64;
-    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
+    let reach = radius + sweep_len(dab);
+    let x0 = (cx - reach).floor().max(0.0) as i64;
+    let y0 = (cy - reach).floor().max(0.0) as i64;
+    let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + reach).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 {
         return None;
     }
     let inv_radius = 1.0 / radius;
+    let sweep = sweep_axis(dab);
     let mut touched = false;
     for py in y0..y1 {
         let dy = (py as f32 + 0.5) - cy;
         for px in x0..x1 {
             let dx = (px as f32 + 0.5) - cx;
-            let t = dab.footprint.falloff_t(dx * inv_radius, dy * inv_radius);
+            let (rx, ry) = sweep_residual(dx, dy, sweep);
+            let t = dab.footprint.falloff_t(rx * inv_radius, ry * inv_radius);
             let w = crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius);
             if w <= 0.0 {
                 continue;
@@ -374,6 +446,7 @@ mod tests {
             shape: None,
             grain: Some(&basis),
             grain_image: None,
+            prev_center: None, // a lone stamped dab — nothing to sweep back to
         };
         let _ = accumulate_dab_height(&mut dst, W, W, spec, &dab);
         dst
@@ -490,6 +563,7 @@ mod tests {
             shape: None,
             grain: None,
             grain_image: None,
+            prev_center: None,
         };
         let rect =
             erase_dab_height(&mut field, W, W, &spec, &dab).expect("the eraser touched relief");

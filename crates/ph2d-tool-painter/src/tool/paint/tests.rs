@@ -16831,7 +16831,8 @@ fn impasto_symmetry_mirrors_the_relief() {
         *slot = b;
     }
     t.on_canvas_pointer(cp([8.0, 20.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([8.0, 20.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp([8.0, 12.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([8.0, 12.0], PointerPhase::Up));
     let h = relief(&t);
     let at = |x: u32, y: u32| h[(y * size + x) as usize];
     assert!(at(8, 20) > 0.0, "relief under the brush");
@@ -16839,6 +16840,20 @@ fn impasto_symmetry_mirrors_the_relief() {
         at(32, 20) > 0.0,
         "and its mirror image — 8 and 32 straddle the axis at x=20"
     );
+    // And NOTHING in between. This half of the gate exists because a mutation found the hole: the body
+    // is swept back to the PREVIOUS dab along the path, and `push_symmetric` INTERLEAVES its copies
+    // (`[base, mirror, base, mirror, …]`). Link the immediate neighbour in the list and you sweep a
+    // capsule from every dab to its own MIRROR — a bar of paint straight across the canvas. The
+    // assertions above pass happily with that bar present, which is exactly the kind of gate that lets a
+    // bug ship. The path predecessor is `copies` entries back, and this is what says so.
+    for y in 18..23 {
+        assert_eq!(
+            at(20, y),
+            0.0,
+            "no relief on the mirror axis — the stroke and its reflection must not be joined by a bar \
+             (x=20, y={y})"
+        );
+    }
 }
 
 #[test]
@@ -17489,6 +17504,7 @@ fn impasto_light_does_not_shade_paint_that_is_not_there() {
             impasto_depth: 0.7,
             impasto_source: DepthSource::Grain, // the per-texel grain is what makes the slopes steep
             impasto_smoothing: 0.15,
+            jitter_spacing: 0.6, // the sweep grows with jitter — it must not overshoot onto bare canvas
             ..Default::default()
         };
         b.texture.kind = TextureKind::Noise;
@@ -17906,4 +17922,224 @@ fn impasto_grain_textures_the_body_instead_of_removing_it() {
         grain_spread > 0.1,
         "...and it must still carry striations ({grain_spread:.2}) — a smooth body is not a bristle mark"
     );
+}
+
+#[test]
+#[ignore = "diagnostic — run with --ignored --nocapture"]
+fn spacing_probe_relief_must_not_depend_on_dab_pitch() {
+    // Enio's experiment (2026-07-12): the SAME brush at spacing 0.1 / 0.05 / 0.01 produces three
+    // visibly different reliefs — heavy corduroy, mild, then a smooth tube. That cannot be right: the
+    // thickness of paint is a property of the brush and the path, not of how finely the engine chose to
+    // sample it.
+    //
+    // Thesis: the envelope is a `max` of DISCRETE domes. Between two dab centres the distance to either
+    // grows, so the max DIPS — and the dip is deepest where the falloff is steep, i.e. on the FLANKS.
+    // (My earlier probe sampled the CENTRELINE, where the falloff sits on its plateau and barely dips —
+    // which is exactly why it reported "no corrugation" while the screen was corrugated.)
+    let size = 300u32;
+    let scan = |spacing: f32, off_axis: i32| -> (f32, f32) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 40.0,
+            spacing,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: DepthSource::Uniform, // NO grain — isolate the geometry
+            impasto_smoothing: 0.0,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
+        let h = relief(&t);
+        let y = (150 + off_axis) as usize;
+        let line: Vec<f32> = (60..240).map(|x| h[y * size as usize + x]).collect();
+        // Ripple: peak-to-peak of the height along a line that SHOULD be perfectly flat (a straight
+        // stroke of constant width), and the steepest along-path slope (what the light reads).
+        let (lo, hi) = line
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &v| (l.min(v), h.max(v)));
+        let ripple = hi - lo;
+        let slope = line
+            .windows(3)
+            .map(|w| ((w[2] - w[0]) * 0.5).abs())
+            .fold(0.0f32, f32::max);
+        (ripple, slope)
+    };
+    for spacing in [0.10f32, 0.05, 0.01] {
+        let (r_axis, s_axis) = scan(spacing, 0);
+        let (r_flank, s_flank) = scan(spacing, 30);
+        println!(
+            "UNIFORM  spacing {spacing:.2} ({:>4.1} px)  centre: ripple {r_axis:.4} slope {s_axis:.4}  \
+             flank: ripple {r_flank:.4} slope {s_flank:.4}",
+            spacing * 2.0 * 40.0
+        );
+    }
+    // Now the SMOKE's actual configuration — Grain source over a canvas-anchored noise. If the ribs are
+    // here and not in Uniform, the geometry is not the culprit.
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let scan_grain = |spacing: f32, mapping: TextureMapping, off_axis: i32| -> (f32, f32) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let mut b = BrushSpec {
+            radius_px: 40.0,
+            spacing,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: DepthSource::Grain,
+            impasto_smoothing: 0.15,
+            ..Default::default()
+        };
+        b.texture.kind = TextureKind::Noise;
+        b.texture.mapping = mapping;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
+        let h = relief(&t);
+        let y = (150 + off_axis) as usize;
+        let line: Vec<f32> = (60..240).map(|x| h[y * size as usize + x]).collect();
+        let (lo, hi) = line
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &v| (l.min(v), h.max(v)));
+        let slope = line
+            .windows(3)
+            .map(|w| ((w[2] - w[0]) * 0.5).abs())
+            .fold(0.0f32, f32::max);
+        (hi - lo, slope)
+    };
+    for spacing in [0.10f32, 0.05, 0.01] {
+        for (name, m) in [
+            ("Grain/Tiled    ", TextureMapping::Tiled),
+            ("Grain/ViewPlane", TextureMapping::ViewPlane),
+        ] {
+            let (r, sl) = scan_grain(spacing, m, 0);
+            let (rf, slf) = scan_grain(spacing, m, 30);
+            println!(
+                "{name} spacing {spacing:.2}  centre: ripple {r:.4} slope {sl:.4}  flank: ripple {rf:.4} slope {slf:.4}"
+            );
+        }
+    }
+}
+
+#[test]
+fn impasto_relief_is_the_same_at_any_dab_spacing() {
+    // Enio's experiment, 2026-07-12, and one of the best bug reports this line got: the same brush at
+    // spacing 0.1 / 0.05 / 0.01 produced heavy corduroy, mild corduroy, and a smooth tube. Three
+    // different paintings from one brush.
+    //
+    // The thickness of paint is a property of the brush and the PATH. It cannot depend on how finely the
+    // engine chose to sample that path — that is an implementation detail leaking onto the canvas.
+    //
+    // The cause was geometric, not the grain: the envelope was a `max` of discrete DISCS, and between
+    // two centres the distance to either grows, so the maximum DIPS. Wider spacing, deeper scallops.
+    // (My first probe measured the centreline of a Grain stroke and reported "no corrugation" — it was
+    // looking at the wrong thing. The geometry shows up with the grain OFF.)
+    //
+    // Now each dab sweeps its body BACK along its own heading, so the union is the stroke's true
+    // distance field. Measured before: ripple 0.0148 / 0.0025 / 0.0000. After: 0.0000 at every spacing.
+    let size = 300u32;
+    let stroke = |spacing: f32| -> Vec<f32> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 40.0,
+            spacing,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: DepthSource::Uniform, // grain OFF — this is about the GEOMETRY
+            impasto_smoothing: 0.0,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
+        relief(&t)
+    };
+    // A straight stroke of constant width must leave a relief that is FLAT along its length. Any ripple
+    // here is the dab pitch printing itself onto the paint.
+    let ripple = |h: &[f32], row: usize| {
+        let line: Vec<f32> = (60..240).map(|x| h[row * size as usize + x]).collect();
+        let (lo, hi) = line
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &v| (l.min(v), h.max(v)));
+        hi - lo
+    };
+    let coarse = stroke(0.10);
+    let fine = stroke(0.01);
+    assert!(
+        coarse.iter().fold(0.0f32, |m, &v| m.max(v)) > 0.6,
+        "sanity: the coarse stroke really did lay down a body"
+    );
+    for row in [150usize, 180] {
+        // 180 = 30 px off the axis: the flank, where the falloff is steep.
+        assert!(
+            ripple(&coarse, row) < 0.002,
+            "at spacing 0.10 the relief ripples {:.4} along a stroke that should be flat — the dab \
+             pitch is printing itself onto the paint (row {row})",
+            ripple(&coarse, row)
+        );
+    }
+    // And the two spacings must agree: same brush, same path, same paint.
+    let peak = |h: &[f32]| h.iter().fold(0.0f32, |m, &v| m.max(v.abs()));
+    let (pc, pf) = (peak(&coarse), peak(&fine));
+    assert!(
+        (pc - pf).abs() < 0.02,
+        "coarse and fine sampling of the SAME stroke must deposit the same thickness ({pc:.3} vs {pf:.3})"
+    );
+}
+
+#[test]
+#[ignore = "diagnostic — run with --ignored --nocapture"]
+fn sweep_probe_jitter_spacing() {
+    // The sweep reaches back exactly one nominal pitch. Jitter Spacing scatters the dabs, so a gap can
+    // open wider than that — does the corrugation come back?
+    let size = 300u32;
+    for js in [0.0f32, 0.5, 1.0] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 40.0,
+            spacing: 0.10,
+            jitter_spacing: js,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto: true,
+            impasto_depth: 0.7,
+            impasto_source: DepthSource::Uniform,
+            impasto_smoothing: 0.0,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
+        let h = relief(&t);
+        let line: Vec<f32> = (60..240).map(|x| h[150 * size as usize + x]).collect();
+        let (lo, hi) = line
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(l, h), &v| (l.min(v), h.max(v)));
+        println!("jitter_spacing {js:.1} → ripple {:.4}", hi - lo);
+    }
 }

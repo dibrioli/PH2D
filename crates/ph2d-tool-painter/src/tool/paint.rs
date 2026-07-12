@@ -423,6 +423,12 @@ pub(crate) struct PaintState {
     /// (zero cost); sized lazily by the first dab, cleared on down and on each shape-editor re-stamp.
     /// See [`super::impasto`].
     stroke_height: Vec<f32>,
+    /// **Impasto**: where each Symmetry copy of the stroke was when the LAST pointer batch ended, so the
+    /// first dab of the next batch can sweep back to it. Without it the relief would bead at every
+    /// pointer event — a beading chosen by the artist's mouse polling rate, not by their hand. One slot
+    /// per copy; cleared on pen-down. Mirrors `last_smear_pos` (which is the same idea, for the smear
+    /// chain), but per-copy, because Symmetry paints several strokes at once.
+    last_height_center: Vec<Option<[f32; 2]>>,
     /// **Watercolor render-path** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the
     /// stroke's dabs (max-blended discs = wet_edges `stampCoverage`), the silhouette the optical composite
     /// reconstructs the wash from ([`super::watercolor_render`]). Empty unless the Watercolor section is

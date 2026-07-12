@@ -87,6 +87,33 @@ impl PainterTool {
         let grain_active = brush.texture.is_active();
         let groups = self.paint.dab_groups.clone();
         let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
+        // Each dab's body is swept back to the PREVIOUS dab's centre, so the bodies join into the
+        // stroke's distance field instead of a string of beads (see `accumulate_dab_height`). Finding
+        // that centre is the whole subtlety, and it is why this is not a one-liner:
+        //
+        //  * Symmetry INTERLEAVES its copies — `push_symmetric` emits `[base, mirror, base, mirror, …]`.
+        //    Linking neighbours in the list would draw a capsule from a dab to its own mirror image: a
+        //    bar straight across the canvas. The path predecessor is `copies` entries back.
+        //  * Tiling REPLICATES the list — `groups[j]` is the index of the ORIGINAL dab entry `j` is a
+        //    wrapped copy of. So the predecessor of a wrapped copy is the predecessor of its original,
+        //    carrying the SAME wrap offset.
+        //
+        // Both fall out of data the list already carries. No path is reconstructed.
+        let copies = if !brush.symmetry.enabled {
+            1
+        } else if brush.symmetry.circular {
+            brush.symmetry.segments().max(1) as usize
+        } else {
+            2
+        };
+        // The un-wrapped centre of each original dab (indexed by group), so a wrapped copy can recover
+        // its own offset. With Tiling off, `groups` is empty and the entry IS its own original.
+        let origin_center = |gi: usize| -> [f32; 2] {
+            groups.iter().position(|&g| g as usize == gi).map_or_else(
+                || dabs.get(gi).map_or([0.0, 0.0], |d| d.center),
+                |first| dabs[first].center,
+            )
+        };
 
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
@@ -116,11 +143,34 @@ impl PainterTool {
                     fp,
                 )
             });
+            // The path predecessor, carrying THIS entry's Tiling wrap.
+            let gi = groups.get(di).map_or(di, |g| *g as usize);
+            let prev_center = if gi >= copies {
+                let here = origin_center(gi);
+                let there = origin_center(gi - copies);
+                let off = [d.center[0] - here[0], d.center[1] - here[1]];
+                Some([there[0] + off[0], there[1] + off[1]])
+            } else {
+                // First sample of this batch: chain to where the stroke was when the last batch ended,
+                // per symmetry copy — without this the relief would bead at every pointer event, which is
+                // a beading the artist's hardware chose, not their hand.
+                self.paint
+                    .last_height_center
+                    .get(gi)
+                    .copied()
+                    .flatten()
+                    .map(|prev| {
+                        let here = origin_center(gi);
+                        let off = [d.center[0] - here[0], d.center[1] - here[1]];
+                        [prev[0] + off[0], prev[1] + off[1]]
+                    })
+            };
             let hd = HeightDab {
                 center: d.center,
                 radius: d.radius_px,
                 coverage: d.coverage,
                 footprint: fp,
+                prev_center,
                 shape: shape_basis
                     .as_ref()
                     .map(|sb| ph2d_painter_brush::ShapeInput {
@@ -146,6 +196,18 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
+        // Remember where each Symmetry copy ended, so the NEXT pointer batch sweeps back to it instead
+        // of starting a fresh bead.
+        if !dabs.is_empty() {
+            self.paint.last_height_center.clear();
+            self.paint.last_height_center.resize(copies, None);
+            let last_group = groups.last().map_or(dabs.len() - 1, |g| *g as usize);
+            for c in 0..copies {
+                // The last full round of copies in this batch: group indices `last_group - (copies-1) ..= last_group`.
+                let gi = last_group.saturating_sub(copies - 1 - c);
+                self.paint.last_height_center[c] = Some(origin_center(gi));
+            }
+        }
         // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back (rule 2).
 
         if erasing {
@@ -164,6 +226,7 @@ impl PainterTool {
     /// relief of every shape the artist dragged THROUGH, and a curve would leave a trail of ghosts).
     pub(super) fn reset_stroke_height(&mut self) {
         self.paint.stroke_height.clear();
+        self.paint.last_height_center.clear(); // the sweep chain restarts with the stroke
     }
 
     /// Merge the finished stroke's relief into the active layer, and clear the envelope.

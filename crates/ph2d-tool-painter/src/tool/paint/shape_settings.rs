@@ -192,6 +192,9 @@ impl PainterTool {
             self.paint
                 .shape_layers
                 .set_layers_meta(rgb_layers, opacity, blend, doc_ids);
+            // The real opacities only land HERE — `set_layers` above reset them to 1.0 and the flatten
+            // inside `set_brush_shape_layers` baked that. Re-bake now that the metadata is in.
+            self.reflatten_shape_image();
             if let Some((on, color)) = assignments {
                 self.paint.shape_layers.restore_assignments(&on, &color);
             }
@@ -250,6 +253,19 @@ impl PainterTool {
     /// unchanged. The "Per-Layer Color" checkbox appears (panel) once `> 1` layer is captured.
     pub fn set_brush_shape_layers(&mut self, layers: Vec<(Vec<u8>, u32, u32)>) {
         self.paint.shape_layers.set_layers(layers);
+        self.reflatten_shape_image();
+    }
+
+    /// Re-bake the flattened Shape silhouette from the current layers **and their metadata**, bumping the
+    /// image version so every cache keyed on it re-bakes.
+    ///
+    /// **Why it is its own function (sweep 2026-07-12):** `flatten()` scales each layer by
+    /// `opacity[i]` — but `set_layers()` RESETS the opacities to 1.0, and the capture only installs the
+    /// real ones afterwards (`set_layers_meta`). So the flatten always ran against all-1.0, and
+    /// `set_opacity` never re-flattened at all: the per-layer **Opacity** box was dead in every mode
+    /// except Per-Layer Color (which applies opacity at recomposite time, bypassing the flatten). One
+    /// choke point, called by everything that changes what the silhouette should look like.
+    pub(super) fn reflatten_shape_image(&mut self) {
         match self.paint.shape_layers.flatten() {
             Some((lum, w, h)) => {
                 self.paint.shape_image = Some(BrushTextureImage::new(lum, w, h));
@@ -300,6 +316,7 @@ impl PainterTool {
     /// bug fix: it never edits a coincidentally-id-matching layer in a DIFFERENT document being painted.
     pub fn set_brush_shape_layer_opacity(&mut self, i: usize, op01: f32) {
         self.paint.shape_layers.set_opacity(i, op01);
+        self.reflatten_shape_image(); // the silhouette is scaled by opacity — re-bake it
         // Remote-control the SHAPE SOURCE layer's opacity wherever it lives (the live bound doc, or — when
         // the artist switched away to paint a different sprite with this shape — its stashed stack). Never
         // the painted document's layer.

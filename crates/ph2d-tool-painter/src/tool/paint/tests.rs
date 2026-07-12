@@ -3078,6 +3078,45 @@ fn jitter_rotate_reaches_smear_on_a_flattened_untextured_dab() {
 }
 
 #[test]
+fn shape_layer_opacity_reaches_the_flattened_silhouette() {
+    // Sweep (2026-07-12): `ShapeLayers::flatten()` scales each layer by `opacity[i]` — but `set_layers()`
+    // RESETS the opacities to 1.0, and the capture only installs the real ones afterwards
+    // (`set_layers_meta`). So the flatten always baked against all-1.0. And `set_opacity` never re-flattened
+    // at all: the per-layer **Opacity** box was DEAD everywhere except Per-Layer Color mode (which applies
+    // opacity at recomposite time and so bypasses the flatten entirely — which is exactly why nobody
+    // noticed). The `op` term inside `flatten()` was unreachable code.
+    // RED without the fix: the flattened silhouette is byte-identical after zeroing a layer's opacity.
+    let mut t = white_canvas(64, 9.0);
+    // Two DISJOINT halves. (A full bottom layer would over-composite to saturation and the top layer's
+    // opacity could not change the result at ALL — the fixture would prove nothing.)
+    let mut left = vec![0u8; 64];
+    let mut right = vec![0u8; 64];
+    for y in 0..8 {
+        for x in 0..4 {
+            left[y * 8 + x] = 255;
+            right[y * 8 + x + 4] = 255;
+        }
+    }
+    t.set_brush_shape_layers(vec![(left, 8, 8), (right, 8, 8)]);
+    let before = t
+        .brush_shape_image()
+        .expect("a shape image was flattened")
+        .0
+        .to_vec();
+    // Drop the top layer to fully transparent — it must vanish from the silhouette.
+    t.set_brush_shape_layer_opacity(1, 0.0);
+    let after = t
+        .brush_shape_image()
+        .expect("a shape image was flattened")
+        .0
+        .to_vec();
+    assert_ne!(
+        before, after,
+        "layer Opacity scales the flattened silhouette — the box must re-bake it"
+    );
+}
+
+#[test]
 fn granulation_re_bakes_the_coloured_stamp() {
     // Sweep (2026-07-12): `render_color_stamp_mask` folds `effective_granulation()` into the baked Grain
     // coverage — so Granulation is an INPUT of the bake — but `ColorStampKey` did not carry it. The

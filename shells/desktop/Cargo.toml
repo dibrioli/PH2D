@@ -260,6 +260,7 @@ ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
 # Optional, pulled in only by the `panel-audio-editor` feature.
 ph2d-audio-edit = { path = "../../crates/ph2d-audio-edit", optional = true }
 ph2d-audio-encode = { path = "../../crates/ph2d-audio-encode", optional = true }
+ph2d-audio-spectral = { path = "../../crates/ph2d-audio-spectral", optional = true }
 cpal = "0.15"
 # arboard: system clipboard read/write for the Cmd+C/V/X handlers in
 # ph2d-editor's dispatch. Constructed once at startup; pasted text is
@@ -353,4 +354,4 @@ panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer", "dep:ph2d-
 panel-timeline       = ["ph2d-panel-registry-init/panel-timeline"]
 # Direct dep too: the render_loop editor bridge reads the transport intents +
 # drives the preview engine + publishes position back for the readout/playhead.
-panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode"]
+panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode", "dep:ph2d-audio-spectral"]

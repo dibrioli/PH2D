@@ -23,6 +23,10 @@ use ph2d_panel_audio_editor::{
     take_play_pause, take_save_preset, take_set_loop, take_stop, take_toggle_mono,
 };
 use ph2d_panel_audio_editor::{
+    AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW,
+    spectral_state,
+};
+use ph2d_panel_audio_editor::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
     AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT,
     AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, gain_jitter_norm,
@@ -879,5 +883,119 @@ fn the_asset_prep_sections_start_folded() {
         (ph2d_panel_audio_editor::AEDIT_SEC_FX, "Effects"),
     ] {
         assert!(!host.store().is_collapsed(id), "{name} should start open");
+    }
+}
+
+// ── Spectral (W5, ADR-0115) ─────────────────────────────────────────────────────────
+
+/// The view toggle is the precondition for the whole section: the box that Repair needs
+/// can only be drawn in the spectrogram, so if this click does not reach the overlay,
+/// nothing else here can be reached at all.
+#[test]
+fn the_view_toggle_flips_the_overlay() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let before = spectral_state::view();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_VIEW));
+    assert_ne!(
+        spectral_state::view(),
+        before,
+        "the Spectrogram toggle never reached the overlay"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_VIEW));
+    assert_eq!(
+        spectral_state::view(),
+        before,
+        "the toggle does not toggle back"
+    );
+}
+
+/// **Repair refuses without a time-frequency band, and Denoise refuses without a profile.**
+///
+/// Both buttons are dimmed without them — and a dim is cosmetic (the 2026-07-09 audit
+/// found disabled buttons still registering their hit rects). The failure they guard is not
+/// a no-op either: `SpectralRepair` with no band would fall through to whatever the shell
+/// made of an empty region, and `Denoise` with no profile is a tool aimed at nothing.
+#[test]
+fn the_spectral_tools_refuse_to_fire_without_what_they_need() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+
+    spectral_state::set_ready(false, false, "");
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_REPAIR));
+    assert_eq!(
+        take_edit_cmd(),
+        None,
+        "Repair armed with no time-frequency band selected"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_DENOISE));
+    assert_eq!(
+        take_edit_cmd(),
+        None,
+        "Denoise armed with no noise profile learned"
+    );
+
+    // …and with what they need, they fire.
+    spectral_state::set_ready(true, true, "");
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_REPAIR));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::SpectralRepair),
+        "Repair never armed its command, even with a band"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_DENOISE));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::Denoise),
+        "Denoise never armed its command, even with a profile"
+    );
+}
+
+/// **Learn refuses without a selection** — and this is the one that could do real harm.
+/// Learning from a stretch of *signal* teaches the denoiser that the voice is the noise,
+/// and Denoise then dutifully removes the voice. `EditClip::target()` falls back to the
+/// whole clip when there is no selection, so an unguarded Learn would do exactly that.
+#[test]
+fn learn_refuses_without_a_selection() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+
+    set_has_selection(false);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_LEARN));
+    assert_eq!(
+        take_edit_cmd(),
+        None,
+        "Learn armed with no selection — it would have learned the whole clip as 'noise'"
+    );
+
+    set_has_selection(true);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_LEARN));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::LearnNoise),
+        "Learn never armed its command, even with a selection"
+    );
+}
+
+/// The Spectral section's controls are all REGISTERED — a control that paints but was
+/// never registered in `populate` is a dead item: it looks live, and clicking it does
+/// nothing. (The gate that catches the fan-out's most common wiring miss.)
+#[test]
+fn every_spectral_control_is_registered() {
+    let host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    for (id, name) in [
+        (AEDIT_SPEC_VIEW, "Spectrogram toggle"),
+        (AEDIT_SPEC_REPAIR, "Repair"),
+        (AEDIT_SPEC_LEARN, "Learn Noise"),
+        (AEDIT_SPEC_DENOISE, "Denoise"),
+        (AEDIT_SPEC_AMOUNT, "Amount slider"),
+    ] {
+        assert!(
+            host.store().get(id).is_some(),
+            "{name} is painted but never registered in populate — it is a dead control"
+        );
     }
 }

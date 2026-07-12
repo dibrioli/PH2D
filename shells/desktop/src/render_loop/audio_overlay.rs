@@ -40,7 +40,7 @@ const EDITOR_PANEL_W: f32 = 240.0; // LITERAL-PX-OK: docked editor panel width (
 /// clip is loaded. No-op otherwise.
 pub(super) fn draw_audio_overlay(
     hero: &mut HeroScreen,
-    audio: &AudioSystem,
+    audio: &mut AudioSystem,
     viewport: Rect,
     scene: &mut VectorScene,
     text: &mut TextSystem,
@@ -50,11 +50,13 @@ pub(super) fn draw_audio_overlay(
         crate::audio::set_wave_view(None);
         return;
     }
-    let Some(clip) = audio.editor_clip() else {
+    let Some(frames) = audio.editor_clip().map(|c| c.frame_count()) else {
         crate::audio::set_wave_view(None);
         return;
     };
     let theme = hero.theme;
+    // Which picture is showing. The panel owns this toggle (W5); the overlay just obeys.
+    let spectral = ph2d_panel_audio_editor::spectral_state::view();
 
     // Drag/resize use the SAME proven math as the Widget Gallery: `clamp_panel_rect`
     // against the full viewport, with a `base` strictly SMALLER than that envelope
@@ -88,7 +90,11 @@ pub(super) fn draw_audio_overlay(
     paint_text_centered(
         text,
         scene,
-        "Audio Editor \u{00b7} Waveform",
+        if spectral {
+            "Audio Editor \u{00b7} Spectrogram"
+        } else {
+            "Audio Editor \u{00b7} Waveform"
+        },
         header,
         TypeToken::Xs.px(),
         resolve(ColorToken::Text2, theme),
@@ -111,22 +117,33 @@ pub(super) fn draw_audio_overlay(
     // The playhead frame (offset into the loop region while it loops), computed once:
     // it drives both the waveform's played/unplayed shading and the playhead line.
     let ph_frame = audio.editor_playhead_frame();
-    let total = clip.frame_count().max(1) as f32;
+    let total = frames.max(1) as f32;
     let played_frac = (ph_frame as f32 / total).clamp(0.0, 1.0);
     // Only split played/unplayed once playback has advanced; a stopped clip shows the
     // whole waveform lit.
     let played_x = (ph_frame > 0).then_some(wave.x + played_frac * wave.w);
-    draw_ruler(scene, text, clip, ruler, theme);
-    draw_waveform(scene, clip, wave, played_x, theme);
-    // Selection highlight (under the playhead) + publish the wave viewport so the
-    // shell can hit-test a press over it and map screen-x → clip frame.
-    if let Some((s, e)) = audio.editor_selection() {
-        draw_selection(scene, wave, clip.frame_count() as u64, s, e, theme);
+    if let Some(clip) = audio.editor_clip() {
+        draw_ruler(scene, text, clip, ruler, theme);
+        if !spectral {
+            draw_waveform(scene, clip, wave, played_x, theme);
+        }
+    }
+    // The spectrogram needs the image cache, so it borrows `audio` mutably — after the
+    // read-only draws above have let go of the clip.
+    if spectral {
+        super::audio_spectrogram::draw_spectrogram(scene, audio, wave, theme);
+    }
+    // The selection. In the waveform it is a full-height band (it can only say WHEN); in
+    // the spectrogram it is a box (when AND what), and only the box can be repaired.
+    if spectral {
+        super::audio_spectrogram::draw_band(scene, audio, wave, frames as u64, theme);
+    } else if let Some((s, e)) = audio.editor_selection() {
+        draw_selection(scene, wave, frames as u64, s, e, theme);
     }
     // Loop brackets (W6) — the region that will be written to the `smpl` chunk and
     // auditioned click-free. A green frame, distinct from the blue selection band.
     if let Some((ls, le)) = audio.editor_loop_frames() {
-        draw_loop_region(scene, wave, clip.frame_count() as u64, ls, le, theme);
+        draw_loop_region(scene, wave, frames as u64, ls, le, theme);
     }
     // Cue markers (W6) — named points written to the `cue`+`adtl` chunks. Purple
     // flags in the ruler with a thin line down the wave, distinct from every band.
@@ -135,13 +152,13 @@ pub(super) fn draw_audio_overlay(
         text,
         ruler,
         wave,
-        clip.frame_count() as u64,
+        frames as u64,
         &audio.editor_markers(),
     );
     crate::audio::set_wave_view(Some(crate::audio::WaveView {
         rect: wave,
         ruler,
-        frames: clip.frame_count() as u64,
+        frames: frames as u64,
     }));
     // The playhead spans the ruler AND the waveform (one continuous bar), so grabbing
     // it in the ruler reads as moving the same line. It stays inside the green loop

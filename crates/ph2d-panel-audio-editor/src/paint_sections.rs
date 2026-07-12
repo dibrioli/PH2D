@@ -15,7 +15,7 @@ use crate::paint::{ClippedHits, button, fmt_time, toggle};
 use crate::{
     AEDIT_BATCH_LUFS, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PLAY,
     AEDIT_SEC_DELIVERY, AEDIT_SEC_EDIT, AEDIT_SEC_FX, AEDIT_SEC_LOOP, AEDIT_SEC_MARKERS,
-    AEDIT_SEC_TRANSPORT, AEDIT_SEC_VARIATIONS, AEDIT_STOP,
+    AEDIT_SEC_SPECTRAL, AEDIT_SEC_TRANSPORT, AEDIT_SEC_VARIATIONS, AEDIT_STOP,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
@@ -33,7 +33,7 @@ use crate::paint::ROW_H;
 /// Everything the body needs for one frame, bundled so the walk fits one arg list.
 pub(crate) struct Body {
     /// Fold state per section, in [`SECTIONS`] order.
-    pub open: [bool; 7],
+    pub open: [bool; 8],
     pub loaded: bool,
     pub undo_ok: bool,
     pub redo_ok: bool,
@@ -171,6 +171,39 @@ fn paint_sound_sections(
             b.undo_ok,
             b.redo_ok,
             b.has_sel,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+    y = separator(y, x, w, scene, theme);
+
+    // Spectral sits between Edit and Effects: it IS editing (destructive, undoable), it
+    // just edits in a domain the waveform cannot show. Reach for it after the cuts and
+    // before the rack.
+    let (o, ny) = section(
+        y,
+        x,
+        w,
+        AEDIT_SEC_SPECTRAL,
+        "Spectral",
+        Some(crate::paint_spectral::spectral_readout()),
+        b.open(AEDIT_SEC_SPECTRAL),
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y = ny;
+    if o {
+        y = crate::paint_spectral::paint_spectral_section(
+            y,
+            x,
+            w,
+            b.loaded,
+            b.has_sel,
+            ROW_H,
             scene,
             text_system,
             theme,
@@ -317,10 +350,11 @@ fn paint_asset_sections(
 
 /// Every collapsible section, in paint order. The fold state is read from the store as
 /// one array before the paint borrows, so the body never has to reach back into it.
-pub(crate) const SECTIONS: [NodeId; 7] = [
+pub(crate) const SECTIONS: [NodeId; 8] = [
     AEDIT_SEC_TRANSPORT,
     AEDIT_SEC_LOOP,
     AEDIT_SEC_EDIT,
+    AEDIT_SEC_SPECTRAL,
     AEDIT_SEC_FX,
     AEDIT_SEC_MARKERS,
     AEDIT_SEC_VARIATIONS,

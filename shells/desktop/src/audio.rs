@@ -18,6 +18,10 @@ use ph2d_audio::{
 #[cfg(feature = "panel-audio-editor")]
 mod editor;
 #[cfg(feature = "panel-audio-editor")]
+mod wave_view;
+#[cfg(feature = "panel-audio-editor")]
+pub(crate) use wave_view::{WaveView, frame_at_x, set_wave_view, wave_view};
+#[cfg(feature = "panel-audio-editor")]
 pub(crate) mod fx_params;
 // The rack's parameter specs, split out of `fx_params_table` under the HR-18 shell cap.
 #[cfg(feature = "panel-audio-editor")]
@@ -39,6 +43,10 @@ pub(crate) struct AudioSystem {
     /// Cached delivery price of the loaded clip (W6). Sizing an asset means encoding
     /// it, so the result is cached on (buffer, codec, quality) — see `editor::delivery`.
     delivery: editor::delivery::DeliveryCache,
+    /// The spectrogram, the learned noise profile and the frequency band (W5) — see
+    /// `editor::spectral`. Building the picture is an FFT of the whole clip, so it is
+    /// cached on the buffer and on the size it is drawn at.
+    spectral: editor::spectral::SpectralState,
     format: AudioFormat,
     /// Last master gain pushed to the engine — so the per-frame bridge only
     /// sends a command when it actually changes (else it floods the ring).
@@ -169,6 +177,7 @@ impl AudioSystem {
         Some(AudioSystem {
             engine,
             delivery: Default::default(),
+            spectral: Default::default(),
             format,
             last_master_gain: std::cell::Cell::new(1.0),
             last_cutoff: std::cell::Cell::new(20_000.0),
@@ -492,43 +501,6 @@ impl AudioSystem {
             Err(e) => eprintln!("audio: play failed ({e})"),
         }
     }
-}
-
-/// The waveform viewport (screen rect + clip length) the overlay publishes each
-/// frame, so the shell's mouse handlers can hit-test a press over the waveform and
-/// map screen-x → clip frame for the selection drag.
-#[cfg(feature = "panel-audio-editor")]
-#[derive(Clone, Copy)]
-pub(crate) struct WaveView {
-    pub rect: ph2d_editor::zones::Rect,
-    /// The time-ruler strip below the waveform — the playhead scrub hit-region (the
-    /// wave body above it is the selection region). Same x/width as `rect`.
-    pub ruler: ph2d_editor::zones::Rect,
-    pub frames: u64,
-}
-
-#[cfg(feature = "panel-audio-editor")]
-thread_local! {
-    static WAVE_VIEW: std::cell::Cell<Option<WaveView>> = const { std::cell::Cell::new(None) };
-}
-
-/// Overlay → shell: publish (or clear) the waveform viewport for this frame.
-#[cfg(feature = "panel-audio-editor")]
-pub(crate) fn set_wave_view(v: Option<WaveView>) {
-    WAVE_VIEW.with(|c| c.set(v));
-}
-
-/// Shell mouse handlers: the current waveform viewport, if the overlay is shown.
-#[cfg(feature = "panel-audio-editor")]
-pub(crate) fn wave_view() -> Option<WaveView> {
-    WAVE_VIEW.with(std::cell::Cell::get)
-}
-
-/// Map a screen `x` to a clip frame within `view` (clamped to the clip).
-#[cfg(feature = "panel-audio-editor")]
-pub(crate) fn frame_at_x(view: &WaveView, x: f32) -> u64 {
-    let t = ((x - view.rect.x) / view.rect.w.max(1.0)).clamp(0.0, 1.0);
-    ((t as f64) * view.frames as f64) as u64
 }
 
 /// Build the output stream for device sample type `T`. The mixer renders into a

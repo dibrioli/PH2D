@@ -25,10 +25,12 @@ mod paint_edit;
 mod paint_fx;
 mod paint_loop;
 mod paint_sections;
+mod paint_spectral;
 mod paint_variation;
 mod populate;
 pub mod presets;
 pub mod snapshot;
+pub mod spectral_state;
 pub mod state;
 pub mod variation_state;
 
@@ -58,6 +60,8 @@ pub const AEDIT_SEC_EDIT: NodeId = hash_node_id("audio_editor_sec_edit");
 pub const AEDIT_SEC_FX: NodeId = hash_node_id("audio_editor_sec_fx");
 /// Loop points.
 pub const AEDIT_SEC_LOOP: NodeId = hash_node_id("audio_editor_sec_loop");
+/// Spectral: the spectrogram view, repair and denoise.
+pub const AEDIT_SEC_SPECTRAL: NodeId = hash_node_id("audio_editor_sec_spectral");
 /// Cue markers.
 pub const AEDIT_SEC_MARKERS: NodeId = hash_node_id("audio_editor_sec_markers");
 /// Variation containers.
@@ -109,6 +113,19 @@ pub const AEDIT_CODEC_PREV: NodeId = hash_node_id("audio_editor_codec_prev");
 pub const AEDIT_CODEC_NEXT: NodeId = hash_node_id("audio_editor_codec_next");
 /// Ogg Vorbis quality slider (inert on a lossless codec).
 pub const AEDIT_OGG_QUALITY: NodeId = hash_node_id("audio_editor_ogg_quality");
+
+// Spectral (W5, ADR-0115): the frequency-domain tools. The view toggle swaps what the
+// overlay draws; the rest act on what is selected IN that view.
+/// Waveform ⇄ Spectrogram.
+pub const AEDIT_SPEC_VIEW: NodeId = hash_node_id("audio_editor_spec_view");
+/// Rebuild the selected time-frequency region from its surroundings.
+pub const AEDIT_SPEC_REPAIR: NodeId = hash_node_id("audio_editor_spec_repair");
+/// Learn the noise profile from the selection.
+pub const AEDIT_SPEC_LEARN: NodeId = hash_node_id("audio_editor_spec_learn");
+/// How hard to denoise.
+pub const AEDIT_SPEC_AMOUNT: NodeId = hash_node_id("audio_editor_spec_amount");
+/// Apply the denoise across the clip.
+pub const AEDIT_SPEC_DENOISE: NodeId = hash_node_id("audio_editor_spec_denoise");
 /// Gain −3 dB.
 pub const AEDIT_GAIN_DOWN: NodeId = hash_node_id("audio_editor_gain_down");
 /// Gain +3 dB.
@@ -347,6 +364,12 @@ pub enum AudioEditCmd {
     ApplyFx,
     /// Discard the live audition; the clip goes back to how it sounded.
     CancelFx,
+    /// Rebuild the selected time-frequency region from what surrounds it (W5).
+    SpectralRepair,
+    /// Learn the noise floor from the selection — the selection must be noise ALONE.
+    LearnNoise,
+    /// Suppress the learned noise across the whole clip.
+    Denoise,
 }
 
 /// Zero-size marker implementing the typed Audio Editor panel contract.

@@ -12,6 +12,7 @@ pub(crate) mod delivery;
 mod fx_rack;
 mod loops;
 mod markers;
+pub(crate) mod spectral;
 mod variation;
 
 use super::AudioSystem;
@@ -492,7 +493,25 @@ impl AudioSystem {
                 ),
                 // Handled above (they act on the audition, not on `clip`).
                 Cmd::ApplyFx | Cmd::CancelFx => {}
+                // Spectral (W5) — they need the FFT and the shell's spectral state, so
+                // they are run below, outside this `clip` borrow.
+                Cmd::SpectralRepair | Cmd::LearnNoise | Cmd::Denoise => {}
             }
+        }
+        match cmd {
+            Cmd::SpectralRepair => {
+                self.editor_spectral_repair();
+                return;
+            }
+            Cmd::LearnNoise => {
+                self.editor_learn_noise();
+                return;
+            }
+            Cmd::Denoise => {
+                self.editor_denoise();
+                return;
+            }
+            _ => {}
         }
         // Hot-swap the edited buffer into the sounding preview (no stop). No-op if
         // stopped — the next Play uses the edited clip.

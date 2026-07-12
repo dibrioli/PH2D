@@ -382,10 +382,16 @@ pub(crate) struct App {
     /// format — the editor runs silent (degrade-gracefully, like `gilrs`).
     /// Holds the control-side `AudioEngine` + the live cpal output stream.
     pub(crate) audio: Option<crate::audio::AudioSystem>,
-    /// Audio Editor waveform selection drag: the anchor frame while the primary
-    /// button is held over the overlay waveform (`None` = not selecting).
+    /// Audio Editor selection drag: the anchor while the primary button is held over the
+    /// overlay (`None` = not selecting) — the anchor **frame**, and the anchor **frequency**
+    /// as a fraction of Nyquist.
+    ///
+    /// The frequency half only means anything in the spectrogram (W5), where a selection is
+    /// a box rather than a band. It is captured on every drag anyway, because the anchor is
+    /// gone by the time we would know we needed it: the user can switch views mid-drag, and
+    /// a press does not know what a release will want.
     #[cfg(feature = "panel-audio-editor")]
-    pub(crate) audio_sel_drag: Option<u64>,
+    pub(crate) audio_sel_drag: Option<(u64, f32)>,
     /// Audio Editor playhead scrub: `true` while the primary button is held over the
     /// overlay's time RULER, dragging the playhead (seek). Distinct from the waveform
     /// selection drag (which lives in the wave body above the ruler).

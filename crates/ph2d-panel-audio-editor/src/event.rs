@@ -9,8 +9,9 @@ use crate::{
     AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
     AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
     AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO,
-    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
-    AudioEditorPanel, loop_state, presets, snapshot, variation_state,
+    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN,
+    AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
+    AudioEditorPanel, loop_state, presets, snapshot, spectral_state, variation_state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -31,6 +32,37 @@ fn loop_click(id: NodeId) -> Option<EventOutcome> {
     if id == AEDIT_LOOP_CLEAR {
         if loop_state::has_loop() {
             loop_state::request_clear_loop();
+        }
+        return Some(EventOutcome::Consumed);
+    }
+    None
+}
+
+/// Spectral clicks (W5). The view toggle is free; the three tools each need something
+/// selected, and **the seam refuses without it** — the panel dims them, but a dim is
+/// cosmetic, and the cost of getting this wrong is not a no-op: Learn against a stretch of
+/// *signal* would teach the denoiser that the voice is the noise, and then remove it.
+fn spectral_click(id: NodeId) -> Option<EventOutcome> {
+    if id == AEDIT_SPEC_VIEW {
+        spectral_state::toggle_view();
+        return Some(EventOutcome::Consumed);
+    }
+    if id == AEDIT_SPEC_REPAIR {
+        // Needs a time-AND-frequency box, which only exists in the spectrogram.
+        if spectral_state::has_band() {
+            snapshot::request_edit(AudioEditCmd::SpectralRepair);
+        }
+        return Some(EventOutcome::Consumed);
+    }
+    if id == AEDIT_SPEC_LEARN {
+        if snapshot::has_selection() {
+            snapshot::request_edit(AudioEditCmd::LearnNoise);
+        }
+        return Some(EventOutcome::Consumed);
+    }
+    if id == AEDIT_SPEC_DENOISE {
+        if spectral_state::has_profile() {
+            snapshot::request_edit(AudioEditCmd::Denoise);
         }
         return Some(EventOutcome::Consumed);
     }
@@ -281,6 +313,10 @@ pub(crate) fn apply_event(
         if let Some(outcome) = variation_click(id) {
             return outcome;
         }
+        // Spectral (W5) — the view toggle and the two repair tools.
+        if let Some(outcome) = spectral_click(id) {
+            return outcome;
+        }
         // Chain rows: the eye toggles a stage in/out of the render, the row selects it.
         if let Some(i) = AEDIT_FX_STAGE_ONS.iter().position(|s| *s == id) {
             snapshot::toggle_fx_stage_enabled(i);
@@ -326,6 +362,14 @@ pub(crate) fn apply_event(
     {
         let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
         loop_state::set_xfade_norm(v);
+        return EventOutcome::Consumed;
+    }
+    // The denoise Amount slider — the shell reads it when Denoise is clicked.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && id == AEDIT_SPEC_AMOUNT
+    {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        spectral_state::set_amount(v);
         return EventOutcome::Consumed;
     }
     // The Ogg quality slider — the shell re-prices the asset when it moves.

@@ -10,11 +10,12 @@ use crate::{
     AEDIT_NORMALIZE, AEDIT_OGG_QUALITY, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD,
     AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO, AEDIT_REVERSE,
     AEDIT_SEC_DELIVERY, AEDIT_SEC_EDIT, AEDIT_SEC_FX, AEDIT_SEC_LOOP, AEDIT_SEC_MARKERS,
-    AEDIT_SEC_TRANSPORT, AEDIT_SEC_VARIATIONS, AEDIT_SILENCE, AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO,
-    AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
-    AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT,
-    AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, delivery_state,
-    loop_state, variation_state,
+    AEDIT_SEC_SPECTRAL, AEDIT_SEC_TRANSPORT, AEDIT_SEC_VARIATIONS, AEDIT_SILENCE,
+    AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW,
+    AEDIT_STOP, AEDIT_TRIM, AEDIT_UNDO, AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN,
+    AEDIT_VAR_LOAD, AEDIT_VAR_PITCH, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS,
+    AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT, AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN,
+    AEDIT_VAR_WEIGHT_UP, delivery_state, loop_state, spectral_state, variation_state,
 };
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
@@ -122,9 +123,24 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         // Delivery (W6): the codec selector. It drives the cost readout AND the export.
         AEDIT_CODEC_PREV,
         AEDIT_CODEC_NEXT,
+        // Spectral (W5): the view toggle and the two repair tools.
+        AEDIT_SPEC_VIEW,
+        AEDIT_SPEC_REPAIR,
+        AEDIT_SPEC_LEARN,
+        AEDIT_SPEC_DENOISE,
     ] {
         store.register(id, button());
     }
+
+    // Denoise Amount — normalized 0..1.
+    store.register(
+        AEDIT_SPEC_AMOUNT,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: spectral_state::DEFAULT_AMOUNT,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
 
     // Ogg Vorbis quality — normalized 0..1, which is also the codec's own range.
     store.register(
@@ -207,6 +223,7 @@ fn populate_sections(store: &mut WidgetStore) {
         AEDIT_SEC_EDIT,
         AEDIT_SEC_FX,
         AEDIT_SEC_LOOP,
+        AEDIT_SEC_SPECTRAL,
         AEDIT_SEC_MARKERS,
         AEDIT_SEC_VARIATIONS,
         AEDIT_SEC_DELIVERY,
@@ -220,6 +237,7 @@ fn populate_sections(store: &mut WidgetStore) {
     // per-frame override.
     for id in [
         AEDIT_SEC_LOOP,
+        AEDIT_SEC_SPECTRAL,
         AEDIT_SEC_MARKERS,
         AEDIT_SEC_VARIATIONS,
         AEDIT_SEC_DELIVERY,

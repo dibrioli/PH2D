@@ -6,7 +6,7 @@ use super::*;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::widget::TextInputState;
 
-fn body(open: [bool; 7]) -> Body {
+fn body(open: [bool; 8]) -> Body {
     Body {
         open,
         loaded: true,
@@ -30,7 +30,7 @@ fn body(open: [bool; 7]) -> Body {
 }
 
 /// How tall the body comes out with that fold state.
-fn height(open: [bool; 7]) -> f32 {
+fn height(open: [bool; 8]) -> f32 {
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     let mut hits = HitIndex::default();
@@ -56,14 +56,14 @@ fn height(open: [bool; 7]) -> f32 {
 /// Every section folds on its own, and each one it folds makes the body shorter.
 #[test]
 fn folding_a_section_shortens_the_panel() {
-    let all_open = height([true; 7]);
-    let all_shut = height([false; 7]);
+    let all_open = height([true; 8]);
+    let all_shut = height([false; 8]);
     assert!(
         all_shut < all_open * 0.5,
         "folding everything barely helped: {all_open} open, {all_shut} shut"
     );
     for i in 0..7 {
-        let mut open = [true; 7];
+        let mut open = [true; 8];
         open[i] = false;
         assert!(
             height(open) < all_open,
@@ -77,9 +77,9 @@ fn folding_a_section_shortens_the_panel() {
 /// back in.
 #[test]
 fn a_folded_section_still_paints_its_header() {
-    // Seven headers + seven dividers, even with every block folded away.
+    // Every header + its divider survives, even with every block folded away.
     assert!(
-        height([false; 7]) > section_h() * 7.0,
+        height([false; 8]) > section_h() * 8.0,
         "the headers vanished along with their blocks"
     );
 }
@@ -98,6 +98,7 @@ fn the_section_order_is_pinned() {
             AEDIT_SEC_TRANSPORT,
             AEDIT_SEC_LOOP,
             AEDIT_SEC_EDIT,
+            AEDIT_SEC_SPECTRAL,
             AEDIT_SEC_FX,
             AEDIT_SEC_MARKERS,
             AEDIT_SEC_VARIATIONS,
@@ -113,7 +114,7 @@ fn the_section_order_is_pinned() {
 #[test]
 fn the_fold_state_follows_the_section_not_the_slot() {
     for (i, id) in SECTIONS.iter().enumerate() {
-        let mut open = [true; 7];
+        let mut open = [true; 8];
         open[i] = false;
         let b = body(open);
         assert!(!b.open(*id), "{id:?} lost its own fold state");
@@ -144,7 +145,7 @@ fn no_control_is_painted_twice() {
             0.0,
             0.0,
             220.0,
-            &body([true; 7]),
+            &body([true; 8]),
             &mut scene,
             &mut text,
             Theme::default(),

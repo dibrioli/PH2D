@@ -18,6 +18,7 @@
 
 #[cfg(feature = "panel-audio-editor")]
 mod audio_overlay;
+mod audio_spectrogram;
 pub(crate) mod autokey_pass;
 pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
@@ -266,6 +267,7 @@ impl crate::App {
                 audio.editor_set_looping(ed::looping());
                 audio.editor_poll();
                 audio.editor_publish_delivery();
+                audio.editor_publish_spectral();
                 ed::set_playing(audio.editor_playing());
                 ed::set_loaded(audio.editor_loaded());
                 ed::set_position_secs(audio.editor_position_secs());
@@ -2763,7 +2765,7 @@ impl crate::App {
             // loaded clip from the audio system; no-op when the panel is closed
             // or no clip is loaded.
             #[cfg(feature = "panel-audio-editor")]
-            if let Some(audio) = self.audio.as_ref() {
+            if let Some(audio) = self.audio.as_mut() {
                 audio_overlay::draw_audio_overlay(
                     hero,
                     audio,

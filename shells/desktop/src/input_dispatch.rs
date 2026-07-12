@@ -1854,25 +1854,31 @@ impl App {
     /// starting a selection drag. `None` if the overlay is hidden or the point is
     /// outside the waveform area.
     #[cfg(feature = "panel-audio-editor")]
-    fn audio_wave_frame_at(&self, x: f32, y: f32) -> Option<u64> {
+    fn audio_wave_frame_at(&self, x: f32, y: f32) -> Option<(u64, f32)> {
         let view = crate::audio::wave_view()?;
         self.audio.as_ref()?.editor_clip()?;
         let r = view.rect;
         (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
-            .then(|| crate::audio::frame_at_x(&view, x))
+            .then(|| (crate::audio::frame_at_x(&view, x), freq_at_y(&view, y)))
     }
 
-    /// Extend the active waveform selection to the cursor `x`. Returns `true` if a
-    /// selection drag is live (the caller early-returns so it doesn't also pan).
+    /// Extend the active selection to the cursor. Returns `true` if a selection drag is
+    /// live (the caller early-returns so it doesn't also pan).
+    ///
+    /// In the waveform this sets a time range and nothing else. In the **spectrogram** the
+    /// same gesture also sets the frequency band, because there the selection is a box —
+    /// and the box is the only thing spectral repair can act on (W5).
     #[cfg(feature = "panel-audio-editor")]
-    fn audio_sel_drag_move(&mut self, x: f32) -> bool {
-        let Some(anchor) = self.audio_sel_drag else {
+    fn audio_sel_drag_move(&mut self, x: f32, y: f32) -> bool {
+        let Some((anchor, anchor_hz)) = self.audio_sel_drag else {
             return false;
         };
         if let Some(view) = crate::audio::wave_view() {
             let cur = crate::audio::frame_at_x(&view, x);
+            let cur_hz = freq_at_y(&view, y);
             if let Some(a) = self.audio.as_mut() {
                 a.editor_set_selection(anchor, cur);
+                a.editor_set_spectral_band(anchor_hz, cur_hz);
             }
         }
         true
@@ -1933,7 +1939,7 @@ impl App {
         // being dragged over the overlay waveform, every motion extends it. Early-
         // return so it doesn't also pan / drive a gizmo.
         #[cfg(feature = "panel-audio-editor")]
-        if self.audio_sel_drag_move(self.last_pointer.0) {
+        if self.audio_sel_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // Audio Editor playhead scrub drag (SHELL-only): dragging the time ruler seeks
@@ -2135,10 +2141,10 @@ impl App {
             }
             // Press on the WAVE body → start a selection (cleared to a point).
             PointerKind::Down
-                if let Some(frame) =
+                if let Some(hit) =
                     self.audio_wave_frame_at(self.last_pointer.0, self.last_pointer.1) =>
             {
-                self.audio_sel_drag = Some(frame);
+                self.audio_sel_drag = Some(hit);
                 if let Some(a) = self.audio.as_mut() {
                     a.editor_clear_selection();
                 }
@@ -4068,5 +4074,68 @@ mod cursor_tests {
         // Defensive: a mask with no bits is a horizontal edge by fallback, not a
         // panic and not a misleading up-down arrow on a left/right grip.
         assert_eq!(resize_cursor_for_edges(0), CursorIcon::EwResize);
+    }
+}
+
+/// Map a screen `y` inside the overlay to a **frequency**, as a fraction of Nyquist.
+///
+/// Frequency runs UP the spectrogram (DC at the bottom, Nyquist at the top) — the DAW
+/// convention, and the one the picture is drawn in. Screen y runs DOWN. Getting this
+/// inversion wrong would select a band and repair its mirror image: a fix that removes the
+/// wrong sound and swears it did what you asked.
+#[cfg(feature = "panel-audio-editor")]
+fn freq_at_y(view: &crate::audio::WaveView, y: f32) -> f32 {
+    let r = view.rect;
+    (1.0 - (y - r.y) / r.h.max(1.0)).clamp(0.0, 1.0)
+}
+
+#[cfg(all(test, feature = "panel-audio-editor"))]
+mod spectral_axis_tests {
+    use super::freq_at_y;
+    use crate::audio::WaveView;
+    use ph2d_editor::zones::Rect;
+
+    fn view() -> WaveView {
+        WaveView {
+            rect: Rect::new(100.0, 200.0, 400.0, 300.0),
+            ruler: Rect::new(100.0, 180.0, 400.0, 20.0),
+            frames: 48_000,
+        }
+    }
+
+    /// **Frequency runs UP the spectrogram; screen y runs DOWN.**
+    ///
+    /// This inversion is the whole of the mapping, and getting it backwards is the worst
+    /// kind of bug this feature can have: the user drags a box around a 5 kHz beep, and the
+    /// repair confidently rebuilds the *mirror* band instead — removing a sound they wanted
+    /// and leaving the one they pointed at. Nothing crashes; nothing looks wrong; the beep
+    /// is still there and something else is gone.
+    ///
+    /// Red if the `1.0 -` is dropped: the top of the view would report DC.
+    #[test]
+    fn the_top_of_the_view_is_the_highest_frequency() {
+        let v = view();
+        let top = freq_at_y(&v, v.rect.y);
+        let bottom = freq_at_y(&v, v.rect.y + v.rect.h);
+        assert!(
+            top > 0.99,
+            "the TOP of the spectrogram should be Nyquist, got {top}"
+        );
+        assert!(
+            bottom < 0.01,
+            "the BOTTOM of the spectrogram should be DC, got {bottom}"
+        );
+        // …and the middle is the middle: a linear axis, which is what the picture draws.
+        let mid = freq_at_y(&v, v.rect.y + v.rect.h * 0.5);
+        assert!((mid - 0.5).abs() < 0.01, "the axis is not linear: {mid}");
+    }
+
+    /// A drag that leaves the view still names a frequency inside it — the band is clamped,
+    /// not wrapped. (A wrap would jump the selection to the other end of the spectrum.)
+    #[test]
+    fn dragging_out_of_the_view_clamps() {
+        let v = view();
+        assert_eq!(freq_at_y(&v, v.rect.y - 500.0), 1.0);
+        assert_eq!(freq_at_y(&v, v.rect.y + v.rect.h + 500.0), 0.0);
     }
 }

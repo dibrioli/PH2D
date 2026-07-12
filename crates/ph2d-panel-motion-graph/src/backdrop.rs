@@ -10,11 +10,16 @@
 //! why there is no parent pointer to keep in sync, no re-parenting on drop, and
 //! no way for the doc to disagree with what the eye sees.
 //!
-//! **The body is click-through — deliberately.** Only the header strip and the
-//! resize gripper register hit rects; the body registers nothing, so clicking or
-//! box-selecting *over* a backdrop still reaches the nodes and the canvas beneath
-//! it. A backdrop that swallowed clicks in its body would make every node it
-//! frames unselectable — the exact bug that makes a grouping tool unusable.
+//! **The body is click-through — deliberately.** Only the header strip and the two
+//! bottom-corner grippers register hit rects; the body registers nothing, so
+//! clicking or box-selecting *over* a backdrop still reaches the nodes and the
+//! canvas beneath it. A backdrop that swallowed clicks in its body would make every
+//! node it frames unselectable — the exact bug that makes a grouping tool unusable.
+//!
+//! **The resize affordance is the app's own**, not a shape invented here: the same
+//! corner dot + hit zone every panel uses (`paint_panel_corner_dot{,_bl}` /
+//! `panel_resize_handle_rect{,_bl}`), in BOTH bottom corners, and grabbing either
+//! one holds the opposite edge still (Enio, smoke 2026-07-12).
 //!
 //! All geometry is graph-space (scaled by `zoom` at paint), like the node cards.
 
@@ -22,6 +27,10 @@ use crate::geom::{View, card_h};
 use crate::snapshot::{GraphBackdropView, GraphNodeView};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_title, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::panel_chrome::{
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, panel_resize_handle_rect,
+    panel_resize_handle_rect_bl,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 
@@ -29,8 +38,6 @@ use ph2d_tokens::{ColorToken, Theme};
 // cards in `geom`/`paint`), not chrome design tokens. Hence `LITERAL-PX-OK`.
 /// The draggable / selectable title strip along the top.
 pub(crate) const HEADER_H: f32 = 28.0; // LITERAL-PX-OK: backdrop header strip height
-/// The resize gripper's square, anchored at the bottom-right corner.
-pub(crate) const GRIP: f32 = 20.0; // LITERAL-PX-OK: resize gripper size
 /// A backdrop can never be resized smaller than its own header + a usable body —
 /// collapsing it to a sliver would take its header (the only grabbable part) with
 /// it. Published from the crate root: the shell owns the document and applies the
@@ -63,11 +70,33 @@ pub(crate) fn header_rect(b: &GraphBackdropView, view: &View) -> Rect {
     Rect::new(sx, sy, b.w * view.zoom, HEADER_H * view.zoom)
 }
 
-/// The resize gripper at the bottom-right corner.
-pub(crate) fn grip_rect(b: &GraphBackdropView, view: &View) -> Rect {
-    let (sx, sy) = view.pt(b.x + b.w - GRIP, b.y + b.h - GRIP);
-    let g = GRIP * view.zoom;
-    Rect::new(sx, sy, g, g)
+/// The resize grippers — **both bottom corners**, exactly the app's panels
+/// (`panel_resize_handle_rect{,_bl}`): same size, same corners, same accent dot.
+/// A backdrop is a region the artist resizes, so it uses the resize affordance the
+/// rest of the app already taught them, not a shape of its own.
+///
+/// Their size is SCREEN space (a fixed grab target, like the sockets' `SOCKET_HIT_R`):
+/// the corner stays grabbable when the graph is zoomed out, where a zoom-scaled
+/// gripper would shrink into nothing.
+pub(crate) fn grip_rects(b: &GraphBackdropView, view: &View) -> (Rect, Rect) {
+    let body = body_rect(b, view);
+    (
+        panel_resize_handle_rect_bl(body),
+        panel_resize_handle_rect(body),
+    )
+}
+
+/// Pack a gripper into the opaque handle `GraphHitKind::BackdropResize` carries:
+/// the backdrop id plus WHICH corner. Editor-core never looks inside these handles
+/// (the panel owns them) — the same trick `paint::wire_handle` uses to pack an
+/// edge's target into `GraphHitKind::Wire`.
+pub(crate) fn resize_handle(id: u32, left: bool) -> u64 {
+    (id as u64) | ((left as u64) << 32)
+}
+
+/// Unpack [`resize_handle`] — `(id, is the LEFT corner)`.
+pub(crate) fn resize_target(handle: u64) -> (u32, bool) {
+    (handle as u32, (handle >> 32) & 1 == 1)
 }
 
 /// Whether `b` frames `n` — the node's CENTRE lies inside the region. Centre, not
@@ -151,13 +180,10 @@ pub(crate) fn draw(
             resolve(ColorToken::Accent, theme),
         );
     }
-    // The gripper: a corner tab that says "drag me" without an icon.
-    fill_rounded_rect(
-        ctx.scene,
-        grip_rect(b, view),
-        r,
-        resolve(ColorToken::Border, theme),
-    );
+    // The resize affordance is the app's OWN: the same soft corner dot every panel
+    // draws, in both bottom corners (the panels are grabbable from either).
+    paint_panel_corner_dot(body, ctx.scene, theme);
+    paint_panel_corner_dot_bl(body, ctx.scene, theme);
     paint_text_title(
         ctx.text_system,
         ctx.scene,
@@ -242,22 +268,38 @@ mod tests {
         assert_eq!(wrap_of(&[]), None);
     }
 
-    /// The header and the gripper are inside the body, and the gripper sits at the
-    /// bottom-right — the hit rects the pointer will look for.
+    /// The header sits on top and the two grippers sit in the BOTTOM CORNERS — the
+    /// hit rects the pointer will look for, in the same places every panel in the
+    /// app puts them (they come from `panel_resize_handle_rect{,_bl}` itself).
     #[test]
-    fn the_header_and_gripper_sit_inside_the_body() {
+    fn the_header_and_both_grippers_sit_where_the_app_puts_them() {
         let b = backdrop(10.0, 20.0, 400.0, 300.0);
         let view = View::new(Rect::new(0.0, 0.0, 900.0, 700.0), ViewState::default());
-        let (body, header, grip) = (
-            body_rect(&b, &view),
-            header_rect(&b, &view),
-            grip_rect(&b, &view),
-        );
+        let (body, header) = (body_rect(&b, &view), header_rect(&b, &view));
+        let (bl, br) = grip_rects(&b, &view);
+
         assert_eq!((header.x, header.y), (body.x, body.y));
         assert_eq!(header.w, body.w);
         assert!(header.h < body.h);
-        assert!((grip.x + grip.w - (body.x + body.w)).abs() < 1e-3);
-        assert!((grip.y + grip.h - (body.y + body.h)).abs() < 1e-3);
+        // Bottom-left: flush with the left edge and the bottom.
+        assert!((bl.x - body.x).abs() < 1e-3);
+        assert!((bl.y + bl.h - (body.y + body.h)).abs() < 1e-3);
+        // Bottom-right: flush with the right edge and the bottom.
+        assert!((br.x + br.w - (body.x + body.w)).abs() < 1e-3);
+        assert!((br.y + br.h - (body.y + body.h)).abs() < 1e-3);
+        assert!(bl.x < br.x, "two distinct corners, not one");
+    }
+
+    /// The corner is packed into the opaque hit handle and comes back out — the
+    /// gripper the artist grabbed is the gripper the resize honours.
+    #[test]
+    fn the_resize_handle_round_trips_the_corner() {
+        assert_eq!(resize_target(resize_handle(7, true)), (7, true));
+        assert_eq!(resize_target(resize_handle(7, false)), (7, false));
+        assert_eq!(
+            resize_target(resize_handle(u32::MAX, true)),
+            (u32::MAX, true)
+        );
     }
 
     /// Every colour index resolves, and an out-of-range one clamps instead of

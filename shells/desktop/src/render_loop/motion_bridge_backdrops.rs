@@ -62,13 +62,28 @@ pub(super) fn translate(motion: &mut MotionState, id: u32, dx: f32, dy: f32) {
     }
 }
 
-/// Resize from the bottom-right gripper, clamped to the panel's minimum so a
-/// backdrop can never be collapsed to an ungrabbable sliver (its header would go
-/// with it and the thing would be unrecoverable). Inside the drag bracket.
-pub(super) fn resize(motion: &mut MotionState, id: u32, dw: f32, dh: f32) {
+/// Resize from either bottom gripper, clamped to the panel's minimum so a backdrop
+/// can never be collapsed into an ungrabbable sliver (its header would go with it
+/// and the region would be unrecoverable). Inside the drag bracket.
+///
+/// **The edge the artist did NOT grab stays put.** Dragging the bottom-LEFT corner
+/// moves `x` and shrinks `w`, holding the right edge — and the minimum-size clamp
+/// anchors to that same fixed edge, so a corner pushed past the minimum stops dead
+/// instead of dragging the whole region along with it.
+pub(super) fn resize(motion: &mut MotionState, id: u32, left: bool, dx: f32, dy: f32) {
+    let (min_w, min_h) = (
+        ph2d_panel_motion_graph::BACKDROP_MIN_W,
+        ph2d_panel_motion_graph::BACKDROP_MIN_H,
+    );
     if let Some(b) = find(motion, id) {
-        b.w = (b.w + dw).max(ph2d_panel_motion_graph::BACKDROP_MIN_W);
-        b.h = (b.h + dh).max(ph2d_panel_motion_graph::BACKDROP_MIN_H);
+        b.h = (b.h + dy).max(min_h);
+        if left {
+            let right = b.x + b.w; // the anchored edge
+            b.w = (b.w - dx).max(min_w);
+            b.x = right - b.w;
+        } else {
+            b.w = (b.w + dx).max(min_w);
+        }
     }
 }
 

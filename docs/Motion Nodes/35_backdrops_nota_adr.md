@@ -84,7 +84,23 @@ foi **dividido**, não allowlistado):
 - `MotionCookPump::is_dirty()` (getter novo, aditivo) — só para tornar a regra abaixo **executável**.
 
 **Gestos:** chip = criar (envolvendo a seleção, senão bloco default no centro) · header = selecionar +
-arrastar o grupo · gripper = redimensionar · Delete = apagar a região (**os nós ficam**) · Esc = limpar.
+arrastar o grupo · **qualquer um dos 2 cantos de baixo** = redimensionar · Delete = apagar a região
+(**os nós ficam**) · Esc = limpar.
+
+### 4.1 Correções do smoke do Enio (2026-07-12)
+
+1. **Toolbar do grafo foi do topo-esquerdo para o CANTO INFERIOR ESQUERDO.** No topo ela **embolava
+   com o rail de botões do editor** (undo/redo) — duas toolbars empilhadas na mesma quina. O rodapé é
+   a única quina permanentemente livre do grafo: o topo carrega a banda do divisor do split, e a
+   direita é onde um grafo panado transborda.
+2. **O gripper era chrome INVENTADO** (um quadradinho `Border`) e virou **o do app**: o mesmo
+   `paint_panel_corner_dot` + `panel_resize_handle_rect` que todo painel usa — e, como os painéis,
+   **nos DOIS cantos de baixo**, redimensionável por qualquer um deles. O canto **não** agarrado fica
+   **ancorado**: puxar o da esquerda move `x` e encolhe `w` segurando a borda direita, e o clamp de
+   tamanho mínimo ancora **nessa mesma borda** (senão a região inteira sairia arrastada junto com o
+   cursor ao passar do mínimo — gate `a_left_corner_resize_holds_the_right_edge`). O canto agarrado
+   viaja no handle opaco do `BackdropResize` (mesmo truque do `wire_handle`). Lição:
+   [[feedback_ui_source_of_truth_gallery_inspector]] — procure o precedente ANTES de desenhar chrome.
 
 ## 5. A regra que um gate protege: **decoração NÃO recozinha**
 

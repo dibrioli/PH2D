@@ -58,7 +58,7 @@ fn no_backdrop_edit_ever_re_cooks_the_graph() {
     backdrops::add(&mut motion, 0.0, 0.0, 300.0, 200.0);
     let id = motion.doc.backdrops[0].id;
     backdrops::translate(&mut motion, id, 25.0, -10.0);
-    backdrops::resize(&mut motion, id, 40.0, 40.0);
+    backdrops::resize(&mut motion, id, false, 40.0, 40.0);
     backdrops::set_title(&mut motion, id, "Force chain".to_string());
     backdrops::set_color(&mut motion, id, 3);
     backdrops::delete(&mut motion, id);
@@ -73,7 +73,7 @@ fn no_backdrop_edit_ever_re_cooks_the_graph() {
     assert!(motion.pump.is_dirty());
 }
 
-/// The gripper cannot collapse a backdrop into an ungrabbable sliver: the shell
+/// A gripper cannot collapse a backdrop into an ungrabbable sliver: the shell
 /// clamps to the panel's own minimum (the SAME constant the panel draws and
 /// hit-tests with, so the clamp can never drift from the geometry).
 #[test]
@@ -81,11 +81,40 @@ fn a_resize_clamps_to_the_panels_minimum() {
     let mut motion = MotionState::new();
     backdrops::add(&mut motion, 0.0, 0.0, 300.0, 200.0);
     let id = motion.doc.backdrops[0].id;
-    backdrops::resize(&mut motion, id, -9999.0, -9999.0);
+    backdrops::resize(&mut motion, id, false, -9999.0, -9999.0);
 
     let b = &motion.doc.backdrops[0];
     assert_eq!(b.w, ph2d_panel_motion_graph::BACKDROP_MIN_W);
     assert_eq!(b.h, ph2d_panel_motion_graph::BACKDROP_MIN_H);
+}
+
+/// **Resizing from the LEFT corner holds the RIGHT edge.** Dragging the bottom-left
+/// gripper moves `x` and shrinks `w`; the opposite edge must not budge — a region
+/// that slid sideways while being resized would be unusable. And when the drag
+/// pushes past the minimum width, it stops DEAD against that same anchored edge
+/// instead of dragging the whole region along with the cursor.
+#[test]
+fn a_left_corner_resize_holds_the_right_edge() {
+    let mut motion = MotionState::new();
+    backdrops::add(&mut motion, 100.0, 50.0, 300.0, 200.0);
+    let id = motion.doc.backdrops[0].id;
+    let right = 100.0 + 300.0;
+
+    // Drag the left corner 60 to the right: x moves, w shrinks, right edge holds.
+    backdrops::resize(&mut motion, id, true, 60.0, 0.0);
+    let b = &motion.doc.backdrops[0];
+    assert_eq!((b.x, b.w), (160.0, 240.0));
+    assert_eq!(b.x + b.w, right, "the right edge never moved");
+
+    // Shove it far past the minimum: it stops at the minimum, still anchored.
+    backdrops::resize(&mut motion, id, true, 9999.0, 0.0);
+    let b = &motion.doc.backdrops[0];
+    assert_eq!(b.w, ph2d_panel_motion_graph::BACKDROP_MIN_W);
+    assert_eq!(
+        b.x + b.w,
+        right,
+        "clamped against the anchored edge, not dragged away with the cursor"
+    );
 }
 
 /// Deleting a backdrop removes the REGION and nothing else — a backdrop owns no

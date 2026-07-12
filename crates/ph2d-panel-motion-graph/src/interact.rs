@@ -177,7 +177,11 @@ fn apply_gesture(
         // together) and drag the whole group — the region plus every node it
         // frames, captured now (see `Interaction::DragBackdrop`).
         GraphHitKind::Backdrop { id } => apply_backdrop(state, g, id as u32, snap),
-        GraphHitKind::BackdropResize { id } => apply_backdrop_resize(state, g, id as u32),
+        // Either bottom corner resizes; the handle says which (the panel packed it).
+        GraphHitKind::BackdropResize { id } => {
+            let (id, left) = crate::backdrop::resize_target(id);
+            apply_backdrop_resize(state, g, id, left)
+        }
         // Input sockets (the reverse-drag of an occupied input) land later.
         _ => {}
     }
@@ -272,29 +276,42 @@ fn apply_backdrop(
     }
 }
 
-/// The bottom-right gripper: resize in place (the framed nodes do NOT move — a
-/// resize changes what the region covers, which is the whole point).
-fn apply_backdrop_resize(state: &mut MotionGraphPanelState, g: GraphGesture, id: u32) {
+/// Either bottom gripper: resize in place (the framed nodes do NOT move — a resize
+/// changes what the region covers, which is the whole point). `left` is the corner
+/// grabbed; the opposite edge stays anchored (shell-side).
+fn apply_backdrop_resize(state: &mut MotionGraphPanelState, g: GraphGesture, id: u32, left: bool) {
     match g.phase {
         GesturePhase::Begin => {
             state.selected.clear();
             state.selected_backdrop = Some(id);
             state.interaction = Interaction::ResizeBackdrop {
                 id,
+                left,
                 last: (g.x, g.y),
                 started: false,
             };
         }
         GesturePhase::Update => {
             let zoom = state.view.zoom;
-            if let Interaction::ResizeBackdrop { id, last, started } = &mut state.interaction {
-                let (dw, dh) = ((g.x - last.0) / zoom, (g.y - last.1) / zoom);
+            if let Interaction::ResizeBackdrop {
+                id,
+                left,
+                last,
+                started,
+            } = &mut state.interaction
+            {
+                let (dx, dy) = ((g.x - last.0) / zoom, (g.y - last.1) / zoom);
                 *last = (g.x, g.y);
                 if !*started {
                     push_intent(GraphIntent::BeginDrag);
                     *started = true;
                 }
-                push_intent(GraphIntent::ResizeBackdrop { id: *id, dw, dh });
+                push_intent(GraphIntent::ResizeBackdrop {
+                    id: *id,
+                    left: *left,
+                    dx,
+                    dy,
+                });
             }
         }
         GesturePhase::End | GesturePhase::Click | GesturePhase::DoubleClick => {

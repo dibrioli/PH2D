@@ -83,17 +83,22 @@ pub(crate) fn draw_split_chrome(
     );
     hits.push((split_divider_hit_id(), GraphHitKind::SplitDivider, band));
 
-    // Toolbar chips at the graph's top-left, clear of the divider band. The
-    // orientation chip matching the current split reads as active (Accent ring).
+    // Toolbar chips at the graph's BOTTOM-left. They used to sit at the top-left,
+    // where they collided with the editor's own left-hand button rail (undo/redo)
+    // — two toolbars stacked in the same corner (Enio, smoke 2026-07-12). The
+    // bottom edge is the graph's only permanently free corner: the top carries the
+    // split divider band, and the right is where a panned graph tends to spill.
+    // The orientation chip matching the current split reads as active (Accent ring).
     let chips = [
         (CHROME_SPLIT_H, IconId::SplitHorizontal, !vertical),
         (CHROME_SPLIT_V, IconId::SplitVertical, vertical),
         (CHROME_FIT, IconId::FitView, false),
         (CHROME_BACKDROP, IconId::Backdrop, false),
     ];
+    let row_y = rect.y + rect.h - TOOLBAR_INSET - CHIP_SIZE;
     for (i, (id, icon, active)) in chips.into_iter().enumerate() {
         let cx = rect.x + TOOLBAR_INSET + i as f32 * (CHIP_SIZE + CHIP_GAP);
-        let chip = Rect::new(cx, rect.y + TOOLBAR_INSET, CHIP_SIZE, CHIP_SIZE);
+        let chip = Rect::new(cx, row_y, CHIP_SIZE, CHIP_SIZE);
         fill_rounded_rect(
             ctx.scene,
             chip,

@@ -49,9 +49,11 @@ pub(crate) enum Interaction {
         last: (f32, f32),
         started: bool,
     },
-    /// Dragging a backdrop's bottom-right gripper — grows/shrinks it in place.
+    /// Dragging one of a backdrop's bottom grippers — grows/shrinks it in place.
+    /// `left` is the corner grabbed (the opposite edge stays anchored).
     ResizeBackdrop {
         id: u32,
+        left: bool,
         last: (f32, f32),
         started: bool,
     },

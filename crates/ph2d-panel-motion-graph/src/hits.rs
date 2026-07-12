@@ -84,11 +84,12 @@ pub(crate) fn push_card_hit(
 }
 
 /// Push a backdrop's hit rects: its **header** (select + drag the group) and its
-/// **gripper** (resize), both clipped to the canvas. The BODY is deliberately not
-/// registered — it must stay click-through so the nodes it frames, and the empty
-/// canvas around them, keep receiving clicks and box-selects (see `backdrop`'s
-/// module docs). The gripper is pushed last so it wins the corner it shares with
-/// nothing else; both lose to the wires and cards registered after them.
+/// two bottom-corner **grippers** (resize — either corner, like every panel in the
+/// app), all clipped to the canvas. The BODY is deliberately not registered — it
+/// must stay click-through so the nodes it frames, and the empty canvas around
+/// them, keep receiving clicks and box-selects (see `backdrop`'s module docs). The
+/// grippers are pushed after the header so they win the corners they overlap it in
+/// a short region; all three lose to the wires and cards registered after them.
 pub(crate) fn push_backdrop_hits(
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
     b: &crate::snapshot::GraphBackdropView,
@@ -97,23 +98,27 @@ pub(crate) fn push_backdrop_hits(
 ) {
     if let Some(r) = clip_rect(crate::backdrop::header_rect(b, view), canvas) {
         hits.push((
-            backdrop_hit_id(b.id, false),
+            backdrop_hit_id(b.id, "header"),
             GraphHitKind::Backdrop { id: b.id as u64 },
             r,
         ));
     }
-    if let Some(r) = clip_rect(crate::backdrop::grip_rect(b, view), canvas) {
-        hits.push((
-            backdrop_hit_id(b.id, true),
-            GraphHitKind::BackdropResize { id: b.id as u64 },
-            r,
-        ));
+    let (bl, br) = crate::backdrop::grip_rects(b, view);
+    for (rect, left, part) in [(bl, true, "grip_bl"), (br, false, "grip_br")] {
+        if let Some(r) = clip_rect(rect, canvas) {
+            hits.push((
+                backdrop_hit_id(b.id, part),
+                GraphHitKind::BackdropResize {
+                    id: crate::backdrop::resize_handle(b.id, left),
+                },
+                r,
+            ));
+        }
     }
 }
 
-/// The a11y/hit id of a backdrop's header (`resize = false`) or gripper.
-fn backdrop_hit_id(id: u32, resize: bool) -> NodeId {
-    let part = if resize { "grip" } else { "header" };
+/// The a11y/hit id of one part of a backdrop (`header` / `grip_bl` / `grip_br`).
+fn backdrop_hit_id(id: u32, part: &str) -> NodeId {
     fnv_id(&format!("motion_graph/backdrop/{id}/{part}"))
 }
 

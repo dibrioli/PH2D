@@ -355,7 +355,9 @@ fn apply_graph_intents(
             // cannot depend on decoration). Details in `motion_bridge_backdrops`.
             GraphIntent::AddBackdrop { x, y, w, h } => backdrops::add(motion, x, y, w, h),
             GraphIntent::MoveBackdrop { id, dx, dy } => backdrops::translate(motion, id, dx, dy),
-            GraphIntent::ResizeBackdrop { id, dw, dh } => backdrops::resize(motion, id, dw, dh),
+            GraphIntent::ResizeBackdrop { id, left, dx, dy } => {
+                backdrops::resize(motion, id, left, dx, dy)
+            }
             GraphIntent::DeleteBackdrop { id } => backdrops::delete(motion, id),
             GraphIntent::SetBackdropTitle { id, title } => backdrops::set_title(motion, id, title),
             GraphIntent::SetBackdropColor { id, color } => backdrops::set_color(motion, id, color),

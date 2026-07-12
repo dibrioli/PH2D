@@ -149,9 +149,18 @@ pub enum GraphIntent {
     /// bracket — so carrying a group is a single undo step, and the panel needs no
     /// second kind of node-move.
     MoveBackdrop { id: u32, dx: f32, dy: f32 },
-    /// Grow/shrink a backdrop from its bottom-right gripper by an incremental
-    /// delta. The shell clamps to the minimum size. Bracketed like a move.
-    ResizeBackdrop { id: u32, dw: f32, dh: f32 },
+    /// Grow/shrink a backdrop from one of its bottom corners (`left` = the
+    /// bottom-LEFT gripper), by the pointer's incremental graph-space delta. The
+    /// corner the artist did NOT grab stays put: dragging the left one moves the
+    /// region's `x` and shrinks its `w`, holding the right edge — which is what a
+    /// resize from that side means. The shell owns the minimum-size clamp, and
+    /// anchors it to that same fixed edge. Bracketed like a move.
+    ResizeBackdrop {
+        id: u32,
+        left: bool,
+        dx: f32,
+        dy: f32,
+    },
     /// Delete a backdrop (Delete with one selected). The nodes it framed stay —
     /// a backdrop owns nothing, it only draws around things. One undo step.
     DeleteBackdrop { id: u32 },

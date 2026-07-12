@@ -335,47 +335,54 @@ fn dragging_a_backdrop_header_carries_the_nodes_it_frames() {
     assert_eq!(st.selected_backdrop, Some(9), "the header selects it");
 }
 
-/// The gripper resizes in place — the framed nodes do NOT move (a resize changes
-/// what the region covers; that is the whole point of dragging a corner).
+/// **Either** bottom gripper resizes, and the intent says WHICH corner was grabbed
+/// (the shell anchors the opposite edge to it). The framed nodes do NOT move — a
+/// resize changes what the region covers; that is the whole point of a corner.
 #[test]
-fn dragging_the_gripper_resizes_without_moving_the_nodes() {
-    let _ = drain_intents();
-    let snap = backdrop_snapshot();
-    let mut st = MotionGraphPanelState::default();
-    let hit = GraphHitKind::BackdropResize { id: 9 };
+fn dragging_either_gripper_resizes_without_moving_the_nodes() {
+    for left in [false, true] {
+        let _ = drain_intents();
+        let snap = backdrop_snapshot();
+        let mut st = MotionGraphPanelState::default();
+        let hit = GraphHitKind::BackdropResize {
+            id: crate::backdrop::resize_handle(9, left),
+        };
 
-    apply_gesture(
-        &mut st,
-        gesture(hit, GesturePhase::Begin, 280.0, 200.0),
-        RECT,
-        CENTER,
-        &snap,
-    );
-    apply_gesture(
-        &mut st,
-        gesture(hit, GesturePhase::Update, 300.0, 210.0),
-        RECT,
-        CENTER,
-        &snap,
-    );
-    let intents = drain_intents();
-    assert_eq!(
-        intents,
-        vec![
-            GraphIntent::BeginDrag,
-            GraphIntent::ResizeBackdrop {
-                id: 9,
-                dw: 20.0,
-                dh: 10.0
-            },
-        ]
-    );
-    assert!(
-        !intents
-            .iter()
-            .any(|i| matches!(i, GraphIntent::MoveNodes { .. })),
-        "a resize never drags the group along"
-    );
+        apply_gesture(
+            &mut st,
+            gesture(hit, GesturePhase::Begin, 280.0, 200.0),
+            RECT,
+            CENTER,
+            &snap,
+        );
+        apply_gesture(
+            &mut st,
+            gesture(hit, GesturePhase::Update, 300.0, 210.0),
+            RECT,
+            CENTER,
+            &snap,
+        );
+        let intents = drain_intents();
+        assert_eq!(
+            intents,
+            vec![
+                GraphIntent::BeginDrag,
+                GraphIntent::ResizeBackdrop {
+                    id: 9,
+                    left,
+                    dx: 20.0,
+                    dy: 10.0
+                },
+            ],
+            "the corner grabbed rides the intent (left = {left})"
+        );
+        assert!(
+            !intents
+                .iter()
+                .any(|i| matches!(i, GraphIntent::MoveNodes { .. })),
+            "a resize never drags the group along"
+        );
+    }
 }
 
 /// The Backdrop chip frames the SELECTION when there is one (Nuke's behaviour):
@@ -512,7 +519,11 @@ fn the_backdrop_body_registers_no_hit_rect() {
     let mut hits: Vec<(A11yNodeId, GraphHitKind, Rect)> = Vec::new();
     crate::hits::push_backdrop_hits(&mut hits, b, &view, RECT);
 
-    assert_eq!(hits.len(), 2, "exactly the header and the gripper");
+    assert_eq!(
+        hits.len(),
+        3,
+        "exactly the header and the two corner grippers"
+    );
     // The centre of the body — where a framed node sits — is covered by neither.
     let (cx, cy) = view.pt(b.x + b.w * 0.5, b.y + b.h * 0.5);
     assert!(

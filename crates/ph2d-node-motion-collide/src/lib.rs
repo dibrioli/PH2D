@@ -32,6 +32,11 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// The value type of the `spread` input (mirror of `motion.look_at::VALUE`).
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
+/// The inverse-mass column (PBD's `w = 1/m`) that `motion.pin_constraint` writes:
+/// `1` = free (the default when absent — every pre-pin packing is unchanged),
+/// `0` = pinned. A string convention shared by the module's solvers, spelled
+/// locally by each reader (like `P` / `falloff`) rather than coupling the crates.
+const INV_MASS_COL: &str = "inv_mass";
 
 /// Below this a pair is treated as coincident (the normal is undefined).
 const EPS: f32 = 1e-9;
@@ -93,9 +98,24 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 }
 
 /// Push apart the discs so no two are closer than `2·radius`, sweeping every pair
-/// `iterations` times. Returns the relaxed positions; the midpoint of each corrected
-/// pair is preserved. A pure function — the whole node.
-fn push_apart(p: &[[f32; 2]], radius: f32, iterations: usize, strength: f32) -> Vec<[f32; 2]> {
+/// `iterations` times. Returns the relaxed positions. A pure function — the whole
+/// node.
+///
+/// `w` is the per-element inverse mass (PBD's `w = 1/m`, written by
+/// `motion.pin_constraint`; all-`1` when no pin is wired). The contact correction
+/// is split between the pair **in proportion to their `w`s**, which is the
+/// constraint-projection rule of Müller et al. 2007 — with two free elements each
+/// takes half (the midpoint of the pair is preserved, bit-for-bit as before the
+/// pin existed), and against a pinned element (`w = 0`, infinite mass) the free one
+/// takes the whole penetration and the pin does not budge. That is what makes a
+/// pinned disc an OBSTACLE the others pack around.
+fn push_apart(
+    p: &[[f32; 2]],
+    w: &[f32],
+    radius: f32,
+    iterations: usize,
+    strength: f32,
+) -> Vec<[f32; 2]> {
     let n = p.len();
     let mut q = p.to_vec();
     let min_dist = 2.0 * radius;
@@ -106,33 +126,55 @@ fn push_apart(p: &[[f32; 2]], radius: f32, iterations: usize, strength: f32) -> 
     for _ in 0..iterations {
         for i in 0..n {
             for j in (i + 1)..n {
+                // Two immovable discs (or two infinitely heavy ones) have no
+                // correction to share — the constraint simply cannot be met.
+                let sum_w = w[i] + w[j];
+                if sum_w <= 0.0 {
+                    continue;
+                }
                 let dx = q[j][0] - q[i][0];
                 let dy = q[j][1] - q[i][1];
                 let d2 = dx * dx + dy * dy;
                 if d2 >= min_d2 {
                     continue;
                 }
-                let (nx, ny, push) = if d2 > EPS {
+                let (nx, ny, penetration) = if d2 > EPS {
                     let d = d2.sqrt();
-                    ((dx / d), (dy / d), (min_dist - d) * 0.5 * strength)
+                    (dx / d, dy / d, min_dist - d)
                 } else {
                     // Coincident: split along a deterministic axis (x for even i+j,
                     // y otherwise) so the relaxation stays replay-stable (HR-5, no rng).
-                    let half = min_dist * 0.5 * strength;
                     if (i + j) % 2 == 0 {
-                        (1.0, 0.0, half)
+                        (1.0, 0.0, min_dist)
                     } else {
-                        (0.0, 1.0, half)
+                        (0.0, 1.0, min_dist)
                     }
                 };
-                q[i][0] -= nx * push;
-                q[i][1] -= ny * push;
-                q[j][0] += nx * push;
-                q[j][1] += ny * push;
+                // Each disc moves its SHARE of the penetration: w_i / (w_i + w_j).
+                // Both free = 0.5 each (the old, midpoint-preserving behaviour).
+                let push_i = penetration * (w[i] / sum_w) * strength;
+                let push_j = penetration * (w[j] / sum_w) * strength;
+                q[i][0] -= nx * push_i;
+                q[i][1] -= ny * push_i;
+                q[j][0] += nx * push_j;
+                q[j][1] += ny * push_j;
             }
         }
     }
     q
+}
+
+/// The inverse-mass column (`motion.pin_constraint`), widened to `n` and made
+/// safe: absent reads as free (`1`), and a negative or non-finite weight from a
+/// hand-edited document reads as pinned (`0`) rather than INVERTING the push.
+fn inv_mass(s: &Stream, n: usize) -> Vec<f32> {
+    match s.get(INV_MASS_COL) {
+        Some(Column::Scalar(v)) if v.len() == n => v
+            .iter()
+            .map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 })
+            .collect(),
+        _ => vec![1.0; n],
+    }
 }
 
 struct MotionCollide;
@@ -154,7 +196,8 @@ impl NodeOp for MotionCollide {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
-        let out_p = push_apart(&p, radius, iterations, strength);
+        let w = inv_mass(input, n);
+        let out_p = push_apart(&p, &w, radius, iterations, strength);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "P" {
@@ -220,12 +263,23 @@ mod tests {
         (dx * dx + dy * dy).sqrt()
     }
 
+    /// Relax with every element free (`w = 1`) — the no-pin case, which is what
+    /// the packing behaved like before `motion.pin_constraint` existed.
+    fn push_apart_free(
+        p: &[[f32; 2]],
+        radius: f32,
+        iterations: usize,
+        strength: f32,
+    ) -> Vec<[f32; 2]> {
+        push_apart(p, &vec![1.0; p.len()], radius, iterations, strength)
+    }
+
     /// Two overlapping discs are pushed apart until they merely touch (distance =
     /// 2·radius). FALSIFIED if separation were skipped (they stay overlapping).
     #[test]
     fn overlapping_discs_separate_to_touching() {
         let p = vec![[0.0, 0.0], [0.1, 0.0]]; // 0.1 apart, radius 0.3 → must reach 0.6
-        let out = push_apart(&p, 0.3, 8, 1.0);
+        let out = push_apart_free(&p, 0.3, 8, 1.0);
         assert!(
             (dist(out[0], out[1]) - 0.6).abs() < 1e-3,
             "separated to touching: {}",
@@ -238,7 +292,7 @@ mod tests {
     #[test]
     fn separated_discs_are_unchanged() {
         let p = vec![[0.0, 0.0], [5.0, 0.0]];
-        let out = push_apart(&p, 0.3, 8, 1.0);
+        let out = push_apart_free(&p, 0.3, 8, 1.0);
         assert_eq!(out, p, "no overlap -> identity");
     }
 
@@ -248,7 +302,7 @@ mod tests {
     fn separation_preserves_the_midpoint() {
         let p = vec![[1.0, 2.0], [1.2, 2.0]];
         let mid0 = [(p[0][0] + p[1][0]) * 0.5, (p[0][1] + p[1][1]) * 0.5];
-        let out = push_apart(&p, 0.4, 8, 1.0);
+        let out = push_apart_free(&p, 0.4, 8, 1.0);
         let mid1 = [(out[0][0] + out[1][0]) * 0.5, (out[0][1] + out[1][1]) * 0.5];
         assert!((mid0[0] - mid1[0]).abs() < 1e-4 && (mid0[1] - mid1[1]).abs() < 1e-4);
     }
@@ -263,7 +317,7 @@ mod tests {
                 p.push([i as f32 * 0.2, j as f32 * 0.2]);
             }
         }
-        let out = push_apart(&p, 0.25, 32, 1.0);
+        let out = push_apart_free(&p, 0.25, 32, 1.0);
         for a in 0..out.len() {
             for b in (a + 1)..out.len() {
                 assert!(
@@ -280,8 +334,8 @@ mod tests {
     #[test]
     fn coincident_points_split_deterministically() {
         let p = vec![[0.0, 0.0], [0.0, 0.0]];
-        let a = push_apart(&p, 0.3, 8, 1.0);
-        let b = push_apart(&p, 0.3, 8, 1.0);
+        let a = push_apart_free(&p, 0.3, 8, 1.0);
+        let b = push_apart_free(&p, 0.3, 8, 1.0);
         assert_eq!(a, b, "deterministic");
         assert!(
             dist(a[0], a[1]) > 0.5,
@@ -290,12 +344,37 @@ mod tests {
         );
     }
 
+    /// A **pinned** disc (`motion.pin_constraint`'s `inv_mass = 0`) is an OBSTACLE:
+    /// it does not budge, and the free one takes the WHOLE penetration (PBD's
+    /// proportional split). FALSIFIED if the weights were ignored — the pin would
+    /// be shoved half a penetration off its anchor, exactly the bug that makes a
+    /// "fixed" obstacle drift.
+    #[test]
+    fn a_pinned_disc_does_not_move_and_the_free_one_takes_it_all() {
+        let p = vec![[0.0, 0.0], [0.1, 0.0]];
+        let out = push_apart(&p, &[0.0, 1.0], 0.3, 8, 1.0);
+        assert_eq!(out[0], [0.0, 0.0], "the pinned disc held its ground");
+        assert!(
+            (dist(out[0], out[1]) - 0.6).abs() < 1e-3,
+            "and the pair still ends up touching: {}",
+            dist(out[0], out[1])
+        );
+    }
+
+    /// Two pinned discs that overlap simply stay overlapping — the constraint
+    /// cannot be met, and neither may move (no division by a zero weight sum).
+    #[test]
+    fn two_pinned_discs_have_no_correction_to_share() {
+        let p = vec![[0.0, 0.0], [0.1, 0.0]];
+        assert_eq!(push_apart(&p, &[0.0, 0.0], 0.3, 8, 1.0), p);
+    }
+
     /// `strength` 0 (or radius 0) is the identity.
     #[test]
     fn zero_strength_is_the_identity() {
         let p = vec![[0.0, 0.0], [0.1, 0.0]];
-        assert_eq!(push_apart(&p, 0.3, 8, 0.0), p);
-        assert_eq!(push_apart(&p, 0.0, 8, 1.0), p);
+        assert_eq!(push_apart_free(&p, 0.3, 8, 0.0), p);
+        assert_eq!(push_apart_free(&p, 0.0, 8, 1.0), p);
     }
 
     /// Deterministic + cooks through the registry: count and columns pass through, and

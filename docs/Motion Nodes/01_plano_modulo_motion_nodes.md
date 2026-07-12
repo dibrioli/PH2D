@@ -58,7 +58,10 @@ legal), `gate` (pulse→value), `sample_gradient`, `make_point` (par X/Y). Tabel
 `P`(Vec2)→world_pos · `size`(Vec2) · `rot`→basis · `tint`(Vec4 linear) · `opacity` ·
 `falloff` (**multiplicativo**, consumido por modifiers) · `seed` (default `hash(node_seed,i)`) ·
 `pivot`→anchor · `vel`(Vec2) · `age`/`life` · `z`→z_order quantizado (`base_z +
-(z·65535) as u32`; sem coluna = ordem do stream, sort estável preserva) · `cell`/`uv_rect`→atlas_uv.
+(z·65535) as u32`; sem coluna = ordem do stream, sort estável preserva) · `cell`/`uv_rect`→atlas_uv ·
+**`inv_mass`** (Scalar, o `w = 1/m` do PBD — `1` = livre (default quando ausente), `0` = pinado;
+escrito por `motion.pin_constraint`, **consumido pelos solvers** `motion.integrate`/`spring`/`collide`
+— doc 34).
 **`index`/`count`/`time` implícitos, não materializados** (o nó `expression` injeta `i,n,t` como
 bindings virtuais). Cor: **linear no fio, OKLab dentro dos nós perceptuais**.
 

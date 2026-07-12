@@ -18,6 +18,18 @@ pub(crate) fn falloff_at(stream: &Stream, i: usize) -> f32 {
     }
 }
 
+/// The inverse mass (PBD's `w = 1/m`) that `motion.pin_constraint` writes:
+/// `1` = free (absent, the default), `0` = pinned. It multiplies the falloff, so
+/// a pinned element's spring is fully transparent — it tracks its animated
+/// target rigidly, with no lag, overshoot or settle, which is exactly what a
+/// nailed-down element does.
+pub(crate) fn inv_mass_at(stream: &Stream, i: usize) -> f32 {
+    match stream.get("inv_mass") {
+        Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
+        _ => 1.0,
+    }
+}
+
 /// Per-element identity keys — the `id` column when present, else `None`
 /// (positional identity). Mirrors `motion.integrate`'s reading of the same
 /// convention, so a spring downstream of the particle emitter tracks each

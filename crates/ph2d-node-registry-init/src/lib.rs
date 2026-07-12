@@ -53,9 +53,11 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_orbit::register(reg)?;
     ph2d_node_motion_oscillator::register(reg)?;
     ph2d_node_motion_output::register(reg)?;
+    ph2d_node_motion_pin_constraint::register(reg)?;
     ph2d_node_motion_rotate::register(reg)?;
     ph2d_node_motion_scale::register(reg)?;
     ph2d_node_motion_scatter::register(reg)?;
+    ph2d_node_motion_slit_scan::register(reg)?;
     ph2d_node_motion_soft_body::register(reg)?;
     ph2d_node_motion_sort::register(reg)?;
     ph2d_node_motion_spherize::register(reg)?;

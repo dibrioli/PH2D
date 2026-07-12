@@ -1,36 +1,47 @@
-//! The M1 expression demo — the **default Motion document**, driven by typed formulas:
-//! on the LEFT a **spiral** whose x/y are `cos`/`sin` expressions plotted through
-//! `motion.make_point`; on the RIGHT a grid whose **colour wave** is an expression fed to
-//! a ramp. The `motion.expression` formula lives in the graph's text channel (set here via
-//! `set_text_param`) — the frozen node contract stays f32-only (doc 32). Two independent
-//! scenes (each its own `motion.output` sink), kept small so each new node reads on its
-//! own. A `#[path]` sibling of `motion_state`, kept out for the LOC cap.
+//! The M3 simulation demo — the **default Motion document**, showing the slice's two
+//! new nodes: on the LEFT a curtain whose top row is **pinned** while the rest is sucked
+//! into an attractor and packs around it; on the RIGHT a strip that bobs in LOCKSTEP and
+//! is sheared into a travelling wave by the **slit scan**. Two independent scenes (each
+//! its own `motion.output` sink), kept small so each new node reads on its own. A
+//! `#[path]` sibling of `motion_state`, kept out for the LOC cap.
 //!
 //! ```text
-//! LEFT  (spiral): grid → expr("cos(f*a+t)*f*4") ┐
-//!                 grid → expr("sin(f*a+t)*f*4") ┴→ make_point → tint → move(−6) → output
-//! RIGHT (wave):   grid → expr("sin(t*2+f*a)*.5+.5") → color_ramp(t) → move(+6) → output
+//! LEFT  (pin):       grid ─> pin_constraint ─> integrate ─> collide ─> move(−7) ─> output
+//!                                                  ^                (the pinned row is an
+//!                                    pre└─ attractor ─ drag ─┘       obstacle, not cargo)
+//! RIGHT (slit scan): grid ─> oscillator ─> slit_scan ─> move(+7) ─> output
+//!                                            ^   └─pre─┘
 //! ```
 //!
-//! - **expression** (`motion.expression`, doc 32): a VEX-lite formula over `i`/`n`/`t`/`f`
-//!   (normalised index) + columns + params `a`..`d`. The spiral rotates and the wave
-//!   scrolls because both formulas read `t`.
+//! - **pin_constraint** (`motion.pin_constraint`, doc 34): writes the PBD inverse-mass
+//!   column `inv_mass` (`0` = pinned). `motion.integrate` gives a pinned element no force
+//!   and no displacement — it rides its rest animation — and `motion.collide` refuses to
+//!   push it, so the free elements pack AROUND the pinned row. Drag the `count` slider to
+//!   0 in the params panel and the whole curtain falls in: that is the falsifiable read.
+//! - **slit_scan** (`motion.slit_scan`, doc 34): the oscillator's `phase_stagger` is **0**
+//!   here, so every element bobs at the same phase; the wave you see is the scan sampling
+//!   each element at its own delay (`lag` ticks across the set). Set `lag` to 0 and the
+//!   wave collapses back into a rigid, lockstep bob.
 //!
-//! See docs/Motion Nodes/32 (expression + the text-param channel). The whole value/pulse
-//! vocabulary + the other M3/M4 nodes stay registered (drop them in the editor).
+//! See docs/Motion Nodes/34 (pinning + the slit scan). The whole value/pulse vocabulary +
+//! the other M3/M4 nodes stay registered (drop them in the editor).
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 const COL_W: f32 = 190.0;
-const SPIRAL_ROW: f32 = 0.0;
-const WAVE_ROW: f32 = 340.0;
+const PIN_ROW: f32 = 0.0;
+const SCAN_ROW: f32 = 360.0;
+/// The pinned curtain's shape. `cols` is also the pin's `count`: in the grid's row-major
+/// order the first `cols` elements ARE the top row.
+const CURTAIN_COLS: f32 = 8.0;
+const CURTAIN_ROWS: f32 = 8.0;
 
-/// Author both scenes into `g`; returns their Output nodes (the sinks), the spiral
-/// scene's first so the sink order is stable (id-ascending).
+/// Author both scenes into `g`; returns their Output nodes (the sinks), the pin scene's
+/// first so the sink order is stable (id-ascending).
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    let spiral = build_spiral_scene(g)?;
-    let wave = build_wave_scene(g)?;
-    Some(vec![spiral, wave])
+    let pin = build_pin_scene(g)?;
+    let scan = build_slit_scan_scene(g)?;
+    Some(vec![pin, scan])
 }
 
 /// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
@@ -43,85 +54,98 @@ fn wire(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
     .ok()
 }
 
-/// LEFT: a rotating spiral, x/y from cos/sin expressions. Returns its Output.
-fn build_spiral_scene(g: &mut Graph) -> Option<NodeId> {
-    let grid = g.add_node("motion.grid");
-    let expr_x = g.add_node("motion.expression");
-    let expr_y = g.add_node("motion.expression");
-    let point = g.add_node("motion.make_point");
-    let tint = g.add_node("motion.tint");
-    let mv = g.add_node("motion.move");
-    let output = g.add_node("motion.output");
-
-    g.set_pos(
-        grid,
-        Pos {
-            x: 0.0,
-            y: SPIRAL_ROW,
-        },
-    );
-    g.set_pos(
-        expr_x,
-        Pos {
-            x: COL_W,
-            y: SPIRAL_ROW - 120.0,
-        },
-    );
-    g.set_pos(
-        expr_y,
-        Pos {
-            x: COL_W,
-            y: SPIRAL_ROW + 120.0,
-        },
-    );
-    for (n, col) in [(point, 2.0), (tint, 3.0), (mv, 4.0), (output, 5.0)] {
-        g.set_pos(
-            n,
-            Pos {
-                x: col * COL_W,
-                y: SPIRAL_ROW,
-            },
-        );
-    }
-
-    wire(g, (grid, 0), (expr_x, 0))?; // grid fixes the count for the expressions
-    wire(g, (grid, 0), (expr_y, 0))?;
-    wire(g, (grid, 0), (point, 0))?;
-    wire(g, (expr_x, 0), (point, 1))?; // → x
-    wire(g, (expr_y, 0), (point, 2))?; // → y
-    wire(g, (point, 0), (tint, 0))?;
-    wire(g, (tint, 0), (mv, 0))?;
-    wire(g, (mv, 0), (output, 0))?;
-
-    // A 12×12 grid (144 pts) plotted as a spiral: angle = f·a + t (a ≈ 7 turns), radius
-    // = f·4. Both read `t`, so the spiral rotates. On the left.
-    g.set_param(grid, "rows", 12.0);
-    g.set_param(grid, "cols", 12.0);
-    g.set_param(expr_x, "a", 45.0);
-    g.set_text_param(expr_x, "expr", "cos(f * a + t) * f * 4");
-    g.set_param(expr_y, "a", 45.0);
-    g.set_text_param(expr_y, "expr", "sin(f * a + t) * f * 4");
-    g.set_param(tint, "mode", 0.0); // Solid
-    g.set_param(tint, "r", 0.95);
-    g.set_param(tint, "g", 0.70);
-    g.set_param(tint, "b", 0.20);
-    g.set_param(mv, "dx", -6.0);
-    g.set_param(mv, "dy", 0.0);
-    Some(output)
+/// The `pre` edge: last tick's value. The editor plumbs these itself when a sequential
+/// node is dropped; a document authored in code wires them by hand.
+fn wire_pre(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
+    g.connect(Edge {
+        from,
+        to,
+        delayed: true,
+    })
+    .ok()
 }
 
-/// RIGHT: a grid whose colour is a scrolling expression wave. Returns its Output.
-fn build_wave_scene(g: &mut Graph) -> Option<NodeId> {
+/// LEFT: a curtain nailed by its top row, the rest pulled into an attractor. Returns its
+/// Output.
+fn build_pin_scene(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
-    let expr = g.add_node("motion.expression");
-    let ramp = g.add_node("motion.color_ramp");
+    let pin = g.add_node("motion.pin_constraint");
+    let integrate = g.add_node("motion.integrate");
+    let attractor = g.add_node("force.attractor");
+    let drag = g.add_node("force.drag");
+    let collide = g.add_node("motion.collide");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
 
     for (n, col) in [
         (grid, 0.0),
-        (expr, 1.0),
-        (ramp, 2.0),
+        (pin, 1.0),
+        (integrate, 2.0),
+        (collide, 3.0),
+        (mv, 4.0),
+        (output, 5.0),
+    ] {
+        g.set_pos(
+            n,
+            Pos {
+                x: col * COL_W,
+                y: PIN_ROW,
+            },
+        );
+    }
+    // The force chain hangs below the integrator it feeds back into.
+    for (n, col) in [(attractor, 2.0), (drag, 3.0)] {
+        g.set_pos(
+            n,
+            Pos {
+                x: col * COL_W,
+                y: PIN_ROW + 150.0,
+            },
+        );
+    }
+
+    wire(g, (grid, 0), (pin, 0))?;
+    wire(g, (pin, 0), (integrate, 0))?; // the rest chain carries `inv_mass` in
+    wire_pre(g, (integrate, 0), (attractor, 0))?; // the simulation loop
+    wire(g, (attractor, 0), (drag, 0))?;
+    wire(g, (drag, 0), (integrate, 1))?;
+    wire(g, (integrate, 0), (collide, 0))?;
+    wire(g, (collide, 0), (mv, 0))?;
+    wire(g, (mv, 0), (output, 0))?;
+
+    g.set_param(grid, "rows", CURTAIN_ROWS);
+    g.set_param(grid, "cols", CURTAIN_COLS);
+    g.set_param(grid, "gap_x", 0.6);
+    g.set_param(grid, "gap_y", 0.6);
+    // Nail the top row (row-major: the first `cols` elements).
+    g.set_param(pin, "first", 0.0);
+    g.set_param(pin, "count", CURTAIN_COLS);
+    g.set_param(pin, "strength", 1.0);
+    // Suck everything else toward the scene's origin; drag keeps it from orbiting away.
+    g.set_param(attractor, "strength", 6.0);
+    g.set_param(attractor, "radius", 6.0);
+    g.set_param(drag, "coefficient", 1.4);
+    // Discs, so the falling elements pile up around the pinned row instead of collapsing
+    // into one point — and the pinned row does not budge when they land on it.
+    g.set_param(collide, "radius", 0.28);
+    g.set_param(collide, "iterations", 8.0);
+    g.set_param(mv, "dx", -7.0);
+    g.set_param(mv, "dy", 0.0);
+    Some(output)
+}
+
+/// RIGHT: a lockstep bob sheared into a travelling wave. Returns its Output.
+fn build_slit_scan_scene(g: &mut Graph) -> Option<NodeId> {
+    let grid = g.add_node("motion.grid");
+    let osc = g.add_node("motion.oscillator");
+    let scan = g.add_node("motion.slit_scan");
+    let mv = g.add_node("motion.move");
+    let output = g.add_node("motion.output");
+
+    for (n, col) in [
+        (grid, 0.0),
+        (osc, 1.0),
+        (scan, 2.0),
         (mv, 3.0),
         (output, 4.0),
     ] {
@@ -129,27 +153,30 @@ fn build_wave_scene(g: &mut Graph) -> Option<NodeId> {
             n,
             Pos {
                 x: col * COL_W,
-                y: WAVE_ROW,
+                y: SCAN_ROW,
             },
         );
     }
 
-    wire(g, (grid, 0), (expr, 0))?;
-    wire(g, (grid, 0), (ramp, 0))?; // the grid stream carries the geometry to the ramp
-    wire(g, (expr, 0), (ramp, 1))?; // the expression value drives the ramp's `t`
-    wire(g, (ramp, 0), (mv, 0))?;
+    wire(g, (grid, 0), (osc, 0))?;
+    wire(g, (osc, 0), (scan, 0))?;
+    wire_pre(g, (scan, 0), (scan, 1))?; // the delay line rides its own output
+    wire(g, (scan, 0), (mv, 0))?;
     wire(g, (mv, 0), (output, 0))?;
 
-    // A 10×10 grid coloured by a wave: v = sin(t·2 + f·a)·0.5 + 0.5 ∈ [0,1] (a = spatial
-    // frequency), fed as the ramp's `t`. The `t` term scrolls it. On the right.
-    g.set_param(grid, "rows", 10.0);
-    g.set_param(grid, "cols", 10.0);
-    g.set_param(grid, "gap_x", 0.5);
-    g.set_param(grid, "gap_y", 0.5);
-    g.set_param(expr, "a", 12.0);
-    g.set_text_param(expr, "expr", "sin(t * 2 + f * a) * 0.5 + 0.5");
-    g.set_param(ramp, "preset", 2.0); // Ice
-    g.set_param(mv, "dx", 6.0);
+    g.set_param(grid, "rows", 6.0);
+    g.set_param(grid, "cols", 12.0);
+    g.set_param(grid, "gap_x", 0.55);
+    g.set_param(grid, "gap_y", 0.55);
+    // Bob in Y, every element at the SAME phase (stagger 0) — so the wave on screen can
+    // only come from the scan.
+    g.set_param(osc, "channel", 1.0);
+    g.set_param(osc, "amplitude", 1.2);
+    g.set_param(osc, "frequency", 0.8);
+    g.set_param(osc, "phase_stagger", 0.0);
+    // Two thirds of a tick per element (72 elements, 24 ticks across the set).
+    g.set_param(scan, "lag", 24.0);
+    g.set_param(mv, "dx", 7.0);
     g.set_param(mv, "dy", 0.0);
     Some(output)
 }

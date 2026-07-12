@@ -35,7 +35,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
-use channel::{channel_get, channel_set, falloff_at, ids_of};
+use channel::{channel_get, channel_set, falloff_at, ids_of, inv_mass_at};
 use std::collections::BTreeMap;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -175,10 +175,12 @@ fn step(
     }
 
     // Output channel: the spring blended toward the raw target by the falloff
-    // field (falloff 0 → the spring is transparent there).
+    // field, times the pin weight (falloff 0 or a pinned element → the spring is
+    // transparent there; a free element with no pin multiplies by an exact 1.0,
+    // so every pre-pin graph keeps its bit-identical trajectory).
     let blended: Vec<f32> = (0..n)
         .map(|i| {
-            let fs = falloff_at(input, i);
+            let fs = falloff_at(input, i) * inv_mass_at(input, i);
             if fs >= 1.0 {
                 value[i]
             } else {
@@ -444,6 +446,30 @@ mod tests {
         let out = step(&input, &state, 1, 8.0, 1.5, 1.0 / 60.0);
         match out.get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v[0][1], 5.0, "falloff 0: raw target"),
+            _ => panic!("P"),
+        }
+    }
+
+    /// A **pinned** element (`motion.pin_constraint`'s `inv_mass = 0`) tracks its
+    /// target rigidly: no lag, no overshoot. Its free neighbour, same spring,
+    /// still lags behind. FALSIFIED if the spring ignored the pin weight (the
+    /// pinned element would lag with the other one).
+    #[test]
+    fn a_pinned_element_tracks_its_target_rigidly() {
+        let input = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 5.0], [0.0, 5.0]]))
+            .with("inv_mass", Column::Scalar(vec![0.0, 1.0]));
+        let state = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]))
+            .with("spring_value", Column::Scalar(vec![0.0, 0.0]))
+            .with("spring_vel", Column::Scalar(vec![0.0, 0.0]))
+            .with("sim_t", Column::Scalar(vec![0.0, 0.0]));
+        let out = step(&input, &state, 1, 8.0, 1.5, 1.0 / 60.0);
+        match out.get("P").unwrap() {
+            Column::Vec2(v) => {
+                assert_eq!(v[0][1], 5.0, "pinned: exactly on target, no lag");
+                assert!(v[1][1] < 5.0, "free: still lagging behind ({})", v[1][1]);
+            }
             _ => panic!("P"),
         }
     }

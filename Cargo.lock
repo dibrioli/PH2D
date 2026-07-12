@@ -5489,6 +5489,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-pin-constraint"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-rotate"
 version = "0.0.0"
 dependencies = [
@@ -5506,6 +5514,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-scatter"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-slit-scan"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5746,9 +5762,11 @@ dependencies = [
  "ph2d-node-motion-orbit",
  "ph2d-node-motion-oscillator",
  "ph2d-node-motion-output",
+ "ph2d-node-motion-pin-constraint",
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
  "ph2d-node-motion-scatter",
+ "ph2d-node-motion-slit-scan",
  "ph2d-node-motion-soft-body",
  "ph2d-node-motion-sort",
  "ph2d-node-motion-spherize",

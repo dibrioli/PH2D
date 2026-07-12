@@ -70,6 +70,14 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// (a scrub / loop-wrap) from becoming one giant unstable step.
 const MAX_DT: f32 = 0.1;
 
+/// The inverse-mass column (PBD's `w = 1/m`) that `motion.pin_constraint`
+/// writes: `1` = free (the default when absent — every pre-pin graph integrates
+/// exactly as it did), `0` = pinned. It scales this node's whole contribution,
+/// so a pinned element keeps `sim_d = 0` and rides its rest animation instead.
+/// A string convention shared by the module's solvers, spelled locally by each
+/// reader (like `P` / `falloff` / `accel`) rather than coupling the crates.
+const INV_MASS: &str = "inv_mass";
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.integrate"),
@@ -137,10 +145,19 @@ fn step(rest: &Stream, state: &Stream, playhead: f32) -> Stream {
         }
     }
     let rest_p = vec2_to_n(rest, "P", n, [0.0, 0.0]);
+    // The pin weights ride the LIVE chain (rest), not the state: re-pinning
+    // takes effect on the next tick without a re-seed. Absent = all free.
+    let w = scalar_to_n(rest, INV_MASS, n, 1.0);
 
     // Every element starts at its seed (`vel` from rest — the emitter's muzzle
-    // velocity — and no displacement); the ones the state knows then step.
+    // velocity — and no displacement); the ones the state knows then step. A
+    // pinned element's seed velocity is scaled away too (`w = 0`), so it never
+    // reports a phantom velocity to a downstream reader (`motion.look_at`).
     let mut vel = vec2_to_n(rest, "vel", n, [0.0, 0.0]);
+    for (v, w) in vel.iter_mut().zip(&w) {
+        v[0] *= w;
+        v[1] *= w;
+    }
     let mut sim_d = vec![[0.0f32; 2]; n];
 
     // Pair each rest element with its prior state row (`None` = seed it).
@@ -157,10 +174,19 @@ fn step(rest: &Stream, state: &Stream, playhead: f32) -> Stream {
             let (mut v, mut d, a) = (s_vel[j], s_sim_d[j], accel[j]);
             // Semi-implicit Euler: velocity first, then position with the NEW
             // velocity (symplectic — stable for oscillatory forces).
-            v[0] += a[0] * dt;
-            v[1] += a[1] * dt;
-            d[0] += v[0] * dt;
-            d[1] += v[1] * dt;
+            //
+            // `w` is the inverse mass (PBD): the acceleration a force produces
+            // is `F·w`, and the displacement it accumulates is scaled by the
+            // same weight — so `w = 0` is a HARD pin (no force reaches it, and
+            // no seed velocity can carry it off either: `sim_d` stays 0 and the
+            // element sits exactly on its rest animation), `w = 1` is the free
+            // element (`·1.0` is exact — the pre-pin trajectory is bit-identical)
+            // and in between is a heavy, sluggish element.
+            let w = w[i];
+            v[0] += a[0] * dt * w;
+            v[1] += a[1] * dt * w;
+            d[0] += v[0] * dt * w;
+            d[1] += v[1] * dt * w;
             // NaN/∞ guard (reference parity): a diverged instance recovers by
             // resetting instead of freezing the whole sim.
             if v.iter().chain(&d).all(|x| x.is_finite()) {
@@ -301,11 +327,45 @@ mod tests {
         }
     }
 
+    // The same 2-instance source, but element 0 carries `inv_mass = 0` — what
+    // `motion.pin_constraint` writes upstream. Element 1 stays free.
+    static PIN_SRC_MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("motion.integrate.test.pinned"),
+        name: "motion.integrate.test.pinned",
+        inputs: &[],
+        outputs: &[PortSpec {
+            name: "out",
+            ty: INST_VEC2,
+        }],
+        effect: Effect::Temporal,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct PinnedSrc;
+    impl NodeOp for PinnedSrc {
+        fn manifest(&self) -> &'static NodeManifest {
+            &PIN_SRC_MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            let t = ctx.playhead() as f32;
+            ctx.emit(
+                Stream::new(2)
+                    .with("P", Column::Vec2(vec![[t, 0.0], [10.0 + t, 0.0]]))
+                    // A muzzle velocity on BOTH: the pin must beat it too (an
+                    // infinite mass cannot be carried off by its seed velocity).
+                    .with("vel", Column::Vec2(vec![[5.0, 0.0], [5.0, 0.0]]))
+                    .with(INV_MASS, Column::Scalar(vec![0.0, 1.0])),
+            );
+        }
+    }
+
     struct Ops;
     impl OpResolver for Ops {
         fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
             match ty {
                 t if t == SRC_MAN.id => Some(&Src),
+                t if t == PIN_SRC_MAN.id => Some(&PinnedSrc),
                 t if t == FORCE_MAN.id => Some(&ConstForce),
                 t if t == MANIFEST.id => Some(&MotionIntegrate),
                 _ => None,
@@ -616,6 +676,68 @@ mod tests {
         match out.get("sim_d").unwrap() {
             Column::Vec2(v) => assert!(v[0][0] > 4.0, "kept + advanced, not reset"),
             _ => panic!("sim_d"),
+        }
+    }
+
+    /// **The pin, through the whole loop** (`motion.pin_constraint`'s `inv_mass`
+    /// column): a pinned element (`w = 0`) is untouched by the force chain AND
+    /// by its own seed velocity — it sits exactly on its rest animation, which
+    /// keeps sliding — while its free neighbour, under the same force, runs
+    /// ahead of its rest pose. FALSIFIED if the integrator ignored `inv_mass`
+    /// (the pinned element would drift off with the others) or if it froze the
+    /// rest pose too (the pin would stop following the animation, which is what
+    /// makes a hanging cloth's corner track its animated hook).
+    #[test]
+    fn a_pinned_element_holds_its_rest_pose_while_its_free_neighbour_flies() {
+        let mut g = Graph::new();
+        let src = g.add_node("motion.integrate.test.pinned");
+        let int = g.add_node("motion.integrate");
+        let force = g.add_node("motion.integrate.test.force");
+        for (from, to, delayed) in [
+            ((src, 0), (int, 0), false),
+            ((int, 0), (force, 0), true),
+            ((force, 0), (int, 1), false),
+        ] {
+            g.connect(Edge { from, to, delayed }).unwrap();
+        }
+
+        let (mut cook, dt) = (Cook::new(), 1.0 / 60.0);
+        let (mut last, mut last_ph) = (Vec::new(), 0.0f64);
+        for k in 0..8 {
+            let ph = k as f64 * dt;
+            last = p_of(&mut cook, &g, int, ph);
+            cook.advance_tick(&g, &Ops, ph).unwrap();
+            last_ph = ph;
+        }
+        // The rest pose IS the playhead, taken down the same f64 path the source
+        // took (`playhead as f32`) — re-deriving it in f32 arithmetic here would
+        // differ in the last bit and the oracle, not the node, would be wrong.
+        let ph = last_ph as f32;
+        assert_eq!(
+            last[0],
+            [ph, 0.0],
+            "the pinned element rides its rest animation EXACTLY (no force, no seed velocity)"
+        );
+        assert!(
+            last[1][0] > 10.0 + ph + 1e-3,
+            "the free element ran ahead of its rest pose ({} vs {})",
+            last[1][0],
+            10.0 + ph
+        );
+    }
+
+    /// The pinned element reports zero velocity, not the phantom seed velocity a
+    /// downstream reader (`motion.look_at`) would otherwise aim at.
+    #[test]
+    fn a_pinned_element_reports_no_velocity() {
+        let rest = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
+            .with("vel", Column::Vec2(vec![[5.0, 0.0], [5.0, 0.0]]))
+            .with(INV_MASS, Column::Scalar(vec![0.0, 1.0]));
+        let out = step(&rest, &Stream::new(0), 0.0);
+        match out.get("vel").unwrap() {
+            Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [5.0, 0.0]]),
+            _ => panic!("vel"),
         }
     }
 

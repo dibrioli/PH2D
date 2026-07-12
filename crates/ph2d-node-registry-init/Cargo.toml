@@ -53,9 +53,11 @@ ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }
 ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }
 ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }
 ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
+ph2d-node-motion-pin-constraint = { path = "../ph2d-node-motion-pin-constraint" }
 ph2d-node-motion-rotate = { path = "../ph2d-node-motion-rotate" }
 ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
 ph2d-node-motion-scatter = { path = "../ph2d-node-motion-scatter" }
+ph2d-node-motion-slit-scan = { path = "../ph2d-node-motion-slit-scan" }
 ph2d-node-motion-soft-body = { path = "../ph2d-node-motion-soft-body" }
 ph2d-node-motion-sort = { path = "../ph2d-node-motion-sort" }
 ph2d-node-motion-spherize = { path = "../ph2d-node-motion-spherize" }

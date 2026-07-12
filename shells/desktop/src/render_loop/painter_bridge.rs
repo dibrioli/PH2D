@@ -57,6 +57,10 @@ use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+/// Frame cap for the `PH2D_PREVIEW_DUMP` diagnostic trap (BUGS_painter.md #11). A stroke is tens of
+/// frames, so this holds several gestures while keeping a long session from filling the disk.
+const PREVIEW_DUMP_MAX_FRAMES: u32 = 240;
+
 // `painter_has_unflushed_strokes` + `apply_layer_reparent` (tool-concrete downcast
 // queries) moved to `painter_bridge_queries.rs` (HR-18 file-LOC cap).
 
@@ -270,12 +274,36 @@ pub(super) fn dispatch(
         {
             // B.1: the bbox the drain recomposed (Some = partial fast lane).
             painter_dirty_bbox = painter.take_preview_upload_bbox();
+            // Diagnostic TRAP for the per-layer-colour "rectangle residue" (BUGS_painter.md #11 — OPEN,
+            // intermittent). `PH2D_PREVIEW_DUMP=<dir>` writes each frame's CPU composite (the exact bytes
+            // about to be uploaded, BEFORE any overlay) to `<dir>/preview_NNNN.png`, capped so a long
+            // session can't fill the disk. If the rectangle shows in these PNGs it is the composite; if
+            // they are clean while the artifact is on screen, it is an on-top overlay or the GPU producer
+            // (neither of which this lane touches). Zero cost when the var is unset.
+            if let Some(dir) = std::env::var_os("PH2D_PREVIEW_DUMP") {
+                use std::sync::atomic::{AtomicU32, Ordering};
+                static N: AtomicU32 = AtomicU32::new(0);
+                let n = N.fetch_add(1, Ordering::Relaxed);
+                if n < PREVIEW_DUMP_MAX_FRAMES {
+                    let path = std::path::Path::new(&dir).join(format!("preview_{n:04}.png"));
+                    let _ = image::save_buffer(&path, &rgba[..], w, h, image::ColorType::Rgba8);
+                }
+            }
             *painter_preview = Some(ph2d_tool_runtime::PreviewCache {
                 entity_bits: sel,
                 rgba,
                 width: w,
                 height: h,
             });
+        }
+        // Diagnostic TRAP, half 1 (BUGS_painter.md #11 — OPEN): `PH2D_PREVIEW_DIAG=1` logs which producer
+        // owns the preview slot each frame + the CPU partial-upload bbox. This is what proved the per-layer
+        // shape edits run on the CPU lane (`gpu_owns=false`) while a slider drag hands the slot to the GPU
+        // producer — the CPU↔GPU handoff the headless harness cannot reach. Zero cost when unset.
+        if std::env::var_os("PH2D_PREVIEW_DIAG").is_some() {
+            eprintln!(
+                "[preview-diag] gpu_owns={gpu_owns_preview} cpu_dirty_bbox={painter_dirty_bbox:?}"
+            );
         }
         // Apply / commit capture — same trait path as bgremoval.
         apply_selection = ph2d_tool_runtime::drive_pending_commit(

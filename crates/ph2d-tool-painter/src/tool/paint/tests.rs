@@ -7215,6 +7215,417 @@ mod per_layer_perf {
         let (mv, pv) = measure(&mut t, p0, p1, 8);
         println!("worst: move_us={mv:.1} prev_us={pv:.1}");
     }
+
+    /// REGRESSION (Enio 2026-07-11 smoke, clean `--release`): editing a per-layer-colour shape left "lines
+    /// at the edges of rectangles, in the brush's own colours" — and `PH2D_PAINT_FULL_UPLOAD=1` did NOT
+    /// clear them, so it is NOT the partial GPU upload; it is upstream (the canvas restore/recomposite, or
+    /// the `composite_region`/`blit_region` cache lane). The trigger is a shape that MOVES so the new
+    /// footprint does NOT cover the old (the screenshot's off-centre ghost) — the [[watercolor Drag-Dot
+    /// "moving preview restores the old position"]] class, unguarded for the per-layer-colour shape path.
+    /// A line whose endpoint SWEEPS across the canvas must leave the SAME preview as the final line drawn
+    /// directly; any pixel that differs is residue the sweep failed to revert (the stale rectangle). The
+    /// diff bbox tells whether it is an axis-aligned rectangle (the Bug #9 signature). Cached path (colours
+    /// picked) AND the per-dab dynamic path (Randomize Colour — Enio's 3D-look brushes) are both checked.
+    #[test]
+    fn per_layer_moving_shape_leaves_no_stale_rectangle() {
+        let size = 256u32;
+        let a = [40.0f32, 40.0]; // fixed line start
+        // Endpoint sweeps a wide arc → successive lines barely overlap (the moving-preview case).
+        let sweep = [
+            [220.0f32, 60.0],
+            [210.0, 200.0],
+            [70.0, 215.0],
+            [200.0, 130.0],
+        ];
+        let run = |doc: usize, randomize: bool| -> (usize, (u32, u32, u32, u32)) {
+            let mk = || {
+                let mut t = setup(size, 3, doc, 12.0);
+                t.paint.brush.stroke_method = StrokeMethod::Line;
+                if randomize {
+                    // Route through the per-dab DYNAMIC path (`stamp_dabs_per_layer_dynamic`): a Hue jitter
+                    // makes `has_colour_jitter_amount()` true — the gate the 3D-look brushes trip.
+                    t.paint.brush.color_jitter_hue = 0.5;
+                }
+                t
+            };
+            let last = *sweep.last().unwrap();
+            // TRUTH: the final line, drawn directly.
+            let mut truth = mk();
+            truth.on_canvas_pointer(cp(a, PointerPhase::Down));
+            truth.on_canvas_pointer(cp(last, PointerPhase::Move));
+            let (tb, w, h) = truth.take_preview_arc().expect("truth preview");
+            // ACTUAL: the endpoint sweeps through every point, ending at the SAME final line.
+            let mut actual = mk();
+            actual.on_canvas_pointer(cp(a, PointerPhase::Down));
+            let mut ab_opt = None;
+            for p in sweep {
+                actual.on_canvas_pointer(cp(p, PointerPhase::Move));
+                if let Some(v) = actual.take_preview_arc() {
+                    ab_opt = Some(v); // drain each frame like the bridge; keep the last non-empty
+                }
+            }
+            let (ab, _, _) = ab_opt.expect("actual preview");
+            let mut n = 0usize;
+            let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+            for y in 0..h {
+                for x in 0..w {
+                    let i = ((y * w + x) * 4) as usize;
+                    if tb[i..i + 4] != ab[i..i + 4] {
+                        n += 1;
+                        x0 = x0.min(x);
+                        y0 = y0.min(y);
+                        x1 = x1.max(x);
+                        y1 = y1.max(y);
+                    }
+                }
+            }
+            (n, (x0, y0, x1, y1))
+        };
+        let (n0, b0) = run(0, false);
+        let (n1, b1) = run(1, false);
+        let (nd, bd) = run(0, true);
+        assert_eq!(
+            n0, 0,
+            "cached, trivial stack: {n0} residue px on the CANVAS, bbox={b0:?}"
+        );
+        assert_eq!(
+            n1, 0,
+            "cached, doc stack: {n1} residue px in the COMPOSITE cache lane, bbox={b1:?}"
+        );
+        assert_eq!(
+            nd, 0,
+            "DYNAMIC (Randomize Colour): {nd} residue px, bbox={bd:?}"
+        );
+    }
+
+    /// The REAL context (Enio's screenshot): a PARKED shape (drawn earlier) plus an ACTIVE shape being
+    /// EDITED — the `restamp_shapes_preview` multi-shape path (active + every parked re-stamped onto one
+    /// baseline each frame), NOT the single `stamp_drag_preview` a plain stroke uses. As the active shape's
+    /// handle sweeps, the union footprint shifts; any pixel that ends up different from the same final
+    /// two-shape scene built directly is residue (the off-centre ghost). Trivial + doc stack.
+    #[test]
+    fn per_layer_multishape_edit_leaves_no_stale_rectangle() {
+        let size = 256u32;
+        // Shape 1 (parked): a small ellipse in the top-left. Shape 2 (active): drawn bottom-right, then its
+        // right handle is dragged around. The sweep + the final resting handle position.
+        let c1 = [70.0f32, 70.0];
+        let c2 = [165.0f32, 165.0];
+        let sweep = [
+            [235.0f32, 165.0],
+            [165.0, 235.0],
+            [120.0, 120.0],
+            [210.0, 150.0],
+        ];
+        let run = |doc: usize| -> (usize, (u32, u32, u32, u32)) {
+            // Returns the LIVE preview captured mid-drag (no pen-up — the artifact is a live-preview residue
+            // the final commit would otherwise hide).
+            let build = |edits: &[[f32; 2]]| -> (Arc<Vec<u8>>, u32, u32) {
+                let mut t = setup(size, 3, doc, 12.0);
+                t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+                // Shape 1 → parked once shape 2 begins.
+                t.on_canvas_pointer(cp(c1, PointerPhase::Down));
+                t.on_canvas_pointer(cp([c1[0] + 25.0, c1[1]], PointerPhase::Move));
+                t.on_canvas_pointer(cp([c1[0] + 25.0, c1[1]], PointerPhase::Up));
+                // Shape 2 (empty Down parks shape 1) → radius 40, then editable.
+                t.on_canvas_pointer(cp(c2, PointerPhase::Down));
+                t.on_canvas_pointer(cp([c2[0] + 40.0, c2[1]], PointerPhase::Move));
+                t.on_canvas_pointer(cp([c2[0] + 40.0, c2[1]], PointerPhase::Up));
+                // Edit shape 2: grab the right handle (at centre + rx) and drag it through `edits` — NO Up.
+                let h = [c2[0] + 40.0, c2[1]];
+                t.on_canvas_pointer(cp(h, PointerPhase::Down));
+                let mut prev = None;
+                for &e in edits {
+                    t.on_canvas_pointer(cp(e, PointerPhase::Move));
+                    if let Some(v) = t.take_preview_arc() {
+                        prev = Some(v);
+                    }
+                }
+                prev.or_else(|| {
+                    t.preview_dirty = true;
+                    t.take_preview_arc()
+                })
+                .expect("a live preview mid-edit")
+            };
+            let last = *sweep.last().unwrap();
+            let (tb, w, h) = build(&[last]); // edit straight to the final handle position
+            let (ab, _, _) = build(&sweep); // sweep through every intermediate position
+            let mut n = 0usize;
+            let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+            for y in 0..h {
+                for x in 0..w {
+                    let i = ((y * w + x) * 4) as usize;
+                    if tb[i..i + 4] != ab[i..i + 4] {
+                        n += 1;
+                        x0 = x0.min(x);
+                        y0 = y0.min(y);
+                        x1 = x1.max(x);
+                        y1 = y1.max(y);
+                    }
+                }
+            }
+            (n, (x0, y0, x1, y1))
+        };
+        let (n0, b0) = run(0);
+        let (n1, b1) = run(1);
+        assert_eq!(
+            n0, 0,
+            "multi-shape, trivial stack: {n0} residue px, bbox={b0:?}"
+        );
+        assert_eq!(
+            n1, 0,
+            "multi-shape, doc stack: {n1} residue px, bbox={b1:?}"
+        );
+    }
+
+    /// The DECISIVE oracle: gesture-vs-gesture cancels a bug that is geometry-dependent (both go through
+    /// the partial `composite_region`/`blit_region` cache lane). Compare the incrementally-blitted
+    /// `composited` CACHE against a FULL recompose of the SAME final state — that is the exact difference
+    /// `PH2D_PAINT_FULL_UPLOAD` cannot fix (it uploads the stale cache). Edits sweep a shape toward the
+    /// canvas EDGE so the dirty bbox can clamp (`composite_region` returns `rw < bbox.w` while `blit_region`
+    /// strides by `bbox.w` — the §3-B shear). Non-trivial doc stack (the composite lane only runs there).
+    #[test]
+    fn per_layer_composite_cache_matches_full_recompose_during_shape_edit() {
+        let size = 128u32;
+        let mut t = setup(size, 3, 1, 10.0);
+        t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+        // Draw an ellipse near the right edge, then drag its handle across the boundary and back.
+        let c = [96.0f32, 64.0];
+        t.on_canvas_pointer(cp(c, PointerPhase::Down));
+        t.on_canvas_pointer(cp([c[0] + 24.0, c[1]], PointerPhase::Move));
+        t.on_canvas_pointer(cp([c[0] + 24.0, c[1]], PointerPhase::Up));
+        let handle = [c[0] + 24.0, c[1]];
+        t.on_canvas_pointer(cp(handle, PointerPhase::Down));
+        let mut partial = None;
+        for &e in &[[124.0f32, 64.0], [110.0, 30.0], [70.0, 64.0], [118.0, 90.0]] {
+            t.on_canvas_pointer(cp(e, PointerPhase::Move));
+            if let Some(v) = t.take_preview_arc() {
+                partial = Some(v);
+            }
+        }
+        let (pb, w, h) = partial.expect("a partial-lane composited preview mid-edit");
+        // FULL recompose of the SAME final state (drop the incremental cache).
+        t.composited = None;
+        t.preview_dirty = true;
+        let (fb, _, _) = t.take_preview_arc().expect("a full recompose");
+        let mut n = 0usize;
+        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+        for y in 0..h {
+            for x in 0..w {
+                let i = ((y * w + x) * 4) as usize;
+                if pb[i..i + 4] != fb[i..i + 4] {
+                    n += 1;
+                    x0 = x0.min(x);
+                    y0 = y0.min(y);
+                    x1 = x1.max(x);
+                    y1 = y1.max(y);
+                }
+            }
+        }
+        assert_eq!(
+            n, 0,
+            "partial composite cache != full recompose: {n} stale px, bbox=({x0},{y0})..({x1},{y1}) \
+             — the incremental blit lane left a stale rectangle (FULL_UPLOAD can't fix this)"
+        );
+    }
+
+    /// The screenshot's actual shape: a self-overlapping FREE HAND stroke (the un-incrementalised
+    /// whole-path re-fill) with per-layer colour + Randomize Colour (the dynamic recomposite path) +
+    /// a doc stack. Mid-draw, the partial composite CACHE must equal a FULL recompose of the same state.
+    #[test]
+    fn per_layer_freehand_selfoverlap_cache_matches_full_recompose() {
+        let size = 160u32;
+        let mut t = setup(size, 3, 1, 8.0);
+        t.paint.brush.stroke_method = StrokeMethod::FreeHand;
+        t.paint.brush.color_jitter_hue = 0.5; // → the dynamic per-dab recomposite path
+        // A figure-8 that crosses itself (the pretzel), captured point by point.
+        let path = [
+            [40.0f32, 80.0],
+            [70.0, 40.0],
+            [110.0, 40.0],
+            [120.0, 80.0],
+            [90.0, 120.0],
+            [60.0, 120.0],
+            [40.0, 80.0],
+            [70.0, 60.0],
+            [110.0, 100.0],
+        ];
+        t.on_canvas_pointer(cp(path[0], PointerPhase::Down));
+        let mut partial = None;
+        for &p in &path[1..] {
+            t.on_canvas_pointer(cp(p, PointerPhase::Move));
+            if let Some(v) = t.take_preview_arc() {
+                partial = Some(v);
+            }
+        }
+        let (pb, w, h) = partial
+            .or_else(|| {
+                t.preview_dirty = true;
+                t.take_preview_arc()
+            })
+            .expect("a partial-lane preview mid free-hand");
+        t.composited = None;
+        t.preview_dirty = true;
+        let (fb, _, _) = t.take_preview_arc().expect("a full recompose");
+        let mut n = 0usize;
+        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+        for y in 0..h {
+            for x in 0..w {
+                let i = ((y * w + x) * 4) as usize;
+                if pb[i..i + 4] != fb[i..i + 4] {
+                    n += 1;
+                    x0 = x0.min(x);
+                    y0 = y0.min(y);
+                    x1 = x1.max(x);
+                    y1 = y1.max(y);
+                }
+            }
+        }
+        assert_eq!(
+            n, 0,
+            "free-hand: {n} stale px, bbox=({x0},{y0})..({x1},{y1})"
+        );
+    }
+
+    /// The MISSING context (Enio 2026-07-11: "esqueci de colocar na freehand"): FreeHand is the ONLY shape
+    /// method that does NOT coalesce (`coalesces_canvas_motion == false`) — the real app processes SEVERAL
+    /// pointer Moves per frame, then ONE `take_preview_arc`. Every prior harness drained once per Move, so
+    /// the multi-Move-per-frame accumulation of the growing whole-path re-fill was never exercised. Compare
+    /// the partial composite CACHE built that way against a FULL recompose of the same final state.
+    #[test]
+    fn per_layer_freehand_multimove_per_frame_matches_full_recompose() {
+        let size = 200u32;
+        let mut t = setup(size, 3, 1, 6.0);
+        t.paint.brush.stroke_method = StrokeMethod::FreeHand;
+        t.paint.brush.color_jitter_hue = 0.5; // dynamic per-dab path (Enio's 3D brushes)
+        // A growing, self-overlapping scribble captured point by point (spaced > min-capture).
+        let pts: Vec<[f32; 2]> = (0..40)
+            .map(|i| {
+                let f = i as f32;
+                // A lissajous-ish curve that crosses itself, no RNG, deterministic.
+                let x = 100.0 + 70.0 * ((f * 0.5).sin());
+                let y = 100.0 + 60.0 * ((f * 0.31).sin());
+                [x, y]
+            })
+            .collect();
+        t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+        let mut partial = None;
+        // 4 Moves per "frame", ONE drain per frame (the un-coalesced FreeHand cadence).
+        for frame in pts[1..].chunks(4) {
+            for &p in frame {
+                t.on_canvas_pointer(cp(p, PointerPhase::Move));
+            }
+            if let Some(v) = t.take_preview_arc() {
+                partial = Some(v);
+            }
+        }
+        let (pb, w, h) = partial
+            .or_else(|| {
+                t.preview_dirty = true;
+                t.take_preview_arc()
+            })
+            .expect("a partial-lane preview");
+        t.composited = None;
+        t.preview_dirty = true;
+        let (fb, _, _) = t.take_preview_arc().expect("a full recompose");
+        let mut n = 0usize;
+        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+        for y in 0..h {
+            for x in 0..w {
+                let i = ((y * w + x) * 4) as usize;
+                if pb[i..i + 4] != fb[i..i + 4] {
+                    n += 1;
+                    x0 = x0.min(x);
+                    y0 = y0.min(y);
+                    x1 = x1.max(x);
+                    y1 = y1.max(y);
+                }
+            }
+        }
+        assert_eq!(
+            n, 0,
+            "free-hand multi-move/frame: {n} stale px, bbox=({x0},{y0})..({x1},{y1}) \
+             — the partial cache diverged from a full recompose"
+        );
+    }
+
+    /// Enio's ACTUAL screenshot scene: a FREE HAND scribble already drawn (→ PARKED) with an ELLIPSE editor
+    /// active ON TOP of it, being edited. `restamp_shapes_preview` then re-stamps the parked free-hand's
+    /// LONG dab list + the active ellipse onto one baseline EVERY move — the heaviest multi-shape path, and
+    /// the one the screenshot shows. Partial composite cache vs FULL recompose of the same final state.
+    #[test]
+    fn per_layer_parked_freehand_plus_active_ellipse_matches_full_recompose() {
+        let size = 220u32;
+        let mut t = setup(size, 3, 1, 7.0);
+        // 1) Draw a self-overlapping FREE HAND scribble, pen-up → it parks when the next shape starts.
+        t.paint.brush.stroke_method = StrokeMethod::FreeHand;
+        t.paint.brush.color_jitter_hue = 0.5;
+        let pts: Vec<[f32; 2]> = (0..32)
+            .map(|i| {
+                let f = i as f32;
+                [
+                    70.0 + 55.0 * (f * 0.5).sin(),
+                    80.0 + 45.0 * (f * 0.31).sin(),
+                ]
+            })
+            .collect();
+        t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+        for frame in pts[1..].chunks(4) {
+            for &p in frame {
+                t.on_canvas_pointer(cp(p, PointerPhase::Move));
+            }
+            let _ = t.take_preview_arc();
+        }
+        t.on_canvas_pointer(cp(*pts.last().unwrap(), PointerPhase::Up));
+        let _ = t.take_preview_arc();
+        // 2) An ELLIPSE on top (empty Down parks the free-hand), then EDIT its handle across a sweep.
+        t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+        let c = [150.0f32, 150.0];
+        t.on_canvas_pointer(cp(c, PointerPhase::Down));
+        t.on_canvas_pointer(cp([c[0] + 45.0, c[1]], PointerPhase::Move));
+        t.on_canvas_pointer(cp([c[0] + 45.0, c[1]], PointerPhase::Up));
+        let _ = t.take_preview_arc();
+        let handle = [c[0] + 45.0, c[1]];
+        t.on_canvas_pointer(cp(handle, PointerPhase::Down));
+        let mut partial = None;
+        for &e in &[
+            [205.0f32, 150.0],
+            [150.0, 205.0],
+            [95.0, 120.0],
+            [190.0, 175.0],
+        ] {
+            t.on_canvas_pointer(cp(e, PointerPhase::Move));
+            if let Some(v) = t.take_preview_arc() {
+                partial = Some(v);
+            }
+        }
+        let (pb, w, h) = partial
+            .or_else(|| {
+                t.preview_dirty = true;
+                t.take_preview_arc()
+            })
+            .expect("a partial-lane preview mid-edit");
+        t.composited = None;
+        t.preview_dirty = true;
+        let (fb, _, _) = t.take_preview_arc().expect("a full recompose");
+        let mut n = 0usize;
+        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
+        for y in 0..h {
+            for x in 0..w {
+                let i = ((y * w + x) * 4) as usize;
+                if pb[i..i + 4] != fb[i..i + 4] {
+                    n += 1;
+                    x0 = x0.min(x);
+                    y0 = y0.min(y);
+                    x1 = x1.max(x);
+                    y1 = y1.max(y);
+                }
+            }
+        }
+        assert_eq!(
+            n, 0,
+            "parked free-hand + active ellipse: {n} stale px, bbox=({x0},{y0})..({x1},{y1})"
+        );
+    }
 }
 
 /// `coalesces_canvas_motion` gates per-frame pointer coalescing in the shell. It must be true EXACTLY for

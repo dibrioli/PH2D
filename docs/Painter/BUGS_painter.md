@@ -17,6 +17,86 @@
 | [8](#bug-8--aquarela-borda-duraserrilhada-nas-junções--retângulo-no-preview--6-fixes-verdes-sem-efeito-o-harness-reproduzia-o-mecanismo-não-o-contexto) | Aquarela: borda dura/serrilhada nas junções (Charge<1 / Rewet) + "retângulo no preview" — 6 fixes verdes sem efeito | Watercolor mixer + render (blend do pigmento, estilo por dono) | ✅ Resolvido (smoke Enio 2026-07-09; clareamento preservado, fronteira orgânica) | 2026-07-09 |
 | [9](#bug-9--preview-de-umidade-retângulo-na-união--o-pour-re-molhava-o-vizinho-dentro-do-bbox) | Preview de umidade: "retângulo maldito/gigante" na união de traços úmidos | Moisture pour (`pour_canvas_wet`) + overlay do shell | ✅ Resolvido (pour por-footprint-dona; blur do véu foi tentativa errada) | 2026-07-11 |
 | [10](#bug-10--borda-dura-na-junção-ao-mudar-params-de-wash-e-cruzar-traço-úmido--params-por-dono-degrauavam) | Borda dura na junção ao mudar params de Wash (Body/Concentration/Edge/Opacity/RaggedEdge) e cruzar traço úmido | Watercolor render (params por-dono discretos) | ✅ Resolvido (campo suavizado `build_style_field`; grad 118→13) | 2026-07-11 |
+| [11](#bug-11--per-layer-color-linhas-retangulares-intermitentes-aberto) | Per-Layer Color — "linhas nas bordas de retângulos" nas cores do brush, **intermitente** | Preview (produtor CPU↔GPU / overlay) — **NÃO** o composite CPU | 🔎 **ABERTO** (dormente; composite CPU provado limpo, espaço de busca reduzido, **armadilha armada**) | 2026-07-11 |
+
+---
+
+## Bug #11 — Per-Layer Color: linhas retangulares intermitentes (ABERTO)
+
+> **Estado: ABERTO e DORMENTE.** Nada foi corrigido. A caçada de 2026-07-11 **não achou a causa**, mas
+> **eliminou quase todo o espaço de busca** e deixou uma **armadilha re-ativável** (§Armadilha). Leia a
+> tabela de descartados ANTES de tentar de novo — ela economiza rounds inteiros.
+
+**Sintoma (Enio 2026-07-11, smoke em `--release` LIMPO):** ao usar **Per-Layer Color** com **shapes
+dinâmicas** (Free Hand / Ellipse / Polygon), aparecem **linhas nas bordas de retângulos**, **nas cores do
+próprio brush** (não em cor de chrome). Enio: *"parecem os retângulos da umidade que foram resolvidos
+(Bug #9), mas aparecem como linhas nas bordas dos retângulos."* Na screenshot: um pretzel free-hand já
+desenhado + um editor de **Ellipse ativo por cima**, sendo editado, com um **círculo-fantasma deslocado**
+à direita.
+
+**O fato que domina tudo: é INTERMITENTE.** Apareceu; depois **3 runs seguidas sem reproduzir** (inclusive
+COM Free Hand, o método que o Enio suspeitava ser o gatilho). Isso mata a abordagem "reproduz e bissecta"
+e é a assinatura clássica de **memória não-inicializada** (Bug #2 lição #4) *ou* de uma condição de
+timing/ordem (a troca de produtor CPU↔GPU).
+
+### O que foi DESCARTADO (com o método — não repita)
+
+| Suspeito | Veredito | Como foi descartado |
+|---|---|---|
+| **Composite CPU** (canvas + cache `composited`) | ❌ **DESCARTADO** | **9 testes** (`per_layer_*` em `tool/paint/tests.rs`): o cache parcial (`composite_region`+`blit_region`) é **byte-idêntico** a um recompose CHEIO em shrink, forma que se move, multi-shape, Free Hand auto-sobreposto, **multi-move-por-frame**, parked-freehand+ellipse-ativa, caminhos **cached E dinâmico** (Randomize Color) |
+| **Upload parcial GPU** (`preview_upload_bbox`) | ❌ DESCARTADO | `PH2D_PAINT_FULL_UPLOAD=1` → o artefato **PERSISTIU** |
+| **Tiling / Repeat Image** (`draw_repeat_image`) | ❌ DESCARTADO | Enio confirmou **Tiling OFF** (a função faz early-return) |
+| **Slot GPU não-inicializado** | ❌ Já corrigido (Bug #2) | `clear_all_mips_transparent` presente em `individual.rs::create_entry_empty` |
+| **Upload de camada por versão (GPU)** | ❌ DESCARTADO | `pixel_clock` **incrementa** a cada `bump_layer_pixels`; `ensure_slice` sobe a camada **inteira** quando a versão muda |
+| **Resíduo no canvas** (restore/recomposite) | ❌ DESCARTADO | `dab_bbox` e a footprint do accumulate usam a **mesma** fórmula (`floor(c−r)..ceil(c+r)+1`); `restore_region` **marca dirty** |
+| **Produtor GPU** (`painter_gpu_preview::try_drive`) | ⚠️ **RESTA** | Intestável no harness CPU; **o `FULL_UPLOAD` não o toca** |
+| **Overlay** desenhado por cima | ⚠️ **RESTA** | Não passa pelo composite nem pelo upload. Candidatos: `draw_overlays` (symmetry / ellipse / polygon / **stencil**), `draw_selection_overlay` |
+| **Tamanho do canvas** | ⚠️ **Condição provável** | Quando apareceu, os dirty bboxes chegaram a `(227,56,635,893)` ⇒ canvas **≥ ~862×949**. As 3 runs limpas foram em **512×512** |
+
+### A pista mais forte que sobrou (leia antes de tudo)
+
+O `PH2D_PREVIEW_DIAG` provou que **as edições de shape rodam no produtor CPU** (`gpu_owns=false`), MAS o
+log tinha um bloco de **~2710 frames `gpu_owns=true`** no meio (um **arraste de slider** — o produtor GPU
+assume o slot para sliders rápidos). Ou seja: **o preview ALTERNA de produtor** durante a sessão. A
+troca CPU↔GPU é o único caminho que (a) o harness headless não alcança, (b) o `FULL_UPLOAD` não cobre, e
+(c) depende de timing/ordem — casando com a intermitência. **Comece por aí.**
+
+### Armadilha (re-ativável — já commitada, custo ZERO desligada)
+
+Duas metades em [`painter_bridge.rs`](../../shells/desktop/src/render_loop/painter_bridge.rs):
+
+```bash
+# 1) Qual produtor tem o slot + o bbox do upload parcial, por frame:
+PH2D_PREVIEW_DIAG=1 ./target/release/ph2d-host-desktop 2>/tmp/diag.log
+
+# 2) O composite CPU exato que vai subir (ANTES de qualquer overlay), 1 PNG por frame:
+mkdir -p /tmp/dump && PH2D_PREVIEW_DUMP=/tmp/dump ./target/release/ph2d-host-desktop
+```
+
+**Como usar quando o artefato reaparecer:** reproduza **no sprite GRANDE** com o dump ligado e **feche o
+app no instante em que o retângulo aparecer**. Então:
+- **Retângulo NOS PNGs** ⇒ está no composite ⇒ os 9 testes estão errando alguma condição do gesto real;
+  compare o frame ruim contra o que o teste gera.
+- **PNGs LIMPOS enquanto o artefato está na tela** ⇒ o composite é inocente ⇒ é **overlay** ou o
+  **produtor GPU**. (Este é o desfecho que a evidência atual favorece.)
+
+### Lições (já pagas — não repita)
+
+1. **9 verdes no harness ≠ bug inexistente.** É a [[feedback_harness_reproduces_mechanism_not_context]] de
+   novo: gastei 9 tentativas headless reproduzindo o *mecanismo* (restore/recomposite) sem o *contexto*
+   (produtor GPU, canvas grande, timing). O doc já mandava parar em 1-2 e **instrumentar o app** — e foi a
+   instrumentação (`gpu_owns`) que produziu a única pista real. **Pare o harness mais cedo.**
+2. **Bug intermitente: a NÃO-reprodução não é prova de correção.** Enio: *"alguma coisa que vc fez deve ter
+   resolvido"* — o `git diff` provou o contrário: **+21 linhas, todas dentro de `if env::var_os(...)`**, zero
+   mudança de comportamento. É o falso-negativo do Bug #2 **invertido**: lá um binário stale fez um fix certo
+   parecer morto; aqui a não-reprodução faz um bug vivo parecer morto. **Sempre cheque o diff antes de
+   aceitar "resolveu".**
+3. **Eliminar tem valor mesmo sem resolver.** Esta entrada não tem solução — tem um **espaço de busca
+   reduzido a 2 suspeitos** e uma armadilha armada. Registrar isso é o que evita o próximo round começar do
+   zero (é literalmente para isso que este doc existe).
+4. **Compare contra o ORÁCULO certo.** Comparar gesto-vs-gesto **cancela** um bug geometria-dependente (os
+   dois lados passam pela mesma via parcial). O oráculo que vale é **cache parcial vs recompose CHEIO** do
+   mesmo estado — é exatamente a diferença que o `FULL_UPLOAD` **não** consegue corrigir.
 
 ---
 

@@ -122,7 +122,7 @@ impl FlipRenderer {
                 })],
             }),
             primitive: tri_list(),
-            depth_stencil: Some(depth_greater(Self::DEPTH_FORMAT)),
+            depth_stencil: Some(depth_greater_equal(Self::DEPTH_FORMAT)),
             multisample: no_msaa(),
             multiview_mask: None,
             cache: None,
@@ -176,7 +176,7 @@ impl FlipRenderer {
                 })],
             }),
             primitive: tri_list(),
-            depth_stencil: Some(depth_greater(Self::DEPTH_FORMAT)),
+            depth_stencil: Some(depth_greater_equal(Self::DEPTH_FORMAT)),
             multisample: no_msaa(),
             multiview_mask: None,
             cache: None,
@@ -353,19 +353,18 @@ pub(crate) fn premult_over() -> wgpu::BlendState {
     }
 }
 
-/// Depth-state da ordem 2D — **EXATAMENTE o do Grease Pencil 2D** (draw ref
-/// `gpencil_cache_utils.cc:449`: `WRITE_DEPTH | BLEND_ALPHA_PREMUL | DEPTH_GREATER`,
-/// depth por-stroke crescente com o sid). Escreve depth + teste GREATER **estrito**:
-/// o 2º fragmento no MESMO pixel (uma face do MESMO traço sobrepondo outra — quina ou
-/// cruzamento) é **descartado, não misturado** → sem acúmulo de cor (o spike nas
-/// quinas com hardness baixo vinha do premult-over de faces sobrepostas — Enio
-/// 2026-07-11). Numa linha de cor sólida a sobreposição vira uma UNIÃO limpa. Entre
-/// traços/fills, o sid maior tem depth estritamente maior e compõe por cima.
-fn depth_greater(format: wgpu::TextureFormat) -> wgpu::DepthStencilState {
+/// Depth-state da ordem 2D: escreve + teste GREATER-**EQUAL**. Entre traços/fills, o
+/// sid maior tem depth estritamente maior e ganha (igual ao GREATER). No mesmo
+/// depth (um traço passando por CIMA de si mesmo — auto-overlap), o `>=` deixa o
+/// fragmento **desenhado depois** (ponto mais adiante na fita) passar e compor por
+/// cima — como uma caneta real / o Grease Pencil (Enio 2026-07-11: "o mesmo traço
+/// quando passa por cima de si mesmo é pintado por baixo"). Com GREATER puro o 2º
+/// fragmento falhava e a parte mais NOVA sumia sob a mais velha.
+fn depth_greater_equal(format: wgpu::TextureFormat) -> wgpu::DepthStencilState {
     wgpu::DepthStencilState {
         format,
         depth_write_enabled: true,
-        depth_compare: wgpu::CompareFunction::Greater,
+        depth_compare: wgpu::CompareFunction::GreaterEqual,
         stencil: wgpu::StencilState::default(),
         bias: wgpu::DepthBiasState::default(),
     }

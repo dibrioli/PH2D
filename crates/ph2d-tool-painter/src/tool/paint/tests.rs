@@ -17273,18 +17273,22 @@ fn impasto_light_off_is_byte_identical_and_a_hidden_layer_casts_none() {
 }
 
 #[test]
-#[ignore = "perf measurement — run with --release --ignored"]
+#[ignore = "perf measurement - run with --release --ignored"]
 fn impasto_perf_kill_criterion() {
-    // The kill-criterion frozen BEFORE the build (plan §7, DIRETIVA §5): canvas 2048², r=100, a dragged
-    // stroke, Show Impasto on. Target ≤ 4 ms/move for the whole impasto cost (deposit + light over the
-    // dirty rect); KILL at 8 ms after two CPU optimisation attempts — at which point the feature is
-    // GPU-only or it does not exist in this form. Numbers, in ms, in --release. No verdict by vibes.
+    // The kill-criterion frozen BEFORE the build (plan 7, DIRETIVA 5): canvas 2048, r=100, a dragged
+    // stroke, Show Impasto on. Target <= 4 ms/move for the whole impasto cost (deposit + light over the
+    // dirty rect); KILL at 8 ms. Numbers, in ms, in --release. No verdict by vibes.
+    //
+    // It also times the PEN-UP now, and at 4096 as well as 2048, because the criterion as frozen was
+    // watching the wrong half. It timed the Move and never the Up - and the Up was where the commit ran a
+    // box blur over the WHOLE CANVAS for a stroke that touched a corner of it: 146 ms at 2048 and
+    // **1010 ms at 4096**, a full second of freeze at the end of every stroke, invisible to a gate that
+    // only ever watched the drag. A budget whose other half nobody spends is not a budget.
     use std::time::Instant;
     const MOVES: u32 = 20;
-    // The same stroke with the feature OFF and ON. The number that matters is the DELTA — the frame
+    // The same stroke with the feature OFF and ON. The number that matters is the DELTA - the frame
     // already costs something without Impasto, and charging that to Impasto would flatter it.
-    let run = |impasto: bool| -> (f64, f64) {
-        let size = 2048u32;
+    let run = |size: u32, impasto: bool| -> (f64, f64, f64) {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         let b = BrushSpec {
@@ -17299,31 +17303,39 @@ fn impasto_perf_kill_criterion() {
         for slot in &mut t.paint.brush_by_mode {
             *slot = b;
         }
-        t.on_canvas_pointer(cp([200.0, 1024.0], PointerPhase::Down));
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([200.0, mid], PointerPhase::Down));
         let _ = t.take_preview_arc();
         let (mut worst, mut total) = (0.0f64, 0.0f64);
         for i in 0..MOVES {
             let x = 220.0 + f64::from(i) * 40.0;
             let t0 = Instant::now();
-            t.on_canvas_pointer(cp([x as f32, 1024.0], PointerPhase::Move));
+            t.on_canvas_pointer(cp([x as f32, mid], PointerPhase::Move));
             let _ = t.take_preview_arc(); // deposit + composite + light: what a frame really costs
             let ms = t0.elapsed().as_secs_f64() * 1000.0;
             worst = worst.max(ms);
             total += ms;
         }
-        (total / f64::from(MOVES), worst)
+        // The other half of the budget: the commit (derive + settle + re-base + the re-light of what moved).
+        let t0 = Instant::now();
+        t.on_canvas_pointer(cp([1020.0, mid], PointerPhase::Up));
+        let _ = t.take_preview_arc();
+        let up = t0.elapsed().as_secs_f64() * 1000.0;
+        (total / f64::from(MOVES), worst, up)
     };
-    let (off_mean, off_worst) = run(false);
-    let (on_mean, on_worst) = run(true);
-    println!(
-        "@2048² r100 — impasto OFF: mean {off_mean:.2} ms, worst {off_worst:.2} ms\n\
-         @2048² r100 — impasto  ON: mean {on_mean:.2} ms, worst {on_worst:.2} ms\n\
-         >>> IMPASTO COST: mean {:.2} ms/move, worst {:.2} ms/move (target ≤4, kill at 8)",
-        on_mean - off_mean,
-        on_worst - off_worst
-    );
+    for size in [2048u32, 4096] {
+        let (off_mean, off_worst, off_up) = run(size, false);
+        let (on_mean, on_worst, on_up) = run(size, true);
+        println!(
+            "@{size}px r100 - impasto OFF: mean {off_mean:.2} ms/move, worst {off_worst:.2}, pen-up {off_up:.2} ms\n\
+             @{size}px r100 - impasto  ON: mean {on_mean:.2} ms/move, worst {on_worst:.2}, pen-up {on_up:.2} ms\n\
+             >>> IMPASTO COST @{size}px: mean {:.2} ms/move, worst {:.2} ms/move (target <=4, kill 8) | PEN-UP {:.2} ms",
+            on_mean - off_mean,
+            on_worst - off_worst,
+            on_up - off_up
+        );
+    }
 }
-
 #[test]
 fn impasto_smoothing_settles_the_paint_it_just_laid() {
     // Smoothing is a knob I very nearly shipped DEAD — declared in the spec, threaded to the panel, and
@@ -18521,7 +18533,11 @@ fn impasto_light_shades_the_paint_not_the_paper_showing_through_it() {
         t.invalidate_composite();
         let img = lit(&mut t);
         let active = t.layers.active().expect("a layer");
-        let cov = t.covers.get(&active).cloned().unwrap_or_default();
+        let cov = t
+            .covers
+            .get(&active)
+            .map(|c| c.as_ref().clone())
+            .unwrap_or_default();
         (img, cov)
     };
     // The light at its LOUDEST — full Shine, the artist's Depth/Body/Angle/Elevation.
@@ -18597,7 +18613,11 @@ fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
     t.invalidate_composite();
     let base = lit(&mut t);
     let active = t.layers.active().unwrap();
-    let cov = t.covers.get(&active).cloned().unwrap_or_default();
+    let cov = t
+        .covers
+        .get(&active)
+        .map(|c| c.as_ref().clone())
+        .unwrap_or_default();
 
     // Cross-section at mid-stroke, from the spine outward.
     let x = 80u32;
@@ -18918,7 +18938,11 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         let img = lit(&mut t);
         let h = relief(&t);
         let active = t.layers.active().expect("a layer");
-        let cov = t.covers.get(&active).cloned().unwrap_or_default();
+        let cov = t
+            .covers
+            .get(&active)
+            .map(|c| c.as_ref().clone())
+            .unwrap_or_default();
         (img, h, cov)
     };
     let (matte, h, cov) = paint_with(0.0);
@@ -19062,8 +19086,14 @@ fn impasto_plow_drags_the_relief_with_the_paint() {
 
         let active = t.layers.active().expect("a layer");
         (
-            t.heights.get(&active).cloned().unwrap_or_default(),
-            t.covers.get(&active).cloned().unwrap_or_default(),
+            t.heights
+                .get(&active)
+                .map(|f| f.as_ref().clone())
+                .unwrap_or_default(),
+            t.covers
+                .get(&active)
+                .map(|c| c.as_ref().clone())
+                .unwrap_or_default(),
         )
     };
 
@@ -19404,7 +19434,10 @@ fn sculpt_and_apply(size: u32, method: StrokeMethod, smoothing: f32) -> Vec<f32>
     }
     t.commit_open_shape(); // no-op for the methods that already committed at pen-up
     let id = t.layers.active().expect("a layer");
-    t.heights.get(&id).cloned().unwrap_or_default()
+    t.heights
+        .get(&id)
+        .map(|f| f.as_ref().clone())
+        .unwrap_or_default()
 }
 
 #[test]
@@ -19551,5 +19584,97 @@ fn impasto_a_cancelled_shape_leaves_no_ghost_ridge() {
         t.composed_relief_at(60, 46),
         0.0,
         "…and takes its body with it: a cancelled shape may not leave a ridge behind"
+    );
+}
+
+#[test]
+fn impasto_the_stroke_commit_is_cropped_to_the_stroke_and_byte_identical() {
+    // The pen-up used to re-derive, SETTLE, re-base and diff over the **whole canvas** for a stroke that
+    // touched a corner of it. Measured 2026-07-12: **1010 ms at 4096²** — a full second of freeze at the
+    // end of every stroke, and the kill-criterion never saw it because it only ever timed the `Move`.
+    //
+    // The commit now works inside a window: the stroke's dab footprint, grown by the settle's reach. That
+    // is not an approximation and the gate says so in the only way that cannot be argued with — the
+    // cropped commit must be **BIT-FOR-BIT** what the whole-canvas one produced. It can be, because the
+    // relief outside the window is exactly zero, the blur of zeros is zeros, and a box blur that clamps at
+    // a border of zeros reads the same zeros the whole-canvas pass read from beyond it.
+    //
+    // The reference is not a re-implementation (an oracle that re-derives the thing it tests agrees with
+    // the bug): it is the SAME `derive_height` and the SAME `settle`, run over the full canvas — i.e.
+    // literally the code path this replaced.
+    //
+    // The stroke deliberately runs OFF THE CANVAS EDGE, which is where a crop is most likely to differ:
+    // there the whole-canvas settle clamps against the canvas border, and the window's border IS that
+    // border.
+    let size = 200u32;
+    let n = (size * size) as usize;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 10.0;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.impasto_depth = 0.9;
+    b.impasto_body = 0.4;
+    b.impasto_smoothing = 1.0; // the settle at full reach: the whole point of the window
+    b.impasto_source = DepthSource::Grain; // per-texel grain: no smooth field to hide a seam in
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+
+    // A first stroke, so the second one has a GROUND to be re-based onto (the patch of the layer's
+    // pre-stroke relief — the other thing the crop replaced, and the 64 MB clone it removed).
+    t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Up));
+    let layer = t.layers.active().expect("a layer");
+    let before: Vec<f32> = t.heights.get(&layer).expect("a ground").as_ref().clone();
+
+    // The second stroke, running off the left edge.
+    t.on_canvas_pointer(cp([30.0, 70.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([10.0, 70.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([-6.0, 70.0], PointerPhase::Up));
+
+    // The window really is a window — this is the perf claim, made executable. The ground is kept as a
+    // PATCH of it, so its size IS the crop.
+    let cells = t.paint.live_relief_base.len();
+    assert!(
+        cells > 0 && cells * 8 < n,
+        "the commit works in a window, not on the canvas: the ground patch is {cells} of {n} texels"
+    );
+
+    // …and the window is byte-exact. Re-run the OLD pipeline over the whole canvas and demand equality.
+    let brush = t.paint.brush;
+    let mut reference: Vec<f32> = t
+        .paint
+        .live_paint
+        .iter()
+        .zip(t.paint.live_grain.iter())
+        .map(|(&m, &g)| ph2d_painter_brush::height::derive_height(&brush, m, f32::from(g) / 255.0))
+        .collect();
+    super::impasto_settle::settle(
+        &mut reference,
+        size,
+        size,
+        brush.effective_impasto_smoothing(),
+    );
+    let ceil = super::impasto::H_CEIL;
+    for (r, base) in reference.iter_mut().zip(before.iter()) {
+        *r = (*r + base).clamp(-ceil, ceil);
+    }
+
+    let got = t
+        .heights
+        .get(&layer)
+        .expect("the stroke committed")
+        .as_ref();
+    let worst = got
+        .iter()
+        .zip(reference.iter())
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f32, f32::max);
+    assert_eq!(
+        got, &reference,
+        "the cropped commit must be BIT-FOR-BIT the whole-canvas one (worst texel off by {worst})"
     );
 }

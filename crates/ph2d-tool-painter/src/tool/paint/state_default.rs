@@ -152,6 +152,9 @@ impl Default for PaintState {
             live_grain: Vec::new(),
             live_relief_base: Vec::new(),
             live_relief_layer: None,
+            stroke_relief_bbox: None,
+            live_relief_rect: None,
+            live_relief_had_entry: false,
             // Impasto lighting (canvas-level). Upper-left at 45 deg: the reading every eye resolves as
             // raised rather than engraved. Inert until some layer actually has relief.
             impasto_show: true,

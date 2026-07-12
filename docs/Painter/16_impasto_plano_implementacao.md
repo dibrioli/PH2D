@@ -723,3 +723,74 @@ e não consegui construir vermelho (o único chamador re-deriva por um blur, ent
 como fix observado.
 
 Perf: **2.17 ms/move**.
+
+---
+
+## 11. Fase 9 — **o pen-up era O(canvas)** (2026-07-12): 1010 ms → 12 ms
+
+Fase escolhida **medindo antes** ([[feedback_measure_perf_symptom_scale]]), e a medição mudou a fase: eu ia
+fazer conservação de volume, e o relógio disse outra coisa.
+
+### 11.1 O que o kill-criterion não estava olhando
+
+O §7 congelou o critério em **2048², e só o `Move`**. Medido em 2026-07-12, com o `Up`:
+
+| canvas | por-movimento | **pen-up** |
+|---|---|---|
+| 2048² | 2,2 ms | **146 ms** |
+| 4096² | 2,2 ms | **1010 ms** |
+
+**Um segundo inteiro de congelamento no fim de cada traço em 4K** — e invisível para um gate que só
+cronometrava o arrasto. *Um orçamento cuja outra metade ninguém gasta não é um orçamento.* O critério agora
+mede o pen-up **e** roda em 4096².
+
+### 11.2 Onde o tempo morava (instrumentado, não adivinhado)
+
+Em 4096²: `settle` **258 ms** · `derive` 16 ms · `diff` 6 ms · clone da base **64 MB** · merge de cobertura
+O(n) · snapshot de undo 12-16 ms · **full-recompose de 225 ms** disparado pelo flag `has_relief` ao virar.
+
+Tudo O(canvas) — para um traço que tocou **0,2 M de 16,7 M texels**. O `settle` era um blur separável sobre
+o canvas inteiro num buffer **zero em tudo menos o traço**.
+
+### 11.3 O corte, e por que ele é EXATO
+
+O commit passa a trabalhar numa **janela**: a bbox das dabs do traço, **crescida pelo alcance do blur**
+(`SETTLE_REACH_PX` = `SETTLE_MAX_PX`). Não é aproximação:
+
+- fora da janela a tinta é zero ⇒ o relevo é zero ⇒ **não há o que derivar nem o que escrever**;
+- o blur de zeros é zero, e o box blur **clampa na borda do seu buffer** — numa janela cuja borda já é zero,
+  o clamp replica **o mesmo zero** que o passe de canvas inteiro leria de fora dela.
+
+⇒ **byte-idêntico**, e o gate diz exatamente isso: `impasto_the_stroke_commit_is_cropped_to_the_stroke_and_
+byte_identical` compara o commit cortado contra o **mesmo `derive_height` e o mesmo `settle`** rodados sobre
+o canvas inteiro (a referência **é** o caminho que isto substituiu — não um oráculo re-implementado), com o
+traço **saindo pela borda do canvas**, que é onde um crop tem mais chance de divergir. Mutação (janela sem o
+crescimento) = **vermelha**, pior texel errado por 0,009.
+
+### 11.4 Os outros dois
+
+- **O martelo de 225 ms.** `sync_relief_flags` chamava `invalidate_composite()` para publicar **um booleano**
+  ao painel — largando o composite inteiro e todo cut-cache de ajuste, i.e. um recompose completo do canvas,
+  na primeira pincelada de cada camada. O painel só precisa da **revisão** (`bump_layers_revision`); o relevo
+  recém-deposto já está na tela, porque o re-derive sujou exatamente os texels que moveram. **Não é gateável
+  por teste** (trocar um martelo por um bisturi não muda o resultado, só o relógio) — está anotado como tal.
+- **`heights`/`covers` viram `Arc<Vec<_>>` (copy-on-write).** O snapshot de undo os clonava **fundo**: 80 MB
+  por passo em 4096², com cap de **300 passos** e **os dois extremos por passo**. Agora o snapshot é um bump
+  de refcount e os extremos vizinhos **compartilham** ⇒ **metade da memória** da pilha. O tempo por traço não
+  cai (uma cópia por traço é *inerente* ao undo por snapshot: o `make_mut` copia quando um passo segura o
+  buffer) — mas o 1º traço fica de graça e a memória despenca.
+
+### 11.5 Resultado
+
+| | antes | depois |
+|---|---|---|
+| pen-up @2048² | 146 ms | **16 ms** |
+| **pen-up @4096²** | **1010 ms** | **12 ms** |
+| por-movimento | 2,2 ms | 2,2 ms (intacto) |
+
+**Aberto (NOMEADO, e não é meu):** o `ModelSnapshot` clona **fundo os pixels de cada camada não-ativa**
+(`images`) por traço — a mesma espécie, pré-existente, fora do escopo desta linha
+([[feedback_audit_scope_discipline]]). O `canvas_rgba` já é `Arc`; `images` não.
+
+**Continua fora:** conservação de volume real (a fase que a medição adiou) · luz na GPU (a perf não pede) ·
+múltiplas luzes / IBL · relevo do PAPEL (**exige ordem nova do Enio**).

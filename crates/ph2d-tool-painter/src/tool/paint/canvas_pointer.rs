@@ -103,3 +103,19 @@ impl CanvasPaintTool for PainterTool {
         }
     }
 }
+
+impl PainterTool {
+    /// Set whether the Line method constrains to 45° increments this event (Blender Alt-drag). The
+    /// shell forwards the live Alt state before each [`CanvasPaintTool::on_canvas_pointer`], since the
+    /// frozen `CanvasPointer` carries no modifiers. No effect on the other methods.
+    pub fn set_line_constrain(&mut self, on: bool) {
+        self.paint.line_constrain = on;
+    }
+
+    /// Set the shape editors' control-handle grab radius in image px (the shell forwards a
+    /// screen-constant value scaled by the sprite footprint, so the hit targets stay the same size at
+    /// any zoom). Shared by Curve and Ellipse.
+    pub fn set_shape_grab_tol_px(&mut self, px: f32) {
+        self.paint.shape_grab_tol_px = px.max(1.0);
+    }
+}

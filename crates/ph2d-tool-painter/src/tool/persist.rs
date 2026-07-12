@@ -59,8 +59,18 @@ impl PainterTool {
                 layers: self.layers.clone(),
                 canvas_rgba: self.canvas_rgba.as_ref().clone(),
                 images: self.images.clone(),
-                heights: self.heights.clone(),
-                covers: self.covers.clone(),
+                // Plain vectors on the disk: the `Arc` is a runtime sharing device (an undo snapshot is
+                // a refcount bump, not an 80 MB copy at 4096 px), never a wire format.
+                heights: self
+                    .heights
+                    .iter()
+                    .map(|(k, v)| (*k, v.as_ref().clone()))
+                    .collect(),
+                covers: self
+                    .covers
+                    .iter()
+                    .map(|(k, v)| (*k, v.as_ref().clone()))
+                    .collect(),
                 size: self.source_size,
             });
         }
@@ -188,8 +198,9 @@ mod tests {
             .heights
             .values()
             .next()
-            .cloned()
-            .expect("the stroke sculpted relief");
+            .expect("the stroke sculpted relief")
+            .as_ref()
+            .clone();
         assert!(
             relief_before.iter().any(|&h| h.abs() > 0.2),
             "…and the relief is real"
@@ -233,8 +244,9 @@ mod tests {
             .heights
             .values()
             .next()
-            .cloned()
-            .expect("the relief came back too");
+            .expect("the relief came back too")
+            .as_ref()
+            .clone();
         assert_eq!(relief_after, relief_before, "…exactly as it was sculpted");
 
         // The per-layer composite came back with it. (Postcard is positional, which is why the project

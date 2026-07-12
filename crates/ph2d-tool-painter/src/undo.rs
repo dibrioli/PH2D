@@ -41,9 +41,9 @@ pub struct ModelSnapshot {
     /// thickness it laid down, not just the colour (a snapshot that forgot it would leave the light
     /// pass reporting a ridge over paint that is no longer there). Empty for every layer that was
     /// never sculpted, which is the norm — the map is lazy.
-    pub heights: BTreeMap<RtLayerId, Vec<f32>>,
+    pub heights: BTreeMap<RtLayerId, Arc<Vec<f32>>>,
     /// Paint coverage per layer, captured with the relief it belongs to (see `PainterTool::covers`).
-    pub covers: BTreeMap<RtLayerId, Vec<u8>>,
+    pub covers: BTreeMap<RtLayerId, Arc<Vec<u8>>>,
     pub canvas_rgba: Arc<Vec<u8>>,
     pub selection: BTreeSet<RtLayerId>,
     /// The open on-canvas shape editor (Curve / Ellipse / Polygon), captured so a structural undo/redo

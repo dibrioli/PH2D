@@ -24,8 +24,8 @@ pub(crate) struct StashedDoc {
     /// construction. Left behind, the outgoing sprite's relief would light the incoming one's paint
     /// (`restore_doc` never re-sourced, so nothing cleared them) — the exact shape of Bug #13.c, which
     /// this line exists to keep dead.
-    heights: BTreeMap<RtLayerId, Vec<f32>>,
-    covers: BTreeMap<RtLayerId, Vec<u8>>,
+    heights: BTreeMap<RtLayerId, Arc<Vec<f32>>>,
+    covers: BTreeMap<RtLayerId, Arc<Vec<u8>>>,
     layer_pixel_versions: BTreeMap<RtLayerId, u64>,
     source_size: (u32, u32),
     undo: crate::undo::UndoController,
@@ -48,8 +48,11 @@ impl StashedDoc {
             layers: self.layers.clone(),
             canvas_rgba: self.canvas_rgba.as_ref().clone(),
             images: self.images.clone(),
-            heights: self.heights.clone(),
-            covers: self.covers.clone(),
+            // The disk holds plain vectors — the `Arc` is a RUNTIME sharing device (it makes an undo
+            // snapshot a refcount bump instead of an 80 MB copy at 4096²), not a wire format. Same
+            // boundary the `canvas_rgba` above already crosses.
+            heights: unshare(&self.heights),
+            covers: unshare(&self.covers),
             size: self.source_size,
         }
     }
@@ -61,8 +64,8 @@ impl StashedDoc {
             canvas_rgba: crate::tool::persist::arc_pixels(doc.canvas_rgba),
             layers: doc.layers,
             images: doc.images,
-            heights: doc.heights,
-            covers: doc.covers,
+            heights: reshare(doc.heights),
+            covers: reshare(doc.covers),
             // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps
             // the versions the first time the compositor asks.)
             layer_pixel_versions: BTreeMap::new(),
@@ -260,6 +263,16 @@ impl PainterTool {
     }
 }
 
+/// Runtime `Arc` maps -> plain vectors, for the disk (see [`StashedDoc::to_painted`]).
+fn unshare<T: Clone>(m: &BTreeMap<RtLayerId, Arc<Vec<T>>>) -> BTreeMap<RtLayerId, Vec<T>> {
+    m.iter().map(|(k, v)| (*k, v.as_ref().clone())).collect()
+}
+
+/// The inverse of [`unshare`]: plain vectors off the disk become shareable again.
+fn reshare<T>(m: BTreeMap<RtLayerId, Vec<T>>) -> BTreeMap<RtLayerId, Arc<Vec<T>>> {
+    m.into_iter().map(|(k, v)| (k, Arc::new(v))).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -330,7 +343,13 @@ mod tests {
         t.bind_document(1, vec![255u8; 32 * 32 * 4], 32, 32);
         paint_a_ridge(&mut t);
         assert!(!t.heights.is_empty(), "sprite 1 carries relief");
-        let relief_1: Vec<f32> = t.heights.values().next().expect("a height map").clone();
+        let relief_1: Vec<f32> = t
+            .heights
+            .values()
+            .next()
+            .expect("a height map")
+            .as_ref()
+            .clone();
         assert!(relief_1.iter().any(|&h| h.abs() > 0.1), "and it is real");
 
         // Switch to sprite 2, a fresh canvas the artist has never sculpted.
@@ -346,8 +365,9 @@ mod tests {
             .heights
             .values()
             .next()
-            .cloned()
-            .expect("sprite 1's relief came back with it");
+            .expect("sprite 1's relief came back with it")
+            .as_ref()
+            .clone();
         assert_eq!(back, relief_1, "the sculpting survived the round trip");
 
         // The LENDING path proper: switching to a sprite that is itself CACHED goes through

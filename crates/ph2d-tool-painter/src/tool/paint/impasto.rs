@@ -23,6 +23,8 @@
 //!    Smoothing — re-derives the LAST stroke live, and none of them is a special case (Enio,
 //!    2026-07-12: *"coloque todos os parâmetros vivos em tempo real para ajustes depois do traço"*).
 
+use super::impasto_settle::{RELIEF_EPS, SETTLE_REACH_PX, for_each_in, owned, settle};
+use super::region::grow_region;
 use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::height::{
@@ -73,9 +75,13 @@ impl PainterTool {
         // and the layer takes them at stroke end.
         let mut erase_buffers = None;
         if erasing {
-            match self.heights.remove(&active) {
+            match self.heights.remove(&active).map(owned) {
                 Some(f) if f.len() == n => {
-                    let c = self.covers.remove(&active).filter(|c| c.len() == n);
+                    let c = self
+                        .covers
+                        .remove(&active)
+                        .map(owned)
+                        .filter(|c| c.len() == n);
                     erase_buffers = Some((f, c.unwrap_or_else(|| vec![0u8; n])));
                 }
                 // Nothing to erase (no relief on this layer) — and a stale, differently-sized field is
@@ -228,6 +234,14 @@ impl PainterTool {
                     h: r.h,
                 };
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
+                // …and the union over the WHOLE stroke, which is the window the commit works in. The
+                // per-batch `touched` above is the dirty rect for this pointer event; this one outlives
+                // it (see `PaintState::stroke_relief_bbox`).
+                self.paint.stroke_relief_bbox = Some(
+                    self.paint
+                        .stroke_relief_bbox
+                        .map_or(rect, |acc| union_region(acc, rect)),
+                );
             }
         }
         // Remember where each Symmetry copy ended, so the NEXT pointer batch sweeps back to it instead
@@ -248,8 +262,8 @@ impl PainterTool {
             // The eraser scrubs the LAYER directly, so the live stroke's ground is no longer what it
             // says it is — drop it rather than let a later Depth drag resurrect erased paint.
             self.drop_live_relief();
-            self.heights.insert(active, field);
-            self.covers.insert(active, cover);
+            self.heights.insert(active, std::sync::Arc::new(field));
+            self.covers.insert(active, std::sync::Arc::new(cover));
             self.sync_relief_flags();
         } else {
             self.paint.stroke_height = field;
@@ -281,12 +295,18 @@ impl PainterTool {
         };
         // Nothing sculpted here ⇒ nothing to plow. (And a stale, differently-sized field is dropped
         // rather than indexed into — the shape guard the 2026-07-12 sweep taught us to write.)
-        let Some(mut field) = self.heights.remove(&active).filter(|f| f.len() == n) else {
+        let Some(mut field) = self
+            .heights
+            .remove(&active)
+            .map(owned)
+            .filter(|f| f.len() == n)
+        else {
             return;
         };
         let mut cover = self
             .covers
             .remove(&active)
+            .map(owned)
             .filter(|c| c.len() == n)
             .unwrap_or_else(|| vec![0u8; n]);
 
@@ -328,8 +348,8 @@ impl PainterTool {
         // that stroke) is no longer what it says it is — drop it rather than let a later Depth drag
         // resurrect the un-plowed ridge.
         self.drop_live_relief();
-        self.heights.insert(active, field);
-        self.covers.insert(active, cover);
+        self.heights.insert(active, std::sync::Arc::new(field));
+        self.covers.insert(active, std::sync::Arc::new(cover));
         self.sync_relief_flags();
         if let Some(rect) = touched {
             self.mark_dirty(rect);
@@ -344,6 +364,7 @@ impl PainterTool {
         self.paint.stroke_height.clear();
         self.paint.stroke_paint.clear();
         self.paint.stroke_grain.clear();
+        self.paint.stroke_relief_bbox = None; // the commit's window is per-stroke too
         self.paint.last_height_center.clear(); // the sweep chain restarts with the stroke
     }
 
@@ -360,25 +381,52 @@ impl PainterTool {
         let paint = std::mem::take(&mut self.paint.stroke_paint);
         let grain = std::mem::take(&mut self.paint.stroke_grain);
         self.paint.stroke_height.clear(); // it is derived; the ingredients are the truth
-        let Some(active) = self.layers.active() else {
+        let (Some(active), Some(bbox)) = (self.layers.active(), self.paint.stroke_relief_bbox)
+        else {
             return;
         };
+        // THE WINDOW. The stroke touched `bbox`; the settle reaches `SETTLE_MAX_PX` beyond it and the
+        // relief is exactly ZERO past that, so everything the commit does — derive, settle, re-base,
+        // diff — belongs inside this rect and nowhere else. Cropping is not an approximation: the blur
+        // of a zero field is zero, and the settle CLAMPS at its buffer's edge, which for a window whose
+        // border is already zero replicates the same zero the whole-canvas pass would have read. The
+        // result is byte-identical, and it is gated as byte-identical.
+        let (w, h) = self.source_size;
+        let Some(rect) = grow_region(bbox, SETTLE_REACH_PX, w, h) else {
+            return;
+        };
+
         // Coverage merges by MAX, not by sum: two strokes over the same spot do not make the pixel
         // "200% paint". (The HEIGHT does add — more paint IS thicker. The two are different quantities,
-        // which is the whole reason the light needs both.)
+        // which is the whole reason the light needs both.) Only inside the window: outside it the
+        // stroke's paint is zero, and `max(x, 0)` is `x`.
         {
-            let dst = self.covers.entry(active).or_default();
-            if dst.len() != paint.len() {
-                dst.resize(paint.len(), 0);
+            let n = (w as usize) * (h as usize);
+            let dst = std::sync::Arc::make_mut(self.covers.entry(active).or_default());
+            if dst.len() != n {
+                dst.resize(n, 0);
             }
-            for (d, p) in dst.iter_mut().zip(paint.iter()) {
-                *d = (*d).max((p.clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
-            }
+            for_each_in(rect, w, |i| {
+                let p = paint[i].clamp(0.0, 1.0);
+                dst[i] = dst[i].max((p * 255.0 + 0.5) as u8);
+            });
         }
         // Keep the stroke's INGREDIENTS and the layer's relief from BEFORE it. Between them, the whole
         // Body card re-derives this stroke after the fact — the artist lays a stroke and then dials it
         // in while looking at it, exactly like every other property in this panel.
-        self.paint.live_relief_base = self.heights.get(&active).cloned().unwrap_or_default();
+        //
+        // The ground is kept as a PATCH: cloning the layer's whole height plane to re-add it was a
+        // 64 MB copy per stroke at 4096², for a ground that is only ever read inside the window.
+        self.paint.live_relief_had_entry = self.heights.contains_key(&active);
+        self.paint.live_relief_base = match self.heights.get(&active) {
+            Some(f) if f.len() == (w as usize) * (h as usize) => {
+                let mut base = Vec::with_capacity((rect.w as usize) * (rect.h as usize));
+                for_each_in(rect, w, |i| base.push(f[i]));
+                base
+            }
+            _ => Vec::new(),
+        };
+        self.paint.live_relief_rect = Some(rect);
         self.paint.live_relief_layer = Some(active);
         self.paint.live_paint = paint;
         self.paint.live_grain = grain;
@@ -392,109 +440,110 @@ impl PainterTool {
     /// is the single point where the last stroke's relief is made, at commit and at every edit; the
     /// deposit and the edit therefore cannot drift.
     fn rebuild_live_layer_relief(&mut self) {
-        let (Some(layer), false) = (
+        let (Some(layer), Some(rect), false) = (
             self.paint.live_relief_layer,
+            self.paint.live_relief_rect,
             self.paint.live_paint.is_empty(),
         ) else {
             return;
         };
-        let brush = &self.paint.brush;
-        let mut field: Vec<f32> = self
-            .paint
-            .live_paint
-            .iter()
-            .zip(self.paint.live_grain.iter())
-            .map(|(&m, &g)| derive_height(brush, m, f32::from(g) / 255.0))
-            .collect();
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        if self.paint.live_paint.len() != n || self.paint.live_grain.len() != n {
+            return; // a stale, differently-sized ingredient plane: the shape guard, never an index panic
+        }
+        let (rw, rh) = (rect.w as usize, rect.h as usize);
+        let cells = rw * rh;
+
+        // 1. Derive the stroke's relief — inside the WINDOW only. Outside it the paint is zero, so the
+        //    relief is zero, so there is nothing to derive and nothing to write.
+        let brush = self.paint.brush;
+        let mut field: Vec<f32> = Vec::with_capacity(cells);
+        for_each_in(rect, w, |i| {
+            let g = f32::from(self.paint.live_grain[i]) / 255.0;
+            field.push(derive_height(&brush, self.paint.live_paint[i], g));
+        });
+
+        // 2. Settle it. The window's border is zero (it was grown by the blur's reach), so the settle's
+        //    edge-clamp replicates the same zero a whole-canvas pass would have read from outside — the
+        //    crop is byte-identical, not an approximation. This is the 258 ms that used to run on 16 M
+        //    texels at 4096² for a stroke that touched a corner of the canvas.
         let smoothing = brush.effective_impasto_smoothing();
         if smoothing > 0.0 {
-            let (w, h) = self.source_size;
-            settle(&mut field, w, h, smoothing);
+            settle(&mut field, rect.w, rect.h, smoothing);
         }
-        let base = &self.paint.live_relief_base;
-        if base.len() == field.len() {
-            for (dst, add) in field.iter_mut().zip(base.iter()) {
-                // Strokes ADD — up to the glass ceiling (see [`H_CEIL`]). A lone stroke never reaches
-                // it (`|depth| ≤ 1`), so the clamp only ever bites where strokes genuinely pile up.
-                *dst = (*dst + add).clamp(-H_CEIL, H_CEIL);
-            }
-        }
-        // What the light was showing until this instant is the relief this call is REPLACING — during
-        // the stroke, the raw envelope; on a knob edit, the previous setting's field. Nothing about the
-        // PIXELS changed, so nothing else on this path will mark the canvas dirty, and the composite
-        // cache would go on showing the lighting it last drew. That is the whole of Enio's second
-        // report (2026-07-12): *"o primeiro traço aplica o smoothing automaticamente; a partir do
-        // segundo não aplica até que mova o slider"* — the FIRST stroke was rescued by accident (it
-        // flips the layer's `has_relief`, and that invalidates the composite), and from the second on
-        // only whatever the final dab happened to dirty got re-lit with the settled relief.
-        //
-        // So dirty exactly what MOVED, by diffing the field against the one it replaces. Not the dab
-        // bbox — the settle is a blur, it spreads beyond the paint — and not a full invalidate either,
-        // which would drop every adjustment cut-cache once per stroke (the 55 ms path on a heavy
-        // document). The diff knows the blur's reach without anyone having to hard-code it.
-        if let Some(rect) = self.relief_diff_rect(layer, &field) {
-            self.mark_dirty(rect);
-        }
-        if field.iter().all(|&v| v == 0.0) {
-            self.heights.remove(&layer);
-        } else {
-            self.heights.insert(layer, field);
-        }
-        self.sync_relief_flags();
-    }
 
-    /// The bounding box of the texels where `next` differs from the relief `layer` carries now
-    /// (`None` when nothing moved — a re-derive that lands on the same field costs no repaint).
-    ///
-    /// A missing entry reads as zeros, which is exactly right: the first stroke on a layer changes
-    /// every texel it touches.
-    fn relief_diff_rect(&self, layer: crate::tool::RtLayerId, next: &[f32]) -> Option<Region> {
-        let (w, h) = self.source_size;
-        if next.len() != (w as usize) * (h as usize) {
-            return None;
-        }
-        let cur = self.heights.get(&layer);
-        if cur.is_some_and(|c| c.len() != next.len()) {
-            return None; // a stale, differently-sized field: the shape guard, not an index panic
+        // 3. Add the ground back and write it into the layer — tracking, as we go, the box that actually
+        //    MOVED. What the light was showing until this instant is the relief this call replaces (the
+        //    raw envelope during the stroke; the previous setting's field on a knob edit), and no PIXEL
+        //    changed, so nothing else on this path would mark the canvas dirty: the composite cache would
+        //    go on showing the lighting it last drew. That is Enio's *"o primeiro traço aplica o smoothing;
+        //    a partir do segundo não"* (2026-07-12) — the first stroke was rescued by accident, because it
+        //    flips the layer's `has_relief` and that invalidates the composite.
+        let base = std::mem::take(&mut self.paint.live_relief_base);
+        let has_base = base.len() == cells;
+        let target = std::sync::Arc::make_mut(
+            self.heights
+                .entry(layer)
+                .or_insert_with(|| std::sync::Arc::new(vec![0.0; n])),
+        );
+        if target.len() != n {
+            target.resize(n, 0.0);
         }
         let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
-        for y in 0..h {
-            for x in 0..w {
-                let i = (y as usize) * (w as usize) + x as usize;
-                let was = cur.map_or(0.0, |c| c[i]);
+        let mut any_relief = false;
+        for ry in 0..rh {
+            for rx in 0..rw {
+                let c = ry * rw + rx;
+                let i = (rect.y as usize + ry) * (w as usize) + rect.x as usize + rx;
+                // Strokes ADD — up to the glass ceiling (see [`H_CEIL`]). A lone stroke never reaches it
+                // (`|depth| ≤ 1`), so the clamp only ever bites where strokes genuinely pile up.
+                let ground = if has_base { base[c] } else { 0.0 };
+                let next = (field[c] + ground).clamp(-H_CEIL, H_CEIL);
+                if next != 0.0 {
+                    any_relief = true;
+                }
                 // A texel that moved by less than a 16-bit tick of the height range cannot change a
                 // single output byte; chasing it would repaint the canvas for nothing.
-                if (next[i] - was).abs() <= RELIEF_EPS {
-                    continue;
+                if (next - target[i]).abs() > RELIEF_EPS {
+                    let (px, py) = (rect.x + rx as u32, rect.y + ry as u32);
+                    x0 = x0.min(px);
+                    y0 = y0.min(py);
+                    x1 = x1.max(px);
+                    y1 = y1.max(py);
                 }
-                x0 = x0.min(x);
-                y0 = y0.min(y);
-                x1 = x1.max(x);
-                y1 = y1.max(y);
+                target[i] = next;
             }
         }
-        if x0 == u32::MAX {
-            return None;
+        self.paint.live_relief_base = base; // the ground is re-read on every knob edit — put it back
+
+        // 4. A layer that carried nothing before this stroke and carries nothing now (Depth 0) drops its
+        //    entry — but a layer with relief ELSEWHERE keeps it: the window is all this call can speak
+        //    for. (`any_relief` is the window's verdict; `live_relief_had_entry` is the rest of the map.)
+        if !any_relief && !self.paint.live_relief_had_entry {
+            self.heights.remove(&layer);
         }
-        // Grow by one: the light reads a pixel's NEIGHBOURS (the normal is a central difference), so a
-        // texel just outside the changed box is lit by a slope that changed inside it.
-        //
-        // Stated plainly: **no gate catches this one.** Deleting the grow leaves the suite green, and I
-        // could not build a red for it — the only caller re-derives through a BLUR, so the height change
-        // decays smoothly to `RELIEF_EPS` at the box's edge and the neighbour's normal shifts by less
-        // than an output byte. It is kept as a correctness margin (a hard-edged relief edit arriving on
-        // this path would need it), not as an observed fix, and it is written here rather than left for
-        // a reader to mistake for something the tests defend.
-        let x0 = x0.saturating_sub(1);
-        let y0 = y0.saturating_sub(1);
-        let x1 = (x1 + 1).min(w - 1);
-        let y1 = (y1 + 1).min(h - 1);
-        Some(Region {
-            x: x0,
-            y: y0,
-            w: x1 - x0 + 1,
-            h: y1 - y0 + 1,
-        })
+
+        if x0 != u32::MAX {
+            // Grow by one: the light reads a pixel's NEIGHBOURS (the normal is a central difference), so
+            // a texel just outside the changed box is lit by a slope that changed inside it.
+            //
+            // Stated plainly: **no gate catches this one.** Deleting the grow leaves the suite green, and
+            // I could not build a red for it — this path re-derives through a BLUR, so the height change
+            // decays to `RELIEF_EPS` at the box's edge and the neighbour's normal shifts by less than an
+            // output byte. It is a correctness margin (a hard-edged relief edit arriving here would need
+            // it), not an observed fix, and it is written down rather than left to look defended.
+            let moved = Region {
+                x: x0,
+                y: y0,
+                w: x1 - x0 + 1,
+                h: y1 - y0 + 1,
+            };
+            if let Some(r) = grow_region(moved, 1, w, h) {
+                self.mark_dirty(r);
+            }
+        }
+        self.sync_relief_flags();
     }
 
     /// Publish onto the layer stack the one fact about relief the PANEL cannot derive: which layers
@@ -520,13 +569,18 @@ impl PainterTool {
                 changed = true;
             }
         }
-        // The panel republishes on the layer revision, and NOTHING else bumps it here: a paint stroke
-        // is a pixel edit, not a structural one. Without this, sculpting the first ridge on a layer
-        // would set the flag and the panel would never hear about it — the Depth row would appear only
-        // after some unrelated layer edit happened to bump the revision. (Guarded, so the hot path of a
-        // stroke that changes no flag costs nothing.)
+        // The panel republishes on the layer revision, and NOTHING else bumps it here: a paint stroke is
+        // a pixel edit, not a structural one. Without this, sculpting the first ridge on a layer would
+        // set the flag and the panel would never hear about it — the Depth row would appear only after
+        // some unrelated layer edit happened to bump the revision.
+        //
+        // Bump the revision, and ONLY the revision. The obvious `invalidate_composite()` also drops the
+        // whole composite cache and every adjustment cut-cache, forcing a full recompose of the canvas:
+        // **225 ms at 4096²**, spent on the first stroke of every layer, to publish a boolean. The relief
+        // the artist actually just laid is already on screen — `rebuild_live_layer_relief` dirtied
+        // exactly the texels that moved. Nothing here needs a single pixel recomposited.
         if changed {
-            self.invalidate_composite();
+            self.bump_layers_revision();
         }
     }
 
@@ -546,6 +600,8 @@ impl PainterTool {
         self.paint.live_paint = Vec::new();
         self.paint.live_grain = Vec::new();
         self.paint.live_relief_base = Vec::new();
+        self.paint.live_relief_rect = None;
+        self.paint.live_relief_had_entry = false;
         self.paint.live_relief_layer = None;
     }
 
@@ -566,12 +622,12 @@ impl PainterTool {
             .then_some(&self.paint.stroke_height);
         match (committed, live) {
             (None, None) => None,
-            (Some(c), None) => Some(c.clone()),
+            (Some(c), None) => Some(c.as_ref().clone()),
             (None, Some(l)) => Some(l.clone()),
             (Some(c), Some(l)) if c.len() == l.len() => {
                 Some(c.iter().zip(l.iter()).map(|(a, b)| a + b).collect())
             }
-            (Some(c), Some(_)) => Some(c.clone()),
+            (Some(c), Some(_)) => Some(c.as_ref().clone()),
         }
     }
 }
@@ -585,49 +641,6 @@ impl PainterTool {
 /// out at the same depth. // CLAMP-OK
 pub(super) const H_CEIL: f32 = 2.0;
 
-/// Radius, in pixels, of the settling blur at Smoothing = 1. Thick paint slumps a little, not into a
-/// puddle — past a few pixels the ridges stop reading as brush-marks. // CLAMP-OK
-/// Below this, a change in relief cannot move an output byte — the threshold of [`relief_diff_rect`].
-/// A 16-bit tick of the height range: finer than any 8-bit composite can show, so nothing visible is
-/// ever missed, and the float noise of a re-derive that landed on the same field costs no repaint.
-const RELIEF_EPS: f32 = 1.0 / 65_536.0; // CLAMP-OK: sub-visible threshold, not a design value
-
-const SETTLE_MAX_PX: f32 = 4.0;
-
-/// Let a height field **settle** under its own weight: a separable box blur, applied in place.
-///
-/// Binomial-ish by repetition (two box passes ≈ a triangle kernel), which is what a viscous medium
-/// relaxing actually looks like — and it is transcendental-free (HR-5) and O(n) in the radius, unlike
-/// a true Gaussian. The blur is signed, so a carved groove softens exactly as a raised ridge does.
-fn settle(field: &mut [f32], w: u32, h: u32, amount: f32) {
-    let r = (amount.clamp(0.0, 1.0) * SETTLE_MAX_PX).round() as i64;
-    if r < 1 || w == 0 || h == 0 || field.len() < (w as usize) * (h as usize) {
-        return;
-    }
-    let (wi, hi) = (w as i64, h as i64);
-    let mut tmp = vec![0.0f32; field.len()];
-    let inv = 1.0 / (2 * r + 1) as f32;
-    // Horizontal pass.
-    for y in 0..hi {
-        let row = (y * wi) as usize;
-        for x in 0..wi {
-            let mut sum = 0.0;
-            for k in -r..=r {
-                let sx = (x + k).clamp(0, wi - 1) as usize;
-                sum += field[row + sx];
-            }
-            tmp[row + x as usize] = sum * inv;
-        }
-    }
-    // Vertical pass.
-    for y in 0..hi {
-        for x in 0..wi {
-            let mut sum = 0.0;
-            for k in -r..=r {
-                let sy = (y + k).clamp(0, hi - 1) as usize;
-                sum += tmp[sy * (w as usize) + x as usize];
-            }
-            field[(y * wi + x) as usize] = sum * inv;
-        }
-    }
-}
+// The deposit's SETTLE (the box blur that lets paint relax under its own weight), its reach, and the
+// sub-visible threshold the dirty-rect diff uses, all live in the sibling `impasto_settle` — the physics
+// of the material, apart from the plumbing that schedules it (workspace file-LOC cap).

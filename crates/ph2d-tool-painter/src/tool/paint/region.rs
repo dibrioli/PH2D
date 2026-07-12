@@ -71,3 +71,25 @@ pub(super) fn union_region(a: Region, b: Region) -> Region {
         h: y1 - y0,
     }
 }
+
+/// Grow `r` by `pad` texels on every side, clipped to a `w × h` canvas.
+///
+/// The Impasto commit uses it to turn a stroke's dab footprint into the window the settle needs: the
+/// blur reaches `SETTLE_MAX_PX` beyond the paint, and outside that window the relief is exactly zero —
+/// which is what makes cropping the commit **byte-identical** to running it over the whole canvas
+/// (`docs/Painter/16_impasto_plano_implementacao.md` §10.11).
+pub(super) fn grow_region(r: Region, pad: u32, w: u32, h: u32) -> Option<Region> {
+    if w == 0 || h == 0 {
+        return None;
+    }
+    let x0 = r.x.saturating_sub(pad);
+    let y0 = r.y.saturating_sub(pad);
+    let x1 = (r.x + r.w + pad).min(w);
+    let y1 = (r.y + r.h + pad).min(h);
+    (x1 > x0 && y1 > y0).then_some(Region {
+        x: x0,
+        y: y0,
+        w: x1 - x0,
+        h: y1 - y0,
+    })
+}

@@ -6,6 +6,17 @@
 use super::super::*;
 
 impl PainterTool {
+    /// Bump the panel's publish revision — and **nothing else**.
+    ///
+    /// The layers panel re-clones the stack only when this changes ([`Self::layers_revision`]). Most
+    /// callers want [`Self::invalidate_composite`], which bumps it as part of dropping every cache. This
+    /// is for the one case that is NOT a composite change: a metadata bit the PANEL must learn about
+    /// while the pixels stay exactly as they are (`Layer::has_relief`). Reaching for the big hammer there
+    /// cost a full canvas recompose — 225 ms at 4096² — to publish a boolean.
+    pub(crate) fn bump_layers_revision(&mut self) {
+        self.layers_revision = self.layers_revision.wrapping_add(1);
+    }
+
     /// Mark the composite stale so the next `current_preview` recomputes.
     pub(crate) fn invalidate_composite(&mut self) {
         self.composited = None;

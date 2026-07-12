@@ -366,7 +366,7 @@ impl PainterTool {
             let height = self
                 .heights
                 .get(&id)
-                .map(Vec::as_slice)
+                .map(|f| f.as_slice())
                 .filter(|f| f.len() == n);
             let carries_live = is_active && live_h.is_some();
             if height.is_none() && !carries_live {
@@ -380,7 +380,7 @@ impl PainterTool {
                 cover: self
                     .covers
                     .get(&id)
-                    .map(Vec::as_slice)
+                    .map(|c| c.as_slice())
                     .filter(|c| c.len() == n),
                 depth: layer.impasto_depth,
                 composite: layer.impasto_composite,

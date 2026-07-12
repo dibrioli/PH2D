@@ -37,6 +37,7 @@ pub use stroke_multi::StrokeOpBadge;
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
 mod impasto_settings; // Impasto: section setters + the panel-event route (mirror of watercolor_settings)
+mod impasto_settle; // Impasto: the deposit settling under its own weight (the box blur) + its bounds
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
@@ -444,10 +445,26 @@ pub(crate) struct PaintState {
     /// That stroke's grain plane — the second ingredient (see [`Self::stroke_grain`]).
     live_grain: Vec<u8>,
     /// The active layer's committed relief BEFORE that stroke — the ground the re-derived stroke is
-    /// added back onto. Empty ⇒ the layer had none (the common case: a first stroke).
+    /// added back onto. **A PATCH over [`Self::live_relief_rect`], not the canvas**: outside that rect
+    /// the stroke contributes nothing, so the layer's relief there is its own and never re-derived.
+    /// Empty ⇒ the layer had none (the common case: a first stroke).
     live_relief_base: Vec<f32>,
     /// Which layer the live stroke belongs to. `None` ⇒ nothing live.
     live_relief_layer: Option<crate::tool::RtLayerId>,
+    /// The union of this stroke's dab footprints, in canvas texels — accumulated as the relief is
+    /// deposited, cleared with the stroke.
+    ///
+    /// The commit used to re-derive, settle, diff and re-base over the **whole canvas** for a stroke
+    /// that touched a corner of it: 258 ms of box-blur on 16 M texels at 4096², i.e. a **one-second
+    /// freeze at every pen-up** (measured 2026-07-12; the kill-criterion had only ever timed the
+    /// `Move`). This is what makes that work `O(stroke)`.
+    stroke_relief_bbox: Option<Region>,
+    /// [`Self::stroke_relief_bbox`] grown by the settle's reach and clipped to the canvas — the window
+    /// the live re-derive owns. Every buffer above that is "per-stroke" is indexed against THIS.
+    live_relief_rect: Option<Region>,
+    /// Whether the layer already carried a height entry before the live stroke — so a re-derive that
+    /// zeroes the stroke out (Depth 0) knows whether the entry is now empty or merely untouched here.
+    live_relief_had_entry: bool,
     /// **Watercolor render-path** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the
     /// stroke's dabs (max-blended discs = wet_edges `stampCoverage`), the silhouette the optical composite
     /// reconstructs the wash from ([`super::watercolor_render`]). Empty unless the Watercolor section is
@@ -671,25 +688,8 @@ pub(crate) struct PaintState {
     deform: warp::DeformState,
 }
 
-impl PainterTool {
-    /// Set whether the Line method constrains to 45° increments this event (Blender Alt-drag). The
-    /// shell forwards the live Alt state before each [`Self::on_canvas_pointer`], since the frozen
-    /// `CanvasPointer` carries no modifiers. No effect on the other methods.
-    pub fn set_line_constrain(&mut self, on: bool) {
-        self.paint.line_constrain = on;
-    }
-
-    /// Set the shape editors' control-handle grab radius in image px (the shell forwards a
-    /// screen-constant value scaled by the sprite footprint, so the hit targets stay the same size at
-    /// any zoom). Shared by Curve and Ellipse.
-    pub fn set_shape_grab_tol_px(&mut self, px: f32) {
-        self.paint.shape_grab_tol_px = px.max(1.0);
-    }
-
-    // The open-shape aggregators (commit / cancel / discard / commit-keep) live in `curve_commit`.
-    // The drag-preview stamping (mark_dirty / stamp_drag_preview / commit / stamp_stroke_dabs) lives in
-    // the sibling `stamp_preview` module (workspace file-LOC cap).
-}
+// (LOC cap) `set_line_constrain` / `set_shape_grab_tol_px` live beside the pointer entry in
+// `canvas_pointer`; the open-shape verbs in `curve_commit`; the drag-preview stamping in `stamp_preview`.
 
 // The `impl CanvasPaintTool` pointer entry point (`on_canvas_pointer`) lives in the sibling
 // `canvas_pointer` module (workspace file-LOC cap); it drives the private stroke-lifecycle methods above.

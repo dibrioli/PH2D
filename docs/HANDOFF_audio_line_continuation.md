@@ -36,11 +36,11 @@ cargo check -p ph2d-audio-edit      # warm-up
 | **B** | Edite a pasta do seu módulo à vontade. **Foundational você PODE e DEVE tocar** (com cuidado, ADR-0107). **PARE e reporte ao Enio SÓ se:** (a) for **contrato congelado** (CLAUDE.md §6 — exige ADR), ou (b) o rebase conflitar em código **FORA** dos seus arquivos (colisão de mesmo-símbolo). **Nunca negocie com outra linha.** |
 | **B'** | Ao **CRIAR** foundational novo, projete pra **ISOLAMENTO**: prefira **módulo/arquivo IRMÃO novo** a engordar arquivo compartilhado; ponto de extensão **append-only**. Todo id/const/variant novo → **anote no handoff de integração** (regra H) pro integrador detectar colisão. |
 | **C** | Commits locais frequentes: `git commit --no-verify`. **NUNCA `push`. NUNCA `--force`. NUNCA `git add -A`.** |
-| **D** | `git rebase main` no início de cada jornada. Conflito em `Cargo.lock` ou arquivo GERADO: **NUNCA** resolva na mão — **regenere**. |
+| **D** | `git rebase main` no início de cada jornada. Conflito em `Cargo.lock` ou arquivo GERADO: **NUNCA** resolva na mão — refaça por geração. |
 | **E** | Fechamento = **gate batched** (§7 abaixo). Depois **PARE**. **Você NÃO integra e NÃO roda `foundational-integrate.sh`.** Quem funde é um **agente integrador dedicado**, só por **ordem explícita do Enio**. |
 | **F** | **Ship** (`ship.sh` + push + babysit CI): **NUNCA** por conta própria. Ordem explícita do Enio, feita pelo integrador. **Integrar ou pushar sem ordem = violação do protocolo.** |
 | **G** | **UI canônica:** zero hex, zero `f32` literal de UI, zero string hardcoded — tudo por tokens/i18n. **UI do app em INGLÊS** (labels/toasts). |
-| **H** | **HANDOFF DE INTEGRAÇÃO é entregável obrigatório ao fechar** (DIRETRIZ §1.5.9): branch/HEAD/base · foundational tocado + por quê · **ids/consts novos com valores** · contratos congelados encostados (deve ser nenhum) · **deps novas** · o que só o `ship.sh` pega · o que smoke-testar. Reporte "linha pronta + handoff" e **ESPERE**. |
+| **H** | **HANDOFF DE INTEGRAÇÃO é entregável obrigatório ao fechar** (DIRETRIZ §1.5.9): branch/HEAD/base · foundational tocado + por quê · **ids/consts novos com valores** · contratos congelados encostados (deve dar nenhum) · **deps novas** · o que só o `ship.sh` pega · o que smoke-testar. Reporte "linha pronta + handoff" e **ESPERE**. |
 
 ---
 
@@ -113,7 +113,7 @@ O W4 está majoritariamente fechado. Falta (verifiquei por grep — **0 arquivos
 |---|---|---|
 | **De-click / mouth-declick / de-crackle** | **LPC + interpolação** (o plano já manda isso). Detecta o clique pelo erro de predição linear, substitui a amostra pela predição dos vizinhos. **É tempo-domínio → NÃO precisa de FFT.** | **Não** |
 | **Formant shift** (separado do pitch) | **PSOLA** (tempo-domínio, clean-room — o plano diz "PSOLA/phase-vocoder próprio; **Rubber Band é GPL**, não copie"). Reaproveita a linha de delay/grãos que o `fx/pitch.rs` já tem. | **Não** |
-| **Harmonizer** | Barato: **N cópias do `pitch_shift` existente** em intervalos (3ª/5ª/oitava), misturadas. O motor já está lá e testado. | **Não** |
+| **Harmonizer** | Barato: **N cópias do `pitch_shift` existente** nos graus (3ª/5ª/oitava), misturadas. O motor já está lá e testado. | **Não** |
 | **EQ-voz** (HPF + presença + de-mud + air) | **Preset de fábrica** (puro data em `fx_presets.rs`) — os 5 filtros já existem. Barato, alto valor. | **Não** |
 | **Whisper / shout** | Presets combinando os efeitos existentes (exciter + compress + saturate + EQ). | **Não** |
 
@@ -176,7 +176,7 @@ L≠R + zumbido 60 Hz + clicks brilhantes) que exercita a rack inteira. Se preci
 regerar, o script está no scratchpad da sessão passada — ou refaça: 48 kHz, estéreo,
 16-bit, ~6 s.
 
-**Comando de rodar (sempre com o `cd` junto):**
+**Linha de comando pra rodar (sempre com o `cd` junto):**
 ```bash
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && cargo run -p ph2d-host-desktop --features panel-audio-editor
 ```

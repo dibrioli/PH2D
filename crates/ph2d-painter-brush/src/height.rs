@@ -249,17 +249,69 @@ fn sweep_residual(dx: f32, dy: f32, sweep: Option<([f32; 2], f32)>) -> (f32, f32
     }
 }
 
-/// Combine an existing height with a newly-deposited one — the **stroke envelope**.
+/// The relief a pixel carries, from the two things the stroke actually deposited there: how much
+/// **paint** (`0..1`, the silhouette × the dab's dynamics) and what the **grain** sampled (`1` = no
+/// grain). A pure function of those and the brush's settings.
 ///
-/// The larger *magnitude* wins, so passing the brush back over its own stroke does not stack up a
-/// staircase of paint (one pass of a loaded brush leaves one thickness), and a carving brush
-/// (negative depth) deepens rather than being cancelled by the `max` of two negatives. Separate
-/// strokes DO add — that is the caller's job (the per-stroke envelope is merged into the layer at
-/// stroke end), not this function's.
+/// ## Why the stroke stores INGREDIENTS and not the height
+///
+/// Enio, 2026-07-12: *"coloque todos os parâmetros vivos em tempo real para ajustes depois do traço."*
+/// Depth was live because it is a pure rescale of a stored height; Body and Depth Source could not be,
+/// because they were **baked into** that height, pixel by pixel, and nothing was left to re-derive them
+/// from. So the stroke keeps its paint and its grain — the record of what the brush *laid down* — and
+/// the relief is computed from them on demand. Every knob in the Body card then edits the last stroke
+/// live, and none of them is a special case: the deposit is `derive_height`, and so is the edit.
+///
+/// The profile runs on the PAINT (`w × dynamics`), not on the bare silhouette: it is the same quantity
+/// the light weighs its shading by, so the wall stands exactly where the light says the paint becomes
+/// solid — geometry and shading cannot disagree. It also makes a light touch lay thinner, softer-edged
+/// paint, which is what a light touch does.
 #[inline]
 #[must_use]
-pub fn envelope(a: f32, b: f32) -> f32 {
-    if b.abs() > a.abs() { b } else { a }
+pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
+    let depth = spec.effective_impasto_depth();
+    let m = paint.clamp(0.0, 1.0);
+    if depth == 0.0 || m <= 0.0 {
+        return 0.0;
+    }
+    // The **Body** dial: at 1 the full body curve (plateau + wall), at 0 the paint's own profile
+    // (falloff / Shape / Shape-Tone ramp sculpt the relief — a soft brush lays a perfectly rounded
+    // ridge), in between the mesa family. Monotone in `m` at every setting, which is what lets the
+    // stroke envelope be taken on the paint alone.
+    let body = spec.effective_impasto_body();
+    let mut a = m + (body_profile(m) - m) * body;
+    if matches!(spec.impasto_source, DepthSource::Grain) {
+        // Grooves cut out of a FULL body — never `a *= g`. A grain's samples average well under half,
+        // so multiplying by it does not texture the paint, it removes two thirds of it. See
+        // [`GRAIN_GROOVE`]. With the body curve the grooves notch a PLATEAU — bristle marks in a level
+        // film, the Painter/ArtRage signature — instead of mushing a dome.
+        a *= 1.0 - GRAIN_GROOVE * (1.0 - grain.clamp(0.0, 1.0));
+    }
+    depth * a
+}
+
+/// The grain sample of a pixel that has none: a full, ungrooved body.
+pub const NO_GRAIN: u8 = 255;
+
+/// The buffers one stroke writes: the derived relief plus the **ingredients** it was derived from
+/// ([`derive_height`]). All canvas-sized (`width × height`); `grain` is 8-bit because it only ever
+/// scales a groove (a 1/255 step moves the height by 0.25% of Depth — invisible), while `paint` stays
+/// `f32` because it drives the profile, and quantising *that* would stair-step the wall.
+pub struct HeightFields<'a> {
+    /// The relief itself — always exactly `derive_height(spec, paint[i], grain[i])`.
+    pub height: &'a mut [f32],
+    /// How much paint the winning dab laid at this pixel (`0..1`).
+    pub paint: &'a mut [f32],
+    /// That same dab's grain sample ([`NO_GRAIN`] where the brush carries no grain).
+    pub grain: &'a mut [u8],
+}
+
+impl HeightFields<'_> {
+    /// Whether every plane is at least `n` long — a real early-out, not a `debug_assert` that vanishes
+    /// from the build the artist runs (the lesson of the 2026-07-12 SIGSEGV).
+    fn fits(&self, n: usize) -> bool {
+        self.height.len() >= n && self.paint.len() >= n && self.grain.len() >= n
+    }
 }
 
 /// Deposit one dab's height into the per-stroke envelope `dst` (canvas-sized, `width × height` f32).
@@ -296,21 +348,17 @@ pub fn envelope(a: f32, b: f32) -> f32 {
 /// pixel, so it stays a STAMP. A stamp brush is supposed to leave stamps.
 #[must_use]
 pub fn accumulate_dab_height(
-    dst: &mut [f32],
-    cover: &mut [u8],
+    fields: &mut HeightFields<'_>,
     width: u32,
     height: u32,
     spec: &crate::BrushSpec,
     dab: &HeightDab<'_>,
 ) -> Option<crate::dab::DirtyRect> {
-    // Contract guard — a real early-out, not a `debug_assert` that vanishes from the build the artist
-    // runs (the lesson of the 2026-07-12 SIGSEGV).
     let n = (width as usize) * (height as usize);
-    if dst.len() < n || cover.len() < n || width == 0 || height == 0 {
+    if !fields.fits(n) || width == 0 || height == 0 {
         return None;
     }
-    let depth = spec.effective_impasto_depth();
-    if depth == 0.0 {
+    if spec.effective_impasto_depth() == 0.0 {
         return None;
     }
     // The same fold the colour kernel applies: pressure × Flow × Strength. A light, thin stroke is
@@ -332,9 +380,11 @@ pub fn accumulate_dab_height(
         return None;
     }
     let inv_radius = 1.0 / radius;
-    let use_grain = matches!(spec.impasto_source, DepthSource::Grain) && dab.grain.is_some();
+    // The grain is sampled whenever the brush HAS one, even under `DepthSource::Uniform`: it is stored
+    // as an ingredient, so flipping the source after the stroke re-carves the same grooves this dab
+    // would have left. A brush with no grain pays nothing.
+    let grain_active = dab.grain.is_some();
     let sweep = sweep_axis(dab);
-    let body_mix = spec.effective_impasto_body();
     let mut touched = false;
     for py in y0..y1 {
         let dy = (py as f32 + 0.5) - cy;
@@ -346,38 +396,35 @@ pub fn accumulate_dab_height(
             if w <= 0.0 {
                 continue;
             }
-            // The silhouette becomes the paint's cross-section under the artist's **Body** dial:
-            // at 1 the full body curve (plateau + wall — the §10 fix), at 0 the silhouette itself
-            // (falloff / Shape image / Shape-Tone ramp sculpt the relief — a soft brush lays a
-            // perfectly rounded ridge), in between the mesa family. The colour keeps the raw `w`.
-            // A monotone blend of two monotone remaps, so it still commutes with the envelope.
-            let mut a = w + (body_profile(w) - w) * body_mix;
-            if use_grain
-                && a > 0.0
-                && let Some(b) = dab.grain
-            {
-                // Grooves cut out of a FULL body — never `a *= g`. A grain's samples average well under
-                // half, so multiplying by it does not texture the paint, it removes two thirds of it.
-                // See [`GRAIN_GROOVE`]. With the body curve the grooves now notch a PLATEAU — bristle
-                // marks in a level film, the Painter/ArtRage signature — instead of mushing a dome.
-                let g = crate::dab::grain_at(spec, b, dab.grain_image, px, py, dab.center, radius);
-                a *= 1.0 - GRAIN_GROOVE * (1.0 - g.clamp(0.0, 1.0));
-            }
+            // The **stroke envelope, taken on the PAINT** — the dab that laid the most paint at this
+            // pixel owns it. One pass of a loaded brush leaves one thickness (a second pass over the
+            // same line does not stack a staircase); separate strokes DO add, at stroke end.
+            //
+            // Enveloping the paint rather than the height is what makes every knob live: the winner is
+            // then chosen by a quantity that no setting can change, so re-deriving the relief at a new
+            // Body / Source / Depth cannot silently re-shuffle which dab shaped which pixel.
+            let m = (w * coverage).clamp(0.0, 1.0);
             let i = (py as usize) * (width as usize) + px as usize;
-            let h = depth * coverage * a;
-            if h != 0.0 {
-                dst[i] = envelope(dst[i], h);
+            if m <= fields.paint[i] {
+                continue;
             }
-            // How much PAINT is at this pixel — the silhouette × the dynamics, i.e. the coverage the
-            // colour path deposits. NOT the height (that now stops at the body's edge; the stain's tail
-            // keeps its pigment), and NOT `body`: the light needs to know how much of the pixel is paint
-            // and how much is the paper showing through it, over the whole stain.
-            let c = (w * coverage).clamp(0.0, 1.0);
-            let cb = (c * 255.0 + 0.5) as u8;
-            if cb > cover[i] {
-                cover[i] = cb; // an envelope: paint coverage saturates, it does not accumulate
-            }
-            touched = true; // a `w > 0` pixel was visited — the rect must cover the stain and the body
+            let g = if let Some(b) = dab.grain {
+                crate::dab::grain_at(spec, b, dab.grain_image, px, py, dab.center, radius)
+                    .clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+            let gq = if grain_active {
+                (g * 255.0 + 0.5) as u8
+            } else {
+                NO_GRAIN
+            };
+            fields.paint[i] = m;
+            fields.grain[i] = gq;
+            // Derived from the STORED (quantised) grain, so the buffer and the re-derivation always
+            // agree to the last bit — a live edit can never make the relief jump.
+            fields.height[i] = derive_height(spec, m, f32::from(gq) / 255.0);
+            touched = true;
         }
     }
     if !touched {
@@ -460,185 +507,5 @@ pub fn erase_dab_height(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn wire_discriminants_round_trip() {
-        for v in 0..DepthSource::COUNT {
-            assert_eq!(DepthSource::from_u8(v).to_u8(), v);
-        }
-        for v in 0..DrawTo::COUNT {
-            assert_eq!(DrawTo::from_u8(v).to_u8(), v);
-        }
-        // Unknown wire values fall back to the default, never panic.
-        assert_eq!(DepthSource::from_u8(200), DepthSource::default());
-        assert_eq!(DrawTo::from_u8(200), DrawTo::default());
-    }
-
-    #[test]
-    fn default_draw_to_writes_both_channels() {
-        let d = DrawTo::default();
-        assert!(d.writes_color() && d.writes_depth());
-        assert!(DrawTo::Color.writes_color() && !DrawTo::Color.writes_depth());
-        assert!(!DrawTo::Depth.writes_color() && DrawTo::Depth.writes_depth());
-    }
-
-    use crate::texture::{TextureKind, TextureMapping};
-    use crate::{BrushSpec, Falloff};
-
-    const W: u32 = 33;
-
-    /// A dab at the canvas centre with the given spec; returns the deposited height field.
-    fn deposit(spec: &BrushSpec) -> Vec<f32> {
-        let mut dst = vec![0.0f32; (W * W) as usize];
-        let footprint = spec.footprint_deform();
-        let basis = crate::texture::dab_basis(
-            &spec.texture,
-            [1.0, 0.0],
-            &mut 0u64,
-            [W as f32, W as f32],
-            [1.0, 0.0],
-            footprint,
-        );
-        let dab = HeightDab {
-            center: [16.5, 16.5],
-            radius: 12.0,
-            coverage: 1.0,
-            footprint,
-            shape: None,
-            grain: Some(&basis),
-            grain_image: None,
-            prev_center: None, // a lone stamped dab — nothing to sweep back to
-        };
-        let mut cov = vec![0u8; (W * W) as usize];
-        let _ = accumulate_dab_height(&mut dst, &mut cov, W, W, spec, &dab);
-        dst
-    }
-
-    /// The heights on the falloff's PLATEAU — the dab's flat interior, where Uniform must be level and
-    /// Grain must not be. `hardness = 0.6` ⇒ `w == 1` for `t < 0.6`, i.e. within 7 px of the centre.
-    fn plateau(h: &[f32]) -> Vec<f32> {
-        let mut out = Vec::new();
-        for y in 0..W as i32 {
-            for x in 0..W as i32 {
-                let (dx, dy) = (f64::from(x) + 0.5 - 16.5, f64::from(y) + 0.5 - 16.5);
-                if (dx * dx + dy * dy).sqrt() < 6.0 {
-                    out.push(h[(y as usize) * (W as usize) + x as usize]);
-                }
-            }
-        }
-        out
-    }
-
-    #[test]
-    fn depth_source_uniform_is_level_and_grain_is_not() {
-        // The gate the plan froze: Uniform lays a LEVEL plateau (the grain textures the pigment, not
-        // the body); Grain lets the grain's striations into the relief, so the height VARIES inside the
-        // dab. This is the whole difference between a smooth loaded brush and a bristle brush — if the
-        // two ever produced the same field, `DepthSource` would be a dead knob.
-        let mut base = BrushSpec {
-            impasto: true,
-            impasto_depth: 1.0,
-            hardness: 0.6,
-            falloff: Falloff::Smooth,
-            radius_px: 12.0,
-            ..Default::default()
-        };
-        base.texture.kind = TextureKind::Noise; // a Grain with real per-texel variation
-        base.texture.mapping = TextureMapping::ViewPlane;
-
-        let uniform = deposit(&BrushSpec {
-            impasto_source: DepthSource::Uniform,
-            ..base
-        });
-        let grain = deposit(&BrushSpec {
-            impasto_source: DepthSource::Grain,
-            ..base
-        });
-
-        let u_plateau = plateau(&uniform);
-        let g_plateau = plateau(&grain);
-        assert!(!u_plateau.is_empty(), "the fixture sampled a plateau");
-
-        let spread = |v: &[f32]| {
-            let (lo, hi) = v
-                .iter()
-                .fold((f32::MAX, f32::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
-            hi - lo
-        };
-        assert!(
-            spread(&u_plateau) < 1e-6,
-            "Uniform: the plateau must be LEVEL — the Grain shapes pigment, not body (spread {})",
-            spread(&u_plateau)
-        );
-        assert!(
-            spread(&g_plateau) > 0.05,
-            "Grain: the striations must reach the relief (spread {})",
-            spread(&g_plateau)
-        );
-        // And the plateau really is at full depth (nothing silently scaled it away).
-        assert!(
-            (u_plateau[0] - 1.0).abs() < 1e-6,
-            "full depth on the plateau"
-        );
-    }
-
-    #[test]
-    fn envelope_is_one_pass_of_paint_and_carving_deepens() {
-        // Passing the brush back over its own stroke leaves ONE thickness, not a staircase — the
-        // per-stroke envelope. And a carving brush (negative depth) must DEEPEN under the same rule:
-        // a plain `max` of two negatives would pick the shallower one and the carve would fade.
-        assert_eq!(envelope(0.5, 0.5), 0.5, "a second pass adds nothing");
-        assert_eq!(envelope(0.3, 0.7), 0.7, "a heavier pass wins");
-        assert_eq!(envelope(0.7, 0.3), 0.7, "a lighter pass does not thin it");
-        assert_eq!(envelope(-0.3, -0.7), -0.7, "carving deepens");
-        assert_eq!(
-            envelope(-0.7, -0.3),
-            -0.7,
-            "a lighter carve does not fill it"
-        );
-        assert_eq!(
-            envelope(0.2, -0.9),
-            -0.9,
-            "the stronger gesture wins the pixel"
-        );
-    }
-
-    #[test]
-    fn eraser_scrubs_the_relief_it_finds() {
-        // Erasing must remove the RELIEF, not carve a hole — otherwise the pigment goes and the light
-        // still reports a ridge (ghost relief). Full coverage erases to flat.
-        let spec = BrushSpec {
-            impasto: true,
-            impasto_depth: 1.0,
-            hardness: 1.0, // hard disk → deterministic full coverage inside
-            falloff: Falloff::Constant,
-            radius_px: 12.0,
-            ..Default::default()
-        };
-        let mut field = vec![0.8f32; (W * W) as usize];
-        let footprint = spec.footprint_deform();
-        let dab = HeightDab {
-            center: [16.5, 16.5],
-            radius: 12.0,
-            coverage: 1.0,
-            footprint,
-            shape: None,
-            grain: None,
-            grain_image: None,
-            prev_center: None,
-        };
-        let mut cov = vec![255u8; (W * W) as usize];
-        let rect = erase_dab_height(&mut field, &mut cov, W, W, &spec, &dab)
-            .expect("the eraser touched relief");
-        assert!(rect.w > 0 && rect.h > 0);
-        let centre = field[(16 * W + 16) as usize];
-        assert!(
-            centre.abs() < 1e-6,
-            "under the dab the relief is gone ({centre})"
-        );
-        let corner = field[0];
-        assert_eq!(corner, 0.8, "outside the dab the relief is untouched");
-    }
-}
+#[path = "height_tests.rs"]
+mod tests;

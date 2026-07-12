@@ -381,3 +381,46 @@ Gate: `impasto_body_zero_obeys_the_falloff` (domo sem platô + flanco monótono 
 o véu quase-invisível segue sem sombra — RED provado por mutação `body_mix→1`). Superfície: brush
 agora `Enable · Depth · Body · Smoothing · Source · Draw To` (o Body é percepção de FORMA, não um
 segundo ganho — não reabre o acoplamento que matou o Amount). Perf re-medida: **1.87 ms/move**.
+
+### 10.3 Fase 4.2 — TODO parâmetro do relevo é vivo (Enio, 2026-07-12)
+
+> *"Coloque todos os parâmetros vivos em tempo real para ajustes depois do traço."*
+
+**O que impedia:** o traço guardava a ALTURA. Depth era vivo porque é rescale puro dela; **Body** e
+**Depth Source** ficavam *assados* no depósito, pixel a pixel — não sobrava nada de onde re-derivá-los.
+Fazer cada um "vivo" na mão seria N casos especiais que apodrecem um a um.
+
+**A correção estrutural — o traço guarda os INGREDIENTES, não o resultado:**
+
+| plano | o que é | por que existe |
+|---|---|---|
+| `stroke_paint` (f32, 0..1) | quanto de TINTA cada pixel recebeu (silhueta × dinâmica), envelope por `max` | a 1ª entrada; é também a cobertura que a luz pesa |
+| `stroke_grain` (u8, 255 = sem grão) | o grão que o dab VENCEDOR amostrou naquele pixel | a 2ª entrada; é o que deixa flipar Depth Source depois e re-entalhar os sulcos daquele dab |
+
+E o relevo é **sempre** `derive_height(spec, paint, grain)` — uma função pura. Depósito e edição
+passam pela MESMA função, então não podem divergir. Consequência: **Depth · Body · Depth Source ·
+Smoothing** editam o último traço ao vivo, e nenhum é caso especial. (Lighting — Show/Angle/Elevation/
+Shine — já era vivo: re-ilumina todo frame.)
+
+**Duas decisões que caem disso:**
+1. **O envelope passa a ser tomado na TINTA**, não na altura: o dab que depositou mais tinta é o dono
+   do pixel. Vencedor escolhido por uma grandeza que *nenhum setting muda* ⇒ re-derivar num Body/Source
+   novo não re-embaralha qual dab moldou qual pixel. (Antes: `max |h|`.)
+2. **O perfil roda na TINTA (`w × dinâmica`), não na silhueta crua** — a mesma grandeza que a luz usa
+   para pesar a sombra. Geometria e sombreamento não podem mais discordar sobre onde a tinta fica
+   sólida; e toque leve agora deposita tinta mais fina *e* de borda mais macia, que é o que toque leve
+   faz. (Com pressão cheia é idêntico ao anterior — as gates provam.)
+
+**`Draw To` continua NÃO-vivo, de propósito:** não é propriedade da tinta, é *qual canal o pincel
+escreve*. A metade da cor é irreversível (o pigmento já está na camada), e tornar só a metade da
+altura retroativa apagaria relevo que o artista está vendo — meia-verdade pior que a regra clara.
+
+**Gate (RED provado em 2 mutações):** `impasto_every_body_knob_edits_the_last_stroke_live` — para cada
+knob, *girar depois do traço* == *ter pintado com ele desde o início* (worst pixel < 1e-5), com
+anti-vacuidade (o knob tem de mover ≥200 px). Mutação D (Body sem `refresh`) → vermelho por 0.218 de
+diferença; mutação E (não guardar o grão) → vermelho já na anti-vacuidade (Depth Source vira knob
+morto). No kernel: `every_body_knob_is_a_pure_function_of_the_stored_ingredients` (3 body × 2 source ×
+3 depth = 18 combinações re-derivadas contra depósitos frescos).
+
+**Perf: 1.66 ms/move** (melhorou — o kernel escreve menos por pixel). `height.rs` 761→511 LOC (testes
+p/ `height_tests.rs`, precedente `spec_tests.rs`); `paint.rs` em 700/700.

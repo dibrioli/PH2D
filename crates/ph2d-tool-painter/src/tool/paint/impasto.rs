@@ -14,13 +14,20 @@
 //!    persistent `tex_rng` stream; a second pass that drew from it would advance the stream and the
 //!    colour would silently get a *different* grain frame than the relief. The pass runs on a COPY of
 //!    the stream and throws it away, so it resolves the identical bases and consumes nothing.
-//! 3. **A stroke leaves ONE thickness.** Within a stroke the deposit is an envelope (`stroke_height`,
-//!    by magnitude); separate strokes ADD (committed into the layer at stroke end). Passing the brush
-//!    back over its own line does not build a staircase; going over it again tomorrow does.
+//! 3. **A stroke leaves ONE thickness.** Within a stroke the deposit is an envelope — taken on the
+//!    PAINT (`stroke_paint`), so the heaviest dab owns the pixel; separate strokes ADD (committed into
+//!    the layer at stroke end, up to [`H_CEIL`]). Passing the brush back over its own line does not
+//!    build a staircase; going over it again tomorrow does.
+//! 4. **The stroke stores its INGREDIENTS, not its height.** The relief is always
+//!    `derive_height(spec, paint, grain)`, so every knob in the Body card — Depth, Body, Depth Source,
+//!    Smoothing — re-derives the LAST stroke live, and none of them is a special case (Enio,
+//!    2026-07-12: *"coloque todos os parâmetros vivos em tempo real para ajustes depois do traço"*).
 
 use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
-use ph2d_painter_brush::height::{HeightDab, accumulate_dab_height, erase_dab_height};
+use ph2d_painter_brush::height::{
+    HeightDab, HeightFields, accumulate_dab_height, derive_height, erase_dab_height,
+};
 use ph2d_painter_brush::{BrushSpec, Dab};
 
 impl PainterTool {
@@ -60,26 +67,40 @@ impl PainterTool {
         let Some(active) = self.layers.active() else {
             return;
         };
-        let (mut field, mut cover) = if erasing {
+        // The ERASER scrubs the relief already committed to the layer (there is nothing of its own to
+        // build an envelope from); a PAINT stroke builds its ingredients in `stroke_paint`/`stroke_grain`
+        // and the layer takes them at stroke end.
+        let mut erase_buffers = None;
+        if erasing {
             match self.heights.remove(&active) {
                 Some(f) if f.len() == n => {
                     let c = self.covers.remove(&active).filter(|c| c.len() == n);
-                    (f, c.unwrap_or_else(|| vec![0u8; n]))
+                    erase_buffers = Some((f, c.unwrap_or_else(|| vec![0u8; n])));
                 }
                 // Nothing to erase (no relief on this layer) — and a stale, differently-sized field is
                 // dropped rather than indexed into (the shape guard the sweep taught us to write).
                 _ => return,
             }
+        }
+        let (mut field, mut cover) = erase_buffers.unwrap_or_default();
+        let (mut paint, mut grain) = if erasing {
+            (Vec::new(), Vec::new())
         } else {
-            let mut f = std::mem::take(&mut self.paint.stroke_height);
-            let mut c = std::mem::take(&mut self.paint.stroke_cover);
-            if f.len() != n {
-                f = vec![0.0; n]; // lazily sized by the first dab of the stroke; zero cost when unused
+            let mut h = std::mem::take(&mut self.paint.stroke_height);
+            let mut p = std::mem::take(&mut self.paint.stroke_paint);
+            let mut g = std::mem::take(&mut self.paint.stroke_grain);
+            // Lazily sized by the first dab of the stroke; zero cost for a document nobody sculpts.
+            if h.len() != n {
+                h = vec![0.0; n];
             }
-            if c.len() != n {
-                c = vec![0u8; n];
+            if p.len() != n {
+                p = vec![0.0; n];
             }
-            (f, c)
+            if g.len() != n {
+                g = vec![0u8; n];
+            }
+            field = h;
+            (p, g)
         };
 
         // Resolve each dab's frames EXACTLY as the colour route will — same `d.dir` (Rake), same
@@ -191,7 +212,12 @@ impl PainterTool {
             let hit = if erasing {
                 erase_dab_height(&mut field, &mut cover, w, h, &spec, &hd)
             } else {
-                accumulate_dab_height(&mut field, &mut cover, w, h, &spec, &hd)
+                let mut fields = HeightFields {
+                    height: &mut field,
+                    paint: &mut paint,
+                    grain: &mut grain,
+                };
+                accumulate_dab_height(&mut fields, w, h, &spec, &hd)
             };
             if let Some(r) = hit {
                 let rect = Region {
@@ -218,14 +244,15 @@ impl PainterTool {
         // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back (rule 2).
 
         if erasing {
-            // The eraser scrubs the LAYER directly, so the live buffer's ground is no longer what it
+            // The eraser scrubs the LAYER directly, so the live stroke's ground is no longer what it
             // says it is — drop it rather than let a later Depth drag resurrect erased paint.
             self.drop_live_relief();
             self.heights.insert(active, field);
             self.covers.insert(active, cover);
         } else {
             self.paint.stroke_height = field;
-            self.paint.stroke_cover = cover;
+            self.paint.stroke_paint = paint;
+            self.paint.stroke_grain = grain;
         }
         if let Some(rect) = touched {
             self.mark_dirty(rect);
@@ -238,68 +265,71 @@ impl PainterTool {
     /// relief of every shape the artist dragged THROUGH, and a curve would leave a trail of ghosts).
     pub(super) fn reset_stroke_height(&mut self) {
         self.paint.stroke_height.clear();
-        self.paint.stroke_cover.clear();
+        self.paint.stroke_paint.clear();
+        self.paint.stroke_grain.clear();
         self.paint.last_height_center.clear(); // the sweep chain restarts with the stroke
     }
 
-    /// Merge the finished stroke's relief into the active layer, and clear the envelope.
+    /// Merge the finished stroke into the active layer, and hand its INGREDIENTS to the live edit.
     ///
     /// **Add**, not envelope: within a stroke the brush leaves one thickness, but a *second* stroke
     /// over the same paint genuinely piles more on (and a carving stroke digs further). Called from
     /// `close_stroke`, BEFORE the undo entry is recorded, so the step captures the relief with the
     /// pigment that made it — one Ctrl+Z takes both.
     pub(super) fn commit_stroke_height(&mut self) {
-        if self.paint.stroke_height.is_empty() {
+        if self.paint.stroke_paint.is_empty() {
             return;
         }
-        let stroke = std::mem::take(&mut self.paint.stroke_height);
+        let paint = std::mem::take(&mut self.paint.stroke_paint);
+        let grain = std::mem::take(&mut self.paint.stroke_grain);
+        self.paint.stroke_height.clear(); // it is derived; the ingredients are the truth
         let Some(active) = self.layers.active() else {
             return;
         };
-        // Keep the stroke RAW (unsettled, at the depth it was laid with) and the layer's relief from
-        // BEFORE it. Between them, Depth and Smoothing can be re-derived after the fact — the artist
-        // lays a stroke, then dials the thickness in while looking at it, exactly like every other
-        // property in this panel. See [`Self::refresh_live_relief`].
         // Coverage merges by MAX, not by sum: two strokes over the same spot do not make the pixel
         // "200% paint". (The HEIGHT does add — more paint IS thicker. The two are different quantities,
         // which is the whole reason the light needs both.)
-        let stroke_cover = std::mem::take(&mut self.paint.stroke_cover);
-        if !stroke_cover.is_empty() {
+        {
             let dst = self.covers.entry(active).or_default();
-            if dst.len() != stroke_cover.len() {
-                dst.resize(stroke_cover.len(), 0);
+            if dst.len() != paint.len() {
+                dst.resize(paint.len(), 0);
             }
-            for (d, s) in dst.iter_mut().zip(stroke_cover.iter()) {
-                *d = (*d).max(*s);
+            for (d, p) in dst.iter_mut().zip(paint.iter()) {
+                *d = (*d).max((p.clamp(0.0, 1.0) * 255.0 + 0.5) as u8);
             }
         }
-        let base = self.heights.get(&active).cloned().unwrap_or_default();
-        self.paint.live_relief_depth = self.paint.brush.effective_impasto_depth();
-        self.paint.live_relief_base = base;
+        // Keep the stroke's INGREDIENTS and the layer's relief from BEFORE it. Between them, the whole
+        // Body card re-derives this stroke after the fact — the artist lays a stroke and then dials it
+        // in while looking at it, exactly like every other property in this panel.
+        self.paint.live_relief_base = self.heights.get(&active).cloned().unwrap_or_default();
         self.paint.live_relief_layer = Some(active);
-        self.paint.live_relief = stroke;
+        self.paint.live_paint = paint;
+        self.paint.live_grain = grain;
         self.rebuild_live_layer_relief();
     }
 
-    /// Re-derive the live stroke's relief onto the layer at the CURRENT Depth / Smoothing.
+    /// Re-derive the live stroke onto the layer at the CURRENT Depth / Body / Depth Source / Smoothing.
     ///
-    /// The stroke is stored unsettled and at its original depth, so a new Depth is a pure rescale and a
-    /// new Smoothing is a fresh settle — no re-stroking, no repainting. Called at commit, and again on
-    /// every Depth / Smoothing edit.
+    /// No re-stroking and no repainting: the stroke's paint and grain are stored, and the relief is a
+    /// pure function of them ([`derive_height`]) — so a new setting is one pass over the buffer. This
+    /// is the single point where the last stroke's relief is made, at commit and at every edit; the
+    /// deposit and the edit therefore cannot drift.
     fn rebuild_live_layer_relief(&mut self) {
         let (Some(layer), false) = (
             self.paint.live_relief_layer,
-            self.paint.live_relief.is_empty(),
+            self.paint.live_paint.is_empty(),
         ) else {
             return;
         };
-        let old_depth = self.paint.live_relief_depth;
-        if old_depth == 0.0 {
-            return;
-        }
-        let scale = self.paint.brush.effective_impasto_depth() / old_depth;
-        let mut field: Vec<f32> = self.paint.live_relief.iter().map(|v| v * scale).collect();
-        let smoothing = self.paint.brush.effective_impasto_smoothing();
+        let brush = &self.paint.brush;
+        let mut field: Vec<f32> = self
+            .paint
+            .live_paint
+            .iter()
+            .zip(self.paint.live_grain.iter())
+            .map(|(&m, &g)| derive_height(brush, m, f32::from(g) / 255.0))
+            .collect();
+        let smoothing = brush.effective_impasto_smoothing();
         if smoothing > 0.0 {
             let (w, h) = self.source_size;
             settle(&mut field, w, h, smoothing);
@@ -319,9 +349,9 @@ impl PainterTool {
         }
     }
 
-    /// Live Depth / Smoothing edit: re-derive the last stroke's relief in place. No-op unless that
-    /// stroke is on the layer the artist is looking at — dialling Depth after switching layers must not
-    /// reach back and re-sculpt a stroke on some other one.
+    /// A Body-card edit (Depth / Body / Depth Source / Smoothing): re-derive the last stroke in place.
+    /// No-op unless that stroke is on the layer the artist is looking at — dialling Depth after
+    /// switching layers must not reach back and re-sculpt a stroke on some other one.
     pub(super) fn refresh_live_relief(&mut self) {
         if !self.paint.brush.impasto || self.layers.active() != self.paint.live_relief_layer {
             return;
@@ -332,10 +362,10 @@ impl PainterTool {
 
     /// Forget the live stroke — its ground is no longer valid (an erase, an undo, a fresh document).
     pub(crate) fn drop_live_relief(&mut self) {
-        self.paint.live_relief = Vec::new();
+        self.paint.live_paint = Vec::new();
+        self.paint.live_grain = Vec::new();
         self.paint.live_relief_base = Vec::new();
         self.paint.live_relief_layer = None;
-        self.paint.live_relief_depth = 0.0;
     }
 
     /// The relief the artist should SEE right now for `id`: the committed layer height plus the

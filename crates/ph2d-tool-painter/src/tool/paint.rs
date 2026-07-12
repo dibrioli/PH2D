@@ -416,35 +416,38 @@ pub(crate) struct PaintState {
     ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
-    /// **Impasto** per-stroke height envelope (f32, `w*h`) — the relief THIS stroke has laid down so
-    /// far, combined by magnitude ([`ph2d_painter_brush::height::envelope`]) so passing the brush back
-    /// over its own line leaves one thickness, not a staircase. Merged into the active layer's
-    /// committed height at `close_stroke` (separate strokes DO add). Empty ⇒ no impasto this stroke
-    /// (zero cost); sized lazily by the first dab, cleared on down and on each shape-editor re-stamp.
-    /// See [`super::impasto`].
+    /// **Impasto** per-stroke relief (f32, `w*h`) — always exactly
+    /// [`ph2d_painter_brush::height::derive_height`] of the two ingredient planes below. Merged into the
+    /// layer's committed height at `close_stroke` (separate strokes DO add). Empty ⇒ no impasto this
+    /// stroke (zero cost); sized lazily, cleared on down and on each shape-editor re-stamp.
     stroke_height: Vec<f32>,
-    /// **Impasto** per-stroke PAINT-coverage envelope (1 byte/px) — the sibling of [`Self::stroke_height`].
-    /// Merged into the layer's `covers` at stroke end. See `PainterTool::covers`.
-    stroke_cover: Vec<u8>,
+    /// **Impasto** per-stroke PAINT envelope (f32, `0..1`, by `max` — the heaviest dab owns the pixel,
+    /// so one pass leaves one thickness). Both the stroke's coverage (what the light weighs its shading
+    /// by; merged into the layer's `covers` at stroke end) and the first ingredient of the relief.
+    stroke_paint: Vec<f32>,
+    /// **Impasto** per-stroke GRAIN (1 byte/px, `255` = none): the grain sample of the dab that won each
+    /// pixel. The second ingredient — what lets `Depth Source` be flipped AFTER the stroke and re-carve
+    /// the very grooves that dab would have left.
+    stroke_grain: Vec<u8>,
     /// **Impasto**: where each Symmetry copy of the stroke was when the LAST pointer batch ended, so the
     /// first dab of the next batch can sweep back to it. Without it the relief would bead at every
     /// pointer event — a beading chosen by the artist's mouse polling rate, not by their hand. One slot
     /// per copy; cleared on pen-down. Mirrors `last_smear_pos` (which is the same idea, for the smear
     /// chain), but per-copy, because Symmetry paints several strokes at once.
     last_height_center: Vec<Option<[f32; 2]>>,
-    /// **Impasto live-edit** — the LAST stroke's relief, kept UNSETTLED and at the depth it was laid
-    /// with, so **Depth** and **Smoothing** can be re-derived after the fact instead of only affecting
-    /// the next stroke. (Enio 2026-07-12: "devem atualizar em tempo real após o traço ser feito como as
-    /// outras propriedades fazem." The same live-editability the watercolor wash has while the paper is
-    /// still wet.) Empty ⇒ nothing to re-derive.
-    live_relief: Vec<f32>,
+    /// **Impasto live-edit** — the LAST stroke's ingredients, so the whole Body card re-derives that
+    /// stroke after the fact instead of only affecting the next one (Enio 2026-07-12: *"coloque todos
+    /// os parâmetros vivos em tempo real para ajustes depois do traço"*). Storing the HEIGHT instead
+    /// bakes Body and Depth Source into it, leaving nothing to re-derive them from — the first cut's
+    /// bug. Empty ⇒ nothing live.
+    live_paint: Vec<f32>,
+    /// That stroke's grain plane — the second ingredient (see [`Self::stroke_grain`]).
+    live_grain: Vec<u8>,
     /// The active layer's committed relief BEFORE that stroke — the ground the re-derived stroke is
     /// added back onto. Empty ⇒ the layer had none (the common case: a first stroke).
     live_relief_base: Vec<f32>,
-    /// Which layer [`Self::live_relief`] belongs to, and the Depth it was deposited with (the divisor
-    /// that turns it back into a unit envelope). `None` ⇒ nothing live.
+    /// Which layer the live stroke belongs to. `None` ⇒ nothing live.
     live_relief_layer: Option<crate::tool::RtLayerId>,
-    live_relief_depth: f32,
     /// **Watercolor render-path** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the
     /// stroke's dabs (max-blended discs = wet_edges `stampCoverage`), the silhouette the optical composite
     /// reconstructs the wash from ([`super::watercolor_render`]). Empty unless the Watercolor section is

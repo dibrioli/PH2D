@@ -145,12 +145,13 @@ impl Default for PaintState {
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
             stroke_height: Vec::new(),
-            stroke_cover: Vec::new(),
+            stroke_paint: Vec::new(),
+            stroke_grain: Vec::new(),
             last_height_center: Vec::new(),
-            live_relief: Vec::new(),
+            live_paint: Vec::new(),
+            live_grain: Vec::new(),
             live_relief_base: Vec::new(),
             live_relief_layer: None,
-            live_relief_depth: 0.0,
             // Impasto lighting (canvas-level). Upper-left at 45 deg: the reading every eye resolves as
             // raised rather than engraved. Inert until some layer actually has relief.
             impasto_show: true,

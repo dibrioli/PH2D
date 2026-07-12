@@ -16,6 +16,11 @@
 //! Shine — there is no Amount any more: thickness is the brush's Depth, the slope is geometry),
 //! **Depth** goes negative to carve instead of lift, and **Body** dials the cross-section: 1 = a
 //! level film with a wall (default), 0 = the relief obeys the falloff — the perfectly rounded ridge.
+//!
+//! **Every knob edits the stroke you already painted**: lay a stroke, then drag Depth / Body / Depth
+//! Source / Smoothing and watch the LAST one re-sculpt live (the stroke stores the paint it laid, and
+//! the relief is derived from it). Only `Draw To` is authoring-only — it routes channels, and the
+//! pigment it already laid cannot be un-laid.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;

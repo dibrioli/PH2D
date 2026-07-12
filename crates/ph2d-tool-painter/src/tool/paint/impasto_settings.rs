@@ -128,16 +128,19 @@ impl PainterTool {
     }
 
     /// **Body** — the cross-section dial (`1` = level film with a wall; `0` = the relief obeys the
-    /// falloff: the perfectly rounded ridge of Enio's smoke). Applies from the NEXT stroke: the
-    /// profile is baked into the deposit per pixel, and the stored envelope no longer carries the
-    /// raw silhouette to re-derive it from (unlike Depth, which is a pure rescale).
+    /// falloff: the perfectly rounded ridge). Live on the last stroke too: the stroke stores the paint
+    /// it laid, and the profile is a pure function of it.
     pub fn set_brush_impasto_body(&mut self, v: f32) {
         self.paint.brush.impasto_body = v.clamp(0.0, 1.0);
+        self.refresh_live_relief();
     }
 
-    /// **Depth Source** from its wire discriminant (the segmented group's option).
+    /// **Depth Source** from its wire discriminant (the segmented group's option). Live on the last
+    /// stroke too — the grain each dab sampled is stored beside the paint, so flipping to Grain carves
+    /// the very grooves that stroke would have left, and flipping back fills them.
     pub fn set_brush_impasto_source(&mut self, wire: u8) {
         self.paint.brush.impasto_source = DepthSource::from_u8(wire);
+        self.refresh_live_relief();
     }
 
     /// **Draw To** from its wire discriminant (the segmented group's option).

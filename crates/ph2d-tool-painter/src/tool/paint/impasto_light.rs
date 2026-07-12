@@ -81,8 +81,8 @@ const AMBIENT: f32 = 0.35;
 /// longer carries any mute: the body curve already ends the relief where the paint gets thin, so
 /// the geometry is real wherever it is nonzero.
 #[inline]
-fn paint_body(cover: u8) -> f32 {
-    ph2d_painter_brush::height::body_profile(f32::from(cover) / 255.0)
+fn paint_body(cover: f32) -> f32 {
+    ph2d_painter_brush::height::body_profile(cover)
 }
 
 /// How the SPECULAR scales with the paint — a harder curve than [`paint_body`]: the glint rides the
@@ -95,9 +95,9 @@ fn paint_body(cover: u8) -> f32 {
 /// (`impasto_light_shades_the_paint_not_the_paper_showing_through_it` went red at 20% survival).
 /// Zero below solid coverage, full only where the film is complete.
 #[inline]
-fn gloss_body(cover: u8) -> f32 {
+fn gloss_body(cover: f32) -> f32 {
     let w_solid = ph2d_painter_brush::height::W_SOLID;
-    let t = ((f32::from(cover) / 255.0 - w_solid) / (1.0 - w_solid)).clamp(0.0, 1.0);
+    let t = ((cover - w_solid) / (1.0 - w_solid)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
 }
 
@@ -106,10 +106,13 @@ fn gloss_body(cover: u8) -> f32 {
 struct ReliefFields<'a> {
     /// Every visible layer that carries relief: its height, and its coverage when it has one.
     committed: Vec<(&'a [f32], Option<&'a [u8]>)>,
-    /// The open stroke's envelope on the active layer (`None` outside a stroke, or while erasing —
-    /// an erase mutates the layer in place, so there is nothing separate to add).
+    /// The open stroke's relief on the active layer (`None` outside a stroke, or while erasing — an
+    /// erase mutates the layer in place, so there is nothing separate to add).
     live_h: Option<&'a [f32]>,
-    live_c: Option<&'a [u8]>,
+    /// That stroke's PAINT envelope (`0..1`) — the same plane the relief is derived from, read here as
+    /// the live coverage. The committed layers carry theirs as `u8`; a stroke in progress has it in
+    /// full precision, and there is no reason to round-trip it.
+    live_c: Option<&'a [f32]>,
     width: usize,
     height: usize,
 }
@@ -129,17 +132,18 @@ impl ReliefFields<'_> {
         h.clamp(-super::impasto::H_CEIL, super::impasto::H_CEIL)
     }
 
-    /// Paint coverage at a canvas pixel — the MAX over the layers, not the sum.
+    /// Paint coverage at a canvas pixel (`0..1`) — the MAX over the layers, not the sum: it is a
+    /// presence, not a quantity (two layers of paint over one pixel do not make it 200% paint).
     #[inline]
-    fn cover_at(&self, x: i64, y: i64) -> u8 {
+    fn cover_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
-        let mut c = self.live_c.map_or(0, |l| l[i]);
+        let mut c = self.live_c.map_or(0.0, |l| l[i]);
         for (_, cover) in &self.committed {
             if let Some(cv) = cover {
-                c = c.max(cv[i]);
+                c = c.max(f32::from(cv[i]) / 255.0);
             }
         }
-        c
+        c.clamp(0.0, 1.0)
     }
 
     #[inline]
@@ -294,8 +298,8 @@ impl PainterTool {
         let live_visible = active.is_some_and(|a| self.layer_effectively_visible(a));
         let live_h = (live_visible && self.paint.stroke_height.len() == n && !self.paint.eraser)
             .then_some(self.paint.stroke_height.as_slice());
-        let live_c = (live_visible && self.paint.stroke_cover.len() == n && !self.paint.eraser)
-            .then_some(self.paint.stroke_cover.as_slice());
+        let live_c = (live_visible && self.paint.stroke_paint.len() == n && !self.paint.eraser)
+            .then_some(self.paint.stroke_paint.as_slice());
         if committed.is_empty() && live_h.is_none() {
             return None;
         }

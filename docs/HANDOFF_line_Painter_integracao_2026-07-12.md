@@ -34,8 +34,19 @@ trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
   família mesa). É o `Technique` do PS como contínuo. `PAINTER_IMPASTO_BODY` entrou em
   `PAINTER_IMPASTO_FIELDS` (5→6, append). Gate com RED por mutação:
   `impasto_body_zero_obeys_the_falloff`. Perf 1.87 ms/move. Plano §10.2.
-- **Smoke do Enio: PENDENTE de novo** (2ª rodada — validar o Body 0 = arredondado que ele pediu);
-  comando do §5 vale inalterado; card Lighting com 4 linhas (sem Amount), card Body com 5.
+- **Fase 4.2 (2ª ordem do smoke): TODO parâmetro do relevo é VIVO.** O traço deixou de guardar a
+  ALTURA e passou a guardar os **ingredientes** (`stroke_paint` f32 + `stroke_grain` u8); o relevo é
+  sempre `derive_height(spec, paint, grain)` — uma função pura, a MESMA no depósito e na edição. Logo
+  **Depth · Body · Depth Source · Smoothing** editam o último traço ao vivo, sem caso especial.
+  Envelope passa a ser na TINTA (grandeza que nenhum setting muda) e o perfil roda na tinta
+  (`w × dinâmica`), alinhando geometria e luz. `Draw To` segue não-vivo **de propósito** (é roteamento
+  de canal, não propriedade da tinta — a metade da cor é irreversível). Gate
+  `impasto_every_body_knob_edits_the_last_stroke_live` (RED em 2 mutações) + o unit de pureza no
+  kernel. `height.rs` 761→511 (testes p/ `height_tests.rs` — **arquivo NOVO**); `paint.rs` 700/700.
+  Perf 1.66 ms/move. Plano §10.3.
+- **Smoke do Enio: PENDENTE** (validar: Body 0 = arredondado · girar Depth/Body/Source/Smoothing
+  DEPOIS do traço e ver o relevo mudar ao vivo). Comando do §5 inalterado; card Lighting 4 linhas
+  (sem Amount), card Body 5.
 
 Os §§ 1–8 abaixo descrevem as entregas anteriores da linha e continuam válidos; números de gates
 ficam superseded pelos desta seção.

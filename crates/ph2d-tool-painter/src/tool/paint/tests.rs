@@ -18730,3 +18730,103 @@ fn impasto_body_zero_obeys_the_falloff() {
         "rounded relief must not shade the near-invisible tail (worst drift {worst} levels)"
     );
 }
+
+/// Paint one stroke on a fresh canvas with `arm` applied to the brush, then apply `edit` through the
+/// PUBLIC setters (the panel's own route) and return the relief. With `edit` a no-op this is simply
+/// "what the brush painted".
+fn impasto_stroke_then_edit(
+    arm: impl FnOnce(&mut BrushSpec),
+    edit: impl FnOnce(&mut PainterTool),
+) -> Vec<f32> {
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let size = 120u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 24.0;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.impasto_depth = 0.6;
+    b.impasto_body = 1.0;
+    b.impasto_smoothing = 0.0;
+    b.impasto_source = DepthSource::Uniform;
+    b.texture.kind = TextureKind::Noise; // a grain to carve, so Depth Source has something to say
+    b.texture.mapping = TextureMapping::Tiled;
+    arm(&mut b);
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 70.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+    edit(&mut t);
+    relief(&t)
+}
+
+#[test]
+fn impasto_every_body_knob_edits_the_last_stroke_live() {
+    // Enio, 2026-07-12: "coloque todos os parâmetros vivos em tempo real para ajustes depois do traço."
+    //
+    // THE claim, stated so it can only be true one way: for every knob in the Body card, dialling it
+    // AFTER the stroke gives the same relief as having painted the stroke with it from the start. That
+    // is only possible because the stroke stores its INGREDIENTS (the paint it laid + the grain it
+    // sampled) and the relief is a pure function of them — bake anything into the height that
+    // `derive_height` cannot see and this goes red, which is exactly what Body and Depth Source did
+    // before this gate existed (they were dead after pen-up, and the panel said nothing).
+    type Arm = fn(&mut BrushSpec);
+    type Edit = fn(&mut PainterTool);
+    let cases: [(&str, Arm, Edit); 4] = [
+        (
+            "Depth",
+            |b| b.impasto_depth = -0.9,
+            |t| t.set_brush_impasto_depth(-0.9),
+        ),
+        (
+            "Body",
+            |b| b.impasto_body = 0.0,
+            |t| t.set_brush_impasto_body(0.0),
+        ),
+        (
+            "Depth Source",
+            |b| b.impasto_source = DepthSource::Grain,
+            |t| t.set_brush_impasto_source(DepthSource::Grain.to_u8()),
+        ),
+        (
+            "Smoothing",
+            |b| b.impasto_smoothing = 0.8,
+            |t| t.set_brush_impasto_smoothing(0.8),
+        ),
+    ];
+    let baseline = impasto_stroke_then_edit(|_| {}, |_| {});
+    for (name, arm, edit) in cases {
+        let painted_with_it = impasto_stroke_then_edit(arm, |_| {});
+        let edited_after = impasto_stroke_then_edit(|_| {}, edit);
+        // The knob must actually DO something (else the equality below is vacuous — the trap that let
+        // a dead knob ship green once already).
+        let moved = painted_with_it
+            .iter()
+            .zip(baseline.iter())
+            .filter(|(a, b)| (*a - *b).abs() > 1e-4)
+            .count();
+        assert!(
+            moved > 200,
+            "{name}: the knob changes the deposit at all ({moved} px moved) — else this gate is vacuous"
+        );
+        assert_eq!(
+            painted_with_it.len(),
+            edited_after.len(),
+            "{name}: same canvas"
+        );
+        let worst = painted_with_it
+            .iter()
+            .zip(edited_after.iter())
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0f32, f32::max);
+        assert!(
+            worst < 1e-5,
+            "{name}: dialling it AFTER the stroke must give the relief of having painted with it \
+             (worst pixel differs by {worst})"
+        );
+    }
+}

@@ -43,8 +43,10 @@ mod chrome;
 mod gallery;
 mod inspector;
 mod menus;
+mod menus_timeline;
 
 pub use chrome::*;
 pub use gallery::*;
 pub use inspector::*;
 pub use menus::*;
+pub use menus_timeline::*;

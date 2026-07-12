@@ -86,6 +86,31 @@ pub const TIMELINE_LANE_ADD_STRIP: [NodeId; 8] = [
     hash_node_id("timeline.lane_add_strip_7"),
 ];
 
+/// Per-lane weight fields (`[0, 1]`). Same cap, same reason.
+pub const TIMELINE_LANE_WEIGHT: [NodeId; 8] = [
+    hash_node_id("timeline.lane_weight_0"),
+    hash_node_id("timeline.lane_weight_1"),
+    hash_node_id("timeline.lane_weight_2"),
+    hash_node_id("timeline.lane_weight_3"),
+    hash_node_id("timeline.lane_weight_4"),
+    hash_node_id("timeline.lane_weight_5"),
+    hash_node_id("timeline.lane_weight_6"),
+    hash_node_id("timeline.lane_weight_7"),
+];
+
+/// Per-lane label strips — the R-click surface that opens the lane menu (mode,
+/// Delete Lane). Same cap, same reason.
+pub const TIMELINE_LANE_ROW: [NodeId; 8] = [
+    hash_node_id("timeline.lane_row_0"),
+    hash_node_id("timeline.lane_row_1"),
+    hash_node_id("timeline.lane_row_2"),
+    hash_node_id("timeline.lane_row_3"),
+    hash_node_id("timeline.lane_row_4"),
+    hash_node_id("timeline.lane_row_5"),
+    hash_node_id("timeline.lane_row_6"),
+    hash_node_id("timeline.lane_row_7"),
+];
+
 /// Clip dropdown option ids — one per clip slot, index = clip index.
 ///
 /// **This array IS the clip cap.** The chrome cannot mint a hit id at runtime, so

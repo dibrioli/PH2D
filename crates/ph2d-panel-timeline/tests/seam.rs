@@ -695,3 +695,123 @@ fn a_strip_menu_click_for_a_vanished_strip_expires_quietly() {
         "a dead strip's delete must not raise an intent"
     );
 }
+
+// ── The lane's right-click menu + its weight field (ADR-0115 B5) ────────────
+
+/// A published snapshot with one lane (no strips).
+fn publish_one_lane() {
+    use ph2d_timeline::{TimelineIntent as I, TimelineViewSnapshot, apply_intent};
+    let mut st = ph2d_timeline::TimelineState::default();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    apply_intent(&mut st, &mut ph, I::AddLane);
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&st, &ph);
+    ph2d_panel_timeline::set_current_timeline(Some(snap));
+}
+
+fn park_lane_menu(host: &mut MockPanelHost, lane: usize) {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    use ph2d_editor_core::panel::PanelHostInternal;
+    host.store_mut().open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 0.0,
+        kind: ContextMenuKind::TimelineLane { lane },
+    });
+    host.store_mut().close_context_menu(); // the Down-before-Click parks it
+}
+
+/// Every lane-menu row raises the intent its label promises — including
+/// **Delete Lane**, which until this row existed was an intent (`RemoveLane`) the
+/// document could serve and no gesture could reach: a lane, once added, could not
+/// be removed. A dead intent is the mirror image of a dead menu item, and neither
+/// compiles red.
+#[test]
+fn every_lane_menu_row_raises_the_intent_its_label_promises() {
+    use ph2d_editor_core::ids as c;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_timeline::{LaneMode, TimelineIntent as I};
+
+    let _ = ph2d_panel_timeline::drain_intents();
+    publish_one_lane();
+
+    let expected = |id: ph2d_editor_core::NodeId| -> I {
+        if id == c::CTX_MENU_TL_LANE_DELETE {
+            I::RemoveLane { lane: 0 }
+        } else if id == c::CTX_MENU_TL_LANE_ADDITIVE {
+            I::SetLaneMode {
+                lane: 0,
+                mode: LaneMode::Additive,
+            }
+        } else {
+            I::SetLaneMode {
+                lane: 0,
+                mode: LaneMode::Override,
+            }
+        }
+    };
+
+    for (id, label, _) in c::TIMELINE_LANE_MENU {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        park_lane_menu(&mut host, 0);
+
+        let outcome = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "lane-menu row `{label}` is painted but has no event.rs arm"
+        );
+        assert_eq!(
+            ph2d_panel_timeline::drain_intents(),
+            vec![expected(id)],
+            "lane-menu row `{label}` must raise the intent it names"
+        );
+        assert!(
+            host.store().last_context_menu().is_none(),
+            "row `{label}` left its request parked"
+        );
+    }
+    ph2d_panel_timeline::set_current_timeline(None);
+}
+
+/// The weight field carries the lane's influence to the document — and a lane the
+/// snapshot no longer has raises nothing, like every other stack control.
+#[test]
+fn the_weight_field_sets_the_lane_weight_and_a_vanished_lane_sets_none() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::panel::PanelHostInternal;
+
+    let _ = ph2d_panel_timeline::drain_intents();
+    publish_one_lane();
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    let id = ids::TIMELINE_LANE_WEIGHT[0];
+    if let Some(InteractiveState::NumberInput { value, .. }) = host.store_mut().get_mut(id) {
+        *value = 0.25;
+    }
+    let outcome =
+        host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::ValueChanged(id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "the weight field has no arm"
+    );
+    assert_eq!(
+        ph2d_panel_timeline::drain_intents(),
+        vec![ph2d_timeline::TimelineIntent::SetLaneWeight {
+            lane: 0,
+            weight: 0.25
+        }]
+    );
+
+    // Lane 1 was never in the snapshot: its field is registered (the store is
+    // populated once, for all MAX_LANES) but it addresses nothing.
+    let gone = ids::TIMELINE_LANE_WEIGHT[1];
+    let _ = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::ValueChanged(gone));
+    assert!(
+        ph2d_panel_timeline::drain_intents().is_empty(),
+        "a weight for a lane that is not there weighs nothing"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}

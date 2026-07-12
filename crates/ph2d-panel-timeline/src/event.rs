@@ -55,17 +55,11 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
-    // The clip stack's own chrome answers first (see `stack_click`) — lifted out
-    // because `apply_event` is at its LOC cap, and because those three controls
-    // speak to the STACK rather than to the sheet.
-    if let WidgetEvent::Click(id) = ev
-        && let Some(out) = stack_click(id)
-    {
-        return out;
-    }
-    if let WidgetEvent::Click(id) = ev
-        && let Some(out) = strip_menu_click(id, host)
-    {
+    // The clip stack answers first, through ONE door (`stack_event`): its chrome,
+    // its two menus and its weight field all speak to the STACK rather than to the
+    // sheet, and folding them into one guard is also what keeps `apply_event` under
+    // its LOC cap — the cap noticing that the stack had grown into its own subject.
+    if let Some(out) = stack_event(ev, host) {
         return out;
     }
     match ev {
@@ -239,6 +233,73 @@ pub(crate) fn apply_event(
         }
         _ => EventOutcome::Ignored,
     }
+}
+
+/// Everything the clip stack answers: its chrome, its two right-click menus, and
+/// the lane weight field. `None` means "not ours" — the caller falls through to
+/// the sheet.
+fn stack_event(ev: WidgetEvent, host: &mut dyn PanelHostInternal) -> Option<EventOutcome> {
+    match ev {
+        WidgetEvent::Click(id) => stack_click(id)
+            .or_else(|| strip_menu_click(id, host))
+            .or_else(|| lane_menu_click(id, host)),
+        // The lane weight is a bounded field, so its edit arrives as a ValueChanged.
+        WidgetEvent::ValueChanged(id) => {
+            let lane = ids::TIMELINE_LANE_WEIGHT.iter().position(|&w| w == id)?;
+            // A lane gone from the snapshot addresses nothing — the field is
+            // registered for all MAX_LANES, because the store is populated once.
+            if lane < crate::state::current_snapshot().lanes.len() {
+                let weight = host.store().number_value(id).unwrap_or(1.0);
+                state::push_intent(TimelineIntent::SetLaneWeight { lane, weight });
+            }
+            Some(EventOutcome::Consumed)
+        }
+        _ => None,
+    }
+}
+
+/// The lane's right-click menu (ADR-0115 B5): how it blends, and whether it stays.
+///
+/// Same contract as `strip_menu_click` — read the PARKED request, confirm the lane
+/// still exists, spend the request. `Delete Lane` lives here rather than on the row
+/// because the row has no width for a third button; that is a layout fact, not a
+/// judgement about how often a lane gets deleted.
+fn lane_menu_click(
+    id: ph2d_editor_core::NodeId,
+    host: &mut dyn PanelHostInternal,
+) -> Option<EventOutcome> {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    use ph2d_timeline::LaneMode;
+
+    if !ids::TIMELINE_LANE_MENU.iter().any(|(r, _, _)| *r == id) {
+        return None;
+    }
+    let req = host
+        .store()
+        .context_menu()
+        .or_else(|| host.store().last_context_menu());
+    let Some(ContextMenuKind::TimelineLane { lane }) = req.map(|r| r.kind) else {
+        return Some(EventOutcome::Consumed);
+    };
+    if lane < crate::state::current_snapshot().lanes.len() {
+        let intent = if id == ids::CTX_MENU_TL_LANE_DELETE {
+            TimelineIntent::RemoveLane { lane }
+        } else {
+            // The two modes. `Additive` is named explicitly and `Override` is the
+            // fallback, so a row added to the table without an arm here lands on
+            // Override — which the seam test refuses to let pass silently.
+            let mode = if id == ids::CTX_MENU_TL_LANE_ADDITIVE {
+                LaneMode::Additive
+            } else {
+                LaneMode::Override
+            };
+            TimelineIntent::SetLaneMode { lane, mode }
+        };
+        state::push_intent(intent);
+    }
+    host.store_mut().close_context_menu();
+    host.store_mut().consume_last_context_menu();
+    Some(EventOutcome::Consumed)
 }
 
 /// The strip's right-click menu (ADR-0115 B6). `None` means "not one of ours".

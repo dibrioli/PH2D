@@ -30,6 +30,14 @@ const STRIP_PAD_Y: f32 = 3.0; // LITERAL-PX-OK: a strip must not touch its row's
 const EDGE_W: f32 = 6.0; // LITERAL-PX-OK: a pointer-sized grip, like the loop brace's
 /// Below this, a rate is real time and the strip says nothing about it.
 const SPEED_EPS: f64 = 1e-6; // LITERAL-PX-OK: not a length — a "is it exactly 1" epsilon
+/// The lane weight field's width.
+const WEIGHT_W: f32 = 38.0; // LITERAL-PX-OK: "1.00" at TypeToken::Sm, plus the field's padding
+/// How much of the label column the lane's controls take (weight + two buttons).
+const CONTROLS_W: f32 = WEIGHT_W + (ROW_H_PX - STRIP_PAD_Y * 2.0) * 2.0 + 12.0; // LITERAL-PX-OK: three Xs gaps
+/// A lane's weight step per drag notch, and the decimals it shows.
+const WEIGHT_STEP: f64 = 0.01; // LITERAL-PX-OK: 1% of the [0, 1] range
+/// Decimals shown in the weight field.
+const WEIGHT_DECIMALS: usize = 2; // LITERAL-PX-OK: 1% resolution needs two
 
 /// The "+ Lane" button, beside "+ Track" in the label column's header strip.
 pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
@@ -79,6 +87,7 @@ pub(crate) fn paint(
 }
 
 /// One lane: its label slice, then its strips.
+#[allow(clippy::too_many_lines)] // the row IS the layout: splitting it hides the arithmetic
 fn paint_lane(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -100,6 +109,9 @@ fn paint_lane(
     let font = TypeToken::Sm.px();
     let text_y = row.y + (row.h - font) * 0.5;
     let dim = lane.muted || lane.weight <= 0.0;
+    // The name's budget stops at the controls, not at the column's edge — text that
+    // elides UNDER a button looks like a button with a word behind it.
+    let name_w = (g.label_w - CONTROLS_W - Spacing::Sm.px() * 2.0).max(0.0);
     paint_text_elided(
         ctx.text_system,
         ctx.scene,
@@ -107,7 +119,7 @@ fn paint_lane(
         row.x + Spacing::Sm.px(),
         text_y,
         font,
-        (g.label_w - Spacing::Sm.px() * 2.0).max(0.0),
+        name_w,
         resolve(
             if dim {
                 ColorToken::Text3
@@ -118,7 +130,14 @@ fn paint_lane(
         ),
     );
 
-    // ── the lane's two controls, right-aligned in the label column ──
+    // ── the lane's controls, right-aligned in the label column ──
+    //
+    // The WEIGHT is here and the MODE is in the right-click menu, and that split is
+    // the point: weight is a number you nudge and re-nudge while watching the
+    // canvas, so it belongs under the pointer; mode is set once per lane. Delete
+    // Lane is in the menu too — not because deleting is rare, but because a row
+    // this narrow has no room for a third button, and a control that only appears
+    // when the column is wide enough is worse than one that is always one click in.
     let btn_w = ROW_H_PX - STRIP_PAD_Y * 2.0;
     let btn_y = row.y + STRIP_PAD_Y;
     let add = Rect::new(
@@ -128,8 +147,31 @@ fn paint_lane(
         btn_w,
     );
     let mute = Rect::new(add.x - btn_w - Spacing::Xs.px(), btn_y, btn_w, btn_w);
+    let weight = Rect::new(
+        mute.x - WEIGHT_W - Spacing::Xs.px(),
+        row.y + STRIP_PAD_Y,
+        WEIGHT_W,
+        (row.h - STRIP_PAD_Y * 2.0).max(0.0),
+    );
+    paint_weight(ctx, theme, ids::TIMELINE_LANE_WEIGHT[index], weight, lane);
     paint_lane_button(ctx, theme, ids::TIMELINE_LANE_MUTE[index], mute, lane.muted);
     paint_lane_button(ctx, theme, ids::TIMELINE_LANE_ADD_STRIP[index], add, false);
+
+    // The label itself is the right-click surface (mode, Delete Lane). Its rect
+    // STOPS where the controls start, so it cannot steal their clicks — the hit
+    // index does not need a z-order rule it would only have to remember.
+    let label = Rect::new(row.x, row.y, (weight.x - row.x).max(0.0), row.h);
+    ctx.host.store_mut().register(
+        ids::TIMELINE_LANE_ROW[index],
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::LaneHeader { lane: index },
+            canvas: row,
+        },
+    );
+    ctx.host
+        .hit_index_mut()
+        .register(ids::TIMELINE_LANE_ROW[index], label);
 
     // ── the strips ──
     for s in &lane.strips {
@@ -147,6 +189,43 @@ fn paint_lane(
         paint_strip(ctx, theme, view, body, s, dim);
         register_hits(ctx, row, body, index, s.id.0);
     }
+}
+
+/// The lane's weight, as a bounded number field: drag it, or type into it.
+///
+/// The range is REGISTERED (`set_number_range`), not merely clamped afterwards —
+/// dispatch scales a body-drag by the field's range, so a field that never
+/// declared one drags at the default scale and a lane's `[0, 1]` weight would fly
+/// past both ends in a few pixels ([[reference_number_input_register_range]]).
+fn paint_weight(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    id: ph2d_editor_core::NodeId,
+    r: Rect,
+    lane: &ph2d_timeline::LaneView,
+) {
+    use ph2d_editor_core::widget::{NumberInput, paint_number_input_with_buffer, showcase};
+    {
+        let store = ctx.host.store_mut();
+        crate::transport::mirror_number(store, id, lane.weight, WEIGHT_DECIMALS);
+        store.set_number_range(id, 0.0, 1.0, WEIGHT_STEP);
+    }
+    let (state, _v, buf, caret, anchor) = showcase::read_number_input(ctx.host.store(), id);
+    let buf = buf.to_string();
+    let input = NumberInput::new(id, "", lane.weight)
+        .step(WEIGHT_STEP)
+        .state(state);
+    paint_number_input_with_buffer(
+        &input,
+        Some(&buf),
+        caret,
+        anchor,
+        r,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(id, r);
 }
 
 /// One of a lane's header controls. Square, and `on` fills it — the mute reads as

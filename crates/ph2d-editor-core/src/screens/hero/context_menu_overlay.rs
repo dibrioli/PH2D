@@ -340,6 +340,8 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::TimelineTrack { .. } => &ids::TIMELINE_TRACK_MENU,
         // Timeline clip strip (a stack lane): what a pointer cannot say.
         ContextMenuKind::TimelineStrip { .. } => &ids::TIMELINE_STRIP_MENU,
+        // Timeline stack lane (its label): how it blends, and whether it stays.
+        ContextMenuKind::TimelineLane { .. } => &ids::TIMELINE_LANE_MENU,
     };
 
     if matches!(req.kind, ContextMenuKind::SceneList) {

@@ -99,6 +99,11 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::Strip { lane, strip, edge } => {
             crate::strip_drag::apply(state, px_per_s, snap, lane, strip, edge, g);
         }
+        // A lane's LABEL. Deliberately inert on the left button: it exists so a
+        // right-click has a surface to open the lane menu on, and a header that
+        // also dragged would be a header that swallows a press meant for a strip
+        // scrolled underneath it.
+        TimelineHitKind::LaneHeader { .. } => {}
         // Column lock (default): a press on a track key is a press on its whole
         // time column, so grabbing one key grabs the vertical group. Unlocked, it
         // moves alone. Either way, the Summary diamond itself always moves the

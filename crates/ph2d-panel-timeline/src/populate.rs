@@ -79,6 +79,19 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
     number(store, ids::TIMELINE_TIME_NUM);
     number(store, ids::TIMELINE_FRAME_NUM);
+    // Every lane's weight field, not just the lanes a fresh document has: the
+    // store is populated ONCE at install, so a lane added later would paint a
+    // field that was never registered — pintado mas inerte (the same reason every
+    // clip option below is registered up front).
+    for id in ids::TIMELINE_LANE_WEIGHT {
+        number(store, id);
+    }
+    // The lane LABEL surfaces (the right-click target). The slot has to exist
+    // before the first paint; the paint then replaces each with the
+    // `TimelineSurface` that carries its lane index.
+    for id in ids::TIMELINE_LANE_ROW {
+        store.register(id, InteractiveState::Plain);
+    }
     toggle(store, ids::TIMELINE_LOOP, false);
     toggle(store, ids::TIMELINE_PINGPONG, false);
     toggle(store, ids::TIMELINE_AUTOKEY, false);

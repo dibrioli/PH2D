@@ -242,6 +242,12 @@ pub enum ContextMenuKind {
     /// Track). `target` is the row's raw `AnimTarget` — opaque here; the
     /// timeline panel resolves it against its snapshot and raises the intent.
     TimelineTrack { target: u64 },
+    /// Right-clicked a stack lane's LABEL (`ids::TIMELINE_LANE_MENU`): how the
+    /// lane enters the blend, and whether it stays at all.
+    TimelineLane {
+        /// Index into the document's stack.
+        lane: usize,
+    },
     /// Right-clicked a clip strip in a stack lane (`ids::TIMELINE_STRIP_MENU`).
     /// Both fields are opaque here — the timeline panel resolves them against its
     /// snapshot, exactly as it does for [`ContextMenuKind::TimelineTrack`].
@@ -500,6 +506,17 @@ pub enum TimelineHitKind {
         strip: u64,
         /// `0` start, `1` end, `2` body.
         edge: u8,
+    },
+    /// A stack lane's LABEL strip — the surface a right-click turns into the lane
+    /// menu (mode, Delete Lane). It carries no left-button gesture: a lane header
+    /// is a place to point at, not a thing to drag.
+    ///
+    /// NOT [`Self::Lane`], which is the dope sheet's empty row (where a marquee
+    /// starts). Two different things called "lane" is the timeline's own doing —
+    /// a track row and a stack lane — and the names must keep them apart.
+    LaneHeader {
+        /// Which stack lane.
+        lane: usize,
     },
     ResizeEdge {
         edges: u8,

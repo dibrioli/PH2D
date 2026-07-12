@@ -111,6 +111,7 @@ pub(super) fn handle_down_menus(
                     K::Strip { lane, strip, .. } => {
                         Some(ContextMenuKind::TimelineStrip { lane, strip })
                     }
+                    K::LaneHeader { lane } => Some(ContextMenuKind::TimelineLane { lane }),
                     _ => None,
                 }
             });

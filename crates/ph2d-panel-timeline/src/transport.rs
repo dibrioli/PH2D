@@ -532,7 +532,12 @@ fn label(ctx: &mut PaintCtx, theme: Theme, text: &str, x: f32, y: f32, w: f32) {
 
 /// Mirror a committed numeric `value` into the store's chip when it isn't being
 /// edited (mirror of the Inspector/painter number-field sync).
-fn mirror_number(store: &mut WidgetStore, id: ph2d_a11y::NodeId, value: f64, decimals: usize) {
+pub(crate) fn mirror_number(
+    store: &mut WidgetStore,
+    id: ph2d_a11y::NodeId,
+    value: f64,
+    decimals: usize,
+) {
     if store.focus_id() == Some(id) {
         return;
     }

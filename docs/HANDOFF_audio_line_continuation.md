@@ -137,9 +137,12 @@ De-Click, Formant Shift, Harmonizer, presets Voice EQ/Whisper/Shout, e o fix do 
 shifter desafinado; ver [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md)).
 
 ### 🟡 ETAPA 1 (a próxima grande) — **W5 Espectral (FFT)** — ⚠️ **PRECISA DO OK DO ENIO**
-A wave grande que sobrou. **Bloqueada por decisão do Enio:**
-- **Exige dep nova:** `realfft` (ou `rustfft`) → **ADR obrigatório** + **autorização
-  explícita do Enio** antes de adicionar.
+A wave grande que sobrou. **O ADR já está escrito e à espera de uma palavra:**
+[ADR-0115](architecture/decisions/0115-audio-spectral-fft-via-realfft.md) — `realfft 3.5`
+em crate isolada `ph2d-audio-spectral`. Fatos verificados: 8 crates, todas MIT/Apache-2.0,
+**zero C / zero `*-sys`** (mais leve que o `vorbis_rs` que já temos, que compila C), RUSTSEC
+limpa. Traz **conjunto de aceitação concreto + kill-criterion** congelados (§4 do ADR).
+- **Exige dep nova** → **autorização explícita do Enio** antes de adicionar.
 - **Escopo:** spectrogram (STFT, Hann/Blackman-Harris) alternando com a waveform no
   overlay · seleção tempo-frequência · **spectral repair/inpaint** (heal brush — interpola
   bins vizinhos, remove tosse/bipe pontual) · **spectral denoise** (subtração espectral /
@@ -150,13 +153,23 @@ A wave grande que sobrou. **Bloqueada por decisão do Enio:**
   atalhos. Mas o W5 **realmente precisa** de FFT: spectrogram e repair por bin não dá pra
   fingir no tempo. **Escreva o ADR primeiro, mostre ao Enio, espere o OK.**
 
-### 🟢 ETAPA 2 — **W6 restante**
-Loop points, markers, variação, import e OGG **já landaram**. Falta:
+### 🟢 ETAPA 2 — **W6: FECHADO** (só o Opus sobrou, e é decisão sua)
+Loop points, markers, variação, import, OGG, **force-to-mono** e **batch LUFS** já existiam
+(o handoff anterior estava desatualizado — verifiquei por grep). A **seção Delivery**
+(codec por asset + custo de disco/RAM) landou nesta jornada e fecha o último item.
+
+Sobra só:
 - **Opus** — ADR-0113 §Opus já analisou: recomendação = **crate irmão isolado
   `ph2d-audio-opus`** (puro-Rust, `unsafe` contido). **Decisão do Enio.**
-- **Codec/residência por-asset** + readout de tamanho/RAM.
-- **Force-to-mono** p/ 3D (+ warn se estéreo).
-- **Batch LUFS** não-destrutivo (o `normalize` LUFS já existe — falta o batch).
+
+**🚩 RESIDÊNCIA (streaming) NÃO foi implementada — de propósito.** O plano pedia
+"codec/**residência** por asset", mas **não existe caminho de streaming no mixer**
+(`grep -i stream crates/ph2d-audio/src/` = zero). Um toggle "Streamed" não teria nada na
+engine pra honrá-lo, e botão que não faz nada é pior que botão que falta. **Residência é
+uma wave de ENGINE** (thread produtora + ring buffer + HR-3 no-alloc na thread de áudio),
+não de editor — e ela é o que tornaria o codec relevante pra RAM. Hoje **todo clipe é
+decodificado pra f32 no load**, então Vorbis e WAV custam a MESMA memória; a seção
+Delivery mostra exatamente isso, com a fração do budget de 30 MB (HR-13) do lado.
 
 ### ⚪ ETAPA 3 — **W7 AI/ML** (opt-in, feature `audio-ml`)
 DeepFilterNet (denoise) · Demucs via ONNX. **Tudo atrás de feature-flag** (build default

@@ -28,6 +28,17 @@ receita em [`docs/Audio/BUGS_audio.md`](Audio/BUGS_audio.md) (Bug #1). O §4
 abaixo é histórico — não re-investigue.
 
 **O que já landou:**
+- **W6 (asset-prep) — FECHADO 2026-07-12** (só o **Opus** sobra, e é decisão do Enio).
+  Seção **Delivery**: codec por asset (WAV 16/24 · Ogg Vorbis + Quality) + o preço do asset
+  em disco e em RAM, com a fração do budget de 30 MB (HR-13) do lado. **O que ela ensina:**
+  o codec mexe no DISCO e **não tem voz na RAM** — sem streaming no mixer, todo clipe é
+  decodificado pra f32 no load, então Vorbis e WAV custam a mesma memória. **Um Export só**,
+  dirigido pelo codec (o botão "Export OGG" saiu: dois caminhos = duas verdades).
+  **Residência NÃO existe** e não deve ser fingida — vide handoff de continuação.
+  **BUG DE PERF CORRIGIDO:** `encode_ogg` entregava a take inteira num único
+  `encode_audio_block` → exportar 5 min levava **27,5 s**. Agora alimenta em blocos de 4096
+  frames: **0,95 s** (29×, e linear).
+
 - **W4 (voz + reparo) — FECHADO 2026-07-12** (handoff de integração:
   [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md); rack **34 → 37**,
   presets **15 → 21**, **zero dep nova**). Núcleo LPC comum (`fx/lpc.rs`):

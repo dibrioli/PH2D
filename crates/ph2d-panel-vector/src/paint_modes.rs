@@ -190,8 +190,13 @@ impl BodyCtx<'_> {
                     y,
                 );
             }
-            DrawMode::Text => y = self.text_size_and_string(y),
             _ => {}
+        }
+        // A seção Text aparece no modo Text **ou** com um objeto de TEXTO selecionado
+        // (as configs do texto valem enquanto ele for texto — não-curva — mesmo na
+        // ferramenta Select; a shell publica a visibilidade).
+        if state::text_visible() {
+            y = self.text_size_and_string(y);
         }
         y
     }

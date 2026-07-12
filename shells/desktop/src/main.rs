@@ -72,6 +72,7 @@ mod vec_gizmo_view;
 mod vec_glyph;
 mod vec_overlay;
 mod vec_selection;
+mod vec_shape_live;
 mod vec_snap;
 mod vec_text;
 mod vec_transform;
@@ -267,6 +268,7 @@ impl App {
             vec_text_align: ph2d_tool_vector::TextAlign::Left,
             vec_text_extra_axes: vec_font::seed_extra_axes(None),
             vec_text_family: None,
+            vec_text_last_target: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),

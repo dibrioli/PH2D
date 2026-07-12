@@ -334,21 +334,6 @@ pub(crate) fn apply_text_align(
     }
 }
 
-/// Cicla a família de fonte (botões `<`/`>` do painel) por `dir` (+1/−1): atualiza o
-/// default corrente da shell (`family_field`) e, se há sessão ativa, a família dela +
-/// regenera com a nova fonte. `None` = a InterVariable embutida. Mirror de
-/// [`apply_text_size`]; a resolução/enumeração fica em [`crate::vec_font`].
-pub(crate) fn cycle_text_font(
-    edit: &mut Option<VecTextEdit>,
-    family_field: &mut Option<String>,
-    extra_axes_field: &mut Vec<(ph2d_vector_font::AxisTag, f32)>,
-    scene: &mut ph2d_vec_scene::VecScene,
-    dir: i32,
-) {
-    let next = crate::vec_font::cycle_family(family_field.as_deref(), dir);
-    set_text_font(edit, family_field, extra_axes_field, scene, next);
-}
-
 /// Define a família de fonte corrente diretamente (escolha no dropdown, `None` = a
 /// embutida) + regenera a sessão ativa. A fonte nova tem seus PRÓPRIOS eixos de
 /// variação, então re-semeia os eixos extras (default de cada) na shell e na sessão.
@@ -465,7 +450,7 @@ fn text_params(edit: &VecTextEdit) -> VecTextParams {
     }
 }
 
-fn align_to_u8(a: TextAlign) -> u8 {
+pub(crate) fn align_to_u8(a: TextAlign) -> u8 {
     match a {
         TextAlign::Left => 0,
         TextAlign::Center => 1,
@@ -514,6 +499,156 @@ fn axes_of_params(p: &VecTextParams) -> Vec<(AxisTag, f32)> {
     axes.push((AxisTag::WEIGHT, p.weight));
     axes.extend(p.axes.iter().map(|(b, v)| (AxisTag::new(*b), *v)));
     axes
+}
+
+/// O objeto de TEXTO na seleção (o 1º), se houver — `(path, entidade, params)`. É o
+/// alvo das configs do painel quando NÃO há sessão ativa: o texto continua editável
+/// enquanto for texto (não-curva), mesmo com a ferramenta Select.
+#[must_use]
+pub(crate) fn selected_text_object(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selection: &[VecPathId],
+) -> Option<(VecPathId, Entity, VecTextParams)> {
+    selection.iter().find_map(|id| {
+        let &bits = map.get(id)?;
+        let e = Entity::from_bits(bits);
+        match sim.world().get::<VecShape>(e) {
+            Some(VecShape::Text(p)) => Some((*id, e, p.clone())),
+            _ => None,
+        }
+    })
+}
+
+/// Re-cozinha um objeto de texto com `params` novos: grava o `VecShape` e regenera a
+/// geometria (compound CENTRADO, in-place). O `Transform` **não é tocado** — a forma
+/// re-cozinha em torno do próprio centro, preservando a pose (e o move do usuário).
+pub(crate) fn recook_text_object(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    id: VecPathId,
+    entity: Entity,
+    params: VecTextParams,
+) {
+    let font = crate::vec_font::resolve(params.family.as_deref());
+    let (fill, stroke) = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == id)
+        .map_or((None, None), |p| (p.fill.clone(), p.stroke));
+    let compound = text_to_compound_path(
+        &font,
+        &params.text,
+        &layout_of_params(&params),
+        &axes_of_params(&params),
+        [0.0, 0.0],
+        &fill,
+        &stroke,
+    )
+    .map(|mut c| {
+        let ctr = crate::vec_glyph::path_center(&c);
+        crate::vec_glyph::offset_path(&mut c, [-ctr[0], -ctr[1]]);
+        c
+    });
+    if let Some(mut np) = compound
+        && let Some(p) = scene.path_mut(id)
+    {
+        np.id = id;
+        *p = np;
+    }
+    if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
+        e.insert(VecShape::Text(params));
+    }
+}
+
+/// Edita os parâmetros do objeto de texto SELECIONADO (via `f`) e re-cozinha. Usado
+/// quando não há sessão ativa — é o que faz as configs do painel agirem sobre um texto
+/// já finalizado, na ferramenta Select. `true` se havia um objeto de texto selecionado.
+pub(crate) fn edit_selected_text(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    selection: &[VecPathId],
+    f: impl FnOnce(&mut VecTextParams),
+) -> bool {
+    let Some((id, e, mut params)) = selected_text_object(sim, map, selection) else {
+        return false;
+    };
+    f(&mut params);
+    recook_text_object(sim, scene, id, e, params);
+    true
+}
+
+/// Troca a família do objeto de texto SELECIONADO e re-semeia os eixos extras (a fonte
+/// nova tem os seus), re-cozinhando. `true` se havia um objeto de texto selecionado.
+pub(crate) fn set_selected_text_font(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    selection: &[VecPathId],
+    family: Option<String>,
+) -> bool {
+    let axes: Vec<([u8; 4], f32)> = crate::vec_font::seed_extra_axes(family.as_deref())
+        .into_iter()
+        .map(|(t, v)| (t.to_bytes(), v))
+        .collect();
+    edit_selected_text(sim, scene, map, selection, |p| {
+        p.family = family;
+        p.axes = axes;
+    })
+}
+
+/// O `TextAlign` de um `align` primitivo (`0/1/2`) — o inverso de `align_to_u8`.
+#[must_use]
+pub(crate) fn align_from_u8(a: u8) -> TextAlign {
+    match a {
+        1 => TextAlign::Center,
+        2 => TextAlign::Right,
+        _ => TextAlign::Left,
+    }
+}
+
+/// O ALVO das configs de texto do painel: a sessão viva, senão o objeto de TEXTO
+/// selecionado. É o que faz a seção Text aparecer e agir também na ferramenta Select —
+/// o texto segue editável enquanto for texto (não-curva).
+pub(crate) struct TextTarget {
+    pub id: VecPathId,
+    pub text: String,
+    pub family: Option<String>,
+    pub align: TextAlign,
+    /// `[size, weight, line_height, tracking]` — a semente dos sliders do painel.
+    pub sliders: [f64; 4],
+    pub axes: Vec<(AxisTag, f32)>,
+}
+
+/// Resolve o alvo: a sessão ativa tem prioridade; sem ela, o objeto de texto
+/// selecionado. `None` = nada de texto em foco (a seção some).
+#[must_use]
+pub(crate) fn panel_text_target(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selection: &[VecPathId],
+    edit: Option<&VecTextEdit>,
+) -> Option<TextTarget> {
+    if let Some(e) = edit {
+        return Some(TextTarget {
+            id: e.id.unwrap_or_default(),
+            text: e.text.clone(),
+            family: e.family.clone(),
+            align: e.align,
+            sliders: [e.size, f64::from(e.weight), e.line_height, e.tracking],
+            axes: e.extra_axes.clone(),
+        });
+    }
+    let (id, _, p) = selected_text_object(sim, map, selection)?;
+    Some(TextTarget {
+        id,
+        text: p.text.clone(),
+        family: p.family.clone(),
+        align: align_from_u8(p.align),
+        sliders: [p.size, f64::from(p.weight), p.line_height, p.tracking],
+        axes: p.axes.iter().map(|(b, v)| (AxisTag::new(*b), *v)).collect(),
+    })
 }
 
 /// "Convert to Curves": para cada objeto de TEXTO na seleção, re-cozinha os glyphs

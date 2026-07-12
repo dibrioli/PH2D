@@ -230,6 +230,12 @@ impl crate::App {
         self.flip_entities = flip_map;
         self.vec_sel = crate::vec_selection::VecSelSync::default();
         self.vec_pen.clear();
+        // Live Shapes: uma SESSÃO de texto viva reescreveria o `VecShape` (e a pose) da
+        // entidade com os params dela a cada frame — ou seja, desfaria o undo no frame
+        // seguinte. O estado restaurado é a verdade: a sessão termina (o objeto de texto
+        // continua lá, editável pela seleção).
+        self.vec_text_edit = None;
+        self.vec_text_last_target = None;
         self.undo_baseline = Some(state.clone());
         self.title_dirty = true;
     }

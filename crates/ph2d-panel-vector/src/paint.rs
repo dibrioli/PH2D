@@ -35,6 +35,52 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
+/// Escreve a semente `[size, weight, line_height, tracking]` nos sliders de texto (+
+/// seus chips). Só quando a shell publica uma (o alvo do painel mudou) — fora isso o
+/// store é a fonte da verdade e o arrasto do slider manda.
+fn seed_text_sliders(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_tool_vector::params::{
+        text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
+        text_weight_to_slider,
+    };
+    let Some([size, weight, lh, tr]) = state::take_text_seed() else {
+        return;
+    };
+    let rows = [
+        (
+            ids::VECTOR_TEXT_SIZE,
+            ids::VECTOR_TEXT_SIZE_NUM,
+            text_size_to_slider(size),
+            size,
+        ),
+        (
+            ids::VECTOR_TEXT_WEIGHT,
+            ids::VECTOR_TEXT_WEIGHT_NUM,
+            text_weight_to_slider(weight),
+            weight,
+        ),
+        (
+            ids::VECTOR_TEXT_LINE_HEIGHT,
+            ids::VECTOR_TEXT_LINE_HEIGHT_NUM,
+            text_line_height_to_slider(lh),
+            lh,
+        ),
+        (
+            ids::VECTOR_TEXT_TRACKING,
+            ids::VECTOR_TEXT_TRACKING_NUM,
+            text_tracking_to_slider(tr),
+            tr,
+        ),
+    ];
+    for (slider, chip, track, val) in rows {
+        if let Some(InteractiveState::Slider { value, .. }) = store.get_mut(slider) {
+            *value = track;
+        }
+        store.set_number_value(chip, val);
+    }
+}
+
 pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(VectorPanel::ID) {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
@@ -203,6 +249,10 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
                 store.set_number_value(id, value);
             }
         }
+        // Semente ONE-SHOT dos sliders de texto — publicada quando o ALVO muda (sessão
+        // nova / outro objeto de texto selecionado). Depois o store é a fonte, senão o
+        // seed brigaria com o arrasto do slider.
+        seed_text_sliders(store);
         store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
         store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
         // Clamp any stale scroll if the content shrank (e.g. a mode switch hid a

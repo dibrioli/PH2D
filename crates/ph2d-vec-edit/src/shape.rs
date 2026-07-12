@@ -84,6 +84,10 @@ pub struct ShapeTool {
     params: ShapeParams,
     /// The pressed corner in world-space.
     start: [f64; 2],
+    /// The last dragged corner in world-space (= `start` até o 1º Move). Com `start`
+    /// dá o retângulo AUTORADO do gesto — é dele que a shell tira o `w`/`h` da forma
+    /// VIVA (Live Shapes), e não da bbox da geometria (num polígono elas diferem).
+    cur: [f64; 2],
     /// World units per screen pixel (captured at press) — sizes the stroke +
     /// the min-drag cancel threshold.
     px_to_world: f64,
@@ -116,6 +120,32 @@ impl ShapeTool {
         self.committed
     }
 
+    /// O tipo da última forma desenhada (para a shell registrá-la como forma VIVA).
+    #[must_use]
+    pub fn kind(&self) -> ShapeKind {
+        self.kind
+    }
+
+    /// Os parâmetros da última forma desenhada (sides/points/radius/turns/degrees).
+    #[must_use]
+    pub fn params(&self) -> ShapeParams {
+        self.params
+    }
+
+    /// O retângulo AUTORADO do último gesto — `(start, cur)` em mundo. A shell tira
+    /// daqui o `w`/`h` (com sinal) e o centro da forma viva.
+    #[must_use]
+    pub fn bounds(&self) -> ([f64; 2], [f64; 2]) {
+        (self.start, self.cur)
+    }
+
+    /// Unidades de mundo por pixel de tela capturadas no press (converte o raio de
+    /// canto do RoundRect, que é autorado em PIXELS, para mundo).
+    #[must_use]
+    pub fn px_to_world(&self) -> f64 {
+        self.px_to_world
+    }
+
     /// O path que o arrasto está construindo. Ele é reescrito em coordenadas de
     /// MUNDO a cada Move (`on_drag` regenera `verts`), então a shell não pode
     /// assentar a origem dele no meio do gesto — a geometria e o `Transform` ficariam
@@ -142,6 +172,7 @@ impl ShapeTool {
         self.kind = kind;
         self.params = params;
         self.start = p;
+        self.cur = p;
         self.px_to_world = px_to_world;
         let id = scene.push_path(self.build(p));
         self.active = Some(id);
@@ -154,6 +185,7 @@ impl ShapeTool {
         let Some(id) = self.active else {
             return false;
         };
+        self.cur = p;
         let rebuilt = self.build(p);
         let Some(path) = scene.path_mut(id) else {
             self.active = None;

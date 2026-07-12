@@ -1988,6 +1988,12 @@ impl crate::App {
                     deg,
                 );
             }
+            // Configs de texto: aplicam na SESSÃO viva; sem sessão, no objeto de TEXTO
+            // SELECIONADO (o texto segue editável no Select até virar curva). O
+            // `vec_text_sel` é a seleção corrente para o caminho do objeto.
+            let vec_text_sel: Vec<ph2d_vec_scene::VecPathId> =
+                self.vec_pen.selected_paths().to_vec();
+            let editing_session = self.vec_text_edit.is_some();
             if let Some(size) = pending_vec_text_size {
                 crate::vec_text::apply_text_size(
                     &mut self.vec_text_edit,
@@ -1995,6 +2001,15 @@ impl crate::App {
                     vec_scene,
                     size,
                 );
+                if !editing_session {
+                    crate::vec_text::edit_selected_text(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        |p| p.size = size,
+                    );
+                }
             }
             if let Some(weight) = pending_vec_text_weight {
                 crate::vec_text::apply_text_weight(
@@ -2003,6 +2018,15 @@ impl crate::App {
                     vec_scene,
                     weight,
                 );
+                if !editing_session {
+                    crate::vec_text::edit_selected_text(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        |p| p.weight = weight,
+                    );
+                }
             }
             if let Some(lh) = pending_vec_text_line_height {
                 crate::vec_text::apply_text_line_height(
@@ -2011,6 +2035,15 @@ impl crate::App {
                     vec_scene,
                     lh,
                 );
+                if !editing_session {
+                    crate::vec_text::edit_selected_text(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        |p| p.line_height = lh,
+                    );
+                }
             }
             if let Some(tr) = pending_vec_text_tracking {
                 crate::vec_text::apply_text_tracking(
@@ -2019,8 +2052,41 @@ impl crate::App {
                     vec_scene,
                     tr,
                 );
+                if !editing_session {
+                    crate::vec_text::edit_selected_text(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        |p| p.tracking = tr,
+                    );
+                }
+            }
+            if let Some((i, v)) = pending_vec_text_axis
+                && !editing_session
+            {
+                crate::vec_text::edit_selected_text(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &vec_text_sel,
+                    |p| {
+                        if let Some(a) = p.axes.get_mut(i) {
+                            a.1 = v as f32;
+                        }
+                    },
+                );
             }
             if let Some(align) = pending_vec_text_align {
+                if !editing_session {
+                    crate::vec_text::edit_selected_text(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        |p| p.align = crate::vec_text::align_to_u8(align),
+                    );
+                }
                 crate::vec_text::apply_text_align(
                     &mut self.vec_text_edit,
                     &mut self.vec_text_align,
@@ -2028,13 +2094,31 @@ impl crate::App {
                     align,
                 );
             }
+            // A família "corrente" para o ciclo `<`/`>` é a do ALVO: o objeto de texto
+            // selecionado (sem sessão) ou o default da shell.
+            let cur_family = if editing_session {
+                self.vec_text_family.clone()
+            } else {
+                crate::vec_text::selected_text_object(sim, &self.vec_entities, &vec_text_sel)
+                    .map_or_else(|| self.vec_text_family.clone(), |(_, _, p)| p.family)
+            };
             if let Some(dir) = pending_vec_font_cycle {
-                crate::vec_text::cycle_text_font(
+                let next = crate::vec_font::cycle_family(cur_family.as_deref(), dir);
+                if !editing_session {
+                    crate::vec_text::set_selected_text_font(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        next.clone(),
+                    );
+                }
+                crate::vec_text::set_text_font(
                     &mut self.vec_text_edit,
                     &mut self.vec_text_family,
                     &mut self.vec_text_extra_axes,
                     vec_scene,
-                    dir,
+                    next,
                 );
             }
             if let Some(i) = pending_vec_font_pick {
@@ -2043,6 +2127,15 @@ impl crate::App {
                     .get(i)
                     .cloned()
                     .flatten();
+                if !editing_session {
+                    crate::vec_text::set_selected_text_font(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        family.clone(),
+                    );
+                }
                 crate::vec_text::set_text_font(
                     &mut self.vec_text_edit,
                     &mut self.vec_text_family,
@@ -2067,6 +2160,17 @@ impl crate::App {
                     &mut self.vec_text_extra_axes,
                     vec_scene,
                 );
+                // Sem sessão, a fonte importada vai para o objeto de texto SELECIONADO.
+                if imported && !editing_session {
+                    let fam = self.vec_text_family.clone();
+                    crate::vec_text::set_selected_text_font(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        fam,
+                    );
+                }
                 // A fonte importada entra no dropdown: reconstrói as previews agora.
                 #[cfg(feature = "panel-vector")]
                 if imported {
@@ -2265,43 +2369,54 @@ impl crate::App {
             );
             // Publica a string da sessão ativa para o painel exibir (read-only na
             // A2). `None` quando não há sessão de texto (mostra o hint).
-            #[cfg(feature = "panel-vector")]
-            ph2d_panel_vector::set_current_text(
-                self.vec_text_edit.as_ref().map(|e| e.text.clone()),
-            );
-            // Publica o rótulo da família de fonte corrente (o seletor `<` nome `>`);
-            // `None` fora do modo Text esconde a linha da fonte.
-            #[cfg(feature = "panel-vector")]
-            ph2d_panel_vector::set_current_text_font(
-                (self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text)
-                    .then(|| crate::vec_font::display_name(self.vec_text_family.as_deref())),
-            );
-            // Publica o alinhamento corrente para o painel destacar o botão L/C/R ativo.
-            #[cfg(feature = "panel-vector")]
-            ph2d_panel_vector::set_current_text_align(
-                (self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text)
-                    .then_some(self.vec_text_align),
-            );
-            // Publica os eixos de variação da fonte corrente (nome + range + valor) para
-            // a seção Axes desenhar um campo por eixo. Os valores vêm da sessão ativa se
-            // houver, senão dos defaults correntes da shell (sempre casados com a fonte,
-            // reseedados em toda troca de família). Vazio fora do modo Text.
+            // As configs de TEXTO do painel agem sobre um ALVO: a sessão viva; sem ela, o
+            // objeto de TEXTO selecionado — então a seção Text aparece e edita também na
+            // ferramenta Select, enquanto o texto for texto (não-curva).
             #[cfg(feature = "panel-vector")]
             {
-                let slots = if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text {
-                    let descs = crate::vec_font::variation_axes(self.vec_text_family.as_deref());
-                    let values = self
-                        .vec_text_edit
-                        .as_ref()
-                        .map_or(&self.vec_text_extra_axes, |e| &e.extra_axes);
+                let in_text_mode = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text;
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                let target = crate::vec_text::panel_text_target(
+                    sim,
+                    &self.vec_entities,
+                    &sel,
+                    self.vec_text_edit.as_ref(),
+                );
+                let visible = in_text_mode || target.is_some();
+                ph2d_panel_vector::set_current_text_visible(visible);
+                ph2d_panel_vector::set_current_text(target.as_ref().map(|t| t.text.clone()));
+                // Família / alinhamento: do alvo; sem alvo (modo Text sem sessão), os
+                // defaults correntes da shell (o que a próxima sessão vai usar).
+                let family = target
+                    .as_ref()
+                    .map_or_else(|| self.vec_text_family.clone(), |t| t.family.clone());
+                ph2d_panel_vector::set_current_text_font(
+                    visible.then(|| crate::vec_font::display_name(family.as_deref())),
+                );
+                ph2d_panel_vector::set_current_text_align(
+                    visible.then(|| target.as_ref().map_or(self.vec_text_align, |t| t.align)),
+                );
+                // Semente dos sliders: só quando o ALVO muda (senão brigaria com o drag).
+                let target_id = target.as_ref().map(|t| t.id);
+                if target_id != self.vec_text_last_target {
+                    self.vec_text_last_target = target_id;
+                    ph2d_panel_vector::set_current_text_seed(target.as_ref().map(|t| t.sliders));
+                }
+                // Eixos de variação da fonte do alvo (nome + range + valor).
+                let slots = if visible {
+                    let descs = crate::vec_font::variation_axes(family.as_deref());
+                    let values: Vec<f32> = target.as_ref().map_or_else(
+                        || self.vec_text_extra_axes.iter().map(|(_, v)| *v).collect(),
+                        |t| t.axes.iter().map(|(_, v)| *v).collect(),
+                    );
                     descs
                         .iter()
                         .zip(values)
-                        .map(|(d, (_, v))| ph2d_panel_vector::TextAxisSlot {
+                        .map(|(d, v)| ph2d_panel_vector::TextAxisSlot {
                             name: d.name.clone(),
                             min: f64::from(d.min),
                             max: f64::from(d.max),
-                            value: f64::from(*v),
+                            value: f64::from(v),
                         })
                         .collect()
                 } else {
@@ -2335,8 +2450,18 @@ impl crate::App {
             if let Some(edit) = self.vec_text_edit.as_ref() {
                 crate::vec_text::upsert_text_shape(sim, &self.vec_entities, edit);
             }
+            // Live Shapes: a forma recém-desenhada NASCE VIVA — geometria re-cozida
+            // centrada (pivô no centro), pose no `Transform`, `VecShape` na entidade.
+            // Antes do `settle` (que pula formas vivas). Idempotente.
+            crate::vec_shape_live::make_committed_shape_live(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &self.vec_shape,
+            );
             // "Convert to Curves": assa a(s) forma(s) viva(s) selecionada(s) em paths
-            // crus (o texto explode num grupo por-letra) e re-seleciona o resultado.
+            // crus — o TEXTO explode num grupo por-letra; as PARAMÉTRICAS só descartam
+            // o `VecShape` (a geometria já é a forma). Re-seleciona o resultado.
             if pending_vec_convert {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 let new_sel = crate::vec_text::convert_text_selection_to_curves(
@@ -2345,6 +2470,7 @@ impl crate::App {
                     &mut self.vec_entities,
                     &sel,
                 );
+                crate::vec_shape_live::drop_shape_params(sim, &self.vec_entities, &new_sel);
                 self.vec_pen.select_many(&new_sel);
             }
             // Habilita "Convert to Curves" quando a seleção tem forma viva (`VecShape`).

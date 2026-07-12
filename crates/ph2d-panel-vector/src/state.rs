@@ -52,6 +52,14 @@ thread_local! {
     /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
     /// habilita o botão "Convert to Curves". Publicado pela shell.
     static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
+    /// Mostrar a seção Text: modo Text OU um objeto de TEXTO selecionado (as configs
+    /// do texto ficam visíveis enquanto ele for texto — não-curva — mesmo no Select).
+    static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
+    /// Semente ONE-SHOT dos sliders de texto `[size, weight, line_height, tracking]`,
+    /// publicada quando o ALVO muda (sessão nova / outro objeto selecionado). O paint
+    /// a consome e escreve no store — depois o store é a fonte (senão o seed brigaria
+    /// com o arrasto do slider).
+    static TEXT_SEED: Cell<Option<[f64; 4]>> = const { Cell::new(None) };
     /// Texto da sessão de edição ativa (modo Text). `None` = sem sessão. Só
     /// LEITURA no painel (display); a digitação segue no canvas (A2). Publicado
     /// pela shell a cada frame.
@@ -272,6 +280,25 @@ pub fn set_current_convertible(v: bool) {
 
 pub(crate) fn convertible() -> bool {
     CURRENT_CONVERTIBLE.with(Cell::get)
+}
+
+/// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).
+pub fn set_current_text_visible(v: bool) {
+    CURRENT_TEXT_VISIBLE.with(|c| c.set(v));
+}
+
+pub(crate) fn text_visible() -> bool {
+    CURRENT_TEXT_VISIBLE.with(Cell::get)
+}
+
+/// Publica a semente ONE-SHOT dos sliders de texto (só quando o alvo muda).
+pub fn set_current_text_seed(seed: Option<[f64; 4]>) {
+    TEXT_SEED.with(|c| c.set(seed));
+}
+
+/// O paint consome a semente (uma vez) e escreve no store.
+pub(crate) fn take_text_seed() -> Option<[f64; 4]> {
+    TEXT_SEED.with(|c| c.take())
 }
 
 /// Publica o texto da sessão de edição ativa (`None` = sem sessão de texto).

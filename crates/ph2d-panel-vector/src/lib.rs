@@ -41,8 +41,9 @@ pub use state::{
     set_current_grad_influence, set_current_grad_jitter, set_current_path_closed,
     set_current_pivot_edit, set_current_selection_count, set_current_snap, set_current_text,
     set_current_text_align, set_current_text_axes, set_current_text_font,
-    set_current_text_font_previews, set_current_transform, set_current_vector_style,
-    set_selected_vertex_type, take_want_font_previews,
+    set_current_text_font_previews, set_current_text_seed, set_current_text_visible,
+    set_current_transform, set_current_vector_style, set_selected_vertex_type,
+    take_want_font_previews,
 };
 
 use ph2d_a11y::NodeId;

@@ -16,19 +16,26 @@
 //! true-peak limiter are local.
 //!
 //! Implementations live in the sibling modules ([`tone`], [`dynamics`], [`space`]);
-//! this file is the two enums and the neutral points they promise.
+//! this file is the two enums and the neutral points they promise. The restoration and
+//! voice-transform end of the rack ([`declick`], [`formant`]) shares one linear-
+//! prediction core ([`lpc`]): the same AR fit that tells a click from the signal tells
+//! the vocal tract from the pitch.
 
 mod autowah;
 mod comb;
+mod declick;
 mod deess;
 mod deplosive;
 mod dynamics;
+mod formant;
+mod harmonize;
+mod lpc;
 mod modulation;
-mod pitch;
 mod space;
 mod tail;
 mod tone;
 mod transient;
+mod wsola;
 
 pub use tail::TailEffect;
 
@@ -37,13 +44,16 @@ use ph2d_audio::dsp::BiquadCoeffs;
 
 use autowah::auto_wah;
 use comb::comb;
+use declick::declick;
 use deess::deess;
 use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
+use formant::formant_shift;
+use harmonize::harmonize;
 use modulation::{auto_pan, doubler, modulated_delay, phaser, ring_mod, trance_gate, tremolo};
-use pitch::{PITCH_BYPASS_ST, pitch_shift};
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, distortion, exciter, haas, saturate, stereo_width};
 use transient::{TRANSIENT_BYPASS, transient_shape};
+use wsola::{PITCH_BYPASS_ST, pitch_shift};
 
 /// Chorus base delay (ms): a detuned doubling sits well behind the dry signal.
 const CHORUS_BASE_MS: f32 = 18.0;
@@ -82,6 +92,9 @@ const MOD_BYPASS: f32 = 0.0;
 const HUM_BYPASS_DEPTH: f32 = 0.0;
 /// The leveler at `amount` 0 leaves the gain at unity — a pass-through.
 const LEVELER_BYPASS_AMOUNT: f32 = 0.0;
+/// A de-clicker at `sensitivity` 0 detects nothing, so it repairs nothing. Off is the
+/// neutral point rather than "very insensitive": a repair tool must be *asked* for.
+const DECLICK_BYPASS_SENS: f32 = 0.0;
 
 /// A single length-preserving offline effect. Each variant has a **neutral point**
 /// at which [`Effect::apply`] returns its input untouched (see
@@ -301,6 +314,43 @@ pub enum Effect {
         /// Dry→wet crossfade (0..1).
         mix: f32,
     },
+    /// **Formant shift**: moves the spectral envelope — the *size of the head* — by
+    /// `semitones`, leaving the excitation (and therefore the pitch) alone. Down is a
+    /// giant, up is something small, and the melody does not budge. `mix` crossfades
+    /// dry→wet. Neutral at `semitones` 0 (or `mix` 0).
+    ///
+    /// The complement of [`Effect::PitchShift`], where formants ride *with* the pitch:
+    /// chain the two to pitch a voice while choosing its size independently.
+    FormantShift {
+        /// Envelope shift in semitones (negative = bigger, positive = smaller).
+        semitones: f32,
+        /// Dry→wet crossfade (0..1).
+        mix: f32,
+    },
+    /// **Harmonizer**: two pitched copies of the take (`v1_st`, `v2_st`) sung along
+    /// with it — a third and a fifth make a triad, an octave pair makes a swarm.
+    /// `mix` is the level of the harmony against the dry voice. Neutral at `mix` 0.
+    Harmonizer {
+        /// First harmony voice, in semitones from the dry note.
+        v1_st: f32,
+        /// Second harmony voice, in semitones.
+        v2_st: f32,
+        /// Harmony level (0 = dry … 1 = an even blend of the three voices).
+        mix: f32,
+    },
+    /// **De-Click**: repairs clicks, ticks and crackle — the rack's one *restoration*
+    /// tool. A click is what the audio's own model could not predict, so the detector
+    /// hunts outliers in the prediction residual and the repair re-derives those
+    /// samples from the model: the gap is filled with what the signal *would* have
+    /// done, not muted. Neutral at `sensitivity` 0.
+    DeClick {
+        /// Detection threshold (0 = off … 1 = catches the faintest tick, and the odd
+        /// glottal pulse with it).
+        sensitivity: f32,
+        /// The longest run it will repair (seconds). Past this a "click" is the
+        /// signal, and rewriting it would hallucinate audio.
+        width_secs: f32,
+    },
 }
 
 impl Effect {
@@ -439,6 +489,20 @@ impl Effect {
             {
                 pitch_shift(data, semitones, mix)
             }
+            // Same neutral pair as the pitch shifter: an unwarped envelope driven by
+            // its own residual reconstructs the input, so a zero shift is a no-op.
+            Effect::FormantShift { semitones, mix }
+                if semitones.abs() > PITCH_BYPASS_ST && mix > MOD_BYPASS =>
+            {
+                formant_shift(data, semitones, mix)
+            }
+            Effect::Harmonizer { v1_st, v2_st, mix } if mix > MOD_BYPASS => {
+                harmonize(data, v1_st, v2_st, mix)
+            }
+            Effect::DeClick {
+                sensitivity,
+                width_secs,
+            } if sensitivity > DECLICK_BYPASS_SENS => declick(data, sensitivity, width_secs),
             _ => data.clone(),
         }
     }
@@ -496,7 +560,14 @@ impl Effect {
             } => (((delay_ms + detune_ms) * 0.001 * sample_rate as f32) as usize).min(cap),
             // The pitch shifter's delay line starts empty; without a pre-roll its taps
             // read silence for the first grain and the region swells in. Fill it.
-            Effect::PitchShift { .. } => pitch::GRAIN.min(cap),
+            // The harmonizer is two of them.
+            Effect::PitchShift { .. } | Effect::Harmonizer { .. } => wsola::WINDOW.min(cap),
+            // Block-based, so the region's first block would otherwise be modelled
+            // against assumed silence: for the formant shifter that means an envelope
+            // fitted to a fade-in, and for the de-clicker it means the edge itself
+            // looks like damage and gets "repaired". Pre-roll one analysis block.
+            Effect::FormantShift { .. } => formant::BLOCK.min(cap),
+            Effect::DeClick { .. } => declick::BLOCK.min(cap),
             // Distortion's post low-pass would click at a selection edge without a
             // pre-roll; size it on the darkest (longest-ringing) tone.
             Effect::Distortion { .. } => {
@@ -571,8 +642,13 @@ impl Effect {
                     | Effect::TranceGate { depth, .. }
                     if depth <= MOD_BYPASS)
             || matches!(*self, Effect::Doubler { mix, .. } if mix <= MOD_BYPASS)
-            || matches!(*self, Effect::PitchShift { semitones, mix }
-                if semitones.abs() <= PITCH_BYPASS_ST || mix <= MOD_BYPASS)
+            || matches!(
+                *self,
+                Effect::PitchShift { semitones, mix } | Effect::FormantShift { semitones, mix }
+                    if semitones.abs() <= PITCH_BYPASS_ST || mix <= MOD_BYPASS)
+            || matches!(*self, Effect::Harmonizer { mix, .. } if mix <= MOD_BYPASS)
+            || matches!(*self, Effect::DeClick { sensitivity, .. }
+                if sensitivity <= DECLICK_BYPASS_SENS)
             || matches!(*self, Effect::DeHum { depth, .. } if depth <= HUM_BYPASS_DEPTH)
             || matches!(*self, Effect::Leveler { amount, .. } if amount <= LEVELER_BYPASS_AMOUNT)
             || matches!(*self, Effect::Transient { attack, sustain }

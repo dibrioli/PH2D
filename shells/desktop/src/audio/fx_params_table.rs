@@ -14,7 +14,7 @@ use super::fx_params::{FxCommand, FxKind};
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space → modulation, the way a rack is laid out. Each row's `params` points at a
 /// spec array in the sibling [`super::fx_param_specs`].
-pub(crate) static KINDS: [FxKind; 34] = [
+pub(crate) static KINDS: [FxKind; 37] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -136,6 +136,18 @@ pub(crate) static KINDS: [FxKind; 34] = [
                 threshold: v[1],
                 ratio: v[2],
                 release_secs: v[3],
+            })
+        },
+    },
+    // The rack's one restoration tool, next to the other "take the damage out" pair.
+    FxKind {
+        name: "De-Click",
+        params: &DE_CLICK,
+        arms: &[0], // Sensitivity
+        build: |v| {
+            FxCommand::Plain(Effect::DeClick {
+                sensitivity: v[0],
+                width_secs: v[1],
             })
         },
     },
@@ -401,6 +413,30 @@ pub(crate) static KINDS: [FxKind; 34] = [
             FxCommand::Plain(Effect::PitchShift {
                 semitones: v[0],
                 mix: v[1],
+            })
+        },
+    },
+    // The voice group: what the pitch shifter cannot do alone.
+    FxKind {
+        name: "Formant Shift",
+        params: &FORMANT_SHIFT,
+        arms: &[0], // Shift
+        build: |v| {
+            FxCommand::Plain(Effect::FormantShift {
+                semitones: v[0],
+                mix: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Harmonizer",
+        params: &HARMONIZER,
+        arms: &[2], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::Harmonizer {
+                v1_st: v[0],
+                v2_st: v[1],
+                mix: v[2],
             })
         },
     },

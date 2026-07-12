@@ -163,8 +163,71 @@ static WOBBLE: [FStage; 2] = [
     stage("Vibrato", &[ovr("Rate", 5.0), ovr("Depth", 4.0)]),
     stage("Auto-Pan", &[ovr("Rate", 2.0), ovr("Depth", 0.7)]),
 ];
+// The voice chain the W4 plan asked for as a preset rather than an effect: the five
+// filters already exist, so "EQ for a voice" is data, not DSP. Roll off the rumble,
+// scoop the boxiness a close mic adds, lift the presence band the consonants live in,
+// and open the air on top.
+static VOICE_EQ: [FStage; 4] = [
+    stage("High-Pass", &[ovr("Cutoff", 80.0)]),
+    stage(
+        "Peak EQ",
+        &[ovr("Freq", 300.0), ovr("Q", 1.2), ovr("Gain", -4.0)],
+    ),
+    stage(
+        "Peak EQ",
+        &[ovr("Freq", 3_000.0), ovr("Q", 1.0), ovr("Gain", 3.0)],
+    ),
+    stage("High Shelf", &[ovr("Freq", 10_000.0), ovr("Gain", 3.0)]),
+];
+// Breath with no body behind it: cut the chest, exaggerate the air the exciter makes,
+// and squash the dynamics flat so every consonant sits right against the ear.
+static WHISPER: [FStage; 4] = [
+    stage("High-Pass", &[ovr("Cutoff", 250.0)]),
+    stage("Exciter", &[ovr("Freq", 4_000.0), ovr("Amount", 0.9)]),
+    stage("Compress", &[ovr("Threshold", 0.05), ovr("Ratio", 8.0)]),
+    stage("High Shelf", &[ovr("Freq", 9_000.0), ovr("Gain", 8.0)]),
+];
+// The other end of the same axis: everything forward and strained. Hard compression
+// brings the whole take to the front, the 2.5 kHz shout band is where a raised voice
+// actually gets loud, and a little grit is the throat giving out.
+static SHOUT: [FStage; 4] = [
+    stage("Compress", &[ovr("Threshold", 0.06), ovr("Ratio", 8.0)]),
+    stage(
+        "Peak EQ",
+        &[ovr("Freq", 2_500.0), ovr("Q", 1.5), ovr("Gain", 7.0)],
+    ),
+    stage("Distortion", &[ovr("Drive", 0.25), ovr("Tone", 0.6)]),
+    stage("Limiter", &[ovr("Ceiling", -1.0)]),
+];
+// The restoration chain — and the one-click demo of the de-clicker: take out the
+// ticks, then the mains buzz under them, then the sibilance the repair leaves standing.
+static RESTORE: [FStage; 4] = [
+    stage("De-Click", &[ovr("Sensitivity", 0.6), ovr("Width", 0.001)]),
+    stage("De-Hum", &[ovr("Freq", 50.0), ovr("Depth", 0.8)]),
+    stage("De-Esser", &[ovr("Freq", 6_500.0), ovr("Ratio", 3.0)]),
+    stage("Limiter", &[ovr("Ceiling", -1.0)]),
+];
+// The formant shifter's demo, and the thing no pitch shifter can fake: the same
+// performance, at the same pitch, out of a much bigger head. Shift the vocal tract
+// down, add the chest the bigger body would have, and glue it.
+static GIANT: [FStage; 3] = [
+    stage("Formant Shift", &[ovr("Shift", -7.0), ovr("Mix", 1.0)]),
+    stage("Low Shelf", &[ovr("Freq", 200.0), ovr("Gain", 4.0)]),
+    stage("Compress", &[ovr("Threshold", 0.2), ovr("Ratio", 3.0)]),
+];
+// The harmonizer's demo: one take, three notes, one room.
+static CHOIR: [FStage; 2] = [
+    stage(
+        "Harmonizer",
+        &[ovr("Voice 1", 4.0), ovr("Voice 2", 7.0), ovr("Mix", 0.6)],
+    ),
+    stage(
+        "Reverb",
+        &[ovr("Room", 0.7), ovr("Mix", 0.3), ovr("Tail", 2.5)],
+    ),
+];
 
-static FACTORY: [Preset; 15] = [
+static FACTORY: [Preset; 21] = [
     Preset {
         name: "Voice Cleanup",
         stages: &VOICE_CLEANUP,
@@ -224,6 +287,30 @@ static FACTORY: [Preset; 15] = [
     Preset {
         name: "Wobble",
         stages: &WOBBLE,
+    },
+    Preset {
+        name: "Voice EQ",
+        stages: &VOICE_EQ,
+    },
+    Preset {
+        name: "Whisper",
+        stages: &WHISPER,
+    },
+    Preset {
+        name: "Shout",
+        stages: &SHOUT,
+    },
+    Preset {
+        name: "Restore",
+        stages: &RESTORE,
+    },
+    Preset {
+        name: "Giant",
+        stages: &GIANT,
+    },
+    Preset {
+        name: "Choir",
+        stages: &CHOIR,
     },
 ];
 

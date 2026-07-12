@@ -12,7 +12,7 @@ fn stereo(v: Vec<f32>) -> SampleData {
 /// Every non-neutral `Effect`, for the surface-level invariants below. Keep in
 /// sync with the enum — a variant missing here is a variant nobody proved
 /// length-preserving.
-fn tuned_effects() -> [Effect; 16] {
+fn tuned_effects() -> [Effect; 19] {
     [
         Effect::LowPass {
             cutoff: 3_000.0,
@@ -85,11 +85,27 @@ fn tuned_effects() -> [Effect; 16] {
             rate: 5.0,
             depth: 0.8,
         },
+        // The LPC/WSOLA end of the rack: block-based, so length preservation is a
+        // real claim rather than a free one (overlap-add and a resample-then-stretch
+        // both have to land back on exactly the frames they started with).
+        Effect::FormantShift {
+            semitones: -5.0,
+            mix: 1.0,
+        },
+        Effect::Harmonizer {
+            v1_st: 4.0,
+            v2_st: 7.0,
+            mix: 0.6,
+        },
+        Effect::DeClick {
+            sensitivity: 0.8,
+            width_secs: 0.001,
+        },
     ]
 }
 
 /// Every neutral `Effect`. Keep in sync with `is_bypass`.
-fn neutral_effects() -> [Effect; 16] {
+fn neutral_effects() -> [Effect; 19] {
     [
         Effect::LowPass {
             cutoff: 20_000.0,
@@ -161,6 +177,19 @@ fn neutral_effects() -> [Effect; 16] {
         Effect::Tremolo {
             rate: 5.0,
             depth: 0.0,
+        },
+        Effect::FormantShift {
+            semitones: 0.0,
+            mix: 1.0,
+        },
+        Effect::Harmonizer {
+            v1_st: 4.0,
+            v2_st: 7.0,
+            mix: 0.0,
+        },
+        Effect::DeClick {
+            sensitivity: 0.0,
+            width_secs: 0.001,
         },
     ]
 }

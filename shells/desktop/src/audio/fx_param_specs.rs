@@ -206,3 +206,29 @@ pub(super) static PITCH_SHIFT: [FxParamSpec; 2] = [
     spec("Semitones", -12.0, 12.0, false, 0.0, "st", false),
     spec("Mix", 0.0, 1.0, false, 1.0, "", false),
 ];
+// Same shape as Pitch Shift, and deliberately so — the two are complements (one moves
+// the pitch and drags the formants along, the other moves the formants and leaves the
+// pitch). Shift is the arm; neutral at 0, which is where an unwarped envelope driven by
+// its own residual reconstructs the input.
+pub(super) static FORMANT_SHIFT: [FxParamSpec; 2] = [
+    spec("Shift", -12.0, 12.0, false, 0.0, "st", false),
+    spec("Mix", 0.0, 1.0, false, 1.0, "", false),
+];
+// Mix is the arm (0 = dry = pass-through). The two voices default to a third and a
+// fifth: turn Mix up and a major triad is what comes out, which is the thing to hear
+// first. Linear, so an interval of 0 lands exactly at slider centre.
+pub(super) static HARMONIZER: [FxParamSpec; 3] = [
+    spec("Voice 1", -12.0, 12.0, false, 4.0, "st", false),
+    spec("Voice 2", -12.0, 12.0, false, 7.0, "st", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
+// Sensitivity is the arm: at 0 the detector finds nothing, so the repairer repairs
+// nothing. A restoration tool must be ASKED for — "very insensitive" is not the same
+// promise as "off", and the rack's neutral point means off.
+//
+// Width is the longest run it will touch, in seconds (a click is sub-millisecond; past
+// a few, a "click" is the signal). Log, like every other time parameter.
+pub(super) static DE_CLICK: [FxParamSpec; 2] = [
+    spec("Sensitivity", 0.0, 1.0, false, 0.0, "", false),
+    spec("Width", 0.0001, 0.003, true, 0.001, "s", false),
+];

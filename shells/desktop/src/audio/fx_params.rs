@@ -275,6 +275,7 @@ mod tests {
                 "Gate",
                 "De-Esser",
                 "De-Plosive",
+                "De-Click",
                 "Limiter",
                 "Leveler",
                 "Transient",
@@ -299,6 +300,8 @@ mod tests {
                 "Doubler",
                 "Ring Mod",
                 "Pitch Shift",
+                "Formant Shift",
+                "Harmonizer",
             ]
         );
         assert_eq!(all_default_norms().len(), KINDS.len());
@@ -380,14 +383,24 @@ mod tests {
     /// (`TAU * hz * t`, not `hz * t` — the old version's "220 Hz" was 35 Hz worth of
     /// radians over the whole buffer, so the signal never left a narrow band around
     /// its DC offset and a gate had nothing to close on.)
+    ///
+    /// **And it carries a click** — a few frames of full-scale garbage, mid-buffer.
+    /// A *repair* tool only leaves a mark on damage, so undamaged audio cannot test
+    /// one: without this, `turning_an_arming_knob_wakes_the_effect_up` would be asking
+    /// the de-clicker to prove itself on a signal with nothing wrong with it, and the
+    /// only way to pass would be to smear audio that was never broken — the exact bug
+    /// its own `the_undamaged_audio_survives_untouched` forbids.
     fn probe() -> SampleData {
         let tau = std::f32::consts::TAU;
-        let samples: Vec<f32> = (0..4_800)
+        let mut samples: Vec<f32> = (0..4_800)
             .map(|i| {
                 let t = i as f32 / 48_000.0;
                 0.4 * (tau * 220.0 * t).sin() + 0.3 * (tau * 9_000.0 * t).sin() + 0.05
             })
             .collect();
+        for (n, s) in samples.iter_mut().skip(2_400).take(6).enumerate() {
+            *s = if n % 2 == 0 { 0.95 } else { -0.95 };
+        }
         SampleData::from_interleaved(samples, AudioFormat::stereo(48_000))
     }
 

@@ -5,40 +5,23 @@
 //! dados…), e é por isso que eles valem como formas próprias em vez de "um polígono que
 //! você deforma": o leitor do diagrama reconhece a silhueta.
 //!
+//! **Autorado no espaço unitário** ([`crate::space`]): `v = 0` é o TOPO, como na
+//! referência. A inversão para o mundo (Y-para-cima) acontece uma vez, em [`Unit::p`] — é
+//! o que impede o paralelogramo de nascer inclinado para o lado errado e o cilindro com a
+//! barriga em cima, que foi o que aconteceu quando estes símbolos eram escritos direto em
+//! coordenadas de mundo.
+//!
 //! Todos cabem na caixa do gesto e usam **frações** dela nos parâmetros, para guardarem a
 //! proporção ao redimensionar.
 
-use crate::{Contour, VecPath, VecVertex};
-
-/// Contorno fechado de quinas a partir de pontos crus.
-fn corners(pts: Vec<[f64; 2]>) -> VecPath {
-    VecPath {
-        verts: pts.into_iter().map(VecVertex::corner).collect(),
-        closed: true,
-        ..VecPath::default()
-    }
-}
-
-/// Centro + semi-eixos da caixa do gesto.
-fn box_of(a: [f64; 2], b: [f64; 2]) -> (f64, f64, f64, f64) {
-    (
-        (a[0] + b[0]) * 0.5,
-        (a[1] + b[1]) * 0.5,
-        (b[0] - a[0]).abs() * 0.5,
-        (b[1] - a[1]).abs() * 0.5,
-    )
-}
+use crate::VecPath;
+use crate::space::{Unit, Uv, add_sub, closed, open, poly, straighten};
 
 /// **Decisão** — o losango. Quatro pontos nos meios das bordas.
 #[must_use]
 pub fn diamond(a: [f64; 2], b: [f64; 2]) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    corners(vec![
-        [cx, cy - hh],
-        [cx + hw, cy],
-        [cx, cy + hh],
-        [cx - hw, cy],
-    ])
+    let u = Unit::of(a, b);
+    poly(&u, &[(0.5, 0.0), (1.0, 0.5), (0.5, 1.0), (0.0, 0.5)])
 }
 
 /// **Início / fim** — a pílula (stadium): um retângulo cujas pontas são semicírculos.
@@ -46,270 +29,219 @@ pub fn diamond(a: [f64; 2], b: [f64; 2]) -> VecPath {
 /// silhueta é estável em qualquer proporção (é o que a torna reconhecível).
 #[must_use]
 pub fn pill(a: [f64; 2], b: [f64; 2]) -> VecPath {
-    let (_, _, hw, hh) = box_of(a, b);
+    let (hw, hh) = ((b[0] - a[0]).abs() * 0.5, (b[1] - a[1]).abs() * 0.5);
     crate::rounded_rect(a, b, hw.min(hh))
 }
 
-/// **Dados / entrada-saída** — o paralelogramo. `slant` = quanto a base desliza (fração
+/// **Dados / entrada-saída** — o paralelogramo, com o topo deslocado para a DIREITA
+/// (a inclinação canônica do símbolo de dados). `slant` = quanto a base desliza (fração
 /// da largura).
 #[must_use]
 pub fn parallelogram(a: [f64; 2], b: [f64; 2], slant: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let s = 2.0 * hw * slant.clamp(0.0, 0.9);
-    corners(vec![
-        [cx - hw + s, cy - hh],
-        [cx + hw, cy - hh],
-        [cx + hw - s, cy + hh],
-        [cx - hw, cy + hh],
-    ])
+    let u = Unit::of(a, b);
+    let s = slant.clamp(0.0, 0.9);
+    poly(&u, &[(s, 0.0), (1.0, 0.0), (1.0 - s, 1.0), (0.0, 1.0)])
 }
 
-/// **Trapézio** (operação manual, quando invertido). `slant` = o recuo do topo.
+/// **Trapézio** — topo mais estreito (o símbolo de "operação manual"). `flip` troca qual
+/// base é a curta, o que no vocabulário ANSI vira "entrada manual".
 #[must_use]
 pub fn trapezoid(a: [f64; 2], b: [f64; 2], slant: f64, flip: bool) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let s = 2.0 * hw * slant.clamp(0.0, 0.49);
-    // `flip` troca qual base é a curta — é a diferença entre "entrada manual" e
-    // "operação manual" no vocabulário ANSI.
-    let (top_in, bot_in) = if flip { (0.0, s) } else { (s, 0.0) };
-    corners(vec![
-        [cx - hw + top_in, cy - hh],
-        [cx + hw - top_in, cy - hh],
-        [cx + hw - bot_in, cy + hh],
-        [cx - hw + bot_in, cy + hh],
-    ])
+    let u = Unit::of(a, b);
+    let s = slant.clamp(0.0, 0.49);
+    let (top, bot) = if flip { (0.0, s) } else { (s, 0.0) };
+    poly(
+        &u,
+        &[
+            (top, 0.0),
+            (1.0 - top, 0.0),
+            (1.0 - bot, 1.0),
+            (bot, 1.0),
+        ],
+    )
 }
 
 /// **Hexágono achatado** — "preparação" no fluxograma. `cut` = o recuo das pontas.
 #[must_use]
 pub fn hexagon_flat(a: [f64; 2], b: [f64; 2], cut: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let c = 2.0 * hw * cut.clamp(0.02, 0.49);
-    corners(vec![
-        [cx - hw + c, cy - hh],
-        [cx + hw - c, cy - hh],
-        [cx + hw, cy],
-        [cx + hw - c, cy + hh],
-        [cx - hw + c, cy + hh],
-        [cx - hw, cy],
-    ])
+    let u = Unit::of(a, b);
+    let c = cut.clamp(0.02, 0.49);
+    poly(
+        &u,
+        &[
+            (c, 0.0),
+            (1.0 - c, 0.0),
+            (1.0, 0.5),
+            (1.0 - c, 1.0),
+            (c, 1.0),
+            (0.0, 0.5),
+        ],
+    )
 }
 
-/// **Base de dados** — o cilindro: um retângulo com a elipse do topo e a barriga da base.
-/// `lip` = a altura da elipse (fração da altura).
+/// **Base de dados** — o cilindro. A silhueta é: meia-elipse de TRÁS no topo → lado
+/// direito → meia-elipse da FRENTE na base → lado esquerdo; e a tampa aparece porque a
+/// meia-elipse da FRENTE do topo entra como contorno próprio.
+///
+/// `lip` = a altura CHEIA da elipse (fração da altura da caixa). Clampada em `0.45`: com
+/// meia elipse maior que isso a tampa encostaria na barriga e o cilindro deixaria de
+/// existir.
 #[must_use]
 pub fn cylinder(a: [f64; 2], b: [f64; 2], lip: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let e = hh * lip.clamp(0.05, 0.9); // semi-altura da elipse
-    let (y_top, y_bot) = (cy - hh + e, cy + hh - e);
-    let k = crate::corners::KAPPA;
-    let v = |anchor: [f64; 2], i: [f64; 2], o: [f64; 2]| VecVertex {
-        anchor,
-        in_handle: i,
-        out_handle: o,
-        kind: crate::VertexKind::Corner,
-    };
-    // Contorno: meia-elipse do topo → lateral direita → elipse INTEIRA da base (a
-    // barriga) → lateral esquerda. O topo mostra a "tampa" e a base a curvatura.
-    corners_with(vec![
-        // topo esquerda
-        v([cx - hw, y_top], [cx - hw, y_top], [cx - hw, y_top - e * k]),
-        v(
-            [cx, y_top - e],
-            [cx - hw * k, y_top - e],
-            [cx + hw * k, y_top - e],
-        ),
-        v([cx + hw, y_top], [cx + hw, y_top - e * k], [cx + hw, y_top]),
-        // lateral direita → base
-        v([cx + hw, y_bot], [cx + hw, y_bot], [cx + hw, y_bot + e * k]),
-        v(
-            [cx, y_bot + e],
-            [cx + hw * k, y_bot + e],
-            [cx - hw * k, y_bot + e],
-        ),
-        v([cx - hw, y_bot], [cx - hw, y_bot + e * k], [cx - hw, y_bot]),
-    ])
+    let u = Unit::of(a, b);
+    let e = lip.clamp(0.05, 0.45) * 0.5; // semi-altura da elipse, em unidades de v
+    let (top, bot): (Uv, Uv) = ((0.5, e), (0.5, 1.0 - e));
+
+    // De trás no topo: da esquerda (180°) até a direita (360°), passando pelo topo (270°).
+    let mut verts = u.arc(top, 0.5, e, 180.0, 180.0);
+    let seam = verts.len() - 1;
+    // Da frente na base: da direita (0°) até a esquerda (180°), passando pela base (90°).
+    verts.extend(u.arc(bot, 0.5, e, 0.0, 180.0));
+    straighten(&mut verts, seam); // o lado direito é RETO, não a continuação do arco
+
+    let mut p = closed(verts);
+    // A tampa: a meia-elipse da FRENTE do topo. É ela que faz o cilindro parecer um
+    // cilindro (sem ela, a silhueta é um retângulo de cantos curvos).
+    add_sub(&mut p, u.arc(top, 0.5, e, 0.0, 180.0), false);
+    p
 }
 
-/// **Documento** — retângulo com a base ONDULADA (o papel). `wave` = a amplitude da onda
-/// (fração da altura).
+/// **Documento** — retângulo com a base ONDULADA (a folha de papel). A onda é **uma
+/// cúbica só**, com a forma do preset `flowChartDocument` do ECMA-376 (a especificação
+/// pública do OOXML) renormalizada para a caixa unitária: a direita sai reta, a curva
+/// mergulha e a esquerda termina mais baixa — a assimetria é o que faz parecer papel, e
+/// não um "til".
+///
+/// `wave` = a altura da faixa que a onda ocupa (fração da altura). O pico da cúbica
+/// encosta EXATAMENTE na base da caixa (a janela `WAVE_PEAK − WAVE_R` é o máximo real da
+/// curva, não o do handle) — é o que mantém a bbox honesta.
 #[must_use]
 pub fn document(a: [f64; 2], b: [f64; 2], wave: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let w = hh * wave.clamp(0.02, 0.5);
-    let y_base = cy + hh - w;
-    let v = |anchor: [f64; 2], i: [f64; 2], o: [f64; 2]| VecVertex {
-        anchor,
-        in_handle: i,
-        out_handle: o,
-        kind: crate::VertexKind::Corner,
-    };
-    // A onda é uma cúbica que desce e sobe: sai da esquerda, mergulha, e volta pela
-    // direita — a silhueta clássica de "folha de papel".
-    corners_with(vec![
-        v([cx - hw, cy - hh], [cx - hw, cy - hh], [cx - hw, cy - hh]),
-        v([cx + hw, cy - hh], [cx + hw, cy - hh], [cx + hw, cy - hh]),
-        v(
-            [cx + hw, y_base],
-            [cx + hw, y_base],
-            [cx + hw * 0.45, y_base + 2.0 * w],
-        ),
-        v(
-            [cx - hw, y_base + w],
-            [cx - hw * 0.45, y_base - w],
-            [cx - hw, y_base + w],
-        ),
-    ])
+    /// Onde a onda começa (direita), no espaço do preset.
+    const WAVE_R: f64 = 0.802;
+    /// Onde ela termina (esquerda) — mais baixa que a direita.
+    const WAVE_L: f64 = 0.9339;
+    /// O 2º controle da cúbica; passa da base do preset (é handle, não ponto da curva).
+    const WAVE_C2: f64 = 1.1075;
+    /// O MÁXIMO real da cúbica (avaliado, não o do handle) — a janela de normalização.
+    const WAVE_PEAK: f64 = 0.986_85;
+
+    let u = Unit::of(a, b);
+    let w = wave.clamp(0.05, 0.4);
+    let span = WAVE_PEAK - WAVE_R;
+    let f = |y: f64| 1.0 - w + w * (y - WAVE_R) / span;
+
+    let mut verts = vec![
+        u.corner((0.0, 0.0)),
+        u.corner((1.0, 0.0)),
+        // A onda: sai da direita com tangente horizontal e mergulha.
+        u.smooth((1.0, f(WAVE_R)), (1.0, f(WAVE_R)), (0.5, f(WAVE_R))),
+        u.smooth((0.0, f(WAVE_L)), (0.5, f(WAVE_C2)), (0.0, f(WAVE_L))),
+    ];
+    straighten(&mut verts, 0); // topo reto
+    closed(verts)
 }
 
-/// **Delay** — o "D": retângulo com o lado direito em meia-elipse.
+/// **Delay** — o "D": retângulo com o lado direito em meia-elipse. A tampa é CIRCULAR no
+/// mundo (raio = metade da altura), não elíptica — por isso o raio em `u` carrega o
+/// `aspect` da caixa; e é clampada em meia caixa, senão numa caixa alta a tampa engoliria
+/// o retângulo inteiro.
 #[must_use]
 pub fn delay(a: [f64; 2], b: [f64; 2]) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let k = crate::corners::KAPPA;
-    let r = hw.min(hh); // o arco é um semicírculo do lado direito
-    let x_arc = cx + hw - r;
-    let v = |anchor: [f64; 2], i: [f64; 2], o: [f64; 2]| VecVertex {
-        anchor,
-        in_handle: i,
-        out_handle: o,
-        kind: crate::VertexKind::Corner,
-    };
-    corners_with(vec![
-        v([cx - hw, cy - hh], [cx - hw, cy - hh], [cx - hw, cy - hh]),
-        v([x_arc, cy - hh], [x_arc, cy - hh], [x_arc + r * k, cy - hh]),
-        v(
-            [cx + hw, cy],
-            [cx + hw, cy - hh * k],
-            [cx + hw, cy + hh * k],
-        ),
-        v([x_arc, cy + hh], [x_arc + r * k, cy + hh], [x_arc, cy + hh]),
-        v([cx - hw, cy + hh], [cx - hw, cy + hh], [cx - hw, cy + hh]),
-    ])
+    let u = Unit::of(a, b);
+    let ru = (0.5 * u.aspect()).min(0.5);
+    let x = 1.0 - ru;
+
+    // Do topo (270°) até a base (90°), passando pela direita (0°).
+    let mut verts = vec![u.corner((0.0, 0.0))];
+    let seam = verts.len() - 1;
+    verts.extend(u.arc((x, 0.5), ru, 0.5, -90.0, 180.0));
+    verts.push(u.corner((0.0, 1.0)));
+    straighten(&mut verts, seam); // o topo é reto até onde a tampa começa
+    let last = verts.len() - 2;
+    straighten(&mut verts, last); // e a base também
+    closed(verts)
 }
 
-/// **Display** — a "tela": lado esquerdo em bico, direito arredondado.
+/// **Display** — a "tela": bico à esquerda, lado direito arredondado.
 #[must_use]
 pub fn display(a: [f64; 2], b: [f64; 2], nose: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let n = 2.0 * hw * nose.clamp(0.02, 0.45);
-    let k = crate::corners::KAPPA;
-    let v = |anchor: [f64; 2], i: [f64; 2], o: [f64; 2]| VecVertex {
-        anchor,
-        in_handle: i,
-        out_handle: o,
-        kind: crate::VertexKind::Corner,
-    };
-    let x_arc = cx + hw - n;
-    corners_with(vec![
-        v(
-            [cx - hw + n, cy - hh],
-            [cx - hw + n, cy - hh],
-            [cx - hw + n, cy - hh],
-        ),
-        v([x_arc, cy - hh], [x_arc, cy - hh], [x_arc + n * k, cy - hh]),
-        v(
-            [cx + hw, cy],
-            [cx + hw, cy - hh * k],
-            [cx + hw, cy + hh * k],
-        ),
-        v([x_arc, cy + hh], [x_arc + n * k, cy + hh], [x_arc, cy + hh]),
-        v(
-            [cx - hw + n, cy + hh],
-            [cx - hw + n, cy + hh],
-            [cx - hw + n, cy + hh],
-        ),
-        v([cx - hw, cy], [cx - hw, cy], [cx - hw, cy]),
-    ])
+    let u = Unit::of(a, b);
+    let n = nose.clamp(0.02, 0.45);
+    let x = 1.0 - n;
+
+    let mut verts = vec![u.corner((n, 0.0))];
+    let seam = verts.len() - 1;
+    verts.extend(u.arc((x, 0.5), n, 0.5, -90.0, 180.0));
+    verts.push(u.corner((n, 1.0)));
+    verts.push(u.corner((0.0, 0.5))); // o bico
+    straighten(&mut verts, seam);
+    let last = verts.len() - 3;
+    straighten(&mut verts, last);
+    closed(verts)
 }
 
 /// **Processo predefinido** — retângulo com duas barras verticais (a "sub-rotina").
-/// Compound: as barras são o mesmo contorno externo + duas linhas internas seriam furos,
-/// então elas entram como CONTORNOS de furo (o que dá o desenho certo em fill e em traço).
+/// As barras entram como contornos ABERTOS próprios: assim o símbolo desenha certo tanto
+/// preenchido quanto em traço.
 #[must_use]
 pub fn predefined_process(a: [f64; 2], b: [f64; 2], bar: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let d = 2.0 * hw * bar.clamp(0.02, 0.4);
-    let mut p = corners(vec![
-        [cx - hw, cy - hh],
-        [cx + hw, cy - hh],
-        [cx + hw, cy + hh],
-        [cx - hw, cy + hh],
-    ]);
-    for x in [cx - hw + d, cx + hw - d] {
-        p.subpaths.push(Contour {
-            verts: vec![
-                VecVertex::corner([x, cy - hh]),
-                VecVertex::corner([x, cy + hh]),
-            ],
-            closed: false,
-        });
+    let u = Unit::of(a, b);
+    let d = bar.clamp(0.02, 0.4);
+    let mut p = poly(&u, &[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+    for x in [d, 1.0 - d] {
+        add_sub(&mut p, vec![u.corner((x, 0.0)), u.corner((x, 1.0))], false);
     }
     p
 }
 
-/// **Conector fora-de-página** — o pentágono apontando para baixo. `tip` = a profundidade
+/// **Conector fora-de-página** — o pentágono com o bico para BAIXO. `tip` = a profundidade
 /// do bico (fração da altura).
 #[must_use]
 pub fn offpage(a: [f64; 2], b: [f64; 2], tip: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let t = 2.0 * hh * tip.clamp(0.05, 0.9);
-    corners(vec![
-        [cx - hw, cy - hh],
-        [cx + hw, cy - hh],
-        [cx + hw, cy + hh - t],
-        [cx, cy + hh],
-        [cx - hw, cy + hh - t],
-    ])
+    let u = Unit::of(a, b);
+    let t = tip.clamp(0.05, 0.9);
+    poly(
+        &u,
+        &[
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (1.0, 1.0 - t),
+            (0.5, 1.0),
+            (0.0, 1.0 - t),
+        ],
+    )
 }
 
-/// **Junção / somatório** — o círculo com uma cruz (ou um X, girando 45°). Compound: o
-/// círculo + as duas linhas.
+/// **Junção / somatório** — o círculo com uma cruz. Compound: o círculo + as duas linhas.
 #[must_use]
 pub fn junction(a: [f64; 2], b: [f64; 2]) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let mut p = crate::ellipse([cx, cy], hw, hh);
-    p.subpaths.push(Contour {
-        verts: vec![
-            VecVertex::corner([cx - hw, cy]),
-            VecVertex::corner([cx + hw, cy]),
-        ],
-        closed: false,
-    });
-    p.subpaths.push(Contour {
-        verts: vec![
-            VecVertex::corner([cx, cy - hh]),
-            VecVertex::corner([cx, cy + hh]),
-        ],
-        closed: false,
-    });
+    let u = Unit::of(a, b);
+    let mut p = closed(u.ellipse((0.5, 0.5), 0.5, 0.5));
+    add_sub(
+        &mut p,
+        vec![u.corner((0.0, 0.5)), u.corner((1.0, 0.5))],
+        false,
+    );
+    add_sub(
+        &mut p,
+        vec![u.corner((0.5, 0.0)), u.corner((0.5, 1.0))],
+        false,
+    );
     p
 }
 
 /// **Nota / anotação** — o colchete: um "[" que abraça o conteúdo (ABERTO, é um traço).
 #[must_use]
 pub fn note_bracket(a: [f64; 2], b: [f64; 2], lip: f64) -> VecPath {
-    let (cx, cy, hw, hh) = box_of(a, b);
-    let l = 2.0 * hw * lip.clamp(0.05, 1.0);
-    VecPath {
-        verts: vec![
-            VecVertex::corner([cx - hw + l, cy - hh]),
-            VecVertex::corner([cx - hw, cy - hh]),
-            VecVertex::corner([cx - hw, cy + hh]),
-            VecVertex::corner([cx - hw + l, cy + hh]),
-        ],
-        closed: false,
-        ..VecPath::default()
-    }
-}
-
-/// Contorno fechado a partir de vértices já com handles.
-fn corners_with(verts: Vec<VecVertex>) -> VecPath {
-    VecPath {
-        verts,
-        closed: true,
-        ..VecPath::default()
-    }
+    let u = Unit::of(a, b);
+    let l = lip.clamp(0.05, 1.0);
+    open(vec![
+        u.corner((l, 0.0)),
+        u.corner((0.0, 0.0)),
+        u.corner((0.0, 1.0)),
+        u.corner((l, 1.0)),
+    ])
 }
 
 #[cfg(test)]
@@ -329,8 +261,8 @@ mod tests {
             ("parallelogram", parallelogram(A, B, 0.2)),
             ("trapezoid", trapezoid(A, B, 0.2, false)),
             ("hexagon", hexagon_flat(A, B, 0.2)),
-            ("cylinder", cylinder(A, B, 0.2)),
-            ("document", document(A, B, 0.15)),
+            ("cylinder", cylinder(A, B, 0.3)),
+            ("document", document(A, B, 0.18)),
             ("delay", delay(A, B)),
             ("display", display(A, B, 0.2)),
             ("predefined", predefined_process(A, B, 0.12)),
@@ -353,12 +285,100 @@ mod tests {
         }
     }
 
+    /// **A orientação, executável.** Estas quatro asserções são a definição de "de pé" —
+    /// cada uma delas caiu de verdade quando os símbolos eram autorados em coordenadas de
+    /// mundo (tudo nascia espelhado na vertical). No mundo Y-para-cima, `y` maior é mais
+    /// ALTO.
+    #[test]
+    fn the_asymmetric_flow_symbols_are_right_side_up() {
+        // O bico do conector fora-de-página aponta para BAIXO.
+        let off = offpage(A, B, 0.3);
+        let tip = off
+            .verts
+            .iter()
+            .map(|v| v.anchor[1])
+            .fold(f64::MAX, f64::min);
+        let tip_x = off
+            .verts
+            .iter()
+            .find(|v| (v.anchor[1] - tip).abs() < 1e-9)
+            .expect("o bico existe")
+            .anchor[0];
+        assert!(tip_x.abs() < 1e-9, "o bico e o ponto mais BAIXO, no meio");
+
+        // O trapézio (operação manual) tem o TOPO mais curto que a base.
+        let tz = trapezoid(A, B, 0.25, false);
+        let width_at = |up: bool| {
+            let ys: Vec<&crate::VecVertex> = tz
+                .verts
+                .iter()
+                .filter(|v| (v.anchor[1] > 0.0) == up)
+                .collect();
+            let lo = ys.iter().map(|v| v.anchor[0]).fold(f64::MAX, f64::min);
+            let hi = ys.iter().map(|v| v.anchor[0]).fold(f64::MIN, f64::max);
+            hi - lo
+        };
+        assert!(
+            width_at(true) < width_at(false),
+            "o topo do trapezio e o lado CURTO: {} vs {}",
+            width_at(true),
+            width_at(false)
+        );
+
+        // O cilindro tem a barriga EMBAIXO: o ponto mais baixo do contorno principal fica
+        // no meio (a meia-elipse da frente), não numa quina.
+        let cy = cylinder(A, B, 0.3);
+        let low = cy
+            .verts
+            .iter()
+            .min_by(|p, q| p.anchor[1].total_cmp(&q.anchor[1]))
+            .expect("tem vertices");
+        assert!(
+            low.anchor[0].abs() < 1e-6,
+            "a barriga do cilindro e embaixo, no meio: {:?}",
+            low.anchor
+        );
+
+        // A onda do documento fica na BASE: o ponto mais baixo não é uma das quinas de
+        // cima, e o topo é reto (dois vértices na altura máxima).
+        let doc = document(A, B, 0.18);
+        let top_count = doc
+            .verts
+            .iter()
+            .filter(|v| (v.anchor[1] - 1.0).abs() < 1e-9)
+            .count();
+        assert_eq!(top_count, 2, "o topo do documento e RETO (duas quinas)");
+    }
+
+    /// O paralelogramo de dados inclina para a DIREITA: o topo é deslocado no sentido
+    /// positivo de x em relação à base.
+    #[test]
+    fn the_data_parallelogram_leans_right() {
+        let p = parallelogram(A, B, 0.25);
+        let top_left = p
+            .verts
+            .iter()
+            .filter(|v| v.anchor[1] > 0.0)
+            .map(|v| v.anchor[0])
+            .fold(f64::MAX, f64::min);
+        let bot_left = p
+            .verts
+            .iter()
+            .filter(|v| v.anchor[1] < 0.0)
+            .map(|v| v.anchor[0])
+            .fold(f64::MAX, f64::min);
+        assert!(
+            top_left > bot_left,
+            "o topo tem de estar deslocado para a direita: {top_left} vs {bot_left}"
+        );
+    }
+
     /// O losango toca os QUATRO meios das bordas — é o que o torna um losango e não um
     /// quadrado girado (que não caberia na caixa).
     #[test]
     fn the_diamond_touches_the_four_edge_midpoints() {
         let p = diamond(A, B);
-        let want = [[0.0, -1.0], [2.0, 0.0], [0.0, 1.0], [-2.0, 0.0]];
+        let want = [[0.0, 1.0], [2.0, 0.0], [0.0, -1.0], [-2.0, 0.0]];
         for (v, w) in p.verts.iter().zip(want) {
             assert_eq!(v.anchor, w);
         }
@@ -369,21 +389,22 @@ mod tests {
     #[test]
     fn the_pill_radius_is_always_half_the_short_side() {
         let wide = pill([-4.0, -1.0], [4.0, 1.0]);
-        // Com raio = 1 (metade da altura), as âncoras verticais ficam nos extremos.
         let ys: Vec<f64> = wide.verts.iter().map(|v| v.anchor[1]).collect();
         assert!(ys.iter().any(|y| (*y - 1.0).abs() < 1e-9));
         assert!(ys.iter().any(|y| (*y + 1.0).abs() < 1e-9));
     }
 
     /// O processo predefinido e a junção são COMPOUND: as barras / a cruz são contornos
-    /// próprios. Sem isso o símbolo seria um retângulo liso e perderia o significado.
+    /// próprios. Sem isso o símbolo seria um retângulo liso e perderia o significado. O
+    /// cilindro carrega a tampa pelo mesmo mecanismo.
     #[test]
-    fn predefined_and_junction_carry_their_inner_strokes() {
+    fn compound_symbols_carry_their_inner_strokes() {
         assert_eq!(
             predefined_process(A, B, 0.12).subpaths.len(),
             2,
             "duas barras"
         );
         assert_eq!(junction(A, B).subpaths.len(), 2, "a cruz");
+        assert_eq!(cylinder(A, B, 0.3).subpaths.len(), 1, "a tampa");
     }
 }

@@ -282,7 +282,13 @@ impl ShapeKind {
             ShapeKind::Cross => v[0] = 0.35,
             ShapeKind::Check => v[0] = 0.25,
             ShapeKind::Banner => v[0] = 0.15,
-            ShapeKind::IsoCube | ShapeKind::IsoPyramid => v[0] = 0.3,
+            // `rise` = a altura do vértice interno (inclina os eixos da projeção) e
+            // `skew` = a repartição largura/profundidade. Em 0,5/0,5 numa caixa quadrada
+            // sai o dimétrico 2:1 clássico.
+            ShapeKind::IsoCube | ShapeKind::IsoPyramid => {
+                v[0] = 0.5;
+                v[1] = 0.5;
+            }
             ShapeKind::IsoCone => v[0] = 0.2,
             ShapeKind::Rectangle
             | ShapeKind::Line
@@ -384,9 +390,9 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::Cross => crate::cross(a, b, f(v, 0)),
         ShapeKind::Check => crate::check(a, b, f(v, 0)),
         ShapeKind::Banner => crate::banner(a, b, f(v, 0)),
-        ShapeKind::IsoCube => crate::iso_cube(a, b, f(v, 0)),
+        ShapeKind::IsoCube => crate::iso_cube(a, b, f(v, 0), f(v, 1)),
         ShapeKind::IsoCone => crate::iso_cone(a, b, f(v, 0)),
-        ShapeKind::IsoPyramid => crate::iso_pyramid(a, b, f(v, 0)),
+        ShapeKind::IsoPyramid => crate::iso_pyramid(a, b, f(v, 0), f(v, 1)),
     }
 }
 

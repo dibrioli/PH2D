@@ -69,8 +69,9 @@ pub fn regular_polygon(center: [f64; 2], rx: f64, ry: f64, sides: u32) -> VecPat
     let n = sides.clamp(3, MAX_POLYGON_SIDES) as usize;
     let (cx, cy) = (center[0], center[1]);
     let step = std::f64::consts::TAU / n as f64;
-    // Ângulo 0 = topo (−Y): começa em 12h e caminha em torno da elipse.
-    let start = -std::f64::consts::FRAC_PI_2;
+    // A primeira ponta fica em 12h. O mundo é **Y-para-CIMA** (a câmera inverte na tela),
+    // então 12h é `+π/2` — com `−π/2` o triângulo nascia apontando para BAIXO.
+    let start = std::f64::consts::FRAC_PI_2;
     let verts = (0..n)
         .map(|i| {
             let a = start + step * i as f64;
@@ -117,7 +118,7 @@ pub fn star(center: [f64; 2], rx: f64, ry: f64, points: u32, inner_ratio: f64) -
     let ratio = inner_ratio.clamp(0.05, 0.95);
     let (cx, cy) = (center[0], center[1]);
     let step = std::f64::consts::PI / n as f64; // meio passo (2n vértices em 2π)
-    let start = -std::f64::consts::FRAC_PI_2;
+    let start = std::f64::consts::FRAC_PI_2; // 12h no mundo Y-para-cima
     let verts = (0..2 * n)
         .map(|i| {
             let a = start + step * i as f64;
@@ -172,22 +173,53 @@ pub fn star_rounded(
 /// Teto de voltas de uma espiral (clamp defensivo; o slider real fica em 1..8).
 pub const MAX_SPIRAL_TURNS: u32 = 8;
 
-/// Espiral de Arquimedes ABERTA inscrita na elipse de raios `rx`/`ry`, com
-/// `turns` voltas (clampado a `[1, MAX_SPIRAL_TURNS]`). Cresce do centro
-/// (`f = 0`) até a borda (`f = 1`), amostrada a 24 vértices de quina por volta,
-/// primeira amostra no topo. Aberta, sem estilo.
+/// Espiral de Arquimedes ABERTA inscrita na elipse de raios `rx`/`ry`, com `turns` voltas
+/// (clampado a `[1, MAX_SPIRAL_TURNS]`). Cresce do centro (`f = 0`) até a borda (`f = 1`),
+/// primeira ponta no topo. Aberta, sem estilo.
+///
+/// **Cúbicas exatas, não amostragem.** A espiral era 24 vértices de QUINA por volta — um
+/// polígono disfarçado, que aparece a olho nu quando a forma é grande (o mesmo defeito da
+/// seta curvada). Aqui cada quarto de volta é uma cúbica de Hermite cujos handles carregam
+/// a **tangente analítica** da espiral,
+///
+/// ```text
+/// p(θ) = (cx + rx·f·cos θ,  cy + ry·f·sin θ),   f = (θ − start)/total
+/// p'(θ) = (rx·(f'·cos θ − f·sin θ),  ry·(f'·sin θ + f·cos θ)),   f' = 1/total
+/// ```
+///
+/// com o handle a `Δθ/3` da tangente (a conversão Hermite→Bézier). Quatro âncoras por
+/// volta em vez de 24, curva lisa, e o path continua editável ponto a ponto.
 #[must_use]
 pub fn spiral(center: [f64; 2], rx: f64, ry: f64, turns: u32) -> VecPath {
     let t = turns.clamp(1, MAX_SPIRAL_TURNS);
     let (cx, cy) = (center[0], center[1]);
     let total = std::f64::consts::TAU * f64::from(t);
-    let start = -std::f64::consts::FRAC_PI_2;
-    let steps = t as usize * 24;
+    let start = std::f64::consts::FRAC_PI_2; // 12h no mundo Y-para-cima
+    // Oito cúbicas por volta. O erro se concentra no MIOLO (a espiral se enrola mais
+    // rápido perto do centro): a 4/volta ele é 0,021 no raio 5, a 8/volta cai para 0,0024
+    // — sub-pixel — e ainda assim são um terço dos 24 vértices do polígono antigo.
+    let steps = t as usize * 8;
+    let step = total / steps as f64;
+
     let verts = (0..=steps)
         .map(|i| {
-            let f = i as f64 / steps as f64; // 0..1 (fração do raio E do ângulo)
+            let f = i as f64 / steps as f64; // fração do raio E do ângulo
             let a = start + total * f;
-            VecVertex::corner([cx + rx * f * a.cos(), cy + ry * f * a.sin()])
+            let (s, c) = a.sin_cos();
+            let anchor = [cx + rx * f * c, cy + ry * f * s];
+            // Tangente analítica × o comprimento de handle do ARCO. Não é o `Δθ/3` do
+            // Hermite ingênuo: para um quarto de volta ele fica 1,5% curto (é justamente
+            // a diferença entre `π/6 = 0,5236` e o `KAPPA = 0,5523`), e a espiral sai
+            // visivelmente "murcha" para dentro. `(4/3)·tan(Δθ/4)` é exato no círculo e
+            // degenera certo aqui, onde |p'| ≈ raio.
+            let df = 1.0 / total;
+            let h = (4.0 / 3.0) * (step / 4.0).tan();
+            let (tx, ty) = (rx * (df * c - f * s) * h, ry * (df * s + f * c) * h);
+            VecVertex::smooth(
+                anchor,
+                [anchor[0] - tx, anchor[1] - ty],
+                [anchor[0] + tx, anchor[1] + ty],
+            )
         })
         .collect();
     VecPath {

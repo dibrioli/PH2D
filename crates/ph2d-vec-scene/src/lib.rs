@@ -53,6 +53,13 @@ pub use shapes::{
 /// e dos dois raios da estrela) — módulo irmão de `shapes` (LOC cap).
 pub mod corners;
 
+/// **O espaço de autoria do catálogo**: caixa unitária com `v` para BAIXO (convenção
+/// SVG/OOXML), mapeada para o mundo (Y-para-CIMA) num lugar só. As referências de onde as
+/// formas vêm são todas Y-para-baixo; sem esta fronteira, cada porte é um espelhamento
+/// silencioso esperando para acontecer — e foi (as assimétricas nasceram de cabeça para
+/// baixo em 2026-07-12).
+pub(crate) mod space;
+
 /// A família do CÍRCULO (elipse · arco · pizza · rosquinha · segmento) — pontos do
 /// mesmo espaço de três parâmetros, não cinco primitivas. Módulo irmão de `shapes`.
 pub(crate) mod round;
@@ -71,13 +78,22 @@ pub use flow::{
     parallelogram, pill, predefined_process, trapezoid,
 };
 
-/// Balões (fala / pensamento / explosão) + os símbolos (coração, nuvem, raio, escudo,
-/// engrenagem, cruz…). Módulo irmão de `shapes`.
+/// Os SÍMBOLOS (coração, lua, gota, escudo, engrenagem, tag, raio, cruz, check, banner).
+/// Módulo irmão de `shapes`.
 mod symbols;
-pub use symbols::{
-    banner, bolt, brace, burst, check, cloud, cross, drop, gear, heart, iso_cone, iso_cube,
-    iso_pyramid, moon, shield, speech_oval, speech_rect, tag, thought,
-};
+pub use symbols::{banner, bolt, check, cross, drop, gear, heart, moon, shield, tag};
+
+/// Os BALÕES (fala · pensamento · nuvem · explosão · chave). Família própria: o que os
+/// define é o RABO (a ponta que aponta para quem fala) e a costura de arcos tangentes da
+/// nuvem — assunto bem diferente do dos símbolos. Módulo irmão de `shapes`.
+mod bubbles;
+pub use bubbles::{brace, burst, cloud, speech_oval, speech_rect, thought};
+
+/// Os sólidos ISOMÉTRICOS (cubo · cone · pirâmide). Módulo próprio porque a projeção é um
+/// assunto seu — dois parâmetros (`rise`/`skew`) governam os três, e as arestas internas
+/// são o que os faz ler como volume. Módulo irmão de `shapes`.
+mod iso;
+pub use iso::{iso_cone, iso_cube, iso_pyramid};
 
 /// O CATÁLOGO de formas paramétricas: o enum único (`ShapeKind`), os valores de cada
 /// forma e o `cook` que os transforma em geometria. A forma é DADO — é o que faz uma

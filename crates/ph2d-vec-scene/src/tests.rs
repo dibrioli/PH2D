@@ -390,31 +390,98 @@ fn regular_polygon_has_sides_corner_verts_and_clamps() {
     );
 }
 
+/// A primeira ponta fica no TOPO — e "topo" é onde o usuário vê, não onde a fórmula
+/// acha. O mundo é **Y-para-cima** (a câmera inverte na tela), então o topo é `cy + ry`.
+///
+/// Este teste já existiu afirmando o contrário (`cy − ry`, "angle 0 = top (−Y)"): estava
+/// verde, e o triângulo nascia apontando para BAIXO. Um oráculo derivado do código em vez
+/// da aparência não testa nada — ele carimba o bug. Agora ele assere o que se vê.
 #[test]
-fn regular_polygon_first_vertex_is_at_top() {
-    // Angle 0 = top (−Y): first anchor sits at (cx, cy − ry).
+fn a_polygon_points_up_not_down() {
     let p = regular_polygon([1.0, 1.0], 3.0, 2.0, 6);
     let a = p.verts[0].anchor;
-    assert!((a[0] - 1.0).abs() < 1e-9, "x centered");
-    assert!((a[1] - (1.0 - 2.0)).abs() < 1e-9, "y at top of bbox");
+    assert!((a[0] - 1.0).abs() < 1e-9, "a ponta e centrada em x");
+    assert!(
+        (a[1] - (1.0 + 2.0)).abs() < 1e-9,
+        "a 1a ponta fica no TOPO (y maior, mundo Y-para-cima): {a:?}"
+    );
+
+    // E o triângulo — o caso em que o erro é gritante — tem a ponta em cima e a base
+    // embaixo, com DOIS vértices na base.
+    let tri = regular_polygon([0.0, 0.0], 1.0, 1.0, 3);
+    let ys: Vec<f64> = tri.verts.iter().map(|v| v.anchor[1]).collect();
+    let apex = ys.iter().copied().fold(f64::MIN, f64::max);
+    assert!(
+        (apex - 1.0).abs() < 1e-9,
+        "o apice do triangulo e o topo da elipse"
+    );
+    assert_eq!(
+        ys.iter().filter(|y| **y < 0.0).count(),
+        2,
+        "a base do triangulo tem dois vertices, embaixo"
+    );
 }
 
 #[test]
 fn spiral_is_open_grows_from_center_to_edge_and_clamps_turns() {
     let s = spiral([0.0, 0.0], 2.0, 3.0, 3);
     assert!(!s.closed && s.fill.is_none() && s.stroke.is_none());
-    // 3 turns × 24 samples + 1 endpoint.
-    assert_eq!(s.verts.len(), 3 * 24 + 1);
+    // 3 voltas × 8 cúbicas + 1 ponta.
+    assert_eq!(s.verts.len(), 3 * 8 + 1);
     // First sample at the center (f = 0).
     assert!(s.verts[0].anchor[0].abs() < 1e-6 && s.verts[0].anchor[1].abs() < 1e-6);
-    // Integer turns → the last sample is back at the top of the bbox: (0, −ry).
+    // Integer turns → the last sample is back at the TOP of the bbox: (0, +ry) — o mundo
+    // é Y-para-cima, então o topo é `+ry` (a espiral partia do fundo antes do fix).
     let last = s.verts.last().unwrap().anchor;
-    assert!(last[0].abs() < 1e-6 && (last[1] + 3.0).abs() < 1e-6);
+    assert!(last[0].abs() < 1e-6 && (last[1] - 3.0).abs() < 1e-6);
     // Turns clamp to [1, MAX_SPIRAL_TURNS].
-    assert_eq!(spiral([0.0, 0.0], 1.0, 1.0, 0).verts.len(), 24 + 1);
+    assert_eq!(spiral([0.0, 0.0], 1.0, 1.0, 0).verts.len(), 8 + 1);
     assert_eq!(
         spiral([0.0, 0.0], 1.0, 1.0, 99).verts.len(),
-        MAX_SPIRAL_TURNS as usize * 24 + 1
+        MAX_SPIRAL_TURNS as usize * 8 + 1
+    );
+}
+
+/// **A espiral é CURVA, não um polígono disfarçado.** Ela era amostrada em 24 quinas por
+/// volta; com raio grande os segmentos retos aparecem a olho nu (foi a queixa do Enio na
+/// seta curvada, e a espiral tinha o mesmo defeito). Agora cada quarto de volta é uma
+/// cúbica com a tangente ANALÍTICA nos handles — então a curva desenhada tem de coincidir
+/// com a espiral de verdade, e não apenas nos vértices.
+///
+/// O erro é medido **radialmente**, não ponto-a-ponto no mesmo parâmetro: o parâmetro de
+/// uma Bézier não é proporcional ao ângulo, então comparar `cubic(t)` com `p(θ = t)`
+/// mediria desalinho de PARAMETRIZAÇÃO, não desvio da curva. Aqui cada ponto amostrado é
+/// projetado no seu próprio ângulo e o raio é conferido contra a espiral analítica — o
+/// oráculo mede a APARÊNCIA, que é o que o usuário vê.
+///
+/// Discrimina de verdade: a versão poligonal (24 quinas/volta) erra a sagita da corda,
+/// `R·(1 − cos 7,5°) ≈ 0,043` neste raio; a cúbica de Hermite fica três ordens abaixo.
+#[test]
+fn the_spiral_curve_tracks_the_real_spiral_between_its_anchors() {
+    use std::f64::consts::TAU;
+    let (r, turns) = (5.0, 2_u32);
+    let s = spiral([0.0, 0.0], r, r, turns);
+    let total = TAU * f64::from(turns);
+    let start = std::f64::consts::FRAC_PI_2;
+    let segs = s.verts.len() - 1;
+
+    let mut worst = 0.0_f64;
+    for i in 0..segs {
+        let (a, b) = (&s.verts[i], &s.verts[i + 1]);
+        let a0 = start + total * (i as f64 / segs as f64);
+        for k in 1..8 {
+            let t = f64::from(k) / 8.0;
+            let got = cubic_at(a.anchor, a.out_handle, b.in_handle, b.anchor, t);
+            // O ângulo do ponto, desenrolado para dentro da faixa deste segmento.
+            let raw = got[1].atan2(got[0]);
+            let ang = raw + TAU * ((a0 - raw) / TAU).ceil();
+            let want = r * (ang - start) / total; // o raio que a espiral teria aqui
+            worst = worst.max((got[0].hypot(got[1]) - want).abs());
+        }
+    }
+    assert!(
+        worst < 0.005,
+        "a curva desviou {worst} do raio da espiral — isso e um poligono, nao uma espiral"
     );
 }
 
@@ -641,8 +708,9 @@ fn star_has_2n_alternating_corner_verts() {
     let rad = |v: &VecVertex| (v.anchor[0].powi(2) + v.anchor[1].powi(2)).sqrt();
     assert!((rad(&s.verts[0]) - 4.0).abs() < 1e-9, "outer");
     assert!((rad(&s.verts[1]) - 2.0).abs() < 1e-9, "inner = 4·0.5");
-    // First point at the top (−Y).
-    assert!(s.verts[0].anchor[0].abs() < 1e-9 && (s.verts[0].anchor[1] + 4.0).abs() < 1e-9);
+    // A primeira ponta fica no TOPO — `+ry` no mundo Y-para-cima (a estrela apontava para
+    // baixo enquanto isto dizia `−4.0`).
+    assert!(s.verts[0].anchor[0].abs() < 1e-9 && (s.verts[0].anchor[1] - 4.0).abs() < 1e-9);
     // Clamps.
     assert_eq!(star([0.0, 0.0], 1.0, 1.0, 2, 0.5).verts.len(), 6); // points → 3
 }

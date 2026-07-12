@@ -535,11 +535,13 @@ pub const SHAPES: &[ShapeDesc] = &[
         fields: &[frac("Notch", 0.02, 0.4)],
     },
     // ── Isométricas ──────────────────────────────────────────────────────────
+    // `Rise` inclina os eixos da projeção (é a altura do vértice interno) e `Skew` reparte
+    // largura e profundidade sem mexer no ângulo — os dois governam cubo e pirâmide.
     ShapeDesc {
         kind: ShapeKind::IsoCube,
         label: "Cube",
         group: ShapeGroup::Iso,
-        fields: &[frac("Depth", 0.05, 0.6)],
+        fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9)],
     },
     ShapeDesc {
         kind: ShapeKind::IsoCone,
@@ -551,7 +553,7 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::IsoPyramid,
         label: "Pyramid",
         group: ShapeGroup::Iso,
-        fields: &[frac("Depth", 0.05, 0.6)],
+        fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9)],
     },
 ];
 

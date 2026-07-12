@@ -136,6 +136,15 @@ pub struct Graph {
     /// A node with no entry cooks at its manifest defaults. `BTreeMap` for
     /// deterministic iteration (stable diff / serialization, ADR-0032 §6).
     node_params: BTreeMap<NodeId, BTreeMap<String, f32>>,
+    /// Per-node **text** params (e.g. an expression node's formula) — the additive
+    /// string channel that keeps the FROZEN `NodeManifest` (f32 `ParamSpec` only,
+    /// ADR-0039) intact: a node reads its own text via
+    /// [`crate::cook::EvalCtx::text_param`], absent → the node's own default. This
+    /// is the isolation-preserving realisation of M4.N1 (ParamSpec-tipado) — no
+    /// contract bump, no fan-out breakage (docs/Motion Nodes/32). Covered by
+    /// `Clone`/`PartialEq` (undo) but NOT yet by the textual format (save/load of
+    /// text params is a deferred follow-up — see doc 32 §serialization).
+    node_text_params: BTreeMap<NodeId, BTreeMap<String, String>>,
     next_id: u32,
 }
 
@@ -225,6 +234,7 @@ impl Graph {
         self.edges.retain(|e| e.from.0 != id && e.to.0 != id);
         self.layout.remove(&id);
         self.node_params.remove(&id);
+        self.node_text_params.remove(&id);
         true
     }
 
@@ -270,6 +280,29 @@ impl Graph {
     /// node's via [`Graph::node_param_overrides`].
     pub fn node_params(&self) -> &BTreeMap<NodeId, BTreeMap<String, f32>> {
         &self.node_params
+    }
+
+    /// Set a per-node **text** param (e.g. an expression node's formula). The
+    /// additive string channel that keeps the frozen `NodeManifest` intact — read
+    /// at cook time via [`crate::cook::EvalCtx::text_param`]. Not validated against
+    /// the manifest (text params are free-form; a node reads whatever key it
+    /// wants). See the `node_text_params` field doc.
+    pub fn set_text_param(
+        &mut self,
+        id: NodeId,
+        name: impl Into<String>,
+        value: impl Into<String>,
+    ) {
+        self.node_text_params
+            .entry(id)
+            .or_default()
+            .insert(name.into(), value.into());
+    }
+
+    /// The per-node text-param overrides for `id` (none if untouched). The cook
+    /// threads this into [`crate::cook::EvalCtx`].
+    pub fn node_text_param_overrides(&self, id: NodeId) -> Option<&BTreeMap<String, String>> {
+        self.node_text_params.get(&id)
     }
 
     fn contains(&self, id: NodeId) -> bool {

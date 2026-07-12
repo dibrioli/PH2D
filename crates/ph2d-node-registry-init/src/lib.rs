@@ -34,6 +34,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_distribute_radial::register(reg)?;
     ph2d_node_motion_drive::register(reg)?;
     ph2d_node_motion_emitter::register(reg)?;
+    ph2d_node_motion_expression::register(reg)?;
     ph2d_node_motion_falloff::register(reg)?;
     ph2d_node_motion_fibonacci::register(reg)?;
     ph2d_node_motion_four_point_warp::register(reg)?;

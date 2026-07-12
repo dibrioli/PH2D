@@ -5336,6 +5336,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-expression"
+version = "0.0.0"
+dependencies = [
+ "ph2d-expr",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-falloff"
 version = "0.0.0"
 dependencies = [
@@ -5718,6 +5727,7 @@ dependencies = [
  "ph2d-node-motion-distribute-radial",
  "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",
+ "ph2d-node-motion-expression",
  "ph2d-node-motion-falloff",
  "ph2d-node-motion-fibonacci",
  "ph2d-node-motion-four-point-warp",

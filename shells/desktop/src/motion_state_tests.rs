@@ -1,13 +1,13 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC
 //! shell cap; declared there as a `#[path]` sibling, so `super` is
-//! `motion_state`). Cook the default document — now a `motion.make_point` Lissajous and
-//! a `motion.luminance` recolour, each a `Pure` layout through the REAL registry.
+//! `motion_state`). Cook the default document — now two `motion.expression`-driven scenes
+//! (a spiral and a colour wave) — through the REAL registry, exercising the text-param
+//! channel end to end.
 
 use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 
-/// The `P` column of one sink at playhead `t`.
 fn positions_at(state: &MotionState, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
     let mut cook = Cook::new();
     let out = cook
@@ -19,7 +19,6 @@ fn positions_at(state: &MotionState, sink: NodeId, t: f64) -> Vec<[f32; 2]> {
     }
 }
 
-/// The `tint` column (linear RGBA) of one sink at playhead `t`.
 fn tints_at(state: &MotionState, sink: NodeId, t: f64) -> Vec<[f32; 4]> {
     let mut cook = Cook::new();
     let out = cook
@@ -35,7 +34,6 @@ fn mean_x(pos: &[[f32; 2]]) -> f32 {
     pos.iter().map(|p| p[0]).sum::<f32>() / pos.len() as f32
 }
 
-/// The largest over-time travel of any single element (both scenes keep a fixed count).
 fn max_travel(frames: &[Vec<[f32; 2]>]) -> f32 {
     let n = frames[0].len();
     let mut worst = 0.0f32;
@@ -72,73 +70,77 @@ fn new_builds_the_well_typed_value_document() {
             "motion.output"
         );
     }
-    // 13 nodes: {grid, lfoX, lfoY, make_point, tint, move, output} + {grid, color_ramp,
-    // luminance, color_ramp, move, output}. The two newest nodes (doc 31) — a
-    // `motion.make_point` and a `motion.luminance`.
-    assert_eq!(state.doc.graph.nodes().len(), 13);
+    // 12 nodes: {grid, exprX, exprY, make_point, tint, move, output} + {grid, expr,
+    // color_ramp, move, output}. The newest node (doc 32) — `motion.expression`, its
+    // formula in the graph's text channel.
+    assert_eq!(state.doc.graph.nodes().len(), 12);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
     assert_eq!(state.transport.playhead(1.0 / 60.0), 0.0); // paused at tick 0
 }
 
-/// `motion.make_point` is alive end to end (doc 31): the two staggered LFOs plot a
-/// 64-point Lissajous that stays within the amplitude box and the playhead animates; the
-/// scene sits on the left. Falsifiable: no value fields → all points at one spot; a dead
-/// playhead → static.
+/// `motion.expression` is alive end to end (doc 32): the cos/sin formulas plot a 144-point
+/// spiral (radially spread) that rotates because they read `t`; the scene sits on the
+/// left. Falsifiable: an ignored formula → all points at one spot (no spread); a formula
+/// without `t` → no rotation.
 #[test]
-fn the_lissajous_is_plotted_and_animates() {
+fn the_spiral_is_plotted_and_rotates() {
     let state = MotionState::new();
-    let sink = state.sinks[0]; // the make_point scene (added first)
+    let sink = state.sinks[0]; // the spiral scene (added first)
     let mut frames = Vec::new();
-    for k in 0..=150u64 {
+    for k in 0..=120u64 {
         let pos = positions_at(&state, sink, k as f64 / 60.0);
-        assert_eq!(pos.len(), 64, "the 64-point Lissajous");
+        assert_eq!(pos.len(), 144, "the 12×12 grid plotted as a spiral");
         frames.push(pos);
     }
-    // The plotted points spread over the curve (not collapsed to a point).
+    // The spiral spreads radially (the formula r = f·4 reaches ~4 before the −6 shift).
     let last = frames.last().unwrap();
     let (mut xlo, mut xhi) = (f32::MAX, f32::MIN);
     for p in last {
         xlo = xlo.min(p[0]);
         xhi = xhi.max(p[0]);
     }
-    assert!(xhi - xlo > 3.0, "the curve spans (x extent {})", xhi - xlo);
     assert!(
-        max_travel(&frames) > 0.3,
-        "the playhead animates the Lissajous"
+        xhi - xlo > 4.0,
+        "the spiral spreads (x extent {})",
+        xhi - xlo
     );
+    assert!(max_travel(&frames) > 0.5, "the `t` term rotates the spiral");
     let mean = frames.iter().map(|f| mean_x(f)).sum::<f32>() / frames.len() as f32;
-    assert!(
-        mean < -3.0,
-        "the Lissajous sits on the left (mean x {mean})"
-    );
+    assert!(mean < -3.0, "the spiral sits on the left (mean x {mean})");
 }
 
-/// `motion.luminance` is alive end to end (doc 31): the rainbow's brightness drives a
-/// Heat ramp, so the 100 dots take a spread of Heat colours (not one). The scene sits on
-/// the right. Falsifiable: a dead luminance (all v=0) → every dot is the Heat ramp's
-/// start colour (one distinct tint).
+/// `motion.expression` drives colour too (doc 32): the `sin(t·2 + f·a)` wave feeds the
+/// ramp's `t`, so the 100 dots take a spread of Ice colours that scroll over time. The
+/// scene sits on the right. Falsifiable: a dead expression → one colour, no scroll.
 #[test]
-fn the_grid_is_recoloured_by_luminance() {
+fn the_colour_wave_scrolls() {
     let state = MotionState::new();
-    let sink = state.sinks[1]; // the luminance scene (added second)
+    let sink = state.sinks[1]; // the wave scene (added second)
     let pos = positions_at(&state, sink, 0.0);
     assert_eq!(pos.len(), 100, "the 10×10 grid");
-    let tints = tints_at(&state, sink, 0.0);
+    let tints0 = tints_at(&state, sink, 0.0);
     assert!(
-        distinct_colours(&tints) > 5,
-        "luminance drives a spread of Heat colours ({} distinct)",
-        distinct_colours(&tints)
+        distinct_colours(&tints0) > 5,
+        "the wave spans many Ice colours ({} distinct)",
+        distinct_colours(&tints0)
     );
+    // The wave scrolls: the colour at a fixed index changes over time (the `t` term).
+    let scrolled = (0..=120u64).any(|k| {
+        let t = tints_at(&state, sink, k as f64 / 60.0);
+        !t.is_empty() && t[0] != tints0[0]
+    });
+    assert!(scrolled, "the `t·2` term scrolls the colour wave");
     let mean = mean_x(&pos);
     assert!(
         mean > 3.0,
-        "the recoloured grid sits on the right (mean x {mean})"
+        "the wave grid sits on the right (mean x {mean})"
     );
 }
 
-/// The default document replays bit-identically. Both scenes are deterministic (grid /
-/// lfo / make_point / luminance arithmetic; the lfos are stateless playhead reads), so
-/// two runs match exactly (HR-5).
+/// The default document replays bit-identically **on this machine**: the expression's
+/// `ph2d_expr::eval` uses `f32` transcendentals (libm), which are stable within one
+/// process/libm, so two runs match. (Cross-machine, libm variance is expected — the
+/// expression is presentation-side / HR-5-exempt; see the integration handoff.)
 #[test]
 fn the_default_document_replays_deterministically() {
     use ph2d_eval_motion::MotionCookPump;

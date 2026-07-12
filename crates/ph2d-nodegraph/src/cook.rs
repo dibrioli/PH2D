@@ -85,6 +85,7 @@ pub struct EvalCtx<'a> {
     playhead: f64,
     manifest: &'static NodeManifest,
     overrides: Option<&'a BTreeMap<String, f32>>,
+    text_overrides: Option<&'a BTreeMap<String, String>>,
     outputs: Vec<CookValue>,
 }
 
@@ -130,6 +131,17 @@ impl<'a> EvalCtx<'a> {
                     self.manifest.name
                 )
             })
+    }
+
+    /// The current value of a per-node **text** param `name` (e.g. an expression
+    /// node's formula), set via [`crate::graph::Graph::set_text_param`]; `None` if
+    /// unset. Unlike [`param`](Self::param) text params are **not** declared in the
+    /// frozen `NodeManifest` (which is f32-only, ADR-0039) — they are the additive
+    /// string channel (doc 32), so a node reads its own key with its own default.
+    pub fn text_param(&self, name: &str) -> Option<&str> {
+        self.text_overrides
+            .and_then(|m| m.get(name))
+            .map(String::as_str)
     }
 
     /// Emit the next output port's **instance stream**. Call once per output
@@ -187,6 +199,10 @@ struct Fingerprint {
     /// pre-edit stream. Manifest defaults are compile-time constant, so only
     /// overrides can change at runtime — hashing them suffices.
     params: u64,
+    /// FNV-1a of the node's per-node **text** param overrides (name + string
+    /// bytes). Same reuse-gating role as [`params`](Self::params): an edited
+    /// formula must recompute rather than return a stale, pre-edit stream.
+    text_params: u64,
 }
 
 /// FNV-1a over a node's overrides, in `BTreeMap` (deterministic) order. `None`
@@ -210,6 +226,28 @@ fn params_fingerprint(overrides: Option<&BTreeMap<String, f32>>) -> u64 {
             mix(&(name.len() as u64).to_le_bytes());
             mix(name.as_bytes());
             mix(&value.to_bits().to_le_bytes());
+        }
+    }
+    hash
+}
+
+/// FNV-1a over a node's **text** param overrides (the string channel), same
+/// length-prefixed injective encoding as [`params_fingerprint`] so an edited
+/// formula recomputes rather than returning a stale stream.
+fn text_params_fingerprint(overrides: Option<&BTreeMap<String, String>>) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut mix = |bytes: &[u8]| {
+        for b in bytes {
+            hash ^= *b as u64;
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    if let Some(map) = overrides {
+        for (name, value) in map {
+            mix(&(name.len() as u64).to_le_bytes());
+            mix(name.as_bytes());
+            mix(&(value.len() as u64).to_le_bytes());
+            mix(value.as_bytes());
         }
     }
     hash
@@ -453,6 +491,7 @@ impl Cook {
             playhead: (manifest.effect == Effect::Temporal).then_some(playhead.to_bits()),
             tick: consumes_pre.then_some(self.tick),
             params: params_fingerprint(graph.node_param_overrides(node)),
+            text_params: text_params_fingerprint(graph.node_text_param_overrides(node)),
         };
         if let Some(c) = self.cache.get(&(node, key))
             && c.fingerprint == fingerprint
@@ -466,6 +505,7 @@ impl Cook {
             playhead,
             manifest,
             overrides: graph.node_param_overrides(node),
+            text_overrides: graph.node_text_param_overrides(node),
             outputs: Vec::new(),
         };
         op.eval(&mut ctx);

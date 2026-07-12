@@ -34,6 +34,7 @@ ph2d-node-motion-distribute-curve = { path = "../ph2d-node-motion-distribute-cur
 ph2d-node-motion-distribute-radial = { path = "../ph2d-node-motion-distribute-radial" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
+ph2d-node-motion-expression = { path = "../ph2d-node-motion-expression" }
 ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
 ph2d-node-motion-fibonacci = { path = "../ph2d-node-motion-fibonacci" }
 ph2d-node-motion-four-point-warp = { path = "../ph2d-node-motion-four-point-warp" }

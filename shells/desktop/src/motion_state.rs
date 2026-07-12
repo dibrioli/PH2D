@@ -54,12 +54,11 @@ pub(crate) struct MotionState {
 }
 
 impl MotionState {
-    /// Build the boot state: register every node op + the **default document** — the
-    /// value↔geometry↔colour adapters: on the left a **Lissajous** plotted from two
-    /// staggered LFOs (`motion.make_point` turns value fields into `P`); on the right a
-    /// rainbow grid **recoloured by its own brightness** (`motion.luminance` reads the
-    /// tint back into a value that drives a Heat ramp).
-    /// Kept deliberately small (docs/Motion Nodes/12, 31). The earlier scenes (the
+    /// Build the boot state: register every node op + the **default document** — driven by
+    /// `motion.expression` formulas: on the left a **spiral** whose x/y are cos/sin
+    /// expressions plotted through `motion.make_point`; on the right a grid whose **colour
+    /// wave** is an expression fed to a ramp. Both formulas read `t`, so they animate.
+    /// Kept deliberately small (docs/Motion Nodes/12, 32). The earlier scenes (the
     /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
     /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
     /// live in git history and every node keeps its own unit tests + stays registered
@@ -91,11 +90,11 @@ impl MotionState {
 /// module's most recent work). Returns their sinks (the Output nodes) if the graph
 /// is well-typed.
 ///
-/// The scenes — built in the `strobe` sibling module — are the value↔geometry↔colour
-/// adapters: on the LEFT a **Lissajous** (`motion.make_point` packs two staggered
-/// `value.lfo` fields into `P`, 64 points the playhead animates); on the RIGHT a rainbow
-/// grid recoloured by `motion.luminance` (tint → a `v` field that indexes a Heat ramp).
-/// See docs/Motion Nodes/12 (value), 31 (make_point + luminance).
+/// The scenes — built in the `strobe` sibling module — are formula-driven: on the LEFT a
+/// **spiral** (`motion.expression` cos/sin formulas → `motion.make_point`, 144 points that
+/// rotate); on the RIGHT a grid coloured by a scrolling **expression wave** (`sin(t·2 +
+/// f·a)` fed to a ramp's `t`). The formulas live in the graph's text channel (doc 32).
+/// See docs/Motion Nodes/12 (value), 32 (expression).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible: the
 /// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,

@@ -69,11 +69,11 @@ fn new_builds_the_well_typed_rig_document() {
     // skin_deformer, scale, move, output} + the goal dots {scale, move, output, move,
     // output} + the ORPHAN that demos the inline readouts (doc 43: no sink consumes it, so
     // it never cooks, so it has no reading and the editor veils it) + the SIMULATION ZONE
-    // (docs 48/49/50/51 — the snow: {sim.zone, combine, wind, sim.step, sim.lifetime,
-    // color_ramp, drive(size), drive(opacity), falloff, cull} interior + {value.attribute,
-    // value.map_range} the fade + {grid, move, sim.spawn} birth + {scale, move, output}
-    // render = 18).
-    assert_eq!(state.doc.graph.nodes().len(), 41);
+    // (docs 48/49/50/51/52 — the snow: {sim.zone, combine, wind, sim.step, sim.collide,
+    // sim.lifetime, color_ramp, drive(size), drive(opacity), falloff, cull} interior +
+    // {value.attribute, value.map_range} the fade + {grid, move, sim.spawn} birth +
+    // {scale, move, output} render = 19).
+    assert_eq!(state.doc.graph.nodes().len(), 42);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -488,7 +488,26 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         sizes.iter().map(|q| q[0]).fold(f32::MAX, f32::min)
     );
 
-    // 4. DEATH + STEADY STATE: the population settles instead of growing without bound.
+    // 4. THE GROUND: the flakes LAND on it. Nothing is below the floor (a collider that only
+    //    clamped the position would let them ooze through, because their velocity would still
+    //    point down), and some are resting ON it — so the floor is being hit, not merely drawn.
+    //    The positions here are the RENDERED ones, so the scene's own `motion.move` is added in.
+    let ys: Vec<f32> = match s.get("P") {
+        Some(Column::Vec2(v)) => v.iter().map(|q| q[1]).collect(),
+        _ => panic!("no positions"),
+    };
+    let floor = -2.0 + 2.4; // the collider's height, in the rendered frame (`move` dy = 2.4)
+    let lowest = ys.iter().cloned().fold(f32::MAX, f32::min);
+    assert!(
+        lowest > floor - 0.05,
+        "nothing fell through the floor: lowest {lowest} vs floor {floor}"
+    );
+    assert!(
+        ys.iter().any(|y| *y < floor + 0.15),
+        "…and the snow is settling ON it, not hovering above it: lowest {lowest}"
+    );
+
+    // 5. DEATH + STEADY STATE: the population settles instead of growing without bound.
     let late = &counts[180..];
     let (lo, hi) = (
         *late.iter().min().unwrap() as f32,

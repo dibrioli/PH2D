@@ -80,6 +80,13 @@ const SNOW_RAMP_ICE: f32 = 2.0;
 /// What a flake is worth at the very end of its life: a tenth of its size and a tenth of its
 /// opacity. Not zero — a flake that shrank to nothing a frame before dying reads as a pop.
 const SNOW_FADE_FLOOR: f32 = 0.1;
+/// The ground the snow settles on (doc 52). `sim.collide`'s shapes: **0 Floor** · 1 Disc · 2 Bowl.
+/// It sits well inside the kill disc, so a flake that lands dies of OLD AGE where it lies rather
+/// than being culled at the rim.
+const SNOW_FLOOR_SHAPE: f32 = 0.0;
+const SNOW_FLOOR_Y: f32 = -2.0;
+const SNOW_FLOOR_BOUNCE: f32 = 0.25;
+const SNOW_FLOOR_FRICTION: f32 = 0.35;
 /// `motion.drive`'s channels: 0 X · 1 Y · 2 Rotation · 3 Size · 4 Opacity (doc 51). Modes:
 /// 0 Add · 1 Set · 2 Multiply.
 const DRIVE_CH_SIZE: f32 = 3.0;
@@ -155,6 +162,7 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     let combine = g.add_node("motion.combine");
     let wind = g.add_node("force.wind");
     let step = g.add_node("sim.step");
+    let ground = g.add_node("sim.collide");
     let life = g.add_node("sim.lifetime");
     let attr = g.add_node("value.attribute");
     let fade = g.add_node("value.map_range");
@@ -175,9 +183,11 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     chain(g, RAIN_ROW, 1, &[zone])?;
     chain(g, RAIN_ROW, 2, &[scale, mv, output])?;
     wire(g, (zone, 0), (scale, 0))?;
-    for (i, n) in [combine, wind, step, life, ramp, shrink, dim, falloff, cull]
-        .iter()
-        .enumerate()
+    for (i, n) in [
+        combine, wind, step, ground, life, ramp, shrink, dim, falloff, cull,
+    ]
+    .iter()
+    .enumerate()
     {
         g.set_pos(
             *n,
@@ -189,7 +199,8 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     }
     wire(g, (combine, 0), (wind, 0))?;
     wire(g, (wind, 0), (step, 0))?;
-    wire(g, (step, 0), (life, 0))?;
+    wire(g, (step, 0), (ground, 0))?; // …and the world pushes BACK
+    wire(g, (ground, 0), (life, 0))?;
     wire(g, (life, 0), (ramp, 0))?;
     wire(g, (ramp, 0), (shrink, 0))?;
     wire(g, (shrink, 0), (dim, 0))?;
@@ -219,6 +230,13 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     g.set_param(life, "life", SNOW_LIFE);
     g.set_param(life, "variance", SNOW_LIFE_VARIANCE);
     g.set_param(ramp, "preset", SNOW_RAMP_ICE);
+    // The ground: the flakes land on it, hop once, slide, and melt where they lie. A collision
+    // is a BOUNCE and not a shove, and only a zone could have one — outside it there is no
+    // velocity to reflect (doc 52).
+    g.set_param(ground, "shape", SNOW_FLOOR_SHAPE);
+    g.set_param(ground, "height", SNOW_FLOOR_Y);
+    g.set_param(ground, "restitution", SNOW_FLOOR_BOUNCE);
+    g.set_param(ground, "friction", SNOW_FLOOR_FRICTION);
     // `life` runs 0 → 1 over a flake's life; the fade runs the other way, and never all the way
     // to nothing (a flake that shrank to a true zero would pop out of existence a frame before
     // it died, which reads as a glitch rather than a melt).

@@ -17,10 +17,16 @@
 //! solvers read it.
 //!
 //! ```text
-//! grid ── pin_constraint ──> integrate ──> output      (pinned rows hold the grid;
-//!            (rows 0..cols)      ^                      the free ones fall/blow away)
+//! grid ── pin_constraint ──> integrate ──> output      (the pinned run holds still;
+//!           (one row's worth)    ^                      the free ones fall/blow away)
 //!                                └── force.wind
 //! ```
+//!
+//! **Mind which row you are naming.** The index range is exact but it is not geometry:
+//! `motion.grid` is row-major from the LOWEST y up, so its *first* `cols` elements are
+//! the row at the BOTTOM of the screen and a curtain hangs from the LAST ones. To select
+//! by shape instead of by index — the safer habit — put a `motion.falloff` upstream and
+//! pin the region it covers.
 //!
 //! **Who reads it:** `motion.integrate` (the force chain's one integrator),
 //! `motion.spring` and `motion.collide` — every node that takes an instance

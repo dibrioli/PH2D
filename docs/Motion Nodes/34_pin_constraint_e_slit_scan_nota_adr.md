@@ -133,6 +133,13 @@ DIR  (slit scan): grid ─> oscillator ─> slit_scan ─> move(+7) ─> output
 - **ESQ:** a fileira de cima da cortina 8×8 está **pinada**; as outras 56 são sugadas pelo attractor e
   **empacotam ao redor** da fileira (que não sai do lugar quando o monte encosta nela). Puxe o slider
   `count` do pin pra 0 no painel de params e a cortina inteira desaba — é a leitura falsificável.
+  > **Gotcha que o smoke do Enio pegou (2026-07-12):** o `motion.grid` é row-major **de baixo pra
+  > cima** (`y = (r − cy)·gap_y`, então `r = 0` é o y mais NEGATIVO = a fileira de baixo, num mundo
+  > y-up). Pinar "a de cima" é pinar os **últimos** `cols` elementos (`first = (rows−1)·cols`), não os
+  > primeiros. A demo pinava a de baixo e as docs diziam "a de cima" — o nó estava certo, a demo é que
+  > mentia. O teste de corrente agora asserta a **geometria** (todo pinado acima de todo livre), não o
+  > índice, então a fileira errada fica VERMELHA. Seleção por índice é exata mas **não é geometria**:
+  > o hábito seguro é selecionar por **`motion.falloff`** upstream (pina a região que o campo cobre).
 - **DIR:** o `phase_stagger` do oscilador é **0** (todos bobam na MESMA fase). A onda viajante que se
   vê só pode vir do scan. Ponha `lag` em 0 e a onda colapsa num bob rígido.
 

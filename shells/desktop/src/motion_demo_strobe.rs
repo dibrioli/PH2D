@@ -31,10 +31,13 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 const COL_W: f32 = 190.0;
 const PIN_ROW: f32 = 0.0;
 const SCAN_ROW: f32 = 360.0;
-/// The pinned curtain's shape. `cols` is also the pin's `count`: in the grid's row-major
-/// order the first `cols` elements ARE the top row.
+/// The pinned curtain's shape. `cols` is also the pin's `count` — one row's worth.
 const CURTAIN_COLS: f32 = 8.0;
 const CURTAIN_ROWS: f32 = 8.0;
+/// The first element of the curtain's **top** row. `motion.grid` is row-major from
+/// `y = −cy` upward (row 0 is the LOWEST y, i.e. the bottom of the screen in a y-up
+/// world), so the top row is the LAST one — the curtain hangs from it.
+const CURTAIN_TOP_ROW: f32 = (CURTAIN_ROWS - 1.0) * CURTAIN_COLS;
 
 /// Author both scenes into `g`; returns their Output nodes (the sinks), the pin scene's
 /// first so the sink order is stable (id-ascending).
@@ -117,8 +120,9 @@ fn build_pin_scene(g: &mut Graph) -> Option<NodeId> {
     g.set_param(grid, "cols", CURTAIN_COLS);
     g.set_param(grid, "gap_x", 0.6);
     g.set_param(grid, "gap_y", 0.6);
-    // Nail the top row (row-major: the first `cols` elements).
-    g.set_param(pin, "first", 0.0);
+    // Nail the top row — the curtain hangs from it (see CURTAIN_TOP_ROW: the grid's
+    // first row is the BOTTOM one, so the top row is the last `cols` elements).
+    g.set_param(pin, "first", CURTAIN_TOP_ROW);
     g.set_param(pin, "count", CURTAIN_COLS);
     g.set_param(pin, "strength", 1.0);
     // Suck everything else toward the scene's origin; drag keeps it from orbiting away.

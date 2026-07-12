@@ -8,9 +8,13 @@ use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 
-/// The pin scene's curtain: 8×8, the first row (8 elements) nailed.
-const PINNED: usize = 8;
+/// The pin scene's curtain: 8×8, one row (8 elements) nailed. `motion.grid` is row-major
+/// from the LOWEST y up, so the curtain's top row — the one it hangs from — is the LAST
+/// 8 elements, and the free ones are the 56 below it.
 const CURTAIN: usize = 64;
+const CURTAIN_COLS: usize = 8;
+const PINNED: std::ops::Range<usize> = (CURTAIN - CURTAIN_COLS)..CURTAIN;
+const FREE: std::ops::Range<usize> = 0..(CURTAIN - CURTAIN_COLS);
 /// The slit-scan scene's strip: 6×12.
 const STRIP: usize = 72;
 
@@ -81,10 +85,12 @@ fn new_builds_the_well_typed_simulation_document() {
 /// elements pack around it and may not shove it). So the pinned row is bit-for-bit
 /// motionless while its 56 free neighbours are dragged into the attractor.
 ///
-/// FALSIFIED three ways: an ignored `inv_mass` in the integrator (the top row falls in
+/// FALSIFIED four ways: an ignored `inv_mass` in the integrator (the pinned row falls in
 /// with the rest) · an ignored `inv_mass` in the collision (the row is nudged off its
 /// anchor when the pile lands on it — the "fixed obstacle drifts" bug) · a pin that also
-/// froze the free elements (nothing moves at all).
+/// froze the free elements (nothing moves at all) · **the wrong row pinned** (the curtain
+/// must hang from its TOP row, which in the grid's bottom-up row-major order is the LAST
+/// one — the demo pinned the bottom row until the smoke caught it).
 #[test]
 fn the_pinned_row_holds_while_the_rest_falls_into_the_attractor() {
     let state = MotionState::new();
@@ -92,14 +98,22 @@ fn the_pinned_row_holds_while_the_rest_falls_into_the_attractor() {
     let frames = run_scene(&state, sink, 120);
     assert_eq!(frames[0].len(), CURTAIN, "the 8×8 curtain");
 
-    for i in 0..PINNED {
+    for i in PINNED {
         assert_eq!(
             frames[119][i], frames[0][i],
             "pinned element {i} never moved (neither force nor contact could move it)"
         );
     }
-    let free_travel: f32 =
-        (PINNED..CURTAIN).map(|i| travel(&frames, i)).sum::<f32>() / (CURTAIN - PINNED) as f32;
+    // The pinned row is the curtain's TOP: every pinned element sits above every free one.
+    // Asserted on the GEOMETRY, not the index, so pinning the wrong row goes red.
+    let lowest_pinned = PINNED.map(|i| frames[0][i][1]).fold(f32::MAX, f32::min);
+    let highest_free = FREE.map(|i| frames[0][i][1]).fold(f32::MIN, f32::max);
+    assert!(
+        lowest_pinned > highest_free,
+        "the curtain hangs from its TOP row (pinned y {lowest_pinned} vs free y {highest_free})"
+    );
+
+    let free_travel: f32 = FREE.map(|i| travel(&frames, i)).sum::<f32>() / FREE.len() as f32;
     assert!(
         free_travel > 0.3,
         "the free elements were dragged in (mean travel {free_travel})"
@@ -108,8 +122,8 @@ fn the_pinned_row_holds_while_the_rest_falls_into_the_attractor() {
     // And they were dragged TOWARD the attractor: the scene is shifted by move(−7), so
     // its target sits at (−7, 0) in world space.
     let centre = [-7.0, 0.0];
-    let before = mean_dist_to(&frames[0], PINNED..CURTAIN, centre);
-    let after = mean_dist_to(&frames[119], PINNED..CURTAIN, centre);
+    let before = mean_dist_to(&frames[0], FREE, centre);
+    let after = mean_dist_to(&frames[119], FREE, centre);
     assert!(
         after < before * 0.8,
         "the free elements closed on the attractor ({before} -> {after})"

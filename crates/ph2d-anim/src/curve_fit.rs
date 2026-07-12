@@ -141,10 +141,22 @@ pub fn fit_fcurve(samples: &[(f64, f64)], tol: f64) -> Vec<FitKey> {
         .collect();
     let tol_n = (tol / v_span).max(1e-9);
 
-    let left_t = unit(sub(norm[1], norm[0]));
-    let right_t = unit(sub(norm[n - 2], norm[n - 1]));
+    // Key at every prominent peak/valley (+ the two ends) and NOTHING between:
+    // one least-squares cubic per monotone run between anchors — no recursive
+    // split. This is what an animator draws by hand (a key at each turn) and what
+    // the recursive Schneider fit fails to give: on a multi-turn wave its
+    // split-on-error scatters many keys along the slopes. The low-pass already
+    // removed the jitter that would spawn spurious extrema; `min_prom` is the
+    // least value swing (normalised) for a turn to count as a real extremum.
+    // Fidelity comes from the cubic's own tangents (which are ~flat at each
+    // extremum, so a wave's half-cycle is tracked closely); a run that a single
+    // cubic still misses badly is split ONCE more at its worst point, no deeper.
+    let min_prom = (4.0 * tol_n).max(0.02);
+    let anchors = anchor_indices(&norm, min_prom);
     let mut segs: Vec<[P; 4]> = Vec::new();
-    fit_cubic(&norm, left_t, right_t, tol_n, &mut segs);
+    for w in anchors.windows(2) {
+        fit_run(&norm[w[0]..=w[1]], tol_n, RUN_SPLIT_DEPTH, &mut segs);
+    }
 
     // Each fitted cubic → a BezierW key. `denorm` maps a normalised coordinate
     // back to (seconds, value); the handle x is the time ratio within the
@@ -179,45 +191,115 @@ pub fn fit_fcurve(samples: &[(f64, f64)], tol: f64) -> Vec<FitKey> {
     out
 }
 
-/// Fit one run (`pts`, with end tangents) to cubics within value error `tol`,
-/// appending each `[P0, C0, C1, P1]` to `out`. Recurses, splitting at the
-/// worst-fit sample (Schneider). Error is the VALUE gap at the sample's time.
-fn fit_cubic(pts: &[P], left_t: P, right_t: P, tol: f64, out: &mut Vec<[P; 4]>) {
+/// Indices of the prominent local extrema (peaks + valleys) of the value axis,
+/// always including both endpoints — the anchors the fit pins so a wave keys at
+/// each turn. `min_prom` is the least value swing for a reversal to count as a
+/// real extremum, which rejects the residual jitter the low-pass left behind (a
+/// swinging-door / prominence peak detector). Returns strictly increasing
+/// indices; a monotone run yields just `[0, n-1]`.
+fn anchor_indices(pts: &[P], min_prom: f64) -> Vec<usize> {
     let n = pts.len();
-    if n == 2 {
-        // A straight cubic: handles at the 1/3 chord (so it flattens to the line).
-        let third = scale(sub(pts[1], pts[0]), 1.0 / 3.0);
-        out.push([pts[0], add(pts[0], third), sub(pts[1], third), pts[1]]);
-        return;
+    if n < 3 {
+        return (0..n).collect();
     }
-    let mut u = chord_length_param(pts);
-    let mut bez = generate_bezier(pts, &u, left_t, right_t);
-    let (mut max_e, mut split) = max_value_error(pts, &bez);
-    if max_e < tol {
-        out.push(bez);
-        return;
-    }
-    // Close enough to try Newton reparameterisation a few times before splitting
-    // (Schneider's `maxError < error·4` gate — here on the value error; the
-    // paper's "four or five" iteration cap, `FitCurves.c` uses 4).
-    if max_e < 4.0 * tol {
-        for _ in 0..4 {
-            u = reparameterize(pts, &u, &bez);
-            bez = generate_bezier(pts, &u, left_t, right_t);
-            let (e, s) = max_value_error(pts, &bez);
-            max_e = e;
-            split = s;
-            if max_e < tol {
-                out.push(bez);
-                return;
+    let mut anchors = vec![0usize];
+    let start_v = pts[0][1];
+    let mut ext_i = 0usize; // running extremum candidate
+    let mut ext_v = start_v;
+    let mut trend = 0i32; // +1 rising, -1 falling, 0 not yet moved
+    for (i, p) in pts.iter().enumerate().skip(1) {
+        let v = p[1];
+        match trend {
+            0 => {
+                if v > start_v + min_prom {
+                    trend = 1;
+                    ext_i = i;
+                    ext_v = v;
+                } else if v < start_v - min_prom {
+                    trend = -1;
+                    ext_i = i;
+                    ext_v = v;
+                }
+            }
+            1 => {
+                if v >= ext_v {
+                    ext_v = v;
+                    ext_i = i;
+                } else if v < ext_v - min_prom {
+                    anchors.push(ext_i);
+                    trend = -1;
+                    ext_v = v;
+                    ext_i = i;
+                }
+            }
+            _ => {
+                if v <= ext_v {
+                    ext_v = v;
+                    ext_i = i;
+                } else if v > ext_v + min_prom {
+                    anchors.push(ext_i);
+                    trend = 1;
+                    ext_v = v;
+                    ext_i = i;
+                }
             }
         }
     }
-    let split = split.clamp(1, n - 2);
-    let center_t = unit(sub(pts[split - 1], pts[split + 1]));
-    fit_cubic(&pts[..=split], left_t, center_t, tol, out);
-    fit_cubic(&pts[split..], scale(center_t, -1.0), right_t, tol, out);
+    if *anchors.last().unwrap() != n - 1 {
+        anchors.push(n - 1);
+    }
+    anchors
 }
+
+/// Fit one monotone run (between two extrema) with ONE least-squares cubic —
+/// its ends are peaks/valleys where the gesture's tangent is ~flat, so a single
+/// cubic tracks a wave's half-cycle closely. A run a single cubic misses by more
+/// than `SPLIT_SLACK × tol` (a genuinely complex run, not a wave) splits at its
+/// worst point and recurses, but only to `depth` — so the key-per-extremum
+/// result holds for waves while a complex run still gets bounded fidelity help
+/// (at most `2^depth` cubics), never the Schneider blow-up.
+fn fit_run(run: &[P], tol: f64, depth: u32, out: &mut Vec<[P; 4]>) {
+    let m = run.len();
+    if m < 2 {
+        return;
+    }
+    let bez = one_cubic(run);
+    let (err, worst) = max_value_error(run, &bez);
+    if depth == 0 || m <= 3 || err <= SPLIT_SLACK * tol {
+        out.push(bez);
+        return;
+    }
+    let split = worst.clamp(1, m - 2);
+    fit_run(&run[..=split], tol, depth - 1, out);
+    fit_run(&run[split..], tol, depth - 1, out);
+}
+
+/// One least-squares cubic through `run` with tangents estimated from its ends
+/// (a few Newton reparameterisation passes, no subdivision).
+fn one_cubic(run: &[P]) -> [P; 4] {
+    let m = run.len();
+    if m == 2 {
+        let third = scale(sub(run[1], run[0]), 1.0 / 3.0);
+        return [run[0], add(run[0], third), sub(run[1], third), run[1]];
+    }
+    let lt = unit(sub(run[1], run[0]));
+    let rt = unit(sub(run[m - 2], run[m - 1]));
+    let mut u = chord_length_param(run);
+    let mut bez = generate_bezier(run, &u, lt, rt);
+    for _ in 0..4 {
+        u = reparameterize(run, &u, &bez);
+        bez = generate_bezier(run, &u, lt, rt);
+    }
+    bez
+}
+
+/// How far a single per-run cubic may miss (as a multiple of `tol`) before the
+/// run is split further. Generous, so a wave keeps its one key per extremum;
+/// only a genuinely complex run between two extrema gains extra keys.
+const SPLIT_SLACK: f64 = 4.0;
+/// Max recursive splits per run — bounds a complex run to `2^depth` cubics so it
+/// gains fidelity without the Schneider blow-up (a wave never splits at all).
+const RUN_SPLIT_DEPTH: u32 = 2;
 
 /// Least-squares fit of the two interior control points, given the endpoints
 /// (`pts` first/last) and the end tangents — the Bézier through `pts` at

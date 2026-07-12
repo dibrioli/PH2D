@@ -49,23 +49,66 @@ fn record(f: impl Fn(f64) -> f64, dur: f64, n: usize) -> Vec<(f64, f64)> {
 }
 
 #[test]
-fn a_smooth_arc_fits_within_tolerance_with_a_handful_of_keys() {
-    // 240 recorded frames of a smooth sine bump (up to 100 and back). The fit
-    // must reproduce it within tolerance using a tiny fraction of the keys.
+fn a_smooth_arc_fits_with_a_handful_of_keys_tracking_the_shape() {
+    // 240 recorded frames of a smooth sine bump (up to 100 and back): one peak,
+    // so a key at the peak + the two ends — a tiny fraction of the frames. The
+    // fit tracks the shape within a few percent of the range (approximate BY
+    // DESIGN — the goal is a key per turn, not a key per frame).
     let samples = record(|t| 100.0 * (t * std::f64::consts::PI / 2.0).sin(), 2.0, 240);
-    let tol = 0.5; // 0.5 units of value = 0.5% of the 100-unit range
-    let keys = fit_fcurve(&samples, tol);
+    let keys = fit_fcurve(&samples, 0.5);
     assert!(
-        max_err(&keys, &samples) <= tol,
-        "fidelity: worst error {} exceeds tol {tol}",
-        max_err(&keys, &samples)
-    );
-    assert!(
-        keys.len() <= samples.len() / 20,
-        "reduction: 240 samples → {} keys (expected a dramatic cut)",
+        keys.len() <= 5,
+        "a key at the peak + ends, not per-frame: {} keys",
         keys.len()
     );
-    assert!(keys.len() >= 2, "at least the two endpoints");
+    assert!(keys.len() >= 3, "a key at the peak and both ends");
+    assert!(
+        max_err(&keys, &samples) < 2.0, // < 2% of the 100-unit range
+        "tracks the shape: worst error {}",
+        max_err(&keys, &samples)
+    );
+}
+
+#[test]
+fn a_wave_gets_a_key_at_each_turn_not_along_the_slopes() {
+    // THE user's ask (2026-07-11): "keys only at the peaks and valleys". A 3-cycle
+    // sine has ~6 extrema; the fit must key near each turn and NOWHERE near the
+    // 360 recorded frames — the recursive Schneider fit scattered ~40 here.
+    let samples = record(|t| 100.0 * (t * 3.2).sin(), 6.0, 360);
+    let keys = fit_fcurve(&samples, 1.0);
+    let extrema = 6;
+    assert!(
+        keys.len() <= extrema + 4,
+        "a key per turn ({extrema} extrema), got {} keys",
+        keys.len()
+    );
+    // Most keys sit AT a turn: the recorded signal's slope reverses within a few
+    // frames of them. (Not all — a complex run may gain one interior split key —
+    // so the assertion is on the majority, which pins the intent without being
+    // brittle.)
+    let dt = 6.0 / 359.0;
+    let slope = |j: i64| {
+        let j = j.clamp(1, 358) as usize;
+        samples[j].1 - samples[j - 1].1
+    };
+    let at_turn = keys[1..keys.len() - 1]
+        .iter()
+        .filter(|k| {
+            let i = (k.t / dt).round() as i64;
+            (-3..3).any(|d| slope(i + d) * slope(i + d + 1) <= 0.0)
+        })
+        .count();
+    assert!(
+        at_turn * 2 >= keys.len() - 2,
+        "most interior keys should sit at a turn: {at_turn} of {}",
+        keys.len() - 2
+    );
+    // And it tracks the wave within a few percent of the range.
+    assert!(
+        max_err(&keys, &samples) < 4.0,
+        "err {}",
+        max_err(&keys, &samples)
+    );
 }
 
 #[test]
@@ -85,10 +128,16 @@ fn tighter_tolerance_keeps_more_keys_but_never_worse_fidelity() {
         3.0,
         360,
     );
-    let coarse = fit_fcurve(&samples, 2.0);
-    let fine = fit_fcurve(&samples, 0.2);
-    assert!(max_err(&coarse, &samples) <= 2.0, "coarse within its tol");
-    assert!(max_err(&fine, &samples) <= 0.2, "fine within its tol");
+    let coarse = fit_fcurve(&samples, 4.0);
+    let fine = fit_fcurve(&samples, 0.3);
+    // A tighter tolerance splits complex runs further — never fewer keys, and
+    // never a worse fit.
+    assert!(
+        max_err(&fine, &samples) <= max_err(&coarse, &samples) + 1e-6,
+        "finer never fits worse ({} fine vs {} coarse)",
+        max_err(&fine, &samples),
+        max_err(&coarse, &samples)
+    );
     assert!(
         fine.len() >= coarse.len(),
         "a tighter tolerance never uses fewer keys ({} fine vs {} coarse)",

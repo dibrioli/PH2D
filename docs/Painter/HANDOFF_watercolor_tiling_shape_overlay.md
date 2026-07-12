@@ -64,7 +64,7 @@ nextest-impacted escapam — o integrador drena latentes, orce 2-4 iterações; 
 
 ---
 
-## 1. ~~PROBLEMA ABERTO~~ **RESOLVIDO 2026-07-11 (`d9df426f`, pendente smoke)** — overlay na costura do tiling
+## 1. ~~PROBLEMA ABERTO~~ **RESOLVIDO 2026-07-11 (`d9df426f`) — ✅ SMOKE APROVADO + integrado ao main** — overlay na costura do tiling
 
 > **DIAGNÓSTICO FECHADO (a pergunta-chave abaixo foi respondida):** a geometria **CRUZA a borda**
 > (x > iw) — já era provado pelo teste verde `shape_in_sprite_grab_drags_past_the_seam_without_wrapping`

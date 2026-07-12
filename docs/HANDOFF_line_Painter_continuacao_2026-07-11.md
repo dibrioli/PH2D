@@ -81,16 +81,32 @@ Paper **reseta params** ao trocar kind · Paper procedural ganhou **default de S
 > 1 → 12) foi **smoke-APROVADO pelo Enio em 2026-07-11**. Tudo que está no main desta linha está
 > validado. Você começa limpo.
 
-### 🥇 PRIORIDADE 1 (recomendada) — **#16 PESQUISA: traço de aspecto 3D**
+### 🥇 PRIORIDADE 1 (recomendada) — **#16: traço de aspecto 3D (height-map + lighting)**
 
-**Por que esta é a jogada estratégica.** O objetivo REAL do Enio com o Per-Layer Color é *"pintar brushes
-com aspecto 3D como os artistas do Procreate fazem"*. Só que o Per-Layer Color é **exatamente** onde
-moram os dois problemas abertos (o muro de perf `O(D·N·S)` e o Bug #11). A alternativa mapeada no doc 13
-#16 — **height-map + lighting pass** — entregaria o **mesmo look** por uma fração do custo, **sem** o
-`×N` e **sem** o caminho que produz o retângulo. **Atacar #16 pode tornar #11 e #15 irrelevantes.**
-Comece por **pesquisa** (como Procreate/Rebelle/Painter fazem) → proposta → só então código.
+> **★ DECISÃO DO ENIO (2026-07-11): é FEATURE NOVA, não substituição.** O **Per-Layer Color FICA** —
+> o height-map + lighting entra **ao lado dele**, como um segundo caminho para o look 3D. **Não** planeje
+> nada que deprecie, remova ou "aposente" o Per-Layer Color. Consequência direta: o **Bug #11 e a perf
+> (#15) continuam valendo por mérito próprio** — não são "resolvidos por irrelevância".
+
+**O que é.** O Enio quer *"pintar brushes com aspecto 3D como os artistas do Procreate fazem"*. Hoje o
+único caminho é o **Per-Layer Color** (N camadas capturadas, cada uma com sua cor, compostas em z-order).
+O **#16** é o caminho **alternativo e barato**: o brush carrega um **height-map** (relevo) e um **lighting
+pass** o ilumina — o volume vem da normal/sombreamento, não de empilhar N camadas. Custo ~O(1) em vez de
+`O(D·N·S)`, e não passa pelo caminho que produz o retângulo do #11.
+
+**Como atacar (nesta ordem):**
+1. **PESQUISA primeiro** — como Procreate / Rebelle / Corel Painter fazem o "brush 3D"
+   (height/bump por-dab? normal-map? lighting global vs por-traço? o usuário controla a luz?).
+   Fonte no doc 13 #16. **Zero código antes da proposta.**
+2. **Proposta ao Enio** (semântica + UI: onde mora a altura, quais knobs, como convive com Shape/Grain
+   e com o wash da aquarela) → **só então** implemente.
+3. **Convivência** é requisito, não detalhe: os dois modos (Per-Layer Color **e** height-map) precisam
+   coexistir no painel sem se atropelar.
 
 ### 🥈 PRIORIDADE 2 — **Bug #11 (retângulos per-layer)** — **só quando REPRODUZIR**
+
+> **Segue VALENDO por mérito próprio.** Como o #16 é feature NOVA (o Per-Layer Color **fica**), este bug
+> **não** morre por substituição — ele afeta um caminho que continua vivo e em uso.
 
 **Leia [`Painter/BUGS_painter.md` #11 INTEIRO antes de tocar** — ele tem a tabela do que **já foi
 descartado** (composite CPU · upload parcial · tiling · slot GPU · upload por versão) e economiza rounds.

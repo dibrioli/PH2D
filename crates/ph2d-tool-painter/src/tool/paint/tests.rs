@@ -2915,6 +2915,35 @@ fn per_layer_color_route_flip_mid_stroke_reshapes_the_maps() {
 }
 
 #[test]
+fn per_layer_color_grain_rake_flip_mid_stroke_reshapes_the_maps() {
+    // Enio (2026-07-12): "temos outro rake em grain e paper". The **Grain** Rake reaches the SAME route
+    // predicate as the Shape Rake — `grain_has_per_dab_rotation()` is one of `per_dab_dynamic`'s disjuncts
+    // (`stamp_route.rs`) — so it flips a live Per-Layer Colour stroke from the cached (1 B/px) route to the
+    // dynamic (4 B/px) one exactly like Shape Rake did, and panicked the same way. The shape guard is
+    // route-agnostic, so it covers this too; this test PINS that, because "it's the same code path" is a
+    // claim, and a claim is not a gate.
+    let mut t = per_layer_live_stroke();
+    t.paint.brush.texture = ph2d_painter_brush::TextureSettings {
+        kind: ph2d_painter_brush::TextureKind::Noise, // an active Grain, so Rake is meaningful
+        ..t.paint.brush.texture
+    };
+    t.stamp_dabs(&[live_dab(24.0)]); // batch 1 — cached route (1 B/px maps)
+    let before = t.paint.per_layer_stroke.cov[0].len();
+    t.paint.brush.texture.rake = true; // GRAIN Rake, stroke still live → the route flips
+    t.stamp_dabs(&[live_dab(40.0)]); // batch 2 — panicked here before the fix
+    assert_eq!(
+        before,
+        64 * 64,
+        "the cached route's maps start at 1 B/px coverage"
+    );
+    assert_eq!(
+        t.paint.per_layer_stroke.cov[0].len(),
+        64 * 64 * 4,
+        "Grain Rake re-shaped the maps to the dynamic route's 4 B/px premul RGBA"
+    );
+}
+
+#[test]
 fn per_layer_color_route_flip_back_reshapes_the_maps_too() {
     // The REVERSE flip (Rake turned back off: dynamic → cached) never panicked — the 4 B/px maps are big
     // enough to index at 1 B/px — it CORRUPTED in silence: the cached recomposite read the leftover

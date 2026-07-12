@@ -34,6 +34,7 @@ mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → u
 mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; pixels are a derived recompose
 pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
+mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
@@ -413,6 +414,13 @@ pub(crate) struct PaintState {
     ramp_lut_owner: ramp_lut::RampLutOwner,
     /// **Accumulate OFF** per-stroke coverage mask (1 byte/px), cleared on down; caps a stroke at Strength.
     stroke_mask: Vec<u8>,
+    /// **Impasto** per-stroke height envelope (f32, `w*h`) — the relief THIS stroke has laid down so
+    /// far, combined by magnitude ([`ph2d_painter_brush::height::envelope`]) so passing the brush back
+    /// over its own line leaves one thickness, not a staircase. Merged into the active layer's
+    /// committed height at `close_stroke` (separate strokes DO add). Empty ⇒ no impasto this stroke
+    /// (zero cost); sized lazily by the first dab, cleared on down and on each shape-editor re-stamp.
+    /// See [`super::impasto`].
+    stroke_height: Vec<f32>,
     /// **Watercolor render-path** per-stroke coverage (1 byte/px, `w*h`): the union footprint of the
     /// stroke's dabs (max-blended discs = wet_edges `stampCoverage`), the silhouette the optical composite
     /// reconstructs the wash from ([`super::watercolor_render`]). Empty unless the Watercolor section is

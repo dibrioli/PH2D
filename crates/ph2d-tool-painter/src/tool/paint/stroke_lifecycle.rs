@@ -52,6 +52,7 @@ impl PainterTool {
         // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
+        self.reset_stroke_height(); // Impasto: this stroke's relief starts empty (see `super::impasto`)
         if !wet_session {
             self.paint.stroke_coverage.clear();
             self.paint.stroke_color.clear();
@@ -297,6 +298,9 @@ impl PainterTool {
     /// entry (pre-stroke → current) so the whole stroke undoes/redoes as a unit. No-op when no stroke
     /// is open. Reuses the structural-undo stack (a full-canvas snapshot per stroke; tile delta later).
     pub(super) fn close_stroke(&mut self) {
+        // Impasto: fold this stroke's relief into the layer BEFORE the undo entry is recorded, so the
+        // step captures the height together with the pigment that made it — one Ctrl+Z takes both.
+        self.commit_stroke_height();
         self.paint.stroke = None;
         self.paint.line_anchor = None;
         self.paint.last_smear_pos = None;

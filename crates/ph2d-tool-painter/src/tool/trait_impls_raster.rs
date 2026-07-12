@@ -41,6 +41,10 @@ impl RasterEditTool for PainterTool {
         self.adjustment_cache_pending = false;
         self.dirty_rect = None;
         self.preview_upload_bbox = None;
+        // Impasto relief is canvas-shaped and belongs to the OLD sprite's layers — a fresh bind inherits
+        // none of it. (Same species as the four above: state whose shape is tied to a document that is
+        // no longer bound.)
+        self.heights.clear();
         self.layers_revision = self.layers_revision.wrapping_add(1);
         // A different working canvas — undo/redo over the OLD model is meaningless on the NEW one.
         self.undo.clear();

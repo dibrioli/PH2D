@@ -16763,3 +16763,315 @@ fn impasto_off_is_byte_identical() {
         "sanity: the fixture actually painted (an all-white canvas would make this gate vacuous)"
     );
 }
+
+// ── Impasto (#16) — the height channel rides the SHARED dab list ──────────────────────────────────
+
+/// The relief the artist would see on the active layer (committed + the open stroke's envelope).
+fn relief(t: &PainterTool) -> Vec<f32> {
+    let id = t.layers.active().expect("a layer is active");
+    t.layer_height_view(id).unwrap_or_default()
+}
+
+/// A canvas with an impasto brush ready to sculpt. Hard disk ⇒ a deterministic, level plateau.
+fn impasto_canvas(size: u32) -> PainterTool {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    let b = BrushSpec {
+        radius_px: 6.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.1, 0.2, 0.3],
+        space_attenuation: false,
+        impasto: true,
+        impasto_depth: 0.5,
+        ..Default::default()
+    };
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t
+}
+
+#[test]
+fn impasto_tiling_sculpts_the_opposite_edge() {
+    // THE structural gate (plan §5, T3.4.4). The height must consume the dab list the COLOUR consumes —
+    // already wrapped by Tiling. A height pass that walked its own geometry would paint relief only
+    // where the brush physically is, and the wrapped edge would come out flat: paint on one side of the
+    // seam, no thickness on the other. That is how "Tiling doesn't work in Impasto" gets born, and this
+    // is the test that refuses to let it.
+    let size = 40u32;
+    let mut t = impasto_canvas(size);
+    t.paint.tiling = [true, false]; // wrap on X
+    t.on_canvas_pointer(cp([1.0, 20.0], PointerPhase::Down)); // hard against the LEFT edge
+    t.on_canvas_pointer(cp([1.0, 20.0], PointerPhase::Up));
+    let h = relief(&t);
+    assert!(!h.is_empty(), "the stroke laid down relief");
+    let at = |x: u32, y: u32| h[(y * size + x) as usize];
+    assert!(at(0, 20) > 0.0, "relief where the brush is");
+    assert!(
+        at(size - 1, 20) > 0.0,
+        "and relief on the WRAPPED edge — the height rides the same tiled dab list as the colour"
+    );
+    assert_eq!(at(20, 20), 0.0, "and nowhere the brush never went");
+}
+
+#[test]
+fn impasto_symmetry_mirrors_the_relief() {
+    // The Symmetry twin of the Tiling gate: `push_symmetric` mirrors dabs INTO the list, so the mirrored
+    // dab carries its height for free — if, and only if, the height reads the list.
+    let size = 40u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.symmetry.enabled = true;
+    b.symmetry.axis = ph2d_painter_brush::MirrorAxis::X; // mirror across the vertical centre line
+    b.symmetry.center = [20.0, 20.0];
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([8.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([8.0, 20.0], PointerPhase::Up));
+    let h = relief(&t);
+    let at = |x: u32, y: u32| h[(y * size + x) as usize];
+    assert!(at(8, 20) > 0.0, "relief under the brush");
+    assert!(
+        at(32, 20) > 0.0,
+        "and its mirror image — 8 and 32 straddle the axis at x=20"
+    );
+}
+
+#[test]
+fn impasto_one_stroke_is_one_thickness_but_two_strokes_add() {
+    // The envelope (T1.2). Scrubbing back and forth WITHIN a stroke must not build a staircase of
+    // paint — a loaded brush passing over its own line leaves one thickness. But a SECOND stroke
+    // genuinely piles more on. Both halves matter: envelope-everything would make impasto unbuildable;
+    // add-everything would make a single slow stroke pile up under the cursor.
+    let mut t = impasto_canvas(40);
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Move)); // pass 2 over the same point
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Move)); // pass 3
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    let one = relief(&t)[(20 * 40 + 20) as usize];
+    assert!(
+        (one - 0.5).abs() < 1e-5,
+        "one stroke = one depth, got {one}"
+    );
+
+    // A second, separate stroke over the same paint.
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    let two = relief(&t)[(20 * 40 + 20) as usize];
+    assert!(
+        (two - 1.0).abs() < 1e-5,
+        "a second stroke lays MORE paint on top, got {two}"
+    );
+}
+
+#[test]
+fn impasto_eraser_takes_the_relief_with_the_paint() {
+    // T1.6 — not optional, a correction: without it the eraser removes the pigment and the light pass
+    // keeps reporting a ridge. Ghost relief.
+    let mut t = impasto_canvas(40);
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    assert!(relief(&t)[(20 * 40 + 20) as usize] > 0.0, "relief is there");
+
+    t.paint.eraser = true;
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    let left = relief(&t)[(20 * 40 + 20) as usize];
+    assert!(
+        left.abs() < 1e-5,
+        "the eraser scrubbed the relief away with the paint, got {left}"
+    );
+}
+
+#[test]
+fn impasto_draw_to_depth_sculpts_without_painting() {
+    // T1.8 — the palette knife: thickness, no pigment. The canvas must come out BYTE-identical while
+    // the relief changes. (A "sculpt" that quietly tinted the canvas would be a lie.)
+    let mut t = impasto_canvas(40);
+    let mut b = t.paint.brush;
+    b.impasto_draw_to = DrawTo::Depth;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    let before = (*t.canvas_rgba).clone();
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    assert_eq!(
+        *t.canvas_rgba, before,
+        "Draw To = Depth deposits no pigment — the canvas is untouched"
+    );
+    assert!(
+        relief(&t)[(20 * 40 + 20) as usize] > 0.0,
+        "...but the relief is there"
+    );
+}
+
+#[test]
+fn impasto_undo_takes_back_the_relief_with_the_pixels() {
+    // The relief lives in the undo snapshot. If it didn't, Ctrl+Z would restore the colour and leave
+    // the thickness — paint that is gone but still catches the light.
+    let mut t = impasto_canvas(40);
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+    assert!(relief(&t)[(20 * 40 + 20) as usize] > 0.0);
+    assert!(t.undo_last(), "the stroke is one undo step");
+    let h = relief(&t);
+    assert!(
+        h.is_empty() || h[(20 * 40 + 20) as usize].abs() < 1e-6,
+        "undo took the relief back with the pixels"
+    );
+    assert!(t.redo_last(), "and it redoes");
+    assert!(
+        relief(&t)[(20 * 40 + 20) as usize] > 0.0,
+        "and redo brings it back"
+    );
+}
+
+#[test]
+fn watercolor_is_untouched_by_impasto() {
+    // ★ THE BARRIER (plan §2, Enio's explicit order: "Watercolor é uma implementação à parte e não deve
+    // ser tocada ou ferida"). With the wash on, an impasto brush must be INERT: the canvas byte-identical
+    // to the same wash with Impasto off, and not one texel of relief deposited. The architecture already
+    // guarantees it (`stamp_dabs` short-circuits into the optical path before the router, where the
+    // height choke point lives) — this test is what will notice the day someone changes that.
+    let wash = |impasto: bool| -> (Vec<u8>, Vec<f32>) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 48 * 48 * 4], 48, 48);
+        let b = BrushSpec {
+            radius_px: 8.0,
+            color: [0.8, 0.2, 0.1],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.5,
+            impasto,
+            impasto_depth: 1.0,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([16.0, 24.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([32.0, 24.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([32.0, 24.0], PointerPhase::Up));
+        let h = relief(&t);
+        ((*t.canvas_rgba).clone(), h)
+    };
+    let (plain, h_off) = wash(false);
+    let (with_impasto, h_on) = wash(true);
+    assert!(
+        plain.iter().any(|&b| b != 255),
+        "sanity: the wash actually painted"
+    );
+    assert_eq!(
+        plain, with_impasto,
+        "Impasto must not move a single pixel of the watercolor path"
+    );
+    assert!(h_off.is_empty(), "and the wash deposits no relief...");
+    assert!(
+        h_on.iter().all(|&v| v == 0.0),
+        "...with Impasto ticked either — the card is hidden there, and the code path never runs"
+    );
+}
+
+#[test]
+fn impasto_on_does_not_disturb_the_pigment() {
+    // RULE 2, and the gate that guards it. The Grain's per-dab random frame is drawn from a PERSISTENT
+    // rng stream (`tex_rng`). The height pass has to resolve the same frames the colour pass will — so
+    // it reads a COPY of that stream and throws it away. If it ever wrote the stream back (the obvious,
+    // wrong thing), every colour dab would draw the NEXT random frame instead of its own: the relief and
+    // the pigment would carry different grain, and the artist would see the texture change the moment
+    // they ticked Impasto — a checkbox for RELIEF silently repainting the COLOUR.
+    //
+    // So: turning Impasto ON must add thickness and change not one pixel of pigment.
+    let stroke = |impasto: bool| -> Vec<u8> {
+        use ph2d_painter_brush::{TextureKind, TextureMapping};
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 48 * 48 * 4], 48, 48);
+        let mut b = BrushSpec {
+            radius_px: 7.0,
+            color: [0.2, 0.6, 0.3],
+            space_attenuation: false,
+            impasto,
+            impasto_depth: 1.0,
+            impasto_source: DepthSource::Grain,
+            ..Default::default()
+        };
+        // A Grain that DRAWS from the rng every dab — the whole point. A static grain would make this
+        // gate vacuous: with nothing consuming the stream, a stream bug is invisible.
+        b.texture.kind = TextureKind::Noise;
+        b.texture.mapping = TextureMapping::ViewPlane;
+        b.texture.random_angle = true;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    let without = stroke(false);
+    let with = stroke(true);
+    assert!(
+        without.iter().any(|&b| b != 255),
+        "sanity: the fixture painted"
+    );
+    assert_eq!(
+        without, with,
+        "Impasto adds THICKNESS, not a different painting — the height pass must not consume the \
+         colour's random stream"
+    );
+}
+
+#[test]
+fn impasto_per_layer_color_leaves_one_coherent_relief() {
+    // T1.7 — the plan called this "the one place `for free` does not hold", because the Per-Layer Color
+    // route BYPASSES the ordinary cached routes: it composites N tinted shape layers onto the canvas
+    // itself. It turned out to be free after all, and for a reason worth writing down: the height is
+    // taken at the ONE choke point ABOVE the whole route dispatch, from the union silhouette that all N
+    // layers already flatten into. So the relief is ONE coherent body — the thickness of the paint the
+    // brush laid — not N stacked steps, one per shape layer, which is exactly the artefact the plan
+    // feared. Nothing about this is guaranteed by the code reading well; it is guaranteed by this test.
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+    // Two shape layers, each a solid 8×8 tile → the union silhouette is the whole tip.
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    assert!(
+        t.brush_settings().shape_per_layer_color,
+        "the fixture really is in Per-Layer Color mode"
+    );
+    let mut b = t.paint.brush;
+    b.radius_px = 8.0;
+    b.impasto = true;
+    b.impasto_depth = 0.6;
+    b.space_attenuation = false;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
+
+    let h = relief(&t);
+    assert!(!h.is_empty(), "the Per-Layer Color route laid down relief");
+    let centre = h[(32 * 64 + 32) as usize];
+    assert!(centre > 0.0, "there IS a body under the dab ({centre})");
+    // ONE dab of depth 0.6 ⇒ at most 0.6 anywhere. Two layers each contributing their own step would
+    // land at ~1.2 — the "N stacked steps" artefact, and the whole reason this task existed.
+    let peak = h.iter().fold(0.0f32, |m, &v| m.max(v));
+    assert!(
+        peak > 0.3,
+        "sanity: a real body, not a sliver — else the bound below would pass vacuously (peak {peak})"
+    );
+    assert!(
+        peak <= 0.6 + 1e-5,
+        "the relief is ONE body of the brush's depth, not one step per shape layer (peak {peak})"
+    );
+}

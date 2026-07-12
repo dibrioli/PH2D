@@ -37,6 +37,11 @@ use crate::layers::{LayerId as RtLayerId, LayerStack};
 pub struct ModelSnapshot {
     pub layers: LayerStack,
     pub images: BTreeMap<RtLayerId, LayerImage>,
+    /// **Impasto** relief per layer — captured with the pixels so undoing a stroke takes back the
+    /// thickness it laid down, not just the colour (a snapshot that forgot it would leave the light
+    /// pass reporting a ridge over paint that is no longer there). Empty for every layer that was
+    /// never sculpted, which is the norm — the map is lazy.
+    pub heights: BTreeMap<RtLayerId, Vec<f32>>,
     pub canvas_rgba: Arc<Vec<u8>>,
     pub selection: BTreeSet<RtLayerId>,
     /// The open on-canvas shape editor (Curve / Ellipse / Polygon), captured so a structural undo/redo
@@ -377,6 +382,7 @@ mod tests {
         ModelSnapshot {
             layers: LayerStack::new(),
             images: BTreeMap::new(),
+            heights: BTreeMap::new(),
             canvas_rgba: Arc::new(vec![active_px; 16]),
             selection: BTreeSet::new(),
             shape: None,

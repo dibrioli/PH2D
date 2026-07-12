@@ -19,6 +19,7 @@ impl PainterTool {
         crate::undo::ModelSnapshot {
             layers: self.layers.clone(),
             images: self.images.clone(),
+            heights: self.heights.clone(),
             canvas_rgba: Arc::clone(&self.canvas_rgba),
             selection: self.selection.clone(),
             // Layer ops carry no open shape / live preview; the shape paths override these via
@@ -53,6 +54,7 @@ impl PainterTool {
     pub(crate) fn restore_model(&mut self, m: crate::undo::ModelSnapshot) {
         self.layers = m.layers;
         self.images = m.images;
+        self.heights = m.heights;
         self.canvas_rgba = m.canvas_rgba;
         self.selection = m.selection;
         // Reinstate the Mask brush scratch + target so an undo/redo across a mask stroke restores the

@@ -78,6 +78,13 @@ pub struct PainterTool {
     /// Per-(non-active-)layer pixel buffers (canvas-sized straight sRGB8).
     /// `BTreeMap` per HR-5 (deterministic iteration).
     images: BTreeMap<RtLayerId, LayerImage>,
+    /// **Impasto** relief per layer (canvas-sized `f32`, signed: `+` lifts paint off the canvas, `-`
+    /// carves into it). A sibling of [`Self::images`], and LAZY — a layer with no entry has no relief
+    /// and costs nothing, which is every layer until someone ticks Impasto. Unlike the colour, the
+    /// ACTIVE layer's height lives here too (there is no `canvas_rgba` equivalent to special-case);
+    /// the in-progress stroke's contribution is the separate `PaintState::stroke_height` envelope.
+    /// Captured by the structural-undo snapshot, so undoing a stroke restores the relief with it.
+    heights: BTreeMap<RtLayerId, Vec<f32>>,
     /// Cached composite output (non-trivial stacks only), behind an `Arc` so the
     /// bridge drain is zero-copy. Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,
@@ -157,6 +164,7 @@ impl Default for PainterTool {
             canvas_rgba: Arc::new(Vec::new()),
             layers: LayerStack::new(),
             images: BTreeMap::new(),
+            heights: BTreeMap::new(),
             composited: None,
             preview_upload_bbox: None,
             layers_revision: 0,

@@ -29,6 +29,67 @@ pub struct ShapeInput<'a> {
     pub ramp_lut: Option<&'a [f32]>,
 }
 
+/// The dab's **silhouette** at one canvas pixel — the `w` of the kernel's funnel
+/// `a = w · g · coverage`.
+///
+/// An **Image** Shape *replaces* the falloff (a crisp imported tip stays uneroded); a **procedural**
+/// Shape is *masked by* it (`falloff × pattern`); **no** Shape ⇒ the bare falloff. `t` is the
+/// normalised distance from the dab centre, already deformed by the dab's flatten/rotate footprint.
+///
+/// **This is the single source of the dab's shape.** The colour kernel ([`stamp_band`]) and the
+/// height kernel ([`crate::height`]) both call it, so pigment and relief can never disagree about
+/// what a dab looks like — which is precisely what makes Shape, the Shape-Tone ramp, the falloff and
+/// the flatten/rotate footprint sculpt the Impasto relief for free, and keeps them sculpting it after
+/// someone edits one of them six months from now.
+#[inline]
+#[must_use]
+pub fn silhouette_at(
+    spec: &BrushSpec,
+    shape: Option<ShapeInput<'_>>,
+    t: f32,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+) -> f32 {
+    match shape {
+        Some(sh) => {
+            let raw = crate::texture::sample_shape_silhouette(
+                &spec.shape,
+                sh.basis,
+                px,
+                py,
+                center,
+                radius,
+                sh.image,
+            );
+            let sv = crate::texture::remap_shape_value(raw, sh.ramp_lut);
+            spec.compose_shape_silhouette(sv, spec.falloff_weight(t))
+        }
+        None => spec.falloff_weight(t),
+    }
+}
+
+/// The dab's **grain** coverage factor at one canvas pixel — the `g` of the funnel. Folds Grain Depth,
+/// the watercolor Granulation gate and the Stencil rect, in that order. The colour kernel inlines this
+/// same sequence (it needs the raw sample first, to index a Colour Ramp); the height kernel calls it
+/// directly. Every step is itself a shared function, so the two cannot drift.
+#[inline]
+#[must_use]
+pub fn grain_at(
+    spec: &BrushSpec,
+    basis: &TexDabBasis,
+    image: Option<&ImageMask<'_>>,
+    px: i64,
+    py: i64,
+    center: [f32; 2],
+    radius: f32,
+) -> f32 {
+    let s = crate::texture::sample(&spec.texture, basis, px, py, center, radius, image);
+    crate::texture::grain_coverage(s, spec.grain_depth(), spec.effective_granulation())
+        * crate::texture::stencil_gate(&spec.texture, basis, px, py)
+}
+
 /// Axis-aligned region of the buffer touched by a dab, in pixels (half-open: `[x, x+w)`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DirtyRect {
@@ -428,28 +489,13 @@ fn stamp_band(ctx: &DabCtx, dst: &mut [u8], mut mask: Option<&mut [u8]>, band_y0
         let dy = (py as f32 + 0.5) - ctx.cy;
         let row = r * ctx.stride;
         for px in ctx.x0..ctx.x1 {
-            // SILHOUETTE: an Image Shape *replaces* the falloff; a procedural Shape is MASKED BY it
-            // (`falloff × pattern`); no Shape ⇒ the bare falloff. The dab flatten/rotate deforms `t`.
+            // SILHOUETTE — via the shared [`silhouette_at`], which the Impasto height kernel also
+            // calls: one definition of a dab's shape, so relief and pigment cannot drift apart.
             let dx = (px as f32 + 0.5) - ctx.cx;
             let t = ctx
                 .footprint
                 .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius);
-            let w = if let Some(sh) = ctx.shape {
-                let raw = crate::texture::sample_shape_silhouette(
-                    &ctx.spec.shape,
-                    sh.basis,
-                    px,
-                    py,
-                    ctx.center,
-                    ctx.radius,
-                    sh.image,
-                );
-                let sv = crate::texture::remap_shape_value(raw, sh.ramp_lut);
-                ctx.spec
-                    .compose_shape_silhouette(sv, ctx.spec.falloff_weight(t))
-            } else {
-                ctx.spec.falloff_weight(t)
-            };
+            let w = silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius);
             // Skip pixels the silhouette already zeroes BEFORE the grain sample — the grain only
             // modulates where the dab paints, so sampling it there is pure waste (large Anchored).
             if w <= 0.0 {

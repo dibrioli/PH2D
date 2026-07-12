@@ -37,6 +37,11 @@ impl PainterTool {
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
+        // The pixels were just restored to their pre-preview state and the WHOLE shape is about to be
+        // re-stamped — so the relief has to be restored too. Without this the height envelope keeps the
+        // ridge of every intermediate shape the artist dragged through, and a curve leaves a fan of
+        // ghost relief behind the one it actually drew (`super::impasto`).
+        self.reset_stroke_height();
         // Coverage bbox over the wrapped Tiling copies (the stamp re-tiles them itself).
         let coverage_storage;
         let coverage: &[Dab] = if self.paint.tiling[0] || self.paint.tiling[1] {

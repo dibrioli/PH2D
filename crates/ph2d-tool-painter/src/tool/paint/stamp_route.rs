@@ -419,6 +419,23 @@ impl PainterTool {
         }
         let (w, h) = self.source_size;
         let mut brush = self.paint.brush;
+        // ── IMPASTO: the dab pipeline's SECOND output ────────────────────────────────────────────
+        // THE choke point. The list here is already mirrored (Symmetry, in the stroke engine) and
+        // already replicated (Tiling, just above), and every colour route below is fed from it — so
+        // running the height off this one list is what makes Mirror / Tiling / Stroke / the shape
+        // editors / Jitter sculpt the relief without a single line of code per feature, and keeps
+        // them sculpting it when someone changes them. A height pass hung off any route, or off its
+        // own geometry, is the way "Tiling doesn't work in Impasto" gets born six months from now.
+        //
+        // It runs BEFORE the colour routes because it reads a COPY of the `tex_rng` stream, which the
+        // routes are about to consume — see rule 2 in `super::impasto`.
+        self.stamp_dabs_height(dabs, &brush);
+        // `Draw To = Depth`: a sculpting brush — thickness, no pigment. The relief is already laid
+        // down, so leave the canvas byte-identical and stop here. (With Impasto off, `deposits_color`
+        // is unconditionally true, so the setting is not even read — the master switch is the gate.)
+        if !brush.deposits_color() && matches!(self.paint.paint_mode, PaintMode::Paint) {
+            return;
+        }
         // Eraser overrides the blend with Erase Alpha (the drawing blend in `brush.blend` is kept).
         if self.paint.eraser {
             brush.blend = ph2d_painter_brush::BrushBlend::EraseAlpha;

@@ -150,10 +150,51 @@ impl crate::App {
             };
             let entity = Entity::from_bits(bits);
             if let Some(mut sprite) = gfx.sim.world_mut().get_mut::<Sprite>(entity) {
-                sprite.source = SpriteSource::Individual { texture_id };
-                sprite.size = [w as f32, h as f32];
-                sprite.premultiplied = true;
+                reattach_texture(&mut sprite, texture_id);
             }
         }
+    }
+}
+
+/// Reata o sprite à textura recém-materializada — **e não toca em mais nada**.
+///
+/// Em especial, não toca no `size`: ele é a pose do sprite em **unidades de mundo** (metros), e já veio
+/// correta no snapshot. Escrever ali as dimensões da TEXTURA (que estão em pixels) fez um canvas de
+/// 1024 px reabrir com 1024 **metros** de lado — a textura gigante do 1º smoke da persistência. Um
+/// documento diz o que está *pintado* num objeto; ele não redimensiona o objeto.
+fn reattach_texture(sprite: &mut Sprite, texture_id: u32) {
+    sprite.source = SpriteSource::Individual { texture_id };
+    sprite.premultiplied = true; // o composite sobe premultiplicado (mesmo passo do preview e do Apply)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Carregar um projeto devolve a PINTURA ao sprite, não uma pose nova: o tamanho em mundo, a
+    /// posição na cena e tudo o mais que o snapshot restaurou ficam exatamente como estavam.
+    ///
+    /// RED com `sprite.size = [w as f32, h as f32]` — que é literalmente o bug que Enio viu: a textura
+    /// tem as dimensões em pixels (1024×1024), o sprite mede em metros (10,24 × 10,24), e o load
+    /// inflava o objeto pelo fator `pixels_per_meter`.
+    #[test]
+    fn reattaching_a_document_never_resizes_the_sprite() {
+        // Um canvas de 1024 px a 100 px/m: 10,24 × 10,24 METROS na cena.
+        let mut sprite = Sprite::atlas(0, [10.24, 10.24], [1.0, 1.0, 1.0, 1.0]);
+        sprite.source = SpriteSource::Individual { texture_id: 1 }; // a textura MORTA do save
+        let before = sprite.size;
+
+        reattach_texture(&mut sprite, 42);
+
+        assert!(
+            matches!(sprite.source, SpriteSource::Individual { texture_id: 42 }),
+            "o sprite passa a amostrar a textura NOVA"
+        );
+        assert!(sprite.premultiplied, "…que sobe premultiplicada");
+        assert_eq!(
+            sprite.size, before,
+            "…e a pose em unidades de MUNDO não é tocada (a textura mede em pixels; confundir os dois \
+             reabre um canvas de 1024 px com 1024 metros de lado)"
+        );
     }
 }

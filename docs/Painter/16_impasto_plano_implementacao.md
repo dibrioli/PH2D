@@ -539,3 +539,16 @@ ainda editável, não uma foto.
 tem `PaintedDoc` — o **undo** já o preserva via `doc_cache` em memória, mas um crash antes do 1º save
 perde tudo (é o comportamento de sempre; não regrediu). `SpriteSource::Atlas` (imagens importadas) e
 `CookedTexture` seguem no caminho antigo (`collect_assets`), intactos.
+
+#### 10.6.1 Fix do 1º smoke da persistência: **a textura reabria gigante** (Enio)
+
+*"Save funciona mas abre uma textura gigante e não do mesmo tamanho."* Bug meu, de uma linha: no
+re-ataque do sprite eu escrevia `sprite.size = [w, h]` — mas `Sprite.size` é a pose em **unidades de
+mundo (metros)**, e `w`/`h` são as dimensões da **textura, em pixels**. Um canvas de 1024 px a 100 px/m
+mede 10,24 m; o load o reabria com **1024 metros** de lado (inflado pelo fator `pixels_per_meter`).
+
+O `size` correto **já vinha no snapshot** — o documento não tinha nada a dizer sobre ele. A correção é
+não tocá-lo: o re-ataque virou `reattach_texture(sprite, texture_id)`, que troca **só** a textura (e a
+flag de premultiplicado). *Um documento diz o que está pintado num objeto; ele não redimensiona o
+objeto.* Gate `reattaching_a_document_never_resizes_the_sprite` — RED por mutação com o próprio bug
+(pose 1024 m vs 10,24 m esperados).

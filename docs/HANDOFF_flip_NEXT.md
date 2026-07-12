@@ -5,29 +5,26 @@
 > Leia este arquivo INTEIRO antes de tocar em código. O tracker exaustivo do que já
 > landou é [`HANDOFF_flip_impl.md`](HANDOFF_flip_impl.md) — leia depois deste.
 >
-> **🟨 ESTADO DO §3 (rasterização do traço) — atualizado 2026-07-11 (Rodada 7).**
-> **Acabaram** (verificados em GPU + smoke): acúmulo nas quinas, spike/estrela, bead
-> ("mastigado"), escama. **Sobrou UM artefato novo: a quina sai MORDIDA** com
-> hardness < 1 (um bocado reto arrancado do lado interno da virada). O Enio smokou,
-> reprovou, e mandou **integrar assim mesmo** — o fix fica pra depois.
+> **🟦 ATUALIZAÇÃO 2026-07-12 — a documentação do módulo foi TOTALMENTE reescrita
+> após um estudo exaustivo da referência (21 relatórios: fonte do GP inteiro + web +
+> análise adversarial). A fonte de conhecimento agora é [`docs/Flip/`](Flip/00_README.md):**
 >
-> **Sua PRIMEIRA TAREFA é a MORDIDA** — o mecanismo e o fix já estão deduzidos em
-> `HANDOFF_flip_impl.md` §"Rodada 7" → §"A mordida": com depth first-wins, o
-> fragmento vencedor precisa da distância à **polilinha** (p0/p3 no fragment — o
-> refino que a rodada 7 descartou por engano). **E ANTES de codar: conserte o
-> oráculo** (`assert_matches_analytic`) para esperar o **máximo** da máscara sobre os
-> segmentos (a união real), não o first-wins — hoje ele modela a implementação e
-> fica verde COM o bug na tela. Oráculo consertado = vermelho hoje = alvo
-> irrefutável.
+> - **Sua PRIMEIRA TAREFA é a wave WT (a mordida)** — spec completa, verificada em 3
+>   lentes adversariais, em [`Flip/03_traco_rasterizacao.md`](Flip/03_traco_rasterizacao.md)
+>   §4-§6 (fix = janela p0/p3 com `capsule_dn` UNIFICADA; oráculo-união PRIMEIRO —
+>   tem de ficar vermelho no código atual; kill-criteria K1-K4). Tasks: wave **WT**
+>   em [`Flip/01_plano_waves.md`](Flip/01_plano_waves.md).
+> - Achado central do estudo: **o GP 5.2 tem a MESMA mordida, latente** (issues
+>   #140075/#102927/#94252; o default hardness=1.0 + SMAA a escondem) — e a resposta
+>   estrutural do próprio Blender (Corner Types 2025) ratifica o caminho p0/p3.
+>   Aqui divergimos do Blender de propósito.
+> - Depois da WT: **W3 (Frames · Ghost · Tween)** — o plano enriquecido com os
+>   algoritmos exatos (onion `get_frame_id`, autokey por-tool, tween com constantes)
+>   está no [`Flip/01`](Flip/01_plano_waves.md) + [`Flip/02`](Flip/02_referencia_algoritmos_blender_5.2.md) §3/§8.
 >
-> Depois da mordida, o próximo tópico é o **W3 (Frames · Ghost · Tween)** —
-> guia em `HANDOFF_flip_impl.md` §W3-NEXT.
->
-> O §3 abaixo (a matriz de becos) fica como **HISTÓRICO** — os 3 becos que ele lista
-> estão explicados: `GEQUAL`+stadium = BEAD e `GEQUAL`+fita = SPIKE são **acúmulo**
-> (o premult-over compondo 2× no mesmo pixel); `GREATER`+stadium = ESCAMADO era a
-> **falta do `discard`** de alpha<0.001 (fragmento transparente escrevia depth e
-> furava o vizinho), não culpa do GREATER.
+> O §3 abaixo (a matriz de becos da Rodada 7) fica como **HISTÓRICO** — superado
+> pelo `Flip/03`, que explica os 3 becos: GEQUAL = acúmulo premult; GREATER+stadium
+> escamado = falta do discard, não culpa do GREATER.
 
 ---
 

@@ -134,8 +134,17 @@ const PIVOT_EPS: f64 = 1e-12;
 ///   Σ_{m' ∈ gap} R(m − m')·x[m']  =  − Σ_{j ∉ gap} R(m − j)·x[j]      ∀ m ∈ gap
 /// ```
 ///
-/// where `R` is the autocorrelation of `b`. Small (`gap ≤ MAX_GAP`) and solved
-/// exactly by Gaussian elimination.
+/// where `R` is the autocorrelation of `b`.
+///
+/// **That matrix is Toeplitz.** The gap is contiguous, so `R(mᵢ − mⱼ)` depends only on
+/// `i − j`: every diagonal is constant. Gaussian elimination does not know that and pays
+/// **O(m³)** for it — 2.2 M flops for a single 192-sample plateau, which is what made
+/// dragging De-Clip's Threshold slider freeze the editor at 2 s per frame (audit
+/// 2026-07-12). The **Levinson recursion** exploits the structure and solves the same system
+/// in **O(m²)** — ~200× fewer operations at m = 192, to the same answer.
+///
+/// It is the same answer, and `levinson_matches_gaussian_elimination` says so by keeping the
+/// old dense solver around as a test-only oracle and comparing against it.
 pub(super) fn lsar_interpolate(x: &mut [f64], a: &[f64], gap: Range<usize>) {
     let p = a.len();
     let m = gap.len();
@@ -171,15 +180,72 @@ pub(super) fn lsar_interpolate(x: &mut [f64], a: &[f64], gap: Range<usize>) {
             .sum();
         rhs[i] = -known;
     }
-    if let Some(sol) = solve(&mut mat, &mut rhs, m) {
+    if let Some(sol) = solve_toeplitz(&rr, &rhs) {
         for (i, mi) in gap.enumerate() {
             x[mi] = sol[i];
         }
     }
 }
 
-/// Gaussian elimination with partial pivoting. `None` when the system is singular —
-/// the caller then leaves the audio alone rather than writing NaNs into it.
+/// Solve a symmetric **Toeplitz** system `T·x = rhs`, where `T[i][j] = rr[|i−j|]`, by the
+/// Levinson recursion — O(m²) instead of the O(m³) a general solver pays for not knowing the
+/// structure.
+///
+/// The recursion grows the solution one row at a time, carrying the *forward vector* `f`
+/// (the solution of `T·f = e₁`). For a symmetric Toeplitz matrix the backward vector is
+/// simply `f` reversed, which is what makes the step cheap.
+///
+/// `None` when the recursion breaks down (a reflection coefficient reaching ±1, i.e. a
+/// singular leading minor) or when anything stops being finite — the caller then leaves the
+/// audio alone rather than writing dust into it.
+fn solve_toeplitz(rr: &[f64], rhs: &[f64]) -> Option<Vec<f64>> {
+    let m = rhs.len();
+    if m == 0 {
+        return Some(Vec::new());
+    }
+    // `rr` only spans the AR order; beyond it the autocorrelation is zero.
+    let r = |d: usize| -> f64 { rr.get(d).copied().unwrap_or(0.0) };
+    let r0 = r(0);
+    if r0.abs() < PIVOT_EPS {
+        return None;
+    }
+
+    let mut f = vec![1.0 / r0];
+    let mut x = vec![rhs[0] / r0];
+    for n in 1..m {
+        // How badly the current forward vector predicts the new row.
+        let eps_f: f64 = (0..n).map(|i| r(n - i) * f[i]).sum();
+        let denom = 1.0 - eps_f * eps_f;
+        if denom.abs() < PIVOT_EPS {
+            return None;
+        }
+        // Extend f, using its own reverse as the backward vector (the symmetry).
+        let mut fx = vec![0.0f64; n + 1];
+        for i in 0..n {
+            fx[i] += f[i] / denom;
+            fx[i + 1] -= eps_f * f[n - 1 - i] / denom;
+        }
+        // Extend the solution along the new backward vector.
+        let eps_x: f64 = (0..n).map(|i| r(n - i) * x[i]).sum();
+        let mu = rhs[n] - eps_x;
+        let mut xx = vec![0.0f64; n + 1];
+        xx[..n].copy_from_slice(&x);
+        for i in 0..=n {
+            xx[i] += mu * fx[n - i];
+        }
+        f = fx;
+        x = xx;
+    }
+    x.iter().all(|v| v.is_finite()).then_some(x)
+}
+
+/// Gaussian elimination with partial pivoting — the **reference oracle**.
+///
+/// This is what `lsar_interpolate` used to run in production, at O(m³). It is kept because it
+/// is the independent answer: [`solve_toeplitz`] is fast because it assumes a structure, and
+/// the only honest way to trust that assumption is to compare against a solver that assumes
+/// nothing.
+#[cfg(test)]
 fn solve(mat: &mut [f64], rhs: &mut [f64], n: usize) -> Option<Vec<f64>> {
     for col in 0..n {
         let mut piv = col;
@@ -300,5 +366,78 @@ mod tests {
             tail < head * 0.01,
             "head {head}, tail {tail}: it must decay"
         );
+    }
+}
+
+#[cfg(test)]
+mod solver_tests {
+    use super::*;
+
+    /// **The fast solver gives the SAME answer as the one that assumes nothing.**
+    ///
+    /// [`solve_toeplitz`] is O(m²) instead of O(m³) *because* it assumes the matrix is
+    /// symmetric Toeplitz. That assumption is true — the gap is contiguous, so `R(mᵢ − mⱼ)`
+    /// depends only on `i − j` — but "true" is a claim, and a claim about numerics is worth
+    /// exactly what it is measured against. So: build the same system both ways and compare.
+    ///
+    /// Red if the recursion's indices are off by one, if the backward vector is not the
+    /// reverse of the forward one, or if the symmetry assumption is ever violated upstream.
+    #[test]
+    fn levinson_matches_gaussian_elimination() {
+        // A positive-definite Toeplitz matrix: the autocorrelation of a short filter — the
+        // same shape `lsar_interpolate` actually builds.
+        let filt = [1.0f64, -0.7, 0.35, -0.12, 0.04];
+        let p = filt.len() - 1;
+        let rr: Vec<f64> = (0..=p)
+            .map(|d| (0..=(p - d)).map(|i| filt[i] * filt[i + d]).sum())
+            .collect();
+
+        for m in [1usize, 2, 3, 7, 16, 64, 192] {
+            let rhs: Vec<f64> = (0..m)
+                .map(|i| ((i as f64) * 0.37).sin() * 0.9 + 0.1)
+                .collect();
+
+            let fast = solve_toeplitz(&rr, &rhs).expect("levinson solved");
+
+            let mut mat = vec![0.0f64; m * m];
+            for i in 0..m {
+                for j in 0..m {
+                    mat[i * m + j] = rr.get(i.abs_diff(j)).copied().unwrap_or(0.0);
+                }
+            }
+            let mut b = rhs.clone();
+            let dense = solve(&mut mat, &mut b, m).expect("gauss solved");
+
+            let worst = fast
+                .iter()
+                .zip(&dense)
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0f64, f64::max);
+            assert!(
+                worst < 1e-9,
+                "m = {m}: the Levinson recursion disagrees with Gaussian elimination by {worst:e}"
+            );
+        }
+    }
+
+    /// …and it actually solves the system: `T·x` has to come back as `rhs`. (Agreeing with
+    /// another solver would be cold comfort if both were wrong the same way — this checks the
+    /// answer against the *question*.)
+    #[test]
+    fn the_solution_satisfies_the_system() {
+        let rr = [2.0f64, -0.8, 0.25, -0.05];
+        let m = 32usize;
+        let rhs: Vec<f64> = (0..m).map(|i| ((i * 7 % 13) as f64) / 13.0 - 0.5).collect();
+        let x = solve_toeplitz(&rr, &rhs).expect("solved");
+        for i in 0..m {
+            let row: f64 = (0..m)
+                .map(|j| rr.get(i.abs_diff(j)).copied().unwrap_or(0.0) * x[j])
+                .sum();
+            assert!(
+                (row - rhs[i]).abs() < 1e-9,
+                "row {i}: T·x = {row}, but rhs = {}",
+                rhs[i]
+            );
+        }
     }
 }

@@ -7,6 +7,9 @@
 //! (PCM/ADPCM), AIFF, FLAC, Ogg Vorbis, MP3 (patents expired 2017). AAC / ALAC /
 //! MP4 are deliberately NOT enabled.
 
+mod reader;
+pub use reader::Reader;
+
 use ph2d_audio::{AudioFormat, ChannelLayout, SampleData};
 use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{CODEC_TYPE_NULL, DecoderOptions};

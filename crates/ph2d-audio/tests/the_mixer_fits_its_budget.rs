@@ -86,7 +86,7 @@ fn a_streamed_song_costs_its_ring_not_its_length() {
     );
 
     // And it is a real, playable voice — not a number in a comment.
-    let (_feeder, handle) = stream(48_000, None);
+    let (_feeder, handle) = stream(48_000);
     let (mut engine, _r) = AudioEngine::new(AudioFormat::stereo(48_000));
     engine
         .play_stream(handle, PlayParams::default())

@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-audio-stream"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The PRODUCER side of a streaming voice (ADR-0118): a worker thread that decodes a
+# file ahead, in chunks, and feeds the lock-free ring the audio thread reads from.
+#
+# This is where the codecs live, and that is the whole point of the split: `ph2d-audio`
+# is the real-time mixer and must never grow a decoder (gate:
+# `ph2d-audio/tests/no_codec_reaches_the_mixer.rs`). It pops already-decoded chunks; we
+# fill them, on a thread that is allowed to allocate, block on a file, and take its time.
+[dependencies]
+ph2d-audio = { path = "../ph2d-audio" }
+ph2d-audio-decode = { path = "../ph2d-audio-decode" }
+ph2d-audio-opus = { path = "../ph2d-audio-opus" }
+thiserror = "2"
+
+[dev-dependencies]
+# The end-to-end gate writes real files and streams them back — the encoders are how it makes one.
+ph2d-audio-encode = { path = "../ph2d-audio-encode" }

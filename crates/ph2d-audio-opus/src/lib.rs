@@ -34,11 +34,13 @@
 mod decoder;
 mod encoder;
 mod ogg_stream;
+mod reader;
 
 use ph2d_audio::SampleData;
 
 pub use decoder::{decode_opus, is_opus};
 pub use ogg_stream::write_ogg_opus;
+pub use reader::{Reader, is_opus_file};
 
 /// Opus's native rate. It accepts a few others; this crate feeds it only this one, and
 /// resamples anything else into it.
@@ -70,6 +72,9 @@ pub enum DecodeError {
     /// The file is not a well-formed Ogg Opus stream.
     #[error("malformed opus file: {0}")]
     Malformed(&'static str),
+    /// The file could not be read (streaming reads from disk, not from memory — ADR-0118).
+    #[error("reading the opus file: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 /// What can go wrong writing an Opus file.

@@ -100,7 +100,7 @@ fn a_streaming_voice_recycles_its_chunks_instead_of_freeing_them() {
     use ph2d_audio::{ChannelLayout, STREAM_CHUNK_FRAMES, STREAM_DEPTH, stream};
 
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(48_000));
-    let (feeder, handle) = stream(48_000, None);
+    let (feeder, handle) = stream(48_000);
     engine
         .play_stream(handle, PlayParams::default())
         .expect("play_stream");

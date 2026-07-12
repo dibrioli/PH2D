@@ -38,13 +38,13 @@ const MAX_FRAME: usize = 5_760;
 
 /// A libopus decoder. Owns the allocation; frees it on drop. Mirror of `encoder::Encoder`, and
 /// the second (and last) place `unsafe` appears in this crate.
-struct Decoder {
+pub(crate) struct Decoder {
     st: *mut OpusDecoder,
     channels: usize,
 }
 
 impl Decoder {
-    fn new(channels: usize) -> Result<Self, DecodeError> {
+    pub(crate) fn new(channels: usize) -> Result<Self, DecodeError> {
         let mut err: i32 = 0;
         // SAFETY: `channels` is 1 or 2 (checked by the caller against the file's header), 48 000
         // is a rate libopus accepts, and `err` is a live local we own for the call. The returned
@@ -57,7 +57,7 @@ impl Decoder {
     }
 
     /// Decode one packet. Returns interleaved i16, `samples_per_channel × channels` long.
-    fn decode(&mut self, packet: &[u8]) -> Result<Vec<i16>, DecodeError> {
+    pub(crate) fn decode(&mut self, packet: &[u8]) -> Result<Vec<i16>, DecodeError> {
         let mut out = vec![0i16; MAX_FRAME * self.channels];
         // SAFETY: `self.st` is a live decoder (the type cannot hold a null one). `packet` is a
         // slice we hold for the whole call, and its true length is passed. `out` is ours, and we
@@ -80,6 +80,18 @@ impl Decoder {
         Ok(out)
     }
 }
+
+// SAFETY: `Decoder` is the SOLE owner of its `*mut OpusDecoder` — it is created in `new`, never
+// copied or shared (the type is not `Clone`, and the pointer never escapes), and freed exactly once
+// in `Drop`. libopus's decoder state is entirely self-contained: it keeps no thread-locals and
+// touches no globals, and every call here goes through `&mut self`, so only one thread can be inside
+// it at a time.
+//
+// That makes MOVING one to another thread sound, which is what the streaming producer does
+// (ADR-0118: decoding happens on a worker thread, never on the audio thread). `Sync` is deliberately
+// NOT claimed — two threads calling `decode` on the same decoder concurrently would corrupt its
+// state, and nothing in this crate lets them.
+unsafe impl Send for Decoder {}
 
 impl Drop for Decoder {
     fn drop(&mut self) {
@@ -145,7 +157,7 @@ pub fn decode_opus(bytes: &[u8]) -> Result<SampleData, DecodeError> {
 }
 
 /// Read the `OpusHead` identification header: channel count and pre-skip (RFC 7845 §5.1).
-fn parse_head(data: &[u8]) -> Result<(usize, u16), DecodeError> {
+pub(crate) fn parse_head(data: &[u8]) -> Result<(usize, u16), DecodeError> {
     if data.len() < 19 || !data.starts_with(b"OpusHead") {
         return Err(DecodeError::Malformed("not an OpusHead"));
     }

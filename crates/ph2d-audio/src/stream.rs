@@ -112,6 +112,9 @@ struct Shared {
     eof: AtomicBool,
     /// Frames the audio thread wanted and did not get.
     underruns: AtomicU64,
+    /// The source's length, **published by the producer once it knows** (0 = not yet). See
+    /// [`StreamFeeder::set_loop_frames`].
+    loop_frames: AtomicU64,
 }
 
 /// The **audio-thread** half of a stream: pop frames, recycle chunks. Never allocates, never
@@ -126,8 +129,6 @@ pub struct StreamHandle {
     /// Sample rate of the source — the voice needs it to derive `advance`, exactly as it does from
     /// a resident clip's format.
     rate: u32,
-    /// Length of the source, when it loops. See [`stream`].
-    loop_frames: Option<usize>,
 }
 
 impl StreamHandle {
@@ -136,10 +137,13 @@ impl StreamHandle {
         self.rate
     }
 
-    /// The source's length, when it loops — what lets the voice wrap its cursor exactly as a
-    /// resident one does. See [`stream`].
+    /// The source's length, once the producer knows it — what lets the voice wrap its cursor
+    /// exactly as a resident one does. See [`StreamFeeder::set_loop_frames`].
     pub(crate) fn loop_frames(&self) -> Option<usize> {
-        self.loop_frames
+        match self.shared.loop_frames.load(Ordering::Acquire) {
+            0 => None,
+            n => Some(n as usize),
+        }
     }
 
     /// Frames the audio thread asked for and did not get. Zero is the only good number.
@@ -211,6 +215,23 @@ impl StreamFeeder {
         self.shared.eof.store(true, Ordering::Release);
     }
 
+    /// Tell the voice how long the source is, so a **looping** stream can wrap its cursor exactly
+    /// as a resident clip does (ADR-0118 A2).
+    ///
+    /// Why it can be published *late* rather than known up front: the producer is always **ahead**
+    /// of the audio thread. It reaches the end of the first pass — and therefore learns the length
+    /// — before the voice has finished *playing* that pass, and the voice needs the number only at
+    /// its first wrap, which comes after. The `Release`/`Acquire` pair makes that ordering real
+    /// rather than merely likely.
+    ///
+    /// That is what lets this be **exact for every format**, instead of only for the containers that
+    /// happen to declare a frame count in their header.
+    pub fn set_loop_frames(&self, frames: usize) {
+        self.shared
+            .loop_frames
+            .store(frames as u64, Ordering::Release);
+    }
+
     /// Whether [`StreamFeeder::finish`] has been called.
     pub fn is_finished(&self) -> bool {
         self.shared.eof.load(Ordering::Acquire)
@@ -219,22 +240,13 @@ impl StreamFeeder {
 
 /// Build a stream: the producer half and the audio-thread half.
 ///
-/// `loop_frames` is the source's length, and it matters for exactly one reason. A resident voice
-/// **wraps its cursor** at the end of a loop (`cursor -= frame_count`), which keeps the cursor
-/// small; a stream, left alone, would let it grow forever. Same music, but a different sequence of
-/// `f64` roundings — and the two paths drift apart by an ulp, which is inaudible and is *precisely*
-/// the kind of difference that makes "the build sounds slightly different" unfalsifiable.
-///
-/// Telling the stream how long its source is lets it wrap the cursor **exactly as the resident path
-/// does**, so the two stay bit-identical (ADR-0118 A2). It is also simply better: an unbounded
-/// cursor loses fractional resolution over a long stream, and an ambient bed can run for hours.
-///
-/// `None` for a source that does not loop — there is nothing to wrap, and the cursor is bounded by
-/// the clip anyway.
+/// A looping stream should also call [`StreamFeeder::set_loop_frames`] once the producer knows the
+/// source's length — that is what lets the voice wrap its cursor exactly as a resident one does, and
+/// stay bit-identical to it.
 ///
 /// Every chunk is allocated **here**, once, on the calling thread. Neither ring ever creates or
 /// destroys one afterwards — they only pass the same [`STREAM_DEPTH`] chunks back and forth.
-pub fn stream(rate: u32, loop_frames: Option<usize>) -> (StreamFeeder, StreamHandle) {
+pub fn stream(rate: u32) -> (StreamFeeder, StreamHandle) {
     let (full_tx, full_rx) = ring::<Chunk>(STREAM_DEPTH);
     let (empty_tx, empty_rx) = ring::<Chunk>(STREAM_DEPTH);
     for _ in 0..STREAM_DEPTH {
@@ -244,6 +256,7 @@ pub fn stream(rate: u32, loop_frames: Option<usize>) -> (StreamFeeder, StreamHan
     let shared = Arc::new(Shared {
         eof: AtomicBool::new(false),
         underruns: AtomicU64::new(0),
+        loop_frames: AtomicU64::new(0),
     });
     (
         StreamFeeder {
@@ -258,7 +271,6 @@ pub fn stream(rate: u32, loop_frames: Option<usize>) -> (StreamFeeder, StreamHan
             cur: None,
             at: 0,
             rate: rate.max(1),
-            loop_frames: loop_frames.filter(|n| *n > 0),
         },
     )
 }

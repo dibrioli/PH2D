@@ -117,10 +117,11 @@ fn resident_output(data: &SampleData, params: PlayParams, blocks: usize) -> Vec<
 /// Play `data` streamed (kept fed, so no underruns), and render.
 fn streamed_output(data: &SampleData, params: PlayParams, blocks: usize, loops: usize) -> Vec<f32> {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(OUT_RATE));
-    let (feeder, handle) = stream(
-        data.format().sample_rate,
-        params.looping.then(|| data.frame_count()),
-    );
+    let (feeder, handle) = stream(data.format().sample_rate);
+    if params.looping {
+        // What the real producer does when it reaches the end of the first pass.
+        feeder.set_loop_frames(data.frame_count());
+    }
     let mut producer = Producer::new(data, loops);
     producer.top_up(&feeder);
     engine.play_stream(handle, params).expect("play_stream");
@@ -227,7 +228,7 @@ fn a_stream_ends_where_a_resident_clip_ends() {
 #[test]
 fn an_underrun_is_silence_that_the_voice_survives() {
     let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(OUT_RATE));
-    let (feeder, handle) = stream(OUT_RATE, None);
+    let (feeder, handle) = stream(OUT_RATE);
     let id = engine
         .play_stream(handle, PlayParams::default())
         .expect("play");

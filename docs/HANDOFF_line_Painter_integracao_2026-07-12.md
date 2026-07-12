@@ -3,7 +3,36 @@
 > **Para o agente integrador.** A linha está **FECHADA**. Não integrei, não pushei, não rodei ship —
 > isso é ordem explícita do Enio (CLAUDE.md §0.7 · DIRETRIZ §1.5.9).
 > Worktree: `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter` · branch `line/Painter`
-> **24 commits** sobre `main`, 69 arquivos, +5233/−369.
+> **33 commits** sobre `main`, 74 arquivos, +9855/−2550.
+
+---
+
+## 0. ADENDO (mesmo dia, dono novo) — Fase 4: o CORPO (`482c0696` · `2c3492ab`)
+
+Após o veredito do Enio (*"não sei se melhorou ou piorou; ficou mais difícil de ajustar"*), a linha
+trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
+[`docs/Painter/17_impasto_deposito_pesquisa2.md`](Painter/17_impasto_deposito_pesquisa2.md)) e
+**redesenhou o modelo de depósito** (decisões + divergências medidas: plano 16 §10/§10.1):
+
+- **Curva de corpo** no kernel (`body_profile`, `height.rs`): platô + parede DENTRO da tinta
+  pigmentada (o bevel *inner* do PS); o véu translúcido não carrega relevo. O domo morreu.
+- **Inclinação física** (`DEPTH_UNIT_PX = 16`): morrem `SLOPE_GAIN` e o mute quadrático por
+  cobertura; o glint ganhou curva própria (`gloss_body` — specular só no filme).
+- **O knob `Amount` (canvas) MORREU** — era o gêmeo acoplado do Depth. Superfície final: brush
+  `Enable/Depth/Smoothing/Source/Draw To` · canvas `Show/Angle/Elevation/Shine`. O id
+  `PAINTER_IMPASTO_LIGHT_AMOUNT` saiu de `PAINTER_IMPASTO_FIELDS` (6→5) — **desmonte, não append**:
+  se outra linha referenciar esse id, é colisão real (nenhuma deveria).
+- **Teto de vidro** no commit de traços (`H_CEIL = 2.0`, "pressed against glass" do Painter).
+- **Dívida herdada fechada:** o gate de LOC do workspace já estava **vermelho no HEAD desta linha**
+  (`paint.rs` 712/700) — `union_region` movido para o irmão `region.rs` (697/700).
+- Gates: **584** `ph2d-tool-painter` (2 novas com RED por mutação: body-with-an-edge + glass
+  ceiling; halo/does-not-shade/corrugação re-derivadas — corduroy ViewPlane 1.0→0.70, atenuado) +
+  **239** brush; clippy `--all-targets` 0; perf **1.79 ms/move** (alvo ≤4).
+- **Smoke do Enio: PENDENTE sobre o modelo novo** — comando do §5 vale inalterado; o card Lighting
+  agora tem 4 linhas (sem Amount).
+
+Os §§ 1–8 abaixo descrevem as entregas anteriores da linha e continuam válidos; números de gates
+ficam superseded pelos desta seção.
 
 ---
 

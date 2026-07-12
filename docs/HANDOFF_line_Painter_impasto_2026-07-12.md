@@ -1,5 +1,14 @@
 # HANDOFF — `line/Painter` · Impasto (#16) · 2026-07-12
 
+> ✅ **CUMPRIDO (mesmo dia, dono novo).** A pesquisa do §4 foi feita (5 varreduras primárias →
+> [`docs/Painter/17_impasto_deposito_pesquisa2.md`](Painter/17_impasto_deposito_pesquisa2.md)), a
+> hipótese do §2 **confirmada por medição e pela indústria inteira**, o plano atualizado
+> ([16 §10](Painter/16_impasto_plano_implementacao.md)) e a Fase 4 (o CORPO) **landou**
+> (`2c3492ab`): curva de corpo, inclinação física, `Amount` morto, teto de vidro. Estado vivo:
+> [HANDOFF_line_Painter_integracao §0](HANDOFF_line_Painter_integracao_2026-07-12.md).
+> **Pendente: smoke do Enio sobre o modelo novo.** O texto abaixo é o handoff ORIGINAL, mantido
+> como registro.
+
 > **Você é o novo dono desta linha.** Leia isto inteiro antes de tocar em código.
 > Worktree: `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter` · branch `line/Painter`
 > **30 commits** sobre `main`, 70 arquivos, +8064/−1579. Árvore limpa, tudo verde.

@@ -62,6 +62,17 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     button(store, ids::TIMELINE_NEXT_FRAME);
     button(store, ids::TIMELINE_GO_END);
     button(store, ids::TIMELINE_ADD_TRACK);
+    // The clip stack (ADR-0115). EVERY lane slot is registered, not just the ones a
+    // fresh document uses: the store is populated ONCE at install, and a lane added
+    // later would otherwise paint a button that was never registered — painted but
+    // inert, the same trap the clip options already document.
+    button(store, ids::TIMELINE_ADD_LANE);
+    for id in ids::TIMELINE_LANE_MUTE {
+        button(store, id);
+    }
+    for id in ids::TIMELINE_LANE_ADD_STRIP {
+        button(store, id);
+    }
     button(store, ids::TIMELINE_ADD_MARKER);
     for (id, _) in ids::ADDPROP_BUTTONS {
         button(store, id);

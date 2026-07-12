@@ -485,3 +485,76 @@ fn the_clip_cap_and_the_option_ids_are_the_same_number() {
         "raise MAX_CLIPS and TIMELINE_CLIP_OPT together, or not at all"
     );
 }
+
+// ── The clip stack (ADR-0115) ───────────────────────────────────────────────
+
+/// The twin of the clip-cap gate, for lanes. A lane's header carries hit ids from
+/// a FIXED array — the chrome cannot mint one at runtime — so the number of lanes
+/// the DOCUMENT accepts must equal the number the PANEL can address. Let the doc
+/// grow past the array and the extra lane paints a mute button nothing can click:
+/// pintado mas inerte, and no compiler would say a word.
+#[test]
+fn the_lane_cap_and_the_lane_header_ids_are_the_same_number() {
+    assert_eq!(
+        ph2d_timeline::MAX_LANES,
+        ids::TIMELINE_LANE_MUTE.len(),
+        "raise MAX_LANES and TIMELINE_LANE_MUTE together, or not at all"
+    );
+    assert_eq!(
+        ph2d_timeline::MAX_LANES,
+        ids::TIMELINE_LANE_ADD_STRIP.len(),
+        "and TIMELINE_LANE_ADD_STRIP with them"
+    );
+}
+
+/// **The anti-dead-item gate**, for the stack's chrome: every button the lane
+/// rows paint must be answered by `event.rs`. A painted button with no arm is a
+/// control that silently does nothing — and it is the failure this panel has
+/// already shipped once.
+#[test]
+fn every_stack_button_is_handled_by_the_panel() {
+    let mut ids_to_check = vec![ids::TIMELINE_ADD_LANE];
+    ids_to_check.extend(ids::TIMELINE_LANE_MUTE);
+    ids_to_check.extend(ids::TIMELINE_LANE_ADD_STRIP);
+
+    for id in ids_to_check {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        let outcome = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "a lane button the panel paints but never answers is a dead control"
+        );
+    }
+}
+
+/// "+ Lane" raises the intent, and the panel's own snapshot is what a lane button
+/// resolves against — a lane deleted since the paint that registered its button
+/// raises nothing, exactly as Delete Track does.
+#[test]
+fn add_lane_raises_its_intent_and_a_vanished_lane_raises_none() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    ph2d_panel_timeline::set_current_timeline(None);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut st = TimelinePanelState::default();
+
+    let _ = host
+        .apply_panel_event::<TimelinePanel>(&mut st, WidgetEvent::Click(ids::TIMELINE_ADD_LANE));
+    assert!(
+        ph2d_panel_timeline::drain_intents()
+            .iter()
+            .any(|i| matches!(i, ph2d_timeline::TimelineIntent::AddLane)),
+        "+ Lane raises AddLane"
+    );
+
+    // No snapshot published -> no lanes -> the mute of lane 0 has no target.
+    let _ = host.apply_panel_event::<TimelinePanel>(
+        &mut st,
+        WidgetEvent::Click(ids::TIMELINE_LANE_MUTE[0]),
+    );
+    assert!(
+        ph2d_panel_timeline::drain_intents().is_empty(),
+        "a mute for a lane that is not there mutes nothing"
+    );
+}

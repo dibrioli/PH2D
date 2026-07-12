@@ -136,6 +136,8 @@ pub(crate) fn paint_rows(
     // Rows overflow the band while scrolling and an expanded one is tall; clip
     // so a half-visible graph never bleeds over the ruler or the scrollbar.
     ctx.scene.push_clip(&rect_to_vello(region));
+    // The clip stack, above everything, scrolling with it.
+    crate::stack_lane_paint::paint(ctx, theme, g, view, state, snap);
     // The master row, above track 0 and scrolling with it.
     summary_paint::paint(ctx, theme, g, view, preview_dx, state, snap);
     let bands: Vec<(usize, f32, f32)> = geom::row_bands(

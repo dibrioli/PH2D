@@ -413,19 +413,28 @@ pub enum TimelineHitKind {
     /// A key diamond on some track — click selects it, drag moves the selection
     /// in time. `target`/`key` are the track's `AnimTarget` and the key's
     /// `KeyId`, carried as raw ids (editor-core never dereferences them).
-    Key { target: u64, key: u64 },
+    Key {
+        target: u64,
+        key: u64,
+    },
     /// A diamond on the **Summary** channel: the one row that aggregates every
     /// track's keys by time. Clicking it selects the whole column; dragging moves
     /// it. `t_bits` is the column's time in seconds, as `f64::to_bits` — an
     /// opaque, exact, hashable handle (editor-core never reads it as a number).
-    SummaryKey { t_bits: u64 },
+    SummaryKey {
+        t_bits: u64,
+    },
     /// A track row's expand/collapse twirl — a click opens that track's graph
     /// editor (`target` is its raw `AnimTarget`).
-    Twirl { target: u64 },
+    Twirl {
+        target: u64,
+    },
     /// A track row's LABEL (the name column after the twirl). Inert to primary
     /// gestures — it exists so a right-click can open the track-row context
     /// menu ([`ContextMenuKind::TimelineTrack`], Delete Track).
-    Row { target: u64 },
+    Row {
+        target: u64,
+    },
     /// The padlock on the Summary channel — a click toggles the column lock. When
     /// locked (default), grabbing any single key grabs its whole time column;
     /// unlocked, keys move independently. Panel-local view state, no payload.
@@ -436,26 +445,54 @@ pub enum TimelineHitKind {
     /// A key's anchor dot in an expanded track's graph. Dragging it edits the key
     /// in the `(time, value)` plane: sideways moves the selection in time,
     /// up/down retunes the value. `target`/`key` are the raw `AnimTarget`/`KeyId`.
-    CurveAnchor { target: u64, key: u64 },
+    CurveAnchor {
+        target: u64,
+        key: u64,
+    },
     /// A bézier handle in an expanded track's graph. `target`/`key` name the
     /// segment's **outgoing** key (the one whose `Interp` the handle edits);
     /// `which` is `0` for the out handle (`P1`) and `1` for the in handle (`P2`).
-    CurveHandle { target: u64, key: u64, which: u8 },
+    CurveHandle {
+        target: u64,
+        key: u64,
+        which: u8,
+    },
     /// The grip along the bottom of an expanded track's graph band — dragging it
     /// vertically sets the height of every graph band.
     GraphResize,
     /// A loop-range brace on the ruler. `edge` is `0` = start handle, `1` = end
     /// handle, `2` = the band between them (drag to move the whole range).
     /// Dragging sets the playback loop range; the panel maps pointer x to time.
-    LoopBrace { edge: u8 },
+    LoopBrace {
+        edge: u8,
+    },
     /// A marker pennant on the ruler, keyed by its storage `index`. A plain click
     /// seeks the playhead to it, Alt+click removes it, a drag moves it.
-    Marker { index: usize },
+    Marker {
+        index: usize,
+    },
     /// A resize gripper on the panel's border. `edges` is a bitmask of
     /// [`TIMELINE_EDGE_L`] .. [`TIMELINE_EDGE_B`] (a corner sets two). The panel
     /// owns the resize itself; the bits are named here only so the shell can pick
     /// the matching double-arrow cursor.
-    ResizeEdge { edges: u8 },
+    /// One clip strip on a stack lane (ADR-0115). `edge`: `0` = the start edge,
+    /// `1` = the end edge, `2` = the body — the same encoding [`Self::LoopBrace`]
+    /// uses, because it is the same gesture (a span with two grabbable ends).
+    ///
+    /// `strip` is an opaque `StripId`, carried through without interpretation —
+    /// the same way [`Self::SummaryKey`] carries a time. Editor-core does not know
+    /// what a clip is, and should not.
+    Strip {
+        /// Which lane it sits on.
+        lane: usize,
+        /// The strip's stable id.
+        strip: u64,
+        /// `0` start, `1` end, `2` body.
+        edge: u8,
+    },
+    ResizeEdge {
+        edges: u8,
+    },
 }
 
 /// Left edge bit of [`TimelineHitKind::ResizeEdge`].

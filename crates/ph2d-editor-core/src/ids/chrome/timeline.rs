@@ -55,6 +55,37 @@ pub const TIMELINE_DELETE_CLIP: NodeId = hash_node_id("timeline.clip_delete");
 /// The inline clip-rename text field (mirrors [`TIMELINE_MARKER_RENAME_INPUT`]).
 pub const TIMELINE_CLIP_RENAME_INPUT: NodeId = hash_node_id("timeline.clip_rename_input");
 
+/// "+ Lane" — append a lane to the clip stack (ADR-0115).
+pub const TIMELINE_ADD_LANE: NodeId = hash_node_id("timeline.add_lane");
+
+/// Per-lane mute toggles. **This array IS the lane cap** — same rule as
+/// [`TIMELINE_CLIP_OPT`]: the chrome cannot mint a hit id at runtime, so a
+/// document that accepted a 9th lane would paint a header nothing could click.
+/// `ph2d_timeline::MAX_LANES` must equal this length, and a gate holds them
+/// together.
+pub const TIMELINE_LANE_MUTE: [NodeId; 8] = [
+    hash_node_id("timeline.lane_mute_0"),
+    hash_node_id("timeline.lane_mute_1"),
+    hash_node_id("timeline.lane_mute_2"),
+    hash_node_id("timeline.lane_mute_3"),
+    hash_node_id("timeline.lane_mute_4"),
+    hash_node_id("timeline.lane_mute_5"),
+    hash_node_id("timeline.lane_mute_6"),
+    hash_node_id("timeline.lane_mute_7"),
+];
+
+/// Per-lane "drop the active clip here" buttons. Same cap, same reason.
+pub const TIMELINE_LANE_ADD_STRIP: [NodeId; 8] = [
+    hash_node_id("timeline.lane_add_strip_0"),
+    hash_node_id("timeline.lane_add_strip_1"),
+    hash_node_id("timeline.lane_add_strip_2"),
+    hash_node_id("timeline.lane_add_strip_3"),
+    hash_node_id("timeline.lane_add_strip_4"),
+    hash_node_id("timeline.lane_add_strip_5"),
+    hash_node_id("timeline.lane_add_strip_6"),
+    hash_node_id("timeline.lane_add_strip_7"),
+];
+
 /// Clip dropdown option ids — one per clip slot, index = clip index.
 ///
 /// **This array IS the clip cap.** The chrome cannot mint a hit id at runtime, so
@@ -208,6 +239,14 @@ pub fn timeline_handle_hit_id(target: u64, key: u64, which: u8) -> NodeId {
 /// Each dynamic id family gets its own domain, so a twirl for target `7` and a
 /// key hit for target `7` can never land on the same `NodeId` — nor on any
 /// `timeline.*` const.
+/// Hit id for one strip's grab region: the body (`edge` 2) or either edge
+/// (`0` = start, `1` = end). Dynamic: strips are created and destroyed at
+/// runtime, so unlike a lane header they cannot come from a fixed array.
+#[must_use]
+pub fn timeline_strip_hit_id(lane: u64, strip: u64, edge: u8) -> NodeId {
+    dynamic_id("timeline.strip", &[lane, strip, u64::from(edge)])
+}
+
 fn dynamic_id(domain: &'static str, parts: &[u64]) -> NodeId {
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
     let mut h = hash_node_id(domain).0;

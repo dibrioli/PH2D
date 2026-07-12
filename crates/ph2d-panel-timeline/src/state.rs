@@ -110,6 +110,8 @@ pub struct TimelinePanelState {
     /// In-progress loop-brace drag on the ruler (W4.T3): which edge and the range
     /// captured at Begin, so a slow drag applies deltas to a fixed origin.
     pub loop_drag: Option<LoopDrag>,
+    /// The clip strip being dragged or trimmed, if any.
+    pub strip_drag: Option<StripDrag>,
     /// Storage index of the marker being dragged on the ruler (W4.T3), if any.
     pub marker_drag: Option<usize>,
     /// The marker whose inline rename field is open (W4.T3), opened by a
@@ -225,6 +227,24 @@ pub struct LoopDrag {
     pub start_range: (f64, f64),
 }
 
+/// An in-progress clip-strip drag. `edge` is `0` = start, `1` = end, `2` = body.
+/// The span is captured at Begin so deltas apply to a fixed origin — a drag that
+/// reads back its own output drifts.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StripDrag {
+    /// Which lane the strip sits on.
+    pub lane: usize,
+    /// The strip's stable identity — NOT its index: the lane re-sorts as the strip
+    /// crosses its neighbour, and an index-anchored drag would swap victims mid-air.
+    pub id: ph2d_timeline::StripId,
+    /// `0` = start edge (trim), `1` = end edge (trim), `2` = body (slide).
+    pub edge: u8,
+    /// Pointer x (global px) when the drag began.
+    pub start_x: f32,
+    /// The strip's `(t_start, t_end)` when the drag began.
+    pub start_span: (f64, f64),
+}
+
 /// An open marker rename. The field text lives in the `WidgetStore` (like every
 /// other `TextInput`); this only tracks WHICH marker is being renamed and whether
 /// `paint` has already seeded the field + claimed focus (done once, on the first
@@ -322,6 +342,7 @@ impl Default for TimelinePanelState {
             anchor_drag: None,
             summary_press: None,
             loop_drag: None,
+            strip_drag: None,
             marker_drag: None,
             marker_rename: None,
             clip_rename: None,

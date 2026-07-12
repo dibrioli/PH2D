@@ -160,6 +160,25 @@ pub(crate) fn row_h(expanded: bool, graph_h: f32) -> f32 {
     ROW_H_PX + if expanded { graph_h } else { 0.0 }
 }
 
+/// Height the clip-stack lanes occupy, above everything else. Zero when the
+/// document has no stack — which is the norm, and is why a timeline that never
+/// touches the feature looks exactly as it always did.
+pub(crate) fn stack_h(snap: &TimelineViewSnapshot) -> f32 {
+    ROW_H_PX * snap.lanes.len() as f32
+}
+
+/// Every lane's `(index, top_y, height)`, in the same scrolled band as the rows.
+/// The lanes sit ABOVE the Summary channel and scroll with it: a strip and the
+/// keys it plays belong on one ruler, so they must share one scroll.
+pub(crate) fn stack_bands(
+    snap: &TimelineViewSnapshot,
+    rows_top: f32,
+    scroll_y: f32,
+) -> impl Iterator<Item = (usize, f32, f32)> + '_ {
+    let top = rows_top - scroll_y;
+    (0..snap.lanes.len()).map(move |i| (i, top + ROW_H_PX * i as f32, ROW_H_PX))
+}
+
 /// Height the Summary channel occupies above the tracks. Zero when nothing is
 /// bound: an empty timeline shows no master row to grab.
 pub(crate) fn summary_h(snap: &TimelineViewSnapshot) -> f32 {
@@ -173,7 +192,8 @@ pub(crate) fn summary_h(snap: &TimelineViewSnapshot) -> f32 {
 /// Total height the rows want, for the scroll range — the Summary channel plus
 /// every track (an expanded one carries its graph band).
 pub(crate) fn content_h(snap: &TimelineViewSnapshot, expanded: &[u64], graph_h: f32) -> f32 {
-    summary_h(snap)
+    stack_h(snap)
+        + summary_h(snap)
         + snap
             .tracks
             .iter()
@@ -190,7 +210,7 @@ pub(crate) fn summary_band(
     scroll_y: f32,
 ) -> Option<(f32, f32)> {
     let h = summary_h(snap);
-    (h > 0.0).then_some((rows_top - scroll_y, h))
+    (h > 0.0).then_some((rows_top - scroll_y + stack_h(snap), h))
 }
 
 /// How far the rows can scroll before the last one is flush with the bottom.
@@ -208,8 +228,10 @@ pub(crate) fn row_bands<'a>(
     rows_top: f32,
     scroll_y: f32,
 ) -> impl Iterator<Item = (usize, f32, f32)> + 'a {
-    // The Summary channel sits above track 0 and scrolls with it.
-    let mut y = rows_top - scroll_y + summary_h(snap);
+    // The clip lanes sit above everything, then the Summary channel, then track 0
+    // — and all three scroll together. THIS is the one place that ordering lives:
+    // the painters read the bands, they never re-derive a y.
+    let mut y = rows_top - scroll_y + stack_h(snap) + summary_h(snap);
     snap.tracks.iter().enumerate().map(move |(i, t)| {
         let h = row_h(expanded.contains(&t.target.get()), graph_h);
         let top = y;

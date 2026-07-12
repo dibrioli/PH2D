@@ -94,6 +94,11 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::Marker { index } => {
             marker_drag::apply(state, time_x, px_per_s, snap, index, g);
         }
+        // A clip strip: the body slides, the two edges trim. Overlapping two of
+        // them IS the crossfade — no code here knows that, and none needs to.
+        TimelineHitKind::Strip { lane, strip, edge } => {
+            crate::strip_drag::apply(state, px_per_s, snap, lane, strip, edge, g);
+        }
         // Column lock (default): a press on a track key is a press on its whole
         // time column, so grabbing one key grabs the vertical group. Unlocked, it
         // moves alone. Either way, the Summary diamond itself always moves the

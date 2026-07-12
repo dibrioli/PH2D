@@ -165,9 +165,17 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     let preview_dx = crate::key_drag::preview_dx(state);
 
-    // "+Track" button in the label column, aligned with the ruler strip.
+    // "+Track" and "+Lane" share the label column's header strip, aligned with the
+    // ruler. Two buttons, one row: a track binds a property, a lane holds clips.
     let header = Rect::new(g.region.x, g.region.y, g.label_w, ruler::RULER_H);
+    let half = (header.w * 0.5).max(0.0);
+    let header = Rect::new(header.x, header.y, half, header.h);
     tracks::paint_add_track(ctx, theme, header);
+    crate::stack_lane_paint::paint_add_lane(
+        ctx,
+        theme,
+        Rect::new(header.x + half, header.y, half, header.h),
+    );
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
     // A handle or anchor drag whose row got culled (scrolled away, or its track

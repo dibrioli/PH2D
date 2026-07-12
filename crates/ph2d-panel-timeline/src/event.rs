@@ -11,6 +11,10 @@ use crate::ids;
 use crate::state;
 use crate::{TimelinePanel, state::TimelinePanelState};
 use ph2d_a11y::NodeId;
+/// How long a strip of an EMPTY clip is: a clip with no keys has no duration,
+/// and a strip of zero seconds paints as nothing and cannot be grabbed to fix.
+const MIN_NEW_STRIP_S: f64 = 1.0;
+
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
@@ -51,6 +55,14 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    // The clip stack's own chrome answers first (see `stack_click`) — lifted out
+    // because `apply_event` is at its LOC cap, and because those three controls
+    // speak to the STACK rather than to the sheet.
+    if let WidgetEvent::Click(id) = ev
+        && let Some(out) = stack_click(id)
+    {
+        return out;
+    }
     match ev {
         // Close (X) — hide the panel (mirror of the other docked panels).
         WidgetEvent::Click(id) if id == ids::TIMELINE_CLOSE => {
@@ -222,4 +234,41 @@ pub(crate) fn apply_event(
         }
         _ => EventOutcome::Ignored,
     }
+}
+
+/// The clip stack's chrome (ADR-0115): "+ Lane", and each lane's mute and
+/// "+ Strip". `None` means "not one of ours" — the caller falls through.
+fn stack_click(id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
+    if id == ids::TIMELINE_ADD_LANE {
+        crate::state::push_intent(ph2d_timeline::TimelineIntent::AddLane);
+        return Some(EventOutcome::Consumed);
+    }
+    if let Some(lane) = ids::TIMELINE_LANE_MUTE.iter().position(|&b| b == id) {
+        // A lane the snapshot no longer has (deleted since the paint that
+        // registered this button) raises nothing: the action expires with its
+        // target, exactly as Delete Track's does.
+        if let Some(v) = crate::state::current_snapshot().lanes.get(lane) {
+            crate::state::push_intent(ph2d_timeline::TimelineIntent::SetLaneMuted {
+                lane,
+                muted: !v.muted,
+            });
+        }
+        return Some(EventOutcome::Consumed);
+    }
+    if let Some(lane) = ids::TIMELINE_LANE_ADD_STRIP.iter().position(|&b| b == id) {
+        let snap = crate::state::current_snapshot();
+        if lane < snap.lanes.len() {
+            // The ACTIVE clip, dropped AT THE PLAYHEAD — the clip you are looking
+            // at, where you are looking.
+            let t = snap.time_seconds.max(0.0);
+            crate::state::push_intent(ph2d_timeline::TimelineIntent::AddStrip {
+                lane,
+                clip: snap.active_clip,
+                t_start: t,
+                t_end: t + snap.duration_seconds.max(MIN_NEW_STRIP_S),
+            });
+        }
+        return Some(EventOutcome::Consumed);
+    }
+    None
 }

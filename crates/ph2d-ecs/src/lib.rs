@@ -93,6 +93,12 @@ pub use vec_shape::{MAX_SHAPE_VALUES, VecShape, VecTextParams};
 /// novos, e um conector guardado por bits se soltaria a cada Ctrl+Z.
 mod vec_connector;
 pub use vec_connector::{Anchor, ConnectorEnd, DEFAULT_CURVE_ARM, RouteKind, VecConnector};
+
+/// **O RÓTULO** — o texto que pertence a uma forma (ou a um conector) e a segue. Mesma família
+/// do conector, e pela mesma razão: o componente guarda a RELAÇÃO (de quem, e onde em relação a
+/// ele), e a pose é uma função pura dela. O alvo é um `VecPathId`, nunca bits de entidade.
+mod vec_label;
+pub use vec_label::VecLabel;
 pub use visibility::Visibility;
 pub use visibility_layer::{EnableMode, OnScreenEnabler, VisibilityLayer};
 

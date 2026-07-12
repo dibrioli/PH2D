@@ -59,6 +59,9 @@ problemas = "problemas"
 # nova é o AUTOR dela — e o gate existe justamente para obrigá-lo a declarar para que lado
 # ela fica de pé. Lido como um "author" mal escrito; é a palavra portuguesa.
 autor = "autor"
+# pt-BR dos rótulos (`shells/desktop/src/label_live*.rs`): a bbox de um glyph de verdade é mais
+# lenta de CALCULAR que a de um retângulo. Lido como um "calculator" mal escrito.
+calcular = "calcular"
 # pt-BR dos conectores (`ph2d-ecs/src/vec_connector.rs`, `connector_live_tests.rs`): o jetty e
 # o spread são AUTOMÁTICOS até o painel os fixar, o feixe de conectores paralelos ALTERNA os
 # lados da face, e as caixas do gate estão empilhadas de PROPÓSITO.

@@ -25,12 +25,12 @@ mod tests {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
         register_render_components(&mut reg);
-        // 27 ecs components (4 foundational + 16 W3 sorting/visibility/
+        // 28 ecs components (4 foundational + 16 W3 sorting/visibility/
         // sampling/mask + 1 §10 BlendMode + 4 undo: Locked/GroupedChildren/
         // VecPathRef/FlipObjectRef + 1 Live Shapes: VecShape + 1 Painter
         // persistence: PaintedDoc)
         // + 1 render component (Sprite).
-        assert_eq!(reg.len(), 29);
+        assert_eq!(reg.len(), 30);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
     }
 }

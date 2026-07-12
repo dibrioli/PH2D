@@ -162,11 +162,21 @@ impl crate::app_state::App {
         else {
             return false;
         };
-        let Some(edit) = self.vec_text_reopen_at([f64::from(w[0]), f64::from(w[1])]) else {
-            if log {
-                eprintln!("[text] duplo-clique, mas nao ha TEXTO sob o cursor");
+        let world = [f64::from(w[0]), f64::from(w[1])];
+        let Some(edit) = self.vec_text_reopen_at(world) else {
+            // Não era um TEXTO. Talvez seja uma FORMA ou um CONECTOR — e aí o duplo-clique
+            // cria (ou edita) o RÓTULO dele: o texto que PERTENCE ao objeto e o segue. É o
+            // gesto do draw.io/Figma, e o mesmo caminho: a sessão de digitação de sempre.
+            if self.vec_label_double_click_at(world) {
+                if log {
+                    eprintln!("[text] duplo-clique: rotulo do objeto sob o cursor");
+                }
+                return true;
             }
-            return false; // não era texto: o duplo-clique segue o caminho normal
+            if log {
+                eprintln!("[text] duplo-clique, mas nao ha TEXTO nem OBJETO sob o cursor");
+            }
+            return false; // caiu no vazio: o duplo-clique segue o caminho normal
         };
         if log {
             eprintln!("[text] duplo-clique: reabrindo \"{}\"", edit.text);

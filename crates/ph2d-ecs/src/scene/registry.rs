@@ -266,6 +266,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // Sem este registro, o conector seria DESCARTADO pelo snapshot — o undo e o save o
     // perderiam em silêncio (foi o que aconteceu com Locked/GroupedChildren/VecPathRef).
     reg.register::<crate::VecConnector>("ph2d::ecs::VecConnector");
+    // O vínculo do RÓTULO com o objeto que ele nomeia. Mesma razão, e mais forte: a pose do
+    // rótulo é DERIVADA dele — sem o componente no snapshot, o undo devolveria um texto solto
+    // no meio da forma, com o offset do usuário perdido.
+    reg.register::<crate::VecLabel>("ph2d::ecs::VecLabel");
 }
 
 #[cfg(test)]
@@ -299,7 +303,7 @@ mod tests {
         // sorting/visibility/sampling/mask components (incl. Mask2D source)
         // + 1 §10 BlendMode + 5 save/undo
         // (Locked/GroupedChildren/VecPathRef/FlipObjectRef/PaintedDoc)
-        // + 1 Live Shapes (VecShape) + 1 conector (VecConnector).
+        // + 1 Live Shapes (VecShape) + 1 conector (VecConnector) + 1 rótulo (VecLabel).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -311,7 +315,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 28);
+        assert_eq!(reg.len(), 29);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());
@@ -320,6 +324,8 @@ mod tests {
         assert!(reg.get_by_name("ph2d::ecs::PaintedDoc").is_some());
         assert!(reg.get_by_name("ph2d::ecs::GroupedChildren").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPathRef").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecConnector").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecLabel").is_some());
         assert!(reg.get_by_name("ph2d::ecs::FlipObjectRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecShape").is_some());
         assert!(reg.get_by_name("ph2d::ecs::ZIndexOverride").is_some());

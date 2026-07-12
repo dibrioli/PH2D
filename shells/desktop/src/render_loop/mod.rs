@@ -2751,7 +2751,7 @@ impl crate::App {
             let vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
             // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
             // o afim que a leva ao mundo (a cadeia de pais inclusa).
-            let vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
+            let mut vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
             // **Conectores, 2ª metade:** a geometria é uma função pura da RELAÇÃO — re-cozida
             // aqui, todo frame, sobre os afins DESTE frame. É o que faz a linha SEGUIR a
             // forma que o gizmo acabou de mover.
@@ -2761,6 +2761,33 @@ impl crate::App {
                 &self.vec_entities,
                 &vec_xf,
                 &mut self.vec_connect_sides,
+            );
+            // **Rótulos:** o texto que pertence a uma forma (ou a um conector) e a segue. A pose
+            // é uma função pura do hospedeiro — como a rota do conector é da relação dele.
+            //
+            // **DEPOIS do `recook`, e isso não é arrumação:** a âncora do rótulo de um conector é
+            // o meio da rota, e a rota deste frame acabou de ser escrita ali em cima. Antes do
+            // `recook` o rótulo penderia da polilinha do frame ANTERIOR — e arrastaria a forma
+            // sempre um quadro atrás da linha. (E depois do `build`, pela mesma razão: os afins
+            // das formas-alvo já são os deste frame.)
+            //
+            // O `upkeep_pending` vem primeiro: um rótulo nasce VAZIO, e é a 1ª letra que cria o
+            // objeto — o vínculo tem de estar pendurado antes do passe procurar por ele.
+            let text_id = self.vec_text_edit.as_ref().and_then(|e| e.id);
+            crate::label_live::upkeep_pending(
+                sim,
+                &self.vec_entities,
+                &mut self.vec_label_pending,
+                text_id,
+                self.vec_text_edit.is_some(),
+            );
+            crate::label_live::upkeep(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &mut vec_xf,
+                text_id,
+                &mut self.vec_label_poses,
             );
             self.vec_pen.set_view(vec_view.clone());
             self.vec_pen.set_xforms(vec_xf.clone());

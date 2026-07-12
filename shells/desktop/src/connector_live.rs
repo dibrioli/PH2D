@@ -279,14 +279,19 @@ struct Cooked {
 }
 
 /// **Toda forma que pode barrar uma linha**: a caixa de MUNDO de cada path com contorno
-/// fechado que não seja um conector.
+/// fechado que não seja um conector nem um rótulo.
 ///
-/// Os dois filtros são a definição de "parede". Um **conector** não é obstáculo — se fosse,
+/// Os filtros são a definição de "parede". Um **conector** não é obstáculo — se fosse,
 /// o primeiro cruzamento entre duas linhas empurraria todas as outras, e o diagrama
 /// desmancharia sozinho a cada traço novo. E um **contorno aberto** (um traço da caneta, uma
 /// aresta interna de um cubo) não tem interior: não há o que atravessar. É o mesmo critério
 /// do `boundary_hit`, e não por acaso — a borda em que a linha encosta e a parede de que ela
 /// desvia têm de ser a MESMA borda.
+///
+/// E um **RÓTULO** não é parede: texto é anotação, não estrutura. Aqui a razão é mais dura que o
+/// gosto — o rótulo de um conector mora **em cima da rota dele**, e contá-lo como obstáculo faria
+/// a linha desviar do próprio rótulo, o rótulo se re-centrar na rota nova, a linha desviar de
+/// novo. Um laço que ou oscila ou assenta numa rota torta. (Gate: `label_live_tests`.)
 ///
 /// Calculado uma vez por frame, não uma vez por conector.
 fn shape_boxes(
@@ -295,11 +300,11 @@ fn shape_boxes(
     xforms: &VecXforms,
     map: &VecEntityMap,
 ) -> Vec<Aabb> {
-    let is_connector = |id: VecPathId| {
+    let is_wall = |id: VecPathId| {
         map.get(&id).is_some_and(|&bits| {
-            sim.world()
-                .get::<VecConnector>(Entity::from_bits(bits))
-                .is_some()
+            let e = Entity::from_bits(bits);
+            sim.world().get::<VecConnector>(e).is_some()
+                || sim.world().get::<ph2d_ecs::VecLabel>(e).is_some()
         })
     };
     let has_interior = |p: &VecPath| {
@@ -308,7 +313,7 @@ fn shape_boxes(
     scene
         .paths()
         .iter()
-        .filter(|p| has_interior(p) && !is_connector(p.id))
+        .filter(|p| has_interior(p) && !is_wall(p.id))
         .filter_map(|p| {
             let (lo, hi) = scene.path_world_curve_bbox(xforms, p.id)?;
             Some(Aabb::new(lo, hi))

@@ -236,6 +236,13 @@ impl crate::App {
         // continua lá, editável pela seleção).
         self.vec_text_edit = None;
         self.vec_text_last_target = None;
+        // O cache de poses dos rótulos é a memória de "o que EU escrevi no frame passado". O
+        // restore põe poses novas no mundo sem passar por ele — deixá-lo faria o passe ler a
+        // pose restaurada como um arrasto do usuário. É inócuo (o estado restaurado é
+        // auto-consistente, e re-absorver devolve o MESMO offset), mas zerar é o honesto: a
+        // memória não é mais de nada. O arm de rótulo pendente morre com a sessão de texto.
+        self.vec_label_poses.clear();
+        self.vec_label_pending = None;
         // A mesma forma (mesmo id) pode voltar com OUTROS parâmetros — zerar o alvo
         // força a re-semente dos sliders, senão o painel seguiria mostrando o valor
         // que o undo acabou de desfazer.

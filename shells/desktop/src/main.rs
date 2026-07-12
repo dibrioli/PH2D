@@ -62,6 +62,7 @@ mod input_log;
 mod integration;
 mod keymap;
 mod ktx2_smoke;
+mod label_live;
 mod motion_state;
 mod name_unique;
 mod palette_persist;
@@ -267,6 +268,8 @@ impl App {
             vec_conn_handle: None,
             vec_connect_pending: None,
             vec_connect_sides: crate::connector_live::SideCache::new(),
+            vec_label_pending: None,
+            vec_label_poses: crate::label_live::LabelPoses::new(),
             vec_history: ph2d_vec_edit::History::new(),
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,

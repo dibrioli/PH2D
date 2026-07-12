@@ -552,5 +552,8 @@ fn a_curved_connector_still_goes_around_the_obstacle_the_router_avoided() {
 
 /// Os testes dos WAYPOINTS — módulo filho (teto de 600 LOC por arquivo da shell). Herdam os
 /// helpers daqui pelo `use super::*`.
+///
+/// (O gate de que um **rótulo não é parede** do roteador vive com a feature dele, em
+/// `label_live_tests`: `a_label_sitting_on_the_route_never_pushes_the_line_aside`.)
 #[path = "connector_live_waypoint_tests.rs"]
 mod waypoints;

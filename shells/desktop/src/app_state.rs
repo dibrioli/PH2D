@@ -630,6 +630,15 @@ pub(crate) struct App {
     /// O lado por onde cada ponta de cada conector saiu no frame anterior — a memória da
     /// histerese de `side_towards` (sem ela a saída pisca na diagonal). Runtime-only.
     pub(crate) vec_connect_sides: crate::connector_live::SideCache,
+    /// O **hospedeiro** do rótulo que o duplo-clique acabou de abrir, esperando a 1ª letra
+    /// materializar o objeto de texto (e com ele a entidade) para receber o `VecLabel`. Um
+    /// rótulo nasce VAZIO — sem geometria não há path, sem path não há entidade, e sem entidade
+    /// não há onde pendurar o vínculo. Espelho do `vec_connect_pending`.
+    pub(crate) vec_label_pending: Option<ph2d_vec_scene::VecPathId>,
+    /// A pose que o passe dos rótulos escreveu no frame anterior, por rótulo. É o que distingue
+    /// "o hospedeiro se moveu" (dirigir) de "o USUÁRIO arrastou o rótulo" (absorver no offset) —
+    /// um `Transform` diferente do que gravamos só pode ter vindo do gizmo. Runtime-only.
+    pub(crate) vec_label_poses: crate::label_live::LabelPoses,
     /// ADR-0108: undo/redo by snapshot of `vec_scene` (Ctrl+Z / Ctrl+Shift+Z).
     /// Subsumido pela fila GLOBAL (`undo`, abaixo): ainda é populado pelas ops
     /// vetoriais, mas o Ctrl+Z já não o lê — a fila global cobre a geometria via

@@ -299,12 +299,19 @@ mod tests {
         // sorting/visibility/sampling/mask components (incl. Mask2D source)
         // + 1 §10 BlendMode + 5 save/undo
         // (Locked/GroupedChildren/VecPathRef/FlipObjectRef/PaintedDoc)
-        // + 1 Live Shapes (VecShape).
+        // + 1 Live Shapes (VecShape) + 1 conector (VecConnector).
         //
-        // O número é o ponto: uma componente que o snapshot não conhece é
-        // descartada em SILÊNCIO no save/undo — foi assim que o `PaintedDoc`
-        // (a identidade estável do documento do Painter) teria nascido morto.
-        assert_eq!(reg.len(), 27);
+        // **Este número existe para doer.** Um componente que não passa por aqui é
+        // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
+        // aparece três telas depois (foi assim que o `PaintedDoc`, a identidade estável do
+        // documento do Painter, teria nascido morto). Ao acrescentar um componente, some 1
+        // aqui de propósito.
+        //
+        // Na integração ele SOMA entre linhas: o Painter trouxe o `PaintedDoc` e o Vector o
+        // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
+        // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
+        // workspace vermelho com dois merges verdes.
+        assert_eq!(reg.len(), 28);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());

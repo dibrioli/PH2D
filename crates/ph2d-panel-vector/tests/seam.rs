@@ -673,12 +673,12 @@ fn connector_fields_reach_the_bus_for_the_shell() {
         matches!(
             a,
             EditorAction::ToolPanelEvent(PanelEvent::SetValue(fid, fv))
-                if *fid == ids::VECTOR_CONNECTOR_ROUTE && fv.abs() < 1e-9
+                if *fid == ids::VECTOR_CONNECTOR_ROUTE && (*fv - 2.0).abs() < 1e-9
         )
     });
     assert!(
         cycled,
-        "o clique no Route nao emitiu a PROXIMA rota (Orthogonal -> Straight) — \
+        "o clique no Route nao emitiu a PROXIMA rota (Orthogonal -> Curved) — \
          um botao que despacha o valor corrente nao muda nada"
     );
 

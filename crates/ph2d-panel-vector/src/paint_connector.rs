@@ -228,6 +228,8 @@ mod tests {
         assert_eq!(connector::route_label(0.0), "Straight");
         assert!((connector::next_route(0.0) - 1.0).abs() < f64::EPSILON);
         assert_eq!(connector::route_label(1.0), "Orthogonal");
-        assert!(connector::next_route(1.0).abs() < f64::EPSILON);
+        assert!((connector::next_route(1.0) - 2.0).abs() < f64::EPSILON);
+        assert_eq!(connector::route_label(2.0), "Curved");
+        assert!(connector::next_route(2.0).abs() < f64::EPSILON);
     }
 }

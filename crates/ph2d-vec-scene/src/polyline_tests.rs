@@ -162,3 +162,63 @@ fn collinear_points_get_no_fillet() {
             .all(|w| w.in_handle == w.anchor && w.out_handle == w.anchor)
     );
 }
+
+/// **O spline PASSA pelos pontos da rota** — ele suaviza as dobras, não inventa um caminho
+/// novo. Se ele se afastasse dos vértices, o conector curvo deixaria de desviar dos obstáculos
+/// que o A* contornou, e a curva atravessaria a forma que a rota evitou.
+#[test]
+fn the_smoothed_route_still_passes_through_every_point_the_router_chose() {
+    let pts = [[0.0, 0.0], [5.0, 0.0], [5.0, 5.0], [10.0, 5.0]];
+    let v = smooth_polyline(&pts, 1.0);
+    assert_eq!(v.len(), pts.len(), "um vertice por ponto da rota");
+    for (i, p) in pts.iter().enumerate() {
+        assert_eq!(v[i].anchor, *p, "o spline saiu do ponto {i} da rota");
+    }
+    // E ha curvatura de verdade nos pontos INTERNOS (senao "suavizar" nao suavizou nada).
+    assert!(v[1].in_handle != v[1].anchor && v[1].out_handle != v[1].anchor);
+    assert!(v[2].in_handle != v[2].anchor && v[2].out_handle != v[2].anchor);
+}
+
+/// **As duas PONTAS guardam a tangente do proprio segmento** — e e dela que a ponta de seta
+/// tira a direcao. Uma tangente "suavizada" no extremo faria a seta apontar para o lado.
+#[test]
+fn the_ends_keep_the_direction_the_line_leaves_the_shape_with() {
+    // Sai na horizontal (para +x) e chega na vertical (para +y).
+    let pts = [[0.0, 0.0], [5.0, 0.0], [5.0, 5.0]];
+    let v = smooth_polyline(&pts, 1.0);
+
+    // A tangente de saida do 1o vertice e HORIZONTAL (o rumo do 1o segmento), nao a media de
+    // nada: o `in_handle` dele nem existe (e a ancora), e o `out_handle` corre em +x.
+    let first = &v[0];
+    assert_eq!(first.in_handle, first.anchor, "a 1a ponta nao tem entrada");
+    let out = [
+        first.out_handle[0] - first.anchor[0],
+        first.out_handle[1] - first.anchor[1],
+    ];
+    assert!(
+        out[0] > 0.0 && out[1].abs() < 1e-9,
+        "a linha tem de SAIR na horizontal (o rumo do stub), e saiu em {out:?} — a seta \
+         apontaria para o lado"
+    );
+    // Idem na chegada: vertical, subindo.
+    let last = v.last().expect("ultimo");
+    assert_eq!(last.out_handle, last.anchor);
+    let inn = [
+        last.anchor[0] - last.in_handle[0],
+        last.anchor[1] - last.in_handle[1],
+    ];
+    assert!(
+        inn[1] > 0.0 && inn[0].abs() < 1e-9,
+        "a linha tem de CHEGAR na vertical, e chegou em {inn:?}"
+    );
+}
+
+/// Tensao zero devolve a polilinha crua — a identidade tem de ser exata (e o caminho por onde
+/// um "curvo" com tensao 0 vira um ortogonal, sem caso especial).
+#[test]
+fn zero_tension_is_the_raw_polyline() {
+    let pts = [[0.0, 0.0], [5.0, 0.0], [5.0, 5.0]];
+    let v = smooth_polyline(&pts, 0.0);
+    let want: Vec<VecVertex> = pts.iter().map(|&p| VecVertex::corner(p)).collect();
+    assert_eq!(v, want);
+}

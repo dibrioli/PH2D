@@ -53,7 +53,7 @@
 //! `cap` da caneta), não quinas — também não têm filete. Já a `Open` TEM uma quina (o bico do
 //! "V"), e essa arredonda.
 
-use crate::{VecPath, VecVertex, VertexKind};
+use crate::{StrokeSpec, VecPath, VecVertex, VertexKind};
 
 /// A ponta de um traço. **Append-only**: o discriminante é gravado no documento.
 #[derive(
@@ -479,6 +479,36 @@ pub fn end_tangent(path: &VecPath, at_start: bool) -> Option<([f64; 2], [f64; 2]
         return None;
     }
     Some((v.anchor, [dx / len, dy / len]))
+}
+
+/// **A ponta de um extremo do traço**, na geometria do próprio caminho.
+///
+/// Ela NÃO faz parte do `VecPath` — é construída sob demanda a partir do caminho + do
+/// [`StrokeSpec`]. E é por isso que ela mora aqui, e não no renderer: **quem desenha e quem
+/// agarra têm de ler a mesma função.**
+///
+/// Enquanto ela viveu só no render, o hit-test do canvas não a enxergava — e a cabeça é
+/// justamente a parte GORDA da seta, a que o olho mira e o mouse persegue. Clicar no
+/// triângulo não selecionava nada, e a única área clicável era o fio da linha. Foi a queixa
+/// do Enio ("a área da seta é fina"), e a causa não era o raio de captura: era uma metade do
+/// desenho que simplesmente não existia para o mouse.
+#[must_use]
+pub fn stroke_head(path: &VecPath, s: &StrokeSpec, at_start: bool) -> Option<(Marker, VecPath)> {
+    // Contorno fechado não tem pontas (não há extremo onde pô-las).
+    if path.closed {
+        return None;
+    }
+    let marker = if at_start {
+        s.marker_start
+    } else {
+        s.marker_end
+    };
+    if marker == Marker::None {
+        return None;
+    }
+    let (tip, dir) = end_tangent(path, at_start)?;
+    let geo = marker.build(tip, dir, s.width, s.marker_scale, s.marker_round)?;
+    Some((marker, geo))
 }
 
 #[cfg(test)]

@@ -31,6 +31,11 @@ use crate::vec_transform::{world_transform, xform_of_transform};
 /// (linha, arco, pen não-fechado) são pegas por proximidade do traço.
 const STROKE_HIT_PX: f64 = 8.0;
 
+/// Quanto a folga de um caminho **aberto** (uma linha, um conector) é maior que a da borda de
+/// uma forma fechada. Ver o comentário no `contains_path`: uma linha não tem interior, logo a
+/// folga *é* a área clicável — enquanto na borda de uma forma ela é só o fio.
+const OPEN_PATH_HIT_K: f64 = 1.75;
+
 /// `STROKE_HIT_PX` convertido a world-units no zoom atual.
 #[must_use]
 pub(crate) fn stroke_hit_r(camera: &Camera2d, window_size: WindowSize) -> f64 {
@@ -165,8 +170,42 @@ fn contains_path(
     let Some(path) = scene.paths().iter().find(|pp| pp.id == id) else {
         return false;
     };
+    // **A PONTA DE SETA é clicável.** Ela não faz parte do `VecPath` — é construída a partir
+    // dele + do `StrokeSpec` (`stroke_head`, a MESMA função que o renderer chama). Enquanto o
+    // hit-test não a construía, o triângulo, que é a parte GORDA da seta e a que o olho mira,
+    // não selecionava nada: a única área clicável de um conector era o fio da linha. Era a
+    // queixa do Enio, e a causa não era o raio de captura — era metade do desenho que
+    // simplesmente não existia para o mouse.
+    if let Some(s) = path.stroke.as_ref() {
+        for at_start in [true, false] {
+            if let Some((_, head)) = ph2d_vec_scene::stroke_head(path, s, at_start)
+                && ph2d_vec_scene::contains_point(&head, local)
+            {
+                return true;
+            }
+        }
+    }
+
     if let Some((_, _, d2)) = ph2d_vec_scene::nearest_point_on_path(path, local, STROKE_SAMPLES) {
-        return d2.sqrt() * x.mean_scale() <= stroke_hit_r;
+        // **A TINTA QUE SE VÊ CONTA.** O raio de captura é a folga MAIS a metade da largura
+        // desenhada — não a folga sozinha. Sem isso, uma linha grossa só era pegável nos 8 px
+        // centrais dela: o usuário clicava visivelmente EM CIMA do traço e nada acontecia,
+        // porque o hit-test media a distância até a CURVA e ignorava a espessura com que ela
+        // é pintada.
+        let half_ink = path.stroke.as_ref().map_or(0.0, |s| s.width * 0.5);
+        // **Uma LINHA precisa de mais folga que a borda de uma forma** — e é por isso que os
+        // 8 px eram apertados. Eles foram calibrados para o contorno de uma forma FECHADA, que
+        // tem um interior para mirar: ali a folga só serve para pegar o fio da borda, e uma
+        // folga grande roubaria cliques do que está atrás. Numa linha, a curva é o ÚNICO alvo
+        // que existe — não há interior nenhum —, então a folga é a área clicável inteira. Ela
+        // só pode roubar clique de outra linha, o que praticamente não acontece.
+        let open = (0..path.contour_count()).all(|c| !matches!(path.contour(c), Some((_, true))));
+        let slop = if open {
+            stroke_hit_r * OPEN_PATH_HIT_K
+        } else {
+            stroke_hit_r
+        };
+        return d2.sqrt() * x.mean_scale() <= slop + half_ink;
     }
     false
 }
@@ -418,3 +457,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "vec_gizmo_view_hit_tests.rs"]
+mod hit_tests;

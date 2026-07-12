@@ -56,6 +56,14 @@ pub enum RouteKind {
     /// diagrama, e não um emaranhado de retas.
     #[default]
     Orthogonal = 1,
+    /// **Curva** — a MESMA rota ortogonal, suavizada num spline.
+    ///
+    /// Não é uma curva à parte, e essa é a decisão: uma cúbica única de A a B (o que o Visio
+    /// faz) fica bonita entre duas caixas e **atravessa qualquer coisa no meio**, porque nunca
+    /// passou pelo roteador. Aqui a busca A\* é a mesma, os obstáculos são os mesmos, e só a
+    /// escrita da geometria muda — as dobras do cotovelo viram pontos de controle. O desvio de
+    /// obstáculo sai de graça, e não há um segundo roteador para manter em pé.
+    Curved = 2,
 }
 
 /// **O conector.** A entidade que o carrega também tem um [`crate::VecPathRef`]: o componente

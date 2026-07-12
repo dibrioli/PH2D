@@ -29,7 +29,8 @@ use std::collections::BTreeMap;
 use ph2d_ecs::{Anchor, ConnectorEnd, Entity, Name, SimWorld, Transform, VecConnector};
 use ph2d_vec_connect::{Aabb, Dir, EndSpec, RouteInput, RouteKind, route, side_towards};
 use ph2d_vec_scene::{
-    VecPath, VecPathId, VecScene, VecXforms, boundary_hit, round_polyline, xform_of,
+    VecPath, VecPathId, VecScene, VecXforms, boundary_hit, round_polyline, smooth_polyline,
+    xform_of,
 };
 
 use crate::vec_entities::VecEntityMap;
@@ -41,6 +42,10 @@ use crate::vec_entities::VecEntityMap;
 /// a cada quadro. Runtime-only (não vai para o save nem para o undo) — o pior que um cache
 /// perdido causa é a linha escolher o lado do zero, uma vez.
 pub(crate) type SideCache = BTreeMap<VecPathId, [Option<Dir>; 2]>;
+
+/// A tensão do spline do conector CURVO. `1.0` é a curva Catmull-Rom cheia — o cotovelo vira
+/// uma volta redonda, que é o que se espera de "curvo".
+const CURVE_TENSION: f64 = 1.0;
 
 /// O quanto o spread pode deslizar ao longo da face, como fração da meia-extensão dela. A saída
 /// tem de continuar **na face**: passando disto o ponto escorrega pela quina, e a linha parece
@@ -247,12 +252,18 @@ fn current_endpoints(scene: &VecScene, id: VecPathId) -> ([f64; 2], [f64; 2]) {
 /// `radius > 0` arredonda as **dobras** do cotovelo ([`round_polyline`]). As duas PONTAS ficam
 /// afiadas de propósito: é do primeiro e do último segmento que sai a tangente que orienta a
 /// ponta de seta — arredondá-los faria a seta apontar para o lado.
-fn write_route(scene: &mut VecScene, id: VecPathId, pts: &[[f64; 2]], radius: f64) {
+fn write_route(scene: &mut VecScene, id: VecPathId, pts: &[[f64; 2]], radius: f64, curved: bool) {
     let Some(p) = scene.path_mut(id) else {
         return;
     };
     p.verts.clear();
-    p.verts.extend(round_polyline(pts, radius));
+    if curved {
+        // O conector CURVO é a mesma rota, suavizada — o `corner_radius` não se aplica (o
+        // spline já não tem quina nenhuma). Ver `RouteKind::Curved`.
+        p.verts.extend(smooth_polyline(pts, CURVE_TENSION));
+    } else {
+        p.verts.extend(round_polyline(pts, radius));
+    }
     p.closed = false;
     p.subpaths.clear();
 }
@@ -359,9 +370,12 @@ fn cook(
         end_box(&conn.start, scene, xforms)?,
         end_box(&conn.end, scene, xforms)?,
     );
+    // **O curvo ROTEIA como o ortogonal.** A busca é a mesma, os obstáculos são os mesmos; só a
+    // escrita da geometria difere. É o que faz o conector curvo desviar de obstáculo de graça,
+    // em vez de exigir um segundo roteador.
     let kind = match conn.route {
         ph2d_ecs::RouteKind::Straight => RouteKind::Straight,
-        ph2d_ecs::RouteKind::Orthogonal => RouteKind::Orthogonal,
+        ph2d_ecs::RouteKind::Orthogonal | ph2d_ecs::RouteKind::Curved => RouteKind::Orthogonal,
     };
     let jetty = conn.jetty_or(jetty_for(&a.bbox, &b.bbox));
     let spread = conn.spread_or(ph2d_tool_vector::connector::SPREAD_STEP);
@@ -436,7 +450,13 @@ pub(crate) fn recook(
             continue;
         };
         cache.insert(id, cooked.sides);
-        write_route(scene, id, &cooked.pts, f64::from(conn.corner_radius));
+        write_route(
+            scene,
+            id,
+            &cooked.pts,
+            f64::from(conn.corner_radius),
+            conn.route == ph2d_ecs::RouteKind::Curved,
+        );
 
         // 3. O conector vive na IDENTIDADE (detalhe 3 do doc): a geometria acima é MUNDO, e
         //    uma pose por cima a deslocaria. Devolver a identidade é o que torna o gizmo

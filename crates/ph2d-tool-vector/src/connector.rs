@@ -51,14 +51,14 @@ pub fn auto_jetty(a_half: (f64, f64), b_half: (f64, f64)) -> f64 {
 
 /// Os nomes das rotas, na ordem do discriminante de `ph2d_ecs::RouteKind`
 /// (`Straight = 0`, `Orthogonal = 1`) — o botão de escolha CICLA por eles.
-pub const ROUTE_NAMES: &[&str] = &["Straight", "Orthogonal"];
+pub const ROUTE_NAMES: &[&str] = &["Straight", "Orthogonal", "Curved"];
 
 /// **Route** — como a linha é desenhada. Uma escolha, não um número: "Route: 1" não diz
 /// nada; "Route: Orthogonal" diz tudo (a mesma regra do ponto de vista dos sólidos).
 pub const ROUTE: FieldDesc = FieldDesc {
     label: "Route",
     min: 0.0,
-    max: 1.0,
+    max: 2.0,
     step: 1.0,
     unit: FieldUnit::Choice(ROUTE_NAMES),
 };
@@ -172,14 +172,16 @@ mod tests {
     #[test]
     fn the_route_button_cycles_and_always_has_a_label() {
         assert!((next_route(0.0) - 1.0).abs() < f64::EPSILON);
+        assert!((next_route(1.0) - 2.0).abs() < f64::EPSILON);
         assert!(
-            next_route(1.0).abs() < f64::EPSILON,
-            "de Orthogonal volta a Straight"
+            next_route(2.0).abs() < f64::EPSILON,
+            "de Curved volta a Straight"
         );
         assert_eq!(route_label(0.0), "Straight");
         assert_eq!(route_label(1.0), "Orthogonal");
+        assert_eq!(route_label(2.0), "Curved");
         // Um valor fora da faixa (save corrompido) não pode pintar vazio nem entrar em pânico.
-        assert_eq!(route_label(7.0), "Orthogonal");
+        assert_eq!(route_label(7.0), "Curved");
     }
 
     /// Os campos numéricos declaram faixas que o clamp respeita — é ela que a caixa do

@@ -481,3 +481,71 @@ fn the_corner_radius_reaches_the_cooked_line_but_never_the_two_ends() {
         );
     }
 }
+
+/// Amostra a CURVA de um path (nao so as ancoras): o abaulamento do spline mora entre elas.
+fn curve_samples(scene: &VecScene, id: VecPathId) -> Vec<[f64; 2]> {
+    let p = scene.paths().iter().find(|p| p.id == id).expect("conector");
+    let mut out = Vec::new();
+    for w in p.verts.windows(2) {
+        let (p0, p1, p2, p3) = (w[0].anchor, w[0].out_handle, w[1].in_handle, w[1].anchor);
+        for k in 0..=24 {
+            let t = f64::from(k) / 24.0;
+            let u = 1.0 - t;
+            let (a, b, c, d) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+            out.push([
+                a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0],
+                a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1],
+            ]);
+        }
+    }
+    out
+}
+
+/// **O conector CURVO desvia de obstaculo — e essa e a aposta inteira.**
+///
+/// Uma cubica unica de A a B (o que o Visio faz) fica bonita entre duas caixas e ATRAVESSA
+/// qualquer coisa no meio, porque nunca passou pelo roteador. Aqui o curvo roda a MESMA busca
+/// A*, com os MESMOS obstaculos, e so a escrita da geometria muda.
+///
+/// O risco real que este gate cobre: o spline **abauda** entre os pontos da rota. Passar pelos
+/// vertices nao basta — a barriga da curva pode comer a margem e cortar a forma. A asserçao e
+/// sobre a CURVA amostrada, nao sobre as ancoras.
+#[test]
+fn a_curved_connector_still_goes_around_the_obstacle_the_router_avoided() {
+    let (mut sim, mut scene, mut map, conn, _) = scene_with_connector();
+    let mut cache = SideCache::new();
+
+    // A parede entre as duas caixas.
+    let (lo, hi) = ([4.0, -2.0], [6.0, 3.0]);
+    scene.push_path(rectangle(lo, hi));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+
+    let mut c = VecConnector::between(scene.paths()[0].id, scene.paths()[1].id);
+    c.route = ph2d_ecs::RouteKind::Curved;
+    assert!(attach(&mut sim, &map, conn, &c));
+    let xf = xforms(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut cache);
+
+    let pts = curve_samples(&scene, conn);
+    let inside = |p: [f64; 2]| p[0] > lo[0] && p[0] < hi[0] && p[1] > lo[1] && p[1] < hi[1];
+    for p in &pts {
+        assert!(
+            !inside(*p),
+            "a BARRIGA da curva entrou na forma em {p:?} — passar pelos vertices da rota nao \
+             basta, o spline abauda entre eles"
+        );
+    }
+    // E ela e mesmo uma CURVA (algum handle descolou), senao o teste acima seria sobre a rota
+    // ortogonal e nao provaria nada do curvo.
+    let p = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == conn)
+        .expect("conector");
+    assert!(
+        p.verts
+            .iter()
+            .any(|v| v.in_handle != v.anchor || v.out_handle != v.anchor),
+        "a rota Curved saiu em quinas vivas: nao curvou"
+    );
+}

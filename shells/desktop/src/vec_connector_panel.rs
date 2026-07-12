@@ -94,6 +94,7 @@ pub(crate) fn selection_snapshot(
     let route = match conn.route {
         RouteKind::Straight => 0,
         RouteKind::Orthogonal => 1,
+        RouteKind::Curved => 2,
     };
     Some((route, jetty, spread, f64::from(conn.corner_radius)))
 }
@@ -160,10 +161,10 @@ fn apply_field(conn: &mut VecConnector, id: NodeId, v: f64) -> bool {
     } else if id == ph2d_editor::ids::VECTOR_CONNECTOR_ROUTE {
         // O botão cicla e emite o PRÓXIMO discriminante; um valor fora da tabela (não pode
         // acontecer) cai na rota default em vez de entrar em pânico.
-        conn.route = if v.round() as i64 == 0 {
-            RouteKind::Straight
-        } else {
-            RouteKind::Orthogonal
+        conn.route = match v.round() as i64 {
+            0 => RouteKind::Straight,
+            2 => RouteKind::Curved,
+            _ => RouteKind::Orthogonal,
         };
     } else {
         return false;

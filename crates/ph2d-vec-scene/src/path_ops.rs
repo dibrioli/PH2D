@@ -8,7 +8,7 @@
 //! mover/escalar/rodar leva o buraco junto, e as bboxes enquadram a forma toda.
 
 use crate::compound::contour_segments;
-use crate::{FillRule, FlipAxis, Paint, Rotate90, VecPath, VecPathId, VecScene, VecVertex};
+use crate::{FlipAxis, Paint, Rotate90, VecPath, VecPathId, VecScene, VecVertex};
 
 /// Amostras por segmento cúbico nas varreduras de geometria (bbox / containment).
 /// Apertado o bastante p/ o gizmo e transcendental-free.
@@ -489,56 +489,11 @@ impl VecScene {
         let Some(path) = self.paths.iter().find(|pp| pp.id == id) else {
             return false;
         };
-        let even_odd = path.fill_rule == FillRule::EvenOdd;
-        let mut crossings = 0i32;
-        let mut winding = 0i32;
-        let mut any = false;
-        for k in 0..path.contour_count() {
-            let Some((verts, closed)) = path.contour(k) else {
-                continue;
-            };
-            if !closed || verts.len() < 2 {
-                continue;
-            }
-            any = true;
-            let mut poly: Vec<[f64; 2]> = Vec::with_capacity(verts.len() * CURVE_SAMPLES);
-            for i in 0..verts.len() {
-                let a = &verts[i];
-                let b = &verts[(i + 1) % verts.len()];
-                for j in 0..CURVE_SAMPLES {
-                    let t = j as f64 / CURVE_SAMPLES as f64;
-                    poly.push(cubic(a.anchor, a.out_handle, b.in_handle, b.anchor, t));
-                }
-            }
-            let n = poly.len();
-            if n < 3 {
-                continue;
-            }
-            let mut j = n - 1;
-            for i in 0..n {
-                let (a, b) = (poly[j], poly[i]);
-                // O guard garante a[1] != b[1] (sem divisão por zero).
-                if (a[1] > p[1]) != (b[1] > p[1]) {
-                    let t = (p[1] - a[1]) / (b[1] - a[1]);
-                    let x = a[0] + t * (b[0] - a[0]);
-                    if p[0] < x {
-                        crossings += 1;
-                        winding += if b[1] > a[1] { 1 } else { -1 };
-                    }
-                }
-                j = i;
-            }
-        }
-        if !any {
-            return false;
-        }
-        if even_odd {
-            crossings % 2 != 0
-        } else {
-            winding != 0
-        }
+        crate::contains_point(path, p)
     }
+}
 
+impl VecScene {
     /// Translada o path `id` por `(dx, dy)` world-units (âncora + handles de todos
     /// os vértices de todos os contornos). `false` se o id sumiu.
     pub fn translate_path(&mut self, id: VecPathId, dx: f64, dy: f64) -> bool {

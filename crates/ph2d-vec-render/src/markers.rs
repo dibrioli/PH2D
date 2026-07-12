@@ -11,7 +11,7 @@
 //! Nada disto roda quando o traço não tem ponta, que é o caso da esmagadora maioria dos
 //! paths — o `has_markers()` corta antes.
 
-use ph2d_vec_scene::{Marker, StrokeSpec, VecPath, end_tangent, trim_path};
+use ph2d_vec_scene::{Marker, StrokeSpec, VecPath, trim_path};
 use ph2d_vector::{Affine, Brush, Fill, Stroke, VectorScene};
 
 use crate::{build_bezpath, color};
@@ -31,30 +31,20 @@ pub(crate) fn stroked_line(path: &VecPath, s: &StrokeSpec) -> Option<VecPath> {
     )
 }
 
-/// A ponta de um extremo do traço, já em MUNDO — a geometria que o [`draw`] emite.
+/// A ponta de um extremo do traço, já em MUNDO.
 ///
-/// Extraída do `draw` de propósito: é aqui que mora a COSTURA (o `StrokeSpec` do usuário ⇒ os
-/// argumentos do `Marker::build`), e uma costura só está viva se um teste a puxa. Compilar
-/// prova que os tipos batem; não prova que o `marker_scale` do painel chegou na cabeça — e um
-/// `1.0` esquecido no lugar dele deixaria a linha (que recua pelo `inset(scale)`) parando
-/// longe de uma cabeça pequena, com um vão no meio. `markers_tests` puxa exatamente isso.
+/// **A geometria mora em `ph2d_vec_scene::stroke_head`, e não aqui** — porque o hit-test do
+/// canvas precisa da MESMA cabeça. Enquanto ela vivia neste módulo, o mouse não a enxergava:
+/// clicar no triângulo (a parte gorda da seta, a que o olho mira) não selecionava nada, e a
+/// única área clicável era o fio da linha.
+///
+/// Este wrapper fica porque é aqui que a COSTURA é testada (`markers_tests`): compilar prova
+/// que os tipos batem; não prova que o `marker_scale` do painel chegou na cabeça — e um `1.0`
+/// esquecido no lugar dele deixaria a linha (que recua pelo `inset(scale)`) parando longe de
+/// uma cabeça pequena, com um vão no meio.
 #[must_use]
 pub(crate) fn head(path: &VecPath, s: &StrokeSpec, at_start: bool) -> Option<(Marker, VecPath)> {
-    // Contorno fechado não tem pontas (não há extremo onde pô-las).
-    if path.closed {
-        return None;
-    }
-    let marker = if at_start {
-        s.marker_start
-    } else {
-        s.marker_end
-    };
-    if marker == Marker::None {
-        return None;
-    }
-    let (tip, dir) = end_tangent(path, at_start)?;
-    let geo = marker.build(tip, dir, s.width, s.marker_scale, s.marker_round)?;
-    Some((marker, geo))
+    ph2d_vec_scene::stroke_head(path, s, at_start)
 }
 
 /// Emite as duas pontas do traço.

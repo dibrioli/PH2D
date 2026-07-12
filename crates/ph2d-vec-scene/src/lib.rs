@@ -38,6 +38,13 @@ pub use xform::{VecXforms, Xform, xform_of};
 /// sibling module (LOC cap); the `impl VecScene` block is inherent.
 mod path_ops;
 pub use path_ops::bake_xform;
+
+/// **O ponto está dentro da forma?** — módulo irmão de `path_ops` (teto de LOC). A ponta de
+/// seta é um [`VecPath`] que **não vive na cena**, então o hit-test precisa poder perguntar por
+/// CAMINHO, e não só por id — senão a parte gorda da seta fica invisível para o mouse.
+mod inside;
+pub use inside::contains_point;
+
 /// Reshape ops (smooth / sharpen / simplify / subdivide), likewise a sibling.
 mod reshape;
 
@@ -109,7 +116,7 @@ pub use iso::{iso_cone, iso_cube, iso_pyramid};
 /// propriedade do STROKE — nascem na ponta de qualquer caminho aberto, herdam a cor e a
 /// largura dele, e giram sozinhas com a tangente da curva.
 mod marker;
-pub use marker::{ALL_MARKERS, Marker, end_tangent, trim_path};
+pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 
 /// **Onde uma linha ENCOSTA numa forma** — a borda real (o contorno achatado), não a caixa
 /// envolvente. É o que faz um conector parar na estrela em vez de por baixo dela.
@@ -119,7 +126,7 @@ pub use boundary::{boundary_hit, outline};
 /// **O filete de quina de uma polilinha** — o que transforma o cotovelo duro de um
 /// fluxograma numa linha que dobra suave. Arco exato em qualquer ângulo, sem transcendental.
 mod polyline;
-pub use polyline::round_polyline;
+pub use polyline::{round_polyline, smooth_polyline};
 
 /// O CATÁLOGO de formas paramétricas: o enum único (`ShapeKind`), os valores de cada
 /// forma e o `cook` que os transforma em geometria. A forma é DADO — é o que faz uma

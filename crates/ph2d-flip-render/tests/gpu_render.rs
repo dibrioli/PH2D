@@ -277,26 +277,23 @@ fn newer_stroke_draws_over_older_at_crossing() {
 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
-fn a_stroke_crossing_itself_draws_the_later_part_on_top() {
+fn a_stroke_crossing_itself_is_a_clean_opaque_union() {
     let Some((device, queue)) = device() else {
         return;
     };
-    // UM traço que cruza a SI mesmo (mesmo sid, mesmo depth): o 1º trecho é vermelho
-    // (↘), o 2º é azul (↙); eles se cruzam em (32,32). O trecho DESENHADO DEPOIS
-    // (azul, pontos mais adiante na fita) tem de compor por CIMA — o `GreaterEqual`.
-    // Com GREATER puro o 2º fragmento falhava e o cruzamento saía vermelho (a parte
-    // mais velha por cima) — o bug do Enio 2026-07-11.
+    // UM traço que cruza a SI mesmo (mesmo sid, mesmo depth): dois trechos duros que
+    // se cruzam em (32,32). Com GREATER estrito + write-depth (como o GP 2D), o 2º
+    // fragmento no cruzamento é DESCARTADO (não misturado) → o cruzamento fica
+    // TOTALMENTE coberto (união limpa, sem notch e sem acúmulo). Numa cor sólida a
+    // "parte de cima" é invisível (mesma cor); aqui só afirmamos a cobertura opaca.
     let mut d = FlipDrawing::new();
     let mut s = FlipStroke::new();
-    let red = Rgba::new(1.0, 0.0, 0.0, 1.0);
-    let blue = Rgba::new(0.0, 0.0, 1.0, 1.0);
-    // p0→p1 = diagonal ↘ vermelha (passa por (32,32)); p1→p2 = desvio pela direita;
-    // p2→p3 = diagonal ↙ azul (passa por (32,32), desenhada DEPOIS).
-    for (p, c) in [
-        (Vec2::new(16.0, 16.0), red),
-        (Vec2::new(48.0, 48.0), red),
-        (Vec2::new(48.0, 16.0), blue),
-        (Vec2::new(16.0, 48.0), blue),
+    let c = Rgba::new(0.2, 0.4, 1.0, 1.0);
+    for p in [
+        Vec2::new(16.0, 16.0),
+        Vec2::new(48.0, 48.0),
+        Vec2::new(48.0, 16.0),
+        Vec2::new(16.0, 48.0),
     ] {
         s.push_point(Point {
             pos: p,
@@ -309,11 +306,13 @@ fn a_stroke_crossing_itself_draws_the_later_part_on_top() {
     d.strokes.push(s);
 
     let px = render(&device, &queue, &d);
-    let cross = rgb_at(&px, 32, 32);
+    // O cruzamento é opaco (coberto, sem notch); um braço isolado idem.
     assert!(
-        cross[2] > 150 && cross[0] < cross[2],
-        "auto-cruzamento: o trecho mais NOVO (azul) fica por cima: {cross:?}"
+        alpha_at(&px, 32, 32) > 200,
+        "cruzamento coberto (união limpa): {}",
+        alpha_at(&px, 32, 32)
     );
+    assert!(alpha_at(&px, 20, 20) > 200, "braço isolado coberto");
 }
 
 #[test]
@@ -348,13 +347,13 @@ fn a_sharp_corner_is_a_round_join_without_an_outward_spike() {
     d.strokes.push(s);
 
     let px = render(&device, &queue, &d);
-    // Dentro do disco da junção (dist ~2.8 < r=4): coberto (junção redonda).
+    // O ponto do canto (32,32) está nas DUAS linhas-de-centro → coberto (junção).
     assert!(
-        alpha_at(&px, 34, 34) > 120,
-        "a junção redonda cobre a quina: {}",
-        alpha_at(&px, 34, 34)
+        alpha_at(&px, 32, 32) > 200,
+        "a junção cobre a quina: {}",
+        alpha_at(&px, 32, 32)
     );
-    // Fora do disco, na quina EXTERNA (dist ~7 > 4): vazio — um miter cuspiria spike.
+    // Fora do raio, na quina EXTERNA (dist ~7 > r=4): vazio — um miter cuspiria spike.
     assert_eq!(
         alpha_at(&px, 37, 27),
         0,
@@ -405,6 +404,45 @@ fn a_soft_stroke_has_no_bead_at_the_joints() {
     assert!(
         hi - lo <= 24,
         "opacidade UNIFORME (sem bead nas junções): {vals:?}"
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_sharp_corner_does_not_accumulate_color() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Quina de 90° SOFT: horizontal (10,32)→(40,32) + vertical (40,32)→(40,62). Perto
+    // do canto (40,32) os dois segmentos se sobrepõem. Com GREATER estrito o 2º
+    // fragmento é descartado → NÃO acumula (o spike/estrela do Enio 2026-07-11 era o
+    // premult-over das faces sobrepostas). Um pixel a 1px de AMBOS os segmentos, no
+    // canto, deve ter ~o mesmo alpha de um pixel a 1px de UM segmento numa reta.
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    let c = Rgba::new(0.9, 0.9, 0.1, 1.0);
+    for p in [
+        Vec2::new(10.0, 32.0),
+        Vec2::new(40.0, 32.0),
+        Vec2::new(40.0, 62.0),
+    ] {
+        s.push_point(Point {
+            pos: p,
+            width: 12.0,
+            opacity: 1.0,
+            color: c,
+        });
+    }
+    s.hardness = 0.6;
+    d.strokes.push(s);
+
+    let px = render(&device, &queue, &d);
+    let corner = i32::from(alpha_at(&px, 39, 33)); // 1px do horizontal E do vertical
+    let straight = i32::from(alpha_at(&px, 20, 33)); // 1px do horizontal, longe do canto
+    assert!(straight > 40, "a reta pinta fora do eixo: {straight}");
+    assert!(
+        (corner - straight).abs() <= 40,
+        "a quina NÃO acumula (sem spike): canto={corner} reta={straight}"
     );
 }
 

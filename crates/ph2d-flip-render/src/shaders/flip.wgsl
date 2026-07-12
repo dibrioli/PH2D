@@ -46,9 +46,6 @@ struct GpuStroke {
 const FLAG_CLOSED: u32 = 1u;
 const FLAG_START_FLAT: u32 = 2u;
 const FLAG_END_FLAT: u32 = 4u;
-// Miter clampado (o vértice da junção não dispara além de r·LIMIT numa quina afiada;
-// o fragment carrega a forma redonda por dentro, então isto é só o teto da geometria).
-const MITER_LIMIT: f32 = 4.0;
 
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
@@ -105,26 +102,10 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
         return out;
     }
 
-    // Vizinhos para o miter da FITA CONECTADA: predecessor de a e sucessor de b, com
-    // clamp (aberto) / wrap (fechado). Segmentos adjacentes computam o MESMO vértice
-    // de junção (compartilham prev/nn) → a fita não se sobrepõe nas junções, logo NÃO
-    // há double-blend (o "mastigado" com hardness baixo era o over-blend de quads
-    // sobrepostos). Só cruzamentos REAIS (segmentos não-adjacentes) se sobrepõem, e aí
-    // o GreaterEqual mantém a parte mais nova por cima.
-    var prev_gp = gp;
-    if (li > 0u) { prev_gp = gp - 1u; }
-    else if (closed) { prev_gp = last; }
-    let b_li = next_gp - first;
-    var nn_gp = next_gp;
-    if (b_li + 1u < count) { nn_gp = next_gp + 1u; }
-    else if (closed) { nn_gp = first; }
-
     let a = points[gp];
     let b = points[next_gp];
     let sa = to_screen(a.pos);
     let sb = to_screen(b.pos);
-    let sp = to_screen(points[prev_gp].pos);
-    let sn = to_screen(points[nn_gp].pos);
     let r_a = max(a.width * 0.5 * cam.px_per_world, 0.0);
     let r_b = max(b.width * 0.5 * cam.px_per_world, 0.0);
 
@@ -133,35 +114,18 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     let dir = seg / seg_len;
     let n_seg = perp(dir);
 
-    // Miter em a (bisetriz de prev→a→b): compartilhado com o segmento anterior. Sem
-    // prev (início) = a perpendicular reta. `scale` estica pra alcançar o vértice da
-    // junção, clampado a MITER_LIMIT.
-    var miter_a = n_seg;
-    var scale_a = 1.0;
-    if (prev_gp != gp) {
-        let d_prev = normalize(sa - sp);
-        let m = perp(normalize(d_prev + dir));
-        miter_a = m;
-        scale_a = 1.0 / max(dot(m, n_seg), 1.0 / MITER_LIMIT);
-    }
-    var miter_b = n_seg;
-    var scale_b = 1.0;
-    if (nn_gp != next_gp) {
-        let d_next = normalize(sn - sb);
-        let m = perp(normalize(dir + d_next));
-        miter_b = m;
-        scale_b = 1.0 / max(dot(m, n_seg), 1.0 / MITER_LIMIT);
-    }
-
-    // Tampas: um EXTREMO de traço aberto marcado `Flat` corta reto (sem estender além
-    // do ponto). Tampa Round estende `r` ao longo da reta → a distância clampada
-    // desenha a meia-lua. Junções internas NÃO estendem (o miter conecta a fita).
+    // Geometria = quad-STADIUM por segmento (retângulo perpendicular estendido `r` ao
+    // longo da reta em cada ponta, exceto tampa Flat). Convexo — NUNCA dobra sobre si
+    // (o "spike/estrela" nas quinas era o miter DOBRANDO a fita = triângulo invertido,
+    // a suspeita do Enio sobre "normais da face"). Segmentos adjacentes se sobrepõem,
+    // mas o depth GREATER estrito + write-depth descarta a 2ª face no mesmo pixel (não
+    // acumula). O fragment (distância à reta) carrega a junção/tampa REDONDA.
     let is_start = (li == 0u) && !closed;
     let is_end = (next_gp == last) && !closed;
-    let round_start = is_start && ((st.flags & FLAG_START_FLAT) == 0u);
-    let round_end = is_end && ((st.flags & FLAG_END_FLAT) == 0u);
-    let ext_a = select(0.0, r_a, round_start);
-    let ext_b = select(0.0, r_b, round_end);
+    let flat_start = is_start && ((st.flags & FLAG_START_FLAT) != 0u);
+    let flat_end = is_end && ((st.flags & FLAG_END_FLAT) != 0u);
+    let ext_a = select(r_a, 0.0, flat_start);
+    let ext_b = select(r_b, 0.0, flat_end);
 
     // Quad = 2 triângulos [0,1,2, 2,1,3]; idx 0=(a,esq) 1=(a,dir) 2=(b,esq) 3=(b,dir).
     var idx = ci;
@@ -174,20 +138,21 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
 
     var corner: vec2<f32>;
     if (at_b) {
-        corner = sb + dir * ext_b + miter_b * (side * r_b * scale_b);
+        corner = sb + dir * ext_b + n_seg * (side * r_b);
         out.color = b.color;
         out.opacity = b.opacity;
         out.thickness = 2.0 * r_b;
     } else {
-        corner = sa - dir * ext_a + miter_a * (side * r_a * scale_a);
+        corner = sa - dir * ext_a + n_seg * (side * r_a);
         out.color = a.color;
         out.opacity = a.opacity;
         out.thickness = 2.0 * r_a;
     }
 
-    // Ordem 2D (GP §2): profundidade por-traço = (2·sid+2)·2e-7, teste GreaterEqual.
-    // O sid maior tem depth estritamente maior e ganha; no MESMO depth (auto-overlap)
-    // a parte desenhada depois compõe por cima. Fill do traço em (2·sid+1), abaixo.
+    // Ordem 2D (GP 2D): profundidade por-traço = (2·sid+2)·2e-7, teste GREATER estrito
+    // + write-depth. O sid maior compõe por cima; no MESMO depth (uma face do próprio
+    // traço sobre outra — quina/cruzamento) o 2º fragmento é DESCARTADO, não misturado
+    // → sem acúmulo de cor. Fill do traço em (2·sid+1), abaixo.
     out.clip = to_clip(corner);
     out.clip.z = f32(2u * sid + 2u) * 2e-7;
     out.ss_p1 = sa;

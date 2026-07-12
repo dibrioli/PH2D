@@ -1,9 +1,13 @@
 # HANDOFF DE CONTINUAÇÃO — linha `line/audio`
 
-> **Para o próximo agente-de-linha.** A jornada do **W4 fechou** (2026-07-12) e está
-> **commitada localmente, à espera de integração** — que é ordem exclusiva do Enio.
-> Entregável dela: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md).
+> **Para o próximo agente-de-linha.** **W4 e W6 fecharam** (2026-07-12) e estão
+> **commitados localmente, à espera de integração** — que é ordem exclusiva do Enio.
+> Entregável: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md).
 > O worktree está limpo. Você continua daqui (rebase no main primeiro — §1).
+>
+> **O que está na mesa do Enio:** [ADR-0115](architecture/decisions/0115-audio-spectral-fft-via-realfft.md)
+> (dep de FFT p/ o W5) e o **Opus** (ADR-0113 §Opus). Sem essas duas palavras, o módulo de
+> áudio está **fechado no que dá pra fechar**.
 >
 > Leia **este doc inteiro** + os obrigatórios do §1 antes de escrever a primeira linha
 > de código.
@@ -47,10 +51,13 @@ cargo check -p ph2d-audio-edit      # warm-up
 
 ## 2. Onde a linha parou (estado real, verificado)
 
-- **Worktree:** rebaseado no main (`3805f650`), **árvore limpa**. Commits à frente: o
-  bloco do **W4** (`64fcf4d7`) + o commit de docs.
-- **Gate:** `ph2d-audio-edit` **145** testes · painel **20 lib + 29 seam** · shell **284** ·
-  `ph2d-editor-core` **32 arch-gates** — **todos verdes**. clippy 0 warnings, fmt/typos limpos.
+- **Worktree:** rebaseado no main (`3805f650`), **árvore limpa**. 6 commits à frente.
+- **Gate:** `ph2d-audio-edit` **147** · `ph2d-audio-encode` **21** · painel **19 lib + 31 seam** ·
+  shell **292** · `ph2d-editor-core` **32 arch-gates** — **todos verdes**. clippy 0, fmt/typos limpos.
+- **A jornada W6 entregou:** seção **Delivery** (codec por asset + custo disco/RAM contra o
+  budget de 30 MB) · **um Export só**, dirigido pelo codec · e um **bug de perf**: o
+  `encode_ogg` entregava a take inteira num único `encode_audio_block`, então exportar 5 min
+  de OGG levava **27,5 s** — agora **0,95 s** (blocos de 4096 frames, linear).
 - **A jornada W4 entregou** (handoff de integração: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md)):
   rack **34 → 37 efeitos**, presets **15 → 21**, **zero dep nova**, zero foundational.
   - **De-Click** (reparo: LPC + interpolação LSAR) · **Formant Shift** (trato vocal sem

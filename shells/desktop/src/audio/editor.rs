@@ -8,6 +8,7 @@
 //! trick, one level deeper) — this file is the transport, the clip and the edits.
 
 mod batch;
+pub(crate) mod delivery;
 mod fx_rack;
 mod loops;
 mod markers;
@@ -303,8 +304,8 @@ impl AudioSystem {
         self.editor.scrub_frame = Some(0);
     }
 
-    /// Write the loaded clip out to `path` as a 16-bit PCM WAV.
-    pub(crate) fn editor_export(&self, path: &std::path::Path) {
+    /// Write the loaded clip out to `path` as a PCM WAV at `depth`.
+    pub(crate) fn editor_export(&self, path: &std::path::Path, depth: ph2d_audio_encode::BitDepth) {
         // Export what is SOUNDING and SHOWN — the live audition when the rack is
         // previewing, else the committed clip. `editor_clip` / `editor_duration_secs`
         // already report the audition, so exporting `self.editor.clip` here silently
@@ -346,14 +347,9 @@ impl AudioSystem {
             })
             .unwrap_or_default();
         let meta = ph2d_audio_encode::WavMeta { loops, markers };
-        match ph2d_audio_encode::write_wav_with_meta(
-            path,
-            clip.data(),
-            ph2d_audio_encode::BitDepth::Pcm16,
-            &meta,
-        ) {
+        match ph2d_audio_encode::write_wav_with_meta(path, clip.data(), depth, &meta) {
             Ok(()) => println!(
-                "audio: exported {} (WAV PCM16{})",
+                "audio: exported {} (WAV {depth:?}{})",
                 path.display(),
                 if meta.loops.is_empty() {
                     ""
@@ -370,15 +366,11 @@ impl AudioSystem {
     /// bypass), so the file matches the waveform. Ogg Vorbis carries no `smpl`/`cue`
     /// side-car, so loop points + markers are a WAV-only feature — the audio is exported;
     /// re-import the loop from the source WAV if you need sample-exact looping.
-    pub(crate) fn editor_export_ogg(&self, path: &std::path::Path) {
+    pub(crate) fn editor_export_ogg(&self, path: &std::path::Path, quality: f32) {
         let Some(clip) = self.editor_sounding() else {
             return;
         };
-        match ph2d_audio_encode::write_ogg(
-            path,
-            clip.data(),
-            ph2d_audio_encode::OGG_DEFAULT_QUALITY,
-        ) {
+        match ph2d_audio_encode::write_ogg(path, clip.data(), quality) {
             Ok(()) => println!("audio: exported {} (Ogg Vorbis VBR)", path.display()),
             Err(e) => eprintln!("audio: ogg export failed for {}: {e}", path.display()),
         }

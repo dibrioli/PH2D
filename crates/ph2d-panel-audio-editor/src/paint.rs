@@ -9,8 +9,8 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_EXPORT_OGG, AEDIT_FX_PARAMS, AEDIT_LOAD,
-    AEDIT_LOOP, AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel, snapshot,
+    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_EXPORT, AEDIT_FX_PARAMS, AEDIT_LOAD, AEDIT_LOOP,
+    AEDIT_NAME, AEDIT_PANEL, AEDIT_PLAY, AEDIT_STOP, AudioEditorPanel, snapshot,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -189,6 +189,20 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         hit_index,
     );
 
+    // Delivery (W6) — what the asset costs to ship and to run, priced before the
+    // export rather than discovered after it.
+    let y = crate::paint_delivery::paint_delivery_section(
+        y,
+        x,
+        w,
+        loaded,
+        ROW_H,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+
     // Edit ops (W2) — whole-clip, one-shot; each commits an undo step. Then the
     // effects rack. `final_y` is the bottom of the painted content, still carrying
     // the `- scroll` offset.
@@ -344,19 +358,6 @@ fn paint_transport_section(
         "Export WAV\u{2026}",
         t.loaded,
         AEDIT_EXPORT,
-        scene,
-        text_system,
-        theme,
-        hit_index,
-    );
-    y += ROW_H + Spacing::Sm.px();
-
-    // Export as compressed Ogg Vorbis (ADR-0113) — full width, needs a loaded clip.
-    button(
-        Rect::new(x, y, w, ROW_H),
-        "Export OGG\u{2026}",
-        t.loaded,
-        AEDIT_EXPORT_OGG,
         scene,
         text_system,
         theme,

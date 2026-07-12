@@ -96,7 +96,7 @@ pub struct DeliveryCost {
 
 /// The RAM a decoded clip occupies in the mixer: interleaved `f32`, one allocation.
 pub fn ram_bytes(data: &SampleData) -> usize {
-    data.samples().len() * std::mem::size_of::<f32>()
+    std::mem::size_of_val(data.samples())
 }
 
 /// Size `data` as it would ship under `codec`, and as it would sit in memory once

@@ -36,6 +36,9 @@ use signals::{blip_loop, pluck_loop, sine_tone, swell_loop};
 /// Dropping it closes the stream and stops audio.
 pub(crate) struct AudioSystem {
     engine: AudioEngine,
+    /// Cached delivery price of the loaded clip (W6). Sizing an asset means encoding
+    /// it, so the result is cached on (buffer, codec, quality) — see `editor::delivery`.
+    delivery: editor::delivery::DeliveryCache,
     format: AudioFormat,
     /// Last master gain pushed to the engine — so the per-frame bridge only
     /// sends a command when it actually changes (else it floods the ring).
@@ -165,6 +168,7 @@ impl AudioSystem {
         println!("audio: {name} @ {rate} Hz, {dev_channels} ch, {sample_format:?}");
         Some(AudioSystem {
             engine,
+            delivery: Default::default(),
             format,
             last_master_gain: std::cell::Cell::new(1.0),
             last_cutoff: std::cell::Cell::new(20_000.0),

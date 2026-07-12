@@ -22,7 +22,6 @@ use ph2d_panel_audio_editor::{
     take_batch_lufs, take_clear_loop, take_del_marker, take_edit_cmd, take_load, take_load_preset,
     take_play_pause, take_save_preset, take_set_loop, take_stop, take_toggle_mono,
 };
-use ph2d_panel_audio_editor::{AEDIT_EXPORT_OGG, take_export_ogg};
 use ph2d_panel_audio_editor::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
     AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT,
@@ -551,20 +550,6 @@ fn preset_save_and_load_arm_their_file_intents() {
     assert!(take_load_preset(), "Load click never armed the load intent");
 }
 
-/// Export OGG (ADR-0113) must arm its one-shot through the seam. Like Export WAV it
-/// always arms (the shell bridge writes only when a clip is loaded), so a dead arm
-/// leaves the button painted and the compressed-export path silently unreachable.
-#[test]
-fn export_ogg_arms_its_intent() {
-    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
-    let mut state = AudioEditorState;
-    let _ = take_export_ogg();
-
-    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_EXPORT_OGG));
-    assert!(take_export_ogg(), "Export OGG click never armed its intent");
-    assert!(!take_export_ogg(), "the intent is one-shot");
-}
-
 /// Variation containers (W6). Add, Add Folder and Load are always live (Add builds the
 /// set one clip at a time, Add Folder imports a folder by convention, Load reads a
 /// manifest); their clicks must reach the file/folder-picker one-shots.
@@ -764,5 +749,85 @@ fn a_double_click_is_treated_as_a_click() {
     assert!(
         take_play_pause(),
         "a double-click on Play was swallowed — the normalization must cover the whole panel"
+    );
+}
+
+// ---------------------------------------------------------------------------------
+// Delivery (W6 asset-prep) — the codec selector and the quality slider.
+// ---------------------------------------------------------------------------------
+
+/// The codec selector must reach the shell, because the codec is what decides both the
+/// price the panel shows AND the file the Export button writes. A selector that painted
+/// but did not dispatch would leave the two disagreeing — the readout would price one
+/// format while the export wrote another, which is the worst possible failure for a
+/// tool whose whole job is to tell you what you are about to ship.
+#[test]
+fn the_codec_selector_reaches_the_shell() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    // The shell publishes the table each frame; without it the selector cannot wrap.
+    ph2d_panel_audio_editor::delivery_state::set_codec_info(3, "WAV 16-bit", false);
+
+    let start = ph2d_panel_audio_editor::delivery_state::codec();
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_panel_audio_editor::AEDIT_CODEC_NEXT),
+    );
+    let next = ph2d_panel_audio_editor::delivery_state::codec();
+    assert_ne!(next, start, "clicking the codec arrow did nothing");
+
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_panel_audio_editor::AEDIT_CODEC_PREV),
+    );
+    assert_eq!(
+        ph2d_panel_audio_editor::delivery_state::codec(),
+        start,
+        "the selector must step back the way it stepped forward"
+    );
+}
+
+/// ...and it WRAPS on the table the shell published, rather than walking off the end
+/// into an index the shell would have to clamp.
+#[test]
+fn the_codec_selector_wraps() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    ph2d_panel_audio_editor::delivery_state::set_codec_info(3, "WAV 16-bit", false);
+
+    // Step back from the first codec: it must land on the last, not on -1.
+    while ph2d_panel_audio_editor::delivery_state::codec() != 0 {
+        host.apply_panel_event::<AudioEditorPanel>(
+            &mut state,
+            WidgetEvent::Click(ph2d_panel_audio_editor::AEDIT_CODEC_PREV),
+        );
+    }
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_panel_audio_editor::AEDIT_CODEC_PREV),
+    );
+    assert_eq!(
+        ph2d_panel_audio_editor::delivery_state::codec(),
+        2,
+        "stepping back off the front must wrap to the last codec"
+    );
+}
+
+/// The quality slider must reach the shell, or the size on screen would be the size of
+/// a file nobody is going to write.
+#[test]
+fn the_quality_slider_reaches_the_shell() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+
+    host.set_slider_value(ph2d_panel_audio_editor::AEDIT_OGG_QUALITY, 0.9);
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ph2d_panel_audio_editor::AEDIT_OGG_QUALITY),
+    );
+    let q = ph2d_panel_audio_editor::delivery_state::quality();
+    assert!(
+        (q - 0.9).abs() < 1e-4,
+        "the quality slider did not reach the shell: {q}"
     );
 }

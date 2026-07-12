@@ -2,9 +2,9 @@
 
 use crate::state::AudioEditorState;
 use crate::{
-    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_EXPORT_OGG,
-    AEDIT_FADE_IN, AEDIT_FADE_OUT, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL,
-    AEDIT_FX_DOWN, AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET,
+    AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_CUT, AEDIT_DC, AEDIT_EXPORT, AEDIT_FADE_IN,
+    AEDIT_FADE_OUT, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN,
+    AEDIT_FX_NEXT, AEDIT_FX_PARAMS, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET,
     AEDIT_FX_STAGE_ONS, AEDIT_FX_STAGES, AEDIT_FX_UP, AEDIT_GAIN_DOWN, AEDIT_GAIN_UP, AEDIT_INVERT,
     AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
     AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
@@ -43,9 +43,6 @@ fn loop_click(id: NodeId) -> Option<EventOutcome> {
 fn asset_click(id: NodeId) -> Option<EventOutcome> {
     if id == AEDIT_BATCH_LUFS {
         loop_state::request_batch_lufs();
-    } else if id == AEDIT_EXPORT_OGG {
-        // Always arms; the bridge writes only when a clip is loaded (mirrors Export WAV).
-        loop_state::request_export_ogg();
     } else if id == AEDIT_MONO {
         loop_state::request_toggle_mono();
     } else if id == AEDIT_MARK_ADD {
@@ -83,6 +80,10 @@ fn variation_click(id: NodeId) -> Option<EventOutcome> {
         variation_state::request_add_folder();
     } else if id == AEDIT_VAR_LOAD {
         variation_state::request_load();
+    } else if id == crate::AEDIT_CODEC_PREV {
+        crate::delivery_state::cycle_codec(-1);
+    } else if id == crate::AEDIT_CODEC_NEXT {
+        crate::delivery_state::cycle_codec(1);
     } else if id == AEDIT_VAR_STRATEGY_PREV {
         variation_state::cycle_strategy(-1);
     } else if id == AEDIT_VAR_STRATEGY_NEXT {
@@ -325,6 +326,14 @@ pub(crate) fn apply_event(
     {
         let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
         loop_state::set_xfade_norm(v);
+        return EventOutcome::Consumed;
+    }
+    // The Ogg quality slider — the shell re-prices the asset when it moves.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && id == crate::AEDIT_OGG_QUALITY
+    {
+        let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
+        crate::delivery_state::set_quality_norm(v);
         return EventOutcome::Consumed;
     }
     // The variation pitch/gain jitter sliders — the shell reads them each frame.

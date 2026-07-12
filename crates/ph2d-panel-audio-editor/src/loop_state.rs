@@ -24,8 +24,6 @@ thread_local! {
     static CLEAR_LOOP_REQ: Cell<bool> = const { Cell::new(false) };
     /// Panel → shell: normalize a whole folder of audio to a target loudness.
     static BATCH_LUFS_REQ: Cell<bool> = const { Cell::new(false) };
-    /// Panel → shell: export the loaded clip as compressed Ogg Vorbis (one-shot).
-    static EXPORT_OGG_REQ: Cell<bool> = const { Cell::new(false) };
     /// Panel → shell: flip the non-destructive force-mono output toggle (one-shot).
     static TOGGLE_MONO_REQ: Cell<bool> = const { Cell::new(false) };
     /// Shell → panel: whether force-mono is currently engaged (lights the toggle).
@@ -96,18 +94,6 @@ pub(crate) fn request_batch_lufs() {
 /// picker).
 pub fn take_batch_lufs() -> bool {
     BATCH_LUFS_REQ.with(|c| c.replace(false))
-}
-
-/// Panel: arm "export the clip as compressed Ogg Vorbis" (the bridge opens a save
-/// dialog). Lives here (asset-prep state) rather than `snapshot.rs`, which is at the
-/// panel LOC cap.
-pub(crate) fn request_export_ogg() {
-    EXPORT_OGG_REQ.with(|c| c.set(true));
-}
-
-/// Shell: take the pending Ogg-export request (one-shot).
-pub fn take_export_ogg() -> bool {
-    EXPORT_OGG_REQ.with(|c| c.replace(false))
 }
 
 /// Default crossfade slider position (≈ the shell's mid-length crossfade).
@@ -195,12 +181,5 @@ mod tests {
         request_batch_lufs();
         assert!(take_batch_lufs());
         assert!(!take_batch_lufs());
-    }
-
-    #[test]
-    fn export_ogg_intent_is_one_shot() {
-        request_export_ogg();
-        assert!(take_export_ogg());
-        assert!(!take_export_ogg());
     }
 }

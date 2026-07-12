@@ -231,24 +231,17 @@ impl crate::App {
                 {
                     audio.editor_load(&path);
                 }
-                if ed::take_export()
-                    && audio.editor_loaded()
-                    && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("WAV", &["wav"])
-                        .set_file_name("export.wav")
+                // One Export, driven by the Delivery section's codec: the file that
+                // lands on disk is the one the panel just priced.
+                if ed::take_export() && audio.editor_loaded() {
+                    let codec = audio.editor_codec();
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter(codec.name(), &[codec.extension()])
+                        .set_file_name(format!("export.{}", codec.extension()))
                         .save_file()
-                {
-                    audio.editor_export(&path);
-                }
-                // Export compressed Ogg Vorbis (ADR-0114).
-                if ed::take_export_ogg()
-                    && audio.editor_loaded()
-                    && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Ogg Vorbis", &["ogg"])
-                        .set_file_name("export.ogg")
-                        .save_file()
-                {
-                    audio.editor_export_ogg(&path);
+                    {
+                        audio.editor_export_codec(&path);
+                    }
                 }
                 // Batch LUFS — pick a folder; normalize every audio file in it to
                 // −16 LUFS, writing copies under `<folder>/normalized/`.
@@ -272,6 +265,7 @@ impl crate::App {
                 // Live Loop toggle — takes effect on the sounding preview immediately.
                 audio.editor_set_looping(ed::looping());
                 audio.editor_poll();
+                audio.editor_publish_delivery();
                 ed::set_playing(audio.editor_playing());
                 ed::set_loaded(audio.editor_loaded());
                 ed::set_position_secs(audio.editor_position_secs());

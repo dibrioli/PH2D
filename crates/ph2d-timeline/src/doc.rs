@@ -90,6 +90,8 @@ pub struct TimelineDoc {
     markers: Vec<Marker>,
     /// Monotonic opaque-target allocator (see module docs).
     next_target: u64,
+    /// Monotonic strip-id allocator (see `StripId`). Appended (v4).
+    next_strip: u64,
     /// The clip stack: lanes of clip instances, bottom to top (ADR-0115).
     ///
     /// **Empty is the default and is not a degenerate case** — an empty stack
@@ -127,9 +129,17 @@ impl TimelineDoc {
             bindings: Vec::new(),
             markers: Vec::new(),
             next_target: 0,
+            next_strip: 0,
             stack: Vec::new(),
             scratch: StackScratch::default(),
         }
+    }
+
+    /// Hand out a fresh strip identity. Monotonic and never reused: a stale drag
+    /// or undo entry must resolve to "gone", never to somebody else's strip.
+    pub(crate) fn alloc_strip_id(&mut self) -> crate::stack::StripId {
+        self.next_strip += 1;
+        crate::stack::StripId(self.next_strip)
     }
 
     /// The clip stack, bottom lane first. Empty = the active clip drives.
@@ -222,6 +232,10 @@ impl TimelineDoc {
             return false;
         }
         self.clips.remove(index);
+        // A strip names its clip by INDEX, and removing one slides every later
+        // clip down: without this, every strip above the hole would quietly start
+        // playing its neighbour. Strips of the deleted clip go with it.
+        self.repoint_strips_after_clip_removal(index);
         if self.active_clip >= index {
             self.active_clip = self.active_clip.saturating_sub(1);
         }
@@ -304,14 +318,23 @@ impl TimelineDoc {
     /// THIS, not `active_clip().duration()`.
     #[must_use]
     pub fn end_seconds(&self) -> f64 {
-        let clip = self.active_clip();
-        let last_key = clip
+        self.clip_end_seconds(self.active_clip)
+    }
+
+    /// [`Self::end_seconds`] for any clip — what a strip placed on it is sized to.
+    #[must_use]
+    pub fn clip_end_seconds(&self, index: usize) -> f64 {
+        let Some(named) = self.clips.get(index) else {
+            return 0.0;
+        };
+        let last_key = named
+            .clip
             .tracks()
             .iter()
             .filter_map(|(_, track)| track.keys().last())
             .map(|k| k.t.to_seconds())
             .fold(0.0_f64, f64::max);
-        clip.duration().to_seconds().max(last_key)
+        named.clip.duration().to_seconds().max(last_key)
     }
 
     /// The clip currently edited, mutably.

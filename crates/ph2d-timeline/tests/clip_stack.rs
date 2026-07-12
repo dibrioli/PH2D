@@ -201,3 +201,101 @@ fn a_lane_defaults_to_override_at_full_weight() {
     assert!(!lane.muted);
     assert!(lane.strips.is_empty());
 }
+
+// ── The document-level authoring API (ADR-0115, slice B's data seam) ─────────
+
+/// **Deleting a clip must not re-point somebody else's strip.** Clips live in a
+/// `Vec` and a strip names one by INDEX, so removing one slides every later clip
+/// down. Without a fix-up, every strip above the hole quietly starts playing its
+/// neighbour — a wrong animation, with nothing on screen to say why.
+#[test]
+fn deleting_a_clip_repoints_the_strips_above_it_and_drops_its_own() {
+    use ph2d_timeline::TimelineDoc;
+    let mut doc = TimelineDoc::new(); // clip 0 = "Main"
+    doc.add_clip("B".to_string()); // 1
+    doc.add_clip("C".to_string()); // 2
+    let lane = doc.add_lane("L".to_string()).unwrap();
+    doc.add_strip(lane, 0, 0.0, 1.0).unwrap();
+    let doomed = doc.add_strip(lane, 1, 1.0, 2.0).unwrap();
+    let above = doc.add_strip(lane, 2, 2.0, 3.0).unwrap();
+
+    assert!(doc.remove_clip(1), "clip B is gone");
+
+    assert_eq!(
+        doc.strip(lane, doomed),
+        None,
+        "the strip that played it goes with it — a dead item paints and cannot evaluate"
+    );
+    assert_eq!(
+        doc.strip(lane, above).map(|s| s.clip),
+        Some(1),
+        "clip C slid from index 2 to 1, and its strip followed"
+    );
+    assert_eq!(doc.stack()[lane].strips.len(), 2);
+}
+
+/// A strip is grabbed by identity, never by position: dragging one past its
+/// neighbour renumbers both, and an index-anchored drag would swap victims at the
+/// exact instant the animator is watching most closely.
+#[test]
+fn a_strip_keeps_its_identity_when_a_drag_reorders_the_lane() {
+    use ph2d_timeline::TimelineDoc;
+    let mut doc = TimelineDoc::new();
+    let lane = doc.add_lane("L".to_string()).unwrap();
+    let first = doc.add_strip(lane, 0, 0.0, 1.0).unwrap();
+    let second = doc.add_strip(lane, 0, 2.0, 3.0).unwrap();
+    assert_eq!(doc.stack()[lane].index_of(first), Some(0));
+
+    // Drag the first strip past the second.
+    doc.strip_mut(lane, first).unwrap().t_start = 5.0;
+    doc.strip_mut(lane, first).unwrap().t_end = 6.0;
+    doc.stack_mut()[lane].resort();
+
+    assert_eq!(
+        doc.stack()[lane].index_of(first),
+        Some(1),
+        "it moved to the back"
+    );
+    assert_eq!(doc.stack()[lane].index_of(second), Some(0));
+    assert_eq!(
+        doc.strip(lane, first).map(|s| s.t_start),
+        Some(5.0),
+        "and it is still the strip we grabbed"
+    );
+}
+
+#[test]
+fn a_new_strip_is_as_long_as_the_clip_it_plays() {
+    use ph2d_anim::{AnimValue, Interp, RationalTime};
+    use ph2d_timeline::{PropKind, TimelineDoc};
+    let mut doc = TimelineDoc::new();
+    // A clip whose duration was never authored: it is as long as its last key.
+    doc.insert_key(
+        7,
+        PropKind::TranslationX,
+        RationalTime::from_seconds(3.0),
+        AnimValue::Float(1.0),
+        Interp::Linear,
+    );
+    let lane = doc.add_lane("L".to_string()).unwrap();
+    let id = doc.add_strip(lane, 0, 0.0, 3.0).unwrap();
+    assert_eq!(
+        doc.strip(lane, id).map(|s| s.src_out),
+        Some(3.0),
+        "sized to the clip, not to zero — a zero-length strip is one nobody can grab"
+    );
+}
+
+#[test]
+fn the_lane_count_is_bounded_because_the_panel_ids_are() {
+    use ph2d_timeline::{MAX_LANES, TimelineDoc};
+    let mut doc = TimelineDoc::new();
+    for _ in 0..MAX_LANES {
+        assert!(doc.add_lane("L".to_string()).is_some());
+    }
+    assert_eq!(
+        doc.add_lane("one too many".to_string()),
+        None,
+        "the doc refuses what the panel cannot address"
+    );
+}

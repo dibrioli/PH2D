@@ -64,9 +64,21 @@ pub enum LaneMode {
     Additive,
 }
 
+/// A strip's stable identity, for as long as the document lives.
+///
+/// A strip cannot be addressed by its index: the lane keeps its strips **sorted
+/// by start time**, so dragging one past its neighbour renumbers both. A drag
+/// anchored on an index would silently grab the other strip at the exact moment
+/// they crossed — which is the moment the animator is looking hardest. Selection
+/// and undo have the same problem. Mirrors `KeyId`, for the same reason.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct StripId(pub u64);
+
 /// One placement of a clip on the timeline.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ClipStrip {
+    /// Stable identity (see [`StripId`]). Allocated by the document.
+    pub id: StripId,
     /// Index into the document's clips.
     pub clip: u16,
     /// Timeline seconds: where the strip starts.
@@ -90,9 +102,14 @@ pub struct ClipStrip {
 
 impl ClipStrip {
     /// A strip playing all of `clip` over `[t_start, t_end)`, at speed 1, no ease.
+    ///
+    /// The id is left at zero: authoring goes through [`crate::TimelineDoc`], which
+    /// allocates one. (Two strips sharing an id would confuse a drag, not corrupt
+    /// the document — the evaluator never reads the id.)
     #[must_use]
     pub fn new(clip: u16, t_start: f64, t_end: f64, src_len: f64) -> Self {
         Self {
+            id: StripId(0),
             clip,
             t_start,
             t_end,
@@ -103,6 +120,13 @@ impl ClipStrip {
             ease_in: 0.0,
             ease_out: 0.0,
         }
+    }
+
+    /// Builder: stamp the identity the document allocated.
+    #[must_use]
+    pub fn with_id(mut self, id: StripId) -> Self {
+        self.id = id;
+        self
     }
 
     /// How long the strip occupies the timeline.
@@ -193,6 +217,22 @@ impl ClipLane {
         let at = self.strips.partition_point(|s| s.t_start <= strip.t_start);
         self.strips.insert(at, strip);
         at
+    }
+
+    /// Where the strip with this identity currently sits, if it is here.
+    ///
+    /// An index is a *position*, not a name: a drag holds the [`StripId`] and asks
+    /// this each time, because moving a strip past its neighbour renumbers both.
+    #[must_use]
+    pub fn index_of(&self, id: StripId) -> Option<usize> {
+        self.strips.iter().position(|s| s.id == id)
+    }
+
+    /// Restore the sort after a strip's start time changed — the invariant that
+    /// [`Self::weight_at`] rests on (a neighbour only means something in order).
+    pub fn resort(&mut self) {
+        self.strips
+            .sort_by(|a, b| a.t_start.total_cmp(&b.t_start).then(a.id.cmp(&b.id)));
     }
 
     /// The blend window at the START of strip `i`: the overlap with the strip

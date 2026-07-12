@@ -21,7 +21,8 @@
 //!
 //! The params-panel side (scalar/enum/checkbox rows + OKLCH colour authoring)
 //! lives in the sibling [`params`] module, and the headless tests in
-//! `motion_bridge_tests.rs`, both split out for the HR-18 LOC cap.
+//! `motion_bridge_tests.rs` (+ `motion_bridge_param_tests.rs` and
+//! `motion_bridge_plumbing_tests.rs`), all split out for the HR-18 LOC cap.
 
 use crate::motion_state::MotionState;
 use ph2d_editor::screens::layout::CenterSplit;
@@ -42,6 +43,10 @@ mod tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_param_tests.rs"]
 mod param_tests;
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_plumbing_tests.rs"]
+mod plumbing_tests;
 
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).

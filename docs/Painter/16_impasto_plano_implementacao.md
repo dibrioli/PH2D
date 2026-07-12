@@ -1,0 +1,195 @@
+# #16 — Impasto: PLANO DE IMPLEMENTAÇÃO
+
+> **Aprovado pelo Enio (2026-07-12).** Design + pesquisa: [15_impasto_pesquisa_e_design.md](15_impasto_pesquisa_e_design.md).
+> **Ordem do Enio, literal:** *"tudo o que for compatível no painel painter — toda a seção Shape, Grain,
+> todo o Stroke e até suas shapes dinâmicas, o tiling, o mirror, o randomize color, os color ramps de
+> shape e grain — deve ser integrado ao sistema, e isso já deve ser planejado desde já. O que não for
+> compatível deve ser escondido. **Cuidado: Watercolor é uma implementação à parte e não deve ser tocada
+> ou ferida.**"*
+
+---
+
+## 0. A decisão de arquitetura que faz a ordem do Enio sair de GRAÇA
+
+**A altura é um SEGUNDO OUTPUT do pipeline de dab que já existe — não um pipeline paralelo.**
+
+Isso não é elegância gratuita: é a única forma de a integração ser *automática* em vez de N integrações
+manuais que apodrecem uma a uma. O kernel de cor tem **um funil único**
+([dab.rs:543](../../crates/ph2d-painter-brush/src/dab.rs#L543)):
+
+```rust
+let a = w * g * ctx.coverage;   //  w = silhueta (Shape+Falloff+ramp) · g = Grain (+ramp) · coverage = dyn
+```
+
+Tudo o que o Enio listou já entra **acima** desse funil:
+
+| Feature | Onde ela age | Integra ao impasto… |
+|---|---|---|
+| **Shape** (silhueta · Falloff · imagem · procedural) | é o `w` do funil ([dab.rs:437-452](../../crates/ph2d-painter-brush/src/dab.rs#L437)) | **de graça** — o relevo tem a forma da ponta |
+| **Shape Tone (ramp da silhueta)** | remapeia `w` antes de compor ([dab.rs:447](../../crates/ph2d-painter-brush/src/dab.rs#L447)) | **de graça** — e vira **escultura**: a ramp passa a modelar o relevo |
+| **Grain + ramp + Depth do grain** | é o `g` do funil ([dab.rs:465-493](../../crates/ph2d-painter-brush/src/dab.rs#L465)) | **de graça** — é a fonte natural das **estrias de cerda** (`Depth Source = Grain`) |
+| **Mirror / Symmetry** | `push_symmetric` empurra os dabs espelhados **na MESMA lista** ([stroke.rs:176](../../crates/ph2d-painter-brush/src/stroke.rs#L176)) | **de graça** — dab espelhado carrega altura |
+| **Tiling** | `tiled_dabs` **replica a lista** antes do accumulate ([tiling.rs:13](../../crates/ph2d-tool-painter/src/tool/paint/tiling.rs#L13), usado em [stamp_route.rs:56/148/198](../../crates/ph2d-tool-painter/src/tool/paint/stamp_route.rs#L56)) | **de graça** — basta o accumulate de `h` consumir a MESMA lista tilada |
+| **Stroke + shapes dinâmicas** (Curve/Line/Circle/Polygon/Free Hand, Offset/Trim/Simplify) | produzem lista de dabs pelo mesmo motor | **de graça** |
+| **Jitter Scale / Rotate** | muda a geometria do dab | **de graça** |
+| **Randomize Color · color ramps de cor** | mexem em **cor**, não em cobertura | **ortogonal** — e *corretamente*: jitter de cor **não deve** mudar a espessura da tinta |
+
+> **A regra que isso impõe ao código:** o `h` **NUNCA** é acumulado por um caminho próprio de geometria.
+> Ele consome **a mesma lista de dabs** (já simetrizada e já tilada) e **a mesma máscara** (`StampMask` =
+> silhueta × grain, [stamp.rs:38](../../crates/ph2d-painter-brush/src/stamp.rs#L38)) que a cor consome.
+> Qualquer PR que crie uma segunda geração de dabs para altura está **errado por construção** — é o
+> mecanismo pelo qual "tiling não funciona no impasto" nasceria seis meses depois.
+
+---
+
+## 1. Matriz de compatibilidade (o que integra × o que ESCONDE)
+
+O painel já tem o idiom exato de esconder por modo
+([paint_brush_sections.rs:30-85](../../crates/ph2d-panel-painter-layers/src/paint_brush_sections.rs#L30)):
+`!brush.paints_no_color() && !brush.eraser && !brush.is_mask`, `if !brush.is_inpaint`, `if !brush.is_clone`.
+O Impasto usa **o mesmo idiom**, nada inventado.
+
+### 1.1 INTEGRA (o card Impasto aparece e o relevo funciona)
+
+Brush normal · Shape (todas as fontes) · Shape Tone ramp · Grain (todas as fontes + ramp) · Falloff ·
+Stroke (todos os métodos + shapes dinâmicas) · Symmetry/Mirror · Tiling · Jitter Scale/Rotate ·
+Randomize Color (ortogonal) · Per-Layer Color (§1.3) · Eraser (§1.3) · Selection/proteção/alpha-lock
+(o `h` respeita a mesma gate de escrita da cor).
+
+### 1.2 ESCONDE (o card Impasto não é pintado — logo, não é hit-registrado, logo é inerte)
+
+| Modo | Flag | Por quê |
+|---|---|---|
+| **Watercolor** | `brush.watercolor` | **implementação à parte — NÃO TOCAR** (§2). Aquarela é tinta fina; impasto é óleo/acrílico. A Rebelle separa "Oils & Acrylics" de watercolor pelo mesmo motivo |
+| **Inpaint** | `brush.is_inpaint` | o heal marca uma máscara de disco duro — **já ignora** Shape/Grain/ramps/stroke/symmetry/tiling ([paint_brush_sections.rs:39](../../crates/ph2d-panel-painter-layers/src/paint_brush_sections.rs#L39)) |
+| **Mask** | `brush.is_mask` | máscara é grayscale — não tem relevo |
+| **Smear / Blur / Clone** | `brush.paints_no_color()` | não **depositam** tinta nova. Arrastar relevo alheio é o **`Plow`** do Painter → **deferido, nomeado** (§6) |
+| **Adjustment / Texture layers** | tipo de camada | não têm canal `h` |
+
+### 1.3 Os dois casos que exigem trabalho EXPLÍCITO (não são de graça)
+
+- **Eraser** — a borracha **tem** que apagar o `h` na mesma pegada, senão fica **relevo fantasma** (a tinta
+  some e a luz continua acusando volume). Não é opcional; é correção.
+- **Per-Layer Color** — essa rota **desvia** das rotas cacheadas normais
+  ([stamp_route.rs:417](../../crates/ph2d-tool-painter/src/tool/paint/stamp_route.rs#L417)). O `h` sai da
+  **cobertura-união** das N camadas de shape (uma altura, não N). Precisa de fio explícito na rota
+  `stamp_dabs_per_layer_*`. **É o único ponto onde "de graça" não vale** — e por isso tem task própria (T1.7).
+
+---
+
+## 2. ⚠️ WATERCOLOR — a barreira (ordem explícita do Enio)
+
+**Nenhum arquivo `watercolor_*.rs` é editado. Nenhuma linha. Zero.**
+
+E a arquitetura **já garante** isso sozinha: o `stamp_dabs` faz **short-circuit da aquarela ANTES** de
+chegar em `stamp_dabs_routed` ([stamp_route.rs:47](../../crates/ph2d-tool-painter/src/tool/paint/stamp_route.rs#L47)).
+Com Watercolor ON, **o código do impasto nunca é alcançado** — não é uma promessa de disciplina, é o
+fluxo de controle.
+
+- O card Impasto fica **escondido** com `brush.watercolor` (§1.2) ⇒ nem existe estado a divergir.
+- **Barreira executável (T3.4):** um gate que afirma que `Watercolor ON + Depth > 0` produz canvas
+  **byte-idêntico** ao `Watercolor ON + Depth = 0`. Se algum dia alguém fiar impasto no caminho da
+  aquarela, esse teste fica **vermelho**.
+- **O relevo do PAPEL** (a ideia do §4.1 do doc 15 — `paper_h` alimentando a mesma luz) **sai do escopo**.
+  Ela leria `watercolor_noise::paper_height`, e isso acopla impasto a aquarela. **Deferido, requer ordem
+  nova do Enio** (§6). O impasto da Fase 1 é **só a altura do traço**.
+
+---
+
+## 3. Fase 1 — o canal `h` (dados + acumulação)
+
+**Isolamento (regra B' do Modo L):** tudo em **módulos IRMÃOS novos**. Os arquivos que "naturalmente"
+receberiam isso estão no teto: `watercolor_render.rs` **699/700** (e é proibido tocá-lo de qualquer forma),
+`paint.rs` 653, `dab.rs` 605.
+
+| Task | O quê | Onde (NOVO salvo indicado) | Gate VERMELHO refutável |
+|---|---|---|---|
+| **T1.1** | `heights: BTreeMap<RtLayerId, Vec<f32>>` — mapa **irmão** de `images`, lazy (ausente = camada sem relevo ⇒ custo zero) | `tool/mod.rs:80` (+1 campo) · `tool/layers/undo.rs:21` (+1 linha no clone) · `tool/documents.rs:20` | undo de um traço de impasto **restaura o `h` anterior** (hoje o snapshot já clona `images` — o teste prova que `heights` entrou junto) |
+| **T1.2** | `stroke_height: Vec<f32>` — envelope do traço por **`max`**, lazy, no dirty-rect existente. Espelha `stroke_coverage` ([paint.rs:419](../../crates/ph2d-tool-painter/src/tool/paint.rs#L419)) | `tool/paint.rs` (+1 campo) · **`tool/paint/impasto.rs`** | **um** traço que passa 3× no mesmo ponto tem altura de **uma** passada (envelope, não escadinha); **dois** traços separados **somam** |
+| **T1.3** | `BrushSpec`: `impasto: bool` · `depth: f32` · `depth_source: DepthSource{Uniform,Grain,Shape}` · `draw_to: DrawTo{Color,Depth,ColorAndDepth}` · `smoothing: f32`. Defaults = OFF | `spec.rs` (+campos, append) · `brush_settings.rs` · `snapshot.rs` · `brush_fallback.rs` | `impasto=false` ⇒ **canvas byte-idêntico** ao HEAD (igualdade de buffer, não "parece igual") |
+| **T1.4** | **A máscara de altura reusa o `StampMask`** (silhueta × grain) — `Grain` = a máscara inteira; `Uniform` = a mesma renderizada com grain neutro; `Shape` = só o sample da silhueta. **Zero mudança no kernel de cor** | **`ph2d-painter-brush/src/height.rs`** (fn pura `height_of`) | `Depth Source = Grain` produz `h` que **varia** dentro do dab (estria); `Uniform` produz `h` **constante** no platô |
+| **T1.5** | Accumulate de `h`: irmão de `accumulate_color_stamp_coverage` ([accumulate.rs:22](../../crates/ph2d-painter-brush/src/stamp_color/accumulate.rs#L22)), mas `f32` + `max`. **Consome a lista de dabs JÁ simetrizada e JÁ tilada** | **`ph2d-painter-brush/src/stamp_color/accumulate_height.rs`** | **Tiling ON**: traço na borda produz `h` na borda **oposta** (RED: sem consumir a lista tilada, a borda oposta fica chapada). **Symmetry ON**: `h` aparece espelhado |
+| **T1.6** | **Eraser apaga `h`** na mesma pegada | `tool/paint/impasto.rs` | apagar a tinta apaga o relevo — RED: sem isso, `Show Impasto` ON deixa **volume fantasma** onde não há mais cor |
+| **T1.7** | **Per-Layer Color**: `h` da cobertura-**união** das N camadas | rota `stamp_dabs_per_layer_*` ([stamp_color_cache.rs](../../crates/ph2d-tool-painter/src/tool/paint/stamp_color_cache.rs)) | com Per-Layer ON, um traço produz **um** relevo coerente (não N degraus empilhados) |
+| **T1.8** | `Draw To` = `Depth` ⇒ escreve **só** `h` (pincel que só levanta/cava, sem cor) | `tool/paint/impasto.rs` | `Draw To=Depth` ⇒ o RGBA do canvas fica **byte-idêntico** e o `h` muda |
+
+**Sinal:** `h` é `f32` **com sinal** — negativo = **cavar** (o `Negative Depth`/`Erase` do Painter, o HDR
+[-1,1] do Substance). Float mata banding na origem.
+
+---
+
+## 4. Fase 2 — o passe de luz
+
+| Task | O quê | Onde | Gate VERMELHO |
+|---|---|---|---|
+| **T2.1** | `h_total` = soma em z-order dos `heights` das camadas visíveis (Fase 1 = **Add**; os modos Subtract/Replace/Ignore são §6) | **`compositor/impasto_pass.rs`** (irmão — `compose.rs` está em 566/700) | camada oculta **não** contribui relevo; deletar a camada **remove** o relevo |
+| **T2.2** | Normal por **diferença central 4-tap** + **Blinn-Phong** (ambient/diffuse/specular). Expoente de shininess por **LUT construída 1×** — HR-5, precedente literal em `watercolor_lut.rs` | **`tool/paint/impasto_light.rs`** | **oráculo derivado da DEFINIÇÃO**, não do shader ([[feedback_oracle_must_model_appearance_not_implementation]]): uma **rampa de altura analítica** (plano inclinado conhecido) ⇒ normal e shading **calculados à mão** batem com o passe. Um oráculo que espelhe o código fica verde com o bug na tela |
+| **T2.3** | `Show Impasto` OFF ⇒ o passe **não roda** | idem | OFF ⇒ composite **byte-idêntico** ao HEAD |
+| **T2.4** | Impasto visível ⇒ `gpu_eligible` devolve `None` ⇒ composite CPU (o fallback **já existe e já é usado**) | `render_loop/painter_gpu_preview.rs:132` (+1 guard) | com impasto ON o preview **é o CPU** (e o relevo aparece); sem impasto o caminho GPU **continua** sendo escolhido |
+
+---
+
+## 5. Fase 3 — UI (o card + a matriz VIVA)
+
+Runbook já levantado; os **dois pontos de atrito** estão resolvidos no papel:
+`event.rs` tem **dispensa de LOC congelada em 601/600** ⇒ **não recebe linha nova** (o predicado entra no
+sibling `event_brush_forward.rs`, que já tem o precedente `is_deform_click`, em **troca LOC-neutra**);
+`populate.rs` está em **591/600** ⇒ o Impasto **já nasce** como `populate_impasto.rs`.
+
+| Task | O quê | Onde (NOVO) |
+|---|---|---|
+| **T3.1** | ids + arrays `PAINTER_IMPASTO_{CLICKS,FIELDS}` | `ph2d-editor-core/src/ids/chrome/painter_impasto.rs` |
+| **T3.2** | Card **Impasto** (por brush): `Enable` · `Depth` · `Depth Source` (cycler) · `Draw To` (cycler) · `Smoothing` | `paint_impasto.rs` + `populate_impasto.rs` |
+| **T3.3** | Card **Lighting** (canvas-level, 1 por documento): `Show Impasto` · `Light Angle` · `Light Elevation` · `Amount` (height-to-slope) · `Shine`. Precedente de params canvas-level no painel do brush: os da aquarela | idem |
+| **T3.4** | **A matriz de §1 vira GATE EXECUTÁVEL** | `tests/` do painel |
+| **T3.5** | Rota de eventos + setters + reset (espelho de `watercolor_settings.rs`, **sem tocá-lo**) | `tool/paint/impasto_settings.rs` |
+
+**Gates de T3.4 (o que trava o apodrecimento — checklist em prosa NÃO morde):**
+1. **Seam** (2 testes, espelho de `seam.rs:425/452`): o evento **real** de cada id chega no `BrushSpec`.
+2. **Visibilidade:** em cada modo de §1.2 (`watercolor`/`is_inpaint`/`is_mask`/`paints_no_color`) o card
+   **não é pintado** ⇒ nenhum id do Impasto é hit-registrado.
+3. **★ Barreira do Watercolor:** `Watercolor ON + Depth>0` ≡ `Watercolor ON + Depth=0`, **byte-a-byte**.
+4. **Integração viva** (o antídoto do "morre em 6 meses"): **Tiling ON** ⇒ `h` na borda oposta ·
+   **Symmetry ON** ⇒ `h` espelhado. São os dois que provam que o `h` consome a lista de dabs **compartilhada**.
+
+---
+
+## 6. Fora do 1º corte — NOMEADOS (DEFER nomeia a capacidade exata; não conta como fechamento)
+
+- **`Plow`** — Smear/Smudge **arrastar** o relevo existente (hoje o card é escondido nesses modos).
+- **Composite Depth por camada** (`Add`/`Subtract`/`Replace`/`Ignore`) + escala de depth por camada. O
+  modelo de dados **já nasce per-layer** ⇒ isto é **só o composite**, nunca reconstrução de topologia
+  (regra two-strikes respeitada por construção).
+- **Passe de luz na GPU** (`LayerOp` novo — há **8 slots livres** em `AdjustmentKind ≤ 32`, e código
+  desconhecido no shader já é no-op identidade). Exige reconciliação **bit-a-bit** contra a CPU (DIRETIVA §4).
+- **Relevo do PAPEL** — acoplaria impasto↔aquarela ⇒ **exige ordem nova do Enio** (§2).
+- **Múltiplas luzes / IBL** (Krita tem 4; Rebelle tem environment maps).
+- **Persistência do `h` no `ProjectState`** — herda o gap conhecido (o save já não persiste pixels de
+  `SpriteSource::Individual`); fechar é o mesmo work item.
+
+---
+
+## 7. Kill-criterion (congelado ANTES do build — DIRETIVA §5)
+
+> **Cenário fixo:** canvas 2048², r=100, traço arrastado, `Show Impasto` ON, 1 camada com `h`.
+> **Alvo:** o passe (acumulação + normal + shading, sobre o dirty-rect) **≤ 4 ms/move**, com o move inteiro
+> dentro de 16,7 ms.
+> **Kill:** se após **2 tentativas** de otimização em CPU o passe estourar **8 ms/move**, a feature **não
+> existe nesta forma** — vira GPU-only (o `LayerOp` do §6) **antes** de fechar a linha.
+
+**Medir ANTES de otimizar** ([[feedback_measure_perf_symptom_scale]]): número em ms, por-knob, em `--release`.
+
+---
+
+## 8. Ordem de execução
+
+1. **T1.3** (spec + defaults OFF) → prova de **byte-identidade** primeiro. É o alicerce: se o default não
+   for byte-idêntico, nada mais importa.
+2. **T1.1/T1.2/T1.4/T1.5** (dados + accumulate) → gates de **Tiling** e **Symmetry** (§5 T3.4.4).
+3. **T1.6/T1.7/T1.8** (Eraser · Per-Layer · Draw To) — os que **não** são de graça.
+4. **T2.\*** (luz) → oráculo analítico.
+5. **T3.\*** (UI + a matriz como gate).
+6. **Perf** (§7) → **Smoke do Enio** com exemplo pronto ([[feedback_ready_to_smoke_example]]).
+
+Fecho a linha com gate batched + handoff de integração, e **PARO** — não integro nem faço ship (§0.7 do
+CLAUDE.md).

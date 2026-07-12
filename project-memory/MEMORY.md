@@ -81,6 +81,9 @@
 - [Tolerância folgada esconde viés sistemático](feedback_loose_oracle_hides_systematic_bias.md) — pitch shifter passou 3 jornadas 54 cents baixo; asserte o valor EXATO na unidade que o usuário ouve
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — o miolo é onde não há bug; DC/Nyquist, 1ª/última coluna, 0 e 1 é onde o dado some
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — gate verde na mutação = ou o gate é frouxo, ou o seu COMENTÁRIO está errado
+- [Regra que não OBSERVA não dispara](feedback_a_rule_that_never_observes_cannot_fire.md) — HR-13 somava declarações no boot; editor chegou a 4351 MB sem piscar
+- [Barra congelada vermelha? cheque a ARITMÉTICA dela](feedback_frozen_bar_check_the_arithmetic_before_gaming_it.md) — o piso pode já estourar a barra; e nunca passe pelo caminho que o produto não usa
+- [Refactor mecânico largo = impressão digital](feedback_wide_mechanical_refactor_use_a_fingerprint.md) — digest antes/depois na MESMA máquina; golden pinado = mina no CI (ulp de transcendental)
 - [Lens diversity](feedback_audit_lens_diversity.md) — rotacionar lentes; ≥2 paralelas; gates executáveis > claims verbais
 - [Scope discipline](feedback_audit_scope_discipline.md) — bug em crate alheio = handoff pro owner, não fixo eu mesmo
 - [No industrial claims](feedback_no_industrial_claims_without_verification.md) — zero claim técnico em ADR sem grep/cargo-search/WebFetch
@@ -106,7 +109,8 @@
 - [Pixel center vs edge](feedback_pixel_center_vs_edge_coord.md) — bilinear espera center; `(local/size+0.5)*W` é edge → subtrair 0.5
 - [Exact-pin substring gate](feedback_exact_pin_needs_substring_gate.md) — `=version` pin precisa arch-gate substring senão rebasing "limpa"
 - [ISPC cross-process](feedback_ispc_cross_process_concurrency.md) — asset-cooker ISPC crasha com cargo CONCORRENTE; um de cada vez
-- [Zero-alloc gate = capacidade](feedback_zero_alloc_gate_capacity_not_global_counter.md) — dhat `total_blocks` é global → flaky; asserte CAPACIDADE dos buffers
+- [Zero-alloc gate = capacidade](feedback_zero_alloc_gate_capacity_not_global_counter.md) — dhat `total_blocks` é global → flaky; asserte CAPACIDADE dos buffers (e 1 `#[test]` por binário)
+- [`Arc::from(Vec)` SEMPRE copia](reference_arc_from_vec_always_copies.md) — refcount inline; `collect::<Arc<[T]>>()` de TrustedLen aloca 1× sem unsafe (`Chain` NÃO é TrustedLen)
 - [Visual bug debug](feedback_visual_bug_debug.md) — aritmética de pixels CEDO + simular visual + instrumentação >> leitura estática
 - [Áudio: meter vivo, sem som = mute WirePlumber](project_audio_multichannel_silence.md) — NÃO é bug de código; `stream-properties` salva `mute:true`; fix = sed + restart
 - [Claimed-green ≠ seu-OS-green](project_painter_t19_latent_red_macos_2026_05_28.md) — "W1 green" pode ser CI/linux; build o commit claimed-green ANTES

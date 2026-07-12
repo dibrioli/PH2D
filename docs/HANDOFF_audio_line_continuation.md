@@ -117,6 +117,11 @@ nos 5, ele está costurado.**
 - **O probe dos gates da rack é estéreo, 2400 frames = 50 ms.** Efeito rítmico lento não
   "acorda" dentro dele (o Trance Gate me pegou — precisei de default ≥ 11 Hz).
 - **Commit message com parêntese/backtick quebra o fish** → use `git commit -F <arquivo>`.
+- **⚠️ Gravar memória suja o checkout PRIMÁRIO, não a sua worktree.** O symlink
+  `~/.claude/projects/<key>/memory` aponta pro `project-memory/` do **primário**. O integrador
+  exige o primário **limpo** (DIRETRIZ §1.5.1), então: escreveu memória → **copie os arquivos
+  pra `project-memory/` da SUA worktree, restaure o primário** (`git -C <primário> checkout --
+  project-memory/` + apague o arquivo novo) e comite na sua linha.
 
 ---
 

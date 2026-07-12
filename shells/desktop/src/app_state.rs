@@ -364,6 +364,9 @@ pub(crate) struct App {
     /// widgets (Toggle, RadioGroup, ColorSwatch).
     pub(crate) dragging: Option<NodeId>,
     pub(crate) title_dirty: bool,
+    /// One-shot latch for the `PH2D_IMPASTO_SMOKE` canvas (spawned on the first frame the atlas
+    /// plumbing is in scope, not at init — where `atlas_asset_map` does not exist yet).
+    pub(crate) impasto_smoke_done: bool,
     /// gilrs context (M8). `None` if init failed (e.g. Linux without
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
     /// instead of crashing the renderer).

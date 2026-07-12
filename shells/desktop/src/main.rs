@@ -48,6 +48,7 @@ mod forwarding;
 mod hero_bridge;
 mod hero_intents;
 mod image_import;
+mod impasto_smoke;
 mod init;
 mod input_dispatch;
 mod input_handlers;
@@ -192,6 +193,7 @@ impl App {
             last_pointer: (0.0, 0.0),
             dragging: None,
             title_dirty: true,
+            impasto_smoke_done: false,
             gilrs,
             audio,
             #[cfg(feature = "panel-audio-editor")]

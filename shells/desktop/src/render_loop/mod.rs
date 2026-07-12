@@ -551,6 +551,36 @@ impl crate::App {
             }
         }
 
+        // Impasto smoke (`PH2D_IMPASTO_SMOKE=1`): one-shot, on the first frame where the atlas plumbing
+        // is in scope — spawn a white canvas and SEAT the selection on it, so the artist lands on a
+        // ready surface instead of assembling one. The brush itself is armed in `painter_bridge`, when
+        // the painter first binds the document.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::impasto_smoke::enabled()
+            && !std::mem::replace(&mut self.impasto_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            let cell = *next_import_cell;
+            if let Some(bits) = crate::impasto_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                *next_import_cell = next_import_cell.saturating_add(1);
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    });
+                toasts.push(Toast::success(
+                    "Impasto smoke: pick the Painter tool and drag".to_string(),
+                ));
+            }
+        }
+
         // New-image modal (Cmd/Ctrl+N) → spawn the chosen blank canvas. The modal's Create button set
         // `new_image_request`; service it here where `gfx` is destructured (sim/renderer/atlas access).
         if let Some(hero) = hero_screen.as_mut()

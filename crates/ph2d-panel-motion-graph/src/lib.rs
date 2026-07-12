@@ -19,7 +19,6 @@ mod interact;
 mod paint;
 mod paint_chrome;
 mod probe;
-mod route;
 mod snapshot;
 mod state;
 

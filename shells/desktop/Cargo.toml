@@ -41,6 +41,9 @@ ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
 # while the Motion tool is active.
 ph2d-motion-doc = { path = "../../crates/ph2d-motion-doc" }
 ph2d-node-registry-init = { path = "../../crates/ph2d-node-registry-init" }
+# The reroute node types the wire-splice gesture inserts (doc 45): the shell picks the one
+# that fits the wire, so it must name them.
+ph2d-node-util-reroute = { path = "../../crates/ph2d-node-util-reroute" }
 # Time scopes (M2.N1): the substrate keys scopes by NodeId and knows no node
 # types, so the shell asks the node crate that OWNS the semantic to translate
 # `motion.time_remap` params into `TimeMap`s before each cook (and to refuse a

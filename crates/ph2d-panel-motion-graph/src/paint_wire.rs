@@ -38,9 +38,7 @@ pub(crate) fn draw_wire(
         draw_pre_badges(ctx, e, p0, p3, view, theme, hovered);
         return;
     }
-    // Routed through its waypoints — the SAME path the knife and the hover use (doc 44).
-    let route = crate::route::route(snap, e, view).unwrap_or_else(|| vec![p0, p3]);
-    let pts = wire_path(&route, view.zoom, 20);
+    let pts = wire_polyline(p0, p3, view.zoom, 20);
     // Hovered wires draw thicker and in a bright emphasis colour so the delete
     // target is unmistakable regardless of the port domain hue; others keep
     // their domain colour and normal width.
@@ -50,18 +48,6 @@ pub(crate) fn draw_wire(
         (WIRE_W, domain_token(e.out_domain))
     };
     stroke_polyline(ctx.scene, &pts, base_w * view.zoom, resolve(token, theme));
-
-    // The routing handles, on the wire's own colour so a dot always reads as belonging to
-    // the wire it bends. Drawn only when the wire HAS them: an unrouted wire gains no chrome.
-    for (hx, hy) in crate::route::handles(e, view) {
-        fill_circle(
-            ctx.scene,
-            hx,
-            hy,
-            crate::route::HANDLE_R,
-            resolve(token, theme),
-        );
-    }
 }
 
 /// The `pre` edge's visual: a ring-and-dot badge just outside each end's
@@ -116,31 +102,85 @@ pub(crate) fn draw_wire_ghost(
     view: &View,
     theme: Theme,
 ) {
-    let Interaction::DrawWire {
-        from_node,
-        from_port,
-        cur,
-        target,
-    } = &state.interaction
-    else {
-        return;
-    };
-    let Some(src) = snap.nodes.iter().find(|n| n.id == *from_node) else {
-        return;
-    };
-    let p0 = socket_center(src, view, true, *from_port as usize);
-    let color = match target {
-        Some((_, _, false)) => resolve(ColorToken::Border, theme),
-        _ => resolve(domain_token(port_out_domain(src, *from_port)), theme),
-    };
-    let pts = wire_polyline(p0, *cur, view.zoom, 18);
-    stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
+    match &state.interaction {
+        // Forwards, out of an output — or the END of a wire pulled off its input (doc 45),
+        // which is the same thing: it is still anchored to its source.
+        Interaction::DrawWire {
+            from_node,
+            from_port,
+            cur,
+            target,
+            ..
+        } => {
+            let Some(src) = snap.nodes.iter().find(|n| n.id == *from_node) else {
+                return;
+            };
+            let p0 = socket_center(src, view, true, *from_port as usize);
+            let color = match target {
+                Some((_, _, false)) => resolve(ColorToken::Border, theme),
+                _ => resolve(domain_token(port_out_domain(src, *from_port)), theme),
+            };
+            let pts = wire_polyline(p0, *cur, view.zoom, 18);
+            stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
 
-    if let Some((tn, tp, true)) = target
-        && let Some(t) = snap.nodes.iter().find(|n| n.id == *tn)
-    {
-        let (cx, cy) = socket_center(t, view, false, *tp as usize);
-        highlight_socket(ctx, cx, cy, (SOCKET_R + TARGET_RING_PAD) * view.zoom, theme);
+            if let Some((tn, tp, true)) = target
+                && let Some(t) = snap.nodes.iter().find(|n| n.id == *tn)
+            {
+                let (cx, cy) = socket_center(t, view, false, *tp as usize);
+                highlight_socket(ctx, cx, cy, (SOCKET_R + TARGET_RING_PAD) * view.zoom, theme);
+            }
+        }
+        // BACKWARDS, out of an empty input, hunting for an output. The ghost runs from the
+        // cursor INTO the input, so the wire already reads the way it will read once it is
+        // real — an arrow drawn backwards would have to be re-read the moment it lands.
+        Interaction::DrawWireBack {
+            to_node,
+            to_port,
+            cur,
+            target,
+        } => {
+            let Some(dst) = snap.nodes.iter().find(|n| n.id == *to_node) else {
+                return;
+            };
+            let p3 = socket_center(dst, view, false, *to_port as usize);
+            let color = match target {
+                Some((_, _, false)) => resolve(ColorToken::Border, theme),
+                Some((fnode, fport, true)) => {
+                    let d = snap
+                        .nodes
+                        .iter()
+                        .find(|n| n.id == *fnode)
+                        .map(|n| port_out_domain(n, *fport));
+                    match d {
+                        Some(d) => resolve(domain_token(d), theme),
+                        None => resolve(ColorToken::Border, theme),
+                    }
+                }
+                None => resolve(ColorToken::Border, theme),
+            };
+            let pts = wire_polyline(*cur, p3, view.zoom, 18);
+            stroke_polyline(ctx.scene, &pts, GHOST_W * view.zoom, color);
+
+            if let Some((fnode, fport, true)) = target
+                && let Some(f) = snap.nodes.iter().find(|n| n.id == *fnode)
+            {
+                let (cx, cy) = socket_center(f, view, true, *fport as usize);
+                highlight_socket(ctx, cx, cy, (SOCKET_R + TARGET_RING_PAD) * view.zoom, theme);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The wire currently being PULLED OFF its input, if any — the painter skips it.
+///
+/// A wire still drawn into the socket you are visibly pulling it out of is a wire that has
+/// not moved: the artist would be dragging a ghost while the original sat there, and would
+/// have no way to tell whether the gesture had taken.
+pub(crate) fn detached_edge(state: &MotionGraphPanelState) -> Option<(u32, u16)> {
+    match &state.interaction {
+        Interaction::DrawWire { detached, .. } => *detached,
+        _ => None,
     }
 }
 
@@ -171,27 +211,6 @@ pub(crate) fn wire_polyline(
     cubic_polyline(p0, (p0.0 + dx, p0.1), (p3.0 - dx, p3.1), p3, n)
 }
 
-/// The polyline of a wire ROUTED through its waypoints — the same cubic as
-/// [`wire_polyline`], chained leg by leg along `route` (`[source, waypoints…, target]`).
-///
-/// **Everything that touches a wire goes through here**: what is drawn, what the knife
-/// crosses, what the pointer hovers. Route in the painter alone and the wire would *look*
-/// bent while the knife still cut it along the straight line it used to take — you would
-/// slash empty canvas and watch a wire a hand's width away fall (doc 44).
-///
-/// A route of one leg is exactly [`wire_polyline`], so an unrouted wire is byte-identical
-/// to what it was before waypoints existed.
-pub(crate) fn wire_path(route: &[(f32, f32)], zoom: f32, n: usize) -> Vec<(f32, f32)> {
-    let mut out: Vec<(f32, f32)> = Vec::with_capacity(route.len().saturating_sub(1) * n + 1);
-    for leg in route.windows(2) {
-        let pts = wire_polyline(leg[0], leg[1], zoom, n);
-        // Skip the first point of every leg but the first: it is the previous leg's last.
-        let skip = usize::from(!out.is_empty());
-        out.extend(pts.into_iter().skip(skip));
-    }
-    out
-}
-
 /// How finely a wire is sampled when testing it against the knife. Denser than the
 /// draw sampling, for the same reason the hit path is: a coarse polyline can pass a
 /// stroke that visibly crosses the curve between two samples.
@@ -214,10 +233,8 @@ pub(crate) fn wires_crossed(
         .iter()
         .filter(|e| !e.delayed)
         .filter(|e| {
-            // The ROUTED path — the knife must cut the wire where the artist SEES it, not
-            // along the straight line it would have taken with no waypoints (doc 44).
-            crate::route::route(snap, e, view).is_some_and(|r| {
-                wire_path(&r, view.zoom, KNIFE_SAMPLES)
+            wire_endpoints(snap, e, view).is_some_and(|(p0, p3)| {
+                wire_polyline(p0, p3, view.zoom, KNIFE_SAMPLES)
                     .windows(2)
                     .any(|s| segments_cross(a, b, s[0], s[1]))
             })

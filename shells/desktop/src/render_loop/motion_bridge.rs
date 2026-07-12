@@ -50,8 +50,8 @@ mod edit;
 mod readout;
 
 #[cfg(feature = "panel-motion-graph")]
-#[path = "motion_bridge_waypoints.rs"]
-mod waypoints;
+#[path = "motion_bridge_rewire.rs"]
+mod rewire;
 
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_connect.rs"]
@@ -193,8 +193,6 @@ pub(super) fn dispatch(
             // of the pump's memo (`Cook::peek`, never a second cook). A node no sink
             // consumes has no entry and stays blank — which is the diagnosis, not a gap.
             readout::stamp(motion, &mut snap);
-            // The wire routing (doc 44) — decoration on the document, like the backdrops.
-            waypoints::stamp(motion, &mut snap);
             snap
         }));
     }
@@ -367,26 +365,29 @@ fn apply_graph_intents(
                 edit::duplicate(motion, nodes);
             }
             GraphIntent::CutWires { targets } => edit::cut_wires(motion, toasts, targets),
-            // F2 — wire routing (doc 44). None of these re-cook: a waypoint is decoration.
-            GraphIntent::AddWaypoint {
+            // F2 — rewiring (doc 45). Both are one undo step and both re-cook: a reroute is
+            // a NODE, and a moved wire is a changed graph.
+            GraphIntent::SpliceReroute {
                 to_node,
                 to_port,
-                index,
                 x,
                 y,
-            } => waypoints::add(motion, to_node, to_port, index, x, y),
-            GraphIntent::MoveWaypoint {
-                to_node,
-                to_port,
-                index,
-                dx,
-                dy,
-            } => waypoints::translate(motion, to_node, to_port, index, dx, dy),
-            GraphIntent::RemoveWaypoint {
-                to_node,
-                to_port,
-                index,
-            } => waypoints::remove(motion, to_node, to_port, index),
+            } => rewire::splice_reroute(motion, toasts, to_node, to_port, x, y),
+            GraphIntent::MoveWireEnd {
+                from_node,
+                from_port,
+                old_to_node,
+                old_to_port,
+                new_to,
+            } => rewire::move_wire_end(
+                motion,
+                toasts,
+                from_node,
+                from_port,
+                old_to_node,
+                old_to_port,
+                new_to,
+            ),
             GraphIntent::SmartConnect {
                 from_node,
                 from_port,
@@ -449,8 +450,7 @@ fn apply_graph_intents(
 /// hand-deletable — it would re-derive on the next reconcile anyway — so the gesture steers
 /// the user to the edit that DOES change topology. Everything else disconnects, the plumbing
 /// re-heals (a chain pulled off a `forces` port gets its host's self-loop back; a chain split
-/// mid-way moves the state entry to the new dangling head), and the wire's routing dies with
-/// it (doc 44).
+/// mid-way moves the state entry to the new dangling head),.
 fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: u32, to_port: u16) {
     use ph2d_nodegraph::graph::NodeId;
     if plumbing::is_managed_pre(
@@ -472,9 +472,6 @@ fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: 
         .is_some()
     {
         plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
-        // The wire is gone, so its routing goes with it — INSIDE this undo step, so one
-        // Ctrl+Z brings the wire and its waypoints back together (doc 44).
-        waypoints::prune(motion);
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();
     }
@@ -495,7 +492,6 @@ fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>) {
     }
     if changed {
         plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
-        waypoints::prune(motion); // the deleted nodes' wires took their routing with them
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();
     }

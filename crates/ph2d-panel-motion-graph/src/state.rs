@@ -66,16 +66,6 @@ pub(crate) enum Interaction {
         last: (f32, f32),
         started: bool,
     },
-    /// Dragging a wire's routing waypoint (F2, doc 44). `last` is the previous cursor
-    /// position (screen); `started` brackets the undo step on the first real movement, so a
-    /// click that merely grazes a dot does not mint an undo entry.
-    DragWaypoint {
-        to_node: u32,
-        to_port: u16,
-        index: usize,
-        last: (f32, f32),
-        started: bool,
-    },
     /// Dragging one of a backdrop's bottom grippers — grows/shrinks it in place.
     /// `left` is the corner grabbed (the opposite edge stays anchored).
     ResizeBackdrop {
@@ -92,6 +82,27 @@ pub(crate) enum Interaction {
     DrawWire {
         from_node: u32,
         from_port: u16,
+        cur: (f32, f32),
+        target: Option<(u32, u16, bool)>,
+        /// **The input this wire was PULLED OFF** (F2, doc 45) — set when the gesture began
+        /// on an occupied input socket rather than on an output.
+        ///
+        /// A grabbed wire-end MOVES; it does not copy. So the drop emits `MoveWireEnd` (one
+        /// undo step: unplug the old input, plug the new) instead of `Connect`, and the
+        /// painter hides the edge being dragged — a wire that is still drawn into the socket
+        /// you are visibly pulling it out of is a wire that has not moved.
+        detached: Option<(u32, u16)>,
+    },
+    /// Dragging a wire BACKWARDS out of an empty input socket, hunting for an output to
+    /// feed it (F2, doc 45). `target` is the OUTPUT socket under the pointer (with local
+    /// type-compatibility), the mirror of `DrawWire`'s input target.
+    ///
+    /// Both directions exist because a graph is read in both: sometimes you know what a node
+    /// needs and go looking for it, and an editor that only lets you wire forwards makes you
+    /// cross the canvas to say so.
+    DrawWireBack {
+        to_node: u32,
+        to_port: u16,
         cur: (f32, f32),
         target: Option<(u32, u16, bool)>,
     },

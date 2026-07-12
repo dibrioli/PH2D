@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-node-util-reroute"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+
+[dev-dependencies]
+# The tests cook a real chain through the REAL registry (a pass-through that is only
+# proven against a stub registry is a pass-through that was never in a graph).
+ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }

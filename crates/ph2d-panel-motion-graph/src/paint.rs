@@ -22,7 +22,9 @@
 
 #[path = "paint_wire.rs"]
 mod paint_wire;
-pub(crate) use paint_wire::{draw_wire, draw_wire_ghost, wire_endpoints, wire_path, wires_crossed};
+pub(crate) use paint_wire::{
+    detached_edge, draw_wire, draw_wire_ghost, wire_endpoints, wire_polyline, wires_crossed,
+};
 
 use crate::geom::{self, View, card_h, socket_center};
 use crate::hits::{
@@ -137,7 +139,14 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // tracked by the shell's free-move hover) is drawn emphasised so it reads as
     // the alt-click delete target.
     let hovered = ctx.host.store().hot_id();
+    // The wire whose END is being dragged off its input is NOT drawn (doc 45): the artist is
+    // visibly pulling it out of that socket, and leaving it plugged in would say the gesture
+    // had not taken. Its hit rects go with it — you cannot alt-click a wire you are holding.
+    let detached = detached_edge(state);
     for e in &snap.edges {
+        if detached == Some((e.to_node, e.to_port)) {
+            continue;
+        }
         let is_hovered = hovered == Some(crate::hits::wire_hit_id(e.to_node, e.to_port));
         draw_wire(ctx, &snap, e, &view, theme, is_hovered);
         push_wire_hits(&mut hits, &snap, e, &view, rect);

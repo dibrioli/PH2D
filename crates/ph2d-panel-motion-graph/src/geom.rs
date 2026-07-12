@@ -109,6 +109,25 @@ pub(crate) fn hit_input_socket(
     None
 }
 
+/// The OUTPUT socket whose hit zone contains `(x, y)` — the mirror of
+/// [`hit_input_socket`], for a wire dragged backwards out of an input (doc 45).
+pub(crate) fn hit_output_socket(
+    snap: &GraphViewSnapshot,
+    view: &View,
+    x: f32,
+    y: f32,
+) -> Option<(u32, u16)> {
+    for n in &snap.nodes {
+        for (i, _) in n.outputs.iter().enumerate() {
+            let (cx, cy) = socket_center(n, view, true, i);
+            if (x - cx).abs() <= SOCKET_HIT_R && (y - cy).abs() <= SOCKET_HIT_R {
+                return Some((n.id, i as u16));
+            }
+        }
+    }
+    None
+}
+
 /// The rubber band's screen rect, normalised — the artist may drag in any
 /// direction, so the anchor is not necessarily the top-left corner.
 pub(crate) fn band_rect(anchor: (f32, f32), cur: (f32, f32)) -> Rect {

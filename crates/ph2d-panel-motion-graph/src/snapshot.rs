@@ -54,10 +54,7 @@ pub struct GraphNodeView {
 }
 
 /// One wire in the view. Its color is the source port's [`Domain`].
-///
-/// Not `Eq`: the routing waypoints are float coordinates. (`PartialEq` is what the panel's
-/// snapshot diffing needs; nothing keys a map by an edge view.)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphEdgeView {
     pub from_node: u32,
     pub from_port: u16,
@@ -65,11 +62,6 @@ pub struct GraphEdgeView {
     pub to_port: u16,
     pub delayed: bool,
     pub out_domain: Domain,
-    /// **Routing points** in graph space, in order from the source socket toward the target
-    /// (F2, doc 44). Empty = a straight wire, drawn exactly as it was before waypoints
-    /// existed. Decoration: they live on the `MotionDoc`, never on the `Edge`, and moving
-    /// one cannot dirty the cook.
-    pub waypoints: Vec<(f32, f32)>,
 }
 
 /// One backdrop (group region) in the view — the document's `Backdrop`, resolved
@@ -238,31 +230,32 @@ pub enum GraphIntent {
     /// `(to_node, to_port)`. **One undo step for the whole stroke** — a knife that
     /// cut five wires and needed five Ctrl+Z would be a trap.
     CutWires { targets: Vec<(u32, u16)> },
-    /// Add a routing waypoint to the wire landing on `(to_node, to_port)`, at `index` in
-    /// its order (double-click a wire). One undo step; **never re-cooks** — a waypoint is
-    /// decoration (doc 44), and the `is_dirty` guard proves it.
-    AddWaypoint {
+    /// **Move a wire's END from one input to another** (grab an occupied input socket and
+    /// drag, doc 45). `new_to = None` means it was dropped on empty canvas — the wire is
+    /// simply unplugged.
+    ///
+    /// A grabbed end **moves**; it does not copy. So this is ONE intent and ONE undo step
+    /// (unplug + plug), not a `Disconnect` followed by a `Connect` — which would need two
+    /// Ctrl+Z to put back, and would leave the graph half-rewired if the second half were
+    /// refused. The shell tries both halves on a trial clone and keeps the ORIGINAL wire if
+    /// the new landing is illegal (a refused move must not destroy the wire it moved).
+    MoveWireEnd {
+        from_node: u32,
+        from_port: u16,
+        old_to_node: u32,
+        old_to_port: u16,
+        new_to: Option<(u32, u16)>,
+    },
+    /// **Splice a reroute node into a wire** (double-click it) — the dot that bends the
+    /// wire AND branches from it (doc 45). The panel says WHICH wire and WHERE; the shell
+    /// picks the reroute type that fits the wire's own port type, inserts it, and re-wires
+    /// source → dot → target. One undo step; it re-cooks (a reroute is a NODE — it is in the
+    /// graph, and the graph changed).
+    SpliceReroute {
         to_node: u32,
         to_port: u16,
-        index: usize,
         x: f32,
         y: f32,
-    },
-    /// Move a waypoint by an INCREMENTAL graph-space delta, applied live each frame so the
-    /// dot tracks the cursor. Bracketed by [`Self::BeginDrag`]/[`Self::EndDrag`], exactly
-    /// like a node drag — one undo step for the whole gesture. Never re-cooks.
-    MoveWaypoint {
-        to_node: u32,
-        to_port: u16,
-        index: usize,
-        dx: f32,
-        dy: f32,
-    },
-    /// Remove a waypoint (double-click its handle). One undo step; never re-cooks.
-    RemoveWaypoint {
-        to_node: u32,
-        to_port: u16,
-        index: usize,
     },
 }
 
@@ -451,9 +444,6 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
             to_port: e.to.1,
             delayed: e.delayed,
             out_domain: source_domain(graph, registry, e.from.0, e.from.1),
-            // The routing points live on the DOCUMENT, which `snapshot_from` cannot see —
-            // the shell stamps them in afterwards, exactly as it does the backdrops.
-            waypoints: Vec::new(),
         })
         .collect();
 

@@ -1,4 +1,13 @@
-# 44 — Editor F2: **waypoints** (roteamento de fios) — **F2 FECHADO** — nota-ADR
+# 44 — Editor F2: waypoints (roteamento de fios) — **REVOGADO** — nota-ADR
+
+> ## ⛔ REVOGADO pelo [doc 45](45_reroute_e_socket_de_entrada_nota_adr.md) (2026-07-12, mesmo dia)
+>
+> O smoke do Enio matou o desenho em uma pergunta: *"como se conecta esse ponto no meio do fio? ou não se
+> conecta?"*. **Não se conectava** — era decoração. E um afordance que **parece** uma junção e não é, é um bug,
+> mesmo com o código certo. O ponto no fio agora é um **NÓ de reroute** (Blender/Nuke), e os waypoints foram
+> **deletados** (modelo, formato, painel, shell). Este documento fica como **histórico** — a tese do §3 ("UM
+> caminho, ou a faca corta um fio que não está lá") e a lição do §6-bis (o grafo nunca via duplo-clique)
+> continuam válidas e valem a leitura.
 
 **Data:** 2026-07-12 · **Linha:** `line/motion-value` (Modo L) · **Fase:** editor **F2** (fechamento)
 **Status:** implementado, testado (2 mutantes provados), **pendente smoke do Enio**

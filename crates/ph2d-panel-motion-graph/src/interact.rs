@@ -26,11 +26,11 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerButton;
 
-#[path = "interact_waypoint.rs"]
-mod waypoint;
-
 #[path = "interact_backdrop.rs"]
 mod backdrop_gesture;
+
+#[path = "interact_socket.rs"]
+mod socket;
 
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
@@ -194,15 +194,19 @@ fn apply_gesture(
             let (to_node, to_port) = crate::paint::wire_target(edge);
             push_intent(GraphIntent::Disconnect { to_node, to_port });
         }
-        // A double-click on a wire ADDS a routing waypoint there (F2, doc 44).
+        // **Double-click a wire → splice a REROUTE node into it** (doc 45). The dot is a
+        // node: it bends the wire AND you can drag a new wire out of it. The shell picks the
+        // reroute type that fits this wire and re-wires source → dot → target.
         GraphHitKind::Wire { edge } if g.phase == GesturePhase::DoubleClick => {
             let (to_node, to_port) = crate::paint::wire_target(edge);
-            waypoint::add_on_wire(state, g, rect, snap, to_node, to_port);
-        }
-        // A waypoint handle: drag moves it, double-click removes it.
-        GraphHitKind::Waypoint { edge, index } => {
-            let (to_node, to_port) = crate::paint::wire_target(edge);
-            waypoint::apply_handle(state, g, rect, to_node, to_port, index as usize);
+            let view = View::new(rect, state.view);
+            let (x, y) = view.graph(g.x, g.y);
+            push_intent(GraphIntent::SpliceReroute {
+                to_node,
+                to_port,
+                x,
+                y,
+            });
         }
         // Split divider (E9): drag maps the pointer to a split fraction against
         // the full center band (scene `center` + graph `rect`). Begin/Update both
@@ -246,7 +250,11 @@ fn apply_gesture(
             let (id, left) = crate::backdrop::resize_target(id);
             backdrop_gesture::apply_backdrop_resize(state, g, id, left)
         }
-        // Input sockets (the reverse-drag of an occupied input) land later.
+        // An INPUT socket: draw a wire backwards out of an empty one, or grab the END of the
+        // wire already in it and move it (doc 45). Until now this did nothing at all.
+        GraphHitKind::SocketIn { node, port } => {
+            socket::apply_socket_in(state, g, node as u32, port, rect, snap)
+        }
         _ => {}
     }
 }
@@ -458,6 +466,7 @@ fn apply_socket_out(
                 from_port: port,
                 cur: (g.x, g.y),
                 target: None,
+                detached: None,
             };
         }
         GesturePhase::Update => {
@@ -510,7 +519,7 @@ fn apply_socket_out(
 /// The input socket under `(x, y)`, with whether it is locally type-compatible
 /// with the source output (domain + dim + clock — `connects_directly` minus the
 /// membrane, which the shell checks). `None` when the pointer is over no input.
-fn target_socket(
+pub(super) fn target_socket(
     snap: &GraphViewSnapshot,
     view: &View,
     from_node: u32,

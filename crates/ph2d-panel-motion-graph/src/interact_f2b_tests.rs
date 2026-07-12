@@ -65,7 +65,6 @@ fn the_knife_cuts_the_wires_it_crosses_then_disarms() {
         to_port: 0,
         delayed: false,
         out_domain: Domain::Instances,
-        waypoints: vec![],
     }];
     let mut st = MotionGraphPanelState::default();
     let bg = GraphHitKind::Background;
@@ -262,4 +261,132 @@ fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
         "one intent: the add and the wire are one gesture"
     );
     crate::snapshot::set_current_node_catalog(Vec::new());
+}
+
+// ── Input sockets: draw backwards, and grab a wire's end (F2, doc 45) ────────
+
+/// **Grabbing an OCCUPIED input picks the wire's END up** — it keeps its source and follows
+/// the cursor, and the drop MOVES it. FALSIFIED by an input socket that does nothing (which
+/// is what it did until now) and by a drop that emits `Connect` (which would COPY the wire:
+/// the old input would still be wired).
+#[test]
+fn grabbing_an_occupied_input_picks_up_the_wires_end_and_moves_it() {
+    let mut state = MotionGraphPanelState::default();
+    let snap = two_node_snapshot(); // node 1 out 0 → node 2 in 0
+    let mut snap = snap;
+    snap.edges.push(crate::snapshot::GraphEdgeView {
+        from_node: 1,
+        from_port: 0,
+        to_node: 2,
+        to_port: 0,
+        delayed: false,
+        out_domain: Domain::Instances,
+    });
+    let _ = drain_intents();
+
+    // Press the occupied input.
+    apply_gesture(
+        &mut state,
+        gesture(
+            GraphHitKind::SocketIn { node: 2, port: 0 },
+            GesturePhase::Begin,
+            200.0,
+            37.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    // The wire is now in hand, anchored to its SOURCE — and the painter hides the original.
+    assert_eq!(
+        crate::paint::detached_edge(&state),
+        Some((2, 0)),
+        "the wire was pulled OFF that input"
+    );
+
+    // Drop it back on the same input: the shell will see a no-op move.
+    apply_gesture(
+        &mut state,
+        gesture(
+            GraphHitKind::SocketIn { node: 2, port: 0 },
+            GesturePhase::End,
+            200.0,
+            37.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    let intents = drain_intents();
+    assert!(
+        matches!(
+            intents.as_slice(),
+            [GraphIntent::MoveWireEnd {
+                from_node: 1,
+                from_port: 0,
+                old_to_node: 2,
+                old_to_port: 0,
+                ..
+            }]
+        ),
+        "the drop MOVES the end, it does not copy the wire: {intents:?}"
+    );
+}
+
+/// **An EMPTY input draws a wire backwards** — the mirror of dragging out of an output. The
+/// drop on an output makes the same connection, from the other end.
+#[test]
+fn an_empty_input_draws_a_wire_backwards_to_an_output() {
+    let mut state = MotionGraphPanelState::default();
+    let snap = two_node_snapshot(); // no edges
+    let _ = drain_intents();
+
+    apply_gesture(
+        &mut state,
+        gesture(
+            GraphHitKind::SocketIn { node: 2, port: 0 },
+            GesturePhase::Begin,
+            200.0,
+            37.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    assert!(
+        matches!(
+            state.interaction,
+            Interaction::DrawWireBack { to_node: 2, .. }
+        ),
+        "an empty input draws backwards, hunting for an output"
+    );
+
+    // Move over node 1's OUTPUT socket (it sits at the card's right edge, row 0), then drop.
+    for phase in [GesturePhase::Update, GesturePhase::End] {
+        apply_gesture(
+            &mut state,
+            gesture(
+                GraphHitKind::SocketIn { node: 2, port: 0 },
+                phase,
+                190.0,
+                37.0,
+            ),
+            RECT,
+            CENTER,
+            &snap,
+        );
+    }
+    let intents = drain_intents();
+    assert!(
+        matches!(
+            intents.as_slice(),
+            [GraphIntent::Connect {
+                from_node: 1,
+                from_port: 0,
+                to_node: 2,
+                to_port: 0
+            }]
+        ),
+        "the same connection, made from the other end: {intents:?}"
+    );
 }

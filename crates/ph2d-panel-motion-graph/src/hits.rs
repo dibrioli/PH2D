@@ -11,7 +11,7 @@
 //! keeps "what you see" and "what you can click" the same set.
 
 use crate::geom::{self, View, socket_center};
-use crate::paint::{fnv_id, wire_handle, wire_path};
+use crate::paint::{fnv_id, wire_handle, wire_polyline};
 use crate::snapshot::{GraphEdgeView, GraphNodeView, GraphViewSnapshot};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -153,9 +153,7 @@ pub(crate) fn push_wire_hits(
         }
         return;
     }
-    // The ROUTED path, so the pointer hovers the wire where it is drawn (doc 44).
-    let route = crate::route::route(snap, e, view).unwrap_or_else(|| vec![p0, p3]);
-    let pts = wire_path(&route, view.zoom, WIRE_HIT_SAMPLES);
+    let pts = wire_polyline(p0, p3, view.zoom, WIRE_HIT_SAMPLES);
     for seg in pts.windows(2) {
         let (ax, ay) = seg[0];
         let (bx, by) = seg[1];
@@ -167,24 +165,6 @@ pub(crate) fn push_wire_hits(
         );
         if let Some(r) = clip_rect(r, canvas) {
             hits.push((id, kind, r));
-        }
-    }
-
-    // The waypoint HANDLES, pushed LAST so they win the wire they sit on ("last registered
-    // wins"): a dot you cannot grab because its own wire swallows the click is a dot that
-    // does not exist.
-    for (i, (hx, hy)) in crate::route::handles(e, view).into_iter().enumerate() {
-        let r = crate::route::HANDLE_HIT_R;
-        let rect = Rect::new(hx - r, hy - r, 2.0 * r, 2.0 * r);
-        if let Some(rect) = clip_rect(rect, canvas) {
-            hits.push((
-                fnv_id(&format!("wp:{}:{}:{}", e.to_node, e.to_port, i)),
-                GraphHitKind::Waypoint {
-                    edge: wire_handle(e.to_node, e.to_port),
-                    index: i as u16,
-                },
-                rect,
-            ));
         }
     }
 }
@@ -353,7 +333,6 @@ mod tests {
             to_port: 0,
             delayed,
             out_domain: Domain::Instances,
-            waypoints: vec![],
         };
         let snap = GraphViewSnapshot {
             nodes: vec![node(1, 20.0, 50.0), node(2, 240.0, 50.0)],

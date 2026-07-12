@@ -251,8 +251,6 @@ pub(super) fn cut_wires(
     }
     if cut > 0 {
         plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
-        // The cut wires' routing dies with them, in the same undo step (doc 44).
-        super::waypoints::prune(motion);
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();
     }

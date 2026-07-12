@@ -86,12 +86,16 @@ radial + gira + esquerda) · `the_colour_wave_scrolls` (100 + >5 cores Ice + rol
 
 ## 5. Disclosures (o que fica / caveats) — LER
 
-- **⚠ Serialização textual DEFERIDA (data-loss no save-to-text):** o `Graph` usa um formato textual próprio
-  (`crate::format`, records `p` pros f32); **os text params NÃO são serializados ainda** (o formato é
-  whitespace-delimited → uma fórmula com espaços exige um record com escaping, um follow-up focado). **Undo
-  preserva** (Clone/PartialEq), mas um **save→load textual PERDE a fórmula**. Nenhum teste round-trip usa a
-  boot doc, então nada quebra hoje — mas é uma perda silenciosa a fechar antes de confiar no save. **Follow-up:
-  record de texto com escaping em `format.rs`.**
+- **✅ Serialização textual FECHADA (adendo 2026-07-11, "fecha a serialização"):** o `format.rs` ganhou o
+  record **`x <id> <name> <formula…>`** — a fórmula é o **campo livre final** (tudo após o 3º espaço, espaços
+  interiores preservados; o MESMO padrão do título de backdrop `b` do `ph2d-motion-doc`, **sem inventar
+  escaping**). Um text param **bumpa o header pra `v2`** (record pós-freeze, pela política do próprio `format.rs`);
+  grafo sem text param fica **byte-idêntico `v1`**; `from_text` aceita ambos. `MotionDoc` **delega** ao format
+  (só anexa `[backdrop]`) → funciona transparente. **Round-trip testado** (fórmula com espaços+operadores;
+  header v2; v1 ainda carrega; rejeições de nó-inexistente/malformado) + **prova end-to-end no shell** (a
+  fórmula da boot doc sobrevive a `MotionDoc::to_text/from_text`). Limitação: fórmulas são **single-line**
+  (whitespace de borda da linha é trimado). Contrato de nó **intocado** (só a gramática de serialização ganhou
+  um record aditivo versionado).
 - **⚠ Replay-hash cross-máquina:** `ph2d_expr::eval` usa transcendentais f32 (libm), que **variam entre
   máquinas/libm** (por contrato o `ph2d-expr` é presentation-side/HR-5-exempt). Dentro de um processo é
   determinístico (o teste de replay passa). Se algum **golden de replay-hash cross-máquina** cobrir a boot doc,
@@ -102,7 +106,7 @@ radial + gira + esquerda) · `the_colour_wave_scrolls` (100 + >5 cores Ice + rol
 ## 6. O que fica
 
 A `motion.expression` era o item de MAIOR valor que restava da cauda M1 — e o único ADR-gated. Feito (via o
-caminho aditivo). O restante da cauda M1 é subsumido/marginal. Follow-ups desta fatia: **serialização textual
-de text params** · **UI de texto no painel** · (opcional) lowering WGSL da expression (o `ph2d-expr` já tem
-`to_wgsl` — combina com o motor GPU futuro). Fronteiras inalteradas: **M4** (Rig+FX) · **M5** (GPU). É hora de
-**integrar** as 17 fatias.
+caminho aditivo). O restante da cauda M1 é subsumido/marginal. Follow-ups desta fatia: ~~serialização textual~~
+(FEITA, §5) · **UI de texto no painel** (editor; precisa `ParamWidget::Text` em `ph2d-node-registry`) ·
+(opcional) lowering WGSL da expression (o `ph2d-expr` já tem `to_wgsl` — combina com o motor GPU futuro).
+Fronteiras inalteradas: **M4** (Rig+FX) · **M5** (GPU). É hora de **integrar** as 17 fatias.

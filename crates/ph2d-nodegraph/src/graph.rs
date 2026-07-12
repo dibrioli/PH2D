@@ -141,9 +141,9 @@ pub struct Graph {
     /// ADR-0039) intact: a node reads its own text via
     /// [`crate::cook::EvalCtx::text_param`], absent → the node's own default. This
     /// is the isolation-preserving realisation of M4.N1 (ParamSpec-tipado) — no
-    /// contract bump, no fan-out breakage (docs/Motion Nodes/32). Covered by
-    /// `Clone`/`PartialEq` (undo) but NOT yet by the textual format (save/load of
-    /// text params is a deferred follow-up — see doc 32 §serialization).
+    /// contract bump, no fan-out breakage (docs/Motion Nodes/32). Persisted by both
+    /// `Clone`/`PartialEq` (undo) and the textual format (the `x` record, which bumps
+    /// the header to `v2` — [`crate::format`]).
     node_text_params: BTreeMap<NodeId, BTreeMap<String, String>>,
     next_id: u32,
 }
@@ -303,6 +303,13 @@ impl Graph {
     /// threads this into [`crate::cook::EvalCtx`].
     pub fn node_text_param_overrides(&self, id: NodeId) -> Option<&BTreeMap<String, String>> {
         self.node_text_params.get(&id)
+    }
+
+    /// All per-node text-param overrides, keyed by node id then param name
+    /// (deterministic `BTreeMap` order). Used by the textual format ([`crate::format`],
+    /// the `x` record).
+    pub fn node_text_params(&self) -> &BTreeMap<NodeId, BTreeMap<String, String>> {
+        &self.node_text_params
     }
 
     fn contains(&self, id: NodeId) -> bool {

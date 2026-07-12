@@ -27,6 +27,7 @@
 |---|---|---|
 | **`crates/ph2d-nodegraph/src/graph.rs`** | **SUBSTRATO (fatia 32, ADITIVO):** `Graph.node_text_params` + `set_text_param` + `node_text_param_overrides` + `remove_node`. Undo coberto (Clone/PartialEq). | **NOVO — não era tocado antes.** Aditivo (append-only). `foundational-integrate.sh` roda o gate combinado. Conflito mesmo-símbolo só se outra linha editar graph.rs |
 | **`crates/ph2d-nodegraph/src/cook.rs`** | **SUBSTRATO (fatia 32, ADITIVO):** `EvalCtx.text_overrides`+`text_param` + `Fingerprint.text_params` + `text_params_fingerprint` + threading (2 sites). | idem — aditivo; comportamento existente inalterado |
+| **`crates/ph2d-nodegraph/src/format.rs`** | **SUBSTRATO (fatia 32 +serialização, ADITIVO):** record `x` (text param, campo livre como o `b` title) + header `v2` (só se houver text param; senão `v1` byte-idêntico) + `Graph.node_text_params()` getter. | aditivo; `from_text` aceita v1\|v2; `MotionDoc` delega transparente |
 | `shells/desktop/src/motion_demo_strobe.rs` + `motion_state.rs` + `motion_state_tests.rs` | cena boot (espiral+onda, 12 nós) + testes | shell, módulo Motion; baixo |
 | `shells/desktop/src/render_loop/motion_bridge_tests.rs` | loop-replay do doc 11 — intocado | baixo |
 | `Cargo.lock` | crates PATH novas + `ph2d-color`/`ph2d-expr` (já membros) | regenera na árvore combinada |
@@ -59,10 +60,10 @@ ratificar o canal text-param como ADR real (superseding o plano M4.N1 de bumpar 
 - **Drift pré-fork BAIXO** (fork == `1c7c9a22`). Rode **`ship.sh` completo** na árvore combinada. `nextest-
   impacted` funciona (adição). fmt (pin 1.95, **edition 2024** — cook.rs tem let-chain)/machete/clippy/HR-5/
   LOC/typos verdes no fechamento.
-- **⚠ Serialização textual de text params DEFERIDA (data-loss no save-to-text):** o formato textual do Graph
-  (`format.rs`) **não serializa** `node_text_params` ainda (whitespace-delimited exige escaping). Undo
-  preserva; **save→load textual PERDE a fórmula**. Nenhum teste round-trip usa a boot doc → nada quebra hoje.
-  **Follow-up:** record de texto com escaping. (Detalhe: doc 32 §5.)
+- **✅ Serialização textual FECHADA:** o `format.rs` serializa text params via o record **`x`** (campo livre,
+  como o `b` title — sem escaping) + header **`v2`** (só com text param; senão `v1` byte-idêntico). Round-trip
+  testado (12 format tests) + prova end-to-end no shell (fórmula da boot doc sobrevive a `MotionDoc::to_text/
+  from_text`). `from_text` aceita v1\|v2. Contrato de nó intocado. (Detalhe: doc 32 §5.)
 - **⚠ Replay-hash cross-máquina:** `ph2d_expr::eval` usa transcendentais f32 (libm) que **variam entre máquinas**
   (presentation-side/HR-5-exempt por contrato). Determinístico dentro do processo (replay test passa). Se um
   golden replay-hash cross-máquina cobrir a boot doc, a expression pode divergir → re-lockar ou boot doc sem
@@ -89,8 +90,8 @@ ratificar o canal text-param como ADR real (superseding o plano M4.N1 de bumpar 
 completa incl. **expression**) + cena boot (Expression) + o **canal text-param aditivo no substrato**
 `ph2d-nodegraph` (fatia 32 — contrato PROVADO 8/2/1, realização isolada do M4.N1) + 2 fixes perf voronoi + plano
 GPU. Conflito mecânico = codegen `registry-init` → `ph2d-node-sync`. Contrato congelado intacto; `ph2d-expr`
-consumido. Caveats: serialização textual de text params DEFERIDA · replay-hash cross-máquina da expression. 13
-fatias smoke-aprovadas; 4 pendentes de smoke visual. Aguardo ordem de integração.*
+consumido; serialização textual de text params FECHADA (record `x`/v2). Caveat: replay-hash cross-máquina da
+expression. 13 fatias smoke-aprovadas; 4 pendentes de smoke visual. Aguardo ordem de integração.*
 
 ---
 
@@ -125,7 +126,7 @@ sempre pesquisando o padrão-ouro ANTES de codar. Pesquisa por fatia: docs 16–
 ## 2. Follow-up restante
 - **Cauda M1: COMPLETA** (cor, streams, adapters, expression). A `motion.expression` era o item de maior valor
   e o único ADR-gated — feito via o caminho aditivo.
-- **Follow-ups da fatia 32 (foundational):** serialização textual de text params (`format.rs`, escaping) · UI de
+- **Follow-ups da fatia 32 (foundational):** ~~serialização textual~~ **FEITA** (record `x`/v2, §2/§5) · UI de
   texto no painel de params (editor; precisa `ParamWidget::Text` em `ph2d-node-registry`) · (opcional) lowering
   WGSL da expression (`ph2d-expr` já tem `to_wgsl` — combina com o motor GPU).
 - **M2:** wiring do scrub-back (`Cook::checkpoint/restore` já existem) · `motion.delay` · `force.buoyancy`.

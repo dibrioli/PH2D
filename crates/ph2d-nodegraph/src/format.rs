@@ -9,23 +9,31 @@
 //!
 //! Grammar (whitespace-separated; canonical type names have no spaces):
 //! ```text
-//! v1
+//! v1 | v2
 //! n <id> <type_name>
 //! e <from_id> <from_port> <to_id> <to_port> <fwd|pre>
 //! p <id> <param_name> <value>
+//! x <id> <text_param_name> <formula...>          (v2 only)
 //! [layout]
 //! l <id> <x> <y>
 //! ```
 //!
-//! `p` records (per-instance param overrides) are **semantic** — they sit above
-//! `[layout]` so a semantic diff includes them, unlike `l` (layout) records.
+//! `p` (f32 param overrides) and `x` (**text** param overrides — an expression node's
+//! formula) records are **semantic** — they sit above `[layout]` so a semantic diff
+//! includes them, unlike `l` (layout) records.
 //!
-//! Versioning: `p` is part of the **frozen `v1` grammar** (it lands with the
-//! Motion vertical, before the W2.T4 freeze). The extension is forward- and
-//! backward-compatible — a `v1` file without `p` records still loads, and a
-//! `v1` reader that predates `p` *rejects* an unknown record (hard error, never
-//! a silent misread), so no version bump is warranted. Any **future** record
-//! kind, post-freeze, is a contract change and bumps the header to `v2`.
+//! The `x` record's last field is **free text**: it is everything after the third space,
+//! so a formula's interior single spaces round-trip exactly (the same trailing-free-text
+//! convention as the backdrop `b` title in `ph2d-motion-doc`). Formulas are single-line;
+//! leading/trailing line whitespace is trimmed on load (lines are trimmed).
+//!
+//! Versioning: `p` is part of the **frozen `v1` grammar** (pre-W2.T4). The `x` record is a
+//! **post-freeze** record kind, so — per the versioning policy — it bumps the header to
+//! `v2`: `to_text` emits `v2` **iff** the graph carries a (non-empty) text param, else
+//! `v1` (byte-identical for text-param-free graphs). `from_text` accepts both `v1` and
+//! `v2`. This is the isolation-preserving text-param channel (docs/Motion Nodes/32) — the
+//! frozen NODE contract (`NodeManifest`/`NodeOp`/`OpResolver`) is untouched; only the
+//! serialization grammar gains an additive, versioned record.
 
 use crate::graph::{Edge, EdgeError, Graph, NodeId, Pos};
 use std::fmt::Write as _;
@@ -34,7 +42,13 @@ use std::fmt::Write as _;
 /// edges and layout are each emitted in sorted order, so the same graph always
 /// produces byte-identical output.
 pub fn to_text(graph: &Graph) -> String {
-    let mut out = String::from("v1\n");
+    // A (non-empty) text param bumps the header to v2 (a post-freeze record kind); a
+    // text-param-free graph stays byte-identical v1.
+    let has_text = graph
+        .node_text_params()
+        .values()
+        .any(|m| m.values().any(|v| !v.is_empty()));
+    let mut out = String::from(if has_text { "v2\n" } else { "v1\n" });
 
     let mut nodes: Vec<_> = graph.nodes().iter().collect();
     nodes.sort_by_key(|n| n.id.0);
@@ -58,6 +72,16 @@ pub fn to_text(graph: &Graph) -> String {
     for (id, params) in graph.node_params() {
         for (name, value) in params {
             let _ = writeln!(out, "p {} {} {}", id.0, name, value);
+        }
+    }
+
+    // Per-node text params (semantic). The formula is the trailing free-text field
+    // (interior spaces preserved). Empty formulas == unset, so skip them.
+    for (id, params) in graph.node_text_params() {
+        for (name, value) in params {
+            if !value.is_empty() {
+                let _ = writeln!(out, "x {} {} {}", id.0, name, value);
+            }
         }
     }
 
@@ -88,7 +112,7 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut lines = text.lines().map(str::trim).filter(|l| !l.is_empty());
 
     match lines.next() {
-        Some("v1") => {}
+        Some("v1") | Some("v2") => {}
         _ => return Err(ParseError::BadHeader),
     }
 
@@ -96,10 +120,28 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut node_recs: Vec<(NodeId, String)> = Vec::new();
     let mut edge_recs: Vec<Edge> = Vec::new();
     let mut param_recs: Vec<(NodeId, String, f32)> = Vec::new();
+    let mut text_param_recs: Vec<(NodeId, String, String)> = Vec::new();
     let mut layout_recs: Vec<(NodeId, Pos)> = Vec::new();
     let mut seen_ids = std::collections::BTreeSet::new();
 
     for line in lines {
+        // The `x` (text param) record's last field is free text (a formula with interior
+        // spaces), so split into at most 4 fields — the trailing one keeps its spaces
+        // (the same convention as the backdrop `b` title). Handled before the
+        // whitespace-collapsing tokenizer the other records use.
+        if line.starts_with("x ") {
+            let parts: Vec<&str> = line.splitn(4, ' ').collect();
+            if parts.len() < 4 {
+                return Err(ParseError::BadLine(line.into()));
+            }
+            let id = NodeId(
+                parts[1]
+                    .parse()
+                    .map_err(|_| ParseError::BadLine(line.into()))?,
+            );
+            text_param_recs.push((id, parts[2].to_string(), parts[3].to_string()));
+            continue;
+        }
         let mut tok = line.split_whitespace();
         match tok.next() {
             Some("n") => {
@@ -165,6 +207,16 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
             id.0
         )));
     }
+    // Same for `x` (text param) records — no phantom on a non-existent node.
+    if let Some((id, _, _)) = text_param_recs
+        .iter()
+        .find(|(id, _, _)| !seen_ids.contains(id))
+    {
+        return Err(ParseError::BadLine(format!(
+            "x record for unknown node id {}",
+            id.0
+        )));
+    }
 
     let mut graph = Graph::new();
     for (id, name) in node_recs {
@@ -175,6 +227,9 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     }
     for (id, name, value) in param_recs {
         graph.set_param(id, name, value);
+    }
+    for (id, name, value) in text_param_recs {
+        graph.set_text_param(id, name, value);
     }
     for (id, pos) in layout_recs {
         graph.set_pos(id, pos);
@@ -229,6 +284,55 @@ mod tests {
         assert_eq!(g.edges(), back.edges());
         assert_eq!(g.node_params(), back.node_params());
         assert_eq!(g.layout(), back.layout());
+    }
+
+    /// A **text** param (an expression formula, with interior spaces and operators)
+    /// round-trips through the `x` record, and the header bumps to `v2`. FALSIFIED if the
+    /// formula's spaces split it lossy, or if it were dropped (the old data-loss bug).
+    #[test]
+    fn text_params_round_trip_with_spaces() {
+        let mut g = Graph::new();
+        let e = g.add_node("motion.expression");
+        g.set_text_param(e, "expr", "sin(f * a + t) * 4 > b && c");
+        let text = to_text(&g);
+        assert!(
+            text.starts_with("v2\n"),
+            "a text param bumps to v2:\n{text}"
+        );
+        let back = from_text(&text).unwrap();
+        assert_eq!(
+            g.node_text_params(),
+            back.node_text_params(),
+            "the formula (spaces + operators) survives"
+        );
+    }
+
+    /// A text-param-free graph stays `v1` (byte-identical to before the feature).
+    #[test]
+    fn text_param_free_graph_stays_v1() {
+        assert!(to_text(&sample()).starts_with("v1\n"));
+    }
+
+    /// Both `v1` (no `x`) and `v2` (with `x`) files load; an `x` on an unknown node id or a
+    /// malformed `x` (too few fields) is rejected at the boundary.
+    #[test]
+    fn x_record_parsing_and_rejections() {
+        // A hand-written v2 file with an `x` record loads.
+        let g = from_text("v2\nn 0 motion.expression\nx 0 expr i * 2\n[layout]\n").unwrap();
+        assert_eq!(
+            g.node_text_param_overrides(NodeId(0)).unwrap()["expr"],
+            "i * 2"
+        );
+        // `x` for a node with no `n` record → rejected (no phantom).
+        assert!(matches!(
+            from_text("v2\nn 0 a\nx 7 expr i\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
+        // Malformed `x` (missing the formula field) → rejected.
+        assert!(matches!(
+            from_text("v2\nn 0 a\nx 0 expr\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
     }
 
     #[test]

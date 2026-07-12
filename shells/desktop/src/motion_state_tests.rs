@@ -169,3 +169,24 @@ fn the_default_document_replays_deterministically() {
     };
     assert_eq!(run(), run(), "two runs of the same document match exactly");
 }
+
+/// End-to-end proof that the expression formula PERSISTS through a textual save/load
+/// (doc 32 §serialization, now closed): the boot doc has a text param, so its text is
+/// `v2` and carries the formula; `MotionDoc::from_text` restores it byte-for-byte.
+/// FALSIFIED by the old data-loss bug (the formula dropped on save).
+#[test]
+fn the_expression_formula_survives_a_text_round_trip() {
+    let state = MotionState::new();
+    let text = state.doc.to_text();
+    assert!(text.starts_with("v2"), "a text param bumps the doc to v2");
+    assert!(
+        text.contains("cos(f * a + t) * f * 4"),
+        "the spiral formula is serialized (interior spaces intact)"
+    );
+    let back = ph2d_motion_doc::MotionDoc::from_text(&text).expect("the v2 doc reloads");
+    assert_eq!(
+        back.graph.node_text_params(),
+        state.doc.graph.node_text_params(),
+        "every formula survives the round trip"
+    );
+}

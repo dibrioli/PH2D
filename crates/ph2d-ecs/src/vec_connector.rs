@@ -125,11 +125,11 @@ impl VecConnector {
     ) -> bool {
         let mut hit = false;
         for (end, at) in [(&mut self.start, start_at), (&mut self.end, end_at)] {
-            if let ConnectorEnd::Bound { target, .. } = end {
-                if !alive(*target) {
-                    *end = ConnectorEnd::Free { at };
-                    hit = true;
-                }
+            if let ConnectorEnd::Bound { target, .. } = end
+                && !alive(*target)
+            {
+                *end = ConnectorEnd::Free { at };
+                hit = true;
             }
         }
         hit

@@ -123,10 +123,10 @@ pub fn boundary_hit(
             }
         }
         // O fecho do contorno (último → primeiro), que o `windows` não cobre.
-        if let (Some(a), Some(b)) = (poly.last(), poly.first()) {
-            if let Some(t) = cross(from, d, *a, *b) {
-                best = best.max(t);
-            }
+        if let (Some(a), Some(b)) = (poly.last(), poly.first())
+            && let Some(t) = cross(from, d, *a, *b)
+        {
+            best = best.max(t);
         }
     }
     if !best.is_finite() {

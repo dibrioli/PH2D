@@ -24,6 +24,10 @@ struct Doc {
     map: VecEntityMap,
     sides: crate::connector_live::SideCache,
     poses: LabelPoses,
+    /// O arm do duplo-clique: o hospedeiro cujo rótulo ainda não tem geometria.
+    pending: Option<VecPathId>,
+    /// O path da sessão de texto ABERTA (o que a shell passa como `editing`).
+    editing: Option<VecPathId>,
 }
 
 /// Os params de um objeto de texto qualquer — o rótulo É um objeto de texto, e é o `VecShape`
@@ -50,6 +54,8 @@ impl Doc {
             map: VecEntityMap::new(),
             sides: crate::connector_live::SideCache::new(),
             poses: LabelPoses::new(),
+            pending: None,
+            editing: None,
         }
     }
 
@@ -87,14 +93,61 @@ impl Doc {
         id
     }
 
+    /// **O rótulo NASCENDO como no app** — e a diferença é o bug inteiro.
+    ///
+    /// O duplo-clique só ARMA (`pending = host`): um rótulo nasce vazio, e sem geometria não há
+    /// path, nem entidade, nem onde pendurar o vínculo. É a 1ª letra que materializa o objeto — e
+    /// o `VecLabel` só aparece no [`upkeep_pending`] do frame SEGUINTE ao push, que a shell roda
+    /// **depois** do `connector_live::recook`.
+    ///
+    /// Pendurar o vínculo à mão (o [`Self::label`] acima) pula justamente a janela em que o texto
+    /// existe e o vínculo não — a janela em que a linha enxergava a própria legenda.
+    fn label_born_the_real_way(
+        &mut self,
+        lo: [f64; 2],
+        hi: [f64; 2],
+        host: VecPathId,
+    ) -> VecPathId {
+        self.pending = Some(host); // o duplo-clique no hospedeiro
+        // A 1ª letra: o `vec_text_regen` empurra o path, e o `upsert_text_shape` do frame põe o
+        // `VecShape::Text` (é ele, e não o vínculo, que chega a tempo de o `recook` enxergar).
+        let id = self.scene.push_path(rectangle(lo, hi));
+        crate::vec_entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
+        let e = self.entity(id);
+        if let Ok(mut ent) = self.sim.world_mut().get_entity_mut(e) {
+            ent.insert(VecShape::Text(text_params()));
+        }
+        self.editing = Some(id); // a sessão de digitação está aberta
+        id
+    }
+
     fn entity(&self, id: VecPathId) -> Entity {
         Entity::from_bits(*self.map.get(&id).expect("a entidade do path"))
     }
 
-    /// **O FRAME da shell**, na mesma ordem do `render_loop`: sync → settle → build → recook do
-    /// conector → passe dos rótulos. Trocar essa ordem é o que o teste do conector em "L" pega.
+    /// **O FRAME da shell, PASSO A PASSO, na ordem EXATA do `render_loop`** (mod.rs §2566..2718).
+    ///
+    /// Rodar uma aproximação aqui é o que deixou o laço do rótulo passar: a 1ª versão deste
+    /// harness chamava `sync → settle → build → recook → upkeep` e **pulava o
+    /// [`upkeep_pending`]** — que é o passe que PENDURA o `VecLabel`, e que a shell roda **depois
+    /// do `recook`**. Com o vínculo pendurado à mão antes do 1º frame, o gate media um mundo em
+    /// que a isenção já valia desde sempre: exatamente o único mundo em que o bug não aparece.
+    ///
+    /// A ordem abaixo é a verdade, com os passes que faltavam marcados:
+    ///
+    /// ```text
+    /// vec_entities::sync
+    /// vec_text::upsert_text_shape      ← faltava (a pose do texto EM SESSÃO, todo frame)
+    /// connector_live::upkeep           ← faltava (pendura o VecConnector)
+    /// vec_transform::settle_origins
+    /// vec_transform::build
+    /// connector_live::recook           ← LÊ o VecLabel (as paredes)
+    /// label_live::upkeep_pending       ← faltava — e PENDURA o VecLabel, DEPOIS de quem o lê
+    /// label_live::upkeep
+    /// ```
     fn frame(&mut self) {
         crate::vec_entities::sync(&mut self.sim, &mut self.scene, &mut self.map);
+        crate::connector_live::upkeep(&mut self.sim, &self.scene, &self.map, None, &mut None);
         crate::vec_transform::settle_origins(&mut self.sim, &mut self.scene, &self.map, &[]);
         let mut xf = crate::vec_transform::build(&self.sim, &self.map);
         crate::connector_live::recook(
@@ -104,12 +157,19 @@ impl Doc {
             &xf,
             &mut self.sides,
         );
+        upkeep_pending(
+            &mut self.sim,
+            &self.map,
+            &mut self.pending,
+            self.editing,
+            self.editing.is_some(),
+        );
         upkeep(
             &mut self.sim,
             &self.scene,
             &self.map,
             &mut xf,
-            None,
+            self.editing,
             &mut self.poses,
         );
     }
@@ -499,55 +559,6 @@ fn re_attaching_never_clobbers_the_offset_the_user_authored() {
     );
 }
 
-/// **Um RÓTULO não é parede do roteador** — e este é o gate que impede um laço absurdo.
-///
-/// O rótulo de um conector mora EM CIMA da rota dele. Contá-lo entre os obstáculos faria a linha
-/// desviar do **próprio rótulo**, o rótulo se re-centrar na rota nova, a linha desviar de novo:
-/// ou oscila, ou assenta numa rota permanentemente torta. (É o mesmo raciocínio pelo qual um
-/// conector já não é obstáculo — ver `connector_live::shape_boxes`.)
-///
-/// O gate: uma rota RETA entre duas caixas, com o rótulo bem no meio dela — e a asserção **em
-/// TODO frame**, não só no último.
-///
-/// Esse detalhe é o gate. A 1ª versão deste teste media a rota depois de dois frames e passava
-/// **com o bug**: contado como parede, o rótulo é desviado no frame 1 (a linha cai para
-/// `y = −0.06`), o rótulo se re-centra na rota nova, no frame 2 ele já não bloqueia nada e a linha
-/// volta a ser reta — a oscilação, medida na fase certa, parece estabilidade. Olhar cada frame é o
-/// que a torna impossível de esconder.
-#[test]
-fn a_label_sitting_on_the_route_never_pushes_the_line_aside() {
-    let mut d = Doc::new();
-    // Duas caixas lado a lado: a rota é a reta y = 0.5, de (2, 0.5) a (8, 0.5).
-    let a = d.shape([0.0, 0.0], [2.0, 1.0]);
-    let b = d.shape([8.0, 0.0], [10.0, 1.0]);
-    let conn = d.connector(a, b);
-    d.frame();
-    let seg = |p: [f64; 2], q: [f64; 2]| (q[0] - p[0]).hypot(q[1] - p[1]);
-    let length = |pts: &[[f64; 2]]| -> f64 { pts.windows(2).map(|w| seg(w[0], w[1])).sum() };
-    let straight = length(&d.route(conn));
-    assert!(
-        (straight - 6.0).abs() < 1e-6,
-        "a rota limpa e reta: {straight}"
-    );
-
-    // O rótulo do conector, uma caixa BEM em cima da rota (é onde ele nasce, por construção).
-    let label = d.label([4.0, 0.2], [6.0, 0.8], conn);
-    for f in 1..=4 {
-        d.frame();
-        let len = length(&d.route(conn));
-        assert!(
-            (len - straight).abs() < 1e-6,
-            "frame {f}: a rota desviou do proprio ROTULO ({len:.3} contra {straight:.3} da reta) \
-             — texto nao e parede, e um conector nao pode fugir da propria legenda"
-        );
-        assert!(
-            near(d.centre(label), [5.0, 0.5]),
-            "frame {f}: o rotulo tem de seguir parado no meio da linha: {:?}",
-            d.centre(label)
-        );
-    }
-}
-
 /// O meio por arco de um "L" NÃO é a quina — o teste puro da regra, sem router nem ECS.
 /// (0,0) → (10,0) → (10,2): comprimento 12, metade 6 ⇒ (6, 0). A quina é (10, 0).
 #[test]
@@ -560,3 +571,8 @@ fn the_arclength_midpoint_of_an_l_is_not_the_elbow() {
     assert_eq!(arclength_midpoint(&[[3.0, 4.0]]), Some([3.0, 4.0]));
     assert_eq!(arclength_midpoint(&[]), None);
 }
+
+/// **Os gates do LAÇO** (a linha e o texto pulando sem parar) — módulo filho, teto de 600 LOC.
+/// Herdam o [`Doc`] daqui, e é ele que os faz morder: o frame é a sequência EXATA do `render_loop`.
+#[path = "label_live_loop_tests.rs"]
+mod loops;

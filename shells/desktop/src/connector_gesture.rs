@@ -46,8 +46,19 @@ impl App {
         Some([f64::from(w[0]), f64::from(w[1])])
     }
 
-    /// A forma sob o cursor — **ignorando os conectores** (inclusive o que está sendo
-    /// arrastado, cuja ponta está exatamente sob o cursor e roubaria todo hit-test).
+    /// A forma sob o cursor — **ignorando toda ANOTAÇÃO** (conectores, rótulos, texto solto).
+    ///
+    /// O filtro é o MESMO `connector_live::walls::is_annotation` que decide o que é parede para o
+    /// roteador, e não uma cópia: a pergunta é literalmente a mesma — *isto é estrutura ou é
+    /// coisa escrita por cima da estrutura?* Duas listas divergiriam no dia em que alguém
+    /// acrescentasse um tipo de anotação, e o gesto passaria a mirar o que a rota ignora.
+    ///
+    /// **Por que os rótulos:** um rótulo nasce CENTRADO no hospedeiro — ele cobre exatamente a
+    /// caixa em que o usuário está mirando. Sem o filtro, a ponta se prende à legenda em vez da
+    /// forma; e quando ela se prende ao rótulo do PRÓPRIO conector, a linha persegue um alvo que
+    /// persegue a linha (o `connector_live` já não confia nisso — ele re-resolve na leitura —,
+    /// mas o **preview** do arrasto mostraria o alvo errado, e o que se vê tem de ser o que se
+    /// obtém).
     ///
     /// Ligar um conector a outro conector é possível no draw.io; aqui não é: o alvo de uma
     /// ponta é uma FORMA. (Nada no motor impede — é uma decisão de gesto, e reverter é tirar
@@ -64,20 +75,20 @@ impl App {
             [world[0] as f32, world[1] as f32],
             crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
         );
-        // `pick_all_at_world` devolve do TOPO para o fundo: a primeira forma que não é um
-        // conector é a que o olho vê sob o cursor.
+        // `pick_all_at_world` devolve do TOPO para o fundo: a primeira forma que não é anotação
+        // é a que o olho vê sob o cursor.
         hits.into_iter()
-            .filter(|&bits| {
-                gfx.sim
-                    .world()
-                    .get::<VecConnector>(Entity::from_bits(bits))
-                    .is_none()
-            })
-            .find_map(|bits| {
+            .filter_map(|bits| {
                 self.vec_entities
                     .iter()
                     .find(|&(_, &b)| b == bits)
                     .map(|(&id, _)| id)
+            })
+            // A anotação do topo não ABORTA a busca — ela é PULADA, e a forma debaixo dela é a
+            // resposta. (Filtrar depois de escolher devolveria `None` sempre que um rótulo
+            // estivesse por cima da caixa, que é justamente onde todo rótulo está.)
+            .find(|&id| {
+                !crate::connector_live::walls::is_annotation(&gfx.sim, &self.vec_entities, id)
             })
     }
 

@@ -29,11 +29,15 @@ use std::collections::BTreeMap;
 use ph2d_ecs::{Anchor, ConnectorEnd, Entity, Name, SimWorld, Transform, VecConnector};
 use ph2d_vec_connect::{Aabb, Dir, EndSpec, RouteInput, RouteKind, route, side_towards};
 use ph2d_vec_scene::{
-    VecPath, VecPathId, VecScene, VecXforms, boundary_hit, round_polyline, smooth_polyline,
-    xform_of,
+    VecPathId, VecScene, VecXforms, boundary_hit, round_polyline, smooth_polyline, xform_of,
 };
 
 use crate::vec_entities::VecEntityMap;
+
+/// **O que a linha enxerga** — paredes e alvos. Módulo FILHO (o arquivo está no teto de LOC), e
+/// o ponto onde as duas arestas do laço rótulo↔rota são cortadas. Ver [`walls`].
+#[path = "connector_walls.rs"]
+pub(crate) mod walls;
 
 /// O lado por onde cada ponta saiu no frame ANTERIOR (`[start, end]`), por conector.
 ///
@@ -78,9 +82,21 @@ impl EndBox {
     }
 }
 
-/// A caixa de MUNDO de uma ponta. `None` ⇒ **o alvo sumiu** (o objeto foi apagado) — o
-/// chamador congela a ponta onde ela estava, em vez de deixar a linha voar para a origem.
-fn end_box(end: &ConnectorEnd, scene: &VecScene, xforms: &VecXforms) -> Option<EndBox> {
+/// A caixa de MUNDO de uma ponta. `None` ⇒ **não há alvo legítimo** — o objeto foi apagado, ou o
+/// vínculo aponta para uma ANOTAÇÃO (o gesto prendeu a ponta no rótulo que cobre a caixa). O
+/// chamador congela a ponta onde ela estava, em vez de deixar a linha voar para a origem — ou
+/// perseguir a própria legenda ([`walls::anchor_target`]).
+///
+/// O alvo passa por [`walls::anchor_target`] **aqui, no único ponto em que um id vira caixa**: é o
+/// choke point. Resolver na fronteira (no gesto) deixaria os vínculos já gravados — e os de um
+/// save antigo — apontando para o texto.
+fn end_box(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    end: &ConnectorEnd,
+    scene: &VecScene,
+    xforms: &VecXforms,
+) -> Option<EndBox> {
     match *end {
         ConnectorEnd::Free { at } => Some(EndBox {
             bbox: Aabb::new(at, at),
@@ -88,6 +104,7 @@ fn end_box(end: &ConnectorEnd, scene: &VecScene, xforms: &VecXforms) -> Option<E
             anchor: Anchor::Floating,
         }),
         ConnectorEnd::Bound { target, anchor } => {
+            let target = walls::anchor_target(sim, scene, map, target)?;
             let (lo, hi) = scene.path_world_curve_bbox(xforms, target)?;
             Some(EndBox {
                 bbox: Aabb::new(lo, hi),
@@ -278,96 +295,13 @@ struct Cooked {
     sides: [Option<Dir>; 2],
 }
 
-/// **Toda forma que pode barrar uma linha**: a caixa de MUNDO de cada path com contorno
-/// fechado que não seja um conector nem um rótulo.
-///
-/// Os filtros são a definição de "parede". Um **conector** não é obstáculo — se fosse,
-/// o primeiro cruzamento entre duas linhas empurraria todas as outras, e o diagrama
-/// desmancharia sozinho a cada traço novo. E um **contorno aberto** (um traço da caneta, uma
-/// aresta interna de um cubo) não tem interior: não há o que atravessar. É o mesmo critério
-/// do `boundary_hit`, e não por acaso — a borda em que a linha encosta e a parede de que ela
-/// desvia têm de ser a MESMA borda.
-///
-/// E um **RÓTULO** não é parede: texto é anotação, não estrutura. Aqui a razão é mais dura que o
-/// gosto — o rótulo de um conector mora **em cima da rota dele**, e contá-lo como obstáculo faria
-/// a linha desviar do próprio rótulo, o rótulo se re-centrar na rota nova, a linha desviar de
-/// novo. Um laço que ou oscila ou assenta numa rota torta. (Gate: `label_live_tests`.)
-///
-/// Calculado uma vez por frame, não uma vez por conector.
-fn shape_boxes(
-    sim: &SimWorld,
-    scene: &VecScene,
-    xforms: &VecXforms,
-    map: &VecEntityMap,
-) -> Vec<Aabb> {
-    let is_wall = |id: VecPathId| {
-        map.get(&id).is_some_and(|&bits| {
-            let e = Entity::from_bits(bits);
-            sim.world().get::<VecConnector>(e).is_some()
-                || sim.world().get::<ph2d_ecs::VecLabel>(e).is_some()
-        })
-    };
-    let has_interior = |p: &VecPath| {
-        (0..p.contour_count()).any(|c| matches!(p.contour(c), Some((v, true)) if v.len() >= 2))
-    };
-    scene
-        .paths()
-        .iter()
-        .filter(|p| has_interior(p) && !is_wall(p.id))
-        .filter_map(|p| {
-            let (lo, hi) = scene.path_world_curve_bbox(xforms, p.id)?;
-            Some(Aabb::new(lo, hi))
-        })
-        .collect()
-}
-
-/// **Os obstáculos que ESTA rota precisa enxergar.**
-///
-/// Passar o documento inteiro seria correto e caro: o grafo de visibilidade tem `(2n+3)²` nós,
-/// então cada forma do desenho encareceria TODA rota — inclusive a que liga duas caixas
-/// vizinhas no canto oposto da tela. A poda por região devolve o custo ao tamanho do problema:
-/// numa rota curta sobram duas ou três caixas, e o grafo volta a ter dezenas de nós.
-///
-/// # A região CRESCE — e é por isso que isto é um ponto fixo, não um filtro
-///
-/// O filtro ingênuo (pegue quem cruza o corredor entre as duas pontas) tem um furo: uma forma
-/// que atravessa a borda do corredor obriga a linha a **contorná-la**, e o contorno vai até a
-/// borda OPOSTA dessa forma — que está fora do corredor original, possivelmente colada em
-/// OUTRA forma, que o filtro descartou. A linha atravessaria essa segunda forma, e o desvio
-/// pareceria simplesmente quebrado.
-///
-/// Então a seleção é iterativa: quem cruza a região entra, a região engole a caixa de quem
-/// entrou, repete. Termina sempre (o conjunto só cresce, e é finito) e converge em uma ou duas
-/// passadas num diagrama de verdade. Num diagrama denso ela pega tudo — que é a resposta
-/// **certa**, e o preço de estar certo.
-fn obstacles_in_play(shapes: &[Aabb], a: Aabb, b: Aabb, pad: f64) -> Vec<Aabb> {
-    let mut roi = a.union(b).inflate(pad);
-    let mut taken = vec![false; shapes.len()];
-    loop {
-        let mut grew = false;
-        for (i, s) in shapes.iter().enumerate() {
-            if !taken[i] && roi.overlaps(*s) {
-                taken[i] = true;
-                roi = roi.union(s.inflate(pad));
-                grew = true;
-            }
-        }
-        if !grew {
-            break;
-        }
-    }
-    shapes
-        .iter()
-        .zip(&taken)
-        .filter_map(|(s, &t)| t.then_some(*s))
-        .collect()
-}
-
 /// A rota de `conn`, em MUNDO. Função TOTAL (o roteador é total): sempre uma polilinha
 /// não-vazia, mesmo com as caixas sobrepostas ou as duas pontas soltas no mesmo ponto.
 ///
 /// `None` só quando um dos alvos SUMIU — e aí o chamador já congelou a ponta antes.
 fn cook(
+    sim: &SimWorld,
+    map: &VecEntityMap,
     scene: &VecScene,
     xforms: &VecXforms,
     conn: &VecConnector,
@@ -375,8 +309,8 @@ fn cook(
     shapes: &[Aabb],
 ) -> Option<Cooked> {
     let (a, b) = (
-        end_box(&conn.start, scene, xforms)?,
-        end_box(&conn.end, scene, xforms)?,
+        end_box(sim, map, &conn.start, scene, xforms)?,
+        end_box(sim, map, &conn.end, scene, xforms)?,
     );
     // **O curvo ROTEIA como o ortogonal.** A busca é a mesma, os obstáculos são os mesmos; só a
     // escrita da geometria difere. É o que faz o conector curvo desviar de obstáculo de graça,
@@ -392,7 +326,7 @@ fn cook(
     // **As duas pontas deslizam para lados OPOSTOS da linha** (`spread` e `−spread`): as normais
     // das duas faces apontam uma contra a outra, então o mesmo sinal as moveria em direções
     // contrárias no mundo — e o conector sairia torto em vez de paralelo.
-    let obstacles = obstacles_in_play(shapes, a.bbox, b.bbox, ROI_PAD_K * jetty);
+    let obstacles = walls::obstacles_in_play(shapes, a.bbox, b.bbox, ROI_PAD_K * jetty);
 
     // Um LAÇO não se roteia, e waypoints não fazem sentido nele — ele é construído.
     if conn.is_self_loop() {
@@ -420,8 +354,8 @@ fn cook(
     let mut pts: Vec<[f64; 2]> = Vec::new();
     for i in 0..=last {
         let (from, to) = (
-            end_box(&stations[i], scene, xforms)?,
-            end_box(&stations[i + 1], scene, xforms)?,
+            end_box(sim, map, &stations[i], scene, xforms)?,
+            end_box(sim, map, &stations[i + 1], scene, xforms)?,
         );
         // As pontas de VERDADE (a 1ª e a última estação) já foram resolvidas acima, com o
         // spread e a histerese. As do meio são pontos: o `endpoint` de uma ponta solta devolve
@@ -490,14 +424,20 @@ pub(crate) fn recook(
 
     // As paredes do diagrama — UMA vez por frame, não uma por conector (elas são as mesmas
     // para todos; a poda por rota é que difere).
-    let shapes = shape_boxes(sim, scene, xforms, map);
+    let shapes = walls::shape_boxes(sim, scene, xforms, map);
 
     for (id, entity, mut conn) in conns {
         // 1. O alvo sumiu (o objeto foi apagado) ⇒ a ponta CONGELA onde estava. Apagar o
         //    conector junto destruiria trabalho; deixá-lo apontando para um id morto faria a
         //    linha sumir. Congelar é o que o draw.io faz — e o único que preserva o desenho.
+        //
+        //    **"Sumiu" inclui "nunca foi um alvo".** Um vínculo pode apontar para uma ANOTAÇÃO
+        //    (o gesto prendeu a ponta no rótulo que cobre a caixa) e, resolvido o rótulo para o
+        //    hospedeiro, sobrar coisa nenhuma — um texto solto, outro conector. Para a linha isso
+        //    é indistinguível de um alvo apagado, e a resposta certa é a mesma: congela onde
+        //    está, em vez de perseguir a própria legenda ([`walls::anchor_target`]).
         let (was_a, was_b) = current_endpoints(scene, id);
-        let alive = |t: u64| scene.paths().iter().any(|p| p.id == t);
+        let alive = |t: u64| walls::anchor_target(sim, scene, map, t).is_some();
         if conn.freeze_missing(alive, was_a, was_b)
             && let Ok(mut e) = sim.world_mut().get_entity_mut(entity)
         {
@@ -506,7 +446,7 @@ pub(crate) fn recook(
 
         // 2. A rota. Depois do congelamento, as duas pontas SEMPRE resolvem.
         let prev = cache.get(&id).copied().unwrap_or([None; 2]);
-        let Some(cooked) = cook(scene, xforms, &conn, prev, &shapes) else {
+        let Some(cooked) = cook(sim, map, scene, xforms, &conn, prev, &shapes) else {
             continue;
         };
         cache.insert(id, cooked.sides);

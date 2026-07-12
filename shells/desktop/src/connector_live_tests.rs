@@ -557,3 +557,8 @@ fn a_curved_connector_still_goes_around_the_obstacle_the_router_avoided() {
 /// `label_live_tests`: `a_label_sitting_on_the_route_never_pushes_the_line_aside`.)
 #[path = "connector_live_waypoint_tests.rs"]
 mod waypoints;
+
+/// **O rótulo não é alvo de uma ponta** — módulo filho (teto de 600 LOC). A 2ª aresta do laço
+/// rótulo↔rota; a 1ª (o rótulo como parede) vive em `label_live_tests::loops`.
+#[path = "connector_live_label_tests.rs"]
+mod labels;

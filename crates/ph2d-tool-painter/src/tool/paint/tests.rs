@@ -19301,3 +19301,257 @@ fn impasto_the_panel_learns_a_layer_has_relief_the_moment_it_does() {
         "undo un-sculpts the layer, and the row goes with it"
     );
 }
+
+#[test]
+fn impasto_smoothing_settles_the_stroke_the_moment_the_pen_leaves_the_canvas() {
+    // Enio's smoke, 2026-07-12: *"smoothing nem sempre se aplica no fim do traço"*.
+    //
+    // Smoothing is applied in exactly ONE place — `rebuild_live_layer_relief`, at commit — and it is
+    // applied unconditionally, so the arithmetic was never the suspect. What the pen-up does is SWAP
+    // the relief under the painting: the raw envelope the stroke was drawn with becomes the settled
+    // field. Nothing about the PIXELS changed, so nothing marked the canvas dirty — and the composite
+    // cache went on showing the last frame it drew, which was lit by the UNSETTLED relief.
+    //
+    // Hence "sometimes": whatever region the final dab happened to dirty got re-lit with the settled
+    // relief, and the rest of the stroke kept the raw one — until some unrelated edit (a slider, a
+    // layer click) invalidated the composite and the smoothing appeared *late*.
+    //
+    // The gate is therefore NOT "settle changes the buffer" (that was always green, and green for the
+    // wrong reason). It is the product's own contract: **after the pen leaves the canvas, what the
+    // artist SEES equals a full recompose.** And it must run at the app's real cadence — one preview
+    // drain per frame, including a drain of the last Move — or the fixture will not contain the bug
+    // (a test that never drains starts `preview_dirty` and full-recomposes at the end, which is
+    // exactly how this shipped green).
+    let size = 120u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 14.0;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.impasto_depth = 1.0;
+    b.impasto_body = 1.0;
+    b.impasto_smoothing = 1.0; // the knob under test, at its loudest
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+
+    // The stroke, at the app's cadence: a drain after every pointer event, as a frame would.
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    let _ = t.take_preview_arc();
+    for i in 1..=6 {
+        let x = 30.0 + 10.0 * i as f32;
+        t.on_canvas_pointer(cp([x, 60.0], PointerPhase::Move));
+        let _ = t.take_preview_arc();
+    }
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+
+    // The frame AFTER the pen-up — the one the artist is looking at when they say it did not settle.
+    let (seen, w, h) = t.take_preview_arc().expect("a preview after the stroke");
+
+    // …against the truth: the same document, composited from scratch.
+    t.composited = None;
+    t.preview_dirty = true;
+    let (truth, _, _) = t.take_preview_arc().expect("a full recompose");
+
+    let mut differing = 0usize;
+    let mut worst = 0i32;
+    for p in 0..(w * h) as usize {
+        for c in 0..3 {
+            let d = i32::from(seen[p * 4 + c]) - i32::from(truth[p * 4 + c]);
+            if d != 0 {
+                differing += 1;
+            }
+            worst = worst.max(d.abs());
+        }
+    }
+    assert_eq!(
+        differing, 0,
+        "the frame after pen-up must already BE the settled painting: {differing} channels differ, \
+         worst {worst} levels — the relief was swapped for its settled self and nobody asked for the \
+         pixels to be lit again"
+    );
+}
+
+/// Drive one stroke of `method` and make it PERMANENT the way the artist does — pen-up for the freehand
+/// methods, Apply for the five that leave an editable shape behind. Returns the layer's committed relief.
+fn sculpt_and_apply(size: u32, method: StrokeMethod, smoothing: f32) -> Vec<f32> {
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 14.0;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.impasto_depth = 1.0;
+    b.impasto_body = 1.0;
+    b.impasto_smoothing = smoothing;
+    b.stroke_method = method;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    if matches!(method, StrokeMethod::Line) {
+        // The Line is a POLYLINE: it is authored click-by-click, not by dragging. Driving it with a
+        // drag paints nothing at all — pigment included — which is a fixture that does not contain the
+        // phenomenon, not a bug in the tool. (It cost this gate its first red.)
+        t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Up));
+        t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+    } else {
+        t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+        for i in 1..=6 {
+            t.on_canvas_pointer(cp([30.0 + 10.0 * i as f32, 60.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+    }
+    t.commit_open_shape(); // no-op for the methods that already committed at pen-up
+    let id = t.layers.active().expect("a layer");
+    t.heights.get(&id).cloned().unwrap_or_default()
+}
+
+#[test]
+fn impasto_every_stroke_method_settles_its_relief_and_then_keeps_it() {
+    // Enio's smoke, 2026-07-12: *"smoothing nem sempre se aplica no fim do traço"*. He is right, and the
+    // word that mattered was **nem sempre**.
+    //
+    // Smoothing is applied in exactly ONE place — `rebuild_live_layer_relief`, reached from
+    // `commit_stroke_height` — so the arithmetic was never the suspect. What varies is whether that
+    // commit RUNS. The five SHAPE methods (Line / Arc / Ellipse / Polygon / Free Hand) deliberately keep
+    // the stroke OPEN at pen-up (the shape stays editable until Apply), so `close_stroke` never fired for
+    // them: the light went on reading the raw envelope, and Smoothing — and the whole live Body card —
+    // silently did nothing. The freehand methods commit at pen-up and settled fine. Hence *sometimes*.
+    //
+    // And the relief was doing worse than not settling: with nothing owning it, the next `pen-down`
+    // wiped it (`reset_stroke_height`). Apply a curve, start another stroke, and the thickness of the
+    // first EVAPORATED — the pigment stayed, the body did not. Measured, and it is the third claim here.
+    //
+    // The gate is a TABLE over every method the brush has, because the bug was never in the code that
+    // was written — it was in the paths nobody connected. A sixth shape added tomorrow without a commit
+    // goes red here.
+    let size = 120u32;
+    for method in [
+        StrokeMethod::Space,
+        StrokeMethod::Dots,
+        StrokeMethod::Airbrush,
+        StrokeMethod::Anchored,
+        StrokeMethod::DragDot,
+        StrokeMethod::Line,
+        StrokeMethod::Arc,
+        StrokeMethod::Ellipse,
+        StrokeMethod::Polygon,
+        StrokeMethod::FreeHand,
+    ] {
+        // 1. The relief is COMMITTED to the layer — it lives with the pixels, not in an envelope that
+        //    the next pen-down throws away.
+        let raw = sculpt_and_apply(size, method, 0.0);
+        let settled = sculpt_and_apply(size, method, 1.0);
+        assert!(
+            raw.iter().any(|&h| h > 0.5),
+            "{method:?}: the stroke left relief on the layer"
+        );
+
+        // 2. Smoothing ACTS on it. (Stated as "the knob changes the sculpture", not as a shape: what
+        //    the settle does to a plateau is soften its walls, and pinning a number here would be
+        //    pinning the blur's radius, not the artist's claim.)
+        assert_eq!(raw.len(), settled.len(), "{method:?}: same canvas");
+        let moved = raw
+            .iter()
+            .zip(settled.iter())
+            .filter(|(a, b)| (*a - *b).abs() > 1e-3)
+            .count();
+        assert!(
+            moved > 50,
+            "{method:?}: Smoothing must SETTLE the deposit — only {moved} texels moved between \
+             Smoothing 0 and 1, so the knob is dead on this method (it is applied at COMMIT, and the \
+             shape methods never used to commit)"
+        );
+        // …and it settles by SOFTENING: the sculpture cannot come out taller for being smoothed.
+        let peak = |f: &[f32]| f.iter().cloned().fold(0.0f32, f32::max);
+        assert!(
+            peak(&settled) <= peak(&raw) + 1e-4,
+            "{method:?}: settling is a blur, not a gain ({} vs {})",
+            peak(&settled),
+            peak(&raw)
+        );
+    }
+}
+
+#[test]
+fn impasto_an_applied_shape_keeps_its_body_when_the_next_stroke_lands() {
+    // The half of the bug the artist would have found AFTER the smoothing one, and cursed louder: a
+    // shape's relief lived in `stroke_height` with no owner, so the next pen-down's `reset_stroke_height`
+    // deleted it. The curve stayed painted and went FLAT.
+    let size = 120u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 14.0;
+    b.impasto_depth = 1.0;
+    b.stroke_method = StrokeMethod::Arc; // an editable shape: the family that never committed
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    for i in 1..=6 {
+        t.on_canvas_pointer(cp([30.0 + 10.0 * i as f32, 60.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+    t.commit_open_shape();
+    let on_the_shape = t.composed_relief_at(60, 46);
+    assert!(
+        on_the_shape > 0.3,
+        "the applied shape has body ({on_the_shape})"
+    );
+
+    // Now paint somewhere else entirely.
+    let mut b2 = t.paint.brush;
+    b2.stroke_method = StrokeMethod::Space;
+    t.paint.brush = b2;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b2;
+    }
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
+
+    assert!(
+        (t.composed_relief_at(60, 46) - on_the_shape).abs() < 1e-5,
+        "…and the shape still has it after the next stroke lands ({} vs {on_the_shape}) — the pigment \
+         used to stay while the body evaporated",
+        t.composed_relief_at(60, 46)
+    );
+}
+
+#[test]
+fn impasto_a_cancelled_shape_leaves_no_ghost_ridge() {
+    // The mirror image, and the reason the fix is TWO lines and not one: Esc peels the pixels back to
+    // pristine, so the relief has to go with them. An envelope that survived the cancel would be a ridge
+    // the light shades over paint that is no longer there — the same ghost the Eraser gate refuses,
+    // arriving through the Esc key.
+    let size = 120u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 14.0;
+    b.impasto_depth = 1.0;
+    b.stroke_method = StrokeMethod::Arc;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    for i in 1..=6 {
+        t.on_canvas_pointer(cp([30.0 + 10.0 * i as f32, 60.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+    assert!(
+        t.composed_relief_at(60, 46) > 0.3,
+        "the shape is standing there before the Esc"
+    );
+
+    assert!(t.cancel_open_shape(), "Esc drops the open shape");
+
+    assert_eq!(
+        t.composed_relief_at(60, 46),
+        0.0,
+        "…and takes its body with it: a cancelled shape may not leave a ridge behind"
+    );
+}

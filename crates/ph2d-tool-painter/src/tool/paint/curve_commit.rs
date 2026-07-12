@@ -68,6 +68,11 @@ impl PainterTool {
     /// Cancel the whole MULTI-SHAPE set (Esc / leaving the method): revert every shape's preview to pristine
     /// and drop them all. Returns `true` when a set was open.
     pub fn cancel_open_shape(&mut self) -> bool {
+        // The pixels are peeled back to pristine — so the relief has to go with them. A cancelled shape
+        // whose envelope survived would be a ridge the light shades over paint that is no longer there:
+        // the same ghost the Eraser gate refuses, arriving through the Esc key.
+        self.reset_stroke_height();
+        self.drop_live_relief();
         let cancelled = self.curve_cancel()
             || self.ellipse_cancel()
             || self.polygon_cancel()
@@ -89,6 +94,10 @@ impl PainterTool {
     /// Drop any open shape editor + the whole parked set without touching pixels — for teardown where the
     /// canvas is replaced or cleared (fresh source / deactivate / non-paintable layer).
     pub(crate) fn discard_open_shape(&mut self) {
+        // Teardown (fresh source / deactivate): the canvas under the shape is going away, so its
+        // un-committed relief must not outlive it either.
+        self.reset_stroke_height();
+        self.drop_live_relief();
         self.curve_discard();
         self.ellipse_discard();
         self.polygon_discard();

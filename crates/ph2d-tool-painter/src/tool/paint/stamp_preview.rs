@@ -72,7 +72,27 @@ impl PainterTool {
 
     /// Commit the interactive preview: drop the restore record so the last batch stays painted.
     /// Safe to call for any method (a no-op unless a preview is live).
+    ///
+    /// **This is where a drawing becomes canvas — so it is where the relief becomes layer** (Enio's
+    /// smoke, 2026-07-12: *"smoothing nem sempre se aplica no fim do traço"*). The five SHAPE methods
+    /// (Line / Arc / Ellipse / Polygon / Free Hand) deliberately keep the stroke OPEN at pen-up — the
+    /// shape stays editable until Apply — so `close_stroke`, and with it `commit_stroke_height`, never
+    /// ran for them. Three consequences, and Smoothing was only the visible one:
+    ///
+    ///   1. **Smoothing never applied.** The settle lives at commit; the light was reading the raw
+    ///      envelope. (The freehand methods commit at pen-up and settle — hence "*nem sempre*".)
+    ///   2. The whole live Body card (Depth / Body / Source) could not re-derive a shape's relief
+    ///      either: the ingredients were never handed over.
+    ///   3. Worst: the relief lived on in `stroke_height` with nothing owning it, so the **next
+    ///      pen-down wiped it** (`reset_stroke_height`). Apply a curve, start another stroke, and the
+    ///      thickness of the first simply evaporated — the pigment stayed, the body did not. Measured.
+    ///
+    /// Committing here fixes all three at one point, for every method, on Apply and Apply & Keep alike:
+    /// the pigment and the body are two outputs of the same dab list, so they become permanent in the
+    /// same breath. (The freehand path calls this too, just before `close_stroke` — whose own
+    /// `commit_stroke_height` then finds the ingredients already taken and no-ops. One commit, not two.)
     pub(super) fn commit_drag_preview(&mut self) {
+        self.commit_stroke_height();
         self.paint.drag_preview = None;
         // #3: end any shape watercolor session so the ground (backdrop) rebuilds fresh for the next shape
         // or a freehand stroke. Harmless to the freehand brush, which never sets this flag.

@@ -646,3 +646,45 @@ verde. `nextest-impacted` não os toca; só `cargo test --workspace` pega. Liç�
 
 **Continua fora do 1º corte:** passe de luz na GPU (perf não pede) · conservação de volume real da faca ·
 relevo do PAPEL (**exige ordem nova do Enio** — acopla impasto↔aquarela) · múltiplas luzes / IBL.
+
+---
+
+### 10.9 **"Smoothing nem sempre se aplica no fim do traço"** (smoke do Enio, 2026-07-12) — a palavra era *nem sempre*
+
+**O que ele viu.** O Smoothing às vezes funcionava, às vezes não.
+
+**Onde NÃO estava.** Na aritmética. O settle é aplicado num único lugar — `rebuild_live_layer_relief`,
+alcançado por `commit_stroke_height` — e **incondicionalmente**. O que varia não é o cálculo: é **se aquele
+commit roda**.
+
+**A causa.** Os cinco métodos de **FORMA** (Line · Arc · Ellipse · Polygon · **Free Hand**) mantêm o traço
+**ABERTO** no pen-up de propósito — a forma continua editável até o Apply. Então `close_stroke` (e com ele
+`commit_stroke_height`) **nunca disparava para eles**. Os métodos de mão livre (Space/Dots/Airbrush/
+Anchored/DragDot) comitam no pen-up e assentavam normalmente. **Daí o *nem sempre*.**
+
+Três consequências, e o Smoothing era só a visível:
+
+1. **Smoothing morto** nas 5 formas — a luz lia o **envelope cru**.
+2. **O card Body inteiro morto** nelas (Depth/Body/Source ao vivo): os *ingredientes* nunca eram entregues.
+3. **Pior, e medido:** o relevo ficava em `paint.stroke_height` **sem dono** — o próximo pen-down o
+   **apagava** (`reset_stroke_height`). Aplique uma curva, comece outro traço, e a espessura da primeira
+   **evaporava**: o pigmento ficava, o corpo sumia.
+
+**O fix, em dois pontos — e são os dois chokepoints, não cinco call-sites:**
+
+- `commit_drag_preview()` (**onde um desenho vira canvas**) passa a chamar `commit_stroke_height()`. Um
+  ponto, todos os métodos, Apply **e** Apply & Keep. Pigmento e corpo são duas saídas da MESMA lista de
+  dabs — viram permanentes no mesmo instante. (O caminho de mão livre também passa por aqui, logo antes do
+  `close_stroke`, cujo `commit_stroke_height` então acha os ingredientes já tomados e vira no-op.)
+- `cancel_open_shape()` / `discard_open_shape()` **largam o envelope**. O Esc devolve os pixels ao pristino,
+  então o relevo tem de ir junto — senão sobra **crista sem tinta**, o mesmo fantasma que o gate da borracha
+  recusa, entrando pela tecla Esc.
+
+**Gates (mutações provadas vermelhas):** (F) `commit_drag_preview` sem o commit do relevo — derruba
+*"Smoothing must SETTLE"* e *"the body evaporated"* · (G) cancel sem largar o envelope — derruba a crista
+fantasma. O gate principal é uma **TABELA sobre os 10 métodos**, porque o bug nunca esteve no código escrito:
+esteve nos **caminhos que ninguém conectou**. Uma 6ª forma amanhã, sem commit, fica vermelha aqui.
+
+**Lição de fixture (a 6ª desta linha):** o `Line` é uma **polilinha** (clique-a-clique), não um arrasto —
+dirigi-lo com um drag não pinta **nada**, pigmento incluso. O gate nasceu vermelho por isso, e a fixture
+estava errada, não o tool.

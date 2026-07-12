@@ -14,6 +14,7 @@ use ph2d_anim::{AnimTarget, AnimValue, Clip, Interp, KeyId, RationalTime, Track}
 use serde::{Deserialize, Serialize};
 
 use crate::binding::TargetBinding;
+use crate::clock::ClockIndex;
 use crate::prop::PropKind;
 
 /// On-disk schema version for the timeline document (HR-14). Written explicitly
@@ -85,6 +86,11 @@ pub struct TimelineDoc {
     markers: Vec<Marker>,
     /// Monotonic opaque-target allocator (see module docs).
     next_target: u64,
+    /// This frame's resolved per-entity sampling clocks (`clock.rs`). Runtime
+    /// scratch, not document identity: never serialized, always compares equal,
+    /// and its buffer is retained frame to frame so the apply stays zero-alloc.
+    #[serde(skip)]
+    clocks: ClockIndex,
 }
 
 impl Default for TimelineDoc {
@@ -110,7 +116,20 @@ impl TimelineDoc {
             bindings: Vec::new(),
             markers: Vec::new(),
             next_target: 0,
+            clocks: ClockIndex::default(),
         }
+    }
+
+    /// Move this frame's clock buffer out for the apply to refill (it needs the
+    /// document immutably while writing to the index). The buffer's capacity
+    /// rides along, so [`Self::put_clocks`] returns it warm.
+    pub(crate) fn take_clocks(&mut self) -> ClockIndex {
+        core::mem::take(&mut self.clocks)
+    }
+
+    /// Park the clock buffer back on the document, capacity and all.
+    pub(crate) fn put_clocks(&mut self, clocks: ClockIndex) {
+        self.clocks = clocks;
     }
 
     /// All clips.

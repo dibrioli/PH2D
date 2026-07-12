@@ -23,6 +23,7 @@ pub mod apply;
 pub mod autokey;
 pub mod binding;
 pub mod clipboard;
+mod clock;
 pub mod doc;
 pub mod graph;
 pub mod history;

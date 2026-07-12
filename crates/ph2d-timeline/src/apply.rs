@@ -36,30 +36,43 @@ pub fn apply_from_doc_except(
     t: f64,
     skip: impl Fn(u64) -> bool,
 ) {
+    // Pass 1 — liveness (P6). It precedes the clock pass on purpose: a dead
+    // entity's Time Remap track must not drive anything, and resolving clocks
+    // against last frame's flags would let it.
     let n = doc.bindings().len();
     for i in 0..n {
-        let b = &doc.bindings()[i];
-        let (target, prop, entity_bits) = (b.target, b.prop, b.entity);
-        let entity = Entity::from_bits(entity_bits);
-        let alive = world.get_entity(entity).is_ok();
+        let alive = world
+            .get_entity(Entity::from_bits(doc.bindings()[i].entity))
+            .is_ok();
         doc.bindings_mut()[i].missing = !alive;
-        if !alive {
+    }
+
+    // Pass 2 — one clock per remapped ENTITY, not one per binding. See
+    // `clock.rs`: asking inside the write loop made the apply quadratic and
+    // re-sampled the same curve once per animated property.
+    let mut clocks = doc.take_clocks();
+    clocks.rebuild(doc, doc.active_clip(), t);
+
+    // Pass 3 — write. Reads the document, writes the world: no `&mut doc` here,
+    // so the binding list is a plain slice.
+    for b in doc.bindings() {
+        if b.missing {
             continue;
         }
         // The user owns this entity's transform this frame (gizmo drag /
         // displaced-pose pin) — don't clobber it from the document.
-        if skip(entity_bits) {
+        if skip(b.entity) {
             continue;
         }
         // Time Remap is the timeline's own meta-property, never a scene write:
-        // it is CONSUMED below as the entity's sampling clock.
-        if prop == PropKind::TimeRemap {
+        // it was CONSUMED above as the entity's sampling clock.
+        if b.prop == PropKind::TimeRemap {
             continue;
         }
-        let t_entity = remapped_time(doc, entity_bits, t);
+        let t_entity = clocks.get(b.entity, t);
         // Sample the bound track (skip empty tracks so a just-created binding
         // never forces the property to a default value).
-        let sampled = doc.active_clip().track(target).and_then(|tr| {
+        let sampled = doc.active_clip().track(b.target).and_then(|tr| {
             if tr.is_empty() {
                 None
             } else {
@@ -67,9 +80,11 @@ pub fn apply_from_doc_except(
             }
         });
         if let Some(v) = sampled {
-            write_prop(world, entity, prop, v);
+            write_prop(world, Entity::from_bits(b.entity), b.prop, v);
         }
     }
+
+    doc.put_clocks(clocks); // capacity retained — zero-alloc next frame (HR-3)
 }
 
 /// The time `entity`'s tracks sample at: its Time Remap track's value at the
@@ -77,46 +92,18 @@ pub fn apply_from_doc_except(
 /// reverse) — or the playhead itself when it has none / an empty track (the
 /// identity: binding "Time" changes nothing until keys are authored).
 ///
-/// **Outside the keyed range the clock extrapolates at slope 1** (identity
-/// offset through the boundary key), instead of the track's flat-hold: a
-/// track's hold would freeze the entity's whole timeline the moment the FIRST
-/// key lands — K seeds the identity, so one seeded key must change nothing
-/// anywhere, exactly like zero keys. The one exception is a **`Hold` last
-/// key**, which freezes from there on (the deliberate AE freeze-frame).
+/// The **single-entity** path, for key authoring outside the frame loop
+/// (auto-key's diff, the displaced-pose pin, `K`). The apply resolves the whole
+/// document at once through [`crate::clock::ClockIndex`] — every caller here
+/// asks about one entity, so a scan is the right shape.
 ///
-/// Clamped non-negative like every playhead time. A linear scan over the few
-/// bindings: zero-alloc (HR-3, the paused bridge path is gated).
+/// Seeding and sampling MUST come through this same function: a derived
+/// coordinate whose author uses a different transform than its reader is the bug
+/// that cost this module three rounds.
+///
+/// Zero-alloc (HR-3, the paused bridge path is gated).
 pub fn remapped_time(doc: &TimelineDoc, entity: u64, t: f64) -> f64 {
-    let as_f64 = |v: AnimValue| match v {
-        AnimValue::Float(f) => Some(f64::from(f)),
-        _ => None,
-    };
-    for b in doc.bindings() {
-        if b.entity != entity || b.prop != PropKind::TimeRemap || b.missing {
-            continue;
-        }
-        let Some(tr) = doc.active_clip().track(b.target) else {
-            continue;
-        };
-        let (Some(first), Some(last)) = (tr.keys().first(), tr.keys().last()) else {
-            continue; // empty track = identity
-        };
-        let (t0, t1) = (first.t.to_seconds(), last.t.to_seconds());
-        let source = if t < t0 {
-            as_f64(first.value).map(|v| v + (t - t0))
-        } else if t > t1 {
-            as_f64(last.value).map(|v| match last.interp {
-                ph2d_anim::Interp::Hold => v,
-                _ => v + (t - t1),
-            })
-        } else {
-            as_f64(tr.sample(t))
-        };
-        if let Some(v) = source {
-            return v.max(0.0);
-        }
-    }
-    t
+    crate::clock::remapped_time_in(doc.active_clip(), doc.bindings(), entity, t)
 }
 
 /// Write one resolved property value into an entity, via the sprite resolver.

@@ -1,6 +1,6 @@
 # ADR-0115 — Composição de clips: faixas de instâncias, crossfade por sobreposição, canais esparsos
 
-- **Status:** proposto (aguarda ratificação do Enio antes do build — DIRETIVA §5)
+- **Status:** ACEITO (ratificado pelo Enio, 2026-07-12) — em implementação
 - **Data:** 2026-07-12
 - **Linha:** `line/anim` · sucede a ETAPA 3 (seletor de clip)
 - **Plano de implementação:** [`docs/Timeline/02_plano_composicao_clips.md`](../../Timeline/02_plano_composicao_clips.md)
@@ -234,18 +234,44 @@ ambiguidade de ±2π — sem isso, cruzar 350°→10° blendaria pelo caminho lo
    da faixa — cada um dirigido por `WidgetEvent` real, cada um **um** undo step.
 10. Smoke do Enio.
 
-## §4 — Kill-criterion (ANTES do build)
+## §4 — Kill-criterion (o baseline é MEDIDO, não prometido)
 
 O apply roda **todo frame** e é **zero-alloc gateado** (HR-3, `tests/no_alloc_bridge.rs`).
 
-**O baseline é pior do que eu supunha:** o apply de hoje já é **O(bindings²)** — o `remapped_time` re-varre
-a lista inteira de bindings *por binding* ([apply.rs:94-118](../../../crates/ph2d-timeline/src/apply.rs)).
-Um laço de strips aninhado ingenuamente vira **cúbico**.
+### 4.1 — A0: o hoist (FEITO, 2026-07-12)
 
-- **Pré-requisito medido, não bônus:** hoistar o remap (O(B²) → O(B)) **antes** de empilhar.
-- **Kill:** se a avaliação da pilha não for **zero-alloc**, ou custar **> 2× o baseline** num doc de 50
-  bindings × 4 faixas, **a feature não existe nesta forma** — o caminho passa a ser **pré-composição**
-  (assar a pilha num clip cacheado quando ela muda), e isso é um **ADR novo**, não um remendo.
+O baseline era **duas** quadráticas, não uma — e a segunda só apareceu porque o probe **reprovou o
+primeiro conserto**:
+
+1. `remapped_time` re-varria a lista de bindings *por binding* → o clock de uma entidade com 6 props era
+   resolvido 6 vezes. Hoistado em `clock.rs` (uma resolução por **entidade**).
+2. **A dominante, que eu não tinha visto:** `Clip::track()` era uma **varredura linear** sobre
+   `Vec<(AnimTarget, Track)>` — e como cada binding cria uma track, T ≈ B, então o *lookup* sozinho era
+   O(B²), rodando para **todo** binding (com ou sem Time Remap). `Clip` agora mantém as tracks **ordenadas
+   por target** e busca em binário (invariante restaurada também na desserialização — um save antigo pode
+   ter as tracks fora de ordem, e uma busca binária sobre ele erraria em silêncio, matando a animação).
+
+**Medido** (release, pior caso — *toda* entidade com Time Remap; `tests/apply_perf.rs`, `--ignored`):
+
+| bindings | µs/apply | **µs/binding** |
+|---:|---:|---:|
+| 175 | 4,4 | **0,025** |
+| 1 400 | 51,8 | **0,037** |
+| 5 600 | 299,9 | **0,054** |
+
+**32× os dados, 2,2× o custo POR BINDING** — linearítmico (as buscas binárias + cache). Sob a lei
+quadrática essa última coluna cresceria *proporcional a B*, ou seja **32×**. 5 600 bindings custam **1,8%**
+de um frame a 60 Hz.
+
+> **A lição de método:** a razão do tempo TOTAL não distingue linear (4×) de `B log B` (~4,8×) — o ruído da
+> máquina cobre essa distância. O **custo por binding** distingue: é plano no linear, sobe de leve no
+> `B log B`, e cresce *proporcional a B* no quadrático. O gate assere essa coluna.
+
+### 4.2 — O kill (para a pilha)
+
+Se a avaliação da pilha não for **zero-alloc**, ou custar **> 2× este baseline** num doc de 50 bindings ×
+4 faixas, **a feature não existe nesta forma** — o caminho passa a ser **pré-composição** (assar a pilha num
+clip cacheado quando ela muda), e isso é um **ADR novo**, não um remendo.
 
 ---
 

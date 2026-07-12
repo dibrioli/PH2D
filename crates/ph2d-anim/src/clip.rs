@@ -40,10 +40,32 @@ impl From<u64> for AnimTarget {
 }
 
 /// A named collection of tracks plus a total duration.
+///
+/// **Invariant: `tracks` is sorted by `AnimTarget`.** Every lookup is a binary
+/// search, because the apply resolves one track per binding, once per frame:
+/// with a linear scan that is O(bindings x tracks), and since a binding creates
+/// a track, the two grow together — a quadratic that a clip stack would have
+/// turned cubic (ADR-0115 §4). Nothing reads `tracks()` in insertion order (the
+/// one consumer folds a max over it), so ordering by target costs nothing.
+///
+/// The invariant is upheld by every mutator here **and on deserialization** — a
+/// document saved before the invariant existed can hold an unsorted vec, and a
+/// binary search over it would miss tracks silently, killing the animation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Clip {
+    #[serde(deserialize_with = "de_sorted_tracks")]
     tracks: Vec<(AnimTarget, Track)>,
     duration: RationalTime,
+}
+
+/// Restore the sorted-by-target invariant on load (see [`Clip`]).
+fn de_sorted_tracks<'de, D>(de: D) -> Result<Vec<(AnimTarget, Track)>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let mut tracks: Vec<(AnimTarget, Track)> = Vec::deserialize(de)?;
+    tracks.sort_by_key(|(t, _)| *t);
+    Ok(tracks)
 }
 
 impl Clip {
@@ -59,13 +81,26 @@ impl Clip {
     /// Builder-style: attach a track for a target and return `self`.
     #[must_use]
     pub fn with_track(mut self, target: AnimTarget, track: Track) -> Self {
-        self.tracks.push((target, track));
+        self.push(target, track);
         self
     }
 
-    /// Attach a track for a target.
+    /// Attach a track for a target, keeping the tracks sorted (see [`Clip`]).
     pub fn push(&mut self, target: AnimTarget, track: Track) {
-        self.tracks.push((target, track));
+        let at = self.slot(target).unwrap_or_else(|i| i);
+        self.tracks.insert(at, (target, track));
+    }
+
+    /// The index of `target`'s track, or `Err(insertion point)`.
+    ///
+    /// `partition_point` rather than `binary_search_by_key` so a duplicate target
+    /// resolves to the FIRST of its run — the "first match" the linear scan gave.
+    fn slot(&self, target: AnimTarget) -> Result<usize, usize> {
+        let i = self.tracks.partition_point(|(t, _)| *t < target);
+        match self.tracks.get(i) {
+            Some((t, _)) if *t == target => Ok(i),
+            _ => Err(i),
+        }
     }
 
     /// The clip's total duration.
@@ -89,10 +124,8 @@ impl Clip {
     /// The track bound to `target`, if any (first match).
     #[must_use]
     pub fn track(&self, target: AnimTarget) -> Option<&Track> {
-        self.tracks
-            .iter()
-            .find(|(t, _)| *t == target)
-            .map(|(_, track)| track)
+        let i = self.slot(target).ok()?;
+        Some(&self.tracks[i].1)
     }
 
     /// Re-derive every roving key's time in every track
@@ -105,10 +138,8 @@ impl Clip {
 
     /// The track bound to `target` for mutation (first match).
     pub fn track_mut(&mut self, target: AnimTarget) -> Option<&mut Track> {
-        self.tracks
-            .iter_mut()
-            .find(|(t, _)| *t == target)
-            .map(|(_, track)| track)
+        let i = self.slot(target).ok()?;
+        Some(&mut self.tracks[i].1)
     }
 
     /// The track bound to `target`, inserting an empty one (via `make`) if none
@@ -119,11 +150,11 @@ impl Clip {
         target: AnimTarget,
         make: impl FnOnce() -> Track,
     ) -> &mut Track {
-        let idx = match self.tracks.iter().position(|(t, _)| *t == target) {
-            Some(i) => i,
-            None => {
-                self.tracks.push((target, make()));
-                self.tracks.len() - 1
+        let idx = match self.slot(target) {
+            Ok(i) => i,
+            Err(at) => {
+                self.tracks.insert(at, (target, make()));
+                at
             }
         };
         &mut self.tracks[idx].1

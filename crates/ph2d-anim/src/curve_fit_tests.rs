@@ -182,6 +182,69 @@ fn the_fit_is_a_valid_function_of_time_handles_never_run_backward() {
     }
 }
 
+/// Deterministic pseudo-noise in `[-1, 1]` from an integer (splitmix64-ish, no
+/// transcendentals) — stands in for hand/mouse tremor.
+fn noise(i: usize) -> f64 {
+    let mut z = (i as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^= z >> 31;
+    (z as f64 / u64::MAX as f64) * 2.0 - 1.0
+}
+
+#[test]
+fn low_pass_lets_a_noisy_recording_reduce_far_more() {
+    // A smooth bump buried in tremor — the real mocap case. Without smoothing
+    // the fit chases every noise bump (barely reduces); a few low-pass passes
+    // strip the jitter so it collapses to a clean handful, still tracking the
+    // underlying signal.
+    let n = 300;
+    let signal = |t: f64| 100.0 * (t * std::f64::consts::PI / 2.0).sin();
+    let noisy: Vec<(f64, f64)> = (0..n)
+        .map(|i| {
+            let t = 2.0 * i as f64 / (n - 1) as f64;
+            (t, signal(t) + 1.5 * noise(i)) // ~1.5 units of tremor
+        })
+        .collect();
+    let tol = 0.5; // 0.5% of the 100 range — tight
+
+    let raw = fit_fcurve(&noisy, tol);
+    let mut smoothed = noisy.clone();
+    smooth_values(&mut smoothed, 6);
+    let clean = fit_fcurve(&smoothed, tol);
+
+    assert!(
+        clean.len() * 2 < raw.len(),
+        "low-pass more than halves the keys: {} raw vs {} smoothed",
+        raw.len(),
+        clean.len()
+    );
+    // And it still follows the underlying SIGNAL (not the noise) — within a
+    // couple of tremor amplitudes.
+    for i in 0..n {
+        let t = 2.0 * i as f64 / (n - 1) as f64;
+        assert!(
+            (eval(&clean, t) - signal(t)).abs() < 4.0,
+            "tracks the signal at t={t}"
+        );
+    }
+}
+
+#[test]
+fn smooth_values_pins_the_endpoints_and_is_a_noop_when_disabled() {
+    let mut s = vec![(0.0, 0.0), (1.0, 10.0), (2.0, -5.0), (3.0, 7.0)];
+    let orig = s.clone();
+    smooth_values(&mut s, 0);
+    assert_eq!(s, orig, "0 passes changes nothing");
+    smooth_values(&mut s, 4);
+    assert_eq!(s[0], orig[0], "first endpoint pinned");
+    assert_eq!(s[3], orig[3], "last endpoint pinned");
+    // Times never move.
+    for (a, b) in s.iter().zip(&orig) {
+        assert_eq!(a.0, b.0, "times untouched");
+    }
+}
+
 #[test]
 fn value_scale_is_handled_by_normalisation() {
     // The SAME shape at two wildly different value scales (radians ~π vs pixels

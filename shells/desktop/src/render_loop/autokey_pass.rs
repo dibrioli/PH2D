@@ -43,14 +43,20 @@ use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 use super::timeline_bridge::{default_interp, sample_prop_value};
 
 /// Value tolerance the record-cleanup fit targets, as a fraction of each track's
-/// recorded value range — 0.5% is visually lossless while cutting the dense
+/// recorded value range — 1% is visually lossless while cutting the dense
 /// per-frame keys to a handful ([`ph2d_anim::fit_fcurve`]). Per-channel: the fit
 /// normalises by the range, so this reads the same on a pixel track and a radian
-/// track.
-const REC_SIMPLIFY_REL: f64 = 0.005;
+/// track. (Paired with the low-pass below: together they take a noisy 120-sample
+/// gesture to ~5-6 clean keys; measured in `curve_fit` calibration.)
+const REC_SIMPLIFY_REL: f64 = 0.01;
 /// Absolute value-tolerance floor, so a near-constant track (its range ~0) does
 /// not get an impossibly tight tolerance that keeps every noise sample.
 const REC_SIMPLIFY_FLOOR: f64 = 1e-4;
+/// Low-pass passes applied to the recorded values before the fit — strips the
+/// hand/mouse tremor that otherwise makes the fit over-subdivide (the "reduziu
+/// um pouco" symptom). A binomial `[1,2,1]` kernel ×8 ≈ a ~9-sample window,
+/// which at 60 fps is ~150 ms — removes jitter, keeps the gesture's shape.
+const REC_SMOOTH_PASSES: usize = 8;
 
 /// The recorded time+value span of one `(entity, prop)` track during a performing
 /// session — enough to simplify exactly the recorded range at a proportional
@@ -292,7 +298,7 @@ pub(crate) fn apply_samples(
             };
             let tol = (REC_SIMPLIFY_REL * (span.v_max - span.v_min)).max(REC_SIMPLIFY_FLOOR);
             if let Some(track) = timeline.doc.active_clip_mut().track_mut(target) {
-                track.simplify_range(span.t_min, span.t_max, tol);
+                track.simplify_range(span.t_min, span.t_max, tol, REC_SMOOTH_PASSES);
             }
         }
         ak.record.clear();

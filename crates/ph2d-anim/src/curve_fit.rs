@@ -55,6 +55,31 @@ pub struct FitKey {
     pub interp: Interp,
 }
 
+/// Low-pass the VALUE axis of `samples` in place (times untouched) — a binomial
+/// `[1, 2, 1] / 4` kernel applied `passes` times, endpoints pinned. This is the
+/// mocap-standard pre-filter before a fit: hand/mouse input carries
+/// high-frequency tremor, and without smoothing the recursive fitter
+/// over-subdivides (every noise bump above tolerance spawns a keyframe — the
+/// "reduziu um pouco" symptom). A few passes ≈ a 3–5 sample window: enough to
+/// strip jitter, conservative enough to keep the gesture's real shape (the
+/// literature's "filter conservatively — over-filtering makes motion floaty").
+/// `passes == 0` or fewer than 3 samples is a no-op. Transcendental-free (HR-5).
+pub fn smooth_values(samples: &mut [(f64, f64)], passes: usize) {
+    let n = samples.len();
+    if n < 3 || passes == 0 {
+        return;
+    }
+    let mut src = vec![0.0f64; n];
+    for _ in 0..passes {
+        for (s, &(_, v)) in src.iter_mut().zip(samples.iter()) {
+            *s = v;
+        }
+        for i in 1..n - 1 {
+            samples[i].1 = 0.25 * src[i - 1] + 0.5 * src[i] + 0.25 * src[i + 1];
+        }
+    }
+}
+
 /// Fit dense `samples` (`(time, value)`, any order) to a minimal chain of
 /// cubic-Bézier [`FitKey`]s whose reconstructed curve stays within `tol` — an
 /// ABSOLUTE value tolerance in the samples' own units — of every sample.

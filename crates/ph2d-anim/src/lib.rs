@@ -69,7 +69,7 @@ pub const SCHEMA_VERSION: u32 = 1;
 
 pub use clip::{AnimTarget, Clip};
 pub use curve::{AnimCurve, CurveKey, Interp};
-pub use curve_fit::{FitKey, fit_fcurve};
+pub use curve_fit::{FitKey, fit_fcurve, smooth_values};
 pub use easing::{Easing, EasingFamily, EasingMode};
 pub use time::RationalTime;
 pub use track::{Key, KeyId, Track};

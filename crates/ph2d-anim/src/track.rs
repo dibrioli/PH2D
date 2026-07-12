@@ -394,6 +394,9 @@ impl Track {
     /// MINIMAL cubic-Bézier fit within value `tol` — the record-cleanup path
     /// ([`crate::fit_fcurve`], Schneider). Dense one-key-per-frame recordings
     /// become clean [`Interp::BezierW`] curves of a few keys, precise to `tol`.
+    /// `smooth_passes` low-passes the recorded values first
+    /// ([`crate::smooth_values`]) — mocap tremor would otherwise make the fit
+    /// over-subdivide; `0` disables it (a clean synthetic curve needs none).
     ///
     /// Endpoints are pinned to the range's first/last sampled values, so keys
     /// OUTSIDE the range keep their segments (the neighbour's interpolation is
@@ -401,7 +404,13 @@ impl Track {
     /// keys are skipped (their time is derived, not sampled). Returns `true` when
     /// it reduced the key count; a no-op (fewer than 3 in-range keys, or no
     /// reduction) returns `false` and leaves the track byte-identical.
-    pub fn simplify_range(&mut self, t_min: f64, t_max: f64, tol: f64) -> bool {
+    pub fn simplify_range(
+        &mut self,
+        t_min: f64,
+        t_max: f64,
+        tol: f64,
+        smooth_passes: usize,
+    ) -> bool {
         let mut ids = Vec::new();
         let mut samples = Vec::new();
         for i in 0..self.keys.len() {
@@ -419,6 +428,7 @@ impl Track {
         if samples.len() < 3 {
             return false;
         }
+        crate::smooth_values(&mut samples, smooth_passes);
         let fitted = crate::fit_fcurve(&samples, tol);
         if fitted.len() >= samples.len() {
             return false; // nothing to gain — keep the originals

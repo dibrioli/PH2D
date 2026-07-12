@@ -19,6 +19,11 @@ pub use ph2d_editor_core::ids::{
 };
 
 pub use ph2d_editor_core::ids::CTX_MENU_TL_DELETE_TRACK;
+pub use ph2d_editor_core::ids::{
+    CTX_MENU_TL_STRIP_DELETE, CTX_MENU_TL_STRIP_DUPLICATE, CTX_MENU_TL_STRIP_LOOP,
+    CTX_MENU_TL_STRIP_ONCE, CTX_MENU_TL_STRIP_PINGPONG, CTX_MENU_TL_STRIP_RESET_SPEED,
+    TIMELINE_STRIP_MENU,
+};
 
 /// The "+Track" property buttons paired with their [`ph2d_timeline::PropKind`]:
 /// the six scene properties in `PropKind::ALL` order, then **Time Remap** (the

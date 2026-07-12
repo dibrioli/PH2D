@@ -243,6 +243,10 @@ pub struct StripDrag {
     pub start_x: f32,
     /// The strip's `(t_start, t_end)` when the drag began.
     pub start_span: (f64, f64),
+    /// Cmd/Ctrl was held at Begin: the edge RETIMES instead of trimming (a rate
+    /// stretch). Latched at Begin and never re-read — a modifier released mid-drag
+    /// must not change what the gesture means halfway through.
+    pub stretch: bool,
 }
 
 /// An open marker rename. The field text lives in the `WidgetStore` (like every

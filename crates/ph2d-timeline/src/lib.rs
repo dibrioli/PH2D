@@ -28,6 +28,7 @@ pub mod doc;
 pub mod graph;
 pub mod history;
 pub mod intent;
+pub mod intent_apply;
 pub mod persist;
 pub mod prop;
 pub mod snapshot;
@@ -48,7 +49,8 @@ pub use graph::{
     speed_handle_tip, value_extent, weighted_with_handle, weighted_with_speed_handle,
 };
 pub use history::{HISTORY_CAP, TimelineHistory};
-pub use intent::{TimelineIntent, apply_intent, snap_time};
+pub use intent::TimelineIntent;
+pub use intent_apply::{apply_intent, snap_time};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::{Algebra, PropKind};
 pub use snapshot::{KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};

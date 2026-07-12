@@ -63,6 +63,11 @@ pub(crate) fn apply_event(
     {
         return out;
     }
+    if let WidgetEvent::Click(id) = ev
+        && let Some(out) = strip_menu_click(id, host)
+    {
+        return out;
+    }
     match ev {
         // Close (X) — hide the panel (mirror of the other docked panels).
         WidgetEvent::Click(id) if id == ids::TIMELINE_CLOSE => {
@@ -234,6 +239,76 @@ pub(crate) fn apply_event(
         }
         _ => EventOutcome::Ignored,
     }
+}
+
+/// The strip's right-click menu (ADR-0115 B6). `None` means "not one of ours".
+///
+/// Same two gotchas the track menu documents, for the same reasons: the Down that
+/// preceded this Click already CLOSED the menu (so read
+/// `context_menu().or_else(last_context_menu())` — reading only the open one
+/// ships a menu that does nothing), and the request is CONSUMED after it lands
+/// (so a later stray Click on the id cannot duplicate the strip a second time).
+///
+/// The request names the strip by its stable id, and the snapshot is asked to
+/// confirm it still exists: a strip deleted between the menu opening and the row
+/// being clicked resolves to nothing. The action expires with its target.
+fn strip_menu_click(
+    id: ph2d_editor_core::NodeId,
+    host: &mut dyn PanelHostInternal,
+) -> Option<EventOutcome> {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    use ph2d_timeline::{StripId, StripLoop};
+
+    if !ids::TIMELINE_STRIP_MENU.iter().any(|(r, _, _)| *r == id) {
+        return None;
+    }
+    let req = host
+        .store()
+        .context_menu()
+        .or_else(|| host.store().last_context_menu());
+    let Some(ContextMenuKind::TimelineStrip { lane, strip }) = req.map(|r| r.kind) else {
+        return Some(EventOutcome::Consumed);
+    };
+    let id_ = StripId(strip);
+    let snap = crate::state::current_snapshot();
+    let live = snap
+        .lanes
+        .get(lane)
+        .is_some_and(|l| l.strips.iter().any(|s| s.id == id_));
+    if live {
+        let intent = if id == ids::CTX_MENU_TL_STRIP_DUPLICATE {
+            TimelineIntent::DuplicateStrip { lane, id: id_ }
+        } else if id == ids::CTX_MENU_TL_STRIP_DELETE {
+            TimelineIntent::RemoveStrip { lane, id: id_ }
+        } else if id == ids::CTX_MENU_TL_STRIP_RESET_SPEED {
+            TimelineIntent::SetStripSpeed {
+                lane,
+                id: id_,
+                speed: 1.0,
+            }
+        } else {
+            // The three source modes. Exhaustive over what remains of the table —
+            // and if a row is ever added without landing here, `strip_menu_click`
+            // would silently set Once, so the seam test proves each row raises the
+            // intent it names rather than merely raising SOMETHING.
+            let loop_mode = if id == ids::CTX_MENU_TL_STRIP_LOOP {
+                StripLoop::Loop
+            } else if id == ids::CTX_MENU_TL_STRIP_PINGPONG {
+                StripLoop::PingPong
+            } else {
+                StripLoop::Once
+            };
+            TimelineIntent::SetStripLoop {
+                lane,
+                id: id_,
+                loop_mode,
+            }
+        };
+        state::push_intent(intent);
+    }
+    host.store_mut().close_context_menu();
+    host.store_mut().consume_last_context_menu();
+    Some(EventOutcome::Consumed)
 }
 
 /// The clip stack's chrome (ADR-0115): "+ Lane", and each lane's mute and

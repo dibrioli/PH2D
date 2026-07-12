@@ -44,6 +44,7 @@ pub(crate) fn apply(
                 edge,
                 start_x: g.x,
                 start_span: (s.t_start, s.t_end),
+                stretch: g.mods.cmd,
             });
         }
         GesturePhase::Update | GesturePhase::End => {
@@ -77,21 +78,37 @@ fn emit(
     let (a0, b0) = d.start_span;
     let intent = match d.edge {
         // The two edges TRIM: the span's edge and the source slice's edge travel
-        // together, so the frames that stay visible stay put (`TrimStrip`). This
-        // is not a stretch — stretching is `speed`, and it is a different gesture
-        // on purpose.
-        0 => TimelineIntent::TrimStrip {
-            lane: d.lane,
-            id: d.id,
-            edge: 0,
-            t: snapped(state, snap, a0 + dt),
-        },
-        1 => TimelineIntent::TrimStrip {
-            lane: d.lane,
-            id: d.id,
-            edge: 1,
-            t: snapped(state, snap, b0 + dt),
-        },
+        // together, so the frames that stay visible stay put (`TrimStrip`).
+        //
+        // Held with Cmd/Ctrl the SAME edge STRETCHES instead: the slice is pinned
+        // and the rate falls out of the new span (`StretchStrip`). One gesture,
+        // two meanings, and the modifier picks which — because trim and stretch
+        // are the only two things an edge can mean, and an editor that offers just
+        // one of them makes the other impossible rather than merely awkward.
+        //
+        // No NLE agrees on the modifier (they all make the stretch a separate
+        // TOOL — Premiere's Rate Stretch, Resolve's Change Speed), and a panel has
+        // no tool palette. Cmd is ours; it is free here, and it is the modifier
+        // that already means "the other reading of this gesture" everywhere else
+        // in the editor.
+        0 | 1 => {
+            let t = snapped(state, snap, if d.edge == 0 { a0 + dt } else { b0 + dt });
+            if d.stretch {
+                TimelineIntent::StretchStrip {
+                    lane: d.lane,
+                    id: d.id,
+                    edge: d.edge,
+                    t,
+                }
+            } else {
+                TimelineIntent::TrimStrip {
+                    lane: d.lane,
+                    id: d.id,
+                    edge: d.edge,
+                    t,
+                }
+            }
+        }
         // The body SLIDES, rigidly. Clamped at zero so a strip cannot be dragged
         // off the front of the timeline and become unreachable.
         _ => TimelineIntent::MoveStrip {
@@ -100,7 +117,6 @@ fn emit(
             t_start: snapped(state, snap, (a0 + dt).max(0.0)),
         },
     };
-    let _ = b0;
     state::push_intent(intent);
 }
 

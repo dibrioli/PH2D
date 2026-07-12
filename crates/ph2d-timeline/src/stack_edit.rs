@@ -75,6 +75,24 @@ impl TimelineDoc {
         Some(id)
     }
 
+    /// Copy a strip and lay the copy down **immediately after** the original,
+    /// same length, same slice, same rate.
+    ///
+    /// Adjacent, not overlapping — a duplicate that landed on top of its source
+    /// would come up as a crossfade of a clip with itself, which is a null edit
+    /// dressed as a blend. Butted end-to-start it reads as a repeat, and dragging
+    /// it left by hand IS the crossfade (that is the whole gesture, ADR-0115 R1).
+    pub fn duplicate_strip(&mut self, lane: usize, id: StripId) -> Option<StripId> {
+        let mut copy = self.strip(lane, id)?.clone();
+        let new_id = self.alloc_strip_id();
+        let span = copy.span();
+        copy.id = new_id;
+        copy.t_start += span;
+        copy.t_end += span;
+        self.stack_mut().get_mut(lane)?.insert(copy);
+        Some(new_id)
+    }
+
     /// Drop a strip from a lane.
     pub fn remove_strip(&mut self, lane: usize, id: StripId) -> bool {
         let Some(l) = self.stack_mut().get_mut(lane) else {

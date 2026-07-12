@@ -558,3 +558,140 @@ fn add_lane_raises_its_intent_and_a_vanished_lane_raises_none() {
         "a mute for a lane that is not there mutes nothing"
     );
 }
+
+// ── The strip's right-click menu (ADR-0115 B6) ──────────────────────────────
+
+/// A published snapshot holding one lane with one strip. Returns the strip's id.
+fn publish_one_strip() -> ph2d_timeline::StripId {
+    use ph2d_timeline::{TimelineIntent as I, TimelineViewSnapshot, apply_intent};
+    let mut st = ph2d_timeline::TimelineState::default();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    apply_intent(&mut st, &mut ph, I::AddLane);
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::AddStrip {
+            lane: 0,
+            clip: 0,
+            t_start: 0.0,
+            t_end: 2.0,
+        },
+    );
+    let id = st.doc.stack()[0].strips[0].id;
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&st, &ph);
+    ph2d_panel_timeline::set_current_timeline(Some(snap));
+    id
+}
+
+/// Park a strip menu the way production does: the Secondary Down opened it, the
+/// next Down CLOSED it (leaving the request in `last_context_menu`), and only
+/// then does the Click on the row arrive.
+fn park_strip_menu(host: &mut MockPanelHost, strip: ph2d_timeline::StripId) {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    use ph2d_editor_core::panel::PanelHostInternal;
+    host.store_mut().open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 0.0,
+        kind: ContextMenuKind::TimelineStrip {
+            lane: 0,
+            strip: strip.0,
+        },
+    });
+    host.store_mut().close_context_menu();
+}
+
+/// **The anti-dead-item gate for the strip menu — and it checks WHICH intent.**
+///
+/// Demanding only that the panel *consume* the click would pass a menu whose six
+/// rows all quietly did the same thing: the loop-mode arm falls back to `Once`,
+/// so a new row wired to nothing would land there and look handled. Each row must
+/// therefore raise the intent its own label promises.
+#[test]
+fn every_strip_menu_row_raises_the_intent_its_label_promises() {
+    use ph2d_editor_core::ids as c;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_timeline::{StripLoop, TimelineIntent as I};
+
+    let _ = ph2d_panel_timeline::drain_intents();
+    let strip = publish_one_strip();
+    let lane = 0;
+
+    let expected = |id: ph2d_editor_core::NodeId| -> I {
+        if id == c::CTX_MENU_TL_STRIP_DUPLICATE {
+            I::DuplicateStrip { lane, id: strip }
+        } else if id == c::CTX_MENU_TL_STRIP_DELETE {
+            I::RemoveStrip { lane, id: strip }
+        } else if id == c::CTX_MENU_TL_STRIP_RESET_SPEED {
+            I::SetStripSpeed {
+                lane,
+                id: strip,
+                speed: 1.0,
+            }
+        } else if id == c::CTX_MENU_TL_STRIP_LOOP {
+            I::SetStripLoop {
+                lane,
+                id: strip,
+                loop_mode: StripLoop::Loop,
+            }
+        } else if id == c::CTX_MENU_TL_STRIP_PINGPONG {
+            I::SetStripLoop {
+                lane,
+                id: strip,
+                loop_mode: StripLoop::PingPong,
+            }
+        } else {
+            I::SetStripLoop {
+                lane,
+                id: strip,
+                loop_mode: StripLoop::Once,
+            }
+        }
+    };
+
+    for (id, label, _) in c::TIMELINE_STRIP_MENU {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        park_strip_menu(&mut host, strip);
+
+        let outcome = host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "strip-menu row `{label}` is painted but has no event.rs arm"
+        );
+        assert_eq!(
+            ph2d_panel_timeline::drain_intents(),
+            vec![expected(id)],
+            "strip-menu row `{label}` must raise the intent it names"
+        );
+        assert!(
+            host.store().last_context_menu().is_none(),
+            "row `{label}` left its request parked: a stray later Click would fire it again"
+        );
+    }
+    ph2d_panel_timeline::set_current_timeline(None);
+}
+
+/// A strip deleted between the menu opening and the row being clicked resolves to
+/// nothing. The id is stable, so it cannot be re-used — but the strip is gone, and
+/// an intent naming a dead strip is an intent the document would have to guess at.
+#[test]
+fn a_strip_menu_click_for_a_vanished_strip_expires_quietly() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    ph2d_panel_timeline::set_current_timeline(None); // no lanes at all
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    park_strip_menu(&mut host, ph2d_timeline::StripId(404));
+
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_STRIP_DELETE),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed);
+    assert!(
+        ph2d_panel_timeline::drain_intents().is_empty(),
+        "a dead strip's delete must not raise an intent"
+    );
+}

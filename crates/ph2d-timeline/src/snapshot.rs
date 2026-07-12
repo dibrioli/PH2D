@@ -77,6 +77,10 @@ pub struct StripView {
     pub blend_out: f64,
     /// Whether its source loops, ping-pongs, or plays once.
     pub loop_mode: StripLoop,
+    /// Its playback rate. The panel writes it on the strip whenever it is not
+    /// `1.0` — a retimed strip that looks exactly like a real-time one is a strip
+    /// whose speed the animator will rediscover by being surprised.
+    pub speed: f64,
 }
 
 /// One lane of the clip stack.
@@ -178,6 +182,7 @@ impl TimelineViewSnapshot {
                     blend_in: lane.blend_in(i),
                     blend_out: lane.blend_out(i),
                     loop_mode: st.loop_mode,
+                    speed: st.speed,
                 });
             }
             self.lanes.push(LaneView {

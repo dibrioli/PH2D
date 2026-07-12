@@ -242,6 +242,17 @@ pub enum ContextMenuKind {
     /// Track). `target` is the row's raw `AnimTarget` — opaque here; the
     /// timeline panel resolves it against its snapshot and raises the intent.
     TimelineTrack { target: u64 },
+    /// Right-clicked a clip strip in a stack lane (`ids::TIMELINE_STRIP_MENU`).
+    /// Both fields are opaque here — the timeline panel resolves them against its
+    /// snapshot, exactly as it does for [`ContextMenuKind::TimelineTrack`].
+    TimelineStrip {
+        /// Which lane the strip is on.
+        lane: usize,
+        /// The strip's stable id (`ph2d_timeline::StripId`), NOT its index: a lane
+        /// re-sorts on every move, so an index parked in a menu request would name
+        /// a different strip by the time the click arrives.
+        strip: u64,
+    },
 }
 
 /// What a timeline preset pick applies to. Both variants are opaque here —

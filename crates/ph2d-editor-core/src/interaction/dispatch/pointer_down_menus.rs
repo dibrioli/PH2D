@@ -105,6 +105,12 @@ pub(super) fn handle_down_menus(
                         scope: S::Column { t_bits },
                     }),
                     K::Row { target } => Some(ContextMenuKind::TimelineTrack { target }),
+                    // A strip — any of its three grab zones: the body and both
+                    // trim edges open the same menu, because they are all the
+                    // same strip and a right-click is not a drag.
+                    K::Strip { lane, strip, .. } => {
+                        Some(ContextMenuKind::TimelineStrip { lane, strip })
+                    }
                     _ => None,
                 }
             });

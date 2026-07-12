@@ -9,6 +9,8 @@
 //! Nothing here knows what an overlap is either. Two strips whose rectangles touch
 //! simply have a blend window at that end, because the lane says so.
 
+use std::borrow::Cow;
+
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
@@ -26,6 +28,8 @@ use crate::{geom, ids};
 const STRIP_PAD_Y: f32 = 3.0; // LITERAL-PX-OK: a strip must not touch its row's edge
 /// Grab width of a strip's trim edges.
 const EDGE_W: f32 = 6.0; // LITERAL-PX-OK: a pointer-sized grip, like the loop brace's
+/// Below this, a rate is real time and the strip says nothing about it.
+const SPEED_EPS: f64 = 1e-6; // LITERAL-PX-OK: not a length — a "is it exactly 1" epsilon
 
 /// The "+ Lane" button, beside "+ Track" in the label column's header strip.
 pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
@@ -233,11 +237,20 @@ fn paint_strip(
         );
     }
 
+    // The rate leads the name. A retimed strip is pixel-identical to a trimmed one
+    // — the box says how long it plays, never how fast — so the surprising fact
+    // goes FIRST, where elision cannot eat it on a narrow strip. The guessable one
+    // (which clip) can be cut.
+    let label: Cow<'_, str> = if (s.speed - 1.0).abs() > SPEED_EPS {
+        Cow::Owned(format!("{:.2}\u{d7} {}", s.speed, s.clip_name))
+    } else {
+        Cow::Borrowed(s.clip_name.as_str())
+    };
     let font = TypeToken::Sm.px();
     paint_text_elided(
         ctx.text_system,
         ctx.scene,
-        &s.clip_name,
+        &label,
         body.x + Spacing::Xs.px(),
         body.y + (body.h - font) * 0.5,
         font,

@@ -24,6 +24,7 @@ fn snap() -> TimelineViewSnapshot {
                 blend_in: 0.0,
                 blend_out: 0.0,
                 loop_mode: StripLoop::Once,
+                speed: 1.0,
             }],
         }],
         ..TimelineViewSnapshot::default()
@@ -31,6 +32,10 @@ fn snap() -> TimelineViewSnapshot {
 }
 
 fn gesture(edge: u8, phase: GesturePhase, x: f32) -> TimelineGesture {
+    with_mods(edge, phase, x, GestureMods::default())
+}
+
+fn with_mods(edge: u8, phase: GesturePhase, x: f32, mods: GestureMods) -> TimelineGesture {
     TimelineGesture {
         surface: ph2d_a11y::NodeId(0),
         kind: TimelineHitKind::Strip {
@@ -42,7 +47,7 @@ fn gesture(edge: u8, phase: GesturePhase, x: f32) -> TimelineGesture {
         x,
         y: 0.0,
         button: PointerButton::Primary,
-        mods: GestureMods::default(),
+        mods,
     }
 }
 
@@ -114,6 +119,53 @@ fn dragging_an_edge_trims_and_never_moves() {
             "an edge drag is not a move"
         );
     }
+}
+
+/// The SAME edge drag, with Cmd held, is a stretch and not a trim — and the
+/// modifier is latched at Begin: releasing it mid-drag must not turn a retime into
+/// a trim halfway through the gesture (the strip would be half one edit, half the
+/// other, and a single Ctrl+Z would undo an edit nobody made).
+#[test]
+fn cmd_turns_an_edge_drag_into_a_stretch_and_the_modifier_latches() {
+    let _ = state::drain_intents();
+    let mut st = TimelinePanelState::default();
+    let s = snap();
+    let cmd = GestureMods {
+        cmd: true,
+        ..GestureMods::default()
+    };
+    apply(
+        &mut st,
+        100.0,
+        &s,
+        0,
+        7,
+        1,
+        with_mods(1, GesturePhase::Begin, 100.0, cmd),
+    );
+    // The modifier is RELEASED for the rest of the drag — and the gesture holds.
+    apply(
+        &mut st,
+        100.0,
+        &s,
+        0,
+        7,
+        1,
+        gesture(1, GesturePhase::End, 200.0),
+    );
+    let out = state::drain_intents();
+    assert!(
+        out.iter().any(|i| matches!(
+            i,
+            TimelineIntent::StretchStrip { edge: 1, t, .. } if (t - 4.0).abs() < 1e-9
+        )),
+        "Cmd + end edge must stretch to 4 s: {out:?}"
+    );
+    assert!(
+        !out.iter()
+            .any(|i| matches!(i, TimelineIntent::TrimStrip { .. })),
+        "and it is NOT a trim: a released modifier cannot change what the drag means"
+    );
 }
 
 /// The delta applies to the span captured at Begin, never to the live one — a

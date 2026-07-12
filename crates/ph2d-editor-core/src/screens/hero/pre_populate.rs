@@ -433,6 +433,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         .iter()
         .chain(ids::TIMELINE_EASE_MENU.iter())
         .chain(ids::TIMELINE_TRACK_MENU.iter())
+        .chain(ids::TIMELINE_STRIP_MENU.iter())
     {
         store.register(*id, InteractiveState::Plain);
     }

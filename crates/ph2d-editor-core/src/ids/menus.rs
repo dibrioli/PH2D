@@ -640,6 +640,40 @@ pub const CTX_MENU_TL_DELETE_TRACK: NodeId = hash_node_id("ctx_menu_tl_delete_tr
 pub const TIMELINE_TRACK_MENU: [(NodeId, &str, Option<[u8; 4]>); 1] =
     [(CTX_MENU_TL_DELETE_TRACK, "Delete Track", None)];
 
+// ── Timeline clip-strip menu (ADR-0115 B6) ──────────────────────────────────
+// Right-click a strip in a stack lane. What is NOT here is as deliberate as what
+// is: no blend-in/blend-out numbers (the overlap IS the blend — ADR-0115 R1) and
+// no speed field (a rate is felt, not typed: Cmd-drag an edge to stretch). The
+// menu carries only what a pointer cannot say.
+/// Copy the strip and lay the copy down right after it.
+pub const CTX_MENU_TL_STRIP_DUPLICATE: NodeId = hash_node_id("ctx_menu_tl_strip_duplicate");
+/// Remove the strip from its lane.
+pub const CTX_MENU_TL_STRIP_DELETE: NodeId = hash_node_id("ctx_menu_tl_strip_delete");
+/// Source plays once, then holds its last value.
+pub const CTX_MENU_TL_STRIP_ONCE: NodeId = hash_node_id("ctx_menu_tl_strip_once");
+/// Source wraps to the start of its slice.
+pub const CTX_MENU_TL_STRIP_LOOP: NodeId = hash_node_id("ctx_menu_tl_strip_loop");
+/// Source reflects: forward, backward, forward.
+pub const CTX_MENU_TL_STRIP_PINGPONG: NodeId = hash_node_id("ctx_menu_tl_strip_pingpong");
+/// Back to real time — the span re-lengthens to fit the slice at rate 1.
+pub const CTX_MENU_TL_STRIP_RESET_SPEED: NodeId = hash_node_id("ctx_menu_tl_strip_reset_speed");
+
+/// The strip menu, in paint order: the two edits to the strip itself, then the
+/// three things its source can do when it runs out, then the retime escape.
+///
+/// One table, three consumers — the overlay paints it, `pre_populate` registers
+/// it, and the timeline panel's `apply_event` resolves every row. A row added
+/// here and unhandled there is a menu item that silently does nothing; the seam
+/// test walks this table and fails on exactly that.
+pub const TIMELINE_STRIP_MENU: [(NodeId, &str, Option<[u8; 4]>); 6] = [
+    (CTX_MENU_TL_STRIP_DUPLICATE, "Duplicate Strip", None),
+    (CTX_MENU_TL_STRIP_DELETE, "Delete Strip", None),
+    (CTX_MENU_TL_STRIP_ONCE, "Play Once", None),
+    (CTX_MENU_TL_STRIP_LOOP, "Loop", None),
+    (CTX_MENU_TL_STRIP_PINGPONG, "Ping-Pong", None),
+    (CTX_MENU_TL_STRIP_RESET_SPEED, "Reset Speed", None),
+];
+
 /// The easing-family submenu, shared by all three modes (the mode rides in the
 /// `ContextMenuKind`). Ordered gentlest-first, with the two non-monotone
 /// families (overshoot, bounce) last — the order animators scan.

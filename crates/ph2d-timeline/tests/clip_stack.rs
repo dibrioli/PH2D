@@ -541,4 +541,176 @@ mod intents {
         assert_eq!(lane.strips[0].loop_mode, StripLoop::PingPong);
         assert!(lane.strips[0].speed > 0.0, "speed never reaches zero");
     }
+
+    /// A lane holding one 2-second strip of a 2-second clip, at real time.
+    fn app_with_a_strip() -> (TimelineState, Playhead, ph2d_timeline::StripId) {
+        use ph2d_anim::{AnimValue, Interp, RationalTime};
+        use ph2d_timeline::PropKind;
+        let (mut st, mut ph) = app();
+        // The clip's duration is its last key — a clip of nothing is a strip with
+        // no slice, and a strip with no slice has no rate to stretch.
+        st.doc.insert_key(
+            7,
+            PropKind::TranslationX,
+            RationalTime::from_seconds(2.0),
+            AnimValue::Float(1.0),
+            Interp::Linear,
+        );
+        run(&mut st, &mut ph, I::AddLane);
+        run(
+            &mut st,
+            &mut ph,
+            I::AddStrip {
+                lane: 0,
+                clip: 0,
+                t_start: 0.0,
+                t_end: 2.0,
+            },
+        );
+        let id = st.doc.stack()[0].strips[0].id;
+        (st, ph, id)
+    }
+
+    /// **The stretch is the trim's opposite, and that is the whole point.**
+    ///
+    /// Dragging the end edge from 2 s to 4 s with the modifier held must play the
+    /// SAME two seconds of clip over twice the time — slice untouched, rate halved.
+    /// The identical drag without the modifier hides nothing and reveals two more
+    /// seconds of source at rate 1. Asserting both here, side by side, is the only
+    /// way to prove they did not quietly become the same edit.
+    #[test]
+    fn stretching_an_edge_holds_the_slice_and_changes_the_rate() {
+        let (mut st, mut ph, id) = app_with_a_strip();
+        let slice = st.doc.strip(0, id).map(ClipStrip::slice);
+
+        run(
+            &mut st,
+            &mut ph,
+            I::StretchStrip {
+                lane: 0,
+                id,
+                edge: 1,
+                t: 4.0,
+            },
+        );
+        let s = st.doc.strip(0, id).unwrap();
+        assert_eq!(s.span(), 2.0 * 2.0, "the box doubled");
+        assert_eq!(Some(s.slice()), slice, "and the source slice did NOT move");
+        assert!(
+            (s.speed - 0.5).abs() < 1e-12,
+            "twice the box, same content: half speed, got {}",
+            s.speed
+        );
+        assert_eq!(s.t_start, 0.0, "the edge you are not dragging stays put");
+
+        // And the same gesture WITHOUT the modifier is a trim: the rate is
+        // untouched and the slice grows to fill the new box.
+        run(&mut st, &mut ph, I::Undo);
+        run(
+            &mut st,
+            &mut ph,
+            I::TrimStrip {
+                lane: 0,
+                id,
+                edge: 1,
+                t: 4.0,
+            },
+        );
+        let s = st.doc.strip(0, id).unwrap();
+        assert_eq!(s.speed, 1.0, "a trim never retimes");
+        assert!(s.slice() > slice.unwrap(), "it reveals more source");
+    }
+
+    /// Stretching from the START edge pins the END — the frame under the edge you
+    /// are not touching must not move, or the strip walks across the timeline while
+    /// you retime it.
+    #[test]
+    fn stretching_the_start_edge_pins_the_end() {
+        let (mut st, mut ph, id) = app_with_a_strip();
+        run(
+            &mut st,
+            &mut ph,
+            I::MoveStrip {
+                lane: 0,
+                id,
+                t_start: 4.0,
+            },
+        ); // [4, 6)
+        run(
+            &mut st,
+            &mut ph,
+            I::StretchStrip {
+                lane: 0,
+                id,
+                edge: 0,
+                t: 2.0,
+            },
+        );
+        let s = st.doc.strip(0, id).unwrap();
+        assert_eq!(s.t_end, 6.0, "the end is pinned");
+        assert_eq!(s.t_start, 2.0);
+        assert!((s.speed - 0.5).abs() < 1e-12, "4 s of box, 2 s of clip");
+    }
+
+    /// **Reset Speed re-lengthens the box.** Setting the rate back to 1 while
+    /// leaving a stretched span would leave the strip playing a slice that no
+    /// longer fits it — the source would run out mid-span and the number in the
+    /// menu would describe a strip nobody authored. Rate and span are one edit.
+    #[test]
+    fn resetting_the_speed_restores_real_time_and_the_span_with_it() {
+        let (mut st, mut ph, id) = app_with_a_strip();
+        run(
+            &mut st,
+            &mut ph,
+            I::StretchStrip {
+                lane: 0,
+                id,
+                edge: 1,
+                t: 8.0,
+            },
+        );
+        assert!((st.doc.strip(0, id).unwrap().speed - 0.25).abs() < 1e-12);
+
+        run(
+            &mut st,
+            &mut ph,
+            I::SetStripSpeed {
+                lane: 0,
+                id,
+                speed: 1.0,
+            },
+        );
+        let s = st.doc.strip(0, id).unwrap();
+        assert_eq!(s.speed, 1.0);
+        assert_eq!(
+            s.span(),
+            s.slice(),
+            "at real time the box is exactly as long as what it plays"
+        );
+    }
+
+    /// A duplicate lands BUTTED AGAINST its original, never on top of it: a copy
+    /// overlapping its source would come up as a crossfade of a clip with itself —
+    /// a null edit dressed as a blend. End-to-start it reads as a repeat, and
+    /// dragging it left BY HAND is the crossfade (that is the gesture, ADR-0115 R1).
+    #[test]
+    fn a_duplicate_lands_next_to_its_original_not_on_top_of_it() {
+        let (mut st, mut ph, id) = app_with_a_strip();
+        run(&mut st, &mut ph, I::DuplicateStrip { lane: 0, id });
+
+        let lane = &st.doc.stack()[0];
+        assert_eq!(lane.strips.len(), 2);
+        let (a, b) = (&lane.strips[0], &lane.strips[1]);
+        assert_ne!(a.id, b.id, "a copy is a NEW strip, not an alias");
+        assert_eq!(b.t_start, a.t_end, "butted, not overlapping");
+        assert_eq!(b.span(), a.span());
+        assert_eq!(
+            lane.blend_in(1),
+            0.0,
+            "and therefore no crossfade was invented on the animator's behalf"
+        );
+
+        run(&mut st, &mut ph, I::Undo);
+        assert_eq!(st.doc.stack()[0].strips.len(), 1, "one gesture, one Ctrl+Z");
+    }
 }

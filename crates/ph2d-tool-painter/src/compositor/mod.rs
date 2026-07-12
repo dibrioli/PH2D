@@ -97,7 +97,10 @@ fn encode_byte(thresh: &[f32; 255], coarse: &[u8; 4096], v: f32) -> u8 {
 }
 
 /// RGBA8 (straight, sRGB-encoded) pixels for one layer — canvas-sized.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// Serializable because a painted document has to survive a restart: `LayerStack` (the structure) has
+/// been serde all along, and these are the pixels it points at.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LayerImage {
     pub width: u32,
     pub height: u32,

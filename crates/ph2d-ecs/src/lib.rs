@@ -44,6 +44,7 @@ pub mod blend;
 pub mod flip_object_ref;
 pub mod masking;
 pub mod name;
+pub mod painted_doc;
 pub mod present;
 pub mod root_order;
 pub mod sampling;
@@ -62,6 +63,7 @@ pub use blend::BlendMode;
 pub use flip_object_ref::FlipObjectRef;
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use name::Name;
+pub use painted_doc::PaintedDoc;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::RootOrder;
 pub use sampling::{

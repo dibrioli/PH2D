@@ -62,9 +62,21 @@ trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
   (tinta sem corpo não recebe luz **nenhuma**, em qualquer setting) — a métrica de croma antiga não
   distinguia luz honesta de halo sob `Body 0`; e o screen ganhou **gate algébrico exato**
   (`screen(R)−screen(G) = (R−G)(1−add)`), sem limiar de imagem. Perf 1.94 ms/move. Plano §10.5.
+- **PERSISTÊNCIA do documento pintado (Fase 5) — a pintura sobrevive ao `Ctrl+S`.** Antes: sprite
+  pintado = `Individual{texture_id}` (id de runtime da GPU) ⇒ pintar+salvar+reabrir devolvia o quadro
+  **em branco**. Agora: componente **NOVA `ph2d_ecs::PaintedDoc(u32)`** (módulo irmão `painted_doc.rs`,
+  registrada no `ComponentRegistry` 26→**27**) dá identidade estável; `PaintedDocument`
+  (`ph2d-tool-painter/src/tool/persist.rs`) leva **camadas + pixels + relevo + cobertura** para o
+  arquivo (`LayerImage` ganhou serde); o load re-instala, compõe **pelo caminho normal do preview**
+  (sem segundo bake) e re-materializa a textura individual. `PROJECT_SCHEMA` 2→**3**. Shell:
+  `project_painter.rs` (NOVO) + 3 linhas em `project.rs` + `next_painted_doc` no `AppGfx`. Gate
+  `a_painted_document_survives_the_disk_with_its_relief` (postcard REAL, entidade com bits diferentes).
+  **⚠️ Foundational tocado:** `ph2d-ecs` (componente nova, append; `registry.rs` +1 linha e o gate de
+  contagem 26→27) — anotado para o integrador. Plano §10.6.
 - **Smoke do Enio: PENDENTE** (validar: os defaults novos · **Shine** acende a crista · girar
   Depth/Body/Source/Smoothing DEPOIS do traço e ver o relevo mudar ao vivo · pintar relevo, trocar de
-  sprite e voltar — a escultura tem de estar lá). Comando do §5 inalterado; card Lighting 4 linhas,
+  sprite e voltar — a escultura tem de estar lá · **pintar, Ctrl+S, fechar, reabrir, Ctrl+O — a pintura
+  E o relevo têm de voltar, ainda editáveis**). Comando do §5 inalterado; card Lighting 4 linhas,
   card Body 5.
 
 Os §§ 1–8 abaixo descrevem as entregas anteriores da linha e continuam válidos; números de gates

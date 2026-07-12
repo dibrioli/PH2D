@@ -499,3 +499,43 @@ separava mal (69 vs 131) e teria sido um gate frágil; a álgebra separa sempre.
 `the_highlight_scales_chroma_and_never_annihilates_it` (unit em `impasto_light`), RED com `v*mul + add`.
 
 Perf: 1.94 ms/move. 43 suítes verdes, clippy 0.
+
+### 10.6 PERSISTÊNCIA do documento pintado (2026-07-12) — a pintura passa a sobreviver ao Ctrl+S
+
+**O que estava quebrado (pior do que o gap conhecido):** o projeto salvava o mundo e os pixels dos
+sprites *importados*, mas **nada** do que o Painter pintava. Um sprite pintado é
+`SpriteSource::Individual { texture_id }`, e esse id é de **runtime da GPU** — noutra sessão aponta
+para um slot vazio. Pintar → `Ctrl+S` → reabrir devolvia o quadro **em branco**: nem o bake achatado
+sobrevivia, muito menos as camadas e o relevo. (O `docs` dizia "Individual fica fora do 1º corte"; a
+consequência real nunca tinha sido escrita.)
+
+**A correção tem 3 peças, e a do meio é a que faltava:**
+
+1. **Identidade ESTÁVEL** — componente nova `ph2d_ecs::PaintedDoc(u32)` (módulo irmão
+   `painted_doc.rs`, molde do `VecPathRef`), carimbada no sprite **no save**. Os bits de entidade (a
+   chave do `doc_cache` do Painter) são id de **alocação**: o restore despawna tudo e recria, então
+   morrem. A componente viaja no `WorldSnapshot` ⇒ sobrevive ao arquivo **e ao undo**. Registrada no
+   `ComponentRegistry` (26→**27**; o gate de contagem acusou, que é o trabalho dele — componente
+   não-registrada é descartada em SILÊNCIO).
+2. **O DOCUMENTO no arquivo, não o bake** — `PaintedDocument` (`tool/persist.rs`): `layers` + os
+   pixels de cada camada + **`heights`/`covers`**. Salvar só o sprite achatado devolveria uma
+   *fotografia* de tinta grossa: sem camadas, sem espessura, sem como continuar esculpindo. Único
+   tipo que faltava serde: `LayerImage` (3 campos). Undo/caches **não** entram (histórico é da sessão).
+3. **A textura re-materializada no load** — o documento é instalado, **composto pelo caminho NORMAL do
+   preview** (`bind_document` + `take_preview_arc`, que já assa a luz do impasto) e sobe para um slot
+   novo do `IndividualTextureStore`; o `Sprite.source` re-aponta. **Deliberadamente não existe um
+   segundo bake** — escrever um seria criar um segundo caminho para a mesma imagem, e é assim que dois
+   caminhos divergem seis meses depois (a lição que esta linha já pagou duas vezes).
+
+`PROJECT_SCHEMA` 2→**3** (postcard é posicional; sem saves publicados, quebra livre).
+
+**Gate:** `a_painted_document_survives_the_disk_with_its_relief` — pinta um traço esculpido numa 2ª
+camada, coleta pelo mapa de ids estáveis, **serializa em postcard de verdade** (dev-dep nova; um teste
+noutro formato não provaria o arquivo que o artista salva), instala num tool **novo** sob **bits de
+entidade diferentes** (o que o restore faz) e afirma: as camadas voltam **e o relevo volta idêntico** —
+ainda editável, não uma foto.
+
+**Aberto (nomeado):** o carimbo do id acontece no save, então um documento pintado e **nunca salvo** não
+tem `PaintedDoc` — o **undo** já o preserva via `doc_cache` em memória, mas um crash antes do 1º save
+perde tudo (é o comportamento de sempre; não regrediu). `SpriteSource::Atlas` (imagens importadas) e
+`CookedTexture` seguem no caminho antigo (`collect_assets`), intactos.

@@ -504,6 +504,9 @@ impl crate::App {
             sort_inputs,
             hero_live,
             next_import_cell,
+            // A identidade estável do documento pintado é carimbada no SAVE (`project_painter`), que é
+            // o único momento em que ela precisa existir — o loop de render não a lê.
+            next_painted_doc: _,
             atlas_asset_map,
             logical_texture_map,
             component_registry,

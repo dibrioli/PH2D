@@ -59,3 +59,8 @@ serde = { version = "1", features = ["derive"] }
 # reconstruction is embarrassingly parallel + byte-identical (disjoint output rows, no reduction, no RNG),
 # so it distributes over the thread pool without touching deterministic replay. Used ONLY there.
 rayon = "1"
+
+[dev-dependencies]
+# O round-trip do documento pintado é provado no formato REAL do projeto (postcard, o wire canônico do
+# repo) — um teste que serializasse com outro formato não provaria o arquivo que o artista salva.
+postcard = { version = "1", features = ["alloc"] }

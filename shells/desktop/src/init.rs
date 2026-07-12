@@ -437,6 +437,7 @@ pub(crate) fn build_initial_state(
         sort_inputs: Vec::new(),
         hero_live,
         next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
+        next_painted_doc: 1, // 0 fica livre como "nenhum"
         atlas_asset_map: BTreeMap::new(),
         component_registry: {
             let mut reg = ComponentRegistry::new();

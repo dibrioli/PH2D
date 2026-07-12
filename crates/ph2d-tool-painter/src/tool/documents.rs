@@ -32,6 +32,47 @@ pub(crate) struct StashedDoc {
     selection: BTreeSet<RtLayerId>,
 }
 
+impl StashedDoc {
+    /// The canvas size of a stashed document (the shell needs it before restoring).
+    pub(crate) fn size(&self) -> (u32, u32) {
+        self.source_size
+    }
+
+    /// Freeze this document for the disk — the structure, the pixels and the relief, and nothing else.
+    /// The undo history and the layer-row selection stay behind on purpose: a session's history is not
+    /// a property of the artwork, and restoring one from a file would be restoring the *ghost* of a
+    /// session that no longer exists.
+    pub(crate) fn to_painted(&self, id: u32) -> crate::tool::persist::PaintedDocument {
+        crate::tool::persist::PaintedDocument {
+            id,
+            layers: self.layers.clone(),
+            canvas_rgba: self.canvas_rgba.as_ref().clone(),
+            images: self.images.clone(),
+            heights: self.heights.clone(),
+            covers: self.covers.clone(),
+            size: self.source_size,
+        }
+    }
+
+    /// The inverse: a document off the disk becomes a stashed one, as if the artist had just switched
+    /// away from it — so `bind_document` restores it through the ONE path that already exists.
+    pub(crate) fn from_painted(doc: crate::tool::persist::PaintedDocument) -> Self {
+        Self {
+            canvas_rgba: crate::tool::persist::arc_pixels(doc.canvas_rgba),
+            layers: doc.layers,
+            images: doc.images,
+            heights: doc.heights,
+            covers: doc.covers,
+            // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps
+            // the versions the first time the compositor asks.)
+            layer_pixel_versions: BTreeMap::new(),
+            source_size: doc.size,
+            undo: crate::undo::UndoController::default(),
+            selection: BTreeSet::new(),
+        }
+    }
+}
+
 impl PainterTool {
     /// Bind the working canvas to sprite `entity` (its `rgba`/`width`/`height` pixels) — the painter's
     /// source-of-truth switch; the bridge calls THIS instead of the generic `set_source`. It stashes the

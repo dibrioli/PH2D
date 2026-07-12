@@ -208,6 +208,7 @@ mod internal;
 pub(crate) use internal::*;
 mod layers;
 mod paint;
+pub mod persist;
 // The parametric selection shape list is part of the model snapshot (undo/redo), so `crate::undo` needs
 // to name its entry type — re-export it crate-wide without opening the rest of `paint`.
 pub(crate) use paint::selection_shapes::SelectionEntry;

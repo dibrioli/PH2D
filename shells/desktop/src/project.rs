@@ -16,7 +16,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v2 (ADR-0114): `ProjectState` ganhou o campo `flip: FlipDoc` (3º) — postcard é
 /// posicional, então um arquivo v1 não desserializa. Sem custo real: a
 /// persistência ainda é stub (sem diálogo de arquivo), sem saves publicados.
-const PROJECT_SCHEMA: u32 = 2;
+/// v3: `ProjectFile` ganhou os **documentos do Painter** (3º campo). Sem eles o projeto salvava um
+/// sprite apontando para uma textura de runtime que morre com o processo — pintar, salvar e reabrir
+/// devolvia o quadro em branco. Ver [`crate::project_painter`].
+const PROJECT_SCHEMA: u32 = 3;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -26,6 +29,9 @@ struct ProjectFile {
     /// Pixels dos sprites, para re-materializar o atlas noutra sessão (Fase 2b).
     /// Vazio na Fase 2a.
     assets: Vec<SavedAsset>,
+    /// Os **documentos do Painter** (camadas + pixels + relevo), por identidade estável
+    /// (`ph2d_ecs::PaintedDoc`). Vazio quando nada foi pintado. Ver [`crate::project_painter`].
+    painted: Vec<ph2d_tool_painter::PaintedDocument>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -47,11 +53,19 @@ impl crate::App {
 
     /// Ctrl+S: serializa o projeto inteiro (mundo + geometria + pixels) para o disco.
     pub(crate) fn project_save(&mut self) {
+        let assets = self.collect_assets();
+        // Os documentos pintados carimbam a identidade estável no mundo, então isto tem de rodar ANTES
+        // da captura — senão o `PaintedDoc` recém-inserido ficaria de fora do snapshot e o load não
+        // teria a quem devolver o documento.
+        let painted = self.collect_painted_docs();
         let Some(state) = self.capture_project() else {
             return;
         };
-        let assets = self.collect_assets();
-        let file = ProjectFile { state, assets };
+        let file = ProjectFile {
+            state,
+            assets,
+            painted,
+        };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,
             Err(e) => {
@@ -90,6 +104,9 @@ impl crate::App {
         }
         self.materialize_assets(&file.assets);
         self.apply_project(&file.state);
+        // Depois do mundo: os sprites já existem (com bits novos), e é pelo `PaintedDoc` que cada um
+        // reencontra o documento que era dele.
+        self.restore_painted_docs(file.painted);
         self.undo = ProjectUndo::default();
         eprintln!("[proj] carregado: {path}");
     }
@@ -195,6 +212,7 @@ mod tests {
                 height: 2,
                 rgba: vec![10, 20, 30, 40],
             }],
+            painted: Vec::new(),
         };
         let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
         let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();

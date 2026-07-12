@@ -60,6 +60,7 @@ mod motion_state;
 mod name_unique;
 mod palette_persist;
 mod project;
+mod project_painter;
 mod render_loop;
 mod sim_populate;
 mod theme;

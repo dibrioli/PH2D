@@ -35,6 +35,8 @@ pub use layers::{
     MAX_GROUP_DEPTH, MaskLayer, RasterLayer, TextureLayer,
 };
 pub use params::PainterParams;
+/// O documento pintado, serializável — a unidade que o arquivo de projeto guarda.
+pub use tool::persist::PaintedDocument;
 // Re-export the effects surface so the layers panel can name adjustment params /
 // blend modes without a direct `ph2d-painter-effects` import.
 pub use ph2d_painter_effects::adjustments::{

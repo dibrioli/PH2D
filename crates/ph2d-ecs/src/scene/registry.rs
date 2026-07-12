@@ -251,6 +251,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ADR-0110: a referência que faz de um path vetorial uma entidade. Sem ela um
     // save do mundo perderia o vínculo path↔entidade e o load duplicaria as formas.
     reg.register::<crate::VecPathRef>("ph2d::ecs::VecPathRef");
+    // A identidade ESTÁVEL do documento do Painter (camadas + pixels + relevo). Sem ela
+    // um save/load não teria como devolver a um sprite o documento que era dele — os bits
+    // da entidade são id de alocação e morrem no restore —, e a pintura voltaria como um
+    // bake achatado, sem camadas e sem espessura.
+    reg.register::<crate::PaintedDoc>("ph2d::ecs::PaintedDoc");
     // ADR-0114: idem para um objeto Flip (animação quadro-a-quadro). Sem ela o
     // save perderia o vínculo objeto↔entidade e o load duplicaria os objetos Flip.
     reg.register::<crate::FlipObjectRef>("ph2d::ecs::FlipObjectRef");
@@ -289,15 +294,20 @@ mod tests {
         register_ecs_components(&mut reg);
         // 4 foundational (Transform/Name/Visibility/RootOrder) + 16 W3
         // sorting/visibility/sampling/mask components (incl. Mask2D source)
-        // + 1 §10 BlendMode + 4 save/undo
-        // (Locked/GroupedChildren/VecPathRef/FlipObjectRef)
+        // + 1 §10 BlendMode + 5 save/undo
+        // (Locked/GroupedChildren/VecPathRef/FlipObjectRef/PaintedDoc)
         // + 1 Live Shapes (VecShape).
-        assert_eq!(reg.len(), 26);
+        //
+        // O número é o ponto: uma componente que o snapshot não conhece é
+        // descartada em SILÊNCIO no save/undo — foi assim que o `PaintedDoc`
+        // (a identidade estável do documento do Painter) teria nascido morto.
+        assert_eq!(reg.len(), 27);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());
         assert!(reg.get_by_name("ph2d::ecs::RootOrder").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Locked").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::PaintedDoc").is_some());
         assert!(reg.get_by_name("ph2d::ecs::GroupedChildren").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPathRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::FlipObjectRef").is_some());

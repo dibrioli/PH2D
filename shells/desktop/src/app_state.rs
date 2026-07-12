@@ -175,6 +175,13 @@ pub(crate) struct AppGfx {
     /// (`insert_atlas_sprite_with_regrow`) uses `atlas_asset_map` to
     /// recover each existing region's source bytes from `asset_db`.
     pub(crate) next_import_cell: u32,
+    /// Próximo `ph2d_ecs::PaintedDoc(u32)` livre — a identidade ESTÁVEL de um documento do Painter.
+    ///
+    /// Os bits de entidade (a chave do `doc_cache` do Painter) são id de ALOCAÇÃO do ECS: morrem no
+    /// restore, que despawna tudo e recria. Este contador dá ao documento um nome que sobrevive ao
+    /// arquivo — e, como a componente viaja no `WorldSnapshot`, ao undo também. Monotônico; o load o
+    /// avança para além dos ids do projeto (mesmo contrato de `next_import_cell`).
+    pub(crate) next_painted_doc: u32,
     /// M14.7 polish: atlas-key → AssetId map kept in sync with each
     /// import. Drives the regrow callback so doubling the atlas
     /// texture preserves every previously-imported sprite. BTreeMap

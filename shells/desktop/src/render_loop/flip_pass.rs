@@ -97,6 +97,14 @@ struct LayerRef<'a> {
     /// escala via `Transform`, e o render o dobra no `world_to_clip`. Identidade
     /// para um objeto não-transformado (caminho comum) — sem custo.
     model: Xform,
+    /// **Esta fatia é um Ghost Frame** (`(rgb do tint, alpha)`): a arte sai como
+    /// silhueta recolorida e esmaecida. `None` = a arte real do quadro.
+    ///
+    /// O fantasma é uma FATIA DA PILHA, não um passe por baixo de tudo: ele entra
+    /// logo ABAIXO da própria camada, então a arte das camadas de baixo NÃO o cobre
+    /// (era o bug do 1º corte — o fundo opaco comia o fantasma da camada de cima) e
+    /// a arte do quadro atual, essa sim, cai por cima dele.
+    ghost: Option<([f32; 3], f32)>,
 }
 
 /// Compõe o Flip amostrado em `playhead` no `game_rt`, mais o **preview ao vivo**
@@ -124,31 +132,14 @@ pub(crate) fn render(
 ) {
     // O preview é atribuído à camada ativa (dobrado na fatia dela). `unfolded` só
     // sobra quando a camada-alvo é invisível/irresolvível — aí cai no overlay
-    // Normal (o usuário nunca desenha às cegas).
-    let (layers, unfolded) = collect_layers(flip, playhead, preview, active_layer, models);
-    if layers.is_empty() && unfolded.is_none() && ghosts.is_none() {
+    // Normal (o usuário nunca desenha às cegas). Os fantasmas entram na MESMA lista,
+    // cada um como uma fatia logo abaixo da sua camada.
+    let (layers, unfolded) = collect_layers(flip, playhead, preview, active_layer, models, ghosts);
+    if layers.is_empty() && unfolded.is_none() {
         return;
     }
     let (w, h) = (window.width.max(1), window.height.max(1));
     let cam = camera_raw(camera, window);
-
-    // Os fantasmas vão PRIMEIRO: o blit do composite é premult-over, então a arte do
-    // quadro atual cai por cima deles (e não o contrário).
-    if let Some(selected) = ghosts {
-        let comp = flip_composite.get_or_insert_with(|| FlipComposite::new(gpu));
-        super::flip_pass_ghosts::draw(
-            flip,
-            flip_render,
-            &mut comp.tess,
-            models,
-            playhead,
-            selected,
-            game_rt,
-            &cam,
-            (w, h),
-            gpu,
-        );
-    }
 
     if !layers.is_empty() {
         composite_layers(
@@ -232,18 +223,21 @@ fn composite_layers(
             };
             // A geometria é LOCAL; o `model` do objeto entra pelo `world_to_clip`
             // (e a espessura pela escala). Identidade = a câmera base, sem custo.
-            let cam_obj;
-            let layer_cam: &CameraRaw = if l.model.is_identity() {
-                cam
+            // Numa fatia de FANTASMA, a mesma câmera carrega o tint (a cobertura é a
+            // mesma do desenho; só a cor e o alpha mudam).
+            let mut layer_cam = if l.model.is_identity() {
+                *cam
             } else {
-                cam_obj = fold_model(cam, &l.model);
-                &cam_obj
+                fold_model(cam, &l.model)
             };
+            if let Some((rgb, a)) = l.ghost {
+                layer_cam = layer_cam.with_ghost_tint(rgb, a);
+            }
             let slice = flip_compose.stage_layer(
                 &gpu.device,
                 &gpu.queue,
                 flip_render,
-                layer_cam,
+                &layer_cam,
                 data,
                 (w, h),
             );
@@ -341,6 +335,7 @@ fn collect_layers<'a>(
     preview: Option<&'a FlipGpuData>,
     active_layer: Option<LayerId>,
     models: &[(FlipObjectId, Xform)],
+    ghosts: Option<&[Frame]>,
 ) -> (Vec<LayerRef<'a>>, Option<&'a FlipGpuData>) {
     // Camada-alvo do preview: a ativa do 1º objeto (se ainda existe) ou o topo —
     // exatamente o fallback que o `bake_stroke` usa. `None` sem preview.
@@ -374,6 +369,29 @@ fn collect_layers<'a>(
             let did = layer.drawing_at(frame);
             let drawing = did.and_then(|d| obj.drawing(d));
             let has_geo = drawing.is_some_and(|d| !d.strokes.is_empty());
+
+            // Os fantasmas DESTA camada entram ANTES dela na pilha (mais para o
+            // fundo) — e DEPOIS de todas as camadas de baixo. É isto que faz o
+            // fantasma da camada de cima aparecer POR CIMA da arte da camada de
+            // baixo: ele é uma fatia da pilha, não um passe por baixo de tudo.
+            // Blend Normal + opacity 1: o fade/opacidade já estão no alpha do tint
+            // (aplicá-los de novo pelo compositor os elevaria ao quadrado, e um
+            // blend Multiply da camada tingiria o fantasma com a arte de baixo).
+            if let Some(selected) = ghosts {
+                for g in super::flip_pass_ghosts::collect(obj, layer, frame, playhead, selected) {
+                    out.push(LayerRef {
+                        key: ghost_key(obj.id.0, layer.id.0, g.delta),
+                        blend: ph2d_flip::BlendMode::default().to_u8(),
+                        opacity: 1.0,
+                        cache_key: (obj.id.0, g.drawing_id),
+                        drawing: Some(g.drawing),
+                        preview: None,
+                        model,
+                        ghost: Some((g.tint, g.alpha)),
+                    });
+                }
+            }
+
             if !has_geo && this_preview.is_none() {
                 continue; // sem geometria e sem preview aqui = não compõe
             }
@@ -385,10 +403,18 @@ fn collect_layers<'a>(
                 drawing: if has_geo { drawing } else { None },
                 preview: this_preview,
                 model,
+                ghost: None,
             });
         }
     }
     (out, unfolded)
+}
+
+/// Chave do compositor para o fantasma `delta` da camada — distinta da chave da
+/// própria camada e das dos outros fantasmas dela (senão duas fatias dividiriam a
+/// mesma textura e uma sobrescreveria a outra).
+fn ghost_key(object_id: u64, layer_id: u32, delta: i32) -> u64 {
+    layer_key(object_id, layer_id).wrapping_mul(0xD6E8_FEB8_6659_FD93) ^ (delta as u32 as u64)
 }
 
 /// Chave estável do compositor por (objeto, camada) — determinística e distinta
@@ -445,6 +471,100 @@ fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_core::Vec2;
+    use ph2d_flip::{BlendMode, FlipStroke, Hold, KeyKind};
+
+    /// Um documento com 2 camadas: **BG** (uma chave, arte que cobre tudo) e **FG**
+    /// (chaves em 0 e 8, blend Multiply). É o demo, reduzido.
+    fn doc_bg_fg() -> FlipDoc {
+        let mut doc = FlipDoc::new();
+        let oid = doc.push_object("O");
+        let obj = doc.object_mut(oid).unwrap();
+        obj.fps = 12.0;
+        let art = || {
+            let mut s = FlipStroke::new();
+            s.push_default(Vec2::new(0.0, 0.0));
+            s.push_default(Vec2::new(1.0, 1.0));
+            s
+        };
+        let bg = obj.add_layer("BG");
+        let d = obj
+            .insert_frame(bg, 0, Hold::Implicit, KeyKind::Keyframe)
+            .unwrap();
+        obj.drawing_mut(d).unwrap().strokes.push(art());
+
+        let fg = obj.add_layer("FG");
+        obj.layer_mut(fg).unwrap().blend = BlendMode::Multiply;
+        for k in [0, 8] {
+            let d = obj
+                .insert_frame(fg, k, Hold::Implicit, KeyKind::Keyframe)
+                .unwrap();
+            obj.drawing_mut(d).unwrap().strokes.push(art());
+        }
+        doc
+    }
+
+    /// O playhead pausado no quadro `f` a 12 fps.
+    fn at(f: i32) -> Playhead {
+        let mut p = Playhead::new(1.0 / 12.0);
+        p.pause();
+        p.seek(f64::from(f) / 12.0);
+        p
+    }
+
+    /// **O bug do 1º corte, pinado:** o fantasma de uma camada é uma FATIA DA PILHA,
+    /// logo abaixo dela — e portanto ACIMA das camadas de baixo. Desenhá-lo num
+    /// passe por baixo de tudo fazia o BG opaco engolir o fantasma do FG.
+    ///
+    /// A op-list é composta de baixo para cima, então a ordem da lista É a ordem de
+    /// z: exigir `BG < ghost(FG) < FG` é exigir que o fantasma apareça sobre o BG.
+    #[test]
+    fn a_layers_ghost_sits_above_the_layers_below_it() {
+        let doc = doc_bg_fg();
+        let ph = at(8); // sobre a 2ª chave do FG → o desenho de 0 vira fantasma
+        let (layers, _) = collect_layers(&doc, &ph, None, None, &[], Some(&[]));
+
+        let kinds: Vec<&str> = layers
+            .iter()
+            .map(|l| if l.ghost.is_some() { "ghost" } else { "art" })
+            .collect();
+        assert_eq!(
+            kinds,
+            vec!["art", "ghost", "art"],
+            "ordem de composição (fundo→topo): BG, o fantasma do FG, o FG"
+        );
+
+        let ghost = &layers[1];
+        // O fantasma compõe em NORMAL, opacidade 1 — o fade já está no alpha do
+        // tint. Herdar o Multiply do FG tingiria o fantasma com a arte do BG.
+        assert_eq!(ghost.blend, BlendMode::default().to_u8());
+        assert!((ghost.opacity - 1.0).abs() < f32::EPSILON);
+        assert!(ghost.ghost.is_some());
+        // E as chaves do compositor são todas distintas (fatias não se sobrescrevem).
+        let keys: Vec<u64> = layers.iter().map(|l| l.key).collect();
+        let mut uniq = keys.clone();
+        uniq.sort_unstable();
+        uniq.dedup();
+        assert_eq!(
+            uniq.len(),
+            keys.len(),
+            "chaves de fatia colidiram: {keys:?}"
+        );
+    }
+
+    /// Sem a tool Flip (o `ghosts` é `None`) a cena aparece limpa: nenhuma fatia de
+    /// fantasma. E durante o PLAY também não (o fantasma é ruído na reprodução).
+    #[test]
+    fn there_are_no_ghosts_without_the_tool_or_during_play() {
+        let doc = doc_bg_fg();
+        let (layers, _) = collect_layers(&doc, &at(8), None, None, &[], None);
+        assert!(layers.iter().all(|l| l.ghost.is_none()), "tool inativa");
+
+        let mut playing = at(8);
+        playing.play();
+        let (layers, _) = collect_layers(&doc, &playing, None, None, &[], Some(&[]));
+        assert!(layers.iter().all(|l| l.ghost.is_none()), "durante o play");
+    }
 
     /// Aplica um `world_to_clip` col-major a um ponto homogêneo (x, y, 0, 1).
     fn apply4(m: &[[f32; 4]; 4], x: f32, y: f32) -> [f32; 4] {

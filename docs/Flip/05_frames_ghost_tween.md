@@ -90,9 +90,22 @@ isso é um `ghost_tint: vec4` no uniform da câmera: `a > 0` ⇒ passe de fantas
 mesma; só a cor e o alpha mudam). O **fill entra na silhueta junto** (senão o ghost sairia com o
 miolo colorido e só o contorno tingido).
 
+**O fantasma é uma FATIA DA PILHA, não um passe por baixo de tudo.** Cada ghost entra na op-list
+do compositor **logo abaixo da sua própria camada** (e portanto ACIMA de todas as camadas de
+baixo), com blend **Normal** e opacity **1.0** — o fade e a opacidade da camada já estão no alpha
+do tint.
+- Desenhá-los num passe único por baixo de tudo era o **bug do 1º corte** (Enio, smoke): bastava
+  uma camada de fundo opaca (o retângulo amarelo do demo) para engolir o fantasma da camada de
+  cima. O fantasma pertence à sua camada; o z dele é o dela.
+- Herdar o blend da camada seria o segundo erro: um `Multiply` no FG tingiria o fantasma com a
+  arte do BG (ele deixaria de ser uma silhueta chapada).
+- Gate executável: `flip_pass::tests::a_layers_ghost_sits_above_the_layers_below_it` — a op-list é
+  composta de baixo para cima, então exigir a ordem `BG < ghost(FG) < FG` **é** exigir que o
+  fantasma apareça sobre o BG.
+
 **Gates (todos do GP):** somem no **play** (fantasma durante a reprodução é ruído puro), respeitam
 `onion.enabled` por objeto e `use_onion` por camada, e não existem fora da tool Flip (é chrome de
-autoria, não da cena). Custo: 1 upload + 1 draw por fantasma, com a tesselação vinda do **cache
+autoria, não da cena). Custo: 1 fatia + 1 draw por fantasma, com a tesselação vinda do **cache
 por desenho** — um ghost de um desenho já visitado não re-empacota nada.
 
 ---

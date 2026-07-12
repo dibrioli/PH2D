@@ -770,7 +770,7 @@ fn the_codec_selector_reaches_the_shell() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
     // The shell publishes the table each frame; without it the selector cannot wrap.
-    ph2d_panel_audio_editor::delivery_state::set_codec_info(3, "WAV 16-bit", false);
+    ph2d_panel_audio_editor::delivery_state::set_codec_info(4, "WAV 16-bit", false, "Quality");
 
     let start = ph2d_panel_audio_editor::delivery_state::codec();
     host.apply_panel_event::<AudioEditorPanel>(
@@ -797,7 +797,7 @@ fn the_codec_selector_reaches_the_shell() {
 fn the_codec_selector_wraps() {
     let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
     let mut state = AudioEditorState;
-    ph2d_panel_audio_editor::delivery_state::set_codec_info(3, "WAV 16-bit", false);
+    ph2d_panel_audio_editor::delivery_state::set_codec_info(4, "WAV 16-bit", false, "Quality");
 
     // Step back from the first codec: it must land on the last, not on -1.
     while ph2d_panel_audio_editor::delivery_state::codec() != 0 {
@@ -812,8 +812,8 @@ fn the_codec_selector_wraps() {
     );
     assert_eq!(
         ph2d_panel_audio_editor::delivery_state::codec(),
-        2,
-        "stepping back off the front must wrap to the last codec"
+        3,
+        "stepping back off the front must wrap to the last codec (Opus, since ADR-0116)"
     );
 }
 

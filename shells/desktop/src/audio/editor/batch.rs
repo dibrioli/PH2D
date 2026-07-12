@@ -64,7 +64,7 @@ pub(super) fn batch_lufs_dir(folder: &Path, target_lufs: f32) -> (usize, usize) 
 /// `out_dir` (same stem, `.wav` extension).
 fn normalize_one(path: &Path, out_dir: &Path, target_lufs: f32) -> Result<(), String> {
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-    let data = ph2d_audio_decode::decode(&bytes).map_err(|e| e.to_string())?;
+    let data = crate::audio::decode_any::decode(&bytes).map_err(|e| e.to_string())?;
     let normalized = ph2d_audio_edit::normalize_lufs(&data, target_lufs);
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("clip");
     let out = out_dir.join(format!("{stem}.wav"));

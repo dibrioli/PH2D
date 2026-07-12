@@ -110,7 +110,7 @@ impl AudioSystem {
                 return;
             }
         };
-        let data = match ph2d_audio_decode::decode(&bytes) {
+        let data = match crate::audio::decode_any::decode(&bytes) {
             Ok(d) => d,
             Err(e) => {
                 eprintln!("audio: decode failed for {}: {e}", path.display());
@@ -375,6 +375,26 @@ impl AudioSystem {
     /// bypass), so the file matches the waveform. Ogg Vorbis carries no `smpl`/`cue`
     /// side-car, so loop points + markers are a WAV-only feature — the audio is exported;
     /// re-import the loop from the source WAV if you need sample-exact looping.
+    /// Write the clip out as **Opus** (ADR-0116) — the best quality per byte here, and the one
+    /// format the app has to be able to read back itself, which it now can (`decode_any`).
+    pub(crate) fn editor_export_opus(&self, path: &std::path::Path, quality: f32) {
+        let Some(clip) = self.editor_sounding() else {
+            return;
+        };
+        let bitrate = ph2d_audio_encode::opus_bitrate(quality);
+        match ph2d_audio_encode::encode_opus(clip.data(), quality)
+            .map_err(|e| e.to_string())
+            .and_then(|bytes| std::fs::write(path, bytes).map_err(|e| e.to_string()))
+        {
+            Ok(()) => println!(
+                "audio: exported {} (Opus, {} kbps)",
+                path.display(),
+                bitrate / 1_000
+            ),
+            Err(e) => eprintln!("audio: opus export failed for {}: {e}", path.display()),
+        }
+    }
+
     pub(crate) fn editor_export_ogg(&self, path: &std::path::Path, quality: f32) {
         let Some(clip) = self.editor_sounding() else {
             return;

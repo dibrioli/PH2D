@@ -20,7 +20,7 @@
 
 mod delivery;
 
-pub use delivery::{Codec, DeliveryCost, cost, format_bytes, ram_bytes};
+pub use delivery::{Codec, DeliveryCost, cost, encode_opus, format_bytes, opus_bitrate, ram_bytes};
 
 use std::io::Write;
 use std::path::Path;

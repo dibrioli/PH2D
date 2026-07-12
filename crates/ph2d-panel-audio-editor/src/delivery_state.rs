@@ -22,6 +22,10 @@ thread_local! {
     /// Shell → panel: whether the selected codec is lossy — the Quality slider is inert
     /// on a lossless one, and says so by dimming rather than by lying.
     static LOSSY: Cell<bool> = const { Cell::new(false) };
+    /// Shell → panel: what the slider IS for this codec. Vorbis takes a quality scalar; Opus
+    /// takes a **bitrate**. Same control, different meaning — so it says which, rather than
+    /// calling a bitrate "quality" and hoping nobody looks (ADR-0116).
+    static QUALITY_LABEL: RefCell<String> = const { RefCell::new(String::new()) };
     /// Panel → shell: the Vorbis quality slider, normalized `0..1`.
     static QUALITY_NORM: Cell<f32> = const { Cell::new(DEFAULT_QUALITY_NORM) };
     /// Shell → panel: the finished readout lines.
@@ -48,11 +52,17 @@ pub fn codec() -> usize {
     CODEC.with(|c| c.get())
 }
 
-/// Shell: publish the codec table's size + the selected one's name and lossiness.
-pub fn set_codec_info(count: usize, name: &str, lossy: bool) {
+/// Shell: publish the codec table's size + the selected one's name, lossiness, and what its
+/// quality control actually is.
+pub fn set_codec_info(count: usize, name: &str, lossy: bool, quality_label: &str) {
     CODEC_COUNT.with(|c| c.set(count));
     CODEC_NAME.with(|c| c.borrow_mut().replace_range(.., name));
     LOSSY.with(|c| c.set(lossy));
+    QUALITY_LABEL.with(|c| c.borrow_mut().replace_range(.., quality_label));
+}
+
+pub(crate) fn quality_label() -> String {
+    QUALITY_LABEL.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn codec_name() -> String {

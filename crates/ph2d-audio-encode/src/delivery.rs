@@ -35,11 +35,17 @@ pub enum Codec {
     /// Ogg Vorbis, VBR — lossy and roughly 10× smaller. No `smpl`/`cue` side-car, so
     /// loop points and markers do not survive the trip (they are a WAV feature).
     OggVorbis,
+    /// **Opus** — the modern lossy codec, and the best quality per bit here. Measured on a
+    /// speech clip at the default bitrate: **6.4 %** of the WAV, at 33.8 dB SNR. Like Vorbis it
+    /// carries no loop points or markers.
+    ///
+    /// Opus is a **48 kHz** codec: a clip at another rate is resampled on the way in (ADR-0116).
+    Opus,
 }
 
 impl Codec {
     /// The order the panel's selector cycles.
-    pub const ALL: [Codec; 3] = [Codec::Wav16, Codec::Wav24, Codec::OggVorbis];
+    pub const ALL: [Codec; 4] = [Codec::Wav16, Codec::Wav24, Codec::OggVorbis, Codec::Opus];
 
     /// Display name.
     pub fn name(self) -> &'static str {
@@ -47,6 +53,7 @@ impl Codec {
             Codec::Wav16 => "WAV 16-bit",
             Codec::Wav24 => "WAV 24-bit",
             Codec::OggVorbis => "Ogg Vorbis",
+            Codec::Opus => "Opus",
         }
     }
 
@@ -55,6 +62,7 @@ impl Codec {
         match self {
             Codec::Wav16 | Codec::Wav24 => "wav",
             Codec::OggVorbis => "ogg",
+            Codec::Opus => "opus",
         }
     }
 
@@ -65,8 +73,15 @@ impl Codec {
         matches!(self, Codec::Wav16 | Codec::Wav24)
     }
 
-    /// Whether the Quality control means anything (Vorbis is the only VBR codec here).
+    /// Whether this codec throws information away. Both compressed codecs do.
     pub fn is_lossy(self) -> bool {
+        matches!(self, Codec::OggVorbis | Codec::Opus)
+    }
+
+    /// Whether the **Quality** slider drives this codec. Vorbis is VBR and takes a quality
+    /// scalar; Opus is driven by a **bitrate** instead, and the panel maps the same slider onto
+    /// it — so the control is live for both, and this is about which knob it becomes.
+    pub fn uses_quality_scalar(self) -> bool {
         matches!(self, Codec::OggVorbis)
     }
 }
@@ -116,6 +131,10 @@ pub fn cost(
         Codec::Wav16 => (encode_wav(data, BitDepth::Pcm16)?.len(), true),
         Codec::Wav24 => (encode_wav(data, BitDepth::Pcm24)?.len(), true),
         Codec::OggVorbis => measure_ogg(data, ogg_quality)?,
+        // Opus is measured WHOLE, and exactly. Vorbis needs the extrapolation trick above
+        // because it is VBR and slow enough that sizing a five-minute stem would stall the UI;
+        // Opus is bitrate-driven and fast, so the honest number is also the cheap one.
+        Codec::Opus => (encode_opus(data, ogg_quality)?.len(), true),
     };
 
     Ok(DeliveryCost {
@@ -128,6 +147,23 @@ pub fn cost(
         },
         disk_exact,
     })
+}
+
+/// Encode `data` as Opus. The panel's 0..1 quality slider becomes a **bitrate** — Opus is not
+/// driven by a quality scalar the way Vorbis is, so the same control means a different thing,
+/// and pretending otherwise would put a knob on screen that does not do what it says.
+pub fn encode_opus(data: &SampleData, quality: f32) -> Result<Vec<u8>, EncodeError> {
+    let bitrate = opus_bitrate(quality);
+    ph2d_audio_opus::encode_opus(data, bitrate).map_err(|e| EncodeError::Codec(e.to_string()))
+}
+
+/// The quality slider (0..1) as an Opus bitrate. 32 kbps is thin-but-usable for a game SFX;
+/// 256 kbps is past transparent for anything this editor will hold. The default slider position
+/// lands near 96 kbps, which is where the crate's own gates measured 33.8 dB SNR.
+pub fn opus_bitrate(quality: f32) -> i32 {
+    const MIN: f32 = 32_000.0;
+    const MAX: f32 = 256_000.0;
+    (MIN + (MAX - MIN) * quality.clamp(0.0, 1.0)) as i32
 }
 
 /// Encode (up to [`MEASURE_SECS`] of) the clip and report its Vorbis size.

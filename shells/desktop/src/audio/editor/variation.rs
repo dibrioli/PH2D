@@ -270,7 +270,7 @@ fn decode_file(path: &Path) -> Option<SampleData> {
             return None;
         }
     };
-    match ph2d_audio_decode::decode(&bytes) {
+    match crate::audio::decode_any::decode(&bytes) {
         Ok(d) => Some(d),
         Err(e) => {
             eprintln!("audio: variation decode failed for {}: {e}", path.display());

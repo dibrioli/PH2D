@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-audio-opus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Opus encoding (ADR-0116). A crate of its OWN, and that is the entire point: the only Rust
+# Opus encoder that does not drag a system libopy into the CI is `unsafe-libopus` — libopus
+# transpiled by c2rust — and it exposes the raw C ABI, which is `unsafe` by construction.
+# `ph2d-audio-encode` declares `#![forbid(unsafe_code)]` and KEEPS it; the `unsafe` lives here,
+# in one module, behind a safe API, and no raw pointer crosses this crate's boundary.
+[dependencies]
+ph2d-audio = { path = "../ph2d-audio" }
+# The encoder: libopus 1.3.1, transpiled. Pure Rust — no build.rs, no cc, no system library.
+unsafe-libopus = "0.2"
+# The container. A `.opus` file is Opus encapsulated in Ogg (pages, CRC32, granule positions,
+# and the OpusHead/OpusTags headers); `opus_encode` only hands back raw packets, so without
+# this there is no file. BSD-3, pure Rust, from RustAudio.
+ogg = "0.9"
+thiserror = "2"
+
+[dev-dependencies]
+# Round-trip the encoded bytes back through the REAL decoder: an encoder that returns Ok is not
+# the same as an encoder that produced a file anyone can play (ADR-0116 §4.1).
+ph2d-audio-decode = { path = "../ph2d-audio-decode" }

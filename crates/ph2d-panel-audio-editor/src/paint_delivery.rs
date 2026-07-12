@@ -93,12 +93,15 @@ pub(crate) fn paint_delivery_section(
     );
     y += row_h + gap;
 
-    // Quality — Vorbis only. On a lossless codec it is inert, and it says so by dimming
-    // rather than by pretending to do something.
+    // The compression control. It is **Quality** for Vorbis and **Bitrate** for Opus — the same
+    // slider, driving a different knob, and it says which rather than calling a bitrate
+    // "quality" (ADR-0116). On a lossless codec it is inert, and it says so by dimming rather
+    // than by pretending to do something.
     let lossy = delivery_state::is_lossy();
     let live = loaded && lossy;
+    let label = delivery_state::quality_label();
     y = text_row(
-        "Quality",
+        if label.is_empty() { "Quality" } else { &label },
         x,
         y,
         w,
@@ -220,7 +223,7 @@ mod tests {
 
     /// Paint the section with `ram` published and report how tall it came out.
     fn section_height(ram: &str) -> f32 {
-        delivery_state::set_codec_info(3, "Ogg Vorbis", true);
+        delivery_state::set_codec_info(4, "Ogg Vorbis", true, "Quality");
         delivery_state::set_cost("25 KB", ram, 0.07, false);
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();

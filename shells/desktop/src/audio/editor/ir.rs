@@ -43,7 +43,7 @@ pub(crate) fn load(path: &std::path::Path) -> bool {
         eprintln!("audio: cannot read IR {}", path.display());
         return false;
     };
-    let data = match ph2d_audio_decode::decode(&bytes) {
+    let data = match crate::audio::decode_any::decode(&bytes) {
         Ok(d) => d,
         Err(e) => {
             eprintln!("audio: IR decode failed for {}: {e}", path.display());

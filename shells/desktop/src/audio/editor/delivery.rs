@@ -47,7 +47,18 @@ impl super::super::AudioSystem {
 
         let codec_idx = ds::codec().min(Codec::ALL.len() - 1);
         let codec = Codec::ALL[codec_idx];
-        ds::set_codec_info(Codec::ALL.len(), codec.name(), codec.is_lossy());
+        ds::set_codec_info(
+            Codec::ALL.len(),
+            codec.name(),
+            codec.is_lossy(),
+            if codec.uses_quality_scalar() {
+                "Quality"
+            } else if codec.is_lossy() {
+                "Bitrate"
+            } else {
+                "Quality"
+            },
+        );
 
         let Some(clip) = self.editor_sounding() else {
             ds::set_cost("", "", 0.0, false);
@@ -115,6 +126,10 @@ impl super::super::AudioSystem {
             Codec::OggVorbis => {
                 let q = ph2d_panel_audio_editor::delivery_state::quality();
                 self.editor_export_ogg(path, q);
+            }
+            Codec::Opus => {
+                let q = ph2d_panel_audio_editor::delivery_state::quality();
+                self.editor_export_opus(path, q);
             }
         }
     }

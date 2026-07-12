@@ -15,6 +15,11 @@ authors.workspace = true
 # wave (docs/Audio/02_plano_implementacao_completo.md §6, W6).
 [dependencies]
 ph2d-audio = { path = "../ph2d-audio" }
+# Opus (ADR-0116). This crate keeps its `#![forbid(unsafe_code)]` — the attribute governs THIS
+# crate's code, not its dependencies, which is exactly what makes the isolation worth doing: the
+# `unsafe` of the transpiled libopus ABI is contained in `ph2d-audio-opus`, behind a safe API,
+# and we call that.
+ph2d-audio-opus = { path = "../ph2d-audio-opus" }
 thiserror = "2"
 vorbis_rs = "0.5.5"
 

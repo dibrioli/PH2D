@@ -62,6 +62,42 @@ fn params_and_intent_channels_round_trip() {
 }
 
 #[test]
+fn text_row_and_set_text_param_intent_round_trip() {
+    let _ = drain_param_intents();
+    // A Text (formula) row publishes + reads back (the string-valued row).
+    set_current_params(Some(ParamsSnapshot {
+        node: 3,
+        title: "Expression".into(),
+        rows: vec![ParamRow::Text(TextRow {
+            name: "expr",
+            label: "Formula".into(),
+            value: "sin(t)".into(),
+        })],
+    }));
+    let got = current_params().expect("published");
+    let ParamRow::Text(r) = &got.rows[0] else {
+        panic!("text row");
+    };
+    assert_eq!((r.name, r.value.as_str()), ("expr", "sin(t)"));
+
+    // A formula edit rides the String-carrying SetTextParam intent (not the f64 SetParam).
+    push_param_intent(MotionParamIntent::SetTextParam {
+        node: 3,
+        param: "expr",
+        value: "cos(i * a)".into(),
+    });
+    assert_eq!(
+        drain_param_intents(),
+        vec![MotionParamIntent::SetTextParam {
+            node: 3,
+            param: "expr",
+            value: "cos(i * a)".into(),
+        }]
+    );
+    set_current_params(None);
+}
+
+#[test]
 fn color_row_publishes_and_swatch_id_is_anchor_keyed() {
     // A colour row round-trips through the publish channel, and its swatch id
     // is derived from the anchor channel name (so the shell bridge computes

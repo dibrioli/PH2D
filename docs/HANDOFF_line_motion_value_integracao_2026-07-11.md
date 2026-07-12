@@ -1,4 +1,4 @@
-# HANDOFF de integração — linha `line/motion-value` (docs 16–32: valor + M3 + M4 + cauda M1 + expression)
+# HANDOFF de integração — linha `line/motion-value` (docs 16–33: valor + M3 + M4 + cauda M1 + expression + UI)
 
 > Documento do protocolo DIRETRIZ §1.5.9: a linha fechou, **não integra nem pusha** — este handoff
 > vai pro **agente integrador dedicado** que o Enio abrir. Worktree:
@@ -15,8 +15,9 @@
 
 ### 1. Identidade
 - Branch **`line/motion-value`** · **fork base = `1c7c9a22`** (fork fresco, sem drift pré-fork).
-- **DEZESSETE fatias:** **valor** (16–17); **M3** completo (18–20, 23–28); **SIMULAÇÃO** (21–22); **cauda M1**
-  (Color-Ramp+Color-Array 29 · Combine+Mixer 30 · Make-Point+Luminance 31 · **Expression 32**). **A cena boot
+- **DEZOITO fatias:** **valor** (16–17); **M3** completo (18–20, 23–28); **SIMULAÇÃO** (21–22); **cauda M1**
+  (Color-Ramp+Color-Array 29 · Combine+Mixer 30 · Make-Point+Luminance 31 · **Expression 32** · **Expression-UI
+  33**, o campo de texto da fórmula no painel de params). **A cena boot
   atual demonstra Expression** (um espiral e uma onda de cor, ambos por fórmula). (Também: 2 fixes de perf no
   voronoi + o plano GPU.)
 - **Auto-contida:** sem dependência de outra linha. Fatias 16–31 = fan-out puro; **fatia 32 = foundational
@@ -30,6 +31,9 @@
 | **`crates/ph2d-nodegraph/src/format.rs`** | **SUBSTRATO (fatia 32 +serialização, ADITIVO):** record `x` (text param, campo livre como o `b` title) + header `v2` (só se houver text param; senão `v1` byte-idêntico) + `Graph.node_text_params()` getter. | aditivo; `from_text` aceita v1\|v2; `MotionDoc` delega transparente |
 | `shells/desktop/src/motion_demo_strobe.rs` + `motion_state.rs` + `motion_state_tests.rs` | cena boot (espiral+onda, 12 nós) + testes | shell, módulo Motion; baixo |
 | `shells/desktop/src/render_loop/motion_bridge_tests.rs` | loop-replay do doc 11 — intocado | baixo |
+| **`crates/ph2d-node-registry/src/ui.rs`** | **fatia 33 (UI, aditivo non-frozen):** `ParamWidget::Text` (o painel rende um campo de texto p/ um text param). | variant novo; matches com `_ =>` absorvem; baixo |
+| **`crates/ph2d-panel-motion-params/*`** | **fatia 33:** `ParamRow::Text`/`SetTextParam`/`param_text_id` (snapshot) + `text_rows.rs` (paint) + `rows_paint.rs` (split do laço p/ o cap 200-LOC/fn) + wiring em `lib.rs`. Reusa o `TextInput` compartilhado (ZERO `ph2d-editor-core`). | módulo Motion; baixo |
+| **`shells/desktop/src/render_loop/motion_bridge_params.rs`** | **fatia 33:** monta a Text row dos hints `ParamWidget::Text` + aplica `SetTextParam` via `set_text_param`. | shell, módulo Motion; baixo |
 | `Cargo.lock` | crates PATH novas + `ph2d-color`/`ph2d-expr` (já membros) | regenera na árvore combinada |
 
 **Substrato `ph2d-eval-motion` NÃO tocado.** O `ph2d-nodegraph` foi tocado **aditivamente** (fatia 32) — a
@@ -83,10 +87,11 @@ ratificar o canal text-param como ADR real (superseding o plano M4.N1 de bumpar 
   ```
   Tool **Motion** → à ESQUERDA (âmbar) um **espiral de 144 pts** girando (x/y = fórmulas cos/sin via
   `motion.expression` → `make_point`); à DIREITA (Ice) um grid com uma **onda de cor rolando** (fórmula
-  `sin(t·2+f·a)` → `t` de um ramp). Editor: dropar `motion.expression` (params a..d; a fórmula é text param —
-  **sem campo de texto no painel ainda**, ver caveat).
+  `sin(t·2+f·a)` → `t` de um ramp). Editor (fatia 33): selecionar a `motion.expression` mostra um **campo de
+  texto "Formula"** no painel de params — clicar, digitar, Enter/clicar-fora commita (re-cook); params a..d
+  como sliders.
 
-**Resumo:** *Linha `motion-value`, 17 fatias (fork `1c7c9a22`). 33 crates-nó (valor · M3 · SIMULAÇÃO · cauda M1
+**Resumo:** *Linha `motion-value`, 18 fatias (fork `1c7c9a22`). 33 crates-nó (valor · M3 · SIMULAÇÃO · cauda M1
 completa incl. **expression**) + cena boot (Expression) + o **canal text-param aditivo no substrato**
 `ph2d-nodegraph` (fatia 32 — contrato PROVADO 8/2/1, realização isolada do M4.N1) + 2 fixes perf voronoi + plano
 GPU. Conflito mecânico = codegen `registry-init` → `ph2d-node-sync`. Contrato congelado intacto; `ph2d-expr`
@@ -95,10 +100,10 @@ expression. 13 fatias smoke-aprovadas; 4 pendentes de smoke visual. Aguardo orde
 
 ---
 
-## 0. O que a linha entrega (docs 16–32)
+## 0. O que a linha entrega (docs 16–33)
 
 Fecha o **valor**, o **M3** completo, a **SIMULAÇÃO** e a **cauda M1** (cor + streams + adapters + **expression**),
-sempre pesquisando o padrão-ouro ANTES de codar. Pesquisa por fatia: docs 16–32.
+sempre pesquisando o padrão-ouro ANTES de codar. Pesquisa por fatia: docs 16–33.
 
 **Fatia Make-Point+Luminance (doc 31) — adapters valor↔geometria↔cor.**
 
@@ -126,12 +131,12 @@ sempre pesquisando o padrão-ouro ANTES de codar. Pesquisa por fatia: docs 16–
 ## 2. Follow-up restante
 - **Cauda M1: COMPLETA** (cor, streams, adapters, expression). A `motion.expression` era o item de maior valor
   e o único ADR-gated — feito via o caminho aditivo.
-- **Follow-ups da fatia 32 (foundational):** ~~serialização textual~~ **FEITA** (record `x`/v2, §2/§5) · UI de
-  texto no painel de params (editor; precisa `ParamWidget::Text` em `ph2d-node-registry`) · (opcional) lowering
+- **Follow-ups da fatia 32 (foundational):** ~~serialização textual~~ **FEITA** (record `x`/v2, §2/§5) · ~~UI de
+  texto no painel~~ **FEITA** (fatia 33: `ParamWidget::Text` + campo `TextInput` no painel) · (opcional) lowering
   WGSL da expression (`ph2d-expr` já tem `to_wgsl` — combina com o motor GPU).
 - **M2:** wiring do scrub-back (`Cook::checkpoint/restore` já existem) · `motion.delay` · `force.buoyancy`.
 - **Cross-module (DEFERIDO):** `distribute-path` (vetor) · `slit-scan`/`delay`.
 - **Fronteiras:** **M4** (Rig+FX, necks) · **M5** (motor GPU — ADR + foundational → linha dedicada).
 
-*"Linha `motion-value` com 17 fatias (fork em `1c7c9a22`). Toca o substrato (fatia 32, aditivo, contrato provado
+*"Linha `motion-value` com 18 fatias (fork em `1c7c9a22`). Toca o substrato (fatia 32, aditivo, contrato provado
 8/2/1). Handoff acima. Aguardo ordem de integração."*

@@ -56,6 +56,41 @@ fn selected_tint_node_yields_mode_and_colour_swatch_rows() {
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
 
+/// A selected `motion.expression` resolves to a **Formula** text row that carries the
+/// graph's text-param value and sits FIRST (the formula is the node's primary control).
+/// Proves the `ParamWidget::Text` hint flows through the additive text channel to a
+/// paintable row (docs/Motion Nodes/33). FALSIFIED if the text param were dropped (an
+/// empty field) or never surfaced (no Text row).
+#[test]
+fn selected_expression_node_yields_a_formula_text_row() {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+    let ex = motion.doc.graph.add_node("motion.expression");
+    motion.doc.graph.set_text_param(ex, "expr", "sin(t) * a");
+    ph2d_panel_motion_graph::set_graph_selection(vec![ex.0]);
+
+    let snap = build_params_snapshot(&motion).expect("expression node is resolvable");
+    match &snap.rows[0] {
+        ParamRow::Text(t) => {
+            assert_eq!(t.name, "expr");
+            assert_eq!(
+                t.value, "sin(t) * a",
+                "the formula flows from the text channel"
+            );
+        }
+        other => panic!("first row should be the Formula text field, got {other:?}"),
+    }
+    // The a..d coefficients remain scalar rows below the formula.
+    assert!(
+        snap.rows
+            .iter()
+            .any(|r| matches!(r, ParamRow::Scalar(s) if s.name == "a")),
+        "the coefficient params remain scalar rows"
+    );
+
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
 /// The colour read-back is the inverse of the swatch display: writing a
 /// picked sRGB colour lands linear-straight channel values on the node, and
 /// re-reading them rebuilds the same sRGB swatch (round-trip stable). Guards

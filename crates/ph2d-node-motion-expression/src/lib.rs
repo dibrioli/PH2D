@@ -169,7 +169,22 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[coeff("a"), coeff("b"), coeff("c"), coeff("d")];
+static PARAM_HINTS: &[ParamUiHint] = &[
+    // The formula is a TEXT param (not a `ParamSpec`); the panel renders a text field
+    // that writes it through `Graph::set_text_param` (doc 32/33).
+    ParamUiHint {
+        param: EXPR_KEY,
+        label: "Formula",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Text,
+    },
+    coeff("a"),
+    coeff("b"),
+    coeff("c"),
+    coeff("d"),
+];
 
 const fn coeff(param: &'static str) -> ParamUiHint {
     ParamUiHint {

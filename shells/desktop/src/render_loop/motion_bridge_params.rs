@@ -71,22 +71,37 @@ pub(super) fn apply_param_edits(
         if discrete {
             motion.history.begin(&motion.doc);
         }
-        for MotionParamIntent::SetParam { node, param, value } in intents {
-            let nid = NodeId(node);
-            let Some(inst) = motion.doc.graph.node(nid) else {
-                continue;
-            };
-            // A `channel` switch on a behaviour also resets its magnitude to that
-            // channel's sensible default (world units vs degrees vs scale) — same
-            // undo step, so Ctrl+Z restores the old values.
-            let channel_switch = param == "channel"
-                && (param_value(motion, nid, "channel") - value as f32).abs() > f32::EPSILON;
-            let type_name = channel_switch.then(|| inst.type_name.clone());
-            motion.doc.graph.set_param(nid, param, value as f32);
-            if let Some(tn) = type_name {
-                apply_channel_presets(motion, nid, &tn, value as f32);
+        for intent in intents {
+            match intent {
+                MotionParamIntent::SetParam { node, param, value } => {
+                    let nid = NodeId(node);
+                    let Some(inst) = motion.doc.graph.node(nid) else {
+                        continue;
+                    };
+                    // A `channel` switch on a behaviour also resets its magnitude to that
+                    // channel's sensible default (world units vs degrees vs scale) — same
+                    // undo step, so Ctrl+Z restores the old values.
+                    let channel_switch = param == "channel"
+                        && (param_value(motion, nid, "channel") - value as f32).abs()
+                            > f32::EPSILON;
+                    let type_name = channel_switch.then(|| inst.type_name.clone());
+                    motion.doc.graph.set_param(nid, param, value as f32);
+                    if let Some(tn) = type_name {
+                        apply_channel_presets(motion, nid, &tn, value as f32);
+                    }
+                    motion.pump.mark_dirty();
+                }
+                // A formula edit (a `motion.expression` text param) — the additive text
+                // channel (docs/Motion Nodes/32-33).
+                MotionParamIntent::SetTextParam { node, param, value } => {
+                    let nid = NodeId(node);
+                    if motion.doc.graph.node(nid).is_none() {
+                        continue;
+                    }
+                    motion.doc.graph.set_text_param(nid, param, value);
+                    motion.pump.mark_dirty();
+                }
             }
-            motion.pump.mark_dirty();
         }
         if discrete {
             motion.history.commit_if_changed(&motion.doc);
@@ -362,7 +377,8 @@ pub(super) fn build_params_snapshot(
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{
-        AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, ToggleRow,
+        AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, TextRow,
+        ToggleRow,
     };
 
     let only = selected_motion_node()?;
@@ -404,6 +420,28 @@ pub(super) fn build_params_snapshot(
         .then(|| value_of("channel").round() as i32);
 
     let mut rows: Vec<ParamRow> = Vec::new();
+
+    // Text params (a `motion.expression` formula) are NOT `ParamSpec`s (f32-only), so they
+    // never appear in the manifest loop below — surface each `ParamWidget::Text` hint as a
+    // Text row first (the formula is the node's primary control), reading the graph's text
+    // channel (docs/Motion Nodes/32-33).
+    for h in hints.into_iter().flatten() {
+        if h.widget == ParamWidget::Text {
+            let value = motion
+                .doc
+                .graph
+                .node_text_param_overrides(nid)
+                .and_then(|m| m.get(h.param))
+                .cloned()
+                .unwrap_or_default();
+            rows.push(ParamRow::Text(TextRow {
+                name: h.param,
+                label: h.label.to_string(),
+                value,
+            }));
+        }
+    }
+
     for spec in manifest.params {
         let hint = hints.and_then(|hs| hs.iter().find(|h| h.param == spec.name));
         // A `Color`-anchored param emits ONE swatch row for its 4 channels.

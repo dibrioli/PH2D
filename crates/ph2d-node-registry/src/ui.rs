@@ -93,6 +93,12 @@ pub enum ParamWidget {
     /// stores the selected option **index** as its `f32` value (`0..labels.len()`).
     /// Reusable by every enum-valued param (channel, waveform, easing, …).
     Enum { labels: &'static [&'static str] },
+    /// A free-text field editing a **text param** (a `motion.expression` formula) —
+    /// NOT a `ParamSpec` (which is f32-only). The hint's `param` names the text-param
+    /// key (`Graph::set_text_param`), read/written through the additive text channel
+    /// (doc 32), and the panel renders the shared `TextInput` widget. `min/max/step`
+    /// are inert for a text field.
+    Text,
 }
 
 impl ParamWidget {

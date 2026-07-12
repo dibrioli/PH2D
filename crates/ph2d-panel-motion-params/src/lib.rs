@@ -15,7 +15,9 @@
 #![forbid(unsafe_code)]
 
 mod number_rows;
+mod rows_paint;
 mod snapshot;
+mod text_rows;
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]
@@ -27,29 +29,27 @@ use number_rows::{
 };
 pub use snapshot::{
     AngleRow, ColorRow, EnumRow, MotionParamIntent, ParamRow, ParamsSnapshot, ScalarRow, SeedRow,
-    ToggleRow, drain_param_intents, param_swatch_id, set_current_params,
+    TextRow, ToggleRow, drain_param_intents, param_swatch_id, set_current_params,
 };
 use snapshot::{
     MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id, param_chip_id,
-    param_enum_id, param_number_id, param_reroll_id, param_slider_id, push_param_intent,
+    param_enum_id, param_number_id, param_reroll_id, param_slider_id, param_text_id,
+    push_param_intent,
 };
+use text_rows::{mirror_text, paint_text_row, text_is_typing, text_value};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore, format_number};
-use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
-    paint_segmented_button,
 };
 use ph2d_editor_core::widget::{
-    ButtonState, Checkbox, CheckboxState, CheckboxValue, ColorSwatch, DEFAULT_LABEL_W,
-    NUMBER_INPUT_MIN_W_PX, SliderOrientation, SliderState, SwatchSize, TextInputState,
-    paint_checkbox, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
+    ButtonState, CheckboxState, CheckboxValue, NUMBER_INPUT_MIN_W_PX, SliderOrientation,
+    SliderState, TextInputState,
 };
-use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{Spacing, TypeToken};
 
 /// Retained panel state — none needed: the selected node + its params live
 /// shell-side (`MotionState`) and the pooled widgets re-seed from the published
@@ -109,147 +109,20 @@ impl Panel for MotionParamsPanel {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;
             let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-            let mut y = body_top;
-            for (i, row) in snap.rows.iter().enumerate().take(MAX_PARAM_ROWS) {
-                match row {
-                    ParamRow::Scalar(row) => {
-                        let slider_id = param_slider_id(i);
-                        let chip_id = param_chip_id(i);
-                        let span = (row.max - row.min).max(f64::EPSILON);
-                        let track = store
-                            .slider(slider_id)
-                            .map(|(_, v)| v)
-                            .unwrap_or(normalized_track(row.value, row.min, span));
-                        let display = row_value(track, row.min, row.max, row.integer);
-                        let used = paint_slider_with_chip_layout_adaptive(
-                            Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                            &row.label,
-                            track,
-                            display,
-                            None,
-                            slider_id,
-                            chip_id,
-                            DEFAULT_LABEL_W,
-                            chip_w,
-                            store,
-                            hit_index,
-                            scene,
-                            text_system,
-                            theme,
-                        );
-                        y += used + row_gap;
-                    }
-                    ParamRow::Color(row) => {
-                        let swatch_w = SwatchSize::Md.px();
-                        paint_text(
-                            text_system,
-                            scene,
-                            &row.label,
-                            inner_x,
-                            y + (ROW_H_PX - label_font) * 0.5,
-                            label_font,
-                            DEFAULT_LABEL_W,
-                            resolve(ColorToken::Text1, theme),
-                        );
-                        let swatch_id = param_swatch_id(row.channels[0]);
-                        let srect = Rect::new(inner_x + inner_w - swatch_w, y, swatch_w, ROW_H_PX);
-                        let sw =
-                            ColorSwatch::new(swatch_id, "Color", row.srgb).size(SwatchSize::Md);
-                        paint_color_swatch(&sw, srect, scene, theme);
-                        hit_index.register(swatch_id, srect);
-                        y += ROW_H_PX + row_gap;
-                    }
-                    ParamRow::Toggle(row) => {
-                        // A real checkbox — label + box on the left (the box owns
-                        // the click; the dispatch flips its value + fires Toggled).
-                        let cb_id = param_checkbox_id(i);
-                        let (cb_state, _) = store
-                            .checkbox(cb_id)
-                            .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
-                        let value = if row.on {
-                            CheckboxValue::Checked
-                        } else {
-                            CheckboxValue::Unchecked
-                        };
-                        let cb = Checkbox::new(cb_id, row.label.clone())
-                            .state(cb_state)
-                            .value(value);
-                        let crect = Rect::new(inner_x, y, inner_w, ROW_H_PX);
-                        paint_checkbox(&cb, crect, scene, text_system, theme);
-                        hit_index.register(cb_id, crect);
-                        y += ROW_H_PX + row_gap;
-                    }
-                    ParamRow::Enum(row) => {
-                        // Named segmented selector (label line + option buttons),
-                        // mirror of the Vector panel's Cap / Join / Draw rows.
-                        paint_text(
-                            text_system,
-                            scene,
-                            &row.label,
-                            inner_x,
-                            y,
-                            TypeToken::Sm.px(),
-                            inner_w,
-                            resolve(ColorToken::Text2, theme),
-                        );
-                        y += TypeToken::Sm.px() + Spacing::Xs.px();
-                        let k = row.labels.len().min(MAX_ENUM_OPTIONS);
-                        // Up to 4 buttons across, then wrap; a single option → 1.
-                        let cols = k.clamp(1, 4); // CLAMP-OK: segmented column count (option-count layout, not a UI metric)
-                        let gap = Spacing::Sm.px();
-                        let seg_w = ((inner_w - gap * (cols as f32 - 1.0)) / cols as f32).max(1.0);
-                        for (opt, caption) in row.labels.iter().enumerate().take(k) {
-                            let bid = param_enum_id(i, opt);
-                            let rx = inner_x + (opt % cols) as f32 * (seg_w + gap);
-                            let ry = y + (opt / cols) as f32 * (ROW_H_PX + gap);
-                            let brect = Rect::new(rx, ry, seg_w, ROW_H_PX);
-                            let bstate = store.button_state(bid).unwrap_or(ButtonState::Normal);
-                            paint_segmented_button(
-                                brect,
-                                caption,
-                                opt == row.selected,
-                                bstate,
-                                scene,
-                                text_system,
-                                theme,
-                            );
-                            hit_index.register(bid, brect);
-                        }
-                        let seg_rows = k.div_ceil(cols) as f32;
-                        y += seg_rows * ROW_H_PX + (seg_rows - 1.0) * gap + row_gap;
-                    }
-                    ParamRow::Angle(row) => {
-                        // A `deg` number box — never a raw turns/radians slider.
-                        let used = paint_angle_row(
-                            Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                            &row.label,
-                            param_number_id(i),
-                            row.step_deg,
-                            store,
-                            hit_index,
-                            scene,
-                            text_system,
-                            theme,
-                        );
-                        y += used + row_gap;
-                    }
-                    ParamRow::Seed(row) => {
-                        // A whole-number box + a re-roll button (never a slider).
-                        let used = paint_seed_row(
-                            Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                            &row.label,
-                            param_number_id(i),
-                            param_reroll_id(i),
-                            store,
-                            hit_index,
-                            scene,
-                            text_system,
-                            theme,
-                        );
-                        y += used + row_gap;
-                    }
-                }
-            }
+            rows_paint::paint_rows(
+                &snap.rows,
+                inner_x,
+                inner_w,
+                chip_w,
+                row_gap,
+                body_top,
+                label_font,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
         }
 
         // Phase B (mutable store) — mark each colour swatch so a Down opens the
@@ -276,6 +149,8 @@ impl Panel for MotionParamsPanel {
             WidgetEvent::ValueChanged(id) => on_value_changed(id, host, &snap),
             WidgetEvent::Toggled(id) => on_toggled(id, host, &snap),
             WidgetEvent::Click(id) => on_click(id, &snap),
+            // A formula field commits on Enter (Submit) or focus-loss (Blur).
+            WidgetEvent::Submit(id) | WidgetEvent::Blur(id) => on_text_commit(id, host, &snap),
             _ => EventOutcome::Ignored,
         }
     }
@@ -300,6 +175,15 @@ impl Panel for MotionParamsPanel {
                 param_reroll_id(slot),
                 InteractiveState::Button {
                     state: ButtonState::Normal,
+                },
+            );
+            store.register(
+                param_text_id(slot),
+                InteractiveState::TextInput {
+                    state: TextInputState::Normal,
+                    text: String::new(),
+                    caret: 0,
+                    selection_anchor: None,
                 },
             );
             store.register(
@@ -420,6 +304,26 @@ fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
     EventOutcome::Ignored
 }
 
+/// A formula field commit (Enter → Submit, or focus-loss → Blur) → emit the text-param
+/// edit. The store-global dispatch already wrote the buffer; read it back and push a
+/// [`MotionParamIntent::SetTextParam`] the bridge applies via `Graph::set_text_param`.
+fn on_text_commit(id: NodeId, host: &dyn PanelHostInternal, snap: &ParamsSnapshot) -> EventOutcome {
+    for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
+        if id == param_text_id(slot) {
+            let ParamRow::Text(row) = &snap.rows[slot] else {
+                return EventOutcome::Ignored;
+            };
+            push_param_intent(MotionParamIntent::SetTextParam {
+                node: snap.node,
+                param: row.name,
+                value: text_value(host.store(), id),
+            });
+            return EventOutcome::Consumed;
+        }
+    }
+    EventOutcome::Ignored
+}
+
 /// True while any pooled param row is being interacted with — a slider dragged /
 /// focused, a chip focused, or a standalone number box (Angle / Seed) focused.
 /// The shell reads this as the undo-bracket edge (open on the false→true
@@ -438,18 +342,19 @@ pub fn any_param_editing(store: &WidgetStore) -> bool {
                 ..
             })
         ) || number_is_typing(store, param_number_id(slot))
+            || text_is_typing(store, param_text_id(slot))
     })
 }
 
 /// `[0,1]` slider track for a value in `[min, min+span]`.
-fn normalized_track(value: f64, min: f64, span: f64) -> f32 {
+pub(crate) fn normalized_track(value: f64, min: f64, span: f64) -> f32 {
     (((value - min) / span) as f32).clamp(0.0, 1.0)
 }
 
 /// The param value a slider `track` (`0..1`) maps to over `[min, max]`, rounded
 /// to a whole number for integer params. Shared by `paint` (chip display) and
 /// `apply_event` (the emitted `SetParam` value) so the knob and the doc agree.
-fn row_value(track: f32, min: f64, max: f64, integer: bool) -> f64 {
+pub(crate) fn row_value(track: f32, min: f64, max: f64, integer: bool) -> f64 {
     let span = (max - min).max(f64::EPSILON);
     let v = min + f64::from(track) * span;
     if integer { v.round() } else { v }
@@ -509,6 +414,11 @@ fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
             let id = param_number_id(i);
             mirror_number(store, id, s.value, SEED_DECIMALS);
             store.set_number_range(id, s.min, s.max, 1.0);
+            continue;
+        }
+        // Text (formula) rows: mirror the doc formula into the field when unfocused.
+        if let ParamRow::Text(t) = row {
+            mirror_text(store, param_text_id(i), &t.value);
             continue;
         }
         let ParamRow::Scalar(row) = row else { continue };

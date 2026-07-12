@@ -27,6 +27,20 @@ pub enum ParamRow {
     Enum(EnumRow),
     Angle(AngleRow),
     Seed(SeedRow),
+    Text(TextRow),
+}
+
+/// A free-text row editing a **text param** (a `motion.expression` formula) — the
+/// shared single-line `TextInput` widget. The value is a `String` (not a number), so it
+/// rides a dedicated [`MotionParamIntent::SetTextParam`] rather than the `f64` `SetParam`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextRow {
+    /// The text-param key (`Graph::set_text_param`) — echoed in the intent.
+    pub name: &'static str,
+    /// English label (from the `ParamUiHint`).
+    pub label: String,
+    /// The current formula (the text-param override, else empty).
+    pub value: String,
 }
 
 /// An angle row: a number box with a `deg` unit chip. **Degrees end to end** —
@@ -129,6 +143,13 @@ pub enum MotionParamIntent {
         param: &'static str,
         value: f64,
     },
+    /// A **text** param edit (a formula) — carries a `String` (the `f64` `SetParam` cannot).
+    /// The bridge applies it via `Graph::set_text_param`.
+    SetTextParam {
+        node: u32,
+        param: &'static str,
+        value: String,
+    },
 }
 
 thread_local! {
@@ -205,6 +226,11 @@ pub(crate) fn param_number_id(slot: usize) -> NodeId {
 /// Stable widget id for the `slot`-th Seed row's re-roll button.
 pub(crate) fn param_reroll_id(slot: usize) -> NodeId {
     fnv_id(&format!("motion_param/reroll/{slot}"))
+}
+
+/// Stable widget id for the `slot`-th Text row's `TextInput` field (formula editor).
+pub(crate) fn param_text_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/text/{slot}"))
 }
 
 /// FNV-1a-64 of `key` (same scheme as the graph panel's dynamic hit ids).

@@ -429,14 +429,13 @@ mod solver_tests {
         let m = 32usize;
         let rhs: Vec<f64> = (0..m).map(|i| ((i * 7 % 13) as f64) / 13.0 - 0.5).collect();
         let x = solve_toeplitz(&rr, &rhs).expect("solved");
-        for i in 0..m {
+        for (i, want) in rhs.iter().enumerate() {
             let row: f64 = (0..m)
                 .map(|j| rr.get(i.abs_diff(j)).copied().unwrap_or(0.0) * x[j])
                 .sum();
             assert!(
-                (row - rhs[i]).abs() < 1e-9,
-                "row {i}: T·x = {row}, but rhs = {}",
-                rhs[i]
+                (row - want).abs() < 1e-9,
+                "row {i}: T·x = {row}, but rhs = {want}"
             );
         }
     }

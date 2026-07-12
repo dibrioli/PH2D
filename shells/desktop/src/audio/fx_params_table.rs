@@ -116,6 +116,20 @@ static EXCITER: [FxParamSpec; 2] = [
     spec("Freq", 1_000.0, 10_000.0, true, 3_000.0, "Hz", false),
     spec("Amount", 0.0, 1.0, false, 0.0, "", false),
 ];
+// Haas widener: a single delay knob (0 ms = no widening = neutral).
+static HAAS: [FxParamSpec; 1] = [spec("Delay", 0.0, 30.0, false, 0.0, "ms", false)];
+// Comb resonator: Mix is the arm. Freq tunes the ring, Resonance sets its length.
+static COMB: [FxParamSpec; 3] = [
+    spec("Freq", 40.0, 2_000.0, true, 200.0, "Hz", false),
+    spec("Resonance", 0.0, 0.95, false, 0.8, "", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
+// Auto-wah: Mix is the arm. Base is the resting cut-off, Sens the sweep depth.
+static AUTO_WAH: [FxParamSpec; 3] = [
+    spec("Base", 200.0, 2_000.0, true, 500.0, "Hz", false),
+    spec("Sens", 0.0, 1.0, false, 0.5, "", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
 static REVERB: [FxParamSpec; 4] = [
     spec("Room", 0.0, 1.0, false, 0.7, "", false),
     spec("Damp", 0.0, 1.0, false, 0.5, "", false),
@@ -200,7 +214,7 @@ static PITCH_SHIFT: [FxParamSpec; 2] = [
 
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space, the way a rack is laid out.
-pub(crate) static KINDS: [FxKind; 31] = [
+pub(crate) static KINDS: [FxKind; 34] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -394,6 +408,12 @@ pub(crate) static KINDS: [FxKind; 31] = [
         build: |v| FxCommand::Plain(Effect::StereoWidth { width: v[0] }),
     },
     FxKind {
+        name: "Haas",
+        params: &HAAS,
+        arms: &[0], // Delay
+        build: |v| FxCommand::Plain(Effect::Haas { delay_ms: v[0] }),
+    },
+    FxKind {
         name: "Exciter",
         params: &EXCITER,
         arms: &[1], // Amount
@@ -443,6 +463,18 @@ pub(crate) static KINDS: [FxKind; 31] = [
             })
         },
     },
+    FxKind {
+        name: "Comb",
+        params: &COMB,
+        arms: &[2], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::Comb {
+                freq: v[0],
+                feedback: v[1],
+                mix: v[2],
+            })
+        },
+    },
     // Modulation group.
     FxKind {
         name: "Chorus",
@@ -488,6 +520,18 @@ pub(crate) static KINDS: [FxKind; 31] = [
             FxCommand::Plain(Effect::Phaser {
                 rate: v[0],
                 depth: v[1],
+                mix: v[2],
+            })
+        },
+    },
+    FxKind {
+        name: "Auto-Wah",
+        params: &AUTO_WAH,
+        arms: &[2], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::AutoWah {
+                base_freq: v[0],
+                sens: v[1],
                 mix: v[2],
             })
         },

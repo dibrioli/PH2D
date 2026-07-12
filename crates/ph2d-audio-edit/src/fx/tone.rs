@@ -163,6 +163,28 @@ pub(super) fn distortion(data: &SampleData, drive: f32, tone: f32) -> SampleData
     SampleData::from_interleaved(out, data.format())
 }
 
+/// **Haas widener**: delays the right channel by `delay_ms` relative to the left. Under
+/// ~30 ms the ear fuses the two into one *wider* source (the precedence effect) rather
+/// than hearing an echo. A mono clip has nothing to widen and passes through; `delay_ms`
+/// 0 leaves the right channel unshifted — the neutral point. The right channel's last
+/// few ms are pushed out (length is preserved), which is inaudible at these delays.
+pub(super) fn haas(data: &SampleData, delay_ms: f32) -> SampleData {
+    let ch = channels(data);
+    let sr = data.format().sample_rate as f32;
+    let d = (delay_ms.max(0.0) * 0.001 * sr).round() as usize;
+    if ch < 2 || d == 0 {
+        return data.clone();
+    }
+    let frames = data.frame_count();
+    let src = data.samples();
+    let mut out = src.to_vec(); // left channel already correct
+    for f in 0..frames {
+        // Right channel reads `d` frames back (silence before the start).
+        out[f * ch + 1] = if f >= d { src[(f - d) * ch + 1] } else { 0.0 };
+    }
+    SampleData::from_interleaved(out, data.format())
+}
+
 /// Makeup on the exciter's generated harmonics — they come out well below the band
 /// they were derived from, so a little gain buys audible sparkle before the clamp.
 const EXCITER_DRIVE: f32 = 2.5;
@@ -372,5 +394,42 @@ mod tests {
             out.samples().iter().all(|v| v.abs() <= 1.0 + 1e-4),
             "exciter clipped"
         );
+    }
+
+    /// The Haas widener delays only the right channel; the left is untouched.
+    #[test]
+    fn haas_delays_only_the_right_channel() {
+        // 1 kHz SR → 10 ms = 10 samples. L ramps up, R ramps down (distinct channels).
+        let n = 64;
+        let mut v = vec![0.0f32; n * 2];
+        for i in 0..n {
+            v[i * 2] = i as f32 * 0.01;
+            v[i * 2 + 1] = 1.0 - i as f32 * 0.01;
+        }
+        let d = SampleData::from_interleaved(v, AudioFormat::stereo(1_000));
+        let out = haas(&d, 10.0); // 10 samples
+        let (s, src) = (out.samples(), d.samples());
+        for f in 0..n {
+            assert!((s[f * 2] - src[f * 2]).abs() < 1e-6, "left moved at {f}");
+        }
+        assert!(
+            s[1].abs() < 1e-6 && s[19].abs() < 1e-6,
+            "right not silent pre-delay"
+        );
+        for f in 10..n {
+            assert!(
+                (s[f * 2 + 1] - src[(f - 10) * 2 + 1]).abs() < 1e-6,
+                "right not delayed by 10 at {f}"
+            );
+        }
+    }
+
+    /// A mono clip cannot be widened, and delay 0 is a no-op — both pass through.
+    #[test]
+    fn haas_is_identity_on_mono_and_at_zero() {
+        let m = SampleData::from_interleaved(vec![0.1, -0.2, 0.3], AudioFormat::mono(48_000));
+        assert_eq!(haas(&m, 12.0).samples(), m.samples());
+        let s = stereo(vec![0.1, -0.2, 0.3, -0.4]);
+        assert_eq!(haas(&s, 0.0).samples(), s.samples());
     }
 }

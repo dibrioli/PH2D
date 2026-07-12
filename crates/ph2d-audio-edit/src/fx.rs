@@ -18,6 +18,8 @@
 //! Implementations live in the sibling modules ([`tone`], [`dynamics`], [`space`]);
 //! this file is the two enums and the neutral points they promise.
 
+mod autowah;
+mod comb;
 mod deess;
 mod deplosive;
 mod dynamics;
@@ -30,13 +32,15 @@ mod transient;
 use ph2d_audio::SampleData;
 use ph2d_audio::dsp::{BiquadCoeffs, Delay, Reverb};
 
+use autowah::auto_wah;
+use comb::comb;
 use deess::deess;
 use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
 use modulation::{auto_pan, doubler, modulated_delay, phaser, ring_mod, trance_gate, tremolo};
 use pitch::{PITCH_BYPASS_ST, pitch_shift};
 use space::{pingpong, render_wet};
-use tone::{HUM_Q, biquad_all, bitcrush, dehum, distortion, exciter, saturate, stereo_width};
+use tone::{HUM_Q, biquad_all, bitcrush, dehum, distortion, exciter, haas, saturate, stereo_width};
 use transient::{TRANSIENT_BYPASS, transient_shape};
 
 /// Chorus base delay (ms): a detuned doubling sits well behind the dry signal.
@@ -195,6 +199,15 @@ pub enum Effect {
     /// **Vibrato**: pitch modulation — a fully-wet swept delay line at `rate`, sweep
     /// `depth_ms`. Neutral at `depth_ms` 0 (a fixed delay is bypassed).
     Vibrato { rate: f32, depth_ms: f32 },
+    /// **Comb resonator**: a tuned feedback comb ringing at `freq` (and harmonics),
+    /// `feedback` sets the resonance, blended by `mix`. Neutral at `mix` 0.
+    Comb { freq: f32, feedback: f32, mix: f32 },
+    /// **Auto-wah**: an envelope-following resonant band-pass rooted at `base_freq`,
+    /// `sens` the sweep depth, blended by `mix`. Neutral at `mix` 0.
+    AutoWah { base_freq: f32, sens: f32, mix: f32 },
+    /// **Haas widener**: delays the right channel by `delay_ms` for stereo width.
+    /// Neutral at `delay_ms` 0 (and on mono clips).
+    Haas { delay_ms: f32 },
     /// Lo-fi bit-depth reduction to `bits` + sample-hold decimation by
     /// `downsample` (≥1 = no decimation).
     Bitcrush { bits: u32, downsample: u32 },
@@ -366,6 +379,17 @@ impl Effect {
             Effect::Vibrato { rate, depth_ms } if depth_ms > MOD_BYPASS => {
                 modulated_delay(data, VIBRATO_BASE_MS, depth_ms, rate, 0.0, 1.0)
             }
+            Effect::Comb {
+                freq,
+                feedback,
+                mix,
+            } if mix > MOD_BYPASS => comb(data, freq, feedback, mix),
+            Effect::AutoWah {
+                base_freq,
+                sens,
+                mix,
+            } if mix > MOD_BYPASS => auto_wah(data, base_freq, sens, mix),
+            Effect::Haas { delay_ms } if delay_ms > MOD_BYPASS => haas(data, delay_ms),
             Effect::Bitcrush { bits, downsample }
                 if bits < BITCRUSH_BYPASS_BITS || downsample > 1 =>
             {
@@ -478,6 +502,15 @@ impl Effect {
             }
             // The exciter's high-pass is a biquad — same edge-click risk.
             Effect::Exciter { freq, .. } => biquad_warmup(freq, 0.707, sample_rate, TAUS).min(cap),
+            // The auto-wah's band-pass rings longest at its base (lowest) cut-off.
+            Effect::AutoWah { base_freq, .. } => {
+                biquad_warmup(base_freq, autowah::WAH_Q, sample_rate, TAUS).min(cap)
+            }
+            // The Haas widener reads `delay_ms` frames of the right channel before the
+            // region; pre-roll them so a mid-clip selection's right side isn't silence.
+            Effect::Haas { delay_ms } => {
+                ((delay_ms.max(0.0) * 0.001 * sample_rate as f32) as usize).min(cap)
+            }
             // Vibrato is a modulated delay line that starts empty (like chorus/flanger).
             Effect::Vibrato { depth_ms, .. } => {
                 (((VIBRATO_BASE_MS + depth_ms) * 0.001 * sample_rate as f32) as usize).min(cap)
@@ -515,6 +548,10 @@ impl Effect {
             || matches!(*self, Effect::Distortion { drive, .. } if drive <= DISTORT_BYPASS_DRIVE)
             || matches!(*self, Effect::Exciter { amount, .. } if amount <= MOD_BYPASS)
             || matches!(*self, Effect::Vibrato { depth_ms, .. } if depth_ms <= MOD_BYPASS)
+            || matches!(
+                *self,
+                Effect::Comb { mix, .. } | Effect::AutoWah { mix, .. } if mix <= MOD_BYPASS)
+            || matches!(*self, Effect::Haas { delay_ms } if delay_ms <= MOD_BYPASS)
             || matches!(*self, Effect::Bitcrush { bits, downsample }
                 if bits >= BITCRUSH_BYPASS_BITS && downsample <= 1)
             || matches!(*self, Effect::StereoWidth { width } if (width - 1.0).abs() <= f32::EPSILON)

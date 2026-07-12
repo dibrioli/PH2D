@@ -4,6 +4,8 @@ use crate::buffer::SampleData;
 use crate::bus::BusId;
 use crate::command::PlayParams;
 use crate::format::AudioFormat;
+use crate::stream::StreamHandle;
+use crate::voice::Source;
 use crate::voice::{Voice, VoiceId};
 
 /// A fixed-capacity pool of voices. All slots are pre-allocated at construction;
@@ -38,7 +40,7 @@ impl VoicePool {
         id: VoiceId,
         data: SampleData,
         params: PlayParams,
-        on_finished: &mut dyn FnMut(SampleData),
+        on_finished: &mut dyn FnMut(Source),
     ) {
         let slot = match self.voices.iter().position(Voice::is_free) {
             Some(i) => i,
@@ -51,6 +53,28 @@ impl VoicePool {
             }
         };
         self.voices[slot].start(id, data, &params, self.format.sample_rate);
+    }
+
+    /// Same as [`VoicePool::start`], but the audio arrives from a stream (ADR-0118). Voice
+    /// stealing, bussing and envelopes behave identically — a streamed voice is a voice.
+    pub(crate) fn start_stream(
+        &mut self,
+        id: VoiceId,
+        handle: Box<StreamHandle>,
+        params: PlayParams,
+        on_finished: &mut dyn FnMut(Source),
+    ) {
+        let slot = match self.voices.iter().position(Voice::is_free) {
+            Some(i) => i,
+            None => {
+                let i = self.steal_index();
+                if let Some(old) = self.voices[i].free() {
+                    on_finished(old);
+                }
+                i
+            }
+        };
+        self.voices[slot].start_stream(id, handle, &params, self.format.sample_rate);
     }
 
     /// Index of the voice to steal: minimum loudness, ties broken by oldest age.
@@ -85,7 +109,7 @@ impl VoicePool {
         self.voices.iter_mut().find(|v| v.id() == id)
     }
 
-    pub(crate) fn stop(&mut self, id: VoiceId, on_finished: &mut dyn FnMut(SampleData)) {
+    pub(crate) fn stop(&mut self, id: VoiceId, on_finished: &mut dyn FnMut(Source)) {
         if let Some(v) = self.slot_mut(id)
             && let Some(data) = v.free()
         {
@@ -120,7 +144,7 @@ impl VoicePool {
         target: BusId,
         out: &mut [crate::format::Sample],
         frames: usize,
-        on_finished: &mut dyn FnMut(SampleData),
+        on_finished: &mut dyn FnMut(Source),
     ) {
         for v in &mut self.voices {
             if v.is_free() || v.bus() != target {
@@ -142,12 +166,12 @@ mod tests {
         SampleData::from_interleaved(vec![0.0; 480], AudioFormat::mono(48_000))
     }
 
-    fn noop(_d: SampleData) {}
+    fn noop(_s: Source) {}
 
     #[test]
     fn fills_free_slots_then_caps_by_stealing() {
         let mut pool = VoicePool::new(4, AudioFormat::stereo(48_000));
-        let mut sink: Box<dyn FnMut(SampleData)> = Box::new(noop);
+        let mut sink: Box<dyn FnMut(Source)> = Box::new(noop);
         for i in 1..=4 {
             pool.start(
                 VoiceId(i),
@@ -159,7 +183,7 @@ mod tests {
         assert_eq!(pool.active_count(), 4);
         // 5th must steal, not grow.
         let mut stolen = 0;
-        let mut counting: Box<dyn FnMut(SampleData)> = Box::new(|_| stolen += 1);
+        let mut counting: Box<dyn FnMut(Source)> = Box::new(|_| stolen += 1);
         pool.start(
             VoiceId(5),
             silent_sample(),
@@ -175,7 +199,7 @@ mod tests {
     #[test]
     fn stop_frees_a_slot() {
         let mut pool = VoicePool::new(2, AudioFormat::stereo(48_000));
-        let mut sink: Box<dyn FnMut(SampleData)> = Box::new(noop);
+        let mut sink: Box<dyn FnMut(Source)> = Box::new(noop);
         pool.start(
             VoiceId(1),
             silent_sample(),

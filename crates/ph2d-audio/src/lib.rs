@@ -41,6 +41,7 @@ mod meter;
 mod mixer;
 mod output;
 mod pool;
+mod stream;
 mod voice;
 
 pub mod dsp;
@@ -51,6 +52,7 @@ pub use command::PlayParams;
 pub use engine::{AudioEngine, AudioRenderer};
 pub use format::{AudioFormat, ChannelLayout, Sample};
 pub use meter::AudioMeter;
+pub use stream::{Chunk, STREAM_CHUNK_FRAMES, STREAM_DEPTH, StreamFeeder, StreamHandle, stream};
 pub use voice::VoiceId;
 
 use ph2d_core::MemoryBudget;

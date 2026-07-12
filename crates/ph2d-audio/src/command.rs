@@ -14,6 +14,8 @@ use crossbeam_queue::ArrayQueue;
 use crate::buffer::SampleData;
 use crate::bus::BusId;
 use crate::dsp::{AdsrParams, BiquadCoeffs};
+use crate::stream::StreamHandle;
+use crate::voice::Source;
 use crate::voice::VoiceId;
 
 /// How a voice should play, passed to [`crate::AudioEngine::play`].
@@ -51,6 +53,14 @@ pub(crate) enum AudioCommand {
     Play {
         voice: VoiceId,
         data: SampleData,
+        params: PlayParams,
+    },
+    /// Play from a **stream** instead of a resident clip (ADR-0118). Boxed: the command ring is a
+    /// fixed-size array of `AudioCommand`, and every variant pays for the largest — a fat handle
+    /// inline would make every `Stop` carry its weight.
+    PlayStream {
+        voice: VoiceId,
+        handle: Box<StreamHandle>,
         params: PlayParams,
     },
     Stop {
@@ -186,8 +196,12 @@ pub(crate) enum AudioCommand {
 
 /// A message from the audio thread back to the control thread.
 pub(crate) enum AudioReturn {
-    /// A finished/stolen voice's sample, to be dropped on the control thread.
-    FinishedSample(SampleData),
+    /// A finished/stolen voice's source, to be dropped on the control thread.
+    ///
+    /// It carries a whole [`Source`] and not just a `SampleData` because a **stream** must come
+    /// home too: dropping its chunks on the audio thread would be a `free()` there, which is the
+    /// one thing HR-3 forbids (ADR-0118).
+    FinishedSource(Source),
 }
 
 /// Producer half of a bounded lock-free ring.

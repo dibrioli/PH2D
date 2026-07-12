@@ -6,12 +6,12 @@
 //! master mix then gets the master gain + low-pass filter. Per-bus post-fader
 //! peaks are reported out so the UI can meter every strip.
 
-use crate::buffer::SampleData;
 use crate::bus::{BusId, SUB_BUS_COUNT};
 use crate::command::AudioCommand;
 use crate::dsp::{Biquad, Compressor, Delay, Reverb, SmoothGain};
 use crate::format::{AudioFormat, Sample};
 use crate::pool::VoicePool;
+use crate::voice::Source;
 
 /// Linear stereo balance gains `[left, right]` for `pan` in `-1.0..=1.0`:
 /// center = `[1, 1]` (unity, unlike an equal-power *mono* pan), full-left =
@@ -135,13 +135,18 @@ impl Mixer {
 
     /// Apply one control command. `on_finished` receives any sample freed as a
     /// side effect (a stolen or stopped voice), for off-thread drop.
-    pub(crate) fn apply(&mut self, cmd: AudioCommand, on_finished: &mut dyn FnMut(SampleData)) {
+    pub(crate) fn apply(&mut self, cmd: AudioCommand, on_finished: &mut dyn FnMut(Source)) {
         match cmd {
             AudioCommand::Play {
                 voice,
                 data,
                 params,
             } => self.pool.start(voice, data, params, on_finished),
+            AudioCommand::PlayStream {
+                voice,
+                handle,
+                params,
+            } => self.pool.start_stream(voice, handle, params, on_finished),
             AudioCommand::Stop { voice } => self.pool.stop(voice, on_finished),
             AudioCommand::Release { voice } => self.pool.release(voice),
             AudioCommand::SetVoiceGain { voice, gain } => self.pool.set_gain(voice, gain),
@@ -255,7 +260,7 @@ impl Mixer {
         bus_peaks: &mut [[f32; 2]; SUB_BUS_COUNT],
         bus_rms: &mut [[f32; 2]; SUB_BUS_COUNT],
         frames: usize,
-        on_finished: &mut dyn FnMut(SampleData),
+        on_finished: &mut dyn FnMut(Source),
     ) {
         let n = frames * 2;
         let inv_frames = 1.0 / frames.max(1) as f32;

@@ -17,7 +17,8 @@ use crate::format::{AudioFormat, Sample};
 use crate::meter::AudioMeter;
 use crate::mixer::Mixer;
 use crate::output::write_out;
-use crate::voice::{Voice, VoiceId};
+use crate::stream::StreamHandle;
+use crate::voice::{Source, Voice, VoiceId};
 use crate::{CMD_CAPACITY, MAX_VOICES, RETURN_CAPACITY};
 
 /// Internal marker id for the renderer's dedicated preview voice. It lives
@@ -180,6 +181,30 @@ impl AudioEngine {
         self.send(AudioCommand::Play {
             voice: id,
             data,
+            params,
+        })?;
+        Ok(id)
+    }
+
+    /// Play from a **stream**: the audio is decoded ahead, in chunks, by a producer thread, and
+    /// never all resident at once (ADR-0118).
+    ///
+    /// This is what makes the codec mean something to memory. A three-minute song costs 65.9 MB
+    /// resident — 2.2x HR-13's entire iPad audio budget — and the same song streamed costs the
+    /// ring: a few tens of kilobytes, whatever its length.
+    ///
+    /// Pair with [`crate::stream`], and feed the [`StreamFeeder`](crate::StreamFeeder) half from a
+    /// worker thread.
+    pub fn play_stream(
+        &mut self,
+        handle: StreamHandle,
+        params: PlayParams,
+    ) -> Result<VoiceId, AudioError> {
+        self.next_id += 1;
+        let id = VoiceId(self.next_id);
+        self.send(AudioCommand::PlayStream {
+            voice: id,
+            handle: Box::new(handle),
             params,
         })?;
         Ok(id)
@@ -356,11 +381,15 @@ impl AudioEngine {
         self.send(AudioCommand::SetMasterEq { low, mid, high })
     }
 
-    /// Drain and drop finished samples returned by the audio thread. Call once
-    /// per game frame so their `Arc`s free on the control thread, not the RT one.
+    /// Drain and drop the sources finished voices handed back. Call once per game frame so their
+    /// memory frees on the control thread, not the RT one.
+    ///
+    /// A resident source frees an `Arc<[f32]>`; a **streamed** one frees its chunks. Both are a
+    /// `free()`, and a `free()` on the audio thread is an allocation running backwards (HR-3) —
+    /// which is why the return ring carries the whole source, not just the sample (ADR-0118).
     pub fn collect_returns(&self) {
-        while let Some(AudioReturn::FinishedSample(_sample)) = self.returns.pop() {
-            // Dropping `_sample` here frees its `Arc` on the control thread (HR-3).
+        while let Some(AudioReturn::FinishedSource(_source)) = self.returns.pop() {
+            // Dropping `_source` here frees it on the control thread (HR-3).
         }
     }
 
@@ -432,10 +461,10 @@ impl AudioRenderer {
             format,
         } = self;
 
-        let mut on_finished = |data: SampleData| {
+        let mut on_finished = |source: Source| {
             // Return ring full only if the control thread stalled badly; dropping
             // here (a free on the RT thread) is the rare last resort.
-            let _ = returns.push(AudioReturn::FinishedSample(data));
+            let _ = returns.push(AudioReturn::FinishedSource(source));
         };
 
         // 1. Apply queued control commands. Preview commands drive the dedicated
@@ -458,7 +487,7 @@ impl AudioRenderer {
                         }
                     } else {
                         // Not sounding — ship it back to drop on the control thread.
-                        on_finished(data);
+                        on_finished(Source::Resident(data));
                     }
                 }
                 AudioCommand::SetPreviewLooping { looping } => preview.set_looping(looping),

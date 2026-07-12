@@ -42,6 +42,8 @@ ph2d-node-motion-integrate = { path = "../ph2d-node-motion-integrate" }
 ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
 ph2d-node-motion-lattice = { path = "../ph2d-node-motion-lattice" }
 ph2d-node-motion-look-at = { path = "../ph2d-node-motion-look-at" }
+ph2d-node-motion-luminance = { path = "../ph2d-node-motion-luminance" }
+ph2d-node-motion-make-point = { path = "../ph2d-node-motion-make-point" }
 ph2d-node-motion-mirror = { path = "../ph2d-node-motion-mirror" }
 ph2d-node-motion-mixer = { path = "../ph2d-node-motion-mixer" }
 ph2d-node-motion-morph = { path = "../ph2d-node-motion-morph" }

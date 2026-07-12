@@ -42,6 +42,8 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_kaleidoscope::register(reg)?;
     ph2d_node_motion_lattice::register(reg)?;
     ph2d_node_motion_look_at::register(reg)?;
+    ph2d_node_motion_luminance::register(reg)?;
+    ph2d_node_motion_make_point::register(reg)?;
     ph2d_node_motion_mirror::register(reg)?;
     ph2d_node_motion_mixer::register(reg)?;
     ph2d_node_motion_morph::register(reg)?;

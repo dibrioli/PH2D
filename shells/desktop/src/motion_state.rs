@@ -54,11 +54,12 @@ pub(crate) struct MotionState {
 }
 
 impl MotionState {
-    /// Build the boot state: register every node op + the **default document** — the first
-    /// with branch-and-merge topology: on the left a grid and a spinning ring
-    /// **concatenated** into one cloud (`motion.combine`); on the right a grid **blended**
-    /// into a circle (`motion.mixer`, its `blend` morphing square↔ring). By `value.lfo`s.
-    /// Kept deliberately small (docs/Motion Nodes/12, 30). The earlier scenes (the
+    /// Build the boot state: register every node op + the **default document** — the
+    /// value↔geometry↔colour adapters: on the left a **Lissajous** plotted from two
+    /// staggered LFOs (`motion.make_point` turns value fields into `P`); on the right a
+    /// rainbow grid **recoloured by its own brightness** (`motion.luminance` reads the
+    /// tint back into a value that drives a Heat ramp).
+    /// Kept deliberately small (docs/Motion Nodes/12, 31). The earlier scenes (the
     /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
     /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
     /// live in git history and every node keeps its own unit tests + stays registered
@@ -90,11 +91,11 @@ impl MotionState {
 /// module's most recent work). Returns their sinks (the Output nodes) if the graph
 /// is well-typed.
 ///
-/// The scenes — built in the `strobe` sibling module — are the first branch-and-merge
-/// graphs: on the LEFT a grid and a spinning ring **concatenated** by `motion.combine`
-/// (140 dots); on the RIGHT a grid **blended** into a circle by `motion.mixer` (Blend
-/// mode), a sine `value.lfo` morphing the square into the ring and back. See
-/// docs/Motion Nodes/12 (value), 30 (combine + mixer).
+/// The scenes — built in the `strobe` sibling module — are the value↔geometry↔colour
+/// adapters: on the LEFT a **Lissajous** (`motion.make_point` packs two staggered
+/// `value.lfo` fields into `P`, 64 points the playhead animates); on the RIGHT a rainbow
+/// grid recoloured by `motion.luminance` (tint → a `v` field that indexes a Heat ramp).
+/// See docs/Motion Nodes/12 (value), 31 (make_point + luminance).
 ///
 /// The earlier scenes were removed to keep the boot document small and legible: the
 /// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,

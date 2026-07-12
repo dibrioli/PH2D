@@ -1,38 +1,38 @@
-//! The M1 stream demo — the **default Motion document**, the first with **branch-and-
-//! merge** topology (until now every graph was one linear chain): on the LEFT a grid and
-//! a ring are **concatenated** into one cloud (`motion.combine`); on the RIGHT a grid is
-//! **blended** into a circle (`motion.mixer` in Blend mode, its `blend` swept by a sine
-//! `value.lfo` — a square morphing to a ring and back). Each scene is a Y: two sources
-//! converging on the new node. Two independent scenes (each its own `motion.output` sink),
-//! kept small so each new node reads on its own. A `#[path]` sibling of `motion_state`,
-//! kept out for the LOC cap.
+//! The M1 adapter demo — the **default Motion document**, showing the value↔geometry↔
+//! colour bridges: on the LEFT a **Lissajous** plotted from two staggered LFOs
+//! (`motion.make_point` turns value fields into positions); on the RIGHT a rainbow grid
+//! **recoloured by its own brightness** (`motion.luminance` reads the tint back into a
+//! value that drives a second ramp). Two independent scenes (each its own `motion.output`
+//! sink), kept small so each new node reads on its own. A `#[path]` sibling of
+//! `motion_state`, kept out for the LOC cap.
 //!
 //! ```text
-//! LEFT  (combine): grid ┐                          RIGHT (mixer): grid ┐
-//!         radial(spin) ┴→ combine → tint → move(−6) → out    radial ┴→ mixer(Blend) → tint → move(+6) → out
-//!                                                                      lfo(sine) → blend
+//! LEFT  (make_point): grid → lfoX(stagger) ┐
+//!                     grid → lfoY(stagger) ┴→ make_point → tint → move(−6) → output
+//! RIGHT (luminance):  grid → color_ramp(Rainbow) → luminance → color_ramp(t, Heat) → move(+6) → out
 //! ```
 //!
-//! - **combine** (`motion.combine`, doc 30): a 10×10 grid and a spinning 40-point ring
-//!   stack into one 140-point stream (concatenation — the Merge/Join).
-//! - **mixer** (`motion.mixer`, doc 30): a 64-point grid and a 64-point circle, blended
-//!   element-wise; the `blend` `value.lfo` morphs the square into the ring and back.
+//! - **make_point** (`motion.make_point`, doc 31): the grid fixes the count (64); two
+//!   `value.lfo`s with different `phase_stagger` give per-instance x and y → a Lissajous
+//!   that the playhead animates.
+//! - **luminance** (`motion.luminance`, doc 31): the rainbow's per-instance brightness
+//!   becomes a `v` field that indexes a Heat ramp — colour read back into a value.
 //!
-//! See docs/Motion Nodes/30 (combine + mixer). The whole value/pulse vocabulary + the
-//! other M3/M4 nodes stay registered (drop them in the editor).
+//! See docs/Motion Nodes/31 (make_point + luminance). The whole value/pulse vocabulary +
+//! the other M3/M4 nodes stay registered (drop them in the editor).
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
 const COL_W: f32 = 190.0;
-const COMBINE_ROW: f32 = 0.0;
-const MIXER_ROW: f32 = 340.0;
+const LISSAJOUS_ROW: f32 = 0.0;
+const LUMA_ROW: f32 = 320.0;
 
-/// Author both scenes into `g`; returns their Output nodes (the sinks), the combine
+/// Author both scenes into `g`; returns their Output nodes (the sinks), the make_point
 /// scene's first so the sink order is stable (id-ascending).
 pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    let combine = build_combine_scene(g)?;
-    let mixer = build_mixer_scene(g)?;
-    Some(vec![combine, mixer])
+    let lissajous = build_lissajous_scene(g)?;
+    let luma = build_luminance_scene(g)?;
+    Some(vec![lissajous, luma])
 }
 
 /// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
@@ -45,143 +45,123 @@ fn wire(g: &mut Graph, from: (NodeId, u16), to: (NodeId, u16)) -> Option<()> {
     .ok()
 }
 
-/// LEFT: a grid and a spinning ring concatenated. Returns its Output node.
-fn build_combine_scene(g: &mut Graph) -> Option<NodeId> {
+/// Configure a `value.lfo`: sine, `amp`, period 6 s, per-instance `stagger` cycles.
+fn setup_lfo(g: &mut Graph, lfo: NodeId, amp: f32, phase: f32, stagger: f32) {
+    g.set_param(lfo, "wave", 0.0); // Sine
+    g.set_param(lfo, "period", 6.0);
+    g.set_param(lfo, "amplitude", amp);
+    g.set_param(lfo, "phase", phase);
+    g.set_param(lfo, "phase_stagger", stagger);
+}
+
+/// LEFT: a Lissajous plotted by make_point from two staggered LFOs. Returns its Output.
+fn build_lissajous_scene(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
-    let ring = g.add_node("motion.distribute_radial");
-    let combine = g.add_node("motion.combine");
+    let lfo_x = g.add_node("value.lfo");
+    let lfo_y = g.add_node("value.lfo");
+    let point = g.add_node("motion.make_point");
     let tint = g.add_node("motion.tint");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
-    let lfo = g.add_node("value.lfo");
 
     g.set_pos(
         grid,
         Pos {
             x: 0.0,
-            y: COMBINE_ROW,
+            y: LISSAJOUS_ROW,
         },
     );
     g.set_pos(
-        ring,
+        lfo_x,
         Pos {
-            x: 0.0,
-            y: COMBINE_ROW + 120.0,
+            x: COL_W,
+            y: LISSAJOUS_ROW - 120.0,
         },
     );
-    for (n, col) in [(combine, 1.0), (tint, 2.0), (mv, 3.0), (output, 4.0)] {
+    g.set_pos(
+        lfo_y,
+        Pos {
+            x: COL_W,
+            y: LISSAJOUS_ROW + 120.0,
+        },
+    );
+    for (n, col) in [(point, 2.0), (tint, 3.0), (mv, 4.0), (output, 5.0)] {
         g.set_pos(
             n,
             Pos {
                 x: col * COL_W,
-                y: COMBINE_ROW,
+                y: LISSAJOUS_ROW,
             },
         );
     }
-    g.set_pos(
-        lfo,
-        Pos {
-            x: 0.0,
-            y: COMBINE_ROW + 240.0,
-        },
-    );
 
-    wire(g, (grid, 0), (combine, 0))?;
-    wire(g, (ring, 0), (combine, 1))?;
-    wire(g, (combine, 0), (tint, 0))?;
+    wire(g, (grid, 0), (lfo_x, 0))?; // grid fixes the count for the LFOs
+    wire(g, (grid, 0), (lfo_y, 0))?;
+    wire(g, (grid, 0), (point, 0))?; // and for make_point
+    wire(g, (lfo_x, 0), (point, 1))?; // → x
+    wire(g, (lfo_y, 0), (point, 2))?; // → y
+    wire(g, (point, 0), (tint, 0))?; // the plotted points → tint → move → output
     wire(g, (tint, 0), (mv, 0))?;
     wire(g, (mv, 0), (output, 0))?;
-    wire(g, (lfo, 0), (ring, 0))?; // → ring spin
 
-    // A 10×10 grid + a 40-point ring around it → 140 dots, amber, left.
-    g.set_param(grid, "rows", 10.0);
-    g.set_param(grid, "cols", 10.0);
-    g.set_param(grid, "gap_x", 0.45);
-    g.set_param(grid, "gap_y", 0.45);
-    g.set_param(ring, "count", 40.0);
-    g.set_param(ring, "rings", 1.0);
-    g.set_param(ring, "radius", 3.2);
+    // An 8×8 grid (64 instances) drives the LFO count; x runs 3 cycles across the set,
+    // y runs 2 → a 3:2 Lissajous, amplitude 4, on the left.
+    g.set_param(grid, "rows", 8.0);
+    g.set_param(grid, "cols", 8.0);
+    setup_lfo(g, lfo_x, 4.0, 0.0, 3.0 / 64.0);
+    setup_lfo(g, lfo_y, 4.0, 0.25, 2.0 / 64.0);
     g.set_param(tint, "mode", 0.0); // Solid
     g.set_param(tint, "r", 0.95);
     g.set_param(tint, "g", 0.70);
     g.set_param(tint, "b", 0.20);
     g.set_param(mv, "dx", -6.0);
     g.set_param(mv, "dy", 0.0);
-    // lfo → ring spin: a slow sine, ±180°.
-    g.set_param(lfo, "wave", 0.0); // Sine
-    g.set_param(lfo, "period", 6.0);
-    g.set_param(lfo, "amplitude", 180.0);
-    g.set_param(lfo, "offset", 0.0);
     Some(output)
 }
 
-/// RIGHT: a grid blended into a circle. Returns its Output node.
-fn build_mixer_scene(g: &mut Graph) -> Option<NodeId> {
+/// RIGHT: a rainbow grid recoloured by its own luminance through a Heat ramp. Returns
+/// its Output.
+fn build_luminance_scene(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
-    let circle = g.add_node("motion.distribute_radial");
-    let mixer = g.add_node("motion.mixer");
-    let tint = g.add_node("motion.tint");
+    let rainbow = g.add_node("motion.color_ramp");
+    let luma = g.add_node("motion.luminance");
+    let heat = g.add_node("motion.color_ramp");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
-    let lfo = g.add_node("value.lfo");
 
-    g.set_pos(
-        grid,
-        Pos {
-            x: 0.0,
-            y: MIXER_ROW,
-        },
-    );
-    g.set_pos(
-        circle,
-        Pos {
-            x: 0.0,
-            y: MIXER_ROW + 120.0,
-        },
-    );
-    for (n, col) in [(mixer, 1.0), (tint, 2.0), (mv, 3.0), (output, 4.0)] {
+    for (n, col) in [
+        (grid, 0.0),
+        (rainbow, 1.0),
+        (luma, 2.0),
+        (heat, 3.0),
+        (mv, 4.0),
+        (output, 5.0),
+    ] {
         g.set_pos(
             n,
             Pos {
                 x: col * COL_W,
-                y: MIXER_ROW,
+                y: LUMA_ROW,
             },
         );
     }
-    g.set_pos(
-        lfo,
-        Pos {
-            x: 0.0,
-            y: MIXER_ROW + 240.0,
-        },
-    );
 
-    wire(g, (grid, 0), (mixer, 0))?;
-    wire(g, (circle, 0), (mixer, 1))?;
-    wire(g, (mixer, 0), (tint, 0))?;
-    wire(g, (tint, 0), (mv, 0))?;
+    wire(g, (grid, 0), (rainbow, 0))?;
+    wire(g, (rainbow, 0), (luma, 0))?; // luminance reads the rainbow's tint → a `v` field
+    wire(g, (rainbow, 0), (heat, 0))?; // the rainbow stream carries the geometry to Heat
+    wire(g, (luma, 0), (heat, 1))?; // the luma value drives Heat's `t`
+    wire(g, (heat, 0), (mv, 0))?;
     wire(g, (mv, 0), (output, 0))?;
-    wire(g, (lfo, 0), (mixer, 4))?; // → blend weight
 
-    // An 8×8 grid (64) blended toward a 64-point circle → a square↔ring morph, cyan, right.
-    g.set_param(grid, "rows", 8.0);
-    g.set_param(grid, "cols", 8.0);
-    g.set_param(grid, "gap_x", 0.55);
-    g.set_param(grid, "gap_y", 0.55);
-    g.set_param(circle, "count", 64.0);
-    g.set_param(circle, "rings", 1.0);
-    g.set_param(circle, "radius", 2.4);
-    g.set_param(mixer, "mode", 2.0); // Blend (in0 → in1)
-    g.set_param(tint, "mode", 0.0); // Solid
-    g.set_param(tint, "r", 0.25);
-    g.set_param(tint, "g", 0.80);
-    g.set_param(tint, "b", 0.95);
+    // A 10×10 grid coloured by a rainbow (by index), its brightness read by luminance and
+    // fed as the `t` of a Heat ramp → recoloured by luma, on the right.
+    g.set_param(grid, "rows", 10.0);
+    g.set_param(grid, "cols", 10.0);
+    g.set_param(grid, "gap_x", 0.5);
+    g.set_param(grid, "gap_y", 0.5);
+    g.set_param(rainbow, "preset", 0.0); // Rainbow
+    g.set_param(heat, "preset", 1.0); // Heat (indexed by the luma `t`)
     g.set_param(mv, "dx", 6.0);
     g.set_param(mv, "dy", 0.0);
-    // lfo → blend: a sine about 0.5, ±0.5 → blend ∈ [0, 1] (grid ↔ circle).
-    g.set_param(lfo, "wave", 0.0); // Sine
-    g.set_param(lfo, "period", 5.0);
-    g.set_param(lfo, "amplitude", 0.5);
-    g.set_param(lfo, "offset", 0.5);
     Some(output)
 }

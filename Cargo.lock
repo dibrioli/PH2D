@@ -5400,6 +5400,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-luminance"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-make-point"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-mirror"
 version = "0.0.0"
 dependencies = [
@@ -5710,6 +5726,8 @@ dependencies = [
  "ph2d-node-motion-kaleidoscope",
  "ph2d-node-motion-lattice",
  "ph2d-node-motion-look-at",
+ "ph2d-node-motion-luminance",
+ "ph2d-node-motion-make-point",
  "ph2d-node-motion-mirror",
  "ph2d-node-motion-mixer",
  "ph2d-node-motion-morph",

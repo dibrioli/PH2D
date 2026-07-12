@@ -9,7 +9,7 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::ROW_H_PX;
 
 use crate::ids;
 use crate::ruler;
@@ -56,11 +56,22 @@ pub(crate) fn body(rect: Rect, title_size: f32) -> Rect {
     )
 }
 
-/// The panel's header band: the title's own height, but never shorter than one
-/// control row — the transport now flows BESIDE the title (Enio, 2026-07-12), so
-/// the band has to be able to hold it.
-fn head_h(title_size: f32) -> f32 {
-    (PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px()).max(ROW_H_PX + Spacing::Sm.px() * 2.0)
+/// The panel's header band: exactly ONE control row, inset.
+///
+/// The transport flows beside the title now (Enio, 2026-07-12) and the title sits
+/// ON that row — so the band is the row, and there is no second line to leave
+/// space for. Everything the row cannot hold wraps into the body below it.
+fn head_h(_title_size: f32) -> f32 {
+    HEAD_PAD_Y * 2.0 + ROW_H_PX
+}
+
+/// Vertical inset above and below the header's single control row.
+const HEAD_PAD_Y: f32 = 6.0; // LITERAL-PX-OK: header row inset
+
+/// Baseline for the panel title so it sits on the SAME row as the controls
+/// ([`PANEL_TITLE_BASELINE`] is a text box's top-to-baseline offset).
+pub(crate) fn title_baseline(rect: Rect) -> f32 {
+    rect.y + HEAD_PAD_Y + (ROW_H_PX - PANEL_TITLE_BASELINE) * 0.5
 }
 
 /// Width reserved for the panel's own title before the controls may start.
@@ -75,11 +86,10 @@ const TITLE_RESERVE: f32 = 92.0; // LITERAL-PX-OK: header column reserved for th
 
 /// The strip in the header where the transport controls flow: right of the title,
 /// left of the close (X) button, vertically centred in the band.
-pub(crate) fn header_controls(rect: Rect, title_size: f32) -> Rect {
+pub(crate) fn header_controls(rect: Rect, _title_size: f32) -> Rect {
     let x = rect.x + PANEL_HEAD_PAD + TITLE_RESERVE;
     let right = rect.x + rect.w - PANEL_HEAD_PAD - PANEL_HEADER_CLOSE_RESERVE;
-    let y = rect.y + (head_h(title_size) - ROW_H_PX) * 0.5;
-    Rect::new(x, y, (right - x).max(0.0), ROW_H_PX)
+    Rect::new(x, rect.y + HEAD_PAD_Y, (right - x).max(0.0), ROW_H_PX)
 }
 
 /// Narrowest the track-name column may be dragged.

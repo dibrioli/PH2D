@@ -66,18 +66,21 @@ const ITEMS: [Item; 11] = [
     Item::Speed,
 ];
 
-/// Flow the transport controls beside the panel title, wrapping what does not fit
-/// onto a second row above the dope sheet.
+/// Flow the transport controls beside the panel title, wrapping onto as many rows
+/// as the panel's width needs.
 ///
 /// Returns the `y` the dope sheet starts at, and — when the clip dropdown is OPEN
 /// — the chip's rect. The caller paints the popover LAST, after the dope sheet, or
 /// the list would be drawn under the rows it overlaps
 /// ([[feedback_overlay_cut_at_boundary_check_draw_order]]).
 ///
-/// **Two rows, and only when it needs two** (Enio: "a timeline ficou apertada").
-/// A wide panel carries the whole bar on the title line and hands the dope sheet
-/// the row back; narrow it and the tail spills to the row below, one item at a
-/// time, so nothing is ever clipped away where the animator cannot reach it.
+/// **As many rows as it takes** (Enio, 2026-07-12). Row 1 is the strip beside the
+/// title, and it is SHORT — the title and the close button both eat into it — so
+/// the tail spills below. Each further row is the full body width. Wrapping only
+/// ONCE was the bug in the first cut: everything past the second row's edge simply
+/// painted outside the panel, where it could be seen and not clicked. A row is
+/// only ever spent when an item needs it, so a wide panel still keeps the whole bar
+/// on the title line and hands the dope sheet the space back.
 pub(crate) fn paint_bar(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -87,20 +90,26 @@ pub(crate) fn paint_bar(
     speed_view: bool,
 ) -> (f32, Option<Rect>) {
     let gap = Spacing::Sm.px();
+    let row_step = ROW_H_PX + gap;
     let mut clip_chip = None;
+    // Row 0 is the header strip; row 1+ are full-width rows in the body.
     let mut row = header;
-    let mut x = header.x;
-    let mut wrapped = false;
+    let mut body_rows = 0usize;
+    let mut x = row.x;
 
     for item in ITEMS {
         let w = width(item, snap);
-        // Wrap ONCE: the first item that will not fit, and everything after it,
-        // moves down together. Breaking a cluster across rows would be worse than
-        // a short first row.
-        if !wrapped && x + w > row.x + row.w {
-            wrapped = true;
-            row = body;
-            x = body.x;
+        // Does not fit? Take the next row. Never split a cluster across rows — a
+        // short row reads better than a broken control.
+        if x > row.x && x + w > row.x + row.w {
+            body_rows += 1;
+            row = Rect::new(
+                body.x,
+                body.y + (body_rows - 1) as f32 * row_step,
+                body.w,
+                ROW_H_PX,
+            );
+            x = row.x;
         }
         if let Some(chip) = paint_item(ctx, theme, item, x, row.y, snap, speed_view) {
             clip_chip = Some(chip);
@@ -108,12 +117,7 @@ pub(crate) fn paint_bar(
         x += w + gap;
     }
 
-    let next_y = if wrapped {
-        body.y + ROW_H_PX + Spacing::Sm.px()
-    } else {
-        body.y
-    };
-    (next_y, clip_chip)
+    (body.y + body_rows as f32 * row_step, clip_chip)
 }
 
 /// How wide `item` paints. The single source the flow measures against — every

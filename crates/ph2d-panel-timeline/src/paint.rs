@@ -14,14 +14,14 @@ use crate::geom::SPLIT_GRIP;
 use crate::state::{self, TimelinePanelState, set_last_content_h, set_last_visible_h};
 use crate::{TimelinePanel, geom, graph, ids, ruler, scrollbar, tracks, transport};
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_title, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEADER_CLOSE_RESERVE, paint_panel_close_button, paint_panel_corner_dot,
-    paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, paint_panel_close_button, paint_panel_corner_dot,
+    paint_panel_corner_dot_bl, paint_panel_surface,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, Theme, TypeToken};
 
 /// Thickness of the hairline drawn on the label/time seam.
 const SPLIT_LINE_W: f32 = 1.0; // LITERAL-PX-OK: splitter hairline width
@@ -77,13 +77,22 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
-    let title_size = paint_panel_title(
-        rect,
-        ph2d_i18n::tr("panel.timeline.title"),
-        PANEL_HEADER_CLOSE_RESERVE,
-        ctx.scene,
+    // The title is painted HERE rather than through `paint_panel_title`, because it
+    // has to sit ON the control row: the header IS the transport's first row now,
+    // and a title floating on a line above it read as a stray label (Enio,
+    // 2026-07-12). The shared chrome helper hard-codes its own baseline — and it is
+    // at its LOC cap, so this is the one panel that owns its title placement rather
+    // than growing the chrome for everyone.
+    let title_size = TypeToken::Lg.px();
+    paint_text_title(
         ctx.text_system,
-        theme,
+        ctx.scene,
+        ph2d_i18n::tr("panel.timeline.title"),
+        rect.x + PANEL_HEAD_PAD,
+        geom::title_baseline(rect),
+        title_size,
+        (rect.w - PANEL_HEAD_PAD * 2.0 - PANEL_HEADER_CLOSE_RESERVE).max(0.0),
+        resolve(ColorToken::Text1, theme),
     );
     paint_panel_close_button(
         rect,

@@ -363,6 +363,23 @@ pub struct BrushSettings {
     pub impasto_draw_to: u8,
     /// **Smoothing** (`0..1`) — how much the deposited relief is settled before it is lit.
     pub impasto_smoothing: f32,
+    /// Whether the Impasto section APPLIES in the current mode (`PainterTool::impasto_applies`) — the
+    /// §1.2 matrix, published as ONE predicate instead of re-derived in the panel. False under the
+    /// Watercolor wash / Eraser / Mask / Inpaint / Smear / Blur / Clone, where the card is not painted
+    /// and its ids are therefore never hit-registered. (The panel re-deriving this disjunction for
+    /// itself is exactly how a UI and its engine come to disagree about when a feature is live.)
+    pub impasto_applies: bool,
+    /// **Show Impasto** — canvas-level: is the relief lit? (Not a brush property; carried in this
+    /// display snapshot for the Lighting card's read-back, like `dry_time_s` / `wet_preview`.)
+    pub impasto_show: bool,
+    /// Light **Angle** (whole degrees, azimuth) — canvas-level.
+    pub impasto_light_angle_deg: u16,
+    /// Light **Elevation** (whole degrees above the canvas plane) — canvas-level.
+    pub impasto_light_elev_deg: u16,
+    /// Light **Amount** (`0..1`, height-to-slope) — canvas-level.
+    pub impasto_light_amount: f32,
+    /// **Shine** (`0..1`, specular strength) — canvas-level.
+    pub impasto_shine: f32,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

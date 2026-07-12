@@ -12,13 +12,13 @@
 //! `SetValue` (routed via [`ph2d_editor_core::ids::PAINTER_WATERCOLOR_FIELDS`] + `is_param_field`); the
 //! Enable toggle + section reset forward as `PanelEvent::Click`.
 
+use crate::card::{card_frame, card_row};
 use crate::number_field;
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
 /// Slider range bounds — the parameter domains (matching the tool's `set_brush_*` clamps), not design
@@ -31,10 +31,6 @@ const DEPTH_MAX: f32 = 8.0; // LITERAL-PX-OK: Beer–Lambert optical-depth max (
 const WARP_MAX: f32 = 48.0; // LITERAL-PX-OK: watercolor Ragged-Edge displacement max (px; range pair of SPREAD_MAX)
 const DRY_TIME_MIN: f32 = 2.0; // LITERAL-PX-OK: Drying-Time slider min (seconds; matches DRY_TIME_MIN_S clamp)
 const DRY_TIME_MAX: f32 = 60.0; // LITERAL-PX-OK: Drying-Time slider max (seconds; matches DRY_TIME_MAX_S clamp)
-
-/// Wider label column for the Watercolor cards' descriptive technique names ("Edge Darkening",
-/// "Concentration", "Pigment") — the shared `number_field` column (70 px) clips them.
-const CARD_LABEL_W: f32 = 96.0; // LITERAL-PX-OK: watercolor card label column (descriptive names)
 
 /// Paint the Watercolor section starting at `y`, returning the next `y`.
 pub(crate) fn paint_watercolor_section(
@@ -384,96 +380,4 @@ fn paint_water_card(
         2,
     );
     next_y
-}
-
-/// Draw a titled bordered **card** (the Composite/Clone-card idiom) sized for `n_rows` number rows, and
-/// return `(inner_x, inner_w, first_row_y, y_after_card)` — the caller paints the rows into
-/// `[inner_x, inner_w]` starting at `first_row_y` with [`card_row`], then continues at `y_after_card`.
-fn card_frame(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    title: &str,
-    n_rows: usize,
-) -> (f32, f32, f32, f32) {
-    let pad = Spacing::Sm.px();
-    let font = TypeToken::Sm.px();
-    let title_h = font + Spacing::Sm.px();
-    let row_adv = ROW_H_PX + Spacing::Xs.px();
-    let card_h = pad + title_h + n_rows as f32 * row_adv + pad;
-    let card = Rect::new(x, y, content_w, card_h);
-    let radius = Radius::Md.px();
-    fill_rounded_rect(ctx.scene, card, radius, resolve(ColorToken::Bg1, theme));
-    stroke_rounded_rect(
-        ctx.scene,
-        card,
-        radius,
-        StrokeToken::Default.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    // Card title — a discreet caption in the card's top-left.
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        title,
-        x + pad,
-        y + pad,
-        font,
-        content_w - 2.0 * pad,
-        resolve(ColorToken::Text2, theme),
-    );
-    (
-        x + pad,
-        content_w - 2.0 * pad,
-        y + pad + title_h,
-        y + card_h + Spacing::Sm.px(),
-    )
-}
-
-/// One `label · number-box` row inside a card — the app-standard drag-scrub [`number_field::chip`] with a
-/// WIDER label column ([`CARD_LABEL_W`]) than the shared `paint_num_row`, so the descriptive technique
-/// names fit. Returns the next `y`.
-#[allow(clippy::too_many_arguments)]
-fn card_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    label: &str,
-    id: ph2d_a11y::NodeId,
-    value: f32,
-    min: f32,
-    max: f32,
-    step: f64,
-    decimals: usize,
-) -> f32 {
-    let gap = Spacing::Sm.px();
-    let font = TypeToken::Sm.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        label,
-        x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        CARD_LABEL_W,
-        resolve(ColorToken::Text2, theme),
-    );
-    let cx = x + CARD_LABEL_W + gap;
-    let cw = (x + content_w - cx).max(0.0);
-    number_field::chip(
-        ctx,
-        theme,
-        Rect::new(cx, y, cw, ROW_H_PX),
-        id,
-        value,
-        min,
-        max,
-        step,
-        decimals,
-    );
-    y + ROW_H_PX + Spacing::Xs.px()
 }

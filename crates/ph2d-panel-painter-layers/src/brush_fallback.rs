@@ -200,4 +200,10 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     impasto_source: 0,  // Uniform (DepthSource wire 0)
     impasto_draw_to: 0, // Color + Depth (DrawTo wire 0)
     impasto_smoothing: 0.2, // LITERAL-PX-OK: default relief settling (mirrors BrushSpec::default)
+    impasto_applies: true, // plain Paint mode in the pre-publish fallback
+    impasto_show: true,
+    impasto_light_angle_deg: 135,
+    impasto_light_elev_deg: 45,
+    impasto_light_amount: 0.5, // LITERAL-PX-OK: default height-to-slope (mirrors PaintState::default)
+    impasto_shine: 0.3, // LITERAL-PX-OK: default specular strength (mirrors PaintState::default)
 };

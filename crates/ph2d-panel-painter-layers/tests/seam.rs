@@ -550,3 +550,60 @@ fn shape_watercolor_automatic_forwards_its_click() {
         "Automatic never forwarded as ToolPanelEvent(Click) — seam dead. drained = {actions:?}"
     );
 }
+
+// ── Impasto section seam (#16) ────────────────────────────────────────────────────────────────────
+// The panel can paint a card, register its hits and still be completely dead if the event.rs
+// membership is missing — the card looks alive and nothing happens. These two prove the REAL widget
+// event forwards the EXACT PanelEvent the tool's `route_brush_impasto_event` arm consumes, for every
+// id in the section, so a knob added later cannot ship silently disconnected.
+
+/// Every Impasto **Click** widget (Enable / Reset / the Depth-Source + Draw-To segments / Show Impasto)
+/// forwards as `ToolPanelEvent(Click(id))` — the `PAINTER_IMPASTO_CLICKS` allowlist arm in `event.rs`.
+#[test]
+fn impasto_click_controls_forward_their_click() {
+    for clicked in core_ids::PAINTER_IMPASTO_CLICKS {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::Click(clicked));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "impasto control {clicked:?} click ignored — the event.rs Click allowlist is missing the id"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::Click(id)) if *id == clicked
+            )),
+            "impasto control {clicked:?} never forwarded as ToolPanelEvent(Click) — seam dead. \
+             drained = {actions:?}"
+        );
+    }
+}
+
+/// Every Impasto number-field (Depth / Smoothing / Angle / Elevation / Amount / Shine) forwards
+/// `SetValue(id, _)` — the `is_param_field` route.
+#[test]
+fn impasto_sliders_forward_setvalue() {
+    for id in core_ids::PAINTER_IMPASTO_FIELDS {
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let outcome =
+            host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "impasto slider {id:?} drag ignored — the event.rs `is_param_field` arm is missing the id"
+        );
+        let actions = host.drained_actions();
+        assert!(
+            actions.iter().any(|a| matches!(
+                a,
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _)) if *i == id
+            )),
+            "impasto slider {id:?} never forwarded as SetValue — seam dead. drained = {actions:?}"
+        );
+    }
+}

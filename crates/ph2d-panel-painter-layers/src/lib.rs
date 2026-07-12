@@ -27,6 +27,7 @@
 mod adjust_menu;
 mod blend;
 mod brush_fallback;
+mod card; // the titled row-box shared by the brush panel technique sections
 mod dropdown_popover;
 mod event;
 mod event_brush_forward;
@@ -41,6 +42,7 @@ mod paint_clone;
 mod paint_composite;
 mod paint_deform;
 mod paint_falloff;
+mod paint_impasto; // Impasto: the Body (per-brush) + Lighting (per-canvas) cards
 mod paint_inpaint;
 mod paint_mask;
 mod paint_mask_row;

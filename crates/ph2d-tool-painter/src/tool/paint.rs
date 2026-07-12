@@ -36,6 +36,7 @@ pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
+mod impasto_settings; // Impasto: section setters + the panel-event route (mirror of watercolor_settings)
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;

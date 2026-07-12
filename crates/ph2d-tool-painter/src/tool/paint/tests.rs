@@ -17344,3 +17344,123 @@ fn impasto_smoothing_settles_the_paint_it_just_laid() {
         "the paint spreads, it does not vanish ({vs} → {vt})"
     );
 }
+
+#[test]
+fn impasto_hides_itself_in_every_mode_it_does_not_apply_to() {
+    // §1.2 of the plan, as an EXECUTABLE gate. The card is painted only when `impasto_applies`, and a
+    // card that is not painted registers no hit — so this one predicate is what makes the whole matrix
+    // real. A prose checklist in a doc does not bite; this does.
+    //
+    // Watercolor is the one that matters most: Enio's order was that it "é uma implementação à parte e
+    // não deve ser tocada ou ferida". Impasto must not so much as APPEAR there.
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
+    assert!(
+        t.impasto_applies(),
+        "a plain Paint brush is where Impasto lives"
+    );
+    assert!(
+        t.brush_settings().impasto_applies,
+        "and the panel is told so"
+    );
+
+    // Watercolor: the wash is a separate implementation and thin paint besides.
+    t.paint.brush.watercolor = true;
+    assert!(!t.impasto_applies(), "hidden under the Watercolor wash");
+    assert!(!t.brush_settings().impasto_applies);
+    t.paint.brush.watercolor = false;
+
+    // Eraser: it TAKES relief away (that is wired), but it has no body of its own to configure.
+    t.paint.eraser = true;
+    assert!(!t.impasto_applies(), "hidden for the Eraser");
+    t.paint.eraser = false;
+
+    // The pixel-processing modes: Smear / Blur / Clone move paint that is already down (dragging the
+    // relief with it is `Plow` — named, deferred); Mask is a grayscale channel with no body; Inpaint is
+    // a heal disc that ignores the brush entirely.
+    for mode in [
+        PaintMode::Smear,
+        PaintMode::Blur,
+        PaintMode::Clone,
+        PaintMode::Mask,
+        PaintMode::Inpaint,
+        PaintMode::Selection,
+    ] {
+        t.paint.paint_mode = mode;
+        assert!(
+            !t.impasto_applies(),
+            "Impasto must not show up in {mode:?} — it deposits no fresh paint"
+        );
+        assert!(!t.brush_settings().impasto_applies);
+    }
+    t.paint.paint_mode = PaintMode::Paint;
+    assert!(t.impasto_applies(), "and it comes back in Paint");
+}
+
+#[test]
+fn impasto_panel_events_reach_the_brush() {
+    // The seam test in the panel proves the widget forwards the event; this proves the TOOL consumes it
+    // and the value lands in the spec. Both halves are needed: either one alone leaves a knob that looks
+    // wired and is not (`feedback_tool_unit_green_integration_dead`).
+    use ph2d_editor_core::ids as core_ids;
+    use ph2d_editor_core::tool::{PanelEvent, Tool};
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 32 * 32 * 4], 32, 32);
+
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_ENABLE));
+    assert!(t.paint.brush.impasto, "Enable reached the brush");
+
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_IMPASTO_DEPTH, -0.4));
+    assert!(
+        (t.paint.brush.impasto_depth + 0.4).abs() < 1e-6,
+        "Depth, negative (carving) and all"
+    );
+
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_SOURCE_GRAIN));
+    assert_eq!(t.paint.brush.impasto_source, DepthSource::Grain);
+
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_DRAW_DEPTH));
+    assert_eq!(t.paint.brush.impasto_draw_to, DrawTo::Depth);
+
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_IMPASTO_SMOOTHING,
+        0.9,
+    ));
+    assert!((t.paint.brush.impasto_smoothing - 0.9).abs() < 1e-6);
+
+    // The canvas half.
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_SHOW));
+    assert!(!t.paint.impasto_show, "Show Impasto toggled off");
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_IMPASTO_LIGHT_ANGLE,
+        200.0,
+    ));
+    assert_eq!(t.paint.impasto_light_angle_deg, 200);
+    t.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_IMPASTO_LIGHT_ELEV,
+        1.0,
+    ));
+    assert_eq!(
+        t.paint.impasto_light_elev_deg, 5,
+        "elevation floors at 5° — a grazing light divides by ~0"
+    );
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_IMPASTO_SHINE, 0.7));
+    assert!((t.paint.impasto_shine - 0.7).abs() < 1e-6);
+
+    // Reset restores the settings — and must NOT delete relief the artist already sculpted.
+    t.paint.brush.impasto = true;
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    let sculpted = relief(&t);
+    assert!(
+        sculpted.iter().any(|&v| v != 0.0),
+        "there is relief on the canvas"
+    );
+    t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_IMPASTO_RESET));
+    assert!(!t.paint.brush.impasto, "Reset restored the defaults");
+    assert_eq!(
+        relief(&t),
+        sculpted,
+        "...and did NOT delete the artist's sculpting — Reset is for the SETTINGS"
+    );
+}

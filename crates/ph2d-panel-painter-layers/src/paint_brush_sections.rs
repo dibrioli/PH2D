@@ -34,6 +34,7 @@ pub(crate) fn paint_appearance_sections(
     if !brush.is_inpaint {
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_watercolor::paint_watercolor_section(ctx, theme, x, content_w, y, brush);
+        y = crate::paint_impasto::paint_impasto_section(ctx, theme, x, content_w, y, brush);
     }
 
     // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur/Clone,

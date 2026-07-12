@@ -17404,9 +17404,9 @@ fn impasto_hides_itself_in_every_mode_it_does_not_apply_to() {
     assert!(!t.impasto_applies(), "hidden for the Eraser");
     t.paint.eraser = false;
 
-    // The pixel-processing modes: Smear / Blur / Clone move paint that is already down (dragging the
-    // relief with it is `Plow` — named, deferred); Mask is a grayscale channel with no body; Inpaint is
-    // a heal disc that ignores the brush entirely.
+    // The pixel-processing modes: Smear / Blur / Clone move paint that is already down; Mask is a
+    // grayscale channel with no body; Inpaint is a heal disc that ignores the brush entirely. None of
+    // them deposits paint, so none of them has a Body to configure.
     for mode in [
         PaintMode::Smear,
         PaintMode::Blur,
@@ -17418,9 +17418,42 @@ fn impasto_hides_itself_in_every_mode_it_does_not_apply_to() {
         t.paint.paint_mode = mode;
         assert!(
             !t.impasto_applies(),
-            "Impasto must not show up in {mode:?} — it deposits no fresh paint"
+            "the Body card must not show up in {mode:?} — it deposits no fresh paint"
         );
         assert!(!t.brush_settings().impasto_applies);
+    }
+
+    // …but the SMEAR is the one exception the matrix always named: it deposits nothing and yet it MOVES
+    // paint, so it gets the knife — `Plow`, and nothing else. (Before this, the Smear dragged the colour
+    // and left the body behind: thick paint was unworkable once it landed.)
+    t.paint.paint_mode = PaintMode::Smear;
+    assert!(
+        t.impasto_plow_applies() && t.brush_settings().impasto_plow_applies,
+        "the Smear has a knife"
+    );
+    for mode in [
+        PaintMode::Paint,
+        PaintMode::Blur,
+        PaintMode::Clone,
+        PaintMode::Mask,
+        PaintMode::Inpaint,
+        PaintMode::Selection,
+    ] {
+        t.paint.paint_mode = mode;
+        assert!(
+            !t.impasto_plow_applies(),
+            "…and only the Smear does — {mode:?} has no paint to displace"
+        );
+        assert!(!t.brush_settings().impasto_plow_applies);
+    }
+    // The two are mutually exclusive by construction: a mode never shows both cards, so the artist is
+    // never offered a Depth they cannot deposit nor a knife with nothing to push.
+    for mode in [PaintMode::Paint, PaintMode::Smear] {
+        t.paint.paint_mode = mode;
+        assert!(
+            t.impasto_applies() != t.impasto_plow_applies(),
+            "{mode:?}: exactly one of the two Impasto surfaces is live"
+        );
     }
     t.paint.paint_mode = PaintMode::Paint;
     assert!(t.impasto_applies(), "and it comes back in Paint");
@@ -18987,5 +19020,83 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         drifted, 0,
         "at full Shine the pass moved {drifted} channels of the translucent stain (worst {worst_drift} \
          levels) — the light must not touch paint too thin to have a body"
+    );
+}
+
+#[test]
+fn impasto_plow_drags_the_relief_with_the_paint() {
+    // **Plow** — the palette knife (plan §6, deferred since the first cut; Corel's `Plow`, ArtRage's
+    // Flat blade). Until now the Smear dragged the COLOUR and left the body of the paint where it was:
+    // thick paint was unworkable once it landed, and the light kept shading a ridge that the pigment had
+    // already left. This gate says the two move as one thing.
+    let size = 80u32;
+    let smear_with_plow = |plow: f32| -> (Vec<f32>, Vec<u8>) {
+        let mut t = impasto_canvas(size);
+        // 1. Lay a ridge of thick paint on the LEFT half.
+        let mut b = t.paint.brush;
+        b.radius_px = 10.0;
+        b.impasto_depth = 1.0;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Up));
+
+        // 2. Then take the KNIFE across it, to the right.
+        let mut k = t.paint.brush;
+        k.impasto_plow = plow;
+        k.strength = 1.0;
+        k.hardness = 1.0; // a firm blade: the drag is the claim, not the falloff
+        t.paint.brush = k;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = k;
+        }
+        t.paint.paint_mode = PaintMode::Smear;
+        t.on_canvas_pointer(cp([20.0, 40.0], PointerPhase::Down));
+        for x in 1..=20 {
+            t.on_canvas_pointer(cp([20.0 + f32::from(x as u8), 40.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
+
+        let active = t.layers.active().expect("a layer");
+        (
+            t.heights.get(&active).cloned().unwrap_or_default(),
+            t.covers.get(&active).cloned().unwrap_or_default(),
+        )
+    };
+
+    let at = |v: &[f32], x: u32, y: u32| v[(y * size + x) as usize];
+    let (no_plow, _) = smear_with_plow(0.0);
+    let (plowed, cov) = smear_with_plow(1.0);
+
+    // Sanity: the ridge is there, on the left, in both.
+    assert!(at(&no_plow, 20, 40) > 0.3, "the ridge was laid");
+
+    // 1. WITHOUT Plow the knife leaves the body exactly where it was — the default is "smear the
+    //    pigment, do not touch the paint's thickness" (and the artist gets the old behaviour untouched).
+    assert!(
+        at(&no_plow, 34, 40) < 0.02,
+        "no Plow ⇒ the relief stays put ({})",
+        at(&no_plow, 34, 40)
+    );
+
+    // 2. WITH Plow the relief is DRAGGED into the path of the knife — thick paint where there was none.
+    assert!(
+        at(&plowed, 34, 40) > 0.1,
+        "Plow ⇒ the knife carries the body along ({} at x=34)",
+        at(&plowed, 34, 40)
+    );
+
+    // 3. And it moves WITH the paint, not beside it: where the knife dragged relief, it dragged the
+    //    coverage too. A relief that travelled without its coverage would be a ridge the light shades
+    //    over paint that is no longer there — the ghost the Eraser gate already refuses, arriving by
+    //    another door.
+    let c = |x: u32, y: u32| f32::from(cov[(y * size + x) as usize]) / 255.0;
+    assert!(
+        c(34, 40) > 0.1,
+        "the paint's presence travelled with its body ({} at x=34)",
+        c(34, 40)
     );
 }

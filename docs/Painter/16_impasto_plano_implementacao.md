@@ -552,3 +552,38 @@ não tocá-lo: o re-ataque virou `reattach_texture(sprite, texture_id)`, que tro
 flag de premultiplicado). *Um documento diz o que está pintado num objeto; ele não redimensiona o
 objeto.* Gate `reattaching_a_document_never_resizes_the_sprite` — RED por mutação com o próprio bug
 (pose 1024 m vs 10,24 m esperados).
+
+### 10.7 **PLOW** — a espátula (2026-07-12): a última peça que a pesquisa mapeou
+
+Até aqui o Smear arrastava a **cor** e deixava o **corpo** onde estava: tinta grossa era *imexível*
+depois de pousada, e a luz seguia sombreando uma crista que o pigmento já tinha abandonado. Plow é o
+gesto que faltava — Corel expõe o parâmetro com esse nome (*"a brushstroke with a high Plow value…
+displaces the depth of the existing brushstroke"*), e a lâmina chata do ArtRage é o mesmo gesto
+(pesquisa 2 §3.6).
+
+**Mecanismo (zero geometria nova):** `plow_dab_height` é o **mesmo lift-and-drag** do smear de cor
+(`smear_dab`) — fotografa a região de origem em `from`, funde no footprint em `to`, pesada por
+falloff × strength — só que sobre `h` **e** `cover`. Isso não é atalho, é o ponto: a faca move tinta, e
+o pigmento e o **corpo** daquela tinta têm de se mover **juntos**, pelo mesmo deslocamento, sob a mesma
+máscara. Dar ao relevo uma lei de deslocamento própria seria deixar a luz descolar da cor — sombras
+flutuando ao lado da crista a que pertencem. Por isso a rota consome o **mesmo `last_smear_pos`** (e
+roda ANTES de a cor avançar a cadeia, senão o corpo atrasaria um dab).
+
+**Deslocamento, nunca depósito:** a faca não usa `Depth` nem o master switch do Impasto — ela move o que
+já está lá, *quem quer que tenha posto*. Default `Plow = 0` (o Smear de sempre, byte-idêntico).
+
+**UI honesta:** no Smear o card **Body inteiro some** e entra **um card `Knife` com uma linha (`Plow`)**
+— e não o card Body com linhas esmaecidas: uma faca não tem Depth, Draw To nem Depth Source, e mostrar
+três controles desabilitados é mostrar ao artista três explicações de por que eles não valem. (Controle
+esmaecido ainda hit-registra; a regra da casa é: **o que não se aplica não é pintado**.) O predicado é
+publicado pelo tool (`impasto_plow_applies`), não re-derivado pelo painel.
+
+**Gates (RED por mutação, os dois):** `impasto_plow_drags_the_relief_with_the_paint` — (a) sem Plow o
+relevo **não se move** (o default preservado); (b) com Plow a faca **carrega o corpo** para onde não
+havia tinta grossa; (c) **a cobertura viaja junto** (mutação: relevo sem cobertura ⇒ a crista-fantasma
+que o gate da borracha já recusa, entrando por outra porta). E a matriz de §1.2 virou **exclusividade**:
+em Paint vale o Body, em Smear vale a faca, **nunca os dois**.
+
+Perf: **1.99 ms/move** (a faca é O(footprint), sem solver). Fica **fora**: conservação de volume real
+(IMPaSTo/WetBrush — a crista que se ergue à frente da lâmina). O que existe é a versão degenerada e
+barata, que é exatamente o que a Corel faz.

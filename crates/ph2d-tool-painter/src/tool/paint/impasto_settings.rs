@@ -71,6 +71,10 @@ impl PainterTool {
                 self.set_brush_impasto_body(*v as f32);
                 true
             }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_PLOW => {
+                self.set_brush_impasto_plow(*v as f32);
+                true
+            }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_ANGLE => {
                 self.set_impasto_light_angle(*v as f32);
                 true
@@ -99,6 +103,20 @@ impl PainterTool {
     #[must_use]
     pub fn impasto_applies(&self) -> bool {
         matches!(self.paint.paint_mode, PaintMode::Paint)
+            && !self.watercolor_render_active()
+            && !self.paint.eraser
+    }
+
+    /// Whether the **Plow** control applies: the Smear, and only the Smear.
+    ///
+    /// The knife is the one place where a mode that deposits NO paint still has something to say about
+    /// the relief — it moves what is already there. Blur and Clone do not (they have no displacement to
+    /// speak of), Mask has no body, and the wash is a separate implementation. So the Body card is
+    /// hidden here and a single row takes its place, which is also the honest UI: in the Smear there is
+    /// no Depth to set, because nothing is being laid down.
+    #[must_use]
+    pub fn impasto_plow_applies(&self) -> bool {
+        matches!(self.paint.paint_mode, PaintMode::Smear)
             && !self.watercolor_render_active()
             && !self.paint.eraser
     }
@@ -133,6 +151,12 @@ impl PainterTool {
     pub fn set_brush_impasto_body(&mut self, v: f32) {
         self.paint.brush.impasto_body = v.clamp(0.0, 1.0);
         self.refresh_live_relief();
+    }
+
+    /// **Plow** — how strongly the Smear drags existing relief (the palette knife). Applies from the
+    /// next smear: it is a displacement, not a deposit, so there is nothing to re-derive after the fact.
+    pub fn set_brush_impasto_plow(&mut self, v: f32) {
+        self.paint.brush.impasto_plow = v.clamp(0.0, 1.0);
     }
 
     /// **Depth Source** from its wire discriminant (the segmented group's option). Live on the last
@@ -186,6 +210,7 @@ impl PainterTool {
         b.impasto_draw_to = d.impasto_draw_to;
         b.impasto_smoothing = d.impasto_smoothing;
         b.impasto_body = d.impasto_body;
+        b.impasto_plow = d.impasto_plow;
         self.paint.impasto_show = true;
         self.paint.impasto_light_angle_deg = 230;
         self.paint.impasto_light_elev_deg = 30;

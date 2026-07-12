@@ -201,6 +201,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     impasto_draw_to: 0, // Color + Depth (DrawTo wire 0)
     impasto_smoothing: 1.0, // LITERAL-PX-OK: default relief settling (mirrors BrushSpec::default)
     impasto_body: 0.0,  // LITERAL-PX-OK: the relief obeys the falloff (mirrors BrushSpec::default)
+    impasto_plow: 0.0, // LITERAL-PX-OK: the knife leaves the body where it is (mirrors BrushSpec::default)
+    impasto_plow_applies: false, // o fallback é o modo Paint, não o Smear
     impasto_applies: true, // plain Paint mode in the pre-publish fallback
     impasto_show: true,
     impasto_light_angle_deg: 230,

@@ -43,6 +43,11 @@ pub const PAINTER_IMPASTO_DRAW_DEPTH: NodeId = hash_node_id("painter_brush.impas
 /// **Smoothing** (`0..1`) — how far the deposit settles under its own weight at stroke end.
 /// `SetValue` → `set_brush_impasto_smoothing`.
 pub const PAINTER_IMPASTO_SMOOTHING: NodeId = hash_node_id("painter_brush.impasto_smoothing");
+/// **Plow** (`0..1`) — how strongly the **Smear** drags EXISTING relief along with the colour: the
+/// palette knife. Painted only in the Smear (the one mode that deposits no paint and still has
+/// something to say about the body), where it replaces the whole Body card — there is no Depth to set
+/// when nothing is being laid down. `SetValue` → `set_brush_impasto_plow`.
+pub const PAINTER_IMPASTO_PLOW: NodeId = hash_node_id("painter_brush.impasto_plow");
 
 // ── The canvas half: the light (one per document, like the paper colour) ────────────────────────
 
@@ -81,9 +86,10 @@ pub const PAINTER_IMPASTO_CLICKS: [NodeId; 8] = [
 
 /// The Impasto **SetValue** number-fields — one membership check for the panel's number-field forward
 /// (`is_param_field`) and its register loop.
-pub const PAINTER_IMPASTO_FIELDS: [NodeId; 6] = [
+pub const PAINTER_IMPASTO_FIELDS: [NodeId; 7] = [
     PAINTER_IMPASTO_DEPTH,
     PAINTER_IMPASTO_BODY,
+    PAINTER_IMPASTO_PLOW,
     PAINTER_IMPASTO_SMOOTHING,
     PAINTER_IMPASTO_LIGHT_ANGLE,
     PAINTER_IMPASTO_LIGHT_ELEV,

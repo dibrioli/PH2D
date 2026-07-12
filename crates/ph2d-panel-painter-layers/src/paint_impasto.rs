@@ -40,6 +40,12 @@ pub(crate) fn paint_impasto_section(
 ) -> f32 {
     // The §1.2 matrix: no card, no hit targets, no knob to be confused by. Watercolor is the one that
     // matters most — it is a separate implementation and Impasto must not so much as appear there.
+    //
+    // The Smear is the exception the matrix always named: it deposits no paint, so it has no Body to
+    // configure — but it MOVES paint, so it has a knife. One row, and nothing else.
+    if brush.impasto_plow_applies {
+        return paint_plow_only(ctx, theme, x, content_w, y, &brush);
+    }
     if !brush.impasto_applies {
         return y;
     }
@@ -260,4 +266,51 @@ fn seg_row(
         hit_index,
     );
     y + used + Spacing::Xs.px()
+}
+
+/// The Smear's whole Impasto surface: **Plow**, and nothing else.
+///
+/// Deliberately NOT the Body card with rows greyed out. A knife has no Depth, no Draw To and no Depth
+/// Source — showing them disabled would be showing the artist four controls to explain why three of
+/// them do not apply. (And a dimmed control is cosmetic: it still hit-registers. The rule of the house
+/// is that a control which does not apply is not painted.)
+fn paint_plow_only(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let (mut y, collapsed) = crate::paint_brush_top::paint_collapsible_section(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Impasto",
+        core_ids::PAINTER_IMPASTO_SECTION,
+        core_ids::PAINTER_IMPASTO_SECTION_COLOR,
+        core_ids::PAINTER_IMPASTO_RESET,
+    );
+    if collapsed {
+        return y;
+    }
+    let (ix, iw, ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Knife", 1);
+    let _ = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Plow",
+        core_ids::PAINTER_IMPASTO_PLOW,
+        brush.impasto_plow,
+        0.0,
+        UNIT_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    y = next_y;
+    y
 }

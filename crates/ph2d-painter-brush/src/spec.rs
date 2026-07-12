@@ -292,6 +292,14 @@ pub struct BrushSpec {
     /// 2026-07-12: the roundness must stay reachable). Between the two, a mesa with a soft crown —
     /// the Chisel-Soft family.
     pub impasto_body: f32,
+    /// **Plow**, `0..1`: how strongly the **Smear** brush drags EXISTING relief along with the colour —
+    /// the palette knife (Corel's `Plow`; ArtRage's Flat blade). `0` (default) = the knife moves pigment
+    /// only and the paint's body stays where it was; `1` = the body follows the smear in full.
+    ///
+    /// It displaces; it never deposits — so it is deliberately independent of [`Self::impasto_depth`],
+    /// and it does not need the `impasto` master switch either: a stroke can plow relief that some other
+    /// brush laid down.
+    pub impasto_plow: f32,
 }
 
 impl Default for BrushSpec {
@@ -373,6 +381,7 @@ impl Default for BrushSpec {
             impasto_draw_to: DrawTo::ColorAndDepth,
             impasto_smoothing: 1.0,
             impasto_body: 0.0,
+            impasto_plow: 0.0, // o padrão do Smear é arrastar a COR e deixar o corpo onde está
         }
     }
 }
@@ -496,6 +505,19 @@ impl BrushSpec {
         } else {
             0.0
         }
+    }
+
+    /// Whether this brush's Smear should drag relief: a non-zero **Plow**. Independent of the `impasto`
+    /// master switch — the knife moves paint that is already down, whoever laid it.
+    #[must_use]
+    pub fn impasto_plow_active(&self) -> bool {
+        self.impasto_plow > 0.0
+    }
+
+    /// Effective impasto **Plow** `[0, 1]`.
+    #[must_use]
+    pub fn effective_impasto_plow(&self) -> f32 {
+        self.impasto_plow.clamp(0.0, 1.0)
     }
 
     /// Effective impasto **Body** `[0, 1]` — how far the deposit is pushed through the body curve

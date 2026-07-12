@@ -245,6 +245,8 @@ impl PainterTool {
             impasto_draw_to: b.impasto_draw_to.to_u8(),
             impasto_smoothing: b.impasto_smoothing,
             impasto_body: b.impasto_body,
+            impasto_plow: b.impasto_plow,
+            impasto_plow_applies: self.impasto_plow_applies(),
             impasto_applies: self.impasto_applies(),
             impasto_show: self.paint.impasto_show,
             impasto_light_angle_deg: self.paint.impasto_light_angle_deg,

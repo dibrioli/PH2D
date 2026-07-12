@@ -250,6 +250,11 @@ impl PainterTool {
         }
         let base = self.paint.brush;
         let strength = base.strength.clamp(0.0, 1.0);
+        // **Plow** (the palette knife): the relief is dragged by the SAME dab list, from the SAME
+        // `last_smear_pos` chain — so it must run BEFORE the colour advances that chain, or the body
+        // would lag the pigment by one dab. It is a no-op unless the brush has Plow and the layer has
+        // relief. See `super::impasto::plow_dabs`.
+        self.plow_dabs(dabs, &base, strength * base.effective_impasto_plow());
         let has_shape_image = self.paint.shape_image.is_some();
         let textured = base.shape_silhouette_active(has_shape_image)
             || base.texture.is_active()

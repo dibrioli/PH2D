@@ -366,6 +366,12 @@ pub struct BrushSettings {
     /// **Body** (`0..1`) — the relief's cross-section: `1` = level film with a wall, `0` = the
     /// silhouette's own profile (perfectly rounded).
     pub impasto_body: f32,
+    /// **Plow** (`0..1`) — how strongly the Smear drags EXISTING relief (the palette knife).
+    pub impasto_plow: f32,
+    /// Whether the **Plow** row applies (`PainterTool::impasto_plow_applies`): the Smear, and only it.
+    /// Published by the tool for the same reason `impasto_applies` is — a panel that re-derives the
+    /// predicate is a panel that will one day disagree with the engine about when the knife is live.
+    pub impasto_plow_applies: bool,
     /// Whether the Impasto section APPLIES in the current mode (`PainterTool::impasto_applies`) — the
     /// §1.2 matrix, published as ONE predicate instead of re-derived in the panel. False under the
     /// Watercolor wash / Eraser / Mask / Inpaint / Smear / Blur / Clone, where the card is not painted

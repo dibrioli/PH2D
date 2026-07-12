@@ -73,11 +73,20 @@ trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
   `a_painted_document_survives_the_disk_with_its_relief` (postcard REAL, entidade com bits diferentes).
   **⚠️ Foundational tocado:** `ph2d-ecs` (componente nova, append; `registry.rs` +1 linha e o gate de
   contagem 26→27) — anotado para o integrador. Plano §10.6.
+- **PLOW — a espátula (Fase 6).** O Smear arrastava a cor e deixava o corpo: tinta grossa era imexível
+  depois de pousada. `plow_dab_height` é o **mesmo lift-and-drag** do smear de cor, sobre `h` **e**
+  `cover`, consumindo o **mesmo `last_smear_pos`** (roda ANTES de a cor avançar a cadeia) — pigmento e
+  corpo movem-se como uma coisa só. Deslocamento, nunca depósito: não usa Depth nem o master switch;
+  default `Plow=0` (Smear byte-idêntico). UI: no Smear o card Body **some** e entra o card **Knife** com
+  1 linha — não Body esmaecido (o que não se aplica não é pintado). `PAINTER_IMPASTO_PLOW` em
+  `PAINTER_IMPASTO_FIELDS` (6→**7**, append). Gates com RED por mutação: relevo arrastado + **cobertura
+  junto** + a matriz virou exclusividade (Paint⊕Smear). Perf 1.99 ms/move. Plano §10.7.
 - **Smoke do Enio: PENDENTE** (validar: os defaults novos · **Shine** acende a crista · girar
   Depth/Body/Source/Smoothing DEPOIS do traço e ver o relevo mudar ao vivo · pintar relevo, trocar de
   sprite e voltar — a escultura tem de estar lá · **pintar, Ctrl+S, fechar, reabrir, Ctrl+O — a pintura
-  E o relevo têm de voltar, ainda editáveis**). Comando do §5 inalterado; card Lighting 4 linhas,
-  card Body 5.
+  E o relevo têm de voltar, ainda editáveis** · **Smear com Plow: passar a faca num traço grosso e ver o
+  relevo ser ARRASTADO junto com a cor**). Comando do §5 inalterado; card Lighting 4 linhas, card Body 5,
+  card Knife (só no Smear) 1.
 
 Os §§ 1–8 abaixo descrevem as entregas anteriores da linha e continuam válidos; números de gates
 ficam superseded pelos desta seção.

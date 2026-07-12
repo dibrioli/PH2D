@@ -85,6 +85,34 @@ AR que separa um clique do sinal separa o trato vocal do pitch.
 | **Formant Shift** (move o trato vocal, **não** o pitch) | `fx/formant.rs` | Modelo fonte-filtro (Fant 1960); warp do envelope via reamostragem da resposta impulsiva. Sem FFT |
 | **Harmonizer** (2 vozes afinadas) | `fx/harmonize.rs` | 2× WSOLA + blend convexo |
 
+### 2.5 O 2º bug, achado pelo SMOKE do Enio — o De-Click comia os transientes
+
+Enio: *"Restore não eliminou todos os cliques"*. Medido no áudio real, o diagnóstico foi
+**outro**: os 6 cliques **estavam** sendo removidos (o salto amostra-a-amostra cai de 1.90
+para ~0.02 — o nível natural da onda; nenhum degrau sobra). O problema era o **colateral**:
+48 amostras em 288.000 foram mexidas, e **todas as 48 caíam em cima dos 5 transientes
+percussivos**, que o de-clicker amassava em até **0.108** (~25% do ataque). Ele removia 6
+cliques e **criava 5 artefatos** — e o ouvido chama os dois de "clique".
+
+**Causa:** para um modelo AR, o ataque de uma batida é tão imprevisível quanto um clique
+(medido: cliques picam a **115–162 σ**, ataques a **81–152 σ** — a MESMA faixa). O resíduo
+**não** os distingue. Minha 1ª hipótese ("o transiente deixa o modelo errado por mais tempo")
+foi **refutada pelos dados**.
+
+**O que separa não é o pico, é o que vem DEPOIS:**
+
+| | modelo do ANTES explica o DEPOIS? | medido |
+|---|---|---|
+| **clique** = dano DENTRO do sinal (tire-o e o mesmo sinal continua) | sim | **1.8–2.4×** |
+| **transiente** = onde um sinal NOVO começa | não | **7.5–13.2×** |
+
+**Fix:** `signal_resumes_after` — ajusta o AR nos 512 samples antes da rajada e mede quanto
+ele ainda explica os 512 depois; só repara o que o modelo diz que voltou. Limiar 4×, no
+meio da vala. Transiente danificado **0.108 → 0.015**; cliques seguem sumindo.
+Asserção-vermelha: `a_percussive_attack_is_not_mistaken_for_a_click` (sem o guard: *"ate the
+attack: moved by 0.255"*), com o par `a_click_next_to_a_transient_is_still_repaired` pra que
+o guard não vire desculpa pra não reparar nada.
+
 ### 2.3 Presets (6 novos)
 
 `Voice EQ` · `Whisper` · `Shout` (os do plano W4) + `Restore` · `Giant` · `Choir` — estes três
@@ -144,8 +172,16 @@ typos
 ## 6. O que smoke-testar (nada disso foi smokado pelo Enio ainda)
 
 **Arquivo pronto:** `/home/enio/ph2d_audio_smoke.wav` — 6 s, 48 kHz, estéreo. Voz sintética
-(trem glotal + 3 formantes, melodia 165→196→220→196→165 Hz, L≠R), zumbido de 60 Hz, 5
-transientes espaçados e **6 cliques reais**.
+(trem glotal + 3 formantes, melodia 165→196→220→196→165 Hz, L≠R), zumbido de 60 Hz, e **duas
+coisas que é preciso NÃO confundir**:
+
+| o que | onde | o De-Click deve |
+|---|---|---|
+| **6 cliques** (tiques digitais, 3 amostras de lixo) = **DANO** | 0.83 · 1.71 · 2.94 · 3.62 · 4.35 · 5.11 s | **remover** |
+| **5 batidas percussivas** (thump grave 400 Hz) = **MÚSICA** | 0.5 · 1.5 · 2.5 · 3.5 · 4.5 s | **deixar em paz** |
+
+(No v1 do WAV as batidas eram brilhantes a 1800 Hz e soavam como tique — foi o que fez o
+1º smoke parecer "sobraram cliques". Agora são um tom de bumbo, inconfundível.)
 
 ```bash
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && cargo run --release -p ph2d-host-desktop --features panel-audio-editor
@@ -153,8 +189,8 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && cargo run --relea
 
 Carregue o WAV e rode os presets, nesta ordem:
 
-1. **Restore** → os 6 cliques (0.83 · 1.71 · 2.94 · 3.62 · 4.35 · 5.11 s) somem, **e a voz
-   sob eles fica intacta**. É o par que interessa: reparo sem borrão.
+1. **Restore** → os 6 cliques somem, **e as 5 batidas + a voz ficam intactas**. É o par que
+   interessa: reparo sem borrão. (Foi aqui que o 1º smoke pegou um bug real — §2.5.)
 2. **Giant** → a mesma melodia, **no mesmo tom**, saindo de uma cabeça muito maior. É o efeito
    que nenhum pitch shifter consegue fingir — se o tom mudar, o Formant Shift está errado.
 3. **Choir** → um acorde maior. **Ouça se afina** — é o que o fix do WSOLA comprou.

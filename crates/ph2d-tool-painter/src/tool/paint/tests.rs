@@ -2859,6 +2859,85 @@ fn per_layer_color_fill_method_uses_canvas_base_and_self_clears() {
     );
 }
 
+/// Build the reported context: a live Per-Layer Colour freehand stroke on the CACHED route (two layers
+/// with custom colours ⇒ 1 B/px coverage maps, no per-dab dynamics yet).
+#[cfg(test)]
+fn per_layer_live_stroke() -> PainterTool {
+    let mut t = white_canvas(64, 6.0);
+    t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Space; // incremental freehand
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]); // bottom red
+    t.set_brush_shape_layer_color(1, [0.0, 1.0, 0.0]); // top green
+    t
+}
+
+#[cfg(test)]
+fn live_dab(x: f32) -> ph2d_painter_brush::Dab {
+    ph2d_painter_brush::Dab {
+        center: [x, 32.0],
+        radius_px: 6.0,
+        coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+    }
+}
+
+#[test]
+fn per_layer_color_route_flip_mid_stroke_reshapes_the_maps() {
+    // Enio's PANIC (2026-07-12), painting a live freehand stroke in Per-Layer Colour and pressing Shape
+    // **Rake**: `range end index 3911680 out of range for slice of length 1048576`
+    // (`accumulate_batch.rs`) → SIGSEGV. Rake flips the route from the cached path (maps = 1 B/px coverage)
+    // to the per-dab dynamic path (maps = 4 B/px premul RGBA), and the reuse guard only asked
+    // "initialised?" (`pre.is_empty()`) / "layer count changed?" (`cov.len() != n`) — never the ELEMENT
+    // SIZE. The dynamic route then sliced the previous route's `w*h` maps as if they were `w*h*4`: an
+    // out-of-bounds slice, not a wrong pixel. (3911680 = row 955 × stride 4096; 1048576 = 1024².)
+    // RED without the fix: the second `stamp_dabs` PANICS here.
+    let mut t = per_layer_live_stroke();
+    t.stamp_dabs(&[live_dab(24.0)]); // batch 1 — the cached route allocates the 1 B/px maps
+    assert_eq!(
+        t.paint.per_layer_stroke.cov[0].len(),
+        64 * 64,
+        "the cached route's maps are 1 B/px coverage"
+    );
+    t.paint.brush.shape.rake = true; // the user presses Rake with the stroke STILL LIVE → the route flips
+    t.stamp_dabs(&[live_dab(40.0)]); // batch 2 — the dynamic route: this is where it blew up
+    assert_eq!(
+        t.paint.per_layer_stroke.cov[0].len(),
+        64 * 64 * 4,
+        "the flipped-to dynamic route re-shaped the maps to 4 B/px premul RGBA"
+    );
+    assert!(
+        px(&t, 64, 40, 32)[3] > 0,
+        "the dab painted after the mid-stroke route flip"
+    );
+}
+
+#[test]
+fn per_layer_color_route_flip_back_reshapes_the_maps_too() {
+    // The REVERSE flip (Rake turned back off: dynamic → cached) never panicked — the 4 B/px maps are big
+    // enough to index at 1 B/px — it CORRUPTED in silence: the cached recomposite read the leftover
+    // premul-RGBA bytes as coverage. Same root cause (the guard ignored the element size), so the same
+    // guard has to catch this direction too, or the fix would only have moved the bug.
+    let mut t = per_layer_live_stroke();
+    t.paint.brush.shape.rake = true; // start on the dynamic route (4 B/px maps)
+    t.stamp_dabs(&[live_dab(24.0)]);
+    assert_eq!(t.paint.per_layer_stroke.cov[0].len(), 64 * 64 * 4);
+    t.paint.brush.shape.rake = false; // Rake back off, stroke still live → back to the cached route
+    t.stamp_dabs(&[live_dab(40.0)]);
+    assert_eq!(
+        t.paint.per_layer_stroke.cov[0].len(),
+        64 * 64,
+        "the flipped-back cached route re-shaped the maps to 1 B/px coverage"
+    );
+    let p = px(&t, 64, 40, 32);
+    assert!(
+        p[1] > 200 && p[0] < 80,
+        "the post-flip dab paints the TOP layer's green — not RGBA bytes read as coverage: {p:?}"
+    );
+}
+
 #[test]
 fn dab_bbox_covers_the_paint_write_bounds() {
     // Regression (Enio 2026-06-27): `dab_bbox` is the drag-preview SAVE/RESTORE + dirty-upload region for

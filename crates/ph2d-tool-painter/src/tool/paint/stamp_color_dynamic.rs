@@ -43,14 +43,7 @@ impl PainterTool {
             StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
         );
         let len = (w as usize) * (h as usize) * 4;
-        if incremental {
-            if self.paint.per_layer_stroke.pre.is_empty() {
-                let snap = (*self.canvas_rgba).clone();
-                self.paint.per_layer_stroke.init(snap, n, len);
-            }
-        } else if self.paint.per_layer_stroke.cov.len() != n {
-            self.paint.per_layer_stroke.init(Vec::new(), n, len);
-        }
+        self.ensure_per_layer_stroke(incremental, n, len);
         let grain_active = brush.texture.is_active();
         let grain_ramp_active = self.ensure_per_layer_grain_ramp(brush);
         let mut acc = std::mem::take(&mut self.paint.per_layer_stroke.cov);
@@ -177,14 +170,7 @@ impl PainterTool {
             StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
         );
         let len = (w as usize) * (h as usize) * 4;
-        if incremental {
-            if self.paint.per_layer_stroke.pre.is_empty() {
-                let snap = (*self.canvas_rgba).clone();
-                self.paint.per_layer_stroke.init(snap, n, len);
-            }
-        } else if self.paint.per_layer_stroke.cov.len() != n {
-            self.paint.per_layer_stroke.init(Vec::new(), n, len);
-        }
+        self.ensure_per_layer_stroke(incremental, n, len);
         let Some((stamps, key)) = self.paint.color_stamp_cache.take() else {
             return;
         };

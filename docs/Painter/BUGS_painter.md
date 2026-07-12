@@ -18,6 +18,87 @@
 | [9](#bug-9--preview-de-umidade-retângulo-na-união--o-pour-re-molhava-o-vizinho-dentro-do-bbox) | Preview de umidade: "retângulo maldito/gigante" na união de traços úmidos | Moisture pour (`pour_canvas_wet`) + overlay do shell | ✅ Resolvido (pour por-footprint-dona; blur do véu foi tentativa errada) | 2026-07-11 |
 | [10](#bug-10--borda-dura-na-junção-ao-mudar-params-de-wash-e-cruzar-traço-úmido--params-por-dono-degrauavam) | Borda dura na junção ao mudar params de Wash (Body/Concentration/Edge/Opacity/RaggedEdge) e cruzar traço úmido | Watercolor render (params por-dono discretos) | ✅ Resolvido (campo suavizado `build_style_field`; grad 118→13) | 2026-07-11 |
 | [11](#bug-11--per-layer-color-linhas-retangulares-intermitentes-aberto) | Per-Layer Color — "linhas nas bordas de retângulos" nas cores do brush, **intermitente** | Preview (produtor CPU↔GPU / overlay) — **NÃO** o composite CPU | 🔎 **ABERTO** (dormente; composite CPU provado limpo, espaço de busca reduzido, **armadilha armada**) | 2026-07-11 |
+| [12](#bug-12--panicsigsegv-ao-apertar-rake-com-um-traço-per-layer-color-vivo) | **PANIC/SIGSEGV** ao apertar Shape **Rake** com um traço Per-Layer Color vivo | Roteamento de stamp (troca de rota **no meio do traço**) | ✅ Resolvido (guard de forma único; RED verificado nas 2 direções) | 2026-07-12 |
+
+---
+
+## Bug #12 — PANIC/SIGSEGV ao apertar Rake com um traço Per-Layer Color vivo
+
+> **Estado: ✅ RESOLVIDO na linha `line/Painter` (2026-07-12).** Fix + 2 gates. Aguarda integração ao main.
+
+### Sintoma (Enio, 2026-07-12)
+
+Pintando com Per-Layer Color, traço freehand desenhado na tela **em tempo real**, ao apertar **Rake** na
+seção Shape:
+
+```
+PH2D PANIC frame=34949 location="crates/ph2d-painter-brush/src/stamp_color/accumulate_batch.rs:347"
+message="range end index 3911680 out of range for slice of length 1048576"
+… encerrada pelo sinal SIGSEGV
+```
+
+### Causa-raiz — **as rotas do Per-Layer Color usam mapas de tamanhos de elemento DIFERENTES**
+
+As três rotas alocam o mesmo `PerLayerStroke.cov`, mas com **bytes/pixel diferentes**:
+
+| Rota | `len` de cada mapa | Kernel |
+|---|---|---|
+| `stamp_dabs_cached_color` | `w·h` — **1 B/px** (cobertura alpha-only) | `accumulate_color_stamps_fused_batch` |
+| `stamp_dabs_cached_color_rgba` · `stamp_dabs_per_layer_dynamic` | `w·h·4` — **4 B/px** (premul RGBA) | `accumulate_*_rgba_batch` |
+
+E o guard de reuso **nunca perguntava o tamanho do elemento**. Ele perguntava só:
+`pre.is_empty()` (*"já inicializei este traço?"*) e `cov.len() != n` (*"mudou o número de camadas?"*).
+
+**Rake troca a rota** (`shape_has_per_dab_rotation` → `per_dab_dynamic`, `stamp_route.rs:429`) — e o traço
+**continua vivo**, então `pre` não está vazio e `n` não mudou ⇒ **nenhuma re-alocação**. A rota dinâmica
+então fatiou os mapas de `w·h` como se fossem `w·h·4`:
+
+```
+gy0*w*4 .. gy1*w*4   →   3911680 = linha 955 × stride 4096
+len do mapa          →   1048576 = 1024² × 1 B/px      ⇒  fora do slice
+```
+
+**A aritmética fecha exatamente com o crash do Enio:** canvas 1024², rota cacheada, lida com stride de 4.
+
+**O flip REVERSO (Rake desligado) era pior porque era SILENCIOSO:** os mapas de 4 B/px são *grandes demais*,
+nunca estouram o índice — o recomposite cacheado apenas lê **bytes premul-RGBA como se fossem cobertura**.
+Corrupção visual sem panic. Mesma causa-raiz; se o fix só olhasse a direção que crashou, o bug teria
+*migrado* em vez de morrer.
+
+### A solução — um guard de FORMA, num ponto só
+
+1. **`PerLayerStroke::fits(n, len)`** (`stamp_color_cache.rs`) — *"os mapas já estão na forma desta rota?"*.
+   **O tamanho do elemento passou a fazer parte da forma**, que é justamente o que faltava.
+2. **`PainterTool::ensure_per_layer_stroke(incremental, n, len)`** — **as três rotas passam por aqui**. Um
+   choke point: a próxima rota que alguém adicionar **não consegue** esquecer o guard.
+3. No flip, a **cobertura acumulada** é descartada (os mapas das duas rotas não são o mesmo dado) mas a
+   **base do traço (`pre`) sobrevive** — o recomposite segue reconstruindo a partir do canvas pré-traço, em
+   vez de compor em cima de si mesmo. Os métodos de fill re-estampam a forma inteira a cada move, então
+   **não perdem nada**.
+
+### Verificação (RED verificado nas DUAS direções — DIRETIVA §3)
+
+- `per_layer_color_route_flip_mid_stroke_reshapes_the_maps` — cacheada → Rake → dinâmica.
+  **RED confirmado** desligando o fix: `index out of bounds: the len is 4096 but the index is 6792`
+  (o mesmo mecanismo do crash do Enio; num canvas de teste pequeno o batch cai no kernel **serial**
+  `accumulate.rs:256` em vez do **bandado** `accumulate_batch.rs:347` — mesma causa, kernel diferente).
+- `per_layer_color_route_flip_back_reshapes_the_maps_too` — dinâmica → Rake off → cacheada.
+  **RED confirmado**: mapas ficavam em 16384 B onde deviam ter 4096, e o pixel saía errado.
+- Suítes: **544** `ph2d-tool-painter` + **231** `ph2d-painter-brush` verdes; clippy `--all-targets` 0 warnings.
+
+### Lições generalizáveis
+
+1. **Guard de reuso de buffer tem que checar a FORMA INTEIRA, não a identidade.** `pre.is_empty()` responde
+   *"já aloquei?"*, não *"aloquei do jeito que EU preciso?"*. Toda cache reusada por rotas diferentes
+   precisa que **o layout faça parte da chave** — contagem **e** tamanho de elemento.
+2. **Editar o brush no meio de um traço vivo é um estado real, não um caso de canto.** O painel e o canvas
+   estão vivos ao mesmo tempo; qualquer knob que **troque de rota** (Rake, Random, Jitter, Grain Tiled,
+   Randomize Color) pode fazê-lo com buffers de meio-traço na mão. **Todo roteador de stamp deve assumir
+   que a rota pode mudar entre dois batches do MESMO traço.**
+3. **Corrija a CLASSE, não a direção que crashou.** O flip reverso não estourava índice — corrompia calado.
+   Um fix que só olhasse o panic teria deixado metade do bug vivo, e a metade pior (silenciosa).
+4. **Um choke point > N guards corretos.** Três cópias do mesmo guard já tinham divergido (o incremental nem
+   checava `n`). Uma função por onde todas as rotas passam é o que impede a 4ª rota de nascer quebrada.
 
 ---
 

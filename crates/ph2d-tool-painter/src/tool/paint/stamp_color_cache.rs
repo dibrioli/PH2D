@@ -46,6 +46,18 @@ impl PerLayerStroke {
         self.pre = pre;
         self.cov = (0..n).map(|_| vec![0u8; len]).collect();
     }
+
+    /// Whether the maps are already shaped for `n` layers × `len` bytes — the ONLY state in which the
+    /// stroke's accumulation may be reused. **The element size is part of the shape**: the cached route's
+    /// maps are 1 B/px coverage, the dynamic / RGBA routes' are 4 B/px premul, and a brush edit can FLIP
+    /// the route *mid-stroke* (toggling Shape **Rake** while a Free-Hand stroke is live — Enio's panic,
+    /// 2026-07-12). The old guards asked only "initialised?" (`pre.is_empty()`) and "layer count changed?"
+    /// (`cov.len() != n`), so a flipped route re-read the previous route's maps at the wrong stride: not a
+    /// wrong pixel — an **out-of-bounds slice** (`accumulate_batch.rs` sliced `gy0*w*4..gy1*w*4` into a
+    /// `w*h` map). Pinned by `per_layer_color_route_flip_mid_stroke_reshapes_the_maps`.
+    pub(super) fn fits(&self, n: usize, len: usize) -> bool {
+        self.cov.len() == n && self.cov.iter().all(|m| m.len() == len)
+    }
 }
 
 /// The panel's coloured-Shape **preview** resolution (texels per side) — the multi-layer composite is
@@ -120,6 +132,32 @@ fn composite_preview_blended(stamps: &[ColorStampMask], blends: &[u8], size: u32
 }
 
 impl PainterTool {
+    /// Shape the per-layer stroke maps for the route about to run: `n` layers × `len` bytes per map, with
+    /// the base snapshot the incremental methods recomposite from (the fill methods use the canvas, so they
+    /// carry no base). **Every per-layer route MUST come through here** — it is the one place that knows a
+    /// mid-stroke route flip re-shapes the maps (see [`PerLayerStroke::fits`]); a route that allocates its
+    /// own maps re-opens the out-of-bounds panic.
+    ///
+    /// On a flip the accumulated coverage is dropped (the two routes' maps are not the same datum) but the
+    /// stroke's **base** survives, so the recomposite still rebuilds from the pre-stroke canvas rather than
+    /// double-compositing onto itself. The fill methods re-stamp the whole shape every move, so they lose
+    /// nothing at all.
+    pub(super) fn ensure_per_layer_stroke(&mut self, incremental: bool, n: usize, len: usize) {
+        let has_base = !self.paint.per_layer_stroke.pre.is_empty();
+        // Incremental ⇒ a base snapshot must exist; fill ⇒ it must not (the canvas IS the base).
+        if has_base == incremental && self.paint.per_layer_stroke.fits(n, len) {
+            return;
+        }
+        let pre = if !incremental {
+            Vec::new()
+        } else if has_base {
+            std::mem::take(&mut self.paint.per_layer_stroke.pre) // route flipped: keep the stroke's base
+        } else {
+            (*self.canvas_rgba).clone() // first batch of the stroke: snapshot the canvas once
+        };
+        self.paint.per_layer_stroke.init(pre, n, len);
+    }
+
     /// Paint a dab batch in the per-layer-colour mode — the path of [`Self::stamp_dabs`].
     ///
     /// **Cross-stroke z-order (the 3-D-shaded stroke):** each layer accumulates its own per-stroke
@@ -158,15 +196,7 @@ impl PainterTool {
             StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
         );
         let len = (w as usize) * (h as usize);
-        if incremental {
-            if self.paint.per_layer_stroke.pre.is_empty() {
-                let snap = (*self.canvas_rgba).clone();
-                self.paint.per_layer_stroke.init(snap, n, len);
-            }
-        } else if self.paint.per_layer_stroke.cov.len() != n {
-            // `paint_begin` cleared the maps; allocate N zeroed maps (no snapshot — the canvas is the base).
-            self.paint.per_layer_stroke.init(Vec::new(), n, len);
-        }
+        self.ensure_per_layer_stroke(incremental, n, len);
         // Accumulate every dab's per-layer coverage (cache taken out to disjoin the borrows).
         let Some((stamps, key)) = self.paint.color_stamp_cache.take() else {
             return;

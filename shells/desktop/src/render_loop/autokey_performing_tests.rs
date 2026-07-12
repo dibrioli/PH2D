@@ -185,7 +185,7 @@ fn a_performing_session_simplifies_the_recorded_keys_on_release() {
     let simplified = st.doc.active_clip().track(target).unwrap().len();
     assert!(
         simplified <= dense / 3,
-        "release simplified the recording: {dense} → {simplified} keys"
+        "release simplified the recording: {dense} -> {simplified} keys"
     );
     assert!(simplified >= 2, "and kept a real curve");
 

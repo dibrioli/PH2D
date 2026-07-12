@@ -3011,6 +3011,55 @@ fn editing_the_paper_re_renders_the_wet_wash_with_the_new_paper() {
 }
 
 #[test]
+fn under_the_wash_accumulate_is_inert_but_strength_is_not() {
+    // Enio (2026-07-12): "no modo aquarela, faz sentido ter Strength e Accumulate no painel?"
+    // The answer differs for the two, and this pins BOTH — a hidden knob must be provably dead, and a
+    // kept knob must be provably alive, or the panel is lying either way.
+    //
+    // ACCUMULATE is dead: it is read ONLY by `accumulate_cap` inside the stamp routing, and the wash
+    // short-circuits before that (`stamp_dabs`). It is also redundant by construction — the wash's
+    // coverage is MAX-blended (an envelope), which already IS "no build-up within one stroke".
+    // STRENGTH is alive: the stroke engine bakes it into `Dab.coverage`, and the wash reads it as the
+    // deposit peak (`coverage × (1 − Dilution)`).
+    //
+    // This also settles that EVERY stroke method washes: the shape editors run the optics through
+    // `stamp_drag_preview_watercolor` (doc 13 #3), so there is no method where Accumulate comes back.
+    let wash = |strength: f32, accumulate: bool| -> Vec<u8> {
+        let mut t = white_canvas(64, 10.0);
+        t.paint.brush = BrushSpec {
+            radius_px: 10.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.85, 0.1, 0.1],
+            space_attenuation: false,
+            watercolor: true,
+            fill: 0.5,
+            depth: 1.5,
+            strength,
+            accumulate,
+            ..Default::default()
+        };
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = t.paint.brush;
+        }
+        t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([36.0, 36.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([36.0, 36.0], PointerPhase::Up));
+        (*t.canvas_rgba).clone()
+    };
+    assert_eq!(
+        wash(0.6, true),
+        wash(0.6, false),
+        "Accumulate is INERT under the wash — hiding the checkbox removes nothing"
+    );
+    assert_ne!(
+        wash(0.35, true),
+        wash(0.9, true),
+        "Strength is ALIVE under the wash (it is the deposit peak) — the slider must STAY"
+    );
+}
+
+#[test]
 fn tiling_wrapped_copies_share_the_dabs_random_frame() {
     // Sweep finding (2026-07-12). Under Tiling the canvas is a TORUS: a dab crossing an edge is drawn as
     // two `Dab`s (`tiling::tiled_dabs` replicates the list), but they are the SAME dab seen from both

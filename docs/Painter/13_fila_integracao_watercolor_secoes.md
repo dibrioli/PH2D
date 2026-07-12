@@ -203,6 +203,26 @@ BUGS #7 + memórias):
 6. **Medir a ESCALA primeiro** ([[feedback_measure_perf_symptom_scale]]): fixar o nº em ms
    por-frame por-knob antes de escolher o alvo.
 
+### #19 — Varredura pós-#12 (2026-07-12): a família do "guard que pergunta 'existe?'"
+
+Pedida pelo Enio após o PANIC do Rake. 4 lentes independentes. **Fechados:** o 2º PANIC (trocar de
+sprite com tinta molhada) + 3 vazamentos entre sprites (sessão molhada · Deform · Seleção · cache de
+cut-points do compositor) · o Paper que não re-texturizava a poça · **Tiling + Random Angle** (a costura
+não fechava — as cópias wrapped sorteavam ângulos diferentes) · encanamento morto do Paper Rake/Random ·
+**Accumulate escondido sob o wash**. Detalhe completo + achados ABERTOS: [BUGS #13](BUGS_painter.md).
+
+**Semântica fixada nesta varredura (vale para o painel INTEIRO):**
+- **Todo método de traço lava.** Line/Curve/Ellipse/Polygon/Free Hand rodam a ótica por
+  `stamp_drag_preview_watercolor` (doc 13 #3). O comentário do `stamp_route` que dizia o contrário estava
+  **desatualizado** e foi corrigido — ele chegou a induzir uma condição de UI errada.
+- **O que decide é o MODO, não o método:** `watercolor_render_active() = watercolor && Paint && !eraser`.
+  Em Eraser/Mask/Smear/Blur/Clone/Inpaint o depósito comum volta mesmo com o checkbox ligado.
+  Publicado ao painel como `BrushSettings::watercolor_active` (fonte única — o painel não re-deriva).
+- **Accumulate:** morto sob o wash (lido só pelo `accumulate_cap`, depois do short-circuit) **e** redundante
+  (a cobertura do wash é max-blend = envelope). **Escondido.**
+- **Strength:** **VIVO** sob o wash — o engine o assa no `Dab.coverage`, e o wash lê
+  `peak = coverage × (1 − Dilution)`. **Fica.** Gate: `under_the_wash_accumulate_is_inert_but_strength_is_not`.
+
 ### #16 — PESQUISA: traço de aspecto 3D sem N camadas (o objetivo do Per-Layer Color)
 
 **Pergunta do Enio:** Procreate e outros produzem traços com aspecto 3D — como? Dá pra

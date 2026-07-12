@@ -104,13 +104,25 @@ nunca limpou nenhum. *Mesmo seam, duas portas, uma trancada.*
    deles a fundo.
 5. **Auditores concordando não é prova.** Duas lentes apontaram o `wet_substrate`; meu primeiro probe
    **refutou** (mediu errado) e o segundo **confirmou**. Sempre execute — dos dois lados.
+6. **★ Um comentário desatualizado é pior que nenhum comentário — ele MENTE com autoridade.** Duas vezes
+   nesta varredura: (a) o `stamp_route` afirmava que os shape-editors *"fall through to the plain deposit"*
+   com Watercolor ligado — **falso desde o doc 13 #3** (eles rodam a ótica por `stamp_drag_preview_watercolor`),
+   e eu quase reportei ao Enio uma condição de UI errada por causa dele; (b) os setters do Paper Rake,
+   mantidos *"for the API"*, fizeram uma auditoria inteira concluir que havia botões mortos no painel —
+   **não havia botão nenhum**. Corolário: **código/comentário sem consumidor não é neutro, é uma armadilha
+   armada** — quem chegar depois vai acreditar. Se removeu a UI, remova o encanamento.
+7. **"Está morto" e "está vivo" são AMBOS afirmações que exigem teste.** Esconder um knob morto exige provar
+   que ele é inerte (byte-identidade); manter um knob exige provar que ele muda a saída. O gate
+   `under_the_wash_accumulate_is_inert_but_strength_is_not` pina os dois lados — senão o painel mente numa
+   direção ou na outra.
 
 ### ⚠️ ABERTOS na varredura (nenhum é crash) — precisam de decisão ou fila
 
 | Achado | Gravidade | Nota |
 |---|---|---|
-| **Paper Rake / Paper Random são knobs MORTOS** | knob morto | Escritos pelo setter, ecoados ao painel, **lidos por ninguém**. O Paper é ancorado no canvas (não há dab) ⇒ "Rake" (a rotação segue o traço) **não tem significado físico**. Pior: como `TextureSettings` compara `rake`, clicar dispara um **re-render de wash inteiro** que devolve bytes idênticos. **Decisão do Enio: remover os 2 botões (recomendado) ou dar-lhes semântica.** |
-| **Tiling + Random Angle: a costura não fecha** | corrupção silenciosa | As cópias wrapped do dab sacam do RNG **uma vez cada** ⇒ o mesmo dab visto pelos dois lados da borda sorteia **ângulos diferentes**. Smear/Blur/Clone **fazem certo e documentam**; as rotas de *paint* não. Quebra a promessa do seamless. |
+| ~~**Paper Rake / Paper Random**~~ | ✅ **FECHADO** (`970d47c8`) | **O auditor errou:** os BOTÕES nunca existiram — o painel já os tinha removido, com o raciocínio certo (o papel é substrato ancorado no canvas; não há dab, logo "a rotação segue o traço" não tem o que rodar). O que sobrou foram **ids + setters + arms + campos mantidos "for the API"**, e o encanamento morto virou **armadilha**: a auditoria leu os setters sobreviventes como knobs vivos. Removidos os 6 sites. **Lição: código morto não é neutro — ele MENTE para o próximo leitor.** |
+| ~~**Tiling + Random Angle: a costura não fecha**~~ | ✅ **FECHADO** (`a6da10de`) | As cópias wrapped sacavam do RNG **uma vez cada** ⇒ os dois lados da costura sorteavam ângulos diferentes. Fix: `tiled_dabs_grouped` + `DabRng` reproduzem o stream **por dab original**. Aplicado nas 3 rotas de pintura **e** nas 2 passagens do wash. Sem tiling ⇒ byte-idêntico. **Armadilha de oráculo:** a 1ª versão do RED tinha off-by-2 no mapeamento canvas→local (o centro da cópia é `cx+span`) e falharia em QUALQUER implementação — um **falso RED**. |
+| ~~**Accumulate visível sob o wash**~~ | ✅ **FECHADO** (`under_the_wash_…`) | `brush.accumulate` é lido **só** pelo `accumulate_cap`, dentro do roteamento de stamp — e a aquarela faz short-circuit **antes** dele. Checkbox pintado-mas-inerte. É também **redundante por construção**: a cobertura do wash é max-blend (um envelope), que já **É** "não acumula dentro do traço". Escondido sob `watercolor_active` (o predicado REAL: `watercolor && Paint && !eraser` — em Eraser/Mask/Inpaint o depósito comum volta e o Accumulate volta a valer). **`Strength` FICA** — provado vivo: o engine o assa no `Dab.coverage` e o wash o lê como o pico do depósito. |
 | **Grain Rake/Random ignorados DENTRO da aquarela** | knob morto | O short-circuit da aquarela desvia das rotas de stamp; a granulação amostra o Grain **ancorado no canvas**. O mesmo botão significa duas coisas conforme o checkbox Watercolor — e uma delas é "nada". |
 | **Jitter Rotate morto em Smear/Blur/Clone** | knob morto | Com Shape=None, Grain=None e `dab_flatten>0`, a máscara constante é servida e `d.rotation` não chega ao blit. A rota de *pintura* não tem o bug — assimetria pura. |
 | **Grain `Random Offset` servido pelo cache constante no Per-Layer Color** | knob morto | O `per_dab_dynamic` esqueceu `randomises_offset()`. O gate correto seria `!texture.is_cacheable()`. |

@@ -183,9 +183,16 @@ pub(crate) fn paint_brush_body(
         y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);
     }
 
-    // 5. Accumulate (checkbox — caps the stroke at Strength when off). Hidden in Smear/Blur
-    //    (neither uses the paint-side Strength cap).
-    if !brush.paints_no_color() {
+    // 5. Accumulate (checkbox — caps the stroke at Strength when off). Hidden in Smear/Blur (neither uses
+    //    the paint-side Strength cap) and, since 2026-07-12 (Enio), under the **optical wash**: the
+    //    watercolor path short-circuits before the stamp routing, and `accumulate` is read ONLY there
+    //    (`accumulate_cap`), so the checkbox was painted-but-inert — dead UI, exactly like the Composite
+    //    card hidden above for the same reason. It is also redundant by construction: the wash's coverage
+    //    is MAX-blended (an envelope), which IS "no build-up within a stroke". Note this keys off
+    //    `watercolor_active`, not the checkbox: in Eraser/Mask/Inpaint the plain deposit runs again and
+    //    Accumulate goes back to meaning something. **Strength stays** — the engine bakes it into
+    //    `Dab.coverage` and the wash reads it as the deposit peak (`coverage × (1 − Dilution)`).
+    if !brush.paints_no_color() && !brush.watercolor_active {
         y = paint_checkbox_row(
             ctx,
             theme,

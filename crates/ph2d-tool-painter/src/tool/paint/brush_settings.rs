@@ -285,6 +285,13 @@ pub struct BrushSettings {
     // ── Watercolor section (wet-media look; `docs/Painter/08_plano_aquarela_edge_grain_pigment.md`) ──
     /// Master enable for the Watercolor section (edge darkening + granulation + pigment).
     pub watercolor: bool,
+    /// Whether the **optical wash actually runs** — `watercolor` AND the plain Paint mode AND not Eraser
+    /// (`PainterTool::watercolor_render_active`). The checkbox alone is NOT enough: with Eraser / Mask /
+    /// Smear / Blur / Clone / Inpaint the deposit falls back to the plain stamp path even with Watercolor
+    /// ticked. Every stroke method DOES wash (the shape editors run the optics through
+    /// `stamp_drag_preview_watercolor`), so this is about the MODE, not the method. The panel reads this
+    /// instead of re-deriving the predicate — one source of truth for "is the wash the thing painting?".
+    pub watercolor_active: bool,
     /// Shape "Automatic" (watercolor): true = built-in feather silhouette; false = the Shape
     /// section drives the watercolor stamp (doc 13 #1).
     pub watercolor_shape_auto: bool,

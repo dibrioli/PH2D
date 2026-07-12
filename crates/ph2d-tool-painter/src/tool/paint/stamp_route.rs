@@ -39,11 +39,20 @@ impl PainterTool {
         // (max-blended discs) + the deposited colour (source-over), and let `apply_watercolor` reconstruct
         // the whole wash over the frozen base ([`super::watercolor_render`]). Short-circuits every route.
         //
-        // Gated on an OPEN watercolor stroke (the frozen base exists ⇔ `paint_begin` ran): the shape
-        // editors (Line/Arc/Ellipse/Polygon/Free Hand, `stroke_multi`) stamp via `stamp_drag_preview`
-        // WITHOUT the stroke lifecycle, so no base is frozen and `apply_watercolor` never runs — routing
-        // them here painted NOTHING and leaked never-cleared coverage. With the gate they fall through to
-        // the plain deposit (the shape paints; the watercolor optics stay a stroke-methods feature).
+        // Gated on an OPEN watercolor stroke: the frozen base exists ⇔ some lifecycle froze it. Originally
+        // that meant only `paint_begin`, and the shape editors (Line/Curve/Ellipse/Polygon/Free Hand) fell
+        // through to the plain deposit. **THAT IS NO LONGER TRUE** (doc 13 #3): they run the optics through
+        // their OWN entry, `stamp_drag_preview_watercolor`, which freezes the ground and calls
+        // `apply_watercolor` itself — so EVERY stroke method washes. The gate still earns its keep (a batch
+        // reaching here with no base frozen must not enter the optical path), but the old wording said the
+        // opposite and misled an audit (2026-07-12) — hence this correction.
+        //
+        // What the wash does NOT cover is the MODE: `watercolor_render_active()` is
+        // `watercolor && paint_mode == Paint && !eraser`, so Eraser / Mask / Smear / Blur / Clone / Inpaint
+        // keep the plain stamp path even with the checkbox ticked. `BrushSettings::watercolor_active`
+        // publishes exactly this predicate to the panel, which hides **Accumulate** under the wash (it is
+        // read only by `accumulate_cap`, below this short-circuit — dead there, and redundant anyway: the
+        // wash coverage is max-blended, which already IS "no build-up within a stroke").
         if self.watercolor_render_active() && self.paint.watercolor_base.is_some() {
             // Seamless Tiling (doc 13 #2): replicate the dabs across the wrapped sprite edges BEFORE the
             // accumulate, so an edge-crossing wash also FORMS on the opposite edge (the divergence above

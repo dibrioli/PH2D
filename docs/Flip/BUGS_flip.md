@@ -356,3 +356,82 @@ separa "rápido" de "rápido e correto".
 
 **E: empate + corte = não-determinismo.** Sempre que você ordena e trunca, garanta uma chave de
 desempate total.
+
+---
+
+## Bug #6 — O fantasma da camada de cima ficava atrás da camada de baixo
+
+**Sintoma (smoke do Enio, W3):** "Ghost da camada de cima está coberto pela camada de baixo." No
+demo, o retângulo amarelo opaco do BG engolia os fantasmas do FG.
+
+**A causa não era de COR — era de ORDEM.** O 1º corte desenhava TODOS os fantasmas num passe
+direto no `game_rt`, **antes** de compor as camadas. Aí o composite blitava a pilha inteira por
+cima: qualquer camada de fundo opaca apagava o fantasma de qualquer camada acima dela. O bug é
+invisível num documento de uma camada só — e o demo tinha duas.
+
+**A ideia errada por trás:** tratar o fantasma como um *fundo* ("é uma coisa esmaecida, vai lá
+atrás"). **O fantasma não é um fundo — ele pertence à sua camada.** O z dele é o dela.
+
+**Solução.** Cada ghost virou uma **fatia do compositor**, inserida na op-list logo ABAIXO da sua
+própria camada (portanto acima de todas as de baixo, e abaixo da arte do quadro atual), com blend
+**Normal** e opacity **1.0** — o fade e a opacidade da camada já estão no alpha do tint. Herdar o
+blend da camada seria o erro seguinte: um `Multiply` no FG tingiria o fantasma com a arte do BG,
+e ele deixaria de ser uma silhueta chapada.
+
+**O gate.** A op-list compõe de baixo para cima, então **a ordem da lista É a ordem de z**:
+`a_layers_ghost_sits_above_the_layers_below_it` exige `BG < ghost(FG) < FG`. É um teste de
+APARÊNCIA disfarçado de teste estrutural — e a mutação sangra (coletar os fantasmas fora do laço
+de camadas devolve `ghost, art, art`).
+
+**Lição generalizável.** *Overlay é uma decisão de z, não de cor.* Quando um elemento novo
+"pertence" a uma camada existente, ele entra NA PILHA, na posição dela — nunca num passe separado
+por baixo (ou por cima) de tudo. Ver também
+[[feedback_overlay_cut_at_boundary_check_draw_order]]: o mesmo reflexo (listar os writers, em
+ordem) resolve as duas famílias.
+
+---
+
+## Bug #7 — Os ciclos (Loop/Ping-Pong) não faziam absolutamente NADA
+
+**Sintoma (smoke do Enio, W3):** "Parece que pingpong e loop extrapolam o último quadro e não
+funcionam corretamente." O último desenho segurava para sempre, em qualquer modo de ciclo.
+
+**Causa-raiz:** o modelo tinha os ciclos implementados (`cycle.rs`) e **testados** (`map_frame`
+com Loop/PingPong/Hold/None, 6 testes verdes) — e o render **nunca os chamava**. O
+`collect_layers` do `flip_pass` amostrava `FlipLayer::drawing_at` (o caminho CRU) em vez de
+`drawing_at_cycled`. Uma linha.
+
+É o caso de livro de [[feedback_tool_unit_green_integration_dead]]: **unit-verde ≠ funciona no
+produto**. Todo teste do ciclo passava porque todos testavam o MODELO. Nenhum testava o caminho
+que o app realmente percorre.
+
+**Solução.** O render (e os fantasmas, e a navegação por desenho, e a célula destacada na tira)
+passam pelo quadro-FONTE. Gate: `the_render_samples_through_the_cycle` — no `collect_layers` REAL,
+o quadro 20 de um Loop de 16 tem de resolver para o desenho do quadro 4.
+
+**O achado colateral (que um teste pegou na hora):** ao rotear a autoria pelo mesmo mapa, eu
+quase matei o autokey. **Há TRÊS relógios, não dois:**
+
+| Transform | Responde | Quem usa |
+|---|---|---|
+| `drawing_at` (cru) | "o que a chave em/antes deste quadro diz" | a mecânica interna |
+| `source_frame` | "**qual quadro do vão está na tela**" | render, fantasmas, célula destacada, ops de chave |
+| `authoring_frame` | "**em qual quadro este gesto escreve**" | caneta, borracha |
+
+`authoring_frame` mapeia pelo ciclo **só onde o tempo REPETE** (Loop/Ping-Pong: editar a 2ª volta
+edita o vão, e a edição aparece em todas as voltas — é o que um ciclo *significa*). Sob `Hold`/
+`None` — os **defaults** — o tempo depois do vão é tempo **NOVO**: desenhar ali cria a chave ali,
+que é como uma animação cresce. Mapear de volta teria feito a caneta editar o desenho anterior em
+vez de criar o próximo.
+
+**Lição generalizável.** [[feedback_derived_coordinate_seed_must_match_sample]] diz "todo caminho
+de autoria usa a MESMA transform do de leitura" — e é verdade, **mas a transform de leitura pode
+não ser única**. Antes de unificar, pergunte *o que cada quadro/coordenada SIGNIFICA*: aqui,
+"repetido" e "novo" são semanticamente diferentes, e colapsá-los quebra uma feature ou a outra.
+Duas transforms com nomes honestos > uma transform "unificada" que mente para metade dos callers.
+
+**E um terceiro, de UX:** ligar um ciclo sobre uma tira cuja última chave tinha hold implícito
+(infinito) fazia o vão fechar em `última + 1` — ela expunha 1 quadro e o ciclo *piscava* no fim.
+Agora escolher Loop/Ping-Pong **materializa a exposição da última célula** (igual à da anterior),
+visível na tira e editável no Hold. *Um default derivado de um valor "infinito" precisa virar um
+número real no momento em que alguém depende dele.*

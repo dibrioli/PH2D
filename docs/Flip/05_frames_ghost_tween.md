@@ -1,6 +1,6 @@
 # Flip W3 — Frames · Ghost Frames · Tween (o doc definitivo do TEMPO)
 
-> **Estado: FECHADA em 2026-07-12** (pendente o smoke do Enio). Este doc é a fonte de verdade
+> **Estado: FECHADA em 2026-07-12** (smoke APROVADO, após 2 rodadas de correção — `BUGS_flip.md`). Este doc é a fonte de verdade
 > do modelo de tempo do Flip: como um desenho ocupa quadros, o que acontece fora do vão, quem
 > aparece como fantasma, o que nasce quando se desenha, e como o inbetween é gerado.
 >

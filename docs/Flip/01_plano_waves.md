@@ -10,7 +10,7 @@
 > APROVADO pelo Enio) · **W3 (Frames · Ghost · Tween) FECHADA** — o Flip virou app de
 > ANIMAÇÃO (tira com exposição, ciclos, Ghost Frames, autokey por-tool, flip por desenho,
 > tween). Doc: [`05_frames_ghost_tween.md`](05_frames_ghost_tween.md). Pendente o smoke.
-> **A wave atual é a W4 (Fill).** A **W6 (timeline global) está ADIADA** até a timeline
+> **A wave atual é a W4 (Fill), EM CURSO.** A **W6 (timeline global) está ADIADA** até a timeline
 > principal ficar pronta (Enio 2026-07-12).
 
 ## Regras permanentes (valem em TODA task)
@@ -82,7 +82,7 @@ morreu em todas as suas formas. Detalhe completo em
 
 ---
 
-# W3 — Frames · Ghost Frames · Tween (FECHADA 2026-07-12 · pendente o smoke)
+# W3 — Frames · Ghost Frames · Tween (FECHADA 2026-07-12 · smoke APROVADO)
 
 **Entregue:** o modelo de tempo completo (vão/exposição/ciclos), os Ghost Frames como função
 pura + passe de silhueta tingida, o autokey POR TOOL (a borracha sempre duplica), o flip por
@@ -144,7 +144,7 @@ onion; bench do cache.
 
 ---
 
-# W4 — Fill (balde)
+# W4 — Fill (balde) — EM CURSO
 
 **Objetivo:** balde robusto para line-art com Gap Closure interativo, resultado = GEOMETRIA.
 Referências: `02` §6 (pipeline exato + constantes) e `04` §3 (upgrades decididos).

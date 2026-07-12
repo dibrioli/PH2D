@@ -5816,11 +5816,13 @@ dependencies = [
  "ph2d-node-rig-rubber-hose",
  "ph2d-node-rig-skeleton",
  "ph2d-node-rig-skin-deformer",
+ "ph2d-node-sim-lifetime",
  "ph2d-node-sim-spawn",
  "ph2d-node-sim-step",
  "ph2d-node-sim-zone",
  "ph2d-node-sync",
  "ph2d-node-util-reroute",
+ "ph2d-node-value-attribute",
  "ph2d-node-value-instance-field",
  "ph2d-node-value-lfo",
  "ph2d-node-value-map-range",
@@ -5877,6 +5879,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-sim-lifetime"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-node-registry-init",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-sim-spawn"
 version = "0.0.0"
 dependencies = [
@@ -5909,6 +5920,15 @@ version = "0.0.0"
 
 [[package]]
 name = "ph2d-node-util-reroute"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-node-registry-init",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-attribute"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",

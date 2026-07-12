@@ -31,6 +31,14 @@
 //!
 //! `accel` is CONSUMED (dropped): it is the transient the `force.*` nodes accumulate, and a step
 //! that left it on the stream would re-apply the same force forever, one tick out of date.
+//!
+//! ## It also keeps the `age`
+//!
+//! The step owns the clock, so the step owns the ageing: every element's `age` grows by the same
+//! `dt` its motion did (doc 50). An element with no `age` yet is newborn — it starts at zero.
+//! Nothing else in the library could do this honestly: a node without the sim's own clock would
+//! have to guess the frame rate, and the age is what `sim.lifetime` kills by and what
+//! `value.attribute` hands to a colour ramp.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -94,10 +102,13 @@ fn step(state: &Stream, playhead: f32, damping: f32) -> Stream {
     // Everything the sim does not own rides through untouched — `id` above all, so a kill node
     // downstream can tell the survivors apart next tick. `accel` is consumed.
     for (name, col) in state.columns() {
-        if !matches!(name.as_str(), "accel" | "P" | "vel" | "sim_t") {
+        if !matches!(name.as_str(), "accel" | "P" | "vel" | "sim_t" | "age") {
             out.set(name.clone(), col.clone());
         }
     }
+    // The age grows by the same `dt` the motion did — the step owns the clock, so the step owns
+    // the ageing. A row with no `age` is newborn: it starts at zero.
+    let age_prev = scalar_col(state, "age", n, 0.0).unwrap_or_else(|| vec![0.0; n]);
 
     let mut p = vec2_col(state, "P", n);
     let mut vel = vec2_col(state, "vel", n);
@@ -129,8 +140,19 @@ fn step(state: &Stream, playhead: f32, damping: f32) -> Stream {
         }
     }
 
+    let age: Vec<f32> = (0..n)
+        .map(|i| {
+            let dt = t_prev
+                .as_ref()
+                .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds, min < max
+                .unwrap_or(0.0);
+            age_prev[i] + dt
+        })
+        .collect();
+
     out.set("P", Column::Vec2(p));
     out.set("vel", Column::Vec2(vel));
+    out.set("age", Column::Scalar(age));
     out.set("sim_t", Column::Scalar(vec![playhead; n]));
     out
 }

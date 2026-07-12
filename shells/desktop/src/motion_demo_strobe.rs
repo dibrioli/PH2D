@@ -69,6 +69,14 @@ const SNOW_SITE_GAP: f32 = 0.36;
 const SNOW_SKY_Y: f32 = 2.6;
 const SNOW_RATE: f32 = 24.0;
 const SNOW_GUST: f32 = 0.35;
+/// A flake lives ~2.2 s (± the hashed variance), which is about the fall through the disc — so
+/// most melt of old age on the way down and the strays are culled at the rim.
+const SNOW_LIFE: f32 = 2.2;
+const SNOW_LIFE_VARIANCE: f32 = 0.4;
+/// The column the colour is driven by (`sim.lifetime` writes it: 0 at birth, 1 at the end).
+const SNOW_ATTR: &str = "life";
+/// `motion.color_ramp`'s presets: 0 Rainbow · 1 Heat · **2 Ice** · 3 Grayscale · 4 Custom.
+const SNOW_RAMP_ICE: f32 = 2.0;
 const RAIN_QUAD: f32 = 0.18;
 const RAIN_GRAVITY: f32 = 4.0;
 /// The kill disc, around the seed's own centre: a LINEAR falloff of radius 3.4, culled at 0.05,
@@ -123,17 +131,25 @@ pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
 ///   would merge the same particles again, every frame, forever.)
 /// - **LIFE** — `force.wind` + `sim.step`: velocity ACCUMULATES in the state, so the flakes
 ///   accelerate instead of drifting at a constant rate.
-/// - **DEATH** — `motion.falloff` + `motion.cull`: inside a zone that pair is not a filter but a
-///   KILL. What falls out of the circle stays out.
+/// - **AGE** — `sim.step` grows an `age` on every flake, `sim.lifetime` kills what has outlived
+///   its own (hashed) lifetime and writes how far through life the survivors are; `value.attribute`
+///   reads that number back out as a value field, and `motion.color_ramp` COLOURS by it. The flake
+///   fades along the Ice ramp as it ages — the most ordinary sentence in motion graphics, which
+///   this library could not say until the attribute node existed (doc 50).
+/// - **DEATH** — two of them, and a particle system has both: **old age** (`sim.lifetime`) and
+///   **place** (`motion.falloff` + `motion.cull` — the stray that leaves the circle is gone, and
+///   inside a zone that pair is not a filter but a KILL).
 ///
-/// Birth and death balance, so the snow reaches a **steady state** and stays there. Every node
-/// in the interior but the two `sim.*` ones already existed; the zone is what made them a
-/// simulation.
+/// Birth and death balance, so the snow reaches a **steady state** and stays there. Every node in
+/// the interior but the `sim.*` ones already existed; the zone is what made them a simulation.
 fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     let zone = g.add_node("sim.zone");
     let combine = g.add_node("motion.combine");
     let wind = g.add_node("force.wind");
     let step = g.add_node("sim.step");
+    let life = g.add_node("sim.lifetime");
+    let attr = g.add_node("value.attribute");
+    let ramp = g.add_node("motion.color_ramp");
     let falloff = g.add_node("motion.falloff");
     let cull = g.add_node("motion.cull");
     let sky = g.add_node("motion.grid");
@@ -148,7 +164,10 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     chain(g, RAIN_ROW, 1, &[zone])?;
     chain(g, RAIN_ROW, 2, &[scale, mv, output])?;
     wire(g, (zone, 0), (scale, 0))?;
-    for (i, n) in [combine, wind, step, falloff, cull].iter().enumerate() {
+    for (i, n) in [combine, wind, step, life, ramp, falloff, cull]
+        .iter()
+        .enumerate()
+    {
         g.set_pos(
             *n,
             Pos {
@@ -159,11 +178,31 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     }
     wire(g, (combine, 0), (wind, 0))?;
     wire(g, (wind, 0), (step, 0))?;
-    wire(g, (step, 0), (falloff, 0))?;
+    wire(g, (step, 0), (life, 0))?;
+    wire(g, (life, 0), (ramp, 0))?;
+    wire(g, (ramp, 0), (falloff, 0))?;
     wire(g, (falloff, 0), (cull, 0))?;
     wire(g, (cull, 0), (zone, 1))?; // the interior's END lands on `state`
 
-    chain(g, RAIN_ROW + 2.0 * RAIN_INTERIOR_DY, 0, &[sky, lift, spawn])?;
+    // The colour is DRIVEN BY THE AGE: `value.attribute` reads the `life` column that
+    // `sim.lifetime` just wrote (0 at birth, 1 at the end) and hands it to the ramp's `t`. A
+    // diamond — the ramp reads the same stream twice, once as geometry and once as a value — and
+    // the cook memoizes the shared branch, so it costs one evaluation, not two.
+    g.set_pos(
+        attr,
+        Pos {
+            x: 3.0 * COL_W,
+            y: RAIN_ROW + 2.0 * RAIN_INTERIOR_DY,
+        },
+    );
+    wire(g, (life, 0), (attr, 0))?;
+    wire(g, (attr, 0), (ramp, 1))?;
+    g.set_text_param(attr, "attr", SNOW_ATTR);
+    g.set_param(life, "life", SNOW_LIFE);
+    g.set_param(life, "variance", SNOW_LIFE_VARIANCE);
+    g.set_param(ramp, "preset", SNOW_RAMP_ICE);
+
+    chain(g, RAIN_ROW + 3.0 * RAIN_INTERIOR_DY, 0, &[sky, lift, spawn])?;
     wire(g, (spawn, 0), (combine, 1))?; // …the newborns join the population
 
     // **The state entry.** The zone's PREVIOUS output enters the interior at its head — here the

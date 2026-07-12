@@ -69,9 +69,10 @@ fn new_builds_the_well_typed_rig_document() {
     // skin_deformer, scale, move, output} + the goal dots {scale, move, output, move,
     // output} + the ORPHAN that demos the inline readouts (doc 43: no sink consumes it, so
     // it never cooks, so it has no reading and the editor veils it) + the SIMULATION ZONE
-    // (docs 48/49 — the snow: {sim.zone, combine, wind, sim.step, falloff, cull} interior +
-    // {grid, move, sim.spawn} birth + {scale, move, output} render = 12).
-    assert_eq!(state.doc.graph.nodes().len(), 35);
+    // (docs 48/49/50 — the snow: {sim.zone, combine, wind, sim.step, sim.lifetime,
+    // value.attribute, motion.color_ramp, falloff, cull} interior + {grid, move, sim.spawn}
+    // birth + {scale, move, output} render = 15).
+    assert_eq!(state.doc.graph.nodes().len(), 38);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -407,7 +408,47 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         "…and it really is accelerating, not drifting"
     );
 
-    // 3. DEATH + STEADY STATE: the population settles instead of growing without bound.
+    // 3. AGE: the flakes grow old and are COLOURED by how old they are. Both readings come off
+    //    the same live state, so a broken `sim.step` age or a mis-wired ramp shows here.
+    let out = cook
+        .cook(&state.doc.graph, &state.registry, snow, 4.0)
+        .unwrap();
+    let s = out[0].as_stream();
+    let (ages, lifes) = (
+        match s.get("age") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => panic!("the flakes have no age"),
+        },
+        match s.get("life") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => panic!("the flakes do not know their life fraction"),
+        },
+    );
+    assert!(
+        ages.iter().any(|a| *a > 1.0) && ages.iter().any(|a| *a < 0.3),
+        "old flakes and newborns coexist: {:?}..{:?}",
+        ages.iter().cloned().fold(f32::MAX, f32::min),
+        ages.iter().cloned().fold(f32::MIN, f32::max)
+    );
+    assert!(
+        lifes.iter().all(|t| (0.0..=1.0).contains(t)),
+        "the life fraction stays in [0,1]"
+    );
+    // The colour is DRIVEN by that fraction: a young flake and an old one are not the same
+    // colour. (FALSIFIED by a `value.attribute` that reads a missing column: every t would be 0
+    // and the whole snowfall would be one flat colour.)
+    let tints = match s.get("tint") {
+        Some(Column::Vec4(v)) => v.clone(),
+        _ => panic!("the ramp never coloured them"),
+    };
+    let spread = tints.iter().map(|c| c[2]).fold(f32::MIN, f32::max)
+        - tints.iter().map(|c| c[2]).fold(f32::MAX, f32::min);
+    assert!(
+        spread > 0.05,
+        "the flakes are coloured by their AGE, not all alike: blue spread {spread}"
+    );
+
+    // 4. DEATH + STEADY STATE: the population settles instead of growing without bound.
     let late = &counts[180..];
     let (lo, hi) = (
         *late.iter().min().unwrap() as f32,

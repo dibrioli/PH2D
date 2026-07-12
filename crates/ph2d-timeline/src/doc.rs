@@ -25,6 +25,17 @@ pub const DOC_VERSION: u32 = 2;
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
 
+/// How many clips a document may hold.
+///
+/// A real bound, not a guess at what an animator needs: the clip selector is a
+/// dropdown, and a dropdown's option ids are a FIXED array of `NodeId`s
+/// (`TIMELINE_CLIP_OPT`) — the chrome has no way to mint a hit id at runtime. So
+/// the cap is whatever that array is, and it lives HERE, with the data, where
+/// [`TimelineDoc::add_clip`] can refuse rather than let the UI silently drop a
+/// clip it cannot address. Raising it means growing the id array in lockstep, and
+/// a gate holds the two together.
+pub const MAX_CLIPS: usize = 16;
+
 /// A named point in time on the timeline (UI in W4; data lives here from W1).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Marker {
@@ -100,6 +111,65 @@ impl TimelineDoc {
         if index < self.clips.len() {
             self.active_clip = index;
         }
+    }
+
+    /// Append a clip named `name` and return its index. Refuses past
+    /// [`MAX_CLIPS`] (the selector's option ids are a fixed array) and returns
+    /// the active index unchanged.
+    ///
+    /// The new clip is **empty**, and that is the whole model: BINDINGS are
+    /// document-wide (a binding maps an entity's property to a stable target id),
+    /// so every clip animates the same objects and only the KEYS differ. A second
+    /// clip therefore costs a name and nothing else — "walk" and "run" are two sets
+    /// of curves over one rig, which is how After Effects and Unity both read it.
+    pub fn add_clip(&mut self, name: String) -> usize {
+        if self.clips.len() >= MAX_CLIPS {
+            return self.active_clip;
+        }
+        self.clips.push(NamedClip {
+            name,
+            clip: Clip::new(RationalTime::from_seconds(0.0)),
+        });
+        self.clips.len() - 1
+    }
+
+    /// Rename clip `index` (out of range: no-op).
+    pub fn rename_clip(&mut self, index: usize, name: String) {
+        if let Some(c) = self.clips.get_mut(index) {
+            c.name = name;
+        }
+    }
+
+    /// Delete clip `index`, returning `true` if it went.
+    ///
+    /// **The last clip never goes** — a document must always have one to edit, and
+    /// an empty `clips` would make `active_clip()` panic on the very next frame.
+    /// The active index follows the deletion (it shifts down with the clips above
+    /// it, and clamps if it WAS the deleted one), so the caller never has to
+    /// repair it.
+    pub fn remove_clip(&mut self, index: usize) -> bool {
+        if self.clips.len() <= 1 || index >= self.clips.len() {
+            return false;
+        }
+        self.clips.remove(index);
+        if self.active_clip >= index {
+            self.active_clip = self.active_clip.saturating_sub(1);
+        }
+        true
+    }
+
+    /// A name no clip is using yet — `"Clip 2"`, then `"Clip 3"`… Seeds the
+    /// selector's "New Clip" so two clips never share a label (which would make
+    /// the dropdown unreadable and the rename ambiguous).
+    #[must_use]
+    pub fn fresh_clip_name(&self) -> String {
+        for n in 2..=MAX_CLIPS + 1 {
+            let candidate = format!("Clip {n}");
+            if !self.clips.iter().any(|c| c.name == candidate) {
+                return candidate;
+            }
+        }
+        "Clip".to_string()
     }
 
     /// Serialize the document to the versioned on-disk format (postcard). The

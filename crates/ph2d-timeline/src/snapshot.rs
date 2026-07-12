@@ -77,6 +77,11 @@ pub struct TimelineViewSnapshot {
     pub frame_snap: bool,
     /// Performing (record-during-play) armed.
     pub performing: bool,
+    /// Every clip's author-visible name, in document order — the selector's list.
+    /// Reused across rebuilds (clear + push).
+    pub clips: Vec<String>,
+    /// Index into [`Self::clips`] of the clip being edited.
+    pub active_clip: usize,
 }
 
 impl TimelineViewSnapshot {
@@ -94,6 +99,14 @@ impl TimelineViewSnapshot {
         self.auto_key = state.flags.auto_key;
         self.frame_snap = state.flags.frame_snap;
         self.performing = state.flags.performing;
+
+        // Clips (reuse buffer): names only — the panel never touches the curves of
+        // a clip it is not showing.
+        self.clips.clear();
+        for c in doc.clips() {
+            self.clips.push(c.name.clone());
+        }
+        self.active_clip = doc.active_index();
 
         // Markers (reuse buffer).
         self.markers.clear();

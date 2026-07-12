@@ -208,6 +208,33 @@ pub enum TimelineIntent {
     Undo,
     /// Redo one document step.
     Redo,
+
+    // ── clips (W5 / NLA step 1 — each is one undo step) ─────────────────────
+    /// Switch which clip is edited. Out of range: no-op.
+    ///
+    /// Undoable like any other document edit: the active clip is what every
+    /// authoring intent below writes into, so a Ctrl+Z that did not put it back
+    /// would undo the keys into a clip the animator is no longer looking at.
+    SetActiveClip {
+        /// Index into [`crate::TimelineDoc::clips`].
+        index: usize,
+    },
+    /// Append a new, empty clip and make it active. Refused past
+    /// [`crate::MAX_CLIPS`].
+    AddClip,
+    /// Rename clip `index`.
+    RenameClip {
+        /// Index into [`crate::TimelineDoc::clips`].
+        index: usize,
+        /// The new author-visible name.
+        name: String,
+    },
+    /// Delete clip `index`. The LAST clip is never deleted (a document always has
+    /// one to edit).
+    DeleteClip {
+        /// Index into [`crate::TimelineDoc::clips`].
+        index: usize,
+    },
 }
 
 /// Apply one intent to the timeline state + playhead. Document-mutating intents
@@ -427,6 +454,31 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             state.history.cancel();
             state.redo();
         }
+
+        // ── clips ───────────────────────────────────────────────────────────
+        // Every arm clears the SELECTION: a `KeyId` is only meaningful inside the
+        // track that issued it, so ids held across a clip switch would point at
+        // whatever key happens to sit at that index in the new clip — a stale
+        // selection that deletes the wrong keys. Clearing is the only safe move,
+        // and it is what switching a comp does everywhere else too.
+        I::SetActiveClip { index } => edit(state, |doc, sel| {
+            doc.set_active(index);
+            sel.clear();
+        }),
+        I::AddClip => edit(state, |doc, sel| {
+            let name = doc.fresh_clip_name();
+            let i = doc.add_clip(name);
+            doc.set_active(i);
+            sel.clear();
+        }),
+        I::RenameClip { index, name } => edit(state, |doc, _| {
+            doc.rename_clip(index, name);
+        }),
+        I::DeleteClip { index } => edit(state, |doc, sel| {
+            if doc.remove_clip(index) {
+                sel.clear();
+            }
+        }),
     }
 }
 

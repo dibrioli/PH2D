@@ -38,7 +38,7 @@ pub use apply::{apply_from_doc, apply_from_doc_except, remapped_time};
 pub use autokey::{PoseSample, autokey_props};
 pub use binding::{TargetBinding, WireId};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
-pub use doc::{DEFAULT_FPS, DOC_VERSION, Marker, NamedClip, TimelineDoc};
+pub use doc::{DEFAULT_FPS, DOC_VERSION, MAX_CLIPS, Marker, NamedClip, TimelineDoc};
 pub use graph::{
     drawn_extent, handle_coords, handle_point, sample_keys, segment_handle_points,
     speed_handle_tip, value_extent, weighted_with_handle, weighted_with_speed_handle,

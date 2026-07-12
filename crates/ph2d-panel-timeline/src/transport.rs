@@ -15,8 +15,9 @@ use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    Button, ButtonState, IconButtonStyle, IconGlyph, NumberInput, Toggle, ToggleState,
-    paint_button, paint_icon_button, paint_number_input_with_buffer, paint_toggle,
+    Button, ButtonState, Dropdown, DropdownOption, DropdownState, IconButtonStyle, IconGlyph,
+    NumberInput, Toggle, ToggleState, paint_button, paint_dropdown_chip, paint_icon_button,
+    paint_number_input_with_buffer, paint_toggle,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{DEFAULT_FPS, TimelineViewSnapshot};
@@ -29,18 +30,31 @@ const ADD_MARKER_W: f32 = 40.0; // LITERAL-PX-OK: "+M" add-marker button width
 const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: seconds/frame number chip width
 const CHIP_LABEL_W: f32 = 48.0; // LITERAL-PX-OK: "Time(s)"/"Frames" chip-label column
 const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
+const CLIP_DD_W: f32 = 108.0; // LITERAL-PX-OK: clip dropdown chip width
 
-/// Paint the transport row inside `body` (top-aligned). Returns the `y` below it.
+/// Paint the transport row inside `body` (top-aligned).
+///
+/// Returns the `y` below the row, and — when the clip dropdown is OPEN — the
+/// chip's rect. The caller paints the popover LAST, after the dope sheet, or the
+/// list would be drawn under the rows it overlaps
+/// ([[feedback_overlay_cut_at_boundary_check_draw_order]]).
 pub(crate) fn paint_bar(
     ctx: &mut PaintCtx,
     theme: Theme,
     body: Rect,
     snap: &TimelineViewSnapshot,
     speed_view: bool,
-) -> f32 {
+) -> (f32, Option<Rect>) {
     let gap = Spacing::Sm.px();
     let y = body.y;
     let mut x = body.x;
+
+    // ── clip selector (W5) ───────────────────────────────────────────────────
+    // Far left, ahead of the transport — the clip is the thing everything else on
+    // this bar acts ON, so it reads first (and it is where Unity's animation window
+    // puts it).
+    let (after_clips, clip_chip) = clip_cluster(ctx, theme, x, y, snap);
+    x = after_clips + gap;
 
     // ── transport buttons ────────────────────────────────────────────────────
     // |◀ ◀ ▶/⏸ ▶ ▶| — jump to start, step back, play/pause, step forward, jump
@@ -170,7 +184,63 @@ pub(crate) fn paint_bar(
     // pressing M, for discoverability.
     add_marker_button(ctx, theme, x, y);
 
-    y + ROW_H_PX + Spacing::Sm.px()
+    (y + ROW_H_PX + Spacing::Sm.px(), clip_chip)
+}
+
+/// The clip cluster: `[ Main ▾ ] [+] [✎] [🗑]`.
+///
+/// Returns the `x` after it, and the chip rect when the dropdown is open (the
+/// caller defers the popover paint — see [`paint_bar`]).
+///
+/// The TRASH is not painted, and — the part that matters —  **not hit-registered**,
+/// while the document holds a single clip: a document must always have one to edit,
+/// and a dimmed button that still dispatches is a click that silently does nothing
+/// ([[feedback_disabled_button_still_dispatches]]).
+fn clip_cluster(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    y: f32,
+    snap: &TimelineViewSnapshot,
+) -> (f32, Option<Rect>) {
+    let gap = Spacing::Sm.px();
+    let mut x = x;
+
+    let chip = Rect::new(x, y, CLIP_DD_W, ROW_H_PX);
+    ctx.host
+        .hit_index_mut()
+        .register(ids::TIMELINE_CLIP_DD, chip);
+    let (state, open) = match ctx.host.store().get(ids::TIMELINE_CLIP_DD) {
+        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
+        _ => (DropdownState::Normal, false),
+    };
+    let dd = Dropdown::new(ids::TIMELINE_CLIP_DD, "", clip_options(snap))
+        .selected(snap.active_clip)
+        .open(open)
+        .state(state);
+    paint_dropdown_chip(&dd, chip, ctx.scene, ctx.text_system, theme);
+    x += CLIP_DD_W + gap * 0.5;
+
+    x = icon_button(ctx, theme, x, y, ids::TIMELINE_ADD_CLIP, IconId::Plus) + gap * 0.5;
+    x = icon_button(ctx, theme, x, y, ids::TIMELINE_RENAME_CLIP, IconId::Modify) + gap * 0.5;
+    if snap.clips.len() > 1 {
+        x = icon_button(ctx, theme, x, y, ids::TIMELINE_DELETE_CLIP, IconId::Trash);
+    }
+
+    (x, open.then_some(chip))
+}
+
+/// One dropdown option per clip: the VALUE is the clip's index (what the dispatch
+/// needs) and the label is its name (what the animator reads). Truncated at the id
+/// array — a clip past it could be painted but never clicked, so
+/// `ph2d_timeline::MAX_CLIPS` refuses to create one and a gate holds the two equal.
+pub(crate) fn clip_options(snap: &TimelineViewSnapshot) -> Vec<DropdownOption<usize>> {
+    snap.clips
+        .iter()
+        .enumerate()
+        .take(ids::TIMELINE_CLIP_OPT.len())
+        .map(|(i, name)| DropdownOption::new(ids::TIMELINE_CLIP_OPT[i], i, name.clone()))
+        .collect()
 }
 
 /// Paint the "+M" add-marker button + register its hit. `+` matches the

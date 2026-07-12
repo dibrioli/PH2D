@@ -18,6 +18,7 @@
 
 mod anchor_drag;
 mod box_select;
+mod clip_rename;
 mod event;
 mod geom;
 mod graph;

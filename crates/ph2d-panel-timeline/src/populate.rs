@@ -9,7 +9,7 @@
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{
-    ButtonState, SliderOrientation, SliderState, TextInputState, ToggleState,
+    ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState, ToggleState,
 };
 
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
@@ -73,4 +73,27 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     toggle(store, ids::TIMELINE_RECORD, false);
     toggle(store, ids::TIMELINE_SNAP, true);
     toggle(store, ids::TIMELINE_SPEED, false);
+
+    // Clip selector (W5). The chip is a Dropdown (the generic dispatch flips
+    // `open` on a click and emits no event — the paint reads it back); each option
+    // is a plain Button, which is what makes its Click reach `apply_event`.
+    //
+    // Every option id is registered, not just the ones a fresh document uses: the
+    // store is populated ONCE at install, and a clip added later would otherwise
+    // paint an option that was never registered — pintado mas inerte, the exact
+    // failure this registration exists to prevent.
+    store.register(
+        ids::TIMELINE_CLIP_DD,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(0),
+        },
+    );
+    for id in ids::TIMELINE_CLIP_OPT {
+        button(store, id);
+    }
+    button(store, ids::TIMELINE_ADD_CLIP);
+    button(store, ids::TIMELINE_RENAME_CLIP);
+    button(store, ids::TIMELINE_DELETE_CLIP);
 }

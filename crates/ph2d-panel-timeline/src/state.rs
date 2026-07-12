@@ -115,6 +115,12 @@ pub struct TimelinePanelState {
     /// The marker whose inline rename field is open (W4.T3), opened by a
     /// double-click on its pennant. `None` when no rename is in flight.
     pub marker_rename: Option<MarkerRename>,
+    /// The clip whose inline rename field is open (W5), opened by the pencil in
+    /// the transport bar. `None` when no rename is in flight. Same shape as
+    /// [`MarkerRename`] and for the same reason: the text lives in the
+    /// `WidgetStore`, so this only remembers WHICH clip and whether the field has
+    /// been seeded (re-seeding every frame would stomp the user's typing).
+    pub clip_rename: Option<ClipRename>,
     /// In-progress box-select (marquee) drag over an empty lane.
     pub box_drag: Option<BoxDrag>,
     /// A box-select that just finished, waiting to be resolved against the key
@@ -232,6 +238,15 @@ pub struct MarkerRename {
     pub opened: bool,
 }
 
+/// An open clip rename — see [`TimelinePanelState::clip_rename`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ClipRename {
+    /// Index of the clip being renamed.
+    pub index: usize,
+    /// The field has been registered + seeded with the current name + focused.
+    pub opened: bool,
+}
+
 /// A press that landed on a Summary column.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SummaryPress {
@@ -309,6 +324,7 @@ impl Default for TimelinePanelState {
             loop_drag: None,
             marker_drag: None,
             marker_rename: None,
+            clip_rename: None,
             box_drag: None,
             box_commit: None,
             rect: None,

@@ -38,6 +38,45 @@ pub const TIMELINE_SNAP: NodeId = hash_node_id("timeline.snap");
 /// VALUE curve and the VELOCITY (speed) curve. Panel-local view state.
 pub const TIMELINE_SPEED: NodeId = hash_node_id("timeline.speed");
 
+// ── Clip selector (W5 / NLA step 1) ──────────────────────────────────────────
+/// The clip dropdown chip — shows the active clip's name, opens the clip list.
+pub const TIMELINE_CLIP_DD: NodeId = hash_node_id("timeline.clip_dd");
+/// "+" — append a new, empty clip and make it active.
+pub const TIMELINE_ADD_CLIP: NodeId = hash_node_id("timeline.clip_add");
+/// Pencil — open the inline rename field for the ACTIVE clip.
+pub const TIMELINE_RENAME_CLIP: NodeId = hash_node_id("timeline.clip_rename");
+/// Trash — delete the ACTIVE clip. Never painted (nor hit-registered) while the
+/// document holds only one: a document must always have a clip to edit.
+pub const TIMELINE_DELETE_CLIP: NodeId = hash_node_id("timeline.clip_delete");
+/// The inline clip-rename text field (mirrors [`TIMELINE_MARKER_RENAME_INPUT`]).
+pub const TIMELINE_CLIP_RENAME_INPUT: NodeId = hash_node_id("timeline.clip_rename_input");
+
+/// Clip dropdown option ids — one per clip slot, index = clip index.
+///
+/// **This array IS the clip cap.** The chrome cannot mint a hit id at runtime, so
+/// the number of clips a document may hold is exactly the number of ids here, and
+/// `ph2d_timeline::MAX_CLIPS` must equal `TIMELINE_CLIP_OPT.len()` — a gate holds
+/// the two together, because a doc that accepted a 17th clip would paint an option
+/// nothing could click.
+pub const TIMELINE_CLIP_OPT: [NodeId; 16] = [
+    hash_node_id("timeline.clip_opt_0"),
+    hash_node_id("timeline.clip_opt_1"),
+    hash_node_id("timeline.clip_opt_2"),
+    hash_node_id("timeline.clip_opt_3"),
+    hash_node_id("timeline.clip_opt_4"),
+    hash_node_id("timeline.clip_opt_5"),
+    hash_node_id("timeline.clip_opt_6"),
+    hash_node_id("timeline.clip_opt_7"),
+    hash_node_id("timeline.clip_opt_8"),
+    hash_node_id("timeline.clip_opt_9"),
+    hash_node_id("timeline.clip_opt_10"),
+    hash_node_id("timeline.clip_opt_11"),
+    hash_node_id("timeline.clip_opt_12"),
+    hash_node_id("timeline.clip_opt_13"),
+    hash_node_id("timeline.clip_opt_14"),
+    hash_node_id("timeline.clip_opt_15"),
+];
+
 // ── Track list + ruler ───────────────────────────────────────────────────────
 /// "+ Track" button (adds a binding for the selected object's property).
 pub const TIMELINE_ADD_TRACK: NodeId = hash_node_id("timeline.add_track");

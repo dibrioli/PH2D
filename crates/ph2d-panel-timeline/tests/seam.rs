@@ -314,3 +314,174 @@ fn a_delete_for_a_row_gone_from_the_snapshot_expires_quietly() {
         "a dead row's delete must not raise an intent"
     );
 }
+
+// ── Clip selector (W5) ──────────────────────────────────────────────────────
+//
+// The clips travel the DIRECT intent channel (`drain_intents`), like Delete Track:
+// the panel resolves everything from the snapshot, so the shell learns nothing new.
+// These drive the real WidgetEvents; a missing arm in `event.rs` is a control that
+// paints and does nothing, which no amount of `cargo check` would notice.
+
+/// Publish a snapshot with `names` as the clips, `active` selected — the same
+/// object the shell hands the live panel.
+fn publish_clips(names: &[&str], active: usize) {
+    use ph2d_timeline::{TimelineIntent, TimelineState, TimelineViewSnapshot, apply_intent};
+    let mut st = TimelineState::new();
+    let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    // A fresh doc already holds "Main"; add the rest.
+    for _ in 1..names.len() {
+        apply_intent(&mut st, &mut ph, TimelineIntent::AddClip);
+    }
+    for (i, n) in names.iter().enumerate() {
+        apply_intent(
+            &mut st,
+            &mut ph,
+            TimelineIntent::RenameClip {
+                index: i,
+                name: (*n).to_string(),
+            },
+        );
+    }
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetActiveClip { index: active },
+    );
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&st, &ph);
+    assert_eq!(snap.clips, names, "the fixture really holds those clips");
+    ph2d_panel_timeline::set_current_timeline(Some(snap));
+}
+
+#[test]
+fn picking_a_clip_from_the_list_switches_to_it_and_closes_the_list() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::panel::PanelHostInternal;
+
+    let _ = ph2d_panel_timeline::drain_intents(); // isolate from sibling tests
+    publish_clips(&["Main", "Walk", "Run"], 0);
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    // Open the list (the generic dispatch flips `open`; it raises no event).
+    if let Some(InteractiveState::Dropdown { open, .. }) =
+        host.store_mut().get_mut(ids::TIMELINE_CLIP_DD)
+    {
+        *open = true;
+    }
+
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_CLIP_OPT[2]),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "the clip-option arm is missing from event.rs"
+    );
+    assert_eq!(
+        ph2d_panel_timeline::drain_intents(),
+        vec![ph2d_timeline::TimelineIntent::SetActiveClip { index: 2 }],
+        "clicking the third clip must switch to the third clip"
+    );
+    // The chip has to read right THIS frame — the document round-trip only lands
+    // on the next one, so the store carries the pick.
+    match host.store().get(ids::TIMELINE_CLIP_DD) {
+        Some(InteractiveState::Dropdown {
+            open,
+            selected_index,
+            ..
+        }) => {
+            assert!(!open, "picking a clip closes the list");
+            assert_eq!(*selected_index, Some(2), "…and the chip shows the new clip");
+        }
+        _ => panic!("the clip dropdown is not registered in populate.rs"),
+    }
+}
+
+#[test]
+fn the_plus_button_raises_add_clip() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    publish_clips(&["Main"], 0);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+
+    let outcome = host
+        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::TIMELINE_ADD_CLIP));
+    assert_eq!(outcome, EventOutcome::Consumed);
+    assert_eq!(
+        ph2d_panel_timeline::drain_intents(),
+        vec![ph2d_timeline::TimelineIntent::AddClip]
+    );
+}
+
+#[test]
+fn the_pencil_opens_a_rename_field_seeded_on_the_active_clip() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    publish_clips(&["Main", "Walk"], 1);
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    assert!(state.clip_rename.is_none());
+
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_RENAME_CLIP),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed);
+    let cr = state
+        .clip_rename
+        .expect("the pencil opens the rename field");
+    assert_eq!(cr.index, 1, "it renames the ACTIVE clip, not the first one");
+    assert!(!cr.opened, "paint seeds + focuses it on the first frame");
+    assert!(
+        ph2d_panel_timeline::drain_intents().is_empty(),
+        "opening the field is not yet a document edit"
+    );
+}
+
+#[test]
+fn the_trash_deletes_the_active_clip_but_never_the_last_one() {
+    let _ = ph2d_panel_timeline::drain_intents();
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+
+    // THE guard. With one clip the paint does not even register the trash's hit —
+    // but a dimmed control that still dispatches is exactly the failure that guard
+    // is for, so a Click that reaches here anyway must still be refused. A document
+    // with no clip would panic in `active_clip()` on the very next frame.
+    publish_clips(&["Main"], 0);
+    let outcome = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_DELETE_CLIP),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed);
+    assert!(
+        ph2d_panel_timeline::drain_intents().is_empty(),
+        "the LAST clip is never deleted — a document must always have one to edit"
+    );
+
+    // With two, the active one goes.
+    publish_clips(&["Main", "Walk"], 1);
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_DELETE_CLIP),
+    );
+    assert_eq!(
+        ph2d_panel_timeline::drain_intents(),
+        vec![ph2d_timeline::TimelineIntent::DeleteClip { index: 1 }]
+    );
+}
+
+#[test]
+fn the_clip_cap_and_the_option_ids_are_the_same_number() {
+    // THE gate the two halves need. A dropdown's option ids are a FIXED array —
+    // the chrome cannot mint a hit id at runtime — so the number of clips the
+    // DOCUMENT accepts must equal the number of ids the PANEL can address. Let the
+    // doc grow past the array and the extra clip paints an option that nothing can
+    // click: pintado mas inerte, and no compiler would say a word.
+    assert_eq!(
+        ph2d_timeline::MAX_CLIPS,
+        ids::TIMELINE_CLIP_OPT.len(),
+        "raise MAX_CLIPS and TIMELINE_CLIP_OPT together, or not at all"
+    );
+}

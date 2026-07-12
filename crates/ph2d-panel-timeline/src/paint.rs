@@ -94,7 +94,8 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     );
 
     let body = geom::body(rect, title_size);
-    let after_transport = transport::paint_bar(ctx, theme, body, &snapshot, state.speed_view);
+    let (after_transport, clip_dd_chip) =
+        transport::paint_bar(ctx, theme, body, &snapshot, state.speed_view);
     let g = geom::resolve(rect, after_transport, state.label_w);
     // Write the clamped width back, so a drag that ran past the bounds does not
     // have to be dragged all the way back before the column moves again.
@@ -186,18 +187,19 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         state.label_drag.is_some(),
     );
 
-    // "+Track" property dropdown overlay — painted last so it sits on top.
-    tracks::paint_add_track_popover(ctx, theme, header, state.add_track_open);
-    // The inline marker-rename field, if one is open — painted after everything
-    // so it overlays the ruler + lanes it floats over.
-    crate::marker_rename::paint(
-        state,
+    paint_overlays(
         ctx,
         theme,
-        g.time_area,
-        view_start,
-        px_per_s,
+        state,
         &snapshot,
+        Overlays {
+            body,
+            header,
+            time_area: g.time_area,
+            clip_dd_chip,
+            view_start,
+            px_per_s,
+        },
     );
 
     set_last_content_h(content_h);
@@ -227,6 +229,71 @@ fn paint_label_splitter(ctx: &mut PaintCtx, theme: Theme, region: Rect, x: f32, 
     ctx.host
         .hit_index_mut()
         .register(ids::TIMELINE_LABEL_SPLIT, grip);
+}
+
+/// The rects + view scalars the overlay pass needs (grouped so the helper takes
+/// one argument instead of six — HR-12).
+struct Overlays {
+    body: Rect,
+    header: Rect,
+    time_area: Rect,
+    /// The clip dropdown's chip rect, when the list is OPEN.
+    clip_dd_chip: Option<Rect>,
+    view_start: f64,
+    px_per_s: f64,
+}
+
+/// Everything that floats ON TOP, painted after the dope sheet — the "+Track"
+/// list, the clip list, and the two inline rename fields.
+///
+/// They are deferred here for one reason: painted where they are AUTHORED (inside
+/// the header, inside the transport bar) each would be drawn under the ruler and
+/// the rows it hangs over. Same cause as the overlay-clipping bug this project
+/// already paid for once — the fix is the draw ORDER, not a clamp
+/// ([[feedback_overlay_cut_at_boundary_check_draw_order]]).
+fn paint_overlays(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    state: &mut TimelinePanelState,
+    snapshot: &ph2d_timeline::TimelineViewSnapshot,
+    o: Overlays,
+) {
+    tracks::paint_add_track_popover(ctx, theme, o.header, state.add_track_open);
+
+    if let Some(chip) = o.clip_dd_chip {
+        let dd = ph2d_editor_core::widget::Dropdown::new(
+            ids::TIMELINE_CLIP_DD,
+            "",
+            transport::clip_options(snapshot),
+        )
+        .selected(snapshot.active_clip)
+        .open(true);
+        ph2d_editor_core::widget::paint_dropdown_popover(
+            &dd,
+            chip,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        // Each option's hit rect is only knowable HERE, from the OPEN popover's
+        // geometry — register them now, or the list paints and nothing clicks.
+        for (i, opt) in dd.options.iter().enumerate() {
+            ctx.host
+                .hit_index_mut()
+                .register(opt.id, dd.option_rect(chip, i));
+        }
+    }
+
+    crate::marker_rename::paint(
+        state,
+        ctx,
+        theme,
+        o.time_area,
+        o.view_start,
+        o.px_per_s,
+        snapshot,
+    );
+    crate::clip_rename::paint(state, ctx, theme, o.body, snapshot);
 }
 
 /// Register the eight edge/corner grippers as `TimelineSurface` hits so dispatch

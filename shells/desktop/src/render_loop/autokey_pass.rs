@@ -216,15 +216,20 @@ pub(crate) fn apply_samples(
         } else {
             t
         };
-        // The diff's reference clock is the RAW `t_src` — the exact time the
-        // apply sampled — NOT the frame-snapped `t_e` a new key lands at.
-        // Pausing mid-play rests the playhead off-frame (sim dt 1/60 vs
-        // display frames 1/24), and `curve(t_raw) != curve(t_snap)` there: an
-        // untouched pose would read as "dragged", so armed minted a key out
-        // of thin air and disarmed pinned the entity (freezing it against
-        // every timeline edit, undo included) — Enio, 2026-07-11. Same lesson
-        // as the Time-remap K seed: compare where you read.
-        let t_diff = RationalTime::from_seconds(t_src);
+        // The diff's reference clock is the RAW `t_src` — the exact `f64` the
+        // apply sampled the curve at to write this pose — NOT the frame-snapped
+        // `t_e` a new key lands at, and NOT a `RationalTime` round-trip of it.
+        //
+        // Both mistakes have now been made. Snapping it (2026-07-11): pausing
+        // mid-play rests the playhead off-frame (sim dt 1/60 vs display frames
+        // 1/24) and `curve(t_raw) != curve(t_snap)`, so an untouched pose read as
+        // "dragged". Quantising it (2026-07-12): `RationalTime` rounds to the
+        // MICROSECOND, so scrubbing an animated object minted a key every frame —
+        // same failure, one thousandth the size, invisible to every test because a
+        // test scrubs to 0.5 and 0.5 round-trips exactly.
+        //
+        // Compare where you read. [[feedback_derived_coordinate_seed_must_match_sample]]
+        let t_diff = t_src;
         let base = ak.baseline.get(&entity).copied().unwrap_or([None; 6]);
         if capturing {
             // Performing (playing) records only what the DRAG pushed off the

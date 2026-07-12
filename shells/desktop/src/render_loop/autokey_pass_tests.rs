@@ -359,3 +359,116 @@ fn playing_does_not_auto_key_even_when_the_pose_looks_off_its_curve() {
         "paused: the off-curve pose keys as before"
     );
 }
+
+// ── The scrub regression (Enio, 2026-07-12) ─────────────────────────────────
+//
+// "Se o objeto já está animado e arrasto a linha de tempo com AutoKey checado,
+// keys são criadas."
+//
+// Every test above HANDS the pass a pose. That is the hole: in the app the pose is
+// whatever the APPLY just wrote, and the bug lives in the round-trip between the
+// two — not in either half. So this one drives the REAL apply into a REAL world and
+// reads the pose back the way the shell does.
+
+/// A world with one sprite whose TranslationX is keyed `0 → 10` over `0..1 s`,
+/// plus the document that drives it.
+fn animated_world() -> (ph2d_ecs::World, u64, TimelineState, Playhead) {
+    use ph2d_ecs::{Transform, World};
+    let mut w = World::new();
+    let e = w
+        .spawn(Transform::from_translation(ph2d_core::Vec2::ZERO))
+        .id();
+    let bits = e.to_bits();
+
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    for (t, v) in [(0.0, 0.0f32), (1.0, 10.0)] {
+        ph2d_timeline::apply_intent(
+            &mut st,
+            &mut ph,
+            ph2d_timeline::TimelineIntent::AddKey {
+                entity: bits,
+                prop: PropKind::TranslationX,
+                t: RationalTime::from_seconds(t),
+                value: AnimValue::Float(v),
+                interp: ph2d_anim::Interp::Linear,
+            },
+        );
+    }
+    ph.pause();
+    (w, bits, st, ph)
+}
+
+#[test]
+fn scrubbing_an_animated_object_with_autokey_armed_creates_no_keys() {
+    let (mut w, e, mut st, mut ph) = animated_world();
+    let target = st
+        .doc
+        .binding_for(e, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let before = st.doc.active_clip().track(target).unwrap().len();
+    let mut ak = AutokeyState::default();
+
+    // Drag the ruler across the animation. The times are DELIBERATELY off the
+    // rational grid (`RationalTime` quantises to the microsecond, and a playhead
+    // that advanced by 1/60 s never lands on it) — the whole bug was that the diff
+    // sampled the curve at a time the apply never used, so `world != curve` by a
+    // few ulps and the exact-equality diff minted a key. On the clean times the old
+    // tests scrub to (0.5, 0.25…) it round-trips exactly and nothing shows.
+    for i in 0..=120 {
+        let t = f64::from(i) / 120.0 + 1.0 / 3.0 * 1e-6; // …and off it again
+        ph.seek(t);
+
+        // What the shell does, in order: apply the document to the scene…
+        ph2d_timeline::apply_from_doc(&mut w, &mut st.doc, ph.time());
+        // …then read the settled pose back and let auto-key judge it.
+        let pose = super::sample_pose(&w, e);
+        apply_samples(&mut st, &ph, &[(e, pose)], false, true, false, &mut ak);
+
+        assert_eq!(
+            st.doc.active_clip().track(target).unwrap().len(),
+            before,
+            "scrubbing to t={t} minted a key: the pose IS the curve, \
+             the diff just read it at a different time"
+        );
+    }
+}
+
+#[test]
+fn a_real_pose_edit_while_scrubbed_off_grid_still_keys() {
+    // The other half — the fix must not make auto-key deaf. Park the playhead at an
+    // ugly time, MOVE the object, and it still keys.
+    let (mut w, e, mut st, mut ph) = animated_world();
+    let target = st
+        .doc
+        .binding_for(e, PropKind::TranslationX)
+        .unwrap()
+        .target;
+    let before = st.doc.active_clip().track(target).unwrap().len();
+    let mut ak = AutokeyState::default();
+
+    let t = 0.4166666666666667; // 25 ticks of 1/60 s — nowhere near a µs boundary
+    ph.seek(t);
+    ph2d_timeline::apply_from_doc(&mut w, &mut st.doc, ph.time());
+    // Settle the baseline first (this frame the pose IS the curve).
+    let on_curve = super::sample_pose(&w, e);
+    apply_samples(&mut st, &ph, &[(e, on_curve)], false, true, false, &mut ak);
+    assert_eq!(st.doc.active_clip().track(target).unwrap().len(), before);
+
+    // Now the user drags the object off its curve.
+    apply_samples(
+        &mut st,
+        &ph,
+        &[(e, pose(&[(TX, 99.0)]))],
+        false,
+        true,
+        false,
+        &mut ak,
+    );
+    assert_eq!(
+        st.doc.active_clip().track(target).unwrap().len(),
+        before + 1,
+        "an ACTUAL pose edit must still key — the fix tightens the clock, not the ear"
+    );
+}

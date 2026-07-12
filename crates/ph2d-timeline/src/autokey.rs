@@ -33,24 +33,39 @@ use crate::prop::PropKind;
 /// opacity), which never keys.
 pub type PoseSample = [Option<f32>; 6];
 
-/// Which of a sprite's properties auto-key should write at `t`, given its live
-/// pose (`world`), the pose it had last frame (`baseline`, for unbound
-/// first-touch), and whether new tracks may be created this frame
-/// (`allow_create` — the shell ties this to the timeline panel being open, so
-/// casual editing with the panel closed never sprays tracks).
+/// Which of a sprite's properties auto-key should write, given its live pose
+/// (`world`), the pose it had last frame (`baseline`, for unbound first-touch),
+/// and whether new tracks may be created this frame (`allow_create` — the shell
+/// ties this to the timeline panel being open, so casual editing with the panel
+/// closed never sprays tracks).
 ///
 /// Returns `(prop, value)` pairs the caller upserts. Empty when nothing moved off
 /// its curve — the common case, so a still scene keys nothing.
+///
+/// # `t_secs` is an `f64`, and that is the whole point
+///
+/// It must be **byte-identical to the time [`crate::apply_from_doc`] sampled** to
+/// write the pose this function is about to judge. It took a `RationalTime`, and
+/// `RationalTime` quantises to the microsecond ([`RationalTime::from_seconds`]) —
+/// so the diff read the curve at a time the apply never used. A playhead that
+/// advanced by `1/60 s`, or that a ruler drag parked anywhere, is off that grid by
+/// a fraction of a microsecond; on a track moving 10 units/s that is ~3e-6 of
+/// value, which is a DIFFERENT `f32`, and the comparison below is exact. So
+/// scrubbing an animated object with auto-key armed minted a key every frame — the
+/// pose WAS the curve, the diff just read it somewhere else (Enio, 2026-07-12).
+///
+/// It never showed in a test because a test scrubs to `0.5`, and `0.5` survives
+/// the round-trip. [[feedback_derived_coordinate_seed_must_match_sample]]: whatever
+/// writes a derived coordinate and whatever reads it must be the SAME function.
 #[must_use]
 pub fn autokey_props(
     doc: &TimelineDoc,
     entity: u64,
-    t: RationalTime,
+    t_secs: f64,
     world: &PoseSample,
     baseline: &PoseSample,
     allow_create: bool,
 ) -> Vec<(PropKind, f32)> {
-    let t_secs = t.to_seconds();
     let mut out = Vec::new();
     for (i, &prop) in PropKind::ALL.iter().enumerate() {
         let Some(v) = world[i] else { continue };
@@ -141,7 +156,7 @@ mod tests {
         // At t = 0.5 the curve says x = 5. The world is at 7 (the user dragged it):
         // key it. The other props are None → never keyed.
         let st = doc_with_tx_track();
-        let got = autokey_props(&st.doc, E, s(0.5), &pose(&[(TX, 7.0)]), &pose(&[]), true);
+        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), true);
         assert_eq!(got, vec![(PropKind::TranslationX, 7.0)]);
     }
 
@@ -151,7 +166,7 @@ mod tests {
         // the curve value to the world, so world == curve — auto-key must be silent
         // or it would re-key what the document just produced, fighting the undo.
         let st = doc_with_tx_track();
-        let got = autokey_props(&st.doc, E, s(0.5), &pose(&[(TX, 5.0)]), &pose(&[]), true);
+        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 5.0)]), &pose(&[]), true);
         assert!(got.is_empty(), "on-curve poses key nothing: {got:?}");
     }
 
@@ -163,7 +178,7 @@ mod tests {
         let got = autokey_props(
             &st.doc,
             E,
-            s(0.5),
+            0.5,
             &pose(&[(ROT, 0.5)]),
             &pose(&[(ROT, 0.0)]),
             true,
@@ -177,7 +192,7 @@ mod tests {
         let got = autokey_props(
             &st.doc,
             E,
-            s(0.5),
+            0.5,
             &pose(&[(ROT, 0.5)]),
             &pose(&[(ROT, 0.5)]), // same as last frame
             true,
@@ -196,7 +211,7 @@ mod tests {
         let got = autokey_props(
             &st.doc,
             E,
-            s(0.5),
+            0.5,
             &pose(&[(ROT, 9.0)]),
             &pose(&[(ROT, 0.0)]),
             false,
@@ -204,7 +219,7 @@ mod tests {
         assert!(got.is_empty());
         // But a BOUND prop still auto-keys with creation off — updating an
         // existing channel is always allowed.
-        let got = autokey_props(&st.doc, E, s(0.5), &pose(&[(TX, 7.0)]), &pose(&[]), false);
+        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(TX, 7.0)]), &pose(&[]), false);
         assert_eq!(got, vec![(PropKind::TranslationX, 7.0)]);
     }
 
@@ -213,7 +228,7 @@ mod tests {
         // First frame an entity is selected: no baseline → nothing to compare, so
         // its mere selection never mints a key.
         let st = doc_with_tx_track();
-        let got = autokey_props(&st.doc, E, s(0.5), &pose(&[(ROT, 9.0)]), &pose(&[]), true);
+        let got = autokey_props(&st.doc, E, 0.5, &pose(&[(ROT, 9.0)]), &pose(&[]), true);
         assert!(got.is_empty());
     }
 
@@ -234,7 +249,7 @@ mod tests {
         let got = autokey_props(
             &st.doc,
             E,
-            s(0.5),
+            0.5,
             &pose(&[(TX, 3.0)]),
             &pose(&[(TX, 0.0)]),
             true,
@@ -248,12 +263,26 @@ mod tests {
         // is ON the curve → nothing more to key. This is the loop that must close.
         let mut st = doc_with_tx_track();
         let t = s(0.5);
-        let got = autokey_props(&st.doc, E, t, &pose(&[(TX, 7.0)]), &pose(&[]), true);
+        let got = autokey_props(
+            &st.doc,
+            E,
+            t.to_seconds(),
+            &pose(&[(TX, 7.0)]),
+            &pose(&[]),
+            true,
+        );
         for (prop, v) in got {
             st.doc
                 .upsert_key(E, prop, t, AnimValue::Float(v), Interp::Linear);
         }
-        let again = autokey_props(&st.doc, E, t, &pose(&[(TX, 7.0)]), &pose(&[]), true);
+        let again = autokey_props(
+            &st.doc,
+            E,
+            t.to_seconds(),
+            &pose(&[(TX, 7.0)]),
+            &pose(&[]),
+            true,
+        );
         assert!(
             again.is_empty(),
             "the keyed pose is now on its own curve: {again:?}"

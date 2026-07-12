@@ -567,6 +567,21 @@ fix); candidato natural a W3/edit-mode. NÃO foi feito nesta rodada.
 > redonda sem miter, sem double-blend, e alpha correto com hardness baixo. Ref viva:
 > `/home/enio/Downloads/blender-5.2-grease-pencil-ref` → `draw_grease_pencil_lib.glsl`.
 
+## Smoke do Enio (2026-07-11, 5ª rodada) — "mastigado" (bead) com hardness baixo
+
+**Linha "mastigada" com hardness < 1** ✅ — beads a cada ponto. Causa: os quads-stadium
+de segmentos ADJACENTES se sobrepunham na junção (cada um estendia `r` na tampa redonda),
+e o `GreaterEqual` deixava o 2º compor por cima do 1º (premult-over) → onde a cobertura é
+parcial (borda macia), `1-(1-a)² > a` → bead. O GP (draw ref: per-stroke depth +
+`DEPTH_GREATER` + fita conectada) não sobrepõe. Fix: a geometria virou uma **FITA
+CONECTADA** — segmentos adjacentes computam o MESMO vértice de junção (miter da bisetriz
+prev/nn compartilhado) e ABUTAM em vez de sobrepor → um pixel coberto por UM segmento →
+sem double-blend → sem bead. Extensão de tampa redonda só nos EXTREMOS. Cruzamentos REAIS
+(não-adjacentes) ainda se sobrepõem → `GreaterEqual` mantém a parte nova por cima (ganho
+da 3ª rodada preservado). O fragment analítico segue igual (o miter é só o teto da
+geometria; a forma redonda sai do fragment). GPU: novo
+`a_soft_stroke_has_no_bead_at_the_joints` + 6 anteriores + 2 composite verdes.
+
 ## Aberto (fora do W0/W1/W2, por design)
 
 - **W3 (próximo):** Frames · Ghost Frames · Tween — guia em **§W3-NEXT** acima.

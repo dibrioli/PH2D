@@ -112,6 +112,14 @@ pub use kind::{
 #[cfg(test)]
 mod tests;
 
+/// **O gate de ORIENTAÇÃO** (`match` exaustivo sobre `ShapeKind`, sem braço `_`): toda
+/// forma do catálogo declara se tem um "cima" — e, se tem, prova para que lado, com um
+/// predicado que o gate verifica NÃO ser vazio (isto é: que ele reprova a forma
+/// espelhada). Arquivo irmão por causa do teto de LOC.
+#[cfg(test)]
+#[path = "orient_tests.rs"]
+mod orient_tests;
+
 /// Cor de estilo (sRGB 8-bit). Fase 0: representação mínima; a cor canônica
 /// OKLCH (via `ph2d-color`) é refinamento de Fase 1.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

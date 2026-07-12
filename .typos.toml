@@ -51,6 +51,10 @@ incidentes = "incidentes"
 responde = "responde"
 vertice = "vertice"
 VALIDADE = "VALIDADE"
+# pt-BR do gate de orientação (`ph2d-vec-scene/src/orient_tests.rs`): quem escreve a forma
+# nova é o AUTOR dela — e o gate existe justamente para obrigá-lo a declarar para que lado
+# ela fica de pé. Lido como um "author" mal escrito; é a palavra portuguesa.
+autor = "autor"
 # Audio/phonetics term (the resonant peaks of a vocal tract), read by typos-cli as a
 # misspelt "format". Used in `ph2d-audio-edit/src/fx/pitch.rs` to explain why the
 # granular shifter moves formants with the pitch (which is what makes a monster voice).

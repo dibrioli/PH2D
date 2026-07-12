@@ -320,18 +320,18 @@ mod tests {
             width_at(false)
         );
 
-        // O cilindro tem a barriga EMBAIXO: o ponto mais baixo do contorno principal fica
-        // no meio (a meia-elipse da frente), não numa quina.
+        // O cilindro tem a TAMPA em cima. E é preciso olhar para a tampa, não para a
+        // barriga: o contorno principal do cilindro é **exatamente simétrico em Y** (as duas
+        // meias-elipses são espelhos uma da outra), então uma asserção sobre o ponto mais
+        // baixo dele passaria igualzinha num cilindro de cabeça para baixo — seria um teste
+        // VAZIO. O único traço que distingue o cilindro do seu espelho é o sub-contorno da
+        // tampa, e é nele que a asserção morde.
         let cy = cylinder(A, B, 0.3);
-        let low = cy
-            .verts
-            .iter()
-            .min_by(|p, q| p.anchor[1].total_cmp(&q.anchor[1]))
-            .expect("tem vertices");
+        let cap = &cy.subpaths.first().expect("o cilindro tem tampa").verts;
+        let lowest_cap = cap.iter().map(|v| v.anchor[1]).fold(f64::MAX, f64::min);
         assert!(
-            low.anchor[0].abs() < 1e-6,
-            "a barriga do cilindro e embaixo, no meio: {:?}",
-            low.anchor
+            lowest_cap > 0.0,
+            "a tampa tem de ficar na METADE DE CIMA da caixa (o cilindro esta invertido): {lowest_cap}"
         );
 
         // A onda do documento fica na BASE: o ponto mais baixo não é uma das quinas de

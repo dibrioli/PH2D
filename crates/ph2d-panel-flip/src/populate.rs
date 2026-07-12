@@ -13,8 +13,9 @@ use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_flip::{
-    DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_SMOOTHING, DEFAULT_WIDTH_PX, OPACITY_SLIDER_SCALE,
-    WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider,
+    DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_SMOOTHING, DEFAULT_WIDTH_PX, GAP_MAX_PX, GROW_MAX,
+    GROW_MIN, OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN, WIDTH_SLIDER_OFFSET,
+    WIDTH_SLIDER_SCALE, px_to_slider,
 };
 
 /// Register a plain action Button in the Normal state.
@@ -102,6 +103,41 @@ pub fn populate(store: &mut WidgetStore) {
         f64::from(DEFAULT_SMOOTHING),
         1.0,
         0.0,
+    );
+
+    // Fill (W4): modo, sub-modos do balde e os 3 sliders. Registrados sempre (só
+    // PINTADOS no modo Fill) — um widget não-registrado não pode ser clicado.
+    button(store, ids::FLIP_MODE_FILL);
+    button(store, ids::FLIP_FILL_PAINT);
+    button(store, ids::FLIP_FILL_BEHIND);
+    button(store, ids::FLIP_FILL_UNPAINT);
+    slider_chip(
+        store,
+        ids::FLIP_GAP,
+        ids::FLIP_GAP_NUM,
+        0.0,
+        0.0,
+        GAP_MAX_PX as f32,
+        0.0,
+    );
+    slider_chip(
+        store,
+        ids::FLIP_GROW,
+        ids::FLIP_GROW_NUM,
+        // O default (+2px) na faixa [-8, +8].
+        ((2.0 - GROW_MIN) / (GROW_MAX - GROW_MIN)) as f32,
+        2.0,
+        (GROW_MAX - GROW_MIN) as f32,
+        GROW_MIN as f32,
+    );
+    slider_chip(
+        store,
+        ids::FLIP_PRECISION,
+        ids::FLIP_PRECISION_NUM,
+        ((1.0 - PRECISION_MIN) / (PRECISION_MAX - PRECISION_MIN)) as f32,
+        1.0,
+        (PRECISION_MAX - PRECISION_MIN) as f32,
+        PRECISION_MIN as f32,
     );
 
     // Erase sub-mode buttons (painted only in Erase mode, registered always).

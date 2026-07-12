@@ -18,7 +18,32 @@ pub enum FlipMode {
     Draw,
     /// Borracha: remove cobertura/traço (ver [`EraseMode`]).
     Erase,
+    /// **Balde**: um clique preenche a região delimitada pelas linhas (W4).
+    Fill,
 }
+
+/// Como o balde trata o que já está pintado — a semântica de balde de ANIMAÇÃO do
+/// Toon Boom (`04 §3`). Espelha `ph2d_flip_fill::FillMode` (o painel/tool não
+/// dependem do solver; o shell traduz).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum FillMode {
+    /// Preenche a região (o balde de sempre).
+    #[default]
+    Paint,
+    /// Preenche **por baixo** do que já está pintado — colorir sem tocar na linha.
+    PaintBehind,
+    /// **Remove** o preenchimento sob o clique.
+    Unpaint,
+}
+
+/// Faixa do slider **Gap Closure** (alcance da extensão, em px de tela).
+pub const GAP_MAX_PX: f64 = 40.0;
+/// Faixa do **Grow/Shrink** (px do buffer do balde).
+pub const GROW_MIN: f64 = -8.0;
+pub const GROW_MAX: f64 = 8.0;
+/// Faixa do **Precision** (pixels do buffer por px de tela; 1 = resolução da tela).
+pub const PRECISION_MIN: f64 = 0.5;
+pub const PRECISION_MAX: f64 = 4.0;
 
 /// Como a borracha age (GP `erase.cc`): `Soft` reduz opacidade (default, mais
 /// "pintura"), `Hard` corta a cobertura, `Stroke` apaga o traço inteiro tocado.
@@ -82,6 +107,18 @@ pub struct FlipStyleSnapshot {
     pub mode: FlipMode,
     /// Modo de borracha atual (só relevante em `FlipMode::Erase`).
     pub erase: EraseMode,
+    /// Cor do PREENCHIMENTO (sRGB8) — distinta da cor do traço: colorir usa outra
+    /// paleta que desenhar, e obrigar a trocar a cor do traço para pintar seria
+    /// hostil.
+    pub fill_color: [u8; 4],
+    /// Modo do balde.
+    pub fill_mode: FillMode,
+    /// Alcance do Gap Closure em px de tela (`0` = desligado).
+    pub gap_px: f64,
+    /// Grow/Shrink em px do buffer (positivo enfia a cor por baixo da linha).
+    pub grow: f64,
+    /// Precision: resolução do buffer do balde (pixels por px de tela).
+    pub precision: f64,
 }
 
 impl Default for FlipStyleSnapshot {
@@ -97,6 +134,11 @@ impl Default for FlipStyleSnapshot {
             smoothing: 0.5,
             mode: FlipMode::Select,
             erase: EraseMode::Soft,
+            fill_color: [230, 190, 120, 255],
+            fill_mode: FillMode::Paint,
+            gap_px: 0.0,
+            grow: 2.0,
+            precision: 1.0,
         }
     }
 }

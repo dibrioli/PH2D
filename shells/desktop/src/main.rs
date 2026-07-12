@@ -46,6 +46,7 @@ mod flip_demo;
 mod flip_draw;
 mod flip_entities;
 mod flip_erase;
+mod flip_fill;
 mod flip_gizmo_view;
 mod flip_layers;
 mod flip_smooth;

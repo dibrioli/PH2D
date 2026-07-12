@@ -20,6 +20,27 @@ pub const FLIP_MODE_SELECT: NodeId = hash_node_id("flip.mode.select");
 pub const FLIP_MODE_DRAW: NodeId = hash_node_id("flip.mode.draw");
 /// Erase: removes coverage / strokes (see the Erase sub-mode row).
 pub const FLIP_MODE_ERASE: NodeId = hash_node_id("flip.mode.erase");
+/// Fill: one click floods the region bounded by the line-art (W4).
+pub const FLIP_MODE_FILL: NodeId = hash_node_id("flip.mode.fill");
+
+// ── Fill section (shown only in Fill mode, ADR-0114 W4) ─────────────────────
+/// Fill-colour swatch — its OWN colour (colouring uses a different palette than
+/// drawing; forcing the stroke colour to double as the fill colour would be hostile).
+pub const FLIP_FILL_SWATCH: NodeId = hash_node_id("flip.fill.swatch");
+/// Paint (the usual bucket) / Paint Behind (colour under what is already painted) /
+/// Unpaint (remove the fill under the click) — the animation-bucket semantics.
+pub const FLIP_FILL_PAINT: NodeId = hash_node_id("flip.fill.paint");
+pub const FLIP_FILL_BEHIND: NodeId = hash_node_id("flip.fill.behind");
+pub const FLIP_FILL_UNPAINT: NodeId = hash_node_id("flip.fill.unpaint");
+/// Gap Closure reach (screen px; `0` = off) + its chip.
+pub const FLIP_GAP: NodeId = hash_node_id("flip.fill.gap");
+pub const FLIP_GAP_NUM: NodeId = hash_node_id("flip.fill.gap_num");
+/// Grow / Shrink (buffer px; positive tucks the colour under the line) + its chip.
+pub const FLIP_GROW: NodeId = hash_node_id("flip.fill.grow");
+pub const FLIP_GROW_NUM: NodeId = hash_node_id("flip.fill.grow_num");
+/// Precision (bucket buffer resolution) + its chip.
+pub const FLIP_PRECISION: NodeId = hash_node_id("flip.fill.precision");
+pub const FLIP_PRECISION_NUM: NodeId = hash_node_id("flip.fill.precision_num");
 
 // ── Brush section (size / hardness / opacity / smoothing) ────────────────────
 /// Stroke width slider (track `0..1` → `1..64` px) + its px chip.

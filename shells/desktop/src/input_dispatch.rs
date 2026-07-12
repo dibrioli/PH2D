@@ -2302,6 +2302,17 @@ impl App {
         {
             return;
         }
+        // Flip bucket (W4): um CLIQUE no modo Fill preenche a região sob o cursor.
+        // Não é um gesto de arrasto — uma chamada faz tudo.
+        if self.flip_wants_fill()
+            && kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && on_canvas
+            && !menu_open_before
+            && self.flip_fill_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
         // Flip eraser (T2.9): a pen-DOWN in Erase mode on the canvas begins an
         // erase gesture (Select falls through to gizmo/pick, like Draw).
         if self.flip_wants_erase()

@@ -763,9 +763,38 @@ definitivo — modelo de tempo, ciclos, algoritmo do onion, autokey por-tool, tw
 modo `Selected` dos fantasmas, já pronto no modelo) · picker de easing + fade-in de órfãos na UI
 do tween (o motor suporta) · cache de playback (só com bench antes) · light table.
 
-## Aberto (fora do W0/W1/W2/W3, por design)
+## W4 — Fill (o balde) (LANDOU 2026-07-12, pendente o smoke)
 
-- **W4 (próximo):** Fill (balde) — plano em `docs/Flip/01_plano_waves.md`.
+Doc definitivo: [`docs/Flip/06_fill_balde.md`](Flip/06_fill_balde.md).
+
+- **Solver** (`ph2d-flip-fill`, crate NOVA, CPU pura, headless): `gap.rs` (Gap Closure —
+  pontas + quinas apertadas pela bissetriz externa, corte por colisão, extensão que não
+  colide é descartada) · `raster.rs` (buffer de FLAGS; fronteiras a MEIA espessura —
+  `radius_scale = 0.5`, a cor entra POR BAIXO da linha; span fill + filtro de vazamento
+  CRUZADO; Grow/Shrink; o flood REPORTA o vazamento) · `trace.rs` (marching squares — os
+  buracos saem de graça — + RDP).
+- **Modelo**: `FlipStroke.holes` + `hide_stroke`. Um fill é UM traço com seus buracos (não N
+  traços com `fill_id`): é uma unidade de seleção/undo/delete/animação.
+  **`FLIP_SCHEMA_VERSION` 2→3.**
+- **Render**: `fill_holes.rs` — decomposição trapezoidal **even-odd** (exata, robusta a
+  buracos e auto-interseção). Ear-clipping com pontes travaria.
+- **Costura**: modo **Fill** na tool (4º modo) + seção do painel (cor PRÓPRIA do balde,
+  Paint/Behind/Unpaint, Gap/Grow/Precision) + `flip_fill.rs` no shell (a fronteira
+  modelo↔solver) + o clique no `input_dispatch`. O desenho-alvo vem do autokey por-tool
+  com política **Modify** (preencher é MODIFICAR: no rabo de um hold a chave nasce
+  duplicata, nunca em branco).
+- **O twist do Harmony**: o fechamento de gap vira **traço invisível PERSISTENTE** — re-fill
+  com outra cor, no quadro vizinho, ou amanhã, não depende de a ferramenta estar com os
+  mesmos parâmetros.
+
+**Carry-overs:** fill multiframe (depende da multi-seleção de chaves da tira) · ajuste modal
+ao vivo do Gap Closure (o `closures()` já devolve os segmentos; falta o overlay) · modo Radius
+· Colorize (LazyBrush/trapped-ball) é wave própria.
+
+## Aberto (fora do W0..W4, por design)
+
+- **W5 (próxima):** Reshape (escultura de traço) — os 9 pincéis, com TODAS as constantes já
+  tabeladas em `docs/Flip/02 §7`.
 - **W6 (timeline global): ADIADA** — a timeline principal ainda está em desenvolvimento
   (Enio 2026-07-12). O playhead do Flip JÁ é o global, então a integração não terá relógio a
   reconciliar.

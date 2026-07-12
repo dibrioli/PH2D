@@ -159,17 +159,26 @@ pub(crate) fn publish(
         .tool_by_id_mut(&ToolId::new("flip"))
         .and_then(|t| t.as_any_mut().downcast_mut::<FlipTool>())
     {
-        // ── 2. Picker read-back: is the picker targeting our Stroke swatch? ──
-        if hero.store.picker_target() == Some(ph2d_editor::ids::FLIP_STROKE_SWATCH)
-            && let Some((value, _, _, _)) = hero
-                .store
-                .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
-        {
-            tool.set_stroke_rgba(value.rgba);
+        // ── 2. Picker read-back: qual swatch o picker está editando? A do TRAÇO ou a
+        //    do BALDE — são cores distintas (colorir usa outra paleta que desenhar).
+        let picked = hero
+            .store
+            .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+            .map(|(value, _, _, _)| value.rgba);
+        match (hero.store.picker_target(), picked) {
+            (Some(id), Some(rgba)) if id == ph2d_editor::ids::FLIP_STROKE_SWATCH => {
+                tool.set_stroke_rgba(rgba);
+            }
+            (Some(id), Some(rgba)) if id == ph2d_editor::ids::FLIP_FILL_SWATCH => {
+                tool.set_fill_rgba(rgba);
+            }
+            _ => {}
         }
-        // Seed the swatch's stored colour so the picker opens on the live colour.
+        // Seed the swatches' stored colour so the picker opens on the live colour.
         hero.store
             .set_widget_color(ph2d_editor::ids::FLIP_STROKE_SWATCH, tool.stroke_rgba());
+        hero.store
+            .set_widget_color(ph2d_editor::ids::FLIP_FILL_SWATCH, tool.fill_rgba());
         Some(tool.ui_snapshot())
     } else {
         None

@@ -10,7 +10,7 @@
 > APROVADO pelo Enio) · **W3 (Frames · Ghost · Tween) FECHADA** — o Flip virou app de
 > ANIMAÇÃO (tira com exposição, ciclos, Ghost Frames, autokey por-tool, flip por desenho,
 > tween). Doc: [`05_frames_ghost_tween.md`](05_frames_ghost_tween.md). Pendente o smoke.
-> **A wave atual é a W4 (Fill), EM CURSO.** A **W6 (timeline global) está ADIADA** até a timeline
+> **W4 (Fill) FECHADA** (doc: [`06_fill_balde.md`](06_fill_balde.md)). **A wave atual é a W5 (Reshape).** A **W6 (timeline global) está ADIADA** até a timeline
 > principal ficar pronta (Enio 2026-07-12).
 
 ## Regras permanentes (valem em TODA task)
@@ -144,31 +144,35 @@ onion; bench do cache.
 
 ---
 
-# W4 — Fill (balde) — EM CURSO
+# W4 — Fill (balde) — FECHADA 2026-07-12 (pendente o smoke)
 
 **Objetivo:** balde robusto para line-art com Gap Closure interativo, resultado = GEOMETRIA.
 Referências: `02` §6 (pipeline exato + constantes) e `04` §3 (upgrades decididos).
 
-- [ ] **T4.1 — Fill como geometria.** `fill_id` por-stroke (fills com buracos multi-curva,
+- [x] **T4.1 — Fill como geometria.** `fill_id` por-stroke (fills com buracos multi-curva,
       02 §1) + `hide_stroke`; render no passe de fill existente (depth `sid+1` — 02 §2b).
       Aceite: fill de N curvas com furo renderiza.
-- [ ] **T4.2 — Pipeline raster.** Fit-to-bounds (margem 20px, Precision, mín 128², zoom ≤5×) →
+- [x] **T4.2 — Pipeline raster.** Fit-to-bounds (margem 20px, Precision, mín 128², zoom ≤5×) →
       render offscreen com **`radius_scale = 0.5`** + threshold `r ≥ 1/255` → span fill com
       **leak filter cruzado 3px** → Moore trace (buracos = contornos separados) → **RDP ε≈1.25px
       + fit Schneider** (upgrade sobre o smooth 20× do GP) → stroke cíclico com fill. Buffer de
       flags dedicado `Vec<u8>`. Falha total ao tocar a borda (+ modo invert). Aceite: clicar
       dentro de forma fechada preenche; goldens do trace.
-- [ ] **T4.3 — Gap Closure.** Extend (pontas + **quinas mid-stroke por curvatura**) com corte
+- [x] **T4.3 — Gap Closure.** Extend (pontas + **quinas mid-stroke por curvatura**) com corte
       por colisão (2 passes, 3 exclusões) + Radius (círculos-guia SÓ nos gaps pendentes;
       linhas centro-a-centro); ajuste modal ao vivo (scroll). **Fechamento bem-sucedido vira
       stroke INVISÍVEL persistente** (twist do Harmony — o re-fill sobrevive). Aceite: fechar
       forma com abertura; helpers visuais; re-fill de frame vizinho reaproveita.
-- [ ] **T4.4 — Semântica de balde de animação.** Modos **Paint / Paint Unpainted
+- [x] **T4.4 — Semântica de balde de animação.** Modos **Paint / Paint Unpainted
       (paint-behind) / Unpaint** + **Grow/Shrink** por offset CAD do polígono (+2px default) +
       **Precision**. Fill lê camada(s) de referência (linha) — o contrato linha/cor. Aceite:
       colorir sem tocar a linha; grow mata o halo do AA.
-- [ ] **T4.5 — Fill multiframe** (roda POR FRAME selecionado — N fills independentes). Aceite:
-      pintar a mesma região em 3 quadros de uma vez.
+- [ ] **T4.5 — Fill multiframe** — **carry-over declarado**: depende da multi-seleção de chaves na
+      tira (carry-over da W3). O solver já é por-desenho; falta só o wiring.
+
+**Carry-overs da W4 (conscientes):** ajuste modal ao vivo do Gap Closure (scroll + helpers nos vãos
+pendentes — o `closures()` já devolve os segmentos, falta o overlay) · modo **Radius** do Gap
+Closure · fill multiframe · **Colorize** (LazyBrush/trapped-ball) é wave própria (`04 §3`).
 
 **Gate W4:** smoke — line-art com gaps, preencher com preview dos helpers, Grow/Shrink,
 paint-behind, multiframe.

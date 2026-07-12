@@ -14,7 +14,10 @@ use ph2d_editor_core::floating_panel::{FloatingPanel, PanelAnchor, ToolId};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
-use crate::params::{EraseMode, FlipMode, FlipStyleSnapshot, slider_to_px, slider_to_unit};
+use crate::params::{
+    EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
+    PRECISION_MAX, PRECISION_MIN, slider_to_px, slider_to_unit,
+};
 
 /// Largura default do traço (px de tela) — uma linha média.
 pub const DEFAULT_WIDTH_PX: f64 = 6.0;
@@ -26,6 +29,9 @@ pub const DEFAULT_OPACITY: f32 = 1.0;
 pub const DEFAULT_SMOOTHING: f32 = 0.5;
 /// Cor default do traço (sRGB8) — quase-branco, como o Vector.
 pub const DEFAULT_STROKE: [u8; 4] = [240, 240, 245, 255];
+/// Cor default do PREENCHIMENTO (um ocre claro — visível sobre a linha clara e sobre
+/// o fundo escuro). Distinta da cor do traço de propósito: `docs/Flip/06`.
+pub const DEFAULT_FILL: [u8; 4] = [230, 190, 120, 255];
 
 /// A ferramenta Flip — só estilo de brush + modo de canvas.
 #[derive(Debug, Clone, PartialEq)]
@@ -37,6 +43,13 @@ pub struct FlipTool {
     smoothing: f32,
     mode: FlipMode,
     erase: EraseMode,
+    // ── O balde (W4). Cor PRÓPRIA: colorir usa outra paleta que desenhar, e obrigar
+    //    a trocar a cor do traço para pintar uma região seria hostil.
+    fill_color: [u8; 4],
+    fill_mode: FillMode,
+    gap_px: f64,
+    grow: f64,
+    precision: f64,
 }
 
 impl Default for FlipTool {
@@ -51,6 +64,11 @@ impl Default for FlipTool {
             // O painel docado (T2.15) tem a linha de modos Select/Draw/Erase.
             mode: FlipMode::Select,
             erase: EraseMode::Soft,
+            fill_color: DEFAULT_FILL,
+            fill_mode: FillMode::Paint,
+            gap_px: 0.0,
+            grow: 2.0,
+            precision: 1.0,
         }
     }
 }
@@ -137,7 +155,23 @@ impl FlipTool {
             smoothing: self.smoothing,
             mode: self.mode,
             erase: self.erase,
+            fill_color: self.fill_color,
+            fill_mode: self.fill_mode,
+            gap_px: self.gap_px,
+            grow: self.grow,
+            precision: self.precision,
         }
+    }
+
+    /// A cor do PREENCHIMENTO (o picker OKLCH escreve aqui quando a swatch de Fill
+    /// está no alvo).
+    #[must_use]
+    pub fn fill_rgba(&self) -> [u8; 4] {
+        self.fill_color
+    }
+
+    pub fn set_fill_rgba(&mut self, c: [u8; 4]) {
+        self.fill_color = c;
     }
 }
 
@@ -175,6 +209,28 @@ impl Tool for FlipTool {
             PanelEvent::Click(id) if id == ids::FLIP_MODE_SELECT => self.mode = FlipMode::Select,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_DRAW => self.mode = FlipMode::Draw,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_ERASE => self.mode = FlipMode::Erase,
+            PanelEvent::Click(id) if id == ids::FLIP_MODE_FILL => self.mode = FlipMode::Fill,
+            // Modo do balde (Paint / Paint-Behind / Unpaint).
+            PanelEvent::Click(id) if id == ids::FLIP_FILL_PAINT => self.fill_mode = FillMode::Paint,
+            PanelEvent::Click(id) if id == ids::FLIP_FILL_BEHIND => {
+                self.fill_mode = FillMode::PaintBehind;
+            }
+            PanelEvent::Click(id) if id == ids::FLIP_FILL_UNPAINT => {
+                self.fill_mode = FillMode::Unpaint;
+            }
+            // Sliders do balde. Cada um é um mapa afim `track → valor` — o mesmo que o
+            // painel usa no `link_slider_number_mapped`, senão o knob e o valor
+            // divergem no 1º arrasto.
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_GAP => {
+                self.gap_px = v.clamp(0.0, 1.0) * GAP_MAX_PX;
+            }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_GROW => {
+                self.grow = GROW_MIN + v.clamp(0.0, 1.0) * (GROW_MAX - GROW_MIN);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_PRECISION => {
+                self.precision =
+                    PRECISION_MIN + v.clamp(0.0, 1.0) * (PRECISION_MAX - PRECISION_MIN);
+            }
             // Sub-modo da borracha.
             PanelEvent::Click(id) if id == ids::FLIP_ERASE_SOFT => self.erase = EraseMode::Soft,
             PanelEvent::Click(id) if id == ids::FLIP_ERASE_HARD => self.erase = EraseMode::Hard,

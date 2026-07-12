@@ -33,6 +33,7 @@ mod expose;
 mod frame;
 mod ids;
 mod layer;
+mod layer_time;
 mod object;
 mod onion;
 mod stroke;

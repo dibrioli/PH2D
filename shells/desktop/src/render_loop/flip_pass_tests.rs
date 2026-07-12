@@ -71,7 +71,7 @@ fn a_layers_ghost_sits_above_the_layers_below_it() {
     assert_eq!(
         kinds,
         vec!["art", "ghost", "art"],
-        "ordem de composição (fundo→topo): BG, o fantasma do FG, o FG"
+        "ordem de composicao (fundo para topo): BG, o fantasma do FG, o FG"
     );
 
     let ghost = &layers[1];
@@ -127,8 +127,8 @@ fn the_render_samples_through_the_cycle() {
         })
     };
     assert_eq!(layer_drawing(&doc, 4), Some(d0.0), "dentro do vão: d0");
-    assert_eq!(layer_drawing(&doc, 20), Some(d0.0), "20 → 4 (Loop): d0");
-    assert_eq!(layer_drawing(&doc, 28), Some(d8.0), "28 → 12 (Loop): d8");
+    assert_eq!(layer_drawing(&doc, 20), Some(d0.0), "20 vira 4 (Loop): d0");
+    assert_eq!(layer_drawing(&doc, 28), Some(d8.0), "28 vira 12 (Loop): d8");
 }
 
 /// Sem a tool Flip (o `ghosts` é `None`) a cena aparece limpa: nenhuma fatia de

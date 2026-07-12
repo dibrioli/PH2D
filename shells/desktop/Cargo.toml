@@ -227,6 +227,8 @@ ph2d-vec-connect = { path = "../../crates/ph2d-vec-connect" }
 ph2d-flip = { path = "../../crates/ph2d-flip" }
 # ADR-0114 W1: pipeline wgpu dedicado do traço do Flip (passe no present.rs).
 ph2d-flip-render = { path = "../../crates/ph2d-flip-render" }
+# O balde (ADR-0114 W4) — solver CPU puro; o shell é a fronteira modelo↔solver.
+ph2d-flip-fill = { path = "../../crates/ph2d-flip-fill" }
 # Texto vetorial (W1): glyph outlines (skrifa) → VecPath do motor novo. O crate é
 # foundational mas está FORA do gate congelado (que só escaneia -doc/-traits).
 ph2d-vector-font = { path = "../../crates/ph2d-vector-font" }

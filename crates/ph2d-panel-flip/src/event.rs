@@ -58,7 +58,10 @@ pub(crate) fn apply_event(
             if id == ids::FLIP_SIZE
                 || id == ids::FLIP_HARDNESS
                 || id == ids::FLIP_OPACITY
-                || id == ids::FLIP_SMOOTHING =>
+                || id == ids::FLIP_SMOOTHING
+                || id == ids::FLIP_GAP
+                || id == ids::FLIP_GROW
+                || id == ids::FLIP_PRECISION =>
         {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
@@ -74,7 +77,10 @@ pub(crate) fn apply_event(
             if id == ids::FLIP_SIZE_NUM
                 || id == ids::FLIP_HARDNESS_NUM
                 || id == ids::FLIP_OPACITY_NUM
-                || id == ids::FLIP_SMOOTHING_NUM =>
+                || id == ids::FLIP_SMOOTHING_NUM
+                || id == ids::FLIP_GAP_NUM
+                || id == ids::FLIP_GROW_NUM
+                || id == ids::FLIP_PRECISION_NUM =>
         {
             true
         }
@@ -83,9 +89,13 @@ pub(crate) fn apply_event(
             if id == ids::FLIP_MODE_SELECT
                 || id == ids::FLIP_MODE_DRAW
                 || id == ids::FLIP_MODE_ERASE
+                || id == ids::FLIP_MODE_FILL
                 || id == ids::FLIP_ERASE_SOFT
                 || id == ids::FLIP_ERASE_HARD
-                || id == ids::FLIP_ERASE_STROKE =>
+                || id == ids::FLIP_ERASE_STROKE
+                || id == ids::FLIP_FILL_PAINT
+                || id == ids::FLIP_FILL_BEHIND
+                || id == ids::FLIP_FILL_UNPAINT =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

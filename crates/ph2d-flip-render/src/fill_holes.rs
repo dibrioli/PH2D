@@ -98,8 +98,8 @@ pub fn triangulate_even_odd(outer: &[Vec2], holes: &[Vec<Vec2>]) -> Vec<Vec2> {
     let mut xs: Vec<f32> = Vec::new();
     for w in ys.windows(2) {
         let (y_lo, y_hi) = (w[0], w[1]);
-        if y_hi - y_lo < f32::EPSILON {
-            continue;
+        if (y_hi - y_lo).abs() < f32::EPSILON {
+            continue; // banda de altura zero (y's duplicados)
         }
         // Amostra as arestas no MEIO da banda: ali a paridade é inequívoca (nos y's de
         // vértice, uma aresta que só toca o ponto contaria uma vez a mais ou a menos).
@@ -118,8 +118,8 @@ pub fn triangulate_even_odd(outer: &[Vec2], holes: &[Vec<Vec2>]) -> Vec<Vec2> {
         // paridade duas vezes ao ser atravessado — e some do preenchimento sozinho.
         for pair in xs.chunks_exact(2) {
             let (xa, xb) = (pair[0], pair[1]);
-            if xb - xa < f32::EPSILON {
-                continue;
+            if (xb - xa).abs() < f32::EPSILON {
+                continue; // span de largura zero (duas arestas no mesmo x)
             }
             // O trapézio: os lados inclinados vêm das MESMAS arestas, avaliadas nos
             // dois y's da banda — então a borda sai exata, não em escada.
@@ -163,7 +163,8 @@ mod tests {
     fn area(tris: &[Vec2]) -> f32 {
         tris.chunks_exact(3)
             .map(|t| {
-                ((t[1].x - t[0].x) * (t[2].y - t[0].y) - (t[1].y - t[0].y) * (t[2].x - t[0].x)).abs()
+                ((t[1].x - t[0].x) * (t[2].y - t[0].y) - (t[1].y - t[0].y) * (t[2].x - t[0].x))
+                    .abs()
                     * 0.5
             })
             .sum()
@@ -199,7 +200,8 @@ mod tests {
         // E nenhum triângulo cai DENTRO do furo (o centro do furo não é coberto).
         let center = Vec2::new(5.0, 5.0);
         let inside_hole = tris.chunks_exact(3).any(|t| {
-            let s = |a: Vec2, b: Vec2, p: Vec2| (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+            let s =
+                |a: Vec2, b: Vec2, p: Vec2| (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
             let (d1, d2, d3) = (
                 s(t[0], t[1], center),
                 s(t[1], t[2], center),
@@ -229,7 +231,11 @@ mod tests {
     /// triângulo é a do triângulo, não a de uma escada de retângulos).
     #[test]
     fn a_slanted_edge_is_exact_not_a_staircase() {
-        let tri = vec![Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0), Vec2::new(0.0, 10.0)];
+        let tri = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 0.0),
+            Vec2::new(0.0, 10.0),
+        ];
         let tris = triangulate_even_odd(&tri, &[]);
         assert!(
             (area(&tris) - 50.0).abs() < 1e-3,

@@ -16,7 +16,10 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
-use ph2d_tool_flip::{EraseMode, FlipMode, FlipStyleSnapshot, px_to_slider};
+use ph2d_tool_flip::{
+    EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
+    PRECISION_MAX, PRECISION_MIN, px_to_slider,
+};
 use ph2d_vector::VectorScene;
 
 /// Label column width for slider rows + the Stroke label.
@@ -127,7 +130,7 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
-    /// Mode row (Select / Draw / Erase) — the gizmo is live only in Select.
+    /// Mode row (Select / Draw / Erase / Fill) — the gizmo is live only in Select.
     pub(crate) fn mode_row(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
         self.segmented(
             "Mode",
@@ -139,6 +142,7 @@ impl BodyCtx<'_> {
                 ),
                 (ids::FLIP_MODE_DRAW, "Draw", snap.mode == FlipMode::Draw),
                 (ids::FLIP_MODE_ERASE, "Erase", snap.mode == FlipMode::Erase),
+                (ids::FLIP_MODE_FILL, "Fill", snap.mode == FlipMode::Fill),
             ],
             y,
         )
@@ -240,6 +244,112 @@ impl BodyCtx<'_> {
         self.hit_index
             .register(ids::FLIP_STROKE_SWATCH, swatch_rect);
         y + self.row_h + self.row_gap
+    }
+
+    /// **Fill section** (W4) — only in Fill mode. The bucket's own colour, the
+    /// animation-bucket modes (Paint / Behind / Unpaint) and the three knobs that
+    /// decide whether the bucket "works first time": Gap Closure, Grow and Precision.
+    pub(crate) fn fill_section(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
+        if snap.mode != FlipMode::Fill {
+            return y;
+        }
+        y = self.section_label("Fill", y);
+
+        // A cor do BALDE — própria, não a do traço (colorir usa outra paleta).
+        let swatch_w = SwatchSize::Md.px();
+        paint_text(
+            self.text_system,
+            self.scene,
+            "Color",
+            self.inner_x,
+            y + (self.row_h - self.font) * 0.5,
+            self.font,
+            LABEL_COL_W,
+            resolve(ColorToken::Text1, self.theme),
+        );
+        let swatch_rect = Rect::new(
+            self.inner_x + self.inner_w - swatch_w,
+            y,
+            swatch_w,
+            self.row_h,
+        );
+        let swatch = ColorSwatch::new(ids::FLIP_FILL_SWATCH, "Fill color", snap.fill_color)
+            .size(SwatchSize::Md);
+        paint_color_swatch(&swatch, swatch_rect, self.scene, self.theme);
+        self.hit_index.register(ids::FLIP_FILL_SWATCH, swatch_rect);
+        y += self.row_h + self.row_gap;
+
+        // Paint / Behind / Unpaint — a semântica de balde de ANIMAÇÃO (Toon Boom).
+        y = self.segmented(
+            "Bucket",
+            [
+                (
+                    ids::FLIP_FILL_PAINT,
+                    "Paint",
+                    snap.fill_mode == FillMode::Paint,
+                ),
+                (
+                    ids::FLIP_FILL_BEHIND,
+                    "Behind",
+                    snap.fill_mode == FillMode::PaintBehind,
+                ),
+                (
+                    ids::FLIP_FILL_UNPAINT,
+                    "Unpaint",
+                    snap.fill_mode == FillMode::Unpaint,
+                ),
+            ],
+            y,
+        );
+
+        // Gap Closure (px de tela; 0 = desligado) — o knob que salva o line-art aberto.
+        let track = self
+            .store
+            .slider(ids::FLIP_GAP)
+            .map(|(_, v)| v)
+            .unwrap_or((snap.gap_px / GAP_MAX_PX) as f32);
+        let gap = f64::from(track) * GAP_MAX_PX;
+        y = self.slider_row(
+            "Gap",
+            ids::FLIP_GAP,
+            ids::FLIP_GAP_NUM,
+            track,
+            gap,
+            &format!("{}", gap.round() as i64),
+            y,
+        );
+        // Grow/Shrink (px do buffer): positivo enfia a cor por baixo da linha.
+        let track = self
+            .store
+            .slider(ids::FLIP_GROW)
+            .map(|(_, v)| v)
+            .unwrap_or(((snap.grow - GROW_MIN) / (GROW_MAX - GROW_MIN)) as f32);
+        let grow = GROW_MIN + f64::from(track) * (GROW_MAX - GROW_MIN);
+        y = self.slider_row(
+            "Grow",
+            ids::FLIP_GROW,
+            ids::FLIP_GROW_NUM,
+            track,
+            grow,
+            &format!("{}", grow.round() as i64),
+            y,
+        );
+        // Precision: resolução do buffer do balde.
+        let track = self
+            .store
+            .slider(ids::FLIP_PRECISION)
+            .map(|(_, v)| v)
+            .unwrap_or(((snap.precision - PRECISION_MIN) / (PRECISION_MAX - PRECISION_MIN)) as f32);
+        let prec = PRECISION_MIN + f64::from(track) * (PRECISION_MAX - PRECISION_MIN);
+        self.slider_row(
+            "Precision",
+            ids::FLIP_PRECISION,
+            ids::FLIP_PRECISION_NUM,
+            track,
+            prec,
+            &format!("{prec:.1}"),
+            y,
+        )
     }
 
     /// Erase sub-mode row (Soft / Hard / Stroke) — only in Erase mode.

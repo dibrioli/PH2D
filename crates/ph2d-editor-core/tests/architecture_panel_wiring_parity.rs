@@ -64,9 +64,12 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // `populate.rs`. Dispatched by the colour-picker hit path in `pointer.rs`.
     ("ph2d-panel-vector", "VECTOR_STROKE_SWATCH"),
     ("ph2d-panel-vector", "VECTOR_FILL_SWATCH"),
-    // Flip tool Style panel (ADR-0114 W2): the Stroke swatch is a picker swatch —
-    // hit-indexed in paint via `register_picker_swatch`, never in `populate.rs`.
+    // Flip tool Style panel (ADR-0114 W2/W4): the Stroke swatch and the bucket's
+    // own Fill swatch are picker swatches — hit-indexed in paint via
+    // `register_picker_swatch`, never in `populate.rs`. Dispatched by the
+    // colour-picker hit path in `pointer.rs`, same class as the Vector pair.
     ("ph2d-panel-flip", "FLIP_STROKE_SWATCH"),
+    ("ph2d-panel-flip", "FLIP_FILL_SWATCH"),
     // Inline-rename text field: registered dynamically only while rename mode
     // is active; handled in `ph2d-panel-hierarchy/src/event.rs` via
     // Submit/Cancel arms (verified) — not a static populate widget.

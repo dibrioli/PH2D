@@ -83,7 +83,7 @@ impl FlipDraw {
 
 /// sRGB8 → `Rgba` linear straight-alpha (o `FlipDoc` guarda linear; o picker/tool
 /// dá sRGB). Transfer padrão; fora de qualquer caminho de sim (não é HR-5).
-fn srgb8_to_linear(c: [u8; 4]) -> Rgba {
+pub(crate) fn srgb8_to_linear(c: [u8; 4]) -> Rgba {
     fn ch(b: u8) -> f32 {
         let v = b as f32 / 255.0;
         if v <= 0.04045 {

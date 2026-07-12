@@ -119,6 +119,7 @@ pub(crate) fn paint(_state: &mut FlipPanelState, ctx: &mut PaintCtx) {
         y = b.brush(&snap, y);
         y = b.color(&snap, y);
         y = b.erase_row(&snap, y);
+        y = b.fill_section(&snap, y);
     }
 
     // ── Phase B: Layers section (dynamic per-row widgets → mutable store). ──
@@ -157,6 +158,7 @@ pub(crate) fn paint(_state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     {
         let store = ctx.host.store_mut();
         store.register_picker_swatch(ids::FLIP_STROKE_SWATCH);
+        store.register_picker_swatch(ids::FLIP_FILL_SWATCH);
         store.set_panel_content_h(ids::FLIP_PANEL, content_h);
         store.set_panel_visible_h(ids::FLIP_PANEL, body_h);
         let max_scroll = (content_h - body_h).max(0.0);

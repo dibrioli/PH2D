@@ -236,7 +236,7 @@ fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
 
     // Picking it adds AND wires, in one intent.
     let panel = geom::add_menu_panel(&menu, rows.len(), RECT);
-    let row = geom::add_menu_row(panel, 0);
+    let row = geom::add_menu_row(panel, 0, 0.0);
     apply_gesture(
         &mut st,
         gesture(

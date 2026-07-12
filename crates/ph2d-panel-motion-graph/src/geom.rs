@@ -27,6 +27,11 @@ pub(crate) const MENU_W: f32 = 200.0; // LITERAL-PX-OK: add-menu popup width
 pub(crate) const MENU_ROW_H: f32 = 22.0; // LITERAL-PX-OK: add-menu row height
 pub(crate) const MENU_HEADER_H: f32 = 22.0; // LITERAL-PX-OK: add-menu header height
 pub(crate) const MENU_PAD: f32 = 5.0; // LITERAL-PX-OK: add-menu inner padding
+/// Breathing room between the popup and the canvas edge (it is capped to the canvas height, so
+/// without this it would sit flush against the top and bottom).
+const MENU_MARGIN: f32 = 8.0; // LITERAL-PX-OK: add-menu margin from the canvas edge
+pub(crate) const MENU_BAR_W: f32 = 6.0; // LITERAL-PX-OK: add-menu scrollbar width
+const MENU_THUMB_MIN_H: f32 = 24.0; // LITERAL-PX-OK: smallest grabbable scrollbar thumb
 
 /// graph-space → screen-space affine: `screen = base + pan + graph * zoom`.
 pub(crate) struct View {
@@ -181,27 +186,110 @@ fn intersects(a: Rect, b: Rect) -> bool {
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 }
 
-/// The add-node popup's panel rect, clamped so a menu opened near the right/
-/// bottom edge stays fully on `canvas`.
+/// The add-node popup's panel rect, clamped so a menu opened near the right/bottom edge stays
+/// fully on `canvas` — and **never taller than the canvas**.
+///
+/// The library has 86 node types. A menu as tall as its list runs off the bottom of the screen and
+/// the last forty are unreachable (Enio's screenshot). So the panel is CAPPED, and what does not
+/// fit SCROLLS.
 pub(crate) fn add_menu_panel(menu: &AddMenu, count: usize, canvas: Rect) -> Rect {
-    let h = MENU_HEADER_H + count.max(1) as f32 * MENU_ROW_H + 2.0 * MENU_PAD;
+    let full = MENU_HEADER_H + count.max(1) as f32 * MENU_ROW_H + 2.0 * MENU_PAD;
+    let room = (canvas.h - 2.0 * MENU_MARGIN).max(MENU_HEADER_H + MENU_ROW_H + 2.0 * MENU_PAD);
+    let h = full.min(room);
     let x = menu
         .screen
         .0
         .min(canvas.x + canvas.w - MENU_W)
         .max(canvas.x);
-    let y = menu.screen.1.min(canvas.y + canvas.h - h).max(canvas.y);
+    let y = (menu.screen.1)
+        .min(canvas.y + canvas.h - h - MENU_MARGIN)
+        .max(canvas.y + MENU_MARGIN);
     Rect::new(x, y, MENU_W, h)
 }
 
-/// The clickable row rect for the `i`-th catalog entry inside `panel`.
-pub(crate) fn add_menu_row(panel: Rect, i: usize) -> Rect {
+/// The scrolling VIEWPORT: the band of the panel the rows live in (everything below the header).
+/// Rows are drawn clipped to it and hit-tested against it, so a row scrolled half-way out is
+/// half-clickable and never spills over the header.
+pub(crate) fn add_menu_list(panel: Rect) -> Rect {
     Rect::new(
         panel.x + MENU_PAD,
-        panel.y + MENU_HEADER_H + MENU_PAD + i as f32 * MENU_ROW_H,
+        panel.y + MENU_HEADER_H + MENU_PAD,
         panel.w - 2.0 * MENU_PAD,
+        (panel.h - MENU_HEADER_H - 2.0 * MENU_PAD).max(0.0),
+    )
+}
+
+/// How far the list can scroll before its last row sits on the bottom edge. `0` when everything
+/// fits — and then there is no scrollbar and the wheel is not stolen.
+pub(crate) fn add_menu_max_scroll(panel: Rect, count: usize) -> f32 {
+    (count as f32 * MENU_ROW_H - add_menu_list(panel).h).max(0.0)
+}
+
+/// The clickable row rect for the `i`-th catalog entry, offset by the list's `scroll`.
+pub(crate) fn add_menu_row(panel: Rect, i: usize, scroll: f32) -> Rect {
+    let list = add_menu_list(panel);
+    Rect::new(
+        list.x,
+        list.y + i as f32 * MENU_ROW_H - scroll,
+        list.w - scrollbar_reserve(panel, i, scroll),
         MENU_ROW_H,
     )
+}
+
+/// A row's text stops short of the scrollbar when there is one (a label running under the thumb is
+/// a label you cannot read and a thumb you cannot grab).
+fn scrollbar_reserve(_panel: Rect, _i: usize, _scroll: f32) -> f32 {
+    MENU_BAR_W + MENU_PAD
+}
+
+/// The scrollbar's TRACK — a thin column down the right of the list. `None` when everything fits:
+/// a scrollbar for a list that cannot scroll is a control that lies.
+pub(crate) fn add_menu_track(panel: Rect, count: usize) -> Option<Rect> {
+    if add_menu_max_scroll(panel, count) <= 0.0 {
+        return None;
+    }
+    let list = add_menu_list(panel);
+    Some(Rect::new(
+        list.x + list.w - MENU_BAR_W,
+        list.y,
+        MENU_BAR_W,
+        list.h,
+    ))
+}
+
+/// The draggable THUMB: as tall a fraction of the track as the viewport is of the list, and never
+/// shorter than a thing you can actually grab.
+pub(crate) fn add_menu_thumb(panel: Rect, count: usize, scroll: f32) -> Option<Rect> {
+    let track = add_menu_track(panel, count)?;
+    let list_h = count as f32 * MENU_ROW_H;
+    let frac = (track.h / list_h).clamp(0.0, 1.0); // CLAMP-OK: a fraction
+    let h = (track.h * frac).max(MENU_THUMB_MIN_H);
+    let max_scroll = add_menu_max_scroll(panel, count);
+    let t = if max_scroll > 0.0 {
+        (scroll / max_scroll).clamp(0.0, 1.0) // CLAMP-OK: a fraction
+    } else {
+        0.0
+    };
+    Some(Rect::new(track.x, track.y + (track.h - h) * t, track.w, h))
+}
+
+/// The scroll a thumb dragged to screen `y` means — the inverse of [`add_menu_thumb`], so the
+/// thumb lands under the cursor and stays there. `grab` is where inside the thumb it was seized:
+/// grabbing a thumb by its middle and having it jump to put its TOP under the cursor is the
+/// scrollbar bug everyone has met.
+pub(crate) fn add_menu_scroll_at(panel: Rect, count: usize, y: f32, grab: f32) -> f32 {
+    let (Some(track), Some(thumb)) = (
+        add_menu_track(panel, count),
+        add_menu_thumb(panel, count, 0.0),
+    ) else {
+        return 0.0;
+    };
+    let span = track.h - thumb.h;
+    if span <= 0.0 {
+        return 0.0;
+    }
+    let t = ((y - grab - track.y) / span).clamp(0.0, 1.0); // CLAMP-OK: a fraction
+    t * add_menu_max_scroll(panel, count)
 }
 
 #[cfg(test)]
@@ -302,6 +390,7 @@ mod tests {
         let canvas = Rect::new(0.0, 0.0, 300.0, 200.0);
         // Opened past the right/bottom edge → clamped fully inside.
         let menu = AddMenu {
+            scroll: 0.0,
             screen: (290.0, 190.0),
             spawn: (0.0, 0.0),
             connect_from: None,

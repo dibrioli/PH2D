@@ -106,11 +106,18 @@ pub(crate) enum Interaction {
         cur: (f32, f32),
         target: Option<(u32, u16, bool)>,
     },
+    /// Dragging the add-menu's scrollbar thumb. `grab` is where INSIDE the thumb the cursor
+    /// seized it — without that, the thumb jumps to put its TOP edge under the cursor the moment
+    /// you touch it, which is the scrollbar bug everyone has met.
+    MenuScroll { grab: f32 },
 }
 
 /// An open add-node popup (E7). Ephemeral — never undoable.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) struct AddMenu {
+    /// How far the list is scrolled, in px. The library has 86 node types and a popup is not
+    /// allowed to run off the screen (Enio), so the panel is capped and the list scrolls inside it.
+    pub scroll: f32,
     /// Top-left of the popup panel, screen space (the R-click point, clamped at
     /// paint so the list stays on-canvas).
     pub screen: (f32, f32),

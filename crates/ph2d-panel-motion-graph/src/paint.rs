@@ -429,8 +429,18 @@ fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, theme: Theme)
         panel.w - 2.0 * geom::MENU_PAD,
         resolve(ColorToken::Text2, theme),
     );
+    // The list SCROLLS inside the panel (86 node types do not fit on a screen). It is clipped to
+    // its own band, so a row scrolled half-way out is drawn half — and hit-tested half, against
+    // the same rect (`geom::add_menu_list`), because the row you can see is the row you can click.
+    let list = geom::add_menu_list(panel);
+    ctx.scene.push_clip(&rect_to_vello(list));
     for (i, c) in catalog.iter().enumerate() {
-        let row = geom::add_menu_row(panel, i);
+        let row = geom::add_menu_row(panel, i, menu.scroll);
+        // Rows entirely outside the band are not drawn at all: with 86 of them, most of the menu
+        // is off-list at any moment, and Vello charges per draw object (doc 53).
+        if row.y + row.h < list.y || row.y > list.y + list.h {
+            continue;
+        }
         fill_circle(
             ctx.scene,
             row.x + MENU_DOT_X,
@@ -447,6 +457,27 @@ fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, theme: Theme)
             MENU_ROW_SIZE,
             row.w - MENU_ROW_TEXT_INSET_R,
             resolve(ColorToken::Text1, theme),
+        );
+    }
+    ctx.scene.pop_layer();
+
+    // The scrollbar, and only when the list can actually scroll: a scrollbar on a list that fits
+    // is a control that lies about there being more.
+    if let (Some(track), Some(thumb)) = (
+        geom::add_menu_track(panel, catalog.len()),
+        geom::add_menu_thumb(panel, catalog.len(), menu.scroll),
+    ) {
+        fill_rounded_rect(
+            ctx.scene,
+            track,
+            geom::MENU_BAR_W * 0.5,
+            resolve(ColorToken::Bg3, theme),
+        );
+        fill_rounded_rect(
+            ctx.scene,
+            thumb,
+            geom::MENU_BAR_W * 0.5,
+            resolve(ColorToken::BorderStrong, theme),
         );
     }
 }

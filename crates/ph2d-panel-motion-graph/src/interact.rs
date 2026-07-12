@@ -32,6 +32,10 @@ mod backdrop_gesture;
 #[path = "interact_socket.rs"]
 mod socket;
 
+#[path = "interact_menu.rs"]
+mod menu;
+use menu::{drag_menu_thumb, grab_menu_thumb, resolve_add_menu, scroll_menu};
+
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
 /// the snapshot `paint` already fetched — reused for socket/wire hit-testing.
@@ -53,7 +57,10 @@ pub(crate) fn process(
         state.selected_backdrop = None;
     }
 
-    if let Some(z) = ctx.host.store_mut().take_graph_zoom(panel) {
+    // The wheel over an OPEN add-menu scrolls its list; only otherwise does it zoom the canvas.
+    if let Some(z) = ctx.host.store_mut().take_graph_zoom(panel)
+        && !scroll_menu(state, rect, &z)
+    {
         apply_zoom(state, rect, z);
     }
     let keys: Vec<GraphKey> = ctx.host.store_mut().drain_graph_keys().collect();
@@ -152,6 +159,7 @@ fn apply_key(state: &mut MotionGraphPanelState, k: GraphKey, rect: Rect) {
             let center = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
             let spawn = View::new(rect, state.view).graph(center.0, center.1);
             state.add_menu = Some(AddMenu {
+                scroll: 0.0,
                 screen: center,
                 spawn,
                 connect_from: None,
@@ -180,6 +188,7 @@ fn apply_gesture(
         if g.phase == GesturePhase::Begin {
             let spawn = View::new(rect, state.view).graph(g.x, g.y);
             state.add_menu = Some(AddMenu {
+                scroll: 0.0,
                 screen: (g.x, g.y),
                 spawn,
                 connect_from: None,
@@ -301,10 +310,14 @@ fn apply_background(
 ) {
     match g.phase {
         GesturePhase::Begin => {
-            // A press while the menu is open consumes it (no band); the release
-            // resolves the menu. Otherwise start a rubber band — the LEFT button
-            // selects (panning is the middle button's job).
-            if state.add_menu.is_some() {
+            // The scrollbar takes the press before anything else: reaching for it must not shut
+            // the very menu you are trying to scroll (doc 54).
+            if let Some(grab) = grab_menu_thumb(state, rect, g.x, g.y) {
+                state.interaction = Interaction::MenuScroll { grab };
+            } else if state.add_menu.is_some() {
+                // A press anywhere else while the menu is open consumes it (no band); the release
+                // resolves the menu. Otherwise start a rubber band — the LEFT button selects
+                // (panning is the middle button's job).
                 state.interaction = Interaction::Idle;
             } else if state.knife_armed {
                 state.interaction = Interaction::Knife {
@@ -319,14 +332,20 @@ fn apply_background(
                 };
             }
         }
-        GesturePhase::Update => match &mut state.interaction {
-            Interaction::BoxSelect { cur, .. } | Interaction::Knife { cur, .. } => {
-                *cur = (g.x, g.y)
+        GesturePhase::Update => {
+            if let Interaction::MenuScroll { grab } = state.interaction {
+                drag_menu_thumb(state, rect, g.y, grab);
+            } else if let Interaction::BoxSelect { cur, .. } | Interaction::Knife { cur, .. } =
+                &mut state.interaction
+            {
+                *cur = (g.x, g.y);
             }
-            _ => {}
-        },
+        }
         GesturePhase::Click => {
-            if let Some(menu) = state.add_menu.take() {
+            // A tap on the scrollbar scrolled; it chose nothing, and it must not close the menu.
+            if matches!(state.interaction, Interaction::MenuScroll { .. }) {
+                state.interaction = Interaction::Idle;
+            } else if let Some(menu) = state.add_menu.take() {
                 // A primary click while the menu is open closes it; a click on a
                 // row also adds that node at the menu's spawn point.
                 resolve_add_menu(&menu, rect, snap, g.x, g.y);
@@ -339,6 +358,11 @@ fn apply_background(
             state.interaction = Interaction::Idle;
         }
         GesturePhase::End | GesturePhase::DoubleClick => {
+            // A finished scrollbar drag leaves the menu exactly as it was: open, and scrolled.
+            if matches!(state.interaction, Interaction::MenuScroll { .. }) {
+                state.interaction = Interaction::Idle;
+                return;
+            }
             // A left-drag over empty canvas dismisses an open menu; otherwise it was
             // a rubber band (select) or a knife stroke (cut) — resolve whichever.
             if state.add_menu.take().is_none() {
@@ -371,37 +395,6 @@ fn apply_background(
                 }
             }
             state.interaction = Interaction::Idle;
-        }
-    }
-}
-
-/// Resolve a primary click at `(x, y)` against the open add-menu: if it lands on a
-/// catalog row, emit `AddNode` at the menu's graph-space spawn point — and, when
-/// the menu was opened by a wire dropped in space (**smart-connect**), a `Connect`
-/// right behind it, so the node arrives already wired to what asked for it.
-fn resolve_add_menu(menu: &AddMenu, rect: Rect, snap: &GraphViewSnapshot, x: f32, y: f32) {
-    let catalog = crate::snapshot::menu_catalog(snap, menu.connect_from);
-    let panel = geom::add_menu_panel(menu, catalog.len(), rect);
-    for (i, c) in catalog.iter().enumerate() {
-        if geom::add_menu_row(panel, i).contains(x, y) {
-            // Smart-connect is ONE intent, not an add followed by a connect: it was
-            // one gesture, so it must be one undo step (and the shell, which mints
-            // the id, is the only one that can name the node it just created).
-            match menu.connect_from {
-                Some((from_node, from_port)) => push_intent(GraphIntent::SmartConnect {
-                    from_node,
-                    from_port,
-                    to_type: c.type_name,
-                    x: menu.spawn.0,
-                    y: menu.spawn.1,
-                }),
-                None => push_intent(GraphIntent::AddNode {
-                    type_name: c.type_name,
-                    x: menu.spawn.0,
-                    y: menu.spawn.1,
-                }),
-            }
-            return;
         }
     }
 }
@@ -509,6 +502,7 @@ fn apply_socket_out(
                     // the artist drew a wire and got nothing back.)
                     let spawn = View::new(rect, state.view).graph(g.x, g.y);
                     state.add_menu = Some(AddMenu {
+                        scroll: 0.0,
                         screen: (g.x, g.y),
                         spawn,
                         connect_from: Some((from_node, from_port)),
@@ -586,3 +580,7 @@ mod f2_tests;
 #[cfg(test)]
 #[path = "interact_f2b_tests.rs"]
 mod f2b_tests;
+
+#[cfg(test)]
+#[path = "interact_menu_tests.rs"]
+mod menu_tests;

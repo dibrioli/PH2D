@@ -605,6 +605,11 @@ pub(crate) struct PaintState {
     inpaint_search_norm: f32,
     /// Per-stroke per-layer-colour accumulation (recomposite); see [`stamp_color_cache`].
     per_layer_stroke: stamp_color_cache::PerLayerStroke,
+    /// For the dab list currently being stamped: which ORIGINAL dab each entry was replicated from
+    /// ([`tiling::tiled_dabs_grouped`]). Empty ⇒ no Tiling ⇒ every entry is its own dab. The routes feed
+    /// it to [`tiling::DabRng`] so a dab's wrapped copies SHARE its random frame — they are the same dab
+    /// seen from both sides of the seam, and a per-copy draw made the tile stop matching itself.
+    dab_groups: Vec<u32>,
     /// Cached coloured Shape **preview** (premul RGBA), re-baked only on appearance change; [`stamp_color_cache`].
     shape_color_preview: stamp_color_cache::ShapeColorPreview,
     /// **Deform** (Liquify) settings + session state — sub-mode, brush knobs, Freeze, and the pre-deform

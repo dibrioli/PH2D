@@ -299,7 +299,10 @@ impl PainterTool {
         // the same rng stream (it re-reads `tex_rng` and is the one that advances it), so both passes
         // draw identical per-dab Random bases — coverage and colour always agree pixel-wise.
         let stamp = self.wet_shape_stamp();
-        let mut rng = self.paint.tex_rng; // NOT written back here — the colour pass replays + advances
+        // Wrapped Tiling copies are the SAME dab across the seam → one random frame each (`tiling::DabRng`).
+        let groups = self.paint.dab_groups.clone();
+        // NOT written back here — the colour pass replays the identical stream and advances it.
+        let mut rng = super::tiling::DabRng::new(self.paint.tex_rng);
         // Tip-density buffer: sized only when a textured tip is stamping (see `stroke_density` docs);
         // stays empty otherwise so the composite's fast path (density ≡ 1) is untouched. Sized BEFORE
         // the shape-image borrow below (disjoint field borrows carry the loop).
@@ -356,7 +359,8 @@ impl PainterTool {
             // Frame draw BEFORE any skip: the colour pass replays this stream per emitted dab, and
             // its skip conditions differ (no Dilution `flow` there) — drawing after a skip would
             // desynchronise the two passes' Random draws.
-            let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut rng, canvas));
+            let rng = rng.enter(&groups, di);
+            let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut *rng, canvas));
             let r = d.radius_px;
             // The dab's pigment reserve (fresh + carry), max-blended over its whole footprint —
             // re-inking a faded trail restores it (a fresh head dab wins over a depleted tail's).
@@ -489,13 +493,15 @@ impl PainterTool {
         // per-dab Random bases ⇒ colour and coverage agree pixel-wise), then ADVANCE the stroke
         // stream here — net one advance per batch, like every other stamp route.
         let stamp = self.wet_shape_stamp();
-        let mut rng = self.paint.tex_rng;
+        let groups = self.paint.dab_groups.clone(); // same group map ⇒ the two passes stay in lock-step
+        let mut rng = super::tiling::DabRng::new(self.paint.tex_rng);
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let canvas = [fw as f32, fh as f32];
         let buf = &mut self.paint.stroke_color;
-        for (d, (dcol, prio, depl)) in dabs.iter().zip(&mixed) {
+        for (di, (d, (dcol, prio, depl))) in dabs.iter().zip(&mixed).enumerate() {
             // Frame draw BEFORE any skip — mirror of the coverage pass (stream sync; see there).
-            let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut rng, canvas));
+            let rng = rng.enter(&groups, di);
+            let frame = stamp.as_ref().map(|s| s.dab_frame(d, &mut *rng, canvas));
             let r = d.radius_px;
             let peak = d.coverage.clamp(0.0, 1.0);
             if r <= 0.0 || peak <= 0.0 {
@@ -577,6 +583,6 @@ impl PainterTool {
         // Manual stamp: advance the stroke's texture-rng stream (once per batch — the coverage pass
         // replayed the same seed without writing back). Automatic ⇒ `rng` untouched, write-back is a
         // no-op (the historical stream stays byte-identical).
-        self.paint.tex_rng = rng;
+        self.paint.tex_rng = rng.finish();
     }
 }

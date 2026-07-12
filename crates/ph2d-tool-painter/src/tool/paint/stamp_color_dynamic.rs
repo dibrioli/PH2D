@@ -49,7 +49,12 @@ impl PainterTool {
         let mut acc = std::mem::take(&mut self.paint.per_layer_stroke.cov);
         let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let grain_ramp = grain_ramp_active.then_some(self.paint.texture_ramp_lut.as_slice());
-        let mut tex_rng = self.paint.tex_rng;
+        // A dab's wrapped Tiling copies must share ONE random frame (see `tiling::DabRng`): the texture
+        // bases below are drawn from `tex_rng` PER ENTRY, so without the group map the two sides of a seam
+        // got different Random angles. (Randomize Color is safe by construction — the jitter is baked into
+        // `d.color` by the stroke engine, upstream of the tiling, so the copies already share it.)
+        let groups = self.paint.dab_groups.clone();
+        let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
         let bbox: Option<Region>;
         {
             let masks = self.paint.shape_layers.masks();
@@ -69,7 +74,9 @@ impl PainterTool {
             // `batched_dynamic_accumulate_is_bit_identical_to_sequential` in `ph2d-painter-brush`.
             let dyn_dabs: Vec<DynDab> = dabs
                 .iter()
-                .map(|d| {
+                .enumerate()
+                .map(|(di, d)| {
+                    let tex_rng = dab_rng.enter(&groups, di);
                     let spec = BrushSpec {
                         radius_px: d.radius_px,
                         ..*brush
@@ -83,7 +90,7 @@ impl PainterTool {
                     let shape_basis = ph2d_painter_brush::texture::dab_basis(
                         &spec.shape,
                         d.dir,
-                        &mut tex_rng,
+                        &mut *tex_rng,
                         dims,
                         [1.0, 0.0],
                         fp,
@@ -92,7 +99,7 @@ impl PainterTool {
                         ph2d_painter_brush::texture::dab_basis(
                             &spec.texture,
                             d.dir,
-                            &mut tex_rng,
+                            &mut *tex_rng,
                             dims,
                             [1.0, 0.0],
                             fp,
@@ -132,7 +139,7 @@ impl PainterTool {
             });
         }
         self.paint.per_layer_stroke.cov = acc;
-        self.paint.tex_rng = tex_rng;
+        self.paint.tex_rng = dab_rng.finish();
         let Some(bb) = bbox else {
             return;
         };

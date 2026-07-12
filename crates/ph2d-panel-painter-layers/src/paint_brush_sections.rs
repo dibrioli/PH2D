@@ -25,6 +25,17 @@ pub(crate) fn paint_appearance_sections(
     // Sections below are separated by the Inspector's discreet divider line (Enio 2026-06-25).
     let sep = paint_section_separator;
 
+    // ── Watercolor — the wet-media look (edge darkening + granulation + pigment). MOVED to the head of the
+    //    appearance half (Enio 2026-07-12): it is the switch that REINTERPRETS everything under it — the
+    //    Grain slot becomes the granulation map, the Paper section appears, the optics take over the
+    //    deposit — so it belongs ABOVE what it governs, not buried below the Stroke sections. Hidden in
+    //    Inpaint like the rest of the appearance half. Off by default ⇒ a plain brush is byte-identical.
+    //    `docs/Painter/08_…`. ──
+    if !brush.is_inpaint {
+        y = sep(ctx.scene, theme, x, content_w, y);
+        y = crate::paint_watercolor::paint_watercolor_section(ctx, theme, x, content_w, y, brush);
+    }
+
     // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur/Clone,
     //    Eraser AND Mask (all colourless — nothing to randomize). ──
     if !brush.paints_no_color() && !brush.eraser && !brush.is_mask {
@@ -77,11 +88,6 @@ pub(crate) fn paint_appearance_sections(
         }
         y = sep(ctx.scene, theme, x, content_w, y);
         y = crate::paint_stroke::paint_tiling_section(ctx, theme, x, content_w, y, brush);
-
-        // ── Section 11: Watercolor — the wet-media look (edge darkening + granulation + pigment).
-        //    Off by default; a plain brush is byte-identical. `docs/Painter/08_…`. ──
-        y = sep(ctx.scene, theme, x, content_w, y);
-        y = crate::paint_watercolor::paint_watercolor_section(ctx, theme, x, content_w, y, brush);
     }
     // Eraser is the left-rail Eraser tool (a mode), not a panel checkbox — its former standalone
     // checkbox was removed (Enio). In Eraser mode the panel is the normal Brush panel; only the ramp

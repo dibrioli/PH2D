@@ -3011,6 +3011,70 @@ fn editing_the_paper_re_renders_the_wet_wash_with_the_new_paper() {
 }
 
 #[test]
+fn tiling_wrapped_copies_share_the_dabs_random_frame() {
+    // Sweep finding (2026-07-12). Under Tiling the canvas is a TORUS: a dab crossing an edge is drawn as
+    // two `Dab`s (`tiling::tiled_dabs` replicates the list), but they are the SAME dab seen from both
+    // sides — so they must share one random frame. They did not: the paint routes iterate the already-
+    // wrapped list and draw from `tex_rng` PER COPY, so Shape/Grain Random-Angle (and Randomize Color)
+    // gave each side of the seam a different draw. The seam stops matching — which breaks the whole
+    // promise of seamless Tiling. Smear/Blur/Clone already do it right and say so out loud:
+    // "Computed ONCE per dab, so the wrapped Tiling copies share the same random frame."
+    //
+    // ORACLE: paint the SAME dab twice from a fresh tool — once centred (no wrap) as the reference, once
+    // straddling the left edge with Tiling on. On a torus the tiled canvas must be the reference disc,
+    // translated. The wrapped band is where the second (spurious) rng draw shows up.
+    // RED without the fix: the wrapped band differs from the reference.
+    use ph2d_painter_brush::{Dab, TextureKind, TextureMapping, TextureSettings};
+    let brush_with_random_grain = |t: &mut PainterTool| {
+        t.paint.brush.texture = TextureSettings {
+            kind: TextureKind::Noise,
+            mapping: TextureMapping::ViewPlane, // dab-local ⇒ the grain rotates WITH the dab
+            random_angle: true,                 // ← the per-dab draw the copies must SHARE
+            ..t.paint.brush.texture
+        };
+    };
+    let dab_at = |cx: f32| Dab {
+        center: [cx, 32.0],
+        radius_px: 12.0,
+        coverage: 1.0,
+        color: [0.0, 0.0, 0.0],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+    };
+    // Reference: the same dab, centred, no tiling → the disc's own random frame.
+    let mut r = white_canvas(64, 12.0);
+    brush_with_random_grain(&mut r);
+    r.stamp_dabs(&[dab_at(32.0)]);
+    // Under test: the dab straddles the LEFT edge, Tiling X on → a wrapped copy lands on the right edge.
+    let mut t = white_canvas(64, 12.0);
+    brush_with_random_grain(&mut t);
+    t.paint.tiling = [true, false];
+    t.stamp_dabs(&[dab_at(2.0)]);
+    // Map canvas → dab-local, carefully (an off-by-one here fails on ANY implementation and would be a
+    // false RED): the dab straddling the left edge sits at x=2, so its wrapped copy is centred at 2+64=66.
+    // A canvas pixel x in the wrapped band is dab-local `x-66`, which the centred reference holds at
+    // `32+(x-66) = x-34`. The central band is dab-local `x-2`, held by the reference at `x+30`.
+    let mut mismatch = 0;
+    for y in 24..40u32 {
+        for x in 54..64u32 {
+            if px(&t, 64, x, y) != px(&r, 64, x - 34, y) {
+                mismatch += 1; // the WRAPPED copy — where the spurious second rng draw lands
+            }
+        }
+        for x in 0..14u32 {
+            if px(&t, 64, x, y) != px(&r, 64, x + 30, y) {
+                mismatch += 1; // the central copy — must equal the reference too (same first draw)
+            }
+        }
+    }
+    assert_eq!(
+        mismatch, 0,
+        "the wrapped copy must use the SAME random frame as its central self \
+         ({mismatch} texels of the seam band disagree with the reference disc)"
+    );
+}
+
+#[test]
 fn switching_sprite_drops_the_compositor_cut_cache() {
     // Sweep finding (2026-07-12) — the THIRD instance of the Bug #12 family, and the nastiest, because the
     // same-size case does not crash: it corrupts in silence.

@@ -53,9 +53,13 @@ impl PainterTool {
             // wrapped list so their rng streams stay in lock-step. Off ⇒ the raw dabs (byte-identical).
             let tiled;
             let wet_dabs: &[Dab] = if self.paint.tiling[0] || self.paint.tiling[1] {
-                tiled = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+                let (w, g) =
+                    super::tiling::tiled_dabs_grouped(dabs, self.source_size, self.paint.tiling);
+                tiled = w;
+                self.paint.dab_groups = g; // wrapped copies share their dab's random frame
                 &tiled
             } else {
+                self.paint.dab_groups.clear();
                 dabs
             };
             self.accumulate_wet_coverage(wet_dabs);
@@ -145,9 +149,15 @@ impl PainterTool {
             return;
         }
         if self.paint.tiling[0] || self.paint.tiling[1] {
-            let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, self.paint.tiling);
+            // The wrapped copies are the SAME dabs seen across the seam — publish the group map so the
+            // routes draw each dab's random frame ONCE and share it (see `tiling::DabRng`).
+            let (wrapped, groups) =
+                super::tiling::tiled_dabs_grouped(dabs, self.source_size, self.paint.tiling);
+            self.paint.dab_groups = groups;
             self.stamp_dabs_inner(&wrapped);
+            self.paint.dab_groups.clear();
         } else {
+            self.paint.dab_groups.clear(); // no Tiling ⇒ every entry is its own dab (byte-identical)
             self.stamp_dabs_inner(dabs);
         }
     }

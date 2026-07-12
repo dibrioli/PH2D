@@ -188,6 +188,7 @@ impl Default for PaintState {
             fill_last_rect: None,
             fill_return_mode: None,
             per_layer_stroke: stamp_color_cache::PerLayerStroke::default(),
+            dab_groups: Vec::new(),
             shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
             deform: warp::DeformState::default(),
         }

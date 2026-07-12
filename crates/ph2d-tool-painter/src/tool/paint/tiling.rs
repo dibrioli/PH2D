@@ -11,9 +11,29 @@ use ph2d_painter_brush::Dab;
 /// corner). Returns the expanded list. Called only when at least one axis tiles.
 #[must_use]
 pub(super) fn tiled_dabs(dabs: &[Dab], source_size: (u32, u32), tiling: [bool; 2]) -> Vec<Dab> {
+    tiled_dabs_grouped(dabs, source_size, tiling).0
+}
+
+/// [`tiled_dabs`] + the **group map**: `groups[i]` is the index of the ORIGINAL dab that output `i` was
+/// replicated from (copies of one dab are emitted consecutively).
+///
+/// **Why this exists (sweep 2026-07-12):** a dab's wrapped copies are not new dabs — they are the SAME
+/// dab seen from the other side of the seam. Anything drawn PER DAB (Shape/Grain Random-Angle, Random
+/// Offset, Randomize Color) must therefore be drawn ONCE and shared by the copies. The paint routes used
+/// to iterate the already-wrapped list and pull from `tex_rng` per entry, so the two sides of the seam got
+/// DIFFERENT random frames and the tile stopped matching — the one thing Tiling exists to guarantee.
+/// Smear/Blur/Clone always got this right (they compute the frame once per dab and wrap inside).
+/// Feed this map to [`DabRng`], which replays the stream per group.
+#[must_use]
+pub(super) fn tiled_dabs_grouped(
+    dabs: &[Dab],
+    source_size: (u32, u32),
+    tiling: [bool; 2],
+) -> (Vec<Dab>, Vec<u32>) {
     let (fw, fh) = (source_size.0 as f32, source_size.1 as f32);
     let mut out = Vec::with_capacity(dabs.len() * 2);
-    for d in dabs {
+    let mut groups = Vec::with_capacity(dabs.len() * 2);
+    for (gi, d) in dabs.iter().enumerate() {
         let mut xs = [0.0f32; 3];
         let nx = axis_offsets(d.center[0], d.radius_px, fw, tiling[0], &mut xs);
         let mut ys = [0.0f32; 3];
@@ -24,10 +44,51 @@ pub(super) fn tiled_dabs(dabs: &[Dab], source_size: (u32, u32), tiling: [bool; 2
                     center: [d.center[0] + dx, d.center[1] + dy],
                     ..*d
                 });
+                groups.push(gi as u32);
             }
         }
     }
-    out
+    (out, groups)
+}
+
+/// The per-dab texture RNG, replayed so that a dab's wrapped Tiling copies share ONE random frame.
+///
+/// Call [`Self::enter`] once per entry of the dab list, in order, BEFORE any draw for that entry. The
+/// first copy of a group draws normally; every further copy re-runs the stream from the group's start, so
+/// it makes the IDENTICAL draws. Because all copies of a dab draw the same amount, the stream ends up
+/// advanced exactly once per ORIGINAL dab — which is also what makes the un-tiled path **byte-identical**
+/// (with no group map every entry is its own group, so `enter` never rewinds anything).
+pub(super) struct DabRng {
+    rng: u64,
+    group_start: u64,
+    cur: u32,
+}
+
+impl DabRng {
+    pub(super) fn new(rng: u64) -> Self {
+        Self {
+            rng,
+            group_start: rng,
+            cur: u32::MAX,
+        }
+    }
+
+    /// Position the stream for list entry `i`, given the group map (empty ⇒ every entry its own group).
+    pub(super) fn enter(&mut self, groups: &[u32], i: usize) -> &mut u64 {
+        let g = groups.get(i).copied().unwrap_or(i as u32);
+        if g == self.cur {
+            self.rng = self.group_start; // a wrapped copy: replay its original's draws
+        } else {
+            self.cur = g;
+            self.group_start = self.rng; // a new dab: this is where its draws begin
+        }
+        &mut self.rng
+    }
+
+    /// The stream state to write back (advanced once per original dab).
+    pub(super) fn finish(self) -> u64 {
+        self.rng
+    }
 }
 
 /// Fill `out` with the wrap offsets (`[dx, dy]`, always including `[0, 0]`) for a dab at

@@ -304,7 +304,9 @@ impl PainterTool {
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let lut = &self.paint.texture_ramp_lut;
         let alpha_mode = self.active_ramp_alpha_mode(owner);
-        let mut tex_rng = self.paint.tex_rng;
+        // A dab's wrapped Tiling copies must share ONE random frame (see `tiling::DabRng`).
+        let groups = self.paint.dab_groups.clone();
+        let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
         // Accumulate OFF (Strength < 1) caps each pixel's stroke coverage at Strength — thread the
         // per-stroke mask so a Color-Ramp stroke honours Accumulate too (Enio 2026-06-25).
         let accumulate_cap = !brush.accumulate && brush.strength < 1.0;
@@ -319,7 +321,8 @@ impl PainterTool {
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;
-        for d in dabs.iter() {
+        for (di, d) in dabs.iter().enumerate() {
+            let tex_rng = dab_rng.enter(&groups, di);
             let spec = BrushSpec {
                 radius_px: d.radius_px,
                 color: d.color,
@@ -335,7 +338,7 @@ impl PainterTool {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
                     d.dir,
-                    &mut tex_rng,
+                    &mut *tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
                     fp,
@@ -352,7 +355,7 @@ impl PainterTool {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
                     d.dir,
-                    &mut tex_rng,
+                    &mut *tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
                     fp,
@@ -383,7 +386,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
-        self.paint.tex_rng = tex_rng;
+        self.paint.tex_rng = dab_rng.finish();
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }
@@ -411,7 +414,9 @@ impl PainterTool {
             && self.paint.shape_color_ramp_bw)
             .then_some(self.paint.shape_ramp_lut.as_slice());
         let shape_active = brush.shape_silhouette_active(shape_image.is_some());
-        let mut tex_rng = self.paint.tex_rng;
+        // A dab's wrapped Tiling copies must share ONE random frame (see `tiling::DabRng`).
+        let groups = self.paint.dab_groups.clone();
+        let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
         // Accumulate OFF (Strength < 1): hand the per-pixel blit the per-stroke coverage mask so it
         // caps each pixel at Strength. `paint_begin` cleared it on pointer-down; grow it to canvas size
         // (only the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation).
@@ -427,7 +432,8 @@ impl PainterTool {
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
         let mut touched: Option<Region> = None;
-        for d in dabs.iter() {
+        for (di, d) in dabs.iter().enumerate() {
+            let tex_rng = dab_rng.enter(&groups, di);
             // Per-dab Randomize Color rides on `d.color`; the radius is already jittered in `d`.
             let spec = BrushSpec {
                 radius_px: d.radius_px,
@@ -445,7 +451,7 @@ impl PainterTool {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.shape,
                     d.dir,
-                    &mut tex_rng,
+                    &mut *tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
                     fp,
@@ -462,7 +468,7 @@ impl PainterTool {
                 ph2d_painter_brush::texture::dab_basis(
                     &spec.texture,
                     d.dir,
-                    &mut tex_rng,
+                    &mut *tex_rng,
                     [w as f32, h as f32],
                     [1.0, 0.0],
                     fp,
@@ -491,7 +497,7 @@ impl PainterTool {
                 touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
             }
         }
-        self.paint.tex_rng = tex_rng;
+        self.paint.tex_rng = dab_rng.finish();
         if let Some(rect) = touched {
             self.mark_dirty(rect);
         }

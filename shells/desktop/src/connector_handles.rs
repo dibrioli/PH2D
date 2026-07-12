@@ -43,6 +43,14 @@ pub(crate) enum EndSide {
 /// acertar, pequeno o bastante para não roubar a borda, que é onde os ports úteis vivem.
 const CENTRE_ZONE: f64 = 0.2;
 
+/// A folga (em múltiplos do raio da alça) com que a pressão pega o CORPO da linha para fincar um
+/// waypoint. Mais generosa que a alça: agarrar a linha para dobrá-la é um gesto grosso, e errá-lo
+/// só custa um clique — enquanto uma alça agarrada por engano move uma ponta.
+const BODY_GRAB_K: f64 = 1.4;
+
+/// Amostras por segmento na busca do ponto mais próximo do corpo da linha.
+const BODY_SAMPLES: u32 = 24;
+
 /// A forma sob o cursor no momento de largar.
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct DropTarget {
@@ -185,78 +193,233 @@ mod tests;
 use crate::app_state::App;
 use ph2d_ecs::{Entity, VecConnector};
 
+/// O que a pressão agarrou.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) enum Grab {
+    /// Uma das duas pontas (o círculo).
+    End(EndSide),
+    /// Um ponto de passagem (o quadradinho), pelo índice.
+    Waypoint(usize),
+}
+
 /// O arrasto de uma alça (Down..Up).
 #[derive(Clone, Debug)]
 pub(crate) struct HandleDrag {
     pub(crate) path: VecPathId,
-    side: EndSide,
-    /// A ponta como ela **estava**. Durante o arrasto a ponta vira `Free` (para a linha seguir
-    /// o cursor ao vivo, que é o preview), e o largar resolve a partir DAQUI — senão o vínculo
-    /// original se perderia no meio do caminho e "afastar sem soltar" viraria "soltar".
+    grab: Grab,
+    /// A ponta como ela **estava** (só para [`Grab::End`]). Durante o arrasto a ponta vira
+    /// `Free` (para a linha seguir o cursor ao vivo, que é o preview), e o largar resolve a
+    /// partir DAQUI — senão o vínculo original se perderia no meio do caminho e "afastar sem
+    /// soltar" viraria "soltar".
     original: ConnectorEnd,
+    /// O waypoint acabou de NASCER neste gesto (a pressão caiu no corpo da linha). Se o usuário
+    /// soltar sem arrastar, ele é desfeito: um clique perdido não pode fincar um ponto invisível
+    /// exatamente em cima da linha.
+    born_now: bool,
+}
+
+/// A menor distância do ponto `p` ao segmento `a`–`b`.
+fn dist_to_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
+    let ab = [b[0] - a[0], b[1] - a[1]];
+    let len2 = ab[0] * ab[0] + ab[1] * ab[1];
+    let t = if len2 < 1e-12 {
+        0.0
+    } else {
+        (((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / len2).clamp(0.0, 1.0)
+    };
+    let q = [a[0] + ab[0] * t, a[1] + ab[1] * t];
+    (p[0] - q[0]).hypot(p[1] - q[1])
+}
+
+/// **Onde enfiar um waypoint NOVO na lista.**
+///
+/// A ordem dos waypoints é a ordem em que a linha passa por eles, então inserir no fim seria um
+/// bug: fincar um ponto perto da origem faria a linha ir até o fim, voltar, e seguir. O índice
+/// certo é o que **menos alonga** a rota — o critério clássico de inserção (o desvio que o ponto
+/// novo acrescenta ao trecho que ele parte).
+///
+/// `stations` são os pontos das estações **em ordem**: a saída, os waypoints, a chegada.
+pub(crate) fn insert_index(stations: &[[f64; 2]], p: [f64; 2]) -> usize {
+    let mut best = (f64::INFINITY, 0usize);
+    for i in 0..stations.len().saturating_sub(1) {
+        let (a, b) = (stations[i], stations[i + 1]);
+        let detour = (p[0] - a[0]).hypot(p[1] - a[1]) + (b[0] - p[0]).hypot(b[1] - p[1])
+            - (b[0] - a[0]).hypot(b[1] - a[1]);
+        if detour < best.0 {
+            best = (detour, i);
+        }
+    }
+    best.1
+}
+
+/// Um waypoint largado **em cima da reta entre os vizinhos dele** não diz nada — ele nao dobra a
+/// rota. Removê-lo ali é o gesto natural de desfazer um ponto de passagem (arraste-o de volta
+/// para a linha), e de quebra apaga o que um clique perdido criaria.
+///
+/// `tol` em unidades de MUNDO (o chamador converte dos pixels da alça).
+pub(crate) fn is_redundant(stations: &[[f64; 2]], i: usize, tol: f64) -> bool {
+    // `i` é o índice do waypoint; nas estações ele está em `i + 1` (a saída vem antes).
+    let k = i + 1;
+    if k == 0 || k + 1 >= stations.len() {
+        return false;
+    }
+    dist_to_segment(stations[k], stations[k - 1], stations[k + 1]) <= tol
 }
 
 impl App {
-    /// A ponta `side` do conector `path`, no componente.
-    fn conn_end_mut(&mut self, path: VecPathId, side: EndSide) -> Option<&mut ConnectorEnd> {
+    /// O componente do conector `path`, mutável.
+    fn conn_mut(&mut self, path: VecPathId) -> Option<&mut VecConnector> {
         let &bits = self.vec_entities.get(&path)?;
         let gfx = self.gfx.as_mut()?;
+        Some(
+            gfx.sim
+                .world_mut()
+                .get_mut::<VecConnector>(Entity::from_bits(bits))?
+                .into_inner(),
+        )
+    }
+
+    /// Escreve o ponto de mundo `at` no que o gesto agarrou: a ponta vira SOLTA ali (o preview
+    /// é o conector), ou o waypoint se muda para lá.
+    fn conn_grab_set(&mut self, path: VecPathId, grab: Grab, at: [f64; 2]) {
+        let Some(c) = self.conn_mut(path) else { return };
+        match grab {
+            Grab::End(EndSide::Start) => c.start = ConnectorEnd::Free { at },
+            Grab::End(EndSide::End) => c.end = ConnectorEnd::Free { at },
+            Grab::Waypoint(i) => {
+                if let Some(w) = c.waypoints.get_mut(i) {
+                    *w = at;
+                }
+            }
+        }
+    }
+
+    /// Os pontos das ESTAÇÕES em ordem (saída, waypoints, chegada) — a régua em que um waypoint
+    /// novo acha o seu lugar e um redundante é reconhecido.
+    fn conn_stations(&self, path: VecPathId) -> Option<Vec<[f64; 2]>> {
+        let gfx = self.gfx.as_ref()?;
+        let &bits = self.vec_entities.get(&path)?;
         let c = gfx
             .sim
-            .world_mut()
-            .get_mut::<VecConnector>(Entity::from_bits(bits))?
-            .into_inner();
-        Some(match side {
-            EndSide::Start => &mut c.start,
-            EndSide::End => &mut c.end,
-        })
+            .world()
+            .get::<VecConnector>(Entity::from_bits(bits))?;
+        let (a, b) = handle_points(&gfx.vec_scene, path)?;
+        let mut out = Vec::with_capacity(c.waypoints.len() + 2);
+        out.push(a);
+        out.extend(c.waypoints.iter().copied());
+        out.push(b);
+        Some(out)
     }
 
     /// **Down.** A pressão caiu numa alça do conector selecionado? Abre o arrasto.
     ///
-    /// `false` = não era alça, e o clique segue o caminho de sempre (picking, gizmo). É o
-    /// contrato que mantém o resto do editor intacto: a alça só rouba o clique quando ela
+    /// Três alvos, nesta ordem: a **ponta** (o círculo), um **waypoint** (o quadradinho) e — o
+    /// gesto que cria — o **corpo da linha**. Pressionar o corpo de um conector JÁ SELECIONADO
+    /// finca um ponto de passagem ali e passa a arrastá-lo, que é o gesto do draw.io: o ponto
+    /// nasce debaixo do dedo, e o usuário o leva para onde quer.
+    ///
+    /// `false` = não era nenhum dos três, e o clique segue o caminho de sempre (picking, gizmo).
+    /// É o contrato que mantém o resto do editor intacto: a alça só rouba o clique quando ela
     /// realmente está ali.
     pub(crate) fn conn_handle_down(&mut self, world: [f64; 2]) -> bool {
         // O MESMO raio em que o círculo é desenhado (`ph2d-vec-render`). Duas constantes
         // fariam o usuário clicar no meio da bolinha e não pegar nada — e a tela estaria
         // certa, que é o sintoma mais enlouquecedor que existe.
-        let r = self.vec_px_to_world() * ph2d_vec_render::HANDLE_R_PX;
+        let px = self.vec_px_to_world();
+        let r = px * ph2d_vec_render::HANDLE_R_PX;
+        let body_r = px * ph2d_vec_render::HANDLE_R_PX * BODY_GRAB_K;
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
         };
+
         // Só os conectores da SELEÇÃO têm alça — senão toda linha da tela seria um campo minado
         // de pontos agarráveis.
-        let found = self.vec_pen.selected_paths().iter().find_map(|&id| {
-            let &bits = self.vec_entities.get(&id)?;
-            let c = gfx
-                .sim
-                .world()
-                .get::<VecConnector>(Entity::from_bits(bits))?;
-            let (side, _) = hit(&gfx.vec_scene, id, world, r)?;
-            let original = match side {
-                EndSide::Start => c.start,
-                EndSide::End => c.end,
+        let mut found: Option<(HandleDrag, [f64; 2])> = None;
+        for &id in self.vec_pen.selected_paths() {
+            let Some(&bits) = self.vec_entities.get(&id) else {
+                continue;
             };
-            Some(HandleDrag {
-                path: id,
-                side,
-                original,
-            })
-        });
-        let Some(drag) = found else {
+            let Some(c) = gfx.sim.world().get::<VecConnector>(Entity::from_bits(bits)) else {
+                continue;
+            };
+            // 1. As pontas.
+            if let Some((side, _)) = hit(&gfx.vec_scene, id, world, r) {
+                let original = match side {
+                    EndSide::Start => c.start,
+                    EndSide::End => c.end,
+                };
+                found = Some((
+                    HandleDrag {
+                        path: id,
+                        grab: Grab::End(side),
+                        original,
+                        born_now: false,
+                    },
+                    world,
+                ));
+                break;
+            }
+            // 2. Um waypoint já existente.
+            if let Some(i) = c
+                .waypoints
+                .iter()
+                .position(|w| (w[0] - world[0]).hypot(w[1] - world[1]) <= r)
+            {
+                found = Some((
+                    HandleDrag {
+                        path: id,
+                        grab: Grab::Waypoint(i),
+                        original: c.start,
+                        born_now: false,
+                    },
+                    world,
+                ));
+                break;
+            }
+            // 3. O CORPO da linha: finca um waypoint novo ali.
+            let Some(p) = gfx.vec_scene.paths().iter().find(|p| p.id == id) else {
+                continue;
+            };
+            let near = ph2d_vec_scene::nearest_point_on_path(p, world, BODY_SAMPLES)
+                .is_some_and(|(_, _, d2)| d2.sqrt() <= body_r);
+            if near {
+                let mut stations = vec![handle_points(&gfx.vec_scene, id).map(|(a, _)| a)];
+                stations.extend(c.waypoints.iter().map(|&w| Some(w)));
+                stations.push(handle_points(&gfx.vec_scene, id).map(|(_, b)| b));
+                let stations: Vec<[f64; 2]> = stations.into_iter().flatten().collect();
+                let i = insert_index(&stations, world);
+                found = Some((
+                    HandleDrag {
+                        path: id,
+                        grab: Grab::Waypoint(i),
+                        original: c.start,
+                        born_now: true,
+                    },
+                    world,
+                ));
+                break;
+            }
+        }
+
+        let Some((drag, at)) = found else {
             return false;
         };
-        // A ponta vira SOLTA no cursor: o re-cook do frame já desenha a linha seguindo a mão.
-        // Não há caminho de preview separado — o preview é o conector.
-        if let Some(end) = self.conn_end_mut(drag.path, drag.side) {
-            *end = ConnectorEnd::Free { at: world };
+        if drag.born_now
+            && let Grab::Waypoint(i) = drag.grab
+        {
+            if let Some(c) = self.conn_mut(drag.path) {
+                c.waypoints.insert(i, at);
+            }
+        } else {
+            // A ponta vira SOLTA no cursor: o re-cook do frame já desenha a linha seguindo a mão.
+            // Não há caminho de preview separado — o preview é o conector.
+            self.conn_grab_set(drag.path, drag.grab, at);
         }
         self.vec_conn_handle = Some(drag);
         true
     }
 
-    /// **Move.** A ponta acompanha o cursor. `false` sem arrasto armado.
+    /// **Move.** O que foi agarrado acompanha o cursor. `false` sem arrasto armado.
     pub(crate) fn conn_handle_move(&mut self, x: f32, y: f32) -> bool {
         let Some(drag) = self.vec_conn_handle.clone() else {
             return false;
@@ -264,16 +427,38 @@ impl App {
         let Some(world) = self.vec_world_at((x, y)) else {
             return false;
         };
-        if let Some(end) = self.conn_end_mut(drag.path, drag.side) {
-            *end = ConnectorEnd::Free { at: world };
-        }
+        self.conn_grab_set(drag.path, drag.grab, world);
         true
     }
 
-    /// **Up.** Resolve o largar ([`resolve_drop`]) e fecha o arrasto.
+    /// **Up.** Resolve o largar e fecha o arrasto.
+    ///
+    /// Para uma PONTA, o [`resolve_drop`] decide (religar, fixar, afastar sem soltar). Para um
+    /// WAYPOINT, o que decide é ele ter virado **redundante**: largado em cima da reta entre os
+    /// vizinhos, ele não dobra a rota, e some. É o mesmo gesto que desfaz um ponto de passagem
+    /// (arraste-o de volta para a linha) e que apaga o que um clique perdido criaria — um ponto
+    /// invisível, exatamente sobre a linha, que o usuário nunca saberia que existe.
     pub(crate) fn conn_handle_up(&mut self, world: [f64; 2]) -> bool {
         let Some(drag) = self.vec_conn_handle.take() else {
             return false;
+        };
+        if let Grab::Waypoint(i) = drag.grab {
+            let tol = self.vec_px_to_world() * ph2d_vec_render::HANDLE_R_PX;
+            self.conn_grab_set(drag.path, drag.grab, world);
+            let dead = self
+                .conn_stations(drag.path)
+                .is_some_and(|st| is_redundant(&st, i, tol));
+            if dead
+                && let Some(c) = self.conn_mut(drag.path)
+                && i < c.waypoints.len()
+            {
+                c.waypoints.remove(i);
+            }
+            return true;
+        }
+
+        let Grab::End(_) = drag.grab else {
+            return true;
         };
         let over = self.shape_under_cursor(world);
         let Some(gfx) = self.gfx.as_ref() else {
@@ -292,19 +477,39 @@ impl App {
         let over = over.and_then(mk);
         let bound = target_of(&gfx.vec_scene, &xforms, &drag.original);
         let resolved = resolve_drop(&drag.original, world, over, bound);
-        if let Some(end) = self.conn_end_mut(drag.path, drag.side) {
-            *end = resolved;
+        if let Some(c) = self.conn_mut(drag.path) {
+            match drag.grab {
+                Grab::End(EndSide::Start) => c.start = resolved,
+                Grab::End(EndSide::End) => c.end = resolved,
+                Grab::Waypoint(_) => {}
+            }
         }
         true
     }
 
-    /// **Cancela** (Esc, ou o ponteiro sumiu): a ponta volta ao que era.
+    /// **Cancela** (Esc, botão direito): tudo volta ao que era. Um waypoint que nasceu neste
+    /// gesto é desfeito — desistir não pode deixar um ponto para trás.
     pub(crate) fn conn_handle_cancel(&mut self) -> bool {
         let Some(drag) = self.vec_conn_handle.take() else {
             return false;
         };
-        if let Some(end) = self.conn_end_mut(drag.path, drag.side) {
-            *end = drag.original;
+        match drag.grab {
+            Grab::Waypoint(i) if drag.born_now => {
+                if let Some(c) = self.conn_mut(drag.path)
+                    && i < c.waypoints.len()
+                {
+                    c.waypoints.remove(i);
+                }
+            }
+            Grab::End(side) => {
+                if let Some(c) = self.conn_mut(drag.path) {
+                    match side {
+                        EndSide::Start => c.start = drag.original,
+                        EndSide::End => c.end = drag.original,
+                    }
+                }
+            }
+            Grab::Waypoint(_) => {}
         }
         true
     }
@@ -347,6 +552,23 @@ pub(crate) fn view(
         };
         out.push((a, pinned(&c.start)));
         out.push((b, pinned(&c.end)));
+    }
+    out
+}
+
+/// Os WAYPOINTS a desenhar neste frame (em MUNDO). Vazio quando nenhum conector está
+/// selecionado — como as alças de ponta, eles são controles da seleção, não enfeite da tela.
+pub(crate) fn waypoint_view(
+    sim: &ph2d_ecs::SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+    selected: &[VecPathId],
+) -> Vec<[f64; 2]> {
+    let mut out = Vec::new();
+    for &id in selected {
+        let Some(&bits) = map.get(&id) else { continue };
+        if let Some(c) = sim.world().get::<VecConnector>(Entity::from_bits(bits)) {
+            out.extend(c.waypoints.iter().copied());
+        }
     }
     out
 }

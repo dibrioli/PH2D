@@ -15,7 +15,7 @@
 //! **azul** = o usuário a pregou naquele ponto. Sem a distinção não há como saber, olhando, se
 //! aquela linha ainda vai se reorganizar sozinha ou não.
 
-use ph2d_vector::{Affine, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, VectorScene};
 
 /// O raio do círculo da alça, em PIXELS de tela. Em pixels e não em mundo: uma alça que
 /// encolhesse com o zoom-out ficaria impegável exatamente quando o diagrama fica grande.
@@ -54,6 +54,41 @@ pub fn draw_connector_handles(
             &Brush::Solid(RING),
             None,
             &c,
+        );
+    }
+}
+
+/// O ponto de passagem — um QUADRADO, e não um círculo.
+///
+/// A forma carrega o significado: um círculo é uma ponta (ela se prende a alguma coisa), um
+/// quadrado é um ponto fincado no espaço. Distinguir só pela cor obrigaria o usuário a lembrar
+/// qual é qual; pela forma, ele não precisa lembrar de nada.
+const WAYPOINT: Color = Color::from_rgba8(245, 190, 90, 255);
+
+/// Desenha os pontos de passagem, em MUNDO.
+pub fn draw_connector_waypoints(points: &[[f64; 2]], transform: Affine, target: &mut VectorScene) {
+    let h = HANDLE_R_PX * 0.85; // meia-aresta: um quadrado de mesma área "pesa" mais que o círculo
+    for &w in points {
+        let p = transform * Point::new(w[0], w[1]);
+        let mut sq = BezPath::new();
+        sq.move_to(Point::new(p.x - h, p.y - h));
+        sq.line_to(Point::new(p.x + h, p.y - h));
+        sq.line_to(Point::new(p.x + h, p.y + h));
+        sq.line_to(Point::new(p.x - h, p.y + h));
+        sq.close_path();
+        target.inner_mut().fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(WAYPOINT),
+            None,
+            &sq,
+        );
+        target.inner_mut().stroke(
+            &Stroke::new(1.5),
+            Affine::IDENTITY,
+            &Brush::Solid(RING),
+            None,
+            &sq,
         );
     }
 }

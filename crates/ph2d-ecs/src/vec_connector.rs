@@ -95,6 +95,23 @@ pub struct VecConnector {
     /// Não é `Option` como os dois acima: não há um "raio automático" que faça sentido. Zero
     /// já é a resposta certa, e é a que o desenho técnico espera.
     pub corner_radius: f32,
+    /// **Os pontos de passagem** — o escape manual, em MUNDO. Vazio = a rota é toda automática.
+    ///
+    /// O roteador é bom, e ainda assim vai escolher um caminho feio em algum diagrama: é a
+    /// natureza de uma heurística. Sem uma saída manual, a única alternativa do usuário seria
+    /// mover as formas até a linha se comportar — desenhar o diagrama em função do roteador, e
+    /// não o contrário.
+    ///
+    /// A rota é então **costurada por trechos**: `início → w₁ → w₂ → … → fim`, cada trecho
+    /// roteado pela mesma busca, com os mesmos obstáculos. Um waypoint não é um caso especial
+    /// no roteador — é uma ponta SOLTA no meio do caminho, e o roteador já sabe o que é isso.
+    ///
+    /// **Em MUNDO, e não na régua de uma forma** (ao contrário do [`Anchor::Port`]): um ponto
+    /// de passagem não pertence a forma nenhuma — ele é uma escolha sobre o ESPAÇO por onde a
+    /// linha corre. Amarrá-lo a uma das duas caixas o faria migrar quando aquela caixa se
+    /// mexesse, o que não é o que ninguém quer dizer ao fincar um ponto no meio da tela.
+    #[serde(default)]
+    pub waypoints: Vec<[f64; 2]>,
 }
 
 impl SimComponent for VecConnector {}
@@ -117,7 +134,23 @@ impl VecConnector {
             jetty: None,
             spread: None,
             corner_radius: 0.0,
+            waypoints: Vec::new(),
         }
+    }
+
+    /// **As ESTAÇÕES da rota**: as duas pontas com os waypoints entre elas.
+    ///
+    /// Um waypoint entra como uma ponta **solta** (`ConnectorEnd::Free`) — e é essa a ideia
+    /// toda. O roteador já sabe rotear de e para uma ponta solta; não há um caso especial de
+    /// "waypoint" em lugar nenhum. A rota vira a costura dos trechos entre estações
+    /// consecutivas.
+    #[must_use]
+    pub fn stations(&self) -> Vec<ConnectorEnd> {
+        let mut out = Vec::with_capacity(self.waypoints.len() + 2);
+        out.push(self.start);
+        out.extend(self.waypoints.iter().map(|&at| ConnectorEnd::Free { at }));
+        out.push(self.end);
+        out
     }
 
     /// **O spread automático**, a partir do [`Self::parallel_index`]: `0, +1, −1, +2, −2 …`

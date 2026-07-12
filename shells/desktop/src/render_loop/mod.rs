@@ -2837,6 +2837,14 @@ impl crate::App {
                     self.vec_pen.selected_paths(),
                 );
                 ph2d_vec_render::draw_connector_handles(&handles, cam_affine, vector_scene);
+                // Os pontos de passagem — QUADRADOS, por cima das bolinhas: quando um waypoint
+                // é arrastado até uma ponta, é ele que está sob o dedo.
+                let ways = crate::connector_handles::waypoint_view(
+                    sim,
+                    &self.vec_entities,
+                    self.vec_pen.selected_paths(),
+                );
+                ph2d_vec_render::draw_connector_waypoints(&ways, cam_affine, vector_scene);
             }
             // Cursor de texto (modo Text): na ponta da última linha em edição. Lê só o
             // campo `vec_text_edit` (fn livre), pra não colidir com o borrow de gfx.

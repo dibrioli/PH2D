@@ -180,3 +180,39 @@ fn the_handles_sit_on_the_two_ends_of_the_cooked_line() {
     let r = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
     assert!(handle_points(&scene, r).is_some());
 }
+
+/// **A ORDEM do waypoint importa.** Os pontos de passagem sao percorridos na ordem da lista, entao
+/// enfiar um ponto novo no fim seria um bug: fincar um ponto perto da origem faria a linha ir ate
+/// o fim, VOLTAR, e seguir. O indice certo e o que menos alonga a rota.
+#[test]
+fn a_new_waypoint_lands_where_it_does_not_send_the_line_backwards() {
+    // Saida (0,0) -> waypoint (10,0) -> chegada (20,0).
+    let st = [[0.0, 0.0], [10.0, 0.0], [20.0, 0.0]];
+    // Um ponto novo perto da ORIGEM entra ANTES do waypoint existente (indice 0).
+    assert_eq!(insert_index(&st, [2.0, 1.0]), 0);
+    // Um ponto novo perto da CHEGADA entra DEPOIS dele (indice 1).
+    assert_eq!(
+        insert_index(&st, [18.0, 1.0]),
+        1,
+        "o ponto novo foi parar antes do que ja existia — a linha vai e volta"
+    );
+}
+
+/// Um waypoint largado EM CIMA da reta entre os vizinhos nao dobra a rota: ele nao diz nada, e
+/// some. E o gesto natural de desfazer um ponto de passagem (arraste-o de volta para a linha) — e
+/// e o que apaga o ponto invisivel que um clique perdido criaria.
+#[test]
+fn a_waypoint_dropped_back_onto_the_line_removes_itself() {
+    // O waypoint (indice 0) esta nas estacoes em [1].
+    let on_line = [[0.0, 0.0], [10.0, 0.05], [20.0, 0.0]];
+    assert!(
+        is_redundant(&on_line, 0, 0.5),
+        "um waypoint em cima da reta entre os vizinhos tem de sumir"
+    );
+    // E um que DOBRA a rota de verdade fica.
+    let bent = [[0.0, 0.0], [10.0, 5.0], [20.0, 0.0]];
+    assert!(
+        !is_redundant(&bent, 0, 0.5),
+        "um waypoint que dobra a rota nao pode ser apagado como se fosse ruido"
+    );
+}

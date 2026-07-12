@@ -133,6 +133,7 @@ impl App {
                 jetty: None,
                 spread: None,
                 corner_radius: 0.0,
+                waypoints: Vec::new(),
             },
             start_world: world,
         });

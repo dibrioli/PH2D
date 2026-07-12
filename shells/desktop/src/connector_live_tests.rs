@@ -549,3 +549,8 @@ fn a_curved_connector_still_goes_around_the_obstacle_the_router_avoided() {
         "a rota Curved saiu em quinas vivas: nao curvou"
     );
 }
+
+/// Os testes dos WAYPOINTS — módulo filho (teto de 600 LOC por arquivo da shell). Herdam os
+/// helpers daqui pelo `use super::*`.
+#[path = "connector_live_waypoint_tests.rs"]
+mod waypoints;

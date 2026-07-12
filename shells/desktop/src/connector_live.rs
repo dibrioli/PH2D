@@ -385,17 +385,69 @@ fn cook(
     // das duas faces apontam uma contra a outra, então o mesmo sinal as moveria em direções
     // contrárias no mundo — e o conector sairia torto em vez de paralelo.
     let obstacles = obstacles_in_play(shapes, a.bbox, b.bbox, ROI_PAD_K * jetty);
-    let pts = route(&RouteInput {
-        start: EndSpec { at: p0, dir: d0 },
-        end: EndSpec { at: p1, dir: d1 },
-        kind,
-        jetty,
-        obstacles: &obstacles,
-        spread,
-        // Fonte e destino na MESMA forma: não há rota a buscar — é um laço, e ele é
-        // construído, não roteado.
-        self_loop: conn.is_self_loop().then_some(a.bbox),
-    });
+
+    // Um LAÇO não se roteia, e waypoints não fazem sentido nele — ele é construído.
+    if conn.is_self_loop() {
+        let pts = route(&RouteInput {
+            start: EndSpec { at: p0, dir: d0 },
+            end: EndSpec { at: p1, dir: d1 },
+            kind,
+            jetty,
+            obstacles: &obstacles,
+            spread,
+            self_loop: Some(a.bbox),
+        });
+        return Some(Cooked {
+            pts,
+            sides: [Some(d0), Some(d1)],
+        });
+    }
+
+    // **A rota é a COSTURA dos trechos entre estações.** Sem waypoints há uma estação de cada
+    // lado e um trecho só — o caminho de sempre, byte a byte. Com waypoints, cada ponto de
+    // passagem é uma ponta SOLTA no meio, e o roteador já sabe rotear de e para uma dessas.
+    // Não existe um caso "waypoint" em lugar nenhum do roteador; era essa a ideia.
+    let stations = conn.stations();
+    let last = stations.len() - 2; // índice do ÚLTIMO trecho
+    let mut pts: Vec<[f64; 2]> = Vec::new();
+    for i in 0..=last {
+        let (from, to) = (
+            end_box(&stations[i], scene, xforms)?,
+            end_box(&stations[i + 1], scene, xforms)?,
+        );
+        // As pontas de VERDADE (a 1ª e a última estação) já foram resolvidas acima, com o
+        // spread e a histerese. As do meio são pontos: o `endpoint` de uma ponta solta devolve
+        // o próprio ponto, e o lado sai do rumo da estação vizinha.
+        let (s_at, s_dir) = if i == 0 {
+            (p0, d0)
+        } else {
+            endpoint(scene, xforms, &from, to.center(), kind, None, 0.0)
+        };
+        let (e_at, e_dir) = if i == last {
+            (p1, d1)
+        } else {
+            endpoint(scene, xforms, &to, from.center(), kind, None, 0.0)
+        };
+        let leg_pts = route(&RouteInput {
+            start: EndSpec {
+                at: s_at,
+                dir: s_dir,
+            },
+            end: EndSpec {
+                at: e_at,
+                dir: e_dir,
+            },
+            kind,
+            jetty,
+            obstacles: &obstacles,
+            spread,
+            self_loop: None,
+        });
+        // A junção é o MESMO ponto nas duas pontas dos trechos vizinhos — solda-se sem duplicar
+        // o vértice, senão o filete de quina veria uma aresta de comprimento zero ali.
+        let skip = usize::from(!pts.is_empty());
+        pts.extend(leg_pts.into_iter().skip(skip));
+    }
     Some(Cooked {
         pts,
         sides: [Some(d0), Some(d1)],

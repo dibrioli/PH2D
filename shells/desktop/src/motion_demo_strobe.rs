@@ -6,9 +6,13 @@
 //! `motion_state`, kept out for the LOC cap.
 //!
 //! ```text
-//! LEFT  (drop shadow): grid ─> oscillator ─> drop_shadow ─> move(−7) ─> output
-//! RIGHT (rgb split):   grid ─> orbit ─> tint ─> rgb_split ─> move(+7) ─> output
+//! LEFT  (drop shadow): grid ─> scale ─> oscillator ─> drop_shadow ─> move(−7) ─> output
+//! RIGHT (rgb split):   grid ─> scale ─> orbit ─> tint ─> rgb_split ─> move(+7) ─> output
 //! ```
+//!
+//! The `motion.scale` in each chain is how a document asks for **small quads**: the
+//! lowering's fallback for a stream with no `size` column is the IDENTITY (unit scale),
+//! never a cosmetic number hidden in the shell (doc 39).
 //!
 //! - **drop_shadow** (`fx.drop_shadow`, doc 38): each element becomes two rows — its
 //!   shadow (behind, in a block) and itself. Spin `Direction` in the params panel and
@@ -31,6 +35,9 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 const COL_W: f32 = 190.0;
 const SHADOW_ROW: f32 = 0.0;
 const SPLIT_ROW: f32 = 360.0;
+/// The quad size both scenes ask for, as a fraction of their grid spacing — small
+/// enough that the elements read as distinct dots with clear gaps between them.
+const QUAD: f32 = 0.4;
 
 /// Author both scenes into `g`; returns their Output nodes (the sinks), the shadow
 /// scene's first so the sink order is stable (id-ascending).
@@ -66,13 +73,15 @@ fn place(g: &mut Graph, row: f32, chain: &[NodeId]) {
 /// LEFT: a bobbing grid casting a hard drop shadow. Returns its Output.
 fn build_drop_shadow_scene(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
+    let scale = g.add_node("motion.scale");
     let osc = g.add_node("motion.oscillator");
     let shadow = g.add_node("fx.drop_shadow");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
-    place(g, SHADOW_ROW, &[grid, osc, shadow, mv, output]);
+    place(g, SHADOW_ROW, &[grid, scale, osc, shadow, mv, output]);
 
-    wire(g, (grid, 0), (osc, 0))?;
+    wire(g, (grid, 0), (scale, 0))?;
+    wire(g, (scale, 0), (osc, 0))?;
     wire(g, (osc, 0), (shadow, 0))?;
     wire(g, (shadow, 0), (mv, 0))?;
     wire(g, (mv, 0), (output, 0))?;
@@ -81,6 +90,7 @@ fn build_drop_shadow_scene(g: &mut Graph) -> Option<NodeId> {
     g.set_param(grid, "cols", 4.0);
     g.set_param(grid, "gap_x", 1.0);
     g.set_param(grid, "gap_y", 1.0);
+    g.set_param(scale, "amount", QUAD);
     // A gentle bob, staggered across the set — the shadow has to follow it.
     g.set_param(osc, "channel", 1.0);
     g.set_param(osc, "amplitude", 0.5);
@@ -99,14 +109,16 @@ fn build_drop_shadow_scene(g: &mut Graph) -> Option<NodeId> {
 /// Returns its Output.
 fn build_rgb_split_scene(g: &mut Graph) -> Option<NodeId> {
     let grid = g.add_node("motion.grid");
+    let scale = g.add_node("motion.scale");
     let orbit = g.add_node("motion.orbit");
     let tint = g.add_node("motion.tint");
     let split = g.add_node("fx.rgb_split");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
-    place(g, SPLIT_ROW, &[grid, orbit, tint, split, mv, output]);
+    place(g, SPLIT_ROW, &[grid, scale, orbit, tint, split, mv, output]);
 
-    wire(g, (grid, 0), (orbit, 0))?;
+    wire(g, (grid, 0), (scale, 0))?;
+    wire(g, (scale, 0), (orbit, 0))?;
     wire(g, (orbit, 0), (tint, 0))?;
     wire(g, (tint, 0), (split, 0))?;
     wire(g, (split, 0), (mv, 0))?;
@@ -116,6 +128,7 @@ fn build_rgb_split_scene(g: &mut Graph) -> Option<NodeId> {
     g.set_param(grid, "cols", 5.0);
     g.set_param(grid, "gap_x", 0.9);
     g.set_param(grid, "gap_y", 0.9);
+    g.set_param(scale, "amount", QUAD);
     g.set_param(orbit, "speed", 0.15);
     // A cyan-ish body, so the fringes can only carry the channels it HAS: the R ghost
     // is nearly black and the G+B ghost carries the colour (doc 38 §2).

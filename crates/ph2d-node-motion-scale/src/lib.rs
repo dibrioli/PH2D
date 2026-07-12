@@ -3,13 +3,16 @@
 //! attribute by `amount`, eased per-instance by the multiplicative `falloff`
 //! column (§1.2). The effective factor is `1 + (amount - 1) * falloff_i`, so an
 //! instance with `falloff = 0` keeps its size and `falloff = 1` gets the full
-//! `amount`. A stream without a `size` column starts from the unit size
-//! `[1, 1]`. Every other column passes through unchanged (count preserved). Pure.
+//! `amount`. A stream without a `size` column starts from
+//! [`SIZE_IDENTITY`](ph2d_nodegraph::attr::SIZE_IDENTITY) — the SAME unit scale
+//! the lowering falls back to, which is what makes `amount = 1` a true no-op on
+//! the render (doc 39). Every other column passes through unchanged (count
+//! preserved). Pure.
 //!
 //! Params (read via `ctx.param`): `amount` (1.0).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -63,15 +66,17 @@ impl NodeOp for MotionScale {
         let out = {
             let input = ctx.input(0);
             let n = input.count();
-            // Base per-instance size (absent column → unit size).
+            // Base per-instance size (absent column → the identity the lowering
+            // itself falls back to — see SIZE_IDENTITY: any other base would make
+            // `amount = 1` resize the scene).
             let base: Vec<[f32; 2]> = match input.get("size") {
                 Some(Column::Vec2(v)) => v.clone(),
-                _ => vec![[1.0, 1.0]; n],
+                _ => vec![SIZE_IDENTITY; n],
             };
             let scaled: Vec<[f32; 2]> = (0..n)
                 .map(|i| {
                     let f = eff_factor(amount, falloff_at(input, i));
-                    let s = base.get(i).copied().unwrap_or([1.0, 1.0]);
+                    let s = base.get(i).copied().unwrap_or(SIZE_IDENTITY);
                     [s[0] * f, s[1] * f]
                 })
                 .collect();

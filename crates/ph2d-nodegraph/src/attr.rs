@@ -13,6 +13,22 @@
 use crate::port::Dim;
 use std::collections::BTreeMap;
 
+/// The identity of the reserved `size` column: **unit scale**.
+///
+/// A node only writes the columns it changes, so every node that MATERIALIZES
+/// `size` on a stream that had none must start from this base (`motion.scale`,
+/// the Size channel of `oscillator`/`wiggle`/`noise`/`step`/`stagger`/`drive`,
+/// `strobe`, …) — filling the gap with `[0,0]` would collapse every element to
+/// nothing.
+///
+/// **The contract that binds the two ends:** whoever lowers a stream to
+/// instances MUST use this same value as its fallback for an absent `size`. If
+/// the renderer's fallback and the nodes' base disagree, then a node dropped at
+/// its own IDENTITY silently resizes the whole scene — which is exactly what
+/// happened (the shell lowered with `0.4` while every node assumed `1.0`, so a
+/// `motion.scale` at `amount = 1` blew every quad up by 2.5×; doc 39).
+pub const SIZE_IDENTITY: [f32; 2] = [1.0, 1.0];
+
 /// A typed column of per-element values, stored SoA.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Column {

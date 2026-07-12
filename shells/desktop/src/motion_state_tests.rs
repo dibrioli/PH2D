@@ -82,10 +82,11 @@ fn new_builds_the_well_typed_fx_document() {
             "motion.output"
         );
     }
-    // 11 nodes: {grid, oscillator, drop_shadow, move, output}
-    // + {grid, orbit, tint, rgb_split, move, output}. The newest nodes (doc 38) —
-    // `fx.drop_shadow` and `fx.rgb_split`.
-    assert_eq!(state.doc.graph.nodes().len(), 11);
+    // 13 nodes: {grid, scale, oscillator, drop_shadow, move, output}
+    // + {grid, scale, orbit, tint, rgb_split, move, output}. The newest nodes (doc 38) —
+    // `fx.drop_shadow` and `fx.rgb_split`; the `motion.scale` in each chain is how the
+    // document asks for small quads (doc 39).
+    assert_eq!(state.doc.graph.nodes().len(), 13);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -204,6 +205,94 @@ fn the_aberration_is_clean_at_the_axis_and_smears_at_the_rim() {
     let rim = (0..RING).map(fringe).fold(0.0, f32::max);
     assert!(rim > 0.2, "the rim smears (peak fringe {rim})");
     assert!(mean_x(&f.pos) > 3.0, "the ring sits on the right");
+}
+
+/// **A node dropped at its DEFAULT params may not change a single instance** — the
+/// invariant the whole `size` column rests on (doc 39).
+///
+/// Every node that materializes `size` on a stream that has none starts from unit scale
+/// (`SIZE_IDENTITY`). If the LOWERING falls back to anything else, then dropping such a
+/// node at its own identity silently resizes the scene: the shell used to lower with
+/// `0.4`, so a `motion.scale` at `amount = 1` — a no-op by definition — scaled every quad
+/// by 2.5×. Nothing caught it, because both halves were self-consistently wrong.
+///
+/// The guard is behavioural and lowers through the REAL path: cook `grid -> output`, then
+/// cook `grid -> scale(default) -> output`, and demand the RenderInstances be identical.
+/// FALSIFIED the moment the two ends disagree again. The oscillator's Size channel at zero
+/// amplitude is the same claim for the whole channel family (wiggle/noise/step/…, which
+/// share the leaf).
+#[test]
+fn a_node_at_its_default_params_does_not_resize_the_scene() {
+    use ph2d_eval_motion::evaluate_motion_into;
+    use ph2d_nodegraph::attr::SIZE_IDENTITY;
+    use ph2d_nodegraph::cook::Cook;
+
+    let state = MotionState::new();
+    assert_eq!(
+        state.default_size, SIZE_IDENTITY,
+        "the lowering's fallback IS the identity the nodes assume"
+    );
+
+    // `grid -> [maybe a node] -> output`, lowered exactly as the shell lowers it.
+    let render = |insert: Option<(&str, &[(&str, f32)])>| {
+        let mut g = ph2d_nodegraph::graph::Graph::new();
+        let grid = g.add_node("motion.grid");
+        let out = g.add_node("motion.output");
+        let mut tail = grid;
+        if let Some((ty, params)) = insert {
+            let n = g.add_node(ty.to_string());
+            for (p, v) in params {
+                g.set_param(n, *p, *v);
+            }
+            g.connect(ph2d_nodegraph::graph::Edge {
+                from: (tail, 0),
+                to: (n, 0),
+                delayed: false,
+            })
+            .expect("wire");
+            tail = n;
+        }
+        g.connect(ph2d_nodegraph::graph::Edge {
+            from: (tail, 0),
+            to: (out, 0),
+            delayed: false,
+        })
+        .expect("wire");
+        // Lower with the SHELL's own fallbacks — `evaluate_motion`'s 5-arg form would
+        // quietly substitute the headless `[1,1]` and the guard would prove nothing
+        // about the shell (it passed against the real bug until this line was fixed).
+        let mut cook = Cook::new();
+        let mut instances = Vec::new();
+        evaluate_motion_into(
+            &mut cook,
+            &g,
+            &state.registry,
+            out,
+            0.0,
+            state.default_uv_rect,
+            state.default_size,
+            &mut instances,
+        )
+        .expect("cooks");
+        instances.iter().map(|i| i.size).collect::<Vec<_>>()
+    };
+
+    let bare = render(None);
+    assert!(!bare.is_empty(), "the grid renders");
+    assert_eq!(
+        render(Some(("motion.scale", &[]))),
+        bare,
+        "a Scale at amount = 1 is a no-op on the render"
+    );
+    // The channel family: an oscillator aimed at Size with zero amplitude, likewise.
+    assert_eq!(
+        render(Some((
+            "motion.oscillator",
+            &[("channel", 3.0), ("amplitude", 0.0)]
+        ))),
+        bare,
+        "a Size oscillator at zero amplitude is a no-op on the render"
+    );
 }
 
 /// The default document replays bit-identically: the whole boot doc is HR-5 arithmetic

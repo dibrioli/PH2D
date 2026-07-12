@@ -52,9 +52,14 @@ pub(crate) struct MotionState {
     /// single opaque tile, so instances render as clean solid quads instead of a
     /// whole-atlas thumbnail. `[0,0,1,1]` (whole atlas) until the shell overrides.
     pub(crate) default_uv_rect: [f32; 4],
-    /// `size` fallback for instances whose stream carries no `size` column. Kept
-    /// **below** the default grid spacing (`1.0`) so bare instances render as
-    /// distinct dots rather than a merged solid band.
+    /// `size` fallback for instances whose stream carries no `size` column.
+    ///
+    /// **It is the IDENTITY, and it may not be anything else** (`SIZE_IDENTITY`):
+    /// every node that materializes `size` builds it from unit scale, so a
+    /// fallback that disagrees makes those nodes resize the scene just by being
+    /// dropped (doc 39 — it was `0.4`, so a `motion.scale` at `amount = 1` scaled
+    /// every quad by 2.5×). A document that wants small quads says so, with a
+    /// `motion.scale` — it does not get it from a number hidden in the shell.
     pub(crate) default_size: [f32; 2],
     /// F2 probe: the node whose output the editor is reading, and the ring of its
     /// most recent readings (oldest first). UI-only — it never touches the cook.
@@ -87,9 +92,8 @@ impl MotionState {
             // Whole-atlas until the shell wires a real tile (init.rs). Headless
             // callers / tests keep this default.
             default_uv_rect: [0.0, 0.0, 1.0, 1.0],
-            // Distinct dots with clear gaps for a bare generator (a scale/strobe
-            // that writes a `size` column overrides this fallback).
-            default_size: [0.4, 0.4],
+            // The SAME unit scale every node assumes when it materializes `size`.
+            default_size: ph2d_nodegraph::attr::SIZE_IDENTITY,
             probe: None,
             probe_ring: Vec::new(),
         }

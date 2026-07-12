@@ -12,6 +12,7 @@ use ph2d_anim::{AnimTarget, Interp, KeyId};
 use ph2d_core::Playhead;
 
 use crate::prop::PropKind;
+use crate::stack::{LaneMode, StripId, StripLoop};
 use crate::state::{SelectedKey, TimelineState};
 
 /// One key as the panel sees it (a dope-sheet diamond).
@@ -52,6 +53,47 @@ pub struct TrackView {
     pub keys: Vec<KeyView>,
 }
 
+/// One clip strip, as the panel draws it: a named rectangle.
+///
+/// It carries `clip_name` already resolved rather than an index for the panel to
+/// look up — the panel is a pure function of this snapshot, and a strip whose
+/// clip vanished between rebuild and paint would otherwise index into thin air.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StripView {
+    /// Stable identity — what a drag and a context menu hold on to.
+    pub id: StripId,
+    /// The clip it plays.
+    pub clip_name: String,
+    /// Its span on the timeline, in seconds.
+    pub t_start: f64,
+    /// Exclusive end.
+    pub t_end: f64,
+    /// The blend window at the start — the OVERLAP with the strip before it where
+    /// there is one, the authored ease where there is not. The panel draws the
+    /// crossfade from this, and the evaluator weights by the same number, so what
+    /// is drawn and what is heard cannot drift apart.
+    pub blend_in: f64,
+    /// Mirror of `blend_in`, at the end.
+    pub blend_out: f64,
+    /// Whether its source loops, ping-pongs, or plays once.
+    pub loop_mode: StripLoop,
+}
+
+/// One lane of the clip stack.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LaneView {
+    /// Author-visible name.
+    pub name: String,
+    /// A muted lane is REMOVED from the blend — not merely turned down.
+    pub muted: bool,
+    /// Its influence over the stack below it.
+    pub weight: f64,
+    /// How it enters that stack.
+    pub mode: LaneMode,
+    /// Its strips, ordered by start time.
+    pub strips: Vec<StripView>,
+}
+
 /// The whole panel view for one frame.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimelineViewSnapshot {
@@ -82,6 +124,10 @@ pub struct TimelineViewSnapshot {
     pub frame_snap: bool,
     /// Performing (record-during-play) armed.
     pub performing: bool,
+    /// The clip stack, bottom lane first. **Empty is the norm**: a document with
+    /// no stack is one whose active clip drives the scene, and the panel paints no
+    /// lane rows at all.
+    pub lanes: Vec<LaneView>,
     /// Every clip's author-visible name, in document order — the selector's list.
     /// Reused across rebuilds (clear + push).
     pub clips: Vec<String>,
@@ -113,6 +159,35 @@ impl TimelineViewSnapshot {
             self.clips.push(c.name.clone());
         }
         self.active_clip = doc.active_index();
+
+        // The clip stack. The blend windows are asked of the LANE, never recomputed
+        // here — so the crossfade the panel DRAWS is literally the one the
+        // evaluator WEIGHTS by, and the two cannot drift apart.
+        self.lanes.clear();
+        for lane in doc.stack() {
+            let mut strips = Vec::with_capacity(lane.strips.len());
+            for (i, st) in lane.strips.iter().enumerate() {
+                strips.push(StripView {
+                    id: st.id,
+                    clip_name: doc
+                        .clips()
+                        .get(st.clip as usize)
+                        .map_or_else(String::new, |c| c.name.clone()),
+                    t_start: st.t_start,
+                    t_end: st.t_end,
+                    blend_in: lane.blend_in(i),
+                    blend_out: lane.blend_out(i),
+                    loop_mode: st.loop_mode,
+                });
+            }
+            self.lanes.push(LaneView {
+                name: lane.name.clone(),
+                muted: lane.muted,
+                weight: lane.weight,
+                mode: lane.mode,
+                strips,
+            });
+        }
 
         // Markers (reuse buffer).
         self.markers.clear();

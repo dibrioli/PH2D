@@ -18,6 +18,7 @@ use ph2d_core::Playhead;
 
 use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
+use crate::stack::{LaneMode, StripId, StripLoop};
 use crate::state::{SelectedKey, Selection, TimelineState};
 
 /// A single command from the timeline panel (or a headless test).
@@ -245,6 +246,102 @@ pub enum TimelineIntent {
     DeleteClip {
         /// Index into [`crate::TimelineDoc::clips`].
         index: usize,
+    },
+
+    // ── the clip stack (ADR-0115 — each is one undo step) ───────────────────
+    /// Append an empty lane. Refused past [`crate::MAX_LANES`].
+    AddLane,
+    /// Delete a lane and every strip on it.
+    RemoveLane {
+        /// Index into [`crate::TimelineDoc::stack`].
+        lane: usize,
+    },
+    /// Mute a lane — which REMOVES it from the blend, and is not the same as
+    /// turning its weight to zero (a zero-weight lane still asserts its coverage
+    /// and mixes toward its value; a muted one is simply not there).
+    SetLaneMuted {
+        /// Index into the stack.
+        lane: usize,
+        /// The new state.
+        muted: bool,
+    },
+    /// How a lane enters the stack below it.
+    SetLaneMode {
+        /// Index into the stack.
+        lane: usize,
+        /// Override (mix toward) or Additive (apply the delta).
+        mode: LaneMode,
+    },
+    /// A lane's influence, `[0, 1]`.
+    SetLaneWeight {
+        /// Index into the stack.
+        lane: usize,
+        /// Clamped by the evaluator.
+        weight: f64,
+    },
+    /// Place a clip on a lane over `[t_start, t_end)`.
+    AddStrip {
+        /// Index into the stack.
+        lane: usize,
+        /// Index into [`crate::TimelineDoc::clips`].
+        clip: usize,
+        /// Where it starts, in seconds.
+        t_start: f64,
+        /// Where it ends, exclusive.
+        t_end: f64,
+    },
+    /// Remove a strip.
+    RemoveStrip {
+        /// Index into the stack.
+        lane: usize,
+        /// The strip's stable identity — never its index (dragging one past its
+        /// neighbour renumbers both).
+        id: StripId,
+    },
+    /// **Slide a strip**, rigidly: its span moves, its content comes along.
+    MoveStrip {
+        /// Index into the stack.
+        lane: usize,
+        /// Stable identity.
+        id: StripId,
+        /// The new start; the end follows by the span.
+        t_start: f64,
+    },
+    /// **Trim a strip** by one edge — which is NOT a move and NOT a stretch.
+    ///
+    /// Dragging an edge reveals or hides content: the span's edge and the source
+    /// slice's edge travel together, so the frames that remain visible stay put on
+    /// the timeline. Stretching (the same content over a longer span) is `speed`,
+    /// and it is a different gesture on purpose — conflating the two is how a trim
+    /// ends up silently retiming an animation.
+    TrimStrip {
+        /// Index into the stack.
+        lane: usize,
+        /// Stable identity.
+        id: StripId,
+        /// `0` = the start edge, `1` = the end edge.
+        edge: u8,
+        /// Where that edge is being dragged to, in seconds.
+        t: f64,
+    },
+    /// What a strip's source does once it runs past its slice.
+    SetStripLoop {
+        /// Index into the stack.
+        lane: usize,
+        /// Stable identity.
+        id: StripId,
+        /// Once / Loop / PingPong.
+        loop_mode: StripLoop,
+    },
+    /// A strip's playback rate (1.0 = real time).
+    SetStripSpeed {
+        /// Index into the stack.
+        lane: usize,
+        /// Stable identity.
+        id: StripId,
+        /// Clamped away from zero — a strip at speed 0 reads one frame forever,
+        /// which is what `StripLoop::Once` past its end already does, honestly.
+        speed: f64,
     },
 }
 
@@ -508,6 +605,118 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             });
             sync_loop(&state.doc, playhead);
         }
+
+        // ── the clip stack ──────────────────────────────────────────────────
+        // None of these touch the SELECTION: a strip is not a key, and the two
+        // never share an identity space.
+        I::AddLane => edit(state, |doc, _| {
+            let name = doc.fresh_lane_name();
+            doc.add_lane(name);
+        }),
+        I::RemoveLane { lane } => edit(state, |doc, _| {
+            doc.remove_lane(lane);
+        }),
+        I::SetLaneMuted { lane, muted } => edit(state, |doc, _| {
+            if let Some(l) = doc.stack_mut().get_mut(lane) {
+                l.muted = muted;
+            }
+        }),
+        I::SetLaneMode { lane, mode } => edit(state, |doc, _| {
+            if let Some(l) = doc.stack_mut().get_mut(lane) {
+                l.mode = mode;
+            }
+        }),
+        I::SetLaneWeight { lane, weight } => edit(state, |doc, _| {
+            if let Some(l) = doc.stack_mut().get_mut(lane) {
+                l.weight = weight.clamp(0.0, 1.0); // CLAMP-OK: constant bounds
+            }
+        }),
+        I::AddStrip {
+            lane,
+            clip,
+            t_start,
+            t_end,
+        } => edit(state, |doc, _| {
+            doc.add_strip(lane, clip, t_start.max(0.0), t_end.max(0.0));
+        }),
+        I::RemoveStrip { lane, id } => edit(state, |doc, _| {
+            doc.remove_strip(lane, id);
+        }),
+        I::MoveStrip { lane, id, t_start } => edit(state, |doc, _| {
+            if let Some(s) = doc.strip_mut(lane, id) {
+                let span = s.span();
+                s.t_start = t_start.max(0.0);
+                s.t_end = s.t_start + span; // rigid: the span rides along
+            }
+        }),
+        I::TrimStrip { lane, id, edge, t } => edit(state, |doc, _| {
+            if let Some(s) = doc.strip_mut(lane, id) {
+                trim_strip(s, edge, t);
+            }
+        }),
+        I::SetStripLoop {
+            lane,
+            id,
+            loop_mode,
+        } => edit(state, |doc, _| {
+            if let Some(s) = doc.strip_mut(lane, id) {
+                s.loop_mode = loop_mode;
+            }
+        }),
+        I::SetStripSpeed { lane, id, speed } => edit(state, |doc, _| {
+            if let Some(s) = doc.strip_mut(lane, id) {
+                s.speed = speed.clamp(MIN_STRIP_SPEED, MAX_STRIP_SPEED); // CLAMP-OK: const bounds
+            }
+        }),
+    }
+}
+
+/// The slowest and fastest a strip may play. Zero would freeze the source on one
+/// frame forever — which `StripLoop::Once` past its end already expresses, and
+/// honestly; a negative speed would run it backwards, which is `PingPong`'s job.
+const MIN_STRIP_SPEED: f64 = 0.01;
+/// Mirror of [`MIN_STRIP_SPEED`].
+const MAX_STRIP_SPEED: f64 = 100.0;
+
+/// Move one edge of a strip, taking the source slice with it.
+///
+/// **A trim is not a stretch.** The frames that stay visible must stay WHERE they
+/// were on the timeline, so the span's edge and the slice's edge travel together
+/// (by `speed`, which is what converts timeline seconds into clip seconds).
+/// Dragging the start edge one second to the right hides the clip's first second
+/// — it does not squeeze the whole clip into a shorter box.
+///
+/// Neither edge may cross the other: a strip of negative span is a strip that
+/// covers no time and paints inside-out.
+fn trim_strip(s: &mut crate::ClipStrip, edge: u8, t: f64) {
+    let min_span = 1.0 / 240.0; // LITERAL-OK: a quarter of a frame at 60 fps
+    if edge == 0 {
+        let t_start = t.max(0.0).min(s.t_end - min_span);
+        s.src_in += (t_start - s.t_start) * s.speed;
+        s.t_start = t_start;
+    } else {
+        let t_end = t.max(s.t_start + min_span);
+        s.src_out += (t_end - s.t_end) * s.speed;
+        s.t_end = t_end;
+    }
+}
+
+/// Restore every invariant an edit may have broken. Idempotent, cheap, and the
+/// SINGLE place either one is re-derived — which is the whole point: an invariant
+/// that any authoring path can break needs exactly one place that fixes it, or it
+/// is really N places and one of them will be forgotten.
+///
+/// 1. **Roving keys**: their time is a function of their neighbours' values, so it
+///    is re-derived after every add/move/scale/paste/value/interp/rove.
+/// 2. **Strip order**: a lane's strips are sorted by start time, and that is what
+///    `ClipLane::weight_at` reads to find the neighbour a crossfade blends with.
+///    Drag a strip past its neighbour and the order is stale — the drawn crossfade
+///    and the evaluated one would disagree, which is exactly the bug class that
+///    "one place" exists to prevent.
+fn settle(doc: &mut TimelineDoc) {
+    doc.active_clip_mut().resolve_roving();
+    for lane in doc.stack_mut() {
+        lane.resort();
     }
 }
 
@@ -560,12 +769,12 @@ fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selecti
     // cheap, and folded into the same undo step as the edit it follows.
     if state.history.is_open() {
         f(&mut state.doc, &mut state.selection);
-        state.doc.active_clip_mut().resolve_roving();
+        settle(&mut state.doc);
         return;
     }
     state.history.begin(&state.doc);
     f(&mut state.doc, &mut state.selection);
-    state.doc.active_clip_mut().resolve_roving();
+    settle(&mut state.doc);
     state.history.commit_if_changed(&state.doc);
 }
 

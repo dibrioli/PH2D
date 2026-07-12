@@ -51,7 +51,7 @@ pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::{TimelineIntent, apply_intent, snap_time};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::{Algebra, PropKind};
-pub use snapshot::{KeyView, TimelineViewSnapshot, TrackView};
+pub use snapshot::{KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};
 pub use speed::{sample_speed, segment_endpoint_speed, speed_extent};
 pub use stack::{ClipLane, ClipStrip, LaneMode, StripId, StripLoop};
 pub use stack_edit::MAX_LANES;

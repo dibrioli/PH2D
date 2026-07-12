@@ -299,3 +299,246 @@ fn the_lane_count_is_bounded_because_the_panel_ids_are() {
         "the doc refuses what the panel cannot address"
     );
 }
+
+// ── Intents: one gesture, one undo step (ADR-0115 acceptance §3.9's data half) ─
+
+mod intents {
+    use ph2d_core::Playhead;
+    use ph2d_timeline::{
+        ClipStrip, LaneMode, StripLoop, TimelineIntent as I, TimelineState, apply_intent,
+    };
+
+    fn app() -> (TimelineState, Playhead) {
+        (TimelineState::default(), Playhead::default())
+    }
+
+    fn run(st: &mut TimelineState, ph: &mut Playhead, i: I) {
+        apply_intent(st, ph, i);
+    }
+
+    /// A strip authored, dragged, trimmed and deleted — each one gesture, each one
+    /// Ctrl+Z. Nothing here touches the panel: intents are pure over
+    /// `(state, playhead)`, so the whole feature is testable with no UI at all.
+    #[test]
+    fn every_stack_intent_is_exactly_one_undo_step() {
+        let (mut st, mut ph) = app();
+        run(&mut st, &mut ph, I::AddLane);
+        assert_eq!(st.doc.stack().len(), 1);
+
+        run(
+            &mut st,
+            &mut ph,
+            I::AddStrip {
+                lane: 0,
+                clip: 0,
+                t_start: 1.0,
+                t_end: 3.0,
+            },
+        );
+        let id = st.doc.stack()[0].strips[0].id;
+
+        run(
+            &mut st,
+            &mut ph,
+            I::MoveStrip {
+                lane: 0,
+                id,
+                t_start: 5.0,
+            },
+        );
+        assert_eq!(st.doc.strip(0, id).map(ClipStrip::span), Some(2.0), "rigid");
+
+        run(&mut st, &mut ph, I::Undo);
+        assert_eq!(
+            st.doc.strip(0, id).map(|s| s.t_start),
+            Some(1.0),
+            "one Ctrl+Z puts the strip back"
+        );
+        run(&mut st, &mut ph, I::Undo);
+        assert!(
+            st.doc.stack()[0].strips.is_empty(),
+            "and one more removes it"
+        );
+        run(&mut st, &mut ph, I::Undo);
+        assert!(st.doc.stack().is_empty(), "and one more, the lane");
+    }
+
+    /// **A trim is not a stretch.** Dragging the start edge one second in must HIDE
+    /// the clip's first second, not squeeze the whole clip into a smaller box. The
+    /// tell is `src_in`: it has to travel with the edge.
+    #[test]
+    fn trimming_an_edge_moves_the_source_slice_with_it() {
+        let (mut st, mut ph) = app();
+        run(&mut st, &mut ph, I::AddLane);
+        run(
+            &mut st,
+            &mut ph,
+            I::AddStrip {
+                lane: 0,
+                clip: 0,
+                t_start: 0.0,
+                t_end: 4.0,
+            },
+        );
+        let id = st.doc.stack()[0].strips[0].id;
+        st.doc.strip_mut(0, id).unwrap().src_out = 4.0; // a 4 s clip, played 1:1
+
+        run(
+            &mut st,
+            &mut ph,
+            I::TrimStrip {
+                lane: 0,
+                id,
+                edge: 0,
+                t: 1.0,
+            },
+        );
+        let s = st.doc.strip(0, id).unwrap();
+        assert_eq!(s.t_start, 1.0);
+        assert_eq!(
+            s.src_in, 1.0,
+            "the clip's first second is HIDDEN, not compressed"
+        );
+        assert_eq!(s.src_out, 4.0, "and the rest of the slice did not move");
+    }
+
+    #[test]
+    fn an_edge_cannot_cross_the_other_and_paint_the_strip_inside_out() {
+        let (mut st, mut ph) = app();
+        run(&mut st, &mut ph, I::AddLane);
+        run(
+            &mut st,
+            &mut ph,
+            I::AddStrip {
+                lane: 0,
+                clip: 0,
+                t_start: 0.0,
+                t_end: 2.0,
+            },
+        );
+        let id = st.doc.stack()[0].strips[0].id;
+
+        run(
+            &mut st,
+            &mut ph,
+            I::TrimStrip {
+                lane: 0,
+                id,
+                edge: 0,
+                t: 9.0, // way past the end
+            },
+        );
+        let s = st.doc.strip(0, id).unwrap();
+        assert!(
+            s.t_start < s.t_end,
+            "a strip of negative span covers no time"
+        );
+    }
+
+    /// Dragging a strip past its neighbour renumbers the lane — and the ORDER is
+    /// what the crossfade reads to find that neighbour. `settle()` restores it at
+    /// the single choke point, so the drawn blend and the evaluated one cannot
+    /// disagree.
+    #[test]
+    fn a_strip_dragged_past_its_neighbour_leaves_the_lane_sorted() {
+        let (mut st, mut ph) = app();
+        run(&mut st, &mut ph, I::AddLane);
+        for (a, b) in [(0.0, 2.0), (4.0, 6.0)] {
+            run(
+                &mut st,
+                &mut ph,
+                I::AddStrip {
+                    lane: 0,
+                    clip: 0,
+                    t_start: a,
+                    t_end: b,
+                },
+            );
+        }
+        let first = st.doc.stack()[0].strips[0].id;
+        run(
+            &mut st,
+            &mut ph,
+            I::MoveStrip {
+                lane: 0,
+                id: first,
+                t_start: 8.0,
+            },
+        );
+
+        let starts: Vec<f64> = st.doc.stack()[0].strips.iter().map(|s| s.t_start).collect();
+        assert_eq!(starts, [4.0, 8.0], "the lane re-sorted itself");
+        assert_eq!(
+            st.doc.stack()[0].index_of(first),
+            Some(1),
+            "and the strip we dragged is the one that moved"
+        );
+    }
+
+    #[test]
+    fn lane_and_strip_settings_round_trip_through_intents() {
+        let (mut st, mut ph) = app();
+        run(&mut st, &mut ph, I::AddLane);
+        run(
+            &mut st,
+            &mut ph,
+            I::AddStrip {
+                lane: 0,
+                clip: 0,
+                t_start: 0.0,
+                t_end: 2.0,
+            },
+        );
+        let id = st.doc.stack()[0].strips[0].id;
+
+        run(
+            &mut st,
+            &mut ph,
+            I::SetLaneMode {
+                lane: 0,
+                mode: LaneMode::Additive,
+            },
+        );
+        run(
+            &mut st,
+            &mut ph,
+            I::SetLaneWeight {
+                lane: 0,
+                weight: 9.0, // out of range on purpose
+            },
+        );
+        run(
+            &mut st,
+            &mut ph,
+            I::SetLaneMuted {
+                lane: 0,
+                muted: true,
+            },
+        );
+        run(
+            &mut st,
+            &mut ph,
+            I::SetStripLoop {
+                lane: 0,
+                id,
+                loop_mode: StripLoop::PingPong,
+            },
+        );
+        run(
+            &mut st,
+            &mut ph,
+            I::SetStripSpeed {
+                lane: 0,
+                id,
+                speed: 0.0, // a strip frozen on one frame is not a speed
+            },
+        );
+
+        let lane = &st.doc.stack()[0];
+        assert_eq!(lane.mode, LaneMode::Additive);
+        assert_eq!(lane.weight, 1.0, "weight is clamped, not trusted");
+        assert!(lane.muted);
+        assert_eq!(lane.strips[0].loop_mode, StripLoop::PingPong);
+        assert!(lane.strips[0].speed > 0.0, "speed never reaches zero");
+    }
+}

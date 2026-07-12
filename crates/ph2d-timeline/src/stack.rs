@@ -237,7 +237,8 @@ impl ClipLane {
 
     /// The blend window at the START of strip `i`: the overlap with the strip
     /// before it, or the authored `ease_in` when it has no neighbour there.
-    fn blend_in(&self, i: usize) -> f64 {
+    #[must_use]
+    pub fn blend_in(&self, i: usize) -> f64 {
         let s = &self.strips[i];
         let overlap = i
             .checked_sub(1)
@@ -251,7 +252,8 @@ impl ClipLane {
     }
 
     /// The blend window at the END of strip `i`. Mirror of [`Self::blend_in`].
-    fn blend_out(&self, i: usize) -> f64 {
+    #[must_use]
+    pub fn blend_out(&self, i: usize) -> f64 {
         let s = &self.strips[i];
         let overlap = self
             .strips

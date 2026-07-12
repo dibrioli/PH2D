@@ -66,6 +66,16 @@ pub(crate) enum Interaction {
         last: (f32, f32),
         started: bool,
     },
+    /// Dragging a wire's routing waypoint (F2, doc 44). `last` is the previous cursor
+    /// position (screen); `started` brackets the undo step on the first real movement, so a
+    /// click that merely grazes a dot does not mint an undo entry.
+    DragWaypoint {
+        to_node: u32,
+        to_port: u16,
+        index: usize,
+        last: (f32, f32),
+        started: bool,
+    },
     /// Dragging one of a backdrop's bottom grippers — grows/shrinks it in place.
     /// `left` is the corner grabbed (the opposite edge stays anchored).
     ResizeBackdrop {

@@ -31,7 +31,7 @@ fn a_cycle_closing_connect_becomes_a_pre_edge() {
     let mut toasts = ToastQueue::new();
 
     // spring.out -> spring.state closes a (self-)cycle: the shell converts it.
-    apply_connect(&mut motion, &mut toasts, spring.0, 0, spring.0, 1);
+    super::connect::apply_connect(&mut motion, &mut toasts, spring.0, 0, spring.0, 1);
     let edge = motion
         .doc
         .graph
@@ -132,7 +132,7 @@ fn wiring_a_chain_into_forces_replumbs_the_state_entry() {
 
     motion.doc.graph = g;
     let mut toasts = ToastQueue::new();
-    apply_connect(&mut motion, &mut toasts, drag.0, 0, integrate.0, 1);
+    super::connect::apply_connect(&mut motion, &mut toasts, drag.0, 0, integrate.0, 1);
 
     let edges = motion.doc.graph.edges();
     assert!(
@@ -201,7 +201,7 @@ fn a_wire_dragging_a_sequential_node_under_a_time_remap_is_refused() {
     let mut toasts = ToastQueue::new();
 
     // spring -> remap.in would put the spring inside the remapped scope.
-    apply_connect(&mut motion, &mut toasts, spring.0, 0, remap.0, 0);
+    super::connect::apply_connect(&mut motion, &mut toasts, spring.0, 0, remap.0, 0);
     assert!(
         !motion.doc.graph.edges().iter().any(|e| e.to == (remap, 0)),
         "the wire that would scope a sequential node must be refused"
@@ -218,7 +218,7 @@ fn a_wire_dragging_a_sequential_node_under_a_time_remap_is_refused() {
         })
         .unwrap();
     assert!(
-        scopes_a_sequential_node(&forced),
+        super::connect::scopes_a_sequential_node(&forced),
         "the guard must be what rejected the wire (not some other refusal)"
     );
     let scopes = ph2d_node_motion_time_remap::time_scopes(&forced, &motion.registry);
@@ -231,7 +231,7 @@ fn a_wire_dragging_a_sequential_node_under_a_time_remap_is_refused() {
     );
 
     // The grid alone (no `pre` anywhere upstream) connects and cooks fine.
-    apply_connect(&mut motion, &mut toasts, grid.0, 0, remap.0, 0);
+    super::connect::apply_connect(&mut motion, &mut toasts, grid.0, 0, remap.0, 0);
     assert!(
         motion
             .doc
@@ -241,7 +241,7 @@ fn a_wire_dragging_a_sequential_node_under_a_time_remap_is_refused() {
             .any(|e| e.from == (grid, 0) && e.to == (remap, 0)),
         "an ordinary subtree is welcome under a Time Remap"
     );
-    assert!(!scopes_a_sequential_node(&motion.doc.graph));
+    assert!(!super::connect::scopes_a_sequential_node(&motion.doc.graph));
     let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
     assert!(
         Cook::new()
@@ -278,7 +278,7 @@ fn plumbing_reheals_on_delete_and_managed_pre_is_not_hand_deletable() {
     }
     motion.doc.graph = g;
     let mut toasts = ToastQueue::new();
-    apply_connect(&mut motion, &mut toasts, drag.0, 0, integrate.0, 1);
+    super::connect::apply_connect(&mut motion, &mut toasts, drag.0, 0, integrate.0, 1);
 
     // The managed badge refuses the delete gesture...
     let before_len = motion.doc.graph.edges().len();

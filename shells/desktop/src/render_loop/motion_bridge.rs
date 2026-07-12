@@ -49,6 +49,14 @@ mod edit;
 #[path = "motion_bridge_readout.rs"]
 mod readout;
 
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_waypoints.rs"]
+mod waypoints;
+
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_connect.rs"]
+mod connect;
+
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
@@ -185,6 +193,8 @@ pub(super) fn dispatch(
             // of the pump's memo (`Cook::peek`, never a second cook). A node no sink
             // consumes has no entry and stays blank — which is the diagnosis, not a gap.
             readout::stamp(motion, &mut snap);
+            // The wire routing (doc 44) — decoration on the document, like the backdrops.
+            waypoints::stamp(motion, &mut snap);
             snap
         }));
     }
@@ -333,7 +343,7 @@ fn apply_graph_intents(
                 from_port,
                 to_node,
                 to_port,
-            } => apply_connect(motion, toasts, from_node, from_port, to_node, to_port),
+            } => connect::apply_connect(motion, toasts, from_node, from_port, to_node, to_port),
             GraphIntent::Disconnect { to_node, to_port } => {
                 apply_disconnect(motion, toasts, to_node, to_port);
             }
@@ -357,6 +367,26 @@ fn apply_graph_intents(
                 edit::duplicate(motion, nodes);
             }
             GraphIntent::CutWires { targets } => edit::cut_wires(motion, toasts, targets),
+            // F2 — wire routing (doc 44). None of these re-cook: a waypoint is decoration.
+            GraphIntent::AddWaypoint {
+                to_node,
+                to_port,
+                index,
+                x,
+                y,
+            } => waypoints::add(motion, to_node, to_port, index, x, y),
+            GraphIntent::MoveWaypoint {
+                to_node,
+                to_port,
+                index,
+                dx,
+                dy,
+            } => waypoints::translate(motion, to_node, to_port, index, dx, dy),
+            GraphIntent::RemoveWaypoint {
+                to_node,
+                to_port,
+                index,
+            } => waypoints::remove(motion, to_node, to_port, index),
             GraphIntent::SmartConnect {
                 from_node,
                 from_port,
@@ -415,93 +445,12 @@ fn apply_graph_intents(
 /// never hand-wired — `plumbing` derives it from the `forces` port
 /// (docs/Motion Nodes/03).
 #[cfg(feature = "panel-motion-graph")]
-fn apply_connect(
-    motion: &mut MotionState,
-    toasts: &mut ToastQueue,
-    from_node: u32,
-    from_port: u16,
-    to_node: u32,
-    to_port: u16,
-) {
-    use ph2d_editor::Toast;
-    use ph2d_nodegraph::graph::{Edge, EdgeError, NodeId};
-    let fwd = Edge {
-        from: (NodeId(from_node), from_port),
-        to: (NodeId(to_node), to_port),
-        delayed: false,
-    };
-    let mut trial = motion.doc.graph.clone();
-    // A feedback port (or a plumbed branch head) holds an engine-managed `pre`;
-    // the user's forward wire takes precedence — clear it here and let the
-    // post-commit reconcile re-plumb the state entry at the branch's new head.
-    // An expert (non-managed) `pre` is NOT cleared: the connect then fails with
-    // the ordinary occupied-port refusal.
-    plumbing::clear_managed_pre_at(&mut trial, &motion.registry, NodeId(to_node), to_port);
-    let (attempt, edge) = match trial.connect(fwd) {
-        Err(EdgeError::WouldCycle) => {
-            let pre_edge = Edge {
-                delayed: true,
-                ..fwd
-            };
-            (trial.connect(pre_edge), pre_edge)
-        }
-        other => (other, fwd),
-    };
-    match attempt {
-        Err(e) => {
-            toasts.push(Toast::warning(connect_err_msg(e)));
-        }
-        Ok(()) => {
-            let rejected = match trial.validate(&motion.registry) {
-                Ok(()) => false,
-                Err(viols) => viols.iter().any(|v| violation_blocks_edge(v, edge)),
-            };
-            if rejected {
-                toasts.push(Toast::warning("Can't connect: incompatible ports"));
-            } else if scopes_a_sequential_node(&trial) {
-                // A spring / integrate upstream of a Time Remap would be asked
-                // to integrate a recurrence on a rewritten clock — the cook
-                // refuses it (`SequentialInTimeScope`) and the scene goes dark.
-                // Refuse the WIRE instead, with the reason (M2.N1).
-                toasts.push(Toast::warning(
-                    "Can't connect: Time Remap can't rewrite time for a spring or integrate upstream",
-                ));
-            } else {
-                let pre = motion.doc.clone();
-                motion.doc.graph = trial;
-                plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
-                motion.history.push_undo(pre);
-                motion.pump.mark_dirty();
-                if edge.delayed {
-                    toasts.push(Toast::info("Connected as 1-tick feedback (pre)"));
-                }
-            }
-        }
-    }
-}
-
-/// Does any `motion.time_remap` in `graph` now have a **sequential** node (a
-/// spring / integrate, i.e. one fed by a `pre` edge) in its upstream subtree?
-/// Such a node integrates a recurrence over the outer tick and has no defined
-/// behaviour on a rewritten clock (`CookError::SequentialInTimeScope`), so the
-/// editor refuses the wire that would create the situation rather than let the
-/// cook drop the sink and the scene go dark (M2.N1, plan §1.5).
-#[cfg(feature = "panel-motion-graph")]
-fn scopes_a_sequential_node(graph: &ph2d_nodegraph::graph::Graph) -> bool {
-    graph
-        .nodes()
-        .iter()
-        .filter(|n| n.type_name == ph2d_node_motion_time_remap::MANIFEST.name)
-        .any(|n| ph2d_node_motion_time_remap::scopes_a_sequential_node(graph, n.id))
-}
-
-/// Apply a `Disconnect` intent. An engine-managed `pre` (the plumbing badge)
-/// is not hand-deletable — it would re-derive on the next reconcile anyway —
-/// so the gesture steers the user to the edit that DOES change topology.
-/// Everything else disconnects, then the plumbing re-heals (a chain pulled off
-/// a `forces` port gets the host its self-loop back; a chain split mid-way
-/// moves the state entry to the new dangling head).
-#[cfg(feature = "panel-motion-graph")]
+/// Apply a `Disconnect` intent. An engine-managed `pre` (the plumbing badge) is not
+/// hand-deletable — it would re-derive on the next reconcile anyway — so the gesture steers
+/// the user to the edit that DOES change topology. Everything else disconnects, the plumbing
+/// re-heals (a chain pulled off a `forces` port gets its host's self-loop back; a chain split
+/// mid-way moves the state entry to the new dangling head), and the wire's routing dies with
+/// it (doc 44).
 fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: u32, to_port: u16) {
     use ph2d_nodegraph::graph::NodeId;
     if plumbing::is_managed_pre(
@@ -523,6 +472,9 @@ fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: 
         .is_some()
     {
         plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+        // The wire is gone, so its routing goes with it — INSIDE this undo step, so one
+        // Ctrl+Z brings the wire and its waypoints back together (doc 44).
+        waypoints::prune(motion);
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();
     }
@@ -543,6 +495,7 @@ fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>) {
     }
     if changed {
         plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+        waypoints::prune(motion); // the deleted nodes' wires took their routing with them
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();
     }
@@ -568,36 +521,9 @@ fn output_nodes(graph: &ph2d_nodegraph::graph::Graph) -> Vec<ph2d_nodegraph::gra
 
 /// Human-readable reason a structural `connect` was rejected (add-menu toast).
 #[cfg(feature = "panel-motion-graph")]
-fn connect_err_msg(e: ph2d_nodegraph::graph::EdgeError) -> &'static str {
-    use ph2d_nodegraph::graph::EdgeError;
-    match e {
-        EdgeError::WouldCycle => "Can't connect: would create a cycle",
-        EdgeError::InputAlreadyConnected => "Can't connect: input already wired",
-        EdgeError::UnknownNode => "Can't connect: unknown node",
-    }
-}
-
-/// Does a validation violation reject *this* just-added edge (as opposed to a
-/// pre-existing problem elsewhere)? Only a type mismatch or a membrane crossing
-/// on the same endpoints blocks the connect.
-#[cfg(feature = "panel-motion-graph")]
-fn violation_blocks_edge(
-    v: &ph2d_nodegraph::graph::Violation,
-    edge: ph2d_nodegraph::graph::Edge,
-) -> bool {
-    use ph2d_nodegraph::graph::Violation;
-    match v {
-        Violation::TypeMismatch { from, to } | Violation::Membrane { from, to } => {
-            *from == edge.from && *to == edge.to
-        }
-        _ => false,
-    }
-}
-
 /// Build the addable-node catalog from the registry (canonical name + English
 /// display label + category), sorted by category then label so the menu groups
 /// by color (the palette teaches the library map, plan §2.4).
-#[cfg(feature = "panel-motion-graph")]
 fn build_catalog(
     registry: &ph2d_node_registry::NodeRegistry,
 ) -> Vec<ph2d_panel_motion_graph::NodeChoice> {

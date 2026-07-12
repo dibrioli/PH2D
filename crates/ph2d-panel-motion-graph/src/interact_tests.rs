@@ -731,6 +731,7 @@ fn the_knife_cuts_the_wires_it_crosses_then_disarms() {
         to_port: 0,
         delayed: false,
         out_domain: Domain::Instances,
+        waypoints: vec![],
     }];
     let mut st = MotionGraphPanelState::default();
     let bg = GraphHitKind::Background;

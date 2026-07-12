@@ -23,7 +23,12 @@
 //! [backdrop]
 //! z <base_z>
 //! b <id> <x> <y> <w> <h> <color> <title...>
+//! w <to_node> <to_port> <x0> <y0> <x1> <y1> ...
 //! ```
+//!
+//! The section is really *the UI-only section* — it carries the backdrops **and** the wire
+//! waypoints (`w`, doc 44), both of which are decoration that never reaches the cook. Its
+//! name is historical; splitting it would break every document already on disk for nothing.
 //!
 //! A graph-only text (no `[backdrop]` section) still loads — `base_z` defaults to
 //! 0 and there are no backdrops — so the format is backward-compatible with a bare
@@ -35,6 +40,9 @@
 //! `ph2d-vec-edit::History`): cheap because the doc is `Clone` (a `Graph` clone +
 //! a small `Vec` + a `u32`). `begin` at gesture start, `commit_if_changed` at the
 //! end (no-op if nothing changed), or `push_undo` for an atomic op.
+
+mod waypoint;
+pub use waypoint::Waypoints;
 
 use ph2d_nodegraph::format::ParseError;
 use ph2d_nodegraph::graph::Graph;
@@ -68,6 +76,9 @@ pub struct MotionDoc {
     pub graph: Graph,
     /// UI-only group backdrops (see [`Backdrop`]).
     pub backdrops: Vec<Backdrop>,
+    /// UI-only wire routing points (see [`Waypoints`]) — keyed by the input each wire
+    /// lands on. Like the backdrops: decoration, never part of the cook.
+    pub waypoints: Vec<Waypoints>,
     /// Base z-order the sink columns offset from (`base_z + quantized(z)`).
     pub base_z: u32,
 }
@@ -97,6 +108,8 @@ impl MotionDoc {
                 b.id, b.x, b.y, b.w, b.h, b.color, b.title
             );
         }
+        // The wire routing points — the section's other UI-only citizen (doc 44).
+        waypoint::emit(&mut out, &self.waypoints);
         out
     }
 
@@ -115,12 +128,19 @@ impl MotionDoc {
 
         let mut base_z = 0u32;
         let mut backdrops: Vec<Backdrop> = Vec::new();
+        let mut waypoints: Vec<Waypoints> = Vec::new();
         let mut seen = std::collections::BTreeSet::new();
         for line in backdrop_part
             .lines()
             .map(str::trim)
             .filter(|l| !l.is_empty())
         {
+            // A wire's routing points (doc 44). Malformed → rejected, never half-read.
+            if line.starts_with("w ") {
+                waypoints
+                    .push(waypoint::parse(line).ok_or_else(|| ParseError::BadLine(line.into()))?);
+                continue;
+            }
             // `b` carries a trailing free-text title, so split into at most 8 fields
             // on single spaces (to_text guarantees single-space separators). Other
             // records use whitespace-collapsing splits.
@@ -173,6 +193,7 @@ impl MotionDoc {
         Ok(Self {
             graph,
             backdrops,
+            waypoints,
             base_z,
         })
     }
@@ -363,6 +384,7 @@ mod tests {
         g.set_param(grid, "rows", 4.0);
         MotionDoc {
             graph: g,
+            waypoints: vec![],
             backdrops: vec![
                 Backdrop {
                     id: 1,

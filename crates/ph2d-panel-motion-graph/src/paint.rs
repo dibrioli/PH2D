@@ -361,7 +361,9 @@ fn draw_wire(
         draw_pre_badges(ctx, e, p0, p3, view, theme, hovered);
         return;
     }
-    let pts = wire_polyline(p0, p3, view.zoom, 20);
+    // Routed through its waypoints — the SAME path the knife and the hover use (doc 44).
+    let route = crate::route::route(snap, e, view).unwrap_or_else(|| vec![p0, p3]);
+    let pts = wire_path(&route, view.zoom, 20);
     // Hovered wires draw thicker and in a bright emphasis colour so the delete
     // target is unmistakable regardless of the port domain hue; others keep
     // their domain colour and normal width.
@@ -371,6 +373,18 @@ fn draw_wire(
         (WIRE_W, domain_token(e.out_domain))
     };
     stroke_polyline(ctx.scene, &pts, base_w * view.zoom, resolve(token, theme));
+
+    // The routing handles, on the wire's own colour so a dot always reads as belonging to
+    // the wire it bends. Drawn only when the wire HAS them: an unrouted wire gains no chrome.
+    for (hx, hy) in crate::route::handles(e, view) {
+        fill_circle(
+            ctx.scene,
+            hx,
+            hy,
+            crate::route::HANDLE_R,
+            resolve(token, theme),
+        );
+    }
 }
 
 /// The `pre` edge's visual: a ring-and-dot badge just outside each end's
@@ -531,6 +545,27 @@ pub(crate) fn wire_polyline(
     cubic_polyline(p0, (p0.0 + dx, p0.1), (p3.0 - dx, p3.1), p3, n)
 }
 
+/// The polyline of a wire ROUTED through its waypoints — the same cubic as
+/// [`wire_polyline`], chained leg by leg along `route` (`[source, waypoints…, target]`).
+///
+/// **Everything that touches a wire goes through here**: what is drawn, what the knife
+/// crosses, what the pointer hovers. Route in the painter alone and the wire would *look*
+/// bent while the knife still cut it along the straight line it used to take — you would
+/// slash empty canvas and watch a wire a hand's width away fall (doc 44).
+///
+/// A route of one leg is exactly [`wire_polyline`], so an unrouted wire is byte-identical
+/// to what it was before waypoints existed.
+pub(crate) fn wire_path(route: &[(f32, f32)], zoom: f32, n: usize) -> Vec<(f32, f32)> {
+    let mut out: Vec<(f32, f32)> = Vec::with_capacity(route.len().saturating_sub(1) * n + 1);
+    for leg in route.windows(2) {
+        let pts = wire_polyline(leg[0], leg[1], zoom, n);
+        // Skip the first point of every leg but the first: it is the previous leg's last.
+        let skip = usize::from(!out.is_empty());
+        out.extend(pts.into_iter().skip(skip));
+    }
+    out
+}
+
 /// How finely a wire is sampled when testing it against the knife. Denser than the
 /// draw sampling, for the same reason the hit path is: a coarse polyline can pass a
 /// stroke that visibly crosses the curve between two samples.
@@ -553,8 +588,10 @@ pub(crate) fn wires_crossed(
         .iter()
         .filter(|e| !e.delayed)
         .filter(|e| {
-            wire_endpoints(snap, e, view).is_some_and(|(p0, p3)| {
-                wire_polyline(p0, p3, view.zoom, KNIFE_SAMPLES)
+            // The ROUTED path — the knife must cut the wire where the artist SEES it, not
+            // along the straight line it would have taken with no waypoints (doc 44).
+            crate::route::route(snap, e, view).is_some_and(|r| {
+                wire_path(&r, view.zoom, KNIFE_SAMPLES)
                     .windows(2)
                     .any(|s| segments_cross(a, b, s[0], s[1]))
             })

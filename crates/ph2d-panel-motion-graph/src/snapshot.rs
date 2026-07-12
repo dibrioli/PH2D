@@ -54,7 +54,10 @@ pub struct GraphNodeView {
 }
 
 /// One wire in the view. Its color is the source port's [`Domain`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// Not `Eq`: the routing waypoints are float coordinates. (`PartialEq` is what the panel's
+/// snapshot diffing needs; nothing keys a map by an edge view.)
+#[derive(Clone, Debug, PartialEq)]
 pub struct GraphEdgeView {
     pub from_node: u32,
     pub from_port: u16,
@@ -62,6 +65,11 @@ pub struct GraphEdgeView {
     pub to_port: u16,
     pub delayed: bool,
     pub out_domain: Domain,
+    /// **Routing points** in graph space, in order from the source socket toward the target
+    /// (F2, doc 44). Empty = a straight wire, drawn exactly as it was before waypoints
+    /// existed. Decoration: they live on the `MotionDoc`, never on the `Edge`, and moving
+    /// one cannot dirty the cook.
+    pub waypoints: Vec<(f32, f32)>,
 }
 
 /// One backdrop (group region) in the view — the document's `Backdrop`, resolved
@@ -230,6 +238,32 @@ pub enum GraphIntent {
     /// `(to_node, to_port)`. **One undo step for the whole stroke** — a knife that
     /// cut five wires and needed five Ctrl+Z would be a trap.
     CutWires { targets: Vec<(u32, u16)> },
+    /// Add a routing waypoint to the wire landing on `(to_node, to_port)`, at `index` in
+    /// its order (double-click a wire). One undo step; **never re-cooks** — a waypoint is
+    /// decoration (doc 44), and the `is_dirty` guard proves it.
+    AddWaypoint {
+        to_node: u32,
+        to_port: u16,
+        index: usize,
+        x: f32,
+        y: f32,
+    },
+    /// Move a waypoint by an INCREMENTAL graph-space delta, applied live each frame so the
+    /// dot tracks the cursor. Bracketed by [`Self::BeginDrag`]/[`Self::EndDrag`], exactly
+    /// like a node drag — one undo step for the whole gesture. Never re-cooks.
+    MoveWaypoint {
+        to_node: u32,
+        to_port: u16,
+        index: usize,
+        dx: f32,
+        dy: f32,
+    },
+    /// Remove a waypoint (double-click its handle). One undo step; never re-cooks.
+    RemoveWaypoint {
+        to_node: u32,
+        to_port: u16,
+        index: usize,
+    },
 }
 
 /// One addable node type in the add-node menu (M1.E7). Copy — the canonical
@@ -417,6 +451,9 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
             to_port: e.to.1,
             delayed: e.delayed,
             out_domain: source_domain(graph, registry, e.from.0, e.from.1),
+            // The routing points live on the DOCUMENT, which `snapshot_from` cannot see —
+            // the shell stamps them in afterwards, exactly as it does the backdrops.
+            waypoints: Vec::new(),
         })
         .collect();
 

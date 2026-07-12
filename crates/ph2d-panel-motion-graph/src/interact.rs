@@ -26,6 +26,9 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerButton;
 
+#[path = "interact_waypoint.rs"]
+mod waypoint;
+
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
 /// the snapshot `paint` already fetched — reused for socket/wire hit-testing.
@@ -187,6 +190,16 @@ fn apply_gesture(
         GraphHitKind::Wire { edge } if g.phase == GesturePhase::Begin && g.mods.alt => {
             let (to_node, to_port) = crate::paint::wire_target(edge);
             push_intent(GraphIntent::Disconnect { to_node, to_port });
+        }
+        // A double-click on a wire ADDS a routing waypoint there (F2, doc 44).
+        GraphHitKind::Wire { edge } if g.phase == GesturePhase::DoubleClick => {
+            let (to_node, to_port) = crate::paint::wire_target(edge);
+            waypoint::add_on_wire(state, g, rect, snap, to_node, to_port);
+        }
+        // A waypoint handle: drag moves it, double-click removes it.
+        GraphHitKind::Waypoint { edge, index } => {
+            let (to_node, to_port) = crate::paint::wire_target(edge);
+            waypoint::apply_handle(state, g, rect, to_node, to_port, index as usize);
         }
         // Split divider (E9): drag maps the pointer to a split fraction against
         // the full center band (scene `center` + graph `rect`). Begin/Update both

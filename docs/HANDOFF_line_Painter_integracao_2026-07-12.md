@@ -81,12 +81,38 @@ trocou de dono, fez **pesquisa nova** (5 varreduras de fontes primárias —
   1 linha — não Body esmaecido (o que não se aplica não é pintado). `PAINTER_IMPASTO_PLOW` em
   `PAINTER_IMPASTO_FIELDS` (6→**7**, append). Gates com RED por mutação: relevo arrastado + **cobertura
   junto** + a matriz virou exclusividade (Paint⊕Smear). Perf 1.99 ms/move. Plano §10.7.
+- **COMPOSITE DEPTH POR CAMADA (Fase 7) — o relevo vira parâmetro de composição.** O Depth do pincel é
+  **assado em cada traço** quando ele pousa e o re-derive vivo alcança **só o último**: na 2ª pincelada a
+  espessura da 1ª estava congelada, e **nada no produto voltava a tocá-la**. O Depth de CAMADA alcança —
+  composita, não re-esculpe, então age sobre **tudo que já foi esculpido ali, para sempre** (`0` muda, não
+  apaga; o gate sobe de volta e exige a escultura **bit a bit**). Mora na **linha 3 da row da camada**, ao
+  lado da opacidade, no mesmo formato — e **só em camadas que têm relevo** (`Layer::has_relief`, projetado
+  pelo tool do mapa de alturas; documento não-esculpido não mostra chrome de impasto em lugar nenhum).
+  **Os 4 modos do plano viraram 2:** `Add`/`Subtract`/`Ignore` são três leituras de **um número com sinal**
+  (`+` empilha, `0` muda, `−` cava) — enum que duplica slider é o segundo-ganho que esta seção já matou uma
+  vez (o antigo "Amount"). Sobra o único que a escala não diz: **`Level`** (a tinta opaca desta camada
+  **soterra** a textura debaixo, pesada pela própria cobertura — o *"composite, don't add"* da pesquisa).
+  E `Level` **não comuta**: o fold da altura passa a caminhar a **ordem-z** (`z_order_bottom_up`), com o
+  traço vivo **no slot da camada ativa**. Enquanto era soma pura ele iterava o mapa em ordem de **chave** e
+  ninguém via. **5 mutações provadas vermelhas** (fold sem `depth` · `Level`=`Add` · flag não publicado ·
+  fold em ordem de chave · **revisão não bumpada** — o flag certo e o painel nunca sabendo, porque pincelada
+  é edit de *pixel*, não bump de revisão: um teste que só lê o flag fica **verde** com esse bug).
+  `PainterLayerWidget::ALL` 23→**25** (append). `PROJECT_SCHEMA` 3→**4** (postcard é posicional; o `Layer`
+  ganhou 3 campos). Perf **2.35 ms/move** (alvo 4, kill 8). Plano §10.8.
+- **⚠️ VERMELHO LATENTE MEU, PAGO AQUI:** os gates de contagem de componentes ECS de **`ph2d-render`** e
+  **`ph2d-script`** estavam **quebrados desde `0a90ed31`** (a persistência registrou `PaintedDoc`: 27→28) e
+  **a linha reportou verde**. `nextest-impacted` não os toca — só `cargo test --workspace` pega. Ambos
+  corrigidos neste commit; a lição já estava catalogada ([`feedback_ship_parity_gaps_ci_only`]), e desta
+  vez ela cobrou. **Integrador: rode o workspace inteiro, não o impacted.**
 - **Smoke do Enio: PENDENTE** (validar: os defaults novos · **Shine** acende a crista · girar
   Depth/Body/Source/Smoothing DEPOIS do traço e ver o relevo mudar ao vivo · pintar relevo, trocar de
   sprite e voltar — a escultura tem de estar lá · **pintar, Ctrl+S, fechar, reabrir, Ctrl+O — a pintura
   E o relevo têm de voltar, ainda editáveis** · **Smear com Plow: passar a faca num traço grosso e ver o
-  relevo ser ARRASTADO junto com a cor**). Comando do §5 inalterado; card Lighting 4 linhas, card Body 5,
-  card Knife (só no Smear) 1.
+  relevo ser ARRASTADO junto com a cor** · **Depth de camada: esculpir DOIS traços, e no painel de Layers
+  arrastar o Depth da linha 3 da camada — os DOIS relevos têm de responder ao vivo (o pincel só alcançava o
+  último); no negativo a crista vira sulco; o chip `Add`/`Level` numa camada de cima tem de soterrar a
+  textura debaixo**). Comando do §5 inalterado; card Lighting 4 linhas, card Body 5, card Knife (só no
+  Smear) 1; a linha de Depth só aparece em camadas COM relevo.
 
 Os §§ 1–8 abaixo descrevem as entregas anteriores da linha e continuam válidos; números de gates
 ficam superseded pelos desta seção.
@@ -172,7 +198,9 @@ traço freehand**, que era o SIGSEGV original.
 |---|---|
 | **Watercolor OFF→ON no meio do traço** apaga tinta | **Não consegui construir um RED** — o dab plano não chega a pintar no harness. Escrevi o fix e **revertí**: sem vermelho refutável não se mexe, menos ainda na aquarela que o Enio mandou não ferir. BUGS #13. |
 | Gates de paridade banda-vs-serial são **dependentes de máquina** | Num runner de 1 core comparam serial com serial. |
-| `Plow` (Smear arrasta relevo) · Composite Depth por camada · luz na GPU · relevo do PAPEL · persistência do `h` | Fora do 1º corte, **nomeados** no plano §6 + §9.10. O relevo do papel **acopla impasto↔aquarela ⇒ exige ordem nova do Enio**. |
+| ~~`Plow`~~ · ~~Composite Depth por camada~~ · ~~persistência do `h`~~ | **FECHADOS** (§0, Fases 5–7). |
+| Luz na GPU · conservação de volume real da faca · múltiplas luzes / IBL | Fora do 1º corte, **nomeados** (plano §10.8). A perf não pede a GPU: 2.35 ms/move contra um alvo de 4. |
+| Relevo do PAPEL | **Acopla impasto↔aquarela ⇒ exige ordem NOVA do Enio** (plano §2). |
 
 ---
 

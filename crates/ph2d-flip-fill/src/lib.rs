@@ -74,7 +74,15 @@ pub struct FillParams {
     pub precision: f32,
     /// Alcance do **Gap Closure** (unidades do documento). `0` = desligado.
     pub gap_reach: f32,
-    /// **Grow/Shrink**, em pixels do BUFFER. Positivo cresce, negativo encolhe.
+    /// **Grow/Shrink**, em pixels do BUFFER — medido da borda onde a cor **começa a
+    /// aparecer** (a borda INTERNA do traço), não da silhueta externa dele. É essa âncora
+    /// que torna o efeito VISÍVEL independente da espessura da linha:
+    ///
+    /// - `0` → a cor entra por baixo da linha e para na silhueta: sem vão, sem transbordo,
+    ///   em qualquer espessura;
+    /// - `< 0` → a cor recua: um vão visível de exatamente `|grow|` px, numa linha de 1 px
+    ///   ou de 40;
+    /// - `> 0` → a cor sangra `grow` px além da linha (o "off-register" da animação 2D).
     ///
     /// O chamador converte de px de tela para px de buffer (multiplicando pela
     /// `precision`) — senão subir a Precision encolheria o Grow em silêncio.
@@ -211,21 +219,35 @@ pub fn fill_at(
         return Err(FillError::Leaked);
     }
 
-    // 5. **A cor entra por baixo da linha e para na silhueta dela.** Nenhum número
-    //    arbitrário: a expansão é limitada pela própria TINTA, então cobre exatamente o
-    //    que o traço esconde — numa linha de 1px ou de 40px, igual.
+    // 5+6. **O Grow, medido de onde a cor COMEÇA A APARECER.**
     //
-    //    Era aqui que morava o chute. O `grow` cego não sabe onde a linha acaba: pequeno
-    //    demais, o alisamento do contorno descolava a cor do traço numa curva apertada e
-    //    abria um fio claro; grande demais, a cor transbordava numa linha fina. A
-    //    quantidade certa depende da espessura LOCAL do traço — logo, nenhuma constante
-    //    serve, e o default "+2px" era ele próprio o halo que dizia evitar.
+    // A âncora é tudo aqui. Ancorado na borda EXTERNA do traço (o 1º corte), o mesmo
+    // `grow = -8` abria 8,6 px de vão numa linha de 1 px e vão NENHUM numa de 40 — os
+    // primeiros 40 px de recuo eram gastos por baixo do traço, onde ninguém vê. Um
+    // controle assim exige um ajuste diferente para cada espessura, que é justamente o
+    // que um controle não pode exigir.
+    //
+    // Ancorando na borda INTERNA — a fronteira do que se VÊ — os dois lados do slider
+    // ficam independentes da espessura:
+    //
+    //   grow  = 0  → a cor entra por baixo da linha e para na silhueta dela.
+    //                Sem vão, sem transbordo, em qualquer espessura. (O default.)
+    //   grow  < 0  → a cor RECUA |grow| px da borda interna: um vão visível de exatamente
+    //                |grow| px, seja a linha de 1 px ou de 40.
+    //   grow  > 0  → a cor SANGRA |grow| px além da silhueta: um transbordo deliberado de
+    //                exatamente |grow| px (o "off-register" da animação 2D).
     let passes = (max_ink_px.ceil() as usize).saturating_add(2);
-    grid.expand_under_ink(passes);
-
-    // 6. O Grow/Shrink do usuário, por cima — agora um ajuste FINO (default 0), não a
-    //    muleta que fazia a coisa toda funcionar.
-    if params.grow != 0 {
+    if params.grow >= 0 {
+        // A cor cobre exatamente o que a linha esconde — a expansão é limitada pela
+        // própria TINTA, então nenhuma constante é necessária.
+        grid.expand_under_ink(passes);
+        if params.grow > 0 {
+            grid.grow(params.grow); // e sangra além dela
+        }
+    } else {
+        // Descola da linha primeiro (a cor para onde ela começa a aparecer), e SÓ ENTÃO
+        // recua — senão o recuo seria comido pela espessura do traço.
+        grid.strip_ink();
         grid.grow(params.grow);
     }
 
@@ -488,12 +510,16 @@ mod tests {
         }
     }
 
-    /// Um ponto do círculo unitário em `t ∈ [0,1)`, sem `sin`/`cos` (HR-5): quatro arcos
-    /// pela parametrização racional. Só precisa ser uma curva fechada convexa estável.
+    /// Um ponto do círculo unitário em `t ∈ [0,1)`, sem `sin`/`cos` (HR-5).
+    ///
+    /// `u = tan(θ/2)` parametriza racionalmente o arco: com `u ∈ [0,1]` sai EXATAMENTE o
+    /// 1º quadrante (θ de 0° a 90°), e os outros três saem por rotação de 90°. (A 1ª
+    /// versão usava `u ∈ [-1,1]`, que é um SEMICÍRCULO — girado quatro vezes, ele saltava
+    /// de (0,1) para (1,0) e o "círculo" tinha uma corda enorme. O solver estava certo; o
+    /// teste é que descrevia outra forma.)
     fn unit_circle(t: f32) -> (f32, f32) {
-        // Parametrização racional do círculo: (1-u²)/(1+u²), 2u/(1+u²), por quadrante.
         let q = (t * 4.0).floor() as i32 % 4;
-        let u = (t * 4.0).fract() * 2.0 - 1.0;
+        let u = (t * 4.0).fract(); // [0,1) → o quarto de arco
         let d = 1.0 + u * u;
         let (x, y) = ((1.0 - u * u) / d, 2.0 * u / d);
         match q {
@@ -558,6 +584,101 @@ mod tests {
                 max_r >= inner_edge,
                 "linha de {width_px}px: a cor parou a {max_r:.1} px, ANTES do corpo do \
                  traco ({inner_edge:.1}..{outer_edge:.1}) — vai abrir um fio claro na curva"
+            );
+        }
+    }
+
+    /// **O Grow é medido de onde a cor COMEÇA A APARECER** — e por isso o efeito visível
+    /// é o mesmo em qualquer espessura de linha.
+    ///
+    /// Ancorado na borda EXTERNA do traço (o 1º corte), o mesmo `grow = -8` abria 8,6 px
+    /// de vão numa linha de 1 px e vão NENHUM numa de 40: os primeiros 40 px de recuo eram
+    /// gastos por baixo do traço, onde ninguém vê. O usuário tinha de reajustar o slider a
+    /// cada mudança de pincel — que é justamente o que um controle não pode exigir.
+    ///
+    /// Ancorado na borda INTERNA, `grow = -N` abre um vão de N px, ponto.
+    #[test]
+    fn a_negative_grow_opens_the_same_visible_gap_at_any_line_width() {
+        let px_to_world = 10.0f32 / 800.0;
+        for grow_px in [-2i32, -4, -8] {
+            let mut gaps = Vec::new();
+            for width_px in [1.0f32, 6.0, 16.0, 40.0] {
+                let r = 250.0 * px_to_world;
+                let n = 96;
+                let pts: Vec<Vec2> = (0..n)
+                    .map(|i| {
+                        let (x, y) = unit_circle(i as f32 / n as f32);
+                        Vec2::new(r * x, r * y)
+                    })
+                    .collect();
+                let half = width_px * 0.5 * px_to_world;
+                let res = fill_at(
+                    &[(pts, vec![half; n], true)],
+                    Vec2::new(0.0, 0.0),
+                    FillParams {
+                        precision: 1.0 / px_to_world,
+                        gap_reach: 0.0,
+                        grow: grow_px,
+                        mode: FillMode::Paint,
+                    },
+                )
+                .expect("preenche");
+                let fill_edge = res
+                    .outer
+                    .iter()
+                    .map(|p| (p.x * p.x + p.y * p.y).sqrt() / px_to_world)
+                    .fold(0.0f32, f32::max);
+                // A borda INTERNA da linha: onde a cor deixa de estar escondida.
+                let inner_edge = 250.0 - width_px * 0.5;
+                gaps.push((width_px, inner_edge - fill_edge));
+            }
+            let want = -grow_px as f32;
+            for (w, gap) in &gaps {
+                assert!(
+                    (gap - want).abs() <= 1.0,
+                    "grow {grow_px} px, linha de {w} px: o vao visivel saiu {gap:.1} px em vez \
+                     de {want:.1} px — o ajuste depende da espessura, e nao pode"
+                );
+            }
+        }
+    }
+
+    /// E o lado positivo é simétrico: `grow = +N` **sangra** N px além da silhueta (o
+    /// "off-register" da animação 2D), também igual em qualquer espessura.
+    #[test]
+    fn a_positive_grow_bleeds_the_same_amount_at_any_line_width() {
+        let px_to_world = 10.0f32 / 800.0;
+        for width_px in [1.0f32, 6.0, 16.0, 40.0] {
+            let r = 250.0 * px_to_world;
+            let n = 96;
+            let pts: Vec<Vec2> = (0..n)
+                .map(|i| {
+                    let (x, y) = unit_circle(i as f32 / n as f32);
+                    Vec2::new(r * x, r * y)
+                })
+                .collect();
+            let half = width_px * 0.5 * px_to_world;
+            let res = fill_at(
+                &[(pts, vec![half; n], true)],
+                Vec2::new(0.0, 0.0),
+                FillParams {
+                    precision: 1.0 / px_to_world,
+                    gap_reach: 0.0,
+                    grow: 4,
+                    mode: FillMode::Paint,
+                },
+            )
+            .expect("preenche");
+            let fill_edge = res
+                .outer
+                .iter()
+                .map(|p| (p.x * p.x + p.y * p.y).sqrt() / px_to_world)
+                .fold(0.0f32, f32::max);
+            let outer_edge = 250.0 + width_px * 0.5;
+            let bleed = fill_edge - outer_edge;
+            assert!(
+                (bleed - 4.0).abs() <= 1.5,
+                "linha de {width_px} px: o sangramento saiu {bleed:.1} px em vez de 4,0"
             );
         }
     }

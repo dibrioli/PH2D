@@ -352,13 +352,33 @@ impl Grid {
         }
     }
 
+    /// **Descola a cor de baixo da linha**: tira o `FILLED` de todo pixel de `INK`.
+    ///
+    /// O resultado é a região que para exatamente na **borda INTERNA** do traço — o ponto
+    /// onde a cor *começa a aparecer*. É a única âncora que torna o Grow previsível: medido
+    /// dela, um recuo de N px abre um vão VISÍVEL de N px, seja a linha de 1 px ou de 40.
+    /// (Medido da borda externa — o 1º corte — o mesmo `grow = -8` abria 8,6 px de vão
+    /// numa linha de 1 px e vão NENHUM numa de 40: os primeiros 40 px de recuo eram
+    /// gastos por baixo do traço, onde ninguém vê.)
+    pub fn strip_ink(&mut self) {
+        for f in &mut self.flags {
+            if *f & INK != 0 {
+                *f &= !FILLED;
+            }
+        }
+    }
+
     /// (`n` é clampado: a crate é uma lib pública, e `grow(i32::MIN)` seriam 2³¹ passes
     /// clonando o buffer a cada um — o painel já limita a ±8, mas a guarda mora aqui.)
     pub fn grow(&mut self, n: i32) {
         let n = n.clamp(-GROW_LIMIT, GROW_LIMIT);
-        for _ in 0..n.unsigned_abs() {
+        for pass in 0..n.unsigned_abs() {
             let src = self.flags.clone();
             let grow = n > 0;
+            // Alterna 4-conexo e 8-conexo. Só 8-conexo cresce em métrica de Chebyshev — um
+            // QUADRADO —, e um recuo de N px sairia 41% mais fundo nas diagonais que nos
+            // eixos. Alternando, a forma acumulada é um octógono: visualmente, um disco.
+            let eight = pass % 2 == 1;
             for y in 0..self.h {
                 for x in 0..self.w {
                     let i = y * self.w + x;
@@ -366,10 +386,12 @@ impl Grid {
                     if mine == grow {
                         continue; // já é o que queremos
                     }
-                    // 8-conexo: algum vizinho do lado oposto?
                     let mut found = false;
                     for dy in -1i32..=1 {
                         for dx in -1i32..=1 {
+                            if !eight && dx != 0 && dy != 0 {
+                                continue; // passe 4-conexo: sem diagonais
+                            }
                             let (nx, ny) = (x as i32 + dx, y as i32 + dy);
                             if nx < 0 || ny < 0 || nx >= self.w as i32 || ny >= self.h as i32 {
                                 // Fora da grade conta como VAZIO (encolher come a borda).

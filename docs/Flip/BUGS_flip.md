@@ -638,3 +638,58 @@ qualquer zoom. O `grow` continua no painel, mas virou o que devia ter sido desde
 > diferentes foram tentados (+2, 0, +1) e cada um quebrava numa faixa de espessura. Isso não é um
 > problema de calibração: é o sintoma de que a decisão depende de uma informação que o algoritmo não
 > tem. *Antes de procurar o valor certo de uma constante, pergunte que dado a tornaria desnecessária.*
+
+---
+
+## #13 — A âncora do Grow: medir de onde a cor APARECE, não de onde a linha acaba
+
+**Sintoma (Enio, 3º smoke):** *"Para cada espessura de linha os ajustes são diferentes. Será que a
+referência para o fill é o meio da espessura da linha?"* — quatro traços de espessuras diferentes,
+um único `Grow = -8`, quatro resultados.
+
+A intuição estava certa: **o problema era a âncora.**
+
+O Grow era medido da **borda EXTERNA** do traço (a silhueta, onde a cor para). O vão que o usuário
+de fato *vê* é a distância da cor até a borda **INTERNA** — e a conta expõe o defeito:
+
+```
+vão visível = borda_interna − borda_do_fill = (c − w/2) − (c + w/2 + grow) = −(w + grow)
+```
+
+Medido, com `grow = −8`:
+
+| espessura | 1 px | 6 px | 16 px | 40 px |
+|---|---|---|---|---|
+| vão visível | **8,6 px** | 1,9 px | 0 (ainda escondida) | 0 (ainda escondida) |
+
+Os primeiros `w` pixels de recuo eram **gastos por baixo do traço, onde ninguém vê**. Num traço
+grosso, o slider inteiro (−8) não conseguia produzir vão nenhum.
+
+**Fix — ancorar na borda onde a cor começa a aparecer** (`Grid::strip_ink`: tira a cor de baixo da
+tinta ANTES de recuar). Os dois lados do slider ficam independentes da espessura:
+
+| | o que faz | independente da espessura? |
+|---|---|---|
+| `grow = 0` | a cor entra por baixo da linha e para na silhueta dela: **sem vão, sem transbordo** | sim (é o `expand_under_ink`, #12) |
+| `grow < 0` | a cor **recua**: vão visível de exatamente `\|grow\|` px | **sim** |
+| `grow > 0` | a cor **sangra** `grow` px além da linha (o *off-register* da animação 2D) | **sim** |
+
+Medido depois: `grow = −4` → vão de 3,7 a 4,0 px em traços de 1 a 40 px. `grow = −8` → 7,8 a 8,0 px.
+Gates: `a_negative_grow_opens_the_same_visible_gap_at_any_line_width` e o simétrico positivo.
+
+> **Lição — um controle mede a partir de uma ÂNCORA, e a âncora tem de ser o que o usuário vê.**
+> "Borda externa" e "borda interna" são as duas escolhas óbvias, e a diferença entre elas é
+> invisível no código e brutal na tela: uma faz o controle depender da espessura do traço, a outra
+> não. *Quando um ajuste "precisa de um valor diferente para cada caso", quase nunca é o valor que
+> está errado — é a régua.*
+
+**E um bônus do mesmo dia, sobre testes:** o gate desta correção falhou primeiro, e a culpa era do
+**helper de teste**. Para gerar um círculo sem transcendentais (HR-5), eu usei a parametrização
+racional `u = tan(θ/2)` — mas com `u ∈ [-1,1]`, que cobre um **semicírculo**, e depois girei quatro
+vezes: o "círculo" saltava de (0,1) para (1,0) numa corda enorme. *O solver estava certo; o teste é
+que descrevia outra forma.* Antes de acreditar num teste que acusa o código, confira que o teste
+descreve o que você acha que descreve.
+
+**Erosão isotrópica, de brinde:** a dilatação/erosão puramente 8-conexa cresce em métrica de
+Chebyshev — um **quadrado** —, e um recuo de N px sairia 41% mais fundo nas diagonais. Alternando
+passes 4-conexos e 8-conexos, a forma acumulada é um octógono: visualmente, um disco.

@@ -159,27 +159,27 @@ pub(crate) fn bake_stroke(
     let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();
     drawing
         .strokes
-        .push(build_stroke(style, &pts, &prs, px_to_world, world_to_local));
+        .push(build_stroke(style, &pts, &prs, world_to_local));
     true
 }
 
 /// Constrói um `FlipStroke` a partir das amostras (MUNDO) + estilo. Compartilhado
 /// pelo bake (pen-up) e pelo preview ao vivo (durante o arrasto).
 ///
-/// ADR-0111: a geometria é guardada no espaço LOCAL do objeto (o gizmo pode tê-lo
-/// movido). `world_to_local` converte as posições na fronteira e a largura recua
-/// pela escala (`mean_scale`), pra o render — que refaz `× model` — devolver a
-/// espessura de tela pretendida. Identidade = objeto não-movido → no-op.
+/// A largura é guardada em **PIXELS DE TELA** (tamanho de brush ABSOLUTO — o render
+/// usa escala de espessura 1.0, sem multiplicar pelo zoom). ADR-0111: a geometria é
+/// LOCAL (o gizmo pode ter movido/escalado o objeto), então a largura recua pela
+/// escala do objeto (`world_to_local.mean_scale`) — o render refaz `× object_scale`
+/// e devolve os `width_px` de tela pretendidos. Objeto não-movido = `wscale=1`.
 fn build_stroke(
     style: &FlipStyleSnapshot,
     points: &[Vec2],
     pressures: &[f32],
-    px_to_world: f32,
     world_to_local: &Xform,
 ) -> FlipStroke {
     let color = srgb8_to_linear(style.stroke);
     let wscale = world_to_local.mean_scale() as f32;
-    let base_w = (style.width_px as f32) * px_to_world * wscale; // px→mundo→local
+    let base_w = (style.width_px as f32) * wscale; // px de tela (÷ escala do objeto)
     let mut s = FlipStroke::new();
     for (&p, &pr) in points.iter().zip(pressures.iter()) {
         let l = world_to_local.apply([f64::from(p.x), f64::from(p.y)]);
@@ -271,20 +271,17 @@ impl crate::App {
         }
         let style = self.flip_style?;
         // O preview é dobrado na fatia da camada ativa (espaço LOCAL do objeto); as
-        // amostras são MUNDO → converte, senão o preview folga do traço final.
+        // amostras são MUNDO → converte, senão o preview folga do traço final. A
+        // largura é px de tela ABSOLUTO (o render não escala pelo zoom) → sem câmera.
         let w2l = self.flip_active_world_to_local();
-        let gfx = self.gfx.as_ref()?;
         let (pts, prs) = self.flip_draw.samples();
         if pts.len() < 2 {
             return None;
         }
-        let win = gfx.surface.size();
-        let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
         // Mesmo active smoothing do bake → o preview mostra o traço FINAL.
         let smoothed = crate::flip_smooth::active_smooth(pts, style.smoothing);
         let mut d = FlipDrawing::default();
-        d.strokes
-            .push(build_stroke(&style, &smoothed, prs, px_to_world, &w2l));
+        d.strokes.push(build_stroke(&style, &smoothed, prs, &w2l));
         Some(pack_drawing(&d))
     }
 

@@ -75,7 +75,7 @@ fn frame_rect() -> FlipStroke {
     ] {
         s.push_point(Point {
             pos: corner,
-            width: 0.05,
+            width: 2.0,
             opacity: 1.0,
             color: gray,
         });
@@ -92,7 +92,7 @@ fn filled_rect(min: Vec2, max: Vec2, color: Rgba) -> FlipStroke {
     for corner in [min, Vec2::new(max.x, min.y), max, Vec2::new(min.x, max.y)] {
         s.push_point(Point {
             pos: corner,
-            width: 0.04,
+            width: 2.0,
             opacity: 1.0,
             color,
         });

@@ -410,16 +410,14 @@ fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
 }
 
 /// Converte a `Camera2d` (mundo→clip ortográfico) no uniform do passe. O
-/// `view_proj` é o MESMO afim que os sprites usam; `px_per_world` = altura da
-/// janela / altura de mundo (pixels isotrópicos), o zoom que vira a espessura.
+/// `view_proj` é o MESMO afim que os sprites usam (as POSIÇÕES acompanham o zoom).
+/// O 3º campo é a **escala de espessura** = `1.0`: a largura do traço é guardada em
+/// PIXELS DE TELA e o render NÃO a multiplica pelo zoom → tamanho de brush ABSOLUTO
+/// (constante na tela em qualquer zoom — Enio 2026-07-11). O `fold_model` de um
+/// objeto escalado sobrescreve isto por `mean_scale` (aí a arte engrossa junto).
 fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
     let vp = camera.view_proj(window).to_cols_array_2d();
-    let px_per_world = window.height.max(1) as f32 / camera.height_world.max(f32::EPSILON);
-    CameraRaw::new(
-        vp,
-        [window.width as f32, window.height as f32],
-        px_per_world,
-    )
+    CameraRaw::new(vp, [window.width as f32, window.height as f32], 1.0)
 }
 
 #[cfg(test)]

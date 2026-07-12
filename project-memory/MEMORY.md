@@ -42,6 +42,7 @@
 - [Integração = Enio-only, via integrador](feedback_integration_only_enio_command_end_of_all_lines.md) — Modo L: NÃO integre/shippe; feche → handoff (§1.5.9) → PARE
 - [Integrador: ship drena latentes — 2-4 iterações](project_integrator_ship_catches_latents_budget_iterations.md) — gate per-linha NÃO roda fmt/clippy-all/machete/deny; só ship vermelha
 - [Pipe mascara o exit code do script](feedback_pipe_masks_script_exit_code.md) — `| grep` faz `$?` virar o do grep; ship/integrate falha e você lê 0. Verifique o ESTADO
+- [Crase na msg de commit = substituição de comando](feedback_backticks_in_commit_message_are_command_substitution.md) — fish/zsh EXECUTA e a palavra some em silêncio; use `git commit -F <arquivo>` e releia o log
 - [Varra marcadores de conflito em CADA commit](feedback_sweep_conflict_markers_every_commit.md) — `<<<<<<< HEAD` órfão commitado não compila; a árvore limpa não prova o histórico
 - [Foundational editável — crie com isolamento](feedback_foundational_editable_design_for_isolation.md) — Modo L PODE tocar; ao CRIAR projete p/ isolamento + anote ids no handoff
 - [CI direto + fmt-skew](feedback_ci_direct_lint_gates_and_fmt_skew.md) — lint gates local antes; `cargo fmt` plain = skew, use `rustup run <pin> cargo fmt`

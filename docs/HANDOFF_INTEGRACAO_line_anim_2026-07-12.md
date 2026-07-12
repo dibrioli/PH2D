@@ -13,8 +13,8 @@
 | **Branch** | `line/anim` |
 | **Worktree** | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim/` |
 | **Base** | `3805f650` (main de 2026-07-12) — rebasada, sem dívida de merge |
-| **HEAD** | `8ef30a82` — **3 commits** de código (`8874a2b7` semântica de canal · `c7e740b5` raiz no gizmo · `8ef30a82` **W4.T7 relógio único**) |
-| **Gate** | `nextest` **WORKSPACE INTEIRO 5611/5611** · clippy `--all-targets` **0 warnings** · `fmt` (rustup 1.95) · LOC caps ok · `typos` ok |
+| **HEAD** | `a762aebf` — **4 commits** de código (`8874a2b7` semântica de canal · `c7e740b5` raiz no gizmo · `8ef30a82` W4.T7 relógio único · `a762aebf` **ETAPA 3 seletor de clip**) |
+| **Gate** | `nextest` **WORKSPACE INTEIRO 5624/5624** · clippy `--all-targets` **0 warnings** · `fmt` (rustup 1.95) · LOC caps ok · `typos` ok |
 | **⚠️ Linha Motion VIVA** | **Leia §7 antes de integrar** — superfície de colisão em `motion_bridge.rs` mapeada por função |
 | **Contratos congelados** | **NENHUM tocado** (`Tool`/`NodeOp`/`PanelEvent`/vector-doc intactos) |
 | **`DOC_VERSION` / `SCHEMA_VERSION`** | **NÃO mudaram** (nada novo é serializado) |
@@ -245,7 +245,52 @@ apagar um tipo `pub` na crate alheia enquanto ela está viva é exatamente a col
 
 ## §8 — Fila restante da linha (do handoff anterior, inalterada)
 
-~~ETAPA 1 (W4.T7 relógio único)~~ **FEITA** (§7) · **ETAPA 2** (W4.T4: docar a timeline no
-`motion_timeline_slot` — agora DESTRAVADA, era o T7 que faltava) · ETAPA 3 (NLA / seletor de clip — 100%
-isolado) · ETAPA 4 (markers → signals) · ETAPA 6 (save cena+timeline).
+~~ETAPA 1 (W4.T7 relógio único)~~ **FEITA** (§7) · ~~ETAPA 3 (seletor de clip)~~ **FEITA** (§9) ·
+**ETAPA 2** (W4.T4: docar a timeline no `motion_timeline_slot` — destravada pelo T7, mas **ESPERE a linha
+Motion fechar**: ela cai em `motion_bridge.rs` blocos 1-2 + dentro de `apply_graph_intents`, a região viva
+dela, e nada depende dela) · ETAPA 4 (markers → signals — isolada, pequena) · **NLA de verdade**
+(empilhar clips; o seletor é o passo 1) · ETAPA 6 (save cena+timeline).
 Detalhe em [`HANDOFF_line_anim_CONTINUACAO_2026-07-12.md`](HANDOFF_line_anim_CONTINUACAO_2026-07-12.md) §2.
+
+---
+
+## §9 — ETAPA 3: seletor de clip (`a762aebf`)
+
+O dado já existia (`TimelineDoc.clips` + `active_clip`) e só o clip ativo era exposto — faltava **toda** a
+autoria. Agora dá para **ver, trocar, criar, renomear e apagar** clips.
+
+**O modelo (é o que torna o recurso barato):** os **bindings são do DOCUMENTO**, não do clip. Todo clip
+anima os mesmos objetos e só as **keys** mudam — um segundo clip custa um nome e nada mais ("walk" e "run"
+sobre um rig só). É o precomp do AE e o clip da Unity.
+
+**UI:** `[ Main ▾ ] [+] [✎] [🗑]` à esquerda da barra de transporte (onde a Unity põe). Dropdown real; o
+popover é **diferido** para o fim do paint, senão a lista sai desenhada **debaixo** da régua e das rows.
+
+**Símbolos novos** (nenhum id numérico — todos são hash de slug, colisão impossível):
+
+| símbolo | onde |
+|---|---|
+| `MAX_CLIPS = 16` | `ph2d-timeline::doc` |
+| `TimelineDoc::{add_clip, rename_clip, remove_clip, fresh_clip_name}` | idem |
+| `TimelineIntent::{SetActiveClip, AddClip, RenameClip, DeleteClip}` | `ph2d-timeline::intent` (**apendados** ao fim do enum) |
+| `TimelineViewSnapshot::{clips, active_clip}` | `ph2d-timeline::snapshot` (campos novos) |
+| `TIMELINE_CLIP_DD` · `TIMELINE_CLIP_OPT[16]` · `TIMELINE_ADD_CLIP` · `TIMELINE_RENAME_CLIP` · `TIMELINE_DELETE_CLIP` · `TIMELINE_CLIP_RENAME_INPUT` | `ph2d-editor-core::ids::chrome::timeline` |
+| `clip_rename.rs` (módulo irmão) · `paint_overlays` | `ph2d-panel-timeline` |
+
+**O teto NÃO é um chute:** os ids de opção de um dropdown são um **array fixo** de `NodeId` (o chrome não
+cria hit id em runtime), então o número de clips que o **doc** aceita tem de ser o número de ids que o
+**painel** endereça. O doc **recusa** o 17º, e um gate amarra os dois
+(`MAX_CLIPS == TIMELINE_CLIP_OPT.len()`) — sem ele, um clip a mais pinta uma opção que nada clica.
+
+**`DOC_VERSION` NÃO mudou:** `clips` já era um `Vec` serializado; nenhuma forma nova foi para o disco.
+
+**ZERO mudança no shell:** os intents viajam o canal direto (`drain_intents`), que o shell já aplica
+genericamente (`mod.rs:805`).
+
+### Smoke (some aos itens de §6.2 e §7.4)
+
+8. **Clips.** Crie um objeto, bind uma track, ponha keys. Clique **+** → nasce "Clip 2", **vazio**, e a
+   **row continua lá** (o binding é do documento). Volte para "Main" pelo dropdown: **as keys estão onde
+   você deixou**. Renomeie pelo lápis (Enter confirma, Esc cancela). Apague pela lixeira.
+   **Esperado:** com **um** clip só, a lixeira **não aparece** (o documento sempre tem um clip para editar).
+   Um **Ctrl+Z** desfaz cada operação inteira.

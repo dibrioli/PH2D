@@ -6,13 +6,21 @@
 
 ---
 
-## 0. TL;DR do estado atual (2026-07-10)
+## 0. TL;DR do estado atual (2026-07-12)
 
-**A linha está verde**, mas **à frente do `main` integrado** (`54fc9ecf`) com commits
-locais **não integrados**: `bdacc038` presets · `52b2df34` modulação · `ef0bcaab` fix
-slider "0" · **W6 Bloco 1 loop points** (este). O último ponto de integração adicionou
-`split audio.rs` (HR-18), fix `fmt` drift `style_edition 2024` e AVIF no CI. **Integração
-e ship são decisão exclusiva do Enio** — a linha fecha, entrega este handoff e para.
+**A linha `line/audio` foi INTEGRADA ao `main`** (jornada de 2026-07-12, 37 commits,
+ff-only). O worktree foi **rebaseado** e está **em cima do main atual, 0 commits à
+frente, árvore limpa** — pronto pra próxima jornada.
+
+**Próximo agente:** leia
+[`HANDOFF_audio_line_continuation.md`](HANDOFF_audio_line_continuation.md) — tem o Modo L,
+o estado por-wave e as etapas planejadas. **Integração e ship seguem sendo decisão
+exclusiva do Enio** (via agente integrador dedicado): a linha fecha, entrega o handoff
+de integração (DIRETRIZ §1.5.9) e **para**.
+
+**O rack de efeitos está em 34 efeitos + 15 presets** (era 14/7 antes desta jornada) —
+W4 (tratamento de voz) majoritariamente fechado, W6 com variação/import/OGG. O que
+falta por wave está no doc de continuação acima.
 
 **O bug "meter vivo, sem som" está RESOLVIDO** e **não era código**: o
 WirePlumber guardava `mute:true` por-app em `stream-properties`. Detalhe +

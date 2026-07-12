@@ -244,6 +244,15 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// Panel files that paint via vector/text primitives only (no widget
 /// interaction → no a11y to wire). Each entry: (path key, why).
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    // Motion graph wire drawing — split from `paint.rs` for the 600-LOC cap. It owns no
+    // widget and registers nothing: it flattens and strokes the wire splines, while every
+    // a11y node for a wire (and for its routing waypoints) is registered by `hits.rs`,
+    // which wires AccessKit itself. Keeping the drawing and the hit path in one file is
+    // what the cap forbids; keeping them AGREEING is what `wire_path` is for (doc 44).
+    (
+        "ph2d-panel-motion-graph/src/paint_wire.rs",
+        "pure spline drawing — the wires' AccessKit nodes are registered in hits.rs",
+    ),
     // Painter Brush appearance sections (6–11) — a thin ORCHESTRATOR split from
     // `paint_brush.rs` for the 200-LOC/fn + 600-LOC/file caps. It owns no widget:
     // every row it paints is a call into a section module (`paint_shape`,

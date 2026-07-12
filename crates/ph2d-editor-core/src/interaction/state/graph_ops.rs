@@ -43,6 +43,19 @@ impl WidgetStore {
         std::mem::take(&mut self.graph_moved)
     }
 
+    /// Arm the double-click flag on a graph Down (from
+    /// [`WidgetStore::record_pointer_down`]). The graph's Down captures the pointer and
+    /// returns EARLY — past the general double-click detection — so without this a graph
+    /// surface could never see a double-click at all, whatever a panel asked for.
+    pub fn set_graph_double(&mut self, double: bool) {
+        self.graph_double = double;
+    }
+
+    /// Read + reset the flag. The Up uses it to choose `DoubleClick` over `Click`.
+    pub fn take_graph_double(&mut self) -> bool {
+        std::mem::take(&mut self.graph_double)
+    }
+
     // ── Anchored zoom ────────────────────────────────────────────────────
     /// Accumulate a wheel-notch delta for `surface`'s anchored zoom, updating
     /// the anchor to the latest cursor. The panel drains + applies it.

@@ -608,6 +608,11 @@ pub struct WidgetStore {
     /// Whether the active graph capture has moved since Down — decides End vs
     /// Click on Up (mirror of the NumberInput drag's threshold flag).
     pub(super) graph_moved: bool,
+    /// Whether the active graph capture began as the SECOND Down of a double-click
+    /// (mirror of `timeline_double`). The Up reads it back to choose `DoubleClick`
+    /// over `Click` — without it a graph surface can never see a double-click at all,
+    /// because the graph's Down returns early, past the general detection path.
+    pub(super) graph_double: bool,
     /// Timeline dope-sheet pointer gestures stashed by dispatch, drained by the
     /// timeline panel each frame (mirror of `graph_gestures`).
     pub(super) timeline_gestures: Vec<TimelineGesture>,

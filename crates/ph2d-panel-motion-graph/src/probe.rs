@@ -77,7 +77,7 @@ pub(crate) fn draw(
         panel.x + PAD,
         panel.y + TEXT_H + PAD * 0.5,
         panel.w - 2.0 * PAD,
-        panel.h - TEXT_H - PAD * 1.5,
+        panel.h - TEXT_H - PAD * 1.5, // LITERAL-PX-OK: 1.5 pads = the half above + the full below
     );
     stroke_polyline(
         ctx.scene,

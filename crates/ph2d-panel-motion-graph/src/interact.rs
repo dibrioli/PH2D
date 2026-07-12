@@ -29,6 +29,9 @@ use ph2d_host::PointerButton;
 #[path = "interact_waypoint.rs"]
 mod waypoint;
 
+#[path = "interact_backdrop.rs"]
+mod backdrop_gesture;
+
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
 /// the snapshot `paint` already fetched — reused for socket/wire hit-testing.
@@ -225,7 +228,9 @@ fn apply_gesture(
                 push_intent(GraphIntent::SetSplitVertical { vertical: true })
             }
             crate::paint_chrome::CHROME_FIT => state.fitted = false,
-            crate::paint_chrome::CHROME_BACKDROP => add_backdrop(state, rect, snap),
+            crate::paint_chrome::CHROME_BACKDROP => {
+                backdrop_gesture::add_backdrop(state, rect, snap)
+            }
             crate::paint_chrome::CHROME_KNIFE => state.knife_armed = !state.knife_armed,
             crate::paint_chrome::CHROME_PROBE => state.probe_armed = !state.probe_armed,
             _ => {}
@@ -233,150 +238,16 @@ fn apply_gesture(
         // A backdrop's header: select it (a backdrop and a node are never selected
         // together) and drag the whole group — the region plus every node it
         // frames, captured now (see `Interaction::DragBackdrop`).
-        GraphHitKind::Backdrop { id } => apply_backdrop(state, g, id as u32, snap),
+        GraphHitKind::Backdrop { id } => {
+            backdrop_gesture::apply_backdrop(state, g, id as u32, snap)
+        }
         // Either bottom corner resizes; the handle says which (the panel packed it).
         GraphHitKind::BackdropResize { id } => {
             let (id, left) = crate::backdrop::resize_target(id);
-            apply_backdrop_resize(state, g, id, left)
+            backdrop_gesture::apply_backdrop_resize(state, g, id, left)
         }
         // Input sockets (the reverse-drag of an occupied input) land later.
         _ => {}
-    }
-}
-
-/// The Backdrop chip: frame the current selection, or drop a default block at the
-/// view centre when nothing is selected (Nuke's two behaviours from one button).
-/// The panel computes the rect; the shell mints the id.
-fn add_backdrop(state: &MotionGraphPanelState, rect: Rect, snap: &GraphViewSnapshot) {
-    let framed: Vec<&crate::snapshot::GraphNodeView> = snap
-        .nodes
-        .iter()
-        .filter(|n| state.selected.contains(&n.id))
-        .collect();
-    let (x, y, w, h) = crate::backdrop::wrap_of(&framed).unwrap_or_else(|| {
-        let view = View::new(rect, state.view);
-        let (cx, cy) = view.graph(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
-        (
-            cx - crate::backdrop::NEW_W * 0.5,
-            cy - crate::backdrop::NEW_H * 0.5,
-            crate::backdrop::NEW_W,
-            crate::backdrop::NEW_H,
-        )
-    });
-    push_intent(GraphIntent::AddBackdrop { x, y, w, h });
-}
-
-/// Header gestures: select on press, drag the group (region + framed nodes) as one
-/// undo step. The framed set is captured at Begin — see `Interaction::DragBackdrop`.
-fn apply_backdrop(
-    state: &mut MotionGraphPanelState,
-    g: GraphGesture,
-    id: u32,
-    snap: &GraphViewSnapshot,
-) {
-    match g.phase {
-        GesturePhase::Begin => {
-            state.selected.clear(); // a backdrop and nodes are never co-selected
-            state.selected_backdrop = Some(id);
-            let nodes = snap
-                .backdrops
-                .iter()
-                .find(|b| b.id == id)
-                .map(|b| {
-                    snap.nodes
-                        .iter()
-                        .filter(|n| crate::backdrop::frames_node(b, n))
-                        .map(|n| n.id)
-                        .collect()
-                })
-                .unwrap_or_default();
-            state.interaction = Interaction::DragBackdrop {
-                id,
-                nodes,
-                last: (g.x, g.y),
-                started: false,
-            };
-        }
-        GesturePhase::Update => {
-            let zoom = state.view.zoom;
-            if let Interaction::DragBackdrop {
-                id,
-                nodes,
-                last,
-                started,
-            } = &mut state.interaction
-            {
-                let (dx, dy) = ((g.x - last.0) / zoom, (g.y - last.1) / zoom);
-                *last = (g.x, g.y);
-                if !*started {
-                    push_intent(GraphIntent::BeginDrag);
-                    *started = true;
-                }
-                push_intent(GraphIntent::MoveBackdrop { id: *id, dx, dy });
-                if !nodes.is_empty() {
-                    push_intent(GraphIntent::MoveNodes {
-                        nodes: nodes.clone(),
-                        dx,
-                        dy,
-                    });
-                }
-            }
-        }
-        // Release (a drag that moved, a tap that did not, or a double-tap): close
-        // the undo bracket if one was opened. The selection made on press stays.
-        GesturePhase::End | GesturePhase::Click | GesturePhase::DoubleClick => {
-            if let Interaction::DragBackdrop { started: true, .. } = state.interaction {
-                push_intent(GraphIntent::EndDrag);
-            }
-            state.interaction = Interaction::Idle;
-        }
-    }
-}
-
-/// Either bottom gripper: resize in place (the framed nodes do NOT move — a resize
-/// changes what the region covers, which is the whole point). `left` is the corner
-/// grabbed; the opposite edge stays anchored (shell-side).
-fn apply_backdrop_resize(state: &mut MotionGraphPanelState, g: GraphGesture, id: u32, left: bool) {
-    match g.phase {
-        GesturePhase::Begin => {
-            state.selected.clear();
-            state.selected_backdrop = Some(id);
-            state.interaction = Interaction::ResizeBackdrop {
-                id,
-                left,
-                last: (g.x, g.y),
-                started: false,
-            };
-        }
-        GesturePhase::Update => {
-            let zoom = state.view.zoom;
-            if let Interaction::ResizeBackdrop {
-                id,
-                left,
-                last,
-                started,
-            } = &mut state.interaction
-            {
-                let (dx, dy) = ((g.x - last.0) / zoom, (g.y - last.1) / zoom);
-                *last = (g.x, g.y);
-                if !*started {
-                    push_intent(GraphIntent::BeginDrag);
-                    *started = true;
-                }
-                push_intent(GraphIntent::ResizeBackdrop {
-                    id: *id,
-                    left: *left,
-                    dx,
-                    dy,
-                });
-            }
-        }
-        GesturePhase::End | GesturePhase::Click | GesturePhase::DoubleClick => {
-            if let Interaction::ResizeBackdrop { started: true, .. } = state.interaction {
-                push_intent(GraphIntent::EndDrag);
-            }
-            state.interaction = Interaction::Idle;
-        }
     }
 }
 
@@ -682,3 +553,11 @@ fn select_on_press(state: &mut MotionGraphPanelState, node: u32, shift: bool) {
 #[cfg(test)]
 #[path = "interact_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "interact_f2_tests.rs"]
+mod f2_tests;
+
+#[cfg(test)]
+#[path = "interact_f2b_tests.rs"]
+mod f2b_tests;

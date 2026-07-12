@@ -322,3 +322,70 @@ fn shortcuts_yield_to_a_focused_text_widget() {
         "a focused text widget swallows the key before the graph arm"
     );
 }
+
+/// **A graph surface really sees a DOUBLE-CLICK** — the producer half of the Motion editor's
+/// waypoint gestures (doc 44).
+///
+/// The graph's Down CAPTURES the pointer and returns early, past the general double-click
+/// detection at the bottom of `pointer_down`. So the flag has to be recorded on the graph's
+/// own capture path — and until it was, a graph surface could never see a double-click *at
+/// all*, whatever a panel asked for: the Motion panel's "double-click a wire to route it"
+/// was wired at the panel end and silently dead.
+///
+/// FALSIFIED by removing `set_graph_double`/`take_graph_double`: the second tap comes back
+/// as a plain `Click` and the gesture the panel is waiting for never arrives.
+#[test]
+fn a_second_tap_on_a_graph_surface_is_a_double_click() {
+    let (mut store, hits) = graph_setup(GraphHitKind::Background);
+    let arena = Bump::new();
+    let tap = |store: &mut WidgetStore, at_ns: u128| {
+        for kind in [PointerKind::Down, PointerKind::Up] {
+            let mut e = pointer(kind, 60.0, 60.0);
+            e.timestamp_ns = at_ns;
+            let _ = dispatch_pointer(store, &hits, e, &arena);
+        }
+    };
+
+    tap(&mut store, 0);
+    tap(&mut store, 100_000_000); // 100 ms later — inside the 350 ms window
+
+    let g: Vec<_> = store.drain_graph_gestures().collect();
+    assert_eq!(g.len(), 4, "Begin, Click, Begin, DoubleClick");
+    assert_eq!(g[1].phase, GesturePhase::Click, "the first tap is a click");
+    assert_eq!(
+        g[3].phase,
+        GesturePhase::DoubleClick,
+        "the second tap upgrades to DoubleClick"
+    );
+
+    // A slow second tap stays a plain Click — and the flag never leaks into it.
+    tap(&mut store, 1_000_000_000); // a second later
+    let g: Vec<_> = store.drain_graph_gestures().collect();
+    assert_eq!(g[1].phase, GesturePhase::Click, "too slow to be a double");
+}
+
+/// A double-click that DRAGGED is an `End`, not a `DoubleClick` — a gesture that moved is a
+/// drag, whatever the tap count, and the flag must not survive to poison the next tap.
+#[test]
+fn a_dragged_second_tap_is_an_end_not_a_double_click() {
+    let (mut store, hits) = graph_setup(GraphHitKind::Background);
+    let arena = Bump::new();
+    for kind in [PointerKind::Down, PointerKind::Up] {
+        let _ = dispatch_pointer(&mut store, &hits, pointer(kind, 60.0, 60.0), &arena);
+    }
+    let mut down = pointer(PointerKind::Down, 60.0, 60.0);
+    down.timestamp_ns = 100_000_000;
+    let _ = dispatch_pointer(&mut store, &hits, down, &arena);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, 200.0, 200.0),
+        &arena,
+    );
+    let mut up = pointer(PointerKind::Up, 200.0, 200.0);
+    up.timestamp_ns = 120_000_000;
+    let _ = dispatch_pointer(&mut store, &hits, up, &arena);
+
+    let g: Vec<_> = store.drain_graph_gestures().collect();
+    assert_eq!(g.last().unwrap().phase, GesturePhase::End, "it dragged");
+}

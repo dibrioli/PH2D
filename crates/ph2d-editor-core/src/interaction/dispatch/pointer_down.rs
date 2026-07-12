@@ -63,6 +63,11 @@ pub(super) fn dispatch_down<'frame>(
         store.set_active(Some(id));
         store.set_active_rect(Some(rect));
         store.set_graph_moved(false);
+        // Record the Down for double-click detection HERE: this capture returns early,
+        // past the general path at the bottom, so the graph would otherwise never see a
+        // double-click (the Up reads the flag back to upgrade `Click` → `DoubleClick`).
+        let is_double = store.record_pointer_down(Some(id), event.timestamp_ns);
+        store.set_graph_double(is_double);
         let mods = store.gesture_mods();
         store.push_graph_gesture(GraphGesture {
             surface,

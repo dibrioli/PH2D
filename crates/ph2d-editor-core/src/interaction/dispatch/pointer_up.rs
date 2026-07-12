@@ -207,8 +207,12 @@ pub(super) fn dispatch_up<'frame>(
         // else a Click (a tap). No apply_click / focus side effects — the panel
         // owns all graph semantics. Runs before the generic release logic.
         if let Some((surface, kind)) = store.graph_surface_at_id(active) {
+            // Consume the double flag regardless, so it cannot leak into the next tap.
+            let double = store.take_graph_double();
             let phase = if store.take_graph_moved() {
                 GesturePhase::End
+            } else if double {
+                GesturePhase::DoubleClick
             } else {
                 GesturePhase::Click
             };

@@ -84,6 +84,54 @@ O `motion_bridge.rs` estourou o teto de 600 LOC (620). **Extraí, não fiz allow
 `connect_err_msg` + o `violation_blocks_edge` que só a servem) foi pra `motion_bridge_connect.rs`. É um recorte
 com sentido próprio, não um corte pra caber: *o painel PROPÕE uma conexão, o shell DISPÕE.*
 
+## 6-bis. O smoke do Enio: *"duplo click não funciona"* — a MESMA classe do Ctrl+D
+
+**O grafo NUNCA viu um duplo-clique. Nunca. Nenhum painel, nenhum gesto, desde sempre.**
+
+`GesturePhase::DoubleClick` existia no enum e só a superfície da **TIMELINE** o emitia. O `pointer_up` do
+grafo escolhia entre **End** (arrastou) e **Click** — e ponto. Porque o **Down do grafo CAPTURA o ponteiro e
+retorna CEDO**, passando ao largo da detecção geral de duplo-clique que mora no fim do `pointer_down`.
+
+Então eu fiei a ponta do painel (o `match` no `GesturePhase::DoubleClick`) e **não verifiquei o produtor** — de
+novo, exatamente como no Ctrl+D (doc 37). O braço compilava, o teste do painel passava, e o gesto **jamais
+chegava**. [[feedback_tool_unit_green_integration_dead]]
+
+**Fix:** espelhar o mecanismo da timeline (`graph_double`, armado no Down do grafo por `record_pointer_down`,
+lido no Up pra promover `Click` → `DoubleClick`). Foundational, mas **aditivo**: um campo, dois acessores, uma
+linha em cada ponta do dispatch.
+
+**Guarda no PRODUTOR** (`a_second_tap_on_a_graph_surface_is_a_double_click`, em `editor-core`) — o teste que
+teria pego isso. Mutante provado: sem o flag, o 2º tap volta como `Click` (`left: Click, right: DoubleClick`) —
+**exatamente o bug que o Enio viu**. Mais `a_dragged_second_tap_is_an_end_not_a_double_click` (um gesto que se
+moveu é um drag, seja qual for a contagem de taps).
+
+## 6-ter. Dívida de LOC — e o gate que eu não estava rodando
+
+O smoke destapou 5 gates vermelhos **acumulados nesta linha**: `paint.rs` (704) · `interact.rs` (684) ·
+`interact_tests.rs` (931) · `ph2d-node-motion-integrate` (750/700) · um magic number no `probe.rs`.
+
+**Por que passaram despercebidos:** o gate de LOC de PAINEL vive em **`ph2d-editor-core`**, e a lista de gates
+do handoff desta linha manda rodar `-p ph2d-host-desktop -E 'test(loc_cap)'` — que é **outro gate** (o do
+shell). Eu vinha rodando o do shell a cada fatia e o do painel **nenhuma vez**. É precisamente o latente que o
+`ship.sh` do integrador pegaria ([[project_integrator_ship_catches_latents_budget_iterations]]) — só que agora,
+não na integração.
+
+**Tudo corrigido por SPLIT, zero allowlist** ([[feedback_loc_cap_split_not_allowlist_and_fmt_reexpands]]):
+
+| Arquivo | Split |
+|---|---|
+| `paint.rs` 704 → 471 | **`paint_wire.rs`** — *tudo que é fio*: desenhar, achatar, testar contra a faca. Estão juntos porque **têm que CONCORDAR** (é a tese do §3) |
+| `interact.rs` 684 → 530 | **`interact_backdrop.rs`** — os gestos de backdrop |
+| `interact_tests.rs` 931 | → + `interact_f2_tests.rs` (backdrops+botões) + `interact_f2b_tests.rs` (duplicate/faca/probe) |
+| `ph2d-node-motion-integrate` 750 → 255 | testes pro irmão `tests.rs` |
+
+Uma entrada nova no `PANEL_A11Y_DELEGATE_OK` (HR-12) pro `paint_wire.rs`: ele **não tem widget** e **não
+registra nada** — os nós AccessKit dos fios (e dos waypoints) são registrados pelo `hits.rs`. É a saída que o
+próprio gate oferece, com o mesmo precedente de outros dois painéis.
+
+> **Ação pro handoff:** a lista de gates da linha precisa ganhar
+> `cargo nextest run -p ph2d-editor-core -E 'test(loc_cap) or test(a11y) or test(no_magic)'`.
+
 ## 7. Superfície nova (pro integrador)
 
 | Onde | O quê |
@@ -93,6 +141,7 @@ com sentido próprio, não um corte pra caber: *o painel PROPÕE uma conexão, o
 | `GraphIntent` | **`AddWaypoint`** · **`MoveWaypoint`** · **`RemoveWaypoint`** |
 | painel | `route.rs` (rota + insert-index) · `interact_waypoint.rs` (gestos) · `paint::wire_path` |
 | shell | `motion_bridge_waypoints.rs` (intents + `prune` + `stamp`) · `motion_bridge_connect.rs` (extraído) |
+| **foundational** | `ph2d-editor-core`: `graph_double` + `set_graph_double`/`take_graph_double` (aditivo) — **sem isso o grafo não vê duplo-clique** |
 
 ## 8. **O EDITOR F2 ESTÁ FECHADO**
 

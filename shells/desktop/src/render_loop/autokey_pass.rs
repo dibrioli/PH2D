@@ -42,6 +42,44 @@ use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 
 use super::timeline_bridge::{default_interp, sample_prop_value};
 
+/// Value tolerance the record-cleanup fit targets, as a fraction of each track's
+/// recorded value range — 0.5% is visually lossless while cutting the dense
+/// per-frame keys to a handful ([`ph2d_anim::fit_fcurve`]). Per-channel: the fit
+/// normalises by the range, so this reads the same on a pixel track and a radian
+/// track.
+const REC_SIMPLIFY_REL: f64 = 0.005;
+/// Absolute value-tolerance floor, so a near-constant track (its range ~0) does
+/// not get an impossibly tight tolerance that keeps every noise sample.
+const REC_SIMPLIFY_FLOOR: f64 = 1e-4;
+
+/// The recorded time+value span of one `(entity, prop)` track during a performing
+/// session — enough to simplify exactly the recorded range at a proportional
+/// tolerance when the drag ends.
+#[derive(Clone, Copy)]
+pub(crate) struct RecSpan {
+    t_min: f64,
+    t_max: f64,
+    v_min: f64,
+    v_max: f64,
+}
+
+impl RecSpan {
+    fn seed(t: f64, v: f64) -> Self {
+        Self {
+            t_min: t,
+            t_max: t,
+            v_min: v,
+            v_max: v,
+        }
+    }
+    fn extend(&mut self, t: f64, v: f64) {
+        self.t_min = self.t_min.min(t);
+        self.t_max = self.t_max.max(t);
+        self.v_min = self.v_min.min(v);
+        self.v_max = self.v_max.max(v);
+    }
+}
+
 /// The shell-owned state of the auto-key / pose machinery (one per `App`).
 #[derive(Default)]
 pub(crate) struct AutokeyState {
@@ -58,6 +96,10 @@ pub(crate) struct AutokeyState {
     /// The playhead time `displaced` was collected at (the bridge clears the
     /// set when the time changes).
     pub displaced_t: f64,
+    /// Per `(entity, prop)` recorded span of the in-flight performing session —
+    /// what to simplify (and over what tolerance) when the record drag ends.
+    /// Empty outside a performing drag.
+    pub(crate) record: BTreeMap<(u64, PropKind), RecSpan>,
 }
 
 /// Sample a sprite's six animatable values into a [`PoseSample`], in
@@ -151,10 +193,17 @@ pub(crate) fn apply_samples(
         // back. Identity (the common case, remapped == playhead) keeps the
         // frame-snapped playhead time byte-identical to before.
         let t_src = ph2d_timeline::remapped_time(&timeline.doc, entity, playhead.time());
-        let t_e = if t_src == playhead.time() {
-            t
-        } else {
+        // Where a key lands. Performing records in REAL (sub-frame) time: a mocap
+        // gesture is a continuous trajectory, and the simplify afterward places
+        // clean keys wherever the curve needs them — frame-snapping here would
+        // pin each key to a frame while its VALUE is the pose at the un-snapped
+        // instant, a mismatch of up to half a frame that the fit would chase
+        // (many spurious keys). Paused authoring still snaps (keys on whole
+        // frames); a Time Remap always keys at its source time.
+        let t_e = if playing || t_src != playhead.time() {
             RationalTime::from_seconds(t_src)
+        } else {
+            t
         };
         // The diff's reference clock is the RAW `t_src` — the exact time the
         // apply sampled — NOT the frame-snapped `t_e` a new key lands at.
@@ -173,6 +222,16 @@ pub(crate) fn apply_samples(
             // entity's trajectory, key per display frame.
             for (prop, v) in autokey_props(&timeline.doc, entity, t_diff, &pose, &base, true) {
                 to_key.push((entity, prop, v, t_e));
+                // Track the recorded span so the drag's end can simplify exactly
+                // what it recorded (playing = a performing session, not a paused
+                // one-off edit).
+                if playing {
+                    let (ts, vf) = (t_e.to_seconds(), f64::from(v));
+                    ak.record
+                        .entry((entity, prop))
+                        .and_modify(|s| s.extend(ts, vf))
+                        .or_insert_with(|| RecSpan::seed(ts, vf));
+                }
             }
         }
         // Displaced-pose pin (paused only — while playing the apply drives the
@@ -223,12 +282,32 @@ pub(crate) fn apply_samples(
     // Close the gizmo drag's step when the drag ends: one undo step if it changed
     // the document.
     if ak.drag_active && !drag_now {
+        // A performing session just ended: simplify the dense per-frame keys it
+        // recorded into clean minimal Bézier curves — WITHIN this same undo step,
+        // so one Ctrl+Z reverts the whole record + cleanup. `simplify_range`
+        // pins the range's endpoints, so keys outside it are untouched.
+        for (&(entity, prop), span) in &ak.record {
+            let Some(target) = timeline.doc.binding_for(entity, prop).map(|b| b.target) else {
+                continue;
+            };
+            let tol = (REC_SIMPLIFY_REL * (span.v_max - span.v_min)).max(REC_SIMPLIFY_FLOOR);
+            if let Some(track) = timeline.doc.active_clip_mut().track_mut(target) {
+                track.simplify_range(span.t_min, span.t_max, tol);
+            }
+        }
+        ak.record.clear();
         let doc = timeline.doc.clone();
         timeline.history.commit_if_changed(&doc);
     }
     ak.drag_active = drag_now;
 }
 
+#[cfg(test)]
+#[path = "autokey_performing_tests.rs"]
+mod performing_tests;
+#[cfg(test)]
+#[path = "autokey_test_helpers.rs"]
+mod test_helpers;
 #[cfg(test)]
 #[path = "autokey_pass_tests.rs"]
 mod tests;

@@ -55,6 +55,7 @@
 pub(crate) mod anim_value_serde;
 pub mod clip;
 pub mod curve;
+pub mod curve_fit;
 pub(crate) mod curve_weighted;
 pub mod easing;
 pub mod time;
@@ -68,6 +69,7 @@ pub const SCHEMA_VERSION: u32 = 1;
 
 pub use clip::{AnimTarget, Clip};
 pub use curve::{AnimCurve, CurveKey, Interp};
+pub use curve_fit::{FitKey, fit_fcurve};
 pub use easing::{Easing, EasingFamily, EasingMode};
 pub use time::RationalTime;
 pub use track::{Key, KeyId, Track};

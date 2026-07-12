@@ -390,6 +390,50 @@ impl Track {
         }
     }
 
+    /// Replace the non-roving keys in `[t_min, t_max]` seconds (inclusive) with a
+    /// MINIMAL cubic-Bézier fit within value `tol` — the record-cleanup path
+    /// ([`crate::fit_fcurve`], Schneider). Dense one-key-per-frame recordings
+    /// become clean [`Interp::BezierW`] curves of a few keys, precise to `tol`.
+    ///
+    /// Endpoints are pinned to the range's first/last sampled values, so keys
+    /// OUTSIDE the range keep their segments (the neighbour's interpolation is
+    /// untouched — it still points at a key of the same time and value). Roving
+    /// keys are skipped (their time is derived, not sampled). Returns `true` when
+    /// it reduced the key count; a no-op (fewer than 3 in-range keys, or no
+    /// reduction) returns `false` and leaves the track byte-identical.
+    pub fn simplify_range(&mut self, t_min: f64, t_max: f64, tol: f64) -> bool {
+        let mut ids = Vec::new();
+        let mut samples = Vec::new();
+        for i in 0..self.keys.len() {
+            let ts = self.keys[i].t.to_seconds();
+            if ts >= t_min && ts <= t_max && !self.roving[i] {
+                // Only scalar keys fit; a non-scalar in range would break the
+                // (t, value) sampling, so leave the whole range alone.
+                let AnimValue::Float(v) = self.keys[i].value else {
+                    return false;
+                };
+                ids.push(self.ids[i]);
+                samples.push((ts, f64::from(v)));
+            }
+        }
+        if samples.len() < 3 {
+            return false;
+        }
+        let fitted = crate::fit_fcurve(&samples, tol);
+        if fitted.len() >= samples.len() {
+            return false; // nothing to gain — keep the originals
+        }
+        self.remove_keys(&ids);
+        for fk in &fitted {
+            self.insert_key(
+                RationalTime::from_seconds(fk.t),
+                AnimValue::Float(fk.v as f32),
+                fk.interp,
+            );
+        }
+        true
+    }
+
     /// Duplicate each listed key, offset by `delta`. Returns the copies' ids, in
     /// the order the sources were listed (for re-selecting the duplicates).
     ///

@@ -435,3 +435,67 @@ fn a_frame_exact_move_merges_where_to_seconds_would_have_missed() {
     tr.move_keys(&[a], RationalTime::from_frame(2, 24)); // 0 -> frame 2, exactly
     assert_eq!(tr.len(), 1, "exact frame equality merged them");
 }
+
+// ── W5: simplify_range (record cleanup — Schneider fit through Track) ─────────
+
+/// Sample the track's value at time `t` (via the public evaluator).
+fn tr_at(tr: &Track, t: f64) -> f32 {
+    as_f(tr.sample(t))
+}
+
+#[test]
+fn simplify_range_replaces_dense_keys_with_a_precise_minimal_fit() {
+    // A dense recording: 200 keys, one per frame, tracing a smooth sine bump.
+    let mut tr = Track::new(vec![]);
+    let n = 200;
+    for i in 0..n {
+        let t = 4.0 * i as f64 / (n - 1) as f64;
+        let v = 50.0 * (t * std::f64::consts::PI / 4.0).sin();
+        tr.insert_key(secs(t), AnimValue::Float(v as f32), Interp::Linear);
+    }
+    assert_eq!(tr.len(), n);
+    let changed = tr.simplify_range(0.0, 4.0, 0.25);
+    assert!(changed, "the dense run simplified");
+    assert!(
+        tr.len() < n / 10,
+        "dramatic reduction: {} keys from {n}",
+        tr.len()
+    );
+    // Fidelity: the simplified curve stays within tolerance of the original.
+    for i in 0..n {
+        let t = 4.0 * i as f64 / (n - 1) as f64;
+        let want = 50.0 * (t * std::f64::consts::PI / 4.0).sin();
+        assert!(
+            (f64::from(tr_at(&tr, t)) - want).abs() <= 0.25 + 1e-3,
+            "fidelity at t={t}"
+        );
+    }
+}
+
+#[test]
+fn simplify_range_leaves_keys_outside_the_range_untouched() {
+    let mut tr = Track::new(vec![]);
+    // A key well before the range, then a dense run inside [1, 2].
+    let before = tr.insert_key(secs(0.0), AnimValue::Float(9.0), Interp::Hold);
+    for i in 0..60 {
+        let t = 1.0 + i as f64 / 59.0;
+        let v = (t * 6.0).sin();
+        tr.insert_key(secs(t), AnimValue::Float(v as f32), Interp::Linear);
+    }
+    tr.simplify_range(1.0, 2.0, 0.05);
+    // The outside key survives with its value and its Hold interp.
+    assert_eq!(tr.key(before).map(|k| k.interp), Some(Interp::Hold));
+    assert!((tr_at(&tr, 0.0) - 9.0).abs() < 1e-6, "pre-range value held");
+}
+
+#[test]
+fn simplify_range_is_a_noop_below_three_keys() {
+    let mut tr = Track::new(vec![]);
+    tr.insert_key(secs(0.0), AnimValue::Float(0.0), Interp::Linear);
+    tr.insert_key(secs(1.0), AnimValue::Float(1.0), Interp::Linear);
+    assert!(
+        !tr.simplify_range(0.0, 1.0, 0.1),
+        "two keys: nothing to fit"
+    );
+    assert_eq!(tr.len(), 2);
+}

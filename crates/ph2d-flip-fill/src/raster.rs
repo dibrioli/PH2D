@@ -12,6 +12,10 @@ use ph2d_core::Vec2;
 pub const BOUNDARY: u8 = 1 << 0;
 /// O pixel foi alcançado pelo flood a partir da semente.
 pub const FILLED: u8 = 1 << 1;
+/// O pixel está sob a **TINTA** de um traço — a silhueta VISUAL da linha (espessura
+/// cheia), não a parede do flood (que é metade dela). É o mapa de "até onde a cor pode
+/// avançar escondida debaixo do traço".
+pub const INK: u8 = 1 << 2;
 
 /// Teto de passes de dilatação/erosão (cada passe clona o buffer). O painel limita a
 /// ±8; isto é a guarda da lib.
@@ -96,20 +100,29 @@ impl Grid {
     }
 
     /// **Rasteriza um segmento como cápsula** de raio `r` (em pixels), marcando
-    /// `BOUNDARY`.
+    /// `BOUNDARY` — a parede que o flood não atravessa.
     ///
-    /// O raio é **metade** da espessura visual do traço (`radius_scale = 0.5` do GP) —
-    /// e essa é *a linha mais importante do subsistema*: com a espessura cheia, o
-    /// contorno traçado fica na borda EXTERNA da linha e o preenchimento nasce com um
-    /// halo; com raio zero, ele vaza pelas frestas do anti-aliasing. Com metade, o
-    /// contorno cai DENTRO do corpo da linha e a cor entra **por baixo** dela — o
-    /// mesmo insight do "fill up to vector paths" do Clip Studio.
+    /// O raio é **metade** da espessura visual do traço (`radius_scale = 0.5` do GP): a
+    /// parede cai DENTRO do corpo da linha, então o flood já para por baixo dela.
     pub fn stroke_capsule(&mut self, a: Vec2, b: Vec2, r_px: f32) {
+        // O GP conta com o AA do render dilatando ~½px e fechando micro-frestas; aqui o
+        // raster é exato, então o ½px entra explicitamente no raio da PAREDE.
+        self.capsule(a, b, r_px, BOUNDARY, 0.5);
+    }
+
+    /// A **TINTA** do traço: a cápsula na espessura VISUAL cheia — a silhueta do que o
+    /// usuário enxerga. Não é parede; é o mapa de "até onde a cor pode ir escondida".
+    pub fn ink_capsule(&mut self, a: Vec2, b: Vec2, r_px: f32) {
+        // **Sem a folga de AA.** A tinta é a silhueta EXATA do que se vê, não uma parede
+        // que precisa tapar frestas: meio pixel a mais aqui é meio pixel de cor aparecendo
+        // por fora do traço.
+        self.capsule(a, b, r_px, INK, 0.0);
+    }
+
+    fn capsule(&mut self, a: Vec2, b: Vec2, r_px: f32, bit: u8, aa: f32) {
         let (ax, ay) = self.to_px(a);
         let (bx, by) = self.to_px(b);
-        // O GP conta com o AA do render dilatando ~½px e fechando micro-frestas; aqui
-        // o raster é exato, então o ½px entra explicitamente no raio.
-        let r = r_px.max(0.0) + 0.5;
+        let r = r_px.max(0.0) + aa;
         let x0 = ((ax.min(bx) - r).floor().max(0.0)) as usize;
         let x1 = ((ax.max(bx) + r).ceil().min((self.w - 1) as f32)).max(0.0) as usize;
         let y0 = ((ay.min(by) - r).floor().max(0.0)) as usize;
@@ -172,7 +185,7 @@ impl Grid {
                 continue;
             }
             for x in (xa as usize)..=(xb as usize) {
-                self.set(x, y, BOUNDARY);
+                self.set(x, y, bit);
             }
         }
     }
@@ -292,6 +305,53 @@ impl Grid {
     /// **Grow/Shrink** (dilate/erode 8-conexo) do bitmap preenchido, `n` passos.
     /// Positivo cresce (mata o halo do anti-aliasing, entrando por baixo da linha —
     /// o "Area Scaling" do Clip Studio); negativo encolhe.
+    /// **A cor entra por baixo da linha e para na SILHUETA dela.**
+    ///
+    /// Dilata a região preenchida, mas **só para dentro de pixels de `INK`** — o corpo
+    /// visível do traço. Roda até não haver mais o que ganhar (limitado por `max_passes`,
+    /// que o chamador deriva da espessura mais grossa do desenho).
+    ///
+    /// É a diferença entre uma regra e um chute. O `grow` cego não sabe onde a linha
+    /// acaba: pequeno demais, o alisamento do contorno descola a cor do traço numa curva
+    /// apertada e abre um fio claro; grande demais, a cor transborda numa linha fina. Como
+    /// a quantidade certa **depende da espessura do traço em cada ponto**, nenhuma
+    /// constante serve. Aqui não há constante: a expansão é *limitada pela própria tinta*,
+    /// então o preenchimento cobre exatamente o que a linha esconde — nem um pixel a menos,
+    /// nem um a mais, seja a linha de 1px ou de 40.
+    pub fn expand_under_ink(&mut self, max_passes: usize) {
+        for _ in 0..max_passes {
+            let src = self.flags.clone();
+            let mut changed = false;
+            for y in 0..self.h {
+                for x in 0..self.w {
+                    let i = y * self.w + x;
+                    // Só pixels de TINTA que ainda não são cor.
+                    if src[i] & FILLED != 0 || src[i] & INK == 0 {
+                        continue;
+                    }
+                    // Algum vizinho 8-conexo já é cor?
+                    let mut touch = false;
+                    for dy in -1i32..=1 {
+                        for dx in -1i32..=1 {
+                            let (nx, ny) = (x as i32 + dx, y as i32 + dy);
+                            if nx < 0 || ny < 0 || nx >= self.w as i32 || ny >= self.h as i32 {
+                                continue;
+                            }
+                            touch |= src[ny as usize * self.w + nx as usize] & FILLED != 0;
+                        }
+                    }
+                    if touch {
+                        self.flags[i] |= FILLED;
+                        changed = true;
+                    }
+                }
+            }
+            if !changed {
+                break; // já cobriu toda a tinta alcançável
+            }
+        }
+    }
+
     /// (`n` é clampado: a crate é uma lib pública, e `grow(i32::MIN)` seriam 2³¹ passes
     /// clonando o buffer a cada um — o painel já limita a ±8, mas a guarda mora aqui.)
     pub fn grow(&mut self, n: i32) {

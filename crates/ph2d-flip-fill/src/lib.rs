@@ -14,7 +14,8 @@
 //!   → gap::closures         fecha os vãos (pontas + quinas), cortando na colisão
 //!   → raster::Grid          rasteriza as fronteiras a MEIA espessura (radius_scale 0.5)
 //!   → raster::flood         span fill 4-conexo + filtro de vazamento CRUZADO
-//!   → raster::grow          Grow/Shrink (mata o halo do AA; entra por baixo da linha)
+//!   → raster::expand_under_ink  a cor entra por baixo da linha e PARA na silhueta dela
+//!   → raster::grow          Grow/Shrink do usuário (ajuste fino; default 0)
 //!   → trace::trace_contours marching squares — os buracos saem de graça
 //!   → trace::simplify_ring  RDP + binomial leve
 //!   = FillResult { outer, holes, closures }
@@ -173,7 +174,12 @@ pub fn fill_at(
     let scale = params.precision.max(MIN_SCALE);
     let mut grid = Grid::new(lo, hi, scale, MARGIN_PX, MAX_SIDE);
 
-    // 3. Rasteriza as fronteiras a MEIA espessura + os fechamentos (1px, como o GP).
+    // 3. Duas rasterizações, com papéis DIFERENTES:
+    //    - `BOUNDARY` = a **parede** do flood, a meia espessura (`radius_scale = 0.5`):
+    //      cai dentro do corpo da linha, então o flood já para por baixo dela;
+    //    - `INK` = a **silhueta visual** do traço, espessura cheia: o mapa de até onde a
+    //      cor pode avançar ESCONDIDA. É ele que substitui o chute do `grow` (passo 5).
+    let mut max_ink_px: f32 = 0.0;
     for (pts, w, closed) in strokes {
         let n = pts.len();
         if n < 2 {
@@ -184,13 +190,14 @@ pub fn fill_at(
             let (a, b) = (pts[i], pts[(i + 1) % n]);
             let ra = w.get(i).copied().unwrap_or(0.0);
             let rb = w.get((i + 1) % n).copied().unwrap_or(0.0);
-            // `radius_scale = 0.5`: metade da meia-espessura, em pixels da grade.
-            let r_px = 0.5 * 0.5 * (ra + rb) * scale;
-            grid.stroke_capsule(a, b, r_px);
+            let half_px = 0.5 * (ra + rb) * scale; // a meia-espessura VISUAL, em px
+            max_ink_px = max_ink_px.max(half_px);
+            grid.ink_capsule(a, b, half_px); // a silhueta
+            grid.stroke_capsule(a, b, 0.5 * half_px); // a parede (metade dela)
         }
     }
     for c in &closures {
-        grid.stroke_capsule(c.a, c.b, 0.0); // o fechamento é fino (1px)
+        grid.stroke_capsule(c.a, c.b, 0.0); // o fechamento é fino (1px) e é só parede
     }
 
     // 4. O flood, a partir do clique.
@@ -204,7 +211,20 @@ pub fn fill_at(
         return Err(FillError::Leaked);
     }
 
-    // 5. Grow/Shrink — o preenchimento entra por baixo da linha (mata o halo do AA).
+    // 5. **A cor entra por baixo da linha e para na silhueta dela.** Nenhum número
+    //    arbitrário: a expansão é limitada pela própria TINTA, então cobre exatamente o
+    //    que o traço esconde — numa linha de 1px ou de 40px, igual.
+    //
+    //    Era aqui que morava o chute. O `grow` cego não sabe onde a linha acaba: pequeno
+    //    demais, o alisamento do contorno descolava a cor do traço numa curva apertada e
+    //    abria um fio claro; grande demais, a cor transbordava numa linha fina. A
+    //    quantidade certa depende da espessura LOCAL do traço — logo, nenhuma constante
+    //    serve, e o default "+2px" era ele próprio o halo que dizia evitar.
+    let passes = (max_ink_px.ceil() as usize).saturating_add(2);
+    grid.expand_under_ink(passes);
+
+    // 6. O Grow/Shrink do usuário, por cima — agora um ajuste FINO (default 0), não a
+    //    muleta que fazia a coisa toda funcionar.
     if params.grow != 0 {
         grid.grow(params.grow);
     }
@@ -449,13 +469,21 @@ mod tests {
                  ficou grosseiro e o fill virou um poligono"
             );
         }
-        // E nenhum deles pode TRANSBORDAR a linha: o raio do contorno fica DENTRO do
-        // raio desenhado (250 px), porque a cor entra por baixo do traço.
+        // **A regra, em números.** O traço tem 6 px: a linha VISÍVEL vai de 247 a 253 px
+        // do centro. O preenchimento tem de chegar à borda EXTERNA (253) — cobrindo tudo
+        // o que a linha esconde, sem deixar um fio claro na curva — e **nunca passar
+        // dela** (senão a cor aparece por fora do desenho).
         for &(h, _, r) in &results {
             assert!(
-                r <= 250.0,
+                r <= 253.0 + 1.0,
                 "zoom h={h}: o preenchimento vazou {:.1} px para FORA da linha",
-                r - 250.0
+                r - 253.0
+            );
+            assert!(
+                r >= 250.0,
+                "zoom h={h}: o preenchimento parou a {:.1} px do centro, aquem do corpo da \
+                 linha (247..253) — vai abrir um fio claro na curva",
+                r
             );
         }
     }
@@ -473,6 +501,64 @@ mod tests {
             1 => (-y, x),
             2 => (-x, -y),
             _ => (y, -x),
+        }
+    }
+
+    /// **A cor para na SILHUETA da linha — em QUALQUER espessura.**
+    ///
+    /// É a regra que substituiu o chute. Um `grow` cego não sabe onde a linha acaba, e a
+    /// quantidade certa depende da espessura LOCAL do traço: o mesmo "+2 px" que fecha o
+    /// fio claro de uma linha grossa transborda uma linha de 1 px. Nenhuma constante
+    /// serve — por isso a expansão é limitada pela própria TINTA (`INK`).
+    ///
+    /// Aqui: o mesmo círculo com traços de 1 a 40 px. Em todos, o preenchimento tem de
+    /// **alcançar a borda externa** do traço (senão o alisamento do contorno abre um fio
+    /// claro na curva) e **não passar dela** (senão a cor aparece por fora do desenho).
+    #[test]
+    fn the_colour_stops_at_the_ink_silhouette_at_any_line_width() {
+        let px_to_world = 10.0f32 / 800.0;
+        for width_px in [1.0f32, 2.0, 6.0, 16.0, 40.0] {
+            let r = 250.0 * px_to_world;
+            let n = 96;
+            let pts: Vec<Vec2> = (0..n)
+                .map(|i| {
+                    let (x, y) = unit_circle(i as f32 / n as f32);
+                    Vec2::new(r * x, r * y)
+                })
+                .collect();
+            let half = width_px * 0.5 * px_to_world;
+            let strokes = vec![(pts, vec![half; n], true)];
+
+            let res = fill_at(
+                &strokes,
+                Vec2::new(0.0, 0.0),
+                FillParams {
+                    precision: 1.0 / px_to_world,
+                    gap_reach: 0.0,
+                    grow: 0, // NENHUM ajuste: a tinta é que manda
+                    mode: FillMode::Paint,
+                },
+            )
+            .expect("o circulo fechado preenche");
+
+            let max_r = res
+                .outer
+                .iter()
+                .map(|p| (p.x * p.x + p.y * p.y).sqrt() / px_to_world)
+                .fold(0.0f32, f32::max);
+            // A linha VISÍVEL vai de (250 - w/2) a (250 + w/2).
+            let outer_edge = 250.0 + width_px * 0.5;
+            let inner_edge = 250.0 - width_px * 0.5;
+            assert!(
+                max_r <= outer_edge + 1.0,
+                "linha de {width_px}px: a cor vazou {:.1} px para FORA do traco",
+                max_r - outer_edge
+            );
+            assert!(
+                max_r >= inner_edge,
+                "linha de {width_px}px: a cor parou a {max_r:.1} px, ANTES do corpo do \
+                 traco ({inner_edge:.1}..{outer_edge:.1}) — vai abrir um fio claro na curva"
+            );
         }
     }
 }

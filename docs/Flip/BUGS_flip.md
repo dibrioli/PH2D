@@ -599,3 +599,42 @@ vértices e precisão sub-pixel em qualquer aproximação. Gate: `the_fill_is_in
 > O produto dizia "12 px, 17 vértices". A diferença era **um parâmetro que o teste nunca varreu**.
 > Varra o eixo que o usuário controla ([[feedback_test_with_product_numbers_not_convenient_ones]]):
 > não basta usar os números do produto, é preciso usar a **faixa** deles.
+
+---
+
+## #12 — O `grow` era um chute, e nenhuma constante podia acertar
+
+**Sintoma (Enio, 2º smoke):** *"melhorou mas não completamente"* — a cor ainda descolava do traço na
+curvatura apertada, deixando um fio claro entre o preenchimento e a linha.
+
+A tentação óbvia era subir o Grow. Mas o Grow é uma **dilatação cega**: ele não sabe onde a linha
+acaba. E a quantidade certa **depende da espessura local do traço** —
+
+| | linha de 1 px | linha de 40 px |
+|---|---|---|
+| grow +2 px | a cor **transborda** 1,5 px | ainda **falta** 18 px para chegar à borda |
+
+Não existe constante que sirva para as duas. O `grow` estava fazendo o trabalho de uma **regra** —
+e a regra, o doc já dizia em português desde o começo: *"a cor entra por baixo da linha"*. Ela nunca
+tinha sido escrita em código, porque o solver **não sabia onde a linha estava**: ele só conhecia a
+`BOUNDARY` (a parede, a meia espessura), nunca a silhueta visual.
+
+**Fix — dar ao solver o que faltava:** um segundo mapa, `INK`, com a cápsula na espessura **cheia**
+(a silhueta do que se vê). Depois do flood, `expand_under_ink()` dilata a região **só para dentro de
+pixels de tinta**, até não haver mais o que ganhar. O preenchimento cobre então *exatamente* o que a
+linha esconde — nem um pixel a menos, nem um a mais.
+
+Medido (mesmo círculo, `grow = 0`, sem ajuste nenhum):
+
+| espessura | 1 px | 2 px | 6 px | 16 px | 40 px |
+|---|---|---|---|---|---|
+| sobra além da borda externa | +0,2 | +0,3 | +0,3 | +0,2 | +0,3 px |
+
+Uma sobra sub-pixel, constante, dentro do próprio anti-aliasing da linha — em qualquer espessura e
+qualquer zoom. O `grow` continua no painel, mas virou o que devia ter sido desde o início: um
+**ajuste fino** (default 0), não a muleta que fazia a coisa funcionar.
+
+> **Lição — quando nenhuma constante serve, é porque falta um DADO, não um número.** Três defaults
+> diferentes foram tentados (+2, 0, +1) e cada um quebrava numa faixa de espessura. Isso não é um
+> problema de calibração: é o sintoma de que a decisão depende de uma informação que o algoritmo não
+> tem. *Antes de procurar o valor certo de uma constante, pergunte que dado a tornaria desnecessária.*

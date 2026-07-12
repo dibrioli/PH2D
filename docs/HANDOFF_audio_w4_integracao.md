@@ -8,8 +8,14 @@
 ## ⚠️ O QUE O INTEGRADOR PRECISA SABER ANTES DE TUDO
 
 1. **ZERO dep nova.** Nenhum `Cargo.toml`/`Cargo.lock` tocado. Nada de `machete`/`deny` novo.
-2. **ZERO foundational tocado.** Todo o diff vive em `crates/ph2d-audio-edit/` +
-   `shells/desktop/src/audio/` — a pasta do módulo. Sem `editor-core`, sem `tokens`, sem `ph2d-core`.
+2. **Foundational tocado: DOIS pontos, ambos ADITIVOS** (o resto do diff vive nas pastas do
+   módulo de áudio):
+   - **`crates/ph2d-ui-testkit`** — `MockPanelHost::store()`, acessor **read-only** novo, pra um
+     seam test poder afirmar sobre o que o `populate` semeou (seção dobrada, default), não só
+     sobre o que um evento fez. Nada muda de forma; nenhum caller existente é afetado.
+   - **`crates/ph2d-editor-core/tests/hr15_no_hardcoded_ui_strings.rs`** — a entrada de BASELINE
+     de `paint.rs` **migrou** para `paint_sections.rs` quando o painel foi dividido em seções
+     (mesma string, arquivo novo). Baseline **movido**, não afrouxado.
 3. **ZERO contrato congelado encostado** (CLAUDE.md §6): `NodeOp`/`OpResolver`/`NodeManifest`,
    `Tool`/`RasterEditTool`/`CanvasPaintTool`/`PanelEvent`, `VectorOp` — nenhum foi lido nem escrito.
 4. **Um arquivo foi DELETADO:** `crates/ph2d-audio-edit/src/fx/pitch.rs` (motor granular,
@@ -142,6 +148,12 @@ Nenhum é foundational; todos vivem dentro do módulo de áudio. Listados porque
   **nome**, nunca por índice (o módulo `fx_presets` documenta isso).
 - **`FACTORY`** (`fx_presets.rs`): **15 → 21**.
 - **Specs novas** em `fx_param_specs.rs`: `FORMANT_SHIFT`, `HARMONIZER`, `DE_CLICK`.
+- **Ids novos do painel** (`ph2d-panel-audio-editor`): `AEDIT_CODEC_PREV`/`_NEXT`,
+  `AEDIT_OGG_QUALITY` (Delivery) + as 7 seções colapsáveis `AEDIT_SEC_TRANSPORT`/`_EDIT`/`_FX`/
+  `_LOOP`/`_MARKERS`/`_VARIATIONS`/`_DELIVERY`. **Removido:** `AEDIT_EXPORT_OGG` (o botão saiu;
+  o Export obedece o codec). Todos `hash_node_id` do próprio painel — não colidem com nada.
+- **Módulo novo do painel:** `paint_sections.rs` (+ `paint_sections/tests.rs`), do split de LOC.
+- **Crate `ph2d-audio-encode`:** módulo `delivery.rs` novo; `encode_ogg` reescrito (chunked).
 
 ---
 

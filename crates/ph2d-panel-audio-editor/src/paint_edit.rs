@@ -127,11 +127,10 @@ pub(crate) fn paint_edit_section(
         theme,
         hit_index,
     );
-    y += ROW_H + Spacing::Md.px();
-
-    // Effects rack (W3 blocks 3a/3b) — selector + parameter sliders + the chain list
-    // + Apply. It acts on the selection, or the whole clip when there is none, so it
-    // only needs a clip loaded (like the whole-clip ops above). Returns the bottom of
-    // the painted body, which the caller turns into the scrollable content height.
-    crate::paint_fx::paint_fx_section(y, x, w, loaded, ROW_H, scene, text_system, theme, hit_index)
+    // The effects rack used to be painted from here. It is its own SECTION now
+    // (`paint_sections`), so delegating to it as well drew the whole rack twice — and
+    // since `HitIndex::hit` walks back-to-front, the copy up here was a ghost: painted,
+    // and unclickable. Enio spotted the duplicate on sight (2026-07-12);
+    // `no_control_is_painted_twice` keeps it spotted.
+    y + ROW_H + Spacing::Md.px()
 }

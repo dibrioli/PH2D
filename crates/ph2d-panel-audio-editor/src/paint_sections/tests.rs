@@ -122,3 +122,42 @@ fn the_fold_state_follows_the_section_not_the_slot() {
         }
     }
 }
+
+/// **No control may be painted twice.** The rack was being drawn once inside the Edit
+/// section (which still delegated to it, from before the panel had sections) and again
+/// as its own Effects section. It looks like a duplicated block, and it is worse than it
+/// looks: `HitIndex::hit` walks back-to-front, so the LAST registration of an id wins
+/// and the first copy becomes a ghost — painted, and unclickable.
+///
+/// A height test cannot see this (folding either copy still shortens the panel), so the
+/// invariant has to be stated directly: paint the whole body, and no id may register a
+/// hit rect more than once.
+#[test]
+fn no_control_is_painted_twice() {
+    let mut scene = VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let mut hits = HitIndex::default();
+    {
+        let clip = Rect::new(0.0, 0.0, 220.0, 40_000.0);
+        let mut ch = ClippedHits::new(&mut hits, clip);
+        paint_body(
+            0.0,
+            0.0,
+            220.0,
+            &body([true; 7]),
+            &mut scene,
+            &mut text,
+            Theme::default(),
+            &mut ch,
+        );
+    }
+    let mut seen: std::collections::BTreeMap<ph2d_a11y::NodeId, usize> = Default::default();
+    for (id, _) in hits.iter_registrations() {
+        *seen.entry(id).or_default() += 1;
+    }
+    let dupes: Vec<_> = seen.iter().filter(|(_, n)| **n > 1).collect();
+    assert!(
+        dupes.is_empty(),
+        "these controls are painted more than once (the first copy is a ghost): {dupes:?}"
+    );
+}

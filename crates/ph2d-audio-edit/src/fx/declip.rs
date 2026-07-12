@@ -155,9 +155,16 @@ fn repair_block(x: &mut [f64], block: Range<usize>, threshold: f64) {
     };
     for run in runs {
         let gap = (lo + run.start)..(lo + run.end);
-        // The interpolation needs intact signal on BOTH sides to lean on. A plateau flush
-        // against the edge of the block has only one, so it waits for a block whose
-        // boundaries fall elsewhere rather than being rebuilt from half a picture.
+        // The interpolation needs intact signal on BOTH sides to lean on, so a plateau flush
+        // against the edge of the CLIP is left alone rather than rebuilt from half a picture.
+        //
+        // (This guard is about the clip's edges, not the block's. A plateau straddling a
+        // block seam is split into two shorter runs and each half is repaired on its own —
+        // the blocks are fixed and never move, so there is no second pass in which the seam
+        // falls elsewhere. Measured: 11 of 110 alignments leave 1-2 samples pinned at the
+        // ceiling, with no audible step at the seam. An earlier comment here claimed the
+        // plateau "waits for a block whose boundaries fall elsewhere", which is not a thing
+        // that happens — audit 2026-07-12.)
         if gap.start < ORDER || gap.end + ORDER > x.len() {
             continue;
         }

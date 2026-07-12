@@ -82,8 +82,13 @@ impl Effect {
             // looks like damage and gets "repaired". Pre-roll one analysis block.
             Effect::FormantShift { .. } => formant::BLOCK.min(cap),
             Effect::DeClick { .. } => declick::BLOCK.min(cap),
-            // De-Clip refits its AR model per block, like De-Click: it needs a block of
-            // preceding audio or the model entering the region has heard nothing.
+            // De-Clip, like De-Click. What the pre-roll actually buys is the EDGE GUARD: a
+            // plateau within `ORDER` samples of the buffer's start is skipped, so without a
+            // warm-up a clipped peak at the very beginning of a selection would never be
+            // repaired. It does NOT give the AR model more context — the model is refitted
+            // per fixed block, and a warm-up of exactly `BLOCK` just adds one whole block
+            // that is discarded (audit 2026-07-12). `ORDER` would do; `BLOCK` costs 0.07 %
+            // of a 60 s clip and keeps the two restoration tools saying the same thing.
             Effect::DeClip { .. } => declip::BLOCK.min(cap),
             // Distortion's post low-pass would click at a selection edge without a
             // pre-roll; size it on the darkest (longest-ringing) tone.

@@ -26,11 +26,8 @@
 //! Os parâmetros são **frações** da caixa, não medidas absolutas — assim a seta guarda a
 //! proporção ao ser redimensionada, que é o que se espera de uma forma paramétrica.
 
-use crate::space::{Unit, Uv, closed, fit, poly, straighten};
+use crate::space::{Unit, Uv, closed, poly, straighten};
 use crate::{VecPath, VecVertex};
-
-/// O centro da caixa unitária — a origem de tudo que é radial aqui.
-const O: Uv = (0.5, 0.5);
 
 /// **Arco em cúbicas de ≤45°** — o antídoto da poligonização.
 ///
@@ -65,24 +62,6 @@ fn elbow(u: &Unit, c: Uv, ru: f64, rv: f64, start_deg: f64, sweep_deg: f64) -> V
         return vec![u.corner(c)]; // os dois extremos do arco colapsam no centro
     }
     arc45(u, c, ru, rv, start_deg, sweep_deg)
-}
-
-/// Ponto na circunferência de raio `r` e ângulo `deg` em torno de [`O`] (espaço unitário).
-fn polar(r: f64, deg: f64) -> Uv {
-    let (s, c) = deg.to_radians().sin_cos();
-    (O.0 + r * c, O.1 + r * s)
-}
-
-/// O ângulo (graus) de um ponto visto de [`O`] — o inverso de [`polar`].
-fn angle_of(p: Uv) -> f64 {
-    (p.1 - O.1).atan2(p.0 - O.0).to_degrees()
-}
-
-/// O sweep COM SINAL que leva de `from` a `to` andando no sentido `dir` (±1). Sem isto,
-/// "de 337° para 180°" viraria +203° (a volta longa, pelo lado errado) em vez de −157°.
-fn signed_span(from: f64, to: f64, dir: f64) -> f64 {
-    let d = (to - from).rem_euclid(360.0);
-    if dir < 0.0 { d - 360.0 } else { d }
 }
 
 /// **Seta reta.** Haste retangular + cabeça triangular apontando para +X: a ponta é um
@@ -239,154 +218,3 @@ pub fn chevron(a: [f64; 2], b: [f64; 2], point: f64, notch: f64) -> VecPath {
         ],
     )
 }
-
-/// Os números RESOLVIDOS da seta circular — clamps aplicados, a forma fechada da
-/// referência já avaliada. Existe como tipo (e não como um punhado de `let`) porque é a
-/// MESMA verdade que o desenho usa e que o teste mede: um teste que re-derivasse o raio
-/// estaria provando a si mesmo.
-#[derive(Copy, Clone, Debug)]
-struct Curved {
-    start: f64,
-    /// Raio EXTERNO da faixa. Já encolhido pelo transbordo da cabeça — é a normalização.
-    r_out: f64,
-    r_in: f64,
-    span_out: f64,
-    span_in: f64,
-    ang_c: f64,
-    tip: Uv,
-    corner_g: Uv,
-    corner_b: Uv,
-    flare: bool,
-}
-
-impl Curved {
-    /// A álgebra inteira da `circularArrow` do ECMA-376, em forma fechada (substitui ~90
-    /// linhas da linguagem de guias do padrão).
-    ///
-    /// A NORMALIZAÇÃO é o coração: `r_out = 0,5 + th/2 − hh` faz `r_c = 0,5 − hh`, e como
-    /// a cabeça é construída a ±`hh` da linha de CENTRO, o ponto mais externo dela cai em
-    /// `r_c + hh = 0,5` — exatamente o círculo inscrito na caixa. A forma inteira fica
-    /// contida por desigualdade triangular, **sem um único clamp de transbordo**.
-    ///
-    /// Duas armadilhas do padrão NÃO são portadas (ele erra as duas em parte do espaço de
-    /// parâmetros): o teto do sweep da cabeça é `asin(r_in / r_c)` — a construção `maxAng`
-    /// do OOXML escolhe o ramo OBTUSO em metade dos casos, e uma cabeça varrendo 174° não
-    /// é uma cabeça —, e a raiz da interseção interna é SEMPRE a mais próxima de `H` (o
-    /// padrão pega a mais próxima de `B`, e a cabeça auto-intersecta no extremo).
-    fn resolve(sweep_deg: f64, start_deg: f64, thickness: f64, head_w: f64, head_len: f64) -> Self {
-        let full = head_w.clamp(0.05, 0.5);
-        let hh = full * 0.5;
-        // O OOXML: a faixa nunca é mais grossa que a cabeça (`maxAdj1 = 2·adj5`).
-        let th = thickness.clamp(0.02, 0.5).min(full);
-        let r_out = 0.5 + th * 0.5 - hh;
-        let r_c = 0.5 - hh;
-        let r_in = (r_out - th).max(1e-3);
-
-        let mag = sweep_deg.abs().clamp(10.0, 350.0);
-        let dir = if sweep_deg < 0.0 { -1.0 } else { 1.0 };
-        // A linha da base da cabeça tem de CORTAR o círculo interno: é isso, e só isso,
-        // que limita o sweep dela.
-        let max_hs = (r_in / r_c).clamp(-1.0, 1.0).asin().to_degrees();
-        let hs = (head_len.clamp(0.02, 0.9) * mag).min(max_hs.min(mag * 0.9));
-
-        let start = start_deg;
-        let pt = start + mag * dir; // a ponta fica no FIM do sweep
-        let en = pt - dir * hs; // a base da cabeça, na linha de centro
-        let h = polar(r_c, en);
-        // A base da cabeça é a reta por `H` na direção RADIAL DA PONTA (não da base) — é o
-        // que o padrão faz, e é o que dá à cabeça a farpa levemente inclinada para trás.
-        let (us, uc) = pt.to_radians().sin_cos();
-
-        // |H + σ·u|² = R²  =>  σ = −r_c·cos(hs) ± sqrt(R² − r_c²·sin²(hs)). A raiz "+" é
-        // sempre a mais próxima de H — válida para o círculo externo (H está dentro) E
-        // para o interno (H está fora).
-        let (sp, cp) = hs.to_radians().sin_cos();
-        let base = r_c * sp;
-        let sigma = |r: f64| (r * r - base * base).max(0.0).sqrt() - r_c * cp;
-        let (sigma_f, sigma_c) = (sigma(r_out), sigma(r_in));
-
-        let along = |d: f64| (h.0 + d * uc, h.1 + d * us);
-        let (f_pt, c_pt) = (along(sigma_f), along(sigma_c));
-
-        Self {
-            start,
-            r_out,
-            r_in,
-            span_out: signed_span(start, angle_of(f_pt), dir),
-            span_in: signed_span(angle_of(c_pt), start, -dir),
-            ang_c: angle_of(c_pt),
-            tip: polar(r_c, pt), // a PONTA vive na linha de CENTRO, não na borda externa
-            corner_g: along(hh),
-            corner_b: along(-hh),
-            // Faixa mais grossa que a cabeça = cabeça sem aba: vira um corte inclinado.
-            flare: (sigma_f - sigma_c) * 0.5 < hh,
-        }
-    }
-
-    /// O contorno, ainda **sem** o ajuste à caixa — é o que o teste mede contra o círculo.
-    fn build(&self, u: &Unit) -> VecPath {
-        let mut verts = arc45(u, O, self.r_out, self.r_out, self.start, self.span_out);
-        let f = verts.len() - 1; // F: onde a base da cabeça corta o arco EXTERNO
-        if self.flare {
-            verts.push(u.corner(self.corner_g));
-        }
-        verts.push(u.corner(self.tip));
-        if self.flare {
-            verts.push(u.corner(self.corner_b));
-        }
-        let head_end = verts.len() - 1;
-        // O arco INTERNO já nasce em C (a outra interseção da base com a faixa).
-        verts.extend(arc45(u, O, self.r_in, self.r_in, self.ang_c, self.span_in));
-
-        // Os flancos da cabeça são RETAS: sem isto o vértice do arco levaria a sua tangente
-        // para dentro do triângulo e a cabeça sairia de barriga curva.
-        straighten(&mut verts, f);
-        straighten(&mut verts, head_end);
-        // O fecho é o corte RADIAL da cauda (a "cauda chata") — reto também.
-        let end = verts.len() - 1;
-        verts[end].out_handle = verts[end].anchor;
-        verts[0].in_handle = verts[0].anchor;
-        closed(verts)
-    }
-}
-
-/// **Seta circular** — uma faixa em arco com a cabeça na ponta. `sweep` grande dá a seta
-/// de "refazer"; pequeno, a curva suave entre dois pontos. O sweep é **COM SINAL**:
-/// negativo percorre ao contrário, o que dá de graça a seta circular canhota do OOXML.
-///
-/// Uma forma só substitui três presets do padrão (`circularArrow`, `leftCircularArrow`,
-/// `leftRightCircularArrow`) — e supera as quatro `curved*Arrow`, que são fitas pseudo-3D
-/// **auto-intersectantes**, legíveis apenas com uma dica de sombreamento (`darkenLess`)
-/// que nenhum compositor moderno tem.
-///
-/// - `sweep_deg` = o arco total, cauda→ponta (com sinal);
-/// - `start_deg` = onde a cauda começa (0 = 3 horas; cresce no sentido horário);
-/// - `thickness` = espessura radial da faixa (fração da caixa);
-/// - `head_w` = largura CHEIA da cabeça (fração da caixa) — governa também o raio da
-///   faixa (`r_c = 0,5 − head_w/2`), porque é o transbordo da cabeça que a caixa acomoda;
-/// - `head_len` = quanto do sweep a cabeça consome (fração).
-#[must_use]
-pub fn arrow_curved(
-    a: [f64; 2],
-    b: [f64; 2],
-    sweep_deg: f64,
-    start_deg: f64,
-    thickness: f64,
-    head_w: f64,
-    head_len: f64,
-) -> VecPath {
-    let u = Unit::of(a, b);
-    let c = Curved::resolve(sweep_deg, start_deg, thickness, head_w, head_len);
-    let mut p = c.build(&u);
-    // A contenção é de graça (tudo cabe no círculo inscrito), mas a caixa do gesto tem de
-    // ABRAÇAR a tinta — um sweep de 90° deixaria três quartos da caixa vazios e o gizmo
-    // longe do desenho. O `fit` mede a bbox da CURVA (âncoras **+ extremos das cúbicas**),
-    // nunca o casco dos controles: o casco estufa até 1,3% para fora da curva real, erro
-    // da mesma ordem do que estamos consertando aqui.
-    fit(&u, &mut p);
-    p
-}
-
-#[cfg(test)]
-#[path = "arrows_tests.rs"]
-mod tests;

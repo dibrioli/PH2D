@@ -629,6 +629,7 @@ fn connector_fields_reach_the_bus_for_the_shell() {
         jetty: 0.35,
         spread: 0.0,
         corner: 0.0,
+        curve: 1.0 / 3.0,
     }));
 
     // Jetty + Spread: caixas numéricas — o valor sai como está (não é um track 0..1).

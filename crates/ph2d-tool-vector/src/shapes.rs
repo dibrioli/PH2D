@@ -362,28 +362,6 @@ pub const SHAPES: &[ShapeDesc] = &[
         group: ShapeGroup::Arrows,
         fields: &[frac("Point", 0.02, 0.9), frac("Notch", 0.0, 0.9)],
     },
-    // A seta circular (a `circularArrow` do ECMA-376). O `Sweep` é **com sinal**: negativo
-    // percorre ao contrário e dá a seta canhota de graça — um campo, dois presets. O
-    // `Head width` governa também o RAIO da faixa: é o transbordo da cabeça que a caixa
-    // acomoda, e é por isso que a forma nunca precisa de clamp anti-transbordo.
-    ShapeDesc {
-        kind: ShapeKind::ArrowCurved,
-        label: "Curved",
-        group: ShapeGroup::Arrows,
-        fields: &[
-            FieldDesc {
-                label: "Sweep",
-                min: -350.0,
-                max: 350.0,
-                step: 1.0,
-                unit: FieldUnit::Degrees,
-            },
-            START,
-            frac("Thickness", 0.02, 0.5),
-            frac("Head width", 0.05, 0.5),
-            frac("Head len", 0.02, 0.9),
-        ],
-    },
     // ── Fluxograma ───────────────────────────────────────────────────────────
     ShapeDesc {
         kind: ShapeKind::Diamond,

@@ -97,6 +97,7 @@ fn selecting_a_connector_hides_the_shape_params_instead_of_showing_the_last_shap
         jetty: 0.35,
         spread: 0.0,
         corner: 0.0,
+        curve: 1.0 / 3.0,
     }));
     publish(None, 1, DrawMode::Select, ShapeKind::Star);
     paint_frame(&mut hero);
@@ -159,6 +160,7 @@ fn arming_a_shape_keeps_the_catalog_fields_even_with_a_connector_selected() {
         jetty: 0.35,
         spread: 0.0,
         corner: 0.0,
+        curve: 1.0 / 3.0,
     }));
     publish(None, 1, DrawMode::Shape, ShapeKind::Star);
     paint_frame(&mut hero);

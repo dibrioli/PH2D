@@ -87,6 +87,7 @@ fn the_connector_section_is_painted_only_when_a_connector_is_selected() {
         jetty: 0.35,
         spread: 0.0,
         corner: 0.0,
+        curve: 1.0 / 3.0,
     }));
     paint_frame(&mut hero);
     assert_eq!(
@@ -124,6 +125,7 @@ fn the_fields_are_born_showing_the_effective_value_not_zero() {
         jetty: effective_jetty,
         spread: effective_spread,
         corner: effective_corner,
+        curve: 1.0 / 3.0,
     }));
     paint_frame(&mut hero);
 
@@ -160,6 +162,7 @@ fn the_fields_are_born_showing_the_effective_value_not_zero() {
         jetty: 0.9,
         spread: effective_spread,
         corner: effective_corner,
+        curve: 1.0 / 3.0,
     }));
     paint_frame(&mut hero);
     let jetty = hero

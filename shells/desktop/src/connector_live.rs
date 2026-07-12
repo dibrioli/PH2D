@@ -43,10 +43,6 @@ use crate::vec_entities::VecEntityMap;
 /// perdido causa é a linha escolher o lado do zero, uma vez.
 pub(crate) type SideCache = BTreeMap<VecPathId, [Option<Dir>; 2]>;
 
-/// A tensão do spline do conector CURVO. `1.0` é a curva Catmull-Rom cheia — o cotovelo vira
-/// uma volta redonda, que é o que se espera de "curvo".
-const CURVE_TENSION: f64 = 1.0;
-
 /// O quanto o spread pode deslizar ao longo da face, como fração da meia-extensão dela. A saída
 /// tem de continuar **na face**: passando disto o ponto escorrega pela quina, e a linha parece
 /// brotar do canto da caixa em vez de sair dela.
@@ -252,7 +248,14 @@ fn current_endpoints(scene: &VecScene, id: VecPathId) -> ([f64; 2], [f64; 2]) {
 /// `radius > 0` arredonda as **dobras** do cotovelo ([`round_polyline`]). As duas PONTAS ficam
 /// afiadas de propósito: é do primeiro e do último segmento que sai a tangente que orienta a
 /// ponta de seta — arredondá-los faria a seta apontar para o lado.
-fn write_route(scene: &mut VecScene, id: VecPathId, pts: &[[f64; 2]], radius: f64, curved: bool) {
+fn write_route(
+    scene: &mut VecScene,
+    id: VecPathId,
+    pts: &[[f64; 2]],
+    radius: f64,
+    curved: bool,
+    arm: f64,
+) {
     let Some(p) = scene.path_mut(id) else {
         return;
     };
@@ -260,7 +263,7 @@ fn write_route(scene: &mut VecScene, id: VecPathId, pts: &[[f64; 2]], radius: f6
     if curved {
         // O conector CURVO é a mesma rota, suavizada — o `corner_radius` não se aplica (o
         // spline já não tem quina nenhuma). Ver `RouteKind::Curved`.
-        p.verts.extend(smooth_polyline(pts, CURVE_TENSION));
+        p.verts.extend(smooth_polyline(pts, arm));
     } else {
         p.verts.extend(round_polyline(pts, radius));
     }
@@ -508,6 +511,7 @@ pub(crate) fn recook(
             &cooked.pts,
             f64::from(conn.corner_radius),
             conn.route == ph2d_ecs::RouteKind::Curved,
+            f64::from(conn.curve_arm),
         );
 
         // 3. O conector vive na IDENTIDADE (detalhe 3 do doc): a geometria acima é MUNDO, e

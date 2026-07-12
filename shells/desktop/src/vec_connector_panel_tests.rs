@@ -95,7 +95,7 @@ fn a_pristine_connector_publishes_the_automatic_values_not_zero() {
     let (sim, scene, map, conns) = scene_with_connectors(2);
     let xf = xforms(&sim, &map);
 
-    let (route, jetty, spread, corner) =
+    let (route, jetty, spread, corner, _curve) =
         selection_snapshot(&sim, &map, &scene, &xf, &conns[..1]).expect("ha conector");
     assert_eq!(
         route, 1,
@@ -118,7 +118,7 @@ fn a_pristine_connector_publishes_the_automatic_values_not_zero() {
     );
     // O SEGUNDO conector do mesmo par (index 1) já nasce deslocado — e o painel mostra
     // esse deslocamento, não zero: é o valor que ele teria de fixar para não mudar nada.
-    let (_, _, spread1, _) =
+    let (_, _, spread1, _, _curve) =
         selection_snapshot(&sim, &map, &scene, &xf, &conns[1..2]).expect("ha conector");
     assert!(
         (spread1 - VecConnector::auto_spread(1, connector::SPREAD_STEP)).abs() < 1e-12,
@@ -304,7 +304,7 @@ fn the_value_the_panel_shows_is_the_value_the_cooked_line_actually_uses() {
     // 1. O conector AUTOMÁTICO (jetty e spread em `None`) — e o que o painel publica dele.
     let (mut sim, mut scene, map, c) = scene_with_a_wall();
     let xf = xforms(&sim, &map);
-    let (_, shown_jetty, shown_spread, _) =
+    let (_, shown_jetty, shown_spread, _, _curve) =
         selection_snapshot(&sim, &map, &scene, &xf, &[c]).expect("ha conector");
     let auto_line = cooked(&mut sim, &mut scene, &map, c);
     assert!(
@@ -369,7 +369,7 @@ fn a_free_end_still_publishes_a_usable_jetty() {
         .insert(conn);
 
     let xf = xforms(&sim, &map);
-    let (_, jetty, _, _) =
+    let (_, jetty, _, _, _curve) =
         selection_snapshot(&sim, &map, &scene, &xf, &conns).expect("ha conector");
     assert!(
         jetty.is_finite() && jetty > 0.0,
@@ -405,7 +405,8 @@ fn editing_the_corner_reaches_every_selected_connector_and_clamps() {
     }
     // E o painel passa a EXIBIR o que foi escrito (semente = amostra: o campo mostra o que a
     // linha usa, senão o número saltaria no toque seguinte).
-    let (_, _, _, corner) = selection_snapshot(&sim, &map, &scene, &xf, &conns).expect("conector");
+    let (_, _, _, corner, _curve) =
+        selection_snapshot(&sim, &map, &scene, &xf, &conns).expect("conector");
     assert!((corner - 0.4).abs() < 1e-6, "o painel exibiu {corner}");
 
     // Um valor fora da faixa (digitado, ou de um save corrompido) satura — nunca vira uma

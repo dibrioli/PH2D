@@ -119,8 +119,6 @@ fn declared(k: ShapeKind) -> YOrient {
         ShapeKind::Pie | ShapeKind::Segment => Asymmetric(flat_side_down),
         // A seta em L entra rente à base e sai para CIMA: a ponta é única lá em cima.
         ShapeKind::ArrowBent => Asymmetric(one_point_up),
-        // A faixa cresta por CIMA no eixo; a cabeça pendura EMBAIXO, fora do eixo.
-        ShapeKind::ArrowCurved => Asymmetric(crest_up_head_off_axis),
         // Dados: o topo desliza para a DIREITA em relação à base.
         ShapeKind::Parallelogram => Asymmetric(leans_right),
         // Operação manual: o topo é o lado CURTO. O `flip` (entrada manual) inverte.
@@ -223,12 +221,6 @@ fn top_y(pts: &[[f64; 2]]) -> f64 {
 
 fn bot_y(pts: &[[f64; 2]]) -> f64 {
     pts.iter().map(|q| q[1]).fold(f64::MAX, f64::min)
-}
-
-/// O ponto mais ALTO (o primeiro, se houver empate).
-fn highest(pts: &[[f64; 2]]) -> [f64; 2] {
-    let y = top_y(pts);
-    *pts.iter().find(|q| q[1] >= y).expect("a forma tem pontos")
 }
 
 /// O ponto mais BAIXO.
@@ -385,13 +377,6 @@ fn bulges_up(p: &VecPath) -> bool {
 fn flat_side_down(p: &VecPath) -> bool {
     let a = anchors(p);
     count_at_y(&a, bot_y(&a)) > count_at_y(&a, top_y(&a))
-}
-
-/// A faixa da seta circular cresta por CIMA **no eixo**; a cabeça pendura EMBAIXO, fora
-/// dele. (Espelhada, a crista desce e a cabeça sobe.)
-fn crest_up_head_off_axis(p: &VecPath) -> bool {
-    let c = curve(p);
-    (highest(&c)[0] - CX).abs() < (lowest(&c)[0] - CX).abs()
 }
 
 /// O paralelogramo de dados inclina para a DIREITA: o topo é deslocado no sentido positivo

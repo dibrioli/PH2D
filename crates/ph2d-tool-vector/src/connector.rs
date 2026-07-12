@@ -101,6 +101,20 @@ pub const CORNER: FieldDesc = FieldDesc {
     unit: FieldUnit::Ratio,
 };
 
+/// **Curve** — o braço dos handles da curva: o quanto o controle da cúbica se afasta do ponto.
+/// Só faz efeito na rota `Curved`.
+///
+/// O teto é o dobro do canônico (`1/3`), então dá para exagerar de propósito; o piso é zero, que
+/// devolve a polilinha. O default (`0,333`) é o spline que passa pelos pontos **sem escapar
+/// deles** — a curva "certa", quando não se quer opinar.
+pub const CURVE: FieldDesc = FieldDesc {
+    label: "Curve",
+    min: 0.0,
+    max: 0.67,
+    step: 0.01,
+    unit: FieldUnit::Ratio,
+};
+
 /// Clampa um valor autorado à faixa do seu campo — a mesma porta para o painel (que
 /// desenha) e para a shell (que aplica). Delega ao catálogo: um clamp só, para campos de
 /// forma, de conector e de ponta (senão as três faixas divergiriam).

@@ -121,35 +121,51 @@ mod tests;
 /// controle de um spline em vez de quinas. O desvio de obstáculo sai **de graça**, e não há um
 /// segundo roteador para manter em pé.
 ///
-/// A conversão é Catmull-Rom → Bézier: a tangente num ponto interno é a corda entre os
-/// vizinhos, e os handles ficam a um terço dela. **As duas pontas guardam a tangente do
-/// próprio segmento** — é dela que a ponta de seta tira a direção, e uma tangente "suavizada"
-/// no extremo faria a seta apontar para o lado.
+/// # O braço do handle é proporcional ao SEGMENTO, não à corda dos vizinhos
 ///
-/// `tension` em `[0, 1]`: `0` devolve a polilinha (útil como identidade), `1` é a curva cheia.
+/// A tangente num ponto interno é a **direção** da corda entre os vizinhos — isso é
+/// Catmull-Rom, e está certo. O que a primeira versão errou foi o **comprimento**: ela usava a
+/// corda inteira (`(next − prev) · k`), e numa rota ortogonal com uma perna longa e outra curta
+/// essa corda é muito maior que o segmento curto. O handle passa do vértice seguinte, a cúbica
+/// estoura para fora do caminho, e o conector vira um S enorme que não tem nada a ver com a
+/// rota que o A\* escolheu. Foi o que o Enio viu.
+///
+/// A cura é dar a **cada lado o seu próprio comprimento**: o braço de saída mede uma fração do
+/// segmento que ele vai percorrer; o de entrada, do segmento de onde veio. Com `arm = 1/3` isto
+/// é o spline cardinal canônico — passa pelos pontos, e não escapa deles.
+///
+/// **As duas pontas guardam a tangente do próprio segmento** — é dela que a ponta de seta tira
+/// a direção, e uma tangente "suavizada" no extremo faria a seta apontar para o lado.
+///
+/// `arm` é o comprimento do braço em frações do segmento (o ajuste do painel: "mais perto ou
+/// mais longe do ponto"). `0` devolve a polilinha crua; `1/3` é o canônico; acima disso a curva
+/// abre de propósito.
 #[must_use]
-pub fn smooth_polyline(pts: &[[f64; 2]], tension: f64) -> Vec<VecVertex> {
+pub fn smooth_polyline(pts: &[[f64; 2]], arm: f64) -> Vec<VecVertex> {
     let n = pts.len();
-    if n < 3 || tension <= EPS {
+    if n < 3 || arm <= EPS {
         return pts.iter().map(|&p| VecVertex::corner(p)).collect();
     }
-    let k = tension / 3.0;
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
         let a = pts[i];
-        // A corda entre os VIZINHOS é a tangente em `a` (Catmull-Rom). Nas pontas não há
-        // vizinho dos dois lados, e usa-se o próprio segmento — que é o que preserva a direção
-        // de saída da forma, e com ela o rumo da ponta de seta.
         let (prev, next) = (pts[i.saturating_sub(1)], pts[(i + 1).min(n - 1)]);
-        let t = [(next[0] - prev[0]) * k, (next[1] - prev[1]) * k];
-        let (i_h, o_h) = if i == 0 {
-            (a, [a[0] + t[0], a[1] + t[1]])
-        } else if i == n - 1 {
-            ([a[0] - t[0], a[1] - t[1]], a)
-        } else {
-            ([a[0] - t[0], a[1] - t[1]], [a[0] + t[0], a[1] + t[1]])
+        // A DIREÇÃO da tangente: a corda entre os vizinhos (nas pontas, o próprio segmento).
+        let Some((dir, _)) = unit(prev, next) else {
+            out.push(VecVertex::corner(a));
+            continue;
         };
-        out.push(VecVertex::smooth(a, i_h, o_h));
+        // O COMPRIMENTO de cada braço: uma fração do segmento QUE ELE PERCORRE. É isto que
+        // impede o handle de passar do vértice seguinte.
+        let back = (a[0] - prev[0]).hypot(a[1] - prev[1]) * arm;
+        let fwd = (next[0] - a[0]).hypot(next[1] - a[1]) * arm;
+        let i_h = [a[0] - dir[0] * back, a[1] - dir[1] * back];
+        let o_h = [a[0] + dir[0] * fwd, a[1] + dir[1] * fwd];
+        out.push(match i {
+            0 => VecVertex::smooth(a, a, o_h),
+            _ if i == n - 1 => VecVertex::smooth(a, i_h, a),
+            _ => VecVertex::smooth(a, i_h, o_h),
+        });
     }
     out
 }

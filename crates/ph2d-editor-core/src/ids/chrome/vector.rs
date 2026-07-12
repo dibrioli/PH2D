@@ -429,6 +429,8 @@ pub const VECTOR_CONNECTOR_SPREAD: NodeId = hash_node_id("vector.connector.sprea
 /// mundo. `0` = afiado, o default do fluxograma clássico. Não confundir com o
 /// [`VECTOR_MARKER_ROUND`], que arredonda as quinas da SETA.
 pub const VECTOR_CONNECTOR_CORNER: NodeId = hash_node_id("vector.connector.corner");
+/// **Curve** — o braço dos handles da rota curva ("mais perto ou mais longe do ponto").
+pub const VECTOR_CONNECTOR_CURVE: NodeId = hash_node_id("vector.connector.curve");
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

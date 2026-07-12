@@ -169,7 +169,7 @@ fn collinear_points_get_no_fillet() {
 #[test]
 fn the_smoothed_route_still_passes_through_every_point_the_router_chose() {
     let pts = [[0.0, 0.0], [5.0, 0.0], [5.0, 5.0], [10.0, 5.0]];
-    let v = smooth_polyline(&pts, 1.0);
+    let v = smooth_polyline(&pts, 1.0 / 3.0);
     assert_eq!(v.len(), pts.len(), "um vertice por ponto da rota");
     for (i, p) in pts.iter().enumerate() {
         assert_eq!(v[i].anchor, *p, "o spline saiu do ponto {i} da rota");
@@ -185,7 +185,7 @@ fn the_smoothed_route_still_passes_through_every_point_the_router_chose() {
 fn the_ends_keep_the_direction_the_line_leaves_the_shape_with() {
     // Sai na horizontal (para +x) e chega na vertical (para +y).
     let pts = [[0.0, 0.0], [5.0, 0.0], [5.0, 5.0]];
-    let v = smooth_polyline(&pts, 1.0);
+    let v = smooth_polyline(&pts, 1.0 / 3.0);
 
     // A tangente de saida do 1o vertice e HORIZONTAL (o rumo do 1o segmento), nao a media de
     // nada: o `in_handle` dele nem existe (e a ancora), e o `out_handle` corre em +x.
@@ -211,6 +211,73 @@ fn the_ends_keep_the_direction_the_line_leaves_the_shape_with() {
         inn[1] > 0.0 && inn[0].abs() < 1e-9,
         "a linha tem de CHEGAR na vertical, e chegou em {inn:?}"
     );
+}
+
+/// **A CURVA NAO ESCAPA DO CAMINHO** — o defeito que o Enio viu ("curvas muito exageradas").
+///
+/// A 1a versao media o braco do handle pela corda entre os VIZINHOS. Numa rota ortogonal com uma
+/// perna longa e outra curta, essa corda e muito maior que o segmento curto: o handle passa do
+/// vertice seguinte, a cubica estoura para fora, e o conector vira um S enorme que nao tem nada a
+/// ver com a rota que o A* escolheu.
+///
+/// O gate mede o que o olho ve: a curva AMOSTRADA nao pode sair da caixa da propria polilinha,
+/// mais uma folga estreita. Um spline que passa pelos pontos e nao escapa deles cabe ai; um que
+/// estoura, nao.
+/// A folga que um spline BEM-COMPORTADO precisa: o abaulamento legitimo entre dois pontos, como
+/// fracao do maior lado da rota. Apertada de proposito — com 12% (o meu 1o chute) o gate ficava
+/// VERDE com o bug presente, que e o pior tipo de teste que existe.
+const ESCAPE_PAD: f64 = 0.02;
+
+#[test]
+fn the_smoothed_curve_never_escapes_the_route_it_smooths() {
+    // Uma perna LONGA e uma CURTA — a geometria que expunha o bug.
+    let pts = [[0.0, 0.0], [40.0, 0.0], [40.0, 3.0], [44.0, 3.0]];
+    let v = smooth_polyline(&pts, 1.0 / 3.0);
+
+    // A caixa da polilinha, com 12% de folga (o abaulamento legitimo de um spline).
+    let (lo, hi): ([f64; 2], [f64; 2]) = ([0.0, 0.0], [44.0, 3.0]);
+    let pad = ESCAPE_PAD * (hi[0] - lo[0]).max(hi[1] - lo[1]);
+
+    for w in v.windows(2) {
+        let (p0, p1, p2, p3) = (w[0].anchor, w[0].out_handle, w[1].in_handle, w[1].anchor);
+        for k in 0..=32 {
+            let t = f64::from(k) / 32.0;
+            let u = 1.0 - t;
+            let (a, b, c, d) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+            let p = [
+                a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0],
+                a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1],
+            ];
+            assert!(
+                p[0] >= lo[0] - pad
+                    && p[0] <= hi[0] + pad
+                    && p[1] >= lo[1] - pad
+                    && p[1] <= hi[1] + pad,
+                "a curva ESTOUROU para fora da rota em {p:?} (caixa {lo:?}..{hi:?}, folga {pad:.2}) \
+                 — o braco do handle esta medido pela corda dos vizinhos, e nao pelo segmento"
+            );
+        }
+    }
+}
+
+/// O braco NUNCA passa do vertice seguinte. E a formulacao local do gate acima, e a que explica
+/// por que a curva nao escapa: um handle mais longo que o segmento leva a cubica para depois do
+/// proximo ponto, e ela tem de voltar.
+#[test]
+fn a_handle_never_reaches_past_the_next_anchor() {
+    let pts = [[0.0, 0.0], [40.0, 0.0], [40.0, 3.0], [44.0, 3.0]];
+    let v = smooth_polyline(&pts, 1.0 / 3.0);
+    for i in 0..v.len() - 1 {
+        let (a, b) = (&v[i], &v[i + 1]);
+        let seg = (b.anchor[0] - a.anchor[0]).hypot(b.anchor[1] - a.anchor[1]);
+        let out = (a.out_handle[0] - a.anchor[0]).hypot(a.out_handle[1] - a.anchor[1]);
+        let inn = (b.in_handle[0] - b.anchor[0]).hypot(b.in_handle[1] - b.anchor[1]);
+        assert!(
+            out <= seg * 0.5 + 1e-9 && inn <= seg * 0.5 + 1e-9,
+            "handle mais longo que meio segmento ({out:.2}/{inn:.2} contra {seg:.2}): a cubica \
+             passa do proximo ponto e volta"
+        );
+    }
 }
 
 /// Tensao zero devolve a polilinha crua — a identidade tem de ser exata (e o caminho por onde

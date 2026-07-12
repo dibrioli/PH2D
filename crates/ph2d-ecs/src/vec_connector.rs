@@ -112,6 +112,25 @@ pub struct VecConnector {
     /// mexesse, o que não é o que ninguém quer dizer ao fincar um ponto no meio da tela.
     #[serde(default)]
     pub waypoints: Vec<[f64; 2]>,
+    /// **O braço dos handles da curva** (só a rota [`RouteKind::Curved`]): o quanto o controle da
+    /// cúbica se afasta do ponto, em frações do segmento. `0` = a curva volta a ser a polilinha;
+    /// `1/3` (o default) é o spline cardinal canônico — passa pelos pontos sem escapar deles;
+    /// acima disso ela abre de propósito.
+    ///
+    /// É o "mais perto ou mais longe do ponto" do painel. Existe porque a curvatura certa é uma
+    /// questão de gosto e de escala do diagrama, e nenhum número fixo acerta as duas.
+    #[serde(default = "default_curve_arm")]
+    pub curve_arm: f32,
+}
+
+/// O braço canônico do spline cardinal: **um terço do segmento** — o spline que passa pelos
+/// pontos sem escapar deles.
+pub const DEFAULT_CURVE_ARM: f32 = 1.0 / 3.0;
+
+/// O default do [`VecConnector::curve_arm`]. Precisa ser uma função porque o default de `serde`
+/// para um `f32` é ZERO — e braço zero é uma curva que não curva.
+fn default_curve_arm() -> f32 {
+    DEFAULT_CURVE_ARM
 }
 
 impl SimComponent for VecConnector {}
@@ -135,6 +154,7 @@ impl VecConnector {
             spread: None,
             corner_radius: 0.0,
             waypoints: Vec::new(),
+            curve_arm: default_curve_arm(),
         }
     }
 

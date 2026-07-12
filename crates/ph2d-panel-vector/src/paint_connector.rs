@@ -55,6 +55,9 @@ pub struct ConnectorSnapshot {
     ///
     /// Não confundir com o `Head Round` da seção Stroke, que arredonda as quinas da SETA.
     pub corner: f64,
+    /// O braço dos handles da rota **curva**: o quanto o controle da cúbica se afasta do
+    /// ponto ("mais perto ou mais longe"). Inerte nas outras rotas.
+    pub curve: f64,
 }
 
 /// Publica o conector em foco (a shell chama a cada frame; `None` esconde a seção).
@@ -91,6 +94,7 @@ pub(crate) fn seed(store: &mut WidgetStore) {
             &connector::CORNER,
             snap.corner,
         ),
+        (ids::VECTOR_CONNECTOR_CURVE, &connector::CURVE, snap.curve),
     ] {
         store.set_number_range(id, field.min, field.max, field.step);
         if focus != Some(id) {
@@ -111,6 +115,8 @@ fn number_field_of(id: ph2d_a11y::NodeId) -> Option<&'static ph2d_tool_vector::s
         Some(&connector::SPREAD)
     } else if id == ids::VECTOR_CONNECTOR_CORNER {
         Some(&connector::CORNER)
+    } else if id == ids::VECTOR_CONNECTOR_CURVE {
+        Some(&connector::CURVE)
     } else {
         None
     }
@@ -192,10 +198,20 @@ impl BodyCtx<'_> {
         );
         // **Corner** — o raio das quinas do PERCURSO (as dobras do cotovelo). Irmã de
         // Route/Jetty/Spread porque é a mesma pergunta: como esta linha é desenhada.
-        self.labeled_number_field(
+        y = self.labeled_number_field(
             connector::CORNER.label,
             ids::VECTOR_CONNECTOR_CORNER,
             connector::CORNER.step,
+            y,
+        );
+        // **Curve** — o braço dos handles: o quanto o controle da cúbica se afasta do ponto.
+        // Só faz efeito na rota Curved, e fica aqui mesmo assim: escondê-lo conforme a rota
+        // faria a seção pular de altura a cada clique no botão, e um campo que some é mais
+        // confuso que um campo inerte.
+        self.labeled_number_field(
+            connector::CURVE.label,
+            ids::VECTOR_CONNECTOR_CURVE,
+            connector::CURVE.step,
             y,
         )
     }
@@ -217,6 +233,7 @@ mod tests {
             jetty: 0.3,
             spread: 0.0,
             corner: 0.0,
+            curve: 1.0 / 3.0,
         }));
         assert!(current_connector().is_some());
         set_current_connector(None); // não vaza para os outros testes da thread

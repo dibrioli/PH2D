@@ -81,7 +81,7 @@ pub use round::{FULL_TURN, arc_open, ellipse_chord, ellipse_sweep};
 /// As setas em BLOCO (forma preenchível) — não confundir com as pontas de traço
 /// (arrowheads), que são propriedade do stroke. Módulo irmão de `shapes`.
 mod arrows;
-pub use arrows::{arrow_bent, arrow_block, arrow_curved, arrow_double, chevron};
+pub use arrows::{arrow_bent, arrow_block, arrow_double, chevron};
 
 /// O vocabulário de FLUXOGRAMA (ANSI/ISO 5807) — losango, pílula, cilindro, documento…
 /// Módulo irmão de `shapes`.

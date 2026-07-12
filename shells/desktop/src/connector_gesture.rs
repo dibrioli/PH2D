@@ -134,6 +134,7 @@ impl App {
                 spread: None,
                 corner_radius: 0.0,
                 waypoints: Vec::new(),
+                curve_arm: ph2d_ecs::DEFAULT_CURVE_ARM,
             },
             start_world: world,
         });

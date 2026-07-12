@@ -92,7 +92,7 @@ pub use vec_shape::{MAX_SHAPE_VALUES, VecShape, VecTextParams};
 /// `VecPathId` (o id do documento), nunca bits de entidade — o undo respawna tudo com bits
 /// novos, e um conector guardado por bits se soltaria a cada Ctrl+Z.
 mod vec_connector;
-pub use vec_connector::{Anchor, ConnectorEnd, RouteKind, VecConnector};
+pub use vec_connector::{Anchor, ConnectorEnd, DEFAULT_CURVE_ARM, RouteKind, VecConnector};
 pub use visibility::Visibility;
 pub use visibility_layer::{EnableMode, OnScreenEnabler, VisibilityLayer};
 

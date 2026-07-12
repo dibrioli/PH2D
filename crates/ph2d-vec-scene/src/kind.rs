@@ -55,7 +55,6 @@ pub enum ShapeKind {
     ArrowDouble = 11,
     ArrowBent = 12,
     Chevron = 13,
-    ArrowCurved = 14,
     // ── Fluxograma (ANSI/ISO 5807) ───────────────────────────────────────────
     Diamond = 15,
     Pill = 16,
@@ -111,7 +110,6 @@ pub const ALL_SHAPES: &[ShapeKind] = &[
     ShapeKind::ArrowDouble,
     ShapeKind::ArrowBent,
     ShapeKind::Chevron,
-    ShapeKind::ArrowCurved,
     ShapeKind::Diamond,
     ShapeKind::Pill,
     ShapeKind::Parallelogram,
@@ -228,16 +226,6 @@ impl ShapeKind {
             ShapeKind::Chevron => {
                 v[0] = 0.3; // profundidade da ponta
                 v[1] = 0.2; // entalhe
-            }
-            // A seta circular é a `circularArrow` do ECMA-376 em forma fechada. O sweep é
-            // COM SINAL (negativo = canhota), e a largura da cabeça governa o raio da
-            // faixa — é o transbordo dela que a caixa precisa acomodar.
-            ShapeKind::ArrowCurved => {
-                v[0] = 270.0; // sweep total, cauda->ponta (com sinal)
-                v[1] = 180.0; // onde a cauda começa (0 = 3 horas)
-                v[2] = 0.125; // espessura radial da faixa
-                v[3] = 0.25; // largura cheia da cabeça
-                v[4] = 0.12; // quanto do sweep a cabeça consome
             }
             // Fluxograma: as medidas são frações da caixa.
             ShapeKind::Parallelogram => v[0] = 0.2,
@@ -393,9 +381,6 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::ArrowDouble => crate::arrow_double(a, b, f(v, 0), f(v, 1), f(v, 2)),
         ShapeKind::ArrowBent => crate::arrow_bent(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3)),
         ShapeKind::Chevron => crate::chevron(a, b, f(v, 0), f(v, 1)),
-        ShapeKind::ArrowCurved => {
-            crate::arrow_curved(a, b, f(v, 0), f(v, 1), f(v, 2), f(v, 3), f(v, 4))
-        }
         ShapeKind::Diamond => crate::diamond(a, b),
         ShapeKind::Pill => crate::pill(a, b),
         ShapeKind::Parallelogram => crate::parallelogram(a, b, f(v, 0)),
@@ -456,7 +441,9 @@ mod tests {
         assert_eq!(ShapeKind::Pie.as_u16(), 8);
         assert_eq!(ShapeKind::Segment.as_u16(), 9);
         assert_eq!(ShapeKind::ArrowRight.as_u16(), 10);
-        assert_eq!(ShapeKind::ArrowCurved.as_u16(), 14);
+        // O 14 e um BURACO: a `ArrowCurved` foi removida (o conector curvo faz a mesma coisa,
+        // e melhor). Os discriminantes seguintes NAO recuaram — mexer neles quebraria todo save
+        // que ja tem um losango dentro.
         assert_eq!(ShapeKind::Diamond.as_u16(), 15);
         assert_eq!(ShapeKind::NoteBracket.as_u16(), 28);
         assert_eq!(ShapeKind::SpeechRect.as_u16(), 29);

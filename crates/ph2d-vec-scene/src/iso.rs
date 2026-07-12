@@ -144,14 +144,18 @@ pub fn iso_cone(a: [f64; 2], b: [f64; 2], lip: f64, from_below: bool) -> VecPath
 /// **Pirâmide.** Ápice para CIMA sobre o centro da base; a silhueta é um QUADRILÁTERO
 /// (ápice → direita → frente → esquerda).
 ///
-/// **`from_below` troca quais arestas internas existem** — e é o mesmo raciocínio do cone:
+/// **`from_below` troca quais arestas internas existem.**
 ///
-/// - **de cima** (default): a aresta viva é a da FRENTE (ápice → vértice frontal), que é a
-///   quina entre as duas faces que se veem. O 4º vértice da base fica escondido ATRÁS da
-///   pirâmide.
-/// - **de baixo**: a base tapa o corpo. A aresta da frente some, e o que aparece são as duas
-///   arestas de TRÁS da base (esquerda → fundo → direita) — o contorno do quadrado visto por
-///   baixo, cruzando o corpo.
+/// - **de cima** (default): veem-se as duas faces da FRENTE, e a quina entre elas é a aresta
+///   ápice → vértice frontal. As três arestas de trás ficam escondidas pelo corpo.
+/// - **de baixo**: a base tapa o corpo, e a única aresta escondida passa a ser a da frente.
+///   Aparecem **três**: as duas arestas de TRÁS da base (esquerda → fundo → direita), que
+///   desenham o losango da base vista por baixo, **e a aresta ápice → fundo**.
+///
+/// Essa terceira é fácil de esquecer, e o olho a cobra: a região acima do losango da base
+/// **não é uma face, são DUAS** — as duas faces laterais traseiras —, e o que as separa é
+/// exatamente a aresta ápice → fundo. Sem ela, aquele pedaço lê como um triângulo chapado e
+/// a pirâmide perde o volume.
 #[must_use]
 pub fn iso_pyramid(a: [f64; 2], b: [f64; 2], rise: f64, skew: f64, from_below: bool) -> VecPath {
     let u = Unit::of(a, b);
@@ -164,11 +168,14 @@ pub fn iso_pyramid(a: [f64; 2], b: [f64; 2], rise: f64, skew: f64, from_below: b
 
     let mut p = poly(&u, &[apex, right, front, left]);
     if from_below {
+        // As duas arestas de trás da base…
         add_sub(
             &mut p,
             vec![u.corner(left), u.corner(back), u.corner(right)],
             false,
         );
+        // …e a quina entre as duas faces traseiras.
+        add_sub(&mut p, vec![u.corner(back), u.corner(apex)], false);
     } else {
         add_sub(&mut p, vec![u.corner(apex), u.corner(front)], false);
     }
@@ -337,18 +344,74 @@ mod tests {
             "as tres arestas apontam para o outro trio de vertices"
         );
 
-        // Piramide: de cima UMA aresta (a quina da frente); de baixo DUAS (as de tras).
+        // Piramide: de cima a quina da FRENTE; de baixo, as duas arestas de tras da base
+        // MAIS a que divide as duas faces traseiras.
         let py_up = iso_pyramid(A, B, 0.5, 0.5, false);
         let py_down = iso_pyramid(A, B, 0.5, 0.5, true);
+        assert_eq!(edges_of(&py_up).len(), 1, "de cima: a quina da frente");
         assert_eq!(
-            py_up.subpaths[0].verts.len(),
-            2,
-            "de cima: a quina da frente"
-        );
-        assert_eq!(
-            py_down.subpaths[0].verts.len(),
+            edges_of(&py_down).len(),
             3,
-            "de baixo: as duas arestas de tras da base"
+            "de baixo: as duas arestas de tras da base MAIS a que vai ao apice"
         );
+    }
+
+    /// Todas as arestas internas do path (pares consecutivos dos sub-contornos abertos).
+    fn edges_of(p: &VecPath) -> Vec<([f64; 2], [f64; 2])> {
+        p.subpaths
+            .iter()
+            .flat_map(|c| {
+                c.verts
+                    .windows(2)
+                    .map(|w| (w[0].anchor, w[1].anchor))
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    /// **Onde tres faces se encontram, tres arestas se encontram.** A invariante que faltava
+    /// — e ela e geral, nao um caso particular.
+    ///
+    /// O vertice interno de um solido em projecao e o ponto onde tres faces se tocam; dele
+    /// tem de sair exatamente **tres** arestas, uma por par de faces. A piramide vista de
+    /// baixo nascia com o vertice de tras em grau **2** (so as duas arestas da base): a
+    /// regiao acima dele lia como um triangulo chapado, quando na verdade sao DUAS faces
+    /// traseiras, e a quina entre elas — apice ate o fundo — nao estava sendo desenhada. O
+    /// Enio viu na tela ("faltou o traco central que vai ate o topo") antes de qualquer teste
+    /// ver.
+    ///
+    /// Um teste que apenas CONTASSE arestas nao pegaria isso (duas arestas ja parecem
+    /// plausiveis). Contar o GRAU do vertice interno, sim.
+    #[test]
+    fn three_faces_meet_at_the_internal_vertex_so_three_edges_do_too() {
+        let cases: [(&str, VecPath, [f64; 2]); 3] = [
+            (
+                "cubo de cima",
+                iso_cube(A, B, 0.3, 0.7, false),
+                Unit::of(A, B).p((0.7, 0.3)),
+            ),
+            (
+                "cubo de baixo",
+                iso_cube(A, B, 0.3, 0.7, true),
+                Unit::of(A, B).p((0.3, 0.7)),
+            ),
+            (
+                "piramide de baixo",
+                iso_pyramid(A, B, 0.3, 0.7, true),
+                Unit::of(A, B).p((0.3, 0.7)),
+            ),
+        ];
+        for (name, p, m) in cases {
+            let near = |q: [f64; 2]| (q[0] - m[0]).hypot(q[1] - m[1]) < 1e-9;
+            let degree = edges_of(&p)
+                .iter()
+                .filter(|(a, b)| near(*a) || near(*b))
+                .count();
+            assert_eq!(
+                degree, 3,
+                "{name}: do vertice interno {m:?} saem {degree} arestas, e tem de ser TRES \
+                 (tres faces se tocam ali, e cada par delas tem uma quina)"
+            );
+        }
     }
 }

@@ -133,12 +133,27 @@ pub fn denoise(data: &SampleData, profile: &NoiseProfile, amount: f32) -> Sample
     let channels = format.channel_count().max(1);
     let frames = data.frame_count();
 
-    // Subtract MORE than the measured average. The profile is a mean, so half the noise is
-    // above it by definition; over-subtraction buys margin against exactly the excursions
-    // that would otherwise survive as musical noise.
-    let oversub = 1.0 + 2.0 * amount;
-    // …and never below the floor: an attenuated hiss is a bed, a deleted hiss is a
-    // backdrop against which every surviving artefact stands out.
+    // **There is no over-subtraction here, and that is a decision, not an omission.**
+    //
+    // The textbook move is to subtract MORE than the measured average — the profile is a
+    // mean, so half the noise sits above it — on the theory that the margin is what stops
+    // the loud excursions from surviving as musical noise. This code did that, and the
+    // justification was written down with confidence. It is false. Measured (audit
+    // 2026-07-12), at full amount, over-subtracting by 3×:
+    //
+    // | | SNR | residual hiss |
+    // |---|---|---|
+    // | with over-subtraction | 8.2 dB | -30.0 dB |
+    // | without | **14.9 dB** | -25.2 dB |
+    //
+    // It buys 4.8 dB more suppression and costs 6.7 dB of the signal — it distorts more
+    // than it removes. And the coefficient of variation (the musical-noise measure) does not
+    // budge without it: the smoothing is what handles the excursions, exactly as the module
+    // docs above say, and the over-subtraction was doing nothing but damage.
+    //
+    // What remains is the gain floor: the residual is attenuated, never annihilated. A bed of
+    // quiet hiss is what the ear expects under a recording, and leaving it there is what keeps
+    // any survivor from standing out against a dead-silent background. `amount` sets how deep.
     let floor_db = -(6.0 + 24.0 * amount);
     let floor = 10f32.powf(floor_db / 20.0);
 
@@ -154,7 +169,7 @@ pub fn denoise(data: &SampleData, profile: &NoiseProfile, amount: f32) -> Sample
         let mut prev = vec![0.0f32; bins];
         let y = stft.process(&x, |_, spec| {
             for (b, c) in spec.iter_mut().enumerate() {
-                let noise = profile.mag.get(b).copied().unwrap_or(0.0) * oversub;
+                let noise = profile.mag.get(b).copied().unwrap_or(0.0);
                 let n2 = noise * noise;
                 if n2 <= 0.0 {
                     continue;
@@ -274,6 +289,33 @@ mod tests {
         assert!(
             gain >= 8.0,
             "denoise only bought {gain:.1} dB (in {before:.1} → out {after:.1}); the gate is 8 dB"
+        );
+    }
+
+    /// **…and it actually removes the hiss.**
+    ///
+    /// SNR alone is a gameable target: a denoiser that does almost nothing scores well on it,
+    /// because it distorts almost nothing. So the amount of noise ACTUALLY taken out is
+    /// pinned too. The pair is the contract — take the hiss out (this), and do not wreck the
+    /// signal doing it (the gate above). Measured at amount 0.6: -19.8 dB of residual hiss.
+    ///
+    /// This is the gate that would have caught the over-subtraction being removed if removing
+    /// it had cost real suppression. It did not (audit 2026-07-12) — but nothing was watching
+    /// until now.
+    #[test]
+    fn denoise_actually_removes_the_hiss() {
+        let (data, _, profile_range, _) = fixture();
+        let profile = NoiseProfile::learn(&data, profile_range.clone()).expect("profile");
+        let out = denoise(&data, &profile, 0.6);
+
+        let rms = |v: &[f32]| (v.iter().map(|s| s * s).sum::<f32>() / v.len() as f32).sqrt();
+        let before = rms(&data.samples()[profile_range.clone()]);
+        let after = rms(&out.samples()[profile_range]);
+        let atten = 20.0 * (after / before.max(1e-20)).log10();
+        assert!(
+            atten <= -15.0,
+            "the hiss only dropped {atten:.1} dB — the denoiser is protecting the signal by \
+             declining to do its job"
         );
     }
 

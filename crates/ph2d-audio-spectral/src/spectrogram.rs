@@ -255,6 +255,62 @@ mod tests {
         assert!(far < 80, "the tone smeared to a distant bin: {far}/255");
     }
 
+    /// **Frequency runs UP the image.** The other half of the mapping `freq_at_y` gates in
+    /// the shell — and the half that was NOT gated (audit 2026-07-12), which is worse,
+    /// because between them they are a loop: if the PICTURE is flipped, the user sees the
+    /// beep at the bottom, drags the box at the bottom, `freq_at_y` faithfully reports
+    /// "low", and the repair erases the bass. Every assertion in the crate stayed green for
+    /// a flipped picture.
+    #[test]
+    fn the_top_of_the_image_is_the_highest_frequency() {
+        // A tone at a quarter of Nyquist: unambiguously in the lower half.
+        let sg = Spectrogram::build(&clip(6_000.0, 0.4, 0.8));
+        let (w, h) = (64usize, 128usize);
+        let img = sg.rgba(w, h, &[[0, 0, 0], [255, 255, 255]]);
+        // i32, not u8: `top + 100` on a byte SILENTLY WRAPS in release (250 + 100 = 94), and
+        // the first version of this assertion did exactly that — so the flipped picture
+        // compared 96 > 94 and passed. The gate was right about the physics and wrong about
+        // the arithmetic, which is its own little lesson about trusting a green.
+        let brightest = |rows: std::ops::Range<usize>| -> i32 {
+            rows.flat_map(|y| (0..w).map(move |x| (y * w + x) * 4))
+                .map(|i| i32::from(img[i]))
+                .max()
+                .unwrap_or(0)
+        };
+        let top = brightest(0..h / 2);
+        let bottom = brightest(h / 2..h);
+        assert!(
+            bottom > top + 100,
+            "a 6 kHz tone (a quarter of Nyquist) is brighter in the TOP half than the \
+             bottom: {top} vs {bottom} — the frequency axis is upside down, and a repair \
+             will erase the mirror band"
+        );
+    }
+
+    /// **The calibration is two-sided.** `quantise_db` clamps at 0 dB, so a reference that
+    /// is too HOT saturates and a full-scale test can never see it: an image 6 dB too bright
+    /// everywhere still reads 255 at full scale (audit 2026-07-12 — the systematic-bias
+    /// class, [[feedback_loose_oracle_hides_systematic_bias]]).
+    ///
+    /// So anchor at a level the quantiser does NOT clamp. A -20 dBFS tone must read the byte
+    /// the dB scale says it should: `(−20 − FLOOR)/−FLOOR × 255 = 198`. Measured: 198 exactly
+    /// with the right reference, 215 with one 6 dB hot.
+    #[test]
+    fn the_picture_is_calibrated_on_both_sides() {
+        // -20 dBFS = amplitude 0.1.
+        let sg = Spectrogram::build(&clip(6_000.0, 0.4, 0.1));
+        let bin = (6_000.0 / sg.nyquist() * (sg.bins - 1) as f32).round() as usize;
+        let col = sg.cols / 2;
+        let got = sg.db[col * sg.bins + bin];
+        let want = ((-20.0 - FLOOR_DB) / -FLOOR_DB * 255.0) as i32;
+        assert!(
+            (i32::from(got) - want).abs() <= 3,
+            "a -20 dBFS tone read {got}/255; the dB scale says {want}. The picture is \
+             miscalibrated by roughly {:.1} dB",
+            (f32::from(got) - want as f32) / 255.0 * -FLOOR_DB
+        );
+    }
+
     /// Quiet is dark and loud is bright, monotonically. If the ramp is not ordered the
     /// picture is decorative rather than informative.
     #[test]

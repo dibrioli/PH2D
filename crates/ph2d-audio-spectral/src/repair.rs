@@ -255,6 +255,72 @@ mod tests {
         );
     }
 
+    /// **The fill CONTINUES the signal; it does not merely sit quietly in the hole.**
+    ///
+    /// The beep gate above (−20 dB in, ≤1 dB out) is satisfied by *any* sufficiently quiet
+    /// filler — including one that continues nothing. Measured (audit 2026-07-12): killing
+    /// the time route, or the phase continuation, or replacing the phase with a hash, all
+    /// left it green. Half of what the module documents was proved by nothing.
+    ///
+    /// So put a **sustained tone** under the beep, at the beep's own frequency, and check
+    /// the two things the doc actually claims:
+    ///
+    /// 1. the repaired bin comes back at the level of the bed that was passing through it
+    ///    (the TIME route) — not at the level of some unrelated neighbouring bin;
+    /// 2. it comes back **steady** across columns (the PHASE continuation). An incoherent
+    ///    phase cancels unevenly in the overlap-add and the bin flickers — which is exactly
+    ///    what "a fresh burst rather than a continuation" sounds like.
+    ///
+    /// Measured, coefficient of variation across the repaired columns: coherent 0.33 ·
+    /// phase-zero 1.43 · phase-hash 0.73 · frequency-route-only 1.42. The bar at 0.50 catches
+    /// all three, including the near-miss.
+    #[test]
+    fn the_fill_continues_the_tone_that_was_passing_through() {
+        let n = 48_000usize;
+        let bed_hz = 5_000.0;
+        let (f0, f1) = (20_000usize, 24_000usize);
+        let mut s = speech(n);
+        for (i, v) in s.iter_mut().enumerate() {
+            let t = i as f32 / SR;
+            // A quiet tonal bed at 5 kHz, sustained through the whole clip...
+            *v += (std::f32::consts::TAU * bed_hz * t).sin() * 0.08;
+            // ...and a loud beep on top of it, only inside the region.
+            if (f0..f1).contains(&i) {
+                *v += (std::f32::consts::TAU * bed_hz * t).sin() * 0.5;
+            }
+        }
+        let after = repair(
+            &mono(s),
+            &Band {
+                frames: f0..f1,
+                hz: (bed_hz - 300.0)..(bed_hz + 300.0),
+            },
+        );
+
+        // Per-column magnitude of the repaired bin, inside the region.
+        let mut stft = Stft::new();
+        let bins = stft.bins();
+        let bin = (bed_hz / (SR * 0.5) * (bins - 1) as f32).round() as usize;
+        let (c0, c1) = (stft.column_at(f0), stft.column_at(f1));
+        let x = after.samples().to_vec();
+        let mut mags = Vec::new();
+        stft.analyze(&x, |col, spec| {
+            if (c0 + 2..c1 - 2).contains(&col) {
+                mags.push(magnitude(spec[bin]));
+            }
+        });
+        assert!(mags.len() > 4, "not enough repaired columns to judge");
+
+        let mean = mags.iter().sum::<f32>() / mags.len() as f32;
+        let var = mags.iter().map(|m| (m - mean).powi(2)).sum::<f32>() / mags.len() as f32;
+        let cov = var.sqrt() / mean.max(1e-12);
+        assert!(
+            cov <= 0.50,
+            "the repaired bin flickers across columns (CoV {cov:.2}) — the fill is a burst, \
+             not a continuation of the tone that was passing through"
+        );
+    }
+
     /// **Everything outside the region's reach comes back bit-identical.** Not "close" —
     /// identical. A repair that quietly resynthesised the whole clip would pass every
     /// energy test above and still be the wrong tool.

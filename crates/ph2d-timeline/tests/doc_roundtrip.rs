@@ -87,11 +87,15 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_two() {
-    // v2 = per-key roving flags appended to the track payload (postcard is
-    // positional: a v1 blob must be REJECTED by the version gate, not misread).
-    assert_eq!(DOC_VERSION, 2);
-    assert_eq!(TimelineDoc::new().version, 2);
+fn schema_version_is_three() {
+    // v2 = per-key roving flags appended to the track payload.
+    // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
+    //      `loop_ping_pong`, appended) — a loop belongs to the animation it
+    //      brackets, not to the document (Enio, 2026-07-12).
+    // Postcard is positional: an older blob must be REJECTED by the version gate,
+    // not misread field-for-field.
+    assert_eq!(DOC_VERSION, 3);
+    assert_eq!(TimelineDoc::new().version, 3);
 }
 
 #[test]

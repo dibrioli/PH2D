@@ -199,9 +199,23 @@ fn transport_intents_toggle_and_loop() {
     assert!(!ph.is_playing());
     apply_intent(&mut st, &mut ph, I::TogglePlay);
     assert!(ph.is_playing());
-    apply_intent(&mut st, &mut ph, I::SetLoop(Some((1.0, 2.0))));
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((1.0, 2.0)),
+            ping_pong: false,
+        },
+    );
     assert_eq!(ph.loop_range(), Some((1.0, 2.0)));
-    apply_intent(&mut st, &mut ph, I::SetLoop(None));
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: None,
+            ping_pong: false,
+        },
+    );
     assert_eq!(ph.loop_range(), None);
 }
 

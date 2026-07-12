@@ -42,6 +42,16 @@ pub enum IconButtonStyle {
     /// Frameless: glyph only, tinted by state. Pause / Reset / right
     /// cluster.
     Plain,
+    /// Framed like [`IconButtonStyle::Chip`], but at the radius the token scale
+    /// actually reserves for a control this size: `Radius::Sm` ("compact buttons,
+    /// dense inputs") instead of `Radius::Xl` ("hero cards, splash").
+    ///
+    /// `Chip` is a **pill** on purpose — it is the TopBar's action pills. A dense
+    /// transport row is not that: at `Xl` a 30x28 button rounds into a lozenge no
+    /// matter which corner-radius preset the theme is on, which is exactly the
+    /// "they ignore the Theme" Enio saw (2026-07-12). Same surface, same border,
+    /// same glyph box — only the corner comes from the right rung of the scale.
+    Compact,
 }
 
 /// State→glyph tint for the `Chip` / `Plain` styles (the canonical
@@ -67,17 +77,17 @@ pub fn paint_icon_button(
     theme: Theme,
 ) {
     let (icon_rect, icon_color) = match style {
-        IconButtonStyle::Chip => {
-            fill_rounded_rect(
-                scene,
-                rect,
-                Radius::Xl.px(),
-                resolve(ColorToken::BgElev, theme),
-            );
+        IconButtonStyle::Chip | IconButtonStyle::Compact => {
+            let radius = if matches!(style, IconButtonStyle::Compact) {
+                Radius::Sm.px()
+            } else {
+                Radius::Xl.px()
+            };
+            fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
             stroke_rounded_rect(
                 scene,
                 rect,
-                Radius::Xl.px(),
+                radius,
                 StrokeToken::Default.px(),
                 resolve(ColorToken::Border, theme),
             );

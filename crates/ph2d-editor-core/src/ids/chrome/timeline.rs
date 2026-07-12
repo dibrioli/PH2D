@@ -34,6 +34,10 @@ pub const TIMELINE_AUTOKEY: NodeId = hash_node_id("timeline.autokey");
 pub const TIMELINE_RECORD: NodeId = hash_node_id("timeline.record");
 /// Frame-snap toggle.
 pub const TIMELINE_SNAP: NodeId = hash_node_id("timeline.snap");
+/// **Ping-pong** loop toggle — the same loop as [`TIMELINE_LOOP`], played back
+/// and forth. Mutually exclusive with it *by construction*: both read one value
+/// (a range plus a mode), and no value is both.
+pub const TIMELINE_PINGPONG: NodeId = hash_node_id("timeline.ping_pong");
 /// Speed-graph view toggle (W5) — flips every expanded graph band between the
 /// VALUE curve and the VELOCITY (speed) curve. Panel-local view state.
 pub const TIMELINE_SPEED: NodeId = hash_node_id("timeline.speed");

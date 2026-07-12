@@ -4,7 +4,9 @@
 //! so gestures see the current geometry, once after, so a resize lands the same
 //! frame it is dragged).
 
-use ph2d_editor_core::widget::panel_chrome::{PANEL_HEAD_PAD, PANEL_TITLE_BASELINE};
+use ph2d_editor_core::widget::panel_chrome::{
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ROW_H_PX, Spacing};
@@ -45,13 +47,39 @@ pub(crate) struct Geom {
 
 /// The panel body below the title (the transport bar + dope sheet live here).
 pub(crate) fn body(rect: Rect, title_size: f32) -> Rect {
-    let top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px();
+    let top = rect.y + head_h(title_size);
     Rect::new(
         rect.x + PANEL_HEAD_PAD,
         top,
         (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0),
         (rect.y + rect.h - top - PANEL_HEAD_PAD).max(0.0),
     )
+}
+
+/// The panel's header band: the title's own height, but never shorter than one
+/// control row — the transport now flows BESIDE the title (Enio, 2026-07-12), so
+/// the band has to be able to hold it.
+fn head_h(title_size: f32) -> f32 {
+    (PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px()).max(ROW_H_PX + Spacing::Sm.px() * 2.0)
+}
+
+/// Width reserved for the panel's own title before the controls may start.
+///
+/// A RESERVE, not a measurement — the same trick the chrome already plays on the
+/// other side with [`PANEL_HEADER_CLOSE_RESERVE`]. There is no text-measuring API
+/// to ask (and `chars().count()` is banned as a width proxy, correctly: Inter is
+/// proportional, so a character count is not a pixel advance). Wide enough for
+/// "Timeline" at the title size, and the title paints clipped to its own `max_w`
+/// anyway, so a longer one shortens rather than collides.
+const TITLE_RESERVE: f32 = 92.0; // LITERAL-PX-OK: header column reserved for the panel title
+
+/// The strip in the header where the transport controls flow: right of the title,
+/// left of the close (X) button, vertically centred in the band.
+pub(crate) fn header_controls(rect: Rect, title_size: f32) -> Rect {
+    let x = rect.x + PANEL_HEAD_PAD + TITLE_RESERVE;
+    let right = rect.x + rect.w - PANEL_HEAD_PAD - PANEL_HEADER_CLOSE_RESERVE;
+    let y = rect.y + (head_h(title_size) - ROW_H_PX) * 0.5;
+    Rect::new(x, y, (right - x).max(0.0), ROW_H_PX)
 }
 
 /// Narrowest the track-name column may be dragged.

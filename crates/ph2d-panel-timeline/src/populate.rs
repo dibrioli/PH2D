@@ -69,6 +69,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     number(store, ids::TIMELINE_TIME_NUM);
     number(store, ids::TIMELINE_FRAME_NUM);
     toggle(store, ids::TIMELINE_LOOP, false);
+    toggle(store, ids::TIMELINE_PINGPONG, false);
     toggle(store, ids::TIMELINE_AUTOKEY, false);
     toggle(store, ids::TIMELINE_RECORD, false);
     toggle(store, ids::TIMELINE_SNAP, true);

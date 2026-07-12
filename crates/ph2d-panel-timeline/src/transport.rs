@@ -31,160 +31,292 @@ const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: seconds/frame number chip width
 const CHIP_LABEL_W: f32 = 48.0; // LITERAL-PX-OK: "Time(s)"/"Frames" chip-label column
 const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
 const CLIP_DD_W: f32 = 108.0; // LITERAL-PX-OK: clip dropdown chip width
+/// Buttons in the transport cluster: go-start, step-back, play, step-forward, go-end.
+const TRANSPORT_BTNS: usize = 5;
 
-/// Paint the transport row inside `body` (top-aligned).
+/// The controls, in the order Enio set (2026-07-12): the CLIP everything else
+/// acts on, then the transport, then **+M** right after Go-to-End, then the
+/// readouts, then the toggles.
+#[derive(Clone, Copy, PartialEq)]
+enum Item {
+    Clips,
+    Transport,
+    AddMarker,
+    TimeChip,
+    FrameChip,
+    Loop,
+    PingPong,
+    AutoKey,
+    Record,
+    Snap,
+    Speed,
+}
+
+const ITEMS: [Item; 11] = [
+    Item::Clips,
+    Item::Transport,
+    Item::AddMarker,
+    Item::TimeChip,
+    Item::FrameChip,
+    Item::Loop,
+    Item::PingPong,
+    Item::AutoKey,
+    Item::Record,
+    Item::Snap,
+    Item::Speed,
+];
+
+/// Flow the transport controls beside the panel title, wrapping what does not fit
+/// onto a second row above the dope sheet.
 ///
-/// Returns the `y` below the row, and — when the clip dropdown is OPEN — the
-/// chip's rect. The caller paints the popover LAST, after the dope sheet, or the
-/// list would be drawn under the rows it overlaps
+/// Returns the `y` the dope sheet starts at, and — when the clip dropdown is OPEN
+/// — the chip's rect. The caller paints the popover LAST, after the dope sheet, or
+/// the list would be drawn under the rows it overlaps
 /// ([[feedback_overlay_cut_at_boundary_check_draw_order]]).
+///
+/// **Two rows, and only when it needs two** (Enio: "a timeline ficou apertada").
+/// A wide panel carries the whole bar on the title line and hands the dope sheet
+/// the row back; narrow it and the tail spills to the row below, one item at a
+/// time, so nothing is ever clipped away where the animator cannot reach it.
 pub(crate) fn paint_bar(
     ctx: &mut PaintCtx,
     theme: Theme,
+    header: Rect,
     body: Rect,
     snap: &TimelineViewSnapshot,
     speed_view: bool,
 ) -> (f32, Option<Rect>) {
     let gap = Spacing::Sm.px();
-    let y = body.y;
-    let mut x = body.x;
+    let mut clip_chip = None;
+    let mut row = header;
+    let mut x = header.x;
+    let mut wrapped = false;
 
-    // ── clip selector (W5) ───────────────────────────────────────────────────
-    // Far left, ahead of the transport — the clip is the thing everything else on
-    // this bar acts ON, so it reads first (and it is where Unity's animation window
-    // puts it).
-    let (after_clips, clip_chip) = clip_cluster(ctx, theme, x, y, snap);
-    x = after_clips + gap;
+    for item in ITEMS {
+        let w = width(item, snap);
+        // Wrap ONCE: the first item that will not fit, and everything after it,
+        // moves down together. Breaking a cluster across rows would be worse than
+        // a short first row.
+        if !wrapped && x + w > row.x + row.w {
+            wrapped = true;
+            row = body;
+            x = body.x;
+        }
+        if let Some(chip) = paint_item(ctx, theme, item, x, row.y, snap, speed_view) {
+            clip_chip = Some(chip);
+        }
+        x += w + gap;
+    }
 
-    // ── transport buttons ────────────────────────────────────────────────────
-    // |◀ ◀ ▶/⏸ ▶ ▶| — jump to start, step back, play/pause, step forward, jump
-    // to end. The skip glyphs bracket the frame-steppers, as every transport does.
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_GO_START, IconId::SkipBack) + gap * 0.5;
-    x = icon_button(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_PREV_FRAME,
-        IconId::ChevronLeft,
-    ) + gap * 0.5;
-    let play_glyph = if snap.playing {
-        IconId::Pause
+    let next_y = if wrapped {
+        body.y + ROW_H_PX + Spacing::Sm.px()
     } else {
-        IconId::Play
+        body.y
     };
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_PLAY, play_glyph) + gap * 0.5;
-    x = icon_button(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_NEXT_FRAME,
-        IconId::ChevronRight,
-    ) + gap * 0.5;
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_GO_END, IconId::SkipForward) + gap;
+    (next_y, clip_chip)
+}
 
-    // ── seconds + frame chips ────────────────────────────────────────────────
+/// How wide `item` paints. The single source the flow measures against — every
+/// painter below lays out from these same constants, so the fit test and the
+/// pixels cannot disagree.
+fn width(item: Item, snap: &TimelineViewSnapshot) -> f32 {
+    let gap = Spacing::Sm.px();
+    let half = gap * 0.5;
+    match item {
+        // [ Main v ] [+] [pencil] [trash] — the trash only exists above one clip.
+        Item::Clips => {
+            let trash = if snap.clips.len() > 1 {
+                BTN_W + half
+            } else {
+                0.0
+            };
+            CLIP_DD_W + half + BTN_W + half + BTN_W + half + trash
+        }
+        // |< < >/|| > >| — five buttons, four gaps between them.
+        Item::Transport => {
+            let n = TRANSPORT_BTNS as f32;
+            BTN_W * n + half * (n - 1.0)
+        }
+        Item::AddMarker => ADD_MARKER_W,
+        Item::TimeChip | Item::FrameChip => CHIP_LABEL_W + half + CHIP_W,
+        Item::Loop | Item::PingPong | Item::AutoKey | Item::Record | Item::Snap | Item::Speed => {
+            toggle_w()
+        }
+    }
+}
+
+/// The outlined `[label | switch]` cell's width (mirrors [`toggle`]'s layout).
+fn toggle_w() -> f32 {
+    let pad = Spacing::Xs.px();
+    pad + TOGGLE_LABEL_W + pad + TypeToken::Xl3.px() + pad
+}
+
+/// Paint one item at `(x, y)`. Returns the clip chip's rect when that item is the
+/// clip dropdown AND it is open (the caller defers the popover — see [`paint_bar`]).
+fn paint_item(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    item: Item,
+    x: f32,
+    y: f32,
+    snap: &TimelineViewSnapshot,
+    speed_view: bool,
+) -> Option<Rect> {
+    let gap = Spacing::Sm.px();
+    let half = gap * 0.5;
     let fps = if snap.fps > 0.0 {
         snap.fps
     } else {
         DEFAULT_FPS
     };
-    label(
-        ctx,
-        theme,
-        ph2d_i18n::tr("panel.timeline.time_seconds"),
-        x,
-        y,
-        CHIP_LABEL_W,
-    );
-    x += CHIP_LABEL_W + gap * 0.5;
-    x = chip(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_TIME_NUM,
-        snap.time_seconds,
-        1.0 / fps,
-        2,
-    ) + gap;
-    label(
-        ctx,
-        theme,
-        ph2d_i18n::tr("panel.timeline.frame"),
-        x,
-        y,
-        CHIP_LABEL_W,
-    );
-    x += CHIP_LABEL_W + gap * 0.5;
-    x = chip(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_FRAME_NUM,
-        snap.frame as f64,
-        1.0,
-        0,
-    ) + gap;
-
-    // ── toggles ──────────────────────────────────────────────────────────────
-    x = toggle(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_LOOP,
-        ph2d_i18n::tr("panel.timeline.loop"),
-        snap.loop_range.is_some(),
-    ) + gap;
-    x = toggle(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_AUTOKEY,
-        ph2d_i18n::tr("panel.timeline.autokey"),
-        snap.auto_key,
-    ) + gap;
-    // Record / performing (W5) — records the pose LIVE while playing + dragging,
-    // sits next to AutoKey (its paused counterpart).
-    x = toggle(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_RECORD,
-        ph2d_i18n::tr("panel.timeline.record"),
-        snap.performing,
-    ) + gap;
-    x = toggle(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_SNAP,
-        ph2d_i18n::tr("panel.timeline.snap"),
-        snap.frame_snap,
-    ) + gap;
-    // Speed-graph view (W5) — panel-local, NOT a document command: flips every
-    // expanded graph band between the value curve and the velocity curve.
-    x = toggle(
-        ctx,
-        theme,
-        x,
-        y,
-        ids::TIMELINE_SPEED,
-        ph2d_i18n::tr("panel.timeline.speed"),
-        speed_view,
-    ) + gap;
-
-    // "+M" — drop a marker at the playhead (W4.T3). Same one-click authoring as
-    // pressing M, for discoverability.
-    add_marker_button(ctx, theme, x, y);
-
-    (y + ROW_H_PX + Spacing::Sm.px(), clip_chip)
+    match item {
+        Item::Clips => return clip_cluster(ctx, theme, x, y, snap),
+        Item::Transport => {
+            // |< < >/|| > >| — jump to start, step back, play/pause, step forward,
+            // jump to end. The skip glyphs bracket the frame-steppers, as every
+            // transport does.
+            let mut x =
+                icon_button(ctx, theme, x, y, ids::TIMELINE_GO_START, IconId::SkipBack) + half;
+            x = icon_button(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_PREV_FRAME,
+                IconId::ChevronLeft,
+            ) + half;
+            let play_glyph = if snap.playing {
+                IconId::Pause
+            } else {
+                IconId::Play
+            };
+            x = icon_button(ctx, theme, x, y, ids::TIMELINE_PLAY, play_glyph) + half;
+            x = icon_button(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_NEXT_FRAME,
+                IconId::ChevronRight,
+            ) + half;
+            icon_button(ctx, theme, x, y, ids::TIMELINE_GO_END, IconId::SkipForward);
+        }
+        Item::AddMarker => add_marker_button(ctx, theme, x, y),
+        Item::TimeChip => {
+            label(
+                ctx,
+                theme,
+                ph2d_i18n::tr("panel.timeline.time_seconds"),
+                x,
+                y,
+                CHIP_LABEL_W,
+            );
+            chip(
+                ctx,
+                theme,
+                x + CHIP_LABEL_W + half,
+                y,
+                ids::TIMELINE_TIME_NUM,
+                snap.time_seconds,
+                1.0 / fps,
+                2,
+            );
+        }
+        Item::FrameChip => {
+            label(
+                ctx,
+                theme,
+                ph2d_i18n::tr("panel.timeline.frame"),
+                x,
+                y,
+                CHIP_LABEL_W,
+            );
+            chip(
+                ctx,
+                theme,
+                x + CHIP_LABEL_W + half,
+                y,
+                ids::TIMELINE_FRAME_NUM,
+                snap.frame as f64,
+                1.0,
+                0,
+            );
+        }
+        // Loop and PingPong are the SAME loop seen two ways, so exactly one can
+        // read as on — the snapshot carries a range plus a mode, and there is no
+        // value that is both.
+        Item::Loop => {
+            toggle(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_LOOP,
+                ph2d_i18n::tr("panel.timeline.loop"),
+                snap.loop_range.is_some() && !snap.loop_ping_pong,
+            );
+        }
+        Item::PingPong => {
+            toggle(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_PINGPONG,
+                ph2d_i18n::tr("panel.timeline.ping_pong"),
+                snap.loop_range.is_some() && snap.loop_ping_pong,
+            );
+        }
+        Item::AutoKey => {
+            toggle(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_AUTOKEY,
+                ph2d_i18n::tr("panel.timeline.autokey"),
+                snap.auto_key,
+            );
+        }
+        // Record / performing (W5) — records the pose LIVE while playing +
+        // dragging, sits next to AutoKey (its paused counterpart).
+        Item::Record => {
+            toggle(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_RECORD,
+                ph2d_i18n::tr("panel.timeline.record"),
+                snap.performing,
+            );
+        }
+        Item::Snap => {
+            toggle(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_SNAP,
+                ph2d_i18n::tr("panel.timeline.snap"),
+                snap.frame_snap,
+            );
+        }
+        // Speed-graph view (W5) — panel-local, NOT a document command: flips every
+        // expanded graph band between the value curve and the velocity curve.
+        Item::Speed => {
+            toggle(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_SPEED,
+                ph2d_i18n::tr("panel.timeline.speed"),
+                speed_view,
+            );
+        }
+    }
+    None
 }
 
 /// The clip cluster: `[ Main ▾ ] [+] [✎] [🗑]`.
@@ -202,7 +334,7 @@ fn clip_cluster(
     x: f32,
     y: f32,
     snap: &TimelineViewSnapshot,
-) -> (f32, Option<Rect>) {
+) -> Option<Rect> {
     let gap = Spacing::Sm.px();
     let mut x = x;
 
@@ -222,12 +354,12 @@ fn clip_cluster(
     x += CLIP_DD_W + gap * 0.5;
 
     x = icon_button(ctx, theme, x, y, ids::TIMELINE_ADD_CLIP, IconId::Plus) + gap * 0.5;
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_RENAME_CLIP, IconId::Modify) + gap * 0.5;
+    x = icon_button(ctx, theme, x, y, ids::TIMELINE_RENAME_CLIP, IconId::Text) + gap * 0.5;
     if snap.clips.len() > 1 {
-        x = icon_button(ctx, theme, x, y, ids::TIMELINE_DELETE_CLIP, IconId::Trash);
+        icon_button(ctx, theme, x, y, ids::TIMELINE_DELETE_CLIP, IconId::Trash);
     }
 
-    (x, open.then_some(chip))
+    open.then_some(chip)
 }
 
 /// One dropdown option per clip: the VALUE is the clip's index (what the dispatch
@@ -281,7 +413,7 @@ fn icon_button(
     paint_icon_button(
         rect,
         IconGlyph::Builtin(glyph),
-        IconButtonStyle::Chip,
+        IconButtonStyle::Compact,
         state,
         ctx.scene,
         theme,

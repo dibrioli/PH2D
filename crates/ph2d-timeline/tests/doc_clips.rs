@@ -195,3 +195,95 @@ fn a_clip_edit_is_one_undo_step() {
     apply_intent(&mut st, &mut ph, I::Undo);
     assert_eq!(st.doc.active_index(), 0);
 }
+
+// ── Per-clip loop (Enio, 2026-07-12) ────────────────────────────────────────
+
+#[test]
+fn each_clip_remembers_its_own_loop_and_switching_swaps_it_in() {
+    // A loop belongs to the animation it BRACKETS — "walk" cycles over its own two
+    // seconds and "run" over its own. One range shared across every clip was simply
+    // the wrong range for all but the one it was drawn on.
+    let (mut st, mut ph) = state();
+
+    // Main loops 0..2, plain cycle.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((0.0, 2.0)),
+            ping_pong: false,
+        },
+    );
+    assert_eq!(ph.loop_range(), Some((0.0, 2.0)));
+
+    // A new clip starts with NO loop — and the playhead follows it there.
+    apply_intent(&mut st, &mut ph, I::AddClip);
+    assert_eq!(ph.loop_range(), None, "the new clip has no loop yet");
+
+    // Give it its own, ping-ponging.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((1.0, 3.0)),
+            ping_pong: true,
+        },
+    );
+    assert_eq!(ph.loop_range(), Some((1.0, 3.0)));
+    assert_eq!(ph.loop_mode(), ph2d_core::LoopMode::PingPong);
+
+    // Back to Main: ITS loop returns, cycle and all.
+    apply_intent(&mut st, &mut ph, I::SetActiveClip { index: 0 });
+    assert_eq!(ph.loop_range(), Some((0.0, 2.0)), "Main's own loop is back");
+    assert_eq!(ph.loop_mode(), ph2d_core::LoopMode::Wrap);
+
+    // …and forward again.
+    apply_intent(&mut st, &mut ph, I::SetActiveClip { index: 1 });
+    assert_eq!(ph.loop_range(), Some((1.0, 3.0)));
+    assert_eq!(ph.loop_mode(), ph2d_core::LoopMode::PingPong);
+}
+
+#[test]
+fn loop_and_ping_pong_cannot_both_be_on() {
+    // They are the SAME loop seen two ways — a range plus what happens at its end.
+    // The exclusion is structural: there is no value that is both, so the two
+    // toggles the panel reads off this snapshot can never light up together.
+    let (mut st, mut ph) = state();
+    let on = |st: &TimelineState| {
+        let r = st.doc.active_loop().is_some();
+        (
+            r && !st.doc.active_ping_pong(),
+            r && st.doc.active_ping_pong(),
+        )
+    };
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((0.0, 2.0)),
+            ping_pong: false,
+        },
+    );
+    assert_eq!(on(&st), (true, false), "Loop on, PingPong off");
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: Some((0.0, 2.0)),
+            ping_pong: true,
+        },
+    );
+    assert_eq!(on(&st), (false, true), "arming PingPong disarms Loop");
+
+    apply_intent(
+        &mut st,
+        &mut ph,
+        I::SetLoop {
+            range: None,
+            ping_pong: false,
+        },
+    );
+    assert_eq!(on(&st), (false, false), "both off = no loop");
+}

@@ -84,11 +84,24 @@ pub(crate) fn intent_for_transport(
         PanelEvent::SetValue(id, v) if id == ids::TIMELINE_FRAME_NUM => {
             Some(I::SeekFrame(v as i64))
         }
-        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_LOOP => Some(if on {
-            I::SetLoop(Some((0.0, duration().max(1.0 / fps.max(1.0)))))
-        } else {
-            I::SetLoop(None)
-        }),
+        // Loop and PingPong are ONE loop seen two ways — a range plus what happens
+        // at its end. Each toggle sends the whole value, so arming one necessarily
+        // disarms the other: there is no state where both are on, and no rule
+        // anyone has to remember to enforce.
+        PanelEvent::Toggle(id, on) if id == ids::TIMELINE_LOOP || id == ids::TIMELINE_PINGPONG => {
+            let ping_pong = id == ids::TIMELINE_PINGPONG;
+            Some(if on {
+                I::SetLoop {
+                    range: Some((0.0, duration().max(1.0 / fps.max(1.0)))),
+                    ping_pong,
+                }
+            } else {
+                I::SetLoop {
+                    range: None,
+                    ping_pong: false,
+                }
+            })
+        }
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_AUTOKEY => Some(I::SetAutoKey(on)),
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_RECORD => Some(I::SetPerforming(on)),
         PanelEvent::Toggle(id, on) if id == ids::TIMELINE_SNAP => Some(I::SetFrameSnap(on)),
@@ -315,7 +328,10 @@ mod tests {
         );
         assert_eq!(
             intent_for_transport(&PanelEvent::Toggle(ids::TIMELINE_LOOP, true), &st, &ph),
-            Some(TimelineIntent::SetLoop(Some((0.0, 4.0)))),
+            Some(TimelineIntent::SetLoop {
+                range: Some((0.0, 4.0)),
+                ping_pong: false,
+            }),
             "looping a hand-keyed clip must not collapse to a zero-length range"
         );
     }

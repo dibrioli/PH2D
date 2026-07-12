@@ -94,8 +94,11 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     );
 
     let body = geom::body(rect, title_size);
+    // The transport now flows BESIDE the title and only spills to a row of its own
+    // when the panel is too narrow to hold it (Enio: "a timeline ficou apertada").
+    let head_strip = geom::header_controls(rect, title_size);
     let (after_transport, clip_dd_chip) =
-        transport::paint_bar(ctx, theme, body, &snapshot, state.speed_view);
+        transport::paint_bar(ctx, theme, head_strip, body, &snapshot, state.speed_view);
     let g = geom::resolve(rect, after_transport, state.label_w);
     // Write the clamped width back, so a drag that ran past the bounds does not
     // have to be dragged all the way back before the column moves again.
@@ -282,6 +285,13 @@ fn paint_overlays(
                 .hit_index_mut()
                 .register(opt.id, dd.option_rect(chip, i));
         }
+        // Publish the popover so a Down that lands OUTSIDE it closes the list
+        // (`dispatch::pointer_down`'s light-dismiss). Without this the list stays
+        // open over the dope sheet, which is the bug Enio hit — and the reason is
+        // that the dismiss reads a slot no painter had ever written.
+        ctx.host
+            .store_mut()
+            .set_dropdown_popover(ids::TIMELINE_CLIP_DD, dd.popover_rect(chip));
     }
 
     crate::marker_rename::paint(

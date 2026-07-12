@@ -38,7 +38,12 @@ pub(crate) fn apply(
         GesturePhase::Update | GesturePhase::End => {
             if let Some(d) = state.loop_drag {
                 let range = resolve(&d, state.view_start_s, time_x, px_per_s, g.x, snap);
-                state::push_intent(TimelineIntent::SetLoop(Some(range)));
+                // Carry the CURRENT mode through: dragging a ping-pong's brace
+                // reshapes it, it does not demote it to a plain cycle.
+                state::push_intent(TimelineIntent::SetLoop {
+                    range: Some(range),
+                    ping_pong: snap.loop_ping_pong,
+                });
             }
             if matches!(g.phase, GesturePhase::End) {
                 state.loop_drag = None;

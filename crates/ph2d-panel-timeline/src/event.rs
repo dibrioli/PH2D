@@ -40,6 +40,7 @@ fn is_chip(id: NodeId) -> bool {
 /// handled in `apply_event` without reaching the shell.
 fn is_toggle(id: NodeId) -> bool {
     id == ids::TIMELINE_LOOP
+        || id == ids::TIMELINE_PINGPONG
         || id == ids::TIMELINE_AUTOKEY
         || id == ids::TIMELINE_RECORD
         || id == ids::TIMELINE_SNAP

@@ -20,7 +20,9 @@ use crate::prop::PropKind;
 /// as the first field (never trust `serde(default)` under a positional format).
 /// v2: tracks carry per-key roving flags (`TrackData.roving`, appended field —
 /// postcard is positional, so a v1 blob is rejected rather than misread).
-pub const DOC_VERSION: u32 = 2;
+/// v3: each clip carries its own loop (`NamedClip.loop_range` + `loop_ping_pong`,
+/// appended) — a loop belongs to the animation it brackets, not to the document.
+pub const DOC_VERSION: u32 = 3;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -53,6 +55,21 @@ pub struct NamedClip {
     pub name: String,
     /// The animation data.
     pub clip: Clip,
+    /// This clip's `[start, end)` loop range in seconds, if the animator set one.
+    ///
+    /// **Per clip, not per document** (Enio, 2026-07-12): a loop is a property of
+    /// the animation it brackets — "walk" cycles over its own two seconds and
+    /// "run" over its own — so one range shared across every clip was simply the
+    /// wrong range for all but the one it was drawn on. The `Playhead` still owns
+    /// the LIVE loop (it is what wraps the transport); this is where each clip
+    /// parks its own, and switching clips swaps it in.
+    ///
+    /// Appended field — postcard is positional, hence `DOC_VERSION` 2 -> 3.
+    pub loop_range: Option<(f64, f64)>,
+    /// `true` when this clip's loop **ping-pongs** (plays back and forth) instead
+    /// of wrapping. Rides with the range because it IS part of it: a loop is a
+    /// span plus what happens at its end. Appended (v3).
+    pub loop_ping_pong: bool,
 }
 
 /// The editable timeline document (see module docs).
@@ -86,6 +103,8 @@ impl TimelineDoc {
             clips: vec![NamedClip {
                 name: "Main".to_string(),
                 clip: Clip::new(RationalTime::from_seconds(0.0)),
+                loop_range: None,
+                loop_ping_pong: false,
             }],
             active_clip: 0,
             bindings: Vec::new(),
@@ -129,6 +148,8 @@ impl TimelineDoc {
         self.clips.push(NamedClip {
             name,
             clip: Clip::new(RationalTime::from_seconds(0.0)),
+            loop_range: None,
+            loop_ping_pong: false,
         });
         self.clips.len() - 1
     }
@@ -156,6 +177,29 @@ impl TimelineDoc {
             self.active_clip = self.active_clip.saturating_sub(1);
         }
         true
+    }
+
+    /// The active clip's loop range, if it has one.
+    #[must_use]
+    pub fn active_loop(&self) -> Option<(f64, f64)> {
+        self.clips[self.active_clip].loop_range
+    }
+
+    /// Park `range` on the ACTIVE clip. The caller mirrors it into the `Playhead`,
+    /// which owns the live loop — this is the copy that survives a clip switch.
+    pub fn set_active_loop(&mut self, range: Option<(f64, f64)>) {
+        self.clips[self.active_clip].loop_range = range;
+    }
+
+    /// Whether the active clip's loop ping-pongs.
+    #[must_use]
+    pub fn active_ping_pong(&self) -> bool {
+        self.clips[self.active_clip].loop_ping_pong
+    }
+
+    /// Set whether the active clip's loop ping-pongs.
+    pub fn set_active_ping_pong(&mut self, on: bool) {
+        self.clips[self.active_clip].loop_ping_pong = on;
     }
 
     /// A name no clip is using yet — `"Clip 2"`, then `"Clip 3"`… Seeds the

@@ -202,7 +202,7 @@ pub(super) fn dispatch(
 /// motion would depend on the frame rate (plan §1.4: dt fixo). The common frame
 /// owes exactly one tick, which takes the pump's cheap forward path.
 ///
-/// **Backwards or a jump: one call.** The playhead was scrubbed, seeked, or wrapped
+/// **Backwards or a jump: one call.** The playhead was scrubbed, sought, or wrapped
 /// its loop. [`MotionCookPump::advance_or_scrub_scoped`] restores the newest
 /// checkpoint at or before the target and re-sims forward, bit-exact (M2.N2) —
 /// walking there tick by tick would instead re-cook from the ring on every step.

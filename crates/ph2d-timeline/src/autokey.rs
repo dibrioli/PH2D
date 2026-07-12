@@ -22,7 +22,7 @@
 //! the UI ever writes an unbound property (the apply pass skips it), so there is
 //! no feedback loop to guard against.
 
-use ph2d_anim::{AttributeEvaluator, RationalTime};
+use ph2d_anim::AttributeEvaluator;
 
 use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
@@ -111,6 +111,7 @@ mod tests {
     use super::*;
     use crate::state::TimelineState;
     use crate::{TimelineIntent as I, apply_intent};
+    use ph2d_anim::RationalTime;
     use ph2d_anim::{AnimValue, Interp};
     use ph2d_core::Playhead;
 

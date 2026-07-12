@@ -49,7 +49,7 @@ fn drag_to(edge: u8, x: f32) -> (f64, f64) {
     );
     let intents = state::drain_intents();
     match intents.last() {
-        Some(TimelineIntent::SetLoop(Some(r))) => *r,
+        Some(TimelineIntent::SetLoop { range: Some(r), .. }) => *r,
         other => panic!("expected SetLoop, got {other:?}"),
     }
 }
@@ -122,7 +122,10 @@ fn dragging_the_start_handle_never_panics_on_a_sub_frame_loop() {
         gesture(0, GesturePhase::Update, 50.0),
     );
     match state::drain_intents().last() {
-        Some(TimelineIntent::SetLoop(Some((a, b)))) => {
+        Some(TimelineIntent::SetLoop {
+            range: Some((a, b)),
+            ..
+        }) => {
             assert_eq!(*a, 0.0, "start collapses to 0, not a panic");
             assert!((*b - 0.01).abs() < 1e-9, "end unchanged");
         }
@@ -153,7 +156,7 @@ fn dragging_the_body_moves_both_ends_and_keeps_the_length() {
         gesture(2, GesturePhase::Update, 150.0),
     );
     let got = match state::drain_intents().last() {
-        Some(TimelineIntent::SetLoop(Some(r))) => *r,
+        Some(TimelineIntent::SetLoop { range: Some(r), .. }) => *r,
         o => panic!("{o:?}"),
     };
     assert_eq!(got, (1.5, 3.5));
@@ -182,7 +185,7 @@ fn dragging_the_body_left_clamps_the_start_at_zero_and_keeps_the_length() {
         gesture(2, GesturePhase::Update, -100.0),
     );
     let got = match state::drain_intents().last() {
-        Some(TimelineIntent::SetLoop(Some(r))) => *r,
+        Some(TimelineIntent::SetLoop { range: Some(r), .. }) => *r,
         o => panic!("{o:?}"),
     };
     assert_eq!(got, (0.0, 2.0));

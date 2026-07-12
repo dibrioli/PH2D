@@ -36,8 +36,19 @@ pub enum TimelineIntent {
     SeekFrame(i64),
     /// Set the playback-rate multiplier.
     SetRate(f64),
-    /// Set (or clear) the `[start, end)` loop range in seconds.
-    SetLoop(Option<(f64, f64)>),
+    /// Set (or clear) the ACTIVE CLIP's loop: its `[start, end)` range in seconds
+    /// and whether it **ping-pongs** (plays back and forth) instead of wrapping.
+    ///
+    /// One intent carries both because they are ONE thing — a loop is a span PLUS
+    /// what happens at its end. That also makes the two toggles that drive it
+    /// (Loop / PingPong) mutually exclusive **by construction**: there is no value
+    /// that is both, so no rule anyone can forget to enforce.
+    SetLoop {
+        /// `[start, end)` in seconds; `None` clears the loop.
+        range: Option<(f64, f64)>,
+        /// Play back and forth instead of jumping to the start.
+        ping_pong: bool,
+    },
 
     // ── authoring (active clip; each is one undo step) ──────────────────────
     /// Ensure a binding exists for `(entity, prop)` (creates the row).
@@ -252,10 +263,16 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::Scrub(t) => playhead.seek(snap(t, fps, state.flags.frame_snap)),
         I::SeekFrame(f) => playhead.seek_frame(f, fps),
         I::SetRate(r) => playhead.set_rate(r),
-        I::SetLoop(range) => match range {
-            Some((a, b)) => playhead.set_loop(a, b),
-            None => playhead.clear_loop(),
-        },
+        // The loop belongs to the CLIP, not the document: "walk" cycles over its
+        // own two seconds and "run" over its own. The `Playhead` owns the LIVE loop
+        // (it is what wraps the transport); the clip is where it is parked, so a
+        // switch swaps it in. Written straight (no undo step) — a loop brace is
+        // transport, not authoring.
+        I::SetLoop { range, ping_pong } => {
+            state.doc.set_active_loop(range);
+            state.doc.set_active_ping_pong(ping_pong);
+            sync_loop(&state.doc, playhead);
+        }
 
         // authoring (undoable)
         I::Bind { entity, prop } => edit(state, |doc, _| {
@@ -449,10 +466,13 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             // otherwise commit a stale pre-state on the next EndEdit.
             state.history.cancel();
             state.undo();
+            // The undo may have put another clip back in front — its loop comes with it.
+            sync_loop(&state.doc, playhead);
         }
         I::Redo => {
             state.history.cancel();
             state.redo();
+            sync_loop(&state.doc, playhead);
         }
 
         // ── clips ───────────────────────────────────────────────────────────
@@ -461,24 +481,33 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         // whatever key happens to sit at that index in the new clip — a stale
         // selection that deletes the wrong keys. Clearing is the only safe move,
         // and it is what switching a comp does everywhere else too.
-        I::SetActiveClip { index } => edit(state, |doc, sel| {
-            doc.set_active(index);
-            sel.clear();
-        }),
-        I::AddClip => edit(state, |doc, sel| {
-            let name = doc.fresh_clip_name();
-            let i = doc.add_clip(name);
-            doc.set_active(i);
-            sel.clear();
-        }),
+        I::SetActiveClip { index } => {
+            edit(state, |doc, sel| {
+                doc.set_active(index);
+                sel.clear();
+            });
+            sync_loop(&state.doc, playhead);
+        }
+        I::AddClip => {
+            edit(state, |doc, sel| {
+                let name = doc.fresh_clip_name();
+                let i = doc.add_clip(name);
+                doc.set_active(i);
+                sel.clear();
+            });
+            sync_loop(&state.doc, playhead);
+        }
         I::RenameClip { index, name } => edit(state, |doc, _| {
             doc.rename_clip(index, name);
         }),
-        I::DeleteClip { index } => edit(state, |doc, sel| {
-            if doc.remove_clip(index) {
-                sel.clear();
-            }
-        }),
+        I::DeleteClip { index } => {
+            edit(state, |doc, sel| {
+                if doc.remove_clip(index) {
+                    sel.clear();
+                }
+            });
+            sync_loop(&state.doc, playhead);
+        }
     }
 }
 
@@ -506,6 +535,20 @@ fn copy_selection(state: &mut TimelineState) {
 
 /// Run a doc edit as one undo step: snapshot, mutate `(doc, selection)`, commit
 /// only if the document changed.
+/// Mirror the ACTIVE clip's loop into the playhead — the one place a clip switch
+/// (or an undo of one) becomes the live transport loop.
+fn sync_loop(doc: &TimelineDoc, playhead: &mut Playhead) {
+    match doc.active_loop() {
+        Some((a, b)) => playhead.set_loop(a, b),
+        None => playhead.clear_loop(),
+    }
+    playhead.set_loop_mode(if doc.active_ping_pong() {
+        ph2d_core::LoopMode::PingPong
+    } else {
+        ph2d_core::LoopMode::Wrap
+    });
+}
+
 fn edit(state: &mut TimelineState, f: impl FnOnce(&mut TimelineDoc, &mut Selection)) {
     // Inside a `BeginEdit`/`EndEdit` bracket the caller owns the undo step: just
     // mutate, and let the bracket's commit fold every frame of the gesture into

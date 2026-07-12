@@ -28,6 +28,24 @@
 
 use crate::time::FixedStep;
 
+/// How many times one `advance` may reflect off the loop's ends. A step longer
+/// than the span (a huge `rate` over a tiny loop) would bounce more than once;
+/// this bounds the fold so a pathological rate cannot spin here forever. Two
+/// bounces cover any step up to twice the span, which no real transport reaches.
+const MAX_PING_BOUNCES: usize = 8;
+
+/// How the transport behaves at the end of its [loop range](Playhead::set_loop).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LoopMode {
+    /// Jump back to the start — a cycle (the classic loop).
+    #[default]
+    Wrap,
+    /// Turn around and play backwards to the start, then forwards again — a
+    /// **ping-pong**. What a walk cycle authored one way needs to read both ways,
+    /// and what AE calls a "boomerang".
+    PingPong,
+}
+
 /// The engine-wide timeline cursor and its transport state.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Playhead {
@@ -43,6 +61,11 @@ pub struct Playhead {
     /// Optional `[start, end)` loop; while set, [`Playhead::advance`] wraps the
     /// position back into the range (deterministically, via `rem_euclid`).
     loop_range: Option<(f64, f64)>,
+    /// What happens at the end of the loop — wrap, or turn around.
+    loop_mode: LoopMode,
+    /// Which way a [`LoopMode::PingPong`] is currently travelling: `+1` forwards,
+    /// `-1` back. Meaningless (and left at `+1`) in [`LoopMode::Wrap`].
+    ping_dir: f64,
 }
 
 impl Playhead {
@@ -60,6 +83,8 @@ impl Playhead {
             rate: 1.0,
             playing: true,
             loop_range: None,
+            loop_mode: LoopMode::Wrap,
+            ping_dir: 1.0,
         }
     }
 
@@ -77,11 +102,38 @@ impl Playhead {
         if !self.playing {
             return;
         }
-        self.time = (self.time + self.fixed_dt * self.rate).max(0.0);
-        if let Some((start, end)) = self.loop_range
-            && end > start
-        {
-            self.time = start + (self.time - start).rem_euclid(end - start);
+        let step = self.fixed_dt * self.rate;
+        let Some((start, end)) = self.loop_range.filter(|&(a, b)| b > a) else {
+            self.time = (self.time + step).max(0.0);
+            return;
+        };
+        match self.loop_mode {
+            LoopMode::Wrap => {
+                self.time = (self.time + step).max(0.0);
+                self.time = start + (self.time - start).rem_euclid(end - start);
+            }
+            // REFLECT off each end rather than jumping back. The reflection is
+            // applied to the OVERSHOOT, not to the raw position, so a step that
+            // lands past the end resumes exactly as far inside as it went beyond —
+            // no frame is dropped and no time is invented, which is what keeps a
+            // ping-pong bit-exact under any `rate`.
+            LoopMode::PingPong => {
+                let mut t = self.time + step * self.ping_dir;
+                // A rate so large it overshoots the whole span would bounce more
+                // than once; fold repeatedly rather than clamp, so it stays exact.
+                for _ in 0..MAX_PING_BOUNCES {
+                    if t > end {
+                        t = end - (t - end);
+                        self.ping_dir = -1.0;
+                    } else if t < start {
+                        t = start + (start - t);
+                        self.ping_dir = 1.0;
+                    } else {
+                        break;
+                    }
+                }
+                self.time = t.clamp(start, end); // CLAMP-OK: measured bounds, end>start
+            }
         }
     }
 
@@ -144,6 +196,27 @@ impl Playhead {
     /// Clear the playback loop.
     pub fn clear_loop(&mut self) {
         self.loop_range = None;
+    }
+
+    /// Choose what happens at the end of the loop — [`LoopMode::Wrap`] (cycle) or
+    /// [`LoopMode::PingPong`] (turn around). Resets the ping-pong to travelling
+    /// FORWARDS, so arming it never starts the animation running backwards.
+    pub fn set_loop_mode(&mut self, mode: LoopMode) {
+        self.loop_mode = mode;
+        self.reset_ping_dir();
+    }
+
+    /// Send a ping-pong back to travelling FORWARDS — the derived state
+    /// [`Self::set_loop_mode`] must reconcile, so arming the mode never starts the
+    /// animation running backwards from wherever the last one happened to stop.
+    fn reset_ping_dir(&mut self) {
+        self.ping_dir = 1.0;
+    }
+
+    /// The current loop mode.
+    #[must_use]
+    pub fn loop_mode(&self) -> LoopMode {
+        self.loop_mode
     }
 
     /// The current loop range `[start, end)` in seconds, if any.
@@ -328,5 +401,68 @@ mod tests {
         }
         let t = p.time();
         assert!((1.0..2.0).contains(&t), "t={t} not in [1, 2)");
+    }
+}
+
+#[cfg(test)]
+mod ping_pong_tests {
+    use super::*;
+
+    /// Play `n` ticks and collect the position after each.
+    fn run(ph: &mut Playhead, n: usize) -> Vec<f64> {
+        (0..n)
+            .map(|_| {
+                ph.advance();
+                ph.time()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_wrapping_loop_jumps_back_to_the_start() {
+        let mut ph = Playhead::new(0.25);
+        ph.set_loop(0.0, 1.0);
+        ph.set_loop_mode(LoopMode::Wrap);
+        // …0.75, then over the end -> back to 0.0.
+        assert_eq!(run(&mut ph, 5), vec![0.25, 0.5, 0.75, 0.0, 0.25]);
+    }
+
+    #[test]
+    fn a_ping_pong_turns_around_instead_of_jumping() {
+        // THE difference: at the end it REVERSES, and the reflection is applied to
+        // the OVERSHOOT — so it resumes exactly as far inside as it went beyond and
+        // no frame is dropped.
+        let mut ph = Playhead::new(0.25);
+        ph.set_loop(0.0, 1.0);
+        ph.set_loop_mode(LoopMode::PingPong);
+        assert_eq!(
+            run(&mut ph, 9),
+            vec![0.25, 0.5, 0.75, 1.0, 0.75, 0.5, 0.25, 0.0, 0.25],
+            "out to the end, back to the start, and out again"
+        );
+    }
+
+    #[test]
+    fn arming_a_ping_pong_always_starts_it_forwards() {
+        // The direction is DERIVED state. Left over from a previous ping-pong, it
+        // would start the animation running backwards the moment the toggle is
+        // armed — which is why `set_loop_mode` reconciles it.
+        let mut ph = Playhead::new(0.25);
+        ph.set_loop(0.0, 1.0);
+        ph.set_loop_mode(LoopMode::PingPong);
+        run(&mut ph, 5); // …now travelling BACK (0.75)
+        ph.set_loop_mode(LoopMode::PingPong); // re-arm
+        assert_eq!(run(&mut ph, 1), vec![1.0], "forwards again, not backwards");
+    }
+
+    #[test]
+    fn a_ping_pong_with_no_loop_range_just_plays_on() {
+        let mut ph = Playhead::new(0.25);
+        ph.set_loop_mode(LoopMode::PingPong);
+        assert_eq!(
+            run(&mut ph, 3),
+            vec![0.25, 0.5, 0.75],
+            "nothing to bounce off"
+        );
     }
 }

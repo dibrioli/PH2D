@@ -65,6 +65,11 @@ pub struct TimelineViewSnapshot {
     pub playing: bool,
     /// Loop range `[start, end)` in seconds, if set.
     pub loop_range: Option<(f64, f64)>,
+    /// The loop plays back and forth instead of wrapping. Only meaningful with a
+    /// `loop_range`; the two transport toggles read
+    /// `loop_range.is_some() && !ping_pong` and `loop_range.is_some() && ping_pong`,
+    /// which is what makes them look mutually exclusive — because they ARE.
+    pub loop_ping_pong: bool,
     /// Active-clip duration in seconds.
     pub duration_seconds: f64,
     /// Track rows (active clip).
@@ -95,6 +100,7 @@ impl TimelineViewSnapshot {
         self.frame = playhead.frame(doc.fps_display);
         self.playing = playhead.is_playing();
         self.loop_range = playhead.loop_range();
+        self.loop_ping_pong = doc.active_ping_pong();
         self.duration_seconds = doc.active_clip().duration().to_seconds();
         self.auto_key = state.flags.auto_key;
         self.frame_snap = state.flags.frame_snap;

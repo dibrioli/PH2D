@@ -502,3 +502,50 @@ fn batched_dynamic_accumulate_is_bit_identical_to_sequential() {
         );
     }
 }
+
+#[test]
+fn mis_shaped_maps_bail_instead_of_indexing_past_the_end() {
+    // Sweep (2026-07-12). The SIGSEGV that opened this sweep was a caller handing a mis-shaped buffer to
+    // one of these `pub` kernels: maps sized for the 1 B/px cached route, read at the 4 B/px stride of the
+    // dynamic one. The CALLER is fixed (`ensure_per_layer_stroke` is now the one choke point), but the
+    // kernels only validated their contract in `debug_assert!` — absent from the build the artist runs.
+    // A dropped batch is a bug you can SEE on the canvas; an out-of-bounds slice is a crash on their machine.
+    let (w, h) = (16u32, 16u32);
+    let spec = shape_image_spec();
+    let l0 = layer([true, true, true, true]);
+    let stamp = render_color_stamp_mask(
+        &spec,
+        &[mask(&l0)],
+        &[[1.0, 0.0, 0.0]],
+        &[],
+        &[],
+        None,
+        None,
+        8,
+    );
+    let dab = FusedDab {
+        center: [8.0, 8.0],
+        radius: 4.0,
+        coverage: 1.0,
+    };
+    // Sanity: correctly shaped input still paints (else the test proves nothing).
+    let mut ok = vec![vec![0u8; (w as usize) * (h as usize)]];
+    assert!(
+        accumulate_color_stamps_fused_batch(&mut ok, w, h, &[dab], std::slice::from_ref(&stamp))
+            .is_some(),
+        "a correctly shaped batch still accumulates"
+    );
+    // No maps at all (the audit's exact repro: `covs` empty, `stamps` non-empty → `maps[0]` panicked).
+    assert!(
+        accumulate_color_stamps_fused_batch(&mut [], w, h, &[dab], std::slice::from_ref(&stamp))
+            .is_none(),
+        "no coverage maps ⇒ bail, not index"
+    );
+    // Maps sized for the OTHER route (4 B/px premul where 1 B/px coverage is expected) — Bug #12's shape.
+    let mut wrong = vec![vec![0u8; (w as usize) * (h as usize) * 4]];
+    assert!(
+        accumulate_color_stamps_fused_batch(&mut wrong, w, h, &[dab], std::slice::from_ref(&stamp))
+            .is_none(),
+        "maps shaped for the other route ⇒ bail, not index at the wrong stride"
+    );
+}

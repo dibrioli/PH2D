@@ -53,6 +53,17 @@ pub fn accumulate_color_stamps_fused_batch(
     if width == 0 || height == 0 || n == 0 || dabs.is_empty() {
         return None;
     }
+    // Contract guard (sweep 2026-07-12). This was a `debug_assert!` — i.e. ABSENT from the build the
+    // artist runs, and the CI's `ci-test` profile. The SIGSEGV that opened this sweep was exactly a caller
+    // handing a mis-shaped buffer to one of these `pub` kernels. The caller is fixed
+    // (`ensure_per_layer_stroke` is now the single choke point, and that is where a mismatch is LOUD), but
+    // a public contract must not be enforced only in debug: bail instead of indexing past the end. A
+    // dropped batch is a bug you can see on the canvas; an out-of-bounds slice is a crash on the artist's
+    // machine. Pinned by `mis_shaped_maps_bail_instead_of_indexing_past_the_end`.
+    let len = (width as usize) * (height as usize);
+    if covs.len() != n || covs.iter().any(|c| c.len() != len) {
+        return None;
+    }
     // Per-dab clipped boxes (identical arithmetic to the per-dab kernel); drop the no-op dabs.
     struct Box_ {
         di: usize,
@@ -133,10 +144,9 @@ pub fn accumulate_color_stamps_fused_batch(
         }
     }
     let size = stamps[0].size;
-    debug_assert!(
-        stamps.iter().all(|s| s.size == size),
-        "fused accumulate requires all stamps baked at the same size"
-    );
+    if size == 0 || stamps.iter().any(|s| s.size != size) {
+        return None; // a mixed-size batch would index `stamps[i].data` with stamps[0]'s stride
+    }
     let s = size as f32;
     let si = size as i64;
     let sz = size as usize;
@@ -257,7 +267,10 @@ pub fn accumulate_shape_layers_rgba_batch(
     if width == 0 || height == 0 || n == 0 || dabs.is_empty() {
         return None;
     }
-    debug_assert_eq!(accs.len(), n, "one premul-RGBA map per layer");
+    let len4 = (width as usize) * (height as usize) * 4;
+    if accs.len() != n || accs.iter().any(|a| a.len() != len4) {
+        return None;
+    }
     struct Box_ {
         di: usize,
         x0: i64,
@@ -502,12 +515,14 @@ pub fn accumulate_color_stamps_rgba_batch(
     if width == 0 || height == 0 || n == 0 || dabs.is_empty() {
         return None;
     }
-    debug_assert_eq!(accs.len(), n, "one premul-RGBA map per layer");
+    let len4 = (width as usize) * (height as usize) * 4;
+    if accs.len() != n || accs.iter().any(|a| a.len() != len4) {
+        return None;
+    }
     let size = stamps[0].size;
-    debug_assert!(
-        stamps.iter().all(|s| s.size == size),
-        "fused accumulate requires all stamps baked at the same size"
-    );
+    if size == 0 || stamps.iter().any(|s| s.size != size) {
+        return None; // a mixed-size batch would index `stamps[i].data` with stamps[0]'s stride
+    }
     struct Box_ {
         di: usize,
         x0: i64,

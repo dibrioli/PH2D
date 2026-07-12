@@ -3078,6 +3078,53 @@ fn jitter_rotate_reaches_smear_on_a_flattened_untextured_dab() {
 }
 
 #[test]
+fn flipping_per_layer_color_mid_stroke_keeps_what_was_already_painted() {
+    // Sweep (2026-07-12). Same seam as Bug #12 — the panel is live while the canvas is — but a different
+    // failure: not the maps' SHAPE, the stroke's CONTINUITY. `pre` is the PRE-stroke canvas snapshot; a dab
+    // painted while Per-Layer Color was OFF went straight to `canvas_rgba`, so it is in neither `pre` nor
+    // the coverage maps. Turning the mode back ON, the next batch recomposites its bbox from `pre` — and
+    // the off-interval dab EVAPORATES.
+    // RED without the fix: the pixel painted with the mode off is white again.
+    use ph2d_painter_brush::{Dab, StrokeMethod};
+    let mut t = white_canvas(64, 8.0);
+    t.paint.brush.stroke_method = StrokeMethod::Space;
+    t.paint.brush.color = [0.0, 0.0, 1.0]; // blue — the plain-route dab
+    t.set_brush_shape_layers(vec![(vec![255u8; 64], 8, 8), (vec![255u8; 64], 8, 8)]);
+    t.toggle_brush_shape_per_layer_color();
+    t.set_brush_shape_layer_color(0, [1.0, 0.0, 0.0]);
+    t.set_brush_shape_layer_color(1, [0.0, 1.0, 0.0]);
+    let dab = |cx: f32, coverage: f32| Dab {
+        center: [cx, 32.0],
+        radius_px: 8.0,
+        coverage,
+        color: [0.0, 0.0, 1.0],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+    };
+    t.stamp_dabs(&[dab(16.0, 1.0)]); // per-layer ON — this seeds `pre` (the canvas BEFORE it: all white)
+    t.toggle_brush_shape_per_layer_color(); // OFF, stroke still live
+    t.stamp_dabs(&[dab(32.0, 1.0)]); // opaque BLUE, straight to the canvas — in neither `pre` nor the maps
+    assert!(
+        px(&t, 64, 32, 32)[2] > 200 && px(&t, 64, 32, 32)[0] < 60,
+        "the mode-off dab painted blue"
+    );
+    t.toggle_brush_shape_per_layer_color(); // back ON
+    // A SEMI-TRANSPARENT dab over the same spot. Its recomposite rebuilds the region as `pre ⊕ layers` —
+    // and where the layers are only 30% opaque, 70% of what shows through is the BASE. If the base is the
+    // stale pre-stroke snapshot, that 70% is WHITE and the blue dab is gone. (An opaque dab would hide the
+    // bug: it overwrites what is under it anyway, which is just normal painting.)
+    t.stamp_dabs(&[dab(32.0, 0.3)]);
+    let p = px(&t, 64, 32, 32);
+    assert!(
+        p[0] < 60,
+        "the dab painted with the mode OFF must survive the flip back ON — its blue must still be the \
+         base under the translucent dab, not rebuilt away from a stale `pre` (red channel {}, so the base \
+         went back to WHITE)",
+        p[0]
+    );
+}
+
+#[test]
 fn appearance_signature_tracks_tiling_and_ramp_alpha() {
     // Sweep (2026-07-12): `AppearanceSig` is the change detector that re-fills an OPEN shape editor's
     // preview (`on_panel_event` compares it and calls `refill_open_shape`). It missed the two ramps'

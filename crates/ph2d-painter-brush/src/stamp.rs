@@ -139,10 +139,10 @@ pub fn blit_stamp(
     coverage: f32,
     preserve_alpha: bool,
 ) -> Option<DirtyRect> {
-    debug_assert!(
-        buf.len() >= (width as usize) * (height as usize) * 4,
-        "buffer too small"
-    );
+    // Contract guard (sweep 2026-07-12): was `debug_assert!`, i.e. absent from the build the artist runs.
+    if buf.len() < (width as usize) * (height as usize) * 4 {
+        return None;
+    }
     let coverage =
         coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {

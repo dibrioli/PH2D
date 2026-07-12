@@ -213,10 +213,10 @@ fn stamp_dab_inner(
     // View-Grain) a random angle this dab. Independent of the per-slot Random Angle (pattern-within).
     dab_rotation: [f32; 2],
 ) -> Option<DirtyRect> {
-    debug_assert!(
-        buf.len() >= (width as usize) * (height as usize) * 4,
-        "buffer too small"
-    );
+    // Contract guard (sweep 2026-07-12): was `debug_assert!`, i.e. absent from the build the artist runs.
+    if buf.len() < (width as usize) * (height as usize) * 4 {
+        return None;
+    }
     // Per-dab opacity = the stroke's coverage × the brush's Flow (per-dab build-up) × Strength
     // (overall opacity). With `mask` set this is the per-stroke CAP (Accumulate off); without it the
     // dab just builds up (Accumulate on). Both default to 1.0.

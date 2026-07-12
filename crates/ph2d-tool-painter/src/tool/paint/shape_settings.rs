@@ -281,6 +281,14 @@ impl PainterTool {
     /// lower). While on, the Shape colour ramp is hidden + nullified (the route uses the coloured stamp).
     pub fn toggle_brush_shape_per_layer_color(&mut self) {
         self.paint.shape_layers.toggle_per_layer_color();
+        // Flipping the mode MID-STROKE (the panel and the canvas are both live — that is how Enio's Rake
+        // panic happened) invalidates the accumulation, and silently: `pre` is the PRE-stroke canvas, and
+        // any dab painted while the mode was OFF went straight to `canvas_rgba` — it is in neither `pre`
+        // nor the coverage maps. The next batch's recomposite rebuilds the region from `pre` and those dabs
+        // EVAPORATE. Dropping the accumulation makes the next batch re-snapshot the CURRENT canvas (which
+        // does contain them) as its base, so the stroke continues from what is actually on screen.
+        // Sweep 2026-07-12; the `fits()` guard validates the maps' SHAPE, not the stroke's CONTINUITY.
+        self.paint.per_layer_stroke.reset();
     }
 
     /// Toggle Shape layer `i`'s custom-colour checkbox (off ⇒ it paints the brush base colour).

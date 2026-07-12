@@ -55,8 +55,8 @@ fn new_builds_the_well_typed_rig_document() {
     let state = MotionState::new();
     assert_eq!(
         state.sinks.len(),
-        4,
-        "the hose, the flesh, and a goal dot beside each"
+        5,
+        "the hose, the flesh, a goal dot beside each - and the rain (the simulation zone)"
     );
     for sink in &state.sinks {
         assert_eq!(
@@ -68,8 +68,9 @@ fn new_builds_the_well_typed_rig_document() {
     // scale, move, output} + the skinned tentacle {skeleton, fabrik, grid, move,
     // skin_deformer, scale, move, output} + the goal dots {scale, move, output, move,
     // output} + the ORPHAN that demos the inline readouts (doc 43: no sink consumes it, so
-    // it never cooks, so it has no reading and the editor veils it).
-    assert_eq!(state.doc.graph.nodes().len(), 23);
+    // it never cooks, so it has no reading and the editor veils it) + the SIMULATION ZONE
+    // (doc 48: {grid, sim.zone, wind, sim.step, falloff, cull, scale, move, output} = 9).
+    assert_eq!(state.doc.graph.nodes().len(), 32);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -343,5 +344,57 @@ fn a_text_param_survives_a_text_round_trip() {
         back.graph.node_text_params(),
         doc.graph.node_text_params(),
         "every formula survives the round trip"
+    );
+}
+
+/// **The rain: the Simulation Zone, in the boot document, end to end** (doc 48).
+///
+/// Two things must be true, and neither is true of a graph without a zone:
+///
+/// 1. **It ACCELERATES.** Each tick's fall is longer than the last, because the velocity is
+///    carried in the state and the wind keeps adding to it. A per-frame recompute (which is what
+///    every `Pure` chain outside a zone is) would fall at a constant rate, or not at all.
+/// 2. **What dies STAYS dead.** The population only ever falls as the drops leave the kill disc.
+///    The very same `motion.falloff` + `motion.cull` pair outside a zone is a filter, and every
+///    element it drops is back on the next frame.
+///
+/// FALSIFIED by a zone that re-seeds when its state empties (the count would climb back to 49),
+/// by a `sim.step` that reads a frame counter instead of the state's own clock, and by any wiring
+/// that leaves the `pre` state entry off the interior's head (the rain would freeze on frame 1).
+#[test]
+fn the_rain_accelerates_and_what_it_kills_stays_dead() {
+    let state = MotionState::new();
+    let rain = *state.sinks.last().expect("the rain is the last sink");
+    let frames = run_scene(&state, rain, 120);
+
+    assert_eq!(frames[0].len(), 49, "the 7x7 seed arrives on tick 1");
+
+    // 1. It accelerates: the fall from tick to tick GROWS. Measured on the MEAN height, and
+    //    only while every drop is still alive — the LOWEST drop is precisely the one the disc is
+    //    about to kill, so tracking it would show the minimum RISING as the bottom is culled,
+    //    which is the survivorship trap this measurement walked into first.
+    let mean_y = |f: &Vec<[f32; 2]>| f.iter().map(|p| p[1]).sum::<f32>() / f.len() as f32;
+    let (i, j, k) = (10, 20, 30);
+    for t in [i, j, k] {
+        assert_eq!(frames[t].len(), 49, "nobody has died yet at tick {t}");
+    }
+    let (fall1, fall2) = (
+        mean_y(&frames[i]) - mean_y(&frames[j]),
+        mean_y(&frames[j]) - mean_y(&frames[k]),
+    );
+    assert!(
+        fall2 > fall1 * 1.5 && fall1 > 0.0,
+        "gravity accumulates in the STATE: the drops fell {fall1} then {fall2}"
+    );
+
+    // 2. The population only ever falls, and it really does fall (the kill is live).
+    let counts: Vec<usize> = frames.iter().map(Vec::len).collect();
+    assert!(
+        counts.windows(2).all(|w| w[1] <= w[0]),
+        "a killed drop never comes back: {counts:?}"
+    );
+    assert!(
+        *counts.last().unwrap() < 49,
+        "…and the disc did kill some of them: {counts:?}"
     );
 }

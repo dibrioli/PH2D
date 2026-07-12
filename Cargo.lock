@@ -5816,6 +5816,8 @@ dependencies = [
  "ph2d-node-rig-rubber-hose",
  "ph2d-node-rig-skeleton",
  "ph2d-node-rig-skin-deformer",
+ "ph2d-node-sim-step",
+ "ph2d-node-sim-zone",
  "ph2d-node-sync",
  "ph2d-node-util-reroute",
  "ph2d-node-value-instance-field",
@@ -5870,6 +5872,24 @@ name = "ph2d-node-rig-skin-deformer"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-sim-step"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-node-registry-init",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-sim-zone"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-node-registry-init",
  "ph2d-nodegraph",
 ]
 

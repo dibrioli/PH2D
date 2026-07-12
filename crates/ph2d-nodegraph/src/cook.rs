@@ -86,6 +86,8 @@ pub struct EvalCtx<'a> {
     manifest: &'static NodeManifest,
     overrides: Option<&'a BTreeMap<String, f32>>,
     text_overrides: Option<&'a BTreeMap<String, String>>,
+    /// Did THIS node emit anything on the previous tick? (`prev_outputs` holds it.)
+    started: bool,
     outputs: Vec<CookValue>,
 }
 
@@ -108,6 +110,26 @@ impl<'a> EvalCtx<'a> {
 
     pub fn input_count(&self) -> usize {
         self.inputs.len()
+    }
+
+    /// **Did this node emit anything on the previous tick?** — the node's own memory of the
+    /// sequential circuit it sits in. `false` on the very first tick of a sim, and after any
+    /// reset that cleared the `pre` state.
+    ///
+    /// This exists for the **simulation zone** (doc 48), and it is the ONLY question that
+    /// answers *"has the sim started?"* correctly. The two obvious cheaper tests both lie:
+    ///
+    /// - *"is my `state` input empty?"* — a sim that killed its last element hands back an
+    ///   EMPTY STREAM, which is a real answer that happens to carry nothing. Read it as "not
+    ///   started" and the zone re-seeds from `init`: kill every particle and the scene
+    ///   **resurrects**, one frame later, forever.
+    /// - *"did an edge deliver a value on `state`?"* — it always did. The interior is wired into
+    ///   `state` by a FORWARD edge, so the cook evaluates it first and it hands back an empty
+    ///   stream on tick 1 (its own input, the zone's previous output, was the absent one).
+    ///
+    /// The state lives on the node's OWN previous output, so that is where the question belongs.
+    pub fn started(&self) -> bool {
+        self.started
     }
 
     /// Current clock time; meaningful for `Temporal` nodes.
@@ -527,6 +549,7 @@ impl Cook {
             manifest,
             overrides: graph.node_param_overrides(node),
             text_overrides: graph.node_text_param_overrides(node),
+            started: self.prev_outputs.contains_key(&node),
             outputs: Vec::new(),
         };
         op.eval(&mut ctx);

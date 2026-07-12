@@ -89,6 +89,8 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_rig_rubber_hose::register(reg)?;
     ph2d_node_rig_skeleton::register(reg)?;
     ph2d_node_rig_skin_deformer::register(reg)?;
+    ph2d_node_sim_step::register(reg)?;
+    ph2d_node_sim_zone::register(reg)?;
     ph2d_node_util_reroute::register(reg)?;
     ph2d_node_value_instance_field::register(reg)?;
     ph2d_node_value_lfo::register(reg)?;

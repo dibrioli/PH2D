@@ -70,11 +70,13 @@ mod vec_font;
 mod vec_font_preview;
 mod vec_gizmo_view;
 mod vec_glyph;
+mod vec_glyph_build;
 mod vec_overlay;
 mod vec_selection;
 mod vec_shape_live;
 mod vec_snap;
 mod vec_text;
+mod vec_text_object;
 mod vec_transform;
 mod winit_host;
 

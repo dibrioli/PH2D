@@ -1,6 +1,6 @@
 use super::*;
 use ph2d_editor_core::tool::RasterEditTool;
-use ph2d_painter_brush::Falloff;
+use ph2d_painter_brush::{DepthSource, DrawTo, Falloff};
 
 fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
@@ -16681,4 +16681,85 @@ fn watercolor_canvas_wet_view_exposes_moisture() {
     assert!(bytes.iter().all(|&b| b == 255), "umidade cheia");
     t.dry_session_now();
     assert!(t.canvas_wet_view().is_none(), "secou → None");
+}
+
+// ── Impasto (#16) — the foundation gate: the master switch is the ONLY gate ───────────────────────
+
+/// Paint the SAME rich stroke — Shape + Grain + Randomize Color + Jitter Scale/Rotate + Symmetry +
+/// Tiling, i.e. every feature Enio asked to be integrated — through a brush the caller may tweak.
+/// Returns the canvas bytes. One tool per call, so the two runs share nothing but the code.
+fn impasto_rich_stroke(tweak: impl FnOnce(&mut BrushSpec)) -> Vec<u8> {
+    use ph2d_painter_brush::{MirrorAxis, TextureKind, TextureMapping};
+    let size = 48u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    let mut b = BrushSpec {
+        radius_px: 9.0,
+        hardness: 0.3,
+        color: [0.2, 0.5, 0.9],
+        space_attenuation: false,
+        // Everything that must ride the SAME dab list / SAME stamp mask as the height will.
+        dab_flatten: 0.4,
+        dab_angle_deg: 20,
+        jitter_scale: 0.3,
+        jitter_rotate: 0.4,
+        jitter_spacing: 0.2,
+        color_jitter_enabled: true,
+        color_jitter_hue: 0.3,
+        color_jitter_sat: 0.2,
+        color_jitter_val: 0.2,
+        grain_depth: 0.8,
+        ..Default::default()
+    };
+    b.shape.kind = TextureKind::Checker; // procedural silhouette (no image pixels needed)
+    b.shape.mapping = TextureMapping::ViewPlane;
+    b.texture.kind = TextureKind::Noise; // Grain
+    b.texture.mapping = TextureMapping::ViewPlane;
+    b.symmetry.enabled = true;
+    b.symmetry.axis = MirrorAxis::X;
+    b.symmetry.center = [24.0, 24.0];
+    tweak(&mut b);
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.paint.tiling = [true, true]; // wrap on both axes
+    t.on_canvas_pointer(cp([6.0, 10.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([20.0, 22.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([44.0, 41.0], PointerPhase::Up));
+    (*t.canvas_rgba).clone()
+}
+
+#[test]
+fn impasto_off_is_byte_identical() {
+    // T1.3, the foundation of #16: while the master switch is off, NONE of the impasto knobs may be
+    // read. If any of them leaks into the colour path — even as a rounding difference — this fails.
+    //
+    // The knobs deliberately carry live *when-enabled* defaults (depth 0.5, smoothing 0.2), so the
+    // default is inert because of the SWITCH, not because the values happen to be neutral. This gate
+    // is what says so: it drives every knob to a wild value and demands the same bytes.
+    //
+    // The stroke is the rich one on purpose — Shape, Grain, Randomize Color, Jitter Scale/Rotate,
+    // Symmetry and Tiling all active. Those are exactly the features the height channel is going to
+    // share the dab list and the stamp mask with, so if wiring the height ever perturbs the dab
+    // stream (a re-ordered RNG draw, an extra dab, a differently-shaped mask), the COLOUR moves too
+    // and this gate catches it — in the one configuration where it is hardest to notice by eye.
+    let baseline = impasto_rich_stroke(|_| {});
+    let wild = impasto_rich_stroke(|b| {
+        b.impasto_depth = 1.0;
+        b.impasto_smoothing = 1.0;
+        b.impasto_source = DepthSource::Grain;
+        b.impasto_draw_to = DrawTo::Depth; // would suppress ALL pigment if it were read
+        // ...but the master switch stays OFF.
+        b.impasto = false;
+    });
+    assert_eq!(
+        baseline, wild,
+        "with Impasto off, the impasto settings must not reach a single pixel"
+    );
+    assert!(
+        baseline.iter().any(|&b| b != 255),
+        "sanity: the fixture actually painted (an all-white canvas would make this gate vacuous)"
+    );
 }

@@ -9,6 +9,7 @@
 use crate::blend::BrushBlend;
 use crate::falloff::Falloff;
 use crate::falloff_curve::FalloffCurve;
+use crate::height::{DepthSource, DrawTo};
 use crate::stroke_method::{JitterUnit, StrokeMethod};
 use crate::symmetry::SymmetrySettings;
 use crate::texture::TextureSettings;
@@ -259,6 +260,29 @@ pub struct BrushSpec {
     /// preset = the built-in curve) + [`Self::hardness`] + the Shape slot image/procedural +
     /// rotation. Only read by the watercolor render-path; inert for a plain brush.
     pub watercolor_shape_auto: bool,
+
+    // ── Impasto (paint thickness + relief; see [`crate::height`] and `docs/Painter/16…`) ──────────
+    /// Master switch for **Impasto**. Default `false`, and while it is off **none** of the fields
+    /// below is read — a default brush deposits no height and the canvas is byte-identical to a
+    /// build without impasto. (Every `impasto_*` field is prefixed because [`Self::depth`] and
+    /// [`Self::opacity`] already belong to the *watercolor* optics — a bare `depth` here would have
+    /// collided with the Beer–Lambert one and quietly crossed the two systems.)
+    pub impasto: bool,
+    /// **Depth**, `-1..1` — how much thickness one full-coverage dab lays down, in the height field's
+    /// own units. Signed: positive **lifts** paint off the canvas, negative **carves** into it (the
+    /// Painter "Negative Depth"). `0` = flat (no relief), so the pass is inert even with the master
+    /// switch on.
+    pub impasto_depth: f32,
+    /// Which part of the dab mask sculpts the relief — see [`DepthSource`]. Default
+    /// [`DepthSource::Uniform`] (a smooth plateau); [`DepthSource::Grain`] is the bristle look.
+    pub impasto_source: DepthSource,
+    /// Whether this brush writes colour, height, or both — see [`DrawTo`]. Default
+    /// [`DrawTo::ColorAndDepth`] (an ordinary loaded brush).
+    pub impasto_draw_to: DrawTo,
+    /// **Smoothing**, `0..1`: how much the deposited height is softened before it is lit. `0` = the
+    /// raw dab profile (crisp ridges, every grain striation lit); higher settles the paint like a
+    /// thick medium relaxing under its own weight. Purely a property of the deposit, not of the light.
+    pub impasto_smoothing: f32,
 }
 
 impl Default for BrushSpec {
@@ -327,6 +351,14 @@ impl Default for BrushSpec {
             granulation_use_paper: true,
             paper_depth: 1.0,
             watercolor_shape_auto: true, // built-in feather silhouette (byte-identical default)
+            // Impasto: the `impasto` gate (OFF) is what guarantees the byte-identical default — the
+            // params below carry sensible *when-enabled* values (a visible ridge the moment the
+            // artist ticks the box), not neutral zeros. `impasto_off_is_byte_identical` locks that.
+            impasto: false,
+            impasto_depth: 0.5,
+            impasto_source: DepthSource::Uniform,
+            impasto_draw_to: DrawTo::ColorAndDepth,
+            impasto_smoothing: 0.2,
         }
     }
 }
@@ -408,6 +440,45 @@ impl BrushSpec {
     pub fn effective_pigment_mix(&self) -> f32 {
         if self.watercolor && self.pigment {
             self.pigment_mix.clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
+    /// Whether this brush's dabs deposit **height** (the impasto relief). The master switch must be on,
+    /// the brush must be set to write depth, and the depth must be non-zero — a zero-depth dab is a
+    /// no-op *by definition* (it neither lifts nor carves), so the height pass skips it entirely rather
+    /// than writing a flat zero over relief that is already there.
+    #[must_use]
+    pub fn deposits_height(&self) -> bool {
+        self.impasto && self.impasto_draw_to.writes_depth() && self.impasto_depth != 0.0
+    }
+
+    /// Whether this brush's dabs deposit **pigment**. Only [`DrawTo::Depth`] — *with the master switch
+    /// on* — suppresses it. With impasto off, [`Self::impasto_draw_to`] is not read at all, so a brush
+    /// left on "Depth" in a previous session paints normally again the moment impasto is unticked; the
+    /// master switch is the single gate, which is what makes the off state byte-identical.
+    #[must_use]
+    pub fn deposits_color(&self) -> bool {
+        !self.impasto || self.impasto_draw_to.writes_color()
+    }
+
+    /// Effective impasto **Depth**, clamped to `[-1, 1]`. Zero unless the master switch is on, so every
+    /// caller can read this one number without re-checking the gate.
+    #[must_use]
+    pub fn effective_impasto_depth(&self) -> f32 {
+        if self.impasto {
+            self.impasto_depth.clamp(-1.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
+    /// Effective impasto **Smoothing** `[0, 1]`. Zero unless the master switch is on.
+    #[must_use]
+    pub fn effective_impasto_smoothing(&self) -> f32 {
+        if self.impasto {
+            self.impasto_smoothing.clamp(0.0, 1.0)
         } else {
             0.0
         }
@@ -544,98 +615,5 @@ impl BrushSpec {
             Falloff::Custom => self.custom_falloff.weight(remapped),
             preset => preset.weight(remapped),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn defaults_are_sane() {
-        let b = BrushSpec::default();
-        assert_eq!(b.blend, BrushBlend::Mix);
-        assert_eq!(b.falloff, Falloff::Smooth);
-        assert!(b.dab_spacing_px() >= 1.0);
-        // Per-dab randomize is off by default (so a default stroke is byte-identical to baseline).
-        assert!(!b.color_jitter_enabled);
-        assert!(!b.has_colour_jitter_amount());
-        assert!(!b.has_per_dab_rotation());
-        assert_eq!(b.jitter_scale, 0.0);
-        assert_eq!(b.jitter_rotate, 0.0);
-    }
-
-    #[test]
-    fn jitter_rotate_makes_an_active_shape_rotate_per_dab() {
-        use crate::texture::TextureKind;
-        // Jitter Rotate spins the whole stamp, so an active Shape with jitter > 0 needs a per-dab basis
-        // (routes off the constant-orientation caches) even without Shape Rake/Random (Enio 2026-06-28).
-        let mut b = BrushSpec {
-            jitter_rotate: 0.5,
-            ..Default::default()
-        };
-        b.shape.kind = TextureKind::Image;
-        assert!(
-            b.shape_has_per_dab_rotation(true),
-            "an active Shape + Jitter Rotate rotates per dab"
-        );
-        // No Shape ⇒ nothing to rotate (the bare falloff is isotropic).
-        assert!(!b.shape_has_per_dab_rotation(false));
-        // Jitter off ⇒ no per-dab rotation (byte-identical baseline).
-        b.jitter_rotate = 0.0;
-        assert!(!b.shape_has_per_dab_rotation(true));
-    }
-
-    #[test]
-    fn compose_shape_image_replaces_procedural_masks() {
-        use crate::texture::TextureKind;
-        let mut b = BrushSpec::default();
-        // Image kind: the silhouette IS the image sample — the falloff is ignored (crisp tip).
-        b.shape.kind = TextureKind::Image;
-        assert_eq!(b.compose_shape_silhouette(0.7, 0.3), 0.7);
-        // A procedural kind: the falloff MASKS the pattern (falloff × pattern).
-        b.shape.kind = TextureKind::Checker;
-        assert!((b.compose_shape_silhouette(0.7, 0.3) - 0.21).abs() < 1e-6);
-        // Falloff 0 (dab edge) zeroes a procedural silhouette, but never an Image one.
-        assert_eq!(b.compose_shape_silhouette(1.0, 0.0), 0.0);
-        b.shape.kind = TextureKind::Image;
-        assert_eq!(b.compose_shape_silhouette(1.0, 0.0), 1.0);
-    }
-
-    #[test]
-    fn radius_clamped() {
-        let b = BrushSpec {
-            radius_px: 999_999.0,
-            ..Default::default()
-        };
-        assert_eq!(b.clamped_radius(), MAX_BRUSH_RADIUS_PX);
-        let b = BrushSpec {
-            radius_px: 0.0,
-            ..Default::default()
-        };
-        assert_eq!(b.clamped_radius(), 0.5);
-    }
-
-    #[test]
-    fn hardness_full_is_hard_disk() {
-        let b = BrushSpec {
-            hardness: 1.0,
-            ..Default::default()
-        };
-        assert_eq!(b.falloff_weight(0.0), 1.0);
-        assert_eq!(b.falloff_weight(0.99), 1.0);
-        assert_eq!(b.falloff_weight(1.0), 0.0);
-    }
-
-    #[test]
-    fn hardness_plateau_then_falls() {
-        let b = BrushSpec {
-            hardness: 0.5,
-            falloff: Falloff::Linear,
-            ..Default::default()
-        };
-        assert_eq!(b.falloff_weight(0.5), 1.0); // inside plateau
-        // At t=0.75, remapped = (0.75-0.5)/0.5 = 0.5 → linear weight 0.5.
-        assert!((b.falloff_weight(0.75) - 0.5).abs() < 1e-6);
     }
 }

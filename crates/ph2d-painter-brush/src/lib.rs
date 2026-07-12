@@ -23,6 +23,7 @@
 //! - [`stroke_method`] — the "Stroke" panel's discrete options (method + jitter unit).
 //! - [`stroke`]  — the stroke engine: a pointer path → dabs (spacing, dash, jitter, stabilize).
 //! - [`texture`] — the brush texture mask (procedural patterns + 2D mapping modes).
+//! - [`height`]  — Impasto: the dab's *second* output, the paint's own thickness.
 //! - `jitter` — the shared deterministic RNG + the per-dab Scale / Rotate / Randomize-Color scatter.
 
 pub mod blend;
@@ -37,6 +38,7 @@ pub mod falloff;
 pub mod falloff_curve;
 pub mod footprint;
 pub mod heading;
+pub mod height;
 pub(crate) mod jitter;
 pub mod mask_ops;
 pub mod ramp_alpha;
@@ -44,6 +46,8 @@ pub mod sampler;
 pub mod smear;
 pub mod smear_grain;
 pub mod spec;
+#[cfg(test)]
+mod spec_tests;
 pub mod stamp;
 pub mod stamp_color;
 pub mod stamp_ramped;
@@ -69,6 +73,7 @@ pub use falloff_curve::{
     eval_falloff_curve,
 };
 pub use footprint::{DAB_FLATTEN_MAX, FootprintDeform};
+pub use height::{DepthSource, DrawTo};
 pub use jitter::shift_colors_like;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use ramp_alpha::RampAlphaMode;

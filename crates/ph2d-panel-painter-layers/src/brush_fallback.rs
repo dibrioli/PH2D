@@ -193,4 +193,11 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     paper_params: [0.5; 6], // LITERAL-PX-OK: neutral texture params
     granulation_use_paper: true,
     paper_color: [1.0, 1.0, 1.0], // white ground (mirrors PaintState default)
+    // Impasto section — the `impasto` gate (off) guarantees neutrality; the params carry the
+    // when-enabled defaults (mirrors BrushSpec::default).
+    impasto: false,
+    impasto_depth: 0.5, // LITERAL-PX-OK: default relief depth (mirrors BrushSpec::default)
+    impasto_source: 0,  // Uniform (DepthSource wire 0)
+    impasto_draw_to: 0, // Color + Depth (DrawTo wire 0)
+    impasto_smoothing: 0.2, // LITERAL-PX-OK: default relief settling (mirrors BrushSpec::default)
 };

@@ -350,6 +350,19 @@ pub struct BrushSettings {
     /// Document **paper colour** (straight sRGB `0..1`) — the ground the watercolor optics see where
     /// the backdrop under the active layer is transparent. Tool-global (`PaintState`), not per-brush.
     pub paper_color: [f32; 3],
+
+    // ── Impasto section (paint thickness + relief; `docs/Painter/16_impasto_plano_implementacao.md`) ──
+    /// Master enable for the **Impasto** section. Off ⇒ every field below is inert and the brush is
+    /// byte-identical to a build without impasto.
+    pub impasto: bool,
+    /// **Depth** (`-1..1`) — thickness one full-coverage dab lays down. Negative carves into the paint.
+    pub impasto_depth: f32,
+    /// **Depth Source** (`DepthSource` wire u8): `0` Uniform · `1` Grain · `2` Shape.
+    pub impasto_source: u8,
+    /// **Draw To** (`DrawTo` wire u8): `0` Color + Depth · `1` Color · `2` Depth.
+    pub impasto_draw_to: u8,
+    /// **Smoothing** (`0..1`) — how much the deposited relief is settled before it is lit.
+    pub impasto_smoothing: f32,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

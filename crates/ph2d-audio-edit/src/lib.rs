@@ -28,6 +28,8 @@ mod history;
 mod loops;
 mod ops;
 mod peaks;
+mod pieces;
+mod structure;
 mod truepeak;
 mod variation;
 
@@ -38,6 +40,7 @@ pub use ops::{
     snap_to_zero_crossing,
 };
 pub use peaks::{ColumnPeaks, DEFAULT_BIN_SIZE, PeakCache, column_peaks};
+pub use pieces::{boundaries, ranges};
 pub use truepeak::{OVERSAMPLE, true_peak};
 pub use variation::{
     Jitter, PickStrategy, Variation, VariationPicker, VariationSet, WEIGHT_RANGE, natural_cmp,
@@ -49,6 +52,7 @@ use std::ops::Range;
 use ph2d_audio::SampleData;
 
 use history::History;
+use structure::{FrameMap, Structure};
 
 pub use clipboard::{conform, insert, split_at};
 
@@ -70,16 +74,15 @@ pub struct Marker {
 pub struct EditClip {
     data: SampleData,
     peaks: PeakCache,
-    /// Selection in **frames**, `start..end`. `None` = nothing selected.
+    /// Selection in **frames**, `start..end`. `None` = nothing selected. Where the *user* is
+    /// pointing — not a property of the audio, and so deliberately not part of the undo step.
     selection: Option<Range<usize>>,
-    /// Loop region in **frames**, `start..end` (half-open). Metadata, NOT part of
-    /// the undo timeline — it is not sample data, so it survives undo/redo and only
-    /// clamps when an edit shrinks the clip (mirror of `selection`). Drives the
-    /// click-free audition ([`crossfaded_loop`]) and the exported `smpl` chunk.
-    loop_region: Option<Range<usize>>,
-    /// Named cue points, kept sorted by frame. Metadata like `loop_region` (survives
-    /// undo, clamps/drops when an edit shrinks the clip). Exported to `cue`+`adtl`.
-    markers: Vec<Marker>,
+    /// Everything positional that is glued to the audio: **cuts, markers, the loop region**.
+    ///
+    /// One value, and part of the undo step, because the edits that reorder and stretch pieces
+    /// move all of it at once — an undo that restored the samples but not the boundaries would
+    /// draw the cuts across the wrong audio. See [`structure`].
+    structure: Structure,
     /// Undo timeline — **deltas, capped by bytes** (ADR-0117). Each step holds only the samples
     /// its edit displaced, so fixing one second of a three-minute clip costs a second. It used to
     /// hold 64 whole clips: on a 3-minute stereo clip that peaked at **4351 MB**, against a
@@ -101,8 +104,7 @@ impl EditClip {
             data,
             peaks,
             selection: None,
-            loop_region: None,
-            markers: Vec::new(),
+            structure: Structure::default(),
         }
     }
 
@@ -128,8 +130,8 @@ impl EditClip {
             .frames_to_secs(self.data.frame_count() as u64)
     }
 
-    /// Install `data` as the current clip: rebuild the peak cache + clamp the
-    /// selection. Does NOT touch the undo timeline (callers manage that).
+    /// Install `data` as the current clip: rebuild the peak cache + clamp the selection and the
+    /// structure. Does NOT touch the undo timeline (callers manage that).
     fn install(&mut self, data: SampleData) {
         let bin = self.peaks.bin_size();
         self.peaks = PeakCache::build(&data, bin);
@@ -140,48 +142,83 @@ impl EditClip {
             let end = sel.end.min(frames);
             self.selection = (start < end).then_some(start..end);
         }
-        if let Some(lp) = &self.loop_region {
-            let start = lp.start.min(frames);
-            let end = lp.end.min(frames);
-            self.loop_region = (start < end).then_some(start..end);
-        }
-        // Drop any marker that an edit pushed past the (possibly shorter) end.
-        self.markers.retain(|m| m.frame < frames);
+        self.structure.clamp(frames);
     }
 
-    /// Replace the clip and **reset** the undo timeline (the load path — a new
-    /// clip starts a fresh history + a fresh loop + no markers).
+    /// Replace the clip and **reset** the undo timeline (the load path — a new clip starts a
+    /// fresh history and a fresh structure: no cuts, no loop, no markers).
     pub fn set_data(&mut self, data: SampleData) {
         self.history.clear();
-        self.loop_region = None;
-        self.markers.clear();
+        self.structure = Structure::default();
         self.install(data);
     }
 
-    /// Commit an edited buffer as one undo step (truncating any redo tail).
+    /// Commit an edited buffer whose frames did not **move** — every in-place op (gain, reverse,
+    /// an effect), and tail growth, which only appends. Positions keep their meaning, so the
+    /// structure rides along untouched.
     ///
     /// The step records **only what changed** (`history::History` diffs the two buffers), and the
     /// timeline is capped by **bytes**, not by a count of edits — see ADR-0117. An edit that
     /// changed nothing records no step, so a no-op never lights the Undo button.
     fn commit(&mut self, data: SampleData) {
-        self.history.push(&self.data, &data);
+        let structure = self.structure.clone();
+        self.commit_with(data, structure);
+    }
+
+    /// Commit an edit that **moved audio** (a delete, a paste, a trim, a reorder, a stretch).
+    ///
+    /// Markers and the loop are carried across `map`; the cuts are the ones the caller derived
+    /// from the new layout — never arithmetic on the old ones (see [`Structure::remap`]).
+    fn commit_moved(&mut self, data: SampleData, cuts: Vec<usize>, map: &FrameMap) {
+        let mut structure = self.structure.clone();
+        structure.remap(map);
+        structure.cuts = cuts;
+        self.commit_with(data, structure);
+    }
+
+    /// Commit a change to the **structure alone** — a split, a merge. Not one sample moves, so the
+    /// step carries no audio at all; it is still a step, because a cut you cannot take back is a
+    /// cut you cannot experiment with. `false` when it changed nothing.
+    fn commit_structure(&mut self, cuts: Vec<usize>) -> bool {
+        let mut structure = self.structure.clone();
+        structure.cuts = cuts;
+        structure.clamp(self.frame_count());
+        if structure == self.structure {
+            return false;
+        }
+        let data = self.data.clone();
+        self.commit_with(data, structure);
+        true
+    }
+
+    /// The one place a new (buffer, structure) pair becomes the document.
+    fn commit_with(&mut self, data: SampleData, mut structure: Structure) {
+        // Clamp BEFORE recording, so the timeline holds what the document will actually hold —
+        // otherwise `install`'s clamp would silently diverge from the step, and a redo would
+        // resurrect a boundary past the end of the clip.
+        structure.clamp(data.frame_count());
+        self.history
+            .push(&self.data, &self.structure, &data, &structure);
+        self.structure = structure;
         self.install(data);
     }
 
     /// Step back one edit. Returns `false` at the start of the timeline.
     pub fn undo(&mut self) -> bool {
-        let Some(data) = self.history.undo(&self.data) else {
+        let Some((data, structure)) = self.history.undo(&self.data, &self.structure) else {
             return false;
         };
+        self.structure = structure;
         self.install(data);
         true
     }
 
     /// Step forward one edit. Returns `false` at the tip of the timeline.
     pub fn redo(&mut self) -> bool {
-        let Some(data) = self.history.redo(&self.data) else {
+        let Some((data, structure)) = self.history.redo(&self.data, &self.structure) else {
             return false;
         };
+        self.structure = structure;
         self.install(data);
         true
     }
@@ -306,15 +343,23 @@ impl EditClip {
     /// Crop to the selection (no-op with no selection). Clears the selection.
     pub fn apply_trim(&mut self) {
         if let Some(sel) = self.selection.clone() {
-            self.commit(ops::trim(&self.data, sel));
+            let map = FrameMap::keep(sel.clone());
+            let cuts = map.cuts(&self.structure.cuts);
+            self.commit_moved(ops::trim(&self.data, sel), cuts, &map);
             self.selection = None;
         }
     }
 
     /// Delete the selection (ripple), closing the gap. Clears the selection.
+    ///
+    /// The audio after the gap slides left, and so does everything standing on it. Before the
+    /// structure was one value this was a real bug: the samples shifted and the markers did not,
+    /// so every cue past the deleted range quietly ended up on different audio.
     pub fn apply_delete(&mut self) {
         if let Some(sel) = self.selection.clone() {
-            self.commit(ops::delete(&self.data, sel));
+            let map = FrameMap::splice(self.frame_count(), sel.start, sel.len(), 0);
+            let cuts = map.cuts(&self.structure.cuts);
+            self.commit_moved(ops::delete(&self.data, sel), cuts, &map);
             self.selection = None;
         }
     }
@@ -357,25 +402,18 @@ impl EditClip {
         let fitted = clipboard::conform(clip, self.data.format());
         // A selection is a replacement target, as it is in every DAW: the pasted audio takes its
         // place rather than shoving it aside.
-        let (base, source) = match self.selection.clone() {
-            Some(sel) if sel.start < sel.end => (sel.start, ops::delete(&self.data, sel)),
-            _ => (at.min(self.frame_count()), self.data.clone()),
+        let (base, removed, source) = match self.selection.clone() {
+            Some(sel) if sel.start < sel.end => {
+                (sel.start, sel.len(), ops::delete(&self.data, sel))
+            }
+            _ => (at.min(self.frame_count()), 0, self.data.clone()),
         };
+        // Net effect on the ORIGINAL clip: `removed` frames at `base` replaced by the pasted ones.
+        let map = FrameMap::splice(self.frame_count(), base, removed, fitted.frame_count());
+        let cuts = map.cuts(&self.structure.cuts);
         let out = clipboard::insert(&source, base, &fitted);
-        self.commit(out);
+        self.commit_moved(out, cuts, &map);
         self.selection = Some(base..base + fitted.frame_count());
-    }
-
-    /// Split the clip at its markers — the pieces a recording of N takes falls into (W2).
-    ///
-    /// Non-destructive: the clip is untouched and the caller decides what the pieces become (files,
-    /// variation entries). Empty when there are no markers to split on.
-    pub fn split_at_markers(&self) -> Vec<SampleData> {
-        let cuts: Vec<usize> = self.markers.iter().map(|m| m.frame).collect();
-        if cuts.is_empty() {
-            return Vec::new();
-        }
-        clipboard::split_at(&self.data, &cuts)
     }
 
     /// Current selection (frames), if any.
@@ -398,45 +436,50 @@ impl EditClip {
 
     /// The current loop region (frames), if any. Half-open `start..end`.
     pub fn loop_region(&self) -> Option<Range<usize>> {
-        self.loop_region.clone()
+        self.structure.loop_region.clone()
     }
 
     /// Whether a loop region is set.
     pub fn has_loop(&self) -> bool {
-        self.loop_region.is_some()
+        self.structure.loop_region.is_some()
     }
 
     /// Set the loop region (frames); an empty or inverted range clears it.
     pub fn set_loop_region(&mut self, range: Option<Range<usize>>) {
-        self.loop_region = range.and_then(|r| self.clamp_frames(r));
+        self.structure.loop_region = range.and_then(|r| self.clamp_frames(r));
     }
 
     /// Adopt the current selection as the loop region (no-op with no selection).
     pub fn set_loop_from_selection(&mut self) {
         if let Some(sel) = self.selection.clone() {
-            self.loop_region = self.clamp_frames(sel);
+            self.structure.loop_region = self.clamp_frames(sel);
         }
     }
 
     /// Clear the loop region.
     pub fn clear_loop(&mut self) {
-        self.loop_region = None;
+        self.structure.loop_region = None;
     }
 
     /// The clip's cue markers, sorted by frame.
     pub fn markers(&self) -> &[Marker] {
-        &self.markers
+        &self.structure.markers
     }
 
     /// Add a named cue marker at `frame` (clamped to the clip), keeping the list sorted
     /// by frame. Returns `false` (no-op) if a marker already sits on that exact frame.
     pub fn add_marker(&mut self, frame: usize, name: impl Into<String>) -> bool {
         let frame = frame.min(self.frame_count().saturating_sub(1));
-        let pos = self.markers.partition_point(|m| m.frame < frame);
-        if self.markers.get(pos).is_some_and(|m| m.frame == frame) {
+        let pos = self.structure.markers.partition_point(|m| m.frame < frame);
+        if self
+            .structure
+            .markers
+            .get(pos)
+            .is_some_and(|m| m.frame == frame)
+        {
             return false;
         }
-        self.markers.insert(
+        self.structure.markers.insert(
             pos,
             Marker {
                 frame,
@@ -450,29 +493,30 @@ impl EditClip {
     /// marker, or `None` if none is close enough.
     pub fn remove_marker_near(&mut self, frame: usize, window: usize) -> Option<Marker> {
         let (idx, _) = self
+            .structure
             .markers
             .iter()
             .enumerate()
             .map(|(i, m)| (i, m.frame.abs_diff(frame)))
             .filter(|&(_, d)| d <= window)
             .min_by_key(|&(_, d)| d)?;
-        Some(self.markers.remove(idx))
+        Some(self.structure.markers.remove(idx))
     }
 
     /// Remove every marker.
     pub fn clear_markers(&mut self) {
-        self.markers.clear();
+        self.structure.markers.clear();
     }
 
     /// Snap both loop endpoints to the nearest zero crossing within `window` frames
     /// (per [`snap_to_zero_crossing`]). No-op without a loop, or if the snap would
     /// collapse the region.
     pub fn snap_loop_to_zero_crossing(&mut self, window: usize) {
-        if let Some(lp) = self.loop_region.clone() {
+        if let Some(lp) = self.structure.loop_region.clone() {
             let start = ops::snap_to_zero_crossing(&self.data, lp.start, window);
             let end = ops::snap_to_zero_crossing(&self.data, lp.end, window);
             if start < end {
-                self.loop_region = Some(start..end);
+                self.structure.loop_region = Some(start..end);
             }
         }
     }
@@ -481,7 +525,7 @@ impl EditClip {
     /// `xfade`-frame pre-loop crossfade — the buffer the shell auditions on repeat.
     /// `None` when no loop is set.
     pub fn loop_audition_buffer(&self, xfade: usize) -> Option<SampleData> {
-        let lp = self.loop_region.clone()?;
+        let lp = self.structure.loop_region.clone()?;
         loops::crossfaded_loop(&self.data, lp, xfade)
     }
 

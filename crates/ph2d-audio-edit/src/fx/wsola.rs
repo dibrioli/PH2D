@@ -188,6 +188,103 @@ fn time_scale(x: &[f64], scale: f64, want: usize) -> Vec<f64> {
     out
 }
 
+/// Time-stretch `data` to exactly `new_frames` — same pitch, different length.
+///
+/// This is the **Scale** tool: shorten a take without trimming it, or stretch it to land on a
+/// beat. Pitch shift is the other half of the same engine (resample, then stretch back); here
+/// there is no resample, so nothing moves but the clock.
+///
+/// ## The channels are stretched TOGETHER
+///
+/// [`time_scale`] searches each signal it is given for the best splice. Run it once per channel
+/// and the two channels of a stereo take choose **different** splices — same length out, but the
+/// waveforms no longer line up, and the stereo image wanders and goes phasey. So the similarity
+/// search runs once, on the channel sum, and every channel is overlap-added at the **same**
+/// offsets: whatever the splice does to the image, it does to both channels identically, which
+/// is the definition of leaving the image alone.
+///
+/// (Pitch shift keeps its own per-channel path, untouched — the rack's outputs are byte-identical
+/// under a gate, and this is a new operation, not a change to that one.)
+pub(crate) fn stretch(data: &SampleData, new_frames: usize) -> SampleData {
+    let frames = data.frame_count();
+    let want = new_frames.max(1);
+    // Asking for the length it already has is not a stretch. Returning the input untouched keeps
+    // a zero-move drag byte-identical, instead of running the audio through the grain mill for
+    // nothing and rounding every sample.
+    if want == frames || frames == 0 {
+        return data.clone();
+    }
+    let ch = channels(data);
+    let src = data.samples();
+
+    let chans: Vec<Vec<f64>> = (0..ch)
+        .map(|c| (0..frames).map(|f| f64::from(src[f * ch + c])).collect())
+        .collect();
+    // The key the search reads: the channel sum. It hears everything the channels hear together,
+    // which is what a splice has to be good for.
+    let key: Vec<f64> = (0..frames)
+        .map(|f| (0..ch).map(|c| chans[c][f]).sum::<f64>() / ch as f64)
+        .collect();
+
+    let scale = want as f64 / frames as f64;
+    let out = time_scale_linked(&chans, &key, scale, want);
+    SampleData::from_fn(want * ch, data.format(), |i| {
+        let (f, c) = (i / ch, i % ch);
+        out[c][f].clamp(-1.0, 1.0) as f32
+    })
+}
+
+/// Overlap-add every channel of `chans` at the splice offsets chosen by searching `key` — the
+/// shared-offset core of [`stretch`]. Mirrors [`time_scale`] exactly, except that the offset is
+/// decided once and spent on every channel.
+fn time_scale_linked(chans: &[Vec<f64>], key: &[f64], scale: f64, want: usize) -> Vec<Vec<f64>> {
+    let n_out = ((key.len() as f64 * scale).round() as usize).max(1);
+    let hann: Vec<f64> = (0..WINDOW)
+        .map(|i| 0.5 - 0.5 * (TAU * i as f64 / WINDOW as f64).cos())
+        .collect();
+
+    let mut acc = vec![vec![0.0f64; n_out + WINDOW]; chans.len()];
+    // One window-sum for all channels: they are laid down at the same offsets, so they accumulate
+    // the same window.
+    let mut wsum = vec![0.0f64; n_out + WINDOW];
+    let mut natural = 0usize;
+    let mut m = 0usize;
+    while m * HOP < n_out {
+        let out_pos = m * HOP;
+        let ideal = ((out_pos as f64) / scale).round() as usize;
+        let start = if m == 0 {
+            ideal.min(key.len().saturating_sub(1))
+        } else {
+            best_match(key, ideal, natural)
+        };
+        for i in 0..WINDOW {
+            if start + i >= key.len() {
+                break;
+            }
+            wsum[out_pos + i] += hann[i];
+            for (c, chan) in chans.iter().enumerate() {
+                acc[c][out_pos + i] += chan[start + i] * hann[i];
+            }
+        }
+        natural = start + HOP;
+        m += 1;
+    }
+
+    acc.iter()
+        .map(|a| {
+            (0..want)
+                .map(|f| {
+                    if f < n_out && wsum[f] > 1e-9 {
+                        a[f] / wsum[f]
+                    } else {
+                        0.0
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
 /// Slide the analysis position within ±[`SEARCH`] of `ideal` and return the offset
 /// whose waveform best matches `natural` — the audio that would have followed the
 /// grain already on the output.

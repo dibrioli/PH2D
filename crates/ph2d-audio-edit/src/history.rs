@@ -40,6 +40,8 @@ use std::collections::VecDeque;
 
 use ph2d_audio::{AudioFormat, SampleData};
 
+use crate::structure::Structure;
+
 /// How much audio the timeline may hold, in bytes (ADR-0117). Sized so that the worst realistic
 /// case — repeated **whole-clip** edits on a 3-minute stereo clip, the one that used to reach
 /// 4351 MB — stays inside the A2 bar of 512 MB peak once the live buffer and the render transient
@@ -61,19 +63,40 @@ struct Step {
     /// the two buffers are not comparable sample-for-sample at all; such a step degenerates to a
     /// whole-buffer snapshot, which is honest — nothing *was* preserved.
     other_format: AudioFormat,
+    /// The **structure** (cuts, markers, loop) that is not currently in the document — swapped
+    /// with the samples, by the same trick and for the same reason.
+    ///
+    /// It has to travel in the step because the edits that reorder and stretch pieces move the
+    /// audio *and* the boundaries at once. An undo that put the samples back but left the cuts
+    /// where they were would draw every seam across the wrong audio — and a marker is a promise
+    /// about a moment, so a marker that survives an undo onto different audio is a broken one.
+    other_structure: Structure,
 }
 
 impl Step {
-    /// What this step costs. `Box<[f32]>` is one allocation of exactly this size.
+    /// What this step costs. `Box<[f32]>` is one allocation of exactly this size; the structure is
+    /// small, but a byte cap that only counts the easy part is not a cap.
     fn bytes(&self) -> usize {
-        self.other.len() * std::mem::size_of::<f32>()
+        self.other.len() * std::mem::size_of::<f32>() + self.other_structure.bytes()
     }
 
     /// Swap this step's samples with the document's, returning the new document.
     ///
     /// This is undo. It is also redo. After the swap the step holds whatever it displaced, so
     /// running it again is the inverse — which is the whole reason one delta suffices.
-    fn swap(&mut self, doc: &SampleData) -> SampleData {
+    fn swap(&mut self, doc: &SampleData, structure: &Structure) -> (SampleData, Structure) {
+        let out = self.swap_samples(doc);
+        let other = std::mem::replace(&mut self.other_structure, structure.clone());
+        (out, other)
+    }
+
+    /// The sample half of the swap.
+    fn swap_samples(&mut self, doc: &SampleData) -> SampleData {
+        // A structure-only step — a split, a merge — moved no audio at all. Rebuilding the whole
+        // buffer to say "nothing changed" would copy a 66 MB clip to undo a click.
+        if self.other.is_empty() && self.in_doc == 0 {
+            return doc.clone();
+        }
         let src = doc.samples();
         let at = self.at.min(src.len());
         let end = (at + self.in_doc).min(src.len());
@@ -143,7 +166,13 @@ impl History {
     ///
     /// Returns `false` when the two buffers are identical: **a no-op costs no undo step**. That is
     /// a guarantee of the diff, not a check each caller has to remember.
-    pub(crate) fn push(&mut self, old: &SampleData, new: &SampleData) -> bool {
+    pub(crate) fn push(
+        &mut self,
+        old: &SampleData,
+        old_structure: &Structure,
+        new: &SampleData,
+        new_structure: &Structure,
+    ) -> bool {
         // The redo tail is unreachable the moment a new edit lands.
         while self.steps.len() > self.applied {
             if let Some(s) = self.steps.pop_back() {
@@ -151,7 +180,7 @@ impl History {
             }
         }
 
-        let Some(step) = diff(old, new) else {
+        let Some(step) = diff(old, new, old_structure, new_structure) else {
             return false;
         };
         self.bytes += step.bytes();
@@ -162,20 +191,28 @@ impl History {
     }
 
     /// Step back. `None` at the start of the timeline.
-    pub(crate) fn undo(&mut self, doc: &SampleData) -> Option<SampleData> {
+    pub(crate) fn undo(
+        &mut self,
+        doc: &SampleData,
+        structure: &Structure,
+    ) -> Option<(SampleData, Structure)> {
         if !self.can_undo() {
             return None;
         }
         self.applied -= 1;
-        Some(self.swap_at(self.applied, doc))
+        Some(self.swap_at(self.applied, doc, structure))
     }
 
     /// Step forward. `None` at the tip.
-    pub(crate) fn redo(&mut self, doc: &SampleData) -> Option<SampleData> {
+    pub(crate) fn redo(
+        &mut self,
+        doc: &SampleData,
+        structure: &Structure,
+    ) -> Option<(SampleData, Structure)> {
         if !self.can_redo() {
             return None;
         }
-        let out = self.swap_at(self.applied, doc);
+        let out = self.swap_at(self.applied, doc, structure);
         self.applied += 1;
         Some(out)
     }
@@ -187,10 +224,15 @@ impl History {
     /// trim, a delete. Assuming the size is stable across a swap is how the running total goes
     /// stale, and it is what an existing test (`tail_effect_grows_the_clip_and_undo_restores_it`)
     /// caught: the count underflowed on the next commit.
-    fn swap_at(&mut self, i: usize, doc: &SampleData) -> SampleData {
+    fn swap_at(
+        &mut self,
+        i: usize,
+        doc: &SampleData,
+        structure: &Structure,
+    ) -> (SampleData, Structure) {
         let step = &mut self.steps[i];
         let was = step.bytes();
-        let out = step.swap(doc);
+        let out = step.swap(doc, structure);
         let now = step.bytes();
         self.bytes = self.bytes + now - was;
         out
@@ -226,8 +268,14 @@ impl History {
 /// `NaN != NaN`; an undo timeline needs *identity*, and a flipped sign bit is a real difference
 /// that must be restorable. This is also exactly the standard the rack holds itself to — its
 /// invariant is *byte*-identical, not *approximately* identical.
-fn diff(old: &SampleData, new: &SampleData) -> Option<Step> {
+fn diff(
+    old: &SampleData,
+    new: &SampleData,
+    old_structure: &Structure,
+    new_structure: &Structure,
+) -> Option<Step> {
     let (a, b) = (old.samples(), new.samples());
+    let structure_moved = old_structure != new_structure;
 
     // A channel-layout change (force-mono) makes the buffers incomparable sample-for-sample: index
     // i means a different thing on each side. Snapshot the whole thing rather than diff nonsense.
@@ -237,13 +285,25 @@ fn diff(old: &SampleData, new: &SampleData) -> Option<Step> {
             other: a.into(),
             in_doc: b.len(),
             other_format: old.format(),
+            other_structure: old_structure.clone(),
         });
     }
 
     let same = |x: f32, y: f32| x.to_bits() == y.to_bits();
     let head = a.iter().zip(b).take_while(|(x, y)| same(**x, **y)).count();
     if head == a.len() && a.len() == b.len() {
-        return None; // nothing changed — no step, no lit Undo button
+        // The samples are identical. If a cut moved, that is still an edit — a step with no audio
+        // in it at all, which `swap_samples` short-circuits rather than paying for.
+        if !structure_moved {
+            return None; // nothing changed — no step, no lit Undo button
+        }
+        return Some(Step {
+            at: 0,
+            other: Box::new([]),
+            in_doc: 0,
+            other_format: old.format(),
+            other_structure: old_structure.clone(),
+        });
     }
     // The common suffix, stopping before it can overlap the prefix on either side.
     let max_tail = (a.len() - head).min(b.len() - head);
@@ -260,12 +320,29 @@ fn diff(old: &SampleData, new: &SampleData) -> Option<Step> {
         other: a[head..a.len() - tail].into(),
         in_doc: b.len() - head - tail,
         other_format: old.format(),
+        other_structure: old_structure.clone(),
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Test shims for the sample-only path: these tests are about the sample delta, and threading a
+    /// `Structure::default()` through every call would say nothing and hide the assertion. The
+    /// structure half of a step has its own tests (`structure_travels_with_the_step`, and the
+    /// reorder/stretch round-trips in `pieces`).
+    impl History {
+        fn push_data(&mut self, old: &SampleData, new: &SampleData) -> bool {
+            self.push(old, &Structure::default(), new, &Structure::default())
+        }
+        fn undo_data(&mut self, doc: &SampleData) -> Option<SampleData> {
+            self.undo(doc, &Structure::default()).map(|(d, _)| d)
+        }
+        fn redo_data(&mut self, doc: &SampleData) -> Option<SampleData> {
+            self.redo(doc, &Structure::default()).map(|(d, _)| d)
+        }
+    }
     use ph2d_audio::AudioFormat;
 
     fn buf(samples: Vec<f32>, ch: usize) -> SampleData {
@@ -340,7 +417,7 @@ mod tests {
                         _ => doc.clone(),
                     };
 
-                    let changed = h.push(&doc, &next);
+                    let changed = h.push_data(&doc, &next);
                     assert_eq!(
                         changed,
                         next.samples() != doc.samples(),
@@ -354,7 +431,7 @@ mod tests {
 
                 // Walk all the way back, checking every state against the snapshot.
                 let mut i = snapshots.len() - 1;
-                while let Some(prev) = h.undo(&doc) {
+                while let Some(prev) = h.undo_data(&doc) {
                     doc = prev;
                     i -= 1;
                     assert_eq!(
@@ -367,7 +444,7 @@ mod tests {
                 assert_eq!(i, 0, "undo stopped short of the original");
 
                 // And all the way forward again.
-                while let Some(next) = h.redo(&doc) {
+                while let Some(next) = h.redo_data(&doc) {
                     doc = next;
                     i += 1;
                     assert_eq!(
@@ -396,15 +473,15 @@ mod tests {
             1,
         );
         let mut h = History::new();
-        assert!(h.push(&stereo, &mono));
-        let back = h.undo(&mono).expect("undo");
+        assert!(h.push_data(&stereo, &mono));
+        let back = h.undo_data(&mono).expect("undo");
         assert_eq!(back.samples(), stereo.samples());
         assert_eq!(
             back.format(),
             stereo.format(),
             "undo lost the channel layout"
         );
-        let fwd = h.redo(&back).expect("redo");
+        let fwd = h.redo_data(&back).expect("redo");
         assert_eq!(fwd.format(), mono.format());
         assert_eq!(fwd.samples(), mono.samples());
     }
@@ -427,7 +504,7 @@ mod tests {
                     .collect(),
                 1,
             );
-            h.push(&doc, &next);
+            h.push_data(&doc, &next);
             doc = next;
             assert!(
                 h.bytes() <= HISTORY_BUDGET_BYTES,
@@ -453,7 +530,7 @@ mod tests {
             let mut v = doc.samples().to_vec();
             v[k * 10] = 0.5;
             let next = buf(v, 1);
-            h.push(&doc, &next);
+            h.push_data(&doc, &next);
             doc = next;
         }
         // 64 single-sample edits: the old design held 64 whole clips.

@@ -38,7 +38,7 @@ mod tail;
 mod tone;
 mod transient;
 mod warmup;
-mod wsola;
+pub(crate) mod wsola;
 
 pub use tail::TailEffect;
 

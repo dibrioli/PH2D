@@ -61,6 +61,7 @@ const PRE_RING_W: f32 = 1.4; // LITERAL-PX-OK: portal badge ring stroke width
 const PRE_DOT_R: f32 = 2.2; // LITERAL-PX-OK: portal badge inner dot radius
 const GHOST_W: f32 = 2.2; // LITERAL-PX-OK: in-progress ghost wire stroke width
 const BAND_W: f32 = 1.0; // LITERAL-PX-OK: rubber-band border stroke width
+const KNIFE_W: f32 = 1.6; // LITERAL-PX-OK: knife stroke width
 const WIRE_TANGENT: f32 = 20.0; // LITERAL-PX-OK: horizontal bezier handle length
 const ZOOM_FIT_MIN: f32 = 0.35; // LITERAL-PX-OK: auto-fit zoom floor
 const ZOOM_FIT_MAX: f32 = 1.2; // LITERAL-PX-OK: auto-fit zoom ceiling
@@ -151,6 +152,15 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // add-menu (already clamped on-canvas).
     if let Interaction::DrawWire { .. } = &state.interaction {
         draw_wire_ghost(ctx, &snap, state, &view, theme);
+    }
+    // The knife stroke — Danger, because it is one: what it crosses gets cut.
+    if let Interaction::Knife { anchor, cur } = state.interaction {
+        stroke_polyline(
+            ctx.scene,
+            &[anchor, cur],
+            KNIFE_W,
+            resolve(ColorToken::Danger, theme),
+        );
     }
     // The rubber band (left-drag on empty canvas). Translucent fill — it is drawn
     // OVER the very cards it is selecting, and an opaque one would hide them.
@@ -470,6 +480,51 @@ pub(crate) fn wire_polyline(
 ) -> Vec<(f32, f32)> {
     let dx = ((p3.0 - p0.0).abs() * 0.5 + WIRE_TANGENT * zoom).max(WIRE_TANGENT * zoom);
     cubic_polyline(p0, (p0.0 + dx, p0.1), (p3.0 - dx, p3.1), p3, n)
+}
+
+/// How finely a wire is sampled when testing it against the knife. Denser than the
+/// draw sampling, for the same reason the hit path is: a coarse polyline can pass a
+/// stroke that visibly crosses the curve between two samples.
+const KNIFE_SAMPLES: usize = 24;
+
+/// Every wire the knife stroke `a → b` crosses, as its target input `(to_node,
+/// to_port)` — the same identity `Disconnect` uses (an input takes exactly one
+/// edge, so the target names the wire uniquely).
+///
+/// `pre` edges are **skipped**: they have no spline on screen (they draw as portal
+/// badges at their sockets), so a stroke could only "cross" one by accident — and
+/// the shell refuses to cut managed state wiring anyway.
+pub(crate) fn wires_crossed(
+    snap: &GraphViewSnapshot,
+    view: &View,
+    a: (f32, f32),
+    b: (f32, f32),
+) -> Vec<(u32, u16)> {
+    snap.edges
+        .iter()
+        .filter(|e| !e.delayed)
+        .filter(|e| {
+            wire_endpoints(snap, e, view).is_some_and(|(p0, p3)| {
+                wire_polyline(p0, p3, view.zoom, KNIFE_SAMPLES)
+                    .windows(2)
+                    .any(|s| segments_cross(a, b, s[0], s[1]))
+            })
+        })
+        .map(|e| (e.to_node, e.to_port))
+        .collect()
+}
+
+/// Whether the segments `p→q` and `r→s` properly cross. The standard orientation
+/// test: they cross when each segment's endpoints straddle the other's line.
+/// Collinear-overlap is treated as no crossing — a knife dragged exactly ALONG a
+/// wire is not a cut, it is a miss (and the cross-product test says so).
+fn segments_cross(p: (f32, f32), q: (f32, f32), r: (f32, f32), s: (f32, f32)) -> bool {
+    let cross = |o: (f32, f32), a: (f32, f32), b: (f32, f32)| {
+        (a.0 - o.0) * (b.1 - o.1) - (a.1 - o.1) * (b.0 - o.0)
+    };
+    let (d1, d2) = (cross(p, q, r), cross(p, q, s));
+    let (d3, d4) = (cross(r, s, p), cross(r, s, q));
+    ((d1 > 0.0) != (d2 > 0.0)) && ((d3 > 0.0) != (d4 > 0.0))
 }
 
 /// An Accent ring around a socket (the compatible drop-target highlight), drawn

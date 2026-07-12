@@ -43,6 +43,9 @@ pub(crate) enum Interaction {
         cur: (f32, f32),
         additive: bool,
     },
+    /// Slicing a knife stroke across the canvas (armed by `K`): every wire the
+    /// segment crosses is cut on release, as ONE undo step. Screen space.
+    Knife { anchor: (f32, f32), cur: (f32, f32) },
     /// Dragging the selected nodes. `last` is the previous pointer (screen);
     /// each Update pushes an incremental `MoveNodes` delta the shell applies
     /// live (so the node tracks the cursor with no end-jump). `started` gates the
@@ -111,4 +114,8 @@ pub struct MotionGraphPanelState {
     /// Open add-node popup, or `None`. Opened by R-click on empty canvas / `A`;
     /// closed by picking a row, clicking away, or Esc.
     pub(crate) add_menu: Option<AddMenu>,
+    /// `K` armed the knife: the NEXT left-drag on the canvas slices wires instead
+    /// of rubber-band selecting. Disarmed by the stroke itself, by Esc, or by a
+    /// second `K` — a mode that cannot be left is a trap, so it has three exits.
+    pub(crate) knife_armed: bool,
 }

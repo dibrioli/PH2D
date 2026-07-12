@@ -38,6 +38,13 @@ pub(crate) fn process(
 ) {
     let panel = ids::MOTION_GRAPH_PANEL;
 
+    // The shell hands back a selection after it mints ids the panel could not know
+    // (Ctrl+D's duplicates). Taken FIRST, so this frame's gestures act on the copies.
+    if let Some(nodes) = crate::snapshot::take_selection_request() {
+        state.selected = nodes.into_iter().collect();
+        state.selected_backdrop = None;
+    }
+
     if let Some(z) = ctx.host.store_mut().take_graph_zoom(panel) {
         apply_zoom(state, rect, z);
     }
@@ -77,7 +84,19 @@ fn apply_key(state: &mut MotionGraphPanelState, k: GraphKey, rect: Rect) {
             state.selected_backdrop = None;
             state.interaction = Interaction::Idle;
             state.add_menu = None;
+            state.knife_armed = false;
         }
+        // Ctrl+D — duplicate the selection (the shell mints the copies, wires the
+        // links INTERNAL to the selection, and hands the copies back as the new
+        // selection so the drag that follows moves them, not the originals).
+        GraphKey::Duplicate if !state.selected.is_empty() => {
+            push_intent(GraphIntent::DuplicateSelection {
+                nodes: state.selected.iter().copied().collect(),
+            });
+        }
+        // `K` arms the knife: the next left-drag slices wires instead of selecting.
+        // A second K disarms it (so does Esc, and so does the stroke itself).
+        GraphKey::Knife => state.knife_armed = !state.knife_armed,
         // Delete the selection (orphan edges go with the nodes, shell-side).
         // Empty selection → no intent (idempotent against the double key
         // dispatch: M0 focus gate + the shell's cursor push). Node and backdrop
@@ -367,6 +386,11 @@ fn apply_background(
             // selects (panning is the middle button's job).
             if state.add_menu.is_some() {
                 state.interaction = Interaction::Idle;
+            } else if state.knife_armed {
+                state.interaction = Interaction::Knife {
+                    anchor: (g.x, g.y),
+                    cur: (g.x, g.y),
+                };
             } else {
                 state.interaction = Interaction::BoxSelect {
                     anchor: (g.x, g.y),
@@ -375,11 +399,12 @@ fn apply_background(
                 };
             }
         }
-        GesturePhase::Update => {
-            if let Interaction::BoxSelect { cur, .. } = &mut state.interaction {
-                *cur = (g.x, g.y);
+        GesturePhase::Update => match &mut state.interaction {
+            Interaction::BoxSelect { cur, .. } | Interaction::Knife { cur, .. } => {
+                *cur = (g.x, g.y)
             }
-        }
+            _ => {}
+        },
         GesturePhase::Click => {
             if let Some(menu) = state.add_menu.take() {
                 // A primary click while the menu is open closes it; a click on a
@@ -394,24 +419,36 @@ fn apply_background(
             state.interaction = Interaction::Idle;
         }
         GesturePhase::End | GesturePhase::DoubleClick => {
-            // A left-drag over empty canvas dismisses an open menu; otherwise it
-            // was a rubber band — resolve it into the selection.
-            if state.add_menu.take().is_none()
-                && let Interaction::BoxSelect {
-                    anchor,
-                    cur,
-                    additive,
-                } = state.interaction
-            {
-                let band = geom::band_rect(anchor, cur);
-                let hit = geom::nodes_in_box(snap, &View::new(rect, state.view), band);
-                if !additive {
-                    state.selected.clear();
+            // A left-drag over empty canvas dismisses an open menu; otherwise it was
+            // a rubber band (select) or a knife stroke (cut) — resolve whichever.
+            if state.add_menu.take().is_none() {
+                let view = View::new(rect, state.view);
+                match state.interaction {
+                    Interaction::BoxSelect {
+                        anchor,
+                        cur,
+                        additive,
+                    } => {
+                        let hit = geom::nodes_in_box(snap, &view, geom::band_rect(anchor, cur));
+                        if !additive {
+                            state.selected.clear();
+                        }
+                        state.selected.extend(hit);
+                        // A band selects NODES; a backdrop is picked by its header
+                        // alone (its body is click-through — the band swept over it).
+                        state.selected_backdrop = None;
+                    }
+                    Interaction::Knife { anchor, cur } => {
+                        let targets = crate::paint::wires_crossed(snap, &view, anchor, cur);
+                        if !targets.is_empty() {
+                            push_intent(GraphIntent::CutWires { targets });
+                        }
+                        // The stroke consumes the arming: a knife you have to
+                        // remember to put away is a knife that cuts by accident.
+                        state.knife_armed = false;
+                    }
+                    _ => {}
                 }
-                state.selected.extend(hit);
-                // A band selects NODES; a backdrop is picked by its header alone
-                // (its body is click-through, so the band swept right over it).
-                state.selected_backdrop = None;
             }
             state.interaction = Interaction::Idle;
         }

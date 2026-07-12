@@ -169,6 +169,20 @@ pub enum GraphIntent {
     /// Re-tint a backdrop (the params panel's Colour row), 0-based into
     /// `graph-backdrop-1..8`.
     SetBackdropColor { id: u32, color: u8 },
+    /// Duplicate the selected nodes (Ctrl+D) — with their params, their text
+    /// params and the wires **between them**, offset so the copies are visible.
+    /// Wires coming from OUTSIDE the selection are not copied: a duplicate is a
+    /// new thing to place, not a second consumer silently spliced into the
+    /// upstream (Blender / Nuke both copy internal links only).
+    ///
+    /// The shell mints the ids and hands the copies back as the new selection
+    /// (via [`request_graph_selection`]) — so Ctrl+D then drag moves the COPIES,
+    /// which is the whole point of the gesture. One undo step.
+    DuplicateSelection { nodes: Vec<u32> },
+    /// Cut every wire the knife stroke crossed, identified by target input
+    /// `(to_node, to_port)`. **One undo step for the whole stroke** — a knife that
+    /// cut five wires and needed five Ctrl+Z would be a trap.
+    CutWires { targets: Vec<(u32, u16)> },
 }
 
 /// One addable node type in the add-node menu (M1.E7). Copy — the canonical
@@ -188,6 +202,7 @@ thread_local! {
     static CATALOG: RefCell<Vec<NodeChoice>> = const { RefCell::new(Vec::new()) };
     static SELECTION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
     static BACKDROP_SELECTION: RefCell<Option<u32>> = const { RefCell::new(None) };
+    static SELECTION_REQUEST: RefCell<Option<Vec<u32>>> = const { RefCell::new(None) };
 }
 
 /// Publish the current node selection (panel `paint` → shell bridge, M1.P1). The
@@ -201,6 +216,20 @@ pub fn set_graph_selection(selection: Vec<u32>) {
 /// selected or the Motion tool is inactive.
 pub fn current_graph_selection() -> Vec<u32> {
     SELECTION.with(|c| c.borrow().clone())
+}
+
+/// Hand the panel a NEW selection (shell bridge → panel). The one channel that
+/// runs against the usual direction, and it has to: only the shell knows the ids
+/// it just minted (Ctrl+D's duplicates), and the copies must end up selected — or
+/// the drag that naturally follows would move the ORIGINALS. Drained by the panel
+/// on its next `process`.
+pub fn request_graph_selection(nodes: Vec<u32>) {
+    SELECTION_REQUEST.with(|c| *c.borrow_mut() = Some(nodes));
+}
+
+/// Take the pending selection request, if any (panel).
+pub(crate) fn take_selection_request() -> Option<Vec<u32>> {
+    SELECTION_REQUEST.with(|c| c.borrow_mut().take())
 }
 
 /// Publish the selected BACKDROP (panel `paint` → shell bridge). Mutually

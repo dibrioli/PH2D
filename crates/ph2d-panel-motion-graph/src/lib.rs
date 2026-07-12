@@ -29,8 +29,8 @@ pub use backdrop::{MIN_H as BACKDROP_MIN_H, MIN_W as BACKDROP_MIN_W};
 pub use snapshot::{
     GraphBackdropView, GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, NodeChoice,
     PortView, current_graph_backdrop_selection, current_graph_selection, drain_intents,
-    set_current_motion_graph, set_current_node_catalog, set_graph_backdrop_selection,
-    set_graph_selection, snapshot_from,
+    request_graph_selection, set_current_motion_graph, set_current_node_catalog,
+    set_graph_backdrop_selection, set_graph_selection, snapshot_from,
 };
 pub use state::MotionGraphPanelState;
 

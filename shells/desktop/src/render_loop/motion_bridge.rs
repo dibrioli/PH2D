@@ -41,6 +41,10 @@ mod plumbing;
 #[path = "motion_bridge_backdrops.rs"]
 mod backdrops;
 
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_edit.rs"]
+mod edit;
+
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
@@ -56,6 +60,10 @@ mod plumbing_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_backdrop_tests.rs"]
 mod backdrop_tests;
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_edit_tests.rs"]
+mod edit_tests;
 
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).
@@ -330,6 +338,11 @@ fn apply_graph_intents(
             GraphIntent::DeleteSelection { nodes } => {
                 apply_delete_selection(motion, nodes);
             }
+            // F2 — Ctrl+D and the knife (both in `motion_bridge_edit`).
+            GraphIntent::DuplicateSelection { nodes } => {
+                edit::duplicate(motion, nodes);
+            }
+            GraphIntent::CutWires { targets } => edit::cut_wires(motion, toasts, targets),
             // Split chrome (E9) — UI-only (no cook / undo). `with_t` clamps the
             // fraction; orientation flips preserve it.
             GraphIntent::SetSplit { t } => {

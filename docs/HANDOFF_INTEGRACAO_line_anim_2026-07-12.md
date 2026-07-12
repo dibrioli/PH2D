@@ -13,8 +13,9 @@
 | **Branch** | `line/anim` |
 | **Worktree** | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim/` |
 | **Base** | `3805f650` (main de 2026-07-12) — rebasada, sem dívida de merge |
-| **HEAD** | `c7e740b5` — **2 commits** de código (`8874a2b7` semântica de canal · `c7e740b5` raiz no gizmo) |
-| **Gate** | `nextest` **WORKSPACE INTEIRO 5609/5609** · clippy `--all-targets` **0 warnings** · `fmt` (rustup 1.95) · LOC caps ok · `typos` ok |
+| **HEAD** | `8ef30a82` — **3 commits** de código (`8874a2b7` semântica de canal · `c7e740b5` raiz no gizmo · `8ef30a82` **W4.T7 relógio único**) |
+| **Gate** | `nextest` **WORKSPACE INTEIRO 5611/5611** · clippy `--all-targets` **0 warnings** · `fmt` (rustup 1.95) · LOC caps ok · `typos` ok |
+| **⚠️ Linha Motion VIVA** | **Leia §7 antes de integrar** — superfície de colisão em `motion_bridge.rs` mapeada por função |
 | **Contratos congelados** | **NENHUM tocado** (`Tool`/`NodeOp`/`PanelEvent`/vector-doc intactos) |
 | **`DOC_VERSION` / `SCHEMA_VERSION`** | **NÃO mudaram** (nada novo é serializado) |
 
@@ -185,8 +186,66 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-anim && cargo run -p ph2d-
 
 ---
 
-## §7 — Fila restante da linha (do handoff anterior, inalterada)
+## §7 — W4.T7: o editor tem UM relógio (`8ef30a82`) — **e a linha Motion está viva**
 
-ETAPA 1 (W4.T7 relógio único ← coordena com Motion) · ETAPA 2 (W4.T4 dock no `motion_timeline_slot`) ·
-ETAPA 3 (NLA / seletor de clip — 100% isolado) · ETAPA 4 (markers → signals) · ETAPA 6 (save cena+timeline).
+### 7.1 — O que mudou
+
+Eram **três** cópias do tempo: o `MotionTransport` do shell, o `Playhead`, e o `last_cooked_tick` do pump.
+O transporte do Motion foi **REMOVIDO** (`MotionState.transport`); o tick que o cook renderiza é **derivado**
+do `Playhead` (`motion_tick = round(time / fixed_dt)`), e o `last_cooked_tick` do pump é o único registro de
+onde a simulação está. **Não há o que divergir — por construção, não por disciplina.**
+
+O pump já estava pronto: a doc de `advance_or_scrub_scoped` diz literalmente *"a future timeline ruler that
+sets `transport.tick` is handled for free"*. Um tick pra frente = pump barato; um salto (scrub, seek, wrap de
+loop) = restore do checkpoint + re-sim **bit-exato** (M2.N2).
+
+**A garantia de determinismo está isolada em `ticks_owed()`** e testada: um frame lento (ou `rate 2`) deve
+simular **todos** os ticks que pulou — a trajetória de um nó sequencial (`integrate`/`spring`/`verlet`) é a
+**soma** dos passos. Pra trás é o oposto: **uma** chamada (restore + re-sim), não um passo por tick.
+
+**Semântica nova (é o objetivo):** Space no grafo pausa a **timeline** e vice-versa · a régua da timeline
+move o grafo · abrir o Motion toca o relógio do editor.
+
+### 7.2 — ⚠️ SUPERFÍCIE DE COLISÃO (o integrador LEIA ISTO)
+
+A linha `motion-value` está **aberta**. Ela **não** disputa o relógio — o briefing dela põe o W4.T4/T7 em
+"⛔ FORA DESTA LINHA: coordena com a linha `anim`". Mas nós dois podemos escrever no **mesmo arquivo**:
+
+| `shells/desktop/src/render_loop/motion_bridge.rs` | dono | o que fiz |
+|---|---|---|
+| cabeçalho + assinatura de `dispatch` | **anim** | `frame_ticks: u32` → `playhead: &mut ph2d_core::Playhead` |
+| bloco 2 (auto-play na entrada) | **anim** | `motion.transport.play()` → `playhead.play()` |
+| bloco 3 (cook por-frame) | **anim** | reescrito: `motion_tick` + `ticks_owed` (fns novas) |
+| **`apply_graph_intents`** | **⚠️ AMBOS** | ganhou o param `playhead`; `GraphIntent::TogglePlay` → `playhead.toggle_play()` |
+| `apply_connect` / `apply_disconnect` / params | **motion-value** | **não toquei** |
+
+**O ponto quente é `apply_graph_intents`** — a linha Motion mexe nela para intents novos do painel (a
+ETAPA D dela). São **símbolos diferentes dentro da mesma função**: o Mergiraf funde, mas confira.
+
+**Outros arquivos:** `motion_state.rs` (campo removido) · `mod.rs` (call site) · `motion_bridge_tests.rs` ·
+`crates/ph2d-eval-motion/src/lib.rs` (**um getter novo**, `MotionCookPump::last_cooked_tick()` — append-only).
+
+### 7.3 — Uma limpeza que é DELES, não minha
+
+`ph2d_motion_doc::MotionTransport` ficou **sem nenhum uso**. Não o removi: mora na crate da linha Motion, e
+apagar um tipo `pub` na crate alheia enquanto ela está viva é exatamente a colisão que se deve evitar
+([[feedback_audit_scope_discipline]]). **Nada no shell o usa mais** — a remoção é um one-liner para eles.
+
+### 7.4 — Smoke do T7 (some aos itens de §6.2)
+
+6. **Um relógio.** Abra o Motion (grafo com um nó temporal — `motion.emitter`, um `spring`). **Space** no
+   grafo deve pausar/tocar **a timeline junto**. Mova a **régua da timeline**: o grafo deve seguir, inclusive
+   **para trás** (o spring re-simula, não mostra o futuro).
+7. **Custo conhecido (não é bug).** Se você tocar a timeline até, digamos, 50 s e **só então** abrir o Motion,
+   ele re-simula até lá numa tacada (o ring de checkpoints está frio). É o preço correto de um relógio único
+   — o grafo é avaliado no tempo em que a **cena** está. Scrubs seguintes são O(1). Se travar de forma
+   inaceitável, me fale: dá pra semear o ring.
+
+---
+
+## §8 — Fila restante da linha (do handoff anterior, inalterada)
+
+~~ETAPA 1 (W4.T7 relógio único)~~ **FEITA** (§7) · **ETAPA 2** (W4.T4: docar a timeline no
+`motion_timeline_slot` — agora DESTRAVADA, era o T7 que faltava) · ETAPA 3 (NLA / seletor de clip — 100%
+isolado) · ETAPA 4 (markers → signals) · ETAPA 6 (save cena+timeline).
 Detalhe em [`HANDOFF_line_anim_CONTINUACAO_2026-07-12.md`](HANDOFF_line_anim_CONTINUACAO_2026-07-12.md) §2.

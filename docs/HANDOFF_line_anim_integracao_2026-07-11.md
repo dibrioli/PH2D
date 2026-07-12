@@ -293,9 +293,31 @@ No play, só grava com **gesto de gizmo ATIVO** (`drag_now`). A pose passiva que
 
 ---
 
+## 17. Feature W5 — simplificação de keyframes do record (Schneider F-curve fit, `b09f7003`)
+
+**O quê (pedido do Enio, 2026-07-11):** o record (§16) gravava **1 key por frame** (denso, ineditável). Agora, no fim de cada sessão de record, o autokey **simplifica** cada track gravada numa curva Bézier **limpíssima de pouquíssimos keys**, precisa a **0.5% do range de valor**. O algoritmo é o **padrão-ouro** — Schneider ("An Algorithm for Automatically Fitting Digitized Curves", Graphics Gems I 1990): least-squares cubic + reparameterização de Newton + split adaptativo no pior ponto.
+
+**Núcleo em `ph2d-anim/curve_fit.rs`** (`fit_fcurve(samples, tol) -> Vec<FitKey>`), f64, foundational, testável isolado. Duas adaptações que o tornam um fit de **F-curve** (não de curva 2D genérica) — validadas por pesquisa contra `FitCurves.c`, Inkscape `bezier-utils.cpp`, Blender `correct_bezpart`/`curve_fit_nd`:
+1. **Erro medido em VALOR no tempo correto:** inverte `x(u)=t` via Newton e compara `V(u)` vs `v` — não a distância euclidiana 2D clássica, que cobraria por estar adiantado/atrasado no TEMPO (irrelevante p/ F-curve; o sample ESTÁ no seu tempo). É o que dá "muito preciso em valor".
+2. **Eixos normalizados p/ `[0,1]`** → tolerância = fração do range (mesma leitura em pixels ou radianos); **handle-x clampado a `[0,1]`** → o resultado continua função do tempo (handle não corre pra trás). Wu–Barsky fallback com guard `ε·chord` (não `α<0`, que a referência do livro erra); Newton com guard `den≤0` (Inkscape).
+
+A saída é **`Interp::BezierW`** — um par de tangentes ponderadas É exatamente uma cúbica Bézier no plano `(u, valor)`, então a conversão é **exata**.
+
+**`Track::simplify_range(t_min, t_max, tol)`** (ph2d-anim) troca os keys densos do range pelos fitted, **pinando os endpoints** (keys fora do range intactos, o vizinho mantém seu interp), pulando roving. **Integração no shell** (`autokey_pass`): a sessão de record rastreia por `(entity, prop)` o span `[t,v]`; no **release** simplifica no **MESMO undo step** (1 Ctrl+Z desfaz record+cleanup). **Record grava em tempo REAL sub-frame** (não snapado): com frame-snap o valor do key descasava do seu tempo snapado e o fit perseguia o erro (49→26 keys); em tempo real, 49→~7.
+
+**Símbolos novos (grep de colisão):** `ph2d_anim::{fit_fcurve, FitKey}` (módulo `curve_fit`) · `Track::simplify_range` · `apply_samples` param `performing` já existia; `AutokeyState.record: BTreeMap<(u64,PropKind),RecSpan>` + `RecSpan` (shell-privado) · consts `REC_SIMPLIFY_REL`/`REC_SIMPLIFY_FLOOR`. Zero contrato congelado, zero dep nova.
+
+**Deferido (documentado no topo de `curve_fit.rs`, pesquisa confirmou como refinamentos):** corner pre-pass (cusps viram tangentes BROKEN, não suavizadas) · value-overshoot clamp p/ canais limitados (opacity já é clampada no runtime) · rotation unwrap p/ spins multi-volta · low-pass p/ ruído.
+
+**Prova:** 11 testes de fit (fidelidade dentro do tol · redução dramática · retas/flat colapsam a 2 keys · canto preservado por split · handles nunca correm pra trás · scale-independence pixel↔radiano · endpoints exatos · dedup de tempo) + 3 de `simplify_range` (redução+fidelidade · keys fora do range intactos · no-op <3 keys) + 2 e2e no record (sessão densa simplifica no release em 1 undo step · não dispara em drag pausado). **416/416** no shell + suítes ph2d-anim/timeline + clippy `--all-targets` + fmt pin + LOC caps (tests do autokey divididos p/ `autokey_test_helpers.rs` + `autokey_performing_tests.rs`).
+
+**Smoke do Enio (pendente):** arme Record → Play → arraste o objeto por alguns segundos → solte → a track deve ter **poucos keys Bézier limpos** (não 1 por frame), e a curva no graph deve seguir de perto o que você desenhou. 1 Ctrl+Z desfaz o record inteiro. Compare a suavidade da curva simplificada com o traço gravado.
+
+---
+
 ## Cauda da W4 ainda aberta (para a próxima rodada — decisão do Enio)
 
 - **W4.T4** — docar a timeline no `motion_timeline_slot` quando o split do Motion está ativo (coordenação leve com Motion).
 - **W4.T7** — unificar o relógio: `MotionTransport` derivar do `Playhead` + remover transporte duplicado em `motion_bridge.rs` (coordenação leve com Motion).
 - **W4.T6 (= B5)** — save de projeto unificado cena+timeline + id estável de entity (**deferido** — cross-cutting, esforço coordenado, não landar solo).
-- **W5 restante** (Performing **landou** §16): NLA / multi-clip UI (dado já é `Vec<NamedClip>`, só a UI falta) · markers→signals · MCP/Luau · bake curves→keyframes · export.
+- **W5 restante** (Performing §16 + record-simplify §17 **landaram**): NLA / multi-clip UI (dado já é `Vec<NamedClip>`, só a UI falta) · markers→signals · MCP/Luau · bake curves→keyframes · export · (refinamentos do fit: corner broken-tangents · overshoot clamp p/ opacity · rotation unwrap · low-pass — §17).

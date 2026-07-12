@@ -76,6 +76,7 @@
 - [Overlay cortado na fronteira = cheque a ORDEM de draw](feedback_overlay_cut_at_boundary_check_draw_order.md) — mesma cena, draw posterior cobre; liste os writers ANTES de caçar clamp
 - [Oráculo modela a APARÊNCIA, não o código](feedback_oracle_must_model_appearance_not_implementation.md) — oráculo derivado do shader fica verde com o bug na tela; esperado sai da definição do objeto
 - [Gate verde contradito? RENDERIZE e olhe](feedback_render_and_look_when_a_green_gate_is_contradicted.md) — igualdade-de-conjuntos não vê névoa; o pixel é o oráculo, a métrica é sombra dele
+- [Heurística exige TAXA de falso-positivo](feedback_heuristic_needs_false_positive_rate.md) — detector verde num fixture é sorte do seed; meça FP sobre 200 realizações de ruído
 - [Lens diversity](feedback_audit_lens_diversity.md) — rotacionar lentes; ≥2 paralelas; gates executáveis > claims verbais
 - [Scope discipline](feedback_audit_scope_discipline.md) — bug em crate alheio = handoff pro owner, não fixo eu mesmo
 - [No industrial claims](feedback_no_industrial_claims_without_verification.md) — zero claim técnico em ADR sem grep/cargo-search/WebFetch

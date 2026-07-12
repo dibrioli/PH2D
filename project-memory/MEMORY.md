@@ -17,6 +17,7 @@
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = exemplo auto-play no doc demo; não peça pro Enio montar
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão; padrão-ouro vence cronograma
 - [Painter: 4 causas + DIRETIVA](feedback_painter_inefficiency_4_causes.md) — costura não-testada/audit=compilar/isolamento órfão/alvo irrefutável
+- [Comentário velho / código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md) — se removeu a UI remova o encanamento; nunca aja só pelo comentário
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — comentário "intentionally NOT X" = decisão ratificada; não sobrescrever
 - [Convenção vs inércia](feedback_convention_vs_inertia.md) — checar se "convenção" tem gate ou é inércia; default = mais isolamento
 

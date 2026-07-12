@@ -254,6 +254,15 @@ impl MotionCookPump {
         self.ring.clear();
     }
 
+    /// Whether the next [`Self::pump`] will re-cook. Exposed so an edit that must
+    /// NOT re-cook can prove it: the editor's decoration (the graph panel's group
+    /// backdrops) is document state but cannot change what the graph cooks, and a
+    /// stray `mark_dirty` on a backdrop drag would re-cook the whole graph every
+    /// frame of the gesture. A test asserts this stays `false` across such an edit.
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+
     /// Re-cook every sink in `sinks` into `instances` at `playhead` **iff** the
     /// frame is dirty (the `tick` changed since the last cook,
     /// [`Self::mark_dirty`] was called, or this is the first cook). A clean,

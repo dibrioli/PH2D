@@ -37,6 +37,10 @@ mod params;
 #[path = "motion_bridge_plumbing.rs"]
 mod plumbing;
 
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_backdrops.rs"]
+mod backdrops;
+
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
@@ -48,6 +52,10 @@ mod param_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_plumbing_tests.rs"]
 mod plumbing_tests;
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_backdrop_tests.rs"]
+mod backdrop_tests;
 
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).
@@ -135,11 +143,28 @@ pub(super) fn dispatch(
         } else {
             ph2d_panel_motion_graph::set_current_node_catalog(Vec::new());
         }
-        ph2d_panel_motion_graph::set_current_motion_graph(
-            motion_active.then(|| {
-                ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry)
-            }),
-        );
+        ph2d_panel_motion_graph::set_current_motion_graph(motion_active.then(|| {
+            let mut snap =
+                ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
+            // The backdrops ride the DOCUMENT, not the graph (they are decoration
+            // and never cook), so `snapshot_from` — which only sees the graph —
+            // cannot know them. Resolve them here, into the panel's own view type.
+            snap.backdrops = motion
+                .doc
+                .backdrops
+                .iter()
+                .map(|b| ph2d_panel_motion_graph::GraphBackdropView {
+                    id: b.id,
+                    x: b.x,
+                    y: b.y,
+                    w: b.w,
+                    h: b.h,
+                    color: b.color,
+                    title: b.title.clone(),
+                })
+                .collect();
+            snap
+        }));
     }
 
     // ── Params panel (M1.P1): apply the selected node's param edits, then
@@ -325,6 +350,15 @@ fn apply_graph_intents(
             GraphIntent::TogglePlay => {
                 playhead.toggle_play();
             }
+            // Backdrops (F2) — document state, so undoable, but UI-only, so NONE
+            // of these re-cooks (`mark_dirty` is deliberately absent: a cook
+            // cannot depend on decoration). Details in `motion_bridge_backdrops`.
+            GraphIntent::AddBackdrop { x, y, w, h } => backdrops::add(motion, x, y, w, h),
+            GraphIntent::MoveBackdrop { id, dx, dy } => backdrops::translate(motion, id, dx, dy),
+            GraphIntent::ResizeBackdrop { id, dw, dh } => backdrops::resize(motion, id, dw, dh),
+            GraphIntent::DeleteBackdrop { id } => backdrops::delete(motion, id),
+            GraphIntent::SetBackdropTitle { id, title } => backdrops::set_title(motion, id, title),
+            GraphIntent::SetBackdropColor { id, color } => backdrops::set_color(motion, id, color),
         }
     }
 }

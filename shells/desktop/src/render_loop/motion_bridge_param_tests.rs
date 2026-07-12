@@ -487,3 +487,57 @@ fn seed_param_resolves_to_a_seed_row_not_a_slider() {
 
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
+
+/// **The rename + re-tint UI exists** (F2): with a BACKDROP selected the params
+/// panel stops showing node params and shows the backdrop's own — a Title text box
+/// and the 8-tint picker, whose labels name the hue ramp the tokens actually walk.
+/// A backdrop is not a node (no manifest, never cooks), so without this branch it
+/// would be unnameable: created, and then stuck as "Group" forever.
+/// FALSIFIED if the panel fell through to the node path (`None`, an empty panel).
+#[test]
+fn a_selected_backdrop_yields_its_title_and_colour_rows() {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+    super::backdrops::add(&mut motion, 0.0, 0.0, 300.0, 200.0);
+    let id = motion.doc.backdrops[0].id;
+    super::backdrops::set_title(&mut motion, id, "Force chain".to_string());
+    super::backdrops::set_color(&mut motion, id, 4);
+    ph2d_panel_motion_graph::set_graph_backdrop_selection(Some(id));
+
+    let snap = build_params_snapshot(&motion).expect("the backdrop is the subject");
+    assert_eq!(snap.node, id);
+    match &snap.rows[0] {
+        ParamRow::Text(t) => {
+            assert_eq!(t.name, "title");
+            assert_eq!(t.value, "Force chain", "the box opens on the current name");
+        }
+        other => panic!("the first row should be the Title box, got {other:?}"),
+    }
+    match &snap.rows[1] {
+        ParamRow::Enum(e) => {
+            assert_eq!(e.name, "color");
+            assert_eq!(e.selected, 4, "the picker opens on the current tint");
+            assert_eq!(e.labels.len(), 8, "one label per `graph-backdrop-*` token");
+        }
+        other => panic!("the second row should be the Color picker, got {other:?}"),
+    }
+
+    ph2d_panel_motion_graph::set_graph_backdrop_selection(None);
+}
+
+/// And the subjects are mutually exclusive: a selected NODE still shows node
+/// params (the backdrop branch cannot hijack the panel once a node is picked).
+#[test]
+fn a_selected_node_still_wins_the_params_panel() {
+    let mut motion = MotionState::new();
+    super::backdrops::add(&mut motion, 0.0, 0.0, 300.0, 200.0);
+    let grid = motion.doc.graph.add_node("motion.grid");
+    ph2d_panel_motion_graph::set_graph_backdrop_selection(None);
+    ph2d_panel_motion_graph::set_graph_selection(vec![grid.0]);
+
+    let snap = build_params_snapshot(&motion).expect("the node is the subject");
+    assert_eq!(snap.node, grid.0);
+    assert_eq!(snap.title, "Grid");
+
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

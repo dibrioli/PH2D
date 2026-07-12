@@ -68,18 +68,24 @@ fn apply_key(state: &mut MotionGraphPanelState, k: GraphKey, rect: Rect) {
         GraphKey::Fit => state.fitted = false,
         GraphKey::Escape => {
             state.selected.clear();
+            state.selected_backdrop = None;
             state.interaction = Interaction::Idle;
             state.add_menu = None;
         }
         // Delete the selection (orphan edges go with the nodes, shell-side).
         // Empty selection → no intent (idempotent against the double key
-        // dispatch: M0 focus gate + the shell's cursor push).
+        // dispatch: M0 focus gate + the shell's cursor push). Node and backdrop
+        // selection are mutually exclusive, so Delete is never ambiguous — and a
+        // deleted backdrop takes nothing with it (it owns no nodes; it draws
+        // around them).
         GraphKey::Delete => {
             if !state.selected.is_empty() {
                 push_intent(GraphIntent::DeleteSelection {
                     nodes: state.selected.iter().copied().collect(),
                 });
                 state.selected.clear();
+            } else if let Some(id) = state.selected_backdrop.take() {
+                push_intent(GraphIntent::DeleteBackdrop { id });
             }
             state.interaction = Interaction::Idle;
         }
@@ -154,7 +160,8 @@ fn apply_gesture(
             };
             push_intent(GraphIntent::SetSplit { t });
         }
-        // Toolbar chips (E9): SplitH / SplitV flip orientation; Fit re-fits.
+        // Toolbar chips (E9): SplitH / SplitV flip orientation; Fit re-fits;
+        // Backdrop frames the selection (F2).
         GraphHitKind::Chrome { id } if g.phase == GesturePhase::Click => match id {
             crate::paint_chrome::CHROME_SPLIT_H => {
                 push_intent(GraphIntent::SetSplitVertical { vertical: false })
@@ -163,11 +170,139 @@ fn apply_gesture(
                 push_intent(GraphIntent::SetSplitVertical { vertical: true })
             }
             crate::paint_chrome::CHROME_FIT => state.fitted = false,
+            crate::paint_chrome::CHROME_BACKDROP => add_backdrop(state, rect, snap),
             _ => {}
         },
-        // Input sockets (reverse-drag of an occupied input) + backdrops land
-        // later; ignore for now.
+        // A backdrop's header: select it (a backdrop and a node are never selected
+        // together) and drag the whole group — the region plus every node it
+        // frames, captured now (see `Interaction::DragBackdrop`).
+        GraphHitKind::Backdrop { id } => apply_backdrop(state, g, id as u32, snap),
+        GraphHitKind::BackdropResize { id } => apply_backdrop_resize(state, g, id as u32),
+        // Input sockets (the reverse-drag of an occupied input) land later.
         _ => {}
+    }
+}
+
+/// The Backdrop chip: frame the current selection, or drop a default block at the
+/// view centre when nothing is selected (Nuke's two behaviours from one button).
+/// The panel computes the rect; the shell mints the id.
+fn add_backdrop(state: &MotionGraphPanelState, rect: Rect, snap: &GraphViewSnapshot) {
+    let framed: Vec<&crate::snapshot::GraphNodeView> = snap
+        .nodes
+        .iter()
+        .filter(|n| state.selected.contains(&n.id))
+        .collect();
+    let (x, y, w, h) = crate::backdrop::wrap_of(&framed).unwrap_or_else(|| {
+        let view = View::new(rect, state.view);
+        let (cx, cy) = view.graph(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        (
+            cx - crate::backdrop::NEW_W * 0.5,
+            cy - crate::backdrop::NEW_H * 0.5,
+            crate::backdrop::NEW_W,
+            crate::backdrop::NEW_H,
+        )
+    });
+    push_intent(GraphIntent::AddBackdrop { x, y, w, h });
+}
+
+/// Header gestures: select on press, drag the group (region + framed nodes) as one
+/// undo step. The framed set is captured at Begin — see `Interaction::DragBackdrop`.
+fn apply_backdrop(
+    state: &mut MotionGraphPanelState,
+    g: GraphGesture,
+    id: u32,
+    snap: &GraphViewSnapshot,
+) {
+    match g.phase {
+        GesturePhase::Begin => {
+            state.selected.clear(); // a backdrop and nodes are never co-selected
+            state.selected_backdrop = Some(id);
+            let nodes = snap
+                .backdrops
+                .iter()
+                .find(|b| b.id == id)
+                .map(|b| {
+                    snap.nodes
+                        .iter()
+                        .filter(|n| crate::backdrop::frames_node(b, n))
+                        .map(|n| n.id)
+                        .collect()
+                })
+                .unwrap_or_default();
+            state.interaction = Interaction::DragBackdrop {
+                id,
+                nodes,
+                last: (g.x, g.y),
+                started: false,
+            };
+        }
+        GesturePhase::Update => {
+            let zoom = state.view.zoom;
+            if let Interaction::DragBackdrop {
+                id,
+                nodes,
+                last,
+                started,
+            } = &mut state.interaction
+            {
+                let (dx, dy) = ((g.x - last.0) / zoom, (g.y - last.1) / zoom);
+                *last = (g.x, g.y);
+                if !*started {
+                    push_intent(GraphIntent::BeginDrag);
+                    *started = true;
+                }
+                push_intent(GraphIntent::MoveBackdrop { id: *id, dx, dy });
+                if !nodes.is_empty() {
+                    push_intent(GraphIntent::MoveNodes {
+                        nodes: nodes.clone(),
+                        dx,
+                        dy,
+                    });
+                }
+            }
+        }
+        // Release (a drag that moved, a tap that did not, or a double-tap): close
+        // the undo bracket if one was opened. The selection made on press stays.
+        GesturePhase::End | GesturePhase::Click | GesturePhase::DoubleClick => {
+            if let Interaction::DragBackdrop { started: true, .. } = state.interaction {
+                push_intent(GraphIntent::EndDrag);
+            }
+            state.interaction = Interaction::Idle;
+        }
+    }
+}
+
+/// The bottom-right gripper: resize in place (the framed nodes do NOT move — a
+/// resize changes what the region covers, which is the whole point).
+fn apply_backdrop_resize(state: &mut MotionGraphPanelState, g: GraphGesture, id: u32) {
+    match g.phase {
+        GesturePhase::Begin => {
+            state.selected.clear();
+            state.selected_backdrop = Some(id);
+            state.interaction = Interaction::ResizeBackdrop {
+                id,
+                last: (g.x, g.y),
+                started: false,
+            };
+        }
+        GesturePhase::Update => {
+            let zoom = state.view.zoom;
+            if let Interaction::ResizeBackdrop { id, last, started } = &mut state.interaction {
+                let (dw, dh) = ((g.x - last.0) / zoom, (g.y - last.1) / zoom);
+                *last = (g.x, g.y);
+                if !*started {
+                    push_intent(GraphIntent::BeginDrag);
+                    *started = true;
+                }
+                push_intent(GraphIntent::ResizeBackdrop { id: *id, dw, dh });
+            }
+        }
+        GesturePhase::End | GesturePhase::Click | GesturePhase::DoubleClick => {
+            if let Interaction::ResizeBackdrop { started: true, .. } = state.interaction {
+                push_intent(GraphIntent::EndDrag);
+            }
+            state.interaction = Interaction::Idle;
+        }
     }
 }
 
@@ -198,8 +333,10 @@ fn apply_background(state: &mut MotionGraphPanelState, g: GraphGesture, rect: Re
                 // row also adds that node at the menu's spawn point.
                 resolve_add_menu(&menu, rect, g.x, g.y);
             } else {
-                // A plain tap on empty canvas clears the selection.
+                // A plain tap on empty canvas clears the selection — including a
+                // selected backdrop (the tap goes THROUGH its click-through body).
                 state.selected.clear();
+                state.selected_backdrop = None;
             }
             state.interaction = Interaction::Idle;
         }
@@ -232,6 +369,7 @@ fn resolve_add_menu(menu: &AddMenu, rect: Rect, x: f32, y: f32) {
 fn apply_node(state: &mut MotionGraphPanelState, g: GraphGesture, node: u32) {
     match g.phase {
         GesturePhase::Begin => {
+            state.selected_backdrop = None; // one subject at a time (see the state docs)
             select_on_press(state, node, g.mods.shift);
             state.interaction = Interaction::DragNodes {
                 nodes: state.selected.iter().copied().collect(),

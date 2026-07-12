@@ -83,6 +83,40 @@ pub(crate) fn push_card_hit(
     }
 }
 
+/// Push a backdrop's hit rects: its **header** (select + drag the group) and its
+/// **gripper** (resize), both clipped to the canvas. The BODY is deliberately not
+/// registered — it must stay click-through so the nodes it frames, and the empty
+/// canvas around them, keep receiving clicks and box-selects (see `backdrop`'s
+/// module docs). The gripper is pushed last so it wins the corner it shares with
+/// nothing else; both lose to the wires and cards registered after them.
+pub(crate) fn push_backdrop_hits(
+    hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
+    b: &crate::snapshot::GraphBackdropView,
+    view: &View,
+    canvas: Rect,
+) {
+    if let Some(r) = clip_rect(crate::backdrop::header_rect(b, view), canvas) {
+        hits.push((
+            backdrop_hit_id(b.id, false),
+            GraphHitKind::Backdrop { id: b.id as u64 },
+            r,
+        ));
+    }
+    if let Some(r) = clip_rect(crate::backdrop::grip_rect(b, view), canvas) {
+        hits.push((
+            backdrop_hit_id(b.id, true),
+            GraphHitKind::BackdropResize { id: b.id as u64 },
+            r,
+        ));
+    }
+}
+
+/// The a11y/hit id of a backdrop's header (`resize = false`) or gripper.
+fn backdrop_hit_id(id: u32, resize: bool) -> NodeId {
+    let part = if resize { "grip" } else { "header" };
+    fnv_id(&format!("motion_graph/backdrop/{id}/{part}"))
+}
+
 /// Push a wire's hit rects (all sharing one id encoding the target input) —
 /// several padded segment boxes along the flattened bezier, clipped to `canvas`.
 pub(crate) fn push_wire_hits(
@@ -297,6 +331,7 @@ mod tests {
         let snap = GraphViewSnapshot {
             nodes: vec![node(1, 20.0, 50.0), node(2, 240.0, 50.0)],
             edges: vec![],
+            backdrops: vec![],
         };
         let view = View::new(CANVAS, ViewState::default());
 

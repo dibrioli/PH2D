@@ -71,7 +71,20 @@ pub(super) fn apply_param_edits(
         if discrete {
             motion.history.begin(&motion.doc);
         }
+        // When the subject is a BACKDROP, the rows are its own (title / colour) and
+        // the edits go to the document's decoration, never to a node. Routed by the
+        // live SELECTION rather than by the intent's `node` field: an intent left
+        // over from a previous frame carries an id from the old subject, and a node
+        // id and a backdrop id are both just `u32` — reusing it would let a stale
+        // rename land on whatever node happened to share the number.
+        let backdrop = ph2d_panel_motion_graph::current_graph_backdrop_selection();
         for intent in intents {
+            // A backdrop edit never touches a node and never re-cooks (decoration
+            // cannot change what the graph cooks).
+            if let Some(bid) = backdrop {
+                super::backdrops::apply_param_intent(motion, bid, intent);
+                continue;
+            }
             match intent {
                 MotionParamIntent::SetParam { node, param, value } => {
                     let nid = NodeId(node);
@@ -380,6 +393,13 @@ pub(super) fn build_params_snapshot(
         AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, TextRow,
         ToggleRow,
     };
+
+    // The params panel shows the properties of whatever ONE subject is selected.
+    // A backdrop is not a node (no manifest, never cooks), so its rows are built by
+    // the module that owns backdrops shell-side.
+    if let Some(snap) = super::backdrops::params_snapshot(motion) {
+        return Some(snap);
+    }
 
     let only = selected_motion_node()?;
     let nid = NodeId(only);

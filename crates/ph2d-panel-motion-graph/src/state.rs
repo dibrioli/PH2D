@@ -38,6 +38,23 @@ pub(crate) enum Interaction {
         last: (f32, f32),
         started: bool,
     },
+    /// Dragging a backdrop by its header — it carries the nodes it FRAMES, whose
+    /// set is captured once at grab time (`nodes`) rather than re-tested each
+    /// frame: a node that drifts to the edge mid-drag must not silently join or
+    /// leave the group it is being carried with. Each Update pushes a
+    /// `MoveBackdrop` + a companion `MoveNodes` (one undo step for the pair).
+    DragBackdrop {
+        id: u32,
+        nodes: Vec<u32>,
+        last: (f32, f32),
+        started: bool,
+    },
+    /// Dragging a backdrop's bottom-right gripper — grows/shrinks it in place.
+    ResizeBackdrop {
+        id: u32,
+        last: (f32, f32),
+        started: bool,
+    },
     /// Dragging a new wire out of an output socket (E6). `cur` is the live
     /// pointer (screen) the ghost wire tracks; `target` is the input socket
     /// currently under the pointer (if any) plus whether it is locally
@@ -70,6 +87,10 @@ pub struct MotionGraphPanelState {
     pub(crate) fitted: bool,
     /// Selected node ids (`NodeId.0`).
     pub(crate) selected: BTreeSet<u32>,
+    /// The selected backdrop, if any. Mutually exclusive with `selected`: the
+    /// params panel shows the properties of ONE subject, and a Delete must never
+    /// be ambiguous about what it removes.
+    pub(crate) selected_backdrop: Option<u32>,
     pub(crate) interaction: Interaction,
     /// Open add-node popup, or `None`. Opened by R-click on empty canvas / `A`;
     /// closed by picking a row, clicking away, or Esc.

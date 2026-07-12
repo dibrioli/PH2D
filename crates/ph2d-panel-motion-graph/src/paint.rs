@@ -21,7 +21,9 @@
 //! gestures (no menu-specific `GraphHitKind`). Sizes are logical.
 
 use crate::geom::{self, View, card_h, socket_center};
-use crate::hits::{bg_hit_id, push_card_hit, push_socket_hits, push_wire_hits, register_hits};
+use crate::hits::{
+    bg_hit_id, push_backdrop_hits, push_card_hit, push_socket_hits, push_wire_hits, register_hits,
+};
 use crate::snapshot::{
     GraphEdgeView, GraphNodeView, GraphViewSnapshot, current_catalog, current_snapshot,
 };
@@ -93,15 +95,19 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     crate::interact::process(state, ctx, rect, center, &snap);
 
     // Publish the selection so the shell bridge can build the params snapshot for
-    // the selected node (M1.P1). Cheap: a small Vec, only while the tool is up.
+    // the selected node (M1.P1) — or for the selected backdrop (F2: the params
+    // panel shows the properties of whatever ONE subject is selected). Cheap: a
+    // small Vec, only while the tool is up.
     crate::snapshot::set_graph_selection(state.selected.iter().copied().collect());
+    crate::snapshot::set_graph_backdrop_selection(state.selected_backdrop);
 
     let view = View::new(rect, state.view);
 
     // Hit rects, lowest-priority first (last registered wins): background →
-    // wires → node bodies → sockets. So a socket beats the node body it sits on,
-    // a node body beats a wire behind it, and a wire beats empty canvas. Each is
-    // clipped to `rect` by `hits`, matching the paint clip below.
+    // backdrop headers/grippers → wires → node bodies → sockets. So a socket beats
+    // the node body it sits on, a node body beats a wire behind it, a wire beats a
+    // backdrop's header, and everything beats empty canvas. Each is clipped to
+    // `rect` by `hits`, matching the paint clip below.
     let mut hits: Vec<(NodeId, GraphHitKind, Rect)> =
         vec![(bg_hit_id(), GraphHitKind::Background, rect)];
 
@@ -110,6 +116,16 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     ctx.scene.push_clip(&rect_to_vello(rect));
     fill_rounded_rect(ctx.scene, rect, 0.0, resolve(ColorToken::GraphBg, theme));
     draw_grid(ctx, rect, theme);
+
+    // Backdrops: behind the wires and cards (they are the wallpaper of the group).
+    // Only the header + gripper get hit rects — the BODY is click-through, so a
+    // click or box-select over a backdrop still reaches the nodes and the canvas
+    // beneath it (see `backdrop`'s module docs).
+    for b in &snap.backdrops {
+        let selected = state.selected_backdrop == Some(b.id);
+        crate::backdrop::draw(ctx, b, &view, theme, selected);
+        push_backdrop_hits(&mut hits, b, &view, rect);
+    }
 
     // Wires under the cards. The hovered wire (the hit-index id under the cursor,
     // tracked by the shell's free-move hover) is drawn emphasised so it reads as

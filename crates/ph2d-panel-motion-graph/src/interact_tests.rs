@@ -51,7 +51,28 @@ fn two_node_snapshot() -> GraphViewSnapshot {
             node(2, 200.0, vec![port(Domain::Instances)], vec![]),
         ],
         edges: vec![],
+        backdrops: vec![],
     }
+}
+
+/// Two nodes (1 at x=0, 2 at x=600) and a backdrop that frames only the FIRST —
+/// so a drag that carried node 2 as well would be caught. The region sits at the
+/// canvas origin so its header is ON-screen: a header panned off-canvas is clipped
+/// away by `hits` (an invisible target must never stay clickable), and the
+/// click-through test below would then be measuring the clip, not the body.
+fn backdrop_snapshot() -> GraphViewSnapshot {
+    let mut snap = two_node_snapshot();
+    snap.nodes[1].x = 600.0;
+    snap.backdrops = vec![crate::snapshot::GraphBackdropView {
+        id: 9,
+        x: 0.0,
+        y: 0.0,
+        w: 300.0,
+        h: 240.0,
+        color: 0,
+        title: "Group".into(),
+    }];
+    snap
 }
 
 fn gesture(kind: GraphHitKind, phase: GesturePhase, x: f32, y: f32) -> GraphGesture {
@@ -255,5 +276,247 @@ fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
     assert!(
         st.add_menu.is_some(),
         "the right-release keeps the menu open"
+    );
+}
+
+// ── Backdrops (F2) ───────────────────────────────────────────────────────────
+
+/// **The point of a backdrop**: dragging its header carries the nodes it FRAMES —
+/// and only those. Node 1 is inside the region, node 2 (at x = 600) is far
+/// outside. FALSIFIED if the drag moved the region alone (a backdrop that slides
+/// out from under its group), or if it swept up node 2 (a group with no edges).
+#[test]
+fn dragging_a_backdrop_header_carries_the_nodes_it_frames() {
+    let _ = drain_intents();
+    let snap = backdrop_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    let hit = GraphHitKind::Backdrop { id: 9 };
+
+    apply_gesture(
+        &mut st,
+        gesture(hit, GesturePhase::Begin, 10.0, 0.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    apply_gesture(
+        &mut st,
+        gesture(hit, GesturePhase::Update, 40.0, 20.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    apply_gesture(
+        &mut st,
+        gesture(hit, GesturePhase::End, 40.0, 20.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+
+    assert_eq!(
+        drain_intents(),
+        vec![
+            GraphIntent::BeginDrag,
+            GraphIntent::MoveBackdrop {
+                id: 9,
+                dx: 30.0,
+                dy: 20.0
+            },
+            GraphIntent::MoveNodes {
+                nodes: vec![1],
+                dx: 30.0,
+                dy: 20.0
+            },
+            GraphIntent::EndDrag,
+        ],
+        "the region and its framed node move together, as ONE undo step"
+    );
+    assert_eq!(st.selected_backdrop, Some(9), "the header selects it");
+}
+
+/// The gripper resizes in place — the framed nodes do NOT move (a resize changes
+/// what the region covers; that is the whole point of dragging a corner).
+#[test]
+fn dragging_the_gripper_resizes_without_moving_the_nodes() {
+    let _ = drain_intents();
+    let snap = backdrop_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    let hit = GraphHitKind::BackdropResize { id: 9 };
+
+    apply_gesture(
+        &mut st,
+        gesture(hit, GesturePhase::Begin, 280.0, 200.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    apply_gesture(
+        &mut st,
+        gesture(hit, GesturePhase::Update, 300.0, 210.0),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    let intents = drain_intents();
+    assert_eq!(
+        intents,
+        vec![
+            GraphIntent::BeginDrag,
+            GraphIntent::ResizeBackdrop {
+                id: 9,
+                dw: 20.0,
+                dh: 10.0
+            },
+        ]
+    );
+    assert!(
+        !intents
+            .iter()
+            .any(|i| matches!(i, GraphIntent::MoveNodes { .. })),
+        "a resize never drags the group along"
+    );
+}
+
+/// The Backdrop chip frames the SELECTION when there is one (Nuke's behaviour):
+/// the emitted rect contains both selected nodes.
+#[test]
+fn the_backdrop_chip_wraps_the_selection() {
+    let _ = drain_intents();
+    let snap = backdrop_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    st.selected.insert(1);
+    st.selected.insert(2);
+
+    apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::Chrome {
+                id: crate::paint_chrome::CHROME_BACKDROP,
+            },
+            GesturePhase::Click,
+            0.0,
+            0.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+
+    match drain_intents()[..] {
+        [GraphIntent::AddBackdrop { x, y, w, h }] => {
+            let framed = crate::snapshot::GraphBackdropView {
+                id: 0,
+                x,
+                y,
+                w,
+                h,
+                color: 0,
+                title: String::new(),
+            };
+            assert!(
+                snap.nodes
+                    .iter()
+                    .all(|n| crate::backdrop::frames_node(&framed, n)),
+                "the new region frames every selected node"
+            );
+        }
+        ref other => panic!("expected one AddBackdrop, got {other:?}"),
+    }
+}
+
+/// With nothing selected the chip drops a default block instead (the same button,
+/// the second behaviour) — never a zero-size region at the origin.
+#[test]
+fn the_backdrop_chip_with_no_selection_drops_a_default_block() {
+    let _ = drain_intents();
+    let snap = backdrop_snapshot();
+    let mut st = MotionGraphPanelState::default();
+
+    apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::Chrome {
+                id: crate::paint_chrome::CHROME_BACKDROP,
+            },
+            GesturePhase::Click,
+            0.0,
+            0.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    match drain_intents()[..] {
+        [GraphIntent::AddBackdrop { w, h, .. }] => {
+            assert_eq!((w, h), (crate::backdrop::NEW_W, crate::backdrop::NEW_H));
+        }
+        ref other => panic!("expected one AddBackdrop, got {other:?}"),
+    }
+}
+
+/// Delete is never ambiguous: node and backdrop selection are mutually exclusive,
+/// so with a backdrop selected Delete removes the REGION — and the nodes it framed
+/// stay (a backdrop owns nothing).
+#[test]
+fn delete_with_a_backdrop_selected_removes_only_the_backdrop() {
+    let _ = drain_intents();
+    let mut st = MotionGraphPanelState {
+        selected_backdrop: Some(9),
+        ..Default::default()
+    };
+
+    apply_key(&mut st, GraphKey::Delete, RECT);
+
+    assert_eq!(drain_intents(), vec![GraphIntent::DeleteBackdrop { id: 9 }]);
+    assert_eq!(st.selected_backdrop, None);
+}
+
+/// Selecting a node clears the backdrop selection (and vice-versa) — the params
+/// panel shows ONE subject, and Delete must know what it is deleting.
+#[test]
+fn selecting_a_node_clears_the_backdrop_selection() {
+    let _ = drain_intents();
+    let snap = backdrop_snapshot();
+    let mut st = MotionGraphPanelState {
+        selected_backdrop: Some(9),
+        ..Default::default()
+    };
+
+    apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::Node { node: 1 },
+            GesturePhase::Begin,
+            5.0,
+            5.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    assert_eq!(st.selected_backdrop, None, "the node took the selection");
+    assert!(st.selected.contains(&1));
+    let _ = drain_intents();
+}
+
+/// **The body is click-through.** Only the header and the gripper register hit
+/// rects; nothing covers the middle of the region. FALSIFIED by the bug that makes
+/// a grouping tool unusable: a body rect would swallow every click and box-select
+/// aimed at the nodes it frames.
+#[test]
+fn the_backdrop_body_registers_no_hit_rect() {
+    let snap = backdrop_snapshot();
+    let b = &snap.backdrops[0];
+    let view = View::new(RECT, crate::state::ViewState::default());
+    let mut hits: Vec<(A11yNodeId, GraphHitKind, Rect)> = Vec::new();
+    crate::hits::push_backdrop_hits(&mut hits, b, &view, RECT);
+
+    assert_eq!(hits.len(), 2, "exactly the header and the gripper");
+    // The centre of the body — where a framed node sits — is covered by neither.
+    let (cx, cy) = view.pt(b.x + b.w * 0.5, b.y + b.h * 0.5);
+    assert!(
+        !hits.iter().any(|(_, _, r)| r.contains(cx, cy)),
+        "no hit rect covers the body: clicks reach the nodes beneath"
     );
 }

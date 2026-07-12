@@ -12,6 +12,7 @@
 
 #![forbid(unsafe_code)]
 
+mod backdrop;
 mod geom;
 mod hits;
 mod interact;
@@ -20,9 +21,15 @@ mod paint_chrome;
 mod snapshot;
 mod state;
 
+/// The smallest a backdrop may be resized to (graph space). Published so the
+/// shell — which owns the document and therefore the clamp — enforces exactly the
+/// minimum the panel drew and hit-tested, instead of a second number that could
+/// drift from it.
+pub use backdrop::{MIN_H as BACKDROP_MIN_H, MIN_W as BACKDROP_MIN_W};
 pub use snapshot::{
-    GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, NodeChoice, PortView,
-    current_graph_selection, drain_intents, set_current_motion_graph, set_current_node_catalog,
+    GraphBackdropView, GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, NodeChoice,
+    PortView, current_graph_backdrop_selection, current_graph_selection, drain_intents,
+    set_current_motion_graph, set_current_node_catalog, set_graph_backdrop_selection,
     set_graph_selection, snapshot_from,
 };
 pub use state::MotionGraphPanelState;

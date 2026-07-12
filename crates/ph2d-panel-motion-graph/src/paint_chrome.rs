@@ -31,6 +31,8 @@ const CHIP_ICON_STROKE: f32 = 1.5; // LITERAL-PX-OK: chip icon stroke width
 pub(crate) const CHROME_SPLIT_H: u16 = 0;
 pub(crate) const CHROME_SPLIT_V: u16 = 1;
 pub(crate) const CHROME_FIT: u16 = 2;
+/// Add a group backdrop — framing the selection when there is one (F2).
+pub(crate) const CHROME_BACKDROP: u16 = 3;
 
 fn split_divider_hit_id() -> NodeId {
     fnv_id("motion_graph/split_divider")
@@ -87,6 +89,7 @@ pub(crate) fn draw_split_chrome(
         (CHROME_SPLIT_H, IconId::SplitHorizontal, !vertical),
         (CHROME_SPLIT_V, IconId::SplitVertical, vertical),
         (CHROME_FIT, IconId::FitView, false),
+        (CHROME_BACKDROP, IconId::Backdrop, false),
     ];
     for (i, (id, icon, active)) in chips.into_iter().enumerate() {
         let cx = rect.x + TOOLBAR_INSET + i as f32 * (CHIP_SIZE + CHIP_GAP);

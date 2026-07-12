@@ -54,12 +54,33 @@ pub struct GraphEdgeView {
     pub out_domain: Domain,
 }
 
+/// One backdrop (group region) in the view — the document's `Backdrop`, resolved
+/// into the panel's own vocabulary (the panel never sees `ph2d-motion-doc`). Pure
+/// decoration: it is drawn behind the wires and cards and never cooks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GraphBackdropView {
+    /// Stable document id (drives selection + every backdrop intent).
+    pub id: u32,
+    /// Top-left in graph space.
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+    /// Tint index into the `graph-backdrop-1..8` tokens (clamped at paint).
+    pub color: u8,
+    pub title: String,
+}
+
 /// The whole graph, resolved to primitives the panel can paint without touching
 /// the registry or the graph directly.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GraphViewSnapshot {
     pub nodes: Vec<GraphNodeView>,
     pub edges: Vec<GraphEdgeView>,
+    /// Group regions, painted behind everything. Filled by the shell bridge from
+    /// `MotionDoc::backdrops` (not by [`snapshot_from`], which only sees the
+    /// graph — the backdrops live on the document, not in the cook).
+    pub backdrops: Vec<GraphBackdropView>,
 }
 
 /// An edit the panel asks the shell to apply to the document (M1.E10, reverse of
@@ -114,6 +135,31 @@ pub enum GraphIntent {
     /// Toggle transport play/pause (Space) so time-driven behaviours animate.
     /// The shell owns the transport; UI-only w.r.t. the doc (no undo step).
     TogglePlay,
+    /// Add a group backdrop covering the given graph-space rect (the toolbar's
+    /// Backdrop chip). The panel computes the rect — wrapping the selection when
+    /// there is one, a default block at the view centre otherwise — and the shell
+    /// mints the id (the document owns id allocation). One undo step.
+    ///
+    /// Backdrops are **UI-only**: applying one never re-cooks (`mark_dirty` is
+    /// not called), because nothing about the cook can depend on decoration.
+    AddBackdrop { x: f32, y: f32, w: f32, h: f32 },
+    /// Move a backdrop by an incremental graph-space delta (header drag). The
+    /// nodes it frames move in the SAME frame via a companion
+    /// [`Self::MoveNodes`], both inside one [`Self::BeginDrag`]/[`Self::EndDrag`]
+    /// bracket — so carrying a group is a single undo step, and the panel needs no
+    /// second kind of node-move.
+    MoveBackdrop { id: u32, dx: f32, dy: f32 },
+    /// Grow/shrink a backdrop from its bottom-right gripper by an incremental
+    /// delta. The shell clamps to the minimum size. Bracketed like a move.
+    ResizeBackdrop { id: u32, dw: f32, dh: f32 },
+    /// Delete a backdrop (Delete with one selected). The nodes it framed stay —
+    /// a backdrop owns nothing, it only draws around things. One undo step.
+    DeleteBackdrop { id: u32 },
+    /// Rename a backdrop (the params panel's Title row).
+    SetBackdropTitle { id: u32, title: String },
+    /// Re-tint a backdrop (the params panel's Colour row), 0-based into
+    /// `graph-backdrop-1..8`.
+    SetBackdropColor { id: u32, color: u8 },
 }
 
 /// One addable node type in the add-node menu (M1.E7). Copy — the canonical
@@ -132,6 +178,7 @@ thread_local! {
     static INTENTS: RefCell<Vec<GraphIntent>> = const { RefCell::new(Vec::new()) };
     static CATALOG: RefCell<Vec<NodeChoice>> = const { RefCell::new(Vec::new()) };
     static SELECTION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
+    static BACKDROP_SELECTION: RefCell<Option<u32>> = const { RefCell::new(None) };
 }
 
 /// Publish the current node selection (panel `paint` → shell bridge, M1.P1). The
@@ -145,6 +192,20 @@ pub fn set_graph_selection(selection: Vec<u32>) {
 /// selected or the Motion tool is inactive.
 pub fn current_graph_selection() -> Vec<u32> {
     SELECTION.with(|c| c.borrow().clone())
+}
+
+/// Publish the selected BACKDROP (panel `paint` → shell bridge). Mutually
+/// exclusive with the node selection by construction — selecting a backdrop
+/// clears the nodes and vice-versa — so the params panel always has exactly one
+/// subject to show properties for.
+pub fn set_graph_backdrop_selection(selected: Option<u32>) {
+    BACKDROP_SELECTION.with(|c| *c.borrow_mut() = selected);
+}
+
+/// Read the selected backdrop (shell bridge). `None` when a node (or nothing) is
+/// selected, or the Motion tool is inactive.
+pub fn current_graph_backdrop_selection() -> Option<u32> {
+    BACKDROP_SELECTION.with(|c| *c.borrow())
 }
 
 /// Publish the addable-node catalog (shell bridge → panel). Set once on tool
@@ -225,7 +286,13 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
         })
         .collect();
 
-    GraphViewSnapshot { nodes, edges }
+    // The backdrops are NOT here: they live on the `MotionDoc`, not in the graph
+    // the cook sees. The shell bridge fills them in after this call.
+    GraphViewSnapshot {
+        nodes,
+        edges,
+        backdrops: Vec::new(),
+    }
 }
 
 fn port_views(specs: &[ph2d_nodegraph::node::PortSpec]) -> Vec<PortView> {

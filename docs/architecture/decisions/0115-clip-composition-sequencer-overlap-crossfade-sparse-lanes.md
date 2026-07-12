@@ -224,15 +224,15 @@ ambiguidade de ±2π — sem isso, cruzar 350°→10° blendaria pelo caminho lo
 
 **PRONTO** quando, e só quando:
 
-1. Documento com `stack` vazia é **byte-idêntico** ao de hoje (gate executável).
+1. Documento com `stack` vazia é **byte-idêntico** ao de hoje (gate executável). ✅ **(A6)**
 2. Dois strips sobrepostos na mesma faixa: crossfade **contínuo, sem salto e sem afundar** — incluindo o
-   caso *"o clip A keya X, o clip B não keya X"* → X segue A (R2), **não** cai pro default.
+   caso *"o clip A keya X, o clip B não keya X"* → X segue A (R2), **não** cai pro default. ✅ **(A5)**
 3. `src_in`/`src_out` recorta; `speed` retima; `Once`/`Loop`/`PingPong` dobram a fonte. Cada um provado
    no **valor amostrado**, não na existência do campo. ✅ **(A1-A3, `tests/clip_stack.rs`)**
 4. Faixa `Additive` soma **DELTA**: um clip de pose **constante** contribui **ZERO** (o teste que pega
-   "somei o valor absoluto").
-5. Escala additive **multiplica**: dois clips de escala 1.0 dão **1.0**, não 2.0.
-6. Faixa **mutada** não contribui. A **ordem** de empilhamento importa, e o teste prova qual.
+   "somei o valor absoluto"). ✅ **(A4/A5)**
+5. Escala additive **multiplica**: dois clips de escala 1.0 dão **1.0**, não 2.0. ✅ **(A4)**
+6. Faixa **mutada** não contribui. A **ordem** de empilhamento importa, e o teste prova qual. ✅ **(A5)**
 7. **Autokey sob pilha**: com um `Override` de `w=1` acima, a key é **recusada** com toast; com `w<1`, a
    key gravada **reproduz a pose vista** (round-trip pelo apply real).
 8. **Gate R7**: nenhum `PropKind` não-blendável alcança a pilha.

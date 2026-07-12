@@ -133,6 +133,39 @@ impl PropKind {
             | PropKind::TimeRemap => ph2d_anim::FitChannel::LINEAR,
         }
     }
+
+    /// How an **additive** clip lane combines with what is under it (ADR-0115).
+    ///
+    /// This is the distinction that Blender got wrong first and had to invent
+    /// `COMBINE` to fix ([T47035]): "additive" cannot mean "add the number".
+    /// Adding two scale clips of 1.0 gives **2.0** — double size, where the
+    /// honest answer is *no change*. A channel whose neutral value is 1 and whose
+    /// meaning is proportional composes by **ratio**, not by sum.
+    ///
+    /// [T47035]: https://developer.blender.org/T47035
+    #[must_use]
+    pub const fn algebra(self) -> Algebra {
+        match self {
+            // Position and angle: neutral 0, additive means "displace by".
+            PropKind::TranslationX | PropKind::TranslationY | PropKind::Rotation => Algebra::Sum,
+            // Scale and alpha: neutral 1, additive means "scale by".
+            PropKind::ScaleX | PropKind::ScaleY | PropKind::Opacity => Algebra::Ratio,
+            // Never stacked: it IS the clock (ADR-0115 R6). The value is a safe
+            // default, not a semantic claim.
+            PropKind::TimeRemap => Algebra::Sum,
+        }
+    }
+}
+
+/// How a channel composes with another value of itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Algebra {
+    /// Neutral 0. Additive contribution is a **difference** (`v - base`), applied
+    /// by addition.
+    Sum,
+    /// Neutral 1. Additive contribution is a **ratio** (`v / base`), applied by
+    /// multiplication. Scale, and alpha.
+    Ratio,
 }
 
 #[cfg(test)]

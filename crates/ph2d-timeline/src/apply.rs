@@ -15,6 +15,7 @@ use ph2d_ecs::{Entity, Transform, World};
 use crate::doc::TimelineDoc;
 use crate::prop::PropKind;
 use crate::sprite::SpriteProp;
+use crate::stack_eval;
 
 /// Sample every binding in `doc`'s active clip at time `t` (seconds) and write
 /// the resolved value into each bound entity. Updates each binding's `missing`
@@ -36,22 +37,31 @@ pub fn apply_from_doc_except(
     t: f64,
     skip: impl Fn(u64) -> bool,
 ) {
-    // Pass 1 — liveness (P6). It precedes the clock pass on purpose: a dead
-    // entity's Time Remap track must not drive anything, and resolving clocks
-    // against last frame's flags would let it.
+    // Pass 1 — liveness (P6), and the one chance to capture `rest`.
+    //
+    // It precedes the clock pass on purpose: a dead entity's Time Remap track
+    // must not drive anything, and resolving clocks against last frame's flags
+    // would let it. And `rest` is read HERE, before any write this frame — the
+    // world still holds the pose the animator left the object in.
     let n = doc.bindings().len();
     for i in 0..n {
-        let alive = world
-            .get_entity(Entity::from_bits(doc.bindings()[i].entity))
-            .is_ok();
+        let (entity_bits, prop) = {
+            let b = &doc.bindings()[i];
+            (b.entity, b.prop)
+        };
+        let entity = Entity::from_bits(entity_bits);
+        let alive = world.get_entity(entity).is_ok();
         doc.bindings_mut()[i].missing = !alive;
+        if alive && doc.bindings()[i].rest.is_none() && prop != PropKind::TimeRemap {
+            doc.bindings_mut()[i].rest = read_prop(world, entity, prop);
+        }
     }
 
-    // Pass 2 — one clock per remapped ENTITY, not one per binding. See
-    // `clock.rs`: asking inside the write loop made the apply quadratic and
-    // re-sampled the same curve once per animated property.
-    let mut clocks = doc.take_clocks();
-    clocks.rebuild(doc, doc.active_clip(), t);
+    // Pass 2 — the live strips and, inside each, one clock per remapped ENTITY.
+    // Never one per binding: that was the quadratic (`clock.rs`).
+    let mut scratch = doc.take_scratch();
+    scratch.rebuild(doc, t);
+    let stacked = !doc.stack().is_empty();
 
     // Pass 3 — write. Reads the document, writes the world: no `&mut doc` here,
     // so the binding list is a plain slice.
@@ -69,22 +79,60 @@ pub fn apply_from_doc_except(
         if b.prop == PropKind::TimeRemap {
             continue;
         }
-        let t_entity = clocks.get(b.entity, t);
-        // Sample the bound track (skip empty tracks so a just-created binding
-        // never forces the property to a default value).
-        let sampled = doc.active_clip().track(b.target).and_then(|tr| {
-            if tr.is_empty() {
-                None
-            } else {
-                Some(tr.sample(t_entity))
-            }
-        });
+        // THE branch (ADR-0115 §6): an empty stack is the single-clip path, on
+        // the same code it always ran. A stack blends its lanes instead.
+        let sampled = if stacked {
+            stack_eval::sample_stack(
+                doc,
+                &scratch,
+                b.entity,
+                b.target,
+                b.prop,
+                b.rest.unwrap_or(0.0),
+            )
+            .map(AnimValue::Float)
+        } else {
+            let t_entity = stack_eval::solo_source_time(&scratch, b.entity, t);
+            // Skip empty tracks so a just-created binding never forces the
+            // property to a default value.
+            doc.active_clip().track(b.target).and_then(|tr| {
+                if tr.is_empty() {
+                    None
+                } else {
+                    Some(tr.sample(t_entity))
+                }
+            })
+        };
         if let Some(v) = sampled {
             write_prop(world, Entity::from_bits(b.entity), b.prop, v);
         }
     }
 
-    doc.put_clocks(clocks); // capacity retained — zero-alloc next frame (HR-3)
+    doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
+}
+
+/// Read one property back out of an entity — the exact inverse of
+/// [`write_prop`], and the reason `rest` can be captured without the shell's
+/// help. Also what the inverse-blend key authoring will need (ADR-0115 R9).
+fn read_prop(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
+    if let Some(sp) = prop.as_sprite_transform() {
+        let xf = world.get::<Transform>(entity)?;
+        return Some(match sp {
+            SpriteProp::TranslationX => xf.translation.x,
+            SpriteProp::TranslationY => xf.translation.y,
+            SpriteProp::Rotation => xf.rotation,
+            SpriteProp::ScaleX => xf.scale.x,
+            SpriteProp::ScaleY => xf.scale.y,
+        });
+    }
+    #[cfg(feature = "render")]
+    if prop == PropKind::Opacity {
+        return world
+            .get::<ph2d_render::Sprite>(entity)
+            .map(|sprite| sprite.tint[3]);
+    }
+    let _ = (world, entity);
+    None
 }
 
 /// The time `entity`'s tracks sample at: its Time Remap track's value at the

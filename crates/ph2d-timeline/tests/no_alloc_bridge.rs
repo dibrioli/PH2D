@@ -6,7 +6,7 @@
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Transform, World};
-use ph2d_timeline::{PropKind, TimelineDoc, apply_from_doc};
+use ph2d_timeline::{ClipLane, ClipStrip, LaneMode, PropKind, TimelineDoc, apply_from_doc};
 
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -56,6 +56,32 @@ fn apply_from_doc_is_zero_alloc_steady_state() {
             );
         }
     }
+
+    // A real clip STACK on top (ADR-0115): two lanes, an overlap that crossfades,
+    // and an additive lane. The stack is the hot path's most expensive shape, so
+    // it is the one that must be under the gate — an evaluator that allocates a
+    // buffer per frame would be invisible to a single-clip test and fatal here.
+    doc.add_clip("B".to_string());
+    for (i, e) in ents.iter().enumerate() {
+        doc.set_active(1);
+        doc.insert_key(
+            e.to_bits(),
+            PropKind::TranslationX,
+            s(0.0),
+            AnimValue::Float(i as f32 * 2.0),
+            Interp::Linear,
+        );
+        doc.set_active(0);
+    }
+    let mut base = ClipLane::new("Base");
+    base.insert(ClipStrip::new(0, 0.0, 2.0, 1.0));
+    base.insert(ClipStrip::new(1, 1.0, 3.0, 1.0)); // overlaps -> crossfade
+    let mut add = ClipLane::new("Add");
+    add.mode = LaneMode::Additive;
+    add.insert(ClipStrip::new(1, 0.0, 3.0, 1.0));
+    doc.stack_mut().push(base);
+    doc.stack_mut().push(add);
+
     std::hint::black_box(&ents);
 
     // Warm-up: first apply builds bevy's query/archetype state.

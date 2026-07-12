@@ -87,15 +87,17 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_three() {
+fn schema_version_is_four() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
     //      brackets, not to the document (Enio, 2026-07-12).
+    // v4 = the clip STACK (`TimelineDoc.stack`) + each binding's captured `rest`
+    //      (ADR-0115). Both appended; an empty stack behaves exactly as v3 did.
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 3);
-    assert_eq!(TimelineDoc::new().version, 3);
+    assert_eq!(DOC_VERSION, 4);
+    assert_eq!(TimelineDoc::new().version, 4);
 }
 
 #[test]

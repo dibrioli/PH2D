@@ -55,6 +55,20 @@ pub struct TargetBinding {
     /// silent no-op — P6).
     #[serde(skip)]
     pub missing: bool,
+    /// The value this property held when it was **first animated** — the pose the
+    /// object was in before the timeline took it over.
+    ///
+    /// This is the base a clip lane fades in *from* when nothing is under it
+    /// (ADR-0115 R5). It is not a nicety: without it, a lane at partial coverage
+    /// has to blend toward *something*, and the only other candidate is the
+    /// property's type default — which for `TranslationX` is 0, i.e. the parent's
+    /// origin. A sprite easing in would fly across the canvas.
+    ///
+    /// Captured lazily by the apply, on the first frame the binding is live (the
+    /// world still holds the authored pose then, because no track drives it yet),
+    /// and persisted from there on. Rive shipped without this and had to add
+    /// **Capture Base State**; Unreal calls it the **Base Pose**. Appended (v4).
+    pub rest: Option<f32>,
 }
 
 impl TargetBinding {
@@ -69,6 +83,7 @@ impl TargetBinding {
             wire_id: WireId::NULL,
             entity,
             missing: false,
+            rest: None, // captured on the first live apply (see the field)
         }
     }
 

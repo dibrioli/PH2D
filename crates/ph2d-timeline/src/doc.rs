@@ -14,8 +14,9 @@ use ph2d_anim::{AnimTarget, AnimValue, Clip, Interp, KeyId, RationalTime, Track}
 use serde::{Deserialize, Serialize};
 
 use crate::binding::TargetBinding;
-use crate::clock::ClockIndex;
 use crate::prop::PropKind;
+use crate::stack::ClipLane;
+use crate::stack_eval::StackScratch;
 
 /// On-disk schema version for the timeline document (HR-14). Written explicitly
 /// as the first field (never trust `serde(default)` under a positional format).
@@ -23,7 +24,10 @@ use crate::prop::PropKind;
 /// postcard is positional, so a v1 blob is rejected rather than misread).
 /// v3: each clip carries its own loop (`NamedClip.loop_range` + `loop_ping_pong`,
 /// appended) — a loop belongs to the animation it brackets, not to the document.
-pub const DOC_VERSION: u32 = 3;
+/// v4: the clip **stack** (`TimelineDoc.stack`) and each binding's captured
+/// `rest` value (ADR-0115). Both appended; a document with an empty stack behaves
+/// byte-for-byte as it did in v3.
+pub const DOC_VERSION: u32 = 4;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -86,11 +90,18 @@ pub struct TimelineDoc {
     markers: Vec<Marker>,
     /// Monotonic opaque-target allocator (see module docs).
     next_target: u64,
-    /// This frame's resolved per-entity sampling clocks (`clock.rs`). Runtime
-    /// scratch, not document identity: never serialized, always compares equal,
-    /// and its buffer is retained frame to frame so the apply stays zero-alloc.
+    /// The clip stack: lanes of clip instances, bottom to top (ADR-0115).
+    ///
+    /// **Empty is the default and is not a degenerate case** — an empty stack
+    /// means "the active clip drives the scene", which is what this document did
+    /// before the stack existed, on the same code path and to the same bytes.
+    /// Appended field (v4).
+    stack: Vec<ClipLane>,
+    /// This frame's live strips and their per-entity clocks (`stack_eval.rs`).
+    /// Runtime scratch, not document identity: never serialized, always compares
+    /// equal, and its buffers are retained frame to frame (zero-alloc, HR-3).
     #[serde(skip)]
-    clocks: ClockIndex,
+    scratch: StackScratch,
 }
 
 impl Default for TimelineDoc {
@@ -116,20 +127,32 @@ impl TimelineDoc {
             bindings: Vec::new(),
             markers: Vec::new(),
             next_target: 0,
-            clocks: ClockIndex::default(),
+            stack: Vec::new(),
+            scratch: StackScratch::default(),
         }
     }
 
-    /// Move this frame's clock buffer out for the apply to refill (it needs the
-    /// document immutably while writing to the index). The buffer's capacity
-    /// rides along, so [`Self::put_clocks`] returns it warm.
-    pub(crate) fn take_clocks(&mut self) -> ClockIndex {
-        core::mem::take(&mut self.clocks)
+    /// The clip stack, bottom lane first. Empty = the active clip drives.
+    #[must_use]
+    pub fn stack(&self) -> &[ClipLane] {
+        &self.stack
     }
 
-    /// Park the clock buffer back on the document, capacity and all.
-    pub(crate) fn put_clocks(&mut self, clocks: ClockIndex) {
-        self.clocks = clocks;
+    /// The clip stack, for editing.
+    pub fn stack_mut(&mut self) -> &mut Vec<ClipLane> {
+        &mut self.stack
+    }
+
+    /// Move this frame's scratch out for the apply to refill (it needs the
+    /// document immutably while writing to the index). The buffers' capacity
+    /// rides along, so [`Self::put_scratch`] returns them warm.
+    pub(crate) fn take_scratch(&mut self) -> StackScratch {
+        core::mem::take(&mut self.scratch)
+    }
+
+    /// Park the scratch back on the document, capacity and all.
+    pub(crate) fn put_scratch(&mut self, scratch: StackScratch) {
+        self.scratch = scratch;
     }
 
     /// All clips.

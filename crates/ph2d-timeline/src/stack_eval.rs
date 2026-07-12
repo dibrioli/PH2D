@@ -24,7 +24,7 @@
 //! the mask, exactly as in Rive and Spine — and unlike them, it costs nothing to
 //! get right, because the crossfade weights are complementary (`stack.rs`).
 
-use ph2d_anim::{AnimTarget, AnimValue, AttributeEvaluator, Track};
+use ph2d_anim::{AnimTarget, AnimValue, AttributeEvaluator, Interp, RationalTime, Track};
 
 use crate::clock::ClockIndex;
 use crate::doc::TimelineDoc;
@@ -193,11 +193,15 @@ pub(crate) fn sample_stack(doc: &TimelineDoc, scratch: &StackScratch, q: Query) 
 /// you are keying — including a clip that has **no track yet** for this channel,
 /// which is exactly the first-key case. A probed clip contributes whether or not
 /// it has a track: that is what "if this clip held value v" means.
+///
+/// The probe is `(clip, value, key time)`. It carries the **time** because the
+/// probe is a hypothetical *write*, and a write can move more than the value it
+/// writes — see [`Probe`].
 fn sample_stack_probed(
     doc: &TimelineDoc,
     scratch: &StackScratch,
     q: Query,
-    probe: Option<(usize, f64)>,
+    probe: Option<Probe>,
 ) -> Option<f32> {
     let Query {
         entity,
@@ -221,13 +225,15 @@ fn sample_stack_probed(
             if a.lane != li {
                 continue;
             }
-            let probed = probe.filter(|&(c, _)| c == a.clip).map(|(_, v)| v);
-            let track = doc.clips()[a.clip].clip.track(target);
+            let probed = probe.filter(|p| p.clip == a.clip);
+            // `.get`, not `[..]`: the index is cached in the scratch, and a scratch
+            // that outlived a DeleteClip would panic here rather than go quiet.
+            let track = doc.clips().get(a.clip).and_then(|c| c.clip.track(target));
             // Sparsity (R2): a clip that does not key this channel contributes
             // nothing — unless it is the probed one, whose whole purpose is to
             // answer "what if it did".
             let v = match (probed, track) {
-                (Some(v), _) => v,
+                (Some(p), _) => p.value,
                 (None, Some(tr)) if !tr.is_empty() => {
                     let t_src = scratch.clocks[i].get(entity, a.t_clip);
                     let Some(v) = as_f64(tr.sample(t_src)) else {
@@ -238,10 +244,21 @@ fn sample_stack_probed(
                 _ => continue,
             };
             let x = if additive {
-                // The additive reference stays the REAL track's first frame: it is
-                // a fixed pose, not a function of the probe. That is precisely
-                // what keeps the stack affine in `v` and the inversion exact.
-                let base = track.map_or(v, |tr| reference(tr, a.src_in));
+                // **A write can move the reference it is measured against.** An
+                // additive strip's reference is its clip's own value at `src_in`,
+                // and the key we are about to insert may be the very key that
+                // defines it (it is, whenever the animator poses at the strip's
+                // first frame — which is where they start). Holding the reference
+                // fixed made the solve report full influence where the truth is
+                // none: the key was written, the delta came out zero, the pose was
+                // thrown away, and every OTHER frame of that lane translated by the
+                // value we had just invented. So the probe models the write.
+                let base = match (probed, track) {
+                    (Some(p), Some(tr)) => reference_after(tr, a.src_in, p),
+                    (Some(p), None) => p.value, // no track: the key IS the curve
+                    (None, Some(tr)) => reference(tr, a.src_in),
+                    (None, None) => v,
+                };
                 contribution(v, base, algebra)
             } else {
                 v
@@ -274,6 +291,22 @@ fn sample_stack_probed(
         reason = "the scene value is f32; f64 is the blend's working precision"
     )]
     touched.then_some(acc as f32)
+}
+
+/// A hypothetical **write**: "if clip `clip` held `value` at source time `t_key`".
+///
+/// It is not merely a value substitution, and that distinction is load-bearing. On
+/// an additive lane the clip's own value at `src_in` is the reference the delta is
+/// measured against — so a key can move the thing it is measured against, and a
+/// probe that ignored the time could not see it.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct Probe {
+    /// Index of the clip being keyed.
+    pub clip: usize,
+    /// The value under test.
+    pub value: f64,
+    /// Where the key would land, in the clip's own time.
+    pub t_key: f64,
 }
 
 /// The entity's clock for the solo (no-stack) path — the active clip at `t`.
@@ -331,8 +364,13 @@ pub(crate) fn strip_source_time(
 /// probed clip's value, is exactly `out(v) = A*v + B`, and **two evaluations
 /// pin it down**: `B = out(0)`, `A = out(1) - B`. Then `v = (want - B) / A`.
 ///
-/// Exact, not iterative. It handles the clip appearing in several lanes at once,
-/// under any mix of modes, for free.
+/// Exact, not iterative — **where the stack really is affine**, which is not
+/// everywhere. Put the same clip on an `Override` lane and a `Ratio` lane at once
+/// and the composition is quadratic in `v`; let an additive reference move with the
+/// key and a `Ratio` lane turns rational. So the solve does not assume: a third
+/// probe checks the line it just drew, and a stack that fails the check is refused
+/// (`AFFINE_TOL`). Two points pin a line through any two samples; they cannot tell
+/// you what happened between them.
 ///
 /// `A == 0` means the clip has no influence on what you are looking at — a full
 /// `Override` lane above it, or an additive lane whose reference cancels it. The
@@ -345,9 +383,10 @@ pub(crate) fn invert_stack(
     scratch: &StackScratch,
     q: Query,
     clip: usize,
+    t_key: f64,
     want: f32,
 ) -> Option<f32> {
-    let at = |probe: f64| sample_stack_probed(doc, scratch, q, Some((clip, probe)));
+    let at = |value: f64| sample_stack_probed(doc, scratch, q, Some(Probe { clip, value, t_key }));
     let (b, one) = (f64::from(at(0.0)?), f64::from(at(1.0)?));
     let a = one - b;
     // Not "a != 0": a coefficient this small is a lever too long to pull — the key
@@ -355,11 +394,52 @@ pub(crate) fn invert_stack(
     if a.abs() < 1e-6 {
         return None;
     }
+    // **Verify the affinity; do not trust it.** Two points pin a line through ANY
+    // two samples — they cannot tell you the function between them was a line. A
+    // third probe costs one evaluation and refuses every case where it was not:
+    // the same clip on an Override lane and a Ratio lane at once (the composition
+    // is quadratic in `v`), or a Ratio lane whose reference the key itself moves.
+    // Each of those would otherwise hand back a confident, wrong number and put the
+    // object somewhere nobody asked for. A stack with no single answer has no
+    // answer, and R9 says which way to fail.
+    let half = f64::from(at(0.5)?);
+    let scale = 1.0 + b.abs() + one.abs();
+    if (half - (0.5 * a + b)).abs() > AFFINE_TOL * scale {
+        return None;
+    }
     #[expect(
         clippy::cast_possible_truncation,
         reason = "the scene value is f32; f64 is the blend's working precision"
     )]
     Some(((f64::from(want) - b) / a) as f32)
+}
+
+/// How far a three-point probe may stray from the line its two endpoints define
+/// before the stack is declared non-affine. Relative to the values in play, and a
+/// few orders above `f32`'s round-trip noise (the tracks store `f32`).
+const AFFINE_TOL: f64 = 1e-5;
+
+/// The additive reference **after** the probed key is written.
+///
+/// Clones the track and inserts the key. That is not free — but it happens only on
+/// the authoring path (auto-key / K), only under a stack, and only for the clip
+/// being keyed. The alternative, modelling the insertion by hand, would be a second
+/// implementation of interpolation that has to agree with the first forever:
+/// [[feedback_derived_coordinate_seed_must_match_sample]] is the memory of what
+/// that costs. Ask the real curve.
+fn reference_after(tr: &Track, src_in: f64, p: Probe) -> f64 {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the track stores f32; f64 is the probe's working precision"
+    )]
+    let v = p.value as f32;
+    let mut hypothetical = tr.clone();
+    hypothetical.upsert_key(
+        RationalTime::from_seconds(p.t_key),
+        AnimValue::Float(v),
+        Interp::Linear,
+    );
+    as_f64(hypothetical.sample(src_in)).unwrap_or(0.0)
 }
 
 /// What an additive strip measures its delta against: its clip's value at the

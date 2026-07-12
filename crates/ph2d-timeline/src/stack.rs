@@ -235,33 +235,53 @@ impl ClipLane {
             .sort_by(|a, b| a.t_start.total_cmp(&b.t_start).then(a.id.cmp(&b.id)));
     }
 
-    /// The blend window at the START of strip `i`: the overlap with the strip
-    /// before it, or the authored `ease_in` when it has no neighbour there.
+    /// The blend window at the START of strip `i`: how far into it another strip is
+    /// still playing, or the authored `ease_in` when none is.
+    ///
+    /// **Every other strip live at that edge is asked, not just `strips[i-1]`.** The
+    /// neighbour in sort order is the right strip to ask only when the lane is a
+    /// staircase, and nothing makes it one: a body drag can drop a short strip
+    /// *inside* a long one, or leave two overlapping strips with a third between
+    /// them. Asking the wrong strip is how a lane's coverage silently collapsed —
+    /// a strip would fade out against a neighbour that had already ended, `den`
+    /// would fall toward zero, and the sprite would crawl back to its rest pose in
+    /// the middle of a clip that never moves. (The bug the audit found; the tests
+    /// only ever built staircases.)
     #[must_use]
     pub fn blend_in(&self, i: usize) -> f64 {
         let s = &self.strips[i];
-        let overlap = i
-            .checked_sub(1)
-            .map(|p| self.strips[p].t_end - s.t_start)
-            .unwrap_or(0.0);
-        if overlap > 0.0 {
-            overlap.min(s.span()) // the overlap IS the blend (Unity's rule)
+        let reach = self
+            .strips
+            .iter()
+            .enumerate()
+            .filter(|(j, o)| *j != i && o.covers(s.t_start))
+            .map(|(_, o)| o.t_end - s.t_start)
+            .fold(0.0_f64, f64::max);
+        if reach > 0.0 {
+            reach.min(s.span()) // the overlap IS the blend (Unity's rule)
         } else {
             s.ease_in.max(0.0).min(s.span())
         }
     }
 
     /// The blend window at the END of strip `i`. Mirror of [`Self::blend_in`].
+    ///
+    /// A strip only fades OUT against something that is still there when it ends —
+    /// `o.t_end >= s.t_end`. A strip that ends *before* this one does not shorten
+    /// this one's tail; it makes a hump in its middle, and the middle is not an
+    /// edge. That distinction is the whole of the containment fix.
     #[must_use]
     pub fn blend_out(&self, i: usize) -> f64 {
         let s = &self.strips[i];
-        let overlap = self
+        let reach = self
             .strips
-            .get(i + 1)
-            .map(|n| s.t_end - n.t_start)
-            .unwrap_or(0.0);
-        if overlap > 0.0 {
-            overlap.min(s.span())
+            .iter()
+            .enumerate()
+            .filter(|(j, o)| *j != i && o.t_start < s.t_end && o.t_end >= s.t_end)
+            .map(|(_, o)| s.t_end - o.t_start)
+            .fold(0.0_f64, f64::max);
+        if reach > 0.0 {
+            reach.min(s.span())
         } else {
             s.ease_out.max(0.0).min(s.span())
         }

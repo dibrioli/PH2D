@@ -153,27 +153,62 @@ fn paint_lane(
         WEIGHT_W,
         (row.h - STRIP_PAD_Y * 2.0).max(0.0),
     );
-    paint_weight(ctx, theme, ids::TIMELINE_LANE_WEIGHT[index], weight, lane);
-    paint_lane_button(ctx, theme, ids::TIMELINE_LANE_MUTE[index], mute, lane.muted);
-    paint_lane_button(ctx, theme, ids::TIMELINE_LANE_ADD_STRIP[index], add, false);
+    // Every hit in the label column is clipped to the visible band: a lane scrolled
+    // half under the ruler must not register its mute where "+ Lane" is painted.
+    let band = Rect::new(g.rows.x, g.rows.y, g.label_w, g.rows.h);
+    paint_weight(
+        ctx,
+        theme,
+        ids::TIMELINE_LANE_WEIGHT[index],
+        weight,
+        band,
+        lane,
+    );
+    paint_lane_button(
+        ctx,
+        theme,
+        ids::TIMELINE_LANE_MUTE[index],
+        mute,
+        band,
+        lane.muted,
+    );
+    paint_lane_button(
+        ctx,
+        theme,
+        ids::TIMELINE_LANE_ADD_STRIP[index],
+        add,
+        band,
+        false,
+    );
 
     // The label itself is the right-click surface (mode, Delete Lane). Its rect
     // STOPS where the controls start, so it cannot steal their clicks — the hit
     // index does not need a z-order rule it would only have to remember.
     let label = Rect::new(row.x, row.y, (weight.x - row.x).max(0.0), row.h);
-    ctx.host.store_mut().register(
-        ids::TIMELINE_LANE_ROW[index],
-        InteractiveState::TimelineSurface {
-            parent: ids::TIMELINE_PANEL,
-            kind: TimelineHitKind::LaneHeader { lane: index },
-            canvas: row,
-        },
-    );
-    ctx.host
-        .hit_index_mut()
-        .register(ids::TIMELINE_LANE_ROW[index], label);
+    if let Some(r) = clipped(label, band) {
+        ctx.host.store_mut().register(
+            ids::TIMELINE_LANE_ROW[index],
+            InteractiveState::TimelineSurface {
+                parent: ids::TIMELINE_PANEL,
+                kind: TimelineHitKind::LaneHeader { lane: index },
+                canvas: row,
+            },
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(ids::TIMELINE_LANE_ROW[index], r);
+    }
 
     // ── the strips ──
+    //
+    // Two passes, and the order is load-bearing. The hit index resolves to the
+    // LAST id registered over a point, and a lane's strips MAY OVERLAP — that is
+    // the crossfade. Registering each strip whole (body, then its edges) before
+    // the next one puts the right strip's BODY on top of the left strip's END
+    // edge, which is precisely the edge you reach for to tune the crossfade you
+    // just made. Bodies first for the whole lane, edges after, and every edge
+    // outranks every body.
+    let mut boxes: Vec<(&ph2d_timeline::StripView, Rect)> = Vec::new();
     for s in &lane.strips {
         let (x0, x1) = (view.x(s.t_start), view.x(s.t_end));
         // Off-screen, or collapsed to nothing: no rect, no hit.
@@ -187,8 +222,76 @@ fn paint_lane(
             (row.h - STRIP_PAD_Y * 2.0).max(0.0),
         );
         paint_strip(ctx, theme, view, body, s, dim);
-        register_hits(ctx, row, body, index, s.id.0);
+        boxes.push((s, body));
     }
+    // Clipped to the TIME area, never the label column: a strip that starts left of
+    // the view has an x0 far off to the left, and an unclipped body rect would
+    // blanket the lane's name, weight, mute and "+ strip" — and, registered after
+    // them, win every one of their clicks.
+    let time_band = Rect::new(
+        view.time_x,
+        g.rows.y,
+        (view.right - view.time_x).max(0.0),
+        g.rows.h,
+    );
+    let spans: Vec<(u64, Rect)> = boxes.iter().map(|(s, b)| (s.id.0, *b)).collect();
+    for (strip, edge, rect) in hit_plan(&spans, time_band) {
+        put_strip_hit(ctx, row, rect, index, strip, edge);
+    }
+}
+
+/// **The order the strip hits are registered in — and it is load-bearing.**
+///
+/// The hit index resolves a point to the LAST id registered over it, and a lane's
+/// strips MAY OVERLAP: that is the crossfade. Registering each strip whole (body,
+/// then its own edges) put the right strip's BODY on top of the left strip's END
+/// edge — precisely the grip you reach for to tune the crossfade you just made.
+/// So: every body first, every edge after. An edge always outranks a box.
+///
+/// Pure, and tested, because no headless paint can reach it: the defect lived in
+/// the order of two loops and no `apply_event` test could ever have seen it.
+fn hit_plan(spans: &[(u64, Rect)], band: Rect) -> Vec<(u64, u8, Rect)> {
+    let mut out = Vec::with_capacity(spans.len() * 3);
+    for &(id, body) in spans {
+        if let Some(r) = clipped(body, band) {
+            out.push((id, 2, r));
+        }
+    }
+    for &(id, body) in spans {
+        let w = EDGE_W.min(body.w * 0.5);
+        for (edge, rect) in [
+            (0, Rect::new(body.x, body.y, w, body.h)),
+            (1, Rect::new(body.x + body.w - w, body.y, w, body.h)),
+        ] {
+            // The WHOLE grip must be inside the band, not merely overlap it: a
+            // sliver of an edge poking into view is not something a pointer can aim
+            // at, and the start edge of a strip that begins off-screen left would
+            // otherwise be trimmable blind.
+            if rect.x >= band.x
+                && rect.x + rect.w <= band.x + band.w
+                && let Some(r) = clipped(rect, band)
+            {
+                out.push((id, edge, r));
+            }
+        }
+    }
+    out
+}
+
+/// The part of `r` the panel can actually show — its intersection with the band.
+///
+/// A hit rect that reaches outside the band is a control you cannot see and can
+/// still click. A lane scrolled half under the ruler would otherwise register its
+/// mute where "+ Lane" is painted, and a strip that starts left of the view would
+/// register its body across the whole label column, on top of every control there.
+/// Both are the same bug, and this is the one place it dies.
+fn clipped(r: Rect, band: Rect) -> Option<Rect> {
+    let (x0, y0) = (r.x.max(band.x), r.y.max(band.y));
+    let (x1, y1) = (
+        (r.x + r.w).min(band.x + band.w),
+        (r.y + r.h).min(band.y + band.h),
+    );
+    (x1 > x0 && y1 > y0).then(|| Rect::new(x0, y0, x1 - x0, y1 - y0))
 }
 
 /// The lane's weight, as a bounded number field: drag it, or type into it.
@@ -202,6 +305,7 @@ fn paint_weight(
     theme: Theme,
     id: ph2d_editor_core::NodeId,
     r: Rect,
+    band: Rect,
     lane: &ph2d_timeline::LaneView,
 ) {
     use ph2d_editor_core::widget::{NumberInput, paint_number_input_with_buffer, showcase};
@@ -225,7 +329,9 @@ fn paint_weight(
         ctx.text_system,
         theme,
     );
-    ctx.host.hit_index_mut().register(id, r);
+    if let Some(hit) = clipped(r, band) {
+        ctx.host.hit_index_mut().register(id, hit);
+    }
 }
 
 /// One of a lane's header controls. Square, and `on` fills it — the mute reads as
@@ -235,6 +341,7 @@ fn paint_lane_button(
     theme: Theme,
     id: ph2d_editor_core::NodeId,
     r: Rect,
+    band: Rect,
     on: bool,
 ) {
     fill_rounded_rect(
@@ -258,7 +365,9 @@ fn paint_lane_button(
         resolve(ColorToken::Border, theme),
     );
     ctx.host.store_mut().register(id, InteractiveState::Plain);
-    ctx.host.hit_index_mut().register(id, r);
+    if let Some(hit) = clipped(r, band) {
+        ctx.host.hit_index_mut().register(id, hit);
+    }
 }
 
 /// One strip: its box, its name, and the two blend wedges — which are the
@@ -338,23 +447,99 @@ fn paint_strip(
     );
 }
 
-/// The three grab targets: body, then the two edges LAST so they win the overlap
-/// (the convention the resize grips already state — outermost-last).
-fn register_hits(ctx: &mut PaintCtx, row: Rect, body: Rect, lane: usize, strip: u64) {
-    let mut put = |edge: u8, rect: Rect| {
-        let id = ids::timeline_strip_hit_id(lane as u64, strip, edge);
-        ctx.host.store_mut().register(
-            id,
-            InteractiveState::TimelineSurface {
-                parent: ids::TIMELINE_PANEL,
-                kind: TimelineHitKind::Strip { lane, strip, edge },
-                canvas: row,
-            },
+/// One strip hit target. `edge`: `0` = start, `1` = end, `2` = body.
+fn put_strip_hit(ctx: &mut PaintCtx, row: Rect, rect: Rect, lane: usize, strip: u64, edge: u8) {
+    let id = ids::timeline_strip_hit_id(lane as u64, strip, edge);
+    ctx.host.store_mut().register(
+        id,
+        InteractiveState::TimelineSurface {
+            parent: ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::Strip { lane, strip, edge },
+            canvas: row,
+        },
+    );
+    ctx.host.hit_index_mut().register(id, rect);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Last registration wins, so this is what a click at `(x, y)` resolves to.
+    fn hit(plan: &[(u64, u8, Rect)], x: f32, y: f32) -> Option<(u64, u8)> {
+        plan.iter()
+            .rev()
+            .find(|(_, _, r)| x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+            .map(|(s, e, _)| (*s, *e))
+    }
+
+    fn band() -> Rect {
+        Rect::new(100.0, 50.0, 400.0, 200.0)
+    }
+
+    /// **The crossfade's own grip must be reachable.** Two overlapping strips ARE a
+    /// crossfade (ADR-0115 R1), and the first thing you do after making one is grab
+    /// the left strip's END edge to tune it. Registering each strip whole put the
+    /// right strip's body on top of that edge, and the drag slid the neighbour
+    /// instead. Bodies first, edges after — every edge outranks every box.
+    #[test]
+    fn the_left_strips_end_edge_survives_the_overlap_that_makes_the_crossfade() {
+        let a = Rect::new(150.0, 60.0, 100.0, 20.0); // A: [150, 250)
+        let b = Rect::new(200.0, 60.0, 100.0, 20.0); // B: [200, 300) — 50 px of overlap
+        let plan = hit_plan(&[(1, a), (2, b)], band());
+
+        assert_eq!(
+            hit(&plan, 248.0, 70.0),
+            Some((1, 1)),
+            "A's end grip, deep inside B's body, must still be A's END edge"
         );
-        ctx.host.hit_index_mut().register(id, rect);
-    };
-    put(2, body);
-    let w = EDGE_W.min(body.w * 0.5);
-    put(0, Rect::new(body.x, body.y, w, body.h));
-    put(1, Rect::new(body.x + body.w - w, body.y, w, body.h));
+        assert_eq!(
+            hit(&plan, 202.0, 70.0),
+            Some((2, 0)),
+            "and B's start grip is B's START edge"
+        );
+        assert_eq!(
+            hit(&plan, 230.0, 70.0),
+            Some((2, 2)),
+            "between them: B's body"
+        );
+    }
+
+    /// A strip that starts left of the view has an x far outside the time area. Its
+    /// unclipped body used to blanket the whole label column — and, registered after
+    /// them, win the clicks of the lane's name, weight, mute and "+ strip".
+    #[test]
+    fn a_strip_that_starts_before_the_view_never_reaches_the_label_column() {
+        let straddling = Rect::new(-300.0, 60.0, 600.0, 20.0); // starts far left
+        let plan = hit_plan(&[(1, straddling)], band());
+
+        assert!(
+            hit(&plan, 20.0, 70.0).is_none(),
+            "nothing of the strip may be clickable left of the time area"
+        );
+        assert_eq!(
+            hit(&plan, 150.0, 70.0),
+            Some((1, 2)),
+            "inside the band it is still the strip's body"
+        );
+        assert!(
+            !plan.iter().any(|(_, e, _)| *e == 0),
+            "and its START grip is off-screen: a grip you cannot see must not be \
+             grabbable, or the strip gets trimmed blind"
+        );
+    }
+
+    /// Nothing registers outside the band, ever — the same rule that keeps a lane
+    /// scrolled half under the ruler from stealing the clicks of "+ Lane".
+    #[test]
+    fn no_hit_rect_ever_escapes_the_band() {
+        let over = Rect::new(120.0, 20.0, 600.0, 20.0); // above the band, and too wide
+        for (_, _, r) in hit_plan(&[(1, over)], band()) {
+            let b = band();
+            assert!(
+                r.x >= b.x && r.y >= b.y && r.x + r.w <= b.x + b.w && r.y + r.h <= b.y + b.h,
+                "{r:?} escapes {b:?}"
+            );
+        }
+    }
 }

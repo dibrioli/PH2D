@@ -861,6 +861,13 @@ impl crate::App {
             .map(|d| d.entity_bits);
         if self.timeline_insert_key {
             self.timeline_insert_key = false;
+            // The stack's scratch must describe THIS instant before K asks it where
+            // a key lands or whether the pose is reachable. This runs BEFORE
+            // `timeline_bridge::run` rebuilds it, so without the prime K resolves
+            // against the PREVIOUS frame's strip state — and at speed 100 (which the
+            // clamp allows) one frame of playhead skew is 1.67 s of clip time. It
+            // also refused a K pressed on the very frame a strip became live.
+            self.timeline.doc.prime_stack(self.playhead.time());
             if let Some(entity) = hero_screen
                 .as_ref()
                 .and_then(|h| h.gizmo.iter_selected().next())

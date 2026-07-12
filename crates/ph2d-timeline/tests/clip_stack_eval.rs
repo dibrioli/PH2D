@@ -378,3 +378,94 @@ fn a_channel_no_lane_keys_is_left_to_the_scene() {
         "the timeline does not own a channel it never keyed"
     );
 }
+
+// ── The lane is not a staircase, and the blend must not assume it is ─────────
+//
+// Both of these were found by an adversarial audit (2026-07-12) and both were
+// CATASTROPHIC: a lane's coverage collapsed and the sprite crawled back to its
+// rest pose in the middle of a clip that never moves. The cause was one line —
+// `blend_out(i)` asked `strips[i + 1]`, the neighbour in SORT order, which is the
+// right strip to ask only when the strips form a staircase. Nothing makes them
+// one: the body drag has no clamp against its neighbours.
+
+/// **Containment.** A short strip dropped INSIDE a long one. The long strip must
+/// hold its value to its own end — the short one makes a hump in its middle, and
+/// the middle is not an edge. Before the fix, the long strip faded out for 6 s
+/// against a neighbour that had already ended: 500 -> 104.
+#[test]
+fn a_strip_dropped_inside_another_never_drains_the_lane() {
+    let (mut world, mut doc, e) = scene(100.0); // rest = 100
+    flat(&mut doc, 0, e, PropKind::TranslationX, 500.0);
+    let mut lane = ClipLane::new("L");
+    lane.insert(ClipStrip::new(0, 0.0, 10.0, 2.0)); // A
+    lane.insert(ClipStrip::new(0, 2.0, 4.0, 2.0)); // B, wholly inside A
+    doc.stack_mut().push(lane);
+
+    for t in [3.99, 4.0, 5.0, 8.0, 9.5] {
+        apply_from_doc(&mut world, &mut doc, t);
+        let x = x_of(&world, e);
+        assert!(
+            (x - 500.0).abs() < 0.5,
+            "the clip is flat at 500 and both strips play it; at t={t} the sprite is at {x} \
+             (before the fix it sagged toward the rest pose, reaching 104)"
+        );
+    }
+}
+
+/// **Non-adjacent overlap.** A[0,10), B[1,2), C[8,20). `blend_in(C)` used to look
+/// only at `strips[i-1]` = B, whose overlap is negative -> it entered at full
+/// weight with no fade, while A had been sagging since t=2. The tell was an 86%
+/// sag followed by a POP back to 500 at t=8.
+#[test]
+fn an_overlap_that_is_not_with_the_sort_order_neighbour_still_crossfades() {
+    let (mut world, mut doc, e) = scene(100.0);
+    flat(&mut doc, 0, e, PropKind::TranslationX, 500.0);
+    let mut lane = ClipLane::new("L");
+    lane.insert(ClipStrip::new(0, 0.0, 10.0, 2.0)); // A
+    lane.insert(ClipStrip::new(0, 1.0, 2.0, 2.0)); // B, a blip inside A
+    lane.insert(ClipStrip::new(0, 8.0, 20.0, 2.0)); // C, overlapping A's tail
+    doc.stack_mut().push(lane);
+
+    for t in [3.0, 5.0, 7.0, 7.9, 8.0, 8.1, 12.0] {
+        apply_from_doc(&mut world, &mut doc, t);
+        let x = x_of(&world, e);
+        assert!(
+            (x - 500.0).abs() < 0.5,
+            "flat clip, full coverage everywhere; at t={t} the sprite is at {x}"
+        );
+    }
+}
+
+/// And the ordinary crossfade — the one the whole model exists for — is untouched
+/// by the fix: two strips of DIFFERENT clips, weights summing to exactly 1 through
+/// the overlap, no sag toward the rest pose at any point inside it.
+#[test]
+fn the_plain_crossfade_still_sums_to_one_and_never_sags() {
+    let (mut world, mut doc, e) = scene(100.0);
+    doc.add_clip("Other".to_string());
+    flat(&mut doc, 0, e, PropKind::TranslationX, 0.0);
+    flat(&mut doc, 1, e, PropKind::TranslationX, 100.0);
+    let mut lane = ClipLane::new("L");
+    lane.insert(ClipStrip::new(0, 0.0, 2.0, 2.0));
+    lane.insert(ClipStrip::new(1, 1.0, 3.0, 2.0)); // 1 s of overlap
+    doc.stack_mut().push(lane);
+
+    let mut prev = f32::NEG_INFINITY;
+    for i in 0..=10 {
+        let t = 1.0 + f64::from(i) * 0.1;
+        apply_from_doc(&mut world, &mut doc, t);
+        let x = x_of(&world, e);
+        // Complementary weights: the value only ever travels BETWEEN the two clips'
+        // values. Anything outside [0, 100] is the stack falling toward `rest`.
+        assert!(
+            (-0.01..=100.01).contains(&x),
+            "at t={t} the blend left the two clips' values: {x}"
+        );
+        assert!(
+            x >= prev - 0.01,
+            "and it climbs monotonically: {prev} -> {x}"
+        );
+        prev = x;
+    }
+    assert!(prev > 99.0, "and lands on the incoming clip: {prev}");
+}

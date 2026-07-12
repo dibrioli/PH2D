@@ -11,8 +11,13 @@ use crate::ids;
 use crate::state;
 use crate::{TimelinePanel, state::TimelinePanelState};
 use ph2d_a11y::NodeId;
-/// How long a strip of an EMPTY clip is: a clip with no keys has no duration,
-/// and a strip of zero seconds paints as nothing and cannot be grabbed to fix.
+/// How long a strip of an EMPTY clip is: a clip with no keys has no duration, and
+/// a strip of zero seconds paints as nothing and cannot be grabbed to fix.
+///
+/// It floors ONLY the empty case. Padding a short clip's span to a second used to
+/// look harmless and was not: a 0.4 s clip in a 1 s box is a strip playing at 0.4x
+/// before anyone asked it to (`slice == span * speed`), and the first stretch would
+/// have snapped its rate to match.
 const MIN_NEW_STRIP_S: f64 = 1.0;
 
 use ph2d_editor_core::action_bus::EditorAction;
@@ -59,7 +64,7 @@ pub(crate) fn apply_event(
     // its two menus and its weight field all speak to the STACK rather than to the
     // sheet, and folding them into one guard is also what keeps `apply_event` under
     // its LOC cap — the cap noticing that the stack had grown into its own subject.
-    if let Some(out) = stack_event(ev, host) {
+    if let Some(out) = stack_event(state, ev, host) {
         return out;
     }
     match ev {
@@ -238,11 +243,41 @@ pub(crate) fn apply_event(
 /// Everything the clip stack answers: its chrome, its two right-click menus, and
 /// the lane weight field. `None` means "not ours" — the caller falls through to
 /// the sheet.
-fn stack_event(ev: WidgetEvent, host: &mut dyn PanelHostInternal) -> Option<EventOutcome> {
+fn stack_event(
+    state: &mut TimelinePanelState,
+    ev: WidgetEvent,
+    host: &mut dyn PanelHostInternal,
+) -> Option<EventOutcome> {
     match ev {
         WidgetEvent::Click(id) => stack_click(id)
             .or_else(|| strip_menu_click(id, host))
             .or_else(|| lane_menu_click(id, host)),
+        // Grabbing (or clicking into) the weight field OPENS the undo bracket.
+        //
+        // Dispatch emits a `ValueChanged` for every Move of a number body-drag, and
+        // each one, unbracketed, is its own atomic undo step: sliding the weight
+        // across its range left dozens of Ctrl+Z steps behind it. Every other
+        // document-mutating gesture in this panel brackets (`strip_drag`, `key_drag`,
+        // `anchor_drag`); this was the one that did not.
+        WidgetEvent::Focus(id) => {
+            let lane = ids::TIMELINE_LANE_WEIGHT.iter().position(|&w| w == id)?;
+            if state.weight_edit.is_none() {
+                state.weight_edit = Some(lane);
+                state::push_intent(TimelineIntent::BeginEdit);
+            }
+            Some(EventOutcome::Consumed)
+        }
+        // …and letting go closes it. Dispatch guarantees the Blur: it fires on
+        // pointer-up for a body drag and on click-away for a typed edit. A gesture
+        // that changed nothing commits no step (`commit_if_changed`).
+        WidgetEvent::Blur(id) | WidgetEvent::Submit(id)
+            if ids::TIMELINE_LANE_WEIGHT.contains(&id) =>
+        {
+            if state.weight_edit.take().is_some() {
+                state::push_intent(TimelineIntent::EndEdit);
+            }
+            Some(EventOutcome::Consumed)
+        }
         // The lane weight is a bounded field, so its edit arrives as a ValueChanged.
         WidgetEvent::ValueChanged(id) => {
             let lane = ids::TIMELINE_LANE_WEIGHT.iter().position(|&w| w == id)?;
@@ -397,11 +432,16 @@ fn stack_click(id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
             // The ACTIVE clip, dropped AT THE PLAYHEAD — the clip you are looking
             // at, where you are looking.
             let t = snap.time_seconds.max(0.0);
+            let len = if snap.duration_seconds > 0.0 {
+                snap.duration_seconds
+            } else {
+                MIN_NEW_STRIP_S
+            };
             crate::state::push_intent(ph2d_timeline::TimelineIntent::AddStrip {
                 lane,
                 clip: snap.active_clip,
                 t_start: t,
-                t_end: t + snap.duration_seconds.max(MIN_NEW_STRIP_S),
+                t_end: t + len,
             });
         }
         return Some(EventOutcome::Consumed);

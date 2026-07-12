@@ -70,7 +70,17 @@ impl TimelineDoc {
         );
         let id = self.alloc_strip_id();
         let clip_ix = u16::try_from(clip).ok()?;
-        let strip = ClipStrip::new(clip_ix, t_start, t_end, src_len).with_id(id);
+        let mut strip = ClipStrip::new(clip_ix, t_start, t_end, src_len).with_id(id);
+        // **`slice == span * speed` is the lane's invariant, and it has to be TRUE
+        // at birth, not merely assumed later.** `stretch_strip` re-derives the rate
+        // from the span (`speed = slice / span`), so a strip that started out with a
+        // span its slice does not fill would jump to a wildly different rate on the
+        // first hair of a stretch — a clip of 0.4 s dropped into a 1 s span went
+        // from speed 1.0 to 0.4 the instant the drag began.
+        let span = strip.span();
+        if strip.slice() > 0.0 && span > 0.0 {
+            strip.speed = strip.slice() / span;
+        }
         self.stack_mut()[lane].insert(strip);
         Some(id)
     }

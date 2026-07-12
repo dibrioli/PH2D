@@ -61,7 +61,10 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     // Pass 1: drain this frame's wheel + gestures against the rect we start with.
     let rect0 = geom::clamp_to(state.rect.unwrap_or(docked), viewport);
-    let time_x0 = geom::time_x(rect0, state.label_w);
+    // The label column's floor depends on what it HOLDS: a lane row carries
+    // controls a track row does not (`geom::min_label_w`).
+    let min_label = geom::min_label_w(&snapshot);
+    let time_x0 = geom::time_x(rect0, state.label_w, min_label);
     crate::interact::process(state, ctx, rect0, time_x0, viewport, &snapshot);
 
     // Pass 2: a resize may have just moved the panel — paint from the new rect.
@@ -73,42 +76,14 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // over the border strips where they overlap.
     register_resize_grips(ctx, rect);
 
-    // Canonical dark-glass chrome — identical to the other docked panels.
-    paint_panel_surface(rect, ctx.scene, theme);
-    paint_panel_corner_dot(rect, ctx.scene, theme);
-    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
-    // The title is painted HERE rather than through `paint_panel_title`, because it
-    // has to sit ON the control row: the header IS the transport's first row now,
-    // and a title floating on a line above it read as a stray label (Enio,
-    // 2026-07-12). The shared chrome helper hard-codes its own baseline — and it is
-    // at its LOC cap, so this is the one panel that owns its title placement rather
-    // than growing the chrome for everyone.
-    let title_size = TypeToken::Lg.px();
-    paint_text_title(
-        ctx.text_system,
-        ctx.scene,
-        ph2d_i18n::tr("panel.timeline.title"),
-        rect.x + PANEL_HEAD_PAD,
-        geom::title_baseline(rect),
-        title_size,
-        (rect.w - PANEL_HEAD_PAD * 2.0 - PANEL_HEADER_CLOSE_RESERVE).max(0.0),
-        resolve(ColorToken::Text1, theme),
-    );
-    paint_panel_close_button(
-        rect,
-        ids::TIMELINE_CLOSE,
-        ctx.host.hit_index_mut(),
-        ctx.scene,
-        theme,
-    );
-
+    let title_size = paint_chrome(ctx, theme, rect);
     let body = geom::body(rect, title_size);
     // The transport now flows BESIDE the title and only spills to a row of its own
     // when the panel is too narrow to hold it (Enio: "a timeline ficou apertada").
     let head_strip = geom::header_controls(rect, title_size);
     let (after_transport, clip_dd_chip) =
         transport::paint_bar(ctx, theme, head_strip, body, &snapshot, state.speed_view);
-    let g = geom::resolve(rect, after_transport, state.label_w);
+    let g = geom::resolve(rect, after_transport, state.label_w, min_label);
     // Write the clamped width back, so a drag that ran past the bounds does not
     // have to be dragged all the way back before the column moves again.
     state.label_w = g.label_w;
@@ -326,6 +301,40 @@ fn paint_overlays(
 /// Register the eight edge/corner grippers as `TimelineSurface` hits so dispatch
 /// streams their drag to `interact::apply_resize`. Invisible by design — the
 /// panel border is the affordance.
+/// The panel's shell: glass, corner dots, title, close button. Returns the title's
+/// size, which the body's geometry hangs off.
+///
+/// The title is painted HERE rather than through `paint_panel_title`, because it
+/// has to sit ON the control row: the header IS the transport's first row now, and
+/// a title floating on a line above it read as a stray label (Enio, 2026-07-12).
+/// The shared chrome helper hard-codes its own baseline — and it is at its LOC cap,
+/// so this is the one panel that owns its title placement rather than growing the
+/// chrome for everyone.
+fn paint_chrome(ctx: &mut PaintCtx, theme: Theme, rect: Rect) -> f32 {
+    paint_panel_surface(rect, ctx.scene, theme);
+    paint_panel_corner_dot(rect, ctx.scene, theme);
+    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
+    let title_size = TypeToken::Lg.px();
+    paint_text_title(
+        ctx.text_system,
+        ctx.scene,
+        ph2d_i18n::tr("panel.timeline.title"),
+        rect.x + PANEL_HEAD_PAD,
+        geom::title_baseline(rect),
+        title_size,
+        (rect.w - PANEL_HEAD_PAD * 2.0 - PANEL_HEADER_CLOSE_RESERVE).max(0.0),
+        resolve(ColorToken::Text1, theme),
+    );
+    paint_panel_close_button(
+        rect,
+        ids::TIMELINE_CLOSE,
+        ctx.host.hit_index_mut(),
+        ctx.scene,
+        theme,
+    );
+    title_size
+}
+
 fn register_resize_grips(ctx: &mut PaintCtx, rect: Rect) {
     for (id, edges, r) in geom::resize_grips(rect) {
         ctx.host.store_mut().register(

@@ -94,6 +94,24 @@ pub(crate) fn header_controls(rect: Rect, _title_size: f32) -> Rect {
 
 /// Narrowest the track-name column may be dragged.
 pub(crate) const MIN_LABEL_W: f32 = 56.0; // LITERAL-PX-OK: min track-name column width
+/// The label column's minimum **while the clip stack has lanes**.
+///
+/// A lane's row carries a weight field, a mute, a "+ strip" and — in what is left
+/// of it — the surface that opens the lane menu (mode, and the ONLY way to delete
+/// a lane). Squeezed to [`MIN_LABEL_W`] that surface is 0 px wide and the menu
+/// becomes unreachable, while the weight field is laid out 38 px off the panel's
+/// left edge. A column has a minimum because of what lives in it; when lanes live
+/// there, this is it.
+pub(crate) const MIN_LANE_LABEL_W: f32 = 148.0; // LITERAL-PX-OK: lane controls (94) + a name
+
+/// What the label column may not go below, given what it currently holds.
+pub(crate) fn min_label_w(snap: &TimelineViewSnapshot) -> f32 {
+    if snap.lanes.is_empty() {
+        MIN_LABEL_W
+    } else {
+        MIN_LANE_LABEL_W
+    }
+}
 /// Narrowest the time area may be squeezed to by widening the names.
 const MIN_TIME_W: f32 = 120.0; // LITERAL-PX-OK: min time-area width
 /// Half-width of the splitter's grab strip.
@@ -109,30 +127,30 @@ pub(crate) const TIME_GUTTER: f32 = 12.0; // LITERAL-PX-OK: splitter/first-key s
 /// The user's requested label-column width, held inside the panel's bounds. Never
 /// wider than what leaves [`MIN_TIME_W`] of time area, never below
 /// [`MIN_LABEL_W`] — and never wider than the region itself on a tiny panel.
-pub(crate) fn clamp_label_w(label_w: f32, region_w: f32) -> f32 {
-    let widest = (region_w - MIN_TIME_W).max(MIN_LABEL_W);
-    label_w.min(widest).max(MIN_LABEL_W).min(region_w)
+pub(crate) fn clamp_label_w(label_w: f32, region_w: f32, min: f32) -> f32 {
+    let widest = (region_w - MIN_TIME_W).max(min);
+    label_w.min(widest).max(min).min(region_w)
 }
 
 /// Where `view_start_s` maps — the seam plus [`TIME_GUTTER`]. Depends only on the
 /// panel rect + the label width, so `interact::process` can have it before the
 /// transport bar paints.
-pub(crate) fn time_x(rect: Rect, label_w: f32) -> f32 {
+pub(crate) fn time_x(rect: Rect, label_w: f32, min_label: f32) -> f32 {
     let body_x = rect.x + PANEL_HEAD_PAD;
     let body_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    body_x + clamp_label_w(label_w, body_w) + TIME_GUTTER
+    body_x + clamp_label_w(label_w, body_w, min_label) + TIME_GUTTER
 }
 
 /// Resolve the dope-sheet sub-rects from the panel `rect`, the transport bar's
 /// bottom edge and the (user-resizable) label-column width. (`region.h` does not
 /// depend on the title size: the body's bottom is `rect.y + rect.h -
 /// PANEL_HEAD_PAD` either way.)
-pub(crate) fn resolve(rect: Rect, after_transport: f32, label_w: f32) -> Geom {
+pub(crate) fn resolve(rect: Rect, after_transport: f32, label_w: f32, min_label: f32) -> Geom {
     let x = rect.x + PANEL_HEAD_PAD;
     let w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
     let bottom = rect.y + rect.h - PANEL_HEAD_PAD;
     let region = Rect::new(x, after_transport, w, (bottom - after_transport).max(0.0));
-    let label_w = clamp_label_w(label_w, region.w);
+    let label_w = clamp_label_w(label_w, region.w, min_label);
     let bar_x = region.x + region.w - SCROLLBAR_W;
     // The time column starts a gutter past the seam, so the splitter grip and the
     // first keyframe never fight over the same pixels.
@@ -427,30 +445,33 @@ mod tests {
     #[test]
     fn the_label_column_stays_between_its_bounds() {
         // Wide panel: the drag is honoured verbatim.
-        assert_eq!(clamp_label_w(200.0, 800.0), 200.0);
+        assert_eq!(clamp_label_w(200.0, 800.0, MIN_LABEL_W), 200.0);
         // Dragged to nothing: floors at MIN_LABEL_W.
-        assert_eq!(clamp_label_w(0.0, 800.0), MIN_LABEL_W);
+        assert_eq!(clamp_label_w(0.0, 800.0, MIN_LABEL_W), MIN_LABEL_W);
         // Dragged past the right edge: the time area keeps MIN_TIME_W.
-        assert_eq!(clamp_label_w(10_000.0, 800.0), 800.0 - MIN_TIME_W);
+        assert_eq!(
+            clamp_label_w(10_000.0, 800.0, MIN_LABEL_W),
+            800.0 - MIN_TIME_W
+        );
     }
 
     #[test]
     fn a_panel_too_narrow_for_both_still_yields_a_finite_column() {
         // MIN_LABEL_W + MIN_TIME_W does not fit: the label wins, capped by the
         // region, and never inverts into a negative time area.
-        let w = clamp_label_w(500.0, 80.0);
+        let w = clamp_label_w(500.0, 80.0, MIN_LABEL_W);
         assert!(w > 0.0 && w <= 80.0, "{w}");
-        assert!(clamp_label_w(0.0, 20.0) <= 20.0);
+        assert!(clamp_label_w(0.0, 20.0, MIN_LABEL_W) <= 20.0);
     }
 
     #[test]
     fn the_time_area_starts_a_gutter_past_the_label_column() {
         let rect = Rect::new(0.0, 0.0, 900.0, 400.0);
-        let g = resolve(rect, 40.0, 200.0);
+        let g = resolve(rect, 40.0, 200.0, MIN_LABEL_W);
         assert_eq!(g.label_w, 200.0);
         assert_eq!(g.time_area.x, g.region.x + 200.0 + TIME_GUTTER);
         assert_eq!(
-            time_x(rect, 200.0),
+            time_x(rect, 200.0, MIN_LABEL_W),
             g.time_area.x,
             "the two ways to find the time origin must agree"
         );
@@ -481,5 +502,33 @@ mod tests {
             corner_start.unwrap() > last_edge.unwrap(),
             "corners last = on top"
         );
+    }
+
+    /// **A column has a minimum because of what lives in it.** With lanes on
+    /// screen the label column carries a weight field, a mute, a "+ strip" and the
+    /// surface that opens the lane menu — which is the only way to DELETE a lane.
+    /// Squeezed to the track-row minimum that surface is 0 px wide (the menu
+    /// becomes unreachable) and the weight field lands 38 px off the panel's left
+    /// edge.
+    #[test]
+    fn the_label_column_cannot_be_squeezed_below_what_a_lane_row_needs() {
+        let mut snap = TimelineViewSnapshot::default();
+        assert_eq!(min_label_w(&snap), MIN_LABEL_W, "no lanes: the old minimum");
+
+        snap.lanes.push(ph2d_timeline::LaneView {
+            name: "L".into(),
+            muted: false,
+            weight: 1.0,
+            mode: ph2d_timeline::LaneMode::Override,
+            strips: Vec::new(),
+        });
+        let min = min_label_w(&snap);
+        assert_eq!(min, MIN_LANE_LABEL_W);
+        assert!(
+            min > MIN_LABEL_W,
+            "and it is strictly wider than the track-row minimum"
+        );
+        // A splitter dragged to nothing floors THERE, not at 56.
+        assert_eq!(clamp_label_w(0.0, 800.0, min), MIN_LANE_LABEL_W);
     }
 }

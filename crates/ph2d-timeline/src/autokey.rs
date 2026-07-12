@@ -167,7 +167,11 @@ pub fn key_value_in_active_clip(
     let scratch = doc.scratch();
     // The clip being edited must be playing exactly once right now, or "key it
     // here" has no single answer (see `stack_eval::sole_strip_of`).
-    crate::stack_eval::sole_strip_of(scratch, doc.active_index()).ok()?;
+    let strip = crate::stack_eval::sole_strip_of(scratch, doc.active_index()).ok()?;
+    // WHERE the key lands, in the clip's own time. The probe needs it: on an
+    // additive lane a key can move the reference its own delta is measured against,
+    // and a probe that only substituted a value could not see that.
+    let t_key = crate::stack_eval::strip_source_time(scratch, &strip, entity)?;
     // An unbound property has no target anywhere yet, so no clip can key it — a
     // target no clip holds is exactly the right answer, and the probe supplies the
     // active clip's contribution regardless. Targets are allocated up from 0, so
@@ -189,6 +193,7 @@ pub fn key_value_in_active_clip(
             rest,
         },
         doc.active_index(),
+        t_key,
         want,
     )
 }

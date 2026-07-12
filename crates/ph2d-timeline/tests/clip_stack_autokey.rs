@@ -268,3 +268,119 @@ fn every_prop_kind_interpolates_and_a_discrete_one_would_break_this() {
         );
     }
 }
+
+// ── A key can move the reference it is measured against ─────────────────────
+
+/// **The additive key that was silently thrown away** (audit, 2026-07-12).
+///
+/// An additive strip measures its delta against its clip's OWN value at `src_in`.
+/// Key at the strip's first frame — where an animator starts posing — and the key
+/// you write IS the value at `src_in`: the delta comes out zero, the pose is lost,
+/// and (worse) every OTHER frame of that lane translates by the value you just
+/// invented. The probe held the reference fixed, so the solve reported full
+/// influence where the truth is none, and nothing refused.
+///
+/// The probe now models the WRITE, so `A` really is 0 and the key is refused. A
+/// refusal is a correct answer here — the additive delta at a clip's own first
+/// frame is zero BY DEFINITION (Maya: "relative to its first frame"), so no value
+/// in the clip can produce that pose. What is NOT acceptable is the third outcome:
+/// writing a key and moving the object anyway.
+#[test]
+fn an_additive_key_at_the_strips_first_frame_is_refused_not_lost() {
+    let (mut world, mut doc, e) = scene();
+    // rest = 100, clip ramps 0 -> 10 over its 2 s.
+    if let Some(mut t) = world.get_mut::<Transform>(Entity::from_bits(e)) {
+        t.translation.x = 100.0;
+    }
+    doc.set_active(0);
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(0.0),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(2.0),
+        AnimValue::Float(10.0),
+        Interp::Linear,
+    );
+    let mut l = ClipLane::new("Add");
+    l.mode = LaneMode::Additive;
+    l.insert(ClipStrip::new(0, 0.0, 4.0, 2.0));
+    doc.stack_mut().push(l);
+
+    // The strip's FIRST frame: the delta is definitionally zero, so the sprite sits
+    // at its rest pose.
+    apply_from_doc(&mut world, &mut doc, 0.0);
+    assert!((x_of(&world, e) - 100.0).abs() < 1e-3);
+
+    // The animator drags it to 130. There is no value the clip could hold that
+    // would produce 130 here — keying it moves the reference too.
+    assert_eq!(
+        key_value_in_active_clip(&doc, e, PropKind::TranslationX, 130.0),
+        None,
+        "no value in the clip reaches this pose: refuse, do not invent one \
+         (before the fix it returned Some(30.0), the pose came out at 100 anyway, \
+          and every other frame of the lane shifted by -30)"
+    );
+
+    // And the rest of the strip is untouched — nothing was written.
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    assert!(
+        (x_of(&world, e) - 105.0).abs() < 1e-3,
+        "the lane still reads +5 at its midpoint: {}",
+        x_of(&world, e)
+    );
+}
+
+/// Away from the reference the additive inversion is exact, and it must stay so —
+/// the fix must not turn a working case into a refusal. Keying mid-strip writes a
+/// value that reproduces the pose the animator posed.
+#[test]
+fn an_additive_key_away_from_the_reference_still_round_trips_exactly() {
+    let (mut world, mut doc, e) = scene();
+    if let Some(mut t) = world.get_mut::<Transform>(Entity::from_bits(e)) {
+        t.translation.x = 100.0;
+    }
+    doc.set_active(0);
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(0.0),
+        AnimValue::Float(0.0),
+        Interp::Linear,
+    );
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(2.0),
+        AnimValue::Float(10.0),
+        Interp::Linear,
+    );
+    let mut l = ClipLane::new("Add");
+    l.mode = LaneMode::Additive;
+    l.insert(ClipStrip::new(0, 0.0, 4.0, 2.0));
+    doc.stack_mut().push(l);
+    apply_from_doc(&mut world, &mut doc, 1.0); // mid-strip; the pose is 105
+
+    let stored = key_value_in_active_clip(&doc, e, PropKind::TranslationX, 130.0)
+        .expect("mid-strip the clip DOES have influence");
+    let t_key = key_time(&doc, e, 1.0).expect("and the key has a home");
+    doc.insert_key(
+        e,
+        PropKind::TranslationX,
+        s(t_key),
+        AnimValue::Float(stored),
+        Interp::Linear,
+    );
+
+    apply_from_doc(&mut world, &mut doc, 1.0);
+    assert!(
+        (x_of(&world, e) - 130.0).abs() < 1e-2,
+        "the key must reproduce the pose it was authored from: {}",
+        x_of(&world, e)
+    );
+}

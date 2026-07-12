@@ -714,3 +714,40 @@ mod intents {
         assert_eq!(st.doc.stack()[0].strips.len(), 1, "one gesture, one Ctrl+Z");
     }
 }
+
+// ── The invariant `slice == span * speed` must be TRUE at birth ─────────────
+
+/// A clip SHORTER than the panel's minimum strip length used to be dropped into a
+/// 1 s box at speed 1.0 — a strip whose slice does not fill its span. Nothing
+/// complained until the first stretch: `stretch_strip` re-derives the rate from the
+/// span, so a 1 ms drag snapped a 0.4 s clip from speed 1.0 to 0.4 and the frame
+/// under the playhead jumped from 0.2 s to 0.08 s of clip time. The invariant holds
+/// at birth or it does not hold at all.
+#[test]
+fn a_strip_is_born_with_the_invariant_its_stretch_assumes() {
+    use ph2d_anim::{AnimValue, Interp, RationalTime};
+    use ph2d_timeline::{PropKind, TimelineDoc};
+    let mut doc = TimelineDoc::new();
+    // A clip 0.4 s long — shorter than any floor the panel might apply.
+    doc.insert_key(
+        7,
+        PropKind::TranslationX,
+        RationalTime::from_seconds(0.4),
+        AnimValue::Float(1.0),
+        Interp::Linear,
+    );
+    let lane = doc.add_lane("L".to_string()).unwrap();
+    // The caller asks for a 1 s span (what a floor would have produced).
+    let id = doc.add_strip(lane, 0, 0.0, 1.0).unwrap();
+    let s = doc.strip(lane, id).unwrap();
+
+    assert!(
+        (s.slice() - s.span() * s.speed).abs() < 1e-12,
+        "slice {} != span {} * speed {}",
+        s.slice(),
+        s.span(),
+        s.speed
+    );
+    // And the frame it shows is the frame the span says it shows.
+    assert!((s.source_time(0.5).unwrap() - 0.2).abs() < 1e-12);
+}

@@ -184,9 +184,11 @@ impl TimelineDoc {
     /// authors keys calls this first and is simply right, whether or not an apply
     /// ran before it.
     pub fn prime_stack(&mut self, t: f64) {
-        if self.scratch.built_at().to_bits() == t.to_bits() {
-            return;
-        }
+        // Unconditional. A "has the time changed" guard would be blind to the half
+        // of the dependency that matters more — the DOCUMENT changing at the same
+        // instant (a strip moved, a clip deleted) — and a cache that is fresh for
+        // one of its two inputs is a cache that lies. The rebuild is a scan of the
+        // live strips; the apply already pays it once a frame.
         let mut scratch = self.take_scratch();
         scratch.rebuild(self, t);
         self.put_scratch(scratch);

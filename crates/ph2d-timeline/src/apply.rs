@@ -189,6 +189,17 @@ pub fn key_home(doc: &TimelineDoc, entity: u64, t: f64) -> Result<f64, crate::Ke
         return Ok(remapped_time(doc, entity, t));
     }
     let scratch = doc.scratch();
+    // Under a stack the answer comes from the SCRATCH, so this function is only as
+    // honest as the caller's promise that the scratch describes `t`
+    // (`TimelineDoc::prime_stack`). Check the promise rather than trusting it: a
+    // caller reading a scratch built for another instant gets a confidently wrong
+    // key time, and that is the exact bug class this module has now paid for three
+    // times ([[feedback_derived_coordinate_seed_must_match_sample]]).
+    debug_assert!(
+        scratch.built_at().to_bits() == t.to_bits(),
+        "the stack scratch describes t={}, not t={t}: prime_stack first",
+        scratch.built_at()
+    );
     let strip = stack_eval::sole_strip_of(scratch, doc.active_index())?;
     // The strip is live (`sole_strip_of` said so), so its clock has an entry —
     // `NotPlaying` here would mean the scratch disagreed with itself.

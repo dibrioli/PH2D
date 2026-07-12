@@ -112,6 +112,14 @@ pub struct TimelinePanelState {
     pub loop_drag: Option<LoopDrag>,
     /// The clip strip being dragged or trimmed, if any.
     pub strip_drag: Option<StripDrag>,
+    /// A lane weight field is being edited (dragged or typed) and an undo bracket
+    /// is open for it. Without it, dispatch's per-Move `ValueChanged` would make
+    /// each frame of the drag its own atomic undo step — sliding the weight across
+    /// its range would leave dozens of Ctrl+Z steps behind. Every other
+    /// document-mutating gesture in this panel brackets; this was the one that did
+    /// not.
+    pub weight_edit: Option<usize>,
+
     /// Storage index of the marker being dragged on the ruler (W4.T3), if any.
     pub marker_drag: Option<usize>,
     /// The marker whose inline rename field is open (W4.T3), opened by a
@@ -347,6 +355,7 @@ impl Default for TimelinePanelState {
             summary_press: None,
             loop_drag: None,
             strip_drag: None,
+            weight_edit: None,
             marker_drag: None,
             marker_rename: None,
             clip_rename: None,

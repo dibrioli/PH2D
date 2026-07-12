@@ -815,3 +815,58 @@ fn the_weight_field_sets_the_lane_weight_and_a_vanished_lane_sets_none() {
     );
     ph2d_panel_timeline::set_current_timeline(None);
 }
+
+/// **One gesture, one Ctrl+Z.** Dispatch emits a `ValueChanged` for every Move of
+/// a number body-drag; unbracketed, each one is its own atomic undo step, and
+/// sliding the weight across its range left dozens of them behind. Every other
+/// document-mutating gesture in this panel brackets — this was the one that did
+/// not (audit, 2026-07-12).
+#[test]
+fn dragging_the_lane_weight_is_one_undo_step_not_one_per_frame() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_timeline::TimelineIntent as I;
+
+    let _ = ph2d_panel_timeline::drain_intents();
+    publish_one_lane();
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    let id = ids::TIMELINE_LANE_WEIGHT[0];
+
+    // The pointer goes down on the field (Focus), scrubs it across three frames,
+    // and lets go (Blur) — exactly what dispatch emits for a body drag.
+    host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Focus(id));
+    for v in [0.8, 0.5, 0.25] {
+        if let Some(InteractiveState::NumberInput { value, .. }) = host.store_mut().get_mut(id) {
+            *value = v;
+        }
+        host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::ValueChanged(id));
+    }
+    host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Blur(id));
+
+    let out = ph2d_panel_timeline::drain_intents();
+    assert!(
+        matches!(out.first(), Some(I::BeginEdit)),
+        "the bracket opens on Focus: {out:?}"
+    );
+    assert!(
+        matches!(out.last(), Some(I::EndEdit)),
+        "and closes on Blur, folding the whole scrub into ONE undo step: {out:?}"
+    );
+    assert_eq!(
+        out.iter()
+            .filter(|i| matches!(i, I::BeginEdit | I::EndEdit))
+            .count(),
+        2,
+        "exactly one bracket, however many frames the drag spans: {out:?}"
+    );
+    assert_eq!(
+        out.iter()
+            .filter(|i| matches!(i, I::SetLaneWeight { .. }))
+            .count(),
+        3,
+        "and every frame's value still reaches the document (a live drag)"
+    );
+    ph2d_panel_timeline::set_current_timeline(None);
+}

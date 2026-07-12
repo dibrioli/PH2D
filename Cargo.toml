@@ -38,6 +38,19 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.rayon]
 opt-level = 2
+# Same bargain for the audio DSP (W5, ADR-0115): the spectral tools are per-sample and
+# per-bin arithmetic, and at opt-0 they are 15-25x slower — a spectral repair goes from
+# 67 ms to 3.1 s, and resizing the spectrogram overlay from 3 ms/frame to 40 ms/frame. That
+# is a `cargo run` smoke reporting the feature as broken while the release build is fine,
+# which is exactly the phantom "grave FPS drop" this section was created for.
+[profile.dev.package.ph2d-audio-spectral]
+opt-level = 2
+[profile.dev.package.ph2d-audio-edit]
+opt-level = 2
+[profile.dev.package.realfft]
+opt-level = 2
+[profile.dev.package.rustfft]
+opt-level = 2
 
 [profile.release]
 opt-level = 3

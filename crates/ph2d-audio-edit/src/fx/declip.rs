@@ -20,6 +20,7 @@
 //! keeps this from mangling a clean, hot master — and `a_hot_but_clean_peak_is_left_alone`
 //! is the gate that says so.
 
+use std::cell::RefCell;
 use std::ops::Range;
 
 use ph2d_audio::SampleData;
@@ -67,32 +68,72 @@ pub(super) fn declip(data: &SampleData, threshold: f32, amount: f32) -> SampleDa
     if amount <= 0.0 {
         return data.clone();
     }
-    let ch = channels(data);
-    let frames = data.frame_count();
     let amount = f64::from(amount.clamp(0.0, 1.0));
     let threshold = f64::from(threshold).clamp(0.1, 1.0);
-    let mut out = data.samples().to_vec();
+    let full = reconstruct(data, threshold);
 
+    // Blend, so Amount is a real control and 0 is exactly the input. The reconstruction only
+    // ever *raises* a clipped sample away from the ceiling; blending it back in partially is
+    // a legitimate "restore some of the peak" and never an artefact.
+    let dry = data.samples();
+    let out: Vec<f32> = dry
+        .iter()
+        .zip(full.samples())
+        .map(|(d, w)| (f64::from(*d) + (f64::from(*w) - f64::from(*d)) * amount) as f32)
+        .collect();
+    SampleData::from_interleaved(out, data.format())
+}
+
+/// The clip with **every** clipped plateau rebuilt — the `amount = 1` reconstruction, which
+/// is what the blend above interpolates towards.
+///
+/// **Memoised on (buffer, threshold), and that is not an optimisation — it is what makes the
+/// Amount slider usable.** The rack auditions live: every frame of a slider drag re-renders
+/// the whole chain over the whole clip. The reconstruction is the expensive part (a dense
+/// least-squares solve per plateau — measured at 212 ms for a 60 s clipped clip, and up to
+/// 2 s on clipped bass), and it does **not depend on `amount`** at all. Without this, dragging
+/// Amount ran that solve every frame and the editor dropped to 10 fps (audit 2026-07-12).
+///
+/// One entry: the rack auditions one clip at a time, and the buffer identity is the `Arc`'s
+/// pointer, so an edit (or a different clip) is a miss.
+fn reconstruct(data: &SampleData, threshold: f64) -> SampleData {
+    thread_local! {
+        static CACHE: RefCell<Option<(usize, usize, u64, SampleData)>> = const { RefCell::new(None) };
+    }
+    let key = (
+        data.samples().as_ptr() as usize,
+        data.samples().len(),
+        threshold.to_bits(),
+    );
+    if let Some(hit) = CACHE.with(|c| {
+        c.borrow()
+            .as_ref()
+            .filter(|(p, l, t, _)| (*p, *l, *t) == key)
+            .map(|(_, _, _, d)| d.clone())
+    }) {
+        return hit;
+    }
+
+    let ch = channels(data);
+    let frames = data.frame_count();
+    let mut out = data.samples().to_vec();
     for c in 0..ch {
         let mut x: Vec<f64> = (0..frames)
             .map(|f| f64::from(data.samples()[f * ch + c]))
             .collect();
-        let dry = x.clone();
         let mut start = 0;
         while start < frames {
             let end = (start + BLOCK).min(frames);
             repair_block(&mut x, start..end, threshold);
             start = end;
         }
-        // Blend, so Amount is a real control and 0 is exactly the input. The reconstruction
-        // only ever *raises* a clipped sample away from the ceiling; blending it back in
-        // partially is a legitimate "restore some of the peak" and never an artefact.
         for f in 0..frames {
-            let v = dry[f] + (x[f] - dry[f]) * amount;
-            out[f * ch + c] = v as f32;
+            out[f * ch + c] = x[f] as f32;
         }
     }
-    SampleData::from_interleaved(out, data.format())
+    let built = SampleData::from_interleaved(out, data.format());
+    CACHE.with(|c| *c.borrow_mut() = Some((key.0, key.1, key.2, built.clone())));
+    built
 }
 
 /// Find the flat tops in one block and rebuild each from the signal around it.

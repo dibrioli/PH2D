@@ -18,6 +18,15 @@ use ph2d_tokens::{ColorToken, Theme};
 use std::sync::Arc;
 
 /// Everything spectral the shell holds for the loaded clip.
+///
+/// **Two of these fields are LEARNED, and learned state has to be told when the clip it was
+/// learned from is gone.** The two caches below are keyed on the buffer, so a new clip is a
+/// cache miss and they are safe by construction. The profile and the band are not keyed on
+/// anything — they *survive edits on purpose* (learn once, denoise, undo, denoise again at a
+/// different amount) — so nothing distinguished "survive an edit" from "survive a different
+/// file". Load a room tone, Learn, load a dialogue: Denoise stayed lit and subtracted the
+/// shape of a noise floor from a recording that never had it. Silent, and destructive
+/// (audit 2026-07-12). `editor_load` now clears this whole struct.
 #[derive(Default)]
 pub(crate) struct SpectralState {
     /// The analysed picture, and the buffer it was analysed from.
@@ -102,7 +111,20 @@ impl super::super::AudioSystem {
         h: u32,
         theme: Theme,
     ) -> Option<Arc<Vec<u8>>> {
-        let clip = self.editor.clip.as_ref()?;
+        // **The picture must be of the clip the overlay is BUILT ON — the sounding one.**
+        //
+        // The ruler, the playhead, the hit-test and `WaveView.frames` all come from
+        // `editor_clip()`, which is the live rack audition when one is running (and the
+        // force-mono view when that is on). Drawing the *committed* clip here instead put a
+        // picture of one buffer inside a rectangle whose time axis belongs to another: with a
+        // reverb auditioning, the audition is LONGER, so a beep at pixel x maps to a
+        // different frame — and the box drawn around it repairs the wrong instant. Nothing
+        // crashes; the repair "works" and removes the wrong thing (audit 2026-07-12).
+        //
+        // The cost is real and accepted: an audition hands us a new buffer every frame the
+        // user drags a rack slider, and each one is a fresh FFT (~24 ms for a 60 s clip). A
+        // picture that disagrees with the ruler you are clicking on is not a picture, though.
+        let clip = self.editor_clip()?;
         if w == 0 || h == 0 {
             return None;
         }
@@ -138,6 +160,17 @@ impl super::super::AudioSystem {
         self.spectral.band = Some((a.clamp(0.0, 1.0), b.clamp(0.0, 1.0)));
     }
 
+    /// The overlay: this selection was drawn in the WAVEFORM, which has no frequency axis —
+    /// so it has no band, and Repair has nothing to act on.
+    ///
+    /// It has to be said out loud rather than left alone: a stale band from an earlier
+    /// spectrogram drag would otherwise still be sitting there, and switching back to the
+    /// spectrogram would light Repair up over a box the user never drew for this selection
+    /// (audit 2026-07-12).
+    pub(crate) fn editor_clear_spectral_band(&mut self) {
+        self.spectral.band = None;
+    }
+
     /// The frequency band, for the overlay's selection box.
     pub(crate) fn editor_spectral_band(&self) -> Option<(f32, f32)> {
         self.spectral.band
@@ -157,6 +190,12 @@ impl super::super::AudioSystem {
             hz: (a.min(b) * nyquist)..(a.max(b) * nyquist),
         };
         let out = ph2d_audio_spectral::repair(clip.data(), &band);
+        // A no-op must not cost an undo step. `repair` returns the input unchanged when the
+        // band collapses, and `commit_rendered` pushes onto the history unconditionally — so
+        // the user got a lit Undo button for an edit that never happened (audit 2026-07-12).
+        if out.samples() == clip.data().samples() {
+            return;
+        }
         clip.commit_rendered(out);
         self.editor_hot_swap();
     }
@@ -174,7 +213,12 @@ impl super::super::AudioSystem {
         let Some(sel) = clip.selection() else {
             return;
         };
-        self.spectral.profile = NoiseProfile::learn(clip.data(), sel);
+        // Keep the old profile if the new selection is too short to learn from. Assigning the
+        // `None` straight through would delete a good profile in silence and darken the
+        // Denoise button, with nothing on screen to say why (audit 2026-07-12).
+        if let Some(p) = NoiseProfile::learn(clip.data(), sel) {
+            self.spectral.profile = Some(p);
+        }
     }
 
     /// **Denoise**: suppress the learned noise across the whole clip.
@@ -187,6 +231,12 @@ impl super::super::AudioSystem {
             return;
         };
         let out = ph2d_audio_spectral::denoise(clip.data(), profile, amount);
+        // Same guard as the repair: `denoise` returns the input untouched at amount 0 (and
+        // when the profile's rate does not match the clip's), and an undo step for nothing is
+        // a lie about what happened.
+        if out.samples() == clip.data().samples() {
+            return;
+        }
         clip.commit_rendered(out);
         self.editor_hot_swap();
     }

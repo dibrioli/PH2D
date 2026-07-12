@@ -131,6 +131,12 @@ impl AudioSystem {
         self.editor.mono_view = None;
         self.editor.mono_sig = None;
         self.editor_fx_discard();
+        // …and it starts with nothing LEARNED about it. The noise profile and the
+        // time-frequency band are the only spectral state not keyed on the buffer (they
+        // survive edits on purpose), so a new file has to clear them explicitly — otherwise
+        // Denoise stays lit after a Load and subtracts the previous file's noise floor from
+        // this one (audit 2026-07-12).
+        self.spectral = Default::default();
     }
 
     /// The clip **before** the force-mono view: the live audition when the effects rack

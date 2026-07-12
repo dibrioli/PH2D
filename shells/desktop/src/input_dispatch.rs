@@ -1865,20 +1865,32 @@ impl App {
     /// Extend the active selection to the cursor. Returns `true` if a selection drag is
     /// live (the caller early-returns so it doesn't also pan).
     ///
-    /// In the waveform this sets a time range and nothing else. In the **spectrogram** the
-    /// same gesture also sets the frequency band, because there the selection is a box —
-    /// and the box is the only thing spectral repair can act on (W5).
+    /// In the **spectrogram** the gesture sets a box — a time range AND a frequency band,
+    /// which is the only thing spectral repair can act on (W5). In the **waveform** there is
+    /// no frequency axis, so the same gesture sets a time range and explicitly CLEARS the
+    /// band.
+    ///
+    /// Clearing it matters. The doc used to promise the waveform "sets a time range and
+    /// nothing else" while the code wrote the band on every drag, using the y of a gesture
+    /// the user made along x — so a horizontal drag in the waveform overwrote a carefully
+    /// drawn box with a degenerate one, and Repair stayed lit and did nothing visible
+    /// (audit 2026-07-12).
     #[cfg(feature = "panel-audio-editor")]
     fn audio_sel_drag_move(&mut self, x: f32, y: f32) -> bool {
         let Some((anchor, anchor_hz)) = self.audio_sel_drag else {
             return false;
         };
+        let spectral = ph2d_panel_audio_editor::spectral_state::view();
         if let Some(view) = crate::audio::wave_view() {
             let cur = crate::audio::frame_at_x(&view, x);
             let cur_hz = freq_at_y(&view, y);
             if let Some(a) = self.audio.as_mut() {
                 a.editor_set_selection(anchor, cur);
-                a.editor_set_spectral_band(anchor_hz, cur_hz);
+                if spectral {
+                    a.editor_set_spectral_band(anchor_hz, cur_hz);
+                } else {
+                    a.editor_clear_spectral_band();
+                }
             }
         }
         true

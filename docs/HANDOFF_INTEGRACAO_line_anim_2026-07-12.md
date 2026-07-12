@@ -248,8 +248,8 @@ apagar um tipo `pub` na crate alheia enquanto ela está viva é exatamente a col
 ~~ETAPA 1 (W4.T7 relógio único)~~ **FEITA** (§7) · ~~ETAPA 3 (seletor de clip)~~ **FEITA** (§9) ·
 **ETAPA 2** (W4.T4: docar a timeline no `motion_timeline_slot` — destravada pelo T7, mas **ESPERE a linha
 Motion fechar**: ela cai em `motion_bridge.rs` blocos 1-2 + dentro de `apply_graph_intents`, a região viva
-dela, e nada depende dela) · ETAPA 4 (markers → signals — isolada, pequena) · **NLA de verdade**
-(empilhar clips; o seletor é o passo 1) · ETAPA 6 (save cena+timeline).
+dela, e nada depende dela) · ETAPA 4 (markers → signals — isolada, pequena) · **composição de clips**
+(empilhar; o seletor é o passo 1 — **desenhada, não construída**: §10) · ETAPA 6 (save cena+timeline).
 Detalhe em [`HANDOFF_line_anim_CONTINUACAO_2026-07-12.md`](HANDOFF_line_anim_CONTINUACAO_2026-07-12.md) §2.
 
 ---
@@ -294,3 +294,34 @@ genericamente (`mod.rs:805`).
    você deixou**. Renomeie pelo lápis (Enter confirma, Esc cancela). Apague pela lixeira.
    **Esperado:** com **um** clip só, a lixeira **não aparece** (o documento sempre tem um clip para editar).
    Um **Ctrl+Z** desfaz cada operação inteira.
+
+---
+
+## §10 — Composição de clips: DESENHADA, não construída (só docs neste commit)
+
+**Nada de código.** O Enio pediu o próximo passo ("empilhar clips") e mandou **pesquisar o padrão-ouro
+antes de portar** — *"Blender nem sempre é o melhor"*. A pesquisa (5 frentes) **inverteu o desenho** e o
+resultado é [**ADR-0115**](architecture/decisions/0115-clip-composition-sequencer-overlap-crossfade-sparse-lanes.md)
++ [plano](Timeline/02_plano_composicao_clips.md). Ambos **propostos** — aguardam ratificação.
+
+**O que a pesquisa matou (portar o strip-stack do Blender):**
+- O **próprio Blender** está movendo blend/influence do strip pra **camada** (projeto Baklava: Slotted
+  Actions shipou no 4.4; Layered Animation em WIP; strips-na-Action 2027+), cortou 5 modos pra 2 e quer
+  **eliminar o tweak mode**. Veredito deles sobre o NLA: *"not a pleasure to work with"*.
+- Os **sequenciadores** (Unity/Unreal/Maya/MotionBuilder) convergiram no gesto **sobrepôs-cruzou** — que
+  falta ao Blender (strips na mesma faixa **não podem** se sobrepor lá).
+- No **2D**, "empilhar e blendar" **não é o idioma**: Animate/Harmony/AE não têm blend de animação nenhum;
+  a Cavalry (única 2D com blend real) escolheu **camadas por-atributo**; o Moho resolve overlap por **canais
+  disjuntos**. O idioma 2D é **nesting** — e nós temos **zero** (nomeado como o ADR seguinte).
+
+**Três coisas que a pesquisa expôs no NOSSO código, e que o integrador deve conhecer:**
+1. `remapped_time` lê `doc.active_clip()` ([apply.rs:98](../crates/ph2d-timeline/src/apply.rs)) — sob uma
+   pilha, *qual clip dá o relógio da entidade?* é **indefinido**. O ADR §2/R6 fixa: o strip mapeia
+   timeline→clip, o `TimeRemap` **daquele clip** mapeia clip→fonte (modelo precomp do AE).
+2. O apply **já é O(bindings²)** (o remap re-varre a lista por binding). Empilhar em cima disso vira
+   **cúbico** — o hoist é **pré-requisito medido** do kill-criterion, não bônus.
+3. `TranslationX` é posição **absoluta**: "blend-to-default" (a regra do Blender/Godot) **jogaria o sprite
+   na origem do pai**. Eles não sofrem disso porque osso é rest-relative. Daí o `rest` **capturado** por
+   binding (ADR §2/R5) — o Capture Base State do Rive e a Base Pose do Unreal, que os dois precisaram.
+
+**Nenhum contrato congelado é tocado**; quando construído, `DOC_VERSION` vai 3→4.

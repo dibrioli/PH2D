@@ -72,7 +72,7 @@ gap editor↔runtime.
 | **Tempo & transporte** | Playhead + scrub bidirecional · play/pause · **loop range** · frame⇄timecode | ✅ parcial · loop 🔜 (W0) |
 | | Markers/regions (Unity signals) · time remap | 🔜 (W4) · backlog |
 | | Onion skin (raster frame-anim) | — (caso do Painter, não do core) |
-| **Estrutura** | Tracks hierárquicos colapsáveis · clip nomeado · NLA/keyframe-layers blend · nesting | 🔜 (W2) · ✅ `Clip` · backlog · backlog |
+| **Estrutura** | Tracks hierárquicos colapsáveis · clip nomeado · composição de clips · **nesting** | 🔜 (W2) · ✅ `Clip` + UI · 🔜 [ADR-0115](../architecture/decisions/0115-clip-composition-sequencer-overlap-crossfade-sparse-lanes.md) · backlog (**o idioma 2D de reuso** — ADR seguinte) |
 | **Procedural/data** | Expressions/drivers · behaviours + **bake→keys** · data binding · state machine | — (Motion Nodes) · backlog-ponte |
 | **Interação** | **Performing por gesto** (Dreams) · **auto-key** (Blender) · joystick 2D (Cavalry) | backlog-WOW · 🔜 (W4) · backlog |
 | **Feedback** | Timecode/tooltip no scrub · live preview sempre | 🔜 (W2) · ✅ apply |
@@ -108,8 +108,8 @@ Feito = o Enio consegue, SÓ pela UI (mouse + atalhos):
 8. Gates verdes: seam tests comportamentais (ui-testkit), wiring-parity, no_literal_color, i18n EN, LOC caps, dhat (paused = 0 alloc no caminho bridge), clippy/fmt; 60 fps na cena de referência (B5).
 
 **Não-escopo v1 (backlog W5):** performing por gesto, speed graph, weighted/value-space tangents,
-roving, NLA/keyframe-layers, time remap, multi-clip UI + nó `motion.clip`, markers→signals, MCP/Luau
-(HR-10), bake procedural↔keys, export, onion skin.
+roving, composição de clips (ex-"NLA"), nesting, time remap, multi-clip UI + nó `motion.clip`,
+markers→signals, MCP/Luau (HR-10), bake procedural↔keys, export, onion skin.
 
 ## B2. Arquitetura (decisões fixadas)
 
@@ -232,11 +232,18 @@ keys em massa → undo — tudo pela UI.
 
 ### W5 — Backlog (pós-v1; ordem sugerida por valor)
 
-Performing por gesto (Dreams-style, gravar durante o play) · ~~speed graph~~ ✅ **(landou
-2026-07-11)** · ~~weighted/value-space tangents~~ ✅ **(landou 2026-07-11)** · ~~time remap~~ ✅
-**(landou 2026-07-11)** · roving keys (**PRÓXIMO** — fila do Enio) · keyframe-layers/NLA blend ·
-multi-clip UI + nó `motion.clip` (seam Motion) · markers→signals/eventos · API MCP/Luau da timeline
-(HR-10) · bake procedural⇄keys (ponte Cavalry) · export.
+~~Performing por gesto~~ ✅ · ~~speed graph~~ ✅ · ~~weighted/value-space tangents~~ ✅ · ~~time remap~~ ✅
+· ~~roving keys~~ ✅ **(todos landaram 2026-07-11)** · ~~multi-clip UI~~ ✅ **(landou 2026-07-12)** ·
+**composição de clips** (o ex-"keyframe-layers/NLA blend" — **PRÓXIMO**, [ADR-0115](../architecture/decisions/0115-clip-composition-sequencer-overlap-crossfade-sparse-lanes.md)
++ [plano](02_plano_composicao_clips.md)) · **nesting** (o idioma 2D de reuso — ADR seguinte) · nó
+`motion.clip` (seam Motion) · markers→signals/eventos · API MCP/Luau da timeline (HR-10) · bake
+procedural⇄keys (ponte Cavalry) · export.
+
+> **O "NLA blend" deste backlog foi REDESENHADO (2026-07-12).** Portar o strip-stack do Blender foi
+> **descartado**: o próprio Blender está movendo blend/influence do strip pra **camada** (projeto Baklava),
+> os sequenciadores convergiram no gesto **sobrepôs-cruzou** (que falta ao Blender), e no 2D "empilhar e
+> blendar" **não é o idioma** (Animate/Harmony/AE não têm blend de animação nenhum; a Cavalry escolheu
+> camadas por-atributo). Evidência + as 9 regras + kill-criterion no ADR-0115.
 
 **Time remap (W5, FECHADO 2026-07-11):** `PropKind::TimeRemap = 6` — track **"Time"** por entidade
 (playhead → tempo-fonte; slope<1 slow-mo, flat freeze, descendo reverse) que retima TODAS as outras

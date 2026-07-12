@@ -119,6 +119,7 @@
 - [Vector cutover ADR-0108](project_vector_cutover_adr0108.md) — módulo REPOSICIONADO (Rive-ref, GPU/editor-first); `ph2d-vec-*`+`ph2d-tool-vector`; icon-sort=slug, gate-doc FICA
 - [Flip = port 2D do Grease Pencil](project_flip_module_grease_pencil_2d.md) — 4º meio (animação quadro-a-quadro); W0-W4 fechadas (2026-07-12): traço, frames/ghosts/tween, balde (âncora = EIXO da linha). Timeline global ADIADA. Autokey é POR-TOOL (borracha sempre duplica)
 - [Flip: traço = UNIÃO GLOBAL da polilinha](project_flip_stroke_analytic_coverage_gp.md) — mordida MORTA (2026-07-12): janela p0/p3 + vizinhos GEOMÉTRICOS (broadphase no pack) + capsule_dn única + clamp/fade sub-pixel; 1 passe, 5 mutações provadas
+- [Composição de clips ≠ NLA do Blender](project_clip_composition_not_blender_nla.md) — o Blender abandonou o próprio strip-stack; no 2D o idioma é NESTING. Overlap=crossfade; apply já é O(bindings²); TranslationX é absoluta (blend-to-default joga o sprite na origem)
 - [Modelo multi-agente = função do HW](project_multiagent_modo_l_2026_07_05.md) — workstation=Modo L (worktree, sem coordenador); constrained=Modo C. ADR-0106/0107
 - [Tool isolation ADR-0040 frozen](project_tool_isolation_freeze_2026_05_22.md) — tools = drop-crates + tool-sync codegen; tool nova = fan-out drop-in
 - [Vector node carrier opaco](project_vector_node_opaque_carrier.md) — nós vetoriais emitem VectorNetwork via `CookValue::Opaque(Arc<dyn Any>)`

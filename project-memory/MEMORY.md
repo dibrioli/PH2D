@@ -65,6 +65,7 @@
 - [Menu "não faz nada" = falta populate](feedback_context_menu_closes_on_down_repaint.md) — grep o id no `populate_*` PRIMEIRO; close-on-Down = red herring
 - [Meça a ESCALA do sintoma antes da causa](feedback_measure_perf_symptom_scale.md) — fixe o nº (ms); frame(4-16ms) vs ⅓s muda a classe; bench-verde≠vivo
 - [Harness reproduz mecanismo, não contexto](feedback_harness_reproduces_mechanism_not_context.md) — smoke contradiz fix ⇒ instrumente o guard no app real
+- [1º caso salvo por efeito colateral](feedback_first_case_rescued_by_side_effect_test_repetition.md) — fixture de 1 traço não continha o bug do 2º; teste a REPETIÇÃO, no ritmo real do app
 - [Não-reprodução ≠ correção](feedback_nonreproduction_is_not_proof_of_fix.md) — bug intermitente que some segue VIVO; cheque o `git diff` antes de aceitar "resolveu"
 - [Unit-verde ≠ funciona no produto](feedback_tool_unit_green_integration_dead.md) — tool passa unit+CI e está morta (pill/input não wirado); só audit e2e pega
 - [Pintado ≠ populado: teste a PINTURA](feedback_painted_is_not_populated_paint_gate.md) — nenhum gate rodava `paint`; "o botão não existe" passava em tudo

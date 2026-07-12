@@ -188,6 +188,21 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
                 state::set_rot_last(0.0);
             }
         }
+        // Seed the variation-axis fields (value + range) from the published axes of
+        // the current font — skip the field being edited so a keystroke/drag isn't
+        // clobbered. Fixed slots adapt to whatever axes the font has (paint reads the
+        // seeded value; a change flows back as a `SetValue` the shell applies).
+        let focus = store.focus_id();
+        let axes: Vec<(f64, f64, f64)> =
+            state::with_text_axes(|a| a.iter().map(|s| (s.min, s.max, s.value)).collect());
+        for (i, (min, max, value)) in axes.into_iter().enumerate() {
+            let id = ids::vector_text_axis_id(i);
+            let step = ((max - min) / 40.0).max(0.01); // LITERAL-PX-OK: ~40 scrub steps across the axis range (drag granularity, not a metric)
+            store.set_number_range(id, min, max, step);
+            if focus != Some(id) {
+                store.set_number_value(id, value);
+            }
+        }
         store.set_panel_content_h(ids::VECTOR_PANEL, content_h);
         store.set_panel_visible_h(ids::VECTOR_PANEL, body_h);
         // Clamp any stale scroll if the content shrank (e.g. a mode switch hid a

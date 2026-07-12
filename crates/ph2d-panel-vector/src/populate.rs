@@ -272,6 +272,22 @@ fn populate_shape(store: &mut WidgetStore) {
         TEXT_TRACKING_SLIDER_SCALE,
         TEXT_TRACKING_SLIDER_OFFSET,
     );
+    // Variation-axis number fields (one per non-wght axis the current font exposes).
+    // Value + range are seeded per-frame from the published axes (paint Phase B), so
+    // the fixed slots adapt to whatever axes the current font has.
+    for i in 0..ids::MAX_TEXT_VARIATION_AXES {
+        store.register(
+            ids::vector_text_axis_id(i),
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::from("0"),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+    }
 
     populate_transform_fields(store);
 }

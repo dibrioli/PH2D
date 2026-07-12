@@ -804,4 +804,16 @@ fn vector_dynamic_ids_dont_collide_with_chrome_or_each_other() {
             "vector_text_font_option_id({index}) (id {id:#018x}) collides with another dynamic id",
         );
     }
+    // Variation-axis fields (index into the current font's non-wght axes).
+    for index in 0..ids::MAX_TEXT_VARIATION_AXES {
+        let id = ids::vector_text_axis_id(index).0;
+        assert!(
+            !chrome.contains(&id),
+            "vector_text_axis_id({index}) (id {id:#018x}) collides with a chrome const",
+        );
+        assert!(
+            seen.insert(id),
+            "vector_text_axis_id({index}) (id {id:#018x}) collides with another dynamic id",
+        );
+    }
 }

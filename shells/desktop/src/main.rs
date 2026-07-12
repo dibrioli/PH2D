@@ -265,6 +265,7 @@ impl App {
             vec_text_line_height: ph2d_tool_vector::params::DEFAULT_TEXT_LINE_HEIGHT,
             vec_text_tracking: ph2d_tool_vector::params::DEFAULT_TEXT_TRACKING,
             vec_text_align: ph2d_tool_vector::TextAlign::Left,
+            vec_text_extra_axes: vec_font::seed_extra_axes(None),
             vec_text_family: None,
             vec_entities: Default::default(),
             flip_entities: Default::default(),

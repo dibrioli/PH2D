@@ -660,6 +660,10 @@ pub(crate) struct App {
     /// Alinhamento horizontal corrente do texto (L/C/R) — botões do painel; persiste
     /// entre sessões.
     pub(crate) vec_text_align: ph2d_tool_vector::TextAlign,
+    /// Valores correntes dos eixos de variação da fonte além do peso (opsz/wdth/…), na
+    /// ordem de `vec_font::variation_axes`. Reseedado quando a família muda; a seção
+    /// Axes do painel os edita e uma nova sessão herda estes defaults.
+    pub(crate) vec_text_extra_axes: Vec<(ph2d_vector_font::AxisTag, f32)>,
     /// Família de fonte corrente do texto (`None` = InterVariable embutida). Os botões
     /// `<`/`>` do painel ciclam; persiste entre sessões.
     pub(crate) vec_text_family: Option<String>,

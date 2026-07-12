@@ -66,6 +66,14 @@ pub(crate) fn apply_event(
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
             true
         }
+        // Variation-axis number field — forward the committed axis value; the shell
+        // maps the slot index to the font's axis and re-cooks the glyphs.
+        WidgetEvent::ValueChanged(id) if state::text_axis_index(id).is_some() => {
+            let val = host.store().number_value(id).unwrap_or(0.0);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
+            true
+        }
         // Shape-parameter sliders — same shape as Width (track 0..1 → the tool
         // projects to a side/point count, inner ratio, or radius).
         WidgetEvent::ValueChanged(id)

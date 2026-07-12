@@ -59,6 +59,9 @@ thread_local! {
     /// Alinhamento horizontal corrente do texto (L/C/R), publicado pela shell no modo
     /// Text — destaca o botão ativo na seção Paragraph. `None` fora do modo Text.
     static CURRENT_TEXT_ALIGN: Cell<Option<TextAlign>> = const { Cell::new(None) };
+    /// Eixos de variação da fonte corrente (sem `wght`), publicados pela shell — a
+    /// seção Axes desenha um campo por eixo. Vazio fora do modo Text / fonte estática.
+    static CURRENT_TEXT_AXES: RefCell<Vec<TextAxisSlot>> = const { RefCell::new(Vec::new()) };
     /// Rotation-field accumulator: the angle (degrees) the Angle chip last
     /// reported THIS gesture. `event` emits the DELTA `(current − this)` so the
     /// shell rotates incrementally; reset to 0 by `paint` whenever the field is
@@ -289,6 +292,35 @@ pub fn set_current_text_align(align: Option<TextAlign>) {
 /// O alinhamento corrente este frame (destaca o botão L/C/R ativo). `None` = default.
 pub(crate) fn current_text_align() -> Option<TextAlign> {
     CURRENT_TEXT_ALIGN.with(Cell::get)
+}
+
+/// Um eixo de variação da fonte corrente exposto como campo numérico na seção Axes do
+/// painel (fora o Weight, que tem slider próprio). A shell (dona do `VariableFont`)
+/// publica nome + range + valor; o painel só desenha o campo e devolve o valor.
+#[derive(Clone, Debug)]
+pub struct TextAxisSlot {
+    /// Nome legível do eixo (`"Optical Size"`, `"Width"`, `"Slant"`…).
+    pub name: String,
+    pub min: f64,
+    pub max: f64,
+    pub value: f64,
+}
+
+/// Publica os eixos de variação da fonte corrente (sem `wght`), na ordem em que a
+/// shell os aplica. Vazio fora do modo Text ou para fontes não-variáveis.
+pub fn set_current_text_axes(axes: Vec<TextAxisSlot>) {
+    CURRENT_TEXT_AXES.with(|c| *c.borrow_mut() = axes);
+}
+
+/// Roda `f` com os eixos publicados (sem clonar o `Vec`).
+pub(crate) fn with_text_axes<R>(f: impl FnOnce(&[TextAxisSlot]) -> R) -> R {
+    CURRENT_TEXT_AXES.with(|c| f(&c.borrow()))
+}
+
+/// Índice do eixo de variação cujo id de campo é `id` (`None` se não for um). Casa
+/// contra o espaço fixo de slots (`MAX_TEXT_VARIATION_AXES`).
+pub(crate) fn text_axis_index(id: NodeId) -> Option<usize> {
+    (0..crate::ids::MAX_TEXT_VARIATION_AXES).find(|&i| crate::ids::vector_text_axis_id(i) == id)
 }
 
 /// Uma família selecionável no dropdown de fonte, já com o **nome renderizado no

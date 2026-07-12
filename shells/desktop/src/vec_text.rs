@@ -28,6 +28,10 @@ pub(crate) struct VecTextEdit {
     pub tracking: f64,
     /// Alinhamento horizontal do bloco (L/C/R) em relação à origem.
     pub align: TextAlign,
+    /// Valores dos eixos de variação da fonte ALÉM do peso (opsz/wdth/slnt/…), na
+    /// ordem que a fonte expõe (`vec_font::variation_axes`). Casa índice-a-índice com
+    /// os campos da seção Axes do painel; reseedado quando a família muda.
+    pub extra_axes: Vec<(ph2d_vector_font::AxisTag, f32)>,
     /// Família de fonte escolhida (`None` = a InterVariable embutida). Resolvida em
     /// `VariableFont` por `vec_font::resolve` a cada regen.
     pub family: Option<String>,
@@ -79,6 +83,7 @@ impl crate::app_state::App {
             line_height: self.vec_text_line_height, // entrelinha corrente
             tracking: self.vec_text_tracking, // tracking corrente
             align: self.vec_text_align, // alinhamento corrente
+            extra_axes: self.vec_text_extra_axes.clone(), // eixos extras correntes
             family: self.vec_text_family.clone(), // a família corrente (Font picker)
             fill,
             stroke,
@@ -165,11 +170,14 @@ fn layout_of(edit: &VecTextEdit) -> TextLayout {
     }
 }
 
-/// Os valores dos eixos variáveis da sessão (hoje só `wght`). O default 400 já casa
-/// com a location neutra do skrifa; mandar sempre é inofensivo e deixa o eixo pronto
-/// para novos eixos (opsz/slnt) sem tocar as assinaturas do converter.
-fn axes_of(edit: &VecTextEdit) -> [(ph2d_vector_font::AxisTag, f32); 1] {
-    [(ph2d_vector_font::AxisTag::WEIGHT, edit.weight)]
+/// Os valores dos eixos variáveis da sessão: o peso (`wght`) + os eixos extras que a
+/// fonte expõe (opsz/wdth/slnt/…). O skrifa clampa cada um no range da fonte; mandar
+/// todos é a `location` completa do glyph.
+fn axes_of(edit: &VecTextEdit) -> Vec<(ph2d_vector_font::AxisTag, f32)> {
+    let mut axes = Vec::with_capacity(1 + edit.extra_axes.len());
+    axes.push((ph2d_vector_font::AxisTag::WEIGHT, edit.weight));
+    axes.extend(edit.extra_axes.iter().copied());
+    axes
 }
 
 /// Sincroniza o Style de uma sessão de texto ATIVA com o Style vivo do painel, por
@@ -294,25 +302,50 @@ pub(crate) fn apply_text_align(
 pub(crate) fn cycle_text_font(
     edit: &mut Option<VecTextEdit>,
     family_field: &mut Option<String>,
+    extra_axes_field: &mut Vec<(ph2d_vector_font::AxisTag, f32)>,
     scene: &mut ph2d_vec_scene::VecScene,
     dir: i32,
 ) {
     let next = crate::vec_font::cycle_family(family_field.as_deref(), dir);
-    set_text_font(edit, family_field, scene, next);
+    set_text_font(edit, family_field, extra_axes_field, scene, next);
 }
 
 /// Define a família de fonte corrente diretamente (escolha no dropdown, `None` = a
-/// embutida) + regenera a sessão ativa. Mesmo efeito que [`cycle_text_font`], mas
-/// com um alvo explícito em vez de próximo/anterior.
+/// embutida) + regenera a sessão ativa. A fonte nova tem seus PRÓPRIOS eixos de
+/// variação, então re-semeia os eixos extras (default de cada) na shell e na sessão.
 pub(crate) fn set_text_font(
     edit: &mut Option<VecTextEdit>,
     family_field: &mut Option<String>,
+    extra_axes_field: &mut Vec<(ph2d_vector_font::AxisTag, f32)>,
     scene: &mut ph2d_vec_scene::VecScene,
     family: Option<String>,
 ) {
     *family_field = family.clone();
+    *extra_axes_field = crate::vec_font::seed_extra_axes(family.as_deref());
     if let Some(edit) = edit.as_mut() {
         edit.family = family;
+        edit.extra_axes = extra_axes_field.clone();
+        regen_into(scene, edit);
+    }
+}
+
+/// Aplica o valor de um eixo de variação extra (índice na ordem de
+/// `vec_font::variation_axes`) vindo do campo do painel: atualiza o default corrente
+/// da shell + a sessão ativa + regenera. Mirror de [`apply_text_weight`], mas por eixo.
+pub(crate) fn apply_text_axis(
+    edit: &mut Option<VecTextEdit>,
+    extra_axes_field: &mut [(ph2d_vector_font::AxisTag, f32)],
+    scene: &mut ph2d_vec_scene::VecScene,
+    index: usize,
+    value: f64,
+) {
+    if let Some((_, v)) = extra_axes_field.get_mut(index) {
+        *v = value as f32;
+    }
+    if let Some(edit) = edit.as_mut() {
+        if let Some((_, v)) = edit.extra_axes.get_mut(index) {
+            *v = value as f32;
+        }
         regen_into(scene, edit);
     }
 }
@@ -324,6 +357,7 @@ pub(crate) fn set_text_font(
 pub(crate) fn import_text_font(
     edit: &mut Option<VecTextEdit>,
     family_field: &mut Option<String>,
+    extra_axes_field: &mut Vec<(ph2d_vector_font::AxisTag, f32)>,
     scene: &mut ph2d_vec_scene::VecScene,
 ) -> bool {
     let Some(path) = rfd::FileDialog::new()
@@ -343,8 +377,10 @@ pub(crate) fn import_text_font(
         return false; // não é uma fonte válida
     };
     *family_field = Some(name.clone());
+    *extra_axes_field = crate::vec_font::seed_extra_axes(Some(&name));
     if let Some(edit) = edit.as_mut() {
         edit.family = Some(name);
+        edit.extra_axes = extra_axes_field.clone();
         regen_into(scene, edit);
     }
     true
@@ -386,6 +422,7 @@ mod tests {
             line_height: 1.2,
             tracking: 0.0,
             align: TextAlign::Left,
+            extra_axes: Vec::new(),
             family: None,
             fill: Some(black()),
             stroke: None,
@@ -414,6 +451,7 @@ mod tests {
             line_height: 1.2,
             tracking: 0.0,
             align: TextAlign::Left,
+            extra_axes: Vec::new(),
             family: None,
             fill: Some(black()),
             stroke: None,
@@ -439,6 +477,7 @@ mod tests {
             line_height: 1.2,
             tracking: 0.0,
             align: TextAlign::Left,
+            extra_axes: Vec::new(),
             family: None,
             fill: Some(black()),
             stroke: None,

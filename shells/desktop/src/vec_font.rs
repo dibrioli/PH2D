@@ -14,7 +14,17 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use fontique::{Collection, CollectionOptions, SourceCache};
-use ph2d_vector_font::VariableFont;
+use ph2d_vector_font::{AxisTag, VariableFont, VariableFontAxis};
+
+/// Um eixo de variação de uma fonte (fora o `wght`, que tem slider próprio) — nome
+/// legível + range + default. Alimenta a seção Axes do painel.
+pub(crate) struct AxisDesc {
+    pub tag: AxisTag,
+    pub name: String,
+    pub min: f32,
+    pub max: f32,
+    pub default: f32,
+}
 
 /// A fonte embutida (InterVariable) como `Arc`, parseada 1× — o default (`family =
 /// None`) e o fallback quando uma família do sistema não parseia. NÃO constrói o
@@ -159,6 +169,35 @@ pub(crate) fn display_name(family: Option<&str>) -> String {
     family.map_or_else(|| "Inter (bundled)".to_owned(), str::to_owned)
 }
 
+/// Os eixos de variação de `family` ALÉM do peso (`wght`), na ordem que a fonte os
+/// expõe — o que a seção Axes do painel mostra. Vazio para fontes estáticas ou que só
+/// têm peso. Resolve a fonte (cacheada) e lê o `fvar`.
+#[must_use]
+pub(crate) fn variation_axes(family: Option<&str>) -> Vec<AxisDesc> {
+    resolve(family)
+        .axes()
+        .iter()
+        .filter(|a| a.tag() != AxisTag::WEIGHT)
+        .map(|a| AxisDesc {
+            tag: a.tag(),
+            name: a.name().to_owned(),
+            min: a.min(),
+            max: a.max(),
+            default: a.default(),
+        })
+        .collect()
+}
+
+/// A lista `(tag, default)` dos eixos extras de `family` — o estado inicial de
+/// `VecTextEdit::extra_axes` / o default corrente da shell quando a família muda.
+#[must_use]
+pub(crate) fn seed_extra_axes(family: Option<&str>) -> Vec<(AxisTag, f32)> {
+    variation_axes(family)
+        .into_iter()
+        .map(|a| (a.tag, a.default))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -195,6 +234,30 @@ mod tests {
         if let Some(fam) = cycle_family(None, 1) {
             assert!(resolve(Some(&fam)).units_per_em() > 0);
         }
+    }
+
+    /// A InterVariable embutida expõe o eixo `opsz` (Optical Size) além do peso — a
+    /// seção Axes do painel mostra um campo pra ele. Trava a enumeração de eixos extras
+    /// (sem `wght`, que tem slider próprio).
+    #[test]
+    fn the_bundled_font_exposes_the_optical_size_axis() {
+        let axes = variation_axes(None);
+        assert!(
+            axes.iter().any(|a| a.tag == AxisTag::OPTICAL_SIZE),
+            "a Inter embutida tem opsz"
+        );
+        assert!(
+            axes.iter().all(|a| a.tag != AxisTag::WEIGHT),
+            "o peso NAO entra nos eixos extras (tem slider proprio)"
+        );
+        // seed_extra_axes casa 1-a-1 com variation_axes, no default de cada eixo.
+        let seed = seed_extra_axes(None);
+        assert_eq!(seed.len(), axes.len());
+        assert!(
+            seed.iter()
+                .zip(&axes)
+                .all(|((t, v), d)| *t == d.tag && *v == d.default)
+        );
     }
 
     /// Uma fonte importada resolve pelo nome e entra no ciclo antes das do sistema

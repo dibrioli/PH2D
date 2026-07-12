@@ -1052,6 +1052,8 @@ impl crate::App {
             let mut pending_vec_text_line_height: Option<f64> = None;
             let mut pending_vec_text_tracking: Option<f64> = None;
             let mut pending_vec_text_align: Option<ph2d_tool_vector::TextAlign> = None;
+            // Variation-axis field edit: (slot index into the font's non-wght axes, value).
+            let mut pending_vec_text_axis: Option<(usize, f64)> = None;
             // Text font-family cycle (`<` = -1 / `>` = +1) from the panel picker.
             let mut pending_vec_font_cycle: Option<i32> = None;
             // Font dropdown option pick — index into `vec_font::pickable_families()`.
@@ -1218,6 +1220,15 @@ impl crate::App {
                                 pending_vec_text_tracking = Some(
                                     ph2d_tool_vector::params::slider_to_text_tracking(*v as f32),
                                 );
+                            } else {
+                                // Variation-axis field carries the axis VALUE directly
+                                // (not a 0..1 track): match the slot to its font axis.
+                                for i in 0..ph2d_editor::ids::MAX_TEXT_VARIATION_AXES {
+                                    if *id == ph2d_editor::ids::vector_text_axis_id(i) {
+                                        pending_vec_text_axis = Some((i, *v));
+                                        break;
+                                    }
+                                }
                             }
                         }
                         // Font dropdown pick: `SelectOption(chip, "<index>")` → the
@@ -2017,6 +2028,7 @@ impl crate::App {
                 crate::vec_text::cycle_text_font(
                     &mut self.vec_text_edit,
                     &mut self.vec_text_family,
+                    &mut self.vec_text_extra_axes,
                     vec_scene,
                     dir,
                 );
@@ -2030,14 +2042,25 @@ impl crate::App {
                 crate::vec_text::set_text_font(
                     &mut self.vec_text_edit,
                     &mut self.vec_text_family,
+                    &mut self.vec_text_extra_axes,
                     vec_scene,
                     family,
+                );
+            }
+            if let Some((index, value)) = pending_vec_text_axis {
+                crate::vec_text::apply_text_axis(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_extra_axes,
+                    vec_scene,
+                    index,
+                    value,
                 );
             }
             if pending_vec_font_import {
                 let imported = crate::vec_text::import_text_font(
                     &mut self.vec_text_edit,
                     &mut self.vec_text_family,
+                    &mut self.vec_text_extra_axes,
                     vec_scene,
                 );
                 // A fonte importada entra no dropdown: reconstrói as previews agora.
@@ -2255,6 +2278,33 @@ impl crate::App {
                 (self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text)
                     .then_some(self.vec_text_align),
             );
+            // Publica os eixos de variação da fonte corrente (nome + range + valor) para
+            // a seção Axes desenhar um campo por eixo. Os valores vêm da sessão ativa se
+            // houver, senão dos defaults correntes da shell (sempre casados com a fonte,
+            // reseedados em toda troca de família). Vazio fora do modo Text.
+            #[cfg(feature = "panel-vector")]
+            {
+                let slots = if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Text {
+                    let descs = crate::vec_font::variation_axes(self.vec_text_family.as_deref());
+                    let values = self
+                        .vec_text_edit
+                        .as_ref()
+                        .map_or(&self.vec_text_extra_axes, |e| &e.extra_axes);
+                    descs
+                        .iter()
+                        .zip(values)
+                        .map(|(d, (_, v))| ph2d_panel_vector::TextAxisSlot {
+                            name: d.name.clone(),
+                            min: f64::from(d.min),
+                            max: f64::from(d.max),
+                            value: f64::from(*v),
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                ph2d_panel_vector::set_current_text_axes(slots);
+            }
             // Dropdown de fonte: constrói as previews (nome de cada família na fonte
             // dela) SÓ quando o painel pede — i.e. na 1ª abertura do dropdown. Assim o
             // scan+parse das fontes do sistema é pago no open, nunca ao entrar no Text.

@@ -184,6 +184,20 @@ pub const VECTOR_TEXT_TRACKING_NUM: NodeId = hash_node_id("vector.text.tracking_
 pub fn vector_text_font_option_id(index: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.text.fontopt.{index}"))
 }
+
+/// Max variation-axis number fields the Text panel shows (besides the dedicated
+/// Weight slider) — one per non-`wght` axis the current font exposes. 6 covers every
+/// registered axis a real variable font ships (`wdth`/`slnt`/`opsz`/`ital`/`GRAD`/…).
+pub const MAX_TEXT_VARIATION_AXES: usize = 6;
+
+/// NodeId for the `index`-th variation-axis field in the Text panel — bound to the
+/// `index`-th non-`wght` axis of the current font (its name/range/value published by
+/// the shell). Runtime `format!` (the axis set is per-font). Mirrors the font-option
+/// factory.
+#[must_use]
+pub fn vector_text_axis_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.text.axis.{index}"))
+}
 /// Polygon "Sides" slider (3..12) — shown only in Polygon mode; drives
 /// `VectorTool::polygon_sides`.
 pub const VECTOR_SIDES: NodeId = hash_node_id("vector.sides");

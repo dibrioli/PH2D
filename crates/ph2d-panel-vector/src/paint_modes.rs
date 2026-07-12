@@ -6,15 +6,18 @@
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
+use crate::paint_sections::LABEL_COL_W;
 use crate::state;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
+use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
+    Button, ButtonKind, ButtonState, Dropdown, DropdownOption, NumberInput, paint_button,
+    paint_dropdown_chip, paint_number_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Spacing};
+use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 use ph2d_tool_vector::params::{
     DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
     DrawMode, arc_degrees_to_slider, radius_to_slider, sides_to_slider, spiral_turns_to_slider,
@@ -235,6 +238,7 @@ impl BodyCtx<'_> {
         );
         y = self.font_picker_row(y);
         y = self.paragraph_section(y);
+        y = self.axes_section(y);
         // Read-only string preview (the active session's text, or a hint when empty).
         y = self.section_label("Text", y);
         let text = state::current_text().unwrap_or_default();
@@ -365,6 +369,54 @@ impl BodyCtx<'_> {
             &format!("{tr_val:.2}"),
             y,
         )
+    }
+
+    /// Variation Axes (Text mode): one number field per non-`wght` axis the current
+    /// font exposes (Optical Size / Width / Slant / …). Hidden for static fonts. The
+    /// field value + range are seeded by the shell each frame (paint Phase B).
+    fn axes_section(&mut self, mut y: f32) -> f32 {
+        let names: Vec<String> =
+            state::with_text_axes(|axes| axes.iter().map(|a| a.name.clone()).collect());
+        if names.is_empty() {
+            return y;
+        }
+        y = self.section_label("Axes", y);
+        for (i, name) in names.iter().enumerate() {
+            y = self.axis_field(name, ids::vector_text_axis_id(i), y);
+        }
+        y
+    }
+
+    /// One labelled variation-axis number field (`<axis name> [ value ]`).
+    fn axis_field(&mut self, name: &str, id: ph2d_a11y::NodeId, y: f32) -> f32 {
+        let gap = Spacing::Sm.px();
+        paint_text(
+            self.text_system,
+            self.scene,
+            name,
+            self.inner_x,
+            y + (self.row_h - TypeToken::Sm.px()) * 0.5,
+            TypeToken::Sm.px(),
+            LABEL_COL_W,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        let field_x = self.inner_x + LABEL_COL_W + gap;
+        let field_w = (self.inner_w - LABEL_COL_W - gap).max(1.0);
+        let rect = Rect::new(field_x, y, field_w, self.row_h);
+        self.hit_index.register(id, rect);
+        let (state, value, buffer, caret, anchor) = read_number_input(self.store, id);
+        let input = NumberInput::new(id, "", value).step(1.0).state(state);
+        paint_number_input_with_buffer(
+            &input,
+            Some(buffer),
+            caret,
+            anchor,
+            rect,
+            self.scene,
+            self.text_system,
+            self.theme,
+        );
+        y + self.row_h + self.row_gap
     }
 
     /// A small square action button (used by the font-picker `<` / `>`).

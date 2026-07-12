@@ -5,11 +5,21 @@
 > comunidade Blender, o estado da arte externo (`04_alem_do_blender.md` §1), e a análise
 > adversarial (3 lentes) do fix. **Quem for mexer em `ph2d-flip-render` lê este doc INTEIRO
 > antes.** Arquivos nossos: `crates/ph2d-flip-render/src/shaders/flip.wgsl` · `pipeline.rs` ·
-> `tests/gpu_render.rs`. Referência GP: `~/Downloads/blender-5.2-grease-pencil-ref/`.
+> `neighbors.rs` · `pack.rs` · `tests/gpu_render.rs`. Referência GP:
+> `~/Downloads/blender-5.2-grease-pencil-ref/`.
+>
+> ## 🟩 ESTADO: a mordida está MORTA (wave WT fechada 2026-07-12; pendente o smoke do Enio)
+>
+> A cobertura do traço é agora a **UNIÃO GLOBAL da polilinha**, num único passe. O que a
+> spec previa (janela `p0`/`p3`) fechou a classe *quina quebrada*, mas o smoke sintético
+> revelou uma **segunda classe** que a análise tinha subestimado (a "auto-aproximação
+> não-adjacente" — §4.2): o fix final tem **quatro peças**, não uma. Resultado: 15 testes GPU
+> verdes (debug e release), **5 mutações provadas**, custo real de 1.7 ms para um traço de
+> 4000 pontos. O que mudou em relação à spec original está marcado com **[REVISÃO]**.
 
 Sumário: §1 A arquitetura e o invariante · §2 O GP por dentro (o que cada peça faz) ·
-§3 A mordida (mecanismo provado) · §4 O fix, ranqueado e especificado · §5 O oráculo
-corrigido + plano de testes · §6 Execução em 1 iteração + kill-criteria · §7 Antialiasing ·
+§3 A mordida (mecanismo provado) · §4 O fix IMPLEMENTADO (4 peças) · §5 O oráculo de
+aparência + a bateria · §6 O que sobrou e os kill-criteria · §7 Antialiasing ·
 §8 Refinos futuros do traço.
 
 ---
@@ -132,204 +142,211 @@ Precisões que a verificação adversarial cravou (não confie na intuição aqu
   O resíduo mitrado real é de 2ª ordem e só aparece com **largura por-ponto** (taper), pela
   divergência de parametrização de raio — ver D1 no §4.
 
-## §4 — O fix, ranqueado e especificado
+## §4 — O fix IMPLEMENTADO: a cobertura é a UNIÃO GLOBAL da polilinha
 
-### 4.1 — 1º: fragment com janela de vizinhos p0/p3 (RECOMENDADO agora)
+**A ideia central** (validada; era o coração da spec original): a cobertura de um fragmento
+deixa de ser a distância ao *próprio* segmento e passa a ser a distância à **polilinha** —
+`dn = min(dn_i)` sobre as cápsulas que alcançam o pixel. Como o perfil de hardness é monótono
+decrescente, **min-distância ⇔ max-cobertura**: os quads que se sobrepõem num pixel passam a
+computar o **mesmo** valor, e o depth first-wins volta a ser invisível (o invariante do §1 é
+restaurado).
 
-**Ideia:** a cobertura do fragment passa a ser a **união local das 3 cápsulas** — a do próprio
-segmento e as dos dois vizinhos. Como o perfil é monótono decrescente na distância,
-`min-distância ⇔ max-cobertura`:
+O que a análise adversarial tinha previsto em parte, e o oráculo provou por inteiro: **fazer
+isso direito exige quatro peças.** As duas primeiras estavam na spec; as duas últimas são
+**[REVISÃO]** — vieram do vermelho dos testes.
 
-```
-dn = min(dn_prev, dn_own, dn_next)   →   mask = hardness_mask(dn, hardness, aa)
-```
+### 4.1 — Peça 1: a janela de sequência (`p0`/`p3`)
 
-**Consistência entre vencedores (o coração):** na sobreposição da quina em `p2`, a janela de A
-é `{prev(A), A, B}` e a de B é `{A, B, next(B)}` — **a interseção `{A, B}` contém os dois campos
-relevantes do disco da junção**. Enquanto só A e B alcançarem o pixel, ambos computam o MESMO
-`min` e o first-wins volta a ser invisível. Casos: quina quebrada isolada = **exato**; quina
-mitrada = mata o resíduo de taper; hairpin de 3 pontos = exato; caps = sentinela `p0==p1`
-(cápsula degenerada ignorada); closed = o vertex já faz wrap (a costura ganha a janela de
-graça); traço reto = **byte-idêntico ao atual com largura uniforme** (goldens intactos).
+O vertex já busca os vizinhos de sequência para o miter — agora **exporta-os** como varyings
+FLAT (`ss_p0`, `ss_p3`, `radii`), e o fragment inclui as duas cápsulas vizinhas no `min`.
+Fecha a classe **quina quebrada** (`miter_break`): na sobreposição em `p2`, a janela de A
+(`{prev,A,B}`) e a de B (`{A,B,next}`) contêm ambas `{A,B}` → mesmo mínimo → sem mordida.
 
-**⚠️ A correção OBRIGATÓRIA da spec (achada 3× na verificação adversarial): `dn_own` TEM de
-usar a MESMA função de cápsula dos vizinhos.** O `dn` atual vem do varying `thickness`
-interpolado sobre o quad ESTENDIDO (afim na coordenada axial, extensões incluídas); as cápsulas
-vizinhas usariam `mix(ra, rb, t_clampado)` analítico. Com **largura por-ponto** (pressão de
-tablet — o caso normal!) são funções DIFERENTES do mesmo segmento → o invariante quebra de novo
-e a mordida encolhe em vez de morrer (contra-exemplo numérico: taper 5→2 sobre ext=r dá 25% de
-divergência em `dn`). **Uma função, três chamadas:**
+Sentinela de borda: sem prev/next, o vizinho **coincide** com o próprio extremo; como os
+varyings são FLAT (sem interpolação), a igualdade é exata e a cápsula degenerada é ignorada
+(`len_sq < 1e-6 → +∞`). Um port que interpole esses varyings quebra a sentinela.
+
+### 4.2 — Peça 2 [REVISÃO]: os vizinhos GEOMÉTRICOS (a classe que faltava)
+
+**O oráculo mostrou que a janela ±1 NÃO basta.** No zigzag do smoke, o pixel (43,36) tinha a
+GPU pintando `2` onde a união pede `254`: o **segmento 2 passa por baixo da borda macia do
+segmento 0** — não-adjacentes. O quad de 0 cobre aquele pixel, sua máscara ali é fraquíssima
+(`0.0046`, ou seja 1/255) mas **sobrevive ao discard, escreve depth e bloqueia o segmento 2**,
+cujo núcleo (cobertura ~1) deveria pintar. Ou seja: **a borda quase-invisível de um segmento
+apaga o miolo opaco de outro.** É a mesma doença, com alcance maior — e é o que mais salta aos
+olhos no zigzag do Enio.
+
+Chamar isso de "teto aceitável" (o K4 da spec) seria errado: **acontece em todo traço que volta
+sobre si mesmo** — zigzag apertado, laço, letra, hachura, qualquer rabisco.
+
+**A solução, num único passe:** a lista de vizinhos geométricos, pré-computada na CPU
+(`neighbors.rs`), consumida pelo fragment.
+
+- **CPU (no `pack`, que é cacheado por desenho):** para cada segmento, quais segmentos
+  NÃO-adjacentes podem alcançar os pixels do seu quad. Critério **conservador, sem
+  falso-negativo**: um pixel do quad de `i` está no máximo a `2·r_i` do eixo de `i` (o esticão
+  do miter é limitado a 2×), e `j` só o influencia se `dist(pixel, j) < r_j`; pela desigualdade
+  triangular basta `dist(seg_i, seg_j) < 2·r_i + r_j`. **O teste é ASSIMÉTRICO** — o raio do
+  dono do quad entra DOBRADO — e essa assimetria é load-bearing no grid (pad de inserção `r_j`,
+  pad de consulta `2·r_i`; usar o mesmo pad dos dois lados perde vizinhos mais GROSSOS que o
+  dono, e a mordida volta em silêncio naqueles pixels).
+- **GPU:** `seg_extra_range[gp]` (por segmento, via varying flat) → `(offset, count)` na lista
+  `seg_extras` de pares `(a,b)` de pontos; o fragment soma essas cápsulas ao `min`. `count == 0`
+  na esmagadora maioria dos traços ⇒ **custo zero**. Os storage buffers `points` e `seg_extras`
+  ficam visíveis ao FRAGMENT (mudança de BGL em `pipeline.rs`).
+
+**Custo (medido, release):** traço longo NORMAL (onda de 4000 pontos, não volta sobre si) =
+**1.7 ms**; rabisco browniano patológico de 4000 pontos = 14 ms, limitado pelo `PAIR_BUDGET`.
+O grid é ~linear (um teste prova equivalência exata com o par-a-par `O(n²)`).
+
+**Degradações declaradas** (as duas são determinísticas e ficam onde não doem):
+- `MAX_EXTRAS_PER_SEGMENT = 16` — num rabisco denso, dezenas de segmentos cruzam o mesmo; os
+  16 mais próximos entram. **Desempate por índice é obrigatório** (não só por distância):
+  dezenas empatam em distância 0, e sem o desempate o corte dependeria da ordem de descoberta
+  → o mesmo desenho geraria buffers diferentes (determinismo/replay-hash).
+- `PAIR_BUDGET` — teto de trabalho por traço; além dele os segmentos restantes ficam sem lista
+  e voltam ao first-wins do GP. Só é atingido pelo borrão sólido, onde a mordida é invisível.
+
+### 4.3 — Peça 3 [REVISÃO parcial]: uma única `capsule_dn` (o defeito D1, confirmado)
+
+A verificação adversarial apontou (3 lentes independentes) e o **teste do taper provou**: se o
+segmento próprio usar o `thickness` interpolado sobre o QUAD (que inclui as extensões) enquanto
+os vizinhos usam a cápsula analítica, então **com largura por-ponto** (pressão de tablet, o caso
+normal!) os dois quads que cobrem o mesmo pixel normalizam por raios diferentes — o invariante
+quebra de novo e a mordida sobrevive em 2ª ordem. **Uma função, três (ou mais) chamadas**:
 
 ```wgsl
-// distância NORMALIZADA à cápsula a→b com raios lerp'ados pelo t clampado.
-// SENTINELA: cápsula ausente (p0==p1 / p3==p2, flat varyings → igualdade exata).
+// raio efetivo = o interpolado pelo `t` CLAMPADO da cápsula (não pelo quad!)
 fn capsule_dn(frag: vec2f, a: vec2f, b: vec2f, ra: f32, rb: f32) -> f32 {
     let ab = b - a;
     let len_sq = dot(ab, ab);
-    if (len_sq < 1e-6) { return 1e9; }
+    if (len_sq < 1e-6) { return 1e9; }          // cápsula degenerada (sentinela)
     let t = clamp(dot(frag - a, ab) / len_sq, 0.0, 1.0);
-    let d = length(frag - a - t * ab);
-    return d / max(mix(ra, rb, t), 1e-4);   // 0 = centro, 1 = borda
+    return length(frag - a - t * ab) / max(mix(ra, rb, t), 1e-4);
 }
 ```
 
-Varyings novos (o vertex JÁ busca `sp`/`sn` do storage para o miter — só passa a exportá-los;
-+2 fetches para os raios vizinhos, custo nulo):
+O varying `thickness` sobrevive, mas só para o fade sub-pixel (§4.4) — **não** entra mais na
+máscara.
+
+### 4.4 — Peça 4 [REVISÃO]: o par clamp+fade, e o AA de cobertura
+
+Ao portar o **fade sub-pixel** do GP (`mask *= smoothstep(0,1, thickness_px)`) descobrimos que
+ele **sozinho não faz nada**: uma linha de 0.35 px não cobre o centro de nenhum pixel e some
+por completo (alpha 0). O GP tem um **par**: clamp de largura mínima (~1.3 px, usado na
+geometria E na máscara) + fade pela espessura **não-clampada**. Juntos: a linha fina não afina
+mais — ela **desbota**, preservando energia e matando o pisca/serrilhado ao mover e ao dar zoom.
+Implementado como `MIN_WIDTH_PX = 1.3` no vertex (raios clampados) + `thickness` cru no varying.
+
+E, no caminho, um bug de AA que estava lá desde o W1: a forma antiga
+(`edge = 1 - smoothstep(1-aa, 1, dn)`) **subestima a cobertura** quando o traço é fino
+(`aa = fwidth(dn) > 1`) — a linha de 1 px saía 10× mais fraca do que devia. A forma correta é a
+**fração do pixel coberta**:
 
 ```wgsl
-@location(6) @interpolate(flat) ss_p0: vec2<f32>,  // sentinela: == ss_p1 (aberto sem prev)
-@location(7) @interpolate(flat) ss_p3: vec2<f32>,  // sentinela: == ss_p2
-@location(8) @interpolate(flat) radii: vec4<f32>,  // (r_p0, r_a, r_b, r_p3) em px
-
-// vs_main:
-out.ss_p0 = select(sa, sp, prev_gp != gp);
-out.ss_p3 = select(sb, sn, nn_gp != next_gp);
-out.radii = vec4(r_prev, r_a, r_b, r_next);
+let edge = clamp(0.5 + (1.0 - dn) / aa, 0.0, 1.0);   // em dn=1 dá 0.5 = meio pixel
 ```
 
-Fragment (a única mudança de comportamento):
+### 4.5 — O que NÃO mudou (o tripé intacto)
 
-```wgsl
-let dn_own  = capsule_dn(frag, in.ss_p1, in.ss_p2, in.radii.y, in.radii.z);
-let dn_prev = capsule_dn(frag, in.ss_p0, in.ss_p1, in.radii.x, in.radii.y);
-let dn_next = capsule_dn(frag, in.ss_p2, in.ss_p3, in.radii.z, in.radii.w);
-let dn = min(dn_own, min(dn_prev, dn_next));
-let aa = max(fwidth(dn), 1e-4);            // dn é contínuo (campos coincidem na troca de dono)
-let mask = hardness_mask(dn, in.hardness, aa);
-// discard < 0.001: INALTERADO — 3ª perna do tripé; onde a união local ainda dá ~0,
-// não escreve depth e um segmento FORA da janela pinta depois.
-```
+Vertex (miter/`miter_break`/extensões/caps/cíclico), depth por-stroke + **GREATER estrito**,
+`discard` de `alpha < 0.001`, blend premult, o compositor por-camada, o `TessCache` do shell.
+Uma blindagem nova: `safe_dir` no miter — um **ponto duplicado** (tablet repete amostra; o
+smooth funde dois) fazia `normalize(0)` = NaN e **rasgava o traço**; agora o vizinho degenerado
+é tratado como "sem vizinho".
 
-O que **não** muda: vertex (geometria/miter/break/depth), `pipeline.rs`, discard, blend,
-compositor por-camada, `pack.rs` (nenhum atributo novo — tudo já está nos buffers). Diff
-confinado a `flip.wgsl`. **Nota de fronteira:** os storage buffers têm `visibility: VERTEX`
-apenas (`pipeline.rs`) — o fragment recebe TUDO por varying; qualquer tentação de "buscar
-`points[]` no fragment" muda a BGL (deixar um comentário-cerca no shader).
+**Descoberta sobre o discard:** com a união global, ele **deixou de ser load-bearing** para a
+correção (a mutação "sem discard" não sangra mais). A razão: o fragmento que cobre o núcleo de
+outro segmento agora tem máscara ALTA, não ~0 — a classe "fragmento transparente escreve depth
+e fura o vizinho" desapareceu. Ele permanece porque (a) protege a degradação do cap/budget e
+(b) evita escrever depth à toa. **Não afrouxe** — é barato.
 
-Efeitos colaterais aceitos e documentados:
-- **Goldens de caps/extensões com taper mudam ligeiramente** (o raio na extensão hoje é
-  poluído pelo comprimento da extensão — o valor NOVO é o mais correto).
-- **Cor/opacity por-ponto:** o vencedor pinta com os varyings DELE. Na junção ambos convergem
-  para os valores do ponto compartilhado (sem costura de COR); no flanco da sobreposição há
-  um degrau teórico de opacity limitado por `Δ·r/(len+r)` — resíduo documentado como teto,
-  coberto pelo teste 9 (width) e anotado para opacity.
+### 4.6 — Alternativas, e por que a escalada NÃO foi necessária
 
-**Limites conhecidos (o teto de (a)):** a janela é ±1. Sobreposição com `i±2, i±3…` (tablet
-denso + pincel gordo em curva fechada apertada — o miter interno dobra) e **auto-cruzamento
-não-adjacente** (laço) permanecem first-wins. O laço é **semântica pinada de propósito**
-(default do GP; a alternativa com acúmulo é a futura flag *Self Overlap*, §8). O `i±2` é o
-gatilho objetivo da escalada (K4, §6).
+A spec previa, como escalada, o **scratch com blend MAX** (Stencil-then-Cover contínuo). Ela
+resolveria a mesma classe — mas custa **2 render passes por traço**: com ~300 traços num frame
+são ~600 passes (~3 ms de CPU só de encoding), e o cache de frame não salva porque o traço
+rasteriza em screen-space (zoom/pan invalidam). A janela geométrica entrega a **mesma união
+global** com **zero passes extras** e custo O(1) por fragmento. A escalada fica registrada como
+plano B se algum dia um caso patológico exigir (§8) — mas hoje ela seria mais lenta e mais
+complexa, sem ganho de qualidade.
 
-### 4.2 — 2º: dois passes com blend MAX (a ESCALADA exata, se (a) bater no teto)
+As demais (correção de alpha do Ciallo, dab-based, Vello stroke-expansion, polar stroking,
+airbrush integral, depth por-ponto) seguem rejeitadas pelas razões do estudo — ver a tabela
+em `04_alem_do_blender.md` §1.
 
-Passe 1: os mesmos quads numa scratch single-channel (`R16Float`; `R8Unorm` chega), **sem
-depth**, `BlendOperation::Max`, o fragment escreve `mask` — a união `max_i(mask_i)` emerge por
-hardware, **globalmente correta** (junções, i±2+, hairpins, laços). Passe 2: composite com a cor.
-
-- **Correção obrigatória (D4):** o passe 2 redesenha os quads com o depth GREATER de hoje para
-  a seleção de cor, **descartando pelo mask PRÓPRIO** (`< 0.001`, recomputado) e tomando só o
-  **alpha** do scratch — sem isso, o canto de A com alpha-da-união alto venceria o depth e
-  pintaria a COR de A sobre o núcleo de B (pior que hoje).
-- Escopo: a união só vale DENTRO de um traço → scratch→composite→clear **por traço** (dirty-rect),
-  ou rotear pro caminho lento só traços com `hardness < 1` E auto-sobreposição. Para o traço
-  AO VIVO é 1 scratch incremental — desprezível. Para replay de frame com centenas de traços
-  macios o custo de passes é real (mitigação: cache do frame composto, que a arquitetura de
-  camadas já favorece).
-- Pedigree: é o *Stencil-then-Cover* (NV_path_rendering) contínuo; a semântica do Krita Wash e
-  das patentes de ink da Microsoft (`04_alem_do_blender.md` §1).
-- **Variante SDF** (anotar, não implementar): scratch de DISTÂNCIA com blend MIN + falloff no
-  composite → hardness re-editável por uniform sem re-render.
-- Zoom/pan invalidam cache de frame (o traço rasteriza em screen-space) — o custo por-pass cai
-  no caminho interativo; por isso (b) é escalada com gatilho, não default.
-
-### 4.3 — Rejeitadas (com razão registrada)
-
-| Opção | Por que não |
-|---|---|
-| Correção de alpha do Ciallo `1−sqrt(1−A)` | pressupõe alpha constante + exatamente 2 camadas = o caso hardness=1, que o tripé já resolve |
-| Dab-based (Krita/Painter) | re-stamp por frame de animação; casa mal com edição posterior; o Flip é traço vetorial re-renderizável |
-| Vello stroke-expansion / polar stroking / stroke→fill | união exata SÓ para alpha constante — nenhum trata falloff; referência p/ futuro pincel "ink" duro |
-| Airbrush integral (Ciallo) | semântica de ACÚMULO físico (laço escurece) ≠ união GP; excelente pincel FUTURO |
-| Depth por-ponto (`GP_STROKE_OVERLAP`) | muda a semântica p/ acúmulo, não corrige — é a futura flag de material *Self Overlap* |
-| Join-fan geométrico sem sobreposição (pygfx) | sofre a mesma doença (campo radial do fan vs núcleo do vizinho); e o recuo exato do vértice interno com raio variável é espinhoso |
-
-## §5 — O oráculo corrigido + plano de testes
+## §5 — O oráculo de APARÊNCIA e a bateria (o que garante que não volta)
 
 **A lição da rodada 7** (memória `feedback_oracle_must_model_appearance_not_implementation`):
-o oráculo modelava first-wins e ficou **verde com o bug na tela**. O expected deriva da
-APARÊNCIA:
+o oráculo antigo modelava o first-wins — a IMPLEMENTAÇÃO — e ficou **verde com a mordida na
+tela**. O novo (`gpu_render.rs`) modela o **OBJETO**:
 
-- **Cenas de junção** (sem auto-sobreposição não-adjacente): `expected = hardness_mask(min_i
-  dn_i)` sobre **TODOS** os segmentos (a distância à polilinha = a união). Nessas cenas,
-  união global e janela ±1 coincidem por construção → o oráculo é irrefutável E discriminante.
-- **Cenas com laço** (cruzamento não-adjacente): expected = first-wins (o oráculo atual),
-  **pinando a semântica escolhida** — documentado no próprio teste.
-- Manter: containment de quad (pixels fora de todo quad = 0), pulos de faixa de aresta/limiar
-  de discard/AA, `checked > 500`.
+> Um traço macio É a união dos discos varridos ao longo da polilinha. A cobertura num pixel é
+> o perfil de hardness aplicado à MENOR distância normalizada às cápsulas de **todos** os
+> segmentos (com o raio mínimo rasterizável e o fade sub-pixel — que também são aparência).
+> Nada nele sabe de quads, depth, ordem de desenho ou discard.
 
-**Migração dos testes legados (não é opcional — foi um achado adversarial):** 2 dos 9 testes
-GPU atuais usam o `expected_alpha` first-wins (`a_sharp_corner_does_not_accumulate_color` e
-`a_smooth_curve_matches_the_analytic_coverage`). Com o fix, o first-wins antigo fica ERRADO
-(o GPU pinta a união, maior) → **migram pro oráculo-união junto com o fix**. Atenção: o teste
-do arco (r=8, segmentos ~12px, o miter interno dobra) é exatamente o cenário `i±2` — se ficar
-vermelho pós-fix APENAS em pixels de sobreposição i±2, isso é o **teto documentado de (a)**
-(K4), não um bug: ou skip window-aware documentado só nesses pixels, ou promover a escalada
-(b). **NUNCA afrouxar a tolerância pra "passar"** — é a 4ª causa da DIRETIVA.
+Pixels ambíguos (a faixa de AA da borda e o limiar do discard) são pulados; **todo o resto do
+alvo** é comparado, fundo incluso. Qualquer classe de artefato — mordida, bead, escama, spike,
+acúmulo, buraco de junção, rasgo por NaN — é uma divergência da união, e portanto vermelha.
 
-**Bateria (nomes + o que afirmam):**
+**Sequência obrigatória** (foi seguida; repita-a em qualquer mudança futura):
+1. Troque/estenda o oráculo **primeiro** e prove que ele fica **VERMELHO** no código atual.
+   (Foi: 4 testes vermelhos com desvio ~250/255 — a GPU pintava 2 onde a união pede 254.)
+2. Só então mexa no shader, até o verde.
+3. **Prove as mutações.** O oráculo só vale se elas sangram.
 
-1. `a_soft_broken_corner_matches_the_polyline_union` — o zigzag do smoke (viradas 135–170°),
-   hardness 0.8: todo pixel = união. **TEM de estar VERMELHO antes do fix** (é a mordida).
-2. `a_soft_mitered_corner_matches_the_union` — virada ~30°, gordo, hardness 0.7. **Verde
-   ANTES do fix com largura uniforme** (cobertura mitrada já é união — D2): é REGRESSÃO, não
-   discriminante. Não espere vermelho aqui.
-3. `a_soft_hairpin_matches_the_polyline_union` — 3 pontos, virada ~175° (o extremo da
-   sobreposição A∩B).
-4. `a_closed_soft_star_seam_matches_the_union` — fechada com viradas > 120° (**estrela, não
-   quadrado** — quinas de 90° são mitradas e não discriminam).
-5. `soft_round_caps_are_unchanged_by_the_neighbor_window` — 2 pontos (janela toda sentinela):
-   paridade com o comportamento antigo (regressão de cap).
-6. `a_soft_self_crossing_keeps_first_wins_semantics` — o X macio: pinos explícitos de (i) sem
-   acúmulo (`cross ≈ arm`), (ii) primeira-parte-por-cima, (iii) tolerância documentando o
-   resíduo da borda de A sobre o núcleo de B. **É o contrato do teto de (a).**
-7. **`a_tapered_broken_corner_matches_the_union` (teste 9 — OBRIGATÓRIO):** quina quebrada
-   macia com **largura por-ponto** (ex.: 4→16px). É o teste que pega a divergência de
-   parametrização de raio (D1) — sem ele, o gap do `dn_own` passa em silêncio (todos os
-   outros usam largura uniforme).
-8. Os testes de tripé existentes (bead/spike/escamado/acúmulo/cruzamento entre strokes/fill)
-   permanecem verdes — nenhum é afrouxado.
-9. **Mutações provadas** (asserção-vermelha real, como na rodada 7): remover `dn_prev/dn_next`
-   do min → teste 1 vermelho; `GreaterEqual` → hairpin vermelho; sem discard → vermelho.
-   O oráculo só vale se as mutações sangram.
+**A bateria (15 testes GPU, verdes em debug e release):**
 
-**Gotcha de dados (R3):** ponto DUPLICADO no meio do traço degenera a cápsula-vizinha
-(sentinela acidental) e a janela não vê o segmento seguinte — e o código atual JÁ é hostil a
-duplicados (`normalize(0)` no miter). Garantir dedup no ingest (`flip_draw`/pack) e registrar
-como invariante do buffer (`debug_assert`).
+| Teste | O que prova |
+|---|---|
+| `a_soft_broken_corner_matches_the_polyline_union` | **o zigzag do smoke** — quina quebrada + o segmento que volta por baixo |
+| `a_tapered_broken_corner_matches_the_union` | o mesmo, com **largura por-ponto** (pega o defeito D1 — nenhum outro teste o vê) |
+| `a_soft_hairpin_matches_the_polyline_union` | virada ~175°: o extremo da sobreposição A∩B |
+| `a_closed_soft_star_seam_matches_the_union` | traço FECHADO com quinas afiadas: a costura do wrap ganha a janela |
+| `a_soft_mitered_corner_matches_the_union` | arco mitrado: **regressão** (já era união — verde antes e depois; não é discriminante) |
+| `soft_round_caps_are_unchanged_by_the_neighbor_window` | 2 pontos: a janela toda-sentinela não estraga as tampas |
+| `a_duplicated_point_does_not_tear_the_stroke` | ponto repetido não vira NaN/rasgo (`safe_dir`) |
+| `a_subpixel_thin_stroke_fades_instead_of_flickering` | o par clamp+fade: a linha fina desbota, não some nem pisca |
+| `a_stroke_crossing_itself_is_a_clean_union_without_accumulation` | auto-cruzamento: união sem acúmulo premult |
+| `a_soft_stroke_has_no_bead_at_the_joints` · `a_sharp_corner_is_a_round_join_without_an_outward_spike` · `newer_stroke_draws_over_older_at_crossing` · `filled_closed_stroke_renders_fill_under_stroke` · `hardness_controls_edge_falloff` · `straight_stroke_paints_a_band…` | o **tripé** e o resto do contrato — nenhum foi afrouxado |
 
-## §6 — Execução em 1 iteração + kill-criteria
+**As 5 mutações provadas** (cada uma sangra):
 
-Sequência (a ordem importa — alvo irrefutável ANTES do fix, DIRETIVA):
+| Mutação | Resultado |
+|---|---|
+| sem os vizinhos geométricos (`count = 0`) | **3 vermelhos** (zigzag, taper, duplicado) |
+| sem a janela `p0`/`p3` (só o próprio segmento) | **5 vermelhos** |
+| `GreaterEqual` no depth (o acúmulo) | **6 vermelhos** |
+| sem o fade sub-pixel | 1 vermelho |
+| sem o clamp de largura mínima | 1 vermelho |
 
-1. **Trocar o oráculo** → rodar → o teste 1 **TEM de estar vermelho no código atual**.
-2. Implementar o fragment (§4.1, com `capsule_dn` unificada) → suite completa `--ignored` em
-   debug E `--release` → migrar os 2 legados (política do arco: acima).
-3. Smoke do Enio no mesmo zigzag, hardness alto e baixo + tablet denso se possível.
+Além da GPU: `neighbors.rs` tem **6 unit tests**, incluindo o que compara o grid com o
+par-a-par `O(n²)` num rabisco de 180 segmentos (pegou 2 bugs reais durante a implementação:
+o pad assimétrico e o desempate não-determinístico), e `pack_perf.rs` guarda o custo por ORDEM.
 
-Kill-criteria:
+## §6 — O que sobrou (teto honesto) e os kill-criteria
 
-- **K1 (oráculo):** teste 1 não fica vermelho antes do fix → o oráculo modela mecanismo, não
-  aparência — invalida a iteração; consertar o oráculo primeiro.
-- **K2 (tripé):** qualquer teste de tripé vermelho após o fix → o fix interagiu com
-  discard/depth de forma imprevista → reverter e re-analisar.
-- **K3 (smoke vs harness):** oráculo verde mas a mordida visível no app → o harness reproduz o
-  mecanismo, não o contexto (memória `feedback_harness_reproduces_mechanism_not_context`):
-  instrumentar no app real (dump da janela p0/p3 e do `dn` no pixel apontado) ANTES de código novo.
-- **K4 (teto → escalada):** quinas limpas mas mordida residual com tablet denso + pincel gordo
-  em curvas fechadas, ou laço macio incômodo → NÃO iterar em (a); promover (b) (§4.2), que
-  reutiliza a mesma máscara — só troca quem faz o `max` (o hardware de blend).
-- **Perf (não-kill):** +2 cápsulas/fragment e +8 escalares flat (dentro do budget de 16 vec4
-  inter-stage) — abaixo de ruído; medir antes de atribuir qualquer regressão a isto.
+**O que a união global NÃO cobre:**
+- **Além do cap/budget** (rabisco patológico): os segmentos sem lista voltam ao first-wins do
+  GP. Determinístico, e num borrão sólido a mordida é invisível.
+- **A COR em auto-cruzamento** continua first-wins (o vencedor pinta com a cor DELE). A
+  *cobertura* é a união (o buraco morreu), mas num traço com gradiente de cor por-ponto que
+  cruza a si mesmo, o trecho cruzado mostra a cor do segmento de índice menor. É a semântica do
+  GP; mudá-la exige o caminho de 2 passes (§4.6) e só vale se alguém reclamar.
+- **Auto-sobreposição com acúmulo** (tinta que escurece ao passar duas vezes) **não existe** —
+  é a flag *Self Overlap* futura (§8), não um bug.
+
+**Kill-criteria para qualquer mudança futura no traço:**
+- **K1 (oráculo):** a mudança precisa de um teste que fique **vermelho antes**. Sem isso, não
+  comece.
+- **K2 (tripé):** qualquer um dos testes de tripé vermelho ⇒ reverta e re-analise.
+- **K3 (smoke ≠ harness):** oráculo verde e artefato na tela ⇒ o harness reproduz o mecanismo,
+  não o contexto (memória `feedback_harness_reproduces_mechanism_not_context`): instrumente no
+  app real (dump da janela + do `dn` no pixel apontado) ANTES de escrever código.
+- **K4 (perf):** `pack_perf` é o guard de ordem. Se o preview travar num rabisco longo, o
+  próximo passo é o **pack incremental** (o traço em curso cresce; só a cauda muda — recomputar
+  só a janela ativa), não afrouxar o broadphase.
 
 ## §7 — Antialiasing (a decisão, com a história do GP como aviso)
 
@@ -341,11 +358,14 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
 
 **Decisão Flip:**
 
-1. **Viewport: AA analítico (fwidth) como caminho primário — NÃO portar SMAA agora.** Para o
-   traço, o analítico é estritamente superior (cobertura exata, estabilidade temporal, custo
-   ~zero). Fechar a mordida vem antes de qualquer pós-AA.
-2. **Portar o fade sub-pixel do GP** (`color *= smoothstep(0,1, thickness_px_unclamped)`) —
-   barato, mata o pisca de traço < 1px (o hack validado min-width ~1.3px + modulação de opacidade).
+1. **Viewport: AA analítico como caminho primário — NÃO portar SMAA agora.** ✅ FEITO, e
+   corrigido: a cobertura de borda é `clamp(0.5 + (1-dn)/fwidth(dn), 0, 1)` — a **fração do
+   pixel coberta** (em `dn=1` dá 0.5). A forma antiga (`1 - smoothstep(1-aa, 1, dn)`)
+   subestimava a cobertura em traço fino: a linha de 1 px saía 10× mais fraca (§4.4).
+2. **Fade sub-pixel + clamp de largura mínima.** ✅ FEITO — e são um PAR: o fade sozinho não
+   salva a linha fina (ela não cobre o centro de pixel nenhum e some). `MIN_WIDTH_PX = 1.3`
+   na geometria/máscara + `thickness` cru (não-clampado) no fade. Teste:
+   `a_subpixel_thin_stroke_fades_instead_of_flickering`.
 3. **Export/render: o esquema de ACÚMULO do GP é a joia barata** — Halton(2,3) → gaussiana
    σ=0.284 truncada em ±0.93 (o `sqrt(0.284)` é contrato empírico, "needed to match EEVEE") →
    translação ortográfica sub-pixel → média corrente em `log2(c+0.5)` com snap de alpha opaco.
@@ -366,6 +386,14 @@ solução definitiva deles foi **SSAA no render** (4.5+), não mais SMAA.
 
 ## §8 — Refinos futuros do traço (backlog qualificado)
 
+- **Pack INCREMENTAL do traço em curso** (o gatilho: se o preview travar num rabisco muito
+  longo). O traço cresce ponto a ponto e só a cauda muda (o `active_smooth` congela o resto):
+  recomputar só a janela ativa + os segmentos afetados, em vez do broadphase inteiro por frame.
+  Hoje: 1.7 ms para um traço normal de 4000 pontos; 14 ms no rabisco patológico (limitado pelo
+  `PAIR_BUDGET`).
+- **Escalada de 2 passes (scratch + blend MAX)** — só se um caso patológico exigir a união
+  ALÉM do cap, ou se a semântica de COR em auto-cruzamento incomodar (§6). Custa ~2 render
+  passes por traço; hoje seria mais lenta e mais complexa, sem ganho de qualidade (§4.6).
 - **Flag *Self Overlap* por pincel/traço** (1 bit + 1 linha: depth por-PONTO em vez de
   por-stroke) — auto-sobreposição com acúmulo, para marker/build-up expressivo. É a resposta
   canônica ao "parte nova por cima" do smoke da 3ª rodada.

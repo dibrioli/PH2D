@@ -572,6 +572,53 @@ fix); candidato natural a W3/edit-mode. NÃO foi feito nesta rodada.
 > redonda sem miter, sem double-blend, e alpha correto com hardness baixo. Ref viva:
 > `/home/enio/Downloads/blender-5.2-grease-pencil-ref` → `draw_grease_pencil_lib.glsl`.
 
+## WT — O TRAÇO: a mordida está MORTA (2026-07-12) — pendente o smoke do Enio
+
+A cobertura do traço é agora a **UNIÃO GLOBAL da polilinha**, num único passe. **Doc definitivo:
+[`docs/Flip/03_traco_rasterizacao.md`](Flip/03_traco_rasterizacao.md)** (mecanismo, as 4 peças,
+o oráculo, as mutações, os kill-criteria). Resumo do que landou:
+
+**O fix tem 4 peças** (a spec previa 1 — o vermelho dos testes revelou as outras 3):
+1. **Janela de sequência `p0`/`p3`** — o vertex exporta os vizinhos (já os buscava para o
+   miter); o fragment inclui as 2 cápsulas no `min`. Fecha a classe *quina quebrada*.
+2. **Vizinhos GEOMÉTRICOS** (`neighbors.rs`, NOVO) — a janela ±1 **não bastava**: todo traço
+   que volta sobre si mesmo (zigzag, laço, letra) tinha a mordida de longo alcance — a borda
+   macia de um segmento (alpha 1/255!) vencia o depth e apagava o NÚCLEO de outro. Broadphase
+   por grid no `pack` (cacheado por desenho) + loop no fragment ⇒ **união global, 1 passe, zero
+   render passes extras**. Critério conservador `dist(i,j) < 2·r_i + r_j` (assimétrico: o raio
+   do dono do quad entra dobrado).
+3. **`capsule_dn` única** — o defeito D1 da análise adversarial era real: com largura por-ponto
+   (pressão), o raio interpolado no QUAD ≠ o da cápsula, e a mordida sobrevivia em 2ª ordem.
+   O teste do taper o pegou.
+4. **Par clamp+fade sub-pixel** (`MIN_WIDTH_PX = 1.3` + `thickness` cru) — o fade do GP sozinho
+   não salva a linha fina (ela não cobre o centro de pixel nenhum e SOME). No caminho, achamos
+   um bug de AA que estava lá desde o W1: a cobertura de borda subestimava traço fino em 10×
+   (a forma correta é `clamp(0.5 + (1-dn)/fwidth(dn), 0, 1)`).
+
+Mais: **`safe_dir`** no miter — um ponto DUPLICADO fazia `normalize(0)` = NaN e **rasgava o
+traço** (bug latente desde o W1).
+
+**O tripé segue intacto** (miter/`miter_break`, depth por-stroke + GREATER estrito, discard).
+Descoberta: com a união global, o **discard deixou de ser load-bearing** para a correção (a
+mutação não sangra mais) — ele fica por proteger a degradação do cap e por economia. Não afrouxe.
+
+**Gate:** 15 testes GPU + 18 unit + 2 composite verdes em **debug E release**; **5 mutações
+provadas** (vizinhos geométricos, janela ±1, GreaterEqual, fade, clamp — cada uma sangra);
+fmt (pin 1.95), clippy `--all-targets`, LOC caps, suite do shell — limpos.
+**Perf (release):** traço real de 4000 pontos = **1.7 ms** de pack; rabisco patológico = 14 ms
+(limitado pelo `PAIR_BUDGET`); `pack_perf.rs` guarda a ordem.
+
+**Símbolos novos** (p/ o integrador): crate `ph2d-flip-render` — módulo `neighbors` (privado),
+`pack::GpuSegRef` (pub), campos `FlipGpuData::{seg_extra_range, seg_extras}`, bindings 4 e 5 no
+BGL (e `points` passa a ser VERTEX|FRAGMENT), teste `tests/pack_perf.rs`. **Nada fora da crate.**
+
+**Smoke pedido:**
+```
+cargo run -p ph2d-host-desktop --release
+```
+Zigzag afiado com hardness alto E baixo · curvas densas · traço cruzando a si mesmo · linha
+fina com zoom out (não pode piscar).
+
 ## Rodada 7 (2026-07-11) — 2 artefatos MORTOS, 1 NOVO (quina "mordida") — **REPROVADA no smoke**
 
 > 🟥 **Veredito do Enio: "não ficou bom".** O acúmulo/spike/bead/escama **acabaram**

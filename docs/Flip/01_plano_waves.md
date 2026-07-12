@@ -6,8 +6,10 @@
 > **O traço (bug aberto + fix):** [`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) ·
 > **Estado da arte além do Blender:** [`04_alem_do_blender.md`](04_alem_do_blender.md).
 >
-> **Estado (2026-07-12):** W0+W1+W2 **ENTREGUES e integrados ao main** (tracker:
-> `docs/HANDOFF_flip_impl.md`). A wave atual é a **WT (o traço)**. Depois: W3 → W4 → W5 → W6.
+> **Estado (2026-07-12):** W0+W1+W2 **integrados ao main** · **WT (o traço) FECHADA** — a
+> mordida morreu; a cobertura é a UNIÃO GLOBAL da polilinha (15 testes GPU + 5 mutações
+> provadas; `docs/Flip/03`). Pendente só o smoke do Enio. **A wave atual é a W3
+> (Frames · Ghost · Tween).**
 
 ## Regras permanentes (valem em TODA task)
 
@@ -38,9 +40,9 @@
 | Espessura do brush = **px de TELA** (absoluta; `fold_model × mean_scale` no gizmo) | Enio 2026-07-11; HANDOFF_flip_impl |
 | Espaço de cor: rasteriza premult/linear/16F → resolve → compositor 8-bit sRGB do Painter | W1, ratificado (blend byte-idêntico ao Painter) |
 | Undo = fila global `ProjectState` (sem undo próprio); **Arc-CoW nos drawings antes de dup/hold em escala** | 02 §1/§8; lição GPv3 (undo 6.6×) |
-| Fix do traço = janela p0/p3 com `capsule_dn` unificada; escalada = scratch MAX (gatilho K4) | 03 §4-§6 |
-| Auto-cruzamento não-adjacente = first-wins (GP default); acúmulo = flag *Self Overlap* futura | 03 §4.1/§8 |
-| AA: analítico + fade sub-pixel no viewport; acúmulo Halton no export; SMAA só do reference MIT (futuro) | 03 §7 |
+| Traço = **UNIÃO GLOBAL da polilinha** num passe: janela `p0`/`p3` + **vizinhos geométricos** (broadphase no pack) + `capsule_dn` única + clamp/fade sub-pixel. Escalada de 2 passes NÃO foi necessária | 03 §4 |
+| Auto-cruzamento: a COBERTURA é união (sem mordida); a **cor** segue first-wins (GP default). Acúmulo de tinta = flag *Self Overlap* futura | 03 §4.2/§6/§8 |
+| AA: cobertura analítica `0.5+(1-dn)/fwidth` + par clamp(1.3px)/fade sub-pixel; acúmulo Halton no export; SMAA só do reference MIT (futuro) | 03 §7 |
 | Onion: default RELATIVE (por-desenho), verde/azul do GP como **tokens**, fade 1/Δ piso 0.1, **some no play** | 02 §8; 04 §4 |
 | Tween W3 = GP literal (índice+padding+auto-flip) com fator POR CAMADA; v2 = matching+espiral (04 §2) | 02 §3; 04 §2 |
 | Fill W4 = pixel solver do GP + fechamentos PERSISTENTES (Harmony) + Paint/Unpainted/Unpaint + Grow/Shrink; Delaunay = v2 | 02 §6; 04 §3 |
@@ -53,28 +55,28 @@
 
 ---
 
-# WT — O traço (wave ATUAL: matar a mordida)
+# WT — O traço (FECHADA 2026-07-12 · pendente o smoke do Enio)
 
-**Objetivo:** cobertura do traço = união da polilinha em toda junção; smoke do zigzag macio
-limpo. **Spec completa: [`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) §4-§6 — siga a
-sequência de lá** (oráculo primeiro!).
+**Objetivo (batido):** a cobertura do traço é a **união global da polilinha** — a mordida
+morreu em todas as suas formas. Detalhe completo em
+[`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) §4-§6.
 
-- [ ] **WT.1 — Oráculo-união.** Trocar `expected_alpha` (first-wins → união `mask(min dn_i)`
-      global; laço = first-wins pinado). Rodar: o teste do zigzag TEM de ficar VERMELHO no
-      código atual (K1). Migrar os 2 testes legados (hairpin/arco) — política do arco no 03 §5.
-- [ ] **WT.2 — Fragment com janela p0/p3.** `capsule_dn` única ×3 + varyings flat
-      `ss_p0/ss_p3/radii` (03 §4.1). Vertex/pipeline/discard intocados.
-- [ ] **WT.3 — Bateria nova.** Os 7 testes do 03 §5 (incl. **teste 9: quina quebrada com
-      taper** — obrigatório) + 3 mutações sangrando. Suite completa debug + `--release`.
-- [ ] **WT.4 — Dedup de pontos no ingest** (invariante do buffer; ponto duplicado quebra a
-      janela E o miter atual — `debug_assert` + dedup no `flip_draw`/pack).
-- [ ] **WT.5 — Fade sub-pixel** (`color *= smoothstep(0,1, thickness_px_unclamped)`) — barato,
-      mata o pisca de linha fina (03 §7.2).
-- [ ] **WT.6 — Smoke do Enio** (zigzag hardness alto/baixo + curvas densas + laço). Kill-criteria
-      K1-K4 do 03 §6; K4 → promover a escalada (b) SEM iterar em (a).
-
-**Gate WT:** oráculo-união verde (com o vermelho-antes provado), 23+ testes verdes nos dois
-perfis, mutações provadas, smoke aprovado.
+- [x] **WT.1 — Oráculo de APARÊNCIA.** `expected_alpha` deixou de modelar o first-wins e passou
+      a modelar a união da polilinha. Provado VERMELHO no código antigo (4 testes, desvio ~250).
+- [x] **WT.2 — Janela de sequência (`p0`/`p3`)** + **`capsule_dn` única** (o defeito D1 — raio
+      por-ponto — era real; o teste do taper o pegou).
+- [x] **WT.3 — Vizinhos GEOMÉTRICOS** *(não estava na spec)*: a janela ±1 não bastava — todo
+      traço que volta sobre si mesmo tinha a mordida de longo alcance. Broadphase por grid no
+      `pack` (`neighbors.rs`, cacheado por desenho) + loop no fragment. **União global, 1 passe,
+      zero render passes extras.**
+- [x] **WT.4 — `safe_dir`**: ponto duplicado fazia `normalize(0)` = NaN e RASGAVA o traço.
+- [x] **WT.5 — Fade sub-pixel + clamp de largura mínima** (são um PAR) + **AA de cobertura
+      correto** (a forma antiga subestimava traço fino em 10×).
+- [x] **Gate:** 15 testes GPU + 18 unit + 2 composite verdes (debug e release), **5 mutações
+      provadas**, fmt/clippy/LOC limpos, suite do shell verde. Perf: 1.7 ms para um traço real
+      de 4000 pontos.
+- [ ] **WT.6 — Smoke do Enio** (zigzag hardness alto/baixo, curvas densas, laço, linha fina com
+      zoom out). Kill-criteria K1-K4 no 03 §6.
 
 ---
 

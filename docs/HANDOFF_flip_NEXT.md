@@ -9,11 +9,12 @@
 > após um estudo exaustivo da referência (21 relatórios: fonte do GP inteiro + web +
 > análise adversarial). A fonte de conhecimento agora é [`docs/Flip/`](Flip/00_README.md):**
 >
-> - **Sua PRIMEIRA TAREFA é a wave WT (a mordida)** — spec completa, verificada em 3
->   lentes adversariais, em [`Flip/03_traco_rasterizacao.md`](Flip/03_traco_rasterizacao.md)
->   §4-§6 (fix = janela p0/p3 com `capsule_dn` UNIFICADA; oráculo-união PRIMEIRO —
->   tem de ficar vermelho no código atual; kill-criteria K1-K4). Tasks: wave **WT**
->   em [`Flip/01_plano_waves.md`](Flip/01_plano_waves.md).
+> - 🟩 **A wave WT (o traço) está FECHADA (2026-07-12): a mordida MORREU.** A cobertura é a
+>   UNIÃO GLOBAL da polilinha num único passe (4 peças: janela `p0`/`p3` + vizinhos
+>   GEOMÉTRICOS por broadphase + `capsule_dn` única + par clamp/fade sub-pixel). 15 testes GPU,
+>   5 mutações provadas. Leia [`Flip/03`](Flip/03_traco_rasterizacao.md) antes de tocar em
+>   `ph2d-flip-render`. **Sua PRIMEIRA TAREFA é a W3 (Frames · Ghost · Tween)** —
+>   [`Flip/01_plano_waves.md`](Flip/01_plano_waves.md).
 > - Achado central do estudo: **o GP 5.2 tem a MESMA mordida, latente** (issues
 >   #140075/#102927/#94252; o default hardness=1.0 + SMAA a escondem) — e a resposta
 >   estrutural do próprio Blender (Corner Types 2025) ratifica o caminho p0/p3.

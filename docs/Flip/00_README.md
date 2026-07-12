@@ -11,7 +11,7 @@
 |---|---|---|
 | [`01_plano_waves.md`](01_plano_waves.md) | plano por waves (WT→W3→W4→W5→W6), **decisões cravadas**, deferidos, não-objetivos, DoD | SEMPRE — é o roteiro |
 | [`02_referencia_algoritmos_blender_5.2.md`](02_referencia_algoritmos_blender_5.2.md) | os algoritmos do GP 5.2 por subsistema, com pseudocódigo, constantes e `arquivo:linha`: dados · engine · shader · AA · tween · curvas · draw/erase · fill · sculpt · frames/onion · materiais · VFX · seleção/cíclicas · GL→wgpu | antes de CADA tópico de implementação |
-| [`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) | o doc definitivo do traço: o tripé, o invariante, **a mordida (mecanismo provado + evidência de que o GP tem o mesmo artefato latente)**, o fix ranqueado com spec WGSL, o oráculo corrigido, kill-criteria, AA | antes de tocar `ph2d-flip-render` |
+| [`03_traco_rasterizacao.md`](03_traco_rasterizacao.md) | o doc definitivo do traço: o tripé, o invariante, **a mordida (mecanismo provado + a evidência de que o GP tem o mesmo artefato, ABERTO)**, o fix de 4 peças que a matou, o oráculo de aparência + a bateria, kill-criteria, AA | antes de tocar `ph2d-flip-render` |
 | [`04_alem_do_blender.md`](04_alem_do_blender.md) | estado da arte além do GP (com fontes): stroke rendering, inbetweening (BetweenIT/espiral log), fill (LazyBrush/trapped-ball), a paisagem dos apps (TVPaint/Toonz/Harmony/Krita), lições do redesign GPv3, tabela lib GP→crate Rust | ao decidir "faz como o Blender ou melhor?" |
 | `../HANDOFF_flip_impl.md` | tracker do que LANDOU (W0-W2 + a saga das 7 rodadas do traço) | para saber o estado real do código |
 | `../HANDOFF_flip_NEXT.md` | onboarding do próximo agente da linha (Modo L + primeira tarefa) | ao abrir a linha |
@@ -36,10 +36,12 @@ no `04 §2`), o pós-processo do fill (Schneider > smooth 20×).
 
 - **W0 (dados) + W1 (render GPU) + W2 (tool+painel+borracha+Select/gizmo): ENTREGUES e
   integrados ao main.** Detalhe: `../HANDOFF_flip_impl.md`.
-- **Bug aberto:** a "mordida" nas quinas com hardness < 1 — mecanismo provado, fix
-  especificado e verificado adversarialmente, **pronto para implementar** (`03 §4-§6`; wave WT
-  no plano).
-- Próximas waves: W3 (Frames/Ghost/Tween) → W4 (Fill) → W5 (Reshape) → W6 (Timeline global).
+- **Wave WT (o traço) FECHADA em 2026-07-12** — a "mordida" morreu: a cobertura é a **união
+  global da polilinha** num único passe (janela `p0`/`p3` + vizinhos geométricos por broadphase
+  + `capsule_dn` única + par clamp/fade sub-pixel). 15 testes GPU, 5 mutações provadas, custo
+  real de 1.7 ms num traço de 4000 pontos. Detalhe: [`03`](03_traco_rasterizacao.md). **Pendente
+  só o smoke do Enio.**
+- Próximas waves: **W3 (Frames/Ghost/Tween)** → W4 (Fill) → W5 (Reshape) → W6 (Timeline global).
 
 ## Princípios deste módulo (inegociáveis)
 

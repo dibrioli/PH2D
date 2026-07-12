@@ -47,6 +47,10 @@ pub struct FlipRenderer {
     points_buf: Option<wgpu::Buffer>,
     strokes_buf: Option<wgpu::Buffer>,
     point_stroke_buf: Option<wgpu::Buffer>,
+    // Janela de vizinhos geométricos (`neighbors.rs`): o range por-ponto (VERTEX) e
+    // a lista concatenada (FRAGMENT).
+    seg_range_buf: Option<wgpu::Buffer>,
+    seg_extras_buf: Option<wgpu::Buffer>,
     bind_group: Option<wgpu::BindGroup>,
     /// Nº de vértices a desenhar no próximo/último `render` (= point_count · 6).
     vertex_count: u32,
@@ -85,9 +89,16 @@ impl FlipRenderer {
                     },
                     count: None,
                 },
-                storage_entry(1),
+                // points: VERTEX (expansão do quad) **e FRAGMENT** — o fragment lê
+                // os pontos dos segmentos vizinhos GEOMÉTRICOS (binding 5) para
+                // compor a união global da polilinha (`neighbors.rs`).
+                storage_entry_vf(1),
                 storage_entry(2),
                 storage_entry(3),
+                // seg_extra_range: por-ponto, lido no VERTEX (viaja por varying flat).
+                storage_entry(4),
+                // seg_extras: a lista concatenada, lida no FRAGMENT.
+                storage_entry_frag(5),
             ],
         });
 
@@ -196,6 +207,8 @@ impl FlipRenderer {
             points_buf: None,
             strokes_buf: None,
             point_stroke_buf: None,
+            seg_range_buf: None,
+            seg_extras_buf: None,
             bind_group: None,
             vertex_count: 0,
             fill_pipeline,
@@ -284,6 +297,21 @@ impl FlipRenderer {
             "ph2d-flip point_stroke",
             bytemuck::cast_slice(&data.point_stroke),
         );
+        let seg_range = storage_buffer(
+            device,
+            queue,
+            "ph2d-flip seg_extra_range",
+            bytemuck::cast_slice(&data.seg_extra_range),
+        );
+        // A lista de vizinhos geométricos é VAZIA no caso comum (traço que não volta
+        // sobre si mesmo). Um storage buffer de tamanho 0 é inválido — sobe uma
+        // entrada dummy; nenhum fragment a lê (todos os `count` são 0).
+        let extras_bytes: &[u8] = if data.seg_extras.is_empty() {
+            bytemuck::bytes_of(&crate::pack::GpuSegRef { a: 0, b: 0 })
+        } else {
+            bytemuck::cast_slice(&data.seg_extras)
+        };
+        let seg_extras = storage_buffer(device, queue, "ph2d-flip seg_extras", extras_bytes);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-flip bind group"),
@@ -305,12 +333,22 @@ impl FlipRenderer {
                     binding: 3,
                     resource: point_stroke.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: seg_range.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: seg_extras.as_entire_binding(),
+                },
             ],
         });
 
         self.points_buf = Some(points);
         self.strokes_buf = Some(strokes);
         self.point_stroke_buf = Some(point_stroke);
+        self.seg_range_buf = Some(seg_range);
+        self.seg_extras_buf = Some(seg_extras);
         self.bind_group = Some(bind_group);
         self.vertex_count = data.point_count() as u32 * 6;
     }
@@ -412,9 +450,26 @@ fn vertex_buffer(
 
 /// Uma entrada de bind-group-layout para um storage buffer read-only no vertex.
 fn storage_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    storage_entry_for(binding, wgpu::ShaderStages::VERTEX)
+}
+
+/// Storage read-only visível ao VERTEX **e** ao FRAGMENT.
+fn storage_entry_vf(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    storage_entry_for(
+        binding,
+        wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+    )
+}
+
+/// Storage read-only visível só ao FRAGMENT.
+fn storage_entry_frag(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    storage_entry_for(binding, wgpu::ShaderStages::FRAGMENT)
+}
+
+fn storage_entry_for(binding: u32, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding,
-        visibility: wgpu::ShaderStages::VERTEX,
+        visibility,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Storage { read_only: true },
             has_dynamic_offset: false,

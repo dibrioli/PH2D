@@ -18,13 +18,14 @@
 
 mod composite;
 mod fill;
+mod neighbors;
 mod pack;
 mod pipeline;
 
 pub use composite::{FlipCompose, SLICE_FORMAT};
 pub use fill::{FillVertex, triangulate};
 pub use pack::{
-    FLAG_CLOSED, FLAG_END_FLAT, FLAG_START_FLAT, FlipGpuData, GpuPoint, GpuStroke, pack_drawing,
-    pack_drawings,
+    FLAG_CLOSED, FLAG_END_FLAT, FLAG_START_FLAT, FlipGpuData, GpuPoint, GpuSegRef, GpuStroke,
+    pack_drawing, pack_drawings,
 };
 pub use pipeline::{CameraRaw, FlipRenderer};

@@ -507,17 +507,24 @@ fn hardness_controls_edge_falloff() {
     );
 }
 
-// ---------- Oráculo analítico (paridade CPU↔GPU, pixel-a-pixel) ----------
+// ---------- Oráculo de APARÊNCIA: a UNIÃO da polilinha ----------
 //
-// O modelo espelha o raster do GP: o pixel é ganho pelo PRIMEIRO segmento (ordem
-// de desenho) cujo fragmento sobrevive ao discard (`alpha >= 0.001`) — depth
-// GREATER estrito + write-depth = a primeira face fica, as demais são descartadas,
-// nunca misturadas. O valor do pixel é a máscara de hardness DELE (distância
-// clampada à linha-de-centro do segmento). Pixels com alguma máscara na zona
-// ambígua do limiar de discard são pulados; TODO o resto do alvo é comparado,
-// inclusive o fundo (0). Qualquer classe de artefato — bead (blend dobrado),
-// escama (depth furado por fragmento transparente), spike (fita dobrada), buraco
-// (junção descoberta) — diverge do oráculo.
+// **O expected NÃO modela o shader — modela o OBJETO.** Um traço macio É a união
+// dos discos varridos ao longo da polilinha: a cobertura num pixel é o perfil de
+// hardness aplicado à MENOR distância normalizada às cápsulas de TODOS os
+// segmentos (o perfil é monótono decrescente ⇒ min-distância ⇔ max-cobertura).
+// Nada aqui sabe de quads, depth, ordem de desenho ou discard.
+//
+// Isto é deliberado e caro de esquecer: a versão anterior deste oráculo espelhava
+// a IMPLEMENTAÇÃO (first-wins por depth) e ficou **verde com a mordida na tela**
+// (memória `feedback_oracle_must_model_appearance_not_implementation`). Toda
+// classe de artefato — mordida na quina, bead, escama, spike, acúmulo, buraco de
+// junção — é uma divergência da união, e por isso vermelha aqui.
+//
+// **Semântica pinada:** auto-cruzamento NÃO-adjacente (laço) segue first-wins (o
+// default do GP, "the stroke cannot overlap itself") — logo os traços deste
+// oráculo não se auto-cruzam; o laço tem teste próprio
+// (`a_soft_self_crossing_keeps_first_wins_semantics`).
 
 /// `smoothstep(0, 1, x)` do WGSL.
 fn smoothstep01(x: f32) -> f32 {
@@ -525,9 +532,10 @@ fn smoothstep01(x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-/// A `hardness_mask` do `flip.wgsl` na CPU, sem o termo de AA (os pixels na faixa
-/// de AA caem na zona ambígua e são pulados). Os hardness usados aqui dão expoente
-/// INTEIRO (`10·(1-h)`: 0.8 → 2, 0.7 → 3) — `powi`, nada transcendental.
+/// O perfil de hardness (a queda do pincel), sem o termo de AA da borda — os
+/// pixels da faixa de AA são pulados por `expected_union_alpha`. Os hardness
+/// usados aqui dão expoente INTEIRO (`10·(1-h)`: 0.8 → 2, 0.7 → 3) — `powi`,
+/// nada transcendental.
 fn cpu_mask(dn: f32, hardness: f32) -> f32 {
     let inv = (1.0 - dn).clamp(0.0, 1.0);
     let exp = 10.0 * (1.0 - hardness);
@@ -538,194 +546,128 @@ fn cpu_mask(dn: f32, hardness: f32) -> f32 {
     smoothstep01(inv.powi(exp.round() as i32))
 }
 
-/// Distância NORMALIZADA (0 = centro, 1 = borda) do ponto `p` ao segmento `a`→`b`,
-/// clampada ao segmento (a mesma conta do fragment).
-fn seg_dn(p: (f32, f32), a: (f32, f32), b: (f32, f32), radius: f32) -> f32 {
+/// Distância NORMALIZADA (0 = centro, 1 = borda) do ponto `p` à cápsula `a`→`b`
+/// de raios `ra`/`rb` — o raio efetivo é interpolado pelo `t` CLAMPADO (a cápsula
+/// de raio variável). É a definição do objeto; o shader tem de convergir a ela.
+fn capsule_dn(p: (f32, f32), a: (f32, f32), b: (f32, f32), ra: f32, rb: f32) -> f32 {
     let ab = (b.0 - a.0, b.1 - a.1);
     let ap = (p.0 - a.0, p.1 - a.1);
-    let len_sq = (ab.0 * ab.0 + ab.1 * ab.1).max(1e-6);
+    let len_sq = ab.0 * ab.0 + ab.1 * ab.1;
+    if len_sq < 1e-6 {
+        return 1e9; // cápsula degenerada: não existe
+    }
     let t = ((ap.0 * ab.0 + ap.1 * ab.1) / len_sq).clamp(0.0, 1.0);
     let d = (ap.0 - t * ab.0, ap.1 - t * ab.1);
-    (d.0 * d.0 + d.1 * d.1).sqrt() / radius.max(1e-4)
+    let radius = (ra + (rb - ra) * t).max(1e-4);
+    (d.0 * d.0 + d.1 * d.1).sqrt() / radius
 }
 
-/// O quad de UM segmento, com os mesmos 4 cantos que o `vs_main` emite:
-/// `[a_esq, a_dir, b_esq, b_dir]` (miter compartilhado nas junções mitradas;
-/// perpendicular própria + extensão `r` nas quebradas/tampas).
-struct SegQuad {
-    corners: [(f32, f32); 4],
-}
-
-fn norm(v: (f32, f32)) -> (f32, f32) {
-    let l = (v.0 * v.0 + v.1 * v.1).sqrt().max(1e-6);
-    (v.0 / l, v.1 / l)
-}
-
-/// Replica a geometria do `vs_main` (fita conectada + miter_break do GP) na CPU,
-/// para um traço ABERTO de largura uniforme com tampas redondas.
-fn seg_quads(pts: &[(f32, f32)], width: f32) -> Vec<SegQuad> {
-    const MITER_BREAK_COS: f32 = 0.5;
-    let r = width * 0.5;
-    let mut quads = Vec::new();
-    for i in 0..pts.len() - 1 {
-        let a = pts[i];
-        let b = pts[i + 1];
-        let dir = norm((b.0 - a.0, b.1 - a.1));
-        let n_seg = (-dir.1, dir.0);
-
-        let mut miter_a = n_seg;
-        let mut scale_a = 1.0;
-        let mut ext_a = if i == 0 { r } else { 0.0 };
-        if i > 0 {
-            let p_prev = pts[i - 1];
-            let d_prev = norm((a.0 - p_prev.0, a.1 - p_prev.1));
-            if -(dir.0 * d_prev.0 + dir.1 * d_prev.1) > MITER_BREAK_COS {
-                ext_a = r;
-            } else {
-                let m_tan = norm((d_prev.0 + dir.0, d_prev.1 + dir.1));
-                miter_a = (-m_tan.1, m_tan.0);
-                scale_a = 1.0 / (m_tan.0 * d_prev.0 + m_tan.1 * d_prev.1).max(MITER_BREAK_COS);
-            }
-        }
-        let mut miter_b = n_seg;
-        let mut scale_b = 1.0;
-        let mut ext_b = if i + 2 == pts.len() { r } else { 0.0 };
-        if i + 2 < pts.len() {
-            let p_next = pts[i + 2];
-            let d_next = norm((p_next.0 - b.0, p_next.1 - b.1));
-            if -(dir.0 * d_next.0 + dir.1 * d_next.1) > MITER_BREAK_COS {
-                ext_b = r;
-            } else {
-                let m_tan = norm((dir.0 + d_next.0, dir.1 + d_next.1));
-                miter_b = (-m_tan.1, m_tan.0);
-                scale_b = 1.0 / (m_tan.0 * d_next.0 + m_tan.1 * d_next.1).max(MITER_BREAK_COS);
-            }
-        }
-
-        let sa = (a.0 - dir.0 * ext_a, a.1 - dir.1 * ext_a);
-        let sb = (b.0 + dir.0 * ext_b, b.1 + dir.1 * ext_b);
-        let ra = r * scale_a;
-        let rb = r * scale_b;
-        quads.push(SegQuad {
-            corners: [
-                (sa.0 + miter_a.0 * ra, sa.1 + miter_a.1 * ra),
-                (sa.0 - miter_a.0 * ra, sa.1 - miter_a.1 * ra),
-                (sb.0 + miter_b.0 * rb, sb.1 + miter_b.1 * rb),
-                (sb.0 - miter_b.0 * rb, sb.1 - miter_b.1 * rb),
-            ],
-        });
-    }
-    quads
-}
-
-enum Containment {
-    In,
-    Out,
-    Borderline,
-}
-
-/// Ponto-no-triângulo com margem: `In`/`Out` definitivos exigem folga `eps` (px)
-/// de TODA aresta — na faixa da aresta o raster e a CPU podem discordar por ulp.
-fn tri_contains(p: (f32, f32), t: [(f32, f32); 3], eps: f32) -> Containment {
-    let area = (t[1].0 - t[0].0) * (t[2].1 - t[0].1) - (t[1].1 - t[0].1) * (t[2].0 - t[0].0);
-    if area.abs() < 1e-6 {
-        return Containment::Out; // degenerado não emite fragmento útil
-    }
-    let s = area.signum();
-    let mut min_inset = f32::MAX;
-    for k in 0..3 {
-        let v0 = t[k];
-        let v1 = t[(k + 1) % 3];
-        let e = (v1.0 - v0.0, v1.1 - v0.1);
-        let len = (e.0 * e.0 + e.1 * e.1).sqrt().max(1e-6);
-        let cross = e.0 * (p.1 - v0.1) - e.1 * (p.0 - v0.0);
-        min_inset = min_inset.min(s * cross / len);
-    }
-    if min_inset > eps {
-        Containment::In
-    } else if min_inset < -eps {
-        Containment::Out
-    } else {
-        Containment::Borderline
-    }
-}
-
-/// O quad rasteriza como os 2 triângulos do shader: `[0,1,2]` + `[2,1,3]`.
-fn quad_contains(q: &SegQuad, p: (f32, f32)) -> Containment {
-    let c = &q.corners;
-    let t1 = tri_contains(p, [c[0], c[1], c[2]], 0.08);
-    let t2 = tri_contains(p, [c[2], c[1], c[3]], 0.08);
-    match (t1, t2) {
-        (Containment::In, _) | (_, Containment::In) => Containment::In,
-        (Containment::Out, Containment::Out) => Containment::Out,
-        _ => Containment::Borderline,
-    }
-}
-
-/// Alpha esperado no pixel, ou `None` se o pixel é ambíguo: perto de uma aresta
-/// de quad (o raster decide por ulp) ou com máscara na faixa do discard de 0.001
-/// (CPU e GPU podem cair em lados diferentes do limiar).
-fn expected_alpha(
-    pts: &[(f32, f32)],
-    quads: &[SegQuad],
-    width: f32,
+/// A polilinha de um traço: pontos + raios por-ponto (px) + fechamento.
+struct Polyline<'a> {
+    pts: &'a [(f32, f32)],
+    radii: &'a [f32],
+    closed: bool,
     hardness: f32,
-    p: (f32, f32),
-) -> Option<f32> {
-    let r = width * 0.5;
-    for (i, w) in pts.windows(2).enumerate() {
-        let m = cpu_mask(seg_dn(p, w[0], w[1], r), hardness);
-        match quad_contains(&quads[i], p) {
-            Containment::Out => continue,
-            cont => {
-                if m > 0.0002 && m < 0.005 {
-                    return None; // limiar do discard — ambíguo
-                }
-                if m < 0.001 {
-                    continue; // descartado com folga: não escreve depth
-                }
-                match cont {
-                    Containment::In => return Some(m),
-                    _ => return None, // aresta de quad — ambíguo
-                }
-            }
-        }
-    }
-    Some(0.0)
 }
 
-/// Renderiza a polilinha (um traço, opacity 1, cor sólida) e compara TODOS os
-/// pixels comparáveis do alvo com o oráculo analítico.
-fn assert_matches_analytic(
+/// Largura MÍNIMA rasterizada (px) — abaixo dela o traço não afina, desbota. É
+/// parte da APARÊNCIA do objeto (o par clamp+fade do Grease Pencil), não um detalhe
+/// do shader: uma linha de 0,3 px que "afinasse" piscaria ao mover.
+const MIN_WIDTH_PX: f32 = 1.3;
+
+impl Polyline<'_> {
+    /// Índices dos segmentos (com o de fechamento, se cíclico).
+    fn segments(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
+        let n = self.pts.len();
+        let last = if self.closed { n } else { n - 1 };
+        (0..last).map(move |i| (i, (i + 1) % n))
+    }
+
+    /// O raio EFETIVO de um ponto: nunca abaixo do mínimo rasterizável.
+    fn radius(&self, i: usize) -> f32 {
+        self.radii[i].max(MIN_WIDTH_PX * 0.5)
+    }
+
+    /// A distância normalizada à POLILINHA = o mínimo sobre todos os segmentos.
+    fn union_dn(&self, p: (f32, f32)) -> f32 {
+        self.segments()
+            .map(|(i, j)| capsule_dn(p, self.pts[i], self.pts[j], self.radius(i), self.radius(j)))
+            .fold(f32::MAX, f32::min)
+    }
+
+    /// O fade sub-pixel: um traço mais fino que 1 px desbota em vez de afinar. Como
+    /// os traços deste oráculo são grossos, isto é 1.0 em todos eles — está aqui
+    /// para o modelo ser a APARÊNCIA completa, não um subconjunto conveniente.
+    fn subpixel_fade(&self) -> f32 {
+        let w = self.radii.iter().copied().fold(f32::MAX, f32::min) * 2.0;
+        smoothstep01(w)
+    }
+
+    /// O menor raio EFETIVO da polilinha — a escala do gradiente de `dn` (≈ largura
+    /// da faixa de AA por pixel).
+    fn min_radius(&self) -> f32 {
+        (0..self.pts.len())
+            .map(|i| self.radius(i))
+            .fold(f32::MAX, f32::min)
+    }
+}
+
+/// Alpha esperado no pixel, ou `None` se o pixel é AMBÍGUO — nas duas faixas onde
+/// CPU e GPU podem legitimamente discordar: o limiar do discard (`alpha ≈ 0.001`)
+/// e a faixa de AA da borda (o shader fecha a borda com `fwidth`, que este modelo
+/// não reproduz de propósito — modelar o AA seria modelar a implementação).
+fn expected_union_alpha(poly: &Polyline<'_>, p: (f32, f32)) -> Option<f32> {
+    let dn = poly.union_dn(p);
+    // Faixa de AA: `fwidth(dn) ≈ 1/raio` por pixel; o shader atenua a borda em
+    // `dn ∈ [1-aa, 1]`. Margem generosa (2 px) — o interesse do teste é o miolo.
+    let aa = 2.0 / poly.min_radius().max(1e-4);
+    if dn > 1.0 - aa && dn < 1.0 + aa {
+        return None;
+    }
+    let m = cpu_mask(dn, poly.hardness) * poly.subpixel_fade();
+    if m > 0.0002 && m < 0.005 {
+        return None; // limiar do discard — o GPU pode pintar ou descartar
+    }
+    Some(if m < 0.001 { 0.0 } else { m })
+}
+
+/// Rasteriza a polilinha (um traço, opacity 1, cor sólida) e compara TODOS os
+/// pixels não-ambíguos do alvo com a UNIÃO analítica.
+fn assert_matches_union(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    pts: &[(f32, f32)],
-    width: f32,
-    hardness: f32,
+    poly: &Polyline<'_>,
     label: &str,
 ) {
+    assert!(
+        poly.hardness < 0.95,
+        "{label}: o oráculo não modela o AA da borda dura — use hardness macio"
+    );
+    assert_eq!(poly.pts.len(), poly.radii.len(), "{label}: pts/radii");
+
     let mut d = FlipDrawing::new();
     let mut s = FlipStroke::new();
-    for &(x, y) in pts {
+    for (&(x, y), &r) in poly.pts.iter().zip(poly.radii) {
         s.push_point(Point {
             pos: Vec2::new(x, y),
-            width,
+            width: r * 2.0,
             opacity: 1.0,
             color: Rgba::new(1.0, 0.2, 0.1, 1.0),
         });
     }
-    s.hardness = hardness;
+    s.hardness = poly.hardness;
+    s.closed = poly.closed;
     d.strokes.push(s);
     let px = render(device, queue, &d);
-    let quads = seg_quads(pts, width);
 
     let mut checked = 0u32;
     let mut worst = 0i32;
     let mut worst_at = (0u32, 0u32);
+    let mut worst_pair = (0i32, 0i32);
     for y in 0..H {
         for x in 0..W {
             let p = (x as f32 + 0.5, y as f32 + 0.5);
-            let Some(exp) = expected_alpha(pts, &quads, width, hardness, p) else {
+            let Some(exp) = expected_union_alpha(poly, p) else {
                 continue;
             };
             let got = i32::from(alpha_at(&px, x, y));
@@ -735,6 +677,7 @@ fn assert_matches_analytic(
             if diff > worst {
                 worst = diff;
                 worst_at = (x, y);
+                worst_pair = (got, want);
             }
         }
     }
@@ -744,57 +687,242 @@ fn assert_matches_analytic(
     );
     assert!(
         worst <= 8,
-        "{label}: GPU diverge do oráculo analítico — pior desvio {worst} em {worst_at:?}"
+        "{label}: a GPU diverge da UNIÃO da polilinha - pior desvio {worst} em {worst_at:?} \
+         (pintou {}, esperado {})",
+        worst_pair.0,
+        worst_pair.1
+    );
+}
+
+/// Raios uniformes para uma polilinha de `n` pontos.
+fn uniform_radii(r: f32, n: usize) -> Vec<f32> {
+    vec![r; n]
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_soft_broken_corner_matches_the_polyline_union() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // **O TESTE DA MORDIDA** (o zigzag do smoke do Enio). Duas viradas afiadas
+    // (~158°/~171° > 120° → `miter_break`) com hardness macio: os quads dos dois
+    // segmentos se sobrepõem no disco da junção e, com depth first-wins, o
+    // ANTERIOR vencia todos os pixels compartilhados pintando a sua queda RADIAL
+    // por cima do NÚCLEO do seguinte — o "bocado arrancado". A aparência correta
+    // é a UNIÃO da polilinha (docs/Flip/03 §3-§4).
+    // O último trecho ainda cruza de volta o canto estendido do 1º segmento, onde
+    // a máscara é ~0 — sem o `discard`, aquele fragmento transparente escreveria
+    // depth e furaria o traço que passa depois (a classe "escamado").
+    let pts = [(10.0, 32.0), (44.0, 32.0), (14.0, 44.0), (56.0, 35.0)];
+    assert_matches_union(
+        &device,
+        &queue,
+        &Polyline {
+            pts: &pts,
+            radii: &uniform_radii(5.0, pts.len()),
+            closed: false,
+            hardness: 0.8,
+        },
+        "zigzag quebrado",
     );
 }
 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
-fn a_sharp_corner_does_not_accumulate_color() {
+fn a_soft_mitered_corner_matches_the_union() {
     let Some((device, queue)) = device() else {
         return;
     };
-    // Zigzag com DUAS viradas afiadas (~158°/~171° > 120° → miter_break) e
-    // hardness baixo: a geometria estendida cobre o disco de cada junção DUAS
-    // vezes, e o GREATER estrito + discard pintam UMA — todo pixel bate com o
-    // oráculo single-coverage. Era o spike/estrela da 6ª rodada: a fita mitrada
-    // DOBRAVA na quina afiada (bowtie) e o premult-over acumulava na bissetriz.
-    // O último trecho ainda CRUZA DE VOLTA o canto estendido (mask=0) do 1º
-    // segmento — sem o discard, aquele fragmento transparente escreve depth e
-    // FURA o traço que passa depois (a classe "escamado").
-    assert_matches_analytic(
+    // Arco suave (viradas ~15-30° → fita MITRADA, junções compartilhadas) com
+    // pincel gordo e hardness macio. Com largura uniforme a cobertura mitrada já
+    // É a união hoje (a aresta de miter é exatamente a bissetriz dos raios — o
+    // Voronoi das duas cápsulas), então este teste é **regressão, não
+    // discriminante**: fica verde ANTES e DEPOIS do fix. Ele guarda o outro lado
+    // do tripé — sem bead nas junções, sem escama, sem costura entre segmentos.
+    let pts = [
+        (8.0, 40.0),
+        (20.0, 34.0),
+        (32.0, 31.0),
+        (44.0, 31.0),
+        (56.0, 34.0),
+    ];
+    assert_matches_union(
         &device,
         &queue,
-        &[(10.0, 32.0), (44.0, 32.0), (14.0, 44.0), (56.0, 35.0)],
-        10.0,
-        0.8,
+        &Polyline {
+            pts: &pts,
+            radii: &uniform_radii(8.0, pts.len()),
+            closed: false,
+            hardness: 0.7,
+        },
+        "arco mitrado",
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_soft_hairpin_matches_the_polyline_union() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Hairpin de 3 pontos (virada ~175°): o EXTREMO da sobreposição A∩B — os dois
+    // quads estendidos cobrem quase a mesma região em torno da dobra. A janela de
+    // vizinhos {A,B} é idêntica dos dois lados, então a união tem de sair exata.
+    let pts = [(12.0, 20.0), (52.0, 26.0), (12.0, 30.0)];
+    assert_matches_union(
+        &device,
+        &queue,
+        &Polyline {
+            pts: &pts,
+            radii: &uniform_radii(5.0, pts.len()),
+            closed: false,
+            hardness: 0.8,
+        },
         "hairpin",
     );
 }
 
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored"]
-fn a_smooth_curve_matches_the_analytic_coverage() {
+fn a_closed_soft_star_seam_matches_the_union() {
     let Some((device, queue)) = device() else {
         return;
     };
-    // Arco suave (viradas ~15° → fita mitrada, junções compartilhadas) com
-    // hardness baixo e largura GORDA (o miter interno até dobra — segmentos mais
-    // curtos que o inset — e ainda assim não pode acumular nem escamar): alpha
-    // idêntico ao oráculo em todo o alvo — sem escama (corrente de ovais), sem
-    // bead nas junções, sem costura entre segmentos.
-    assert_matches_analytic(
+    // Traço FECHADO com quinas afiadas (estrela de 4 pontas — quinas de 90° seriam
+    // MITRADAS e não discriminariam nada). Prova que a COSTURA do wrap (o último
+    // segmento fecha no primeiro) ganha a mesma janela de vizinhos que o miolo:
+    // o vertex já faz wrap de prev/next em traço cíclico.
+    let pts = [
+        (32.0, 8.0),
+        (37.0, 27.0),
+        (56.0, 32.0),
+        (37.0, 37.0),
+        (32.0, 56.0),
+        (27.0, 37.0),
+        (8.0, 32.0),
+        (27.0, 27.0),
+    ];
+    assert_matches_union(
         &device,
         &queue,
-        &[
-            (8.0, 40.0),
-            (20.0, 34.0),
-            (32.0, 31.0),
-            (44.0, 31.0),
-            (56.0, 34.0),
-        ],
-        16.0,
-        0.7,
-        "arco",
+        &Polyline {
+            pts: &pts,
+            radii: &uniform_radii(4.0, pts.len()),
+            closed: true,
+            hardness: 0.8,
+        },
+        "estrela fechada",
     );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn soft_round_caps_are_unchanged_by_the_neighbor_window() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Traço de 2 pontos: a janela de vizinhos é TODA sentinela (não há prev nem
+    // next). Regressão das tampas redondas — a cápsula única com os discos das
+    // pontas — e prova que a sentinela (cápsula degenerada) é ignorada de verdade.
+    let pts = [(14.0, 24.0), (50.0, 40.0)];
+    assert_matches_union(
+        &device,
+        &queue,
+        &Polyline {
+            pts: &pts,
+            radii: &uniform_radii(6.0, pts.len()),
+            closed: false,
+            hardness: 0.7,
+        },
+        "cap redondo",
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_tapered_broken_corner_matches_the_union() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // **O teste do TAPER** (largura por-ponto = pressão de tablet, o caso NORMAL).
+    // A MESMA geometria do zigzag da mordida, agora com o raio variando 3→8→5→3 px.
+    // O fragment precisa normalizar a distância pelo raio interpolado no `t`
+    // CLAMPADO da cápsula — a MESMA função para o próprio segmento e para os
+    // vizinhos. Se o segmento próprio usar o raio interpolado sobre o QUAD (que
+    // inclui as extensões), os dois vencedores possíveis de um pixel compartilhado
+    // medem raios diferentes e a mordida sobrevive em 2ª ordem — invisível para
+    // todos os outros testes, que usam largura uniforme (docs/Flip/03 §4.1, D1).
+    let pts = [(10.0, 32.0), (44.0, 32.0), (14.0, 44.0), (56.0, 35.0)];
+    assert_matches_union(
+        &device,
+        &queue,
+        &Polyline {
+            pts: &pts,
+            radii: &[3.0, 8.0, 5.0, 3.0],
+            closed: false,
+            hardness: 0.8,
+        },
+        "quina com taper",
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_duplicated_point_does_not_tear_the_stroke() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Um ponto DUPLICADO no meio do traço (o tablet repete uma amostra; o smooth ou
+    // o simplify fundem dois). O miter faria `normalize(0)` = NaN e o quad inteiro
+    // sumiria — um rasgo no traço. O `safe_dir` do vertex trata o vizinho degenerado
+    // como "sem vizinho", e o `capsule_dn` ignora a cápsula de comprimento zero: a
+    // aparência tem de ser exatamente a da polilinha sem o ponto repetido.
+    let pts = [
+        (10.0, 32.0),
+        (28.0, 26.0),
+        (28.0, 26.0), // <-- repetido
+        (54.0, 38.0),
+    ];
+    assert_matches_union(
+        &device,
+        &queue,
+        &Polyline {
+            pts: &pts,
+            radii: &uniform_radii(5.0, pts.len()),
+            closed: false,
+            hardness: 0.8,
+        },
+        "ponto duplicado",
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored"]
+fn a_subpixel_thin_stroke_fades_instead_of_flickering() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    // Um traço mais FINO que um pixel não pode "afinar" — ele perde OPACIDADE
+    // (`gpencil_frag.glsl:534`). Sem esse fade, a linha fina pisca e serrilha ao
+    // mover/zoomar, porque o rasterizador acerta ou erra o centro do pixel.
+    let thin = render(&device, &queue, &horizontal_stroke(0.35, 1.0));
+    let one_px = render(&device, &queue, &horizontal_stroke(1.0, 1.0));
+    let thick = render(&device, &queue, &horizontal_stroke(4.0, 1.0));
+
+    // A linha de 0.35 px AINDA PINTA (não some) — só que fraca.
+    let a_thin = i32::from(alpha_at(&thin, 32, 32));
+    let a_one = i32::from(alpha_at(&one_px, 32, 32));
+    let a_thick = i32::from(alpha_at(&thick, 32, 32));
+    assert!(a_thin > 10, "a linha sub-pixel não pode sumir: {a_thin}");
+    assert!(
+        a_thin < a_one,
+        "a sub-pixel tem de ser MAIS FRACA que a de 1 px: {a_thin} vs {a_one}"
+    );
+    assert!(
+        a_one < a_thick,
+        "e a de 1 px, mais fraca que a grossa: {a_one} vs {a_thick}"
+    );
+    // A grossa é opaca (o fade não pode tocar em traço normal).
+    assert!(a_thick > 240, "traço normal fica intacto: {a_thick}");
 }

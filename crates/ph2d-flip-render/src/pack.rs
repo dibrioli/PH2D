@@ -15,6 +15,7 @@
 //! Puro (sem wgpu) — testável headless. O upload pra GPU envolve estas structs.
 
 use crate::fill::{FillVertex, triangulate};
+use crate::neighbors::{self, Seg};
 use ph2d_core::Vec2;
 use ph2d_flip::{Cap, FlipDrawing};
 
@@ -64,6 +65,16 @@ pub struct GpuStroke {
     pub _pad: [u32; 3],
 }
 
+/// Um segmento vizinho GEOMÉTRICO, resolvido em índices GLOBAIS de ponto — o par
+/// `(a, b)` já com o wrap do traço fechado embutido, para o fragment não precisar
+/// consultar a tabela de traços. 8 bytes = o stride de um `vec2<u32>` no WGSL.
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct GpuSegRef {
+    pub a: u32,
+    pub b: u32,
+}
+
 /// O resultado do empacotamento de um desenho, pronto para upload.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct FlipGpuData {
@@ -76,6 +87,17 @@ pub struct FlipGpuData {
     /// Vértices de fill (triângulos já triangulados), dos traços fechados com
     /// preenchimento. Rasterizados ABAIXO do traço (profundidade menor).
     pub fills: Vec<FillVertex>,
+    /// Paralelo a `points`: `[offset, count]` em [`Self::seg_extras`] — os segmentos
+    /// NÃO-adjacentes que podem influenciar os pixels do quad do segmento que
+    /// começa NESTE ponto. É o que torna a cobertura do fragment a **UNIÃO GLOBAL**
+    /// da polilinha num único passe: sem esta lista, um traço que volta sobre si
+    /// mesmo (zigzag apertado, laço, letra) sofre a "mordida" de longo alcance — o
+    /// quad do segmento de índice MENOR vence o núcleo do outro por depth
+    /// first-wins. Vazia na esmagadora maioria dos traços (custo zero); ver
+    /// `neighbors.rs` e `docs/Flip/03_traco_rasterizacao.md`.
+    pub seg_extra_range: Vec<[u32; 2]>,
+    /// A lista concatenada apontada por [`Self::seg_extra_range`].
+    pub seg_extras: Vec<GpuSegRef>,
 }
 
 impl FlipGpuData {
@@ -92,15 +114,16 @@ impl FlipGpuData {
     }
 
     /// Anexa `other`, deslocando os índices para o espaço GLOBAL deste buffer
-    /// (`sid` via `point_stroke`/posição na tabela, `first_point`, e a depth
-    /// absoluta dos fills). Usado para **dobrar o preview ao vivo na fatia da
-    /// camada ativa** — o traço em curso passa a compor pelo blend/opacity DELA em
-    /// tempo real, byte-idêntico ao que o bake produz (mesmo slice, mesmos over
-    /// entre traços, um blend no fim). O apenso ganha `sid` MAIOR → depth maior →
-    /// por cima dos traços já presentes (mesma regra GREATER do pack normal).
+    /// (`sid` via `point_stroke`/posição na tabela, `first_point`, a depth
+    /// absoluta dos fills e os índices da janela de vizinhos). Usado para **dobrar
+    /// o preview ao vivo na fatia da camada ativa** — o traço em curso passa a
+    /// compor pelo blend/opacity DELA em tempo real, byte-idêntico ao que o bake
+    /// produz. O apenso ganha `sid` MAIOR → depth maior → por cima dos traços já
+    /// presentes (mesma regra GREATER do pack normal).
     pub fn append(&mut self, other: &FlipGpuData) {
         let point_base = self.points.len() as u32;
         let stroke_base = self.strokes.len() as u32;
+        let extra_base = self.seg_extras.len() as u32;
         self.points.extend_from_slice(&other.points);
         self.point_stroke
             .extend(other.point_stroke.iter().map(|&s| s + stroke_base));
@@ -109,6 +132,21 @@ impl FlipGpuData {
             s.first_point += point_base;
             s
         }));
+        // A janela de vizinhos é indexada por PONTO e aponta PONTOS: os dois espaços
+        // rebaseiam pelo mesmo deslocamento.
+        self.seg_extra_range
+            .extend(other.seg_extra_range.iter().map(|&[off, count]| {
+                if count == 0 {
+                    [0, 0]
+                } else {
+                    [off + extra_base, count]
+                }
+            }));
+        self.seg_extras
+            .extend(other.seg_extras.iter().map(|r| GpuSegRef {
+                a: r.a + point_base,
+                b: r.b + point_base,
+            }));
         // Fills carregam depth ABSOLUTA = (2·sid+1)·DEPTH_STEP (o traço lê o sid no
         // shader; o fill não). Rebaseia pelo mesmo deslocamento de sid para casar.
         let depth_shift = 2.0 * stroke_base as f32 * DEPTH_STEP;
@@ -135,6 +173,33 @@ fn stroke_flags(closed: bool, cap: (Cap, Cap)) -> u32 {
     f
 }
 
+/// Os segmentos de UM traço, em índices GLOBAIS de ponto (o wrap do fechado já
+/// resolvido) — a entrada do broadphase de vizinhos geométricos.
+fn stroke_segments(g: &FlipGpuData, first_point: u32, count: u32, closed: bool) -> Vec<Seg> {
+    if count < 2 {
+        return Vec::new();
+    }
+    let last = first_point + count - 1;
+    let mut segs = Vec::with_capacity(count as usize);
+    let mut push = |a: u32, b: u32| {
+        let (pa, pb) = (g.points[a as usize], g.points[b as usize]);
+        segs.push(Seg {
+            a,
+            b,
+            pa: Vec2::new(pa.pos[0], pa.pos[1]),
+            pb: Vec2::new(pb.pos[0], pb.pos[1]),
+            radius: (pa.width.max(pb.width)) * 0.5,
+        });
+    };
+    for a in first_point..last {
+        push(a, a + 1);
+    }
+    if closed {
+        push(last, first_point); // a costura
+    }
+    segs
+}
+
 /// Anexa os traços de `drawing` aos acumuladores (o `sid` de cada traço é o
 /// índice GLOBAL em `strokes`, então `point_stroke` casa entre desenhos).
 fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
@@ -153,6 +218,7 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
                 color: col[i].0,
             });
             g.point_stroke.push(sid);
+            g.seg_extra_range.push([0, 0]); // preenchido abaixo
         }
         g.strokes.push(GpuStroke {
             first_point,
@@ -162,6 +228,24 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             material: s.material.0,
             _pad: [0; 3],
         });
+
+        // A janela de vizinhos GEOMÉTRICOS deste traço (a união global no fragment;
+        // vazia para traços que não voltam sobre si mesmos — o caso comum).
+        let segs = stroke_segments(g, first_point, pos.len() as u32, s.closed);
+        for (i, extras) in neighbors::extras_for_stroke(&segs).into_iter().enumerate() {
+            if extras.is_empty() {
+                continue;
+            }
+            let offset = g.seg_extras.len() as u32;
+            for j in &extras {
+                let sj = segs[*j as usize];
+                g.seg_extras.push(GpuSegRef { a: sj.a, b: sj.b });
+            }
+            // O range é indexado pelo PONTO INICIAL do segmento (a identidade do
+            // segmento no shader é o `gp` do seu primeiro ponto).
+            let owner = segs[i].a as usize;
+            g.seg_extra_range[owner] = [offset, extras.len() as u32];
+        }
 
         // Fill: só traço FECHADO com preenchimento. Triangula os pontos e emite
         // os triângulos com a cor premultiplicada + a profundidade do fill.

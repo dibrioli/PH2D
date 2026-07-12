@@ -75,6 +75,13 @@ pub(crate) fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     // A loaded bristle brush: thick paint, the grain's striations carried into the relief.
     painter.set_brush_size_px(40.0);
     painter.set_brush_texture_kind(ph2d_tool_painter::TextureKind::Noise.to_u8());
+    // CANVAS-ANCHORED grain, and this is not a detail. A ViewPlane grain is DAB-relative: every dab
+    // stamps the identical noise in its own frame, and at 10% spacing the dabs overlap tenfold — so the
+    // relief comes out corrugated at exactly the dab pitch (measured: 100% of the height variance along
+    // the stroke is a function of the dab phase). Anchored to the canvas it drops to ~2%, and the marks
+    // read as bristle streaks along the path instead of ribs across it. The first smoke shipped with the
+    // default ViewPlane and Enio saw the corduroy immediately.
+    painter.set_brush_texture_mapping(ph2d_tool_painter::TextureMapping::Tiled.to_u8());
     painter.toggle_brush_impasto();
     painter.set_brush_impasto_depth(0.7);
     painter.set_brush_impasto_source(ph2d_tool_painter::DepthSource::Grain.to_u8());

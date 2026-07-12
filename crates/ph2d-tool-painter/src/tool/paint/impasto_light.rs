@@ -44,6 +44,24 @@ const SPEC_LUT: usize = 256;
 /// the flat-surface response goes to zero and the relative shading divides by ~0. // CLAMP-OK
 const MIN_ELEV_DEG: u16 = 5;
 
+/// **Ambient** floor of the diffuse term: what a face turned fully AWAY from the light still returns.
+///
+/// Paint in shadow is darker; it is not black. Without this the shading floors at `0` and multiplies
+/// the pixel to zero — which is exactly what put the black smudges on the stroke ends of Enio's smoke
+/// (a stroke's cap is where the height falls from full to nothing over a pixel, so it is the steepest
+/// slope on the canvas, so it is the first place a zero-floor bites). Folded so a FLAT surface still
+/// returns exactly `1.0` — the byte-identity contract survives. // CLAMP-OK
+const AMBIENT: f32 = 0.35;
+
+/// Height (in deposit units) below which the relief is a *film*, not a *body*.
+///
+/// The normal comes from the **slope**, not the height — so a vanishingly thin layer of paint whose
+/// grain swings per texel has micro-slopes as steep as a real ridge's, and gets shaded just as hard.
+/// On the brush's near-invisible falloff tail that draws a halo of shadow over paint the eye cannot
+/// see: relief where there is no paint. Below this height the pass fades smoothly to a no-op, so thin
+/// paint is thin paint. // CLAMP-OK
+const BODY_MIN: f32 = 0.06;
+
 /// The lighting environment, resolved once per pass.
 struct Light {
     /// Unit light direction (x, y, z); `z > 0` points out of the canvas.
@@ -98,12 +116,20 @@ impl Light {
         }
     }
 
-    /// Shade one pixel from its height gradient. Returns `(multiply, add)`: the composite's RGB is
-    /// `rgb × multiply + add`. A FLAT pixel (`dhx = dhy = 0`) returns exactly `(1.0, 0.0)`.
+    /// Shade one pixel from its height gradient and the amount of paint (`h`) actually there. Returns
+    /// `(multiply, add)`: the composite's RGB is `rgb × multiply + add`. A FLAT pixel — or one with no
+    /// real body of paint — returns exactly `(1.0, 0.0)`.
     #[inline]
-    fn shade(&self, dhx: f32, dhy: f32) -> (f32, f32) {
+    fn shade(&self, h: f32, dhx: f32, dhy: f32) -> (f32, f32) {
         if dhx == 0.0 && dhy == 0.0 {
             return (1.0, 0.0); // flat paint is untouched, to the byte
+        }
+        // How much of a BODY is here. The normal comes from the slope, so without this a film of paint
+        // one thousandth deep — but with a per-texel grain — would shade as hard as a real ridge, and
+        // draw shadows over the brush's invisible falloff tail. No body, no relief.
+        let body = (h.abs() / BODY_MIN).min(1.0);
+        if body <= 0.0 {
+            return (1.0, 0.0);
         }
         // Surface normal from the gradient: a rising slope tilts the normal AGAINST the rise.
         let n = {
@@ -112,12 +138,17 @@ impl Light {
             [v[0] / len, v[1] / len, v[2] / len]
         };
         let ndl = n[0] * self.dir[0] + n[1] * self.dir[1] + n[2] * self.dir[2];
-        // RELATIVE diffuse: 1.0 on flat ground, > 1 on a face turned toward the light, → 0 on a face
-        // turned away. Capped so a near-vertical wall facing the light cannot blow the pixel out.
-        let mul = (ndl.max(0.0) / self.flat_diffuse).clamp(0.0, 2.0);
+        // RELATIVE diffuse, with an AMBIENT floor: exactly 1.0 on flat ground (so flat paint stays
+        // byte-identical), above 1 on a face turned toward the light, and down to `AMBIENT` — never 0 —
+        // on a face turned away. Paint in shadow is dark, not black.
+        let ratio = (ndl.max(0.0) / self.flat_diffuse).clamp(0.0, 2.0);
+        let mut mul = AMBIENT + (1.0 - AMBIENT) * ratio;
         let ndh = n[0] * self.half[0] + n[1] * self.half[1] + n[2] * self.half[2];
         let i = (ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize;
-        let add = self.shine * (self.spec_lut[i] - self.flat_spec).max(0.0);
+        let mut add = self.shine * (self.spec_lut[i] - self.flat_spec).max(0.0);
+        // Fade the whole effect in with the body, so the pass is a strict no-op on bare canvas.
+        mul = 1.0 + (mul - 1.0) * body;
+        add *= body;
         (mul, add)
     }
 }
@@ -221,7 +252,7 @@ impl PainterTool {
                 // dirty-rect update lights its border exactly as a full recompose would.
                 let dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
                 let dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
-                let (mul, add) = light.shade(dhx, dhy);
+                let (mul, add) = light.shade(at(gx, gy), dhx, dhy);
                 if mul == 1.0 && add == 0.0 {
                     continue; // flat: byte-identical, and not even a rounding trip through f32
                 }

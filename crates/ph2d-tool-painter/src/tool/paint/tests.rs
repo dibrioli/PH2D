@@ -17464,3 +17464,204 @@ fn impasto_panel_events_reach_the_brush() {
         "...and did NOT delete the artist's sculpting — Reset is for the SETTINGS"
     );
 }
+
+#[test]
+fn impasto_light_does_not_shade_paint_that_is_not_there() {
+    // Enio's smoke (2026-07-12) showed a pale echo hugging each stroke where the eye saw no paint.
+    // The light pass is a MULTIPLY, so it cannot tint bare white — but it CAN darken the brush's
+    // near-invisible falloff tail: (255,248,248) × 0.75 = (191,186,186), a pink-grey halo over paint
+    // nobody could see before. And the normal comes from the SLOPE, not the height: a film of paint one
+    // thousandth deep, carrying a grain that swings per texel, has micro-slopes as steep as a real
+    // ridge's — so it was shaded just as hard. Relief where there is no paint.
+    //
+    // The fix is the physical one (`BODY_MIN`): below a real body of paint, the pass fades to a no-op.
+    // Measured: 53 offending pixels before, 0 after.
+    use ph2d_painter_brush::{TextureKind, TextureMapping};
+    let size = 200u32;
+    let paint = |impasto: bool| -> (Vec<u8>, Vec<u8>) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let mut b = BrushSpec {
+            radius_px: 20.0,
+            color: [0.9, 0.1, 0.1],
+            space_attenuation: false,
+            impasto,
+            impasto_depth: 0.7,
+            impasto_source: DepthSource::Grain, // the per-texel grain is what makes the slopes steep
+            impasto_smoothing: 0.15,
+            ..Default::default()
+        };
+        b.texture.kind = TextureKind::Noise;
+        b.texture.mapping = TextureMapping::ViewPlane;
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        let path = [[100.0, 40.0], [110.0, 90.0], [100.0, 140.0], [110.0, 170.0]];
+        t.on_canvas_pointer(cp(path[0], PointerPhase::Down));
+        for p in &path[1..] {
+            t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp(path[3], PointerPhase::Up));
+        let canvas = (*t.canvas_rgba).clone();
+        let (comp, _, _) = t.take_preview_arc().expect("preview");
+        (canvas, (*comp).clone())
+    };
+    let (canvas, unlit) = paint(false);
+    let (_, litc) = paint(true);
+
+    // Where the canvas is still ≥ 96% white, there is nothing the eye reads as painted.
+    let (mut faint, mut drifted, mut worst) = (0u32, 0u32, 0i32);
+    for i in (0..canvas.len()).step_by(4) {
+        if 255 - i32::from(canvas[i + 1]) > 10 {
+            continue; // real paint — the light SHOULD shade this
+        }
+        faint += 1;
+        let d = (i32::from(litc[i + 1]) - i32::from(unlit[i + 1])).abs();
+        if d > 8 {
+            drifted += 1;
+        }
+        worst = worst.max(d);
+    }
+    assert!(
+        faint > 10_000,
+        "sanity: the fixture has a large unpainted field"
+    );
+    assert_eq!(
+        drifted, 0,
+        "the light pass shaded {drifted} pixels that carry no paint (worst drift {worst} levels) — \
+         relief where there is no paint"
+    );
+}
+
+#[test]
+fn impasto_shadowed_paint_is_dark_but_never_black() {
+    // The black smudges on the stroke ENDS of Enio's smoke: a cap is where the height drops from full
+    // to nothing across a pixel, so it is the steepest slope on the canvas — the first place a diffuse
+    // term with a floor of ZERO bites. It multiplied the pixel straight to black. Paint in shadow is
+    // dark; it is not a hole. `AMBIENT` is the floor, folded so a FLAT surface still returns exactly 1
+    // (the byte-identity contract is untouched — `impasto_light_leaves_flat_paint_byte_identical`).
+    let size = 60u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.impasto_depth = 1.0; // maximum relief ⇒ the steepest walls this brush can make
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.paint.impasto_light_amount = 1.0;
+    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Up));
+
+    let h = relief(&t);
+    let lum = |img: &[u8], x: u32, y: u32| {
+        let i = ((y * size + x) * 4) as usize;
+        (u32::from(img[i]) + u32::from(img[i + 1]) + u32::from(img[i + 2])) as f32 / 3.0
+    };
+    t.paint.impasto_show = true;
+    t.invalidate_composite();
+    let shaded = lit(&mut t);
+    t.paint.impasto_show = false;
+    t.invalidate_composite();
+    let plain = lit(&mut t);
+
+    // The darkest LIT pixel that actually carries paint — measured against that same pixel unlit.
+    let mut worst_ratio = f32::MAX;
+    for y in 0..size {
+        for x in 0..size {
+            if h[(y * size + x) as usize].abs() < 0.05 {
+                continue; // no body here — not what this gate is about
+            }
+            let base = lum(&plain, x, y).max(1.0);
+            worst_ratio = worst_ratio.min(lum(&shaded, x, y) / base);
+        }
+    }
+    assert!(
+        worst_ratio < 1.0,
+        "sanity: something on this stroke IS in shadow (else the gate proves nothing)"
+    );
+    assert!(
+        worst_ratio > 0.25,
+        "the deepest shadow on the paint crushed it to {:.0}% of its colour — paint in shadow is \
+         dark, not a black hole",
+        worst_ratio * 100.0
+    );
+}
+
+/// How much of the height variance along a straight stroke is a pure function of the DAB PHASE
+/// (`x mod spacing`). 1.0 = the relief is corrugated at exactly the dab pitch; ~0 = it is not.
+fn dab_phase_variance(mapping: ph2d_painter_brush::TextureMapping) -> f32 {
+    use ph2d_painter_brush::TextureKind;
+    let size = 320u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    let mut b = BrushSpec {
+        radius_px: 40.0, // the smoke's brush — spacing = 0.10 × 2 × 40 = 8 px exactly
+        color: [0.9, 0.1, 0.1],
+        space_attenuation: false,
+        impasto: true,
+        impasto_depth: 0.7,
+        impasto_source: DepthSource::Grain,
+        impasto_smoothing: 0.0,
+        ..Default::default()
+    };
+    b.texture.kind = TextureKind::Noise;
+    b.texture.mapping = mapping;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    let step = b.dab_spacing_px().round().max(2.0) as usize;
+    t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([280.0, 160.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([280.0, 160.0], PointerPhase::Up));
+    let h = relief(&t);
+    let line: Vec<f32> = (70..270).map(|x| h[(160 * size + x) as usize]).collect();
+    let mean = line.iter().sum::<f32>() / line.len() as f32;
+    let total: f32 = line.iter().map(|x| (x - mean) * (x - mean)).sum();
+    if total <= 0.0 {
+        return 0.0;
+    }
+    let mut explained = 0.0f32;
+    for ph in 0..step {
+        let bin: Vec<f32> = line.iter().skip(ph).step_by(step).copied().collect();
+        if bin.is_empty() {
+            continue;
+        }
+        let bm = bin.iter().sum::<f32>() / bin.len() as f32;
+        explained += bin.len() as f32 * (bm - mean) * (bm - mean);
+    }
+    explained / total
+}
+
+#[test]
+fn impasto_grain_relief_corrugates_unless_the_grain_is_anchored_to_the_canvas() {
+    // The ribs Enio saw across every stroke (2026-07-12), quantified — and NOT an engine bug, which is
+    // exactly why it needs a gate rather than a fix.
+    //
+    // A **ViewPlane** grain is DAB-relative: each dab stamps the identical noise in its own frame. At
+    // 10% spacing the dabs overlap tenfold, so the height envelope repeats at exactly the dab pitch and
+    // the relief comes out CORRUGATED across the travel. Measured: **100%** of the height variance along
+    // the stroke is a pure function of `x mod spacing`. The colour path does this too — nobody notices,
+    // because coverage saturates; the relief keeps the envelope, so it shows.
+    //
+    // Anchor the grain to the CANVAS (Tiled) and consecutive dabs bite different noise: **~2%**, and the
+    // marks read as bristle streaks ALONG the path — which is what a loaded brush actually leaves.
+    //
+    // So: `DepthSource::Grain` wants a canvas-anchored Grain. The smoke arms it that way, and this gate
+    // is here so that the day someone "simplifies" the mapping, the corduroy does not come back silently.
+    use ph2d_painter_brush::TextureMapping;
+    let dab_relative = dab_phase_variance(TextureMapping::ViewPlane);
+    let canvas_anchored = dab_phase_variance(TextureMapping::Tiled);
+    assert!(
+        dab_relative > 0.8,
+        "a dab-relative grain DOES corrugate at the dab pitch — that is the physics this gate records \
+         (got {dab_relative:.2}, expected ~1.0)"
+    );
+    assert!(
+        canvas_anchored < 0.2,
+        "a canvas-anchored grain must NOT corrugate: consecutive dabs have to bite different noise \
+         (got {canvas_anchored:.2}, expected ~0.02)"
+    );
+}

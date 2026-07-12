@@ -13,8 +13,8 @@
 use crate::paint::{ClippedHits, button};
 use crate::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
-    AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT,
-    AEDIT_VAR_STRAT_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, MAX_VARIATIONS,
+    AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE, AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT,
+    AEDIT_VAR_STRATEGY_PREV, AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP, MAX_VARIATIONS,
     variation_state,
 };
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
@@ -85,7 +85,7 @@ pub(crate) fn paint_variation_section(
         Rect::new(x, y, ARROW_W, row_h),
         "\u{25c0}",
         true,
-        AEDIT_VAR_STRAT_PREV,
+        AEDIT_VAR_STRATEGY_PREV,
         scene,
         text_system,
         theme,
@@ -108,7 +108,7 @@ pub(crate) fn paint_variation_section(
         Rect::new(x + w - ARROW_W, y, ARROW_W, row_h),
         "\u{25b6}",
         true,
-        AEDIT_VAR_STRAT_NEXT,
+        AEDIT_VAR_STRATEGY_NEXT,
         scene,
         text_system,
         theme,

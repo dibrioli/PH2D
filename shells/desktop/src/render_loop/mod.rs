@@ -394,9 +394,9 @@ impl crate::App {
                 if ed::take_remove_variation() {
                     audio.editor_remove_variation(ed::variation_sel());
                 }
-                let strat_steps = ed::take_strategy_step();
-                if strat_steps != 0 {
-                    audio.editor_cycle_variation_strategy(strat_steps);
+                let strategy_steps = ed::take_strategy_step();
+                if strategy_steps != 0 {
+                    audio.editor_cycle_variation_strategy(strategy_steps);
                 }
                 let weight_steps = ed::take_weight_step();
                 if weight_steps != 0 {

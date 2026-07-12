@@ -69,7 +69,7 @@ fn asset_click(id: NodeId) -> Option<EventOutcome> {
 fn variation_click(id: NodeId) -> Option<EventOutcome> {
     use crate::{
         AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_LOAD, AEDIT_VAR_PLAY, AEDIT_VAR_REMOVE,
-        AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRAT_NEXT, AEDIT_VAR_STRAT_PREV,
+        AEDIT_VAR_ROWS, AEDIT_VAR_SAVE, AEDIT_VAR_STRATEGY_NEXT, AEDIT_VAR_STRATEGY_PREV,
         AEDIT_VAR_WEIGHT_DOWN, AEDIT_VAR_WEIGHT_UP,
     };
     if let Some(i) = AEDIT_VAR_ROWS.iter().position(|r| *r == id) {
@@ -83,9 +83,9 @@ fn variation_click(id: NodeId) -> Option<EventOutcome> {
         variation_state::request_add_folder();
     } else if id == AEDIT_VAR_LOAD {
         variation_state::request_load();
-    } else if id == AEDIT_VAR_STRAT_PREV {
+    } else if id == AEDIT_VAR_STRATEGY_PREV {
         variation_state::cycle_strategy(-1);
-    } else if id == AEDIT_VAR_STRAT_NEXT {
+    } else if id == AEDIT_VAR_STRATEGY_NEXT {
         variation_state::cycle_strategy(1);
     } else if id == AEDIT_VAR_PLAY {
         if has_any {

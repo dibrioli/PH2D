@@ -28,6 +28,11 @@ extend-ignore-identifiers-re = [
 # Project-specific names (not typos).
 ph2d = "ph2d"
 PH2D = "PH2D"
+# Audio/phonetics term (the resonant peaks of a vocal tract), read by typos-cli as a
+# misspelt "format". Used in `ph2d-audio-edit/src/fx/pitch.rs` to explain why the
+# granular shifter moves formants with the pitch (which is what makes a monster voice).
+formant = "formant"
+formants = "formants"
 # pt-BR word in the Motion research docs (docs/Motion Nodes/02_*), read by
 # typos-cli as a misspelt "information".
 informativo = "informativo"

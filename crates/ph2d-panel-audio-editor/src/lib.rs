@@ -192,9 +192,9 @@ pub const AEDIT_VAR_REMOVE: NodeId = hash_node_id("audio_editor_var_remove");
 /// Audition the next variation (pick per strategy + jitter → preview).
 pub const AEDIT_VAR_PLAY: NodeId = hash_node_id("audio_editor_var_play");
 /// Previous pick strategy in the `◀ name ▶` selector.
-pub const AEDIT_VAR_STRAT_PREV: NodeId = hash_node_id("audio_editor_var_strat_prev");
+pub const AEDIT_VAR_STRATEGY_PREV: NodeId = hash_node_id("audio_editor_var_strategy_prev");
 /// Next pick strategy.
-pub const AEDIT_VAR_STRAT_NEXT: NodeId = hash_node_id("audio_editor_var_strat_next");
+pub const AEDIT_VAR_STRATEGY_NEXT: NodeId = hash_node_id("audio_editor_var_strategy_next");
 /// Halve the selected variation's weight.
 pub const AEDIT_VAR_WEIGHT_DOWN: NodeId = hash_node_id("audio_editor_var_weight_down");
 /// Double the selected variation's weight.

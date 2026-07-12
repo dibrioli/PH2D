@@ -3,6 +3,7 @@
 //! Ligado por `#[path]` no modulo pai, entao `use super::*` continua valendo.
 
 use super::*;
+use ph2d_vec_scene::ShapeValues;
 use ph2d_vec_scene::{ALL_SHAPES, MAX_SHAPE_FIELDS};
 
 /// **Gate anti-forma-sem-UI:** toda forma que o `cook` desenha tem descritor aqui —

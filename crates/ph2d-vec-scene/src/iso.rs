@@ -54,21 +54,43 @@ fn cube_frame(rise: f64, skew: f64) -> ([Uv; 6], Uv) {
     (hex, (t, r))
 }
 
-/// **Cubo isométrico.** Silhueta hexagonal + as TRÊS arestas internas (V1–M, V3–M, V5–M),
-/// que recortam as três faces (topo, esquerda, direita).
+/// **Cubo isométrico.** Silhueta hexagonal + as TRÊS arestas internas, todas incidentes num
+/// único vértice interno.
+///
+/// **`from_below` é a ambiguidade de Necker, resolvida.** O mesmo hexágono lê como cubo
+/// visto de cima OU de baixo; o que decide é para onde as três arestas apontam:
+///
+/// - **de cima** (default): o vértice interno é `M = (skew, rise)` e as arestas vão para os
+///   vértices ímpares (V1, V3, V5) — vê-se o topo e as duas laterais da frente;
+/// - **de baixo**: o vértice interno é o OPOSTO, `M' = (1 − skew, 1 − rise)`, e as arestas
+///   vão para os PARES (V0, V2, V4) — vê-se a face de baixo.
+///
+/// Nos defaults (`0,5 / 0,5`) os dois vértices coincidem no centro da caixa — que é
+/// precisamente por que um cubo em traço puro é ambíguo a olho nu.
 #[must_use]
-pub fn iso_cube(a: [f64; 2], b: [f64; 2], rise: f64, skew: f64) -> VecPath {
+pub fn iso_cube(a: [f64; 2], b: [f64; 2], rise: f64, skew: f64, from_below: bool) -> VecPath {
     let u = Unit::of(a, b);
-    let (hex, m) = cube_frame(rise.clamp(0.1, 0.9), skew.clamp(0.1, 0.9));
+    let (r, t) = (rise.clamp(0.1, 0.9), skew.clamp(0.1, 0.9));
+    let (hex, m_above) = cube_frame(r, t);
+    // O vértice interno e o trio de arestas dependem do lado de onde se olha.
+    let (m, spokes) = if from_below {
+        ((1.0 - t, 1.0 - r), [0_usize, 2, 4])
+    } else {
+        (m_above, [1_usize, 3, 5])
+    };
+
     let mut p = poly(&u, &hex);
-    // As três arestas internas, todas incidentes em M. Uma polilinha aberta V1→M→V3 mais
-    // um traço M→V5: cobre as três sem repetir nenhuma.
+    // Uma polilinha aberta A→M→B mais um traço M→C: cobre as três sem repetir nenhuma.
     add_sub(
         &mut p,
-        vec![u.corner(hex[1]), u.corner(m), u.corner(hex[3])],
+        vec![
+            u.corner(hex[spokes[0]]),
+            u.corner(m),
+            u.corner(hex[spokes[1]]),
+        ],
         false,
     );
-    add_sub(&mut p, vec![u.corner(m), u.corner(hex[5])], false);
+    add_sub(&mut p, vec![u.corner(m), u.corner(hex[spokes[2]])], false);
     p
 }
 
@@ -87,8 +109,18 @@ pub fn iso_cube(a: [f64; 2], b: [f64; 2], rise: f64, skew: f64) -> VecPath {
 /// que revela a barriga da base). Ligar o ápice aos extremos laterais `(0/1, 1 − lip)` dá
 /// um cone visivelmente "quebrado" no encontro: com `lip = 0,25` o erro é de 8,3% da
 /// altura. O stencil de cone do draw.io tem exatamente esse defeito.
+///
+/// **`from_below` decide se a borda de TRÁS da base existe.** Ela é a meia-elipse que
+/// fecharia o disco por cima:
+///
+/// - **de cima** (default): o corpo do cone TAPA essa borda — ela não é desenhada. É o cone
+///   sólido clássico: duas geratrizes e o arco da frente.
+/// - **de baixo**: vê-se a face inferior do disco, que fica *na frente* do cone — e a borda
+///   de trás aparece cruzando o corpo.
+///
+/// Não é cosmético: a linha existe ou não existe, conforme o ponto de vista.
 #[must_use]
-pub fn iso_cone(a: [f64; 2], b: [f64; 2], lip: f64) -> VecPath {
+pub fn iso_cone(a: [f64; 2], b: [f64; 2], lip: f64, from_below: bool) -> VecPath {
     let u = Unit::of(a, b);
     let ry = lip.clamp(0.05, 0.45);
     let (rx, h) = (0.5, 1.0 - ry);
@@ -98,28 +130,48 @@ pub fn iso_cone(a: [f64; 2], b: [f64; 2], lip: f64) -> VecPath {
     let mut verts = vec![u.corner((0.5, 0.0))]; // o ápice
     verts.extend(u.arc(c, rx, ry, -phi, 180.0 + 2.0 * phi)); // a barriga da base
     let mut p = closed(verts);
-    // A boca da base (a meia-elipse de trás), que é o que dá o volume ao cone.
-    add_sub(
-        &mut p,
-        u.arc(c, rx, ry, 180.0 + phi, 180.0 - 2.0 * phi),
-        false,
-    );
+    if from_below {
+        add_sub(
+            &mut p,
+            u.arc(c, rx, ry, 180.0 + phi, 180.0 - 2.0 * phi),
+            false,
+        );
+    }
     fit(&u, &mut p);
     p
 }
 
 /// **Pirâmide.** Ápice para CIMA sobre o centro da base; a silhueta é um QUADRILÁTERO
-/// (ápice → direita → frente → esquerda) e há **uma** aresta interna: ápice → vértice da
-/// frente. O 4º vértice da base fica escondido atrás — dentro da silhueta, nunca desenhado.
+/// (ápice → direita → frente → esquerda).
+///
+/// **`from_below` troca quais arestas internas existem** — e é o mesmo raciocínio do cone:
+///
+/// - **de cima** (default): a aresta viva é a da FRENTE (ápice → vértice frontal), que é a
+///   quina entre as duas faces que se veem. O 4º vértice da base fica escondido ATRÁS da
+///   pirâmide.
+/// - **de baixo**: a base tapa o corpo. A aresta da frente some, e o que aparece são as duas
+///   arestas de TRÁS da base (esquerda → fundo → direita) — o contorno do quadrado visto por
+///   baixo, cruzando o corpo.
 #[must_use]
-pub fn iso_pyramid(a: [f64; 2], b: [f64; 2], rise: f64, skew: f64) -> VecPath {
+pub fn iso_pyramid(a: [f64; 2], b: [f64; 2], rise: f64, skew: f64, from_below: bool) -> VecPath {
     let u = Unit::of(a, b);
-    let (hex, _) = cube_frame(rise.clamp(0.1, 0.9), skew.clamp(0.1, 0.9));
+    let (r, t) = (rise.clamp(0.1, 0.9), skew.clamp(0.1, 0.9));
+    let (hex, _) = cube_frame(r, t);
     let apex: Uv = (0.5, 0.0);
     let (right, front, left) = (hex[2], hex[3], hex[4]);
+    // O 4º canto da base — o oposto do da frente no losango da base.
+    let back: Uv = (1.0 - t, 1.0 - r);
 
     let mut p = poly(&u, &[apex, right, front, left]);
-    add_sub(&mut p, vec![u.corner(apex), u.corner(front)], false);
+    if from_below {
+        add_sub(
+            &mut p,
+            vec![u.corner(left), u.corner(back), u.corner(right)],
+            false,
+        );
+    } else {
+        add_sub(&mut p, vec![u.corner(apex), u.corner(front)], false);
+    }
     p
 }
 
@@ -135,8 +187,8 @@ mod tests {
     #[test]
     fn the_apex_points_up_not_down() {
         for (name, p) in [
-            ("cone", iso_cone(A, B, 0.15)),
-            ("pyramid", iso_pyramid(A, B, 0.5, 0.5)),
+            ("cone", iso_cone(A, B, 0.15, false)),
+            ("pyramid", iso_pyramid(A, B, 0.5, 0.5, false)),
         ] {
             let apex = p
                 .verts
@@ -163,7 +215,7 @@ mod tests {
     /// fotografou); este teste rejeita qualquer aresta que não toque `M`.
     #[test]
     fn every_internal_edge_of_the_cube_touches_the_centre() {
-        let p = iso_cube(A, B, 0.5, 0.5);
+        let p = iso_cube(A, B, 0.5, 0.5, false);
         assert_eq!(p.verts.len(), 6, "a silhueta e um hexagono");
 
         let u = Unit::of(A, B);
@@ -223,9 +275,9 @@ mod tests {
     #[test]
     fn every_solid_fits_inside_the_gesture_box() {
         for (name, p) in [
-            ("cube", iso_cube(A, B, 0.5, 0.5)),
-            ("cone", iso_cone(A, B, 0.25)),
-            ("pyramid", iso_pyramid(A, B, 0.5, 0.5)),
+            ("cube", iso_cube(A, B, 0.5, 0.5, false)),
+            ("cone", iso_cone(A, B, 0.25, false)),
+            ("pyramid", iso_pyramid(A, B, 0.5, 0.5, false)),
         ] {
             for v in p.verts_all() {
                 assert!(
@@ -235,5 +287,68 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// **O ponto de vista MUDA a geometria, não a aparência.** É a diferença entre uma
+    /// opção de verdade e um enfeite.
+    ///
+    /// - **Cone:** visto de CIMA o corpo tapa a borda de trás da base — ela não existe. De
+    ///   BAIXO vê-se a face inferior do disco, que fica na frente do cone, e a borda aparece
+    ///   cruzando o corpo. (Foi o que o Enio apontou: "se é por cima essa linha some".)
+    /// - **Cubo:** é a ambiguidade de Necker. O hexágono é o MESMO; o que muda é o vértice
+    ///   interno — `(skew, rise)` ou o oposto — e, com ele, para onde apontam as três
+    ///   arestas. O teste usa `rise ≠ skew` de propósito: nos defaults `0,5/0,5` os dois
+    ///   vértices coincidem no centro e as duas leituras seriam indistinguíveis (que é
+    ///   exatamente por que um cubo em traço puro engana o olho).
+    /// - **Pirâmide:** de cima a quina viva é a da FRENTE; de baixo a base tapa o corpo e o
+    ///   que aparece são as duas arestas de TRÁS.
+    #[test]
+    fn the_viewpoint_changes_which_edges_exist() {
+        // Cone: de cima a boca da base NAO existe; de baixo, existe.
+        assert_eq!(
+            iso_cone(A, B, 0.2, false).subpaths.len(),
+            0,
+            "visto de cima, o corpo do cone TAPA a borda de tras da base"
+        );
+        assert_eq!(
+            iso_cone(A, B, 0.2, true).subpaths.len(),
+            1,
+            "visto de baixo, a borda de tras aparece cruzando o corpo"
+        );
+
+        // Cubo: mesmo hexagono, vertice interno OPOSTO. Com rise != skew eles nao coincidem.
+        let (up, down) = (
+            iso_cube(A, B, 0.3, 0.7, false),
+            iso_cube(A, B, 0.3, 0.7, true),
+        );
+        let hull: Vec<[f64; 2]> = up.verts.iter().map(|v| v.anchor).collect();
+        let hull_d: Vec<[f64; 2]> = down.verts.iter().map(|v| v.anchor).collect();
+        assert_eq!(hull, hull_d, "a SILHUETA e a mesma — e a de Necker");
+        let m_up = up.subpaths[0].verts[1].anchor;
+        let m_down = down.subpaths[0].verts[1].anchor;
+        let d = (m_up[0] - m_down[0]).hypot(m_up[1] - m_down[1]);
+        assert!(
+            d > 0.5,
+            "o vertice interno tem de SALTAR para o oposto (saltou {d})"
+        );
+        // E as arestas partem de vertices DIFERENTES do hexagono.
+        assert_ne!(
+            up.subpaths[0].verts[0].anchor, down.subpaths[0].verts[0].anchor,
+            "as tres arestas apontam para o outro trio de vertices"
+        );
+
+        // Piramide: de cima UMA aresta (a quina da frente); de baixo DUAS (as de tras).
+        let py_up = iso_pyramid(A, B, 0.5, 0.5, false);
+        let py_down = iso_pyramid(A, B, 0.5, 0.5, true);
+        assert_eq!(
+            py_up.subpaths[0].verts.len(),
+            2,
+            "de cima: a quina da frente"
+        );
+        assert_eq!(
+            py_down.subpaths[0].verts.len(),
+            3,
+            "de baixo: as duas arestas de tras da base"
+        );
     }
 }

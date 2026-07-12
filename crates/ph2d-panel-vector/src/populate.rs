@@ -173,6 +173,16 @@ fn populate_shape(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
+        // O gêmeo BOTÃO do mesmo slot: quando o campo é uma ESCOLHA (`FieldUnit::Choice`),
+        // é ele que fica clicável e cicla pelas opções — o slot numérico vira só o depósito
+        // do valor. `populate` é estático (não sabe qual forma está em foco), então os dois
+        // existem sempre e a PINTURA decide qual dos dois registra o hit.
+        store.register(
+            ids::vector_shape_choice_id(i),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
     }
 
     // Text "Size" slider (world units) — shown only in Text mode; seeded at the

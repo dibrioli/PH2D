@@ -17,7 +17,7 @@
 //! `0.3`, ilegível numa caixa). [`FieldUnit`] marca quais campos cruzam essa fronteira,
 //! e [`to_world`] / [`to_ui`] fazem a travessia — um lugar só, em vez de espalhado.
 
-use ph2d_vec_scene::{ShapeKind, ShapeValues};
+use ph2d_vec_scene::ShapeKind;
 
 /// A unidade em que um parâmetro é AUTORADO (o que o usuário vê e digita).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -30,6 +30,13 @@ pub enum FieldUnit {
     Degrees,
     /// **Pixels de tela** — cruza a fronteira: o documento guarda `px × px_to_world`.
     Px,
+    /// **Escolha** entre N opções nomeadas (o valor é o índice, `0..N−1`).
+    ///
+    /// O painel pinta um botão que CICLA pelos nomes — não uma caixa de número. "Ponto de
+    /// vista: 0" não é uma UI; "Viewed: From above" é. O valor continua um `f64` no
+    /// documento (o vetor de parâmetros é de tamanho fixo e homogêneo), mas a UI nunca o
+    /// mostra cru.
+    Choice(&'static [&'static str]),
 }
 
 /// Um parâmetro de forma, do ponto de vista da UI.
@@ -174,6 +181,25 @@ const fn frac(label: &'static str, min: f64, max: f64) -> FieldDesc {
         unit: FieldUnit::Ratio,
     }
 }
+
+/// **O ponto de vista** de um sólido isométrico — e ele MUDA a geometria, não é cosmético.
+///
+/// A câmera acima ou abaixo do plano da base decide **quais arestas existem**:
+///
+/// - o cone visto de CIMA tem o corpo tapando a borda de trás da base (ela some); visto de
+///   BAIXO, vê-se a face inferior do disco, que fica *na frente* do cone — e a borda de trás
+///   aparece cruzando o corpo;
+/// - o cubo é a **ambiguidade de Necker**: o mesmo hexágono lê dos dois jeitos, e o que
+///   decide é para onde apontam as três arestas internas — para o vértice `(skew, rise)` ou
+///   para o OPOSTO, `(1 − skew, 1 − rise)`. (Nos defaults `0,5/0,5` os dois coincidem no
+///   centro; é exatamente por isso que um cubo em traço puro é ambíguo.)
+const VIEWED: FieldDesc = FieldDesc {
+    label: "Viewed",
+    min: 0.0,
+    max: 1.0,
+    step: 1.0,
+    unit: FieldUnit::Choice(&["From above", "From below"]),
+};
 
 /// Raio de canto (px). A faixa vai a 500 porque o teto antigo (40) não alcançava formas
 /// grandes; o arredondamento satura na geometria, então pedir demais achata, nunca inverte.
@@ -580,75 +606,25 @@ pub const SHAPES: &[ShapeDesc] = &[
         kind: ShapeKind::IsoCube,
         label: "Cube",
         group: ShapeGroup::Iso,
-        fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9)],
+        fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9), VIEWED],
     },
     ShapeDesc {
         kind: ShapeKind::IsoCone,
         label: "Cone",
         group: ShapeGroup::Iso,
-        fields: &[frac("Lip", 0.05, 0.45)],
+        fields: &[frac("Lip", 0.05, 0.45), VIEWED],
     },
     ShapeDesc {
         kind: ShapeKind::IsoPyramid,
         label: "Pyramid",
         group: ShapeGroup::Iso,
-        fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9)],
+        fields: &[frac("Rise", 0.1, 0.9), frac("Skew", 0.1, 0.9), VIEWED],
     },
 ];
 
-/// O descritor de `kind` (todo `ShapeKind` tem um — o gate abaixo garante).
-#[must_use]
-pub fn desc(kind: ShapeKind) -> &'static ShapeDesc {
-    SHAPES.iter().find(|d| d.kind == kind).unwrap_or(&SHAPES[0])
-}
-
-/// As formas de uma família, na ordem do catálogo.
-pub fn shapes_in(group: ShapeGroup) -> impl Iterator<Item = &'static ShapeDesc> {
-    SHAPES.iter().filter(move |d| d.group == group)
-}
-
-/// Valores autorados (UI) → valores de DOCUMENTO (mundo). Só os campos `Px` viajam;
-/// contagens, razões e ângulos são os mesmos dos dois lados.
-#[must_use]
-pub fn to_world(kind: ShapeKind, ui: &ShapeValues, px_to_world: f64) -> ShapeValues {
-    let mut out = *ui;
-    for (i, f) in desc(kind).fields.iter().enumerate() {
-        if f.unit == FieldUnit::Px {
-            out[i] = ui[i] * px_to_world;
-        }
-    }
-    out
-}
-
-/// Valores de DOCUMENTO (mundo) → valores autorados (UI) — o inverso exato de
-/// [`to_world`]. `px_to_world` degenerado devolve os campos `Px` zerados (em vez de
-/// infinito).
-#[must_use]
-pub fn to_ui(kind: ShapeKind, world: &ShapeValues, px_to_world: f64) -> ShapeValues {
-    let mut out = *world;
-    for (i, f) in desc(kind).fields.iter().enumerate() {
-        if f.unit == FieldUnit::Px {
-            out[i] = if px_to_world > 0.0 {
-                world[i] / px_to_world
-            } else {
-                0.0
-            };
-        }
-    }
-    out
-}
-
-/// Clampa cada campo à faixa dele (e arredonda as contagens). Aplicado a toda autoria,
-/// então nem digitação nem save corrompido produzem forma inválida.
-pub fn clamp(kind: ShapeKind, v: &mut ShapeValues) {
-    for (i, f) in desc(kind).fields.iter().enumerate() {
-        let mut x = v[i].clamp(f.min, f.max);
-        if f.unit == FieldUnit::Count {
-            x = x.round();
-        }
-        v[i] = x;
-    }
-}
+// A travessia (descritor · unidade · clamp · escolhas) mora no módulo irmão, mas a porta é
+// aqui: `shapes::to_world`, `shapes::clamp`, … seguem existindo para quem consome.
+pub use crate::shapes_units::{choice_label, clamp, desc, next_choice, shapes_in, to_ui, to_world};
 
 #[cfg(test)]
 #[path = "shapes_tests.rs"]

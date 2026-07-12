@@ -435,6 +435,11 @@ pub(crate) fn shape_field_index(id: NodeId) -> Option<usize> {
     (0..crate::ids::MAX_SHAPE_FIELD_SLOTS).find(|&i| crate::ids::vector_shape_field_id(i) == id)
 }
 
+/// Índice do parâmetro cujo **botão de escolha** é `id` (o gêmeo clicável do slot numérico).
+pub(crate) fn shape_choice_index(id: NodeId) -> Option<usize> {
+    (0..crate::ids::MAX_SHAPE_FIELD_SLOTS).find(|&i| crate::ids::vector_shape_choice_id(i) == id)
+}
+
 /// Índice da forma no catálogo cujo id de botão é `id`.
 pub(crate) fn shape_index(id: NodeId) -> Option<usize> {
     (0..ph2d_tool_vector::shapes::SHAPES.len()).find(|&i| crate::ids::vector_shape_id(i) == id)

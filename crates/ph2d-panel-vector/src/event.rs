@@ -74,6 +74,31 @@ pub(crate) fn apply_event(
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, val)));
             true
         }
+        // **Campo de ESCOLHA** (o ponto de vista de um sólido): o clique CICLA. O botão tem
+        // id próprio, mas o valor mora no slot numérico do mesmo índice — então o `SetValue`
+        // sai no id do CAMPO, e a shell segue tendo um caminho só para aplicar parâmetro.
+        WidgetEvent::Click(id) if state::shape_choice_index(id).is_some() => {
+            seam_reset_button(host, id);
+            let i = state::shape_choice_index(id).unwrap_or(0);
+            let field = ids::vector_shape_field_id(i);
+            let cur = host.store().number_value(field).unwrap_or(0.0);
+            let active = state::current_snapshot().shape;
+            let focus = state::shape_focus(state::current_shape_focus(), active);
+            match ph2d_tool_vector::shapes::next_choice(focus, i, cur) {
+                Some(next) => {
+                    // O painel adianta o valor no store para o botão já pintar o rótulo
+                    // novo neste frame; a shell aplica e re-cozinha a forma viva.
+                    host.store_mut().set_number_value(field, next);
+                    host.bus_mut()
+                        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                            field, next,
+                        )));
+                    true
+                }
+                // O campo deste indice nao e uma escolha nesta forma: o clique nao existe.
+                None => false,
+            }
+        }
         // Variation-axis number field — forward the committed axis value; the shell
         // maps the slot index to the font's axis and re-cooks the glyphs.
         WidgetEvent::ValueChanged(id) if state::text_axis_index(id).is_some() => {

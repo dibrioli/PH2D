@@ -28,6 +28,10 @@ pub mod params;
 /// `ph2d_vec_scene::kind`, que sabe desenhar. É o que faz uma forma nova custar uma
 /// linha de tabela em vez de oito lugares.
 pub mod shapes;
+
+/// A TRAVESSIA do catálogo (descritor · unidade UI↔mundo · clamp · escolhas) — módulo irmão
+/// de `shapes` (teto de LOC). Re-exportado dali, então quem consome não percebe o corte.
+mod shapes_units;
 pub mod tool;
 
 pub use params::{

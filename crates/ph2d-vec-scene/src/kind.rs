@@ -416,9 +416,11 @@ pub fn cook(kind: ShapeKind, a: [f64; 2], b: [f64; 2], v: &[f64]) -> VecPath {
         ShapeKind::Cross => crate::cross(a, b, f(v, 0)),
         ShapeKind::Check => crate::check(a, b, f(v, 0)),
         ShapeKind::Banner => crate::banner(a, b, f(v, 0)),
-        ShapeKind::IsoCube => crate::iso_cube(a, b, f(v, 0), f(v, 1)),
-        ShapeKind::IsoCone => crate::iso_cone(a, b, f(v, 0)),
-        ShapeKind::IsoPyramid => crate::iso_pyramid(a, b, f(v, 0), f(v, 1)),
+        // O 3º valor (ou o 2º, no cone) e o PONTO DE VISTA: >= 0,5 = visto de baixo. Ele
+        // muda quais arestas EXISTEM, nao so a aparencia.
+        ShapeKind::IsoCube => crate::iso_cube(a, b, f(v, 0), f(v, 1), f(v, 2) >= 0.5),
+        ShapeKind::IsoCone => crate::iso_cone(a, b, f(v, 0), f(v, 1) >= 0.5),
+        ShapeKind::IsoPyramid => crate::iso_pyramid(a, b, f(v, 0), f(v, 1), f(v, 2) >= 0.5),
     }
 }
 

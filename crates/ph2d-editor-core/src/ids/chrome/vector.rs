@@ -214,6 +214,18 @@ pub fn vector_shape_field_id(index: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.shape.field.{index}"))
 }
 
+/// **Botão** do parâmetro `index` quando ele é uma ESCOLHA (`FieldUnit::Choice`) em vez de
+/// um número — o ponto de vista de um sólido isométrico, por exemplo.
+///
+/// Id próprio, e não o `vector_shape_field_id`, porque os dois são widgets DIFERENTES: um
+/// slot é registrado uma vez, no `populate`, que é estático e não sabe qual forma está em
+/// foco. O botão emite `SetValue` **no id do campo**, então o valor continua morando num
+/// lugar só — o slot numérico é apenas o depósito, e deixa de ser clicável.
+#[must_use]
+pub fn vector_shape_choice_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.shape.choice.{index}"))
+}
+
 /// Teto de campos de forma que o painel registra (espelha `MAX_SHAPE_FIELDS`).
 pub const MAX_SHAPE_FIELD_SLOTS: usize = 8;
 /// Teto de botões de forma que o painel registra (o catálogo pode crescer até aqui).

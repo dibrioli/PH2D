@@ -111,9 +111,57 @@ impl BodyCtx<'_> {
             return y + self.row_h + self.row_gap;
         }
         for (i, f) in desc.fields.iter().enumerate() {
-            y = self.labeled_number_field(f.label, ids::vector_shape_field_id(i), f.step, y);
+            let id = ph2d_editor_core::ids::vector_shape_field_id(i);
+            y = match f.unit {
+                // Uma ESCOLHA não é um número. Um campo mostrando "Viewed: 1" não diz nada;
+                // um botão dizendo "From below" diz tudo — e clicar nele cicla.
+                shapes::FieldUnit::Choice(_) => {
+                    let cur = self.store.number_value(id).unwrap_or(0.0);
+                    let text = shapes::choice_label(focus, i, cur).unwrap_or("");
+                    // O HIT vai no gêmeo botão; o valor continua morando no slot numérico.
+                    let btn = ph2d_editor_core::ids::vector_shape_choice_id(i);
+                    self.labeled_choice_button(f.label, btn, text, y)
+                }
+                _ => self.labeled_number_field(f.label, id, f.step, y),
+            };
         }
         y
+    }
+
+    /// Um campo de ESCOLHA: rótulo + um botão que mostra a opção corrente e CICLA ao clique.
+    /// Ocupa a mesma coluna da caixa numérica, então a seção continua alinhada.
+    fn labeled_choice_button(
+        &mut self,
+        label: &str,
+        id: ph2d_a11y::NodeId,
+        current: &str,
+        y: f32,
+    ) -> f32 {
+        let gap = Spacing::Sm.px();
+        paint_text(
+            self.text_system,
+            self.scene,
+            label,
+            self.inner_x,
+            y + (self.row_h - TypeToken::Sm.px()) * 0.5,
+            TypeToken::Sm.px(),
+            LABEL_COL_W,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        let field_x = self.inner_x + LABEL_COL_W + gap;
+        let field_w = (self.inner_w - LABEL_COL_W - gap).max(1.0);
+        let rect = Rect::new(field_x, y, field_w, self.row_h);
+        self.hit_index.register(id, rect);
+        paint_segmented_button(
+            rect,
+            current,
+            false,
+            self.store.button_state(id).unwrap_or_default(),
+            self.scene,
+            self.text_system,
+            self.theme,
+        );
+        y + self.row_h + self.row_gap
     }
 
     /// Uma grade de botões segmentados de `cols` colunas — o desenho compartilhado do

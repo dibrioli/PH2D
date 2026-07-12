@@ -8,7 +8,8 @@
 //! `crate::ids::VECTOR_*`.
 
 pub use ph2d_editor_core::ids::{
-    MAX_SHAPE_FIELD_SLOTS, vector_shape_field_id, vector_shape_group_id, vector_shape_id,
+    MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,
+    vector_shape_id,
 };
 pub use ph2d_editor_core::ids::{
     MAX_TEXT_VARIATION_AXES, vector_text_axis_id, vector_text_font_option_id,

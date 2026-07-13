@@ -266,7 +266,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         crate::paint_chrome::ChromeState {
             knife_armed: state.knife_armed,
             probe_armed: state.probe_armed,
-            has_selection: !state.selected.is_empty(),
+            group_verb: crate::interact::group_verb(state),
         },
     );
     // The breadcrumb (doc 57), top-left: where you are, and every way back out. Drawn

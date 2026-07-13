@@ -26,6 +26,39 @@ pub(super) fn group(state: &mut MotionGraphPanelState) {
     state.selected.clear();
 }
 
+/// **What the toolbar's Group chip will do if you press it right now** — because a
+/// button that always says the same thing while doing nothing half the time is a
+/// button the artist stops pressing (Enio, smoke 2026-07-13: *"o botão de agrupar
+/// deveria ser usado para desagrupar tb"*).
+///
+/// A card selected → it will DISSOLVE it. Anything else selected → it will collapse
+/// it. Nothing selected → it is inert, and reads inert.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum GroupVerb {
+    Group,
+    Ungroup,
+    Inert,
+}
+
+pub(crate) fn verb(state: &MotionGraphPanelState) -> GroupVerb {
+    if state.selected.iter().any(|id| is_subgraph_view(*id)) {
+        GroupVerb::Ungroup
+    } else if state.selected.is_empty() {
+        GroupVerb::Inert
+    } else {
+        GroupVerb::Group
+    }
+}
+
+/// The chip. One button, both verbs — it does whatever [`verb`] said it would.
+pub(super) fn chip(state: &mut MotionGraphPanelState, snap: &GraphViewSnapshot) {
+    match verb(state) {
+        GroupVerb::Group => group(state),
+        GroupVerb::Ungroup => ungroup(state, snap),
+        GroupVerb::Inert => {}
+    }
+}
+
 /// **Ctrl+Alt+G** — dissolve. With cards selected, dissolve those. With nothing
 /// selected while standing INSIDE a group, dissolve the group you are in and step
 /// out to where it was (Nuke's *Expand Group* from inside).

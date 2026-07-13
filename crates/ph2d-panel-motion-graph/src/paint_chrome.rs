@@ -6,6 +6,7 @@
 //! [`GraphHitKind::Chrome`] carrying its ordinal. `interact` interprets them
 //! (divider drag → `SetSplit`, chips → `SetSplitVertical` / re-fit).
 
+use crate::interact::GroupVerb;
 use crate::paint::fnv_id;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
@@ -64,11 +65,13 @@ fn chrome_hit_id(id: u16) -> NodeId {
 /// What the toolbar has to know about the editor's state to draw itself honestly:
 /// which modes are ARMED (their chip wears the Accent ring — a mode with no visible
 /// sign is a mystery) and whether Group has a subject at all.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) struct ChromeState {
     pub knife_armed: bool,
     pub probe_armed: bool,
-    pub has_selection: bool,
+    /// What the Group chip would do if pressed right now — it draws the icon of the
+    /// verb it will actually perform (doc 57).
+    pub group_verb: crate::interact::GroupVerb,
 }
 
 pub(crate) fn draw_split_chrome(
@@ -82,7 +85,7 @@ pub(crate) fn draw_split_chrome(
     let ChromeState {
         knife_armed,
         probe_armed,
-        has_selection,
+        group_verb,
     } = state;
     let vertical = rect.x > center.x + 0.5;
     // Divider line + a forgiving grab band straddling the boundary edge.
@@ -128,9 +131,18 @@ pub(crate) fn draw_split_chrome(
         (CHROME_BACKDROP, IconId::Backdrop, false),
         (CHROME_KNIFE, IconId::Knife, knife_armed),
         (CHROME_PROBE, IconId::Probe, probe_armed),
-        // Group (doc 57) — active when there IS a selection to collapse. A chip that
-        // looks the same whether or not it can act is a chip that lies once per press.
-        (CHROME_GROUP, IconId::Group, has_selection),
+        // Group / Ungroup (doc 57) — ONE chip, and it wears the icon of the verb it
+        // will actually perform: a card selected and it becomes Ungroup. A chip that
+        // looks the same whether or not it can act (and whichever way it will act) is
+        // a chip that lies once per press.
+        (
+            CHROME_GROUP,
+            match group_verb {
+                GroupVerb::Ungroup => IconId::Ungroup,
+                _ => IconId::Group,
+            },
+            group_verb != GroupVerb::Inert,
+        ),
     ];
     let row_y = rect.y + rect.h - TOOLBAR_INSET - CHIP_SIZE;
     for (i, (id, icon, active)) in chips.into_iter().enumerate() {

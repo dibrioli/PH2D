@@ -253,6 +253,22 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-motion-graph/src/paint_wire.rs",
         "pure spline drawing — the wires' AccessKit nodes are registered in hits.rs",
     ),
+    // The add-node popup's DRAW — split from `paint.rs` for the 600-LOC cap (doc 57).
+    //
+    // It registers nothing because the MENU registers nothing: its rows are hit-tested
+    // panel-side against the full-canvas `Background` shield (`interact::apply_background`
+    // → `geom::add_menu_row`), a design that predates this split by a long way (M1.E7).
+    // So the a11y gap MOVED here with the split; it did not appear with it — and papering
+    // over it with an `use ph2d_a11y` that registers nothing would satisfy this scan while
+    // making the menu no more reachable than it is today.
+    //
+    // **The real debt, named:** the add-menu's 86 rows have no AccessKit nodes at all.
+    // Closing it means giving each row an id + hit rect of its own instead of the shield.
+    (
+        "ph2d-panel-motion-graph/src/paint_menu.rs",
+        "add-menu draw — its rows are hit-tested against the Background shield and register \
+         no ids anywhere (pre-existing M1.E7 gap, not introduced by the split)",
+    ),
     (
         "ph2d-panel-motion-graph/src/paint_wire_tests.rs",
         "the flattening guards for paint_wire.rs — a test module, it paints nothing",

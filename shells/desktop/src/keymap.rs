@@ -13,8 +13,8 @@ use winit::keyboard::KeyCode;
 pub fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
     use ph2d_editor::interaction::{
         KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
-        KEY_ENTER, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_K, KEY_KEY_P,
-        KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
+        KEY_ENTER, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_K,
+        KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
     };
     Some(match code {
         KeyCode::Tab => KEY_TAB,
@@ -34,10 +34,61 @@ pub fn winit_to_editor_keycode(code: KeyCode) -> Option<u32> {
         // focus; otherwise they fall through unmapped as before.
         KeyCode::KeyD => KEY_KEY_D,
         KeyCode::KeyF => KEY_KEY_F,
+        // G — Group / Ungroup a subgraph (doc 57), when the cursor is over the graph.
+        KeyCode::KeyG => KEY_KEY_G,
         KeyCode::KeyK => KEY_KEY_K,
         KeyCode::KeyP => KEY_KEY_P,
         KeyCode::KeyV => KEY_KEY_V,
         KeyCode::KeyX => KEY_KEY_X,
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_editor::interaction::{GraphKey, graph_key_for};
+
+    /// **Every verb the graph owns must survive the SHELL's normalizer.**
+    ///
+    /// This is the gate that would have caught the `Ctrl+G` bug before the smoke (Enio,
+    /// 2026-07-13: it toggled the scene grid instead of grouping). The graph's keymap
+    /// lives in editor-core; the shell's key router is what actually feeds it while the
+    /// cursor is over the panel — and it can only feed a key it can NAME. `KeyG` was
+    /// missing from this table, so the chord fell straight through to the global `G`.
+    ///
+    /// A verb the graph can express but the shell cannot spell is a verb that silently
+    /// does something else.
+    #[test]
+    fn every_graph_verb_is_reachable_through_the_shells_normalizer() {
+        let cases = [
+            (KeyCode::KeyG, true, false, GraphKey::Group),
+            (KeyCode::KeyG, true, true, GraphKey::Ungroup),
+            (KeyCode::KeyD, true, false, GraphKey::Duplicate),
+            (KeyCode::KeyF, false, false, GraphKey::Fit),
+            (KeyCode::KeyA, false, false, GraphKey::Add),
+            (KeyCode::KeyK, false, false, GraphKey::Knife),
+            (KeyCode::KeyP, false, false, GraphKey::Probe),
+            (KeyCode::Escape, false, false, GraphKey::Escape),
+            (KeyCode::Delete, false, false, GraphKey::Delete),
+            (KeyCode::Space, false, false, GraphKey::TogglePlay),
+        ];
+        for (code, cmd, alt, want) in cases {
+            let kc = winit_to_editor_keycode(code)
+                .unwrap_or_else(|| panic!("the shell cannot even NAME {code:?}"));
+            assert_eq!(
+                graph_key_for(kc, cmd, alt),
+                Some(want),
+                "{code:?} (cmd={cmd}, alt={alt}) must reach the graph as {want:?}"
+            );
+        }
+    }
+
+    /// A plain `G` is NOT a graph verb — it is the scene's grid toggle, and the graph
+    /// must not eat a letter it does not own (that would be the same bug, mirrored).
+    #[test]
+    fn a_bare_g_is_not_a_graph_verb() {
+        let kc = winit_to_editor_keycode(KeyCode::KeyG).unwrap();
+        assert_eq!(graph_key_for(kc, false, false), None);
+    }
 }

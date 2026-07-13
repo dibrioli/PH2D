@@ -32,7 +32,7 @@ pub mod tick;
 
 use blender::{apply_blender_channel_value, derive_blender_channel_value};
 pub use clipboard::apply_clipboard_paste;
-pub use key::dispatch_key;
+pub use key::{dispatch_key, graph_key_for};
 pub use keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
     KEY_ENTER, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_K,

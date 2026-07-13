@@ -291,7 +291,11 @@ fn plumbing_reheals_on_delete_and_managed_pre_is_not_hand_deletable() {
 
     // ...while deleting the mid-chain node re-heals: wind's stale entry is
     // swept, drag (the new dangling head) gains one.
-    apply_delete_selection(&mut motion, vec![curl.0]);
+    apply_delete_selection(
+        &mut motion,
+        vec![curl.0],
+        &mut ph2d_editor::ToastQueue::default(),
+    );
     let edges = motion.doc.graph.edges();
     assert!(
         !edges.iter().any(|e| e.to.0 == curl || e.from.0 == curl),

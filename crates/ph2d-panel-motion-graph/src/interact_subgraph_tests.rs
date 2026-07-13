@@ -7,6 +7,7 @@
 
 use super::tests::{CENTER, RECT, gesture, two_node_snapshot};
 use super::*;
+use crate::interact::GroupVerb;
 use crate::snapshot::{Crumb, GraphIntent, NodeViewKind, drain_intents};
 
 /// The two-node scene with node 2 replaced by a COLLAPSED CARD (view id tagged), and
@@ -177,31 +178,51 @@ fn clicking_a_crumb_walks_to_that_level() {
     );
 }
 
-/// The Group CHIP is the same verb as the key — a toolbar that can do less than the
-/// keyboard is a toolbar the artist stops trusting.
+/// **The chip is ONE button with BOTH verbs** (Enio, smoke 2026-07-13: *"o botão de
+/// agrupar deveria ser usado para desagrupar tb"*) — and it draws the icon of the verb
+/// it will actually perform, so it never lies about what a press will do.
 #[test]
-fn the_group_chip_collapses_the_selection_too() {
-    let snap = two_node_snapshot();
+fn the_group_chip_groups_or_ungroups_depending_on_what_is_selected() {
+    let press = |st: &mut MotionGraphPanelState, snap: &GraphViewSnapshot| {
+        apply_gesture(
+            st,
+            gesture(
+                GraphHitKind::Chrome {
+                    id: crate::paint_chrome::CHROME_GROUP,
+                },
+                GesturePhase::Click,
+                10.0,
+                10.0,
+            ),
+            RECT,
+            CENTER,
+            snap,
+        );
+    };
+
+    // Nothing selected: the chip is INERT, and says so.
+    let plain = two_node_snapshot();
     let mut st = MotionGraphPanelState::default();
+    assert_eq!(super::subgraph_gesture::verb(&st), GroupVerb::Inert);
+    press(&mut st, &plain);
+    assert!(drain_intents().is_empty());
+
+    // Nodes selected: it groups.
     st.selected.insert(2);
-    apply_gesture(
-        &mut st,
-        gesture(
-            GraphHitKind::Chrome {
-                id: crate::paint_chrome::CHROME_GROUP,
-            },
-            GesturePhase::Click,
-            10.0,
-            10.0,
-        ),
-        RECT,
-        CENTER,
-        &snap,
-    );
+    assert_eq!(super::subgraph_gesture::verb(&st), GroupVerb::Group);
+    press(&mut st, &plain);
     assert_eq!(
         drain_intents(),
         vec![GraphIntent::GroupSelection { nodes: vec![2] }]
     );
+
+    // A CARD selected: the same chip now ungroups it.
+    let cards = card_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    st.selected.insert(cards.nodes[1].id);
+    assert_eq!(super::subgraph_gesture::verb(&st), GroupVerb::Ungroup);
+    press(&mut st, &cards);
+    assert_eq!(drain_intents(), vec![GraphIntent::Ungroup { id: 3 }]);
 }
 
 /// **A ghost is never rubber-banded.** It lives on another level, and a band that swept

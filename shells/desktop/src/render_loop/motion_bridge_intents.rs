@@ -105,7 +105,7 @@ pub(super) fn apply_graph_intents(
                 motion.pump.mark_dirty();
             }
             GraphIntent::DeleteSelection { nodes } => {
-                apply_delete_selection(motion, nodes);
+                apply_delete_selection(motion, nodes, toasts);
             }
             // F2 — Ctrl+D and the knife (both in `motion_bridge_edit`). A duplicated
             // CARD duplicates its contents (Unreal, on collapsed graphs: "if you copy

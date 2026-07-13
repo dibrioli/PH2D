@@ -38,6 +38,7 @@ use menu::{drag_menu_thumb, grab_menu_thumb, resolve_add_menu, scroll_menu};
 
 #[path = "interact_subgraph.rs"]
 mod subgraph_gesture;
+pub(crate) use subgraph_gesture::{GroupVerb, verb as group_verb};
 
 #[path = "interact_key.rs"]
 mod key;
@@ -202,7 +203,7 @@ fn apply_gesture(
             }
             crate::paint_chrome::CHROME_KNIFE => state.knife_armed = !state.knife_armed,
             crate::paint_chrome::CHROME_PROBE => state.probe_armed = !state.probe_armed,
-            crate::paint_chrome::CHROME_GROUP => subgraph_gesture::group(state),
+            crate::paint_chrome::CHROME_GROUP => subgraph_gesture::chip(state, snap),
             // The breadcrumb (doc 57): crumb `i` rides the ordinal `CHROME_CRUMB_BASE + i`.
             id if id >= crate::paint_chrome::CHROME_CRUMB_BASE => {
                 subgraph_gesture::go_to_crumb(

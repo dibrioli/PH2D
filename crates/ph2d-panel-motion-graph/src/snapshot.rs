@@ -61,7 +61,7 @@ pub enum NodeViewKind {
 /// moment a document has both a node 3 and a subgraph 3 — which is the common case,
 /// not the corner one. The shell mints the tag and the shell decodes it; the panel
 /// only ever asks *is this a card?*.
-pub const SUBGRAPH_VIEW_TAG: u32 = 0x8000_0000;
+pub const SUBGRAPH_VIEW_TAG: u32 = 0x8000_0000; // LITERAL-COLOR-OK: an id tag bit, not a colour
 
 /// Is this view id a collapsed subgraph card?
 pub fn is_subgraph_view(id: u32) -> bool {

@@ -77,6 +77,38 @@ impl App {
             // key as a global shortcut.
             return;
         }
+
+        // ── **The graph owns its keys while the cursor is over it** ───────────────
+        //
+        // Enio, smoke 2026-07-13: *"se o mouse estiver em Motion, o tool motion deve
+        // capturar os atalhos e não o canvas"* — `Ctrl+G` was toggling the scene GRID
+        // instead of grouping.
+        //
+        // This used to be seven bespoke arms below (D / K / P / F / Delete / A /
+        // Space), each re-stating a verb the graph's keymap already knew. That second
+        // list is precisely the defect: the graph grew `Ctrl+G` and the shell had never
+        // heard of it, so the key fell through to the global `G`. **So there is one map
+        // now** ([`graph_key_for`], in editor-core) and this is its only other reader.
+        //
+        // It runs on the CURSOR rather than on the focus gate inside `dispatch_key`,
+        // which is the whole reason this router exists: a stale focus elsewhere in the
+        // editor used to swallow the graph's keys (the "Ctrl+D não duplica" smoke).
+        // The panel's handling is idempotent, so the focus-gated path pushing the same
+        // verb in the same frame is harmless.
+        if over_motion_graph
+            && let Some(kc) = crate::keymap::winit_to_editor_keycode(code)
+            && let Some(gk) =
+                ph2d_editor::interaction::graph_key_for(kc, cmd_chord, self.modifiers.alt_key())
+        {
+            if let Some(hero) = gfx.hero_screen.as_mut() {
+                hero.store.push_graph_key(gk);
+            }
+            // CONSUMED. Falling through would let the scene act on it too — which is
+            // how `G` toggled the grid, and how `F` would fit the scene behind the
+            // graph it just fitted.
+            return;
+        }
+
         match code {
             KeyCode::Tab if gfx.zen.try_toggle() => {
                 let msg = if gfx.zen.is_active() {
@@ -114,35 +146,6 @@ impl App {
                     "Timeline hidden (L)"
                 }));
                 self.title_dirty = true;
-            }
-            // Motion Nodes F2: Ctrl+D duplicates the selection, `K` arms the knife,
-            // `P` arms the probe. Pushed HERE, on the same proven cursor check as
-            // F / Delete / A / Space below — `dispatch/key.rs` also maps these three,
-            // but that path goes through the focus gate this file exists to bypass,
-            // and the panel never saw them (Enio, smoke 2026-07-12: "Ctrl+D não
-            // duplica"). The panel's handling is idempotent, so a double push from
-            // both paths is harmless.
-            //
-            // **These arms must sit ABOVE the global `K`** (timeline insert-key)
-            // — a match arm below it is unreachable, and the knife would silently
-            // never arm. Clippy's `unreachable_pattern` is what caught it.
-            KeyCode::KeyD if over_motion_graph && cmd_chord => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store
-                        .push_graph_key(ph2d_editor::interaction::GraphKey::Duplicate);
-                }
-            }
-            KeyCode::KeyK if over_motion_graph && !cmd_chord => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store
-                        .push_graph_key(ph2d_editor::interaction::GraphKey::Knife);
-                }
-            }
-            KeyCode::KeyP if over_motion_graph && !cmd_chord => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store
-                        .push_graph_key(ph2d_editor::interaction::GraphKey::Probe);
-                }
             }
             // Insert a keyframe at the playhead on every track bound to the
             // selected sprite (captures its current pose). Processed next frame
@@ -301,44 +304,12 @@ impl App {
             // could be blocked by a stale focus) using the proven cursor check —
             // and the arm suppresses the scene frame so the two don't both fit
             // (Blender per-area focus).
-            KeyCode::KeyF if over_motion_graph => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store
-                        .push_graph_key(ph2d_editor::interaction::GraphKey::Fit);
-                }
-            }
             // Timeline W2.E6: over the dope sheet, F fits the TIME AXIS to the
             // keys. Same per-area focus rule as the graph, and it likewise
             // suppresses the scene frame below so only one thing fits. The view
             // transform is panel state, so this raises a request the panel's
             // `paint` consumes (it alone knows the time area's pixel width).
             KeyCode::KeyF if over_timeline => ph2d_panel_timeline::request_fit(),
-            // Motion Nodes M1.E7: over the graph, Delete/Backspace removes the
-            // selected nodes (+ orphan edges) and `A` opens the add-node menu.
-            // Pushed directly on the proven cursor check (same rationale as F);
-            // the panel's Delete/Add handling is idempotent, so the parallel M0
-            // focus-gated dispatch pushing the same verb is harmless.
-            KeyCode::Delete | KeyCode::Backspace if over_motion_graph => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store
-                        .push_graph_key(ph2d_editor::interaction::GraphKey::Delete);
-                }
-            }
-            KeyCode::KeyA if over_motion_graph && !cmd_chord => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store
-                        .push_graph_key(ph2d_editor::interaction::GraphKey::Add);
-                }
-            }
-            // Motion Nodes M1: over the graph, Space toggles transport play/pause
-            // (so time-driven behaviours animate). The render output is the
-            // `Output` node — wire a chain into one, no keyboard verb needed.
-            KeyCode::Space if over_motion_graph => {
-                if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.store
-                        .push_graph_key(ph2d_editor::interaction::GraphKey::TogglePlay);
-                }
-            }
             KeyCode::Home | KeyCode::KeyF => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     // Wave 2.5 PR 11.8d: bus migration (was
@@ -360,7 +331,10 @@ impl App {
             // promises "Show Grid · G" — this is the shortcut. Affects
             // only the hero's grid_visible flag; grid_view publishing
             // by the host continues regardless.
-            KeyCode::KeyG => {
+            // `!cmd_chord`: a CHORD must never land on a plain-letter shortcut. `Ctrl+G`
+            // is Group (doc 57), and this arm was eating it for every panel in the app,
+            // not just the graph — the guard fixes the class, not the symptom.
+            KeyCode::KeyG if !cmd_chord => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.view.grid_visible = !hero.view.grid_visible;
                     let msg = if hero.view.grid_visible {

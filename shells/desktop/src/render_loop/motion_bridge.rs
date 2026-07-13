@@ -419,10 +419,31 @@ fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: 
 /// re-resolved from the Output nodes each frame (before the cook), so deleting
 /// one cleanly stops its scene — no manual sink bookkeeping here.
 #[cfg(feature = "panel-motion-graph")]
-fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>) {
+fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>, toasts: &mut ToastQueue) {
     let pre = motion.doc.clone();
     let mut changed = false;
-    for id in nodes {
+    // **A GHOST is not deletable from here** (doc 57): it is a node from outside this
+    // level, drawn because a wire reaches it. You can grab it and tidy it (a node has
+    // ONE position), but deleting it would reach into a canvas the artist is not on —
+    // and a node vanishing from a room you cannot see is the definition of a surprise.
+    let (dead, foreign): (Vec<u32>, Vec<u32>) = nodes.into_iter().partition(|id| {
+        subgraph::subgraph_of(*id).is_some()
+            || !matches!(
+                ph2d_motion_doc::subgraph::holder_at(
+                    &motion.doc.subgraphs,
+                    &motion.doc.members,
+                    ph2d_nodegraph::graph::NodeId(*id),
+                    motion.level,
+                ),
+                ph2d_motion_doc::Holder::Outside
+            )
+    });
+    if !foreign.is_empty() {
+        toasts.push(ph2d_editor::Toast::info(
+            "That node lives outside this group - leave the group to delete it",
+        ));
+    }
+    for id in dead {
         match subgraph::target(id) {
             // A collapsed card IS its contents (Nuke: "the original nodes are
             // replaced with the Group node"), so deleting it deletes them — every

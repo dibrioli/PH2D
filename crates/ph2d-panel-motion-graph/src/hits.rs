@@ -68,21 +68,23 @@ pub(crate) fn clip_rect(r: Rect, canvas: Rect) -> Option<Rect> {
 
 /// Push a node body's hit rect, clipped to the canvas (skipped when fully off).
 ///
-/// **A ghost registers no body** (doc 57): it is a node from OUTSIDE this level,
-/// drawn only because a wire crosses to it, and a click-through body is what makes
-/// it read as what it is. Dragging it would move a node on a canvas the artist is
-/// not looking at; deleting it would reach across the boundary. Its **sockets** are
-/// registered all the same (`push_socket_hits`) — the whole point of drawing it is
-/// that you can wire across the seam.
+/// **A ghost registers a body too** (doc 57, Enio smoke 2026-07-13: *"o primeiro e
+/// último nó do grupo não pode ser movido, mas deveria poder para arrumar melhor os
+/// nós"*). It used to register none, on the theory that dragging it would move a node
+/// on a canvas the artist is not looking at — but that theory is wrong: a node has
+/// exactly ONE position, and the artist looking at the ghost IS looking at the node.
+/// Blender and Houdini both let you move the boundary proxy from inside the group,
+/// and for the same reason: you cannot tidy a room whose doorways are nailed down.
+///
+/// What a ghost still cannot do is **be deleted from here** — the shell refuses that
+/// with a toast (`intents`), because deleting it would reach into a canvas the artist
+/// is not on.
 pub(crate) fn push_card_hit(
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
     n: &GraphNodeView,
     body: Rect,
     canvas: Rect,
 ) {
-    if n.kind == crate::snapshot::NodeViewKind::Ghost {
-        return;
-    }
     if let Some(r) = clip_rect(body, canvas) {
         hits.push((
             node_hit_id(n.id),
@@ -343,11 +345,17 @@ mod tests {
         assert_eq!((r.y, r.h), (100.0, 28.0), "only the visible band is hit");
     }
 
-    /// **A ghost registers no body** (doc 57): it belongs to another level, and a
-    /// click-through body is what makes it read as what it is. Its SOCKETS still
-    /// register — wiring across the seam is the entire reason it is drawn.
+    /// **A ghost is grabbable** (doc 57, Enio smoke 2026-07-13: *"o primeiro e último
+    /// nó do grupo não pode ser movido, mas deveria poder"*). It is a real node with
+    /// exactly ONE position, and the artist looking at the ghost IS looking at the
+    /// node — so it can be dragged, to tidy the room it flanks. Blender and Houdini
+    /// both move their boundary proxies from inside the group, for the same reason:
+    /// you cannot tidy a room whose doorways are nailed down.
+    ///
+    /// The one line it does not cross is DELETE — refused shell-side with a toast,
+    /// because that would reach into a canvas the artist is not on.
     #[test]
-    fn a_ghost_has_no_body_hit_but_keeps_its_sockets() {
+    fn a_ghost_can_be_grabbed_and_wired_like_the_node_it_is() {
         let ghost = GraphNodeView {
             kind: crate::snapshot::NodeViewKind::Ghost,
             ..node(9, 10.0, 10.0)
@@ -361,17 +369,14 @@ mod tests {
             Rect::new(10.0, 120.0, 190.0, 58.0),
             CANVAS,
         );
-        assert!(
-            body.is_empty(),
-            "a ghost cannot be grabbed, dragged or deleted"
-        );
+        assert_eq!(body.len(), 1, "you can grab it and move it out of the way");
 
         let mut sockets = Vec::new();
         push_socket_hits(&mut sockets, &ghost, &view, CANVAS);
         assert_eq!(
             sockets.len(),
             1,
-            "but its sockets are live: you can wire it"
+            "and its sockets are live: you can wire it"
         );
     }
 

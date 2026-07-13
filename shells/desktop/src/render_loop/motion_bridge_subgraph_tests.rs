@@ -299,7 +299,11 @@ fn deleting_a_card_deletes_its_members_at_every_depth() {
         "grouping a card re-parents it - that is how a nest gets a second storey"
     );
 
-    apply_delete_selection(&mut m, vec![super::subgraph::view_id(outer)]);
+    apply_delete_selection(
+        &mut m,
+        vec![super::subgraph::view_id(outer)],
+        &mut ph2d_editor::ToastQueue::default(),
+    );
     assert!(m.doc.subgraphs.is_empty(), "both groups are gone");
     assert!(m.doc.members.is_empty(), "no membership outlived its group");
     assert!(m.doc.graph.node(n0).is_none(), "the nested node died too");
@@ -413,6 +417,58 @@ fn probing_a_card_reads_what_it_emits_and_the_hud_hangs_off_the_card() {
         snap.nodes.iter().any(|n| n.id == probe.node),
         "and the card it points at is actually in the view - a HUD anchored to \
          something that is not drawn is a HUD that is not drawn"
+    );
+}
+
+/// **A ghost can be MOVED but not DELETED** (Enio, smoke 2026-07-13). It is a real
+/// node with one position, so tidying it from inside the group is legitimate — but
+/// deleting it would remove a node from a canvas the artist is not looking at, and
+/// that is refused, out loud (a toast), never in silence.
+#[test]
+fn a_ghost_moves_but_cannot_be_deleted_from_inside_the_group() {
+    let mut m = MotionState::new();
+    let sid = m.doc.subgraphs[0].id;
+    m.level = Some(sid);
+
+    // The two nodes across the boundary (the collide that feeds the chain, the falloff
+    // it feeds) — the ones the artist sees as "the first and last node of the group".
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    fold::fold(&m, &mut snap);
+    let ghost = snap
+        .nodes
+        .iter()
+        .find(|n| n.kind == NodeViewKind::Ghost)
+        .expect("the boundary is drawn")
+        .id;
+    let before = m.doc.graph.pos(NodeId(ghost)).unwrap();
+
+    // MOVE: it tracks the cursor like any other card.
+    push_intent(GraphIntent::MoveNodes {
+        nodes: vec![ghost],
+        dx: 12.0,
+        dy: 7.0,
+    });
+    // DELETE: refused, and the node is still there.
+    push_intent(GraphIntent::DeleteSelection { nodes: vec![ghost] });
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut toasts,
+        &mut ph2d_editor::screens::layout::CenterSplit::None,
+    );
+
+    assert_eq!(
+        m.doc.graph.pos(NodeId(ghost)).unwrap(),
+        ph2d_nodegraph::graph::Pos {
+            x: before.x + 12.0,
+            y: before.y + 7.0
+        },
+        "a ghost is a node, and a node can be tidied"
+    );
+    assert!(
+        m.doc.graph.node(NodeId(ghost)).is_some(),
+        "but it cannot be deleted from a room it does not live in"
     );
 }
 

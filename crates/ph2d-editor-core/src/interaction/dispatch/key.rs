@@ -418,7 +418,16 @@ pub fn dispatch_key<'frame>(
 /// AND Nuke both use for exactly these two verbs (Blender: Group / Ungroup; Nuke:
 /// Collapse To Group / Expand Group). The alt arm is listed FIRST: `Ctrl+Alt+G`
 /// also satisfies `cmd`, and a match that tested the plain chord first would eat it.
-fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
+///
+/// **This is the ONE map, and it is `pub` for that reason** (Enio, smoke 2026-07-13:
+/// *"se o mouse estiver em Motion, o tool motion deve capturar os atalhos e não o
+/// canvas"*). The shell has to consult it too — its own key router runs on the
+/// CURSOR (which panel is under the pointer), not on the focus gate below, because a
+/// stale focus used to swallow the graph's keys. It used to do that by re-listing the
+/// verbs by hand, one bespoke arm per key, and that second list is exactly how
+/// `Ctrl+G` ended up toggling the scene grid: the graph grew a verb the shell had
+/// never heard of. Two derivations of one map is one map too many.
+pub fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
     Some(match keycode {
         KEY_DELETE | KEY_BACKSPACE => GraphKey::Delete,
         KEY_KEY_F if !cmd => GraphKey::Fit,
@@ -429,6 +438,10 @@ fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
         KEY_KEY_D if cmd => GraphKey::Duplicate,
         KEY_KEY_G if cmd && alt => GraphKey::Ungroup,
         KEY_KEY_G if cmd => GraphKey::Group,
+        // Space is the transport. It lived ONLY in the shell's hand-written list
+        // until now, which made it the proof of the problem: the same verb, in two
+        // maps, and neither knew about the other's.
+        KEY_SPACE if !cmd => GraphKey::TogglePlay,
         _ => return None,
     })
 }

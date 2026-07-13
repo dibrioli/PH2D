@@ -86,6 +86,8 @@
 - [Tolerância folgada esconde viés sistemático](feedback_loose_oracle_hides_systematic_bias.md) — pitch shifter passou 3 jornadas 54 cents baixo; asserte o valor EXATO na unidade que o usuário ouve
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — o miolo é onde não há bug; DC/Nyquist, 1ª/última coluna, 0 e 1 é onde o dado some
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — gate verde na mutação = ou o gate é frouxo, ou o seu COMENTÁRIO está errado
+- [Mutação que sobrevive pode ser gate FALTANDO](feedback_a_mutation_that_survives_may_mean_a_missing_gate.md) — 3ª causa: o gate verde está CERTO, só não fala daquilo. Explique por que ela é inofensiva ALI — a resposta nomeia o caminho sem gate
+- [Gate de AUSÊNCIA precisa do irmão de PRESENÇA](feedback_absence_gate_needs_a_presence_sibling.md) — "a cor não vaza" fica verde com o fill INVISÍVEL; e varredura só vale se a coisa medida está em quadro
 - [Regra que não OBSERVA não dispara](feedback_a_rule_that_never_observes_cannot_fire.md) — HR-13 somava declarações no boot; editor chegou a 4351 MB sem piscar
 - [Faça a MESMA pergunta ao outro lado](feedback_ask_the_same_question_of_the_other_side.md) — gate do editor verde → mesmo gate no runtime nasceu VERMELHO (65,9 MB/música)
 - [Mesma conta, escrituração diferente = 1 ulp](feedback_same_math_different_bookkeeping_diverges.md) — residente faz wrap do cursor, stream não fazia; gate byte-idêntico pega, "soa igual" não

@@ -50,6 +50,7 @@ mod flip_fill;
 mod flip_gizmo_view;
 mod flip_layers;
 mod flip_live;
+mod flip_reshape;
 mod flip_smooth;
 mod flip_strip;
 mod flip_transform;
@@ -284,6 +285,7 @@ impl App {
             flip_erasing: false,
             flip_strip: crate::flip_strip::FlipStrip::default(),
             flip_live: None,
+            flip_reshape: None,
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,

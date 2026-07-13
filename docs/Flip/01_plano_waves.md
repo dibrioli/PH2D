@@ -10,8 +10,10 @@
 > APROVADO pelo Enio) · **W3 (Frames · Ghost · Tween) FECHADA** — o Flip virou app de
 > ANIMAÇÃO (tira com exposição, ciclos, Ghost Frames, autokey por-tool, flip por desenho,
 > tween). Doc: [`05_frames_ghost_tween.md`](05_frames_ghost_tween.md). Pendente o smoke.
-> **W4 (Fill) FECHADA** (doc: [`06_fill_balde.md`](06_fill_balde.md)). **A wave atual é a W5 (Reshape).** A **W6 (timeline global) está ADIADA** até a timeline
-> principal ficar pronta (Enio 2026-07-12).
+> **W4 (Fill) FECHADA** (doc: [`06_fill_balde.md`](06_fill_balde.md)) e **W5 (Reshape) FECHADA**
+> (doc: [`07_reshape_escultura.md`](07_reshape_escultura.md) — os 8 pincéis; T5.7 multiframe fica
+> como carry-over, depende da multi-seleção de chaves na tira). **A W6 (timeline global) está
+> ADIADA** até a timeline principal ficar pronta (Enio 2026-07-12).
 
 ## Regras permanentes (valem em TODA task)
 
@@ -184,20 +186,20 @@ paint-behind, multiframe.
 **Objetivo:** remodelar traços com pincéis de raio+força+falloff. Referência: `02 §7`
 (os 9 pincéis com TODAS as constantes — a W5 está lá, não aqui).
 
-- [ ] **T5.1 — Trait `ReshapeBrush`** (3 callbacks, 02 §7) + infra: influence =
+- [x] **T5.1 — Trait `ReshapeBrush`** (3 callbacks, 02 §7) + infra: influence =
       `alpha·pressure·falloff(dist, raio)·multi_frame_falloff` (falloff curve do Painter);
       invert por Ctrl; **auto-masking congelado no down** (seleção/camada ativa; threshold
       20px). Aceite: seam headless do pipeline de influence.
-- [ ] **T5.2 — Smooth** (binomial iterations=2, influence = mistura; projeta TODOS os pontos).
+- [x] **T5.2 — Smooth** (binomial iterations=2, influence = mistura; projeta TODOS os pontos).
       Aceite: alisar traço trêmulo sem encolher pontas.
-- [ ] **T5.3 — Push + Grab** (push = delta·influence por sample; grab = máscara+pesos
+- [x] **T5.3 — Push + Grab** (push = delta·influence por sample; grab = máscara+pesos
       CONGELADOS no down, pressure=1). Aceite: os dois com a distinção de UX correta.
-- [ ] **T5.4 — Thickness + Strength** (aditivos: ±0.001 no raio [na NOSSA unidade: px de
+- [x] **T5.4 — Thickness + Strength** (aditivos: ±0.001 no raio [na NOSSA unidade: px de
       tela], ±0.125 com clamp na opacity). Aceite: engrossar/apagar gradual.
-- [ ] **T5.5 — Pinch + Twist** (pinch `inf²/25`; twist 1°·influence em tela). Aceite: ambos.
-- [ ] **T5.6 — Randomize** (hash splitmix64 por sample, perpendicular ao movimento) — 2º corte
+- [x] **T5.5 — Pinch + Twist** (pinch `inf²/25`; twist 1°·influence em tela). Aceite: ambos.
+- [x] **T5.6 — Randomize** (hash splitmix64 por sample, perpendicular ao movimento)
       se apertar. **Clone = comando** (paste posicionado), não brush — fora da W5.
-- [ ] **T5.7 — Reshape multiframe** (o falloff já está na assinatura desde T5.1; UI de seleção
+- [ ] **T5.7 — Reshape multiframe** (CARRY-OVER: depende da multi-seleção de chaves na tira) (o falloff já está na assinatura desde T5.1; UI de seleção
       de frames + curva com ativo em 0.5). Opcional/carry-over.
 
 **Gate W5:** smoke — smooth, push, grab, engrossar; constantes com a "sensação GP".

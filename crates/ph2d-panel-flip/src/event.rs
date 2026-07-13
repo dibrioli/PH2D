@@ -90,12 +90,15 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_MODE_DRAW
                 || id == ids::FLIP_MODE_ERASE
                 || id == ids::FLIP_MODE_FILL
+                || id == ids::FLIP_MODE_RESHAPE
                 || id == ids::FLIP_ERASE_SOFT
                 || id == ids::FLIP_ERASE_HARD
                 || id == ids::FLIP_ERASE_STROKE
                 || id == ids::FLIP_FILL_PAINT
                 || id == ids::FLIP_FILL_BEHIND
-                || id == ids::FLIP_FILL_UNPAINT =>
+                || id == ids::FLIP_FILL_UNPAINT
+                // Os oito pincéis de escultura (W5) — a tabela é a ordem do painel.
+                || ids::FLIP_RESHAPE_KIND_IDS.contains(&id) =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

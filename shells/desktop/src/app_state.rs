@@ -618,6 +618,10 @@ pub(crate) struct App {
     /// do painel continuam ajustando até o usuário fazer outra coisa. Enquanto não há
     /// seleção de traço, é ele o alvo dos ajustes. Ver `flip_live`.
     pub(crate) flip_live: Option<crate::flip_live::FlipLive>,
+    /// ADR-0114 W5: o gesto de ESCULTURA em curso (Down..Up no modo Reshape). Carrega
+    /// a máscara congelada no pen-down — e, no Grab, os pesos. `None` quando não há
+    /// gesto. Ver `flip_reshape`.
+    pub(crate) flip_reshape: Option<crate::flip_reshape::FlipReshape>,
     /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.

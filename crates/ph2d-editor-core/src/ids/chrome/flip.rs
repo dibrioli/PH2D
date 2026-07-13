@@ -22,6 +22,36 @@ pub const FLIP_MODE_DRAW: NodeId = hash_node_id("flip.mode.draw");
 pub const FLIP_MODE_ERASE: NodeId = hash_node_id("flip.mode.erase");
 /// Fill: one click floods the region bounded by the line-art (W4).
 pub const FLIP_MODE_FILL: NodeId = hash_node_id("flip.mode.fill");
+/// Reshape: sculpts the strokes already drawn (W5 — see the Reshape section).
+pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
+
+// ── Reshape section (shown only in Reshape mode, ADR-0114 W5) ───────────────
+/// The eight sculpt brushes, in panel order (two rows of four). They share the
+/// Brush section's Size (radius) and Strength — a Reshape with its own pair of
+/// sliders for the same two quantities would be duplicate state, and the user
+/// would have to re-tune the brush on every mode switch.
+pub const FLIP_RS_SMOOTH: NodeId = hash_node_id("flip.reshape.smooth");
+pub const FLIP_RS_PUSH: NodeId = hash_node_id("flip.reshape.push");
+pub const FLIP_RS_GRAB: NodeId = hash_node_id("flip.reshape.grab");
+pub const FLIP_RS_PINCH: NodeId = hash_node_id("flip.reshape.pinch");
+pub const FLIP_RS_TWIST: NodeId = hash_node_id("flip.reshape.twist");
+pub const FLIP_RS_THICKNESS: NodeId = hash_node_id("flip.reshape.thickness");
+pub const FLIP_RS_STRENGTH: NodeId = hash_node_id("flip.reshape.strength");
+pub const FLIP_RS_RANDOMIZE: NodeId = hash_node_id("flip.reshape.randomize");
+/// The eight ids in the SAME order as `ReshapeKind::ALL` — the table that the
+/// panel paints and the event router decodes. One list, one order: adding a
+/// brush means adding it here and in `ReshapeKind::ALL`, and the seam test that
+/// drives every id proves the two never drift apart.
+pub const FLIP_RESHAPE_KIND_IDS: [NodeId; 8] = [
+    FLIP_RS_SMOOTH,
+    FLIP_RS_PUSH,
+    FLIP_RS_GRAB,
+    FLIP_RS_PINCH,
+    FLIP_RS_TWIST,
+    FLIP_RS_THICKNESS,
+    FLIP_RS_STRENGTH,
+    FLIP_RS_RANDOMIZE,
+];
 
 // ── Fill section (shown only in Fill mode, ADR-0114 W4) ─────────────────────
 /// Fill-colour swatch — its OWN colour (colouring uses a different palette than

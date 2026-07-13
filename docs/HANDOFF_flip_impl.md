@@ -820,10 +820,48 @@ saga completa (medições antes/depois, trade-offs decididos, lições) está em
   clippy/fmt-pin/typos/LOC-caps limpos; release build OK. `flip_live` intacto (a âncora não
   depende do zoom da vista — o `px_to_world` da criação continua correto).
 
-## Aberto (fora do W0..W4, por design)
+## W5 — Reshape (a escultura de traço) (LANDOU 2026-07-13, pendente o smoke)
 
-- **W5 (próxima):** Reshape (escultura de traço) — os 9 pincéis, com TODAS as constantes já
-  tabeladas em `docs/Flip/02 §7`.
+Doc definitivo: [`docs/Flip/07_reshape_escultura.md`](Flip/07_reshape_escultura.md).
+
+- **Solver** (`ph2d-flip-reshape`, crate NOVA, CPU pura, headless): os **8 pincéis**
+  (Smooth · Push · Grab · Pinch · Twist · Thickness · Strength · Randomize) sobre uma infra
+  só — `influence = força · pressão · falloff_multiframe · smoothstep(d/r)`. Cada constante
+  tem FONTE no `sculpt_*.cc` da referência; nenhuma foi calibrada no olho. `Session` carrega
+  a **máscara congelada no pen-down** (e, no Grab, os pesos, com `pressure = 1.0` fixo).
+- **O kernel binomial ganhou UM DONO** (`ph2d_flip_reshape::blur`): o `active_smooth` do traço
+  em curso (influência uniforme) e o pincel Smooth (influência POR PONTO) usam o mesmo. A
+  duplicata que existia no shell morreu — "o Smooth da caneta e o do pincel alisam diferente"
+  seria um bug que ninguém procura.
+- **HR-5 no Twist:** rotação por **Taylor** (|θ| ≤ 1°/amostra → erro ~1e-11, muito abaixo do
+  épsilon do `f32`), não `sin`/`cos` — polinômio é bit-idêntico entre plataformas. Gate compara
+  com a `sin_cos` real em toda a faixa.
+- **Duas traduções de unidade** (as únicas): Thickness (o `0.001` do GP é 10% do raio default
+  → **0,6 px de largura** na nossa unidade absoluta de tela) e Randomize (amplitude em px de
+  TELA → `px_to_local`).
+- **Costura:** 5º modo **Sculpt** na tool + seção modal no painel (2 fileiras de 4 pincéis;
+  Size e Strength são os MESMOS da borracha — um 2º par de sliders seria estado duplicado) +
+  `flip_reshape.rs` no shell (autokey **Modify**, Ctrl = invert, 3 pontos no `input_dispatch`).
+  O undo sai de graça (o diff pós-frame registra no pen-up).
+- **Gates novos:** 21 no solver (um por pincel, cada um afirmando a PROPRIEDADE que o define —
+  ex.: o Grab *carrega* enquanto o Push *larga*, rodando o MESMO caminho) + 7 no shell (unidades,
+  bijeção dos 8, autokey Modify no hold, camada travada) + 2 no painel (seam dos 8 ids ↔ pincéis;
+  PINTURA das 2 fileiras).
+- **Símbolos novos** (p/ o integrador): crate `ph2d-flip-reshape` (`ReshapeKind`/`ReshapeParams`/
+  `InputSample`/`Session`/`influence`/`binomial`/`Ends`) · `ph2d_tool_flip::ReshapeKind` +
+  `FlipMode::Reshape` · ids `FLIP_MODE_RESHAPE` + `FLIP_RS_*` (8) + `FLIP_RESHAPE_KIND_IDS` ·
+  `App::flip_reshape` + `flip_reshape::{reshape_begin, reshape_sample, params_from}`.
+
+**Carry-overs declarados:** T5.7 multiframe (o `frame_falloff` já é respeitado; falta a
+multi-seleção de chaves na tira — mesma dependência do fill multiframe) · auto-masking fino
+(por traço/material/seleção → depende do Edit Mode) · Clone (é um COMANDO, não um pincel) ·
+pressão real da caneta (o mouse manda 1.0; o funil já a recebe).
+
+## Aberto (fora do W0..W5, por design)
+
+- **A próxima recomendada: Edit Mode / seleção de traço** (o "select do traço" que o Enio
+  pediu). Ele destrava o auto-masking fino do Reshape (a máscara passa a ser a SELEÇÃO) e
+  substitui o "alvo vivo" como alvo dos ajustes do painel.
 - **W6 (timeline global): ADIADA** — a timeline principal ainda está em desenvolvimento
   (Enio 2026-07-12). O playhead do Flip JÁ é o global, então a integração não terá relógio a
   reconciliar.

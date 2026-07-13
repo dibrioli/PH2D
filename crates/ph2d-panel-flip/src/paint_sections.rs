@@ -18,7 +18,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_tool_flip::{
     EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
-    PRECISION_MAX, PRECISION_MIN, px_to_slider,
+    PRECISION_MAX, PRECISION_MIN, ReshapeKind, px_to_slider,
 };
 use ph2d_vector::VectorScene;
 
@@ -91,6 +91,10 @@ impl BodyCtx<'_> {
     }
 
     /// A labelled N-across segmented button row; returns the advanced `y`.
+    ///
+    /// An EMPTY label paints no caption and reserves no space for one — that is how
+    /// a control with more options than fit one row (the eight Reshape brushes)
+    /// becomes two rows under a single caption, instead of two captioned rows.
     fn segmented<const N: usize>(
         &mut self,
         label: &str,
@@ -101,17 +105,19 @@ impl BodyCtx<'_> {
         let sd_gap = Spacing::Sm.px();
         let cols = N as f32;
         let sd_w = ((self.inner_w - sd_gap * (cols - 1.0)) / cols).max(1.0);
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y,
-            sd_font,
-            self.inner_w,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        y += sd_font + Spacing::Xs.px();
+        if !label.is_empty() {
+            paint_text(
+                self.text_system,
+                self.scene,
+                label,
+                self.inner_x,
+                y,
+                sd_font,
+                self.inner_w,
+                resolve(ColorToken::Text2, self.theme),
+            );
+            y += sd_font + Spacing::Xs.px();
+        }
         for (i, (id, lbl, active)) in opts.iter().enumerate() {
             let rx = self.inner_x + i as f32 * (sd_w + sd_gap);
             let rect = Rect::new(rx, y, sd_w, self.row_h);
@@ -130,7 +136,8 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
-    /// Mode row (Select / Draw / Erase / Fill) — the gizmo is live only in Select.
+    /// Mode row (Select / Draw / Erase / Fill / Reshape) — the gizmo is live only in
+    /// Select.
     pub(crate) fn mode_row(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
         self.segmented(
             "Mode",
@@ -143,9 +150,41 @@ impl BodyCtx<'_> {
                 (ids::FLIP_MODE_DRAW, "Draw", snap.mode == FlipMode::Draw),
                 (ids::FLIP_MODE_ERASE, "Erase", snap.mode == FlipMode::Erase),
                 (ids::FLIP_MODE_FILL, "Fill", snap.mode == FlipMode::Fill),
+                (
+                    ids::FLIP_MODE_RESHAPE,
+                    "Sculpt",
+                    snap.mode == FlipMode::Reshape,
+                ),
             ],
             y,
         )
+    }
+
+    /// **Reshape section** (W5) — only in Reshape mode: the eight sculpt brushes, in
+    /// two rows of four under one caption.
+    ///
+    /// The radius and the force are NOT here: they are the Brush section's Size and
+    /// Strength (see [`BodyCtx::brush`]). A second pair of sliders for the same two
+    /// quantities would be duplicate state — and the user would have to re-tune the
+    /// brush every time they switched between erasing and sculpting.
+    pub(crate) fn reshape_section(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
+        if snap.mode != FlipMode::Reshape {
+            return y;
+        }
+        let ids4 = |off: usize| -> [(ph2d_a11y::NodeId, &'static str, bool); 4] {
+            let mut out = [(ids::FLIP_RS_SMOOTH, "", false); 4];
+            for (i, slot) in out.iter_mut().enumerate() {
+                let kind = ReshapeKind::ALL[off + i];
+                *slot = (
+                    ids::FLIP_RESHAPE_KIND_IDS[off + i],
+                    kind.label(),
+                    snap.reshape == kind,
+                );
+            }
+            out
+        };
+        y = self.segmented("Sculpt Brush", ids4(0), y);
+        self.segmented("", ids4(4), y)
     }
 
     /// **Cada modo mostra SÓ os seus atributos** (Enio 2026-07-12).
@@ -158,14 +197,27 @@ impl BodyCtx<'_> {
     /// - **Draw**: o pincel inteiro (Size / Hardness / Opacity / Smoothing).
     /// - **Erase**: só o que a borracha REALMENTE usa — o raio (`width_px`) e a força
     ///   (`opacity`). Ela não tem dureza, nem alisamento, nem cor.
+    /// - **Reshape** (W5): as MESMAS duas — o raio do pincel de escultura e a força
+    ///   dele. É de propósito que sejam as mesmas: um 2º par de sliders para raio e
+    ///   força seria estado duplicado, e trocar de modo exigiria re-ajustar tudo.
     /// - **Select / Fill**: nada daqui.
     pub(crate) fn brush(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
+        let sculpt = snap.mode == FlipMode::Reshape;
         let eraser = snap.mode == FlipMode::Erase;
-        if !eraser && snap.mode != FlipMode::Draw {
+        // Os dois modos "raio + força": a borracha e a escultura.
+        let radius_force = eraser || sculpt;
+        if !radius_force && snap.mode != FlipMode::Draw {
             return y;
         }
-        y = self.section_label(if eraser { "Eraser" } else { "Brush" }, y);
-        // Size (px) — o raio da borracha, no modo Erase.
+        let label = if eraser {
+            "Eraser"
+        } else if sculpt {
+            "Sculpt"
+        } else {
+            "Brush"
+        };
+        y = self.section_label(label, y);
+        // Size (px) — o raio da borracha / do pincel de escultura.
         let track = self
             .store
             .slider(ids::FLIP_SIZE)
@@ -184,8 +236,8 @@ impl BodyCtx<'_> {
             &format!("{}", px.round() as i64),
             y,
         );
-        // Hardness (0..1) — só o pincel tem borda; a borracha não.
-        if eraser {
+        // Hardness (0..1) — só o pincel de DESENHO tem borda.
+        if radius_force {
             let track = self
                 .store
                 .slider(ids::FLIP_OPACITY)
@@ -193,7 +245,7 @@ impl BodyCtx<'_> {
                 .unwrap_or(snap.opacity);
             let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
             return self.slider_row(
-                "Strength", // é o que a opacidade SIGNIFICA para a borracha
+                "Strength", // é o que a opacidade SIGNIFICA para a borracha e o sculpt
                 ids::FLIP_OPACITY,
                 ids::FLIP_OPACITY_NUM,
                 track,

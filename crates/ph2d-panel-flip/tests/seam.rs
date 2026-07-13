@@ -117,6 +117,7 @@ fn every_mode_button_is_painted_and_clickable() {
         (ids::FLIP_MODE_DRAW, "Draw"),
         (ids::FLIP_MODE_ERASE, "Erase"),
         (ids::FLIP_MODE_FILL, "Fill"),
+        (ids::FLIP_MODE_RESHAPE, "Sculpt"),
     ] {
         let hit = painted.iter().find(|(w, _)| *w == id);
         let Some((_, r)) = hit else {
@@ -241,6 +242,17 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Grow", ids::FLIP_GROW),
         ("Precision", ids::FLIP_PRECISION),
     ];
+    // Os oito pincéis de escultura (W5) — atributo SÓ do modo Sculpt.
+    let sculpt_only = [
+        ("Smooth", ids::FLIP_RS_SMOOTH),
+        ("Push", ids::FLIP_RS_PUSH),
+        ("Grab", ids::FLIP_RS_GRAB),
+        ("Pinch", ids::FLIP_RS_PINCH),
+        ("Twist", ids::FLIP_RS_TWIST),
+        ("Thickness", ids::FLIP_RS_THICKNESS),
+        ("Strength", ids::FLIP_RS_STRENGTH),
+        ("Randomize", ids::FLIP_RS_RANDOMIZE),
+    ];
 
     // (modo, o que TEM de aparecer, o que NÃO pode aparecer)
     #[allow(clippy::type_complexity)] // (modo, o que aparece, o que NAO pode aparecer)
@@ -248,15 +260,33 @@ fn each_mode_shows_only_its_own_attributes() {
         FlipMode,
         &[(&str, ph2d_a11y::NodeId)],
         &[&[(&str, ph2d_a11y::NodeId)]],
-    ); 4] = [
-        (FlipMode::Draw, &stroke_only, &[&eraser_only, &bucket_only]),
-        (FlipMode::Erase, &eraser_only, &[&stroke_only, &bucket_only]),
-        (FlipMode::Fill, &bucket_only, &[&stroke_only, &eraser_only]),
+    ); 5] = [
+        (
+            FlipMode::Draw,
+            &stroke_only,
+            &[&eraser_only, &bucket_only, &sculpt_only],
+        ),
+        (
+            FlipMode::Erase,
+            &eraser_only,
+            &[&stroke_only, &bucket_only, &sculpt_only],
+        ),
+        (
+            FlipMode::Fill,
+            &bucket_only,
+            &[&stroke_only, &eraser_only, &sculpt_only],
+        ),
+        // Sculpt: os oito pincéis — e nada de dureza/alisamento/cor/balde.
+        (
+            FlipMode::Reshape,
+            &sculpt_only,
+            &[&stroke_only, &eraser_only, &bucket_only],
+        ),
         // Select move/gira o objeto: não tem atributo de pintura nenhum.
         (
             FlipMode::Select,
             &[],
-            &[&stroke_only, &eraser_only, &bucket_only],
+            &[&stroke_only, &eraser_only, &bucket_only, &sculpt_only],
         ),
     ];
 
@@ -287,13 +317,16 @@ fn each_mode_shows_only_its_own_attributes() {
     }
 }
 
-/// O **Size** é o único atributo compartilhado: é a espessura do pincel E o raio da
-/// borracha. Ele aparece nos dois — e some no balde e no Select.
+/// O **Size** é o atributo compartilhado: a espessura do pincel, o raio da borracha E
+/// o raio do pincel de escultura (W5 — de propósito: um 2º par de sliders para raio e
+/// força seria estado duplicado, e trocar de modo obrigaria a re-ajustar tudo). Ele
+/// aparece nos três — e some no balde e no Select.
 #[test]
-fn size_is_shared_by_brush_and_eraser_and_absent_elsewhere() {
+fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
     for (mode, want) in [
         (FlipMode::Draw, true),
         (FlipMode::Erase, true),
+        (FlipMode::Reshape, true),
         (FlipMode::Fill, false),
         (FlipMode::Select, false),
     ] {
@@ -309,4 +342,79 @@ fn size_is_shared_by_brush_and_eraser_and_absent_elsewhere() {
             .any(|(w, r)| *w == ids::FLIP_SIZE && r.w > 0.0);
         assert_eq!(shown, want, "modo {mode:?}: Size deveria aparecer? {want}");
     }
+}
+
+/// **Os oito pincéis de escultura chegam à tool — cada um no SEU.**
+///
+/// Duas listas têm de andar juntas: `FLIP_RESHAPE_KIND_IDS` (a ordem do painel) e
+/// `ReshapeKind::ALL` (o vocabulário). O decodificador é o zip das duas — e um zip
+/// entre listas *desalinhadas* compila perfeitamente e dá o pincel errado: o usuário
+/// clica em Twist e o traço engrossa. Nenhum outro gate pega isso.
+///
+/// Aqui cada um dos oito ids é DIRIGIDO pelo seam real (painel → barramento → tool) e
+/// a tool tem de acabar exatamente no pincel daquele botão.
+#[test]
+fn every_sculpt_brush_button_selects_its_own_brush() {
+    use ph2d_tool_flip::ReshapeKind;
+
+    for (id, kind) in ids::FLIP_RESHAPE_KIND_IDS.iter().zip(ReshapeKind::ALL) {
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut panel_state = FlipPanelState;
+        let mut tool = FlipTool::default();
+
+        let outcome =
+            host.apply_panel_event::<FlipPanel>(&mut panel_state, WidgetEvent::Click(*id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "o clique no pincel {kind:?} foi IGNORADO — falta o arm em `event.rs`"
+        );
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+            }
+        }
+        assert_eq!(
+            tool.reshape_kind(),
+            kind,
+            "o botao {kind:?} selecionou OUTRO pincel (as duas listas desalinharam)"
+        );
+    }
+}
+
+/// E os oito **existem na tela** no modo Sculpt, com área clicável (o gate de PINTURA
+/// — o botão que "não existe" com todos os outros gates verdes, BUGS #8).
+#[test]
+fn the_eight_sculpt_brushes_are_painted_in_reshape_mode() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState;
+    ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Reshape,
+        ..Default::default()
+    }));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+
+    for (id, kind) in ids::FLIP_RESHAPE_KIND_IDS
+        .iter()
+        .zip(ph2d_tool_flip::ReshapeKind::ALL)
+    {
+        let hit = painted.iter().find(|(w, _)| w == id);
+        let Some((_, r)) = hit else {
+            panic!("o pincel {kind:?} NAO e pintado: nao existe na tela");
+        };
+        assert!(
+            r.w > 0.0 && r.h > 0.0,
+            "o pincel {kind:?} foi pintado com area ZERO: invisivel e inclicavel ({r:?})"
+        );
+    }
+    // E as duas fileiras não se sobrepõem (4 + 4, não 8 em cima de 4).
+    let ys: Vec<f32> = ids::FLIP_RESHAPE_KIND_IDS
+        .iter()
+        .filter_map(|id| painted.iter().find(|(w, _)| w == id).map(|(_, r)| r.y))
+        .collect();
+    assert_eq!(ys.len(), 8);
+    assert!(
+        ys[0] == ys[3] && ys[4] == ys[7] && ys[4] > ys[0],
+        "os oito nao sairam em DUAS fileiras de quatro: {ys:?}"
+    );
 }

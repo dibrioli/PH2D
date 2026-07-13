@@ -2012,6 +2012,12 @@ impl App {
         if self.flip_erase_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Flip sculpt (ADR-0114 W5): while a reshape gesture is open, every motion is
+        // ONE more brush sample (a dose é por amostra — mover devagar aplica mais).
+        // No-op unless a sculpt gesture is in progress.
+        if self.flip_reshape_canvas_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Fill (Bucket) ColorDrop drag (SHELL-only): while a colour is being dragged from the Fill rail
         // button onto the canvas, deliver it to the painter's Fill. Early-return so it doesn't pan.
         if self.fill_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2293,6 +2299,14 @@ impl App {
         {
             return;
         }
+        // Flip sculpt (W5): o pen-UP encerra o gesto (a máscara congelada morre com
+        // ele; o passo de undo sai do diff pós-frame).
+        if kind == PointerKind::Up
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && self.flip_reshape_canvas_up()
+        {
+            return;
+        }
         if self.flip_wants_canvas()
             && kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary
@@ -2321,6 +2335,17 @@ impl App {
             && on_canvas
             && !menu_open_before
             && self.flip_erase_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
+        // Flip sculpt (W5): a pen-DOWN no modo Reshape começa um gesto de escultura
+        // (Select cai no gizmo/pick, como o Draw e a borracha).
+        if self.flip_wants_reshape()
+            && kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && on_canvas
+            && !menu_open_before
+            && self.flip_reshape_canvas_down(self.last_pointer.0, self.last_pointer.1)
         {
             return;
         }

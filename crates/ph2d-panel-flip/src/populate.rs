@@ -80,10 +80,11 @@ fn slider_chip(
 
 /// Registra os widgets fixos do painel Flip.
 pub fn populate(store: &mut WidgetStore) {
-    // Mode row (Select / Draw / Erase).
+    // Mode row (Select / Draw / Erase / Fill / Sculpt).
     button(store, ids::FLIP_MODE_SELECT);
     button(store, ids::FLIP_MODE_DRAW);
     button(store, ids::FLIP_MODE_ERASE);
+    button(store, ids::FLIP_MODE_RESHAPE);
 
     // Brush sliders — seeded at the tool defaults.
     slider_chip(
@@ -171,6 +172,13 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_ERASE_SOFT);
     button(store, ids::FLIP_ERASE_HARD);
     button(store, ids::FLIP_ERASE_STROKE);
+
+    // Os oito pincéis de escultura (W5; pintados só no modo Reshape, registrados
+    // sempre — como os de cima). Um botão pintado e NÃO registrado aqui é focável
+    // por ninguém e o clique dele é dropado em silêncio.
+    for id in ids::FLIP_RESHAPE_KIND_IDS {
+        button(store, id);
+    }
 
     // Layers toolbar.
     button(store, ids::FLIP_LAYER_ADD);

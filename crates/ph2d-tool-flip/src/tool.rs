@@ -16,7 +16,7 @@ use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 use crate::params::{
     EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
-    PRECISION_MAX, PRECISION_MIN, slider_to_px, slider_to_unit,
+    PRECISION_MAX, PRECISION_MIN, ReshapeKind, slider_to_px, slider_to_unit,
 };
 
 /// Largura default do traço (px de tela) — uma linha média.
@@ -54,6 +54,9 @@ pub struct FlipTool {
     gap_px: f64,
     grow: f64,
     precision: f64,
+    // ── O Reshape (W5). Sem raio/força próprios: usa o Size + o Strength do
+    //    pincel (ver `FlipStyleSnapshot::reshape`).
+    reshape: ReshapeKind,
 }
 
 impl Default for FlipTool {
@@ -75,6 +78,7 @@ impl Default for FlipTool {
             // qualquer espessura e zoom — o Grow é só o ajuste estilístico.
             grow: 0.0,
             precision: DEFAULT_PRECISION,
+            reshape: ReshapeKind::Smooth,
         }
     }
 }
@@ -120,6 +124,11 @@ impl FlipTool {
     pub fn erase_mode(&self) -> EraseMode {
         self.erase
     }
+    /// Pincel de escultura atual (só relevante em `FlipMode::Reshape`).
+    #[must_use]
+    pub fn reshape_kind(&self) -> ReshapeKind {
+        self.reshape
+    }
 
     /// Define a cor do traço (read-back do picker).
     pub fn set_stroke_rgba(&mut self, rgba: [u8; 4]) {
@@ -163,6 +172,7 @@ impl FlipTool {
             erase: self.erase,
             fill_color: self.fill_color,
             fill_mode: self.fill_mode,
+            reshape: self.reshape,
             gap_px: self.gap_px,
             grow: self.grow,
             precision: self.precision,
@@ -216,6 +226,19 @@ impl Tool for FlipTool {
             PanelEvent::Click(id) if id == ids::FLIP_MODE_DRAW => self.mode = FlipMode::Draw,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_ERASE => self.mode = FlipMode::Erase,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_FILL => self.mode = FlipMode::Fill,
+            PanelEvent::Click(id) if id == ids::FLIP_MODE_RESHAPE => self.mode = FlipMode::Reshape,
+            // Os oito pincéis de escultura (W5). A tabela `FLIP_RESHAPE_KIND_IDS` está
+            // na MESMA ordem que `ReshapeKind::ALL` — o zip é o decodificador, e o
+            // seam test dirige os oito ids para provar que as duas listas não derivam.
+            PanelEvent::Click(id) if ids::FLIP_RESHAPE_KIND_IDS.contains(&id) => {
+                if let Some((_, kind)) = ids::FLIP_RESHAPE_KIND_IDS
+                    .iter()
+                    .zip(ReshapeKind::ALL)
+                    .find(|(kid, _)| **kid == id)
+                {
+                    self.reshape = kind;
+                }
+            }
             // Modo do balde (Paint / Paint-Behind / Unpaint).
             PanelEvent::Click(id) if id == ids::FLIP_FILL_PAINT => self.fill_mode = FillMode::Paint,
             PanelEvent::Click(id) if id == ids::FLIP_FILL_BEHIND => {

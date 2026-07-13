@@ -20,6 +20,61 @@ pub enum FlipMode {
     Erase,
     /// **Balde**: um clique preenche a região delimitada pelas linhas (W4).
     Fill,
+    /// **Reshape**: esculpe o traço já desenhado (W5 — ver [`ReshapeKind`]).
+    Reshape,
+}
+
+/// Os pincéis de **escultura de traço** (W5). Espelha `ph2d_flip_reshape::ReshapeKind`
+/// — mesmo precedente do [`FillMode`]: a tool e o painel são vocabulário de UI e não
+/// carregam o solver; o shell traduz na fronteira.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum ReshapeKind {
+    /// Alisa o tremor (o pincel mais usado).
+    #[default]
+    Smooth,
+    /// Empurra na direção do movimento.
+    Push,
+    /// **Agarra** e carrega (o conjunto é congelado no toque).
+    Grab,
+    /// Aperta em direção ao cursor (Ctrl: infla).
+    Pinch,
+    /// Torce ao redor do cursor (Ctrl: inverte).
+    Twist,
+    /// Engrossa a linha (Ctrl: afina).
+    Thickness,
+    /// Aumenta a opacidade (Ctrl: apaga).
+    Strength,
+    /// Bagunça, perpendicular ao movimento.
+    Randomize,
+}
+
+impl ReshapeKind {
+    /// Os oito, na ordem do painel (2 linhas de 4).
+    pub const ALL: [ReshapeKind; 8] = [
+        ReshapeKind::Smooth,
+        ReshapeKind::Push,
+        ReshapeKind::Grab,
+        ReshapeKind::Pinch,
+        ReshapeKind::Twist,
+        ReshapeKind::Thickness,
+        ReshapeKind::Strength,
+        ReshapeKind::Randomize,
+    ];
+
+    /// O rótulo do botão (inglês — a UI do app é inglês, sempre).
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            ReshapeKind::Smooth => "Smooth",
+            ReshapeKind::Push => "Push",
+            ReshapeKind::Grab => "Grab",
+            ReshapeKind::Pinch => "Pinch",
+            ReshapeKind::Twist => "Twist",
+            ReshapeKind::Thickness => "Thicken",
+            ReshapeKind::Strength => "Strength",
+            ReshapeKind::Randomize => "Jitter",
+        }
+    }
 }
 
 /// Como o balde trata o que já está pintado — a semântica de balde de ANIMAÇÃO do
@@ -115,6 +170,13 @@ pub struct FlipStyleSnapshot {
     pub fill_color: [u8; 4],
     /// Modo do balde.
     pub fill_mode: FillMode,
+    /// O pincel de escultura ativo (só relevante em [`FlipMode::Reshape`]).
+    ///
+    /// O Reshape **não tem raio nem força próprios**: usa o `width_px` (Size) e a
+    /// `opacity` (Strength) — exatamente como a borracha. Um 2º par de sliders para
+    /// as mesmas duas grandezas seria estado duplicado, e o usuário teria de
+    /// re-ajustar o pincel a cada troca de modo.
+    pub reshape: ReshapeKind,
     /// Alcance do Gap Closure em px de tela (`0` = desligado).
     pub gap_px: f64,
     /// Grow/Shrink em px de tela: offset assinado do contorno a partir do EIXO da
@@ -139,6 +201,7 @@ impl Default for FlipStyleSnapshot {
             erase: EraseMode::Soft,
             fill_color: [230, 190, 120, 255],
             fill_mode: FillMode::Paint,
+            reshape: ReshapeKind::Smooth,
             gap_px: 0.0,
             grow: 0.0,
             precision: 1.6, // = DEFAULT_PRECISION (tool.rs); o teste-espelho cobre

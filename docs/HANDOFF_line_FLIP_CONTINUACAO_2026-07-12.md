@@ -72,6 +72,7 @@ fantasmas e tween. Tudo abaixo está no `main`, testado e **smokado pelo Enio**.
 | **W2** | tool (Select/Draw/Erase/Fill) + painel docado **modal** + caneta + borracha (3 modos) | `ph2d-tool-flip`, `ph2d-panel-flip`, `shells/desktop/src/flip_{draw,erase,layers}.rs` |
 | **W3** | **frames · exposição · ciclos · ghosts · tween** + a tira docada | `ph2d-panel-flip-frames`, `flip_strip.rs`, `flip_autokey.rs` |
 | **W4** | **o balde** (solver CPU puro) + Gap Closure persistente + o **alvo vivo** | `ph2d-flip-fill`, `flip_fill.rs`, `flip_live.rs` |
+| **W5** | **a escultura** — 8 pincéis (Smooth/Push/Grab/Pinch/Twist/Thickness/Strength/Randomize) | `ph2d-flip-reshape`, `flip_reshape.rs` |
 
 **As 5 regras do módulo que NÃO podem ser re-derivadas erradas** (cada uma custou rodadas):
 
@@ -99,7 +100,19 @@ fantasmas e tween. Tudo abaixo está no `main`, testado e **smokado pelo Enio**.
 
 ## §2 — A FILA (em ordem recomendada; o Enio decide a final)
 
-### ETAPA 1 (recomendada) — **W5: Reshape** (escultura de traço)
+### ✅ ETAPA 1 — **W5: Reshape** — FECHADA (2026-07-13, pendente smoke)
+
+Os 8 pincéis landaram (`ph2d-flip-reshape` + modo **Sculpt** no painel). Doc:
+[`Flip/07_reshape_escultura.md`](Flip/07_reshape_escultura.md); tracker: `HANDOFF_flip_impl §W5`.
+**Ao mexer neles, leia o doc primeiro** — as constantes têm fonte no `sculpt_*.cc` e as três
+decisões de sensação (dose por AMOSTRA · máscara congelada · projeção que colapsa) não se
+re-derivam. Carry-over: T5.7 multiframe (o `frame_falloff` já é respeitado; falta a
+multi-seleção de chaves na tira).
+
+<details>
+<summary>A spec original da etapa (histórico)</summary>
+
+#### **W5: Reshape** (escultura de traço)
 
 Os **9 pincéis** com a matemática e as constantes **já tabeladas** em
 [`Flip/02 §7`](Flip/02_referencia_algoritmos_blender_5.2.md) (Smooth · Push · Grab · Pinch · Twist ·
@@ -123,14 +136,18 @@ Thickness · Strength · Randomize · Clone). Nada a pesquisar — é porte fiel
 - **DoD:** os 9 no painel (seção própria, modal como as outras) + seam test que DIRIGE o evento real
   + gate de PINTURA (`MockPanelHost::paint`) + smoke do Enio.
 
-### ETAPA 2 — **Edit Mode / seleção de traço** (o "select do traço" que o Enio pediu)
+</details>
+
+### ETAPA 2 (a próxima) — **Edit Mode / seleção de traço** (o "select do traço" que o Enio pediu)
 
 Hoje o alvo dos ajustes do painel é *"a última coisa que você fez"* (`flip_live.rs`) — um paliativo
 declarado. O modelo de seleção está especificado em [`Flip/02 §11`](Flip/02_referencia_algoritmos_blender_5.2.md)
 (traço / ponto / segmento + transform).
 
-- **Sinergia com a ETAPA 1:** a seleção é uma das fontes de **auto-masking** do Reshape — fazer o
-  Reshape primeiro deixa o gancho pronto; fazer a seleção antes obriga a voltar no Reshape.
+- **O gancho já está pronto** (a ETAPA 1 fechou primeiro de propósito): a máscara do Reshape é
+  resolvida num ponto só (`Session::begin`) e hoje vale "os traços de linha do desenho ativo".
+  Quando existir seleção, ela vira a máscara — e o auto-masking fino do GP (por traço sob o
+  cursor, por material) sai junto.
 - Quando existir, **a seleção vira o alvo do painel** (o `flip_live` já foi escrito prevendo isso —
   leia o doc do módulo antes de trocar).
 

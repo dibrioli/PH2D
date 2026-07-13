@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | **Branch** | `line/motion-value` |
-| **HEAD** | `621f93f4` |
+| **HEAD** | `76e1584c` (+ este handoff) |
 | **Base** | `4cd8ef13` (= `main` no início da jornada) |
-| **Commits** | 4 |
+| **Commits** | 8 |
 | **O que entregou** | **FILA 1 — subgrafos** (nesting: card colapsado + duplo-clique entra + breadcrumb) |
 | **Nota-ADR** | [`docs/Motion Nodes/57_subgrafos_nota_adr.md`](Motion%20Nodes/57_subgrafos_nota_adr.md) |
 
@@ -45,7 +45,11 @@ o desenho, não o teste**.
 | `ph2d-editor-core/src/interaction/types.rs` | **+2 variantes no fim** do `enum GraphKey`: `Group`, `Ungroup` | **Baixo** (append-only). Se outra linha também apendou, a união é trivial — mas **conte, não escolha** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]). |
 | `.../dispatch/keymap.rs` | **`KEY_KEY_G: u32 = 0x47`** (const nova) | Baixo |
 | `.../dispatch/key.rs` | `graph_key_for` ganhou o parâmetro **`alt`** (assinatura mudou; 1 caller) | **Médio** — se outra linha mexeu em `dispatch_key`, o merge textual pode passar e o `check` pegar. |
-| `.../dispatch/mod.rs` | `KEY_KEY_G` no `pub use keymap::{…}` | Baixo |
+| `.../dispatch/mod.rs` | `KEY_KEY_G` **e `graph_key_for`** no `pub use` | Baixo |
+| `.../dispatch/key.rs` | **`graph_key_for` virou `pub`** e ganhou `KEY_SPACE => TogglePlay` — é agora **o único mapa** dos verbos do grafo, e o shell é seu segundo leitor | **Médio** |
+| `shells/desktop/src/keymap.rs` | `KeyCode::KeyG` + um `mod tests` novo | Baixo |
+| `shells/desktop/src/input_handlers.rs` | **7 arms bespoke removidas** (D/K/P/F/Delete/A/Space) e substituídas por **um portão único**; o arm do `G` (grid) ganhou `if !cmd_chord` | **ALTO se outra linha mexeu no `handle_editor_key`** — o match encolheu bastante |
+| **`crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs`** | **+1 entrada** na `PANEL_A11Y_DELEGATE_OK` (`paint_menu.rs`) | **ALTO se outra linha também adicionou** — mesma armadilha da allowlist: **funda a união, não escolha um lado** |
 | `.../dispatch/tests/graph.rs` | `key_cmd` virou wrapper de `key_chord(kc, cmd, alt)`; +1 caso e +1 teste | Baixo |
 | **`.typos.toml`** | **+3 palavras** (`frase`, `organizacional`, `HDA`) na `[default.extend-words]` | **ALTO se outra linha também adicionou** — chave duplicada **mata o TOML no parse** e o typos nem escaneia ([[feedback_duplicate_allowlist_key_kills_the_gate_at_parse.md]]). **Funda a união, sem duplicar chave.** |
 
@@ -102,6 +106,27 @@ Rodei local: **fmt (pinado 1.95) · clippy `-D warnings` · typos · machete · 
 `architecture_contract_surface` · a suíte das 4 crates tocadas** — todos verdes.
 **Não** rodei: `cargo deny`, `cargo audit`, nextest com `--cargo-profile ci-test`, matrix
 macOS/Windows. Não adicionei dependência nenhuma, então `deny`/`audit` não deveriam mexer.
+
+## 7.1 Correções do 1º smoke do Enio (2026-07-13, commit `76e1584c`)
+
+O Enio achou 4 coisas, e as duas primeiras eram a mesma **dívida estrutural**:
+
+1. **`Ctrl+G` desativava o GRID** em vez de agrupar. O shell mantinha uma **segunda lista** dos
+   verbos do grafo, escrita à mão (7 arms), e o grafo cresceu um verbo que essa lista nunca
+   ouviu falar — o chord caiu no `G` global. O mesmo arquivo **já documentava esse bug** de
+   2026-07-12 (*"Ctrl+D não duplica"*) e o tinha consertado **adicionando mais uma arm**. A
+   oitava arm seria a mesma dívida pela terceira vez.
+   **Fix estrutural:** existe **UM mapa** (`graph_key_for`, agora `pub`) e o shell é seu único
+   outro leitor. Portão único: cursor sobre o grafo ⇒ o grafo é dono da tecla, e **consome**.
+   Gate novo (`every_graph_verb_is_reachable_through_the_shells_normalizer`, mutation-tested)
+   teria pego isso antes do smoke.
+2. **Um CHORD nunca pode acertar um atalho de letra solta** — o arm do grid virou
+   `KeyCode::KeyG if !cmd_chord`. Isso valia pro **app inteiro**, não só pro grafo.
+3. **O chip de agrupar** agora é **um botão com os dois verbos**, e veste o ícone do verbo que
+   vai de fato executar (card selecionado ⇒ `IconId::Ungroup`).
+4. **Os ghosts são ARRASTÁVEIS.** A teoria de que mover um ghost mexeria numa tela que você não
+   está vendo estava errada — um nó tem **uma** posição, e quem olha pro ghost está olhando pro
+   nó. Apagá-lo de lá continua **refusado, com toast**.
 
 ## 8. Smoke (o Enio)
 

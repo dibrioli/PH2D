@@ -32,8 +32,8 @@ pub use snapshot::{
     Crumb, GraphBackdropView, GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot,
     NodeChoice, NodeViewKind, PROBE_SAMPLES, PortView, ProbeView, SUBGRAPH_VIEW_TAG,
     current_graph_backdrop_selection, current_graph_selection, drain_intents, is_subgraph_view,
-    push_intent, request_graph_selection, set_current_motion_graph, set_current_node_catalog,
-    set_graph_backdrop_selection, set_graph_selection, snapshot_from,
+    pending_graph_selection, push_intent, request_graph_selection, set_current_motion_graph,
+    set_current_node_catalog, set_graph_backdrop_selection, set_graph_selection, snapshot_from,
 };
 pub use state::MotionGraphPanelState;
 

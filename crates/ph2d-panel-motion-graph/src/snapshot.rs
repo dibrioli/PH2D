@@ -268,6 +268,15 @@ pub(crate) fn take_selection_request() -> Option<Vec<u32>> {
     SELECTION_REQUEST.with(|c| c.borrow_mut().take())
 }
 
+/// Look at the pending request WITHOUT consuming it — how a seam gate on the shell
+/// side checks what an edit handed back. Deliberately non-destructive: a reader that
+/// took it would steal the panel's selection and the bug would surface as "sometimes
+/// the copies aren't selected", which is exactly the class of bug this channel exists
+/// to prevent.
+pub fn pending_graph_selection() -> Option<Vec<u32>> {
+    SELECTION_REQUEST.with(|c| c.borrow().clone())
+}
+
 /// Publish the selected BACKDROP (panel `paint` → shell bridge). Mutually
 /// exclusive with the node selection by construction — selecting a backdrop
 /// clears the nodes and vice-versa — so the params panel always has exactly one

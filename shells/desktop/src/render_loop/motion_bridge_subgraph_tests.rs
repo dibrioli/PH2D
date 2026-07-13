@@ -280,6 +280,54 @@ fn ungroup_restores_the_document_it_grouped() {
     );
 }
 
+/// **Ungroup hands the freed contents back as the selection** (Enio, smoke 2026-07-13).
+///
+/// The artist had a cluster in their hand — the card — and dissolving it must not empty
+/// their hand: what they were holding is now the members, and the drag or the Ctrl+G that
+/// naturally follows has to find them there. (Blender's Ungroup leaves the freed nodes
+/// selected for the same reason.) The freed set is read BEFORE the dissolve and handed
+/// back AFTER it, because dissolving the room you stand in changes level, and a level
+/// change clears the selection.
+#[test]
+fn ungroup_hands_the_freed_contents_back_as_the_selection() {
+    let mut m = flat();
+    let n0 = m.doc.graph.nodes()[0].id;
+    let n1 = m.doc.graph.nodes()[1].id;
+    // A nest: `inner` holds n0; `outer` holds n1 AND inner. Dissolving `outer` spills a
+    // node and a CARD onto the root — both are things the artist can now grab, so both
+    // come back, and the card comes back in the id space the view speaks (tagged).
+    super::subgraph::group(&mut m, vec![n0.0]);
+    let inner = m.doc.subgraphs[0].id;
+    super::subgraph::group(&mut m, vec![n1.0, super::subgraph::view_id(inner)]);
+    let outer = m.doc.subgraphs.iter().find(|s| s.id != inner).unwrap().id;
+
+    super::subgraph::ungroup(&mut m, outer);
+    let mut got = ph2d_panel_motion_graph::pending_graph_selection()
+        .expect("ungroup must hand a selection back - an empty hand is the bug");
+    got.sort_unstable();
+    let mut want = vec![n1.0, super::subgraph::view_id(inner)];
+    want.sort_unstable();
+    assert_eq!(
+        got, want,
+        "the freed member AND the freed card, and nothing else - n0 is still folded \
+         inside `inner`, so it is not something the artist can grab"
+    );
+
+    // …and from INSIDE: dissolving the room you are standing in walks you out and STILL
+    // leaves the contents in your hand (the level change clears the selection first).
+    super::subgraph::set_level(&mut m, Some(inner));
+    super::subgraph::ungroup(&mut m, inner);
+    assert_eq!(
+        m.level, None,
+        "the room is gone, so you are back at the root"
+    );
+    assert_eq!(
+        ph2d_panel_motion_graph::pending_graph_selection(),
+        Some(vec![n0.0]),
+        "the node that was in the dissolved room is selected, not nothing"
+    );
+}
+
 /// **Deleting a card deletes what is inside it** — at every depth (Nuke: "the original
 /// nodes are replaced with the Group node", so the card IS them).
 #[test]

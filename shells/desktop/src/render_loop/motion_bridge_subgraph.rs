@@ -143,6 +143,26 @@ pub(super) fn ungroup(motion: &mut MotionState, sid: u32) {
         return;
     };
     let pre = motion.doc.clone();
+    // What the card was holding, in the view ids of the level it is about to spill onto
+    // — the DIRECT members plus the nested cards, which is exactly what becomes visible.
+    // Read BEFORE the mutation, handed back as the selection AFTER it: dissolving a group
+    // and finding nothing selected loses the artist the cluster they had in their hand
+    // (Enio, smoke 2026-07-13), and it is also what Blender's Ungroup leaves selected.
+    let mut freed: Vec<u32> = motion
+        .doc
+        .members
+        .iter()
+        .filter(|(_, s)| **s == sid)
+        .map(|(n, _)| n.0)
+        .collect();
+    freed.extend(
+        motion
+            .doc
+            .subgraphs
+            .iter()
+            .filter(|s| s.parent == Some(sid))
+            .map(|s| view_id(s.id)),
+    );
     // Members rise one level (to the root when there is no parent).
     motion.doc.members.retain(|_, s| {
         if *s == sid {
@@ -178,9 +198,11 @@ pub(super) fn ungroup(motion: &mut MotionState, sid: u32) {
     motion.doc.subgraphs.retain(|s| s.id != sid);
     // Dissolving the room you are standing in puts you where the room was.
     if motion.level == Some(sid) {
+        // …which CLEARS the selection, so the hand-back below has to come after it.
         set_level(motion, parent);
     }
     motion.history.push_undo(pre);
+    ph2d_panel_motion_graph::request_graph_selection(freed);
 }
 
 /// **Delete a card and everything inside it** — the members, the nests below them,

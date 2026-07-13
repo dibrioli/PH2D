@@ -71,6 +71,7 @@ impl WidgetStore {
             hierarchy_drag: None,
             hierarchy_row_ids: std::collections::BTreeSet::new(),
             multiline_text_ids: std::collections::BTreeSet::new(),
+            cancel_on_escape_ids: std::collections::BTreeSet::new(),
             number_input_drag: None,
             number_stepper_hold: None,
             shift_held: false,

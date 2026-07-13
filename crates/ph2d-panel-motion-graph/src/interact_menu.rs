@@ -8,7 +8,7 @@
 
 use super::{GraphViewSnapshot, Menu, MotionGraphPanelState, geom};
 use crate::snapshot::ChoiceTarget;
-use crate::snapshot::{GraphIntent, menu_catalog, menu_rows, push_intent};
+use crate::snapshot::{GraphIntent, menu_matches, menu_rows, push_intent};
 use crate::state::MenuBody;
 use ph2d_editor_core::interaction::GraphZoom;
 use ph2d_editor_core::zones::Rect;
@@ -162,7 +162,9 @@ pub(super) fn resolve_menu(menu: &Menu, rect: Rect, snap: &GraphViewSnapshot, x:
             });
         }
         MenuBody::Library { connect_from } => {
-            let c = menu_catalog(snap, *connect_from)[i];
+            // The SAME list the paint drew: filtered by the query AND ranked by it. Reading
+            // the raw catalog here is exactly the bug this popup already had once.
+            let c = menu_matches(snap, menu, *connect_from)[i];
             // Smart-connect is ONE intent, not an add followed by a connect: it was
             // one gesture, so it must be one undo step (and the shell, which mints
             // the id, is the only one that can name the node it just created).

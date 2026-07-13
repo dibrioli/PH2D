@@ -166,6 +166,8 @@ pub(super) fn card_port_menu(
         scroll: 0.0,
         screen: (x, y),
         spawn: view.graph(x, y),
+        query: String::new(),
+        opened: false,
         body: MenuBody::CardPorts {
             rows,
             other,

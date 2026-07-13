@@ -126,6 +126,16 @@ pub(crate) struct Menu {
     /// Graph-space point the chosen node lands at (the R-click point mapped
     /// through the view — stable under a later pan/zoom while the menu is open).
     pub spawn: (f32, f32),
+    /// **What the artist has typed** — mirrored from the search field's `TextInput` at the
+    /// top of every `process`, so the store owns the buffer (caret, selection, keyboard) and
+    /// this is only ever a READ of it. Two copies of the same string, edited on both sides,
+    /// is the bug that field is famous for.
+    pub query: String,
+    /// The search field claims focus exactly ONCE, on the frame the menu opens — re-claiming
+    /// it every frame would fight anything else the artist focuses, and re-seeding the buffer
+    /// would stomp what they are typing. (Same flag, same reason, as the timeline's inline
+    /// rename.)
+    pub opened: bool,
     pub body: MenuBody,
 }
 

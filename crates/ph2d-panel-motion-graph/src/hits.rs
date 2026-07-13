@@ -263,6 +263,11 @@ fn sock_in_id(node: u32, port: usize) -> NodeId {
 fn sock_out_id(node: u32, port: usize) -> NodeId {
     fnv_id(&format!("motion_graph/sock_out/{node}/{port}"))
 }
+/// The add-menu's search field. One id — there is only ever one menu open.
+pub(crate) fn menu_search_id() -> NodeId {
+    fnv_id("motion_graph/menu_search")
+}
+
 pub(crate) fn wire_hit_id(to_node: u32, to_port: u16) -> NodeId {
     fnv_id(&format!("motion_graph/wire/{to_node}/{to_port}"))
 }

@@ -467,6 +467,9 @@ fn open_rename(store: &mut crate::interaction::WidgetStore) {
         },
     );
     store.set_focus(Some(ids::HIER_RENAME_INPUT));
+    // Esc aborts the rename (it used to be spelled as this id, hardcoded inside
+    // `dispatch_key`; the field says so itself now).
+    store.mark_cancel_on_escape(ids::HIER_RENAME_INPUT);
 }
 
 /// ADR-0029 Phase B.3 — `PanelHostInternal` is the

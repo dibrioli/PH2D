@@ -77,6 +77,8 @@ pub(super) fn apply_key(
                 scroll: 0.0,
                 screen: center,
                 spawn,
+                query: String::new(),
+                opened: false,
                 body: MenuBody::Library { connect_from: None },
             });
         }

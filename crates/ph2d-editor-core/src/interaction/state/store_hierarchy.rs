@@ -134,6 +134,17 @@ impl WidgetStore {
         self.multiline_text_ids.contains(&id)
     }
 
+    /// Mark `id` as a TextInput that **aborts on Esc** (emits `WidgetEvent::Cancel` +
+    /// `Blur` instead of just blurring). Idempotent; populators re-mark every frame.
+    pub fn mark_cancel_on_escape(&mut self, id: NodeId) {
+        self.cancel_on_escape_ids.insert(id);
+    }
+
+    /// True iff `id` was marked via `mark_cancel_on_escape`.
+    pub fn is_cancel_on_escape(&self, id: NodeId) -> bool {
+        self.cancel_on_escape_ids.contains(&id)
+    }
+
     pub fn is_hierarchy_row(&self, id: NodeId) -> bool {
         self.hierarchy_row_ids.contains(&id)
     }

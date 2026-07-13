@@ -38,6 +38,9 @@ pub use snapshot::{
 };
 pub use state::MotionGraphPanelState;
 
+#[path = "menu_search.rs"]
+mod menu_search;
+
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
@@ -81,13 +84,30 @@ impl Panel for MotionGraphPanel {
     }
 
     fn apply_event(
-        _state: &mut MotionGraphPanelState,
+        state: &mut MotionGraphPanelState,
         _host: &mut dyn PanelHostInternal,
-        _ev: WidgetEvent,
+        ev: WidgetEvent,
     ) -> EventOutcome {
-        // No interactive widgets yet — graph gestures arrive via the
-        // `GraphSurface` dispatch channel (M0.T2/T3), not per-widget events.
-        EventOutcome::Ignored
+        // The graph's own gestures arrive on the `GraphSurface` dispatch channel, not here.
+        // The ONE widget in this panel is the add-menu's search field (doc 59), and it owns
+        // the keyboard while it is open — so Enter and Esc are ITS events, not the graph's.
+        match ev {
+            // **Enter takes the top match.** A search box where the obvious key does nothing
+            // makes you reach for the mouse to click the row you are already looking at.
+            WidgetEvent::Submit(id) if id == hits::menu_search_id() => {
+                if let Some(menu) = state.menu.take() {
+                    menu_search::pick_first(&menu);
+                }
+                EventOutcome::Consumed
+            }
+            // **Esc closes the popup**, rather than merely blurring the field and leaving a
+            // menu on screen that no longer answers the keyboard.
+            WidgetEvent::Cancel(id) if id == hits::menu_search_id() => {
+                state.menu = None;
+                EventOutcome::Consumed
+            }
+            _ => EventOutcome::Ignored,
+        }
     }
 
     fn populate(_store: &mut WidgetStore) {

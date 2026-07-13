@@ -5,7 +5,7 @@
 
 use super::tests::{CENTER, RECT, gesture, two_node_snapshot};
 use super::*;
-use crate::snapshot::{NodeChoice, set_current_node_catalog};
+use crate::snapshot::{GraphIntent, NodeChoice, drain_intents, set_current_node_catalog};
 use ph2d_node_registry::NodeUiCategory;
 
 /// A catalog of `n` node types — enough of them to overflow any screen.
@@ -28,6 +28,8 @@ fn open_menu(scroll: f32) -> MotionGraphPanelState {
             scroll,
             screen: (RECT.x + 20.0, RECT.y + 20.0),
             spawn: (0.0, 0.0),
+            query: String::new(),
+            opened: false,
             body: MenuBody::Library { connect_from: None },
         }),
         ..Default::default()
@@ -215,4 +217,136 @@ fn the_paint_and_the_hit_enumerate_one_list() {
             "{who} reached for the raw catalog again - that is the divergence coming back"
         );
     }
+}
+
+// ── The search (doc 59) ─────────────────────────────────────────────────────
+
+/// A catalog whose FIRST entry is a decoy: "Mirror Alpha Pass" matches the query `map` as a
+/// scattered subsequence (**M**irror **A**lpha **P**ass), so a search that filters without
+/// RANKING would list it above the node the artist actually wants — in the very first row.
+fn library() {
+    use crate::snapshot::NodeChoice;
+    set_current_node_catalog(vec![
+        NodeChoice {
+            type_name: "paint.mirror_alpha_pass",
+            display: "Mirror Alpha Pass",
+            category: NodeUiCategory::Utility,
+            inputs: &[],
+        },
+        NodeChoice {
+            type_name: "value.lfo",
+            display: "LFO",
+            category: NodeUiCategory::Source,
+            inputs: &[],
+        },
+        NodeChoice {
+            type_name: "value.map_range",
+            display: "Map Range",
+            category: NodeUiCategory::Utility,
+            inputs: &[],
+        },
+    ]);
+}
+
+fn with_query(q: &str) -> MotionGraphPanelState {
+    let mut st = open_menu(0.0);
+    st.menu.as_mut().unwrap().query = q.to_string();
+    st
+}
+
+/// **Typing finds the node, and the best match is FIRST** — and the row the artist clicks is
+/// the row they were shown, because the paint, the hit and the ranking are one derivation.
+///
+/// This is the smoke that prompted it (Enio, 2026-07-13: *"não encontrei value.lfo"*): 86
+/// types in a flat list, and he knew the name.
+#[test]
+fn typing_filters_the_library_and_the_first_row_is_the_best_match() {
+    library();
+    let snap = two_node_snapshot();
+    let mut st = with_query("map");
+    let menu = st.menu.clone().unwrap();
+
+    let rows = crate::snapshot::menu_rows(&snap, &menu);
+    assert!(
+        rows.len() >= 2,
+        "the decoy matches too - that is the point of it"
+    );
+    assert_eq!(
+        rows[0].label, "Map Range",
+        "the node the artist meant is FIRST. 'Mirror Alpha Pass' matches `map` as a scattered \
+         subsequence and sits earlier in the catalog, so a filter that does not RANK would \
+         hand them that one - and the whole difference between a search that works and a list \
+         that happens to contain the answer is which row comes first"
+    );
+
+    // Clicking that first row adds THAT type: the pick resolves against the same filtered,
+    // ranked list the paint drew.
+    let panel = geom::menu_panel(&menu, rows.len(), RECT);
+    let row = geom::menu_row(panel, 0, 0.0);
+    apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::Background,
+            GesturePhase::Click,
+            row.x + 2.0,
+            row.y + 2.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::AddNode {
+            type_name: "value.map_range",
+            x: 0.0,
+            y: 0.0,
+        }],
+        "the row that was drawn first is the row the click adds"
+    );
+}
+
+/// **The canonical name is a name too.** I told Enio to look for `value.lfo` — a string the
+/// menu never showed him. Now it finds it, and so does the domain prefix.
+#[test]
+fn the_canonical_name_and_the_domain_are_both_searchable() {
+    library();
+    let snap = two_node_snapshot();
+
+    let menu = with_query("value.lfo").menu.unwrap();
+    assert_eq!(crate::snapshot::menu_rows(&snap, &menu)[0].label, "LFO");
+
+    // Typing a DOMAIN lists that domain — the structure the flat list never exposed.
+    let menu = with_query("value").menu.unwrap();
+    let rows = crate::snapshot::menu_rows(&snap, &menu);
+    let labels: Vec<&str> = rows.iter().map(|r| r.label).collect();
+    assert!(labels.contains(&"LFO") && labels.contains(&"Map Range"));
+    assert!(
+        !labels.contains(&"Mirror Alpha Pass"),
+        "a paint.* node is not a value.* node"
+    );
+
+    // A query that matches nothing lists nothing — and picking in an empty list does nothing.
+    let menu = with_query("zzzz").menu.unwrap();
+    assert!(crate::snapshot::menu_rows(&snap, &menu).is_empty());
+    crate::menu_search::pick_first(&menu);
+    assert!(drain_intents().is_empty());
+}
+
+/// **Enter takes the top match** — the row you are already looking at. A search box where the
+/// obvious key does nothing sends you back to the mouse.
+#[test]
+fn enter_picks_the_top_match() {
+    library();
+    crate::snapshot::set_current_motion_graph(Some(two_node_snapshot()));
+    let menu = with_query("mr").menu.unwrap(); // initials of "Map Range"
+    crate::menu_search::pick_first(&menu);
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::AddNode {
+            type_name: "value.map_range",
+            x: 0.0,
+            y: 0.0,
+        }]
+    );
 }

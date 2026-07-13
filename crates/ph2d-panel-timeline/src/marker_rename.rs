@@ -71,6 +71,11 @@ pub(crate) fn paint(
         ctx.host
             .store_mut()
             .set_focus(Some(ids::TIMELINE_MARKER_RENAME_INPUT));
+        // Esc aborts the rename — the FIELD says so, rather than `dispatch_key` keeping a
+        // hardcoded list of the ids that do.
+        ctx.host
+            .store_mut()
+            .mark_cancel_on_escape(ids::TIMELINE_MARKER_RENAME_INPUT);
         mr.opened = true;
         state.marker_rename = Some(mr);
     }

@@ -264,8 +264,10 @@ pub fn dispatch_key<'frame>(
                 // M14.7 polish: Esc on the rename TextInput emits
                 // `Cancel` so the panel can drop the rename mode without
                 // committing (hierarchy row rename + timeline marker rename).
-                if (id == crate::ids::HIER_RENAME_INPUT
-                    || id == crate::ids::TIMELINE_MARKER_RENAME_INPUT)
+                // The FIELD says whether Esc aborts it (`mark_cancel_on_escape`) — this used
+                // to be a hardcoded list of two ids here, which every new field of the kind
+                // had to be added to, in a file that knows nothing about it.
+                if store.is_cancel_on_escape(id)
                     && matches!(store.get(id), Some(InteractiveState::TextInput { .. }))
                 {
                     if let Some(InteractiveState::TextInput { state, .. }) = store.get_mut(id) {

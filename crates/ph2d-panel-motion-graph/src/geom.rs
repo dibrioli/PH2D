@@ -27,6 +27,8 @@ pub(crate) const MENU_W: f32 = 200.0; // LITERAL-PX-OK: add-menu popup width
 pub(crate) const MENU_ROW_H: f32 = 22.0; // LITERAL-PX-OK: add-menu row height
 pub(crate) const MENU_HEADER_H: f32 = 22.0; // LITERAL-PX-OK: add-menu header height
 pub(crate) const MENU_PAD: f32 = 5.0; // LITERAL-PX-OK: add-menu inner padding
+/// The search field's band, between the header and the list.
+pub(crate) const MENU_SEARCH_H: f32 = 26.0; // LITERAL-PX-OK: add-menu search field height
 /// Breathing room between the popup and the canvas edge (it is capped to the canvas height, so
 /// without this it would sit flush against the top and bottom).
 const MENU_MARGIN: f32 = 8.0; // LITERAL-PX-OK: add-menu margin from the canvas edge
@@ -226,8 +228,9 @@ fn intersects(a: Rect, b: Rect) -> bool {
 /// the last forty are unreachable (Enio's screenshot). So the panel is CAPPED, and what does not
 /// fit SCROLLS.
 pub(crate) fn menu_panel(menu: &Menu, count: usize, canvas: Rect) -> Rect {
-    let full = MENU_HEADER_H + count.max(1) as f32 * MENU_ROW_H + 2.0 * MENU_PAD;
-    let room = (canvas.h - 2.0 * MENU_MARGIN).max(MENU_HEADER_H + MENU_ROW_H + 2.0 * MENU_PAD);
+    let chrome = MENU_HEADER_H + MENU_SEARCH_H;
+    let full = chrome + count.max(1) as f32 * MENU_ROW_H + 2.0 * MENU_PAD;
+    let room = (canvas.h - 2.0 * MENU_MARGIN).max(chrome + MENU_ROW_H + 2.0 * MENU_PAD);
     let h = full.min(room);
     let x = menu
         .screen
@@ -244,11 +247,22 @@ pub(crate) fn menu_panel(menu: &Menu, count: usize, canvas: Rect) -> Rect {
 /// Rows are drawn clipped to it and hit-tested against it, so a row scrolled half-way out is
 /// half-clickable and never spills over the header.
 pub(crate) fn menu_list(panel: Rect) -> Rect {
+    let top = MENU_HEADER_H + MENU_SEARCH_H;
     Rect::new(
         panel.x + MENU_PAD,
-        panel.y + MENU_HEADER_H + MENU_PAD,
+        panel.y + top + MENU_PAD,
         panel.w - 2.0 * MENU_PAD,
-        (panel.h - MENU_HEADER_H - 2.0 * MENU_PAD).max(0.0),
+        (panel.h - top - 2.0 * MENU_PAD).max(0.0),
+    )
+}
+
+/// The search field's rect — under the header, above the list.
+pub(crate) fn menu_search_rect(panel: Rect) -> Rect {
+    Rect::new(
+        panel.x + MENU_PAD,
+        panel.y + MENU_HEADER_H,
+        panel.w - 2.0 * MENU_PAD,
+        MENU_SEARCH_H - MENU_PAD,
     )
 }
 
@@ -429,6 +443,8 @@ mod tests {
             scroll: 0.0,
             screen: (290.0, 190.0),
             spawn: (0.0, 0.0),
+            query: String::new(),
+            opened: false,
             body: crate::state::MenuBody::Library { connect_from: None },
         };
         let p = menu_panel(&menu, 3, canvas);

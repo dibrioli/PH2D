@@ -8,7 +8,6 @@
 //! `ph2d_panel_vector::set_current_vector_style`). The panel returns edits the
 //! other way as `GraphIntent`s (M1.E10 phase 2; not yet wired).
 
-use crate::state::{Menu, MenuBody};
 use ph2d_node_registry::{NodeRegistry, NodeSilhouette, NodeUiCategory};
 use ph2d_nodegraph::graph::Graph;
 use ph2d_nodegraph::node::NodeTypeId;
@@ -21,9 +20,17 @@ pub use intent::GraphIntent;
 
 #[path = "snapshot_drop.rs"]
 mod drop_targets;
+
+#[path = "snapshot_menu.rs"]
+mod menu;
 pub use drop_targets::{
     ChoiceTarget, HiddenPorts, PortChoice, card_hidden_ports, set_card_hidden_ports,
 };
+pub(crate) use menu::{menu_matches, menu_rows};
+// The raw (unranked) catalog is the gates' business only: production code reads the popup
+// through `menu_rows`, which is the point.
+#[cfg(test)]
+pub(crate) use menu::menu_catalog;
 
 /// One socket on a node card. Color ← [`Domain`], shape ← [`Dim`] (plan §2.4).
 /// `clock` completes the [`ph2d_nodegraph::port::PortType`] axes so the editor's
@@ -310,79 +317,10 @@ pub(crate) fn current_catalog() -> Vec<NodeChoice> {
     CATALOG.with(|c| c.borrow().clone())
 }
 
-/// **One row of the popup** — a label, a tinted dot, and (for the library) the node type
-/// a pick would create.
-///
-/// The popup has ONE row source, and `paint`, the hit-test and the panel's GEOMETRY all
-/// read it. They used to disagree: the paint drew `current_catalog()` (all 86 types) while
-/// the click resolved against the *filtered* smart-connect list, so on a wire-drop the
-/// artist clicked "Attractor" and got whichever type sat at that index in a list they were
-/// never shown. Two derivations of the same list is the bug; one is the fix.
-pub(crate) struct MenuRow<'a> {
-    pub label: &'a str,
-    pub category: NodeUiCategory,
-}
-
-/// The rows the popup shows.
-///
-/// **Library:** plain `A` / R-click → the whole catalog. Opened by a wire dropped in empty
-/// space (**smart-connect**) → only the node types with an input that wire can feed (the
-/// domain/dim/clock rule the drag's compatibility ghost already uses; the shell still has
-/// the last word on cycles and the membrane). Filtering — rather than listing all 86 and
-/// refusing 60 of them after the click — is the whole point: the menu answers *"what can I
-/// plug in here?"*.
-///
-/// **CardPorts:** the rows were already chosen and filtered at drop time (they name ports
-/// the panel cannot see from here); it just reads them back.
-pub(crate) fn menu_rows<'a>(snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<MenuRow<'a>> {
-    match &menu.body {
-        MenuBody::CardPorts { rows, .. } => rows
-            .iter()
-            .map(|p| MenuRow {
-                label: &p.label,
-                category: p.category,
-            })
-            .collect(),
-        MenuBody::Library { connect_from } => menu_catalog(snap, *connect_from)
-            .iter()
-            .map(|c| MenuRow {
-                label: c.display,
-                category: c.category,
-            })
-            .collect(),
-    }
-}
-
-/// The library entries a pick could create — the same filter [`menu_rows`] shows, so row
-/// `i` here IS row `i` there.
-pub(crate) fn menu_catalog(snap: &GraphViewSnapshot, from: Option<(u32, u16)>) -> Vec<NodeChoice> {
-    let all = current_catalog();
-    let Some((from_node, from_port)) = from else {
-        return all;
-    };
-    let Some(out) = snap
-        .nodes
-        .iter()
-        .find(|n| n.id == from_node)
-        .and_then(|n| n.outputs.get(from_port as usize))
-    else {
-        return all;
-    };
-    all.into_iter()
-        .filter(|c| c.inputs.iter().any(|i| accepts(&i.ty, out)))
-        .collect()
-}
-
 /// Whether two ports could be wired together — the panel-side rule (domain + dim + clock,
 /// `connects_directly` minus the membrane; the shell still has the last word).
 pub(crate) fn same_type(a: &PortView, b: &PortView) -> bool {
     a.domain == b.domain && a.dim == b.dim && a.clock == b.clock
-}
-
-/// Whether an input port could take the dragged output (the panel-side rule:
-/// domain + dim + clock — `connects_directly` minus the membrane).
-fn accepts(input: &ph2d_nodegraph::port::PortType, out: &PortView) -> bool {
-    input.domain == out.domain && input.dim == out.dim && input.clock == out.clock
 }
 
 /// Queue an edit for the shell bridge to apply (panel → shell).

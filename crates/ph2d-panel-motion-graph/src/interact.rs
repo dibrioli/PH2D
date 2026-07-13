@@ -66,6 +66,23 @@ pub(crate) fn process(
         state.selected_backdrop = None;
     }
 
+    // **The search field** (doc 59). On the frame the menu opens it takes the keyboard, so the
+    // gesture is simply *press A and type*. From then on the STORE owns the buffer — caret,
+    // selection, every keystroke — and `query` is only ever a mirror of it. Two copies of the
+    // same string, edited on both sides, is the classic way a text field starts lying.
+    if let Some(menu) = state.menu.as_mut() {
+        if !menu.opened {
+            crate::menu_search::open_search(ctx.host.store_mut());
+            menu.opened = true;
+        }
+        menu.query = ctx
+            .host
+            .store()
+            .text(crate::hits::menu_search_id())
+            .unwrap_or_default()
+            .to_string();
+    }
+
     // The wheel over an OPEN add-menu scrolls its list; only otherwise does it zoom the canvas.
     if let Some(z) = ctx.host.store_mut().take_graph_zoom(panel)
         && !scroll_menu(state, rect, snap, &z)
@@ -133,6 +150,8 @@ fn apply_gesture(
                 scroll: 0.0,
                 screen: (g.x, g.y),
                 spawn,
+                query: String::new(),
+                opened: false,
                 body: MenuBody::Library { connect_from: None },
             });
             state.interaction = Interaction::Idle;
@@ -480,6 +499,8 @@ fn apply_socket_out(
                         scroll: 0.0,
                         screen: (g.x, g.y),
                         spawn,
+                        query: String::new(),
+                        opened: false,
                         body: MenuBody::Library {
                             connect_from: Some((from_node, from_port)),
                         },

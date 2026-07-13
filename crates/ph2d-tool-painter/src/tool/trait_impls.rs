@@ -65,6 +65,7 @@ impl Tool for PainterTool {
             || self.route_fill_event(&event)
             || self.route_selection_event(&event)
             || self.route_deform_event(&event)
+            || self.route_sculpt_event(&event)
         {
             self.refill_if_appearance_changed(appearance_before);
             return;

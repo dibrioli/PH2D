@@ -149,6 +149,16 @@ impl DrawTo {
 /// is empty the groove cuts this deep. That is what a tuft actually leaves behind. // CLAMP-OK
 const GRAIN_GROOVE: f32 = 0.65;
 
+/// The grain's weight on a body, as a multiplier — `1` where the grain is full, [`GRAIN_GROOVE`] deep
+/// where it is empty. Shared with [`crate::sculpt`] so a grainy spatula bites by the SAME law a grainy
+/// brush deposits by; a bare `× g` in either place would not texture the touch, it would quietly remove
+/// two thirds of it (a grain's samples average well under half — see [`derive_height`]).
+#[inline]
+#[must_use]
+pub(crate) fn grain_groove(grain: f32) -> f32 {
+    1.0 - GRAIN_GROOVE * (1.0 - grain.clamp(0.0, 1.0))
+}
+
 /// One dab's inputs to the height kernel — the *same* resolved frames the colour kernel is handed for
 /// that dab (its footprint, its Shape basis, its Grain basis). The caller resolves them once and gives
 /// both kernels the same ones; that is the whole trick.
@@ -265,7 +275,7 @@ pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
         // so multiplying by it does not texture the paint, it removes two thirds of it. See
         // [`GRAIN_GROOVE`]. With the body curve the grooves notch a PLATEAU — bristle marks in a level
         // film, the Painter/ArtRage signature — instead of mushing a dome.
-        a *= 1.0 - GRAIN_GROOVE * (1.0 - grain.clamp(0.0, 1.0));
+        a *= grain_groove(grain);
     }
     depth * a
 }

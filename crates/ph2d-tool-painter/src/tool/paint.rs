@@ -44,6 +44,8 @@ mod impasto_shade; // Impasto: the RIG + how one pixel is shaded (the optics; it
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
+mod sculpt; // Sculpt: the brush as a LOCAL operator on the relief (Smooth / Sharpen) — `docs/Painter/18…`
+mod sculpt_blur; // Sculpt: the kernel + the per-tile memo of `blur(pre)`; split from `sculpt` (LOC cap)
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
 mod shape_layers;
 /// Imported-image slots (Grain + Shape) + Shape geometry + Grain Depth setters; split from `brush_settings`.
@@ -653,6 +655,11 @@ pub(crate) struct PaintState {
     /// **Deform** (Liquify) settings + session state — sub-mode, brush knobs, Freeze, and the pre-deform
     /// buffer Reconstruct/Amount read from. Mode-exclusive; see [`warp`] (Deform Wave 1).
     deform: warp::DeformState,
+    /// **Sculpt** settings + per-stroke session — the sub-mode, the kernel Radius, and the frozen relief
+    /// plus the accumulated intensity the re-render reads. Unlike Deform this is NOT mode-exclusive: the
+    /// sculpt rides the same dab list the colour does, so the brush's own knobs are its knobs. See
+    /// [`sculpt`].
+    sculpt: sculpt::SculptState,
 }
 
 // (LOC cap) `set_line_constrain` / `set_shape_grab_tol_px` live beside the pointer entry in
@@ -665,3 +672,8 @@ use region::union_region;
 
 #[cfg(test)]
 mod tests;
+
+// The Sculpt gates live in their own file rather than at the end of the 21k-line `tests` — a wave's
+// worth of gates appended to that is a wave's worth of gates nobody can find again.
+#[cfg(test)]
+mod sculpt_tests;

@@ -459,7 +459,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_SEL_CONVERT || id == core_ids::PAINTER_SEL_SIMPLIFY
                 || id == core_ids::PAINTER_SEL_MERGE
                 || core_ids::PAINTER_SEL_OFFSET_APPLY_IDS.contains(&id)
-                || crate::event_brush_forward::is_deform_click(id) =>
+                || crate::event_brush_forward::is_deform_click(id)
+                // Sculpt (`docs/Painter/18…`): the Smooth / Sharpen sub-mode segments.
+                || crate::event_brush_forward::is_sculpt_click(id) =>
         {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));

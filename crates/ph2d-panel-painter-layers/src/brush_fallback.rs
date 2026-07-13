@@ -71,6 +71,10 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     deform_strength: 0.5, // LITERAL-PX-OK: centred bipolar Strength (neutral)
     deform_temperament: 0,
     deform_transform_mode: 0,
+    is_sculpt: false,
+    sculpt_mode: 0,
+    sculpt_radius: 0.5, // LITERAL-PX-OK: Sculpt default (mirrors SculptState::default)
+    sculpt_radius_px: 9.0, // LITERAL-PX-OK: round(1 + 0.5·(16−1)) = the radius_norm 0.5 default, in px
     selection_offset: 0.5, // LITERAL-PX-OK: centred Offset = no grow/shrink (mirrors shape_offset_norm)
     inpaint_patch: 0.25, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_patch_norm)
     inpaint_quality: 0.3333, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_quality_norm)

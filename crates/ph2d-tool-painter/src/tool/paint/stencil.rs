@@ -358,6 +358,7 @@ impl PainterTool {
             "fill" => PaintMode::Fill,
             "selection" => PaintMode::Selection,
             "deform" => PaintMode::Deform,
+            "sculpt" => PaintMode::Sculpt,
             // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
             _ => PaintMode::Paint,
         };
@@ -378,6 +379,13 @@ impl PainterTool {
         if self.paint.paint_mode != PaintMode::Deform && new_mode == PaintMode::Deform {
             self.paint.deform.temperament = super::DEFORM_TEMPERAMENT_NONE;
         }
+        // Leaving Sculpt parks nothing: the carving is already committed to the layer (the sculpt writes
+        // `heights` live, it does not stage it), so all that is left to do is let go of the frozen source.
+        // Keeping it would mean a Radius drag made in some OTHER tool re-rendered a stroke the artist has
+        // moved on from — a knob reaching back through time.
+        if self.paint.paint_mode == PaintMode::Sculpt && new_mode != PaintMode::Sculpt {
+            self.end_sculpt_session();
+        }
         self.paint.paint_mode = new_mode;
         // Leaving the Selection tool auto-hides its gizmos (the "Show Selection Gizmos" checkbox unchecks) —
         // the gizmos belong to Select and would otherwise linger over another tool (Enio 2026-07-03).
@@ -387,7 +395,9 @@ impl PainterTool {
         // Per-mode flags. Smear/Blur/Clone leave the eraser override as-is (unchanged behaviour); the
         // colour-painting modes clear it; Eyedropper additionally arms the pick.
         match mode {
-            "smear" | "blur" | "clone" => {}
+            // Sculpt joins Smear/Blur/Clone here for the same reason: it processes what is already on the
+            // canvas rather than laying colour, so the Eraser override is none of its business.
+            "smear" | "blur" | "clone" | "sculpt" => {}
             "eyedropper" => {
                 self.paint.eraser = false;
                 self.paint.eyedropper_armed = true;
@@ -412,6 +422,7 @@ impl PainterTool {
             PaintMode::Fill => "fill",
             PaintMode::Selection => "selection",
             PaintMode::Deform => "deform",
+            PaintMode::Sculpt => "sculpt",
             PaintMode::Paint if self.paint.eraser => "eraser",
             PaintMode::Paint => "brush",
         }

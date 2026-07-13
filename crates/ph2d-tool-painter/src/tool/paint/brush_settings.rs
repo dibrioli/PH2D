@@ -106,6 +106,19 @@ pub struct BrushSettings {
     pub deform_temperament: u8,
     /// Transform sub-mode (`0` Uniform aspect-locked · `1` Free independent axes) — only shown in Transform.
     pub deform_transform_mode: u8,
+    /// **Sculpt** mode — the panel ADDS the Sculpt card (it does NOT swap the body out, the way Deform
+    /// does). That difference is the design, not an oversight: the sculpt rides the same dab list the
+    /// colour does, so the brush's own Size / Spacing / Falloff / Shape / Grain / Symmetry / Tiling / stroke
+    /// method ARE its controls and must stay on screen (`docs/Painter/18…` §10.1). What it hides instead is
+    /// the COLOUR half (via [`Self::paints_no_color`]) — a tool that lays no pigment has no use for it.
+    pub is_sculpt: bool,
+    /// Sculpt sub-mode (`0` Smooth · `1` Sharpen).
+    pub sculpt_mode: u8,
+    /// Sculpt kernel Radius, `0..1` track (mapped to `1..=16` px by the tool — small on purpose: smoothing
+    /// at a large scale is Flatten, which is a different kernel, not a bigger blur).
+    pub sculpt_radius: f32,
+    /// The kernel Radius in px, as the artist would read it off the chip.
+    pub sculpt_radius_px: f32,
     /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited
     /// boundary; only meaningful (and shown) in Edit mode.
     pub selection_offset: f32,

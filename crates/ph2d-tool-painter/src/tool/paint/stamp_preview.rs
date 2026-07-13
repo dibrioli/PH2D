@@ -49,6 +49,12 @@ impl PainterTool {
         // ridge of every intermediate shape the artist dragged through, and a curve leaves a fan of
         // ghost relief behind the one it actually drew (`super::impasto`).
         self.reset_stroke_height();
+        // …and the SCULPT has to be put back for the very same reason, one channel over. It differs from
+        // the deposit in one way that matters here: the deposit builds its relief in a per-stroke envelope
+        // and only merges it at commit, so clearing that envelope is enough — but the sculpt REWRITES the
+        // layer's own plane live, so it has to actually restore it. Without this a Curve would carve deeper
+        // on every pointer move while the artist merely LOOKED at it (`super::sculpt`, §4).
+        self.restamp_reset_sculpt();
         // Coverage bbox over the wrapped Tiling copies (the stamp re-tiles them itself).
         let coverage_storage;
         let coverage: &[Dab] = if self.paint.tiling[0] || self.paint.tiling[1] {
@@ -98,8 +104,17 @@ impl PainterTool {
     /// the pigment and the body are two outputs of the same dab list, so they become permanent in the
     /// same breath. (The freehand path calls this too, just before `close_stroke` — whose own
     /// `commit_stroke_height` then finds the ingredients already taken and no-ops. One commit, not two.)
+    ///
+    /// **And the SCULPT has consequence #3 too, in a nastier form** (found 2026-07-13, by asking this
+    /// comment's own question of the new channel). The sculpt writes the layer's relief LIVE, and a
+    /// shape-editor re-stamp restores it from the frozen `pre` first (`restamp_reset_sculpt`) — so a
+    /// session left open past its Apply is a loaded gun: the next shape's very first preview frame would
+    /// restore over the applied shape's carving and **erase it**. The deposit only lost its relief; the
+    /// sculpt would have quietly un-done work that was already on the canvas. Parking the session here is
+    /// what closes it, at the same one point, for every method.
     pub(super) fn commit_drag_preview(&mut self) {
         self.commit_stroke_height();
+        self.commit_stroke_sculpt();
         self.paint.drag_preview = None;
         // #3: end any shape watercolor session so the ground (backdrop) rebuilds fresh for the next shape
         // or a freehand stroke. Harmless to the freehand brush, which never sets this flag.

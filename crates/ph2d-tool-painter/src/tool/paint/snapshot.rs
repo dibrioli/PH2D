@@ -13,10 +13,24 @@ impl BrushSettings {
     /// incremental methods for either. **Composite Brush** is excluded: it contains a Brush layer that
     /// paints colour, so every control stays visible (the colour ones just drive the Brush layer).
     /// (Defined here, beside the snapshot builder, so `brush_settings.rs` stays under the file-LOC cap.)
+    ///
+    /// **Sculpt** belongs on this list, and belonging on it is the whole reason its panel section can be
+    /// additive: it reshapes the relief that is already there and lays no pigment (`docs/Painter/18…` §5),
+    /// so the colour controls go — and everything else about the brush STAYS, because the brush is what
+    /// does the sculpting.
+    ///
+    /// It sits OUTSIDE the `!composite_enabled` guard, though, and that is not a slip. `composite_enabled`
+    /// is a **tool-global** flag, not a per-mode one, so a Composite Brush left ticked in the Brush tool
+    /// followed the artist into Sculpt and switched this predicate back off — bringing Blend, Colour,
+    /// Accumulate and Randomize Color back on screen for a mode whose stamp route returns before the colour
+    /// ever runs. The escape hatch exists because a Composite Brush *contains* a Brush layer that paints;
+    /// in Sculpt it contains nothing, because `composite_active()` requires `PaintMode::Paint`.
+    /// (The card itself is hidden in Sculpt too — `paint_brush::paint_brush_body`.)
     #[must_use]
     pub fn paints_no_color(&self) -> bool {
-        (self.is_smear || self.is_blur || self.is_clone || self.is_inpaint)
-            && !self.composite_enabled
+        self.is_sculpt
+            || ((self.is_smear || self.is_blur || self.is_clone || self.is_inpaint)
+                && !self.composite_enabled)
     }
 }
 
@@ -113,6 +127,10 @@ impl PainterTool {
             deform_strength: self.paint.deform.strength,
             deform_temperament: self.paint.deform.temperament,
             deform_transform_mode: self.paint.deform.transform_mode,
+            is_sculpt: self.is_sculpt_mode(),
+            sculpt_mode: self.paint.sculpt.mode,
+            sculpt_radius: self.paint.sculpt.radius_norm,
+            sculpt_radius_px: self.sculpt_radius_px() as f32,
             selection_offset: self.selection_offset(),
             inpaint_patch: self.paint.inpaint_patch_norm,
             inpaint_quality: self.paint.inpaint_quality_norm,

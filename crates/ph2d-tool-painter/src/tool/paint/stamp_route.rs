@@ -435,6 +435,19 @@ impl PainterTool {
         // It runs BEFORE the colour routes because it reads a COPY of the `tex_rng` stream, which the
         // routes are about to consume — see rule 2 in `super::impasto`.
         self.stamp_dabs_height(dabs, &brush);
+        // ── SCULPT: the same list, a different verb on the same plane ────────────────────────────
+        // Sculpt reads the layer's committed relief and RESHAPES it (Smooth / Sharpen; the spatula
+        // verbs follow in Wave 2). It hangs off THIS choke point, and not off geometry of its own, for
+        // exactly the reason the height does: Symmetry, Tiling, the shape editors, pressure, Jitter,
+        // falloff, Shape and Grain reach it for free — and keep reaching it when someone changes them.
+        //
+        // It lays no pigment (`docs/Painter/18…` §5: scraping the BODY of the paint does not take its
+        // PIGMENT — a sculpt that erased colour would just be the eraser), so it stops here and the
+        // colour routes below never run.
+        if matches!(self.paint.paint_mode, PaintMode::Sculpt) {
+            self.stamp_dabs_sculpt(dabs, &brush);
+            return;
+        }
         // `Draw To = Depth`: a sculpting brush — thickness, no pigment. The relief is already laid
         // down, so leave the canvas byte-identical and stop here. (With Impasto off, `deposits_color`
         // is unconditionally true, so the setting is not even read — the master switch is the gate.)

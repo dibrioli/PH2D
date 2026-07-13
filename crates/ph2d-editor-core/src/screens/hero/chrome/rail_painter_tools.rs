@@ -40,6 +40,8 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         "inpaint"
     } else if tool_id == ids::PAINTER_RAIL_DEFORM {
         "deform"
+    } else if tool_id == ids::PAINTER_RAIL_SCULPT {
+        "sculpt"
     } else if tool_id == ids::PAINTER_RAIL_FILL {
         // Placeholder: the Fill (Bucket) behaviour + colour-picker wiring lands in a follow-up; for now
         // selecting it just marks the rail radio (the painter defaults an unknown mode to Brush paint).

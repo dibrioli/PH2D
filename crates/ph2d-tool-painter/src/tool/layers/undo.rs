@@ -16,6 +16,7 @@ impl PainterTool {
         let (selection_mask, selection_active, selection_crisp, selection_feather) =
             self.selection_for_snapshot();
         let (deform_disp, deform_pre, deform_active) = self.deform_for_snapshot();
+        let sculpt = self.sculpt_for_snapshot();
         crate::undo::ModelSnapshot {
             layers: self.layers.clone(),
             images: self.images.clone(),
@@ -46,6 +47,7 @@ impl PainterTool {
             deform_disp,
             deform_pre,
             deform_active,
+            sculpt,
         }
     }
 
@@ -83,6 +85,21 @@ impl PainterTool {
         self.set_shape_offset_base_px(m.offset_base_px);
         // Reinstate the ACTIVE shape's boolean op so undoing a centre-square op-cycle tap rolls it back.
         self.set_active_op_wire(m.active_op);
+        // The **Sculpt** session — and it must land BEFORE the shape overlay below, which RE-STAMPS.
+        //
+        // The sculpt writes the layer's relief LIVE, so a snapshot captures an already-carved plane. Two
+        // things therefore have to be true when that re-stamp runs, and only the second is obvious:
+        //
+        //   1. `heights` is the snapshot's (done above), and
+        //   2. the SESSION is the snapshot's too — because the re-stamp restores the window from the
+        //      session's frozen `pre` before re-accumulating.
+        //
+        // Restore the session *after* the re-stamp and (2) is false: the re-stamp finds no session, opens a
+        // fresh one, and freezes the **carved** plane as its source — then runs the kernel on top of it.
+        // Undo, redo, and the ridge has been smoothed twice; the pixels are perfect the whole time, so
+        // nothing else in the system so much as blinks. (`docs/Painter/18…` §10.4; the same
+        // source-of-truth-before-its-derivative ordering the selection shapes get, four lines up.)
+        self.restore_sculpt(m.sculpt);
         // Reinstate (or clear) the open shape overlay: peel the snapshot canvas back to its pristine
         // baseline (strip the preview patch) and re-stamp the editor's geometry, so dots + pixels stay in
         // sync. A `None` shape just clears the editors. See `tool::paint::shape_snapshot`.

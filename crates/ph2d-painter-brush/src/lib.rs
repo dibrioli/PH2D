@@ -47,6 +47,8 @@ pub mod mask_ops;
 pub mod material;
 pub mod ramp_alpha;
 pub mod sampler;
+/// **Sculpt** — the brush as a local operator on the relief (Smooth / Sharpen; the spatula follows).
+pub mod sculpt;
 pub mod smear;
 pub mod smear_grain;
 pub mod spec;

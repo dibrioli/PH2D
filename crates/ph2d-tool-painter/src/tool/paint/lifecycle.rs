@@ -50,6 +50,19 @@ impl PainterTool {
         // from the OLD sprite's pixels (the flood-the-new-sprite class this very reset was written to kill).
         self.end_deform_session();
 
+        // The **Sculpt** session is the same hazard on the height channel, and the paragraph above is its
+        // repro verbatim. `sculpt.pre` is the OLD sprite's relief, and the two things guarding it are the
+        // two this reset exists because they do not hold across a rebind: the active-layer id (`LayerStack`
+        // restarts `next_id` at 1, so the ids COLLIDE by construction) and a LENGTH check (which matches
+        // whenever the two sprites are the same size — the case that corrupts in silence).
+        //
+        // Without this line: sculpt on sprite A, bind a same-size sprite B, and — *without painting a
+        // thing* — drag the Radius slider. `refresh_live_sculpt` passes both guards and writes A's frozen
+        // relief onto B's height plane. A pen-down on B would have cured it (it opens a fresh session), so
+        // the hazard window is exactly "switch sprite, then touch the card": the one order in which nothing
+        // warns you.
+        self.end_sculpt_session();
+
         // The pixel Selection: tool-global (it is NOT in `StashedDoc`, which stashes the LAYER selection),
         // and `selection_restricts_paint()` asks only "is the mask non-empty?". So the new sprite silently
         // inherited the old one's selection and every stroke outside it was reverted — the "it just doesn't

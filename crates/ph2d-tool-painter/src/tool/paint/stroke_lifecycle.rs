@@ -53,6 +53,10 @@ impl PainterTool {
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
         self.reset_stroke_height(); // Impasto: this stroke's relief starts empty (see `super::impasto`)
+        // Sculpt: drop the PREVIOUS stroke's session (it was parked so its knobs stayed live). The relief
+        // it carved is already the layer's, and this stroke must freeze THAT as its own source — a session
+        // that outlived its stroke would re-render from a `pre` two strokes stale (see `super::sculpt`).
+        self.end_sculpt_session();
         if !wet_session {
             self.paint.stroke_coverage.clear();
             self.paint.stroke_color.clear();
@@ -301,6 +305,11 @@ impl PainterTool {
         // Impasto: fold this stroke's relief into the layer BEFORE the undo entry is recorded, so the
         // step captures the height together with the pigment that made it — one Ctrl+Z takes both.
         self.commit_stroke_height();
+        // Sculpt: PARK the session (free the blur memo, keep the frozen source + the intensity) so Radius /
+        // Smooth↔Sharpen / Strength still re-render the stroke the artist is looking at. The relief itself
+        // is already in `heights`, and `heights` is in the `ModelSnapshot` — so the undo entry the line
+        // below records takes the carving with the paint that was under it.
+        self.commit_stroke_sculpt();
         self.paint.stroke = None;
         self.paint.line_anchor = None;
         self.paint.last_smear_pos = None;

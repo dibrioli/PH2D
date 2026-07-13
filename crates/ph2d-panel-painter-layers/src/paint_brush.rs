@@ -59,6 +59,15 @@ pub(crate) fn paint_brush_body(
             ctx, theme, x, content_w, top_y, brush,
         );
     }
+    // Sculpt is the exception to the two above, and deliberately so: its card is ADDED to the brush body
+    // rather than replacing it. The sculpt rides the same dab list the colour does, so the brush's own
+    // Size / Spacing / Falloff / Shape / Grain / Symmetry / Tiling / stroke method ARE the spatula — take
+    // them off screen and you have left the artist the settings for a tool they can no longer aim. What
+    // the mode hides instead is the COLOUR half, through `paints_no_color` (see `snapshot.rs`).
+    let mut top_y = top_y;
+    if brush.is_sculpt {
+        top_y = crate::paint_sculpt::paint_sculpt_section(ctx, theme, x, content_w, top_y, brush);
+    }
     // If the shared picker is editing our swatch, forward its live colour.
     brush_color_readback(ctx, brush);
     // Keep the store's swatch colour synced to the brush colour while the picker is CLOSED, so the
@@ -172,12 +181,17 @@ pub(crate) fn paint_brush_body(
     //     the Erase-Alpha override; `composite_active()` requires the plain Brush + `!eraser`).
     //     HIDDEN in watercolor mode too (Enio 2026-07-07): the optical render-path short-circuits
     //     before the composite routing, so the card would be painted-but-inert (dead UI).
+    //     …and HIDDEN in Sculpt for the same reason: `composite_active()` requires `PaintMode::Paint`, so
+    //     the card would be painted-but-inert there too. It also has a second-order bite — see
+    //     `BrushSettings::paints_no_color`, which the Composite checkbox used to be able to switch OFF,
+    //     bringing Blend / Colour / Accumulate / Randomize back into a mode that writes no pigment at all.
     if !brush.is_smear
         && !brush.is_blur
         && !brush.is_clone
         && !brush.eraser
         && !brush.is_mask
         && !brush.is_inpaint
+        && !brush.is_sculpt
         && !brush.watercolor
     {
         y = crate::paint_composite::paint_composite_card(ctx, theme, x, content_w, y, brush);

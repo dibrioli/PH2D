@@ -30,6 +30,30 @@
 //! Source / Smoothing and watch the LAST one re-sculpt live (the stroke stores the paint it laid, and
 //! the relief is derived from it). Only `Draw To` is authoring-only — it routes channels, and the
 //! pigment it already laid cannot be un-laid.
+//!
+//! ## The SCULPT (`docs/Painter/18…`, Wave 1 — 2026-07-13)
+//!
+//! This same smoke is the sculpt's, and deliberately without an env var of its own: the sculpt needs
+//! relief to reshape, and the way you get relief is to paint some. So —
+//!
+//!   1. Paint two or three thick strokes (as above). Ridges, with brush-marks on them.
+//!   2. Click **SCULP** on the left rail (between Deform and Mask).
+//!   3. Drag over the ridges. **Smooth** knocks them down toward the local average; the **Sharpen**
+//!      chip runs the same kernel backwards and brings them back up.
+//!
+//! The brush's own **Size** is the spatula's width, its **Strength** is how hard you lean on it, and
+//! Spacing / Falloff / Shape / Grain / Symmetry / Tiling all apply — the sculpt rides the same dab list
+//! the colour does, so a spatula with a Grain is a *textured* spatula, for free. The Sculpt card adds
+//! only what the brush cannot say: which verb, and the kernel's own **Radius** (1-16 px — the scale
+//! brush-marks live at; smoothing at a large scale is Flatten, which is Wave 2 and a different kernel).
+//!
+//! **Radius and Smooth↔Sharpen are live on the stroke you just made**, like the Body card's knobs: drag
+//! the spatula once, then turn Radius and watch that stroke re-render.
+//!
+//! Note that nothing here is armed in code — you click the rail chip yourself. That is on purpose. The
+//! smoke that arms state under the table skips exactly the seam it was supposed to prove, and this line
+//! has the scar: `PH2D_IMPASTO_SMOKE` pre-ticked Enable, which is how the master switch shipped dead
+//! under the mouse and nobody noticed for a week.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;

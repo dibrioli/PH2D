@@ -107,6 +107,34 @@ pub struct ModelSnapshot {
     pub(crate) deform_disp: Arc<Vec<[f32; 2]>>,
     pub(crate) deform_pre: Arc<Vec<u8>>,
     pub(crate) deform_active: bool,
+    /// The **Sculpt** session at capture time (`docs/Painter/18…` §10.4).
+    ///
+    /// Captured for a reason the Deform did NOT have, and it is the reason the plan demanded it: the
+    /// sculpt writes the layer's relief **live**, so a snapshot taken mid-preview captures an
+    /// already-carved plane. Drop the session on restore and the shape editor's next re-stamp opens a
+    /// FRESH one whose frozen source is that carved plane — and re-runs the kernel on top of it. Undo,
+    /// redo, and the ridge has been smoothed twice; do it again and it melts further. The pixels are
+    /// perfect the whole time, so nothing else in the system notices.
+    ///
+    /// Rolling the session back with the relief makes the restored state a state the sculpt can *continue
+    /// from*, which is the same thing `deform_disp` buys the warp.
+    pub(crate) sculpt: SculptSnap,
+}
+
+/// The Sculpt session as an undo snapshot — `Arc`-shared, so a snapshot taken while nobody is sculpting
+/// carries two empty (0-byte) buffers and costs nothing.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct SculptSnap {
+    /// The layer's relief as the stroke found it — the frozen source every re-render reads.
+    pub(crate) pre: Arc<Vec<f32>>,
+    /// The accumulated per-texel touch.
+    pub(crate) amount: Arc<Vec<f32>>,
+    /// Which layer the session belongs to (`None` ⇒ no session).
+    pub(crate) layer: Option<RtLayerId>,
+    /// The window the stroke touched — what a re-stamp restores, and what a knob edit re-renders.
+    pub(crate) bbox: Option<crate::compositor::Region>,
+    /// A stroke is in progress (as opposed to a session parked for the live knobs).
+    pub(crate) open: bool,
 }
 
 /// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural
@@ -414,6 +442,7 @@ mod tests {
             deform_disp: Arc::new(Vec::new()),
             deform_pre: Arc::new(Vec::new()),
             deform_active: false,
+            sculpt: SculptSnap::default(),
         }
     }
 

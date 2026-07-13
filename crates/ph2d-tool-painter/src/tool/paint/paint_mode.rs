@@ -32,11 +32,22 @@ pub(crate) enum PaintMode {
     /// displacement field `D` changes between sub-modes. Writes the active raster (structural undo), reuses
     /// the Selection mask for Freeze/Protect. See [`super::warp`] (Deform Wave 1).
     Deform,
+    /// **Sculpt** — reshape the impasto RELIEF (Smooth / Sharpen; the spatula verbs land in Wave 2). It
+    /// reads the layer's committed height and rewrites it, and it writes NOTHING else: no RGBA, no
+    /// coverage, no material (`docs/Painter/18…` §5 — scraping the BODY of the paint does not take its
+    /// PIGMENT, and a sculpt that erased colour would just be the eraser).
+    ///
+    /// Where Deform is a mode-exclusive tool with its OWN dab geometry, Sculpt deliberately has none: it
+    /// consumes the SAME dab list the colour does, at the same choke point (`stamp_dabs_height`'s
+    /// neighbour in `stamp_dabs_inner`), so Symmetry, Tiling, the shape editors, pressure, Jitter,
+    /// falloff, Shape and Grain reach it for free — and keep reaching it when someone changes them. A
+    /// spatula with Grain is a textured spatula, and it costs nothing. See [`super::sculpt`].
+    Sculpt,
 }
 
 /// Number of [`PaintMode`] variants — the length of the per-mode brush-settings array (see
 /// [`PaintMode::slot`]). Keep in lock-step with the enum.
-pub(crate) const PAINT_MODE_COUNT: usize = 9;
+pub(crate) const PAINT_MODE_COUNT: usize = 10;
 
 impl PaintMode {
     /// This mode's index into the per-mode brush-settings array (`0..PAINT_MODE_COUNT`). Each tool keeps
@@ -52,6 +63,7 @@ impl PaintMode {
             PaintMode::Fill => 6,
             PaintMode::Selection => 7,
             PaintMode::Deform => 8,
+            PaintMode::Sculpt => 9,
         }
     }
 }

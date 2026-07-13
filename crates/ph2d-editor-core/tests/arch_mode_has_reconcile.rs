@@ -163,6 +163,16 @@ const RECONCILES_VIA: &[(&str, &str, &str)] = &[
          next stamp — the Shape twin of `set_texture_ramp_mode`",
     ),
     (
+        "set_sculpt_mode",
+        "refresh_live_sculpt",
+        "Painter Sculpt verb (Smooth/Sharpen): the two verbs are one kernel with the sign flipped, and \
+         the last stroke's session is PARKED (its frozen source + accumulated intensity are still held), \
+         so switching the verb has to re-render the stroke the artist is looking at rather than merely \
+         arm the next one. `refresh_live_sculpt()` is that re-render — it restores the window from the \
+         frozen `pre` and runs the kernel again. Gated by `sculpt_tests::the_sculpt_knobs_re_render_the_\
+         finished_stroke`, whose red is proven by making the session die at pen-up.",
+    ),
+    (
         "set_texture_layer_ramp_mode",
         "rerender_texture_layer",
         "Painter Texture LAYER ramp mode: a Texture layer is pre-rendered, so the setter \

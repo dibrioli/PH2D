@@ -24,6 +24,7 @@ pub(crate) fn header_title(shows_layers: bool, brush: Option<BrushSettings>) -> 
     }
     match brush {
         Some(b) if b.is_deform => "Deform",
+        Some(b) if b.is_sculpt => "Sculpt",
         Some(b) if b.is_selection => "Select",
         Some(b) if b.is_mask => "Mask",
         Some(b) if b.is_inpaint => "Inpaint",

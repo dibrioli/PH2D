@@ -265,6 +265,12 @@ fn register_mask_and_selection(store: &mut WidgetStore) {
     }
     // Deform section (Wave 1) widgets — split into a sibling for the panel file-LOC cap.
     crate::populate_deform::register_deform_widgets(store);
+    // Sculpt section. This call is not optional and it is not a formality: a widget that paints, registers
+    // a hit rect and is forwarded by `event.rs` is STILL dead under the mouse unless it also carries an
+    // `InteractiveState` here — `is_focusable` answers `None => false`, so Down never activates it and the
+    // Click never happens. That is exactly how the Impasto light rig shipped inert. The gate that would
+    // catch its absence is `tests/seam_sculpt.rs`, and it CLICKS.
+    crate::populate_sculpt::register_sculpt_widgets(store);
 }
 
 /// Checkbox/action Buttons (swatches, toggles, ramp + stroke-editor actions, Watercolor

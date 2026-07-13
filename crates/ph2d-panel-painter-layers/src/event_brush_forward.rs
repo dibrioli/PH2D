@@ -37,6 +37,14 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || id == core_ids::PAINTER_DEFORM_DISTORTION_SLIDER
         || id == core_ids::PAINTER_DEFORM_MOMENTUM_SLIDER
         || id == core_ids::PAINTER_DEFORM_STRENGTH_SLIDER
+        // Sculpt section (Wave 1): the kernel Radius. (Strength is the BRUSH's — the sculpt does not have
+        // a second one, on purpose.)
+        || id == core_ids::PAINTER_SCULPT_RADIUS_SLIDER
+}
+
+/// `true` when `id` is a Sculpt-panel **Click** target (the Smooth / Sharpen sub-mode segments).
+pub(crate) fn is_sculpt_click(id: NodeId) -> bool {
+    core_ids::PAINTER_SCULPT_MODE_IDS.contains(&id)
 }
 
 /// `true` when `id` is a Deform-panel **Click** target the panel forwards to the tool as

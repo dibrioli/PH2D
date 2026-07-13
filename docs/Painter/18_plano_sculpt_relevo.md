@@ -179,7 +179,23 @@ Com `plane_offset` (subir/descer o plano, o Blender tem) os quatro verbos caem d
 
 ## §8 — As ondas
 
-### W1 — SMOOTH (o modo + o motor + o primeiro pincel) ⭐ COMEÇAR AQUI
+### W1 — SMOOTH ✅ **FECHADA (2026-07-13)** — entregou Smooth **e Sharpen**
+
+> Handoff: [`HANDOFF_line_Painter_sculpt_integracao_2026-07-13.md`](../HANDOFF_line_Painter_sculpt_integracao_2026-07-13.md).
+> Sharpen entrou junto porque é este mesmo kernel com o sinal trocado (W3 já dizia "cai de graça") e um
+> segmented de UM chip é cheiro de design. **Três coisas que este plano previu errado, e o código corrigiu:**
+>
+> * **§3 manda "espelhar o Deform linha por linha".** O painel do sculpt é **ADITIVO**, não mode-exclusive
+>   — porque o §10.1 (o invariante) diz que ele monta na lista de dabs do pincel, e então **Size / Spacing /
+>   Falloff / Shape / Grain do PINCEL são a espátula**. Escondê-los, como o Deform esconde, deixaria o
+>   artista com os ajustes de uma ferramenta que ele não consegue mirar. O §10.1 ganha do §3.
+> * **§3/§8 preveem um Strength do sculpt.** Não existe: o **pincel já tem um**, e `Dab::coverage` já o
+>   carrega. Dois knobs disputando o mesmo número é bug de design.
+> * **§8 W1.3 diz `amount` = máscara × Strength.** O `amount` acumula a máscara × coverage (com o fold da
+>   casa); o que fica **vivo depois do traço** são os knobs do CARD (Radius, Smooth↔Sharpen), não o gesto
+>   da mão — que é exatamente a divisão que o card Body já faz.
+
+### (histórico) W1 — o escopo como foi planejado
 
 O item de **maior valor e menor custo** da lista: o kernel já existe (`impasto_settle::box_blur`,
 separável, e — leia o comentário dele — **cada texel re-soma a janela do zero de propósito**, porque a

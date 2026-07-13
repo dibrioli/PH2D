@@ -197,6 +197,7 @@ impl Default for PaintState {
             dab_groups: Vec::new(),
             shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
             deform: warp::DeformState::default(),
+            sculpt: sculpt::SculptState::default(),
         }
     }
 }

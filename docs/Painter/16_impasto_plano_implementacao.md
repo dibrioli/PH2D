@@ -1132,3 +1132,79 @@ ingredientes de que o card Body o re-deriva, e a janela contra a qual todos são
 
 **3,26 ms/movimento @2048² · 3,43 @4096²** (alvo ≤4, kill 8) — +0,15 ms pelo plano novo. Workspace
 **5677 testes, 0 falhas**; clippy 0.
+
+---
+
+## 16. OPACIDADE NÃO É ESPESSURA — o 3º smoke do Enio
+
+> *"regrediu ao deixar a tinta extravasar o relevo e não resolveu a distância da tinta levantada."*
+
+### 16.1 O gate estava verde e a foto estava errada
+
+O filme (§14) cortava o pigmento na borda do corpo, e os **suportes batiam exatamente** —
+`impasto_lays_no_pigment_where_the_light_lays_no_shading` afirmava isso e estava **certo**. E era
+**fraco demais pra ver o que ele viu**.
+
+Medido, no pincel do próprio smoke (`r = 40`, defaults, Impasto on):
+
+| t | tinta | sombra |
+|---|---|---|
+| 0,38 | **227** | 103 |
+| 0,47 | 133 | 49 |
+| 0,55 | 15 | 7 |
+
+A tinta e a sombra somem **juntas** — o suporte é idêntico — **ao longo de 8 px de rampa suave**. E uma
+rampa suave de vermelho pálido, sem forma 3D nenhuma, **é** uma névoa. Um gate de igualdade-de-conjuntos
+não distingue uma parede de um banco de neblina.
+
+**Reproduzi renderizando o traço num PNG e olhando.** A névoa estava lá, no meu harness, idêntica à
+foto. A medição transversal dizia "limpo"; a imagem dizia "névoa". A imagem tinha razão.
+
+### 16.2 A física que eu tinha errado
+
+**A opacidade de um filme satura muito antes que a espessura dele** (Beer–Lambert). Tinta a óleo com um
+décimo da espessura já é praticamente **opaca** — é por isso que uma espátula deixa uma **borda**, e não
+um gradiente. Modelar o alpha como *proporcional ao corpo* era modelar tinta como **vidro**.
+
+`height_film::film_opacity(d) = 1 − (1 − d)⁸` — satura rápido, transcendental-free (HR-5: três
+elevações ao quadrado, zero `exp`). A tinta vai **opaca até onde o corpo acaba** e então **para**, no
+~1 px que a silhueta leva pra cair o resto.
+
+É também por isso que o `Sphere` do Enio parecia certo: a silhueta dele é quase plana até a borda, então
+o filme dele já alcançava corpo cheio em um ou dois pixels — **ele já fazia isto, por acidente de
+forma.** Agora todo falloff faz.
+
+E fecha o halo pelo outro lado, o que não é coincidência: a regra é *"a luz não pode branquear o papel
+visto ATRAVÉS de tinta translúcida"*, e esta é a função que diz que **quase não há tinta translúcida
+para ver através**.
+
+### 16.3 O gate novo — enunciado onde o olho lê: como ÁREA
+
+`impasto_paint_has_an_edge_not_a_fringe`. De toda a tinta que um traço deposita, quanta não é nem sólida
+nem ausente?
+
+| | opaca | translúcida | **névoa** |
+|---|---|---|---|
+| sem filme (o bug original) | 6122 | 6620 | **52%** |
+| filme ∝ espessura (o 1º corte) | 5108 | 2036 | **28,5%** |
+| **filme com opacidade** | **6396** | **1000** | **13,5%** |
+
+…e a área **opaca CRESCE** enquanto a névoa cai: a tinta não encolheu, ela **virou sólida**. Barra 18%;
+as duas mutações (∝ espessura · sem filme) são vermelhas.
+
+Os 610 gates seguem verdes **sem um só ajuste** — inclusive os três da luz, que a §15 tinha acabado de
+reescrever sobre proporcionalidade. Isso é a confirmação de que a opacidade é a peça que faltava e não
+uma segunda mão de tinta por cima do problema.
+
+### 16.4 Perf
+
+O `film_of` corta os dois extremos constantes (abaixo de `W_TAIL` o filme é zero por definição, acima de
+`W_SOLID` é um) — e a cauda é a maior parte da bbox de um dab. **3,18 ms/movimento @2048² · 3,27 @4096²**
+(alvo ≤4) — mais rápido que antes da curva. Workspace **5678 testes, 0 falhas**; clippy 0.
+
+### 16.5 A lição
+
+**Um gate de igualdade-de-conjuntos não vê o que o olho vê.** "O pigmento existe exatamente onde a luz
+modela" era verdade — e a foto estava errada, porque *quanta* tinta e *quanta* forma há em cada pixel é
+outra pergunta. Quando o Enio contradiz um gate verde, **renderize e olhe**: o pixel é o oráculo, o
+suporte é só uma sombra dele.

@@ -20443,3 +20443,72 @@ fn the_light_models_a_faint_stroke() {
         prev = faint;
     }
 }
+
+/// The paint has an **EDGE**, not a fringe: a stroke of thick paint is opaque right up to where its body
+/// ends, and then it stops.
+///
+/// Enio, 2026-07-12, third smoke: *"regrediu ao deixar a tinta extravasar o relevo e não resolveu a
+/// distância da tinta levantada."* The film (§14) cut the pigment at the body's edge and the supports
+/// matched exactly — `impasto_lays_no_pigment_where_the_light_lays_no_shading` said so, and it was right,
+/// and it was **too weak to see what he saw**: the alpha *ramped* with the body, so the stroke ended in a
+/// soft gradient of pale red carrying no 3D form. A soft gradient with no form IS a haze. The support was
+/// identical and the picture was still wrong — a set-equality gate cannot tell a wall from a fog bank.
+///
+/// The physics that was wrong: **opacity is not thickness.** A film's opacity saturates long before its
+/// thickness does (Beer–Lambert) — oil paint at a tenth of full thickness is already all but opaque,
+/// which is why a palette knife leaves an edge and not a gradient. Modelling alpha as proportional to
+/// body was modelling paint as glass (`film_opacity`).
+///
+/// So the property is stated where the eye reads it — as **area**, not as a threshold. Of all the paint a
+/// stroke lays, how much is neither solid nor absent? Measured on the smoke's own brush:
+///
+/// | | opaque | translucent | haze |
+/// |---|---|---|---|
+/// | no film at all (the original bug) | 6122 | 6620 | **52%** |
+/// | film ∝ thickness (the first cut) | 5108 | 2036 | **28.5%** |
+/// | film with opacity (today) | 6396 | 1000 | **13.5%** |
+///
+/// …and the OPAQUE area grows as the haze falls: the paint did not shrink, it went solid.
+#[test]
+fn impasto_paint_has_an_edge_not_a_fringe() {
+    const MAX_HAZE: f32 = 0.18; // measured: 0.135. Proportional-alpha: 0.285. No film: 0.52.
+    let size = 240u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    // The SMOKE's arming, verbatim: the defaults + a size + Impasto on. A bad default has nowhere to hide.
+    let b = BrushSpec {
+        radius_px: 40.0,
+        color: [0.9, 0.1, 0.1],
+        impasto: true,
+        ..Default::default()
+    };
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([60.0, 120.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([180.0, 120.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([180.0, 120.0], PointerPhase::Up));
+
+    let (mut opaque, mut translucent) = (0u32, 0u32);
+    for p in 0..(size * size) as usize {
+        let ink = 255i32 - i32::from(t.canvas_rgba[p * 4 + 1]); // green channel: red paint on white
+        if ink >= 200 {
+            opaque += 1;
+        } else if ink >= 10 {
+            translucent += 1; // paint the eye can see, that is not paint the eye can trust
+        }
+    }
+    assert!(
+        opaque > 3_000,
+        "sanity: the stroke laid solid paint ({opaque} px)"
+    );
+    let haze = translucent as f32 / (opaque + translucent) as f32;
+    assert!(
+        haze <= MAX_HAZE,
+        "{:.0}% of this stroke's paint is neither solid nor absent ({translucent} px against {opaque} \
+         opaque) — a soft gradient carrying no form is the haze Enio photographed, whatever the supports \
+         agree about",
+        haze * 100.0
+    );
+}

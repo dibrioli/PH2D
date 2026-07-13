@@ -110,7 +110,57 @@ pub fn body_profile(w: f32) -> f32 {
 #[inline]
 #[must_use]
 pub fn film_coverage(lays_body: bool, sil: f32) -> f32 {
-    if lays_body { body_profile(sil) } else { sil }
+    if lays_body { film_of(sil) } else { sil }
+}
+
+/// The film a bare silhouette leaves: its body ([`body_profile`]) seen as an OPACITY
+/// ([`film_opacity`]). The two ends are constants, and skipping them is not a micro-optimisation — the
+/// tail is most of a dab's bounding box, and this runs per texel per dab in the height kernel.
+#[inline]
+#[must_use]
+pub fn film_of(sil: f32) -> f32 {
+    if sil <= W_TAIL {
+        return 0.0; // the stain: no body, so no paint
+    }
+    if sil >= W_SOLID {
+        return 1.0; // solid paint, and opaque long before this
+    }
+    film_opacity(body_profile(sil))
+}
+
+/// How **opaque** a film of paint of this thickness is.
+///
+/// ## Opacity is not thickness — and getting that wrong left the haze standing
+///
+/// Enio, 2026-07-12, third smoke: *"regrediu ao deixar a tinta extravasar o relevo e não resolveu a
+/// distância da tinta levantada."* The film was cutting the pigment at the body's edge, and the support
+/// of the two matched exactly — the gate said so and the gate was right. It was also **too weak to see
+/// what he saw**: the alpha *ramped* with the body over ~8 px, so the stroke ended in a soft gradient of
+/// pale red carrying no 3D form at all. A soft gradient with no form IS a haze. Measured, on the smoke's
+/// own brush: ink 227 → 0 across `t = 0.38 … 0.57`, with the shading fading in lockstep — the two agree
+/// perfectly and the edge still reads as fog.
+///
+/// The physics I had wrong: a film's **opacity saturates long before its thickness does**
+/// (Beer–Lambert). Oil paint at a tenth of full thickness is already all but opaque — that is why a
+/// palette knife leaves an EDGE and not a gradient. Modelling alpha as proportional to body was
+/// modelling paint as glass.
+///
+/// So the deposit's alpha is the film's opacity: `1 − (1 − d)⁸`, saturating fast, transcendental-free
+/// (HR-5 — three squarings, no `exp`). The paint is opaque right up to where the body ends and then it
+/// **stops**, over the ~1 px the silhouette needs to fall the rest of the way. That is also why Enio's
+/// `Sphere` looked right: its silhouette is nearly flat to the rim, so its film reached full body over a
+/// pixel or two — it was already doing this, by accident of shape. Now every falloff does.
+///
+/// It closes the halo from the other side too, and that is not a coincidence: the pass may not bleach the
+/// **paper seen through translucent paint**, and this is the function that says there is barely any
+/// translucent paint to see through. // CLAMP-OK
+#[inline]
+#[must_use]
+pub fn film_opacity(d: f32) -> f32 {
+    let q = (1.0 - d.clamp(0.0, 1.0)).clamp(0.0, 1.0);
+    let q2 = q * q;
+    let q4 = q2 * q2;
+    1.0 - q4 * q4
 }
 
 /// How much **solid paint** one dab lays at a texel — the quantity the light weighs its shading by.
@@ -137,5 +187,5 @@ pub fn film_coverage(lays_body: bool, sil: f32) -> f32 {
 #[inline]
 #[must_use]
 pub fn solid_paint(sil: f32, dynamics: f32) -> f32 {
-    (dynamics * body_profile(sil)).clamp(0.0, 1.0)
+    (dynamics * film_of(sil)).clamp(0.0, 1.0)
 }

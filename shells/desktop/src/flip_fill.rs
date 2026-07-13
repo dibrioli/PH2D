@@ -227,8 +227,17 @@ fn ring_contains(ring: &[Vec2], p: Vec2) -> bool {
 /// dessincronizar: **há um só**. Esculpir a linha move a cor junto, de graça, para
 /// sempre, em qualquer zoom.
 ///
+/// **`closed` NÃO entra no critério** — e é aqui que o 1º corte morreu no produto (smoke
+/// do Enio 2026-07-13). Um traço desenhado À MÃO é `closed = false`: o `flip_draw::build_stroke`
+/// só fecha o traço no modo `Shape: Filled`, e a mão que encosta a ponta no começo **não**
+/// muda esse bit. Exigir `closed` fazia o auto-preenchimento **nunca disparar** fora daquele
+/// modo — todo fill do usuário caía no contorno vetorizado, que é justamente o que
+/// dessincroniza. O polígono de um traço aberto fecha **implicitamente** (é o que o GP faz:
+/// a triangulação dos pontos da curva não pergunta se ela é cíclica), e é assim que o
+/// `ring_contains`/`ring_area` já o leem.
+///
 /// O critério é conservador — os três têm de valer:
-/// 1. o traço é **fechado** e é line-art (não uma região);
+/// 1. o traço é **line-art** (não uma região) e tem polígono (≥ 3 pontos);
 /// 2. o **clique** cai dentro dele;
 /// 3. a área do contorno que o solver traçou **bate** com a do traço (≤ `AREA_TOL`) — é
 ///    isso que separa "preencheu a forma" de "preencheu um pedaço entre ela e outra".
@@ -247,7 +256,7 @@ fn filled_shape_target(drawing: &FlipDrawing, outer: &[Vec2], click: Vec2) -> Op
         .strokes
         .iter()
         .enumerate()
-        .filter(|(_, s)| s.closed && !s.hide_stroke && s.len() >= 3)
+        .filter(|(_, s)| !s.hide_stroke && s.len() >= 3)
         .filter(|(_, s)| ring_contains(s.positions(), click))
         .find(|(_, s)| {
             let a = ring_area(s.positions()).abs();
@@ -278,12 +287,12 @@ pub(crate) fn fill_click(
             // objeto de cor e some inteira; um traço com fill é LINE-ART que por acaso
             // carrega cor — apagá-lo levaria a linha junto, e o usuário só pediu para
             // tirar a cor.
+            // (Sem `closed` aqui, pela MESMA razão do `filled_shape_target`: a forma
+            // desenhada à mão é aberta, e o Unpaint tem de alcançá-la — senão a cor que o
+            // balde acabou de pôr nela não sai mais.)
             let hit = drawing.strokes.iter().rposition(|s| {
                 (is_fill(s) && fill_contains(s, local))
-                    || (s.fill.is_some()
-                        && !s.hide_stroke
-                        && s.closed
-                        && ring_contains(s.positions(), local))
+                    || (s.fill.is_some() && !s.hide_stroke && ring_contains(s.positions(), local))
             });
             return match hit {
                 Some(i) if drawing.strokes[i].hide_stroke => {

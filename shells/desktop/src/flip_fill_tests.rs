@@ -427,19 +427,18 @@ fn a_region_bounded_by_several_strokes_still_gets_a_traced_contour() {
     );
 }
 
-/// 🟥 **O BUG ABERTO (smoke do Enio, 2026-07-13):** um traço desenhado À MÃO **não é
-/// `closed`** — e o balde exige `closed` para reconhecer a forma. Resultado: no produto,
-/// o auto-preenchimento **nunca dispara**, e todo fill volta para o contorno vetorizado
-/// (o que dessincroniza).
+/// **Uma forma desenhada À MÃO pinta a si mesma** — mesmo sendo `closed = false`.
 ///
-/// A caneta só fecha o traço no modo `Shape: Filled`. Uma forma desenhada à mão, com as
-/// pontas se encontrando na tela, tem `closed = false` — e é exatamente o caso de todos
-/// os smokes.
+/// Era o bug do smoke do Enio (2026-07-13): a caneta só fecha o traço no modo
+/// `Shape: Filled`, então uma forma desenhada à mão, com as pontas se encontrando na tela,
+/// tem `closed = false`. O balde exigia `closed` para reconhecer a forma — logo, **no
+/// produto o auto-preenchimento NUNCA disparava**, e todo fill do usuário caía no contorno
+/// vetorizado (o que dessincroniza dos vértices da linha e o zoom amplia).
 ///
-/// Este teste é a ASSERÇÃO-VERMELHA da 1ª tarefa do próximo implementador (handoff §C).
+/// Mutação que sangra: devolva o `s.closed` ao filtro do `filled_shape_target` e este teste
+/// vê dois traços (o vetorizado) em vez de um.
 #[test]
-#[ignore = "BUG ABERTO: a proxima tarefa da linha (ver HANDOFF_line_FLIP_CONTINUACAO)"]
-fn a_hand_drawn_shape_is_not_closed_and_the_bucket_misses_it() {
+fn a_hand_drawn_shape_paints_itself_even_though_it_is_not_closed() {
     let mut d = FlipDrawing::new();
     let mut s = FlipStroke::new();
     for p in [

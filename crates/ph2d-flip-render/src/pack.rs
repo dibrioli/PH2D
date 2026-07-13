@@ -277,13 +277,19 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
             }
         }
 
-        // Fill: só traço FECHADO com preenchimento. Sem buracos, o ear-clipping do W1
-        // (byte-idêntico ao que já estava). COM buracos, a decomposição trapezoidal
-        // even-odd (`fill_holes`) — ela devolve POSIÇÕES novas (os cantos dos
-        // trapézios), não índices de entrada.
-        if s.closed
-            && let Some(f) = s.fill
-        {
+        // Fill: todo traço com preenchimento — **`closed` NÃO é pré-requisito**.
+        //
+        // O bit `closed` diz que a LINHA é cíclica (o shader desenha o segmento que liga a
+        // última ponta à primeira); ele não diz nada sobre a REGIÃO. Um traço desenhado à
+        // mão é aberto (o `build_stroke` só fecha no `Shape: Filled`), e exigir `closed`
+        // aqui deixava o preenchimento dele INVISÍVEL — o balde punha a cor no traço e a
+        // tela não mostrava nada. O polígono do fill **fecha implicitamente** (é o que o GP
+        // faz: a triangulação dos pontos da curva não pergunta se ela é cíclica), e a
+        // decomposição even-odd abaixo já o lê assim.
+        //
+        // O `stroke_flags(s.closed, …)` acima **não muda**: fechar a linha desenharia um
+        // segmento que o usuário não fez.
+        if let Some(f) = s.fill {
             let depth = (2 * sid + 1) as f32 * DEPTH_STEP;
             let a = f.color.a() * f.opacity;
             // Premultiplicado (o fragment de fill não multiplica de novo).

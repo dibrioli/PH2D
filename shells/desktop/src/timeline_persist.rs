@@ -41,7 +41,10 @@ fn wire_id_for_name(name: &str) -> WireId {
 /// The bound entity's name-derived wire id, or `NULL` when it has no `Name`
 /// (a transient object that would not survive a reload anyway).
 fn wire_of(world: &World, entity_bits: u64) -> WireId {
-    match world.get::<Name>(Entity::from_bits(entity_bits)) {
+    // `try_from_bits`: uma binding DESTACADA carrega `entity = 0`, e `0` não é nulo no bevy —
+    // o índice é `NonZero<u32>`, então `from_bits(0)` **entra em pânico**. Salvar um projeto
+    // logo depois de abrir outro (bindings ainda pendentes de recolagem) chegaria aqui.
+    match Entity::try_from_bits(entity_bits).and_then(|e| world.get::<Name>(e)) {
         Some(name) => wire_id_for_name(name.as_str()),
         None => WireId::NULL,
     }
@@ -97,17 +100,21 @@ pub(crate) fn serialize(timeline: &mut TimelineState, world: &World) -> Result<V
 ///
 /// Selection / history / clipboard não são persistidos: nascem limpos em volta do documento
 /// carregado, então um undo depois do load não alcança a sessão anterior.
-pub(crate) fn install_from_project(
-    timeline: &mut TimelineState,
-    bytes: &[u8],
-) -> Result<usize, String> {
-    let doc = ph2d_timeline::TimelineDoc::from_bytes(bytes)?;
-    *timeline = TimelineState::new();
-    timeline.doc = doc;
+pub(crate) fn install_from_project(bytes: &[u8]) -> Result<TimelineState, String> {
+    let mut timeline = TimelineState::new();
+    if bytes.is_empty() {
+        return Ok(timeline); // projeto sem animação: a sessão fica com o documento vazio
+    }
+    timeline.doc = ph2d_timeline::TimelineDoc::from_bytes(bytes)?;
     // `entity_of` sempre `None` ⇒ `entity = 0` + `missing` em TODA binding (contrato do
     // `resolve_entities`). O `wire_id` — que é o que importa — vem do arquivo, intacto.
+    //
+    // `0` NÃO é um entity válido no bevy (o índice é `NonZero<u32>`), o que é exatamente o que
+    // faz dele um sentinel seguro — e exatamente o que obriga TODO leitor de bits a usar
+    // `Entity::try_from_bits`: o `from_bits(0)` **entra em pânico**. O apply do frame seguinte
+    // faria isso com cada binding recém-carregada, e o Ctrl+O virava um crash.
     resolve_entities(&mut timeline.doc, |_| None);
-    Ok(timeline.doc.bindings().len())
+    Ok(timeline)
 }
 
 #[cfg(test)]
@@ -199,10 +206,10 @@ mod tests {
             .collect();
         assert_ne!(save_bits, load_bits, "um respawn dá bits novos");
 
-        let mut loaded = TimelineState::new();
-        let pending = install_from_project(&mut loaded, &bytes).unwrap();
+        let mut loaded = install_from_project(&bytes).unwrap();
         assert_eq!(
-            pending, 2,
+            loaded.doc.bindings().len(),
+            2,
             "as duas chegam DESTACADAS (nada resolvido ainda)"
         );
         assert!(
@@ -238,8 +245,8 @@ mod tests {
 
         // Sessão 2: só o primeiro sprite voltou.
         let (mut load_world, _) = world_with(&["sprite_001"]);
-        let mut loaded = TimelineState::new();
-        assert_eq!(install_from_project(&mut loaded, &bytes).unwrap(), 2);
+        let mut loaded = install_from_project(&bytes).unwrap();
+        assert_eq!(loaded.doc.bindings().len(), 2);
         assert_eq!(
             upkeep(&mut loaded, load_world.world_mut()),
             1,
@@ -262,10 +269,10 @@ mod tests {
         key(&mut timeline, bits[0]);
         let bytes = serialize(&mut timeline, world.world()).unwrap();
 
-        let mut loaded = TimelineState::new();
-        key(&mut loaded, bits[0]); // uma sessão suja: um passo no histórico
-        assert!(loaded.history.can_undo());
-        install_from_project(&mut loaded, &bytes).unwrap();
+        let mut dirty = TimelineState::new();
+        key(&mut dirty, bits[0]); // uma sessão suja: um passo no histórico
+        assert!(dirty.history.can_undo());
+        let loaded = install_from_project(&bytes).unwrap();
         assert!(!loaded.history.can_undo(), "histórico zerado no load");
         assert!(loaded.selection.is_empty(), "seleção zerada no load");
     }
@@ -274,11 +281,13 @@ mod tests {
     /// layout novo. (Postcard é posicional: ler seria pior que recusar.)
     #[test]
     fn a_document_from_another_era_is_refused_not_misread() {
-        let mut loaded = TimelineState::new();
-        assert!(install_from_project(&mut loaded, &[0xff, 0xff, 0xff]).is_err());
         assert!(
-            loaded.doc.bindings().is_empty(),
-            "e o estado atual não é corrompido pela tentativa"
+            install_from_project(&[0xff, 0xff, 0xff]).is_err(),
+            "bytes de outra era são RECUSADOS — o load inteiro é recusado por cima disso"
+        );
+        assert!(
+            install_from_project(&[]).unwrap().doc.bindings().is_empty(),
+            "…e um projeto SEM animação abre com o documento vazio, sem erro"
         );
     }
 }

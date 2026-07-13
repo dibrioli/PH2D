@@ -1,0 +1,88 @@
+//! **A alça de fade do strip** (ADR-0115 B4) — geometria e ordem de hit.
+//!
+//! Mora fora do `stack_lane_paint` por duas razões: o arquivo de lá estourou o cap de 600 LOC dos
+//! painéis, e — a de verdade — isto é uma unidade própria. Os dois grips **se constrangem
+//! mutuamente**, então quem os coloca tem de ver os DOIS: colocados um de cada vez, eles se
+//! atropelam exatamente na forma mais ordinária que existe (um fade-in e um fade-out que quase se
+//! encontram no meio), e o hit index, que é last-wins, entrega o clique da ponta VISÍVEL de um
+//! para o outro.
+
+use ph2d_editor_core::math::safe_clamp;
+use ph2d_editor_core::zones::Rect;
+
+use crate::graph::TimeView;
+use crate::stack_lane_paint::EDGE_W;
+
+/// Grab size of the ease handle at a strip's top corner (B4).
+pub(crate) const EASE_W: f32 = 7.0; // LITERAL-PX-OK: a pointer-sized grip, like the trim edge's
+/// The ease handle's resting inset from the corner, when the strip has NO fade yet.
+///
+/// It rests just PAST the trim grip instead of on the corner, so the two grips never
+/// share a pixel: a handle stacked on the trim edge would have to win the click (it is
+/// registered later), and the artist reaching for the trim would author a fade instead.
+/// Dragging it back to here means zero fade.
+pub(crate) const EASE_REST_X: f32 = EDGE_W; // LITERAL-PX-OK: exactly clear of the trim grip
+/// The blend window's width in pixels — the wedge the panel already draws, measured.
+pub(crate) fn blend_px(view: TimeView, t_start: f64, blend: f64) -> f32 {
+    view.x(t_start + blend) - view.x(t_start)
+}
+
+/// Hit/paint code for the fade-in grip (the strip's start corner).
+pub(crate) const EASE_IN: u8 = 3;
+/// …and the fade-out grip (its end corner).
+pub(crate) const EASE_OUT: u8 = 4;
+
+/// **Both fade grips of one strip, placed together** — because they CONSTRAIN each other.
+///
+/// Each sits at the tip of its wedge, on the strip's top edge, so the thing you grab is the
+/// thing you see. But two fades that nearly meet in the middle — the most ordinary fade-in /
+/// fade-out shape there is — put the two tips within a grip's width of each other, and then:
+///
+/// - placed independently, the rects **coincide**, and the hit index (last-wins) hands every
+///   click to the fade-OUT: grabbing the visible fade-in tip would drag the other fade;
+/// - further in, the rects **cross**, and the fade-in grip is painted to the RIGHT of the
+///   fade-out one.
+///
+/// So they are laid out as a pair: when the two would touch, they are set side by side about
+/// the midpoint of the tips — still under the wedge tips, still in the right ORDER, never the
+/// same pixel. Placing them one at a time is the bug; the signature is the fix.
+///
+/// `None` when the strip is too narrow to hold both trim grips AND both handles: on a strip
+/// that small the handles would sit on top of the trim edges and steal them (an ease grip
+/// outranks a trim grip). A strip you cannot fade at this zoom is honest; a strip you can no
+/// longer TRIM is a bug.
+///
+/// With no fade authored the tip is at the corner, where the trim grip already is, so the
+/// handle RESTS one grip-width in ([`EASE_REST_X`]). Dragging it back there means zero fade.
+pub(crate) fn ease_grips(body: Rect, in_px: f32, out_px: f32) -> Option<(Rect, Rect)> {
+    // Room for: trim grip | fade-in | fade-out | trim grip, none of them overlapping.
+    if body.w < (EASE_REST_X + EASE_W) * 2.0 {
+        return None;
+    }
+    let (lo, hi) = (
+        body.x + EASE_REST_X,                   // leftmost either grip may sit
+        body.x + body.w - EASE_REST_X - EASE_W, // rightmost either grip may sit
+    );
+    // `safe_clamp`: os limites saem da GEOMETRIA (o corpo do strip), não de constantes — e um
+    // NaN vindo de um zoom degenerado viraria um retângulo que o hit index aceita e ninguém vê.
+    let mut a = safe_clamp(body.x + in_px.max(EASE_REST_X), lo, hi);
+    let mut b = safe_clamp(body.x + body.w - out_px.max(EASE_REST_X) - EASE_W, lo, hi);
+    if b < a + EASE_W {
+        // The tips met. Sit the pair side by side about their midpoint, in order.
+        let mid = (a + b + EASE_W) * 0.5;
+        a = safe_clamp(mid - EASE_W, lo, hi - EASE_W); // `hi - lo >= EASE_W` pela guarda acima
+        b = a + EASE_W;
+    }
+    // Top band only: the rest of the strip's height stays the BODY's, so the slide gesture is
+    // not shrunk to a sliver by a grip that only needs a corner.
+    let h = (body.h * 0.5).min(EASE_W);
+    Some((
+        Rect::new(a, body.y, EASE_W, h),
+        Rect::new(b, body.y, EASE_W, h),
+    ))
+}
+
+/// Do two rects share a pixel?
+pub(crate) fn overlaps(a: Rect, b: Rect) -> bool {
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}

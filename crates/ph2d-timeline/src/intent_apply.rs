@@ -338,12 +338,17 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 s.loop_mode = loop_mode;
             }
         }),
-        // The fade the strip authors for itself (B4). Clamped to the strip: a fade
-        // longer than the span would make `weight_at` ramp in and out over the same
-        // seconds — the strip would never reach full weight, and the artist would have
-        // dragged a handle into a shape the evaluator quietly refuses. `blend_in`/
-        // `blend_out` clamp on READ too, so this is belt-and-braces at the source: the
-        // number stored is the number honoured.
+        // The fade the strip authors for itself (B4).
+        //
+        // **The clamp is on the SUM, not on each edge.** `weight_at` is `mixIn(t) * mixOut(t)`
+        // (Unity's shape), so two fades that OVERLAP multiply: give a 2 s strip a 2 s fade-in
+        // and a 2 s fade-out — each perfectly legal on its own — and its weight peaks at
+        // **0.25**, never reaching 1. On an `Override` lane that is a sprite permanently
+        // half-blended toward the pose below, with nothing on screen to explain why. Unity
+        // clamps the sum for exactly this reason, and so do we: a fade can take the whole
+        // strip, but the two of them cannot take it twice.
+        //
+        // It also keeps the two grips from crossing on screen — the tips can meet, never pass.
         I::SetStripEase {
             lane,
             id,
@@ -351,7 +356,9 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             seconds,
         } => edit(state, |doc, _| {
             if let Some(s) = doc.strip_mut(lane, id) {
-                let v = seconds.clamp(0.0, s.span()); // CLAMP-OK: 0..span, the strip itself
+                let other = if edge == 0 { s.ease_out } else { s.ease_in };
+                let room = (s.span() - other.max(0.0)).max(0.0);
+                let v = seconds.clamp(0.0, room); // CLAMP-OK: 0..what the other fade left
                 if edge == 0 {
                     s.ease_in = v;
                 } else {
@@ -483,6 +490,19 @@ fn copy_selection(state: &mut TimelineState) {
 /// only if the document changed.
 /// Mirror the ACTIVE clip's loop into the playhead — the one place a clip switch
 /// (or an undo of one) becomes the live transport loop.
+/// Publish the ACTIVE CLIP's loop onto the transport — the doc is the truth, the `Playhead`
+/// is the copy.
+///
+/// Every intent that can change which clip is active (or its range) calls this. **So must
+/// anything that swaps the document under the transport** — loading a project, above all:
+/// the loop lives in the clip (`NamedClip.loop_range`, DOC v3), so without this a saved loop
+/// never comes back, and — worse — the *previous* project's loop stays armed on the
+/// `Playhead` and quietly loops the new project over a range that belongs to a file the
+/// artist already closed.
+pub fn sync_transport_loop(doc: &TimelineDoc, playhead: &mut Playhead) {
+    sync_loop(doc, playhead);
+}
+
 fn sync_loop(doc: &TimelineDoc, playhead: &mut Playhead) {
     match doc.active_loop() {
         Some((a, b)) => playhead.set_loop(a, b),

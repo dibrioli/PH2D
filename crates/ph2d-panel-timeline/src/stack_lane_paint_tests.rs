@@ -6,6 +6,8 @@
 //! ou um grip travado que ainda aceita o clique.
 
 use super::*;
+use crate::graph::TimeView;
+use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, ease_grips};
 
 /// Last registration wins, so this is what a click at `(x, y)` resolves to.
 fn hit(plan: &[(u64, u8, Rect)], x: f32, y: f32) -> Option<(u64, u8)> {
@@ -19,12 +21,23 @@ fn band() -> Rect {
     Rect::new(100.0, 50.0, 400.0, 200.0)
 }
 
-/// The two grips of a strip with no fade authored yet, as `paint_lane` builds them.
+/// Os dois grips de fade de um strip, como o `paint_lane` os constrói. `fades` são as larguras
+/// das cunhas em PIXELS (o que o `blend_px` mede).
+fn grips(
+    id: u64,
+    body: Rect,
+    fades: (f32, f32),
+    locked: (bool, bool),
+) -> Vec<(u64, u8, Rect, bool)> {
+    match ease_grips(body, fades.0, fades.1) {
+        Some((a, b)) => vec![(id, EASE_IN, a, locked.0), (id, EASE_OUT, b, locked.1)],
+        None => Vec::new(),
+    }
+}
+
+/// …e o caso comum: nenhuma fade autorada ainda (as alças em repouso).
 fn rest_grips(id: u64, body: Rect, locked: (bool, bool)) -> Vec<(u64, u8, Rect, bool)> {
-    [(EASE_IN, locked.0), (EASE_OUT, locked.1)]
-        .into_iter()
-        .filter_map(|(edge, lock)| ease_grip(body, 0.0, edge).map(|r| (id, edge, r, lock)))
-        .collect()
+    grips(id, body, (0.0, 0.0), locked)
 }
 
 /// **B4: the fade grip is reachable, and it does not eat the trim grip.**
@@ -106,7 +119,7 @@ fn a_fade_defined_by_a_neighbour_is_painted_but_not_grabbable() {
 #[test]
 fn a_strip_too_narrow_for_both_grips_keeps_the_trim_and_drops_the_fade() {
     let tiny = Rect::new(150.0, 60.0, 20.0, 20.0); // < 2 * (EASE_REST_X + EASE_W)
-    assert!(ease_grip(tiny, 0.0, EASE_IN).is_none());
+    assert!(ease_grips(tiny, 0.0, 0.0).is_none());
     let plan = hit_plan(&[(1, tiny)], &rest_grips(1, tiny, (false, false)), band());
     assert!(
         !plan.iter().any(|(_, e, _)| *e == EASE_IN || *e == EASE_OUT),
@@ -184,4 +197,86 @@ fn no_hit_rect_ever_escapes_the_band() {
             "{r:?} escapes {b:?}"
         );
     }
+}
+
+/// **As duas alças NUNCA se atropelam** — nem no ponto em que as duas cunhas se encontram.
+///
+/// Um fade-in e um fade-out que quase se tocam no meio (a forma mais ordinária que existe)
+/// punham os dois retângulos no MESMO lugar: como o hit index é last-wins e o OUT é registrado
+/// por último, agarrar a ponta VISÍVEL do fade-in arrastava o fade-OUT. Mais fundo, os grips se
+/// CRUZAVAM (o de entrada pintado à direita do de saída).
+///
+/// Por isso os dois são colocados JUNTOS (`ease_grips` devolve o par): quando as pontas se
+/// encontram, eles se sentam lado a lado em torno do ponto médio — na ordem certa, nunca no
+/// mesmo pixel. FALSIFICADO colocando um de cada vez.
+#[test]
+fn the_two_fade_grips_never_land_on_the_same_pixel_or_swap_sides() {
+    let body = Rect::new(150.0, 60.0, 100.0, 20.0);
+    // Varre TODAS as combinações de cunha, inclusive as que se cruzam fundo.
+    for i in 0..=40 {
+        for j in 0..=40 {
+            let (in_px, out_px) = (i as f32 * 3.0, j as f32 * 3.0);
+            let Some((a, b)) = ease_grips(body, in_px, out_px) else {
+                continue;
+            };
+            assert!(
+                a.x + a.w <= b.x + 1e-4,
+                "in={in_px} out={out_px}: as alças se atropelam ({a:?} vs {b:?})"
+            );
+            for g in [a, b] {
+                assert!(
+                    g.x >= body.x && g.x + g.w <= body.x + body.w,
+                    "in={in_px} out={out_px}: a alça {g:?} saiu do strip {body:?}"
+                );
+            }
+        }
+    }
+}
+
+/// **Uma alça de fade não pode roubar o grip de trim do VIZINHO.**
+///
+/// Strips se sobrepõem — é isso que é o crossfade. Então a alça de um pode cair em cima do grip
+/// de aparar do outro e, registrada depois de todo trim, ganhar o clique: o artista puxaria a
+/// borda de B e autoraria uma fade em A. O `ease_grips` só protege as bordas do PRÓPRIO strip;
+/// a recusa do vizinho mora aqui, no `hit_plan`, que é quem vê os dois.
+#[test]
+fn a_fade_grip_never_steals_a_neighbours_trim_grip() {
+    // A começa antes; B entra por cima (o overlap É o crossfade).
+    let a = Rect::new(150.0, 60.0, 120.0, 20.0); // [150, 270)
+    let b = Rect::new(156.0, 60.0, 120.0, 20.0); // [156, 276) — a borda de B cai DENTRO de A
+    let mut eases = rest_grips(1, a, (false, false));
+    eases.extend(rest_grips(2, b, (false, false)));
+    let plan = hit_plan(&[(1, a), (2, b)], &eases, band());
+
+    // O grip de trim inicial de B ocupa [156, 162). Nada de A pode estar por cima dele.
+    for x in [157.0_f32, 159.0, 161.0] {
+        assert_eq!(
+            hit(&plan, x, 62.0),
+            Some((2, 0)),
+            "x={x}: a borda de B tem de continuar sendo a borda de B"
+        );
+    }
+}
+
+/// `blend_px` mede a cunha que o painel desenha — é o que ancora a alça na PONTA dela. Sem isto,
+/// os gates acima passariam com uma alça que nunca sai do repouso.
+#[test]
+fn the_grip_rides_the_wedge_tip() {
+    let view = TimeView {
+        time_x: 100.0,
+        right: 500.0,
+        view_start: 0.0,
+        px_per_s: 100.0,
+    };
+    assert!(
+        (blend_px(view, 1.0, 0.5) - 50.0).abs() < 1e-4,
+        "meio segundo a 100 px/s é 50 px de cunha"
+    );
+    // …e a alça segue a ponta: 50 px de cunha põem o grip 50 px dentro do strip.
+    let body = Rect::new(150.0, 60.0, 200.0, 20.0);
+    let (a, _) = ease_grips(body, 50.0, 0.0).expect("cabe");
+    assert!(
+        (a.x - (body.x + 50.0)).abs() < 1e-4,
+        "a alça tem de estar NA ponta da cunha, não no repouso: {a:?}"
+    );
 }

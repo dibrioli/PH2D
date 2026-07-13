@@ -51,7 +51,7 @@ pub use graph::{
 };
 pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::TimelineIntent;
-pub use intent_apply::{apply_intent, snap_time};
+pub use intent_apply::{apply_intent, snap_time, sync_transport_loop};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::{Algebra, PropKind};
 pub use refusal::KeyRefusal;

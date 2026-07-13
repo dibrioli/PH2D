@@ -16,16 +16,38 @@ use crate::doc::TimelineDoc;
 /// serialized document names its objects by a stable id. `wire_of` returns the
 /// scene's stable id for a live entity's bits ([`WireId::NULL`] for an entity
 /// that has none — e.g. a transient object that will not survive the save).
+///
+/// **A NULL never erases a stored hash** — the same guard, and the same reason, as
+/// [`refresh_and_heal_bindings`]. A binding whose object is deleted (or merely detached,
+/// waiting for the load's name-heal) has no live entity to ask, so `wire_of` answers NULL;
+/// writing that in would burn the ONE identity the binding still has, and the track could
+/// never reconnect — not by undo, not by re-creating the object, not in any future session.
+/// The bug this guard exists for: animate `hero` → delete `hero` (the track survives,
+/// dormant, by design) → **Ctrl+S** → the identity is gone from the document AND from the
+/// file. The save destroyed the mechanism the whole module is built on, silently.
 pub fn stamp_wire_ids(doc: &mut TimelineDoc, wire_of: impl Fn(u64) -> WireId) {
     for b in doc.bindings_mut() {
-        b.wire_id = wire_of(b.entity);
+        let w = wire_of(b.entity);
+        if !w.is_null() {
+            b.wire_id = w;
+        }
     }
 }
 
 /// After loading, resolve each binding's live `entity` from its serialized
 /// `wire_id`. `entity_of` maps a stable id back to this session's entity bits, or
 /// `None` when the object is gone / not yet loaded — those bindings are flagged
-/// `missing` (the panel badges them; apply skips them — never a silent no-op).
+/// `missing` and their `entity` **zeroed**.
+///
+/// `0` is the DETACHED sentinel, and it is not a valid entity in bevy (the index is a
+/// `NonZero<u32>`), which is exactly why it is safe as a sentinel and exactly why every
+/// reader must decode with `Entity::try_from_bits` — `from_bits(0)` panics. See
+/// [`crate::apply_from_doc`].
+///
+/// A missing binding stays in the document, dormant: the apply skips it (never a silent
+/// write to the wrong object) and the panel's snapshot skips its ROW — the track leaves the
+/// view with its object and comes back with it. It is not badged; it is absent, which is
+/// the behaviour Enio ratified when the bindings-survive-the-object work landed.
 ///
 /// Returns how many bindings resolved, so the caller can report "N of M tracks
 /// reconnected".

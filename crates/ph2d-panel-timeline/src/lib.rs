@@ -34,6 +34,7 @@ pub mod populate;
 mod resize;
 mod ruler;
 mod scrollbar;
+mod stack_ease_grip;
 mod stack_lane_paint;
 pub mod state;
 mod strip_drag;

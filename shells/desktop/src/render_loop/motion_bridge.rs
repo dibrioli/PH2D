@@ -154,8 +154,7 @@ pub(super) fn dispatch(
 
     // ── 2. Center split + Inspector takeover — edge-triggered on activation ──
     {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        static LAST_ACTIVE: AtomicBool = AtomicBool::new(false);
+        use std::sync::atomic::Ordering;
         let was = LAST_ACTIVE.swap(motion_active, Ordering::Relaxed);
         if was != motion_active {
             hero.panel_visibility.insert("inspector", !motion_active);
@@ -338,6 +337,24 @@ fn ticks_owed(last_cooked: Option<u64>, target: u64) -> std::ops::RangeInclusive
 /// seconds — so the seam rounds. At `rate == 1` the playhead's time is an exact
 /// multiple of `fixed_dt` and the rounding is a no-op; a seek to mid-tick lands on
 /// the nearest one.
+/// The tool-activation latch: `true` while the Motion tool is the active tool.
+///
+/// The auto-play (and the scene/graph split) is EDGE-triggered on entry, so a document that
+/// changes underneath an already-open tool never sees that edge.
+static LAST_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// **Forget that the tool was ever entered** — so the next frame re-fires the entry edge.
+///
+/// Loading a project is a NEW document arriving under an open tool. Without this, the Motion
+/// tool's *"auto-play on entry so time-driven behaviours animate live"* never re-fires (the tool
+/// did not change; the document did), and — since a load now rewinds AND pauses the editor's one
+/// clock — the artist would open a project and watch the graph sit frozen at t=0 until they
+/// pressed Space. Re-entering is what the loaded document deserves: it is being opened for the
+/// first time.
+pub(crate) fn forget_tool_transition() {
+    LAST_ACTIVE.store(false, std::sync::atomic::Ordering::Relaxed);
+}
+
 pub(crate) fn motion_tick(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> u64 {
     if fixed_dt <= 0.0 {
         return 0;

@@ -49,10 +49,23 @@ pub fn apply_from_doc_except(
             let b = &doc.bindings()[i];
             (b.entity, b.prop)
         };
-        let entity = Entity::from_bits(entity_bits);
-        let alive = world.get_entity(entity).is_ok();
+        // **`try_from_bits`, never `from_bits`.** A binding can be DETACHED — `entity = 0`,
+        // which is the sentinel [`crate::resolve_entities`] writes for "this one has no live
+        // object; find it by `wire_id`" (a project just loaded is nothing BUT detached
+        // bindings). And `0` is not a null in bevy: the index is a `NonZero<u32>`, so
+        // `Entity::from_bits(0)` **panics** — it does not return a dead entity.
+        //
+        // Pass 1 is the pass that DECIDES `missing`, so it cannot skip a binding to avoid
+        // decoding it. Decode fallibly instead: undecodable bits are exactly what `missing`
+        // means. (This was a live mine the day the loader started using the sentinel it was
+        // already documented to write.)
+        let entity = Entity::try_from_bits(entity_bits);
+        let alive = entity.is_some_and(|e| world.get_entity(e).is_ok());
         doc.bindings_mut()[i].missing = !alive;
-        if alive && doc.bindings()[i].rest.is_none() && prop != PropKind::TimeRemap {
+        if let Some(entity) = entity.filter(|_| alive)
+            && doc.bindings()[i].rest.is_none()
+            && prop != PropKind::TimeRemap
+        {
             doc.bindings_mut()[i].rest = read_prop(world, entity, prop);
         }
     }
@@ -105,8 +118,10 @@ pub fn apply_from_doc_except(
                 }
             })
         };
-        if let Some(v) = sampled {
-            write_prop(world, Entity::from_bits(b.entity), b.prop, v);
+        // Same rule as pass 1: a detached binding (`entity = 0`) has no object to write to,
+        // and `from_bits` would panic rather than tell us so.
+        if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
+            write_prop(world, e, b.prop, v);
         }
     }
 

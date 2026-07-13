@@ -793,3 +793,63 @@ fn the_ease_lock_means_exactly_what_the_evaluator_does_with_the_ease() {
         "and it is the authored ease that shapes the ramp"
     );
 }
+
+/// **Duas fades não podem tomar o strip duas vezes** (B4).
+///
+/// `weight_at` é `mixIn(t) * mixOut(t)` (a forma da Unity), então fades que se SOBREPÕEM
+/// multiplicam: um strip de 2 s com 2 s de fade-in e 2 s de fade-out — cada uma perfeitamente
+/// legal sozinha — teria pico de peso **0,25** e nunca chegaria a 1. Numa faixa `Override` isso
+/// é um sprite permanentemente meio-misturado com a pose de baixo, sem nada na tela explicando
+/// por quê. O clamp é na SOMA, e é por isso.
+#[test]
+fn two_fades_cannot_take_the_strip_twice() {
+    use ph2d_timeline::{StripId, TimelineIntent as I, TimelineState, apply_intent};
+    let mut st = TimelineState::new();
+    apply_intent(
+        &mut st,
+        &mut ph2d_core::Playhead::new(1.0 / 60.0),
+        I::AddLane,
+    );
+    apply_intent(
+        &mut st,
+        &mut ph2d_core::Playhead::new(1.0 / 60.0),
+        I::AddStrip {
+            lane: 0,
+            clip: 0,
+            t_start: 0.0,
+            t_end: 2.0,
+        },
+    );
+    let id = st.doc.stack()[0].strips[0].id;
+    let span = st.doc.stack()[0].strips[0].span();
+    // O artista arrasta as DUAS alças o mais fundo que consegue.
+    for edge in [0, 1] {
+        apply_intent(
+            &mut st,
+            &mut ph2d_core::Playhead::new(1.0 / 60.0),
+            I::SetStripEase {
+                lane: 0,
+                id: StripId(id.0),
+                edge,
+                seconds: 999.0,
+            },
+        );
+    }
+    let s = &st.doc.stack()[0].strips[0];
+    assert!(
+        s.ease_in + s.ease_out <= span + 1e-9,
+        "a soma das fades não pode passar do strip: {} + {} > {span}",
+        s.ease_in,
+        s.ease_out
+    );
+    // E o que importa de verdade: o strip AINDA chega a peso cheio em algum lugar.
+    let lane = &st.doc.stack()[0];
+    let peak = (0..=200)
+        .map(|i| lane.weight_at(0, s.t_start + span * f64::from(i) / 200.0))
+        .fold(0.0_f64, f64::max);
+    assert!(
+        peak > 0.999,
+        "o strip nunca chega a peso cheio (pico {peak}) — na Override o sprite fica \
+         permanentemente meio-misturado com a pose de baixo"
+    );
+}

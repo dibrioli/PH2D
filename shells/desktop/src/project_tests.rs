@@ -143,14 +143,15 @@ fn a_loaded_project_rewinds_the_clock_and_starts_a_fresh_history() {
 /// **O load esquece a TIMELINE do documento anterior** — e isto não é higiene, é o
 /// antídoto de uma corrupção silenciosa.
 ///
-/// A timeline ainda não é persistida (W4.T6/B5), então ela SOBREVIVE ao Ctrl+O. As
-/// bindings dela nomeiam entidades que o `apply_project` acabou de despawnar → ficam
-/// `missing` → e o `timeline_persist::upkeep` **reconecta binding órfã pelo hash do
-/// `Name`** (é o que faz delete+undo curar a animação). Nomes se repetem entre projetos
-/// ("Layer 1", "sprite_001"): sem este reset, a animação do projeto A adota os objetos
-/// homônimos do projeto B no frame seguinte e passa a dirigir a pose deles — uma animação
-/// que não está em arquivo nenhum, sobre um projeto que nunca a teve, e com a fila de undo
-/// zerada pelo próprio load.
+/// A timeline do documento ANTERIOR não pode sobreviver ao Ctrl+O — e o perigo não é lixo, é
+/// ADOÇÃO: as bindings dela nomeiam entidades que o `apply_project` acabou de despawnar → ficam
+/// `missing` → e o `timeline_persist::upkeep` **reconecta binding órfã pelo hash do `Name`** (é o
+/// que faz delete+undo curar a animação). Nomes se repetem entre projetos ("Layer 1",
+/// "sprite_001"): sem este reset, a animação do projeto A adotaria os objetos homônimos do
+/// projeto B no frame seguinte e passaria a dirigir a pose deles — uma animação que não está em
+/// arquivo nenhum, sobre um projeto que nunca a teve, e com a fila de undo zerada pelo próprio
+/// load. (O arquivo AGORA carrega a sua própria timeline — W4.T6/B5 — e é ela que entra no lugar:
+/// ver `a_loaded_project_brings_its_animation_back_pending_the_name_heal`.)
 ///
 /// (A dupla `autokey` + `timeline_insert_key` vai junto pelo mesmo motivo do
 /// `MotionState::install`: são pins e pedidos keyados por bits de entidade que morreram.)
@@ -215,8 +216,8 @@ fn the_load_re_arms_the_undo_baseline_from_the_world_not_from_the_file() {
 
     assert!(
         app.undo_baseline.is_none(),
-        "o load tem de RE-ARMAR o baseline a partir do mundo (headless: `None`); o baseline \
-         do documento anterior ficou pendurado, e o primeiro diff do frame vira um passo"
+        "o load tem de DESARMAR o baseline; o do documento anterior ficou pendurado, e o \
+         primeiro diff do frame vira um passo espúrio"
     );
 }
 
@@ -341,9 +342,10 @@ fn project_file_round_trips_through_postcard() {
     );
     // A animação viaja como postcard do `TimelineDoc` — e volta LEGÍVEL do outro lado do
     // arquivo (bytes iguais não bastariam: o que importa é o documento reabrir).
-    let mut back_timeline = ph2d_timeline::TimelineState::new();
+    let back_timeline = crate::timeline_persist::install_from_project(&back.timeline)
+        .expect("a animação volta legível do outro lado do arquivo");
     assert_eq!(
-        crate::timeline_persist::install_from_project(&mut back_timeline, &back.timeline).unwrap(),
+        back_timeline.doc.bindings().len(),
         1,
         "a animação preservada: uma track, do outro lado do arquivo"
     );
@@ -369,5 +371,62 @@ fn a_flip_schema_bump_must_bump_the_project_schema() {
         (8, 3),
         "a forma do FlipDoc mudou (ou o esquema do projeto): suba o PROJECT_SCHEMA \
          junto e atualize este par. Postcard nao avisa - ele so le errado."
+    );
+}
+
+/// **O LOOP mora no CLIP — e o loop do projeto anterior não pode vazar pro novo.**
+///
+/// `NamedClip.loop_range` é salvo (DOC v3), mas o `Playhead` é só a cópia viva dele, e quem
+/// publica a cópia é o `sync_transport_loop` — chamado por todo intent que troca de clip. Um LOAD
+/// troca o documento inteiro sem passar por intent nenhum: sem publicar aqui, o loop salvo nunca
+/// voltava e — pior — o transporte continuava repetindo sobre o intervalo de um arquivo que o
+/// artista já fechou.
+#[test]
+fn a_load_publishes_the_clips_loop_and_never_leaks_the_previous_ones() {
+    let mut app = headless_app();
+    // A sessão anterior estava em loop [1, 2).
+    app.playhead.set_loop(1.0, 2.0);
+    assert_eq!(app.playhead.loop_range(), Some((1.0, 2.0)));
+
+    // Um projeto SEM loop: o do anterior tem de morrer junto.
+    let path = tmp_path("load_loop_clear");
+    write_project_with(&path, PROJECT_SCHEMA, animation_of_hero());
+    app.project_load_from(&path.to_string_lossy());
+    let _ = std::fs::remove_file(&path);
+    assert_eq!(
+        app.playhead.loop_range(),
+        None,
+        "o loop do projeto ANTERIOR continuou armado sobre o projeto novo"
+    );
+}
+
+/// Um documento de animação que este binário não sabe ler **RECUSA o arquivo inteiro** — não
+/// abre o projeto sem a animação.
+///
+/// Abrir sem ela é a pior das opções: a cena aparece, parece certa, a timeline aparece vazia — e
+/// o próximo Ctrl+S grava esse vazio POR CIMA do arquivo. A animação não sumiria por um bug;
+/// sumiria porque o app abriu, mentiu e salvou. E a recusa acontece ANTES de qualquer mutação:
+/// a sessão em curso fica intacta.
+#[test]
+fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone() {
+    let mut app = headless_app();
+    app.playhead.play();
+    app.playhead.advance_ticks(120);
+    let before = app.playhead.time();
+    app.undo.push_undo(empty_state());
+
+    let path = tmp_path("load_bad_timeline");
+    write_project_with(&path, PROJECT_SCHEMA, vec![0xff, 0xff, 0xff]); // não é um TimelineDoc
+    app.project_load_from(&path.to_string_lossy());
+    let _ = std::fs::remove_file(&path);
+
+    assert_eq!(app.playhead.time(), before, "o relógio não foi tocado");
+    assert!(
+        app.undo.can_undo(),
+        "o histórico do trabalho aberto sobreviveu"
+    );
+    assert!(
+        app.timeline.doc.bindings().is_empty(),
+        "e nada da animação do arquivo entrou pela metade"
     );
 }

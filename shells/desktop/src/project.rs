@@ -154,8 +154,18 @@ impl crate::App {
         };
         let path = Self::project_path();
         match std::fs::write(&path, &bytes) {
-            Ok(()) => eprintln!("[proj] salvo: {path} ({} bytes)", bytes.len()),
-            Err(e) => eprintln!("[proj] erro ao gravar {path}: {e}"),
+            Ok(()) => {
+                eprintln!("[proj] salvo: {path} ({} bytes)", bytes.len());
+                let n = self.timeline.doc.bindings().len();
+                self.toast(format!(
+                    "Project saved · {} KB · {n} animation track(s)",
+                    bytes.len() / 1024
+                ));
+            }
+            Err(e) => {
+                eprintln!("[proj] erro ao gravar {path}: {e}");
+                self.toast(format!("Project save FAILED: {e}"));
+            }
         }
     }
 
@@ -190,8 +200,29 @@ impl crate::App {
         };
         if ver != PROJECT_SCHEMA {
             eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
+            self.toast(format!(
+                "Project refused: file format {ver}, this build reads {PROJECT_SCHEMA}"
+            ));
             return;
         }
+        // A ANIMAÇÃO É PARTE DO ARQUIVO, e um documento que este binário não sabe ler faz o
+        // load inteiro ser RECUSADO — não "abre sem a animação".
+        //
+        // Abrir sem ela seria a pior das opções: a cena aparece, parece certa, a timeline
+        // aparece vazia, e o próximo Ctrl+S grava esse vazio POR CIMA do arquivo. A animação
+        // não some por um bug — some porque o app abriu, mentiu e salvou. Recusar é a única
+        // leitura honesta (a mesma regra da versão do projeto, logo acima), e o parse vem ANTES
+        // de qualquer mutação da sessão, então a recusa não custa nada ao documento aberto.
+        let timeline = match crate::timeline_persist::install_from_project(&file.timeline) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("[proj] timeline ilegivel — load RECUSADO: {e}");
+                self.toast(format!(
+                    "Project refused: its animation is from another version ({e})"
+                ));
+                return;
+            }
+        };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
         // **A SESSÃO ESQUECE O DOCUMENTO ANTERIOR.** Este bloco fica colado na decisão de
@@ -212,6 +243,10 @@ impl crate::App {
         // documento.
         self.playhead.rewind();
         self.playhead.pause();
+        // …e o Motion re-ENTRA. O auto-play dele é edge-triggered na entrada na tool, e um load
+        // não muda a tool — muda o DOCUMENTO. Sem isto, quem estivesse com o Motion aberto abriria
+        // um projeto e veria o grafo congelado em t=0 até apertar Space (o `pause` acima é novo).
+        crate::render_loop::motion_bridge::forget_tool_transition();
         self.undo = ProjectUndo::default(); // documento novo, histórico novo
         self.flip_live_clear(); // …e o alvo vivo do anterior morreu junto
         // **A TIMELINE do documento anterior morre aqui** — a do arquivo entra no fim (W4.T6/B5).
@@ -242,33 +277,48 @@ impl crate::App {
         {
             eprintln!("[proj] grafo de motion ilegivel, mantido o atual: {e:?}");
         }
-        // **A ANIMAÇÃO** (W4.T6/B5). As bindings entram DESTACADAS (bits de entidade zerados) e
-        // o `upkeep` do frame as recola nos objetos que o `apply_project` acabou de spawnar,
-        // pelo hash do `Name` — a MESMA função que cura delete+undo. Por isso este passo não
-        // precisa do mundo, e por isso o load não pode divergir do undo: a resolução por nome
-        // existe uma vez só. Um documento ilegível (outra era do `DOC_VERSION`) NÃO aborta o
-        // load — a cena já entrou; a timeline fica vazia e o motivo vai pro log.
-        if !file.timeline.is_empty() {
-            match crate::timeline_persist::install_from_project(&mut self.timeline, &file.timeline)
-            {
-                Ok(n) => eprintln!("[proj] timeline: {n} track(s) a recolar por nome"),
-                Err(e) => eprintln!("[proj] timeline ilegivel, projeto aberto SEM animacao: {e}"),
-            }
-        }
-        // **O baseline do undo é a ÚLTIMA palavra — e sai do MUNDO, não do arquivo.**
+        // **A ANIMAÇÃO** (W4.T6/B5). Já parseada lá em cima (um documento ilegível recusa o
+        // arquivo INTEIRO, antes de tocar na sessão). As bindings entram DESTACADAS — `entity`
+        // zerada — e o `upkeep` do frame as recola nos objetos que o `apply_project` acabou de
+        // spawnar, pelo hash do `Name`: a MESMA função que cura delete+undo. Por isso este
+        // passo não precisa do mundo, e por isso o load não pode divergir do undo — a
+        // resolução por nome existe uma vez só.
+        let tracks = timeline.doc.bindings().len();
+        self.timeline = timeline;
+        // **O LOOP mora no CLIP** (`NamedClip.loop_range`), e o `Playhead` é só a cópia viva.
+        // Sem publicar aqui, o loop salvo nunca voltava — e, pior, o loop do projeto ANTERIOR
+        // continuava armado no transporte, fazendo o projeto novo repetir sobre um intervalo de
+        // um arquivo que o artista já fechou.
+        ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.playhead);
+        // **O baseline do undo fica DESARMADO** — e é o `post_frame_undo` que o arma, depois
+        // que o frame assentar.
         //
-        // O `apply_project` armou o baseline com o estado do ARQUIVO; o `restore_painted_docs`
-        // mexeu no mundo DEPOIS disso (cada sprite pintado recebe uma textura individual NOVA
-        // — o `texture_id` do save morreu com o processo que o criou, e `Sprite` é componente
-        // registrado, logo está no snapshot). Mundo ≠ baseline. E o `post_frame_undo` roda no
-        // MESMO frame — o Ctrl+O é input, então `any_input_this_frame` é `true` — vê a
-        // diferença e registra um passo. Resultado: a fila "nova" nascia com um passo dentro,
-        // e o primeiro Ctrl+Z do artista não desfazia a ação dele: re-apontava cada sprite
-        // pintado para um `texture_id` morto (ou, na mesma sessão, para a textura do projeto
-        // ANTERIOR). Re-armar do mundo aqui é o que faz "histórico novo" ser verdade no FRAME,
-        // e não só no retorno desta função. [[feedback_tool_unit_green_integration_dead]]
-        self.undo_baseline = self.capture_project();
-        eprintln!("[proj] carregado: {path}");
+        // Capturá-lo aqui seria capturar um mundo que ainda não terminou de virar este projeto:
+        // o `restore_painted_docs` troca o `texture_id` de cada sprite pintado (o do save morreu
+        // com o processo que o criou), e a animação recém-instalada só escreve a pose quando as
+        // bindings recolam — um frame depois. Qualquer baseline tirado agora estaria errado por
+        // uma dessas duas razões, e o `post_frame_undo` do MESMO frame (o Ctrl+O é input) veria a
+        // diferença e gravaria um passo espúrio: o primeiro Ctrl+Z do artista não desfazia a
+        // ação dele — devolvia uma textura morta, ou a pose do arquivo.
+        //
+        // `None` significa "ainda não sei", e o `post_frame_undo` já sabe o que fazer com isso:
+        // arma o baseline com o mundo assentado e NÃO registra passo. A fila nova nasce vazia de
+        // verdade. [[feedback_tool_unit_green_integration_dead]]
+        self.undo_baseline = None;
+        eprintln!("[proj] carregado: {path} ({tracks} track(s) de animacao)");
+        self.toast(if tracks == 0 {
+            "Project loaded".to_string()
+        } else {
+            format!("Project loaded · {tracks} animation track(s)")
+        });
+    }
+
+    /// Um aviso na tela — não só no terminal. O Ctrl+O é destrutivo (troca a cena, zera o undo)
+    /// e o Ctrl+S é silencioso; um `eprintln!` num app de janela é uma mensagem para ninguém.
+    fn toast(&mut self, msg: String) {
+        if let Some(gfx) = self.gfx.as_mut() {
+            gfx.toasts.push(ph2d_editor::Toast::info(msg));
+        }
     }
 
     /// Coleta os pixels de cada imagem importada, para embutir no arquivo.

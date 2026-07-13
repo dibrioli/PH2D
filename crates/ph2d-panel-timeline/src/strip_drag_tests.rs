@@ -21,8 +21,12 @@ fn snap() -> TimelineViewSnapshot {
                 clip_name: "Main".into(),
                 t_start: 1.0,
                 t_end: 3.0,
-                blend_in: 0.0,
-                blend_out: 0.0,
+                // Uma fade JA autorada: 0,25 s de cada lado. Com a cunha em zero, `start_ease`
+                // seria sempre 0 e o gate nao veria a diferenca entre "delta sobre o que ja
+                // existe" e "valor absoluto" -- que e exatamente o bug que o
+                // `arch_no_absolute_drag_pattern` existe para pegar.
+                blend_in: 0.25,
+                blend_out: 0.25,
                 ease_locked_in: false,
                 ease_locked_out: false,
                 loop_mode: StripLoop::Once,
@@ -293,9 +297,12 @@ fn dragging_the_fade_in_grip_authors_the_strips_own_fade() {
         *edge, 0,
         "the panel's grip 3 is the document's edge 0 (the start)"
     );
+    // A fixture ja tinha 0,25 s de fade-in. 50 px a 100 px/s sao mais meio segundo -> 0,75.
+    // Se o drag ignorasse o `start_ease` (valor absoluto em vez de delta), daria 0,5 e a alca
+    // SALTARIA pra tras no primeiro pixel do arrasto.
     assert!(
-        (*seconds - 0.5).abs() < 1e-9,
-        "50 px at 100 px/s is half a second of fade: {seconds}"
+        (*seconds - 0.75).abs() < 1e-9,
+        "o arrasto e um DELTA sobre a fade que ja existe (0,25 + 0,5): {seconds}"
     );
 }
 
@@ -320,15 +327,17 @@ fn the_fade_out_grip_grows_the_fade_by_dragging_left_and_never_goes_negative() {
             })
             .expect("the fade grip must raise SetStripEase")
     };
-    // 40 px LEFT of where it began, at 100 px/s: 0.4 s of fade-out.
+    // 40 px a ESQUERDA, a 100 px/s: +0,4 s sobre os 0,25 s que a fixture ja tinha.
     assert!(
-        (ease_of(&drag(4, 60.0)) - 0.4).abs() < 1e-9,
-        "dragging the end grip INWARD (left) must GROW the fade"
+        (ease_of(&drag(4, 60.0)) - 0.65).abs() < 1e-9,
+        "arrastar a alca do fim pra DENTRO (esquerda) tem de CRESCER a fade, a partir da que ja \
+         existe: {}",
+        ease_of(&drag(4, 60.0))
     );
-    // …and dragging it outward, past the corner, is no fade — never a negative one.
+    // …e arrastando pra FORA, passando da quina, e fade nenhuma — nunca uma negativa.
     assert_eq!(
-        ease_of(&drag(4, 140.0)),
+        ease_of(&drag(4, 200.0)),
         0.0,
-        "a fade cannot be negative: the tip stops at the corner"
+        "a fade nao pode ser negativa: a ponta para na quina"
     );
 }

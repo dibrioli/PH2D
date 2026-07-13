@@ -21,22 +21,14 @@ use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::graph::TimeView;
+use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, ease_grips, overlaps};
 use crate::state::TimelinePanelState;
 use crate::{geom, ids};
 
 /// Vertical inset of a strip inside its row, so lanes read as separate rows.
 const STRIP_PAD_Y: f32 = 3.0; // LITERAL-PX-OK: a strip must not touch its row's edge
 /// Grab width of a strip's trim edges.
-const EDGE_W: f32 = 6.0; // LITERAL-PX-OK: a pointer-sized grip, like the loop brace's
-/// Grab size of the ease handle at a strip's top corner (B4).
-const EASE_W: f32 = 7.0; // LITERAL-PX-OK: a pointer-sized grip, like the trim edge's
-/// The ease handle's resting inset from the corner, when the strip has NO fade yet.
-///
-/// It rests just PAST the trim grip instead of on the corner, so the two grips never
-/// share a pixel: a handle stacked on the trim edge would have to win the click (it is
-/// registered later), and the artist reaching for the trim would author a fade instead.
-/// Dragging it back to here means zero fade.
-const EASE_REST_X: f32 = EDGE_W; // LITERAL-PX-OK: exactly clear of the trim grip
+pub(crate) const EDGE_W: f32 = 6.0; // LITERAL-PX-OK: a pointer-sized grip, like the loop brace's
 /// Below this, a rate is real time and the strip says nothing about it.
 const SPEED_EPS: f64 = 1e-6; // LITERAL-PX-OK: not a length — a "is it exactly 1" epsilon
 /// The lane weight field's width.
@@ -250,60 +242,22 @@ fn paint_lane(
     // control that lies ([[feedback_disabled_button_still_dispatches]]).
     let eases: Vec<(u64, u8, Rect, bool)> = boxes
         .iter()
-        .flat_map(|(s, body)| {
-            [
-                (EASE_IN, s.blend_in, s.ease_locked_in),
-                (EASE_OUT, s.blend_out, s.ease_locked_out),
-            ]
-            .into_iter()
-            .filter_map(|(edge, blend, locked)| {
-                let px = blend_px(view, s.t_start, blend);
-                ease_grip(*body, px, edge).map(|r| (s.id.0, edge, r, locked))
-            })
-            .collect::<Vec<_>>()
+        .filter_map(|(s, body)| {
+            let (a, b) = ease_grips(
+                *body,
+                blend_px(view, s.t_start, s.blend_in),
+                blend_px(view, s.t_start, s.blend_out),
+            )?;
+            Some([
+                (s.id.0, EASE_IN, a, s.ease_locked_in),
+                (s.id.0, EASE_OUT, b, s.ease_locked_out),
+            ])
         })
+        .flatten()
         .collect();
     for (strip, edge, rect) in hit_plan(&spans, &eases, time_band) {
         put_strip_hit(ctx, row, rect, index, strip, edge);
     }
-}
-
-/// The blend window's width in pixels — the wedge the panel already draws, measured.
-fn blend_px(view: TimeView, t_start: f64, blend: f64) -> f32 {
-    view.x(t_start + blend) - view.x(t_start)
-}
-
-/// Hit/paint code for the fade-in grip (the strip's start corner).
-const EASE_IN: u8 = 3;
-/// …and the fade-out grip (its end corner).
-const EASE_OUT: u8 = 4;
-
-/// **Where the ease handle sits**: at the TIP of the wedge, on the strip's top edge —
-/// so the thing you grab is the thing you see, and dragging it is dragging the fade.
-///
-/// `None` when the strip is too narrow to hold both trim grips AND the two handles: on
-/// a strip that small the handles would sit on top of the trim edges and steal them (an
-/// ease grip outranks a trim grip in the hit order). A strip you cannot fade at this
-/// zoom is honest; a strip you can no longer TRIM is a bug.
-///
-/// With no fade authored, the tip is at the corner — where the trim grip already is —
-/// so the handle RESTS one grip-width in ([`EASE_REST_X`]). Dragging it back there means
-/// zero fade, which is exactly where it came from.
-fn ease_grip(body: Rect, blend_px: f32, edge: u8) -> Option<Rect> {
-    // Both trim grips + both handles, side by side, with nothing overlapping.
-    if body.w < (EASE_REST_X + EASE_W) * 2.0 {
-        return None;
-    }
-    let reach = blend_px.max(EASE_REST_X);
-    let x = if edge == EASE_IN {
-        (body.x + reach).min(body.x + body.w - EASE_REST_X - EASE_W)
-    } else {
-        (body.x + body.w - reach - EASE_W).max(body.x + EASE_REST_X)
-    };
-    // Top band only: the rest of the strip's height stays the BODY's, so the slide
-    // gesture is not shrunk to a sliver by a grip that only needs a corner.
-    let h = (body.h * 0.5).min(EASE_W);
-    Some(Rect::new(x, body.y, EASE_W, h))
 }
 
 /// **The order the strip hits are registered in — and it is load-bearing.**
@@ -357,13 +311,27 @@ fn hit_plan(
             }
         }
     }
+    // Every trim grip registered above — a fade handle may not land on ANY of them.
+    let trims: Vec<Rect> = out
+        .iter()
+        .filter(|(_, e, _)| *e == 0 || *e == 1)
+        .map(|(_, _, r)| *r)
+        .collect();
     for &(id, edge, rect, locked) in eases {
         // Same rule as the trim grips: a handle half-visible at the edge of the view is
         // not one a pointer can aim at. And a locked one is not grabbable at all.
+        //
+        // **And it must not cover a trim grip — not even a NEIGHBOUR's.** `ease_grips` keeps a
+        // handle clear of its own strip's edges, but strips OVERLAP (that is the crossfade), so
+        // one strip's fade handle can land squarely on the strip next door's trim grip — and,
+        // registered after every trim, it would win the click. The artist would reach for the
+        // edge of B and author a fade on A. Dropping the handle is the right refusal: the trim
+        // is the gesture that cannot be replaced, and the fade is one scroll away.
         if !locked
             && rect.x >= band.x
             && rect.x + rect.w <= band.x + band.w
             && let Some(r) = clipped(rect, band)
+            && !trims.iter().any(|t| overlaps(*t, r))
         {
             out.push((id, edge, r));
         }
@@ -522,26 +490,26 @@ fn paint_strip(
     // the window — there the overlap IS the fade, and the way to change it is to move
     // the strips; the grip is painted so the artist can SEE that the edge is spoken
     // for, and it is not registered, so it cannot be dragged into a number nobody reads.
-    for (edge, blend, locked) in [
-        (EASE_IN, s.blend_in, s.ease_locked_in),
-        (EASE_OUT, s.blend_out, s.ease_locked_out),
-    ] {
-        let Some(g) = ease_grip(body, blend_px(view, s.t_start, blend), edge) else {
-            continue;
-        };
-        fill_rounded_rect(
-            ctx.scene,
-            g,
-            Radius::Xs.px(),
-            resolve(
-                if locked || dim {
-                    ColorToken::Border
-                } else {
-                    ColorToken::TimelinePlayhead
-                },
-                theme,
-            ),
-        );
+    if let Some((a, b)) = ease_grips(
+        body,
+        blend_px(view, s.t_start, s.blend_in),
+        blend_px(view, s.t_start, s.blend_out),
+    ) {
+        for (g, locked) in [(a, s.ease_locked_in), (b, s.ease_locked_out)] {
+            fill_rounded_rect(
+                ctx.scene,
+                g,
+                Radius::Xs.px(),
+                resolve(
+                    if locked || dim {
+                        ColorToken::Border
+                    } else {
+                        ColorToken::TimelinePlayhead
+                    },
+                    theme,
+                ),
+            );
+        }
     }
 
     // The rate leads the name. A retimed strip is pixel-identical to a trimmed one

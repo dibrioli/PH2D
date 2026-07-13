@@ -94,6 +94,7 @@ pub fn heart(a: [f64; 2], b: [f64; 2], cleft: f64) -> VecPath {
             in_handle: u.p(mirror(lobe)),
             out_handle: u.p(lobe),
             kind: VertexKind::Corner,
+            corner_radius: 0.0,
         },
         // O bico: chega pelo lado direito, sai pelo esquerdo.
         VecVertex {
@@ -101,6 +102,7 @@ pub fn heart(a: [f64; 2], b: [f64; 2], cleft: f64) -> VecPath {
             in_handle: u.p(side),
             out_handle: u.p(mirror(side)),
             kind: VertexKind::Corner,
+            corner_radius: 0.0,
         },
     ]);
     fit(&u, &mut p);
@@ -207,6 +209,7 @@ pub fn moon(a: [f64; 2], b: [f64; 2], phase: f64) -> VecPath {
         in_handle: term[term.len() - 1].in_handle,
         out_handle: limb[0].out_handle,
         kind: VertexKind::Corner,
+        corner_radius: 0.0,
     });
     verts.extend(limb[1..limb.len() - 1].iter().copied()); // a barriga
     // Corneta de cima: chega pelo limbo, sai pelo terminador.
@@ -215,6 +218,7 @@ pub fn moon(a: [f64; 2], b: [f64; 2], phase: f64) -> VecPath {
         in_handle: limb[limb.len() - 1].in_handle,
         out_handle: term[0].out_handle,
         kind: VertexKind::Corner,
+        corner_radius: 0.0,
     });
     verts.extend(term[1..term.len() - 1].iter().copied()); // o terminador
 

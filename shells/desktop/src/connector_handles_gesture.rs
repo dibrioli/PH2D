@@ -131,7 +131,7 @@ impl App {
             let Some(p) = gfx.vec_scene.paths().iter().find(|p| p.id == id) else {
                 continue;
             };
-            let near = ph2d_vec_scene::nearest_point_on_path(p, world, BODY_SAMPLES)
+            let near = ph2d_vec_scene::nearest_point_on_path(&p.cooked(), world, BODY_SAMPLES)
                 .is_some_and(|(_, _, d2)| d2.sqrt() <= body_r);
             if near {
                 let mut stations = vec![handle_points(&gfx.vec_scene, id).map(|(a, _)| a)];

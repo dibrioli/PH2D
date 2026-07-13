@@ -232,6 +232,10 @@ fn eat_contour(verts: &[VecVertex], is_closed: bool, lo: &mut [f64; 2], hi: &mut
 
 /// A bbox VERDADEIRA da curva (âncoras **+ extremos internos das cúbicas**), em mundo.
 fn curve_bbox(path: &VecPath) -> ([f64; 2], [f64; 2]) {
+    // Cozida — a caixa tem de abraçar a forma que se vê. (Aqui é sempre a identidade
+    // hoje: o catálogo gera formas sem raio de quina vivo, e o raio das que arredondam
+    // já está assado na geometria. Fica certo se um dia deixar de ser.)
+    let path = &*path.cooked();
     let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
     eat_contour(&path.verts, path.closed, &mut lo, &mut hi);
     for c in &path.subpaths {

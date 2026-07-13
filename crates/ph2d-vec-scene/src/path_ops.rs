@@ -56,7 +56,7 @@ impl VecScene {
         });
         // The gradient geometry mirrors with the shape (only the flipped axis).
         transform_fill_geometry(
-            &mut path.fill,
+            path,
             |mut p| {
                 p[a] = twice_center - p[a];
                 p
@@ -101,7 +101,7 @@ impl VecScene {
             v.out_handle = rot(v.out_handle);
         });
         // Gradient geometry rotates with the shape (about the same pivot).
-        transform_fill_geometry(&mut path.fill, rot, 1.0);
+        transform_fill_geometry(path, rot, 1.0);
         true
     }
 
@@ -171,6 +171,11 @@ impl VecScene {
         let Some(src_path) = self.paths.iter().find(|p| p.id == src) else {
             return false;
         };
+        // O raio de quina é um COMPRIMENTO no espaço local, e este map troca de espaço
+        // local (o de `src` pelo de `dst`): ele escala pelo mesmo fator que a geometria.
+        // Sem isso, soldar uma forma pequena numa grande deixaria as quinas dela com o
+        // raio do espaço errado — redondas demais ou afiadas demais, silenciosamente.
+        let r_scale = src_xf.mean_scale() * inv_dst.mean_scale();
         let mut mapped: Vec<VecVertex> = src_path
             .verts
             .iter()
@@ -179,6 +184,7 @@ impl VecScene {
                 in_handle: inv_dst.apply(src_xf.apply(v.in_handle)),
                 out_handle: inv_dst.apply(src_xf.apply(v.out_handle)),
                 kind: v.kind,
+                corner_radius: v.corner_radius * r_scale,
             })
             .collect();
         if reverse_src {
@@ -505,7 +511,7 @@ impl VecScene {
             v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
             v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
         });
-        transform_fill_geometry(&mut path.fill, |p| [p[0] + dx, p[1] + dy], 1.0);
+        transform_fill_geometry(path, |p| [p[0] + dx, p[1] + dy], 1.0);
         true
     }
 
@@ -529,7 +535,7 @@ impl VecScene {
         // Gradient geometry scales with the shape; the radial radius by the mean
         // axis factor (peniko radials are circular, so non-uniform scale is
         // approximated rather than made elliptical).
-        transform_fill_geometry(&mut path.fill, s, (sx.abs() + sy.abs()) * 0.5);
+        transform_fill_geometry(path, s, (sx.abs() + sy.abs()) * 0.5);
         true
     }
 
@@ -553,7 +559,7 @@ impl VecScene {
         // Gradient geometry rotates with the shape about the SAME pivot — so the
         // fill stays locked to the shape and never "breathes" (the Transform R
         // field case the user hit).
-        transform_fill_geometry(&mut path.fill, rot, 1.0);
+        transform_fill_geometry(path, rot, 1.0);
         true
     }
 
@@ -575,6 +581,9 @@ impl VecScene {
 /// Chama `f` em cada ponto amostrado da curva de TODOS os contornos de `path`
 /// (`CURVE_SAMPLES` por segmento, fechamento incluído). Base das bboxes de curva.
 fn for_each_curve_point(path: &crate::VecPath, mut f: impl FnMut([f64; 2])) {
+    // Cozida: a bbox tem de enquadrar a forma que está na TELA. Uma quina arredondada
+    // ocupa menos que a afiada, e é a redonda que o gizmo abraça e o snap encaixa.
+    let path = &*path.cooked();
     for k in 0..path.contour_count() {
         let Some((verts, closed)) = path.contour(k) else {
             continue;
@@ -610,19 +619,31 @@ pub fn bake_xform(path: &mut VecPath, x: &crate::Xform) {
         v.in_handle = f(v.in_handle);
         v.out_handle = f(v.out_handle);
     });
-    transform_fill_geometry(&mut path.fill, f, x.mean_scale());
+    transform_fill_geometry(path, f, x.mean_scale());
 }
 
 /// Aplica a transformação de ponto `f` (a MESMA das âncoras) à geometria world-space
-/// do gradiente do fill, e escala o raio radial por `radius_scale`. Assim o
-/// gradiente transforma rigidamente com a shape (não "respira" ao rotacionar).
+/// do gradiente do fill, e escala por `radius_scale` **todo comprimento escalar do
+/// path**: o raio do gradiente radial e o `corner_radius` de cada vértice.
+///
+/// Os dois são a mesma espécie de quantidade — **um comprimento que não é um ponto** —
+/// e é por isso que moram na mesma função. Um op que transforma a geometria transforma
+/// os pontos com `f` e os comprimentos com `radius_scale`; se os dois comprimentos
+/// vivessem em funções separadas, o próximo op novo escalaria um e esqueceria o outro,
+/// e a quina de uma forma escalada arredondaria errado sem nada ficar vermelho.
+///
+/// Sob escala NÃO-uniforme um raio escalar é indefinido (a quina viraria elíptica); o
+/// fator médio dos eixos é a mesma aproximação que o gradiente radial já faz.
 /// No-op para `Solid` / sem fill.
 fn transform_fill_geometry(
-    fill: &mut Option<Paint>,
+    path: &mut VecPath,
     f: impl Fn([f64; 2]) -> [f64; 2],
     radius_scale: f64,
 ) {
-    match fill {
+    if radius_scale != 1.0 {
+        path.for_each_vert_mut(|v| v.corner_radius *= radius_scale);
+    }
+    match &mut path.fill {
         Some(Paint::Linear { start, end, .. }) => {
             *start = f(*start);
             *end = f(*end);

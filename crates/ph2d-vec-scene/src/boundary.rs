@@ -44,6 +44,9 @@ fn cubic(p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2], t: f64) -> [f64
 /// `x' = a·x + c·y + e`.
 #[must_use]
 pub fn outline(path: &VecPath, xform: [f64; 6]) -> Vec<Vec<[f64; 2]>> {
+    // Cozida: é onde o conector tem de encostar — na borda que se VÊ, não na quina
+    // afiada que o documento guarda por baixo dela.
+    let path = &*path.cooked();
     let m = |p: [f64; 2]| -> [f64; 2] {
         [
             xform[0] * p[0] + xform[2] * p[1] + xform[4],

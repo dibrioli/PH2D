@@ -514,6 +514,9 @@ impl PenTool {
                 in_handle: xf_b.apply(v.in_handle),
                 out_handle: xf_b.apply(v.out_handle),
                 kind: v.kind,
+                // O raio é um COMPRIMENTO no espaço local, e aqui B sobe para o mundo:
+                // escala com a geometria (e desce de novo para o local de A, abaixo).
+                corner_radius: v.corner_radius * xf_b.mean_scale(),
             })
             .collect();
         if !b_first {
@@ -532,6 +535,7 @@ impl PenTool {
                 in_handle: inv_a.apply(v.in_handle),
                 out_handle: inv_a.apply(v.out_handle),
                 kind: v.kind,
+                corner_radius: v.corner_radius * inv_a.mean_scale(),
             });
         }
         let last = a.verts.len().saturating_sub(1);

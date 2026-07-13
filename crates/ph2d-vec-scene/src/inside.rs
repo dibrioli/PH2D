@@ -28,6 +28,9 @@ fn cubic(p0: [f64; 2], p1: [f64; 2], p2: [f64; 2], p3: [f64; 2], t: f64) -> [f64
 /// olho mira e o mouse persegue.
 #[must_use]
 pub fn contains_point(path: &VecPath, p: [f64; 2]) -> bool {
+    // A geometria COZIDA (quinas já arredondadas) — é a forma que está na tela, e é ela
+    // que o dedo tem de pegar. Sem raio nenhum isto é a própria fonte, emprestada.
+    let path = &*path.cooked();
     {
         let even_odd = path.fill_rule == FillRule::EvenOdd;
         let mut crossings = 0i32;

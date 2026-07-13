@@ -170,6 +170,7 @@ pub(crate) fn place(u: &Unit, k: u8, vs: &[Uvv]) -> Vec<VecVertex> {
             } else {
                 VertexKind::Smooth
             },
+            corner_radius: 0.0,
         })
         .collect()
 }

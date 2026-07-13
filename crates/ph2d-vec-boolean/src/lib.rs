@@ -157,6 +157,12 @@ fn is_line(a: &VecVertex, b: &VecVertex) -> bool {
 /// *Smooth* com handles pendurados no meio das arestas — pontos de controle que o
 /// usuário nunca pediu. Com `line_to`, o corte de uma reta devolve retas.
 fn to_bez(path: &VecPath) -> BezPath {
+    // A booleana come a geometria COZIDA — ela corta a forma que está na tela. E o
+    // resultado sai com as quinas ASSADAS (os verts novos nascem com raio 0): uma
+    // booleana é destrutiva por natureza, e um raio vivo não sobrevive a ela — o
+    // vértice que ele arredondava pode nem existir mais depois do corte. É o que a
+    // Figma faz, e é o único contrato honesto.
+    let path = &*path.cooked();
     let mut bp = BezPath::new();
     for c in 0..path.contour_count() {
         let Some((verts, _)) = path.contour(c) else {
@@ -316,6 +322,9 @@ fn smooth(anchor: [f64; 2], in_h: [f64; 2], out_h: [f64; 2]) -> VecVertex {
         in_handle: in_h,
         out_handle: out_h,
         kind: VertexKind::Smooth,
+        // Sem raio: a booleana comeu a geometria já COZIDA, então o arredondamento já
+        // está ASSADO nestes vértices. Carregar o raio adiante o aplicaria duas vezes.
+        corner_radius: 0.0,
     }
 }
 

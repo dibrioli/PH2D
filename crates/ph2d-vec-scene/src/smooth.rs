@@ -226,6 +226,7 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
         in_handle: p0a,
         out_handle: p1a,
         kind: VertexKind::Corner,
+        corner_radius: 0.0,
     });
     if arc <= ARC_EPS {
         // `s = 1`: o arco sumiu — as duas asas se encontram na bissetriz, num vértice SÓ
@@ -236,6 +237,7 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
             in_handle: qa,
             out_handle: qb,
             kind: VertexKind::Corner,
+            corner_radius: 0.0,
         });
     } else {
         out.push(VecVertex {
@@ -243,12 +245,14 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
             in_handle: qa,
             out_handle: add(aa, mul(tang(d_aa), h)),
             kind: VertexKind::Corner,
+            corner_radius: 0.0,
         });
         out.push(VecVertex {
             anchor: ab,
             in_handle: sub(ab, mul(tang(d_ab), h)),
             out_handle: qb,
             kind: VertexKind::Corner,
+            corner_radius: 0.0,
         });
     }
     out.push(VecVertex {
@@ -256,6 +260,7 @@ pub(crate) fn smooth_corner(a: P, v: P, b: P, r: f64, s: f64) -> Option<Vec<VecV
         in_handle: p1b,
         out_handle: p0b,
         kind: VertexKind::Corner,
+        corner_radius: 0.0,
     });
     Some(out)
 }

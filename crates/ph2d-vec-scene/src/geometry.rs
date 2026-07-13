@@ -240,6 +240,7 @@ pub fn split_segment(path: &mut VecPath, seg: usize, t: f64) -> Option<usize> {
                 in_handle: r0,
                 out_handle: r1,
                 kind: VertexKind::Smooth,
+                corner_radius: 0.0,
             },
         );
     }

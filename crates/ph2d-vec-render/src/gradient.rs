@@ -339,9 +339,13 @@ const IDW_RES: u32 = 64;
 /// (the anchor-only bbox misses the parts that bulge past the anchors, leaving
 /// the multi-point image unfilled there). Unit rect if empty.
 fn control_point_bounds(path: &VecPath) -> ([f64; 2], [f64; 2]) {
+    // COZIDA (o raster tem de cobrir a forma que se vê) e `verts_all` (TODOS os
+    // contornos, não só o primário — enquadrar um compound só pelo contorno externo
+    // deixava a região do buraco fora do raster e o gradiente não pintava lá).
+    let path = &*path.cooked();
     let mut lo = [f64::INFINITY; 2];
     let mut hi = [f64::NEG_INFINITY; 2];
-    for v in &path.verts {
+    for v in path.verts_all() {
         for p in [v.anchor, v.in_handle, v.out_handle] {
             lo[0] = lo[0].min(p[0]);
             lo[1] = lo[1].min(p[1]);

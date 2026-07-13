@@ -186,7 +186,13 @@ fn contains_path(
         }
     }
 
-    if let Some((_, _, d2)) = ph2d_vec_scene::nearest_point_on_path(path, local, STROKE_SAMPLES) {
+    // COZIDA: apalpar o traço é apalpar a tinta que está na tela, e uma quina arredondada
+    // deixou de passar pelo bico afiado que o documento ainda guarda. (`nearest_point_on_path`
+    // em si fica na FONTE — o índice de segmento que ela devolve endereça os verts autorados,
+    // e é o que insere vértice; aqui só interessa a distância.)
+    if let Some((_, _, d2)) =
+        ph2d_vec_scene::nearest_point_on_path(&path.cooked(), local, STROKE_SAMPLES)
+    {
         // **A TINTA QUE SE VÊ CONTA.** O raio de captura é a folga MAIS a metade da largura
         // desenhada — não a folga sozinha. Sem isso, uma linha grossa só era pegável nos 8 px
         // centrais dela: o usuário clicava visivelmente EM CIMA do traço e nada acontecia,

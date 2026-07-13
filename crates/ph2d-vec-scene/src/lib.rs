@@ -61,6 +61,12 @@ pub use shapes::{
 /// e dos dois raios da estrela) — módulo irmão de `shapes` (LOC cap).
 pub mod corners;
 
+/// **Raio de quina VIVO** sobre um caminho autorado qualquer (com curvas): o `corners`
+/// acima *gera* uma forma a partir de pontos; este *transforma* um caminho desenhado.
+/// É o "Live Corners" — a fonte guarda a quina afiada + o raio, e a geometria consumida
+/// (`VecPath::cooked`) é derivada dela. Módulo irmão de `corners` (LOC cap).
+pub mod corner_live;
+
 /// **Suavização de quina** (o *squircle*): o arco de círculo vira `asa + arco curto + asa`,
 /// e a curvatura sobe em rampa a partir do lado reto em vez de saltar. Motor de
 /// `corners::round_closed_corners_smooth` — módulo irmão de `corners` (LOC cap).
@@ -391,6 +397,21 @@ pub struct VecVertex {
     pub in_handle: [f64; 2],
     pub out_handle: [f64; 2],
     pub kind: VertexKind,
+    /// **Raio de quina vivo** (Live Corners do Illustrator / Corner Tool do Affinity):
+    /// o quanto esta quina arredonda quando a geometria é COZIDA
+    /// ([`crate::corner_live`]). `0` = quina afiada, e é a identidade byte-a-byte.
+    ///
+    /// Mora **dentro do vértice**, e não num vetor paralelo ao lado dos `verts`, de
+    /// propósito: dezenas de operações inserem, apagam, invertem e soldam vértices, e
+    /// cada uma delas teria de lembrar de mexer no vetor paralelo também. Aqui o raio
+    /// **viaja junto** com o vértice, de graça — dessincronizar é impossível.
+    ///
+    /// É **fonte, nunca cozido**: a geometria que o documento guarda continua sendo a
+    /// quina afiada, e o arredondamento é derivado dela (é o `inkscape:original-d` +
+    /// `d`). Um vértice `Smooth`/`Symmetric` tem handles colineares por definição, logo
+    /// não é quina e o cozimento o pula sozinho — o raio só morde onde há quina de
+    /// verdade, sem precisar consultar o `kind`.
+    pub corner_radius: f64,
 }
 
 impl VecVertex {
@@ -401,6 +422,7 @@ impl VecVertex {
             in_handle: anchor,
             out_handle: anchor,
             kind: VertexKind::Corner,
+            corner_radius: 0.0,
         }
     }
 
@@ -411,6 +433,7 @@ impl VecVertex {
             in_handle,
             out_handle,
             kind: VertexKind::Smooth,
+            corner_radius: 0.0,
         }
     }
 }
@@ -448,9 +471,10 @@ pub struct VecPath {
 /// schema). v2: `VertexKind` ganhou `Symmetric`. v3: `stroke` virou
 /// [`StrokeSpec`] (cap/join/dash). v4: `fill` virou [`Paint`] (sólido + gradientes
 /// Linear/Radial/MultiPoint). v5: [`GradientPoint`] ganhou `jitter`. v6: `VecPath`
-/// ganhou `subpaths` + `fill_rule` (compound paths). (Migração robusta = cutover,
-/// Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 7;
+/// ganhou `subpaths` + `fill_rule` (compound paths). v8: [`VecVertex`] ganhou
+/// `corner_radius` (Live Corners — [`crate::corner_live`]). (Migração robusta =
+/// cutover, Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 8;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

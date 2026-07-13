@@ -38,7 +38,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v9 (ADR-0114 W7.2): a CHAVE (`FlipFrame`) ganhou `offset` — a **pose do quadro**
 /// (`FLIP_SCHEMA_VERSION` 4→5). É o que faz uma instância (duas chaves, um desenho) ser
 /// mais que um hold: a arte é compartilhada e o lugar é de cada quadro.
-const PROJECT_SCHEMA: u32 = 9;
+/// v10 (ADR-0121): o `VecVertex` ganhou `corner_radius` (Live Corners —
+/// `ph2d_vec_scene::corner_live`), e a `VecScene` vai embutida aqui
+/// (`VEC_SCENE_SCHEMA_VERSION` 7→8). Mesma regra.
+const PROJECT_SCHEMA: u32 = 10;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -294,19 +297,32 @@ mod tests {
     /// (a versão bate) e o lê com o layout novo — sai geometria embaralhada, não
     /// um erro. Foi o que quase aconteceu na W4 (`holes`/`hide_stroke`).
     ///
-    /// Este par existe para que bumpar UM sem pensar no OUTRO fique vermelho.
+    /// Esta tripla existe para que bumpar UM sem pensar nos OUTROS fique vermelho.
     ///
-    /// O `PROJECT_SCHEMA` é 7 (e não o 4 que a linha Flip trazia sozinha) porque na
-    /// árvore integrada ele conta TODAS as quebras de layout, não só as do Flip: v3/v4
-    /// do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 do Flip. Cada
-    /// linha subiu o mesmo contador por um motivo diferente — e o contador é um só.
+    /// O `PROJECT_SCHEMA` é 10 (e não o 8 que a linha Vector trazia sozinha) porque na
+    /// árvore integrada ele conta TODAS as quebras de layout, não só as de um módulo:
+    /// v3/v4 do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 e v8/v9 do
+    /// Flip (o balde, depois `selected` + `offset`), v10 do Vector (o `corner_radius` do
+    /// `VecVertex`). Cada linha subiu o mesmo contador por um motivo diferente — e o
+    /// contador é um só: o valor certo não existe em nenhum lado do conflito, ele se
+    /// CONTA.
+    ///
+    /// A `VecScene` entrou no pin porque ela também vai EMBUTIDA no arquivo de projeto, e
+    /// o pin só protege quem ele nomeia: até aqui um campo novo em `VecVertex` teria
+    /// bumpado o `VEC_SCENE_SCHEMA_VERSION`, deixado o `PROJECT_SCHEMA` para trás, e
+    /// **este teste teria passado** — um projeto v7 seria lido com o layout novo, e o
+    /// postcard não tem nomes de campo para reclamar.
     #[test]
-    fn a_flip_schema_bump_must_bump_the_project_schema() {
+    fn a_flip_or_vec_schema_bump_must_bump_the_project_schema() {
         assert_eq!(
-            (PROJECT_SCHEMA, ph2d_flip::FLIP_SCHEMA_VERSION),
-            (9, 5),
-            "a forma do FlipDoc mudou (ou o esquema do projeto): suba o PROJECT_SCHEMA \
-             junto e atualize este par. Postcard nao avisa - ele so le errado."
+            (
+                PROJECT_SCHEMA,
+                ph2d_flip::FLIP_SCHEMA_VERSION,
+                ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
+            ),
+            (10, 5, 8),
+            "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
+             PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
         );
     }
 }

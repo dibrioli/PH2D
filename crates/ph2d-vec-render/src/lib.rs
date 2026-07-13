@@ -82,6 +82,11 @@ pub fn build_lines_bezpath(path: &VecPath) -> BezPath {
 /// `want`: `None` = todos os contornos · `Some(true)` = só os fechados · `Some(false)` = só
 /// os abertos.
 fn build_path(path: &VecPath, want: Option<bool>) -> BezPath {
+    // A geometria COZIDA: as quinas com `corner_radius` já viraram arco. O documento
+    // guarda a quina afiada + o raio; o que se PINTA é isto. (Os overlays de âncora
+    // continuam na fonte — ver `draw_overlays` — senão o usuário veria dois vértices
+    // onde autorou um.) Sem raio nenhum, isto é a própria fonte emprestada.
+    let path = &*path.cooked();
     let mut bp = BezPath::new();
     for c in 0..path.contour_count() {
         let Some((verts, closed)) = path.contour(c) else {

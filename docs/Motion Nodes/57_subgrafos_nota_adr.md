@@ -117,6 +117,40 @@ são sobre o editor.
    o duplo-clique cair numa tela vazia a uma tela de distância do card que você acabou de
    arrastar.
 
+## 6.1 O preço da fronteira derivada — e como ele se paga (FILA 1.b, 2026-07-13)
+
+A interface derivada tem um buraco, e ele é **estrutural**: os sockets do card *são* os fios
+que já cruzam. Um fio **novo** não tem onde pousar — o socket que ele quer **não existe, e não
+pode existir, até o fio existir**. Sem resposta, um grupo fechado vira um lugar onde não se
+entra sem entrar.
+
+O Blender e o Nuke não têm esse problema porque a interface deles é **declarada** (o *Group
+Input*, o *Input node*) — e pagam com uma segunda coisa pra construir e manter em sincronia.
+Nós derivamos, e pagamos **uma vez, aqui**: soltar o fio no **CORPO do card** abre um menu com
+as **portas escondidas** lá dentro; na escolha sai um `Connect` **ordinário** para a porta
+real, e **o card ganha o socket por derivação**, da aresta que agora cruza. Nada declarou
+interface — *o fio é a interface*.
+
+A lista é filtrada pelo que o fio pode de fato alimentar (domain+dim+clock): oferecer portas em
+que ele seria recusado seria uma lista de decepções. E a **assimetria dos dois lados é do
+grafo, não do desenho**:
+
+- **input** segura UMA aresta → só entra na lista se **ninguém** o alimenta (um input ocupado
+  se resolve arrastando a ponta do fio, como em qualquer lugar do editor);
+- **output** faz fan-out → entra **a menos que o card já o exponha** (aí o socket está ali, e o
+  menu estaria oferecendo uma segunda porta pro mesmo quarto).
+
+Vale nos três gestos: fio pra frente, fio **pra trás** (que num card era *no-op silencioso*) e
+**ponta arrastada** (vira `MoveWireEnd` — o fio *move*, não copia; e fica desenhado onde está
+até o artista escolher, porque ele ainda não se moveu).
+
+**Um bug de produção caiu junto:** o `draw_menu` desenhava `current_catalog()` (os 86 tipos)
+enquanto o clique resolvia contra a lista **filtrada** do smart-connect — o artista lia uma
+linha e apertava outra. O popup agora tem **UMA fonte de linhas** (`menu_rows`), lida pelo
+paint, pelo hit **e** pela geometria; `AddMenu` virou `Menu` + `MenuBody::{Library, CardPorts}`
+(o nome mentia, e dois `Option` onde cabia um enum deixavam estado ilegal representável). Gate
+estrutural lê o fonte: quem voltar a chamar o catálogo cru no paint fica vermelho.
+
 ## 7. O que ficou de FORA, deliberadamente
 
 **Subgrafo REUTILIZÁVEL** (a mesma definição instanciada em vários lugares): o *datablock* do
@@ -140,3 +174,8 @@ seja, **o contrato congelado**. Fica para um ADR, se e quando o Enio quiser.
 - **Contrato congelado: intacto.** `architecture_contract_surface` = 3 verdes (8/2/1).
 - **Zero `GraphHitKind` novo:** o breadcrumb anda no canal `Chrome { id }` (ordinais a partir de
   `CHROME_CRUMB_BASE = 100`), que o editor-core nunca interpreta.
+- **Canal novo (FILA 1.b):** `set_card_hidden_ports` / `card_hidden_ports` — as portas que cada
+  card esconde, publicadas **pelo fold** (o único código que enxerga dentro de um card), ao lado
+  do snapshot e não dentro dele, **pelo mesmo motivo que o catálogo de nós**: são linhas de um
+  MENU, não algo que o paint desenha. Um card que mostrasse suas portas escondidas como sockets
+  não estaria escondendo nada.

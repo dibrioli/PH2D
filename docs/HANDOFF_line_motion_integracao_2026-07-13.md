@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | **Branch** | `line/motion-value` |
-| **HEAD** | `76e1584c` (+ este handoff) |
+| **HEAD** | `6207bd68` (+ este handoff) |
 | **Base** | `4cd8ef13` (= `main` no início da jornada) |
-| **Commits** | 8 |
-| **O que entregou** | **FILA 1 — subgrafos** (nesting: card colapsado + duplo-clique entra + breadcrumb) |
+| **Commits** | 10 |
+| **O que entregou** | **FILA 1 — subgrafos** (nesting: card colapsado + duplo-clique entra + breadcrumb) **+ FILA 1.b** (um fio novo entra num grupo fechado) |
 | **Nota-ADR** | [`docs/Motion Nodes/57_subgrafos_nota_adr.md`](Motion%20Nodes/57_subgrafos_nota_adr.md) |
 
 > **`CLAUDE.md` §5 NÃO foi tocado de propósito** — é a maior superfície de colisão do repo, e
@@ -99,6 +99,11 @@ linha.
 | `plumbing::reconcile_after` | (inalterada) | mas os **7 call-sites** agora passam por `motion_bridge::reconcile` |
 | `GraphNodeView` | — | **+campo `kind: NodeViewKind`** (toda construção precisa dele) |
 | `GraphViewSnapshot` | — | **+campos `level` e `breadcrumb`** |
+| `state::AddMenu` | struct c/ `connect_from` | **`Menu` + `MenuBody::{Library, CardPorts}`** (renomeado — o nome mentia) |
+| `geom::add_menu_*` | 7 fns | **`geom::menu_*`** (mesmo rename) |
+| `paint_menu::draw_menu` | `(ctx, menu, canvas, theme)` | `(ctx, menu, snap, canvas, theme)` |
+| `interact_menu::{scroll,grab,drag}_menu*` | sem `snap` | **+`snap`** (a contagem de linhas vem de UMA fonte) |
+| `snapshot::menu_catalog` | usada pelo hit | **+`menu_rows`** — a fonte ÚNICA (paint E hit) |
 
 ## 7. O que só o `ship.sh` pega (conte com 2–4 iterações)
 
@@ -128,6 +133,22 @@ O Enio achou 4 coisas, e as duas primeiras eram a mesma **dívida estrutural**:
    está vendo estava errada — um nó tem **uma** posição, e quem olha pro ghost está olhando pro
    nó. Apagá-lo de lá continua **refusado, com toast**.
 
+## 7.2 FILA 1.b — o fio novo entra no grupo fechado (commit `6207bd68`)
+
+O gap que eu mesmo tinha nomeado no §9 desta folha. Fechado na mesma sessão (§0.6 — gaps
+in-scope fecham agora). **Detalhe do desenho: [doc 57 §6.1](Motion%20Nodes/57_subgrafos_nota_adr.md).**
+
+Soltar um fio no **corpo** de um card abre um menu com as **portas escondidas** lá dentro
+(as que nenhum fio alcança), filtrado pelo que esse fio pode alimentar. Na escolha sai um
+`Connect` **ordinário** pra porta real — e **o card ganha o socket por derivação**. Vale nos 3
+gestos (fio pra frente · fio pra trás · ponta arrastada → `MoveWireEnd`).
+
+**⚠️ Bug de produção corrigido junto (F2 smart-connect, pré-existente):** o `draw_menu`
+desenhava `current_catalog()` (86 tipos) enquanto o clique resolvia contra a lista **filtrada**
+— o artista lia uma linha e apertava outra, e a altura/scrollbar do popup eram de uma lista que
+ninguém via. **Se outra linha encostou no add-menu, é aqui que o merge dói** (o popup foi
+reescrito pra ter UMA fonte de linhas).
+
 ## 8. Smoke (o Enio)
 
 ```
@@ -144,6 +165,10 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
   desfaz. Selecione o card → o painel de params mostra o nome, editável.
 - **Ctrl+Z** desfaz o agrupamento (e se você estiver DENTRO do grupo quando desfizer, o editor
   te devolve pra raiz em vez de te deixar numa sala que não existe mais).
+- **Desagrupar deixa o conteúdo SELECIONADO** (smoke #2 do Enio) — a mão do artista não esvazia.
+- **Puxe um fio de um nó de fora e SOLTE EM CIMA do card** → abre "Connect Inside Group" com as
+  portas livres lá dentro; escolha uma e **o card ganha um socket novo** (ninguém declarou
+  interface — o fio *é* a interface). Funciona também puxando pra trás de um input vazio.
 
 ## 9. Fila restante (o próximo da linha escolhe)
 
@@ -157,12 +182,11 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
 
 ### Gaps conhecidos DESTA fatia (nomeados, não escondidos)
 
-- **Um fio NOVO para dentro de um grupo se autora de dentro** (os inputs de um card são os fios
-  que cruzam, então estão sempre ocupados — ADR §3). O caminho natural pra fechar: **soltar um
-  fio no corpo do card abre um menu** das portas de entrada **livres** dos membros — é o mesmo
-  maquinário do smart-connect, filtrado por compatibilidade. Seria a FILA 1.b.
 - **Um backdrop cujos nós foram agrupados fica órfão** na raiz (emoldurando nada). Ele não é
   apagado nem carregado junto — decisão consciente (um backdrop não possui nada, ele desenha em
   volta), mas dá pra questionar.
 - **Reuso/instanciação** (o datablock do Blender / Gizmo / HDA) está **fora de escopo por
   desenho** (ADR §7) — exige o contrato congelado.
+- **O menu do card não oferece input já alimentado por DENTRO** (doc 57 §6.1): trocar esse fio
+  de fora, sem ver o que ele alimenta, é armadilha — entre no grupo e arraste a ponta. É uma
+  decisão, não um esquecimento; se o Enio quiser o contrário, é uma linha no `hidden_ports`.

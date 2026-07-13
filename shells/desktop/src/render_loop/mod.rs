@@ -2910,17 +2910,17 @@ impl crate::App {
                 // `PenTool` usa (`ph2d_vec_edit::corner_handle`) — desenhar numa posição e
                 // capturar noutra faria o usuário clicar no meio da bolinha e não pegar
                 // nada, com a tela certa.
-                if overlay.corner_handles
-                    && let Some(sel) = self.vec_pen.selected()
-                {
-                    // `vec_px_to_world` já veio calculado lá em cima: chamar o método de
-                    // `&self` aqui colidiria com o `gfx` emprestado mutável (é a mesma razão
-                    // de a `view()` do conector ser função LIVRE e não método de `App`).
-                    let handles = ph2d_vec_edit::corner_handle::view(
+                if overlay.corner_handles {
+                    // A política (quem TEM alça) mora em `crate::corner_handles`, fora do
+                    // render e testável sem gfx: uma FORMA VIVA não tem — o recook dos
+                    // parâmetros dela varreria o raio em silêncio.
+                    let handles = crate::corner_handles::view(
+                        sim,
                         vec_scene,
-                        sel,
-                        &ph2d_vec_scene::xform_of(&vec_xf, sel),
-                        ph2d_vec_scene::corner_live::CORNER_HANDLE_PARK_PX * vec_px_to_world,
+                        &self.vec_entities,
+                        self.vec_pen.selected(),
+                        &vec_xf,
+                        vec_px_to_world,
                     );
                     ph2d_vec_render::draw_corner_handles(
                         &handles,

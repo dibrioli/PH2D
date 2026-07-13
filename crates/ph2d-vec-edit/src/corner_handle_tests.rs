@@ -59,7 +59,7 @@ fn pressing_the_handle_and_dragging_inward_actually_rounds_the_corner() {
     let h = handle_of(&scene, &pen, id, 0);
 
     assert_eq!(
-        pen.on_press_node(&mut scene, h, PTW, false),
+        pen.on_press_node(&mut scene, h, PTW, Some(PTW), false),
         PenClick::Grabbed,
         "a pressão SOBRE a alça tem de agarrá-la"
     );
@@ -104,7 +104,7 @@ fn dragging_the_handle_back_to_the_anchor_sharpens_the_corner_again() {
 
     let h = handle_of(&scene, &pen, id, 0);
     assert_eq!(
-        pen.on_press_node(&mut scene, h, PTW, false),
+        pen.on_press_node(&mut scene, h, PTW, Some(PTW), false),
         PenClick::Grabbed
     );
     // De volta para cima da âncora.
@@ -167,7 +167,7 @@ fn the_handle_of_a_sharp_corner_parks_away_from_the_anchor_and_the_drag_starts_f
     );
 
     assert_eq!(
-        pen.on_press_node(&mut scene, h, PTW, false),
+        pen.on_press_node(&mut scene, h, PTW, Some(PTW), false),
         PenClick::Grabbed
     );
     // Um tico para dentro a partir da posição estacionada: 0.001 world-units na bissetriz.
@@ -190,7 +190,7 @@ fn no_selection_means_no_radius_handle_to_grab() {
     pen.select(None);
     // A pressão cai no vazio (a alça fica dentro da forma, mas longe do traço): sem
     // seleção ela não é agarrável, e a quina fica afiada.
-    pen.on_press_node(&mut scene, h, PTW, false);
+    pen.on_press_node(&mut scene, h, PTW, Some(PTW), false);
     pen.on_drag(&mut scene, [3.0, 3.0], &mut nosnap);
     pen.on_release();
     assert_eq!(
@@ -214,7 +214,7 @@ fn the_handle_stays_under_the_cursor_all_the_way_through_the_drag() {
     let park = CORNER_HANDLE_PARK_PX * PTW;
     let h = handle_of(&scene, &pen, id, 0);
     assert_eq!(
-        pen.on_press_node(&mut scene, h, PTW, false),
+        pen.on_press_node(&mut scene, h, PTW, Some(PTW), false),
         PenClick::Grabbed
     );
 

@@ -2578,10 +2578,22 @@ impl App {
                             // Node edita nós e NUNCA cria (ADR-0112). Não encaixa
                             // tampouco: o snap serve a quem POSICIONA um ponto novo.
                             None if node_mode => {
+                                // A alça de raio de quina não existe numa FORMA VIVA (o
+                                // recook dos parâmetros varreria o raio — ver
+                                // `crate::corner_handles`). O render já não a desenha lá;
+                                // aqui o hit-test também não pode agarrá-la, senão o
+                                // clique pegaria um alvo que não está na tela.
+                                let corner_px = (!crate::corner_handles::is_live_shape(
+                                    &gfx.sim,
+                                    &self.vec_entities,
+                                    self.vec_pen.selected().unwrap_or_default(),
+                                ))
+                                .then_some(px_to_world);
                                 self.vec_pen.on_press_node(
                                     &mut gfx.vec_scene,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
+                                    corner_px,
                                     alt,
                                 );
                             }

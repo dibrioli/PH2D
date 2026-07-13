@@ -40,6 +40,7 @@ mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
 mod connector_handles;
 mod connector_live;
+mod corner_handles;
 mod cursor_pos;
 mod flip_autokey;
 mod flip_demo;

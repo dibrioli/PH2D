@@ -648,7 +648,7 @@ fn node_mode_never_creates_a_path_and_selects_the_shape_under_the_cursor() {
 
     // Clique no vazio: nada criado, nada selecionado.
     assert_eq!(
-        pen.on_press_node(&mut scene, [90.0, 90.0], PTW, false),
+        pen.on_press_node(&mut scene, [90.0, 90.0], PTW, Some(PTW), false),
         PenClick::Ignored
     );
     assert_eq!(scene.paths().len(), before, "não criou path");
@@ -656,7 +656,7 @@ fn node_mode_never_creates_a_path_and_selects_the_shape_under_the_cursor() {
 
     // Clique DENTRO da forma (longe de qualquer âncora): seleciona, não cria.
     assert_eq!(
-        pen.on_press_node(&mut scene, [5.0, 5.0], PTW, false),
+        pen.on_press_node(&mut scene, [5.0, 5.0], PTW, Some(PTW), false),
         PenClick::Grabbed
     );
     assert_eq!(scene.paths().len(), before, "ainda não criou path");
@@ -664,7 +664,7 @@ fn node_mode_never_creates_a_path_and_selects_the_shape_under_the_cursor() {
 
     // Clique numa âncora: agarra o vértice.
     assert_eq!(
-        pen.on_press_node(&mut scene, [10.0, 0.0], PTW, false),
+        pen.on_press_node(&mut scene, [10.0, 0.0], PTW, Some(PTW), false),
         PenClick::Grabbed
     );
     assert_eq!(pen.selected_verts(), [1]);

@@ -315,15 +315,22 @@ impl PenTool {
     ///
     /// Não há gizmo neste modo — as alças dele comeriam o clique do nó — então o
     /// clique no interior de uma forma nunca a transforma, só a seleciona.
+    /// `corner_px`: a escala de pixel QUANDO as alças de raio de quina valem para o path
+    /// selecionado — `None` as desliga. **Quem decide é a shell**, porque a resposta
+    /// depende do ECS, que esta crate não vê: uma **forma viva** não tem alça de raio (a
+    /// geometria dela é re-cozida dos parâmetros e varreria o raio), e o `PenTool` não tem
+    /// como saber disso sozinho. Sem esta porta, o hit-test agarraria uma alça que o render
+    /// não desenhou — um alvo FANTASMA, o pior tipo de alvo.
     pub fn on_press_node(
         &mut self,
         scene: &mut VecScene,
         p: [f64; 2],
         px_to_world: f64,
+        corner_px: Option<f64>,
         alt: bool,
     ) -> PenClick {
         let hit_r = 10.0 * px_to_world;
-        if let Some(g) = self.hit_test(scene, p, hit_r, Some(px_to_world)) {
+        if let Some(g) = self.hit_test(scene, p, hit_r, corner_px) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
         }

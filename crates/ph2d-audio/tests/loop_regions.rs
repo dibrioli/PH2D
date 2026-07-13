@@ -390,3 +390,55 @@ fn a_one_shot_ignores_the_region() {
         "the one-shot kept going"
     );
 }
+
+/// **Turning Loop off mid-playback plays on through the outro.** The editor's Loop toggle flips
+/// `looping` on a *sounding* voice, so the region's end stops being a turn-around and goes back to
+/// being an ordinary frame. If the voice kept treating it as the end of the lap, every frame past it
+/// would come out **held** — the outro would be a smear rather than audio.
+///
+/// The rate is fractional **on purpose**. At a 1:1 rate the cursor lands exactly on source frames,
+/// `frac` is always zero, and the interpolation's second frame is never read — so a held partner is
+/// invisible and this gate would pass with the bug in place. (It did. Mutation is how that was
+/// found, for the second time in this file.) At half rate every other output frame straddles two
+/// source frames, and a held partner is a number that is simply wrong.
+#[test]
+fn unlooping_a_region_mid_flight_plays_on_into_the_outro() {
+    // Source at half the output rate → advance = 0.5.
+    let data = stamped(12, OUT_RATE / 2);
+    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(OUT_RATE));
+    engine
+        .play_preview(
+            data.clone(),
+            params(true, Some(LoopRegion { start: 4, end: 8 })),
+        )
+        .expect("play_preview");
+
+    // Four output frames in (cursor 2.0 — inside the intro, before any wrap): turn Loop off.
+    let mut out = vec![0.0f32; 4 * 2];
+    renderer.render(&mut out, 4);
+    engine.set_preview_looping(false).expect("unloop");
+
+    let mut rest = vec![0.0f32; 30 * 2];
+    renderer.render(&mut rest, 30);
+    out.extend_from_slice(&rest);
+    let stamps = left_in_stamps(&out);
+
+    // Un-looped, the voice reads straight on to the end of the clip. Stamps are `frame + 1` and the
+    // cursor advances by 0.5, so output frame `f` must read `f/2 + 1` — right through the region's
+    // end at source frame 8 and on into the outro.
+    //
+    // A held partner shows up immediately: at f = 15 the cursor is 7.5, and holding source frame 7
+    // gives 8.0 where the truth is 8.5.
+    let expected: Vec<f32> = (8..22).map(|f| f as f32 / 2.0 + 1.0).collect();
+    assert_stamps(
+        &stamps[8..22],
+        &expected,
+        "un-looping must let the voice read on past the region end, not hold its last frame",
+    );
+
+    // And then it really does stop, at the end of the clip.
+    assert!(
+        stamps[25..30].iter().all(|&s| s.abs() < 1e-3),
+        "the voice should have ended at the clip's end"
+    );
+}

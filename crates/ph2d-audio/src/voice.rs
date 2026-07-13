@@ -166,9 +166,7 @@ impl Voice {
         self.gain = SmoothGain::immediate(params.gain);
         self.pan_gains = equal_power_pan(params.pan);
         self.looping = params.looping;
-        // A region on a one-shot names nothing. Dropping it here means every path below can ask
-        // "is there a region?" without also asking "and are we even looping?".
-        self.loop_region = params.looping.then_some(params.loop_region).flatten();
+        self.loop_region = params.loop_region;
         self.bus = params.bus;
         self.age = 0;
     }
@@ -297,7 +295,16 @@ impl Voice {
         // The region is clamped against the real length: one that runs past the end is refused, not
         // obeyed, because a voice that wrapped on audio that is not there would be worse than one
         // that ignored the ask (A8).
-        let (wrap_at, wrap_to) = match self.loop_region.and_then(|r| r.clamped(frame_count as u64))
+        //
+        // Gated on the **live** `looping`, not on the one `start` was given: the editor's Loop
+        // toggle flips it mid-playback. Turn Loop off over a region and the voice must read on
+        // through the outro to the end of the clip — if `wrap_at` stayed at the region's end, every
+        // frame past it would come out as a HELD frame instead, and the outro would be a smear.
+        let (wrap_at, wrap_to) = match self
+            .looping
+            .then_some(self.loop_region)
+            .flatten()
+            .and_then(|r| r.clamped(frame_count as u64))
         {
             Some(r) => (r.end as usize, r.start as usize),
             None => (frame_count, 0),

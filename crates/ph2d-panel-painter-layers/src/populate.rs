@@ -186,7 +186,7 @@ fn register_mask_and_selection(store: &mut WidgetStore) {
         );
     }
     store.mark_collapsible_section(ph2d_editor_core::ids::PAINTER_MASK_SECTION);
-    register_collapsible_sections(store);
+    crate::populate_sections::register_collapsible_sections(store);
     // Selection section (ADR-0103): the Feather + Automatic-threshold sliders (with linked editable chips)
     // and the mode / boolean-op / action segments + the Edit-Selection toggle (all Buttons). Registered
     // here (not in `paint_selection`) so panel-wiring-parity + the dispatch see them.
@@ -375,6 +375,24 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
             },
         );
     }
+    // Impasto section: the Enable master + section reset + the Depth-Source / Draw-To segments +
+    // Show Impasto + the four lamp chips + the lamp's Enable. Every one of them was PAINTED,
+    // hit-registered, forwarded by `event.rs` and routed by the tool — and stone dead under the
+    // mouse, because none of them was here (Enio 2026-07-12: "nem o checkbox nem se pode
+    // selecionar outra luz"). A hit rect is not enough: `dispatch_pointer` only makes a hit ACTIVE
+    // when it is focusable, and an id the store never heard of is not. `paint_checkbox_row` and
+    // `paint_segmented_group_adaptive` both take the store by `&` — they CANNOT self-register, so
+    // this is the only place the wire can be closed. Buttons, not Checkboxes: the check state lives
+    // in the TOOL (the paint mirrors `brush.impasto*`), and a Checkbox would emit `Toggled`, which
+    // `event.rs` does not forward — registered, and still dead. Gate: `tests/seam_impasto_rig.rs`.
+    for id in ph2d_editor_core::ids::PAINTER_IMPASTO_CLICKS {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
     // Mouse-over hint for the (not-yet-wired) Save As Object button.
     store.set_tooltip(
         ph2d_editor_core::ids::PAINTER_BRUSH_STROKE_SAVE_OBJECT,
@@ -409,67 +427,6 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
                 selected_index: Some(0),
             },
         );
-    }
-}
-
-/// Mark each collapsible Brush section's header (click-to-collapse) + make its colour dot a picker
-/// swatch (clicking opens the shared picker to assign the dot's colour). Randomize Color, Color Ramp
-/// and Tiling START COLLAPSED; Texture + Stroke start expanded (Enio 2026-06-24).
-fn register_collapsible_sections(store: &mut WidgetStore) {
-    use ph2d_editor_core::ids as core_ids;
-    for (section, color) in [
-        (
-            core_ids::PAINTER_SHAPE_SECTION,
-            core_ids::PAINTER_SHAPE_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
-            core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_BRUSH_TEXTURE_SECTION,
-            core_ids::PAINTER_BRUSH_TEXTURE_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
-            core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_BRUSH_STROKE_SECTION,
-            core_ids::PAINTER_BRUSH_STROKE_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_BRUSH_TILING_SECTION,
-            core_ids::PAINTER_BRUSH_TILING_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_BRUSH_SYMMETRY_SECTION,
-            core_ids::PAINTER_BRUSH_SYMMETRY_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_SHAPE_RAMP_SECTION,
-            core_ids::PAINTER_SHAPE_RAMP_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_WATERCOLOR_SECTION,
-            core_ids::PAINTER_WATERCOLOR_SECTION_COLOR,
-        ),
-        (
-            core_ids::PAINTER_WATERCOLOR_PAPER_SECTION,
-            core_ids::PAINTER_WATERCOLOR_PAPER_SECTION_COLOR,
-        ),
-    ] {
-        store.mark_collapsible_section(section);
-        store.register_picker_swatch(color);
-    }
-    for collapsed in [
-        core_ids::PAINTER_BRUSH_RANDOMIZE_SECTION,
-        core_ids::PAINTER_BRUSH_COLOR_RAMP_SECTION,
-        core_ids::PAINTER_BRUSH_TILING_SECTION,
-        core_ids::PAINTER_BRUSH_SYMMETRY_SECTION,
-        core_ids::PAINTER_SHAPE_RAMP_SECTION,
-    ] {
-        store.set_collapsed(collapsed, true);
     }
 }
 

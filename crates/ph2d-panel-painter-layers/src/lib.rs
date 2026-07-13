@@ -65,6 +65,7 @@ mod paint_watercolor_paper;
 mod populate;
 mod populate_brush_chips;
 mod populate_deform;
+mod populate_sections;
 pub mod state;
 mod state_dropdowns;
 mod state_ramp;

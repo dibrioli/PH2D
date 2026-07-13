@@ -29,4 +29,7 @@ ph2d-tokens      = { path = "../ph2d-tokens" }
 # exige a cena Vello + o shaper. Sem GPU: a cena é um buffer de comandos, e o
 # TextSystem::without_system_fonts() não varre o SO (é o que mantém o gate rápido).
 ph2d-vector      = { path = "../ph2d-vector" }
-ph2d-text        = { path = "../ph2d-text" }
+ph2d-text        = { path = "../ph2d-text" }# O harness de CLIQUE (`MockPanelHost::click_at`) dirige o `dispatch_pointer` REAL — o mesmo
+# que o shell roda. Daí o `PointerEvent` (ph2d-host) e a arena do dispatcher (bumpalo).
+ph2d-host        = { path = "../ph2d-host" }
+bumpalo          = { version = "3", features = ["collections"] }

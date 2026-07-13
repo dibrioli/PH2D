@@ -42,17 +42,24 @@
 
 use std::collections::BTreeMap;
 
+use bumpalo::Bump;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::{ActionBus, EditorAction};
 use ph2d_editor_core::grid_snap::GridSnapState;
+use ph2d_editor_core::interaction::dispatch_pointer;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHost, PanelHostInternal};
 use ph2d_editor_core::project::ProjectSettings;
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
 use ph2d_editor_core::zones::Rect;
+use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
+
+/// One second of the synthetic pointer clock — the gap [`MockPanelHost::click_at`] leaves
+/// between clicks so the dispatcher never mistakes two of them for a double-click.
+const NANOS_PER_SECOND: u128 = 1_000_000_000;
 
 /// A throwaway [`PanelHostInternal`] for tests. Holds the real widget
 /// store + action bus a panel reads/writes; the grid-snap / selection /
@@ -68,6 +75,10 @@ pub struct MockPanelHost {
     project: ProjectSettings,
     theme: Theme,
     visible: BTreeMap<String, bool>,
+    /// Monotonic clock for the synthetic pointer events ([`MockPanelHost::click_at`]). A
+    /// counter, not a wall clock: the dispatcher's double-click window is a real threshold,
+    /// so the gap between clicks has to be deterministic or the gate flakes.
+    clock_ns: u128,
 }
 
 impl MockPanelHost {
@@ -84,6 +95,7 @@ impl MockPanelHost {
             project: ProjectSettings::default(),
             theme: Theme::default(),
             visible: BTreeMap::new(),
+            clock_ns: 0,
         }
     }
 
@@ -239,6 +251,57 @@ impl MockPanelHost {
             .into_iter()
             .find(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
             .map(|(_, r)| r)
+    }
+
+    /// **Drive a REAL pointer click at `(x, y)`** — Down then Up — through the same
+    /// [`dispatch_pointer`] the shell runs, over the hit index the last [`Self::paint`] built.
+    /// Returns the `WidgetEvent`s the dispatcher emitted (feed them to `apply_panel_event`).
+    ///
+    /// ## Why this exists (the last hole in the "green-but-dead" family)
+    ///
+    /// [`Self::paint`] proves a widget REGISTERS A HIT RECT and [`Self::apply_panel_event`]
+    /// proves the panel FORWARDS an event it is handed. Neither proves a POINTER on that rect
+    /// ever becomes that event — and it does not, unless the id also carries an
+    /// `InteractiveState` in the store: `dispatch_pointer`'s Down only makes a hit `active`
+    /// when it is *focusable*, and an id absent from the store is not. So a widget can paint,
+    /// hit-register, forward and route — every gate green — and still be **stone dead under
+    /// the mouse** because `populate` never registered it. That is not a hypothetical: it is
+    /// the Impasto light rig (Enio 2026-07-12, *"nem o checkbox nem se pode selecionar outra
+    /// luz"*), and before it the hierarchy companions.
+    ///
+    /// A widget is not done when it paints. It is done when a test CLICKS it.
+    pub fn click_at(&mut self, x: f32, y: f32) -> Vec<WidgetEvent> {
+        let mut out = Vec::new();
+        for kind in [PointerKind::Down, PointerKind::Up] {
+            // Space the clicks a full second apart: inside the double-click window the
+            // dispatcher would upgrade the second Click to a DoubleClick and the assertion
+            // would fail for a reason that has nothing to do with the seam under test.
+            self.clock_ns += NANOS_PER_SECOND;
+            let arena = Bump::new();
+            let event = PointerEvent {
+                x,
+                y,
+                pressure: 1.0,
+                kind,
+                source: PointerSource::Mouse,
+                button: PointerButton::Primary,
+                timestamp_ns: self.clock_ns,
+            };
+            out.extend_from_slice(dispatch_pointer(
+                &mut self.store,
+                &self.hit_index,
+                event,
+                &arena,
+            ));
+        }
+        out
+    }
+
+    /// The id a pointer at `(x, y)` actually LANDS ON — the dispatcher's own resolution
+    /// (topmost = last registered wins). When [`Self::click_at`] emits nothing, this says
+    /// whether the widget lost the hit to something painted over it, or was never hit at all.
+    pub fn hit_at(&self, x: f32, y: f32) -> Option<NodeId> {
+        self.hit_index.hit(x, y)
     }
 }
 

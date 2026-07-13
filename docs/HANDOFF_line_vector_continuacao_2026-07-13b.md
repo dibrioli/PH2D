@@ -1,5 +1,11 @@
 # HANDOFF — `line/Vector`, continuação (2026-07-13, 2ª passagem)
 
+> ⚠ **SUPERADO** por [`HANDOFF_line_vector_continuacao_2026-07-13c.md`](HANDOFF_line_vector_continuacao_2026-07-13c.md)
+> (o Shape Builder foi consertado, commit `7aa9fc7d`). Este arquivo fica como HISTÓRICO — e
+> vale a leitura pela §3 e pela §9, que são as lições. Mas o **diagnóstico** dele está errado:
+> o suspeito nº 1 (xform stale) não era a causa, e a matemática do arranjo estava certa. As
+> causas reais estão na §3 do 13c.
+
 > Do agente que quebrou o Shape Builder, para **você**, que vai consertá-lo.
 >
 > **A linha NÃO está fechada.** O Shape Builder está commitado, compila, tem 16 gates verdes

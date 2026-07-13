@@ -502,6 +502,94 @@ aparecer.
 
 ---
 
+## Bug #12 — Um CLIQUE no Shape Builder dissolvia a arte (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+O Enio smokou, desenhou um pentágono, uma estrela e um retângulo arredondado sobrepostos,
+entrou no modo Build e reportou quatro coisas: *"undo não funciona"*, *"as silhuetas das
+formas sobrepostas somem"*, *"o véu está estranho e grande e não bate com as formas"*, *"há
+problemas no algoritmo"*. **Dezesseis gates verdes.**
+
+### O que estava acontecendo (medido no app, não deduzido)
+
+`resolve()` devolvia a sobra do gesto como `união(todas as fontes) − o que foi levado`: **uma**
+forma só, com **um** estilo só. Um clique numa face trocava as três formas por (a face) + (um
+blob de 24 vértices com a bbox da união inteira) + (uma lasca de 0,05 unidade). O pentágono
+laranja e a estrela verde **desapareciam** — e as fronteiras entre as formas, que são
+justamente o que define as faces seguintes, deixavam de existir.
+
+Ou seja: as queixas 2 e 4 do Enio eram a MESMA coisa, e não eram sobre o véu.
+
+### Correção
+
+Cada fonte sobrevive como **ela mesma menos o que foi levado**, com o estilo dela e no z dela.
+A forma que o gesto **não atravessou não é sequer tocada** — mantém id, entidade, `Transform`,
+raio de quina e params de Live Shape. É o que o Illustrator faz: o Shape Builder divide o que
+você percorre e deixa o resto em paz.
+
+### Lição
+
+**Um gate que olha o RETORNO de uma função não vê o que o artista fica.** Todos os 16 mediam
+`resolve()`; nenhum mediu a **cena depois do gesto**. O oráculo de uma ferramenta de edição é
+o documento, não o valor de retorno.
+
+---
+
+## Bug #13 — A borda do véu tinha 150 pixels (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+O "véu estranho e grande que não bate com as formas" (queixa 3).
+
+### Causa
+
+`draw_build_faces` emitia `Stroke::new(EDGE_PX)` **sob o afim mundo→tela**. O Vello escala o
+traço pelo afim: `1.5` não era 1,5 px, era **1,5 unidades de MUNDO** — no zoom default, ~150 px
+de tinta opaca por cima exatamente da arte que o artista precisa ver.
+
+Toda a crate já fazia o contrário (`draw_corner_handles`: *"o ponto sobe pelo afim, o raio
+não"*). Este era o único sítio que destoava, e era o mais novo.
+
+### Correção
+
+`edge_strokes()` — função pura que devolve **a geometria já em coordenadas de tela e a largura
+já em pixels**. O gate mede exatamente a propriedade: dar zoom não muda a largura, e muda a
+geometria. Mutei a largura para acompanhar o afim (o bug original): vermelho.
+
+### Lição
+
+**Uma constante com o sufixo `_PX` não é uma promessa — é uma intenção.** Quem verifica a
+unidade é o afim que você passa junto. Ao criar a 2ª função de desenho de uma crate, leia a 1ª:
+a convenção estava escrita, com o motivo, a 40 linhas de distância.
+
+---
+
+## Bug #14 — O realce pairava sobre nada (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+*"As silhuetas das formas sobrepostas somem — deveriam continuar visíveis no Build."*
+
+### Causa
+
+As faces do arranjo seguem as bordas das formas sobrepostas — mas **uma forma coberta por
+outra não está na tela**. O artista via um realce recortado por contornos que não
+correspondiam a nada que ele enxergasse. Nenhum bug de geometria: um bug de **desenho ausente**.
+
+### Correção
+
+As silhuetas das formas de origem são redesenhadas **por cima do véu** (traço fino, em px). É o
+que o Illustrator faz, e é literalmente o que o Enio pediu.
+
+### Lição
+
+**O realce É a feature.** A booleana já existia; o que o Shape Builder acrescenta é a
+capacidade de VER as regiões antes de escolher uma. O agente anterior escreveu o realce por
+último, sem gate — e é onde estavam duas das quatro queixas.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de
@@ -532,3 +620,17 @@ aparecer.
    O sinal é visível a olho nu na suíte: se **todos** os testes passam o mesmo valor para um
    campo (`spread: 0.0`, seis vezes), esse campo nunca foi testado. Grepar o nome do parâmetro
    nos testes é mais rápido que ler a implementação, e encontra a mesma coisa.
+
+8. **A FIXTURE é parte do gate, e é a parte que ninguém audita** (Bugs #12-#14). Dezesseis
+   gates verdes usavam quadrados eixo-alinhados, construídos à mão, na identidade — enquanto
+   o produto entrega formas do **catálogo** (curvas), **centradas no local 0**, com a pose num
+   `Transform` (ADR-0111). Mutar o código e ver vermelho **dentro de um universo de quadrados**
+   só prova coisas sobre quadrados. Duas perguntas, antes de confiar numa suíte:
+   *quantos gates usaram uma forma do catálogo?* e *quantos usaram um `Transform`?* Se a
+   resposta for zero, a suíte não fala do seu produto.
+
+9. **Instrumente o app antes de teorizar.** Os três bugs acima foram achados montando a cena
+   do print DENTRO do app (`PH2D_BUILD_SMOKE`), dirigindo o gesto no frame de verdade e
+   olhando a tela — em ~20 minutos. A hipótese principal do handoff anterior (xform stale)
+   estava **errada**, e o gate novo do arranjo nasceu **verde**. Uma tarde de leitura de
+   código não teria chegado lá.

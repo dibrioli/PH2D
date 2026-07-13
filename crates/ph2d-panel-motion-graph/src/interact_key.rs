@@ -5,9 +5,10 @@
 //! probe) or a single [`GraphIntent`] — the panel never edits the document itself.
 
 use super::{
-    AddMenu, GraphIntent, GraphKey, GraphViewSnapshot, Interaction, MotionGraphPanelState, Rect,
-    View, push_intent, subgraph_gesture,
+    GraphIntent, GraphKey, GraphViewSnapshot, Interaction, Menu, MotionGraphPanelState, Rect, View,
+    push_intent, subgraph_gesture,
 };
+use crate::state::MenuBody;
 
 pub(super) fn apply_key(
     state: &mut MotionGraphPanelState,
@@ -26,7 +27,7 @@ pub(super) fn apply_key(
             state.selected.clear();
             state.selected_backdrop = None;
             state.interaction = Interaction::Idle;
-            state.add_menu = None;
+            state.menu = None;
             state.knife_armed = false;
             state.probe_armed = false;
             // Esc also puts the probe away — it is a readout, not a commitment.
@@ -69,14 +70,14 @@ pub(super) fn apply_key(
         // `A` opens the add-node menu at the canvas center (the keyboard verb
         // carries no cursor position). Idempotent: a second `A` (menu already
         // open) falls through to the no-op arm below.
-        GraphKey::Add if state.add_menu.is_none() => {
+        GraphKey::Add if state.menu.is_none() => {
             let center = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
             let spawn = View::new(rect, state.view).graph(center.0, center.1);
-            state.add_menu = Some(AddMenu {
+            state.menu = Some(Menu {
                 scroll: 0.0,
                 screen: center,
                 spawn,
-                connect_from: None,
+                body: MenuBody::Library { connect_from: None },
             });
         }
         // Space — toggle transport play/pause (the shell owns the transport).

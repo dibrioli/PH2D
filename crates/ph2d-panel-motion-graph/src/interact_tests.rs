@@ -233,11 +233,11 @@ fn right_click_background_opens_menu_then_left_pick_adds_node() {
     let mut rc = gesture(GraphHitKind::Background, GesturePhase::Begin, 120.0, 90.0);
     rc.button = PointerButton::Secondary;
     apply_gesture(&mut st, rc, RECT, CENTER, &two_node_snapshot());
-    let menu = st.add_menu.expect("menu opened");
+    let menu = st.menu.clone().expect("menu opened");
     assert_eq!(menu.spawn, (120.0, 90.0)); // identity view → graph == screen
     // Left-click the first (only) row → AddNode at the spawn point.
-    let panel = geom::add_menu_panel(&menu, 1, RECT);
-    let row = geom::add_menu_row(panel, 0, 0.0);
+    let panel = geom::menu_panel(&menu, 1, RECT);
+    let row = geom::menu_row(panel, 0, 0.0);
     let pick = gesture(
         GraphHitKind::Background,
         GesturePhase::Click,
@@ -253,7 +253,7 @@ fn right_click_background_opens_menu_then_left_pick_adds_node() {
             y: 90.0,
         }]
     );
-    assert!(st.add_menu.is_none()); // picking closes the menu
+    assert!(st.menu.is_none()); // picking closes the menu
 }
 
 #[test]
@@ -270,10 +270,7 @@ fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
     );
     down.button = PointerButton::Secondary;
     apply_gesture(&mut st, down, RECT, CENTER, &two_node_snapshot());
-    assert!(
-        st.add_menu.is_some(),
-        "right-press opens the menu over a node"
-    );
+    assert!(st.menu.is_some(), "right-press opens the menu over a node");
     assert!(st.selected.is_empty(), "the node is not selected");
     // A right-release classified as End (the click drifted) must NOT dismiss.
     let mut up = gesture(
@@ -284,8 +281,5 @@ fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
     );
     up.button = PointerButton::Secondary;
     apply_gesture(&mut st, up, RECT, CENTER, &two_node_snapshot());
-    assert!(
-        st.add_menu.is_some(),
-        "the right-release keeps the menu open"
-    );
+    assert!(st.menu.is_some(), "the right-release keeps the menu open");
 }

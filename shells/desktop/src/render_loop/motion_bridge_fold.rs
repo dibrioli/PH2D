@@ -22,7 +22,8 @@ use ph2d_motion_doc::Holder;
 use ph2d_motion_doc::subgraph;
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_panel_motion_graph::{
-    Crumb, GraphEdgeView, GraphNodeView, GraphViewSnapshot, NodeViewKind, SUBGRAPH_VIEW_TAG,
+    Crumb, GraphEdgeView, GraphNodeView, GraphViewSnapshot, HiddenPorts, NodeViewKind, PortChoice,
+    SUBGRAPH_VIEW_TAG,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -107,6 +108,9 @@ pub(super) fn fold(motion: &MotionState, snap: &mut GraphViewSnapshot) {
     snap.level = level;
     snap.breadcrumb = breadcrumb(motion);
     if motion.doc.subgraphs.is_empty() {
+        // Republished EMPTY, not skipped: the channel is a mirror of the cards on screen,
+        // and a stale entry would let a wire drop on a card that no longer exists.
+        ph2d_panel_motion_graph::set_card_hidden_ports(BTreeMap::new());
         return;
     }
     let (subs, members) = (&motion.doc.subgraphs, &motion.doc.members);
@@ -171,6 +175,20 @@ pub(super) fn fold(motion: &MotionState, snap: &mut GraphViewSnapshot) {
 
     // ── Nodes: the direct members, the ghosts, and one card per child group ───
     let full: Vec<GraphNodeView> = std::mem::take(&mut snap.nodes);
+    // What each card is HIDING — the rows of the menu a wire dropped on its body opens
+    // (doc 57 §5). Derived from the same `full` views the panel would have drawn and the
+    // same raw edges, before either is folded away.
+    ph2d_panel_motion_graph::set_card_hidden_ports(
+        cards
+            .iter()
+            .map(|sid| {
+                (
+                    view_id(*sid),
+                    hidden_ports(motion, *sid, &ports[sid], &full, &snap.edges),
+                )
+            })
+            .collect(),
+    );
     let mut nodes: Vec<GraphNodeView> = full
         .iter()
         .filter_map(|n| match holder(n.id) {
@@ -203,6 +221,56 @@ pub(super) fn fold(motion: &MotionState, snap: &mut GraphViewSnapshot) {
     {
         p.node = view_id(sid);
     }
+}
+
+/// **What a card is hiding** (doc 57 §5) — every port inside the group that has no socket
+/// on the card, and could therefore never be reached from outside without going in.
+///
+/// The two sides are not symmetric, and the asymmetry is the graph's own:
+///
+/// - an **input** holds at most one edge, so it is offerable only when NOTHING feeds it. A
+///   `pre` (the editor's own state-loop plumbing) does not count as fed — it is not a wire
+///   the artist drew, and `apply_connect` clears the managed one anyway; the panel's own
+///   `wire_into` skips it for exactly the same reason.
+/// - an **output** fans out freely, so it is offerable unless the card ALREADY exposes it —
+///   in which case the socket is right there and the menu would be offering a second door
+///   into the same room.
+fn hidden_ports(
+    motion: &MotionState,
+    sid: u32,
+    exposed: &CardPorts,
+    full: &[GraphNodeView],
+    raw: &[GraphEdgeView],
+) -> HiddenPorts {
+    let mut out = HiddenPorts::default();
+    for n in subgraph::member_nodes_deep(&motion.doc.subgraphs, &motion.doc.members, sid) {
+        let Some(v) = full.iter().find(|v| v.id == n.0) else {
+            continue;
+        };
+        let choice = |port: u16, pv: &ph2d_panel_motion_graph::PortView| PortChoice {
+            node: n.0,
+            port,
+            label: format!("{}: {}", v.display_name, pv.name),
+            category: v.category,
+            port_type: pv.clone(),
+        };
+        for (i, pv) in v.inputs.iter().enumerate() {
+            let port = i as u16;
+            let fed = raw
+                .iter()
+                .any(|e| e.to_node == n.0 && e.to_port == port && !e.delayed);
+            if !fed {
+                out.inputs.push(choice(port, pv));
+            }
+        }
+        for (i, pv) in v.outputs.iter().enumerate() {
+            let port = i as u16;
+            if !exposed.outputs.contains(&(n, port)) {
+                out.outputs.push(choice(port, pv));
+            }
+        }
+    }
+    out
 }
 
 /// One collapsed card: its derived sockets, and what its contents are DOING —

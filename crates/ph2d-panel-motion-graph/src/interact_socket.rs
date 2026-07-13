@@ -118,6 +118,23 @@ pub(super) fn apply_socket_in(
                 } => {
                     let new_to = target_socket(snap, &view, from_node, from_port, g.x, g.y)
                         .map(|(n, p, _)| (n, p));
+                    // Dropped on a collapsed CARD's body: which port inside does the end
+                    // move to (doc 57 §5)? Nothing is pushed until the artist says — and
+                    // the wire stays drawn where it is, because it has not moved yet.
+                    if new_to.is_none()
+                        && let Some(menu) = super::subgraph_gesture::card_port_menu(
+                            snap,
+                            &view,
+                            (from_node, from_port),
+                            true,
+                            Some((old_to_node, old_to_port)),
+                            g.x,
+                            g.y,
+                        )
+                    {
+                        state.menu = Some(menu);
+                        return;
+                    }
                     // KEEP HIDING the old wire until the shell answers. The shell applies
                     // intents at the top of the NEXT frame, so this frame would otherwise
                     // paint the wire back onto the socket it was just torn off — a snap-back
@@ -153,6 +170,19 @@ pub(super) fn apply_socket_in(
                             to_node,
                             to_port,
                         });
+                    } else if let Some(menu) = super::subgraph_gesture::card_port_menu(
+                        snap,
+                        &view,
+                        (to_node, to_port),
+                        false,
+                        None,
+                        g.x,
+                        g.y,
+                    ) {
+                        // Dropped on a collapsed CARD: which of the group's outputs feeds
+                        // this input? The backwards gesture had no answer for a card either
+                        // — it was a silent no-op, the very thing it exists to prevent.
+                        state.menu = Some(menu);
                     }
                 }
                 _ => {}

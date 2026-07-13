@@ -225,6 +225,162 @@ fn the_group_chip_groups_or_ungroups_depending_on_what_is_selected() {
     assert_eq!(drain_intents(), vec![GraphIntent::Ungroup { id: 3 }]);
 }
 
+// ── Wiring INTO a closed group (doc 57 §5) ──────────────────────────────────
+
+/// The two hidden ports of card 3 — one input (node 7) and one output (node 8), both of
+/// the type `two_node_snapshot`'s wires speak, plus one of a type they do NOT.
+fn publish_hidden() {
+    use crate::snapshot::{HiddenPorts, PortChoice, set_card_hidden_ports};
+    use ph2d_nodegraph::port::{Clock, Dim, Domain};
+    let choice = |node, port, label: &str, domain| PortChoice {
+        node,
+        port,
+        label: label.into(),
+        category: ph2d_node_registry::NodeUiCategory::Utility,
+        port_type: crate::snapshot::PortView {
+            name: "p",
+            domain,
+            dim: Dim::Scalar,
+            clock: Clock::Frame,
+        },
+    };
+    set_card_hidden_ports(
+        [(
+            crate::snapshot::SUBGRAPH_VIEW_TAG | 3,
+            HiddenPorts {
+                inputs: vec![
+                    choice(7, 1, "Lifetime: Age", Domain::Instances),
+                    // Same port name, WRONG type: the drop must not offer it.
+                    choice(9, 0, "Colour: RGB", Domain::Field),
+                ],
+                outputs: vec![choice(8, 0, "Ramp: Out", Domain::Instances)],
+            },
+        )]
+        .into_iter()
+        .collect(),
+    );
+}
+
+/// **A wire dropped on a closed card asks which port inside it lands on** — and then lands
+/// on the REAL port, not on the card.
+///
+/// This is the hole the fold leaves and has to pay for: a card's sockets ARE the wires that
+/// cross it, so a *new* wire has no socket to aim at. Without this the artist has to enter
+/// the group to wire anything into it, which makes a closed group a place you cannot reach.
+#[test]
+fn a_wire_dropped_on_a_card_offers_the_ports_hidden_inside_it() {
+    publish_hidden();
+    let snap = card_snapshot(); // node 1 (out) at x=0; card 3 at x=200
+    let mut st = MotionGraphPanelState::default();
+
+    // Drag out of node 1's output and drop it on the CARD'S BODY (not a socket).
+    let out = GraphHitKind::SocketOut { node: 1, port: 0 };
+    for (phase, x, y) in [
+        (GesturePhase::Begin, 10.0, 37.0),
+        (GesturePhase::Update, 210.0, 20.0),
+        (GesturePhase::End, 210.0, 20.0),
+    ] {
+        apply_gesture(&mut st, gesture(out, phase, x, y), RECT, CENTER, &snap);
+    }
+    assert!(
+        drain_intents().is_empty(),
+        "nothing is decided until the artist names the port"
+    );
+    let menu = st
+        .menu
+        .clone()
+        .expect("the drop opened the card's port menu");
+    let crate::state::MenuBody::CardPorts { rows, .. } = &menu.body else {
+        panic!("the popup must be the card's ports, not the node library");
+    };
+    assert_eq!(
+        rows.iter().map(|p| p.node).collect::<Vec<_>>(),
+        vec![7],
+        "only the port this wire can actually feed - a list of ports it would be refused \
+         on is a list of disappointments"
+    );
+
+    // Pick the row → an ordinary Connect to the real node inside. The card grows the socket
+    // by derivation, from the edge that now crosses it (the shell's gate proves that half).
+    let panel = crate::geom::menu_panel(&menu, rows.len(), RECT);
+    let row = crate::geom::menu_row(panel, 0, 0.0);
+    apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::Background,
+            GesturePhase::Click,
+            row.x + 2.0,
+            row.y + 2.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::Connect {
+            from_node: 1,
+            from_port: 0,
+            to_node: 7,
+            to_port: 1,
+        }],
+        "the wire lands on the REAL port inside the group, not on the card"
+    );
+    assert!(st.menu.is_none(), "picking closes the popup");
+}
+
+/// The same drop, drawn BACKWARDS out of an empty input: the card answers with its hidden
+/// OUTPUTS. (This gesture used to be a silent no-op on a card — the artist drags a wire
+/// looking for a source, drops it on the group that has one, and gets nothing.)
+#[test]
+fn a_backwards_wire_dropped_on_a_card_offers_the_outputs_hidden_inside_it() {
+    publish_hidden();
+    let mut snap = card_snapshot();
+    // Node 1 needs an INPUT to drag backwards out of; give it one, of the wires' type.
+    snap.nodes[0].inputs = vec![super::tests::port(ph2d_nodegraph::port::Domain::Instances)];
+    let mut st = MotionGraphPanelState::default();
+
+    let inp = GraphHitKind::SocketIn { node: 1, port: 0 };
+    for (phase, x, y) in [
+        (GesturePhase::Begin, 2.0, 37.0),
+        (GesturePhase::Update, 210.0, 20.0),
+        (GesturePhase::End, 210.0, 20.0),
+    ] {
+        apply_gesture(&mut st, gesture(inp, phase, x, y), RECT, CENTER, &snap);
+    }
+    let menu = st.menu.clone().expect("the backwards drop opened the menu");
+    let crate::state::MenuBody::CardPorts { rows, forward, .. } = &menu.body else {
+        panic!("the popup must be the card's ports");
+    };
+    assert!(!forward, "the wire is hunting for a SOURCE");
+    assert_eq!(rows.iter().map(|p| p.node).collect::<Vec<_>>(), vec![8]);
+
+    let panel = crate::geom::menu_panel(&menu, rows.len(), RECT);
+    let row = crate::geom::menu_row(panel, 0, 0.0);
+    apply_gesture(
+        &mut st,
+        gesture(
+            GraphHitKind::Background,
+            GesturePhase::Click,
+            row.x + 2.0,
+            row.y + 2.0,
+        ),
+        RECT,
+        CENTER,
+        &snap,
+    );
+    assert_eq!(
+        drain_intents(),
+        vec![GraphIntent::Connect {
+            from_node: 8,
+            from_port: 0,
+            to_node: 1,
+            to_port: 0,
+        }],
+        "the group's hidden output feeds the input that went looking for it"
+    );
+}
+
 /// **A ghost is never rubber-banded.** It lives on another level, and a band that swept
 /// one up would let a Delete reach across the boundary into a canvas the artist is not
 /// even looking at.

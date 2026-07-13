@@ -7,10 +7,12 @@
 //! same gestures (drag, select, delete): they are both cards on a canvas, and the
 //! shell decodes the id.
 
+use crate::geom::{self, View};
 use crate::snapshot::{
-    GraphIntent, GraphViewSnapshot, NodeViewKind, is_subgraph_view, push_intent,
+    GraphIntent, GraphViewSnapshot, NodeViewKind, PortView, card_hidden_ports, is_subgraph_view,
+    push_intent, same_type,
 };
-use crate::state::{Interaction, MotionGraphPanelState};
+use crate::state::{Interaction, Menu, MenuBody, MotionGraphPanelState};
 
 /// **Ctrl+G** — collapse the selection into a subgraph. Nothing selected, nothing to
 /// collapse: the key is inert rather than creating an empty group nobody asked for.
@@ -110,6 +112,71 @@ pub(super) fn enter(
     // The selection is dropped by the SHELL on the level change (it is the side that
     // knows whether the level actually changed), so nothing is cleared here.
     true
+}
+
+/// **A wire dropped on a collapsed card's BODY** (doc 57 §5) — the popup that asks which
+/// port inside the group it lands on. `None` when the drop was not on a card, or the group
+/// holds nothing this wire could legally reach (the caller then falls back to whatever a
+/// drop on empty canvas does — smart-connect, or nothing).
+///
+/// **Why a menu, and not a socket.** The card's sockets ARE the wires that already cross
+/// it. A *new* wire therefore has nowhere to land: the socket it wants cannot exist until
+/// the wire does. Blender and Nuke dodge this by making the group's interface DECLARED (a
+/// Group Input node, an Input node) — a second thing to build and keep in sync. We derive
+/// it instead, and pay for that here, once: the drop asks the one question the editor
+/// cannot answer for itself, and the socket appears on the pick, derived from the edge.
+///
+/// The list is filtered to what the wire can actually feed (domain + dim + clock — the same
+/// local rule the drag's compatibility ghost uses). Offering ports it would only be refused
+/// on would make the menu a list of disappointments.
+pub(super) fn card_port_menu(
+    snap: &GraphViewSnapshot,
+    view: &View,
+    other: (u32, u16),
+    forward: bool,
+    detach: Option<(u32, u16)>,
+    x: f32,
+    y: f32,
+) -> Option<Menu> {
+    let card = snap
+        .nodes
+        .iter()
+        .find(|n| n.kind == NodeViewKind::Subgraph && geom::card_rect(n, view).contains(x, y))?;
+    let held = port_view(snap, other, !forward)?;
+    let hidden = card_hidden_ports(card.id);
+    // Forward: the wire comes OUT of `other` and needs an input inside. Backwards: it needs
+    // an output inside to feed `other`.
+    let side = if forward {
+        hidden.inputs
+    } else {
+        hidden.outputs
+    };
+    let rows: Vec<_> = side
+        .into_iter()
+        .filter(|p| same_type(&p.port_type, &held))
+        .collect();
+    if rows.is_empty() {
+        return None;
+    }
+    Some(Menu {
+        scroll: 0.0,
+        screen: (x, y),
+        spawn: view.graph(x, y),
+        body: MenuBody::CardPorts {
+            rows,
+            other,
+            forward,
+            detach,
+        },
+    })
+}
+
+/// The type of the port already in hand — an output when the wire was drawn forwards, an
+/// input when it was drawn backwards.
+fn port_view(snap: &GraphViewSnapshot, (node, port): (u32, u16), input: bool) -> Option<PortView> {
+    let n = snap.nodes.iter().find(|n| n.id == node)?;
+    let ports = if input { &n.inputs } else { &n.outputs };
+    ports.get(port as usize).cloned()
 }
 
 /// **A breadcrumb crumb was clicked** — walk to that level (`None` = the root).

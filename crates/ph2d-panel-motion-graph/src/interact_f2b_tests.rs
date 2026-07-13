@@ -226,17 +226,33 @@ fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
     ] {
         apply_gesture(&mut st, gesture(out, phase, x, y), RECT, CENTER, &snap);
     }
-    let menu = st.add_menu.expect("the drop opened the smart-connect menu");
-    assert_eq!(menu.connect_from, Some((1, 0)), "it remembers the wire");
+    let menu = st
+        .menu
+        .clone()
+        .expect("the drop opened the smart-connect menu");
+    assert_eq!(
+        menu.body,
+        crate::state::MenuBody::Library {
+            connect_from: Some((1, 0))
+        },
+        "it remembers the wire"
+    );
 
-    // Only the compatible type is listed.
-    let rows = crate::snapshot::menu_catalog(&snap, menu.connect_from);
+    // Only the compatible type is listed — and the DRAWN rows say the same thing, because
+    // they are the same list (they were not, once: the paint enumerated all 86 types while
+    // the click resolved against this filtered one).
+    let rows = crate::snapshot::menu_catalog(&snap, Some((1, 0)));
     assert_eq!(rows.len(), 1, "the incompatible type is not offered");
     assert_eq!(rows[0].type_name, "motion.takes");
+    assert_eq!(
+        crate::snapshot::menu_rows(&snap, &menu).len(),
+        1,
+        "and the popup DRAWS one row - paint and hit enumerate one list"
+    );
 
     // Picking it adds AND wires, in one intent.
-    let panel = geom::add_menu_panel(&menu, rows.len(), RECT);
-    let row = geom::add_menu_row(panel, 0, 0.0);
+    let panel = geom::menu_panel(&menu, rows.len(), RECT);
+    let row = geom::menu_row(panel, 0, 0.0);
     apply_gesture(
         &mut st,
         gesture(

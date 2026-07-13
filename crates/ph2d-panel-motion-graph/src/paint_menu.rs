@@ -6,8 +6,8 @@ use super::{
     MENU_ROW_SIZE, MENU_ROW_TEXT_INSET_R, MENU_ROW_TEXT_X, MENU_ROW_TEXT_Y, cat_token,
 };
 use crate::geom;
-use crate::snapshot::current_catalog;
-use crate::state::AddMenu;
+use crate::snapshot::{GraphViewSnapshot, menu_rows};
+use crate::state::{Menu, MenuBody};
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_text_title, rect_to_vello, resolve, stroke_rounded_rect,
 };
@@ -15,12 +15,26 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 
-/// The add-node popup: a `Bg2` panel with a header + one row per catalog entry,
-/// each a category-tinted dot + the English display name. Hit-tested in
-/// `interact` against `Background` gestures via `geom::add_menu_row`.
-pub(super) fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, theme: Theme) {
-    let catalog = current_catalog();
-    let panel = geom::add_menu_panel(menu, catalog.len(), canvas);
+/// The popup: a `Bg2` panel with a header, and one row per entry — a category-tinted dot
+/// beside an English label. Hit-tested in `interact` against `Background` gestures via
+/// `geom::menu_row`, **against the same [`menu_rows`] this draws** — the paint and the
+/// click must enumerate one list, or a row means one thing on screen and another under the
+/// cursor.
+pub(super) fn draw_menu(
+    ctx: &mut PaintCtx,
+    menu: &Menu,
+    snap: &GraphViewSnapshot,
+    canvas: Rect,
+    theme: Theme,
+) {
+    let rows = menu_rows(snap, menu);
+    // The header names the question being asked. "Add Node" for the library; for a wire
+    // dropped on a collapsed card, the question is which port INSIDE it the wire lands on.
+    let header = match menu.body {
+        MenuBody::Library { .. } => "Add Node",
+        MenuBody::CardPorts { .. } => "Connect Inside Group",
+    };
+    let panel = geom::menu_panel(menu, rows.len(), canvas);
     fill_rounded_rect(
         ctx.scene,
         panel,
@@ -37,7 +51,7 @@ pub(super) fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, th
     paint_text_title(
         ctx.text_system,
         ctx.scene,
-        "Add Node",
+        header,
         panel.x + geom::MENU_PAD + MENU_HEADER_PAD_X,
         panel.y + MENU_HEADER_PAD_Y,
         MENU_HEADER_SIZE,
@@ -46,11 +60,11 @@ pub(super) fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, th
     );
     // The list SCROLLS inside the panel (86 node types do not fit on a screen). It is clipped to
     // its own band, so a row scrolled half-way out is drawn half — and hit-tested half, against
-    // the same rect (`geom::add_menu_list`), because the row you can see is the row you can click.
-    let list = geom::add_menu_list(panel);
+    // the same rect (`geom::menu_list`), because the row you can see is the row you can click.
+    let list = geom::menu_list(panel);
     ctx.scene.push_clip(&rect_to_vello(list));
-    for (i, c) in catalog.iter().enumerate() {
-        let row = geom::add_menu_row(panel, i, menu.scroll);
+    for (i, c) in rows.iter().enumerate() {
+        let row = geom::menu_row(panel, i, menu.scroll);
         // Rows entirely outside the band are not drawn at all: with 86 of them, most of the menu
         // is off-list at any moment, and Vello charges per draw object (doc 53).
         if row.y + row.h < list.y || row.y > list.y + list.h {
@@ -66,7 +80,7 @@ pub(super) fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, th
         paint_text_title(
             ctx.text_system,
             ctx.scene,
-            c.display,
+            c.label,
             row.x + MENU_ROW_TEXT_X,
             row.y + MENU_ROW_TEXT_Y,
             MENU_ROW_SIZE,
@@ -79,8 +93,8 @@ pub(super) fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, th
     // The scrollbar, and only when the list can actually scroll: a scrollbar on a list that fits
     // is a control that lies about there being more.
     if let (Some(track), Some(thumb)) = (
-        geom::add_menu_track(panel, catalog.len()),
-        geom::add_menu_thumb(panel, catalog.len(), menu.scroll),
+        geom::menu_track(panel, rows.len()),
+        geom::menu_thumb(panel, rows.len(), menu.scroll),
     ) {
         fill_rounded_rect(
             ctx.scene,

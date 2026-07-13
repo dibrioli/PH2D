@@ -22,7 +22,7 @@
 
 #[path = "paint_menu.rs"]
 mod paint_menu;
-use paint_menu::draw_add_menu;
+use paint_menu::draw_menu;
 #[path = "paint_breadcrumb.rs"]
 mod paint_breadcrumb;
 #[path = "paint_stamp.rs"]
@@ -248,8 +248,8 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
             resolve(ColorToken::Accent, theme),
         );
     }
-    if let Some(menu) = state.add_menu {
-        draw_add_menu(ctx, &menu, rect, theme);
+    if let Some(menu) = &state.menu {
+        draw_menu(ctx, menu, &snap, rect, theme);
     }
     ctx.scene.pop_layer();
 
@@ -276,7 +276,7 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // makes every click resolve as Background — so a menu row drawn over a card /
     // socket still reaches the menu, and a click off the menu dismisses it
     // (`interact::apply_background`).
-    if state.add_menu.is_some() {
+    if state.menu.is_some() {
         hits.push((bg_hit_id(), GraphHitKind::Background, rect));
     }
 

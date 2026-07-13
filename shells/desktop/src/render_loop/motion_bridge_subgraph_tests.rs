@@ -52,7 +52,7 @@ fn cook(motion: &mut MotionState, ticks: u64) -> Vec<u8> {
 /// A `MotionState` with the boot document's group already dissolved — the same graph,
 /// flat. Every test that wants to group something starts from here, so that "before"
 /// and "after" differ by exactly the grouping.
-fn flat() -> MotionState {
+pub(super) fn flat() -> MotionState {
     let mut m = MotionState::new();
     m.doc.subgraphs.clear();
     m.doc.members.clear();
@@ -561,45 +561,4 @@ fn moving_a_card_carries_everything_inside_it() {
             y: before1.y - 10.0
         }
     );
-}
-
-/// Wiring into a CARD's socket reaches the real port inside it — the derivation that
-/// drew the socket and the one that resolves it are the same function, or the socket
-/// would mean a different port than the one it drew.
-#[test]
-fn wiring_a_card_socket_reaches_the_real_port_inside() {
-    let mut m = flat();
-    // Grid -> Clone, with the clone alone in a group: the group's one input slot is
-    // the clone's port 0, and re-wiring it must land on the CLONE.
-    let grid = m.doc.graph.add_node("motion.grid");
-    let clone = m.doc.graph.add_node("motion.clone");
-    let grid2 = m.doc.graph.add_node("motion.grid");
-    m.doc
-        .graph
-        .connect(ph2d_nodegraph::graph::Edge {
-            from: (grid, 0),
-            to: (clone, 0),
-            delayed: false,
-        })
-        .unwrap();
-    super::subgraph::group(&mut m, vec![clone.0]);
-    let sid = m.doc.subgraphs[0].id;
-
-    // The crossing wire occupies the card's only input slot, so a fresh Connect into
-    // it is REFUSED (an occupied input is occupied, card or not — the artist grabs the
-    // wire's end to move it, which is the same gesture as anywhere else in the editor).
-    // What must be true is that it refuses the RIGHT port: the clone's, not the card's.
-    let (node, port) =
-        super::subgraph::resolve_port(&m, super::subgraph::view_id(sid), 0, true).unwrap();
-    assert_eq!((node, port), (clone, 0));
-
-    // Moving the wire's end onto the card's slot from the other grid: same target.
-    push_intent(GraphIntent::MoveWireEnd {
-        from_node: grid2.0,
-        from_port: 0,
-        old_to_node: grid.0,
-        old_to_port: 0,
-        new_to: Some((super::subgraph::view_id(sid), 0)),
-    });
-    let _ = drain_intents(); // (this one is asserted through `resolve_port` above)
 }

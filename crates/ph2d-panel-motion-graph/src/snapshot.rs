@@ -8,11 +8,13 @@
 //! `ph2d_panel_vector::set_current_vector_style`). The panel returns edits the
 //! other way as `GraphIntent`s (M1.E10 phase 2; not yet wired).
 
+use crate::state::{Menu, MenuBody};
 use ph2d_node_registry::{NodeRegistry, NodeSilhouette, NodeUiCategory};
 use ph2d_nodegraph::graph::Graph;
 use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_nodegraph::port::{Clock, Dim, Domain};
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 
 #[path = "snapshot_intent.rs"]
 mod intent;
@@ -28,6 +30,39 @@ pub struct PortView {
     pub domain: Domain,
     pub dim: Dim,
     pub clock: Clock,
+}
+
+/// **A port INSIDE a collapsed group that the card does not expose** (doc 57 §5) — one
+/// row of the menu a wire dropped on a card's body opens.
+///
+/// It names a REAL node and a REAL port (untagged ids): the fold is a view, the graph is
+/// flat, so the connection the artist picks is an ordinary edge and everything downstream
+/// — the connect authority, the plumbing, the undo — goes on speaking about real nodes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PortChoice {
+    pub node: u32,
+    pub port: u16,
+    /// `"<node display name>: <port name>"` — the node has to be named, because a group
+    /// holds many and "Value" alone would not say whose.
+    pub label: String,
+    /// The MEMBER's category, so the row's dot reads like the card it lives on.
+    pub category: NodeUiCategory,
+    /// The port's type — how the drop filters the list to what this wire can actually feed.
+    pub port_type: PortView,
+}
+
+/// The ports a card keeps out of sight: everything inside the group that no wire crosses
+/// to. Published per card by the shell's fold (it is the only one that can see inside).
+///
+/// **The two sides are not symmetric, and the asymmetry is the graph's own:** an input
+/// holds at most ONE edge, so an input that is already fed cannot take this wire (it is
+/// hidden AND unavailable — you would have to go in and move the wire). An output fans
+/// out freely, so every member output is offerable **unless the card already exposes it**,
+/// in which case the artist should drop on the socket that is right there.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct HiddenPorts {
+    pub inputs: Vec<PortChoice>,
+    pub outputs: Vec<PortChoice>,
 }
 
 /// **What a card in the view actually IS** (doc 57). The panel paints and hits all
@@ -239,6 +274,27 @@ thread_local! {
     static SELECTION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
     static BACKDROP_SELECTION: RefCell<Option<u32>> = const { RefCell::new(None) };
     static SELECTION_REQUEST: RefCell<Option<Vec<u32>>> = const { RefCell::new(None) };
+    static CARD_PORTS: RefCell<BTreeMap<u32, HiddenPorts>> = const { RefCell::new(BTreeMap::new()) };
+}
+
+/// Publish what each collapsed card is HIDING, keyed by its view id (shell fold → panel,
+/// doc 57 §5). Rebuilt every frame by the fold, which is the only code that can see
+/// through a card.
+///
+/// It rides beside the snapshot rather than inside it for the same reason the node
+/// catalog does: these are the rows of a MENU, not something the paint draws. A card
+/// that showed its hidden ports as sockets would not be hiding them.
+pub fn set_card_hidden_ports(cards: BTreeMap<u32, HiddenPorts>) {
+    CARD_PORTS.with(|c| *c.borrow_mut() = cards);
+}
+
+/// What card `view` is hiding — empty for anything that is not a collapsed card.
+///
+/// **Public so the shell's seam gate can read back what its fold published.** Deriving the
+/// hidden ports perfectly and never publishing them would compile, pass every unit test on
+/// the shell side, and hand the artist an empty menu.
+pub fn card_hidden_ports(view: u32) -> HiddenPorts {
+    CARD_PORTS.with(|c| c.borrow().get(&view).cloned().unwrap_or_default())
 }
 
 /// Publish the current node selection (panel `paint` → shell bridge, M1.P1). The
@@ -303,12 +359,51 @@ pub(crate) fn current_catalog() -> Vec<NodeChoice> {
     CATALOG.with(|c| c.borrow().clone())
 }
 
-/// The rows the add-menu shows. Plain `A` / R-click → the whole catalog. Opened by
-/// a wire dropped in empty space (**smart-connect**) → only the node types with an
-/// input that wire can feed (domain + dim + clock, the same local rule the drag's
-/// compatibility ghost uses; the shell still has the last word on cycles and the
-/// membrane). Filtering — rather than listing all 71 and refusing 60 of them after
-/// the click — is the whole point: the menu answers "what can I plug in here?".
+/// **One row of the popup** — a label, a tinted dot, and (for the library) the node type
+/// a pick would create.
+///
+/// The popup has ONE row source, and `paint`, the hit-test and the panel's GEOMETRY all
+/// read it. They used to disagree: the paint drew `current_catalog()` (all 86 types) while
+/// the click resolved against the *filtered* smart-connect list, so on a wire-drop the
+/// artist clicked "Attractor" and got whichever type sat at that index in a list they were
+/// never shown. Two derivations of the same list is the bug; one is the fix.
+pub(crate) struct MenuRow<'a> {
+    pub label: &'a str,
+    pub category: NodeUiCategory,
+}
+
+/// The rows the popup shows.
+///
+/// **Library:** plain `A` / R-click → the whole catalog. Opened by a wire dropped in empty
+/// space (**smart-connect**) → only the node types with an input that wire can feed (the
+/// domain/dim/clock rule the drag's compatibility ghost already uses; the shell still has
+/// the last word on cycles and the membrane). Filtering — rather than listing all 86 and
+/// refusing 60 of them after the click — is the whole point: the menu answers *"what can I
+/// plug in here?"*.
+///
+/// **CardPorts:** the rows were already chosen and filtered at drop time (they name ports
+/// the panel cannot see from here); it just reads them back.
+pub(crate) fn menu_rows<'a>(snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<MenuRow<'a>> {
+    match &menu.body {
+        MenuBody::CardPorts { rows, .. } => rows
+            .iter()
+            .map(|p| MenuRow {
+                label: &p.label,
+                category: p.category,
+            })
+            .collect(),
+        MenuBody::Library { connect_from } => menu_catalog(snap, *connect_from)
+            .iter()
+            .map(|c| MenuRow {
+                label: c.display,
+                category: c.category,
+            })
+            .collect(),
+    }
+}
+
+/// The library entries a pick could create — the same filter [`menu_rows`] shows, so row
+/// `i` here IS row `i` there.
 pub(crate) fn menu_catalog(snap: &GraphViewSnapshot, from: Option<(u32, u16)>) -> Vec<NodeChoice> {
     let all = current_catalog();
     let Some((from_node, from_port)) = from else {
@@ -325,6 +420,12 @@ pub(crate) fn menu_catalog(snap: &GraphViewSnapshot, from: Option<(u32, u16)>) -
     all.into_iter()
         .filter(|c| c.inputs.iter().any(|i| accepts(&i.ty, out)))
         .collect()
+}
+
+/// Whether two ports could be wired together — the panel-side rule (domain + dim + clock,
+/// `connects_directly` minus the membrane; the shell still has the last word).
+pub(crate) fn same_type(a: &PortView, b: &PortView) -> bool {
+    a.domain == b.domain && a.dim == b.dim && a.clock == b.clock
 }
 
 /// Whether an input port could take the dragged output (the panel-side rule:

@@ -76,6 +76,9 @@ mod intents;
 use intents::apply_graph_intents;
 
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_subgraph_ports_tests.rs"]
+mod subgraph_ports_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_subgraph_tests.rs"]
 mod subgraph_tests;
 

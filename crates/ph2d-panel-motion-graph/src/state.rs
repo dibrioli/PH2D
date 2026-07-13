@@ -2,6 +2,7 @@
 //! in-progress drag. Non-undoable (only doc mutations, via `GraphIntent`, are).
 //! Owned by the typed panel registry; passed `&mut` into `paint`.
 
+use crate::snapshot::PortChoice;
 use std::collections::BTreeSet;
 
 /// graph-space → screen affine: `screen = panel_origin + pan + graph * zoom`.
@@ -112,9 +113,10 @@ pub(crate) enum Interaction {
     MenuScroll { grab: f32 },
 }
 
-/// An open add-node popup (E7). Ephemeral — never undoable.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) struct AddMenu {
+/// An open popup (E7). Ephemeral — never undoable. The frame (panel, scrollbar,
+/// rows) is one widget; WHAT it lists and what a pick MEANS is [`MenuBody`].
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Menu {
     /// How far the list is scrolled, in px. The library has 86 node types and a popup is not
     /// allowed to run off the screen (Enio), so the panel is capped and the list scrolls inside it.
     pub scroll: f32,
@@ -124,12 +126,53 @@ pub(crate) struct AddMenu {
     /// Graph-space point the chosen node lands at (the R-click point mapped
     /// through the view — stable under a later pan/zoom while the menu is open).
     pub spawn: (f32, f32),
-    /// **Smart-connect** (F2): the output socket a wire was dragged FROM and
-    /// dropped on empty canvas. When set, the popup lists only the node types with
-    /// an input this wire can feed, and picking one both creates it AND wires it —
-    /// the gesture already said what it wanted, so making the artist draw the wire
-    /// a second time would be asking twice.
-    pub connect_from: Option<(u32, u16)>,
+    pub body: MenuBody,
+}
+
+/// What the popup is a list OF.
+///
+/// An enum rather than two optional fields: the two bodies are alternatives, and a
+/// struct that can hold both can hold neither meaningfully — the popup would have to
+/// guess which question it was asking.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum MenuBody {
+    /// **The node library.** Plain `A` / R-click lists all 86 types.
+    ///
+    /// `connect_from` is **smart-connect** (F2): the output socket a wire was dragged
+    /// FROM and dropped on empty canvas. When set, the popup lists only the node types
+    /// with an input this wire can feed, and picking one both creates it AND wires it —
+    /// the gesture already said what it wanted, so making the artist draw the wire a
+    /// second time would be asking twice.
+    Library { connect_from: Option<(u32, u16)> },
+    /// **The ports hidden inside a collapsed card** (doc 57 §5) — a wire was dropped on
+    /// a card's BODY, and the card exposes no socket for it.
+    ///
+    /// A card's sockets ARE the wires that already cross its boundary (derived, never
+    /// declared), so a *new* wire into a group has nowhere to land: the socket it wants
+    /// does not exist yet, and cannot, until the wire exists. Something has to name the
+    /// port inside — and only the artist knows which of the group's free ports they
+    /// meant. So the drop asks. On the pick, the wire connects to the REAL port inside,
+    /// and the card grows the socket **by derivation**, from the edge that now crosses it.
+    ///
+    /// `rows` is captured at DROP time, not re-derived per frame: the list must not shift
+    /// under a cursor that is already travelling toward a row.
+    CardPorts {
+        rows: Vec<PortChoice>,
+        /// The end already in hand — the outside node's port the wire was drawn from
+        /// (`forward`) or hunting for (`!forward`).
+        other: (u32, u16),
+        /// The wire was drawn FORWARD, out of an output: it needs an INPUT inside, and
+        /// the connection reads `other -> row`. Backwards, it reads `row -> other`.
+        forward: bool,
+        /// The input this wire's end was pulled OFF, when the gesture was a wire being
+        /// MOVED rather than drawn (doc 45). The pick then moves it — one undo step,
+        /// unplug and re-plug — instead of making a second copy of the same wire.
+        ///
+        /// Until the artist picks, the wire is still drawn where it was: it has not moved,
+        /// and a wire drawn nowhere while a menu is open would be a wire the editor
+        /// dropped on the floor.
+        detach: Option<(u32, u16)>,
+    },
 }
 
 /// Retained panel state.
@@ -147,7 +190,7 @@ pub struct MotionGraphPanelState {
     pub(crate) interaction: Interaction,
     /// Open add-node popup, or `None`. Opened by R-click on empty canvas / `A`;
     /// closed by picking a row, clicking away, or Esc.
-    pub(crate) add_menu: Option<AddMenu>,
+    pub(crate) menu: Option<Menu>,
     /// `P` armed the probe: the NEXT click on a node picks it as the probe target.
     /// Disarmed by the pick, by Esc, or by a second `P` — same three exits as the
     /// knife (a mode you cannot leave is a trap).

@@ -17,7 +17,8 @@
 
 use crate::geom::{self, View};
 use crate::snapshot::{GraphIntent, GraphViewSnapshot, push_intent};
-use crate::state::{AddMenu, Interaction, MotionGraphPanelState};
+use crate::state::MenuBody;
+use crate::state::{Interaction, Menu, MotionGraphPanelState};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{
     GesturePhase, GraphGesture, GraphHitKind, GraphKey, GraphZoom,
@@ -34,7 +35,7 @@ mod socket;
 
 #[path = "interact_menu.rs"]
 mod menu;
-use menu::{drag_menu_thumb, grab_menu_thumb, resolve_add_menu, scroll_menu};
+use menu::{drag_menu_thumb, grab_menu_thumb, resolve_menu, scroll_menu};
 
 #[path = "interact_subgraph.rs"]
 mod subgraph_gesture;
@@ -67,7 +68,7 @@ pub(crate) fn process(
 
     // The wheel over an OPEN add-menu scrolls its list; only otherwise does it zoom the canvas.
     if let Some(z) = ctx.host.store_mut().take_graph_zoom(panel)
-        && !scroll_menu(state, rect, &z)
+        && !scroll_menu(state, rect, snap, &z)
     {
         apply_zoom(state, rect, z);
     }
@@ -128,11 +129,11 @@ fn apply_gesture(
     if g.button == PointerButton::Secondary {
         if g.phase == GesturePhase::Begin {
             let spawn = View::new(rect, state.view).graph(g.x, g.y);
-            state.add_menu = Some(AddMenu {
+            state.menu = Some(Menu {
                 scroll: 0.0,
                 screen: (g.x, g.y),
                 spawn,
-                connect_from: None,
+                body: MenuBody::Library { connect_from: None },
             });
             state.interaction = Interaction::Idle;
         }
@@ -261,9 +262,9 @@ fn apply_background(
         GesturePhase::Begin => {
             // The scrollbar takes the press before anything else: reaching for it must not shut
             // the very menu you are trying to scroll (doc 54).
-            if let Some(grab) = grab_menu_thumb(state, rect, g.x, g.y) {
+            if let Some(grab) = grab_menu_thumb(state, rect, snap, g.x, g.y) {
                 state.interaction = Interaction::MenuScroll { grab };
-            } else if state.add_menu.is_some() {
+            } else if state.menu.is_some() {
                 // A press anywhere else while the menu is open consumes it (no band); the release
                 // resolves the menu. Otherwise start a rubber band — the LEFT button selects
                 // (panning is the middle button's job).
@@ -283,7 +284,7 @@ fn apply_background(
         }
         GesturePhase::Update => {
             if let Interaction::MenuScroll { grab } = state.interaction {
-                drag_menu_thumb(state, rect, g.y, grab);
+                drag_menu_thumb(state, rect, snap, g.y, grab);
             } else if let Interaction::BoxSelect { cur, .. } | Interaction::Knife { cur, .. } =
                 &mut state.interaction
             {
@@ -294,10 +295,10 @@ fn apply_background(
             // A tap on the scrollbar scrolled; it chose nothing, and it must not close the menu.
             if matches!(state.interaction, Interaction::MenuScroll { .. }) {
                 state.interaction = Interaction::Idle;
-            } else if let Some(menu) = state.add_menu.take() {
+            } else if let Some(menu) = state.menu.take() {
                 // A primary click while the menu is open closes it; a click on a
                 // row also adds that node at the menu's spawn point.
-                resolve_add_menu(&menu, rect, snap, g.x, g.y);
+                resolve_menu(&menu, rect, snap, g.x, g.y);
             } else {
                 // A plain tap on empty canvas clears the selection — including a
                 // selected backdrop (the tap goes THROUGH its click-through body).
@@ -314,7 +315,7 @@ fn apply_background(
             }
             // A left-drag over empty canvas dismisses an open menu; otherwise it was
             // a rubber band (select) or a knife stroke (cut) — resolve whichever.
-            if state.add_menu.take().is_none() {
+            if state.menu.take().is_none() {
                 let view = View::new(rect, state.view);
                 match state.interaction {
                     Interaction::BoxSelect {
@@ -454,17 +455,34 @@ fn apply_socket_out(
             } = std::mem::take(&mut state.interaction)
             {
                 let Some((to_node, to_port, _compat)) = target else {
+                    // Dropped on a collapsed CARD's body: the group has ports this wire
+                    // could feed, but no socket for them yet (doc 57 §5). Ask which one.
+                    let view = View::new(rect, state.view);
+                    if let Some(menu) = subgraph_gesture::card_port_menu(
+                        snap,
+                        &view,
+                        (from_node, from_port),
+                        true,
+                        None,
+                        g.x,
+                        g.y,
+                    ) {
+                        state.menu = Some(menu);
+                        return;
+                    }
                     // **Smart-connect**: dropped on empty canvas. The gesture already
                     // said what it wanted — a consumer for THIS wire — so open the
                     // add-menu filtered to the node types that can take it, and wire
                     // it on the pick. (Dropping in space used to be a silent no-op:
                     // the artist drew a wire and got nothing back.)
-                    let spawn = View::new(rect, state.view).graph(g.x, g.y);
-                    state.add_menu = Some(AddMenu {
+                    let spawn = view.graph(g.x, g.y);
+                    state.menu = Some(Menu {
                         scroll: 0.0,
                         screen: (g.x, g.y),
                         spawn,
-                        connect_from: Some((from_node, from_port)),
+                        body: MenuBody::Library {
+                            connect_from: Some((from_node, from_port)),
+                        },
                     });
                     return;
                 };

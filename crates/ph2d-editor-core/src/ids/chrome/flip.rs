@@ -22,6 +22,15 @@ pub const FLIP_MODE_DRAW: NodeId = hash_node_id("flip.mode.draw");
 pub const FLIP_MODE_ERASE: NodeId = hash_node_id("flip.mode.erase");
 /// Fill: one click floods the region bounded by the line-art (W4).
 pub const FLIP_MODE_FILL: NodeId = hash_node_id("flip.mode.fill");
+/// Shape row (Draw mode): does the stroke carry its OWN fill?
+///
+/// This is the Grease Pencil material with `show_stroke` + `show_fill` on the SAME
+/// curve (that is how the Suzanne artwork is made): the fill is the triangulation of
+/// the stroke's own points, so line and colour are ONE geometry — sculpt the line and
+/// the colour follows, exactly, in the same frame.
+pub const FLIP_SHAPE_LINE: NodeId = hash_node_id("flip.shape.line");
+pub const FLIP_SHAPE_FILLED: NodeId = hash_node_id("flip.shape.filled");
+
 /// Reshape: sculpts the strokes already drawn (W5 — see the Reshape section).
 pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
 

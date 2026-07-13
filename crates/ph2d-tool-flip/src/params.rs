@@ -179,6 +179,14 @@ pub struct FlipStyleSnapshot {
     pub fill_color: [u8; 4],
     /// Modo do balde.
     pub fill_mode: FillMode,
+    /// **O traço nasce PREENCHIDO** (só relevante em [`FlipMode::Draw`]) — o material
+    /// `stroke + fill` do Grease Pencil, que é como o Suzanne é desenhado.
+    ///
+    /// Quando ligado, o traço carrega o próprio preenchimento: o fill é a triangulação
+    /// dos **pontos dele**, então linha e cor são UMA geometria — esculpir a linha move
+    /// a cor exatamente junto, no mesmo frame, sem re-preencher nada. (O balde continua
+    /// existindo para colorir regiões delimitadas por VÁRIOS traços.)
+    pub draw_filled: bool,
     /// O pincel de escultura ativo (só relevante em [`FlipMode::Reshape`]).
     ///
     /// O Reshape **não tem raio nem força próprios**: usa o `width_px` (Size) e a
@@ -210,6 +218,7 @@ impl Default for FlipStyleSnapshot {
             erase: EraseMode::Soft,
             fill_color: [230, 190, 120, 255],
             fill_mode: FillMode::Paint,
+            draw_filled: false,
             reshape: ReshapeKind::Smooth,
             gap_px: 0.0,
             grow: 0.0,

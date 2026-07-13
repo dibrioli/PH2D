@@ -183,37 +183,61 @@ pub fn influence(p: &ReshapeParams, s: &InputSample, point: Vec2) -> f32 {
 pub struct Session {
     /// Os traços que este gesto pode tocar (índices no desenho), congelados no down.
     mask: Vec<usize>,
-    /// **Grab**: `(traço, ponto, peso)` congelados no down, com `pressure = 1.0` (o
-    /// GP fixa a pressão aqui — `sculpt_grab.cc:188`). O conjunto agarrado nunca é
+    /// **Grab**: `(traço, anel, ponto, peso)` congelados no down, com `pressure = 1.0`
+    /// (o GP fixa a pressão aqui — `sculpt_grab.cc:188`). O conjunto agarrado nunca é
     /// reavaliado: é o que faz o Grab *carregar* um trecho em vez de recrutar pontos
-    /// novos a cada milímetro.
-    grab: Vec<(usize, usize, f32)>,
+    /// novos a cada milímetro. O `anel` é `None` para o contorno e `Some(k)` para o
+    /// k-ésimo buraco de uma região.
+    grab: Vec<(usize, Option<usize>, usize, f32)>,
     /// Contador de amostras — a semente do Randomize é **re-semeada por amostra**
     /// (parado, o pincel faz um passeio browniano; é assim no GP).
     sample_no: u64,
 }
 
-/// Um traço que a escultura não toca: uma REGIÃO (preenchimento ou fechamento de
-/// gap). O contorno dela não é rasterizado — esculpi-la moveria uma borda que o
-/// usuário não vê e destruiria os buracos. (Mesmo critério da borracha de ponto:
-/// `flip_erase::is_region`.)
+/// Uma **REGIÃO**: um preenchimento (com seus buracos) ou um fechamento de gap. O
+/// contorno dela não é line-art.
+///
+/// **A escultura MOVE as regiões** — e isso não é um detalhe, é a diferença entre "a
+/// cor acompanha a linha" e "a cor fica para trás" (smoke do Enio 2026-07-13, com o
+/// Suzanne do Blender ao lado). No Grease Pencil o sculpt edita **todas** as curvas
+/// (`retrieve_editable_strokes`: a única exclusão é material travado), e o
+/// preenchimento é a triangulação dos pontos da própria curva — então mexer nos pontos
+/// re-tria o fill no mesmo frame. É por isso que lá "line e fill parecem um só".
+///
+/// O que NÃO se esculpe numa região são os atributos: o `width` do contorno de um fill
+/// é a **dilatação da cor por baixo da linha** (BUGS #15), não a espessura de um traço
+/// — engrossá-lo com o Thicken empurraria a cor para fora do desenho. Idem a opacidade.
+/// (A borracha continua não mordendo regiões: lá o critério é outro — ela remove tinta,
+/// e uma região não tem nenhuma.)
 fn is_region(s: &FlipStroke) -> bool {
     s.hide_stroke
+}
+
+/// O pincel mexe em ATRIBUTOS (largura, opacidade) em vez de posição?
+fn edits_attributes(kind: ReshapeKind) -> bool {
+    matches!(kind, ReshapeKind::Thickness | ReshapeKind::Strength)
 }
 
 impl Session {
     /// Pen-down: congela a máscara (e, no Grab, os pesos).
     ///
-    /// **A máscara de hoje** é "os traços de LINHA do desenho ativo" (regiões fora).
+    /// **A máscara é "tudo o que tem geometria no desenho ativo"** — line-art E regiões
+    /// (é o que o GP faz: `retrieve_editable_strokes` só exclui material travado). Um
+    /// pincel que movesse a linha e deixasse a cor para trás não seria uma ferramenta de
+    /// escultura; seria uma ferramenta de quebrar o desenho.
+    ///
     /// O auto-masking mais fino do GP (por traço sob o cursor, por material, pela
-    /// seleção) depende de um modelo de SELEÇÃO, que é o Edit Mode — o pacote
-    /// seguinte. O que importa já vale: o conjunto é resolvido UMA vez, no down.
+    /// seleção) depende de um modelo de SELEÇÃO, que é o Edit Mode — o pacote seguinte.
+    /// O que importa já vale: o conjunto é resolvido UMA vez, no down.
     #[must_use]
     pub fn begin(strokes: &[FlipStroke], p: &ReshapeParams, s: &InputSample) -> Self {
         let mask: Vec<usize> = strokes
             .iter()
             .enumerate()
-            .filter(|(_, st)| !is_region(st) && st.len() >= 2)
+            .filter(|(_, st)| st.len() >= 2)
+            // Os pincéis de ATRIBUTO (largura/opacidade) não tocam regiões: ali o
+            // `width` é a dilatação da cor, não a espessura de uma linha.
+            .filter(|(_, st)| !(edits_attributes(p.kind) && is_region(st)))
             .map(|(i, _)| i)
             .collect();
         let mut grab = Vec::new();
@@ -227,10 +251,21 @@ impl Session {
             };
             for &si in &mask {
                 let st = &strokes[si];
+                // `ring = None` é o contorno; `Some(k)` é o k-ésimo buraco (o "O" tem
+                // um — e se o buraco não fosse agarrado junto, ele ficaria para trás e a
+                // rosquinha viraria uma mancha).
                 for (pi, &pos) in st.positions().iter().enumerate() {
                     let w = influence(p, &frozen, pos);
                     if w > 0.0 {
-                        grab.push((si, pi, w));
+                        grab.push((si, None, pi, w));
+                    }
+                }
+                for (k, hole) in st.holes.iter().enumerate() {
+                    for (pi, &pos) in hole.iter().enumerate() {
+                        let w = influence(p, &frozen, pos);
+                        if w > 0.0 {
+                            grab.push((si, Some(k), pi, w));
+                        }
                     }
                 }
             }
@@ -253,20 +288,25 @@ impl Session {
         if p.kind == ReshapeKind::Grab {
             return brushes::grab(strokes, &self.grab, s.delta);
         }
+        let n = self.sample_no;
         let mut changed = false;
         for &si in &self.mask {
             let Some(st) = strokes.get_mut(si) else {
                 continue;
             };
             changed |= match p.kind {
-                ReshapeKind::Smooth => brushes::smooth(st, p, s),
-                ReshapeKind::Push => brushes::push(st, p, s),
-                ReshapeKind::Pinch => brushes::pinch(st, p, s),
-                ReshapeKind::Twist => brushes::twist(st, p, s),
                 ReshapeKind::Thickness => brushes::thickness(st, p, s),
                 ReshapeKind::Strength => brushes::strength(st, p, s),
-                ReshapeKind::Randomize => brushes::randomize(st, p, s, self.sample_no),
-                ReshapeKind::Grab => unreachable!("o Grab sai antes do laço"),
+                // Os pincéis de POSIÇÃO valem para o contorno **e para os buracos**: um
+                // buraco que ficasse para trás abriria a rosquinha.
+                _ => {
+                    let closed = st.closed;
+                    let mut hit = brushes::position(st.positions_mut(), p, s, closed, n);
+                    for hole in &mut st.holes {
+                        hit |= brushes::position(hole, p, s, true, n);
+                    }
+                    hit
+                }
             };
         }
         changed

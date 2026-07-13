@@ -54,6 +54,8 @@ pub struct FlipTool {
     gap_px: f64,
     grow: f64,
     precision: f64,
+    /// O traço nasce preenchido (material stroke+fill do GP) — ver o snapshot.
+    draw_filled: bool,
     // ── O Reshape (W5). Sem raio/força próprios: usa o Size + o Strength do
     //    pincel (ver `FlipStyleSnapshot::reshape`).
     reshape: ReshapeKind,
@@ -78,6 +80,7 @@ impl Default for FlipTool {
             // qualquer espessura e zoom — o Grow é só o ajuste estilístico.
             grow: 0.0,
             precision: DEFAULT_PRECISION,
+            draw_filled: false,
             reshape: ReshapeKind::Smooth,
         }
     }
@@ -123,6 +126,11 @@ impl FlipTool {
     #[must_use]
     pub fn erase_mode(&self) -> EraseMode {
         self.erase
+    }
+    /// O traço nasce preenchido? (só relevante em `FlipMode::Draw`.)
+    #[must_use]
+    pub fn draw_filled(&self) -> bool {
+        self.draw_filled
     }
     /// Pincel de escultura atual (só relevante em `FlipMode::Reshape`).
     #[must_use]
@@ -172,6 +180,7 @@ impl FlipTool {
             erase: self.erase,
             fill_color: self.fill_color,
             fill_mode: self.fill_mode,
+            draw_filled: self.draw_filled,
             reshape: self.reshape,
             gap_px: self.gap_px,
             grow: self.grow,
@@ -227,6 +236,9 @@ impl Tool for FlipTool {
             PanelEvent::Click(id) if id == ids::FLIP_MODE_ERASE => self.mode = FlipMode::Erase,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_FILL => self.mode = FlipMode::Fill,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_RESHAPE => self.mode = FlipMode::Reshape,
+            // Shape (modo Draw): o traço carrega o próprio preenchimento?
+            PanelEvent::Click(id) if id == ids::FLIP_SHAPE_LINE => self.draw_filled = false,
+            PanelEvent::Click(id) if id == ids::FLIP_SHAPE_FILLED => self.draw_filled = true,
             // Os oito pincéis de escultura (W5). A tabela `FLIP_RESHAPE_KIND_IDS` está
             // na MESMA ordem que `ReshapeKind::ALL` — o zip é o decodificador, e o
             // seam test dirige os oito ids para provar que as duas listas não derivam.

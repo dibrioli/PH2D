@@ -116,27 +116,103 @@ fn the_mask_is_frozen_at_pen_down() {
     );
 }
 
-/// **Uma REGIÃO não se esculpe.** O contorno de um preenchimento não é rasterizado:
-/// mexer nele moveria uma borda invisível e destruiria os buracos. (Mesmo critério da
-/// borracha de ponto — `flip_erase::is_region`.)
+/// **A ESCULTURA MOVE A COR JUNTO COM A LINHA** (smoke do Enio 2026-07-13, com o
+/// Suzanne do Blender ao lado: *"o fill é atualizado em tempo real como se line e fill
+/// fossem um só"*).
+///
+/// No Grease Pencil o sculpt edita **todas** as curvas (`retrieve_editable_strokes` só
+/// exclui material travado) e o preenchimento é a **triangulação dos pontos da própria
+/// curva** — mover os pontos re-tria o fill no mesmo frame. Um pincel que movesse a
+/// linha e deixasse a cor para trás não seria escultura: seria uma ferramenta de
+/// quebrar o desenho.
+///
+/// Mutação que sangra: volte a pular as regiões na máscara (`!is_region`) e a cor fica
+/// exatamente onde estava.
 #[test]
-fn a_filled_region_is_never_sculpted() {
+fn sculpting_carries_the_filled_region_along_with_the_line() {
     let mut fill = line(5);
     fill.hide_stroke = true;
     fill.fill = Some(ph2d_flip::Fill {
         color: Rgba::WHITE,
         opacity: 1.0,
     });
-    let mut strokes = vec![fill];
-    let before = strokes[0].positions().to_vec();
+    let mut strokes = vec![fill, line(5)]; // a região + a linha
     let p = params(ReshapeKind::Push, 10.0);
     let changed = stroke_once(
         &mut strokes,
         &p,
         &sample(Vec2::new(2.0, 0.0), Vec2::new(0.0, 5.0)),
     );
-    assert!(!changed, "a regiao nao pode ser esculpida");
-    assert_eq!(strokes[0].positions(), &before[..]);
+    assert!(changed);
+    assert!(
+        strokes[0].positions()[2].y > 1.0,
+        "a REGIAO ficou para tras: a cor descola da linha"
+    );
+    assert!(
+        strokes[1].positions()[2].y > 1.0,
+        "e a linha tem de ter andado tambem"
+    );
+}
+
+/// **E o BURACO vai junto** — senão a rosquinha se abre.
+///
+/// Os buracos vivem fora do SoA (`FlipStroke.holes`), e é exatamente por isso que eles
+/// são fáceis de esquecer: nenhum laço sobre `positions_mut()` os alcança. Um "O" cujo
+/// contorno anda e cujo furo fica parado vira uma mancha sólida deslocada.
+#[test]
+fn sculpting_carries_the_holes_of_a_region_too() {
+    for kind in [ReshapeKind::Push, ReshapeKind::Grab] {
+        let mut region = line(5);
+        region.hide_stroke = true;
+        region.fill = Some(ph2d_flip::Fill {
+            color: Rgba::WHITE,
+            opacity: 1.0,
+        });
+        region.holes = vec![vec![
+            Vec2::new(1.0, 0.0),
+            Vec2::new(3.0, 0.0),
+            Vec2::new(3.0, 1.0),
+            Vec2::new(1.0, 1.0),
+        ]];
+        let mut strokes = vec![region];
+        let p = params(kind, 10.0);
+        let s = sample(Vec2::new(2.0, 0.0), Vec2::new(0.0, 4.0));
+        let mut sess = Session::begin(&strokes, &p, &s);
+        sess.apply(&mut strokes, &p, &s);
+        let hole = &strokes[0].holes[0];
+        assert!(
+            hole.iter().all(|h| h.y > 0.5),
+            "{kind:?}: o BURACO ficou para tras (a rosquinha se abriu): {hole:?}"
+        );
+    }
+}
+
+/// **Mas os pincéis de ATRIBUTO não tocam a região.** O `width` do contorno de um fill
+/// não é a espessura de uma linha: é a **dilatação da cor por baixo do line-art**
+/// (BUGS #15). Engrossá-lo com o Thicken empurraria a cor para FORA do desenho — um
+/// pincel de espessura que produz vazamento de cor.
+#[test]
+fn the_attribute_brushes_do_not_touch_a_region() {
+    for kind in [ReshapeKind::Thickness, ReshapeKind::Strength] {
+        let mut region = line(5);
+        region.hide_stroke = true;
+        region.fill = Some(ph2d_flip::Fill {
+            color: Rgba::WHITE,
+            opacity: 1.0,
+        });
+        let widths = region.widths().to_vec();
+        let ops = region.opacities().to_vec();
+        let mut strokes = vec![region];
+        let p = params(kind, 10.0);
+        let changed = stroke_once(&mut strokes, &p, &sample(Vec2::new(2.0, 0.0), Vec2::ZERO));
+        assert!(!changed, "{kind:?}: mexeu na regiao");
+        assert_eq!(
+            strokes[0].widths(),
+            &widths[..],
+            "{kind:?}: mudou a dilatacao"
+        );
+        assert_eq!(strokes[0].opacities(), &ops[..]);
+    }
 }
 
 /// **Determinismo (HR-5):** a mesma sequência de amostras dá o mesmo resultado, bit a

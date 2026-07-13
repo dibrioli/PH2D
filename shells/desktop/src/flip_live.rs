@@ -69,6 +69,11 @@ fn same_stroke_style(a: &FlipStyleSnapshot, b: &FlipStyleSnapshot) -> bool {
         && a.hardness.to_bits() == b.hardness.to_bits()
         && a.opacity.to_bits() == b.opacity.to_bits()
         && a.smoothing.to_bits() == b.smoothing.to_bits()
+        // O traço PREENCHIDO (W5.1) e a cor que ele carrega são atributos do traço:
+        // ligar o Filled tem de preencher o traço que acabou de sair da mão, não só o
+        // próximo (é o que o alvo vivo existe para fazer).
+        && a.draw_filled == b.draw_filled
+        && (!a.draw_filled || a.fill_color == b.fill_color)
 }
 
 /// Os atributos que decidem a forma de um PREENCHIMENTO.

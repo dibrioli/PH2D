@@ -85,6 +85,9 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_MODE_DRAW);
     button(store, ids::FLIP_MODE_ERASE);
     button(store, ids::FLIP_MODE_RESHAPE);
+    // Shape (Draw): o traço carrega o próprio preenchimento?
+    button(store, ids::FLIP_SHAPE_LINE);
+    button(store, ids::FLIP_SHAPE_FILLED);
 
     // Brush sliders — seeded at the tool defaults.
     slider_chip(

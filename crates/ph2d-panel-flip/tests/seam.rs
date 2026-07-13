@@ -418,3 +418,58 @@ fn the_eight_sculpt_brushes_are_painted_in_reshape_mode() {
         "os oito nao sairam em DUAS fileiras de quatro: {ys:?}"
     );
 }
+
+/// **O traço preenchido (W5.1) chega à tool** — e a linha Shape só existe no Draw.
+///
+/// É o material `stroke + fill` do Grease Pencil (como o Suzanne é desenhado): o fill é
+/// a triangulação dos pontos do PRÓPRIO traço, então linha e cor são uma geometria só.
+#[test]
+fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
+    // (a) o seam: o clique chega e a tool muda.
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState;
+    let mut tool = FlipTool::default();
+    assert!(!tool.draw_filled(), "o default e a linha simples");
+
+    let outcome =
+        host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_SHAPE_FILLED));
+    assert_eq!(outcome, EventOutcome::Consumed, "o clique foi IGNORADO");
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+        }
+    }
+    assert!(tool.draw_filled(), "o Filled nao chegou na tool");
+
+    host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_SHAPE_LINE));
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+        }
+    }
+    assert!(!tool.draw_filled(), "o Line nao desligou o preenchimento");
+
+    // (b) a PINTURA: a linha Shape existe no Draw e em nenhum outro modo.
+    for (mode, want) in [
+        (FlipMode::Draw, true),
+        (FlipMode::Erase, false),
+        (FlipMode::Fill, false),
+        (FlipMode::Reshape, false),
+        (FlipMode::Select, false),
+    ] {
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut st = FlipPanelState;
+        ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+            mode,
+            ..Default::default()
+        }));
+        let painted = host.paint::<FlipPanel>(&mut st, viewport());
+        let shown = painted
+            .iter()
+            .any(|(w, r)| *w == ids::FLIP_SHAPE_FILLED && r.w > 0.0);
+        assert_eq!(
+            shown, want,
+            "modo {mode:?}: a linha Shape deveria aparecer? {want}"
+        );
+    }
+}

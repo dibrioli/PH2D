@@ -91,6 +91,8 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_MODE_ERASE
                 || id == ids::FLIP_MODE_FILL
                 || id == ids::FLIP_MODE_RESHAPE
+                || id == ids::FLIP_SHAPE_LINE
+                || id == ids::FLIP_SHAPE_FILLED
                 || id == ids::FLIP_ERASE_SOFT
                 || id == ids::FLIP_ERASE_HARD
                 || id == ids::FLIP_ERASE_STROKE

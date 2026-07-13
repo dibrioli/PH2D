@@ -116,6 +116,7 @@ pub(crate) fn paint(_state: &mut FlipPanelState, ctx: &mut PaintCtx) {
             font,
         };
         y = b.mode_row(&snap, y);
+        y = b.shape_row(&snap, y);
         y = b.brush(&snap, y);
         y = b.color(&snap, y);
         y = b.erase_row(&snap, y);

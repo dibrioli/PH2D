@@ -118,6 +118,40 @@ oráculo, não o produto.
 
 ---
 
+## §3.1 — A COR ANDA COM A LINHA (o que o Suzanne ensinou)
+
+O smoke trouxe o Suzanne do Blender ao lado do nosso: *"o fill é atualizado em tempo real
+como se line e fill fossem um só"*. Fui ao fonte, e o mecanismo é mais simples do que
+"material pronto":
+
+> **No Grease Pencil, o preenchimento é a TRIANGULAÇÃO DOS PONTOS DA PRÓPRIA CURVA**
+> (`blenkernel/grease_pencil.cc:477`). Não existe geometria de fill separada: mover os
+> pontos invalida o cache e o fill re-tria **no mesmo frame**.
+
+E o sculpt de lá edita **todas** as curvas (`retrieve_editable_strokes`: só material
+travado escapa) — inclusive as de preenchimento. Daí os dois comportamentos que faltavam:
+
+**1. A escultura move as REGIÕES** (e os buracos delas). Um pincel que movesse a linha e
+deixasse a cor para trás não seria escultura — seria uma ferramenta de quebrar o desenho.
+Os buracos vivem fora do SoA (`FlipStroke.holes`), então nenhum laço sobre `positions_mut()`
+os alcança: é exatamente o tipo de coisa que se esquece, e um "O" com o furo parado vira
+uma mancha. Há gate para os dois.
+
+*O que NÃO se esculpe numa região são os ATRIBUTOS:* o `width` do contorno de um fill é a
+**dilatação da cor por baixo da linha** (BUGS #15), não a espessura de um traço —
+engrossá-lo com o Thicken empurraria a cor para fora do desenho.
+
+**2. O traço nasce PREENCHIDO** (`Shape: Line | Filled`, no modo Draw) — o material
+`stroke + fill` do GP, que é como o Suzanne é desenhado. O traço carrega o próprio
+preenchimento (o fill é a triangulação dos **pontos dele**), então **linha e cor são UMA
+geometria**: esculpir a linha move a cor exatamente junto, no mesmo frame, sem nada a
+re-preencher e sem nada para ficar para trás.
+
+O balde continua existindo — e continua sendo a ferramenta certa para colorir uma região
+delimitada por **vários** traços (o caso em que não há "uma curva" para carregar a cor).
+
+---
+
 ## §4 — O que o Reshape herda do módulo (e não pode reinventar)
 
 - **Autokey `Modify`** (a regra da W3, `05 §4`): esculpir é MODIFICAR o que está na

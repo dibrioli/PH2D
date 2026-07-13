@@ -160,6 +160,26 @@ impl BodyCtx<'_> {
         )
     }
 
+    /// **Shape row** (Draw mode, W5.1) — does the stroke carry its OWN fill?
+    ///
+    /// This is the Grease Pencil material with stroke + fill on the SAME curve (how the
+    /// Suzanne artwork is made): the fill is the triangulation of the stroke's own
+    /// points, so **line and colour are ONE geometry** — sculpt the line and the colour
+    /// follows exactly, in the same frame, with nothing to re-fill.
+    pub(crate) fn shape_row(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
+        if snap.mode != FlipMode::Draw {
+            return y;
+        }
+        self.segmented(
+            "Shape",
+            [
+                (ids::FLIP_SHAPE_LINE, "Line", !snap.draw_filled),
+                (ids::FLIP_SHAPE_FILLED, "Filled", snap.draw_filled),
+            ],
+            y,
+        )
+    }
+
     /// **Reshape section** (W5) — only in Reshape mode: the eight sculpt brushes, in
     /// two rows of four under one caption.
     ///
@@ -310,6 +330,32 @@ impl BodyCtx<'_> {
             return y;
         }
         y = self.section_label("Color", y);
+        // Com o traço PREENCHIDO, a cor do preenchimento que ele carrega também é
+        // atributo do desenho — e ela é a do balde (a mesma paleta de colorir).
+        if snap.draw_filled {
+            let swatch_w = SwatchSize::Md.px();
+            paint_text(
+                self.text_system,
+                self.scene,
+                "Fill",
+                self.inner_x,
+                y + (self.row_h - self.font) * 0.5,
+                self.font,
+                LABEL_COL_W,
+                resolve(ColorToken::Text1, self.theme),
+            );
+            let rect = Rect::new(
+                self.inner_x + self.inner_w - swatch_w,
+                y,
+                swatch_w,
+                self.row_h,
+            );
+            let sw = ColorSwatch::new(ids::FLIP_FILL_SWATCH, "Fill color", snap.fill_color)
+                .size(SwatchSize::Md);
+            paint_color_swatch(&sw, rect, self.scene, self.theme);
+            self.hit_index.register(ids::FLIP_FILL_SWATCH, rect);
+            y += self.row_h + self.row_gap;
+        }
         let swatch_w = SwatchSize::Md.px();
         paint_text(
             self.text_system,

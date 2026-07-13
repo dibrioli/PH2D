@@ -277,3 +277,77 @@ fn sculpting_inside_a_hold_duplicates_the_visible_drawing_never_a_blank_one() {
         "a escultura vazou para o desenho ORIGINAL do hold"
     );
 }
+
+/// **O TRAÇO PREENCHIDO: linha e cor são UMA geometria** (a resposta ao Suzanne).
+///
+/// No Grease Pencil, um material com `stroke + fill` faz o preenchimento ser a
+/// triangulação dos pontos da PRÓPRIA curva — por isso, lá, "line e fill parecem um só":
+/// não há o que atualizar, é a mesma geometria. Aqui: um traço desenhado com Filled
+/// carrega o `fill`, e esculpir a linha move o preenchimento **exatamente** junto,
+/// porque não há um segundo objeto para ficar para trás.
+///
+/// Mutação que sangra: pare de setar o `fill` no `build_stroke` (o traço vira só linha) —
+/// ou volte a pular regiões na máscara do solver, e o gesto deixa de mover a cor.
+#[test]
+fn a_filled_stroke_is_one_geometry_so_sculpting_the_line_moves_the_colour() {
+    use ph2d_tool_flip::FlipMode;
+
+    // Um traço desenhado com Shape = Filled.
+    let style = FlipStyleSnapshot {
+        mode: FlipMode::Draw,
+        draw_filled: true,
+        fill_color: [200, 150, 90, 255],
+        width_px: 8.0,
+        // **Smoothing ZERO de propósito.** Com o default (0,5) o active smoothing roda
+        // 12 iterações de kernel sobre as amostras — e num "quadrado" de quatro pontos
+        // isso colapsa os dois interiores contra a corda, tirando-os de baixo do pincel.
+        // O teste ficaria vermelho por culpa DELE, não do código (a armadilha do
+        // BUGS #13). O que se afirma aqui é o preenchimento e a escultura, não o
+        // alisamento — que tem gates próprios.
+        smoothing: 0.0,
+        ..Default::default()
+    };
+    let pts = [
+        Vec2::new(0.0, 0.0),
+        Vec2::new(4.0, 0.0),
+        Vec2::new(4.0, 4.0),
+        Vec2::new(0.0, 4.0),
+    ];
+    let stroke =
+        crate::flip_draw::stroke_from_samples(&style, &pts, &[1.0; 4], 1.0, &Xform::IDENTITY);
+    assert!(
+        stroke.fill.is_some(),
+        "o traco Filled tem de carregar o proprio preenchimento (o material stroke+fill do GP)"
+    );
+    assert!(stroke.closed, "uma forma preenchida e fechada");
+    assert!(
+        !stroke.hide_stroke,
+        "e a LINHA continua sendo desenhada: e o mesmo traco, nao uma regiao"
+    );
+
+    // Agora esculpe: um Push no meio de uma aresta. A linha anda — e a cor, que é a
+    // triangulação DESTES pontos, anda com ela por construção.
+    let mut strokes = vec![stroke];
+    let before = strokes[0].positions()[1];
+    let p = ReshapeParams {
+        kind: ReshapeKind::Push,
+        radius: 3.0,
+        strength: 1.0,
+        ..Default::default()
+    };
+    let s = InputSample {
+        pos: Vec2::new(4.0, 0.0),
+        delta: Vec2::new(2.0, 0.0),
+        pressure: 1.0,
+    };
+    let mut sess = ph2d_flip_reshape::Session::begin(&strokes, &p, &s);
+    assert!(sess.apply(&mut strokes, &p, &s), "o gesto tinha de mexer");
+    assert!(
+        strokes[0].positions()[1].x > before.x + 1.0,
+        "a linha nao andou"
+    );
+    assert!(
+        strokes[0].fill.is_some(),
+        "o preenchimento sobreviveu a escultura (ele E o traco)"
+    );
+}

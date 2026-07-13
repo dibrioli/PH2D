@@ -193,7 +193,20 @@ fn build_stroke(
         });
     }
     s.hardness = style.hardness;
-    s.closed = false;
+    // **O traço PREENCHIDO** (o material stroke+fill do GP — como o Suzanne é feito):
+    // o fill é a triangulação dos pontos DESTE traço, então linha e cor são UMA
+    // geometria. Esculpir a linha move a cor exatamente junto, no mesmo frame — nada a
+    // re-preencher, nada para ficar para trás. E ele fecha: uma forma preenchida é uma
+    // forma fechada (o traço à mão quase nunca encontra a própria ponta).
+    if style.draw_filled {
+        s.closed = true;
+        s.fill = Some(ph2d_flip::Fill {
+            color: srgb8_to_linear(style.fill_color),
+            opacity: 1.0,
+        });
+    } else {
+        s.closed = false;
+    }
     s
 }
 

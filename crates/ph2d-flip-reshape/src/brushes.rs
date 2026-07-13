@@ -13,7 +13,7 @@
 //! `px_to_local` (ver lá).
 
 use crate::blur::{self, Ends};
-use crate::{InputSample, ReshapeParams, influence};
+use crate::{InputSample, ReshapeKind, ReshapeParams, influence};
 use ph2d_core::Vec2;
 use ph2d_flip::FlipStroke;
 
@@ -57,15 +57,15 @@ fn sign(p: &ReshapeParams) -> f32 {
 /// O kernel roda sobre o traço INTEIRO e a máscara entra só na mistura (o vizinho de
 /// um ponto influenciado pode estar fora do alcance do pincel — ver `blur`). As
 /// pontas ficam ancoradas: alisar a ponta a puxa para dentro, e o traço encurta.
-pub(crate) fn smooth(st: &mut FlipStroke, p: &ReshapeParams, s: &InputSample) -> bool {
-    let pos = st.positions().to_vec();
+fn smooth(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample, closed: bool) -> bool {
+    let pos = pts.to_vec();
     let inf = |i: usize| influence(p, s, pos[i]);
     if !pos.iter().any(|&pt| influence(p, s, pt) > 0.0) {
         return false;
     }
-    let out = blur::binomial(&pos, SMOOTH_ITERATIONS, &inf, Ends::Anchored, st.closed);
+    let out = blur::binomial(&pos, SMOOTH_ITERATIONS, &inf, Ends::Anchored, closed);
     let mut changed = false;
-    for (dst, src) in st.positions_mut().iter_mut().zip(out) {
+    for (dst, src) in pts.iter_mut().zip(out) {
         if *dst != src {
             *dst = src;
             changed = true;
@@ -76,13 +76,13 @@ pub(crate) fn smooth(st: &mut FlipStroke, p: &ReshapeParams, s: &InputSample) ->
 
 /// **Push** — empurra na direção do movimento do cursor
 /// (`sculpt_push.cc`: `positions += mouse_delta * influence`).
-pub(crate) fn push(st: &mut FlipStroke, p: &ReshapeParams, s: &InputSample) -> bool {
+fn push(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample) -> bool {
     let delta = s.delta;
     if delta.x == 0.0 && delta.y == 0.0 {
         return false; // parado: o Push não faz nada (a dose é o MOVIMENTO)
     }
     let mut changed = false;
-    for pt in st.positions_mut() {
+    for pt in pts.iter_mut() {
         let inf = influence(p, s, *pt);
         if inf > 0.0 {
             *pt += delta * inf;
@@ -100,19 +100,24 @@ pub(crate) fn push(st: &mut FlipStroke, p: &ReshapeParams, s: &InputSample) -> b
 /// mesmo que o cursor saia de perto deles.
 pub(crate) fn grab(
     strokes: &mut [FlipStroke],
-    frozen: &[(usize, usize, f32)],
+    frozen: &[(usize, Option<usize>, usize, f32)],
     delta: Vec2,
 ) -> bool {
     if delta.x == 0.0 && delta.y == 0.0 {
         return false;
     }
     let mut changed = false;
-    for &(si, pi, w) in frozen {
+    for &(si, ring, pi, w) in frozen {
         let Some(st) = strokes.get_mut(si) else {
             continue;
         };
-        let ps = st.positions_mut();
-        if let Some(pt) = ps.get_mut(pi) {
+        // `ring = None` → o contorno; `Some(k)` → o k-ésimo buraco (que tem de ser
+        // carregado junto, senão a rosquinha se abre).
+        let slot = match ring {
+            None => st.positions_mut().get_mut(pi),
+            Some(k) => st.holes.get_mut(k).and_then(|h| h.get_mut(pi)),
+        };
+        if let Some(pt) = slot {
             *pt += delta * w;
             changed = true;
         }
@@ -126,10 +131,10 @@ pub(crate) fn grab(
 /// vetor até o cursor — quem já está perto anda pouco, quem está longe (mas dentro do
 /// raio) anda mais. É por isso que o Pinch afina uma silhueta em vez de colapsá-la
 /// num ponto.
-pub(crate) fn pinch(st: &mut FlipStroke, p: &ReshapeParams, s: &InputSample) -> bool {
+fn pinch(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample) -> bool {
     let mut changed = false;
     let cursor = s.pos;
-    for pt in st.positions_mut() {
+    for pt in pts.iter_mut() {
         let inf = influence(p, s, *pt);
         if inf <= 0.0 {
             continue;
@@ -161,10 +166,10 @@ fn rotate_small(v: Vec2, theta: f32) -> Vec2 {
 /// `sculpt_twist.cc`: `angle = ±1° · influence`, e o ponto anda pela DIFERENÇA entre
 /// o raio girado e o raio original — uma rotação rígida do trecho ao redor do cursor,
 /// não um arrasto tangencial.
-pub(crate) fn twist(st: &mut FlipStroke, p: &ReshapeParams, s: &InputSample) -> bool {
+fn twist(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample) -> bool {
     let mut changed = false;
     let cursor = s.pos;
-    for pt in st.positions_mut() {
+    for pt in pts.iter_mut() {
         let inf = influence(p, s, *pt);
         if inf <= 0.0 {
             continue;
@@ -249,12 +254,7 @@ fn hash01(seed: u64, index: u64) -> f32 {
 ///    Não há constante de escala escondida: no máximo 1 px por amostra, e o efeito
 ///    se acumula. É a única fórmula desta crate que carrega a unidade de tela — daí
 ///    o `px_to_local`.
-pub(crate) fn randomize(
-    st: &mut FlipStroke,
-    p: &ReshapeParams,
-    s: &InputSample,
-    sample_no: u64,
-) -> bool {
+fn randomize(pts: &mut [Vec2], p: &ReshapeParams, s: &InputSample, sample_no: u64) -> bool {
     // A direção do movimento; parado, o gesto ainda vibra — usa-se um eixo estável
     // (o GP normaliza um delta zero e obtém NaN; aqui o zero cai no eixo X, que é
     // determinístico e não produz NaN nenhum).
@@ -267,9 +267,9 @@ pub(crate) fn randomize(
     };
     let sideways = Vec2::new(-forward.y, forward.x);
 
-    let pos = st.positions().to_vec();
+    let pos = pts.to_vec();
     let mut changed = false;
-    for (i, pt) in st.positions_mut().iter_mut().enumerate() {
+    for (i, pt) in pts.iter_mut().enumerate() {
         let inf = influence(p, s, pos[i]);
         if inf <= 0.0 {
             continue;
@@ -279,6 +279,31 @@ pub(crate) fn randomize(
         changed = true;
     }
     changed
+}
+
+/// **O funil dos pincéis de POSIÇÃO** — o que vale para um anel de pontos qualquer: o
+/// contorno de um traço, o contorno de uma região, ou o anel de um BURACO dela.
+///
+/// É essa indiferença que faz a cor acompanhar a linha (smoke do Enio + o Suzanne): no
+/// GP o sculpt edita todas as curvas, e o preenchimento é a triangulação dos pontos
+/// delas — mover os pontos re-tria o fill no mesmo frame.
+pub(crate) fn position(
+    pts: &mut [Vec2],
+    p: &ReshapeParams,
+    s: &InputSample,
+    closed: bool,
+    sample_no: u64,
+) -> bool {
+    match p.kind {
+        ReshapeKind::Smooth => smooth(pts, p, s, closed),
+        ReshapeKind::Push => push(pts, p, s),
+        ReshapeKind::Pinch => pinch(pts, p, s),
+        ReshapeKind::Twist => twist(pts, p, s),
+        ReshapeKind::Randomize => randomize(pts, p, s, sample_no),
+        // O Grab tem caminho próprio (pesos congelados); os de atributo não mexem em
+        // posição nenhuma.
+        ReshapeKind::Grab | ReshapeKind::Thickness | ReshapeKind::Strength => false,
+    }
 }
 
 #[cfg(test)]

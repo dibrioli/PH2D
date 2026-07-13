@@ -4876,8 +4876,10 @@ name = "ph2d-flip-render"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "image",
  "ph2d-core",
  "ph2d-flip",
+ "ph2d-flip-fill",
  "ph2d-gpu",
  "ph2d-painter-effects",
  "ph2d-render",

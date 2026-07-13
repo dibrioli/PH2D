@@ -28,6 +28,25 @@ use ph2d_flip_fill::{FillError, FillMode, FillParams, fill_at};
 use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
 
+/// Margem da dilatação do fill, em px de tela — a folga que cobre o erro de
+/// VETORIZAÇÃO do contorno (marching squares + RDP + alisamento deixam o contorno até
+/// ~1,5 px DENTRO do eixo nos picos de tremor).
+///
+/// **O valor saiu de uma varredura no pixel**, não do olho: dois defeitos OPOSTOS se
+/// tocam aqui (`gpu_fill_fit::sweep_tuck`, medido no anel da linha, 256 raios):
+///
+/// | margem | fundo sob a linha | transbordo além dela |
+/// |---|---|---|
+/// | 0,0 | **4 px** (o defeito do smoke) | 5 |
+/// | **0,5** | **0** | **16** |
+/// | 1,5 | 0 | 99 |
+/// | 2,0 | 0 | 195 |
+///
+/// `0,5` é o menor valor que zera o vazamento — margem a mais volta a empurrar a cor
+/// para FORA da linha, que é exatamente o defeito que matou o `grow = +2` default
+/// (BUGS #11).
+const FILL_TUCK_PX: f32 = 0.5; // LITERAL-PX-OK: erro de vetorizacao do contorno, MEDIDO
+
 /// As linhas que delimitam o preenchimento: TODOS os traços do desenho que não são,
 /// eles próprios, um preenchimento sem contorno.
 ///
@@ -63,21 +82,57 @@ fn boundaries(drawing: &FlipDrawing, px_to_world: f32) -> Vec<(Vec<Vec2>, Vec<f3
 }
 
 /// O traço que materializa a região preenchida.
-fn fill_stroke(outer: &[Vec2], holes: Vec<Vec<Vec2>>, color: Rgba, opacity: f32) -> FlipStroke {
+///
+/// **A largura do contorno é a espessura da LINHA** — e isso não é um contorno de
+/// verdade (o `hide_stroke` segue ligado): é a **dilatação da cor por baixo do
+/// line-art**, sem a qual a arte não fecha.
+///
+/// A geometria do fill termina no **eixo** da linha (BUGS #14 — a única âncora imune
+/// ao zoom), e o eixo fica a meia-espessura da silhueta. Sem dilatar, a metade externa
+/// da linha não tem cor por baixo: com um pincel MACIO ela mistura com o fundo, e o
+/// contorno ganha um halo escuro (o *"o fill não se ajusta à linha"* do smoke). Com a
+/// dilatação, a cor vai exatamente até a silhueta — e como as duas grandezas estão na
+/// MESMA unidade (px de tela, absoluta), elas escalam juntas: o encaixe é invariante
+/// ao zoom, que era todo o ponto da âncora no eixo.
+///
+/// Largura VARIÁVEL (pressão): usa-se a média. A dilatação erra por (w_local − w_média)/2
+/// nos pontos extremos — sub-pixel num traço de mouse (largura constante), e sempre
+/// menor que o erro de não dilatar nada.
+fn fill_stroke(
+    outer: &[Vec2],
+    holes: Vec<Vec<Vec2>>,
+    color: Rgba,
+    opacity: f32,
+    line_width_px: f32,
+) -> FlipStroke {
     let mut s = FlipStroke::new();
     for &p in outer {
         s.push_point(Point {
             pos: p,
-            width: 0.0, // sem contorno próprio…
+            width: line_width_px, // a dilatação: a cor entra por baixo da linha
             opacity: 1.0,
             color,
         });
     }
     s.closed = true;
-    s.hide_stroke = true; // …e o contorno NÃO é rasterizado: só o preenchimento
+    s.hide_stroke = true; // não é line-art: é a região (o `is_fill` continua valendo)
     s.holes = holes;
     s.fill = Some(Fill { color, opacity });
     s
+}
+
+/// A espessura MÉDIA do line-art que delimita a região (px de tela) — a dilatação que
+/// o contorno do fill veste. Ignora as regiões (que não têm tinta) e os fechamentos de
+/// gap (largura zero).
+fn mean_line_width(drawing: &FlipDrawing) -> f32 {
+    let (sum, n) = drawing
+        .strokes
+        .iter()
+        .filter(|s| !s.hide_stroke)
+        .flat_map(|s| s.widths().iter().copied())
+        .filter(|w| *w > 0.0)
+        .fold((0.0f32, 0usize), |(sum, n), w| (sum + w, n + 1));
+    if n == 0 { 0.0 } else { sum / n as f32 }
 }
 
 /// O traço invisível que fecha um vão — persistente, sem cor, sem preenchimento.
@@ -221,7 +276,17 @@ pub(crate) fn fill_click(
     }
 
     let color = crate::flip_draw::srgb8_to_linear(style.fill_color);
-    let stroke = fill_stroke(&r.outer, r.holes, color, 1.0);
+    // A dilatação sai da ARTE (a espessura do line-art que delimita a região), não de
+    // um parâmetro: é isso que faz a cor encaixar na linha sem o usuário ajustar nada.
+    //
+    // **Mais a margem de vetorização.** O contorno é traçado num buffer e simplificado
+    // (marching squares + RDP), então ele cai até ~1,5 px de tela DENTRO do eixo nos
+    // pontos de tremor. Sem a margem, sobra ali um fio de linha sem cor por baixo — e
+    // com pincel macio esse fio deixa o fundo aparecer. A margem custa um transbordo de
+    // no máximo ~1 px sob o anti-aliasing da linha (invisível), e é o mesmo remédio do
+    // GP, cujo Grow default é +2 px pela MESMA razão.
+    let dilate = mean_line_width(drawing) + 2.0 * FILL_TUCK_PX;
+    let stroke = fill_stroke(&r.outer, r.holes, color, 1.0, dilate);
 
     // Os fechamentos que a solução usou viram traços invisíveis PERSISTENTES.
     for c in &r.closures {

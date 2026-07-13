@@ -32,3 +32,9 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 # O wire u8 dos 22 modos (Normal/Multiply) para montar a op-list do teste.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
+# SÓ diagnóstico (`--ignored`): grava o alvo offscreen num PNG para OLHAR o pixel —
+# o oráculo desta linha (BUGS #2: um gate verde pode conviver com o bug na tela).
+image = { version = "0.25", default-features = false, features = ["png"] }
+# O balde: o teste de ENCAIXE rasteriza a cena real (o fill que o solver devolve + a
+# linha por cima) e mede o vão entre a cor e o contorno.
+ph2d-flip-fill = { path = "../ph2d-flip-fill" }

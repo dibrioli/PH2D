@@ -113,9 +113,18 @@ pub enum EraseMode {
 }
 
 /// Largura do traço em pixels de tela (a faixa inclusiva que o slider Size cobre).
-/// O traço do Flip vai de fino (linha) a grosso (marca), daí o teto alto.
+///
+/// **O teto é 256 px** (smoke do Enio 2026-07-13: *"parece que o máximo ainda é muito
+/// pequeno"*). Os 64 px do 1º corte eram um pincel de *linha*; o Flip precisa também da
+/// **marca** — o traço largo de marcador, o preenchimento à mão, o borrão de sombra —, e
+/// 64 px num monitor de 4K é um risco fino. O mesmo Size é o raio da borracha e o do
+/// pincel de escultura, então o teto vale para os três.
+///
+/// (A faixa é linear de propósito: o painel liga o slider ao chip por um mapa **afim**
+/// — `display = track·scale + offset` —, e uma curva quadrática faria o número no chip
+/// divergir do knob no 1º arrasto. Para o valor exato existe a caixa: digitar 7 dá 7.)
 pub const WIDTH_MIN_PX: f64 = 1.0;
-pub const WIDTH_MAX_PX: f64 = 64.0;
+pub const WIDTH_MAX_PX: f64 = 256.0;
 
 /// Mapa afim do slider Size → chip px (o painel usa em `link_slider_number_mapped`:
 /// `px = track·SCALE + OFFSET`). Mantém painel e tool em lock-step com

@@ -26,6 +26,9 @@ mod color_equalization_bridge;
 mod cooked_texture_bridge;
 mod equalize_sizes_bridge;
 pub(crate) mod flip_bridge;
+/// O anel do cursor do pincel do FLIP (ADR-0114 W5, smoke do Enio): o Size é absoluto
+/// em px de tela, então o anel é px de tela — sem conversão de câmera.
+pub(crate) mod flip_cursor;
 pub(crate) mod flip_pass;
 mod flip_pass_cache;
 mod flip_pass_ghosts;
@@ -2576,6 +2579,16 @@ impl crate::App {
             );
             self.flip_active = flip_active;
             self.flip_style = flip_style;
+            // O anel do pincel (W5): mostra no canvas o tamanho do que vai acontecer.
+            // Depois do publish (o estilo do frame já está no cache) e na cena de
+            // overlay, como o anel do Painter.
+            flip_cursor::draw_flip_cursor(
+                flip_active,
+                flip_style,
+                hero,
+                vector_scene,
+                self.last_pointer,
+            );
 
             // Texto em edição herda o Style do painel em TEMPO REAL: o bridge acabou
             // de copiar Fill/Stroke/Width/Cap/Join do painel para o Pen; se mudou,

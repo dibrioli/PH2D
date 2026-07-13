@@ -209,12 +209,24 @@ fn append_drawing(g: &mut FlipGpuData, drawing: &FlipDrawing) {
         let first_point = g.points.len() as u32;
         let pos = s.positions();
 
-        // **`hide_stroke`** (W4): o traço não é rasterizado — só o preenchimento dele.
-        // É o que o balde produz (a cor entra POR BAIXO do line-art, sem desenhar um
-        // segundo contorno em cima). A `GpuStroke` é empurrada mesmo assim, com ZERO
-        // pontos: ela não gera quad nenhum, e o `sid` (que dá a profundidade do fill)
-        // continua alinhado com a ordem de z dos traços.
-        if s.hide_stroke {
+        // **`hide_stroke`** (W4/W5): o traço não é line-art — mas isso NÃO quer dizer
+        // que ele não pinte nada.
+        //
+        // **O contorno de um preenchimento é a DILATAÇÃO da cor por baixo da linha**
+        // (smoke do Enio 2026-07-13: *"o fill não se ajusta à linha de contorno"*).
+        // A geometria do fill termina no EIXO da linha — a única âncora imune ao zoom
+        // (BUGS #14) —, e o eixo fica a meia-espessura da silhueta. Sem dilatar, a
+        // metade externa da linha não tem cor por baixo: com o pincel MACIO (o caso
+        // comum) ela mistura com o FUNDO, e a arte não fecha.
+        //
+        // A dilatação é o contorno rasterizado como traço, na **cor do fill** e com a
+        // **largura da linha** (px de TELA — a mesma unidade da linha, e por isso as
+        // duas escalam JUNTAS: o encaixe é invariante ao zoom, que era todo o ponto do
+        // BUGS #14). O `width` dos pontos do contorno carrega essa largura; um fill
+        // sem dilatação (ou um fechamento de gap, que é invisível de propósito) tem
+        // largura zero e continua sem gerar quad nenhum.
+        let dilated = s.widths().iter().any(|w| *w > 0.0);
+        if s.hide_stroke && !dilated {
             g.strokes.push(GpuStroke {
                 first_point,
                 point_count: 0,

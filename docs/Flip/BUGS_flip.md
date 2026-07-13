@@ -16,6 +16,7 @@
 | [3](#bug-3--linha-fina-sumia--o-aa-subestimava-a-cobertura-em-10) | Linha fina **sumia**; AA subestimava a cobertura em 10× | `flip.wgsl` (máscara/AA) | ✅ Resolvido (latente desde o W1) | 2026-07-12 |
 | [4](#bug-4--ponto-duplicado-rasgava-o-traço-nan-no-miter) | Ponto duplicado **rasgava o traço** (`normalize(0)` = NaN) | `flip.wgsl` (vertex/miter) | ✅ Resolvido (latente desde o W1) | 2026-07-12 |
 | [5](#bug-5--o-grid-do-broadphase-perdia-vizinhos-pad-simétrico--empate-não-determinístico) | O broadphase perdia vizinhos (pad simétrico) e era **não-determinístico** (empate) | `neighbors.rs` | ✅ Resolvido antes de sair do forno (pego por teste) | 2026-07-12 |
+| [15](#15--a-cor-parava-no-eixo-e-a-metade-externa-da-linha-ficava-sem-cor-por-baixo) | **O fill não se ajustava à linha** — a metade EXTERNA do traço não tinha cor por baixo | `flip_fill` + `flip-render/pack` | ✅ Resolvido (o PIXEL foi o oráculo) | 2026-07-13 |
 
 ---
 
@@ -815,3 +816,65 @@ passo 0→−1 movia 16,8 px numa linha de 16) · `the_colour_stops_at_the_line_
 > +0,3 px. O produto mostrava +10. A diferença não era o número — era o **eixo não varrido**. Usar
 > os números do produto não basta: é preciso varrer a **faixa** de cada parâmetro que o usuário
 > controla. Foi a terceira vez, hoje, que essa mesma armadilha funcionou.
+
+
+---
+
+## #15 — A cor parava no eixo, e a metade externa da linha ficava sem cor por baixo
+
+**Sintoma (Enio, smoke da W5, com screenshot):** *"o fill não se ajusta à linha de contorno. No
+Blender acontece perfeitamente."*
+
+### O que a medição disse (e por que ela não bastou)
+
+O solver estava **certo**: com os números do produto (traço trêmulo à mão, Precision 1,6, linha de
+4 a 24 px), a borda do fill cai a **0,3 px do EIXO** — sub-pixel, exatamente o que a âncora do
+BUGS #14 promete. Nenhum gate de geometria tinha como falhar.
+
+**Então renderizei a cena e OLHEI o pixel** (`gpu_fill_fit.rs` — traço + fill rasterizados de
+verdade, PNG gravado). O defeito apareceu na hora, e a causa é geométrica e óbvia depois de vista:
+
+> A geometria do fill termina no **eixo**. O eixo fica a **meia-espessura** da silhueta. Logo, a
+> metade EXTERNA da linha **não tem cor por baixo**.
+
+Com o pincel DURO isso é invisível (a linha opaca cobre tudo). Com o pincel **macio** — o caso comum
+do Flip — a borda da linha é semi-transparente: a metade externa mistura com o **fundo**, e o
+contorno ganha um halo sujo. Medido: **4 px de fundo** vazando pelo anel da linha.
+
+### A solução: o contorno do fill é a DILATAÇÃO da cor, não um contorno
+
+O traço do fill (que tinha `width = 0` e nunca era rasterizado) passa a ser rasterizado **na cor do
+fill, com a espessura da LINHA**. Ele não vira line-art (o `hide_stroke` continua ligado, e com ele
+todo o resto: `is_fill`, Unpaint, a borracha, o `boundaries` do próximo balde) — ele é a cor
+entrando por baixo do traço.
+
+**E isto é zoom-safe por construção:** a dilatação e a linha estão na MESMA unidade (px de tela,
+absoluta), então escalam **juntas**. A geometria assada continua sendo o eixo — a âncora imune ao
+zoom que o BUGS #14 pagou caro para descobrir. Ganhamos o encaixe do GP sem reabrir o transbordo.
+
+### A constante saiu de uma varredura no pixel, não do olho
+
+O contorno é vetorizado (marching squares + RDP + alisamento) e cai até ~1,5 px **dentro** do eixo
+nos picos de tremor — ali sobra um fio de linha sem cor. A margem (`FILL_TUCK_PX`) fecha isso, mas
+demais ela empurra a cor para **fora** da linha: o defeito oposto, o que matou o `grow = +2` default
+(BUGS #11). Os dois se tocam, e o valor certo é o que zera um sem acordar o outro:
+
+| margem | fundo sob a linha | transbordo além dela |
+|---|---|---|
+| 0,0 | **4 px** (o defeito do smoke) | 5 |
+| **0,5** | **0** | **16** |
+| 1,5 | 0 | 99 |
+| 2,0 | 0 | 195 |
+
+`0,5 px`. Os dois lados viraram gate (`a_soft_line_never_shows_the_background_through_the_fill_edge`
+e `the_colour_never_spills_outside_the_line`), e a varredura ficou no repo (`sweep_tuck`) — quem
+mexer no valor vê a curva inteira.
+
+> **Lição — quando a geometria está certa e a tela está errada, RENDERIZE e olhe.** Três gates de
+> geometria mediam a coisa certa (a borda do fill vs o eixo) e todos estavam verdes; o defeito vivia
+> na *relação entre a cor e a linha*, que nenhum deles observava. O pixel é o oráculo — a métrica é a
+> sombra dele ([[feedback_render_and_look_when_a_green_gate_is_contradicted]]).
+>
+> **E o corolário:** *uma âncora invariante (o eixo) resolve o zoom, mas não desenha a arte.* A
+> geometria assada e a aparência são coisas diferentes: a primeira quer o que não muda; a segunda
+> quer o que se vê. Quando as duas divergem, a ponte é o RENDER — não uma âncora de compromisso.

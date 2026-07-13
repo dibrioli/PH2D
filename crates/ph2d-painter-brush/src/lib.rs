@@ -44,6 +44,7 @@ pub mod height_film;
 pub mod height_push;
 pub(crate) mod jitter;
 pub mod mask_ops;
+pub mod material;
 pub mod ramp_alpha;
 pub mod sampler;
 pub mod smear;

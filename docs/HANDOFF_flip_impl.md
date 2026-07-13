@@ -791,7 +791,7 @@ Doc definitivo: [`docs/Flip/06_fill_balde.md`](Flip/06_fill_balde.md).
 ao vivo do Gap Closure (o `closures()` já devolve os segmentos; falta o overlay) · modo Radius
 · Colorize (LazyBrush/trapped-ball) é wave própria.
 
-## W4.1 — A âncora do fill é o EIXO da linha (2026-07-12, fecha o BUGS #14 — pendente smoke)
+## W4.1 — A âncora do fill é o EIXO da linha (2026-07-12, fecha o BUGS #14 — smoke APROVADO; Precision default 1,6 saiu do smoke)
 
 O 5º smoke do balde ("Piorou. Linhas finas nem têm valor no slider… grow 0 e −1") tinha causa
 provada: espessura **absoluta em px de TELA** × fill **assado em unidades de DOCUMENTO** — a

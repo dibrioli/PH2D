@@ -698,8 +698,10 @@ passes 4-conexos e 8-conexos, a forma acumulada é um octógono: visualmente, um
 
 ## #14 — ✅ a referência do fill vs. a espessura da linha (o bug que sobreviveu a #12 e #13)
 
-**Estado:** ✅ **resolvido em 2026-07-12** (âncora no EIXO — ver "A solução aplicada" abaixo;
-pendente smoke do Enio).
+**Estado:** ✅ **resolvido em 2026-07-12** (âncora no EIXO — ver "A solução aplicada" abaixo).
+**Smoke do Enio aprovado no mesmo dia** ("perfeito!"); do smoke saiu um ajuste de tuning:
+**Precision default 1,6** (`DEFAULT_PRECISION`, `ph2d-tool-flip`) — acima da resolução da
+tela, o resíduo de quantização do contorno cai para sub-pixel.
 
 **Sintoma (Enio, 4º smoke):** *"Piorou. Linhas finas nem têm valor no slider para ajustar. Aí grow 0
 e −1."* — com `Grow = 0` a cor **transborda** a linha fina; com `−1` abre um **vão escuro** de vários

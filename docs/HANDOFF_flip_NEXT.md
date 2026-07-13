@@ -5,8 +5,10 @@
 >
 > Três partes: **§A — como trabalhar (Modo L, o seu contrato)** · **§B — o estado da linha** ·
 > **§C — RESOLVIDO (âncora no eixo)**, mantido como registro: o defeito do balde que era a 1ª
-> tarefa foi fechado nesta revisão (gates vermelhos→verdes; **pendente o smoke do Enio**, §C.7).
-> Sua 1ª tarefa provável é a **W5 — Reshape** (§D) — mas confirme o resultado do smoke antes.
+> tarefa foi fechado nesta revisão (gates vermelhos→verdes; **smoke do Enio APROVADO**
+> 2026-07-12 — do smoke saiu o Precision default 1,6). A linha está FECHADA aguardando
+> integração ([handoff](HANDOFF_line_FLIP_integracao_2026-07-12.md)); a próxima tarefa da
+> linha, quando reabrir, é a **W5 — Reshape** (§D).
 
 ---
 
@@ -99,7 +101,7 @@ O **Flip** é o 4º meio do PH2D: animação quadro-a-quadro, fork 2D clean-room
 | **W1** | render GPU (`ph2d-flip-render`; cobertura = **união global** da polilinha, 1 passe) | fechada |
 | **W2** | tool + painel docado + caneta + borracha | fechada |
 | **W3** | **virou app de ANIMAÇÃO**: frames, exposição, ciclos, ghosts, tween, a tira | fechada, smoke OK |
-| **W4** | **o balde** (`ph2d-flip-fill`; âncora = o EIXO da linha, BUGS #14) | fechada, **pendente smoke do §C.7** |
+| **W4** | **o balde** (`ph2d-flip-fill`; âncora = o EIXO da linha, BUGS #14) | fechada, **smoke OK** (2026-07-12; Precision default 1,6 saiu dele) |
 
 Conhecimento do módulo: [`docs/Flip/`](Flip/00_README.md) — `05_frames_ghost_tween.md`,
 `06_fill_balde.md`, e sobretudo **[`BUGS_flip.md`](Flip/BUGS_flip.md)**, o registro dos bugs cuja
@@ -179,7 +181,7 @@ O que você precisa saber ao mexer no balde daqui em diante:
   transbordo/vão em px de tela por espessura×zoom. Use-a antes e depois de qualquer mudança
   no solver — e `PH2D_FLIP_FILL_DEBUG=1` no app real.
 
-## C.7 — O smoke pendente (peça ao Enio; é o que valida esta revisão)
+## C.7 — O smoke (APROVADO pelo Enio em 2026-07-12; roteiro mantido p/ regressão)
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && PH2D_FLIP_DEMO=1 cargo run --release -p ph2d-host-desktop

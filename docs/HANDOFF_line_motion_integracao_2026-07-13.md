@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | **Branch** | `line/motion-value` |
-| **HEAD** | `cc42f47c` (+ este handoff) |
+| **HEAD** | `787e69e0` (+ este handoff) |
 | **Base** | `4cd8ef13` (= `main` no início da jornada) |
-| **Commits** | 17 |
+| **Commits** | 20 |
 | **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (fio novo entra em grupo fechado) + **FILA 2 — params dirigidos por fio** + **busca no add-menu** |
 | **Notas-ADR** | [`57_subgrafos`](Motion%20Nodes/57_subgrafos_nota_adr.md) · [`58_params_dirigidos`](Motion%20Nodes/58_params_dirigidos_nota_adr.md) |
 
@@ -61,6 +61,7 @@ o desenho, não o teste**.
 | `crates/ph2d-panel-motion-params/src/snapshot.rs` | **`ScalarRow.driven`** (campo novo — toda construção precisa dele) | Médio |
 | **`.../interaction/dispatch/key.rs`** + `state/{mod,store_core,store_hierarchy}.rs` | **`cancel_on_escape` virou FLAG por widget** (`mark_cancel_on_escape`) — a lista hardcoded `id == HIER_RENAME_INPUT \|\| id == TIMELINE_MARKER_RENAME_INPUT` MORREU | **MÉDIO** — os dois ids agora se marcam (em `screens/hero.rs` e `ph2d-panel-timeline/src/marker_rename.rs`). Se outra linha adicionou um 3º id àquela expressão, **ele tem que virar um `mark_cancel_on_escape` também** ou o Esc dele para de cancelar (silenciosamente). |
 | `crates/ph2d-editor-core/src/widget/mod.rs` | `format_number` exportado | Baixo |
+| `crates/ph2d-ui-testkit/src/lib.rs` + `Cargo.toml` | **`paint_with_layout`** + **`dispatch_pointer_event`** (+ deps `ph2d-host`, `bumpalo`) | Baixo (aditivo) — mas **leia o §7.5**: sem eles, nenhum painel do split podia ter gate de paint |
 
 **Contrato congelado: INTACTO.** `architecture_contract_surface` = 3 verdes (8/2/1).
 `IconId` **não** mudou (o `IconId::Group` e o `docs/design/icons/group.svg` já existiam).
@@ -189,6 +190,29 @@ tinha. Enter escolhe o primeiro, Esc fecha.
 
 **Dívida morta de brinde:** `cancel_on_escape` era uma lista de ids hardcoded dentro do
 `dispatch_key`. Virou flag por widget. Ver §3.
+
+## 7.5 O clique que deslizava (`787e69e0`) — e o gate que faltava no repo INTEIRO
+
+Smoke do Enio: *"não consigo inserir nenhum nó ao clicar no menu"*.
+
+**O dispatcher chama de `End` (arrasto), não de `Click`, qualquer press-release com QUALQUER
+movimento entre eles** — e mão humana sempre mexe. Um pixel de deslize e a linha que o artista
+apertou virava arrasto: o menu se dispensava e nada era adicionado. **Não é regressão da
+busca** — o bug existia desde que o menu existe.
+
+**E todo teste desta crate mandava Down e Up na MESMA coordenada**, a única coisa que uma mão
+de verdade nunca faz. Verde em tudo, inusável na mão. Lição:
+[[feedback_a_click_is_a_press_that_drifted]].
+
+**Fix:** com menu aberto, o ponteiro pertence ao MENU — onde o botão SOBE é o que vale (sobre a
+linha, escolhe; fora, dispensa). O foco do campo se assenta num lugar só (`settle_focus`): abriu
+pega o teclado, fechou devolve (senão todo atalho do editor digitaria num buffer invisível).
+
+**Testkit (aditivo, e destrava gates futuros):** `paint_with_layout` — o `for_viewport` monta o
+centro **sem split**, então o painel do grafo tinha rect **zero** e a pintura retornava antes de
+desenhar: **por isso ele nunca teve um gate de paint**. Mais `dispatch_pointer_event` (caminho
+`_with_text`, o do shell). O gate novo (`tests/the_add_menu_actually_adds_a_node.rs`) **pinta**,
+lê o hit index que a **pintura** registrou, e despacha `PointerEvent` de verdade.
 
 ## 8. Smoke (o Enio)
 

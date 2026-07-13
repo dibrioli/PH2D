@@ -180,6 +180,82 @@ fn fill_contains(s: &FlipStroke, p: Vec2) -> bool {
     inside(s.positions()) && !s.holes.iter().any(|h| inside(h))
 }
 
+/// A área (com sinal) de um anel.
+fn ring_area(r: &[Vec2]) -> f32 {
+    let n = r.len();
+    (0..n)
+        .map(|i| {
+            let (a, b) = (r[i], r[(i + 1) % n]);
+            a.x * b.y - b.x * a.y
+        })
+        .sum::<f32>()
+        * 0.5
+}
+
+/// O ponto está dentro do anel (even-odd)?
+fn ring_contains(ring: &[Vec2], p: Vec2) -> bool {
+    let n = ring.len();
+    let mut c = false;
+    for i in 0..n {
+        let (a, b) = (ring[i], ring[(i + 1) % n]);
+        if (a.y > p.y) != (b.y > p.y) {
+            let t = (p.y - a.y) / (b.y - a.y);
+            if p.x < a.x + t * (b.x - a.x) {
+                c = !c;
+            }
+        }
+    }
+    c
+}
+
+/// **A região preenchida É o interior de um traço fechado?** Se for, o índice dele.
+///
+/// É a pergunta que muda tudo (smoke do Enio 2026-07-13, com o Suzanne ao lado):
+///
+/// > *"nem todo vertex da linha está conectado ao vertex de fill… isso cria áreas de
+/// > dessincronização e gaps"*
+///
+/// Exato — e a causa é que o contorno do balde sai do **raster** (marching squares +
+/// RDP), então os vértices dele não têm relação com os da linha: nas quinas ele chanfra,
+/// nas retas ele desliza, e como o erro é assado em unidades de DOCUMENTO enquanto a
+/// linha é absoluta em px de TELA, **o zoom o amplia**.
+///
+/// A cura não é aproximar melhor: é **não vetorizar**. Quando a região é o interior de
+/// uma forma fechada, o preenchimento é o **fill do próprio traço** (a triangulação dos
+/// pontos DELE — exatamente o que o Grease Pencil faz num material `stroke + fill`, que
+/// é como o Suzanne é desenhado). Aí não há dois conjuntos de vértices para
+/// dessincronizar: **há um só**. Esculpir a linha move a cor junto, de graça, para
+/// sempre, em qualquer zoom.
+///
+/// O critério é conservador — os três têm de valer:
+/// 1. o traço é **fechado** e é line-art (não uma região);
+/// 2. o **clique** cai dentro dele;
+/// 3. a área do contorno que o solver traçou **bate** com a do traço (≤ `AREA_TOL`) — é
+///    isso que separa "preencheu a forma" de "preencheu um pedaço entre ela e outra".
+///
+/// Quando não bate (uma região delimitada por VÁRIOS traços — colorir entre linhas), não
+/// existe "a curva" para carregar a cor, e o contorno vetorizado é o caminho — que é o
+/// que o balde do GP também faz.
+fn filled_shape_target(drawing: &FlipDrawing, outer: &[Vec2], click: Vec2) -> Option<usize> {
+    /// Quanto a área do contorno traçado pode diferir da do traço (fração).
+    const AREA_TOL: f32 = 0.15; // LITERAL-PX-OK: fracao, nao metrica de design
+    let target_area = ring_area(outer).abs();
+    if target_area <= 0.0 {
+        return None;
+    }
+    drawing
+        .strokes
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| s.closed && !s.hide_stroke && s.len() >= 3)
+        .filter(|(_, s)| ring_contains(s.positions(), click))
+        .find(|(_, s)| {
+            let a = ring_area(s.positions()).abs();
+            (a - target_area).abs() <= AREA_TOL * a.max(target_area)
+        })
+        .map(|(i, _)| i)
+}
+
 /// **O clique do balde.** `local` é o ponto clicado no espaço do desenho; `px_to_world`
 /// converte px de tela em unidades do documento (o zoom da câmera).
 ///
@@ -197,13 +273,25 @@ pub(crate) fn fill_click(
         ph2d_tool_flip::FillMode::PaintBehind => FillMode::PaintBehind,
         ph2d_tool_flip::FillMode::Unpaint => {
             // O de CIMA primeiro (o que o usuário vê): varre de trás para a frente.
-            let hit = drawing
-                .strokes
-                .iter()
-                .rposition(|s| fill_contains(s, local));
+            //
+            // **Um traço PREENCHIDO perde o fill; ele não é deletado.** Uma região é um
+            // objeto de cor e some inteira; um traço com fill é LINE-ART que por acaso
+            // carrega cor — apagá-lo levaria a linha junto, e o usuário só pediu para
+            // tirar a cor.
+            let hit = drawing.strokes.iter().rposition(|s| {
+                (is_fill(s) && fill_contains(s, local))
+                    || (s.fill.is_some()
+                        && !s.hide_stroke
+                        && s.closed
+                        && ring_contains(s.positions(), local))
+            });
             return match hit {
-                Some(i) => {
+                Some(i) if drawing.strokes[i].hide_stroke => {
                     drawing.strokes.remove(i);
+                    Ok(())
+                }
+                Some(i) => {
+                    drawing.strokes[i].fill = None;
                     Ok(())
                 }
                 None => Err(FillError::Degenerate), // nada para despintar aqui
@@ -276,6 +364,25 @@ pub(crate) fn fill_click(
     }
 
     let color = crate::flip_draw::srgb8_to_linear(style.fill_color);
+
+    // **A forma fechada pinta A SI MESMA** (a lição do Suzanne — ver `filled_shape_target`).
+    // Sem contorno vetorizado, sem dois conjuntos de vértices, sem dessincronização: a cor
+    // é a triangulação dos pontos da própria linha, em qualquer zoom, para sempre.
+    if let Some(i) = filled_shape_target(drawing, &r.outer, local) {
+        // Os fechamentos de gap que a solução usou continuam valendo (o twist do Harmony).
+        for c in &r.closures {
+            drawing.strokes.insert(0, closure_stroke(c.a, c.b));
+        }
+        let idx = i + r.closures.len(); // os fechamentos entraram ANTES dele
+        drawing.strokes[idx].fill = Some(Fill {
+            color,
+            opacity: 1.0,
+        });
+        // Os buracos do solver (o "O") entram no traço: a região é o interior DELE.
+        drawing.strokes[idx].holes = r.holes;
+        return Ok(());
+    }
+
     // A dilatação sai da ARTE (a espessura do line-art que delimita a região), não de
     // um parâmetro: é isso que faz a cor encaixar na linha sem o usuário ajustar nada.
     //

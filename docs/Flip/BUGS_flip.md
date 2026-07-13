@@ -17,6 +17,7 @@
 | [4](#bug-4--ponto-duplicado-rasgava-o-traço-nan-no-miter) | Ponto duplicado **rasgava o traço** (`normalize(0)` = NaN) | `flip.wgsl` (vertex/miter) | ✅ Resolvido (latente desde o W1) | 2026-07-12 |
 | [5](#bug-5--o-grid-do-broadphase-perdia-vizinhos-pad-simétrico--empate-não-determinístico) | O broadphase perdia vizinhos (pad simétrico) e era **não-determinístico** (empate) | `neighbors.rs` | ✅ Resolvido antes de sair do forno (pego por teste) | 2026-07-12 |
 | [15](#15--a-cor-parava-no-eixo-e-a-metade-externa-da-linha-ficava-sem-cor-por-baixo) | **O fill não se ajustava à linha** — a metade EXTERNA do traço não tinha cor por baixo | `flip_fill` + `flip-render/pack` | ✅ Resolvido (o PIXEL foi o oráculo) | 2026-07-13 |
+| [16](#16--os-vértices-do-fill-não-eram-os-da-linha-a-dessincronização-que-o-zoom-amplia) | **Os vértices do fill não eram os da linha** — dessincronização, ampliada pelo zoom | `flip_fill` (o balde) | ✅ Resolvido (a forma fechada pinta a SI MESMA) | 2026-07-13 |
 
 ---
 
@@ -878,3 +879,62 @@ mexer no valor vê a curva inteira.
 > **E o corolário:** *uma âncora invariante (o eixo) resolve o zoom, mas não desenha a arte.* A
 > geometria assada e a aparência são coisas diferentes: a primeira quer o que não muda; a segunda
 > quer o que se vê. Quando as duas divergem, a ponte é o RENDER — não uma âncora de compromisso.
+
+
+---
+
+## #16 — Os vértices do fill não eram os da linha (a dessincronização que o zoom amplia)
+
+**Sintoma (Enio, com screenshot e o Suzanne do Blender ao lado):** *"quase perfeito, mas nem todo
+vertex da linha está conectado ao vertex de fill — o fill provavelmente não foi gerado conforme o
+número de vertex da linha. isso cria áreas de dessincronização e gaps."*
+
+Diagnóstico dele, exato. O contorno do balde sai do **raster** (marching squares → RDP →
+alisamento), então os vértices dele **não têm relação nenhuma** com os da polilinha: nas quinas ele
+chanfra (o RDP corta o bico), nas retas ele desliza.
+
+### Por que o defeito parecia grande demais para o erro medido
+
+O erro de vetorização é ~1,5 px — mas ele é **assado em unidades de DOCUMENTO**, e a linha é
+absoluta em **px de TELA**. Aproximar a câmera **multiplica o desvio** e não a dilatação (BUGS #15,
+que é constante em px de tela). A 5× de zoom, 1,5 px viram 7 px de cor fora da linha. **Nenhuma
+margem constante fecha isso — é erro de FORMA, não de escala.**
+
+### O beco: costurar o contorno à linha
+
+A tentativa óbvia (e que parecia elegante): projetar cada vértice do contorno no eixo da linha e
+**reinserir** os vértices dela (as quinas que o RDP jogou fora). Funciona em geometria mansa — e
+**destrói o anel numa quina aguda**: os dois lados do bico estão à mesma distância, a projeção
+alterna entre eles, o contorno vai-e-volta e a região vira um nó de área zero (`Degenerate` nos
+testes do donut, do Gap Closure e da estrela). Impor a direção do percurso salvou dois dos três, e
+aí ficou claro que a abordagem estava errada: *proximidade não é ordem*, e remendá-la ia custar um
+map-matching completo.
+
+### A solução: não vetorizar
+
+> **Quando a região é o interior de uma FORMA FECHADA, o preenchimento é o `fill` do PRÓPRIO
+> traço** — a triangulação dos pontos DELE. Não há dois conjuntos de vértices para dessincronizar:
+> **há um só.**
+
+É exatamente o que o Grease Pencil faz — e a resposta à pergunta do Enio sobre o Suzanne: lá, o
+preenchimento é a triangulação dos pontos da própria curva (`blenkernel/grease_pencil.cc:477`) e o
+material tem `stroke + fill` no MESMO traço (`gpencil_engine_c.cc:550`). O Suzanne **não usa o
+balde**: as formas dele carregam a própria cor. Esculpir a linha move a cor junto de graça, em
+qualquer zoom, para sempre.
+
+O critério do balde é conservador (`filled_shape_target`): o traço é **fechado** e é line-art, o
+**clique** cai dentro dele, e a **área** do contorno que o solver traçou bate com a dele (±15%) —
+é isso que separa "preencheu a forma" de "preencheu um pedaço entre ela e outra".
+
+**A região entre VÁRIOS traços continua vetorizada** — ali não existe "a curva" para carregar a
+cor, e o balde do GP faz o mesmo. A dessincronização residual desse caminho é inerente a ele (e é
+onde a dilatação do BUGS #15 continua trabalhando).
+
+Ganho de brinde: o **Unpaint** ficou mais honesto — de um traço preenchido ele tira a **cor**, não a
+linha (uma região é só cor e some inteira; um traço com fill é line-art que por acaso carrega cor).
+
+> **Lição — quando a aproximação não fecha, pergunte se ela precisa existir.** Duas rodadas foram
+> gastas tentando fazer o contorno vetorizado *seguir* a linha (dilatar, costurar) — e a resposta
+> era que, no caso que importa, **não deve haver contorno vetorizado nenhum**. A geometria já
+> existia: era a própria linha. *Antes de melhorar a conversão entre dois modelos, pergunte se o
+> segundo modelo é necessário.*

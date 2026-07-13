@@ -37,11 +37,18 @@ fn boxed_drawing() -> FlipDrawing {
     d
 }
 
-/// O caminho feliz: clicar dentro do quadrado cria UM traço de preenchimento — que
-/// entra ATRÁS do line-art (a cor vai por baixo da linha).
+/// **Clicar dentro de uma FORMA FECHADA pinta a própria forma** (o Suzanne).
+///
+/// Nada de contorno vetorizado: o preenchimento vira o `fill` do traço que já está lá, e
+/// a cor passa a ser a triangulação dos pontos DELE. Um conjunto de vértices só — nada
+/// para dessincronizar, em nenhum zoom, nunca (smoke do Enio 2026-07-13).
+///
+/// Mutação que sangra: remova o `filled_shape_target` e o balde volta a criar um traço
+/// novo, com vértices próprios — e este teste vê dois traços em vez de um.
 #[test]
-fn clicking_inside_creates_a_fill_behind_the_line_art() {
+fn clicking_inside_a_closed_shape_paints_the_shape_itself() {
     let mut d = boxed_drawing();
+    let before = d.strokes[0].positions().to_vec();
     fill_click(
         &mut d,
         &style(ToolFillMode::Paint),
@@ -50,15 +57,32 @@ fn clicking_inside_creates_a_fill_behind_the_line_art() {
         &Xform::IDENTITY,
     )
     .expect("um quadrado fechado preenche");
-    assert_eq!(d.strokes.len(), 2);
-    assert!(is_fill(&d.strokes[0]), "o fill entra ATRÁS do line-art");
-    assert!(!d.strokes[1].hide_stroke, "o line-art continua visível");
-    assert!(d.strokes[0].fill.is_some());
+
+    assert_eq!(
+        d.strokes.len(),
+        1,
+        "o balde criou um traco NOVO em vez de pintar a forma que ja existia"
+    );
+    let s = &d.strokes[0];
+    assert!(s.fill.is_some(), "a forma nao ganhou a cor");
+    assert!(
+        !s.hide_stroke,
+        "e ela continua sendo LINE-ART (a linha aparece)"
+    );
+    assert_eq!(
+        s.positions(),
+        &before[..],
+        "os pontos da linha mudaram — a cor tem de usar OS MESMOS"
+    );
 }
 
-/// **Unpaint** remove o preenchimento sob o clique — e não toca no line-art.
+/// **Unpaint tira a COR — e nunca a linha.**
+///
+/// Uma região (o traço invisível que o balde cria entre várias linhas) some inteira: ela
+/// é só cor. Mas um traço PREENCHIDO é line-art que por acaso carrega cor — apagá-lo
+/// levaria o desenho junto. O Unpaint tira o `fill` e deixa a linha.
 #[test]
-fn unpaint_removes_the_fill_under_the_click_only() {
+fn unpaint_removes_the_colour_but_never_the_line() {
     let mut d = boxed_drawing();
     fill_click(
         &mut d,
@@ -68,7 +92,7 @@ fn unpaint_removes_the_fill_under_the_click_only() {
         &Xform::IDENTITY,
     )
     .unwrap();
-    assert_eq!(d.strokes.len(), 2);
+    assert!(d.strokes[0].fill.is_some());
 
     fill_click(
         &mut d,
@@ -77,9 +101,10 @@ fn unpaint_removes_the_fill_under_the_click_only() {
         1.0,
         &Xform::IDENTITY,
     )
-    .expect("há um fill sob o clique");
-    assert_eq!(d.strokes.len(), 1, "só o fill saiu");
-    assert!(!d.strokes[0].hide_stroke, "o line-art ficou");
+    .expect("ha cor sob o clique");
+    assert_eq!(d.strokes.len(), 1, "a LINHA foi apagada junto com a cor");
+    assert!(d.strokes[0].fill.is_none(), "a cor nao saiu");
+    assert!(!d.strokes[0].hide_stroke, "e a linha continua la");
 
     // E despintar o vazio não faz nada (nem entra em pânico).
     assert!(
@@ -94,11 +119,9 @@ fn unpaint_removes_the_fill_under_the_click_only() {
     );
 }
 
-/// **Um fill anterior NÃO é fronteira** — senão a 2ª cor nunca entraria por baixo
-/// da 1ª, e o `Paint Behind` seria impossível. (Um fechamento de gap, que também é
-/// invisível, É fronteira: os dois se distinguem pelo `fill`.)
+/// **Repintar a forma TROCA a cor** — não empilha um segundo preenchimento.
 #[test]
-fn an_existing_fill_is_not_a_boundary() {
+fn painting_a_shape_twice_just_changes_its_colour() {
     let mut d = boxed_drawing();
     fill_click(
         &mut d,
@@ -108,16 +131,15 @@ fn an_existing_fill_is_not_a_boundary() {
         &Xform::IDENTITY,
     )
     .unwrap();
-    // O 2º clique preenche a MESMA região (o fill velho não a dividiu).
-    fill_click(
-        &mut d,
-        &style(ToolFillMode::Paint),
-        Vec2::new(10.0, 10.0),
-        1.0,
-        &Xform::IDENTITY,
-    )
-    .expect("o fill anterior não pode barrar o novo");
-    assert_eq!(d.strokes.len(), 3, "dois fills + o line-art");
+    let first = d.strokes[0].fill.unwrap().color;
+
+    let mut other = style(ToolFillMode::Paint);
+    other.fill_color = [10, 200, 10, 255];
+    fill_click(&mut d, &other, Vec2::new(10.0, 10.0), 1.0, &Xform::IDENTITY).unwrap();
+
+    assert_eq!(d.strokes.len(), 1, "o 2o clique empilhou um traco");
+    let second = d.strokes[0].fill.unwrap().color;
+    assert_ne!(first, second, "a cor nao trocou");
 }
 
 /// **Gap Closure:** um "C" aberto não preenche… até o Gap Closure fechá-lo — e o
@@ -234,7 +256,10 @@ fn the_bucket_fills_at_the_real_camera_scale() {
     )
     .expect("um quadrado fechado no zoom PADRAO tem de preencher");
 
-    assert!(is_fill(&d.strokes[0]), "o fill entra atras do line-art");
+    assert!(
+        d.strokes[0].fill.is_some(),
+        "a forma fechada tem de pintar A SI MESMA (nenhum contorno vetorizado)"
+    );
     // E a regiao preenchida cobre a maior parte do quadrado (nao uma casquinha).
     let area = {
         let r = d.strokes[0].positions();
@@ -354,5 +379,50 @@ fn readjusting_from_the_pristine_base_replaces_instead_of_accumulating() {
         wrong.strokes.len() > once,
         "reaplicar SEM restaurar a base deveria acumular — se nao acumula, o gate de \
              cima nao prova nada"
+    );
+}
+
+/// **E a região entre VÁRIOS traços continua sendo vetorizada** — porque ali não existe
+/// "a curva" para carregar a cor.
+///
+/// É o caso de colorir entre linhas (o uso de produção), e é também o que o balde do
+/// Grease Pencil faz: um traço novo, invisível, com o contorno que o solver traçou. A
+/// diferença entre os dois caminhos não é um detalhe de implementação — é a resposta à
+/// pergunta *"esta região É uma forma?"*.
+#[test]
+fn a_region_bounded_by_several_strokes_still_gets_a_traced_contour() {
+    let mut d = FlipDrawing::new();
+    // Duas linhas em "L" + duas fechando: quatro traços ABERTOS formando um quadrado.
+    for (a, b) in [
+        (Vec2::new(0.0, 0.0), Vec2::new(20.0, 0.0)),
+        (Vec2::new(20.0, 0.0), Vec2::new(20.0, 20.0)),
+        (Vec2::new(20.0, 20.0), Vec2::new(0.0, 20.0)),
+        (Vec2::new(0.0, 20.0), Vec2::new(0.0, 0.0)),
+    ] {
+        let mut s = FlipStroke::new();
+        for p in [a, b] {
+            s.push_point(Point {
+                pos: p,
+                width: 0.6,
+                opacity: 1.0,
+                color: Rgba::BLACK,
+            });
+        }
+        d.strokes.push(s);
+    }
+    fill_click(
+        &mut d,
+        &style(ToolFillMode::Paint),
+        Vec2::new(10.0, 10.0),
+        1.0,
+        &Xform::IDENTITY,
+    )
+    .expect("a regiao entre os quatro tracos preenche");
+
+    assert_eq!(d.strokes.len(), 5, "faltou o traco de preenchimento");
+    assert!(
+        is_fill(&d.strokes[0]),
+        "a regiao multi-traco tem de virar um traco de fill VETORIZADO (nenhuma das \
+         quatro linhas e 'a forma')"
     );
 }

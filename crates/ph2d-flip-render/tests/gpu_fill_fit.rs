@@ -535,3 +535,248 @@ fn the_colour_never_spills_outside_the_line() {
         );
     }
 }
+
+/// A cena que o smoke expôs: um polígono de **cantos AGUDOS** (o "bico" da imagem do
+/// Enio). É onde a vetorização do contorno mais se afasta da linha — o marching squares
+/// + RDP chanfram a quina, e o fill descola.
+fn spiky(width_px: f32) -> FlipDrawing {
+    // Uma estrela de 5 pontas: cantos agudos para dentro E para fora.
+    let (cx, cy) = (160.0f32, 160.0);
+    let n = 10;
+    let pts: Vec<Vec2> = (0..n)
+        .map(|i| {
+            let t = i as f32 / n as f32;
+            let (c, s) = unit_circle(t);
+            let r = if i % 2 == 0 { 120.0 } else { 55.0 };
+            Vec2::new(cx + r * c, cy + r * s)
+        })
+        .collect();
+    let res = fill_at(
+        &[(pts.clone(), vec![width_px * 0.5; n], true)],
+        Vec2::new(cx, cy),
+        FillParams {
+            precision: 1.6,
+            gap_reach: 0.0,
+            grow: 0,
+            mode: FillMode::Paint,
+        },
+    )
+    .expect("a estrela preenche");
+
+    let mut d = FlipDrawing::new();
+    let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
+    let mut f = FlipStroke::new();
+    for p in &res.outer {
+        f.push_point(Point {
+            pos: *p,
+            width: width_px + 2.0 * FILL_TUCK_PX,
+            opacity: 1.0,
+            color: ocre,
+        });
+    }
+    f.closed = true;
+    f.hide_stroke = true;
+    f.holes = res.holes;
+    f.fill = Some(Fill {
+        color: ocre,
+        opacity: 1.0,
+    });
+    d.strokes.push(f);
+
+    let mut line = FlipStroke::new();
+    for p in &pts {
+        line.push_point(Point {
+            pos: *p,
+            width: width_px,
+            opacity: 1.0,
+            color: Rgba::new(0.95, 0.95, 0.96, 1.0),
+        });
+    }
+    line.closed = true;
+    d.strokes.push(line);
+    d
+}
+
+/// **A forma fechada pinta A SI MESMA — e aí não há vértices para dessincronizar.**
+///
+/// A resposta ao smoke do Enio (*"nem todo vertex da linha está conectado ao vertex de
+/// fill"*): quando a região é o interior de uma forma fechada, o balde não vetoriza nada
+/// — ele liga o `fill` no **próprio traço**, e a cor passa a ser a triangulação dos
+/// pontos DELE (o material `stroke + fill` do GP, como o Suzanne é desenhado). Um
+/// conjunto de vértices só.
+///
+/// Aqui a régua é o pixel, na cena que mais dói: uma ESTRELA (quinas agudas para dentro
+/// e para fora), onde o contorno vetorizado chanfrava os bicos.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_self_filled_shape_has_no_desync_at_all() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    for width_px in [8.0f32, 20.0] {
+        // A estrela, com o fill NO PRÓPRIO TRAÇO (o que o balde agora produz).
+        let (cx, cy) = (160.0f32, 160.0);
+        let n = 10;
+        let pts: Vec<Vec2> = (0..n)
+            .map(|i| {
+                let (c, s) = unit_circle(i as f32 / n as f32);
+                let r = if i % 2 == 0 { 120.0 } else { 55.0 };
+                Vec2::new(cx + r * c, cy + r * s)
+            })
+            .collect();
+        let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
+        let mut d = FlipDrawing::new();
+        let mut shape = FlipStroke::new();
+        for p in &pts {
+            shape.push_point(Point {
+                pos: *p,
+                width: width_px,
+                opacity: 1.0,
+                color: Rgba::new(0.95, 0.95, 0.96, 1.0),
+            });
+        }
+        shape.closed = true;
+        shape.fill = Some(Fill {
+            color: ocre,
+            opacity: 1.0,
+        });
+        d.strokes.push(shape);
+        let px = render(&device, &queue, &d);
+
+        // A cor não pode aparecer FORA da arte (o polígono + a meia-espessura da linha).
+        let inside = |p: Vec2| -> bool {
+            let mut c = false;
+            for i in 0..n {
+                let (a, b) = (pts[i], pts[(i + 1) % n]);
+                if (a.y > p.y) != (b.y > p.y) {
+                    let t = (p.y - a.y) / (b.y - a.y);
+                    if p.x < a.x + t * (b.x - a.x) {
+                        c = !c;
+                    }
+                }
+            }
+            c
+        };
+        let mut spill = 0;
+        for y in 0..H {
+            for x in 0..W {
+                let i = ((y * W + x) * 4) as usize;
+                let (r, b) = (px[i] as i32, px[i + 2] as i32);
+                if !(r > 120 && r > b + 40) {
+                    continue; // não é a cor
+                }
+                let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                if inside(p) {
+                    continue;
+                }
+                // Fora do polígono, a cor só pode estar sob a linha (a triangulação vai
+                // até o EIXO; a linha cobre meia-espessura para cada lado).
+                let mut dist = f32::MAX;
+                for i in 0..n {
+                    let (a, b) = (pts[i], pts[(i + 1) % n]);
+                    let ab = b - a;
+                    let t = (((p - a).x * ab.x + (p - a).y * ab.y)
+                        / (ab.x * ab.x + ab.y * ab.y).max(1e-9))
+                    .clamp(0.0, 1.0);
+                    let c = a + ab * t;
+                    dist = dist.min(((p - c).x.powi(2) + (p - c).y.powi(2)).sqrt());
+                }
+                if dist > width_px * 0.5 + 1.5 {
+                    spill += 1;
+                }
+            }
+        }
+        println!("estrela AUTO-preenchida, linha {width_px}px: {spill} px de cor fora da arte");
+        assert_eq!(
+            spill, 0,
+            "a forma auto-preenchida vazou {spill} px — os vertices deveriam ser OS MESMOS"
+        );
+    }
+}
+
+/// **O contorno do fill tem de SEGUIR a linha — inclusive nas quinas.**
+///
+/// Smoke do Enio (2026-07-13): *"nem todo vertex da linha está conectado ao vertex de
+/// fill… isso cria áreas de dessincronização e gaps"*. Exato: o contorno vem do RASTER
+/// (marching squares + RDP), então os vértices dele não têm nada a ver com os da
+/// polilinha — nas quinas ele chanfra (deixa vão), nas retas ele desliza (transborda).
+///
+/// Aqui a régua é o pixel: numa ESTRELA (cantos agudos para dentro e para fora), conta-se
+/// quanto de cor aparece FORA da silhueta da linha. A dilatação não salva este caso: o
+/// erro é de FORMA, não de escala.
+#[test]
+#[ignore = "precisa de GPU"]
+fn the_fill_contour_follows_the_line_even_at_sharp_corners() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    for width_px in [8.0f32, 16.0] {
+        let px = render(&device, &queue, &spiky(width_px));
+        let is_colour = |i: usize| -> bool {
+            let (r, b) = (px[i] as i32, px[i + 2] as i32);
+            r > 120 && r > b + 40
+        };
+        // A silhueta da estrela: um ponto está DENTRO da arte se estiver a menos de
+        // w/2 de algum segmento da polilinha, ou dentro do polígono. Cor fora disso é
+        // vazamento — e é o que a imagem do smoke mostra nas quinas.
+        let (cx, cy) = (160.0f32, 160.0);
+        let n = 10;
+        let poly: Vec<Vec2> = (0..n)
+            .map(|i| {
+                let (c, s) = unit_circle(i as f32 / n as f32);
+                let r = if i % 2 == 0 { 120.0 } else { 55.0 };
+                Vec2::new(cx + r * c, cy + r * s)
+            })
+            .collect();
+        let inside = |p: Vec2| -> bool {
+            let mut c = false;
+            for i in 0..n {
+                let (a, b) = (poly[i], poly[(i + 1) % n]);
+                if (a.y > p.y) != (b.y > p.y) {
+                    let t = (p.y - a.y) / (b.y - a.y);
+                    if p.x < a.x + t * (b.x - a.x) {
+                        c = !c;
+                    }
+                }
+            }
+            c
+        };
+        let dist_to_line = |p: Vec2| -> f32 {
+            let mut best = f32::MAX;
+            for i in 0..n {
+                let (a, b) = (poly[i], poly[(i + 1) % n]);
+                let ab = b - a;
+                let t = (((p - a).x * ab.x + (p - a).y * ab.y)
+                    / (ab.x * ab.x + ab.y * ab.y).max(1e-9))
+                .clamp(0.0, 1.0);
+                let c = a + ab * t;
+                best = best.min(((p - c).x.powi(2) + (p - c).y.powi(2)).sqrt());
+            }
+            best
+        };
+
+        let mut spill = 0;
+        for y in 0..H {
+            for x in 0..W {
+                let i = ((y * W + x) * 4) as usize;
+                if !is_colour(i) {
+                    continue;
+                }
+                let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                // Cor legítima: dentro do polígono, ou sob a linha (+1 px de AA).
+                if inside(p) || dist_to_line(p) <= width_px * 0.5 + 1.5 {
+                    continue;
+                }
+                spill += 1;
+            }
+        }
+        println!("estrela, linha {width_px}px: {spill} px de cor FORA da arte");
+        assert!(
+            spill <= 20,
+            "linha de {width_px}px: {spill} pixels de cor caíram FORA da arte — o contorno \
+             do fill nao segue a linha (as quinas dessincronizam)"
+        );
+    }
+}

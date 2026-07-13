@@ -10,11 +10,11 @@
 | | |
 |---|---|
 | **Branch** | `line/motion-value` |
-| **HEAD** | `6207bd68` (+ este handoff) |
+| **HEAD** | `76551888` (+ este handoff) |
 | **Base** | `4cd8ef13` (= `main` no início da jornada) |
-| **Commits** | 10 |
-| **O que entregou** | **FILA 1 — subgrafos** (nesting: card colapsado + duplo-clique entra + breadcrumb) **+ FILA 1.b** (um fio novo entra num grupo fechado) |
-| **Nota-ADR** | [`docs/Motion Nodes/57_subgrafos_nota_adr.md`](Motion%20Nodes/57_subgrafos_nota_adr.md) |
+| **Commits** | 13 |
+| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (um fio novo entra num grupo fechado) + **FILA 2 — params dirigidos por fio** |
+| **Notas-ADR** | [`57_subgrafos`](Motion%20Nodes/57_subgrafos_nota_adr.md) · [`58_params_dirigidos`](Motion%20Nodes/58_params_dirigidos_nota_adr.md) |
 
 > **`CLAUDE.md` §5 NÃO foi tocado de propósito** — é a maior superfície de colisão do repo, e
 > toda linha aberta encosta nela. A entrada de **Motion Nodes** precisa ganhar uma frase sobre
@@ -52,6 +52,13 @@ o desenho, não o teste**.
 | **`crates/ph2d-editor-core/tests/hr12_widgets_a11y.rs`** | **+1 entrada** na `PANEL_A11Y_DELEGATE_OK` (`paint_menu.rs`) | **ALTO se outra linha também adicionou** — mesma armadilha da allowlist: **funda a união, não escolha um lado** |
 | `.../dispatch/tests/graph.rs` | `key_cmd` virou wrapper de `key_chord(kc, cmd, alt)`; +1 caso e +1 teste | Baixo |
 | **`.typos.toml`** | **+3 palavras** (`frase`, `organizacional`, `HDA`) na `[default.extend-words]` | **ALTO se outra linha também adicionou** — chave duplicada **mata o TOML no parse** e o typos nem escaneia ([[feedback_duplicate_allowlist_key_kills_the_gate_at_parse.md]]). **Funda a união, sem duplicar chave.** |
+
+| **`crates/ph2d-nodegraph/src/graph.rs`** | **campo novo `param_sources`** no `Graph` + 4 acessores; **`would_cycle` e `remove_node` estendidos** (doc 58) | **MÉDIO** — o `Graph` é a foundational mais quente do repo. As mudanças são **aditivas** (campo novo, fns novas), mas as DUAS fns existentes ganharam corpo: se outra linha as tocou, resolva **pelos estágios do índice**, e confira que o walk do ciclo continua vendo os dois tipos de dependência. |
+| **`crates/ph2d-nodegraph/src/cook.rs`** | `EvalCtx.driven` (campo novo) · `param()` resolve **fio > override > default** · `cook_node` resolve as fontes na mesma recursão · +1 campo no `Fingerprint` | **MÉDIO** — mesmo raciocínio. **Um merge que perca o campo do fingerprint compila e devolve número velho pra sempre** (o gate `re_pointing_a_param_to_another_port_of_the_same_driver_recomputes` é quem pega). |
+| `crates/ph2d-nodegraph/src/format.rs` | header **`v3`** + record **`d`** (aditivo, ausente quando não há param dirigido) | Baixo |
+| `crates/ph2d-nodegraph/src/attr.rs` | **`VALUE_COLUMN`** (a coluna `"v"`, que era const privado em ~30 crates de nó) | Baixo |
+| `crates/ph2d-editor-core/src/widget/mod.rs` | **`format_number`** no `pub use` (já existia; só não era exportado) | Baixo |
+| `crates/ph2d-panel-motion-params/src/snapshot.rs` | **`ScalarRow.driven`** (campo novo — toda construção precisa dele) | Médio |
 
 **Contrato congelado: INTACTO.** `architecture_contract_surface` = 3 verdes (8/2/1).
 `IconId` **não** mudou (o `IconId::Group` e o `docs/design/icons/group.svg` já existiam).
@@ -149,6 +156,25 @@ desenhava `current_catalog()` (86 tipos) enquanto o clique resolvia contra a lis
 ninguém via. **Se outra linha encostou no add-menu, é aqui que o merge dói** (o popup foi
 reescrito pra ter UMA fonte de linhas).
 
+## 7.3 FILA 2 — params dirigidos por fio (`cbc62a5b` motor + `76551888` editor)
+
+**Detalhe: [doc 58](Motion%20Nodes/58_params_dirigidos_nota_adr.md).** O plano tinha deferido
+isto **duas vezes** dizendo *"exige porta dinâmica no modelo"* — e porta dinâmica é de fato
+impossível (`NodeManifest.inputs` é `&'static`). Mas **a porta nunca foi o requisito**: o
+requisito é uma **ARESTA que o manifesto não conhece**, e aresta é estado de DOCUMENTO — que é
+onde o canal de text param já mora. Mesmo truque, segundo uso.
+
+- `Graph.param_sources` + `drive_param`/`undrive_param`. O cook resolve na mesma recursão dos
+  inputs; `EvalCtx::param` = **fio > override > default**. **Os 86 tipos de nó ficaram
+  dirigíveis sem uma linha de mudança em nenhum deles** (todos leem param por esse funil).
+- **Não existe estado "promovido"**: o fio É a promoção (drop no corpo do nó → menu dos params
+  → o socket aparece porque o fio existe). Mesma lei e mesma máquina do doc 57 §6.1.
+- **Um param dirigido vira read-only no painel** e mostra o número vivo que o fio põe.
+
+**⚠️ Para o integrador:** este é o único pedaço da linha que mexe em `ph2d-nodegraph` (a
+foundational mais quente). Tudo é aditivo, mas `would_cycle`, `remove_node`, `cook_node` e
+`Fingerprint` ganharam corpo — veja a tabela do §3.
+
 ## 8. Smoke (o Enio)
 
 ```
@@ -169,10 +195,16 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
 - **Puxe um fio de um nó de fora e SOLTE EM CIMA do card** → abre "Connect Inside Group" com as
   portas livres lá dentro; escolha uma e **o card ganha um socket novo** (ninguém declarou
   interface — o fio *é* a interface). Funciona também puxando pra trás de um input vazio.
+- **FILA 2:** adicione um `value.lfo` (menu `A`), puxe o fio da saída dele e **solte no CORPO
+  de qualquer nó** → abre "Drive Parameter" com os params daquele nó. Escolha um (ex.: a
+  Strength de um `force.wind`) → **o nó ganha um socket novo**, o fio pousa nele, e o param
+  **oscila**. No painel de params aquela linha vira **read-only mostrando o número vivo**.
+  Corte o fio (faca `K`, ou arraste a ponta pra fora) → **o socket some** e o knob volta.
 
 ## 9. Fila restante (o próximo da linha escolhe)
 
-1. **FILA 2 — promoção param → socket.** Continua não existindo. Mesmo padrão aditivo.
+1. ~~**FILA 2 — promoção param → socket**~~ — **FECHADA** (doc 58; virou *param dirigido por
+   fio*, sem estado de promoção).
 2. **FILA 3 — FX passes no compositor HDR** (glow/bloom/blur/vignette/levels/hue-shift).
    Reuso obrigatório do compositor GPU do Painter (`ph2d-painter-effects`).
 3. **FILA 4 — os 4 nós que faltam** (`motion-delay`, `motion-buoyancy`,

@@ -140,8 +140,11 @@ fn every_mode_button_is_painted_and_clickable() {
 fn the_bucket_widgets_appear_only_in_fill_mode() {
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
     let mut st = FlipPanelState;
+    // O **swatch de Fill NÃO está aqui**: ele é compartilhado com o modo Edit (W6), onde
+    // recolore o miolo do traço selecionado — a cor da linha e a do miolo são dois
+    // atributos, e fundi-las num controle só foi o defeito que o smoke derrubou. O que é
+    // exclusivo do balde são os MODOS dele e os três knobs.
     let bucket = [
-        ids::FLIP_FILL_SWATCH,
         ids::FLIP_FILL_PAINT,
         ids::FLIP_FILL_BEHIND,
         ids::FLIP_FILL_UNPAINT,
@@ -237,7 +240,16 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Erase hard", ids::FLIP_ERASE_HARD),
         ("Erase stroke", ids::FLIP_ERASE_STROKE),
     ];
+    // Os knobs do balde — exclusivos DELE. (O swatch de Fill saiu daqui: ele é
+    // compartilhado com o Edit, ver `fill_swatch`.)
     let bucket_only = [
+        ("Gap", ids::FLIP_GAP),
+        ("Grow", ids::FLIP_GROW),
+        ("Precision", ids::FLIP_PRECISION),
+    ];
+    // A cor do MIOLO: do balde (que a deposita) e do Edit (que a reescreve na seleção).
+    let fill_swatch = [("Fill color", ids::FLIP_FILL_SWATCH)];
+    let bucket_expected = [
         ("Fill color", ids::FLIP_FILL_SWATCH),
         ("Gap", ids::FLIP_GAP),
         ("Grow", ids::FLIP_GROW),
@@ -258,6 +270,9 @@ fn each_mode_shows_only_its_own_attributes() {
     let edit_expected = [
         ("Hardness", ids::FLIP_HARDNESS),
         ("Stroke color", ids::FLIP_STROKE_SWATCH),
+        // A cor do MIOLO do traço selecionado — atributo À PARTE da cor da linha (o smoke
+        // do Enio derrubou o 1º corte, em que o swatch do traço recoloria os dois).
+        ("Fill color", ids::FLIP_FILL_SWATCH),
         ("Select all", ids::FLIP_EDIT_SELECT_ALL),
         ("Deselect", ids::FLIP_EDIT_DESELECT),
         ("Delete selection", ids::FLIP_EDIT_DELETE),
@@ -284,23 +299,41 @@ fn each_mode_shows_only_its_own_attributes() {
         (
             FlipMode::Draw,
             &stroke_only,
-            &[&eraser_only, &bucket_only, &sculpt_only, &edit_only],
+            &[
+                &eraser_only,
+                &bucket_only,
+                &fill_swatch,
+                &sculpt_only,
+                &edit_only,
+            ],
         ),
         (
             FlipMode::Erase,
             &eraser_only,
-            &[&stroke_only, &bucket_only, &sculpt_only, &edit_only],
+            &[
+                &stroke_only,
+                &bucket_only,
+                &fill_swatch,
+                &sculpt_only,
+                &edit_only,
+            ],
         ),
         (
             FlipMode::Fill,
-            &bucket_only,
+            &bucket_expected,
             &[&stroke_only, &eraser_only, &sculpt_only, &edit_only],
         ),
         // Sculpt: os oito pincéis — e nada de dureza/alisamento/cor/balde.
         (
             FlipMode::Reshape,
             &sculpt_only,
-            &[&stroke_only, &eraser_only, &bucket_only, &edit_only],
+            &[
+                &stroke_only,
+                &eraser_only,
+                &bucket_only,
+                &fill_swatch,
+                &edit_only,
+            ],
         ),
         // Select move/gira o objeto: não tem atributo de pintura nenhum.
         (
@@ -310,12 +343,15 @@ fn each_mode_shows_only_its_own_attributes() {
                 &stroke_only,
                 &eraser_only,
                 &bucket_only,
+                &fill_swatch,
                 &sculpt_only,
                 &edit_only,
             ],
         ),
-        // Edit (W6): as ops de seleção + os atributos do traço que ele reescreve. O
-        // Smoothing fica de fora (ver `smoothing_only`), e nada de borracha/balde/sculpt.
+        // Edit (W6): as ops de seleção + os atributos do traço que ele reescreve (as DUAS
+        // cores — linha e miolo). O Smoothing fica de fora (ver `smoothing_only`), e os
+        // KNOBS do balde também: Gap/Grow/Precision são do gesto de preencher, não da
+        // seleção.
         (
             FlipMode::Edit,
             &edit_expected,

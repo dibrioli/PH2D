@@ -380,9 +380,17 @@ impl BodyCtx<'_> {
             return y;
         }
         y = self.section_label("Color", y);
-        // Com o traço PREENCHIDO, a cor do preenchimento que ele carrega também é
-        // atributo do desenho — e ela é a do balde (a mesma paleta de colorir).
-        if snap.draw_filled {
+        // A cor do MIOLO. Ela aparece em dois casos, e por motivos diferentes:
+        //
+        // - **Draw + Shape: Filled** — o traço nasce carregando o próprio preenchimento;
+        // - **Edit** (W6) — o traço selecionado PODE ter miolo (uma forma preenchida, ou
+        //   uma região do balde), e a cor dele é um atributo à parte da cor da LINHA.
+        //   Sem este swatch, a única saída era recolorir o miolo pelo swatch do traço —
+        //   que é o que o 1º corte fazia, e que fundia dois atributos num controle só
+        //   (smoke do Enio: *"a cor do stroke muda fill e stroke"*).
+        //
+        // É a cor do balde (`fill_color`): colorir usa a MESMA paleta em toda a tool.
+        if snap.draw_filled || snap.mode == FlipMode::Edit {
             let swatch_w = SwatchSize::Md.px();
             paint_text(
                 self.text_system,

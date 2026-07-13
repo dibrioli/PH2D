@@ -319,20 +319,29 @@ pub(crate) fn apply_style_delta(
     }
     let color = crate::flip_draw::srgb8_to_linear(now.stroke);
     let mut changed = false;
+    let fill_color = crate::flip_draw::srgb8_to_linear(now.fill_color);
     for s in drawing.strokes.iter_mut().filter(|s| s.selected) {
-        if now.stroke != prev.stroke {
+        // **A cor da LINHA e a cor do MIOLO são dois atributos, com dois controles.**
+        //
+        // O 1º corte fazia o swatch do traço recolorir o miolo junto ("um traço com fill é
+        // uma coisa só") — e o Enio derrubou isso no smoke: são duas decisões de arte, e
+        // fundi-las tira do usuário a única forma de mudar uma sem a outra. O painel ganhou
+        // o swatch de Fill no modo Edit; aqui, cada um escreve no SEU campo.
+        //
+        // Uma REGIÃO (`hide_stroke`, a cor do balde) não tem linha visível: o swatch do
+        // traço não a alcança — só o de Fill.
+        if now.stroke != prev.stroke && !s.hide_stroke {
             for c in s.colors_mut() {
                 *c = color;
             }
-            // Um traço que carrega o PRÓPRIO preenchimento (Shape: Filled) tem a cor da
-            // linha e a do miolo juntas — recolorir a linha e deixar o miolo antigo faria
-            // dele duas coisas. (Uma REGIÃO do balde é só cor, e a cor dela é a do BALDE,
-            // não a do traço: ela não é recolorida por aqui.)
-            if let Some(f) = s.fill.as_mut()
-                && !s.hide_stroke
-            {
-                f.color = color;
-            }
+            changed = true;
+        }
+        // O miolo — de uma forma preenchida (Shape: Filled) OU de uma região do balde.
+        // Um traço SEM miolo não ganha um: o swatch recolore, não cria.
+        if now.fill_color != prev.fill_color
+            && let Some(f) = s.fill.as_mut()
+        {
+            f.color = fill_color;
             changed = true;
         }
         if (now.opacity - prev.opacity).abs() > f32::EPSILON {

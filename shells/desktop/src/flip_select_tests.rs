@@ -346,3 +346,102 @@ fn an_unselected_stroke_is_never_touched() {
         "o traco NAO selecionado foi editado pelo painel"
     );
 }
+
+/// 🔴 **A cor da LINHA e a cor do MIOLO são dois atributos independentes** (smoke do Enio,
+/// 2026-07-13: *"a cor do stroke muda fill e stroke"*).
+///
+/// O 1º corte recoloria o miolo junto com a linha ("um traço com fill é uma coisa só") —
+/// e isso tira do usuário a única forma de mudar uma sem a outra. São duas decisões de
+/// arte, e cada uma tem o seu swatch (o painel ganhou o de Fill no modo Edit).
+///
+/// Mutação que sangra: volte a escrever `f.color = color` no ramo do `stroke`.
+#[test]
+fn the_stroke_colour_never_touches_the_fill_and_vice_versa() {
+    let mut d = drawing(vec![line(&[(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)], 4.0)]);
+    d.strokes[0].selected = true;
+    let green = Rgba::new(0.1, 0.7, 0.2, 1.0);
+    d.strokes[0].fill = Some(Fill {
+        color: green,
+        opacity: 1.0,
+    });
+
+    // Mexer no swatch do TRAÇO: a linha muda, o miolo NÃO.
+    let a = style();
+    let b = ph2d_tool_flip::FlipStyleSnapshot {
+        stroke: [255, 0, 0, 255],
+        ..a
+    };
+    assert!(apply_style_delta(&mut d, &a, &b));
+    assert_eq!(
+        d.strokes[0].fill.unwrap().color,
+        green,
+        "o swatch do TRACO recoloriu o MIOLO — sao dois atributos"
+    );
+
+    // Mexer no swatch do MIOLO: o miolo muda, a linha NÃO.
+    let line_now = d.strokes[0].colors()[0];
+    let c = ph2d_tool_flip::FlipStyleSnapshot {
+        fill_color: [0, 0, 255, 255],
+        ..b
+    };
+    assert!(apply_style_delta(&mut d, &b, &c));
+    assert_ne!(
+        d.strokes[0].fill.unwrap().color,
+        green,
+        "o swatch do MIOLO nao chegou no fill"
+    );
+    assert_eq!(
+        d.strokes[0].colors()[0],
+        line_now,
+        "o swatch do MIOLO recoloriu a LINHA"
+    );
+}
+
+/// **Uma REGIÃO do balde só responde ao swatch de Fill** — ela não tem linha visível
+/// (`hide_stroke`), então o swatch do traço não a alcança.
+#[test]
+fn a_region_answers_only_to_the_fill_swatch() {
+    let mut d = drawing(vec![region(&[(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)])]);
+    d.strokes[0].selected = true;
+    let before = d.strokes[0].clone();
+
+    let a = style();
+    let b = ph2d_tool_flip::FlipStyleSnapshot {
+        stroke: [255, 0, 0, 255],
+        ..a
+    };
+    apply_style_delta(&mut d, &a, &b);
+    assert_eq!(
+        d.strokes[0].colors(),
+        before.colors(),
+        "o swatch do traco mexeu numa REGIAO (que nao tem linha)"
+    );
+
+    let c = ph2d_tool_flip::FlipStyleSnapshot {
+        fill_color: [0, 0, 255, 255],
+        ..b
+    };
+    assert!(apply_style_delta(&mut d, &b, &c));
+    assert_ne!(
+        d.strokes[0].fill.unwrap().color,
+        before.fill.unwrap().color,
+        "o swatch de Fill nao recoloriu a regiao"
+    );
+}
+
+/// **O swatch de Fill RECOLORE, não CRIA.** Um traço sem miolo continua sem miolo.
+#[test]
+fn the_fill_swatch_recolours_but_never_creates_a_fill() {
+    let mut d = drawing(vec![line(&[(0.0, 0.0), (10.0, 0.0)], 4.0)]);
+    d.strokes[0].selected = true;
+    let a = style();
+    let b = ph2d_tool_flip::FlipStyleSnapshot {
+        fill_color: [0, 0, 255, 255],
+        ..a
+    };
+    apply_style_delta(&mut d, &a, &b);
+    assert!(
+        d.strokes[0].fill.is_none(),
+        "o swatch de Fill INVENTOU um preenchimento num traco que era so linha"
+    );
+}

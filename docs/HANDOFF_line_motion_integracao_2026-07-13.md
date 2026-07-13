@@ -16,6 +16,10 @@
 | **O que entregou** | **FILA 1 — subgrafos** (nesting: card colapsado + duplo-clique entra + breadcrumb) |
 | **Nota-ADR** | [`docs/Motion Nodes/57_subgrafos_nota_adr.md`](Motion%20Nodes/57_subgrafos_nota_adr.md) |
 
+> **`CLAUDE.md` §5 NÃO foi tocado de propósito** — é a maior superfície de colisão do repo, e
+> toda linha aberta encosta nela. A entrada de **Motion Nodes** precisa ganhar uma frase sobre
+> subgrafos na integração (sugestão: *"**Subgrafos** ([doc 57](docs/Motion%20Nodes/57_subgrafos_nota_adr.md), landou 2026-07-13): nesting é uma **dobra da VISTA** — o `Graph` continua PLANO e o cook é **byte-idêntico** com/sem grupo (o contrato congelado forçou isso: `NodeManifest.inputs` é `&'static`, então porta dinâmica é impossível). Ctrl+G / Ctrl+Alt+G / duplo-clique entra / breadcrumb sai. Interface do card = as arestas que **cruzam** (derivada, não declarada — não temos nó-proxy); dentro, os vizinhos de fora são **ghosts** read-only. Reuso (datablock/Gizmo/HDA) está fora por desenho."*).
+
 ```
 621f93f4 fix(motion): dois no-ops silenciosos que a auditoria propria achou (doc 57)
 0d9aca5c chore(typos): allowlist pt-BR — frase/organizacional/HDA (doc 57)

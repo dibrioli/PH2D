@@ -622,6 +622,11 @@ pub(crate) struct App {
     /// a máscara congelada no pen-down — e, no Grab, os pesos. `None` quando não há
     /// gesto. Ver `flip_reshape`.
     pub(crate) flip_reshape: Option<crate::flip_reshape::FlipReshape>,
+    /// ADR-0114 W6: o estilo do painel no frame ANTERIOR, enquanto há seleção no modo
+    /// Edit. É o que deixa **só a MUDANÇA** agir sobre os traços selecionados: sem esta
+    /// memória, o passe reaplicaria o estilo a cada frame e selecionar um traço vermelho
+    /// com o painel em azul o pintaria de azul no ato do clique. Ver `flip_select`.
+    pub(crate) flip_edit_style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
     /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.

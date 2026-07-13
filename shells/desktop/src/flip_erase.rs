@@ -56,6 +56,11 @@ fn new_like(src: &FlipStroke) -> FlipStroke {
     s.fill = src.fill;
     s.holes = src.holes.clone();
     s.hide_stroke = src.hide_stroke;
+    // A W6 acrescentou a seleção: os PEDAÇOS de um traço selecionado continuam
+    // selecionados (é o que o GP faz — cortar não desmarca). Sem isto, cortar um traço
+    // selecionado o tiraria da seleção em silêncio, e o próximo ajuste do painel
+    // atingiria outro traço.
+    s.selected = src.selected;
     s
 }
 

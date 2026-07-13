@@ -91,6 +91,7 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_MODE_ERASE
                 || id == ids::FLIP_MODE_FILL
                 || id == ids::FLIP_MODE_RESHAPE
+                || id == ids::FLIP_MODE_EDIT
                 || id == ids::FLIP_SHAPE_LINE
                 || id == ids::FLIP_SHAPE_FILLED
                 || id == ids::FLIP_ERASE_SOFT
@@ -101,6 +102,19 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_FILL_UNPAINT
                 // Os oito pincéis de escultura (W5) — a tabela é a ordem do painel.
                 || ids::FLIP_RESHAPE_KIND_IDS.contains(&id) =>
+        {
+            seam_reset_button(host, id);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+            true
+        }
+        // ── Edit section (W6): Select All / Deselect / Delete. São edições de
+        //    DOCUMENTO (mexem nos traços, não no estilo da tool) → mesmo caminho das ops
+        //    de camada: o bus leva, o drain do shell aplica.
+        WidgetEvent::Click(id)
+            if id == ids::FLIP_EDIT_SELECT_ALL
+                || id == ids::FLIP_EDIT_DESELECT
+                || id == ids::FLIP_EDIT_DELETE =>
         {
             seam_reset_button(host, id);
             host.bus_mut()

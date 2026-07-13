@@ -69,7 +69,10 @@ pub use ph2d_painter_effects::BlendMode;
 /// v2 (W3): a camada ganhou `cycle` (pre/post behavior) + `use_onion`, e o
 /// `OnionSettings` ganhou `kind_filter`.
 /// v3 (W4): o traço ganhou `holes` (os buracos do preenchimento) + `hide_stroke`.
-pub const FLIP_SCHEMA_VERSION: u32 = 3;
+/// v4 (W6): o traço ganhou `selected` — o atributo `.selection` do GP no domínio
+/// **Curve** (o Edit Mode). É atributo de documento (e não estado do shell) porque a
+/// identidade de um traço é a posição dele na lista, e o balde insere no MEIO dela.
+pub const FLIP_SCHEMA_VERSION: u32 = 4;
 
 #[cfg(test)]
 mod tests {

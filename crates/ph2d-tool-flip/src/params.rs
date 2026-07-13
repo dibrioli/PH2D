@@ -22,6 +22,32 @@ pub enum FlipMode {
     Fill,
     /// **Reshape**: esculpe o traço já desenhado (W5 — ver [`ReshapeKind`]).
     Reshape,
+    /// **Edit**: seleciona TRAÇOS (W6 — o Edit Mode do GP).
+    ///
+    /// É um modo próprio, e **não** uma sobrecarga do [`FlipMode::Select`]: o Select é a
+    /// arbitragem do ADR-0112 — ali quem manda é o **gizmo**, que move/gira/escala o
+    /// objeto Flip inteiro. Se o clique do Select passasse a pegar traço, o usuário
+    /// perderia o gizmo. É a mesma separação Object Mode × Edit Mode do Grease Pencil.
+    Edit,
+}
+
+impl FlipMode {
+    /// **Todos os modos** — a lista que os gates varrem.
+    ///
+    /// Ela existe porque um modo NOVO escapava dos gates em silêncio: eles enumeravam os
+    /// modos à mão, e o `Edit` (W6) entrou sem que o gate modal ou o do Size dissessem
+    /// nada — apesar de o Edit mostrar controles dos dois. Um gate que não OBSERVA não
+    /// dispara. Agora os gates varrem `ALL` e afirmam que a tabela deles a cobre INTEIRA,
+    /// então o próximo modo quebra o teste no dia em que nascer — que é o único momento em
+    /// que o custo de arrumar é baixo.
+    pub const ALL: [FlipMode; 6] = [
+        FlipMode::Select,
+        FlipMode::Draw,
+        FlipMode::Erase,
+        FlipMode::Fill,
+        FlipMode::Reshape,
+        FlipMode::Edit,
+    ];
 }
 
 /// Os pincéis de **escultura de traço** (W5). Espelha `ph2d_flip_reshape::ReshapeKind`

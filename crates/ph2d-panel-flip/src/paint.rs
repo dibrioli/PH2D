@@ -122,6 +122,7 @@ pub(crate) fn paint(_state: &mut FlipPanelState, ctx: &mut PaintCtx) {
         y = b.erase_row(&snap, y);
         y = b.fill_section(&snap, y);
         y = b.reshape_section(&snap, y);
+        y = b.edit_section(&snap, y);
     }
 
     // ── Phase B: Layers section (dynamic per-row widgets → mutable store). ──

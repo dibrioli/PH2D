@@ -87,6 +87,26 @@ impl App {
             }
         }
 
+        // ADR-0114 W6 — Edit Mode do Flip: Delete/Backspace apaga os TRAÇOS selecionados.
+        //
+        // **E CONSOME a tecla** (o `return`), que é o ponto: o objeto Flip continua
+        // selecionado como ENTIDADE, e o caminho genérico de Delete apaga a entidade
+        // selecionada. Sem o consumo, apagar um traço apagaria o desenho inteiro junto —
+        // uma tecla, dois efeitos, e o segundo é catastrófico. (Mesmo padrão do bloco
+        // vetorial logo abaixo, que consome pelo mesmo motivo.)
+        if self.flip_wants_edit()
+            && state == ElementState::Pressed
+            && !repeat
+            && self.modifiers.is_empty()
+            && matches!(
+                physical_key,
+                PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
+            )
+            && self.flip_delete_selected()
+        {
+            return;
+        }
+
         // ADR-0108 Fase 1: modo vetorial (flag PH2D_VEC_PEN) — U/I/D/X fazem a
         // booleana (Union/Intersect/Difference/Exclude) das 2 últimas regiões
         // fechadas; Delete/Backspace apaga o path

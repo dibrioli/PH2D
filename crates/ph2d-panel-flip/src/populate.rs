@@ -85,6 +85,13 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_MODE_DRAW);
     button(store, ids::FLIP_MODE_ERASE);
     button(store, ids::FLIP_MODE_RESHAPE);
+    button(store, ids::FLIP_MODE_EDIT);
+    // Edit section (W6) — pintados só no modo Edit, registrados SEMPRE (mesma regra dos
+    // botões de borracha logo abaixo: registrar é o que os torna focáveis, e o gate
+    // `architecture_panel_wiring_parity` cobra a paridade paint↔register).
+    button(store, ids::FLIP_EDIT_SELECT_ALL);
+    button(store, ids::FLIP_EDIT_DESELECT);
+    button(store, ids::FLIP_EDIT_DELETE);
     // Shape (Draw): o traço carrega o próprio preenchimento?
     button(store, ids::FLIP_SHAPE_LINE);
     button(store, ids::FLIP_SHAPE_FILLED);

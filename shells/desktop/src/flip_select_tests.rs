@@ -1,0 +1,348 @@
+//! Testes do Edit Mode (`flip_select`), num módulo-irmão pelo cap de LOC do HR-18.
+//! Declarado pelo pai via `#[path]`, então `super` é `flip_select`.
+
+use super::*;
+use ph2d_flip::{Fill, Point, Rgba};
+
+/// Um traço de line-art, com os pontos dados (largura em px de TELA, como o produto).
+fn line(pts: &[(f32, f32)], width: f32) -> FlipStroke {
+    let mut s = FlipStroke::new();
+    for &(x, y) in pts {
+        s.push_point(Point {
+            pos: Vec2::new(x, y),
+            width,
+            opacity: 1.0,
+            color: Rgba::BLACK,
+        });
+    }
+    s
+}
+
+/// Uma REGIÃO (o que o balde produz): só cor, sem linha (`hide_stroke`).
+fn region(pts: &[(f32, f32)]) -> FlipStroke {
+    let mut s = line(pts, 0.0);
+    s.closed = true;
+    s.hide_stroke = true;
+    s.fill = Some(Fill {
+        color: Rgba::new(0.8, 0.2, 0.2, 1.0),
+        opacity: 1.0,
+    });
+    s
+}
+
+fn drawing(strokes: Vec<FlipStroke>) -> FlipDrawing {
+    let mut d = FlipDrawing::new();
+    d.strokes = strokes;
+    d
+}
+
+/// **O pick pega o traço de CIMA.** Dois traços sobrepostos: o clique tem de escolher o
+/// que o usuário VÊ (o último da lista — a ordem da lista é a ordem de z).
+///
+/// Mutação que sangra: tire o `.rev()` do `stroke_at` e ele passa a pegar o de baixo.
+#[test]
+fn the_pick_takes_the_topmost_stroke() {
+    let d = drawing(vec![
+        line(&[(0.0, 0.0), (10.0, 0.0)], 4.0),
+        line(&[(0.0, 0.0), (10.0, 0.0)], 4.0),
+    ]);
+    assert_eq!(
+        stroke_at(&d, Vec2::new(5.0, 0.0), 1.0, &Xform::IDENTITY),
+        Some(1),
+        "o pick pegou o traco de BAIXO — o usuario clica no que ve"
+    );
+}
+
+/// **Uma REGIÃO pega pelo INTERIOR.** Ela não tem linha (`hide_stroke`): exigir
+/// proximidade da borda tornaria a cor do balde inselecionável, e clicar no meio dela é o
+/// gesto óbvio.
+///
+/// E o BURACO não pega: clicar no furo de um "O" é clicar no que está ATRÁS dele.
+#[test]
+fn a_region_is_picked_by_its_interior_but_never_by_its_hole() {
+    let mut r = region(&[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0), (0.0, 20.0)]);
+    r.holes = vec![vec![
+        Vec2::new(8.0, 8.0),
+        Vec2::new(12.0, 8.0),
+        Vec2::new(12.0, 12.0),
+        Vec2::new(8.0, 12.0),
+    ]];
+    let d = drawing(vec![r]);
+
+    assert_eq!(
+        stroke_at(&d, Vec2::new(3.0, 3.0), 1.0, &Xform::IDENTITY),
+        Some(0),
+        "o miolo da regiao tem de pegar (ela nao tem linha para se aproximar)"
+    );
+    assert_eq!(
+        stroke_at(&d, Vec2::new(10.0, 10.0), 1.0, &Xform::IDENTITY),
+        None,
+        "o BURACO pegou — clicar no furo de um O e clicar no que esta atras"
+    );
+}
+
+/// **O raio de pick acompanha o ZOOM.** A espessura do traço é absoluta em px de TELA e a
+/// geometria é documento: o mesmo clique, a 3 unidades de uma linha fina, tem de PEGAR
+/// com a câmera afastada (onde 3 unidades são poucos px) e ERRAR com ela aproximada.
+///
+/// É a mesma armadilha que matou o balde três vezes (BUGS #11/#14/#16): um teste com
+/// `px_to_world = 1.0` — o único valor em que px de tela vale unidade de documento — não
+/// veria erro de unidade nenhum.
+///
+/// Mutação que sangra: tire o `px_to_world` do `stroke_at` e as duas asserções trocam.
+#[test]
+fn the_pick_radius_follows_the_zoom() {
+    let d = drawing(vec![line(&[(0.0, 0.0), (100.0, 0.0)], 1.0)]);
+    let p = Vec2::new(50.0, 3.0); // 3 unidades de documento acima da linha
+
+    // Câmera AFASTADA: 1 px de tela = 4 unidades ⇒ o raio de pick (5 px de tela) cobre
+    // 20 unidades. Pega.
+    assert_eq!(
+        stroke_at(&d, p, 4.0, &Xform::IDENTITY),
+        Some(0),
+        "afastado, 3 unidades sao menos de 1 px de tela: tinha de pegar"
+    );
+    // Câmera APROXIMADA: 1 px de tela = 0,1 unidade ⇒ o raio de pick cobre 0,5 unidade.
+    // O ponto está a 3 unidades = 30 px de tela. Erra.
+    assert_eq!(
+        stroke_at(&d, p, 0.1, &Xform::IDENTITY),
+        None,
+        "aproximado, 3 unidades sao 30 px de tela: nao podia pegar"
+    );
+}
+
+/// **Clique simples SUBSTITUI; Shift+clique ALTERNA; clique no vazio DESMARCA.**
+#[test]
+fn click_replaces_shift_toggles_and_empty_clears() {
+    let mut d = drawing(vec![
+        line(&[(0.0, 0.0), (10.0, 0.0)], 4.0),
+        line(&[(0.0, 10.0), (10.0, 10.0)], 4.0),
+    ]);
+
+    assert!(apply_pick(&mut d, Some(0), Pick::Replace));
+    assert_eq!(d.selected_indices(), vec![0]);
+
+    // Shift: o 1º CONTINUA selecionado.
+    assert!(apply_pick(&mut d, Some(1), Pick::Toggle));
+    assert_eq!(d.selected_indices(), vec![0, 1]);
+
+    // Shift de novo no mesmo: sai.
+    assert!(apply_pick(&mut d, Some(1), Pick::Toggle));
+    assert_eq!(d.selected_indices(), vec![0]);
+
+    // Clique simples noutro: o 1º SAI (substitui, não acumula).
+    assert!(apply_pick(&mut d, Some(1), Pick::Replace));
+    assert_eq!(d.selected_indices(), vec![1]);
+
+    // Vazio sem Shift: limpa. Com Shift: não faz nada (um shift-clique que errou o traço
+    // por 2 px não pode apagar a seleção que o usuário montou).
+    assert!(apply_pick(&mut d, None, Pick::Replace));
+    assert!(d.selected_indices().is_empty());
+    assert!(apply_pick(&mut d, Some(0), Pick::Replace));
+    assert!(!apply_pick(&mut d, None, Pick::Toggle));
+    assert_eq!(d.selected_indices(), vec![0], "o Shift no vazio DESMARCOU");
+}
+
+/// **A seleção SOBREVIVE ao balde** — e é isto que uma lista de índices no shell não
+/// conseguiria fazer.
+///
+/// O balde insere o preenchimento **no meio da lista** (`flip_fill`: a cor entra POR BAIXO
+/// do line-art). Uma seleção guardada como índice `1` apontaria, depois da inserção, para
+/// um traço DIFERENTE — e o próximo ajuste do painel recoloriria a arte errada, em
+/// silêncio. Como o `selected` é um atributo que VIAJA com o traço, ele não tem como
+/// dessincronizar.
+///
+/// Mutação que sangra: guarde a seleção como `Vec<usize>` no shell e este teste morre.
+#[test]
+fn the_selection_survives_the_bucket_inserting_a_stroke_beneath_it() {
+    let mut d = drawing(vec![
+        line(&[(0.0, 0.0), (10.0, 0.0)], 4.0),
+        line(&[(0.0, 10.0), (10.0, 10.0)], 4.0),
+    ]);
+    apply_pick(&mut d, Some(1), Pick::Replace);
+    let before = d.strokes[1].clone();
+
+    // O balde entra ATRÁS do line-art (índice 0) — exatamente como o `fill_click` faz.
+    d.strokes
+        .insert(0, region(&[(0.0, 0.0), (5.0, 0.0), (5.0, 5.0)]));
+
+    assert_eq!(
+        d.selected_indices(),
+        vec![2],
+        "a insercao deslocou o traco, e a selecao tem de ter ido JUNTO com ele"
+    );
+    assert_eq!(
+        d.strokes[2], before,
+        "o traco selecionado nao e mais o mesmo — a selecao apontou para outra arte"
+    );
+}
+
+/// **Re-clicar a seleção que já existe não muda nada** — senão cada clique repetido
+/// viraria um passo de undo vazio (o registro do undo sai do DIFF pós-frame).
+#[test]
+fn reclicking_the_same_lone_selection_changes_nothing() {
+    let mut d = drawing(vec![line(&[(0.0, 0.0), (10.0, 0.0)], 4.0)]);
+    assert!(apply_pick(&mut d, Some(0), Pick::Replace));
+    assert!(
+        !apply_pick(&mut d, Some(0), Pick::Replace),
+        "re-clicar a mesma selecao registrou uma mudanca (= um passo de undo vazio)"
+    );
+}
+
+/// **Uma camada TRAVADA não entrega os traços dela** — nem para seleção (regra do GP).
+#[test]
+fn a_locked_layer_yields_no_drawing_to_select_in() {
+    use ph2d_core::Playhead;
+    let mut doc = FlipDoc::default();
+    let oid = doc.push_object("Flip");
+    let obj = doc.object_mut(oid).unwrap();
+    let lid = obj.add_layer("Layer 1");
+    obj.insert_frame(
+        lid,
+        0,
+        ph2d_flip::Hold::Implicit,
+        ph2d_flip::KeyKind::Keyframe,
+    );
+    let playhead = Playhead::default();
+
+    assert!(
+        visible_drawing(&doc, &playhead, Some(lid)).is_some(),
+        "a camada destravada tem de entregar o desenho"
+    );
+    doc.object_mut(oid).unwrap().layer_mut(lid).unwrap().locked = true;
+    assert!(
+        visible_drawing(&doc, &playhead, Some(lid)).is_none(),
+        "a camada TRAVADA entregou o desenho — e o clique editaria arte protegida"
+    );
+}
+
+// ── Os ajustes do painel sobre a SELEÇÃO (`apply_style_delta`) ──
+
+fn style() -> ph2d_tool_flip::FlipStyleSnapshot {
+    ph2d_tool_flip::FlipStyleSnapshot {
+        mode: ph2d_tool_flip::FlipMode::Edit,
+        stroke: [10, 20, 200, 255], // azul
+        width_px: 8.0,
+        opacity: 1.0,
+        ..Default::default()
+    }
+}
+
+/// 🔴 **A regra que protege a arte: SÓ A MUDANÇA age.**
+///
+/// Um traço vermelho selecionado, com o painel em azul, **não pode virar azul** — e é
+/// exatamente o que aconteceria se o passe reaplicasse o estilo a cada frame. O usuário
+/// perderia a arte *só por clicar nela*.
+///
+/// Mutação que sangra: tire o `if prev == now { return false }` (ou compare contra os
+/// defaults em vez de contra o frame anterior) e o vermelho vira azul.
+#[test]
+fn selecting_a_stroke_does_not_repaint_it_with_the_panel_colour() {
+    let mut d = drawing(vec![line(&[(0.0, 0.0), (10.0, 0.0)], 4.0)]);
+    d.strokes[0].selected = true;
+    let red = Rgba::new(0.9, 0.1, 0.1, 1.0);
+    for c in d.strokes[0].colors_mut() {
+        *c = red;
+    }
+
+    // O painel está em AZUL, mas nada mudou entre um frame e o outro.
+    let s = style();
+    assert!(
+        !apply_style_delta(&mut d, &s, &s),
+        "um frame sem mudanca de estilo escreveu no traco"
+    );
+    assert!(
+        d.strokes[0].colors().iter().all(|c| *c == red),
+        "o traco VERMELHO virou a cor do painel so por estar selecionado"
+    );
+}
+
+/// **Mexer no Size não repinta; mexer na cor não reespessa.** Cada campo age sozinho.
+#[test]
+fn each_field_acts_alone() {
+    let mut d = drawing(vec![line(&[(0.0, 0.0), (10.0, 0.0)], 4.0)]);
+    d.strokes[0].selected = true;
+    let red = Rgba::new(0.9, 0.1, 0.1, 1.0);
+    for c in d.strokes[0].colors_mut() {
+        *c = red;
+    }
+
+    let prev = style();
+    let bigger = ph2d_tool_flip::FlipStyleSnapshot {
+        width_px: 16.0,
+        ..prev
+    };
+    assert!(apply_style_delta(&mut d, &prev, &bigger));
+    assert!(
+        d.strokes[0].colors().iter().all(|c| *c == red),
+        "mexer no SIZE repintou o traco"
+    );
+    assert!(
+        (d.strokes[0].widths()[0] - 16.0).abs() < 1e-3,
+        "o Size nao chegou no traco"
+    );
+}
+
+/// **A espessura preserva o PERFIL da pressão, e o slider é reversível.**
+///
+/// Um traço de caneta tem largura variável (pressão). Um `w_i := size` chapado destruiria
+/// esse desenho em silêncio. O perfil (`w_i / w_max`) é re-imposto sobre a espessura nova,
+/// e como escalar preserva razões, arrastar o slider ida-e-volta devolve o traço ORIGINAL.
+///
+/// Mutação que sangra: troque o `size * (w / max)` por `size` e a razão 1:2 vira 1:1.
+#[test]
+fn resizing_preserves_the_pressure_profile_and_is_reversible() {
+    let mut d = drawing(vec![line(&[(0.0, 0.0), (10.0, 0.0), (20.0, 0.0)], 4.0)]);
+    d.strokes[0].selected = true;
+    // Perfil de pressão: 2 px na ponta, 8 px no meio, 4 px no fim.
+    let w = d.strokes[0].widths_mut();
+    w[0] = 2.0;
+    w[1] = 8.0;
+    w[2] = 4.0;
+    let original: Vec<f32> = d.strokes[0].widths().to_vec();
+
+    let a = style(); // width_px = 8
+    let b = ph2d_tool_flip::FlipStyleSnapshot {
+        width_px: 16.0,
+        ..a
+    };
+    apply_style_delta(&mut d, &a, &b);
+    let scaled: Vec<f32> = d.strokes[0].widths().to_vec();
+    assert!(
+        (scaled[0] - 4.0).abs() < 1e-3 && (scaled[1] - 16.0).abs() < 1e-3,
+        "o perfil da pressao (1:4:2) nao sobreviveu ao Size: {scaled:?}"
+    );
+
+    // E a volta devolve o traço.
+    apply_style_delta(&mut d, &b, &a);
+    let back: Vec<f32> = d.strokes[0].widths().to_vec();
+    for (o, n) in original.iter().zip(back.iter()) {
+        assert!(
+            (o - n).abs() < 1e-3,
+            "o slider nao e reversivel: {original:?} -> {back:?}"
+        );
+    }
+}
+
+/// **Um traço NÃO selecionado é intocável.** É a fronteira inteira da feature.
+#[test]
+fn an_unselected_stroke_is_never_touched() {
+    let mut d = drawing(vec![
+        line(&[(0.0, 0.0), (10.0, 0.0)], 4.0),
+        line(&[(0.0, 10.0), (10.0, 10.0)], 4.0),
+    ]);
+    d.strokes[1].selected = true;
+    let before = d.strokes[0].clone();
+
+    let a = style();
+    let b = ph2d_tool_flip::FlipStyleSnapshot {
+        stroke: [255, 0, 0, 255],
+        width_px: 32.0,
+        ..a
+    };
+    assert!(apply_style_delta(&mut d, &a, &b));
+    assert_eq!(
+        d.strokes[0], before,
+        "o traco NAO selecionado foi editado pelo painel"
+    );
+}

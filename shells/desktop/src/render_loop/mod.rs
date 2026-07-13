@@ -32,6 +32,7 @@ pub(crate) mod flip_cursor;
 pub(crate) mod flip_pass;
 mod flip_pass_cache;
 mod flip_pass_ghosts;
+mod flip_selection_overlay;
 mod gizmo_prune;
 mod hierarchy;
 mod image_edit;
@@ -2589,6 +2590,34 @@ impl crate::App {
                 vector_scene,
                 self.last_pointer,
             );
+            // O realce da seleção (W6): uma seleção que não se VÊ não existe. Overlay
+            // (chrome), nunca render de traço — ver o cabeçalho do módulo.
+            {
+                let l2w = flip
+                    .objects()
+                    .first()
+                    .map(|o| o.id)
+                    .and_then(|oid| self.flip_entities.get(&oid).copied())
+                    .map(ph2d_ecs::Entity::from_bits)
+                    .filter(|e| sim.world().get_entity(*e).is_ok())
+                    .map_or(ph2d_vec_scene::Xform::IDENTITY, |e| {
+                        crate::flip_transform::object_xform(sim, e)
+                    });
+                flip_selection_overlay::draw_flip_selection(
+                    flip_active,
+                    matches!(
+                        flip_style.map(|s| s.mode),
+                        Some(ph2d_tool_flip::FlipMode::Edit)
+                    ),
+                    flip,
+                    &self.playhead,
+                    self.flip_active_layer,
+                    &l2w,
+                    camera,
+                    surface.size(),
+                    vector_scene,
+                );
+            }
 
             // Texto em edição herda o Style do painel em TEMPO REAL: o bridge acabou
             // de copiar Fill/Stroke/Width/Cap/Join do painel para o Pen; se mudou,

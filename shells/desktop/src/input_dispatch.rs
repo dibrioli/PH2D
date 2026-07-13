@@ -2349,6 +2349,18 @@ impl App {
         {
             return;
         }
+        // Flip Edit Mode (W6): um CLIQUE no modo Edit seleciona o TRAÇO sob o cursor
+        // (Shift alterna; no vazio, desmarca). Consome mesmo errando o traço — no Edit o
+        // gizmo de objeto não manda, senão o arrasto seguinte moveria o objeto inteiro.
+        if self.flip_wants_edit()
+            && kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && on_canvas
+            && !menu_open_before
+            && self.flip_edit_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
         // "Set Center" armado (ADR-0112): a pressão põe a ORIGEM da forma selecionada
         // sob o cursor e desarma. Vale em QUALQUER modo — inclusive Select, onde o
         // pivô do gizmo é o que se está ajustando.

@@ -536,3 +536,47 @@ fn randomize_keeps_wandering_while_the_cursor_is_held_still() {
         "com a semente por GESTO o traco congelaria: a 2a amostra tem de mexer de novo"
     );
 }
+
+/// **O auto-masking pela SELEÇÃO** (W6 — o Edit Mode).
+///
+/// É a promessa central do Edit Mode: num desenho cheio, alisar uma linha não pode alisar
+/// o que passa perto dela. Se HÁ seleção, o gesto toca só os selecionados.
+///
+/// E **seleção vazia = tudo** — é essa metade da regra que torna a feature aditiva: quem
+/// nunca abriu o Edit Mode não vê diferença nenhuma no Sculpt.
+///
+/// Mutação que sangra: tire o `.filter(|(_, st)| !any_selected || st.selected)` do
+/// `Session::begin` e a máscara volta a pegar os dois traços.
+#[test]
+fn the_sculpt_touches_only_the_selected_strokes_when_there_is_a_selection() {
+    let params = ReshapeParams {
+        kind: ReshapeKind::Smooth,
+        radius: 1000.0, // o pincel cobre os DOIS traços — só a seleção pode separá-los
+        strength: 1.0,
+        ..Default::default()
+    };
+    let s0 = sample(Vec2::new(0.0, 0.0), Vec2::new(0.0, 0.0));
+
+    // Sem seleção: a máscara pega os dois (o comportamento de sempre).
+    let mut strokes = vec![wobbly(12), wobbly(12)];
+    let s = Session::begin(&strokes, &params, &s0);
+    assert_eq!(
+        s.mask.len(),
+        2,
+        "sem selecao, o Sculpt tem de continuar pegando TUDO (a feature e aditiva)"
+    );
+
+    // Com um selecionado: só ele.
+    strokes[1].selected = true;
+    let s = Session::begin(&strokes, &params, &s0);
+    assert_eq!(
+        s.mask.len(),
+        1,
+        "com selecao, o Sculpt tem de tocar SO o selecionado"
+    );
+    assert_eq!(
+        s.mask.first().copied(),
+        Some(1),
+        "o Sculpt esculpiu o traco ERRADO (o nao-selecionado)"
+    );
+}

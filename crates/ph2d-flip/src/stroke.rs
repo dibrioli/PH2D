@@ -104,6 +104,19 @@ pub struct FlipStroke {
     /// (`hide_stroke` do GP). É o que o balde produz: o preenchimento entra POR BAIXO
     /// do line-art que já existe, sem desenhar um segundo contorno em cima dele.
     pub hide_stroke: bool,
+    /// **Selecionado** (W6 — o Edit Mode). É o atributo `.selection` do GP no domínio
+    /// **Curve** (`02_referencia §11`).
+    ///
+    /// **Por que um CAMPO, e não uma lista de índices no shell:** a identidade de um
+    /// traço é a posição dele na `Vec` — e o balde **insere no meio da lista**
+    /// (`flip_fill::fill_click` → `strokes.insert(at, …)`), a borracha reescreve a lista
+    /// inteira, o undo a restaura. Uma seleção guardada como índices apodrece em silêncio
+    /// contra qualquer uma dessas ops: você seleciona um traço, preenche outro, e o painel
+    /// recolore o traço errado. **O atributo VIAJA com o traço** e é imune às três.
+    ///
+    /// (O domínio Point — meio-traço selecionado — é a wave seguinte; ele exige um vetor
+    /// paralelo aos pontos e a conversão de domínio explícita do §11.)
+    pub selected: bool,
 }
 
 impl Default for FlipStroke {
@@ -120,6 +133,7 @@ impl Default for FlipStroke {
             fill: None,
             holes: Vec::new(),
             hide_stroke: false,
+            selected: false,
         }
     }
 }
@@ -179,6 +193,12 @@ impl FlipStroke {
     /// Um traço VAZIO com os mesmos atributos de curva (fechado, caps, hardness,
     /// material, fill) — o molde para reconstruir a polilinha ponto a ponto (o
     /// tween, o offset, o refit). Os arrays SoA saem vazios, invariante intacto.
+    ///
+    /// **O `selected` NÃO viaja** — um traço novo nasce não-selecionado. Os dois usos
+    /// querem coisas opostas: o **tween** produz um traço DERIVADO (um in-between; herdar
+    /// o realce pintaria os quadros gerados de selecionado), enquanto a **borracha**
+    /// produz os PEDAÇOS do mesmo traço e deve herdar — ela o faz explicitamente, no sítio
+    /// onde essa semântica mora (`flip_erase`).
     #[must_use]
     pub fn clone_attrs(&self) -> Self {
         Self {
@@ -193,6 +213,7 @@ impl FlipStroke {
             fill: self.fill,
             holes: self.holes.clone(),
             hide_stroke: self.hide_stroke,
+            selected: false, // um traço novo nasce não-selecionado (ver acima)
         }
     }
 

@@ -136,10 +136,15 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
-    /// Mode row (Select / Draw / Erase / Fill / Reshape) — the gizmo is live only in
-    /// Select.
-    pub(crate) fn mode_row(&mut self, snap: &FlipStyleSnapshot, y: f32) -> f32 {
-        self.segmented(
+    /// Mode row (Select / Draw / Erase · Fill / Sculpt / Edit) — the gizmo is live only
+    /// in Select.
+    ///
+    /// **Duas fileiras de três**, e não uma de seis: o [`BodyCtx::segmented`] DIVIDE a
+    /// largura interna por `N` (não reflui), então seis chips num painel docado deixariam
+    /// ~33 px por rótulo e "Sculpt" não caberia. Mesmo formato que a seção Sculpt (duas
+    /// fileiras de quatro).
+    pub(crate) fn mode_row(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
+        y = self.segmented(
             "Mode",
             [
                 (
@@ -149,15 +154,47 @@ impl BodyCtx<'_> {
                 ),
                 (ids::FLIP_MODE_DRAW, "Draw", snap.mode == FlipMode::Draw),
                 (ids::FLIP_MODE_ERASE, "Erase", snap.mode == FlipMode::Erase),
+            ],
+            y,
+        );
+        self.segmented(
+            "",
+            [
                 (ids::FLIP_MODE_FILL, "Fill", snap.mode == FlipMode::Fill),
                 (
                     ids::FLIP_MODE_RESHAPE,
                     "Sculpt",
                     snap.mode == FlipMode::Reshape,
                 ),
+                (ids::FLIP_MODE_EDIT, "Edit", snap.mode == FlipMode::Edit),
             ],
             y,
         )
+    }
+
+    /// **Edit section** (W6) — o que se faz com a SELEÇÃO de traços.
+    ///
+    /// A seleção em si é feita no canvas (clique = seleciona o traço sob o cursor;
+    /// Shift+clique alterna; clique no vazio limpa). Aqui ficam só as ops que não têm
+    /// gesto: selecionar tudo, limpar, apagar.
+    ///
+    /// O **Brush** e a **Color** também aparecem neste modo (ver [`BodyCtx::brush`]): no
+    /// Edit eles não descrevem o pincel — eles **editam os traços selecionados** (o shell
+    /// reaplica a partir da cópia pristina). É o que aposenta o "alvo vivo".
+    pub(crate) fn edit_section(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
+        if snap.mode != FlipMode::Edit {
+            return y;
+        }
+        y = self.segmented(
+            "Selection",
+            [
+                (ids::FLIP_EDIT_SELECT_ALL, "All", false),
+                (ids::FLIP_EDIT_DESELECT, "None", false),
+                (ids::FLIP_EDIT_DELETE, "Delete", false),
+            ],
+            y,
+        );
+        y
     }
 
     /// **Shape row** (Draw mode, W5.1) — does the stroke carry its OWN fill?
@@ -220,19 +257,27 @@ impl BodyCtx<'_> {
     /// - **Reshape** (W5): as MESMAS duas — o raio do pincel de escultura e a força
     ///   dele. É de propósito que sejam as mesmas: um 2º par de sliders para raio e
     ///   força seria estado duplicado, e trocar de modo exigiria re-ajustar tudo.
+    /// - **Edit** (W6): Size / Hardness / Opacity — mas aqui eles **não descrevem um
+    ///   pincel**: editam os traços SELECIONADOS (o shell reaplica a partir da cópia
+    ///   pristina). **Sem Smoothing**: o alisamento é uma op de GEOMETRIA sobre as
+    ///   amostras cruas da caneta, que um traço já desenhado não guarda — um slider que
+    ///   não pode agir é exatamente o controle morto que esta doutrina proíbe.
     /// - **Select / Fill**: nada daqui.
     pub(crate) fn brush(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
         let sculpt = snap.mode == FlipMode::Reshape;
         let eraser = snap.mode == FlipMode::Erase;
+        let editing = snap.mode == FlipMode::Edit;
         // Os dois modos "raio + força": a borracha e a escultura.
         let radius_force = eraser || sculpt;
-        if !radius_force && snap.mode != FlipMode::Draw {
+        if !radius_force && !editing && snap.mode != FlipMode::Draw {
             return y;
         }
         let label = if eraser {
             "Eraser"
         } else if sculpt {
             "Sculpt"
+        } else if editing {
+            "Stroke" // não é um pincel: são os atributos do que está selecionado
         } else {
             "Brush"
         };
@@ -304,7 +349,11 @@ impl BodyCtx<'_> {
             &format!("{}", pct.round() as i64),
             y,
         );
-        // Smoothing (0..1) — the "settle".
+        // Smoothing (0..1) — the "settle". SÓ no Draw: ele reamostra a polilinha a partir
+        // das amostras CRUAS da caneta, e um traço já desenhado não as guarda.
+        if editing {
+            return y;
+        }
         let track = self
             .store
             .slider(ids::FLIP_SMOOTHING)
@@ -323,10 +372,11 @@ impl BodyCtx<'_> {
 
     /// Color section — a Stroke colour swatch (opens the shared OKLCH picker).
     ///
-    /// **Só no modo Draw**: a cor do TRAÇO não é atributo da borracha nem do balde (que
-    /// tem a cor própria dele, na seção Fill).
+    /// **Draw e Edit**: no Draw ela é a cor do PRÓXIMO traço; no Edit, a dos traços
+    /// SELECIONADOS (o shell recolore). Não é atributo da borracha nem do balde (que tem
+    /// a cor própria dele, na seção Fill).
     pub(crate) fn color(&mut self, snap: &FlipStyleSnapshot, mut y: f32) -> f32 {
-        if snap.mode != FlipMode::Draw {
+        if snap.mode != FlipMode::Draw && snap.mode != FlipMode::Edit {
             return y;
         }
         y = self.section_label("Color", y);

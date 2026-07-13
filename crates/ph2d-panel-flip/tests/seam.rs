@@ -118,6 +118,7 @@ fn every_mode_button_is_painted_and_clickable() {
         (ids::FLIP_MODE_ERASE, "Erase"),
         (ids::FLIP_MODE_FILL, "Fill"),
         (ids::FLIP_MODE_RESHAPE, "Sculpt"),
+        (ids::FLIP_MODE_EDIT, "Edit"),
     ] {
         let hit = painted.iter().find(|(w, _)| *w == id);
         let Some((_, r)) = hit else {
@@ -242,6 +243,25 @@ fn each_mode_shows_only_its_own_attributes() {
         ("Grow", ids::FLIP_GROW),
         ("Precision", ids::FLIP_PRECISION),
     ];
+    // W6 — o Edit Mode. As ops de seleção são SÓ dele; e o Smoothing é o único
+    // atributo do Brush que o Edit NÃO pode mostrar (é uma op de GEOMETRIA sobre as
+    // amostras cruas da caneta, que um traço já desenhado não guarda — um slider que não
+    // pode agir é o controle morto que a doutrina modal proíbe).
+    let edit_only = [
+        ("Select all", ids::FLIP_EDIT_SELECT_ALL),
+        ("Deselect", ids::FLIP_EDIT_DESELECT),
+        ("Delete selection", ids::FLIP_EDIT_DELETE),
+    ];
+    let smoothing_only = [("Smoothing", ids::FLIP_SMOOTHING)];
+    // O que o Edit mostra ALÉM das ops: os atributos do traço que ele reescreve na
+    // seleção (a cor e a dureza; o Size e a Opacity são compartilhados com outros modos).
+    let edit_expected = [
+        ("Hardness", ids::FLIP_HARDNESS),
+        ("Stroke color", ids::FLIP_STROKE_SWATCH),
+        ("Select all", ids::FLIP_EDIT_SELECT_ALL),
+        ("Deselect", ids::FLIP_EDIT_DESELECT),
+        ("Delete selection", ids::FLIP_EDIT_DELETE),
+    ];
     // Os oito pincéis de escultura (W5) — atributo SÓ do modo Sculpt.
     let sculpt_only = [
         ("Smooth", ids::FLIP_RS_SMOOTH),
@@ -260,36 +280,57 @@ fn each_mode_shows_only_its_own_attributes() {
         FlipMode,
         &[(&str, ph2d_a11y::NodeId)],
         &[&[(&str, ph2d_a11y::NodeId)]],
-    ); 5] = [
+    ); 6] = [
         (
             FlipMode::Draw,
             &stroke_only,
-            &[&eraser_only, &bucket_only, &sculpt_only],
+            &[&eraser_only, &bucket_only, &sculpt_only, &edit_only],
         ),
         (
             FlipMode::Erase,
             &eraser_only,
-            &[&stroke_only, &bucket_only, &sculpt_only],
+            &[&stroke_only, &bucket_only, &sculpt_only, &edit_only],
         ),
         (
             FlipMode::Fill,
             &bucket_only,
-            &[&stroke_only, &eraser_only, &sculpt_only],
+            &[&stroke_only, &eraser_only, &sculpt_only, &edit_only],
         ),
         // Sculpt: os oito pincéis — e nada de dureza/alisamento/cor/balde.
         (
             FlipMode::Reshape,
             &sculpt_only,
-            &[&stroke_only, &eraser_only, &bucket_only],
+            &[&stroke_only, &eraser_only, &bucket_only, &edit_only],
         ),
         // Select move/gira o objeto: não tem atributo de pintura nenhum.
         (
             FlipMode::Select,
             &[],
-            &[&stroke_only, &eraser_only, &bucket_only, &sculpt_only],
+            &[
+                &stroke_only,
+                &eraser_only,
+                &bucket_only,
+                &sculpt_only,
+                &edit_only,
+            ],
+        ),
+        // Edit (W6): as ops de seleção + os atributos do traço que ele reescreve. O
+        // Smoothing fica de fora (ver `smoothing_only`), e nada de borracha/balde/sculpt.
+        (
+            FlipMode::Edit,
+            &edit_expected,
+            &[&eraser_only, &bucket_only, &sculpt_only, &smoothing_only],
         ),
     ];
 
+    // A tabela tem de cobrir TODOS os modos: um modo novo que entrasse sem um caso aqui
+    // não seria testado por ninguém — e o `Edit` (W6) fez exatamente isso enquanto as
+    // listas eram escritas à mão.
+    assert_eq!(
+        cases.len(),
+        FlipMode::ALL.len(),
+        "um modo NOVO nao tem caso nesta tabela — o gate modal esta cego para ele"
+    );
     for (mode, expected, forbidden) in cases {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
         let mut st = FlipPanelState;
@@ -317,19 +358,30 @@ fn each_mode_shows_only_its_own_attributes() {
     }
 }
 
-/// O **Size** é o atributo compartilhado: a espessura do pincel, o raio da borracha E
-/// o raio do pincel de escultura (W5 — de propósito: um 2º par de sliders para raio e
-/// força seria estado duplicado, e trocar de modo obrigaria a re-ajustar tudo). Ele
-/// aparece nos três — e some no balde e no Select.
+/// O **Size** é o atributo compartilhado: a espessura do pincel, o raio da borracha, o
+/// raio do pincel de escultura (W5 — de propósito: um 2º par de sliders para raio e força
+/// seria estado duplicado, e trocar de modo obrigaria a re-ajustar tudo) e, no **Edit**
+/// (W6), a espessura dos traços SELECIONADOS. Ele some no balde e no Select.
+///
+/// A varredura cobre `FlipMode::ALL` (e afirma isso): um modo novo que mostrasse o Size
+/// sem passar por aqui escaparia do gate — foi exatamente o que o Edit fez quando a lista
+/// era escrita à mão.
 #[test]
 fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
-    for (mode, want) in [
+    let cases = [
         (FlipMode::Draw, true),
         (FlipMode::Erase, true),
         (FlipMode::Reshape, true),
+        (FlipMode::Edit, true),
         (FlipMode::Fill, false),
         (FlipMode::Select, false),
-    ] {
+    ];
+    assert_eq!(
+        cases.len(),
+        FlipMode::ALL.len(),
+        "um modo NOVO nao entrou nesta varredura — o gate ficaria cego para ele"
+    );
+    for (mode, want) in cases {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
         let mut st = FlipPanelState;
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {

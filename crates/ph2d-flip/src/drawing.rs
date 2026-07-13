@@ -67,6 +67,46 @@ impl FlipDrawing {
     pub(crate) fn set_users(&mut self, n: u32) {
         self.users = n;
     }
+
+    // ── Seleção (W6 — o Edit Mode; `FlipStroke::selected`, domínio Curve) ──
+    //
+    // A seleção é **derivada dos traços**, nunca guardada em paralelo: perguntar
+    // "quem está selecionado?" é uma varredura, e é assim que ela não pode
+    // dessincronizar de uma inserção/remoção (o balde insere no meio da lista).
+
+    /// Os índices dos traços selecionados, em ordem de z.
+    #[must_use]
+    pub fn selected_indices(&self) -> Vec<usize> {
+        self.strokes
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.selected)
+            .map(|(i, _)| i)
+            .collect()
+    }
+
+    /// Há algum traço selecionado?
+    #[must_use]
+    pub fn any_selected(&self) -> bool {
+        self.strokes.iter().any(|s| s.selected)
+    }
+
+    /// Desmarca tudo. Devolve `true` se algo mudou (o chamador decide se isso é um
+    /// passo de undo).
+    pub fn clear_selection(&mut self) -> bool {
+        let mut changed = false;
+        for s in &mut self.strokes {
+            changed |= std::mem::replace(&mut s.selected, false);
+        }
+        changed
+    }
+
+    /// Remove os traços selecionados. Devolve quantos saíram.
+    pub fn delete_selected(&mut self) -> usize {
+        let before = self.strokes.len();
+        self.strokes.retain(|s| !s.selected);
+        before - self.strokes.len()
+    }
 }
 
 #[cfg(test)]

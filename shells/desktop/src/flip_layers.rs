@@ -38,6 +38,39 @@ pub(crate) fn apply_panel_event(
         return false;
     };
     match ev {
+        // ── Edit Mode (W6): as ops de SELEÇÃO que não têm gesto de canvas. ──
+        //
+        // Elas moram aqui, no drain do documento, e não na tool: a seleção é atributo do
+        // TRAÇO (`FlipStroke::selected`), não estado de estilo — a tool não tem, e não
+        // deve ter, acesso ao `FlipDoc`.
+        //
+        // Todas operam no desenho VISÍVEL (`flip_select::visible_drawing`, que recebe o
+        // doc imutável): selecionar/desmarcar/apagar nunca materializa uma chave nova.
+        PanelEvent::Click(id)
+            if *id == ids::FLIP_EDIT_SELECT_ALL
+                || *id == ids::FLIP_EDIT_DESELECT
+                || *id == ids::FLIP_EDIT_DELETE =>
+        {
+            let Some((_oid, _lid, did)) =
+                crate::flip_select::visible_drawing(flip, playhead, *active_layer)
+            else {
+                return false; // camada travada / quadro sem desenho
+            };
+            let Some(drawing) = flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
+                return false;
+            };
+            if *id == ids::FLIP_EDIT_SELECT_ALL {
+                let mut changed = false;
+                for s in &mut drawing.strokes {
+                    changed |= !std::mem::replace(&mut s.selected, true);
+                }
+                changed
+            } else if *id == ids::FLIP_EDIT_DESELECT {
+                drawing.clear_selection()
+            } else {
+                drawing.delete_selected() > 0
+            }
+        }
         PanelEvent::Click(id) if *id == ids::FLIP_LAYER_ADD => {
             if let Some(obj) = flip.object_mut(oid) {
                 let name = format!("Layer {}", obj.layers().len() + 1);

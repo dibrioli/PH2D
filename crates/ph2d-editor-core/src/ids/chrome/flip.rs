@@ -34,6 +34,19 @@ pub const FLIP_SHAPE_FILLED: NodeId = hash_node_id("flip.shape.filled");
 /// Reshape: sculpts the strokes already drawn (W5 — see the Reshape section).
 pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
 
+/// Edit: selects STROKES (W6 — the Grease Pencil Edit Mode).
+///
+/// A mode of its own, NOT an overload of Select: in Select the sprite **gizmo** owns the
+/// click (it moves the whole Flip object, ADR-0112). Same split as the Grease Pencil's
+/// Object Mode vs Edit Mode.
+pub const FLIP_MODE_EDIT: NodeId = hash_node_id("flip.mode.edit");
+/// Edit section: deletes the selected strokes.
+pub const FLIP_EDIT_DELETE: NodeId = hash_node_id("flip.edit.delete");
+/// Edit section: clears the selection (deselect all).
+pub const FLIP_EDIT_DESELECT: NodeId = hash_node_id("flip.edit.deselect");
+/// Edit section: selects every stroke of the active drawing.
+pub const FLIP_EDIT_SELECT_ALL: NodeId = hash_node_id("flip.edit.select_all");
+
 // ── Reshape section (shown only in Reshape mode, ADR-0114 W5) ───────────────
 /// The eight sculpt brushes, in panel order (two rows of four). They share the
 /// Brush section's Size (radius) and Strength — a Reshape with its own pair of

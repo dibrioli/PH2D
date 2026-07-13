@@ -226,11 +226,19 @@ impl Session {
     /// pincel que movesse a linha e deixasse a cor para trás não seria uma ferramenta de
     /// escultura; seria uma ferramenta de quebrar o desenho.
     ///
-    /// O auto-masking mais fino do GP (por traço sob o cursor, por material, pela
-    /// seleção) depende de um modelo de SELEÇÃO, que é o Edit Mode — o pacote seguinte.
-    /// O que importa já vale: o conjunto é resolvido UMA vez, no down.
+    /// **O auto-masking pela SELEÇÃO** (W6 — o Edit Mode) já vale: se **algum** traço do
+    /// desenho está selecionado, o gesto toca **só os selecionados**. É o
+    /// `retrieve_editable_strokes` do GP com a seleção ligada, e é o que torna o Sculpt
+    /// utilizável num desenho cheio: sem ele, alisar uma linha alisa o que passa perto
+    /// dela. **Seleção vazia = tudo** (o comportamento anterior, byte a byte) — e é essa
+    /// regra que faz a feature ser aditiva: quem nunca abriu o Edit Mode não vê diferença.
+    ///
+    /// O conjunto é resolvido UMA vez, no down.
     #[must_use]
     pub fn begin(strokes: &[FlipStroke], p: &ReshapeParams, s: &InputSample) -> Self {
+        // "Há seleção?" é uma pergunta sobre o DESENHO, não sobre o traço — por isso ela
+        // é resolvida antes do filtro, e não dentro dele.
+        let any_selected = strokes.iter().any(|st| st.selected);
         let mask: Vec<usize> = strokes
             .iter()
             .enumerate()
@@ -238,6 +246,7 @@ impl Session {
             // Os pincéis de ATRIBUTO (largura/opacidade) não tocam regiões: ali o
             // `width` é a dilatação da cor, não a espessura de uma linha.
             .filter(|(_, st)| !(edits_attributes(p.kind) && is_region(st)))
+            .filter(|(_, st)| !any_selected || st.selected)
             .map(|(i, _)| i)
             .collect();
         let mut grab = Vec::new();

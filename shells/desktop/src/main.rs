@@ -51,6 +51,7 @@ mod flip_gizmo_view;
 mod flip_layers;
 mod flip_live;
 mod flip_reshape;
+mod flip_select;
 mod flip_smooth;
 mod flip_strip;
 mod flip_transform;
@@ -286,6 +287,7 @@ impl App {
             flip_strip: crate::flip_strip::FlipStrip::default(),
             flip_live: None,
             flip_reshape: None,
+            flip_edit_style: None,
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,
@@ -403,6 +405,9 @@ impl App {
         // o traço ou o preenchimento. Antes do retrato do undo, para o ajuste e o estado
         // que o usuário vê serem o MESMO passo.
         self.flip_live_refresh();
+        // **A SELEÇÃO** (`flip_select`, W6): no modo Edit ela é o alvo dos ajustes do
+        // painel, e enquanto existe ela aposenta o alvo vivo. Só a MUDANÇA de estilo age.
+        crate::flip_select::flip_edit_style_refresh(self);
         // Depois do frame (estado já reconciliado pelo `sync`, `self` livre do borrow
         // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
         // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).

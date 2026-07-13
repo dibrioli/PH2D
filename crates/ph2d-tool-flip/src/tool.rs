@@ -236,6 +236,7 @@ impl Tool for FlipTool {
             PanelEvent::Click(id) if id == ids::FLIP_MODE_ERASE => self.mode = FlipMode::Erase,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_FILL => self.mode = FlipMode::Fill,
             PanelEvent::Click(id) if id == ids::FLIP_MODE_RESHAPE => self.mode = FlipMode::Reshape,
+            PanelEvent::Click(id) if id == ids::FLIP_MODE_EDIT => self.mode = FlipMode::Edit,
             // Shape (modo Draw): o traço carrega o próprio preenchimento?
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_LINE => self.draw_filled = false,
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_FILLED => self.draw_filled = true,

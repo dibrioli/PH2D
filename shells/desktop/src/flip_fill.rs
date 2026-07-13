@@ -193,7 +193,11 @@ fn ring_area(r: &[Vec2]) -> f32 {
 }
 
 /// O ponto está dentro do anel (even-odd)?
-fn ring_contains(ring: &[Vec2], p: Vec2) -> bool {
+///
+/// `pub(crate)` porque o pick do Edit Mode (`flip_select`) faz a MESMA pergunta ao clicar
+/// dentro de uma região — e duas cópias desta regra derivariam (o render usa even-odd, e
+/// um pick que discordasse dele selecionaria o que não está sob o cursor).
+pub(crate) fn ring_contains(ring: &[Vec2], p: Vec2) -> bool {
     let n = ring.len();
     let mut c = false;
     for i in 0..n {

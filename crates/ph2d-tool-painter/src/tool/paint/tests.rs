@@ -18600,31 +18600,57 @@ fn impasto_light_shades_the_paint_not_the_paper_showing_through_it() {
     let (loud, cov) = render(1.0, true);
     let (unlit, _) = render(1.0, false);
 
+    // The statement, restated on the quantity the layers now hold (§15). `cov` used to be the RAW paint
+    // (silhouette × dynamics) and the weight a curve over it, so "no body" could be spelled `cov < W_TAIL`
+    // and the no-op below it was true BY CONSTRUCTION of the weight function — a tautology wearing a
+    // gate's clothes. `cov` is now the SOLID PAINT itself (`solid_paint`: the body curve on the
+    // silhouette, the dynamics multiplying afterwards), which is the light's weight, so the property has
+    // to be said in two halves that are each independently falsifiable:
+    //
+    //   1. BARE PAPER — the pixel carries no pigment at all — is byte-identical, however the light is
+    //      dialled. That line is absolute and it is the halo's actual door.
+    //   2. TRANSLUCENT PAINT is touched only IN PROPORTION to the paint that is there. Measured: the
+    //      worst the pass ever moves such a pixel is **half** the ink in it. That is what stops the pass
+    //      from bleaching the paper *through* the paint, and — unlike the old threshold — it is a real
+    //      measurement, not a restatement of the weight function.
+    //
+    // (MUT `paint_body(c) = 1.0`: bare paper lights up ⇒ half 1 RED. MUT `paint_body(c) = c.sqrt()`: the
+    // thinnest paint takes 11× its share ⇒ half 2 RED. The old form caught neither on its own terms.)
+    const MAX_SHARE: f32 = 0.75; // measured worst: 0.50 of the pixel's own ink
     let w_tail = ph2d_painter_brush::height::W_TAIL;
-    let (mut bodyless, mut drifted, mut worst) = (0u32, 0u32, 0i32);
+    let (mut bare, mut bare_drift, mut worst_share, mut worst_c) = (0u32, 0i32, 0.0f32, 0.0f32);
     for p in 0..(size * size) as usize {
-        if f32::from(cov[p]) / 255.0 >= w_tail {
-            continue; // paint with a body — the light SHOULD model it
-        }
-        bodyless += 1;
-        for c in 0..3 {
-            let d = i32::from(loud[p * 4 + c]) - i32::from(unlit[p * 4 + c]);
-            if d != 0 {
-                drifted += 1;
+        let c = f32::from(cov[p]) / 255.0;
+        let d = (0..3)
+            .map(|k| (i32::from(loud[p * 4 + k]) - i32::from(unlit[p * 4 + k])).abs())
+            .max()
+            .unwrap_or(0);
+        if c == 0.0 {
+            bare += 1;
+            bare_drift = bare_drift.max(d);
+        } else if c < w_tail {
+            let share = d as f32 / (255.0 * c);
+            if share > worst_share {
+                worst_share = share;
+                worst_c = c;
             }
-            worst = worst.max(d.abs());
         }
     }
     assert!(
-        bodyless > 30_000,
-        "sanity: most of this canvas is bare paper or a faint stain ({bodyless} px)"
+        bare > 30_000,
+        "sanity: most of this canvas is bare paper ({bare} px)"
     );
     assert_eq!(
-        drifted, 0,
-        "the light moved {drifted} channels of paint that has NO body (worst {worst} levels) — that is \
-         the white halo: the pass shading the paper seen through the paint. It vanished on Enio's black \
-         canvas because there was nothing white to bleach, which is how we know it is the paper and not \
-         the pigment."
+        bare_drift, 0,
+        "the light moved BARE PAPER by {bare_drift} levels — the pass must be a strict no-op where there \
+         is no pigment at all. That is the white halo: it vanished on Enio's black canvas because there \
+         was nothing white to bleach, which is how we know it is the paper and not the pigment."
+    );
+    assert!(
+        worst_share <= MAX_SHARE,
+        "the light moved a translucent pixel by {:.0}% of its own ink (at coverage {worst_c:.3}) — it may \
+         only touch the paint that is actually there, never the paper showing through it",
+        worst_share * 100.0
     );
 }
 
@@ -18704,22 +18730,42 @@ fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
         at(0.25).2
     );
 
-    // 2. The stain carries NO body: past 85% of the painted half-width the relief is zero.
-    //    (Dome: 0.065 there — relief over near-invisible paint, the halo's raw material.)
-    assert!(
-        at(0.85).2 == 0.0 && at(0.95).2 == 0.0,
-        "the translucent rim is FLAT ({} / {})",
-        at(0.85).2,
-        at(0.95).2
-    );
+    // 2. The relief ENDS WITH THE PAINT: past the film's own edge there is no body left standing.
+    //
+    //    It used to say "past 85% of the painted half-width the relief is zero", and that measured the
+    //    stain — a band of pigment WITHOUT body, which is exactly what the brush no longer lays (§14:
+    //    `film_coverage`; and `cov` is now the solid paint itself, so the painted half-width IS the
+    //    body's). The claim survives, sharper, from the other side: step OUT past the paint and there
+    //    must be nothing — no body, no pigment. (Dome kernel: 0.065 of relief out there, standing over
+    //    near-invisible paint — the halo's raw material. Still RED.)
+    let out = |frac: f32| {
+        let d = (frac * half_width as f32).round() as u32;
+        rows.iter().find(|r| r.0 == d).expect("inside the canvas")
+    };
+    for frac in [1.10f32, 1.25, 1.40] {
+        let r = out(frac);
+        assert!(
+            r.2 == 0.0 && r.1 == 0,
+            "past the paint's edge the canvas is BARE: at {frac}x the half-width the relief is {} and \
+             the coverage {}",
+            r.2,
+            r.1
+        );
+    }
 
-    // 3. The light lives on the WALL: the response is concentrated (≤ 40% of the painted width moves
-    //    ≥ 3 levels; the dome smeared 62%), and its peak is a real edge, not a haze (≥ 8 levels;
-    //    the dome managed 7.3 with everything on).
+    // 3. The light lives on the WALL: the response is concentrated, and its peak is a real edge, not a
+    //    haze (≥ 8 levels; the dome managed 7.3 with everything on).
+    //
+    //    The bar moved 40% → 55%, and the DENOMINATOR is why: `painted` used to run out to the stain's
+    //    last visible pixel, and the stain is exactly what the brush stopped laying (§14). Measured over
+    //    the film, the wall's share is its own geometry — for this brush it spans `t ∈ [0.35, 0.61]` of a
+    //    film that ends at `t = 0.61`, i.e. **43%**, and 43% is what it measures. The dome, over the same
+    //    denominator, smears **84%** (MUT `body_profile(w) = w`, with assertions 1–2 silenced so this one
+    //    could speak). The bar sits between them, nearer the geometry than the slack.
     let visible = painted.iter().filter(|r| r.3.abs() >= 3.0).count();
     let concentration = visible as f32 / painted.len().max(1) as f32;
     assert!(
-        concentration <= 0.40,
+        concentration <= 0.55,
         "the shading is concentrated at the edge, not smeared over the stroke ({:.0}% of the width)",
         concentration * 100.0
     );
@@ -19074,22 +19120,25 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         lit(&mut t)
     };
     let _ = &h;
-    let (mut stain_px, mut drifted, mut worst_drift) = (0u32, 0u32, 0i32);
+    // Restated on the quantity the layers now hold (§15): `cov` is the SOLID PAINT — the light's weight
+    // itself — so "the pass is a no-op on the stain" is no longer a threshold to check but a
+    // PROPORTION: the highlight may only touch the paint that is actually there. Bare paper takes
+    // nothing at all; a translucent pixel takes at most its own share. (The stain CAN carry a little
+    // height — `Smoothing` settles the paint and the blur spreads it past the body's edge, which is what
+    // settling paint does. What must not happen is the light bleaching the paper *through* it.)
+    const MAX_SHARE: f32 = 0.75; // measured worst: 0.50 of the pixel's own ink
+    let (mut stain_px, mut bare_drift, mut worst_share) = (0u32, 0i32, 0.0f32);
     for p in 0..(size * size) as usize {
         let c = f32::from(cov[p]) / 255.0;
-        if c == 0.0 || c >= w_tail {
-            continue; // bare paper, or paint with a body — not the stain
-        }
-        stain_px += 1;
-        // (The stain CAN carry a little height — `Smoothing` settles the paint and the blur spreads it
-        // past the body's edge, which is what settling paint does. What must not happen is the LIGHT
-        // reading it: the weight is the body curve, which is zero here, so the pixels stay untouched.)
-        for ch in 0..3 {
-            let d = i32::from(glossy[p * 4 + ch]) - i32::from(unlit[p * 4 + ch]);
-            if d != 0 {
-                drifted += 1;
-            }
-            worst_drift = worst_drift.max(d.abs());
+        let d = (0..3)
+            .map(|ch| (i32::from(glossy[p * 4 + ch]) - i32::from(unlit[p * 4 + ch])).abs())
+            .max()
+            .unwrap_or(0);
+        if c == 0.0 {
+            bare_drift = bare_drift.max(d);
+        } else if c < w_tail {
+            stain_px += 1;
+            worst_share = worst_share.max(d as f32 / (255.0 * c));
         }
     }
     assert!(
@@ -19097,12 +19146,16 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         "sanity: the fixture HAS a translucent stain ({stain_px} px) — else this claim is vacuous"
     );
     assert_eq!(
-        drifted, 0,
-        "at full Shine the pass moved {drifted} channels of the translucent stain (worst {worst_drift} \
-         levels) — the light must not touch paint too thin to have a body"
+        bare_drift, 0,
+        "at full Shine the highlight moved BARE PAPER by {bare_drift} levels — the halo's door"
+    );
+    assert!(
+        worst_share <= MAX_SHARE,
+        "at full Shine the highlight moved a translucent pixel by {:.0}% of its own ink — the light must \
+         not touch paint too thin to have a body",
+        worst_share * 100.0
     );
 }
-
 #[test]
 fn impasto_plow_drags_the_relief_with_the_paint() {
     // **Plow** — the palette knife (plan §6, deferred since the first cut; Corel's `Plow`, ArtRage's
@@ -19697,7 +19750,7 @@ fn impasto_the_stroke_commit_is_cropped_to_the_stroke_and_byte_identical() {
     // displacement's widest bank) — so it is a function of the STROKE, never of the canvas, which is what
     // keeps the commit `O(stroke)`. On this 200² fixture a short stroke plus that pad lands around a fifth
     // of the canvas; on a 4096² one it is the same window.
-    let cells = t.paint.live_relief_base.len();
+    let cells = t.paint.relief.live_relief_base.len();
     assert!(
         cells > 0 && cells * 3 < n,
         "the commit works in a window, not on the canvas: the ground patch is {cells} of {n} texels"
@@ -19707,9 +19760,10 @@ fn impasto_the_stroke_commit_is_cropped_to_the_stroke_and_byte_identical() {
     let brush = t.paint.brush;
     let mut reference: Vec<f32> = t
         .paint
+        .relief
         .live_paint
         .iter()
-        .zip(t.paint.live_grain.iter())
+        .zip(t.paint.relief.live_grain.iter())
         .map(|(&m, &g)| ph2d_painter_brush::height::derive_height(&brush, m, f32::from(g) / 255.0))
         .collect();
     super::impasto_settle::settle(
@@ -20111,7 +20165,6 @@ fn impasto_push_banks_a_smooth_ridge_with_no_crease_scored_along_it() {
 /// makes it a rule and not a preset.
 #[test]
 fn impasto_lays_no_pigment_where_the_light_lays_no_shading() {
-    use ph2d_painter_brush::height::body_profile;
     let size = 200u32;
     // Paint one stroke and return (canvas, cover) — the pigment that landed and the paint the light sees.
     let stroke = |falloff: Falloff, strength: f32| -> (Vec<u8>, Vec<u8>) {
@@ -20142,20 +20195,26 @@ fn impasto_lays_no_pigment_where_the_light_lays_no_shading() {
         (t.canvas_rgba.to_vec(), cover)
     };
 
-    // At FULL dynamics — where the light is live. Its own coverage threshold is on the PAINT
-    // (`body_profile(cover)`, `cover = tip × dynamics`), so under Flow × Strength × pressure below
-    // ~`W_TAIL` it already models nothing anywhere on the stroke, and has since long before the film
-    // (verify by reverting `film_coverage` to the identity: a Strength-0.5 impasto stroke gets no light
-    // then either). Asserting the rule there would be asserting that the brush paints NOTHING. So the
-    // rule is stated where it has content, and the light's own threshold is named as the open seam —
-    // `docs/Painter/16_impasto_plano_implementacao.md` §14.
-    for falloff in [
-        Falloff::Smooth, // the default brush — where Enio saw the haze
-        Falloff::Sphere, // his workaround: the rule must not depend on the falloff
+    // At every FALLOFF and every STRENGTH. The Strength axis is the whole point of the second pass
+    // (§15): the light used to weigh by `body_profile(cover)` over a `cover` that held the RAW paint —
+    // dynamics INSIDE the body curve, where they starve it. Below Flow × Strength × pressure ≈ `W_TAIL`
+    // the argument fell under the tail for every texel and the light modelled NOTHING anywhere on the
+    // stroke, while the pigment was still right there: Enio's haze, hiding behind the mouse (which always
+    // presses at 1.0). The layers now store the SOLID PAINT itself, so the threshold sits on the
+    // silhouette and the dynamics multiply afterwards — and the rule holds at any pressure.
+    for (falloff, strength) in [
+        (Falloff::Smooth, 1.0f32), // the default brush — where Enio saw the haze
+        (Falloff::Sphere, 1.0),    // his workaround: the rule must not depend on the falloff
+        (Falloff::Smooth, 0.5),    // …nor on how hard you press. RED before §15.
+        (Falloff::Smooth, 0.3), // Accumulate-OFF territory, and under the old W_TAIL on the dynamics
     ] {
-        let (canvas, cover) = stroke(falloff, 1.0);
-        let falloff = format!("{falloff:?}");
-        assert_eq!(cover.len(), (size * size) as usize, "{falloff}: a cover map");
+        let (canvas, cover) = stroke(falloff, strength);
+        let falloff = format!("{falloff:?} @ strength {strength}");
+        assert_eq!(
+            cover.len(),
+            (size * size) as usize,
+            "{falloff}: a cover map"
+        );
         let (mut pigmented, mut orphan, mut worst) = (0u32, 0u32, 0.0f32);
         for p in 0..(size * size) as usize {
             // Did the brush leave pigment here? (White paper: any channel below 255 is paint.)
@@ -20164,17 +20223,22 @@ fn impasto_lays_no_pigment_where_the_light_lays_no_shading() {
                 continue;
             }
             pigmented += 1;
-            // Then the light MUST model it: its coverage weight is `body_profile(cover)`, and a zero
-            // there is the light declaring this pixel bodyless — paper showing through a stain.
-            let weight = body_profile(f32::from(cover[p]) / 255.0);
+            // Then the light MUST model it. `cover` IS the light's weight now — the SOLID PAINT the
+            // brush laid (`solid_paint`) — and a zero there is the light declaring this pixel bodyless:
+            // paper showing through a stain.
+            let weight = f32::from(cover[p]) / 255.0;
             if weight <= 0.0 {
                 orphan += 1;
                 worst = worst.max(f32::from(ink) / 255.0);
             }
         }
-        assert!(pigmented > 500, "{falloff}: the stroke must actually paint ({pigmented} px)");
+        assert!(
+            pigmented > 500,
+            "{falloff}: the stroke must actually paint ({pigmented} px)"
+        );
         assert_eq!(
-            orphan, 0,
+            orphan,
+            0,
             "{falloff}: {orphan} px of pigment outside the relief the light will model \
              (worst {:.0}% ink) — the haze Enio photographed",
             worst * 100.0
@@ -20278,7 +20342,10 @@ fn the_film_never_starves_the_brush_at_low_strength() {
             .count() as u32
     };
     let full = ink(1.0);
-    assert!(full > 500, "sanity: the full-strength stroke paints ({full} px)");
+    assert!(
+        full > 500,
+        "sanity: the full-strength stroke paints ({full} px)"
+    );
     for strength in [0.5f32, 0.3, 0.15] {
         let faint = ink(strength);
         assert!(
@@ -20286,5 +20353,93 @@ fn the_film_never_starves_the_brush_at_low_strength() {
             "Strength {strength}: an impasto brush laid {faint} px against {full} at full — the film cut \
              the DYNAMICS instead of the tip, and starved the brush"
         );
+    }
+}
+
+/// The light models a **faint** stroke: a light touch lays a thinner film, not one the light refuses to see.
+///
+/// The hole §14.6 named and did not close. The pass weighed its shading by `body_profile(cover)` over a
+/// `cover` that held the RAW paint — `silhouette × dynamics` — so the dynamics sat INSIDE the body curve,
+/// where they could starve it: at Flow × Strength × pressure below `W_TAIL` the argument falls under the
+/// tail for **every texel** and the light models nothing anywhere on the stroke. The pigment, cut on the
+/// silhouette (`film_coverage`), is still perfectly there. That is Enio's haze — pigment with no visible
+/// body — surviving at partial pressure, and it hid behind the mouse, which always presses at 1.0.
+///
+/// The fix is the film's own theorem applied to the other side: **the threshold belongs to the silhouette;
+/// the dynamics multiply afterwards** (`solid_paint`). At full dynamics the two spellings are the same
+/// number, so nothing a mouse ever drew moved.
+///
+/// MUT (`solid_paint(sil, dyn) = body_profile(sil * dyn)` — the dynamics back inside the curve): RED,
+/// the faint stroke goes completely unlit.
+#[test]
+fn the_light_models_a_faint_stroke() {
+    let size = 160u32;
+    // The shading a stroke at `strength` produces: the biggest level the light moves any pixel.
+    let shading = |strength: f32| -> i32 {
+        let render = |show: bool| -> Vec<u8> {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+            let b = BrushSpec {
+                radius_px: 30.0,
+                color: [0.9, 0.1, 0.1],
+                strength,
+                space_attenuation: false,
+                impasto: true,
+                ..Default::default()
+            };
+            t.paint.brush = b;
+            for slot in &mut t.paint.brush_by_mode {
+                *slot = b;
+            }
+            t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
+            t.on_canvas_pointer(cp([120.0, 90.0], PointerPhase::Move));
+            t.on_canvas_pointer(cp([40.0, 130.0], PointerPhase::Up));
+            t.paint.impasto_show = show;
+            t.invalidate_composite();
+            lit(&mut t)
+        };
+        let (lit_img, flat) = (render(true), render(false));
+        let mut worst = 0i32;
+        for p in 0..(size * size) as usize {
+            for c in 0..3 {
+                let d = (i32::from(lit_img[p * 4 + c]) - i32::from(flat[p * 4 + c])).abs();
+                worst = worst.max(d);
+            }
+        }
+        worst
+    };
+    let full = shading(1.0);
+    assert!(
+        full > 20,
+        "sanity: a full-strength stroke is modelled ({full} levels)"
+    );
+    // A light touch is THINNER paint, and Strength scales the THICKNESS as well as the opacity — so a
+    // 30% stroke is a film 30% as tall AND 30% as opaque, and the two multiply. It is modelled an order
+    // of magnitude more softly, and that is the physics, not the bug: thin paint catches little light.
+    //
+    // The property is that the light does not go DARK, and the bar is stated there and nowhere else —
+    // inflating it to "must move ≥ N levels" would be inventing a look the paint does not have. Measured:
+    // **149 / 30 / 2** levels at Strength 1.0 / 0.5 / 0.3. Under the MUT (`solid_paint` spelled
+    // `body_profile(sil * dynamics)` — the dynamics back inside the curve) Strength 0.5 goes to exactly
+    // **0**: the pass turns black, which is what Enio would have hit the first time he picked up the pen.
+    //
+    // Below ~0.25 the response falls under a LEVEL and rounds to zero, and that is arithmetic, not a
+    // cliff: Strength scales the film's thickness AND its opacity, so a 20% stroke is 20% as tall and 20%
+    // as opaque, and 4% of a shading is less than 1/255. Thin paint has no visible relief. Asserting
+    // otherwise would be asserting a look the paint does not have.
+    let mut prev = full;
+    for strength in [0.5f32, 0.3] {
+        let faint = shading(strength);
+        assert!(
+            faint > 0,
+            "Strength {strength}: the light moved {faint} levels — a faint stroke is thinner paint, not \
+             paint the light refuses to SEE (full strength moves {full})"
+        );
+        assert!(
+            faint <= prev,
+            "…and it tracks the paint: Strength {strength} may not be modelled harder ({faint}) than the \
+             heavier stroke above it ({prev})"
+        );
+        prev = faint;
     }
 }

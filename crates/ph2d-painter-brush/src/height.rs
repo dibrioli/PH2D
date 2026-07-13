@@ -15,7 +15,7 @@
 //! Where a body of paint ENDS — [`W_TAIL`] / [`W_SOLID`] / [`body_profile`] / [`film_coverage`] — lives in
 //! the sibling [`crate::height_film`], re-exported here so callers still see one `height` surface.
 
-pub use crate::height_film::{W_SOLID, W_TAIL, body_profile, film_coverage};
+pub use crate::height_film::{W_SOLID, W_TAIL, body_profile, film_coverage, solid_paint};
 
 /// Where a dab's height comes from — which part of the dab mask the colour path already built
 /// (`silhouette × grain`) sculpts the relief.
@@ -284,13 +284,21 @@ pub struct HeightFields<'a> {
     pub paint: &'a mut [f32],
     /// That same dab's grain sample ([`NO_GRAIN`] where the brush carries no grain).
     pub grain: &'a mut [u8],
+    /// The **solid paint** the stroke laid ([`solid_paint`]) — the film's own alpha, and the coverage the
+    /// light weighs its shading by. Its own `max` envelope, NOT the winner-by-paint's value: it is a
+    /// different function of the dab (the body curve runs on the silhouette, the dynamics scale it), so
+    /// the dab that laid the most paint here is not always the one that laid the most body.
+    pub film: &'a mut [u8],
 }
 
 impl HeightFields<'_> {
     /// Whether every plane is at least `n` long — a real early-out, not a `debug_assert` that vanishes
     /// from the build the artist runs (the lesson of the 2026-07-12 SIGSEGV).
     fn fits(&self, n: usize) -> bool {
-        self.height.len() >= n && self.paint.len() >= n && self.grain.len() >= n
+        self.height.len() >= n
+            && self.paint.len() >= n
+            && self.grain.len() >= n
+            && self.film.len() >= n
     }
 }
 
@@ -381,6 +389,14 @@ pub fn accumulate_dab_height(
             if w <= 0.0 {
                 continue;
             }
+            let i = (py as usize) * (width as usize) + px as usize;
+            // The **film's** envelope, taken FIRST and on its own: the light's coverage is a different
+            // function of the dab than the relief's ingredient is, so it cannot ride the same winner.
+            let fq = (crate::height_film::solid_paint(w, coverage) * 255.0 + 0.5) as u8;
+            if fq > fields.film[i] {
+                fields.film[i] = fq;
+                touched = true;
+            }
             // The **stroke envelope, taken on the PAINT** — the dab that laid the most paint at this
             // pixel owns it. One pass of a loaded brush leaves one thickness (a second pass over the
             // same line does not stack a staircase); separate strokes DO add, at stroke end.
@@ -389,7 +405,6 @@ pub fn accumulate_dab_height(
             // then chosen by a quantity that no setting can change, so re-deriving the relief at a new
             // Body / Source / Depth cannot silently re-shuffle which dab shaped which pixel.
             let m = (w * coverage).clamp(0.0, 1.0);
-            let i = (py as usize) * (width as usize) + px as usize;
             if m <= fields.paint[i] {
                 continue;
             }

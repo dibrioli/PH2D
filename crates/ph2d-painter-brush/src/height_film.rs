@@ -112,3 +112,30 @@ pub fn body_profile(w: f32) -> f32 {
 pub fn film_coverage(lays_body: bool, sil: f32) -> f32 {
     if lays_body { body_profile(sil) } else { sil }
 }
+
+/// How much **solid paint** one dab lays at a texel — the quantity the light weighs its shading by.
+///
+/// `sil` is the bare silhouette, `dynamics` the dab's folded pressure × Flow × Strength. It is exactly
+/// [`film_coverage`] scaled by the dynamics — the film's own alpha — and the factorisation is the point.
+///
+/// ## The hole it closes (Enio's bug, at partial pressure)
+///
+/// The light used to weigh by `body_profile(cover)` where `cover` was the raw paint, `sil × dynamics`.
+/// The dynamics were INSIDE the curve, so they could starve it: at Flow × Strength × pressure ≈ 0.35 the
+/// argument falls under [`W_TAIL`] for every texel and the light models **nothing anywhere on the
+/// stroke** — while the pigment (cut on the silhouette, [`film_coverage`]) is still there. That is the
+/// haze all over again, and it is the exact species of bug the film was written to kill; it merely hid
+/// behind the mouse, which always presses at 1.0.
+///
+/// It is the same theorem as the film's, applied to the other side: **the threshold belongs to the
+/// silhouette; the dynamics multiply afterwards.** A light touch lays a THINNER film — less pigment, less
+/// body, less light — not a film the light refuses to look at.
+///
+/// At full dynamics `dynamics × body_profile(sil)` and `body_profile(sil × dynamics)` are the same
+/// number, so the light is unchanged for every stroke drawn with a mouse — and every gate that pins its
+/// look was drawn with one.
+#[inline]
+#[must_use]
+pub fn solid_paint(sil: f32, dynamics: f32) -> f32 {
+    (dynamics * body_profile(sil)).clamp(0.0, 1.0)
+}

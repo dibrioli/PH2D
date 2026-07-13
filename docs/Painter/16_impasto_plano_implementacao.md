@@ -1058,3 +1058,77 @@ próprio, com um smoke próprio. **Não foi feito aqui.**
 Grátis: o filme é assado na máscara cacheada. `impasto_perf_kill_criterion` em `--release`:
 **3,10 ms/movimento @2048² · 3,28 ms @4096²** (alvo ≤4, kill 8). Workspace: **5676 testes, 0 falhas**;
 clippy 0.
+
+---
+
+## 15. A LUZ, do mesmo lado do teorema — fechando o §14.6
+
+O §14.6 nomeou um buraco e não o fechou: **abaixo de Flow × Strength × pressão ≈ `W_TAIL` a luz não
+modelava nada em traço nenhum.** Com o mouse (que sempre aperta a 1,0) ele não aparece. Com a **caneta**,
+é o bug do Enio de volta: o pigmento está lá (cortado na silhueta pelo filme), o relevo está lá, e a
+**luz se recusa a olhar**.
+
+### 15.1 A causa é a MESMA do filme
+
+A luz pesava a sombra por `body_profile(cover)`, e `cover` era a tinta **crua** — `silhueta × dinâmica`.
+As dinâmicas estavam **dentro** da curva do corpo, onde podem matá-la de fome: a Strength 0,3 o argumento
+cai sob a cauda em **todo texel** e o peso é zero em toda parte.
+
+É o mesmo teorema que o §14.3 pagou caro pra aprender, do outro lado:
+
+> **O limiar pertence à silhueta; a dinâmica multiplica depois.**
+>
+> Um toque leve deposita um filme mais **fino** — menos pigmento, menos corpo, menos luz — não um filme
+> que a luz se recusa a ver.
+
+### 15.2 A mudança
+
+As camadas passam a guardar a **tinta sólida** ela mesma — `height_film::solid_paint` =
+`dinâmica × body_profile(silhueta)`, o alpha do próprio filme (plano `stroke_film`, envelope `max`
+próprio: é uma função *diferente* do dab, então não pode pegar carona no vencedor da tinta crua). O
+`cover` **é** o peso da luz, e `paint_body` vira a identidade.
+
+**A dinâmica cheia dá o mesmo número** (`dyn × body_profile(sil)` = `body_profile(sil × dyn)` quando
+`dyn = 1`), então **nenhum traço que um mouse já desenhou mudou** — e todo gate que fixa a aparência foi
+desenhado com um.
+
+O `stroke_paint` (a tinta crua) continua sendo o **ingrediente** do relevo → Depth/Body/Depth
+Source/Smoothing/Push seguem vivos.
+
+### 15.3 Medido
+
+| Strength | 1,0 | 0,5 | 0,3 | 0,2 |
+|---|---|---|---|---|
+| luz move (níveis) | 149 | 30 | 2 | 0 |
+| **antes** (dinâmica dentro da curva) | 149 | **0** | **0** | **0** |
+
+O zero a 0,2 **não é um cliff, é aritmética**: a Strength escala a espessura *e* a opacidade, então um
+traço a 20% é um filme 20% mais baixo **e** 20% opaco — 4% de uma sombra é menos que 1/255. Tinta fina
+não tem relevo visível. Afirmar o contrário seria inventar uma aparência que a tinta não tem.
+
+### 15.4 Quatro gates REFORMULADOS — e ficaram mais afiados
+
+Os classificadores diziam `cov < W_TAIL` sobre um `cov` que mudou de significado. A luz **não mudou** (a
+dinâmica cheia dá o mesmo número); os gates é que passaram a varrer outra rede. Reformulados sobre o que
+de fato se mede:
+
+| Gate | Era | Virou | MUT vermelha |
+|---|---|---|---|
+| `impasto_light_shades_the_paint_not_the_paper_showing_through_it` | "abaixo de `W_TAIL`, zero" — **verdade por construção** do peso: uma tautologia vestida de gate | **papel nu** (cov 0) byte-idêntico · tinta translúcida movida **no máximo na proporção da tinta que há nela** (pior medido: **50%**) | peso=1 → papel nu move **100 níveis** · peso=√cov → a tinta mais fina leva **600%** da própria tinta |
+| `impasto_shine_glints_on_the_wall_without_bleaching_the_rim` | idem, no specular | idem | idem (**200%**) |
+| `impasto_soft_stroke_reads_as_a_body_with_an_edge` | "passando 85% da largura pintada o relevo é zero" — a largura pintada incluía a saia, que o pincel não deposita mais | **o relevo acaba COM a tinta**: passe da borda e não há corpo nem pigmento. E a concentração da sombra mede-se sobre o filme: a parede é **43%** dele *por geometria* (`t ∈ [0,35 … 0,61]` de um filme que acaba em 0,61) | domo (`body_profile(w) = w`) esparrama **84%** |
+| `impasto_lays_no_pigment_where_the_light_lays_no_shading` | só a dinâmica cheia (era tudo que a luz suportava) | **toda Strength** — 1,0 / 0,5 / 0,3 | dinâmica de volta na curva → **7306 px** de pigmento órfão a Strength 0,5 |
+
+Gate novo: **`the_light_models_a_faint_stroke`** — a luz não apaga, e acompanha a tinta (monotônica).
+MUT (dinâmica de volta na curva): **0 níveis a Strength 0,5**.
+
+### 15.5 Split
+
+`PaintState` estourou o teto de 700 LOC. O estado por-traço do relevo (os planos que o corpo deposita, os
+ingredientes de que o card Body o re-deriva, e a janela contra a qual todos são indexados) saiu pro módulo
+`paint/relief_state.rs` — uma coisa coerente que estava perdida num god-struct.
+
+### 15.6 Perf
+
+**3,26 ms/movimento @2048² · 3,43 @4096²** (alvo ≤4, kill 8) — +0,15 ms pelo plano novo. Workspace
+**5677 testes, 0 falhas**; clippy 0.

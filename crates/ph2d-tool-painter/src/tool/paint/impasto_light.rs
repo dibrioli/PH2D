@@ -73,17 +73,27 @@ const AMBIENT: f32 = 0.35;
 /// the core, gone on black canvas). So the effect is weighted by the paint's own coverage, and bare
 /// paper gets exactly none — the pass stays a strict no-op there.
 ///
-/// But the weight is the deposit's own [`ph2d_painter_brush::height::body_profile`], on the SAME
-/// thresholds: nothing over the stain (≤ `W_TAIL` coverage — where the wall does not stand, the
-/// light does not push), full over solid paint (≥ `W_SOLID`), the ramp between. One curve, one
-/// definition of "solid paint", both sides of the pipeline. The first cut instead weighted linearly
-/// to 100% AND multiplied the slope by the same factor — a quadratic mute that melted the shoulder
-/// of every soft brush (the "hard to adjust" verdict; measured in §10 of the plan). The slope no
-/// longer carries any mute: the body curve already ends the relief where the paint gets thin, so
-/// the geometry is real wherever it is nonzero.
+/// ## The weight IS the coverage — because the coverage is now the SOLID paint
+///
+/// It used to be `body_profile(cover)` over a `cover` that held the RAW paint (silhouette × dynamics),
+/// and that put the dynamics INSIDE the body curve, where they could starve it: at
+/// Flow × Strength × pressure ≈ `W_TAIL` the argument falls under the tail for every texel and the light
+/// models **nothing anywhere on the stroke** — while the pigment, cut on the silhouette
+/// ([`ph2d_painter_brush::height::film_coverage`]), is still perfectly there. Enio's haze, hiding behind
+/// the mouse (which always presses at 1.0).
+///
+/// The layers now store the **solid paint** itself
+/// ([`ph2d_painter_brush::height::solid_paint`] — `dynamics × body_profile(silhouette)`, the film's own
+/// alpha), so the curve is already in the number and the weight is the number. At full dynamics the two
+/// are the same value, so every stroke a mouse ever drew — and every gate that pins the look — is
+/// unchanged; under a light touch the light now models a thinner film instead of refusing to see it.
+///
+/// One definition of "solid paint", still, on both sides of the pipeline: nothing over the stain
+/// (`≤ W_TAIL` of silhouette — where the wall does not stand, the light does not push, and the brush no
+/// longer lays pigment either), full over solid paint (`≥ W_SOLID`), the ramp between.
 #[inline]
 fn paint_body(cover: f32) -> f32 {
-    ph2d_painter_brush::height::body_profile(cover)
+    cover
 }
 
 /// How the SPECULAR scales with the paint.
@@ -134,10 +144,11 @@ struct ReliefFields<'a> {
     /// The open stroke's relief on the active layer (`None` outside a stroke, or while erasing — an
     /// erase mutates the layer in place, so there is nothing separate to add).
     live_h: Option<&'a [f32]>,
-    /// That stroke's PAINT envelope (`0..1`) — the same plane the relief is derived from, read here as
-    /// the live coverage. The committed layers carry theirs as `u8`; a stroke in progress has it in
-    /// full precision, and there is no reason to round-trip it.
-    live_c: Option<&'a [f32]>,
+    /// That stroke's **solid paint** plane — the same `u8` quantity the layer will store at stroke end
+    /// (`PaintState::stroke_film`), so the light reads the identical number before and after the commit.
+    /// (It used to be the raw f32 paint envelope, in "full precision" — and the precision was of the
+    /// wrong quantity: the relief's ingredient, not the pigment's alpha.)
+    live_c: Option<&'a [u8]>,
     width: usize,
     height: usize,
 }
@@ -181,7 +192,7 @@ impl ReliefFields<'_> {
     fn layer_cover_at(&self, l: &ReliefLayer<'_>, i: usize) -> f32 {
         let mut c = l.cover.map_or(0.0, |cv| f32::from(cv[i]) / 255.0);
         if l.active {
-            c = c.max(self.live_c.map_or(0.0, |s| s[i]));
+            c = c.max(self.live_c.map_or(0.0, |s| f32::from(s[i]) / 255.0));
         }
         c.clamp(0.0, 1.0)
     }
@@ -195,7 +206,7 @@ impl ReliefFields<'_> {
     #[inline]
     fn cover_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
-        let mut c = self.live_c.map_or(0.0, |l| l[i]);
+        let mut c = self.live_c.map_or(0.0, |l| f32::from(l[i]) / 255.0);
         for l in &self.layers {
             if let Some(cv) = l.cover {
                 c = c.max(f32::from(cv[i]) / 255.0);
@@ -312,7 +323,7 @@ impl PainterTool {
     #[must_use]
     pub fn impasto_visible(&self) -> bool {
         self.paint.impasto_show
-            && (!self.heights.is_empty() || !self.paint.stroke_height.is_empty())
+            && (!self.heights.is_empty() || !self.paint.relief.stroke_height.is_empty())
     }
 
     /// Whether `id` is visible *and every group above it is too*. Hiding a GROUP has to put out the
@@ -349,10 +360,12 @@ impl PainterTool {
         let active = self.layers.active();
         // The open stroke rides on the active layer — which may not have a committed entry yet.
         let live_visible = active.is_some_and(|a| self.layer_effectively_visible(a));
-        let live_h = (live_visible && self.paint.stroke_height.len() == n && !self.paint.eraser)
-            .then_some(self.paint.stroke_height.as_slice());
-        let live_c = (live_visible && self.paint.stroke_paint.len() == n && !self.paint.eraser)
-            .then_some(self.paint.stroke_paint.as_slice());
+        let live_h =
+            (live_visible && self.paint.relief.stroke_height.len() == n && !self.paint.eraser)
+                .then_some(self.paint.relief.stroke_height.as_slice());
+        let live_c =
+            (live_visible && self.paint.relief.stroke_film.len() == n && !self.paint.eraser)
+                .then_some(self.paint.relief.stroke_film.as_slice());
 
         // Bottom-up, because `Level` is not commutative. Only layers that were actually sculpted have
         // an entry — the map is lazy, so this is empty for every document nobody has used Impasto on

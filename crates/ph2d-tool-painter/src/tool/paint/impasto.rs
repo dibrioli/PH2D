@@ -90,12 +90,13 @@ impl PainterTool {
             }
         }
         let (mut field, mut cover) = erase_buffers.unwrap_or_default();
-        let (mut paint, mut grain) = if erasing {
-            (Vec::new(), Vec::new())
+        let (mut paint, mut grain, mut film) = if erasing {
+            (Vec::new(), Vec::new(), Vec::new())
         } else {
-            let mut h = std::mem::take(&mut self.paint.stroke_height);
-            let mut p = std::mem::take(&mut self.paint.stroke_paint);
-            let mut g = std::mem::take(&mut self.paint.stroke_grain);
+            let mut h = std::mem::take(&mut self.paint.relief.stroke_height);
+            let mut p = std::mem::take(&mut self.paint.relief.stroke_paint);
+            let mut g = std::mem::take(&mut self.paint.relief.stroke_grain);
+            let mut f = std::mem::take(&mut self.paint.relief.stroke_film);
             // Lazily sized by the first dab of the stroke; zero cost for a document nobody sculpts.
             if h.len() != n {
                 h = vec![0.0; n];
@@ -106,8 +107,11 @@ impl PainterTool {
             if g.len() != n {
                 g = vec![0u8; n];
             }
+            if f.len() != n {
+                f = vec![0u8; n];
+            }
             field = h;
-            (p, g)
+            (p, g, f)
         };
         // The displacement's own plane, and the GROUND it bites into — the layer's relief as the stroke
         // found it. Recorded whenever there IS paint to shove, NOT only when the knob is up: Push has to
@@ -117,11 +121,11 @@ impl PainterTool {
         let ground = (!erasing)
             .then(|| self.heights.get(&active).cloned())
             .flatten();
-        let mut push_plane = std::mem::take(&mut self.paint.stroke_push);
+        let mut push_plane = std::mem::take(&mut self.paint.relief.stroke_push);
         if ground.is_some() && push_plane.len() != n {
             push_plane = vec![0.0; n];
         }
-        let mut scratch = std::mem::take(&mut self.paint.push_scratch);
+        let mut scratch = std::mem::take(&mut self.paint.relief.push_scratch);
 
         // Resolve each dab's frames EXACTLY as the colour route will — same `d.dir` (Rake), same
         // footprint (Jitter Rotate), same Random draws, same order (Shape before Grain). The RNG is a
@@ -203,6 +207,7 @@ impl PainterTool {
                 // per symmetry copy — without this the relief would bead at every pointer event, which is
                 // a beading the artist's hardware chose, not their hand.
                 self.paint
+                    .relief
                     .last_height_center
                     .get(gi)
                     .copied()
@@ -246,6 +251,7 @@ impl PainterTool {
                     height: &mut field,
                     paint: &mut paint,
                     grain: &mut grain,
+                    film: &mut film,
                 };
                 let laid = accumulate_dab_height(&mut fields, w, h, &spec, &hd, bite.as_mut());
                 let displaced = bite.map_or(0.0, |b| b.displaced);
@@ -283,8 +289,9 @@ impl PainterTool {
                 // …and the union over the WHOLE stroke, which is the window the commit works in. The
                 // per-batch `touched` above is the dirty rect for this pointer event; this one outlives
                 // it (see `PaintState::stroke_relief_bbox`).
-                self.paint.stroke_relief_bbox = Some(
+                self.paint.relief.stroke_relief_bbox = Some(
                     self.paint
+                        .relief
                         .stroke_relief_bbox
                         .map_or(rect, |acc| union_region(acc, rect)),
                 );
@@ -293,18 +300,18 @@ impl PainterTool {
         // Remember where each Symmetry copy ended, so the NEXT pointer batch sweeps back to it instead
         // of starting a fresh bead.
         if !dabs.is_empty() {
-            self.paint.last_height_center.clear();
-            self.paint.last_height_center.resize(copies, None);
+            self.paint.relief.last_height_center.clear();
+            self.paint.relief.last_height_center.resize(copies, None);
             let last_group = groups.last().map_or(dabs.len() - 1, |g| *g as usize);
             for c in 0..copies {
                 // The last full round of copies in this batch: group indices `last_group - (copies-1) ..= last_group`.
                 let gi = last_group.saturating_sub(copies - 1 - c);
-                self.paint.last_height_center[c] = Some(origin_center(gi));
+                self.paint.relief.last_height_center[c] = Some(origin_center(gi));
             }
         }
         // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back (rule 2).
-        self.paint.stroke_push = push_plane; // the displacement banked so far, at Push = 1
-        self.paint.push_scratch = scratch;
+        self.paint.relief.stroke_push = push_plane; // the displacement banked so far, at Push = 1
+        self.paint.relief.push_scratch = scratch;
 
         if erasing {
             // The eraser scrubs the LAYER directly, so the live stroke's ground is no longer what it
@@ -314,9 +321,10 @@ impl PainterTool {
             self.covers.insert(active, std::sync::Arc::new(cover));
             self.sync_relief_flags();
         } else {
-            self.paint.stroke_height = field;
-            self.paint.stroke_paint = paint;
-            self.paint.stroke_grain = grain;
+            self.paint.relief.stroke_height = field;
+            self.paint.relief.stroke_paint = paint;
+            self.paint.relief.stroke_grain = grain;
+            self.paint.relief.stroke_film = film;
         }
         if let Some(rect) = touched {
             self.mark_dirty(rect);
@@ -328,12 +336,13 @@ impl PainterTool {
     /// shape every pointer move over a restored canvas — without this the envelope would keep the
     /// relief of every shape the artist dragged THROUGH, and a curve would leave a trail of ghosts).
     pub(super) fn reset_stroke_height(&mut self) {
-        self.paint.stroke_height.clear();
-        self.paint.stroke_paint.clear();
-        self.paint.stroke_grain.clear();
-        self.paint.stroke_push.clear(); // the displacement is per-stroke; a re-stamp starts it over
-        self.paint.stroke_relief_bbox = None; // the commit's window is per-stroke too
-        self.paint.last_height_center.clear(); // the sweep chain restarts with the stroke
+        self.paint.relief.stroke_height.clear();
+        self.paint.relief.stroke_paint.clear();
+        self.paint.relief.stroke_grain.clear();
+        self.paint.relief.stroke_film.clear();
+        self.paint.relief.stroke_push.clear(); // the displacement is per-stroke; a re-stamp starts it over
+        self.paint.relief.stroke_relief_bbox = None; // the commit's window is per-stroke too
+        self.paint.relief.last_height_center.clear(); // the sweep chain restarts with the stroke
     }
 
     /// Merge the finished stroke into the active layer, and hand its INGREDIENTS to the live edit.
@@ -343,13 +352,15 @@ impl PainterTool {
     /// `close_stroke`, BEFORE the undo entry is recorded, so the step captures the relief with the
     /// pigment that made it — one Ctrl+Z takes both.
     pub(super) fn commit_stroke_height(&mut self) {
-        if self.paint.stroke_paint.is_empty() {
+        if self.paint.relief.stroke_paint.is_empty() {
             return;
         }
-        let paint = std::mem::take(&mut self.paint.stroke_paint);
-        let grain = std::mem::take(&mut self.paint.stroke_grain);
-        self.paint.stroke_height.clear(); // it is derived; the ingredients are the truth
-        let (Some(active), Some(bbox)) = (self.layers.active(), self.paint.stroke_relief_bbox)
+        let paint = std::mem::take(&mut self.paint.relief.stroke_paint);
+        let grain = std::mem::take(&mut self.paint.relief.stroke_grain);
+        let film = std::mem::take(&mut self.paint.relief.stroke_film);
+        self.paint.relief.stroke_height.clear(); // it is derived; the ingredients are the truth
+        let (Some(active), Some(bbox)) =
+            (self.layers.active(), self.paint.relief.stroke_relief_bbox)
         else {
             return;
         };
@@ -377,8 +388,7 @@ impl PainterTool {
                 dst.resize(n, 0);
             }
             for_each_in(rect, w, |i| {
-                let p = paint[i].clamp(0.0, 1.0);
-                dst[i] = dst[i].max((p * 255.0 + 0.5) as u8);
+                dst[i] = dst[i].max(film.get(i).copied().unwrap_or(0));
             });
         }
         // Keep the stroke's INGREDIENTS and the layer's relief from BEFORE it. Between them, the whole
@@ -387,8 +397,8 @@ impl PainterTool {
         //
         // The ground is kept as a PATCH: cloning the layer's whole height plane to re-add it was a
         // 64 MB copy per stroke at 4096², for a ground that is only ever read inside the window.
-        self.paint.live_relief_had_entry = self.heights.contains_key(&active);
-        self.paint.live_relief_base = match self.heights.get(&active) {
+        self.paint.relief.live_relief_had_entry = self.heights.contains_key(&active);
+        self.paint.relief.live_relief_base = match self.heights.get(&active) {
             Some(f) if f.len() == (w as usize) * (h as usize) => {
                 let mut base = Vec::with_capacity((rect.w as usize) * (rect.h as usize));
                 for_each_in(rect, w, |i| base.push(f[i]));
@@ -396,13 +406,13 @@ impl PainterTool {
             }
             _ => Vec::new(),
         };
-        self.paint.live_relief_rect = Some(rect);
-        self.paint.live_relief_layer = Some(active);
-        self.paint.live_paint = paint;
-        self.paint.live_grain = grain;
+        self.paint.relief.live_relief_rect = Some(rect);
+        self.paint.relief.live_relief_layer = Some(active);
+        self.paint.relief.live_paint = paint;
+        self.paint.relief.live_grain = grain;
         // The displacement at Push = 1 — the third ingredient. The whole displacement is LINEAR in Push,
         // so keeping it lets the knob stay live after the stroke without replaying a single dab.
-        self.paint.live_push = std::mem::take(&mut self.paint.stroke_push);
+        self.paint.relief.live_push = std::mem::take(&mut self.paint.relief.stroke_push);
         self.rebuild_live_layer_relief();
     }
 
@@ -414,15 +424,15 @@ impl PainterTool {
     /// deposit and the edit therefore cannot drift.
     fn rebuild_live_layer_relief(&mut self) {
         let (Some(layer), Some(rect), false) = (
-            self.paint.live_relief_layer,
-            self.paint.live_relief_rect,
-            self.paint.live_paint.is_empty(),
+            self.paint.relief.live_relief_layer,
+            self.paint.relief.live_relief_rect,
+            self.paint.relief.live_paint.is_empty(),
         ) else {
             return;
         };
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        if self.paint.live_paint.len() != n || self.paint.live_grain.len() != n {
+        if self.paint.relief.live_paint.len() != n || self.paint.relief.live_grain.len() != n {
             return; // a stale, differently-sized ingredient plane: the shape guard, never an index panic
         }
         let (rw, rh) = (rect.w as usize, rect.h as usize);
@@ -433,8 +443,8 @@ impl PainterTool {
         let brush = self.paint.brush;
         let mut field: Vec<f32> = Vec::with_capacity(cells);
         for_each_in(rect, w, |i| {
-            let g = f32::from(self.paint.live_grain[i]) / 255.0;
-            field.push(derive_height(&brush, self.paint.live_paint[i], g));
+            let g = f32::from(self.paint.relief.live_grain[i]) / 255.0;
+            field.push(derive_height(&brush, self.paint.relief.live_paint[i], g));
         });
 
         // 2. Settle it. The window's border is zero (it was grown by the blur's reach), so the settle's
@@ -453,7 +463,7 @@ impl PainterTool {
         //    go on showing the lighting it last drew. That is Enio's *"o primeiro traço aplica o smoothing;
         //    a partir do segundo não"* (2026-07-12) — the first stroke was rescued by accident, because it
         //    flips the layer's `has_relief` and that invalidates the composite.
-        let base = std::mem::take(&mut self.paint.live_relief_base);
+        let base = std::mem::take(&mut self.paint.relief.live_relief_base);
         let has_base = base.len() == cells;
 
         // 2b. PUSH — volume conservation. The brush shoved the paint it found out of its way, and that
@@ -466,7 +476,7 @@ impl PainterTool {
         //     is what lets the SHAPE editors re-stamp the whole shape on every pointer move without
         //     carving a canyon.
         let push = brush.effective_impasto_push();
-        let has_push = push > 0.0 && self.paint.live_push.len() == n;
+        let has_push = push > 0.0 && self.paint.relief.live_push.len() == n;
         let target = std::sync::Arc::make_mut(
             self.heights
                 .entry(layer)
@@ -487,7 +497,7 @@ impl PainterTool {
                 // `R₁` IS the displacement (it sums to zero), so the ground plus a scaled copy of it is
                 // the whole story — and it is linear in Push, which is what keeps the knob live.
                 let under = if has_push {
-                    g0 + push * self.paint.live_push[i]
+                    g0 + push * self.paint.relief.live_push[i]
                 } else {
                     g0
                 };
@@ -507,12 +517,12 @@ impl PainterTool {
                 target[i] = next;
             }
         }
-        self.paint.live_relief_base = base; // PRISTINE — the ground is re-read on every knob edit
+        self.paint.relief.live_relief_base = base; // PRISTINE — the ground is re-read on every knob edit
 
         // 4. A layer that carried nothing before this stroke and carries nothing now (Depth 0) drops its
         //    entry — but a layer with relief ELSEWHERE keeps it: the window is all this call can speak
         //    for. (`any_relief` is the window's verdict; `live_relief_had_entry` is the rest of the map.)
-        if !any_relief && !self.paint.live_relief_had_entry {
+        if !any_relief && !self.paint.relief.live_relief_had_entry {
             self.heights.remove(&layer);
         }
 
@@ -580,7 +590,8 @@ impl PainterTool {
     /// No-op unless that stroke is on the layer the artist is looking at — dialling Depth after
     /// switching layers must not reach back and re-sculpt a stroke on some other one.
     pub(super) fn refresh_live_relief(&mut self) {
-        if !self.paint.brush.impasto || self.layers.active() != self.paint.live_relief_layer {
+        if !self.paint.brush.impasto || self.layers.active() != self.paint.relief.live_relief_layer
+        {
             return;
         }
         self.rebuild_live_layer_relief();
@@ -589,13 +600,13 @@ impl PainterTool {
 
     /// Forget the live stroke — its ground is no longer valid (an erase, an undo, a fresh document).
     pub(crate) fn drop_live_relief(&mut self) {
-        self.paint.live_paint = Vec::new();
-        self.paint.live_grain = Vec::new();
-        self.paint.live_push = Vec::new();
-        self.paint.live_relief_base = Vec::new();
-        self.paint.live_relief_rect = None;
-        self.paint.live_relief_had_entry = false;
-        self.paint.live_relief_layer = None;
+        self.paint.relief.live_paint = Vec::new();
+        self.paint.relief.live_grain = Vec::new();
+        self.paint.relief.live_push = Vec::new();
+        self.paint.relief.live_relief_base = Vec::new();
+        self.paint.relief.live_relief_rect = None;
+        self.paint.relief.live_relief_had_entry = false;
+        self.paint.relief.live_relief_layer = None;
     }
 
     /// The relief the artist should SEE right now for `id`: the committed layer height plus the
@@ -609,10 +620,10 @@ impl PainterTool {
     #[must_use]
     pub fn layer_height_view(&self, id: crate::tool::RtLayerId) -> Option<Vec<f32>> {
         let committed = self.heights.get(&id);
-        let live = (!self.paint.stroke_height.is_empty()
+        let live = (!self.paint.relief.stroke_height.is_empty()
             && self.layers.active() == Some(id)
             && !self.paint.eraser)
-            .then_some(&self.paint.stroke_height);
+            .then_some(&self.paint.relief.stroke_height);
         match (committed, live) {
             (None, None) => None,
             (Some(c), None) => Some(c.as_ref().clone()),

@@ -857,6 +857,33 @@ multi-seleção de chaves na tira — mesma dependência do fill multiframe) · 
 (por traço/material/seleção → depende do Edit Mode) · Clone (é um COMANDO, não um pincel) ·
 pressão real da caneta (o mouse manda 1.0; o funil já a recebe).
 
+## W5.1 — Os 3 achados do smoke da W5 (2026-07-13) + o BUG que ficou ABERTO
+
+Smoke da W5 (`af06b052`, `3004f715`, `5eab3475`). **Leia `docs/Flip/BUGS_flip.md` #15 e #16.**
+
+- **#15 — a cor não entrava por baixo da linha.** A geometria estava certa (0,3 px do eixo); o
+  defeito só aparece no PIXEL. Fix: o contorno de um fill vetorizado é rasterizado **na cor do
+  fill, com a espessura da linha** (a dilatação) — zoom-safe porque as duas grandezas estão na
+  mesma unidade. A margem (`FILL_TUCK_PX = 0,5`) saiu de uma **varredura no pixel** (dois defeitos
+  opostos se tocam: fundo sob a linha × transbordo além dela).
+- **Cursor do pincel** (`render_loop/flip_cursor.rs`): anel em Draw/Erase/Sculpt (raio = Size/2 em
+  px de TELA — o pincel do Flip é absoluto, sem conversão de câmera). **Size máx 64 → 256 px.**
+- **A cor anda com a linha** (o que o Suzanne ensinou): o sculpt passou a mover **regiões e os
+  buracos delas**, e o traço pode **nascer preenchido** (`Shape: Line | Filled` — o material
+  `stroke + fill` do GP).
+- **#16 — os vértices do fill não eram os da linha.** O contorno do balde vem do raster, e o erro
+  dele é assado em DOC enquanto a linha é px de TELA → **o zoom o amplia**. Fix: quando a região é
+  o interior de uma forma fechada, o balde **pinta o próprio traço** (não vetoriza nada).
+  O beco (registrado): costurar o contorno à linha destrói o anel em quinas agudas.
+
+### 🟥 ABERTO (a 1ª tarefa do próximo — causa PROVADA, gate vermelho escrito)
+
+**O balde não reconhece a forma desenhada À MÃO:** o `filled_shape_target` exige `s.closed`, e um
+traço da caneta **nunca é `closed`** (só o `Shape: Filled` fecha). Logo o auto-preenchimento **nunca
+disparou no produto** e todo fill volta ao contorno vetorizado (que dessincroniza). Gate vermelho:
+`flip_fill_tests::a_hand_drawn_shape_is_not_closed_and_the_bucket_misses_it` (`#[ignore]`).
+**O fix e as armadilhas estão no [handoff §C](HANDOFF_line_FLIP_CONTINUACAO_2026-07-13.md).**
+
 ## Aberto (fora do W0..W5, por design)
 
 - **A próxima recomendada: Edit Mode / seleção de traço** (o "select do traço" que o Enio

@@ -1,4 +1,11 @@
-# HANDOFF — continuação da linha `line/FLIP` (COMECE AQUI)
+# HANDOFF — continuação da linha `line/FLIP` (⚠️ SUPERSEDIDO)
+
+> **⚠️ NÃO COMECE POR AQUI.** A porta de entrada é
+> **[`HANDOFF_line_FLIP_CONTINUACAO_2026-07-13.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-13.md)** —
+> a W5 fechou, e há um **bug aberto com causa provada** que é a 1ª tarefa. Este arquivo vira
+> histórico.
+
+# HANDOFF — continuação da linha `line/FLIP` (histórico, 2026-07-12)
 
 > **Para:** o próximo **agente-de-linha** que assumir `line/FLIP` (o Flip = 4º meio do PH2D:
 > animação quadro-a-quadro, fork 2D clean-room do Grease Pencil — [ADR-0114](architecture/decisions/0114-grease-pencil-as-native-2d-medium-flip-no-3d-viewport.md)).

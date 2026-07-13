@@ -256,4 +256,44 @@ mod tests {
         ];
         assert!(area(&triangulate_even_odd(&flat, &[])) < 1e-4);
     }
+
+    /// **Uma CONCAVIDADE profunda não é preenchida por cima** (o "V" do smoke do Enio,
+    /// 2026-07-13 — a suspeita que a medição inocentou).
+    ///
+    /// Um entalhe em "V" produz QUATRO cruzamentos numa scanline: uma decomposição que
+    /// pegasse só o primeiro e o último preencheria o vão. Esta cobre — e o buraco de
+    /// teste era real: nenhum caso côncavo existia aqui.
+    #[test]
+    fn a_deep_notch_is_not_filled_over() {
+        // Um retângulo com um entalhe em "V" descendo do topo até o meio.
+        let poly = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 0.0),
+            Vec2::new(10.0, 10.0),
+            Vec2::new(6.0, 10.0),
+            Vec2::new(5.0, 3.0), // o bico do V (fundo do entalhe)
+            Vec2::new(4.0, 10.0),
+            Vec2::new(0.0, 10.0),
+        ];
+        // Área real (shoelace):
+        let n = poly.len();
+        let real: f32 = (0..n)
+            .map(|i| {
+                let (a, b) = (poly[i], poly[(i + 1) % n]);
+                a.x * b.y - b.x * a.y
+            })
+            .sum::<f32>()
+            .abs()
+            * 0.5;
+        let tris = triangulate_even_odd(&poly, &[]);
+        let got = area(&tris);
+        println!(
+            "area REAL {real:.2} | triangulada {got:.2} | diferenca {:.2}",
+            got - real
+        );
+        assert!(
+            (got - real).abs() < 0.5,
+            "a triangulacao PREENCHEU O ENTALHE: {got:.2} != {real:.2}"
+        );
+    }
 }

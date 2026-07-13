@@ -426,3 +426,57 @@ fn a_region_bounded_by_several_strokes_still_gets_a_traced_contour() {
          quatro linhas e 'a forma')"
     );
 }
+
+/// 🟥 **O BUG ABERTO (smoke do Enio, 2026-07-13):** um traço desenhado À MÃO **não é
+/// `closed`** — e o balde exige `closed` para reconhecer a forma. Resultado: no produto,
+/// o auto-preenchimento **nunca dispara**, e todo fill volta para o contorno vetorizado
+/// (o que dessincroniza).
+///
+/// A caneta só fecha o traço no modo `Shape: Filled`. Uma forma desenhada à mão, com as
+/// pontas se encontrando na tela, tem `closed = false` — e é exatamente o caso de todos
+/// os smokes.
+///
+/// Este teste é a ASSERÇÃO-VERMELHA da 1ª tarefa do próximo implementador (handoff §C).
+#[test]
+#[ignore = "BUG ABERTO: a proxima tarefa da linha (ver HANDOFF_line_FLIP_CONTINUACAO)"]
+fn a_hand_drawn_shape_is_not_closed_and_the_bucket_misses_it() {
+    let mut d = FlipDrawing::new();
+    let mut s = FlipStroke::new();
+    for p in [
+        Vec2::new(0.0, 0.0),
+        Vec2::new(20.0, 0.0),
+        Vec2::new(20.0, 20.0),
+        Vec2::new(0.0, 20.0),
+        Vec2::new(0.2, 0.3), // a mão volta ao começo, mas NÃO fecha o traço
+    ] {
+        s.push_point(Point {
+            pos: p,
+            width: 6.0,
+            opacity: 1.0,
+            color: Rgba::BLACK,
+        });
+    }
+    // `closed` é FALSE — é o que `flip_draw::build_stroke` produz fora do Shape: Filled.
+    assert!(!s.closed);
+    d.strokes.push(s);
+
+    fill_click(
+        &mut d,
+        &style(ToolFillMode::Paint),
+        Vec2::new(10.0, 10.0),
+        1.0,
+        &Xform::IDENTITY,
+    )
+    .expect("a forma desenhada a mao preenche");
+
+    assert_eq!(
+        d.strokes.len(),
+        1,
+        "o balde criou um contorno VETORIZADO em vez de pintar a forma — e e por isso \
+         que os vertices dessincronizam no produto"
+    );
+    assert!(
+        d.strokes[0].fill.is_some(),
+        "a forma desenhada a mao tinha de pintar A SI MESMA"
+    );
+}

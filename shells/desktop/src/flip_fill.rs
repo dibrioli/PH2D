@@ -7,11 +7,12 @@
 //! Três decisões que moram nesta fronteira:
 //!
 //! 1. **A espessura do traço é em px de TELA** (brush absoluto — Enio 2026-07-11), e o
-//!    solver trabalha no espaço do documento. Então a meia-espessura em unidades do
-//!    documento **depende do zoom** — e isso é honesto, não um bug: com o zoom afastado
-//!    as linhas ficam relativamente mais grossas e os vãos fecham. É a mesma dependência
-//!    que o GP tem (lá o solver também é em espaço de tela). O `Precision` multiplica a
-//!    resolução do buffer por cima disso.
+//!    fill é assado em unidades de DOCUMENTO — a relação entre os dois MUDA com o zoom.
+//!    Por isso **a âncora do solver é o EIXO da linha** (BUGS #14), que é geometria
+//!    pura: a espessura convertida abaixo só folga o bbox da grade, nunca decide onde a
+//!    cor para. (O 1º corte ancorava na silhueta — congelada no zoom do clique, ela
+//!    transbordava `(w/2)·(zoom−1)` px ao aproximar a câmera depois.) O `Precision`
+//!    multiplica a resolução do buffer por cima disso.
 //! 2. **Os fechamentos de gap viram traços INVISÍVEIS persistentes** (o twist do
 //!    Harmony): eles entram no desenho como qualquer outro traço, com `hide_stroke` e
 //!    sem fill. Assim o vão fica fechado para sempre — re-preencher com outra cor, ou
@@ -52,6 +53,9 @@ fn boundaries(drawing: &FlipDrawing, px_to_world: f32) -> Vec<(Vec<Vec2>, Vec<f3
             // `× px_to_world` — NÃO `× doc_per_px`: o `mean_scale` já está embutido no
             // `width`, e multiplicá-lo de novo aplicaria a escala do objeto duas vezes.
             // É exatamente o que a borracha faz (`flip_erase`: raio = w·0,5·px_to_world).
+            //
+            // (Desde a âncora no eixo — BUGS #14 — o solver usa isto SÓ para o bbox da
+            // grade; a parede e a borda da cor são o eixo, imunes ao zoom do clique.)
             let half: Vec<f32> = s.widths().iter().map(|w| w * 0.5 * px_to_world).collect();
             (pts, half, s.closed)
         })

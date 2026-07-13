@@ -12,9 +12,10 @@ use ph2d_core::Vec2;
 pub const BOUNDARY: u8 = 1 << 0;
 /// O pixel foi alcançado pelo flood a partir da semente.
 pub const FILLED: u8 = 1 << 1;
-/// O pixel está sob a **TINTA** de um traço — a silhueta VISUAL da linha (espessura
-/// cheia), não a parede do flood (que é metade dela). É o mapa de "até onde a cor pode
-/// avançar escondida debaixo do traço".
+/// O pixel está na linha do **EIXO** de um traço (a cápsula de raio zero, sem folga de
+/// AA). É o alvo do [`Grid::expand_under_ink`]: depois do flood, a cor cobre esses
+/// pixels e a borda dela crava EM CIMA do eixo — a âncora zoom-proof do balde
+/// (BUGS #14) — em vez de parar na face interna da parede, ~1 px aquém.
 pub const INK: u8 = 1 << 2;
 
 /// Teto de passes de dilatação/erosão (cada passe clona o buffer). O painel limita a
@@ -102,20 +103,20 @@ impl Grid {
     /// **Rasteriza um segmento como cápsula** de raio `r` (em pixels), marcando
     /// `BOUNDARY` — a parede que o flood não atravessa.
     ///
-    /// O raio é **metade** da espessura visual do traço (`radius_scale = 0.5` do GP): a
-    /// parede cai DENTRO do corpo da linha, então o flood já para por baixo dela.
+    /// O raio é decisão do CHAMADOR: o balde rasteriza tudo **no eixo** (raio 0 — a
+    /// âncora zoom-proof, BUGS #14), fechamentos de gap idem.
     pub fn stroke_capsule(&mut self, a: Vec2, b: Vec2, r_px: f32) {
         // O GP conta com o AA do render dilatando ~½px e fechando micro-frestas; aqui o
         // raster é exato, então o ½px entra explicitamente no raio da PAREDE.
         self.capsule(a, b, r_px, BOUNDARY, 0.5);
     }
 
-    /// A **TINTA** do traço: a cápsula na espessura VISUAL cheia — a silhueta do que o
-    /// usuário enxerga. Não é parede; é o mapa de "até onde a cor pode ir escondida".
+    /// A linha do **EIXO** do traço (com raio 0): os pixels que a polilinha atravessa.
+    /// Não é parede; é o alvo do [`Grid::expand_under_ink`] — onde a borda da cor crava.
     pub fn ink_capsule(&mut self, a: Vec2, b: Vec2, r_px: f32) {
-        // **Sem a folga de AA.** A tinta é a silhueta EXATA do que se vê, não uma parede
-        // que precisa tapar frestas: meio pixel a mais aqui é meio pixel de cor aparecendo
-        // por fora do traço.
+        // **Sem a folga de AA.** O eixo é a âncora EXATA do resultado, não uma parede
+        // que precisa tapar frestas: meio pixel a mais aqui é meio pixel de cor
+        // ultrapassando o eixo.
         self.capsule(a, b, r_px, INK, 0.0);
     }
 
@@ -302,22 +303,18 @@ impl Grid {
         false
     }
 
-    /// **Grow/Shrink** (dilate/erode 8-conexo) do bitmap preenchido, `n` passos.
-    /// Positivo cresce (mata o halo do anti-aliasing, entrando por baixo da linha —
-    /// o "Area Scaling" do Clip Studio); negativo encolhe.
-    /// **A cor entra por baixo da linha e para na SILHUETA dela.**
+    /// **A borda da cor crava em cima do EIXO.**
     ///
-    /// Dilata a região preenchida, mas **só para dentro de pixels de `INK`** — o corpo
-    /// visível do traço. Roda até não haver mais o que ganhar (limitado por `max_passes`,
-    /// que o chamador deriva da espessura mais grossa do desenho).
+    /// Dilata a região preenchida, mas **só para dentro de pixels de `INK`** — a linha
+    /// de pixels que o eixo da polilinha atravessa. A parede do flood tem ~1 px de
+    /// espessura (a folga de AA), então sem este passo a cor pararia na face interna
+    /// dela, ~1 px de buffer aquém do eixo — e dar zoom depois do clique amplia esse px
+    /// num fio claro. Cobrindo o filamento do eixo, o resíduo cai para ± meio pixel.
     ///
-    /// É a diferença entre uma regra e um chute. O `grow` cego não sabe onde a linha
-    /// acaba: pequeno demais, o alisamento do contorno descola a cor do traço numa curva
-    /// apertada e abre um fio claro; grande demais, a cor transborda numa linha fina. Como
-    /// a quantidade certa **depende da espessura do traço em cada ponto**, nenhuma
-    /// constante serve. Aqui não há constante: a expansão é *limitada pela própria tinta*,
-    /// então o preenchimento cobre exatamente o que a linha esconde — nem um pixel a menos,
-    /// nem um a mais, seja a linha de 1px ou de 40.
+    /// `max_passes` DEVE ser pequeno (o filamento tem ≤ 2 px na transversal): a
+    /// expansão também rasteja AO LONGO do filamento ~1 px por passe — num cruzamento,
+    /// ela subiria pelo eixo do outro traço. Tudo que ela alcança está sob a linha
+    /// renderizada, mas não há razão para esticar.
     pub fn expand_under_ink(&mut self, max_passes: usize) {
         for _ in 0..max_passes {
             let src = self.flags.clone();
@@ -348,22 +345,6 @@ impl Grid {
             }
             if !changed {
                 break; // já cobriu toda a tinta alcançável
-            }
-        }
-    }
-
-    /// **Descola a cor de baixo da linha**: tira o `FILLED` de todo pixel de `INK`.
-    ///
-    /// O resultado é a região que para exatamente na **borda INTERNA** do traço — o ponto
-    /// onde a cor *começa a aparecer*. É a única âncora que torna o Grow previsível: medido
-    /// dela, um recuo de N px abre um vão VISÍVEL de N px, seja a linha de 1 px ou de 40.
-    /// (Medido da borda externa — o 1º corte — o mesmo `grow = -8` abria 8,6 px de vão
-    /// numa linha de 1 px e vão NENHUM numa de 40: os primeiros 40 px de recuo eram
-    /// gastos por baixo do traço, onde ninguém vê.)
-    pub fn strip_ink(&mut self) {
-        for f in &mut self.flags {
-            if *f & INK != 0 {
-                *f &= !FILLED;
             }
         }
     }
@@ -537,23 +518,29 @@ mod tests {
         assert!(back < grown, "shrink tem de encolher: {grown} → {back}");
     }
 
-    /// O raio da cápsula é MEIA espessura (`radius_scale = 0.5`): a fronteira cai
-    /// dentro do corpo da linha, e o preenchimento chega por baixo dela.
+    /// A parede marca exatamente o raio pedido (+ a folga de AA de ½px) — e o balde
+    /// pede raio ZERO: a parede é o EIXO, e o corpo da linha fica atravessável.
     #[test]
-    fn the_boundary_is_half_the_stroke_so_the_fill_goes_under_the_line() {
+    fn the_wall_marks_its_radius_and_the_axis_wall_is_a_hairline() {
         let mut g = Grid::new(Vec2::new(0.0, 0.0), Vec2::new(20.0, 20.0), 1.0, 0, 64);
-        // Uma linha "grossa" de 8px de espessura visual → raio de fronteira = 2px
-        // (metade da meia-espessura), mais o ½px do AA.
         g.stroke_capsule(Vec2::new(2.0, 10.0), Vec2::new(18.0, 10.0), 2.0);
-        let on = |dy: f32| {
+        let on = |g: &Grid, dy: f32| {
             let p = g.pixel_of(Vec2::new(10.0, 10.0 + dy)).unwrap();
             g.at(p.0, p.1) & BOUNDARY != 0
         };
-        assert!(on(0.0), "o centro da linha é fronteira");
-        assert!(on(2.0), "a 2px do centro ainda é fronteira");
+        assert!(on(&g, 0.0), "o centro da linha é fronteira");
         assert!(
-            !on(4.0),
-            "a 4px já NÃO é — aí a cor entra por baixo da linha"
+            on(&g, 2.0),
+            "a 2px do centro ainda é fronteira (raio 2 + AA)"
+        );
+        assert!(!on(&g, 4.0), "a 4px já NÃO é");
+        // E a parede do balde (raio 0, o EIXO) é um fio: 1 px de distância já passa.
+        let mut ax = Grid::new(Vec2::new(0.0, 0.0), Vec2::new(20.0, 20.0), 1.0, 0, 64);
+        ax.stroke_capsule(Vec2::new(2.0, 10.0), Vec2::new(18.0, 10.0), 0.0);
+        assert!(on(&ax, 0.0), "o eixo é fronteira");
+        assert!(
+            !on(&ax, 2.0),
+            "a 2px do eixo NÃO é — o corpo da linha é atravessável"
         );
     }
 

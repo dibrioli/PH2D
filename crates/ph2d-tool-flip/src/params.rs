@@ -38,7 +38,9 @@ pub enum FillMode {
 
 /// Faixa do slider **Gap Closure** (alcance da extensão, em px de tela).
 pub const GAP_MAX_PX: f64 = 40.0;
-/// Faixa do **Grow/Shrink** (px do buffer do balde).
+/// Faixa do **Grow/Shrink** (px de tela): o offset assinado do contorno a partir do
+/// **EIXO** da linha (BUGS #14). O default 0 já é exato em qualquer espessura e zoom;
+/// isto é só o ajuste estilístico (o "off-register" para +, o vão deliberado para −).
 pub const GROW_MIN: f64 = -8.0;
 pub const GROW_MAX: f64 = 8.0;
 /// Faixa do **Precision** (pixels do buffer por px de tela; 1 = resolução da tela).
@@ -115,7 +117,8 @@ pub struct FlipStyleSnapshot {
     pub fill_mode: FillMode,
     /// Alcance do Gap Closure em px de tela (`0` = desligado).
     pub gap_px: f64,
-    /// Grow/Shrink em px do buffer (positivo enfia a cor por baixo da linha).
+    /// Grow/Shrink em px de tela: offset assinado do contorno a partir do EIXO da
+    /// linha (o shell converte para px de buffer via `precision`).
     pub grow: f64,
     /// Precision: resolução do buffer do balde (pixels por px de tela).
     pub precision: f64,

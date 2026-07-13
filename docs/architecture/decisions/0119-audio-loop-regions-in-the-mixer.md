@@ -113,3 +113,36 @@ zero-crossing snap.
 - **Runtime crossfade** (a second read head). Deliberately refused above.
 - **Sample-accurate loop switching** (swap the region on a playing voice without a click). The
   region is set at `play`; changing it live re-triggers the existing whole-buffer path.
+
+---
+
+## 6. Outcome (2026-07-12) — all eight held
+
+| | | |
+|---|---|---|
+| **A1** | nothing changes for anyone who did not ask | ✅ `a_loop_without_a_region_is_byte_identical_to_the_old_whole_buffer_loop` — and the six ADR-0118 bit-identity gates never went red |
+| **A2** | intro once, then the body, seam sample-accurate | ✅ `the_intro_plays_once_and_then_the_body_repeats` · `the_frame_after_the_loop_end_is_the_loop_start` |
+| **A3** | streamed == resident, bit for bit | ✅ `a_streamed_region_is_bit_identical_to_a_resident_one` (+ mono) |
+| **A4** | the metadata round-trips through the *application* | ✅ `a_loop_and_its_markers_survive_export_and_load` |
+| **A5** | the editor auditions the real thing | ✅ the fabricated buffer, `playing_loop_region`, `loop_sig`, the hot-swap and the playhead offsets are **deleted** |
+| **A6** | crossfade is a bake, refused without a pre-roll | ✅ `apply_loop_crossfade` + `the_crossfade_bake_refuses_without_a_pre_roll` |
+| **A7** | HR-3 holds | ✅ `no_alloc_render` unchanged and green |
+| **A8** | a degenerate region is refused, not obeyed | ✅ `a_region_that_names_nothing_falls_back_to_the_whole_buffer` · `a_region_running_past_the_end_is_clamped_to_the_audio` |
+
+**Found while building, not planned for:** the region's wrap has to be gated on the **live**
+`looping`, not the one `start` was handed. The editor's Loop toggle flips it on a *sounding* voice,
+and a `wrap_at` still parked at the region's end turned every frame past it into a **held** frame —
+the outro would have been a smear. (`unlooping_a_region_mid_flight_plays_on_into_the_outro`.)
+
+**Two gates were born blind**, and only mutation said so:
+
+1. The **producer** had no gate at all. The intro-plays-once sequence is built there and nowhere
+   else, so breaking it left every gate in `ph2d-audio` green — the mixer plays what it is fed. The
+   fix is an end-to-end gate through a real file (`a_streamed_region_plays_its_intro_exactly_once…`).
+2. That gate's first test file had **no outro**, so the region ended where the file did — which made
+   "never turn around at the loop end" indistinguishable from "turn around at EOF". A loud outro the
+   loop must never reach is what makes both bugs one number.
+
+A third one nearly slipped: two gates used a **1:1 sample rate**, where `frac` is always zero and the
+interpolation's second frame is never read — so a *held* partner frame is invisible. Anything about a
+seam has to be measured at a fractional advance.

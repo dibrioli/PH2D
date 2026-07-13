@@ -21,6 +21,7 @@
 - [Painter: 4 causas + DIRETIVA](feedback_painter_inefficiency_4_causes.md) — costura não-testada/audit=compilar/isolamento órfão/alvo irrefutável
 - [Comentário velho / código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md) — se removeu a UI remova o encanamento; nunca aja só pelo comentário
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — comentário "intentionally NOT X" = decisão ratificada; não sobrescrever
+- [Contrato congelado pode ESCOLHER a arquitetura](feedback_frozen_contract_can_pick_the_architecture.md) — o desenho que sobra costuma vir com um invariante (e um gate) que o óbvio não teria
 - [Convenção vs inércia](feedback_convention_vs_inertia.md) — checar se "convenção" tem gate ou é inércia; default = mais isolamento
 
 ## Git & colisão multi-agente

@@ -1,16 +1,24 @@
-//! Timeline document save/load (W4) — a **sidecar** file for the timeline alone.
+//! **Identidade** dos objetos animados — como uma track reencontra o objeto dela (W4.T6/B5).
 //!
-//! There is no unified project save today (only the vector scene persists), and
-//! the ECS scene has no stable per-entity id (its snapshots are index-based and
-//! reallocate entity bits on load). So a binding cannot be reconnected by entity
-//! bits across a relaunch. Instead we identify a bound object by its **name** —
-//! unique (enforced by `name_unique`) and stable across a reload of the same
-//! scene — hashing it into the timeline's `WireId`.
+//! O ECS não tem id estável: o snapshot é indexado por posição e o restore **respawna** as
+//! entidades com bits NOVOS. Então uma binding não pode ser reconectada por bits — nem através
+//! de um Ctrl+Z, nem através de um load. O objeto bound é identificado pelo **nome** (único, por
+//! `name_unique`, e estável entre sessões), hasheado no `WireId` da timeline.
 //!
-//! This makes the sidecar genuinely useful (the demo scene re-spawns the same
-//! names every launch, so tracks reconnect) and forward-compatible: when a real
-//! project save + stable-id scheme lands (the B5 follow-up, owned outside this
-//! line), only the `wire_of`/`entity_of` closures change.
+//! É o mesmo mecanismo em três situações, e é por isso que ele é UM só:
+//!
+//! - **delete + undo**: o undo global respawna o objeto (bits novos, mesmo `Name`) e a binding
+//!   órfã se recola — as rows voltam ([`upkeep`], por-frame).
+//! - **load de projeto**: o `TimelineDoc` viaja DENTRO do arquivo de projeto ([`crate::project`],
+//!   campo `timeline`) e volta com as bindings **destacadas** ([`install_from_project`]); o
+//!   `upkeep` do frame as recola nos objetos que o load acabou de spawnar.
+//! - **save**: [`serialize`] carimba o hash do nome em cada binding antes de gravar.
+//!
+//! **O sidecar MORREU** (era `ph2d_timeline.postcard` + Ctrl+S/Ctrl+O no contexto do painel).
+//! Ele existia porque "não havia save de projeto" — e havia: o bloco GLOBAL de Ctrl+S/Ctrl+O em
+//! `keyboard.rs` já retornava antes, então o sidecar era **código morto** que ainda dizia o
+//! contrário no comentário. Um 2º formato para o mesmo dado é a coisa que o `project.rs` existe
+//! para não ser.
 
 use ph2d_ecs::{Entity, Name, World};
 use ph2d_timeline::{
@@ -67,63 +75,39 @@ pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> usize {
     )
 }
 
-/// Where the sidecar is written. Env-overridable like the vector save.
-pub(crate) fn save_path() -> String {
-    std::env::var("PH2D_TIMELINE_SAVE_PATH")
-        .unwrap_or_else(|_| "ph2d_timeline.postcard".to_string())
-}
-
-/// Stamp each binding's wire id from its object's name, then write the document.
-/// Returns the number of bound tracks saved.
-pub(crate) fn save(timeline: &mut TimelineState, world: &World) -> Result<usize, String> {
-    let bytes = serialize(timeline, world)?;
-    let n = timeline.doc.bindings().len();
-    std::fs::write(save_path(), &bytes).map_err(|e| e.to_string())?;
-    Ok(n)
-}
-
-/// Read the document back and reconnect its bindings by matching each saved wire
-/// id against the live named entities. Returns `(reconnected, total)`.
-pub(crate) fn load(
-    timeline: &mut TimelineState,
-    world: &mut World,
-) -> Result<(usize, usize), String> {
-    let bytes = std::fs::read(save_path()).map_err(|e| e.to_string())?;
-    deserialize(timeline, world, &bytes)
-}
-
-/// Stamp wire ids from names and serialize — the pure half of [`save`], testable
-/// without touching the filesystem.
-fn serialize(timeline: &mut TimelineState, world: &World) -> Result<Vec<u8>, String> {
+/// Carimba o `wire_id` (hash do nome do objeto) em cada binding e serializa o documento —
+/// os bytes que o arquivo de projeto carrega no campo `timeline` ([`crate::project`]).
+pub(crate) fn serialize(timeline: &mut TimelineState, world: &World) -> Result<Vec<u8>, String> {
     stamp_wire_ids(&mut timeline.doc, |bits| wire_of(world, bits));
     timeline.doc.to_bytes()
 }
 
-/// Deserialize and reconnect bindings to live entities by name — the pure half of
-/// [`load`]. Returns `(reconnected, total)`.
+/// Instala o documento vindo do arquivo de projeto, com **toda binding DESTACADA**
+/// (`entity = 0`, `missing`). Devolve quantas bindings ficaram pendentes de recolagem.
 ///
-/// Selection / history / clipboard are panel state, not persisted — they reset to
-/// a clean slate around the loaded document, so an undo after load cannot reach
-/// into the previous session.
-fn deserialize(
+/// **Por que destacar, e não resolver aqui.** As bindings chegam com os bits de entidade da
+/// sessão em que foram SALVAS — e bits são reciclados: nada impede que os bits gravados de um
+/// objeto morto sejam, nesta sessão, os bits de um objeto **diferente e vivo**. Aí a track
+/// dirigiria em silêncio a pose do objeto errado, sem nunca ser marcada `missing`. Destacar
+/// torna isso impossível: o único caminho de volta é o `wire_id` (o nome).
+///
+/// Quem recola é o [`upkeep`] do frame — a MESMA função que cura o delete+undo. É de propósito:
+/// a resolução por nome existe UMA vez, então o load não pode divergir do undo (e o load não
+/// precisa do mundo, o que o torna dirigível sem janela — ver os gates em `project_tests`).
+///
+/// Selection / history / clipboard não são persistidos: nascem limpos em volta do documento
+/// carregado, então um undo depois do load não alcança a sessão anterior.
+pub(crate) fn install_from_project(
     timeline: &mut TimelineState,
-    world: &mut World,
     bytes: &[u8],
-) -> Result<(usize, usize), String> {
+) -> Result<usize, String> {
     let doc = ph2d_timeline::TimelineDoc::from_bytes(bytes)?;
-
-    // Build the name-hash → live-entity map once, then resolve every binding.
-    let mut by_wire: std::collections::BTreeMap<u64, u64> = std::collections::BTreeMap::new();
-    let mut q = world.query::<(Entity, &Name)>();
-    for (e, name) in q.iter(world) {
-        by_wire.insert(wire_id_for_name(name.as_str()).0, e.to_bits());
-    }
-
     *timeline = TimelineState::new();
     timeline.doc = doc;
-    let total = timeline.doc.bindings().len();
-    let resolved = resolve_entities(&mut timeline.doc, |w| by_wire.get(&w.0).copied());
-    Ok((resolved, total))
+    // `entity_of` sempre `None` ⇒ `entity = 0` + `missing` em TODA binding (contrato do
+    // `resolve_entities`). O `wire_id` — que é o que importa — vem do arquivo, intacto.
+    resolve_entities(&mut timeline.doc, |_| None);
+    Ok(timeline.doc.bindings().len())
 }
 
 #[cfg(test)]
@@ -188,17 +172,23 @@ mod tests {
         assert!(!timeline.doc.bindings()[0].missing);
     }
 
+    /// **A animação atravessa o arquivo de projeto e reencontra os objetos pelo NOME.**
+    ///
+    /// Sessão 1 salva; a sessão 2 respawna os MESMOS nomes com bits DIFERENTES (é o que o
+    /// `apply_project` faz: despawna tudo e re-spawna do snapshot). O `install_from_project`
+    /// destaca as bindings e o `upkeep` do frame — a mesma função que cura o delete+undo — as
+    /// recola. Nenhuma track fica órfã, e nenhuma cola no objeto errado.
     #[test]
-    fn a_track_reconnects_by_name_after_the_entities_respawn() {
-        // Session 1: two named sprites, one track each.
+    fn the_animation_crosses_the_project_file_and_finds_its_objects_by_name() {
+        // Sessão 1: dois sprites nomeados, uma track cada.
         let (save_world, save_bits) = world_with(&["sprite_001", "sprite_002"]);
         let mut timeline = TimelineState::new();
         key(&mut timeline, save_bits[0]);
         key(&mut timeline, save_bits[1]);
         let bytes = serialize(&mut timeline, save_world.world()).unwrap();
 
-        // Session 2: the SAME names respawn with DIFFERENT entity bits (a few
-        // throwaway entities offset the allocator so the bits genuinely differ).
+        // Sessão 2: os MESMOS nomes, bits NOVOS (as entidades descartadas deslocam o
+        // alocador, para que os bits realmente difiram).
         let mut sim2 = SimWorld::new();
         for _ in 0..3 {
             sim2.world_mut().spawn(());
@@ -207,54 +197,88 @@ mod tests {
             .iter()
             .map(|n| sim2.world_mut().spawn(Name::new(*n)).id().to_bits())
             .collect();
-        let mut load_world = sim2;
-        assert_ne!(save_bits, load_bits, "a respawn hands out fresh bits");
+        assert_ne!(save_bits, load_bits, "um respawn dá bits novos");
+
         let mut loaded = TimelineState::new();
-        let (n, total) = deserialize(&mut loaded, load_world.world_mut(), &bytes).unwrap();
-        assert_eq!((n, total), (2, 2), "both tracks reconnected by name");
-        // Each binding now points at THIS session's entity for its name.
+        let pending = install_from_project(&mut loaded, &bytes).unwrap();
+        assert_eq!(
+            pending, 2,
+            "as duas chegam DESTACADAS (nada resolvido ainda)"
+        );
+        assert!(
+            loaded
+                .doc
+                .bindings()
+                .iter()
+                .all(|b| b.missing && b.entity == 0),
+            "destacada = `entity` zerada: bits de outra sessão nunca podem colar por acidente"
+        );
+
+        // O frame seguinte (o `upkeep` do `timeline_bridge`) recola pelo nome.
+        assert_eq!(
+            upkeep(&mut loaded, sim2.world_mut()),
+            2,
+            "as duas recolaram"
+        );
         for (b, want) in loaded.doc.bindings().iter().zip(&load_bits) {
-            assert_eq!(b.entity, *want);
+            assert_eq!(b.entity, *want, "cada binding no objeto DESTA sessão");
             assert!(!b.missing);
         }
     }
 
+    /// A track cujo objeto não está no projeto carregado **sobrevive como `missing`** — não é
+    /// descartada em silêncio (o painel a badgeia; o apply a pula).
     #[test]
-    fn a_track_whose_object_is_gone_loads_missing_not_dropped() {
+    fn a_track_whose_object_is_gone_stays_missing_never_dropped() {
         let (save_world, save_bits) = world_with(&["sprite_001", "sprite_002"]);
         let mut timeline = TimelineState::new();
         key(&mut timeline, save_bits[0]);
         key(&mut timeline, save_bits[1]);
         let bytes = serialize(&mut timeline, save_world.world()).unwrap();
 
-        // Session 2: only the first sprite is back.
+        // Sessão 2: só o primeiro sprite voltou.
         let (mut load_world, _) = world_with(&["sprite_001"]);
         let mut loaded = TimelineState::new();
-        let (n, total) = deserialize(&mut loaded, load_world.world_mut(), &bytes).unwrap();
+        assert_eq!(install_from_project(&mut loaded, &bytes).unwrap(), 2);
         assert_eq!(
-            (n, total),
-            (1, 2),
-            "one reconnected, the other survives as missing"
+            upkeep(&mut loaded, load_world.world_mut()),
+            1,
+            "uma recola; a outra continua pendente"
         );
         assert!(!loaded.doc.bindings()[0].missing);
-        assert!(loaded.doc.bindings()[1].missing);
+        assert!(
+            loaded.doc.bindings()[1].missing,
+            "a track do objeto ausente fica visível como missing, não some"
+        );
     }
 
+    /// O install zera selection/history — um Ctrl+Z depois do load não alcança a sessão
+    /// anterior. (O undo GLOBAL do editor é zerado pelo `project_load_from`; este é o undo
+    /// próprio da timeline.)
     #[test]
-    fn load_resets_panel_state_so_undo_cannot_cross_sessions() {
+    fn install_resets_panel_state_so_undo_cannot_cross_sessions() {
         let (world, bits) = world_with(&["sprite_001"]);
         let mut timeline = TimelineState::new();
         key(&mut timeline, bits[0]);
         let bytes = serialize(&mut timeline, world.world()).unwrap();
-        // A dirty session: something selected + an undo step banked.
-        let (mut world2, _) = world_with(&["sprite_001"]);
+
         let mut loaded = TimelineState::new();
-        key(&mut loaded, bits[0]); // bank a history entry
-        deserialize(&mut loaded, world2.world_mut(), &bytes).unwrap();
-        assert!(!loaded.history.can_undo(), "history reset around the load");
+        key(&mut loaded, bits[0]); // uma sessão suja: um passo no histórico
+        assert!(loaded.history.can_undo());
+        install_from_project(&mut loaded, &bytes).unwrap();
+        assert!(!loaded.history.can_undo(), "histórico zerado no load");
+        assert!(loaded.selection.is_empty(), "seleção zerada no load");
+    }
+
+    /// Bytes de um `DOC_VERSION` que este binário não lê são **recusados** — não lidos com o
+    /// layout novo. (Postcard é posicional: ler seria pior que recusar.)
+    #[test]
+    fn a_document_from_another_era_is_refused_not_misread() {
+        let mut loaded = TimelineState::new();
+        assert!(install_from_project(&mut loaded, &[0xff, 0xff, 0xff]).is_err());
         assert!(
-            loaded.selection.is_empty(),
-            "selection reset around the load"
+            loaded.doc.bindings().is_empty(),
+            "e o estado atual não é corrompido pela tentativa"
         );
     }
 }

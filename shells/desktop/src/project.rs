@@ -48,7 +48,12 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v12: o MESMO `mats` mudou de FORMA — 4 bytes → 7 (a **cor do Wax**, o filtro sobre a luz que
 /// atravessa a tinta). Não é campo novo, é o mesmo campo com outro layout, e posicional é
 /// posicional: sem o bump um v11 passaria na checagem e o material sairia dos bytes errados.
-const PROJECT_SCHEMA: u32 = 12;
+/// v13 (W4.T6/B5): `ProjectFile` ganhou `timeline` (o `TimelineDoc` em postcard) — 5º campo.
+/// **A animação era perdida ao fechar o app**: nada a salvava (o "sidecar" que dizia salvá-la
+/// era código morto — o Ctrl+S global já retornava antes). Os bytes trazem a própria versão
+/// (`DOC_VERSION`), então um bump lá é RECUSADO com erro honesto e não obriga a bumpar aqui;
+/// o campo NOVO, sim, obriga (posicional).
+const PROJECT_SCHEMA: u32 = 13;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -73,6 +78,17 @@ struct ProjectFile {
     /// diffável e mergeável por linha (o requisito multiagente que descartou JSON/RON).
     /// Um projeto sem grafo carrega `""`.
     motion: String,
+    /// O **`TimelineDoc`** (clips, faixas, tracks, keys) em postcard — a animação inteira.
+    ///
+    /// Fora do `ProjectState` pelo mesmo motivo do `motion`: o `ProjectState` é a unidade do
+    /// undo GLOBAL, e a timeline tem undo próprio. Enfiá-la ali faria cada Ctrl+Z do canvas
+    /// rebobinar a animação junto.
+    ///
+    /// As bindings viajam com o **`wire_id`** (hash do `Name` do objeto) carimbado no save, e
+    /// NÃO com os bits de entidade — que o load recicla. Quem as recola é o `upkeep` do frame,
+    /// a mesma função que cura delete+undo (ver [`crate::timeline_persist`]). Um projeto sem
+    /// animação carrega `vec![]`.
+    timeline: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -99,6 +115,22 @@ impl crate::App {
         // da captura — senão o `PaintedDoc` recém-inserido ficaria de fora do snapshot e o load não
         // teria a quem devolver o documento.
         let painted = self.collect_painted_docs();
+        // A animação. O `serialize` carimba em cada binding o hash do NOME do objeto — é por
+        // ele que a track reencontra o objeto do outro lado do arquivo (os bits de entidade
+        // não sobrevivem a um respawn). Precisa do mundo, então vem antes da captura.
+        let timeline = match self.gfx.as_ref() {
+            Some(gfx) => {
+                let world = gfx.sim.world();
+                match crate::timeline_persist::serialize(&mut self.timeline, world) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        eprintln!("[proj] timeline nao serializou, projeto salvo SEM ela: {e}");
+                        Vec::new()
+                    }
+                }
+            }
+            None => Vec::new(),
+        };
         let Some(state) = self.capture_project() else {
             return;
         };
@@ -111,6 +143,7 @@ impl crate::App {
                 .as_ref()
                 .map(|g| g.motion.doc.to_text())
                 .unwrap_or_default(),
+            timeline,
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,
@@ -181,16 +214,15 @@ impl crate::App {
         self.playhead.pause();
         self.undo = ProjectUndo::default(); // documento novo, histórico novo
         self.flip_live_clear(); // …e o alvo vivo do anterior morreu junto
-        // **A TIMELINE.** Ela NÃO é persistida ainda (W4.T6/B5), e é justamente por isso que
-        // tem de morrer aqui: as bindings do documento anterior nomeiam entidades que o
+        // **A TIMELINE do documento anterior morre aqui** — a do arquivo entra no fim (W4.T6/B5).
+        //
+        // Não é higiene: as bindings do documento anterior nomeiam entidades que o
         // `apply_project` vai despawnar logo abaixo — e o `timeline_persist::upkeep` RECONECTA
         // binding órfã por **hash do Name** (é o que cura delete+undo). Nomes se repetem entre
         // projetos ("Layer 1", "sprite_001"), então, deixada viva, a animação do projeto A
         // adotaria os objetos homônimos do projeto B no frame seguinte e passaria a dirigir a
         // pose deles — uma animação que não está em arquivo nenhum, e com a fila de undo já
-        // zerada logo acima. O loader da própria timeline faz este mesmo reset pelo mesmo
-        // motivo (`timeline_persist::deserialize`: *"an undo after load cannot reach into the
-        // previous session"*). Perder a animação não-salva é o degradado HONESTO até a W4.T6.
+        // zerada logo acima.
         self.timeline = ph2d_timeline::TimelineState::new();
         self.timeline_intents.clear();
         self.timeline_insert_key = false;
@@ -209,6 +241,19 @@ impl crate::App {
             && let Err(e) = gfx.motion.load_text(&file.motion)
         {
             eprintln!("[proj] grafo de motion ilegivel, mantido o atual: {e:?}");
+        }
+        // **A ANIMAÇÃO** (W4.T6/B5). As bindings entram DESTACADAS (bits de entidade zerados) e
+        // o `upkeep` do frame as recola nos objetos que o `apply_project` acabou de spawnar,
+        // pelo hash do `Name` — a MESMA função que cura delete+undo. Por isso este passo não
+        // precisa do mundo, e por isso o load não pode divergir do undo: a resolução por nome
+        // existe uma vez só. Um documento ilegível (outra era do `DOC_VERSION`) NÃO aborta o
+        // load — a cena já entrou; a timeline fica vazia e o motivo vai pro log.
+        if !file.timeline.is_empty() {
+            match crate::timeline_persist::install_from_project(&mut self.timeline, &file.timeline)
+            {
+                Ok(n) => eprintln!("[proj] timeline: {n} track(s) a recolar por nome"),
+                Err(e) => eprintln!("[proj] timeline ilegivel, projeto aberto SEM animacao: {e}"),
+            }
         }
         // **O baseline do undo é a ÚLTIMA palavra — e sai do MUNDO, não do arquivo.**
         //

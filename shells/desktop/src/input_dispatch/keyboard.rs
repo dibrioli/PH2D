@@ -336,31 +336,11 @@ impl App {
             return;
         }
 
-        // General timeline (W4) — Ctrl/Cmd+S saves the timeline document to its
-        // sidecar, Ctrl/Cmd+O loads it, while the panel is the context (open, no
-        // active Vector tool — which owns these chords for its own scene — and no
-        // focused text field). There is no unified project save yet; this is the
-        // documented sidecar (B5).
-        if self.timeline_panel_open()
-            && !self.vector_tool_active()
-            && state == ElementState::Pressed
-            && !repeat
-            && (self.modifiers.control_key() || self.modifiers.super_key())
-            && !self.vector_text_field_focused()
-            && let PhysicalKey::Code(code) = physical_key
-        {
-            match code {
-                KeyCode::KeyS => {
-                    self.timeline_save_to_sidecar();
-                    return;
-                }
-                KeyCode::KeyO => {
-                    self.timeline_load_from_sidecar();
-                    return;
-                }
-                _ => {}
-            }
-        }
+        // (W4.T6/B5) O bloco do "sidecar da timeline" — Ctrl+S/Ctrl+O no contexto do painel —
+        // foi REMOVIDO daqui. Era **inalcançável**: o Ctrl+S/Ctrl+O GLOBAL de projeto, lá em
+        // cima, já retornava antes dele. E o comentário ainda dizia "não há save de projeto
+        // ainda", o que deixou de ser verdade quando o `project.rs` landou. Hoje a timeline
+        // viaja DENTRO do arquivo de projeto (`ProjectFile.timeline`) — um dado, um formato.
 
         // General timeline (W4.T3) — `M` drops a marker at the playhead while the
         // panel is open (Blender's marker key). Intercepted here, before the

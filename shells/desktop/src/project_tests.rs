@@ -38,15 +38,39 @@ fn empty_state() -> ProjectState {
 /// Grava um arquivo de projeto em `path` com o esquema `schema`. Passar
 /// `PROJECT_SCHEMA` produz um arquivo que o loader ACEITA; qualquer outro número
 /// produz um que ele RECUSA — os dois caminhos que os gates abaixo separam.
-fn write_project(path: &std::path::Path, schema: u32) {
+///
+/// `timeline` são os bytes do `TimelineDoc` (vazio = projeto sem animação).
+fn write_project_with(path: &std::path::Path, schema: u32, timeline: Vec<u8>) {
     let file = ProjectFile {
         state: empty_state(),
         assets: Vec::new(),
         painted: Vec::new(),
         motion: String::new(),
+        timeline,
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");
+}
+
+fn write_project(path: &std::path::Path, schema: u32) {
+    write_project_with(path, schema, Vec::new());
+}
+
+/// O documento de uma animação: uma track em `hero`, com o `wire_id` (hash do nome) carimbado
+/// como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
+fn animation_of_hero() -> Vec<u8> {
+    use ph2d_ecs::{Name, SimWorld};
+    let mut sim = SimWorld::new();
+    let hero = sim.world_mut().spawn(Name::new("hero")).id().to_bits();
+    let mut timeline = ph2d_timeline::TimelineState::new();
+    timeline.doc.upsert_key(
+        hero,
+        ph2d_timeline::PropKind::TranslationX,
+        ph2d_anim::RationalTime::from_seconds(1.0),
+        ph2d_timeline::AnimValue::Float(42.0),
+        ph2d_timeline::Interp::Linear,
+    );
+    crate::timeline_persist::serialize(&mut timeline, sim.world()).expect("serializa a timeline")
 }
 
 /// Um caminho temporário por gate (os testes correm em paralelo, no mesmo processo —
@@ -230,6 +254,44 @@ fn a_refused_load_leaves_the_clock_and_the_history_alone() {
     );
 }
 
+/// **A ANIMAÇÃO SOBREVIVE AO FECHAR O APP** (W4.T6/B5) — e volta pronta para reencontrar os
+/// objetos pelo nome.
+///
+/// Até aqui a timeline não era salva por caminho NENHUM: o "sidecar" que dizia salvá-la era
+/// código morto (o Ctrl+S global de projeto retornava antes dele), então fechar o app perdia a
+/// animação inteira. Agora o `TimelineDoc` viaja dentro do arquivo de projeto.
+///
+/// As bindings voltam **destacadas** (`entity == 0`, `missing`) de propósito: os bits de
+/// entidade do save não valem nada nesta sessão — e, pior, poderiam colidir com um objeto
+/// DIFERENTE e vivo. Quem as recola é o `upkeep` do frame, pelo hash do `Name` — a mesma
+/// função que cura delete+undo, gateada em `timeline_persist`
+/// (`the_animation_crosses_the_project_file_and_finds_its_objects_by_name`).
+#[test]
+fn a_loaded_project_brings_its_animation_back_pending_the_name_heal() {
+    let mut app = headless_app();
+    assert!(app.timeline.doc.bindings().is_empty(), "sessão em branco");
+
+    let path = tmp_path("load_animation");
+    write_project_with(&path, PROJECT_SCHEMA, animation_of_hero());
+    app.project_load_from(&path.to_string_lossy());
+    let _ = std::fs::remove_file(&path);
+
+    let bindings = app.timeline.doc.bindings();
+    assert_eq!(
+        bindings.len(),
+        1,
+        "a animação do arquivo entrou na sessão — o projeto reabre COM ela"
+    );
+    assert!(
+        !bindings[0].wire_id.is_null(),
+        "…carregando a identidade por NOME, que é o que sobrevive a um respawn"
+    );
+    assert!(
+        bindings[0].missing && bindings[0].entity == 0,
+        "…e DESTACADA: bits de outra sessão nunca podem colar num objeto vivo por acidente"
+    );
+}
+
 /// O arquivo de projeto sobrevive ao round-trip postcard: geometria, versão e os
 /// pixels embutidos voltam idênticos.
 #[test]
@@ -259,6 +321,7 @@ fn project_file_round_trips_through_postcard() {
         }],
         painted: Vec::new(),
         motion: motion.clone(),
+        timeline: animation_of_hero(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -276,6 +339,14 @@ fn project_file_round_trips_through_postcard() {
         ph2d_motion_doc::MotionDoc::from_text(&back.motion).is_ok(),
         "…e ainda parseável do outro lado do arquivo"
     );
+    // A animação viaja como postcard do `TimelineDoc` — e volta LEGÍVEL do outro lado do
+    // arquivo (bytes iguais não bastariam: o que importa é o documento reabrir).
+    let mut back_timeline = ph2d_timeline::TimelineState::new();
+    assert_eq!(
+        crate::timeline_persist::install_from_project(&mut back_timeline, &back.timeline).unwrap(),
+        1,
+        "a animação preservada: uma track, do outro lado do arquivo"
+    );
 }
 
 /// **Estopim de esquema.** O `ProjectState` embute o `FlipDoc` inteiro, e o
@@ -286,15 +357,16 @@ fn project_file_round_trips_through_postcard() {
 ///
 /// Este par existe para que bumpar UM sem pensar no OUTRO fique vermelho.
 ///
-/// O `PROJECT_SCHEMA` é 7 (e não o 4 que a linha Flip trazia sozinha) porque na
+/// O `PROJECT_SCHEMA` é 8 (e não o 4 que a linha Flip trazia sozinha) porque na
 /// árvore integrada ele conta TODAS as quebras de layout, não só as do Flip: v3/v4
-/// do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 do Flip. Cada
-/// linha subiu o mesmo contador por um motivo diferente — e o contador é um só.
+/// do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 do Flip, v8 a
+/// timeline. Cada linha subiu o mesmo contador por um motivo diferente — e o
+/// contador é um só.
 #[test]
 fn a_flip_schema_bump_must_bump_the_project_schema() {
     assert_eq!(
         (PROJECT_SCHEMA, ph2d_flip::FLIP_SCHEMA_VERSION),
-        (7, 3),
+        (8, 3),
         "a forma do FlipDoc mudou (ou o esquema do projeto): suba o PROJECT_SCHEMA \
          junto e atualize este par. Postcard nao avisa - ele so le errado."
     );

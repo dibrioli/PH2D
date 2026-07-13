@@ -820,3 +820,33 @@ fn the_marker_head_controls_reach_the_tool() {
         "a via unica limpa o COMECO"
     );
 }
+
+/// **O pill do Shape Builder chega à tool.** Mesmo gate, mesma razão: um pill que PINTA e
+/// não despacha deixa a feature inteira inalcançável, e todo teste do arranjo — que é onde
+/// mora a matemática — continua verde. É o modo mais fácil de entregar nada.
+#[test]
+fn clicking_build_pill_reaches_the_tool() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    let mut tool = VectorTool::default();
+    assert_ne!(tool.mode(), DrawMode::Build, "precondition: nao e Build");
+
+    let outcome = host.apply_panel_event::<VectorPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::VECTOR_MODE_BUILD),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o pill Build nao foi consumido — falta o id na allowlist de `event.rs`"
+    );
+    assert!(
+        drain_into_tool(&mut host, &mut tool),
+        "o clique nunca virou ToolPanelEvent — o seam painel->shell esta morto"
+    );
+    assert_eq!(
+        tool.mode(),
+        DrawMode::Build,
+        "o clique chegou ao bus mas nao virou modo — falta o arm em `handle_panel_event`"
+    );
+}

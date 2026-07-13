@@ -45,6 +45,11 @@ pub use connector::{HANDLE_R_PX, draw_connector_handles, draw_connector_waypoint
 mod corner;
 pub use corner::draw_corner_handles;
 
+/// O realce das FACES do Shape Builder — módulo irmão (LOC cap). É a feature: sem ele o
+/// artista arrasta às cegas e só descobre o que pegou depois de soltar.
+mod build_faces;
+pub use build_faces::draw_build_faces;
+
 /// Constrói o `BezPath` (world-space) de um path editável: para CADA contorno
 /// (primário + `subpaths`), `move_to` na 1ª âncora, depois uma cúbica por segmento
 /// usando `out_handle(i)` e `in_handle(i+1)`; fecha com uma cúbica final se

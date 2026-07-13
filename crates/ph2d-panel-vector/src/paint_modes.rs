@@ -78,6 +78,11 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.connect"),
                 DrawMode::Connect,
             ),
+            (
+                ids::VECTOR_MODE_BUILD,
+                tr("panel.vector.mode.build"),
+                DrawMode::Build,
+            ),
         ];
         let cols = 3usize;
         self.button_grid(y, cols, modes.len(), |i| {

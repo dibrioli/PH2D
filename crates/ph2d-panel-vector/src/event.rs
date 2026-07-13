@@ -296,6 +296,8 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // O 6º pill (Connect). Fora daqui, o botão pinta e está MORTO — é o gate do
         // seam (`clicking_connect_pill_reaches_the_tool`).
         || id == ids::VECTOR_MODE_CONNECT
+        // O 7º pill (Build / Shape Builder).
+        || id == ids::VECTOR_MODE_BUILD
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT
         || id == ids::VECTOR_TEXT_FONT_IMPORT

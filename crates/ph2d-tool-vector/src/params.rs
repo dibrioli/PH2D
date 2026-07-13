@@ -226,6 +226,14 @@ pub enum DrawMode {
     /// Texto: clica no canvas e digita; cada glyph vira um `VecPath` preenchido
     /// (ADR-0108). Não é uma shape-tool nem cria pelo Pen — o shell trata o gesto.
     Text,
+    /// **Shape Builder**: com 2+ formas selecionadas, o cursor arrasta sobre as REGIÕES em
+    /// que elas se dividem — o que ele pinta vira uma forma só; com Alt, some.
+    ///
+    /// É um modo e não um botão de Pathfinder porque a unidade de trabalho não é a FORMA, é
+    /// a **face do arranjo**: a região "dentro da A e fora da B" não existe como objeto até o
+    /// dedo passar por cima dela. Um Pathfinder obriga a pensar em operações; isto deixa
+    /// desenhar o resultado.
+    Build,
     /// **Conector**: pressiona sobre uma forma, arrasta, solta sobre outra — nasce uma
     /// linha que gruda nas duas e as SEGUE (soltar no vazio deixa a ponta solta ali;
     /// pressionar e soltar na mesma forma faz um laço).

@@ -397,6 +397,18 @@ impl App {
             }
         }
 
+        // Shape Builder: Escape DESMARCA o que foi pintado, sem tocar na arte. Vem antes do
+        // Escape do Pen porque um modo exclui o outro, e este consome só quando há
+        // algo pintado para desmarcar (senão o Escape cai no blur de widget, como sempre).
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.vector_tool_active()
+            && self.build_cancel()
+        {
+            return;
+        }
+
         // Vector: Escape ends an in-progress path (it stays in the scene, open).
         // Consumed only while the Vector tool is active and the Pen is drawing,
         // so Escape otherwise falls through to widget blur.

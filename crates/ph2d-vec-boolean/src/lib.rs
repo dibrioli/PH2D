@@ -17,6 +17,11 @@
 //! kurbo do vello) → zero risco de version-skew.
 
 use kurbo::{BezPath, PathEl, Point};
+/// **O arranjo planar** — as FACES que o Shape Builder pinta. Módulo irmão: ele monta as
+/// regiões COM as ops daqui, e é por isso que mora nesta crate (o motor é o mesmo).
+pub mod arrangement;
+pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
+
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
 use ph2d_vec_scene::{Contour, FillRule, VecPath, VecVertex, VertexKind};
 

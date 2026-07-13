@@ -681,6 +681,13 @@ pub(crate) struct App {
     pub(crate) any_input_this_frame: bool,
     /// Gradient group: the gradient handle currently being DRAGGED on-canvas —
     /// a multi-point point OR a linear/radial endpoint (`None` = not dragging).
+    /// **O Shape Builder em curso** (modo `DrawMode::Build`). Guarda o arranjo das formas
+    /// selecionadas + as faces já pintadas. `None` fora do modo, ou com menos de 2 formas
+    /// fechadas selecionadas (aí não há região para pintar).
+    ///
+    /// Vive entre frames de propósito: o arranjo MEMOIZA a geometria de cada região
+    /// visitada, e reabri-lo por frame faria todo hover pagar a booleana de novo.
+    pub(crate) vec_build: Option<crate::shape_build::BuildSession>,
     pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,
     /// The selected gradient handle (drives the overlay highlight + the Remove-
     /// point / Influence / Jitter targets, via [`GradHandle::point`]). `None` = none.

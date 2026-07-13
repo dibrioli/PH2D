@@ -129,6 +129,7 @@ pub fn tr(key: &str) -> &'static str {
         // campos (Route / Jetty / Spread) vêm do catálogo em `ph2d-tool-vector::connector`,
         // que é a fonte única deles (a mesma regra do catálogo de formas).
         "panel.vector.section.connector" => "Connector",
+        "panel.vector.mode.build" => "Build",
         "panel.vector.mode.select" => "Select",
         "panel.vector.mode.node" => "Node",
         "panel.vector.mode.pen" => "Pen",

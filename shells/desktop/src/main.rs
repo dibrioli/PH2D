@@ -78,6 +78,8 @@ mod palette_persist;
 mod project;
 mod project_painter;
 mod render_loop;
+mod shape_build;
+mod shape_build_gesture;
 mod sim_populate;
 mod theme;
 mod timeline_persist;
@@ -304,6 +306,7 @@ impl App {
             undo_baseline: None,
             undo_request: None,
             any_input_this_frame: false,
+            vec_build: None,
             vec_grad_drag: None,
             vec_grad_selected: None,
             vec_clipboard: None,

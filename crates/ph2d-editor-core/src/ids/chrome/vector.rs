@@ -379,6 +379,10 @@ pub const VECTOR_MODE_SHAPE: NodeId = hash_node_id("vector.mode.shape");
 /// por isso é um modo, e não mais um item na grade de tipos.
 pub const VECTOR_MODE_CONNECT: NodeId = hash_node_id("vector.mode.connect");
 
+/// **Shape Builder** — o 7º pill. Arrasta sobre as regiões de 2+ formas selecionadas: o que
+/// o cursor pinta vira uma forma só; com Alt, some.
+pub const VECTOR_MODE_BUILD: NodeId = hash_node_id("vector.mode.build");
+
 /// Chip de **CATEGORIA** do catálogo de formas (`Dropdown`): a família (Basic / Round /
 /// Arrows / Flow / Bubbles / Symbols / 3D) escolhida numa LINHA, com um widget
 /// visualmente distinto da grade de tipos abaixo — é essa diferença de widget que separa

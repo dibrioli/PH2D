@@ -491,6 +491,11 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_CONNECT => {
                 self.mode = DrawMode::Connect;
             }
+            // **Shape Builder** — o 7º pill. Precisa de 2+ formas selecionadas; a shell é
+            // quem sabe disso (a tool não vê a cena).
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_BUILD => {
+                self.mode = DrawMode::Build;
+            }
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_BUTT => self.set_cap(StrokeCap::Butt),

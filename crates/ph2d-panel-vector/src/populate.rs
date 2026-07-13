@@ -192,6 +192,10 @@ fn populate_shape(store: &mut WidgetStore) {
     // torna clicável — pintar e dar hit-rect não basta.
     button(store, ids::VECTOR_MODE_CONNECT);
 
+    // O 7º: **Build** (o Shape Builder). Mesma armadilha: registrar aqui é o que o torna
+    // clicável — pintar e dar hit-rect não basta.
+    button(store, ids::VECTOR_MODE_BUILD);
+
     // O CATÁLOGO: um botão por forma + uma opção de dropdown por família. Registrados por
     // ÍNDICE — uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.
     for i in 0..shapes::SHAPES.len() {

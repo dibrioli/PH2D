@@ -506,6 +506,12 @@ impl crate::App {
             self.handle_dropped_files(&paths);
         }
 
+        // **Shape Builder:** abre/renova o arranjo das formas selecionadas. Roda ANTES do
+        // borrow mutável do `gfx` (ele precisa ler a cena e escrever em `self`), e só
+        // reconstrói quando a SELEÇÃO muda — refazê-lo por frame jogaria fora o memo do
+        // arranjo e cada hover voltaria a pagar a booleana.
+        self.build_session_upkeep();
+
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -2954,6 +2960,27 @@ impl crate::App {
             // qualquer modo, inclusive o gizmo-move do Select (P1, ADR-0112).
             if overlay.snap_guides {
                 ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
+            }
+            // **O realce do Shape Builder** — as faces sob o cursor e as já pintadas. Fora do
+            // `overlay.edit` porque o Build não é um modo de edição de nó: o que ele
+            // manipula é a REGIÃO, não a âncora.
+            if let Some(b) = self.vec_build.as_mut() {
+                let marked: Vec<ph2d_vec_scene::VecPath> = b
+                    .marked
+                    .clone()
+                    .into_iter()
+                    .filter_map(|f| b.arr.face_path(f).cloned())
+                    .collect();
+                let hover = b.hover.and_then(|f| b.arr.face_path(f).cloned());
+                // As faces já estão em MUNDO (a sessão as assou), então só a câmera.
+                ph2d_vec_render::draw_build_faces(
+                    hover.as_ref(),
+                    &marked,
+                    b.subtract,
+                    cam_affine,
+                    hero.theme,
+                    vector_scene,
+                );
             }
             // **As alças de ponta do conector** — FORA do `overlay.edit`, e isso é a coisa toda:
             // elas vivem no modo **Select**, que é exatamente onde `overlay.edit` é FALSO (lá

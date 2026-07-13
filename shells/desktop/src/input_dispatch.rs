@@ -2039,6 +2039,14 @@ impl App {
             m.1 = self.last_pointer;
             return;
         }
+        // Shape Builder: o realce segue o cursor mesmo SEM botão apertado (é o que
+        // deixa o artista ver as regiões antes de escolher uma), e com o botão ele PINTA.
+        if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Build
+            && let Some(w) = self.vec_world_at(self.last_pointer)
+            && self.build_move(w)
+        {
+            return;
+        }
         // ADR-0108 Fase 1.2: Pen NOVO — arrastar após a âncora puxa os handles
         // Bézier (simétricos). Early-return: não pan/gizmo. No-op sem drag ativo.
         if self.vec_pen_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2534,6 +2542,16 @@ impl App {
                         }
                         return;
                     }
+                    // Modo Build (Shape Builder): a pressão começa a PINTAR faces do
+                    // arranjo. Captura o canvas inteiro — não há pen, shape nem gizmo aqui;
+                    // o que se manipula não é a forma, é a região.
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Build {
+                        if let Some(w) = self.vec_world_at(self.last_pointer) {
+                            let alt = self.modifiers.alt_key();
+                            self.build_down(w, alt);
+                        }
+                        return;
+                    }
                     // Modo Connect: a pressão abre o gesto do CONECTOR (sobre uma forma, a
                     // ponta nasce presa a ela; no vazio, solta ali). Nada de pen/shape —
                     // a linha de um conector não é autorada, é derivada.
@@ -2653,6 +2671,13 @@ impl App {
                 (ph2d_host::PointerButton::Primary, PointerKind::Up) => {
                     // Fim de gesto: as guias de snap não sobrevivem ao Up.
                     self.vec_clear_snap_guides();
+                    // Shape Builder: o Up materializa as faces pintadas. Consome SÓ com o
+                    // arrasto VIVO, pela mesma razão que o conector documenta abaixo —
+                    // um Up sobre um botão do painel não pode ser engolido pelo modo.
+                    if self.vec_build.as_ref().is_some_and(|s| s.dragging) {
+                        self.build_up();
+                        return;
+                    }
                     // Conector: o Up prende a 2ª ponta (na forma sob o cursor, ou solta ali).
                     // Consome SÓ com gesto vivo — senão soltar sobre um botão do painel no
                     // modo Connect engoliria o clique (a armadilha do `shape_up_consumes`).

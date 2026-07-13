@@ -42,7 +42,11 @@ pub(crate) struct VecOverlayPlan {
 #[must_use]
 pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverlayPlan {
     VecOverlayPlan {
-        edit: vector_active && mode != DrawMode::Select,
+        // O **Build** também fica de fora, e pela mesma razão do Select: o que ele
+        // manipula é a REGIÃO, não a âncora. Âncoras e handles por cima de um emaranhado
+        // de formas sobrepostas só atrapalham a leitura das faces — que é a única coisa
+        // que o artista precisa enxergar ali.
+        edit: vector_active && !matches!(mode, DrawMode::Select | DrawMode::Build),
         snap_guides: vector_active,
         corner_handles: vector_active && mode == DrawMode::Node,
     }
@@ -62,6 +66,16 @@ mod tests {
             "guia de snap no Select (gizmo-move encaixa)"
         );
         assert!(!plan.edit, "âncoras/handles NÃO no Select (ADR-0112)");
+    }
+
+    /// **O Shape Builder não desenha âncoras.** O que ele manipula é a região; um mapa de
+    /// nós por cima de formas sobrepostas esconde exatamente o que o artista precisa ver.
+    #[test]
+    fn build_mode_shows_no_node_overlays_because_it_manipulates_regions() {
+        let plan = vec_overlay_plan(true, DrawMode::Build);
+        assert!(!plan.edit, "sem âncoras/handles no Build");
+        assert!(!plan.corner_handles, "e sem alça de raio de quina");
+        assert!(plan.snap_guides, "as guias de snap valem em todo modo");
     }
 
     /// Nos modos de desenho/edição de nó, os dois overlays aparecem.

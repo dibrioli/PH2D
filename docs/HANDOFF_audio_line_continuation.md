@@ -306,3 +306,62 @@ mutante 20,4. Se alguém mexer no sinal de teste, **re-mute**.
   cliente.
 - Peça arrastada só troca de lugar **entre fronteiras existentes** (é o que foi pedido). Posição
   livre com gaps exigiria o modelo multi-clipe que foi deliberadamente recusado.
+
+---
+
+## §N+1 — Regiões de loop no runtime ([ADR-0119](architecture/decisions/0119-audio-loop-regions-in-the-mixer.md), 2026-07-12)
+
+**Commits:** `1ce60508` (runtime) · `63bf5790` (editor) · ADR + outcome.
+
+### O buraco (achado ao procurar a próxima tarefa, não pedido)
+
+A seção Loop autorava pontos que **nada conseguia tocar**:
+
+1. `PlayParams.looping` era um **bool** — o buffer inteiro, ou nada. Sem "toque `0..N` uma vez,
+   depois repita `A..B`", que é a estrutura de praticamente toda música de jogo.
+2. A audição do loop era uma **fabricação de preview**: construía um buffer separado só com a
+   região, com crossfade, e tocava *aquele* em loop de buffer inteiro. O que o usuário ouvia não era
+   o que um jogo tocaria — porque um jogo **não conseguia** tocar aquilo.
+3. `read_loop_regions`/`read_markers` **existiam**, com round-trip unit-testado no próprio crate, e
+   **nada na aplicação os chamava**. Exporte um WAV com loop, carregue de volta: o loop sumia.
+   Não era feature faltando, era **chamada** faltando — e nenhum teste do `ph2d-audio-encode` jamais
+   pegaria (o crate fica verde de qualquer jeito).
+
+### Decisão
+
+A região é propriedade de uma **voz tocando**. `intro→loop` não é 2ª feature — é o que uma região
+**é**. `looping` sem região continua significando o buffer inteiro, **byte-idêntico** (A1).
+
+- **Stream:** o produtor publica a **região efetiva** (antes só o comprimento) e emite `[0..end)` e
+  depois `[start..end)`. Chega no `start` **rebobinando e descartando**, não buscando — busca é
+  por-formato e grosseira, e um loop alguns frames fora é um loop que estala. **Bit-idêntico** ao
+  residente (A3, padrão do ADR-0118).
+- **Crossfade vira BAKE** (1 undo step). Um loop de runtime **PULA**; não faz crossfade (precisaria
+  de 2ª cabeça de leitura, e num stream de áudio que o produtor já jogou fora). Escreve a emenda
+  **nas amostras**, usando o intro como pre-roll. Recusa (e fica dim) com loop no frame 0.
+
+### Cuidados pro próximo
+
+- **A região vai pra voz SEMPRE**; o `looping` **vivo** decide se usa. Gatear na entrega faria
+  "ligar Loop no meio da reprodução" virar loop de buffer inteiro (a voz nunca soube da região).
+- E o **wrap** também é gateado no `looping` vivo — o toggle Loop vira `looping` numa voz *tocando*,
+  e um `wrap_at` parado no fim da região tornaria todo frame depois dela um frame **SEGURADO** (o
+  outro viraria borrão). Achado durante a implementação, não previsto.
+
+### ⚠️ Três gates nasceram cegos (só a mutação disse)
+
+1. **O produtor não tinha gate NENHUM.** A sequência intro-uma-vez é construída só ali, então
+   quebrá-la deixava todo gate do `ph2d-audio` verde (o mixer toca o que lhe dão). Fix: gate
+   end-to-end com arquivo real.
+2. **Aquele gate sem OUTRO** não distinguia "nunca vira no fim da região" de "vira no EOF" — a
+   região terminava onde o arquivo terminava. O outro alto que o loop nunca pode alcançar é o que
+   torna os dois bugs **um número**.
+3. **Taxa 1:1 esconde frame segurado** — `frac` é sempre 0, o 2º frame da interpolação nunca é lido.
+   **Qualquer coisa sobre emenda tem de ser medida com avanço fracionário.**
+
+### Aberto
+
+- Loop **múltiplo** (`smpl` aceita vários; jogos usam um — o reader pega o primeiro).
+- Crossfade em runtime (2ª cabeça) — **recusado** deliberadamente.
+- Trocar entre dois loops **numa fronteira musical** (remix vertical): precisa de scheduler, não de
+  região.

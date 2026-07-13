@@ -86,6 +86,7 @@
 - [Heurística exige TAXA de falso-positivo](feedback_heuristic_needs_false_positive_rate.md) — detector verde num fixture é sorte do seed; meça FP sobre 200 realizações de ruído
 - [Tolerância folgada esconde viés sistemático](feedback_loose_oracle_hides_systematic_bias.md) — pitch shifter passou 3 jornadas 54 cents baixo; asserte o valor EXATO na unidade que o usuário ouve
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — o miolo é onde não há bug; DC/Nyquist, 1ª/última coluna, 0 e 1 é onde o dado some
+- [Um gate só prova o que a FIXTURE dele contém](feedback_a_gate_only_proves_what_its_fixture_contains.md) — mutei o código, vi vermelho, e só provei coisas sobre QUADRADOS; o produto desenha curvas com Transform
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — gate verde na mutação = ou o gate é frouxo, ou o seu COMENTÁRIO está errado
 - [Cheque se o oráculo é ALCANÇÁVEL antes de escrever o gate](feedback_check_the_oracle_is_achievable_before_writing_the_gate.md) — LR4 soma allpass, nunca identidade; o gate prescrito era impossível e o "fix" seria afrouxá-lo até não medir nada
 - [Otimização precisa de gate que prove que ela DISPARA](feedback_an_optimization_needs_a_gate_that_proves_it_fires.md) — fallback silencia o bug: vira código morto, tudo verde, e o único sintoma é que nada acelerou

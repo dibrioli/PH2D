@@ -6725,6 +6725,7 @@ version = "0.0.0"
 dependencies = [
  "kurbo 0.13.0",
  "linesweeper",
+ "ph2d-tokens",
  "ph2d-vec-scene",
 ]
 

@@ -89,6 +89,9 @@
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — gate verde na mutação = ou o gate é frouxo, ou o seu COMENTÁRIO está errado
 - [Cheque se o oráculo é ALCANÇÁVEL antes de escrever o gate](feedback_check_the_oracle_is_achievable_before_writing_the_gate.md) — LR4 soma allpass, nunca identidade; o gate prescrito era impossível e o "fix" seria afrouxá-lo até não medir nada
 - [Otimização precisa de gate que prove que ela DISPARA](feedback_an_optimization_needs_a_gate_that_proves_it_fires.md) — fallback silencia o bug: vira código morto, tudo verde, e o único sintoma é que nada acelerou
+- [Mutação que sobrevive pode ser gate FALTANDO](feedback_a_mutation_that_survives_may_mean_a_missing_gate.md) — 3ª causa: o gate verde está CERTO, só não fala daquilo. Explique por que ela é inofensiva ALI — a resposta nomeia o caminho sem gate
+- [Gate de AUSÊNCIA precisa do irmão de PRESENÇA](feedback_absence_gate_needs_a_presence_sibling.md) — "a cor não vaza" fica verde com o fill INVISÍVEL; e varredura só vale se a coisa medida está em quadro
+- ["Funciona e depois esquece" = recook varre o autorado](feedback_works_then_silently_forgets_recook_wipes_authored_state.md) — campo autorado dentro de geometria DERIVADA some no recook do dono; e gate de MODO ≠ gate de POLÍTICA
 - [Regra que não OBSERVA não dispara](feedback_a_rule_that_never_observes_cannot_fire.md) — HR-13 somava declarações no boot; editor chegou a 4351 MB sem piscar
 - [Faça a MESMA pergunta ao outro lado](feedback_ask_the_same_question_of_the_other_side.md) — gate do editor verde → mesmo gate no runtime nasceu VERMELHO (65,9 MB/música)
 - [Mesma conta, escrituração diferente = 1 ulp](feedback_same_math_different_bookkeeping_diverges.md) — residente faz wrap do cursor, stream não fazia; gate byte-idêntico pega, "soa igual" não

@@ -1,5 +1,9 @@
 # HANDOFF — `line/Vector`, continuação (2026-07-13, 3ª passagem)
 
+> ⚠ **Há um handoff MAIS NOVO:** [`HANDOFF_line_vector_continuacao_2026-07-14.md`](HANDOFF_line_vector_continuacao_2026-07-14.md)
+> — ele carrega o **bug aberto do undo** (causa provada + repro) e a fila. Este aqui continua
+> válido pelo que descreve (o Shape Builder e as lições), e o 14 o referencia.
+
 > **O Shape Builder foi consertado.** O handoff anterior
 > ([13b](HANDOFF_line_vector_continuacao_2026-07-13b.md)) o passava QUEBRADO; ele está
 > **superado** — leia este.

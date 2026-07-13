@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | **Branch** | `line/motion-value` |
-| **HEAD** | `76551888` (+ este handoff) |
+| **HEAD** | `cc42f47c` (+ este handoff) |
 | **Base** | `4cd8ef13` (= `main` no início da jornada) |
-| **Commits** | 13 |
-| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (um fio novo entra num grupo fechado) + **FILA 2 — params dirigidos por fio** |
+| **Commits** | 17 |
+| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (fio novo entra em grupo fechado) + **FILA 2 — params dirigidos por fio** + **busca no add-menu** |
 | **Notas-ADR** | [`57_subgrafos`](Motion%20Nodes/57_subgrafos_nota_adr.md) · [`58_params_dirigidos`](Motion%20Nodes/58_params_dirigidos_nota_adr.md) |
 
 > **`CLAUDE.md` §5 NÃO foi tocado de propósito** — é a maior superfície de colisão do repo, e
@@ -59,6 +59,8 @@ o desenho, não o teste**.
 | `crates/ph2d-nodegraph/src/attr.rs` | **`VALUE_COLUMN`** (a coluna `"v"`, que era const privado em ~30 crates de nó) | Baixo |
 | `crates/ph2d-editor-core/src/widget/mod.rs` | **`format_number`** no `pub use` (já existia; só não era exportado) | Baixo |
 | `crates/ph2d-panel-motion-params/src/snapshot.rs` | **`ScalarRow.driven`** (campo novo — toda construção precisa dele) | Médio |
+| **`.../interaction/dispatch/key.rs`** + `state/{mod,store_core,store_hierarchy}.rs` | **`cancel_on_escape` virou FLAG por widget** (`mark_cancel_on_escape`) — a lista hardcoded `id == HIER_RENAME_INPUT \|\| id == TIMELINE_MARKER_RENAME_INPUT` MORREU | **MÉDIO** — os dois ids agora se marcam (em `screens/hero.rs` e `ph2d-panel-timeline/src/marker_rename.rs`). Se outra linha adicionou um 3º id àquela expressão, **ele tem que virar um `mark_cancel_on_escape` também** ou o Esc dele para de cancelar (silenciosamente). |
+| `crates/ph2d-editor-core/src/widget/mod.rs` | `format_number` exportado | Baixo |
 
 **Contrato congelado: INTACTO.** `architecture_contract_surface` = 3 verdes (8/2/1).
 `IconId` **não** mudou (o `IconId::Group` e o `docs/design/icons/group.svg` já existiam).
@@ -175,6 +177,19 @@ onde o canal de text param já mora. Mesmo truque, segundo uso.
 foundational mais quente). Tudo é aditivo, mas `would_cycle`, `remove_node`, `cook_node` e
 `Fingerprint` ganharam corpo — veja a tabela do §3.
 
+## 7.4 Busca no add-menu (`cc42f47c`, doc 59)
+
+Smoke do Enio: *"não encontrei value.lfo"* — 86 tipos numa lista plana. (E o nome que EU dei
+era o canônico; o menu só mostrava o rótulo `LFO`. Isso é parte do bug.)
+
+O menu abre com um campo que **já tem o teclado**: aperta `A` e digita. Casa nos **dois nomes**
+(rótulo + canônico → o **domínio** vira query: `value` lista os `value.*`), é **subsequência**
+(`mr` → Map Range) e é **ranqueada** — filtrar sem ranquear devolve a mesma lista que ele já
+tinha. Enter escolhe o primeiro, Esc fecha.
+
+**Dívida morta de brinde:** `cancel_on_escape` era uma lista de ids hardcoded dentro do
+`dispatch_key`. Virou flag por widget. Ver §3.
+
 ## 8. Smoke (o Enio)
 
 ```
@@ -195,7 +210,10 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
 - **Puxe um fio de um nó de fora e SOLTE EM CIMA do card** → abre "Connect Inside Group" com as
   portas livres lá dentro; escolha uma e **o card ganha um socket novo** (ninguém declarou
   interface — o fio *é* a interface). Funciona também puxando pra trás de um input vazio.
-- **FILA 2:** adicione um `value.lfo` (menu `A`), puxe o fio da saída dele e **solte no CORPO
+- **BUSCA:** aperte `A` e **digite** — o campo já está focado. `lfo` acha o **LFO** (o nome que
+  o menu mostra); `value.lfo` acha também (o nome que a doc fala); `value` lista o domínio
+  inteiro. **Enter** pega o primeiro.
+- **FILA 2:** adicione um **LFO** (menu `A` → digite `lfo`), puxe o fio da saída dele e **solte no CORPO
   de qualquer nó** → abre "Drive Parameter" com os params daquele nó. Escolha um (ex.: a
   Strength de um `force.wind`) → **o nó ganha um socket novo**, o fio pousa nele, e o param
   **oscila**. No painel de params aquela linha vira **read-only mostrando o número vivo**.

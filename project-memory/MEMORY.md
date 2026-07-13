@@ -114,6 +114,7 @@
 - [Fan-out registry-init](feedback_fanout_registry_init_friction.md) — tool-sync NÃO regenera os 2 testes hand-maintained (cluster order + icon slug)
 - [node-sync glob prefix](feedback_node_sync_glob_prefix_gotcha.md) — crate na área de nós não pode começar com `ph2d-node-`
 - [Hier companion allowlist](feedback_hier_companion_dispatch_allowlist.md) — bits novos em 2 sites de `pointer.rs` senão click dropado
+- [Duas portas p/ a mesma pergunta DIVERGEM](feedback_two_doors_to_the_same_question_diverge.md) — o botão Undo fazia o undo de IMAGEM e o Redo era órfão; botão e atalho chamam a MESMA função, e o gate percorre a lista que a UI PINTA
 - [Botão dimmed ainda despacha](feedback_disabled_button_still_dispatches.md) — dim é cosmético; não-registrar hit + recusar no event.rs
 - [Panel populate register](feedback_panel_populate_register.md) — botão novo exige register em `populate.rs`; pintar + hit_index não basta
 - [Painel docado = 4 sites](feedback_docked_panel_registration_four_sites.md) — crate+sync+EXPECTED · feature-proxy shell · z-order walk hero/paint.rs · visibility

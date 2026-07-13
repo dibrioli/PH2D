@@ -107,6 +107,42 @@ mas não lida"*.
 
 ---
 
+## §3.6 — E depois: **"undo/redo no sistema"** (o Enio, mesmo dia)
+
+O Ctrl+Z funcionava — eu tinha acabado de provar. Os **botões Undo/Redo da barra esquerda**,
+não:
+
+- o **Undo** despachava `EditorAction::UndoImageEdit` — o desfazer de **IMAGEM**, single-level
+  (Trim / Make Square / Bg Removal). Mover uma forma, desenhar, apagar, construir uma região e
+  clicar em Undo **não fazia nada**;
+- o **Redo** não despachava **coisa alguma**. Pintado, clicável, órfão — e havia um gate ao
+  lado dele afirmando que ele estava *"no store"*. **Registrado não é despachado**, do mesmo
+  jeito que pintado não é populado.
+
+**Uma porta só:** `EditorAction::UndoStep{redo}` (chrome) → `App::undo_or_redo` (shell) — a
+MESMA função que o Ctrl+Z chama. A política (Áudio → Painter → global → image-edit) virou
+`undo_route::undo_owner`, pura e gateada. Duas portas para a mesma pergunta divergem.
+
+**O gate que mata a classe:** `every_painted_rail_button_is_dispatched_by_somebody` percorre a
+lista que o rail **PINTA** (`left_rail::rail_entries`, extraída do `paint` justamente para
+isso) e exige que `chrome::dispatch_all` consuma cada chip. Uma lista escrita à mão no gate
+driftaria da tela.
+
+**E o teclado agora é gateável:** o `winit::KeyEvent` tem campo privado e **não pode ser
+construído** fora do winit — enquanto o corpo do `on_keyboard_input` morava nele, nenhum teste
+conseguia apertar uma tecla, e o roteamento do Ctrl+Z era a única parte do input que gate
+nenhum alcançava. Extraído para `key_input(...)`.
+
+Provado no app (`PH2D_BUILD_SMOKE=5` + `PH2D_UNDO_LOG=1`): o ponteiro acha o chip no hit-index,
+clica, o chrome despacha, o shell desfaz — Undo 5→3 formas, Redo 3→5. E um clique no vazio
+entre os dois **não** registra passo espúrio (o redo sobrevive).
+
+**Achado de passagem, não consertado:** `TOOL_PROJECTION` é registrado no `WidgetStore` e
+**nunca pintado** no rail. Id vestigial (não é botão morto — não está na tela). Fica anotado;
+não é da linha do Vector.
+
+---
+
 ## §4 — As lições (custaram uma reprovação; não as pague de novo)
 
 1. **A fixture é parte do gate, e é a parte que ninguém audita.** Os 16 gates verdes usavam

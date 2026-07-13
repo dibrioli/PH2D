@@ -15,9 +15,9 @@
 |---|---|
 | Worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` |
 | Branch | `line/Vector` (rebasada em `main` = `4cd8ef13`) |
-| Commits **não integrados** | 11 (Live Corners **aprovada no smoke** + Shape Builder **v1 reprovada** + o **fix** `7aa9fc7d`) |
-| Suíte | **6637/6637 verde**, clippy limpo |
-| **Pendente do Enio** | **o smoke do Shape Builder consertado** (§2) |
+| Commits **não integrados** | 13 (Live Corners **aprovada no smoke** + Shape Builder **v1 reprovada** + o **fix** `7aa9fc7d` + os **botões Undo/Redo do sistema** `dad6b205`) |
+| Suíte | **6640/6640 verde**, clippy limpo |
+| **Pendente do Enio** | **o smoke do Shape Builder consertado** (§2) — e os botões Undo/Redo da barra (§3.6) |
 
 ```bash
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && git fetch origin && git rebase main

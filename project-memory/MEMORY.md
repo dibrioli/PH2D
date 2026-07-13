@@ -32,6 +32,7 @@
 - [Desfazer mutação com `cp`, nunca `git checkout`](feedback_mutation_undo_with_cp_never_git_checkout.md) — o checkout apaga a feature junto e o gate "passa"; 3× na linha do Painter
 - [cargo fmt -p reformata WIP alheio](feedback_cargo_fmt_p_reformats_foreign_wip.md) — formata a crate inteira; use `rustfmt <meus arquivos>`
 - [Worktree agent stale base](feedback_worktree_agent_stale_base.md) — `Agent(worktree)` ramifica do HEAD de início; só audit read-only
+- [`str.replace()` que não casa é no-op silencioso](feedback_python_replace_silent_noop_after_fmt.md) — `fmt` reflowa o texto entre edições; `assert old in s` sempre
 - [`sed -i` relativo escreve no repo errado](feedback_sed_relative_path_hits_primary_cwd.md) — mutação SEMPRE por caminho absoluto (Modo L: senão edita o `main`)
 - [perl/sed em arquivo UTF-8 = mojibake](feedback_perl_utf8_mojibake_use_edit_tool.md) — literal não-ASCII no `-e` corrompe o arquivo inteiro; texto acentuado só via Edit tool
 
@@ -91,6 +92,7 @@
 - [No industrial claims](feedback_no_industrial_claims_without_verification.md) — zero claim técnico em ADR sem grep/cargo-search/WebFetch
 - [Internal-state grep](feedback_audit_internal_state_grep.md) — sweep-grep de símbolos internos antes de escrever ADR
 - [Commit-msg claim aging](feedback_audit_commit_msg_claim_verification.md) — claims numéricos envelhecem; framing relativo + literal do grep
+- [Gate de emenda precisa de avanço fracionário](feedback_seam_gates_need_fractional_advance.md) — taxa 1:1 = frac 0, o 2º frame nunca é lido; frame segurado invisível
 - [Determinism sweep grep](feedback_determinism_sweep_grep_all_transcendentals.md) — grepar `\.(sin|cos|tan|atan2|exp|sqrt|pow)\b`, não só `sin_cos`
 
 ## Padrões de código (gotchas silenciosos)

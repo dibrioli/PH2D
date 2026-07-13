@@ -141,7 +141,7 @@ impl Default for FlipStyleSnapshot {
             fill_mode: FillMode::Paint,
             gap_px: 0.0,
             grow: 0.0,
-            precision: 1.0,
+            precision: 1.6, // = DEFAULT_PRECISION (tool.rs); o teste-espelho cobre
         }
     }
 }

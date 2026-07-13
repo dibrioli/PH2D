@@ -13,9 +13,9 @@ use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 use ph2d_tool_flip::{
-    DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_SMOOTHING, DEFAULT_WIDTH_PX, GAP_MAX_PX, GROW_MAX,
-    GROW_MIN, OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN, WIDTH_SLIDER_OFFSET,
-    WIDTH_SLIDER_SCALE, px_to_slider,
+    DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_PRECISION, DEFAULT_SMOOTHING, DEFAULT_WIDTH_PX,
+    GAP_MAX_PX, GROW_MAX, GROW_MIN, OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN,
+    WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider,
 };
 
 /// Register a plain action Button in the Normal state.
@@ -147,9 +147,9 @@ pub fn populate(store: &mut WidgetStore) {
         store,
         ids::FLIP_GROW,
         ids::FLIP_GROW_NUM,
-        // O default (0 px) na faixa [-8, +8]. NÃO é +2: com a fronteira a um quarto da
-        // espessura, o preenchimento já nasce POR BAIXO da linha, e +2 o empurrava
-        // 1 px para FORA dela — o halo que o Enio viu (BUGS #11).
+        // O default (0 px) na faixa [-8, +8]. Com a âncora no EIXO da linha (BUGS #14)
+        // o zero já é exato em qualquer espessura e zoom — o Grow é só o ajuste
+        // estilístico (off-register / vão deliberado).
         ((0.0 - GROW_MIN) / (GROW_MAX - GROW_MIN)) as f32,
         0.0,
         (GROW_MAX - GROW_MIN) as f32,
@@ -160,8 +160,8 @@ pub fn populate(store: &mut WidgetStore) {
         store,
         ids::FLIP_PRECISION,
         ids::FLIP_PRECISION_NUM,
-        ((1.0 - PRECISION_MIN) / (PRECISION_MAX - PRECISION_MIN)) as f32,
-        1.0,
+        ((DEFAULT_PRECISION - PRECISION_MIN) / (PRECISION_MAX - PRECISION_MIN)) as f32,
+        DEFAULT_PRECISION,
         (PRECISION_MAX - PRECISION_MIN) as f32,
         PRECISION_MIN as f32,
         0.1, // LITERAL-PX-OK: passo do dominio (Precision 0,5..4), nao metrica de design

@@ -27,6 +27,10 @@ pub const DEFAULT_HARDNESS: f32 = 1.0;
 pub const DEFAULT_OPACITY: f32 = 1.0;
 /// Intensidade default do active smoothing `0..=1`.
 pub const DEFAULT_SMOOTHING: f32 = 0.5;
+/// Precision default do balde (px de buffer por px de tela) — 1.6 (Enio 2026-07-12,
+/// smoke da âncora no eixo): acima da resolução da tela, o resíduo de quantização do
+/// contorno cai para sub-pixel sem encarecer o clique.
+pub const DEFAULT_PRECISION: f64 = 1.6;
 /// Cor default do traço (sRGB8) — quase-branco, como o Vector.
 pub const DEFAULT_STROKE: [u8; 4] = [240, 240, 245, 255];
 /// Cor default do PREENCHIMENTO (um ocre claro — visível sobre a linha clara e sobre
@@ -67,10 +71,10 @@ impl Default for FlipTool {
             fill_color: DEFAULT_FILL,
             fill_mode: FillMode::Paint,
             gap_px: 0.0,
-            // Grow 0: a fronteira já é rasterizada a um QUARTO da espessura, então a cor
-            // nasce por baixo da linha. O +2 do 1º corte a empurrava para FORA do traço.
+            // Grow 0: com a âncora no EIXO da linha (BUGS #14), o default já é exato em
+            // qualquer espessura e zoom — o Grow é só o ajuste estilístico.
             grow: 0.0,
-            precision: 1.0,
+            precision: DEFAULT_PRECISION,
         }
     }
 }

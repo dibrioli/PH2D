@@ -1,6 +1,6 @@
 ---
 name: feedback-a-gate-only-proves-what-its-fixture-contains
-description: Mutation-testar dentro de um universo de fixtures convenientes só prova coisas sobre aquele universo. A fixture é parte do gate — e é a parte que ninguém audita.
+description: Mutation-testar num universo de fixtures convenientes só prova coisas sobre aquele universo — e um gate que mede o RETORNO de uma função não vê o que o usuário fica.
 metadata:
   type: feedback
 ---
@@ -47,6 +47,32 @@ dois últimos. A fixture continua sendo aquilo que foi conveniente escrever.
 4. E: **"simular o smoke no papel" não é smoke.** Ele percorre o roteiro que você IMAGINOU —
    o usuário percorre o que existe. Serve para achar bugs; **não** serve para ganhar
    confiança de que a feature funciona.
+
+---
+
+## A outra metade, descoberta no conserto (2026-07-13)
+
+A fixture não era o único buraco. **Nenhum dos 16 gates olhou a CENA depois do gesto** — todos
+mediam o **retorno** de `resolve()`. E o bug que o Enio viu era um **efeito colateral**: o
+`build_up` dissolvia as três formas dele num blob único ao aplicar aquele retorno no documento.
+Um gate que mede o valor devolvido por uma função **nunca vê a destruição que a função seguinte
+comete**.
+
+5. **O oráculo de uma ferramenta de edição é o DOCUMENTO, não o retorno.** Extraia a mutação de
+   estado numa função pura (`commit(scene, sources, result) -> scene`) e faça o gate asserir
+   sobre a cena resultante: *o que sobrou, com que id, com que estilo, com que geometria*. É a
+   mesma disciplina do [[feedback_painted_is_not_populated_paint_gate]], um nível acima.
+
+6. **Instrumente o app antes de teorizar.** O handoff da reprovação apontava um suspeito nº 1
+   (xform stale) com código e tudo. **Estava errado** — o gate novo do arranjo, com formas do
+   catálogo e rotação, nasceu **VERDE**. O que resolveu foi montar a cena do print DENTRO do
+   app (env `PH2D_BUILD_SMOKE`), dirigir o gesto no frame real, imprimir os números e olhar a
+   tela: 20 minutos, duas causas, nenhuma delas onde a teoria dizia.
+
+7. **E o gate novo também pode ser frouxo.** Escrevi o gate do estilo, mutei o código — e ele
+   ficou **VERDE**: media *"algum path que contém o ponto"* e pegava a forma NOVA em vez da
+   sobra. Verde na mutação é **sempre** gate frouxo; não racionalize
+   ([[feedback_mutate_the_code_not_just_the_test]]).
 
 Relacionadas: [[feedback_mutate_the_code_not_just_the_test]] ·
 [[feedback_tool_unit_green_integration_dead]] ·

@@ -38,6 +38,43 @@ pub use snapshot::{
 };
 pub use state::MotionGraphPanelState;
 
+/// **Is the add-menu open?** (seam gates only — the panel's state is private, and a test that
+/// cannot see the menu cannot tell "it never opened" from "it opened and ate the click".)
+pub fn menu_is_open(state: &MotionGraphPanelState) -> bool {
+    state.menu_for_test().is_some()
+}
+
+/// The first row's rect, as the PAINT laid it out — the row the artist clicks. `None` when no
+/// menu is open (or nothing matched the search).
+/// The add-menu's search field id (seam gates: *does the field hold the keyboard, and does it
+/// give it back?*).
+pub fn menu_search_widget() -> NodeId {
+    hits::menu_search_id()
+}
+
+/// Screen → graph, through the panel's OWN view (seam gates: a test that places a node "under
+/// the cursor" has to use the same map the panel draws with, or it places it somewhere else).
+pub fn graph_point(
+    state: &MotionGraphPanelState,
+    rect: zones::Rect,
+    sx: f32,
+    sy: f32,
+) -> (f32, f32) {
+    geom::View::new(rect, state.view_for_test()).graph(sx, sy)
+}
+
+pub fn first_menu_row(state: &MotionGraphPanelState, rect: zones::Rect) -> Option<zones::Rect> {
+    let menu = state.menu_for_test()?;
+    let snap = snapshot::current_snapshot();
+    let rows = snapshot::menu_rows(&snap, menu);
+    if rows.is_empty() {
+        return None;
+    }
+    let panel = geom::menu_panel(menu, rows.len(), rect);
+    Some(geom::menu_row(panel, 0, menu.scroll))
+}
+use ph2d_editor_core::zones;
+
 #[path = "menu_search.rs"]
 mod menu_search;
 

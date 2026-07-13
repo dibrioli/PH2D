@@ -26,6 +26,54 @@ use crate::hits::menu_search_id;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::TextInputState;
 
+/// **The query the rows are derived from** — mirrored from the store BEFORE the frame's
+/// gestures, because a click resolves against the rows the query produced.
+///
+/// The STORE owns the buffer (caret, selection, every keystroke); `Menu::query` is only ever a
+/// read of it. Two copies of one string, edited on both sides, is the classic way a text field
+/// starts lying about what it holds.
+pub(crate) fn mirror_query(
+    state: &mut crate::state::MotionGraphPanelState,
+    ctx: &mut ph2d_editor_core::panel::PaintCtx,
+) {
+    if let Some(menu) = state.menu.as_mut() {
+        menu.query = ctx
+            .host
+            .store()
+            .text(menu_search_id())
+            .unwrap_or_default()
+            .to_string();
+    }
+}
+
+/// **Who owns the keyboard** — settled AFTER the frame's gestures, since a gesture is what
+/// opens (and closes) the menu.
+///
+/// - The menu just opened → the field takes the keyboard, so the gesture is *press A and type*.
+///   (Settled before the gestures, the focus landed a frame late and the artist's first
+///   keystroke went to the graph — `K` armed the knife instead of typing a "k".)
+/// - The menu is gone → the field lets go. It closes down four different paths (a pick, a drag
+///   out, Esc, Enter) and chasing the blur through all of them is how one gets forgotten, so it
+///   happens HERE, once, wherever it went. A field that kept focus would swallow every shortcut
+///   in the editor: `A` would not reopen the menu, it would type an "a" into a buffer nobody
+///   can see.
+pub(crate) fn settle_focus(
+    state: &mut crate::state::MotionGraphPanelState,
+    ctx: &mut ph2d_editor_core::panel::PaintCtx,
+) {
+    match state.menu.as_mut() {
+        Some(menu) if !menu.opened => {
+            open_search(ctx.host.store_mut());
+            menu.opened = true;
+            menu.query.clear();
+        }
+        None if ctx.host.store().focus_id() == Some(menu_search_id()) => {
+            ctx.host.store_mut().set_focus(None);
+        }
+        _ => {}
+    }
+}
+
 /// **Open the search field and give it the keyboard** — once, on the frame the menu opens.
 /// Re-registering every frame would stomp what the artist is typing; re-focusing every frame
 /// would fight anything else they click.

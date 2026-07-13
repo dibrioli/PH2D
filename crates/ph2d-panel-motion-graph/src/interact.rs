@@ -66,22 +66,7 @@ pub(crate) fn process(
         state.selected_backdrop = None;
     }
 
-    // **The search field** (doc 59). On the frame the menu opens it takes the keyboard, so the
-    // gesture is simply *press A and type*. From then on the STORE owns the buffer — caret,
-    // selection, every keystroke — and `query` is only ever a mirror of it. Two copies of the
-    // same string, edited on both sides, is the classic way a text field starts lying.
-    if let Some(menu) = state.menu.as_mut() {
-        if !menu.opened {
-            crate::menu_search::open_search(ctx.host.store_mut());
-            menu.opened = true;
-        }
-        menu.query = ctx
-            .host
-            .store()
-            .text(crate::hits::menu_search_id())
-            .unwrap_or_default()
-            .to_string();
-    }
+    crate::menu_search::mirror_query(state, ctx);
 
     // The wheel over an OPEN add-menu scrolls its list; only otherwise does it zoom the canvas.
     if let Some(z) = ctx.host.store_mut().take_graph_zoom(panel)
@@ -97,6 +82,8 @@ pub(crate) fn process(
     for g in gestures {
         apply_gesture(state, g, rect, center, snap);
     }
+
+    crate::menu_search::settle_focus(state, ctx);
 }
 
 /// **The frame boundary a released wire-end has to survive** (doc 45.1).
@@ -332,9 +319,29 @@ fn apply_background(
                 state.interaction = Interaction::Idle;
                 return;
             }
+            // **A release INSIDE the popup is a PICK, not a dismissal** (Enio, smoke
+            // 2026-07-13: *"não consigo inserir nenhum nó ao clicar no menu"*).
+            //
+            // The dispatcher calls a press-release with ANY movement between them an `End`,
+            // not a `Click` — and a hand always moves. One pixel of drift and the row the
+            // artist pressed became a drag, the menu closed, and nothing was added. Every
+            // test sent Down and Up at the same coordinate, which is the one thing a real
+            // hand never does.
+            //
+            // While a menu is open the pointer belongs to the MENU, so where the button
+            // comes UP is what it means: over a row, that row; anywhere else, dismiss. (This
+            // also gives the popup the press-slide-release gesture every OS menu has.)
+            if let Some(menu) = state.menu.take() {
+                let rows = crate::snapshot::menu_rows(snap, &menu).len();
+                if geom::menu_panel(&menu, rows, rect).contains(g.x, g.y) {
+                    resolve_menu(&menu, rect, snap, g.x, g.y);
+                }
+                state.interaction = Interaction::Idle;
+                return;
+            }
             // A left-drag over empty canvas dismisses an open menu; otherwise it was
             // a rubber band (select) or a knife stroke (cut) — resolve whichever.
-            if state.menu.take().is_none() {
+            {
                 let view = View::new(rect, state.view);
                 match state.interaction {
                     Interaction::BoxSelect {

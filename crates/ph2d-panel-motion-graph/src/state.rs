@@ -236,6 +236,17 @@ pub struct MotionGraphPanelState {
 }
 
 impl MotionGraphPanelState {
+    /// The view (pan/zoom), for the seam gates — see `menu_for_test`.
+    pub(crate) fn view_for_test(&self) -> ViewState {
+        self.view
+    }
+
+    /// The open menu, for the seam gates (the state is private and a paint-driven test has no
+    /// other way to see what the artist is looking at).
+    pub(crate) fn menu_for_test(&self) -> Option<&Menu> {
+        self.menu.as_ref()
+    }
+
     /// **A new level is a new canvas** (doc 57). Adopt the level the shell published;
     /// if it CHANGED, drop the fit so the next paint re-frames.
     ///

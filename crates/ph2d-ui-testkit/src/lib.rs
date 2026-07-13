@@ -166,9 +166,25 @@ impl MockPanelHost {
     /// The panel is forced visible first (a paint gated on `panel_visible`
     /// would otherwise return before drawing anything).
     pub fn paint<P: Panel>(&mut self, state: &mut P::State, viewport: Rect) -> Vec<(NodeId, Rect)> {
+        self.paint_with_layout::<P>(state, HeroLayout::for_viewport(viewport), viewport)
+    }
+
+    /// [`Self::paint`], but with the layout given explicitly.
+    ///
+    /// `for_viewport` builds an UNSPLIT centre (`CenterSplit::None`), and a panel that lives
+    /// in the split — the Motion graph, the Motion timeline slot — then gets a **zero-sized
+    /// rect and returns before drawing anything**. Every paint gate for those panels was
+    /// therefore impossible to write, which is why none existed: the add-menu could be
+    /// unclickable in the running app with every test in the crate green (Enio, smoke
+    /// 2026-07-13). A harness that cannot lay a panel out cannot test what the artist clicks.
+    pub fn paint_with_layout<P: Panel>(
+        &mut self,
+        state: &mut P::State,
+        layout: HeroLayout,
+        viewport: Rect,
+    ) -> Vec<(NodeId, Rect)> {
         self.set_panel_visible(P::ID, true);
         self.hit_index.clear_for_frame();
-        let layout = HeroLayout::for_viewport(viewport);
         let mut scene = VectorScene::new();
         let mut text_system = TextSystem::without_system_fonts();
         {
@@ -182,6 +198,32 @@ impl MockPanelHost {
             P::paint(state, &mut ctx);
         }
         self.hit_index.iter_registrations().collect()
+    }
+
+    /// **Drive a real pointer event through the real dispatcher**, against the hit index the
+    /// last [`Self::paint`] filled in.
+    ///
+    /// This is the half that hand-pushed gestures skip — and therefore the half where a
+    /// regression hides: the dispatcher decides whether a click on a popup becomes a widget
+    /// event, a graph gesture, or nothing at all, purely from what the PAINT registered. A
+    /// test that pushes the gesture itself has already assumed the answer.
+    ///
+    /// Returns the widget events the dispatch emitted (a graph gesture is not one of them —
+    /// it lands in the store, for the panel's next `paint` to drain).
+    pub fn dispatch_pointer_event(&mut self, event: ph2d_host::PointerEvent) -> Vec<WidgetEvent> {
+        let arena = bumpalo::Bump::new();
+        // `_with_text` — the variant the SHELL uses (it threads a live `TextSystem` so a click
+        // into a text field lands the caret on the right glyph). A harness that dispatched the
+        // no-text variant would be testing a path the app does not take.
+        let mut ts = TextSystem::without_system_fonts();
+        ph2d_editor_core::interaction::dispatch_pointer_with_text(
+            &mut self.store,
+            &self.hit_index,
+            event,
+            Some(&mut ts),
+            &arena,
+        )
+        .to_vec()
     }
 
     /// Sugar over [`Self::paint`] for the common assertion: *is this widget on

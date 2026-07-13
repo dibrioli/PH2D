@@ -6201,6 +6201,7 @@ dependencies = [
  "ph2d-node-registry",
  "ph2d-nodegraph",
  "ph2d-tokens",
+ "ph2d-ui-testkit",
 ]
 
 [[package]]
@@ -6680,8 +6681,10 @@ dependencies = [
 name = "ph2d-ui-testkit"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",

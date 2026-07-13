@@ -18,6 +18,11 @@ authors.workspace = true
 
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# `PointerEvent` — the harness can drive the REAL pointer dispatcher, so a gate can test
+# what the artist actually does: click a pixel, and see what the panel does about it.
+ph2d-host = { path = "../ph2d-host" }
+# The dispatcher allocates its per-frame event slice in a bump arena.
+bumpalo = "3"
 ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 # O harness de PINTURA (`MockPanelHost::paint`) roda o `Panel::paint` real, que

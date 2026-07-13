@@ -3,33 +3,46 @@
 //! câmera e sem mundo; aqui mora só a ponte com o frame.
 
 use crate::App;
-use crate::shape_build::BuildSession;
+use crate::shape_build::{BuildSession, source_key};
+use ph2d_vec_scene::VecPathId;
 
 impl App {
     /// Abre (ou renova) a sessão de Shape Builder para a seleção atual. Chamado por frame,
     /// no modo Build.
     ///
-    /// **Só reconstrói quando a SELEÇÃO muda.** Reconstruir por frame jogaria fora o memo do
-    /// arranjo a cada quadro, e cada hover voltaria a pagar a booleana (o custo frio, ~140 µs
-    /// por região) em vez de ler o cache (~20 µs).
+    /// **Reconstrói quando a seleção, a GEOMETRIA ou a POSE mudam** — e não só quando a
+    /// seleção muda. O arranjo é assado em MUNDO: se a forma se move (ou volta de um undo)
+    /// e o arranjo não é refeito, o véu segue descrevendo a forma onde ela *estava*. É a
+    /// mesma família do [[feedback_derived_coordinate_seed_must_match_sample]].
+    ///
+    /// Fora disso ele é preservado, e isso importa: refazê-lo por frame jogaria fora o memo
+    /// do arranjo e cada hover voltaria a pagar a booleana (~140 µs por região, contra ~20 µs
+    /// de cache).
     pub(crate) fn build_session_upkeep(&mut self) {
         let Some(gfx) = self.gfx.as_ref() else { return };
         if self.vec_draw_config.mode != ph2d_tool_vector::DrawMode::Build {
             self.vec_build = None;
             return;
         }
-        let sel: Vec<u64> = self.vec_pen.selected_paths().to_vec();
-        if self
-            .vec_build
-            .as_ref()
-            .is_some_and(|s| s.sources == sel && !s.dragging)
-        {
-            return; // a seleção é a mesma: o arranjo (e o memo) valem
-        }
         if self.vec_build.as_ref().is_some_and(|s| s.dragging) {
             return; // no meio de um arrasto o arranjo é sagrado
         }
+        // **Ordem de z (fundo → topo), não a ordem de clique.** O `selected_paths` guarda a
+        // ordem em que o artista clicou; o arranjo promete z, e é o z que decide de quem a
+        // forma nova herda o estilo (a do topo) e onde ela nasce na pilha.
+        let mut sel: Vec<VecPathId> = self.vec_pen.selected_paths().to_vec();
+        sel.sort_by_key(|id| {
+            gfx.vec_scene
+                .paths()
+                .iter()
+                .position(|p| p.id == *id)
+                .unwrap_or(usize::MAX)
+        });
         let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+        let key = source_key(&gfx.vec_scene, &xf, &sel);
+        if self.vec_build.as_ref().is_some_and(|s| s.opened_for == key) {
+            return; // mesma arte, mesma pose: o arranjo (e o memo) valem
+        }
         self.vec_build = BuildSession::open(&gfx.vec_scene, &xf, &sel);
     }
 
@@ -80,44 +93,32 @@ impl App {
 
     /// Soltou: as faces pintadas viram forma (ou somem). UM passo de undo.
     ///
-    /// Os originais são CONSUMIDOS e o resultado nasce na fatia de z do mais de trás —
-    /// exatamente como a booleana normal faz (a forma não salta para o topo).
+    /// **Só as formas TOCADAS são consumidas.** A que o gesto não atravessou continua sendo
+    /// o mesmo path — mesmo id, mesma entidade, mesmo `Transform`, mesmos params de Live
+    /// Shape. A 1ª versão dissolvia TODAS as fontes numa sobra única e o artista via a arte
+    /// dele desaparecer num blob (o smoke do Enio).
+    ///
+    /// O undo é o GLOBAL, por diff (`App::post_frame_undo`): a `VecScene` está na captura,
+    /// e o `held_button` já foi limpo quando o Up chega aqui. Não há passo a empurrar à mão
+    /// — o `vec_history` é uma fila morta (ADR-0110+, "populado mas não lido").
     pub(crate) fn build_up(&mut self) {
         let Some(session) = self.vec_build.as_mut() else {
             return;
         };
         session.dragging = false;
-        let results = session.resolve();
-        let sources = session.sources.clone();
+        let result = session.resolve();
         session.marked.clear();
-        if results.is_empty() && !sources.is_empty() {
-            // Nada pintado: no-op silencioso (o hover sozinho não destrói nada).
-            return;
+        if result.is_empty() {
+            return; // nada pintado: no-op silencioso (o hover sozinho não destrói nada)
         }
+        let sources: Vec<VecPathId> = session.sources.clone();
         let Some(gfx) = self.gfx.as_mut() else { return };
-        let scene = &mut gfx.vec_scene;
-
-        // A fatia de z do operando mais de trás — o resultado ocupa o lugar dele.
-        let at = sources
-            .iter()
-            .filter_map(|id| scene.paths().iter().position(|p| p.id == *id))
-            .min()
-            .unwrap_or(0);
-
-        let pre = scene.clone();
-        for id in &sources {
-            scene.remove_path(*id);
-        }
-        let new_ids: Vec<u64> = results
-            .into_iter()
-            .enumerate()
-            .map(|(k, r)| scene.insert_path(at + k, r))
-            .collect();
-        self.vec_history.push_undo(pre);
-        self.vec_pen.select_many(&new_ids);
-        eprintln!("[ph2d-vec] build: ok ({} path[s])", new_ids.len());
-        // A sessão morre com o gesto: a seleção mudou, e o `upkeep` do próximo frame
-        // reabre o arranjo sobre o que sobrou.
+        // A regra do que morre e do que fica vive em `shape_build::commit` — provável sem
+        // `App`, e é o que os gates exercem.
+        let sel = crate::shape_build::commit(&mut gfx.vec_scene, &sources, result);
+        self.vec_pen.select_many(&sel);
+        // A sessão morre com o gesto: a arte mudou, e o `upkeep` do próximo frame reabre o
+        // arranjo sobre o que ficou.
         self.vec_build = None;
     }
 

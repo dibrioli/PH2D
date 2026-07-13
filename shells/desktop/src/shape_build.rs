@@ -11,31 +11,60 @@
 //! o artista a traduzir o que ele quer ("a lua crescente") numa sequência de ops ("subtrai
 //! o círculo B do A"); aqui ele passa o dedo na parte que quer e pronto.
 //!
-//! ## A regra do resultado (uma só, e é a que a booleana já usava)
+//! ## A sobra é POR FORMA — e é isto que o smoke do Enio derrubou
 //!
-//! Tudo que o Shape Builder emite herda o **estilo da forma do TOPO** — a mesma convenção
-//! do `apply_many` e do Illustrator. Sem essa regra a face herdaria o estilo do último
-//! argumento de uma SUBTRAÇÃO, que é justamente uma forma que ela **não** contém: a região
-//! sairia pintada com a cor de quem não a cobre.
+//! A 1ª versão devolvia a sobra como `união(todas as fontes) − o que foi levado`: **uma**
+//! forma só. O efeito no app real (medido, [`crate::build_smoke`]): um clique numa região
+//! fundia o pentágono, a estrela e o retângulo num BLOB único, com um estilo só — as
+//! silhuetas que o artista tinha acabado de desenhar simplesmente sumiam, e as fronteiras
+//! entre elas (que são justamente o que define as faces seguintes) deixavam de existir.
+//! Um clique destruía a arte.
 //!
-//! ## O que NÃO é feito aqui, e por quê
+//! Agora cada forma de origem sobrevive como **ela mesma menos o que foi levado**, com o
+//! ESTILO dela e no z dela; a forma que ninguém tocou **não é sequer tocada** (mantém id,
+//! entidade, `Transform`, raio de quina e os params de Live Shape — uma booleana que passa
+//! por perto não pode assar uma forma paramétrica que o artista não escolheu). É o que o
+//! Illustrator faz: o Shape Builder divide o que você percorre e deixa o resto em paz.
 //!
-//! A sobra (o que não foi pintado) sai como **uma** região — as componentes desconexas dela
-//! se separam sozinhas, mas duas faces não-pintadas que se ENCOSTAM viram uma forma só.
-//! Decompor a sobra em todas as faces individuais exigiria enumerar as `2^N` pertinências
-//! possíveis, e o custo explode. É um trade consciente: a sobra é "o que você não levou",
-//! não um inventário.
+//! ## A regra do estilo (uma só, e é a que a booleana já usava)
+//!
+//! A forma NOVA (as faces pintadas) herda o estilo da forma do **TOPO entre as tocadas** — a
+//! convenção do `apply_many` e do Illustrator. Sem essa regra, a face herdaria o estilo do
+//! último argumento de uma SUBTRAÇÃO, que é justamente uma forma que ela **não** contém.
 
-use ph2d_vec_boolean::{Arrangement, BoolOp, FaceId, apply_many};
+use ph2d_vec_boolean::{Arrangement, BoolOp, FaceId, MAX_BUILD_SHAPES, Membership, apply_many};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms};
+
+/// O que um gesto de Shape Builder produz. Tudo em MUNDO.
+#[derive(Default)]
+pub(crate) struct BuildResult {
+    /// A forma nova: a união das faces pintadas (vazia no modo subtrair, ou se nada foi
+    /// pintado). Mais de uma entrada quando as faces pintadas são desconexas.
+    pub(crate) merged: Vec<VecPath>,
+    /// O que sobra de cada forma **tocada**, por índice de fonte (fundo → topo). Uma lista
+    /// vazia = a fonte foi inteiramente levada e deixa de existir. As fontes que o gesto
+    /// não tocou **não aparecem aqui** — o path delas não é mexido.
+    pub(crate) remainder: Vec<(usize, Vec<VecPath>)>,
+}
+
+impl BuildResult {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.merged.is_empty() && self.remainder.is_empty()
+    }
+}
 
 /// O gesto de Shape Builder em curso.
 pub(crate) struct BuildSession {
     /// As faces, em MUNDO (as formas entram assadas — a booleana precisa de um frame só).
     pub(crate) arr: Arrangement,
-    /// Os ids das formas de origem, na ordem de z (fundo → topo). São eles que somem no
-    /// apply.
+    /// Os ids das formas de origem, **alinhados com `arr.sources()`** (mesma ordem, mesmo
+    /// comprimento: `open` descarta as abertas e as que sumiram). São eles que o `build_up`
+    /// consome.
     pub(crate) sources: Vec<VecPathId>,
+    /// A seleção (em z) para a qual esta sessão foi aberta, e a impressão digital da
+    /// geometria+pose dela. O `upkeep` reabre a sessão quando qualquer um dos dois muda —
+    /// senão o arranjo seguiria descrevendo formas que já não estão ali.
+    pub(crate) opened_for: SourceKey,
     /// As faces que o dedo já pintou, na ordem em que foram tocadas.
     pub(crate) marked: Vec<FaceId>,
     /// A face sob o cursor agora (o realce que segue o mouse mesmo sem botão apertado).
@@ -47,33 +76,65 @@ pub(crate) struct BuildSession {
     pub(crate) dragging: bool,
 }
 
+/// A identidade da entrada do arranjo: quem, com que pose, e com que geometria.
+///
+/// **Detector de mudança, não hash criptográfico:** id, nº de vértices, a soma das âncoras e
+/// o afim. Reabrir o arranjo é o que impede o véu de descrever a forma onde ela *estava* (o
+/// arranjo é assado em MUNDO; se a pose muda, ele mente).
+pub(crate) type SourceKey = Vec<(VecPathId, usize, [f64; 2], ph2d_vec_scene::Xform)>;
+
+/// A impressão digital da seleção `ids` (na ordem dada).
+pub(crate) fn source_key(scene: &VecScene, xforms: &VecXforms, ids: &[VecPathId]) -> SourceKey {
+    ids.iter()
+        .filter_map(|id| {
+            let p = scene.paths().iter().find(|p| p.id == *id)?;
+            let mut n = 0usize;
+            let mut sum = [0.0f64; 2];
+            for v in p.verts_all() {
+                n += 1;
+                sum[0] += v.anchor[0];
+                sum[1] += v.anchor[1];
+            }
+            Some((*id, n, sum, ph2d_vec_scene::xform_of(xforms, *id)))
+        })
+        .collect()
+}
+
 impl BuildSession {
     /// Abre a sessão para as formas `ids` (ordem de z, fundo → topo), assando cada uma no
-    /// MUNDO. `None` com menos de 2 formas — não há região para pintar.
+    /// MUNDO. `None` com menos de 2 formas fechadas — não há região para pintar.
     pub(crate) fn open(
         scene: &VecScene,
         xforms: &VecXforms,
         ids: &[VecPathId],
     ) -> Option<BuildSession> {
-        if ids.len() < 2 {
-            return None;
+        // `sources` e `arr.sources()` têm de ficar ALINHADOS: uma forma aberta (ou que
+        // sumiu) sai da lista de ids também, senão o índice `i` do arranjo apontaria para o
+        // id errado — e o `build_up` consumiria a forma errada.
+        let mut kept: Vec<VecPathId> = Vec::new();
+        let mut world: Vec<VecPath> = Vec::new();
+        for id in ids {
+            let Some(p) = scene.paths().iter().find(|p| p.id == *id) else {
+                continue;
+            };
+            if !p.closed {
+                continue;
+            }
+            let mut w = p.clone();
+            ph2d_vec_scene::bake_xform(&mut w, &ph2d_vec_scene::xform_of(xforms, p.id));
+            kept.push(*id);
+            world.push(w);
+            if kept.len() == MAX_BUILD_SHAPES {
+                break; // o mesmo teto que o `Arrangement::new` aplica
+            }
         }
-        let world: Vec<VecPath> = ids
-            .iter()
-            .filter_map(|id| scene.paths().iter().find(|p| p.id == *id))
-            .filter(|p| p.closed)
-            .map(|p| {
-                let mut w = p.clone();
-                ph2d_vec_scene::bake_xform(&mut w, &ph2d_vec_scene::xform_of(xforms, p.id));
-                w
-            })
-            .collect();
         if world.len() < 2 {
             return None;
         }
         Some(BuildSession {
             arr: Arrangement::new(world),
-            sources: ids.to_vec(),
+            opened_for: source_key(scene, xforms, &kept),
+            sources: kept,
             marked: Vec::new(),
             hover: None,
             subtract: false,
@@ -92,17 +153,18 @@ impl BuildSession {
         }
     }
 
-    /// As formas que este gesto produz, em MUNDO. Vazio = nada a fazer.
+    /// O que este gesto produz. Vazio = nada a fazer.
     ///
-    /// - **Unir:** as faces pintadas viram uma forma; a sobra fica.
-    /// - **Subtrair:** as faces pintadas somem; sobra a sobra.
+    /// - **Unir:** as faces pintadas viram uma forma nova; cada fonte tocada perde o que foi
+    ///   levado.
+    /// - **Subtrair:** o mesmo, sem a forma nova — as faces pintadas simplesmente somem.
     ///
-    /// (As duas são a MESMA conta — a única diferença é se o que foi pintado é entregue ou
-    /// jogado fora. Escrever assim é o que garante que "pintar tudo e unir" e "pintar tudo
-    /// e subtrair" sejam exatamente complementares.)
-    pub(crate) fn resolve(&mut self) -> Vec<VecPath> {
+    /// As duas são a MESMA conta (a única diferença é se o que foi pintado é entregue ou
+    /// jogado fora), e é isso que garante que "pintar tudo e unir" e "pintar tudo e
+    /// subtrair" sejam exatamente complementares.
+    pub(crate) fn resolve(&mut self) -> BuildResult {
         if self.marked.is_empty() {
-            return Vec::new();
+            return BuildResult::default();
         }
         let faces: Vec<VecPath> = self
             .marked
@@ -111,29 +173,88 @@ impl BuildSession {
             .filter_map(|f| self.arr.face_path(f).cloned())
             .collect();
         if faces.is_empty() {
-            return Vec::new();
+            return BuildResult::default();
         }
-        let merged = union_of(&faces);
-        let leftover = subtract_from_whole(self.arr.sources(), &merged);
+        let taken = union_of(&faces);
+        // As fontes que o gesto tocou: o bit `i` ligado em ALGUMA face pintada. Uma fonte
+        // que não aparece em nenhuma delas não perde área nenhuma — e não é tocada.
+        let touched: Membership = self.marked.iter().fold(0, |a, f| a | f.membership);
 
-        let mut out = if self.subtract {
-            leftover
-        } else {
-            let mut v = merged;
-            v.extend(leftover);
-            v
-        };
-        // **O estilo do topo, para tudo** (a convenção do `apply_many` e do Illustrator).
-        // Sem isto, o estilo de uma face viria do último argumento da SUBTRAÇÃO que a
-        // produziu — uma forma que ela justamente NÃO contém.
-        if let Some(top) = self.arr.sources().last() {
-            for p in &mut out {
+        let mut remainder = Vec::new();
+        for i in 0..self.arr.len() {
+            if touched & (1 << i) == 0 {
+                continue;
+            }
+            let src = self.arr.sources()[i].clone();
+            let mut rest = subtract_all(&src, &taken);
+            // O `apply_many` tira o estilo do ÚLTIMO argumento — que aqui é uma FACE, não a
+            // fonte. O que sobra de uma forma continua sendo aquela forma: o estilo é dela.
+            for p in &mut rest {
+                p.fill = src.fill.clone();
+                p.stroke = src.stroke;
+            }
+            remainder.push((i, rest));
+        }
+
+        let mut merged = if self.subtract { Vec::new() } else { taken };
+        // O estilo da forma nova: o da fonte do TOPO entre as tocadas (Illustrator).
+        if let Some(top) = (0..self.arr.len())
+            .rev()
+            .find(|i| touched & (1 << i) != 0)
+            .map(|i| &self.arr.sources()[i])
+        {
+            for p in &mut merged {
                 p.fill = top.fill.clone();
                 p.stroke = top.stroke;
             }
         }
-        out
+        BuildResult { merged, remainder }
     }
+}
+
+/// Aplica o resultado do gesto na cena, e devolve a **seleção** que fica (o que sobrou + o
+/// que nasceu + as fontes intactas) — é ela que reabre o arranjo no frame seguinte, e é o
+/// que deixa o artista continuar construindo em cima do resultado.
+///
+/// Mora aqui, e não no gesto, porque é a metade da regra que se pode PROVAR sem `App`: é
+/// esta função que decide o que é destruído. O `build_up` é só a ponte com o frame.
+pub(crate) fn commit(
+    scene: &mut VecScene,
+    sources: &[VecPathId],
+    result: BuildResult,
+) -> Vec<VecPathId> {
+    let touched: Vec<VecPathId> = result
+        .remainder
+        .iter()
+        .filter_map(|(i, _)| sources.get(*i).copied())
+        .collect();
+    let mut sel: Vec<VecPathId> = sources
+        .iter()
+        .filter(|id| !touched.contains(id))
+        .copied()
+        .collect();
+    // A fatia de z da tocada mais de trás — o grupo re-empilha ali (a forma não salta para
+    // o topo do documento), com a forma NOVA por cima do que sobrou.
+    let at = touched
+        .iter()
+        .filter_map(|id| scene.paths().iter().position(|p| p.id == *id))
+        .min()
+        .unwrap_or(0);
+    for id in &touched {
+        scene.remove_path(*id);
+    }
+    let mut k = at;
+    for (_, rest) in result.remainder {
+        for r in rest {
+            sel.push(scene.insert_path(k, r));
+            k += 1;
+        }
+    }
+    for m in result.merged {
+        sel.push(scene.insert_path(k, m));
+        k += 1;
+    }
+    sel
 }
 
 /// A união de um punhado de formas. Uma só é ela mesma (o `apply_many` exige duas).
@@ -144,20 +265,16 @@ fn union_of(paths: &[VecPath]) -> Vec<VecPath> {
     apply_many(&paths.iter().collect::<Vec<_>>(), BoolOp::Union)
 }
 
-/// `(∪ de todas as formas) − (o que foi pintado)` — a sobra.
-fn subtract_from_whole(sources: &[VecPath], taken: &[VecPath]) -> Vec<VecPath> {
-    if taken.is_empty() {
-        return union_of(sources);
+/// `base − (∪ cutters)`. O `Subtract` do `apply_many` já é `base − (c1 ∪ c2 ∪ …)` (o
+/// acumulador dobra), então uma chamada basta.
+fn subtract_all(base: &VecPath, cutters: &[VecPath]) -> Vec<VecPath> {
+    if cutters.is_empty() {
+        return vec![base.clone()];
     }
-    let whole = union_of(sources);
-    let mut out = Vec::new();
-    for w in &whole {
-        let mut args: Vec<&VecPath> = Vec::with_capacity(1 + taken.len());
-        args.push(w);
-        args.extend(taken.iter());
-        out.extend(apply_many(&args, BoolOp::Subtract));
-    }
-    out
+    let mut args: Vec<&VecPath> = Vec::with_capacity(1 + cutters.len());
+    args.push(base);
+    args.extend(cutters.iter());
+    apply_many(&args, BoolOp::Subtract)
 }
 
 #[cfg(test)]

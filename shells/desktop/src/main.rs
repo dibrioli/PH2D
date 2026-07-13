@@ -35,6 +35,7 @@
 mod app_state;
 mod atlas_loader;
 mod audio;
+mod build_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).

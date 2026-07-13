@@ -510,6 +510,7 @@ impl crate::App {
         // borrow mutável do `gfx` (ele precisa ler a cena e escrever em `self`), e só
         // reconstrói quando a SELEÇÃO muda — refazê-lo por frame jogaria fora o memo do
         // arranjo e cada hover voltaria a pagar a booleana.
+        self.build_smoke();
         self.build_session_upkeep();
 
         let Some(gfx) = self.gfx.as_mut() else {
@@ -2972,8 +2973,11 @@ impl crate::App {
                     .filter_map(|f| b.arr.face_path(f).cloned())
                     .collect();
                 let hover = b.hover.and_then(|f| b.arr.face_path(f).cloned());
-                // As faces já estão em MUNDO (a sessão as assou), então só a câmera.
+                // As faces E as silhuetas já estão em MUNDO (a sessão as assou), então só a
+                // câmera. As silhuetas são redesenhadas por cima do véu: uma forma coberta
+                // por outra não aparece na tela, e sem elas o realce paira sobre nada.
                 ph2d_vec_render::draw_build_faces(
+                    b.arr.sources(),
                     hover.as_ref(),
                     &marked,
                     b.subtract,

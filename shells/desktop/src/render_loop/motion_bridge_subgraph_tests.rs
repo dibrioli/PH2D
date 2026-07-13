@@ -370,6 +370,52 @@ fn a_vanished_level_falls_back_to_the_root() {
     let _ = drain_intents(); // (the level change queued a selection request, not an intent)
 }
 
+/// **Probing a collapsed card reads what the group EMITS, and the HUD hangs off the
+/// CARD.** The probe resolves to a node inside the group — a node this level does not
+/// draw — so without the fold re-pointing it, the artist would arm P, click the card,
+/// and the editor would show them nothing at all: a silent no-op, and the worst kind
+/// (the gesture LOOKED like it worked).
+#[test]
+fn probing_a_card_reads_what_it_emits_and_the_hud_hangs_off_the_card() {
+    let mut m = MotionState::new();
+    let sid = m.doc.subgraphs[0].id;
+    let card = super::subgraph::view_id(sid);
+
+    // The card's first output source — a real node, inside the group.
+    let emitter = super::subgraph::probe_target(&m, card).expect("the group emits something");
+    assert!(
+        m.doc.members.contains_key(&emitter),
+        "what a card emits comes from a node INSIDE it"
+    );
+
+    push_intent(GraphIntent::SetProbe { node: Some(card) });
+    apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor::screens::layout::CenterSplit::None,
+    );
+    assert_eq!(
+        m.probe,
+        Some(emitter),
+        "the probe points at the real node, because that is what the cook can read"
+    );
+
+    // ...and the published view puts the reading back ON the card, which is the only
+    // thing at this level the HUD could possibly hang off.
+    cook(&mut m, 2);
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    snap.probe = super::edit::sample_probe(&mut m, 0.0);
+    fold::fold(&m, &mut snap);
+    let probe = snap.probe.expect("the probe published a reading");
+    assert_eq!(probe.node, card, "the HUD is drawn beside the CARD");
+    assert!(
+        snap.nodes.iter().any(|n| n.id == probe.node),
+        "and the card it points at is actually in the view - a HUD anchored to \
+         something that is not drawn is a HUD that is not drawn"
+    );
+}
+
 /// Moving a card carries its members — otherwise entering it would land the artist on
 /// empty canvas, a screen away from the card they just dragged.
 #[test]

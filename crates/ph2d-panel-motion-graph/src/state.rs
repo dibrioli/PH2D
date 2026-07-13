@@ -159,6 +159,12 @@ pub struct MotionGraphPanelState {
     /// of rubber-band selecting. Disarmed by the stroke itself, by Esc, or by a
     /// second `K` — a mode that cannot be left is a trap, so it has three exits.
     pub(crate) knife_armed: bool,
+    /// **The level this panel last painted** (doc 57) — mirrored from the snapshot,
+    /// never authored here (the SHELL owns the level, so that an undo which dissolves
+    /// the group you are standing in can put you back on solid ground). It exists for
+    /// one reason: to notice a level CHANGE and re-fit, so entering a group never
+    /// lands the artist on a canvas they cannot see.
+    pub(crate) level: Option<u32>,
     /// The input a wire's end was just pulled off, held for the ONE frame between
     /// the drop and the shell's answer (doc 45.1).
     ///
@@ -174,4 +180,54 @@ pub struct MotionGraphPanelState {
     /// shell's answer, whatever it was, and it is the truth to paint. (A REFUSED move
     /// therefore shows the original wire again, which is exactly right: it never moved.)
     pub(crate) pending_detach: Option<(u32, u16)>,
+}
+
+impl MotionGraphPanelState {
+    /// **A new level is a new canvas** (doc 57). Adopt the level the shell published;
+    /// if it CHANGED, drop the fit so the next paint re-frames.
+    ///
+    /// The fold moves nothing — a group's members sit exactly where they always sat —
+    /// so a view zoomed in on the collapsed card would open the group showing a corner
+    /// of it, or empty canvas. Blender and Houdini both re-frame on the way in.
+    ///
+    /// Returns whether the level changed (the paint does not care; the gate does).
+    pub(crate) fn sync_level(&mut self, level: Option<u32>) -> bool {
+        if self.level == level {
+            return false;
+        }
+        self.level = level;
+        self.fitted = false;
+        true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entering_or_leaving_a_level_re_fits_and_staying_put_does_not() {
+        let mut st = MotionGraphPanelState {
+            fitted: true,
+            ..Default::default()
+        };
+        assert!(
+            !st.sync_level(None),
+            "already at the root: nothing happened"
+        );
+        assert!(st.fitted, "and the artist's pan/zoom is left alone");
+
+        assert!(st.sync_level(Some(3)), "entered a group");
+        assert!(!st.fitted, "so the next paint re-frames on its contents");
+
+        st.fitted = true;
+        assert!(!st.sync_level(Some(3)), "still in the same room");
+        assert!(
+            st.fitted,
+            "a re-fit on every frame would fight the artist's zoom"
+        );
+
+        assert!(st.sync_level(None), "walked the breadcrumb back out");
+        assert!(!st.fitted);
+    }
 }

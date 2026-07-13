@@ -192,6 +192,17 @@ pub(super) fn fold(motion: &MotionState, snap: &mut GraphViewSnapshot) {
     // and nowhere else.
     snap.backdrops
         .retain(|b| motion.doc.backdrop_members.get(&b.id).copied() == level);
+
+    // **The probe follows what it is reading, up onto the card that hides it.** Probing
+    // a collapsed group points the readout at the node the group EMITS from
+    // (`subgraph::probe_target`) — a node which, at this level, is not drawn. The HUD
+    // hangs off a card, so without this it would hang off nothing: the artist arms P,
+    // clicks the card, and the editor silently shows them nothing at all.
+    if let Some(p) = &mut snap.probe
+        && let Holder::Card(sid) = holder(p.node)
+    {
+        p.node = view_id(sid);
+    }
 }
 
 /// One collapsed card: its derived sockets, and what its contents are DOING —

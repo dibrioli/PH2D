@@ -101,6 +101,12 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     let theme = ctx.host.theme();
     let snap = current_snapshot();
 
+    // **A new level is a new canvas** (doc 57): entering a group, or walking the
+    // breadcrumb out of one, re-fits. The members sit where they always sat — the
+    // fold moves nothing — so a view zoomed in on the card would open the group
+    // showing a corner of it, or nothing at all. Blender and Houdini both re-frame
+    // on the way in; so does this.
+    state.sync_level(snap.level);
     // Fit the graph on first sight (then the user owns pan/zoom; F re-fits).
     if !state.fitted && !snap.nodes.is_empty() {
         state.view = fit(&snap, rect);

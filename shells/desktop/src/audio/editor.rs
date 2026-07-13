@@ -18,6 +18,7 @@ mod loops;
 mod manifest_path;
 mod markers;
 mod meta;
+mod multiband_smoke;
 pub(crate) mod pieces;
 pub(crate) mod spectral;
 mod variation;

@@ -181,6 +181,11 @@ impl App {
             if std::env::var_os("PH2D_AUDIO_LOOP_SMOKE").is_some() {
                 a.editor_loop_smoke();
             }
+            // Stage the Multiband A/B: the clip that exposes it (a kick over steady
+            // highs) plus a two-stage rack, Multiband vs Compress at the same Ratio.
+            if std::env::var_os("PH2D_AUDIO_MULTIBAND_SMOKE").is_some() {
+                a.editor_multiband_smoke();
+            }
         }
         Self {
             window: None,

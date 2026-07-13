@@ -20,7 +20,61 @@
 | [11](#bug-11--per-layer-color-linhas-retangulares-intermitentes-aberto) | Per-Layer Color — "linhas nas bordas de retângulos" nas cores do brush, **intermitente** | Preview (produtor CPU↔GPU / overlay) — **NÃO** o composite CPU | 🔎 **ABERTO** (dormente; composite CPU provado limpo, espaço de busca reduzido, **armadilha armada**) | 2026-07-11 |
 | [12](#bug-12--panicsigsegv-ao-apertar-rake-com-um-traço-per-layer-color-vivo) | **PANIC/SIGSEGV** ao apertar Shape **Rake** com um traço Per-Layer Color vivo | Roteamento de stamp (troca de rota **no meio do traço**) | ✅ Resolvido (guard de forma único; RED verificado nas 2 direções) | 2026-07-12 |
 | [13](#bug-13--varredura-a-família-do-12-o-guard-que-pergunta-existe-em-vez-de-que-forma-tem) | **Varredura**: +1 PANIC (trocar de sprite com tinta molhada) + 4 vazamentos silenciosos entre sprites | Lifecycle de rebind de documento · compositor · aquarela | ✅ 3 fixes (RED verificado em cada) | 2026-07-12 |
+| [15](#bug-15--impasto-os-chips-do-rig-de-luzes-pintam-e-não-clicam-aberto) | **Impasto**: os chips do rig de luzes **pintam e não clicam** (nem o checkbox) | Seam da UI (painel ↔ tool) — **não** a matemática | 🔎 **ABERTO** (fila: amanhã, gate do seam PRIMEIRO) | 2026-07-12 |
 | [14](#bug-14--impasto-a-tinta-extravasava-o-relevo-o-suporte-batia-e-a-foto-estava-errada) | **Impasto**: "a tinta extravasa o relevo" — 3 rodadas; o gate ficava **verde** e a foto do Enio, errada | Depósito de pigmento (alpha do dab) × corpo × luz | ✅ Resolvido (o FILME + opacidade Beer-Lambert; névoa 52% → 13,5%) | 2026-07-12 |
+
+## Bug #15 — Impasto: os chips do rig de luzes pintam e não clicam (ABERTO)
+
+**Área:** seam da UI (painel `ph2d-panel-painter-layers` ↔ `ph2d-tool-painter`). **Não** é a matemática
+do rig — essa tem 6 gates e 3 mutações vermelhas (`16_impasto_plano_implementacao.md` §18).
+**Estado:** 🔎 **ABERTO** — fila de amanhã, por ordem do Enio.
+
+### Sintoma (Enio, 2026-07-12, print)
+
+*"UI não funciona, nem o checkbox nem se pode selecionar outra luz."*
+
+Os chips `1 2 3 4` do card **Lighting** **pintam** (o print mostra `1` selecionado e `2· 3· 4·`
+apagados — os pontinhos são a marca de "desligada", então **o snapshot chega certo no painel**) e
+**não respondem ao clique**. O checkbox **Enable** também não; mas isso pode ser *consequência*: ele só
+é pintado quando a lâmpada selecionada é ≠ 1, e não dá pra selecionar outra.
+
+### Causa — NÃO IDENTIFICADA (e não vou adivinhar)
+
+Duas hipóteses levantadas e **descartadas na leitura**:
+
+1. **Colisão de id**: passei `PAINTER_IMPASTO_LIGHT_1` como `group_id` do segmented **e** como id da
+   opção 1. → **Descartada**: `paint_segmented_adaptive` **ignora** o `group_id` (só mapeia
+   `widget.options` para `paint_segmented_group_adaptive`).
+2. **Falta de `store.register` em `populate.rs`** ([[feedback_panel_populate_register]]). →
+   **Descartada**: os segmentos de **Depth Source** / **Draw To** também não estão em `populate.rs` e
+   funcionam.
+
+**Candidatos ainda NÃO checados:**
+
+- **A altura do `card_frame`.** O segmented **reflui** (4 chips num painel estreito podem virar 2
+  linhas), mas eu dimensionei o card por uma contagem **fixa** de linhas (`rows = 6`, ou 7 com o
+  Enable). Se o conteúdo estoura o card, o **card seguinte é pintado por cima** — e os hit-rects dele
+  ganham. O print reforça: o card parece **curto demais**, terminando logo abaixo dos chips.
+- A **ordem dos arms** em `event.rs::handle_event`.
+
+### A LIÇÃO — e é a terceira vez que ela cobra
+
+Gatei a **MATEMÁTICA** do rig com 6 gates e 3 mutações vermelhas, e escrevi **ZERO gates no seam da
+UI**. O `ph2d-ui-testkit` existe exatamente para isso: um teste headless que **clica no chip 2** e
+afirma que `impasto_rig.selected == 1` teria saído **vermelho antes de o Enio abrir o app**.
+
+É [[feedback_painted_is_not_populated_paint_gate]] (*pintado ≠ populado: teste a PINTURA... e o
+CLIQUE*) e [[feedback_tool_unit_green_integration_dead]] (*unit-verde ≠ funciona no produto*) outra vez.
+**Um widget novo não está pronto quando pinta — está pronto quando um teste clica nele.**
+
+### Ordem de amanhã (não negociável)
+
+1. **Escrever o gate do seam PRIMEIRO.** Headless: clica o chip 2 → `selected == 1`; clica Enable →
+   `lights[1].on`. **Ele nasce VERMELHO.** Sem ele, qualquer fix é chute.
+2. Só então diagnosticar (candidatos acima).
+3. Consertar. É **UI pura**: não toca a matemática, e nenhum dos 6 gates do rig deve se mexer.
+
+---
 
 ## Bug #14 — Impasto: "a tinta extravasa o relevo" (o suporte batia, e a foto estava errada)
 

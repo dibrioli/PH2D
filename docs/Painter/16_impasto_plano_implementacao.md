@@ -1217,7 +1217,8 @@ O Enio priorizou explicitamente. Ordem, e nada fora dela:
 
 | # | Item | Estado |
 |---|---|---|
-| 1 | **Múltiplas luzes** (Krita tem 4; Rebelle tem environment maps) | ▶ **em curso** |
+| 0 | 🔴 **A UI do rig de luzes está MORTA** — os chips `1 2 3 4` pintam mas não respondem, nem o checkbox (Enio, 2026-07-12) | ▶ **AMANHÃ, primeiro** (§18.6) |
+| 1 | ~~Múltiplas luzes~~ — a **matemática** landou (§18); só o acesso pela UI está morto | ✅ com o item 0 aberto |
 | 2 | Passe de luz na **GPU** (`LayerOp` novo; há 8 slots livres em `AdjustmentKind ≤ 32`) | fila |
 | 3 | Persistência do `h` no `ProjectState` | fila (herda o gap de `SpriteSource::Individual`) |
 | — | **Relevo do PAPEL** | **exige ordem NOVA** do Enio (acopla impasto↔aquarela, §2) |
@@ -1301,3 +1302,34 @@ clippy 0.
 `impasto_rig.rs` (o modelo: `ImpastoLight` / `LightRig`, no tool) · `impasto_light.rs` (`Rig`/`Lamp`: a
 matemática) · `paint_impasto_rig.rs` (o card) · `event/impasto_light_picker.rs` (a swatch → o picker
 OKLCH compartilhado). Ids novos: `PAINTER_IMPASTO_LIGHT_{1..4}` / `_ON` / `_POWER` / `_COLOR`.
+
+### 18.6 🔴 A UI do rig está MORTA — e o gate que faltava é o de sempre
+
+**Enio, 2026-07-12 (print):** *"UI não funciona, nem o checkbox nem se pode selecionar outra luz."*
+
+Os chips `1 2 3 4` **pintam** (o print mostra `1` selecionado, `2· 3· 4·` apagados) e **não respondem ao
+clique**. O checkbox **Enable** também não — mas isso pode ser consequência: ele só é pintado quando a
+lâmpada selecionada é ≠ 1, e não dá pra selecionar outra.
+
+**Causa: NÃO IDENTIFICADA.** Duas hipóteses levantadas e **descartadas**:
+
+- **Colisão de id** entre o `group_id` do segmented e o id da opção 1 (passei `PAINTER_IMPASTO_LIGHT_1`
+  nos dois papéis) → **descartada**: `paint_segmented_adaptive` **ignora** o `group_id`; ele só mapeia
+  `widget.options`.
+- **Falta de `store.register` em `populate.rs`** ([[feedback_panel_populate_register]]) → **descartada**:
+  os segmentos de **Depth Source** e **Draw To** também não estão lá e funcionam.
+
+**A LIÇÃO, e é a terceira vez:** eu gatei a **MATEMÁTICA** do rig com 6 gates e 3 mutações vermelhas — e
+**zero gates no SEAM da UI**. O `ph2d-ui-testkit` existe exatamente pra isto. Um teste headless que
+**CLICA no chip** e afirma que `impasto_rig.selected` mudou teria saído **vermelho antes de o Enio abrir
+o app**. É [[feedback_painted_is_not_populated_paint_gate]] + [[feedback_tool_unit_green_integration_dead]]
+outra vez: *unit-verde ≠ funciona no produto*, e *pintado ≠ populado*.
+
+**Ordem de amanhã (não negociável):**
+
+1. **Escrever o gate do seam PRIMEIRO** — headless, clica o chip 2, afirma `selected == 1`; clica
+   Enable, afirma `lights[1].on`. **Ele nasce VERMELHO.** Sem isso, qualquer fix é chute.
+2. Só então diagnosticar (candidatos ainda não checados: a altura do `card_frame` — o segmented
+   **reflui** em painel estreito e pode empurrar as linhas pra fora do card, e o card seguinte pintaria
+   por cima, roubando os hit-rects; e a ordem dos arms em `handle_event`).
+3. Consertar. É **UI pura** — não toca a matemática, e nenhum dos 6 gates do rig deve se mexer.

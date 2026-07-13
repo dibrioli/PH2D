@@ -445,3 +445,86 @@ fn the_fill_swatch_recolours_but_never_creates_a_fill() {
         "o swatch de Fill INVENTOU um preenchimento num traco que era so linha"
     );
 }
+
+// ── O plano do pen-DOWN (`plan_down`): o colapso ADIADO ──
+
+/// 🔴 **Pegar um traço de uma MULTISSELEÇÃO arrasta o GRUPO — não colapsa a seleção.**
+///
+/// O bug do smoke do Enio (2026-07-13): *"funciona a multisseleção mas não dá pra mover as
+/// formas selecionadas juntas. só uma"*.
+///
+/// A causa: o pen-down num traço fazia `Pick::Replace` SEMPRE — inclusive quando o traço já
+/// estava selecionado. A multisseleção morria no instante do toque, e o arrasto levava um
+/// traço só. É por isso que todo editor (Illustrator, Figma, Blender) **adia** o colapso
+/// para o pen-up: as duas leituras do mesmo gesto (colapsar × arrastar o grupo) só se
+/// distinguem pelo que vem DEPOIS do down.
+///
+/// Mutação que sangra: tire o braço `if drawing.strokes[i].selected` do `plan_down` e a
+/// seleção volta a colapsar no toque.
+#[test]
+fn grabbing_one_of_several_selected_strokes_keeps_the_whole_selection() {
+    let mut d = drawing(vec![
+        line(&[(0.0, 0.0), (10.0, 0.0)], 4.0),
+        line(&[(0.0, 10.0), (10.0, 10.0)], 4.0),
+        line(&[(0.0, 20.0), (10.0, 20.0)], 4.0),
+    ]);
+    d.strokes[0].selected = true;
+    d.strokes[2].selected = true;
+
+    // Pen-down no traço 0, que JÁ está selecionado, sem Shift.
+    let down = plan_down(&mut d, Some(0), false);
+
+    assert_eq!(
+        d.selected_indices(),
+        vec![0, 2],
+        "o toque num traco JA selecionado destruiu a multisselecao — e o arrasto levaria um so"
+    );
+    assert_eq!(
+        down,
+        Down::Move {
+            collapse_to: Some(0)
+        },
+        "o gesto tem de ser MOVER (com o colapso ADIADO para o pen-up)"
+    );
+}
+
+/// **E soltar SEM arrastar colapsa** — "agora só este". É a outra metade da regra: sem ela,
+/// clicar num traço de uma multisseleção não teria como reduzi-la.
+#[test]
+fn releasing_without_dragging_collapses_the_selection_to_the_stroke() {
+    let mut d = drawing(vec![
+        line(&[(0.0, 0.0), (10.0, 0.0)], 4.0),
+        line(&[(0.0, 10.0), (10.0, 10.0)], 4.0),
+    ]);
+    d.strokes[0].selected = true;
+    d.strokes[1].selected = true;
+
+    let Down::Move {
+        collapse_to: Some(i),
+    } = plan_down(&mut d, Some(0), false)
+    else {
+        panic!("o down num traco selecionado tem de abrir um Move com colapso adiado");
+    };
+    // O pen-up SEM arrasto executa o colapso (é o que o `flip_edit_canvas_up` faz).
+    assert!(apply_pick(&mut d, Some(i), Pick::Replace));
+    assert_eq!(d.selected_indices(), vec![0], "o colapso nao aconteceu");
+}
+
+/// **Um traço NÃO selecionado vira a seleção no ato** (e não tem colapso a adiar).
+#[test]
+fn grabbing_an_unselected_stroke_selects_it_at_once() {
+    let mut d = drawing(vec![
+        line(&[(0.0, 0.0), (10.0, 0.0)], 4.0),
+        line(&[(0.0, 10.0), (10.0, 10.0)], 4.0),
+    ]);
+    d.strokes[1].selected = true;
+
+    let down = plan_down(&mut d, Some(0), false);
+
+    assert_eq!(
+        d.selected_indices(),
+        vec![0],
+        "o traco novo nao virou a selecao"
+    );
+    assert_eq!(down, Down::Move { collapse_to: None });
+}

@@ -36,7 +36,29 @@ pub(crate) enum EditGesture {
     },
     /// Translação da seleção. `last` é o cursor no espaço LOCAL do objeto (a geometria é
     /// local — ADR-0111), e o delta de cada quadro é `agora − last`.
-    Move { last: Vec2 },
+    ///
+    /// `collapse_to` é o **colapso ADIADO**: o traço em que a seleção deve virar se o
+    /// usuário soltar **sem arrastar** (`flip_select::plan_down`). Ele nasce preenchido
+    /// quando o clique caiu num traço que JÁ estava selecionado — porque nesse caso o
+    /// gesto é ambíguo (colapsar a seleção × arrastar o grupo), e só o que vem DEPOIS do
+    /// down desempata. O 1º arrasto que passa do slop o zera: virou arrasto de grupo.
+    ///
+    /// Sem isto, pegar um traço de uma multisseleção para arrastá-la **destruía a
+    /// multisseleção no instante do toque**, e o arrasto levava um traço só (smoke do
+    /// Enio, 2026-07-13).
+    Move {
+        last: Vec2,
+        down: (f32, f32),
+        collapse_to: Option<usize>,
+    },
+    /// **Um clique que já se resolveu no Down** (o Shift+clique, que alterna e não
+    /// arrasta). Existe só para o pen-UP ter o que CONSUMIR.
+    ///
+    /// Sem ele, o UP do Shift+clique não era consumido e caía no **picker de OBJETO** do
+    /// editor — que, com Shift, alterna o objeto Flip na multisseleção de objetos. No modo
+    /// Edit o canvas é da ferramenta: nenhum clique dele pode chegar lá (é a mesma razão
+    /// pela qual o Down consome até quando erra o traço).
+    Click,
 }
 
 /// A caixa do marquee, em px de tela (normalizada: min/max).
@@ -158,13 +180,28 @@ impl crate::App {
                 self.title_dirty = true;
                 true
             }
-            EditGesture::Move { last } => {
+            EditGesture::Click => true, // resolvido no down; nada a arrastar
+            EditGesture::Move {
+                last,
+                down,
+                collapse_to,
+            } => {
                 let w2l = self.flip_active_world_to_local();
                 let Some(now) = self.flip_screen_to_local(x, y, &w2l) else {
                     return true;
                 };
                 let delta = now - last;
-                self.flip_edit_gesture = Some(EditGesture::Move { last: now });
+                // Passou do slop ⇒ é um ARRASTO de grupo, não um clique: o colapso morre.
+                let collapse_to = if passed_slop(down, (x, y)) {
+                    None
+                } else {
+                    collapse_to
+                };
+                self.flip_edit_gesture = Some(EditGesture::Move {
+                    last: now,
+                    down,
+                    collapse_to,
+                });
                 let active_layer = self.flip_active_layer;
                 let playhead = self.playhead;
                 if let Some(gfx) = self.gfx.as_mut()
@@ -194,7 +231,31 @@ impl crate::App {
             additive,
         } = gesture
         else {
-            return true; // Move: os pontos já foram translados a cada quadro
+            // `Click` (resolvido no down) ou `Move`. No `Move`, os pontos já foram
+            // translados a cada quadro — mas resta o **colapso adiado**: se o usuário
+            // soltou SEM arrastar, o clique num traço já selecionado significava "agora só
+            // este". Em qualquer caso o UP é CONSUMIDO (no Edit o canvas é da ferramenta).
+            if let EditGesture::Move {
+                collapse_to: Some(i),
+                ..
+            } = gesture
+            {
+                let active_layer = self.flip_active_layer;
+                let playhead = self.playhead;
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some((oid, _l, did)) =
+                        crate::flip_select::visible_drawing(&gfx.flip, &playhead, active_layer)
+                    && let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
+                    && crate::flip_select::apply_pick(
+                        dr,
+                        Some(i),
+                        crate::flip_select::Pick::Replace,
+                    )
+                {
+                    self.title_dirty = true;
+                }
+            }
+            return true;
         };
         // Um marquee que não passou do slop foi um CLIQUE no vazio: desmarcar (o clique é
         // tratado no down, então aqui não há o que fazer).

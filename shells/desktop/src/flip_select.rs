@@ -137,6 +137,58 @@ pub(crate) enum Pick {
     Toggle,
 }
 
+/// O que o pen-DOWN abre, depois de mexer (ou não) na seleção.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Down {
+    /// Arrastar move a seleção. `collapse_to` = o traço que a seleção deve virar **se o
+    /// usuário soltar sem arrastar** (ver [`plan_down`]).
+    Move { collapse_to: Option<usize> },
+    /// O clique já se resolveu (Shift+clique alterna e não arrasta).
+    Click,
+    /// O vazio: arrastar desenha a caixa.
+    Marquee { additive: bool },
+}
+
+/// **O plano do pen-DOWN** — quem mexe na seleção e decide o gesto.
+///
+/// Aqui mora a regra que faltava, e que o smoke do Enio expôs (*"não dá pra mover as
+/// formas selecionadas juntas, só uma"*):
+///
+/// > **Clicar num traço que JÁ está selecionado não colapsa a seleção.** Ele começa a
+/// > mover a seleção INTEIRA. O colapso ("agora só este") é **adiado para o pen-UP**, e só
+/// > acontece se o usuário soltar **sem arrastar**.
+///
+/// É o comportamento de todo editor (Illustrator, Figma, Blender), e a razão é exatamente
+/// a que o smoke encontrou: sem o adiamento, pegar um item de uma multisseleção para
+/// arrastá-la **destrói a multisseleção no instante do toque** — e o arrasto leva um traço
+/// só. As duas leituras do mesmo gesto (colapsar × arrastar o grupo) só se distinguem pelo
+/// que acontece DEPOIS do down; então a decisão espera.
+pub(crate) fn plan_down(drawing: &mut FlipDrawing, hit: Option<usize>, shift: bool) -> Down {
+    match (hit, shift) {
+        (None, shift) => {
+            if !shift {
+                drawing.clear_selection();
+            }
+            Down::Marquee { additive: shift }
+        }
+        (Some(i), true) => {
+            apply_pick(drawing, Some(i), Pick::Toggle);
+            Down::Click
+        }
+        (Some(i), false) if drawing.strokes[i].selected => {
+            // Já selecionado: NÃO toca na seleção. Arrastar move o grupo; soltar sem
+            // arrastar colapsa para este traço.
+            Down::Move {
+                collapse_to: Some(i),
+            }
+        }
+        (Some(i), false) => {
+            apply_pick(drawing, Some(i), Pick::Replace);
+            Down::Move { collapse_to: None }
+        }
+    }
+}
+
 /// Aplica o clique. Devolve `true` se o documento mudou (o passo de undo sai do diff
 /// pós-frame, como todo o resto do Flip).
 pub(crate) fn apply_pick(drawing: &mut FlipDrawing, hit: Option<usize>, pick: Pick) -> bool {
@@ -216,6 +268,17 @@ impl crate::App {
             return true;
         };
         let hit = stroke_at(drawing, local, px_to_world, &w2l);
+        // `PH2D_FLIP_SELECT_DEBUG=1` — a régua do Edit Mode no app REAL. O seam
+        // modificador→pick é a única linha que um teste de unidade não alcança (ele não
+        // tem um `App`), e é exatamente onde um defeito de multisseleção mora.
+        if std::env::var("PH2D_FLIP_SELECT_DEBUG").is_ok() {
+            eprintln!(
+                "[edit] shift={} hit={hit:?} tracos={} selecionados_antes={:?}",
+                pick == Pick::Toggle,
+                drawing.strokes.len(),
+                drawing.selected_indices(),
+            );
+        }
         // **Arrastar um traço já o move** (W6.1). Se o clique pegou traço, o gesto que
         // começa é o de MOVER — inclusive quando o traço ainda não estava selecionado
         // (aí o pick o seleciona primeiro, e o arrasto o leva junto). Exigir clicar,
@@ -225,18 +288,20 @@ impl crate::App {
         // Shift+arrasto num traço já selecionado seria ambíguo (alternar ou mover?): o
         // Shift manda, e o gesto vira alternar — o arrasto não pega.
         let shift = pick == Pick::Toggle;
-        if apply_pick(drawing, hit, pick) {
-            self.title_dirty = true;
-        }
-        self.flip_edit_gesture = match (hit, shift) {
-            (Some(_), false) => Some(crate::flip_edit_gesture::EditGesture::Move { last: local }),
-            (Some(_), true) => None,
-            (None, _) => Some(crate::flip_edit_gesture::EditGesture::Marquee {
+        self.title_dirty = true;
+        self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift) {
+            Down::Move { collapse_to } => crate::flip_edit_gesture::EditGesture::Move {
+                last: local,
+                down: (x, y),
+                collapse_to,
+            },
+            Down::Click => crate::flip_edit_gesture::EditGesture::Click,
+            Down::Marquee { additive } => crate::flip_edit_gesture::EditGesture::Marquee {
                 start: (x, y),
                 cur: (x, y),
-                additive: shift,
-            }),
-        };
+                additive,
+            },
+        });
         // A seleção vira o alvo dos ajustes do painel — o "alvo vivo" (a última coisa
         // criada) sai de cena enquanto houver seleção.
         self.flip_live_clear();

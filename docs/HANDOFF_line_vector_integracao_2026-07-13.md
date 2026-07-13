@@ -115,7 +115,7 @@ futura embutir um terceiro schema, ele precisa entrar na tripla.
 ## §5 — Como smokar (o comando, pronto)
 
 ```bash
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && cargo run --release
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && cargo run --release --bin ph2d-host-desktop
 ```
 
 **O roteiro, exatamente:**

@@ -150,6 +150,11 @@ fase = "fase"
 elipse = "elipse"
 Elipse = "Elipse"
 colateral = "colateral"
+# "frase" (pt-BR for "sentence") + "organizacional" — the Motion Nodes subgraph
+# note (doc 57). `HDA` is Houdini's Digital Asset, cited there by name.
+frase = "frase"
+organizacional = "organizacional"
+HDA = "HDA"
 # "controle" (pt-BR for "control") — e.g. "pontos de controle" (control points)
 # in the Vector flip/geometry comments.
 controle = "controle"

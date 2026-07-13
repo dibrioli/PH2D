@@ -14,15 +14,21 @@
 //!   geometria de documento, aproximar a câmera o engrossaria e ele cobriria a linha que
 //!   está tentando destacar.
 //!
-//! A pose do objeto entra como um **`Affine` só** (`world_to_screen_affine ∘ local→mundo`):
-//! nenhum ponto é transformado à mão, então o realce não pode derivar da arte — ele
-//! herda a MESMA matriz que o render usa.
+//! ⚠️ **E é por isso que a geometria sai daqui já em px de TELA, com o `stroke` desenhando
+//! sob `Affine::IDENTITY`.** No Vello o transform do `stroke` **multiplica a espessura**:
+//! entregar o afim mundo→tela como transform (o 1º corte) transformou 2 px em
+//! `2 × px_por_unidade_de_mundo` — centenas de pixels, e o realce virou um borrão que
+//! cobria o desenho inteiro (smoke do Enio, 2026-07-13). O anel do pincel (`flip_cursor`)
+//! sempre desenhou assim, em tela, exatamente por isto.
+//!
+//! A pose do objeto e a câmera entram numa matriz só (`world_to_screen_affine ∘
+//! local→mundo`) — a MESMA que o render usa —, mas aplicada aos PONTOS.
 
 use ph2d_flip::FlipDoc;
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vec_scene::Xform;
-use ph2d_vector::VectorScene;
+use ph2d_vector::{BezPath, Point, VectorScene};
 
 /// Espessura do contorno de realce, em px de tela.
 const HALO_PX: f64 = 2.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
@@ -62,39 +68,106 @@ pub(super) fn draw_flip_selection(
         return;
     }
 
-    use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
-    // local → mundo → tela, numa matriz só (a MESMA do render; ver o cabeçalho).
+    use ph2d_vector::{Affine, Brush, Color, Stroke};
+    // local → mundo → tela, numa matriz só (a MESMA que o render usa).
     let [a, b, c, d, e, f] = l2w.0;
-    let local_to_world = Affine::new([a, b, c, d, e, f]);
-    let to_screen = camera.world_to_screen_affine(window) * local_to_world;
+    let to_screen = camera.world_to_screen_affine(window) * Affine::new([a, b, c, d, e, f]);
 
     let color = Color::new(HALO_RGBA);
     for s in drawing.strokes.iter().filter(|s| s.selected) {
-        let pos = s.positions();
-        if pos.is_empty() {
+        let path = halo_path(s.positions(), s.closed, to_screen);
+        if path.is_empty() {
             continue;
         }
-        let mut path = BezPath::new();
-        for (i, p) in pos.iter().enumerate() {
-            let pt = Point::new(f64::from(p.x), f64::from(p.y));
-            if i == 0 {
-                path.move_to(pt);
-            } else {
-                path.line_to(pt);
-            }
-        }
-        // O traço FECHADO (e o contorno de uma região) fecha o realce; um traço aberto
-        // NÃO — desenhar o segmento que liga as pontas mostraria uma linha que o usuário
-        // não fez, e depois do BUGS #17 sabemos que "fechado" não é o caso comum.
-        if s.closed {
-            path.close_path();
-        }
+        // ⚠️ **`Affine::IDENTITY`, e a geometria já em px de TELA.** No Vello a espessura
+        // do traço é multiplicada pelo TRANSFORM: passar o afim mundo→tela aqui e uma
+        // espessura de 2.0 dá `2 × px_por_unidade_de_mundo` — centenas de pixels no zoom
+        // normal. Foi o 1º corte, e o realce virou um borrão que cobria o desenho inteiro
+        // (smoke do Enio, 2026-07-13). O anel do pincel (`flip_cursor`) sempre desenhou em
+        // tela, com IDENTITY, exatamente por isto.
         vector_scene.inner_mut().stroke(
             &Stroke::new(HALO_PX),
-            to_screen,
+            Affine::IDENTITY,
             &Brush::Solid(color),
             None,
             &path,
+        );
+    }
+}
+
+/// A polilinha do realce, **já em px de TELA** (o `to_screen` é aplicado aos PONTOS, não
+/// entregue ao Vello como transform — ver o `stroke` acima).
+///
+/// Pura, e separada por isso: a invariante que ela carrega ("a espessura do realce não
+/// muda com o zoom") é a que quebrou no produto, e uma função pura é o que um gate
+/// consegue interrogar.
+fn halo_path(pos: &[ph2d_core::Vec2], closed: bool, to_screen: ph2d_vector::Affine) -> BezPath {
+    let mut path = BezPath::new();
+    for (i, p) in pos.iter().enumerate() {
+        let pt = to_screen * Point::new(f64::from(p.x), f64::from(p.y));
+        if i == 0 {
+            path.move_to(pt);
+        } else {
+            path.line_to(pt);
+        }
+    }
+    // O traço FECHADO (e o contorno de uma região) fecha o realce; um traço aberto NÃO —
+    // desenhar o segmento que liga as pontas mostraria uma linha que o usuário não fez, e
+    // depois do BUGS #17 sabemos que "fechado" não é o caso comum.
+    if closed && pos.len() >= 3 {
+        path.close_path();
+    }
+    path
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_core::Vec2;
+    use ph2d_vector::{Affine, Shape};
+
+    /// 🔴 **O realce tem espessura de TELA — e a geometria dele é que carrega o zoom.**
+    ///
+    /// O 1º corte entregou o afim mundo→tela ao Vello como *transform* do `stroke`. No
+    /// Vello o transform **multiplica a espessura**: 2 px viraram `2 × px_por_unidade` =
+    /// centenas de pixels, e o realce virou um borrão cobrindo o desenho (smoke do Enio).
+    ///
+    /// A cura é a geometria sair daqui **já em px de tela** (e o `stroke` usar
+    /// `IDENTITY`). Este gate afirma isso pelo único jeito que não mente: os pontos que
+    /// saem têm de estar onde a câmera os põe NA TELA.
+    ///
+    /// Mutação que sangra: devolva os pontos em espaço local (tire o `to_screen *`) e a
+    /// bbox deixa de acompanhar o zoom.
+    #[test]
+    fn the_halo_geometry_comes_out_in_screen_pixels() {
+        let pts = [Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0)];
+        // Uma câmera qualquer: 20 px de tela por unidade de mundo, origem em (100, 50).
+        let to_screen = Affine::new([20.0, 0.0, 0.0, 20.0, 100.0, 50.0]);
+
+        let bbox = halo_path(&pts, false, to_screen).bounding_box();
+        assert!(
+            (bbox.x0 - 100.0).abs() < 1e-6 && (bbox.x1 - 300.0).abs() < 1e-6,
+            "a geometria do realce NAO saiu em px de tela: {bbox:?} — se ela sair em \
+             espaco local, o Vello multiplica a espessura pelo zoom e o realce vira um \
+             borrao"
+        );
+    }
+
+    /// **Um traço ABERTO não ganha o segmento de fechamento** — desenhá-lo mostraria uma
+    /// linha que o usuário não fez (e, depois do BUGS #17, sabemos que o traço da mão é
+    /// aberto: seria o caso COMUM).
+    #[test]
+    fn an_open_stroke_is_not_closed_by_the_halo() {
+        let pts = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 0.0),
+            Vec2::new(10.0, 10.0),
+        ];
+        let open = halo_path(&pts, false, Affine::IDENTITY);
+        let closed = halo_path(&pts, true, Affine::IDENTITY);
+        assert!(
+            open.elements().len() < closed.elements().len(),
+            "o realce fechou um traco ABERTO — desenharia um segmento que nao existe"
         );
     }
 }

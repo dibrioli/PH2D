@@ -44,6 +44,15 @@ pub struct ModelSnapshot {
     pub heights: BTreeMap<RtLayerId, Arc<Vec<f32>>>,
     /// Paint coverage per layer, captured with the relief it belongs to (see `PainterTool::covers`).
     pub covers: BTreeMap<RtLayerId, Arc<Vec<u8>>>,
+    /// The paint's MATERIAL per layer, captured with the relief and the coverage — the three are one
+    /// fact about one stroke and they must roll back together.
+    ///
+    /// Left out when the material landed (2026-07-13), and the hole was nearly invisible: on bare canvas
+    /// an undone stroke's coverage goes to zero, so the light weights its stale material by zero and
+    /// nothing shows. Paint the stroke over EXISTING paint, though, and undo restores the lower stroke's
+    /// coverage under the upper one's material — the paint underneath comes back wearing the wrong
+    /// gloss. `undoing_a_stroke_restores_the_material_underneath_it`.
+    pub mats: BTreeMap<RtLayerId, Arc<Vec<ph2d_painter_brush::material::MaterialBytes>>>,
     pub canvas_rgba: Arc<Vec<u8>>,
     pub selection: BTreeSet<RtLayerId>,
     /// The open on-canvas shape editor (Curve / Ellipse / Polygon), captured so a structural undo/redo
@@ -385,6 +394,7 @@ mod tests {
             layers: LayerStack::new(),
             images: BTreeMap::new(),
             heights: BTreeMap::new(),
+            mats: BTreeMap::new(),
             covers: BTreeMap::new(),
             canvas_rgba: Arc::new(vec![active_px; 16]),
             selection: BTreeSet::new(),

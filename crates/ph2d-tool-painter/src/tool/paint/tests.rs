@@ -21619,3 +21619,95 @@ fn the_impasto_planes_cost_twelve_bytes_per_pixel() {
          ADR-0117 is what happens when nobody measures it."
     );
 }
+
+/// **Undoing a stroke gives back the material of the paint UNDERNEATH it.**
+///
+/// The relief, the coverage and the material are three facts about one stroke, and they must roll back
+/// together. `mats` was left out of `ModelSnapshot` when the material landed (2026-07-13) — and the hole
+/// hid, because on BARE canvas an undone stroke's coverage goes to zero, the light weights its stale
+/// material by zero, and nothing shows. The bug only speaks where there is paint to speak for: lay a
+/// MATTE stroke, lay a GLOSSY one across it, undo the glossy one — and the matte paint comes back
+/// wearing gloss it was never painted with.
+///
+/// So the gate is paint-over-paint, which is the only place the defect is observable. A gate on an empty
+/// canvas would have been green with the bug in it, which is the whole lesson: *test where the fact can
+/// be contradicted, not where it is convenient.*
+#[test]
+fn undoing_a_stroke_restores_the_material_underneath_it() {
+    let size = 160u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.radius_px = 40.0;
+    b.impasto_depth = 0.7;
+    b.color = [0.9, 0.1, 0.1];
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    let stroke = |t: &mut PainterTool, y: f32| {
+        t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp(
+                [40.0 + 10.0 * f32::from(i as u8), y],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([120.0, y], PointerPhase::Up));
+    };
+
+    // 1. A MATTE stroke.
+    t.set_impasto_shine(0.0);
+    t.set_impasto_roughness(1.0);
+    stroke(&mut t, 80.0);
+    let after_matte = lit(&mut t);
+    let active = t.layers.active().expect("a layer");
+    let matte_mats = t
+        .mats
+        .get(&active)
+        .expect("the stroke baked a material")
+        .as_ref()
+        .clone();
+
+    // 2. A GLOSSY stroke straight across it — same place, so it overwrites the material there.
+    //
+    // "Adjust Last Stroke" comes OFF first, and that is not incidental: with it ON (the default) the two
+    // setters below would re-bake the MATTE stroke to glossy before the second stroke even starts —
+    // which is precisely what that toggle is for, and it is what made the first version of this fixture
+    // lie. The paint underneath has to be finished paint, or there is nothing for the undo to give back.
+    t.toggle_impasto_live_edit();
+    t.set_impasto_shine(1.0);
+    t.set_impasto_roughness(0.0);
+    stroke(&mut t, 80.0);
+    let glossy_mats = t
+        .mats
+        .get(&active)
+        .expect("…and re-baked it")
+        .as_ref()
+        .clone();
+    assert_ne!(
+        matte_mats, glossy_mats,
+        "fixture: the glossy stroke must actually have changed the material, or the undo below proves nothing"
+    );
+
+    // 3. Undo it. The matte paint must come back MATTE — pixels and material both.
+    assert!(t.undo_last(), "the glossy stroke must be undoable");
+    let restored_mats = t
+        .mats
+        .get(&active)
+        .expect("the material plane survives the undo")
+        .as_ref()
+        .clone();
+    assert_eq!(
+        restored_mats, matte_mats,
+        "undoing the glossy stroke left its MATERIAL on the canvas — the matte paint underneath came \
+         back wearing gloss it was never painted with. `mats` is missing from `ModelSnapshot`: the \
+         relief, the coverage and the material are one fact and they roll back together or not at all."
+    );
+    let restored = lit(&mut t);
+    assert_eq!(
+        restored, after_matte,
+        "…and the lit canvas must be the matte one again, to the byte"
+    );
+}

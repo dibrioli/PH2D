@@ -393,12 +393,69 @@ fn loading_forgets_every_id_that_named_the_previous_document() {
         !state.history.can_undo(),
         "undo belongs to the document that was edited, not to the file that replaced it"
     );
-    // "A loaded document starts at tick 0" is NOT asserted here any more, and that is a real
-    // move, not a deletion: after W4.T7 the clock is the editor's ONE `Playhead`, which
-    // `MotionState` does not own and cannot rewind. The rewind now lives in
-    // `App::project_load` (see `project.rs`). It is not covered by a headless guard — `App`
-    // needs a window — and that gap is recorded in the integration report rather than papered
-    // over with an assertion about a field that no longer exists.
+    // "A loaded document starts at tick 0" is NOT asserted here, and that is a MOVE, not a
+    // deletion: after W4.T7 the clock is the editor's ONE `Playhead`, which `MotionState` does
+    // not own and cannot rewind. The rewind lives in `App::project_load` (`project.rs`), and it
+    // is gated there — `project::tests::a_loaded_project_rewinds_the_clock_and_starts_a_fresh_history`
+    // drives the real Ctrl+O on a real (windowless) `App`. What the assertion was PROTECTING
+    // against is the guard right below.
+}
+
+/// **Why the load rewinds the clock** — the Motion half of a gate whose other half is
+/// `project::tests::a_loaded_project_rewinds_the_clock_and_starts_a_fresh_history`.
+///
+/// The rewind reads like bookkeeping ("a new document starts at zero"), which is exactly how a
+/// line like that gets deleted by someone tidying up. It is not bookkeeping. `install` hands the
+/// pump a **brand-new `MotionCookPump`** — no ticks cooked, an empty checkpoint ring — and the
+/// pump decides between *advance* and *scrub* by comparing the tick it is asked for with the last
+/// one it cooked. Ask a fresh pump for tick 120 and it does not refuse and it does not start over:
+/// it **SCRUBS** there. So a clock left where the previous document had wandered to does not
+/// merely display the wrong number — it opens the loaded scene TWO SECONDS IN, with the snow
+/// already falling, where a boot opens on an empty sky.
+///
+/// That is the failure the removed `MotionTransport` assertion used to catch, restated at the
+/// level where it is still true.
+#[test]
+fn a_clock_that_was_not_rewound_opens_the_document_mid_scene() {
+    const FIXED_DT: f64 = 1.0 / 60.0;
+
+    // The editor's clock after two seconds of play — the session Ctrl+O walks into.
+    let mut playhead = ph2d_core::Playhead::new(FIXED_DT);
+    playhead.seek(2.0);
+    let inherited = crate::render_loop::motion_bridge::motion_tick(&playhead, FIXED_DT);
+    assert_eq!(inherited, 120, "two seconds of fixed ticks");
+
+    // The freshly installed document (what a load produces: a new pump, not one tick cooked)
+    // driven at that INHERITED tick.
+    let mut loaded = MotionState::new();
+    loaded.sinks = sinks_of(&loaded);
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&loaded.doc.graph, &loaded.registry);
+    loaded.pump.advance_or_scrub_scoped(
+        &loaded.doc.graph,
+        &loaded.registry,
+        &loaded.sinks,
+        inherited,
+        |t| t as f64 * FIXED_DT,
+        loaded.default_uv_rect,
+        loaded.default_size,
+        &scopes,
+    );
+
+    // …against the same document on a REWOUND clock: tick 0, the sky still empty (the premise
+    // of `the_snow_is_born_...`: `counts[0] == 0` — every flake is yet to be born).
+    let mut booted = MotionState::new();
+    run(&mut booted, 0);
+
+    assert!(
+        booted.pump.instances.is_empty(),
+        "a rewound clock opens on an EMPTY sky: {} instances",
+        booted.pump.instances.len()
+    );
+    assert!(
+        !loaded.pump.instances.is_empty(),
+        "an un-rewound clock opens the document with the snow already in the air - the load \
+         would hand the artist the scene MID-SCENE instead of at its start"
+    );
 }
 
 /// A document survives the trip through the project file: the graph the artist built comes

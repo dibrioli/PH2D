@@ -126,11 +126,22 @@ impl crate::App {
         }
     }
 
-    /// Ctrl+O: carrega um projeto do disco, substituindo a cena atual. Zera a fila de
-    /// undo (documento novo, histórico novo).
+    /// Ctrl+O: carrega o projeto do caminho da sessão (env `PH2D_PROJECT_PATH`).
     pub(crate) fn project_load(&mut self) {
-        let path = Self::project_path();
-        let bytes = match std::fs::read(&path) {
+        self.project_load_from(&Self::project_path());
+    }
+
+    /// O load de verdade, com o caminho **injetado** — substitui a cena atual e assenta a
+    /// sessão (relógio + histórico).
+    ///
+    /// O caminho é parâmetro (e não a env var) porque é isto que torna o load **dirigível
+    /// sem janela**: um `App` recém-construído tem `window`/`host`/`gfx` em `None` (o winit
+    /// só cria a janela no `resumed`), e todo passo daqui que depende de `gfx` já degrada
+    /// para no-op. Os gates em `tests` dirigem ESTA função — o corpo inteiro que o Ctrl+O
+    /// executa (o `project_load` acima só resolve o caminho) — e não uma cópia da decisão
+    /// posta num helper que ninguém chama.
+    pub(crate) fn project_load_from(&mut self, path: &str) {
+        let bytes = match std::fs::read(path) {
             Ok(b) => b,
             Err(e) => {
                 eprintln!("[proj] sem arquivo {path}: {e}");
@@ -148,6 +159,43 @@ impl crate::App {
             eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
             return;
         }
+        // ---- Daqui pra baixo o arquivo foi ACEITO. ----
+        //
+        // **A SESSÃO ESQUECE O DOCUMENTO ANTERIOR.** Este bloco fica colado na decisão de
+        // aceitar, e não lá no fim: entre o aceite e o esquecimento não sobra nenhum passo que
+        // dependa de `gfx`, então o que o gate headless observa é exatamente o que o app com
+        // janela faz. (O `MotionState::install` faz a MESMA lista pro runtime dele; a lição é
+        // a mesma — o que nomeia o documento antigo por id/bits/relógio não "fica velho", é
+        // ADOTADO por quem herdar o número.)
+        //
+        // **O relógio volta a zero — e PAUSA.** O Motion não tem transporte próprio (W4.T7): o
+        // `install` não pode se rebobinar sozinho, e o `Playhead` é do editor. Um playhead
+        // adiantado sobre uma simulação que nunca rodou mentiria sobre um estado que não existe
+        // (o pump entraria pelo caminho de SCRUB e abriria o documento no meio da nevasca —
+        // `motion_state_tests::a_clock_that_was_not_rewound_opens_the_document_mid_scene`). E o
+        // `rewind` NÃO pausa (`Playhead` doc: *"keeps rate + play state"*), então sem o `pause`
+        // o projeto recém-aberto ficava em t=0 por UM frame e saía correndo — o app pausa o
+        // próprio playhead no boot pela mesma razão (`main.rs`), e um load é o boot de um
+        // documento.
+        self.playhead.rewind();
+        self.playhead.pause();
+        self.undo = ProjectUndo::default(); // documento novo, histórico novo
+        self.flip_live_clear(); // …e o alvo vivo do anterior morreu junto
+        // **A TIMELINE.** Ela NÃO é persistida ainda (W4.T6/B5), e é justamente por isso que
+        // tem de morrer aqui: as bindings do documento anterior nomeiam entidades que o
+        // `apply_project` vai despawnar logo abaixo — e o `timeline_persist::upkeep` RECONECTA
+        // binding órfã por **hash do Name** (é o que cura delete+undo). Nomes se repetem entre
+        // projetos ("Layer 1", "sprite_001"), então, deixada viva, a animação do projeto A
+        // adotaria os objetos homônimos do projeto B no frame seguinte e passaria a dirigir a
+        // pose deles — uma animação que não está em arquivo nenhum, e com a fila de undo já
+        // zerada logo acima. O loader da própria timeline faz este mesmo reset pelo mesmo
+        // motivo (`timeline_persist::deserialize`: *"an undo after load cannot reach into the
+        // previous session"*). Perder a animação não-salva é o degradado HONESTO até a W4.T6.
+        self.timeline = ph2d_timeline::TimelineState::new();
+        self.timeline_intents.clear();
+        self.timeline_insert_key = false;
+        self.timeline_reveal_after_apply = false;
+        self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos
         self.materialize_assets(&file.assets);
         self.apply_project(&file.state);
         // Depois do mundo: os sprites já existem (com bits novos), e é pelo `PaintedDoc` que cada um
@@ -162,13 +210,19 @@ impl crate::App {
         {
             eprintln!("[proj] grafo de motion ilegivel, mantido o atual: {e:?}");
         }
-        // O relógio volta a zero. O Motion não tem transporte próprio (W4.T7) — o `install`
-        // não pode se rebobinar sozinho, e é aqui que a rebobinada pertence: um projeto
-        // recém-carregado começa no início, e um playhead adiantado sobre uma simulação que
-        // nunca rodou mentiria sobre um estado que não existe.
-        self.playhead.rewind();
-        self.undo = ProjectUndo::default();
-        self.flip_live_clear(); // documento novo: o alvo vivo do anterior morreu
+        // **O baseline do undo é a ÚLTIMA palavra — e sai do MUNDO, não do arquivo.**
+        //
+        // O `apply_project` armou o baseline com o estado do ARQUIVO; o `restore_painted_docs`
+        // mexeu no mundo DEPOIS disso (cada sprite pintado recebe uma textura individual NOVA
+        // — o `texture_id` do save morreu com o processo que o criou, e `Sprite` é componente
+        // registrado, logo está no snapshot). Mundo ≠ baseline. E o `post_frame_undo` roda no
+        // MESMO frame — o Ctrl+O é input, então `any_input_this_frame` é `true` — vê a
+        // diferença e registra um passo. Resultado: a fila "nova" nascia com um passo dentro,
+        // e o primeiro Ctrl+Z do artista não desfazia a ação dele: re-apontava cada sprite
+        // pintado para um `texture_id` morto (ou, na mesma sessão, para a textura do projeto
+        // ANTERIOR). Re-armar do mundo aqui é o que faz "histórico novo" ser verdade no FRAME,
+        // e não só no retorno desta função. [[feedback_tool_unit_green_integration_dead]]
+        self.undo_baseline = self.capture_project();
         eprintln!("[proj] carregado: {path}");
     }
 
@@ -244,93 +298,5 @@ impl crate::App {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::undo::ProjectState;
-    use ph2d_ecs::scene::WorldSnapshot;
-    use ph2d_vec_scene::{VecScene, rectangle};
-
-    /// O arquivo de projeto sobrevive ao round-trip postcard: geometria, versão e os
-    /// pixels embutidos voltam idênticos.
-    #[test]
-    fn project_file_round_trips_through_postcard() {
-        let mut vec = VecScene::new();
-        vec.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
-        // ADR-0114: o FlipDoc entra no ProjectState (3º campo) → o save o carrega
-        // de graça (mesma captura do undo).
-        let mut flip = ph2d_flip::FlipDoc::new();
-        flip.push_object("Anim");
-        let state = ProjectState {
-            world: WorldSnapshot::new(),
-            vec,
-            flip,
-        };
-        // O grafo de Motion viaja como TEXTO canônico — a forma real que o `MotionDoc`
-        // serializa (doc 56), não uma string inventada: se o formato mudar, o teste viaja
-        // junto em vez de mentir que sobreviveu.
-        let motion = ph2d_motion_doc::MotionDoc::new().to_text();
-        let file = ProjectFile {
-            state: state.clone(),
-            assets: vec![SavedAsset {
-                key: 16,
-                width: 2,
-                height: 2,
-                rgba: vec![10, 20, 30, 40],
-            }],
-            painted: Vec::new(),
-            motion: motion.clone(),
-        };
-        let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
-        let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
-        assert_eq!(ver, PROJECT_SCHEMA);
-        assert_eq!(back.state, state, "estado (mundo + geometria) preservado");
-        assert_eq!(back.assets.len(), 1);
-        assert_eq!(back.assets[0].key, 16);
-        assert_eq!(
-            back.assets[0].rgba,
-            vec![10, 20, 30, 40],
-            "pixels preservados"
-        );
-        assert_eq!(back.motion, motion, "o grafo de Motion preservado");
-        assert!(
-            ph2d_motion_doc::MotionDoc::from_text(&back.motion).is_ok(),
-            "…e ainda parseável do outro lado do arquivo"
-        );
-    }
-
-    /// **Estopim de esquema.** O `ProjectState` embute o `FlipDoc` inteiro, e o
-    /// postcard é POSICIONAL: qualquer campo novo em qualquer struct do Flip muda
-    /// o layout do arquivo de projeto. Sem bump, o loader aceita o arquivo velho
-    /// (a versão bate) e o lê com o layout novo — sai geometria embaralhada, não
-    /// um erro. Foi o que quase aconteceu na W4 (`holes`/`hide_stroke`).
-    ///
-    /// Esta tripla existe para que bumpar UM sem pensar nos OUTROS fique vermelho.
-    ///
-    /// O `PROJECT_SCHEMA` é 12 (e não o 9 que a linha Painter trazia sozinha) porque na
-    /// árvore integrada ele conta TODAS as quebras de layout, não só as de um módulo:
-    /// v3/v4 do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 e v8/v9 do
-    /// Flip (o balde, depois `selected` + `offset`), v10 do Vector (o `corner_radius` do
-    /// `VecVertex`), v11/v12 do Painter de novo (o MATERIAL do impasto —
-    /// `PaintedDocument.mats` —, e o mesmo `mats` mudando de FORMA: 4 → 7 bytes, a cor do
-    /// Wax). Cada linha subiu o mesmo contador por um motivo diferente — e o contador é um
-    /// só: o valor certo não existe em nenhum lado do conflito, ele se CONTA.
-    ///
-    /// A `VecScene` entrou no pin porque ela também vai EMBUTIDA no arquivo de projeto, e
-    /// o pin só protege quem ele nomeia: até aqui um campo novo em `VecVertex` teria
-    /// bumpado o `VEC_SCENE_SCHEMA_VERSION`, deixado o `PROJECT_SCHEMA` para trás, e
-    /// **este teste teria passado** — um projeto antigo seria lido com o layout novo, e o
-    /// postcard não tem nomes de campo para reclamar.
-    #[test]
-    fn a_flip_or_vec_schema_bump_must_bump_the_project_schema() {
-        assert_eq!(
-            (
-                PROJECT_SCHEMA,
-                ph2d_flip::FLIP_SCHEMA_VERSION,
-                ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
-            ),
-            (12, 5, 8),
-            "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
-             PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
-        );
-    }
-}
+#[path = "project_tests.rs"]
+mod tests;

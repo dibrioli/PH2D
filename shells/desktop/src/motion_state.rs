@@ -132,9 +132,11 @@ impl MotionState {
     ///   feedback). A fresh pump says what it means.
     /// - the **clock** goes back to 0 — but that is now the CALLER's job, not ours (W4.T7):
     ///   Motion keeps no transport of its own, and the editor's ONE `Playhead` is not a
-    ///   field we own. `App::project_load` rewinds it after a successful load. The reason
-    ///   stands: a playhead at t=40s into a graph that has never been cooked is not a
-    ///   resumption, it is a lie about a simulation that never ran.
+    ///   field we own. `App::project_load_from` rewinds it the moment a file is accepted, and
+    ///   both halves of that are gated: the rewind itself in `project::tests`, and what it buys
+    ///   us in `a_clock_that_was_not_rewound_opens_the_document_mid_scene`. The reason stands:
+    ///   a playhead at t=40s into a graph that has never been cooked is not a resumption, it is
+    ///   a lie about a simulation that never ran.
     /// - **undo** belongs to the document that was edited, not to the file that replaced it.
     /// - the **probe**, the **flow digests**, the panel's **selection** and the **level the
     ///   editor is standing in** (doc 57) all name things by id. A stale selection is the

@@ -610,7 +610,6 @@ fn park_strip_menu(host: &mut MockPanelHost, strip: ph2d_timeline::StripId) {
 #[test]
 fn every_strip_menu_row_raises_the_intent_its_label_promises() {
     use ph2d_editor_core::ids as c;
-    use ph2d_editor_core::panel::PanelHostInternal;
     use ph2d_timeline::{StripLoop, TimelineIntent as I};
 
     let _ = ph2d_panel_timeline::drain_intents();
@@ -728,7 +727,6 @@ fn park_lane_menu(host: &mut MockPanelHost, lane: usize) {
 #[test]
 fn every_lane_menu_row_raises_the_intent_its_label_promises() {
     use ph2d_editor_core::ids as c;
-    use ph2d_editor_core::panel::PanelHostInternal;
     use ph2d_timeline::{LaneMode, TimelineIntent as I};
 
     let _ = ph2d_panel_timeline::drain_intents();

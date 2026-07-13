@@ -188,7 +188,6 @@ fn the_bucket_widgets_appear_only_in_fill_mode() {
 #[test]
 fn every_number_box_has_a_registered_range() {
     use ph2d_editor_core::interaction::InteractiveState;
-    use ph2d_editor_core::panel::PanelHostInternal; // traz o `store()`
     let host = MockPanelHost::with_panel::<FlipPanel>();
     let store = host.store();
 

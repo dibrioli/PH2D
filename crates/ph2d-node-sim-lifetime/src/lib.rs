@@ -108,12 +108,12 @@ fn reap(s: &Stream, life: f32, variance: f32, seed: u32) -> Stream {
     // The survivors, in their original order (identity is order-independent, but the render is
     // not: reshuffling the set every tick would make every downstream index-based node flicker).
     let mut keep: Vec<usize> = Vec::with_capacity(n);
-    let mut lifes: Vec<f32> = Vec::with_capacity(n);
+    let mut lives: Vec<f32> = Vec::with_capacity(n);
     for i in 0..n {
         let span = life_of(ids[i] as u32, life, variance, seed);
         if age[i] < span {
             keep.push(i);
-            lifes.push((age[i] / span).clamp(0.0, 1.0)); // CLAMP-OK: fraction of a life
+            lives.push((age[i] / span).clamp(0.0, 1.0)); // CLAMP-OK: fraction of a life
         }
     }
 
@@ -124,7 +124,7 @@ fn reap(s: &Stream, life: f32, variance: f32, seed: u32) -> Stream {
         }
         out.set(name.clone(), gather(col, &keep));
     }
-    out.set("life", Column::Scalar(lifes));
+    out.set("life", Column::Scalar(lives));
     out
 }
 

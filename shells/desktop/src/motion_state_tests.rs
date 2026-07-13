@@ -96,7 +96,7 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         .cook(&state.doc.graph, &state.registry, snow, 4.0)
         .unwrap();
     let s = out[0].as_stream();
-    let (ages, lifes) = (
+    let (ages, lives) = (
         match s.get("age") {
             Some(Column::Scalar(v)) => v.clone(),
             _ => panic!("the flakes have no age"),
@@ -113,7 +113,7 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         ages.iter().cloned().fold(f32::MIN, f32::max)
     );
     assert!(
-        lifes.iter().all(|t| (0.0..=1.0).contains(t)),
+        lives.iter().all(|t| (0.0..=1.0).contains(t)),
         "the life fraction stays in [0,1]"
     );
     // The colour is DRIVEN by that fraction: a young flake and an old one are not the same
@@ -138,7 +138,7 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         _ => panic!("the shrink never wrote a size"),
     };
     let pick = |cmp: fn(&f32, &f32) -> std::cmp::Ordering| {
-        lifes
+        lives
             .iter()
             .enumerate()
             .max_by(|a, b| cmp(a.1, b.1))

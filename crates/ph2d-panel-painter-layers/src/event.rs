@@ -21,10 +21,10 @@ use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BL
 /// Dropdown option-id decoders + the dropdown-option routing table (split out for the LOC cap).
 mod dab_gizmo;
 mod decode;
+mod impasto_light_picker;
 mod option_route;
 mod picker;
 mod ramp_picker;
-mod impasto_light_picker;
 mod shape_layer_picker;
 mod shape_ramp_picker;
 

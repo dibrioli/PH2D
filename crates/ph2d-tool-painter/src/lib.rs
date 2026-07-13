@@ -65,11 +65,10 @@ pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
-    ImpastoLight, LightRig, MAX_IMPASTO_LIGHTS,
-    DEFORM_TEMPERAMENT_TRANSFORM, EllipseOverlay, LineCornerGizmo, LineDimensions, LineOverlay,
-    MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS, PainterTool, PolygonOverlay, SelectionGizmoView,
-    StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo,
-    brush_falloff_weight_at, set_pending_select_mods,
+    DEFORM_TEMPERAMENT_TRANSFORM, EllipseOverlay, ImpastoLight, LightRig, LineCornerGizmo,
+    LineDimensions, LineOverlay, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS,
+    PainterTool, PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge,
+    TangentHandles, TransformGizmo, brush_falloff_weight_at, set_pending_select_mods,
 };
 pub use undo::{DEFAULT_MAX_DEPTH, UndoController};
 

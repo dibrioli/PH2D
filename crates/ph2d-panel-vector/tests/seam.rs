@@ -539,7 +539,6 @@ fn delete_node_button_click_forwards_to_the_bus_for_the_shell() {
 /// nasceram vivos, e uma seção nova sem a marca sai vermelha.
 #[test]
 fn every_section_header_is_registered_as_collapsible() {
-    use ph2d_editor_core::panel::PanelHostInternal;
     let host = MockPanelHost::with_panel::<VectorPanel>();
     assert_eq!(
         ids::VECTOR_SECTIONS.len(),

@@ -98,6 +98,8 @@
 - [Gate de AUSÊNCIA precisa do irmão de PRESENÇA](feedback_absence_gate_needs_a_presence_sibling.md) — "a cor não vaza" fica verde com o fill INVISÍVEL; e varredura só vale se a coisa medida está em quadro
 - [Booleana deixa lasca — e peça sem área pinta uma LINHA](feedback_a_boolean_leaves_slivers_and_a_zero_area_piece_paints_a_line.md) — subtrair uma curva dela mesma após round-trip deixa 144 verts de área 1e-13; `assert!(area > 0)` fica VERDE com o bug vivo — o oráculo é a densidade
 - ["Funciona e depois esquece" = recook varre o autorado](feedback_works_then_silently_forgets_recook_wipes_authored_state.md) — campo autorado dentro de geometria DERIVADA some no recook do dono; e gate de MODO ≠ gate de POLÍTICA
+- [Tente CONSTRUIR o harness antes de dizer que não dá](feedback_try_to_build_the_harness_before_declaring_it_impossible.md) — "o App exige janela" era falso: ele nasce sem ela
+- [O que sobrevive a um load é ADOTADO](feedback_what_survives_a_load_is_adopted_not_stale.md) — cura por nome/id/relógio vira contaminação na troca de documento
 - [Regra que não OBSERVA não dispara](feedback_a_rule_that_never_observes_cannot_fire.md) — HR-13 somava declarações no boot; editor chegou a 4351 MB sem piscar
 - [Faça a MESMA pergunta ao outro lado](feedback_ask_the_same_question_of_the_other_side.md) — gate do editor verde → mesmo gate no runtime nasceu VERMELHO (65,9 MB/música)
 - [Mesma conta, escrituração diferente = 1 ulp](feedback_same_math_different_bookkeeping_diverges.md) — residente faz wrap do cursor, stream não fazia; gate byte-idêntico pega, "soa igual" não

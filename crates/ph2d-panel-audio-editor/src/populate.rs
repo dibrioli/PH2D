@@ -25,6 +25,13 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
+/// A plain, hittable button — what every clickable id on this panel registers as.
+fn button() -> InteractiveState {
+    InteractiveState::Button {
+        state: ButtonState::Normal,
+    }
+}
+
 pub(crate) fn populate(store: &mut WidgetStore) {
     populate_sections(store);
 
@@ -56,103 +63,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // between the handles fall through to the canvas tool. `Plain` = hittable no-op.
     store.register(ids::AUDIO_OVERLAY_PANEL, InteractiveState::Plain);
 
-    // Every transport control + Load/Export is a plain Button so the panel's
-    // apply_event branch fires on Click. Show/hide is the TopBar
-    // `TOPBAR_AUDIO_EDITOR` pill; the dock drag/resize reuse the shared `INSP_*`
-    // handles (registered by the Inspector), so none are needed here.
-    let button = || InteractiveState::Button {
-        state: ButtonState::Normal,
-    };
-    for id in [
-        AEDIT_CLOSE,
-        AEDIT_PLAY,
-        AEDIT_STOP,
-        AEDIT_LOOP,
-        AEDIT_LOAD,
-        AEDIT_EXPORT,
-        AEDIT_BATCH_LUFS,
-        // Edit ops (W2).
-        AEDIT_UNDO,
-        AEDIT_REDO,
-        AEDIT_NORMALIZE,
-        AEDIT_NORM_LUFS,
-        AEDIT_REVERSE,
-        AEDIT_DC,
-        AEDIT_INVERT,
-        AEDIT_MONO,
-        AEDIT_GAIN_DOWN,
-        AEDIT_GAIN_UP,
-        // The Edit toolbar: the three tools (a group — exactly one armed), Split at the
-        // playhead, Clear Cuts. Registered here or they are painted, clickable-looking and DEAD
-        // in the app while every seam test stays green (`no_dead_buttons`).
-        AEDIT_TOOL_SELECT,
-        AEDIT_TOOL_MOVE,
-        AEDIT_TOOL_SCALE,
-        AEDIT_SPLIT_PLAYHEAD,
-        AEDIT_CUTS_CLEAR,
-        // Range ops (block 2b) + the clipboard (W2).
-        AEDIT_TRIM,
-        AEDIT_CUT,
-        AEDIT_COPY,
-        AEDIT_PASTE,
-        AEDIT_SILENCE,
-        AEDIT_FADE_IN,
-        AEDIT_FADE_OUT,
-        // Effects rack (W3 block 3a): selector + Apply.
-        AEDIT_FX_PREV,
-        AEDIT_FX_NEXT,
-        AEDIT_FX_RESET,
-        AEDIT_FX_APPLY,
-        AEDIT_FX_CANCEL,
-        // Effects chain (W3 block 3b): edit the chain + the global A/B.
-        AEDIT_FX_ADD,
-        AEDIT_FX_REMOVE,
-        AEDIT_FX_UP,
-        AEDIT_FX_DOWN,
-        AEDIT_FX_BYPASS,
-        // Chain presets (W3): factory selector + Apply · Save · Load.
-        AEDIT_PRESET_PREV,
-        AEDIT_PRESET_NEXT,
-        AEDIT_PRESET_APPLY,
-        AEDIT_PRESET_SAVE,
-        AEDIT_PRESET_LOAD,
-        // Loop points (W6): Set from selection · Clear · bake the seam (ADR-0119).
-        AEDIT_LOOP_SET,
-        AEDIT_LOOP_CLEAR,
-        AEDIT_LOOP_BAKE,
-        // Markers (W6): Add at playhead · Delete nearest.
-        AEDIT_MARK_ADD,
-        AEDIT_MARK_DEL,
-        AEDIT_SPLIT,
-        // Delivery: one file per piece, adopted as a variation set.
-        AEDIT_EXPORT_PIECES,
-        // Variation containers (W6): Add · Add Folder · Remove · Play · strategy
-        // selector · Weight ÷2/×2 · Save · Load.
-        AEDIT_VAR_ADD,
-        AEDIT_VAR_ADD_FOLDER,
-        AEDIT_VAR_REMOVE,
-        AEDIT_VAR_PLAY,
-        AEDIT_VAR_STRATEGY_PREV,
-        AEDIT_VAR_STRATEGY_NEXT,
-        AEDIT_VAR_WEIGHT_DOWN,
-        AEDIT_VAR_WEIGHT_UP,
-        AEDIT_VAR_SAVE,
-        AEDIT_VAR_LOAD,
-        // Delivery (W6): the codec selector. It drives the cost readout AND the export.
-        AEDIT_CODEC_PREV,
-        AEDIT_CODEC_NEXT,
-        // The Convolution Reverb's room (W6): an IR is a resource, not a parameter.
-        AEDIT_FX_LOAD_IR,
-        // Take a variation out of the pick without deleting it.
-        AEDIT_VAR_ENABLED,
-        // Spectral (W5): the view toggle and the two repair tools.
-        AEDIT_SPEC_VIEW,
-        AEDIT_SPEC_REPAIR,
-        AEDIT_SPEC_LEARN,
-        AEDIT_SPEC_DENOISE,
-    ] {
-        store.register(id, button());
-    }
+    register_buttons(store);
 
     // Denoise Amount — normalized 0..1.
     store.register(
@@ -265,5 +176,108 @@ fn populate_sections(store: &mut WidgetStore) {
         AEDIT_SEC_DELIVERY,
     ] {
         store.set_collapsed(id, true);
+    }
+}
+
+/// Register every plain **Button** on the panel.
+///
+/// Split out of `populate` under the panel fn-LOC cap (HR-18) — and it is the piece that grows
+/// with every feature, so it is the one that should own a function. A button missing from this
+/// list is **painted, clickable-looking and DEAD in the app** while every seam test stays green;
+/// `tests/no_dead_buttons.rs` is the gate that says so.
+fn register_buttons(store: &mut WidgetStore) {
+    // Every transport control + Load/Export is a plain Button so the panel's
+    // apply_event branch fires on Click. Show/hide is the TopBar
+    // `TOPBAR_AUDIO_EDITOR` pill; the dock drag/resize reuse the shared `INSP_*`
+    // handles (registered by the Inspector), so none are needed here.
+    for id in [
+        AEDIT_CLOSE,
+        AEDIT_PLAY,
+        AEDIT_STOP,
+        AEDIT_LOOP,
+        AEDIT_LOAD,
+        AEDIT_EXPORT,
+        AEDIT_BATCH_LUFS,
+        // Edit ops (W2).
+        AEDIT_UNDO,
+        AEDIT_REDO,
+        AEDIT_NORMALIZE,
+        AEDIT_NORM_LUFS,
+        AEDIT_REVERSE,
+        AEDIT_DC,
+        AEDIT_INVERT,
+        AEDIT_MONO,
+        AEDIT_GAIN_DOWN,
+        AEDIT_GAIN_UP,
+        // The Edit toolbar: the three tools (a group — exactly one armed), Split at the
+        // playhead, Clear Cuts. Registered here or they are painted, clickable-looking and DEAD
+        // in the app while every seam test stays green (`no_dead_buttons`).
+        AEDIT_TOOL_SELECT,
+        AEDIT_TOOL_MOVE,
+        AEDIT_TOOL_SCALE,
+        AEDIT_SPLIT_PLAYHEAD,
+        AEDIT_CUTS_CLEAR,
+        // Range ops (block 2b) + the clipboard (W2).
+        AEDIT_TRIM,
+        AEDIT_CUT,
+        AEDIT_COPY,
+        AEDIT_PASTE,
+        AEDIT_SILENCE,
+        AEDIT_FADE_IN,
+        AEDIT_FADE_OUT,
+        // Effects rack (W3 block 3a): selector + Apply.
+        AEDIT_FX_PREV,
+        AEDIT_FX_NEXT,
+        AEDIT_FX_RESET,
+        AEDIT_FX_APPLY,
+        AEDIT_FX_CANCEL,
+        // Effects chain (W3 block 3b): edit the chain + the global A/B.
+        AEDIT_FX_ADD,
+        AEDIT_FX_REMOVE,
+        AEDIT_FX_UP,
+        AEDIT_FX_DOWN,
+        AEDIT_FX_BYPASS,
+        // Chain presets (W3): factory selector + Apply · Save · Load.
+        AEDIT_PRESET_PREV,
+        AEDIT_PRESET_NEXT,
+        AEDIT_PRESET_APPLY,
+        AEDIT_PRESET_SAVE,
+        AEDIT_PRESET_LOAD,
+        // Loop points (W6): Set from selection · Clear · bake the seam (ADR-0119).
+        AEDIT_LOOP_SET,
+        AEDIT_LOOP_CLEAR,
+        AEDIT_LOOP_BAKE,
+        // Markers (W6): Add at playhead · Delete nearest.
+        AEDIT_MARK_ADD,
+        AEDIT_MARK_DEL,
+        AEDIT_SPLIT,
+        // Delivery: one file per piece, adopted as a variation set.
+        AEDIT_EXPORT_PIECES,
+        // Variation containers (W6): Add · Add Folder · Remove · Play · strategy
+        // selector · Weight ÷2/×2 · Save · Load.
+        AEDIT_VAR_ADD,
+        AEDIT_VAR_ADD_FOLDER,
+        AEDIT_VAR_REMOVE,
+        AEDIT_VAR_PLAY,
+        AEDIT_VAR_STRATEGY_PREV,
+        AEDIT_VAR_STRATEGY_NEXT,
+        AEDIT_VAR_WEIGHT_DOWN,
+        AEDIT_VAR_WEIGHT_UP,
+        AEDIT_VAR_SAVE,
+        AEDIT_VAR_LOAD,
+        // Delivery (W6): the codec selector. It drives the cost readout AND the export.
+        AEDIT_CODEC_PREV,
+        AEDIT_CODEC_NEXT,
+        // The Convolution Reverb's room (W6): an IR is a resource, not a parameter.
+        AEDIT_FX_LOAD_IR,
+        // Take a variation out of the pick without deleting it.
+        AEDIT_VAR_ENABLED,
+        // Spectral (W5): the view toggle and the two repair tools.
+        AEDIT_SPEC_VIEW,
+        AEDIT_SPEC_REPAIR,
+        AEDIT_SPEC_LEARN,
+        AEDIT_SPEC_DENOISE,
+    ] {
+        store.register(id, button());
     }
 }

@@ -294,48 +294,11 @@ pub(crate) fn apply_event(
         if let Some(outcome) = asset_click(id) {
             return outcome;
         }
-        // Effects rack selector: cycle the SELECTED stage's kind. Its parameters are
-        // re-seeded with the new effect's neutral defaults, so the stage is a no-op
-        // again until a slider moves.
-        if id == AEDIT_FX_PREV {
-            snapshot::cycle_fx_kind(-1);
-            return EventOutcome::Consumed;
-        }
-        if id == AEDIT_FX_NEXT {
-            snapshot::cycle_fx_kind(1);
-            return EventOutcome::Consumed;
-        }
-        // Reset the SELECTED effect to its neutral defaults (icon beside the name).
-        if id == AEDIT_FX_RESET {
-            snapshot::reset_fx_params();
-            return EventOutcome::Consumed;
-        }
-        // Chain editing (W3 block 3b). Add/Remove/Up/Down act on the SELECTED stage.
-        if id == AEDIT_FX_ADD {
-            snapshot::add_fx_stage();
-            return EventOutcome::Consumed;
-        }
-        if id == AEDIT_FX_REMOVE {
-            // The chain never empties (`remove_fx_stage` re-seeds a neutral stage),
-            // but the panel dims Remove at one stage — refuse it here too, so the
-            // seam agrees with the dim (2026-07-09 audit).
-            if snapshot::fx_stage_count() > 1 {
-                snapshot::remove_fx_stage();
-            }
-            return EventOutcome::Consumed;
-        }
-        if id == AEDIT_FX_UP {
-            snapshot::move_fx_stage(-1);
-            return EventOutcome::Consumed;
-        }
-        if id == AEDIT_FX_DOWN {
-            snapshot::move_fx_stage(1);
-            return EventOutcome::Consumed;
-        }
-        // Global A/B: mute the whole chain and hear the dry clip, keeping the chain.
-        if id == AEDIT_FX_BYPASS {
-            snapshot::toggle_fx_bypass();
-            return EventOutcome::Consumed;
+        // Effects-rack chrome (selector · reset · add/remove/move · bypass) — extracted so
+        // `apply_event` stays under the panel fn-LOC cap (HR-18). It is the cluster that grows
+        // every time the rack does, so it is the one that should own a function.
+        if let Some(outcome) = rack_click(id) {
+            return outcome;
         }
         // Chain presets. The selector just browses; Apply/Save/Load arm one-shots the
         // shell drains (it owns the factory table + the effect-name ↔ kind mapping).
@@ -456,4 +419,56 @@ pub(crate) fn apply_event(
         return EventOutcome::Consumed;
     }
     EventOutcome::Ignored
+}
+
+/// Effects-rack chrome clicks: the kind selector, Reset, Add/Remove, Up/Down, and the global
+/// Bypass. `None` for any other id.
+///
+/// Extracted from `apply_event` under the panel fn-LOC cap, and mirrors the `asset_click` /
+/// `spectral_click` / `tool_click` handlers beside it.
+fn rack_click(id: NodeId) -> Option<EventOutcome> {
+    // Effects rack selector: cycle the SELECTED stage's kind. Its parameters are
+    // re-seeded with the new effect's neutral defaults, so the stage is a no-op
+    // again until a slider moves.
+    if id == AEDIT_FX_PREV {
+        snapshot::cycle_fx_kind(-1);
+        return Some(EventOutcome::Consumed);
+    }
+    if id == AEDIT_FX_NEXT {
+        snapshot::cycle_fx_kind(1);
+        return Some(EventOutcome::Consumed);
+    }
+    // Reset the SELECTED effect to its neutral defaults (icon beside the name).
+    if id == AEDIT_FX_RESET {
+        snapshot::reset_fx_params();
+        return Some(EventOutcome::Consumed);
+    }
+    // Chain editing (W3 block 3b). Add/Remove/Up/Down act on the SELECTED stage.
+    if id == AEDIT_FX_ADD {
+        snapshot::add_fx_stage();
+        return Some(EventOutcome::Consumed);
+    }
+    if id == AEDIT_FX_REMOVE {
+        // The chain never empties (`remove_fx_stage` re-seeds a neutral stage),
+        // but the panel dims Remove at one stage — refuse it here too, so the
+        // seam agrees with the dim (2026-07-09 audit).
+        if snapshot::fx_stage_count() > 1 {
+            snapshot::remove_fx_stage();
+        }
+        return Some(EventOutcome::Consumed);
+    }
+    if id == AEDIT_FX_UP {
+        snapshot::move_fx_stage(-1);
+        return Some(EventOutcome::Consumed);
+    }
+    if id == AEDIT_FX_DOWN {
+        snapshot::move_fx_stage(1);
+        return Some(EventOutcome::Consumed);
+    }
+    // Global A/B: mute the whole chain and hear the dry clip, keeping the chain.
+    if id == AEDIT_FX_BYPASS {
+        snapshot::toggle_fx_bypass();
+        return Some(EventOutcome::Consumed);
+    }
+    None
 }

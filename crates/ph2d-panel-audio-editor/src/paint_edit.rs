@@ -23,6 +23,10 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{Spacing, Theme};
 use ph2d_vector::VectorScene;
 
+/// The toolbar lays its rows out three across. A **count**, not a dimension — there is no design
+/// token for "how many buttons fit on a line".
+const TOOL_COLS: f32 = 3.0; // LITERAL-PX-OK: a column count, not a design value
+
 /// The toolbar at the top of the section: the tools, then the clipboard, then the structure.
 ///
 /// The three tools are a **group**: exactly one is armed, and clicking one arms it rather than
@@ -40,7 +44,7 @@ fn paint_toolbar(
     hit_index: &mut ClippedHits,
 ) -> f32 {
     let gap = Spacing::Sm.px();
-    let third = ((w - gap * 2.0) / 3.0).max(1.0);
+    let third = ((w - gap * (TOOL_COLS - 1.0)) / TOOL_COLS).max(1.0);
     let half = ((w - gap) * 0.5).max(1.0);
     let armed = tool_state::tool();
 

@@ -14,6 +14,7 @@
 //! e <from_id> <from_port> <to_id> <to_port> <fwd|pre>
 //! p <id> <param_name> <value>
 //! x <id> <text_param_name> <formula...>          (v2 only)
+//! d <id> <param_name> <src_id> <src_port>        (v3 only)
 //! [layout]
 //! l <id> <x> <y>
 //! ```
@@ -27,13 +28,20 @@
 //! convention as the backdrop `b` title in `ph2d-motion-doc`). Formulas are single-line;
 //! leading/trailing line whitespace is trimmed on load (lines are trimmed).
 //!
+//! The `d` record is a **driven param** (doc 58): the param reads a node's output instead of
+//! a constant. It is an EDGE — it just lands on a name rather than a port index — so it is
+//! semantic, sits above `[layout]`, and is re-validated on load like any edge (a corrupt file
+//! that closes a cycle through a param wire is rejected).
+//!
 //! Versioning: `p` is part of the **frozen `v1` grammar** (pre-W2.T4). The `x` record is a
 //! **post-freeze** record kind, so — per the versioning policy — it bumps the header to
 //! `v2`: `to_text` emits `v2` **iff** the graph carries a (non-empty) text param, else
 //! `v1` (byte-identical for text-param-free graphs). `from_text` accepts both `v1` and
 //! `v2`. This is the isolation-preserving text-param channel (docs/Motion Nodes/32) — the
 //! frozen NODE contract (`NodeManifest`/`NodeOp`/`OpResolver`) is untouched; only the
-//! serialization grammar gains an additive, versioned record.
+//! serialization grammar gains an additive, versioned record. `d` follows the same policy one
+//! step up: `v3` **iff** the graph carries a driven param, else the version it would have had.
+//! A graph that never drove a param serializes **byte for byte** as it always did.
 
 use crate::graph::{Edge, EdgeError, Graph, NodeId, Pos};
 use std::fmt::Write as _;
@@ -48,7 +56,14 @@ pub fn to_text(graph: &Graph) -> String {
         .node_text_params()
         .values()
         .any(|m| m.values().any(|v| !v.is_empty()));
-    let mut out = String::from(if has_text { "v2\n" } else { "v1\n" });
+    // A driven param (doc 58) is a post-v2 record kind, so it bumps the header again — and
+    // only then. Nothing about a graph that has none of them changes by one byte.
+    let has_driven = !graph.all_param_sources().is_empty();
+    let mut out = String::from(match (has_driven, has_text) {
+        (true, _) => "v3\n",
+        (false, true) => "v2\n",
+        (false, false) => "v1\n",
+    });
 
     let mut nodes: Vec<_> = graph.nodes().iter().collect();
     nodes.sort_by_key(|n| n.id.0);
@@ -85,6 +100,13 @@ pub fn to_text(graph: &Graph) -> String {
         }
     }
 
+    // Driven params (semantic) — a nested `BTreeMap`, so ids and names are already sorted.
+    for (id, sources) in graph.all_param_sources() {
+        for (name, (src, port)) in sources {
+            let _ = writeln!(out, "d {} {} {} {}", id.0, name, src.0, port);
+        }
+    }
+
     out.push_str("[layout]\n");
     // `layout()` is a BTreeMap, already sorted by id.
     for (id, pos) in graph.layout() {
@@ -112,7 +134,7 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut lines = text.lines().map(str::trim).filter(|l| !l.is_empty());
 
     match lines.next() {
-        Some("v1") | Some("v2") => {}
+        Some("v1") | Some("v2") | Some("v3") => {}
         _ => return Err(ParseError::BadHeader),
     }
 
@@ -121,6 +143,7 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut edge_recs: Vec<Edge> = Vec::new();
     let mut param_recs: Vec<(NodeId, String, f32)> = Vec::new();
     let mut text_param_recs: Vec<(NodeId, String, String)> = Vec::new();
+    let mut driven_recs: Vec<(NodeId, String, NodeId, u16)> = Vec::new();
     let mut layout_recs: Vec<(NodeId, Pos)> = Vec::new();
     let mut seen_ids = std::collections::BTreeSet::new();
 
@@ -185,6 +208,16 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
                 }
                 param_recs.push((id, name.to_string(), value));
             }
+            Some("d") => {
+                let id = NodeId(parse(&mut tok, line)?);
+                let name = tok.next().ok_or_else(|| ParseError::BadLine(line.into()))?;
+                let src = NodeId(parse(&mut tok, line)?);
+                let port: u16 = parse(&mut tok, line)?;
+                if tok.next().is_some() {
+                    return Err(ParseError::BadLine(line.into()));
+                }
+                driven_recs.push((id, name.to_string(), src, port));
+            }
             Some("l") => {
                 let id = NodeId(parse(&mut tok, line)?);
                 let x: f32 = parse(&mut tok, line)?;
@@ -217,6 +250,17 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
             id.0
         )));
     }
+    // Same for `d` (driven param) — on BOTH ends. A source pointing at a node that is not in
+    // the file is a wire to nowhere, and it would cook `Empty` forever rather than fail.
+    if let Some((id, _, src, _)) = driven_recs
+        .iter()
+        .find(|(id, _, src, _)| !seen_ids.contains(id) || !seen_ids.contains(src))
+    {
+        return Err(ParseError::BadLine(format!(
+            "d record for unknown node id {} or source {}",
+            id.0, src.0
+        )));
+    }
 
     let mut graph = Graph::new();
     for (id, name) in node_recs {
@@ -230,6 +274,13 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     }
     for (id, name, value) in text_param_recs {
         graph.set_text_param(id, name, value);
+    }
+    // Re-validated like an edge: a hand-edited (or corrupt) file that closes a cycle through
+    // a param wire is REJECTED here, not discovered by the cook blowing the stack.
+    for (id, name, src, port) in driven_recs {
+        graph
+            .drive_param(id, name, (src, port))
+            .map_err(ParseError::Edge)?;
     }
     for (id, pos) in layout_recs {
         graph.set_pos(id, pos);
@@ -418,5 +469,48 @@ mod tests {
             from_text(text),
             Err(ParseError::Edge(EdgeError::WouldCycle))
         ));
+    }
+
+    // ── Driven params (doc 58) ──────────────────────────────────────────────
+
+    /// A driven param round-trips, and it bumps the header to `v3` — **only** when there is
+    /// one. A graph that never drove a param must serialize byte for byte as it always did,
+    /// or every existing document in the repo changes on its next save.
+    #[test]
+    fn a_driven_param_round_trips_and_only_then_is_the_file_v3() {
+        let mut g = Graph::new();
+        let a = g.add_node("a");
+        let b = g.add_node("b");
+        assert!(
+            to_text(&g).starts_with("v1\n"),
+            "no driven param, no version bump - the old file is untouched"
+        );
+
+        g.drive_param(b, "strength", (a, 0)).unwrap();
+        let text = to_text(&g);
+        assert!(text.starts_with("v3\n"));
+        assert!(
+            text.contains("d 1 strength 0 0\n"),
+            "the record names the param, not a port index: {text}"
+        );
+        let back = from_text(&text).unwrap();
+        assert_eq!(back, g, "the document survives the round trip");
+
+        // …and pulling the wire off takes the version back down with it.
+        g.undrive_param(b, "strength");
+        assert!(to_text(&g).starts_with("v1\n"));
+    }
+
+    /// A `d` record is an EDGE, so a hand-forged file cannot use one to smuggle in a cycle
+    /// (which the cook would meet as a stack overflow) or a wire to a node that is not there.
+    #[test]
+    fn a_forged_driven_param_cannot_cycle_or_point_at_nothing() {
+        let cyclic = "v3\nn 0 a\nn 1 b\ne 0 0 1 0 fwd\nd 0 k 1 0\n[layout]\n";
+        assert!(matches!(
+            from_text(cyclic),
+            Err(ParseError::Edge(EdgeError::WouldCycle))
+        ));
+        let phantom = "v3\nn 0 a\nd 0 k 7 0\n[layout]\n";
+        assert!(matches!(from_text(phantom), Err(ParseError::BadLine(_))));
     }
 }

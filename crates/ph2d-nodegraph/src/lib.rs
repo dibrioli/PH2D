@@ -36,6 +36,7 @@ pub mod effect;
 pub mod format;
 pub mod graph;
 pub mod node;
+pub mod param_source;
 pub mod port;
 pub mod time;
 pub mod value;

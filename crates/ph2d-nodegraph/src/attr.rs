@@ -29,6 +29,15 @@ use std::collections::BTreeMap;
 /// `motion.scale` at `amount = 1` blew every quad up by 2.5×; doc 39).
 pub const SIZE_IDENTITY: [f32; 2] = [1.0, 1.0];
 
+/// The name of the reserved **value** column — the scalar a `value.*` node emits and a
+/// consumer reads (`motion.drive`'s second input, a driven param, doc 58).
+///
+/// It was a `const VALUE_COL: &str = "v"` re-declared privately in every value node and
+/// every consumer of one. That is a convention held together by everyone remembering it;
+/// naming it here makes it a fact. (The node crates keep their local aliases — retyping the
+/// letter in 30 crates is churn without a gate — but anything NEW reads it from here.)
+pub const VALUE_COLUMN: &str = "v";
+
 /// A typed column of per-element values, stored SoA.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Column {

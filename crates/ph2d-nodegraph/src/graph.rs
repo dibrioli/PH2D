@@ -145,6 +145,15 @@ pub struct Graph {
     /// `Clone`/`PartialEq` (undo) and the textual format (the `x` record, which bumps
     /// the header to `v2` — [`crate::format`]).
     node_text_params: BTreeMap<NodeId, BTreeMap<String, String>>,
+    /// **Driven parameters** — a param fed by a node's output instead of a constant
+    /// ([`crate::param_source`], doc 58). The same additive move as `node_text_params`,
+    /// for the same reason: `NodeManifest.inputs` is `&'static` (ADR-0039), so a node
+    /// cannot grow a port, and a *driven* param is not a port — it is an **edge the
+    /// manifest does not know about**, which is document state, which lives here.
+    ///
+    /// It is a real dependency: [`Graph::would_cycle`] walks it, the cook cooks it, and
+    /// [`Graph::remove_node`] cleans it up on both sides.
+    param_sources: crate::param_source::All,
     next_id: u32,
 }
 
@@ -235,6 +244,14 @@ impl Graph {
         self.layout.remove(&id);
         self.node_params.remove(&id);
         self.node_text_params.remove(&id);
+        // Both sides: the params IT drove, and the params driven BY it. A source left
+        // pointing at a deleted node would cook as `Empty` forever — a socket wired to a
+        // ghost.
+        self.param_sources.remove(&id);
+        for sources in self.param_sources.values_mut() {
+            sources.retain(|_, (src, _)| *src != id);
+        }
+        self.param_sources.retain(|_, s| !s.is_empty());
         true
     }
 
@@ -312,6 +329,68 @@ impl Graph {
         &self.node_text_params
     }
 
+    // ── Driven params (doc 58) ──────────────────────────────────────────────
+    //
+    // The verbs are deliberately shaped like the edge verbs (`connect` / `disconnect`),
+    // because that is what they are: an edge onto a parameter. There is no separate
+    // "promote" — the wire IS the promotion, and pulling it off takes the socket away
+    // (doc 58; the derived-interface rule of doc 57 §3, applied a second time).
+
+    /// **Drive parameter `param` of `node` from `src`.** Replaces any previous source.
+    ///
+    /// Enforces the same structural invariants a `connect` does — both endpoints exist,
+    /// and it does not close a cycle — because it IS a dependency: the cook will recurse
+    /// through it. (A param has no *"already connected"* case: setting a second source
+    /// replaces the first, exactly as re-plugging an input socket would.)
+    ///
+    /// The param NAME is not checked here (the graph holds no manifests, the same reason
+    /// `set_param` cannot check it); `Graph::validate` surfaces an unknown one.
+    pub fn drive_param(
+        &mut self,
+        node: NodeId,
+        param: impl Into<String>,
+        src: crate::param_source::Source,
+    ) -> Result<(), EdgeError> {
+        if !self.contains(node) || !self.contains(src.0) {
+            return Err(EdgeError::UnknownNode);
+        }
+        if src.0 == node || self.would_cycle(src.0, node) {
+            return Err(EdgeError::WouldCycle);
+        }
+        self.param_sources
+            .entry(node)
+            .or_default()
+            .insert(param.into(), src);
+        Ok(())
+    }
+
+    /// Stop driving `param` — the node goes back to its override, else its manifest
+    /// default. Returns the source that was there. The socket vanishes with it.
+    pub fn undrive_param(
+        &mut self,
+        node: NodeId,
+        param: &str,
+    ) -> Option<crate::param_source::Source> {
+        let sources = self.param_sources.get_mut(&node)?;
+        let was = sources.remove(param);
+        if sources.is_empty() {
+            self.param_sources.remove(&node);
+        }
+        was
+    }
+
+    /// What drives `node`'s params — sorted by param name, which is what makes socket `k`
+    /// mean the same parameter every frame.
+    pub fn param_sources(&self, node: NodeId) -> Option<&crate::param_source::Sources> {
+        self.param_sources.get(&node)
+    }
+
+    /// Every driven param in the document (deterministic order). Used by the textual
+    /// format ([`crate::format`], the `d` record) and by the view's fold.
+    pub fn all_param_sources(&self) -> &crate::param_source::All {
+        &self.param_sources
+    }
+
     fn contains(&self, id: NodeId) -> bool {
         self.nodes.iter().any(|n| n.id == id)
     }
@@ -335,6 +414,14 @@ impl Graph {
             for e in &self.edges {
                 if !e.delayed && e.from.0 == cur {
                     stack.push(e.to.0);
+                }
+            }
+            // A driven param is a dependency like any other, so it can close a cycle like
+            // any other — and a cycle the check does not see is not a refused connect, it
+            // is the cook recursing until the stack runs out.
+            for (node, sources) in &self.param_sources {
+                if sources.values().any(|(src, _)| *src == cur) {
+                    stack.push(*node);
                 }
             }
         }

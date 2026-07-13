@@ -86,6 +86,12 @@ pub struct EvalCtx<'a> {
     manifest: &'static NodeManifest,
     overrides: Option<&'a BTreeMap<String, f32>>,
     text_overrides: Option<&'a BTreeMap<String, String>>,
+    /// **Params driven by a wire** (doc 58) — already cooked, already reduced to one
+    /// number, resolved by [`Cook::cook_node`] in the same recursion that resolved the
+    /// input ports. Read by [`EvalCtx::param`] BEFORE the override and the default, which
+    /// is what makes all 86 node types drivable without touching one of them: they all
+    /// read their params through that one funnel.
+    driven: BTreeMap<&'a str, f32>,
     /// Did THIS node emit anything on the previous tick? (`prev_outputs` holds it.)
     started: bool,
     /// Seconds since the previous tick, on the ROOT clock (0 on the first tick).
@@ -156,15 +162,19 @@ impl<'a> EvalCtx<'a> {
         self.dt
     }
 
-    /// The current value of parameter `name`: the graph's per-instance override
-    /// if set ([`crate::graph::Graph::set_param`]), else the node type's
-    /// manifest default. Panics if `name` is not a declared param of this node
+    /// The current value of parameter `name`, resolved **wire > override > default** — the
+    /// hierarchy the plan reserved from day one (*"socket conectado > literal"*): the node
+    /// that drives it if one is wired ([`crate::graph::Graph::drive_param`], doc 58), else
+    /// the graph's per-instance override ([`crate::graph::Graph::set_param`]), else the node
+    /// type's manifest default. Panics if `name` is not a declared param of this node
     /// — a programmer error (the name is a literal of the node's own crate),
     /// caught by its golden test rather than silently reading `0.0`, the same
     /// no-silent-failure discipline as [`NodeManifest::param_default`].
     pub fn param(&self, name: &str) -> f32 {
-        self.overrides
-            .and_then(|o| o.get(name).copied())
+        self.driven
+            .get(name)
+            .copied()
+            .or_else(|| self.overrides.and_then(|o| o.get(name).copied()))
             .or_else(|| self.manifest.param_default(name))
             .unwrap_or_else(|| {
                 panic!(
@@ -234,6 +244,12 @@ struct Fingerprint {
     input_revs: Vec<u64>,
     playhead: Option<u64>,
     tick: Option<u64>,
+    /// FNV-1a of WHICH params are driven and by whom (name + source). The driver's own
+    /// revision already rides in [`input_revs`](Self::input_revs), so this is not about the
+    /// value — it is about the WIRING: re-pointing a param to a different node whose output
+    /// happens to be unchanged must still recompute, because the node now reads a different
+    /// place.
+    param_sources: u64,
     /// FNV-1a of the node's per-instance param overrides (name + value bits).
     /// Folds edited params into the reuse decision: an override change must
     /// recompute, or a re-cook with the same `Cook` would return a stale,
@@ -292,6 +308,47 @@ fn text_params_fingerprint(overrides: Option<&BTreeMap<String, String>>) -> u64 
         }
     }
     hash
+}
+
+/// FNV-1a over WHICH params a node has driven, and from where — see
+/// [`Fingerprint::param_sources`]. Not the values (those ride in the revisions).
+fn param_sources_fingerprint(sources: Option<&crate::param_source::Sources>) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut mix = |bytes: &[u8]| {
+        for b in bytes {
+            hash ^= *b as u64;
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    if let Some(map) = sources {
+        for (name, (src, port)) in map {
+            mix(&(name.len() as u64).to_le_bytes());
+            mix(name.as_bytes());
+            mix(&src.0.to_le_bytes());
+            mix(&port.to_le_bytes());
+        }
+    }
+    hash
+}
+
+/// **The one number a driven param reads.**
+///
+/// A parameter is one number and a stream is many, so something has to give — and what gives
+/// is the stream: the param reads its FIRST value. That is not a compromise, it is the
+/// convention this graph already speaks in the other direction: a value node with no geometry
+/// input emits a **length-1 global** stream (`value.lfo`: *"cardinality follows the geometry,
+/// else the length-1 global oscillation"*), which `motion.drive` broadcasts back out to N.
+/// Driving a param IS the length-1 case; wiring a per-instance stream into it reads the first
+/// particle, and the artist sees exactly which number landed, live, in the params panel.
+///
+/// A per-instance parameter is a different feature and it already exists: it is a real input
+/// port (`motion.drive`'s `value`), declared by nodes that mean it.
+fn driven_value(v: &CookValue) -> Option<f32> {
+    let s = v.as_stream();
+    match s.get(crate::attr::VALUE_COLUMN)? {
+        crate::attr::Column::Scalar(xs) => xs.first().copied(),
+        _ => None,
+    }
 }
 
 struct Cached {
@@ -549,6 +606,25 @@ impl Cook {
             }
         }
 
+        // 1b. Resolve DRIVEN PARAMS (doc 58) — the same recursion, the same revisions.
+        //     A driven param is a dependency: cook it here, or the driver would be read
+        //     from a stale memo lane (or never cooked at all, since nothing else pulls it).
+        let sources = graph.param_sources(node);
+        let mut driven: BTreeMap<&str, f32> = BTreeMap::new();
+        if let Some(sources) = sources {
+            for (name, (src, src_port)) in sources {
+                let rev = self.cook_node(graph, ops, *src, in_playhead, in_key, scopes)?;
+                input_revs.push(rev);
+                if let Some(v) = driven_value(&self.cur_output(*src, in_key, *src_port as usize)) {
+                    driven.insert(name.as_str(), v);
+                }
+                // An empty driver leaves the param FALLING BACK to its override/default
+                // rather than to 0.0: a wire that has not produced a number yet has not
+                // said the number is zero, and a scene that goes to zero on a frame where
+                // an emitter has not spawned yet is a scene that flickers.
+            }
+        }
+
         // A recurrence over the outer tick cannot run on a rewritten clock
         // (see `CookError::SequentialInTimeScope`). Refuse before evaluating.
         if consumes_pre && key != SCOPE_ROOT {
@@ -564,6 +640,7 @@ impl Cook {
             tick: consumes_pre.then_some(self.tick),
             params: params_fingerprint(graph.node_param_overrides(node)),
             text_params: text_params_fingerprint(graph.node_text_param_overrides(node)),
+            param_sources: param_sources_fingerprint(sources),
         };
         if let Some(c) = self.cache.get(&(node, key))
             && c.fingerprint == fingerprint
@@ -578,6 +655,7 @@ impl Cook {
             manifest,
             overrides: graph.node_param_overrides(node),
             text_overrides: graph.node_text_param_overrides(node),
+            driven,
             started: self.prev_outputs.contains_key(&node),
             // The ROOT clock's step. A rewritten lane has no meaningful delta across ticks —
             // and a node that needs one to hold state is sequential, which a scope refuses.
@@ -630,3 +708,7 @@ impl Cook {
 #[cfg(test)]
 #[path = "cook_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "cook_param_source_tests.rs"]
+mod param_source_tests;

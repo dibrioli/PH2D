@@ -422,7 +422,7 @@ fn cooking_a_missing_node_errors() {
 
 // A node that emits its `k` param (default 7) as a 1-element scalar — the
 // probe for per-instance param overrides + their memo invalidation.
-static PARAM_MAN: NodeManifest = NodeManifest {
+pub(super) static PARAM_MAN: NodeManifest = NodeManifest {
     id: NodeTypeId::of("test.param_echo"),
     name: "test.param_echo",
     inputs: &[],
@@ -435,8 +435,8 @@ static PARAM_MAN: NodeManifest = NodeManifest {
     }],
     lowerings: &[LoweringKind::Cpu],
 };
-struct ParamEcho {
-    calls: AtomicU64,
+pub(super) struct ParamEcho {
+    pub(super) calls: AtomicU64,
 }
 impl NodeOp for ParamEcho {
     fn manifest(&self) -> &'static NodeManifest {
@@ -447,8 +447,8 @@ impl NodeOp for ParamEcho {
         ctx.emit(Stream::new(1).with("v", Column::Scalar(vec![ctx.param("k")])));
     }
 }
-struct ParamOps {
-    echo: ParamEcho,
+pub(super) struct ParamOps {
+    pub(super) echo: ParamEcho,
 }
 impl OpResolver for ParamOps {
     fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {

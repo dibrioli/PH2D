@@ -81,8 +81,21 @@ fn packing_a_dense_scribble_is_bounded() {
     eprintln!("rabisco denso de 4000 pontos: {ms:.2} ms · {extras} vizinhos");
     // O `PAIR_BUDGET` corta o trabalho: medido ~14 ms em release (sem ele, ~27 ms e
     // crescendo). O teto existe para o frame do preview não desabar.
+    //
+    // **O teto é por PERFIL, e não por acaso.** O doc-comment desta suíte já diz que "em
+    // debug os números não dizem nada" — e o `cargo nextest run --workspace` roda em DEBUG.
+    // Medido nesta workstation: **13,7 ms em release · 78 ms em debug ocioso**, e o nextest
+    // roda dezenas de testes em paralelo, o que empurra o debug para além de 130 ms. Com o
+    // teto único de 120 ms o gate ficava vermelho na suíte cheia e VERDE isolado — um flaky
+    // que não denuncia regressão nenhuma, só carga de máquina. (Encontrado pela linha
+    // `line/Vector` quando ele derrubou o gate de fechamento dela; o gate em si é do Flip.)
+    //
+    // Os dois tetos guardam a MESMA propriedade — que o broadphase não voltou a ser O(n²) —
+    // com a mesma folga relativa (~9×) no perfil em que cada um roda.
+    let ceiling = if cfg!(debug_assertions) { 700.0 } else { 120.0 };
     assert!(
-        ms < 120.0,
-        "o teto de trabalho do broadphase (PAIR_BUDGET) não está segurando: {ms:.1} ms"
+        ms < ceiling,
+        "o teto de trabalho do broadphase (PAIR_BUDGET) não está segurando: \
+         {ms:.1} ms (teto {ceiling} ms neste perfil)"
     );
 }

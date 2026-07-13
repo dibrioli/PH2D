@@ -2548,7 +2548,8 @@ impl App {
                     if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Build {
                         if let Some(w) = self.vec_world_at(self.last_pointer) {
                             let alt = self.modifiers.alt_key();
-                            self.build_down(w, alt);
+                            let shift = self.modifiers.shift_key();
+                            self.build_down(w, alt, shift);
                         }
                         return;
                     }

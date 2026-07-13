@@ -33,18 +33,39 @@ impl App {
         self.vec_build = BuildSession::open(&gfx.vec_scene, &xf, &sel);
     }
 
-    /// Pressão no canvas em modo Build: começa a pintar faces. `alt` = subtrai.
-    pub(crate) fn build_down(&mut self, world: [f64; 2], alt: bool) {
+    /// Pressão no canvas em modo Build. `alt` = subtrai; `shift` = soma à seleção.
+    ///
+    /// **Sem arranjo ainda (menos de 2 formas fechadas selecionadas), o clique SELECIONA.**
+    /// É a diferença entre um modo utilizável e um modo que parece quebrado: o artista entra
+    /// no Build logo depois de desenhar, com uma forma selecionada ou nenhuma, e se o modo
+    /// engolisse o clique para não fazer nada ele acharia que a ferramenta está morta. Aqui
+    /// ele clica as formas que quer combinar (Shift para somar), o arranjo abre sozinho no
+    /// frame seguinte, e o canvas vira a mesa de trabalho.
+    pub(crate) fn build_down(&mut self, world: [f64; 2], alt: bool, shift: bool) {
+        if self.vec_build.is_none() {
+            self.build_select(world, shift);
+            return;
+        }
         let Some(s) = self.vec_build.as_mut() else {
-            // Sem sessão (menos de 2 formas fechadas selecionadas) o modo não faz nada, e
-            // é preciso DIZER isso — um modo que captura o canvas e fica mudo parece
-            // quebrado.
-            eprintln!("[ph2d-vec] build: selecione >= 2 regioes FECHADAS (Shift+clique)");
             return;
         };
         s.subtract = alt; // fixado no press: o mesmo gesto não pode mudar de significado
         s.dragging = true;
         s.touch(world);
+    }
+
+    /// O clique de SELEÇÃO do modo Build (enquanto ainda não há 2 formas). Shift soma;
+    /// clique no vazio limpa.
+    fn build_select(&mut self, world: [f64; 2], shift: bool) {
+        let px = self.vec_px_to_world();
+        let Some(gfx) = self.gfx.as_ref() else { return };
+        let hit = self.vec_pen.path_at(&gfx.vec_scene, world, 10.0 * px);
+        match (hit, shift) {
+            (Some(id), true) => self.vec_pen.toggle_path(id),
+            (Some(id), false) => self.vec_pen.select(Some(id)),
+            (None, false) => self.vec_pen.select(None),
+            (None, true) => {}
+        }
     }
 
     /// O cursor andou em modo Build. Realça a face sob ele e, se estiver arrastando, pinta.

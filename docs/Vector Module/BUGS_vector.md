@@ -367,6 +367,141 @@ em todos os seis testes era o aviso, e ele estava à vista.
 
 ---
 
+## Bug #8 — O filete caía num fallback frouxo (sinal de Cramer trocado) (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+Nenhum, na tela. O arredondamento de quina "funcionava" — só era **errado**: o arco não era
+o arco. Um gate que comparava o motor novo (`corner_live`) com o velho (`corners`, o gerador
+das Live Shapes) na MESMA quina reta pegou: handle em `1.0572` onde devia ser `0.8954`.
+
+### Causa
+
+A cúbica do filete precisa da interseção das duas tangentes. Resolvendo
+`s·t_in + w·t_out = d` por Cramer:
+
+```
+s = (d × t_out) / (t_in × t_out)        w = (d × t_in) / (t_out × t_in)
+```
+
+Os **denominadores são opostos** (`t_out × t_in = −(t_in × t_out)`). Eu dividi os dois pelo
+mesmo. Resultado: `w` saía **negativo** numa quina perfeitamente boa, o guard de "a
+interseção fica à frente dos dois pontos" a **reprovava**, e todo filete caía no fallback de
+terço-de-corda. O número batia exato: `hypot(2,−2)/3 = 0,9428`.
+
+### Lição
+
+Um fallback que funciona **esconde** o bug do caminho principal. O guard estava certo; o que
+ele testava é que estava errado. **Se um caminho de exceção nunca é exercitado nos testes,
+ele pode estar sendo o caminho NORMAL** — e a única coisa que denuncia é comparar o
+resultado com um oráculo independente. Aqui o oráculo já existia: o outro motor.
+
+---
+
+## Bug #9 — A "reta" é um smoothstep, e de Casteljau a envenenava (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+Também nenhum na tela — e este teria estragado a **booleana** silenciosamente, meses depois.
+
+### Causa
+
+Uma aresta reta, neste modelo, é uma cúbica de **handles nulos**: `[(0,10), (0,10), (0,0),
+(0,0)]`. Ela é geometricamente o segmento, mas **não é uma reta uniforme** — é um
+*smoothstep* (velocidade zero nas duas pontas). Cortá-la com de Casteljau devolve pontos de
+controle **no meio da aresta**, não nulos.
+
+A curva traçada fica **idêntica**. A **representação**, não: ela deixa de ser a convenção de
+reta. E é exatamente essa convenção que o `to_bez` da `ph2d-vec-boolean` testa para emitir
+`line_to` — sem ela, o `linesweeper` devolve as quinas como `Smooth` com handles pendurados
+no meio das arestas. **É o bug que aquele código já documenta e contorna**, e eu ia
+recriá-lo pela porta dos fundos.
+
+### Correção
+
+`sub_cubic` corta a aresta reta **como reta** (lerp das pontas, handles nulos), e não por de
+Casteljau. Detectado por igualdade EXATA (é uma convenção de representação, não uma medida
+de geometria — e um afim leva handle nulo em handle nulo).
+
+### Lição
+
+**Geometria igual não é representação igual.** Duas cúbicas podem traçar exatamente a mesma
+curva e significar coisas diferentes para o subsistema seguinte. Antes de reconstruir
+geometria, pergunte quem mais LÊ o formato dela — e o que ele infere da forma dos pontos de
+controle, não só da posição deles.
+
+---
+
+## Bug #10 — A alça escorregava do dedo (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+Arrastar a alça de raio de quina: a bolinha **ficava para trás do cursor**, e a distância
+crescia ao longo do gesto.
+
+### Causa
+
+A alça de uma quina afiada não pode ser desenhada em cima da âncora (sumiria dentro dela),
+então ela **estaciona** alguns pixels adiante, sobre a bissetriz. Eu implementei isso como um
+**PISO** no desenho (`max(setback, park)`), enquanto o arrasto lia `setback = projeção −
+park`. Os dois não se cancelam: agarrar a alça estacionada e levar o cursor a `2,0` deixava a
+bolinha em `1,86` — a diferença é o `park`, e ela **não some**, fica.
+
+### Correção
+
+O `park` é um **deslocamento CONSTANTE**, não um piso: desenhar em `park + setback` e ler
+`− park` se cancelam, a bolinha pousa exatamente no cursor, e o raio ainda cresce de zero.
+
+### Gate
+
+`the_handle_stays_under_the_cursor_all_the_way_through_the_drag` mede a deriva em **quatro**
+pontos do arrasto. Um ponto só, perto do início, teria passado — o erro do piso é constante
+em valor absoluto, mas só fica óbvio depois de andar.
+
+### Lição
+
+É a família do bug que o `connector.rs` já documenta (*"desenhar num raio e agarrar noutro"*),
+na versão que **se acumula ao longo do gesto**. Uma alça tem TRÊS números que precisam
+concordar, não dois: onde ela é desenhada, onde ela é capturada, e **como o arrasto dela é
+lido**. Os dois primeiros eu já sabia. O terceiro me pegou.
+
+---
+
+## Bug #11 — A alça funcionava e depois esquecia (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+Nenhum teste vermelho. Encontrado **simulando o caminho do smoke do Enio no papel**, o que é
+o método que este doc inteiro recomenda e que eu quase pulei.
+
+Desenhar um retângulo com a Shape tool → ele nasce **Live Shape** → modo Node → a alça de raio
+aparecia nas quinas dela e **funcionava**. Até encostar num slider do painel: `recook_into`
+reescreve `path.verts` INTEIRO a cada mudança de parâmetro, e o `corner_radius` mora dentro
+do vértice. O raio sumia **sem erro nenhum**.
+
+### Por que os gates passaram
+
+Eu havia gateado que a alça é do **modo Node**, e achei que estava coberto. Mas uma **forma
+viva selecionada dentro do modo Node** é outra coisa — o gate de MODO nunca a alcança.
+
+### Correção
+
+Uma forma viva não tem alça de raio, nem no render nem no **hit-test** (senão a alça ficaria
+invisível e ainda agarrável — um alvo fantasma). E não há conserto por preservar os raios no
+recook: a **contagem** de vértices é função dos parâmetros. O raio de uma forma viva é um
+campo dela (o painel); o por-vértice é para caminho desenhado (ADR-0119).
+
+### Lição
+
+**"Funciona e depois desfaz sozinho" é pior que "não funciona".** O usuário confia e perde o
+trabalho em silêncio.
+
+E: um gate sobre o **modo** não é um gate sobre a **política**. Se a regra é "isto não vale
+para objetos do tipo X", teste objetos do tipo X — não os modos em que eles costumam
+aparecer.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de

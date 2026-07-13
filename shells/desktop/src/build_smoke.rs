@@ -134,6 +134,21 @@ impl crate::App {
             15 if level == 5 => self.smoke_state("depois do BOTÃO Undo"),
             16 if level == 5 => self.smoke_rail_click(ph2d_editor::ids::TOOL_REDO, "Redo"),
             17 if level == 5 => self.smoke_state("depois do BOTÃO Redo"),
+            // **Nível 6 — o bug do Enio: "undo só faz uma etapa".** Duas ações, depois três
+            // Ctrl+Z, com o DOWN e o UP em frames SEPARADOS (é o que o winit entrega).
+            12 if level == 6 => self.smoke_click(IN_STAR),
+            13 if level == 6 => self.smoke_state("ação 1 (build na estrela)"),
+            16 if level == 6 => self.smoke_click(IN_PENT),
+            17 if level == 6 => self.smoke_state("ação 2 (build no pentágono)"),
+            20 if level == 6 => self.smoke_key_z(false, true),
+            21 if level == 6 => self.smoke_key_z(false, false),
+            22 if level == 6 => self.smoke_state("Ctrl+Z #1"),
+            24 if level == 6 => self.smoke_key_z(false, true),
+            25 if level == 6 => self.smoke_key_z(false, false),
+            26 if level == 6 => self.smoke_state("Ctrl+Z #2"),
+            28 if level == 6 => self.smoke_key_z(false, true),
+            29 if level == 6 => self.smoke_key_z(false, false),
+            30 if level == 6 => self.smoke_state("Ctrl+Z #3"),
             _ => {}
         }
     }
@@ -157,22 +172,37 @@ impl crate::App {
         );
     }
 
-    /// Ctrl+Z (ou Ctrl+Shift+Z) pelo roteamento REAL do teclado.
-    fn smoke_undo(&mut self, redo: bool) {
+    /// Ctrl+Z (ou Ctrl+Shift+Z) pelo roteamento REAL do teclado — **inclusive o RELEASE**.
+    ///
+    /// O release não é enfeite: é um evento de input como qualquer outro, e o
+    /// `post_frame_undo` faz a varredura de diff **em todo frame com input**. Enquanto o
+    /// harness só mandava o `Pressed`, o frame do release nunca existia — e era exatamente
+    /// nele que o passo espúrio nascia.
+    fn smoke_key_z(&mut self, redo: bool, down: bool) {
         use winit::keyboard::ModifiersState;
-        let mods = if redo {
+        self.modifiers = if redo {
             ModifiersState::CONTROL | ModifiersState::SHIFT
         } else {
             ModifiersState::CONTROL
         };
-        self.modifiers = mods;
         self.key_input(
             winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyZ),
-            winit::event::ElementState::Pressed,
+            if down {
+                winit::event::ElementState::Pressed
+            } else {
+                winit::event::ElementState::Released
+            },
             false,
             None,
         );
-        self.modifiers = ModifiersState::empty();
+        if !down {
+            self.modifiers = ModifiersState::empty();
+        }
+    }
+
+    fn smoke_undo(&mut self, redo: bool) {
+        self.smoke_key_z(redo, true);
+        self.smoke_key_z(redo, false);
     }
 
     /// Acha um chip do rail no hit-index e o clica **com o ponteiro** (é o caminho do
@@ -216,5 +246,32 @@ impl crate::App {
             self.undo.depth(),
             usize::from(self.undo.can_redo()),
         );
+        // A ORDEM da cena e o `RootOrder` de cada forma — é o que o restore embaralha.
+        if let Some(gfx) = self.gfx.as_ref() {
+            let ids: Vec<u64> = gfx.vec_scene.paths().iter().map(|p| p.id).collect();
+            let ro: Vec<(u64, String)> = ids
+                .iter()
+                .map(|id| {
+                    let r = self
+                        .vec_entities
+                        .get(id)
+                        .and_then(|&b| {
+                            gfx.sim
+                                .world()
+                                .get::<ph2d_ecs::RootOrder>(ph2d_ecs::Entity::from_bits(b))
+                        })
+                        .map(|r| {
+                            if r.0 == u32::MAX {
+                                "MAX".to_string()
+                            } else {
+                                r.0.to_string()
+                            }
+                        })
+                        .unwrap_or_else(|| "—".to_string());
+                    (*id, r)
+                })
+                .collect();
+            eprintln!("[build-smoke]    ordem da cena + RootOrder: {ro:?}");
+        }
     }
 }

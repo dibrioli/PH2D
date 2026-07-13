@@ -314,10 +314,29 @@ impl crate::App {
             return; // nada mudou desde o último passo
         }
         if std::env::var_os("PH2D_UNDO_LOG").is_some() {
+            let base = self.undo_baseline.as_ref();
             eprintln!(
-                "[undo] passo registrado (fila undo={})",
-                self.undo.depth() + 1
+                "[undo] passo registrado (fila undo={}) — diff: world={} vec={} flip={}",
+                self.undo.depth() + 1,
+                base.is_some_and(|b| b.world != current.world),
+                base.is_some_and(|b| b.vec != current.vec),
+                base.is_some_and(|b| b.flip != current.flip),
             );
+            if let Some(b) = base
+                && b.vec != current.vec
+            {
+                let ids = |v: &VecScene| v.paths().iter().map(|p| p.id).collect::<Vec<_>>();
+                let (a, c) = (ids(&b.vec), ids(&current.vec));
+                let mut sa = a.clone();
+                let mut sc = c.clone();
+                sa.sort_unstable();
+                sc.sort_unstable();
+                eprintln!(
+                    "[undo]   vec: base={a:?} atual={c:?} · mesmos ids={} · só a ORDEM={}",
+                    sa == sc,
+                    sa == sc && a != c
+                );
+            }
         }
         if let Some(base) = self.undo_baseline.replace(current) {
             self.undo.push_undo(base);

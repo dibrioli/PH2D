@@ -56,6 +56,82 @@ pub(super) fn resolve_port(
     }
 }
 
+/// **The parameter an input-side port index names**, or `None` when it names a real port
+/// (doc 58).
+///
+/// A node's declared inputs come first, then one socket per driven param in sorted order —
+/// the SAME derivation `snapshot_from` used to draw them (`param_source::param_at`). A second
+/// derivation here is exactly how a socket comes to mean a different parameter than the one
+/// it drew.
+pub(super) fn param_at(motion: &MotionState, node: NodeId, port: u16) -> Option<String> {
+    param_at_in(&motion.doc.graph, &motion.registry, node, port)
+}
+
+/// The same, against a bare graph (the rewire path edits a TRIAL clone).
+pub(super) fn param_at_in(
+    graph: &ph2d_nodegraph::graph::Graph,
+    registry: &ph2d_node_registry::NodeRegistry,
+    node: NodeId,
+    port: u16,
+) -> Option<String> {
+    let manifest = fold::manifest_in(graph, registry, node)?;
+    let k = (port as usize).checked_sub(manifest.inputs.len())?;
+    let sources = graph.param_sources(node)?;
+    ph2d_nodegraph::param_source::param_at(sources, k).map(str::to_string)
+}
+
+/// **Pull a wire off an input socket** — whichever KIND of socket it is (doc 58).
+///
+/// The three places that unplug a wire (Disconnect, the knife, a dragged wire-end) all go
+/// through here, so none of them has to learn that a parameter exists — the same funnel
+/// discipline that keeps `reconcile` from being forgotten at one of its seven call sites.
+/// Returns whether anything was actually unplugged; the CALLER owns the undo bracket.
+pub(super) fn unplug(motion: &mut MotionState, node: NodeId, port: u16) -> bool {
+    let registry = &motion.registry;
+    let name = param_at_in(&motion.doc.graph, registry, node, port);
+    unplug_in(&mut motion.doc.graph, name.as_deref(), node, port)
+}
+
+/// The same, against a bare graph. `param` is what [`param_at_in`] said this socket is
+/// (resolved BEFORE the borrow, since the answer lives in the graph we are about to edit).
+pub(super) fn unplug_in(
+    graph: &mut ph2d_nodegraph::graph::Graph,
+    param: Option<&str>,
+    node: NodeId,
+    port: u16,
+) -> bool {
+    match param {
+        Some(name) => graph.undrive_param(node, name).is_some(),
+        None => graph.disconnect(node, port).is_some(),
+    }
+}
+
+/// **Drive a param from a wire** (the `DriveParam` intent). One undo step; it re-cooks,
+/// because unlike grouping this really does change what the graph computes.
+pub(super) fn drive(
+    motion: &mut MotionState,
+    toasts: &mut ph2d_editor::ToastQueue,
+    from: (NodeId, u16),
+    to: NodeId,
+    param: &str,
+) {
+    let pre = motion.doc.clone();
+    match motion.doc.graph.drive_param(to, param, from) {
+        Ok(()) => {
+            motion.history.push_undo(pre);
+            motion.pump.mark_dirty();
+        }
+        // The only structural refusal a param wire can hit: it would close a loop. (A param
+        // has no "already connected" case — a second source replaces the first, exactly as
+        // re-plugging an input socket does.)
+        Err(_) => {
+            toasts.push(ph2d_editor::Toast::warning(
+                "Can't drive: that would make a loop",
+            ));
+        }
+    }
+}
+
 /// The node a readout should point at when the artist probes a CARD: what the group
 /// emits (its first output's source). A group with no output emits nothing, and
 /// there is nothing to read.

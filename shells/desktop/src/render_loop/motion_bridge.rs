@@ -404,12 +404,7 @@ fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: 
         return;
     }
     let pre = motion.doc.clone();
-    if motion
-        .doc
-        .graph
-        .disconnect(NodeId(to_node), to_port)
-        .is_some()
-    {
+    if subgraph::unplug(motion, NodeId(to_node), to_port) {
         reconcile(motion, &pre.graph);
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();

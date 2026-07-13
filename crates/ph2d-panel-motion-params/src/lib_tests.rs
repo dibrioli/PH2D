@@ -34,6 +34,7 @@ fn params_and_intent_channels_round_trip() {
             max: 20.0,
             step: 1.0,
             integer: true,
+            driven: false,
         })],
     }));
     let got = current_params().expect("published");

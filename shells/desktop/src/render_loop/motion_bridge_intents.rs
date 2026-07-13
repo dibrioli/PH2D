@@ -87,6 +87,26 @@ pub(super) fn apply_graph_intents(
                     connect::apply_connect(motion, toasts, f.0, fp, t.0, tp);
                 }
             }
+            // **A wire that lands on a PARAMETER** (doc 58) — it has no port, so it cannot
+            // be a `Connect`. The source may itself be a card's socket, which resolves to
+            // the real port inside exactly as it does for a wire.
+            GraphIntent::DriveParam {
+                from_node,
+                from_port,
+                to_node,
+                param,
+            } => {
+                if let Some((f, fp)) = subgraph::resolve_port(motion, from_node, from_port, false)
+                    && let Some(t) = match subgraph::target(to_node) {
+                        subgraph::Target::Node(n) => Some(n),
+                        // A param inside a CLOSED group: the card's body offered it, so the
+                        // menu row already names the real node inside.
+                        subgraph::Target::Card(_) => None,
+                    }
+                {
+                    subgraph::drive(motion, toasts, (f, fp), t, param);
+                }
+            }
             GraphIntent::Disconnect { to_node, to_port } => {
                 if let Some((t, tp)) = subgraph::resolve_port(motion, to_node, to_port, true) {
                     apply_disconnect(motion, toasts, t.0, tp);

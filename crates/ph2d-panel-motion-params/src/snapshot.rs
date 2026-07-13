@@ -105,6 +105,13 @@ pub struct ScalarRow {
     pub step: f64,
     /// The chip snaps to whole numbers (count / index / seed).
     pub integer: bool,
+    /// **A wire is driving this param** (doc 58) — `value` is the live number coming down it.
+    ///
+    /// The row is then READ-ONLY: it paints the number and registers no widget at all. A
+    /// knob that still turns under the finger while a wire decides the value is a control
+    /// that lies once per drag — and dimming it would not help, because a dimmed widget
+    /// still dispatches ([[feedback_disabled_button_still_dispatches]]).
+    pub driven: bool,
 }
 
 /// A colour-swatch row driving four **linear-straight** RGBA channel params

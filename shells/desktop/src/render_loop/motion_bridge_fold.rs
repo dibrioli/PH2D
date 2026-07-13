@@ -22,8 +22,8 @@ use ph2d_motion_doc::Holder;
 use ph2d_motion_doc::subgraph;
 use ph2d_nodegraph::graph::NodeId;
 use ph2d_panel_motion_graph::{
-    Crumb, GraphEdgeView, GraphNodeView, GraphViewSnapshot, HiddenPorts, NodeViewKind, PortChoice,
-    SUBGRAPH_VIEW_TAG,
+    ChoiceTarget, Crumb, GraphEdgeView, GraphNodeView, GraphViewSnapshot, HiddenPorts,
+    NodeViewKind, PortChoice, SUBGRAPH_VIEW_TAG,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -71,22 +71,55 @@ pub(super) fn card_ports(motion: &MotionState, sid: u32) -> CardPorts {
             .collect();
     let mut inputs = BTreeSet::new();
     let mut outputs = BTreeSet::new();
-    for e in motion.doc.graph.edges() {
-        let (from, to) = (e.from.0, e.to.0);
+    let mut cross = |from: NodeId, from_port: u16, to: NodeId, to_port: u16| {
         match (inside.contains(&from), inside.contains(&to)) {
             (false, true) => {
-                inputs.insert((to, e.to.1));
+                inputs.insert((to, to_port));
             }
             (true, false) => {
-                outputs.insert((from, e.from.1));
+                outputs.insert((from, from_port));
             }
             _ => {} // wholly inside, or wholly outside: not this card's business
+        }
+    };
+    for e in motion.doc.graph.edges() {
+        cross(e.from.0, e.from.1, e.to.0, e.to.1);
+    }
+    // **A driven param is an edge too** (doc 58), and it crosses boundaries like one. Missed
+    // here, grouping a node whose param is driven from outside would make the wire VANISH
+    // from the view — the cook would go on reading it, and the canvas would be lying.
+    for (node, sources) in motion.doc.graph.all_param_sources() {
+        let Some(base) = manifest_of(motion, *node).map(|m| m.inputs.len()) else {
+            continue;
+        };
+        for (k, (_, (src, src_port))) in sources.iter().enumerate() {
+            cross(*src, *src_port, *node, (base + k) as u16);
         }
     }
     CardPorts {
         inputs: inputs.into_iter().collect(),
         outputs: outputs.into_iter().collect(),
     }
+}
+
+/// The node's manifest, or `None` for a type the registry does not know.
+pub(super) fn manifest_of(
+    motion: &MotionState,
+    node: NodeId,
+) -> Option<&'static ph2d_nodegraph::node::NodeManifest> {
+    manifest_in(&motion.doc.graph, &motion.registry, node)
+}
+
+/// The same, against a bare graph — the rewire path works on a TRIAL clone, not on the
+/// document, so it cannot ask the `MotionState`.
+pub(super) fn manifest_in(
+    graph: &ph2d_nodegraph::graph::Graph,
+    registry: &ph2d_node_registry::NodeRegistry,
+    node: NodeId,
+) -> Option<&'static ph2d_nodegraph::node::NodeManifest> {
+    use ph2d_nodegraph::cook::OpResolver;
+    let inst = graph.node(node)?;
+    registry.resolve(inst.type_id()).map(|op| op.manifest())
 }
 
 /// The slot a real port occupies on a card, or `None` when it does not cross.
@@ -108,9 +141,11 @@ pub(super) fn fold(motion: &MotionState, snap: &mut GraphViewSnapshot) {
     snap.level = level;
     snap.breadcrumb = breadcrumb(motion);
     if motion.doc.subgraphs.is_empty() {
-        // Republished EMPTY, not skipped: the channel is a mirror of the cards on screen,
-        // and a stale entry would let a wire drop on a card that no longer exists.
-        ph2d_panel_motion_graph::set_card_hidden_ports(BTreeMap::new());
+        // No nesting to fold — but EVERY node still offers its params to a dropped wire
+        // (doc 58), and most graphs have no groups at all. Publishing an empty map here (as
+        // the first cut did) silently turned the feature off for exactly those graphs: the
+        // gate that caught it is `a_wire_dropped_on_a_node_drives_one_of_its_params`.
+        ph2d_panel_motion_graph::set_card_hidden_ports(node_param_targets(motion, &snap.nodes));
         return;
     }
     let (subs, members) = (&motion.doc.subgraphs, &motion.doc.members);
@@ -178,17 +213,24 @@ pub(super) fn fold(motion: &MotionState, snap: &mut GraphViewSnapshot) {
     // What each card is HIDING — the rows of the menu a wire dropped on its body opens
     // (doc 57 §5). Derived from the same `full` views the panel would have drawn and the
     // same raw edges, before either is folded away.
-    ph2d_panel_motion_graph::set_card_hidden_ports(
-        cards
-            .iter()
-            .map(|sid| {
-                (
-                    view_id(*sid),
-                    hidden_ports(motion, *sid, &ports[sid], &full, &snap.edges),
-                )
-            })
-            .collect(),
-    );
+    let mut drop_targets: BTreeMap<u32, HiddenPorts> = cards
+        .iter()
+        .map(|sid| {
+            (
+                view_id(*sid),
+                hidden_ports(motion, *sid, &ports[sid], &full, &snap.edges),
+            )
+        })
+        .collect();
+    // …and every ordinary node AT THIS LEVEL offers its own PARAMS (doc 58). A card hides
+    // ports; a node hides parameters; the wire asks the same question of both.
+    let here: Vec<GraphNodeView> = full
+        .iter()
+        .filter(|v| matches!(holder(v.id), Holder::Direct))
+        .cloned()
+        .collect();
+    drop_targets.extend(node_param_targets(motion, &here));
+    ph2d_panel_motion_graph::set_card_hidden_ports(drop_targets);
     let mut nodes: Vec<GraphNodeView> = full
         .iter()
         .filter_map(|n| match holder(n.id) {
@@ -249,7 +291,7 @@ fn hidden_ports(
         };
         let choice = |port: u16, pv: &ph2d_panel_motion_graph::PortView| PortChoice {
             node: n.0,
-            port,
+            target: ChoiceTarget::Port(port),
             label: format!("{}: {}", v.display_name, pv.name),
             category: v.category,
             port_type: pv.clone(),
@@ -269,8 +311,79 @@ fn hidden_ports(
                 out.outputs.push(choice(port, pv));
             }
         }
+        // The members' undriven PARAMS are hidden by the card too (doc 58): a wire dropped
+        // on a closed group can drive a parameter three storeys down without opening a door.
+        out.inputs.extend(param_choices(motion, n, v));
     }
     out
+}
+
+/// The drop-targets of ordinary nodes: their undriven params, keyed by node id (which IS the
+/// view id for a node — only a card's is tagged).
+fn node_param_targets(motion: &MotionState, nodes: &[GraphNodeView]) -> BTreeMap<u32, HiddenPorts> {
+    nodes
+        .iter()
+        .filter_map(|v| {
+            let params = param_choices(motion, NodeId(v.id), v);
+            (!params.is_empty()).then(|| {
+                (
+                    v.id,
+                    HiddenPorts {
+                        inputs: params,
+                        outputs: Vec::new(),
+                    },
+                )
+            })
+        })
+        .collect()
+}
+
+/// **The parameters of `n` that no wire drives** (doc 58) — the rows a wire dropped on its
+/// body offers.
+///
+/// A param has no port and never will (`NodeManifest.inputs` is frozen), so this is the ONLY
+/// way a wire reaches one. An already-driven param is not offered: its socket is right there
+/// on the card, and re-driving it is a drop on that socket.
+///
+/// The type is the one a value node emits (`Instances/Scalar`, the node's own clock), so the
+/// drop's compatibility filter does the rest: only a value wire can reach a parameter, which
+/// is exactly the rule the cook enforces anyway (`driven_value` reads the `"v"` column).
+fn param_choices(motion: &MotionState, n: NodeId, v: &GraphNodeView) -> Vec<PortChoice> {
+    use ph2d_panel_motion_graph::PortView;
+    let Some(manifest) = manifest_of(motion, n) else {
+        return Vec::new();
+    };
+    let driven = motion.doc.graph.param_sources(n);
+    let hints = motion
+        .doc
+        .graph
+        .node(n)
+        .and_then(|i| motion.registry.param_ui(i.type_id()));
+    manifest
+        .params
+        .iter()
+        .filter(|p| driven.is_none_or(|d| !d.contains_key(p.name)))
+        .map(|p| {
+            // The artist reads the label the params panel shows them ("Strength"), not the
+            // canonical key ("strength") — the same name in both places, or the menu is
+            // offering something they cannot find.
+            let label = hints
+                .and_then(|hs| hs.iter().find(|h| h.param == p.name))
+                .map_or(p.name, |h| h.label);
+            PortChoice {
+                node: n.0,
+                target: ChoiceTarget::Param(p.name),
+                label: format!("{}: {}", v.display_name, label),
+                category: v.category,
+                port_type: PortView {
+                    name: p.name,
+                    domain: ph2d_nodegraph::port::Domain::Instances,
+                    dim: ph2d_nodegraph::port::Dim::Scalar,
+                    clock: manifest.clock,
+                },
+            }
+        })
+        .collect()
 }
 
 /// One collapsed card: its derived sockets, and what its contents are DOING —

@@ -25,6 +25,18 @@ pub enum GraphIntent {
     /// then `Graph::validate` (typing / membrane) on a trial clone and only keeps
     /// it when the new edge is legal — else it raises a refusal toast. One undo
     /// step; re-cooks (`mark_dirty`).
+    /// **Drive a parameter from a wire** (doc 58) — the artist dropped a wire on a node's
+    /// body and picked one of its params. The shell calls `Graph::drive_param`; the socket
+    /// then appears because the wire exists, not the other way round.
+    ///
+    /// A `Connect` cannot carry this: it names a port INDEX, and a param has no port. The
+    /// name is `&'static` (it comes off the node's own manifest, through the shell).
+    DriveParam {
+        from_node: u32,
+        from_port: u16,
+        to_node: u32,
+        param: &'static str,
+    },
     Connect {
         from_node: u32,
         from_port: u16,

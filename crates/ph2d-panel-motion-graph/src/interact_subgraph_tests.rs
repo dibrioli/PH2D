@@ -234,7 +234,7 @@ fn publish_hidden() {
     use ph2d_nodegraph::port::{Clock, Dim, Domain};
     let choice = |node, port, label: &str, domain| PortChoice {
         node,
-        port,
+        target: crate::snapshot::ChoiceTarget::Port(port),
         label: label.into(),
         category: ph2d_node_registry::NodeUiCategory::Utility,
         port_type: crate::snapshot::PortView {

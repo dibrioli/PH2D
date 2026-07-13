@@ -27,6 +27,7 @@
 //! interface of doc 57 already proved we do not need one.
 
 use crate::graph::NodeId;
+use crate::value::CookValue;
 use std::collections::BTreeMap;
 
 /// Which node port drives a parameter: `(source node, source output port)`.
@@ -53,4 +54,45 @@ pub fn slot_of(sources: &Sources, param: &str) -> Option<usize> {
 /// The parameter socket *k* stands for.
 pub fn param_at(sources: &Sources, k: usize) -> Option<&str> {
     sources.keys().nth(k).map(String::as_str)
+}
+
+/// FNV-1a over WHICH params a node has driven, and from where — see
+/// the cook's fingerprint. Not the values (those ride in the revisions).
+pub fn fingerprint(sources: Option<&Sources>) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut mix = |bytes: &[u8]| {
+        for b in bytes {
+            hash ^= *b as u64;
+            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    if let Some(map) = sources {
+        for (name, (src, port)) in map {
+            mix(&(name.len() as u64).to_le_bytes());
+            mix(name.as_bytes());
+            mix(&src.0.to_le_bytes());
+            mix(&port.to_le_bytes());
+        }
+    }
+    hash
+}
+
+/// **The one number a driven param reads.**
+///
+/// A parameter is one number and a stream is many, so something has to give — and what gives
+/// is the stream: the param reads its FIRST value. That is not a compromise, it is the
+/// convention this graph already speaks in the other direction: a value node with no geometry
+/// input emits a **length-1 global** stream (`value.lfo`: *"cardinality follows the geometry,
+/// else the length-1 global oscillation"*), which `motion.drive` broadcasts back out to N.
+/// Driving a param IS the length-1 case; wiring a per-instance stream into it reads the first
+/// particle, and the artist sees exactly which number landed, live, in the params panel.
+///
+/// A per-instance parameter is a different feature and it already exists: it is a real input
+/// port (`motion.drive`'s `value`), declared by nodes that mean it.
+pub fn driven_value(v: &CookValue) -> Option<f32> {
+    let s = v.as_stream();
+    match s.get(crate::attr::VALUE_COLUMN)? {
+        crate::attr::Column::Scalar(xs) => xs.first().copied(),
+        _ => None,
+    }
 }

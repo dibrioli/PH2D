@@ -7,6 +7,7 @@
 //! in but not wired, a wire unplugged and not re-plugged — would leave the artist with a
 //! graph they did not ask for and no single Ctrl+Z to undo it.
 
+use super::subgraph;
 use super::{MotionState, plumbing};
 use ph2d_editor::ToastQueue;
 use ph2d_nodegraph::cook::OpResolver;
@@ -142,7 +143,11 @@ pub(super) fn move_wire_end(
 
     let pre = motion.doc.clone();
     let mut trial: Graph = motion.doc.graph.clone();
-    if trial.disconnect(old.0, old.1).is_none() {
+    // The end being pulled off may be a PARAM socket (doc 58) — it is drawn like a wire, so
+    // it moves like a wire. Resolved before the edit, because the answer lives in the graph
+    // the edit is about to change.
+    let old_param = subgraph::param_at_in(&trial, &motion.registry, old.0, old.1);
+    if !subgraph::unplug_in(&mut trial, old_param.as_deref(), old.0, old.1) {
         return; // the wire is already gone (a stale gesture) — do nothing, quietly
     }
 
@@ -152,14 +157,22 @@ pub(super) fn move_wire_end(
         if (n, p) == (old_to_node, old_to_port) {
             return;
         }
-        let landed = trial
-            .connect(Edge {
-                from: (NodeId(from_node), from_port),
-                to: (NodeId(n), p),
-                delayed: false,
-            })
-            .is_ok()
-            && trial.validate(&motion.registry).is_ok();
+        // Landing on ANOTHER param's socket: re-drive that one. (Landing on a param that has
+        // no wire yet is not a socket at all — the drop opens the body menu instead, and the
+        // panel sends `DriveParam`.)
+        let dst_param = subgraph::param_at_in(&trial, &motion.registry, NodeId(n), p);
+        let landed = match &dst_param {
+            Some(name) => trial
+                .drive_param(NodeId(n), name.as_str(), (NodeId(from_node), from_port))
+                .is_ok(),
+            None => trial
+                .connect(Edge {
+                    from: (NodeId(from_node), from_port),
+                    to: (NodeId(n), p),
+                    delayed: false,
+                })
+                .is_ok(),
+        } && trial.validate(&motion.registry).is_ok();
         if !landed {
             toasts.push(ph2d_editor::Toast::info(
                 "Can't move the wire there - the original stays",

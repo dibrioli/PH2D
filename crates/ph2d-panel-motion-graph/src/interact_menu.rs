@@ -7,6 +7,7 @@
 //! the canvas, and the list scrolls inside it — by the wheel, or by a scrollbar you can drag.
 
 use super::{GraphViewSnapshot, Menu, MotionGraphPanelState, geom};
+use crate::snapshot::ChoiceTarget;
 use crate::snapshot::{GraphIntent, menu_catalog, menu_rows, push_intent};
 use crate::state::MenuBody;
 use ph2d_editor_core::interaction::GraphZoom;
@@ -118,22 +119,40 @@ pub(super) fn resolve_menu(menu: &Menu, rect: Rect, snap: &GraphViewSnapshot, x:
             detach,
         } => {
             let p = &rows[i];
+            // A PARAMETER (doc 58): it has no port, so it cannot be a `Connect`. Driving it
+            // IS the promotion — the socket appears because the wire exists.
+            if let ChoiceTarget::Param(param) = p.target {
+                // A pulled-off end that lands on a param: the shell unplugs the old socket
+                // and drives the param in one step (it knows both halves).
+                push_intent(GraphIntent::DriveParam {
+                    from_node: other.0,
+                    from_port: other.1,
+                    to_node: p.node,
+                    param,
+                });
+                return;
+            }
             // A wire whose end was pulled off MOVES; it does not copy (doc 45). The port
             // just named is where it moves TO.
-            if let Some((old_to_node, old_to_port)) = *detach {
+            if let (Some((old_to_node, old_to_port)), ChoiceTarget::Port(port)) =
+                (*detach, p.target)
+            {
                 push_intent(GraphIntent::MoveWireEnd {
                     from_node: other.0,
                     from_port: other.1,
                     old_to_node,
                     old_to_port,
-                    new_to: Some((p.node, p.port)),
+                    new_to: Some((p.node, port)),
                 });
                 return;
             }
+            let ChoiceTarget::Port(port) = p.target else {
+                unreachable!("the param arm returned above");
+            };
             let (from, to) = if *forward {
-                (*other, (p.node, p.port))
+                (*other, (p.node, port))
             } else {
-                ((p.node, p.port), *other)
+                ((p.node, port), *other)
             };
             push_intent(GraphIntent::Connect {
                 from_node: from.0,

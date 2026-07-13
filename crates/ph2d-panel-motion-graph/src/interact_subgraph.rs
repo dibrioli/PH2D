@@ -138,10 +138,14 @@ pub(super) fn card_port_menu(
     x: f32,
     y: f32,
 ) -> Option<Menu> {
+    // A CARD hides ports (doc 57 §5); an ordinary NODE hides its parameters (doc 58) — a
+    // param has no port and never will, so the only way a wire reaches one is to ask. Same
+    // gesture, same menu, same question: *where does this wire go?* A GHOST hides nothing —
+    // it lives on another level, and its body is not a door.
     let card = snap
         .nodes
         .iter()
-        .find(|n| n.kind == NodeViewKind::Subgraph && geom::card_rect(n, view).contains(x, y))?;
+        .find(|n| n.kind != NodeViewKind::Ghost && geom::card_rect(n, view).contains(x, y))?;
     let held = port_view(snap, other, !forward)?;
     let hidden = card_hidden_ports(card.id);
     // Forward: the wire comes OUT of `other` and needs an input inside. Backwards: it needs

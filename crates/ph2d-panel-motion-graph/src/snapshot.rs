@@ -14,11 +14,16 @@ use ph2d_nodegraph::graph::Graph;
 use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_nodegraph::port::{Clock, Dim, Domain};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 
 #[path = "snapshot_intent.rs"]
 mod intent;
 pub use intent::GraphIntent;
+
+#[path = "snapshot_drop.rs"]
+mod drop_targets;
+pub use drop_targets::{
+    ChoiceTarget, HiddenPorts, PortChoice, card_hidden_ports, set_card_hidden_ports,
+};
 
 /// One socket on a node card. Color ← [`Domain`], shape ← [`Dim`] (plan §2.4).
 /// `clock` completes the [`ph2d_nodegraph::port::PortType`] axes so the editor's
@@ -30,39 +35,6 @@ pub struct PortView {
     pub domain: Domain,
     pub dim: Dim,
     pub clock: Clock,
-}
-
-/// **A port INSIDE a collapsed group that the card does not expose** (doc 57 §5) — one
-/// row of the menu a wire dropped on a card's body opens.
-///
-/// It names a REAL node and a REAL port (untagged ids): the fold is a view, the graph is
-/// flat, so the connection the artist picks is an ordinary edge and everything downstream
-/// — the connect authority, the plumbing, the undo — goes on speaking about real nodes.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PortChoice {
-    pub node: u32,
-    pub port: u16,
-    /// `"<node display name>: <port name>"` — the node has to be named, because a group
-    /// holds many and "Value" alone would not say whose.
-    pub label: String,
-    /// The MEMBER's category, so the row's dot reads like the card it lives on.
-    pub category: NodeUiCategory,
-    /// The port's type — how the drop filters the list to what this wire can actually feed.
-    pub port_type: PortView,
-}
-
-/// The ports a card keeps out of sight: everything inside the group that no wire crosses
-/// to. Published per card by the shell's fold (it is the only one that can see inside).
-///
-/// **The two sides are not symmetric, and the asymmetry is the graph's own:** an input
-/// holds at most ONE edge, so an input that is already fed cannot take this wire (it is
-/// hidden AND unavailable — you would have to go in and move the wire). An output fans
-/// out freely, so every member output is offerable **unless the card already exposes it**,
-/// in which case the artist should drop on the socket that is right there.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct HiddenPorts {
-    pub inputs: Vec<PortChoice>,
-    pub outputs: Vec<PortChoice>,
 }
 
 /// **What a card in the view actually IS** (doc 57). The panel paints and hits all
@@ -274,27 +246,6 @@ thread_local! {
     static SELECTION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
     static BACKDROP_SELECTION: RefCell<Option<u32>> = const { RefCell::new(None) };
     static SELECTION_REQUEST: RefCell<Option<Vec<u32>>> = const { RefCell::new(None) };
-    static CARD_PORTS: RefCell<BTreeMap<u32, HiddenPorts>> = const { RefCell::new(BTreeMap::new()) };
-}
-
-/// Publish what each collapsed card is HIDING, keyed by its view id (shell fold → panel,
-/// doc 57 §5). Rebuilt every frame by the fold, which is the only code that can see
-/// through a card.
-///
-/// It rides beside the snapshot rather than inside it for the same reason the node
-/// catalog does: these are the rows of a MENU, not something the paint draws. A card
-/// that showed its hidden ports as sockets would not be hiding them.
-pub fn set_card_hidden_ports(cards: BTreeMap<u32, HiddenPorts>) {
-    CARD_PORTS.with(|c| *c.borrow_mut() = cards);
-}
-
-/// What card `view` is hiding — empty for anything that is not a collapsed card.
-///
-/// **Public so the shell's seam gate can read back what its fold published.** Deriving the
-/// hidden ports perfectly and never publishing them would compile, pass every unit test on
-/// the shell side, and hand the artist an empty menu.
-pub fn card_hidden_ports(view: u32) -> HiddenPorts {
-    CARD_PORTS.with(|c| c.borrow().get(&view).cloned().unwrap_or_default())
 }
 
 /// Publish the current node selection (panel `paint` → shell bridge, M1.P1). The
@@ -492,7 +443,18 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 silhouette: ui.map(|u| u.silhouette).unwrap_or(NodeSilhouette::Rect),
                 x: pos.x,
                 y: pos.y,
-                inputs: manifest.map(|m| port_views(m.inputs)).unwrap_or_default(),
+                // The manifest's declared inputs, and then one socket per DRIVEN PARAM
+                // (doc 58) — a port the graph does not have, exactly as a subgraph card
+                // draws ports the graph does not have (doc 57 §3). Appended, never
+                // interleaved: slot `inputs.len() + k` is the k-th driven param, and the
+                // shell decodes it back with the same derivation (`param_source::param_at`).
+                inputs: manifest
+                    .map(|m| {
+                        let mut v = port_views(m.inputs);
+                        v.extend(driven_param_ports(graph, m, inst.id));
+                        v
+                    })
+                    .unwrap_or_default(),
                 outputs: manifest.map(|m| port_views(m.outputs)).unwrap_or_default(),
                 // The readout, the stream's mass, whether it changed, and which nodes are
                 // sinks all need the COOK (or the shell's sink list), which only the shell
@@ -506,7 +468,7 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
         })
         .collect();
 
-    let edges = graph
+    let mut edges: Vec<GraphEdgeView> = graph
         .edges()
         .iter()
         .map(|e| GraphEdgeView {
@@ -518,6 +480,31 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
             out_domain: source_domain(graph, registry, e.from.0, e.from.1),
         })
         .collect();
+    // A driven param is an edge — it just lands on a name instead of a port index. It is
+    // drawn like one, cut like one, and pulled off its socket like one, because to everything
+    // downstream of here it IS one.
+    for (node, sources) in graph.all_param_sources() {
+        let Some(manifest) = graph
+            .node(*node)
+            .and_then(|n| registry.resolve(n.type_id()))
+            .map(|op| op.manifest())
+        else {
+            continue;
+        };
+        for (k, (name, (src, src_port))) in sources.iter().enumerate() {
+            if declared_param(manifest, name).is_none() {
+                continue; // dead data: the node type no longer has that param
+            }
+            edges.push(GraphEdgeView {
+                from_node: src.0,
+                from_port: *src_port,
+                to_node: node.0,
+                to_port: (manifest.inputs.len() + k) as u16,
+                delayed: false,
+                out_domain: source_domain(graph, registry, *src, *src_port),
+            });
+        }
+    }
 
     // The backdrops are NOT here: they live on the `MotionDoc`, not in the graph
     // the cook sees. The shell bridge fills them in after this call.
@@ -530,6 +517,46 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
         probe: None,
         now: 0.0,
     }
+}
+
+/// The param's own `&'static` name, if the node type still declares it. A socket for a param
+/// the manifest does not have would be a socket wired to nothing — and the name has to come
+/// from the MANIFEST anyway, because a `PortView` names a compile-time port and the graph
+/// only knows a `String`.
+pub(crate) fn declared_param(
+    manifest: &'static ph2d_nodegraph::node::NodeManifest,
+    name: &str,
+) -> Option<&'static str> {
+    manifest
+        .params
+        .iter()
+        .find(|p| p.name == name)
+        .map(|p| p.name)
+}
+
+/// One input socket per driven param, in the map's sorted order (doc 58).
+///
+/// The type is the one a **value** node emits — a scalar instance stream — because that is
+/// what a param can read (`cook::driven_value`). So the editor's own compatibility rule
+/// filters the drop for free: only a value wire can reach a parameter.
+fn driven_param_ports(
+    graph: &Graph,
+    manifest: &'static ph2d_nodegraph::node::NodeManifest,
+    node: ph2d_nodegraph::graph::NodeId,
+) -> Vec<PortView> {
+    let Some(sources) = graph.param_sources(node) else {
+        return Vec::new();
+    };
+    sources
+        .keys()
+        .filter_map(|name| declared_param(manifest, name))
+        .map(|name| PortView {
+            name,
+            domain: Domain::Instances,
+            dim: Dim::Scalar,
+            clock: manifest.clock,
+        })
+        .collect()
 }
 
 fn port_views(specs: &[ph2d_nodegraph::node::PortSpec]) -> Vec<PortView> {

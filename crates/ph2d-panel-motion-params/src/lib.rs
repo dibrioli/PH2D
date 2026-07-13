@@ -238,6 +238,12 @@ fn on_value_changed(
             let ParamRow::Scalar(row) = &snap.rows[slot] else {
                 return EventOutcome::Ignored;
             };
+            // Second barrier (the paint registers nothing for a driven row, so this should be
+            // unreachable — but a stale id from the frame the wire landed must not write a
+            // number the wire is about to overwrite anyway).
+            if row.driven {
+                return EventOutcome::Ignored;
+            }
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             push_param_intent(MotionParamIntent::SetParam {
                 node: snap.node,

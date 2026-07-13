@@ -310,47 +310,6 @@ fn text_params_fingerprint(overrides: Option<&BTreeMap<String, String>>) -> u64 
     hash
 }
 
-/// FNV-1a over WHICH params a node has driven, and from where — see
-/// [`Fingerprint::param_sources`]. Not the values (those ride in the revisions).
-fn param_sources_fingerprint(sources: Option<&crate::param_source::Sources>) -> u64 {
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    let mut mix = |bytes: &[u8]| {
-        for b in bytes {
-            hash ^= *b as u64;
-            hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-        }
-    };
-    if let Some(map) = sources {
-        for (name, (src, port)) in map {
-            mix(&(name.len() as u64).to_le_bytes());
-            mix(name.as_bytes());
-            mix(&src.0.to_le_bytes());
-            mix(&port.to_le_bytes());
-        }
-    }
-    hash
-}
-
-/// **The one number a driven param reads.**
-///
-/// A parameter is one number and a stream is many, so something has to give — and what gives
-/// is the stream: the param reads its FIRST value. That is not a compromise, it is the
-/// convention this graph already speaks in the other direction: a value node with no geometry
-/// input emits a **length-1 global** stream (`value.lfo`: *"cardinality follows the geometry,
-/// else the length-1 global oscillation"*), which `motion.drive` broadcasts back out to N.
-/// Driving a param IS the length-1 case; wiring a per-instance stream into it reads the first
-/// particle, and the artist sees exactly which number landed, live, in the params panel.
-///
-/// A per-instance parameter is a different feature and it already exists: it is a real input
-/// port (`motion.drive`'s `value`), declared by nodes that mean it.
-fn driven_value(v: &CookValue) -> Option<f32> {
-    let s = v.as_stream();
-    match s.get(crate::attr::VALUE_COLUMN)? {
-        crate::attr::Column::Scalar(xs) => xs.first().copied(),
-        _ => None,
-    }
-}
-
 struct Cached {
     outputs: Vec<CookValue>,
     revision: u64,
@@ -615,7 +574,11 @@ impl Cook {
             for (name, (src, src_port)) in sources {
                 let rev = self.cook_node(graph, ops, *src, in_playhead, in_key, scopes)?;
                 input_revs.push(rev);
-                if let Some(v) = driven_value(&self.cur_output(*src, in_key, *src_port as usize)) {
+                if let Some(v) = crate::param_source::driven_value(&self.cur_output(
+                    *src,
+                    in_key,
+                    *src_port as usize,
+                )) {
                     driven.insert(name.as_str(), v);
                 }
                 // An empty driver leaves the param FALLING BACK to its override/default
@@ -640,7 +603,7 @@ impl Cook {
             tick: consumes_pre.then_some(self.tick),
             params: params_fingerprint(graph.node_param_overrides(node)),
             text_params: text_params_fingerprint(graph.node_text_param_overrides(node)),
-            param_sources: param_sources_fingerprint(sources),
+            param_sources: crate::param_source::fingerprint(sources),
         };
         if let Some(c) = self.cache.get(&(node, key))
             && c.fingerprint == fingerprint

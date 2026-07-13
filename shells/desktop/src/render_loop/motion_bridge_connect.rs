@@ -20,6 +20,19 @@ pub(super) fn apply_connect(
 ) {
     use ph2d_editor::Toast;
     use ph2d_nodegraph::graph::{Edge, EdgeError, NodeId};
+    // The target may be a PARAM's socket (doc 58) — a wire dropped straight onto one
+    // re-drives that param from a new source. It is not an edge and `connect` would not know
+    // what to do with the port index.
+    if let Some(param) = super::subgraph::param_at(motion, NodeId(to_node), to_port) {
+        super::subgraph::drive(
+            motion,
+            toasts,
+            (NodeId(from_node), from_port),
+            NodeId(to_node),
+            &param,
+        );
+        return;
+    }
     let fwd = Edge {
         from: (NodeId(from_node), from_port),
         to: (NodeId(to_node), to_port),

@@ -264,6 +264,26 @@ fn channel_range_override(type_name: &str, param: &str, channel: i32) -> Option<
 
 /// The single selected Motion node's `NodeId.0`, or `None` unless exactly one
 /// node is selected (params edit a single node; multi-select is a later step).
+/// **The live number a wire is putting into `param`** (doc 58), or `None` if nothing drives
+/// it — read from the cook's MEMO (`Cook::peek`), so showing it costs a lookup and never a
+/// second evaluation.
+///
+/// It is the SAME reduction the cook itself does (`driven_value`: the first value of the
+/// `"v"` column) — a second one here would be a number that agrees with the wire on most
+/// frames and disagrees on the frame that matters.
+fn driven_value(
+    motion: &MotionState,
+    node: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+) -> Option<f32> {
+    let (src, port) = *motion.doc.graph.param_sources(node)?.get(param)?;
+    let cooked = motion.pump.cook.peek(src)?;
+    // **The SAME reduction the cook does** (`param_source::driven_value`), not a second one
+    // that agrees with the wire on most frames and disagrees on the frame that matters
+    // ([[feedback_derived_coordinate_seed_must_match_sample]]).
+    ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?)
+}
+
 pub(super) fn selected_motion_node() -> Option<u32> {
     match ph2d_panel_motion_graph::current_graph_selection()[..] {
         [only] => Some(only),
@@ -437,7 +457,12 @@ pub(super) fn build_params_snapshot(
                 _ => {}
             }
         }
-        let value = f64::from(value_of(spec.name));
+        // **A driven param shows the number the WIRE is putting in** (doc 58), not the
+        // override the wire is overriding — the resolution order the cook uses, made visible.
+        // Read from the cook's memo (`peek`), never by evaluating anything a second time.
+        let driven = driven_value(motion, nid, spec.name);
+        let value = f64::from(driven.unwrap_or_else(|| value_of(spec.name)));
+        let driven = driven.is_some();
         rows.push(ParamRow::Scalar(match hint {
             Some(h) => {
                 // A behaviour's magnitude range depends on the channel it drives
@@ -458,6 +483,7 @@ pub(super) fn build_params_snapshot(
                     max: f64::from(max),
                     step: f64::from(step),
                     integer: h.widget.is_integer(),
+                    driven,
                 }
             }
             // No hint → a neutral range around the param's manifest DEFAULT.
@@ -489,6 +515,7 @@ pub(super) fn build_params_snapshot(
                     max: f64::from(max),
                     step: 0.1,
                     integer: false,
+                    driven,
                 }
             }
         }));

@@ -246,7 +246,9 @@ pub(super) fn cut_wires(
             refused = true;
             continue;
         }
-        if motion.doc.graph.disconnect(nid, to_port).is_some() {
+        // Whichever kind of socket it is: the knife cuts a param wire like any other
+        // (doc 58) — it is drawn like one, so it must die like one.
+        if super::subgraph::unplug(motion, nid, to_port) {
             cut += 1;
         }
     }

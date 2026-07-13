@@ -85,24 +85,30 @@ fn a_card_hides_the_ports_no_wire_reaches_and_the_menu_can_reach_them() {
     let sid = m.doc.subgraphs[0].id;
 
     let hidden = hidden_of(&m, sid);
+    let port = |p: &ph2d_panel_motion_graph::PortChoice| match p.target {
+        ph2d_panel_motion_graph::ChoiceTarget::Port(k) => Some(k),
+        // A PARAM row is not a port row, and it must not be mistaken for one — a `port: 0`
+        // sentinel collided with real port 0 here, which is why the target is an enum.
+        ph2d_panel_motion_graph::ChoiceTarget::Param(_) => None,
+    };
     assert!(
         !hidden
             .inputs
             .iter()
-            .any(|p| p.node == drive.0 && p.port == 0),
+            .any(|p| p.node == drive.0 && port(p) == Some(0)),
         "input 0 is already fed - offering it would offer a port the connect must refuse"
     );
     assert!(
         hidden
             .inputs
             .iter()
-            .any(|p| p.node == drive.0 && p.port == 1),
+            .any(|p| p.node == drive.0 && port(p) == Some(1)),
         "but input 1 is free, and without the menu nothing outside could ever reach it"
     );
     let out = hidden
         .outputs
         .iter()
-        .find(|p| p.node == drive.0 && p.port == 0)
+        .find(|p| p.node == drive.0 && port(p) == Some(0))
         .expect("the drive's output crosses nothing, so the card cannot show it");
     assert!(
         out.label.contains(':'),
@@ -122,7 +128,7 @@ fn a_card_hides_the_ports_no_wire_reaches_and_the_menu_can_reach_them() {
     );
     push_intent(GraphIntent::Connect {
         from_node: out.node,
-        from_port: out.port,
+        from_port: port(out).expect("an output row is a port row"),
         to_node: sink.0,
         to_port: 0,
     });
@@ -141,7 +147,7 @@ fn a_card_hides_the_ports_no_wire_reaches_and_the_menu_can_reach_them() {
         !hidden_of(&m, sid)
             .outputs
             .iter()
-            .any(|p| p.node == drive.0 && p.port == 0),
+            .any(|p| p.node == drive.0 && port(p) == Some(0)),
         "...and it is no longer HIDDEN: the socket is right there, so the menu stops \
          offering a second door into the same room"
     );
@@ -170,5 +176,144 @@ fn a_card_hides_what_its_nested_cards_hide() {
     assert!(
         hidden.outputs.iter().any(|p| p.node == shallow.0),
         "and so is the one directly inside it"
+    );
+}
+
+// ── Driven params (doc 58) ──────────────────────────────────────────────────
+
+/// **The whole feature, through the real seam.** A wire dropped on a node's body offers its
+/// PARAMS; picking one drives it; the socket then EXISTS (the view grows it, derived from the
+/// wire); and pulling the wire off takes the socket away again.
+///
+/// Nothing here is a param-specific gesture. The drop, the menu, the socket, the cut are the
+/// ones the editor already had — a parameter is simply a place a wire can land.
+#[test]
+fn a_wire_dropped_on_a_node_drives_one_of_its_params_and_the_socket_appears() {
+    let mut m = flat();
+    let lfo = m.doc.graph.add_node("value.lfo");
+    let wind = m.doc.graph.add_node("force.wind");
+    let inputs = fold::manifest_of(&m, wind)
+        .expect("wind is registered")
+        .inputs
+        .len();
+
+    // What the drop offers: the wind's params, by the label the params panel shows.
+    let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    fold::fold(&m, &mut snap);
+    let offered = ph2d_panel_motion_graph::card_hidden_ports(wind.0);
+    let strength = offered
+        .inputs
+        .iter()
+        .find_map(|p| match p.target {
+            ph2d_panel_motion_graph::ChoiceTarget::Param(name) if name == "strength" => Some(name),
+            _ => None,
+        })
+        .expect("an undriven param is offered - it has no socket, so the menu is the only door");
+    assert!(
+        offered
+            .inputs
+            .iter()
+            .all(|p| matches!(p.target, ph2d_panel_motion_graph::ChoiceTarget::Param(_))),
+        "an ordinary node hides parameters, not ports"
+    );
+
+    // The pick — the intent the panel pushes.
+    push_intent(GraphIntent::DriveParam {
+        from_node: lfo.0,
+        from_port: 0,
+        to_node: wind.0,
+        param: strength,
+    });
+    apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor::screens::layout::CenterSplit::None,
+    );
+    assert_eq!(
+        m.doc
+            .graph
+            .param_sources(wind)
+            .and_then(|s| s.get("strength")),
+        Some(&(lfo, 0u16)),
+        "the param is driven by the node the artist named"
+    );
+
+    // THE SOCKET NOW EXISTS — derived from the wire, appended after the declared inputs — and
+    // a wire is drawn into it. Neither is in the graph: the graph has no such port.
+    let snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    let card = snap.nodes.iter().find(|n| n.id == wind.0).unwrap();
+    assert_eq!(
+        card.inputs.len(),
+        inputs + 1,
+        "the card grew a socket for the driven param"
+    );
+    assert_eq!(card.inputs[inputs].name, "strength");
+    assert!(
+        snap.edges
+            .iter()
+            .any(|e| e.from_node == lfo.0 && e.to_node == wind.0 && e.to_port == inputs as u16),
+        "and the wire is drawn into it"
+    );
+    // It is no longer offered by the menu: its socket is right there.
+    let mut snap2 = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    fold::fold(&m, &mut snap2);
+    assert!(
+        !ph2d_panel_motion_graph::card_hidden_ports(wind.0)
+            .inputs
+            .iter()
+            .any(|p| p.target == ph2d_panel_motion_graph::ChoiceTarget::Param("strength"))
+    );
+
+    // **Pull the wire off and the socket goes with it.** The gesture is the ordinary one —
+    // the panel does not know it is unplugging a parameter.
+    push_intent(GraphIntent::Disconnect {
+        to_node: wind.0,
+        to_port: inputs as u16,
+    });
+    apply_graph_intents(
+        &mut m,
+        &mut ph2d_core::Playhead::default(),
+        &mut ph2d_editor::ToastQueue::default(),
+        &mut ph2d_editor::screens::layout::CenterSplit::None,
+    );
+    assert!(m.doc.graph.param_sources(wind).is_none(), "un-driven");
+    let snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+    let card = snap.nodes.iter().find(|n| n.id == wind.0).unwrap();
+    assert_eq!(
+        card.inputs.len(),
+        inputs,
+        "the socket existed only because the wire did"
+    );
+}
+
+/// A param driven from OUTSIDE a group keeps its wire when the node is collapsed into a card
+/// — the card grows a socket for it, like any crossing wire (doc 57 §3 + doc 58).
+///
+/// Missed, the wire would VANISH from the view the moment the artist grouped the node: the
+/// cook would go on reading it, and the canvas would be lying about what the scene computes.
+#[test]
+fn grouping_a_node_whose_param_is_driven_from_outside_keeps_the_wire_on_the_card() {
+    let mut m = flat();
+    let lfo = m.doc.graph.add_node("value.lfo");
+    let wind = m.doc.graph.add_node("force.wind");
+    m.doc.graph.drive_param(wind, "strength", (lfo, 0)).unwrap();
+    super::subgraph::group(&mut m, vec![wind.0]);
+    let sid = m.doc.subgraphs[0].id;
+
+    let ports = super::subgraph::card_ports(&m, sid);
+    assert_eq!(
+        ports.inputs.len(),
+        1,
+        "the param wire crosses the boundary, so the card has a socket for it"
+    );
+    // …and that socket resolves back to the param, not to a port that does not exist.
+    let (node, port) = super::subgraph::resolve_port(&m, super::subgraph::view_id(sid), 0, true)
+        .expect("slot 0 resolves");
+    assert_eq!(node, wind);
+    assert_eq!(
+        super::subgraph::param_at(&m, node, port).as_deref(),
+        Some("strength"),
+        "the card's socket stands for a PARAMETER of the node inside it"
     );
 }

@@ -39,6 +39,12 @@ pub use guides::{Guide, draw_snap_guides, draw_text_caret};
 mod connector;
 pub use connector::{HANDLE_R_PX, draw_connector_handles, draw_connector_waypoints};
 
+/// As alças de **raio de quina** (Live Corners) — módulo irmão (LOC cap). O raio e a
+/// posição da bolinha vêm de `ph2d-vec-scene`/`ph2d-vec-edit`, as mesmas funções que o
+/// hit-test usa: aqui só se pinta.
+mod corner;
+pub use corner::draw_corner_handles;
+
 /// Constrói o `BezPath` (world-space) de um path editável: para CADA contorno
 /// (primário + `subpaths`), `move_to` na 1ª âncora, depois uma cúbica por segmento
 /// usando `out_handle(i)` e `in_handle(i+1)`; fecha com uma cúbica final se

@@ -25,6 +25,17 @@ pub(crate) struct VecOverlayPlan {
     /// Guias de alinhamento do snap — desenhadas em TODOS os modos, inclusive o
     /// Select (gizmo-move).
     pub snap_guides: bool,
+    /// As alças de **raio de quina** (Live Corners) — só no **Node**, e é mais estreito
+    /// que o `edit`.
+    ///
+    /// No **Pen** o clique cria e edita ponto: uma alça de raio ali disputaria o pixel com
+    /// o gesto de desenhar, e arredondar quina não é o que a caneta faz. No **Shape** a
+    /// forma é PARAMÉTRICA — o raio dela é um campo do `VecShape` (o painel), não o
+    /// `corner_radius` do vértice; a geometria é re-cozida do zero a cada mudança de
+    /// parâmetro e o raio por-vértice seria varrido junto. No **Select** manda o gizmo.
+    ///
+    /// Sobra o Node — que é exatamente onde o Illustrator e o Affinity a põem.
+    pub corner_handles: bool,
 }
 
 /// A política de visibilidade dos overlays vetoriais deste frame.
@@ -33,6 +44,7 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
     VecOverlayPlan {
         edit: vector_active && mode != DrawMode::Select,
         snap_guides: vector_active,
+        corner_handles: vector_active && mode == DrawMode::Node,
     }
 }
 
@@ -68,5 +80,25 @@ mod tests {
         let plan = vec_overlay_plan(false, DrawMode::Node);
         assert!(!plan.edit);
         assert!(!plan.snap_guides);
+        assert!(!plan.corner_handles);
+    }
+
+    /// **A alça de raio de quina é do NODE, e só dele** — mais estreita que o `edit`.
+    ///
+    /// O `Shape` é o que este teste realmente protege: uma forma paramétrica re-cozinha a
+    /// geometria INTEIRA a cada mudança de parâmetro (`recook_into` sobrescreve `verts`),
+    /// então um `corner_radius` gravado num vértice dela seria varrido no próximo arrasto
+    /// de slider — a alça funcionaria por um frame e depois "esqueceria" sozinha. O raio de
+    /// uma Live Shape é um campo DELA (o painel); o raio por-vértice é para path desenhado.
+    #[test]
+    fn the_corner_radius_handle_belongs_to_node_mode_alone() {
+        assert!(vec_overlay_plan(true, DrawMode::Node).corner_handles);
+        for mode in [DrawMode::Select, DrawMode::Pen, DrawMode::Shape] {
+            let plan = vec_overlay_plan(true, mode);
+            assert!(
+                !plan.corner_handles,
+                "{mode:?} NÃO desenha alça de raio de quina"
+            );
+        }
     }
 }

@@ -7,12 +7,19 @@
 //!    hit-test, bbox, booleana) sem mexer numa vírgula do comportamento de hoje.
 //! 2. **O caso reto continua sendo o arco exato de sempre.** A generalização para curvas
 //!    não pode ter mexido no que o `crate::corners` já fazia.
-//! 3. **A saturação não estoura.** É a lição do Bug #1 (`docs/Vector Module/BUGS_vector.md`):
-//!    duas quinas vizinhas dividem uma aresta, os dois recuos saem da mesma conta, e um
-//!    piso e um teto derivados dela se cruzam por 1 ulp. A varredura tem de ser
-//!    **COMBINADA** — mexer num raio de cada vez fica verde com o bug vivo.
-//! 4. **Nada de `NaN`.** Um pânico morre com stack trace; um `NaN` contamina a bbox em
-//!    silêncio, o gizmo some, e o usuário reporta "a forma sumiu" três telas depois.
+//! 3. **A alça não mente.** O que o gizmo mostra é onde o cozimento arredonda — a mesma
+//!    função nas duas direções. É o gate mais importante daqui, e o único que fica
+//!    vermelho quando as duas contas divergem.
+//! 4. **A saturação não estoura, e nada vira `NaN`.** Um pânico morre com stack trace; um
+//!    `NaN` contamina a bbox em silêncio, o gizmo some, e o usuário reporta "a forma
+//!    sumiu" três telas depois da causa (Bug #1, `docs/Vector Module/BUGS_vector.md`).
+//!
+//! **Sobre o que cada gate NÃO prova** — porque eu escrevi o gate errado primeiro e vale
+//! deixar registrado: a varredura combinada de quinas vizinhas prova finitude e
+//! contenção, mas **não morde** o guard de ordem nem o clamp de meia-corda (confirmei
+//! removendo os dois, um de cada vez: ela seguiu verde). O estrago que eles evitam é
+//! sub-ulp ou satura em outro lugar — invisível para uma asserção de caixa. Cada um tem o
+//! gate próprio, e os três foram **provados por mutação**, não por alegação.
 
 use super::*;
 use crate::{VecPath, VecVertex, VertexKind};

@@ -25,6 +25,14 @@ mod selection;
 pub mod snap;
 pub use snap::{SnapConfig, SnapResult, SnapTargets, bbox_key_points, collect_targets};
 
+/// A alça do **raio de quina** (Live Corners) — módulo irmão (LOC cap).
+pub mod corner_handle;
+
+/// **O arrasto** de um ponto agarrado (âncora / handle bézier / alça de raio) — módulo
+/// irmão (LOC cap). Bloco `impl PenTool` inerente; a API pública não muda.
+mod pen_drag;
+use ph2d_vec_scene::corner_live::{CORNER_HANDLE_PARK_PX, CORNER_HANDLE_R_PX};
+
 use ph2d_vec_scene::{Paint, VecPath, VecPathId, VecScene, VecVertex, VertexKind};
 
 /// Resultado de uma pressão do Pen (para o shell logar/reagir se quiser).
@@ -49,6 +57,10 @@ enum Part {
     Anchor,
     In,
     Out,
+    /// A alça do **raio de quina** (Live Corners): corre pela bissetriz, e arrastá-la
+    /// para dentro arredonda o canto. Só existe onde há quina de verdade —
+    /// `corner_at` é o mesmo predicado que o cozimento usa.
+    Radius,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -56,6 +68,17 @@ struct Grab {
     path: VecPathId,
     vert: usize,
     part: Part,
+    /// **O arrasto relativo da alça de raio, num número só:** a diferença entre o recuo
+    /// VERDADEIRO e a projeção do cursor na bissetriz, medida no instante do grab. Durante
+    /// o arrasto, `recuo = projeção_agora + este offset`.
+    ///
+    /// É relativo porque a alça de uma quina AFIADA não pode ser desenhada em cima da
+    /// âncora (sumiria dentro dela): ela ESTACIONA alguns pixels adiante, sobre a
+    /// bissetriz. Com arrasto absoluto, o primeiro pixel de movimento faria o raio saltar
+    /// para o valor daquele estacionamento. Com o offset, a quina afiada tem
+    /// `offset = 0 − park` e o raio cresce de zero, como o dedo espera. Só o
+    /// `Part::Radius` usa.
+    radius_offset: f64,
 }
 
 /// Ferramenta Pen + edição de ponto. O estado de documento (`VecScene`) e a
@@ -258,8 +281,9 @@ impl PenTool {
         if self.reopen_endpoint(scene, p, hit_r) {
             return PenClick::Grabbed;
         }
-        // hit-test para EDITAR um ponto existente.
-        if let Some(g) = self.hit_test(scene, p, hit_r) {
+        // hit-test para EDITAR um ponto existente. Sem alca de raio: ela e do modo
+        // NODE (ADR-0112) — no Pen o clique cria e edita ponto, nao arredonda quina.
+        if let Some(g) = self.hit_test(scene, p, hit_r, None) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
         }
@@ -299,7 +323,7 @@ impl PenTool {
         alt: bool,
     ) -> PenClick {
         let hit_r = 10.0 * px_to_world;
-        if let Some(g) = self.hit_test(scene, p, hit_r) {
+        if let Some(g) = self.hit_test(scene, p, hit_r, Some(px_to_world)) {
             self.grab_vertex(scene, g, alt);
             return PenClick::Grabbed;
         }
@@ -316,101 +340,6 @@ impl PenTool {
                 PenClick::Ignored
             }
         }
-    }
-
-    /// Arrasto: puxa os handles do vértice em desenho, OU move o elemento agarrado.
-    /// Devolve `true` se consumiu.
-    ///
-    /// `snap` só se aplica ao arrasto de ÂNCORA — um handle é uma tangente, encaixá-lo
-    /// numa âncora vizinha só produziria curva torta. Sem snap, passe `&mut |p| p`.
-    pub fn on_drag(
-        &mut self,
-        scene: &mut VecScene,
-        p: [f64; 2],
-        snap: &mut dyn FnMut([f64; 2]) -> [f64; 2],
-    ) -> bool {
-        // Edição de ponto agarrado.
-        if let Some(g) = self.grab {
-            let xf = self.xf(g.path);
-            let Some(inv) = xf.inverse() else {
-                return false; // forma colapsada: nada a arrastar
-            };
-            let Some(path) = scene.path_mut(g.path) else {
-                return false;
-            };
-            // Arrasto de ÂNCORA: se a agarrada está na multi-seleção, TODAS as
-            // âncoras selecionadas transladam pelo mesmo delta (âncora + handles);
-            // senão só a agarrada. Handles ficam de fora (são per-vértice).
-            if g.part == Part::Anchor {
-                let Some(grabbed) = path.vert(g.vert) else {
-                    return false;
-                };
-                let p = snap(p);
-                // O snap acontece no MUNDO; o delta desce pro espaço local do path.
-                let gw = xf.apply(grabbed.anchor);
-                let d = inv.apply_vec([p[0] - gw[0], p[1] - gw[1]]);
-                let group = self.selected_verts.contains(&g.vert);
-                for i in 0..path.total_verts() {
-                    if i != g.vert && !(group && self.selected_verts.contains(&i)) {
-                        continue;
-                    }
-                    let Some(v) = path.vert_mut(i) else { continue };
-                    v.anchor = [v.anchor[0] + d[0], v.anchor[1] + d[1]];
-                    v.in_handle = [v.in_handle[0] + d[0], v.in_handle[1] + d[1]];
-                    v.out_handle = [v.out_handle[0] + d[0], v.out_handle[1] + d[1]];
-                }
-                return true;
-            }
-            // Um handle é uma tangente: sem snap, e no espaço local do path.
-            let p = inv.apply(p);
-            let Some(v) = path.vert_mut(g.vert) else {
-                return false;
-            };
-            match g.part {
-                Part::Anchor => unreachable!("handled above"),
-                // O handle oposto segue a restrição do tipo: Symmetric espelha,
-                // Smooth mantém colinear preservando o comprimento, Corner é livre.
-                Part::In => {
-                    v.in_handle = p;
-                    match v.kind {
-                        VertexKind::Symmetric => v.out_handle = mirror(v.anchor, p),
-                        VertexKind::Smooth => {
-                            v.out_handle = colinear_opposite(v.anchor, p, v.out_handle)
-                        }
-                        VertexKind::Corner => {}
-                    }
-                }
-                Part::Out => {
-                    v.out_handle = p;
-                    match v.kind {
-                        VertexKind::Symmetric => v.in_handle = mirror(v.anchor, p),
-                        VertexKind::Smooth => {
-                            v.in_handle = colinear_opposite(v.anchor, p, v.in_handle)
-                        }
-                        VertexKind::Corner => {}
-                    }
-                }
-            }
-            return true;
-        }
-        // Arrasto de handle do vértice em desenho: o Pen cria handles simétricos
-        // (Symmetric) — o clássico "arrasta pra curvar", quebrável depois (Alt).
-        if self.dragging
-            && let Some(id) = self.active
-        {
-            let p = self.to_local(id, p);
-            let Some(path) = scene.path_mut(id) else {
-                return false;
-            };
-            let Some(v) = path.verts.last_mut() else {
-                return false;
-            };
-            v.out_handle = p;
-            v.in_handle = mirror(v.anchor, p);
-            v.kind = VertexKind::Symmetric;
-            return true;
-        }
-        false
     }
 
     /// Solta o botão: encerra arrasto/edição. `true` se havia manipulação (o clique
@@ -594,6 +523,7 @@ impl PenTool {
             path: sel,
             vert: ni,
             part: Part::Anchor,
+            radius_offset: 0.0,
         });
         Some(PenClick::Inserted)
     }
@@ -601,7 +531,17 @@ impl PenTool {
     /// O raio `r` é WORLD-units (px × zoom), então a comparação acontece no mundo:
     /// cada ponto local sobe pelo afim do path dele. Assim uma forma escalada a 10×
     /// não fica com um raio de captura 10× maior — o alvo é do tamanho que se vê.
-    fn hit_test(&self, scene: &VecScene, p: [f64; 2], r: f64) -> Option<Grab> {
+    /// `corner_px`: a escala de pixel do mundo QUANDO as alças de raio de quina estão
+    /// vivas. `None` = ignora as alças de raio — é o que o `path_at` (seletor de
+    /// OBJETO, com tolerância escolhida pelo chamador) passa: lá o `r` não é o raio de
+    /// captura de um vértice, e uma alça de raio nunca é um "objeto sob o cursor".
+    fn hit_test(
+        &self,
+        scene: &VecScene,
+        p: [f64; 2],
+        r: f64,
+        corner_px: Option<f64>,
+    ) -> Option<Grab> {
         let r2 = r * r;
         if let Some(sel) = self.selected
             && let Some(path) = scene.paths().iter().find(|pp| pp.id == sel)
@@ -621,8 +561,41 @@ impl PenTool {
                             path: sel,
                             vert: i,
                             part,
+                            radius_offset: 0.0,
                         });
                     }
+                }
+            }
+            // A alça do RAIO DE QUINA, depois dos handles Bézier e antes das âncoras.
+            // Ela corre pela bissetriz — PARA DENTRO da quina —, enquanto os handles
+            // apontam para fora ao longo das tangentes, então na prática não disputam o
+            // mesmo pixel. O raio de captura é o MESMO em que a bolinha é desenhada
+            // (`CORNER_HANDLE_R_PX`): duas constantes fariam o usuário clicar no meio
+            // dela e não pegar nada.
+            if let Some(px) = corner_px {
+                let grab_r2 = (CORNER_HANDLE_R_PX * px).powi(2);
+                let park = CORNER_HANDLE_PARK_PX * px;
+                for i in 0..path.total_verts() {
+                    // O MESMO predicado do cozimento: sem quina, sem alça. Uma alça que
+                    // aparece e não faz nada é pior que alça nenhuma.
+                    let Some(frame) = corner_handle::frame_at_flat(path, i) else {
+                        continue;
+                    };
+                    let h = corner_handle::handle_pos_local(&frame, park);
+                    if dist2(p, xf.apply(h)) > grab_r2 {
+                        continue;
+                    }
+                    // O offset que torna o arrasto RELATIVO (ver `Grab::radius_offset`):
+                    // o quanto o recuo verdadeiro difere da projeção do cursor, AGORA.
+                    let pl = self.to_local(sel, p);
+                    let d = [pl[0] - frame.anchor[0], pl[1] - frame.anchor[1]];
+                    let proj = d[0] * frame.bisector[0] + d[1] * frame.bisector[1];
+                    return Some(Grab {
+                        path: sel,
+                        vert: i,
+                        part: Part::Radius,
+                        radius_offset: frame.setback - proj,
+                    });
                 }
             }
         }
@@ -638,31 +611,13 @@ impl PenTool {
                         path: path.id,
                         vert: i,
                         part: Part::Anchor,
+                        radius_offset: 0.0,
                     });
                 }
             }
         }
         None
     }
-}
-
-fn mirror(anchor: [f64; 2], h: [f64; 2]) -> [f64; 2] {
-    [2.0 * anchor[0] - h[0], 2.0 * anchor[1] - h[1]]
-}
-
-/// Handle oposto colinear (regra Smooth): aponta na direção contrária ao handle
-/// movido, **preservando o próprio comprimento**. Se o handle movido coincidir
-/// com a âncora (sem direção), devolve o oposto inalterado.
-fn colinear_opposite(anchor: [f64; 2], moved: [f64; 2], opposite: [f64; 2]) -> [f64; 2] {
-    let d = [moved[0] - anchor[0], moved[1] - anchor[1]];
-    let l = (d[0] * d[0] + d[1] * d[1]).sqrt();
-    if l < 1e-9 {
-        return opposite;
-    }
-    let t = [d[0] / l, d[1] / l];
-    let o = [opposite[0] - anchor[0], opposite[1] - anchor[1]];
-    let opp_len = (o[0] * o[0] + o[1] * o[1]).sqrt();
-    [anchor[0] - t[0] * opp_len, anchor[1] - t[1] * opp_len]
 }
 
 fn dist2(a: [f64; 2], b: [f64; 2]) -> f64 {
@@ -672,3 +627,8 @@ fn dist2(a: [f64; 2], b: [f64; 2]) -> f64 {
 
 #[cfg(test)]
 mod tests;
+
+/// Gates da alça de raio de quina — no SEAM (pressiona, arrasta, exige a forma redonda).
+#[cfg(test)]
+#[path = "corner_handle_tests.rs"]
+mod corner_handle_tests;

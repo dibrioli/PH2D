@@ -2902,6 +2902,33 @@ impl crate::App {
                     cam_affine,
                     vector_scene,
                 );
+                // As alças de **raio de quina** (Live Corners) — só no modo Node, e por
+                // cima das âncoras: quando uma quina está afiada, a bolinha estacionada
+                // fica perto da âncora, e é ELA que o dedo deve pegar ali.
+                //
+                // O `park` e a posição saem das MESMAS funções que o hit-test do
+                // `PenTool` usa (`ph2d_vec_edit::corner_handle`) — desenhar numa posição e
+                // capturar noutra faria o usuário clicar no meio da bolinha e não pegar
+                // nada, com a tela certa.
+                if overlay.corner_handles
+                    && let Some(sel) = self.vec_pen.selected()
+                {
+                    // `vec_px_to_world` já veio calculado lá em cima: chamar o método de
+                    // `&self` aqui colidiria com o `gfx` emprestado mutável (é a mesma razão
+                    // de a `view()` do conector ser função LIVRE e não método de `App`).
+                    let handles = ph2d_vec_edit::corner_handle::view(
+                        vec_scene,
+                        sel,
+                        &ph2d_vec_scene::xform_of(&vec_xf, sel),
+                        ph2d_vec_scene::corner_live::CORNER_HANDLE_PARK_PX * vec_px_to_world,
+                    );
+                    ph2d_vec_render::draw_corner_handles(
+                        &handles,
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                }
                 // Gradient handles (multi-point dots, or linear/radial endpoints)
                 // when the selected path has a gradient fill. A geometria do gradiente
                 // é LOCAL como a do path, então sobe pelo afim dele.

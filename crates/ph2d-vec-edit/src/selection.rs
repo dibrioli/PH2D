@@ -38,7 +38,7 @@ impl PenTool {
     /// Hit-test de OBJETO: o path cujo âncora/handle OU contorno está a `hit_r` de
     /// `p` (o mais próximo). Para o Shift+clique de multi-seleção. `None` = vazio.
     pub fn path_at(&self, scene: &VecScene, p: [f64; 2], hit_r: f64) -> Option<VecPathId> {
-        if let Some(g) = self.hit_test(scene, p, hit_r) {
+        if let Some(g) = self.hit_test(scene, p, hit_r, None) {
             return Some(g.path);
         }
         let mut best: Option<(VecPathId, f64)> = None;

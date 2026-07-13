@@ -46,6 +46,38 @@ use crate::{VecPath, VecVertex, VertexKind};
 /// Abaixo disto (unidades de mundo) um raio / recuo / vetor é tratado como zero.
 const EPS: f64 = 1e-9;
 
+/// O raio da bolinha da alça de raio, em PIXELS de tela.
+///
+/// **Mora aqui, e não na crate de desenho nem na de edição, porque as DUAS o leem.** Quem
+/// desenha o círculo e quem o captura têm de usar o mesmo número: se divergirem, o usuário
+/// clica exatamente no meio da bolinha e não pega nada — e a tela está certa, que é o
+/// sintoma mais enlouquecedor que existe. (O `connector.rs` já escreveu essa lição; esta é
+/// a mesma, e a casa comum das duas pontas é esta crate.)
+///
+/// Em pixels e não em mundo: uma alça que encolhesse com o zoom-out ficaria impegável
+/// exatamente quando a forma fica grande.
+pub const CORNER_HANDLE_R_PX: f64 = 6.0;
+
+/// Onde a alça de uma quina AFIADA estaciona, em pixels ao longo da bissetriz. Longe o
+/// bastante da âncora para não brigar com o hit-test dela, perto o bastante para ler como
+/// "esta alça é desta quina".
+pub const CORNER_HANDLE_PARK_PX: f64 = 14.0;
+
+/// Uma alça de raio pronta para desenhar: onde ela está **no mundo**, e se a quina já
+/// está arredondada (bolinha cheia) ou ainda afiada (vazada, só estacionada).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct CornerHandleView {
+    /// O centro da bolinha, em coordenadas de MUNDO.
+    pub pos: [f64; 2],
+    /// A âncora da quina, no mundo — um fio fino liga uma à outra, e é ele que diz a
+    /// QUEM a bolinha pertence quando várias quinas estão próximas.
+    pub anchor: [f64; 2],
+    /// A quina já tem raio? (decide o preenchimento da bolinha)
+    pub rounded: bool,
+    /// O índice PLANO do vértice (o mesmo espaço de índice do hit-test e da seleção).
+    pub vert: usize,
+}
+
 /// Uma cúbica: os quatro pontos de controle, na ordem do traçado.
 type Cubic = [[f64; 2]; 4];
 
@@ -267,18 +299,30 @@ pub struct CornerFrame {
 impl CornerFrame {
     /// O raio que um recuo `setback` produz nesta quina — o inverso exato do cozimento,
     /// já clampado ao que a geometria absorve. É o que o arrasto da alça usa.
+    ///
+    /// Abaixo do EPS o resultado é **exatamente zero**, e não a poeira de ponto flutuante
+    /// que a ida-e-volta `raio → recuo → raio` deixa (o `tan(π/4)` do `f64` não é 1). Uma
+    /// quina "afiada" com raio `4e-16` cozinharia igual — o motor a trata como zero — mas
+    /// ficaria guardada no documento, apareceria num diff de save e faria um
+    /// `raio == 0.0` mentir para quem viesse depois. Afiada é afiada.
     #[must_use]
     pub fn radius_for_setback(&self, setback: f64) -> f64 {
         let t = setback.clamp(0.0, self.max_setback);
-        (t * self.half_angle.tan()).max(0.0)
+        let r = (t * self.half_angle.tan()).max(0.0);
+        if r <= EPS { 0.0 } else { r }
     }
 
-    /// Onde a alça é DESENHADA (espaço local): sobre a bissetriz, ao recuo atual. É a
-    /// mesma posição que o hit-test procura — uma constante só, senão o usuário clica no
-    /// meio da bolinha e não pega nada.
+    /// O ponto da bissetriz a `setback` da âncora (espaço local). É **cru**: não clampa.
+    ///
+    /// O clamp é do RAIO (`radius_for_setback`), não do ponto — e essa distinção é a
+    /// diferença entre a alça ficar sob o dedo e escorregar dele. A alça é desenhada a
+    /// `park + setback`: o estacionamento é um deslocamento CONSTANTE, presente tanto no
+    /// desenho quanto na leitura do arrasto (`setback = projeção − park`), e é isso que
+    /// faz a bolinha pousar exatamente no cursor. Se este ponto clampasse, a bolinha
+    /// pararia antes do dedo assim que o raio saturasse.
     #[must_use]
     pub fn handle_at(&self, setback: f64) -> [f64; 2] {
-        let t = setback.clamp(0.0, self.max_setback);
+        let t = setback.max(0.0);
         [
             self.anchor[0] + self.bisector[0] * t,
             self.anchor[1] + self.bisector[1] * t,
@@ -316,7 +360,7 @@ fn fillet_handles(
     // Interseção das retas `p_in + s·t_in` e `p_out − w·t_out`. Resolvendo
     // `s·t_in + w·t_out = d` por Cramer (`a × b` = `a.x·b.y − a.y·b.x`):
     //   s = (d × t_out) / (t_in × t_out)      w = (d × t_in) / (t_out × t_in)
-    // Repare que os DENOMINADORES são opostos — `t_out × t_in = −(t_in × t_out)`. Usar o
+    // Note que os DENOMINADORES são opostos — `t_out × t_in = −(t_in × t_out)`. Usar o
     // mesmo para os dois dá um `w` NEGATIVO numa quina perfeitamente boa, o guard de
     // "à frente" a reprova, e todo filete cai no fallback: o arco vira um blend frouxo,
     // e a quina reta deixa de bater com o `crate::corners`.

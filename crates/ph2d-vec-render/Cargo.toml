@@ -17,3 +17,8 @@ authors.workspace = true
 ph2d-vector = { path = "../ph2d-vector" }
 # O modelo editor-first que esta pipeline renderiza.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# Tokens de design (HR-15) — a alça de raio de quina é a primeira coisa TOKENIZADA deste
+# crate. O overlay de âncoras e as alças de conector ainda usam literais (dívida da Fase
+# 1, registrada no doc-comment delas); migrá-las muda a aparência do que já existe, e isso
+# é decisão do Enio.
+ph2d-tokens = { path = "../ph2d-tokens" }

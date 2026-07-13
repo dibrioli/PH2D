@@ -44,6 +44,8 @@
 - [Integrador: ship drena latentes — 2-4 iterações](project_integrator_ship_catches_latents_budget_iterations.md) — gate per-linha NÃO roda fmt/clippy-all/machete/deny; só ship vermelha
 - [Pipe mascara o exit code do script](feedback_pipe_masks_script_exit_code.md) — `| grep` faz `$?` virar o do grep; ship/integrate falha e você lê 0. Verifique o ESTADO
 - [Crase na msg de commit = substituição de comando](feedback_backticks_in_commit_message_are_command_substitution.md) — fish/zsh EXECUTA e a palavra some em silêncio; use `git commit -F <arquivo>` e releia o log
+- [Merge limpo no texto pode estar quebrado por dentro](feedback_clean_text_merge_can_be_semantically_broken.md) — uma linha remove o símbolo, a outra o usa; `merge-tree` passa e a árvore não compila. Só o `check --workspace` cruza
+- [Resolva pelos ESTÁGIOS do índice, não pelos marcadores](feedback_resolve_conflicts_from_index_stages_not_markers.md) — `:1`base/`:2`ours/`:3`theirs; Mergiraf emite 2 vias sem base. Portão anti-marcador antes do `git add`
 - [Varra marcadores de conflito em CADA commit](feedback_sweep_conflict_markers_every_commit.md) — `<<<<<<< HEAD` órfão commitado não compila; a árvore limpa não prova o histórico
 - [Foundational editável — crie com isolamento](feedback_foundational_editable_design_for_isolation.md) — Modo L PODE tocar; ao CRIAR projete p/ isolamento + anote ids no handoff
 - [CI direto + fmt-skew](feedback_ci_direct_lint_gates_and_fmt_skew.md) — lint gates local antes; `cargo fmt` plain = skew, use `rustup run <pin> cargo fmt`
@@ -61,6 +63,8 @@
 - [Ship-prep no-fail-fast](feedback_ship_prep_no_fail_fast.md) — `nextest --no-fail-fast` enumera TODAS as falhas; ship.sh é fail-fast
 - [CI cold-build = @stable rust-cache drift](project_ci_rustcache_stable_drift_pin.md) — `@stable` rotaciona rustc-hash → cache bust; pin `@1.95`
 - [ship.sh ≠ 100% paridade CI](feedback_ship_parity_gaps_ci_only.md) — bindgen/advisory-db/nextest-impacted escapam do ship; cutover quebra impacted
+- [Números que SOMAM entre linhas: conte, não escolha](feedback_numbers_that_sum_across_lines_count_dont_pick.md) — registry/LOC-cap/schema: o valor certo não existe em nenhum lado do conflito. Prove com o teste
+- [Allowlist duplicada mata o gate no PARSE](feedback_duplicate_allowlist_key_kills_the_gate_at_parse.md) — união duplica chave, TOML morre, o typos nem escaneia (e esconde erro real embaixo)
 - [Integrar pré-cutover = drift de ship](project_integration_prefork_lines_ship_drift.md) — foundational-integrate NÃO roda fmt/typos; rode ship completo no fechamento
 
 ## Auditoria

@@ -1,11 +1,12 @@
 # HANDOFF — você é o novo implementador da linha `line/FLIP` (COMECE AQUI)
 
-> **2026-07-12** · escrito pelo agente anterior, para você. Leia INTEIRO antes de tocar em código.
+> **2026-07-12 (2ª revisão, mesma data)** · escrito pelos agentes anteriores, para você. Leia
+> INTEIRO antes de tocar em código.
 >
 > Três partes: **§A — como trabalhar (Modo L, o seu contrato)** · **§B — o estado da linha** ·
-> **§C — o PROBLEMA ABERTO**, que é a sua 1ª tarefa. A causa dele **já está provada com números**:
-> não recomece a investigação do zero, e não confie no seu olho nem só no harness (§C.5 explica por
-> quê — o harness já mentiu duas vezes hoje).
+> **§C — RESOLVIDO (âncora no eixo)**, mantido como registro: o defeito do balde que era a 1ª
+> tarefa foi fechado nesta revisão (gates vermelhos→verdes; **pendente o smoke do Enio**, §C.7).
+> Sua 1ª tarefa provável é a **W5 — Reshape** (§D) — mas confirme o resultado do smoke antes.
 
 ---
 
@@ -98,11 +99,11 @@ O **Flip** é o 4º meio do PH2D: animação quadro-a-quadro, fork 2D clean-room
 | **W1** | render GPU (`ph2d-flip-render`; cobertura = **união global** da polilinha, 1 passe) | fechada |
 | **W2** | tool + painel docado + caneta + borracha | fechada |
 | **W3** | **virou app de ANIMAÇÃO**: frames, exposição, ciclos, ghosts, tween, a tira | fechada, smoke OK |
-| **W4** | **o balde** (`ph2d-flip-fill`) | fechada, **com um defeito aberto — §C** |
+| **W4** | **o balde** (`ph2d-flip-fill`; âncora = o EIXO da linha, BUGS #14) | fechada, **pendente smoke do §C.7** |
 
 Conhecimento do módulo: [`docs/Flip/`](Flip/00_README.md) — `05_frames_ghost_tween.md`,
 `06_fill_balde.md`, e sobretudo **[`BUGS_flip.md`](Flip/BUGS_flip.md)**, o registro dos bugs cuja
-causa enganava. **Leia os #8–#13**: são todos de hoje, e cada um é uma armadilha que você pode
+causa enganava. **Leia os #8–#14**: são todos de hoje, e cada um é uma armadilha que você pode
 repetir. Tracker exaustivo: [`HANDOFF_flip_impl.md`](HANDOFF_flip_impl.md).
 
 ## B.2 — As seis lições que custaram caro (não as re-aprenda)
@@ -113,7 +114,8 @@ repetir. Tracker exaustivo: [`HANDOFF_flip_impl.md`](HANDOFF_flip_impl.md).
 2. **Um teste que escolhe a constante conveniente é uma tautologia.** Os testes do balde passavam
    `px_to_world = 1.0` — o **único** valor em que px de tela == unidade de documento, e portanto o
    único que esconde um erro de unidade. Use os números do **produto**… **e varra a FAIXA deles**:
-   foi um zoom não-varrido que escondeu o bug seguinte, e é um zoom não-varrido que causa o de §C.
+   foi um zoom não-varrido que escondeu o bug seguinte, e foi um zoom não-varrido que causou o
+   do §C (três vezes a mesma armadilha, no mesmo dia).
 3. **O harness reproduz o mecanismo, não o contexto.** Duas vezes o solver mediu "1 px de erro" e o
    app mostrou 12. Existe `PH2D_FLIP_FILL_DEBUG=1` — **use**.
 4. **PINTADO ≠ populado.** Nenhum gate do projeto rodava `Panel::paint`: um widget podia estar
@@ -123,15 +125,17 @@ repetir. Tracker exaustivo: [`HANDOFF_flip_impl.md`](HANDOFF_flip_impl.md).
 5. **Quando nenhuma constante serve, falta um DADO, não um número.** (BUGS #12: três defaults de
    `grow` foram tentados e cada um quebrava numa faixa de espessura — porque o solver não sabia onde
    a linha estava.)
-6. **Um controle mede a partir de uma ÂNCORA, e a âncora tem de ser o que o usuário VÊ.**
-   (BUGS #13 — e §C mostra que essa história **ainda não acabou**.)
+6. **Um controle mede a partir de uma ÂNCORA — e a âncora tem de ser INVARIANTE sob o que o
+   usuário mexe.** (BUGS #13 dizia "o que o usuário vê"; BUGS #14 fechou a história: o que ele
+   vê muda com o ZOOM — só o eixo é geometria, e foi nele que o balde ancorou.)
 
 ## B.3 — Commits desta sessão (todos locais, nada pushado)
 
 ```
-111637cd  fix: a âncora do Grow (borda interna)          ← EM DISPUTA, ver §C
+7477641b  fix: a âncora do fill é o EIXO da linha         ← fecha o §C (BUGS #14)
+111637cd  fix: a âncora do Grow (borda interna)           ← SUPERSEDED pelo de cima
 896b88aa  feat: o ALVO VIVO + painel por-modo
-42cf4d96  fix: a cor para na silhueta da linha (expand_under_ink)
+42cf4d96  fix: a cor para na silhueta da linha (expand_under_ink)  ← idem, superseded
 b4cd145d  fix: "fill impreciso" — o teto na unidade errada (o zoom quebrava o balde)
 380c6d8c  fix: a W4 estava MORTA no produto — 12 bugs, 14 gates novos
 ```
@@ -148,145 +152,47 @@ Duas features desta sessão que você vai encontrar e precisa conhecer:
 
 ---
 
-# §C — 🟥 O PROBLEMA ABERTO (sua 1ª tarefa)
+# §C — ✅ RESOLVIDO (2026-07-12): a âncora do fill é o EIXO da linha
 
-## C.1 — O sintoma, nas palavras do Enio
+O problema aberto desta seção (o 5º smoke: *"Piorou. Linhas finas nem têm valor no slider
+para ajustar. Aí grow 0 e −1"*) foi fechado seguindo a solução recomendada — **a intuição
+do Enio confirmada**: ancorar o balde no **eixo** da polilinha, a única âncora que é
+geometria pura (não depende do zoom nem da espessura).
 
-> *"Piorou. Linhas finas nem têm valor no slider para ajustar. Aí grow 0 e −1."*
+**O registro completo — causa provada, medições antes/depois, decisões, lições — está em
+[`Flip/BUGS_flip.md` #14](Flip/BUGS_flip.md); o resumo de código em
+[`HANDOFF_flip_impl.md` §W4.1](HANDOFF_flip_impl.md).** Em uma linha: parede e `INK`
+rasterizam no eixo (raio 0), `expand_under_ink(3)` crava a borda da cor em cima dele, e o
+Grow virou `grid.grow(signed)` sem ramo — `strip_ink` deletado, slider contínuo em 0.
 
-Duas capturas: com **Grow = 0** a cor **transborda** a linha fina (aparece por fora dela); com
-**Grow = −1** abre um **vão escuro** de vários pixels. **Não existe valor intermediário** — o slider
-é de passo inteiro, e entre 0 e −1 o resultado salta.
+O que você precisa saber ao mexer no balde daqui em diante:
 
-E antes disso ele já tinha feito a pergunta certa:
+- **Não reintroduza a espessura no raster do solver.** Ela só folga o bbox. Qualquer âncora
+  derivada dela (silhueta, borda interna) volta a transbordar `(w/2)·(zoom−1)` px quando o
+  usuário dá zoom depois do clique — é o gate
+  `the_baked_fill_stays_under_the_line_at_any_later_zoom` que fica vermelho.
+- **Trade-offs já decididos e documentados** (BUGS #14): grow ≠ 0 é assado no zoom do clique
+  (aceito, é estilístico) · vão do grow negativo só aparece além de w/2 (aceito) · corpos
+  sobrepostos sem eixos cruzados dependem do Gap Closure (o toast sugere) · clicar no corpo
+  de uma linha grossa preenche o lado clicado (só o eixo recusa).
+- **A régua:** `cargo test -p ph2d-flip-fill sweep_table -- --ignored --nocapture` imprime
+  transbordo/vão em px de tela por espessura×zoom. Use-a antes e depois de qualquer mudança
+  no solver — e `PH2D_FLIP_FILL_DEBUG=1` no app real.
 
-> *"Será que a referência para o fill é o meio da espessura da linha? Se não for, se for o interior
-> da linha, pode ser um problema."*
-
-**Ele está certo, e a causa está provada.**
-
-## C.2 — A causa raiz (PROVADA — não é hipótese)
-
-Duas grandezas vivem em espaços diferentes:
-
-- A **espessura do traço é em px de TELA** — absoluta, **invariante ao zoom** (decisão do Enio,
-  2026-07-11; o render usa escala de espessura `1.0`, ver `flip_pass::camera_raw`).
-- A **geometria do fill é assada em unidades de DOCUMENTO** — congelada no instante do clique.
-
-Logo, **a relação entre as duas muda quando se dá zoom depois de preencher**: a meia-espessura da
-linha, medida em unidades de documento, encolhe quando a câmera aproxima; a borda do fill não se
-mexe. Fórmula:
+## C.7 — O smoke pendente (peça ao Enio; é o que valida esta revisão)
 
 ```
-transbordo ≈ (w/2) · (zoom − 1)      [px de tela]
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && PH2D_FLIP_DEMO=1 cargo run --release -p ph2d-host-desktop
 ```
 
-Medido (mesmo círculo; preenche, depois dá zoom; `grow = 0`):
-
-| linha | zoom 1× | zoom 2× | zoom 4× |
-|---|---|---|---|
-| 3 px | +0,4 px | +2,2 px | **+5,9 px** |
-| 6 px | +0,3 px | +3,7 px | **+10,3 px** |
-| 16 px | +0,2 px | +8,4 px | **+24,9 px** |
-
-É exatamente a 1ª captura. E a 2ª (`grow = −1`) é o **mesmo** erro pelo outro lado: o `strip_ink`
-descola a cor de uma faixa de tinta calculada **no zoom do preenchimento** — mais larga, em
-documento, que a linha renderizada no zoom da vista → vão escuro. **Os dois quadros são um bug só.**
-
-> ⚠️ **Sobre o commit `111637cd`** (âncora na borda interna): ele **não mudou nada** no caminho
-> `grow = 0` (byte-idêntico ao anterior). O que ele introduziu foi a **descontinuidade** entre 0 e
-> −1: em 0 a cor vai até a silhueta externa; em −1 ela salta para a borda interna e recua 1 px — um
-> pulo de `w + 1` px. Numa linha fina isso torna o slider inutilizável. **Considerar revertê-lo faz
-> parte da solução** (a proposta de C.3 o torna desnecessário).
-
-## C.3 — A solução recomendada: **ancorar no EIXO da linha** (a ideia do Enio)
-
-O **eixo** (a polilinha) é **geometria pura**: não depende do zoom nem da espessura. E a linha
-renderizada, seja qual for a espessura e o zoom, **sempre o cavalga** — metade de cada lado.
-
-Um preenchimento que termina **no eixo**, portanto:
-- **nunca transborda** (a cor não passa do eixo; a linha cobre do eixo para fora);
-- **nunca abre vão** (a metade interna da linha cobre a borda da cor);
-- e isso vale **em qualquer zoom e qualquer espessura** — porque nada disso depende deles.
-
-Medido, com a fronteira no eixo (meia-espessura zero no raster). Negativo = a cor está **por baixo**
-da linha (é o que se quer):
-
-| linha | zoom 1× | zoom 2× | zoom 4× |
-|---|---|---|---|
-| 3 px | −1,7 px | −1,9 px | −2,2 px |
-| 6 px | −3,2 px | −3,4 px | −3,7 px |
-| 16 px | −8,2 px | −8,4 px | −8,7 px |
-
-Sempre negativo, sempre estável no zoom. O resíduo de ~0,4 px é quantização do raster: sub-pixel,
-invisível.
-
-### O que isso implica no código
-
-1. **`BOUNDARY` passa a ser o EIXO.** Hoje `fill_at` (`ph2d-flip-fill/src/lib.rs`, passo 3)
-   rasteriza a parede a `0,5 × meia-espessura` (o `radius_scale = 0.5` do GP). Passaria a
-   rasterizar **no eixo** (raio ≈ 0).
-2. **`INK` / `expand_under_ink` deixam de ser necessários no caso default** — a cor já para no lugar
-   certo por construção. (Talvez sobrevivam a serviço do `grow`; decida.)
-3. **O `grow` fica livre para ser só o ajuste fino que deveria ser — e CONTÍNUO**: `+N` avança N px
-   além do eixo (entra no corpo da linha, e além dela vira sangramento); `−N` recua N px do eixo.
-   **Sem salto em 0.**
-
-### As perguntas que VOCÊ tem de responder (estão em aberto, decida e DOCUMENTE)
-
-- **O `grow` continua em px de tela?** Se sim, ele sofre do mesmo mal: é aplicado no raster (doc) e o
-  resultado é assado — um `grow ≠ 0` volta a ser zoom-dependente. Provavelmente **aceitável** (é um
-  ajuste estilístico deliberado, não o default), mas decida conscientemente.
-- **Linha fina + slider de passo inteiro.** O Enio: *"linhas finas nem têm valor no slider para
-  ajustar"*. Com o eixo como âncora, o **default fica certo sem ajuste nenhum** — mas se ainda
-  precisar de passo fino, o slider tem de virar **fracionário** (`set_number_range(id, min, max,
-  step)`; hoje o step do Grow é `1.0`, em `ph2d-panel-flip/src/populate.rs`), ou a dilatação tem de
-  virar sub-pixel.
-- **O `grow` negativo ainda deve abrir um vão independente da espessura?** Era o objetivo de
-  BUGS #13. Com a âncora no eixo, `−N` abre um vão visível de `N − w/2` px — **volta a depender da
-  espessura**. Ou você aceita (o vão é efeito raro), ou mantém o `strip_ink` **só no ramo negativo**
-  — mas então **resolva a descontinuidade em 0**, que é exatamente o que o Enio está reclamando.
-- **E a espessura absoluta em px de tela, deveria ser assim?** É a raiz do descasamento. É decisão
-  do Enio (2026-07-11). **Não mude sem falar com ele.**
-
-## C.4 — Onde mexer
-
-| arquivo | o quê |
-|---|---|
-| `crates/ph2d-flip-fill/src/lib.rs` | `fill_at`: passo 3 (raster da parede/tinta) e 5+6 (grow). **A âncora vive aqui.** |
-| `crates/ph2d-flip-fill/src/raster.rs` | `stroke_capsule` (parede), `ink_capsule` (silhueta), `expand_under_ink`, `strip_ink`, `grow`. |
-| `shells/desktop/src/flip_fill.rs` | a fronteira modelo↔solver: `boundaries()` converte a espessura (px de tela → doc, via `px_to_world`) e `fill_click` monta os `FillParams`. **É aqui que a unidade se decide.** |
-| `crates/ph2d-tool-flip/src/params.rs` | `GROW_MIN/MAX`, `PRECISION_*`, defaults. |
-| `crates/ph2d-panel-flip/src/populate.rs` | o `step` do slider (hoje `1.0` no Grow). |
-| `shells/desktop/src/flip_live.rs` | o alvo vivo: ele guarda o `px_to_world` **da criação**. Se a âncora passar a depender do zoom da VISTA, isto precisa mudar. |
-
-## C.5 — Como MEDIR (faça isto ANTES de mudar qualquer coisa)
-
-Não confie no olho, e **não confie só no harness** — ele já mentiu duas vezes hoje.
-
-1. **No app real:**
-   ```
-   cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && PH2D_FLIP_FILL_DEBUG=1 PH2D_FLIP_DEMO=1 cargo run --release -p ph2d-host-desktop
-   ```
-   Cada clique do balde imprime `px_to_world`, a escala do buffer, a meia-espessura efetiva em px de
-   TELA e o contorno resultante. **Peça ao Enio para colar essa linha** se algo não bater.
-2. **Fora do app:** um binário descartável que chama `fill_at` com os números do produto e **varre a
-   FAIXA** (espessura 1..40 px × zoom 1×..4×), medindo transbordo e vão **em px de tela**. Foi assim
-   que a causa de C.2 foi provada, e é a única forma de não repetir o erro nº 2 de §B.2. **Não meça
-   um ponto só.**
-
-## C.6 — Os gates que existem (se um ficar vermelho, ENTENDA antes de mexer)
-
-Em `crates/ph2d-flip-fill/src/lib.rs`:
-- `the_fill_is_invariant_under_camera_zoom` — a geometria de saída é a mesma em qualquer zoom.
-- `the_colour_stops_at_the_ink_silhouette_at_any_line_width` — **vai mudar de sentido** com a âncora
-  no eixo. **Reescreva-o para a regra nova; não o delete.**
-- `a_negative_grow_opens_the_same_visible_gap_at_any_line_width` + o simétrico positivo — idem.
-
-> ⚠️ **Um gate desta sessão ficou vermelho por culpa do PRÓPRIO TESTE:** o helper que gera um
-> círculo sem transcendentais (HR-5) usava uma parametrização racional que cobria um **semicírculo**
-> por quadrante — o "círculo" saltava de (0,1) para (1,0). *Antes de acreditar num teste que acusa o
-> código, confira que o teste descreve o que você acha que descreve.*
+1. Desenhar uma forma fechada com linha FINA (1–3 px) e preencher com `Grow = 0` → a cor
+   não pode aparecer por fora da linha.
+2. **Dar zoom DEPOIS de preencher** (o caso que quebrava): aproximar 2–4× → sem transbordo,
+   sem fio claro, em linha fina E grossa.
+3. Arrastar o Grow de −3 a +3 numa linha fina → o preenchimento muda ~1 px por passo,
+   SEM salto entre 0 e −1 (o alvo vivo reaplica sozinho).
+4. Linha grossa (16+ px): `Grow = 0` fica exato; o vão visível de grow negativo agora só
+   começa além de w/2 (comportamento novo, deliberado — BUGS #14).
 
 ---
 

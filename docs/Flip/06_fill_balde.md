@@ -49,26 +49,38 @@ A letra "O" é o caso trivial que exige a decisão.
 ```
 linhas + clique
   → gap::closures          fecha os vãos (pontas + quinas), cortando na colisão
-  → raster::Grid           rasteriza as fronteiras a MEIA espessura (radius_scale 0.5)
+  → raster::Grid           rasteriza as fronteiras NO EIXO da polilinha (BUGS #14)
   → raster::flood          span fill 4-conexo + filtro de vazamento CRUZADO
-  → raster::grow           Grow/Shrink (mata o halo do AA; a cor entra por baixo da linha)
+  → raster::expand_under_ink  a borda da cor crava EM CIMA do eixo
+  → raster::grow           Grow/Shrink (offset assinado do eixo; default 0)
   → trace::trace_contours  marching squares — os buracos saem de graça
   → trace::simplify_ring   binomial leve + RDP  (NESSA ORDEM — §5)
   = FillResult { outer, holes, closures }
 ```
 
-### §2.1 — `radius_scale = 0.5`: a linha mais importante do subsistema
+### §2.1 — a âncora é o EIXO da linha: a decisão mais importante do subsistema
 
-As fronteiras são rasterizadas com **metade** da espessura visual da linha.
+> **Histórico:** o 1º corte portou o `radius_scale = 0.5` do GP (parede a meia espessura,
+> cor expandida até a silhueta — BUGS #12/#13). Ele morreu no BUGS #14: **a espessura do
+> traço é absoluta em px de TELA** (Enio 2026-07-11) e o fill é assado em unidades de
+> DOCUMENTO — qualquer âncora derivada da espessura fica congelada no zoom do clique, e
+> aproximar a câmera depois transbordava `(w/2)·(zoom−1)` px. O GP não tem esse problema
+> porque a espessura dele é world-space; a nossa decisão de brush absoluto exige outra
+> âncora.
 
-| Raio usado | O que acontece |
-|---|---|
-| espessura CHEIA | o contorno traçado fica na borda EXTERNA da linha → o preenchimento nasce com um **halo** claro entre ele e o traço |
-| raio ZERO | o preenchimento **vaza** pelas frestas do anti-aliasing |
-| **METADE** | o contorno cai DENTRO do corpo da linha → **a cor entra por baixo dela** |
+A parede do flood, a borda da cor e o zero do Grow são **o eixo da polilinha** — a única
+âncora que é geometria pura (não depende de zoom nem de espessura). A linha renderizada
+sempre cavalga o eixo, metade para cada lado, então a cor que termina nele nunca aparece
+por fora nem descola da linha, **em qualquer zoom posterior e qualquer espessura, sem
+ajuste nenhum**. Medido: resíduo ≤ 0,3 px no sweep espessura (1..40) × zoom (1..4×);
+tabela completa em [`BUGS_flip.md` #14](BUGS_flip.md).
 
-É o mesmo insight do *"fill up to vector paths"* do Clip Studio. Somado ao **Grow +2px** default,
-o preenchimento se enfia sob o line-art e não sobra fio claro em canto nenhum.
+Mecânica: a parede é a cápsula de **raio zero** (+ ½px de folga de AA, estanque); a mesma
+cápsula sem folga marca `INK` — o filamento de pixels que o eixo atravessa — e, depois do
+flood, `expand_under_ink` o cobre para a borda da cor cravar em cima do eixo (sem isso ela
+pararia na face interna da parede, ~1 px aquém). O preço aceito: linhas cujos **corpos** se
+sobrepõem mas cujos **eixos** não se cruzam não selam sozinhas — o filtro cruzado pega as
+frestas pequenas, o Gap Closure fecha o resto (e o toast do vazamento já o sugere).
 
 ### §2.2 — O filtro de vazamento CRUZADO
 
@@ -127,8 +139,9 @@ Gate: `gap_closure_leaves_a_persistent_invisible_stroke` — depois de fechar co
 | **Paint Behind** | entra atrás de **tudo**, inclusive dos fills antigos | colorir o que ainda não foi colorido, sem tocar no que já está |
 | **Unpaint** | remove o fill sob o clique (o de cima primeiro) | corrigir |
 
-Mais **Grow/Shrink** (o "Area Scaling" do CSP: +2px default enfia a cor sob a linha e mata o halo)
-e **Precision** (resolução do buffer).
+Mais **Grow/Shrink** (offset assinado do contorno a partir do EIXO da linha, contínuo em 0;
+default 0 — com a âncora no eixo não há halo para matar, é só o ajuste estilístico) e
+**Precision** (resolução do buffer).
 
 ---
 

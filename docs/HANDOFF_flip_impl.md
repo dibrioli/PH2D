@@ -769,10 +769,10 @@ Doc definitivo: [`docs/Flip/06_fill_balde.md`](Flip/06_fill_balde.md).
 
 - **Solver** (`ph2d-flip-fill`, crate NOVA, CPU pura, headless): `gap.rs` (Gap Closure —
   pontas + quinas apertadas pela bissetriz externa, corte por colisão, extensão que não
-  colide é descartada) · `raster.rs` (buffer de FLAGS; fronteiras a MEIA espessura —
-  `radius_scale = 0.5`, a cor entra POR BAIXO da linha; span fill + filtro de vazamento
-  CRUZADO; Grow/Shrink; o flood REPORTA o vazamento) · `trace.rs` (marching squares — os
-  buracos saem de graça — + RDP).
+  colide é descartada) · `raster.rs` (buffer de FLAGS; fronteiras **no EIXO da polilinha**
+  — ver §W4.1, que revogou o `radius_scale = 0.5` do 1º corte; span fill + filtro de
+  vazamento CRUZADO; Grow/Shrink; o flood REPORTA o vazamento) · `trace.rs` (marching
+  squares — os buracos saem de graça — + RDP).
 - **Modelo**: `FlipStroke.holes` + `hide_stroke`. Um fill é UM traço com seus buracos (não N
   traços com `fill_id`): é uma unidade de seleção/undo/delete/animação.
   **`FLIP_SCHEMA_VERSION` 2→3.**
@@ -790,6 +790,35 @@ Doc definitivo: [`docs/Flip/06_fill_balde.md`](Flip/06_fill_balde.md).
 **Carry-overs:** fill multiframe (depende da multi-seleção de chaves da tira) · ajuste modal
 ao vivo do Gap Closure (o `closures()` já devolve os segmentos; falta o overlay) · modo Radius
 · Colorize (LazyBrush/trapped-ball) é wave própria.
+
+## W4.1 — A âncora do fill é o EIXO da linha (2026-07-12, fecha o BUGS #14 — pendente smoke)
+
+O 5º smoke do balde ("Piorou. Linhas finas nem têm valor no slider… grow 0 e −1") tinha causa
+provada: espessura **absoluta em px de TELA** × fill **assado em unidades de DOCUMENTO** — a
+silhueta do zoom do clique transborda `(w/2)·(zoom−1)` px quando a câmera aproxima depois. A
+saga completa (medições antes/depois, trade-offs decididos, lições) está em
+[`BUGS_flip.md` #14](Flip/BUGS_flip.md); o resumo do que mudou no código:
+
+- **`fill_at` passo 3:** parede E `INK` rasterizam **no eixo** (raio 0). A espessura só folga
+  o bbox. `max_ink_px` morreu.
+- **`fill_at` passos 5/6, SEM RAMO:** `expand_under_ink(AXIS_COVER_PASSES = 3)` crava a borda
+  da cor em cima do eixo (senão ela para na face interna da parede, ~1 px aquém), e o Grow é
+  `grid.grow(params.grow)` direto — offset assinado do eixo, **contínuo em 0**.
+- **`Grid::strip_ink` DELETADO** (era a âncora dupla que saltava w+1 px entre 0 e −1 — o
+  commit `111637cd` ficou superseded por construção).
+- **Testes movidos para `ph2d-flip-fill/src/tests.rs`** (o lib.rs estourou o cap de 700; o
+  gate exclui `src/tests.rs`). Gates novos/reescritos, todos provados VERMELHOS antes do fix:
+  `the_baked_fill_stays_under_the_line_at_any_later_zoom` ·
+  `the_grow_slider_is_continuous_through_zero` ·
+  `the_colour_stops_at_the_line_axis_at_any_width` ·
+  `a_negative/positive_grow_*_the_contour_the_same_at_any_line_width` · `sweep_table`
+  (`--ignored --nocapture`: a régua espessura×zoom em px de tela).
+- **Comportamento novo (deliberado):** clicar no CORPO de uma linha grossa preenche o lado
+  clicado (só o eixo recusa com `OnBoundary`); corpos que se sobrepõem sem os eixos se
+  cruzarem dependem do Gap Closure (toast já sugere).
+- Gate batched: 34 fill + 66 flip + 7 tool + 10 painel + shell OK; 17 GPU do traço OK;
+  clippy/fmt-pin/typos/LOC-caps limpos; release build OK. `flip_live` intacto (a âncora não
+  depende do zoom da vista — o `px_to_world` da criação continua correto).
 
 ## Aberto (fora do W0..W4, por design)
 

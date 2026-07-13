@@ -696,7 +696,10 @@ passes 4-conexos e 8-conexos, a forma acumulada é um octógono: visualmente, um
 
 ---
 
-## #14 — 🟥 **ABERTO** — a referência do fill vs. a espessura da linha (o bug que sobreviveu a #12 e #13)
+## #14 — ✅ a referência do fill vs. a espessura da linha (o bug que sobreviveu a #12 e #13)
+
+**Estado:** ✅ **resolvido em 2026-07-12** (âncora no EIXO — ver "A solução aplicada" abaixo;
+pendente smoke do Enio).
 
 **Sintoma (Enio, 4º smoke):** *"Piorou. Linhas finas nem têm valor no slider para ajustar. Aí grow 0
 e −1."* — com `Grow = 0` a cor **transborda** a linha fina; com `−1` abre um **vão escuro** de vários
@@ -737,8 +740,68 @@ abre vão, em qualquer zoom e qualquer espessura**. Medido (negativo = a cor est
 | 6 px | −3,2 | −3,4 | −3,7 px |
 | 16 px | −8,2 | −8,4 | −8,7 px |
 
-Sempre negativo, sempre estável. O plano completo (o que muda, o que fica em aberto, como medir)
-está em **[`HANDOFF_flip_NEXT.md` §C](../HANDOFF_flip_NEXT.md)**.
+Sempre negativo, sempre estável.
+
+### A solução aplicada (2026-07-12)
+
+**A âncora de TUDO virou o eixo, num pipeline sem ramo** (`fill_at` passos 3/5/6):
+
+1. **A parede rasteriza NO EIXO** (`stroke_capsule(a, b, 0.0)` — raio zero + a folga de AA
+   de ½px que a mantém estanque). A espessura não entra mais no raster: só folga o bbox.
+2. **`INK` virou a linha do eixo** (a mesma cápsula, sem folga): depois do flood,
+   `expand_under_ink(3)` cobre esse filamento e a borda da cor **crava em cima do eixo** —
+   sem ele, a cor parava na face interna da parede, ~1 px de buffer aquém, e o zoom
+   posterior ampliava esse px num fio claro. (Poucos passes DE PROPÓSITO: a expansão
+   rasteja ao longo do filamento ~1 px/passe.)
+3. **O Grow virou um offset ASSINADO do eixo, sem ramo** (`grid.grow(params.grow)` direto):
+   `+N` avança por baixo da linha (além de `w/2` vira o "off-register"); `−N` recua (o vão
+   visível começa quando `|N|` passa de `w/2`). **`strip_ink` foi deletado** — a âncora
+   dupla (silhueta em 0, borda interna nos negativos) era exatamente o salto de `w+1` px
+   entre 0 e −1 que o Enio reportou; a âncora única o mata por construção.
+
+Medido depois (preenche no zoom default, olha a 1×/2×/4×; negativo = a cor está por baixo
+da linha, dos DOIS lados):
+
+| linha | transbordo 1×/2×/4× | vão 1×/2×/4× |
+|---|---|---|
+| 1 px | −0,3 / −0,1 / **+0,3** | −0,7 / −0,9 / −1,3 |
+| 3 px | −1,3 / −1,1 / −0,7 | −1,7 / −1,9 / −2,3 |
+| 6 px | −3,0 / −2,9 / −2,8 | −3,0 / −3,1 / −3,2 |
+| 16 px | −8,0 / −7,9 / −7,8 | −8,0 / −8,1 / −8,2 |
+| 40 px | −20,0 / −19,9 / −19,8 | −20,0 / −20,1 / −20,2 |
+
+O pior resíduo do sweep inteiro é +0,3 px (linha de 1 px a 4×) — sub-pixel. Antes: +25,2 px
+na linha de 16 a 4×.
+
+**Gates** (todos ficaram VERMELHOS no código antigo antes do fix — a sequência do Bug #2):
+`the_baked_fill_stays_under_the_line_at_any_later_zoom` (o bug do produto: preenche num
+zoom, olha noutro) · `the_grow_slider_is_continuous_through_zero` (a reclamação exata: o
+passo 0→−1 movia 16,8 px numa linha de 16) · `the_colour_stops_at_the_line_axis_at_any_width`
+· `a_negative/positive_grow_*_the_contour_the_same_at_any_line_width` · e a régua manual
+`sweep_table` (`--ignored --nocapture`, imprime a tabela acima). Em
+`ph2d-flip-fill/src/tests.rs`.
+
+**Trade-offs aceitos e documentados** (as perguntas em aberto do handoff, decididas):
+- **Grow segue em px de tela, convertido no clique** — um `grow ≠ 0` é assado e escala com
+  o zoom posterior. Aceito: é ajuste estilístico deliberado, não o default.
+- **O vão do grow negativo voltou a depender da espessura** (`|N| − w/2` visível). Aceito:
+  o objetivo de #13 (vão espessura-independente) era incompatível com a âncora zoom-proof —
+  aparência é função da câmera; geometria não. O slider é contínuo, que era a dor real.
+- **Duas linhas cujos CORPOS se sobrepõem mas cujos eixos não se cruzam não selam mais o
+  flood sozinhas** (a parede é o eixo, não o corpo). O filtro de vazamento cruzado pega as
+  frestas pequenas; o resto é o Gap Closure — e o toast do vazamento já o sugere.
+- **O passo do slider ficou em 1 px**: com o default certo por construção, o ajuste fino
+  deixou de ser necessário para "consertar" — 1 px por passo é granularidade de efeito.
+- **Clicar no CORPO de uma linha grossa agora preenche o lado clicado** (antes: "clicked on
+  a line" se o clique caísse a até ¼ da espessura do eixo). Só o eixo em si recusa.
+
+> **Lição — a âncora tem de ser INVARIANTE sob o que o usuário mexe.** #13 já dizia que um
+> controle mede a partir de uma âncora e que a âncora tem de ser o que o usuário vê. Faltava a
+> metade seguinte: **o que ele vê muda com o zoom.** Das três âncoras possíveis — borda externa,
+> borda interna, eixo — **só o eixo é geometria**; as outras duas são *aparência*, e aparência é
+> função da câmera. *Quando você ancora numa quantidade derivada, herda todas as dependências
+> dela.* E quando duas semânticas de âncora convivem num controle (uma para 0, outra para <0),
+> a fronteira entre elas é uma DESCONTINUIDADE que o usuário sente como "o slider não funciona".
 
 > **Lição — a âncora tem de ser INVARIANTE sob o que o usuário mexe.** #13 já dizia que um controle
 > mede a partir de uma âncora e que a âncora tem de ser o que o usuário vê. Faltava a metade

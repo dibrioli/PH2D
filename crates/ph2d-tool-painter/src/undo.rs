@@ -129,12 +129,11 @@ pub(crate) struct SculptSnap {
     pub(crate) pre: Arc<Vec<f32>>,
     /// The accumulated per-texel touch.
     pub(crate) amount: Arc<Vec<f32>>,
-    /// Which layer the session belongs to (`None` ⇒ no session).
+    /// Which layer the session belongs to — and, the session dying at commit, also *whether there is an
+    /// uncommitted gesture at all* (`None` ⇒ no session). The two used to be separate fields.
     pub(crate) layer: Option<RtLayerId>,
     /// The window the stroke touched — what a re-stamp restores, and what a knob edit re-renders.
     pub(crate) bbox: Option<crate::compositor::Region>,
-    /// A stroke is in progress (as opposed to a session parked for the live knobs).
-    pub(crate) open: bool,
 }
 
 /// Plain-data snapshot of an open on-canvas shape editor, stored in a [`ModelSnapshot`] so a structural

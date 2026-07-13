@@ -110,11 +110,12 @@ impl PainterTool {
     /// shape-editor re-stamp restores it from the frozen `pre` first (`restamp_reset_sculpt`) — so a
     /// session left open past its Apply is a loaded gun: the next shape's very first preview frame would
     /// restore over the applied shape's carving and **erase it**. The deposit only lost its relief; the
-    /// sculpt would have quietly un-done work that was already on the canvas. Parking the session here is
-    /// what closes it, at the same one point, for every method.
+    /// sculpt would have quietly un-done work that was already on the canvas. Ending the session here is
+    /// what closes it, at the same one point, for every method — and it is also where a sculpt gesture
+    /// stops being editable, which is the point of `end_sculpt_session`'s docs.
     pub(super) fn commit_drag_preview(&mut self) {
         self.commit_stroke_height();
-        self.commit_stroke_sculpt();
+        self.end_sculpt_session(); // committed ⇒ the sculpt session dies (the card arms the NEXT stroke)
         self.paint.drag_preview = None;
         // #3: end any shape watercolor session so the ground (backdrop) rebuilds fresh for the next shape
         // or a freehand stroke. Harmless to the freehand brush, which never sets this flag.

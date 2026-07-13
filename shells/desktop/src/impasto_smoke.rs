@@ -47,8 +47,16 @@
 //! only what the brush cannot say: which verb, and the kernel's own **Radius** (1-16 px — the scale
 //! brush-marks live at; smoothing at a large scale is Flatten, which is Wave 2 and a different kernel).
 //!
-//! **Radius and Smooth↔Sharpen are live on the stroke you just made**, like the Body card's knobs: drag
-//! the spatula once, then turn Radius and watch that stroke re-render.
+//! **The card arms the NEXT stroke — it does not rewrite the last one.** Pick Sharpen and the Smooth
+//! behind you stays a Smooth; to change a mark you have made, undo it. (It behaved the other way for one
+//! afternoon, riding the Body card's "Adjust Last Stroke", and Enio's smoke killed it: reaching for the
+//! other verb, in order to use it *somewhere else*, inverted the work already on the canvas. Paint is a
+//! substance whose properties you can keep tuning; a smoothing is a verb that already happened.)
+//!
+//! The exception proves the rule: inside an **open shape editor** (Line / Curve / Ellipse / Polygon) the
+//! knobs DO re-render, because a shape is a preview with an Apply button — it is not canvas yet. Draw a
+//! Line in Sculpt, turn Radius before applying, and watch it re-render; then Apply, turn it again, and
+//! watch nothing happen.
 //!
 //! Note that nothing here is armed in code — you click the rail chip yourself. That is on purpose. The
 //! smoke that arms state under the table skips exactly the seam it was supposed to prove, and this line

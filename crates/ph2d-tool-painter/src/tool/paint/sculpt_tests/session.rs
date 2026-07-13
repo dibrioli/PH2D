@@ -1,5 +1,10 @@
-//! Gates for the Sculpt **session** — when it is born, when it is parked, when it dies, and what it
-//! costs while it lives (`docs/Painter/18_plano_sculpt_relevo.md` §4, §10.4).
+//! Gates for the Sculpt **session** — when it is born, how long it lives, every way it can end, and what it
+//! costs while it does (`docs/Painter/18_plano_sculpt_relevo.md` §4, §10.4).
+//!
+//! One sentence governs the whole file: **the session lives exactly as long as the gesture is uncommitted.**
+//! Everything here is a way of ending a gesture — pen-up, Apply, Cancel, undo, a sprite rebind, a mode
+//! switch — and each one is a door the carving can rot behind, because the sculpt is the one channel that
+//! rewrites the layer's plane LIVE. Three of the six were found only by walking the list.
 //!
 //! A child of [`super`] rather than a sibling, so the fixtures (`sculpt_canvas`, `arm_sculpt`, `drag`)
 //! are shared and cannot drift into two subtly different canvases. Split out for the workspace file-LOC
@@ -23,7 +28,7 @@ use std::sync::Arc;
 /// `restamp_reset_sculpt`, which restores the relief from a `pre` frozen before the applied shape — and
 /// silently **erases carving that was already on the canvas**.
 ///
-/// **Mutation that must bleed:** drop `self.commit_stroke_sculpt()` from `commit_drag_preview`.
+/// **Mutation that must bleed:** drop `self.end_sculpt_session()` from `commit_drag_preview`.
 #[test]
 fn an_applied_shape_keeps_its_carving_when_the_next_shape_starts() {
     let size = 200u32;
@@ -108,48 +113,148 @@ fn strength_zero_never_touches_the_relief() {
     );
 }
 
-/// **Radius and Smooth↔Sharpen re-render the stroke that is already down.**
+/// **A finished stroke is finished: the card's knobs do not reach back and rewrite it.**
 ///
-/// This is the property the whole per-stroke session buys (§4.3), and it is the one the artist feels
-/// first: a knob that only arms the NEXT stroke is the failure mode this section keeps producing (the
-/// Body card was rebuilt twice over exactly this).
+/// This wave shipped the opposite. The session was *parked* at pen-up so Radius and Smooth↔Sharpen would
+/// re-render the stroke you had just made, riding the Body card's "Adjust Last Stroke". Enio's smoke killed
+/// it in one sentence: picking **Sharpen** — in order to sharpen somewhere *else* — converted the Smooth
+/// behind him into its opposite.
 ///
-/// **Mutation that must bleed:** make `commit_stroke_sculpt` call `end_sculpt_session()` instead of
-/// parking — the session dies at pen-up and both knobs go inert.
+/// The analogy to the deposit was the error. Paint is a **substance**: Depth / Body are properties *of the
+/// paint that stroke laid*, so "keep tuning them" is a coherent offer. A sculpt stroke is an **operation**;
+/// it leaves nothing behind that has properties, only the relief as it now is. Operations are undone, not
+/// re-dialled — and a *verb* that rewrites history when you select it is not an adjustment at all.
+///
+/// Byte-identical, not "close": a knob that moved one texel of finished work has already broken the promise.
+///
+/// **Mutation that must bleed:** restore the parking — make `commit_drag_preview` free only the memo
+/// (`blurred` / `blur_done`) instead of calling `end_sculpt_session()`.
 #[test]
-fn the_sculpt_knobs_re_render_the_finished_stroke() {
+fn the_sculpt_knobs_do_not_touch_a_finished_stroke() {
     let size = 200u32;
     let (mut t, layer, _) = sculpt_canvas(size);
     arm_sculpt(&mut t, 0, 0.25, 1.0);
     drag(&mut t, &[[60.0, 100.0], [100.0, 100.0], [140.0, 100.0]]);
-    let small_radius = heights_of(&t, layer);
+    let finished = heights_of(&t, layer);
+    let carved = finished.iter().filter(|v| **v != 0.0).count();
+    assert!(
+        carved > 200,
+        "fixture: the stroke carved nothing — there is no finished work here to leave alone"
+    );
 
-    // Pen is UP. Turn the Radius knob — the stroke on screen must change.
+    // The pen is UP. The stroke is on the canvas. Now reach for the other verb, and a different scale.
+    t.set_sculpt_mode(1); // Sharpen
     t.set_sculpt_radius(1.0);
-    let big_radius = heights_of(&t, layer);
-    let moved = small_radius
+
+    let after = heights_of(&t, layer);
+    let moved = finished
         .iter()
-        .zip(&big_radius)
+        .zip(&after)
+        .filter(|(a, b)| a.to_bits() != b.to_bits())
+        .count();
+    assert_eq!(
+        moved, 0,
+        "picking Sharpen (and turning Radius) after the stroke rewrote {moved} texels of the SMOOTH that \
+         was already down. The knobs arm the next stroke; they are not a live filter on the last one — the \
+         artist who reaches for the other verb means the next mark, not the one behind them."
+    );
+}
+
+/// **…and the presence sibling: an OPEN shape still re-renders.** (Deleting `refresh_live_sculpt` outright
+/// would pass the gate above while the shape editor's preview quietly lied.)
+///
+/// A shape editor's stroke is not canvas — it is a preview with an **Apply** button, precisely because it is
+/// not committed. Everything about it is live until then (that is the whole point of the mode), so a Sculpt
+/// card whose knobs went inert *there* would leave the curve on screen disagreeing with the card that
+/// describes it. That is not the rule bending; it is the rule: **the session lives exactly as long as the
+/// gesture is uncommitted.**
+///
+/// **Mutation that must bleed:** make `refresh_live_sculpt` return immediately.
+#[test]
+fn the_sculpt_knobs_re_render_an_open_shape() {
+    let size = 200u32;
+    let (mut t, layer, _) = sculpt_canvas(size);
+    arm_sculpt(&mut t, 0, 0.25, 1.0);
+    let mut b = t.paint.brush;
+    b.stroke_method = ph2d_painter_brush::StrokeMethod::Line;
+    t.paint.brush = b;
+    t.paint.brush_by_mode[super::PaintMode::Sculpt.slot()] = b;
+
+    // Two points ⇒ a line. NOT applied: the shape is still open and editable.
+    for p in [[50.0, 100.0], [150.0, 100.0]] {
+        t.on_canvas_pointer(cp(p, PointerPhase::Down));
+        t.on_canvas_pointer(cp(p, PointerPhase::Up));
+    }
+    let smooth_preview = heights_of(&t, layer);
+    assert!(
+        t.paint.sculpt.layer.is_some(),
+        "fixture: an un-applied shape must keep its session open — there is nothing live to re-render"
+    );
+
+    t.set_sculpt_mode(1); // Sharpen, on a shape the artist has not committed
+    let sharpen_preview = heights_of(&t, layer);
+    let moved = smooth_preview
+        .iter()
+        .zip(&sharpen_preview)
         .filter(|(a, b)| (*a - *b).abs() > 1e-6)
         .count();
     assert!(
         moved > 200,
-        "turning Radius after the stroke re-rendered only {moved} texels — the knob is arming the NEXT \
-         stroke instead of adjusting the one the artist is looking at"
+        "switching the verb on an OPEN shape re-rendered only {moved} texels. The preview on screen now \
+         shows a Smooth while the card says Sharpen, and only the Apply would reconcile them."
     );
+}
 
-    // And the verb, too.
-    t.set_sculpt_mode(1); // Sharpen
-    let sharpened = heights_of(&t, layer);
-    let flipped = big_radius
+/// **Cancelling a shape un-carves it.**
+///
+/// `cancel_open_shape`'s own comment states the invariant: *"the pixels are peeled back to pristine — so the
+/// relief has to go with them"*. The deposit obeys it for free (it stages relief in an envelope and only
+/// merges at commit, so dropping the envelope is enough). The sculpt cannot: it rewrites the layer's plane
+/// LIVE. So a cancelled Curve used to leave its carving behind — the shape gone, the smoothing permanent,
+/// and **no undo entry**, because the shape was never committed. There was no way back.
+///
+/// Third door of the same house as the stale-Apply and the sprite-rebind, and found by walking the list of
+/// every way a gesture can end rather than only the way it usually does.
+///
+/// **Mutation that must bleed:** delete `self.cancel_sculpt_session()` from `cancel_open_shape`.
+#[test]
+fn cancelling_a_shape_un_carves_it() {
+    let size = 200u32;
+    let (mut t, layer, before) = sculpt_canvas(size);
+    arm_sculpt(&mut t, 0, 1.0, 1.0);
+    let mut b = t.paint.brush;
+    b.stroke_method = ph2d_painter_brush::StrokeMethod::Line;
+    t.paint.brush = b;
+    t.paint.brush_by_mode[super::PaintMode::Sculpt.slot()] = b;
+
+    for p in [[50.0, 100.0], [150.0, 100.0]] {
+        t.on_canvas_pointer(cp(p, PointerPhase::Down));
+        t.on_canvas_pointer(cp(p, PointerPhase::Up));
+    }
+    let carved = heights_of(&t, layer);
+    let touched = before
         .iter()
-        .zip(&sharpened)
+        .zip(&carved)
         .filter(|(a, b)| (*a - *b).abs() > 1e-6)
         .count();
     assert!(
-        flipped > 200,
-        "switching Smooth → Sharpen after the stroke re-rendered only {flipped} texels — the verb is \
-         inert on the finished stroke"
+        touched > 200,
+        "fixture: the open shape carved only {touched} texels — nothing to un-carve, so nothing to prove"
+    );
+
+    assert!(t.cancel_open_shape(), "fixture: Esc must cancel the shape");
+
+    let after = heights_of(&t, layer);
+    let left = before
+        .iter()
+        .zip(&after)
+        .filter(|(a, b)| a.to_bits() != b.to_bits())
+        .count();
+    assert_eq!(
+        left, 0,
+        "cancelling the shape left {left} texels of its carving on the layer. The pixels peeled back to \
+         pristine and the relief did not — a smoothing with no shape to explain it, and no undo entry to \
+         reach it, because the shape was never committed."
     );
 }
 
@@ -235,17 +340,19 @@ fn sculpt_perf_kill_criterion() {
     }
 }
 
-/// **The sculpt session costs what this comment says it costs.**
+/// **The sculpt session costs what this comment says it costs — and costs nothing once the stroke is down.**
 ///
 /// *A rule that never observes cannot fire* ([[feedback_a_rule_that_never_observes_cannot_fire]]): the
-/// audio editor reached 4351 MB while HR-13 sat there adding up numbers nobody had measured. So the
-/// planes are counted, on the real thing, rather than reasoned about.
+/// audio editor reached 4351 MB while HR-13 sat there adding up numbers nobody had measured. So the planes
+/// are counted, on the real thing, rather than reasoned about.
 ///
-/// **During a stroke**: `amount` (4 B/px) + `blurred` (4 B/px) + the forked `pre` (4 B/px) = **12 B/px**.
-/// **Parked** (pen-up, waiting for a knob): the memo is freed, so **8 B/px** — less than the impasto's own
-/// parked ingredients, which is the bar this had to clear.
+/// **While the gesture is in flight**: `amount` (4 B/px) + `blurred` (4 B/px) + the forked `pre` (4 B/px) =
+/// **12 B/px**. **Once it is committed**: zero. Not "the memo is freed and 8 B/px is parked for the live
+/// knobs" — that was this wave's first cut, and the knobs it was paying for turned out to be a design bug
+/// (see [`the_sculpt_knobs_do_not_touch_a_finished_stroke`]). Killing the feature refunded the memory: a
+/// canvas you have finished sculpting holds nothing at all.
 #[test]
-fn the_sculpt_session_costs_twelve_bytes_per_pixel_and_parks_at_eight() {
+fn the_sculpt_session_costs_twelve_bytes_per_pixel_and_nothing_once_committed() {
     let size = 128u32;
     let n = (size * size) as usize;
     let (mut t, _layer, _) = sculpt_canvas(size);
@@ -255,13 +362,13 @@ fn the_sculpt_session_costs_twelve_bytes_per_pixel_and_parks_at_eight() {
     t.on_canvas_pointer(cp([40.0, 64.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([90.0, 64.0], PointerPhase::Move));
     let s = &t.paint.sculpt;
-    assert!(s.open, "fixture: the stroke is open");
-    let live = s.amount.len() * 4 + s.blurred.len() * 4 + s.pre.len() * 4;
+    assert!(s.layer.is_some(), "fixture: the gesture is in flight");
     assert_eq!(
         (s.amount.len(), s.blurred.len(), s.pre.len()),
         (n, n, n),
         "the session's planes are not canvas-sized — the arithmetic below is measuring the wrong thing"
     );
+    let live = s.amount.len() * 4 + s.blurred.len() * 4 + s.pre.len() * 4;
     assert_eq!(
         live / n,
         12,
@@ -269,30 +376,20 @@ fn the_sculpt_session_costs_twelve_bytes_per_pixel_and_parks_at_eight() {
         live / n
     );
 
+    // Pen-up commits. The gesture is over, so the session is over — every plane, not just the memo.
     t.on_canvas_pointer(cp([90.0, 64.0], PointerPhase::Up));
     let s = &t.paint.sculpt;
-    assert!(!s.open, "pen-up parks the session");
     assert!(
-        s.blurred.is_empty() && s.blur_done.is_empty(),
-        "the blur memo survived the pen-up — it is pure derived data, and a live Radius edit would \
-         throw it away anyway, so parking it is 4 B/px of pure waste"
-    );
-    let parked = s.amount.len() * 4 + s.pre.len() * 4;
-    assert_eq!(
-        parked / n,
-        8,
-        "a parked sculpt session costs {} B/px, not 8",
-        parked / n
-    );
-
-    // …and the next pen-down lets go of it entirely: a document you have stopped sculpting pays nothing.
-    t.on_canvas_pointer(cp([40.0, 90.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([40.0, 90.0], PointerPhase::Up));
-    t.set_paint_tool_mode("brush");
-    let s = &t.paint.sculpt;
-    assert!(
-        s.amount.is_empty() && s.pre.is_empty() && s.blurred.is_empty(),
-        "leaving Sculpt kept the session's planes alive — the tool is gone and the memory is not"
+        s.layer.is_none()
+            && s.pre.is_empty()
+            && s.amount.is_empty()
+            && s.blurred.is_empty()
+            && s.blur_done.is_empty(),
+        "a finished sculpt stroke left its session behind: {} B of `pre` + {} B of `amount` + {} B of memo. \
+         Those planes exist to re-render an UNCOMMITTED gesture; this one is on the canvas.",
+        s.pre.len() * 4,
+        s.amount.len() * 4,
+        s.blurred.len() * 4
     );
 }
 
@@ -345,7 +442,7 @@ fn undo_and_redo_inside_a_shape_do_not_sculpt_twice() {
     );
 }
 
-/// **A parked session does not follow the artist to the next sprite.**
+/// **A session does not follow the artist to the next sprite.**
 ///
 /// `reset_transient_edit_state` is the rebind teardown, and its own comments name this bug class and kill
 /// the Deform twin for it. The sculpt is that structure again: `pre` is the OLD sprite's relief, and the
@@ -353,20 +450,32 @@ fn undo_and_redo_inside_a_shape_do_not_sculpt_twice() {
 /// the active-layer id (`LayerStack` restarts `next_id` at 1, so the ids COLLIDE by construction) and a
 /// length check (which matches whenever the two sprites are the same size).
 ///
-/// The hazard window is *switch sprite, then touch the card* — a pen-down on the new sprite would have
-/// opened a fresh session and cured it. And a knob edit records no undo entry, so there is no way back.
+/// The carrier is an **open shape**: a committed stroke ends its own session now, so the only thing that can
+/// still be holding sprite A's relief when sprite B arrives is a gesture that was never applied. The rebind
+/// discards the SHAPE (`discard_open_shape`) — the session it was carving in is a separate drop, and that
+/// is the line this gate is about.
+///
+/// The hazard window is *switch sprite, then touch the card* — a pen-down on B would have opened a fresh
+/// session and cured it. And a knob edit records no undo entry, so there is no way back.
 ///
 /// **Mutation that must bleed:** delete `self.end_sculpt_session()` from `lifecycle::reset_transient_edit_state`.
 #[test]
-fn a_parked_session_does_not_follow_the_artist_to_the_next_sprite() {
+fn a_session_does_not_follow_the_artist_to_the_next_sprite() {
     let size = 128u32;
     let n = (size * size) as usize;
     let (mut t, _layer_a, _) = sculpt_canvas(size);
     arm_sculpt(&mut t, 0, 0.5, 1.0);
-    drag(&mut t, &[[30.0, 64.0], [60.0, 64.0], [90.0, 64.0]]);
+    let mut b = t.paint.brush;
+    b.stroke_method = ph2d_painter_brush::StrokeMethod::Line;
+    t.paint.brush = b;
+    t.paint.brush_by_mode[super::PaintMode::Sculpt.slot()] = b;
+    for p in [[30.0, 64.0], [90.0, 64.0]] {
+        t.on_canvas_pointer(cp(p, PointerPhase::Down));
+        t.on_canvas_pointer(cp(p, PointerPhase::Up));
+    }
     assert!(
         t.paint.sculpt.layer.is_some(),
-        "fixture: the session is parked, holding sprite A's relief"
+        "fixture: an un-applied shape must leave the session open, holding sprite A's relief"
     );
 
     // Sprite B — the SAME size, which is the case that corrupts in silence.

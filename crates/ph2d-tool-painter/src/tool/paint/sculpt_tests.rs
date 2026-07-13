@@ -636,7 +636,7 @@ fn no_other_paint_mode_touches_the_relief() {
              point the sculpt hangs off."
         );
         assert!(
-            !t.paint.sculpt.open,
+            t.paint.sculpt.layer.is_none(),
             "the `{mode}` tool opened a sculpt session"
         );
     }

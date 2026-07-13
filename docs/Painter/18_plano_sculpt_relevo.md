@@ -109,9 +109,26 @@ bbox from the frozen stroke-start pixels"*). Copiar a disciplina, não só a ide
    Acumular a *intensidade* e aplicar **uma vez** dá um resultado que é função da INTENÇÃO, não da
    geometria do carimbo. (E compõe com o `space_attenuation`/`accumulate` que o pincel de tinta já tem —
    reusar essa semântica, não inventar outra.)
-3. **Ele destrava o "Adjust Last Stroke" de graça.** Com `pre` + `amount` guardados, mexer no Strength
-   depois do traço **re-renderiza** — igual a Depth e Body. Sem eles, o traço de sculpt é destrutivo e o
-   toggle não alcança o sculpt, o que seria uma inconsistência que o artista sente na hora.
+3. ~~**Ele destrava o "Adjust Last Stroke" de graça.**~~ — **RAZÃO ERRADA. Riscada no smoke do Enio
+   (2026-07-13).** Ela dizia: com `pre` + `amount` guardados, mexer nos knobs depois do traço
+   re-renderiza — igual a Depth e Body. Foi implementado assim, e o Enio derrubou em uma frase: pegar o
+   **Sharpen** (para afiar em *outro lugar*) convertia o Smooth que ele acabara de fazer no oposto dele.
+
+   O erro foi raciocinar **por analogia com o depósito sem checar se a analogia vale**. Tinta é uma
+   **substância**: Depth/Body são propriedades *da tinta que aquele traço depositou*, então "me deixa
+   continuar afinando" é uma oferta coerente — e o checkbox a faz. Um traço de sculpt é uma **operação**:
+   não deixa para trás nada que tenha propriedades, só o relevo, como ele está agora. Não existe "o
+   smoothing" ali parado para ser re-parametrizado. Operações se **desfazem**, não se re-discam. E o
+   **Mode nem é parâmetro** — é *qual ferramenta*: um verbo que reescreve o passado quando você o
+   seleciona não é ajuste, é destruição que o artista não pediu.
+
+   **O motor (§4) sobrevive intacto — as razões 1 e 2 são as que o sustentam, e elas não dependem disto.**
+   O que morreu foi o que eu fiz com ele. A regra que ficou: **a sessão vive exatamente enquanto o gesto
+   não foi comitado** — pen-up (freehand) ou Apply (shape) a mata. O que *continua* re-renderizando ao
+   vivo é um **shape aberto**, que tem botão Apply justamente por ainda não ser tela; um card que ficasse
+   inerte *ali* deixaria a curva na tela discordando do card que a descreve.
+   Gates: `the_sculpt_knobs_do_not_touch_a_finished_stroke` + o irmão de presença
+   `the_sculpt_knobs_re_render_an_open_shape` (sem ele, apagar o refresh inteiro passa no primeiro).
 
 **Gate que torna isso executável (escrever ANTES do kernel):**
 `o_mesmo_traço_carimbado_duas_vezes_dá_o_mesmo_canvas` — carimbar o traço, re-carimbar (o que o shape

@@ -58,12 +58,37 @@ impl SculptMode {
 
 /// Sculpt settings + the per-stroke session (`docs/Painter/18…` §4).
 ///
-/// The session is born at the first sculpt dab of a stroke and **parked** at pen-up rather than freed —
-/// that is what keeps Radius / Strength / Smooth↔Sharpen live on the stroke the artist is looking at,
-/// instead of only affecting the next one. It dies at the next pen-down, on a mode switch, and on a
-/// document rebind. It does NOT die on a layer switch — the knobs should still reach the stroke you left,
-/// and `refresh_live_sculpt` already refuses to act on any layer but the one the session belongs to. On
-/// undo it is not dropped but RESTORED, in lock-step with the relief ([[crate::undo::SculptSnap]]).
+/// The session is born at the first sculpt dab and **dies the moment that gesture is committed**: at
+/// pen-up for the freehand methods, at **Apply** for the shape editors (which deliberately keep the stroke
+/// open until then), and on Cancel, on a mode switch, and on a document rebind. On undo it is not dropped
+/// but RESTORED, in lock-step with the relief ([`crate::undo::SculptSnap`]).
+///
+/// ## The session does NOT outlive the stroke — and that is a correction, not an omission
+///
+/// It used to. The session was *parked* at pen-up so that Radius and Smooth↔Sharpen would re-render the
+/// stroke the artist had just made, riding the Body card's **"Adjust Last Stroke"** checkbox. Enio's smoke
+/// killed it in one sentence: reaching for **Sharpen** — to sharpen somewhere *else* — silently converted
+/// the Smooth he had just made into its opposite.
+///
+/// The mistake was reasoning by analogy from the deposit without asking whether the analogy holds:
+///
+/// * The **deposit is a substance**. Depth / Body / Source are properties *of the paint that stroke laid*,
+///   so "let me keep tuning them" is a coherent offer, and the checkbox makes it.
+/// * A **sculpt stroke is an operation**. It leaves nothing behind that has properties — only the relief,
+///   as it now is. There is no "the smoothing" sitting there to re-parameterise. Operations are undone and
+///   re-done; they are not re-dialled. (Photoshop's Blur tool has no radius-after-the-fact either, and for
+///   this reason.)
+/// * And the **Mode is not a parameter at all** — it is *which tool*. A verb that rewrites history when you
+///   select it is not an adjustment, it is a destruction the artist did not ask for.
+///
+/// Once the verb cannot be retro-active, a retro-active Radius is *worse* than either rule applied
+/// uniformly: two knobs side by side on one card, one rewriting the past and one not, and nothing on
+/// screen to say which is which.
+///
+/// **What stays live is what is still being authored.** A shape editor's stroke is a PREVIEW — it has an
+/// Apply button precisely because it is not committed — so while a shape is open the knobs do re-render it
+/// ([`Self::refresh_live_sculpt`] gates on `open`). That is not an exception to the rule; it is the rule:
+/// *the session lives exactly as long as the gesture is uncommitted.*
 pub(crate) struct SculptState {
     /// Sub-mode (`0` Smooth · `1` Sharpen).
     pub(crate) mode: u8,
@@ -83,20 +108,23 @@ pub(crate) struct SculptState {
     /// copies-on-write) — the same trick `deform.disp` uses, and for the same reason: every shape-editor
     /// gesture takes a snapshot, and a canvas-sized `Vec` cloned per gesture is a 64 MB copy at 4096².
     pub(crate) amount: Arc<Vec<f32>>,
-    /// `blur(pre, radius)`, memoised tile by tile (see [`super::sculpt_blur`]). Freed at pen-up: it is
-    /// pure derived data, and a live Radius edit would invalidate it anyway.
+    /// `blur(pre, radius)`, memoised tile by tile (see [`super::sculpt_blur`]). Pure derived data: it dies
+    /// with the session and is rebuilt lazily, tile by tile, on demand.
     pub(crate) blurred: Vec<f32>,
     /// One flag per tile of [`Self::blurred`] — whether that tile has been computed this session.
     pub(crate) blur_done: Vec<bool>,
     /// The radius [`Self::blurred`] holds. A change invalidates every tile.
     pub(crate) blur_radius: u32,
-    /// Which layer the session belongs to. `None` ⇒ no session.
+    /// Which layer the session belongs to — and, because the session dies at commit, **this is also what
+    /// "a gesture is in flight" means**. `None` ⇒ no session; every guard in this module reads it as both.
+    ///
+    /// There used to be a separate `open: bool` beside it. Once the session stopped outliving the stroke
+    /// the two became coextensive, and a redundant flag is one that eventually disagrees with the field it
+    /// shadows — so the target IS the guard.
     pub(crate) layer: Option<crate::tool::RtLayerId>,
     /// The union of this stroke's dab footprints — the window the re-render owns, and the window a
     /// shape editor's re-stamp restores.
     pub(crate) bbox: Option<Region>,
-    /// A stroke is in progress (as opposed to a session parked for the live edit).
-    pub(crate) open: bool,
 }
 
 impl Default for SculptState {
@@ -111,7 +139,6 @@ impl Default for SculptState {
             blur_radius: 0,
             layer: None,
             bbox: None,
-            open: false,
         }
     }
 }
@@ -188,8 +215,8 @@ impl PainterTool {
     /// That is not an error path, it is the tool being honest (§5): a sculpt brush creates no paint, so a
     /// document nobody has sculpted pays not one byte for the fact that the mode exists.
     pub(super) fn ensure_sculpt_session(&mut self) -> bool {
-        if self.paint.sculpt.open {
-            return true;
+        if self.paint.sculpt.layer.is_some() {
+            return true; // a gesture is already in flight — keep ITS frozen source
         }
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
@@ -208,7 +235,6 @@ impl PainterTool {
         self.paint.sculpt.blur_radius = self.paint.sculpt.radius_px();
         self.paint.sculpt.layer = Some(active);
         self.paint.sculpt.bbox = None;
-        self.paint.sculpt.open = true;
         true
     }
 
@@ -336,7 +362,6 @@ impl PainterTool {
             amount: Arc::clone(&self.paint.sculpt.amount),
             layer: self.paint.sculpt.layer,
             bbox: self.paint.sculpt.bbox,
-            open: self.paint.sculpt.open,
         }
     }
 
@@ -349,20 +374,21 @@ impl PainterTool {
         self.paint.sculpt.amount = s.amount;
         self.paint.sculpt.layer = s.layer;
         self.paint.sculpt.bbox = s.bbox;
-        self.paint.sculpt.open = s.open;
         self.paint.sculpt.blurred = Vec::new();
         self.paint.sculpt.blur_done = Vec::new();
         self.paint.sculpt.blur_radius = 0;
     }
 
-    /// Drop the sculpt session WITHOUT restoring anything — the relief in `heights` is kept.
+    /// **The one exit.** Drop the session WITHOUT restoring anything — the relief in `heights` is kept.
     ///
-    /// This is the pen-down / mode-switch / document-rebind exit: the finished stroke's relief IS the
-    /// layer's relief now, and the next session must freeze THAT as its `pre`.
+    /// This is what a *committed* gesture does: pen-up for the freehand methods, **Apply** for the shape
+    /// editors. The carving IS the layer's relief now, so there is nothing to put back and nothing left to
+    /// re-render — the Sculpt card's knobs arm the NEXT stroke, they do not reach back and rewrite the last
+    /// one (see the [`SculptState`] docs for why the deposit's "Adjust Last Stroke" does not transfer here).
     ///
-    /// It is deliberately NOT called on a plain layer switch: the parked session's knobs stay live on the
-    /// stroke they belong to, and `refresh_live_sculpt` already refuses to act unless that layer is the
-    /// active one — so switching away and back keeps the Radius knob working on the stroke you left.
+    /// It is also the abandon path — mode switch, document rebind, deactivate — where the relief is going
+    /// away with the document anyway. When the carving must be UN-done rather than kept, that is
+    /// [`Self::cancel_sculpt_session`].
     pub(crate) fn end_sculpt_session(&mut self) {
         self.paint.sculpt.pre = Arc::new(Vec::new());
         self.paint.sculpt.amount = Arc::new(Vec::new());
@@ -370,21 +396,20 @@ impl PainterTool {
         self.paint.sculpt.blur_done = Vec::new();
         self.paint.sculpt.layer = None;
         self.paint.sculpt.bbox = None;
-        self.paint.sculpt.open = false;
     }
 
-    /// Park the session at pen-up: free the memo (pure derived data), keep `pre` + `amount` so the Sculpt
-    /// card stays live on the stroke the artist is looking at.
+    /// **Cancel** (Esc / Delete on an open shape): put the relief back the way the gesture found it, THEN
+    /// drop the session.
     ///
-    /// The undo entry is not this function's business — `close_stroke` records it, and `heights` is in the
-    /// `ModelSnapshot`, so the relief rolls back with the pixels that were there when it was carved.
-    pub(super) fn commit_stroke_sculpt(&mut self) {
-        if !self.paint.sculpt.open {
-            return;
-        }
-        self.paint.sculpt.blurred = Vec::new();
-        self.paint.sculpt.blur_done = Vec::new();
-        self.paint.sculpt.open = false;
+    /// `cancel_open_shape` peels the pixels back to pristine, and its own comment states the invariant this
+    /// closes: *"the pixels are peeled back to pristine — so the relief has to go with them"*. The deposit
+    /// obeys it (`reset_stroke_height` + `drop_live_relief`); the sculpt could not, because it does not
+    /// stage its relief in an envelope — it rewrites the layer's plane LIVE. So a cancelled Curve left its
+    /// carving behind: the shape gone, the smoothing permanent, and **no undo entry**, because the shape was
+    /// never committed. Third door of the same house as the Apply and the rebind (`sculpt_tests::session`).
+    pub(super) fn cancel_sculpt_session(&mut self) {
+        self.restamp_reset_sculpt(); // heights[bbox] = pre — the same restore a re-stamp does
+        self.end_sculpt_session();
     }
 
     /// A shape editor is about to re-stamp the WHOLE stroke: put the relief back the way this stroke found
@@ -396,11 +421,7 @@ impl PainterTool {
     /// makes `heights` byte-identical to `pre` again, so the frozen source is still the truth and the
     /// memo of its blur is still valid.
     pub(super) fn restamp_reset_sculpt(&mut self) {
-        let (Some(layer), Some(rect), true) = (
-            self.paint.sculpt.layer,
-            self.paint.sculpt.bbox,
-            self.paint.sculpt.open,
-        ) else {
+        let (Some(layer), Some(rect)) = (self.paint.sculpt.layer, self.paint.sculpt.bbox) else {
             return;
         };
         let (w, _) = self.source_size;

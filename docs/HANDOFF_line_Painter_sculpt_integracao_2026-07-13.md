@@ -91,18 +91,20 @@ propósito, um de cada vez, e o gate caiu. A tabela é o que o próximo agente p
 |---|---|
 | `the_relief_is_a_function_of_the_shape_not_of_how_it_was_dragged_there` (§4.1) | tirar o `restamp_reset_sculpt()` do `stamp_drag_preview` |
 | `a_faster_mouse_does_not_sculpt_deeper` (§4.2) | `render_sculpt` ler `target[i]` (o relevo vivo) em vez de `pre[i]` (a fonte congelada) |
-| `an_applied_shape_keeps_its_carving_when_the_next_shape_starts` | tirar o `commit_stroke_sculpt()` do `commit_drag_preview` |
+| `an_applied_shape_keeps_its_carving_when_the_next_shape_starts` | tirar o `end_sculpt_session()` do `commit_drag_preview` |
 | `the_tile_memo_is_byte_identical_to_a_whole_canvas_blur` | crescer a janela de leitura por `r−1` em vez de `r` |
 | `the_sculpt_writes_the_relief_and_nothing_else` (§5) | tirar o `return` depois do `stamp_dabs_sculpt` |
 | `the_sculpt_does_not_light_bare_paper` (§5) | fazer o sculpt depositar `covers` |
 | `strength_zero_never_touches_the_relief` | tirar o early-out de `coverage <= 0` |
 | `smooth_lowers_the_gradient_and_sharpen_raises_it` | tirar o braço `sharpen` (os dois verbos viram Smooth) |
 | `the_sculpt_respects_the_selection` | tirar o bloco `restrict` |
-| `the_sculpt_knobs_re_render_the_finished_stroke` | fazer o `commit_stroke_sculpt` matar a sessão em vez de parkeá-la |
-| `the_sculpt_session_costs_twelve_bytes_per_pixel_and_parks_at_eight` | manter o memo parkeado no pen-up |
+| `the_sculpt_knobs_do_not_touch_a_finished_stroke` (§11) | **parkear a sessão no commit** — i.e. o que esta onda tinha shipado |
+| `the_sculpt_knobs_re_render_an_open_shape` (§11, irmão de PRESENÇA) | fazer o `refresh_live_sculpt` retornar na hora |
+| `cancelling_a_shape_un_carves_it` (§11) | tirar o `cancel_sculpt_session()` do `cancel_open_shape` |
+| `the_sculpt_session_costs_twelve_bytes_per_pixel_and_nothing_once_committed` | parkear a sessão no commit |
 | `no_other_paint_mode_touches_the_relief` | tirar o guard de modo do choke point (o **Mask** re-entra nele com o canvas trocado — é a rota sorrateira) |
 | `undo_and_redo_inside_a_shape_do_not_sculpt_twice` (§6.1) | trocar o `restore_sculpt` por `end_sculpt_session` no `restore_model` |
-| `a_parked_session_does_not_follow_the_artist_to_the_next_sprite` (§6.2) | tirar o `end_sculpt_session()` do `reset_transient_edit_state` |
+| `a_session_does_not_follow_the_artist_to_the_next_sprite` (§6.2) | tirar o `end_sculpt_session()` do `reset_transient_edit_state` |
 | `a_feathered_selection_does_not_attenuate_once_per_pointer_batch` (§6.3) | dobrar a máscara no total acumulado em vez de no dab |
 
 E o **seam** (`crates/ph2d-panel-painter-layers/tests/seam_sculpt.rs`, 6 testes — incl. o do chip em px,
@@ -230,8 +232,11 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
 1. Pinte dois ou três traços grossos (o smoke já arma o impasto). Cristas, com marcas de pincel.
 2. Clique **SCULP** no rail esquerdo (entre Deform e Mask).
 3. Arraste por cima das cristas. **Smooth** derruba; o chip **Sharpen** roda o mesmo kernel ao contrário.
-4. Depois do traço, gire o **Radius** e alterne Smooth/Sharpen — o traço que você acabou de fazer
-   **re-renderiza ao vivo** (como os knobs do card Body).
+4. **Alterne Smooth/Sharpen depois do traço: o traço que já está lá NÃO deve mudar** (§11 — foi o achado do
+   1º smoke). O card arma o **próximo** traço. Pra mudar uma marca já feita, Ctrl+Z.
+5. A exceção, que é a regra: com um **shape aberto** (Line/Curve — antes do Apply), gire o Radius e alterne
+   o verbo — a curva **re-renderiza ao vivo**, porque um shape ainda é preview, não tela. Depois do Apply,
+   gire de novo: nada acontece.
 
 **Nada aqui é armado por código — você clica o rail você mesmo, de propósito.** O smoke que arma estado
 por baixo do pano pula exatamente o seam que ele deveria provar, e esta linha tem a cicatriz: o
@@ -290,7 +295,57 @@ veem), mas quem for capear a superfície de painel deve começar por aqui.
 
 ## 10. Estado da linha
 
-**Fechada. Não integrada, não pushada.** `cargo test --workspace` verde (6629), clippy limpo, fmt limpo,
-perf dentro do alvo. **Falta o smoke do Enio** (§7).
+**Fechada. Não integrada, não pushada.** `cargo test --workspace` verde, clippy limpo, fmt limpo,
+perf dentro do alvo (3,01 ms/move @2048² · 3,13 @4096²). **1º smoke do Enio FEITO** — o achado está na §11,
+corrigido e gateado. Aguardando ordem explícita.
 
-Aguardando ordem explícita.
+---
+
+## 11. O que o 1º smoke do Enio derrubou (2026-07-13) — e é a lição mais cara da onda
+
+> *"Ao trocar de Sharpen para Smooth e vice-versa, imediatamente o efeito é aplicado. […] Mas aqui não pode
+> ser assim."*
+
+A onda tinha shipado os knobs do card **vivos sobre o traço já feito** — a sessão era *parkeada* no pen-up e
+o Radius / Smooth↔Sharpen re-renderizavam o último traço, pegando carona no **"Adjust Last Stroke"** do card
+Body. Pegar o **Sharpen** (pra afiar em *outro lugar*) convertia o Smooth que você acabou de fazer no oposto
+dele.
+
+**A causa não é um bug de código. É uma affordance HERDADA POR ANALOGIA sem re-derivar.**
+
+* Tinta é uma **substância**. Depth/Body são propriedades *da tinta que aquele traço depositou* — "me deixa
+  continuar afinando" é uma oferta coerente, e o checkbox a faz.
+* Um traço de sculpt é uma **operação**. Não deixa pra trás nada que tenha propriedades: só o relevo, como
+  ele está agora. Não existe "o smoothing" parado ali pra ser re-parametrizado. Operações se **desfazem**.
+* E o **Mode nem parâmetro é** — é *qual ferramenta*. Um verbo que reescreve o passado quando você o
+  seleciona não é ajuste, é destruição que ninguém pediu.
+
+**O motor por-traço (§4: `pre` + `amount` + re-render) sobrevive intacto** — as razões 1 e 2 (idempotência
+sob re-stamp, e não virar difusão dependente do Spacing) o sustentam sozinhas. Morreu só o que eu fiz com
+ele. O plano registrou a razão 3 como **riscada**, não apagada.
+
+**A regra que ficou:** *a sessão vive exatamente enquanto o gesto não foi comitado.* Pen-up (freehand) ou
+Apply (shape) a matam. O que segue re-renderizando ao vivo é um **shape aberto** — que tem botão Apply
+justamente por ainda não ser tela; um card inerte *ali* deixaria a curva na tela discordando do card que a
+descreve.
+
+**Consequências no código:**
+
+* `commit_stroke_sculpt` **morreu** — o commit chama `end_sculpt_session()`. Uma sessão, uma morte.
+* O campo `SculptState.open` **morreu**: com a sessão morrendo no commit ele virou exatamente
+  `layer.is_some()`, e um booleano redundante é um que um dia vai discordar do campo que sombreia. O guard
+  `Some(layer)` que já existia **é** a checagem — o fix não precisou de gate novo no `refresh_live_sculpt`,
+  ele caiu de graça.
+* **Memória devolvida:** a sessão parkeada custava 8 B/px indefinidamente pra alimentar um recurso que era
+  um bug. Agora um canvas que você terminou de esculpir custa **zero**.
+* **E um TERCEIRO buraco da mesma família, achado ao varrer as saídas:** `cancel_open_shape` (Esc/Delete)
+  descascava os pixels e **deixava o entalhe**. O comentário logo ali diz *"the pixels are peeled back to
+  pristine — so the relief has to go with them"* — o depósito obedece de graça (ele estagia o relevo num
+  envelope), o sculpt não podia, porque escreve o plano da camada **ao vivo**. Shape sumia, smoothing ficava,
+  e **sem entrada de undo**, porque o shape nunca foi comitado. Fix: `cancel_sculpt_session()`.
+
+**A lição que vale além do sculpt:** ⚠️ **o gate que pinava esse bug era VERDE, bem escrito, e tinha o
+vermelho provado por mutação.** Ele se chamava `the_sculpt_knobs_re_render_the_finished_stroke` e fazia
+exatamente o que dizia. Gates provam que o código faz o que você **disse**; nenhum gate te diz que o que
+você disse está errado. O smoke do usuário é o único oráculo pra isso — e é por isso que ele não é opcional.
+([[feedback_inherited_affordance_must_be_rederived]])

@@ -226,22 +226,30 @@ impl PainterTool {
         }
     }
 
-    /// A Sculpt-card edit (Mode / Radius) — or a brush Strength edit — re-renders the last stroke in place.
+    /// A Sculpt-card edit (Mode / Radius) re-renders the gesture that is **still being authored** — and
+    /// nothing else.
     ///
-    /// No re-stroking: the intensity is stored, the frozen source is stored, and the relief is a pure
-    /// function of the two. This is the same promise the Body card makes, and it is made here for the same
-    /// reason — a knob that does nothing to what you are looking at is the failure mode this section keeps
-    /// producing.
+    /// The `Some(layer)` guard below is the whole rule, and it reads stronger than it looks: the session
+    /// dies the moment a gesture is committed (`end_sculpt_session`), so *a live session IS an uncommitted
+    /// gesture*. In practice that leaves exactly one case where these knobs move pixels — an **open shape
+    /// editor**, whose stroke is a preview with an Apply button precisely because it is not canvas yet.
+    /// Turn Radius there and the curve you are looking at re-renders; that is the shape editor's entire
+    /// promise, and it would be a lie for this one card to opt out of it.
     ///
-    /// No-op unless the parked stroke is on the layer the artist is looking at: dialling Radius after
-    /// switching layers must not reach back and re-sculpt a stroke on some other one.
+    /// A **finished** stroke is not touched. It used to be — the session was parked at pen-up and rode the
+    /// Body card's "Adjust Last Stroke" checkbox — and Enio's smoke killed it in one sentence: picking
+    /// **Sharpen**, in order to sharpen somewhere *else*, converted the Smooth he had just made into its
+    /// opposite. See [`super::sculpt::SculptState`] for why the deposit's live-edit does not transfer to an
+    /// operation: paint is a substance and has properties you can keep tuning; a smoothing is a verb that
+    /// already happened.
+    ///
+    /// Still layer-checked: an open shape lives on ONE layer, and dialling Radius after switching away must
+    /// not reach back through the layer stack to re-sculpt it.
     pub(super) fn refresh_live_sculpt(&mut self) {
         let (Some(layer), Some(rect)) = (self.paint.sculpt.layer, self.paint.sculpt.bbox) else {
-            return;
+            return; // no session ⇒ nothing uncommitted ⇒ the knobs arm the next stroke and stop there
         };
-        if !self.impasto_live_edit() // "Adjust Last Stroke" — finished work stays finished
-            || self.layers.active() != Some(layer)
-        {
+        if self.layers.active() != Some(layer) {
             return;
         }
         // Put the window back to the frozen source first: the render only ever WRITES texels the brush

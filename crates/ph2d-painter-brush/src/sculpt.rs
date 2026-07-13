@@ -63,10 +63,12 @@ use crate::height::{HeightDab, sweep_axis, sweep_residual};
 ///
 /// So: the same fold, deliberately. **A convention is not a bug just because you misread it.**
 ///
-/// The consequence the artist sees is the deposit's, too: the BRUSH's Strength is baked into the stroke
-/// (it is the pressure of the hand that made it), while the SCULPT CARD's knobs — Radius, Smooth↔Sharpen
-/// — re-render the finished stroke live. The card's knobs are live; the hand's gesture is not. That is
-/// exactly the split the Body card already draws.
+/// The consequence the artist sees is that Strength is baked into the gesture, like every other thing the
+/// hand did. **And so is the rest of the card** — Radius and Smooth↔Sharpen arm the NEXT stroke; they do not
+/// re-render the last one. They did, briefly, riding the deposit's "Adjust Last Stroke"; that was a design
+/// bug, and Enio's smoke found it in one move (reaching for Sharpen, to sharpen elsewhere, turned the Smooth
+/// behind him into its opposite). Paint is a substance and has properties you can keep tuning; a smoothing
+/// is a verb that already happened. See `tool::paint::sculpt::SculptState` in the tool crate.
 ///
 /// The `impasto_depth` gate is not here either: a sculpt brush deposits no body, so a brush with Depth 0
 /// — or with the Impasto checkbox off entirely — still sculpts. The checkbox says *this brush lays

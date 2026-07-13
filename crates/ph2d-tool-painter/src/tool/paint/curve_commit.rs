@@ -73,6 +73,11 @@ impl PainterTool {
         // the same ghost the Eraser gate refuses, arriving through the Esc key.
         self.reset_stroke_height();
         self.drop_live_relief();
+        // The SCULPT obeys the same sentence, and could not obey it for free: it stages nothing in an
+        // envelope, it rewrites the layer's plane LIVE. So a cancelled Curve used to leave its carving
+        // behind — shape gone, smoothing permanent, and NO undo entry, because the shape was never
+        // committed. This puts the relief back from the frozen `pre`, then drops the session.
+        self.cancel_sculpt_session();
         let cancelled = self.curve_cancel()
             || self.ellipse_cancel()
             || self.polygon_cancel()

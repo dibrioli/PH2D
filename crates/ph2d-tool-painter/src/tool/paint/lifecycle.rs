@@ -56,11 +56,13 @@ impl PainterTool {
         // restarts `next_id` at 1, so the ids COLLIDE by construction) and a LENGTH check (which matches
         // whenever the two sprites are the same size — the case that corrupts in silence).
         //
-        // Without this line: sculpt on sprite A, bind a same-size sprite B, and — *without painting a
-        // thing* — drag the Radius slider. `refresh_live_sculpt` passes both guards and writes A's frozen
-        // relief onto B's height plane. A pen-down on B would have cured it (it opens a fresh session), so
-        // the hazard window is exactly "switch sprite, then touch the card": the one order in which nothing
-        // warns you.
+        // A COMMITTED sculpt stroke ends its own session, so the surviving carrier is an **open shape**:
+        // carve with a Curve, bind a same-size sprite B (the shape is discarded above, the session is not),
+        // and — *without painting a thing* — drag the Radius slider. `refresh_live_sculpt` passes both
+        // guards and writes A's frozen relief onto B's height plane. A pen-down on B would have cured it (it
+        // opens a fresh session), so the hazard window is exactly "switch sprite, then touch the card": the
+        // one order in which nothing warns you. And a knob edit records no undo entry, so there is no way
+        // back. (`discard_open_shape` above drops the SHAPE; only this drops the session it was carving in.)
         self.end_sculpt_session();
 
         // The pixel Selection: tool-global (it is NOT in `StashedDoc`, which stashes the LAYER selection),

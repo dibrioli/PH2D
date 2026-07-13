@@ -2,7 +2,7 @@
 //! left selects). Split from `interact_tests` for the panel LOC cap; `super` is `interact`,
 //! so the shared fixtures come in with it.
 
-use super::tests::{CENTER, RECT, backdrop_snapshot, gesture};
+use super::tests::{CENTER, RECT, backdrop_snapshot, gesture, two_node_snapshot};
 use super::*;
 use crate::snapshot::drain_intents;
 use ph2d_a11y::NodeId as A11yNodeId;
@@ -201,7 +201,7 @@ fn delete_with_a_backdrop_selected_removes_only_the_backdrop() {
         ..Default::default()
     };
 
-    apply_key(&mut st, GraphKey::Delete, RECT);
+    apply_key(&mut st, GraphKey::Delete, RECT, &two_node_snapshot());
 
     assert_eq!(drain_intents(), vec![GraphIntent::DeleteBackdrop { id: 9 }]);
     assert_eq!(st.selected_backdrop, None);

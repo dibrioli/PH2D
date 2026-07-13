@@ -36,6 +36,13 @@ mod socket;
 mod menu;
 use menu::{drag_menu_thumb, grab_menu_thumb, resolve_add_menu, scroll_menu};
 
+#[path = "interact_subgraph.rs"]
+mod subgraph_gesture;
+
+#[path = "interact_key.rs"]
+mod key;
+use key::apply_key;
+
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
 /// the snapshot `paint` already fetched — reused for socket/wire hit-testing.
@@ -65,7 +72,7 @@ pub(crate) fn process(
     }
     let keys: Vec<GraphKey> = ctx.host.store_mut().drain_graph_keys().collect();
     for k in keys {
-        apply_key(state, k, rect);
+        apply_key(state, k, rect, snap);
     }
     let gestures: Vec<GraphGesture> = ctx.host.store_mut().drain_graph_gestures().collect();
     for g in gestures {
@@ -104,73 +111,6 @@ fn apply_zoom(state: &mut MotionGraphPanelState, rect: Rect, z: GraphZoom) {
     state.view.zoom = new;
 }
 
-fn apply_key(state: &mut MotionGraphPanelState, k: GraphKey, rect: Rect) {
-    match k {
-        // Re-fit on the next paint (the draw pass owns the fit math).
-        GraphKey::Fit => state.fitted = false,
-        GraphKey::Escape => {
-            state.selected.clear();
-            state.selected_backdrop = None;
-            state.interaction = Interaction::Idle;
-            state.add_menu = None;
-            state.knife_armed = false;
-            state.probe_armed = false;
-            // Esc also puts the probe away — it is a readout, not a commitment.
-            if state.probe.take().is_some() {
-                push_intent(GraphIntent::SetProbe { node: None });
-            }
-        }
-        // Ctrl+D — duplicate the selection (the shell mints the copies, wires the
-        // links INTERNAL to the selection, and hands the copies back as the new
-        // selection so the drag that follows moves them, not the originals).
-        GraphKey::Duplicate if !state.selected.is_empty() => {
-            push_intent(GraphIntent::DuplicateSelection {
-                nodes: state.selected.iter().copied().collect(),
-            });
-        }
-        // `K` arms the knife: the next left-drag slices wires instead of selecting.
-        // A second K disarms it (so does Esc, and so does the stroke itself). The
-        // toolbar chip mirrors the state (Accent ring) — a mode with no visible
-        // sign is a mystery (Enio, smoke: "não entendi K o que faz").
-        GraphKey::Knife => state.knife_armed = !state.knife_armed,
-        // `P` arms the probe: the next click on a node points the readout at it.
-        GraphKey::Probe => state.probe_armed = !state.probe_armed,
-        // Delete the selection (orphan edges go with the nodes, shell-side).
-        // Empty selection → no intent (idempotent against the double key
-        // dispatch: M0 focus gate + the shell's cursor push). Node and backdrop
-        // selection are mutually exclusive, so Delete is never ambiguous — and a
-        // deleted backdrop takes nothing with it (it owns no nodes; it draws
-        // around them).
-        GraphKey::Delete => {
-            if !state.selected.is_empty() {
-                push_intent(GraphIntent::DeleteSelection {
-                    nodes: state.selected.iter().copied().collect(),
-                });
-                state.selected.clear();
-            } else if let Some(id) = state.selected_backdrop.take() {
-                push_intent(GraphIntent::DeleteBackdrop { id });
-            }
-            state.interaction = Interaction::Idle;
-        }
-        // `A` opens the add-node menu at the canvas center (the keyboard verb
-        // carries no cursor position). Idempotent: a second `A` (menu already
-        // open) falls through to the no-op arm below.
-        GraphKey::Add if state.add_menu.is_none() => {
-            let center = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
-            let spawn = View::new(rect, state.view).graph(center.0, center.1);
-            state.add_menu = Some(AddMenu {
-                scroll: 0.0,
-                screen: center,
-                spawn,
-                connect_from: None,
-            });
-        }
-        // Space — toggle transport play/pause (the shell owns the transport).
-        GraphKey::TogglePlay => push_intent(GraphIntent::TogglePlay),
-        _ => {}
-    }
-}
-
 fn apply_gesture(
     state: &mut MotionGraphPanelState,
     g: GraphGesture,
@@ -206,7 +146,7 @@ fn apply_gesture(
     }
     match g.kind {
         GraphHitKind::Background => apply_background(state, g, rect, snap),
-        GraphHitKind::Node { node } => apply_node(state, g, node as u32),
+        GraphHitKind::Node { node } => apply_node(state, g, node as u32, snap),
         GraphHitKind::SocketOut { node, port } => {
             apply_socket_out(state, g, node as u32, port, rect, snap)
         }
@@ -262,6 +202,14 @@ fn apply_gesture(
             }
             crate::paint_chrome::CHROME_KNIFE => state.knife_armed = !state.knife_armed,
             crate::paint_chrome::CHROME_PROBE => state.probe_armed = !state.probe_armed,
+            crate::paint_chrome::CHROME_GROUP => subgraph_gesture::group(state),
+            // The breadcrumb (doc 57): crumb `i` rides the ordinal `CHROME_CRUMB_BASE + i`.
+            id if id >= crate::paint_chrome::CHROME_CRUMB_BASE => {
+                subgraph_gesture::go_to_crumb(
+                    snap,
+                    (id - crate::paint_chrome::CHROME_CRUMB_BASE) as usize,
+                );
+            }
             _ => {}
         },
         // A backdrop's header: select it (a backdrop and a node are never selected
@@ -400,7 +348,12 @@ fn apply_background(
 }
 
 /// Node-body gestures: select on press, multi-drag with a live `MoveNodes`.
-fn apply_node(state: &mut MotionGraphPanelState, g: GraphGesture, node: u32) {
+fn apply_node(
+    state: &mut MotionGraphPanelState,
+    g: GraphGesture,
+    node: u32,
+    snap: &GraphViewSnapshot,
+) {
     // Probe armed: this press PICKS the node to read instead of selecting/dragging
     // it. The pick disarms (three exits, like the knife).
     if state.probe_armed && g.phase == GesturePhase::Begin {
@@ -452,7 +405,12 @@ fn apply_node(state: &mut MotionGraphPanelState, g: GraphGesture, node: u32) {
                 push_intent(GraphIntent::EndDrag);
             }
         }
-        GesturePhase::Click | GesturePhase::DoubleClick => {
+        // **Double-click a collapsed card → go inside it** (doc 57). On an ordinary
+        // node it is inert, and falls through to the same idle reset as a Click.
+        GesturePhase::DoubleClick => {
+            subgraph_gesture::enter(state, snap, node);
+        }
+        GesturePhase::Click => {
             state.interaction = Interaction::Idle;
         }
     }
@@ -584,3 +542,7 @@ mod f2b_tests;
 #[cfg(test)]
 #[path = "interact_menu_tests.rs"]
 mod menu_tests;
+
+#[cfg(test)]
+#[path = "interact_subgraph_tests.rs"]
+mod subgraph_tests;

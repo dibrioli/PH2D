@@ -8,7 +8,7 @@
 
 use super::*;
 use crate::interaction::dispatch::{
-    KEY_DELETE, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_D, KEY_KEY_F, KEY_KEY_K, KEY_KEY_P,
+    KEY_DELETE, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_K, KEY_KEY_P,
 };
 use crate::interaction::{GesturePhase, GraphHitKind, GraphKey};
 use ph2d_host::{PointerButton, WheelEvent};
@@ -64,12 +64,16 @@ fn wheel(x: f32, y: f32, delta_y: f32) -> WheelEvent {
 }
 
 fn key_cmd(kc: u32, cmd: bool) -> KeyEvent {
+    key_chord(kc, cmd, false)
+}
+
+fn key_chord(kc: u32, cmd: bool, alt: bool) -> KeyEvent {
     KeyEvent {
         keycode: kc,
         modifiers: Modifiers {
             shift: false,
             ctrl: cmd,
-            alt: false,
+            alt,
             meta: false,
         },
         kind: KeyKind::Down,
@@ -278,12 +282,39 @@ fn graph_shortcuts_route_when_the_surface_is_focused() {
         (KEY_KEY_K, false, GraphKey::Knife),
         (KEY_KEY_P, false, GraphKey::Probe),
         (KEY_KEY_D, true, GraphKey::Duplicate),
+        (KEY_KEY_G, true, GraphKey::Group),
     ];
     for (kc, cmd, expected) in cases {
         let _ = dispatch_key(&mut store, key_cmd(kc, cmd), &arena);
         let keys: Vec<_> = store.drain_graph_keys().collect();
         assert_eq!(keys, vec![expected], "keycode {kc:#06x} (cmd={cmd})");
     }
+}
+
+/// **Ctrl+Alt+G is Ungroup, not Group** (doc 57) — the chord Blender and Nuke both
+/// use for the verb. It also satisfies `cmd`, so an arm order that tested the plain
+/// chord first would swallow it and dissolving a group would instead nest it one
+/// level deeper: the exact opposite of the gesture.
+#[test]
+fn ctrl_alt_g_is_ungroup_and_plain_ctrl_g_is_group() {
+    let (mut store, _hits) = graph_setup(GraphHitKind::Background);
+    store.set_graph_focused(Some(SURFACE));
+    let arena = Bump::new();
+
+    let _ = dispatch_key(&mut store, key_chord(KEY_KEY_G, true, true), &arena);
+    assert_eq!(
+        store.drain_graph_keys().collect::<Vec<_>>(),
+        vec![GraphKey::Ungroup]
+    );
+    let _ = dispatch_key(&mut store, key_chord(KEY_KEY_G, true, false), &arena);
+    assert_eq!(
+        store.drain_graph_keys().collect::<Vec<_>>(),
+        vec![GraphKey::Group]
+    );
+    // A bare `G` is not a graph verb at all (it falls through to the generic
+    // handlers — the graph must not eat a letter it does not own).
+    let _ = dispatch_key(&mut store, key_chord(KEY_KEY_G, false, false), &arena);
+    assert!(store.drain_graph_keys().next().is_none());
 }
 
 #[test]

@@ -7,6 +7,7 @@ use ph2d_nodegraph::port::Domain;
 
 fn node(id: u32, is_sink: bool, count: Option<u32>) -> GraphNodeView {
     GraphNodeView {
+        kind: crate::snapshot::NodeViewKind::Node,
         id,
         display_name: format!("n{id}"),
         category: NodeUiCategory::Utility,
@@ -36,6 +37,8 @@ fn edge(from_node: u32, to_node: u32, delayed: bool) -> GraphEdgeView {
 
 fn snap(nodes: Vec<GraphNodeView>, edges: Vec<GraphEdgeView>) -> GraphViewSnapshot {
     GraphViewSnapshot {
+        level: None,
+        breadcrumb: Vec::new(),
         nodes,
         edges,
         probe: None,

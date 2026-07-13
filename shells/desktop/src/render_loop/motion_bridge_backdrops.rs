@@ -49,6 +49,12 @@ pub(super) fn add(motion: &mut MotionState, x: f32, y: f32, w: f32, h: f32) {
         color,
         title: DEFAULT_TITLE.to_string(),
     });
+    // Decoration has a LEVEL (doc 57): a backdrop added while the artist is inside a
+    // group belongs to that group's canvas. Without this it would be born at the root
+    // — invisible from where it was created, which is a chip that does nothing.
+    if let Some(level) = motion.level {
+        motion.doc.backdrop_members.insert(id, level);
+    }
     motion.history.push_undo(pre);
 }
 

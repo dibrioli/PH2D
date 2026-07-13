@@ -36,8 +36,12 @@
 //! a small `Vec` + a `u32`). `begin` at gesture start, `commit_if_changed` at the
 //! end (no-op if nothing changed), or `push_undo` for an atomic op.
 
+pub mod subgraph;
+pub use subgraph::{Holder, Members, Subgraph};
+
 use ph2d_nodegraph::format::ParseError;
 use ph2d_nodegraph::graph::Graph;
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 /// A translucent group region drawn **behind** a set of nodes (Cavalry/Blender
@@ -70,6 +74,16 @@ pub struct MotionDoc {
     pub backdrops: Vec<Backdrop>,
     /// Base z-order the sink columns offset from (`base_z + quantized(z)`).
     pub base_z: u32,
+    /// Collapsed groups — nesting as a fold in the VIEW ([`subgraph`]). Like the
+    /// backdrops, these are invisible to the cook: the graph above stays FLAT, and
+    /// a node inside a subgraph is an ordinary member of it.
+    pub subgraphs: Vec<Subgraph>,
+    /// node → the subgraph holding it (absent = the root canvas).
+    pub members: Members,
+    /// backdrop → the subgraph whose canvas it decorates (absent = the root
+    /// canvas). Decoration has a level for the same reason nodes do: a backdrop
+    /// added while inside a group has to be drawn there, and nowhere else.
+    pub backdrop_members: BTreeMap<u32, u32>,
 }
 
 impl MotionDoc {
@@ -97,6 +111,15 @@ impl MotionDoc {
                 b.id, b.x, b.y, b.w, b.h, b.color, b.title
             );
         }
+        // Appended LAST, and only when there ARE subgraphs — so a document authored
+        // before this feature (and any document that never groups anything) writes
+        // byte-for-byte what it always wrote.
+        subgraph::write_section(
+            &mut out,
+            &self.subgraphs,
+            &self.members,
+            &self.backdrop_members,
+        );
         out
     }
 
@@ -105,11 +128,17 @@ impl MotionDoc {
     /// is rejected); the `[backdrop]` section is parsed here. A text with no
     /// `[backdrop]` section loads as a graph with `base_z = 0` and no backdrops.
     pub fn from_text(text: &str) -> Result<Self, ParseError> {
-        // The section header always starts a line (`\n[backdrop]`), so anchoring on
-        // the newline avoids a stray match inside a (whitespace-free) type name.
-        let (graph_part, backdrop_part) = match text.split_once("\n[backdrop]") {
-            Some((g, b)) => (g, b),
+        // The section headers always start a line, so anchoring on the newline
+        // avoids a stray match inside a (whitespace-free) type name. Peel the
+        // sections off the tail first: `[subgraph]` is the last one written, and a
+        // document that has none simply never mentions it.
+        let (head, subgraph_part) = match text.split_once("\n[subgraph]") {
+            Some((h, s)) => (h, s),
             None => (text, ""),
+        };
+        let (graph_part, backdrop_part) = match head.split_once("\n[backdrop]") {
+            Some((g, b)) => (g, b),
+            None => (head, ""),
         };
         let graph = ph2d_nodegraph::format::from_text(graph_part)?;
 
@@ -170,11 +199,36 @@ impl MotionDoc {
                 }
             }
         }
+        let (subgraphs, members, backdrop_members) = subgraph::parse_section(subgraph_part)?;
+        // A corrupt nesting dies HERE, at the boundary — an unknown parent, a cycle,
+        // a member naming a node that does not exist. Past this line every walk in
+        // `subgraph` is total, and the editor can fold without asking whether the
+        // document makes sense.
+        subgraph::validate(
+            &graph,
+            &subgraphs,
+            &members,
+            &backdrop_members,
+            &backdrops.iter().map(|b| b.id).collect(),
+        )?;
         Ok(Self {
             graph,
             backdrops,
             base_z,
+            subgraphs,
+            members,
+            backdrop_members,
         })
+    }
+
+    /// Drop every trace of the nodes in `dead` from the nesting (call after
+    /// removing them from the graph). Membership that outlived its node would make
+    /// a card claim a member that is not there — and the fold would draw a socket
+    /// for an edge nobody has.
+    pub fn forget_nodes(&mut self, dead: &[ph2d_nodegraph::graph::NodeId]) {
+        for n in dead {
+            self.members.remove(n);
+        }
     }
 }
 
@@ -314,6 +368,7 @@ mod tests {
                 },
             ],
             base_z: 7,
+            ..MotionDoc::new()
         }
     }
 

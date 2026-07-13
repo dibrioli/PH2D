@@ -204,6 +204,7 @@ mod tests {
 
     fn node(id: u32, x: f32, y: f32) -> GraphNodeView {
         GraphNodeView {
+            kind: crate::snapshot::NodeViewKind::Node,
             id,
             display_name: "n".into(),
             category: NodeUiCategory::Utility,

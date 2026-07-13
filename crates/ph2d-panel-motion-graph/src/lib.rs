@@ -29,9 +29,10 @@ mod state;
 /// drift from it.
 pub use backdrop::{MIN_H as BACKDROP_MIN_H, MIN_W as BACKDROP_MIN_W};
 pub use snapshot::{
-    GraphBackdropView, GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot, NodeChoice,
-    PROBE_SAMPLES, PortView, ProbeView, current_graph_backdrop_selection, current_graph_selection,
-    drain_intents, request_graph_selection, set_current_motion_graph, set_current_node_catalog,
+    Crumb, GraphBackdropView, GraphEdgeView, GraphIntent, GraphNodeView, GraphViewSnapshot,
+    NodeChoice, NodeViewKind, PROBE_SAMPLES, PortView, ProbeView, SUBGRAPH_VIEW_TAG,
+    current_graph_backdrop_selection, current_graph_selection, drain_intents, is_subgraph_view,
+    push_intent, request_graph_selection, set_current_motion_graph, set_current_node_catalog,
     set_graph_backdrop_selection, set_graph_selection, snapshot_from,
 };
 pub use state::MotionGraphPanelState;

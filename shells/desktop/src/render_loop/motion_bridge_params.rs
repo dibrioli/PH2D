@@ -79,11 +79,18 @@ pub(super) fn apply_param_edits(
         // id and a backdrop id are both just `u32` — reusing it would let a stale
         // rename land on whatever node happened to share the number.
         let backdrop = ph2d_panel_motion_graph::current_graph_backdrop_selection();
+        // Same rule for a selected CARD (doc 57): a subgraph has no manifest, so its
+        // one row (the name) is routed to the document's nesting, never to a node.
+        let card = super::subgraph::selected_card();
         for intent in intents {
             // A backdrop edit never touches a node and never re-cooks (decoration
             // cannot change what the graph cooks).
             if let Some(bid) = backdrop {
                 super::backdrops::apply_param_intent(motion, bid, intent);
+                continue;
+            }
+            if let Some(sid) = card {
+                super::subgraph::apply_param_intent(motion, super::subgraph::view_id(sid), intent);
                 continue;
             }
             match intent {
@@ -284,6 +291,10 @@ pub(super) fn build_params_snapshot(
     // A backdrop is not a node (no manifest, never cooks), so its rows are built by
     // the module that owns backdrops shell-side.
     if let Some(snap) = super::backdrops::params_snapshot(motion) {
+        return Some(snap);
+    }
+    // A collapsed subgraph is not a node either (doc 57) — its rows are its own.
+    if let Some(snap) = super::subgraph::params_snapshot(motion) {
         return Some(snap);
     }
 

@@ -416,6 +416,12 @@ pub enum GraphKey {
     Duplicate,
     /// Space — toggle transport play/pause (so time-driven behaviours animate).
     TogglePlay,
+    /// Ctrl/Cmd+G — collapse the selection into a subgraph. Blender's and Nuke's
+    /// chord for this verb, in both cases.
+    Group,
+    /// Ctrl/Cmd+Alt+G — dissolve the selected subgraph (or the one being edited).
+    /// Blender's *Ungroup* and Nuke's *Expand Group* are BOTH this chord.
+    Ungroup,
 }
 
 /// A hit target inside the general timeline's dope-sheet surface. Mirror of

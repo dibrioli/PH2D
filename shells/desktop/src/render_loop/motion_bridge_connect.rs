@@ -64,7 +64,7 @@ pub(super) fn apply_connect(
             } else {
                 let pre = motion.doc.clone();
                 motion.doc.graph = trial;
-                plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+                super::reconcile(motion, &pre.graph);
                 motion.history.push_undo(pre);
                 motion.pump.mark_dirty();
                 if edge.delayed {

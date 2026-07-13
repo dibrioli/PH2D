@@ -14,8 +14,8 @@ use super::clipboard::{clipboard_extract_selection, collapse_selection, delete_s
 use super::focus::{apply_click, cycle_focus};
 use super::keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
-    KEY_ENTER, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_K, KEY_KEY_P,
-    KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
+    KEY_ENTER, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_K,
+    KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
 };
 use super::text_ops::{next_char_boundary, prev_char_boundary};
 use super::{
@@ -44,7 +44,11 @@ pub fn dispatch_key<'frame>(
     // The panel drains `graph_keys` and decides what each verb does.
     if store.graph_focused().is_some()
         && store.focus_id().is_none()
-        && let Some(gk) = graph_key_for(event.keycode, event.modifiers.ctrl || event.modifiers.meta)
+        && let Some(gk) = graph_key_for(
+            event.keycode,
+            event.modifiers.ctrl || event.modifiers.meta,
+            event.modifiers.alt,
+        )
     {
         store.push_graph_key(gk);
         return events.into_bump_slice();
@@ -404,12 +408,17 @@ pub fn dispatch_key<'frame>(
     events.into_bump_slice()
 }
 
-/// Motion Nodes M0.T3 — map a keycode (+ whether Cmd/Ctrl is held) to a graph
-/// shortcut. Letter verbs require NO command modifier so `Cmd/Ctrl+A` stays
+/// Motion Nodes M0.T3 — map a keycode (+ whether Cmd/Ctrl and Alt are held) to a
+/// graph shortcut. Letter verbs require NO command modifier so `Cmd/Ctrl+A` stays
 /// select-all and only `Cmd/Ctrl+D` duplicates; Delete/Backspace/Escape apply
 /// regardless. Returns `None` for keys the graph doesn't consume (they fall
 /// through to the generic handlers).
-fn graph_key_for(keycode: u32, cmd: bool) -> Option<GraphKey> {
+///
+/// **Group / Ungroup** (doc 57) are `Ctrl+G` / `Ctrl+Alt+G` — the chords Blender
+/// AND Nuke both use for exactly these two verbs (Blender: Group / Ungroup; Nuke:
+/// Collapse To Group / Expand Group). The alt arm is listed FIRST: `Ctrl+Alt+G`
+/// also satisfies `cmd`, and a match that tested the plain chord first would eat it.
+fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
     Some(match keycode {
         KEY_DELETE | KEY_BACKSPACE => GraphKey::Delete,
         KEY_KEY_F if !cmd => GraphKey::Fit,
@@ -418,6 +427,8 @@ fn graph_key_for(keycode: u32, cmd: bool) -> Option<GraphKey> {
         KEY_KEY_K if !cmd => GraphKey::Knife,
         KEY_KEY_P if !cmd => GraphKey::Probe,
         KEY_KEY_D if cmd => GraphKey::Duplicate,
+        KEY_KEY_G if cmd && alt => GraphKey::Ungroup,
+        KEY_KEY_G if cmd => GraphKey::Group,
         _ => return None,
     })
 }

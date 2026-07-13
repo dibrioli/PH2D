@@ -26,7 +26,7 @@ use ph2d_eval_motion::MotionCookPump;
 use ph2d_motion_doc::{MotionDoc, MotionHistory};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::format::ParseError;
-use ph2d_nodegraph::graph::{Graph, NodeId};
+use ph2d_nodegraph::graph::NodeId;
 
 /// Runtime state for the Motion Nodes editor. One instance on `AppGfx`.
 pub(crate) struct MotionState {
@@ -70,6 +70,12 @@ pub(crate) struct MotionState {
     /// whose digest MOVED has data running down its wires, and the panel marches them
     /// (TouchDesigner's animated wire). UI-only — the cook never reads it.
     pub(crate) flow_digest: std::collections::BTreeMap<u32, u64>,
+    /// **The subgraph the editor is standing IN** (doc 57): `None` = the root canvas.
+    /// Navigation, so it is not in the document (not serialized, not undoable) — but
+    /// it is not in the PANEL either: an undo that unmakes the group you are inside
+    /// has to be able to put you back on solid ground, and only the shell sees the
+    /// undo (`subgraph::clamp_level`, every frame).
+    pub(crate) level: Option<u32>,
 }
 
 impl MotionState {
@@ -87,7 +93,7 @@ impl MotionState {
         ph2d_node_registry_init::register_all_nodes(&mut registry)
             .expect("motion node registry builds");
         let mut doc = MotionDoc::new();
-        let sinks = build_default_document(&mut doc.graph, &registry).unwrap_or_default();
+        let sinks = build_default_document(&mut doc, &registry).unwrap_or_default();
         Self {
             doc,
             history: MotionHistory::new(),
@@ -102,6 +108,7 @@ impl MotionState {
             probe: None,
             probe_ring: Vec::new(),
             flow_digest: std::collections::BTreeMap::new(),
+            level: None,
         }
     }
 
@@ -129,9 +136,11 @@ impl MotionState {
     ///   stands: a playhead at t=40s into a graph that has never been cooked is not a
     ///   resumption, it is a lie about a simulation that never ran.
     /// - **undo** belongs to the document that was edited, not to the file that replaced it.
-    /// - the **probe**, the **flow digests** and the panel's **selection** all name nodes by
-    ///   id. A stale selection is the sharpest of the three: the params panel would happily
-    ///   edit whichever node inherited the number.
+    /// - the **probe**, the **flow digests**, the panel's **selection** and the **level the
+    ///   editor is standing in** (doc 57) all name things by id. A stale selection is the
+    ///   sharpest of them: the params panel would happily edit whichever node inherited the
+    ///   number. A stale LEVEL is the strangest — the new document's group `2` is not the room
+    ///   you were in, and you would be looking at a canvas you never opened.
     ///
     /// `sinks` is the exception that proves the rule — the bridge recomputes it from the graph
     /// every frame, so it heals itself; it is cleared anyway so a headless caller between the
@@ -144,6 +153,7 @@ impl MotionState {
         self.probe = None;
         self.probe_ring.clear();
         self.flow_digest.clear();
+        self.level = None;
         #[cfg(feature = "panel-motion-graph")]
         ph2d_panel_motion_graph::set_graph_selection(Vec::new());
     }
@@ -163,12 +173,41 @@ impl MotionState {
 /// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,
 /// pulse and M3/M4 chains. They remain in git history and every node keeps its own unit
 /// tests; the nodes stay registered, so any of them can be dropped.
-fn build_default_document(g: &mut Graph, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    let sinks = strobe::build(g)?;
+fn build_default_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
+    let demo = strobe::build(&mut doc.graph)?;
     // Same "validate on load" the editor runs before cooking — proves the authored
     // graph is well-typed and membrane-clean.
-    g.validate(reg).ok()?;
-    Some(sinks)
+    doc.graph.validate(reg).ok()?;
+    // **The boot document ships a SUBGRAPH** (doc 57): the six nodes that age, colour,
+    // shrink and fade a flake are folded into ONE card, sitting inline in the chain
+    // with one socket on each side. So the feature is on the canvas the moment the tool
+    // opens — double-click the card and you are inside it — and nobody has to build a
+    // graph to find out that groups exist.
+    //
+    // The snow is **byte-identical** with the group as without it (gate:
+    // `grouping_never_changes_the_cook`). That is the whole claim of the design, and
+    // the boot document is where it is easiest to see: the flakes still fall.
+    let sid = 0;
+    // The centroid of what it folds — the SAME place the Ctrl+G gesture would put it
+    // (`subgraph::group`), so the boot document is a document the artist could have
+    // authored, not a special case the code knows about.
+    let mut sum = (0.0f32, 0.0f32);
+    for n in &demo.aging {
+        let p = doc.graph.pos(*n)?;
+        sum = (sum.0 + p.x, sum.1 + p.y);
+    }
+    let n = demo.aging.len() as f32;
+    doc.subgraphs.push(ph2d_motion_doc::Subgraph {
+        id: sid,
+        parent: None,
+        x: sum.0 / n,
+        y: sum.1 / n,
+        title: "Age & Fade".to_string(),
+    });
+    for id in &demo.aging {
+        doc.members.insert(*id, sid);
+    }
+    Some(demo.sinks)
 }
 #[cfg(test)]
 #[path = "motion_state_tests.rs"]

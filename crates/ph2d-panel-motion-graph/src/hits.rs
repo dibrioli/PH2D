@@ -67,16 +67,26 @@ pub(crate) fn clip_rect(r: Rect, canvas: Rect) -> Option<Rect> {
 }
 
 /// Push a node body's hit rect, clipped to the canvas (skipped when fully off).
+///
+/// **A ghost registers no body** (doc 57): it is a node from OUTSIDE this level,
+/// drawn only because a wire crosses to it, and a click-through body is what makes
+/// it read as what it is. Dragging it would move a node on a canvas the artist is
+/// not looking at; deleting it would reach across the boundary. Its **sockets** are
+/// registered all the same (`push_socket_hits`) — the whole point of drawing it is
+/// that you can wire across the seam.
 pub(crate) fn push_card_hit(
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
-    node: u32,
+    n: &GraphNodeView,
     body: Rect,
     canvas: Rect,
 ) {
+    if n.kind == crate::snapshot::NodeViewKind::Ghost {
+        return;
+    }
     if let Some(r) = clip_rect(body, canvas) {
         hits.push((
-            node_hit_id(node),
-            GraphHitKind::Node { node: node as u64 },
+            node_hit_id(n.id),
+            GraphHitKind::Node { node: n.id as u64 },
             r,
         ));
     }
@@ -272,6 +282,7 @@ mod tests {
 
     fn node(id: u32, x: f32, y: f32) -> GraphNodeView {
         GraphNodeView {
+            kind: crate::snapshot::NodeViewKind::Node,
             id,
             display_name: "n".into(),
             category: NodeUiCategory::Utility,
@@ -313,13 +324,55 @@ mod tests {
         // clipped away visually, but an unclipped hit rect would still swallow
         // clicks meant for the scene behind it.
         let mut hits = Vec::new();
-        push_card_hit(&mut hits, 7, Rect::new(10.0, -60.0, 190.0, 58.0), CANVAS);
+        push_card_hit(
+            &mut hits,
+            &node(7, 0.0, 0.0),
+            Rect::new(10.0, -60.0, 190.0, 58.0),
+            CANVAS,
+        );
         assert!(hits.is_empty(), "an off-canvas card is not clickable");
 
         // A card straddling the edge stays clickable, but only over its visible part.
-        push_card_hit(&mut hits, 8, Rect::new(10.0, 70.0, 190.0, 58.0), CANVAS);
+        push_card_hit(
+            &mut hits,
+            &node(8, 0.0, 0.0),
+            Rect::new(10.0, 70.0, 190.0, 58.0),
+            CANVAS,
+        );
         let (_, _, r) = hits[0];
         assert_eq!((r.y, r.h), (100.0, 28.0), "only the visible band is hit");
+    }
+
+    /// **A ghost registers no body** (doc 57): it belongs to another level, and a
+    /// click-through body is what makes it read as what it is. Its SOCKETS still
+    /// register — wiring across the seam is the entire reason it is drawn.
+    #[test]
+    fn a_ghost_has_no_body_hit_but_keeps_its_sockets() {
+        let ghost = GraphNodeView {
+            kind: crate::snapshot::NodeViewKind::Ghost,
+            ..node(9, 10.0, 10.0)
+        };
+        let view = View::new(CANVAS, ViewState::default());
+
+        let mut body = Vec::new();
+        push_card_hit(
+            &mut body,
+            &ghost,
+            Rect::new(10.0, 120.0, 190.0, 58.0),
+            CANVAS,
+        );
+        assert!(
+            body.is_empty(),
+            "a ghost cannot be grabbed, dragged or deleted"
+        );
+
+        let mut sockets = Vec::new();
+        push_socket_hits(&mut sockets, &ghost, &view, CANVAS);
+        assert_eq!(
+            sockets.len(),
+            1,
+            "but its sockets are live: you can wire it"
+        );
     }
 
     /// A `pre` edge's hit surface is its badge pair, not a spline band: two
@@ -338,6 +391,8 @@ mod tests {
             out_domain: Domain::Instances,
         };
         let snap = GraphViewSnapshot {
+            level: None,
+            breadcrumb: Vec::new(),
             nodes: vec![node(1, 20.0, 50.0), node(2, 240.0, 50.0)],
             edges: vec![],
             backdrops: vec![],

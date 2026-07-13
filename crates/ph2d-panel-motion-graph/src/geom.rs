@@ -75,6 +75,34 @@ pub(crate) fn card_rows(n: &GraphNodeView) -> f32 {
     (n.inputs.len().max(n.outputs.len()).max(1)) as f32
 }
 
+// Breadcrumb metrics (doc 57) — logical == screen (chrome, never scaled by zoom).
+pub(crate) const CRUMB_H: f32 = 20.0; // LITERAL-PX-OK: breadcrumb chip height
+pub(crate) const CRUMB_PAD_X: f32 = 8.0; // LITERAL-PX-OK: breadcrumb chip x-padding
+pub(crate) const CRUMB_GAP: f32 = 4.0; // LITERAL-PX-OK: gap between crumbs (the separator sits here)
+pub(crate) const CRUMB_INSET: f32 = 8.0; // LITERAL-PX-OK: breadcrumb inset from the graph corner
+pub(crate) const CRUMB_TEXT_SIZE: f32 = 12.0; // LITERAL-PX-OK: breadcrumb font size
+const CRUMB_CHAR_W: f32 = 6.6; // LITERAL-PX-OK: mean advance at CRUMB_TEXT_SIZE (no measure API)
+const CRUMB_MAX_W: f32 = 140.0; // LITERAL-PX-OK: a long group name is truncated, not a wall
+
+/// The width of one crumb. **The draw and the hit rect both come from here** — a
+/// second estimate is how a clickable thing comes to sit somewhere other than where
+/// it was drawn. (There is no text-measure API in this stack, so the width is a
+/// mean-advance estimate; the label is clipped to the same box by `paint_text_title`.)
+pub(crate) fn crumb_w(title: &str) -> f32 {
+    (2.0 * CRUMB_PAD_X + title.chars().count() as f32 * CRUMB_CHAR_W).min(CRUMB_MAX_W)
+}
+
+/// The screen rect of crumb `i`, laid out left to right from the graph's top-left.
+pub(crate) fn crumb_rect(canvas: Rect, titles: &[String], i: usize) -> Rect {
+    let x = canvas.x
+        + CRUMB_INSET
+        + titles[..i]
+            .iter()
+            .map(|t| crumb_w(t) + CRUMB_GAP)
+            .sum::<f32>();
+    Rect::new(x, canvas.y + CRUMB_INSET, crumb_w(&titles[i]), CRUMB_H)
+}
+
 /// The postage stamp's strip (F3): the little scatter of what the node emits, under its
 /// readout. Wide as the card, tall enough to tell a spiral from a grid.
 pub(crate) const PREVIEW_H: f32 = 52.0; // LITERAL-PX-OK: postage-stamp strip height
@@ -174,9 +202,14 @@ pub(crate) fn card_rect(n: &GraphNodeView, view: &View) -> Rect {
 /// people actually make, and demanding that each card be swallowed whole would
 /// silently miss the ones the band merely crossed. Blender and Nuke both select on
 /// intersection.
+///
+/// A **ghost** is never selected: it does not live at this level (doc 57), and a band
+/// that swept one up would let a Delete reach across the boundary and remove a node
+/// from a canvas the artist is not even looking at.
 pub(crate) fn nodes_in_box(snap: &GraphViewSnapshot, view: &View, band: Rect) -> Vec<u32> {
     snap.nodes
         .iter()
+        .filter(|n| n.kind != crate::snapshot::NodeViewKind::Ghost)
         .filter(|n| intersects(card_rect(n, view), band))
         .map(|n| n.id)
         .collect()
@@ -302,6 +335,7 @@ mod tests {
 
     fn node_with_inputs(id: u32, x: f32, n_in: usize) -> GraphNodeView {
         GraphNodeView {
+            kind: crate::snapshot::NodeViewKind::Node,
             id,
             display_name: "n".into(),
             category: NodeUiCategory::Utility,
@@ -328,6 +362,8 @@ mod tests {
     #[test]
     fn hit_input_socket_resolves_the_right_port() {
         let snap = GraphViewSnapshot {
+            level: None,
+            breadcrumb: Vec::new(),
             nodes: vec![node_with_inputs(7, 100.0, 2)],
             edges: vec![],
             backdrops: vec![],
@@ -372,6 +408,8 @@ mod tests {
         let y = bare_r.y + bare_r.h + ROW_H * 0.5;
         let band = Rect::new(0.0, y - 1.0, 10.0, 2.0);
         let snap = GraphViewSnapshot {
+            level: None,
+            breadcrumb: Vec::new(),
             nodes: vec![bare, with_readout],
             edges: vec![],
             backdrops: vec![],

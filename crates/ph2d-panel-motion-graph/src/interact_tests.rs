@@ -36,6 +36,7 @@ pub(super) fn port(domain: Domain) -> PortView {
 /// socket 0 at screen (200, 37) under the identity view.
 pub(super) fn two_node_snapshot() -> GraphViewSnapshot {
     let node = |id: u32, x: f32, ins: Vec<PortView>, outs: Vec<PortView>| GraphNodeView {
+        kind: crate::snapshot::NodeViewKind::Node,
         id,
         display_name: "n".into(),
         category: NodeUiCategory::Utility,
@@ -51,6 +52,8 @@ pub(super) fn two_node_snapshot() -> GraphViewSnapshot {
         preview: None,
     };
     GraphViewSnapshot {
+        level: None,
+        breadcrumb: Vec::new(),
         nodes: vec![
             node(1, 0.0, vec![], vec![port(Domain::Instances)]),
             node(2, 200.0, vec![port(Domain::Instances)], vec![]),
@@ -205,14 +208,14 @@ fn delete_key_emits_delete_selection_and_is_idempotent() {
     let _ = drain_intents();
     let mut st = MotionGraphPanelState::default();
     st.selected.extend([1, 2]);
-    apply_key(&mut st, GraphKey::Delete, RECT);
+    apply_key(&mut st, GraphKey::Delete, RECT, &two_node_snapshot());
     assert_eq!(
         drain_intents(),
         vec![GraphIntent::DeleteSelection { nodes: vec![1, 2] }]
     );
     assert!(st.selected.is_empty());
     // A second Delete (double-dispatch) with the now-empty selection is inert.
-    apply_key(&mut st, GraphKey::Delete, RECT);
+    apply_key(&mut st, GraphKey::Delete, RECT, &two_node_snapshot());
     assert!(drain_intents().is_empty());
 }
 

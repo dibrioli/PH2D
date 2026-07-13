@@ -84,10 +84,21 @@ const RAIN_KILL_KEEP: f32 = 0.05;
 const RAIN_X: f32 = 0.0;
 const RAIN_Y: f32 = 2.4;
 
-/// Author the document into `g`; returns its Output node (the sink).
-pub(crate) fn build(g: &mut Graph) -> Option<Vec<NodeId>> {
-    let snow = build_sim_zone(g)?;
-    Some(vec![snow])
+/// What the boot document is made of: its sinks, and the sub-chain the editor folds
+/// into a subgraph card (doc 57).
+pub(crate) struct Demo {
+    pub sinks: Vec<NodeId>,
+    /// The AGE chain — `sim.lifetime` and the five nodes that read the age it writes
+    /// and turn it into colour, size and opacity. One input crosses into it (the
+    /// collided population) and one output crosses out (the faded one), so the card
+    /// it folds into has exactly one socket on each side: the smallest complete
+    /// demonstration of a derived interface there is.
+    pub aging: Vec<NodeId>,
+}
+
+/// Author the document into `g`.
+pub(crate) fn build(g: &mut Graph) -> Option<Demo> {
+    build_sim_zone(g)
 }
 
 /// Connect `from` → `to` on the given ports, an immediate (non-delayed) edge.
@@ -149,7 +160,7 @@ fn chain(g: &mut Graph, row: f32, col: usize, nodes: &[NodeId]) -> Option<()> {
 ///
 /// Birth and death balance, so the snow reaches a **steady state** and stays there. Every node in
 /// the interior but the `sim.*` ones already existed; the zone is what made them a simulation.
-fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
+fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     let zone = g.add_node("sim.zone");
     let combine = g.add_node("motion.combine");
     let wind = g.add_node("force.wind");
@@ -279,5 +290,8 @@ fn build_sim_zone(g: &mut Graph) -> Option<NodeId> {
     g.set_param(scale, "amount", RAIN_QUAD);
     g.set_param(mv, "dx", RAIN_X);
     g.set_param(mv, "dy", RAIN_Y);
-    Some(output)
+    Some(Demo {
+        sinks: vec![output],
+        aging: vec![life, attr, fade, ramp, shrink, dim],
+    })
 }

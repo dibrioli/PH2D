@@ -16,14 +16,14 @@ fn ctrl_d_duplicates_the_selection_and_is_inert_when_empty() {
     let _ = drain_intents();
     let mut st = MotionGraphPanelState::default();
 
-    apply_key(&mut st, GraphKey::Duplicate, RECT);
+    apply_key(&mut st, GraphKey::Duplicate, RECT, &two_node_snapshot());
     assert!(
         drain_intents().is_empty(),
         "nothing selected: nothing to do"
     );
 
     st.selected.extend([1, 2]);
-    apply_key(&mut st, GraphKey::Duplicate, RECT);
+    apply_key(&mut st, GraphKey::Duplicate, RECT, &two_node_snapshot());
     assert_eq!(
         drain_intents(),
         vec![GraphIntent::DuplicateSelection { nodes: vec![1, 2] }]
@@ -69,7 +69,7 @@ fn the_knife_cuts_the_wires_it_crosses_then_disarms() {
     let mut st = MotionGraphPanelState::default();
     let bg = GraphHitKind::Background;
 
-    apply_key(&mut st, GraphKey::Knife, RECT);
+    apply_key(&mut st, GraphKey::Knife, RECT, &two_node_snapshot());
     assert!(st.knife_armed, "K arms the knife");
 
     // Slice vertically through the middle of the gap the wire crosses.
@@ -91,7 +91,7 @@ fn the_knife_cuts_the_wires_it_crosses_then_disarms() {
     assert!(!st.knife_armed, "the stroke put the blade away");
 
     // Re-armed, a stroke through empty space cuts nothing (and still disarms).
-    apply_key(&mut st, GraphKey::Knife, RECT);
+    apply_key(&mut st, GraphKey::Knife, RECT, &two_node_snapshot());
     for (phase, x, y) in [
         (GesturePhase::Begin, 600.0, 400.0),
         (GesturePhase::Update, 700.0, 500.0),
@@ -109,7 +109,7 @@ fn an_armed_knife_suppresses_the_rubber_band() {
     let _ = drain_intents();
     let snap = two_node_snapshot();
     let mut st = MotionGraphPanelState::default();
-    apply_key(&mut st, GraphKey::Knife, RECT);
+    apply_key(&mut st, GraphKey::Knife, RECT, &two_node_snapshot());
 
     for (phase, x, y) in [
         (GesturePhase::Begin, 400.0, 300.0),
@@ -149,7 +149,7 @@ fn p_arms_the_probe_and_the_next_click_picks_the_node() {
     let snap = two_node_snapshot();
     let mut st = MotionGraphPanelState::default();
 
-    apply_key(&mut st, GraphKey::Probe, RECT);
+    apply_key(&mut st, GraphKey::Probe, RECT, &two_node_snapshot());
     assert!(st.probe_armed, "P armed it");
 
     apply_gesture(
@@ -176,7 +176,7 @@ fn p_arms_the_probe_and_the_next_click_picks_the_node() {
     );
 
     // Esc puts the probe away.
-    apply_key(&mut st, GraphKey::Escape, RECT);
+    apply_key(&mut st, GraphKey::Escape, RECT, &two_node_snapshot());
     assert_eq!(drain_intents(), vec![GraphIntent::SetProbe { node: None }]);
     assert_eq!(st.probe, None);
 }

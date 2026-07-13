@@ -39,6 +39,16 @@ pub(crate) const CHROME_BACKDROP: u16 = 3;
 pub(crate) const CHROME_KNIFE: u16 = 4;
 /// Arm the probe (F2) — same: armed = active ring, and the next click picks a node.
 pub(crate) const CHROME_PROBE: u16 = 5;
+/// Collapse the selection into a subgraph (doc 57) — the chip form of Ctrl+G. It
+/// reads ACTIVE while there is something to collapse, so the artist can see that the
+/// gesture has a subject; with an empty selection it is inert (and says so).
+pub(crate) const CHROME_GROUP: u16 = 6;
+/// **Breadcrumb crumbs start here** — crumb `i` is `CHROME_CRUMB_BASE + i`. They ride
+/// the same `Chrome` hit kind as the toolbar chips (an ordinal the panel alone
+/// interprets), so navigation costs the foundational interaction vocabulary NOTHING:
+/// no new `GraphHitKind`, no new dispatch arm. The base is far above the chip
+/// ordinals so the two can never collide as the toolbar grows.
+pub(crate) const CHROME_CRUMB_BASE: u16 = 100;
 
 fn split_divider_hit_id() -> NodeId {
     fnv_id("motion_graph/split_divider")
@@ -51,15 +61,29 @@ fn chrome_hit_id(id: u16) -> NodeId {
 /// toolbar, pushing their hit rects. `center` is the scene half of the center
 /// band; the graph (`rect`) sits below it (horizontal split) or to its right
 /// (vertical split), which also picks the active-orientation highlight.
+/// What the toolbar has to know about the editor's state to draw itself honestly:
+/// which modes are ARMED (their chip wears the Accent ring — a mode with no visible
+/// sign is a mystery) and whether Group has a subject at all.
+#[derive(Copy, Clone, Debug, Default)]
+pub(crate) struct ChromeState {
+    pub knife_armed: bool,
+    pub probe_armed: bool,
+    pub has_selection: bool,
+}
+
 pub(crate) fn draw_split_chrome(
     ctx: &mut PaintCtx,
     rect: Rect,
     center: Rect,
     theme: Theme,
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
-    knife_armed: bool,
-    probe_armed: bool,
+    state: ChromeState,
 ) {
+    let ChromeState {
+        knife_armed,
+        probe_armed,
+        has_selection,
+    } = state;
     let vertical = rect.x > center.x + 0.5;
     // Divider line + a forgiving grab band straddling the boundary edge.
     let (line, band) = if vertical {
@@ -104,6 +128,9 @@ pub(crate) fn draw_split_chrome(
         (CHROME_BACKDROP, IconId::Backdrop, false),
         (CHROME_KNIFE, IconId::Knife, knife_armed),
         (CHROME_PROBE, IconId::Probe, probe_armed),
+        // Group (doc 57) — active when there IS a selection to collapse. A chip that
+        // looks the same whether or not it can act is a chip that lies once per press.
+        (CHROME_GROUP, IconId::Group, has_selection),
     ];
     let row_y = rect.y + rect.h - TOOLBAR_INSET - CHIP_SIZE;
     for (i, (id, icon, active)) in chips.into_iter().enumerate() {

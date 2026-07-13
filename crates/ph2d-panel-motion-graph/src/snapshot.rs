@@ -14,6 +14,10 @@ use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_nodegraph::port::{Clock, Dim, Domain};
 use std::cell::RefCell;
 
+#[path = "snapshot_intent.rs"]
+mod intent;
+pub use intent::GraphIntent;
+
 /// One socket on a node card. Color ← [`Domain`], shape ← [`Dim`] (plan §2.4).
 /// `clock` completes the [`ph2d_nodegraph::port::PortType`] axes so the editor's
 /// live wire-compatibility preview matches `connects_directly` (domain + dim +
@@ -26,11 +30,62 @@ pub struct PortView {
     pub clock: Clock,
 }
 
+/// **What a card in the view actually IS** (doc 57). The panel paints and hits all
+/// three the same way — a card is a card — but they answer to different verbs, and
+/// the difference is not cosmetic: a double-click ENTERS a subgraph, and a ghost
+/// refuses to be dragged or deleted because it does not live at this level.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum NodeViewKind {
+    /// An ordinary node of the graph, at the level being viewed.
+    Node,
+    /// A **collapsed subgraph**: one card standing for every node inside it. Its
+    /// `id` is a subgraph id tagged with [`SUBGRAPH_VIEW_TAG`] (the two id spaces
+    /// are independent, so an untagged id would be ambiguous), and its ports are
+    /// the edges that CROSS its boundary — derived, never declared (doc 57 §3).
+    Subgraph,
+    /// A **ghost**: a node from OUTSIDE this level that is wired across the
+    /// boundary, drawn read-only where the wire enters. Houdini's *indirect input*
+    /// ("a node-like item that appears inside subnets and corresponds to the node
+    /// wired into the subnet") — with the real node's name on it, because we can
+    /// afford to say which node it is.
+    ///
+    /// It is what keeps the inside of a group from LYING: without it, a member fed
+    /// from outside would draw an empty input socket, which is the one thing a
+    /// socket must never do.
+    Ghost,
+}
+
+/// A view id with this bit set names a SUBGRAPH, not a node (doc 57 §4). Node ids
+/// are minted from 0 upward by `Graph::next_id` and subgraph ids by their own
+/// counter, so the two spaces overlap and a bare `u32` would be ambiguous the
+/// moment a document has both a node 3 and a subgraph 3 — which is the common case,
+/// not the corner one. The shell mints the tag and the shell decodes it; the panel
+/// only ever asks *is this a card?*.
+pub const SUBGRAPH_VIEW_TAG: u32 = 0x8000_0000;
+
+/// Is this view id a collapsed subgraph card?
+pub fn is_subgraph_view(id: u32) -> bool {
+    id & SUBGRAPH_VIEW_TAG != 0
+}
+
+/// One step of the breadcrumb: the level it walks to (`None` = the root canvas)
+/// and what to write on it. Built by the shell from the parent chain, root first —
+/// Blender's *"breadcrumbs in the top left corner of the node editor"*, Houdini's
+/// clickable path gadget.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Crumb {
+    pub level: Option<u32>,
+    pub title: String,
+}
+
 /// One node card in the view.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GraphNodeView {
     /// `NodeId.0` — the opaque handle carried through the `GraphSurface` channel.
+    /// For a [`NodeViewKind::Subgraph`] card this is the subgraph id | [`SUBGRAPH_VIEW_TAG`].
     pub id: u32,
+    /// Node, collapsed subgraph, or boundary ghost (see [`NodeViewKind`]).
+    pub kind: NodeViewKind,
     /// English display label (registry UI metadata, else the type name).
     pub display_name: String,
     /// Header tint category + body silhouette (registry UI metadata).
@@ -135,156 +190,19 @@ pub struct GraphViewSnapshot {
     /// `MotionDoc::backdrops` (not by [`snapshot_from`], which only sees the
     /// graph — the backdrops live on the document, not in the cook).
     pub backdrops: Vec<GraphBackdropView>,
+    /// **The level this view is showing** (doc 57): `None` = the root canvas, else
+    /// the subgraph that was entered. The panel does not own it — the SHELL does
+    /// (like the probe), so that an undo which deletes the subgraph you are
+    /// standing in can put you back on solid ground.
+    pub level: Option<u32>,
+    /// The path from the root to [`Self::level`], root first — one clickable crumb
+    /// per step. Always at least one entry (the root).
+    pub breadcrumb: Vec<Crumb>,
     /// The playhead, in seconds — the ONE clock the marching dashes read (F3). The panel has
     /// no clock of its own and must not grow one: a flow animation driven by a paint counter
     /// would keep marching on a paused graph, which is precisely the lie the dashes exist to
     /// not tell.
     pub now: f32,
-}
-
-/// An edit the panel asks the shell to apply to the document (M1.E10, reverse of
-/// [`GraphViewSnapshot`]). Ephemeral view state (pan / zoom / selection / drag)
-/// stays in `Panel::State` and is NEVER an intent; only doc mutations are.
-#[derive(Clone, Debug, PartialEq)]
-pub enum GraphIntent {
-    /// Open a one-undo-step bracket (the shell snapshots the doc). Pushed on the
-    /// first movement of a node drag.
-    BeginDrag,
-    /// Move nodes by an INCREMENTAL graph-space delta — applied live each frame
-    /// so the node tracks the cursor (no end-jump); the whole drag is one undo
-    /// step (bracketed by [`Self::BeginDrag`]/[`Self::EndDrag`]).
-    MoveNodes { nodes: Vec<u32>, dx: f32, dy: f32 },
-    /// Close the bracket (the shell commits the undo step). Pushed on release.
-    EndDrag,
-    /// Connect an output port to an input port (drag socket→socket). The shell is
-    /// the authority: it runs `Graph::connect` (cycle / occupied-input structure)
-    /// then `Graph::validate` (typing / membrane) on a trial clone and only keeps
-    /// it when the new edge is legal — else it raises a refusal toast. One undo
-    /// step; re-cooks (`mark_dirty`).
-    Connect {
-        from_node: u32,
-        from_port: u16,
-        to_node: u32,
-        to_port: u16,
-    },
-    /// Remove the edge feeding an input port (alt-click a wire). Identified by its
-    /// unique target `(to_node, to_port)`. One undo step; re-cooks.
-    Disconnect { to_node: u32, to_port: u16 },
-    /// Add a node of the given canonical type at a graph-space position (add-node
-    /// menu). `type_name` is a `&'static` canonical name from the published
-    /// [`NodeChoice`] catalog. One undo step; re-cooks.
-    AddNode {
-        type_name: &'static str,
-        x: f32,
-        y: f32,
-    },
-    /// Delete the selected nodes and their orphaned incident edges (Delete key).
-    /// A no-op (no undo step) when `nodes` is empty or none still exist — safe
-    /// against the double key-dispatch (M0 focus gate + shell cursor push). One
-    /// undo step; re-cooks.
-    DeleteSelection { nodes: Vec<u32> },
-    /// Set the viewport⟂graph split fraction (divider drag, E9). Absolute `t` in
-    /// the center band; the shell clamps it to the split's legal range. UI-only
-    /// (never touches the cook / undo).
-    SetSplit { t: f32 },
-    /// Flip the split orientation (SplitH/SplitV chips, E9): `true` = vertical
-    /// (scene left, graph right), `false` = horizontal (scene top, graph bottom).
-    /// UI-only.
-    SetSplitVertical { vertical: bool },
-    /// Toggle transport play/pause (Space) so time-driven behaviours animate.
-    /// The shell owns the transport; UI-only w.r.t. the doc (no undo step).
-    TogglePlay,
-    /// Add a group backdrop covering the given graph-space rect (the toolbar's
-    /// Backdrop chip). The panel computes the rect — wrapping the selection when
-    /// there is one, a default block at the view centre otherwise — and the shell
-    /// mints the id (the document owns id allocation). One undo step.
-    ///
-    /// Backdrops are **UI-only**: applying one never re-cooks (`mark_dirty` is
-    /// not called), because nothing about the cook can depend on decoration.
-    AddBackdrop { x: f32, y: f32, w: f32, h: f32 },
-    /// Move a backdrop by an incremental graph-space delta (header drag). The
-    /// nodes it frames move in the SAME frame via a companion
-    /// [`Self::MoveNodes`], both inside one [`Self::BeginDrag`]/[`Self::EndDrag`]
-    /// bracket — so carrying a group is a single undo step, and the panel needs no
-    /// second kind of node-move.
-    MoveBackdrop { id: u32, dx: f32, dy: f32 },
-    /// Grow/shrink a backdrop from one of its bottom corners (`left` = the
-    /// bottom-LEFT gripper), by the pointer's incremental graph-space delta. The
-    /// corner the artist did NOT grab stays put: dragging the left one moves the
-    /// region's `x` and shrinks its `w`, holding the right edge — which is what a
-    /// resize from that side means. The shell owns the minimum-size clamp, and
-    /// anchors it to that same fixed edge. Bracketed like a move.
-    ResizeBackdrop {
-        id: u32,
-        left: bool,
-        dx: f32,
-        dy: f32,
-    },
-    /// Delete a backdrop (Delete with one selected). The nodes it framed stay —
-    /// a backdrop owns nothing, it only draws around things. One undo step.
-    DeleteBackdrop { id: u32 },
-    /// Rename a backdrop (the params panel's Title row).
-    SetBackdropTitle { id: u32, title: String },
-    /// Re-tint a backdrop (the params panel's Colour row), 0-based into
-    /// `graph-backdrop-1..8`.
-    SetBackdropColor { id: u32, color: u8 },
-    /// Duplicate the selected nodes (Ctrl+D) — with their params, their text
-    /// params and the wires **between them**, offset so the copies are visible.
-    /// Wires coming from OUTSIDE the selection are not copied: a duplicate is a
-    /// new thing to place, not a second consumer silently spliced into the
-    /// upstream (Blender / Nuke both copy internal links only).
-    ///
-    /// The shell mints the ids and hands the copies back as the new selection
-    /// (via [`request_graph_selection`]) — so Ctrl+D then drag moves the COPIES,
-    /// which is the whole point of the gesture. One undo step.
-    DuplicateSelection { nodes: Vec<u32> },
-    /// **Smart-connect**: add a node of `to_type` (the add-menu pick that followed
-    /// a wire dropped in empty space) and wire the dragged output into its FIRST
-    /// compatible input — one undo step with the add. The panel names the target by
-    /// TYPE, not by id: the shell is the one minting ids, and it resolves the type
-    /// to the node it just created.
-    SmartConnect {
-        from_node: u32,
-        from_port: u16,
-        to_type: &'static str,
-        x: f32,
-        y: f32,
-    },
-    /// Point the probe at a node (or clear it). The shell samples that node's
-    /// output every tick and publishes the readout + the ring of recent samples
-    /// back on the snapshot. UI-only: it never edits the document, so no undo step.
-    SetProbe { node: Option<u32> },
-    /// Cut every wire the knife stroke crossed, identified by target input
-    /// `(to_node, to_port)`. **One undo step for the whole stroke** — a knife that
-    /// cut five wires and needed five Ctrl+Z would be a trap.
-    CutWires { targets: Vec<(u32, u16)> },
-    /// **Move a wire's END from one input to another** (grab an occupied input socket and
-    /// drag, doc 45). `new_to = None` means it was dropped on empty canvas — the wire is
-    /// simply unplugged.
-    ///
-    /// A grabbed end **moves**; it does not copy. So this is ONE intent and ONE undo step
-    /// (unplug + plug), not a `Disconnect` followed by a `Connect` — which would need two
-    /// Ctrl+Z to put back, and would leave the graph half-rewired if the second half were
-    /// refused. The shell tries both halves on a trial clone and keeps the ORIGINAL wire if
-    /// the new landing is illegal (a refused move must not destroy the wire it moved).
-    MoveWireEnd {
-        from_node: u32,
-        from_port: u16,
-        old_to_node: u32,
-        old_to_port: u16,
-        new_to: Option<(u32, u16)>,
-    },
-    /// **Splice a reroute node into a wire** (double-click it) — the dot that bends the
-    /// wire AND branches from it (doc 45). The panel says WHICH wire and WHERE; the shell
-    /// picks the reroute type that fits the wire's own port type, inserts it, and re-wires
-    /// source → dot → target. One undo step; it re-cooks (a reroute is a NODE — it is in the
-    /// graph, and the graph changed).
-    SpliceReroute {
-        to_node: u32,
-        to_port: u16,
-        x: f32,
-        y: f32,
-    },
 }
 
 /// One addable node type in the add-node menu (M1.E7). Copy — the canonical
@@ -407,7 +325,13 @@ fn accepts(input: &ph2d_nodegraph::port::PortType, out: &PortView) -> bool {
 }
 
 /// Queue an edit for the shell bridge to apply (panel → shell).
-pub(crate) fn push_intent(intent: GraphIntent) {
+///
+/// **Public so the shell's seam tests can drive the REAL intent path** — the same
+/// queue the panel writes and `drain_intents` reads. A test that called the shell's
+/// apply functions directly would prove the apply and skip the wiring, which is the
+/// half that breaks (DIRETIVA_IMPLEMENTACAO §2: a missing end of the seam is a
+/// dropped click, not a compile error).
+pub fn push_intent(intent: GraphIntent) {
     INTENTS.with(|c| c.borrow_mut().push(intent));
 }
 
@@ -446,6 +370,11 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 .unwrap_or(ph2d_nodegraph::graph::Pos { x: 0.0, y: 0.0 });
             GraphNodeView {
                 id: inst.id.0,
+                // Every node of the graph is a plain node here. The shell FOLDS this
+                // full view down to the level being shown (`motion_bridge_subgraph`),
+                // turning the nested ones into cards and the boundary-touching
+                // outsiders into ghosts — it is the only side that knows the nesting.
+                kind: NodeViewKind::Node,
                 display_name: ui
                     .map(|u| u.display_name.to_string())
                     .unwrap_or_else(|| inst.type_name.clone()),
@@ -483,6 +412,8 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
     // The backdrops are NOT here: they live on the `MotionDoc`, not in the graph
     // the cook sees. The shell bridge fills them in after this call.
     GraphViewSnapshot {
+        level: None,
+        breadcrumb: Vec::new(),
         nodes,
         edges,
         backdrops: Vec::new(),

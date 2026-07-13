@@ -108,7 +108,7 @@ pub(super) fn splice_reroute(
         return;
     }
     motion.doc.graph = trial;
-    plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+    super::reconcile(motion, &pre.graph);
     motion.history.push_undo(pre);
     motion.pump.mark_dirty(); // a reroute is a NODE — the graph changed
     ph2d_panel_motion_graph::request_graph_selection(vec![dot.0]);
@@ -169,7 +169,7 @@ pub(super) fn move_wire_end(
     }
 
     motion.doc.graph = trial;
-    plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+    super::reconcile(motion, &pre.graph);
     motion.history.push_undo(pre);
     motion.pump.mark_dirty();
 }

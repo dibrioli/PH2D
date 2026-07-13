@@ -23,16 +23,22 @@ const OFFSET_Y: f32 = 40.0; // LITERAL-PX-OK: duplicate offset (graph space)
 /// The copies become the SELECTION (`request_graph_selection`) — only the shell
 /// knows the ids it just minted, and if the originals stayed selected, the drag
 /// that naturally follows a Ctrl+D would move the originals instead of the copies.
-/// Returns the ids it minted (also handed to the panel as the new selection) —
-/// so the caller, and the tests, can see exactly what was created.
-pub(super) fn duplicate(motion: &mut MotionState, nodes: Vec<u32>) -> Vec<u32> {
+///
+/// Returns **source → copy**, not just the copies: a duplicated subgraph has to put
+/// each copy into the copy of the group its source was in (doc 57), and that needs
+/// the mapping, not the list. The caller may keep mutating in the same undo step —
+/// the snapshot was taken before any of this.
+pub(super) fn duplicate(
+    motion: &mut MotionState,
+    nodes: Vec<u32>,
+) -> std::collections::BTreeMap<NodeId, NodeId> {
     let sources: Vec<NodeId> = nodes
         .iter()
         .map(|id| NodeId(*id))
         .filter(|id| motion.doc.graph.node(*id).is_some())
         .collect();
     if sources.is_empty() {
-        return Vec::new();
+        return Default::default();
     }
     let pre = motion.doc.clone();
 
@@ -100,13 +106,13 @@ pub(super) fn duplicate(motion: &mut MotionState, nodes: Vec<u32>) -> Vec<u32> {
 
     // A duplicated sequential node needs its `pre` self-loop re-plumbed, exactly as
     // one dropped from the add-menu does.
-    plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+    super::reconcile(motion, &pre.graph);
     motion.history.push_undo(pre);
     motion.pump.mark_dirty();
 
     let copies: Vec<u32> = copy_of.values().map(|id| id.0).collect();
-    ph2d_panel_motion_graph::request_graph_selection(copies.clone());
-    copies
+    ph2d_panel_motion_graph::request_graph_selection(copies);
+    copy_of
 }
 
 /// **Smart-connect**: the artist dragged a wire into empty space and picked a node
@@ -133,7 +139,7 @@ pub(super) fn smart_connect(
     let target = motion.doc.graph.add_node(to_type.to_string());
     motion.doc.graph.set_pos(target, Pos { x, y });
     // A sequential node arrives with its `pre` self-loop plumbed, like any other.
-    plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+    super::reconcile(motion, &pre.graph);
 
     // The dragged output's type → the first input on the new node that takes it.
     let out_ty = motion
@@ -250,7 +256,7 @@ pub(super) fn cut_wires(
         ));
     }
     if cut > 0 {
-        plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+        super::reconcile(motion, &pre.graph);
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();
     }

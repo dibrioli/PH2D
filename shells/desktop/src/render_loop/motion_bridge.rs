@@ -61,6 +61,24 @@ mod rewire;
 #[path = "motion_bridge_connect.rs"]
 mod connect;
 
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_fold.rs"]
+mod fold;
+
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_subgraph.rs"]
+mod subgraph;
+
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_intents.rs"]
+mod intents;
+#[cfg(feature = "panel-motion-graph")]
+use intents::apply_graph_intents;
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_subgraph_tests.rs"]
+mod subgraph_tests;
+
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
@@ -163,6 +181,11 @@ pub(super) fn dispatch(
     {
         if motion_active {
             apply_graph_intents(motion, playhead, toasts, &mut hero.view.center_split);
+            // The level the artist is standing in can stop existing under their feet
+            // (an undo that unmakes the group). Checked AFTER the intents — an undo
+            // arrives as one — and before anything is published, so the fold never
+            // runs against a room that is not there.
+            subgraph::clamp_level(motion);
             // Publish the addable-node catalog for the add-menu. Rebuilt each
             // active frame (cheap: ~dozens of `Copy` entries) alongside the
             // snapshot; memoizing it is a follow-up like the snapshot's own
@@ -207,6 +230,13 @@ pub(super) fn dispatch(
             // and whether that changed since last frame (the wire's march). A node no sink
             // consumes has no entry and stays blank — which is the diagnosis, not a gap.
             readout::stamp(motion, &mut snap);
+            // **The fold** (doc 57), LAST: everything above published the whole flat
+            // graph, and this cuts it down to the level the artist is standing in —
+            // folding the nested nodes into cards (which is why it runs after the
+            // readouts: a card aggregates what its members are doing) and drawing the
+            // outsiders that touch the boundary as ghosts. A document with no
+            // subgraphs pays a breadcrumb and nothing else.
+            fold::fold(motion, &mut snap);
             // The ONE clock the marching dashes read (`ph2d_core::Playhead`, W4.T7). The panel
             // has none of its own: a flow animation driven by a paint counter would keep
             // marching on a paused graph.
@@ -326,143 +356,20 @@ fn motion_time(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> f64 {
     motion_tick(playhead, fixed_dt) as f64 * fixed_dt
 }
 
-/// Apply the panel's queued [`GraphIntent`]s to the shell-owned document (M1.E10).
+/// **Re-derive everything the graph's SHAPE implies**, after any structural edit —
+/// the ONE funnel every mint and every rewire goes through:
 ///
-/// - **Drag** (`BeginDrag`/`MoveNodes`/`EndDrag`) is a live sequence: the bracket
-///   opens the undo step, each incremental delta applies immediately (so the node
-///   tracks the cursor with no end-jump), and the release commits one step.
-///   Positions are UI-only (they never touch the cook) → no `mark_dirty`.
-/// - **Structural** edits (`Connect`/`Disconnect`/`AddNode`/`DeleteSelection`)
-///   each are one atomic undo step and change the cook → `mark_dirty`. Connect is
-///   validated here (the shell is the authority): a trial clone runs
-///   `Graph::connect` (cycle / occupied-input) then `Graph::validate` (typing /
-///   membrane), and the edit is kept only when the new edge is legal — else a
-///   refusal toast is raised and the document is untouched.
+/// - the **`pre` plumbing** (a sequential node's self-loop follows its `forces` chain);
+/// - the **membership** of a node that was just minted (doc 57): created while the
+///   artist is inside a group, it belongs to that group — otherwise it would land at
+///   the root and **vanish the instant it was created**.
+///
+/// Both are functions of `graph` vs `before`, and both are wrong the moment somebody
+/// adds a fifth way to mint a node and forgets one of them. So there is one door.
 #[cfg(feature = "panel-motion-graph")]
-fn apply_graph_intents(
-    motion: &mut MotionState,
-    playhead: &mut ph2d_core::Playhead,
-    toasts: &mut ToastQueue,
-    split: &mut CenterSplit,
-) {
-    use ph2d_nodegraph::graph::{NodeId, Pos};
-    use ph2d_panel_motion_graph::GraphIntent;
-    for intent in ph2d_panel_motion_graph::drain_intents() {
-        match intent {
-            GraphIntent::BeginDrag => motion.history.begin(&motion.doc),
-            GraphIntent::MoveNodes { nodes, dx, dy } => {
-                for id in nodes {
-                    let nid = NodeId(id);
-                    if let Some(p) = motion.doc.graph.pos(nid) {
-                        motion.doc.graph.set_pos(
-                            nid,
-                            Pos {
-                                x: p.x + dx,
-                                y: p.y + dy,
-                            },
-                        );
-                    }
-                }
-            }
-            GraphIntent::EndDrag => motion.history.commit_if_changed(&motion.doc),
-            GraphIntent::Connect {
-                from_node,
-                from_port,
-                to_node,
-                to_port,
-            } => connect::apply_connect(motion, toasts, from_node, from_port, to_node, to_port),
-            GraphIntent::Disconnect { to_node, to_port } => {
-                apply_disconnect(motion, toasts, to_node, to_port);
-            }
-            GraphIntent::AddNode { type_name, x, y } => {
-                let pre = motion.doc.clone();
-                let id = motion.doc.graph.add_node(type_name);
-                motion.doc.graph.set_pos(id, Pos { x, y });
-                // Sequential-node template (docs/Motion Nodes/03): a feedback
-                // host (`state`/`forces` input) lands with its `pre` self-loop
-                // already plumbed, so integrate/spring arrive alive instead of
-                // frozen at their seed.
-                plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
-                motion.history.push_undo(pre);
-                motion.pump.mark_dirty();
-            }
-            GraphIntent::DeleteSelection { nodes } => {
-                apply_delete_selection(motion, nodes);
-            }
-            // F2 — Ctrl+D and the knife (both in `motion_bridge_edit`).
-            GraphIntent::DuplicateSelection { nodes } => {
-                edit::duplicate(motion, nodes);
-            }
-            GraphIntent::CutWires { targets } => edit::cut_wires(motion, toasts, targets),
-            // F2 — rewiring (doc 45). Both are one undo step and both re-cook: a reroute is
-            // a NODE, and a moved wire is a changed graph.
-            GraphIntent::SpliceReroute {
-                to_node,
-                to_port,
-                x,
-                y,
-            } => rewire::splice_reroute(motion, toasts, to_node, to_port, x, y),
-            GraphIntent::MoveWireEnd {
-                from_node,
-                from_port,
-                old_to_node,
-                old_to_port,
-                new_to,
-            } => rewire::move_wire_end(
-                motion,
-                toasts,
-                from_node,
-                from_port,
-                old_to_node,
-                old_to_port,
-                new_to,
-            ),
-            GraphIntent::SmartConnect {
-                from_node,
-                from_port,
-                to_type,
-                x,
-                y,
-            } => edit::smart_connect(motion, toasts, from_node, from_port, to_type, x, y),
-            // The probe is a READOUT: it points at a node and reads what that node
-            // already cooks. No document edit, no undo step, no `mark_dirty`.
-            GraphIntent::SetProbe { node } => {
-                motion.probe = node.map(ph2d_nodegraph::graph::NodeId);
-                motion.probe_ring.clear();
-            }
-            // Split chrome (E9) — UI-only (no cook / undo). `with_t` clamps the
-            // fraction; orientation flips preserve it.
-            GraphIntent::SetSplit { t } => {
-                if split.is_split() {
-                    *split = split.with_t(t);
-                }
-            }
-            GraphIntent::SetSplitVertical { vertical } => {
-                *split = if vertical {
-                    split.to_vertical()
-                } else {
-                    split.to_horizontal()
-                };
-            }
-            // Transport play/pause (Space) — no doc edit / undo. Toggles the
-            // EDITOR's clock (W4.T7), so pausing the graph pauses the timeline
-            // and vice versa; the cook simply follows wherever the playhead is.
-            GraphIntent::TogglePlay => {
-                playhead.toggle_play();
-            }
-            // Backdrops (F2) — document state, so undoable, but UI-only, so NONE
-            // of these re-cooks (`mark_dirty` is deliberately absent: a cook
-            // cannot depend on decoration). Details in `motion_bridge_backdrops`.
-            GraphIntent::AddBackdrop { x, y, w, h } => backdrops::add(motion, x, y, w, h),
-            GraphIntent::MoveBackdrop { id, dx, dy } => backdrops::translate(motion, id, dx, dy),
-            GraphIntent::ResizeBackdrop { id, left, dx, dy } => {
-                backdrops::resize(motion, id, left, dx, dy)
-            }
-            GraphIntent::DeleteBackdrop { id } => backdrops::delete(motion, id),
-            GraphIntent::SetBackdropTitle { id, title } => backdrops::set_title(motion, id, title),
-            GraphIntent::SetBackdropColor { id, color } => backdrops::set_color(motion, id, color),
-        }
-    }
+pub(super) fn reconcile(motion: &mut MotionState, before: &ph2d_nodegraph::graph::Graph) {
+    plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, before);
+    subgraph::adopt_new(motion, before);
 }
 
 /// Apply a `Connect` intent: validate against the shell-owned document (the
@@ -500,7 +407,7 @@ fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: 
         .disconnect(NodeId(to_node), to_port)
         .is_some()
     {
-        plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+        reconcile(motion, &pre.graph);
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();
     }
@@ -513,14 +420,24 @@ fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: 
 /// one cleanly stops its scene — no manual sink bookkeeping here.
 #[cfg(feature = "panel-motion-graph")]
 fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>) {
-    use ph2d_nodegraph::graph::NodeId;
     let pre = motion.doc.clone();
     let mut changed = false;
     for id in nodes {
-        changed |= motion.doc.graph.remove_node(NodeId(id));
+        match subgraph::target(id) {
+            // A collapsed card IS its contents (Nuke: "the original nodes are
+            // replaced with the Group node"), so deleting it deletes them — every
+            // member, at every depth, and the decoration that lived in there.
+            subgraph::Target::Card(sid) => changed |= subgraph::delete_deep(motion, sid),
+            subgraph::Target::Node(nid) => {
+                if motion.doc.graph.remove_node(nid) {
+                    motion.doc.forget_nodes(&[nid]);
+                    changed = true;
+                }
+            }
+        }
     }
     if changed {
-        plumbing::reconcile_after(&mut motion.doc.graph, &motion.registry, &pre.graph);
+        reconcile(motion, &pre.graph);
         motion.history.push_undo(pre);
         motion.pump.mark_dirty();
     }

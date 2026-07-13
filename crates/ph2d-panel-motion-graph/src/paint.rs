@@ -20,6 +20,11 @@
 //! tokens (HR-15); the add-menu is hit-tested panel-side against `Background`
 //! gestures (no menu-specific `GraphHitKind`). Sizes are logical.
 
+#[path = "paint_menu.rs"]
+mod paint_menu;
+use paint_menu::draw_add_menu;
+#[path = "paint_breadcrumb.rs"]
+mod paint_breadcrumb;
 #[path = "paint_stamp.rs"]
 mod paint_stamp;
 #[path = "paint_wire.rs"]
@@ -33,8 +38,8 @@ use crate::geom::{self, View, card_h, socket_center};
 use crate::hits::{
     bg_hit_id, push_backdrop_hits, push_card_hit, push_socket_hits, push_wire_hits, register_hits,
 };
-use crate::snapshot::{GraphNodeView, GraphViewSnapshot, current_catalog, current_snapshot};
-use crate::state::{AddMenu, Interaction, MotionGraphPanelState, ViewState};
+use crate::snapshot::{GraphNodeView, GraphViewSnapshot, current_snapshot};
+use crate::state::{Interaction, MotionGraphPanelState, ViewState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::GraphHitKind;
 use ph2d_editor_core::paint::{
@@ -68,6 +73,7 @@ const PREVIEW_DOT_R: f32 = 1.3; // LITERAL-PX-OK: postage-stamp point radius
 const PREVIEW_DOT_MIN: f32 = 0.6; // LITERAL-PX-OK: point radius floor, so a zoomed-out dot survives
 const PREVIEW_MIN_H: f32 = 18.0; // LITERAL-PX-OK: below this the stamp is sub-pixel mush; draw the empty window
 const GRID_STEP: f32 = 32.0; // LITERAL-PX-OK: background grid spacing
+const STACK_OFFSET: f32 = 3.0; // LITERAL-PX-OK: per-step offset of a collapsed card's stack
 const WIRE_W_DELAYED: f32 = 1.6; // LITERAL-PX-OK: hover-ghost stroke width revealing a pre pair
 const WIRE_W_HOVER: f32 = 4.0; // LITERAL-PX-OK: hovered wire stroke width (targeted for alt-click)
 const PRE_RING_W: f32 = 1.4; // LITERAL-PX-OK: portal badge ring stroke width
@@ -185,8 +191,13 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         .filter(|n| touches(geom::card_rect(n, &view), rect))
         .collect();
     for n in &on_screen {
-        let body = draw_card(ctx, state, n, &view, theme, veiled(n.id));
-        push_card_hit(&mut hits, n.id, body, rect);
+        // A GHOST is always veiled: it is not part of this level, and the veil is the
+        // whole message (doc 57). It never counts as "inert" or "out of the influence"
+        // — those are readings about the graph, and a ghost is a reading about the
+        // BOUNDARY.
+        let dim = n.kind == crate::snapshot::NodeViewKind::Ghost || veiled(n.id);
+        let body = draw_card(ctx, state, n, &view, theme, dim);
+        push_card_hit(&mut hits, n, body, rect);
     }
     // Sockets last so they win the overlap with the node edge they sit on.
     for n in &on_screen {
@@ -246,9 +257,15 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         center,
         theme,
         &mut hits,
-        state.knife_armed,
-        state.probe_armed,
+        crate::paint_chrome::ChromeState {
+            knife_armed: state.knife_armed,
+            probe_armed: state.probe_armed,
+            has_selection: !state.selected.is_empty(),
+        },
     );
+    // The breadcrumb (doc 57), top-left: where you are, and every way back out. Drawn
+    // only when you are somewhere — at the root there is nothing to walk back to.
+    paint_breadcrumb::draw(ctx, rect, theme, &snap, &mut hits);
     // While the add-menu is open, a full-canvas Background shield registered LAST
     // makes every click resolve as Background — so a menu row drawn over a card /
     // socket still reaches the menu, and a click off the menu dismisses it
@@ -316,6 +333,20 @@ fn draw_card(
     let h = card_h(n) * view.zoom;
     let r = CARD_RADIUS * view.zoom;
     let body = Rect::new(sx, sy, w, h);
+
+    // **A collapsed subgraph draws as a STACK** (doc 57): two cards peeking out from
+    // behind the front one. It is the universal idiom for "there is more than one
+    // thing here", it needs no icon and no legend, and it is the only difference
+    // between a card that opens and a card that does not — which is exactly the
+    // difference a double-click depends on the artist knowing.
+    if n.kind == crate::snapshot::NodeViewKind::Subgraph {
+        for step in [2.0, 1.0] {
+            let off = STACK_OFFSET * step * view.zoom;
+            let back = Rect::new(sx + off, sy - off, w, h);
+            fill_rounded_rect(ctx.scene, back, r, resolve(ColorToken::Bg3, theme));
+            stroke_rounded_rect(ctx.scene, back, r, 1.0, resolve(ColorToken::Border, theme));
+        }
+    }
 
     fill_rounded_rect(ctx.scene, body, r, resolve(ColorToken::Bg2, theme));
     let header = Rect::new(sx, sy, w, geom::HEADER_H * view.zoom);
@@ -398,88 +429,6 @@ fn draw_card(
         }
     }
     body
-}
-
-/// The add-node popup: a `Bg2` panel with a header + one row per catalog entry,
-/// each a category-tinted dot + the English display name. Hit-tested in
-/// `interact` against `Background` gestures via `geom::add_menu_row`.
-fn draw_add_menu(ctx: &mut PaintCtx, menu: &AddMenu, canvas: Rect, theme: Theme) {
-    let catalog = current_catalog();
-    let panel = geom::add_menu_panel(menu, catalog.len(), canvas);
-    fill_rounded_rect(
-        ctx.scene,
-        panel,
-        MENU_RADIUS,
-        resolve(ColorToken::Bg2, theme),
-    );
-    stroke_rounded_rect(
-        ctx.scene,
-        panel,
-        MENU_RADIUS,
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
-    paint_text_title(
-        ctx.text_system,
-        ctx.scene,
-        "Add Node",
-        panel.x + geom::MENU_PAD + MENU_HEADER_PAD_X,
-        panel.y + MENU_HEADER_PAD_Y,
-        MENU_HEADER_SIZE,
-        panel.w - 2.0 * geom::MENU_PAD,
-        resolve(ColorToken::Text2, theme),
-    );
-    // The list SCROLLS inside the panel (86 node types do not fit on a screen). It is clipped to
-    // its own band, so a row scrolled half-way out is drawn half — and hit-tested half, against
-    // the same rect (`geom::add_menu_list`), because the row you can see is the row you can click.
-    let list = geom::add_menu_list(panel);
-    ctx.scene.push_clip(&rect_to_vello(list));
-    for (i, c) in catalog.iter().enumerate() {
-        let row = geom::add_menu_row(panel, i, menu.scroll);
-        // Rows entirely outside the band are not drawn at all: with 86 of them, most of the menu
-        // is off-list at any moment, and Vello charges per draw object (doc 53).
-        if row.y + row.h < list.y || row.y > list.y + list.h {
-            continue;
-        }
-        fill_circle(
-            ctx.scene,
-            row.x + MENU_DOT_X,
-            row.y + row.h * 0.5,
-            MENU_DOT_R,
-            resolve(cat_token(c.category), theme),
-        );
-        paint_text_title(
-            ctx.text_system,
-            ctx.scene,
-            c.display,
-            row.x + MENU_ROW_TEXT_X,
-            row.y + MENU_ROW_TEXT_Y,
-            MENU_ROW_SIZE,
-            row.w - MENU_ROW_TEXT_INSET_R,
-            resolve(ColorToken::Text1, theme),
-        );
-    }
-    ctx.scene.pop_layer();
-
-    // The scrollbar, and only when the list can actually scroll: a scrollbar on a list that fits
-    // is a control that lies about there being more.
-    if let (Some(track), Some(thumb)) = (
-        geom::add_menu_track(panel, catalog.len()),
-        geom::add_menu_thumb(panel, catalog.len(), menu.scroll),
-    ) {
-        fill_rounded_rect(
-            ctx.scene,
-            track,
-            geom::MENU_BAR_W * 0.5,
-            resolve(ColorToken::Bg3, theme),
-        );
-        fill_rounded_rect(
-            ctx.scene,
-            thumb,
-            geom::MENU_BAR_W * 0.5,
-            resolve(ColorToken::BorderStrong, theme),
-        );
-    }
 }
 
 /// An Accent ring around a socket (the compatible drop-target highlight), drawn

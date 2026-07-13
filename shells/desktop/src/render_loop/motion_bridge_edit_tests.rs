@@ -48,8 +48,7 @@ fn duplicate_copies_params_and_the_wires_between_the_copies_only() {
 
     // Duplicate grid + move (the chain), NOT output.
     let copies: Vec<NodeId> = edit::duplicate(&mut motion, vec![grid.0, mv.0])
-        .into_iter()
-        .map(NodeId)
+        .into_values()
         .collect();
 
     let g = &motion.doc.graph;
@@ -91,7 +90,7 @@ fn duplicate_carries_the_text_param_too() {
     let ex = motion.doc.graph.add_node("motion.expression");
     motion.doc.graph.set_text_param(ex, "expr", "sin(t) * a");
 
-    let copy = NodeId(edit::duplicate(&mut motion, vec![ex.0])[0]);
+    let copy = edit::duplicate(&mut motion, vec![ex.0])[&ex];
     assert_eq!(
         motion
             .doc

@@ -111,8 +111,11 @@ zero-crossing snap.
 - **Multiple loop regions.** `smpl` can hold several; games use one. The reader keeps taking the
   first.
 - **Runtime crossfade** (a second read head). Deliberately refused above.
-- **Sample-accurate loop switching** (swap the region on a playing voice without a click). The
-  region is set at `play`; changing it live re-triggers the existing whole-buffer path.
+- **Sample-accurate loop switching.** Moving the region on a sounding voice *is* supported
+  (`set_preview_loop_region` — the editor dragging a loop point, taking effect at the next lap;
+  built because the alternative was re-triggering the clip, which is stuttery and useless for
+  tuning a loop by ear). What is **not** here is switching between two different loops *at a musical
+  boundary* — the vertical-remixing feature. That needs a scheduler, not a region.
 
 ---
 

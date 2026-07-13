@@ -33,6 +33,7 @@ mod formant;
 mod harmonize;
 mod lpc;
 mod modulation;
+mod multiband;
 mod space;
 mod tail;
 mod tone;
@@ -55,6 +56,7 @@ use dynamics::{compress, gate, leveler, limit};
 use formant::formant_shift;
 use harmonize::harmonize;
 use modulation::{auto_pan, doubler, modulated_delay, phaser, ring_mod, trance_gate, tremolo};
+use multiband::multiband;
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, distortion, exciter, haas, saturate, stereo_width};
 use transient::{TRANSIENT_BYPASS, transient_shape};
 use wsola::{PITCH_BYPASS_ST, pitch_shift};
@@ -143,9 +145,29 @@ pub enum Effect {
         /// Release time (seconds).
         release_secs: f32,
     },
+    /// **Multiband**: the compressor above, run on three bands that cannot duck one
+    /// another (low / mid / high, split by a Linkwitz-Riley crossover at 200 Hz and
+    /// 2 kHz). The knobs are Compress's, and mean the same thing — with one difference
+    /// that matters: `threshold` is a fraction of **each band's own peak**, not an
+    /// absolute level, or the bass would cross it constantly while the treble never
+    /// reached it (see [`multiband`]). Neutral at `ratio` 1.
+    Multiband {
+        /// Where reduction starts, as a fraction (0..1) of the band's own peak.
+        threshold: f32,
+        /// Ratio (≥1), applied in every band.
+        ratio: f32,
+        /// Attack time (seconds).
+        attack_secs: f32,
+        /// Release time (seconds).
+        release_secs: f32,
+    },
     /// Downward expander — a noise **gate** at a high ratio. Passes what is above
     /// `threshold` and pulls down what is below it by `(level/threshold)^(ratio−1)`.
     /// `attack_secs` opens the gate, `release_secs` closes it. Neutral at `ratio` 1.
+    ///
+    /// This **is** the rack's expander: one knob spans "gentle downward expansion" to
+    /// "hard gate" without a mode switch, which is why there is no separate Expander
+    /// row — it would be this function under another name.
     Gate {
         /// Level (linear 0..1) below which expansion starts.
         threshold: f32,
@@ -408,6 +430,14 @@ impl Effect {
                 attack_secs,
                 release_secs,
             } if ratio > 1.0 => compress(data, threshold, ratio, attack_secs, release_secs),
+            // Same neutral point as Compress, and for the same reason — it IS Compress,
+            // three times over. At ratio 1 the crossover never even runs.
+            Effect::Multiband {
+                threshold,
+                ratio,
+                attack_secs,
+                release_secs,
+            } if ratio > 1.0 => multiband(data, threshold, ratio, attack_secs, release_secs),
             // Ratio 1:1 expands nothing: `(level/threshold)^0` is unity everywhere.
             Effect::Gate {
                 threshold,
@@ -546,6 +576,7 @@ impl Effect {
             || matches!(
                 *self,
                 Effect::Compress { ratio, .. }
+                    | Effect::Multiband { ratio, .. }
                     | Effect::Gate { ratio, .. }
                     | Effect::DeEss { ratio, .. }
                     | Effect::DePlosive { ratio, .. }

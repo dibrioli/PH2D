@@ -72,8 +72,9 @@ pub(super) fn frame_peak(src: &[f32], ch: usize, f: usize) -> f32 {
 }
 
 /// Ceiling on the automatic make-up, so a region that is almost entirely above the
-/// threshold (or a near-silent one) can't be blown up.
-const COMPRESS_MAX_MAKEUP: f32 = 8.0;
+/// threshold (or a near-silent one) can't be blown up. Shared with the multiband, which
+/// trims its summed bands on the same terms.
+pub(super) const COMPRESS_MAX_MAKEUP: f32 = 8.0;
 
 /// Stereo-linked compression, then **peak-preserving** make-up.
 ///

@@ -14,7 +14,7 @@ use super::fx_params::{FxCommand, FxKind};
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space → modulation, the way a rack is laid out. Each row's `params` points at a
 /// spec array in the sibling [`super::fx_param_specs`].
-pub(crate) static KINDS: [FxKind; 39] = [
+pub(crate) static KINDS: [FxKind; 40] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -93,6 +93,21 @@ pub(crate) static KINDS: [FxKind; 39] = [
         // ratio must not raise the waveform's amplitude.
         build: |v| {
             FxCommand::Plain(Effect::Compress {
+                threshold: v[0],
+                ratio: v[1],
+                attack_secs: v[2],
+                release_secs: v[3],
+            })
+        },
+    },
+    FxKind {
+        name: "Multiband",
+        params: &MULTIBAND,
+        arms: &[1], // Ratio — the same arm as Compress, because it is the same compressor.
+        // Sits next to Compress on purpose: it is the one to reach for when the kick is
+        // ducking the cymbals, and reading the two rows side by side is what says so.
+        build: |v| {
+            FxCommand::Plain(Effect::Multiband {
                 threshold: v[0],
                 ratio: v[1],
                 attack_secs: v[2],

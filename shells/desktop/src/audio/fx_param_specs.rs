@@ -49,6 +49,18 @@ pub(super) static COMPRESS: [FxParamSpec; 4] = [
     spec("Attack", 0.001, 0.2, true, 0.005, "s", false),
     spec("Release", 0.01, 1.0, true, 0.1, "s", false),
 ];
+// Compress's knobs, deliberately: the Multiband IS that compressor, run on three bands that
+// cannot duck one another. Same neutral (1:1), same arm (Ratio) — the only thing that reads
+// differently is Threshold, which is a fraction of **each band's own peak** rather than an
+// absolute level (an absolute one would be crossed constantly by the bass and never reached
+// by the treble; see `ph2d_audio_edit::fx::multiband`). The crossovers are fixed at 200 Hz
+// and 2 kHz — the standard three-way split, and the rack has four sliders, not six.
+pub(super) static MULTIBAND: [FxParamSpec; 4] = [
+    spec("Threshold", 0.01, 1.0, true, 0.3, "", false),
+    spec("Ratio", 1.0, 20.0, false, 1.0, "x", false),
+    spec("Attack", 0.001, 0.2, true, 0.005, "s", false),
+    spec("Release", 0.01, 1.0, true, 0.1, "s", false),
+];
 pub(super) static GATE: [FxParamSpec; 4] = [
     spec("Threshold", 0.001, 0.5, true, 0.05, "", false),
     // Neutral at 1:1 — `(level/threshold)^0` is unity at every level.

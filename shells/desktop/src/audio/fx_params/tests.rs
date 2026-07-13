@@ -57,6 +57,7 @@ fn the_kind_table_is_the_rack_layout() {
             "High Shelf",
             "De-Hum",
             "Compress",
+            "Multiband",
             "Gate",
             "De-Esser",
             "De-Plosive",

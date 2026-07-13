@@ -17,7 +17,7 @@
 
 use super::{
     CHORUS_BASE_MS, Effect, FLANGER_BASE_MS, HUM_Q, VIBRATO_BASE_MS, autowah, biquad_warmup,
-    declick, declip, deess, formant, tone, wsola,
+    declick, declip, deess, formant, multiband, tone, wsola,
 };
 
 impl Effect {
@@ -109,6 +109,16 @@ impl Effect {
             // Vibrato is a modulated delay line that starts empty (like chorus/flanger).
             Effect::Vibrato { depth_ms, .. } => {
                 (((VIBRATO_BASE_MS + depth_ms) * 0.001 * sample_rate as f32) as usize).min(cap)
+            }
+            // The multiband's COMPRESSORS prime themselves, like the plain one — but its
+            // CROSSOVER does not, and a crossover that starts empty hands each band a
+            // fade-in, which the compressors then read as dynamics that were never there.
+            // Settle the lowest, longest-ringing section (the 200 Hz split), doubled
+            // because a Linkwitz-Riley section is TWO cascaded biquads and rings for about
+            // twice as long as the one `biquad_warmup` models.
+            Effect::Multiband { .. } => {
+                (2 * biquad_warmup(multiband::XOVER_LOW_HZ, multiband::LR_Q, sample_rate, TAUS))
+                    .min(cap)
             }
             // The compressor and the gate prime their own envelope on the region's
             // first frame; the phaser's all-pass state settles in a handful of

@@ -20,8 +20,152 @@
 | [11](#bug-11--per-layer-color-linhas-retangulares-intermitentes-aberto) | Per-Layer Color — "linhas nas bordas de retângulos" nas cores do brush, **intermitente** | Preview (produtor CPU↔GPU / overlay) — **NÃO** o composite CPU | 🔎 **ABERTO** (dormente; composite CPU provado limpo, espaço de busca reduzido, **armadilha armada**) | 2026-07-11 |
 | [12](#bug-12--panicsigsegv-ao-apertar-rake-com-um-traço-per-layer-color-vivo) | **PANIC/SIGSEGV** ao apertar Shape **Rake** com um traço Per-Layer Color vivo | Roteamento de stamp (troca de rota **no meio do traço**) | ✅ Resolvido (guard de forma único; RED verificado nas 2 direções) | 2026-07-12 |
 | [13](#bug-13--varredura-a-família-do-12-o-guard-que-pergunta-existe-em-vez-de-que-forma-tem) | **Varredura**: +1 PANIC (trocar de sprite com tinta molhada) + 4 vazamentos silenciosos entre sprites | Lifecycle de rebind de documento · compositor · aquarela | ✅ 3 fixes (RED verificado em cada) | 2026-07-12 |
+| [14](#bug-14--impasto-a-tinta-extravasava-o-relevo-o-suporte-batia-e-a-foto-estava-errada) | **Impasto**: "a tinta extravasa o relevo" — 3 rodadas; o gate ficava **verde** e a foto do Enio, errada | Depósito de pigmento (alpha do dab) × corpo × luz | ✅ Resolvido (o FILME + opacidade Beer-Lambert; névoa 52% → 13,5%) | 2026-07-12 |
+
+## Bug #14 — Impasto: "a tinta extravasa o relevo" (o suporte batia, e a foto estava errada)
+
+**Área:** depósito de pigmento (o alpha do dab) × corpo do impasto × passe de luz.
+**Estado:** ✅ Resolvido em 3 rodadas — cada uma corrigiu uma coisa **real** e as duas primeiras não
+mataram o sintoma. **Aberto e adiado (ordem do Enio, 2026-07-12): a TINTA EMPURRADA (Push) — fim da
+fila, depois de toda a implementação.**
+
+### Sintoma (Enio, três smokes seguidos)
+
+1. *"o efeito leva em consideração os limites do pincel e não o peso do relevo. Este falloff (smooth)
+   pinta tinta fora do relevo. Usando o falloff **Sphere** fica mais preciso e a tinta corresponde ao
+   relevo."*
+2. *"regrediu ao deixar a tinta extravasar o relevo e não resolveu a distância da tinta levantada."*
+
+Uma névoa de vermelho pálido em volta do tubo iluminado — **tinta sem forma**.
+
+### Causa-raiz — TRÊS camadas, e as duas primeiras não bastavam
+
+**(a) O pigmento não conhecia o corpo.** Duas coisas já concordavam sobre onde a tinta deixa de ter
+corpo: o **relevo** (`body_profile`, zero abaixo de `W_TAIL = 0,35` de cobertura) e a **luz** (pesa a
+sombra pela *mesma* curva, pra não branquear o papel — o halo de um smoke anterior). O **pigmento** não
+sabia de nada disso: depositava até o **limite geométrico do disco**.
+
+A largura da saia é **função pura do falloff**, e é *por isso* que o falloff parecia o culpado:
+
+| falloff | `W_TAIL` cai em | saia |
+|---|---|---|
+| `Smooth` (default) | t = 0,61 | **39% do raio** (16 px num pincel de 40) |
+| `Sphere` | t = 0,94 | 6% |
+
+**Sphere não era mais preciso — ele só não tem saia.**
+
+**(b) A luz morria em pressão parcial.** A luz pesava por `body_profile(cover)` com `cover` = tinta
+**crua** (`silhueta × dinâmica`) — as **dinâmicas dentro da curva**, onde podem matá-la de fome: a
+Strength 0,3 o argumento cai sob a cauda em **todo texel** e a luz não modela nada em traço nenhum.
+Invisível com mouse (que sempre aperta a 1,0); com **caneta**, é o mesmo bug de volta.
+
+**(c) ⚠️ A que de fato o Enio via: OPACIDADE NÃO É ESPESSURA.** Depois de (a) e (b) o gate estava
+**verde** — *"o pigmento existe exatamente onde a luz modela"*, provado, mutação-vermelha — e a foto
+**continuava errada**. Medido, no pincel do próprio smoke:
+
+| t | tinta | sombra |
+|---|---|---|
+| 0,38 | **227** | 103 |
+| 0,47 | 133 | 49 |
+| 0,55 | 15 | 7 |
+
+A tinta e a sombra somem **juntas** (suporte idêntico!) **ao longo de 8 px de rampa suave**. E uma rampa
+suave de vermelho pálido, sem forma 3D, **é** uma névoa. **Um gate de igualdade-de-conjuntos não
+distingue uma parede de um banco de neblina.**
+
+A física errada: **a opacidade de um filme satura muito antes que a espessura dele** (Beer–Lambert).
+Tinta a óleo com um décimo da espessura já é praticamente **opaca** — é por isso que uma espátula deixa
+uma **borda**, não um gradiente. Modelar o alpha como *proporcional ao corpo* era modelar tinta como
+**vidro**.
+
+### Como a causa (c) foi finalmente encontrada — RENDERIZANDO E OLHANDO
+
+Duas horas de teoria (build velho? outra rota de depósito? pressão do mouse?) contra um teste
+`#[ignore]` que **pinta o traço num PNG** e um `Read` da imagem: a névoa estava lá, **no próprio
+harness**, idêntica à foto. A medição transversal dizia "limpo"; a imagem dizia "névoa". **A imagem tinha
+razão.**
+
+### A solução — uma função, três consequências
+
+**O FILME** (`ph2d-painter-brush/src/height_film.rs`, módulo-irmão novo):
+
+> **Um pincel que não deposita corpo não deposita tinta** — e a tinta que ele deposita é **opaca**.
+
+```rust
+film_of(sil)      = film_opacity(body_profile(sil))   // early-out nos 2 extremos constantes
+film_opacity(d)   = 1 - (1 - d)^8                     // satura rápido; HR-5 (3 quadrados, zero exp)
+solid_paint(s, d) = d * film_of(s)                    // o alpha do filme = o peso da LUZ
+```
+
+**Onde o corte mora: na SILHUETA** — nem no grão, nem nas dinâmicas. Os dois foram pagos com vermelho:
+
+- **Não nas dinâmicas:** a Strength 0,5 o pico do dab é 0,25 < `W_TAIL` ⇒ a curva zera **todo** texel e o
+  traço **não deposita nada**. Um pincel que não pinta não é um fix. *A borda de um filme é da ponta, não
+  da força com que se aperta.*
+- **Não no grão:** o `cover` que a luz pesa não tem grão de propósito (grão texturiza o pigmento, não
+  escava o corpo). Cortar através dele faz os vales perderem a tinta **mantendo o corpo cheio** ⇒ luz
+  total sobre papel nu (**124 níveis / 1694 px**, medido).
+
+Assado nas **2 máscaras cacheadas** (`StampKey` ganha `lays_body`) + 1 sítio por-pixel; tudo a jusante
+(grão, dinâmicas, teto do Accumulate-OFF, rampas, cor por-camada) herda a silhueta remodelada **sem
+aritmética**. O relevo segue derivando da tinta **crua** ⇒ Depth/Body/Source/Smoothing/Push **vivos**.
+
+**Isto também explica o Sphere:** silhueta quase plana até a borda ⇒ o filme dele já alcançava corpo
+cheio em 1–2 px. **Ele já fazia isto, por acidente de forma.** Agora todo falloff faz.
+
+### Verificação — o gate certo mede ÁREA, não suporte
+
+`impasto_paint_has_an_edge_not_a_fringe`: *de toda a tinta do traço, quanta não é nem sólida nem
+ausente?*
+
+| | opaca | translúcida | **névoa** |
+|---|---|---|---|
+| sem filme (o bug original) | 6122 | 6620 | **52%** |
+| filme ∝ espessura (o 1º corte) | 5108 | 2036 | **28,5%** |
+| **filme com opacidade** | **6396** | **1000** | **13,5%** |
+
+…e a área **opaca CRESCE** enquanto a névoa cai: **a tinta não encolheu, virou sólida.** As duas
+mutações são vermelhas. O suporte não separava nenhuma das três versões; a **área** separa as três.
+
+Outros gates com RED provado: `the_film_never_starves_the_brush_at_low_strength` (MUT cortar as
+dinâmicas → **0 px pintados**) · `the_film_binds_only_a_brush_that_lays_body` (Impasto OFF /
+`DrawTo::Color` / Depth 0 = byte-idênticos) · `the_light_models_a_faint_stroke` (MUT dinâmica de volta na
+curva → **0 níveis** a Strength 0,5).
+
+Perf: **3,18 ms/movimento @2048² · 3,27 @4096²** (alvo ≤4) — o `film_of` corta os dois extremos
+constantes, e a cauda é a maior parte da bbox de um dab, então ficou **mais rápido que antes da curva**.
+
+Commits: `877f8080` (o filme) · `b7ce38cc` (a luz) · `8769b0a3` (a opacidade). Detalhe completo:
+[`16_impasto_plano_implementacao.md`](16_impasto_plano_implementacao.md) §14–§16.
+
+### ⚠️ ABERTO (adiado por ordem do Enio, 2026-07-12) — **a tinta EMPURRADA**
+
+*"a tinta empurrada ainda não resolveu. Adiar para o final de toda essa implementação. Fim da fila."*
+
+O **Push** (conservação de volume, §13 do plano) é real-time, conservativo, vivo e idempotente — a crista
+sobe sob o pincel e a soma fecha em zero. Mas o **desenho** da tinta deslocada ainda não convence. Não
+foi diagnosticado: **fica no fim da fila**, depois de todo o resto do Impasto.
+
+### Lições generalizáveis
+
+1. **Um gate VERDE não prova que você mediu a coisa certa.** *"O pigmento existe exatamente onde a luz
+   modela"* era verdade, provada, com mutação vermelha — e cega para o sintoma. Igualdade-de-**suporte**
+   não vê *quanta* tinta e *quanta* forma há em cada pixel.
+2. **Quando o Enio contradiz um gate verde: RENDERIZE E OLHE.** Um teste `#[ignore]` que despeja um PNG e
+   um `Read` da imagem mataram em um minuto o que a teoria não matou em duas horas. **O pixel é o
+   oráculo; a métrica é uma sombra dele.**
+   ([[feedback_render_and_look_when_a_green_gate_is_contradicted]])
+3. **Sintoma visual ⇒ métrica de ÁREA ou CONTRASTE**, não de suporte. "Quanta tinta é neblina" separa as
+   três versões (52% / 28% / 13,5%); "onde há tinta" não separava nenhuma.
+4. **O workaround do usuário é uma pista da física.** O `Sphere` "mais preciso" não era precisão: era uma
+   silhueta que já saturava a opacidade num pixel. Quando um preset acidental conserta o bug, **descubra
+   o que ele faz** — é a lei que falta.
+5. **Um limiar pertence à forma; a dinâmica multiplica depois.** Errei isso duas vezes, em lados opostos
+   do mesmo cano (o corte do pigmento e o peso da luz), e as duas vezes o sintoma foi um **knob morto**
+   em pressão/força parcial.
 
 ---
+
 
 ## Bug #13 — VARREDURA: a família do #12 (o guard que pergunta "existe?" em vez de "que FORMA tem?")
 

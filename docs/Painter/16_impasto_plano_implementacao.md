@@ -1208,3 +1208,21 @@ O `film_of` corta os dois extremos constantes (abaixo de `W_TAIL` o filme é zer
 modela" era verdade — e a foto estava errada, porque *quanta* tinta e *quanta* forma há em cada pixel é
 outra pergunta. Quando o Enio contradiz um gate verde, **renderize e olhe**: o pixel é o oráculo, o
 suporte é só uma sombra dele.
+
+---
+
+## 17. A FILA (ordem do Enio, 2026-07-12)
+
+O Enio priorizou explicitamente. Ordem, e nada fora dela:
+
+| # | Item | Estado |
+|---|---|---|
+| 1 | **Múltiplas luzes** (Krita tem 4; Rebelle tem environment maps) | ▶ **em curso** |
+| 2 | Passe de luz na **GPU** (`LayerOp` novo; há 8 slots livres em `AdjustmentKind ≤ 32`) | fila |
+| 3 | Persistência do `h` no `ProjectState` | fila (herda o gap de `SpriteSource::Individual`) |
+| — | **Relevo do PAPEL** | **exige ordem NOVA** do Enio (acopla impasto↔aquarela, §2) |
+| **último** | **A TINTA EMPURRADA (Push)** — *"ainda não resolveu"* | ⏸ **FIM DA FILA, por ordem** (2026-07-12) |
+
+**Sobre o Push:** a mecânica está correta (real-time, conservativa, viva, idempotente — §13) e o
+**desenho** da tinta deslocada ainda não convence. **Não diagnosticar agora.** Enio: *"Adiar para o final
+de toda essa implementação. Fim da fila."*

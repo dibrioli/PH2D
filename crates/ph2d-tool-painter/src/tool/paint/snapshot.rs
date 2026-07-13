@@ -251,7 +251,10 @@ impl PainterTool {
             impasto_applies: self.impasto_applies(),
             impasto_show: self.paint.impasto_show,
             impasto_rig: self.paint.impasto_rig,
-            impasto_shine: self.paint.impasto_shine,
+            impasto_shine: b.impasto_shine,
+            impasto_roughness: b.impasto_roughness,
+            impasto_metallic: b.impasto_metallic,
+            impasto_wax: b.impasto_wax,
         }
     }
 

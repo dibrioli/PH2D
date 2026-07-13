@@ -50,6 +50,7 @@ pub mod sampler;
 pub mod smear;
 pub mod smear_grain;
 pub mod spec;
+mod spec_default;
 #[cfg(test)]
 mod spec_tests;
 pub mod stamp;

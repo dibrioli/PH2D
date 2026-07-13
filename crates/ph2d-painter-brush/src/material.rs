@@ -90,7 +90,12 @@ impl Material {
     #[must_use]
     pub fn to_bytes(self) -> [u8; 4] {
         let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-        [q(self.shine), q(self.roughness), q(self.metallic), q(self.wax)]
+        [
+            q(self.shine),
+            q(self.roughness),
+            q(self.metallic),
+            q(self.wax),
+        ]
     }
 
     /// The material a canvas pixel stores. Inverse of [`Self::to_bytes`] up to the `u8` quantisation.
@@ -244,8 +249,15 @@ mod tests {
             assert_eq!(wrapped_ndl(ndl, 0.0), ndl.max(0.0));
         }
         // And wrapping lights the far side of the terminator without brightening the front.
-        assert!(wrapped_ndl(-0.2, 0.5) > 0.0, "wax reaches around the terminator");
-        assert_eq!(wrapped_ndl(1.0, 0.5), 1.0, "…and never over-brightens a face-on surface");
+        assert!(
+            wrapped_ndl(-0.2, 0.5) > 0.0,
+            "wax reaches around the terminator"
+        );
+        assert_eq!(
+            wrapped_ndl(1.0, 0.5),
+            1.0,
+            "…and never over-brightens a face-on surface"
+        );
     }
 
     /// The canvas stores 4 bytes; a round-trip must not move the material enough to shift a pixel.

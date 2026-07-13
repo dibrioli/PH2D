@@ -78,6 +78,16 @@ pub const PAINTER_IMPASTO_BODY: NodeId = hash_node_id("painter_brush.impasto_bod
 /// gives every light its own `ks`; that is four knobs for one material, and it is a good part of why its
 /// Phong Bumpmap ends up with 24 controls.)
 pub const PAINTER_IMPASTO_SHINE: NodeId = hash_node_id("painter_brush.impasto_shine");
+/// **Roughness** (`0..1`) — how BROAD the highlight is (`0` a tight glint … `1` a wide soft sheen).
+/// The exponent used to be the hard-coded `SHININESS = 24`; it is the PAINT's now.
+/// `SetValue` → `set_impasto_roughness`.
+pub const PAINTER_IMPASTO_ROUGHNESS: NodeId = hash_node_id("painter_brush.impasto_roughness");
+/// **Metallic** (`0..1`) — whose colour the highlight takes: the lamp's (`0`) or the paint's own (`1`).
+/// `SetValue` → `set_impasto_metallic`.
+pub const PAINTER_IMPASTO_METALLIC: NodeId = hash_node_id("painter_brush.impasto_metallic");
+/// **Wax** (`0..1`) — the soft terminator of paint the light enters and leaves nearby. Wrap lighting,
+/// not a subsurface simulation. `SetValue` → `set_impasto_wax`.
+pub const PAINTER_IMPASTO_WAX: NodeId = hash_node_id("painter_brush.impasto_wax");
 
 // ── The RIG: four lamps, ONE on screen ─────────────────────────────────────────────────────────────
 //
@@ -123,7 +133,10 @@ pub const PAINTER_IMPASTO_CLICKS: [NodeId; 13] = [
 
 /// The Impasto **SetValue** number-fields — one membership check for the panel's number-field forward
 /// (`is_param_field`) and its register loop.
-pub const PAINTER_IMPASTO_FIELDS: [NodeId; 9] = [
+pub const PAINTER_IMPASTO_FIELDS: [NodeId; 12] = [
+    PAINTER_IMPASTO_ROUGHNESS,
+    PAINTER_IMPASTO_METALLIC,
+    PAINTER_IMPASTO_WAX,
     PAINTER_IMPASTO_DEPTH,
     PAINTER_IMPASTO_BODY,
     PAINTER_IMPASTO_PUSH,

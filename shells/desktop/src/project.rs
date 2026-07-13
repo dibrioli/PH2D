@@ -41,7 +41,11 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v10 (ADR-0121): o `VecVertex` ganhou `corner_radius` (Live Corners —
 /// `ph2d_vec_scene::corner_live`), e a `VecScene` vai embutida aqui
 /// (`VEC_SCENE_SCHEMA_VERSION` 7→8). Mesma regra.
-const PROJECT_SCHEMA: u32 = 10;
+/// v11: o `PaintedDocument` ganhou `mats` — o MATERIAL do Impasto por camada
+/// (Roughness/Metallic/Wax/Shine, por pixel). Sem o bump, um save anterior seria lido com o
+/// layout novo e o material sairia dos bytes da COBERTURA. (O `Shine` deixou de ser global e
+/// virou propriedade da TINTA — Enio, 2026-07-13.)
+const PROJECT_SCHEMA: u32 = 11;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -299,18 +303,19 @@ mod tests {
     ///
     /// Esta tripla existe para que bumpar UM sem pensar nos OUTROS fique vermelho.
     ///
-    /// O `PROJECT_SCHEMA` é 10 (e não o 8 que a linha Vector trazia sozinha) porque na
+    /// O `PROJECT_SCHEMA` é 11 (e não o 8 que a linha Painter trazia sozinha) porque na
     /// árvore integrada ele conta TODAS as quebras de layout, não só as de um módulo:
     /// v3/v4 do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 e v8/v9 do
     /// Flip (o balde, depois `selected` + `offset`), v10 do Vector (o `corner_radius` do
-    /// `VecVertex`). Cada linha subiu o mesmo contador por um motivo diferente — e o
-    /// contador é um só: o valor certo não existe em nenhum lado do conflito, ele se
+    /// `VecVertex`), v11 do Painter de novo (o MATERIAL do impasto —
+    /// `PaintedDocument.mats`). Cada linha subiu o mesmo contador por um motivo diferente
+    /// — e o contador é um só: o valor certo não existe em nenhum lado do conflito, ele se
     /// CONTA.
     ///
     /// A `VecScene` entrou no pin porque ela também vai EMBUTIDA no arquivo de projeto, e
     /// o pin só protege quem ele nomeia: até aqui um campo novo em `VecVertex` teria
     /// bumpado o `VEC_SCENE_SCHEMA_VERSION`, deixado o `PROJECT_SCHEMA` para trás, e
-    /// **este teste teria passado** — um projeto v7 seria lido com o layout novo, e o
+    /// **este teste teria passado** — um projeto antigo seria lido com o layout novo, e o
     /// postcard não tem nomes de campo para reclamar.
     #[test]
     fn a_flip_or_vec_schema_bump_must_bump_the_project_schema() {
@@ -320,7 +325,7 @@ mod tests {
                 ph2d_flip::FLIP_SCHEMA_VERSION,
                 ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
             ),
-            (10, 5, 8),
+            (11, 5, 8),
             "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
              PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
         );

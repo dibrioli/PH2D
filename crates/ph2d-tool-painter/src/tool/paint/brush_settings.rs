@@ -391,6 +391,13 @@ pub struct BrushSettings {
     pub impasto_rig: crate::tool::paint::impasto_rig::LightRig,
     /// **Shine** (`0..1`, specular strength) — canvas-level.
     pub impasto_shine: f32,
+    /// **Roughness** (`0..1`) — how BROAD the highlight is (`0` glossy … `1` matte). Per-BRUSH: the
+    /// material is a property of the paint, so it is baked into the canvas with the stroke.
+    pub impasto_roughness: f32,
+    /// **Metallic** (`0..1`) — whose colour the highlight takes: the lamp's (`0`) or the paint's (`1`).
+    pub impasto_metallic: f32,
+    /// **Wax** (`0..1`) — the soft terminator (wrap lighting; the honest half of "SSS").
+    pub impasto_wax: f32,
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

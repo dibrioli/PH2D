@@ -313,89 +313,47 @@ pub struct BrushSpec {
     /// footprint rather than its path, so it re-derives live with the rest of the Body card and survives
     /// the shape editors' re-stamp (see `impasto_settle::push_ground`).
     pub impasto_push: f32,
+
+    // ── The paint's MATERIAL (what the light finds when it arrives — see [`crate::material`]) ────────
+    //
+    // These live on the BRUSH, not on the canvas, because they are properties of the PAINT: a preset
+    // called "wet oil" and one called "dry gouache" differ here and nowhere else. They are baked into
+    // the canvas with the stroke (like Depth and Body, and unlike the light rig, which is a property of
+    // the ROOM and stays canvas-wide and live) — which is what lets one painting hold glossy oil beside
+    // matte gouache, the thing a canvas-global Shine could never do.
+    /// **Shine**, `0..1` — how much the specular highlight is worth. `0` = matte paint that only models;
+    /// up = wet oil. (It USED to be canvas-global, `PaintState::impasto_shine`, while its own doc-comment
+    /// called it "a property of the PAINT". Enio caught the smell from the other side, 2026-07-13:
+    /// *"Shine parece ser a intensidade do brilho mas é global e não por lâmpada."* It is neither — it is
+    /// the paint's, and paint is per pixel.)
+    pub impasto_shine: f32,
+    /// **Roughness**, `0..1` — how BROAD the highlight is, which is a different question from how strong.
+    /// `0` = a tight glint riding the crest (varnish, fresh oil); `1` = a wide soft sheen (chalk, dry
+    /// gouache). Default `0.5`, which maps to the exponent the pass had hard-coded as `SHININESS = 24`
+    /// before this knob existed ([`crate::material::Material::NEUTRAL`]) — so a default brush is
+    /// byte-identical to the pre-material build.
+    pub impasto_roughness: f32,
+    /// **Metallic**, `0..1` — whose colour the highlight takes. `0` (dielectric: oil, acrylic, gouache) =
+    /// the LAMP's, so a white light glints white on red paint. `1` (metal: gold leaf, iridescent) = the
+    /// PAINT's own, so gold glints gold.
+    pub impasto_metallic: f32,
+    /// **Wax**, `0..1` — the waxy, soft-terminator look of paint the light enters and leaves nearby.
+    /// Wrap lighting, NOT a subsurface simulation; see [`crate::material::Material::wax`] for why the
+    /// honest name is the one that promises the percept it delivers.
+    pub impasto_wax: f32,
 }
 
-impl Default for BrushSpec {
-    /// A soft round black brush, matching Blender's default "TexDraw": smooth falloff, full
-    /// strength/flow, 10% spacing.
-    fn default() -> Self {
-        Self {
-            radius_px: 25.0,
-            hardness: 0.0,
-            strength: 1.0,
-            flow: 1.0,
-            spacing: 0.10,
-            blend: BrushBlend::Mix,
-            falloff: Falloff::Smooth,
-            jitter: 0.0,
-            color: [0.0, 0.0, 0.0],
-            custom_falloff: FalloffCurve::default(),
-            stroke_method: StrokeMethod::Space,
-            space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
-            accumulate: false,
-            dash_ratio: 1.0,
-            dash_samples: 20,
-            jitter_unit: JitterUnit::Brush,
-            jitter_absolute_px: 0.0,
-            input_samples: 1,
-            stabilizer: 0.5,
-            airbrush_rate_s: 0.1,
-            edge_to_edge: false,
-            texture: TextureSettings::default(),
-            grain_depth: 1.0,
-            shape: TextureSettings::default(),
-            dab_flatten: 0.0,
-            dab_angle_deg: 0,
-            color_jitter_enabled: false,
-            color_jitter_hue: 0.0,
-            color_jitter_sat: 0.0,
-            color_jitter_val: 0.0,
-            jitter_scale: 0.0,
-            jitter_rotate: 0.0,
-            jitter_spacing: 0.0,
-            symmetry: SymmetrySettings::default(),
-            // Watercolor: the `watercolor` gate (OFF) is what guarantees a byte-identical default
-            // brush — so the params carry sensible *when-enabled* values, not neutral zeros, and
-            // toggling "Wet edges" on shows an effect immediately.
-            watercolor: false,
-            edge_gain: 1.5,
-            edge_spread: 7.0,
-            granulation: 0.3,
-            pigment: false,
-            pigment_mix: 0.5,
-            // Render-path optics (wet_edges defaults); inert unless `watercolor` is on.
-            fill: 0.12,
-            depth: 1.2,
-            // Pigment body: lifts light-valued pigments so they deposit at their hue (not near-invisible
-            // over white). Inert unless `watercolor` is on → a plain brush is byte-identical regardless.
-            opacity: 0.4,
-            warp: 6.0,
-            wet_smudge: 0.0,   // off → byte-identical (the smear path is skipped)
-            wet_rewet: 0.0,    // off → byte-identical (the rewet path is skipped)
-            wet_charge: 1.0,   // full fresh paint → mixer skipped → byte-identical
-            wet_dilution: 0.0, // full-strength deposit → byte-identical
-            wet_pull: 0.0,     // no colour carry (inert unless charge < 1)
-            // Paper slot inactive by default (the render-path falls back to its built-in paper noise);
-            // granulation follows the paper's tooth until the artist points it at the Grain slot map.
-            paper: TextureSettings::default(),
-            granulation_use_paper: true,
-            paper_depth: 1.0,
-            watercolor_shape_auto: true, // built-in feather silhouette (byte-identical default)
-            // Impasto: the `impasto` gate (OFF) is what guarantees the byte-identical default — the
-            // params below carry sensible *when-enabled* values (a visible ridge the moment the
-            // artist ticks the box), not neutral zeros. `impasto_off_is_byte_identical` locks that.
-            impasto: false,
-            // Enio's dialled-in defaults (2026-07-12, after the smoke): thick paint (Depth 1) whose
-            // relief OBEYS the falloff (Body 0 — the rounded ridge he asked back for), settled soft
-            // (Smoothing 1). They are the artist's numbers, not the engine's: the `impasto` gate below
-            // is what keeps the brush byte-identical until he ticks the box.
-            impasto_depth: 1.0,
-            impasto_source: DepthSource::Uniform,
-            impasto_draw_to: DrawTo::ColorAndDepth,
-            impasto_smoothing: 1.0,
-            impasto_body: 0.0,
-            impasto_plow: 0.0, // o padrão do Smear é arrastar a COR e deixar o corpo onde está
-            impasto_push: 0.0, // sem deslocamento: um traço empilha sobre o que já estava (byte-idêntico)
+impl BrushSpec {
+    /// This brush's [`crate::material::Material`] — what its paint IS, as opposed to what shape it
+    /// leaves. The one place the four fields are read together, so a knob added later cannot be
+    /// forgotten by half the pipeline.
+    #[must_use]
+    pub fn material(&self) -> crate::material::Material {
+        crate::material::Material {
+            shine: self.impasto_shine,
+            roughness: self.impasto_roughness,
+            metallic: self.impasto_metallic,
+            wax: self.impasto_wax,
         }
     }
 }

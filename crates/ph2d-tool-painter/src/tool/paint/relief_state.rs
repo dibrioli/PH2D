@@ -51,6 +51,16 @@ pub(super) struct ReliefState {
     /// the stroke contributes nothing, so the layer's relief there is its own and never re-derived.
     /// Empty ⇒ the layer had none (the common case: a first stroke).
     pub(super) live_relief_base: Vec<f32>,
+    /// The last stroke's **film** — its solid-paint alpha, as a PATCH over [`Self::live_relief_rect`].
+    /// Kept for exactly one reason: it is the weight the MATERIAL merges with, so re-baking the material
+    /// after the fact (the artist turning Roughness while looking at the stroke) needs it. Without it the
+    /// four material knobs would only affect the NEXT stroke — a knob that does nothing to what you are
+    /// looking at, which is the failure mode this section keeps producing (§17).
+    pub(super) live_film: Vec<u8>,
+    /// The active layer's MATERIAL from BEFORE that stroke, as a patch over the same rect — the ground
+    /// the re-baked material is merged back onto. The `over` merge is NOT idempotent, so re-baking has to
+    /// start from what was there, exactly like [`Self::live_relief_base`] does for the height.
+    pub(super) live_mat_base: Vec<[u8; 4]>,
     /// Which layer the live stroke belongs to. `None` ⇒ nothing live.
     pub(super) live_relief_layer: Option<crate::tool::RtLayerId>,
     /// The union of this stroke's dab footprints, in canvas texels — accumulated as the relief is

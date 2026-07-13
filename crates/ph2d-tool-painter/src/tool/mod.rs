@@ -92,6 +92,20 @@ pub struct PainterTool {
     /// a white canvas ×1.65 bleaches a pale pink straight to white — the halo Enio photographed
     /// (2026-07-12), which measured HARDER at the edge than at the core.
     covers: BTreeMap<RtLayerId, Arc<Vec<u8>>>,
+    /// **Impasto** MATERIAL per layer (canvas-sized `[shine, roughness, metallic, wax]` bytes) — what
+    /// the paint at each pixel IS, as opposed to what shape it has ([`Self::heights`]) or how much of it
+    /// there is ([`Self::covers`]).
+    ///
+    /// Per-PIXEL, and that is the whole point: the material is a property of the paint, so it belongs to
+    /// the brush that laid it and is baked in with the stroke. A canvas-global Shine (which is what this
+    /// replaced) can only ever describe ONE material per painting — glossy oil beside matte gouache was
+    /// unrepresentable. Deposited by the SAME stroke that deposits the relief, merged with the paint's
+    /// own alpha (`over`, not `max`: material follows whoever is on top), and lazy exactly like its two
+    /// siblings — a layer nobody sculpted has no entry and costs nothing.
+    ///
+    /// A layer with relief but NO material entry (a document from before this existed) reads as
+    /// [`ph2d_painter_brush::material::Material::NEUTRAL`], which is the pass as it shaded then.
+    mats: BTreeMap<RtLayerId, Arc<Vec<[u8; 4]>>>,
     /// Cached composite output (non-trivial stacks only), behind an `Arc` so the
     /// bridge drain is zero-copy. Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,
@@ -173,6 +187,7 @@ impl Default for PainterTool {
             images: BTreeMap::new(),
             heights: BTreeMap::new(),
             covers: BTreeMap::new(),
+            mats: BTreeMap::new(),
             composited: None,
             preview_upload_bbox: None,
             layers_revision: 0,

@@ -26,6 +26,9 @@ pub(crate) struct StashedDoc {
     /// this line exists to keep dead.
     heights: BTreeMap<RtLayerId, Arc<Vec<f32>>>,
     covers: BTreeMap<RtLayerId, Arc<Vec<u8>>>,
+    /// O MATERIAL por camada. Viaja com o documento pela MESMA razão que o relevo (Bug #13.c: os ids
+    /// de camada colidem entre documentos, então o que fica pra trás sombreia a tinta do próximo).
+    mats: BTreeMap<RtLayerId, Arc<Vec<[u8; 4]>>>,
     layer_pixel_versions: BTreeMap<RtLayerId, u64>,
     source_size: (u32, u32),
     undo: crate::undo::UndoController,
@@ -57,6 +60,7 @@ impl StashedDoc {
             // boundary the `canvas_rgba` above already crosses.
             heights: unshare(&self.heights),
             covers: unshare(&self.covers),
+            mats: unshare(&self.mats),
             size: self.source_size,
         }
     }
@@ -74,6 +78,7 @@ impl StashedDoc {
                 .collect(),
             heights: reshare(doc.heights),
             covers: reshare(doc.covers),
+            mats: reshare(doc.mats),
             // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps
             // the versions the first time the compositor asks.)
             layer_pixel_versions: BTreeMap::new(),
@@ -146,6 +151,7 @@ impl PainterTool {
             images: std::mem::take(&mut self.images),
             heights: std::mem::take(&mut self.heights),
             covers: std::mem::take(&mut self.covers),
+            mats: std::mem::take(&mut self.mats),
             layer_pixel_versions: std::mem::take(&mut self.layer_pixel_versions),
             source_size: self.source_size,
             undo: std::mem::take(&mut self.undo),
@@ -168,6 +174,7 @@ impl PainterTool {
         // #13.c's shape). Either one alone already blocks it; the gate goes red only when BOTH fall,
         // which is exactly what the mutation run showed, so neither line is decoration.
         self.heights = doc.heights;
+        self.mats = doc.mats;
         self.covers = doc.covers;
         self.drop_live_relief();
         // The stack and the relief travelled together, so the `has_relief` flags arrive already true —

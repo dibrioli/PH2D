@@ -82,7 +82,87 @@ pub(crate) fn paint_impasto_section(
         return y;
     }
     y = paint_body_card(ctx, theme, x, content_w, y, &brush);
+    y = paint_material_card(ctx, theme, x, content_w, y, &brush);
     paint_lighting_card(ctx, theme, x, content_w, y, &brush)
+}
+
+/// Card 2: MATERIAL — what the paint IS, as opposed to what shape it has (per-brush).
+///
+/// It sits between Body and Lighting because that is the order of the question: how thick is the paint
+/// (Body) · what is the paint (Material) · what light falls on it (Lighting). The first two are the
+/// BRUSH's and are baked into the canvas with the stroke; the third is the ROOM's and stays live and
+/// canvas-wide. Shine used to sit in the Lighting card — it never belonged there (Enio, 2026-07-13:
+/// *"Shine parece ser a intensidade do brilho mas é global e não por lâmpada"*; it is neither the
+/// lamp's nor the canvas's, it is the paint's).
+fn paint_material_card(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Material", 4);
+    ry = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Shine",
+        core_ids::PAINTER_IMPASTO_SHINE,
+        brush.impasto_shine,
+        0.0,
+        UNIT_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    // Roughness is the knob that did not exist — the exponent was a constant. It is a different percept
+    // from Shine (how BROAD the glint is, not how strong), which is why it is a second row and not a
+    // second gain on the first.
+    ry = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Roughness",
+        core_ids::PAINTER_IMPASTO_ROUGHNESS,
+        brush.impasto_roughness,
+        0.0,
+        UNIT_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    ry = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Metallic",
+        core_ids::PAINTER_IMPASTO_METALLIC,
+        brush.impasto_metallic,
+        0.0,
+        UNIT_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    let _ = card_row(
+        ctx,
+        theme,
+        ix,
+        iw,
+        ry,
+        "Wax",
+        core_ids::PAINTER_IMPASTO_WAX,
+        brush.impasto_wax,
+        0.0,
+        UNIT_MAX,
+        number_field::FINE_STEP,
+        2,
+    );
+    next_y
 }
 
 /// Card 1: BODY — how this brush deposits thickness (per-brush).
@@ -199,9 +279,9 @@ fn paint_lighting_card(
 ) -> f32 {
     // No "Amount" row: it was a second gain over the same percept as the brush's Depth (the pair that
     // made the section read as "hard to adjust"). The slope is geometry now — see the light pass.
-    // Rows: Show · Light (1 2 3 4) · [Enable] · Angle · Elevation · Intensity+colour · Shine. The
-    // selected lamp owns the middle — four lamps, but never more than six rows (`paint_impasto_rig`).
-    let rows = if brush.impasto_rig.selected > 0 { 7 } else { 6 };
+    // Rows: Show · Light (1 2 3 4) · [Enable] · Angle · Elevation · Intensity+colour. (Shine LEFT: it
+    // is the paint's, not the room's — it lives in the Material card now.)
+    let rows = if brush.impasto_rig.selected > 0 { 6 } else { 5 };
     let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Lighting", rows);
     ry = crate::paint_brush_top::paint_checkbox_row(
         ctx,
@@ -213,21 +293,7 @@ fn paint_lighting_card(
         "Show Impasto",
         brush.impasto_show,
     );
-    ry = crate::paint_impasto_rig::paint_light_rows(ctx, theme, ix, iw, ry, brush);
-    let _ = card_row(
-        ctx,
-        theme,
-        ix,
-        iw,
-        ry,
-        "Shine",
-        core_ids::PAINTER_IMPASTO_SHINE,
-        brush.impasto_shine,
-        0.0,
-        UNIT_MAX,
-        number_field::FINE_STEP,
-        2,
-    );
+    let _ = crate::paint_impasto_rig::paint_light_rows(ctx, theme, ix, iw, ry, brush);
     next_y
 }
 

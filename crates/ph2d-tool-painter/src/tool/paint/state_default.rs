@@ -149,7 +149,6 @@ impl Default for PaintState {
             impasto_show: true,
             // The rig: Enio's dialled-in key (2026-07-12, after the smoke) + three lamps switched OFF.
             impasto_rig: Default::default(),
-            impasto_shine: 0.7,
             stroke_coverage: Vec::new(),
             stroke_color: Vec::new(),
             watercolor_base: None,

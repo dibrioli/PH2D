@@ -37,6 +37,11 @@ pub struct PaintedDocument {
     pub heights: BTreeMap<RtLayerId, Vec<f32>>,
     /// **Impasto**: a cobertura de tinta por camada — o que a luz pesa. Anda junto com o relevo.
     pub covers: BTreeMap<RtLayerId, Vec<u8>>,
+    /// **Impasto**: o MATERIAL por camada (`[shine, roughness, metallic, wax]`) — o que a tinta É.
+    /// Anda junto com o relevo pelo mesmo motivo: sem ele, reabrir o quadro devolve óleo brilhante
+    /// como guache fosco. Vazio ⇒ documento anterior ao material ⇒ lido como `Material::NEUTRAL`,
+    /// que é o passe exatamente como ele sombreava então.
+    pub mats: BTreeMap<RtLayerId, Vec<[u8; 4]>>,
     /// Tamanho do canvas em pixels.
     pub size: (u32, u32),
 }
@@ -72,6 +77,11 @@ impl PainterTool {
                     .collect(),
                 covers: self
                     .covers
+                    .iter()
+                    .map(|(k, v)| (*k, v.as_ref().clone()))
+                    .collect(),
+                mats: self
+                    .mats
                     .iter()
                     .map(|(k, v)| (*k, v.as_ref().clone()))
                     .collect(),

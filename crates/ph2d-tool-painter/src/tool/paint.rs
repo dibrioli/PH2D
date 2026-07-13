@@ -36,9 +36,11 @@ pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
+mod impasto_material; // Impasto: the paint's MATERIAL on the canvas (deposit + the live re-bake)
 mod impasto_plow; // Impasto: the palette knife (the Smear drags the relief along with the colour)
 mod impasto_settings; // Impasto: section setters + the panel-event route (mirrors watercolor_settings)
 mod impasto_settle; // Impasto: the deposit settling under its own weight + the material constants
+mod impasto_shade; // Impasto: the RIG + how one pixel is shaded (the optics; its sibling is the plumbing)
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
@@ -456,9 +458,9 @@ pub(crate) struct PaintState {
     /// rest start off, so a canvas nobody has opened the rig on is byte-identical to the one-lamp build.
     /// See [`impasto_rig`].
     impasto_rig: impasto_rig::LightRig,
-    /// **Shine** (`0..1`) — strength of the specular highlight riding the crests. `0` = matte paint
-    /// (watercolour/gouache), high = wet oil.
-    impasto_shine: f32,
+    // (`impasto_shine` used to live HERE, canvas-global, while its own doc-comment called it "a
+    // property of the PAINT". It is the paint's, and paint is per-pixel — so it moved to `BrushSpec`
+    // and is baked into the canvas with the stroke, like Depth and Body. Enio, 2026-07-13.)
     /// **Watercolor render-path** per-stroke water DWELL (1 byte/px, `w*h`): how long the held brush
     /// soaked each pixel (grown by [`PainterTool::grow_wet_soak`] on the tick heartbeat). The rewet
     /// reads it as a `0..1` field: more soak = the dissolve reaches FARTHER (blur-scale lerp) and the

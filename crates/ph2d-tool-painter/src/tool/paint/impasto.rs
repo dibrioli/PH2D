@@ -391,6 +391,52 @@ impl PainterTool {
                 dst[i] = dst[i].max(film.get(i).copied().unwrap_or(0));
             });
         }
+        // The MATERIAL rides the same stroke — it is what the paint this stroke laid IS
+        // (`ph2d_painter_brush::material`). Deposited from the brush, so Symmetry / Tiling / the shape
+        // editors sculpt the material exactly as they sculpt the relief, for free: it is the second
+        // output of the SAME dab list, which is the rule this whole section is built on.
+        //
+        // Merged by **`over`**, not by `max` like the coverage — and the difference is not a detail.
+        // Coverage is a PRESENCE (two layers of paint over one pixel are not 200% paint, so `max`).
+        // Material is an IDENTITY: the paint on top is the paint you see, so new paint replaces the old
+        // in proportion to how opaquely it covers it. That is the same `over` operator the pigment
+        // itself uses, which is why a translucent glaze of gouache over oil reads as a mix of the two
+        // and an opaque one reads as gouache.
+        //
+        // The un-painted ground starts at NEUTRAL rather than at zero: zero is `roughness = 0`, which is
+        // GLOSSY — so a stroke's translucent rim would fade toward a mirror instead of toward bare paper.
+        {
+            let n = (w as usize) * (h as usize);
+            let mat = self.paint.brush.material().to_bytes();
+            let neutral = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
+            let dst = std::sync::Arc::make_mut(self.mats.entry(active).or_default());
+            if dst.len() != n {
+                dst.resize(n, neutral);
+            }
+            // The ground the material sits on, and the film it merges with — kept as patches over the
+            // window so the four material knobs stay LIVE on the stroke the artist just laid, exactly
+            // like Depth and Body are. (`over` does not compose, so a re-bake must start from the base.)
+            let mut base = Vec::with_capacity((rect.w as usize) * (rect.h as usize));
+            let mut kept_film = Vec::with_capacity((rect.w as usize) * (rect.h as usize));
+            for_each_in(rect, w, |i| {
+                base.push(dst[i]);
+                kept_film.push(film.get(i).copied().unwrap_or(0));
+            });
+            self.paint.relief.live_mat_base = base;
+            self.paint.relief.live_film = kept_film;
+            for_each_in(rect, w, |i| {
+                let a = u32::from(film.get(i).copied().unwrap_or(0));
+                if a == 0 {
+                    return; // no paint from this stroke here: the material under it is untouched
+                }
+                for c in 0..4 {
+                    // `over` in 8-bit, rounded: dst = dst·(1−a) + src·a.
+                    let old = u32::from(dst[i][c]);
+                    let new = u32::from(mat[c]);
+                    dst[i][c] = ((old * (255 - a) + new * a + 127) / 255) as u8;
+                }
+            });
+        }
         // Keep the stroke's INGREDIENTS and the layer's relief from BEFORE it. Between them, the whole
         // Body card re-derives this stroke after the fact — the artist lays a stroke and then dials it
         // in while looking at it, exactly like every other property in this panel.
@@ -604,6 +650,8 @@ impl PainterTool {
         self.paint.relief.live_grain = Vec::new();
         self.paint.relief.live_push = Vec::new();
         self.paint.relief.live_relief_base = Vec::new();
+        self.paint.relief.live_film = Vec::new();
+        self.paint.relief.live_mat_base = Vec::new();
         self.paint.relief.live_relief_rect = None;
         self.paint.relief.live_relief_had_entry = false;
         self.paint.relief.live_relief_layer = None;

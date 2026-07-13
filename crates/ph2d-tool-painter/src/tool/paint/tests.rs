@@ -17176,7 +17176,7 @@ fn impasto_light_reads_as_raised_not_engraved() {
     }
     t.paint.impasto_rig.lights[0].angle_deg = 180; // from the LEFT (-x)
     t.paint.impasto_rig.lights[0].elev_deg = 30;
-    t.paint.impasto_shine = 0.0; // isolate the diffuse term — the highlight is a separate question
+    t.set_impasto_shine(0.0); // isolate the diffuse term — the highlight is a separate question
     // A vertical ridge of paint down the middle.
     t.on_canvas_pointer(cp([30.0, 10.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([30.0, 50.0], PointerPhase::Move));
@@ -17558,7 +17558,7 @@ fn impasto_panel_events_reach_the_brush() {
         "elevation floors at 5° — a grazing light divides by ~0"
     );
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_IMPASTO_SHINE, 0.7));
-    assert!((t.paint.impasto_shine - 0.7).abs() < 1e-6);
+    assert!((t.paint.brush.impasto_shine - 0.7).abs() < 1e-6);
 
     // Reset restores the settings — and must NOT delete relief the artist already sculpted.
     t.paint.brush.impasto = true;
@@ -18582,7 +18582,7 @@ fn impasto_light_shades_the_paint_not_the_paper_showing_through_it() {
         for slot in &mut t.paint.brush_by_mode {
             *slot = b;
         }
-        t.paint.impasto_shine = shine;
+        t.set_impasto_shine(shine);
         t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([80.0, 160.0], PointerPhase::Up));
@@ -18680,7 +18680,7 @@ fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
     }
     t.paint.impasto_rig.lights[0].angle_deg = 90; // straight across a horizontal stroke
     t.paint.impasto_rig.lights[0].elev_deg = 45;
-    t.paint.impasto_shine = 0.0; // the diffuse modelling is the claim; the glint has its own gates
+    t.set_impasto_shine(0.0); // the diffuse modelling is the claim; the glint has its own gates
     t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
     for i in 1..=8 {
         t.on_canvas_pointer(cp(
@@ -18871,7 +18871,7 @@ fn impasto_body_zero_obeys_the_falloff() {
     // still ignores paint that is not there — bare-white pixels do not move.
     t.paint.impasto_rig.lights[0].angle_deg = 90;
     t.paint.impasto_rig.lights[0].elev_deg = 45;
-    t.paint.impasto_shine = 0.0;
+    t.set_impasto_shine(0.0);
     t.invalidate_composite();
     let img = lit(&mut t);
     t.paint.impasto_show = false;
@@ -19029,7 +19029,7 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         }
         t.paint.impasto_rig.lights[0].angle_deg = 90;
         t.paint.impasto_rig.lights[0].elev_deg = 45;
-        t.paint.impasto_shine = shine;
+        t.set_impasto_shine(shine);
         t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
         for i in 1..=8 {
             t.on_canvas_pointer(cp(
@@ -20746,7 +20746,7 @@ fn a_single_lamp_shifts_brightness_never_hue() {
         t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Up));
         t.paint.impasto_rig.lights[0].color = color;
-        t.paint.impasto_shine = 0.0; // the DIFFUSE is what the divisor governs; the glint is gate #3's
+        t.set_impasto_shine(0.0); // the DIFFUSE is what the divisor governs; the glint is gate #3's
         t.invalidate_composite();
         lit(&mut t)
     };
@@ -20861,7 +20861,7 @@ fn the_glint_only_ever_adds_light() {
             intensity: 0.7,
             color: [1.0, 1.0, 1.0],
         };
-        t.paint.impasto_shine = shine;
+        t.set_impasto_shine(shine);
         t.invalidate_composite();
         lit(&mut t)
     };
@@ -20892,5 +20892,332 @@ fn the_glint_only_ever_adds_light() {
     assert!(
         brightest > 5,
         "sanity: Shine must LIGHT the paint ({brightest} levels)"
+    );
+}
+
+// ── The paint's MATERIAL (Enio, 2026-07-13) ────────────────────────────────────────────────────────
+//
+// Four knobs, and the section's own history says what to fear: a knob that is wired, painted, routed
+// and does NOTHING (§17 — Shine died that way once already, and the Amount knob before it). So there
+// is one gate per knob asserting it MOVES the picture, and one asserting the contract survives all of
+// them: flat paint is byte-identical at EVERY material, or the whole pass is a lie.
+
+/// A red stroke with relief, lit, under a material the caller dials. The harness the four gates below
+/// share, so a knob cannot pass by being measured differently from its neighbours.
+/// `(pixels lit, the relief, the coverage)` — what the material gates read.
+#[cfg(test)]
+type LitCanvas = (Vec<u8>, Vec<f32>, Vec<u8>);
+
+/// A named material to sweep: how to dial it, through the REAL setters.
+#[cfg(test)]
+type MaterialCase<'a> = (&'a str, &'a dyn Fn(&mut PainterTool));
+
+#[cfg(test)]
+fn impasto_material_render(size: u32, edit: &dyn Fn(&mut PainterTool)) -> LitCanvas {
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth;
+    b.radius_px = 40.0;
+    b.impasto_depth = 0.7;
+    b.color = [0.9, 0.1, 0.1]; // red paint: a metal's glint has somewhere to go
+    b.impasto_source = DepthSource::Grain;
+    b.impasto_smoothing = 0.15;
+    b.texture.kind = ph2d_painter_brush::TextureKind::Noise;
+    b.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.paint.impasto_rig.lights[0].angle_deg = 90;
+    t.paint.impasto_rig.lights[0].elev_deg = 45;
+    t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+    for i in 1..=8 {
+        t.on_canvas_pointer(cp(
+            [40.0 + 10.0 * f32::from(i as u8), 80.0],
+            PointerPhase::Move,
+        ));
+    }
+    t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+    // Dialled AFTER the stroke, through the REAL setters — which is the gesture that matters (the
+    // artist lays a stroke and then dials it in while looking at it), and it is the one that exercises
+    // the live material re-bake. Setting the fields before the stroke would test the deposit and quietly
+    // leave the re-bake — the harder half — ungated.
+    edit(&mut t);
+    let img = lit(&mut t);
+    let h = relief(&t);
+    let active = t.layers.active().expect("a layer");
+    let cov = t
+        .covers
+        .get(&active)
+        .map(|c| c.as_ref().clone())
+        .unwrap_or_default();
+    (img, h, cov)
+}
+
+/// **The contract survives every material.** Flat paint — the plateau, where the gradient is zero —
+/// comes out BYTE-IDENTICAL whatever the paint is made of.
+///
+/// **What it pins, exactly** — and it is worth being precise, because the first version of this comment
+/// was wrong and the mutation run said so. A pixel with a zero gradient takes `shade`'s EARLY-OUT, so
+/// what this gate defends is that no material knob can make the pass touch flat ground *at all*: not by
+/// creating a slope where there is none (a material plane that bled into bare paper would), not by
+/// adding an ambient term outside the relative path, not by letting the glint escape the `flat_spec`
+/// subtraction. It is a real guard, and it is a guard for the FUTURE shape of this code.
+///
+/// **What it canNOT catch, so do not trust it to:** a broken flat DIVISOR. Drop the `wrapped_ndl` from
+/// `MatShade::resolve`'s flat response and this gate stays GREEN — the pixels that would expose it are
+/// sloped, and sloped pixels never reach here. That bug belongs to
+/// [`wax_lights_the_far_flank_without_lifting_flat_paint`], which measures the COMPRESSION the wrap
+/// must produce, and which does bleed on it. (Two gates, two claims. A gate whose comment promises a
+/// mutation it does not catch is worse than no gate, because it retires the question.)
+#[test]
+fn flat_paint_is_byte_identical_at_every_material() {
+    let size = 160u32;
+    // The reference: the pass with no light at all. Every material must leave the flat pixels there.
+    let (unlit, _, _) = impasto_material_render(size, &|t| {
+        t.paint.impasto_show = false;
+        t.invalidate_composite();
+    });
+    let cases: [MaterialCase; 5] = [
+        ("glossy", &|t: &mut PainterTool| {
+            t.set_impasto_roughness(0.0)
+        }),
+        ("matte", &|t: &mut PainterTool| t.set_impasto_roughness(1.0)),
+        ("metal", &|t: &mut PainterTool| t.set_impasto_metallic(1.0)),
+        ("waxy", &|t: &mut PainterTool| t.set_impasto_wax(1.0)),
+        ("everything", &|t: &mut PainterTool| {
+            t.set_impasto_shine(1.0);
+            t.set_impasto_roughness(0.85);
+            t.set_impasto_metallic(1.0);
+            t.set_impasto_wax(1.0);
+        }),
+    ];
+    for (name, edit) in cases {
+        let (lit_img, h, _) = impasto_material_render(size, edit);
+        let w = size as usize;
+        let mut checked = 0u32;
+        for y in 1..(size as usize - 1) {
+            for x in 1..(size as usize - 1) {
+                // FLAT = the central difference is exactly zero in both axes, which is what the pass
+                // itself early-outs on. Read the relief the same way the pass does, or the oracle is
+                // testing a different pixel than the code is.
+                let dhx = h[y * w + x + 1] - h[y * w + x - 1];
+                let dhy = h[(y + 1) * w + x] - h[(y - 1) * w + x];
+                if dhx != 0.0 || dhy != 0.0 {
+                    continue;
+                }
+                checked += 1;
+                for c in 0..3 {
+                    assert_eq!(
+                        lit_img[(y * w + x) * 4 + c],
+                        unlit[(y * w + x) * 4 + c],
+                        "material '{name}' moved a FLAT pixel at ({x}, {y}) channel {c} — the pass is \
+                         RELATIVE to a flat surface OF THE SAME MATERIAL, so flat paint must come out \
+                         byte-identical at any material. It is the contract the whole section stands on."
+                    );
+                }
+            }
+        }
+        assert!(
+            checked > 1000,
+            "material '{name}': only {checked} flat pixels examined — the gate is vacuous"
+        );
+    }
+}
+
+/// **Roughness is not decorative: it changes the WIDTH of the glint.**
+///
+/// The knob that did not exist — the exponent was `SHININESS = 24`, welded shut. A glossy paint puts
+/// its light into FEW, BRIGHT pixels (a tight lobe on the crests); a matte one spreads the same light
+/// over MANY, dimmer ones. So the count of brightly-glinting pixels must GROW with roughness while the
+/// brightest pixel gets no brighter — which is the difference between a broader lobe and simply more
+/// light, and it is the thing a fake "roughness" (a second gain on Shine) could not fake.
+#[test]
+fn roughness_broadens_the_glint_instead_of_brightening_it() {
+    let size = 160u32;
+    let glint_count = |roughness: f32| -> (u32, i32) {
+        let (matte_ref, _, _) = impasto_material_render(size, &move |t| {
+            t.set_impasto_shine(0.0);
+            t.set_impasto_roughness(roughness);
+        });
+        let (glossy, _, _) = impasto_material_render(size, &move |t| {
+            t.set_impasto_shine(1.0);
+            t.set_impasto_roughness(roughness);
+        });
+        // How many pixels the glint LIFTED, and by how much at its peak. Measured against the SAME
+        // canvas with Shine 0, so the diffuse (which roughness does not touch) cancels exactly and what
+        // is left is the highlight alone.
+        let (mut n, mut peak) = (0u32, 0i32);
+        for p in 0..(size * size) as usize {
+            let mut best = 0i32;
+            for c in 0..3 {
+                best = best.max(i32::from(glossy[p * 4 + c]) - i32::from(matte_ref[p * 4 + c]));
+            }
+            if best >= 8 {
+                n += 1;
+            }
+            peak = peak.max(best);
+        }
+        (n, peak)
+    };
+    let (tight_n, tight_peak) = glint_count(0.0);
+    let (broad_n, broad_peak) = glint_count(1.0);
+    assert!(
+        tight_peak > 0 && broad_peak > 0,
+        "sanity: the glint must exist at BOTH roughnesses (tight {tight_peak}, broad {broad_peak}) — \
+         a gate on a highlight that is not there proves nothing"
+    );
+    assert!(
+        broad_n > tight_n,
+        "a rougher paint must spread its highlight over MORE pixels: matte lit {broad_n}, glossy lit \
+         {tight_n}. Roughness is the WIDTH of the lobe; if this does not move, the exponent is still \
+         welded shut and the knob is decoration."
+    );
+}
+
+/// **Metallic makes the glint take the PAINT's colour, not the lamp's.**
+///
+/// The one line that separates a conductor from a dielectric in every PBR model, and the reason gold
+/// leaf glints gold under a white light while white paint glints white. Under a WHITE lamp on RED paint:
+/// a dielectric highlight pushes every channel up together (it drives the pixel toward white, which is
+/// what desaturates it); a metal's pushes mostly RED, so the pigment SURVIVES the highlight.
+#[test]
+fn metallic_gives_the_glint_the_paints_own_colour() {
+    let size = 160u32;
+    // Same rig, same stroke, same Shine — only the conductor/dielectric line moves.
+    let (dielectric, _, _) = impasto_material_render(size, &|t| {
+        t.set_impasto_shine(1.0);
+        t.set_impasto_metallic(0.0);
+    });
+    let (metal, _, _) = impasto_material_render(size, &|t| {
+        t.set_impasto_shine(1.0);
+        t.set_impasto_metallic(1.0);
+    });
+    // Chroma = how much RED the pixel still has over its BLUE. A white highlight destroys it (both
+    // channels climb toward the ceiling together); a red one preserves it.
+    let chroma = |img: &[u8], p: usize| i32::from(img[p * 4]) - i32::from(img[p * 4 + 2]);
+    let (mut moved, mut metal_keeps_more) = (0u32, 0u32);
+    for p in 0..(size * size) as usize {
+        let (cd, cm) = (chroma(&dielectric, p), chroma(&metal, p));
+        if cd == cm {
+            continue;
+        }
+        moved += 1;
+        if cm > cd {
+            metal_keeps_more += 1;
+        }
+    }
+    assert!(
+        moved > 200,
+        "Metallic moved only {moved} pixels — the knob is inert, which is exactly the species this \
+         section keeps shipping (§17)"
+    );
+    // Not "every pixel", because in shadowed pixels the glint is zero and the two are equal there; the
+    // claim is about the DIRECTION wherever it does move.
+    assert!(
+        metal_keeps_more * 10 >= moved * 9,
+        "where Metallic changes a pixel, it must PRESERVE the paint's chroma (its highlight is red, not \
+         white): only {metal_keeps_more} of {moved} changed pixels kept more red. A metal that bleaches \
+         its own colour is a dielectric with extra steps."
+    );
+}
+
+/// **Wax lights the shadowed flank — and brightens nothing that is flat.**
+///
+/// The honest half of "SSS": light wrapping around the terminator, which is what makes wax and thick
+/// oil read as soft. The trap it must not fall into is the one the whole pass exists to avoid — an
+/// ABSOLUTE brightening. So the claim is precisely two-sided: the flank that FACES AWAY from the lamp
+/// must come up, and (this is `flat_paint_is_byte_identical_at_every_material`'s job, asserted again
+/// here in situ) the flat plateau must not move by a single level.
+#[test]
+fn wax_lights_the_far_flank_without_lifting_flat_paint() {
+    let size = 160u32;
+    let (dry, h, _) = impasto_material_render(size, &|t| {
+        t.set_impasto_shine(0.0); // isolate the DIFFUSE: Wax is a diffuse term
+        t.set_impasto_wax(0.0);
+    });
+    let (waxy, _, _) = impasto_material_render(size, &|t| {
+        t.set_impasto_shine(0.0);
+        t.set_impasto_wax(1.0);
+    });
+    let w = size as usize;
+    let (mut shadowed_lifted, mut shadowed_seen, mut flat_moved) = (0u32, 0u32, 0u32);
+    for y in 1..(size as usize - 1) {
+        for x in 1..(size as usize - 1) {
+            let p = y * w + x;
+            let dhx = h[p + 1] - h[p - 1];
+            let dhy = h[(y + 1) * w + x] - h[(y - 1) * w + x];
+            let delta = i32::from(waxy[p * 4]) - i32::from(dry[p * 4]);
+            if dhx == 0.0 && dhy == 0.0 {
+                if delta != 0 {
+                    flat_moved += 1;
+                }
+                continue;
+            }
+            // The lamp comes from azimuth 90°, so a flank whose normal tilts AWAY from it is in shadow.
+            // That is where a wrapped diffuse has something to say, and where an unwrapped one has the
+            // pixel bottomed out on the ambient floor.
+            if dhy > 0.0 {
+                shadowed_seen += 1;
+                if delta > 0 {
+                    shadowed_lifted += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(
+        flat_moved, 0,
+        "Wax lifted {flat_moved} FLAT pixels — the wrap must be applied to the flat DIVISOR too, or \
+         every flat canvas brightens the moment the knob leaves zero"
+    );
+    assert!(
+        shadowed_seen > 500,
+        "only {shadowed_seen} shadowed pixels examined — vacuous"
+    );
+    assert!(
+        shadowed_lifted * 2 > shadowed_seen,
+        "Wax must LIGHT the flank turned away from the lamp (that IS the soft terminator): only \
+         {shadowed_lifted} of {shadowed_seen} shadowed pixels came up. If this does not move, the knob \
+         is decoration."
+    );
+
+    // ── And the OTHER half, which is the one with teeth: a wrap COMPRESSES. ──────────────────────────
+    //
+    // Wrapping raises the shadow AND lowers the highlight — it narrows the range, it does not shift it.
+    // So the flank FACING the lamp must come out DARKER under Wax, never brighter.
+    //
+    // This is the assertion that pins the flat DIVISOR, and it is the reason it exists: if the divisor
+    // is left unwrapped while the pixel is wrapped, the ratio is inflated EVERYWHERE and the whole
+    // relief brightens — the absolute-shading bug the entire pass is built to avoid, arriving through a
+    // new door. `flat_paint_is_byte_identical_at_every_material` cannot see it (flat pixels early-out
+    // before the divisor is ever read — the mutation run proved that, which is why this is here).
+    //
+    // MUT proved RED: `let fd = l.dir[2].max(0.0)` in `MatShade::resolve` (the divisor without the
+    // wrap) ⇒ the lit flank BRIGHTENS and this fires.
+    let (mut lit_seen, mut lit_darkened) = (0u32, 0u32);
+    for y in 1..(size as usize - 1) {
+        for x in 1..(size as usize - 1) {
+            let p = y * w + x;
+            let dhy = h[(y + 1) * w + x] - h[(y - 1) * w + x];
+            if dhy >= 0.0 {
+                continue; // the flank TOWARD the lamp is the one whose highlight must compress
+            }
+            lit_seen += 1;
+            if i32::from(waxy[p * 4]) <= i32::from(dry[p * 4]) {
+                lit_darkened += 1;
+            }
+        }
+    }
+    assert!(
+        lit_seen > 500,
+        "only {lit_seen} lit pixels examined — vacuous"
+    );
+    assert!(
+        lit_darkened * 20 >= lit_seen * 19,
+        "Wax BRIGHTENED the flank facing the lamp ({} of {lit_seen} lit pixels went up) — a wrap \
+         compresses the range, it does not lift it. The flat divisor is not being wrapped along with \
+         the pixel, so the ratio is inflated everywhere and the relief is glowing.",
+        lit_seen - lit_darkened
     );
 }

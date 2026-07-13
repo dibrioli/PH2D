@@ -215,5 +215,9 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
         ],
         selected: 0,
     },
-    impasto_shine: 0.7, // LITERAL-PX-OK: default specular strength (mirrors PaintState::default)
+    impasto_shine: 0.7, // LITERAL-PX-OK: default specular strength (mirrors BrushSpec::default)
+    // O material NEUTRO — `roughness: 0.5` cai no expoente 24 que o passe tinha cravado.
+    impasto_roughness: 0.5, // LITERAL-PX-OK: neutral roughness (the old SHININESS = 24)
+    impasto_metallic: 0.0,  // LITERAL-PX-OK: dielectric paint (oil, acrylic, gouache)
+    impasto_wax: 0.0,       // LITERAL-PX-OK: no wrap — the old Lambert, to the float
 };

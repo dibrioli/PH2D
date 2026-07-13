@@ -99,6 +99,18 @@ impl PainterTool {
                 self.set_impasto_shine(*v as f32);
                 true
             }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_ROUGHNESS => {
+                self.set_impasto_roughness(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_METALLIC => {
+                self.set_impasto_metallic(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_WAX => {
+                self.set_impasto_wax(*v as f32);
+                true
+            }
             // The lamp SELECTOR — four chips, one router arm each. Spelled out rather than derived from
             // an index: the arch-gate that pairs a widget id with its handler reads THIS, and a loop over
             // ids it cannot see is how a chip that does nothing gets shipped.
@@ -282,10 +294,32 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
-    /// **Shine** — the specular highlight on the crests.
+    /// **Shine** — how much the highlight is worth. A property of the PAINT (see `material.rs`), so it
+    /// is a brush setting and it is baked into the canvas with the stroke.
     pub fn set_impasto_shine(&mut self, v: f32) {
-        self.paint.impasto_shine = v.clamp(0.0, 1.0);
-        self.invalidate_composite();
+        self.paint.brush.impasto_shine = v.clamp(0.0, 1.0);
+        self.rebake_live_material();
+    }
+
+    /// **Roughness** — how BROAD the highlight is. `0` = a tight glint (wet varnish); `1` = a wide soft
+    /// sheen (dry chalk). The knob that did not exist: the exponent was the constant `SHININESS = 24`.
+    pub fn set_impasto_roughness(&mut self, v: f32) {
+        self.paint.brush.impasto_roughness = v.clamp(0.0, 1.0);
+        self.rebake_live_material();
+    }
+
+    /// **Metallic** — whose colour the highlight takes: the LAMP's (`0`, a dielectric: oil, gouache) or
+    /// the PAINT's own (`1`, a conductor: gold leaf, iridescent).
+    pub fn set_impasto_metallic(&mut self, v: f32) {
+        self.paint.brush.impasto_metallic = v.clamp(0.0, 1.0);
+        self.rebake_live_material();
+    }
+
+    /// **Wax** — the soft terminator of paint the light enters and leaves nearby (wrap lighting, not a
+    /// subsurface simulation — see `material::Material::wax`).
+    pub fn set_impasto_wax(&mut self, v: f32) {
+        self.paint.brush.impasto_wax = v.clamp(0.0, 1.0);
+        self.rebake_live_material();
     }
 
     /// Reset the whole section to the defaults — the brush half from [`BrushSpec::default`], the canvas
@@ -302,9 +336,13 @@ impl PainterTool {
         b.impasto_smoothing = d.impasto_smoothing;
         b.impasto_body = d.impasto_body;
         b.impasto_plow = d.impasto_plow;
+        // The MATERIAL is the brush's too — Reset puts the paint back to neutral oil.
+        b.impasto_shine = d.impasto_shine;
+        b.impasto_roughness = d.impasto_roughness;
+        b.impasto_metallic = d.impasto_metallic;
+        b.impasto_wax = d.impasto_wax;
         self.paint.impasto_show = true;
         self.paint.impasto_rig = Default::default();
-        self.paint.impasto_shine = 0.7;
         self.invalidate_composite();
     }
 }

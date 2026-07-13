@@ -144,24 +144,37 @@ os braços de `apply` para um módulo irmão, como `warmup.rs` já fez).
 
 ---
 
-## 6. Smoke (o que só o Enio pode fazer)
+## 6. Smoke — **já vem montado** (Enio, 2026-07-13)
 
 `AudioSystem::new()` precisa de device de áudio e nenhum teste headless constrói um — então **o som
-saindo do device é smoke-only**.
+saindo do device é smoke-only**. Mas o clipe e a rack **não são** trabalho do Enio: a linha
+sintetiza os dois (`shells/desktop/src/audio/editor/multiband_smoke.rs`).
 
 ```bash
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && cargo run --release
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && PH2D_AUDIO_MULTIBAND_SMOKE=1 cargo run --release
 ```
 
-1. Abra o editor de áudio, carregue um clipe com **grave forte e agudo presente** (voz com plosiva,
-   ou música com kick + prato — o efeito é invisível em material sem tilt espectral).
-2. No rack, selecione **Multiband** (fica **logo depois do Compress**).
-3. **Sanidade do neutro:** só selecionar não pode mudar **nada** (ratio nasce em 1:1 = bypass).
-4. Suba o **Ratio**. O que ouvir: os agudos **param de abaixar junto com o grave**. Compare
-   alternando com o **Compress** ao lado, nos mesmos números — é exatamente essa a diferença que o
-   efeito existe pra fazer.
-5. **Borda da seleção:** aplique numa seleção no meio do clipe e escute a emenda — não pode estalar
-   (o crossover tem pre-roll; os compressores se primam sozinhos).
+Abra a pill do **Audio Editor**. Já estará carregado:
+
+- **O clipe** — um kick de 60 Hz a cada 0,5 s (120 BPM, quase fundo de escala) sobre um pad
+  (220+330 Hz) e um shimmer (6+9 kHz) **absolutamente firmes**, 25 dB abaixo. A firmeza é o truque:
+  o pad e o shimmer não se mexem sozinhos, então **todo movimento que você ouvir neles é o
+  compressor abaixando-os**.
+- **A rack, com o A/B pronto** — dois stages no **mesmo Ratio (todo à direita, 20:1)**:
+  `[Multiband: ligado] [Compress: bypassado]`.
+
+**O teste:** inverta o `enabled` dos dois stages (é pra isso que ele existe). No **Compress**, o pad
+e o shimmer **bombeiam a 120 BPM**, um mergulho por kick. No **Multiband**, ficam parados e só o
+kick é domado. Mesmos números nos dois — a comparação é entre dois desenhos, não entre dois ajustes.
+
+> **Isto está gateado, não é promessa:** `the_smoke_clip_makes_the_plain_compressor_duck_the_highs`
+> mede o movimento do agudo neste clipe exato — **fonte seca 0,000 · Compress 0,532 · Multiband
+> 0,002**. Se o material deixar de expor o efeito, o gate fica vermelho antes de chegar em você.
+
+Extras que valem 30 s:
+- **Neutro:** puxe o Ratio do Multiband todo pra esquerda (1:1) — tem que ficar **byte-idêntico**.
+- **Borda da seleção:** aplique numa seleção no meio do clipe e escute a emenda — não pode estalar
+  (o crossover tem pre-roll; os compressores se primam sozinhos).
 
 ---
 

@@ -158,7 +158,7 @@ fn a_streamed_region_plays_its_intro_exactly_once_and_never_reaches_the_outro() 
         },
         |i| {
             let f = i / 2;
-            if f < INTRO || f >= INTRO + BODY {
+            if !(INTRO..INTRO + BODY).contains(&f) {
                 let t = f as f32 / RATE as f32;
                 (std::f32::consts::TAU * 220.0 * t).sin() * 0.5
             } else {

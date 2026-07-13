@@ -54,11 +54,6 @@ impl LoopRegion {
             end,
         })
     }
-
-    /// Frames in the repeating body — what the cursor subtracts on every lap.
-    pub fn len(self) -> u64 {
-        self.end.saturating_sub(self.start)
-    }
 }
 
 /// How a voice should play, passed to [`crate::AudioEngine::play`].

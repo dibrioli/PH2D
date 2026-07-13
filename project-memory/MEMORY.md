@@ -77,6 +77,7 @@
 - [Pintado ≠ populado: teste a PINTURA](feedback_painted_is_not_populated_paint_gate.md) — nenhum gate rodava `paint`; "o botão não existe" passava em tudo
 - [Teste com os números do PRODUTO](feedback_test_with_product_numbers_not_convenient_ones.md) — `px_to_world = 1.0` é o único valor que esconde erro de unidade
 - [Geometria sobre eixos de unidades diferentes](feedback_geometry_over_mixed_units_needs_the_consumers_conversion.md) — ângulo/normal só existe depois de converter; use a constante que o RENDERIZADOR usa
+- [Snapshot tem de ser PONTO FIXO dos sistemas](feedback_a_snapshot_must_be_a_fixed_point_of_the_systems.md) — undo/save por diff: se o frame seguinte normaliza algo, a normalização vira "ação do usuário". E um Ctrl+Z são DOIS eventos (o Released também)
 - [Coordenada derivada: seed = sample](feedback_derived_coordinate_seed_must_match_sample.md) — tempo remapeado quebrou 3×; todo caminho de autoria usa a MESMA transform do de leitura
 - [Âncora invariante sob o que o usuário mexe](feedback_anchor_must_be_invariant_under_user_transforms.md) — geometria assada ancorada em APARÊNCIA (silhueta/borda) quebra com zoom-depois; ancore em geometria pura (eixo) e varra espessura×zoom
 - [Gizmo errado = cheque o HIT](feedback_gizmo_verify_hit_target_before_transform_math.md) — logue o target resolvido no grab ANTES da math; era colisão de id

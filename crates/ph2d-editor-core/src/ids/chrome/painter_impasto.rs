@@ -24,6 +24,11 @@ pub const PAINTER_IMPASTO_RESET: NodeId = hash_node_id("painter_brush.impasto_re
 /// **Enable** master toggle for the whole section. `Click` → `toggle_brush_impasto`. Off (the default)
 /// makes a stroke byte-identical to a build with no Impasto at all — the switch is the only gate.
 pub const PAINTER_IMPASTO_ENABLE: NodeId = hash_node_id("painter_brush.impasto_enable");
+/// **Adjust Last Stroke** — whether moving a slider re-derives the stroke already on the canvas
+/// (ON = the section's historical behaviour) or speaks only to the strokes still to come.
+/// `Click` → `toggle_impasto_live_edit`. An editing preference, not a property of the paint: it is
+/// never baked into a pixel.
+pub const PAINTER_IMPASTO_LIVE_EDIT: NodeId = hash_node_id("painter_brush.impasto_live_edit");
 /// **Depth** (`-1..1`; negative CARVES into the paint). `SetValue` → `set_brush_impasto_depth`.
 pub const PAINTER_IMPASTO_DEPTH: NodeId = hash_node_id("painter_brush.impasto_depth");
 /// **Depth Source** segmented group + its two options — Uniform (a level body: the Grain textures the
@@ -115,8 +120,9 @@ pub const PAINTER_IMPASTO_LIGHT_COLOR: NodeId = hash_node_id("painter_brush.impa
 
 /// The Impasto **Click** widgets — one membership check for the panel's click forward, routed by
 /// `route_brush_impasto_event`.
-pub const PAINTER_IMPASTO_CLICKS: [NodeId; 13] = [
+pub const PAINTER_IMPASTO_CLICKS: [NodeId; 14] = [
     PAINTER_IMPASTO_ENABLE,
+    PAINTER_IMPASTO_LIVE_EDIT,
     PAINTER_IMPASTO_RESET,
     PAINTER_IMPASTO_SOURCE_UNIFORM,
     PAINTER_IMPASTO_SOURCE_GRAIN,

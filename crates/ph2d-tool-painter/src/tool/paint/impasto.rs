@@ -636,7 +636,9 @@ impl PainterTool {
     /// No-op unless that stroke is on the layer the artist is looking at — dialling Depth after
     /// switching layers must not reach back and re-sculpt a stroke on some other one.
     pub(super) fn refresh_live_relief(&mut self) {
-        if !self.paint.brush.impasto || self.layers.active() != self.paint.relief.live_relief_layer
+        if !self.impasto_live_edit() // "Adjust Last Stroke" — finished paint stays finished
+            || !self.paint.brush.impasto
+            || self.layers.active() != self.paint.relief.live_relief_layer
         {
             return;
         }

@@ -461,6 +461,17 @@ pub(crate) struct PaintState {
     // (`impasto_shine` used to live HERE, canvas-global, while its own doc-comment called it "a
     // property of the PAINT". It is the paint's, and paint is per-pixel — so it moved to `BrushSpec`
     // and is baked into the canvas with the stroke, like Depth and Body. Enio, 2026-07-13.)
+    /// **Adjust Last Stroke** — whether moving a slider re-derives the stroke already on the canvas.
+    ///
+    /// ON (the default, and how the section has always behaved): the artist lays a stroke and then
+    /// dials it in *while looking at it* — every knob in the Body and Material cards re-derives the last
+    /// stroke live, because the stroke stored its INGREDIENTS rather than its result.
+    ///
+    /// OFF: the sliders speak only to the strokes still to come. The stroke on the canvas is FINISHED —
+    /// which is what an artist wants the moment they are happy with it and start dialling the brush in
+    /// for the next one (Enio, 2026-07-13). It is a property of the EDITING SESSION, not of the paint,
+    /// so it lives here and is never baked into a pixel.
+    impasto_live_edit: bool,
     /// **Watercolor render-path** per-stroke water DWELL (1 byte/px, `w*h`): how long the held brush
     /// soaked each pixel (grown by [`PainterTool::grow_wet_soak`] on the tick heartbeat). The rewet
     /// reads it as a `0..1` field: more soak = the dissolve reaches FARTHER (blur-scale lerp) and the

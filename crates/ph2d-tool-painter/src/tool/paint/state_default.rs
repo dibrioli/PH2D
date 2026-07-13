@@ -147,6 +147,7 @@ impl Default for PaintState {
             relief: Default::default(),
             // Impasto lighting (canvas-level). Inert until some layer actually has relief.
             impasto_show: true,
+            impasto_live_edit: true, // o comportamento que a secao sempre teve
             // The rig: Enio's dialled-in key (2026-07-12, after the smoke) + three lamps switched OFF.
             impasto_rig: Default::default(),
             stroke_coverage: Vec::new(),

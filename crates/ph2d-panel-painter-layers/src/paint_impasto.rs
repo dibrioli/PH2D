@@ -81,6 +81,18 @@ pub(crate) fn paint_impasto_section(
     if !brush.impasto {
         return y;
     }
+    // Governs every slider in the section (Body AND Material), so it sits at the TOP of it rather than
+    // inside one card: a control that reaches across two boxes does not belong in either.
+    y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        core_ids::PAINTER_IMPASTO_LIVE_EDIT,
+        "Adjust Last Stroke",
+        brush.impasto_live_edit,
+    );
     y = paint_body_card(ctx, theme, x, content_w, y, &brush);
     y = paint_material_card(ctx, theme, x, content_w, y, &brush);
     paint_lighting_card(ctx, theme, x, content_w, y, &brush)

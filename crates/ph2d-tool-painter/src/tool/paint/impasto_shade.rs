@@ -46,16 +46,30 @@ pub(super) struct MatShade {
     shine: f32,
     metallic: f32,
     wax: f32,
-    /// `Σ tintᵢ[c] · wrap(Lᵢ.z, wax)` — the flat surface's own diffuse, per channel. The divisor.
-    flat_diffuse: [f32; 3],
+    /// The flat surface's diffuse, in TWO parts — because the wrapped light is TINTED by the paint and
+    /// the paint is per pixel, while this is cached per material.
+    ///
+    /// `flat[c] = flat_base[c] + albedo[c] · flat_wax[c]`, which is exact and costs one multiply-add per
+    /// channel at the texel. `flat_base` is `Σ tintᵢ[c] · Lᵢ.z` (the un-wrapped flat response — the old
+    /// divisor); `flat_wax` is `Σ tintᵢ[c] · (wrap(Lᵢ.z, wax) − Lᵢ.z)`, i.e. the light that WRAPPED onto
+    /// a flat surface, which is the light that went *through* the paint and so comes back wearing its
+    /// colour. Splitting it is what lets the divisor stay cached while the tint stays per-pixel.
+    flat_base: [f32; 3],
+    /// See [`Self::flat_base`]. Zero at `wax = 0`, which is what makes the neutral material the old code.
+    flat_wax: [f32; 3],
     /// Each lamp's specular response on a FLAT surface, at THIS roughness. Subtracted per lamp and
     /// clamped at zero: sum the raw speculars and subtract the flat total instead, and a lamp facing
     /// away from a slope contributes a NEGATIVE term — it borrows headroom from a lamp facing it, and
     /// the "highlight" darkens the paint (`the_glint_only_ever_adds_light`).
     flat_spec: [f32; super::impasto_rig::MAX_LIGHTS],
-    /// Every lamp is grey AND the paint is not metallic ⇒ the three channels are the same float, and
-    /// the shade computes it once instead of three times. Metal breaks it because a metal's highlight
-    /// takes the PAINT's colour, which is per-channel by definition.
+    /// Every lamp is grey AND the paint is neither metallic NOR waxy ⇒ the three channels are the same
+    /// float, and the shade computes it once instead of three times.
+    ///
+    /// Metal breaks it because a metal's highlight takes the PAINT's colour. **Wax breaks it for the
+    /// same reason, one term over**: the light that scatters through paint comes back wearing the
+    /// paint's colour, and that is per-channel by construction. So turning Wax on costs the coloured
+    /// path — which is honest: a knob that tints the light cannot be had on a lane that assumes it does
+    /// not. At `wax = 0` the tinted term is identically zero and the fast lane is the old code.
     achromatic: bool,
 }
 
@@ -98,25 +112,20 @@ impl Rig {
         use ph2d_painter_brush::material::{Material, wrapped_ndl};
         let m = Material::from_bytes(key);
         let level = Material::rough_level(m.roughness);
-        let mut flat_diffuse = [0.0f32; 3];
+        let mut flat_base = [0.0f32; 3];
+        let mut flat_wax = [0.0f32; 3];
         let mut flat_spec = [0.0f32; super::impasto_rig::MAX_LIGHTS];
         for (i, l) in self.lamps[..self.n].iter().enumerate() {
             // Flat: N = (0, 0, 1) ⇒ N·L = L.z and N·H = half.z. The wrap is applied to the FLAT response
             // too — that is the line that keeps flat paint byte-identical at any Wax. Wrap the pixel and
             // not the divisor and every flat canvas would brighten the moment Wax left zero.
-            let fd = wrapped_ndl(l.dir[2], m.wax);
-            for (f, t) in flat_diffuse.iter_mut().zip(l.tint) {
-                *f += t * fd;
+            let lz = l.dir[2].max(0.0);
+            let wrapped = wrapped_ndl(l.dir[2], m.wax) - lz; // the light that went THROUGH the paint
+            for c in 0..3 {
+                flat_base[c] += l.tint[c] * lz;
+                flat_wax[c] += l.tint[c] * wrapped;
             }
             flat_spec[i] = self.spec.spec(level, l.half[2]);
-        }
-        // A channel a rig gives NO light to (a pure-red lamp alone, on the blue channel) would divide by
-        // zero. Its diffuse is zero too, so the ratio is 0/0 — and the answer that keeps the contract is
-        // 1 (the channel is untouched), which is what this floor produces.
-        for f in &mut flat_diffuse {
-            if *f <= 1e-4 {
-                *f = 1.0;
-            }
         }
         MatShade {
             key,
@@ -124,11 +133,10 @@ impl Rig {
             shine: m.shine.clamp(0.0, 1.0),
             metallic: m.metallic.clamp(0.0, 1.0),
             wax: m.wax,
-            flat_diffuse,
+            flat_base,
+            flat_wax,
             flat_spec,
-            // Metal's highlight takes the PAINT's colour, which is per-channel by construction — so a
-            // metallic pixel can never take the grey fast lane, however grey the lamps are.
-            achromatic: self.achromatic && m.metallic <= 0.0,
+            achromatic: self.achromatic && m.metallic <= 0.0 && m.wax <= 0.0,
         }
     }
 
@@ -224,13 +232,22 @@ impl Rig {
         // rig (the default, and every canvas nobody has opened the rig on) is one iteration.
         let (mut diffuse, mut spec) = ([0.0f32; 3], [0.0f32; 3]);
         for (i, l) in self.lamps[..self.n].iter().enumerate() {
-            // The diffuse is WRAPPED by Wax — light reaching around the terminator, which is the waxy
-            // half of what people call SSS and the only half a 2.5-D height field can honestly claim.
-            // At `wax = 0` this is `max(N·L, 0)` exactly.
-            let ndl = ph2d_painter_brush::material::wrapped_ndl(
-                n[0] * l.dir[0] + n[1] * l.dir[1] + n[2] * l.dir[2],
-                mat.wax,
-            );
+            let raw = n[0] * l.dir[0] + n[1] * l.dir[1] + n[2] * l.dir[2];
+            // The diffuse splits in two, and the split IS the physics. `direct` is the light that
+            // bounced off the surface — `max(N·L, 0)`, the plain Lambert. `scattered` is the light that
+            // went INTO the paint and came back out nearby: the wrap
+            // (`ph2d_painter_brush::material::wrapped_ndl`), minus the direct term it sits on top of.
+            //
+            // And the scattered light is COLOURED — by the paint it travelled through. That is not a
+            // stylistic choice, it is what makes an ear red against the sun and marble warm in shadow:
+            // the medium doing the absorbing IS the pigment, so what comes back is what the pigment did
+            // not eat. Which means the tint is not a knob to pick — it is already in the pixel
+            // (`albedo`), free, per-pixel, and correct by construction. (It comes back MORE saturated
+            // than the paint, too, and that also falls out: the pass MULTIPLIES the pixel, which is the
+            // albedo, so the scattered term lands as albedo² — a longer path, more absorbed, exactly
+            // what Beer-Lambert says. Enio, 2026-07-13: *"seria possível ter cor para wax?"*)
+            let direct = raw.max(0.0);
+            let scattered = ph2d_painter_brush::material::wrapped_ndl(raw, mat.wax) - direct;
             let ndh = n[0] * l.half[0] + n[1] * l.half[1] + n[2] * l.half[2];
             let s = self.spec.spec(mat.level, ndh);
             // Each lamp's highlight is relative to ITS OWN flat response, and clamped at zero there:
@@ -238,23 +255,30 @@ impl Rig {
             // borrow headroom from one facing the paint, and the pass would glint on flat ground.
             let ds = (s - mat.flat_spec[i]).max(0.0);
             if mat.achromatic {
-                // Grey lamps, dielectric paint ⇒ the three channels are the same float. Compute it once.
-                diffuse[0] += l.tint[0] * ndl;
+                // Grey lamps, dielectric paint, no wax ⇒ the three channels are the same float, and
+                // `scattered` is identically zero. Compute it once.
+                diffuse[0] += l.tint[0] * direct;
                 spec[0] += l.tint[0] * ds;
             } else {
                 for c in 0..3 {
-                    diffuse[c] += l.tint[c] * ndl;
+                    diffuse[c] += l.tint[c] * (direct + scattered * albedo[c]);
                     spec[c] += l.tint[c] * ds * spec_tint[c];
                 }
             }
         }
         if mat.achromatic {
-            let m = channel(mat, 0, body, diffuse[0], spec[0], gloss);
+            let flat = mat.flat_base[0]; // wax is 0 on this lane, so the tinted half is 0 too
+            let m = channel(mat, body, diffuse[0], spec[0], gloss, flat);
             return ([m.0; 3], [m.1; 3]);
         }
         let (mut mul, mut add) = ([0.0f32; 3], [0.0f32; 3]);
         for c in 0..3 {
-            let (m, a) = channel(mat, c, body, diffuse[c], spec[c], gloss);
+            // The divisor wears the SAME tint the pixel does — `flat = base + albedo · wax_part`. That
+            // is what keeps a flat surface at ratio exactly 1 in every channel: on flat ground the
+            // pixel's own sum IS this sum, term for term. Tint the pixel and not the divisor and the
+            // paint would glow in its own colour everywhere, flat or not.
+            let flat = mat.flat_base[c] + albedo[c] * mat.flat_wax[c];
+            let (m, a) = channel(mat, body, diffuse[c], spec[c], gloss, flat);
             mul[c] = m;
             add[c] = a;
         }
@@ -265,7 +289,14 @@ impl Rig {
 /// One channel's `(multiply, glint)` from its summed diffuse and specular. The shared core of both
 /// paths in [`Rig::shade`] — so the achromatic fast lane cannot drift from the coloured one.
 #[inline]
-fn channel(mat: &MatShade, c: usize, body: f32, diffuse: f32, spec: f32, gloss: f32) -> (f32, f32) {
+fn channel(
+    mat: &MatShade,
+    body: f32,
+    diffuse: f32,
+    spec: f32,
+    gloss: f32,
+    flat: f32,
+) -> (f32, f32) {
     // RELATIVE diffuse, with an AMBIENT floor: exactly 1.0 on flat ground (so flat paint stays
     // byte-identical), above 1 on a face turned toward the light, and down to `AMBIENT` — never 0 — on
     // a face turned away. Paint in shadow is dark, not black.
@@ -274,7 +305,12 @@ fn channel(mat: &MatShade, c: usize, body: f32, diffuse: f32, spec: f32, gloss: 
     // wraps the pixel AND the flat surface, so the ratio on flat ground is still exactly 1 at any Wax.
     // Wrap only the pixel and every flat canvas brightens the moment the knob leaves zero — the same
     // absolute-shading bug the whole pass is built to avoid, arriving through a new door.
-    let ratio = (diffuse / mat.flat_diffuse[c]).clamp(0.0, 2.0);
+    // A channel a rig gives NO light to (a pure-red lamp alone, on the blue channel) would divide by
+    // zero. Its diffuse is zero too, so the ratio is 0/0 — and the answer that keeps the contract is 1
+    // (the channel is untouched), which is what this floor produces. It is applied HERE, not in
+    // `resolve`, because the divisor is only whole once the pixel's own colour has been folded in.
+    let flat = if flat <= 1e-4 { 1.0 } else { flat };
+    let ratio = (diffuse / flat).clamp(0.0, 2.0);
     let m = AMBIENT + (1.0 - AMBIENT) * ratio;
     // Fade both with the body, so the pass is a strict no-op on bare canvas.
     //

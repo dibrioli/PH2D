@@ -384,6 +384,9 @@ pub struct BrushSettings {
     /// **Show Impasto** — canvas-level: is the relief lit? (Not a brush property; carried in this
     /// display snapshot for the Lighting card's read-back, like `dry_time_s` / `wet_preview`.)
     pub impasto_show: bool,
+    /// **Adjust Last Stroke** — whether the sliders re-derive the stroke already on the canvas.
+    /// Tool-global (an editing preference), not per-brush and never baked.
+    pub impasto_live_edit: bool,
     /// The canvas's **light rig** — up to `MAX_LIGHTS` lamps + which one the card is editing. The panel
     /// paints the SELECTED lamp's knobs, so the row count never grows with the rig (Krita's Phong
     /// Bumpmap shows all four at once: 24 controls, and `docs/Painter/17_..._pesquisa2.md` §2.4 files it

@@ -21221,3 +21221,233 @@ fn wax_lights_the_far_flank_without_lifting_flat_paint() {
         lit_seen - lit_darkened
     );
 }
+
+/// **The light that scatters through the paint comes back wearing the paint's COLOUR.**
+///
+/// The signature of subsurface scattering, and the thing a monochrome wrap cannot fake: an ear against
+/// the sun is RED, marble in shadow is WARM, wax is GOLDEN. The medium doing the absorbing IS the
+/// pigment, so what comes back out is what the pigment did not eat — which means the tint is not a knob
+/// anyone gets to pick. It is already in the pixel. (Enio, 2026-07-13: *"seria possível ter cor para
+/// wax?"* — it is not merely possible: it is the half that makes it read as translucency rather than as
+/// blurry shading.)
+///
+/// On RED paint under a WHITE lamp: where Wax lifts the shadowed flank, it must lift the RED channel
+/// far more than the BLUE one. An untinted wrap lifts all three together — it makes the shadow PALER,
+/// not WARMER, and the paint reads as plastic.
+///
+/// MUT proved RED: drop the `* albedo[c]` from the scattered term in `Rig::shade` ⇒ the channels lift
+/// together and this fires.
+#[test]
+fn wax_bleeds_the_paints_own_colour_into_the_shadow() {
+    let size = 160u32;
+    // Shine 0 throughout: the glint is a separate term with its own gates, and a white highlight would
+    // drown the very chroma this gate is measuring.
+    let (dry, h, _) = impasto_material_render(size, &|t| {
+        t.set_impasto_shine(0.0);
+        t.set_impasto_wax(0.0);
+    });
+    let (waxy, _, _) = impasto_material_render(size, &|t| {
+        t.set_impasto_shine(0.0);
+        t.set_impasto_wax(1.0);
+    });
+    let w = size as usize;
+    let (mut seen, mut red_gained, mut blue_gained, mut worst_cold) = (0u32, 0i64, 0i64, 0i32);
+    for y in 1..(size as usize - 1) {
+        for x in 1..(size as usize - 1) {
+            let p = y * w + x;
+            let dhy = h[(y + 1) * w + x] - h[(y - 1) * w + x];
+            if dhy <= 0.0 {
+                continue; // the flank turned AWAY from the lamp: where the scattered light shows
+            }
+            let d_red = i32::from(waxy[p * 4]) - i32::from(dry[p * 4]);
+            let d_blue = i32::from(waxy[p * 4 + 2]) - i32::from(dry[p * 4 + 2]);
+            if d_red == 0 && d_blue == 0 {
+                continue; // Wax changed nothing here — it has no claim to make
+            }
+            seen += 1;
+            red_gained += i64::from(d_red);
+            blue_gained += i64::from(d_blue);
+            worst_cold = worst_cold.max(d_blue - d_red);
+        }
+    }
+    assert!(seen > 500, "only {seen} shadowed pixels moved — vacuous");
+    // The claim is about the LIGHT, so it is asserted on the light: how much red the shadow gained
+    // against how much blue. A per-pixel MAJORITY was the first form of this, and it was the wrong
+    // instrument — it read 88% and failed a 95% bar on pixels that had gone the "wrong" way by ONE
+    // level, which is `u8` rounding, not physics. The aggregate cannot be fooled by a rounding step.
+    //
+    // The bar is 2×, and it is MEASURED, not chosen: the tinted pass gives **2.56:1** and the untinted
+    // mutation gives **1.20:1**. Note what that second number means — an untinted wrap ALSO ends up
+    // with more red levels than blue, because the red pixel is brighter and the same multiplicative
+    // lift buys more levels there. So "red gained more than blue" is NOT a discriminating claim, and a
+    // gate that asserted only that would have passed on the bug. The threshold has to sit between the
+    // two measurements, and it can only do that if both are measured.
+    assert!(
+        red_gained > blue_gained * 2,
+        "the light Wax bleeds into the shadow of RED paint must be RED: the shadow gained \
+         {red_gained} levels of red against {blue_gained} of blue. An untinted wrap lifts all three \
+         channels together — it makes the shadow PALER, not WARMER: soft plastic, not wax."
+    );
+    // …and no pixel may go the other way by more than a rounding step. A tint that warmed the picture
+    // ON AVERAGE while cooling parts of it would be a bug the aggregate alone would hide.
+    assert!(
+        worst_cold <= 1,
+        "a shadowed pixel gained {worst_cold} more levels of BLUE than of RED — the scattered light is \
+         not wearing the paint's colour there"
+    );
+}
+
+/// **"Adjust Last Stroke" governs whether the sliders reach the paint already on the canvas.**
+///
+/// Enio, 2026-07-13: *"Slider para que o último traço pintado possa ser ajustado pelos sliders (como
+/// está agora). Se desmarcado, os ajustes dos sliders só afetam os traços que ainda serão pintados."*
+///
+/// Both halves are asserted, because each one alone is a plausible bug: unticked and still editing (the
+/// checkbox is decoration — this section's signature failure), or ticked and NOT editing (the live
+/// re-derive that the whole Body card exists for, silently dead). And the third: the stroke's
+/// ingredients must SURVIVE being unticked, or the toggle is destructive and ticking it back on can
+/// never reach the stroke again.
+#[test]
+fn adjust_last_stroke_gates_whether_the_sliders_reach_the_canvas() {
+    let size = 160u32;
+    // Paint one stroke, then move a slider — with the box ticked, and with it unticked.
+    let after_edit = |live_edit: bool| -> Vec<u8> {
+        let mut t = impasto_canvas(size);
+        let mut b = t.paint.brush;
+        b.hardness = 0.0;
+        b.falloff = Falloff::Smooth;
+        b.radius_px = 40.0;
+        b.impasto_depth = 0.7;
+        b.color = [0.9, 0.1, 0.1];
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp(
+                [40.0 + 10.0 * f32::from(i as u8), 80.0],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+        if !live_edit {
+            t.toggle_impasto_live_edit();
+        }
+        // The gesture the artist makes: a stroke is down, now move the sliders. One from the Body card
+        // (Depth re-derives the relief) and one from the Material card (Shine re-bakes the material) —
+        // the two independent choke points, so a fix to one that forgets the other goes red.
+        t.set_brush_impasto_depth(-0.9);
+        t.set_impasto_shine(1.0);
+        lit(&mut t)
+    };
+    let baseline = {
+        // The canvas as the stroke LEFT it — no slider moved at all.
+        let mut t = impasto_canvas(size);
+        let mut b = t.paint.brush;
+        b.hardness = 0.0;
+        b.falloff = Falloff::Smooth;
+        b.radius_px = 40.0;
+        b.impasto_depth = 0.7;
+        b.color = [0.9, 0.1, 0.1];
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp(
+                [40.0 + 10.0 * f32::from(i as u8), 80.0],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+        lit(&mut t)
+    };
+
+    let ticked = after_edit(true);
+    let unticked = after_edit(false);
+
+    let moved = |a: &[u8], b: &[u8]| -> u32 {
+        (0..(size * size) as usize)
+            .filter(|p| (0..3).any(|c| a[p * 4 + c] != b[p * 4 + c]))
+            .count() as u32
+    };
+
+    // TICKED — the historical behaviour: the sliders reach back and re-derive the stroke on the canvas.
+    let changed = moved(&ticked, &baseline);
+    assert!(
+        changed > 500,
+        "with 'Adjust Last Stroke' TICKED, moving Depth and Shine changed only {changed} pixels of the \
+         stroke already painted — the live re-derive the whole Body card exists for is dead"
+    );
+
+    // UNTICKED — the paint on the canvas is FINISHED. Not one byte moves.
+    let untouched = moved(&unticked, &baseline);
+    assert_eq!(
+        untouched, 0,
+        "with 'Adjust Last Stroke' UNTICKED, moving the sliders still changed {untouched} pixels of the \
+         stroke already painted. The checkbox is decoration — which is exactly the species this section \
+         keeps shipping (§17)."
+    );
+}
+
+/// …and the toggle is **NOT destructive**: unticking it, moving sliders, then ticking it back on must
+/// leave the stroke exactly as reachable as it was. If the ingredients were dropped when the box was
+/// cleared, the artist would have silently lost the ability to edit their stroke by clicking a checkbox
+/// twice — a checkbox that quietly discards work is not a checkbox.
+///
+/// The claim carries no threshold, and it must not: the off→on cycle has to leave the canvas
+/// **byte-identical** to the run that never toggled at all. (My first two attempts at this file's gates
+/// both picked a pixel-count bar out of the air and both were wrong — 88% against a 95% bar, then 454
+/// pixels against a 500 bar. A number you had to guess is a number the gate did not need.)
+#[test]
+fn adjust_last_stroke_does_not_destroy_the_strokes_ingredients() {
+    let size = 160u32;
+    let stroke = |t: &mut PainterTool| {
+        let mut b = t.paint.brush;
+        b.hardness = 0.0;
+        b.falloff = Falloff::Smooth;
+        b.radius_px = 40.0;
+        b.impasto_depth = 0.7;
+        b.color = [0.9, 0.1, 0.1];
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp(
+                [40.0 + 10.0 * f32::from(i as u8), 80.0],
+                PointerPhase::Move,
+            ));
+        }
+        t.on_canvas_pointer(cp([120.0, 80.0], PointerPhase::Up));
+    };
+
+    // The control: never toggled, one Shine edit.
+    let control = {
+        let mut t = impasto_canvas(size);
+        stroke(&mut t);
+        t.set_impasto_shine(1.0);
+        lit(&mut t)
+    };
+    // The gesture: untick, dial the brush in for the NEXT stroke, tick back on, then the same Shine edit.
+    let cycled = {
+        let mut t = impasto_canvas(size);
+        stroke(&mut t);
+        t.toggle_impasto_live_edit(); // OFF — the stroke on the canvas is finished
+        t.set_brush_impasto_depth(-0.9); // …and this must not touch it
+        t.toggle_impasto_live_edit(); // back ON
+        t.set_impasto_shine(1.0); // …and now the sliders reach it again, in full
+        lit(&mut t)
+    };
+
+    assert_eq!(
+        cycled, control,
+        "after unticking and re-ticking 'Adjust Last Stroke', the same Shine edit produced a DIFFERENT \
+         canvas than the run that never toggled. Either the stroke's ingredients were thrown away when \
+         the box was cleared (so there is no way back), or the Depth edit made while it was unticked \
+         leaked into the paint anyway (so unticking does not mean what it says)."
+    );
+}

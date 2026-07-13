@@ -12,6 +12,26 @@ use super::impasto_settle::for_each_in;
 use crate::tool::PainterTool;
 
 impl PainterTool {
+    /// Whether a knob edit reaches the paint **already on the canvas** — the "Adjust Last Stroke"
+    /// checkbox (Enio, 2026-07-13).
+    ///
+    /// ON (the default, and how the section has always behaved): the artist lays a stroke and dials it
+    /// in *while looking at it* — every knob in the Body and Material cards re-derives it, because the
+    /// stroke stored its INGREDIENTS rather than its result. OFF: the sliders speak only to the strokes
+    /// still to come, because the paint on the canvas is FINISHED — which is what an artist wants the
+    /// moment they are happy with it and start setting up the next one.
+    ///
+    /// The two re-derivers (`refresh_live_relief` for the geometry, `rebake_live_material` for the
+    /// material) both ask HERE, rather than each testing the flag: a toggle honoured by one of two
+    /// choke points is a toggle that half-works, and that is a bug report waiting to be written.
+    ///
+    /// Unticking does NOT drop the stroke's ingredients — they stay, so ticking it back on makes the
+    /// next edit reach the stroke again, in full. A checkbox that quietly discards work is not a
+    /// checkbox (`adjust_last_stroke_does_not_destroy_the_strokes_ingredients`).
+    pub(super) fn impasto_live_edit(&self) -> bool {
+        self.paint.impasto_live_edit
+    }
+
     /// Re-bake the LAST stroke's MATERIAL from the brush — the four material knobs, live on the stroke
     /// the artist is looking at, exactly like Depth and Body.
     ///
@@ -19,6 +39,9 @@ impl PainterTool {
     /// not compose (merging twice at 50% leaves 75% of the new material, not 50%), so a re-bake that
     /// skipped the base would creep toward the brush every time the artist nudged a slider.
     pub(super) fn rebake_live_material(&mut self) {
+        if !self.impasto_live_edit() {
+            return; // finished paint stays finished — the knob speaks to the NEXT stroke
+        }
         self.invalidate_composite();
         let (Some(layer), Some(rect)) = (
             self.paint.relief.live_relief_layer,

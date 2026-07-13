@@ -63,6 +63,10 @@ impl PainterTool {
                 self.toggle_impasto_show();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIVE_EDIT => {
+                self.toggle_impasto_live_edit();
+                true
+            }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_DEPTH => {
                 self.set_brush_impasto_depth(*v as f32);
                 true
@@ -292,6 +296,16 @@ impl PainterTool {
         let l = self.paint.impasto_rig.current_mut();
         l.on = !l.on;
         self.invalidate_composite();
+    }
+
+    /// **Adjust Last Stroke** — whether the sliders reach the paint already on the canvas.
+    ///
+    /// Toggling it does NOT retroactively apply (or un-apply) anything: it changes what the NEXT knob
+    /// edit does. Snapping the last stroke to the current slider values the moment the box is ticked
+    /// would be a jump the artist did not ask for — they may have spent the whole time it was unticked
+    /// dialling the brush in for a *different* stroke.
+    pub fn toggle_impasto_live_edit(&mut self) {
+        self.paint.impasto_live_edit = !self.paint.impasto_live_edit;
     }
 
     /// **Shine** — how much the highlight is worth. A property of the PAINT (see `material.rs`), so it

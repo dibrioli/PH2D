@@ -1508,6 +1508,10 @@ impl crate::App {
                         }
                     }
                     EditorAction::UndoImageEdit => undo_image_edit = true,
+                    // Os botões Undo/Redo da barra: MESMO caminho do Ctrl+Z. O despacho
+                    // espera o fim do frame (`post_frame_undo`) porque `undo_or_redo`
+                    // precisa de `&mut self` e o `gfx` está emprestado aqui.
+                    EditorAction::UndoStep { redo } => self.undo_button = Some(redo),
                     EditorAction::HierToggleVisibility { row } => {
                         visibility_toggle_row.get_or_insert(row);
                     }

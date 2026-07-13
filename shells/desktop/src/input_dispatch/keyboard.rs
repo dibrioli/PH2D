@@ -21,8 +21,15 @@ impl App {
             .is_some_and(|h| h.is_panel_visible("timeline"))
     }
 
+    /// O evento de teclado do winit. **Só desembrulha** — a política toda mora no
+    /// [`Self::key_input`], que é dirigível sem winit.
+    ///
+    /// A separação não é arrumação: o `winit::KeyEvent` tem campo privado e **não pode ser
+    /// construído** fora do winit, então enquanto o corpo morava aqui **nenhum teste
+    /// conseguia apertar uma tecla**. O roteamento do Ctrl+Z (quem consome antes de quem) era
+    /// exatamente o que o Enio disse estar quebrado, e era a única parte do input que nenhum
+    /// gate alcançava.
     pub(crate) fn on_keyboard_input(&mut self, event: WinitKeyEvent) {
-        self.any_input_this_frame = true;
         let WinitKeyEvent {
             physical_key,
             state,
@@ -30,7 +37,18 @@ impl App {
             text,
             ..
         } = event;
+        self.key_input(physical_key, state, repeat, text);
+    }
 
+    /// O caminho de teclado de verdade: roteamento, atalhos e forward pros widgets.
+    pub(crate) fn key_input(
+        &mut self,
+        physical_key: PhysicalKey,
+        state: ElementState,
+        repeat: bool,
+        text: Option<winit::keyboard::SmolStr>,
+    ) {
+        self.any_input_this_frame = true;
         let keycode = match physical_key {
             PhysicalKey::Code(code) => code as u32,
             PhysicalKey::Unidentified(_) => 0,

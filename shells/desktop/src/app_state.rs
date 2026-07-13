@@ -674,6 +674,11 @@ pub(crate) struct App {
     /// Ctrl+Z / Ctrl+Y pendente (`Some(redo)`), setado pelo teclado e drenado no
     /// `post_frame_undo` (onde `self` está livre do borrow do render loop).
     pub(crate) undo_request: Option<bool>,
+    /// Clique nos botões **Undo/Redo da barra** (`TOOL_UNDO`/`TOOL_REDO`), drenado do
+    /// action bus. Vai para o MESMO `undo_or_redo` do Ctrl+Z — não é um 2º caminho, é o
+    /// mesmo caminho armado de outro lugar (o bus é drenado sob o borrow do `gfx`, então o
+    /// despacho espera o `post_frame_undo`, onde `self` está livre).
+    pub(crate) undo_button: Option<bool>,
     /// Houve QUALQUER evento de input neste frame (mouse ou teclado). O
     /// `post_frame_undo` só captura+compara quando houve input e nenhum gesto está
     /// em andamento — barato (frames de input são esparsos), e cobre toda ação

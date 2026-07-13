@@ -185,73 +185,8 @@ impl App {
                 }
             }
             KeyCode::KeyZ if self.modifiers.super_key() || self.modifiers.control_key() => {
-                // Audio Editor owns Cmd/Ctrl+Z (undo) / +Shift (redo) while its WAVE
-                // panel is open with a clip loaded: the user is editing audio there, so
-                // keyboard undo steps the `EditClip` timeline, not the painter/image bus
-                // or the global object undo.
-                //
-                // It consumes the chord UNCONDITIONALLY here (applies the op only when
-                // there is one to apply, but always returns). The old code fell through
-                // to the global undo once the audio timeline was exhausted "so global
-                // undo still works when there's no audio edit" — but that made one extra
-                // Ctrl+Z JUMP THE WHOLE SCENE (the global undo restores the WorldSnapshot
-                // + clears selection). The audio-timeline boundary is invisible to the
-                // user, so it read as "undo sometimes doesn't work / does something
-                // weird" (2026-07-11 multi-agent audit, A1). A focused modal editor owns
-                // its own Ctrl+Z, like the painter/motion/timeline undos do.
-                #[cfg(feature = "panel-audio-editor")]
-                {
-                    let audio_open = gfx
-                        .hero_screen
-                        .as_ref()
-                        .is_some_and(|h| h.is_panel_visible("audio_editor"));
-                    if audio_open
-                        && let Some(a) = self.audio.as_mut()
-                        && a.editor_loaded()
-                    {
-                        let redo = self.modifiers.shift_key();
-                        let can = if redo {
-                            a.editor_can_redo()
-                        } else {
-                            a.editor_can_undo()
-                        };
-                        if can {
-                            a.editor_apply(if redo {
-                                ph2d_panel_audio_editor::AudioEditCmd::Redo
-                            } else {
-                                ph2d_panel_audio_editor::AudioEditCmd::Undo
-                            });
-                        }
-                        return;
-                    }
-                }
-                let painter_active = gfx
-                    .tools
-                    .active()
-                    .map(|t| t.id() == ph2d_editor::ToolId::new("painter"))
-                    .unwrap_or(false);
                 let redo = self.modifiers.shift_key();
-                // Undo GLOBAL de objetos (fila única, ADR-0110+): o fallback do Ctrl+Z
-                // quando nenhum domínio (painter/audio/motion/timeline/vetor) o
-                // consumiu. Só arma o request se há um passo naquele sentido; senão
-                // cai para o image-edit undo de sempre (compat).
-                let global_has = if redo {
-                    self.undo.can_redo()
-                } else {
-                    self.undo.can_undo()
-                };
-                if painter_active {
-                    if redo {
-                        self.painter_redo_requested = true;
-                    } else {
-                        self.painter_undo_requested = true;
-                    }
-                } else if global_has {
-                    self.undo_request = Some(redo);
-                } else if let Some(hero) = gfx.hero_screen.as_mut() {
-                    hero.bus
-                        .push(ph2d_editor::action_bus::EditorAction::UndoImageEdit);
-                }
+                self.undo_or_redo(redo);
             }
             // Cmd/Ctrl+Y — redo in the Audio Editor (the Windows/Linux redo chord,
             // alongside Cmd/Ctrl+Shift+Z). No-op unless the WAVE panel is open with

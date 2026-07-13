@@ -1,4 +1,5 @@
 use super::*;
+use crate::action_bus::EditorAction;
 use crate::widget::ButtonState;
 
 fn ipad12_viewport() -> Rect {
@@ -1678,6 +1679,75 @@ fn every_timeline_menu_row_is_registered_and_hittable() {
         assert!(
             hero.store.get(*id).is_some(),
             "menu row {label:?} is painted but never registered in populate"
+        );
+    }
+}
+
+/// **Os botões Undo/Redo da barra chegam ao desfazer do EDITOR.**
+///
+/// O Enio: *"undo/redo no sistema"*. O Ctrl+Z funcionava; os **botões**, não — o Undo
+/// levantava `UndoImageEdit` (o desfazer de IMAGEM, single-level: Trim / Make Square / Bg
+/// Removal), então mover uma forma e clicar em Undo não fazia nada. E o **Redo não
+/// despachava coisa alguma**: pintado, clicável, órfão.
+///
+/// O gate anterior deste arquivo pedia que `TOOL_REDO` estivesse **no store** — e ele estava.
+/// Registrado não é despachado, do mesmo jeito que pintado não é populado.
+#[test]
+fn the_rail_undo_and_redo_buttons_reach_the_editor_undo() {
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+
+    assert!(
+        chrome::dispatch_all(&mut hero, WidgetEvent::Click(ids::TOOL_UNDO)),
+        "o clique no Undo tem de ser consumido por ALGUÉM"
+    );
+    assert!(chrome::dispatch_all(
+        &mut hero,
+        WidgetEvent::Click(ids::TOOL_REDO)
+    ));
+
+    let raised: Vec<EditorAction> = hero.bus.drain().collect();
+    assert_eq!(
+        raised,
+        vec![
+            EditorAction::UndoStep { redo: false },
+            EditorAction::UndoStep { redo: true },
+        ],
+        "os dois vão para o MESMO caminho do Ctrl+Z, não para o undo de imagem"
+    );
+}
+
+/// **Nenhum chip PINTADO na barra pode ser órfão.** Um botão pintado que ninguém despacha é
+/// indistinguível de um botão quebrado — e foi exatamente assim que o Redo passou meses na
+/// tela sem fazer nada, com um gate ao lado afirmando que ele estava "no store".
+///
+/// A lista vem de `left_rail::rail_entries` — **a mesma que o rail pinta**. Escrevê-la à mão
+/// aqui seria repetir o erro num nível acima: uma lista escrita à mão drifta da tela.
+/// Acrescente um chip ao rail sem lhe dar um handler e este gate nasce vermelho.
+#[test]
+fn every_painted_rail_button_is_dispatched_by_somebody() {
+    crate::test_support::ensure_panel_registry();
+    for painter_active in [false, true] {
+        let probe = HeroScreen::new(NodeId(1));
+        let ids: Vec<NodeId> = super::left_rail::rail_entries(&probe.store, painter_active)
+            .iter()
+            .filter_map(super::super::super::widget::ToolRailEntry::node_id)
+            .collect();
+        assert!(
+            ids.len() >= 8,
+            "o rail tem chips (modo painter={painter_active})"
+        );
+        let mut dead = Vec::new();
+        for id in ids {
+            let mut hero = HeroScreen::new(NodeId(1));
+            if !chrome::dispatch_all(&mut hero, WidgetEvent::Click(id)) {
+                dead.push(id);
+            }
+        }
+        assert!(
+            dead.is_empty(),
+            "chips PINTADOS no rail (painter={painter_active}) que ninguém despacha \
+             — botões mortos: {dead:?}"
         );
     }
 }

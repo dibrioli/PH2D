@@ -284,6 +284,30 @@ pub fn paint_left_rail(
     store: &WidgetStore,
     painter_active: bool,
 ) {
+    let rail = ToolRail::new(
+        NodeId(200),
+        "Editor tools",
+        rail_entries(store, painter_active),
+    );
+    paint_rail(
+        layout,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        rail,
+        painter_active,
+    );
+}
+
+/// **As entradas que o rail PINTA** — a lista de verdade, e a única.
+///
+/// Separada do desenho porque é ela que o gate anti-botão-morto percorre: todo chip pintado
+/// tem de ser despachado por alguém (`chrome::dispatch_all`). Enquanto a lista só existia
+/// dentro do `paint`, um gate sobre ela teria de ser escrito à mão — e um gate escrito à mão
+/// **drifta**. Foi assim que o botão Redo ficou pintado, clicável e órfão.
+pub(crate) fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEntry> {
     // Top section: panel visibility toggles (workspace-level controls).
     let panel_toggles = [
         (
@@ -372,8 +396,21 @@ pub fn paint_left_rail(
     rail_entries.push(ToolRailEntry::Divider);
     rail_entries.push(ToolRailEntry::icon(ids::TOOL_UNDO, "Undo", IconId::Undo).with_sub("UNDO"));
     rail_entries.push(ToolRailEntry::icon(ids::TOOL_REDO, "Redo", IconId::Redo).with_sub("REDO"));
+    rail_entries
+}
 
-    let rail = ToolRail::new(NodeId(200), "Editor tools", rail_entries);
+/// O desenho propriamente dito (o rail já montado).
+#[allow(clippy::too_many_arguments)]
+fn paint_rail(
+    layout: &HeroLayout,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    rail: ToolRail,
+    painter_active: bool,
+) {
     let rail_rect = Rect::new(
         layout.left_rail.x,
         layout.left_rail.y,

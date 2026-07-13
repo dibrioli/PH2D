@@ -85,6 +85,7 @@ mod sim_populate;
 mod theme;
 mod timeline_persist;
 mod undo;
+mod undo_route;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
 mod vec_connector_panel;
@@ -306,6 +307,7 @@ impl App {
             undo: crate::undo::ProjectUndo::default(),
             undo_baseline: None,
             undo_request: None,
+            undo_button: None,
             any_input_this_frame: false,
             vec_build: None,
             vec_grad_drag: None,

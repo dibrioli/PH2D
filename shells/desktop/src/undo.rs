@@ -286,6 +286,12 @@ impl crate::App {
     ///    cada ação.
     pub(crate) fn post_frame_undo(&mut self) {
         let had_input = std::mem::take(&mut self.any_input_this_frame);
+        // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
+        // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
+        // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
+        if let Some(redo) = self.undo_button.take() {
+            self.undo_or_redo(redo);
+        }
         if let Some(redo) = self.undo_request.take() {
             self.apply_undo(redo);
             return;

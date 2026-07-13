@@ -138,10 +138,20 @@ pub enum EditorAction {
 
     /// Undo the most recent image-edit (Trim Transparency / Make
     /// Square / Bg Removal). No payload — the shell owns the
-    /// snapshot. Raised by clicking `TOOL_UNDO` on the LeftRail or
-    /// pressing Cmd+Z / Ctrl+Z in the desktop shell. Single-level
-    /// by design; the broader editor-undo system is M14.x scope.
+    /// snapshot. Single-level by design, and it is now the FALLBACK of
+    /// [`Self::UndoStep`] (the shell routes to it when no other undo
+    /// owner has a step), not something any button raises directly.
     UndoImageEdit,
+
+    /// **O desfazer do editor** — os botões `TOOL_UNDO` / `TOOL_REDO` da barra
+    /// esquerda. `redo = true` é o refazer.
+    ///
+    /// O shell roteia isto pelo MESMO caminho do Ctrl+Z (`App::undo_or_redo`), e é a
+    /// coisa toda: enquanto o botão tinha caminho próprio, ele levantava
+    /// `UndoImageEdit` — o undo de IMAGEM, single-level — enquanto o atalho desfazia o
+    /// projeto. Mover uma forma e clicar em Undo não fazia nada. E o botão **Redo não
+    /// despachava coisa alguma**: era pintado, clicável, e órfão.
+    UndoStep { redo: bool },
 
     /// Toggle the `Visibility` component on the entity backing the
     /// hierarchy row whose eye-icon was just clicked. Payload: the

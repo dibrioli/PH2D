@@ -109,6 +109,21 @@ pub enum ToolRailEntry {
 }
 
 impl ToolRailEntry {
+    /// O id do chip. `None` só para o [`Self::Divider`], que não é clicável.
+    ///
+    /// Existe para o gate anti-botão-morto (`every_painted_rail_button_is_dispatched`): sem
+    /// ele, a lista do gate seria escrita à mão e driftaria da lista que o rail pinta — que
+    /// é exatamente como o botão Redo passou meses pintado, clicável e órfão.
+    #[must_use]
+    pub fn node_id(&self) -> Option<NodeId> {
+        match self {
+            Self::Icon { id, .. } | Self::Compound { id, .. } | Self::Swatch { id, .. } => {
+                Some(*id)
+            }
+            Self::Divider => None,
+        }
+    }
+
     pub fn icon(id: NodeId, label: impl Into<String>, icon: IconId) -> Self {
         Self::Icon {
             id,

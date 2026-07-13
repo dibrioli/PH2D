@@ -97,15 +97,124 @@ impl crate::App {
             }
             // O dedo pousa e arrasta por duas faces — e NÃO solta (o véu das pintadas fica
             // na tela para ser olhado).
-            10 if level >= 2 => {
+            10 if level == 2 => {
                 self.build_down(IN_STAR, false, false);
                 self.build_move(IN_PENT);
             }
-            f if f > 10 && level >= 2 => {
+            f if f > 10 && level == 2 => {
                 self.build_move(IN_STAR);
                 self.build_move(IN_PENT);
             }
+            // **Níveis 3 e 4 — o undo pelo CAMINHO REAL.** Nada de chamar `build_up` e
+            // `undo_request` na mão: aqui entram `on_mouse_input` e `key_input`, que é por
+            // onde o winit entra. É a diferença entre provar o mecanismo e provar o produto.
+            //
+            // O baseline precisa ser ARMADO: o hook cria as formas sem input nenhum, e o undo
+            // global registra por diff **em frames com input** — sem isto o 1º clique
+            // arrastaria "as 3 formas nasceram" para dentro do mesmo passo, e o Ctrl+Z
+            // voltaria para a cena VAZIA. (No produto isso não acontece: desenhar é input.)
+            9 if level >= 3 => {
+                self.any_input_this_frame = true;
+                self.smoke_state("baseline (3 formas)");
+            }
+            12 if level >= 3 => self.smoke_click(IN_STAR),
+            13 if level >= 3 => self.smoke_state("depois do clique"),
+            14 if level == 3 || level == 4 => self.smoke_undo(false), // Ctrl+Z
+            15 if level == 3 || level == 4 => self.smoke_state("depois do UNDO"),
+            // Nível 3: redo direto. Nível 4: um clique no VAZIO ANTES do redo — é aí que um
+            // passo espúrio apareceria, e um passo espúrio **limpa a pilha de redo**.
+            16 if level == 4 => self.smoke_click([9.0, 9.0]),
+            17 if level == 4 => self.smoke_state("depois de um clique no nada"),
+            18 if level == 3 || level == 4 => self.smoke_undo(true), // Ctrl+Shift+Z
+            19 if level == 3 || level == 4 => self.smoke_state("depois do REDO"),
+            // **Nível 5 — os BOTÕES da barra**, clicados com o mouse de verdade: o ponteiro
+            // acha o chip no hit-index, o widget emite o Click, o chrome despacha, o bus é
+            // drenado e o shell desfaz. É o caminho inteiro, sem atalho nenhum.
+            14 if level == 5 => self.smoke_rail_click(ph2d_editor::ids::TOOL_UNDO, "Undo"),
+            15 if level == 5 => self.smoke_state("depois do BOTÃO Undo"),
+            16 if level == 5 => self.smoke_rail_click(ph2d_editor::ids::TOOL_REDO, "Redo"),
+            17 if level == 5 => self.smoke_state("depois do BOTÃO Redo"),
             _ => {}
         }
+    }
+
+    /// Um clique no ponto de MUNDO `w`, pelo caminho do winit: cursor → botão → botão.
+    fn smoke_click(&mut self, w: [f64; 2]) {
+        let Some(gfx) = self.gfx.as_ref() else { return };
+        let win = gfx.surface.size();
+        let s = gfx.camera.world_to_screen([w[0] as f32, w[1] as f32], win);
+        self.on_cursor_moved(winit::dpi::PhysicalPosition::new(
+            f64::from(s.0),
+            f64::from(s.1),
+        ));
+        self.on_mouse_input(
+            winit::event::ElementState::Pressed,
+            winit::event::MouseButton::Left,
+        );
+        self.on_mouse_input(
+            winit::event::ElementState::Released,
+            winit::event::MouseButton::Left,
+        );
+    }
+
+    /// Ctrl+Z (ou Ctrl+Shift+Z) pelo roteamento REAL do teclado.
+    fn smoke_undo(&mut self, redo: bool) {
+        use winit::keyboard::ModifiersState;
+        let mods = if redo {
+            ModifiersState::CONTROL | ModifiersState::SHIFT
+        } else {
+            ModifiersState::CONTROL
+        };
+        self.modifiers = mods;
+        self.key_input(
+            winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyZ),
+            winit::event::ElementState::Pressed,
+            false,
+            None,
+        );
+        self.modifiers = ModifiersState::empty();
+    }
+
+    /// Acha um chip do rail no hit-index e o clica **com o ponteiro** (é o caminho do
+    /// usuário: pixel → hit → widget → chrome → bus → shell).
+    fn smoke_rail_click(&mut self, id: ph2d_editor::NodeId, label: &str) {
+        let Some(hero) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) else {
+            return;
+        };
+        let mut found = None;
+        'scan: for y in (0..1000).step_by(4) {
+            for x in (0..120).step_by(4) {
+                if hero.hit_index.hit(x as f32, y as f32) == Some(id) {
+                    found = Some((x as f32, y as f32));
+                    break 'scan;
+                }
+            }
+        }
+        let Some((x, y)) = found else {
+            eprintln!("[build-smoke] o chip {label} NÃO está no hit-index (não é clicável!)");
+            return;
+        };
+        eprintln!("[build-smoke] clicando no botão {label} em ({x}, {y})");
+        self.on_cursor_moved(winit::dpi::PhysicalPosition::new(
+            f64::from(x),
+            f64::from(y),
+        ));
+        self.on_mouse_input(
+            winit::event::ElementState::Pressed,
+            winit::event::MouseButton::Left,
+        );
+        self.on_mouse_input(
+            winit::event::ElementState::Released,
+            winit::event::MouseButton::Left,
+        );
+    }
+
+    fn smoke_state(&mut self, when: &str) {
+        let n = self.gfx.as_ref().map_or(0, |g| g.vec_scene.paths().len());
+        eprintln!(
+            "[build-smoke] {when}: {n} path(s) · undo={} redo={}",
+            self.undo.depth(),
+            usize::from(self.undo.can_redo()),
+        );
     }
 }

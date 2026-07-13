@@ -37,11 +37,20 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.bus.push(EditorAction::ActivateTool { tool_id });
         return true;
     }
-    // Image-edit Undo — TOOL_UNDO chip on the LeftRail (also bound to
-    // Cmd+Z in the desktop shell). When no snapshot exists the shell's
-    // drainer surfaces a "Nothing to undo" toast.
+    // **Undo / Redo da barra esquerda.** Vão para o MESMO caminho do Cmd/Ctrl+Z
+    // (`EditorAction::UndoStep` → `App::undo_or_redo`), e não para o undo de imagem.
+    //
+    // Era aqui que o "undo/redo não funciona no sistema" morava: o botão Undo levantava
+    // `UndoImageEdit` (single-level, só Trim/Make Square/Bg Removal), então mover uma
+    // forma e clicar em Undo não fazia NADA — e o botão Redo, pintado ao lado dele, não
+    // despachava coisa alguma. Um botão pintado que não despacha é indistinguível de um
+    // botão quebrado, e é assim que ele é lido.
     if id == ids::TOOL_UNDO {
-        hero.bus.push(EditorAction::UndoImageEdit);
+        hero.bus.push(EditorAction::UndoStep { redo: false });
+        return true;
+    }
+    if id == ids::TOOL_REDO {
+        hero.bus.push(EditorAction::UndoStep { redo: true });
         return true;
     }
     false

@@ -77,6 +77,7 @@
 - [Unit-verde ≠ funciona no produto](feedback_tool_unit_green_integration_dead.md) — tool passa unit+CI e está morta (pill/input não wirado); só audit e2e pega
 - [Um clique é um press que DESLIZOU](feedback_a_click_is_a_press_that_drifted.md) — mão humana move 1px; Down/Up na mesma coord é robô, não teste
 - [Pintado ≠ populado: teste a PINTURA](feedback_painted_is_not_populated_paint_gate.md) — nenhum gate rodava `paint`; "o botão não existe" passava em tudo
+- [O widget está pronto quando um teste CLICA nele](feedback_widget_is_done_when_a_test_clicks_it.md) — sem registro no `WidgetStore` o ponteiro nunca vira `Click`; use `MockPanelHost::click_at`
 - [Teste com os números do PRODUTO](feedback_test_with_product_numbers_not_convenient_ones.md) — `px_to_world = 1.0` é o único valor que esconde erro de unidade
 - [Geometria sobre eixos de unidades diferentes](feedback_geometry_over_mixed_units_needs_the_consumers_conversion.md) — ângulo/normal só existe depois de converter; use a constante que o RENDERIZADOR usa
 - [Snapshot tem de ser PONTO FIXO dos sistemas](feedback_a_snapshot_must_be_a_fixed_point_of_the_systems.md) — undo/save por diff: se o frame seguinte normaliza algo, a normalização vira "ação do usuário". E um Ctrl+Z são DOIS eventos (o Released também)

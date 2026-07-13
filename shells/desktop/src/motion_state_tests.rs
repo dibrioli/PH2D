@@ -220,10 +220,17 @@ fn sinks_of(state: &MotionState) -> Vec<NodeId> {
 fn run(state: &mut MotionState, ticks: u64) {
     const FIXED_DT: f64 = 1.0 / 60.0;
     state.sinks = sinks_of(state);
-    // The transport is born PAUSED and `advance` is a no-op while it is (the bridge
-    // auto-plays on the first frame). Without this the tick never leaves 0, the sim never
-    // runs, and a guard about "state the load must forget" would be measuring an empty cook.
-    state.transport.play();
+    // The editor's ONE clock (W4.T7). Motion keeps no transport of its own any more, so the
+    // helper drives the same `Playhead` the bridge drives and derives the tick with the same
+    // function (`motion_bridge::motion_tick`) — a counter rolled by hand here would be the
+    // stand-in this helper exists to avoid, and a second derivation of the tick is the trap
+    // this module has already fallen into.
+    //
+    // It is born PAUSED and `advance` is a no-op while it is (the bridge auto-plays when the
+    // tool opens). Without the `play` the tick never leaves 0, the sim never runs, and a guard
+    // about "state the load must forget" would be measuring an empty cook.
+    let mut playhead = ph2d_core::Playhead::new(FIXED_DT);
+    playhead.play();
     let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
     // The shell cooks the CURRENT tick before it ever advances (the catch-up cook of a
     // paused frame), so tick 0 — the sim's seed — is always the first one cooked. Advancing
@@ -231,9 +238,9 @@ fn run(state: &mut MotionState, ticks: u64) {
     // ring, and nothing comes out. Mirroring the bridge is the point of this helper.
     for step in 0..=ticks {
         if step > 0 {
-            state.transport.advance(1);
+            playhead.advance();
         }
-        let tick = state.transport.tick;
+        let tick = crate::render_loop::motion_bridge::motion_tick(&playhead, FIXED_DT);
         state.pump.advance_or_scrub_scoped(
             &state.doc.graph,
             &state.registry,
@@ -318,10 +325,12 @@ fn loading_forgets_every_id_that_named_the_previous_document() {
         !state.history.can_undo(),
         "undo belongs to the document that was edited, not to the file that replaced it"
     );
-    assert_eq!(
-        state.transport.tick, 0,
-        "a loaded document starts at its own tick 0"
-    );
+    // "A loaded document starts at tick 0" is NOT asserted here any more, and that is a real
+    // move, not a deletion: after W4.T7 the clock is the editor's ONE `Playhead`, which
+    // `MotionState` does not own and cannot rewind. The rewind now lives in
+    // `App::project_load` (see `project.rs`). It is not covered by a headless guard — `App`
+    // needs a window — and that gap is recorded in the integration report rather than papered
+    // over with an assertion about a field that no longer exists.
 }
 
 /// A document survives the trip through the project file: the graph the artist built comes

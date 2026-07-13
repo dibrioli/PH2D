@@ -267,76 +267,6 @@ impl MotionHistory {
     }
 }
 
-/// Playback transport for the Motion Nodes timeline (Motion Nodes M0.T8).
-///
-/// **Not** part of the persisted [`MotionDoc`] — this is runtime playback state.
-/// The playhead is derived from the integer `tick` (`tick × fixed_dt`), never
-/// from accumulated wall-clock float, so motion time is deterministic (HR-5):
-/// the shell advances `tick` by the number of fixed steps its `FixedStep`
-/// produced this frame (the accumulator lives in `FixedStep`, not here).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct MotionTransport {
-    /// Current fixed tick (playhead = `tick × fixed_dt`). Monotonic during
-    /// playback except at a loop wrap or an explicit scrub.
-    pub tick: u64,
-    /// Whether playback is advancing.
-    pub playing: bool,
-    /// Optional `[lo, hi)` loop range in ticks. When set and `tick` reaches
-    /// `hi`, playback wraps back into the range.
-    pub loop_range: Option<(u64, u64)>,
-}
-
-impl MotionTransport {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Playhead in seconds for a given fixed timestep (e.g. `1.0/60.0`).
-    pub fn playhead(&self, fixed_dt: f64) -> f64 {
-        self.tick as f64 * fixed_dt
-    }
-
-    pub fn play(&mut self) {
-        self.playing = true;
-    }
-
-    pub fn pause(&mut self) {
-        self.playing = false;
-    }
-
-    /// Flip play/pause; returns the new `playing` state.
-    pub fn toggle(&mut self) -> bool {
-        self.playing = !self.playing;
-        self.playing
-    }
-
-    /// Jump to an explicit tick (scrub). Does not change `playing`.
-    pub fn scrub_to(&mut self, tick: u64) {
-        self.tick = tick;
-    }
-
-    /// Reset to tick 0 (does not change `playing`).
-    pub fn reset(&mut self) {
-        self.tick = 0;
-    }
-
-    /// Advance by `steps` fixed ticks **iff playing**. Wraps within
-    /// [`Self::loop_range`] when set. No-op when paused or `steps == 0`.
-    pub fn advance(&mut self, steps: u64) {
-        if !self.playing || steps == 0 {
-            return;
-        }
-        self.tick = self.tick.saturating_add(steps);
-        if let Some((lo, hi)) = self.loop_range
-            && hi > lo
-            && self.tick >= hi
-        {
-            let span = hi - lo;
-            self.tick = lo + (self.tick - lo) % span;
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -482,47 +412,5 @@ mod tests {
         hist.begin(&v);
         hist.commit_if_changed(&v); // identical -> no step
         assert!(!hist.can_undo());
-    }
-
-    #[test]
-    fn transport_playhead_is_deterministic_from_tick() {
-        let mut t = MotionTransport::new();
-        t.tick = 120;
-        assert!((t.playhead(1.0 / 60.0) - 2.0).abs() < 1e-9); // 120 ticks @ 60Hz = 2s
-    }
-
-    #[test]
-    fn transport_advances_only_when_playing() {
-        let mut t = MotionTransport::new();
-        t.advance(5); // paused
-        assert_eq!(t.tick, 0);
-        t.play();
-        t.advance(5);
-        assert_eq!(t.tick, 5);
-        t.pause();
-        t.advance(5);
-        assert_eq!(t.tick, 5);
-    }
-
-    #[test]
-    fn transport_loop_range_wraps() {
-        let mut t = MotionTransport {
-            tick: 8,
-            playing: true,
-            loop_range: Some((4, 10)), // span 6
-        };
-        t.advance(4); // 8 -> 12 -> wrap to 4 + (12-4)%6 = 4 + 2 = 6
-        assert_eq!(t.tick, 6);
-    }
-
-    #[test]
-    fn transport_scrub_and_reset() {
-        let mut t = MotionTransport::new();
-        t.play();
-        t.scrub_to(42);
-        assert_eq!(t.tick, 42);
-        assert!(t.playing); // scrub does not change playing
-        t.reset();
-        assert_eq!(t.tick, 0);
     }
 }

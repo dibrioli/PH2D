@@ -32,7 +32,7 @@ mod image_edit;
 mod inspector_commits;
 mod inspector_ordering;
 mod inspector_visibility;
-mod motion_bridge;
+pub(crate) mod motion_bridge;
 mod padding_bridge;
 pub(crate) mod painter_bridge;
 /// Brush-image import helpers (Grain/Shape file pickers), split from

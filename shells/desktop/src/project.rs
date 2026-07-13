@@ -138,6 +138,11 @@ impl crate::App {
         {
             eprintln!("[proj] grafo de motion ilegivel, mantido o atual: {e:?}");
         }
+        // O relógio volta a zero. O Motion não tem transporte próprio (W4.T7) — o `install`
+        // não pode se rebobinar sozinho, e é aqui que a rebobinada pertence: um projeto
+        // recém-carregado começa no início, e um playhead adiantado sobre uma simulação que
+        // nunca rodou mentiria sobre um estado que não existe.
+        self.playhead.rewind();
         self.undo = ProjectUndo::default();
         eprintln!("[proj] carregado: {path}");
     }

@@ -173,8 +173,13 @@ pub(super) fn dispatch(
         }
         // The probe's reading for this frame (a memo lookup on the pump's own cook —
         // see `edit::sample_probe`). Taken before the snapshot borrow.
+        //
+        // At the COOK's time, not the playhead's raw seconds: the memo is keyed by the tick
+        // the pump cooked, and mid-tick (a scrub lands anywhere) those two differ. Asking for
+        // a time nobody cooked is how a readout starts lying.
+        let cook_time = motion_time(playhead, fixed_dt);
         let probe = motion_active
-            .then(|| edit::sample_probe(motion, motion.transport.playhead(fixed_dt)))
+            .then(|| edit::sample_probe(motion, cook_time))
             .flatten();
         ph2d_panel_motion_graph::set_current_motion_graph(motion_active.then(|| {
             let mut snap =
@@ -202,9 +207,10 @@ pub(super) fn dispatch(
             // and whether that changed since last frame (the wire's march). A node no sink
             // consumes has no entry and stays blank — which is the diagnosis, not a gap.
             readout::stamp(motion, &mut snap);
-            // The ONE clock the marching dashes read. The panel has none of its own: a flow
-            // animation driven by a paint counter would keep marching on a paused graph.
-            snap.now = motion.transport.playhead(fixed_dt) as f32;
+            // The ONE clock the marching dashes read (`ph2d_core::Playhead`, W4.T7). The panel
+            // has none of its own: a flow animation driven by a paint counter would keep
+            // marching on a paused graph.
+            snap.now = cook_time as f32;
             snap
         }));
     }
@@ -295,7 +301,7 @@ fn ticks_owed(last_cooked: Option<u64>, target: u64) -> std::ops::RangeInclusive
 /// seconds — so the seam rounds. At `rate == 1` the playhead's time is an exact
 /// multiple of `fixed_dt` and the rounding is a no-op; a seek to mid-tick lands on
 /// the nearest one.
-fn motion_tick(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> u64 {
+pub(crate) fn motion_tick(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> u64 {
     if fixed_dt <= 0.0 {
         return 0;
     }
@@ -307,6 +313,17 @@ fn motion_tick(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> u64 {
     } else {
         0
     }
+}
+
+/// The COOK's time in seconds — the tick of [`motion_tick`] measured back out in seconds.
+///
+/// This is what a readout (probe, flow marching) must be sampled at, and it is NOT the same
+/// as `Playhead::time()`: the playhead is continuous and a scrub lands mid-tick, while the
+/// pump's memo only ever holds the tick it cooked. Reading the panel at the raw playhead time
+/// would ask the memo for an instant that was never simulated — the derived-coordinate trap
+/// (the seed must match the sample), and it has bitten this codebase before.
+fn motion_time(playhead: &ph2d_core::Playhead, fixed_dt: f64) -> f64 {
+    motion_tick(playhead, fixed_dt) as f64 * fixed_dt
 }
 
 /// Apply the panel's queued [`GraphIntent`]s to the shell-owned document (M1.E10).

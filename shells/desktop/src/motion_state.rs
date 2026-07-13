@@ -122,13 +122,12 @@ impl MotionState {
     /// - the **`Cook` is the simulation's living state**, not a cache — it holds the flakes
     ///   that are in the air. The pump is therefore replaced OUTRIGHT, not merely
     ///   `mark_dirty`'d (which invalidates the scrub cache but keeps the memo and the `pre`
-    ///   feedback). Honest footnote: the transport reset below happens to rescue a
-    ///   `mark_dirty`-only version, because rewinding the tick sends the pump down its scrub
-    ///   path and that re-sims from the tick-0 seed — the mutation test says so. But that is
-    ///   an emergent rescue by a neighbouring line, not a contract, and a load is not the
-    ///   place to depend on one. A fresh pump says what it means.
-    /// - the **transport** goes back to 0: a playhead at t=40s into a graph that has never
-    ///   been cooked is not a resumption, it is a lie about a simulation that never ran.
+    ///   feedback). A fresh pump says what it means.
+    /// - the **clock** goes back to 0 — but that is now the CALLER's job, not ours (W4.T7):
+    ///   Motion keeps no transport of its own, and the editor's ONE `Playhead` is not a
+    ///   field we own. `App::project_load` rewinds it after a successful load. The reason
+    ///   stands: a playhead at t=40s into a graph that has never been cooked is not a
+    ///   resumption, it is a lie about a simulation that never ran.
     /// - **undo** belongs to the document that was edited, not to the file that replaced it.
     /// - the **probe**, the **flow digests** and the panel's **selection** all name nodes by
     ///   id. A stale selection is the sharpest of the three: the params panel would happily
@@ -140,7 +139,6 @@ impl MotionState {
     fn install(&mut self, doc: MotionDoc) {
         self.doc = doc;
         self.pump = MotionCookPump::new();
-        self.transport = MotionTransport::new();
         self.history = MotionHistory::new();
         self.sinks.clear();
         self.probe = None;

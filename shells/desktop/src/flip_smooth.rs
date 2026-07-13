@@ -30,22 +30,25 @@ fn iters_for(smoothing: f32) -> u32 {
 /// vezes (de `smoothing`). Mantém a contagem de pontos (as pressões seguem 1:1);
 /// a reamostragem/fit é do pen-up (T2.8). `iters = 0` (ou `< 3` pontos) devolve o
 /// cru intacto.
+///
+/// **O kernel tem um dono só** (`ph2d_flip_reshape::blur`, W5): o mesmo alisador
+/// serve o traço em curso (aqui, influência uniforme) e o pincel **Smooth** da
+/// escultura (influência POR PONTO — o pincel alisa só onde alcança). Duas cópias
+/// dele derivariam, e "o Smooth da caneta e o Smooth do pincel alisam diferente" é
+/// exatamente o tipo de bug que ninguém procura.
 #[must_use]
 pub(crate) fn active_smooth(raw: &[Vec2], smoothing: f32) -> Vec<Vec2> {
     let iters = iters_for(smoothing);
     if iters == 0 || raw.len() < 3 {
         return raw.to_vec();
     }
-    let mut cur = raw.to_vec();
-    let mut next = cur.clone();
-    for _ in 0..iters {
-        // Interior só; `cur[0]` e `cur[last]` ficam ( pontas ancoradas ).
-        for i in 1..cur.len() - 1 {
-            next[i] = (cur[i - 1] + cur[i] * 2.0 + cur[i + 1]) * 0.25;
-        }
-        std::mem::swap(&mut cur, &mut next);
-    }
-    cur
+    ph2d_flip_reshape::binomial_uniform(
+        raw,
+        iters,
+        1.0, // o traço em curso alisa por igual (a "influência" é o nº de iterações)
+        ph2d_flip_reshape::Ends::Anchored, // a ponta segue o cursor sem lag
+        false, // um traço em curso nunca é fechado
+    )
 }
 
 /// Distância perpendicular de `p` à reta `a→b` (transcendental-free além do

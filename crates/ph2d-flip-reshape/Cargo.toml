@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-flip-reshape"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O RESHAPE do Flip (ADR-0114 W5) — os pincéis de escultura de traço, clean-room do
+# sculpt do Grease Pencil 5.2 (`docs/Flip/02 §7`).
+#
+# CPU puro, sem GPU e sem UI: entra a lista de traços + a amostra de input (cursor,
+# delta, pressão), sai o traço remodelado. Testável headless — cada pincel é uma
+# função sobre `FlipStroke`, e a "sensação GP" mora nas CONSTANTES (todas com fonte
+# no fonte da referência, nenhuma inventada).
+#
+# Crate SEPARADA (isolamento, ADR-0107): a tool não carrega a matemática, o modelo
+# não carrega os pincéis, e o kernel binomial (que o `active_smooth` do traço também
+# usa) tem **um dono só**.
+
+[dependencies]
+# Vec2.
+ph2d-core = { path = "../ph2d-core" }
+# O modelo: os pincéis escrevem direto no `FlipStroke` (SoA por-ponto).
+ph2d-flip = { path = "../ph2d-flip" }

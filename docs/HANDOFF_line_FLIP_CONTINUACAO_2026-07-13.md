@@ -2,16 +2,35 @@
 
 > **Para:** o próximo **agente-de-linha** de `line/FLIP` (o Flip = 4º meio do PH2D: animação
 > quadro-a-quadro, fork 2D clean-room do Grease Pencil — [ADR-0114](architecture/decisions/0114-grease-pencil-as-native-2d-medium-flip-no-3d-viewport.md)).
-> **De:** o agente anterior (fechou a **W5 — Reshape**; deixou UM bug aberto, com a **causa provada
-> e o gate vermelho escrito**). **Data:** 2026-07-13 · **Regime:** Modo L (workstation).
+> **De:** os agentes anteriores (a **W5 — Reshape** e, depois, o **§C/BUGS #17** — o balde da forma
+> à mão). **Data:** 2026-07-13 · **Regime:** Modo L (workstation).
 >
-> **Sua 1ª tarefa é o §C.** Não é uma investigação do zero: a causa está provada, o gate vermelho
-> existe no repo, e o fix cabe em poucas linhas. O que custa caro é o que vem **junto** com ele — as
-> armadilhas do §C.4 são reais e já morderam três vezes.
+> ## ✅ O §C FECHOU (2026-07-13, commit `c36933b8`) — sua 1ª tarefa é o **§D.1**
+>
+> O bug do balde (a forma à mão não era reconhecida) está **corrigido e gateado**; o registro
+> completo virou [`BUGS_flip.md` **#17**](Flip/BUGS_flip.md). Resumo do que mudou, para você não
+> reabrir nem re-derivar:
+>
+> - **`closed` saiu de TRÊS sítios** (o 3º não estava no diagnóstico original): o critério
+>   `filled_shape_target`, o **`pack`** do render (o fill de um traço aberto era **descartado** — a
+>   cor ficava invisível) e o **Unpaint** (senão a cor posta na forma à mão não saía mais). O
+>   `stroke_flags(s.closed, …)` **não mudou**: fechar a linha desenharia um segmento que o usuário
+>   não fez.
+> - **Gates novos, os dois com mutação vermelha provada:**
+>   `a_hand_drawn_shape_paints_itself_even_though_it_is_not_closed` (unit, `flip_fill_tests.rs`) e
+>   `a_hand_drawn_open_shape_paints_itself_at_any_zoom` (pixel/GPU, `gpu_fill_fit.rs` — estrela
+>   ABERTA em 1×/2,5×/5×: **0 px de fundo no interior, 0 px de cor fora da arte**).
+> - **Duas armadilhas que o gate de pixel expôs** (leia o #17 antes de escrever o seu):
+>   um gate que só mede *"a cor não vaza"* é **falso-zero** (fica verde com o fill invisível — é a
+>   asserção de COBERTURA que morde); e varrer zoom com a forma **parada** é **vácuo** (a câmera
+>   entra dentro dela e a costura sai de quadro — a cena tem de encolher em mundo por `1/z`).
+> - **Pendente:** o **smoke do Enio** (§C.7 abaixo, mantido como roteiro de regressão).
+>
+> O §C fica abaixo como registro da saga. **Comece pelo §D.**
 >
 > **Leia primeiro, nesta ordem:** `CLAUDE.md` §0 → [`DIRETIVA_IMPLEMENTACAO.md`](IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md)
-> (inteira, e releia a cada passo) → este arquivo → [`Flip/BUGS_flip.md`](Flip/BUGS_flip.md) **#14, #15
-> e #16** (a saga do balde; o §C é o capítulo seguinte dela).
+> (inteira, e releia a cada passo) → este arquivo → [`Flip/BUGS_flip.md`](Flip/BUGS_flip.md) **#14, #15,
+> #16 e #17** (a saga do balde, do começo ao fim — e as armadilhas de GATE que ela ensinou).
 
 ---
 
@@ -59,7 +78,7 @@ tem commits locais **não integrados** (W5 + os fixes do smoke). Confira com `gi
 3. **A cor entra POR BAIXO da linha** (BUGS #15): o contorno de um fill vetorizado é rasterizado na
    cor do fill com a espessura da linha (a "dilatação") — senão a metade externa da linha não tem cor
    por baixo e, com pincel macio, o fundo vaza.
-4. **A forma fechada pinta A SI MESMA** (BUGS #16 — e é o §C): o preenchimento de uma forma é o `fill`
+4. **A forma pinta A SI MESMA** (BUGS #16 + **#17**): o preenchimento de uma forma é o `fill`
    do **próprio traço** (a triangulação dos pontos dele), como no GP. Um conjunto de vértices só.
 5. **O autokey é por FERRAMENTA**: caneta cria chave em BRANCO; **borracha e escultura DUPLICAM**.
 6. **Há TRÊS relógios** (BUGS #7): `drawing_at` · `source_frame` · `authoring_frame`.
@@ -67,7 +86,7 @@ tem commits locais **não integrados** (W5 + os fixes do smoke). Confira com `gi
 
 ---
 
-## §C — 🟥 A 1ª TAREFA: o balde não reconhece a forma desenhada À MÃO
+## §C — ✅ RESOLVIDO (`c36933b8`): o balde não reconhecia a forma desenhada À MÃO
 
 ### C.1 — O sintoma (smoke do Enio, 2026-07-13, com screenshot)
 
@@ -88,13 +107,9 @@ fechada (`flip_fill::filled_shape_target`). O critério exige `s.closed`.
 > vetorizado (que dessincroniza, e cujo erro o zoom amplia — BUGS #16 §"Por que o defeito parecia
 > grande").
 
-**A asserção-vermelha já está escrita** (e marcada `#[ignore]` com o motivo):
-
-```
-cargo test -p ph2d-host-desktop a_hand_drawn -- --ignored
-```
-`shells/desktop/src/flip_fill_tests.rs::a_hand_drawn_shape_is_not_closed_and_the_bucket_misses_it`
-— hoje VERMELHO: o balde cria um 2º traço em vez de pintar a forma.
+**A asserção-vermelha** virou o gate verde `a_hand_drawn_shape_paints_itself_even_though_it_is_not_closed`
+(`shells/desktop/src/flip_fill_tests.rs`), com a mutação provada: devolva o `s.closed` ao filtro e ele
+vê dois traços (o vetorizado) em vez de um.
 
 ### C.3 — O fix (o que fazer)
 

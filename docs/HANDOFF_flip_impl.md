@@ -876,13 +876,33 @@ Smoke da W5 (`af06b052`, `3004f715`, `5eab3475`). **Leia `docs/Flip/BUGS_flip.md
   o interior de uma forma fechada, o balde **pinta o próprio traço** (não vetoriza nada).
   O beco (registrado): costurar o contorno à linha destrói o anel em quinas agudas.
 
-### 🟥 ABERTO (a 1ª tarefa do próximo — causa PROVADA, gate vermelho escrito)
+## W5.2 — ✅ A forma desenhada À MÃO pinta a si mesma (2026-07-13, `c36933b8`, pendente o smoke)
 
-**O balde não reconhece a forma desenhada À MÃO:** o `filled_shape_target` exige `s.closed`, e um
-traço da caneta **nunca é `closed`** (só o `Shape: Filled` fecha). Logo o auto-preenchimento **nunca
-disparou no produto** e todo fill volta ao contorno vetorizado (que dessincroniza). Gate vermelho:
-`flip_fill_tests::a_hand_drawn_shape_is_not_closed_and_the_bucket_misses_it` (`#[ignore]`).
-**O fix e as armadilhas estão no [handoff §C](HANDOFF_line_FLIP_CONTINUACAO_2026-07-13.md).**
+Fecha o bug que o smoke da W5 deixou aberto. **Leia `docs/Flip/BUGS_flip.md` #17.**
+
+A cura do #16 **nunca disparou no produto**: o critério exigia `s.closed`, e um traço da caneta
+**nunca é `closed`** (só o `Shape: Filled` fecha o bit — a mão que encosta a ponta no começo não o
+muda). Todo fill do Enio caía no contorno vetorizado, que é o que dessincroniza.
+
+O `closed` diz que a **LINHA** é cíclica; ele **não diz nada sobre a REGIÃO** (o polígono do fill
+fecha implicitamente — é o que o GP faz). Saiu de **três** sítios:
+
+| Sítio | Sem ele |
+|---|---|
+| `flip_fill::filled_shape_target` | a forma à mão não é reconhecida (o bug reportado) |
+| `ph2d-flip-render::pack` | o fill de um traço ABERTO era **descartado** — a cor ficava **invisível** |
+| `flip_fill`, modo **Unpaint** | a cor posta na forma à mão **não saía mais** (não estava no diagnóstico) |
+
+O `stroke_flags(s.closed, …)` **não muda** (fechar a linha desenharia um segmento que o usuário não
+fez). Gates, os dois com **mutação vermelha provada**:
+`a_hand_drawn_shape_paints_itself_even_though_it_is_not_closed` (unit) e
+`a_hand_drawn_open_shape_paints_itself_at_any_zoom` (pixel/GPU — estrela ABERTA em 1×/2,5×/5×:
+0 px de fundo no interior, 0 px de cor fora da arte).
+
+**As duas armadilhas de GATE que isto ensinou** (BUGS #17, e valem para o módulo inteiro): um gate
+que só mede *"a cor não vaza"* é **falso-zero** (verde com o fill invisível — é a asserção de
+COBERTURA que morde); e varrer zoom com a forma **parada** é **vácuo** (a câmera entra dentro dela,
+a costura sai de quadro — a cena tem de encolher em mundo por `1/z`).
 
 ## Aberto (fora do W0..W5, por design)
 

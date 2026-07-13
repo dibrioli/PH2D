@@ -922,9 +922,13 @@ material tem `stroke + fill` no MESMO traço (`gpencil_engine_c.cc:550`). O Suza
 balde**: as formas dele carregam a própria cor. Esculpir a linha move a cor junto de graça, em
 qualquer zoom, para sempre.
 
-O critério do balde é conservador (`filled_shape_target`): o traço é **fechado** e é line-art, o
-**clique** cai dentro dele, e a **área** do contorno que o solver traçou bate com a dele (±15%) —
-é isso que separa "preencheu a forma" de "preencheu um pedaço entre ela e outra".
+O critério do balde é conservador (`filled_shape_target`): o traço é **line-art** (não uma região)
+e tem polígono, o **clique** cai dentro dele, e a **área** do contorno que o solver traçou bate com
+a dele (±15%) — é isso que separa "preencheu a forma" de "preencheu um pedaço entre ela e outra".
+
+> ⚠️ **O 1º corte deste critério também exigia `closed` — e isso o matou no produto.** Ver **#17**:
+> um traço desenhado à mão **não é `closed`**, então o caminho acima **nunca disparava** fora do
+> modo `Shape: Filled`. O `closed` saiu do critério.
 
 **A região entre VÁRIOS traços continua vetorizada** — ali não existe "a curva" para carregar a
 cor, e o balde do GP faz o mesmo. A dessincronização residual desse caminho é inerente a ele (e é
@@ -938,3 +942,65 @@ linha (uma região é só cor e some inteira; um traço com fill é line-art que
 > era que, no caso que importa, **não deve haver contorno vetorizado nenhum**. A geometria já
 > existia: era a própria linha. *Antes de melhorar a conversão entre dois modelos, pergunte se o
 > segundo modelo é necessário.*
+
+---
+
+## #17 — ✅ A cura do #16 nunca disparou: **nada, no produto, é `closed`**
+
+**Sintoma** (smoke do Enio, 2026-07-13, com screenshot): *"Quase perfeito, mas nem todo vertex da
+linha está conectado ao vertex de fill — o fill provavelmente não foi gerado conforme o número de
+vertex da linha. Isso cria áreas de dessincronização e gaps."* Na tela: a cor **corta** os entalhes
+da linha, transborda em trechos retos e recua em outros — o retrato do **contorno vetorizado**.
+
+Mas o #16 tinha acabado de matar o contorno vetorizado. Ele simplesmente **não estava rodando**.
+
+### A causa
+
+O critério do `filled_shape_target` exigia `s.closed`. E:
+
+> **Um traço desenhado à mão NÃO é `closed`.** O `flip_draw::build_stroke` só liga esse bit no modo
+> `Shape: Filled`; a caneta normal produz `closed = false` — **mesmo quando a mão encosta a ponta no
+> começo**. Logo o auto-preenchimento do #16 nunca disparou no produto, e todo fill do Enio caiu no
+> caminho vetorizado (cujo erro é assado em unidades de DOCUMENTO enquanto a linha é absoluta em px
+> de TELA — e por isso **o zoom o amplia**, que é o que a screenshot mostrava).
+
+O `closed` diz que a **LINHA** é cíclica (o shader liga a última ponta à primeira). Ele **não diz
+nada sobre a REGIÃO**. O polígono do fill fecha **implicitamente** — e é o que o GP faz: a
+triangulação dos pontos da curva não pergunta se ela é cíclica.
+
+### O fix — três sítios, e o terceiro não estava no diagnóstico
+
+| Sítio | Sem ele |
+|---|---|
+| `flip_fill::filled_shape_target` | a forma à mão não é reconhecida (o bug reportado) |
+| `ph2d-flip-render::pack` | o fill de um traço ABERTO era **descartado**: o balde punha a cor no traço e **a tela não mostrava nada** |
+| `flip_fill`, modo **Unpaint** | a cor que o balde acabou de pôr na forma à mão **não saía mais** (o passo 4 do smoke) |
+
+O `stroke_flags(s.closed, …)` **não muda**: fechar a linha desenharia um segmento que o usuário não
+fez (e num traço cujas pontas ficaram longe, uma linha atravessando o desenho).
+
+### Os dois gates — e as duas armadilhas que eles expuseram
+
+`a_hand_drawn_shape_paints_itself_even_though_it_is_not_closed` (unit) e
+`a_hand_drawn_open_shape_paints_itself_at_any_zoom` (pixel/GPU, `gpu_fill_fit.rs`). Os dois têm
+**mutação vermelha provada** (devolver o `s.closed` a cada sítio derruba o seu).
+
+Escrevendo o gate de pixel, duas armadilhas apareceram — e as duas teriam produzido um **verde
+decorativo**:
+
+1. **Falso-zero.** Um gate que só afirmasse *"a cor não vaza para fora da arte"* ficaria **VERDE com
+   o preenchimento invisível** — não há cor para vazar. (Medido: com o `pack` mutado, `spill = 0` e
+   `bg_inside = 16240`.) **É a asserção de COBERTURA que morde.** Todo gate de "não aparece onde não
+   deve" precisa do irmão "aparece onde deve".
+2. **Varredura de zoom vácua.** Varrer o zoom com a forma **parada** faz a câmera entrar DENTRO dela:
+   em 5× a tela vira um campo de cor liso, a costura fill↔linha sai de quadro e as asserções não
+   olham fronteira nenhuma (o `interior` medido salta de 19.298 px para 102.400 = a tela inteira).
+   A cena passou a **encolher em mundo por `1/z`** — o que reproduz a razão que de fato quebra
+   (erro-em-DOC : espessura-em-TELA) **e** mantém a costura sob o microscópio. O gate agora afirma
+   que a costura está em quadro.
+
+> **Lição — a cura de um bug herda a pré-condição em que você a escreveu.** O #16 foi desenvolvido
+> contra uma fixture `closed = true` (a única forma fechada que existia era a do teste), e a
+> pré-condição do laboratório virou, sem ninguém decidir, a pré-condição do produto. *Um caminho
+> novo só existe quando algo que o usuário de fato produz entra nele* — e a pergunta que fecha isso
+> em um minuto é: **"quem, no app real, satisfaz esta condição?"**

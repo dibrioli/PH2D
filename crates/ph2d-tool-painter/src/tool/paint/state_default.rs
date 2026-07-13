@@ -145,12 +145,10 @@ impl Default for PaintState {
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             stroke_mask: Vec::new(),
             relief: Default::default(),
-            // Impasto lighting (canvas-level). Upper-left at 45 deg: the reading every eye resolves as
-            // raised rather than engraved. Inert until some layer actually has relief.
+            // Impasto lighting (canvas-level). Inert until some layer actually has relief.
             impasto_show: true,
-            // Enio's dialled-in light (2026-07-12, after the smoke). Mirrors `reset_brush_impasto`.
-            impasto_light_angle_deg: 230,
-            impasto_light_elev_deg: 30,
+            // The rig: Enio's dialled-in key (2026-07-12, after the smoke) + three lamps switched OFF.
+            impasto_rig: Default::default(),
             impasto_shine: 0.7,
             stroke_coverage: Vec::new(),
             stroke_color: Vec::new(),

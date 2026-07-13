@@ -250,8 +250,7 @@ impl PainterTool {
             impasto_plow_applies: self.impasto_plow_applies(),
             impasto_applies: self.impasto_applies(),
             impasto_show: self.paint.impasto_show,
-            impasto_light_angle_deg: self.paint.impasto_light_angle_deg,
-            impasto_light_elev_deg: self.paint.impasto_light_elev_deg,
+            impasto_rig: self.paint.impasto_rig,
             impasto_shine: self.paint.impasto_shine,
         }
     }

@@ -52,10 +52,6 @@ const SHININESS: f32 = 24.0;
 /// per pixel (HR-5; the precedent is `watercolor_lut.rs`). // CLAMP-OK
 const SPEC_LUT: usize = 256;
 
-/// Lowest light elevation the pass will use, in degrees. At elevation 0 the light grazes the canvas,
-/// the flat-surface response goes to zero and the relative shading divides by ~0. // CLAMP-OK
-const MIN_ELEV_DEG: u16 = 5;
-
 /// **Ambient** floor of the diffuse term: what a face turned fully AWAY from the light still returns.
 ///
 /// Paint in shadow is darker; it is not black. Without this the shading floors at `0` and multiplies
@@ -223,66 +219,152 @@ impl ReliefFields<'_> {
     }
 }
 
-/// The lighting environment, resolved once per pass.
-struct Light {
+/// One resolved lamp: its direction, its half-vector, and what a FLAT surface returns to it. The whole
+/// pass is relative to that flat response — see [`Rig`].
+struct Lamp {
     /// Unit light direction (x, y, z); `z > 0` points out of the canvas.
     dir: [f32; 3],
-    /// The diffuse response of a FLAT surface (`= dir.z`) — the divisor that keeps flat paint at 1.0.
-    flat_diffuse: f32,
-    /// The specular response of a FLAT surface — subtracted so flat paint gains no highlight.
-    flat_spec: f32,
-    /// `pow(x, SHININESS)` for `x ∈ [0, 1]`, baked (HR-5).
-    spec_lut: [f32; SPEC_LUT],
     /// Half-vector between the light and the (orthographic) view direction `(0, 0, 1)`.
     half: [f32; 3],
-    /// Specular strength (Shine).
+    /// Weighted colour: `intensity × colour`. Weight and hue never appear apart again — every sum below
+    /// is over this one vector, which is why a rig of coloured lamps costs exactly what a rig of white
+    /// ones does.
+    tint: [f32; 3],
+    /// Its specular response on a flat surface, before the tint. Subtracted PER LAMP and clamped at
+    /// zero: sum the raw speculars and subtract the flat total instead, and a lamp facing away from a
+    /// slope contributes a NEGATIVE term — it borrows headroom from a lamp facing it, and the
+    /// "highlight" darkens the paint (`the_glint_only_ever_adds_light`).
+    flat_spec: f32,
+}
+
+/// The lighting environment, resolved once per pass: every lit lamp, plus the sums a FLAT surface
+/// returns — which is what the whole pass divides by.
+///
+/// **The contract survives the rig, per channel** (`impasto_rig`): on flat paint `N·Lᵢ = Lᵢ.z` for every
+/// lamp, so `diffuse[c] / flat[c] = 1` in every channel whatever the colours and intensities are. A
+/// warm key and a cool fill therefore tint the paint exactly where it TILTS, and a flat painting under a
+/// red lamp does not turn red.
+struct Rig {
+    /// A fixed array, not a `Vec`: `shade` walks this once per TEXEL, and at 4096² the heap indirection
+    /// on a rig of one lamp cost 0.4 ms/move all by itself.
+    lamps: [Lamp; super::impasto_rig::MAX_LIGHTS],
+    /// How many of [`Self::lamps`] are real.
+    n: usize,
+    /// `Σ tintᵢ[c] · flat_diffuseᵢ` — the flat surface's own diffuse, per channel. The divisor.
+    flat_diffuse: [f32; 3],
+    // (There is deliberately NO rig-wide `flat_spec` total. The flat highlight is subtracted PER LAMP,
+    // in `Lamp::flat_spec`, and clamped at zero there — see `the_glint_only_ever_adds_light`. A total
+    // subtracted from a raw sum lets a lamp facing away from a slope borrow headroom from one facing it,
+    // and the "highlight" comes out negative.)
+    /// `pow(x, SHININESS)` for `x ∈ [0, 1]`, baked once for the rig (HR-5).
+    spec_lut: [f32; SPEC_LUT],
+    /// Every lamp is GREY (`r = g = b`). Then every channel's ratio is the same number, and the shade
+    /// computes it **once** instead of three times.
+    ///
+    /// Not a micro-optimisation dressed up as one: this is the DEFAULT rig (one white key), and it is
+    /// every rig anyone paints with until they deliberately colour a lamp. Without it, giving the pass a
+    /// per-channel answer cost 0.4 ms/move at 4096² — a third of the impasto budget — to compute the same
+    /// float three times for everybody.
+    achromatic: bool,
+    /// Specular strength (Shine) — a property of the PAINT, not of a lamp, so it stays global. (Krita
+    /// gives every light its own ks; that is four knobs for one material and it is the reason its Phong
+    /// Bumpmap has 24 controls.)
     shine: f32,
 }
 
-impl Light {
-    fn new(angle_deg: u16, elev_deg: u16, shine: f32) -> Self {
-        // Transcendental-free (HR-5): the shared 1°-step rotor, the same one the brush's Jitter Rotate
-        // and per-slot Angle are built from.
-        let elev = elev_deg.clamp(MIN_ELEV_DEG, 90);
-        let az = ph2d_painter_brush::texture::rotate_by_degrees(angle_deg % 360);
-        let el = ph2d_painter_brush::texture::rotate_by_degrees(elev);
-        let (cos_e, sin_e) = (el[0], el[1]);
-        let dir = [cos_e * az[0], cos_e * az[1], sin_e];
-        let half = {
-            let h = [dir[0], dir[1], dir[2] + 1.0]; // view = (0, 0, 1), orthographic
-            let len = (h[0] * h[0] + h[1] * h[1] + h[2] * h[2]).sqrt().max(1e-6);
-            [h[0] / len, h[1] / len, h[2] / len]
-        };
+impl Rig {
+    /// Resolve the rig. `None` when no lamp is lit — the caller then leaves the canvas alone rather
+    /// than dividing by a zero flat response.
+    fn new(rig: &super::impasto_rig::LightRig, shine: f32) -> Option<Self> {
         let mut spec_lut = [0.0f32; SPEC_LUT];
         for (i, e) in spec_lut.iter_mut().enumerate() {
             let x = i as f32 / (SPEC_LUT - 1) as f32;
             *e = x.powf(SHININESS);
         }
-        let lut = |x: f32| {
-            let i = (x.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize;
-            spec_lut[i]
+        let lut = |x: f32| spec_lut[(x.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize];
+
+        const DARK: Lamp = Lamp {
+            dir: [0.0; 3],
+            half: [0.0; 3],
+            tint: [0.0; 3],
+            flat_spec: 0.0,
         };
-        // A flat surface's own response — the reference the whole pass is relative to.
-        let flat_spec = lut(half[2]); // N_flat = (0, 0, 1) ⇒ N·H = half.z
-        Self {
-            dir,
-            flat_diffuse: sin_e.max(1e-3),
-            flat_spec,
-            spec_lut,
-            half,
-            shine: shine.clamp(0.0, 1.0),
+        let mut lamps = [DARK; super::impasto_rig::MAX_LIGHTS];
+        let mut n = 0usize;
+        let mut flat_diffuse = [0.0f32; 3];
+        for l in rig.lights.iter().filter(|l| l.on && l.intensity > 0.0) {
+            // Transcendental-free (HR-5): the shared 1°-step rotor, the same one the brush's Jitter
+            // Rotate and per-slot Angle are built from.
+            let elev = l.elev_deg.clamp(super::impasto_rig::MIN_ELEV_DEG, 90);
+            let az = ph2d_painter_brush::texture::rotate_by_degrees(l.angle_deg % 360);
+            let el = ph2d_painter_brush::texture::rotate_by_degrees(elev);
+            let (cos_e, sin_e) = (el[0], el[1]);
+            let dir = [cos_e * az[0], cos_e * az[1], sin_e];
+            let half = {
+                let h = [dir[0], dir[1], dir[2] + 1.0]; // view = (0, 0, 1), orthographic
+                let len = (h[0] * h[0] + h[1] * h[1] + h[2] * h[2]).sqrt().max(1e-6);
+                [h[0] / len, h[1] / len, h[2] / len]
+            };
+            let w = l.intensity.clamp(0.0, 2.0);
+            let tint = [
+                w * l.color[0].clamp(0.0, 1.0),
+                w * l.color[1].clamp(0.0, 1.0),
+                w * l.color[2].clamp(0.0, 1.0),
+            ];
+            let (fd, fs) = (sin_e, lut(half[2])); // flat: N = (0,0,1) ⇒ N·L = L.z, N·H = half.z
+            for (f, t) in flat_diffuse.iter_mut().zip(tint) {
+                *f += t * fd;
+            }
+            lamps[n] = Lamp {
+                dir,
+                half,
+                tint,
+                flat_spec: fs,
+            };
+            n += 1;
         }
+        if n == 0 {
+            return None;
+        }
+        // A channel a rig gives NO light to (a pure-red lamp alone, on the blue channel) would divide by
+        // zero. Its diffuse is zero too, so the ratio is 0/0 — and the answer that keeps the contract is
+        // 1 (the channel is untouched), which is what this floor produces.
+        //
+        // The `intensity > 0` filter above is NOT about the divisor (a zero-tint lamp contributes zero to
+        // BOTH sums — I wrote that it "inflates the denominator" and that was simply wrong). It is about
+        // the EMPTY rig: with every lamp at zero power, an unfiltered `lamps` is non-empty, so this
+        // returns `Some`, `flat_diffuse` is all-zero, the floor turns it into 1, the diffuse stays 0, and
+        // the ratio is 0 — which drives every lit pixel to the AMBIENT floor. Turning the lights down to
+        // zero would DARKEN the painting to 35% instead of leaving it unlit. The filter is what makes
+        // `lamps.is_empty()` above true, and the pass bail.
+        // (`the_lights_turned_all_the_way_down_is_an_unlit_canvas` — MUT: drop the filter ⇒ RED.)
+        for f in &mut flat_diffuse {
+            if *f <= 1e-4 {
+                *f = 1.0;
+            }
+        }
+        let achromatic = lamps[..n]
+            .iter()
+            .all(|l| l.tint[0] == l.tint[1] && l.tint[1] == l.tint[2]);
+        Some(Self {
+            lamps,
+            n,
+            flat_diffuse,
+            spec_lut,
+            achromatic,
+            shine: shine.clamp(0.0, 1.0),
+        })
     }
 
     /// Shade one pixel from its height gradient and the paint actually there: `body` weights the
     /// diffuse modelling ([`paint_body`]), `gloss` the highlight ([`gloss_body`]). Returns
-    /// `(multiply, glint)`: the composite's RGB is `screen(rgb × multiply, glint)` — see
-    /// [`PainterTool::apply_impasto_light`]. A FLAT pixel — or one with no real body of paint —
-    /// returns exactly `(1.0, 0.0)`.
+    /// `(multiply, glint)` PER CHANNEL: the composite's RGB is `screen(rgb × multiply, glint)` — see
+    /// [`PainterTool::apply_impasto_light`]. A FLAT pixel — or one with no real body of paint — returns
+    /// exactly `([1, 1, 1], [0, 0, 0])`.
     #[inline]
-    fn shade(&self, body: f32, gloss: f32, dhx: f32, dhy: f32) -> (f32, f32) {
+    fn shade(&self, body: f32, gloss: f32, dhx: f32, dhy: f32) -> ([f32; 3], [f32; 3]) {
         if (dhx == 0.0 && dhy == 0.0) || body <= 0.0 {
-            return (1.0, 0.0); // flat paint — or bare paper — is untouched, to the byte
+            return ([1.0; 3], [0.0; 3]); // flat paint — or bare paper — is untouched, to the byte
         }
         // Surface normal from the gradient: a rising slope tilts the normal AGAINST the rise. The
         // slope is GEOMETRY — the height buffer's unit converted to pixels ([`DEPTH_UNIT_PX`]) — with
@@ -293,27 +375,63 @@ impl Light {
             let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-6);
             [v[0] / len, v[1] / len, v[2] / len]
         };
-        let ndl = n[0] * self.dir[0] + n[1] * self.dir[1] + n[2] * self.dir[2];
-        // RELATIVE diffuse, with an AMBIENT floor: exactly 1.0 on flat ground (so flat paint stays
-        // byte-identical), above 1 on a face turned toward the light, and down to `AMBIENT` — never 0 —
-        // on a face turned away. Paint in shadow is dark, not black.
-        let ratio = (ndl.max(0.0) / self.flat_diffuse).clamp(0.0, 2.0);
-        let mut mul = AMBIENT + (1.0 - AMBIENT) * ratio;
-        let ndh = n[0] * self.half[0] + n[1] * self.half[1] + n[2] * self.half[2];
-        let i = (ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize;
-        let mut add = self.shine * (self.spec_lut[i] - self.flat_spec).max(0.0);
-        // Fade both with the body, so the pass is a strict no-op on bare canvas.
-        //
-        // (Tried and rejected, 2026-07-12: weighting the BRIGHTENING more harshly than the shadow, to
-        // stop the light washing out translucent paint. It bought 5 points of chroma and cost the
-        // modelling entirely — the lit flank came out exactly as bright as the paint under it, which is
-        // what "no relief" looks like. The washing-out is not a bug to weight away: brightening a pixel
-        // whose pigment channel is already at the ceiling ALWAYS costs saturation, in paint as in
-        // physics. The line that must hold is the other one — the light may not touch paint with no
-        // body at all — and that is what `body` here, and the gates, enforce.)
-        mul = 1.0 + (mul - 1.0) * body;
-        add *= gloss;
+        // Sum every lamp's tinted response at this normal. One pass over a Vec of 1..4 — the single-lamp
+        // rig (the default, and every canvas nobody has opened the rig on) is one iteration.
+        let (mut diffuse, mut spec) = ([0.0f32; 3], [0.0f32; 3]);
+        for l in &self.lamps[..self.n] {
+            let ndl = (n[0] * l.dir[0] + n[1] * l.dir[1] + n[2] * l.dir[2]).max(0.0);
+            let ndh = n[0] * l.half[0] + n[1] * l.half[1] + n[2] * l.half[2];
+            let s = self.spec_lut[(ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize];
+            // Each lamp's highlight is relative to ITS OWN flat response, and clamped at zero there:
+            // summing the raw speculars and subtracting the flat total would let a lamp facing away
+            // borrow headroom from one facing the paint, and the pass would glint on flat ground.
+            let ds = (s - l.flat_spec).max(0.0);
+            if self.achromatic {
+                // Grey lamps ⇒ the three channels are the same float. Compute it once.
+                diffuse[0] += l.tint[0] * ndl;
+                spec[0] += l.tint[0] * ds;
+            } else {
+                for c in 0..3 {
+                    diffuse[c] += l.tint[c] * ndl;
+                    spec[c] += l.tint[c] * ds;
+                }
+            }
+        }
+        if self.achromatic {
+            let m = self.channel(0, body, diffuse[0], spec[0], gloss);
+            return ([m.0; 3], [m.1; 3]);
+        }
+        let (mut mul, mut add) = ([0.0f32; 3], [0.0f32; 3]);
+        for c in 0..3 {
+            // RELATIVE diffuse, with an AMBIENT floor: exactly 1.0 on flat ground (so flat paint stays
+            // byte-identical), above 1 on a face turned toward the light, and down to `AMBIENT` — never
+            // 0 — on a face turned away. Paint in shadow is dark, not black.
+            let (m, a) = self.channel(c, body, diffuse[c], spec[c], gloss);
+            mul[c] = m;
+            add[c] = a;
+        }
         (mul, add)
+    }
+
+    /// One channel's `(multiply, glint)` from its summed diffuse and specular. The shared core of both
+    /// paths in [`Self::shade`] — so the achromatic fast lane cannot drift from the coloured one.
+    #[inline]
+    fn channel(&self, c: usize, body: f32, diffuse: f32, spec: f32, gloss: f32) -> (f32, f32) {
+        {
+            // RELATIVE diffuse: exactly 1.0 on flat ground (so flat paint stays byte-identical).
+            let ratio = (diffuse / self.flat_diffuse[c]).clamp(0.0, 2.0);
+            let m = AMBIENT + (1.0 - AMBIENT) * ratio;
+            // Fade both with the body, so the pass is a strict no-op on bare canvas.
+            //
+            // (Tried and rejected, 2026-07-12: weighting the BRIGHTENING more harshly than the shadow,
+            // to stop the light washing out translucent paint. It bought 5 points of chroma and cost the
+            // modelling entirely — the lit flank came out exactly as bright as the paint under it, which
+            // is what "no relief" looks like. The washing-out is not a bug to weight away: brightening a
+            // pixel whose pigment channel is already at the ceiling ALWAYS costs saturation, in paint as
+            // in physics. The line that must hold is the other one — the light may not touch paint with
+            // no body at all — and that is what `body` here, and the gates, enforce.)
+            (1.0 + (m - 1.0) * body, self.shine * spec * gloss)
+        }
     }
 }
 
@@ -424,11 +542,9 @@ impl PainterTool {
         if rgba.len() < (region.w as usize) * (region.h as usize) * 4 {
             return; // shape guard — bail rather than index out of a mis-sized buffer
         }
-        let light = Light::new(
-            self.paint.impasto_light_angle_deg,
-            self.paint.impasto_light_elev_deg,
-            self.paint.impasto_shine,
-        );
+        let Some(light) = Rig::new(&self.paint.impasto_rig, self.paint.impasto_shine) else {
+            return; // every lamp switched off: the canvas comes back unlit, to the byte
+        };
         let at = |x: i64, y: i64| fields.height_at(x, y);
         let cover_at = |x: i64, y: i64| fields.cover_at(x, y);
         for ry in 0..region.h {
@@ -441,13 +557,13 @@ impl PainterTool {
                 let dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
                 let cover = cover_at(gx, gy);
                 let (mul, add) = light.shade(paint_body(cover), gloss_body(cover), dhx, dhy);
-                if mul == 1.0 && add == 0.0 {
+                if mul == [1.0; 3] && add == [0.0; 3] {
                     continue; // flat: byte-identical, and not even a rounding trip through f32
                 }
                 let i = ((ry as usize) * (region.w as usize) + rx as usize) * 4;
                 for c in 0..3 {
                     let v = f32::from(rgba[i + c]) / 255.0;
-                    let lit = light_pixel(v, mul, add);
+                    let lit = light_pixel(v, mul[c], add[c]);
                     rgba[i + c] = (lit * 255.0 + 0.5) as u8;
                 }
             }

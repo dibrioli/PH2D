@@ -12,8 +12,17 @@
 //! ```
 //!
 //! Then: click the white canvas → the **Painter** pill → drag. The Impasto section (Brush panel) is
-//! already open with Enable ticked; the Lighting card drives the light live (Angle / Elevation /
-//! Shine — there is no Amount any more: thickness is the brush's Depth, the slope is geometry),
+//! already open with Enable ticked; the Lighting card drives the light live.
+//!
+//! **The RIG (2026-07-12):** the card carries **four lamps** — the chips `1 2 3 4` under Show Impasto. A
+//! chip marked `2·` is a lamp that is OFF. Pick lamp 2, tick **Enable**, and you have a fill: give it an
+//! Angle across from the key, a low Intensity, and a colour. **A coloured lamp tints the paint only where
+//! it TILTS** — flat paint stays exactly as you mixed it, because the shading is relative *per channel*.
+//! (One lamp of any colour therefore only brightens and darkens; the hue needs two lamps disagreeing.)
+//! **Shine is global** — it is how wet the OIL is, not a property of a lamp.
+//!
+//! The old rows are still there and now belong to the SELECTED lamp (Angle / Elevation — there is no
+//! Amount any more: thickness is the brush's Depth, the slope is geometry),
 //! **Depth** goes negative to carve instead of lift, and **Body** dials the cross-section: 1 = a
 //! level film with a wall (default), 0 = the relief obeys the falloff — the perfectly rounded ridge.
 //!

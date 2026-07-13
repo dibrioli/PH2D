@@ -216,6 +216,7 @@ pub use paint::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
+    ImpastoLight, LightRig, MAX_IMPASTO_LIGHTS,
     DEFORM_TEMPERAMENT_TRANSFORM, DeformGizmoView, EllipseOverlay, LineCornerGizmo, LineDimensions,
     LineOverlay, MAX_SHAPE_LAYERS, PANEL_RAMP_STOPS, PolygonOverlay, SelectionGizmoView,
     StencilOverlay, StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo,

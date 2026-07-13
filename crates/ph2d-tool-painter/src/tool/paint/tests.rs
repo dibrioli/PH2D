@@ -1,4 +1,5 @@
 use super::*;
+use crate::tool::paint::{ImpastoLight, MAX_IMPASTO_LIGHTS};
 use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_painter_brush::{DepthSource, DrawTo, Falloff};
 
@@ -17173,8 +17174,8 @@ fn impasto_light_reads_as_raised_not_engraved() {
     for slot in &mut t.paint.brush_by_mode {
         *slot = soft;
     }
-    t.paint.impasto_light_angle_deg = 180; // from the LEFT (-x)
-    t.paint.impasto_light_elev_deg = 30;
+    t.paint.impasto_rig.lights[0].angle_deg = 180; // from the LEFT (-x)
+    t.paint.impasto_rig.lights[0].elev_deg = 30;
     t.paint.impasto_shine = 0.0; // isolate the diffuse term — the highlight is a separate question
     // A vertical ridge of paint down the middle.
     t.on_canvas_pointer(cp([30.0, 10.0], PointerPhase::Down));
@@ -17242,7 +17243,7 @@ fn impasto_light_reads_as_raised_not_engraved() {
 
     // Rotate the light 180° and the bright flank must SWAP. (A pass that merely darkened edges — any
     // edge, regardless of the light — would sail through the assertion above and die here.)
-    t.paint.impasto_light_angle_deg = 0; // from the RIGHT (+x)
+    t.paint.impasto_rig.lights[0].angle_deg = 0; // from the RIGHT (+x)
     t.invalidate_composite();
     let img = lit(&mut t);
     let lum2 = |x: u32, y: u32| {
@@ -17547,13 +17548,13 @@ fn impasto_panel_events_reach_the_brush() {
         core_ids::PAINTER_IMPASTO_LIGHT_ANGLE,
         200.0,
     ));
-    assert_eq!(t.paint.impasto_light_angle_deg, 200);
+    assert_eq!(t.paint.impasto_rig.lights[0].angle_deg, 200);
     t.handle_panel_event(PanelEvent::SetValue(
         core_ids::PAINTER_IMPASTO_LIGHT_ELEV,
         1.0,
     ));
     assert_eq!(
-        t.paint.impasto_light_elev_deg, 5,
+        t.paint.impasto_rig.lights[0].elev_deg, 5,
         "elevation floors at 5° — a grazing light divides by ~0"
     );
     t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_IMPASTO_SHINE, 0.7));
@@ -18677,8 +18678,8 @@ fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
     for slot in &mut t.paint.brush_by_mode {
         *slot = b;
     }
-    t.paint.impasto_light_angle_deg = 90; // straight across a horizontal stroke
-    t.paint.impasto_light_elev_deg = 45;
+    t.paint.impasto_rig.lights[0].angle_deg = 90; // straight across a horizontal stroke
+    t.paint.impasto_rig.lights[0].elev_deg = 45;
     t.paint.impasto_shine = 0.0; // the diffuse modelling is the claim; the glint has its own gates
     t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
     for i in 1..=8 {
@@ -18868,8 +18869,8 @@ fn impasto_body_zero_obeys_the_falloff() {
     );
     // And the round school must not resurrect the halo: the tail has height now, but the light
     // still ignores paint that is not there — bare-white pixels do not move.
-    t.paint.impasto_light_angle_deg = 90;
-    t.paint.impasto_light_elev_deg = 45;
+    t.paint.impasto_rig.lights[0].angle_deg = 90;
+    t.paint.impasto_rig.lights[0].elev_deg = 45;
     t.paint.impasto_shine = 0.0;
     t.invalidate_composite();
     let img = lit(&mut t);
@@ -19026,8 +19027,8 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         for slot in &mut t.paint.brush_by_mode {
             *slot = b;
         }
-        t.paint.impasto_light_angle_deg = 90;
-        t.paint.impasto_light_elev_deg = 45;
+        t.paint.impasto_rig.lights[0].angle_deg = 90;
+        t.paint.impasto_rig.lights[0].elev_deg = 45;
         t.paint.impasto_shine = shine;
         t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
         for i in 1..=8 {
@@ -20510,5 +20511,386 @@ fn impasto_paint_has_an_edge_not_a_fringe() {
          opaque) — a soft gradient carrying no form is the haze Enio photographed, whatever the supports \
          agree about",
         haze * 100.0
+    );
+}
+
+/// The rig's contract: **flat paint stays byte-identical — even under coloured light.**
+///
+/// The shading is RELATIVE (a pixel's response divided by a FLAT surface's), and the rig keeps that per
+/// CHANNEL: on flat paint `N·Lᵢ = Lᵢ.z` for every lamp, so `diffuse[c]/flat[c] = 1` in every channel
+/// whatever the colours and intensities are. So a warm key + a cool fill tint the paint exactly where it
+/// TILTS, and **a flat painting under a red lamp does not turn red**.
+///
+/// That is not a nicety. An absolute model would let a coloured lamp wash a colour over the whole canvas
+/// — the light would stop being a property of the RELIEF and become a filter over the picture, and every
+/// pixel of flat paint the artist mixed by eye would shift under it.
+///
+/// Run on a canvas with NO relief at all, and again with relief but Show off. RED under an absolute
+/// model (`ratio = diffuse` with no divisor) and under a per-rig (rather than per-channel) divisor.
+#[test]
+fn a_coloured_light_rig_leaves_flat_paint_byte_identical() {
+    let size = 120u32;
+    let render = |arm: &dyn Fn(&mut PainterTool)| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        // FLAT paint: impasto OFF, so the stroke lays pigment and no body at all.
+        let b = BrushSpec {
+            radius_px: 25.0,
+            color: [0.3, 0.6, 0.45],
+            impasto: false,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([90.0, 80.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([90.0, 80.0], PointerPhase::Up));
+        arm(&mut t);
+        t.invalidate_composite();
+        lit(&mut t)
+    };
+    let one_white_lamp = render(&|_t| {});
+    // A four-lamp rig of saturated, wildly unbalanced colours — the worst case an artist could build.
+    let loud_rig = render(&|t| {
+        let r = &mut t.paint.impasto_rig;
+        r.lights[0] = ImpastoLight {
+            on: true,
+            angle_deg: 20,
+            elev_deg: 70,
+            intensity: 1.8,
+            color: [1.0, 0.1, 0.1],
+        };
+        r.lights[1] = ImpastoLight {
+            on: true,
+            angle_deg: 140,
+            elev_deg: 15,
+            intensity: 0.9,
+            color: [0.1, 1.0, 0.2],
+        };
+        r.lights[2] = ImpastoLight {
+            on: true,
+            angle_deg: 260,
+            elev_deg: 45,
+            intensity: 1.3,
+            color: [0.15, 0.2, 1.0],
+        };
+        r.lights[3] = ImpastoLight {
+            on: true,
+            angle_deg: 350,
+            elev_deg: 88,
+            intensity: 0.2,
+            color: [1.0, 1.0, 0.0],
+        };
+    });
+    assert!(
+        one_white_lamp.iter().any(|&b| b != 255),
+        "sanity: the fixture painted"
+    );
+    assert_eq!(
+        one_white_lamp, loud_rig,
+        "four saturated lamps moved FLAT paint — the light must be a property of the RELIEF, not a \
+         filter over the picture. An absolute model washes the colour over every pixel the artist mixed."
+    );
+}
+
+/// …and the rig is not vacuous: on paint that HAS relief, every lamp does something, and each knob counts.
+///
+/// The other half. Without it, the byte-identity gate above passes on a rig quietly wired to nothing at
+/// all — the exact species of dead knob this module has spent its whole history exterminating. Four
+/// claims, each independently falsifiable:
+///
+/// 1. Switching a second lamp ON changes the picture.
+/// 2. Its ANGLE is live (the same lamp from the other side is a different picture).
+/// 3. Its INTENSITY scales it — and at **zero** it is exactly the same as off (a lamp with no power is
+///    not a lamp; `Rig::new` drops it, and the flat divisor must drop it too, or a dark lamp would
+///    silently darken the whole canvas by inflating the denominator).
+/// 4. Its COLOUR is live.
+#[test]
+fn every_lamp_in_the_rig_is_live() {
+    let size = 140u32;
+    let render = |arm: &dyn Fn(&mut PainterTool)| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 30.0,
+            color: [0.85, 0.15, 0.15],
+            impasto: true, // relief, so there is something for a lamp to model
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([35.0, 40.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Up));
+        arm(&mut t);
+        t.invalidate_composite();
+        lit(&mut t)
+    };
+    let key_only = render(&|_t| {});
+    assert!(
+        key_only.iter().any(|&b| b != 255),
+        "sanity: the fixture painted lit relief"
+    );
+
+    // 1. A second lamp, ON.
+    let fill = |t: &mut PainterTool| {
+        t.paint.impasto_rig.lights[1] = ImpastoLight {
+            on: true,
+            angle_deg: 50,
+            elev_deg: 25,
+            intensity: 0.8,
+            color: [1.0, 1.0, 1.0],
+        };
+    };
+    let two = render(&fill);
+    assert_ne!(two, key_only, "switching lamp 2 ON must change the picture");
+
+    // 2. …from the OTHER side.
+    let two_flipped = render(&|t| {
+        fill(t);
+        t.paint.impasto_rig.lights[1].angle_deg = 230; // now behind the key
+    });
+    assert_ne!(two_flipped, two, "the lamp's ANGLE is live");
+
+    // 3. Intensity — and zero is exactly off. (RED if `Rig::new` counted a zero-power lamp into the flat
+    //    divisor: the denominator would grow, every ratio would shrink, and the canvas would DARKEN.)
+    let two_dim = render(&|t| {
+        fill(t);
+        t.paint.impasto_rig.lights[1].intensity = 0.2;
+    });
+    assert_ne!(two_dim, two, "the lamp's INTENSITY is live");
+    let two_zero = render(&|t| {
+        fill(t);
+        t.paint.impasto_rig.lights[1].intensity = 0.0;
+    });
+    assert_eq!(
+        two_zero, key_only,
+        "a lamp at zero power is exactly a lamp that is OFF — it may not darken the canvas by inflating \
+         the flat divisor"
+    );
+
+    // 4. Colour.
+    let two_warm = render(&|t| {
+        fill(t);
+        t.paint.impasto_rig.lights[1].color = [1.0, 0.6, 0.2];
+    });
+    assert_ne!(two_warm, two, "the lamp's COLOUR is live");
+}
+
+/// **The key cannot be switched off** — and switching every OTHER lamp off returns the one-lamp canvas.
+///
+/// "Show Impasto" already is the master switch. A second one, hidden inside the rig, that can leave the
+/// pass running with nothing to run it with, is how a divide-by-zero ships. `toggle_impasto_light_on`
+/// refuses on lamp 0 and `Rig::new` returns `None` if it ever finds an empty rig anyway (belt and braces
+/// — the guard that is not reachable today is the one that matters when someone adds a preset loader).
+#[test]
+fn the_key_light_cannot_be_switched_off() {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+    t.select_impasto_light(0);
+    t.toggle_impasto_light_on();
+    assert!(
+        t.paint.impasto_rig.lights[0].on,
+        "the key light must stay lit — Show Impasto is the master switch, and a lit canvas with no light \
+         at all is a lie the pass would have to divide by"
+    );
+    // …but every other lamp toggles freely.
+    for i in 1..MAX_IMPASTO_LIGHTS as u8 {
+        t.select_impasto_light(i);
+        let before = t.paint.impasto_rig.lights[i as usize].on;
+        t.toggle_impasto_light_on();
+        assert_ne!(
+            t.paint.impasto_rig.lights[i as usize].on,
+            before,
+            "lamp {} must toggle",
+            i + 1
+        );
+    }
+}
+
+/// **One lamp of any colour changes the paint's BRIGHTNESS, never its hue.**
+///
+/// The per-channel divisor, stated where it has content. With a single lamp the colour must CANCEL:
+/// `diffuse[c] = tint[c]·(N·L)` and `flat[c] = tint[c]·L.z`, so `ratio[c] = (N·L)/L.z` — the same in
+/// every channel, whatever the lamp's colour. There is only one light in the room, so it cannot cast a
+/// hue *relative to itself*; it can only make the tilted paint brighter or darker.
+///
+/// (Where the colour DOES speak is a rig of several lamps at different angles: then each channel gets a
+/// different mix of them, and the ratios genuinely differ — which is what `every_lamp_in_the_rig_is_live`
+/// pins. The two gates are the two halves of one law.)
+///
+/// MUT (divide by the rig's AVERAGE flat response instead of the channel's): RED — a red lamp then tints
+/// every lit slope red, and the relief starts painting hues the artist never mixed.
+#[test]
+fn a_single_lamp_shifts_brightness_never_hue() {
+    let size = 140u32;
+    // GREY paint: any hue in the output is the LIGHT's, not the pigment's — the cleanest instrument.
+    let render = |color: [f32; 3]| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 30.0,
+            color: [0.5, 0.5, 0.5],
+            impasto: true,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([35.0, 40.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Up));
+        t.paint.impasto_rig.lights[0].color = color;
+        t.paint.impasto_shine = 0.0; // the DIFFUSE is what the divisor governs; the glint is gate #3's
+        t.invalidate_composite();
+        lit(&mut t)
+    };
+    let white = render([1.0, 1.0, 1.0]);
+    for lamp in [[1.0f32, 0.2, 0.2], [0.2, 0.2, 1.0], [1.0, 0.85, 0.4]] {
+        let tinted = render(lamp);
+        let mut worst = 0i32;
+        for p in 0..(size * size) as usize {
+            // The pigment is grey, so under a single lamp every channel must move by the SAME amount.
+            let d: Vec<i32> = (0..3)
+                .map(|c| i32::from(tinted[p * 4 + c]) - i32::from(white[p * 4 + c]))
+                .collect();
+            worst = worst.max((d[0] - d[1]).abs().max((d[1] - d[2]).abs()));
+        }
+        assert!(
+            worst <= 1, // 1 level of rounding across the 8-bit round-trip
+            "a single {lamp:?} lamp shifted the channels of GREY paint apart by {worst} levels — one \
+             light cannot cast a hue relative to itself; it can only brighten or darken"
+        );
+    }
+}
+
+/// **Turning every lamp down to zero is an UNLIT canvas — not a canvas darkened to the ambient floor.**
+///
+/// The empty rig. With every lamp at zero power the diffuse sums to zero; if the pass still ran, the
+/// zero-divisor floor would turn the ratio into 0 and drive every lit pixel to `AMBIENT` — dialling the
+/// lights DOWN would darken the painting to 35%. `Rig::new` drops powerless lamps and bails on an empty
+/// rig, so it comes back exactly as it would with Show Impasto off.
+///
+/// MUT (`filter(|l| l.on)` — keep zero-power lamps): RED.
+#[test]
+fn the_lights_turned_all_the_way_down_is_an_unlit_canvas() {
+    let size = 120u32;
+    let render = |arm: &dyn Fn(&mut PainterTool)| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 28.0,
+            color: [0.85, 0.15, 0.15],
+            impasto: true,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([30.0, 35.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([90.0, 85.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([90.0, 85.0], PointerPhase::Up));
+        arm(&mut t);
+        t.invalidate_composite();
+        lit(&mut t)
+    };
+    let unlit = render(&|t| t.paint.impasto_show = false);
+    let lights_out = render(&|t| {
+        for l in &mut t.paint.impasto_rig.lights {
+            l.intensity = 0.0;
+        }
+    });
+    let lit_normally = render(&|_t| {});
+    assert_ne!(
+        lit_normally, unlit,
+        "sanity: the fixture IS lit when the lights are on"
+    );
+    assert_eq!(
+        lights_out, unlit,
+        "with every lamp at zero power the canvas must come back UNLIT — not darkened to the ambient \
+         floor. Dialling the lights down may not dim the painting."
+    );
+}
+
+/// **Shine only ever ADDS light** — a highlight that darkens is not a highlight.
+///
+/// Each lamp's specular is taken relative to ITS OWN flat response and clamped at zero there. Sum the raw
+/// speculars and subtract the flat total instead, and a lamp facing AWAY from a slope contributes a
+/// NEGATIVE term — it borrows headroom from a lamp facing it, and the "highlight" darkens the paint.
+/// With one lamp the flat early-out hides it; with a rig it is visible.
+///
+/// MUT (drop the per-lamp `.max(0.0)`): RED.
+#[test]
+fn the_glint_only_ever_adds_light() {
+    let size = 140u32;
+    let render = |shine: f32| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let b = BrushSpec {
+            radius_px: 30.0,
+            color: [0.5, 0.5, 0.5],
+            impasto: true,
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        t.on_canvas_pointer(cp([35.0, 40.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Up));
+        // A RIG — the lamps disagree about where the light is, which is the whole point.
+        let r = &mut t.paint.impasto_rig;
+        r.lights[1] = ImpastoLight {
+            on: true,
+            angle_deg: 40,
+            elev_deg: 20,
+            intensity: 0.9,
+            color: [1.0, 1.0, 1.0],
+        };
+        r.lights[2] = ImpastoLight {
+            on: true,
+            angle_deg: 130,
+            elev_deg: 60,
+            intensity: 0.7,
+            color: [1.0, 1.0, 1.0],
+        };
+        t.paint.impasto_shine = shine;
+        t.invalidate_composite();
+        lit(&mut t)
+    };
+    let matte = render(0.0);
+    let glossy = render(1.0);
+    let (mut darkened, mut worst) = (0u32, 0i32);
+    for p in 0..(size * size) as usize {
+        for c in 0..3 {
+            let d = i32::from(glossy[p * 4 + c]) - i32::from(matte[p * 4 + c]);
+            if d < -1 {
+                // 1 level of 8-bit rounding is not a darkening
+                darkened += 1;
+                worst = worst.min(d);
+            }
+        }
+    }
+    assert_eq!(
+        darkened, 0,
+        "Shine DARKENED {darkened} channels (worst {worst} levels) — under a rig, a lamp facing away \
+         from a slope must contribute nothing to the glint, not a negative. A highlight that takes light \
+         away is not a highlight."
+    );
+    // …and it is not vacuous: the glint must actually be visible somewhere.
+    let brightest = (0..(size * size) as usize)
+        .map(|p| i32::from(glossy[p * 4 + 1]) - i32::from(matte[p * 4 + 1]))
+        .max()
+        .unwrap_or(0);
+    assert!(
+        brightest > 5,
+        "sanity: Shine must LIGHT the paint ({brightest} levels)"
     );
 }

@@ -138,6 +138,7 @@ mod warp;
 pub use selection_gizmo::SelectionGizmoView;
 pub use warp::DeformGizmoView;
 /// Selection **shape list** model (ADR-0103 Am.2): the `Vec<SelectionShape>` source of truth + compositing. [LOC split].
+pub mod impasto_rig;
 pub(super) mod relief_state;
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
@@ -164,6 +165,7 @@ mod state_default;
 
 mod brush_ranges; // Stroke-slider UI range consts (BRUSH_*_MAX / airbrush rate) + shape grab tol; split for the LOC cap
 pub use brush_ranges::*;
+pub use impasto_rig::{ImpastoLight, LightRig, MAX_IMPASTO_LIGHTS};
 
 // The panel-facing snapshot [`BrushSettings`] + the falloff preview helper `brush_falloff_weight_at`
 // live in the `brush_settings` submodule (their single clamp source); re-exported for the `paint::` path.
@@ -449,12 +451,11 @@ pub(crate) struct PaintState {
     /// Impasto at all. Default on — someone who sculpts wants to see it, and with no relief anywhere
     /// the pass costs a single `is_empty()`.
     impasto_show: bool,
-    /// **Light Angle** in whole degrees — the azimuth the light comes from. Default 135° (upper-left:
-    /// the convention every paint program and every human eye reads as "raised", not "engraved").
-    impasto_light_angle_deg: u16,
-    /// **Light Elevation** in whole degrees above the canvas plane. Low = long dramatic shadows across
-    /// the tooth; high = flat, even light. Clamped away from 0 (a grazing light divides by ~0).
-    impasto_light_elev_deg: u16,
+    /// The canvas's **light rig** — up to `MAX_LIGHTS` lamps, each with its own angle / elevation /
+    /// intensity / colour, plus which one the card is editing. Light 0 is the key and starts on; the
+    /// rest start off, so a canvas nobody has opened the rig on is byte-identical to the one-lamp build.
+    /// See [`impasto_rig`].
+    impasto_rig: impasto_rig::LightRig,
     /// **Shine** (`0..1`) — strength of the specular highlight riding the crests. `0` = matte paint
     /// (watercolour/gouache), high = wet oil.
     impasto_shine: f32,

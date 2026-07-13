@@ -1226,3 +1226,78 @@ O Enio priorizou explicitamente. Ordem, e nada fora dela:
 **Sobre o Push:** a mecânica está correta (real-time, conservativa, viva, idempotente — §13) e o
 **desenho** da tinta deslocada ainda não convence. **Não diagnosticar agora.** Enio: *"Adiar para o final
 de toda essa implementação. Fim da fila."*
+
+---
+
+## 18. O RIG — quatro lâmpadas, uma na tela (fila §17, item 1)
+
+### 18.1 O número saiu da pesquisa, e o aviso também
+
+| | luzes | controles | o que ensina |
+|---|---|---|---|
+| **Krita** (Phong Bumpmap) | 4 | **24** (4 × azimute/inclinação/cor + ka/kd/ks/shininess) | o *"conto-moral do excesso"* (doc 17 §2.4) |
+| **Rebelle 8** | env maps | **0 de ângulo** (*"This would be not possible at the moment"* — Blaskovic) | o outro extremo |
+| **ArtRage** | 1 | Angle + Intensity + Metallic | o mínimo viável |
+
+**Quatro lâmpadas** — key/fill/rim é um rig real, e uma lâmpada só não faz. **Mas uma na tela**: o card
+edita a **selecionada** (chips `1 2 3 4`), então **o número de linhas não cresce com o rig**. Seis linhas,
+quatro lâmpadas. As lâmpadas 2-4 nascem **desligadas** ⇒ uma tela em que ninguém abriu o rig é
+**byte-idêntica** ao build de uma luz.
+
+**Shine fica GLOBAL** — é propriedade da TINTA (quão molhado está o óleo), não de uma lâmpada. Dar `ks`
+a cada luz é quatro knobs para um material, e é boa parte de como a Krita chega a 24.
+
+### 18.2 O contrato sobrevive ao rig — POR CANAL
+
+A sombra é **relativa** (a resposta do pixel dividida pela de uma superfície PLANA). Isso sobrevive a
+luzes coloridas porque a divisão é **por canal**:
+
+```text
+diffuse[c] = Σ  wᵢ · corᵢ[c] · max(N·Lᵢ, 0)
+flat[c]    = Σ  wᵢ · corᵢ[c] · Lᵢ.z          (plano: N = (0,0,1) ⇒ N·Lᵢ = Lᵢ.z)
+ratio[c]   = diffuse[c] / flat[c]
+```
+
+Em tinta plana `N·Lᵢ = Lᵢ.z` para toda lâmpada ⇒ **todo canal dá exatamente 1**, quaisquer que sejam as
+cores e as intensidades. Uma key quente e um fill frio tingem a tinta **só onde ela se INCLINA**, e uma
+pintura plana sob uma lâmpada vermelha **não fica vermelha**.
+
+Isso não é uma concessão ao contrato — é o que um modelo *relativo* **significa**: a luz é propriedade do
+**relevo**, não um filtro sobre o quadro.
+
+**Corolário (e é o gate):** uma lâmpada **sozinha**, de qualquer cor, só muda o **brilho**, nunca o
+**matiz** — a cor cancela na razão. O matiz precisa de **duas** lâmpadas discordando de onde vem a luz.
+
+### 18.3 Gates (3 mutações provadas vermelhas — e as 3 primeiras que escrevi eram INÚTEIS)
+
+Escrevi três gates, rodei as mutações, e **as três passaram**. Um gate verde que você não sabe derrubar
+não é um gate — reescrevi enunciando o que cada peça de fato compra:
+
+| Gate | Afirma | MUT vermelha |
+|---|---|---|
+| `a_single_lamp_shifts_brightness_never_hue` | tinta CINZA sob uma lâmpada colorida: os 3 canais movem **juntos** (≤1 nível) | divisor pela **média** dos canais → **133 níveis** de separação: a lâmpada vermelha pinta sombra vermelha |
+| `the_lights_turned_all_the_way_down_is_an_unlit_canvas` | todas as lâmpadas em potência 0 = tela **não-iluminada** | manter lâmpadas de potência zero no rig → o divisor vai a zero, o piso o torna 1, a razão vira 0 e **a tela escurece ao ambiente (35%)**: baixar as luzes *escurecia* o quadro |
+| `the_glint_only_ever_adds_light` | Shine só **soma** luz | specular somado cru (sem clamp por-lâmpada) → uma lâmpada de costas empresta headroom de outra e o "brilho" **escurece 8589 canais** (pior −50 níveis) |
+| `a_coloured_light_rig_leaves_flat_paint_byte_identical` | 4 lâmpadas saturadas não movem **um byte** de tinta plana | (o early-out do gradiente já garante; fica como cláusula de regressão) |
+| `every_lamp_in_the_rig_is_live` | ligar/ângulo/intensidade/cor de cada lâmpada mudam o quadro; **potência 0 = desligada** | anti-vacuidade |
+| `the_key_light_cannot_be_switched_off` | a key não desliga (Show Impasto **é** o interruptor mestre) | anti-vacuidade |
+
+**Um erro que o clippy pegou e vale registrar:** escrevi no código que o filtro de potência-zero existia
+"para não inflar o denominador". **Era falso** — uma lâmpada de tint zero contribui zero para os **dois**
+somatórios. O que o filtro compra é o **rig VAZIO** (o caso acima). Corrigido no comentário; a mentira
+teria sobrevivido ao review humano porque *soava* certa.
+
+### 18.4 Perf
+
+O laço por-canal triplicaria o trabalho por texel — mas o rig default é **acromático** (uma lâmpada
+branca), então a `shade` detecta isso e calcula **uma vez**. Lâmpadas num **array fixo**, não `Vec` (a
+indireção de heap num rig de uma lâmpada custava 0,4 ms/movimento a 4096²).
+
+**3,41 ms/movimento @2048² · 3,66 @4096²** (alvo ≤4, kill 8). Workspace **5684 testes, 0 falhas**;
+clippy 0.
+
+### 18.5 Arquitetura
+
+`impasto_rig.rs` (o modelo: `ImpastoLight` / `LightRig`, no tool) · `impasto_light.rs` (`Rig`/`Lamp`: a
+matemática) · `paint_impasto_rig.rs` (o card) · `event/impasto_light_picker.rs` (a swatch → o picker
+OKLCH compartilhado). Ids novos: `PAINTER_IMPASTO_LIGHT_{1..4}` / `_ON` / `_POWER` / `_COLOR`.

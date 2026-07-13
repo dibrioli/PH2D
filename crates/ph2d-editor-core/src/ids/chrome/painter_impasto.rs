@@ -74,12 +74,38 @@ pub const PAINTER_IMPASTO_LIGHT_ELEV: NodeId = hash_node_id("painter_brush.impas
 /// gain — orthogonal to Depth. `SetValue` → `set_brush_impasto_body`.
 pub const PAINTER_IMPASTO_BODY: NodeId = hash_node_id("painter_brush.impasto_body");
 /// **Shine** (`0..1`) — the specular highlight riding the crests. `0` = matte, high = wet oil.
-/// `SetValue` → `set_impasto_shine`.
+/// `SetValue` → `set_impasto_shine`. A property of the PAINT, so it is GLOBAL, not per-lamp. (Krita
+/// gives every light its own `ks`; that is four knobs for one material, and it is a good part of why its
+/// Phong Bumpmap ends up with 24 controls.)
 pub const PAINTER_IMPASTO_SHINE: NodeId = hash_node_id("painter_brush.impasto_shine");
+
+// ── The RIG: four lamps, ONE on screen ─────────────────────────────────────────────────────────────
+//
+// The card edits the SELECTED lamp, so its row count never grows with the rig. Lamps 2-4 start off ⇒ a
+// canvas nobody has opened the rig on is byte-identical to the one-lamp build.
+
+/// The lamp selector — four chips (`1 2 3 4`). `Click` → `select_impasto_light`. Editing state: picking
+/// a lamp changes no pixel.
+pub const PAINTER_IMPASTO_LIGHT_1: NodeId = hash_node_id("painter_brush.impasto_light_1");
+/// See [`PAINTER_IMPASTO_LIGHT_1`].
+pub const PAINTER_IMPASTO_LIGHT_2: NodeId = hash_node_id("painter_brush.impasto_light_2");
+/// See [`PAINTER_IMPASTO_LIGHT_1`].
+pub const PAINTER_IMPASTO_LIGHT_3: NodeId = hash_node_id("painter_brush.impasto_light_3");
+/// See [`PAINTER_IMPASTO_LIGHT_1`].
+pub const PAINTER_IMPASTO_LIGHT_4: NodeId = hash_node_id("painter_brush.impasto_light_4");
+/// **Enable** the selected lamp. `Click` → `toggle_impasto_light_on`. Dimmed on lamp 1: the key cannot
+/// be switched off (Show Impasto already IS that switch, and a lit canvas with no light is a lie).
+pub const PAINTER_IMPASTO_LIGHT_ON: NodeId = hash_node_id("painter_brush.impasto_light_on");
+/// **Intensity** of the selected lamp (`0..2`). `SetValue` → `set_impasto_light_intensity`.
+pub const PAINTER_IMPASTO_LIGHT_POWER: NodeId = hash_node_id("painter_brush.impasto_light_power");
+/// The selected lamp's **Colour** swatch — opens the shared OKLCH picker. `Click` → the shell reads the
+/// pick back into `set_impasto_light_color`. A coloured lamp tints the paint where it TILTS and leaves
+/// flat paint byte-identical (the shading is relative, per channel).
+pub const PAINTER_IMPASTO_LIGHT_COLOR: NodeId = hash_node_id("painter_brush.impasto_light_color");
 
 /// The Impasto **Click** widgets — one membership check for the panel's click forward, routed by
 /// `route_brush_impasto_event`.
-pub const PAINTER_IMPASTO_CLICKS: [NodeId; 8] = [
+pub const PAINTER_IMPASTO_CLICKS: [NodeId; 13] = [
     PAINTER_IMPASTO_ENABLE,
     PAINTER_IMPASTO_RESET,
     PAINTER_IMPASTO_SOURCE_UNIFORM,
@@ -88,11 +114,16 @@ pub const PAINTER_IMPASTO_CLICKS: [NodeId; 8] = [
     PAINTER_IMPASTO_DRAW_COLOR,
     PAINTER_IMPASTO_DRAW_DEPTH,
     PAINTER_IMPASTO_SHOW,
+    PAINTER_IMPASTO_LIGHT_1,
+    PAINTER_IMPASTO_LIGHT_2,
+    PAINTER_IMPASTO_LIGHT_3,
+    PAINTER_IMPASTO_LIGHT_4,
+    PAINTER_IMPASTO_LIGHT_ON,
 ];
 
 /// The Impasto **SetValue** number-fields — one membership check for the panel's number-field forward
 /// (`is_param_field`) and its register loop.
-pub const PAINTER_IMPASTO_FIELDS: [NodeId; 8] = [
+pub const PAINTER_IMPASTO_FIELDS: [NodeId; 9] = [
     PAINTER_IMPASTO_DEPTH,
     PAINTER_IMPASTO_BODY,
     PAINTER_IMPASTO_PUSH,
@@ -100,5 +131,6 @@ pub const PAINTER_IMPASTO_FIELDS: [NodeId; 8] = [
     PAINTER_IMPASTO_SMOOTHING,
     PAINTER_IMPASTO_LIGHT_ANGLE,
     PAINTER_IMPASTO_LIGHT_ELEV,
+    PAINTER_IMPASTO_LIGHT_POWER,
     PAINTER_IMPASTO_SHINE,
 ];

@@ -384,10 +384,11 @@ pub struct BrushSettings {
     /// **Show Impasto** — canvas-level: is the relief lit? (Not a brush property; carried in this
     /// display snapshot for the Lighting card's read-back, like `dry_time_s` / `wet_preview`.)
     pub impasto_show: bool,
-    /// Light **Angle** (whole degrees, azimuth) — canvas-level.
-    pub impasto_light_angle_deg: u16,
-    /// Light **Elevation** (whole degrees above the canvas plane) — canvas-level.
-    pub impasto_light_elev_deg: u16,
+    /// The canvas's **light rig** — up to `MAX_LIGHTS` lamps + which one the card is editing. The panel
+    /// paints the SELECTED lamp's knobs, so the row count never grows with the rig (Krita's Phong
+    /// Bumpmap shows all four at once: 24 controls, and `docs/Painter/17_..._pesquisa2.md` §2.4 files it
+    /// under "o conto-moral do excesso").
+    pub impasto_rig: crate::tool::paint::impasto_rig::LightRig,
     /// **Shine** (`0..1`, specular strength) — canvas-level.
     pub impasto_shine: f32,
 }

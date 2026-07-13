@@ -23,11 +23,14 @@ use ph2d_tool_painter::BrushSettings;
 // signed unit depth), so there is no token that could express them.
 const DEPTH_MIN: f32 = -1.0; // LITERAL-PX-OK: signed unit depth — negative carves
 const DEPTH_MAX: f32 = 1.0; // LITERAL-PX-OK: signed unit depth
-const UNIT_MAX: f32 = 1.0; // LITERAL-PX-OK: 0..1 amount track
-const ANGLE_MAX_DEG: f32 = 360.0; // LITERAL-PX-OK: a full turn of azimuth
-const ELEV_MIN_DEG: f32 = 5.0; // LITERAL-PX-OK: floor above 0 — a grazing light divides by ~0
-const ELEV_MAX_DEG: f32 = 90.0; // LITERAL-PX-OK: straight down at the canvas
-const DEG_STEP: f64 = 1.0; // LITERAL-PX-OK: whole degrees
+pub(crate) const UNIT_MAX: f32 = 1.0; // LITERAL-PX-OK: 0..1 amount track
+pub(crate) const ANGLE_MAX_DEG: f32 = 360.0; // LITERAL-PX-OK: a full turn of azimuth
+pub(crate) const ELEV_MIN_DEG: f32 = 5.0; // LITERAL-PX-OK: floor above 0 — a grazing light divides by ~0
+pub(crate) const ELEV_MAX_DEG: f32 = 90.0; // LITERAL-PX-OK: straight down at the canvas
+pub(crate) const DEG_STEP: f64 = 1.0; // LITERAL-PX-OK: whole degrees
+/// A lamp may be pushed to twice full — a rig wants headroom for a key that carries the picture while
+/// the fills sit under 1. // LITERAL-PX-OK
+pub(crate) const LIGHT_POWER_MAX: f32 = 2.0;
 
 /// Paint the Impasto section. Returns the next `y`.
 pub(crate) fn paint_impasto_section(
@@ -196,7 +199,10 @@ fn paint_lighting_card(
 ) -> f32 {
     // No "Amount" row: it was a second gain over the same percept as the brush's Depth (the pair that
     // made the section read as "hard to adjust"). The slope is geometry now — see the light pass.
-    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Lighting", 4);
+    // Rows: Show · Light (1 2 3 4) · [Enable] · Angle · Elevation · Intensity+colour · Shine. The
+    // selected lamp owns the middle — four lamps, but never more than six rows (`paint_impasto_rig`).
+    let rows = if brush.impasto_rig.selected > 0 { 7 } else { 6 };
+    let (ix, iw, mut ry, next_y) = card_frame(ctx, theme, x, content_w, y, "Lighting", rows);
     ry = crate::paint_brush_top::paint_checkbox_row(
         ctx,
         theme,
@@ -207,34 +213,7 @@ fn paint_lighting_card(
         "Show Impasto",
         brush.impasto_show,
     );
-    ry = card_row(
-        ctx,
-        theme,
-        ix,
-        iw,
-        ry,
-        "Angle",
-        core_ids::PAINTER_IMPASTO_LIGHT_ANGLE,
-        f32::from(brush.impasto_light_angle_deg),
-        0.0,
-        ANGLE_MAX_DEG,
-        DEG_STEP,
-        0,
-    );
-    ry = card_row(
-        ctx,
-        theme,
-        ix,
-        iw,
-        ry,
-        "Elevation",
-        core_ids::PAINTER_IMPASTO_LIGHT_ELEV,
-        f32::from(brush.impasto_light_elev_deg),
-        ELEV_MIN_DEG,
-        ELEV_MAX_DEG,
-        DEG_STEP,
-        0,
-    );
+    ry = crate::paint_impasto_rig::paint_light_rows(ctx, theme, ix, iw, ry, brush);
     let _ = card_row(
         ctx,
         theme,
@@ -250,6 +229,39 @@ fn paint_lighting_card(
         2,
     );
     next_y
+}
+
+/// [`seg_row`] with OWNED labels — the lamp chips carry an on/off mark, so they cannot be `&'static str`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn seg_row_owned(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    group_id: ph2d_a11y::NodeId,
+    a11y: &str,
+    options: &[(ph2d_a11y::NodeId, String)],
+    selected: usize,
+) -> f32 {
+    let opts: Vec<SegmentedOption> = options
+        .iter()
+        .map(|(id, label)| SegmentedOption::new(*id, label.as_str()))
+        .collect();
+    let seg = SegmentedAdaptive::new(group_id, a11y, opts).selected(selected);
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_segmented_adaptive(
+        &seg,
+        Rect::new(x, y, content_w, ROW_H_PX),
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    y + used + Spacing::Xs.px()
 }
 
 /// A segmented option group as one card row (mirrors `paint_deform::seg_group`).

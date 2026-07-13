@@ -206,7 +206,14 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     impasto_plow_applies: false, // o fallback é o modo Paint, não o Smear
     impasto_applies: true, // plain Paint mode in the pre-publish fallback
     impasto_show: true,
-    impasto_light_angle_deg: 230,
-    impasto_light_elev_deg: 30,
+    impasto_rig: ph2d_tool_painter::LightRig {
+        lights: [
+            ph2d_tool_painter::ImpastoLight::KEY,
+            ph2d_tool_painter::ImpastoLight::FILL,
+            ph2d_tool_painter::ImpastoLight::FILL,
+            ph2d_tool_painter::ImpastoLight::FILL,
+        ],
+        selected: 0,
+    },
     impasto_shine: 0.7, // LITERAL-PX-OK: default specular strength (mirrors PaintState::default)
 };

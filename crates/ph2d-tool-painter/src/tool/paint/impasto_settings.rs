@@ -18,6 +18,10 @@ const DEPTH_MAX: f32 = 1.0;
 /// response — the divisor the whole relative-shading model rests on — go to zero. // CLAMP-OK
 const ELEV_MIN: f32 = 5.0;
 const ELEV_MAX: f32 = 90.0;
+/// A lamp may be pushed to twice full — a rig wants headroom for a key that carries the picture while
+/// the fills sit under 1. Above this the relative ratio saturates against its own `clamp(0, 2)` anyway,
+/// so a higher ceiling would be a knob with nothing left to give. // CLAMP-OK
+const LIGHT_INTENSITY_MAX: f32 = 2.0;
 /// Azimuth wraps, so it is a full turn. // CLAMP-OK
 const ANGLE_MAX: f32 = 360.0;
 
@@ -87,8 +91,47 @@ impl PainterTool {
                 self.set_impasto_light_elevation(*v as f32);
                 true
             }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_POWER => {
+                self.set_impasto_light_intensity(*v as f32);
+                true
+            }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_IMPASTO_SHINE => {
                 self.set_impasto_shine(*v as f32);
+                true
+            }
+            // The lamp SELECTOR — four chips, one router arm each. Spelled out rather than derived from
+            // an index: the arch-gate that pairs a widget id with its handler reads THIS, and a loop over
+            // ids it cannot see is how a chip that does nothing gets shipped.
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_1 => {
+                self.select_impasto_light(0);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_2 => {
+                self.select_impasto_light(1);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_3 => {
+                self.select_impasto_light(2);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_4 => {
+                self.select_impasto_light(3);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_IMPASTO_LIGHT_ON => {
+                self.toggle_impasto_light_on();
+                true
+            }
+            // The lamp's colour, read back from the shared OKLCH picker as "r,g,b" (sRGB bytes).
+            PanelEvent::SelectOption(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_COLOR => {
+                let mut it = v.split(',').filter_map(|p| p.trim().parse::<u8>().ok());
+                if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next()) {
+                    self.set_impasto_light_color([
+                        f32::from(r) / 255.0,
+                        f32::from(g) / 255.0,
+                        f32::from(b) / 255.0,
+                    ]);
+                }
                 true
             }
             _ => false,
@@ -192,15 +235,50 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
-    /// **Light Angle** (azimuth, whole degrees; wraps).
+    /// **Light Angle** (azimuth, whole degrees; wraps) — of the SELECTED lamp.
     pub fn set_impasto_light_angle(&mut self, v: f32) {
-        self.paint.impasto_light_angle_deg = (v.clamp(0.0, ANGLE_MAX) as u16) % 360;
+        self.paint.impasto_rig.current_mut().angle_deg = (v.clamp(0.0, ANGLE_MAX) as u16) % 360;
         self.invalidate_composite();
     }
 
-    /// **Elevation** (whole degrees above the canvas plane).
+    /// **Elevation** (whole degrees above the canvas plane) — of the SELECTED lamp.
     pub fn set_impasto_light_elevation(&mut self, v: f32) {
-        self.paint.impasto_light_elev_deg = v.clamp(ELEV_MIN, ELEV_MAX) as u16;
+        self.paint.impasto_rig.current_mut().elev_deg = v.clamp(ELEV_MIN, ELEV_MAX) as u16;
+        self.invalidate_composite();
+    }
+
+    /// **Intensity** of the selected lamp (`0..2`). A fill at 0.3 against a key at 1 is the everyday rig.
+    pub fn set_impasto_light_intensity(&mut self, v: f32) {
+        self.paint.impasto_rig.current_mut().intensity = v.clamp(0.0, LIGHT_INTENSITY_MAX);
+        self.invalidate_composite();
+    }
+
+    /// The selected lamp's **colour** (linear RGB). White is neutral; the shading is relative, so a
+    /// coloured lamp tints the paint exactly where it TILTS and leaves flat paint alone.
+    pub fn set_impasto_light_color(&mut self, rgb: [f32; 3]) {
+        self.paint.impasto_rig.current_mut().color = [
+            rgb[0].clamp(0.0, 1.0),
+            rgb[1].clamp(0.0, 1.0),
+            rgb[2].clamp(0.0, 1.0),
+        ];
+        self.invalidate_composite();
+    }
+
+    /// Pick which lamp the Lighting card edits. Changes no pixel — it is editing state — so it does NOT
+    /// invalidate the composite.
+    pub fn select_impasto_light(&mut self, i: u8) {
+        self.paint.impasto_rig.selected = i.min(super::impasto_rig::MAX_LIGHTS as u8 - 1);
+    }
+
+    /// Switch the selected lamp on or off. **Light 0 (the key) cannot be switched off** — a canvas with
+    /// Show Impasto ticked and no light at all is an unlit canvas wearing a lit canvas's UI, and "Show
+    /// Impasto" already IS that switch. Turning the key off would be a second, worse one.
+    pub fn toggle_impasto_light_on(&mut self) {
+        if self.paint.impasto_rig.selected == 0 {
+            return;
+        }
+        let l = self.paint.impasto_rig.current_mut();
+        l.on = !l.on;
         self.invalidate_composite();
     }
 
@@ -225,8 +303,7 @@ impl PainterTool {
         b.impasto_body = d.impasto_body;
         b.impasto_plow = d.impasto_plow;
         self.paint.impasto_show = true;
-        self.paint.impasto_light_angle_deg = 230;
-        self.paint.impasto_light_elev_deg = 30;
+        self.paint.impasto_rig = Default::default();
         self.paint.impasto_shine = 0.7;
         self.invalidate_composite();
     }

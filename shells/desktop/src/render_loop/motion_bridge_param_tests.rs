@@ -8,10 +8,8 @@
 //! first touch. `every_row_range_contains_its_value_for_every_node_and_param` is
 //! the gate for that whole class.
 
-use super::params::{
-    apply_channel_presets, apply_color_to_node, build_params_snapshot, channel_values,
-    linear_rgba_to_srgb8, param_value,
-};
+use super::color::{apply_color_to_node, channel_values, linear_rgba_to_srgb8};
+use super::params::{apply_channel_presets, build_params_snapshot, param_value};
 use crate::motion_state::MotionState;
 
 /// The reported-bug + colour-authoring seam, end to end and headless: a

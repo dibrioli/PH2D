@@ -343,7 +343,13 @@ mod tests {
     #[test]
     fn the_opacity_channel_fades_the_tint_and_starts_from_opaque_white() {
         let plain = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0]; 2]));
-        let out = channel::drive_channel(&plain, channel::CH_OPACITY, &[0.25, 0.75], 1.0, Combine::Set);
+        let out = channel::drive_channel(
+            &plain,
+            channel::CH_OPACITY,
+            &[0.25, 0.75],
+            1.0,
+            Combine::Set,
+        );
         match out.get("tint") {
             Some(Column::Vec4(v)) => {
                 assert_eq!(v[0], [1.0, 1.0, 1.0, 0.25], "white, a quarter opaque");
@@ -356,18 +362,19 @@ mod tests {
         let red = Stream::new(1)
             .with("P", Column::Vec2(vec![[0.0, 0.0]]))
             .with("tint", Column::Vec4(vec![[1.0, 0.0, 0.0, 1.0]]));
-        let faded = channel::drive_channel(&red, channel::CH_OPACITY, &[0.5], 1.0, Combine::Multiply);
+        let faded =
+            channel::drive_channel(&red, channel::CH_OPACITY, &[0.5], 1.0, Combine::Multiply);
         match faded.get("tint") {
             Some(Column::Vec4(v)) => assert_eq!(v[0], [1.0, 0.0, 0.0, 0.5]),
             _ => panic!("tint"),
         }
 
         // An alpha the renderer cannot use is not a brighter particle — it is a bug. Clamped.
-        let over = channel::drive_channel(&plain, channel::CH_OPACITY, &[4.0, -2.0], 1.0, Combine::Set);
+        let over =
+            channel::drive_channel(&plain, channel::CH_OPACITY, &[4.0, -2.0], 1.0, Combine::Set);
         match over.get("tint") {
             Some(Column::Vec4(v)) => assert_eq!((v[0][3], v[1][3]), (1.0, 0.0)),
             _ => panic!("tint"),
         }
     }
-
 }

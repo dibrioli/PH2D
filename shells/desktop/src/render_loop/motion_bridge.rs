@@ -33,6 +33,10 @@ use ph2d_editor::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
 #[path = "motion_bridge_params.rs"]
 mod params;
 
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_color.rs"]
+mod color;
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_plumbing.rs"]
 mod plumbing;
@@ -219,7 +223,7 @@ pub(super) fn dispatch(
             params::apply_param_edits(motion, &hero.store);
             let snap = params::build_params_snapshot(motion);
             if let Some(s) = &snap {
-                params::seed_color_swatches(&mut hero.store, s);
+                color::seed_color_swatches(&mut hero.store, s);
             }
             ph2d_panel_motion_params::set_current_params(snap);
         } else {

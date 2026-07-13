@@ -84,6 +84,7 @@ pub fn populate(store: &mut WidgetStore) {
 
     // Autoria.
     button(store, ids::FLIP_AUTOKEY);
+    button(store, ids::FLIP_FALLOFF);
     button(store, ids::FLIP_ADDITIVE);
 
     // Ops de chave.

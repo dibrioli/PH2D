@@ -106,7 +106,7 @@ pub(crate) fn bake_stroke(
     playhead: &ph2d_core::Playhead,
     style: &FlipStyleSnapshot,
     active_layer: Option<LayerId>,
-    strip: &crate::flip_strip::FlipStrip,
+    strip: &mut crate::flip_strip::FlipStrip,
     points: &[Vec2],
     pressures: &[f32],
     px_to_world: f32,
@@ -314,7 +314,7 @@ impl crate::App {
         // é guardado no espaço local dele. Identidade num objeto novo (o comum).
         let w2l = self.flip_active_world_to_local();
         let playhead = self.playhead;
-        let strip_ref = &self.flip_strip;
+        let strip_ref = &mut self.flip_strip;
         let mut live = None;
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(style) = style

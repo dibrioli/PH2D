@@ -27,7 +27,7 @@ fn active_drawing_mut<'a>(
     flip: &'a mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<LayerId>,
-    strip: &crate::flip_strip::FlipStrip,
+    strip: &mut crate::flip_strip::FlipStrip,
 ) -> Option<&'a mut FlipDrawing> {
     let (oid, _lid, did) = crate::flip_autokey::target_drawing(
         flip,
@@ -113,7 +113,7 @@ pub(crate) fn erase_at(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<LayerId>,
-    strip: &crate::flip_strip::FlipStrip,
+    strip: &mut crate::flip_strip::FlipStrip,
     mode: EraseMode,
     center: Vec2,
     radius: f32,
@@ -192,7 +192,7 @@ pub(crate) fn cleanup_soft(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<LayerId>,
-    strip: &crate::flip_strip::FlipStrip,
+    strip: &mut crate::flip_strip::FlipStrip,
 ) -> bool {
     let Some(dr) = active_drawing_mut(flip, playhead, active_layer, strip) else {
         return false;
@@ -256,13 +256,10 @@ impl crate::App {
         );
         if soft {
             let active_layer = self.flip_active_layer;
+            let playhead = self.playhead;
+            let strip = &mut self.flip_strip;
             if let Some(gfx) = self.gfx.as_mut() {
-                cleanup_soft(
-                    &mut gfx.flip,
-                    &self.playhead,
-                    active_layer,
-                    &self.flip_strip,
-                );
+                cleanup_soft(&mut gfx.flip, &playhead, active_layer, strip);
             }
         }
         true
@@ -278,6 +275,8 @@ impl crate::App {
         // gizmo é LOCAL, então o cursor (mundo) desce ao espaço local e o raio recua
         // pela escala. Identidade num objeto não-movido (o comum) → no-op.
         let w2l = self.flip_active_world_to_local();
+        let playhead = self.playhead;
+        let strip = &mut self.flip_strip;
         if let Some(gfx) = self.gfx.as_mut() {
             let win = gfx.surface.size();
             let w = gfx.camera.screen_to_world((x, y), win);
@@ -288,9 +287,9 @@ impl crate::App {
             let radius_local = radius * w2l.mean_scale() as f32;
             erase_at(
                 &mut gfx.flip,
-                &self.playhead,
+                &playhead,
                 active_layer,
-                &self.flip_strip,
+                strip,
                 style.erase,
                 Vec2::new(local[0] as f32, local[1] as f32),
                 radius_local,
@@ -334,7 +333,7 @@ mod tests {
             &mut doc,
             &Playhead::default(),
             Some(l),
-            &crate::flip_strip::FlipStrip::default(),
+            &mut crate::flip_strip::FlipStrip::default(),
             EraseMode::Stroke,
             Vec2::new(2.0, 0.0),
             0.5,
@@ -354,7 +353,7 @@ mod tests {
             &mut doc,
             &Playhead::default(),
             Some(l),
-            &crate::flip_strip::FlipStrip::default(),
+            &mut crate::flip_strip::FlipStrip::default(),
             EraseMode::Hard,
             Vec2::new(2.0, 0.0),
             0.5,
@@ -375,7 +374,7 @@ mod tests {
                 &mut doc,
                 &Playhead::default(),
                 Some(l),
-                &crate::flip_strip::FlipStrip::default(),
+                &mut crate::flip_strip::FlipStrip::default(),
                 EraseMode::Soft,
                 Vec2::new(2.0, 0.0),
                 10.0,
@@ -397,7 +396,7 @@ mod tests {
             &mut doc,
             &Playhead::default(),
             Some(l),
-            &crate::flip_strip::FlipStrip::default(),
+            &mut crate::flip_strip::FlipStrip::default(),
         ));
     }
 
@@ -411,7 +410,7 @@ mod tests {
             &mut doc,
             &Playhead::default(),
             Some(l),
-            &crate::flip_strip::FlipStrip::default(),
+            &mut crate::flip_strip::FlipStrip::default(),
             EraseMode::Stroke,
             Vec2::new(2.0, 0.0),
             0.5,
@@ -489,7 +488,7 @@ mod tests {
     fn the_soft_eraser_does_not_delete_gap_closures_anywhere_on_the_canvas() {
         let (mut doc, l) = doc_with_fill_and_closure();
         let ph = Playhead::new(1.0 / 12.0);
-        let strip = crate::flip_strip::FlipStrip::default();
+        let mut strip = crate::flip_strip::FlipStrip::default();
         let before = strokes_of(&doc).len();
 
         // Um toque de borracha macia LONGE de tudo (em (100, 100)).
@@ -497,13 +496,13 @@ mod tests {
             &mut doc,
             &ph,
             Some(l),
-            &strip,
+            &mut strip,
             EraseMode::Soft,
             Vec2::new(100.0, 100.0),
             1.0,
             1.0,
         );
-        cleanup_soft(&mut doc, &ph, Some(l), &strip);
+        cleanup_soft(&mut doc, &ph, Some(l), &mut strip);
 
         let after = strokes_of(&doc);
         assert_eq!(
@@ -526,20 +525,20 @@ mod tests {
         for mode in [EraseMode::Soft, EraseMode::Hard] {
             let (mut doc, l) = doc_with_fill_and_closure();
             let ph = Playhead::new(1.0 / 12.0);
-            let strip = crate::flip_strip::FlipStrip::default();
+            let mut strip = crate::flip_strip::FlipStrip::default();
 
             // Apaga bem no MEIO da região preenchida.
             erase_at(
                 &mut doc,
                 &ph,
                 Some(l),
-                &strip,
+                &mut strip,
                 mode,
                 Vec2::new(5.0, 5.0),
                 4.0,
                 1.0,
             );
-            cleanup_soft(&mut doc, &ph, Some(l), &strip);
+            cleanup_soft(&mut doc, &ph, Some(l), &mut strip);
 
             let fills: Vec<FlipStroke> = strokes_of(&doc)
                 .into_iter()

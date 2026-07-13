@@ -27,6 +27,8 @@ const MAX_PX_PER_FRAME: f32 = 26.0; // LITERAL-PX-OK: strip cell scale cap
 const MIN_CELL_W: f32 = 3.0; // LITERAL-PX-OK: strip minimum cell width
 /// Lado do marcador de desenho instanciado.
 const INSTANCE_DOT: f32 = 4.0; // LITERAL-PX-OK: instanced-drawing marker
+/// Altura da barra que marca uma chave selecionada para o multiframe (px de tela).
+const SELECTED_BAR: f32 = 3.0; // LITERAL-PX-OK: marcador de chrome, espessura de tela
 /// Espessura da linha do playhead.
 const PLAYHEAD_W: f32 = 2.0; // LITERAL-PX-OK: playhead line width
 /// A célula só ganha rótulo se couber ~um glifo e meio (senão o número sai cortado).
@@ -113,6 +115,22 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
             ctx.text_system,
             theme,
         );
+        // **Marcada para o MULTIFRAME** (W7): uma barra na base da célula.
+        //
+        // Não é o `ButtonKind::Accent`: esse é da chave que está NA TELA, e ela e uma
+        // chave marcada precisam se distinguir de uma olhada — a ativa é a ÂNCORA (recebe
+        // influência cheia e é de onde o falloff mede), as marcadas são os outros alvos do
+        // mesmo gesto. Confundi-las faria o animador não saber onde o pincel vai bater.
+        if cell.selected {
+            let h = SELECTED_BAR;
+            let bar = Rect::new(r.x, r.y + r.h - h, r.w, h);
+            fill_rounded_rect(
+                ctx.scene,
+                bar,
+                Radius::Sm.px(),
+                resolve(ColorToken::Selection, theme),
+            );
+        }
         // Desenho instanciado (a MESMA arte em várias chaves): um ponto discreto.
         if cell.instanced && w > INSTANCE_DOT * 2.0 {
             let d = Rect::new(

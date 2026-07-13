@@ -151,31 +151,22 @@ fn a_sculpt_gesture_edits_the_active_drawing() {
         strength: 1.0,
         ..Default::default()
     };
-    let strip = crate::flip_strip::FlipStrip::default();
+    let mut strip = crate::flip_strip::FlipStrip::default();
     let ph = Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS));
     let s = InputSample {
         pos: Vec2::new(2.0, 0.0),
         delta: Vec2::new(0.0, 1.0),
         pressure: 1.0,
     };
-    let (_, _, mut sess) =
-        reshape_begin(&mut doc, &ph, Some(l), &strip, &p, &s).expect("ha desenho na camada ativa");
+    let (oid_g, mut targets) = reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false)
+        .expect("ha desenho na camada ativa");
     assert!(
         strokes_at(&doc, l, 0)[0].positions()[2].y > 0.5,
         "o pen-down ja esculpe"
     );
 
     // E um move continua o gesto no MESMO desenho.
-    let oid = doc.objects().first().unwrap().id;
-    let did = doc
-        .objects()
-        .first()
-        .unwrap()
-        .layer(l)
-        .unwrap()
-        .drawing_at(0)
-        .unwrap();
-    reshape_sample(&mut doc, (oid, did), &mut sess, &p, &s);
+    reshape_sample(&mut doc, oid_g, &mut targets, &p, &s);
     assert!(
         strokes_at(&doc, l, 0)[0].positions()[2].y > 1.0,
         "a 2a amostra tinha de somar (a dose e por AMOSTRA)"
@@ -206,9 +197,10 @@ fn a_locked_layer_refuses_the_sculpt() {
         &mut doc,
         &Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS)),
         Some(l),
-        &crate::flip_strip::FlipStrip::default(),
+        &mut crate::flip_strip::FlipStrip::default(),
         &p,
         &s,
+        false,
     );
     assert!(got.is_none(), "a camada travada tinha de RECUSAR");
     assert_eq!(
@@ -232,7 +224,7 @@ fn a_locked_layer_refuses_the_sculpt() {
 #[test]
 fn sculpting_inside_a_hold_duplicates_the_visible_drawing_never_a_blank_one() {
     let (mut doc, l) = doc_with_line();
-    let strip = crate::flip_strip::FlipStrip {
+    let mut strip = crate::flip_strip::FlipStrip {
         autokey: true,
         ..Default::default()
     };
@@ -258,7 +250,8 @@ fn sculpting_inside_a_hold_duplicates_the_visible_drawing_never_a_blank_one() {
         delta: Vec2::new(0.0, 1.0),
         pressure: 1.0,
     };
-    reshape_begin(&mut doc, &ph, Some(l), &strip, &p, &s).expect("o autokey cria a chave");
+    reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false)
+        .expect("o autokey cria a chave");
 
     let here = strokes_at(&doc, l, 5);
     assert_eq!(
@@ -349,5 +342,110 @@ fn a_filled_stroke_is_one_geometry_so_sculpting_the_line_moves_the_colour() {
     assert!(
         strokes[0].fill.is_some(),
         "o preenchimento sobreviveu a escultura (ele E o traco)"
+    );
+}
+
+/// 🔴 **O sculpt MULTIFRAME: o mesmo gesto esculpe N quadros** (W7).
+///
+/// É a feature-assinatura do GP para animação. Com chaves marcadas na tira, um traço do
+/// pincel age em todas — e o quadro ATIVO recebe influência cheia.
+///
+/// Mutação que sangra: faça o `reshape_begin` voltar a resolver UM alvo (o `target_drawing`
+/// sozinho) e o quadro 5 para de se mexer.
+#[test]
+fn the_sculpt_reaches_every_selected_key() {
+    use ph2d_flip::{Hold, KeyKind};
+    let (mut doc, l) = doc_with_line();
+    let oid = doc.objects().first().unwrap().id;
+    // Uma 2ª chave, no quadro 5, com a MESMA linha (uma cópia — desenho próprio).
+    doc.object_mut(oid)
+        .unwrap()
+        .duplicate_frame(l, 0, 5, ph2d_flip::DupMode::Deep);
+    let _ = (Hold::Implicit, KeyKind::Keyframe);
+
+    let strip0 = crate::flip_strip::FlipStrip {
+        selection: vec![0, 5], // as DUAS marcadas
+        ..Default::default()
+    };
+    let mut strip = strip0;
+
+    let p = ReshapeParams {
+        kind: ReshapeKind::Push,
+        radius: 5.0,
+        strength: 1.0,
+        ..Default::default()
+    };
+    let s = InputSample {
+        pos: Vec2::new(2.0, 0.0),
+        delta: Vec2::new(0.0, 1.0),
+        pressure: 1.0,
+    };
+    let ph = Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS)); // quadro 0 = o ativo
+
+    let (_, targets) = reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false)
+        .expect("ha desenho na camada ativa");
+
+    assert_eq!(targets.len(), 2, "o gesto nao alcancou as duas chaves");
+    assert!(
+        strokes_at(&doc, l, 0)[0].positions()[2].y > 0.5,
+        "o quadro ATIVO nao foi esculpido"
+    );
+    assert!(
+        strokes_at(&doc, l, 5)[0].positions()[2].y > 0.5,
+        "o quadro 5 (marcado, mas nao o ativo) NAO foi esculpido — o multiframe nao chegou nele"
+    );
+}
+
+/// 🔴 **Um desenho INSTANCIADO por duas chaves é esculpido UMA vez.**
+///
+/// É a regra que a referência marca com exclamação (`02_referencia §11`: *dedup por
+/// Drawing!*). Duas chaves podem apontar o MESMO desenho (o "duplicate as instance", como
+/// um ciclo reusa arte). Sem o dedup, o pincel aplicaria **duas vezes no mesmo buffer**: a
+/// linha andaria o dobro naquele quadro, e o animador veria a arte se deformar sozinha só
+/// nos quadros instanciados — um bug que ninguem atribuiria ao multiframe.
+///
+/// Mutação que sangra: tire o dedup de `flip_multiframe::targets`.
+#[test]
+fn an_instanced_drawing_is_sculpted_only_once() {
+    let (mut doc, l) = doc_with_line();
+    let oid = doc.objects().first().unwrap().id;
+    // A chave 5 é uma INSTÂNCIA da 0: o MESMO `DrawingId`.
+    doc.object_mut(oid)
+        .unwrap()
+        .duplicate_frame(l, 0, 5, ph2d_flip::DupMode::Instance);
+
+    let mut strip = crate::flip_strip::FlipStrip {
+        selection: vec![0, 5],
+        ..Default::default()
+    };
+
+    let p = ReshapeParams {
+        kind: ReshapeKind::Push,
+        radius: 5.0,
+        strength: 1.0,
+        ..Default::default()
+    };
+    let s = InputSample {
+        pos: Vec2::new(2.0, 0.0),
+        delta: Vec2::new(0.0, 1.0),
+        pressure: 1.0,
+    };
+    let ph = Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS));
+
+    let (_, targets) = reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false).unwrap();
+
+    assert_eq!(
+        targets.len(),
+        1,
+        "o desenho instanciado virou DOIS alvos — o pincel o esculpiria em dobro"
+    );
+    // **E o deslocamento é o de UMA aplicação.** O ponto está SOB o cursor, então a queda
+    // do pincel vale 1 e o Push o desloca exatamente pelo delta (1,0 unidade). Se o
+    // desenho instanciado fosse esculpido duas vezes, ele andaria **2,0** — e é essa a
+    // assinatura do bug, não uma faixa qualquer.
+    let y = strokes_at(&doc, l, 0)[0].positions()[2].y;
+    assert!(
+        (y - 1.0).abs() < 1e-3,
+        "o ponto andou {y}: o esperado e 1,0 (uma aplicacao). 2,0 = o pincel bateu DUAS          vezes no mesmo buffer (o dedup caiu)"
     );
 }

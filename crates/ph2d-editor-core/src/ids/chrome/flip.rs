@@ -245,6 +245,9 @@ pub const FLIP_GHOST_AFTER_NUM: NodeId = hash_node_id("flip.strip.ghost_after_nu
 // ── Autokey (per-tool semantics — see `ph2d_flip::AutokeyPolicy`) ────────────
 /// Autokey on/off: drawing past a key's hold creates a new key.
 pub const FLIP_AUTOKEY: NodeId = hash_node_id("flip.strip.autokey");
+/// Multiframe **Falloff** (W7): os quadros vizinhos recebem menos influência que o
+/// active one. Brushes only — the bucket is a discrete op and always uses 1.0.
+pub const FLIP_FALLOFF: NodeId = hash_node_id("flip.strip.falloff");
 /// Additive: a new key born of DRAWING starts as a copy (not blank).
 pub const FLIP_ADDITIVE: NodeId = hash_node_id("flip.strip.additive");
 

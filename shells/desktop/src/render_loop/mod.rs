@@ -1428,12 +1428,21 @@ impl crate::App {
                         // ADR-0114 W3: e os eventos da TIRA (transporte, ops de
                         // chave, exposição, tween, ciclo, Ghost Frames) — documento
                         // + playhead, aplicados aqui pelo mesmo drain.
+                        // O `add` (Shift/Ctrl) vem do SHELL, não do evento: o
+                        // `WidgetEvent::Click` não carrega modificadores e o `PanelEvent`
+                        // está CONGELADO em 4 variantes (ADR-0040). O drain roda no MESMO
+                        // frame do clique, então o estado da tecla ainda é o do gesto — e
+                        // nenhum contrato precisa ser tocado para a tira ganhar
+                        // multisseleção (W7).
                         crate::flip_strip::apply_panel_event(
                             &ev,
                             flip,
                             self.flip_active_layer,
                             &mut self.playhead,
                             &mut self.flip_strip,
+                            self.modifiers.shift_key()
+                                || self.modifiers.super_key()
+                                || self.modifiers.control_key(),
                         );
                         if let Some(t) = tools.active_mut() {
                             t.handle_panel_event(ev);

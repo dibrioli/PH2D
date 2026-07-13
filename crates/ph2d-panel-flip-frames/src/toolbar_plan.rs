@@ -90,6 +90,11 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
         Item::Gap,
         // Autoria: o que nasce ao desenhar depois do hold
         Item::Toggle(ids::FLIP_AUTOKEY, "Auto", snap.autokey),
+        // **Falloff** (W7 — multiframe): com ele ligado, os quadros vizinhos marcados
+        // recebem menos influência do pincel que o quadro ativo. Vive ao lado do Auto
+        // porque os dois são política de AUTORIA (o que o gesto faz nos outros quadros),
+        // e não parâmetro de pincel.
+        Item::Toggle(ids::FLIP_FALLOFF, "Falloff", snap.falloff),
         Item::Toggle(ids::FLIP_ADDITIVE, "Add.", snap.additive),
         Item::Gap,
         // Ops de chave: + · duplicar · apagar · exposição · mover ±1

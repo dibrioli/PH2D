@@ -21,15 +21,27 @@ use ph2d_flip_reshape::{InputSample, ReshapeKind, ReshapeParams, Session};
 use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
 
+/// Um desenho que este gesto esculpe: a sessão DELE (máscara congelada + pesos do Grab)
+/// e o falloff temporal DELE.
+pub(crate) struct ReshapeTarget {
+    pub(crate) did: ph2d_flip::DrawingId,
+    pub(crate) session: Session,
+    /// `1.0` no quadro ativo; menor nos vizinhos (W7 — `flip_multiframe`).
+    pub(crate) falloff: f32,
+}
+
 /// O gesto de escultura em curso (o que o `App` guarda entre o down e o up).
 pub(crate) struct FlipReshape {
-    session: Session,
+    /// **Um alvo por DESENHO** (W7 — multiframe): com chaves selecionadas na tira, o MESMO
+    /// gesto esculpe N quadros. Cada um tem a sua `Session` — a máscara é congelada no down
+    /// **por desenho** (os traços de um quadro não são os do outro), e o Grab congela os
+    /// pesos dele. Sem seleção múltipla a lista tem UM elemento e nada muda.
+    targets: Vec<ReshapeTarget>,
     /// O cursor da amostra anterior, em espaço LOCAL (o delta sai daqui).
     last_local: Vec2,
-    /// O objeto/desenho que o gesto está esculpindo — resolvido UMA vez, no down.
-    /// (Se o alvo pudesse mudar no meio, um scrub de playhead partiria o gesto em
-    /// dois desenhos diferentes.)
-    target: (ph2d_flip::FlipObjectId, ph2d_flip::DrawingId),
+    /// O objeto que o gesto está esculpindo — resolvido UMA vez, no down. (Se o alvo
+    /// pudesse mudar no meio, um scrub de playhead partiria a escultura em dois.)
+    oid: ph2d_flip::FlipObjectId,
 }
 
 /// O vocabulário da tool → o do solver. As duas listas são espelhos (o mesmo
@@ -52,9 +64,9 @@ fn kind_of(k: ph2d_tool_flip::ReshapeKind) -> ReshapeKind {
 /// - **raio** = metade do Size (o Size é o DIÂMETRO do pincel, como na borracha);
 /// - **força** = o Strength do painel (o `opacity` da tool — a borracha faz igual);
 /// - **invert** = Ctrl (só morde nos pincéis com direção; ver `ReshapeKind`);
-/// - **`frame_falloff` = 1.0** — a tira seleciona um quadro só. Quando ela ganhar
-///   multi-seleção (T5.7), é aqui que o falloff temporal entra, e os oito pincéis já
-///   o respeitam.
+/// - **`frame_falloff`** — o peso temporal do quadro (W7). Ele sai daqui em `1.0` e é
+///   SOBRESCRITO por alvo em `reshape_sample` (cada quadro do multiframe tem o seu). Os
+///   oito pincéis já o respeitam: ele entra no funil único `influence()` do solver.
 pub(crate) fn params_from(
     style: &FlipStyleSnapshot,
     px_to_world: f32,
@@ -84,39 +96,74 @@ pub(crate) fn reshape_begin(
     flip: &mut ph2d_flip::FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<LayerId>,
-    strip: &crate::flip_strip::FlipStrip,
+    strip: &mut crate::flip_strip::FlipStrip,
     p: &ReshapeParams,
     s: &InputSample,
-) -> Option<(ph2d_flip::FlipObjectId, ph2d_flip::DrawingId, Session)> {
-    let (oid, _lid, did) = crate::flip_autokey::target_drawing(
+    falloff_on: bool,
+) -> Option<(ph2d_flip::FlipObjectId, Vec<ReshapeTarget>)> {
+    let (oid, lid, did) = crate::flip_autokey::target_drawing(
         flip,
         playhead,
         active_layer,
         strip,
         crate::flip_autokey::FlipEdit::Modify,
     )?;
-    let drawing = flip.object_mut(oid)?.drawing_mut(did)?;
-    let mut session = Session::begin(&drawing.strokes, p, s);
-    session.apply(&mut drawing.strokes, p, s);
-    Some((oid, did, session))
+    // **O alvo multiframe é resolvido ANTES do gesto** (`02_referencia §11`): daqui para
+    // baixo o Sculpt não sabe que multiframe existe — ele só itera `(drawing, falloff)`.
+    // O quadro ATIVO entra sempre, com influência cheia; os selecionados entram
+    // deduplicados por desenho (um desenho instanciado por duas chaves é UM alvo, senão o
+    // pincel o esculpiria em dobro).
+    let frame = flip.object(oid).map_or(0, |o| o.frame_at(playhead));
+    let mf = crate::flip_multiframe::targets(
+        flip,
+        oid,
+        lid,
+        playhead,
+        strip.selected_keys(),
+        (did, frame),
+        falloff_on,
+    );
+    let mut targets = Vec::with_capacity(mf.len());
+    for t in mf {
+        let Some(drawing) = flip.object_mut(oid).and_then(|o| o.drawing_mut(t.did)) else {
+            continue;
+        };
+        // A máscara é congelada POR DESENHO: os traços de um quadro não são os do outro
+        // (e o auto-masking pela seleção — W6 — vale em cada um por si).
+        let mut session = Session::begin(&drawing.strokes, p, s);
+        let mut pf = *p;
+        pf.frame_falloff = t.falloff;
+        session.apply(&mut drawing.strokes, &pf, s);
+        targets.push(ReshapeTarget {
+            did: t.did,
+            session,
+            falloff: t.falloff,
+        });
+    }
+    (!targets.is_empty()).then_some((oid, targets))
 }
 
-/// Uma amostra do gesto no desenho que ele já resolveu (nunca re-resolve o alvo: um
+/// Uma amostra do gesto nos desenhos que ele já resolveu (nunca re-resolve o alvo: um
 /// scrub de playhead no meio do gesto partiria a escultura em dois desenhos).
 pub(crate) fn reshape_sample(
     flip: &mut ph2d_flip::FlipDoc,
-    target: (ph2d_flip::FlipObjectId, ph2d_flip::DrawingId),
-    session: &mut Session,
+    oid: ph2d_flip::FlipObjectId,
+    targets: &mut [ReshapeTarget],
     p: &ReshapeParams,
     s: &InputSample,
 ) -> bool {
-    let Some(drawing) = flip
-        .object_mut(target.0)
-        .and_then(|o| o.drawing_mut(target.1))
-    else {
-        return false;
-    };
-    session.apply(&mut drawing.strokes, p, s)
+    let mut changed = false;
+    for t in targets.iter_mut() {
+        let Some(drawing) = flip.object_mut(oid).and_then(|o| o.drawing_mut(t.did)) else {
+            continue;
+        };
+        // O falloff temporal DESTE quadro entra no funil único do solver (`influence()`),
+        // e por isso os oito pincéis o respeitam sem saber que multiframe existe.
+        let mut pf = *p;
+        pf.frame_falloff = t.falloff;
+        changed |= t.session.apply(&mut drawing.strokes, &pf, s);
+    }
+    changed
 }
 
 impl crate::App {
@@ -166,7 +213,8 @@ impl crate::App {
 
         let active_layer = self.flip_active_layer;
         let playhead = self.playhead;
-        let strip = &self.flip_strip;
+        let falloff_on = self.flip_strip.falloff;
+        let strip = &mut self.flip_strip;
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -175,9 +223,15 @@ impl crate::App {
             delta: Vec2::ZERO, // no pen-down o cursor ainda não andou
             pressure: 1.0,     // sem caneta real: pressão cheia (igual ao desenho)
         };
-        let Some((oid, did, session)) =
-            reshape_begin(&mut gfx.flip, &playhead, active_layer, strip, &p, &s)
-        else {
+        let Some((oid, targets)) = reshape_begin(
+            &mut gfx.flip,
+            &playhead,
+            active_layer,
+            strip,
+            &p,
+            &s,
+            falloff_on,
+        ) else {
             // Camada travada, ou sem chave com o AutoKey desligado. Uma ferramenta que
             // consome o clique e não faz NADA parece quebrada — ela tem de DIZER.
             gfx.toasts.push(ph2d_editor::Toast::warning(
@@ -187,9 +241,9 @@ impl crate::App {
             return true;
         };
         self.flip_reshape = Some(FlipReshape {
-            session,
+            targets,
             last_local: local,
-            target: (oid, did),
+            oid,
         });
         true
     }
@@ -219,9 +273,9 @@ impl crate::App {
             pressure: 1.0,
         };
         g.last_local = local;
-        let target = g.target;
+        let oid = g.oid;
         if let Some(gfx) = self.gfx.as_mut() {
-            reshape_sample(&mut gfx.flip, target, &mut g.session, &p, &s);
+            reshape_sample(&mut gfx.flip, oid, &mut g.targets, &p, &s);
         }
         true
     }

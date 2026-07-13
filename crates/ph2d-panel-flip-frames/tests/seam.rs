@@ -115,12 +115,14 @@ fn clicking_a_cell_reaches_the_bus() {
                 exposure: 4,
                 breakdown: false,
                 instanced: false,
+                selected: false,
             },
             FlipCell {
                 key: 4,
                 exposure: 1,
                 breakdown: true,
                 instanced: false,
+                selected: false,
             },
         ],
         ..Default::default()
@@ -195,6 +197,7 @@ fn every_toolbar_control_is_actually_painted() {
             exposure: 1,
             breakdown: false,
             instanced: false,
+            selected: false,
         }],
         fps: 12.0,
         ..Default::default()

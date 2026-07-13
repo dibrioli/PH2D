@@ -88,6 +88,7 @@ fn strip_snapshot(
                 .get(&key)
                 .is_some_and(|f| f.kind == ph2d_flip::KeyKind::Breakdown),
             instanced: obj.drawing(drawing).is_some_and(|d| d.is_instanced()),
+            selected: strip.selected_keys().contains(&key),
         })
         .collect();
     FlipStripSnapshot {
@@ -107,6 +108,7 @@ fn strip_snapshot(
         ghost_after: obj.onion.frames_after,
         autokey: strip.autokey,
         additive: strip.additive,
+        falloff: strip.falloff,
         tween_count: strip.tween_count,
         cycle: cycle_wire(layer.cycle.post),
     }

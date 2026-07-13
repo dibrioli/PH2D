@@ -26,9 +26,16 @@ pub(crate) struct FlipStrip {
     pub(crate) additive: bool,
     /// Quantos inbetweens o botão Tween gera.
     pub(crate) tween_count: u32,
-    /// Chaves selecionadas na tira (hoje: a última clicada). O modo `Selected` dos
-    /// Ghost Frames lê isto.
+    /// Chaves selecionadas na tira. O modo `Selected` dos Ghost Frames lê isto — e o
+    /// **multiframe** (W7) a usa como alvo: com 2+ chaves marcadas, o MESMO gesto de
+    /// escultura/balde age em todas.
     pub(crate) selection: Vec<Frame>,
+    /// **Falloff temporal** do multiframe (W7): com ele LIGADO, os quadros vizinhos
+    /// recebem menos influência que o ativo. Desligado por padrão — o uso comum é
+    /// *"aplique esta edição em todos os quadros que marquei"*, e o Blender também o expõe
+    /// como um interruptor à parte. **Só pincéis o respeitam**; ops discretas (o balde) usam
+    /// sempre `1.0` (`02_referencia §11`).
+    pub(crate) falloff: bool,
 }
 
 impl Default for FlipStrip {
@@ -38,14 +45,26 @@ impl Default for FlipStrip {
             additive: false,
             tween_count: 1,
             selection: Vec::new(),
+            falloff: false,
         }
     }
 }
 
 impl FlipStrip {
-    /// As chaves selecionadas (o render dos fantasmas lê isto no modo `Selected`).
+    /// As chaves selecionadas (os fantasmas leem isto no modo `Selected`; o **multiframe**
+    /// as usa como alvo — `flip_multiframe::targets`).
     pub(crate) fn selected_keys(&self) -> &[Frame] {
         &self.selection
+    }
+}
+
+/// Alterna a chave `k` na seleção (Shift/Ctrl+clique na célula).
+fn toggle_key(sel: &mut Vec<Frame>, k: Frame) {
+    if let Some(i) = sel.iter().position(|x| *x == k) {
+        sel.remove(i);
+    } else {
+        sel.push(k);
+        sel.sort_unstable();
     }
 }
 
@@ -115,6 +134,7 @@ pub(crate) fn apply_panel_event(
     active_layer: Option<LayerId>,
     playhead: &mut Playhead,
     strip: &mut FlipStrip,
+    add: bool,
 ) -> bool {
     use ph2d_editor::ids;
     use ph2d_editor::tool::PanelEvent;
@@ -192,6 +212,10 @@ pub(crate) fn apply_panel_event(
         PanelEvent::Click(id) if *id == ids::FLIP_AUTOKEY => {
             strip.autokey = !strip.autokey;
             false
+        }
+        PanelEvent::Click(id) if *id == ids::FLIP_FALLOFF => {
+            strip.falloff = !strip.falloff;
+            false // política de autoria, não documento
         }
         PanelEvent::Click(id) if *id == ids::FLIP_ADDITIVE => {
             strip.additive = !strip.additive;
@@ -320,6 +344,16 @@ pub(crate) fn apply_panel_event(
         }
 
         // ── Células: seleciona + leva o playhead até a chave ───────────────────
+        //
+        // **Com modificador (Shift/Ctrl), ALTERNA a chave na seleção e NÃO move o
+        // playhead** (W7 — multiframe). Mover o playhead junto seria destrutivo: o quadro
+        // ATIVO é a âncora do falloff temporal e é o único que recebe influência cheia —
+        // montar a seleção arrastaria a âncora a cada clique, e o gesto sairia pesando os
+        // quadros errados.
+        //
+        // O modificador vem do SHELL (o `add`), não do evento: o `WidgetEvent::Click` não
+        // carrega modificadores e o `PanelEvent` está congelado (ADR-0040). Nenhum contrato
+        // é tocado.
         PanelEvent::Click(id) => {
             let cells = flip
                 .object(oid)
@@ -328,9 +362,13 @@ pub(crate) fn apply_panel_event(
                 .unwrap_or_default();
             for (i, (k, _, _)) in cells.iter().enumerate() {
                 if ph2d_editor::ids::flip_cell_id(i) == *id {
-                    seek(playhead, fps, *k);
-                    strip.selection = vec![*k];
-                    return false; // navegar não é edição
+                    if add {
+                        toggle_key(&mut strip.selection, *k);
+                    } else {
+                        seek(playhead, fps, *k);
+                        strip.selection = vec![*k];
+                    }
+                    return false; // navegar/selecionar não é edição
                 }
             }
             false

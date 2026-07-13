@@ -20,6 +20,10 @@ pub struct FlipCell {
     pub breakdown: bool,
     /// O desenho é compartilhado por mais de uma chave (instância/ciclo).
     pub instanced: bool,
+    /// **Marcada para o MULTIFRAME** (W7): o mesmo gesto de escultura/balde age em todas
+    /// as chaves marcadas. Sem o realce a feature seria invisível — o usuário marcaria
+    /// quadros sem saber quais, e um gesto agiria onde ele não vê.
+    pub selected: bool,
 }
 
 /// Tudo que a tira pinta, publicado pelo shell a cada frame.
@@ -51,6 +55,9 @@ pub struct FlipStripSnapshot {
     pub tween_count: u32,
     /// Ciclo (post behavior) da camada ativa — `CycleMode as u8`.
     pub cycle: u8,
+    /// **Falloff temporal** do multiframe: os vizinhos recebem menos influência que o
+    /// quadro ativo. Só PINCÉIS o respeitam (o balde é discreto).
+    pub falloff: bool,
 }
 
 thread_local! {

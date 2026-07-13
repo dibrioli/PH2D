@@ -459,7 +459,7 @@ impl crate::App {
         let active_layer = self.flip_active_layer;
         let w2l = self.flip_active_world_to_local();
         let playhead = self.playhead;
-        let strip = &self.flip_strip;
+        let strip = &mut self.flip_strip;
 
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
@@ -470,7 +470,7 @@ impl crate::App {
         let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
         let local = Vec2::new(local[0] as f32, local[1] as f32);
 
-        let Some((oid, _lid, did)) = crate::flip_autokey::target_drawing(
+        let Some((oid, lid, did)) = crate::flip_autokey::target_drawing(
             &mut gfx.flip,
             &playhead,
             active_layer,
@@ -488,6 +488,37 @@ impl crate::App {
             return true;
         };
         let frame = gfx.flip.object(oid).map_or(0, |o| o.frame_at(&playhead));
+
+        // **O balde multiframe** (W7): com chaves selecionadas na tira, o MESMO clique
+        // preenche todas. O pipeline roda **por quadro** (`02_referencia §11`: *"N fills
+        // independentes — a região pode mudar de forma"*): a linha se move entre os
+        // quadros, então o solver tem de re-traçar a região em cada um. Não há como
+        // reaproveitar o contorno.
+        //
+        // **Falloff = 1.0 sempre** — meio-preenchimento não existe. O falloff só multiplica
+        // influência de PINCEL (a regra 2 da referência), e o balde é uma op discreta.
+        //
+        // Os quadros vizinhos são preenchidos em SILÊNCIO (sem toast): um quadro em que a
+        // região não fecha não pode derrubar o clique nos outros — o toast fala pelo quadro
+        // ATIVO, que é onde o usuário está olhando.
+        let extra: Vec<_> = crate::flip_multiframe::targets(
+            &gfx.flip,
+            oid,
+            lid,
+            &playhead,
+            strip.selected_keys(),
+            (did, frame),
+            false,
+        )
+        .into_iter()
+        .filter(|t| t.did != did)
+        .collect();
+        for t in extra {
+            if let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(t.did)) {
+                let _ = fill_click(dr, &style, local, px_to_world, &w2l);
+            }
+        }
+
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
             return true;
         };

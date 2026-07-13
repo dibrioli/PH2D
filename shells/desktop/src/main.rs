@@ -51,6 +51,7 @@ mod flip_fill;
 mod flip_gizmo_view;
 mod flip_layers;
 mod flip_live;
+mod flip_multiframe;
 mod flip_reshape;
 mod flip_select;
 mod flip_smooth;

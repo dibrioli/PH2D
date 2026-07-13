@@ -34,11 +34,21 @@ pub(crate) enum FlipEdit {
 /// `None` = não há onde desenhar (sem objeto/camada, camada travada) ou, no caso de
 /// `Modify`, não há nada na tela para modificar (apagar o vazio não pode inventar
 /// um quadro).
+///
+/// **Efeito colateral deliberado (W7):** se a CANETA fez nascer uma chave, a **seleção de
+/// quadros da tira é LIMPA** — é a regra de segurança do multiframe (`02_referencia §11`).
+/// Sem ela, o animador desenha um quadro novo e o próximo gesto de escultura sai esculpindo
+/// quadros que ele esqueceu de desmarcar: um efeito à distância, e o pior tipo de bug de
+/// animação (o dano aparece **noutro** quadro, e ele não vê acontecer).
+///
+/// **Só a caneta** (`FlipEdit::Draw`). Modificar (borracha / escultura / balde) é
+/// exatamente onde o multiframe VIVE — e o autokey do `Modify` também faz nascer chave (a
+/// duplicata). Limpar ali mataria o multiframe no instante em que ele fosse usado.
 pub(crate) fn target_drawing(
     flip: &mut FlipDoc,
     playhead: &Playhead,
     active_layer: Option<LayerId>,
-    strip: &crate::flip_strip::FlipStrip,
+    strip: &mut crate::flip_strip::FlipStrip,
     edit: FlipEdit,
 ) -> Option<(FlipObjectId, LayerId, DrawingId)> {
     let oid = flip.objects().first().map(|o| o.id)?;
@@ -61,17 +71,28 @@ pub(crate) fn target_drawing(
     );
     // O que está na tela AGORA (o desenho do hold em curso), no quadro de autoria.
     let on_screen = obj.layer(lid).and_then(|l| l.drawing_at(frame));
+    // Já existe uma chave REAL exatamente neste quadro? (Um hold NÃO é chave aqui: o
+    // `on_screen` pode vir de uma chave lá atrás.) É isto que distingue "editei a chave
+    // que existia" de "nasceu uma chave".
+    let key_here = obj
+        .layer(lid)
+        .and_then(|l| l.frames().get(&frame))
+        .is_some_and(|f| f.drawing.is_some());
 
     if !strip.autokey {
         // Sem autokey: edita o que está na tela. Se não há nada (antes da 1ª chave),
         // a caneta ainda precisa de um lugar — cria a primeira chave.
-        return match (on_screen, edit) {
+        let out = match (on_screen, edit) {
             (Some(d), _) => Some((oid, lid, d)),
             (None, FlipEdit::Draw) => obj
                 .ensure_key(lid, frame, AutokeyPolicy::Blank)
                 .map(|d| (oid, lid, d)),
             (None, FlipEdit::Modify) => None,
         };
+        if out.is_some() && on_screen.is_none() && edit == FlipEdit::Draw {
+            strip.selection.clear(); // nasceu chave pela caneta (ver o doc-comment)
+        }
+        return out;
     }
     // Com autokey: a política é da FERRAMENTA. A borracha nunca nasce em branco.
     let policy = match edit {
@@ -82,7 +103,11 @@ pub(crate) fn target_drawing(
     if edit == FlipEdit::Modify && on_screen.is_none() {
         return None; // nada na tela: a borracha não inventa quadro
     }
-    obj.ensure_key(lid, frame, policy).map(|d| (oid, lid, d))
+    let out = obj.ensure_key(lid, frame, policy).map(|d| (oid, lid, d));
+    if out.is_some() && !key_here && edit == FlipEdit::Draw {
+        strip.selection.clear(); // nasceu chave pela caneta (ver o doc-comment)
+    }
+    out
 }
 
 #[cfg(test)]
@@ -121,9 +146,9 @@ mod tests {
     #[test]
     fn drawing_past_the_hold_creates_a_blank_key() {
         let (mut d, l) = doc();
-        let strip = FlipStrip::default(); // autokey ON, additive OFF
+        let mut strip = FlipStrip::default(); // autokey ON, additive OFF
         let (oid, _, did) =
-            target_drawing(&mut d, &at(5), Some(l), &strip, FlipEdit::Draw).unwrap();
+            target_drawing(&mut d, &at(5), Some(l), &mut strip, FlipEdit::Draw).unwrap();
         let o = d.object(oid).unwrap();
         assert!(
             o.drawing(did).unwrap().strokes.is_empty(),
@@ -137,9 +162,9 @@ mod tests {
     #[test]
     fn erasing_past_the_hold_duplicates_the_drawing_on_screen() {
         let (mut d, l) = doc();
-        let strip = FlipStrip::default();
+        let mut strip = FlipStrip::default();
         let (oid, _, did) =
-            target_drawing(&mut d, &at(5), Some(l), &strip, FlipEdit::Modify).unwrap();
+            target_drawing(&mut d, &at(5), Some(l), &mut strip, FlipEdit::Modify).unwrap();
         let o = d.object(oid).unwrap();
         assert_eq!(
             o.drawing(did).unwrap().strokes.len(),
@@ -155,12 +180,12 @@ mod tests {
     #[test]
     fn additive_makes_the_pen_duplicate_too() {
         let (mut d, l) = doc();
-        let strip = FlipStrip {
+        let mut strip = FlipStrip {
             additive: true,
             ..Default::default()
         };
         let (oid, _, did) =
-            target_drawing(&mut d, &at(5), Some(l), &strip, FlipEdit::Draw).unwrap();
+            target_drawing(&mut d, &at(5), Some(l), &mut strip, FlipEdit::Draw).unwrap();
         assert_eq!(
             d.object(oid).unwrap().drawing(did).unwrap().strokes.len(),
             1
@@ -172,12 +197,12 @@ mod tests {
     #[test]
     fn without_autokey_the_gesture_edits_what_is_on_screen() {
         let (mut d, l) = doc();
-        let strip = FlipStrip {
+        let mut strip = FlipStrip {
             autokey: false,
             ..Default::default()
         };
         let (oid, _, did) =
-            target_drawing(&mut d, &at(5), Some(l), &strip, FlipEdit::Draw).unwrap();
+            target_drawing(&mut d, &at(5), Some(l), &mut strip, FlipEdit::Draw).unwrap();
         let o = d.object(oid).unwrap();
         assert_eq!(did, o.drawing_at(l, 0).unwrap(), "é o desenho do quadro 0");
         assert_eq!(o.layer(l).unwrap().cells().len(), 1, "nenhuma chave nova");
@@ -189,8 +214,8 @@ mod tests {
         let mut d = FlipDoc::new();
         let oid = d.push_object("O");
         let l = d.object_mut(oid).unwrap().add_layer("L");
-        let strip = FlipStrip::default();
-        assert!(target_drawing(&mut d, &at(3), Some(l), &strip, FlipEdit::Modify).is_none());
+        let mut strip = FlipStrip::default();
+        assert!(target_drawing(&mut d, &at(3), Some(l), &mut strip, FlipEdit::Modify).is_none());
         assert_eq!(d.object(oid).unwrap().layer(l).unwrap().cells().len(), 0);
     }
 
@@ -203,7 +228,7 @@ mod tests {
             .layer_mut(l)
             .unwrap()
             .locked = true;
-        let strip = FlipStrip::default();
-        assert!(target_drawing(&mut d, &at(0), Some(l), &strip, FlipEdit::Draw).is_none());
+        let mut strip = FlipStrip::default();
+        assert!(target_drawing(&mut d, &at(0), Some(l), &mut strip, FlipEdit::Draw).is_none());
     }
 }

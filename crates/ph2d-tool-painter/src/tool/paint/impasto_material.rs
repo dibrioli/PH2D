@@ -1,8 +1,8 @@
 //! **Impasto** — the paint's MATERIAL, on the canvas.
 //!
-//! Split out of `impasto.rs` (the workspace LOC cap) and cohesive on its own: everything that puts the
-//! four material bytes (`ph2d_painter_brush::material`) onto the layer, and keeps them live on the
-//! stroke the artist is looking at.
+//! Split out of `impasto.rs` (the workspace LOC cap) and cohesive on its own: everything that puts
+//! the material bytes (`ph2d_painter_brush::material::MaterialBytes`) onto the layer, and keeps them
+//! live on the stroke the artist is looking at.
 //!
 //! The material is the *third* output of the same dab list — the relief being the second — and it is
 //! deposited by the very same commit. That is the rule the whole section is built on: a pass with
@@ -32,7 +32,7 @@ impl PainterTool {
         self.paint.impasto_live_edit
     }
 
-    /// Re-bake the LAST stroke's MATERIAL from the brush — the four material knobs, live on the stroke
+    /// Re-bake the LAST stroke's MATERIAL from the brush — every material knob, live on the stroke
     /// the artist is looking at, exactly like Depth and Body.
     ///
     /// It re-merges from the stored BASE rather than merging again on top of what is there: `over` does
@@ -78,7 +78,7 @@ impl PainterTool {
                     dst[i] = b;
                     return;
                 }
-                for c in 0..4 {
+                for c in 0..mat.len() {
                     let old = u32::from(b[c]);
                     let new = u32::from(mat[c]);
                     dst[i][c] = ((old * (255 - a) + new * a + 127) / 255) as u8;

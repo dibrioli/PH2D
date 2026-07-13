@@ -221,4 +221,6 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     impasto_roughness: 0.5, // LITERAL-PX-OK: neutral roughness (the old SHININESS = 24)
     impasto_metallic: 0.0,  // LITERAL-PX-OK: dielectric paint (oil, acrylic, gouache)
     impasto_wax: 0.0,       // LITERAL-PX-OK: no wrap — the old Lambert, to the float
+    // LITERAL-PX-OK: white = the filter is open = the paint scatters its own colour (the physics)
+    impasto_wax_color: [1.0, 1.0, 1.0],
 };

@@ -93,6 +93,13 @@ pub const PAINTER_IMPASTO_METALLIC: NodeId = hash_node_id("painter_brush.impasto
 /// **Wax** (`0..1`) — the soft terminator of paint the light enters and leaves nearby. Wrap lighting,
 /// not a subsurface simulation. `SetValue` → `set_impasto_wax`.
 pub const PAINTER_IMPASTO_WAX: NodeId = hash_node_id("painter_brush.impasto_wax");
+/// The **Wax Colour** swatch — a FILTER on the light that scatters through the paint; opens the shared
+/// OKLCH picker. White (the default) is the physics: the paint scatters its own colour. A warm filter
+/// over white paint is alabaster. `Click` → the panel toggles the picker; the pick rides back as
+/// `SelectOption` → `set_impasto_wax_color`. (Enio, 2026-07-13: *"não deveria ter um seletor de cor ao
+/// lado de Wax como é com Intensity?"* — it should, and the swatch sits on the Wax row exactly as the
+/// lamp's does on Intensity.)
+pub const PAINTER_IMPASTO_WAX_COLOR: NodeId = hash_node_id("painter_brush.impasto_wax_color");
 
 // ── The RIG: four lamps, ONE on screen ─────────────────────────────────────────────────────────────
 //

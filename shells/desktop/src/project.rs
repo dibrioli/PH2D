@@ -45,7 +45,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// (Roughness/Metallic/Wax/Shine, por pixel). Sem o bump, um save anterior seria lido com o
 /// layout novo e o material sairia dos bytes da COBERTURA. (O `Shine` deixou de ser global e
 /// virou propriedade da TINTA — Enio, 2026-07-13.)
-const PROJECT_SCHEMA: u32 = 11;
+/// v12: o MESMO `mats` mudou de FORMA — 4 bytes → 7 (a **cor do Wax**, o filtro sobre a luz que
+/// atravessa a tinta). Não é campo novo, é o mesmo campo com outro layout, e posicional é
+/// posicional: sem o bump um v11 passaria na checagem e o material sairia dos bytes errados.
+const PROJECT_SCHEMA: u32 = 12;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -303,14 +306,14 @@ mod tests {
     ///
     /// Esta tripla existe para que bumpar UM sem pensar nos OUTROS fique vermelho.
     ///
-    /// O `PROJECT_SCHEMA` é 11 (e não o 8 que a linha Painter trazia sozinha) porque na
+    /// O `PROJECT_SCHEMA` é 12 (e não o 9 que a linha Painter trazia sozinha) porque na
     /// árvore integrada ele conta TODAS as quebras de layout, não só as de um módulo:
     /// v3/v4 do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 e v8/v9 do
     /// Flip (o balde, depois `selected` + `offset`), v10 do Vector (o `corner_radius` do
-    /// `VecVertex`), v11 do Painter de novo (o MATERIAL do impasto —
-    /// `PaintedDocument.mats`). Cada linha subiu o mesmo contador por um motivo diferente
-    /// — e o contador é um só: o valor certo não existe em nenhum lado do conflito, ele se
-    /// CONTA.
+    /// `VecVertex`), v11/v12 do Painter de novo (o MATERIAL do impasto —
+    /// `PaintedDocument.mats` —, e o mesmo `mats` mudando de FORMA: 4 → 7 bytes, a cor do
+    /// Wax). Cada linha subiu o mesmo contador por um motivo diferente — e o contador é um
+    /// só: o valor certo não existe em nenhum lado do conflito, ele se CONTA.
     ///
     /// A `VecScene` entrou no pin porque ela também vai EMBUTIDA no arquivo de projeto, e
     /// o pin só protege quem ele nomeia: até aqui um campo novo em `VecVertex` teria
@@ -325,7 +328,7 @@ mod tests {
                 ph2d_flip::FLIP_SCHEMA_VERSION,
                 ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
             ),
-            (11, 5, 8),
+            (12, 5, 8),
             "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
              PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
         );

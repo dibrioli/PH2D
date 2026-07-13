@@ -12,11 +12,19 @@
 
 use crate::card::{card_frame, card_row};
 use crate::number_field;
+use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
+use ph2d_editor_core::tool::PanelEvent;
+use ph2d_editor_core::widget::{
+    ColorSwatch, SegmentedAdaptive, SegmentedOption, SwatchSize, SwatchState, paint_color_swatch,
+    paint_segmented_adaptive,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
+
+/// Width of the Wax-colour swatch — the same square the lamp's colour uses.
+const SWATCH_W: f32 = 28.0; // LITERAL-PX-OK: swatch box, sized to the row height
 use ph2d_tool_painter::BrushSettings;
 
 // Domain ranges, not design values — these are the physical bounds of the controls (degrees of arc, a
@@ -160,11 +168,19 @@ fn paint_material_card(
         number_field::FINE_STEP,
         2,
     );
-    let _ = card_row(
+    // ── Row: Wax + its COLOUR swatch, side by side — the same shape the lamp's Intensity row has, and
+    //    for the same reason: the two are one thought ("how much of what light"). Here it reads "how
+    //    deep the light goes, and what it picks up on the way" (Enio, 2026-07-13).
+    //
+    //    The swatch is a FILTER, and its neutral is WHITE. That is not a UI convenience — it is the only
+    //    honest way to put this control in a square: a *replacement* tint would have "the paint's own
+    //    colour" as its neutral, and that is a value which differs per pixel and cannot be shown.
+    let box_w = iw - SWATCH_W - Spacing::Xs.px();
+    let after = card_row(
         ctx,
         theme,
         ix,
-        iw,
+        box_w,
         ry,
         "Wax",
         core_ids::PAINTER_IMPASTO_WAX,
@@ -174,6 +190,43 @@ fn paint_material_card(
         number_field::FINE_STEP,
         2,
     );
+    let sw_id = core_ids::PAINTER_IMPASTO_WAX_COLOR;
+    let sr = Rect::new(ix + box_w + Spacing::Xs.px(), ry, SWATCH_W, ROW_H_PX);
+    let open = ctx.host.store().picker_target() == Some(sw_id);
+    let enc = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
+    let wc = brush.impasto_wax_color;
+    paint_color_swatch(
+        &ColorSwatch {
+            id: sw_id,
+            label: String::new(),
+            rgba: [enc(wc[0]), enc(wc[1]), enc(wc[2]), 255],
+            state: if open {
+                SwatchState::Focused
+            } else {
+                SwatchState::Normal
+            },
+            size: SwatchSize::Sm,
+        },
+        sr,
+        ctx.scene,
+        theme,
+    );
+    crate::paint::register_button(ctx.host.store_mut(), sw_id);
+    ctx.host.hit_index_mut().register(sw_id, sr);
+    // Read-back: the shared picker writes the pick onto the swatch's widget colour; forward it to the
+    // tool ONLY when it actually differs, or every frame with the picker open would be an undo step.
+    if open
+        && let Some(picked) = ctx.host.store().widget_color(sw_id)
+        && [enc(wc[0]), enc(wc[1]), enc(wc[2])] != [picked[0], picked[1], picked[2]]
+    {
+        ctx.host
+            .bus_mut()
+            .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+                sw_id,
+                format!("{},{},{}", picked[0], picked[1], picked[2]),
+            )));
+    }
+    let _ = after;
     next_y
 }
 

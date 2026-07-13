@@ -20902,6 +20902,15 @@ fn the_glint_only_ever_adds_light() {
 // is one gate per knob asserting it MOVES the picture, and one asserting the contract survives all of
 // them: flat paint is byte-identical at EVERY material, or the whole pass is a lie.
 
+/// The same harness with WHITE paint — for the gates about what the FILTER does, where a coloured
+/// pigment would lend the scattered light a colour of its own and the filter's contribution could not
+/// be told apart from the paint's. White pigment eats nothing, so whatever colour comes back is the
+/// filter's alone.
+#[cfg(test)]
+fn impasto_material_render_white(size: u32, edit: &dyn Fn(&mut PainterTool)) -> LitCanvas {
+    impasto_material_render_with(size, [1.0, 1.0, 1.0], edit)
+}
+
 /// A red stroke with relief, lit, under a material the caller dials. The harness the four gates below
 /// share, so a knob cannot pass by being measured differently from its neighbours.
 /// `(pixels lit, the relief, the coverage)` — what the material gates read.
@@ -20914,13 +20923,23 @@ type MaterialCase<'a> = (&'a str, &'a dyn Fn(&mut PainterTool));
 
 #[cfg(test)]
 fn impasto_material_render(size: u32, edit: &dyn Fn(&mut PainterTool)) -> LitCanvas {
+    // Red paint: a metal's glint has somewhere to go, and the scattered light has a colour to wear.
+    impasto_material_render_with(size, [0.9, 0.1, 0.1], edit)
+}
+
+#[cfg(test)]
+fn impasto_material_render_with(
+    size: u32,
+    color: [f32; 3],
+    edit: &dyn Fn(&mut PainterTool),
+) -> LitCanvas {
     let mut t = impasto_canvas(size);
     let mut b = t.paint.brush;
     b.hardness = 0.0;
     b.falloff = Falloff::Smooth;
     b.radius_px = 40.0;
     b.impasto_depth = 0.7;
-    b.color = [0.9, 0.1, 0.1]; // red paint: a metal's glint has somewhere to go
+    b.color = color;
     b.impasto_source = DepthSource::Grain;
     b.impasto_smoothing = 0.15;
     b.texture.kind = ph2d_painter_brush::TextureKind::Noise;
@@ -21449,5 +21468,154 @@ fn adjust_last_stroke_does_not_destroy_the_strokes_ingredients() {
          canvas than the run that never toggled. Either the stroke's ingredients were thrown away when \
          the box was cleared (so there is no way back), or the Depth edit made while it was unticked \
          leaked into the paint anyway (so unticking does not mean what it says)."
+    );
+}
+
+/// **The Wax filter reaches alabaster — a PALE surface with a WARM interior.**
+///
+/// The case the derived tint alone can never say, and the reason the swatch exists (Enio, 2026-07-13).
+/// White paint scatters white: the pigment is the medium, and white pigment eats nothing. So with no
+/// filter, a white stone can only ever be *soft* — never *warm inside*. Which is wrong about jade,
+/// marble, alabaster and skin, i.e. about every material anyone reaches for Wax to paint.
+///
+/// WHITE paint, WHITE lamp, a WARM filter: the shadowed flank must come back WARM (red over blue). The
+/// control is the same canvas with the filter open (white), where the shadow must stay NEUTRAL — that
+/// second half is what makes this a gate on the FILTER rather than on the lamp or the pigment.
+#[test]
+fn the_wax_filter_gives_pale_paint_a_warm_interior() {
+    let size = 160u32;
+    let warmth = |img: &[u8], p: usize| i32::from(img[p * 4]) - i32::from(img[p * 4 + 2]);
+    // White paint — the pigment has no colour of its own to lend the scattered light.
+    let render = |filter: [f32; 3]| -> (Vec<u8>, Vec<f32>) {
+        let (img, h, _) = impasto_material_render_white(size, &move |t| {
+            t.set_impasto_shine(0.0); // the glint is a separate term with its own gates
+            t.set_impasto_wax(1.0);
+            t.set_impasto_wax_color(filter);
+        });
+        (img, h)
+    };
+    let (open, h) = render([1.0, 1.0, 1.0]); // the filter open: the physics, untouched
+    let (warm, _) = render([1.0, 0.45, 0.2]); // a warm filter: the light picks up amber on the way
+
+    let w = size as usize;
+    let (mut seen, mut warmed, mut open_neutral) = (0u32, 0i64, 0i64);
+    for y in 1..(size as usize - 1) {
+        for x in 1..(size as usize - 1) {
+            let p = y * w + x;
+            let dhy = h[(y + 1) * w + x] - h[(y - 1) * w + x];
+            if dhy <= 0.0 {
+                continue; // the flank turned AWAY from the lamp: where the scattered light shows
+            }
+            seen += 1;
+            warmed += i64::from(warmth(&warm, p));
+            open_neutral += i64::from(warmth(&open, p).abs());
+        }
+    }
+    // The LIT flank, as the control: the filter colours the light that goes THROUGH the paint, and on
+    // the side facing the lamp that light is a small correction on top of a large direct term. So the
+    // lit flank must warm far LESS than the shadowed one — and if it does not, the divisor is not
+    // wearing the filter, the ratio is wrong in the filtered channels EVERYWHERE, and the whole relief
+    // is tinted rather than just its shadow.
+    let (mut lit_seen, mut lit_warmed) = (0u32, 0i64);
+    for y in 1..(size as usize - 1) {
+        for x in 1..(size as usize - 1) {
+            let p = y * w + x;
+            let dhy = h[(y + 1) * w + x] - h[(y - 1) * w + x];
+            if dhy >= 0.0 {
+                continue;
+            }
+            lit_seen += 1;
+            lit_warmed += i64::from(warmth(&warm, p) - warmth(&open, p));
+        }
+    }
+    assert!(seen > 500, "only {seen} shadowed pixels examined — vacuous");
+    assert!(
+        lit_seen > 500,
+        "only {lit_seen} lit pixels examined — vacuous"
+    );
+    // The bar is MEASURED, not chosen: correct gives **0.25 levels/px** of warmth on the lit flank, and
+    // the mutation that leaves the filter out of the DIVISOR gives **6.1**. (On the shadowed flank they
+    // are 12.4 and 27 — both warm, which is why the shadow alone cannot tell them apart, and why this
+    // half of the gate has to exist.) One level per pixel sits between them with room on both sides.
+    //
+    // MUT proved RED: `flat = mat.flat_base[c] + albedo[c] * mat.flat_wax[c]` (the divisor without the
+    // filter) ⇒ the filtered channels get the wrong divisor EVERYWHERE, the whole relief tints instead
+    // of just its shadow, and this fires. It is the same absolute-shading bug the pass is built to
+    // avoid, arriving through the newest door — and it slipped past every gate that used a WHITE filter,
+    // because `albedo × white = albedo` makes the two lines identical. A gate can only see a term it
+    // actually turns on.
+    assert!(
+        lit_warmed <= i64::from(lit_seen),
+        "a warm Wax filter warmed the flank FACING the lamp by {lit_warmed} levels over {lit_seen}          pixels. The filter colours the light that goes THROUGH the paint, which is a small correction          there — unless the DIVISOR is missing the filter, in which case the ratio is wrong in the          filtered channels everywhere and the whole relief is tinted."
+    );
+    assert!(
+        warmed > i64::from(seen),
+        "a WARM filter over WHITE paint left the shadow neutral ({warmed} levels of warmth over {seen} \
+         pixels) — the filter is not reaching the scattered light, so alabaster is unpaintable and the \
+         swatch is decoration"
+    );
+    // …and with the filter OPEN, white paint scatters WHITE. If this drifts, the "white = the physics"
+    // default is a lie and every existing canvas just changed colour.
+    assert_eq!(
+        open_neutral, 0,
+        "with the Wax filter OPEN (white), white paint tinted its own shadow by {open_neutral} levels \
+         — the neutral filter is not neutral"
+    );
+}
+
+/// **The impasto planes cost what the docs say they cost.**
+///
+/// HR-13 as amended by ADR-0117: *whoever declares a budget owns a gate that MEASURES*. The material
+/// plane went from 4 bytes per pixel to 7 to buy the Wax filter, and "it is only three bytes" is exactly
+/// the sentence that precedes a memory regression — so the three bytes are counted here, on the real
+/// planes, rather than reasoned about in a comment.
+///
+/// Per sculpted layer: `heights` (f32) 4 B/px + `covers` 1 B/px + `mats` 7 B/px = **12 B/px**. A layer
+/// nobody sculpted carries NONE of them (the maps are lazy), which is the property that keeps the cost
+/// where the feature is.
+#[test]
+fn the_impasto_planes_cost_twelve_bytes_per_pixel() {
+    let size = 128u32;
+    let n = (size * size) as usize;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.impasto_depth = 0.7;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    // A layer nobody has sculpted pays nothing at all — the maps are lazy, and that is load-bearing.
+    assert!(
+        t.heights.is_empty() && t.covers.is_empty() && t.mats.is_empty(),
+        "an untouched document is already paying for relief it does not have"
+    );
+
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+
+    let active = t.layers.active().expect("a layer");
+    let heights = t
+        .heights
+        .get(&active)
+        .expect("the stroke laid relief")
+        .len();
+    let covers = t.covers.get(&active).expect("…and coverage").len();
+    let mats = t.mats.get(&active).expect("…and a material").len();
+    assert_eq!(
+        (heights, covers, mats),
+        (n, n, n),
+        "one entry per canvas pixel"
+    );
+
+    let bytes = heights * std::mem::size_of::<f32>()
+        + covers
+        + mats * std::mem::size_of::<ph2d_painter_brush::material::MaterialBytes>();
+    let per_px = bytes / n;
+    assert_eq!(
+        per_px, 12,
+        "a sculpted layer costs {per_px} B/px, not the 12 the docs claim (heights 4 + covers 1 + \
+         mats 7). If the material grew, say so where the budget is written — HR-13 is a promise, and \
+         ADR-0117 is what happens when nobody measures it."
     );
 }

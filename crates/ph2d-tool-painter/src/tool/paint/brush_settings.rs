@@ -401,6 +401,8 @@ pub struct BrushSettings {
     pub impasto_metallic: f32,
     /// **Wax** (`0..1`) — the soft terminator (wrap lighting; the honest half of "SSS").
     pub impasto_wax: f32,
+    /// **Wax Colour** — the filter on the scattered light. White = the paint scatters its own colour.
+    pub impasto_wax_color: [f32; 3],
 }
 
 /// Max ramp stops the panel snapshot carries (a ramp may hold up to `MAX_RAMP_STOPS = 32`; the editor

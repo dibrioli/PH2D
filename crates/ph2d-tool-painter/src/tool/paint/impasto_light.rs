@@ -28,6 +28,7 @@ use super::Region;
 use super::impasto_shade::Rig;
 use crate::layers::ReliefComposite;
 use crate::tool::PainterTool;
+use ph2d_painter_brush::material::MaterialBytes;
 
 /// How many CANVAS PIXELS of physical paint height `h = 1.0` (one full-Depth stroke) represents.
 ///
@@ -121,7 +122,7 @@ struct ReliefLayer<'a> {
     cover: Option<&'a [u8]>,
     /// Its MATERIAL plane, when it has one. `None` = a layer sculpted before materials existed; it
     /// reads as `Material::NEUTRAL`, which is the pass exactly as it shaded then.
-    mat: Option<&'a [[u8; 4]]>,
+    mat: Option<&'a [MaterialBytes]>,
     /// The layer's own **Impasto depth** (`Layer::impasto_depth`) — `1` composites as sculpted, `0`
     /// mutes, negative inverts the relief.
     depth: f32,
@@ -150,11 +151,11 @@ struct ReliefFields<'a> {
     /// The open stroke's MATERIAL — the BRUSH's, as a scalar, because a stroke's material is constant
     /// (it comes off the brush). No plane is needed for it, which is what makes the whole per-pixel
     /// material cost one merge at commit instead of a second buffer per stroke.
-    live_mat: [u8; 4],
+    live_mat: MaterialBytes,
     /// `Material::NEUTRAL`, quantised ONCE — the ground the material fold starts from, and the material
     /// a layer with no entry reads as. It is a constant, and it is read per texel; deriving it in the
     /// loop is the kind of thing that costs half a millisecond and looks like nothing.
-    neutral: [u8; 4],
+    neutral: MaterialBytes,
     width: usize,
     height: usize,
 }
@@ -215,18 +216,13 @@ impl ReliefFields<'_> {
     /// is a MIRROR, so bare paper would be the shiniest thing on the canvas and every stroke's
     /// translucent rim would fade toward glass.
     #[inline]
-    fn material_at(&self, x: i64, y: i64) -> [u8; 4] {
+    fn material_at(&self, x: i64, y: i64) -> MaterialBytes {
         let i = self.index(x, y);
         // Hoisted, and it matters: this runs once per TEXEL. Quantising the neutral material inside the
-        // loop cost 0.5 ms/move at 2048² all by itself — the fold does four channels over up to four
-        // layers, and `to_bytes` is four clamps and four multiplies each time it is asked.
+        // loop cost 0.5 ms/move at 2048² all by itself — the fold runs every channel over up to four
+        // layers, and `to_bytes` is a clamp and a multiply per channel each time it is asked.
         let neutral = self.neutral;
-        let mut m = [
-            f32::from(neutral[0]),
-            f32::from(neutral[1]),
-            f32::from(neutral[2]),
-            f32::from(neutral[3]),
-        ];
+        let mut m = neutral.map(f32::from);
         for l in &self.layers {
             let a = self.layer_cover_at(l, i);
             if a <= 0.0 {
@@ -238,6 +234,18 @@ impl ReliefFields<'_> {
                 // it reads as the neutral material, which IS the pass as it shaded then.
                 None => neutral,
             };
+            if a >= 1.0 {
+                // Opaque paint: `over` is a COPY, not a blend — and taking that path skips the whole
+                // per-channel lerp, which is 7 multiply-adds since the Wax filter widened the plane.
+                //
+                // **Measured: it buys nothing** (3.99 ms/move against 3.97 — noise). Kept anyway,
+                // because it is byte-exact and because the measurement is the interesting part: the
+                // fold is **bandwidth-bound on the 7-byte plane, not ALU-bound**, so shaving arithmetic
+                // off it is shaving the wrong thing. Anyone reaching for a faster material fold should
+                // reach for fewer BYTES, or for the GPU — which is the pass's next stop anyway.
+                m = src.map(f32::from);
+                continue;
+            }
             for (c, v) in m.iter_mut().enumerate() {
                 *v += (f32::from(src[c]) - *v) * a;
             }
@@ -246,18 +254,15 @@ impl ReliefFields<'_> {
         // is what the artist is looking at while they turn the knob.
         if let Some(lc) = self.live_c {
             let a = f32::from(lc[i]) / 255.0;
-            if a > 0.0 {
+            if a >= 1.0 {
+                m = self.live_mat.map(f32::from);
+            } else if a > 0.0 {
                 for (c, v) in m.iter_mut().enumerate() {
                     *v += (f32::from(self.live_mat[c]) - *v) * a;
                 }
             }
         }
-        [
-            (m[0] + 0.5) as u8,
-            (m[1] + 0.5) as u8,
-            (m[2] + 0.5) as u8,
-            (m[3] + 0.5) as u8,
-        ]
+        m.map(|v| (v + 0.5) as u8)
     }
 
     /// Paint coverage at a canvas pixel (`0..1`) — the MAX over the layers, not the sum: it is a

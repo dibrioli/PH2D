@@ -60,7 +60,7 @@ pub(super) struct ReliefState {
     /// The active layer's MATERIAL from BEFORE that stroke, as a patch over the same rect — the ground
     /// the re-baked material is merged back onto. The `over` merge is NOT idempotent, so re-baking has to
     /// start from what was there, exactly like [`Self::live_relief_base`] does for the height.
-    pub(super) live_mat_base: Vec<[u8; 4]>,
+    pub(super) live_mat_base: Vec<ph2d_painter_brush::material::MaterialBytes>,
     /// Which layer the live stroke belongs to. `None` ⇒ nothing live.
     pub(super) live_relief_layer: Option<crate::tool::RtLayerId>,
     /// The union of this stroke's dab footprints, in canvas texels — accumulated as the relief is

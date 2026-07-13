@@ -138,6 +138,18 @@ impl PainterTool {
                 self.toggle_impasto_light_on();
                 true
             }
+            // The paint's WAX colour, read back from the shared OKLCH picker as "r,g,b" (sRGB bytes).
+            PanelEvent::SelectOption(id, v) if *id == core_ids::PAINTER_IMPASTO_WAX_COLOR => {
+                let mut it = v.split(',').filter_map(|p| p.trim().parse::<u8>().ok());
+                if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next()) {
+                    self.set_impasto_wax_color([
+                        f32::from(r) / 255.0,
+                        f32::from(g) / 255.0,
+                        f32::from(b) / 255.0,
+                    ]);
+                }
+                true
+            }
             // The lamp's colour, read back from the shared OKLCH picker as "r,g,b" (sRGB bytes).
             PanelEvent::SelectOption(id, v) if *id == core_ids::PAINTER_IMPASTO_LIGHT_COLOR => {
                 let mut it = v.split(',').filter_map(|p| p.trim().parse::<u8>().ok());
@@ -333,6 +345,16 @@ impl PainterTool {
     /// subsurface simulation — see `material::Material::wax`).
     pub fn set_impasto_wax(&mut self, v: f32) {
         self.paint.brush.impasto_wax = v.clamp(0.0, 1.0);
+        self.rebake_live_material();
+    }
+
+    /// **Wax Colour** — the FILTER on the light that scatters through the paint. White = the physics.
+    pub fn set_impasto_wax_color(&mut self, c: [f32; 3]) {
+        self.paint.brush.impasto_wax_color = [
+            c[0].clamp(0.0, 1.0),
+            c[1].clamp(0.0, 1.0),
+            c[2].clamp(0.0, 1.0),
+        ];
         self.rebake_live_material();
     }
 

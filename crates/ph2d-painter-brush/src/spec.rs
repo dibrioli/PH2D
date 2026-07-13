@@ -341,6 +341,11 @@ pub struct BrushSpec {
     /// Wrap lighting, NOT a subsurface simulation; see [`crate::material::Material::wax`] for why the
     /// honest name is the one that promises the percept it delivers.
     pub impasto_wax: f32,
+    /// **Wax Colour** — a FILTER on the light that scatters through the paint. Default WHITE, which IS
+    /// the physics (the paint already scatters its own colour, for free). A warm filter over white paint
+    /// is alabaster — the case the derived tint alone can never reach. See
+    /// [`crate::material::Material::wax_color`].
+    pub impasto_wax_color: [f32; 3],
 }
 
 impl BrushSpec {
@@ -354,6 +359,7 @@ impl BrushSpec {
             roughness: self.impasto_roughness,
             metallic: self.impasto_metallic,
             wax: self.impasto_wax,
+            wax_color: self.impasto_wax_color,
         }
     }
 }

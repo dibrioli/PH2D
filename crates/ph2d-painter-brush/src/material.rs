@@ -40,6 +40,14 @@ pub const ROUGH_LEVELS: usize = 65;
 /// Entries per roughness row — one per `N·H` bucket. Mirrors the old 1-D table. // CLAMP-OK
 pub const SPEC_LUT: usize = 256;
 
+/// The material, as the canvas stores it: `[shine, roughness, metallic, wax, wax_r, wax_g, wax_b]`.
+///
+/// Seven bytes, and the last three are the expensive ones — they are what took the plane from 4 B/px to
+/// 7. They buy the case the derived tint cannot reach: **a pale surface with a warm interior**
+/// (alabaster, jade, skin). White paint scatters white, so without a filter there is no way to say
+/// "this stone glows warm inside". Measured, not asserted: `measure_impasto_planes`.
+pub type MaterialBytes = [u8; 7];
+
 /// The paint's optical properties at one pixel. All `0..1`, all per-BRUSH at deposit.
 ///
 /// Four numbers, not more: every one of them is a distinct *percept*, and the section already learned
@@ -70,6 +78,27 @@ pub struct Material {
     /// exactly that for zero cost. Naming it `Wax` rather than `SSS` is deliberate: it promises the
     /// percept it delivers.
     pub wax: f32,
+    /// **Wax Colour** — a FILTER on the light that scatters through the paint. Default WHITE.
+    ///
+    /// The scattered light already wears the paint's own colour, for free and for a reason: the medium
+    /// doing the absorbing IS the pigment ([`wrapped_ndl`] and `Rig::shade`). So this is a *multiplier*
+    /// on that, not a replacement — `tint = albedo × wax_color` — and the distinction is the whole
+    /// design:
+    ///
+    /// - **White (the default) is the physics**: the paint scatters its own colour, and a default brush
+    ///   is byte-identical to the build before this knob existed.
+    /// - **A filter reaches alabaster**: white paint × a warm filter = a pale surface with a warm
+    ///   interior, which is jade, marble, skin — and which the derived tint alone can never say, because
+    ///   white scatters white.
+    /// - **And its neutral is SHOWABLE.** A *replacement* would have "the paint's own colour" as its
+    ///   neutral — a value that differs per pixel and cannot be put in a swatch. A filter's neutral is
+    ///   white, and white fits in a square. The UI could not have been honest any other way.
+    ///
+    /// What it cannot do — and this is a real limit, not an oversight: it cannot make blue paint glow
+    /// orange. Multiplication only ever *removes* spectrum, which is what absorption does. A pigment
+    /// that emits what it did not receive is a fluorescent one, and it is not modelled.
+    /// (Enio, 2026-07-13: *"não deveria ter um seletor de cor ao lado de Wax como é com Intensity?"*)
+    pub wax_color: [f32; 3],
 }
 
 impl Material {
@@ -84,29 +113,34 @@ impl Material {
         roughness: 0.5,
         metallic: 0.0,
         wax: 0.0,
+        wax_color: [1.0, 1.0, 1.0], // white = the filter is open = the paint scatters its own colour
     };
 
-    /// Quantise to the 4 bytes the canvas stores (`[shine, roughness, metallic, wax]`).
+    /// Quantise to the bytes the canvas stores ([`MaterialBytes`]).
     #[must_use]
-    pub fn to_bytes(self) -> [u8; 4] {
+    pub fn to_bytes(self) -> MaterialBytes {
         let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
         [
             q(self.shine),
             q(self.roughness),
             q(self.metallic),
             q(self.wax),
+            q(self.wax_color[0]),
+            q(self.wax_color[1]),
+            q(self.wax_color[2]),
         ]
     }
 
     /// The material a canvas pixel stores. Inverse of [`Self::to_bytes`] up to the `u8` quantisation.
     #[must_use]
-    pub fn from_bytes(b: [u8; 4]) -> Self {
+    pub fn from_bytes(b: MaterialBytes) -> Self {
         let d = |v: u8| f32::from(v) / 255.0;
         Self {
             shine: d(b[0]),
             roughness: d(b[1]),
             metallic: d(b[2]),
             wax: d(b[3]),
+            wax_color: [d(b[4]), d(b[5]), d(b[6])],
         }
     }
 
@@ -268,6 +302,7 @@ mod tests {
             roughness: 0.25,
             metallic: 1.0,
             wax: 0.33,
+            wax_color: [0.9, 0.5, 0.2],
         };
         let back = Material::from_bytes(m.to_bytes());
         for (a, b) in [
@@ -275,6 +310,9 @@ mod tests {
             (m.roughness, back.roughness),
             (m.metallic, back.metallic),
             (m.wax, back.wax),
+            (m.wax_color[0], back.wax_color[0]),
+            (m.wax_color[1], back.wax_color[1]),
+            (m.wax_color[2], back.wax_color[2]),
         ] {
             assert!((a - b).abs() <= 1.0 / 255.0, "{a} vs {b}");
         }

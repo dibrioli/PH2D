@@ -28,7 +28,7 @@ pub(crate) struct StashedDoc {
     covers: BTreeMap<RtLayerId, Arc<Vec<u8>>>,
     /// O MATERIAL por camada. Viaja com o documento pela MESMA razão que o relevo (Bug #13.c: os ids
     /// de camada colidem entre documentos, então o que fica pra trás sombreia a tinta do próximo).
-    mats: BTreeMap<RtLayerId, Arc<Vec<[u8; 4]>>>,
+    mats: BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
     layer_pixel_versions: BTreeMap<RtLayerId, u64>,
     source_size: (u32, u32),
     undo: crate::undo::UndoController,

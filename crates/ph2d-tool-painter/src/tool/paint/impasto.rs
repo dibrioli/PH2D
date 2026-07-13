@@ -429,7 +429,7 @@ impl PainterTool {
                 if a == 0 {
                     return; // no paint from this stroke here: the material under it is untouched
                 }
-                for c in 0..4 {
+                for c in 0..mat.len() {
                     // `over` in 8-bit, rounded: dst = dst·(1−a) + src·a.
                     let old = u32::from(dst[i][c]);
                     let new = u32::from(mat[c]);

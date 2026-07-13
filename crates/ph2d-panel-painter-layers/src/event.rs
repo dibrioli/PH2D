@@ -21,7 +21,7 @@ use ph2d_tool_painter::{AdjustmentParams, LayerId, LayerKind, LayerStack, MAX_BL
 /// Dropdown option-id decoders + the dropdown-option routing table (split out for the LOC cap).
 mod dab_gizmo;
 mod decode;
-mod impasto_light_picker;
+mod impasto_picker;
 mod option_route;
 mod picker;
 mod ramp_picker;
@@ -487,9 +487,9 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
             shape_ramp_picker::on_swatch_click(host);
             Some(true)
         }
-        // The Impasto lamp's COLOUR swatch → the shared OKLCH picker (`impasto_light_picker`).
-        WidgetEvent::Click(id) if id == core_ids::PAINTER_IMPASTO_LIGHT_COLOR => {
-            impasto_light_picker::on_swatch_click(host, id);
+        // The Impasto swatches — the LAMP's colour and the paint's WAX filter → the shared OKLCH picker.
+        WidgetEvent::Click(id) if impasto_picker::is_impasto_swatch(id) => {
+            impasto_picker::on_swatch_click(host, id);
             Some(true)
         }
         // Per-layer-colour rows (multi-layer Shape): a layer's colour checkbox (forward Click → the tool

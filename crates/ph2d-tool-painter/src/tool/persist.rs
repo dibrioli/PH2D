@@ -19,6 +19,7 @@ use crate::compositor::LayerImage;
 use crate::layers::LayerStack;
 use crate::tool::PainterTool;
 use crate::tool::RtLayerId;
+use ph2d_painter_brush::material::MaterialBytes;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -41,7 +42,7 @@ pub struct PaintedDocument {
     /// Anda junto com o relevo pelo mesmo motivo: sem ele, reabrir o quadro devolve óleo brilhante
     /// como guache fosco. Vazio ⇒ documento anterior ao material ⇒ lido como `Material::NEUTRAL`,
     /// que é o passe exatamente como ele sombreava então.
-    pub mats: BTreeMap<RtLayerId, Vec<[u8; 4]>>,
+    pub mats: BTreeMap<RtLayerId, Vec<MaterialBytes>>,
     /// Tamanho do canvas em pixels.
     pub size: (u32, u32),
 }

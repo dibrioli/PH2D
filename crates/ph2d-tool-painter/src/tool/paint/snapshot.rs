@@ -256,6 +256,7 @@ impl PainterTool {
             impasto_roughness: b.impasto_roughness,
             impasto_metallic: b.impasto_metallic,
             impasto_wax: b.impasto_wax,
+            impasto_wax_color: b.impasto_wax_color,
         }
     }
 

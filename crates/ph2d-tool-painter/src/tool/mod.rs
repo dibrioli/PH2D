@@ -17,6 +17,7 @@ use std::sync::Arc;
 
 use ph2d_editor_core::floating_panel::{FloatingPanel, ToolId};
 use ph2d_editor_core::tool::{CanvasPaintTool, RasterEditTool, Tool};
+use ph2d_painter_brush::material::MaterialBytes;
 use ph2d_painter_effects::BlendMode;
 
 use crate::compositor::{
@@ -105,7 +106,7 @@ pub struct PainterTool {
     ///
     /// A layer with relief but NO material entry (a document from before this existed) reads as
     /// [`ph2d_painter_brush::material::Material::NEUTRAL`], which is the pass as it shaded then.
-    mats: BTreeMap<RtLayerId, Arc<Vec<[u8; 4]>>>,
+    mats: BTreeMap<RtLayerId, Arc<Vec<MaterialBytes>>>,
     /// Cached composite output (non-trivial stacks only), behind an `Arc` so the
     /// bridge drain is zero-copy. Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,

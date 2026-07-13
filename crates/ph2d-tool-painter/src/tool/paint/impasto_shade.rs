@@ -15,6 +15,7 @@
 //! specular too. That is not symmetry for its own sake — it is the contract.
 
 use super::impasto_light::{AMBIENT, DEPTH_UNIT_PX};
+use ph2d_painter_brush::material::MaterialBytes;
 
 pub(super) struct Lamp {
     /// Unit light direction (x, y, z); `z > 0` points out of the canvas.
@@ -40,12 +41,18 @@ pub(super) struct Lamp {
 /// bytes hits essentially always — [`Rig::resolve`] runs a handful of times per pass, not 16 million.
 pub(super) struct MatShade {
     /// The 4 canvas bytes this was resolved from — the cache key.
-    pub(super) key: [u8; 4],
+    pub(super) key: MaterialBytes,
     /// Row of the shared specular table this roughness reads.
     level: usize,
     shine: f32,
     metallic: f32,
     wax: f32,
+    /// The FILTER on the scattered light ([`ph2d_painter_brush::material::Material::wax_color`]). White
+    /// (the default) leaves the physics alone: the light comes back wearing the paint's own colour. The
+    /// effective tint is `albedo × wax_color` — a filter, never a replacement, because the paint's own
+    /// colour is what the light actually picks up on the way through, and because a replacement has no
+    /// neutral you could put in a swatch.
+    wax_color: [f32; 3],
     /// The flat surface's diffuse, in TWO parts — because the wrapped light is TINTED by the paint and
     /// the paint is per pixel, while this is cached per material.
     ///
@@ -108,7 +115,7 @@ pub(super) struct Rig {
 impl Rig {
     /// Resolve `mat` against this rig — the flat response the pass divides by, which now depends on the
     /// PAINT (Roughness sets the exponent, Wax wraps the diffuse) and not on the lamps alone.
-    pub(super) fn resolve(&self, key: [u8; 4]) -> MatShade {
+    pub(super) fn resolve(&self, key: MaterialBytes) -> MatShade {
         use ph2d_painter_brush::material::{Material, wrapped_ndl};
         let m = Material::from_bytes(key);
         let level = Material::rough_level(m.roughness);
@@ -133,6 +140,7 @@ impl Rig {
             shine: m.shine.clamp(0.0, 1.0),
             metallic: m.metallic.clamp(0.0, 1.0),
             wax: m.wax,
+            wax_color: m.wax_color,
             flat_base,
             flat_wax,
             flat_spec,
@@ -228,6 +236,15 @@ impl Rig {
             1.0 + (albedo[1] - 1.0) * mat.metallic,
             1.0 + (albedo[2] - 1.0) * mat.metallic,
         ];
+        // What the light that went THROUGH the paint comes back wearing. The paint's own colour — that
+        // is the physics, and it is free — times the artist's FILTER. White (the default) is the physics
+        // untouched; a warm filter over white paint is alabaster, which is the case the pigment alone
+        // can never say (white scatters white).
+        let wax_tint = [
+            albedo[0] * mat.wax_color[0],
+            albedo[1] * mat.wax_color[1],
+            albedo[2] * mat.wax_color[2],
+        ];
         // Sum every lamp's tinted response at this normal. One pass over 1..4 lamps — the single-lamp
         // rig (the default, and every canvas nobody has opened the rig on) is one iteration.
         let (mut diffuse, mut spec) = ([0.0f32; 3], [0.0f32; 3]);
@@ -261,7 +278,7 @@ impl Rig {
                 spec[0] += l.tint[0] * ds;
             } else {
                 for c in 0..3 {
-                    diffuse[c] += l.tint[c] * (direct + scattered * albedo[c]);
+                    diffuse[c] += l.tint[c] * (direct + scattered * wax_tint[c]);
                     spec[c] += l.tint[c] * ds * spec_tint[c];
                 }
             }
@@ -273,11 +290,11 @@ impl Rig {
         }
         let (mut mul, mut add) = ([0.0f32; 3], [0.0f32; 3]);
         for c in 0..3 {
-            // The divisor wears the SAME tint the pixel does — `flat = base + albedo · wax_part`. That
-            // is what keeps a flat surface at ratio exactly 1 in every channel: on flat ground the
-            // pixel's own sum IS this sum, term for term. Tint the pixel and not the divisor and the
-            // paint would glow in its own colour everywhere, flat or not.
-            let flat = mat.flat_base[c] + albedo[c] * mat.flat_wax[c];
+            // The divisor wears the SAME tint the pixel does — filter included. That is what keeps a
+            // flat surface at ratio exactly 1 in every channel: on flat ground the pixel's own sum IS
+            // this sum, term for term. Tint the pixel and not the divisor and the paint would glow in
+            // its own colour everywhere, flat or not.
+            let flat = mat.flat_base[c] + wax_tint[c] * mat.flat_wax[c];
             let (m, a) = channel(mat, body, diffuse[c], spec[c], gloss, flat);
             mul[c] = m;
             add[c] = a;

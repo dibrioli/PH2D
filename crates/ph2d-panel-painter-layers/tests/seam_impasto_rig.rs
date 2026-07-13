@@ -338,3 +338,48 @@ fn no_impasto_widget_loses_its_hit_to_the_section_below() {
         );
     }
 }
+
+/// **The Wax-colour swatch opens the picker when a pointer clicks it.**
+///
+/// It is a swatch, not a checkbox, so it is not in `PAINTER_IMPASTO_CLICKS` and the sweep above does not
+/// reach it — which is exactly the gap that let the lamp chips ship dead. A swatch has the same four
+/// silent links as any other widget (paint · hit rect · `WidgetStore` · the `event.rs` arm), and the one
+/// that kills it is the third: `paint_color_swatch` does not register anything, so the panel must call
+/// `register_button` at paint time or the pointer never becomes a Click.
+///
+/// (Enio, 2026-07-13: *"não deveria ter um seletor de cor ao lado de Wax como é com Intensity?"* — it
+/// should, and this is the test that says it actually does.)
+#[test]
+fn the_wax_colour_swatch_opens_the_picker() {
+    let tool = tool_with_impasto_on();
+    let _ = &tool; // the fixture publishes the brush snapshot the panel paints from
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let Some((_, rect)) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_IMPASTO_WAX_COLOR && r.w > 0.0 && r.h > 0.0)
+        .copied()
+    else {
+        panic!(
+            "the Wax-colour swatch is not painted with a clickable rect — the Material card's Wax row never drew it"
+        );
+    };
+
+    let (x, y) = centre(rect);
+    assert_eq!(
+        host.hit_at(x, y),
+        Some(core_ids::PAINTER_IMPASTO_WAX_COLOR),
+        "the swatch's own pixel does not resolve to it — the Wax slider beside it is overlapping the square"
+    );
+    for ev in host.click_at(x, y) {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    assert_eq!(
+        host.store().picker_target(),
+        Some(core_ids::PAINTER_IMPASTO_WAX_COLOR),
+        "clicking the Wax-colour swatch did not open the shared picker targeting it — the swatch is \
+         painted, hit-registered and stone dead under the mouse"
+    );
+}

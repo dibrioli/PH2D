@@ -105,6 +105,7 @@ impl Default for BrushSpec {
             impasto_roughness: crate::material::Material::NEUTRAL.roughness,
             impasto_metallic: crate::material::Material::NEUTRAL.metallic,
             impasto_wax: crate::material::Material::NEUTRAL.wax,
+            impasto_wax_color: crate::material::Material::NEUTRAL.wax_color,
         }
     }
 }

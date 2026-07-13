@@ -1,4 +1,9 @@
-# HANDOFF — você é o novo implementador da linha `line/FLIP` (COMECE AQUI)
+# HANDOFF — linha `line/FLIP` (⚠️ HISTÓRICO — a porta de entrada agora é outra)
+
+> **⚠️ NÃO COMECE POR AQUI.** A linha foi **integrada ao `main` em 2026-07-12** e o ponto de entrada
+> do próximo agente é **[`HANDOFF_line_FLIP_CONTINUACAO_2026-07-12.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-12.md)**
+> (estado pós-integração, a fila, as armadilhas). Este arquivo vira **registro histórico**: vale pelo
+> §A (o Modo L explicado) e pelo §C (a saga da âncora do balde, resolvida).
 
 > **2026-07-12 (2ª revisão, mesma data)** · escrito pelos agentes anteriores, para você. Leia
 > INTEIRO antes de tocar em código.

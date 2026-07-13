@@ -11,7 +11,25 @@ metadata:
 quadro-a-quadro (cel), port CLEAN-ROOM da essência do **Grease Pencil** do Blender. Decisão em
 [ADR-0114](../../docs/architecture/decisions/0114-grease-pencil-as-native-2d-medium-flip-no-3d-viewport.md);
 plano exaustivo em [`docs/Flip/`](../../docs/Flip/01_plano_waves.md) (00_README, 01_plano_waves,
-02_referencia_algoritmos_blender_5.2). Planejado 2026-07-11, **ainda não implementado** (linha paralela).
+02_referencia, 03_traço, 04_além-do-blender, 05_frames/ghost/tween, BUGS_flip).
+
+**Estado (2026-07-12):** W0+W1+W2 integrados ao main · **WT (o traço) fechada** (a mordida morreu —
+[[project_flip_stroke_analytic_coverage_gp]]; smoke aprovado) · **W3 fechada** (frames/ghosts/tween:
+o Flip virou app de ANIMAÇÃO) · **W4 (o balde) fechada** — solver `ph2d-flip-fill` **ancorado no
+EIXO da polilinha** (não na silhueta: espessura absoluta em px de TELA × fill assado em DOC =
+âncora derivada de espessura transborda `(w/2)·(zoom−1)` ao dar zoom depois do clique; saga em
+`docs/Flip/BUGS_flip.md` #8–#14, [[feedback_anchor_must_be_invariant_under_user_transforms]];
+smoke aprovado 2026-07-12, Precision default 1,6 saiu dele). **Linha FECHADA aguardando
+integração** — handoff §1.5.9 em `docs/HANDOFF_line_FLIP_integracao_2026-07-12.md` (na
+branch `line/FLIP`). Próxima da linha: W5 (Reshape). **A integração com a timeline global (W6) está
+ADIADA** por ordem do Enio (2026-07-12) até a timeline principal ficar pronta — a tira própria do
+Flip (`ph2d-panel-flip-frames`) é a UI de tempo até lá, e o playhead JÁ é o global (`ph2d_core::Playhead`),
+então não haverá relógio a reconciliar.
+
+**A regra da W3 que não pode ser re-derivada errado:** o autokey é **por FERRAMENTA** — caneta cria
+chave em BRANCO (ou cópia sob *Additive*); **borracha/escultura SEMPRE duplicam**. Se a borracha
+criasse chave em branco, o usuário apagaria um quadro novo e vazio enquanto o desenho que ele VÊ
+ficaria intacto num quadro anterior. Ponto único no shell: `flip_autokey::target_drawing`.
 
 Fatos-âncora (não re-derivar):
 - **2D nativo, SEM viewport 3D.** O engine é estritamente 2D (câmera ortográfica, sem depth buffer,

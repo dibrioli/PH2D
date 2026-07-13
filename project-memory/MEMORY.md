@@ -27,6 +27,7 @@
 - [Git destrutivo fora da pasta](feedback_destructive_git_outside_pasta.md) — nunca reset/checkout/restore em paths alheios sem coordenar
 - [Reset alheio apaga WIP](feedback_destructive_reset_collision_2026_05_28.md) — `git add -- <meus paths>` cedo cria fence (sobrevive a reset)
 - [git stash multiagente](feedback_git_stash_multiagent_danger.md) — stash pop com índice sujo injeta conflict markers em arquivo alheio
+- [Desfazer mutação com `cp`, nunca `git checkout`](feedback_mutation_undo_with_cp_never_git_checkout.md) — o checkout apaga a feature junto e o gate "passa"; 3× na linha do Painter
 - [cargo fmt -p reformata WIP alheio](feedback_cargo_fmt_p_reformats_foreign_wip.md) — formata a crate inteira; use `rustfmt <meus arquivos>`
 - [Worktree agent stale base](feedback_worktree_agent_stale_base.md) — `Agent(worktree)` ramifica do HEAD de início; só audit read-only
 - [`sed -i` relativo escreve no repo errado](feedback_sed_relative_path_hits_primary_cwd.md) — mutação SEMPRE por caminho absoluto (Modo L: senão edita o `main`)
@@ -64,10 +65,14 @@
 - [Harness reproduz mecanismo, não contexto](feedback_harness_reproduces_mechanism_not_context.md) — smoke contradiz fix ⇒ instrumente o guard no app real
 - [Não-reprodução ≠ correção](feedback_nonreproduction_is_not_proof_of_fix.md) — bug intermitente que some segue VIVO; cheque o `git diff` antes de aceitar "resolveu"
 - [Unit-verde ≠ funciona no produto](feedback_tool_unit_green_integration_dead.md) — tool passa unit+CI e está morta (pill/input não wirado); só audit e2e pega
+- [Pintado ≠ populado: teste a PINTURA](feedback_painted_is_not_populated_paint_gate.md) — nenhum gate rodava `paint`; "o botão não existe" passava em tudo
+- [Teste com os números do PRODUTO](feedback_test_with_product_numbers_not_convenient_ones.md) — `px_to_world = 1.0` é o único valor que esconde erro de unidade
 - [Coordenada derivada: seed = sample](feedback_derived_coordinate_seed_must_match_sample.md) — tempo remapeado quebrou 3×; todo caminho de autoria usa a MESMA transform do de leitura
+- [Âncora invariante sob o que o usuário mexe](feedback_anchor_must_be_invariant_under_user_transforms.md) — geometria assada ancorada em APARÊNCIA (silhueta/borda) quebra com zoom-depois; ancore em geometria pura (eixo) e varra espessura×zoom
 - [Gizmo errado = cheque o HIT](feedback_gizmo_verify_hit_target_before_transform_math.md) — logue o target resolvido no grab ANTES da math; era colisão de id
 - [Overlay cortado na fronteira = cheque a ORDEM de draw](feedback_overlay_cut_at_boundary_check_draw_order.md) — mesma cena, draw posterior cobre; liste os writers ANTES de caçar clamp
 - [Oráculo modela a APARÊNCIA, não o código](feedback_oracle_must_model_appearance_not_implementation.md) — oráculo derivado do shader fica verde com o bug na tela; esperado sai da definição do objeto
+- [Gate verde contradito? RENDERIZE e olhe](feedback_render_and_look_when_a_green_gate_is_contradicted.md) — igualdade-de-conjuntos não vê névoa; o pixel é o oráculo, a métrica é sombra dele
 - [Lens diversity](feedback_audit_lens_diversity.md) — rotacionar lentes; ≥2 paralelas; gates executáveis > claims verbais
 - [Scope discipline](feedback_audit_scope_discipline.md) — bug em crate alheio = handoff pro owner, não fixo eu mesmo
 - [No industrial claims](feedback_no_industrial_claims_without_verification.md) — zero claim técnico em ADR sem grep/cargo-search/WebFetch
@@ -108,8 +113,8 @@
 - [Norte node-centric](project_node_centric_decision_2026_05_21.md) — engine = sistema de nós multi-domínio; `ph2d-nodegraph`+`ph2d-expr`; FBP = unidade multi-agente
 - [Motion keyframes adiados p/ timeline](project_motion_keyframes_deferred_timeline_integration.md) — M2.W1 ADIADO 2026-07-09; pesquisa pré-impl preservada
 - [Vector cutover ADR-0108](project_vector_cutover_adr0108.md) — módulo REPOSICIONADO (Rive-ref, GPU/editor-first); `ph2d-vec-*`+`ph2d-tool-vector`; icon-sort=slug, gate-doc FICA
-- [Flip = port 2D do Grease Pencil](project_flip_module_grease_pencil_2d.md) — 4º meio (animação quadro-a-quadro), PLANEJADO 2026-07-11; 2D SEM 3D; ultra-perf wgpu; ADR-0114 + `docs/Flip/`
-- [Flip: traço = tripé do GP (mordida ABERTA)](project_flip_stroke_analytic_coverage_gp.md) — fita+miter_break · GREATER estrito · discard a<0.001 mataram acúmulo/spike/bead/escama; FALTA p0/p3 (quina mordida); oráculo que espelha o código só pega regressão
+- [Flip = port 2D do Grease Pencil](project_flip_module_grease_pencil_2d.md) — 4º meio (animação quadro-a-quadro); W0-W4 fechadas (2026-07-12): traço, frames/ghosts/tween, balde (âncora = EIXO da linha). Timeline global ADIADA. Autokey é POR-TOOL (borracha sempre duplica)
+- [Flip: traço = UNIÃO GLOBAL da polilinha](project_flip_stroke_analytic_coverage_gp.md) — mordida MORTA (2026-07-12): janela p0/p3 + vizinhos GEOMÉTRICOS (broadphase no pack) + capsule_dn única + clamp/fade sub-pixel; 1 passe, 5 mutações provadas
 - [Modelo multi-agente = função do HW](project_multiagent_modo_l_2026_07_05.md) — workstation=Modo L (worktree, sem coordenador); constrained=Modo C. ADR-0106/0107
 - [Tool isolation ADR-0040 frozen](project_tool_isolation_freeze_2026_05_22.md) — tools = drop-crates + tool-sync codegen; tool nova = fan-out drop-in
 - [Vector node carrier opaco](project_vector_node_opaque_carrier.md) — nós vetoriais emitem VectorNetwork via `CookValue::Opaque(Arc<dyn Any>)`

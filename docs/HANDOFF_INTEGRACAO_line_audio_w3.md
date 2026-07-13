@@ -151,8 +151,11 @@ saindo do device é smoke-only**. Mas o clipe e a rack **não são** trabalho do
 sintetiza os dois (`shells/desktop/src/audio/editor/multiband_smoke.rs`).
 
 ```bash
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && PH2D_AUDIO_MULTIBAND_SMOKE=1 cargo run --release
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && PH2D_AUDIO_MULTIBAND_SMOKE=1 cargo run --release -p ph2d-host-desktop
 ```
+
+> O `-p` **não é opcional**: o workspace tem 27 binários e um `cargo run` pelado morre em
+> *"could not determine which binary to run"*.
 
 Abra a pill do **Audio Editor**. Já estará carregado:
 

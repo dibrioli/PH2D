@@ -935,6 +935,23 @@ tabela deles a cobre inteira — o próximo modo quebra o teste no dia em que na
 4 mutações rodadas, 4 gates vermelhos. **Aberto:** box-select (marquee) · domínio Point ·
 o painel não espelha a seleção (write-back) · transformar a seleção.
 
+## W6.1 — Os gestos do Edit Mode (LANDOU 2026-07-13, `ccebc136`, pendente o smoke)
+
+**Marquee** (arrastar no vazio; Shift soma) + **mover a seleção** (arrastar um traço).
+Doc: [`Flip/08 §5b`](Flip/08_edit_mode_selecao.md).
+
+Duas regras que viraram gate: o marquee pega o traço que ele **ATRAVESSA** (ponto-dentro OU
+segmento-cruza — "algum ponto dentro" erra na reta longa, o caso mais comum num desenho de
+linhas) · mover translada os pontos **E OS BURACOS** (um "O" cujo furo fica para trás é uma
+forma quebrada — a mesma regra que o Sculpt já obedece).
+
+Arrastar um traço NÃO-selecionado já o seleciona e o move (Illustrator/Blender): exigir
+clicar-soltar-clicar é a ergonomia que faz a ferramenta parecer morta.
+
+**Aberto:** girar/escalar a seleção — o caminho é o **gizmo de sprite**, mas ele é
+**por-entidade** (escreve num `Transform` do ECS) e um traço não é entidade: exige um
+consumidor novo (bbox da seleção → `GizmoView` → delta assado nos pontos).
+
 ## Aberto (fora do W0..W5, por design)
 
 - **A próxima recomendada: Edit Mode / seleção de traço** (o "select do traço" que o Enio

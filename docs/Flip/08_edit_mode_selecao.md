@@ -131,10 +131,40 @@ o único momento em que arrumar é barato.
 
 ---
 
+## §5b — Os gestos (W6.1)
+
+| Gesto | O que faz |
+|---|---|
+| arrastar no **vazio** | **marquee**: pega tudo que a caixa TOCA (Shift soma) |
+| arrastar um **traço** | **move a seleção inteira** — e se o traço não estava selecionado, ele é selecionado primeiro e vai junto |
+| Shift+arrasto num traço | alterna (o arrasto não pega: o gesto seria ambíguo) |
+
+**O marquee não é "algum ponto dentro".** Uma reta longa pode **atravessar** a caixa sem
+ter um único vértice nela — e quem desenhou a caixa em cima dela espera pegá-la. O teste é
+**ponto-dentro OU segmento-cruza** (orientação; transcendental-free, HR-5).
+
+**Mover translada os pontos E OS BURACOS.** Um preenchimento carrega os furos em anéis
+próprios (o "O"): mover só os pontos deixaria os furos para trás e quebraria a forma — e
+isso só apareceria no desenho do usuário meses depois. É a MESMA regra que o Sculpt já
+obedece (a lição do Suzanne: *a cor anda com a linha*).
+
+**Arrastar um traço não-selecionado já o seleciona e o move** (Illustrator, Blender Edit
+Mode). Exigir clicar-soltar-clicar-de-novo é a ergonomia que faz o usuário concluir que a
+ferramenta não responde.
+
+A caixa é **desenhada** (overlay, px de tela) — um marquee invisível é um arrasto que não
+faz nada. E um **slop de 3 px** separa o clique trêmulo do gesto: sem ele, um clique no
+vazio desenharia uma caixa de 2 px e a seleção piscaria.
+
+---
+
 ## §6 — Aberto (declarado, não esquecido)
 
-- **Box-select (marquee)** — arrastar um retângulo para selecionar vários. O clique+Shift
-  cobre o uso, mas o marquee é o gesto natural num desenho cheio.
+- **Transformar a seleção (girar / escalar)** — mover já existe (W6.1). O caminho do PH2D
+  é o **gizmo de sprite** (ADR-0111: quem move/gira/escala é ele), mas o gizmo é
+  **por-entidade** — ele escreve num `Transform` do ECS, e um traço não é entidade. Fazê-lo
+  agir sobre a seleção exige um consumidor NOVO: bbox da seleção → `GizmoView` → o delta é
+  **assado nos pontos**. É um pacote próprio, e é o próximo passo natural deste modo.
 - **Domínio Point** (meio-traço selecionado) — o `02 §11` o especifica (vetor paralelo aos
   pontos + conversão de domínio explícita). É o que destrava o *segment mode* e o
   auto-masking por PONTO no Sculpt.

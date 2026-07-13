@@ -236,6 +236,7 @@ impl Mixer {
             | AudioCommand::SeekPreview { .. }
             | AudioCommand::SetPreviewData { .. }
             | AudioCommand::SetPreviewLooping { .. }
+            | AudioCommand::SetPreviewLoopRegion { .. }
             | AudioCommand::PausePreview { .. }
             | AudioCommand::StopPreview => {}
         }

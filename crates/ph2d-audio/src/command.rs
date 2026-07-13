@@ -227,6 +227,11 @@ pub(crate) enum AudioCommand {
         data: SampleData,
     },
     /// Enable/disable preview looping live (the editor's Loop toggle mid-play).
+    /// Set (or clear) the preview's loop **region** — the editor moving the loop on a sounding
+    /// voice (ADR-0119). Takes effect on the next lap; it does not re-trigger the clip.
+    SetPreviewLoopRegion {
+        region: Option<LoopRegion>,
+    },
     SetPreviewLooping {
         looping: bool,
     },

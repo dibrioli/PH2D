@@ -8,22 +8,23 @@
 
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
+use ph2d_panel_audio_editor::loop_state;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::tool_state::{self, EditTool};
 use ph2d_panel_audio_editor::{
     AEDIT_BATCH_LUFS, AEDIT_COPY, AEDIT_CUT, AEDIT_CUTS_CLEAR, AEDIT_EXPORT_PIECES, AEDIT_FADE_IN,
     AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
     AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1,
-    AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MARK_ADD,
-    AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
-    AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE,
-    AEDIT_SPLIT, AEDIT_SPLIT_PLAYHEAD, AEDIT_STOP, AEDIT_TOOL_MOVE, AEDIT_TOOL_SCALE,
-    AEDIT_TOOL_SELECT, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty,
-    fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel, reset_fx_chain,
-    set_fx_kind_defaults, set_fx_kind_names, set_has_clipboard, set_has_selection, set_loop_span,
-    set_marker_count, set_preset_names, take_add_marker, take_apply_preset, take_batch_lufs,
-    take_clear_loop, take_del_marker, take_edit_cmd, take_export_pieces, take_load,
-    take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_stop,
+    AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_BAKE, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET,
+    AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY,
+    AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE,
+    AEDIT_SILENCE, AEDIT_SPLIT, AEDIT_SPLIT_PLAYHEAD, AEDIT_STOP, AEDIT_TOOL_MOVE,
+    AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES,
+    clear_fx_dirty, fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel,
+    reset_fx_chain, set_fx_kind_defaults, set_fx_kind_names, set_has_clipboard, set_has_selection,
+    set_loop_span, set_marker_count, set_preset_names, take_add_marker, take_apply_preset,
+    take_batch_lufs, take_clear_loop, take_del_marker, take_edit_cmd, take_export_pieces,
+    take_load, take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_stop,
     take_toggle_mono,
 };
 use ph2d_panel_audio_editor::{
@@ -1215,4 +1216,33 @@ fn move_disarms_itself_when_the_last_cut_is_cleared() {
         EditTool::Select,
         "Move stayed armed over a clip with one piece — the pointer does nothing and says nothing"
     );
+}
+
+/// **Crossfade Loop is an edit** (ADR-0119 A6) — and it refuses when there is nothing to fade from.
+///
+/// The panel dims it without a pre-roll, but a dim is cosmetic: a bake on a loop that starts at
+/// frame 0 has no audio before it to blend with, and firing anyway would land a do-nothing step on
+/// the undo timeline.
+#[test]
+fn the_crossfade_bake_refuses_without_a_pre_roll() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+
+    loop_state::set_can_bake(false);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_BAKE));
+    assert_eq!(
+        take_edit_cmd(),
+        None,
+        "a bake with no pre-roll must not fire — there is nothing to crossfade with"
+    );
+
+    loop_state::set_can_bake(true);
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_LOOP_BAKE));
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::BakeLoopCrossfade),
+        "Crossfade Loop click never armed the edit command — the button is dead"
+    );
+    loop_state::set_can_bake(false);
 }

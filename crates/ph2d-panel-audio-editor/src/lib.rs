@@ -250,6 +250,9 @@ pub const AEDIT_LOOP_SET: NodeId = hash_node_id("audio_editor_loop_set");
 pub const AEDIT_LOOP_CLEAR: NodeId = hash_node_id("audio_editor_loop_clear");
 /// Loop crossfade length slider (normalized `0..1`; the shell maps it to ms).
 pub const AEDIT_LOOP_XFADE: NodeId = hash_node_id("audio_editor_loop_xfade");
+/// **Crossfade Loop** — bake the seam into the audio (ADR-0119 A6). A runtime loop *jumps*, so a
+/// crossfade that lived only in the preview was a promise the game could not keep.
+pub const AEDIT_LOOP_BAKE: NodeId = hash_node_id("audio_editor_loop_bake");
 
 // Markers / cue points (W6) — named timeline points exported to the WAV `cue`+`adtl`.
 /// Add a cue marker at the playhead.
@@ -398,6 +401,8 @@ pub enum AudioEditCmd {
     SplitAtMarkers,
     /// Remove every cut.
     ClearCuts,
+    /// Bake the loop crossfade into the audio — one undo step (ADR-0119 A6).
+    BakeLoopCrossfade,
     /// Silence the selection.
     Silence,
     /// Fade in across the selection.

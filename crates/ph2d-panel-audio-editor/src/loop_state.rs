@@ -13,6 +13,10 @@
 use std::cell::Cell;
 
 thread_local! {
+    /// Shell → panel: whether a crossfade bake would do anything. It needs a loop, a non-zero
+    /// crossfade, and **audio before the loop start** to fade from — a loop that begins at frame 0
+    /// has no pre-roll, and the button says so by staying dim.
+    static CAN_BAKE: Cell<bool> = const { Cell::new(false) };
     /// Panel → shell: the loop crossfade slider position, normalized `0..1`. The
     /// shell maps it onto a real crossfade length in ms.
     static XFADE_NORM: Cell<f32> = const { Cell::new(DEFAULT_XFADE_NORM) };
@@ -142,6 +146,15 @@ pub(crate) fn request_clear_loop() {
 /// Shell: take the pending clear-loop request (one-shot).
 pub fn take_clear_loop() -> bool {
     CLEAR_LOOP_REQ.with(|c| c.replace(false))
+}
+
+/// Shell: publish whether a crossfade bake would do anything.
+pub fn set_can_bake(v: bool) {
+    CAN_BAKE.with(|c| c.set(v));
+}
+
+pub(crate) fn can_bake() -> bool {
+    CAN_BAKE.with(Cell::get)
 }
 
 #[cfg(test)]

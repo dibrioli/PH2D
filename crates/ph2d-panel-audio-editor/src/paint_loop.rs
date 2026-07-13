@@ -13,8 +13,8 @@
 
 use crate::paint::{ClippedHits, button};
 use crate::{
-    AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD, AEDIT_MARK_DEL,
-    AEDIT_SPLIT, loop_state,
+    AEDIT_LOOP_BAKE, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD,
+    AEDIT_MARK_DEL, AEDIT_SPLIT, loop_state,
 };
 use ph2d_editor_core::paint::{paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
@@ -97,7 +97,26 @@ pub(crate) fn paint_loop_section(
             theme,
         );
     }
-    y + Spacing::Md.px() + Spacing::Md.px()
+    y += Spacing::Md.px() + Spacing::Sm.px();
+
+    // **Crossfade Loop** — bake the seam into the audio.
+    //
+    // A runtime loop *jumps*; it does not crossfade. The slider used to sweeten a preview buffer
+    // that only the editor ever heard, so the loop was clean on screen and clicked in the game. The
+    // slider is the amount now, and this is the verb: it writes the seam into the samples, using the
+    // intro as pre-roll. Dim without a loop, without a crossfade, or when the loop starts at frame 0
+    // (nothing before it to fade from — that is what the zero-crossing snap is for).
+    button(
+        Rect::new(x, y, w, row_h),
+        "Crossfade Loop",
+        loop_state::can_bake(),
+        AEDIT_LOOP_BAKE,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y + row_h + Spacing::Md.px()
 }
 
 /// The region readout: `1.20\u{2013}3.40s`, or `No loop` when unset.

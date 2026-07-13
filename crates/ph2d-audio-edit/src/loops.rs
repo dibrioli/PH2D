@@ -1,24 +1,31 @@
-//! Loop-point support (W6 asset-prep): build a **click-free looping buffer** from
-//! a loop region so continuous audition — and a game's runtime loop — doesn't tick
-//! at the wrap.
+//! Loop-point support (W6 asset-prep; **ADR-0119**): bake a **click-free seam** into the audio, so
+//! a runtime that loops by *jumping* has something clean to jump across.
 //!
 //! Control-thread only (HR-3/HR-5 do not apply): allocates and uses `sin`/`cos`.
 //!
 //! ## The pre-loop crossfade
 //!
-//! A raw loop over `[s, e)` jumps `data[e-1] → data[s]` at the wrap; unless those
-//! two samples happen to be continuous, that step is an audible click. The fix used
-//! here is the classic *pre-loop crossfade*: morph the last `L` frames of the region
-//! into the `L` frames that PRECEDE `s` in the source. Because `data[s-1] → data[s]`
-//! is inherently continuous (they are adjacent samples), making the loop tail end on
-//! `data[s-1]` makes the wrap back to `data[s]` continuous too — the seam becomes the
-//! source's own `s-1 → s` transition. The crossfade entry is likewise seamless: it
-//! starts on `data[e-L]`, continuing the untouched body `…data[e-L-1]`.
+//! A loop over `[s, e)` jumps `data[e-1] → data[s]` at the wrap; unless those two samples happen to
+//! be continuous, that step is an audible click. The fix is the classic *pre-loop crossfade*: morph
+//! the last `L` frames of the region into the `L` frames that **precede** `s` in the source.
 //!
-//! `L` is clamped to the material actually available (`min(L, s, e-s)`), so a loop
-//! that starts at frame 0 — no lead-in — degrades to a plain copy (no crossfade
-//! possible), which [`snap_loop_to_zero_crossing`](crate::EditClip::snap_loop_to_zero_crossing)
-//! is there to help with.
+//! Because `data[s-1] → data[s]` is inherently continuous (they are adjacent samples), making the
+//! loop's tail end on `data[s-1]` makes the wrap back to `data[s]` continuous too — the seam becomes
+//! the source's own `s-1 → s` transition. The entry into the crossfade is likewise seamless: it
+//! starts on `data[e-L]`, continuing the untouched body before it.
+//!
+//! **The intro is the pre-roll.** `L` is clamped to the material actually available
+//! (`min(L, s, e-s)`), so a loop that starts at frame 0 has nothing to fade *from* and the bake is a
+//! no-op — there, the tool is
+//! [`snap_loop_to_zero_crossing`](crate::EditClip::snap_loop_to_zero_crossing).
+//!
+//! ## Why this is a BAKE and not a preview
+//!
+//! It used to build a separate, region-only buffer that the editor played on a whole-buffer loop —
+//! a click-free loop that **only existed in the editor**, because the mixer had no loop region to
+//! play and no second read head to crossfade with. The preview was clean and the exported asset was
+//! not (ADR-0119). Now the runtime honours a real region and *jumps*, so the seam has to be in the
+//! audio: what the editor plays is what the game plays, because it is the same samples.
 
 use std::ops::Range;
 
@@ -26,14 +33,14 @@ use ph2d_audio::SampleData;
 
 use crate::ops::channels;
 
-/// Build a click-free looping buffer of exactly the loop region `[region.start,
-/// region.end)`, cross-fading the tail into the `xfade`-frame lead-in before the
-/// region. The returned clip is meant to be played on repeat (its last frame wraps
-/// seamlessly to its first). Returns `None` when the region is empty or out of range.
+/// Write the pre-loop crossfade **into** `data` at the loop seam: the last `xfade` frames of
+/// `[start, end)` are blended into the `xfade` frames leading up to `start`.
 ///
-/// The crossfade length is clamped to `min(xfade, region.start, region_len)`; a
-/// region starting at frame 0 gets no crossfade (a verbatim copy).
-pub fn crossfaded_loop(
+/// Length-preserving — only the seam changes, so the loop points, the markers and the cuts all stay
+/// where they are. `None` when there is nothing to do: no region, or no lead-in to fade from.
+///
+/// The crossfade length is clamped to `min(xfade, start, region_len)`.
+pub fn bake_loop_crossfade(
     data: &SampleData,
     region: Range<usize>,
     xfade: usize,
@@ -45,57 +52,54 @@ pub fn crossfaded_loop(
     if start >= end {
         return None;
     }
-    let region_len = end - start;
+    let l = xfade.min(start).min(end - start);
+    if l == 0 {
+        // A loop that starts at frame 0 has no audio before it to fade from. Saying so (`None`)
+        // beats returning an unchanged buffer that would land a do-nothing step on the undo timeline.
+        return None;
+    }
+
     let src = data.samples();
+    let tail0 = end - l; // first frame of the seam
 
-    // Copy the region verbatim first — the head and body are untouched.
-    let mut out = vec![0.0f32; region_len * ch];
-    out.copy_from_slice(&src[start * ch..end * ch]);
-
-    // Clamp the crossfade to the lead-in available before `start` and to the region.
-    let l = xfade.min(start).min(region_len);
-    if l > 0 {
-        // Overwrite the last `l` frames: fade the region tail out while the pre-`start`
-        // lead-in fades in. Equal-power (sin/cos) keeps the level steady through the
-        // blend. At the final frame the output lands on `data[start-1]`, so the wrap to
-        // the first frame `data[start]` is the source's own continuous step.
-        let tail0 = region_len - l;
+    // One buffer, written once (ADR-0117 D2): the clip, verbatim, with the seam overwritten.
+    Some(SampleData::build(src.len(), data.format(), |out| {
+        out.copy_from_slice(src);
         for j in 0..l {
-            // `t` sweeps 0→1 across the fade; +0.5 centres the ramp so neither endpoint
-            // is fully one-sided.
+            // `t` sweeps 0→1 across the fade; +0.5 centres the ramp so neither endpoint is fully
+            // one-sided. Equal-power (sin/cos) keeps the level steady through the blend — the two
+            // sides are different parts of the take, so a linear fade would dip in the middle.
             let t = (j as f32 + 0.5) / l as f32;
             let (g_in, g_out) = (
                 (t * std::f32::consts::FRAC_PI_2).sin(),
                 (t * std::f32::consts::FRAC_PI_2).cos(),
             );
-            let tail_frame = tail0 + j;
-            let src_tail = start + tail_frame; // data[e-l + j]
-            let src_pre = start - l + j; // data[s-l + j]
+            let f_tail = tail0 + j; // data[e-l + j]
+            let f_pre = start - l + j; // data[s-l + j]
             for c in 0..ch {
-                let a = src[src_tail * ch + c];
-                let b = src[src_pre * ch + c];
-                out[tail_frame * ch + c] = a * g_out + b * g_in;
+                out[f_tail * ch + c] = src[f_tail * ch + c] * g_out + src[f_pre * ch + c] * g_in;
             }
         }
-    }
-
-    Some(SampleData::from_interleaved(out, data.format()))
+    }))
 }
 
-/// The worst per-channel discontinuity at a buffer's loop seam — `|first − last|`
-/// across channels. A raw loop over discontinuous endpoints reads large here; a
-/// crossfaded one reads near zero. Test/diagnostic helper.
-#[cfg(test)]
-pub(crate) fn seam_step(data: &SampleData) -> f32 {
+/// The discontinuity a looping voice would hear at the wrap: `|data[start] − data[end-1]|`, worst
+/// channel. A raw loop over an arbitrary window reads large here; a baked one reads near zero.
+///
+/// This is measured **across the jump the runtime actually makes** — which is the only place the
+/// click can be.
+pub fn loop_seam_step(data: &SampleData, region: Range<usize>) -> f32 {
     let ch = channels(data);
     let frames = data.frame_count();
-    if frames == 0 {
+    let start = region.start.min(frames);
+    let end = region.end.min(frames);
+    if start >= end {
         return 0.0;
     }
     let s = data.samples();
-    let last = frames - 1;
+    let last = end - 1;
     (0..ch)
-        .map(|c| (s[c] - s[last * ch + c]).abs())
+        .map(|c| (s[start * ch + c] - s[last * ch + c]).abs())
         .fold(0.0, f32::max)
 }
 
@@ -104,55 +108,61 @@ mod tests {
     use super::*;
     use ph2d_audio::AudioFormat;
 
-    /// A 100 Hz mono sine at 48 k — smooth, so adjacent samples are close but a loop
-    /// over an arbitrary window has discontinuous endpoints.
+    /// A 100 Hz mono sine at 48 k — smooth, so adjacent samples are close but a loop over an
+    /// arbitrary window has discontinuous endpoints.
     fn sine(frames: usize) -> Vec<f32> {
         let step = std::f32::consts::TAU * 100.0 / 48_000.0;
         (0..frames).map(|i| (i as f32 * step).sin()).collect()
     }
 
+    /// The point of the whole thing: the jump the runtime makes stops clicking.
     #[test]
-    fn crossfade_removes_the_wrap_click() {
+    fn the_bake_removes_the_click_at_the_jump() {
         let data = SampleData::from_interleaved(sine(4_800), AudioFormat::mono(48_000));
         // A window whose endpoints are NOT continuous → a raw loop clicks.
         let region = 1_000..3_137;
-        let raw = SampleData::from_interleaved(
-            data.samples()[region.clone()].to_vec(),
-            AudioFormat::mono(48_000),
-        );
-        let raw_step = seam_step(&raw);
+
+        let raw_step = loop_seam_step(&data, region.clone());
         assert!(raw_step > 0.05, "raw loop should click, got {raw_step}");
 
-        let looped = crossfaded_loop(&data, region.clone(), 256).expect("region is non-empty");
-        assert_eq!(looped.frame_count(), region.len(), "length is the region");
-        let xf_step = seam_step(&looped);
+        let baked = bake_loop_crossfade(&data, region.clone(), 256).expect("bakeable");
+        assert_eq!(
+            baked.frame_count(),
+            data.frame_count(),
+            "the bake is length-preserving — the loop points must not move"
+        );
+        let baked_step = loop_seam_step(&baked, region);
         assert!(
-            xf_step < raw_step * 0.1,
-            "crossfade must shrink the seam step (raw {raw_step}, xf {xf_step})"
+            baked_step < raw_step * 0.1,
+            "the bake must shrink the step across the jump (raw {raw_step}, baked {baked_step})"
         );
     }
 
+    /// Everything outside the seam is **byte-identical**. A bake is a surgical edit, not a re-render
+    /// of the clip.
     #[test]
-    fn body_before_the_crossfade_is_untouched() {
+    fn only_the_seam_changes() {
         let data = SampleData::from_interleaved(sine(4_800), AudioFormat::mono(48_000));
-        let region = 1_000..2_000;
-        let l = 128;
-        let looped = crossfaded_loop(&data, region.clone(), l).unwrap();
-        // Everything before the tail crossfade is a verbatim copy of the source region.
-        let body = region.len() - l;
-        for f in 0..body {
+        let (region, l) = (1_000..2_000, 128);
+        let baked = bake_loop_crossfade(&data, region.clone(), l).unwrap();
+
+        let seam = (region.end - l)..region.end;
+        for f in 0..data.frame_count() {
+            if seam.contains(&f) {
+                continue;
+            }
             assert_eq!(
-                looped.samples()[f],
-                data.samples()[region.start + f],
-                "body frame {f} must be verbatim"
+                baked.samples()[f].to_bits(),
+                data.samples()[f].to_bits(),
+                "frame {f} is outside the seam and must be untouched"
             );
         }
     }
 
+    /// Both channels fade; a stereo take does not go mono at its seam.
     #[test]
     fn stereo_channels_both_crossfade() {
-        // L=+ramp, R=−ramp so the two channels are distinct; a stereo loop must fade
-        // each independently.
+        // L=+ramp, R=−ramp so the two channels are distinct.
         let frames = 800;
         let mut v = Vec::with_capacity(frames * 2);
         for i in 0..frames {
@@ -161,19 +171,22 @@ mod tests {
             v.push(-t);
         }
         let data = SampleData::from_interleaved(v, AudioFormat::stereo(48_000));
-        let looped = crossfaded_loop(&data, 200..600, 64).unwrap();
-        assert_eq!(looped.frame_count(), 400);
-        assert_eq!(looped.format().channel_count(), 2);
-        // The seam is small on both channels (the source is a smooth ramp).
-        assert!(seam_step(&looped) < 0.05);
+        let baked = bake_loop_crossfade(&data, 200..600, 64).unwrap();
+        assert_eq!(baked.frame_count(), frames);
+        assert_eq!(baked.format().channel_count(), 2);
+        assert!(loop_seam_step(&baked, 200..600) < 0.05);
     }
 
+    /// **A loop that starts at frame 0 has no pre-roll**, so there is nothing to fade from. Saying
+    /// so beats quietly returning the clip unchanged and landing a do-nothing step on the undo
+    /// timeline.
     #[test]
-    fn region_at_the_start_has_no_lead_in_so_copies_verbatim() {
+    fn a_loop_with_no_intro_cannot_be_baked() {
         let data = SampleData::from_interleaved(sine(2_000), AudioFormat::mono(48_000));
-        // start == 0 → no material before the loop → L clamps to 0 → verbatim copy.
-        let looped = crossfaded_loop(&data, 0..1_000, 256).unwrap();
-        assert_eq!(looped.samples(), &data.samples()[0..1_000]);
+        assert!(
+            bake_loop_crossfade(&data, 0..1_000, 256).is_none(),
+            "no audio before the loop start = nothing to crossfade with"
+        );
     }
 
     // The empty / inverted ranges are the whole point of this test — silence clippy's
@@ -182,12 +195,21 @@ mod tests {
     #[allow(clippy::reversed_empty_ranges)]
     fn empty_or_out_of_range_region_is_none() {
         let data = SampleData::from_interleaved(sine(1_000), AudioFormat::mono(48_000));
-        assert!(crossfaded_loop(&data, 500..500, 16).is_none(), "empty");
-        assert!(crossfaded_loop(&data, 800..600, 16).is_none(), "inverted");
-        // Out of range clamps; 2000..3000 → clamped to 1000..1000 → empty → None.
+        assert!(bake_loop_crossfade(&data, 500..500, 16).is_none(), "empty");
         assert!(
-            crossfaded_loop(&data, 2_000..3_000, 16).is_none(),
+            bake_loop_crossfade(&data, 800..600, 16).is_none(),
+            "inverted"
+        );
+        assert!(
+            bake_loop_crossfade(&data, 2_000..3_000, 16).is_none(),
             "past end"
         );
+    }
+
+    /// A zero-length crossfade is not a bake.
+    #[test]
+    fn a_zero_crossfade_is_not_a_bake() {
+        let data = SampleData::from_interleaved(sine(2_000), AudioFormat::mono(48_000));
+        assert!(bake_loop_crossfade(&data, 500..1_500, 0).is_none());
     }
 }

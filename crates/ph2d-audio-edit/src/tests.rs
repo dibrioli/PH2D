@@ -245,7 +245,7 @@ fn loop_region_is_metadata_that_survives_undo_and_clamps() {
 /// Snap moves both endpoints onto zero crossings; the audition buffer is the
 /// region length and loops without a click.
 #[test]
-fn loop_snap_and_audition_buffer() {
+fn loop_snap_and_crossfade_bake() {
     // A mono sine: zero crossings are dense, so a small window always finds one.
     let step = std::f32::consts::TAU * 200.0 / 48_000.0;
     let v: Vec<f32> = (0..4_800).map(|i| (i as f32 * step).sin()).collect();
@@ -259,21 +259,28 @@ fn loop_snap_and_audition_buffer() {
     assert!(crosses(lp.start), "loop start on a zero crossing");
     assert!(crosses(lp.end), "loop end on a zero crossing");
 
-    let buf = clip.loop_audition_buffer(256).expect("loop is set");
-    assert_eq!(buf.frame_count(), lp.len());
-    // The crossfade drives the seam down to the source's OWN continuity at the
-    // loop point — `|data[start] − data[start-1]|`, one adjacent-sample step — not
-    // to zero. That is the click-free floor: the wrap becomes the source's natural
-    // `start-1 → start` transition.
+    // The crossfade drives the seam down to the source's OWN continuity at the loop point —
+    // `|data[start] − data[start-1]|`, one adjacent-sample step — not to zero. That is the
+    // click-free floor: the wrap becomes the source's natural `start-1 → start` transition.
     let natural = (sample(lp.start) - sample(lp.start - 1)).abs();
+    assert!(clip.apply_loop_crossfade(256), "the bake had work to do");
+    let step = crate::loop_seam_step(clip.data(), lp.clone());
     assert!(
-        loops::seam_step(&buf) <= natural + 1e-3,
-        "audition seam {} must reach the natural step {natural}",
-        loops::seam_step(&buf)
+        step <= natural + 1e-3,
+        "the baked seam {step} must reach the natural step {natural}"
     );
-    // No loop → no audition buffer.
+    // The bake is length-preserving, so the loop points did not move.
+    assert_eq!(
+        clip.loop_region(),
+        Some(lp),
+        "the loop must not have shifted"
+    );
+    // ...and it is one undo step, which puts the click back.
+    assert!(clip.undo());
+
+    // No loop → nothing to bake.
     clip.clear_loop();
-    assert!(clip.loop_audition_buffer(256).is_none());
+    assert!(!clip.apply_loop_crossfade(256));
 }
 
 /// Force-to-mono downmixes the whole clip (mean of channels), preserves the frame

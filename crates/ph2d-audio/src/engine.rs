@@ -138,6 +138,16 @@ impl AudioEngine {
         self.send(AudioCommand::SetPreviewData { data })
     }
 
+    /// Set (or clear) the preview's loop **region** live — the editor moving the loop while it
+    /// sounds. Takes effect on the next lap rather than re-triggering the clip, which is what makes
+    /// dragging a loop point audible instead of stuttery.
+    pub fn set_preview_loop_region(
+        &self,
+        region: Option<crate::LoopRegion>,
+    ) -> Result<(), AudioError> {
+        self.send(AudioCommand::SetPreviewLoopRegion { region })
+    }
+
     /// Enable/disable preview looping live (the editor's Loop toggle mid-play).
     pub fn set_preview_looping(&self, looping: bool) -> Result<(), AudioError> {
         self.send(AudioCommand::SetPreviewLooping { looping })
@@ -491,6 +501,7 @@ impl AudioRenderer {
                     }
                 }
                 AudioCommand::SetPreviewLooping { looping } => preview.set_looping(looping),
+                AudioCommand::SetPreviewLoopRegion { region } => preview.set_loop_region(region),
                 AudioCommand::PausePreview { paused } => *preview_paused = paused,
                 AudioCommand::StopPreview => {
                     if let Some(old) = preview.free() {

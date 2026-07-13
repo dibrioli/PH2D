@@ -1,5 +1,6 @@
 //! Audio Editor panel widget registration.
 
+use crate::AEDIT_LOOP_BAKE;
 use crate::{
     AEDIT_BATCH_LUFS, AEDIT_CLOSE, AEDIT_CODEC_NEXT, AEDIT_CODEC_PREV, AEDIT_COPY, AEDIT_CUT,
     AEDIT_CUTS_CLEAR, AEDIT_DC, AEDIT_EXPORT, AEDIT_EXPORT_PIECES, AEDIT_FADE_IN, AEDIT_FADE_OUT,
@@ -115,9 +116,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         AEDIT_PRESET_APPLY,
         AEDIT_PRESET_SAVE,
         AEDIT_PRESET_LOAD,
-        // Loop points (W6): Set from selection · Clear.
+        // Loop points (W6): Set from selection · Clear · bake the seam (ADR-0119).
         AEDIT_LOOP_SET,
         AEDIT_LOOP_CLEAR,
+        AEDIT_LOOP_BAKE,
         // Markers (W6): Add at playhead · Delete nearest.
         AEDIT_MARK_ADD,
         AEDIT_MARK_DEL,

@@ -17,6 +17,7 @@ pub(crate) mod ir;
 mod loops;
 mod manifest_path;
 mod markers;
+mod meta;
 pub(crate) mod pieces;
 pub(crate) mod spectral;
 mod variation;
@@ -71,18 +72,9 @@ pub(super) struct AudioEditorRuntime {
     fx_head_sig: Option<fx_rack::HeadSig>,
     /// Global A/B: the dry clip sounds/shows/exports while the chain is kept intact.
     fx_bypass: bool,
-    /// Loop-region playback (W6): `true` iff the preview voice currently holds the
-    /// crossfaded loop buffer rather than the full clip — i.e. Play was pressed with
-    /// Loop on and a region set. Any action that reloads the preview (Play a full
-    /// clip, Stop, Load, Clear loop) clears it; `editor_toggle_play` is where it goes
-    /// true.
-    playing_loop_region: bool,
-    /// Change-gate for the loop buffer — `(start, end, xfade_frames)`. While a region
-    /// is playing, `editor_loop_live_update` hot-swaps a fresh buffer only when this
-    /// moves (so tuning the Crossfade slider updates the sounding loop).
-    loop_sig: Option<(usize, usize, usize)>,
-    /// The crossfade length (frames) the panel's slider currently asks for, refreshed
-    /// each frame so `editor_toggle_play` / `editor_loop_live_update` read one source.
+    /// The crossfade length (frames) the panel's slider currently asks for, refreshed each frame.
+    /// It drives the **bake** now (ADR-0119 A6) — a runtime loop jumps, so a crossfade that only
+    /// existed in the preview was a promise the game could not keep.
     pending_xfade: usize,
     /// Manual playhead override (full-clip frame) while scrubbing the ruler. The
     /// engine only republishes `preview_frame` while a voice is actively rendering, so
@@ -135,8 +127,6 @@ impl AudioSystem {
             .to_string();
         self.editor.clip = Some(ph2d_audio_edit::EditClip::new(data));
         self.editor.state = EditorTransport::Stopped;
-        self.editor.playing_loop_region = false;
-        self.editor.loop_sig = None;
         self.editor.scrub_frame = Some(0);
         // A fresh clip has no cuts, so a Move tool left armed from the last one is a pointer with
         // no legal gesture — and a drag that does nothing reads as a broken editor, not an empty
@@ -145,6 +135,12 @@ impl AudioSystem {
         ph2d_panel_audio_editor::tool_state::set_tool(
             ph2d_panel_audio_editor::tool_state::EditTool::Select,
         );
+        // **The loop points and the markers come back with the file** (ADR-0119 A4) — the call
+        // that was missing for the whole life of the feature. `editor/meta.rs` owns both ends of
+        // that round trip, and gates it.
+        if let Some(clip) = self.editor.clip.as_mut() {
+            meta::adopt_wav_meta(clip, &bytes);
+        }
         // A fresh clip starts un-mono'd.
         self.editor.force_mono = false;
         self.editor.mono_view = None;
@@ -248,62 +244,34 @@ impl AudioSystem {
     pub(crate) fn editor_toggle_play(&mut self, looping: bool) {
         match self.editor.state {
             EditorTransport::Stopped => {
-                let xfade = self.editor.pending_xfade;
-                // Region buffer only when Loop is on and a region exists.
-                let region = looping
-                    .then(|| {
-                        self.editor
-                            .clip
-                            .as_ref()
-                            .and_then(|c| c.loop_audition_buffer(xfade))
-                    })
-                    .flatten();
-                let plays_region = region.is_some();
-                let sig = plays_region
-                    .then(|| {
-                        self.editor
-                            .clip
-                            .as_ref()
-                            .and_then(|c| c.loop_region())
-                            .map(|lp| (lp.start, lp.end, xfade))
-                    })
-                    .flatten();
-                // Region buffer, or the sounding clip (audition when the rack previews).
-                let buf = match region {
-                    Some(b) => Some(b),
-                    None => self.editor_sounding().map(|c| c.data().clone()),
-                };
-                let Some(buf) = buf else {
+                // The WHOLE clip, with a loop REGION (ADR-0119) — not a fabricated region-only
+                // buffer. The preview now plays exactly what a game would play, so "it loops
+                // cleanly in the editor" finally means something about the asset.
+                //
+                // This used to build a separate crossfaded buffer containing only the region, play
+                // *that* on a whole-buffer loop, and then carry an offset through the playhead and
+                // the scrub to undo the lie. All of that is gone: the region is the region.
+                let Some(buf) = self.editor_sounding().map(|c| c.data().clone()) else {
                     return;
                 };
+                // The region goes on the voice **unconditionally**; `looping` decides whether it
+                // is used. Gating it here instead would mean that turning Loop ON mid-playback
+                // (having pressed Play with it off) gave a whole-buffer loop — the voice would
+                // never have been told where the region was.
                 let params = PlayParams {
                     looping,
+                    loop_region: self.editor_loop_region(),
                     ..PlayParams::default()
                 };
                 if self.engine.play_preview(buf, params).is_ok() {
-                    // Begin at the parked playhead (the vertical line) — map it into the
-                    // buffer and seek right after starting, so Play ALWAYS starts from
-                    // the line, never sometimes at 0. Commands drain in order before the
-                    // first block renders, so there is no blip.
+                    // Begin at the parked playhead (the vertical line), so Play ALWAYS starts from
+                    // the line, never sometimes at 0. Commands drain in order before the first block
+                    // renders, so there is no blip.
                     if let Some(sf) = self.editor.scrub_frame {
-                        let start = if plays_region {
-                            self.editor
-                                .clip
-                                .as_ref()
-                                .and_then(|c| c.loop_region())
-                                .map(|lp| {
-                                    sf.clamp(lp.start as u64, lp.end as u64) - lp.start as u64
-                                })
-                                .unwrap_or(0)
-                        } else {
-                            sf
-                        };
-                        let _ = self.engine.seek_preview(start);
+                        let _ = self.engine.seek_preview(sf);
                     }
                     self.editor.state = EditorTransport::Playing;
                     self.editor.started = false;
-                    self.editor.playing_loop_region = plays_region;
-                    self.editor.loop_sig = sig;
                     self.editor.scrub_frame = None; // playback drives the playhead now
                 }
             }
@@ -323,8 +291,6 @@ impl AudioSystem {
     pub(crate) fn editor_stop(&mut self) {
         let _ = self.engine.stop_preview();
         self.editor.state = EditorTransport::Stopped;
-        self.editor.playing_loop_region = false;
-        self.editor.loop_sig = None;
         // Park the playhead at 0 deterministically — the engine's reported frame can
         // linger after a free, so pin the line so the next Play starts from it.
         self.editor.scrub_frame = Some(0);
@@ -439,8 +405,9 @@ impl AudioSystem {
                 Cmd::ClearCuts => {
                     clip.clear_cuts();
                 }
-                // Handled below — it needs the playhead, which lives on the runtime, not the clip.
-                Cmd::SplitAtPlayhead => {}
+                // Handled below — they need the runtime (the playhead, the crossfade amount), not
+                // just the clip.
+                Cmd::SplitAtPlayhead | Cmd::BakeLoopCrossfade => {}
                 // Range ops (act on the selection).
                 Cmd::Trim => clip.apply_trim(),
                 Cmd::Cut | Cmd::Copy | Cmd::Paste => {} // the clipboard needs `self`, below
@@ -469,6 +436,13 @@ impl AudioSystem {
             }
         }
 
+        // Bake the loop crossfade into the audio (ADR-0119 A6) — the crossfade amount lives on the
+        // runtime, not the clip.
+        if matches!(cmd, Cmd::BakeLoopCrossfade) {
+            self.editor_bake_loop_crossfade();
+            return;
+        }
+
         // The clipboard ops (W2) live in `editor/clipboard.rs`. `Copy` changes nothing, so it
         // returns before the hot-swap below; Cut and Paste fall through to it like any other edit.
         if self.editor_clipboard_cmd(cmd) {
@@ -495,14 +469,14 @@ impl AudioSystem {
         self.editor_hot_swap();
     }
 
-    /// Push the Loop toggle to the sounding preview live (so toggling Loop during
-    /// playback takes effect immediately). Change-gated so it doesn't flood the ring.
+    /// Push the Loop toggle to the sounding preview live (so toggling Loop during playback takes
+    /// effect immediately). Change-gated so it doesn't flood the ring.
+    ///
+    /// There used to be a guard here refusing to touch the preview while a loop region was
+    /// "auditioning" — because the audition was a *different buffer* that had to stay looping, and
+    /// the Loop toggle would have switched it off underneath itself. The preview plays the real clip
+    /// with a real region now (ADR-0119), so the toggle means exactly what it says.
     pub(crate) fn editor_set_looping(&self, looping: bool) {
-        // The loop audition forces looping on the preview; the main Loop toggle must
-        // not reach in and turn it off underneath it.
-        if self.editor.playing_loop_region {
-            return;
-        }
         if self.editor.last_loop.get() != looping {
             self.editor.last_loop.set(looping);
             let _ = self.engine.set_preview_looping(looping);

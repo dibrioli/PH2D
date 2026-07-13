@@ -1,5 +1,6 @@
 //! Audio Editor panel event routing.
 
+use crate::AEDIT_LOOP_BAKE;
 use crate::state::AudioEditorState;
 use crate::tool_state::{self, EditTool};
 use crate::{
@@ -208,6 +209,10 @@ fn edit_cmd_for(id: NodeId) -> Option<AudioEditCmd> {
         Some(AudioEditCmd::SplitAtPlayhead)
     } else if id == AEDIT_CUTS_CLEAR {
         Some(AudioEditCmd::ClearCuts)
+    } else if id == AEDIT_LOOP_BAKE {
+        // The panel dims it without a pre-roll, but a dim is cosmetic: a bake on a loop that starts
+        // at frame 0 has nothing to fade from and would land a do-nothing step on the undo timeline.
+        loop_state::can_bake().then_some(AudioEditCmd::BakeLoopCrossfade)
     } else if id == AEDIT_EXPORT_PIECES {
         // Not an AudioEditCmd: the pieces become FILES, so the shell has to pick a folder. The
         // panel never touches the filesystem.

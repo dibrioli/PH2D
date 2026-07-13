@@ -20,40 +20,20 @@ impl AudioSystem {
         let Some(clip) = self.editor_sounding() else {
             return;
         };
-        // Carry the loop region into the WAV's `smpl` chunk so the loop is sample-exact
-        // on re-import / in a game runtime. The loop is metadata on the COMMITTED clip;
-        // clamp it to the exported buffer (a length-preserving audition keeps the frame
-        // indices, a reverb tail only extends past the loop end).
+        // The loop region and the cue markers ride along in the WAV's `smpl` and `cue`+`adtl`
+        // chunks, so the loop is sample-exact on re-import and in a game runtime. Both ends of that
+        // round trip live in `meta.rs` — and are gated there, because the readers used to exist and
+        // never be called.
+        //
+        // Clamped to the buffer actually being written: the rack exports its live audition, and a
+        // reverb tail makes that longer than the committed clip.
         let frames = clip.frame_count() as u32;
-        let loops: Vec<_> = self
+        let meta = self
             .editor
             .clip
             .as_ref()
-            .and_then(|c| c.loop_region())
-            .and_then(|lp| {
-                let start = (lp.start as u32).min(frames);
-                let end = (lp.end as u32).min(frames);
-                (start < end).then_some(ph2d_audio_encode::LoopRegion { start, end })
-            })
-            .into_iter()
-            .collect();
-        // Carry the cue markers too (clamped to the exported buffer).
-        let markers: Vec<_> = self
-            .editor
-            .clip
-            .as_ref()
-            .map(|c| {
-                c.markers()
-                    .iter()
-                    .filter(|m| (m.frame as u32) < frames)
-                    .map(|m| ph2d_audio_encode::Marker {
-                        frame: m.frame as u32,
-                        name: m.name.clone(),
-                    })
-                    .collect()
-            })
+            .map(|c| super::meta::wav_meta(c, frames))
             .unwrap_or_default();
-        let meta = ph2d_audio_encode::WavMeta { loops, markers };
         match ph2d_audio_encode::write_wav_with_meta(path, clip.data(), depth, &meta) {
             Ok(()) => println!(
                 "audio: exported {} (WAV {depth:?}{})",

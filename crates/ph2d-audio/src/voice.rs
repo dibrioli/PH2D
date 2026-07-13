@@ -236,6 +236,15 @@ impl Voice {
         self.looping = looping;
     }
 
+    /// Move (or clear) the loop region on a **sounding** voice — the editor dragging a loop point.
+    ///
+    /// The cursor is left alone: a region that moves under a playing voice takes effect at the next
+    /// wrap, which is what makes dragging a loop point audible rather than stuttery. A cursor now
+    /// outside the new region simply plays on until it reaches the new end.
+    pub(crate) fn set_loop_region(&mut self, region: Option<LoopRegion>) {
+        self.loop_region = region;
+    }
+
     /// Hot-swap the playing sample for `data`, KEEPING the read cursor (clamped to
     /// the new length) so playback continues seamlessly — used by the editor to
     /// apply an edit without stopping the preview. Returns the previous sample (to

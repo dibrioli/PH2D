@@ -34,7 +34,7 @@ mod truepeak;
 mod variation;
 
 pub use fx::{Effect, TailEffect};
-pub use loops::crossfaded_loop;
+pub use loops::{bake_loop_crossfade, loop_seam_step};
 pub use ops::{
     FadeDir, FadeShape, force_mono, in_range, in_range_tail, in_range_warm, normalize_lufs, peak,
     snap_to_zero_crossing,
@@ -521,12 +521,24 @@ impl EditClip {
         }
     }
 
-    /// Build the click-free looping buffer for the current loop region with an
-    /// `xfade`-frame pre-loop crossfade — the buffer the shell auditions on repeat.
-    /// `None` when no loop is set.
-    pub fn loop_audition_buffer(&self, xfade: usize) -> Option<SampleData> {
-        let lp = self.structure.loop_region.clone()?;
-        loops::crossfaded_loop(&self.data, lp, xfade)
+    /// **Bake the loop crossfade into the audio** (ADR-0119 A6) — one undo step. `false` when there
+    /// is nothing to do (no loop, no crossfade, or a loop that starts at frame 0 and so has no
+    /// pre-roll to fade from).
+    ///
+    /// Length-preserving, so the loop points, the markers and the cuts all stay where they are.
+    ///
+    /// A runtime loop **jumps**; it does not crossfade. So a crossfade that lived only in the
+    /// preview was a promise the game could not keep — the editor looped cleanly and the exported
+    /// asset clicked. Writing it into the samples is what makes the two the same thing.
+    pub fn apply_loop_crossfade(&mut self, xfade: usize) -> bool {
+        let Some(lp) = self.structure.loop_region.clone() else {
+            return false;
+        };
+        let Some(out) = loops::bake_loop_crossfade(&self.data, lp, xfade) else {
+            return false;
+        };
+        self.commit(out);
+        true
     }
 
     /// Reduce a visible window to `columns` per-channel min/max pairs.

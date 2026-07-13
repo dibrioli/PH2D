@@ -287,6 +287,11 @@ impl crate::App {
                 ed::set_has_clipboard(audio.editor_has_clipboard());
                 // How many pieces the clip is in — what dims Move, Clear Cuts and Export Pieces.
                 ph2d_panel_audio_editor::tool_state::set_pieces(audio.editor_piece_count());
+                // Whether a crossfade bake would do anything (needs a loop, a crossfade, and audio
+                // before the loop start to fade from).
+                ph2d_panel_audio_editor::loop_state::set_can_bake(
+                    audio.editor_can_bake_crossfade(),
+                );
                 // Effects rack (W3 blocks 3a/3b): the panel owns the effect CHAIN as
                 // kind indices + raw 0..1 slider positions; the shell owns the real
                 // DSP ranges. Publish the kind table (names + each kind's NEUTRAL
@@ -379,7 +384,6 @@ impl crate::App {
                 if ed::take_clear_loop() {
                     audio.editor_clear_loop();
                 }
-                audio.editor_loop_live_update();
                 ed::set_loop_span(audio.editor_loop_span());
 
                 // Markers (W6): Add a cue at the playhead / Delete the nearest; publish

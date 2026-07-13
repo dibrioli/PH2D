@@ -55,6 +55,7 @@ const CLICKABLE: &[(NodeId, &str)] = &[
     // Loop + markers.
     (AEDIT_LOOP_SET, "Set Loop"),
     (AEDIT_LOOP_CLEAR, "Clear Loop"),
+    (AEDIT_LOOP_BAKE, "Crossfade Loop"),
     (AEDIT_MARK_ADD, "Add Marker"),
     (AEDIT_MARK_DEL, "Delete Marker"),
     (AEDIT_SPLIT, "Split at Markers"),

@@ -22,7 +22,9 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v4: o `Layer` do Painter ganhou o **Impasto por camada** (`impasto_depth` / `impasto_composite` /
 /// `has_relief`) — postcard é posicional, então um documento pintado v3 lê lixo nos campos seguintes.
 /// Rejeitar é a única leitura honesta.
-const PROJECT_SCHEMA: u32 = 4;
+/// v5 (doc 56): `ProjectFile` ganhou `motion` (o grafo de Motion Nodes, em texto) — 4º campo. Pelo
+/// mesmo motivo posicional, um v4 não desserializa aqui.
+const PROJECT_SCHEMA: u32 = 5;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -35,6 +37,18 @@ struct ProjectFile {
     /// Os **documentos do Painter** (camadas + pixels + relevo), por identidade estável
     /// (`ph2d_ecs::PaintedDoc`). Vazio quando nada foi pintado. Ver [`crate::project_painter`].
     painted: Vec<ph2d_tool_painter::PaintedDocument>,
+    /// O documento de **Motion Nodes**, na forma textual canônica do `ph2d-motion-doc`
+    /// (linha-a-linha, com `[layout]` e `[backdrop]` — ADR-0032 §6).
+    ///
+    /// Campo do ARQUIVO, deliberadamente **fora do `ProjectState`**: o `ProjectState` é a
+    /// unidade do undo GLOBAL, e o Motion tem undo próprio (`MotionHistory`) — o Enio já
+    /// separou os dois escopos. Enfiar o grafo ali dentro faria cada Ctrl+Z do canvas
+    /// rebobinar o grafo junto, e vice-versa.
+    ///
+    /// É **texto**, não postcard, porque esse já é o formato canônico do documento: é
+    /// diffável e mergeável por linha (o requisito multiagente que descartou JSON/RON).
+    /// Um projeto sem grafo carrega `""`.
+    motion: String,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -68,6 +82,11 @@ impl crate::App {
             state,
             assets,
             painted,
+            motion: self
+                .gfx
+                .as_ref()
+                .map(|g| g.motion.doc.to_text())
+                .unwrap_or_default(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,
@@ -110,6 +129,15 @@ impl crate::App {
         // Depois do mundo: os sprites já existem (com bits novos), e é pelo `PaintedDoc` que cada um
         // reencontra o documento que era dele.
         self.restore_painted_docs(file.painted);
+        // O grafo de Motion. Um erro de parse NÃO aborta o load: a cena, a geometria e os
+        // pixels já entraram, e recusar tudo por causa do grafo perderia o resto do
+        // trabalho. O grafo em memória permanece, e o motivo vai pro log.
+        if !file.motion.is_empty()
+            && let Some(gfx) = self.gfx.as_mut()
+            && let Err(e) = gfx.motion.load_text(&file.motion)
+        {
+            eprintln!("[proj] grafo de motion ilegivel, mantido o atual: {e:?}");
+        }
         self.undo = ProjectUndo::default();
         eprintln!("[proj] carregado: {path}");
     }
@@ -207,6 +235,10 @@ mod tests {
             vec,
             flip,
         };
+        // O grafo de Motion viaja como TEXTO canônico — a forma real que o `MotionDoc`
+        // serializa (doc 56), não uma string inventada: se o formato mudar, o teste viaja
+        // junto em vez de mentir que sobreviveu.
+        let motion = ph2d_motion_doc::MotionDoc::new().to_text();
         let file = ProjectFile {
             state: state.clone(),
             assets: vec![SavedAsset {
@@ -216,6 +248,7 @@ mod tests {
                 rgba: vec![10, 20, 30, 40],
             }],
             painted: Vec::new(),
+            motion: motion.clone(),
         };
         let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
         let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -227,6 +260,11 @@ mod tests {
             back.assets[0].rgba,
             vec![10, 20, 30, 40],
             "pixels preservados"
+        );
+        assert_eq!(back.motion, motion, "o grafo de Motion preservado");
+        assert!(
+            ph2d_motion_doc::MotionDoc::from_text(&back.motion).is_ok(),
+            "…e ainda parseável do outro lado do arquivo"
         );
     }
 }

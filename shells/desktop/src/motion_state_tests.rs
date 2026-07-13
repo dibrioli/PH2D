@@ -200,3 +200,159 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         "birth balances death - the population is a plateau, not a ramp: {lo}..{hi}"
     );
 }
+
+/// The graph's sinks, the way the bridge computes them each frame.
+fn sinks_of(state: &MotionState) -> Vec<NodeId> {
+    let mut ids: Vec<NodeId> = state
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .filter(|i| i.type_name == "motion.output")
+        .map(|i| i.id)
+        .collect();
+    ids.sort();
+    ids
+}
+
+/// Drive the REAL pump for `ticks` fixed steps, exactly as `motion_bridge` does — so what
+/// these guards exercise is the runtime the shell runs, not a hand-rolled stand-in.
+fn run(state: &mut MotionState, ticks: u64) {
+    const FIXED_DT: f64 = 1.0 / 60.0;
+    state.sinks = sinks_of(state);
+    // The transport is born PAUSED and `advance` is a no-op while it is (the bridge
+    // auto-plays on the first frame). Without this the tick never leaves 0, the sim never
+    // runs, and a guard about "state the load must forget" would be measuring an empty cook.
+    state.transport.play();
+    let scopes = ph2d_node_motion_time_remap::time_scopes(&state.doc.graph, &state.registry);
+    // The shell cooks the CURRENT tick before it ever advances (the catch-up cook of a
+    // paused frame), so tick 0 — the sim's seed — is always the first one cooked. Advancing
+    // first instead drops the pump straight into its SCRUB path with an empty checkpoint
+    // ring, and nothing comes out. Mirroring the bridge is the point of this helper.
+    for step in 0..=ticks {
+        if step > 0 {
+            state.transport.advance(1);
+        }
+        let tick = state.transport.tick;
+        state.pump.advance_or_scrub_scoped(
+            &state.doc.graph,
+            &state.registry,
+            &state.sinks,
+            tick,
+            |t| t as f64 * FIXED_DT,
+            state.default_uv_rect,
+            state.default_size,
+            &scopes,
+        );
+    }
+}
+
+/// **A loaded document must cook exactly like a freshly booted one** — byte for byte.
+///
+/// This is the whole of `install()` in one assertion, and it is sharp because the Motion
+/// runtime is keyed by NODE ID. Node ids are small integers that the next document reuses
+/// for entirely different nodes, so anything the previous document left behind does not
+/// merely linger — it gets ADOPTED by whatever node inherits its number.
+///
+/// The `Cook` is the worst of them, because it is not a cache: it holds the simulation's
+/// **living state**. Here the snow is run for two seconds first, so the cook is full of
+/// falling flakes with velocities and ages; then the very same document is loaded back.
+/// If `install` merely marked the pump dirty (or reset the graph but not the transport),
+/// the "loaded" scene would resume mid-snowfall at t=2s while a booted one starts from an
+/// empty sky — and the two would disagree on the first frame.
+///
+/// FALSIFIED by dropping any single line of `install`: keep the pump and the snow keeps
+/// falling; keep the transport and the playhead starts in the future.
+#[test]
+fn a_loaded_document_cooks_exactly_like_a_freshly_booted_one() {
+    let mut used = MotionState::new();
+    run(&mut used, 120); // two seconds of snow: the cook is now FULL of live flakes
+    assert!(
+        !used.pump.instances.is_empty(),
+        "the sim really did accumulate state to forget"
+    );
+
+    // Save it, and load it straight back into the state that has been running.
+    let text = used.doc.to_text();
+    used.load_text(&text).expect("its own text round-trips");
+
+    // A fresh boot of the same document — the reference for what a load must look like.
+    let mut booted = MotionState::new();
+
+    for state in [&mut used, &mut booted] {
+        run(state, 30);
+    }
+    let bytes = |s: &MotionState| bytemuck::cast_slice::<_, u8>(&s.pump.instances).to_vec();
+    assert_eq!(
+        used.pump.instances.len(),
+        booted.pump.instances.len(),
+        "the loaded document is mid-snowfall — the previous run's sim survived the load"
+    );
+    assert_eq!(
+        bytes(&used),
+        bytes(&booted),
+        "a loaded document must be indistinguishable from a booted one"
+    );
+}
+
+/// The load forgets what the previous document was pointing AT. A probe, a flow digest and
+/// (sharpest) the panel's SELECTION all name nodes by raw id — carry any of them across a
+/// load and they silently re-target whichever node inherited the number, so the params
+/// panel would edit a node the artist never picked.
+#[test]
+fn loading_forgets_every_id_that_named_the_previous_document() {
+    let mut state = MotionState::new();
+    let victim = state.doc.graph.nodes()[0].id;
+    state.probe = Some(victim);
+    state.probe_ring.push(1.0);
+    state.flow_digest.insert(victim.0, 7);
+    state.history.begin(&state.doc);
+
+    let text = state.doc.to_text();
+    state.load_text(&text).expect("round-trips");
+
+    assert_eq!(state.probe, None, "the probe named a node in the old graph");
+    assert!(state.probe_ring.is_empty());
+    assert!(state.flow_digest.is_empty(), "the digests were keyed by id");
+    assert!(
+        !state.history.can_undo(),
+        "undo belongs to the document that was edited, not to the file that replaced it"
+    );
+    assert_eq!(
+        state.transport.tick, 0,
+        "a loaded document starts at its own tick 0"
+    );
+}
+
+/// A document survives the trip through the project file: the graph the artist built comes
+/// back with the same nodes, wires, params and LAYOUT (the text format carries `[layout]`,
+/// so a loaded graph is not a pile of cards at the origin).
+#[test]
+fn a_saved_document_comes_back_whole() {
+    let mut state = MotionState::new();
+    // An edit that is the artist's, not the boot document's: a moved card + a dialled param.
+    let node = state.doc.graph.nodes()[0].id;
+    state
+        .doc
+        .graph
+        .set_pos(node, ph2d_nodegraph::graph::Pos { x: 123.0, y: -45.0 });
+    let before = state.doc.to_text();
+
+    let mut loaded = MotionState::new();
+    loaded.load_text(&before).expect("round-trips");
+
+    assert_eq!(
+        loaded.doc.to_text(),
+        before,
+        "the canonical text is a fixed point of save -> load"
+    );
+    assert_eq!(
+        loaded.doc.graph.layout().get(&node),
+        Some(&ph2d_nodegraph::graph::Pos { x: 123.0, y: -45.0 }),
+        "the cards come back where the artist left them"
+    );
+    assert!(
+        loaded.doc.graph.validate(&loaded.registry).is_ok(),
+        "and the loaded graph is still well-typed"
+    );
+}

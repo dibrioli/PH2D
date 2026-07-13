@@ -25,6 +25,7 @@ mod strobe;
 use ph2d_eval_motion::MotionCookPump;
 use ph2d_motion_doc::{MotionDoc, MotionHistory};
 use ph2d_node_registry::NodeRegistry;
+use ph2d_nodegraph::format::ParseError;
 use ph2d_nodegraph::graph::{Graph, NodeId};
 
 /// Runtime state for the Motion Nodes editor. One instance on `AppGfx`.
@@ -102,6 +103,51 @@ impl MotionState {
             probe_ring: Vec::new(),
             flow_digest: std::collections::BTreeMap::new(),
         }
+    }
+
+    /// **Install a saved document** (the project's Ctrl+O path) — parse the canonical text
+    /// and replace the current one, runtime and all.
+    pub(crate) fn load_text(&mut self, text: &str) -> Result<(), ParseError> {
+        let doc = MotionDoc::from_text(text)?;
+        self.install(doc);
+        Ok(())
+    }
+
+    /// Adopt `doc`, **discarding every runtime trace of the one before it**.
+    ///
+    /// The document is the only thing a project stores; everything else here is derived. But
+    /// "derived" is not the same as "harmless", because the runtime is keyed by NODE ID — and
+    /// node ids are small integers that the next document reuses for entirely different nodes:
+    ///
+    /// - the **`Cook` is the simulation's living state**, not a cache — it holds the flakes
+    ///   that are in the air. The pump is therefore replaced OUTRIGHT, not merely
+    ///   `mark_dirty`'d (which invalidates the scrub cache but keeps the memo and the `pre`
+    ///   feedback). Honest footnote: the transport reset below happens to rescue a
+    ///   `mark_dirty`-only version, because rewinding the tick sends the pump down its scrub
+    ///   path and that re-sims from the tick-0 seed — the mutation test says so. But that is
+    ///   an emergent rescue by a neighbouring line, not a contract, and a load is not the
+    ///   place to depend on one. A fresh pump says what it means.
+    /// - the **transport** goes back to 0: a playhead at t=40s into a graph that has never
+    ///   been cooked is not a resumption, it is a lie about a simulation that never ran.
+    /// - **undo** belongs to the document that was edited, not to the file that replaced it.
+    /// - the **probe**, the **flow digests** and the panel's **selection** all name nodes by
+    ///   id. A stale selection is the sharpest of the three: the params panel would happily
+    ///   edit whichever node inherited the number.
+    ///
+    /// `sinks` is the exception that proves the rule — the bridge recomputes it from the graph
+    /// every frame, so it heals itself; it is cleared anyway so a headless caller between the
+    /// load and the first pump never reads the old graph's outputs.
+    fn install(&mut self, doc: MotionDoc) {
+        self.doc = doc;
+        self.pump = MotionCookPump::new();
+        self.transport = MotionTransport::new();
+        self.history = MotionHistory::new();
+        self.sinks.clear();
+        self.probe = None;
+        self.probe_ring.clear();
+        self.flow_digest.clear();
+        #[cfg(feature = "panel-motion-graph")]
+        ph2d_panel_motion_graph::set_graph_selection(Vec::new());
     }
 }
 

@@ -112,9 +112,15 @@ struct Shared {
     eof: AtomicBool,
     /// Frames the audio thread wanted and did not get.
     underruns: AtomicU64,
-    /// The source's length, **published by the producer once it knows** (0 = not yet). See
-    /// [`StreamFeeder::set_loop_frames`].
-    loop_frames: AtomicU64,
+    /// The **effective loop region** the producer is actually emitting, published once it knows
+    /// (ADR-0119). `loop_end == 0` = not yet known.
+    ///
+    /// The producer publishes it, not the caller, because the producer is the only side that knows
+    /// what the file really contains — a region whose end runs past the audio is clamped to the
+    /// audio, and the voice must wrap where the frames actually stop, not where someone hoped they
+    /// would.
+    loop_start: AtomicU64,
+    loop_end: AtomicU64,
 }
 
 /// The **audio-thread** half of a stream: pop frames, recycle chunks. Never allocates, never
@@ -137,12 +143,18 @@ impl StreamHandle {
         self.rate
     }
 
-    /// The source's length, once the producer knows it — what lets the voice wrap its cursor
-    /// exactly as a resident one does. See [`StreamFeeder::set_loop_frames`].
-    pub(crate) fn loop_frames(&self) -> Option<usize> {
-        match self.shared.loop_frames.load(Ordering::Acquire) {
+    /// The effective loop region `(start, end)` in source frames, once the producer knows it — what
+    /// lets the voice wrap its cursor exactly as a resident one does. A whole-buffer loop publishes
+    /// `(0, length)`, which is what looping always meant.
+    ///
+    /// `end` is the release-acquire flag: reading a non-zero `end` guarantees `start` is visible.
+    pub(crate) fn loop_region(&self) -> Option<(usize, usize)> {
+        match self.shared.loop_end.load(Ordering::Acquire) {
             0 => None,
-            n => Some(n as usize),
+            end => Some((
+                self.shared.loop_start.load(Ordering::Relaxed) as usize,
+                end as usize,
+            )),
         }
     }
 
@@ -215,21 +227,29 @@ impl StreamFeeder {
         self.shared.eof.store(true, Ordering::Release);
     }
 
-    /// Tell the voice how long the source is, so a **looping** stream can wrap its cursor exactly
-    /// as a resident clip does (ADR-0118 A2).
+    /// Tell the voice **where** the loop it is emitting turns around (ADR-0119), so a looping stream
+    /// wraps its cursor exactly as a resident clip does (ADR-0118 A2).
     ///
     /// Why it can be published *late* rather than known up front: the producer is always **ahead**
-    /// of the audio thread. It reaches the end of the first pass — and therefore learns the length
-    /// — before the voice has finished *playing* that pass, and the voice needs the number only at
-    /// its first wrap, which comes after. The `Release`/`Acquire` pair makes that ordering real
-    /// rather than merely likely.
+    /// of the audio thread. It reaches the turn-around — and therefore learns it — before the voice
+    /// has finished *playing* its way there, and the voice needs the number only at its first wrap,
+    /// which comes after. The `Release`/`Acquire` pair makes that ordering real rather than merely
+    /// likely.
     ///
     /// That is what lets this be **exact for every format**, instead of only for the containers that
     /// happen to declare a frame count in their header.
-    pub fn set_loop_frames(&self, frames: usize) {
+    pub fn set_loop_region(&self, start: usize, end: usize) {
+        // `start` first, `end` last with Release: a reader that sees a non-zero `end` is guaranteed
+        // to see the `start` that goes with it.
         self.shared
-            .loop_frames
-            .store(frames as u64, Ordering::Release);
+            .loop_start
+            .store(start as u64, Ordering::Relaxed);
+        self.shared.loop_end.store(end as u64, Ordering::Release);
+    }
+
+    /// The whole source is the loop — what `looping` has always meant. Publishes `(0, frames)`.
+    pub fn set_loop_frames(&self, frames: usize) {
+        self.set_loop_region(0, frames);
     }
 
     /// Whether [`StreamFeeder::finish`] has been called.
@@ -256,7 +276,8 @@ pub fn stream(rate: u32) -> (StreamFeeder, StreamHandle) {
     let shared = Arc::new(Shared {
         eof: AtomicBool::new(false),
         underruns: AtomicU64::new(0),
-        loop_frames: AtomicU64::new(0),
+        loop_start: AtomicU64::new(0),
+        loop_end: AtomicU64::new(0),
     });
     (
         StreamFeeder {

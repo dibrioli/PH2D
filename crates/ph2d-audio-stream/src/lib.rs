@@ -136,12 +136,19 @@ impl Drop for StreamPlayer {
 /// that owns the producer thread. **Keep the player alive for as long as the voice plays** — drop
 /// it and the audio stops being fed.
 ///
-/// `looping` splices the file's start onto its end, endlessly. That is all a looping stream is: the
-/// voice never learns the audio ended, so its interpolation across the loop point lands on frame 0
-/// by itself — exactly as a resident clip's does.
+/// `looping` splices the file's start onto its end, endlessly. That is all a whole-buffer looping
+/// stream is: the voice never learns the audio ended, so its interpolation across the loop point
+/// lands on frame 0 by itself — exactly as a resident clip's does.
+///
+/// `region` (ADR-0119) makes it an **intro→loop** instead: the producer emits `[0..end)` once and
+/// then `[start..end)` for ever. **This is where a stream's region is given** — a streamed voice
+/// reads its region from the producer, never from `PlayParams`, because the producer is the only
+/// side that knows what the file really contains and can clamp an over-long region to the audio that
+/// is actually there.
 pub fn play_file(
     path: impl AsRef<Path>,
     looping: bool,
+    region: Option<(u64, u64)>,
 ) -> Result<(StreamHandle, StreamPlayer), StreamError> {
     let path: PathBuf = path.as_ref().to_path_buf();
     let mut src = open(&path)?;
@@ -154,7 +161,7 @@ pub fn play_file(
 
     let worker = std::thread::Builder::new()
         .name("ph2d-audio-stream".into())
-        .spawn(move || pump(&mut *src, &feeder, looping, &flag))
+        .spawn(move || pump(&mut *src, &feeder, looping, region, &flag))
         .map_err(|e| StreamError::Open {
             path: path.display().to_string(),
             reason: e.to_string(),
@@ -177,6 +184,7 @@ fn pump(
     src: &mut dyn Packets,
     feeder: &StreamFeeder,
     looping: bool,
+    region: Option<(u64, u64)>,
     stop: &std::sync::atomic::AtomicBool,
 ) {
     use std::sync::atomic::Ordering;
@@ -185,12 +193,17 @@ fn pump(
     // Frames decoded but not yet handed over — a packet rarely lands on a chunk boundary.
     let mut carry: Vec<[f32; 2]> = Vec::new();
     let mut ended = false;
-    // Frames emitted in the FIRST pass. On reaching the end we publish it, and a looping voice can
-    // then wrap its cursor exactly as a resident one does (ADR-0118 A2) — no header field needed,
-    // and exact for every format. We are always ahead of the audio thread, so the number lands
-    // before the voice's first wrap needs it.
-    let mut first_pass = 0usize;
-    let mut length_known = false;
+    // Source-frame index of the next frame to come out of the decoder. Reset to 0 on every rewind —
+    // it is a position in the FILE, not in the stream we are emitting.
+    let mut pos = 0u64;
+    // Have we been round once? After that, the intro (`[0..start)`) is skipped: an intro is heard
+    // exactly once, which is the whole point of a region (ADR-0119 A2).
+    let mut looped = false;
+    // The effective region, published once we know it. We are always ahead of the audio thread, so
+    // it lands before the voice's first wrap needs it — the `Release`/`Acquire` pair in
+    // `set_loop_region` makes that ordering real rather than merely likely.
+    let mut published = false;
+    let region = region.filter(|&(s, e)| s < e);
 
     while !stop.load(Ordering::Acquire) {
         let Some(mut chunk) = feeder.take_empty() else {
@@ -201,30 +214,62 @@ fn pump(
         };
 
         // Fill the chunk, decoding as much as it takes.
-        while carry.len() < STREAM_CHUNK_FRAMES && !ended {
+        'fill: while carry.len() < STREAM_CHUNK_FRAMES && !ended {
             match src.next_packet() {
                 Some(pcm) => {
                     // Up-mix to stereo exactly as `SampleData::frame_stereo` does — mono into both
                     // channels, >2 channels down to the first two. Up-mixing is linear, which is
                     // what keeps a streamed voice bit-identical to a resident one.
                     for f in pcm.chunks_exact(ch) {
-                        carry.push(match ch {
-                            1 => [f[0], f[0]],
-                            _ => [f[0], f[1]],
-                        });
-                        if !length_known {
-                            first_pass += 1;
+                        // Reached the loop end: back to the top of the file. We rewind and DISCARD
+                        // our way to `start` rather than seeking — seeking is per-format and coarse,
+                        // and a loop that lands a few frames off is a loop that clicks. Discarding is
+                        // exact for every format, and it costs one re-decode of the intro per lap on
+                        // a thread that is already far ahead of playback.
+                        if looping
+                            && let Some((s, e)) = region
+                            && pos >= e
+                        {
+                            if !published {
+                                feeder.set_loop_region(s as usize, e as usize);
+                                published = true;
+                            }
+                            if !src.rewind() {
+                                ended = true;
+                                break 'fill;
+                            }
+                            pos = 0;
+                            looped = true;
+                            // The rest of this packet is past the loop end — none of it is wanted.
+                            continue 'fill;
                         }
+                        // On every lap after the first, the intro is behind us.
+                        let intro = looped && region.is_some_and(|(s, _)| pos < s);
+                        if !intro {
+                            carry.push(match ch {
+                                1 => [f[0], f[0]],
+                                _ => [f[0], f[1]],
+                            });
+                        }
+                        pos += 1;
                     }
                 }
                 None => {
-                    if !length_known {
-                        // The end of the first pass IS the source's length.
-                        feeder.set_loop_frames(first_pass);
-                        length_known = true;
+                    if !published {
+                        // The file ended before the region did (or there is no region): the end of
+                        // the first pass IS the turn-around, whatever anyone asked for. A region
+                        // whose end runs past the audio is clamped to the audio — a voice that
+                        // wrapped on frames that are not there would be worse than one that ignored
+                        // the ask (A8).
+                        let end = pos;
+                        let start = region.map_or(0, |(s, _)| s.min(end.saturating_sub(1)));
+                        feeder.set_loop_region(start as usize, end as usize);
+                        published = true;
                     }
                     if looping && src.rewind() {
-                        continue; // splice the file's start onto its end
+                        pos = 0;
+                        looped = true;
+                        continue; // splice the loop's start onto its end
                     }
                     ended = true;
                 }

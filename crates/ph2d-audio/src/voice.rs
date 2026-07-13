@@ -2,7 +2,7 @@
 
 use crate::buffer::SampleData;
 use crate::bus::BusId;
-use crate::command::PlayParams;
+use crate::command::{LoopRegion, PlayParams};
 use crate::dsp::{Adsr, SmoothGain, equal_power_pan};
 use crate::format::Sample;
 use crate::stream::{Pull, StreamHandle};
@@ -80,6 +80,11 @@ pub(crate) struct Voice {
     pan_gains: [f32; 2],
     envelope: Option<Adsr>,
     looping: bool,
+    /// **Where** to loop (ADR-0119). `None` = the whole buffer, which is what `looping` has always
+    /// meant. Consulted by the **resident** path only: a stream's region is published by the
+    /// producer (it is the only side that knows what the file really contains), and read from the
+    /// handle.
+    loop_region: Option<LoopRegion>,
     /// Which mixer bus this voice sums into (set at `start`).
     bus: BusId,
     /// Output frames rendered since `start` — the "oldest" axis for stealing.
@@ -103,6 +108,7 @@ impl Voice {
             pan_gains: [0.0, 0.0],
             envelope: None,
             looping: false,
+            loop_region: None,
             bus: BusId::Master,
             age: 0,
         }
@@ -160,6 +166,9 @@ impl Voice {
         self.gain = SmoothGain::immediate(params.gain);
         self.pan_gains = equal_power_pan(params.pan);
         self.looping = params.looping;
+        // A region on a one-shot names nothing. Dropping it here means every path below can ask
+        // "is there a region?" without also asking "and are we even looping?".
+        self.loop_region = params.looping.then_some(params.loop_region).flatten();
         self.bus = params.bus;
         self.age = 0;
     }
@@ -281,14 +290,30 @@ impl Voice {
         }
         let [pan_l, pan_r] = self.pan_gains;
 
+        // Where the cursor turns around, and where it turns around TO (ADR-0119). With no region
+        // these are `(frame_count, 0)` — the whole buffer — so every line below is the line that was
+        // here before, and a voice that did not ask for a region renders byte-identically (A1).
+        //
+        // The region is clamped against the real length: one that runs past the end is refused, not
+        // obeyed, because a voice that wrapped on audio that is not there would be worse than one
+        // that ignored the ask (A8).
+        let (wrap_at, wrap_to) = match self.loop_region.and_then(|r| r.clamped(frame_count as u64))
+        {
+            Some(r) => (r.end as usize, r.start as usize),
+            None => (frame_count, 0),
+        };
+        let lap = (wrap_at - wrap_to).max(1) as f64;
+
         for f in 0..frames {
+            // `while`, not `if`: a lap shorter than one output frame (a tiny region under a big
+            // pitch) would leave the cursor still past the end after one subtraction, and the next
+            // read would be off the end of the buffer. `lap >= 1` makes this terminate.
+            while self.looping && self.cursor >= wrap_at as f64 {
+                self.cursor -= lap;
+            }
             if self.cursor >= frame_count as f64 {
-                if self.looping {
-                    self.cursor -= frame_count as f64;
-                } else {
-                    self.id = VoiceId::NONE;
-                    return Some(data);
-                }
+                self.id = VoiceId::NONE;
+                return Some(data);
             }
 
             let env = self.envelope.as_mut().map(|e| e.tick()).unwrap_or(1.0);
@@ -297,10 +322,12 @@ impl Voice {
             let i0 = self.cursor as usize;
             let frac = (self.cursor - i0 as f64) as f32;
             let [l0, r0] = data.frame_stereo(i0);
-            let [l1, r1] = if i0 + 1 < frame_count {
+            // The frame after the last one of the lap is the **first one of the lap** — that is what
+            // makes the seam sample-accurate instead of a held frame or a notch of silence (A2).
+            let [l1, r1] = if i0 + 1 < wrap_at {
                 data.frame_stereo(i0 + 1)
             } else if self.looping {
-                data.frame_stereo(0)
+                data.frame_stereo(wrap_to)
             } else {
                 [l0, r0]
             };
@@ -337,7 +364,9 @@ impl Voice {
     ) -> Option<Box<StreamHandle>> {
         let [pan_l, pan_r] = self.pan_gains;
 
-        let loop_len = h.loop_frames();
+        // The region the producer is actually emitting (ADR-0119). A whole-buffer loop publishes
+        // `(0, length)`, so the two cases are one line of arithmetic apart.
+        let region = h.loop_region();
 
         for f in 0..frames {
             // Wrap the cursor at the loop point, **exactly as the resident loop does**. Not an
@@ -345,12 +374,16 @@ impl Voice {
             // roundings, and the two paths would part company by an ulp — inaudible, unfalsifiable,
             // and the sort of thing someone loses a week to. `base` remembers what was subtracted,
             // so the window still knows which absolute frame of the stream it is looking for.
-            if self.looping
-                && let Some(n) = loop_len
-                && self.cursor >= n as f64
-            {
-                self.cursor -= n as f64;
-                self.base += n;
+            //
+            // The stream's frames arrive as one continuous sequence — the producer has already
+            // spliced `[start..end)` onto the end of `[0..end)` — so `base + cursor` stays exactly
+            // "frames pulled so far", and the window needs to know nothing about loops at all.
+            if let Some((s, e)) = region {
+                let lap = e.saturating_sub(s).max(1);
+                while self.looping && self.cursor >= e as f64 {
+                    self.cursor -= lap as f64;
+                    self.base += lap;
+                }
             }
 
             // The stream ended and the cursor has played out everything it had.

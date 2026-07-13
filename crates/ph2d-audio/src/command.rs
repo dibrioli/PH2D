@@ -18,6 +18,49 @@ use crate::stream::StreamHandle;
 use crate::voice::Source;
 use crate::voice::VoiceId;
 
+/// A **loop region** in source frames, half-open `start..end` (ADR-0119).
+///
+/// This is the structure of essentially every piece of game music: an intro that plays once, then a
+/// body that repeats. There is no separate "intro" feature — the intro is simply whatever lies
+/// before `start`:
+///
+/// ```text
+///   play  [0 .. end)      once
+///   then  [start .. end)  forever
+/// ```
+///
+/// The runtime **jumps** at `end`; it does not crossfade (that would need a second read head, and on
+/// a stream it would need audio the producer has already discarded). The asset is authored to loop
+/// cleanly instead — which is what every loop-point format, `smpl` included, assumes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LoopRegion {
+    /// First frame of the repeating body.
+    pub start: u64,
+    /// One past the last repeating frame.
+    pub end: u64,
+}
+
+impl LoopRegion {
+    /// The region, or `None` if it could not name a loop in a source of `frames` frames.
+    ///
+    /// A degenerate region is **refused, not obeyed** (ADR-0119 A8): an empty or inverted one, or
+    /// one whose end runs past the source, is not a loop — and a voice that tried to honour it would
+    /// wrap on audio that is not there. Falling back to *no region* means the voice loops the whole
+    /// buffer, which is wrong but bounded; hanging on a zero-length region is neither.
+    pub fn clamped(self, frames: u64) -> Option<Self> {
+        let end = self.end.min(frames);
+        (self.start < end).then_some(Self {
+            start: self.start,
+            end,
+        })
+    }
+
+    /// Frames in the repeating body — what the cursor subtracts on every lap.
+    pub fn len(self) -> u64 {
+        self.end.saturating_sub(self.start)
+    }
+}
+
 /// How a voice should play, passed to [`crate::AudioEngine::play`].
 #[derive(Clone, Debug)]
 pub struct PlayParams {
@@ -29,6 +72,11 @@ pub struct PlayParams {
     pub pitch: f32,
     /// Loop the sample instead of stopping at its end.
     pub looping: bool,
+    /// **Where** to loop, when `looping` (ADR-0119). `None` = the whole buffer, which is what
+    /// `looping` has always meant and what it must go on meaning **byte-identically** (A1).
+    ///
+    /// Ignored when `looping` is false: a loop region on a one-shot names nothing.
+    pub loop_region: Option<LoopRegion>,
     /// Optional amplitude envelope; `None` plays at flat gain until the sample ends.
     pub envelope: Option<AdsrParams>,
     /// Which mixer bus this voice sums into (default [`BusId::Master`]).
@@ -42,6 +90,7 @@ impl Default for PlayParams {
             pan: 0.0,
             pitch: 1.0,
             looping: false,
+            loop_region: None,
             envelope: None,
             bus: BusId::Master,
         }

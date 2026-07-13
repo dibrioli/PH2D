@@ -48,7 +48,7 @@ pub mod dsp;
 
 pub use buffer::SampleData;
 pub use bus::{BusId, SUB_BUS_COUNT};
-pub use command::PlayParams;
+pub use command::{LoopRegion, PlayParams};
 pub use engine::{AudioEngine, AudioRenderer};
 pub use format::{AudioFormat, ChannelLayout, Sample};
 pub use meter::AudioMeter;

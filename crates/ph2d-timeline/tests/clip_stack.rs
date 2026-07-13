@@ -751,3 +751,45 @@ fn a_strip_is_born_with_the_invariant_its_stretch_assumes() {
     // And the frame it shows is the frame the span says it shows.
     assert!((s.source_time(0.5).unwrap() - 0.2).abs() < 1e-12);
 }
+
+/// **The lock the panel greys out means EXACTLY what the evaluator does with the number**
+/// (ADR-0115 B4).
+///
+/// The corner handle authors `ease_*`, and it is read-only where an overlap defines the
+/// window. That "where" is a judgement call made twice — once by the panel (which handle
+/// to offer) and once by the evaluator (which number to honour) — so it is asked ONCE,
+/// here: `neighbour_reach_*`. Let the two drift apart and the artist gets a live handle
+/// that does nothing, or is denied one that would have worked.
+#[test]
+fn the_ease_lock_means_exactly_what_the_evaluator_does_with_the_ease() {
+    let mut a = strip(0.0); // [0, 2)
+    (a.ease_in, a.ease_out) = (0.5, 0.5);
+    let mut lane = ClipLane::new("Base");
+    lane.insert(a);
+    lane.insert(strip(1.0)); // [1, 3): overlaps A's END by 1 s, not its start
+
+    // A's END: a neighbour owns it. The panel locks the handle…
+    assert!(
+        lane.neighbour_reach_out(0) > 0.0,
+        "the panel must grey the fade-out handle"
+    );
+    // …and the evaluator ignores the authored 0.5 s, taking the 1 s overlap instead.
+    assert_eq!(
+        lane.blend_out(0),
+        1.0,
+        "the overlap defines the window — the authored ease is not read"
+    );
+
+    // A's START: nothing reaches it. The panel offers the handle…
+    assert_eq!(
+        lane.neighbour_reach_in(0),
+        0.0,
+        "nothing overlaps A's start: the fade-in handle is the artist's"
+    );
+    // …and the evaluator honours exactly the number that handle writes.
+    assert_eq!(
+        lane.blend_in(0),
+        0.5,
+        "and it is the authored ease that shapes the ramp"
+    );
+}

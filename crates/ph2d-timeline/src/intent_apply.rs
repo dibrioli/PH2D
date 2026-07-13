@@ -338,6 +338,27 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 s.loop_mode = loop_mode;
             }
         }),
+        // The fade the strip authors for itself (B4). Clamped to the strip: a fade
+        // longer than the span would make `weight_at` ramp in and out over the same
+        // seconds — the strip would never reach full weight, and the artist would have
+        // dragged a handle into a shape the evaluator quietly refuses. `blend_in`/
+        // `blend_out` clamp on READ too, so this is belt-and-braces at the source: the
+        // number stored is the number honoured.
+        I::SetStripEase {
+            lane,
+            id,
+            edge,
+            seconds,
+        } => edit(state, |doc, _| {
+            if let Some(s) = doc.strip_mut(lane, id) {
+                let v = seconds.clamp(0.0, s.span()); // CLAMP-OK: 0..span, the strip itself
+                if edge == 0 {
+                    s.ease_in = v;
+                } else {
+                    s.ease_out = v;
+                }
+            }
+        }),
         I::SetStripSpeed { lane, id, speed } => edit(state, |doc, _| {
             if let Some(s) = doc.strip_mut(lane, id) {
                 // The span follows the rate, `t_start` pinned — the same edit

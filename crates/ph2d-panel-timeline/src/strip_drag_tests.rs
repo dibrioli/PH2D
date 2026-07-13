@@ -23,6 +23,8 @@ fn snap() -> TimelineViewSnapshot {
                 t_end: 3.0,
                 blend_in: 0.0,
                 blend_out: 0.0,
+                ease_locked_in: false,
+                ease_locked_out: false,
                 loop_mode: StripLoop::Once,
                 speed: 1.0,
             }],
@@ -261,5 +263,72 @@ fn a_gesture_on_a_vanished_strip_arms_nothing() {
     assert!(
         state::drain_intents().is_empty(),
         "an unopened bracket cannot leak"
+    );
+}
+
+/// **B4: the corner grip authors the strip's OWN fade** — the thing a lone strip could
+/// not do at all before (`ease_in`/`ease_out` existed, the evaluator honoured them, and
+/// nothing wrote them: a strip alone on a lane entered and left hard).
+///
+/// The strip runs [1, 3) and the view is 100 px/s, so dragging the fade-in grip 50 px to
+/// the right is half a second of fade.
+#[test]
+fn dragging_the_fade_in_grip_authors_the_strips_own_fade() {
+    let out = drag(3, 150.0);
+    assert!(matches!(out.first(), Some(TimelineIntent::BeginEdit)));
+    assert!(matches!(out.last(), Some(TimelineIntent::EndEdit)));
+    let Some(TimelineIntent::SetStripEase {
+        lane,
+        id,
+        edge,
+        seconds,
+    }) = out
+        .iter()
+        .find(|i| matches!(i, TimelineIntent::SetStripEase { .. }))
+    else {
+        panic!("the fade grip must raise SetStripEase: {out:?}");
+    };
+    assert_eq!((*lane, *id), (0, StripId(7)));
+    assert_eq!(
+        *edge, 0,
+        "the panel's grip 3 is the document's edge 0 (the start)"
+    );
+    assert!(
+        (*seconds - 0.5).abs() < 1e-9,
+        "50 px at 100 px/s is half a second of fade: {seconds}"
+    );
+}
+
+/// **The fade-out grip grows the fade by dragging LEFT** — it rides the tip of the wedge,
+/// which travels INTO the strip. Getting this sign backwards is the whole bug this gate
+/// exists for: the handle would shrink when pulled and the artist would fight it.
+///
+/// And it never goes negative: dragging the tip back PAST the corner is zero fade, not a
+/// fade of minus half a second (the apply clamps too — but a UI that emits nonsense and
+/// leans on the document to sanitise it is a UI that will emit nonsense somewhere the
+/// document does not).
+#[test]
+fn the_fade_out_grip_grows_the_fade_by_dragging_left_and_never_goes_negative() {
+    let ease_of = |out: &[TimelineIntent]| -> f64 {
+        out.iter()
+            .find_map(|i| match i {
+                TimelineIntent::SetStripEase { edge, seconds, .. } => {
+                    assert_eq!(*edge, 1, "grip 4 is the document's edge 1 (the end)");
+                    Some(*seconds)
+                }
+                _ => None,
+            })
+            .expect("the fade grip must raise SetStripEase")
+    };
+    // 40 px LEFT of where it began, at 100 px/s: 0.4 s of fade-out.
+    assert!(
+        (ease_of(&drag(4, 60.0)) - 0.4).abs() < 1e-9,
+        "dragging the end grip INWARD (left) must GROW the fade"
+    );
+    // …and dragging it outward, past the corner, is no fade — never a negative one.
+    assert_eq!(
+        ease_of(&drag(4, 140.0)),
+        0.0,
+        "a fade cannot be negative: the tip stops at the corner"
     );
 }

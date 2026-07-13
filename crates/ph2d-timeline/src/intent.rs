@@ -385,4 +385,28 @@ pub enum TimelineIntent {
         /// which is what `StripLoop::Once` past its end already does, honestly.
         speed: f64,
     },
+    /// **The strip's own fade at one edge** (ADR-0115 B4) — what the corner handle
+    /// authors.
+    ///
+    /// It is the SAME curve as the crossfade, which is the whole point: where a
+    /// neighbour overlaps this edge, the overlap defines the window and this number is
+    /// ignored (`ClipLane::blend_in`/`blend_out`), so the two can never disagree. The
+    /// panel refuses the drag there rather than writing a number nobody will read
+    /// (Unity greys the field out and relabels it "Blend").
+    ///
+    /// Without this, a strip ALONE on a lane could not fade at all: it entered and left
+    /// hard. The fields existed and the evaluator already honoured them — nothing wrote
+    /// them.
+    SetStripEase {
+        /// Index into the stack.
+        lane: usize,
+        /// Stable identity.
+        id: StripId,
+        /// `0` = the fade-in (at `t_start`), `1` = the fade-out (at `t_end`) — the same
+        /// edge vocabulary as [`Self::TrimStrip`].
+        edge: u8,
+        /// The fade's length in seconds. Clamped to `[0, span]` on apply: a fade longer
+        /// than the strip is not a fade, and a negative one is not a thing.
+        seconds: f64,
+    },
 }

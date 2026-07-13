@@ -28,6 +28,15 @@ use crate::{geom, ids};
 const STRIP_PAD_Y: f32 = 3.0; // LITERAL-PX-OK: a strip must not touch its row's edge
 /// Grab width of a strip's trim edges.
 const EDGE_W: f32 = 6.0; // LITERAL-PX-OK: a pointer-sized grip, like the loop brace's
+/// Grab size of the ease handle at a strip's top corner (B4).
+const EASE_W: f32 = 7.0; // LITERAL-PX-OK: a pointer-sized grip, like the trim edge's
+/// The ease handle's resting inset from the corner, when the strip has NO fade yet.
+///
+/// It rests just PAST the trim grip instead of on the corner, so the two grips never
+/// share a pixel: a handle stacked on the trim edge would have to win the click (it is
+/// registered later), and the artist reaching for the trim would author a fade instead.
+/// Dragging it back to here means zero fade.
+const EASE_REST_X: f32 = EDGE_W; // LITERAL-PX-OK: exactly clear of the trim grip
 /// Below this, a rate is real time and the strip says nothing about it.
 const SPEED_EPS: f64 = 1e-6; // LITERAL-PX-OK: not a length — a "is it exactly 1" epsilon
 /// The lane weight field's width.
@@ -235,9 +244,66 @@ fn paint_lane(
         g.rows.h,
     );
     let spans: Vec<(u64, Rect)> = boxes.iter().map(|(s, b)| (s.id.0, *b)).collect();
-    for (strip, edge, rect) in hit_plan(&spans, time_band) {
+    // The ease grips (B4) — only where the strip owns the edge. Where a neighbour
+    // overlaps it, the OVERLAP is the fade (Unity's rule): the grip is painted greyed
+    // and gets **no hit** at all, because a dimmed control that still dispatches is a
+    // control that lies ([[feedback_disabled_button_still_dispatches]]).
+    let eases: Vec<(u64, u8, Rect, bool)> = boxes
+        .iter()
+        .flat_map(|(s, body)| {
+            [
+                (EASE_IN, s.blend_in, s.ease_locked_in),
+                (EASE_OUT, s.blend_out, s.ease_locked_out),
+            ]
+            .into_iter()
+            .filter_map(|(edge, blend, locked)| {
+                let px = blend_px(view, s.t_start, blend);
+                ease_grip(*body, px, edge).map(|r| (s.id.0, edge, r, locked))
+            })
+            .collect::<Vec<_>>()
+        })
+        .collect();
+    for (strip, edge, rect) in hit_plan(&spans, &eases, time_band) {
         put_strip_hit(ctx, row, rect, index, strip, edge);
     }
+}
+
+/// The blend window's width in pixels — the wedge the panel already draws, measured.
+fn blend_px(view: TimeView, t_start: f64, blend: f64) -> f32 {
+    view.x(t_start + blend) - view.x(t_start)
+}
+
+/// Hit/paint code for the fade-in grip (the strip's start corner).
+const EASE_IN: u8 = 3;
+/// …and the fade-out grip (its end corner).
+const EASE_OUT: u8 = 4;
+
+/// **Where the ease handle sits**: at the TIP of the wedge, on the strip's top edge —
+/// so the thing you grab is the thing you see, and dragging it is dragging the fade.
+///
+/// `None` when the strip is too narrow to hold both trim grips AND the two handles: on
+/// a strip that small the handles would sit on top of the trim edges and steal them (an
+/// ease grip outranks a trim grip in the hit order). A strip you cannot fade at this
+/// zoom is honest; a strip you can no longer TRIM is a bug.
+///
+/// With no fade authored, the tip is at the corner — where the trim grip already is —
+/// so the handle RESTS one grip-width in ([`EASE_REST_X`]). Dragging it back there means
+/// zero fade, which is exactly where it came from.
+fn ease_grip(body: Rect, blend_px: f32, edge: u8) -> Option<Rect> {
+    // Both trim grips + both handles, side by side, with nothing overlapping.
+    if body.w < (EASE_REST_X + EASE_W) * 2.0 {
+        return None;
+    }
+    let reach = blend_px.max(EASE_REST_X);
+    let x = if edge == EASE_IN {
+        (body.x + reach).min(body.x + body.w - EASE_REST_X - EASE_W)
+    } else {
+        (body.x + body.w - reach - EASE_W).max(body.x + EASE_REST_X)
+    };
+    // Top band only: the rest of the strip's height stays the BODY's, so the slide
+    // gesture is not shrunk to a sliver by a grip that only needs a corner.
+    let h = (body.h * 0.5).min(EASE_W);
+    Some(Rect::new(x, body.y, EASE_W, h))
 }
 
 /// **The order the strip hits are registered in — and it is load-bearing.**
@@ -250,8 +316,24 @@ fn paint_lane(
 ///
 /// Pure, and tested, because no headless paint can reach it: the defect lived in
 /// the order of two loops and no `apply_event` test could ever have seen it.
-fn hit_plan(spans: &[(u64, Rect)], band: Rect) -> Vec<(u64, u8, Rect)> {
-    let mut out = Vec::with_capacity(spans.len() * 3);
+///
+/// The ease grips (B4) come LAST, and only over their own strip's body: a fade handle
+/// sits ON the body it belongs to, so it has to outrank it. It never lands on a trim
+/// grip — [`ease_grip`] declines the handle entirely on a strip too narrow to hold
+/// both — which is why "last" is safe here and would not be otherwise.
+///
+/// **A LOCKED ease grip is painted and not registered** (`locked` = a neighbour's overlap
+/// defines that fade, so the number is not the strip's to author). The refusal lives HERE,
+/// in the pure function, and not in the paint loop that calls it — a rule that only exists
+/// where no test can reach it is a rule that will be deleted by someone tidying up, and the
+/// artist would find out by dragging a handle that silently writes a number nobody reads
+/// ([[feedback_disabled_button_still_dispatches]]).
+fn hit_plan(
+    spans: &[(u64, Rect)],
+    eases: &[(u64, u8, Rect, bool)],
+    band: Rect,
+) -> Vec<(u64, u8, Rect)> {
+    let mut out = Vec::with_capacity(spans.len() * 3 + eases.len());
     for &(id, body) in spans {
         if let Some(r) = clipped(body, band) {
             out.push((id, 2, r));
@@ -273,6 +355,17 @@ fn hit_plan(spans: &[(u64, Rect)], band: Rect) -> Vec<(u64, u8, Rect)> {
             {
                 out.push((id, edge, r));
             }
+        }
+    }
+    for &(id, edge, rect, locked) in eases {
+        // Same rule as the trim grips: a handle half-visible at the edge of the view is
+        // not one a pointer can aim at. And a locked one is not grabbable at all.
+        if !locked
+            && rect.x >= band.x
+            && rect.x + rect.w <= band.x + band.w
+            && let Some(r) = clipped(rect, band)
+        {
+            out.push((id, edge, r));
         }
     }
     out
@@ -425,6 +518,32 @@ fn paint_strip(
         );
     }
 
+    // The ease grips (B4), at the tip of each wedge. GREYED where a neighbour defines
+    // the window — there the overlap IS the fade, and the way to change it is to move
+    // the strips; the grip is painted so the artist can SEE that the edge is spoken
+    // for, and it is not registered, so it cannot be dragged into a number nobody reads.
+    for (edge, blend, locked) in [
+        (EASE_IN, s.blend_in, s.ease_locked_in),
+        (EASE_OUT, s.blend_out, s.ease_locked_out),
+    ] {
+        let Some(g) = ease_grip(body, blend_px(view, s.t_start, blend), edge) else {
+            continue;
+        };
+        fill_rounded_rect(
+            ctx.scene,
+            g,
+            Radius::Xs.px(),
+            resolve(
+                if locked || dim {
+                    ColorToken::Border
+                } else {
+                    ColorToken::TimelinePlayhead
+                },
+                theme,
+            ),
+        );
+    }
+
     // The rate leads the name. A retimed strip is pixel-identical to a trimmed one
     // — the box says how long it plays, never how fast — so the surprising fact
     // goes FIRST, where elision cannot eat it on a narrow strip. The guessable one
@@ -462,84 +581,5 @@ fn put_strip_hit(ctx: &mut PaintCtx, row: Rect, rect: Rect, lane: usize, strip: 
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Last registration wins, so this is what a click at `(x, y)` resolves to.
-    fn hit(plan: &[(u64, u8, Rect)], x: f32, y: f32) -> Option<(u64, u8)> {
-        plan.iter()
-            .rev()
-            .find(|(_, _, r)| x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
-            .map(|(s, e, _)| (*s, *e))
-    }
-
-    fn band() -> Rect {
-        Rect::new(100.0, 50.0, 400.0, 200.0)
-    }
-
-    /// **The crossfade's own grip must be reachable.** Two overlapping strips ARE a
-    /// crossfade (ADR-0115 R1), and the first thing you do after making one is grab
-    /// the left strip's END edge to tune it. Registering each strip whole put the
-    /// right strip's body on top of that edge, and the drag slid the neighbour
-    /// instead. Bodies first, edges after — every edge outranks every box.
-    #[test]
-    fn the_left_strips_end_edge_survives_the_overlap_that_makes_the_crossfade() {
-        let a = Rect::new(150.0, 60.0, 100.0, 20.0); // A: [150, 250)
-        let b = Rect::new(200.0, 60.0, 100.0, 20.0); // B: [200, 300) — 50 px of overlap
-        let plan = hit_plan(&[(1, a), (2, b)], band());
-
-        assert_eq!(
-            hit(&plan, 248.0, 70.0),
-            Some((1, 1)),
-            "A's end grip, deep inside B's body, must still be A's END edge"
-        );
-        assert_eq!(
-            hit(&plan, 202.0, 70.0),
-            Some((2, 0)),
-            "and B's start grip is B's START edge"
-        );
-        assert_eq!(
-            hit(&plan, 230.0, 70.0),
-            Some((2, 2)),
-            "between them: B's body"
-        );
-    }
-
-    /// A strip that starts left of the view has an x far outside the time area. Its
-    /// unclipped body used to blanket the whole label column — and, registered after
-    /// them, win the clicks of the lane's name, weight, mute and "+ strip".
-    #[test]
-    fn a_strip_that_starts_before_the_view_never_reaches_the_label_column() {
-        let straddling = Rect::new(-300.0, 60.0, 600.0, 20.0); // starts far left
-        let plan = hit_plan(&[(1, straddling)], band());
-
-        assert!(
-            hit(&plan, 20.0, 70.0).is_none(),
-            "nothing of the strip may be clickable left of the time area"
-        );
-        assert_eq!(
-            hit(&plan, 150.0, 70.0),
-            Some((1, 2)),
-            "inside the band it is still the strip's body"
-        );
-        assert!(
-            !plan.iter().any(|(_, e, _)| *e == 0),
-            "and its START grip is off-screen: a grip you cannot see must not be \
-             grabbable, or the strip gets trimmed blind"
-        );
-    }
-
-    /// Nothing registers outside the band, ever — the same rule that keeps a lane
-    /// scrolled half under the ruler from stealing the clicks of "+ Lane".
-    #[test]
-    fn no_hit_rect_ever_escapes_the_band() {
-        let over = Rect::new(120.0, 20.0, 600.0, 20.0); // above the band, and too wide
-        for (_, _, r) in hit_plan(&[(1, over)], band()) {
-            let b = band();
-            assert!(
-                r.x >= b.x && r.y >= b.y && r.x + r.w <= b.x + b.w && r.y + r.h <= b.y + b.h,
-                "{r:?} escapes {b:?}"
-            );
-        }
-    }
-}
+#[path = "stack_lane_paint_tests.rs"]
+mod tests;

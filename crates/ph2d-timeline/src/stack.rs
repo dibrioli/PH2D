@@ -250,18 +250,47 @@ impl ClipLane {
     #[must_use]
     pub fn blend_in(&self, i: usize) -> f64 {
         let s = &self.strips[i];
-        let reach = self
-            .strips
-            .iter()
-            .enumerate()
-            .filter(|(j, o)| *j != i && o.covers(s.t_start))
-            .map(|(_, o)| o.t_end - s.t_start)
-            .fold(0.0_f64, f64::max);
+        let reach = self.neighbour_reach_in(i);
         if reach > 0.0 {
             reach.min(s.span()) // the overlap IS the blend (Unity's rule)
         } else {
             s.ease_in.max(0.0).min(s.span())
         }
+    }
+
+    /// How far another strip still plays INTO the start of strip `i` — `0.0` when
+    /// nothing does. The overlap, before it is capped by the span.
+    ///
+    /// This is the ONE place that answers *"whose window is this?"*, and both callers
+    /// need the same answer: [`Self::blend_in`] uses it to pick between the overlap and
+    /// the authored `ease_in`, and the panel uses it to decide whether the ease handle is
+    /// draggable or **read-only** (Unity greys the field out when an overlap defines it).
+    /// Two copies of this test would be two ways to disagree about who owns an edge, and
+    /// the artist would find the disagreement by dragging a handle that does nothing.
+    #[must_use]
+    pub fn neighbour_reach_in(&self, i: usize) -> f64 {
+        let s = &self.strips[i];
+        self.strips
+            .iter()
+            .enumerate()
+            .filter(|(j, o)| *j != i && o.covers(s.t_start))
+            .map(|(_, o)| o.t_end - s.t_start)
+            .fold(0.0_f64, f64::max)
+    }
+
+    /// Mirror of [`Self::neighbour_reach_in`] at the end — and it asks the *other*
+    /// question: only a strip that is still there when this one ENDS (`o.t_end >=
+    /// s.t_end`) shortens its tail. One that ends earlier makes a hump in the middle,
+    /// and the middle is not an edge.
+    #[must_use]
+    pub fn neighbour_reach_out(&self, i: usize) -> f64 {
+        let s = &self.strips[i];
+        self.strips
+            .iter()
+            .enumerate()
+            .filter(|(j, o)| *j != i && o.t_start < s.t_end && o.t_end >= s.t_end)
+            .map(|(_, o)| s.t_end - o.t_start)
+            .fold(0.0_f64, f64::max)
     }
 
     /// The blend window at the END of strip `i`. Mirror of [`Self::blend_in`].
@@ -273,13 +302,7 @@ impl ClipLane {
     #[must_use]
     pub fn blend_out(&self, i: usize) -> f64 {
         let s = &self.strips[i];
-        let reach = self
-            .strips
-            .iter()
-            .enumerate()
-            .filter(|(j, o)| *j != i && o.t_start < s.t_end && o.t_end >= s.t_end)
-            .map(|(_, o)| s.t_end - o.t_start)
-            .fold(0.0_f64, f64::max);
+        let reach = self.neighbour_reach_out(i);
         if reach > 0.0 {
             reach.min(s.span())
         } else {

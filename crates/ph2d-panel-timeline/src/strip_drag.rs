@@ -20,7 +20,8 @@ use ph2d_timeline::{StripId, TimelineIntent, TimelineViewSnapshot};
 
 use crate::state::{self, StripDrag, TimelinePanelState};
 
-/// Interpret one strip gesture. `edge`: `0` = start, `1` = end, `2` = body.
+/// Interpret one strip gesture. `edge`: `0` = start, `1` = end, `2` = body,
+/// `3` = fade-in grip, `4` = fade-out grip.
 pub(crate) fn apply(
     state: &mut TimelinePanelState,
     px_per_s: f64,
@@ -44,6 +45,15 @@ pub(crate) fn apply(
                 edge,
                 start_x: g.x,
                 start_span: (s.t_start, s.t_end),
+                // The fade the panel DREW at this edge. Reading `blend_*` (and not the
+                // strip's `ease_*`, which the snapshot does not even carry) is what keeps
+                // the handle and the wedge the same object: the grip starts where the
+                // wedge tip is, so it cannot jump on the first pixel of the drag.
+                start_ease: match edge {
+                    EASE_IN => s.blend_in,
+                    EASE_OUT => s.blend_out,
+                    _ => 0.0,
+                },
                 stretch: g.mods.cmd,
             });
         }
@@ -109,6 +119,33 @@ fn emit(
                 }
             }
         }
+        // **The fade grips** (B4). The handle rides the tip of the wedge, so the fade
+        // grows as the tip travels INWARD: right at the start, left at the end. The
+        // number authored is a LENGTH, but what gets snapped is the tip's TIME — snap
+        // the length and a fade would land on the frame grid only when the strip
+        // happened to start on it.
+        //
+        // The panel never offers these grips where a neighbour defines the window
+        // (`ease_locked_*`), so a drag that reaches here is always about a fade the
+        // strip owns. The apply clamps to `[0, span]` anyway: the document is not a
+        // place to trust the caller.
+        EASE_IN | EASE_OUT => {
+            let ease = if d.edge == EASE_IN {
+                let tip = snapped(state, snap, a0 + (d.start_ease + dt));
+                tip - a0
+            } else {
+                let tip = snapped(state, snap, b0 - (d.start_ease - dt));
+                b0 - tip
+            };
+            TimelineIntent::SetStripEase {
+                lane: d.lane,
+                id: d.id,
+                // The panel's grip codes are 3/4; the document's edge vocabulary is the
+                // same 0/1 as Trim and Stretch. One edge, one name.
+                edge: u8::from(d.edge == EASE_OUT),
+                seconds: ease.max(0.0),
+            }
+        }
         // The body SLIDES, rigidly. Clamped at zero so a strip cannot be dragged
         // off the front of the timeline and become unreachable.
         _ => TimelineIntent::MoveStrip {
@@ -119,6 +156,11 @@ fn emit(
     };
     state::push_intent(intent);
 }
+
+/// The panel's grip code for a strip's fade-in (mirrors `stack_lane_paint`).
+const EASE_IN: u8 = 3;
+/// …and for its fade-out.
+const EASE_OUT: u8 = 4;
 
 /// Frame-snap, when the panel is snapping. Never negative.
 fn snapped(state: &TimelinePanelState, snap: &TimelineViewSnapshot, t: f64) -> f64 {

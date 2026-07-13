@@ -245,12 +245,21 @@ pub struct StripDrag {
     /// The strip's stable identity — NOT its index: the lane re-sorts as the strip
     /// crosses its neighbour, and an index-anchored drag would swap victims mid-air.
     pub id: ph2d_timeline::StripId,
-    /// `0` = start edge (trim), `1` = end edge (trim), `2` = body (slide).
+    /// `0` = start edge (trim), `1` = end edge (trim), `2` = body (slide),
+    /// `3` = fade-in grip, `4` = fade-out grip (B4).
     pub edge: u8,
     /// Pointer x (global px) when the drag began.
     pub start_x: f32,
     /// The strip's `(t_start, t_end)` when the drag began.
     pub start_span: (f64, f64),
+    /// The fade at the dragged edge when the drag began, in seconds — read off the
+    /// WEDGE the panel drew (`blend_in`/`blend_out`), never recomputed. Zero for the
+    /// gestures that are not a fade.
+    ///
+    /// Captured at `Begin` like `start_span`, and for the same reason: a drag that
+    /// re-reads the value it is writing accumulates its own rounding and drifts
+    /// (`arch_no_absolute_drag_pattern`).
+    pub start_ease: f64,
     /// Cmd/Ctrl was held at Begin: the edge RETIMES instead of trimming (a rate
     /// stretch). Latched at Begin and never re-read — a modifier released mid-drag
     /// must not change what the gesture means halfway through.

@@ -24,7 +24,7 @@ a forma que a solução tomaria num modelo onde tudo é porta. O requisito real 
 3. a **vista** tem que mostrar um lugar onde o fio pousa.
 
 Nenhum dos três precisa de uma porta no manifesto. Precisam de **uma aresta**, e aresta é
-**estado de DOCUMENTO** — que é exatamente onde o [canal de text param](32_text_param.md) já
+**estado de DOCUMENTO** — que é exatamente onde o [canal de text param](32_expression_text_param_channel_nota_adr.md) já
 mora (`Graph::set_text_param`, o precedente que resolveu o mesmo impasse pelo mesmo caminho).
 
 > **É a terceira vez que o contrato congelado escolhe a arquitetura, e a terceira vez que o

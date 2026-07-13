@@ -175,10 +175,12 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && PH2D_FLIP_DEMO=1 c
 
 ## §D — Depois do §C: a fila
 
-1. **Edit Mode / seleção de traço** (o "select do traço" que o Enio pediu). Destrava o auto-masking
-   fino do Reshape (a máscara passa a ser a SELEÇÃO — o gancho já existe num ponto só,
-   `Session::begin`) e substitui o "alvo vivo" (`flip_live.rs`) como alvo dos ajustes do painel.
-   Modelo de seleção especificado em [`Flip/02 §11`](Flip/02_referencia_algoritmos_blender_5.2.md).
+1. ~~**Edit Mode / seleção de traço**~~ — ✅ **FECHOU** (2026-07-13, `4e1bfbd7`; pendente o smoke).
+   `FlipMode::Edit` + `FlipStroke.selected` (atributo, NÃO índice — o balde insere no meio da
+   lista) + Sculpt mascarado + painel mirando a seleção + Delete/realce.
+   Doc: [`Flip/08_edit_mode_selecao.md`](Flip/08_edit_mode_selecao.md); tracker: W6.
+   **Aberto ali:** box-select (marquee) · domínio Point · write-back do painel · transformar a
+   seleção.
 2. **Carry-overs da W4/W5** (curtos, isolados): overlay ao vivo do Gap Closure (o `closures()` já
    devolve os segmentos) · modo Radius do Gap · **T5.7 multiframe** (o `frame_falloff` já é respeitado
    pelos 8 pincéis; falta a **multi-seleção de chaves na tira** — mesma dependência do fill multiframe:

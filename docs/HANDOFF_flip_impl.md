@@ -904,6 +904,37 @@ que só mede *"a cor não vaza"* é **falso-zero** (verde com o fill invisível 
 COBERTURA que morde); e varrer zoom com a forma **parada** é **vácuo** (a câmera entra dentro dela,
 a costura sai de quadro — a cena tem de encolher em mundo por `1/z`).
 
+## W6 — Edit Mode: a seleção de traço (LANDOU 2026-07-13, `4e1bfbd7`, pendente o smoke)
+
+O "select do traço". **Doc: [`docs/Flip/08_edit_mode_selecao.md`](Flip/08_edit_mode_selecao.md).**
+
+**A seleção é um ATRIBUTO do traço** (`FlipStroke.selected`, domínio Curve do GP) — não uma
+lista de índices no shell. A identidade de um traço é a posição dele na `Vec`, e o **balde
+insere no MEIO dela**, a borracha reescreve a lista, o undo a restaura: índices apodreceriam
+contra as três, em silêncio, e o sintoma seria o painel recolorindo a arte errada.
+⇒ `FLIP_SCHEMA_VERSION` 3→4 + `PROJECT_SCHEMA` 7→8 (o `FlipDoc` vive no `ProjectState`).
+
+**`FlipMode::Edit` é um modo PRÓPRIO** (não uma sobrecarga do Select, onde o **gizmo** manda —
+ADR-0112). Object Mode × Edit Mode, como no GP. O gizmo só publica `GizmoView` no Select, então
+o Edit já nasce sem ele.
+
+**O que a seleção faz:** Sculpt **mascarado** (seleção vazia = tudo ⇒ a feature é aditiva) ·
+os ajustes do painel (Size/Hardness/Opacity/Color) miram a seleção e **aposentam o alvo vivo** ·
+Delete (tecla — que **CONSOME**, senão o caminho genérico apagaria o OBJETO junto — e botão) ·
+Select All / Deselect · **realce** (overlay Vello; uma seleção que não se vê não existe).
+
+**As duas armadilhas, ambas gateadas:** (a) **só a MUDANÇA age** — reaplicar o estilo a cada
+frame pintaria de azul um traço vermelho no ATO do clique; (b) **zero geometria** — reescrever
+posições de uma cópia pristina desfaria uma escultura feita depois da seleção. A espessura vira
+`size × perfil` (perfil = `w_i/w_max` lido AGORA): idempotente, reversível, e a pressão sobrevive.
+
+**Gates cegos, consertados de raiz:** os gates do painel enumeravam os modos À MÃO, e o Edit
+passou por eles sem um pio. Agora existe **`FlipMode::ALL`** e os dois gates afirmam que a
+tabela deles a cobre inteira — o próximo modo quebra o teste no dia em que nascer.
+
+4 mutações rodadas, 4 gates vermelhos. **Aberto:** box-select (marquee) · domínio Point ·
+o painel não espelha a seleção (write-back) · transformar a seleção.
+
 ## Aberto (fora do W0..W5, por design)
 
 - **A próxima recomendada: Edit Mode / seleção de traço** (o "select do traço" que o Enio

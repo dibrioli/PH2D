@@ -405,7 +405,7 @@ fn a_one_shot_ignores_the_region() {
 fn unlooping_a_region_mid_flight_plays_on_into_the_outro() {
     // Source at half the output rate → advance = 0.5.
     let data = stamped(12, OUT_RATE / 2);
-    let (mut engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(OUT_RATE));
+    let (engine, mut renderer) = AudioEngine::new(AudioFormat::stereo(OUT_RATE));
     engine
         .play_preview(
             data.clone(),

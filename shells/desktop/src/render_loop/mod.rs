@@ -2617,6 +2617,8 @@ impl crate::App {
                     surface.size(),
                     vector_scene,
                 );
+                // A caixa do marquee (W6.1) — em px de tela, como o realce.
+                flip_selection_overlay::draw_flip_marquee(self.flip_edit_gesture, vector_scene);
             }
 
             // Texto em edição herda o Style do painel em TEMPO REAL: o bridge acabou

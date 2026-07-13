@@ -622,6 +622,9 @@ pub(crate) struct App {
     /// a máscara congelada no pen-down — e, no Grab, os pesos. `None` quando não há
     /// gesto. Ver `flip_reshape`.
     pub(crate) flip_reshape: Option<crate::flip_reshape::FlipReshape>,
+    /// ADR-0114 W6.1: o GESTO em curso no modo Edit — a caixa do marquee, ou a translação
+    /// da seleção. `None` fora de um arrasto. Ver `flip_edit_gesture`.
+    pub(crate) flip_edit_gesture: Option<crate::flip_edit_gesture::EditGesture>,
     /// ADR-0114 W6: o estilo do painel no frame ANTERIOR, enquanto há seleção no modo
     /// Edit. É o que deixa **só a MUDANÇA** agir sobre os traços selecionados: sem esta
     /// memória, o passe reaplicaria o estilo a cada frame e selecionar um traço vermelho

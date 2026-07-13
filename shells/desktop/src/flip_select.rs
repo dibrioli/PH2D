@@ -216,9 +216,27 @@ impl crate::App {
             return true;
         };
         let hit = stroke_at(drawing, local, px_to_world, &w2l);
+        // **Arrastar um traço já o move** (W6.1). Se o clique pegou traço, o gesto que
+        // começa é o de MOVER — inclusive quando o traço ainda não estava selecionado
+        // (aí o pick o seleciona primeiro, e o arrasto o leva junto). Exigir clicar,
+        // soltar e clicar de novo para arrastar é a ergonomia que faz o usuário concluir
+        // que a ferramenta não responde. No VAZIO, o gesto é o marquee.
+        //
+        // Shift+arrasto num traço já selecionado seria ambíguo (alternar ou mover?): o
+        // Shift manda, e o gesto vira alternar — o arrasto não pega.
+        let shift = pick == Pick::Toggle;
         if apply_pick(drawing, hit, pick) {
             self.title_dirty = true;
         }
+        self.flip_edit_gesture = match (hit, shift) {
+            (Some(_), false) => Some(crate::flip_edit_gesture::EditGesture::Move { last: local }),
+            (Some(_), true) => None,
+            (None, _) => Some(crate::flip_edit_gesture::EditGesture::Marquee {
+                start: (x, y),
+                cur: (x, y),
+                additive: shift,
+            }),
+        };
         // A seleção vira o alvo dos ajustes do painel — o "alvo vivo" (a última coisa
         // criada) sai de cena enquanto houver seleção.
         self.flip_live_clear();

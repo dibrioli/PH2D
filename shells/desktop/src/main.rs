@@ -44,6 +44,7 @@ mod cursor_pos;
 mod flip_autokey;
 mod flip_demo;
 mod flip_draw;
+mod flip_edit_gesture;
 mod flip_entities;
 mod flip_erase;
 mod flip_fill;
@@ -288,6 +289,7 @@ impl App {
             flip_live: None,
             flip_reshape: None,
             flip_edit_style: None,
+            flip_edit_gesture: None,
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,

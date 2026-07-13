@@ -33,6 +33,10 @@ use ph2d_vector::{BezPath, Point, VectorScene};
 /// Espessura do contorno de realce, em px de tela.
 const HALO_PX: f64 = 2.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
 
+/// Espessura da caixa do marquee, em px de tela (mais fina que o realce: ela é um gesto
+/// em curso, não um estado).
+const MARQUEE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
+
 /// Cor do realce (âmbar do editor) — chrome, não arte.
 const HALO_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay de selecao
 
@@ -93,6 +97,35 @@ pub(super) fn draw_flip_selection(
             &path,
         );
     }
+}
+
+/// **A caixa do marquee** (W6.1) — em px de tela, como todo o chrome deste módulo.
+///
+/// Um marquee que não se vê é um arrasto que não faz nada: o usuário puxa a caixa no vazio
+/// e a tela fica muda até soltar. Desenhada mesmo antes do slop (a caixa de 1 px é a
+/// confirmação de que o gesto começou).
+pub(super) fn draw_flip_marquee(
+    gesture: Option<crate::flip_edit_gesture::EditGesture>,
+    vector_scene: &mut VectorScene,
+) {
+    use ph2d_vector::{Affine, Brush, Color, Stroke};
+    let Some(crate::flip_edit_gesture::EditGesture::Marquee { start, cur, .. }) = gesture else {
+        return;
+    };
+    let (x0, y0, x1, y1) = crate::flip_edit_gesture::marquee_rect(start, cur);
+    let mut path = BezPath::new();
+    path.move_to(Point::new(f64::from(x0), f64::from(y0)));
+    path.line_to(Point::new(f64::from(x1), f64::from(y0)));
+    path.line_to(Point::new(f64::from(x1), f64::from(y1)));
+    path.line_to(Point::new(f64::from(x0), f64::from(y1)));
+    path.close_path();
+    vector_scene.inner_mut().stroke(
+        &Stroke::new(MARQUEE_PX),
+        Affine::IDENTITY, // px de TELA (o transform multiplicaria a espessura — ver acima)
+        &Brush::Solid(Color::new(HALO_RGBA)),
+        None,
+        &path,
+    );
 }
 
 /// A polilinha do realce, **já em px de TELA** (o `to_screen` é aplicado aos PONTOS, não

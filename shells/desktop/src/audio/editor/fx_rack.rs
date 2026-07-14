@@ -34,6 +34,25 @@ pub(super) type ChainSig = (Vec<StageSig>, Option<(usize, usize)>);
 /// stages *before* it, and the target range.
 pub(super) type HeadSig = (usize, Vec<StageSig>, Option<(usize, usize)>);
 
+/// Set by the knob smoke, which needs the log to be the point of the scene rather than a second
+/// env var the Enio has to remember (asking him to remember it is asking him to run it wrong).
+static PREVIEW_LOG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Turn the drag-frame log on from code.
+pub(crate) fn enable_preview_log() {
+    PREVIEW_LOG.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// `PH2D_AUDIO_PREVIEW_LOG=1`, or a scene that asked for it — print what one drag frame cost, and
+/// which path paid it.
+///
+/// The env half is read once: it is asked every drag frame and cannot change mid-session.
+fn preview_log() -> bool {
+    static ENV: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    PREVIEW_LOG.load(std::sync::atomic::Ordering::Relaxed)
+        || *ENV.get_or_init(|| std::env::var_os("PH2D_AUDIO_PREVIEW_LOG").is_some())
+}
+
 /// Quantize one stage for the change-gate.
 fn stage_sig(stage: &FxStage) -> StageSig {
     let mut q = [0i32; MAX_FX_PARAMS];
@@ -125,14 +144,41 @@ impl AudioSystem {
         // step on Apply).
         let audition = if chain.iter().any(is_audible) {
             let head = self.editor.fx_head.as_ref().expect("just built").clone();
+            // This block runs ONCE PER DRAG FRAME — it is the 16 ms that ADR-0120 is about, so it
+            // is the only honest place to time it. `PH2D_AUDIO_PREVIEW_LOG=1` prints the cost and
+            // which path paid it; the knob smoke turns it on for itself.
+            let t0 = preview_log().then(std::time::Instant::now);
             // O(selection) when it can be (ADR-0120): rewrite the region of a buffer the mixer has
             // already handed back, instead of copying the whole clip to change 0.55 % of it. It
             // bails out on anything it does not handle, and the full render below always works --
             // the fast path is an optimisation, never a second source of truth.
-            Some(
-                self.fx_preview_incremental(&head, chain, sel)
-                    .unwrap_or_else(|| render_from(&head, chain, sel)),
-            )
+            let fast = self.fx_preview_incremental(&head, chain, sel);
+            let took_fast = fast.is_some();
+            let out = fast.unwrap_or_else(|| render_from(&head, chain, sel));
+            if let Some(t0) = t0 {
+                let ms = t0.elapsed().as_secs_f64() * 1_000.0;
+                // A fast frame that had to BUILD its scratch is not the steady state: the first
+                // two frames of a drag fill the two slots, one whole-clip copy each, and only from
+                // the third on is the drag free. Calling those `region rewrite` would print 32 ms
+                // beside the name of the optimisation and make it look broken in its own log.
+                let filled = took_fast && self.fx_preview_filled();
+                let path = match (took_fast, filled) {
+                    (true, true) => {
+                        "ADR-0120 warm-up (fills a scratch: one copy, twice per selection)"
+                    }
+                    (true, false) => "ADR-0120 (region rewrite) -- the steady state of a drag",
+                    (false, _) => "full render (whole-clip copy) -- the pre-ADR-0120 path",
+                };
+                // 16.6 ms is one frame at 60 fps: over that, the drag itself stutters. Only the
+                // steady state is judged -- the warm-up is a cost the design ACCEPTS, out loud.
+                let verdict = if ms > 16.6 && !filled {
+                    "  <-- OVER BUDGET (this is the stutter)"
+                } else {
+                    ""
+                };
+                println!("audio: preview frame {ms:6.2} ms  {path}{verdict}");
+            }
+            Some(out)
         } else {
             None
         };

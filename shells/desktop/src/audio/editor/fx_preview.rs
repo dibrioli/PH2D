@@ -60,6 +60,14 @@ pub(crate) struct PreviewScratch {
     buffers: [Option<SampleData>; 2],
     slot: usize,
     key: Option<ScratchKey>,
+    /// Did the last `step` have to BUILD its buffer (one whole-clip copy) rather than rewrite a
+    /// region of one it already had?
+    ///
+    /// This is not bookkeeping for its own sake: the first two frames of a drag fill the two
+    /// slots, so they each pay a copy, and only from the third frame on is the drag free. Without
+    /// this flag the frame log calls a fill frame `region rewrite` and prints 32 ms next to it —
+    /// and the smoke would say, in its own output, that the optimisation does not work.
+    filled: bool,
 }
 
 impl PreviewScratch {
@@ -105,6 +113,7 @@ impl PreviewScratch {
         // copy the data — so the head would still be holding the buffer, `get_mut` would refuse
         // FOREVER, and the fast path would be dead code that silently never ran. The gates caught
         // exactly that.
+        self.filled = self.buffers[slot].is_none();
         let buf = self.buffers[slot].get_or_insert_with(|| SampleData::map_in_place(hd, |_| {}));
 
         // The buffer the mixer is still holding cannot be touched. It comes back on the next
@@ -126,7 +135,7 @@ impl PreviewScratch {
 /// their own base (the second acts on the first's output), and a tail effect changes the buffer's
 /// LENGTH — neither fits, and both fall back to the full render. This is not a narrow case: it is
 /// the one a knob drag is, almost always.
-fn lone_plain_stage(chain: &[FxStage], from: usize) -> Option<ph2d_audio_edit::Effect> {
+pub(crate) fn lone_plain_stage(chain: &[FxStage], from: usize) -> Option<ph2d_audio_edit::Effect> {
     let mut found = None;
     for stage in &chain[from.min(chain.len())..] {
         if !is_audible(stage) {
@@ -143,6 +152,20 @@ fn lone_plain_stage(chain: &[FxStage], from: usize) -> Option<ph2d_audio_edit::E
     found
 }
 
+/// **The A/B switch** (`PH2D_AUDIO_SLOW_PREVIEW=1`): make the fast path refuse, so every drag
+/// frame goes down the whole-clip render this ADR replaced.
+///
+/// It exists because the optimisation is **invisible by construction** — the output is byte-
+/// identical, so there is nothing to hear, and "it feels smooth now" is not something a human can
+/// check against a memory of last week. A smoke you cannot A/B is a demo. This makes the *old*
+/// behaviour reachable, in the shipping code path, with one env var.
+///
+/// Read once: a drag reads it every frame, and the answer cannot change mid-session.
+fn slow_preview_forced() -> bool {
+    static FORCED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *FORCED.get_or_init(|| std::env::var_os("PH2D_AUDIO_SLOW_PREVIEW").is_some())
+}
+
 impl super::super::AudioSystem {
     /// The audition for this frame, rendered O(selection) if it can be — `None` when it cannot,
     /// and the caller does the full render.
@@ -152,8 +175,17 @@ impl super::super::AudioSystem {
         chain: &[FxStage],
         sel: usize,
     ) -> Option<EditClip> {
+        if slow_preview_forced() {
+            return None; // the fallback below IS the old path — no second implementation to drift
+        }
         let fx = lone_plain_stage(chain, sel)?;
         self.fx_scratch.step(head, fx)
+    }
+
+    /// Did the last fast-path frame BUILD its buffer (a whole-clip copy, paid once per slot) or
+    /// rewrite a region of one it already owned? Only the second is the steady state of a drag.
+    pub(crate) fn fx_preview_filled(&self) -> bool {
+        self.fx_scratch.filled
     }
 }
 

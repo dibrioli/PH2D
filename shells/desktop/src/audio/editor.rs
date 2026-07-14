@@ -16,6 +16,7 @@ mod export_pieces;
 pub(crate) mod fx_preview;
 mod fx_rack;
 pub(crate) mod ir;
+mod knob_smoke;
 mod loops;
 mod manifest_path;
 mod markers;

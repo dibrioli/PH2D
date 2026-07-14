@@ -208,6 +208,13 @@ impl App {
             if std::env::var_os("PH2D_AUDIO_DELIVERY_SMOKE").is_some() {
                 a.editor_delivery_smoke();
             }
+            // Stage the ADR-0120 knob drag: a 3-minute clip (where the whole-clip copy hurts), a
+            // selection, and a ONE-stage rack. Drag Ratio; each frame prints its cost. Re-run with
+            // PH2D_AUDIO_SLOW_PREVIEW=1 for the old path -- the feature is byte-identical, so the
+            // A/B is the only thing a human can actually check.
+            if std::env::var_os("PH2D_AUDIO_KNOB_SMOKE").is_some() {
+                a.editor_knob_smoke();
+            }
         }
         Self {
             window: None,

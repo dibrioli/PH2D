@@ -117,12 +117,11 @@ fn delay_mode_emits_the_position_from_n_ticks_ago() {
     let path: Vec<f32> = (0..16).map(|i| i as f32).collect(); // y = t
     let out = run(&[("mode", 0.0), ("ticks", 4.0)], &path);
     // From tick 4 on, the line is full: out(t) == in(t-4) == t-4.
-    for t in 4..16 {
+    for (t, v) in out.iter().enumerate().skip(4) {
         assert!(
-            (out[t] - (t as f32 - 4.0)).abs() < 1e-4,
-            "at tick {t} the node should be showing tick {}: got {}",
-            t - 4,
-            out[t]
+            (v - (t as f32 - 4.0)).abs() < 1e-4,
+            "at tick {t} the node should be showing tick {}: got {v}",
+            t - 4
         );
     }
     // …and before it filled, it seeded FLAT (at the live value), not at garbage.

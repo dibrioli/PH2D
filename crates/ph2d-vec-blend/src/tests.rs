@@ -582,3 +582,4 @@ fn every_offset_gives_a_different_correspondence_in_the_same_direction() {
         seen.push(v0);
     }
 }
+

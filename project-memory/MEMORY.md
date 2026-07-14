@@ -86,6 +86,7 @@
 - [Defesa em camadas = gate POR camada](feedback_layered_defenses_need_per_layer_gates.md) — mutação de UMA não sangra; pergunte o que cada camada protege sozinha
 - [Capture a sessão ANTES do pen-up](feedback_capture_stroke_session_before_pen_up.md) — o Up carimba dabs de CAUDA e mata a sessão
 - [Peça sem área pinta uma LINHA](feedback_a_boolean_leaves_slivers_and_a_zero_area_piece_paints_a_line.md) — `area > 0` fica verde; use densidade
+- [Âncora não é FEATURE](feedback_an_anchor_is_not_a_feature.md) — casar formas por âncora força uma rotação (quadrado→círculo girava 45°); num contorno suave a âncora é parametrização
 - ["Funciona e depois esquece"](feedback_works_then_silently_forgets_recook_wipes_authored_state.md) — recook varre o autorado dentro do derivado
 - [CONSTRUA o harness antes de desistir](feedback_try_to_build_the_harness_before_declaring_it_impossible.md) — "o App exige janela" era falso
 - [O que sobrevive a um load é ADOTADO](feedback_what_survives_a_load_is_adopted_not_stale.md) — cura por nome vira contaminação

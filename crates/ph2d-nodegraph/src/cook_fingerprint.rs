@@ -6,7 +6,7 @@
 //! way a node's output can change, and every field in it was added because something changed and
 //! the memo did not notice.
 
-use super::{BTreeMap, Effect};
+use super::BTreeMap;
 
 /// What a node's reuse decision depends on: revisions of its forward inputs,
 /// the playhead bits (if `Temporal`), and the tick (if it consumes a `pre`

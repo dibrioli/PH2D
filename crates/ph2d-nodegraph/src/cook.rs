@@ -92,6 +92,13 @@ pub struct EvalCtx<'a> {
     /// is what makes all 86 node types drivable without touching one of them: they all
     /// read their params through that one funnel.
     driven: BTreeMap<&'a str, f32>,
+    /// **What the APP published** (doc 65) — a drawn curve, and anything else the graph cannot
+    /// reach on its own. Read by [`EvalCtx::external`].
+    externals: &'a crate::external::All,
+    /// The names this node actually READ this eval. The cook keeps them beside the memo, because
+    /// the reuse decision is made BEFORE the eval and can only know what the node read LAST time
+    /// (`external.rs`: the chicken and the egg).
+    read_externals: Vec<String>,
     /// Did THIS node emit anything on the previous tick? (`prev_outputs` holds it.)
     started: bool,
     /// Seconds since the previous tick, on the ROOT clock (0 on the first tick).
@@ -100,6 +107,17 @@ pub struct EvalCtx<'a> {
 }
 
 impl<'a> EvalCtx<'a> {
+    /// **What the app published under this name** (doc 65) — a drawn curve, most of the time.
+    /// Empty if nobody published one, exactly like an unconnected input: a node asking for a shape
+    /// that is not there emits nothing, it does not fail.
+    ///
+    /// Reading one is what puts it in this node's fingerprint (the cook keeps the names beside the
+    /// memo), so editing the curve recomputes the node — which nothing else here would notice.
+    pub fn external(&mut self, name: &str) -> &'a Stream {
+        static EMPTY: Stream = Stream::empty();
+        self.read_externals.push(name.to_string());
+        self.externals.get(name).map_or(&EMPTY, |e| &e.value)
+    }
     /// The cooked **instance stream** on input `port` (empty if unconnected, or
     /// if the upstream emitted a non-stream value; for a `pre` port, the
     /// previous tick's value). The value's domain is guaranteed by `PortType`
@@ -250,6 +268,11 @@ struct Fingerprint {
     /// happens to be unchanged must still recompute, because the node now reads a different
     /// place.
     param_sources: u64,
+    /// FNV-1a of the revisions of the externals this node read LAST time (doc 65). An external
+    /// is an input the graph does not describe: edit the drawn curve and the node must recompute,
+    /// and nothing else in this fingerprint would notice. `0` for a node that has never cooked —
+    /// which cooks, which is right.
+    externals: u64,
     /// FNV-1a of the node's per-instance param overrides (name + value bits).
     /// Folds edited params into the reuse decision: an override change must
     /// recompute, or a re-cook with the same `Cook` would return a stale,
@@ -314,6 +337,9 @@ struct Cached {
     outputs: Vec<CookValue>,
     revision: u64,
     fingerprint: Fingerprint,
+    /// The externals this node read when it last cooked (doc 65) — the only way the NEXT reuse
+    /// decision can know which published values it depends on.
+    read_externals: Vec<String>,
 }
 
 /// A snapshot of the **simulation state** carried across ticks — the `pre`-edge
@@ -361,6 +387,9 @@ impl CookCheckpoint {
 /// re-evaluation cheap and `pre` feedback work.
 #[derive(Default)]
 pub struct Cook {
+    /// **What the app published** (doc 65). Keyed by name; the revision IS the content, so
+    /// republishing the same curve every frame invalidates nothing.
+    externals: crate::external::All,
     /// Keyed by `(node, scope)`: the same node cooked under two different time
     /// scopes in one frame holds two independent memo entries. Without a scope,
     /// every key is `(node, SCOPE_ROOT)`.
@@ -385,6 +414,27 @@ pub struct Cook {
 }
 
 impl Cook {
+    /// **Publish a value into the cook** (doc 65) — the door from the app into the graph.
+    ///
+    /// The revision is the CONTENT (`external::fingerprint`), so a caller cannot get the
+    /// bookkeeping wrong: republishing the same curve every frame is free, and editing it
+    /// invalidates exactly the nodes that read it.
+    pub fn set_external(&mut self, name: impl Into<String>, value: crate::attr::Stream) {
+        let rev = crate::external::fingerprint(&value);
+        self.externals
+            .insert(name.into(), crate::external::External { rev, value });
+    }
+
+    /// Forget everything published (the shell republishes what still exists each frame, so this is
+    /// how a deleted shape stops being visible to the graph).
+    pub fn clear_externals(&mut self) {
+        self.externals.clear();
+    }
+
+    /// What is published right now (read-only — the tests and the panel's readout).
+    pub fn externals(&self) -> &crate::external::All {
+        &self.externals
+    }
     pub fn new() -> Self {
         Self::default()
     }
@@ -617,6 +667,15 @@ impl Cook {
             params: params_fingerprint(graph.node_param_overrides(node)),
             text_params: text_params_fingerprint(graph.node_text_param_overrides(node)),
             param_sources: crate::param_source::fingerprint(sources),
+            // The externals this node read LAST time, at their revisions NOW (doc 65). A node that
+            // has never cooked has read nothing, so this is the hash of the empty list — and its
+            // first cook happens for the ordinary reason (no cache entry).
+            externals: crate::external::revs_of(
+                &self.externals,
+                self.cache
+                    .get(&(node, key))
+                    .map_or(&[][..], |c| &c.read_externals),
+            ),
         };
         if let Some(c) = self.cache.get(&(node, key))
             && c.fingerprint == fingerprint
@@ -627,6 +686,8 @@ impl Cook {
         // 3. Recompute.
         let mut ctx = EvalCtx {
             inputs: &input_values,
+            externals: &self.externals,
+            read_externals: Vec::new(),
             playhead,
             manifest,
             overrides: graph.node_param_overrides(node),
@@ -658,7 +719,21 @@ impl Cook {
             Cached {
                 outputs: ctx.outputs,
                 revision,
-                fingerprint,
+                // **The stored fingerprint must be a FIXED POINT** (doc 65). The one that made the
+                // reuse decision was built from the externals the node read LAST time — which, on
+                // a first cook, is *nothing*. Store that and the very next cook compares
+                // "nothing" against "Track" and recomputes for no reason: one spurious eval, every
+                // time a node first reads a curve.
+                //
+                // So the entry remembers the fingerprint of what it ACTUALLY depends on. It is the
+                // same discipline the undo snapshot needed
+                // ([[feedback_a_snapshot_must_be_a_fixed_point_of_the_systems]]): if the next pass
+                // would derive something different from the same inputs, you have not converged.
+                fingerprint: Fingerprint {
+                    externals: crate::external::revs_of(&self.externals, &ctx.read_externals),
+                    ..fingerprint
+                },
+                read_externals: ctx.read_externals,
             },
         );
         Ok(revision)
@@ -688,3 +763,7 @@ mod tests;
 #[cfg(test)]
 #[path = "cook_param_source_tests.rs"]
 mod param_source_tests;
+
+#[cfg(test)]
+#[path = "cook_external_tests.rs"]
+mod external_tests;

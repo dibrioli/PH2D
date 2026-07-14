@@ -50,6 +50,9 @@ mod plumbing;
 #[path = "motion_bridge_backdrops.rs"]
 mod backdrops;
 
+#[path = "motion_bridge_shapes.rs"]
+mod shapes;
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_edit.rs"]
 mod edit;
@@ -568,4 +571,21 @@ fn build_catalog(
         .collect();
     v.sort_by(|a, b| (a.category as u8, a.display).cmp(&(b.category as u8, b.display)));
     v
+}
+
+/// **Publish the drawn shapes into the cook** (doc 65) — called by the render loop right before the
+/// Motion bridge, because that is where the vector document, the world and the entity map are all
+/// in hand at once.
+///
+/// It runs whether or not the Motion tool is active: a graph cooks in the background (the pump is
+/// what feeds `render_with_extra`), and a `motion.path` whose curve went stale while the artist was
+/// in another tool would be a scene that is wrong until you look at it.
+pub(super) fn publish_shapes(
+    motion: &mut MotionState,
+    sim: &ph2d_ecs::SimWorld,
+    scene: &ph2d_vec_scene::VecScene,
+    map: &crate::vec_entities::VecEntityMap,
+    xforms: &ph2d_vec_scene::VecXforms,
+) {
+    shapes::publish(&mut motion.pump.cook, sim, scene, map, xforms);
 }

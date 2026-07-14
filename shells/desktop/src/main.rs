@@ -50,6 +50,7 @@ mod build_smoke_drive;
 /// A cena de smoke do **Expand** (Outline Stroke + Offset Path) — `PH2D_BUILD_SMOKE=17`.
 mod build_smoke_expand;
 mod chrome_hit;
+mod motion_node_path_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).

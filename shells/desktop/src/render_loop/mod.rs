@@ -651,6 +651,7 @@ impl crate::App {
         self.flip_selection_smoke();
         self.flip_segment_smoke();
         self.blend_smoke();
+        self.motion_node_path_smoke();
         self.build_session_upkeep();
         // Tween v2: a sessão de correção de pares SEGUE o artista a um novo intervalo (no-op
         // se o intervalo é o mesmo, ou se a sessão está fechada).
@@ -4234,6 +4235,11 @@ impl crate::App {
             // the instances it cooks both land this frame). Cooks the graph into
             // `motion.instances` (present injects them via `render_with_extra`)
             // and drives the center split + docked-panel visibility.
+            // The drawn shapes go into the cook BEFORE it runs (doc 65): every named vector path
+            // becomes an external the graph can walk (`motion.path`). Here, because this is the
+            // one place the document, the world, the entity map and the transforms are all in
+            // hand at once.
+            motion_bridge::publish_shapes(motion, sim, vec_scene, &self.vec_entities, &vec_xf_ops);
             motion_bridge::dispatch(
                 hero,
                 tools,

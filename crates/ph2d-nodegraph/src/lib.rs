@@ -42,6 +42,7 @@ pub mod format;
 pub mod gpu;
 pub mod graph;
 pub mod node;
+pub mod external;
 pub mod param_source;
 pub mod port;
 pub mod reduce_meta;

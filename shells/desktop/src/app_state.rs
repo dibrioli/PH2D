@@ -320,6 +320,19 @@ pub(crate) struct HeroLive {
     /// Reused per-frame snapshot. `build_hierarchy_snapshot` clears
     /// the inner Vec without releasing capacity.
     pub(crate) snapshot: HierarchySnapshot,
+    /// **A árvore relida no momento da projeção de z** (ADR-0110, BUGS #15).
+    ///
+    /// A trinca acima é a PUBLICAÇÃO do painel, feita no prólogo do frame — ou seja,
+    /// **antes** de `vec_entities::sync` dar entidade à forma recém-criada. A ordem de z
+    /// é a projeção da árvore e precisa lê-la **depois** do `sync`; então ela lê de novo,
+    /// com a MESMA função (`build_hierarchy_snapshot`) e scratch próprio.
+    ///
+    /// O scratch é próprio, e isso não é arrumação: sobrescrever a trinca do painel no
+    /// meio do frame descasaria a `bridge`, que já foi sincronizada com o snapshot do
+    /// prólogo. Duas leituras da mesma árvore, em instantes diferentes — não duas fontes.
+    pub(crate) z_walk_state: HierarchyWalkState,
+    pub(crate) z_walk_scratch: Vec<(ph2d_ecs::Entity, u8, Option<ph2d_ecs::Entity>)>,
+    pub(crate) z_snapshot: HierarchySnapshot,
 }
 
 pub(crate) struct App {

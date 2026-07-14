@@ -2834,8 +2834,25 @@ impl crate::App {
                 .then(|| flip.objects().first().map(|o| o.id))
                 .flatten();
             crate::flip_transform::settle_origins(sim, flip, &self.flip_entities, flip_gesturing);
-            if let Some(live) = hero_live.as_ref() {
-                let order = crate::vec_entities::z_order(hero, &live.bridge, &self.vec_entities);
+            // **A ordem de z é a projeção da árvore — e a árvore é lida AQUI, depois do
+            // `sync`.** Não é arrumação (BUGS #15): a lista do painel foi publicada no
+            // prólogo do frame, quando a forma recém-criada ainda não tinha entidade.
+            // Projetar por ela punha a forma nova no FUNDO por um frame, e a captura do
+            // undo — tirada no fim deste frame — deixava de ser ponto fixo dos sistemas.
+            // Toda raiz ganha um `RootOrder` explícito ANTES de a árvore ser lida — e antes
+            // da captura do fim do frame. Sem isto, a raiz sem ordem colate em `u32::MAX` e
+            // a árvore a desempata por `Entity::to_bits()` (id de ALOCAÇÃO): o respawn do
+            // undo troca os bits, a pilha de z se reordena sozinha a cada Ctrl+Z, e o passo
+            // espúrio volta vestido de outra coisa. Não ter empate > escolher desempate.
+            ph2d_ecs::assign_missing_root_order(sim.world_mut());
+            if let Some(live) = hero_live.as_mut() {
+                crate::build_hierarchy_snapshot(
+                    sim.world(),
+                    &mut live.z_walk_state,
+                    &mut live.z_walk_scratch,
+                    &mut live.z_snapshot,
+                );
+                let order = crate::vec_entities::z_order(&live.z_snapshot);
                 vec_scene.reorder_to(&order);
             }
             let vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);

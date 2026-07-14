@@ -590,6 +590,59 @@ capacidade de VER as regiões antes de escolher uma. O agente anterior escreveu 
 
 ---
 
+## Bug #15 — "O undo só faz uma etapa e não funciona mais" (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+O Enio: um Ctrl+Z funciona; do segundo em diante a cena não sai do lugar. Reprovado no smoke.
+
+### Causa
+
+**Não estava no undo.** A pilha de z das formas é a **projeção da árvore** (ADR-0110), e o passe
+que a aplica projetava da **lista do PAINEL** — publicada no *prólogo* do frame, **antes** de
+`vec_entities::sync` dar entidade à forma recém-criada. Quem o `VecScene::reorder_to` não conhece
+recebe chave 0 e vai pro **FUNDO**; a cena só convergia **um frame depois**, em silêncio.
+
+A captura do undo é tirada no fim do frame da **AÇÃO** — ou seja, **antes de convergir**. Ela
+**não era ponto fixo dos sistemas**: restaurá-la e deixar o frame rodar produzia *outra coisa*.
+O diff por-frame do `post_frame_undo` lia essa diferença como ação do usuário → nascia um **passo
+espúrio** (mesmos ids, só a ORDEM diferente) que **limpava a pilha de redo** e re-empurrava o
+estado. O Ctrl+Z seguinte desfazia **o lixo que ele mesmo acabara de criar**.
+
+Medido (`PH2D_BUILD_SMOKE=6 PH2D_UNDO_LOG=1`): em regime a cena ficava `[3,4,5,6,1]` (ordem de
+**inserção**); depois de qualquer undo convergia para `[6,5,4,3,1]` (a **projeção real**).
+
+### A segunda mina, que o gate expôs
+
+Um sprite importado nasce **sem `RootOrder`** (`image_import.rs`) ⇒ colate em `u32::MAX` ⇒ o sort
+de raízes desempata por **`Entity::to_bits()`**, o id de **ALOCAÇÃO** — e o restore do undo
+**despawna e re-spawna o mundo inteiro**. O gate do ponto fixo com uma forma pendurada num sprite
+nasceu **VERMELHO**: a pilha invertia (`[0,1]`→`[1,0]`) a cada Ctrl+Z. O passo espúrio voltaria
+vestido de outra coisa, e ninguém teria ligado uma coisa à outra.
+
+### Correção
+
+1. **A projeção lê a árvore DEPOIS do `sync`** — do `build_hierarchy_snapshot` (a **mesma** função
+   que alimenta o painel; um DFS próprio seria uma segunda porta, e duas portas divergem), com
+   scratch próprio (`z_walk_state`/`z_snapshot`), para não descasar a `bridge` do painel.
+2. **`ph2d_ecs::assign_missing_root_order`** — toda raiz ganha número explícito, na ordem que a
+   tela já mostra. **Não se escolhe um desempate melhor: não se tem empate.** A ordem vira função
+   do CONTEÚDO e sobrevive ao respawn.
+
+**Gates:** `vec_zorder_fixpoint_tests.rs` (5, um deles *nasceu vermelho*: o do sprite) +
+`tests/the_z_projection_reads_the_tree_after_the_sync.rs` (arch-gate de **ordem do frame**, sobre
+o arquivo do produto — os unit tests rodam um *espelho* da sequência, e um espelho não vê o dia em
+que alguém reordena o frame de verdade).
+
+### Lição
+
+**Toda captura de estado tem de ser PONTO FIXO dos sistemas:** *capturar → rodar um frame →
+capturar* tem de dar a mesma foto. Quem captura por diff (undo) ou por instantâneo (save) lê
+qualquer normalização atrasada como se fosse o usuário. E o corolário que ninguém viu: **o SAVE
+gravava a mesma captura não-convergida** — o bug não era só do undo.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de

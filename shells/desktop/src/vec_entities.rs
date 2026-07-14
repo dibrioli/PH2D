@@ -11,9 +11,8 @@
 //! Entidade apagada pela Hierarquia ⇒ path removido do documento. Tudo em
 //! [`sync`], uma vez por frame, antes de qualquer leitura.
 
-use crate::hero_bridge::EntityNodeMap;
+use ph2d_ecs::scene::HierarchySnapshot;
 use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef, Visibility};
-use ph2d_editor::HeroScreen;
 use ph2d_vec_scene::{VecPathId, VecScene, VecViewState};
 use std::collections::BTreeMap;
 
@@ -156,24 +155,36 @@ fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
 /// Teto de profundidade das caminhadas de ancestral (defesa, não limite de produto).
 const MAX_DEPTH: usize = 64;
 
+/// Os gates do ponto fixo (o conserto do "undo só faz uma etapa") — módulo irmão,
+/// pelo teto de 600 LOC por arquivo da shell (HR-18).
+#[cfg(test)]
+#[path = "vec_zorder_fixpoint_tests.rs"]
+mod zorder_fixpoint_tests;
+
 /// A ordem de z que a árvore dita: **fundo → topo**, pronta para
 /// `VecScene::reorder_to`.
 ///
 /// A Hierarquia lista em DFS com a primeira linha à frente (convenção
-/// Illustrator/Figma), então a pilha de z é o inverso. Reusa a ordem que o painel
-/// já calculou (`hierarchy_order`) em vez de refazer o DFS.
+/// Illustrator/Figma), então a pilha de z é o inverso.
+///
+/// **A fonte é o snapshot da ÁRVORE, não a lista do painel** — e isso não é
+/// arrumação, é o conserto de BUGS #15. O painel publica a lista dele no prólogo do
+/// frame, **antes** de o [`sync`] dar entidade à forma recém-criada; projetar por
+/// ela deixa a forma nova de fora, e quem o `reorder_to` não conhece recebe chave 0 e
+/// vai pro **FUNDO**. A cena só convergia um frame depois — e como o snapshot do undo
+/// é tirado no fim do frame da AÇÃO, ele capturava um estado que **não é ponto fixo
+/// dos sistemas**: restaurá-lo e deixar o frame rodar produzia outra coisa, o diff
+/// por-frame lia a diferença como ação do usuário, e nascia um passo espúrio que
+/// limpava o redo. Era o "o undo só faz uma etapa e não funciona mais".
+///
+/// O snapshot vem de `build_hierarchy_snapshot` — a **mesma** função que alimenta o
+/// painel, chamada num momento diferente (depois do `sync`). Um DFS próprio aqui
+/// seria uma segunda porta para a mesma pergunta, e duas portas divergem.
 #[must_use]
-pub(crate) fn z_order(
-    hero: &HeroScreen,
-    bridge: &EntityNodeMap,
-    map: &VecEntityMap,
-) -> Vec<VecPathId> {
-    let path_of = |bits: u64| map.iter().find(|(_, b)| **b == bits).map(|(id, _)| *id);
-    hero.store
-        .hierarchy_order()
+pub(crate) fn z_order(snap: &HierarchySnapshot) -> Vec<VecPathId> {
+    snap.entries
         .iter()
-        .filter_map(|&node| bridge.entity_for(node))
-        .filter_map(path_of)
+        .filter_map(|e| e.vec_path)
         .rev()
         .collect()
 }

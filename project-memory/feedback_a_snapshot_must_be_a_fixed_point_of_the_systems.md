@@ -35,6 +35,14 @@ mesma captura): o projeto gravado carrega a ordem não-convergida.
    empilhamento na tela a cada undo, em silêncio.
 4. **Nunca desempate por `Entity::to_bits()`** — é id de ALOCAÇÃO e muda a cada re-spawn (o
    `canonicalize` do `undo.rs` já paga essa lição uma vez; a hierarquia a paga de novo).
+   **CONFIRMADO por medição (2026-07-13), e o conserto tem forma:** o gate do ponto fixo com uma
+   forma pendurada num **sprite importado** (que nasce **sem `RootOrder`** ⇒ colate em `u32::MAX`
+   ⇒ a árvore desempata por bits) nasceu **vermelho** — a pilha de z invertia (`[0,1]`→`[1,0]`) a
+   cada Ctrl+Z, e o passo espúrio voltava vestido de outra coisa. **A saída não é escolher um
+   desempate melhor: é NÃO TER EMPATE.** `assign_missing_root_order` dá número explícito a toda
+   raiz (na ordem que a tela já mostra, então nada pisca), o desempate por bits nunca dispara, e a
+   ordem vira função do CONTEÚDO — que sobrevive ao respawn. Um empate cuja resolução depende de
+   id de alocação é uma bomba-relógio em qualquer sistema que capture e restaure estado.
 
 **Corolário do harness:** o bug só aparece no frame do **`Released`** da tecla — o diff varre
 TODO frame com input, e um Ctrl+Z são **dois** eventos. Meu harness mandava só o `Pressed`, e por

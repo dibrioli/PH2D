@@ -169,11 +169,15 @@ pub(crate) fn build_initial_state(
     let worklist = WorklistBuf::new();
     let hero_live = if hero_live_enabled {
         let walk_state = HierarchyWalkState::new(sim.world_mut());
+        let z_walk_state = HierarchyWalkState::new(sim.world_mut());
         Some(HeroLive {
             bridge: hero_bridge::EntityNodeMap::new(),
             walk_state,
             walk_scratch: Vec::with_capacity(64),
             snapshot: HierarchySnapshot::new(),
+            z_walk_state,
+            z_walk_scratch: Vec::with_capacity(64),
+            z_snapshot: HierarchySnapshot::new(),
         })
     } else {
         None

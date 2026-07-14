@@ -65,7 +65,7 @@ pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use name::Name;
 pub use painted_doc::PaintedDoc;
 pub use present::{PresentComponent, PresentWorld};
-pub use root_order::RootOrder;
+pub use root_order::{RootOrder, assign_missing_root_order};
 pub use sampling::{
     FilterMode, RepeatMode, TextureFilter, TextureRepeat, UvTransform, resolve_texture_filter,
     resolve_texture_repeat,

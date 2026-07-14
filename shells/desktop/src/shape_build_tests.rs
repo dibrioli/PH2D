@@ -284,7 +284,7 @@ fn painting_the_same_face_twice_marks_it_once() {
 }
 
 /// **Os índices do arranjo e os ids TÊM de andar juntos.** Uma forma ABERTA na seleção não
-/// entra no arranjo — e se ela continuasse na lista de ids, o índice `i` da fonte apontaria
+/// entra no arranjo — e se ela ficasse na lista de ids, o índice `i` da fonte apontaria
 /// para o id errado e o `commit` consumiria a forma errada. (Latente na 1ª versão: os ids
 /// eram copiados sem filtro, e nenhum gate misturava aberta com fechada.)
 #[test]

@@ -91,6 +91,8 @@
 - [Heurística exige taxa de falso-positivo](feedback_heuristic_needs_false_positive_rate.md) — verde num fixture é sorte do seed
 - [Tolerância folgada esconde viés](feedback_loose_oracle_hides_systematic_bias.md) — asserte o valor EXATO na unidade do usuário
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — DC/Nyquist, 1ª/última coluna, 0 e 1
+- [Limiar mora onde o domínio é VAZIO](feedback_a_threshold_must_live_where_the_domain_is_empty.md) — cos(15°) sentava no 24-gon; escolha um valor que nenhuma entrada produz
+- [Unidade ABSOLUTA que deveria parecer relativa escala com a geometria](feedback_an_absolute_unit_that_should_feel_relative_must_scale_with_the_geometry.md) — altura de relevo ∝ raio: preserve a razão de aspecto, não calibre o número
 - [Clamp duro NÃO é teto — é BORRACHA](feedback_a_hard_clamp_is_not_a_ceiling_it_is_an_eraser.md) — colapsa o detalhe acima dele; se o consumidor lê DERIVADA, o platô vira NADA
 - [Crescer geometria sem crescer MATÉRIA cresce no vazio](feedback_growing_geometry_without_growing_matter_grows_nothing.md) — se o render multiplica por cobertura/alpha, meça ELA
 - [Efeito LATERAL não sai de fórmula PONTUAL](feedback_a_lateral_effect_needs_a_nonlocal_operator.md) — sintoma: ela vira CONSTANTE no dado real

@@ -35,3 +35,16 @@ Ambos são pior que a ausência: a ausência faz você ir ler o código; a menti
   ([[feedback_context_menu_closes_on_down_repaint]] tem o gêmeo: grep o id no `populate_*` PRIMEIRO).
 - **"Está morto" e "está vivo" são AMBOS claims que exigem teste**: esconder um knob exige provar
   byte-identidade; manter um exige provar que ele muda a saída.
+
+**Terceiro caso (Motion, 2026-07-13, doc 61) — o mais escorregadio dos três: um intent COM handler e
+SEM emissor.** O `SetBackdropTitle` existia no enum, era **executado pelo shell**, e seu comentário
+dizia *"Rename a backdrop (the params panel's Title row)"*. **Essa linha nunca existiu.** O
+`Subgraph.title` idem: o campo existia, serializava, o card **pintava** o nome — e **nada podia
+escrevê-lo**. Tudo compilava, tudo passava, e a feature simplesmente **nunca tinha sido construída**.
+
+**How to apply (a heurística que acha isso):** ao auditar uma feature, **grepe o EMISSOR, não o
+handler.** Um handler prova que alguém *pensou* na feature; só o emissor prova que ela existe. Para
+uma ação de UI, a cadeia inteira é `gesto → intent EMITIDO → handler → estado → PINTURA`, e **o elo
+que apodrece calado é o segundo**. Corolário: quando você for construir algo e achar o modelo de
+dados pronto, **desconfie e procure o gesto** — pode ser que só a metade de baixo tenha sido feita.
+

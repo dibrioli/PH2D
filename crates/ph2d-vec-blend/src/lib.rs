@@ -268,74 +268,10 @@ impl Outline {
     }
 }
 
-/// A correspondência escolhida: em que fase o contorno de B é lido, e em que sentido.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Correspondence {
-    /// O arco normalizado de A **casa** com `(arco de A) − phase` em B.
-    pub phase: f64,
-    pub reversed: bool,
-}
-
-/// Acha a correspondência que **minimiza a distância total percorrida** — o critério do flubber,
-/// e o único que se sustenta sem perguntar nada ao usuário.
-///
-/// Os candidatos NÃO são "todos os deslocamentos de uma reamostragem" (o O(n²) do flubber sobre
-/// pontos que ele mesmo inventou): são os **alinhamentos âncora-com-âncora** (`n_a × n_b`), nos
-/// dois sentidos. É o mesmo custo e casa quina com quina, que é onde o olho olha.
-///
-/// Num caminho ABERTO não há liberdade de rotação (as pontas são as pontas): só o sentido.
-#[must_use]
-pub fn correspondence(a: &VecPath, b: &VecPath) -> Option<Correspondence> {
-    let (oa, ob) = (Outline::of(a)?, Outline::of(b)?);
-    Some(search(&oa, &ob))
-}
-
-fn search(oa: &Outline, ob: &Outline) -> Correspondence {
-    let closed = oa.closed && ob.closed;
-    let ob_rev = ob.reversed();
-    let mut best = Correspondence {
-        phase: 0.0,
-        reversed: false,
-    };
-    let mut best_cost = f64::INFINITY;
-    for reversed in [false, true] {
-        let target = if reversed { &ob_rev } else { ob };
-        let phases: Vec<f64> = if closed {
-            let (pa, pb) = (oa.anchors(), target.anchors());
-            pa.iter()
-                .flat_map(|sa| pb.iter().map(move |sb| wrap(sa - sb)))
-                .collect()
-        } else {
-            vec![0.0] // caminho aberto: a ponta é a ponta
-        };
-        for phase in phases {
-            let cost = travel(oa, target, phase);
-            if cost < best_cost {
-                best_cost = cost;
-                best = Correspondence { phase, reversed };
-            }
-        }
-    }
-    best
-}
-
-/// A distância total que os pontos percorrem sob esta correspondência (soma dos quadrados —
-/// ela pune o ponto que atravessa a forma inteira, que é exatamente o que faz o morph "girar").
-fn travel(oa: &Outline, ob: &Outline, phase: f64) -> f64 {
-    (0..COST_SAMPLES)
-        .map(|k| {
-            let u = k as f64 / COST_SAMPLES as f64;
-            let (pa, pb) = (oa.at(u), ob.at(wrap(u - phase)));
-            (pa - pb).hypot2()
-        })
-        .sum()
-}
-
-#[inline]
-fn wrap(s: f64) -> f64 {
-    let s = s % 1.0;
-    if s < 0.0 { s + 1.0 } else { s }
-}
+/// A **correspondência** (o mapa monótono entre as duas formas) — módulo irmão, pelo teto de LOC.
+mod matching;
+pub use matching::{Correspondence, correspondence};
+use matching::{map_backward, map_forward, search};
 
 /// **A forma no meio do caminho.** `t = 0` devolve A; `t = 1`, B.
 ///
@@ -343,40 +279,31 @@ fn wrap(s: f64) -> f64 {
 #[must_use]
 pub fn morph(a: &VecPath, b: &VecPath, t: f64, opts: BlendOpts) -> Option<VecPath> {
     let (oa, ob) = (Outline::of(a)?, Outline::of(b)?);
-    let auto = search(&oa, &ob);
-    let reversed = auto.reversed != opts.reverse; // XOR: o toggle do usuário sobre o automático
-    let target = if reversed { ob.reversed() } else { ob };
+    let corr = search(&oa, &ob, opts);
+    let target = if corr.reversed { ob.reversed() } else { ob };
 
-    // O escape manual: rodar `offset` âncoras de B é somar à fase a distância de arco entre a
-    // âncora 0 e a âncora `offset` — é o `shapeIndex` do GSAP, com o automático como base.
-    let anchors_b = target.anchors();
-    let phase = if oa.closed && target.closed && !anchors_b.is_empty() {
-        let n = anchors_b.len() as i32;
-        let k = opts.offset.rem_euclid(n) as usize;
-        wrap(auto.phase + anchors_b[k] - anchors_b[0])
-    } else {
-        auto.phase
-    };
-
-    // O corte é na UNIÃO: as âncoras de A, mais as de B trazidas para o arco de A. É esta união
-    // que faz as quinas das DUAS formas sobreviverem — reamostrar uniformemente (o flubber)
-    // arredonda a quina de quem tem quina.
+    // O corte é na UNIÃO — as âncoras de A, mais a PRÉ-IMAGEM de cada âncora de B. É a subdivisão
+    // que faltava: cada vértice da estrela que não casou com uma quina do quadrado vira um ponto
+    // novo na aresta do quadrado, no lugar que o mapa manda.
     let mut cuts: Vec<f64> = oa.anchors();
-    cuts.extend(anchors_b.iter().map(|sb| wrap(sb + phase)));
+    cuts.extend(
+        target
+            .anchors()
+            .iter()
+            .map(|v| map_backward(&corr.knots, *v)),
+    );
     cuts.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
     cuts.dedup_by(|x, y| (*x - *y).abs() <= MERGE_EPS);
-    // O fim do percurso É o começo dele (fechado): um corte em ~1 é o corte em 0, e mantê-lo
-    // criaria uma peça de comprimento zero na costura.
+    // O fim do percurso É o começo dele (fechado): um corte em ~1 é o corte em 0.
     if cuts.last().is_some_and(|&s| s >= 1.0 - MERGE_EPS) {
         cuts.pop();
     }
-    // O percurso sempre começa na ponta/origem.
     if cuts.first().is_none_or(|&s| s > MERGE_EPS) {
         cuts.insert(0, 0.0);
     }
 
     let pieces_a = oa.cut(&cuts);
-    let cuts_b: Vec<f64> = cuts.iter().map(|s| wrap(s - phase)).collect();
+    let cuts_b: Vec<f64> = cuts.iter().map(|u| map_forward(&corr.knots, *u)).collect();
     let pieces_b = target.cut(&cuts_b);
     if pieces_a.is_empty() || pieces_a.len() != pieces_b.len() {
         return None;

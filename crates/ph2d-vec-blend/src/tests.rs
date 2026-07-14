@@ -9,6 +9,7 @@
 //! 5. o **escape manual** existe e faz o que promete.
 
 use super::*;
+use crate::matching::{map_backward, map_forward, search};
 use ph2d_vec_scene::{ShapeKind, cook};
 
 /// Uma forma do catálogo, centrada em `c`.
@@ -34,12 +35,12 @@ fn circle(c: [f64; 2], r: f64) -> VecPath {
 /// vértices, que é justamente o que muda no morph.
 fn max_gap(a: &VecPath, b: &VecPath) -> f64 {
     let (oa, ob) = (Outline::of(a).unwrap(), Outline::of(b).unwrap());
-    let corr = search(&oa, &ob);
+    let corr = search(&oa, &ob, BlendOpts::default());
     let target = if corr.reversed { ob.reversed() } else { ob };
     (0..256)
         .map(|k| {
             let u = k as f64 / 256.0;
-            let (pa, pb) = (oa.at(u), target.at(wrap(u - corr.phase)));
+            let (pa, pb) = (oa.at(u), target.at(map_forward(&corr.knots, u)));
             (pa - pb).hypot()
         })
         .fold(0.0f64, f64::max)
@@ -322,14 +323,19 @@ fn every_piece_of_the_pairing_is_a_real_piece() {
     ];
     for (a, b) in &pairs {
         let (oa, ob) = (Outline::of(a).unwrap(), Outline::of(b).unwrap());
-        let corr = search(&oa, &ob);
+        let corr = search(&oa, &ob, BlendOpts::default());
         let target = if corr.reversed { ob.reversed() } else { ob };
 
         let mut cuts: Vec<f64> = oa.anchors();
-        cuts.extend(target.anchors().iter().map(|sb| wrap(sb + corr.phase)));
+        cuts.extend(
+            target
+                .anchors()
+                .iter()
+                .map(|v| map_backward(&corr.knots, *v)),
+        );
         cuts.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
         cuts.dedup_by(|x, y| (*x - *y).abs() <= MERGE_EPS);
-        let cuts_b: Vec<f64> = cuts.iter().map(|s| wrap(s - corr.phase)).collect();
+        let cuts_b: Vec<f64> = cuts.iter().map(|u| map_forward(&corr.knots, *u)).collect();
 
         for (side, pieces) in [("A", oa.cut(&cuts)), ("B", target.cut(&cuts_b))] {
             for (k, p) in pieces.iter().enumerate() {
@@ -408,4 +414,75 @@ fn hull(a: &VecPath, b: &VecPath) -> ([f64; 2], [f64; 2]) {
         }
     }
     (lo, hi)
+}
+
+/// **A QUEIXA DO ENIO: quina tem de casar com QUINA.**
+///
+/// > *"o algoritmo não subdivide a forma inicial com o número de pontos necessários para gerar
+/// > formas intermediárias coerentes com a forma final"*
+///
+/// Ele está certo, e a causa é estrutural. A 1ª versão casava as formas por uma **rotação
+/// rígida**: o quadrado tem quina a cada 0,25 de perímetro, a estrela a cada 0,10 — sob uma
+/// rotação, **no máximo UMA** das 4 quinas do quadrado pode cair sobre um vértice da estrela. As
+/// outras três caem no meio de uma aresta, as pontas da estrela nascem do meio das arestas retas
+/// do quadrado, e o intermediário sai amassado.
+///
+/// Este gate exige o que o olho exige: **toda quina do quadrado casa com um vértice da estrela**.
+/// Com a rotação, ele fica vermelho (1 de 4).
+#[test]
+fn every_corner_of_the_square_lands_on_a_vertex_of_the_star() {
+    let a = square([0.0, 0.0], 1.0);
+    let b = shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]);
+    let (oa, ob) = (Outline::of(&a).unwrap(), Outline::of(&b).unwrap());
+    let corr = search(&oa, &ob, BlendOpts::default());
+    let target = if corr.reversed { ob.reversed() } else { ob };
+    let vb = target.anchors();
+
+    let mut matched = 0;
+    for ua in oa.anchors() {
+        let v = map_forward(&corr.knots, ua);
+        // A âncora mais próxima de B, em arco (ciclicamente).
+        let gap = vb
+            .iter()
+            .map(|x| {
+                let d = (v - x).abs();
+                d.min(1.0 - d)
+            })
+            .fold(f64::MAX, f64::min);
+        if gap < 1e-9 {
+            matched += 1;
+        }
+    }
+    assert_eq!(
+        matched, 4,
+        "só {matched} das 4 quinas do quadrado caíram sobre um vértice da estrela — as outras \
+         caem no MEIO de uma aresta, e é por isso que a intermediária sai amassada"
+    );
+}
+
+/// **E a subdivisão acontece:** os 6 vértices da estrela que não casaram com uma quina viram
+/// pontos NOVOS nas arestas do quadrado. Sem isso não há como a ponta da estrela nascer.
+#[test]
+fn the_leftover_vertices_subdivide_the_smaller_shape() {
+    let a = square([0.0, 0.0], 1.0);
+    let b = shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]);
+    let at0 = morph(&a, &b, 0.0, BlendOpts::default()).expect("t=0");
+
+    // 4 quinas + 6 subdivisões = 10 (o número de âncoras da ESTRELA — é ela que manda a
+    // resolução, porque é a mais detalhada).
+    assert_eq!(
+        at0.verts.len(),
+        10,
+        "o quadrado tem de sair subdividido nos pontos que a estrela pede"
+    );
+    // E as 4 quinas continuam LÁ, exatas — subdividir não pode arredondar quem tem quina.
+    for corner in [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]] {
+        assert!(
+            at0.verts
+                .iter()
+                .any(|v| (v.anchor[0] - corner[0]).abs() < 1e-9
+                    && (v.anchor[1] - corner[1]).abs() < 1e-9),
+            "a quina {corner:?} sumiu na subdivisão"
+        );
+    }
 }

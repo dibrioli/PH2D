@@ -303,6 +303,16 @@ impl EditClip {
         ops::in_range_warm(&self.data, self.target(), warmup, |d| fx.apply(d))
     }
 
+    /// The processed REGION of [`EditClip::render_effect`], without the whole-clip splice.
+    ///
+    /// The two are the same DSP; this one just does not pay the copy. `None` when the effect is
+    /// not length-preserving over the range, or the range is empty — the caller falls back to
+    /// [`EditClip::render_effect`], which always works. See `ph2d_audio::SampleData::get_mut`.
+    pub fn render_effect_region(&self, fx: Effect) -> Option<(std::ops::Range<usize>, SampleData)> {
+        let warmup = fx.warmup_frames(self.data.format().sample_rate);
+        ops::in_range_warm_region(&self.data, self.target(), warmup, |d| fx.apply(d))
+    }
+
     /// Render a **tail-extending** [`TailEffect`] over the target range without
     /// committing. The ring-out bleeds onto the audio after the range, and the
     /// buffer **grows** when the range reaches the end (see [`in_range_tail`]).

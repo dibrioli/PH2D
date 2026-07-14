@@ -70,6 +70,25 @@ impl SampleData {
         Self { samples, format }
     }
 
+    /// The samples, **mutably** — but only if nobody else holds this buffer.
+    ///
+    /// `SampleData` is an immutable `Arc<[f32]>` on purpose: it is handed to the RT thread, and a
+    /// buffer that could change under the mixer would tear. This is the one escape hatch, and it
+    /// is safe precisely because it **refuses** when it is not the only owner: `Arc::get_mut`
+    /// returns `None` the moment a clone exists (in the mixer, in a snapshot, anywhere).
+    ///
+    /// What it buys: the editor's audition buffer is re-rendered on every frame of a knob drag,
+    /// and a re-render is a whole-clip copy (11.3 ms on a 3-minute clip) of audio that did not
+    /// change — the DSP itself touches only the selection. A caller that already holds a buffer
+    /// whose out-of-range audio is correct can rewrite just the range, and pay only for it
+    /// (ADR-0117 §5, now ADR-0120).
+    ///
+    /// Callers must have a **full re-render fallback** for the `None` case: the mixer may not
+    /// have handed the buffer back yet, and a frame that cannot mutate must still be correct.
+    pub fn get_mut(&mut self) -> Option<&mut [Sample]> {
+        std::sync::Arc::get_mut(&mut self.samples)
+    }
+
     /// Copy `src` and let `f` rewrite it in place — **one allocation** (ADR-0117 D2).
     ///
     /// The shape most of the rack's effects have: start from the input, walk it with a filter's

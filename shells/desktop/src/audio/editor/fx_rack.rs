@@ -45,7 +45,7 @@ fn stage_sig(stage: &FxStage) -> StageSig {
 
 /// Whether a stage actually changes the audio: enabled, buildable, and off its
 /// neutral point. A chain of fresh stages is silent work — skip it.
-fn is_audible(stage: &FxStage) -> bool {
+pub(super) fn is_audible(stage: &FxStage) -> bool {
     stage.enabled
         && crate::audio::fx_params::build(stage.kind, &stage.norms)
             .is_some_and(|cmd| !cmd.is_bypass())
@@ -120,15 +120,21 @@ impl AudioSystem {
             self.editor.fx_head_sig = Some(head_sig);
         }
 
-        let audition = {
-            let head = self.editor.fx_head.as_ref().expect("just built");
-            // An all-neutral chain is a no-op: leave the clip on the wire rather
-            // than audition a byte-identical copy (which would arm Cancel/Bypass
-            // over nothing, and push a no-op undo step on Apply).
-            chain
-                .iter()
-                .any(is_audible)
-                .then(|| render_from(head, chain, sel))
+        // An all-neutral chain is a no-op: leave the clip on the wire rather than audition a
+        // byte-identical copy (which would arm Cancel/Bypass over nothing, and push a no-op undo
+        // step on Apply).
+        let audition = if chain.iter().any(is_audible) {
+            let head = self.editor.fx_head.as_ref().expect("just built").clone();
+            // O(selection) when it can be (ADR-0120): rewrite the region of a buffer the mixer has
+            // already handed back, instead of copying the whole clip to change 0.55 % of it. It
+            // bails out on anything it does not handle, and the full render below always works --
+            // the fast path is an optimisation, never a second source of truth.
+            Some(
+                self.fx_preview_incremental(&head, chain, sel)
+                    .unwrap_or_else(|| render_from(&head, chain, sel)),
+            )
+        } else {
+            None
         };
         self.editor.fx_audition = audition;
         self.editor.fx_sig = Some((sig, selection));

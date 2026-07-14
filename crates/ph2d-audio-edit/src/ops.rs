@@ -158,6 +158,38 @@ pub fn in_range_warm(
     splice(data, &r, processed.samples(), warm)
 }
 
+/// Everything [`in_range_warm`] does **except the whole-clip splice** — the processed region,
+/// on its own.
+///
+/// The splice is the expensive half: a full copy of the clip (11.3 ms on three minutes), writing
+/// audio that did not change, so that the result is contiguous for the mixer. A caller that
+/// ALREADY holds a contiguous buffer whose out-of-range audio is the base can write this straight
+/// into it, and pay only for the region — which is what the editor's knob-drag preview does
+/// (ADR-0120).
+///
+/// `None` when there is nothing to do (an empty range), or when the op did not preserve length —
+/// the same two bail-outs [`in_range_warm`] has, and the caller falls back to the full render.
+pub fn in_range_warm_region(
+    data: &SampleData,
+    range: Range<usize>,
+    warmup: usize,
+    op: impl Fn(&SampleData) -> SampleData,
+) -> Option<(Range<usize>, SampleData)> {
+    let r = clamp_range(data, range);
+    if r.start >= r.end {
+        return None;
+    }
+    let warm = warmup.min(r.start);
+    let region_len = r.end - r.start;
+    let extended = trim(data, r.start - warm..r.end);
+    let processed = op(&extended);
+    if processed.frame_count() != warm + region_len {
+        return None;
+    }
+    // Drop the pre-roll: what is left is exactly the region, ready to be written over it.
+    Some((r, trim(&processed, warm..warm + region_len)))
+}
+
 /// Apply a **tail-extending** op to `range`, ringing the tail out over whatever
 /// follows. The sibling of [`in_range`] for effects (reverb / delay) whose output
 /// outlives their input, so the length-preserving splice doesn't fit.
@@ -406,6 +438,46 @@ pub fn snap_to_zero_crossing(data: &SampleData, frame: usize, window: usize) -> 
 mod tests {
     use super::*;
     use ph2d_audio::AudioFormat;
+
+    /// **The region render IS the full render, minus the copy.** The fast preview path
+    /// (ADR-0120) writes this straight over a buffer it already owns, so if the two ever
+    /// disagreed the user would hear audio the rack never produced — and the whole-clip render,
+    /// which Apply and Export use, would disagree with what was auditioned.
+    #[test]
+    fn the_region_render_matches_the_region_of_the_full_render() {
+        let sr = 48_000usize;
+        let d = SampleData::from_interleaved(
+            (0..sr * 2 * 2)
+                .map(|i| ((i % 977) as f32 / 977.0) * 0.5 - 0.25)
+                .collect(),
+            AudioFormat::stereo(sr as u32),
+        );
+        // A warmup that actually bites: the region does not start at 0, so the pre-roll exists
+        // and has to be dropped from the region render at exactly the right sample.
+        for (range, warm) in [
+            (sr / 4..sr / 2, 0usize),
+            (sr / 3..sr, 2_000),
+            (0..sr / 8, 500),
+        ] {
+            let op = |x: &SampleData| {
+                SampleData::map_in_place(x, |s| {
+                    for v in s.iter_mut() {
+                        *v = (*v * 3.0).tanh();
+                    }
+                })
+            };
+            let full = in_range_warm(&d, range.clone(), warm, op);
+            let (r, region) =
+                in_range_warm_region(&d, range.clone(), warm, op).expect("length-preserving");
+            assert_eq!(r, range, "the region moved");
+            assert_eq!(
+                region.samples(),
+                &full.samples()[r.start * 2..r.end * 2],
+                "warmup {warm}: the region render disagrees with the full render -- the pre-roll \
+                 is being dropped at the wrong sample"
+            );
+        }
+    }
 
     fn stereo(v: Vec<f32>) -> SampleData {
         SampleData::from_interleaved(v, AudioFormat::stereo(48_000))

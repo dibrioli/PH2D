@@ -47,6 +47,9 @@ pub(crate) struct AudioSystem {
     /// The priced shipping targets (W6). Its own cache: pricing the set is THREE conforms and
     /// three real encodes, and the panel repaints every frame.
     platforms: editor::platforms::PlatformCache,
+    /// The knob-drag preview's alternating scratch buffers (ADR-0120). Not in the editor's
+    /// state: it is a render cache, and it is keyed on what it was built from.
+    fx_scratch: editor::fx_preview::PreviewScratch,
     /// The spectrogram, the learned noise profile and the frequency band (W5) — see
     /// `editor::spectral`. Building the picture is an FFT of the whole clip, so it is
     /// cached on the buffer and on the size it is drawn at.
@@ -182,6 +185,7 @@ impl AudioSystem {
             engine,
             delivery: Default::default(),
             platforms: Default::default(),
+            fx_scratch: Default::default(),
             spectral: Default::default(),
             format,
             last_master_gain: std::cell::Cell::new(1.0),

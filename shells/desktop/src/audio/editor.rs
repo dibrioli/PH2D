@@ -13,6 +13,7 @@ pub(crate) mod delivery;
 mod delivery_smoke;
 mod export;
 mod export_pieces;
+pub(crate) mod fx_preview;
 mod fx_rack;
 pub(crate) mod ir;
 mod loops;

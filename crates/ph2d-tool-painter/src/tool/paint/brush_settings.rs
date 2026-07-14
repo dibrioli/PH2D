@@ -112,12 +112,15 @@ pub struct BrushSettings {
     /// method ARE its controls and must stay on screen (`docs/Painter/18…` §10.1). What it hides instead is
     /// the COLOUR half (via [`Self::paints_no_color`]) — a tool that lays no pigment has no use for it.
     pub is_sculpt: bool,
-    /// Sculpt sub-mode (`0` Smooth · `1` Sharpen · `2` Flatten · `3` Scrape · `4` Fill).
+    /// Sculpt sub-mode (`0` Smooth · `1` Sharpen · `2` Flatten · `3` Scrape · `4` Fill · `5` Chisel ·
+    /// `6` Layer · `7` Inflate).
     pub sculpt_mode: u8,
-    /// Whether the sub-mode is a **plane** verb (Flatten / Scrape / Fill). The card shows the Offset row for
-    /// these and the Radius row for the others — one or the other, because a knob that does nothing to the
-    /// active verb is a knob that lies.
-    pub sculpt_is_plane: bool,
+    /// Which knob row the card must paint: `0` Radius (Smooth family) · `1` Offset (Plane) · `2` Depth
+    /// (Height). The card shows the knobs the active verb USES and no others — a knob that does nothing to
+    /// the tool in your hand is a knob that lies.
+    pub sculpt_knob_family: u8,
+    /// Whether the sub-mode is the **Chisel** — the one verb with two knobs (Offset *and* Angle).
+    pub sculpt_is_chisel: bool,
     /// Sculpt kernel Radius, `0..1` track (mapped to `1..=16` px by the tool — small on purpose: smoothing
     /// at a large scale is Flatten, which is a different kernel, not a bigger blur). Smooth family.
     pub sculpt_radius: f32,
@@ -127,6 +130,14 @@ pub struct BrushSettings {
     pub sculpt_offset: f32,
     /// The plane Offset in paint-loads (`−1..=+1`), as the artist would read it off the chip.
     pub sculpt_offset_loads: f32,
+    /// **Depth**, `0..1` track (`0.5` = zero). Height family (Layer / Inflate).
+    pub sculpt_depth: f32,
+    /// The Depth in paint-loads (`−1..=+1`), as the artist would read it off the chip.
+    pub sculpt_depth_loads: f32,
+    /// Chisel **Angle**, `0..1` track (`0` = the flat knife, i.e. Scrape).
+    pub sculpt_angle: f32,
+    /// The Chisel Angle in degrees (`0..=60`), as the artist would read it off the chip.
+    pub sculpt_angle_deg: f32,
     /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited
     /// boundary; only meaningful (and shown) in Edit mode.
     pub selection_offset: f32,

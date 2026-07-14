@@ -141,6 +141,7 @@ pub fn accumulate_dab_sculpt(
 #[must_use]
 pub fn accumulate_dab_plane(
     out: PlaneOut<'_>,
+    chisel: Chisel,
     mask: Option<&[u8]>,
     width: u32,
     height: u32,
@@ -167,6 +168,11 @@ pub fn accumulate_dab_plane(
         scratch.push((i as u32, add));
     })?;
     let plane = fit.solve()?;
+    // The chisel's fold: the flat plane, plus a V that rises away from the stroke's own axis. `perp` is
+    // the unit normal to the heading, so `|local · perp|` is the lateral distance from the line the brush
+    // is travelling along, and `tilt` is how fast the V climbs out of it. See [`Chisel`].
+    let perp = [-chisel.dir[1], chisel.dir[0]];
+    let tilt = chisel.tilt.max(0.0);
     let (cx, cy) = (dab.center[0], dab.center[1]);
     let w_us = width as usize;
     for &(i, add) in scratch.iter() {
@@ -175,10 +181,45 @@ pub fn accumulate_dab_plane(
         // and it is exact (the same `+ 0.5` texel centre).
         let dx = ((i % w_us) as f32 + 0.5) - cx;
         let dy = ((i / w_us) as f32 + 0.5) - cy;
+        let v = (dx * perp[0] + dy * perp[1]).abs() * tilt;
         amount[i] += add;
-        plane_sum[i] += add * plane.at(dx, dy);
+        plane_sum[i] += add * (plane.at(dx, dy) + v);
     }
     Some(rect)
+}
+
+/// The **chisel** fold on the fitted plane — Blender's Multi-plane Scrape, done in one expression instead
+/// of two fits (`docs/Painter/18…` W3).
+///
+/// A flat knife scrapes down to a plane and leaves a flat trough. Tip the knife onto its edge and the two
+/// faces meet in a line: what it leaves is a **V-groove**, and the crease at its bottom is the sharpest mark
+/// a palette knife makes.
+///
+/// The two-plane construction is the long way round. Both faces pass through the same line — the stroke's
+/// own axis — and each rises away from it at the same angle, so their union is just
+///
+/// ```text
+///     plane(x, y)  +  tilt · |lateral distance from the axis|
+/// ```
+///
+/// one plane and an absolute value. `tilt = tan(angle)`: the rise per texel of sideways travel.
+///
+/// **`tilt = 0` is exactly the flat knife.** The `+ v` term vanishes and Scrape / Flatten / Fill are
+/// byte-for-byte the Wave 2 kernel — which is why they can all share this function and why the Angle slider
+/// at zero is not a special case in the code.
+///
+/// **A dab with no heading cannot chisel**, and that is honest rather than defensive: `dir` is `[0, 0]` on a
+/// stroke's first dab (the engine has no tangent yet) and on a single stamp (Drag Dot). With no direction
+/// there is no axis to fold the V about, `perp` is zero, `v` is zero, and the dab lays a flat scrape. A
+/// chisel needs a direction to chisel *along*; inventing one would make the mark depend on which way the
+/// float noise fell.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Chisel {
+    /// `tan(angle)` — how fast the V climbs out of the stroke's axis. `0` ⇒ the flat knife.
+    pub tilt: f32,
+    /// The dab's heading (unit, `[0, 0]` = none). [`crate::Dab::dir`], the same smoothed tangent the Rake
+    /// texture rides.
+    pub dir: [f32; 2],
 }
 
 /// What a plane-family dab writes, and what it reads to decide. Grouped because they travel together and

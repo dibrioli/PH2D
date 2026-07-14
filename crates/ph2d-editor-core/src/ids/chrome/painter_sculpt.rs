@@ -25,16 +25,32 @@ pub const PAINTER_SCULPT_MODE_FLATTEN: NodeId = hash_node_id("painter_sculpt.mod
 pub const PAINTER_SCULPT_MODE_SCRAPE: NodeId = hash_node_id("painter_sculpt.mode_scrape");
 /// **Fill** — the same plane, UP only: paint pushed into the valleys.
 pub const PAINTER_SCULPT_MODE_FILL: NodeId = hash_node_id("painter_sculpt.mode_fill");
+/// **Chisel** — the knife tipped onto its edge: the plane plus a V about the stroke's axis, scraped down to.
+/// At Angle 0 it IS Scrape, to the byte.
+pub const PAINTER_SCULPT_MODE_CHISEL: NodeId = hash_node_id("painter_sculpt.mode_chisel");
+/// **Layer** — bounded build-up: the relief rises toward `pre + Depth` and stops there, however long you
+/// dwell. The one thing neither the deposit (which accumulates) nor the plane verbs (which level) can do.
+pub const PAINTER_SCULPT_MODE_LAYER: NodeId = hash_node_id("painter_sculpt.mode_layer");
+/// **Inflate** — raise along the surface normal, so the flats rise and the walls do not: crests get rounded
+/// off rather than translated. Not the 3D Inflate, and the docs say so.
+pub const PAINTER_SCULPT_MODE_INFLATE: NodeId = hash_node_id("painter_sculpt.mode_inflate");
 /// Sub-mode segments in `SculptMode` discriminant order (`0` Smooth · `1` Sharpen · `2` Flatten ·
-/// `3` Scrape · `4` Fill). Wave 3 appends (Clay / Layer / Draw Sharp / Inflate …) — **the array grows, the
-/// order never shifts**: the discriminant is the segmented control's index and a reorder would silently
-/// re-bind every artist's muscle memory.
-pub const PAINTER_SCULPT_MODE_IDS: [NodeId; 5] = [
+/// `3` Scrape · `4` Fill · `5` Chisel · `6` Layer · `7` Inflate) — **the array grows, the order never
+/// shifts**: the discriminant is the segmented control's index and a reorder would silently re-bind every
+/// artist's muscle memory.
+///
+/// Blender's Clay, Clay Strips and Draw Sharp are deliberately absent, and each absence is a finding rather
+/// than a gap — see `SculptMode` in `ph2d-tool-painter` (Clay is Flatten with a positive Offset; a square
+/// dab belongs to the brush; and our per-stroke engine makes every additive verb "sharp" by construction).
+pub const PAINTER_SCULPT_MODE_IDS: [NodeId; 8] = [
     PAINTER_SCULPT_MODE_SMOOTH,
     PAINTER_SCULPT_MODE_SHARPEN,
     PAINTER_SCULPT_MODE_FLATTEN,
     PAINTER_SCULPT_MODE_SCRAPE,
     PAINTER_SCULPT_MODE_FILL,
+    PAINTER_SCULPT_MODE_CHISEL,
+    PAINTER_SCULPT_MODE_LAYER,
+    PAINTER_SCULPT_MODE_INFLATE,
 ];
 
 // ── Knobs (0..1 track; the tool maps it to its range — the setter is the single clamp source) ──
@@ -60,6 +76,19 @@ pub const PAINTER_SCULPT_RADIUS_CHIP: NodeId = hash_node_id("painter_sculpt.radi
 pub const PAINTER_SCULPT_OFFSET_SLIDER: NodeId = hash_node_id("painter_sculpt.offset_slider");
 pub const PAINTER_SCULPT_OFFSET_CHIP: NodeId = hash_node_id("painter_sculpt.offset_chip");
 
+/// **Depth** — the Height family's knob (Layer / Inflate), in paint-loads. How thick a coat Layer lays, how
+/// hard Inflate puffs; signed, so the lower half carves and deflates.
+pub const PAINTER_SCULPT_DEPTH_SLIDER: NodeId = hash_node_id("painter_sculpt.depth_slider");
+pub const PAINTER_SCULPT_DEPTH_CHIP: NodeId = hash_node_id("painter_sculpt.depth_chip");
+
+/// **Angle** — how far the **Chisel**'s knife is tipped onto its edge (degrees). At `0` the Chisel is Scrape,
+/// to the byte, so the slider's bottom end is not a dead zone: it is the flat blade.
+///
+/// The Chisel is the one verb that shows TWO knobs (Offset *and* Angle) — the plane still has to be placed
+/// before the V is folded about it.
+pub const PAINTER_SCULPT_ANGLE_SLIDER: NodeId = hash_node_id("painter_sculpt.angle_slider");
+pub const PAINTER_SCULPT_ANGLE_CHIP: NodeId = hash_node_id("painter_sculpt.angle_chip");
+
 /// The Sculpt card's a11y group id (a visual surface; not hit-indexed).
 pub const PAINTER_SCULPT_CARD: NodeId = hash_node_id("painter_sculpt.card");
 
@@ -69,10 +98,14 @@ pub const PAINTER_SCULPT_CARD: NodeId = hash_node_id("painter_sculpt.card");
 /// dead if `populate` never gave it an `InteractiveState`: `is_focusable` answers `None => false`, the
 /// Down never activates it, and the `Click` never happens. That is how the Impasto light rig shipped
 /// inert. Keep this list exhaustive and the sweep cannot go stale.
-pub const PAINTER_SCULPT_CLICKS: [NodeId; 5] = PAINTER_SCULPT_MODE_IDS;
+pub const PAINTER_SCULPT_CLICKS: [NodeId; 8] = PAINTER_SCULPT_MODE_IDS;
 
-/// Every Sculpt slider (the `SetValue` half of the same sweep). Both rows are here even though the card
-/// shows only ONE of them at a time (by family) — the sweep gates the wiring, and wiring that is only
-/// reachable in one mode is still wiring that can be dead.
-pub const PAINTER_SCULPT_FIELDS: [NodeId; 2] =
-    [PAINTER_SCULPT_RADIUS_SLIDER, PAINTER_SCULPT_OFFSET_SLIDER];
+/// Every Sculpt slider (the `SetValue` half of the same sweep). All four are here even though the card only
+/// ever shows the ones the active verb USES — the sweep gates the wiring, and wiring that is reachable in
+/// only one mode is still wiring that can be dead.
+pub const PAINTER_SCULPT_FIELDS: [NodeId; 4] = [
+    PAINTER_SCULPT_RADIUS_SLIDER,
+    PAINTER_SCULPT_OFFSET_SLIDER,
+    PAINTER_SCULPT_DEPTH_SLIDER,
+    PAINTER_SCULPT_ANGLE_SLIDER,
+];

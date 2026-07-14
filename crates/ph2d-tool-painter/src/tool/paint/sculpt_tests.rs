@@ -583,6 +583,7 @@ fn the_sculpt_respects_the_selection() {
 // relief; `session` gates the lifetime of the state that lets it.
 mod plane;
 mod session;
+mod w3;
 
 /// **The sculpt fires in Sculpt mode, and in no other.**
 ///

@@ -43,6 +43,8 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         // sculpt does not have a second one, on purpose.)
         || id == core_ids::PAINTER_SCULPT_RADIUS_SLIDER
         || id == core_ids::PAINTER_SCULPT_OFFSET_SLIDER
+        || id == core_ids::PAINTER_SCULPT_DEPTH_SLIDER
+        || id == core_ids::PAINTER_SCULPT_ANGLE_SLIDER
 }
 
 /// `true` when `id` is a Sculpt-panel **Click** target (the five sub-mode segments).

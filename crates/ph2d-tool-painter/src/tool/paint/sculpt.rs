@@ -26,8 +26,8 @@ use crate::tool::PainterTool;
 use std::sync::Arc;
 
 /// The number of sub-modes — the segmented control's option count; [`SculptMode::from_u8`] clamps to it.
-/// Wave 3 appends (Clay / Layer / Draw Sharp / Inflate …); the order never shifts.
-pub(crate) const SCULPT_MODE_COUNT: u8 = 5;
+/// The order NEVER shifts (the discriminant IS the segmented control's index).
+pub(crate) const SCULPT_MODE_COUNT: u8 = 8;
 
 /// The kernel's radius at Radius = 1, in pixels.
 ///
@@ -46,9 +46,20 @@ pub(super) const SCULPT_RADIUS_MAX_PX: f32 = 16.0;
 /// and the control's whole outer half would silently do nothing. // CLAMP-OK
 pub(super) const PLANE_OFFSET_MAX: f32 = 1.0;
 
+/// How far the **Depth** knob can travel, in paint-loads (Layer / Inflate). One full load either way: Layer
+/// lays at most one stroke's worth of paint however long you dwell, and negative carves the same. // CLAMP-OK
+pub(super) const SCULPT_DEPTH_MAX: f32 = 1.0;
+
+/// The **Chisel**'s widest angle, in degrees — how far the knife can be tipped onto its edge.
+///
+/// Sixty, not ninety: `tilt = tan(angle)` runs to infinity at 90°, and past ~60° the V is already steeper
+/// than any paint stands up in. The far end of a slider must do something, and beyond this it would only do
+/// arithmetic. // CLAMP-OK
+pub(super) const CHISEL_ANGLE_MAX_DEG: f32 = 60.0;
+
 /// Which verb the sculpt brush performs. Discriminants are the segmented control's indices.
 ///
-/// **All five are one kernel** — `h = pre + k·Δ`, where `Δ` is the distance to a per-texel *target* and the
+/// **All eight are one kernel** — `h = pre + k·Δ`, where `Δ` is the distance to a per-texel *target* and the
 /// verb decides two things: where the target comes from, and which SIGN of `Δ` is allowed through.
 ///
 /// | verb | target | Δ |
@@ -58,9 +69,26 @@ pub(super) const PLANE_OFFSET_MAX: f32 = 1.0;
 /// | Flatten | the fitted **plane** | both ways |
 /// | Scrape | the fitted plane | **down only** (`min(Δ, 0)`) |
 /// | Fill | the fitted plane | **up only** (`max(Δ, 0)`) |
+/// | Chisel | the plane **+ a V about the stroke's axis** | down only |
+/// | Layer | `pre + Depth` | both ways |
+/// | Inflate | `pre + Depth · n_z` | both ways |
 ///
-/// Scrape and Fill are therefore not two more engines: they are Flatten with one half of the number thrown
-/// away, and they cost one `min` each.
+/// So Scrape and Fill are not two more engines — they are Flatten with one half of the number thrown away,
+/// and they cost one `min` each. Chisel is Scrape with one `abs`. Layer is the kernel with a *constant*
+/// target, which is what makes it bounded: `k ≤ 1`, so `h` never passes `pre + Depth` however long you dwell.
+///
+/// ## Three of Blender's brushes are missing, and each absence is a finding
+///
+/// * **Clay** is `Flatten` with a positive Offset. The plane sits above the surface, so the hollows rise to
+///   it and the ridges fall to it: material added, surface flattened — that IS clay. Both knobs are already
+///   on screen. A chip for it would be a preset of another chip, and a card cannot tell you which of two
+///   identical tools you are holding.
+/// * **Clay Strips** is Clay with a square dab. The dab's shape belongs to the **brush** (ten falloffs, a
+///   Shape image slot, flatten and angle) — a square falloff is a gap in the brush, not a verb in the sculpt.
+/// * **Draw Sharp** collapses into **Layer**. Blender needs it as a separate brush because its ordinary Draw
+///   reads the *deformed* mesh and so rounds its own crest off; our per-stroke engine reads the FROZEN `pre`
+///   and cannot do otherwise (§4). Every additive verb here is "sharp" by construction — there is nothing
+///   left for a second one to be.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum SculptMode {
     /// Pull the relief toward its own local average — `lerp(pre, blur(pre), k)`.
@@ -75,24 +103,41 @@ pub(super) enum SculptMode {
     Scrape,
     /// The same plane, **up only** — paint pushed into the valleys, the ridges left standing.
     Fill,
+    /// The knife **tipped onto its edge**: the same plane plus a V rising out of the stroke's own axis, and
+    /// scraped down to. What it leaves is a groove with a crease at the bottom — the sharpest mark a palette
+    /// knife makes. At Angle 0 it IS Scrape, to the byte ([`ph2d_painter_brush::sculpt::Chisel`]).
+    Chisel,
+    /// **Bounded build-up**: `pre + Depth`, so the relief rises toward exactly that and stops. Dwell all day
+    /// and the coat is still one Depth thick — which is the whole point, and the one thing neither the
+    /// deposit (which accumulates) nor the plane verbs (which level) can do.
+    Layer,
+    /// **Puff**: raise the relief along the surface NORMAL, so flats rise fully and slopes barely move —
+    /// which rounds crests off instead of translating them. Negative Depth deflates.
+    ///
+    /// It is not the 3D Inflate and the docs say so (§1.3): a height field cannot push its own sides out.
+    /// Honest name for what it does, rather than an honest-looking name for what it does not.
+    Inflate,
 }
 
-/// Which *engine* a verb runs on — and therefore which per-texel target buffer the session must carry.
+/// Which *engine* a verb runs on — and therefore which per-texel target the session must carry.
 ///
-/// It is not cosmetic bookkeeping: the two targets are derived from different things, and only one of them
-/// can be rebuilt from what a parked session holds.
+/// It is not cosmetic bookkeeping: the three targets are derived from different things, and they are not
+/// equally recoverable.
 ///
 /// * [`Smooth`](SculptFamily::Smooth) → `blur(pre)`: a function of the frozen relief ALONE, so it is a pure
 ///   memo — throw it away and it rebuilds itself, tile by tile, from `pre`.
 /// * [`Plane`](SculptFamily::Plane) → `Σ w·plane(i)`: a function of the **dab list**, which no longer
 ///   exists once the batch has been consumed. It cannot be rebuilt without re-stamping the stroke.
+/// * [`Height`](SculptFamily::Height) → a function of `pre` and a knob, evaluated per texel in the render.
+///   **It has no buffer at all**, so a Layer or Inflate stroke costs 8 B/px where the others cost 12.
 ///
-/// That asymmetry is why [`PainterTool::set_sculpt_mode`] re-stamps an open shape when the family changes,
-/// and why it does not need to when it does not.
+/// That first asymmetry is why [`PainterTool::set_sculpt_mode`] re-stamps an open shape when the family
+/// changes, and why it does not need to when it does not.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum SculptFamily {
     Smooth,
     Plane,
+    Height,
 }
 
 impl SculptMode {
@@ -102,6 +147,9 @@ impl SculptMode {
             2 => SculptMode::Flatten,
             3 => SculptMode::Scrape,
             4 => SculptMode::Fill,
+            5 => SculptMode::Chisel,
+            6 => SculptMode::Layer,
+            7 => SculptMode::Inflate,
             _ => SculptMode::Smooth,
         }
     }
@@ -109,7 +157,10 @@ impl SculptMode {
     pub(super) fn family(self) -> SculptFamily {
         match self {
             SculptMode::Smooth | SculptMode::Sharpen => SculptFamily::Smooth,
-            SculptMode::Flatten | SculptMode::Scrape | SculptMode::Fill => SculptFamily::Plane,
+            SculptMode::Flatten | SculptMode::Scrape | SculptMode::Fill | SculptMode::Chisel => {
+                SculptFamily::Plane
+            }
+            SculptMode::Layer | SculptMode::Inflate => SculptFamily::Height,
         }
     }
 }
@@ -168,6 +219,12 @@ pub(crate) struct SculptState {
     pub(crate) amount: Arc<Vec<f32>>,
     /// Plane Offset track (`0..1`; mapped to `∓PLANE_OFFSET_MAX` paint-loads by [`Self::plane_offset`]).
     pub(crate) offset_norm: f32,
+    /// **Depth** track (`0..1`; mapped to `∓SCULPT_DEPTH_MAX` paint-loads) — the Height family's knob:
+    /// how thick a coat Layer lays, how hard Inflate puffs. Signed: the lower half carves.
+    pub(crate) depth_norm: f32,
+    /// **Angle** track (`0..1`; mapped to `0..CHISEL_ANGLE_MAX_DEG`) — how far the Chisel's knife is tipped
+    /// onto its edge. At `0` the Chisel is Scrape, to the byte.
+    pub(crate) angle_norm: f32,
 
     /// `Σ w·plane_d(i)` over the stroke's dabs — the **plane family's** per-texel target, un-normalised.
     ///
@@ -209,6 +266,8 @@ impl Default for SculptState {
             mode: 0,          // Smooth — the one Enio asked for first, and the most valuable of the list
             radius_norm: 0.5, // 8 px: brush-mark scale
             offset_norm: 0.5, // dead centre = offset 0: the plane sits ON the surface it was fitted to
+            depth_norm: 0.75, // +0.5 loads: half a stroke's thickness — a coat you can see, not a stunt
+            angle_norm: 0.5,  // 30°: a knife on its edge, not a razor and not a flat blade
             pre: Arc::new(Vec::new()),
             amount: Arc::new(Vec::new()),
             plane_sum: Arc::new(Vec::new()),
@@ -234,6 +293,47 @@ impl SculptState {
     /// `0..1` track. Dead centre is exactly `0.0` — the plane sits on the surface it was fitted to.
     pub(super) fn plane_offset(&self) -> f32 {
         (self.offset_norm.clamp(0.0, 1.0) - 0.5) * 2.0 * PLANE_OFFSET_MAX
+    }
+
+    /// The Height family's **Depth** in paint-loads (`−SCULPT_DEPTH_MAX ..= +SCULPT_DEPTH_MAX`).
+    pub(super) fn depth(&self) -> f32 {
+        (self.depth_norm.clamp(0.0, 1.0) - 0.5) * 2.0 * SCULPT_DEPTH_MAX
+    }
+
+    /// The Chisel's **Angle** in degrees (`0..=CHISEL_ANGLE_MAX_DEG`).
+    pub(super) fn chisel_angle_deg(&self) -> f32 {
+        self.angle_norm.clamp(0.0, 1.0) * CHISEL_ANGLE_MAX_DEG
+    }
+
+    /// The Chisel's tilt — the plane's rise **in paint-loads per texel** of sideways travel out of the
+    /// stroke's axis.
+    ///
+    /// Zero in every verb but Chisel, and that is what lets the plane accumulator be ONE function: the
+    /// `+ tilt·|lateral|` term vanishes and Flatten / Scrape / Fill are byte-for-byte the Wave 2 kernel.
+    ///
+    /// ## `tan(angle) ÷ DEPTH_UNIT_PX`, and the division is the whole correctness of the tool
+    ///
+    /// **A height field's two axes are not the same unit.** `x` is texels; `h` is paint-loads. An angle is a
+    /// ratio of *lengths*, so it only means anything once the height has been converted to length — and the
+    /// converter is the one the LIGHT uses, `DEPTH_UNIT_PX` (a load of paint stands 16 px tall).
+    ///
+    /// The first cut of this shipped `tan(angle)` raw. At 36° that tilts the plane by **0.73 loads per
+    /// texel** — 8.7 loads across the brush's own footprint, four times `H_CEIL`. The "angle" was a number in
+    /// a space with no geometry in it, and the V it cut was a cliff.
+    ///
+    /// It is the same mistake `inflate_nz` exists to avoid, one verb over, and I only avoided it there
+    /// because I went looking. The rule is worth stating once for the whole family: **anything geometric —
+    /// a normal, an angle, a slope the artist can see — crosses `DEPTH_UNIT_PX` on its way in.**
+    ///
+    /// (The `tan` is computed once per render, not per dab and not per texel. HR-5 governs code in a declared
+    /// *deterministic* mode; this is an editor knob, and the crate already leans on `sqrt` and `powf`. What
+    /// HR-5 would forbid is a transcendental in the per-texel loop, and there is not one.)
+    pub(super) fn chisel_tilt(&self) -> f32 {
+        if !matches!(self.mode_enum(), SculptMode::Chisel) {
+            return 0.0;
+        }
+        let slope_px = self.chisel_angle_deg().to_radians().tan().max(0.0); // rise/run, both in PIXELS
+        slope_px / super::impasto_light::DEPTH_UNIT_PX // …and back into paint-loads per texel
     }
 
     pub(super) fn mode_enum(&self) -> SculptMode {
@@ -283,6 +383,26 @@ impl PainterTool {
         self.refresh_live_sculpt();
     }
 
+    /// Set the Height family's **Depth** from the slider's `0..1` track (Layer / Inflate).
+    ///
+    /// No re-stamp: the Height family has no accumulated target at all — its target is a function of `pre`
+    /// and this knob, evaluated in the render. Turning it is a re-render and nothing more.
+    pub fn set_sculpt_depth(&mut self, t: f32) {
+        self.paint.sculpt.depth_norm = t.clamp(0.0, 1.0);
+        self.refresh_live_sculpt();
+    }
+
+    /// Set the Chisel's **Angle** from the slider's `0..1` track.
+    ///
+    /// This one DOES re-stamp: the tilt is folded into `plane_sum` as each dab lands (it is part of the
+    /// plane the dab fitted), so the accumulated target has the old angle baked in. Same reason a family
+    /// switch re-stamps, and the same remedy.
+    pub fn set_sculpt_angle(&mut self, t: f32) {
+        self.paint.sculpt.angle_norm = t.clamp(0.0, 1.0);
+        self.refill_open_shape(); // the V is in `plane_sum`; only a re-stamp can change it
+        self.refresh_live_sculpt();
+    }
+
     /// Whether the active operation is **Sculpt** — the panel shows the Sculpt card (and hides the colour
     /// controls, which a tool that lays no pigment has no use for).
     #[must_use]
@@ -290,12 +410,25 @@ impl PainterTool {
         matches!(self.paint.paint_mode, super::PaintMode::Sculpt)
     }
 
-    /// Whether the active verb is a **plane** one (Flatten / Scrape / Fill) — the panel shows the Offset row
-    /// for these and the Radius row for the others. One or the other, never both: a knob that does nothing
-    /// to the active verb is a knob that lies.
+    /// Which knob row the card must paint: `0` Radius (Smooth family) · `1` Offset (Plane) · `2` Depth
+    /// (Height). The Chisel additionally shows Angle — see [`Self::is_sculpt_chisel`].
+    ///
+    /// The card shows the knobs the active verb USES and no others. A knob that does nothing to the tool in
+    /// your hand is a knob that lies about what the tool can do, and this card has already cost a smoke over
+    /// exactly that class of mistake.
     #[must_use]
-    pub fn is_sculpt_plane_mode(&self) -> bool {
-        self.paint.sculpt.mode_enum().family() == SculptFamily::Plane
+    pub fn sculpt_knob_family(&self) -> u8 {
+        match self.paint.sculpt.mode_enum().family() {
+            SculptFamily::Smooth => 0,
+            SculptFamily::Plane => 1,
+            SculptFamily::Height => 2,
+        }
+    }
+
+    /// Whether the active verb is the **Chisel** — the one verb with two knobs (Offset *and* Angle).
+    #[must_use]
+    pub fn is_sculpt_chisel(&self) -> bool {
+        matches!(self.paint.sculpt.mode_enum(), SculptMode::Chisel)
     }
 
     /// The kernel radius in px — what the Radius chip shows the artist, and what the kernel actually uses.
@@ -312,23 +445,39 @@ impl PainterTool {
         self.paint.sculpt.plane_offset()
     }
 
-    /// Free the target the OTHER family owns, on a family switch.
+    /// The Height family's Depth in paint-loads — the chip's number and the kernel's, one function.
+    #[must_use]
+    pub fn sculpt_depth(&self) -> f32 {
+        self.paint.sculpt.depth()
+    }
+
+    /// The Chisel's Angle in degrees — the chip's number and the kernel's, one function.
+    #[must_use]
+    pub fn sculpt_chisel_angle_deg(&self) -> f32 {
+        self.paint.sculpt.chisel_angle_deg()
+    }
+
+    /// Free the target the OTHER families own, on a family switch.
     ///
-    /// Not an optimisation — it is what keeps the promise the cost gate makes. The two targets are the same
-    /// size, so a session that had carried both would cost 16 B/px instead of 12, and the moment that is
-    /// true "the session costs 12 B/px" becomes a sentence in a comment rather than a fact about the
-    /// program. Both are rebuildable: `blurred` from `pre` (lazily, tile by tile) and `plane_sum` from the
-    /// re-stamp that is about to run anyway.
+    /// Not an optimisation — it is what keeps the promise the cost gate makes. A session that carried every
+    /// family's target would cost 16 B/px instead of 12, and the moment that is true "the session costs
+    /// 12 B/px" becomes a sentence in a comment rather than a fact about the program. Both buffers are
+    /// rebuildable: `blurred` from `pre` (lazily, tile by tile) and `plane_sum` from the re-stamp that is
+    /// about to run anyway. The **Height** family holds neither, so switching TO it frees both — a Layer
+    /// stroke costs 8 B/px.
     fn drop_stale_family_target(&mut self) {
-        match self.paint.sculpt.mode_enum().family() {
-            SculptFamily::Smooth => {
-                self.paint.sculpt.plane_sum = Arc::new(Vec::new());
-            }
-            SculptFamily::Plane => {
-                self.paint.sculpt.blurred = Vec::new();
-                self.paint.sculpt.blur_done = Vec::new();
-                self.paint.sculpt.blur_radius = 0;
-            }
+        let (keep_blur, keep_plane) = match self.paint.sculpt.mode_enum().family() {
+            SculptFamily::Smooth => (true, false),
+            SculptFamily::Plane => (false, true),
+            SculptFamily::Height => (false, false),
+        };
+        if !keep_plane {
+            self.paint.sculpt.plane_sum = Arc::new(Vec::new());
+        }
+        if !keep_blur {
+            self.paint.sculpt.blurred = Vec::new();
+            self.paint.sculpt.blur_done = Vec::new();
+            self.paint.sculpt.blur_radius = 0;
         }
     }
 
@@ -356,6 +505,14 @@ impl PainterTool {
             }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_OFFSET_SLIDER => {
                 self.set_sculpt_offset(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_DEPTH_SLIDER => {
+                self.set_sculpt_depth(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_ANGLE_SLIDER => {
+                self.set_sculpt_angle(*v as f32);
                 true
             }
             _ => false,

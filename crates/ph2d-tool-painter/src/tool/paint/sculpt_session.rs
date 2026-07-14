@@ -44,9 +44,12 @@ impl PainterTool {
 
     /// Size the per-texel target the ACTIVE family needs, and only that one.
     ///
-    /// The two are mutually exclusive by construction (a verb belongs to exactly one family), so the session
-    /// carries one 4 B/px target, not two — which is what keeps five verbs at the same **12 B/px** the two
-    /// of Wave 1 cost. Idempotent: a correctly-sized buffer is left alone, so this is free on the hot path.
+    /// The families are mutually exclusive by construction (a verb belongs to exactly one), so the session
+    /// carries ONE 4 B/px target — which is what keeps eight verbs at the same **12 B/px** the two of Wave 1
+    /// cost. The **Height** family carries none at all: its target is a function of `pre` and a knob,
+    /// evaluated per texel in the render, so Layer and Inflate run at **8 B/px**.
+    ///
+    /// Idempotent: a correctly-sized buffer is left alone, so this is free on the hot path.
     fn ensure_family_target(&mut self) {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
@@ -63,6 +66,7 @@ impl PainterTool {
                     self.paint.sculpt.plane_sum = Arc::new(vec![0.0; n]);
                 }
             }
+            SculptFamily::Height => {} // no target buffer exists to size
         }
     }
 
@@ -108,6 +112,9 @@ impl PainterTool {
         let mut plane_sum = std::mem::take(Arc::make_mut(&mut self.paint.sculpt.plane_sum));
         let mut scratch = std::mem::take(&mut self.paint.sculpt.fit_scratch);
         let pre = Arc::clone(&self.paint.sculpt.pre);
+        // The Chisel's tilt — `tan(angle)`, and exactly `0` in every other verb, so the `+ tilt·|lateral|`
+        // term vanishes and Flatten / Scrape / Fill stay byte-for-byte the Wave 2 kernel. Computed ONCE, here.
+        let chisel_tilt = self.paint.sculpt.chisel_tilt();
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
@@ -166,6 +173,13 @@ impl PainterTool {
                         plane_sum: &mut plane_sum,
                         pre: &pre,
                         scratch: &mut scratch,
+                    },
+                    // The heading is the dab's OWN (`d.dir`, the engine's smoothed tangent — the same one
+                    // the Rake texture rides), so the V follows the curve of the stroke instead of some
+                    // average direction. `[0, 0]` on the first dab ⇒ that dab lays a flat scrape.
+                    ph2d_painter_brush::sculpt::Chisel {
+                        tilt: chisel_tilt,
+                        dir: d.dir,
                     },
                     mask.as_ref().map(|m| m.as_slice()),
                     w,

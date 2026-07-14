@@ -55,6 +55,20 @@ pub(crate) fn register_sculpt_widgets(store: &mut WidgetStore) {
     store.link_slider_number_mapped(offset, offset_chip, 2.0, -1.0); // LITERAL-PX-OK: 0..1 → −1..+1 loads
     store.set_number_range(offset_chip, -1.0, 1.0, 0.05); // LITERAL-PX-OK: the plane's travel, in loads
 
+    // **Depth** (Layer / Inflate) — paint-loads, same affine line as the Offset, same reason.
+    let depth = ph2d_editor_core::ids::PAINTER_SCULPT_DEPTH_SLIDER;
+    let depth_chip = ph2d_editor_core::ids::PAINTER_SCULPT_DEPTH_CHIP;
+    register_slider_with_chip(store, depth, depth_chip);
+    store.link_slider_number_mapped(depth, depth_chip, 2.0, -1.0); // LITERAL-PX-OK: 0..1 → −1..+1 loads
+    store.set_number_range(depth_chip, -1.0, 1.0, 0.05); // LITERAL-PX-OK: the coat's thickness, in loads
+
+    // **Angle** (Chisel) — DEGREES, and `_integer` because a chisel is set to a whole number of them.
+    let angle = ph2d_editor_core::ids::PAINTER_SCULPT_ANGLE_SLIDER;
+    let angle_chip = ph2d_editor_core::ids::PAINTER_SCULPT_ANGLE_CHIP;
+    register_slider_with_chip(store, angle, angle_chip);
+    store.link_slider_number_mapped_integer(angle, angle_chip, 60.0, 0.0); // LITERAL-PX-OK: 0..1 → 0..60°
+    store.set_number_range(angle_chip, 0.0, 60.0, 1.0); // LITERAL-PX-OK: the knife's tilt, in degrees
+
     for id in ph2d_editor_core::ids::PAINTER_SCULPT_MODE_IDS {
         store.register(
             id,

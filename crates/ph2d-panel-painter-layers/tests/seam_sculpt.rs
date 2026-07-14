@@ -403,49 +403,41 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
     );
 }
 
-/// **The knob row swaps with the verb's family — one knob, never both, never neither.**
+/// **Every verb paints EXACTLY the knobs it uses — no more, and no fewer.**
 ///
 /// Radius is the blur's own scale and means nothing to a plane verb (the plane is fitted to the brush's
 /// footprint, so the brush's Size already IS its scale). Offset is where the fitted plane sits and means
-/// nothing to a blur, which has no plane. Painting the inert one would be a knob that lies — and this card
-/// has already cost a smoke over exactly that class of mistake.
+/// nothing to a blur. Depth is a thickness and means nothing to either. Angle belongs to the one verb that
+/// folds a V. Painting an inert one would be a knob that lies about what the tool can do — and this card has
+/// already cost a smoke over exactly that class of mistake.
 ///
-/// The "never neither" half is not padding: it is what catches a family added in Wave 3 whose `is_plane`
-/// answer is right but whose row nobody wired, leaving the card with a verb and no knob at all.
+/// The gate asserts the **exact set**, verb by verb, rather than "this one yes, that one no". The difference
+/// matters: a Wave 4 verb whose family answer is right but whose row nobody wired would slip past a
+/// one-shown-one-hidden check and reach the artist as a card with a tool and nothing to steer it by. And the
+/// Chisel — the only verb with TWO knobs — is precisely the case a looser gate would have got wrong.
 ///
-/// **Mutation that must bleed:** paint `radius_row` unconditionally in `paint_sculpt_section` (the Offset
-/// disappears in the plane verbs), or swap the branch (each verb then shows the other's knob).
+/// **Mutation that must bleed:** paint `radius_row` unconditionally in `paint_sculpt_section`; or drop the
+/// `sculpt_is_chisel` branch, which leaves the Chisel with an Offset and no Angle.
 #[test]
-fn the_knob_row_swaps_with_the_verb_family() {
-    // (mode index, the id the card must paint, the id it must NOT)
-    let cases = [
-        (
-            0u8,
-            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
-            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
-        ), // Smooth
-        (
-            1,
-            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
-            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
-        ), // Sharpen
-        (
-            2,
-            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
-            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
-        ), // Flatten
-        (
-            3,
-            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
-            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
-        ), // Scrape
-        (
-            4,
-            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
-            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
-        ), // Fill
+fn every_verb_paints_exactly_the_knobs_it_uses() {
+    use core_ids::{
+        PAINTER_SCULPT_ANGLE_SLIDER as ANGLE, PAINTER_SCULPT_DEPTH_SLIDER as DEPTH,
+        PAINTER_SCULPT_OFFSET_SLIDER as OFFSET, PAINTER_SCULPT_RADIUS_SLIDER as RADIUS,
+    };
+    // (verb, its name, the knobs it must paint — and by omission, the ones it must not)
+    let cases: [(u8, &str, &[ph2d_a11y::NodeId]); 8] = [
+        (0, "Smooth", &[RADIUS]),
+        (1, "Sharpen", &[RADIUS]),
+        (2, "Flatten", &[OFFSET]),
+        (3, "Scrape", &[OFFSET]),
+        (4, "Fill", &[OFFSET]),
+        (5, "Chisel", &[OFFSET, ANGLE]), // the plane must be placed BEFORE the V is folded about it
+        (6, "Layer", &[DEPTH]),
+        (7, "Inflate", &[DEPTH]),
     ];
-    for (mode, shown, hidden) in cases {
+    let all = [RADIUS, OFFSET, DEPTH, ANGLE];
+
+    for (mode, name, wanted) in cases {
         let mut tool = tool_in_sculpt();
         tool.set_sculpt_mode(mode);
         set_current_brush(Some(tool.brush_settings()));
@@ -455,14 +447,134 @@ fn the_knob_row_swaps_with_the_verb_family() {
         let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
         let ids: Vec<_> = painted.iter().map(|(w, _)| *w).collect();
 
-        assert!(
-            ids.contains(&shown),
-            "verb {mode} paints NO knob of its own — the card shows a spatula with nothing to steer it by"
-        );
-        assert!(
-            !ids.contains(&hidden),
-            "verb {mode} paints the OTHER family's knob. It does nothing to this verb, and a control that \
-             does nothing is a control that lies about what the tool can do."
-        );
+        for knob in all {
+            let should = wanted.contains(&knob);
+            let does = ids.contains(&knob);
+            assert_eq!(
+                does,
+                should,
+                "{name} (verb {mode}) {} a knob it {} use. The card must show exactly the controls the \
+                 active verb steers by: a missing one leaves the artist holding a tool they cannot aim, and \
+                 a spare one is a control that does nothing and says otherwise.",
+                if does { "paints" } else { "hides" },
+                if should { "DOES" } else { "does NOT" },
+            );
+        }
     }
+}
+
+/// **The Depth and Angle sliders reach the tool — each driven in a verb that actually shows it.**
+///
+/// The Wave 3 knobs. A gate that drove them in Smooth would be testing widgets the artist can never touch,
+/// which is the definition of a green gate that proves nothing — so Depth is driven in **Layer** and Angle in
+/// **Chisel**, the verbs whose cards paint them.
+///
+/// The Angle leg checks the number in **degrees**, and that is not cosmetic. A chisel's angle is a *geometric*
+/// quantity, and a height field's two axes are not the same unit (`x` is texels, `h` is paint-loads) — so the
+/// kernel divides `tan(angle)` by `DEPTH_UNIT_PX` on its way in. The chip must still say the degrees the
+/// artist dialled, or the one number they steer by would be a number no code produces.
+///
+/// **Mutation that must bleed:** delete either arm from `route_sculpt_event`, or either id from
+/// `event_brush_forward`'s slider list.
+#[test]
+fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
+    // ── Depth, in Layer ────────────────────────────────────────────────────────────────────────────
+    let mut tool = tool_in_sculpt();
+    tool.set_sculpt_mode(6); // Layer
+    set_current_brush(Some(tool.brush_settings()));
+
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let Some((_, rect)) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_DEPTH_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .copied()
+    else {
+        panic!("the Depth slider is not painted with a clickable rect in Layer");
+    };
+    let (x, y) = centre(rect);
+    assert_eq!(
+        host.hit_at(x, y),
+        Some(core_ids::PAINTER_SCULPT_DEPTH_SLIDER),
+        "the Depth slider's own pixel does not resolve to it"
+    );
+    host.apply_panel_event::<PainterLayersPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_DEPTH_SLIDER),
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
+                if *i == core_ids::PAINTER_SCULPT_DEPTH_SLIDER
+        )),
+        "a Depth drag was never forwarded as SetValue — the id is missing from `event_brush_forward`'s \
+         slider list. drained = {actions:?}"
+    );
+    tool.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_SCULPT_DEPTH_SLIDER,
+        1.0,
+    ));
+    assert!(
+        (tool.sculpt_depth() - 1.0).abs() < 1e-6,
+        "SetValue on the Depth slider did not reach the kernel (depth is {} loads, want +1)",
+        tool.sculpt_depth()
+    );
+
+    // ── Angle, in Chisel ───────────────────────────────────────────────────────────────────────────
+    let mut tool = tool_in_sculpt();
+    tool.set_sculpt_mode(5); // Chisel
+    set_current_brush(Some(tool.brush_settings()));
+
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let Some((_, rect)) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_ANGLE_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .copied()
+    else {
+        panic!("the Angle slider is not painted with a clickable rect in Chisel");
+    };
+    let (x, y) = centre(rect);
+    assert_eq!(
+        host.hit_at(x, y),
+        Some(core_ids::PAINTER_SCULPT_ANGLE_SLIDER),
+        "the Angle slider's own pixel does not resolve to it"
+    );
+    host.apply_panel_event::<PainterLayersPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_ANGLE_SLIDER),
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
+                if *i == core_ids::PAINTER_SCULPT_ANGLE_SLIDER
+        )),
+        "an Angle drag was never forwarded as SetValue — the id is missing from `event_brush_forward`'s \
+         slider list. drained = {actions:?}"
+    );
+    tool.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_SCULPT_ANGLE_SLIDER,
+        0.0,
+    ));
+    assert!(
+        tool.sculpt_chisel_angle_deg().abs() < 1e-6,
+        "the Angle track's bottom is {}°, not 0 — and 0° is not a dead zone, it is the FLAT knife (the \
+         Chisel is byte-identical to Scrape there)",
+        tool.sculpt_chisel_angle_deg()
+    );
+    tool.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_SCULPT_ANGLE_SLIDER,
+        1.0,
+    ));
+    assert!(
+        (tool.sculpt_chisel_angle_deg() - 60.0).abs() < 1e-4,
+        "SetValue on the Angle slider did not reach the kernel (angle is {}°, want 60)",
+        tool.sculpt_chisel_angle_deg()
+    );
 }

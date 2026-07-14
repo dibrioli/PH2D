@@ -1,4 +1,4 @@
-# HANDOFF de INTEGRAÇÃO — `line/Painter`: o SCULPT do relevo, W1 + W2 (2026-07-13)
+# HANDOFF de INTEGRAÇÃO — `line/Painter`: o SCULPT do relevo, W1 + W2 + W3 (2026-07-13)
 
 > **Para o agente INTEGRADOR** (DIRETRIZ §1.5.9). A linha está **fechada e parada**. Não integrei, não
 > pushei, não rodei `ship.sh` — isso é ordem explícita do Enio (CLAUDE.md §0.7).
@@ -248,9 +248,9 @@ por uma semana.
 ## 8. O que ficou ABERTO
 
 * ~~**W2 — a espátula**~~ ✅ **FECHADA no mesmo dia** (Flatten · Scrape · Fill) — ver §12.
-* **W3** — Clay · Clay Strips · Layer · Draw Sharp · Inflate + **Multi-plane Scrape** (composições dos
-  kernels de W1/W2; nenhum motor novo). O `SculptMode` e o `PAINTER_SCULPT_MODE_IDS` são **append-only** —
-  a ordem nunca muda (o discriminante É o índice do segmented), e o sweep do seam cresce junto.
+* ~~**W3**~~ ✅ **FECHADA no mesmo dia** (Chisel · Layer · Inflate — e três da lista do Blender que **não
+  são verbos**) — ver §13. O `SculptMode` e o `PAINTER_SCULPT_MODE_IDS` são **append-only**: a ordem nunca
+  muda (o discriminante É o índice do segmented), e o sweep do seam cresce junto.
 * **W4** — a família advectiva (Grab/Pinch/Nudge/Rotate/Thumb): fazer o motor do **Deform** carregar os
   planos do relevo, não construir motor novo (§8 W4).
 * **W5** — Conserve (a *bow wave*, §6) + filtros de camada inteira.
@@ -464,3 +464,107 @@ Pinte uma crista → **SCULP** → escolha **Flatten** e passe **atravessando o 
 continua um flanco. Uma espátula nivelada araria um vale ali — é o teste de um segundo pro §7.
 Depois **Scrape** (só tira) e **Fill** (só põe), e gire o **Offset**: negativo = a faca crava, positivo =
 o Fill amontoa.
+
+---
+
+## 13. W3 — Chisel · Layer · Inflate, fechada 2026-07-13
+
+**Oito verbos, uma expressão.** `h = pre + k·Δ`. Chisel é Scrape com um `abs`. Layer é o kernel com alvo
+**constante** — e é isso que o limita (`k ≤ 1` ⇒ nunca passa de `pre + Depth`). Inflate é o kernel com alvo
+`pre + Depth·n_z`.
+
+### 13.1 — ⚠️ A LIÇÃO (a mais importante de toda a linha, e o gate cobrou)
+
+**Os dois eixos de um campo de altura NÃO são a mesma unidade.** `x` é texel; `h` é *carga de tinta*. Um
+**ângulo** é razão de COMPRIMENTOS. Uma **normal** também. Então toda grandeza *geométrica* só significa
+alguma coisa depois que a altura vira comprimento — e o conversor é o que a **LUZ** usa:
+`DEPTH_UNIT_PX = 16` (uma carga de tinta tem 16 px de altura).
+
+Eu acertei no **Inflate** porque fui procurar qual normal a luz usa (`impasto_shade::shade`). **Errei no
+Chisel** porque não fui: o 1º corte usou `tan(36°)` cru, inclinando o plano em **0,73 load por texel** —
+8,7 loads ao longo do footprint, **4× o `H_CEIL`**. O "ângulo" era um número num espaço sem geometria
+dentro, e o V que ele cortava era um penhasco.
+
+O gate `the_chisel_carves_a_crease` **pegou**: reportou 0,36 load "poupado" *no próprio eixo* — meio texel
+de lado. O número denunciou a escala.
+
+> **Regra pra W4/W5 e pra qualquer coisa que toque `h`:** *toda grandeza geométrica — normal, ângulo,
+> inclinação que o artista VÊ — cruza `DEPTH_UNIT_PX` na entrada.*
+
+Ambas as mutações estão gateadas (M4: `tan` cru no Chisel · M7: normal sem ganho no Inflate) — **uma lição
+só gateada onde você já sabia olhar não está gateada.**
+
+### 13.2 — Três da lista do Blender NÃO entraram, e cada ausência é um ACHADO
+
+| Blender | Por que não é um verbo aqui |
+|---|---|
+| **Clay** | É **`Flatten` com Offset > 0**. O plano fica ACIMA da superfície: vales sobem até ele, cristas descem até ele — material adicionado, superfície achatada. *Isso É clay.* Os dois knobs já estão na tela; um chip seria **preset de outro chip**, e um card não sabe dizer qual de duas ferramentas idênticas você segura. |
+| **Clay Strips** | É Clay + **dab quadrado**. A forma do dab é do **PINCEL** (10 falloffs, slot de Shape, flatten, ângulo). Um falloff quadrado é buraco do pincel, não verbo do sculpt. |
+| **Draw Sharp** | **Colapsa no Layer.** O Blender precisa dele separado porque o Draw dele lê a malha *deformada* e arredonda a própria crista. **Nosso motor lê o `pre` CONGELADO e não consegue fazer diferente** (§4) — todo verbo aditivo já é "sharp" por construção. Não sobra nada pro segundo ser. |
+
+### 13.3 — Famílias, alvos e custo
+
+| família | verbos | alvo | reconstruível? | knobs | custo |
+|---|---|---|---|---|---|
+| Smooth | Smooth · Sharpen | `blur(pre)` | **sim** (memo, de `pre`) | Radius | 12 B/px |
+| Plane | Flatten · Scrape · Fill · **Chisel** | `Σw·plano(i)` | **não** (função da lista de dabs → re-carimba) | Offset (+ **Angle** no Chisel) | 12 B/px |
+| **Height** | **Layer** · **Inflate** | função de `pre` + knob, por texel | — (**sem buffer**) | Depth | **8 B/px** |
+
+A família Height é a mais barata *e* a mais simples: o alvo do Layer é a constante `pre + Depth`; o do
+Inflate é 4 leituras e uma raiz. Nenhum dos dois vale um plano do tamanho do canvas.
+
+**O Chisel é o único verbo com DOIS knobs** (Offset *e* Angle — o plano precisa ser colocado antes do V ser
+dobrado em torno dele). O gate do painel exige o **conjunto exato** de knobs por verbo, não "um sim, um
+não": um verbo de W4 cuja família está certa mas cuja linha ninguém fiou passaria num check mais frouxo.
+
+### 13.4 — O Chisel, em uma linha
+
+O construtor de dois planos é o caminho longo. As duas faces passam pela **mesma linha** — o eixo do traço —
+e sobem dela no mesmo ângulo, então a união delas é só:
+
+```
+plano(x,y)  +  tilt · |distância lateral ao eixo|
+```
+
+um plano e um valor absoluto. **`tilt = 0` é exatamente a faca chata** ⇒ Flatten/Scrape/Fill continuam
+byte-idênticos ao kernel de W2, e o Angle no zero não é zona morta: é a lâmina plana (gateado:
+`the_chisel_at_zero_degrees_is_byte_identical_to_scrape`).
+
+**Um dab sem direção não crava** (`dir = [0,0]` no 1º dab e num Drag Dot) — sem eixo não há V, e ele deita
+um scrape chato. Isso é honesto, não defensivo: inventar uma direção faria a marca depender de pra que lado
+o ruído de float caiu.
+
+### 13.5 — Gates de W3 (11 mutações, 11 mortas)
+
+| Gate | Mutação que o mata |
+|---|---|
+| `the_chisel_at_zero_degrees_is_byte_identical_to_scrape` | pôr piso no tilt (`tan(a).max(0.05)`) |
+| `the_chisel_carves_a_crease` | tirar o `+ v` do `plane_sum` · dobrar em torno de `dir` em vez de `perp` · **`tan` cru sem `DEPTH_UNIT_PX`** |
+| `layer_lays_one_coat_however_long_you_dwell` | alvo `p + depth*a` (acumula em vez de limitar) |
+| `inflate_rounds_the_crest_instead_of_translating_it` | `n_z = 1` · **normal sem o ganho `DEPTH_UNIT_PX`** |
+| `a_layer_stroke_costs_eight_bytes_per_pixel` | alocar `plane_sum` pra família Height |
+| `switching_into_the_height_family_frees_the_other_targets` | manter o alvo de plano ao entrar no Layer |
+| `every_verb_paints_exactly_the_knobs_it_uses` (seam) | tirar a linha do Angle (o Chisel fica com 1 knob) |
+| `the_depth_and_angle_sliders_are_wired_to_the_tool` (seam) | tirar qualquer um dos arms do `route_sculpt_event` |
+
+**Perf** — os TRÊS motores (o Inflate é aritmética diferente: uma raiz e 4 leituras por texel, e nenhum
+buffer):
+
+```
+SMOOTH  @2048px 3,12 ms/move  |  @4096px 3,09
+SCRAPE  @2048px 2,62 ms/move  |  @4096px 2,93
+INFLATE @2048px 2,32 ms/move  |  @4096px 2,31     (alvo <=4, kill 8)
+```
+
+Plano entre 2048² e 4096² nos três ⇒ **O(traço), não O(canvas)**. O Inflate é o mais barato — ele não
+carrega buffer nenhum.
+
+### 13.6 — Smoke de W3
+
+**Chisel:** pinte uma crista, arraste ao longo dela. Ele **poupa os flancos e corta o eixo** ⇒ um sulco com
+vinco no fundo. Ponha o Angle em 0: vira Scrape (é o mesmo kernel).
+**Layer:** passe **dez vezes no mesmo lugar, dentro de um traço só**. A demão continua com uma espessura de
+Depth. Nenhum outro verbo faz isso.
+**Inflate:** ponha o pincel na borda de uma mancha grossa. O **topo sobe, a parede não** — a crista
+*arredonda* em vez de subir. Depth negativo murcha.
+**Clay:** não tem chip, de propósito. É **Flatten com Offset positivo** — experimente.

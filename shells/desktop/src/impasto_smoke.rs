@@ -31,14 +31,14 @@
 //! the relief is derived from it). Only `Draw To` is authoring-only — it routes channels, and the
 //! pigment it already laid cannot be un-laid.
 //!
-//! ## The SCULPT (`docs/Painter/18…`, Waves 1-2 — 2026-07-13)
+//! ## The SCULPT (`docs/Painter/18…`, Waves 1-3 — 2026-07-13)
 //!
 //! This same smoke is the sculpt's, and deliberately without an env var of its own: the sculpt needs
 //! relief to reshape, and the way you get relief is to paint some. So —
 //!
 //!   1. Paint two or three thick strokes (as above). Ridges, with brush-marks on them.
 //!   2. Click **SCULP** on the left rail (between Deform and Mask).
-//!   3. Drag over the ridges. Five verbs, one kernel:
+//!   3. Drag over the ridges. **Eight verbs, one kernel** (`h = pre + k·Δ`):
 //!      - **Smooth** knocks them down toward the local average; **Sharpen** runs the same kernel
 //!        backwards and brings them back up.
 //!      - **Flatten** pulls the paint toward the plane fitted under the brush — and the plane is
@@ -46,19 +46,29 @@
 //!        flatten across its FLANK: the flank stays a flank. A level spatula would gouge a trough into it.)
 //!      - **Scrape** is that plane, down only — the palette knife taking the high ground off. **Fill** is
 //!        its mirror: paint pushed into the hollows, the ridges left standing.
+//!      - **Chisel** is Scrape with the knife tipped onto its edge (**Angle**): it spares the flanks and
+//!        cuts the axis, so it leaves a groove with a crease at the bottom. At Angle 0 it IS Scrape.
+//!      - **Layer** lays exactly **Depth** of paint and stops — pass over the same spot ten times in one
+//!        stroke and the coat is still one Depth thick. Nothing else here can do that.
+//!      - **Inflate** raises along the surface normal, so the flats come up and the walls do not: a ridge
+//!        gets ROUNDED rather than lifted. Negative Depth deflates it.
 //!
 //! The brush's own **Size** is the spatula's width, its **Strength** is how hard you lean on it, and
 //! Spacing / Falloff / Shape / Grain / Symmetry / Tiling all apply — the sculpt rides the same dab list
 //! the colour does, so a spatula with a Grain is a *textured* spatula, for free.
 //!
-//! The card adds only what the brush cannot say, and **the knob row swaps with the verb**:
+//! The card adds only what the brush cannot say, and **it shows the knobs the active verb uses, and no
+//! others** — a knob that does nothing to the tool in your hand is a knob that lies:
 //!   - Smooth / Sharpen → **Radius** (1-16 px, the scale brush-marks live at).
 //!   - Flatten / Scrape / Fill → **Offset**, in paint-loads. It is the spatula's *bite*: at `0` the plane
 //!     rests on the surface it was fitted to, so Scrape only takes off what stands above the local slope.
 //!     Pull it negative and the knife digs in. Push it positive and Fill mounds paint above the surface.
+//!   - Chisel → **Offset** *and* **Angle** (the plane has to be placed before the V is folded about it).
+//!   - Layer / Inflate → **Depth**, in paint-loads. Signed: the lower half carves and deflates.
 //!
-//! There is no Radius in a plane verb and no Offset in a blur, so the card shows one or the other — a knob
-//! that does nothing to the active tool is a knob that lies.
+//! **Clay is not a chip, and that is deliberate**: it is Flatten with a positive Offset (the plane sits
+//! above the surface, so the hollows fill and the ridges level). Both knobs are already in front of you. A
+//! chip that is a preset of another chip cannot tell you which of the two you are holding.
 //!
 //! **The card arms the NEXT stroke — it does not rewrite the last one.** Pick Sharpen and the Smooth
 //! behind you stays a Smooth; to change a mark you have made, undo it. (It behaved the other way for one

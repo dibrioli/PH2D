@@ -322,10 +322,11 @@ fn sculpt_perf_kill_criterion() {
         (total / f64::from(MOVES), worst, up)
     };
 
-    // Both engines: Smooth (the tile-memoised blur) and Scrape (the per-dab plane fit). They are different
-    // arithmetic with different failure modes, and a budget measured on only one of them is a budget for a
-    // tool the artist does not have.
-    for (label, mode) in [("SMOOTH", 0u8), ("SCRAPE", 3u8)] {
+    // All THREE engines: Smooth (the tile-memoised blur), Scrape (the per-dab plane fit) and Inflate (a
+    // square root and four reads per texel, and no buffer at all). They are different arithmetic with
+    // different failure modes, and a budget measured on one of them is a budget for a tool the artist does
+    // not have.
+    for (label, mode) in [("SMOOTH", 0u8), ("SCRAPE", 3u8), ("INFLATE", 7u8)] {
         for size in [2048u32, 4096] {
             let (off_mean, off_worst, off_up) = run(size, false, mode);
             let (on_mean, on_worst, on_up) = run(size, true, mode);

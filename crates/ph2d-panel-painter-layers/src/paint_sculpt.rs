@@ -23,11 +23,19 @@ use ph2d_tool_painter::BrushSettings;
 
 /// Paint the Sculpt card, returning the next `y`. Only called in Sculpt mode.
 ///
-/// The knob row **swaps with the family**: Radius for Smooth / Sharpen (the blur's own scale), Offset for
-/// Flatten / Scrape / Fill (where the fitted plane sits). Never both. Radius has no meaning to a plane verb
-/// — the plane is fitted to the brush's own footprint, so the brush's Size already IS its scale — and Offset
-/// has none to a blur, which has no plane to offset. Showing the inert one would be a knob that lies, and
-/// this card has already paid once for exactly that class of mistake (see `SculptState`).
+/// **The card shows the knobs the active verb USES, and no others.**
+///
+/// | family | verbs | knobs |
+/// |---|---|---|
+/// | Smooth | Smooth · Sharpen | **Radius** (the blur's own scale) |
+/// | Plane | Flatten · Scrape · Fill | **Offset** (where the fitted plane sits) |
+/// | Plane | Chisel | **Offset** + **Angle** (the plane, then the V folded about the stroke) |
+/// | Height | Layer · Inflate | **Depth** (how thick a coat, how hard a puff) |
+///
+/// Radius means nothing to a plane verb — the plane is fitted to the brush's own footprint, so the brush's
+/// Size already IS its scale. Offset means nothing to a blur, which has no plane. Depth means nothing to
+/// either. Painting the inert one would be a knob that lies about what the tool can do, and this card has
+/// already cost a smoke over exactly that class of mistake (see `SculptState`).
 pub(crate) fn paint_sculpt_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -37,12 +45,88 @@ pub(crate) fn paint_sculpt_section(
     brush: BrushSettings,
 ) -> f32 {
     let mut y = mode_card(ctx, theme, x, content_w, y, brush.sculpt_mode as usize);
-    y = if brush.sculpt_is_plane {
-        offset_row(ctx, theme, x, content_w, y, brush)
-    } else {
-        radius_row(ctx, theme, x, content_w, y, brush)
+    y = match brush.sculpt_knob_family {
+        1 => {
+            let y = offset_row(ctx, theme, x, content_w, y, brush);
+            // The Chisel places the plane AND folds the V about it — two questions, two knobs.
+            if brush.sculpt_is_chisel {
+                angle_row(ctx, theme, x, content_w, y, brush)
+            } else {
+                y
+            }
+        }
+        2 => depth_row(ctx, theme, x, content_w, y, brush),
+        _ => radius_row(ctx, theme, x, content_w, y, brush),
     };
     y
+}
+
+/// The **Depth** row (Height family). Paint-loads, signed: the sign is the tool. Positive Layer lays a coat,
+/// negative Layer carves one out of the paint that is there; positive Inflate puffs, negative deflates.
+fn depth_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let loads = brush.sculpt_depth_loads;
+    let display = format!("{loads:+.2}");
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_slider_with_chip_layout_adaptive(
+        Rect::new(x, y, content_w, ROW_H_PX),
+        "Depth",
+        brush.sculpt_depth,
+        f64::from(loads),
+        Some(&display),
+        core_ids::PAINTER_SCULPT_DEPTH_SLIDER,
+        core_ids::PAINTER_SCULPT_DEPTH_CHIP,
+        DEFAULT_LABEL_W,
+        DEFAULT_CHIP_W,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y + used + Spacing::Xs.px()
+}
+
+/// The **Angle** row (Chisel only). Degrees, and the bottom of the track is not a dead zone — at 0° the
+/// knife is flat and the Chisel IS Scrape, byte for byte.
+fn angle_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let deg = brush.sculpt_angle_deg;
+    let display = format!("{}°", deg as u32);
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_slider_with_chip_layout_adaptive(
+        Rect::new(x, y, content_w, ROW_H_PX),
+        "Angle",
+        brush.sculpt_angle,
+        f64::from(deg),
+        Some(&display),
+        core_ids::PAINTER_SCULPT_ANGLE_SLIDER,
+        core_ids::PAINTER_SCULPT_ANGLE_CHIP,
+        DEFAULT_LABEL_W,
+        DEFAULT_CHIP_W,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y + used + Spacing::Xs.px()
 }
 
 /// The **Offset** row (plane family). The chip shows **paint-loads** — signed, because the sign is the whole
@@ -138,6 +222,9 @@ fn mode_card(
             SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_FLATTEN, "Flatten"),
             SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_SCRAPE, "Scrape"),
             SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_FILL, "Fill"),
+            SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_CHISEL, "Chisel"),
+            SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_LAYER, "Layer"),
+            SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_INFLATE, "Inflate"),
         ],
     )
     .selected(selected);

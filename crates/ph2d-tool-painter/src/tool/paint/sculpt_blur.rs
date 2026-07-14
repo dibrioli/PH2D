@@ -52,6 +52,40 @@ pub(super) fn tile_count(w: u32, h: u32) -> usize {
     (w.div_ceil(TILE) as usize) * (h.div_ceil(TILE) as usize)
 }
 
+/// The **z component of the surface normal** at a texel of the frozen relief — Inflate's whole engine.
+///
+/// `Inflate` raises the relief *along the normal*, and a height field can only move in `z`, so what it can
+/// actually do is raise by `Depth · n_z` (doc 18 §1.3, which says to be honest about this rather than ship a
+/// 3D name over a 2D operation). The consequence is the feel: `n_z = 1` on the flats (they rise fully) and
+/// `n_z → 0` on a wall (it barely moves), so a ridge gets **rounded off** instead of translated upward — and
+/// a negative Depth deflates it the same way. That is a distinct tool from Draw, and this line is why.
+///
+/// ## It is the LIGHT's normal, and that is not a detail
+///
+/// The same central difference, the same `DEPTH_UNIT_PX` gain, as `impasto_shade::shade` — because the slope
+/// only *exists*, visually, once the height buffer's unit is converted to pixels. Without the gain a real
+/// ridge (0.1 loads over a texel) has `n_z = 0.995`: Inflate would be a uniform raise wearing a normal's
+/// name, and every gate written against it would be green. With it, that same ridge reads `n_z = 0.53` and
+/// the tool does what it says.
+///
+/// The rule this obeys is the one that has cost this project twice: **the oracle models the APPEARANCE, not
+/// the implementation** ([[feedback_oracle_must_model_appearance_not_implementation]]). A normal the light
+/// does not use is a normal the artist cannot see.
+///
+/// Edges clamp (the difference reads the nearest texel in), exactly as the light's does.
+fn inflate_nz(pre: &[f32], x: u32, y: u32, w: u32, h: u32) -> f32 {
+    let at = |cx: i64, cy: i64| -> f32 {
+        let cx = cx.clamp(0, i64::from(w) - 1) as usize;
+        let cy = cy.clamp(0, i64::from(h) - 1) as usize;
+        pre[cy * (w as usize) + cx]
+    };
+    let (xi, yi) = (i64::from(x), i64::from(y));
+    let dhx = (at(xi + 1, yi) - at(xi - 1, yi)) * 0.5 * super::impasto_light::DEPTH_UNIT_PX;
+    let dhy = (at(xi, yi + 1) - at(xi, yi - 1)) * 0.5 * super::impasto_light::DEPTH_UNIT_PX;
+    // n = normalize([-dhx, -dhy, 1]) ⇒ n_z = 1 / |[dhx, dhy, 1]|.
+    1.0 / (dhx * dhx + dhy * dhy + 1.0).sqrt()
+}
+
 impl PainterTool {
     /// Blur every tile `rect` overlaps that this session has not blurred yet, into the memo.
     ///
@@ -157,6 +191,7 @@ impl PainterTool {
         }
 
         let offset = self.paint.sculpt.plane_offset();
+        let depth = self.paint.sculpt.depth();
         let pre = Arc::clone(&self.paint.sculpt.pre);
         let amount = std::mem::take(&mut self.paint.sculpt.amount);
         let plane_sum = std::mem::take(&mut self.paint.sculpt.plane_sum);
@@ -177,6 +212,7 @@ impl PainterTool {
             let family_ready = match mode.family() {
                 SculptFamily::Smooth => blurred.len() == n,
                 SculptFamily::Plane => plane_sum.len() == n,
+                SculptFamily::Height => true, // no buffer: the target is `pre` and a knob
             };
             if target.len() != n || !family_ready {
                 self.paint.sculpt.amount = amount;
@@ -207,12 +243,19 @@ impl PainterTool {
                     // independent of Strength and Flow (they scale both sides). `+ offset` is the rigid
                     // shift that gives Scrape and Fill their bite; it is added HERE, not baked into
                     // `plane_sum`, which is exactly why the Offset slider is live on an open shape.
+                    //
+                    // Layer's target is a CONSTANT (`pre + Depth`), and that constant is what bounds it:
+                    // `k ≤ 1`, so however long the artist dwells the coat never passes one Depth. Inflate's
+                    // is the same, scaled by the surface's own `n_z` — see `inflate_nz`.
                     let toward = match mode {
                         SculptMode::Smooth => blurred[i],
                         SculptMode::Sharpen => p + p - blurred[i],
-                        SculptMode::Flatten | SculptMode::Scrape | SculptMode::Fill => {
-                            plane_sum[i] / a + offset
-                        }
+                        SculptMode::Flatten
+                        | SculptMode::Scrape
+                        | SculptMode::Fill
+                        | SculptMode::Chisel => plane_sum[i] / a + offset,
+                        SculptMode::Layer => p + depth,
+                        SculptMode::Inflate => p + depth * inflate_nz(&pre, x, y, w, h),
                     };
                     // ── The verb: which SIGN of the travel is allowed through. ──────────────────────
                     //
@@ -223,7 +266,7 @@ impl PainterTool {
                     // would depend on where the origin of the height field happens to sit.
                     let delta = toward - p;
                     let delta = match mode {
-                        SculptMode::Scrape => delta.min(0.0),
+                        SculptMode::Scrape | SculptMode::Chisel => delta.min(0.0),
                         SculptMode::Fill => delta.max(0.0),
                         _ => delta,
                     };

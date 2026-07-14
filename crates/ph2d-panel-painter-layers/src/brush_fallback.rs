@@ -73,11 +73,16 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     deform_transform_mode: 0,
     is_sculpt: false,
     sculpt_mode: 0,
-    sculpt_is_plane: false,   // mode 0 is Smooth
-    sculpt_radius: 0.5,       // LITERAL-PX-OK: Sculpt default (mirrors SculptState::default)
+    sculpt_knob_family: 0, // mode 0 is Smooth ⇒ the Radius row
+    sculpt_is_chisel: false,
+    sculpt_radius: 0.5, // LITERAL-PX-OK: Sculpt default (mirrors SculptState::default)
     sculpt_radius_px: 9.0, // LITERAL-PX-OK: round(1 + 0.5·(16−1)) = the radius_norm 0.5 default, in px
     sculpt_offset: 0.5, // LITERAL-PX-OK: dead centre = plane offset 0 (mirrors SculptState::default)
     sculpt_offset_loads: 0.0, // LITERAL-PX-OK: …and that maps to exactly zero paint-loads
+    sculpt_depth: 0.75, // LITERAL-PX-OK: Sculpt default (mirrors SculptState::default)
+    sculpt_depth_loads: 0.5, // LITERAL-PX-OK: …and 0.75 maps to +0.5 paint-loads
+    sculpt_angle: 0.5,  // LITERAL-PX-OK: Sculpt default (mirrors SculptState::default)
+    sculpt_angle_deg: 30.0, // LITERAL-PX-OK: …and 0.5 maps to 30° of chisel
     selection_offset: 0.5, // LITERAL-PX-OK: centred Offset = no grow/shrink (mirrors shape_offset_norm)
     inpaint_patch: 0.25, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_patch_norm)
     inpaint_quality: 0.3333, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_quality_norm)

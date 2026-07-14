@@ -12,8 +12,8 @@
 | **Branch** | `line/motion-value` |
 | **HEAD** | `12e4e598` (+ este handoff) |
 | **Base** | `4cd8ef13` (= `main` no início da jornada) |
-| **Commits** | 22 |
-| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (fio novo entra em grupo fechado) + **FILA 2 — params dirigidos por fio** + **busca no add-menu** + **FILA 4 (metade) — Poisson-disc + Bóia** |
+| **Commits** | 24 |
+| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (fio novo entra em grupo fechado) + **FILA 2 — params dirigidos por fio** + **busca no add-menu** + **FILA 4 (metade) — Poisson-disc + Bóia** + **NOMES no grafo (F2)** |
 | **Notas-ADR** | [`57_subgrafos`](Motion%20Nodes/57_subgrafos_nota_adr.md) · [`58_params_dirigidos`](Motion%20Nodes/58_params_dirigidos_nota_adr.md) |
 
 > **`CLAUDE.md` §5 NÃO foi tocado de propósito** — é a maior superfície de colisão do repo, e
@@ -214,6 +214,32 @@ desenhar: **por isso ele nunca teve um gate de paint**. Mais `dispatch_pointer_e
 `_with_text`, o do shell). O gate novo (`tests/the_add_menu_actually_adds_a_node.rs`) **pinta**,
 lê o hit index que a **pintura** registrou, e despacha `PointerEvent` de verdade.
 
+## 7.7 Nomes no grafo — F2 (`5b80e36d`, doc 61)
+
+**O gesto que faltava.** 88 tipos de nó, vinte cards, seis dizendo `Move`/`Drive`: o grafo se lia
+rastreando fios. Agora **F2** nomeia o **card**, o **grupo** ou o **backdrop** selecionado.
+
+- **A auditoria é a notícia:** **dois dos três já tinham onde guardar o nome** (`Subgraph.title`,
+  `Backdrop.title`) **e nada no editor conseguia escrever nele** — o `SetBackdropTitle` existia, era
+  **executado pelo shell**, e **ninguém o emitia**; o comentário dele apontava pra uma linha do
+  painel de params que **não existe**. O modelo de dados não era o buraco, a **caixa** era.
+  ([[feedback_stale_comment_and_dead_code_lie]].)
+- **Foundational (`ph2d-nodegraph`):** campo **`node_labels`** no `Graph` — **mapa paralelo**, não
+  campo no `NodeInstance` (append-only = merge que não conflita; campo novo tocaria todo sítio de
+  construção do repo). Record **`t <id> <label…>`** + header **`v4` só quando alguém nomeou**
+  (ausente = byte-idêntico). É a **3ª volta da mesma manivela** (text-param doc 32, param dirigido
+  doc 58).
+- **`GraphKey::Rename`** (append no fim do enum) + **`KEY_F2 = 0xF705`** + `KeyCode::F2` no shell.
+- **`SetBackdropTitle` REMOVIDO** → virou `Rename { target: RenameTarget, name }` (um gesto, três
+  alvos, um undo). ⚠️ **Se outra linha passou a emitir `SetBackdropTitle`, ela vira `Rename`.**
+- **`graph.rs` estourou o cap de 700 LOC** do workspace → **split** em `graph_tests.rs` (nunca
+  allowlist).
+- **Demo:** os **19 cards do boot ganharam nome** — o grafo da neve virou uma frase.
+- **Gate que PINTA e DIGITA** (`f2_actually_renames_the_thing`), irmão do gate do add-menu. 4
+  mutações mortas.
+- **Aberto (nomeado):** a **cor** do backdrop segue sem gesto (`SetBackdropColor` vivo e sem
+  emissor; o tom só cicla por id ao nascer).
+
 ## 8. Smoke (o Enio)
 
 ```
@@ -251,12 +277,20 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
   **`value.lfo`** pro corpo dele e dirija o `Level` (a maré). O card **Poisson Disk** tem `Radius`:
   aumente e nascem menos sítios, mais separados.
 
+- **Doc 61 (nomes):** o boot já abre com os cards **nomeados** ("The Sea", "Birth Sites", "The Kill
+  Disc"…). Clique num card e aperte **F2** → a caixa abre **sobre o título**, já com o nome dentro,
+  selecionado; digite e **Enter**. **Esc** mantém o antigo. Funciona igual no **card do grupo**
+  ("Age & Fade") e no **backdrop** (clique na faixa do topo dele primeiro). Apague o nome e dê Enter
+  → o card volta a se chamar do que ele é. **Ctrl+Z** desfaz o rename num passo só. E depois de
+  fechar a caixa, **`A` volta a abrir o menu** (o teclado volta pro grafo).
+
 ## 9. Fila restante (o próximo da linha escolhe)
 
 1. ~~**FILA 2 — promoção param → socket**~~ — **FECHADA** (doc 58; virou *param dirigido por
    fio*, sem estado de promoção).
 2. ~~**FILA 4 — Poisson + Bóia**~~ — **FECHADA a metade** (doc 60): `motion.distribute_poisson`
    (Bridson 2007) + `force.buoyancy` (Arquimedes + onda viajante). Ver §7.6.
+2.b ~~**Nomes no grafo**~~ — **FECHADO** (doc 61, F2). Ver §7.7.
 3. **FILA 3 — FX passes no compositor HDR** (glow/bloom/blur/vignette/levels/hue-shift).
    Reuso obrigatório do compositor GPU do Painter (`ph2d-painter-effects`). ⚠️ **Cross-module: PARE
    e reporte ao Enio antes de começar** — é decisão de arquitetura, não fan-out.

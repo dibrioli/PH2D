@@ -89,6 +89,8 @@ fn the_kind_table_is_the_rack_layout() {
             "Ring Mod",
             "Pitch Shift",
             "Formant Shift",
+            "Vocoder",
+            "Granular",
             "Harmonizer",
         ]
     );

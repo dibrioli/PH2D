@@ -30,6 +30,7 @@ mod deess;
 mod deplosive;
 mod dynamics;
 mod formant;
+mod granular;
 mod harmonize;
 mod lpc;
 mod modulation;
@@ -38,6 +39,7 @@ mod space;
 mod tail;
 mod tone;
 mod transient;
+mod vocoder;
 mod warmup;
 pub(crate) mod wsola;
 
@@ -54,11 +56,13 @@ use deess::deess;
 use deplosive::deplosive;
 use dynamics::{compress, gate, leveler, limit};
 use formant::formant_shift;
+use granular::{GRAIN_BYPASS_MIX, granular};
 use harmonize::harmonize;
 use modulation::{auto_pan, doubler, modulated_delay, phaser, ring_mod, trance_gate, tremolo};
 use multiband::multiband;
 use tone::{HUM_Q, biquad_all, bitcrush, dehum, distortion, exciter, haas, saturate, stereo_width};
 use transient::{TRANSIENT_BYPASS, transient_shape};
+use vocoder::{VOC_BYPASS_MIX, vocoder};
 use wsola::{PITCH_BYPASS_ST, pitch_shift};
 
 /// Chorus base delay (ms): a detuned doubling sits well behind the dry signal.
@@ -368,6 +372,42 @@ pub enum Effect {
         /// Harmony level (0 = dry … 1 = an even blend of the three voices).
         mix: f32,
     },
+    /// **Vocoder**: the voice's spectral envelope, played by a carrier this effect
+    /// synthesises — a bank of band-pass filters follows the level of each band of the
+    /// input and imposes it on the same band of the carrier. The formants (the vowels)
+    /// survive; the pitch does not, because the excitation has been replaced.
+    ///
+    /// `breath` crossfades the carrier from a band-limited **saw** (0 = the robot) to
+    /// **noise** (1 = a whisper, which is what unvoiced excitation through a vocal tract
+    /// physically is). That is why neither Robotize nor Whisper is a separate row: they
+    /// are this effect at the two ends of one knob. Neutral at `mix` 0.
+    Vocoder {
+        /// The carrier's pitch (Hz) — the note the robot speaks on. Quantised to a whole
+        /// number of samples per period (a few cents; a robot has no melody).
+        carrier_hz: f32,
+        /// Filters in the bank. Fewer is a coarser, more synthetic vowel.
+        bands: u32,
+        /// Carrier blend: 0 = sawtooth (voiced), 1 = noise (whispered).
+        breath: f32,
+        /// Dry to wet crossfade (0..1).
+        mix: f32,
+    },
+    /// **Granular**: the clip cut into overlapping grains and put back down out of order —
+    /// a one-shot becomes a texture (a footstep into gravel, a voice into a crowd).
+    /// `scatter` is how far a grain may wander from where it was taken, `pitch_st` how far
+    /// it may detune. Not [`wsola`](super::wsola) with a hat on: that engine *synchronises*
+    /// its chunks to hide the seams, and this one scatters them because the seams are the
+    /// point. Neutral at `mix` 0.
+    Granular {
+        /// Grain length (ms). Short is a stutter, long is a smear.
+        grain_ms: f32,
+        /// How far a grain may wander in time (0..1 of ±200 ms).
+        scatter: f32,
+        /// How far a grain may detune (± semitones).
+        pitch_st: f32,
+        /// Dry to wet crossfade (0..1).
+        mix: f32,
+    },
     /// **De-Click**: repairs clicks, ticks and crackle — the rack's one *restoration*
     /// tool. A click is what the audio's own model could not predict, so the detector
     /// hunts outliers in the prediction residual and the repair re-derives those
@@ -549,6 +589,20 @@ impl Effect {
             Effect::Harmonizer { v1_st, v2_st, mix } if mix > MOD_BYPASS => {
                 harmonize(data, v1_st, v2_st, mix)
             }
+            // Fully dry is the neutral point: the carrier is never even synthesised.
+            Effect::Vocoder {
+                carrier_hz,
+                bands,
+                breath,
+                mix,
+            } if mix > VOC_BYPASS_MIX => vocoder(data, carrier_hz, bands, breath, mix),
+            // Fully dry: the grains are never even scheduled.
+            Effect::Granular {
+                grain_ms,
+                scatter,
+                pitch_st,
+                mix,
+            } if mix > GRAIN_BYPASS_MIX => granular(data, grain_ms, scatter, pitch_st, mix),
             Effect::DeClick {
                 sensitivity,
                 width_secs,
@@ -613,6 +667,8 @@ impl Effect {
                 Effect::PitchShift { semitones, mix } | Effect::FormantShift { semitones, mix }
                     if semitones.abs() <= PITCH_BYPASS_ST || mix <= MOD_BYPASS)
             || matches!(*self, Effect::Harmonizer { mix, .. } if mix <= MOD_BYPASS)
+            || matches!(*self, Effect::Vocoder { mix, .. } if mix <= VOC_BYPASS_MIX)
+            || matches!(*self, Effect::Granular { mix, .. } if mix <= GRAIN_BYPASS_MIX)
             || matches!(*self, Effect::DeClick { sensitivity, .. }
                 if sensitivity <= DECLICK_BYPASS_SENS)
             || matches!(*self, Effect::DeClip { amount, .. } if amount <= DECLIP_BYPASS_AMOUNT)

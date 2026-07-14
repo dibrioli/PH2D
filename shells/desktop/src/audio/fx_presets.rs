@@ -181,6 +181,27 @@ static VOICE_EQ: [FStage; 4] = [
 ];
 // Breath with no body behind it: cut the chest, exaggerate the air the exciter makes,
 // and squash the dynamics flat so every consonant sits right against the ear.
+// The vocoder's two ends, as presets rather than rows -- which is the whole point of `Breath`.
+// "Robot" (above) is the CHEAP robot: ring mod + grit, metallic and inharmonic. This is the other
+// one, the Kraftwerk one: the voice's formants carried by a sawtooth, so the words survive and the
+// pitch is the machine's.
+static VOCODER_ROBOT: [FStage; 2] = [
+    stage(
+        "Vocoder",
+        &[ovr("Carrier", 110.0), ovr("Bands", 20.0), ovr("Mix", 1.0)],
+    ),
+    stage("High Shelf", &[ovr("Freq", 6_000.0), ovr("Gain", 4.0)]),
+];
+// ...and with a NOISE carrier the same engine whispers, because unvoiced excitation through a
+// vocal tract is what whispering physically is. (The EQ-built "Whisper" below is the other
+// approach -- it thins and excites a voice that is still phonating; this one actually unvoices it.)
+static VOCODER_WHISPER: [FStage; 2] = [
+    stage(
+        "Vocoder",
+        &[ovr("Bands", 24.0), ovr("Breath", 1.0), ovr("Mix", 1.0)],
+    ),
+    stage("High-Pass", &[ovr("Cutoff", 200.0)]),
+];
 static WHISPER: [FStage; 4] = [
     stage("High-Pass", &[ovr("Cutoff", 250.0)]),
     stage("Exciter", &[ovr("Freq", 4_000.0), ovr("Amount", 0.9)]),
@@ -227,7 +248,7 @@ static CHOIR: [FStage; 2] = [
     ),
 ];
 
-static FACTORY: [Preset; 21] = [
+static FACTORY: [Preset; 23] = [
     Preset {
         name: "Voice Cleanup",
         stages: &VOICE_CLEANUP,
@@ -267,6 +288,14 @@ static FACTORY: [Preset; 21] = [
     Preset {
         name: "Robot",
         stages: &ROBOT,
+    },
+    Preset {
+        name: "Vocoder",
+        stages: &VOCODER_ROBOT,
+    },
+    Preset {
+        name: "Vocoder Whisper",
+        stages: &VOCODER_WHISPER,
     },
     Preset {
         name: "Megaphone",

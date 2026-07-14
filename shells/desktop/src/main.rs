@@ -186,6 +186,11 @@ impl App {
             if std::env::var_os("PH2D_AUDIO_MULTIBAND_SMOKE").is_some() {
                 a.editor_multiband_smoke();
             }
+            // Stage the W4 voice family: synthesised speech + a rack holding the Vocoder at
+            // both ends of its Breath knob (robot / whisper) and the Granular.
+            if std::env::var_os("PH2D_AUDIO_VOICE_SMOKE").is_some() {
+                a.editor_voice_smoke();
+            }
         }
         Self {
             window: None,

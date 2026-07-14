@@ -17,7 +17,7 @@
 
 use super::{
     CHORUS_BASE_MS, Effect, FLANGER_BASE_MS, HUM_Q, VIBRATO_BASE_MS, autowah, biquad_warmup,
-    declick, declip, deess, formant, multiband, tone, wsola,
+    declick, declip, deess, formant, granular, multiband, tone, vocoder, wsola,
 };
 
 impl Effect {
@@ -118,6 +118,24 @@ impl Effect {
             // twice as long as the one `biquad_warmup` models.
             Effect::Multiband { .. } => {
                 (2 * biquad_warmup(multiband::XOVER_LOW_HZ, multiband::LR_Q, sample_rate, TAUS))
+                    .min(cap)
+            }
+            // The vocoder's whole analysis is a filter BANK, and its lowest band is the
+            // longest-ringing thing in it. Without a pre-roll the region opens on the bank's
+            // own transient and the first vowel is built from a filter settling, not a voice.
+            Effect::Vocoder { bands, .. } => biquad_warmup(
+                vocoder::VOC_LO_HZ,
+                vocoder::bank_q(bands as usize),
+                sample_rate,
+                TAUS,
+            )
+            .min(cap),
+            // A grain is allowed to reach BACKWARDS for its source (that is what scatter is),
+            // so a region's first grains read audio from before it. Without the pre-roll they
+            // would read silence and the cloud would fade in — pre-roll exactly as far back as
+            // a grain is allowed to wander.
+            Effect::Granular { scatter, .. } => {
+                ((scatter.clamp(0.0, 1.0) * granular::SCATTER_MAX_S * sample_rate as f32) as usize)
                     .min(cap)
             }
             // The compressor and the gate prime their own envelope on the region's

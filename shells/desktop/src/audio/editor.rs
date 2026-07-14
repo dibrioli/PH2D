@@ -22,6 +22,7 @@ mod multiband_smoke;
 pub(crate) mod pieces;
 pub(crate) mod spectral;
 mod variation;
+mod voice_smoke;
 
 use super::AudioSystem;
 use ph2d_audio::PlayParams;

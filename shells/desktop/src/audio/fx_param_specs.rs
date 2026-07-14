@@ -234,6 +234,26 @@ pub(super) static HARMONIZER: [FxParamSpec; 3] = [
     spec("Voice 2", -12.0, 12.0, false, 7.0, "st", false),
     spec("Mix", 0.0, 1.0, false, 0.0, "", false),
 ];
+// Mix is the arm (0 = dry). Carrier is the robot's note; Breath crossfades the carrier from a
+// sawtooth (0 = voiced = ROBOT) to noise (1 = unvoiced = WHISPER) -- which is why neither is a
+// separate row. Bands is the bank's resolution: coarse is more synthetic, fine resynthesises the
+// input. See `ph2d_audio_edit::fx::vocoder`.
+pub(super) static VOCODER: [FxParamSpec; 4] = [
+    spec("Carrier", 50.0, 400.0, true, 110.0, "Hz", false),
+    spec("Bands", 4.0, 32.0, false, 16.0, "", true),
+    spec("Breath", 0.0, 1.0, false, 0.0, "", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
+// Mix is the arm. Scatter DEFAULTS TO A REAL VALUE on purpose: at scatter 0 (and no detune) the
+// grains land where they came from and a Hann window at half-hop sums to exactly 1, so a fully-wet
+// granular would be a byte-perfect no-op and turning Mix up would do nothing at all. See
+// `ph2d_audio_edit::fx::granular`.
+pub(super) static GRANULAR: [FxParamSpec; 4] = [
+    spec("Grain", 10.0, 200.0, true, 60.0, "ms", false),
+    spec("Scatter", 0.0, 1.0, false, 0.35, "", false),
+    spec("Pitch", 0.0, 12.0, false, 0.0, "st", false),
+    spec("Mix", 0.0, 1.0, false, 0.0, "", false),
+];
 // Sensitivity is the arm: at 0 the detector finds nothing, so the repairer repairs
 // nothing. A restoration tool must be ASKED for — "very insensitive" is not the same
 // promise as "off", and the rack's neutral point means off.

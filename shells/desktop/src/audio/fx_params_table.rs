@@ -14,7 +14,7 @@ use super::fx_params::{FxCommand, FxKind};
 /// The effects the selector cycles, in order — grouped tone → dynamics → character
 /// → space → modulation, the way a rack is laid out. Each row's `params` points at a
 /// spec array in the sibling [`super::fx_param_specs`].
-pub(crate) static KINDS: [FxKind; 40] = [
+pub(crate) static KINDS: [FxKind; 42] = [
     FxKind {
         name: "Low-Pass",
         params: &LOW_PASS,
@@ -470,6 +470,34 @@ pub(crate) static KINDS: [FxKind; 40] = [
             FxCommand::Plain(Effect::FormantShift {
                 semitones: v[0],
                 mix: v[1],
+            })
+        },
+    },
+    FxKind {
+        name: "Vocoder",
+        params: &VOCODER,
+        arms: &[3], // Mix
+        // Sits with the voice transforms: it is the one that throws the excitation away and
+        // keeps only the vocal tract. Breath at 0 is the robot, at 1 the whisper.
+        build: |v| {
+            FxCommand::Plain(Effect::Vocoder {
+                carrier_hz: v[0],
+                bands: v[1] as u32,
+                breath: v[2],
+                mix: v[3],
+            })
+        },
+    },
+    FxKind {
+        name: "Granular",
+        params: &GRANULAR,
+        arms: &[3], // Mix
+        build: |v| {
+            FxCommand::Plain(Effect::Granular {
+                grain_ms: v[0],
+                scatter: v[1],
+                pitch_st: v[2],
+                mix: v[3],
             })
         },
     },

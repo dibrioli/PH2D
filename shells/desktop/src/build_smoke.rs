@@ -6,12 +6,15 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=9` — o **ESCAPE**: estrela → **círculo**, 5 passos — o par que o Enio testou
+//!   à mão. Clique **Rotate Match** e veja a fase rodar em passos **finos** (36°/toque, as 10 quinas
+//!   da estrela). O **Reverse Match** foi **removido** (inverter o winding colapsava a forma).
 //! - `PH2D_BUILD_SMOKE=8` — a cena do **GIRO**: quadrado → **círculo**, 5 passos. É o par do 2º
 //!   smoke do Enio (*"o porquê da rotação?"*), e ele teve de desenhar o círculo **à mão** porque a
 //!   cena não o oferecia. As quinas têm de caminhar **reto** para fora — sem rodar 45° e voltar.
 //! - `PH2D_BUILD_SMOKE=7` — a cena do **BLEND**: um quadrado e uma estrela, selecionados, com
-//!   3 passos já criados entre eles. Clique **Rotate Match** / **Reverse Match** no painel para
-//!   ver a correspondência mudar **na hora** (é o escape do dia em que o automático errar).
+//!   3 passos já criados entre eles. Clique **Rotate Match** no painel para ver a correspondência
+//!   ciclar entre alinhamentos discretos (quinas nos dois lados) — sem colapsar.
 //! - `PH2D_BUILD_SMOKE=1` — a cena, selecionada, no modo Build. **Passe o mouse** (o realce
 //!   segue o cursor), **arraste** para unir, **Alt+arraste** para apagar.
 //! - `PH2D_BUILD_SMOKE=2` — idem, e o gesto é dirigido por CÓDIGO: o dedo pousa e arrasta por
@@ -100,6 +103,28 @@ impl crate::App {
                     [200, 120, 80],
                 ));
             }
+            // A cena do ESCAPE: estrela → CÍRCULO — o par que o Enio testou à mão para conferir
+            // Rotate/Reverse. Um lado tem quinas (a estrela), o outro é liso (o círculo): é o caso
+            // em que Rotate roda por 36°/toque (as 10 quinas) e o Reverse foi removido.
+            3 if level == 9 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                scene.push_path(shape(
+                    ShapeKind::Star,
+                    [-3.4, -1.0],
+                    [-1.4, 1.0],
+                    &[5.0, 0.45, 0.0],
+                    [70, 110, 190],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Ellipse,
+                    [1.4, -1.0],
+                    [3.4, 1.0],
+                    &[],
+                    [200, 120, 80],
+                ));
+            }
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
@@ -163,6 +188,42 @@ impl crate::App {
                      As quinas tem de sair RETO, sem rodar."
                 );
             }
+            // ESCAPE: estrela -> circulo, blendado. Clique Rotate Match (secao Blend) e veja a
+            // correspondencia rodar em passos FINOS (36/toque). O Reverse Match nao existe mais.
+            8 if level == 9 => {
+                let ids: Vec<u64> = self
+                    .gfx
+                    .as_ref()
+                    .expect("gfx")
+                    .vec_scene
+                    .paths()
+                    .iter()
+                    .map(|p| p.id)
+                    .collect();
+                self.vec_pen.select_many(&ids);
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
+                let Some(gfx) = self.gfx.as_mut() else { return };
+                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                crate::vec_blend::apply(
+                    &mut gfx.vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    &xf,
+                    &mut self.vec_blend,
+                    crate::vec_blend::BlendAction::Run,
+                    5,
+                    true,
+                );
+                self.vec_restack = self
+                    .vec_blend
+                    .as_ref()
+                    .map(crate::vec_blend::BlendSession::stack);
+                self.any_input_this_frame = true;
+                eprintln!(
+                    "[blend-smoke] estrela -> CIRCULO, 5 passos. Clique Rotate Match: a fase roda \
+                     36 graus/toque (10 quinas da estrela), nao 90. Reverse Match foi removido."
+                );
+            }
             // BLEND: seleciona as duas e roda o blend pelo caminho REAL (a mesma função que o
             // botão do painel chama). O artista já abre o app com os passos na tela.
             8 if level == 7 => {
@@ -196,7 +257,7 @@ impl crate::App {
                 self.any_input_this_frame = true;
                 eprintln!(
                     "[blend-smoke] quadrado -> estrela, 3 passos. No painel (secao Blend): \
-                     Rotate Match / Reverse Match re-rodam na hora."
+                     Rotate Match cicla os alinhamentos das quinas na hora (sem colapsar)."
                 );
             }
             // Seleciona as três e entra no Build — o estado em que o Enio começa a testar.

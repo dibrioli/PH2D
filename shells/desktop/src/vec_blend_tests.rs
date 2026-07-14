@@ -4,7 +4,7 @@
 //!
 //! 1. as **fontes sobrevivem** (é um Blend, não uma booleana — ela é que consome os operandos);
 //! 2. os passos nascem **entre** elas, no z delas;
-//! 3. o **escape re-roda** (Rotate/Reverse trocam os passos por outros, sem o artista desfazer);
+//! 3. o **escape re-roda** (o Rotate troca os passos por outros, sem o artista desfazer);
 //! 4. cada ação é **UM** passo de undo;
 //! 5. sem duas formas fechadas, o botão **não faz nada** (e não corrompe a cena).
 
@@ -133,26 +133,10 @@ fn rotate_match_replaces_the_steps_in_place() {
     );
 }
 
-/// **Reverse Match** também re-roda, e inverte o sentido de percurso de B.
-#[test]
-fn reverse_match_flips_the_winding_and_re_runs() {
-    let (mut scene, xf, mut pen, ..) = two_shapes();
-    let mut session = None;
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 2);
-    let count = scene.paths().len();
-
-    run(
-        &mut scene,
-        &mut pen,
-        &xf,
-        &mut session,
-        BlendAction::Reverse,
-        2,
-    );
-    let s = session.as_ref().unwrap();
-    assert!(s.opts.reverse, "o Reverse tem de inverter o sentido");
-    assert_eq!(scene.paths().len(), count, "trocou, não empilhou");
-}
+// (O "Reverse Match" foi REMOVIDO 2026-07-14: inverter o sentido de percurso de B inverte o
+// winding, e interpolar entre windings opostos colapsa a forma no meio — colapsava em 100% dos
+// pares do catálogo. O sentido correto já é escolhido automaticamente pelo motor. O gate do winding
+// oposto vive no motor: `ph2d_vec_blend::tests::opposite_winding_does_not_collapse_the_middle`.)
 
 /// **Uma ação = UM passo de undo** (inclusive o re-rodar).
 ///
@@ -229,7 +213,6 @@ fn every_painted_blend_button_maps_to_an_action() {
     for (id, want) in [
         (ph2d_editor::ids::VECTOR_BLEND_RUN, BlendAction::Run),
         (ph2d_editor::ids::VECTOR_BLEND_ROTATE, BlendAction::Rotate),
-        (ph2d_editor::ids::VECTOR_BLEND_REVERSE, BlendAction::Reverse),
     ] {
         assert_eq!(action_for_id(id, true), Some(want));
     }

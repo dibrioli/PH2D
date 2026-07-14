@@ -760,12 +760,46 @@ inteiro, então nenhum polígono regular consegue produzir 16°, e a cerca fica 
 `the_corner_threshold_does_not_sit_on_a_polygon_the_catalog_can_make` **enumera** N até 128 e é ele
 que impede o próximo a mexer no número de reintroduzir o empate.
 
-### Lição — **a pergunta certa era "o que é uma FEATURE?"**
+### O Reverse Match era um botão que NUNCA ajudava (smoke seguinte do Enio)
+
+O Enio testou estrela→círculo e pediu para conferir **Rotate/Reverse** ("resultados estranhos"). O
+probe mostrou os intermediários **rasgados/colapsados** no meio. Medido, por par de formas:
+
+| | `min\|área\|` ao longo de t |
+|---|---|
+| estrela→círculo, **Reverse** | **0,026** (colapso total) |
+| quadrado→estrela, **Reverse** | **0,040** |
+| círculo→círculo, **Reverse** | **0,000** |
+
+**O Reverse inverte o sentido de percurso de B, o que inverte o WINDING** (área +π → −π no círculo
+final). Interpolar de um contorno CCW (a estrela) para um CW (o círculo revertido) cruza winding zero
+no meio → colapso. **Todo o catálogo nasce com o mesmo winding**, então o botão colapsava em 100% dos
+casos. E era **redundante**: quando B de fato tem winding oposto (uma forma importada ao contrário), o
+`search` já testa os dois sentidos e fica com o de menor custo — provei dando uma B em CW e o auto
+escolheu `reversed=true` sozinho, meio limpo. **Removido** (botão + ação + campo `BlendOpts.reverse` +
+const `VECTOR_BLEND_REVERSE`). Nenhuma ferramenta profissional (Illustrator, GSAP) tem um "reverse"
+que inverte winding — elas detectam a direção automaticamente, que é o que o nosso auto já faz.
+
+### O Rotate Match tinha o quantum errado no caso suave
+
+Estrela→círculo, o quantum era `1/âncoras-do-círculo = 1/4 = 90°/toque`, e o 2º toque (180°)
+colapsava. As âncoras do círculo são **arbitrárias** (artefato de cozer a elipse em 4 cúbicas). O
+quantum agora vem das **quinas da forma que TEM quinas** (a estrela, 10 → 36°/toque): passos finos, a
+torção cresce em vez de colapsar de uma vez. A torção em rotação grande é intrínseca ao lerp de
+coordenadas (o gap Sederberg/Alexa, ainda aberto). Gate: `rotate_steps_by_the_corners_not_by_the_
+smooth_shapes_anchors` (nos dois sentidos).
+
+### Lição — **a pergunta certa era "o que é uma FEATURE?"** — e um escape que nunca ajuda é um enfeite
 
 Os dois handoffs anteriores desta linha apontaram um suspeito nº 1, e os dois estavam errados. O que
 resolveu foi **medir**: imprimir a virada de cada âncora do catálogo, ver `(0, 1)` nas quatro do
 círculo, e entender que **não havia nada ali para casar**. O defeito não era um erro de conta — era
 uma **pergunta mal formulada** ao dado.
+
+E o Reverse ensina o corolário do escape: **um botão de escape que produz lixo em 100% dos casos não é
+um escape — é um enfeite que engana.** O sinal foi a MEDIÇÃO (colapso em 3 pares distintos), não a
+leitura do código. Quando um controle "tem resultados estranhos", meça-o em vários casos antes de
+calibrá-lo: pode ser que ele nunca devesse existir.
 
 E dois corolários que valem além do blend:
 

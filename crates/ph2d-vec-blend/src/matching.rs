@@ -80,23 +80,22 @@ pub(crate) fn search(oa: &Outline, ob: &Outline, opts: BlendOpts) -> Corresponde
     #[cfg(test)]
     SEARCH_COUNT.with(|c| c.set(c.get() + 1));
     let ob_rev = ob.reversed();
-    // **O SENTIDO é decidido pelo automático, e o `offset` não o re-decide.**
+    // **O SENTIDO é SEMPRE o automático** (o de menor custo de percurso), e não um toggle do
+    // usuário.
     //
-    // Não é arrumação: quando os dois andavam juntos, rodar a correspondência fazia o motor
-    // trocar de sentido nas costas do artista — e numa forma simétrica (uma elipse) o resultado
-    // físico dava no MESMO. O botão de escape parecia não fazer nada, que é o pior defeito
-    // possível num escape.
+    // Houve um "Reverse Match" manual, e ele foi REMOVIDO por ser um bug de design: inverter o
+    // sentido de percurso de B inverte o WINDING do resultado, e interpolar entre dois windings
+    // opostos **colapsa a forma no meio do caminho** (a área passa por zero). Como todo o catálogo
+    // nasce com o mesmo winding, o botão colapsava em 100% dos casos — provado em estrela→círculo,
+    // quadrado→estrela e círculo→círculo. E ele era **redundante**: quando B de fato tem winding
+    // oposto (uma forma importada/desenhada ao contrário), este `auto_reversed` já a percorre no
+    // sentido certo sozinho. O gate `opposite_winding_does_not_collapse_the_middle` prova isso.
     let (cost_fwd, knots_fwd) = align(oa, ob, 0);
     let (cost_rev, knots_rev) = align(oa, &ob_rev, 0);
-    let auto_reversed = cost_rev < cost_fwd;
-    let reversed = auto_reversed != opts.reverse; // XOR: o toggle do usuário sobre o automático
+    let reversed = cost_rev < cost_fwd;
 
     if opts.offset == 0 {
-        let knots = if reversed == auto_reversed {
-            if auto_reversed { knots_rev } else { knots_fwd }
-        } else {
-            align(oa, if reversed { &ob_rev } else { ob }, 0).1
-        };
+        let knots = if reversed { knots_rev } else { knots_fwd };
         return Correspondence { knots, reversed };
     }
     let target = if reversed { &ob_rev } else { ob };
@@ -239,10 +238,21 @@ fn phase_only(oa: &Outline, ob: &Outline, offset: i32) -> (f64, Vec<(f64, f64)>)
     let p = (0..PHASE_STEPS).fold(0, |best, i| if cost[i] < cost[best] { i } else { best });
     let phi = (p as f64 + parabolic(&cost, p)) / PHASE_STEPS as f64;
 
-    // **O escape manual, no caso suave.** Não há nós a rodar — então o quantum é uma âncora de B
-    // (1/m do perímetro dela): o artista sente um passo do mesmo tamanho que sentiria numa forma
-    // com quinas, e quatro toques dão a volta num círculo do catálogo.
-    let m = ob.segs.len().max(1);
+    // **O escape manual, no caso suave.** Aqui um dos dois lados NÃO tem quina, então não há nós
+    // discretos a ciclar: girar a fase só torce o morph (o lado liso não oferece posição de
+    // encaixe). O quantum vem das **quinas da forma que TEM quinas** — são elas que o artista
+    // percebe como pontos de ajuste —, e não das âncoras arbitrárias da lisa.
+    //
+    // O smoke do Enio (estrela→círculo): o quantum era `1/âncoras-do-círculo` = **1/4 = 90°/toque**,
+    // e o 2º toque (180°) **colapsava** a forma. Pelas 10 quinas da estrela dá 36°/toque — passos
+    // finos, e o artista sente a torção crescer em vez de colapsar de uma vez. A torção em rotação
+    // grande é intrínseca ao lerp de coordenadas (o gap Sederberg/Alexa, ainda aberto).
+    let corners = features(oa).len().max(features(ob).len());
+    let m = if corners > 0 {
+        corners
+    } else {
+        ob.segs.len().max(1) // as duas lisas (círculo→círculo): girar não muda nada visível
+    };
     let phi = wrap(phi + f64::from(offset) / m as f64);
     let knots = vec![(0.0, phi)];
     (travel_cost(oa, ob, &knots), knots)

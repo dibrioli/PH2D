@@ -54,15 +54,23 @@ const COST_SAMPLES: usize = 64;
 
 /// O **escape manual** — o `shapeIndex` do GSAP, o *Map Nodes* do Corel.
 ///
-/// O automático acerta a maioria das vezes e erra em algumas; quando erra, a forma "gira" ou
-/// "vira do avesso" no meio do caminho. Estes dois campos são a saída, e existem porque **toda**
-/// ferramenta séria do mercado teve de ter uma.
+/// O automático acerta a maioria das vezes e erra em algumas; quando erra, a forma "gira" no meio
+/// do caminho. O `offset` é a saída, e existe porque **toda** ferramenta séria do mercado teve de
+/// ter uma.
+///
+/// # Onde foi o `reverse`?
+///
+/// Houve um segundo campo, `reverse` (o "Reverse Match" do painel), e ele foi **removido**: inverter
+/// o sentido de percurso de B inverte o **winding** do resultado, e interpolar entre windings
+/// opostos **colapsa a forma no meio**. Como o catálogo nasce todo com o mesmo winding, o botão
+/// colapsava sempre. E era redundante — o sentido de menor custo já é escolhido automaticamente
+/// ([`matching::search`]), inclusive quando B tem winding oposto de verdade.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct BlendOpts {
-    /// Roda a correspondência em `offset` âncoras de B. `0` = o que o automático escolheu.
+    /// Roda a correspondência em `offset` posições. `0` = o que o automático escolheu. Só tem
+    /// efeito quando **as duas** formas têm quinas (alinhamentos discretos a ciclar); contra um
+    /// contorno suave (um círculo) não há posições distintas, e girar só torce.
     pub offset: i32,
-    /// Inverte o sentido de percurso de B. É o que conserta a forma que sai do avesso.
-    pub reverse: bool,
 }
 
 /// Um segmento do contorno, **com a parametrização normalizada**.
@@ -308,7 +316,7 @@ use matching::{map_backward, map_forward, search};
 /// dentro do `morph`, um blend de 10 passos a buscava **10 vezes**, e chegava dez vezes à mesma
 /// resposta. Depois que a busca de fase entrou (ela varre 256 fases contra 256 amostras), essas
 /// nove buscas jogadas fora passaram a custar **5,9 ms** por blend, contra 0,18 ms do caminho da
-/// DP — e o artista re-roda o blend a cada toque em Steps / Rotate / Reverse.
+/// DP — e o artista re-roda o blend a cada toque em Steps / Rotate.
 ///
 /// E é a **mesma** estrutura que o **morph vivo** (o `t` animável, o próximo da fila) precisa: o
 /// plano é montado quando a relação muda, e cada frame só avalia um `t`.

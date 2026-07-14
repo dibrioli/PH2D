@@ -347,8 +347,8 @@ pub(crate) struct HeroLive {
 
 pub(crate) struct App {
     /// A sessão de **Blend** aberta (as duas fontes + o escape + os passos produzidos).
-    /// É ela que faz *Rotate Match* / *Reverse Match* re-rodarem na hora, em vez de o artista
-    /// ter de desfazer e adivinhar (`crate::vec_blend`).
+    /// É ela que faz o *Rotate Match* re-rodar na hora, em vez de o artista ter de desfazer e
+    /// adivinhar (`crate::vec_blend`).
     pub(crate) vec_blend: Option<crate::vec_blend::BlendSession>,
     /// A sequência de z que o Blend pediu (**fundo → topo**), à espera das ENTIDADES.
     ///

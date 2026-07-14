@@ -144,6 +144,32 @@ peça-ponto nenhuma para trás.
 `features` devolvendo todas as âncoras · fase só nas âncoras · `cut` sem o snap na origem · sem o
 refino parabólico · `TURN_WEIGHT = 0` · quadro pela média das âncoras.
 
+### 1.7 — Rotate / Reverse Match (o smoke SEGUINTE do Enio: "resultados estranhos")
+
+O Enio testou **estrela → círculo** e viu os intermediários **rasgados/colapsados**; pediu para
+conferir os dois botões de escape. Medido, por par de formas, o menor `|área|` ao longo de `t`:
+
+| | Reverse | (default) |
+|---|---|---|
+| estrela → círculo | **0,026** (colapso) | 1,32 (limpo) |
+| quadrado → estrela | **0,040** | 1,32 |
+| círculo → círculo | **0,000** | π |
+
+- **Reverse Match REMOVIDO.** Inverter o sentido de percurso de B inverte o **winding** (a área do
+  círculo final vira **−π**), e interpolar entre windings opostos cruza área zero no meio → colapso.
+  Todo o catálogo nasce com o mesmo winding, então o botão colapsava **sempre**. E era **redundante**:
+  dei uma B em sentido horário e o `search` escolheu `reversed=true` **sozinho**, meio limpo — o
+  sentido correto já é automático. Nenhuma ferramenta profissional tem um "reverse" que inverte
+  winding. Removido de 9 sítios (campo `BlendOpts.reverse`, ação, botão, const, gate…); a lente de
+  completude varreu e o sweep de código ficou limpo.
+- **Rotate Match: quantum das QUINAS.** Era `1/âncoras-do-círculo = 90°`/toque (as âncoras do círculo
+  são artefato de cozer a elipse), e o 2º toque (180°) colapsava. Agora `1/quinas = 36°` — passos
+  finos. A torção em rotação **grande** segue intrínseca ao lerp (o gap Sederberg/Alexa). Gate nos
+  **dois sentidos** (estrela→círculo e círculo→estrela: o `max(features)` é simétrico).
+
+Gates novos: `rotate_steps_by_the_corners_not_by_the_smooth_shapes_anchors` (mutation-tested). Cena de
+smoke **`PH2D_BUILD_SMOKE=9`** (estrela → círculo, para clicar Rotate). BUGS #17.
+
 ---
 
 ## §2 — ⚠️ COMECE AQUI: o SMOKE (pendente)
@@ -159,9 +185,9 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
 As quinas do quadrado têm de caminhar **RETO para fora**, derretendo no círculo. Se elas rodarem
 (45°, e voltarem), o defeito voltou.
 
-Cenas irmãs: `PH2D_BUILD_SMOKE=7` (quadrado → estrela, 3 passos — o caso da DP, com **Rotate
-Match** / **Reverse Match** no painel re-rodando na hora) · `=1` (Shape Builder) · `=6` (a repro do
-undo).
+Cenas irmãs: `PH2D_BUILD_SMOKE=9` (estrela → círculo — o escape, **Rotate Match** em passos finos; o
+**Reverse Match** foi removido) · `=7` (quadrado → estrela — o caso da DP, Rotate ciclando as quinas
+sem colapsar) · `=1` (Shape Builder) · `=6` (a repro do undo).
 
 **Se ele reprovar:** meça **antes** de teorizar. Os três handoffs anteriores desta linha apontaram um
 suspeito nº 1 cada um, e os três estavam **errados**. O que resolveu, todas as vezes, foi montar a
@@ -244,11 +270,12 @@ colinear/área-zero · coords 1e-9/1e-12 · NaN/inf num handle (devolve `None` o
   panica dentro do kurbo. Idêntico em `main`. Um documento em unidades grandes trava no clique do
   Blend. O conserto é tornar o eps **relativo ao tamanho da forma** — mas mexe no motor todo, e não é
   desta passagem.
-- **[PRÉ-EXISTENTE, UX] `Reverse Match` colapsa a área a ZERO** em forma simétrica (quadrado→quadrado,
-  círculo→círculo): é a consequência do lerp de coordenadas, mas o artista clica e a forma **some**. E
-  **`Rotate Match` fica inerte** numa forma com muitos segmentos (o quantum é 1/m do perímetro de B —
-  500 segmentos ⇒ um toque move 3e-5, invisível). Os dois são o horizonte as-rigid-as-possible (§5,
-  Sederberg/Alexa), não bugs desta passagem.
+- **[RESOLVIDO nesta passagem] `Reverse Match` colapsava a área a ZERO.** Era um bug de design (inverter
+  o winding colapsa qualquer par de mesmo winding = todo o catálogo), e o sentido correto já é
+  automático — **removido** (§1.7). O **quantum do Rotate** também: vinha das âncoras da forma
+  lisa (90°/toque, colapsava no 2º); agora vem das quinas (36°). A torção em rotação GRANDE segue
+  intrínseca ao lerp de coordenadas (o horizonte as-rigid-as-possible, Sederberg/Alexa) — não é bug, é
+  o gap do motor.
 - ⚠️ **Os botões Arrange de z-order (To Front / Backward / …) continuam MORTOS.** Eles chamam
   `VecScene::reorder_path`, que muta a ordem do **vetor da cena** — e a projeção de z reescreve essa
   ordem a partir da **árvore** a cada frame (ADR-0110). **Quem quer mandar no z escreve no

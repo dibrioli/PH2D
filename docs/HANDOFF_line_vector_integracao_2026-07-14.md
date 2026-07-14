@@ -118,8 +118,11 @@ deu. Onde **não** deu, está aqui.
 ```
 VECTOR_MODE_BUILD
 VECTOR_SECTION_BLEND · VECTOR_BLEND_RUN · VECTOR_BLEND_STEPS
-VECTOR_BLEND_STEPS_NUM · VECTOR_BLEND_ROTATE · VECTOR_BLEND_REVERSE
+VECTOR_BLEND_STEPS_NUM · VECTOR_BLEND_ROTATE · VECTOR_BLEND_STACK_UP
 ```
+
+(O `VECTOR_BLEND_REVERSE` foi **removido** 2026-07-14 — o "Reverse Match" colapsava a forma; ver
+[continuação 14c §1.7](HANDOFF_line_vector_continuacao_2026-07-14c.md).)
 
 Todos são `hash_node_id("vector.…")` — **namespaced**, então colisão de *hash* é improvável. O
 conflito será **textual** (duas linhas apendando no mesmo bloco). Mergiraf resolve; depois **rode

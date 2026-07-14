@@ -178,16 +178,7 @@ fn the_corners_survive_the_correspondence() {
 fn the_manual_escape_actually_rotates_the_correspondence() {
     let (a, b) = (square([0.0, 0.0], 1.0), square([6.0, 0.0], 1.0));
     let auto = morph(&a, &b, 0.5, BlendOpts::default()).expect("auto");
-    let turned = morph(
-        &a,
-        &b,
-        0.5,
-        BlendOpts {
-            offset: 1,
-            reverse: false,
-        },
-    )
-    .expect("rodado uma âncora");
+    let turned = morph(&a, &b, 0.5, BlendOpts { offset: 1 }).expect("rodado uma âncora");
 
     // Rodar a correspondência em uma quina faz o quadrado GIRAR durante a viagem — então o meio
     // deixa de ser o quadrado limpo. É exatamente o poder que o escape dá ao artista (e, aqui,
@@ -567,10 +558,7 @@ fn every_offset_gives_a_different_correspondence_in_the_same_direction() {
     let mut seen: Vec<[f64; 2]> = Vec::new();
     let mut dir: Option<bool> = None;
     for offset in 0..4 {
-        let opts = BlendOpts {
-            offset,
-            reverse: false,
-        };
+        let opts = BlendOpts { offset };
         let (oa, ob) = (Outline::of(&a).unwrap(), Outline::of(&b).unwrap());
         let corr = search(&oa, &ob, opts);
         match dir {

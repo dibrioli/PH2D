@@ -360,7 +360,6 @@ fn populate_ops(store: &mut WidgetStore) {
     );
     button(store, ids::VECTOR_BLEND_RUN);
     button(store, ids::VECTOR_BLEND_ROTATE);
-    button(store, ids::VECTOR_BLEND_REVERSE);
     button(store, ids::VECTOR_BLEND_STACK_UP);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);

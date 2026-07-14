@@ -8,12 +8,17 @@
 //! A correspondência entre duas formas — *que ponto de A vira que ponto de B?* — é o problema
 //! que **ninguém** resolveu (`docs/Vector Module/20_*` §1.3: o GSAP tem `shapeIndex` manual **e**
 //! uma ferramenta de debug que admite o erro; o Corel pede pro usuário clicar um nó em cada
-//! forma). Quando o automático erra, a forma **gira** ou **vira do avesso** no meio do caminho.
+//! forma). Quando o automático erra, a forma **gira** no meio do caminho.
 //!
 //! Um blend destrutivo de tiro único deixaria o artista assim: blend, ver o erro, Ctrl+Z, mexer
 //! num número, blend de novo — às cegas. Então o blend **guarda a sessão** (as duas fontes, as
-//! opções, e o que ele produziu): **Rotate Match** e **Reverse Match** apagam os passos anteriores
-//! e re-rodam na hora. O erro se conserta **à vista**, e é isso que separa o escape de um enfeite.
+//! opções, e o que ele produziu): **Rotate Match** apaga os passos anteriores e re-roda na hora. O
+//! erro se conserta **à vista**, e é isso que separa o escape de um enfeite.
+//!
+//! Houve um **Reverse Match**, removido 2026-07-14: inverter o sentido de percurso de B inverte o
+//! **winding**, e interpolar entre windings opostos **colapsa a forma no meio** — ele colapsava em
+//! 100% dos pares do catálogo, e o sentido correto já é escolhido automaticamente (o motor testa os
+//! dois e fica com o de menor custo). Era um botão que nunca ajudava.
 //!
 //! As **fontes sobrevivem** (ao contrário da booleana, que consome os operandos) — é o Blend do
 //! Illustrator: os passos nascem ENTRE elas, no z delas.
@@ -58,10 +63,8 @@ impl BlendSession {
 pub(crate) enum BlendAction {
     /// **Blend**: (re)cria os passos entre as duas formas selecionadas.
     Run,
-    /// **Rotate Match**: roda a correspondência em uma âncora e re-roda.
+    /// **Rotate Match**: roda a correspondência em uma quina e re-roda.
     Rotate,
-    /// **Reverse Match**: inverte o sentido de percurso de B e re-roda.
-    Reverse,
     /// **Stack Up**: o checkbox — cada passo acima do anterior, ou abaixo. Re-empilha na hora.
     StackUp(bool),
 }
@@ -74,8 +77,6 @@ pub(crate) fn action_for_id(id: ph2d_editor::NodeId, stack_up: bool) -> Option<B
         Some(BlendAction::Run)
     } else if id == ph2d_editor::ids::VECTOR_BLEND_ROTATE {
         Some(BlendAction::Rotate)
-    } else if id == ph2d_editor::ids::VECTOR_BLEND_REVERSE {
-        Some(BlendAction::Reverse)
     } else {
         None
     }
@@ -85,7 +86,7 @@ pub(crate) fn action_for_id(id: ph2d_editor::NodeId, stack_up: bool) -> Option<B
 ///
 /// - **Run** abre uma sessão nova com as duas formas fechadas selecionadas (exige exatamente
 ///   duas: três formas não têm um "entre" definido, e adivinhar seria pior que recusar).
-/// - **Rotate/Reverse** mexem na sessão ABERTA. Sem sessão, não fazem nada — e dizem por quê.
+/// - **Rotate** mexe na sessão ABERTA. Sem sessão, não faz nada — e diz por quê.
 ///
 /// Um passo de undo por ação (o re-rodar é uma edição como outra qualquer).
 #[allow(clippy::too_many_arguments)] // o shell destruturado passa cada ref separada
@@ -141,10 +142,6 @@ pub(crate) fn apply(
         }
         (BlendAction::Rotate, Some(mut s)) => {
             s.opts.offset = s.opts.offset.wrapping_add(1);
-            s
-        }
-        (BlendAction::Reverse, Some(mut s)) => {
-            s.opts.reverse = !s.opts.reverse;
             s
         }
         (BlendAction::StackUp(up), Some(mut s)) => {
@@ -207,10 +204,9 @@ pub(crate) fn apply(
     }
     pen.select_many(&next.produced);
     eprintln!(
-        "[ph2d-vec] blend: {} passo(s) · offset={} reverse={}",
+        "[ph2d-vec] blend: {} passo(s) · offset={}",
         next.produced.len(),
         next.opts.offset,
-        next.opts.reverse
     );
     *session = Some(next);
 }

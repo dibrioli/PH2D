@@ -34,7 +34,7 @@
 
 use super::impasto::H_CEIL;
 use super::region::grow_region;
-use super::sculpt::SculptMode;
+use super::sculpt::{SculptFamily, SculptMode};
 use super::{Region, impasto_settle};
 use crate::tool::PainterTool;
 use std::sync::Arc;
@@ -134,40 +134,53 @@ impl PainterTool {
         if self.paint.sculpt.pre.len() != n || self.paint.sculpt.amount.len() != n {
             return; // a stale, differently-sized session: the shape guard, never an index panic
         }
-        // Rebuild the memo when the radius moved, when it is not canvas-sized, OR when its per-tile flag
-        // vec does not match the canvas's tile grid. That last clause is not paranoia: a rebind can change
-        // `w` while leaving `n` identical (a 64×128 sprite and a 128×64 one), and then `tiles_x` is wrong
-        // while every length check still passes.
-        let r = self.paint.sculpt.radius_px();
-        if self.paint.sculpt.blur_radius != r
-            || self.paint.sculpt.blurred.len() != n
-            || self.paint.sculpt.blur_done.len() != tile_count(w, h)
-        {
-            self.paint.sculpt.blurred = vec![0.0; n];
-            self.paint.sculpt.blur_done = vec![false; tile_count(w, h)];
-            self.paint.sculpt.blur_radius = r;
+        let mode = self.paint.sculpt.mode_enum();
+        // The blur memo belongs to the SMOOTH family, and the guard is not tidiness: without it the plane
+        // verbs would fall into the "not canvas-sized" branch below on every single render and allocate a
+        // memo they never read — 4 B/px of pure waste, and the end of the session's 12 B/px promise.
+        //
+        // Rebuild when the radius moved, when it is not canvas-sized, OR when its per-tile flag vec does not
+        // match the canvas's tile grid. That last clause is not paranoia: a rebind can change `w` while
+        // leaving `n` identical (a 64×128 sprite and a 128×64 one), and then `tiles_x` is wrong while every
+        // length check still passes.
+        if mode.family() == SculptFamily::Smooth {
+            let r = self.paint.sculpt.radius_px();
+            if self.paint.sculpt.blur_radius != r
+                || self.paint.sculpt.blurred.len() != n
+                || self.paint.sculpt.blur_done.len() != tile_count(w, h)
+            {
+                self.paint.sculpt.blurred = vec![0.0; n];
+                self.paint.sculpt.blur_done = vec![false; tile_count(w, h)];
+                self.paint.sculpt.blur_radius = r;
+            }
+            self.ensure_blur_tiles(rect, r);
         }
-        self.ensure_blur_tiles(rect, r);
 
-        let sharpen = matches!(
-            SculptMode::from_u8(self.paint.sculpt.mode),
-            SculptMode::Sharpen
-        );
+        let offset = self.paint.sculpt.plane_offset();
         let pre = Arc::clone(&self.paint.sculpt.pre);
         let amount = std::mem::take(&mut self.paint.sculpt.amount);
+        let plane_sum = std::mem::take(&mut self.paint.sculpt.plane_sum);
         let blurred = std::mem::take(&mut self.paint.sculpt.blurred);
         let mut moved: Option<Region> = None;
         {
             let Some(entry) = self.heights.get_mut(&layer) else {
                 self.paint.sculpt.amount = amount;
+                self.paint.sculpt.plane_sum = plane_sum;
                 self.paint.sculpt.blurred = blurred;
                 return;
             };
             let target = Arc::make_mut(entry);
             // `!= n`, NOT `!= pre.len()`: `pre` is the session's, and the whole hazard is a session that
-            // outlived the canvas it was measured against.
-            if target.len() != n {
+            // outlived the canvas it was measured against. The family's own target must describe the canvas
+            // too — a family switch sizes it (`ensure_family_target`), and if that has not happened yet
+            // there is nothing to render, not something to guess at.
+            let family_ready = match mode.family() {
+                SculptFamily::Smooth => blurred.len() == n,
+                SculptFamily::Plane => plane_sum.len() == n,
+            };
+            if target.len() != n || !family_ready {
                 self.paint.sculpt.amount = amount;
+                self.paint.sculpt.plane_sum = plane_sum;
                 self.paint.sculpt.blurred = blurred;
                 return;
             }
@@ -185,16 +198,36 @@ impl PainterTool {
                     // is the very thing the deposit does by accident and this kernel refuses to inherit.
                     let k = a.clamp(0.0, 1.0);
                     let p = pre[i];
-                    // Smooth pulls toward the local average; Sharpen pushes away from it by the same
-                    // amount (an unsharp mask). One expression, one sign — Sharpen is not a second
-                    // engine, it is this one run backwards, and `k ≤ 1` bounds it at twice the local
-                    // detail so it cannot ring away.
-                    let toward = if sharpen {
-                        p + p - blurred[i]
-                    } else {
-                        blurred[i]
+                    // ── The target: where this texel is being pulled TO. ────────────────────────────
+                    //
+                    // Smooth pulls toward the local average; Sharpen pushes away from it by the same amount
+                    // (an unsharp mask), and `k ≤ 1` bounds it at twice the local detail so it cannot ring
+                    // away. The plane verbs pull toward the coverage-weighted mean of every plane that
+                    // touched the texel — `plane_sum / amount`, the division being what makes the target
+                    // independent of Strength and Flow (they scale both sides). `+ offset` is the rigid
+                    // shift that gives Scrape and Fill their bite; it is added HERE, not baked into
+                    // `plane_sum`, which is exactly why the Offset slider is live on an open shape.
+                    let toward = match mode {
+                        SculptMode::Smooth => blurred[i],
+                        SculptMode::Sharpen => p + p - blurred[i],
+                        SculptMode::Flatten | SculptMode::Scrape | SculptMode::Fill => {
+                            plane_sum[i] / a + offset
+                        }
                     };
-                    let next = (p + k * (toward - p)).clamp(-H_CEIL, H_CEIL);
+                    // ── The verb: which SIGN of the travel is allowed through. ──────────────────────
+                    //
+                    // Scrape is a spatula, not a press: it takes off what stands above the plane and leaves
+                    // the valleys alone. Fill is its mirror. Clamping the DELTA (rather than the result)
+                    // keeps `k` doing its one job — how far along the travel we go — so a half-Strength
+                    // Scrape removes half the excess instead of scraping to half the plane's height, which
+                    // would depend on where the origin of the height field happens to sit.
+                    let delta = toward - p;
+                    let delta = match mode {
+                        SculptMode::Scrape => delta.min(0.0),
+                        SculptMode::Fill => delta.max(0.0),
+                        _ => delta,
+                    };
+                    let next = (p + k * delta).clamp(-H_CEIL, H_CEIL);
                     if (next - target[i]).abs() > impasto_settle::RELIEF_EPS {
                         let rr = Region { x, y, w: 1, h: 1 };
                         moved = Some(moved.map_or(rr, |acc| super::union_region(acc, rr)));
@@ -204,6 +237,7 @@ impl PainterTool {
             }
         }
         self.paint.sculpt.amount = amount;
+        self.paint.sculpt.plane_sum = plane_sum;
         self.paint.sculpt.blurred = blurred;
 
         if let Some(m) = moved {

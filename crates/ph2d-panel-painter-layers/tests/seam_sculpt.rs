@@ -239,6 +239,81 @@ fn the_radius_slider_is_wired_to_the_tool() {
     );
 }
 
+/// **The Offset slider reaches the tool — and it is only reachable where it means something.**
+///
+/// The plane family's knob (Wave 2). Same two legs as the Radius above, driven in **Scrape**, because that
+/// is the only place the card paints it: a gate that drove it in Smooth would be testing a widget the artist
+/// can never touch, which is the definition of a green gate that proves nothing.
+///
+/// The chip speaks **paint-loads**, signed. The sign is the meaning — negative sinks the plane so the
+/// spatula digs — so a chip that showed the raw `0..1` track would hide the one number the artist steers by.
+/// (That is not hypothetical: the Radius chip shipped exactly that way and the seam gate above is its scar.)
+///
+/// **Mutation that must bleed:** delete the `PAINTER_SCULPT_OFFSET_SLIDER` arm from `route_sculpt_event`,
+/// or drop the id from `event_brush_forward`'s slider list.
+#[test]
+fn the_offset_slider_is_wired_to_the_tool() {
+    let mut tool = tool_in_sculpt();
+    tool.set_sculpt_mode(3); // Scrape — where the Offset row lives
+    set_current_brush(Some(tool.brush_settings()));
+
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let Some((_, rect)) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_OFFSET_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .copied()
+    else {
+        panic!("the Offset slider is not painted with a clickable rect in Scrape");
+    };
+    let (x, y) = centre(rect);
+    assert_eq!(
+        host.hit_at(x, y),
+        Some(core_ids::PAINTER_SCULPT_OFFSET_SLIDER),
+        "the Offset slider's own pixel does not resolve to it"
+    );
+
+    // Leg 1 — panel → bus.
+    host.apply_panel_event::<PainterLayersPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_OFFSET_SLIDER),
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
+                if *i == core_ids::PAINTER_SCULPT_OFFSET_SLIDER
+        )),
+        "an Offset drag was never forwarded as SetValue — the id is missing from \
+         `event_brush_forward`'s slider list, so the panel swallows it. drained = {actions:?}"
+    );
+
+    // Leg 2 — bus → tool, in the unit the chip shows. Dead centre must be exactly ZERO (the plane sits ON
+    // the fitted surface): an off-by-a-half here would give the spatula a permanent bite nobody asked for.
+    tool.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+        0.5,
+    ));
+    assert!(
+        tool.sculpt_plane_offset().abs() < 1e-6,
+        "the Offset track's dead centre maps to {} loads, not 0 — the plane does not rest on the surface \
+         it was fitted to, so Flatten would drift the paint every time it touched it",
+        tool.sculpt_plane_offset()
+    );
+    tool.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+        0.0,
+    ));
+    assert!(
+        (tool.sculpt_plane_offset() + 1.0).abs() < 1e-6,
+        "SetValue on the Offset slider did not reach the kernel (offset is {} loads, want −1) — \
+         `route_sculpt_event` has no arm for the id",
+        tool.sculpt_plane_offset()
+    );
+}
+
 /// **The Radius chip speaks px — the same px the kernel blurs by.**
 ///
 /// It shipped showing the raw `0..1` track ("0.50"), while `sculpt_radius_px` was published, defaulted,
@@ -315,12 +390,9 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let ids: Vec<_> = painted.iter().map(|(w, _)| *w).collect();
 
-    // The card's own controls are there…
-    for id in core_ids::PAINTER_SCULPT_CLICKS
-        .into_iter()
-        .chain(core_ids::PAINTER_SCULPT_FIELDS)
-    {
-        assert!(ids.contains(&id), "sculpt control {id:?} is not painted");
+    // Every verb chip is there…
+    for id in core_ids::PAINTER_SCULPT_CLICKS {
+        assert!(ids.contains(&id), "sculpt verb chip {id:?} is not painted");
     }
     // …AND the brush is still there. This is the assertion that separates Sculpt from Deform, and the
     // one that would fail if someone "fixed" the panel to be mode-exclusive like its neighbour.
@@ -329,4 +401,68 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
         "the brush Size slider is gone in Sculpt mode. The sculpt rides the brush's dab list — Size IS \
          the spatula's width, and without it the tool cannot be aimed (doc 18 §10.1)."
     );
+}
+
+/// **The knob row swaps with the verb's family — one knob, never both, never neither.**
+///
+/// Radius is the blur's own scale and means nothing to a plane verb (the plane is fitted to the brush's
+/// footprint, so the brush's Size already IS its scale). Offset is where the fitted plane sits and means
+/// nothing to a blur, which has no plane. Painting the inert one would be a knob that lies — and this card
+/// has already cost a smoke over exactly that class of mistake.
+///
+/// The "never neither" half is not padding: it is what catches a family added in Wave 3 whose `is_plane`
+/// answer is right but whose row nobody wired, leaving the card with a verb and no knob at all.
+///
+/// **Mutation that must bleed:** paint `radius_row` unconditionally in `paint_sculpt_section` (the Offset
+/// disappears in the plane verbs), or swap the branch (each verb then shows the other's knob).
+#[test]
+fn the_knob_row_swaps_with_the_verb_family() {
+    // (mode index, the id the card must paint, the id it must NOT)
+    let cases = [
+        (
+            0u8,
+            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
+            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+        ), // Smooth
+        (
+            1,
+            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
+            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+        ), // Sharpen
+        (
+            2,
+            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
+        ), // Flatten
+        (
+            3,
+            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
+        ), // Scrape
+        (
+            4,
+            core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+            core_ids::PAINTER_SCULPT_RADIUS_SLIDER,
+        ), // Fill
+    ];
+    for (mode, shown, hidden) in cases {
+        let mut tool = tool_in_sculpt();
+        tool.set_sculpt_mode(mode);
+        set_current_brush(Some(tool.brush_settings()));
+
+        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+        let mut st = PainterLayersPanelState;
+        let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+        let ids: Vec<_> = painted.iter().map(|(w, _)| *w).collect();
+
+        assert!(
+            ids.contains(&shown),
+            "verb {mode} paints NO knob of its own — the card shows a spatula with nothing to steer it by"
+        );
+        assert!(
+            !ids.contains(&hidden),
+            "verb {mode} paints the OTHER family's knob. It does nothing to this verb, and a control that \
+             does nothing is a control that lies about what the tool can do."
+        );
+    }
 }

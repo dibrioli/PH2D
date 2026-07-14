@@ -22,6 +22,12 @@ use ph2d_tokens::{ROW_H_PX, Spacing};
 use ph2d_tool_painter::BrushSettings;
 
 /// Paint the Sculpt card, returning the next `y`. Only called in Sculpt mode.
+///
+/// The knob row **swaps with the family**: Radius for Smooth / Sharpen (the blur's own scale), Offset for
+/// Flatten / Scrape / Fill (where the fitted plane sits). Never both. Radius has no meaning to a plane verb
+/// — the plane is fitted to the brush's own footprint, so the brush's Size already IS its scale — and Offset
+/// has none to a blur, which has no plane to offset. Showing the inert one would be a knob that lies, and
+/// this card has already paid once for exactly that class of mistake (see `SculptState`).
 pub(crate) fn paint_sculpt_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -31,8 +37,47 @@ pub(crate) fn paint_sculpt_section(
     brush: BrushSettings,
 ) -> f32 {
     let mut y = mode_card(ctx, theme, x, content_w, y, brush.sculpt_mode as usize);
-    y = radius_row(ctx, theme, x, content_w, y, brush);
+    y = if brush.sculpt_is_plane {
+        offset_row(ctx, theme, x, content_w, y, brush)
+    } else {
+        radius_row(ctx, theme, x, content_w, y, brush)
+    };
     y
+}
+
+/// The **Offset** row (plane family). The chip shows **paint-loads** — signed, because the sign is the whole
+/// meaning: a negative Offset sinks the plane INTO the paint so Scrape digs, a positive one lifts it so Fill
+/// mounds. A bare `0..1` track would hide the one number the artist is steering by.
+fn offset_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let loads = brush.sculpt_offset_loads;
+    let display = format!("{loads:+.2}");
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_slider_with_chip_layout_adaptive(
+        Rect::new(x, y, content_w, ROW_H_PX),
+        "Offset",
+        brush.sculpt_offset,
+        f64::from(loads),
+        Some(&display),
+        core_ids::PAINTER_SCULPT_OFFSET_SLIDER,
+        core_ids::PAINTER_SCULPT_OFFSET_CHIP,
+        DEFAULT_LABEL_W,
+        DEFAULT_CHIP_W,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y + used + Spacing::Xs.px()
 }
 
 /// The **Radius** row. The slider rides the usual `0..1` track; the chip shows the number the artist
@@ -90,6 +135,9 @@ fn mode_card(
         vec![
             SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_SMOOTH, "Smooth"),
             SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_SHARPEN, "Sharpen"),
+            SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_FLATTEN, "Flatten"),
+            SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_SCRAPE, "Scrape"),
+            SegmentedOption::new(core_ids::PAINTER_SCULPT_MODE_FILL, "Fill"),
         ],
     )
     .selected(selected);

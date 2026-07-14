@@ -96,14 +96,131 @@ pub fn accumulate_dab_sculpt(
     dab: &HeightDab<'_>,
 ) -> Option<crate::dab::DirtyRect> {
     let n = (width as usize) * (height as usize);
-    if width == 0 || height == 0 || amount.len() < n {
+    if amount.len() < n {
+        return None;
+    }
+    walk_dab(mask, width, height, spec, dab, |i, _dx, _dy, add| {
+        // SUM, not envelope. The deposit takes a max (one pass of a loaded brush leaves ONE thickness);
+        // a sculpt has no such conservation to respect — dwelling on a spot really does smooth it more,
+        // and that is the whole feel of the tool. The consumer clamps at 1.
+        amount[i] += add;
+    })
+}
+
+/// Accumulate ONE **plane-family** dab (Flatten / Scrape / Fill): fit the local plane to the surface under
+/// the footprint, then write both the intensity AND the plane's height at each texel
+/// (`docs/Painter/18…` §7).
+///
+/// `pre` is the FROZEN relief the stroke started from — never the live one. Reading the live surface would
+/// let each dab fit a plane to what the previous dab already flattened, and the flattening would then
+/// depend on the spacing and the mouse's polling rate (§4.2, and the gate
+/// `a_faster_mouse_does_not_sculpt_deeper` is written against exactly that).
+///
+/// ## Two outputs, and why the second is a SUM rather than a plane
+///
+/// * `amount[i] += w` — the same intensity [`accumulate_dab_sculpt`] writes. Nothing here changes it.
+/// * `plane_sum[i] += w · plane(i)` — the same weight, times *this* dab's plane at that texel.
+///
+/// The consumer divides: `target[i] = plane_sum[i] / amount[i]`, the **coverage-weighted mean of every
+/// plane that touched the texel**. Storing the mean directly would be wrong the moment a second dab
+/// arrives (you cannot average an average without its weight), and storing a plane *per dab* would need
+/// the dab list at render time — which the shape editors throw away and rebuild every frame.
+///
+/// Note what the division buys: the target is **independent of Strength and Flow**, because they scale
+/// numerator and denominator alike. Strength decides *how far* you travel toward the plane; it does not
+/// decide *where the plane is*. Those are different questions and a spatula that confused them would go
+/// deeper as you leaned harder — which is Scrape's job, and it does it through `k`, not by moving the floor.
+///
+/// The **plane Offset** is deliberately NOT folded in here. It is a rigid shift, so
+/// `Σ w·(plane + off) = plane_sum + off·amount` — the consumer adds it at render time, which is what keeps
+/// the Offset slider live on an open shape without re-stamping a single dab.
+///
+/// `scratch` is caller-owned so a hot stroke allocates nothing: the walk samples the silhouette (the
+/// expensive part — falloff, Shape image, Grain) exactly ONCE and parks `(index, weight)` there, then the
+/// second pass reads it back to write the outputs. A second silhouette pass would have doubled the dab's cost.
+#[must_use]
+pub fn accumulate_dab_plane(
+    out: PlaneOut<'_>,
+    mask: Option<&[u8]>,
+    width: u32,
+    height: u32,
+    spec: &crate::BrushSpec,
+    dab: &HeightDab<'_>,
+) -> Option<crate::dab::DirtyRect> {
+    let PlaneOut {
+        amount,
+        plane_sum,
+        pre,
+        scratch,
+    } = out;
+    let n = (width as usize) * (height as usize);
+    if amount.len() < n || plane_sum.len() < n || pre.len() < n {
+        return None;
+    }
+    scratch.clear();
+    let mut fit = crate::plane::PlaneFit::default();
+    let rect = walk_dab(mask, width, height, spec, dab, |i, dx, dy, add| {
+        // The fit is weighted by the dab's OWN mask, so the Shape image / falloff / Grain decide which
+        // part of the surface the spatula reads — exactly as they decide which part it touches. A chisel
+        // reads with its edge.
+        fit.add(dx, dy, pre[i], add);
+        scratch.push((i as u32, add));
+    })?;
+    let plane = fit.solve()?;
+    let (cx, cy) = (dab.center[0], dab.center[1]);
+    let w_us = width as usize;
+    for &(i, add) in scratch.iter() {
+        let i = i as usize;
+        // Recover (dx, dy) from the index rather than parking two more floats: the walk's own arithmetic,
+        // and it is exact (the same `+ 0.5` texel centre).
+        let dx = ((i % w_us) as f32 + 0.5) - cx;
+        let dy = ((i / w_us) as f32 + 0.5) - cy;
+        amount[i] += add;
+        plane_sum[i] += add * plane.at(dx, dy);
+    }
+    Some(rect)
+}
+
+/// What a plane-family dab writes, and what it reads to decide. Grouped because they travel together and
+/// mean nothing apart — and because six loose buffer arguments is a call site nobody can read.
+pub struct PlaneOut<'a> {
+    /// The intensity, exactly as [`accumulate_dab_sculpt`] writes it. `Σ w`.
+    pub amount: &'a mut [f32],
+    /// `Σ w · plane(i)` — the un-normalised target. The consumer divides by `amount`.
+    pub plane_sum: &'a mut [f32],
+    /// The **frozen** relief the stroke started from. The plane is fitted to THIS, never to the live
+    /// surface: fitting to the live one would let each dab flatten what the last dab flattened, making the
+    /// result a function of the spacing and of how fast the artist moved.
+    pub pre: &'a [f32],
+    /// Caller-owned `(index, weight)` scratch, so the silhouette is sampled once and the fit still gets a
+    /// second pass. Cleared on entry; never read across dabs.
+    pub scratch: &'a mut Vec<(u32, f32)>,
+}
+
+/// The dab's footprint walk — the ONE place the swept body, the silhouette, the Grain and the Selection are
+/// resolved. Both accumulators above ride it, so a change to how a dab is shaped cannot reach one of them
+/// and miss the other.
+///
+/// Calls `f(index, dx, dy, weight)` for every texel the dab actually touches, where `weight` is the fully
+/// folded contribution (`silhouette × grain × coverage × flow × strength × selection`) and `(dx, dy)` is
+/// the offset from the dab centre. Returns the touched rect, or `None` if nothing was written.
+fn walk_dab(
+    mask: Option<&[u8]>,
+    width: u32,
+    height: u32,
+    spec: &crate::BrushSpec,
+    dab: &HeightDab<'_>,
+    mut f: impl FnMut(usize, f32, f32, f32),
+) -> Option<crate::dab::DirtyRect> {
+    let n = (width as usize) * (height as usize);
+    if width == 0 || height == 0 {
         return None;
     }
     // A mask that does not describe this canvas is not a mask — refuse it rather than index into it.
     let mask = mask.filter(|m| m.len() >= n);
-    // The SAME fold the deposit and the colour both apply (see the doc comment: it was measured, not
-    // read). It is also what makes Strength 0 cost nothing at all — the walk never starts, so `amount` is
-    // never written, so the layer's relief plane is never forked. Not an optimisation: a consequence.
+    // The SAME fold the deposit and the colour both apply (see `accumulate_dab_sculpt`: it was measured,
+    // not read). It is also what makes Strength 0 cost nothing at all — the walk never starts, so nothing
+    // is written, so the layer's relief plane is never forked. Not an optimisation: a consequence.
     let coverage =
         dab.coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0) * spec.strength.clamp(0.0, 1.0);
     if coverage <= 0.0 {
@@ -149,8 +266,9 @@ pub fn accumulate_dab_sculpt(
                 None => 1.0,
             };
             let i = (py as usize) * (width as usize) + px as usize;
-            // The **Selection**, folded into THIS dab's contribution (see the doc comment: attenuating the
-            // running total instead compounds once per pointer batch, and a Feather makes that visible).
+            // The **Selection**, folded into THIS dab's contribution (see `accumulate_dab_sculpt`'s docs:
+            // attenuating the running total instead compounds once per pointer batch, and a Feather makes
+            // that visible).
             let sel = match mask {
                 Some(m) => f32::from(m[i]) / 255.0,
                 None => 1.0,
@@ -159,10 +277,7 @@ pub fn accumulate_dab_sculpt(
             if add <= 0.0 {
                 continue;
             }
-            // SUM, not envelope. The deposit takes a max (one pass of a loaded brush leaves ONE
-            // thickness); a sculpt has no such conservation to respect — dwelling on a spot really does
-            // smooth it more, and that is the whole feel of the tool. The consumer clamps at 1.
-            amount[i] += add;
+            f(i, dx, dy, add);
             touched = true;
         }
     }

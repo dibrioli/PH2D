@@ -37,12 +37,15 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || id == core_ids::PAINTER_DEFORM_DISTORTION_SLIDER
         || id == core_ids::PAINTER_DEFORM_MOMENTUM_SLIDER
         || id == core_ids::PAINTER_DEFORM_STRENGTH_SLIDER
-        // Sculpt section (Wave 1): the kernel Radius. (Strength is the BRUSH's — the sculpt does not have
-        // a second one, on purpose.)
+        // Sculpt section: the Smooth family's kernel Radius (W1) and the plane family's Offset (W2). The
+        // card paints one or the other by family, but BOTH are forwarded — a row that is only reachable in
+        // one mode is still a row, and the seam sweep drives them both. (Strength is the BRUSH's — the
+        // sculpt does not have a second one, on purpose.)
         || id == core_ids::PAINTER_SCULPT_RADIUS_SLIDER
+        || id == core_ids::PAINTER_SCULPT_OFFSET_SLIDER
 }
 
-/// `true` when `id` is a Sculpt-panel **Click** target (the Smooth / Sharpen sub-mode segments).
+/// `true` when `id` is a Sculpt-panel **Click** target (the five sub-mode segments).
 pub(crate) fn is_sculpt_click(id: NodeId) -> bool {
     core_ids::PAINTER_SCULPT_MODE_IDS.contains(&id)
 }

@@ -26,8 +26,8 @@ use crate::tool::PainterTool;
 use std::sync::Arc;
 
 /// The number of sub-modes — the segmented control's option count; [`SculptMode::from_u8`] clamps to it.
-/// Waves 2-3 append (Scrape / Fill / Flatten / Clay / Layer / Inflate …); the order never shifts.
-pub(crate) const SCULPT_MODE_COUNT: u8 = 2;
+/// Wave 3 appends (Clay / Layer / Draw Sharp / Inflate …); the order never shifts.
+pub(crate) const SCULPT_MODE_COUNT: u8 = 5;
 
 /// The kernel's radius at Radius = 1, in pixels.
 ///
@@ -37,7 +37,30 @@ pub(crate) const SCULPT_MODE_COUNT: u8 = 2;
 /// worse Flatten. Sixteen pixels is the scale brush-marks and grain actually live at. // CLAMP-OK
 pub(super) const SCULPT_RADIUS_MAX_PX: f32 = 16.0;
 
+/// How far the plane Offset can travel, in **paint-loads** — the same unit `h` itself is in (`H_CEIL = 2.0`
+/// is two full loads of paint).
+///
+/// One load either way: at `−1` the Scrape's plane sits a full stroke's thickness UNDER the surface it was
+/// fitted to, which is a spatula gouging rather than skimming; at `+1` the Fill mounds a full load above it.
+/// Wider than that and the plane leaves the paint entirely — Scrape would find nothing above it to remove,
+/// and the control's whole outer half would silently do nothing. // CLAMP-OK
+pub(super) const PLANE_OFFSET_MAX: f32 = 1.0;
+
 /// Which verb the sculpt brush performs. Discriminants are the segmented control's indices.
+///
+/// **All five are one kernel** — `h = pre + k·Δ`, where `Δ` is the distance to a per-texel *target* and the
+/// verb decides two things: where the target comes from, and which SIGN of `Δ` is allowed through.
+///
+/// | verb | target | Δ |
+/// |---|---|---|
+/// | Smooth | `blur(pre)` | both ways |
+/// | Sharpen | `pre + (pre − blur(pre))` | both ways |
+/// | Flatten | the fitted **plane** | both ways |
+/// | Scrape | the fitted plane | **down only** (`min(Δ, 0)`) |
+/// | Fill | the fitted plane | **up only** (`max(Δ, 0)`) |
+///
+/// Scrape and Fill are therefore not two more engines: they are Flatten with one half of the number thrown
+/// away, and they cost one `min` each.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum SculptMode {
     /// Pull the relief toward its own local average — `lerp(pre, blur(pre), k)`.
@@ -45,13 +68,48 @@ pub(super) enum SculptMode {
     /// Push it away from that average — `pre + k·(pre − blur(pre))`, an unsharp mask on a height field.
     /// Bounded by construction (`k ≤ 1` ⇒ at most twice the local detail), so it cannot ring away.
     Sharpen,
+    /// Pull the relief toward the **tilted plane** fitted to the footprint (§7). Tilted, not horizontal:
+    /// a horizontal fit cuts a crater into a hillside instead of flattening it.
+    Flatten,
+    /// The same plane, **down only** — the spatula taking the high ground off and leaving the valleys.
+    Scrape,
+    /// The same plane, **up only** — paint pushed into the valleys, the ridges left standing.
+    Fill,
+}
+
+/// Which *engine* a verb runs on — and therefore which per-texel target buffer the session must carry.
+///
+/// It is not cosmetic bookkeeping: the two targets are derived from different things, and only one of them
+/// can be rebuilt from what a parked session holds.
+///
+/// * [`Smooth`](SculptFamily::Smooth) → `blur(pre)`: a function of the frozen relief ALONE, so it is a pure
+///   memo — throw it away and it rebuilds itself, tile by tile, from `pre`.
+/// * [`Plane`](SculptFamily::Plane) → `Σ w·plane(i)`: a function of the **dab list**, which no longer
+///   exists once the batch has been consumed. It cannot be rebuilt without re-stamping the stroke.
+///
+/// That asymmetry is why [`PainterTool::set_sculpt_mode`] re-stamps an open shape when the family changes,
+/// and why it does not need to when it does not.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(super) enum SculptFamily {
+    Smooth,
+    Plane,
 }
 
 impl SculptMode {
     pub(super) fn from_u8(v: u8) -> Self {
         match v {
             1 => SculptMode::Sharpen,
+            2 => SculptMode::Flatten,
+            3 => SculptMode::Scrape,
+            4 => SculptMode::Fill,
             _ => SculptMode::Smooth,
+        }
+    }
+
+    pub(super) fn family(self) -> SculptFamily {
+        match self {
+            SculptMode::Smooth | SculptMode::Sharpen => SculptFamily::Smooth,
+            SculptMode::Flatten | SculptMode::Scrape | SculptMode::Fill => SculptFamily::Plane,
         }
     }
 }
@@ -108,8 +166,26 @@ pub(crate) struct SculptState {
     /// copies-on-write) — the same trick `deform.disp` uses, and for the same reason: every shape-editor
     /// gesture takes a snapshot, and a canvas-sized `Vec` cloned per gesture is a 64 MB copy at 4096².
     pub(crate) amount: Arc<Vec<f32>>,
+    /// Plane Offset track (`0..1`; mapped to `∓PLANE_OFFSET_MAX` paint-loads by [`Self::plane_offset`]).
+    pub(crate) offset_norm: f32,
+
+    /// `Σ w·plane_d(i)` over the stroke's dabs — the **plane family's** per-texel target, un-normalised.
+    ///
+    /// The render divides by `amount[i]` (the same `Σ w`) to get the coverage-weighted mean of every plane
+    /// that touched the texel. Storing the mean directly would be wrong the moment a second dab arrives;
+    /// storing the planes would need the dab list, which the shape editors rebuild from scratch every frame.
+    ///
+    /// `Arc` for the same reason `amount` is: the undo snapshot must be a refcount bump, not a 64 MB copy.
+    /// Empty in the Smooth family — the two targets are mutually exclusive, which is what holds the session
+    /// at **12 B/px** with five verbs instead of the sixteen a naive union would cost.
+    pub(crate) plane_sum: Arc<Vec<f32>>,
+    /// Per-dab `(index, weight)` scratch for the plane fit — caller-owned so a hot stroke allocates nothing
+    /// (the silhouette is the expensive sample and it must be taken exactly once; see
+    /// [`ph2d_painter_brush::sculpt::accumulate_dab_plane`]). Never read across dabs; never snapshotted.
+    pub(crate) fit_scratch: Vec<(u32, f32)>,
+
     /// `blur(pre, radius)`, memoised tile by tile (see [`super::sculpt_blur`]). Pure derived data: it dies
-    /// with the session and is rebuilt lazily, tile by tile, on demand.
+    /// with the session and is rebuilt lazily, tile by tile, on demand. Empty in the Plane family.
     pub(crate) blurred: Vec<f32>,
     /// One flag per tile of [`Self::blurred`] — whether that tile has been computed this session.
     pub(crate) blur_done: Vec<bool>,
@@ -132,8 +208,11 @@ impl Default for SculptState {
         Self {
             mode: 0,          // Smooth — the one Enio asked for first, and the most valuable of the list
             radius_norm: 0.5, // 8 px: brush-mark scale
+            offset_norm: 0.5, // dead centre = offset 0: the plane sits ON the surface it was fitted to
             pre: Arc::new(Vec::new()),
             amount: Arc::new(Vec::new()),
+            plane_sum: Arc::new(Vec::new()),
+            fit_scratch: Vec::new(),
             blurred: Vec::new(),
             blur_done: Vec::new(),
             blur_radius: 0,
@@ -150,20 +229,57 @@ impl SculptState {
         let t = self.radius_norm.clamp(0.0, 1.0);
         (1.0 + t * (SCULPT_RADIUS_MAX_PX - 1.0)).round() as u32
     }
+
+    /// The plane's Offset in **paint-loads** (`−PLANE_OFFSET_MAX ..= +PLANE_OFFSET_MAX`), from the slider's
+    /// `0..1` track. Dead centre is exactly `0.0` — the plane sits on the surface it was fitted to.
+    pub(super) fn plane_offset(&self) -> f32 {
+        (self.offset_norm.clamp(0.0, 1.0) - 0.5) * 2.0 * PLANE_OFFSET_MAX
+    }
+
+    pub(super) fn mode_enum(&self) -> SculptMode {
+        SculptMode::from_u8(self.mode)
+    }
 }
 
 impl PainterTool {
     // ── UI-edit setters (the single clamp source; `handle_panel_event` forwards raw panel values here) ──
 
     /// Select the sub-mode from the segmented index (out of range clamps to the last mode).
+    ///
+    /// **A change of FAMILY re-stamps an open shape** rather than merely re-rendering it, and that is not
+    /// belt-and-braces: the plane family's per-texel target (`plane_sum`) is a function of the DAB LIST,
+    /// which the render no longer has. Switching Smooth → Scrape and only re-rendering would divide by an
+    /// all-zero `plane_sum` and pull the whole footprint to height 0 — a flattening to the floor, dressed
+    /// as a scrape. Re-stamping rebuilds the target from the dabs, and it is precisely what the house
+    /// already does when Size / Spacing / Falloff change (`refill_if_appearance_changed`).
+    ///
+    /// A change WITHIN a family (Smooth ↔ Sharpen, Scrape ↔ Fill) reuses the target it already has, so the
+    /// cheap re-render is the correct one.
     pub fn set_sculpt_mode(&mut self, m: u8) {
+        let before = self.paint.sculpt.mode_enum().family();
         self.paint.sculpt.mode = m.min(SCULPT_MODE_COUNT - 1);
+        if self.paint.sculpt.mode_enum().family() == before {
+            self.refresh_live_sculpt();
+        } else {
+            self.drop_stale_family_target();
+            self.refill_open_shape(); // rebuild the new family's target from the dabs (no-op if none open)
+            self.refresh_live_sculpt();
+        }
+    }
+
+    /// Set the kernel Radius from the slider's `0..1` track (Smooth family).
+    pub fn set_sculpt_radius(&mut self, t: f32) {
+        self.paint.sculpt.radius_norm = t.clamp(0.0, 1.0);
         self.refresh_live_sculpt();
     }
 
-    /// Set the kernel Radius from the slider's `0..1` track.
-    pub fn set_sculpt_radius(&mut self, t: f32) {
-        self.paint.sculpt.radius_norm = t.clamp(0.0, 1.0);
+    /// Set the plane Offset from the slider's `0..1` track (Plane family).
+    ///
+    /// No re-stamp: the Offset is a **rigid shift** of the plane, and `Σ w·(plane + off) = plane_sum +
+    /// off·amount`, so the render applies it with one add. That is the whole reason it is not folded into
+    /// `plane_sum` at accumulation time — it keeps the slider live on an open shape for free.
+    pub fn set_sculpt_offset(&mut self, t: f32) {
+        self.paint.sculpt.offset_norm = t.clamp(0.0, 1.0);
         self.refresh_live_sculpt();
     }
 
@@ -174,11 +290,46 @@ impl PainterTool {
         matches!(self.paint.paint_mode, super::PaintMode::Sculpt)
     }
 
+    /// Whether the active verb is a **plane** one (Flatten / Scrape / Fill) — the panel shows the Offset row
+    /// for these and the Radius row for the others. One or the other, never both: a knob that does nothing
+    /// to the active verb is a knob that lies.
+    #[must_use]
+    pub fn is_sculpt_plane_mode(&self) -> bool {
+        self.paint.sculpt.mode_enum().family() == SculptFamily::Plane
+    }
+
     /// The kernel radius in px — what the Radius chip shows the artist, and what the kernel actually uses.
     /// One function, so the number on screen cannot drift from the number in the blur.
     #[must_use]
     pub fn sculpt_radius_px(&self) -> u32 {
         self.paint.sculpt.radius_px()
+    }
+
+    /// The plane Offset in paint-loads — what the Offset chip shows, and what the kernel adds. One function,
+    /// same reason.
+    #[must_use]
+    pub fn sculpt_plane_offset(&self) -> f32 {
+        self.paint.sculpt.plane_offset()
+    }
+
+    /// Free the target the OTHER family owns, on a family switch.
+    ///
+    /// Not an optimisation — it is what keeps the promise the cost gate makes. The two targets are the same
+    /// size, so a session that had carried both would cost 16 B/px instead of 12, and the moment that is
+    /// true "the session costs 12 B/px" becomes a sentence in a comment rather than a fact about the
+    /// program. Both are rebuildable: `blurred` from `pre` (lazily, tile by tile) and `plane_sum` from the
+    /// re-stamp that is about to run anyway.
+    fn drop_stale_family_target(&mut self) {
+        match self.paint.sculpt.mode_enum().family() {
+            SculptFamily::Smooth => {
+                self.paint.sculpt.plane_sum = Arc::new(Vec::new());
+            }
+            SculptFamily::Plane => {
+                self.paint.sculpt.blurred = Vec::new();
+                self.paint.sculpt.blur_done = Vec::new();
+                self.paint.sculpt.blur_radius = 0;
+            }
+        }
     }
 
     /// Route a Sculpt-panel event to its setter. Segmented mode = `Click` on an option id (its array
@@ -203,244 +354,11 @@ impl PainterTool {
                 self.set_sculpt_radius(*v as f32);
                 true
             }
-            _ => false,
-        }
-    }
-
-    // ── Session lifecycle ───────────────────────────────────────────────────────────────────────
-
-    /// Open a session if none is live: freeze the layer's relief as `pre` and allocate the accumulator.
-    ///
-    /// Returns `false` when there is nothing to sculpt — **no layer, or a layer with no relief on it**.
-    /// That is not an error path, it is the tool being honest (§5): a sculpt brush creates no paint, so a
-    /// document nobody has sculpted pays not one byte for the fact that the mode exists.
-    pub(super) fn ensure_sculpt_session(&mut self) -> bool {
-        if self.paint.sculpt.layer.is_some() {
-            return true; // a gesture is already in flight — keep ITS frozen source
-        }
-        let (w, h) = self.source_size;
-        let n = (w as usize) * (h as usize);
-        let Some(active) = self.layers.active() else {
-            return false;
-        };
-        // The layer's own plane, by `Arc` — zero allocation, and it stays frozen because the first write
-        // to `heights` copies it out from under us.
-        let Some(pre) = self.heights.get(&active).filter(|f| f.len() == n).cloned() else {
-            return false; // no relief here: nothing to smooth, nothing to sharpen
-        };
-        self.paint.sculpt.pre = pre;
-        self.paint.sculpt.amount = Arc::new(vec![0.0; n]);
-        self.paint.sculpt.blurred = vec![0.0; n];
-        self.paint.sculpt.blur_done = vec![false; super::sculpt_blur::tile_count(w, h)];
-        self.paint.sculpt.blur_radius = self.paint.sculpt.radius_px();
-        self.paint.sculpt.layer = Some(active);
-        self.paint.sculpt.bbox = None;
-        true
-    }
-
-    /// Deposit one dab batch's sculpt intensity and re-render the relief it reshapes.
-    ///
-    /// Called from the ONE choke point in the route dispatcher, with the list already mirrored (Symmetry)
-    /// and already replicated (Tiling) — the same list the colour would have consumed, which is the whole
-    /// design (§10.1).
-    pub(super) fn stamp_dabs_sculpt(
-        &mut self,
-        dabs: &[ph2d_painter_brush::Dab],
-        brush: &ph2d_painter_brush::BrushSpec,
-    ) {
-        if dabs.is_empty() || !self.ensure_sculpt_session() {
-            return;
-        }
-        let (w, h) = self.source_size;
-        // The Selection, handed to the kernel so it attenuates each dab AS IT LANDS. Multiplying the
-        // accumulated `amount` afterwards is the obvious place and it is wrong: `amount` carries every
-        // earlier batch, so a Feathered edge would be scaled once per pointer event (see
-        // `ph2d_painter_brush::sculpt`). Nothing selected ⇒ `None` ⇒ the spatula reaches everywhere.
-        let mask: Option<Arc<Vec<u8>>> = self
-            .selection_restricts_paint()
-            .then(|| Arc::clone(&self.paint.selection_mask));
-        // Resolve each dab's frames exactly as the colour route would — same Shape basis, same Grain
-        // frame, same order. The RNG is a COPY: this pass must not advance the stream (the deposit's rule
-        // 2, and it holds here for the same reason — a sculpt stroke can carry a grain).
-        let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        let grain_image = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        let shape_ramp_lut = (self.paint.shape_color_ramp_enabled
-            && self.paint.shape_color_ramp_bw)
-            .then_some(self.paint.shape_ramp_lut.as_slice());
-        let shape_active = brush.shape_silhouette_active(shape_image.is_some());
-        let grain_active = brush.texture.is_active();
-        let groups = self.paint.dab_groups.clone();
-        let mut dab_rng = super::tiling::DabRng::new(self.paint.tex_rng);
-
-        let mut amount = std::mem::take(Arc::make_mut(&mut self.paint.sculpt.amount));
-        let mut touched: Option<Region> = None;
-        for (di, d) in dabs.iter().enumerate() {
-            let tex_rng = dab_rng.enter(&groups, di);
-            let spec = ph2d_painter_brush::BrushSpec {
-                radius_px: d.radius_px,
-                ..*brush
-            };
-            let fp = spec.footprint_deform().rotated_by(d.rotation);
-            let shape_basis = shape_active.then(|| {
-                ph2d_painter_brush::texture::dab_basis(
-                    &spec.shape,
-                    d.dir,
-                    &mut *tex_rng,
-                    [w as f32, h as f32],
-                    [1.0, 0.0],
-                    fp,
-                )
-            });
-            let grain_basis = grain_active.then(|| {
-                ph2d_painter_brush::texture::dab_basis(
-                    &spec.texture,
-                    d.dir,
-                    &mut *tex_rng,
-                    [w as f32, h as f32],
-                    [1.0, 0.0],
-                    fp,
-                )
-            });
-            let hd = ph2d_painter_brush::height::HeightDab {
-                center: d.center,
-                radius: d.radius_px,
-                coverage: d.coverage,
-                footprint: fp,
-                // No sweep: a sculpt dab marks where it IS. (The deposit sweeps back to the previous dab
-                // so the bodies join into one ridge instead of a string of beads; an intensity field has
-                // no such seam to hide — it already sums, so consecutive dabs blend by construction.)
-                prev_center: None,
-                shape: shape_basis
-                    .as_ref()
-                    .map(|sb| ph2d_painter_brush::ShapeInput {
-                        basis: sb,
-                        image: shape_image.as_ref(),
-                        ramp_lut: shape_ramp_lut,
-                    }),
-                grain: grain_basis.as_ref(),
-                grain_image: grain_image.as_ref(),
-            };
-            if let Some(r) = ph2d_painter_brush::sculpt::accumulate_dab_sculpt(
-                &mut amount,
-                mask.as_ref().map(|m| m.as_slice()),
-                w,
-                h,
-                &spec,
-                &hd,
-            ) {
-                let rect = Region {
-                    x: r.x,
-                    y: r.y,
-                    w: r.w,
-                    h: r.h,
-                };
-                touched = Some(touched.map_or(rect, |acc| super::union_region(acc, rect)));
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_OFFSET_SLIDER => {
+                self.set_sculpt_offset(*v as f32);
+                true
             }
-        }
-        *Arc::make_mut(&mut self.paint.sculpt.amount) = amount;
-        if let Some(rect) = touched {
-            self.paint.sculpt.bbox = Some(
-                self.paint
-                    .sculpt
-                    .bbox
-                    .map_or(rect, |acc| super::union_region(acc, rect)),
-            );
-            self.render_sculpt(rect);
-        }
-        // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back.
-    }
-
-    /// Snapshot the sculpt session for the undo model (the buffers are `tool::paint`-private, so the
-    /// general `snapshot_model` reaches them through here — mirror of `deform_for_snapshot`).
-    ///
-    /// `Arc`s, so this is two refcount bumps and a `Copy`. See [`crate::undo::SculptSnap`] for *why* the
-    /// session has to ride the snapshot at all — the short version is that the sculpt writes the relief
-    /// LIVE, so a snapshot without the session restores a carved plane and calls it pristine.
-    pub(crate) fn sculpt_for_snapshot(&self) -> crate::undo::SculptSnap {
-        crate::undo::SculptSnap {
-            pre: Arc::clone(&self.paint.sculpt.pre),
-            amount: Arc::clone(&self.paint.sculpt.amount),
-            layer: self.paint.sculpt.layer,
-            bbox: self.paint.sculpt.bbox,
-        }
-    }
-
-    /// Reinstate the sculpt session from an undo model, in lock-step with the relief it describes.
-    ///
-    /// The blur memo is NOT restored — it is pure derived data, and rebuilding it lazily is what keeps the
-    /// snapshot two refcount bumps instead of a third canvas-sized copy.
-    pub(crate) fn restore_sculpt(&mut self, s: crate::undo::SculptSnap) {
-        self.paint.sculpt.pre = s.pre;
-        self.paint.sculpt.amount = s.amount;
-        self.paint.sculpt.layer = s.layer;
-        self.paint.sculpt.bbox = s.bbox;
-        self.paint.sculpt.blurred = Vec::new();
-        self.paint.sculpt.blur_done = Vec::new();
-        self.paint.sculpt.blur_radius = 0;
-    }
-
-    /// **The one exit.** Drop the session WITHOUT restoring anything — the relief in `heights` is kept.
-    ///
-    /// This is what a *committed* gesture does: pen-up for the freehand methods, **Apply** for the shape
-    /// editors. The carving IS the layer's relief now, so there is nothing to put back and nothing left to
-    /// re-render — the Sculpt card's knobs arm the NEXT stroke, they do not reach back and rewrite the last
-    /// one (see the [`SculptState`] docs for why the deposit's "Adjust Last Stroke" does not transfer here).
-    ///
-    /// It is also the abandon path — mode switch, document rebind, deactivate — where the relief is going
-    /// away with the document anyway. When the carving must be UN-done rather than kept, that is
-    /// [`Self::cancel_sculpt_session`].
-    pub(crate) fn end_sculpt_session(&mut self) {
-        self.paint.sculpt.pre = Arc::new(Vec::new());
-        self.paint.sculpt.amount = Arc::new(Vec::new());
-        self.paint.sculpt.blurred = Vec::new();
-        self.paint.sculpt.blur_done = Vec::new();
-        self.paint.sculpt.layer = None;
-        self.paint.sculpt.bbox = None;
-    }
-
-    /// **Cancel** (Esc / Delete on an open shape): put the relief back the way the gesture found it, THEN
-    /// drop the session.
-    ///
-    /// `cancel_open_shape` peels the pixels back to pristine, and its own comment states the invariant this
-    /// closes: *"the pixels are peeled back to pristine — so the relief has to go with them"*. The deposit
-    /// obeys it (`reset_stroke_height` + `drop_live_relief`); the sculpt could not, because it does not
-    /// stage its relief in an envelope — it rewrites the layer's plane LIVE. So a cancelled Curve left its
-    /// carving behind: the shape gone, the smoothing permanent, and **no undo entry**, because the shape was
-    /// never committed. Third door of the same house as the Apply and the rebind (`sculpt_tests::session`).
-    pub(super) fn cancel_sculpt_session(&mut self) {
-        self.restamp_reset_sculpt(); // heights[bbox] = pre — the same restore a re-stamp does
-        self.end_sculpt_session();
-    }
-
-    /// A shape editor is about to re-stamp the WHOLE stroke: put the relief back the way this stroke found
-    /// it and zero what it had accumulated.
-    ///
-    /// Without this, a Curve would carve deeper on every pointer move while the artist merely LOOKED at
-    /// it — and every frame of the drag would leave its ghost in the relief. It is the same restore the
-    /// pixels get (`stamp_drag_preview`), one channel over. `pre` and the blur memo SURVIVE: the restore
-    /// makes `heights` byte-identical to `pre` again, so the frozen source is still the truth and the
-    /// memo of its blur is still valid.
-    pub(super) fn restamp_reset_sculpt(&mut self) {
-        let (Some(layer), Some(rect)) = (self.paint.sculpt.layer, self.paint.sculpt.bbox) else {
-            return;
-        };
-        let (w, _) = self.source_size;
-        let pre = Arc::clone(&self.paint.sculpt.pre);
-        if let Some(target) = self.heights.get_mut(&layer)
-            && target.len() == pre.len()
-        {
-            let dst = Arc::make_mut(target);
-            super::impasto_settle::for_each_in(rect, w, |i| dst[i] = pre[i]);
-        }
-        let amount = Arc::make_mut(&mut self.paint.sculpt.amount);
-        super::impasto_settle::for_each_in(rect, w, |i| {
-            if let Some(a) = amount.get_mut(i) {
-                *a = 0.0; // a shape guard, not a formality: a rebind can leave a session sized for the
-            } // OLD canvas while `rect` is measured against the new one
-        });
-        self.paint.sculpt.bbox = None;
-        if let Some(r) = super::region::grow_region(rect, 1, w, self.source_size.1) {
-            self.mark_dirty(r);
+            _ => false,
         }
     }
 }

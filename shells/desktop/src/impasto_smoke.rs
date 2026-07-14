@@ -31,21 +31,34 @@
 //! the relief is derived from it). Only `Draw To` is authoring-only — it routes channels, and the
 //! pigment it already laid cannot be un-laid.
 //!
-//! ## The SCULPT (`docs/Painter/18…`, Wave 1 — 2026-07-13)
+//! ## The SCULPT (`docs/Painter/18…`, Waves 1-2 — 2026-07-13)
 //!
 //! This same smoke is the sculpt's, and deliberately without an env var of its own: the sculpt needs
 //! relief to reshape, and the way you get relief is to paint some. So —
 //!
 //!   1. Paint two or three thick strokes (as above). Ridges, with brush-marks on them.
 //!   2. Click **SCULP** on the left rail (between Deform and Mask).
-//!   3. Drag over the ridges. **Smooth** knocks them down toward the local average; the **Sharpen**
-//!      chip runs the same kernel backwards and brings them back up.
+//!   3. Drag over the ridges. Five verbs, one kernel:
+//!      - **Smooth** knocks them down toward the local average; **Sharpen** runs the same kernel
+//!        backwards and brings them back up.
+//!      - **Flatten** pulls the paint toward the plane fitted under the brush — and the plane is
+//!        **tilted**, so on a slope it takes the marks off and leaves the slope. (Paint a ridge, then
+//!        flatten across its FLANK: the flank stays a flank. A level spatula would gouge a trough into it.)
+//!      - **Scrape** is that plane, down only — the palette knife taking the high ground off. **Fill** is
+//!        its mirror: paint pushed into the hollows, the ridges left standing.
 //!
 //! The brush's own **Size** is the spatula's width, its **Strength** is how hard you lean on it, and
 //! Spacing / Falloff / Shape / Grain / Symmetry / Tiling all apply — the sculpt rides the same dab list
-//! the colour does, so a spatula with a Grain is a *textured* spatula, for free. The Sculpt card adds
-//! only what the brush cannot say: which verb, and the kernel's own **Radius** (1-16 px — the scale
-//! brush-marks live at; smoothing at a large scale is Flatten, which is Wave 2 and a different kernel).
+//! the colour does, so a spatula with a Grain is a *textured* spatula, for free.
+//!
+//! The card adds only what the brush cannot say, and **the knob row swaps with the verb**:
+//!   - Smooth / Sharpen → **Radius** (1-16 px, the scale brush-marks live at).
+//!   - Flatten / Scrape / Fill → **Offset**, in paint-loads. It is the spatula's *bite*: at `0` the plane
+//!     rests on the surface it was fitted to, so Scrape only takes off what stands above the local slope.
+//!     Pull it negative and the knife digs in. Push it positive and Fill mounds paint above the surface.
+//!
+//! There is no Radius in a plane verb and no Offset in a blur, so the card shows one or the other — a knob
+//! that does nothing to the active tool is a knob that lies.
 //!
 //! **The card arms the NEXT stroke — it does not rewrite the last one.** Pick Sharpen and the Smooth
 //! behind you stays a Smooth; to change a mark you have made, undo it. (It behaved the other way for one

@@ -45,9 +45,12 @@ pub mod height_push;
 pub(crate) mod jitter;
 pub mod mask_ops;
 pub mod material;
+/// The **local plane** fitted to a dab's footprint — the engine behind Flatten / Scrape / Fill. Tilted,
+/// which is the whole point: a horizontal fit cuts a crater into a hillside.
+pub mod plane;
 pub mod ramp_alpha;
 pub mod sampler;
-/// **Sculpt** — the brush as a local operator on the relief (Smooth / Sharpen; the spatula follows).
+/// **Sculpt** — the brush as a local operator on the relief (Smooth / Sharpen / Flatten / Scrape / Fill).
 pub mod sculpt;
 pub mod smear;
 pub mod smear_grain;

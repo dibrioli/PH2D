@@ -44,8 +44,9 @@ mod impasto_shade; // Impasto: the RIG + how one pixel is shaded (the optics; it
 mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
-mod sculpt; // Sculpt: the brush as a LOCAL operator on the relief (Smooth / Sharpen) — `docs/Painter/18…`
-mod sculpt_blur; // Sculpt: the kernel + the per-tile memo of `blur(pre)`; split from `sculpt` (LOC cap)
+mod sculpt; // Sculpt: the MODEL — the five verbs, the two knobs, the routing — `docs/Painter/18…`
+mod sculpt_blur; // Sculpt: the kernel (one expression, five verbs) + the per-tile memo of `blur(pre)`
+mod sculpt_session; // Sculpt: the per-stroke session — birth, the dab walk, snapshot, cancel, re-stamp
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
 mod shape_layers;
 /// Imported-image slots (Grain + Shape) + Shape geometry + Grain Depth setters; split from `brush_settings`.

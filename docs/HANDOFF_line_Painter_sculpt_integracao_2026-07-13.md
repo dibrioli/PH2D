@@ -1,4 +1,4 @@
-# HANDOFF de INTEGRAÇÃO — `line/Painter`: o SCULPT do relevo, W1 (2026-07-13)
+# HANDOFF de INTEGRAÇÃO — `line/Painter`: o SCULPT do relevo, W1 + W2 (2026-07-13)
 
 > **Para o agente INTEGRADOR** (DIRETRIZ §1.5.9). A linha está **fechada e parada**. Não integrei, não
 > pushei, não rodei `ship.sh` — isso é ordem explícita do Enio (CLAUDE.md §0.7).
@@ -247,10 +247,10 @@ por uma semana.
 
 ## 8. O que ficou ABERTO
 
-* **W2 — a espátula** (Scrape · Fill · Flatten + Multi-plane): plano §7. **Um** kernel (ajuste de plano por
-  mínimos quadrados, inclinado, 3 acumuladores, zero transcendental), quatro verbos. O `SculptMode` e o
-  `PAINTER_SCULPT_MODE_IDS` são **append-only** — a ordem nunca muda, e o sweep do seam cresce junto.
-* **W3** — Clay · Clay Strips · Layer · Draw Sharp · Inflate (composições dos kernels de W1/W2).
+* ~~**W2 — a espátula**~~ ✅ **FECHADA no mesmo dia** (Flatten · Scrape · Fill) — ver §12.
+* **W3** — Clay · Clay Strips · Layer · Draw Sharp · Inflate + **Multi-plane Scrape** (composições dos
+  kernels de W1/W2; nenhum motor novo). O `SculptMode` e o `PAINTER_SCULPT_MODE_IDS` são **append-only** —
+  a ordem nunca muda (o discriminante É o índice do segmented), e o sweep do seam cresce junto.
 * **W4** — a família advectiva (Grab/Pinch/Nudge/Rotate/Thumb): fazer o motor do **Deform** carregar os
   planos do relevo, não construir motor novo (§8 W4).
 * **W5** — Conserve (a *bow wave*, §6) + filtros de camada inteira.
@@ -349,3 +349,118 @@ vermelho provado por mutação.** Ele se chamava `the_sculpt_knobs_re_render_the
 exatamente o que dizia. Gates provam que o código faz o que você **disse**; nenhum gate te diz que o que
 você disse está errado. O smoke do usuário é o único oráculo pra isso — e é por isso que ele não é opcional.
 ([[feedback_inherited_affordance_must_be_rederived]])
+
+---
+
+## 12. W2 — A ESPÁTULA (Flatten · Scrape · Fill), fechada 2026-07-13
+
+**Cinco verbos, uma expressão.** `h = pre + k·Δ`, onde o verbo escolhe *de onde vem o alvo* e *qual sinal
+de Δ passa*. Scrape e Fill não são motores novos — são o Flatten com metade do número jogada fora
+(`delta.min(0.0)` / `delta.max(0.0)`), e custam um `min` cada.
+
+O motor de W1 (`pre` + `amount` + re-render) **não foi tocado**. O plano ganhou um segundo alvo por-texel.
+
+### 12.1 — As 3 decisões que o plano não previa
+
+1. **O alvo do plano é uma MÉDIA PONDERADA por-texel, não um plano por-dab.**
+   `plane_sum[i] += w · plano_d(i)` com o MESMO `w` que já soma em `amount[i]`; o render divide. Guardar
+   "o plano" exigiria a lista de dabs no render — e os shape editors a jogam fora e reconstroem a cada
+   frame. **E a divisão torna o alvo independente de Strength e Flow** (eles escalam numerador e
+   denominador): Strength decide *quão longe* você viaja até o plano, não *onde o plano está*. Um Scrape
+   que afundasse o plano quando você aperta seria um bug com cara de feature.
+2. **O Offset NÃO entra na acumulação.** É deslocamento rígido:
+   `Σ w·(plano + off) = plane_sum + off·amount`. O render soma no fim. Consequência: **o slider fica vivo
+   num shape aberto sem re-carimbar um único dab.**
+3. **`blurred` e `plane_sum` são mutuamente exclusivos** — um verbo pertence a UMA família. Então a sessão
+   segue em **12 B/px** com cinco verbos (não 16). O preço: trocar de família num shape aberto tem que
+   **RE-CARIMBAR** (`set_sculpt_mode` → `refill_open_shape`), porque `plane_sum` é função da LISTA DE DABS
+   e não se reconstrói do `pre`. Sem isso, Smooth→Scrape dividia por um `plane_sum` zerado e puxava a tinta
+   pro **chão do canvas** — um flatten-até-o-zero vestido de scrape. Gate:
+   `switching_family_mid_shape_rebuilds_the_target`.
+
+### 12.2 — ⚠️ A LIÇÃO DO GATE (leia antes de mexer no fit)
+
+**O fit horizontal — o bug que o §7 inteiro existe pra evitar — é INVISÍVEL ao longo do traço.**
+
+A intuição diz: plano horizontal na altura média ⇒ ele cava uma cratera na encosta. Verdade *dentro de um
+footprint*. Mas o alvo por-texel é a **média ponderada de todos os planos que tocaram o texel**, e a média
+móvel de planos horizontais **reconstrói a encosta por acidente**: cada plano fica na altura média do seu
+próprio footprint, e essa média acompanha o morro.
+
+Nada faz isso **perpendicular ao traço** — lá só existe UMA fileira de dabs, todos os planos na mesma
+altura, e a inclinação transversal é simplesmente apagada (a espátula ara um vale nivelado na encosta).
+
+Meu 1º gate de produto media a inclinação **ao longo** do traço e ficou **VERDE sob a mutação do fit
+horizontal**. O comentário dele afirmava que pegaria. O comentário estava errado, não o código
+([[feedback_mutate_the_code_not_just_the_test]]). Os dois gates certos:
+
+* `flatten_on_a_pure_ramp_is_a_no_op` — rampa em **dois eixos**, Flatten tem que ser no-op (< 1e-3).
+* `the_scrape_takes_the_marks_off_the_hillside_and_leaves_the_hill` — encosta **ATRAVESSANDO** o traço
+  (`gy = 0.02`, cinco vezes a média das marcas). Correto: 0.020 loads/px. Fit horizontal: 0.005. Vermelho.
+
+### 12.3 — Superfície nova
+
+| Onde | O quê |
+|---|---|
+| `ph2d-painter-brush/src/plane.rs` **(NOVO, foundational, irmão append-only)** | `PlaneFit` (9 acumuladores `f64`, Cramer 3×3, **zero transcendental**) + `Plane`. Degenerado (1 texel, ou colinear) → **média plana**, não um tilt inventado: um sistema singular resolvido mesmo assim dá um gradiente que mora no último bit do acumulador — máquinas diferentes, quadros diferentes (HR-5) |
+| `ph2d-painter-brush/src/sculpt.rs` | `accumulate_dab_plane` + `PlaneOut` + **`walk_dab` extraído**: o walk do footprint (corpo varrido, silhueta, Grain, Seleção) agora é UM, e os dois acumuladores o montam — uma mudança na forma do dab não pode alcançar um e esquecer o outro. O silhouette é amostrado **uma vez** (scratch `(índice, peso)`), senão o custo do dab dobrava |
+| `tool/paint/sculpt.rs` | o MODELO: 5 verbos, `SculptFamily`, os 2 knobs, o roteamento |
+| `tool/paint/sculpt_session.rs` **(NOVO — split por LOC cap)** | a SESSÃO: nascimento, o walk dos dabs, snapshot, cancel, re-stamp, `sculpt_displaced_volume` |
+| `tool/paint/sculpt_blur.rs` | o KERNEL (uma expressão, cinco verbos) + o memo do blur |
+
+`SculptSnap` ganhou `plane_sum` **no mesmo commit** — §10.4 do plano manda, e a cicatriz é o `mats`, que
+ficou de fora do snapshot quando o material landou e só apareceu em tinta-sobre-tinta.
+
+### 12.4 — Volume deslocado (§6)
+
+`sculpt_displaced_volume()` — `Σ(h − pre)` sobre a janela do gesto, negativo quando a espátula tirou
+material. **Computado, exposto, descartado de propósito, e GATEADO agora**
+(`the_scrape_reports_the_volume_it_removed`): o Conserve de W5 (a *bow wave*) vira um **flag**, não uma
+reescrita. Um número conferido só em W5, contra um kernel escrito em W2, seria um número que ninguém pode
+checar.
+
+### 12.5 — Multi-plane Scrape: NÃO entrou, e por quê
+
+Não é cansaço. Ele precisa de (a) um **ângulo** — e o tilt é `tan(θ)`, transcendental (HR-5); (b) a
+**direção do traço**, que é `[0,0]` no 1º dab; (c) um 4º knob no card. É **W3**, junto do Clay, e cabe no
+mesmo fit (dois ajustes nas duas metades do footprint, partidas pelo eixo do traço).
+
+### 12.6 — Gates de W2 (10 mutações, 10 mortas)
+
+| Gate | Mutação que o mata |
+|---|---|
+| `an_exact_plane_is_recovered_exactly` (brush) | fit horizontal (`gx=gy=0` no `solve`) |
+| `the_slope_survives_the_brush_marks` (brush) | idem |
+| `a_collinear_footprint_falls_back_to_the_mean` (brush) | resolver o sistema singular mesmo assim |
+| `flatten_on_a_pure_ramp_is_a_no_op` | **fit horizontal** — o gate do §7 |
+| `the_scrape_takes_the_marks_off_the_hillside_and_leaves_the_hill` | idem (mede ATRAVESSANDO o traço) |
+| `scrape_only_lowers_fill_only_raises_and_flatten_does_both` | tirar o `delta.min(0.0)` do Scrape |
+| `the_plane_offset_gives_the_spatula_its_bite` | tirar o `+ offset` do alvo |
+| `the_scrape_reports_the_volume_it_removed` | zerar (ou inverter o sinal de) `sculpt_displaced_volume` |
+| `switching_family_mid_shape_rebuilds_the_target` | tirar o `refill_open_shape()` da troca de família |
+| `a_plane_stroke_costs_twelve_bytes_per_pixel_too` | tirar o guard de família do memo (16 B/px) |
+| `the_knob_row_swaps_with_the_verb_family` (seam) | pintar o Radius em todo verbo |
+| `the_offset_slider_is_wired_to_the_tool` (seam) | tirar o arm do `route_sculpt_event` |
+
+**Perf** (o kill criterion agora roda os DOIS motores — um orçamento medido num só é o orçamento de uma
+ferramenta que o artista não tem):
+
+```
+SMOOTH @2048px: 3,12 ms/move   |  @4096px: 3,16   (alvo <=4, kill 8)
+SCRAPE @2048px: 2,63 ms/move   |  @4096px: 2,57
+```
+
+O Scrape é **mais barato** que o Smooth (o fit é 9 FMAs/texel + um solve 3×3 por dab; sai mais barato que
+um box blur de raio 16). Plano entre 2048² e 4096² nos dois ⇒ **O(traço), não O(canvas)**.
+
+### 12.7 — Um warning de clippy que NÃO é meu
+
+`tests/spike/src/bin/c11_flecs.rs:64` — *"casting to the same type is unnecessary"*. Está na **main**
+(commit `cf62198e`), minha linha não toca `tests/`. Se o ship reclamar, é dele, não da espátula.
+
+### 12.8 — Smoke de W2 (some ao smoke de W1)
+
+Pinte uma crista → **SCULP** → escolha **Flatten** e passe **atravessando o FLANCO** dela: o flanco
+continua um flanco. Uma espátula nivelada araria um vale ali — é o teste de um segundo pro §7.
+Depois **Scrape** (só tira) e **Fill** (só põe), e gire o **Offset**: negativo = a faca crava, positivo =
+o Fill amontoa.

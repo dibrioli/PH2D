@@ -279,7 +279,7 @@ fn sculpt_perf_kill_criterion() {
     const MOVES: u32 = 20;
     const KILL_MS: f64 = 8.0;
 
-    let run = |size: u32, with_relief: bool| -> (f64, f64, f64) {
+    let run = |size: u32, with_relief: bool, mode: u8| -> (f64, f64, f64) {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         let layer = t.layers.active().expect("a layer");
@@ -296,7 +296,7 @@ fn sculpt_perf_kill_criterion() {
             t.covers.insert(layer, Arc::new(vec![255u8; n]));
             t.sync_relief_flags();
         }
-        arm_sculpt(&mut t, 0, 1.0, 1.0); // the WIDEST kernel — the worst case, not the comfortable one
+        arm_sculpt(&mut t, mode, 1.0, 1.0); // the WIDEST kernel — the worst case, not the comfortable one
         let mut b = t.paint.brush;
         b.radius_px = 100.0;
         t.paint.brush = b;
@@ -322,21 +322,28 @@ fn sculpt_perf_kill_criterion() {
         (total / f64::from(MOVES), worst, up)
     };
 
-    for size in [2048u32, 4096] {
-        let (off_mean, off_worst, off_up) = run(size, false);
-        let (on_mean, on_worst, on_up) = run(size, true);
-        let (mean, worst, up) = (on_mean - off_mean, on_worst - off_worst, on_up - off_up);
-        println!(
-            "@{size}px r100 radius16 — no relief: mean {off_mean:.2} ms/move, worst {off_worst:.2}, pen-up {off_up:.2}\n\
-             @{size}px r100 radius16 — SCULPT : mean {on_mean:.2} ms/move, worst {on_worst:.2}, pen-up {on_up:.2}\n\
-             >>> SCULPT COST @{size}px: mean {mean:.2} ms/move, worst {worst:.2} ms/move (target <=4, kill {KILL_MS}) | PEN-UP {up:.2} ms"
-        );
-        assert!(
-            mean < KILL_MS,
-            "the sculpt costs {mean:.2} ms/move at {size}px — past the kill criterion of {KILL_MS} ms. \
-             The first suspect is the blur memo: if a tile is being recomputed per dab instead of once \
-             per stroke, the cost scales with the SPACING slider."
-        );
+    // Both engines: Smooth (the tile-memoised blur) and Scrape (the per-dab plane fit). They are different
+    // arithmetic with different failure modes, and a budget measured on only one of them is a budget for a
+    // tool the artist does not have.
+    for (label, mode) in [("SMOOTH", 0u8), ("SCRAPE", 3u8)] {
+        for size in [2048u32, 4096] {
+            let (off_mean, off_worst, off_up) = run(size, false, mode);
+            let (on_mean, on_worst, on_up) = run(size, true, mode);
+            let (mean, worst, up) = (on_mean - off_mean, on_worst - off_worst, on_up - off_up);
+            println!(
+                ">>> {label} COST @{size}px: mean {mean:.2} ms/move, worst {worst:.2} ms/move \
+             (target <=4, kill {KILL_MS}) | PEN-UP {up:.2} ms \
+             [baseline {off_mean:.2}, with-relief {on_mean:.2}]"
+            );
+            assert!(
+                mean < KILL_MS,
+                "{label} costs {mean:.2} ms/move at {size}px — past the kill criterion of {KILL_MS} ms. \
+             For SMOOTH the first suspect is the blur memo: if a tile is recomputed per dab instead of once \
+             per stroke, the cost scales with the SPACING slider. For SCRAPE it is the plane fit: if the \
+             silhouette is being sampled twice per dab (once for the fit, once for the write) the whole \
+             dab walk doubles — the `scratch` buffer exists to make it once."
+            );
+        }
     }
 }
 

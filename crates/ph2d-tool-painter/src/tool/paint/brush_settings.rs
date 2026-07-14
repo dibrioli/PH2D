@@ -112,13 +112,21 @@ pub struct BrushSettings {
     /// method ARE its controls and must stay on screen (`docs/Painter/18…` §10.1). What it hides instead is
     /// the COLOUR half (via [`Self::paints_no_color`]) — a tool that lays no pigment has no use for it.
     pub is_sculpt: bool,
-    /// Sculpt sub-mode (`0` Smooth · `1` Sharpen).
+    /// Sculpt sub-mode (`0` Smooth · `1` Sharpen · `2` Flatten · `3` Scrape · `4` Fill).
     pub sculpt_mode: u8,
+    /// Whether the sub-mode is a **plane** verb (Flatten / Scrape / Fill). The card shows the Offset row for
+    /// these and the Radius row for the others — one or the other, because a knob that does nothing to the
+    /// active verb is a knob that lies.
+    pub sculpt_is_plane: bool,
     /// Sculpt kernel Radius, `0..1` track (mapped to `1..=16` px by the tool — small on purpose: smoothing
-    /// at a large scale is Flatten, which is a different kernel, not a bigger blur).
+    /// at a large scale is Flatten, which is a different kernel, not a bigger blur). Smooth family.
     pub sculpt_radius: f32,
     /// The kernel Radius in px, as the artist would read it off the chip.
     pub sculpt_radius_px: f32,
+    /// Plane **Offset**, `0..1` track (`0.5` = the plane sits on the surface it was fitted to). Plane family.
+    pub sculpt_offset: f32,
+    /// The plane Offset in paint-loads (`−1..=+1`), as the artist would read it off the chip.
+    pub sculpt_offset_loads: f32,
     /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited
     /// boundary; only meaningful (and shown) in Edit mode.
     pub selection_offset: f32,

@@ -232,10 +232,51 @@ O trabalho **não é o blur**. É:
 - **O seam:** um teste que **CLICA** no botão do rail e no chip do sub-modo (§3 ⚠️).
 - Perf: kill criterion espelhando o do impasto (≤4 ms/movimento @2048², kill 8).
 
-### W2 — A ESPÁTULA: Scrape · Fill · Flatten (+ Multi-plane Scrape)
-Um kernel (§7), quatro verbos. O `plane_offset` é o que dá mordida a Scrape/Fill.
-Gates: cada verbo só move no seu sentido · **o plano segue a encosta** (o gate que mataria o ajuste
-horizontal) · o volume deslocado é computado (§6).
+### W2 — A ESPÁTULA ✅ **FECHADA (2026-07-13)** — Flatten · Scrape · Fill
+
+Um kernel (§7), e agora **cinco verbos numa expressão só**: `h = pre + k·Δ`, onde o verbo escolhe *de
+onde vem o alvo* e *qual SINAL de Δ passa*.
+
+| verbo | alvo | Δ |
+|---|---|---|
+| Smooth | `blur(pre)` | os dois lados |
+| Sharpen | `pre + (pre − blur(pre))` | os dois lados |
+| Flatten | o **plano** ajustado | os dois lados |
+| Scrape | o plano | **só pra baixo** (`min(Δ,0)`) |
+| Fill | o plano | **só pra cima** (`max(Δ,0)`) |
+
+Scrape e Fill **não são motores novos** — são o Flatten com metade do número jogada fora.
+
+**O que o plano não previa (3 coisas):**
+
+1. **O alvo do plano é uma MÉDIA PONDERADA por-texel, não um plano por-dab.** Cada dab soma
+   `plane_sum[i] += w·plano_d(i)` com o MESMO peso que já soma em `amount[i]`; o render divide. Isso é o
+   que preserva o motor por-traço do §4 — guardar "o plano" exigiria a lista de dabs no render, que os
+   shape editors jogam fora e reconstroem a cada frame. E a divisão torna o alvo **independente de
+   Strength e Flow** (eles escalam os dois lados): Strength decide *quão longe* você vai até o plano, não
+   *onde o plano está*.
+2. **O Offset NÃO entra na acumulação.** É um deslocamento rígido, então
+   `Σw·(plano+off) = plane_sum + off·amount` — o render soma no fim. Custo: o slider fica vivo num shape
+   aberto **sem re-carimbar um dab**.
+3. **`blurred` e `plane_sum` são mutuamente exclusivos** (um verbo pertence a uma família só) ⇒ a sessão
+   segue em **12 B/px** com cinco verbos, não 16. Trocar de família num shape aberto **re-carimba**
+   (`set_sculpt_mode` → `refill_open_shape`), porque `plane_sum` é função da LISTA DE DABS e não dá pra
+   reconstruir do `pre` — sem isso, Smooth→Scrape dividia por zero e puxava a tinta pro **chão** do canvas.
+
+**Volume deslocado (§6): computado, exposto (`sculpt_displaced_volume`), descartado de propósito e
+GATEADO agora** — o Conserve de W5 é um flag, e um número que ninguém conferiu no dia em que foi escrito
+não seria.
+
+**A lição do gate (vale mais que o código):** o fit horizontal — o bug que este §7 inteiro existe pra
+evitar — **é invisível AO LONGO do traço**. A média móvel dos planos horizontais reconstrói a encosta por
+acidente (cada plano fica na altura média do seu footprint, que acompanha o morro). O dano só aparece
+**perpendicular ao traço**, onde nada o reconstrói. O 1º gate de produto media a inclinação *ao longo* e
+ficou **verde sob a mutação**. Gates: `flatten_on_a_pure_ramp_is_a_no_op` (rampa em 2 eixos) +
+`the_scrape_takes_the_marks_off_the_hillside_and_leaves_the_hill` (encosta **atravessando** o traço).
+
+**Multi-plane Scrape: NÃO entrou** — e não é adiamento por cansaço. Ele precisa de (a) um ângulo, que é
+`tan(θ)` = transcendental (HR-5), (b) a direção do traço, que é `[0,0]` no 1º dab, e (c) um 4º knob no
+card. É W3, junto do Clay, e cabe no mesmo fit (dois ajustes nas duas metades do footprint).
 
 ### W3 — Clay · Clay Strips · Layer · Sharpen · Draw Sharp · Inflate
 Todos **composições dos kernels de W1/W2** — nenhum motor novo:

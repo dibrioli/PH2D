@@ -129,6 +129,14 @@ pub(crate) struct SculptSnap {
     pub(crate) pre: Arc<Vec<f32>>,
     /// The accumulated per-texel touch.
     pub(crate) amount: Arc<Vec<f32>>,
+    /// The plane family's per-texel target (`Σ w·plane(i)`) — empty in the Smooth family.
+    ///
+    /// It rides the snapshot and the blur memo does not, and the asymmetry is the point: the memo is a
+    /// function of `pre` alone, so the restore can throw it away and let it rebuild. `plane_sum` is a
+    /// function of the **dab list**, which no longer exists — drop it on restore and the next re-stamp
+    /// divides by it anyway, pulling the footprint toward height 0. Doc 18 §10.4 states the rule with a scar
+    /// behind it: *ao adicionar um plano, adicione-o ao snapshot no mesmo commit.*
+    pub(crate) plane_sum: Arc<Vec<f32>>,
     /// Which layer the session belongs to — and, the session dying at commit, also *whether there is an
     /// uncommitted gesture at all* (`None` ⇒ no session). The two used to be separate fields.
     pub(crate) layer: Option<RtLayerId>,

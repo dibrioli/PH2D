@@ -5263,6 +5263,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-force-buoyancy"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-force-curl"
 version = "0.0.0"
 dependencies = [
@@ -5377,6 +5385,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-motion-distribute-curve"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-distribute-poisson"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -5799,6 +5815,7 @@ dependencies = [
  "ph2d-node-debug-const",
  "ph2d-node-debug-wave",
  "ph2d-node-force-attractor",
+ "ph2d-node-force-buoyancy",
  "ph2d-node-force-curl",
  "ph2d-node-force-drag",
  "ph2d-node-force-vortex",
@@ -5814,6 +5831,7 @@ dependencies = [
  "ph2d-node-motion-combine",
  "ph2d-node-motion-cull",
  "ph2d-node-motion-distribute-curve",
+ "ph2d-node-motion-distribute-poisson",
  "ph2d-node-motion-distribute-radial",
  "ph2d-node-motion-drive",
  "ph2d-node-motion-emitter",

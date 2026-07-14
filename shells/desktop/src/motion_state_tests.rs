@@ -11,6 +11,7 @@
 //! its own tests in its own crate; what died here was the boot document's copy of them, not the
 //! coverage.
 
+use super::strobe::{RAIN_Y, SEA_DRAFT, SEA_LEVEL, SEA_WAVE_AMP, SNOW_FLOOR_Y};
 use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
@@ -23,11 +24,11 @@ fn new_builds_the_well_typed_snow_document() {
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 19 nodes: the zone's interior {sim.zone, combine, force.wind, sim.step, sim.collide,
-    // sim.lifetime, color_ramp, drive(size), drive(opacity), falloff, cull} + the fade
-    // {value.attribute, value.map_range} + birth {grid, move, sim.spawn} + render {scale, move,
-    // output}.
-    assert_eq!(state.doc.graph.nodes().len(), 19);
+    // 20 nodes: the zone's interior {sim.zone, combine, force.wind, force.buoyancy, sim.step,
+    // sim.collide, sim.lifetime, color_ramp, drive(size), drive(opacity), falloff, cull} + the fade
+    // {value.attribute, value.map_range} + birth {distribute_poisson, move, sim.spawn} + render
+    // {scale, move, output}.
+    assert_eq!(state.doc.graph.nodes().len(), 20);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -37,12 +38,20 @@ fn new_builds_the_well_typed_snow_document() {
 ///
 /// 1. **BIRTH** — the zone's `init` is unwired, so the population starts at NOTHING and is
 ///    entirely born. If the spawn were dead, the scene would stay empty forever.
-/// 2. **LIFE** — a flake ACCELERATES: its velocity lives in the state, so each tick's fall is
-///    longer than the last. Measured on one identified flake (`id = 0`), because the population
-///    changes underneath any average — the survivorship trap this test walked into once already,
-///    when it tracked the LOWEST drop and found it *rising* (the lowest drop is the one the disc
-///    is about to kill).
-/// 3. **DEATH + STEADY STATE** — birth balances death, so the population climbs and then SETTLES
+/// 2. **LIFE** — a flake ACCELERATES: **while it is in the air**, its velocity lives in the state,
+///    so each tick's fall is longer than the last. Measured on one identified flake (`id = 0`),
+///    because the population changes underneath any average — the survivorship trap this test
+///    walked into once already, when it tracked the LOWEST drop and found it *rising* (the lowest
+///    drop is the one the disc is about to kill).
+/// 3. **THE SEA** — and then it stops accelerating, because it hits the water (doc 60). The flake
+///    plunges, the sea pushes back, and it comes to rest floating on the surface — not resting on
+///    the bed and not passing through. "In the air" is not a time window here but the *waterline*,
+///    which is what makes this gate survive a re-tuned demo.
+/// 4. **AGE** — they whiten, shrink and fade as they melt, all three driven off the one `life`
+///    column (docs 50 + 51).
+/// 5. **THE WORLD** — on the whole population: nothing is below the bed, and the flakes that
+///    finished falling are FLOATING near the waterline rather than piled on the bottom.
+/// 6. **DEATH + STEADY STATE** — birth balances death, so the population climbs and then SETTLES
 ///    instead of growing without bound. A zone that re-seeded when it emptied, or a cull that was
 ///    only a filter, would both break the plateau.
 #[test]
@@ -78,9 +87,29 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         counts[60]
     );
 
-    // 2. LIFE: flake 0 accelerates — each fall is longer than the one before.
+    // 2. LIFE: flake 0 accelerates — each fall is longer than the one before, WHILE IT IS IN THE
+    //    AIR. The waterline (plus the swell, which reaches SEA_WAVE_AMP above the still level) is
+    //    where the air ends, so this window is read off the world, not off a tick count.
     assert!(flake.len() > 30, "flake 0 lived long enough to measure");
-    let falls: Vec<f32> = flake.windows(2).map(|w| w[0] - w[1]).collect();
+    // **The sink is the scene as DRAWN.** `motion.move` shifts the whole population by `RAIN_Y`
+    // on its way to the output, so every `y` read off it is in DISPLAY space while the sea's
+    // constants are in SIM space. Read one, compare against the other, and the gate is measuring
+    // a sea 2.4 units below the one the flakes fall into
+    // ([[feedback_derived_coordinate_seed_must_match_sample]] — it caught me here).
+    let sea = SEA_LEVEL + RAIN_Y;
+    let bed = SNOW_FLOOR_Y + RAIN_Y;
+    let waterline = sea + SEA_WAVE_AMP;
+    let airborne: Vec<f32> = flake
+        .iter()
+        .copied()
+        .take_while(|y| *y > waterline)
+        .collect();
+    assert!(
+        airborne.len() > 20,
+        "flake 0 spent {} ticks above the water - too few to measure a fall",
+        airborne.len()
+    );
+    let falls: Vec<f32> = airborne.windows(2).map(|w| w[0] - w[1]).collect();
     assert!(
         falls.windows(2).all(|w| w[1] >= w[0] - 1e-4),
         "gravity accumulates in the STATE: {falls:?}"
@@ -90,7 +119,32 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         "…and it really is accelerating, not drifting"
     );
 
-    // 3. AGE: the flakes grow old and are COLOURED by how old they are. Both readings come off
+    // 3. THE SEA catches it. The flake plunges past the still-water line (it arrives with a second
+    //    and a half of gravity behind it), taps the shallow bed, and the water lifts it back — so
+    //    it ENDS afloat: within a draft of the surface, above the bed, and no longer falling.
+    //    Without the buoyancy it would simply lie on the bed; without the bed it would keep going.
+    let deepest = flake.iter().copied().fold(f32::MAX, f32::min);
+    assert!(
+        deepest < sea,
+        "the flake never even broke the surface ({deepest} vs {sea})"
+    );
+    assert!(
+        (deepest - bed).abs() < 0.02,
+        "the splash should TAP the bed and be STOPPED by it (`sim.collide` is what ends the \
+         plunge - the sea alone would just slow it): deepest {deepest} vs bed {bed}"
+    );
+    let settled = flake[flake.len() - 1];
+    assert!(
+        (settled - sea).abs() < SEA_DRAFT + SEA_WAVE_AMP + 0.05,
+        "the flake should be FLOATING at the end of its life, not sunk or launched: {settled} \
+         against a sea at {sea}"
+    );
+    assert!(
+        settled > deepest + 0.05,
+        "it plunged to {deepest} and the water never brought it back up (ended at {settled})"
+    );
+
+    // 4. AGE: the flakes grow old and are COLOURED by how old they are. Both readings come off
     //    the same live state, so a broken `sim.step` age or a mis-wired ramp shows here.
     let out = cook
         .cook(&state.doc.graph, &state.registry, snow, 4.0)
@@ -169,26 +223,40 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
         sizes.iter().map(|q| q[0]).fold(f32::MAX, f32::min)
     );
 
-    // 4. THE GROUND: the flakes LAND on it. Nothing is below the floor (a collider that only
-    //    clamped the position would let them ooze through, because their velocity would still
-    //    point down), and some are resting ON it — so the floor is being hit, not merely drawn.
-    //    The positions here are the RENDERED ones, so the scene's own `motion.move` is added in.
+    // 5. THE WORLD, on the whole population: the SEA holds them and the BED stops them.
+    //
+    //    This used to read "the flakes land on the floor and rest there" — and it did that by
+    //    writing `-2.0 + 2.4` out by hand, a magic number that duplicated the demo's own constant
+    //    instead of importing it. When the sea arrived (doc 60) the bed moved, and the literal went
+    //    on pointing at a patch of empty water while the gate stayed green about it. It reads the
+    //    constants now.
+    //
+    //    What the scene actually does: nothing is below the bed (a collider that only clamped the
+    //    position would let them ooze through, because their velocity would still point down), and
+    //    the population is FLOATING — the flakes that are done falling sit around the waterline,
+    //    not on the bed. Take `force.buoyancy` out and they all pile up on the bottom, which is
+    //    what this second assertion is here to notice.
     let ys: Vec<f32> = match s.get("P") {
         Some(Column::Vec2(v)) => v.iter().map(|q| q[1]).collect(),
         _ => panic!("no positions"),
     };
-    let floor = -2.0 + 2.4; // the collider's height, in the rendered frame (`move` dy = 2.4)
     let lowest = ys.iter().cloned().fold(f32::MAX, f32::min);
     assert!(
-        lowest > floor - 0.05,
-        "nothing fell through the floor: lowest {lowest} vs floor {floor}"
+        lowest > bed - 0.05,
+        "nothing fell through the bed: lowest {lowest} vs bed {bed}"
     );
+    let afloat = ys
+        .iter()
+        .filter(|y| (**y - sea).abs() < SEA_DRAFT + SEA_WAVE_AMP + 0.05)
+        .count();
     assert!(
-        ys.iter().any(|y| *y < floor + 0.15),
-        "…and the snow is settling ON it, not hovering above it: lowest {lowest}"
+        afloat >= 3,
+        "the sea should be holding the flakes that finished falling, but only {afloat} of {} are \
+         anywhere near the waterline at {sea}",
+        ys.len()
     );
 
-    // 5. DEATH + STEADY STATE: the population settles instead of growing without bound.
+    // 6. DEATH + STEADY STATE: the population settles instead of growing without bound.
     let late = &counts[180..];
     let (lo, hi) = (
         *late.iter().min().unwrap() as f32,

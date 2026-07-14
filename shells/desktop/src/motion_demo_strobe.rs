@@ -1,24 +1,30 @@
-//! **The default Motion document: the SNOW** — a whole particle system, on one canvas
-//! (Motion Nodes O4 — docs 48 · 49 · 50 · 51 · 52).
+//! **The default Motion document: the SNOW, falling into the SEA** — a whole particle system, on
+//! one canvas (Motion Nodes O4 — docs 48 · 49 · 50 · 51 · 52 · 60).
 //!
 //! ```text
 //!                     ┌──────────┐ out ──┬──→ scale ──→ move ──→ output
 //!                     │ sim.zone │       │
 //!            state ←──┴──────────┘       ⊙  (the state entry: last tick's population)
 //!              ↑                         │
-//!   cull ← falloff ← drive(α) ← drive(size) ← ramp ← lifetime ← collide ← step ← wind ← combine
-//!                        ↑          ↑         ↑                                       ↑ in1
-//!                        └───── map_range ← attribute("life")    grid → move → sim.spawn
+//!   cull ← falloff ← drive(α) ← drive(size) ← ramp ← lifetime ← collide ← step ← buoyancy ← wind ← combine
+//!                        ↑          ↑         ↑                                                     ↑ in1
+//!                        └───── map_range ← attribute("life")             poisson → move → sim.spawn
 //! ```
 //!
 //! Every line of a particle system is on that canvas, and every one of them is a node you can cut:
 //!
 //! - **BIRTH** — `sim.spawn` emits only *this tick's* newborns; `motion.combine` merges them into
 //!   the live state. The zone's `init` is left UNWIRED on purpose: the population starts at
-//!   NOTHING and is entirely born, so every flake has a unique identity from birth (doc 49).
+//!   NOTHING and is entirely born, so every flake has a unique identity from birth (doc 49). The
+//!   birth sites come from `motion.distribute_poisson` — a *guaranteed* minimum spacing across the
+//!   sky, so they never double up and never read as the comb a `motion.grid` row was (doc 60).
 //! - **LIFE** — `force.wind` + `sim.step`: the velocity lives in the STATE, so the flakes
 //!   *accelerate* instead of drifting (doc 48).
-//! - **THE WORLD** — `sim.collide`: they land on the floor, hop, and slide (doc 52).
+//! - **THE WORLD** — `force.buoyancy` and `sim.collide`. The sea is **shallow**: a flake arrives
+//!   with a second and a half of gravity behind it, punches *through* the surface, taps the bed,
+//!   and the water lifts it back to float and bob on the swell while it melts (doc 60). Both nodes
+//!   are load-bearing — take the sea away and the flakes just land, take the bed away and a heavy
+//!   splash falls out of the world.
 //! - **AGE** — `sim.step` grows an `age`; `sim.lifetime` writes how far through life each flake is
 //!   and `value.attribute` reads that back out as a value field (doc 50), which drives THREE things
 //!   at once: the colour (`motion.color_ramp`), the size and the opacity (`motion.drive`, doc 51).
@@ -42,16 +48,42 @@ const COL_W: f32 = 190.0;
 const RAIN_ROW: f32 = 0.0;
 const RAIN_INTERIOR_DY: f32 = 140.0;
 
-/// The snow: flakes born along a line at the top of the kill disc, falling under gravity, landing
-/// on the floor, and melting of old age.
-const SNOW_SITES: f32 = 14.0;
-const SNOW_SITE_GAP: f32 = 0.36;
+/// The snow: flakes born along a band at the top of the kill disc, falling under gravity, splashing
+/// into the sea, and melting of old age while they bob.
+///
+/// The birth sites are a **Poisson-disc** distribution, not a grid row: `motion.distribute_poisson`
+/// names the *spacing* and lets the count fall out (doc 60), so no two sites ever coincide and the
+/// line of them is irregular the way falling snow is. The band is wide and barely taller than the
+/// spacing, so it fills as one wobbly row — a comb with the teeth knocked crooked.
+const SNOW_SKY_W: f32 = 3.2;
+const SNOW_SKY_H: f32 = 0.35;
+/// The minimum distance between two birth sites (the Poisson radius). ~14 sites fit the band.
+const SNOW_SITE_GAP: f32 = 0.33;
 const SNOW_SKY_Y: f32 = 2.6;
-const SNOW_RATE: f32 = 24.0;
+const SNOW_RATE: f32 = 16.0;
 const SNOW_GUST: f32 = 0.35;
-/// A flake lives ~2.2 s (± the hashed variance) — long enough to reach the floor and melt there.
-const SNOW_LIFE: f32 = 2.2;
-const SNOW_LIFE_VARIANCE: f32 = 0.4;
+/// A flake lives ~3.4 s (± the hashed variance) — ~1.5 s of falling, and the rest afloat.
+const SNOW_LIFE: f32 = 4.5;
+const SNOW_LIFE_VARIANCE: f32 = 0.25;
+
+/// **The sea** (`force.buoyancy`, doc 60). The still-water line sits 0.6 above the floor, so the
+/// water is SHALLOW — that is deliberate, and it is what keeps both nodes in the demo alive: a
+/// flake hits the surface with ~1.5 s of gravity behind it, punches through, taps the bed
+/// (`sim.collide`), and the water pushes it back up to float.
+///
+/// `density` (the lift at full submersion) beats `RAIN_GRAVITY` by 3.5x, so a flake settles about
+/// a third of its draft under the surface and stays there. Make it *smaller* than gravity and the
+/// flake sinks to the bed instead — a stone, not a bug.
+pub(crate) const SEA_LEVEL: f32 = -0.5;
+const SEA_DENSITY: f32 = 14.0;
+/// A flake's draft: how far under it must be to be fully submerged. It is a snowflake, so: not far.
+pub(crate) const SEA_DRAFT: f32 = 0.3;
+/// Water is thick. Without this the flake would pogo on the surface forever instead of settling.
+const SEA_DRAG: f32 = 5.0;
+/// The swell: crests one every 2.4 units, travelling right at half a unit a second.
+pub(crate) const SEA_WAVE_AMP: f32 = 0.14;
+const SEA_WAVE_LEN: f32 = 2.4;
+const SEA_WAVE_SPEED: f32 = 0.5;
 /// The column the fade is driven by (`sim.lifetime` writes it: 0 at birth, 1 at the end).
 const SNOW_ATTR: &str = "life";
 /// `motion.color_ramp`'s presets: 0 Rainbow · 1 Heat · **2 Ice** · 3 Grayscale · 4 Custom.
@@ -63,7 +95,7 @@ const SNOW_FADE_FLOOR: f32 = 0.1;
 /// It sits well inside the kill disc, so a flake that lands dies of OLD AGE where it lies rather
 /// than being culled at the rim.
 const SNOW_FLOOR_SHAPE: f32 = 0.0;
-const SNOW_FLOOR_Y: f32 = -2.0;
+pub(crate) const SNOW_FLOOR_Y: f32 = -1.1;
 const SNOW_FLOOR_BOUNCE: f32 = 0.25;
 const SNOW_FLOOR_FRICTION: f32 = 0.35;
 /// `motion.drive`'s channels: 0 X · 1 Y · 2 Rotation · 3 Size · 4 Opacity (doc 51). Modes:
@@ -82,7 +114,7 @@ const RAIN_KILL_R: f32 = 3.4;
 const RAIN_KILL_KEEP: f32 = 0.05;
 /// Where the scene sits in the world.
 const RAIN_X: f32 = 0.0;
-const RAIN_Y: f32 = 2.4;
+pub(crate) const RAIN_Y: f32 = 2.4;
 
 /// What the boot document is made of: its sinks, and the sub-chain the editor folds
 /// into a subgraph card (doc 57).
@@ -164,6 +196,7 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     let zone = g.add_node("sim.zone");
     let combine = g.add_node("motion.combine");
     let wind = g.add_node("force.wind");
+    let sea = g.add_node("force.buoyancy");
     let step = g.add_node("sim.step");
     let ground = g.add_node("sim.collide");
     let life = g.add_node("sim.lifetime");
@@ -174,7 +207,7 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     let dim = g.add_node("motion.drive");
     let falloff = g.add_node("motion.falloff");
     let cull = g.add_node("motion.cull");
-    let sky = g.add_node("motion.grid");
+    let sky = g.add_node("motion.distribute_poisson");
     let lift = g.add_node("motion.move");
     let spawn = g.add_node("sim.spawn");
     let scale = g.add_node("motion.scale");
@@ -187,7 +220,7 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     chain(g, RAIN_ROW, 2, &[scale, mv, output])?;
     wire(g, (zone, 0), (scale, 0))?;
     for (i, n) in [
-        combine, wind, step, ground, life, ramp, shrink, dim, falloff, cull,
+        combine, wind, sea, step, ground, life, ramp, shrink, dim, falloff, cull,
     ]
     .iter()
     .enumerate()
@@ -201,7 +234,10 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
         );
     }
     wire(g, (combine, 0), (wind, 0))?;
-    wire(g, (wind, 0), (step, 0))?;
+    // Two forces, one integrator (the Houdini rule): gravity and the sea both ADD into the same
+    // transient `accel` column, and `sim.step` is the only thing that turns it into motion.
+    wire(g, (wind, 0), (sea, 0))?;
+    wire(g, (sea, 0), (step, 0))?;
     wire(g, (step, 0), (ground, 0))?; // …and the world pushes BACK
     wire(g, (ground, 0), (life, 0))?;
     wire(g, (life, 0), (ramp, 0))?;
@@ -270,10 +306,11 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     })
     .ok()?;
 
-    // The sky: a wide, thin line of birth sites, lifted to the top of the disc.
-    g.set_param(sky, "rows", 1.0);
-    g.set_param(sky, "cols", SNOW_SITES);
-    g.set_param(sky, "gap_x", SNOW_SITE_GAP);
+    // The sky: a wide, barely-tall band of birth sites at a guaranteed spacing, lifted to the top
+    // of the disc. The band is thinner than one site is wide, so it fills as a single crooked row.
+    g.set_param(sky, "width", SNOW_SKY_W);
+    g.set_param(sky, "height", SNOW_SKY_H);
+    g.set_param(sky, "radius", SNOW_SITE_GAP);
     g.set_param(lift, "dy", SNOW_SKY_Y);
     g.set_param(spawn, "rate", SNOW_RATE);
     // Gravity: `force.wind`'s angle is degrees, 270 = straight down (y-up world). A little gust
@@ -281,6 +318,14 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     g.set_param(wind, "angle", 270.0);
     g.set_param(wind, "strength", RAIN_GRAVITY);
     g.set_param(wind, "gust", SNOW_GUST);
+    // The sea, into which the snow falls.
+    g.set_param(sea, "level", SEA_LEVEL);
+    g.set_param(sea, "density", SEA_DENSITY);
+    g.set_param(sea, "depth", SEA_DRAFT);
+    g.set_param(sea, "drag", SEA_DRAG);
+    g.set_param(sea, "wave_amplitude", SEA_WAVE_AMP);
+    g.set_param(sea, "wave_length", SEA_WAVE_LEN);
+    g.set_param(sea, "wave_speed", SEA_WAVE_SPEED);
     // The kill: `motion.falloff` writes a per-element mask from a disc around the origin, and
     // `motion.cull` keeps only what is still inside it (Falloff mode).
     g.set_param(falloff, "radius", RAIN_KILL_R);

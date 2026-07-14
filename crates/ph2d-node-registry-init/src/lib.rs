@@ -18,6 +18,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_debug_const::register(reg)?;
     ph2d_node_debug_wave::register(reg)?;
     ph2d_node_force_attractor::register(reg)?;
+    ph2d_node_force_buoyancy::register(reg)?;
     ph2d_node_force_curl::register(reg)?;
     ph2d_node_force_drag::register(reg)?;
     ph2d_node_force_vortex::register(reg)?;
@@ -33,6 +34,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_combine::register(reg)?;
     ph2d_node_motion_cull::register(reg)?;
     ph2d_node_motion_distribute_curve::register(reg)?;
+    ph2d_node_motion_distribute_poisson::register(reg)?;
     ph2d_node_motion_distribute_radial::register(reg)?;
     ph2d_node_motion_drive::register(reg)?;
     ph2d_node_motion_emitter::register(reg)?;

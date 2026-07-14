@@ -247,12 +247,52 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
 
 1. ~~**FILA 2 — promoção param → socket**~~ — **FECHADA** (doc 58; virou *param dirigido por
    fio*, sem estado de promoção).
-2. **FILA 3 — FX passes no compositor HDR** (glow/bloom/blur/vignette/levels/hue-shift).
-   Reuso obrigatório do compositor GPU do Painter (`ph2d-painter-effects`).
-3. **FILA 4 — os 4 nós que faltam** (`motion-delay`, `motion-buoyancy`,
-   `motion-distribute-poisson`, `motion-path`).
-4. **FILA 5 — W4.T4** (dock da timeline no `motion_timeline_slot`) — coordene com o Enio, encosta
+2. ~~**FILA 4 — Poisson + Bóia**~~ — **FECHADA a metade** (doc 60): `motion.distribute_poisson`
+   (Bridson 2007) + `force.buoyancy` (Arquimedes + onda viajante). Ver §7.6.
+3. **FILA 3 — FX passes no compositor HDR** (glow/bloom/blur/vignette/levels/hue-shift).
+   Reuso obrigatório do compositor GPU do Painter (`ph2d-painter-effects`). ⚠️ **Cross-module: PARE
+   e reporte ao Enio antes de começar** — é decisão de arquitetura, não fan-out.
+4. **FILA 4, a outra metade** — `motion.delay` (fan-out normal; a família *History* do plano §1.3.
+   Note antes de codar: `motion.time_remap` já atrasa uma sub-árvore **Pure** de graça, então o
+   `delay` só se justifica pra atrasar o que **não é função de t** — uma simulação) ·
+   **`motion.path` = PARADO, precisa de DECISÃO do Enio** (o plano dizia *"integra vector.*"*, mas o
+   sistema vetorial de nós foi RETIRADO por ADR-0108 e a geometria mora em `ph2d-vec-scene`, que o
+   **cook não alcança**: um nó só recebe params/inputs/playhead. Um nó que lê o documento vetorial
+   exige um **canal novo shell→cook** — arquitetura, não fan-out).
+5. **FILA 5 — W4.T4** (dock da timeline no `motion_timeline_slot`) — coordene com o Enio, encosta
    na linha `anim`.
+
+## 7.6 FILA 4 (metade) — Poisson + Bóia (`<COMMIT>`, doc 60)
+
+**2 drop-crates novas, ZERO foundational tocado.**
+
+| Nó | O que é | Referência |
+|---|---|---|
+| `motion.distribute_poisson` | **o raio é o knob, a contagem é a resposta** — preenche um retângulo com pontos que nunca ficam a menos de `radius` um do outro | **Bridson 2007** (`O(N)`, grade de aceleração). NÃO é um 2º `motion.scatter`: aquele é Mitchell best-candidate, `O(N²K)`, e nomeia a **contagem** |
+| `force.buoyancy` | **Arquimedes + uma onda viajante** — acumula em `accel` como toda força; o empuxo é normal à SUPERFÍCIE (então o flutuante cavalga a marola, não bombeia no lugar) | **`BuoyancyEffector2D` da Unity** (level/density/drag), com a superfície promovida a onda |
+
+- **HR-5:** a direção do dardo do Bridson é **rejeitada da bola unitária** (o paper diz "ângulo
+  aleatório" = `sin`/`cos`, proibido); a onda é o seno parabólico (leaf copiado do `force.wind`).
+- **Teto sem `count`:** um nó sem param de contagem não tem `param_as_count` — quem vira o vetor de
+  alocação é o **raio** (0 → grade infinita, e o cast `f32 as usize` **satura**, não entra em
+  pânico). O teto é a **grade** (uma célula de Bridson guarda ≤1 ponto, então limitar células limita
+  memória E contagem).
+- **A demo mudou: a neve cai NO MAR.** Os 2 nós entraram **dentro** do grafo da chuva (Enio: *"deixe
+  só o grafo da chuva"*), não numa 2ª cena. O mar é **raso de propósito** — o floco atravessa a
+  superfície, **bate no leito** (`sim.collide` segue portante) e a água o traz de volta. Medido:
+  queda 1,45 s → mergulho até exatamente o leito → **1,3 s boiando**; população estável ~73.
+- **Bug pré-existente que a demo expôs:** a faixa de nascimento era **mais larga que a região viva**
+  do disco de kill na altura dela — os sítios das pontas **nasciam mortos**. Corrigido (3,2 de
+  largura; meia-largura viva a `y=2,6` é 1,92).
+- **`ph2d-node-registry-init` REGENERADO** (`cargo run -p ph2d-node-sync`) — **88** crates-nó (era
+  86). É o conflito de merge esperado no rebase: **regenere, nunca resolva à mão.**
+- **Shell:** `motion_demo_strobe.rs` + `motion_state_tests.rs`. **5 constantes da demo viraram
+  `pub(crate)`** (`SEA_LEVEL`/`SEA_DRAFT`/`SEA_WAVE_AMP`/`SNOW_FLOOR_Y`/`RAIN_Y`) — o gate do chão
+  tinha um **número mágico duplicando a constante** (`-2.0 + 2.4` à mão) e, quando o leito se moveu,
+  seguiu apontando pra água vazia **verde**. Agora ele lê a constante.
+- **Contrato congelado:** intocado (`architecture_contract_surface` 8/2/1 verde).
+- **3 mutações mataram os gates** (empuxo reto pra cima · submersão binária · varredura de vizinhos
+  5×5→4×4).
 
 ### Gaps conhecidos DESTA fatia (nomeados, não escondidos)
 

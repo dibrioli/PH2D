@@ -64,6 +64,11 @@ pub(crate) fn sync(sim: &mut SimWorld, doc: &mut FlipDoc, map: &mut FlipEntityMa
     }
     let mut next_order = next_root_order(sim);
     for (id, name) in missing {
+        // Pela porta do nome ÚNICO — ver o mesmo comentário em `vec_entities::sync`. O nome do
+        // objeto Flip vem do documento dele, que não sabe nada dos sprites nem das formas: dois
+        // "Char" (ou um "Char" e um sprite que o artista renomeou "Char") são um empate, e desde
+        // o W4.T6 um empate de nome é um empate de IDENTIDADE — a animação cola no objeto errado.
+        let name = crate::name_unique::unique_name(sim, &name);
         let e = sim.world_mut().spawn((
             Transform::default(),
             Name::new(name),

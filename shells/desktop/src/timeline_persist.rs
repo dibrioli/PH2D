@@ -60,13 +60,28 @@ fn wire_of(world: &World, entity_bits: u64) -> WireId {
 /// Steady state (nothing missing) touches no allocation (HR-3: the bridge's
 /// paused path is gated zero-alloc): the name map is only built when a missing
 /// binding exists to resolve.
+///
+/// **Um nome AMBÍGUO não cura — recusa.** A unicidade de nome é um invariante mantido em N
+/// lugares do shell (import, rename, merge, e agora os spawns de vetor e Flip), e um invariante
+/// mantido em N lugares é um invariante que um dia falha em N+1. Se DOIS objetos vivos dividem o
+/// nome, "qual deles é o dono desta track?" não tem resposta — e escolher um (o último que a query
+/// devolver, que é o que um `BTreeMap` faz sozinho) é escolher **em silêncio**, com o resultado de
+/// a animação dirigir a pose do objeto errado.
+///
+/// A binding fica `missing`: a track some do painel e volta quando o empate acabar. Perder a
+/// track de vista é honesto; movê-la para o objeto errado é corrupção.
 pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> usize {
     let any_missing = timeline.doc.bindings().iter().any(|b| b.missing);
-    let by_wire: std::collections::BTreeMap<u64, u64> = if any_missing {
+    // `None` no valor = nome AMBÍGUO (dois objetos vivos, o mesmo nome).
+    let by_wire: std::collections::BTreeMap<u64, Option<u64>> = if any_missing {
         let mut q = world.query::<(Entity, &Name)>();
-        q.iter(world)
-            .map(|(e, name)| (wire_id_for_name(name.as_str()).0, e.to_bits()))
-            .collect()
+        let mut m: std::collections::BTreeMap<u64, Option<u64>> = std::collections::BTreeMap::new();
+        for (e, name) in q.iter(world) {
+            m.entry(wire_id_for_name(name.as_str()).0)
+                .and_modify(|slot| *slot = None) // já havia um: empate
+                .or_insert(Some(e.to_bits()));
+        }
+        m
     } else {
         std::collections::BTreeMap::new() // alloc-free
     };
@@ -74,7 +89,7 @@ pub(crate) fn upkeep(timeline: &mut TimelineState, world: &mut World) -> usize {
     refresh_and_heal_bindings(
         &mut timeline.doc,
         |bits| wire_of(world, bits),
-        |w| by_wire.get(&w.0).copied(),
+        |w| by_wire.get(&w.0).copied().flatten(),
     )
 }
 
@@ -146,6 +161,56 @@ mod tests {
                 interp: ph2d_anim::Interp::Linear,
             },
         );
+    }
+
+    /// **Um nome AMBÍGUO não cura — recusa.**
+    ///
+    /// A animação reencontra o objeto pelo NOME (`wire_id` = hash do `Name`), e a unicidade é um
+    /// invariante mantido em N lugares do shell. Se dois objetos vivos dividem o nome, *"de quem é
+    /// esta track?"* não tem resposta — e o `BTreeMap` responderia sozinho, pelo último que a query
+    /// devolvesse: a animação passaria a dirigir a pose do objeto errado, em silêncio.
+    ///
+    /// A track fica `missing` (some do painel) e volta quando o empate acabar. Perder a track de
+    /// vista é honesto; movê-la para o objeto errado é corrupção.
+    #[test]
+    fn an_ambiguous_name_refuses_to_heal_instead_of_guessing() {
+        let mut sim = SimWorld::new();
+        let hero = sim.world_mut().spawn(Name::new("hero")).id();
+        let mut timeline = TimelineState::new();
+        key(&mut timeline, hero.to_bits());
+        assert_eq!(
+            upkeep(&mut timeline, sim.world_mut()),
+            0,
+            "vivo: nada a curar"
+        );
+
+        // O objeto morre — a track fica dormente, por design.
+        sim.world_mut().despawn(hero);
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, 0.0);
+        assert!(timeline.doc.bindings()[0].missing);
+
+        // …e voltam DOIS objetos com o mesmo nome (um sprite renomeado, uma forma homônima).
+        let a = sim.world_mut().spawn(Name::new("hero")).id();
+        let b = sim.world_mut().spawn(Name::new("hero")).id();
+        assert_ne!(a, b);
+        assert_eq!(
+            upkeep(&mut timeline, sim.world_mut()),
+            0,
+            "empate de nome: a track NÃO pode escolher um dos dois"
+        );
+        assert!(
+            timeline.doc.bindings()[0].missing,
+            "ela continua dormente — visível pela ausência, não colada no objeto errado"
+        );
+
+        // Desfeito o empate, ela cura no que sobrou.
+        sim.world_mut().despawn(b);
+        assert_eq!(
+            upkeep(&mut timeline, sim.world_mut()),
+            1,
+            "sem empate, cura"
+        );
+        assert_eq!(timeline.doc.bindings()[0].entity, a.to_bits());
     }
 
     #[test]

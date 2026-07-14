@@ -72,9 +72,18 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
     }
     let mut next_order = next_root_order(sim);
     for id in missing {
+        // **O nome passa pela porta do nome ÚNICO** (`name_unique::unique_name`), a mesma que o
+        // import e o rename usam. `initial_name` é único entre PATHS (o id é), mas não no MUNDO:
+        // basta o artista ter renomeado um sprite para "Path 3" e a próxima forma com id 3 nasce
+        // homônima dele.
+        //
+        // Nome duplicado não é cosmético desde o W4.T6: a animação reencontra o objeto **pelo
+        // nome** (`wire_id` = hash do `Name`), então dois homônimos fazem duas tracks colarem no
+        // MESMO objeto — e a outra fica sem dono, em silêncio. O nome é identidade agora.
+        let name = crate::name_unique::unique_name(sim, &initial_name(id));
         let e = sim.world_mut().spawn((
             Transform::default(),
-            Name::new(initial_name(id)),
+            Name::new(name),
             VecPathRef(id),
             RootOrder(next_order),
         ));
@@ -382,6 +391,42 @@ mod tests {
         sync(&mut sim, &mut scene, &mut map);
         assert!(map.is_empty());
         assert!(scene.paths().is_empty(), "o path foi junto");
+    }
+
+    /// **A forma nova nasce com nome ÚNICO no MUNDO** — não só entre formas.
+    ///
+    /// `initial_name(id)` é único entre paths (o id é), mas o mundo tem sprites e objetos Flip
+    /// junto: basta o artista ter renomeado um sprite para "Path 1" e a próxima forma nasceria
+    /// homônima dele. Desde o W4.T6 isso não é cosmético — a animação reencontra o objeto **pelo
+    /// nome** (`wire_id` = hash do `Name`), então dois homônimos são dois donos para a mesma
+    /// track. O nome é IDENTIDADE agora, e passa pela mesma porta que o import e o rename usam.
+    #[test]
+    fn a_new_shape_never_takes_a_name_the_world_already_uses() {
+        let (mut sim, mut scene, mut map) = setup();
+        // O artista renomeou um sprite exatamente com o nome que a próxima forma pediria.
+        let first = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+        let squatter = initial_name(first);
+        let mut scene2 = ph2d_vec_scene::VecScene::new();
+        std::mem::swap(&mut scene, &mut scene2); // a forma ainda não entrou no mundo
+        sim.world_mut()
+            .spawn((Transform::default(), Name::new(squatter.clone())));
+        std::mem::swap(&mut scene, &mut scene2);
+
+        sync(&mut sim, &mut scene, &mut map);
+
+        let names: Vec<String> = {
+            let mut q = sim.world_mut().query::<&Name>();
+            q.iter(sim.world()).map(|n| n.as_str().to_owned()).collect()
+        };
+        assert_eq!(names.len(), 2);
+        assert_ne!(
+            names[0], names[1],
+            "a forma nova pegou o nome do sprite — duas tracks colariam no mesmo objeto: {names:?}"
+        );
+        assert!(
+            names.contains(&squatter),
+            "e o nome do sprite continua o dele"
+        );
     }
 
     /// Grupo é uma ENTIDADE COMUM: aceita path vetorial e sprite no mesmo saco, e

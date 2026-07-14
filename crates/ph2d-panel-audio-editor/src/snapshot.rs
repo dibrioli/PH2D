@@ -33,6 +33,9 @@ thread_local! {
     static HAS_CLIPBOARD: Cell<bool> = const { Cell::new(false) };
     /// Panel → shell: write one file per piece (needs a folder, so the shell drives it).
     static EXPORT_PIECES_REQ: Cell<bool> = const { Cell::new(false) };
+    /// Panel -> shell: write every shipping target. Like the pieces, these become FILES, so
+    /// the shell has to pick a folder -- the panel never touches the filesystem.
+    static EXPORT_SET_REQ: Cell<bool> = const { Cell::new(false) };
     // Panel → shell persistent.
     static LOOPING: Cell<bool> = const { Cell::new(false) };
     // Shell → panel display.
@@ -148,6 +151,15 @@ pub(crate) fn request_export_pieces() {
 }
 
 /// Shell: drain the export-pieces request.
+pub(crate) fn request_export_set() {
+    EXPORT_SET_REQ.with(|c| c.set(true));
+}
+
+/// Shell: did the user ask for the whole platform set? Consumes the request.
+pub fn take_export_set() -> bool {
+    take(&EXPORT_SET_REQ)
+}
+
 pub fn take_export_pieces() -> bool {
     take(&EXPORT_PIECES_REQ)
 }

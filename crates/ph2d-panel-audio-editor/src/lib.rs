@@ -170,6 +170,9 @@ pub const AEDIT_CUTS_CLEAR: NodeId = hash_node_id("audio_editor_cuts_clear");
 /// **Delivery**: write one file per piece and adopt them as a variation set. An emitting verb, in
 /// the emitting section — this used to be what "Split at Markers" did.
 pub const AEDIT_EXPORT_PIECES: NodeId = hash_node_id("audio_editor_export_pieces");
+/// Write every shipping target at once (W6): one file per platform, each conformed to that
+/// platform's own format before it is encoded.
+pub const AEDIT_EXPORT_SET: NodeId = hash_node_id("audio_editor_export_set");
 /// Silence the selection.
 pub const AEDIT_SILENCE: NodeId = hash_node_id("audio_editor_silence");
 /// Fade in across the selection.
@@ -498,7 +501,7 @@ pub use snapshot::{set_duration_secs, set_loaded, set_playing, set_position_secs
 /// `(label, formatted value)` pairs.
 pub use snapshot::{set_fx_ir, set_fx_kind_defaults, set_fx_kind_names, set_fx_param_views};
 /// Shell → panel: publish whether a waveform selection exists (range-op buttons).
-pub use snapshot::{set_has_clipboard, set_has_selection, take_export_pieces};
+pub use snapshot::{set_has_clipboard, set_has_selection, take_export_pieces, take_export_set};
 pub use variation_state::{set_selected_enabled, take_toggle_enabled};
 
 // Loop points + batch + force-mono (W6 asset-prep).

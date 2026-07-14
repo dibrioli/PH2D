@@ -10,6 +10,7 @@
 mod batch;
 mod clipboard;
 pub(crate) mod delivery;
+mod delivery_smoke;
 mod export;
 mod export_pieces;
 mod fx_rack;
@@ -20,6 +21,7 @@ mod markers;
 mod meta;
 mod multiband_smoke;
 pub(crate) mod pieces;
+pub(crate) mod platforms;
 pub(crate) mod spectral;
 mod variation;
 mod voice_smoke;

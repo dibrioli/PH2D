@@ -19,8 +19,10 @@
 //! libopus — see ADR-0113).
 
 mod delivery;
+mod platform;
 
 pub use delivery::{Codec, DeliveryCost, cost, encode_opus, format_bytes, opus_bitrate, ram_bytes};
+pub use platform::{PLATFORMS, Platform};
 
 use std::io::Write;
 use std::path::Path;

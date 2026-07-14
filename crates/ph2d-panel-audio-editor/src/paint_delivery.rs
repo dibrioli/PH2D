@@ -3,18 +3,26 @@
 //! Two numbers decide whether an asset ships: what the player **downloads** and what
 //! the engine **holds**. This section prices both before the export, not after.
 //!
-//! The trade it exists to make visible: **the codec moves Disk and never RAM.** There
-//! is no streaming path in the mixer, so a Vorbis clip is decoded to the same `f32`
-//! buffer a WAV would be — compressing an asset shrinks the download and buys back
-//! exactly zero memory. People assume the opposite, and a number on screen is the only
-//! way to un-assume it.
+//! The trade it exists to make visible: **the codec moves Disk and never RAM.** A resident
+//! Vorbis clip decodes to the same `f32` buffer a WAV would — compressing an asset shrinks the
+//! download and buys back exactly zero memory. People assume the opposite, and a number on
+//! screen is the only way to un-assume it. (ADR-0118 later found the same thing from the mixer's
+//! side, and answered it with **streaming voices** — but a clip the *editor* has open is
+//! resident by definition, so what this section prices is still the resident cost.)
+//!
+//! Which is why the **shipping targets** below are formats and not just codecs. A variant that
+//! only swapped the container would print the same RAM figure three times; Mobile conforms the
+//! audio (24 kHz, mono) and is the only one that buys memory back — a quarter of it
+//! (`ph2d_audio_encode::platform`).
 //!
 //! UI-only: the panel owns the codec choice and the quality slider; the shell owns the
-//! encoders, sizes the file for real (no bitrate guesses) and publishes the readout as
+//! encoders, sizes every file for real (no bitrate guesses) and publishes the readouts as
 //! finished strings via `delivery_state`.
 
 use crate::paint::{ClippedHits, button};
-use crate::{AEDIT_CODEC_NEXT, AEDIT_CODEC_PREV, AEDIT_OGG_QUALITY, delivery_state};
+use crate::{
+    AEDIT_CODEC_NEXT, AEDIT_CODEC_PREV, AEDIT_EXPORT_SET, AEDIT_OGG_QUALITY, delivery_state,
+};
 use ph2d_editor_core::paint::{paint_text, paint_text_centered, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider, paint_slider_track};
 use ph2d_editor_core::zones::Rect;
@@ -177,6 +185,47 @@ pub(crate) fn paint_delivery_section(
             text_system,
         ) + gap;
     }
+
+    // **The shipping targets.** One row per platform: what it downloads, what it holds, and
+    // whether that is a worrying share of the budget. These are the numbers a variant EXISTS for
+    // — and they differ per row only because each target conforms the audio, not just the
+    // container (see the module docs).
+    let targets = delivery_state::platforms();
+    if loaded && !targets.is_empty() {
+        for (name, cost, frac) in &targets {
+            y = text_row(
+                &format!("{name}  {cost}"),
+                x,
+                y,
+                w,
+                label_h,
+                resolve(
+                    if *frac > BUDGET_WARN_FRAC {
+                        ColorToken::Warn
+                    } else {
+                        ColorToken::Text2
+                    },
+                    theme,
+                ),
+                scene,
+                text_system,
+            );
+        }
+        y += gap;
+    }
+
+    // One click writes all three, each conformed to its own platform's format first.
+    button(
+        Rect::new(x, y, w, row_h),
+        "Export Set",
+        loaded,
+        AEDIT_EXPORT_SET,
+        scene,
+        text_system,
+        theme,
+        hit_index,
+    );
+    y += row_h + gap;
 
     // **Export Pieces** — one file per piece, in the codec priced above, named `<stem>_01..NN`:
     // exactly what the variation importer reads back as one group. Record eight footsteps in one

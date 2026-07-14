@@ -54,6 +54,8 @@ use ph2d_audio::SampleData;
 use history::History;
 use structure::{FrameMap, Structure};
 
+mod resample;
+
 pub use clipboard::{conform, insert, split_at};
 
 /// A named cue point on the clip's timeline (W6 asset-prep) — a transition / sync /

@@ -36,6 +36,23 @@ thread_local! {
     /// Shell → panel: this codec would drop the loop points / markers the clip carries
     /// (only WAV has chunks for them). The panel warns BEFORE the export, not after.
     static DROPS_META: Cell<bool> = const { Cell::new(false) };
+    /// Shell → panel: one finished line per shipping target — `(name, "Disk · RAM", budget frac)`.
+    ///
+    /// The whole reason this is a LIST and not one number: a variant is a different **clip**
+    /// (rate, channels), not a different container, so each target holds a different amount of
+    /// memory. A per-platform readout that printed the same RAM three times would be the exact
+    /// lie ADR-0118 was written to kill (`ph2d_audio_encode::platform`).
+    static PLATFORMS: RefCell<Vec<(String, String, f32)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Shell: publish the priced shipping targets.
+pub fn set_platforms(rows: Vec<(String, String, f32)>) {
+    PLATFORMS.with(|c| *c.borrow_mut() = rows);
+}
+
+/// Panel: the priced shipping targets, in table order.
+pub(crate) fn platforms() -> Vec<(String, String, f32)> {
+    PLATFORMS.with(|c| c.borrow().clone())
 }
 
 /// Panel: step the codec selector by `delta`, wrapping.

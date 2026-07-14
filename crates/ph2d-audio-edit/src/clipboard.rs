@@ -28,6 +28,13 @@ pub fn conform(src: &SampleData, target: AudioFormat) -> SampleData {
     if src.format() == target {
         return src.clone();
     }
+    // **Band-limit BEFORE decimating.** Linear interpolation is fine going up and folds
+    // everything above the destination's Nyquist back down going DOWN -- a 15 kHz shimmer
+    // resampled to 24 kHz reappears as a 9 kHz tone that was never recorded. A no-op (and
+    // byte-identical) when the target rate is not lower, so the paste path is untouched.
+    // See `crate::resample`.
+    let banded = crate::resample::band_limit(src, target);
+    let src = &banded;
     let src_ch = channels(src);
     let dst_ch = target.channel_count().max(1);
     let ratio = f64::from(target.sample_rate.max(1)) / f64::from(src.format().sample_rate.max(1));

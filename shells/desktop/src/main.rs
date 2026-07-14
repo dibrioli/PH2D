@@ -191,6 +191,11 @@ impl App {
             if std::env::var_os("PH2D_AUDIO_VOICE_SMOKE").is_some() {
                 a.editor_voice_smoke();
             }
+            // Stage the W6 shipping targets: a clip whose 15 kHz shimmer a 24 kHz variant
+            // physically cannot carry, plus a loop + markers only the lossless target keeps.
+            if std::env::var_os("PH2D_AUDIO_DELIVERY_SMOKE").is_some() {
+                a.editor_delivery_smoke();
+            }
         }
         Self {
             window: None,

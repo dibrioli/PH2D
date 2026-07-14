@@ -65,6 +65,7 @@ const CLICKABLE: &[(NodeId, &str)] = &[
     // Delivery.
     (AEDIT_EXPORT, "Export"),
     (AEDIT_EXPORT_PIECES, "Export Pieces"),
+    (AEDIT_EXPORT_SET, "Export Set"),
     (AEDIT_BATCH_LUFS, "Batch LUFS"),
 ];
 

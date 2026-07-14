@@ -260,6 +260,13 @@ impl crate::App {
                 {
                     audio.editor_export_pieces(&dir);
                 }
+                // Export Set (Delivery) — one file per shipping target, each conformed to that
+                // target's own format first, named `<stem>.<platform>.<ext>`.
+                if ed::take_export_set()
+                    && let Some(dir) = rfd::FileDialog::new().pick_folder()
+                {
+                    audio.editor_export_set(&dir);
+                }
                 // Cache the loop crossfade the panel asks for BEFORE Play reads it —
                 // Play plays the click-free region when Loop is on and a region is set.
                 audio.editor_set_pending_xfade(audio.editor_xfade_frames(ed::xfade_norm()));
@@ -276,6 +283,7 @@ impl crate::App {
                 audio.editor_set_looping(ed::looping());
                 audio.editor_poll();
                 audio.editor_publish_delivery();
+                audio.editor_publish_platforms();
                 audio.editor_publish_spectral();
                 ed::set_playing(audio.editor_playing());
                 ed::set_loaded(audio.editor_loaded());

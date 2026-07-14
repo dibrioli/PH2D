@@ -44,6 +44,9 @@ pub(crate) struct AudioSystem {
     /// Cached delivery price of the loaded clip (W6). Sizing an asset means encoding
     /// it, so the result is cached on (buffer, codec, quality) — see `editor::delivery`.
     delivery: editor::delivery::DeliveryCache,
+    /// The priced shipping targets (W6). Its own cache: pricing the set is THREE conforms and
+    /// three real encodes, and the panel repaints every frame.
+    platforms: editor::platforms::PlatformCache,
     /// The spectrogram, the learned noise profile and the frequency band (W5) — see
     /// `editor::spectral`. Building the picture is an FFT of the whole clip, so it is
     /// cached on the buffer and on the size it is drawn at.
@@ -178,6 +181,7 @@ impl AudioSystem {
         Some(AudioSystem {
             engine,
             delivery: Default::default(),
+            platforms: Default::default(),
             spectral: Default::default(),
             format,
             last_master_gain: std::cell::Cell::new(1.0),

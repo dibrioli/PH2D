@@ -12,19 +12,20 @@ use ph2d_panel_audio_editor::loop_state;
 use ph2d_panel_audio_editor::state::AudioEditorState;
 use ph2d_panel_audio_editor::tool_state::{self, EditTool};
 use ph2d_panel_audio_editor::{
-    AEDIT_BATCH_LUFS, AEDIT_COPY, AEDIT_CUT, AEDIT_CUTS_CLEAR, AEDIT_EXPORT_PIECES, AEDIT_FADE_IN,
-    AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS, AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT,
-    AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE, AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1,
-    AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP, AEDIT_LOOP_BAKE, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET,
-    AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO, AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY,
-    AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE,
-    AEDIT_SILENCE, AEDIT_SPLIT, AEDIT_SPLIT_PLAYHEAD, AEDIT_STOP, AEDIT_TOOL_MOVE,
-    AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT, AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES,
-    clear_fx_dirty, fx_bypass, fx_chain, fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel,
-    reset_fx_chain, set_fx_kind_defaults, set_fx_kind_names, set_has_clipboard, set_has_selection,
-    set_loop_span, set_marker_count, set_preset_names, take_add_marker, take_apply_preset,
-    take_batch_lufs, take_clear_loop, take_del_marker, take_edit_cmd, take_export_pieces,
-    take_load, take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_stop,
+    AEDIT_BATCH_LUFS, AEDIT_COPY, AEDIT_CUT, AEDIT_CUTS_CLEAR, AEDIT_EXPORT_PIECES,
+    AEDIT_EXPORT_SET, AEDIT_FADE_IN, AEDIT_FX_ADD, AEDIT_FX_APPLY, AEDIT_FX_BYPASS,
+    AEDIT_FX_CANCEL, AEDIT_FX_DOWN, AEDIT_FX_NEXT, AEDIT_FX_P0, AEDIT_FX_PREV, AEDIT_FX_REMOVE,
+    AEDIT_FX_RESET, AEDIT_FX_S0_ON, AEDIT_FX_S1, AEDIT_FX_UP, AEDIT_LOAD, AEDIT_LOOP,
+    AEDIT_LOOP_BAKE, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_MARK_ADD, AEDIT_MARK_DEL, AEDIT_MONO,
+    AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY, AEDIT_PRESET_APPLY, AEDIT_PRESET_LOAD,
+    AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_SILENCE, AEDIT_SPLIT,
+    AEDIT_SPLIT_PLAYHEAD, AEDIT_STOP, AEDIT_TOOL_MOVE, AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT,
+    AEDIT_TRIM, AudioEditCmd, AudioEditorPanel, MAX_FX_STAGES, clear_fx_dirty, fx_bypass, fx_chain,
+    fx_dirty, fx_sel, fx_sel_stage, looping, preset_sel, reset_fx_chain, set_fx_kind_defaults,
+    set_fx_kind_names, set_has_clipboard, set_has_selection, set_loop_span, set_marker_count,
+    set_preset_names, take_add_marker, take_apply_preset, take_batch_lufs, take_clear_loop,
+    take_del_marker, take_edit_cmd, take_export_pieces, take_export_set, take_load,
+    take_load_preset, take_play_pause, take_save_preset, take_set_loop, take_stop,
     take_toggle_mono,
 };
 use ph2d_panel_audio_editor::{
@@ -1134,6 +1135,22 @@ fn export_pieces_click_reaches_the_export_request() {
     );
     // A one-shot: it must not still be armed on the next frame, or one click exports forever.
     assert!(!take_export_pieces(), "the export request did not drain");
+}
+
+/// **Export Set** — the same seam, for the whole platform set. The panel never touches the
+/// filesystem: the click arms a request and the shell picks the folder.
+#[test]
+fn export_set_click_reaches_the_export_request() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_export_set();
+
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_EXPORT_SET));
+    assert!(
+        take_export_set(),
+        "Export Set click never armed the request -- the button is dead"
+    );
+    assert!(!take_export_set(), "the export set request did not drain");
 }
 
 /// The Edit toolbar's three tools are a **group**: clicking one arms it, and the other two go

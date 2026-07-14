@@ -111,7 +111,7 @@ cargo check -p ph2d-eval-motion -p ph2d-panel-motion-graph
 | 2 | ~~**`motion.path`**~~ | ✅ **FECHADO** (doc 65) — e o que ele destravou é maior que ele: o **canal de externals** (`Cook::set_external` / `EvalCtx::external`), que é **como qualquer coisa que o APP possui entra no grafo**. |
 | 3 | ~~**W4.T4 — dock da timeline**~~ | ✅ **FECHADO** (doc 64). Não faltava sistema; faltava **geometria**. |
 | 4 | **GPU / M5** ([plano](plans/2026-07-gpu-resident-node-pipeline.md)) | 🔴 Exige **linha foundational DEDICADA** (`line/cook-parallel`, depois `line/gpu-nodes` **com ADR** — a Fase 1 **descongela o contrato**, CLAUDE.md §6). **É ordem do Enio abrir. NUNCA enxerte aqui.** |
-| 5 | ~~**`motion.delay`**~~ | ✅ **FECHADO** (doc 63). O valor real era o modo **Blend** (lag **sem overshoot** — o que a mola não dá). |
+| 5 | ~~**`motion.delay`**~~ | ✅ **FECHADO** (doc 63). O valor real era o modo **Blend** (lag **sem overshoot**). ⚠️ **A demo original era FALSA** — eu afirmei que ele *"tirava o tremor da neve"* e **a neve não treme** (o `gust` modula a magnitude de uma força reta pra baixo: desvio de aceleração **0,1% de um floco**, deriva lateral **zero**). O nó **saiu do boot** e ganhou uma cena A/B honesta (`PH2D_MOTION_DELAY_SMOKE=1`). Lição: [[feedback_a_correct_number_can_carry_a_false_story]]. |
 
 ### Gaps conhecidos (nomeados, não escondidos)
 

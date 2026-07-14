@@ -24,11 +24,11 @@ fn new_builds_the_well_typed_snow_document() {
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 21 nodes: the zone's interior {sim.zone, combine, force.wind, force.buoyancy, sim.step,
+    // 20 nodes: the zone's interior {sim.zone, combine, force.wind, force.buoyancy, sim.step,
     // sim.collide, sim.lifetime, color_ramp, drive(size), drive(opacity), falloff, cull} + the fade
     // {value.attribute, value.map_range} + birth {distribute_poisson, move, sim.spawn} + render
-    // {motion.delay, scale, move, output}.
-    assert_eq!(state.doc.graph.nodes().len(), 21);
+    // {scale, move, output}.
+    assert_eq!(state.doc.graph.nodes().len(), 20);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 
@@ -171,34 +171,6 @@ fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
     assert!(
         settled > deepest + 0.05,
         "it plunged to {deepest} and the water never brought it back up (ended at {settled})"
-    );
-
-    // 3b. THE EASE IS DOING SOMETHING (doc 63). The drawn path is not the simulated one: it LAGS
-    //     it, and it is SMOOTHER than it. Falsifiable by deleting the node from the demo (the two
-    //     paths become identical) or by setting its `ticks` to 0 (same).
-    //
-    //     **"Smoother" is measured with the THIRD difference, and that is the whole trick.** The
-    //     obvious metric — the second difference, the jerk — is dominated by GRAVITY: a
-    //     constant-acceleration parabola has a *constant* second difference, and the ease does not
-    //     (and must not) remove it. Measure that and you find the twitch buried under the fall, and
-    //     a gate that barely moves (it dropped 3%, and I asserted 10%, and the gate was right to
-    //     go red). A parabola's THIRD difference is **zero** — so the third difference IS the
-    //     wobble, with the fall subtracted out. It drops by half.
-    let twitch = |v: &[f32]| -> f32 {
-        v.windows(4)
-            .map(|w| (w[3] - 3.0 * w[2] + 3.0 * w[1] - w[0]).abs())
-            .sum()
-    };
-    let n = drawn.len().min(flake.len());
-    assert!(
-        drawn[..n] != flake[..n],
-        "the render chain eases the position - the drawn path cannot BE the simulated one"
-    );
-    assert!(
-        twitch(&drawn[..n]) < twitch(&flake[..n]) * 0.7,
-        "the ease must take the gust's twitch OUT of the fall: drawn {} vs simulated {}",
-        twitch(&drawn[..n]),
-        twitch(&flake[..n])
     );
 
     // 4. AGE: the flakes grow old and are COLOURED by how old they are. Both readings come off

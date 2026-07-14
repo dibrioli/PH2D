@@ -652,6 +652,7 @@ impl crate::App {
         self.flip_segment_smoke();
         self.blend_smoke();
         self.motion_node_path_smoke();
+        self.motion_delay_smoke();
         self.build_session_upkeep();
         // Tween v2: a sessão de correção de pares SEGUE o artista a um novo intervalo (no-op
         // se o intervalo é o mesmo, ou se a sessão está fechada).

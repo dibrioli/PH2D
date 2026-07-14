@@ -57,47 +57,59 @@ começa sem atraso, em vez de herdar o histórico de um estranho. Sem `id` (uma 
 distribuição — um conjunto cujas linhas **são** a identidade dele) ele cai no casamento por linha.
 **Os dois mundos, um nó.**
 
-## 4. A demo: a neve para de tremer
+## 4. ⚠️ CORREÇÃO — **a neve NÃO treme**, e a demo original era falsa
 
-O `force.wind` dá um **gust** a cada floco, na fileira de ruído dele — cada um oscila sozinho. Um
-polo simples na posição **DESENHADA** tira o tremor sem o ringing que uma mola somaria.
+A primeira versão desta nota dizia que o nó *"tirava o tremor da neve"*. **O Enio duvidou. Ele estava
+certo.** Medido:
 
-Ele fica **FORA da zona**, na cadeia de render: ele atrasa o **RESULTADO**, como o Delay Effector do
-C4D. Realimentar uma posição suavizada **dentro** da simulação seria integrar a partir de um lugar
-onde o floco não está.
+| | queda | desvio da aceleração (o "tremor") | excursão lateral |
+|---|---|---|---|
+| a neve, com o `gust` do demo | 85 ticks | **0,00024 = 0,1% de um floco** | **ZERO** |
+| a neve, sem gust | 75 ticks | 0,00000 (parábola perfeita) | zero |
 
-Pequeno de propósito: 3 ticks (50 ms). Suaviza a oscilação e ainda deixa o splash ler como splash.
-Suba o `Ticks` pra 20 e ponha o `Mode` em 0 (Delay) e a nevasca inteira chega **um terço de segundo
-atrasada** — o mesmo nó, a outra pergunta.
+**O `gust` do `force.wind` modula a MAGNITUDE de uma força que aponta reto pra baixo.** O floco cai em
+**linha reta** — só que mais rápido ou mais devagar. Não há oscilação, não há flutter, não há deriva.
+O efeito real do gust é que uns flocos caem ~13% mais devagar que outros: variação de **ritmo**, não
+tremor.
 
-## 5. A armadilha do gate (e ela é boa)
+E a **queda de 47% na 3ª diferença** que eu tinha medido e celebrado? Era a ease amaciando o
+**SPLASH** (a batida no leito) — **não** tremor de gust. **O número era certo; a história que contei
+em cima dele era errada.** É a mesma família do erro do doc 61 §2, uma jornada atrás
+([[feedback_stale_comment_and_dead_code_lie]] 3º caso), e ele tem nome próprio agora:
+[[feedback_a_correct_number_can_carry_a_false_story]].
 
-O gate e2e da neve **ficou vermelho** quando a ease entrou — e **estava certo**: ele media *o que é
-desenhado* e chamava aquilo de *o mundo*. Uma afirmação sobre **física** ("o floco **bate** no
-leito") tem que ser medida na **física** — a saída da **zona** —, não no desenho, porque o polo
-simples **arredonda o fundo do mergulho**. Gate reescrito: física na zona, população/idade/cor no
-sink.
+**O nó saiu do documento de boot.** Ele estava atrasando o desenho (até 89% de um floco) e amaciando
+o splash — nenhuma das duas é a feature, e uma delas era um dano (o splash é o que prova o
+`sim.collide`).
 
-E o gate NOVO (a ease está fazendo alguma coisa) quase nasceu inútil:
+## 5. A demo de verdade: `PH2D_MOTION_DELAY_SMOKE=1`
 
-> **A métrica óbvia — a 2ª diferença (o *jerk*) — é dominada pela GRAVIDADE.** Uma parábola de
-> aceleração constante tem 2ª diferença **constante**, e a ease não remove (nem deve remover) isso.
-> Medindo assim, o tremor fica **enterrado** debaixo da queda: caiu **3%**, e eu tinha afirmado 10% —
-> o gate ficou vermelho e me corrigiu.
->
-> **A 3ª diferença de uma parábola é ZERO.** Então a 3ª diferença **É** o tremor, com a queda
-> subtraída. Medida assim, ela **cai pela metade** (0,0745 → 0,0394).
+Um suavizador precisa de algo **trêmulo**, e a simulação produz movimento **suave**. Então o nó ganhou
+a cena em que ele **é** o que ele diz ser — duas fileiras, o **mesmo** `motion.wiggle`, e a única
+diferença é o nó:
 
-É [[feedback_oracle_must_model_appearance_not_implementation]] pelo avesso: o oráculo tem que modelar
-**a grandeza que a feature muda**, e não a primeira que vem à cabeça.
+```text
+grid → move(cima)  → wiggle(f=8) ──────────────────→ scale → output   ← TREME
+grid → move(baixo) → wiggle(f=8) → delay(Blend, 6) → scale → output   ← SEDOSO
+```
+
+**Medido, os dois:** o `motion.wiggle` a f=8 sacode **0,095 de mundo por tick — 53% da largura do
+próprio objeto, a cada quadro**. Com a ease: **0,036 (20%)**. O tremor cai **61%** e a **excursão
+sobrevive** (1,00 → 0,92).
+
+É essa a promessa, e é essa a forma do gate (`the_ease_kills_the_twitch_and_keeps_the_motion`), que
+**falha nos dois sentidos**: se o nó deixar de suavizar, **e** se ele suavizar até achatar o gesto —
+*um suavizador que mata o movimento não é um suavizador, é um mute*. E ele começa afirmando que **o
+fixture treme** (`raw_twitch > 0.07`): sem isso eu estaria medindo a suavização de nada, que é
+exatamente o erro que este gate corrige.
 
 ## 6. Superfície
 
 - **Drop-crate nova:** `ph2d-node-motion-delay` (só `ph2d-nodegraph` + `ph2d-node-registry`).
 - **`ph2d-node-registry-init` regenerado — 89 crates-nó** (era 88). Conflito esperado no rebase:
   **regenere, nunca resolva à mão.**
-- **Shell:** a demo (`motion_demo_strobe.rs`, +1 card "Ease The Wobble") + o gate reescrito
-  (`motion_state_tests.rs`).
+- **Shell:** `motion_delay_smoke.rs` (a cena A/B, atrás de `PH2D_MOTION_DELAY_SMOKE=1`) + o gate
+  `the_ease_kills_the_twitch_and_keeps_the_motion`. **O boot NÃO tem o nó** (§4).
 - **Contrato congelado:** intocado.
 - **3 mutações mortas:** o Blend virando mola (passa do alvo) · o histórico voltando a casar por
   linha · o `ticks=0` deixando de ser no-op.

@@ -437,3 +437,7 @@ mod gpu_voronoi_tests;
 #[cfg(test)]
 #[path = "motion_gpu_coverage.rs"]
 mod gpu_coverage;
+
+#[cfg(test)]
+#[path = "motion_delay_gate_tests.rs"]
+mod delay_gate_tests;

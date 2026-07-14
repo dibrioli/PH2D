@@ -2,7 +2,7 @@
 //! one canvas (Motion Nodes O4 — docs 48 · 49 · 50 · 51 · 52 · 60).
 //!
 //! ```text
-//!                     ┌──────────┐ out ──┬──→ delay ──→ scale ──→ move ──→ output
+//!                     ┌──────────┐ out ──┬──→ scale ──→ move ──→ output
 //!                     │ sim.zone │       │
 //!            state ←──┴──────────┘       ⊙  (the state entry: last tick's population)
 //!              ↑                         │
@@ -112,12 +112,6 @@ const RAIN_GRAVITY: f32 = 4.0;
 /// every flake is born alive and dies only by living.
 const RAIN_KILL_R: f32 = 3.4;
 const RAIN_KILL_KEEP: f32 = 0.05;
-/// `motion.delay`'s modes (doc 63): 0 Delay · 1 Average · **2 Blend** (the one-pole — lags and
-/// smooths, and NEVER overshoots, which is the whole difference between it and `motion.spring`).
-const DELAY_MODE_BLEND: f32 = 2.0;
-/// 3 ticks = 50 ms of ease on the displayed position. Enough to take the gust's twitch out of the
-/// fall; small enough that the splash still reads as a splash.
-const SNOW_EASE_TICKS: f32 = 3.0;
 /// Where the scene sits in the world.
 const RAIN_X: f32 = 0.0;
 pub(crate) const RAIN_Y: f32 = 2.4;
@@ -216,7 +210,6 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     let sky = g.add_node("motion.distribute_poisson");
     let lift = g.add_node("motion.move");
     let spawn = g.add_node("sim.spawn");
-    let ease = g.add_node("motion.delay");
     let scale = g.add_node("motion.scale");
     let mv = g.add_node("motion.move");
     let output = g.add_node("motion.output");
@@ -224,16 +217,8 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     // Three rows: the zone and its render chain · the interior (which reads right-to-left, the
     // shape a state loop has on a canvas that reads left-to-right) · the birth chain under it.
     chain(g, RAIN_ROW, 1, &[zone])?;
-    chain(g, RAIN_ROW, 2, &[ease, scale, mv, output])?;
-    wire(g, (zone, 0), (ease, 0))?;
-    // The Delay's `pre` self-loop — the sequential-node convention the editor plumbs on drop, and
-    // the boot document writes the topology the plumbing would (doc 63).
-    g.connect(Edge {
-        from: (ease, 0),
-        to: (ease, 1),
-        delayed: true,
-    })
-    .ok()?;
+    chain(g, RAIN_ROW, 2, &[scale, mv, output])?;
+    wire(g, (zone, 0), (scale, 0))?;
     for (i, n) in [
         combine, wind, sea, step, ground, life, ramp, shrink, dim, falloff, cull,
     ]
@@ -347,20 +332,6 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     g.set_param(falloff, "curve", 0.0); // 0 = Linear: the mask is 1 - d/radius
     g.set_param(cull, "mode", 1.0); // Falloff
     g.set_param(cull, "amount", RAIN_KILL_KEEP); // …keep what the mask still calls "inside"
-    // **The wobble eased** (doc 63). The gust makes each flake waver on its own noise row; a
-    // one-pole on the DISPLAYED position takes the twitch out of it without the ringing a spring
-    // would add — a spring overshoots by construction, and that is exactly what you do not want
-    // from a smoother.
-    //
-    // It sits OUTSIDE the zone, on the render chain: it lags the RESULT, like C4D's Delay
-    // Effector. Feeding a smoothed position back into the simulation would be integrating from a
-    // place the flake is not.
-    //
-    // Small on purpose: 3 ticks (50 ms) softens the waver and still lets the splash read as a
-    // splash. Turn `Ticks` up to 20 and `Mode` to 0 (Delay) and the whole snowfall arrives a
-    // third of a second late — the same node, the other question.
-    g.set_param(ease, "mode", DELAY_MODE_BLEND);
-    g.set_param(ease, "ticks", SNOW_EASE_TICKS);
     g.set_param(scale, "amount", RAIN_QUAD);
     g.set_param(mv, "dx", RAIN_X);
     g.set_param(mv, "dy", RAIN_Y);
@@ -372,7 +343,6 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     // gate scans string literals, not comments.)
     for (n, label) in [
         (zone, "The Snow"),
-        (ease, "Ease The Wobble"),
         (spawn, "Birth"),
         (sky, "Birth Sites"),
         (lift, "Up To The Sky"),

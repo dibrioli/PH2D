@@ -582,6 +582,16 @@ fn default_panel_visibility() -> std::collections::BTreeMap<&'static str, bool> 
     map
 }
 
+/// **The two panel ids the Motion dock is a conversation between** (W4.T4).
+///
+/// The shell's Motion bridge WRITES these keys into `panel_visibility`; the hero's paint READS
+/// them to decide whether to carve the timeline's band out of the graph. A string written on one
+/// side and typed again on the other is two doors to the same question, and two doors diverge
+/// ([[feedback_two_doors_to_the_same_question_diverge]]) — silently, because a missing key just
+/// reads as `false` and the feature simply never happens.
+pub const PANEL_MOTION_GRAPH: &str = "motion_graph";
+pub const PANEL_TIMELINE: &str = "timeline";
+
 /// Canonical `&'static str` for known panel ids — keeps the
 /// visibility HashMap keys stable across calls without leaking.
 fn canonical_panel_id(id: &str) -> Option<&'static str> {
@@ -590,7 +600,7 @@ fn canonical_panel_id(id: &str) -> Option<&'static str> {
         "hierarchy" => Some("hierarchy"),
         "widget_gallery" => Some("widget_gallery"),
         "grid_snap" => Some("grid_snap"),
-        "timeline" => Some("timeline"),
+        PANEL_TIMELINE => Some(PANEL_TIMELINE),
         _ => None,
     }
 }

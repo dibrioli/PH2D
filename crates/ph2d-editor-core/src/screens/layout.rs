@@ -177,9 +177,11 @@ pub struct HeroLayout {
     /// Motion Nodes graph sub-rect — the complement of [`Self::center_viewport`]
     /// in the center band. Zero-sized when the split is `None`.
     pub motion_graph: Rect,
-    /// Zero-height reservation at the bottom edge of [`Self::motion_graph`] for
-    /// the future timeline dock (plan §2.1; the timeline itself is deferred to
-    /// its own module — this only holds the seam).
+    /// The timeline's band **inside the Motion workspace** (W4.T4). Zero-height until
+    /// [`Self::dock_timeline_into_motion`] carves it out of the bottom of
+    /// [`Self::motion_graph`] — which is what the shell does when the Motion tool and the
+    /// timeline are both on screen. It was a reserved seam for a whole module's worth of time
+    /// (Motion Nodes M0.T4); this is the module that landed in it.
     pub motion_timeline_slot: Rect,
     /// General timeline panel slot — a bottom-docked strip spanning the center
     /// band (between the two side chrome columns), floating over the lower edge
@@ -194,6 +196,20 @@ pub struct HeroLayout {
 
 /// Default docked height of the general timeline panel (px).
 pub const TIMELINE_DOCK_H: f32 = 240.0; // LITERAL-PX-OK: timeline dock default height
+
+/// The timeline's height when it docks **inside the Motion workspace** (W4.T4) — shorter than its
+/// free-standing dock, because it is sharing a band with the node graph and the graph is the thing
+/// the artist came for.
+///
+/// Under Motion the dope-sheet is mostly empty anyway: its tracks bind to ECS **objects**, and a
+/// Motion parameter is not one (keyframing them is deferred). What the artist actually needs here
+/// is the **transport, the ruler and the scrub** — the graph cooks on the playhead's tick — and
+/// that fits.
+pub const MOTION_TIMELINE_H: f32 = 200.0; // LITERAL-PX-OK: timeline height inside the Motion split
+
+/// …but never more than this much of the graph. On a short window a fixed 200 px would leave the
+/// node editor a sliver, and a dock that eats its host is a dock nobody wants.
+const MOTION_TIMELINE_MAX_FRAC: f32 = 0.45; // LITERAL-PX-OK: a FRACTION of the graph, not a design token
 
 /// Docked height of the Flip frame strip (px): title + toolbar row + the cells
 /// row. It is a STRIP (one layer's cells), not a dope-sheet — the multi-layer
@@ -290,7 +306,7 @@ impl HeroLayout {
                 )
             }
         };
-        // Timeline dock seam: zero-height strip at the bottom of the graph.
+        // The timeline's seam: zero-height until the shell docks the timeline into it (W4.T4).
         let motion_timeline_slot = Rect::new(
             motion_graph.x,
             motion_graph.y + motion_graph.h,
@@ -350,6 +366,39 @@ impl HeroLayout {
             flip_strip,
         }
     }
+
+    /// **The timeline moves INTO the Motion workspace** (W4.T4) — it stops floating over the node
+    /// graph and becomes the band under it.
+    ///
+    /// Everything the timeline needs to be useful to Motion was already there: **one clock** (the
+    /// `MotionTransport` died in W4.T7 — the graph cooks on the `Playhead`'s tick), a bridge that
+    /// runs every frame whether the panel is visible or not, and a snapshot published every frame.
+    /// The gap was **geometry**: `motion_graph` ran all the way down to the chrome, `timeline` was
+    /// the same bottom strip it always is, and the two **overlapped completely** — the timeline
+    /// painted *on top of* the graph, because it is drawn later.
+    ///
+    /// So this does not move a panel; it **carves a band**. The graph gives up its bottom edge and
+    /// the timeline's rect becomes that band — which means the timeline panel needs **no change at
+    /// all**: it already draws into `layout.timeline`, and `layout.timeline` is now somewhere else.
+    /// One rect, decided in one place; a panel that had to ask *"which rect am I in today?"* would
+    /// be a second place for the two to disagree.
+    ///
+    /// Idempotent, and inert without a split (`motion_graph` is zero-sized then — there is nothing
+    /// to carve).
+    pub fn dock_timeline_into_motion(&mut self) {
+        if self.motion_graph.h <= 0.0 || self.motion_graph.w <= 0.0 {
+            return; // no Motion split on screen: the timeline keeps its own dock
+        }
+        let h = MOTION_TIMELINE_H.min(self.motion_graph.h * MOTION_TIMELINE_MAX_FRAC);
+        self.motion_graph.h -= h;
+        self.motion_timeline_slot = Rect::new(
+            self.motion_graph.x,
+            self.motion_graph.y + self.motion_graph.h,
+            self.motion_graph.w,
+            h,
+        );
+        self.timeline = self.motion_timeline_slot;
+    }
 }
 
 #[cfg(test)]
@@ -407,8 +456,10 @@ mod split_tests {
         ));
     }
 
+    /// The seam is still a seam: **nothing is carved until somebody asks** (the shell asks only
+    /// when the Motion tool AND the timeline are both on screen).
     #[test]
-    fn timeline_slot_is_zero_height_at_graph_bottom() {
+    fn timeline_slot_is_zero_height_until_it_is_docked_into() {
         let l =
             HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Horizontal { t: 0.6 });
         assert_eq!(l.motion_timeline_slot.h, 0.0);
@@ -416,6 +467,78 @@ mod split_tests {
             l.motion_timeline_slot.y,
             l.motion_graph.y + l.motion_graph.h
         ));
+    }
+
+    /// **The dock takes the band from the GRAPH, and the timeline lands in it** (W4.T4).
+    ///
+    /// The bug it fixes is that the two used to occupy the SAME pixels — `motion_graph` ran to the
+    /// chrome and `timeline` was the bottom strip — so the timeline painted over the graph. After
+    /// docking they must not overlap, and the graph must be exactly the shorter one.
+    #[test]
+    fn docking_the_timeline_takes_the_band_from_the_graph() {
+        let split = CenterSplit::Horizontal { t: 0.6 };
+        let before = HeroLayout::for_viewport_split(vp(), false, RAIL_W, split);
+        let mut l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, split);
+        assert!(
+            before.timeline.y < before.motion_graph.y + before.motion_graph.h,
+            "the whole point: before the dock, the timeline lay ON the graph"
+        );
+
+        l.dock_timeline_into_motion();
+        let band = l.motion_timeline_slot;
+        assert!(band.h > 0.0, "the band exists");
+        assert!(
+            approx(l.motion_graph.h + band.h, before.motion_graph.h),
+            "the band came OUT of the graph: {} + {} != {}",
+            l.motion_graph.h,
+            band.h,
+            before.motion_graph.h
+        );
+        assert!(
+            approx(band.y, l.motion_graph.y + l.motion_graph.h),
+            "and it sits directly under it"
+        );
+        assert_eq!(l.timeline, band, "the timeline IS the band now");
+        assert!(
+            l.timeline.y >= l.motion_graph.y + l.motion_graph.h - 0.01,
+            "they no longer overlap - that was the bug"
+        );
+    }
+
+    /// Without a split there is no Motion workspace to dock into, and the call is inert: the
+    /// timeline keeps the bottom dock it has everywhere else.
+    #[test]
+    fn docking_without_a_motion_split_changes_nothing() {
+        let mut l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::None);
+        let before = l.timeline;
+        l.dock_timeline_into_motion();
+        assert_eq!(l.timeline, before);
+        assert_eq!(l.motion_timeline_slot.h, 0.0);
+    }
+
+    /// A short window must not let the dock eat its host: the band is capped at a fraction of the
+    /// graph, so the node editor never becomes a sliver.
+    #[test]
+    fn the_dock_never_eats_the_graph() {
+        let short = Rect::new(0.0, 0.0, 1200.0, 420.0);
+        let mut l = HeroLayout::for_viewport_split(
+            short,
+            false,
+            RAIL_W,
+            CenterSplit::Horizontal { t: 0.6 },
+        );
+        l.dock_timeline_into_motion();
+        assert!(
+            l.motion_graph.h > 0.0,
+            "the graph survived: {}",
+            l.motion_graph.h
+        );
+        assert!(
+            l.motion_timeline_slot.h <= l.motion_graph.h,
+            "the band ({}) must not be bigger than what is left of the graph ({})",
+            l.motion_timeline_slot.h,
+            l.motion_graph.h
+        );
     }
 
     #[test]

@@ -33,6 +33,18 @@ pub fn paint_hero_screen(
         rail_w,
         hero.view.center_split,
     );
+    // **The timeline docks INTO the Motion workspace** (W4.T4). Only when both are on screen:
+    // otherwise the graph keeps its full band and the timeline keeps its own dock. The condition
+    // is read from the panel visibility the bridges already publish — the layout stays a pure
+    // function of what it is told, and this is the one place that tells it.
+    //
+    // Before this, `motion_graph` ran down to the chrome and `timeline` was the bottom strip, so
+    // the two occupied the SAME pixels and the timeline (drawn later) painted over the graph.
+    if hero.is_panel_visible(super::PANEL_MOTION_GRAPH)
+        && hero.is_panel_visible(super::PANEL_TIMELINE)
+    {
+        layout.dock_timeline_into_motion();
+    }
     // Apply user-driven panel drag offsets to the Inspector +
     // Hierarchy rects. The offsets live on the WidgetStore's
     // `blender_picker_offset` side-table (panel-agnostic — the

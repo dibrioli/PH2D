@@ -88,6 +88,10 @@ mod subgraph_ports_tests;
 mod subgraph_tests;
 
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_dock_tests.rs"]
+mod dock_tests;
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_rename_tests.rs"]
 mod rename_tests;
 
@@ -144,7 +148,10 @@ pub(super) fn dispatch(
         .is_some_and(|t| t.id() == ToolId::new("motion"));
 
     // ── 1. Panel visibility (mirror of the Vector dock takeover) ──────────
-    hero.panel_visibility.insert("motion_graph", motion_active);
+    hero.panel_visibility.insert(
+        ph2d_editor::screens::hero::PANEL_MOTION_GRAPH,
+        motion_active,
+    );
     hero.panel_visibility.insert("motion_params", motion_active);
 
     // Graph keyboard focus follows the cursor, re-evaluated EVERY frame (not just
@@ -179,6 +186,17 @@ pub(super) fn dispatch(
                 // This plays the EDITOR's clock (W4.T7) — the timeline runs with
                 // the graph, which is the point of there being only one.
                 playhead.play();
+                // …and the timeline COMES WITH IT (W4.T4). It was already running (the bridge
+                // and the snapshot never cared whether it was visible) and already driving this
+                // very clock — it just was not on screen unless the artist happened to have
+                // pressed `L`. A tool that auto-plays and hides the transport is a tool that
+                // asks you to scrub blind. The layout gives it a band of its own under the
+                // graph (`HeroLayout::dock_timeline_into_motion`).
+                //
+                // Leaving the tool does NOT hide it again: it is the GLOBAL timeline, and taking
+                // away a panel the artist can see is not ours to do. `L` still toggles it.
+                hero.panel_visibility
+                    .insert(ph2d_editor::screens::hero::PANEL_TIMELINE, true);
             } else {
                 hero.view.center_split = CenterSplit::None;
             }

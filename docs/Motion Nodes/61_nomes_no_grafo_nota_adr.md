@@ -11,7 +11,9 @@ Um grafo com **88 tipos de nó** e vinte cards, seis dos quais dizem `Move`, `Mo
 documento de verdade deixa nomear os cards — Blender (F2), Houdini, Nuke, TouchDesigner, Cavalry —
 e todos usam **a mesma tecla**.
 
-Nós não tínhamos. Nem no nó, nem no grupo, nem no backdrop.
+Nós não tínhamos — **mas leia a §2 antes de acreditar na força dessa frase**: o backdrop e o grupo
+já podiam ser nomeados pelo painel de params. O que não existia por caminho NENHUM era o nome do
+**nó**, e o que não existia em lugar nenhum era o **gesto**.
 
 ## 2. ⚠️ CORREÇÃO (2026-07-13, mesmo dia) — a §2 original desta nota estava ERRADA
 
@@ -71,7 +73,8 @@ mesmo tempo** (os espaços são independentes — é por isso que o card do grup
 `SUBGRAPH_VIEW_TAG`). Um `u32` cru seria **cara ou coroa** sobre o que você acabou de renomear. O
 gate `the_same_id_in_three_spaces_renames_the_right_one` monta exatamente essa cena.
 
-O `SetBackdropTitle` **morreu** — não porque estava errado, mas porque era **um terço de um gesto**.
+O `SetBackdropTitle` **morreu** — não porque a feature não existia (§2: existia, pelo painel de
+params), mas porque, como `GraphIntent`, ele era **um terço de um gesto** e **ninguém o emitia**.
 
 ## 5. As decisões pequenas que fazem a caixa não irritar
 

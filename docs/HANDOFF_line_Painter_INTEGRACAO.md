@@ -1,5 +1,9 @@
 # HANDOFF de INTEGRAÇÃO — `line/Painter` (2026-07-13)
 
+> ⛔ **HISTÓRICO — a linha foi INTEGRADA na `main` em 2026-07-13.**
+> O documento vivo é [`HANDOFF_line_Painter_continuacao_2026-07-14.md`](HANDOFF_line_Painter_continuacao_2026-07-14.md).
+> **O smoke do Enio segue PENDENTE** — é o item nº 1, antes de W4.
+
 > **Para o AGENTE INTEGRADOR** (DIRETRIZ §1.5.9). Este é o documento operacional da linha inteira.
 > Detalhe técnico do sculpt: [`HANDOFF_line_Painter_sculpt_integracao_2026-07-13.md`](HANDOFF_line_Painter_sculpt_integracao_2026-07-13.md).
 > Plano: [`docs/Painter/18_plano_sculpt_relevo.md`](Painter/18_plano_sculpt_relevo.md).

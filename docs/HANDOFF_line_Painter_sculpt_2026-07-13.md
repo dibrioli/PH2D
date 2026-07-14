@@ -1,5 +1,9 @@
 # HANDOFF — `line/Painter`: o SCULPT do relevo (2026-07-13)
 
+> ⛔ **HISTÓRICO — a linha foi INTEGRADA na `main` em 2026-07-13.**
+> O documento vivo é [`HANDOFF_line_Painter_continuacao_2026-07-14.md`](HANDOFF_line_Painter_continuacao_2026-07-14.md).
+> **O smoke do Enio segue PENDENTE** — é o item nº 1, antes de W4.
+
 > **Para o agente NOVO que vai tocar esta linha.** Leia inteiro antes da primeira linha de código.
 > É longo de propósito — a alternativa é você redescobrir na marra o que já custou caro.
 >

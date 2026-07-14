@@ -1,5 +1,9 @@
 # HANDOFF do SCULPT — detalhe técnico (W1 + W2 + W3, 2026-07-13)
 
+> ⛔ **HISTÓRICO — a linha foi INTEGRADA na `main` em 2026-07-13.**
+> O documento vivo é [`HANDOFF_line_Painter_continuacao_2026-07-14.md`](HANDOFF_line_Painter_continuacao_2026-07-14.md).
+> **O smoke do Enio segue PENDENTE** — é o item nº 1, antes de W4.
+
 > **Detalhe técnico do SCULPT.** O documento operacional do integrador é [`HANDOFF_line_Painter_INTEGRACAO.md`](HANDOFF_line_Painter_INTEGRACAO.md) — comece por lá.
 > A linha está **fechada e parada**. Não integrei, não
 > pushei, não rodei `ship.sh` — isso é ordem explícita do Enio (CLAUDE.md §0.7).

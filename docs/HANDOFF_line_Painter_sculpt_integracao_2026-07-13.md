@@ -1,6 +1,7 @@
-# HANDOFF de INTEGRAÇÃO — `line/Painter`: o SCULPT do relevo, W1 + W2 + W3 (2026-07-13)
+# HANDOFF do SCULPT — detalhe técnico (W1 + W2 + W3, 2026-07-13)
 
-> **Para o agente INTEGRADOR** (DIRETRIZ §1.5.9). A linha está **fechada e parada**. Não integrei, não
+> **Detalhe técnico do SCULPT.** O documento operacional do integrador é [`HANDOFF_line_Painter_INTEGRACAO.md`](HANDOFF_line_Painter_INTEGRACAO.md) — comece por lá.
+> A linha está **fechada e parada**. Não integrei, não
 > pushei, não rodei `ship.sh` — isso é ordem explícita do Enio (CLAUDE.md §0.7).
 >
 > Plano: [`docs/Painter/18_plano_sculpt_relevo.md`](Painter/18_plano_sculpt_relevo.md).

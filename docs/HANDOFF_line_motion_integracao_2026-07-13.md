@@ -12,8 +12,8 @@
 | **Branch** | `line/motion-value` |
 | **HEAD** | `12e4e598` (+ este handoff) |
 | **Base** | `4cd8ef13` (= `main` no início da jornada) |
-| **Commits** | 24 |
-| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (fio novo entra em grupo fechado) + **FILA 2 — params dirigidos por fio** + **busca no add-menu** + **FILA 4 (metade) — Poisson-disc + Bóia** + **NOMES no grafo (F2)** |
+| **Commits** | 27 |
+| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (fio novo entra em grupo fechado) + **FILA 2 — params dirigidos por fio** + **busca no add-menu** + **FILA 4 (metade) — Poisson-disc + Bóia** + **NOMES no grafo (F2)** + **paleta do backdrop (R-click)** |
 | **Notas-ADR** | [`57_subgrafos`](Motion%20Nodes/57_subgrafos_nota_adr.md) · [`58_params_dirigidos`](Motion%20Nodes/58_params_dirigidos_nota_adr.md) |
 
 > **`CLAUDE.md` §5 NÃO foi tocado de propósito** — é a maior superfície de colisão do repo, e
@@ -243,6 +243,25 @@ rastreando fios. Agora **F2** nomeia o **card**, o **grupo** ou o **backdrop** s
 - **Aberto (nomeado):** a **cor** do backdrop segue sem gesto (`SetBackdropColor` vivo e sem
   emissor; o tom só cicla por id ao nascer).
 
+## 7.8 A paleta do backdrop — R-click (`0378ea8c`, doc 62)
+
+⚠️ **Leia a §1 do doc 62 antes de acreditar no título:** a cor **já dava pra trocar** (painel de
+params). Eu afirmei o contrário; corrigido. Esta fatia entrega um **gesto** e **dois bugs**.
+
+- **R-click no cabeçalho do backdrop → os 8 tons**, com o ponto de cada linha **pintado no próprio
+  tom** e a linha do tom atual **contornada**. O que um R-click significa passa a depender do que
+  está embaixo (biblioteca sobre canvas/nó/socket/fio; paleta sobre backdrop) — antes o botão
+  direito abria a biblioteca **sobre qualquer coisa**.
+- **Bug 1:** o **campo de busca era de TODO popup** — o menu de portas de card vinha pintando uma
+  caixa que não filtra nada **e que tomava o teclado**, desde a doc 59. Agora `Menu::has_search()`.
+- **Bug 2:** o `SetBackdropColor` não empurrava undo (contava com o bracket do painel de params); a
+  paleta commita uma vez, então o passo vai **no braço do intent** (um push dentro do `set_color`
+  contaria o caminho do painel em dobro).
+- ⚠️ **Assinaturas mudaram:** `menu_list`/`menu_row`/`menu_max_scroll`/`menu_track`/`menu_thumb`/
+  `menu_scroll_at` **ganharam `&Menu`** (muitos call-sites). `MenuRow.category` → `.dot` + `.selected`.
+- `interact.rs` estourou o cap de 600 → o Secondary saiu pra `interact_menu::open_on_right_press`.
+- **3 mutações mortas.** Gate que pinta e desliza o clique 1px.
+
 ## 8. Smoke (o Enio)
 
 ```
@@ -286,6 +305,12 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
   ("Age & Fade") e no **backdrop** (clique na faixa do topo dele primeiro). Apague o nome e dê Enter
   → o card volta a se chamar do que ele é. **Ctrl+Z** desfaz o rename num passo só. E depois de
   fechar a caixa, **`A` volta a abrir o menu** (o teclado volta pro grafo).
+
+- **Doc 62 (paleta):** crie um backdrop (chip **Backdrop** na barra do grafo) e **clique com o
+  BOTÃO DIREITO no cabeçalho dele** → os 8 tons, cada um com o ponto na própria cor e o atual
+  contornado. Escolha um (arrastando o mouse ao soltar, como a mão faz — tem que funcionar). **Ctrl+Z**
+  desfaz. E confira que o **menu de portas de card** (arraste um fio pro corpo de um grupo) **não tem
+  mais a caixa de busca inerte** — enquanto o menu `A` continua com a dele.
 
 ## 9. Fila restante (o próximo da linha escolhe)
 

@@ -1035,11 +1035,17 @@ PRESENÇA) · multiframe é art-anchored.
 **Só translação** — girar/escalar uma seleção não existe para desenho nenhum (item aberto do W6.1);
 quando existir, é a pose que ele escreve.
 
-## Aberto (fora do W0..W5, por design)
+## Aberto (fila viva — detalhe em [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md))
 
-- **A próxima recomendada: Edit Mode / seleção de traço** (o "select do traço" que o Enio
-  pediu). Ele destrava o auto-masking fino do Reshape (a máscara passa a ser a SELEÇÃO) e
-  substitui o "alvo vivo" como alvo dos ajustes do painel.
+- 🔴 **ITEM 0 — W7 · W7.1 · W7.2 entraram no `main` SEM SMOKE** (registro da integração de
+  2026-07-13). O smoke dessas três vem ANTES de feature nova.
+- **A próxima recomendada: girar/escalar a seleção.** O Edit Mode só translada; assim que o
+  Enio mover uma instância vai querer girá-la. Caminho: consumidor novo do gizmo de sprite
+  (bbox da seleção → `GizmoView` → delta assado) — e a **pose da chave tem de virar AFIM**
+  (hoje é `Vec2`), porque girar uma instância não pode escrever geometria compartilhada. O
+  render e a entrada já compõem `Xform`, então só o TIPO do campo muda.
+- **Seleção no domínio POINT** (hoje é por TRAÇO — domínio Curve do GP): move uma âncora só e
+  dá máscara fina ao Sculpt.
 - **W6 (timeline global): ADIADA** — a timeline principal ainda está em desenvolvimento
   (Enio 2026-07-12). O playhead do Flip JÁ é o global, então a integração não terá relógio a
   reconciliar.

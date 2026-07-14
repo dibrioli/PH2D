@@ -36,15 +36,29 @@ Ambos são pior que a ausência: a ausência faz você ir ler o código; a menti
 - **"Está morto" e "está vivo" são AMBOS claims que exigem teste**: esconder um knob exige provar
   byte-identidade; manter um exige provar que ele muda a saída.
 
-**Terceiro caso (Motion, 2026-07-13, doc 61) — o mais escorregadio dos três: um intent COM handler e
-SEM emissor.** O `SetBackdropTitle` existia no enum, era **executado pelo shell**, e seu comentário
-dizia *"Rename a backdrop (the params panel's Title row)"*. **Essa linha nunca existiu.** O
-`Subgraph.title` idem: o campo existia, serializava, o card **pintava** o nome — e **nada podia
-escrevê-lo**. Tudo compilava, tudo passava, e a feature simplesmente **nunca tinha sido construída**.
+**Terceiro caso (Motion, 2026-07-13) — e o erro fui EU, na direção contrária.** Achei um intent
+(`SetBackdropTitle`) **com handler e sem emissor**, e concluí, no commit e num ADR: *"a feature nunca
+foi construída"*. **Falso.** Ela existia por **OUTRO caminho** — o painel de params tinha as linhas
+Title e Color do backdrop o tempo todo (`backdrops::params_snapshot` + `apply_param_intent`, num
+canal de intent diferente). O intent que eu achei era uma **duplicata morta**, não a ausência da
+capacidade. Descobri **rodando o seam** e imprimindo as rows — depois de já ter afirmado o contrário
+duas vezes por escrito.
 
-**How to apply (a heurística que acha isso):** ao auditar uma feature, **grepe o EMISSOR, não o
-handler.** Um handler prova que alguém *pensou* na feature; só o emissor prova que ela existe. Para
-uma ação de UI, a cadeia inteira é `gesto → intent EMITIDO → handler → estado → PINTURA`, e **o elo
-que apodrece calado é o segundo**. Corolário: quando você for construir algo e achar o modelo de
-dados pronto, **desconfie e procure o gesto** — pode ser que só a metade de baixo tenha sido feita.
+**Why:** "código morto" e "feature ausente" **não são a mesma coisa**, e o grep de um símbolo não
+distingue as duas. Um caminho morto pode ser o *segundo* caminho para algo que funciona — e declarar
+a feature ausente a partir dele é exatamente o erro que este arquivo inteiro descreve, cometido do
+outro lado.
+
+**How to apply:**
+- **Cace a CAPACIDADE, não o símbolo.** A pergunta não é *"quem emite `SetBackdropColor`?"* — é
+  **"o usuário consegue trocar a cor?"**. São perguntas diferentes e só a segunda é a que importa.
+- **Responda-a EXECUTANDO** (o seam, o snapshot do painel, o app), nunca por grep
+  ([[feedback_no_industrial_claims_without_verification]]). Um `println!` das rows do painel matou uma
+  afirmação que dois greps tinham "confirmado".
+- **Antes de dizer "isto não existe", procure o segundo caminho**: outro canal de intent, outro
+  painel, outro atalho. Um sistema com N caminhos para a mesma ação tem N-1 candidatos a parecerem
+  mortos.
+- O corolário do começo **continua valendo** (encanamento sem consumidor mente) — só que a conclusão
+  certa dele é *"há um caminho a MENOS do que os símbolos sugerem"*, e **não** *"a capacidade não
+  existe"*.
 

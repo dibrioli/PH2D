@@ -13,23 +13,33 @@ e todos usam **a mesma tecla**.
 
 Nós não tínhamos. Nem no nó, nem no grupo, nem no backdrop.
 
-## 2. O que a auditoria achou (e é a lição da fatia)
+## 2. ⚠️ CORREÇÃO (2026-07-13, mesmo dia) — a §2 original desta nota estava ERRADA
 
-**Dois dos três já tinham onde guardar o nome, e nada no editor conseguia escrever nele:**
+A primeira versão deste documento afirmava que *"dois dos três já tinham onde guardar o nome e nada
+no editor conseguia escrever nele"*. **É falso, e o erro é meu.**
 
-- `Subgraph.title` — existia, serializava, e o card do grupo **já pintava** (`motion_bridge_fold`
-  usa `s.title` com um `DEFAULT_TITLE` de fallback);
-- `Backdrop.title` — existia, serializava, e havia até o **intent** `SetBackdropTitle`, **executado
-  pelo shell**… e **emitido por ninguém**. O comentário dele dizia, confiante: *"Rename a backdrop
-  (the params panel's Title row)"*. **Essa linha não existe.** (E o `SetBackdropColor` está no mesmo
-  estado — encanamento vivo, gesto inexistente; agora o comentário **diz isso**, em vez de apontar
-  pra uma UI imaginária.)
+Eu greppei o `GraphIntent::SetBackdropTitle`, não achei emissor, e concluí que a feature nunca tinha
+sido construída. **Ela existia por OUTRO caminho:** o **painel de params** já tinha, o tempo todo, as
+linhas **Title** e **Color** do backdrop (`motion_bridge_backdrops::params_snapshot` +
+`apply_param_intent`, num canal de intent *diferente*), e o card de grupo já tinha a linha **Name**
+(`motion_bridge_subgraph::params_snapshot`). Provado **rodando o seam** e imprimindo as rows — depois
+de eu já ter afirmado o contrário duas vezes por escrito.
 
-> **O modelo de dados não era o buraco. A CAIXA era.** É [[feedback_stale_comment_and_dead_code_lie]]
-> em estado puro: código morto com um comentário seguro em cima envelhece pra *documentação de uma
-> feature que não existe*, e ninguém percebe porque tudo **compila e passa**.
+O que estava de fato morto eram **os dois `GraphIntent`** (`SetBackdropTitle`/`SetBackdropColor`):
+handlers sem emissor, **duplicatas** de um caminho vivo — não a ausência da capacidade.
 
-Só o **nó** precisava de canal novo.
+**O que o F2 então REALMENTE trouxe:**
+
+1. **O label do NÓ — isso sim não existia.** O `Graph` não tinha canal nenhum pra um nome de nó, e o
+   painel de params de um nó mostra os *params dele*, não um nome. Um nó **não podia** ser nomeado
+   por caminho nenhum. É a metade nova de verdade, e é a que importa: são 88 tipos e vinte cards.
+2. **O gesto inline.** Nomear deixa de ser *"selecione, vá olhar em outro painel, ache a linha
+   Title"* e passa a ser **F2 sobre a coisa** — que é como todo editor de nós faz, e é a diferença
+   entre uma capacidade e uma ferramenta.
+
+Lição registrada em [[feedback_stale_comment_and_dead_code_lie]] (3º caso): **cace a CAPACIDADE, não
+o símbolo** — *"quem emite X?"* e *"o usuário consegue fazer X?"* são perguntas diferentes, e só a
+segunda importa. E responda-a **executando**, nunca por grep.
 
 ## 3. O canal do nó: mais uma volta da mesma manivela
 

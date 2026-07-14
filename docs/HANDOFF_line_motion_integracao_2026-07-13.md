@@ -219,11 +219,14 @@ lê o hit index que a **pintura** registrou, e despacha `PointerEvent` de verdad
 **O gesto que faltava.** 88 tipos de nó, vinte cards, seis dizendo `Move`/`Drive`: o grafo se lia
 rastreando fios. Agora **F2** nomeia o **card**, o **grupo** ou o **backdrop** selecionado.
 
-- **A auditoria é a notícia:** **dois dos três já tinham onde guardar o nome** (`Subgraph.title`,
-  `Backdrop.title`) **e nada no editor conseguia escrever nele** — o `SetBackdropTitle` existia, era
-  **executado pelo shell**, e **ninguém o emitia**; o comentário dele apontava pra uma linha do
-  painel de params que **não existe**. O modelo de dados não era o buraco, a **caixa** era.
-  ([[feedback_stale_comment_and_dead_code_lie]].)
+- ⚠️ **CORREÇÃO (mesmo dia, doc 61 §2):** eu afirmei que o rename do backdrop/grupo "nunca existiu".
+  **Falso.** O **painel de params** já tinha as linhas **Title**/**Color** do backdrop e a linha
+  **Name** do grupo — por um canal de intent *diferente*. Os `GraphIntent::SetBackdropTitle/Color`
+  eram **duplicatas mortas**, não a ausência da feature. O que o F2 realmente traz: **o label do NÓ**
+  (isso sim não existia em canal nenhum — 88 tipos, vinte cards, e um nó não podia ser nomeado) **+ o
+  gesto inline** (nomear deixa de ser "vá olhar noutro painel"). Lição em
+  [[feedback_stale_comment_and_dead_code_lie]] (3º caso): **cace a CAPACIDADE, não o símbolo**, e
+  responda **executando**.
 - **Foundational (`ph2d-nodegraph`):** campo **`node_labels`** no `Graph` — **mapa paralelo**, não
   campo no `NodeInstance` (append-only = merge que não conflita; campo novo tocaria todo sítio de
   construção do repo). Record **`t <id> <label…>`** + header **`v4` só quando alguém nomeou**

@@ -486,3 +486,99 @@ fn the_leftover_vertices_subdivide_the_smaller_shape() {
         );
     }
 }
+
+/// **UMA QUINA CONVEXA NUNCA CASA COM UM VÉRTICE REENTRANTE.**
+///
+/// O Enio, apontando os intermediários: *"os pontos das setas verdes, desde o início, deveriam
+/// estar mais para dentro, como os das setas vermelhas"*.
+///
+/// Medido: **duas das quatro quinas do quadrado casavam com os VALES da estrela** — os vértices
+/// reentrantes. O custo só olhava POSIÇÃO, e o vale estava angularmente mais perto do que a ponta
+/// seguinte. Na tela: o quadrado **colapsa pelas quinas** e as pontas nascem do meio das arestas
+/// retas. É o "amassado".
+///
+/// O termo que faltava é o de **bending** (Sederberg & Greenwood): a quina do quadrado vira +90°,
+/// a ponta da estrela +144°, e o vale vira **para o outro lado**. Uma quina convexa tem de casar
+/// com uma convexa — é diferença de TIPO, não de grau.
+///
+/// O gate mede o SINAL da virada de cada par casado. Sem o termo de bending, ele fica vermelho.
+#[test]
+fn no_convex_corner_ever_marries_a_reflex_vertex() {
+    let pairs = [
+        (
+            square([0.0, 0.0], 1.0),
+            shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]),
+        ),
+        (
+            shape(ShapeKind::Polygon, [0.0, 0.0], [1.0, 1.0], &[6.0, 0.0]),
+            shape(ShapeKind::Star, [5.0, 0.0], [1.2, 1.0], &[7.0, 0.4, 0.0]),
+        ),
+    ];
+    for (a, b) in &pairs {
+        let (oa, ob) = (Outline::of(a).unwrap(), Outline::of(b).unwrap());
+        let corr = search(&oa, &ob, BlendOpts::default());
+        let target = if corr.reversed { ob.reversed() } else { ob };
+        let (ua, ub) = (oa.anchors(), target.anchors());
+        let (ta, tb) = (crate::matching::turns(&oa), crate::matching::turns(&target));
+
+        for (ka, ua_k) in ua.iter().enumerate() {
+            let v = map_forward(&corr.knots, *ua_k);
+            let Some(kb) = ub.iter().position(|x| (x - v).abs() < 1e-9) else {
+                continue; // esta quina caiu no meio de uma aresta: não é um par casado
+            };
+            let (sa, sb) = (ta[ka].0, tb[kb].0);
+            if sa.abs() < 1e-6 || sb.abs() < 1e-6 {
+                continue; // âncora suave: não há "lado" para concordar
+            }
+            assert!(
+                sa.signum() == sb.signum(),
+                "a quina {ka} (virada {sa:.3}) casou com o vértice {kb} (virada {sb:.3}) — os \
+                 dois viram para lados OPOSTOS: uma quina convexa está colapsando dentro de um \
+                 vértice reentrante, e é isso que amassa a forma no meio do caminho"
+            );
+        }
+    }
+}
+
+/// **O escape ROTACIONA de verdade — e não troca o sentido nas costas do artista.**
+///
+/// Cada `offset` tem de dar uma correspondência DIFERENTE, e todas no mesmo sentido de percurso.
+///
+/// A 1ª versão re-decidia o sentido junto com o offset: numa forma simétrica (uma elipse), rodar
+/// 1 âncora + inverter o percurso davam o MESMO resultado físico — e o botão de escape parecia
+/// **não fazer nada**. Um escape que às vezes é inerte é pior que escape nenhum: o artista conclui
+/// que a ferramenta travou.
+#[test]
+fn every_offset_gives_a_different_correspondence_in_the_same_direction() {
+    let a = square([0.0, 0.0], 1.0);
+    let b = circle([6.0, 0.0], 1.0);
+
+    let mut seen: Vec<[f64; 2]> = Vec::new();
+    let mut dir: Option<bool> = None;
+    for offset in 0..4 {
+        let opts = BlendOpts {
+            offset,
+            reverse: false,
+        };
+        let (oa, ob) = (Outline::of(&a).unwrap(), Outline::of(&b).unwrap());
+        let corr = search(&oa, &ob, opts);
+        match dir {
+            None => dir = Some(corr.reversed),
+            Some(d) => assert_eq!(
+                d, corr.reversed,
+                "o `offset` trocou o SENTIDO de percurso — o motor mudou de ideia nas costas do \
+                 artista, e numa forma simétrica isso devolve o mesmo resultado (o escape vira \
+                 inerte)"
+            ),
+        }
+        let v0 = morph(&a, &b, 0.5, opts).expect("o meio").verts[0].anchor;
+        assert!(
+            !seen
+                .iter()
+                .any(|p| (p[0] - v0[0]).abs() < 1e-9 && (p[1] - v0[1]).abs() < 1e-9),
+            "o offset {offset} repetiu uma correspondência que já existia — o escape não está \
+             rodando nada"
+        );
+        seen.push(v0);
+    }
+}

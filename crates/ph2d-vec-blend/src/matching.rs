@@ -55,31 +55,28 @@ const DP_BUDGET: usize = 20_000_000;
 
 pub(crate) fn search(oa: &Outline, ob: &Outline, opts: BlendOpts) -> Correspondence {
     let ob_rev = ob.reversed();
-    let mut best: Option<(f64, Correspondence)> = None;
-    for reversed in [false, true] {
-        if reversed && !opts.reverse && best.is_some() && !oa.closed {
-            break; // caminho aberto: o sentido de B ainda importa, mas não a rotação
-        }
-        let target = if reversed { &ob_rev } else { ob };
-        let (cost, knots) = align(oa, target, opts.offset);
-        if best.as_ref().is_none_or(|(c, _)| cost < *c) {
-            best = Some((cost, Correspondence { knots, reversed }));
-        }
-    }
-    // O toggle do usuário é a ÚLTIMA palavra sobre o sentido (o escape manual).
-    let mut chosen = best.map(|(_, c)| c).unwrap_or(Correspondence {
-        knots: vec![(0.0, 0.0)],
-        reversed: false,
-    });
-    if opts.reverse {
-        let target = if chosen.reversed { ob } else { &ob_rev };
-        let (_, knots) = align(oa, target, opts.offset);
-        chosen = Correspondence {
-            knots,
-            reversed: !chosen.reversed,
+    // **O SENTIDO é decidido pelo automático, e o `offset` não o re-decide.**
+    //
+    // Não é arrumação: quando os dois andavam juntos, rodar a correspondência fazia o motor
+    // trocar de sentido nas costas do artista — e numa forma simétrica (uma elipse) o resultado
+    // físico dava no MESMO. O botão de escape parecia não fazer nada, que é o pior defeito
+    // possível num escape.
+    let (cost_fwd, knots_fwd) = align(oa, ob, 0);
+    let (cost_rev, knots_rev) = align(oa, &ob_rev, 0);
+    let auto_reversed = cost_rev < cost_fwd;
+    let reversed = auto_reversed != opts.reverse; // XOR: o toggle do usuário sobre o automático
+
+    if opts.offset == 0 {
+        let knots = if reversed == auto_reversed {
+            if auto_reversed { knots_rev } else { knots_fwd }
+        } else {
+            align(oa, if reversed { &ob_rev } else { ob }, 0).1
         };
+        return Correspondence { knots, reversed };
     }
-    chosen
+    let target = if reversed { &ob_rev } else { ob };
+    let (_, knots) = align(oa, target, opts.offset);
+    Correspondence { knots, reversed }
 }
 
 /// O casamento cíclico monótono entre as âncoras de `oa` e `ob`, e o custo dele.
@@ -104,32 +101,43 @@ pub(crate) fn align(oa: &Outline, ob: &Outline, offset: i32) -> (f64, Vec<(f64, 
 
     // As âncoras, NORMALIZADAS (centro + escala): o custo compara FORMA, não posição no mundo.
     let (pa, pb) = (normalized(oa), normalized(ob));
+    // E a VIRADA de cada âncora: é ela que impede uma quina convexa de casar com um vale.
+    let (ta, tb) = (turns(oa), turns(ob));
     // A forma com MENOS âncoras é a que casa todas as suas; as que sobram na outra subdividem.
     let swapped = n > m;
-    let (ua, ub, pa, pb) = if swapped {
-        (ub, ua, pb, pa)
+    let (ua, ub, pa, pb, ta, tb) = if swapped {
+        (ub, ua, pb, pa, tb, ta)
     } else {
-        (ua, ub, pa, pb)
+        (ua, ub, pa, pb, ta, tb)
     };
     let (n, m) = (ua.len(), ub.len());
 
-    let mut best: Option<(f64, Vec<usize>)> = None;
-    let start = offset.rem_euclid(i32::try_from(m).unwrap_or(1)) as usize;
-    for c0 in 0..m {
-        // O escape manual força o 1º nó; sem ele, todos os inícios são candidatos.
-        let c = (c0 + start) % m;
-        if offset != 0 && c0 != 0 {
-            break;
-        }
-        if let Some((cost, js)) = dp_from(&ua, &ub, &pa, &pb, c)
-            && best.as_ref().is_none_or(|(bc, _)| cost < *bc)
+    // O AUTOMÁTICO primeiro: qual âncora de B casa com a 1ª de A?
+    let mut best: Option<(f64, usize, Vec<usize>)> = None;
+    for c in 0..m {
+        if let Some((cost, js)) = dp_from(&ua, &ub, &pa, &pb, &ta, &tb, c)
+            && best.as_ref().is_none_or(|(bc, _, _)| cost < *bc)
         {
-            best = Some((cost, js));
+            best = Some((cost, c, js));
         }
     }
-    let Some((cost, js)) = best else {
+    let Some((mut cost, c_auto, mut js)) = best else {
         return rotation_only(oa, ob, offset);
     };
+    // **O escape manual é RELATIVO ao automático**, e isso não é detalhe: fosse absoluto, o dia em
+    // que o automático já escolhesse aquele nó o botão **não faria nada** — e um escape que às
+    // vezes é inerte é pior que escape nenhum (o artista conclui que a ferramenta travou).
+    if offset != 0 {
+        let c = usize::try_from(
+            (i32::try_from(c_auto).unwrap_or(0) + offset).rem_euclid(i32::try_from(m).unwrap_or(1)),
+        )
+        .unwrap_or(0);
+        let Some((c2, js2)) = dp_from(&ua, &ub, &pa, &pb, &ta, &tb, c) else {
+            return rotation_only(oa, ob, offset);
+        };
+        cost = c2;
+        js = js2;
+    }
     let mut knots: Vec<(f64, f64)> = (0..n)
         .map(|i| {
             if swapped {
@@ -172,6 +180,59 @@ fn travel_cost(oa: &Outline, ob: &Outline, knots: &[(f64, f64)]) -> f64 {
         .sum()
 }
 
+/// A **virada** em cada âncora, como o par `(sen, cos)` do ângulo — sem `atan2`.
+///
+/// Comparar dois pares `(sen, cos)` é comparar dois vetores unitários: a distância entre eles é
+/// monótona na diferença de ângulo, e não passa por transcendental nenhum (HR-5). Numa âncora
+/// suave (um círculo) a virada é `(0, 1)` — o termo não perturba quem não tem quina.
+pub(crate) fn turns(o: &Outline) -> Vec<(f64, f64)> {
+    let n = o.segs.len();
+    (0..n)
+        .map(|i| {
+            if !o.closed && i == 0 {
+                return (0.0, 1.0); // ponta de caminho aberto: não há virada
+            }
+            let prev = o.segs[(i + n - 1) % n];
+            let cur = o.segs[i];
+            let (Some(tin), Some(tout)) = (unit(tangent_end(&prev)), unit(tangent_start(&cur)))
+            else {
+                return (0.0, 1.0);
+            };
+            (
+                tin.x * tout.y - tin.y * tout.x, // sen (o SINAL diz de que lado a quina vira)
+                tin.x * tout.x + tin.y * tout.y, // cos
+            )
+        })
+        .collect()
+}
+
+/// A tangente na SAÍDA da âncora (o 1º controle que não coincide com ela).
+fn tangent_start(s: &kurbo::CubicBez) -> kurbo::Vec2 {
+    for c in [s.p1, s.p2, s.p3] {
+        let v = c - s.p0;
+        if v.hypot() > MERGE_EPS {
+            return v;
+        }
+    }
+    kurbo::Vec2::ZERO
+}
+
+/// A tangente na CHEGADA da âncora seguinte.
+fn tangent_end(s: &kurbo::CubicBez) -> kurbo::Vec2 {
+    for c in [s.p2, s.p1, s.p0] {
+        let v = s.p3 - c;
+        if v.hypot() > MERGE_EPS {
+            return v;
+        }
+    }
+    kurbo::Vec2::ZERO
+}
+
+fn unit(v: kurbo::Vec2) -> Option<kurbo::Vec2> {
+    let len = v.hypot();
+    (len > MERGE_EPS).then(|| v / len)
+}
+
 /// As âncoras normalizadas: centro na origem, escala RMS 1. O custo passa a comparar **forma**.
 fn normalized(o: &Outline) -> Vec<Point> {
     let pts: Vec<Point> = o.segs.iter().map(|s| s.p0).collect();
@@ -190,18 +251,34 @@ fn normalized(o: &Outline) -> Vec<Point> {
         .collect()
 }
 
-/// O peso da distorção de arco no custo. As duas parcelas são adimensionais e da mesma ordem
-/// (distâncias normalizadas ~1; frações de perímetro ~1/n), então `1.0` é um empate honesto — e
-/// não um botão a calibrar.
+/// O peso da distorção de arco no custo. As parcelas são adimensionais e da mesma ordem
+/// (distâncias normalizadas ~1; frações de perímetro ~1/n; viradas em (sen, cos) ~1), então `1.0`
+/// é um empate honesto — e não um botão a calibrar.
 const STRETCH_WEIGHT: f64 = 1.0;
+
+/// O peso da **forma da quina** no custo — o termo de *bending* do Sederberg & Greenwood.
+///
+/// Sem ele, o custo só olha POSIÇÃO, e o smoke do Enio mostrou o preço: **duas das quatro quinas
+/// do quadrado casavam com os VALES da estrela** (os vértices reentrantes), porque o vale estava
+/// angularmente mais perto do que a ponta seguinte. Na tela: o quadrado **colapsa pelas quinas**
+/// enquanto as pontas nascem do meio das arestas retas — o "amassado" que o Enio viu.
+///
+/// Uma quina **convexa** tem de casar com uma **convexa**. É diferença de TIPO, não de grau: a
+/// quina do quadrado vira +90°, a ponta da estrela +144°, e o vale vira para o **outro lado**.
+/// Comparar convexa com reentrante custa 4,7× mais caro do que comparar duas convexas, e é isso
+/// que reordena o casamento inteiro.
+const TURN_WEIGHT: f64 = 1.0;
 
 /// A programação dinâmica, com o 1º nó fixado em `(0, c)`: escolhe `j_1 < j_2 < … < j_{n-1}`
 /// (ciclicamente crescentes) minimizando distância-entre-casados + distorção-de-arco.
+#[allow(clippy::too_many_arguments)] // cada entrada é um eixo distinto do custo
 fn dp_from(
     ua: &[f64],
     ub: &[f64],
     pa: &[Point],
     pb: &[Point],
+    ta: &[(f64, f64)],
+    tb: &[(f64, f64)],
     c: usize,
 ) -> Option<(f64, Vec<usize>)> {
     let (n, m) = (ua.len(), ub.len());
@@ -210,7 +287,15 @@ fn dp_from(
     }
     let du = |i: usize| wrap_pos(ua[(i + 1) % n] - ua[i]);
     let dv = |o0: usize, o1: usize| wrap_pos(ub[(c + o1) % m] - ub[(c + o0) % m]);
-    let pair = |i: usize, o: usize| (pa[i] - pb[(c + o) % m]).hypot2();
+    let pair = |i: usize, o: usize| {
+        let j = (c + o) % m;
+        let pos = (pa[i] - pb[j]).hypot2();
+        // A distância entre as duas VIRADAS, como vetores unitários: convexa com convexa é barato,
+        // convexa com reentrante é caro. É uma diferença de TIPO de quina.
+        let ((sa, ca), (sb, cb)) = (ta[i], tb[j]);
+        let bend = (sa - sb).powi(2) + (ca - cb).powi(2);
+        pos + TURN_WEIGHT * bend
+    };
     let stretch = |i: usize, o0: usize, o1: usize| {
         let d = du(i) - dv(o0, o1);
         STRETCH_WEIGHT * d * d

@@ -162,9 +162,15 @@ struct ReliefFields<'a> {
 
 impl ReliefFields<'_> {
     /// Height at a canvas pixel, clamped to the canvas (so the central difference can read across the
-    /// dirty rect's edge exactly as a full recompose would) — and to the glass ceiling, so the LIVE
-    /// stroke over an already-full pile shows the same paint the commit is about to store (no pop at
-    /// pen-up), and stacked layers top out exactly as stacked strokes do.
+    /// dirty rect's edge exactly as a full recompose would) — and passed through the **glass ceiling**, so
+    /// the LIVE stroke over an already-full pile shows the same paint the commit is about to store (no pop
+    /// at pen-up), and stacked layers top out exactly as stacked strokes do.
+    ///
+    /// **This is the ONLY place the ceiling is applied**, and that is the design: it is a property of what
+    /// the paint *looks like*, not of what the paint *is*. The buffer keeps the true relief, so the sculpt's
+    /// plane fits and ball offsets reason about the surface the artist actually built
+    /// ([`super::impasto_ceiling::soft_ceiling`], which also records why the hard clamp that used to live here was
+    /// not a ceiling but an eraser).
     ///
     /// The fold walks the layers bottom-up, each one scaled by its own depth and joined to the pile
     /// under it by its own composite mode.
@@ -189,7 +195,7 @@ impl ReliefFields<'_> {
                 }
             }
         }
-        h.clamp(-super::impasto::H_CEIL, super::impasto::H_CEIL)
+        super::impasto_ceiling::soft_ceiling(h)
     }
 
     /// One layer's own paint coverage at `i` (`0..1`) — including the open stroke when it is the active

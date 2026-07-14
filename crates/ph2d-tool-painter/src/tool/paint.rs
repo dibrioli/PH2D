@@ -35,6 +35,7 @@ mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes +
 pub use stroke_multi::StrokeOpBadge;
 /// Per-dab randomize setters (Jitter Scale / Rotate / Randomize Color); split from `brush_settings`.
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
+mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a compression, not a clamp)
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
 mod impasto_material; // Impasto: the paint's MATERIAL on the canvas (deposit + the live re-bake)
 mod impasto_plow; // Impasto: the palette knife (the Smear drags the relief along with the colour)

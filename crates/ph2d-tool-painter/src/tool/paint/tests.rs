@@ -18789,11 +18789,18 @@ fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
 
 #[test]
 fn impasto_strokes_pile_up_only_to_the_glass() {
-    // T4.2 — Corel Painter documents the same limit: accumulated impasto "top[s] out and appear[s]
-    // as if the strokes are pressed against glass". Strokes ADD (a second stroke genuinely piles
-    // more on — `impasto_one_stroke_is_one_thickness_but_two_strokes_add` pins that), but not
-    // forever: without the ceiling, five loads make a mesa whose walls dwarf every brush-mark on
-    // top of it, which is the other road back to unreadable relief. RED without the clamp: h = 3.
+    // T4.2 — Corel Painter documents the same limit: accumulated impasto "top[s] out and appear[s] as if the
+    // strokes are pressed against glass". Strokes ADD (a second stroke genuinely piles more on —
+    // `impasto_one_stroke_is_one_thickness_but_two_strokes_add` pins that), but not forever.
+    //
+    // **Rewritten 2026-07-14 (Enio's smoke).** This used to read the STORED field and demand it stop at
+    // exactly 2.0 — i.e. it pinned a hard `clamp`. That clamp was not glass, it was an ERASER: it mapped
+    // every height above the ceiling to the same number, so the brush-marks up there were deleted rather
+    // than compressed, the plateau's gradient went to zero, and the light rendered the artist's hardest work
+    // as a dead flat plate (see `impasto_ceiling::soft_ceiling`). Two strokes of Inflate and the sculpture was a mesa.
+    //
+    // So the ceiling moved to the LIGHT and the buffer tells the truth. The gate follows: the paint really
+    // is three loads thick, and it really does *top out* — the two claims are no longer the same claim.
     let mut t = impasto_canvas(40);
     let mut b = t.paint.brush;
     b.impasto_depth = 1.0;
@@ -18807,8 +18814,137 @@ fn impasto_strokes_pile_up_only_to_the_glass() {
     }
     let h = relief(&t)[(20 * 40 + 20) as usize];
     assert!(
-        (h - 2.0).abs() < 1e-5,
-        "three full loads stop at the glass (two): got {h}"
+        (h - 3.0).abs() < 1e-4,
+        "three full loads of paint ARE three loads — the buffer keeps the relief the artist built, so the \
+         sculpt's plane fits and ball offsets reason about a real surface. Got {h}."
+    );
+    // …and the APPEARANCE tops out: compressed, well short of the raw height, and never past the asymptote.
+    let seen = super::impasto_ceiling::soft_ceiling(h);
+    assert!(
+        seen < h - 0.1 && seen > super::impasto_ceiling::H_KNEE,
+        "three loads should LOOK like {:.2}-ish (topped out but still climbing), not {seen:.3}",
+        super::impasto_ceiling::soft_ceiling(3.0)
+    );
+    assert!(
+        super::impasto_ceiling::soft_ceiling(1000.0) < super::impasto_ceiling::H_ASYMPTOTE,
+        "the glass is not glass: the apparent relief passed the asymptote"
+    );
+}
+
+#[test]
+fn the_glass_ceiling_compresses_the_marks_it_does_not_erase_them() {
+    // **Enio's screenshot, as a number** (2026-07-14): *"em 3 pinceladas toda escultura é achatada no teto"*.
+    //
+    // A hard clamp maps EVERY height above the ceiling to the same value. So two texels that differ by a
+    // brush-mark — the whole reason to sculpt at all — come out IDENTICAL, the plateau's gradient is exactly
+    // zero, and the light (which shades from `∇h`) has nothing to draw. The tool erased the work.
+    //
+    // The soft ceiling's slope is `1/(1+t)²`: small on a huge pile, never zero. Marks survive with less
+    // contrast, which is what *pressed against glass* actually means.
+    //
+    // **Mutation that must bleed:** put the clamp back (`h.clamp(-H_KNEE, H_KNEE)` in `soft_ceiling`).
+    let mark = 0.08f32; // a brush-mark's worth of relief, in loads
+    for base in [2.5f32, 4.0, 8.0, 20.0] {
+        let a = super::impasto_ceiling::soft_ceiling(base);
+        let b = super::impasto_ceiling::soft_ceiling(base + mark);
+        assert!(
+            b > a,
+            "at {base} loads a {mark}-load mark VANISHED under the ceiling ({a} vs {b}). That is not a \
+             ceiling, it is an eraser — and it erases exactly where the artist worked hardest."
+        );
+    }
+    // …and it really is a CEILING: the higher the pile, the less of the mark survives.
+    let low = super::impasto_ceiling::soft_ceiling(2.5 + mark)
+        - super::impasto_ceiling::soft_ceiling(2.5);
+    let high = super::impasto_ceiling::soft_ceiling(20.0 + mark)
+        - super::impasto_ceiling::soft_ceiling(20.0);
+    assert!(
+        high < low * 0.5 && high > 0.0,
+        "the mark should read fainter on a tall pile than on a short one (got {low:e} vs {high:e}) — that \
+         IS the glass, and a ceiling that compressed nothing would be no ceiling at all"
+    );
+}
+
+#[test]
+fn below_the_knee_the_ceiling_is_the_identity_byte_for_byte() {
+    // Everything painted before the ceiling changed must render EXACTLY as it did. The knee sits where the
+    // old hard clamp did, so the whole of the old linear range passes through untouched — no goldens move,
+    // no canvas shifts by a level. (A ceiling you cannot introduce without repainting the artist's work is a
+    // ceiling you cannot introduce.)
+    //
+    // **Mutation that must bleed:** start the compression at zero (drop the `if a <= H_KNEE` early return).
+    for i in 0..=2000 {
+        let h =
+            (f32::from(i16::try_from(i).unwrap_or(0)) / 2000.0) * super::impasto_ceiling::H_KNEE;
+        for h in [h, -h] {
+            assert_eq!(
+                super::impasto_ceiling::soft_ceiling(h).to_bits(),
+                h.to_bits(),
+                "the ceiling touched a height of {h}, which is below the knee"
+            );
+        }
+    }
+    // …and it is C¹ at the knee: no crease where the two halves meet (a crease IS a slope, and the light
+    // would draw a ring around every pile at exactly two loads).
+    let k = super::impasto_ceiling::H_KNEE;
+    let e = 1e-3f32;
+    let below =
+        (super::impasto_ceiling::soft_ceiling(k) - super::impasto_ceiling::soft_ceiling(k - e)) / e;
+    let above =
+        (super::impasto_ceiling::soft_ceiling(k + e) - super::impasto_ceiling::soft_ceiling(k)) / e;
+    assert!(
+        (below - 1.0).abs() < 1e-2 && (above - 1.0).abs() < 2e-2,
+        "the ceiling creases at the knee (slope {below} below, {above} above) — the light would draw a ring \
+         around every pile at exactly {k} loads"
+    );
+}
+
+#[test]
+fn a_pile_past_the_ceiling_still_catches_the_light() {
+    // The same failure as `the_glass_ceiling_compresses_the_marks…`, measured where Enio measured it: **on
+    // the screen**. The unit gate above says the numbers survive; this one says the PIXELS do.
+    //
+    // A relief three loads high, with a fine ridge on top of it. Under the hard clamp every one of those
+    // texels became 2.0, the gradient vanished, and the plateau came out as one flat colour — which is the
+    // screenshot. It has to shade.
+    //
+    // **Mutation that must bleed:** the clamp, again — this time through the whole light pass.
+    let size = 40u32;
+    let mut t = impasto_canvas(size);
+    let layer = t.layers.active().expect("a layer");
+    let n = (size * size) as usize;
+    // Three loads of paint, with a 0.15-load ridge running down it. Well past the old ceiling.
+    let field: Vec<f32> = (0..n)
+        .map(|i| {
+            let x = (i as u32 % size) as f32;
+            3.0 + if (x - 20.0).abs() < 3.0 { 0.15 } else { 0.0 }
+        })
+        .collect();
+    t.heights.insert(layer, std::sync::Arc::new(field));
+    t.covers.insert(layer, std::sync::Arc::new(vec![255u8; n]));
+    t.sync_relief_flags();
+    t.mark_dirty(super::Region {
+        x: 0,
+        y: 0,
+        w: size,
+        h: size,
+    });
+    t.invalidate_composite();
+
+    let px = lit(&mut t);
+    let row = 20usize;
+    let lum = |x: usize| -> i32 {
+        let i = (row * size as usize + x) * 4;
+        i32::from(px[i]) + i32::from(px[i + 1]) + i32::from(px[i + 2])
+    };
+    // The ridge's two walls are at x ≈ 17 and x ≈ 23. Somewhere across them the light must MOVE.
+    let flat = lum(6);
+    let swing = (10..=30).map(|x| (lum(x) - flat).abs()).max().unwrap_or(0);
+    assert!(
+        swing >= 6,
+        "a ridge sitting three loads up rendered as FLAT ({swing} levels of swing across it). Every texel \
+         there was clamped to the same height, so the surface has no slope and the light has nothing to \
+         draw — the artist's work is erased exactly where they worked hardest. This is Enio's screenshot."
     );
 }
 
@@ -19773,7 +19909,9 @@ fn impasto_the_stroke_commit_is_cropped_to_the_stroke_and_byte_identical() {
         size,
         brush.effective_impasto_smoothing(),
     );
-    let ceil = super::impasto::H_CEIL;
+    // The STORED field's only bound is the sanity guard — the glass ceiling is a display transform now
+    // (`impasto_ceiling::soft_ceiling`), applied at the light, so the buffer holds the true relief.
+    let ceil = super::impasto_ceiling::H_MAX;
     for (r, base) in reference.iter_mut().zip(before.iter()) {
         *r = (*r + base).clamp(-ceil, ceil);
     }
@@ -19896,14 +20034,16 @@ fn impasto_push_conserves_the_paint_it_shoves() {
     let (mut t, layer) = slab_canvas(size);
     let before = volume(&t, layer);
     assert!(before > 100.0, "there is a real slab to plough ({before})");
-    let ceiling = super::impasto::H_CEIL;
+    // Volume conservation is a statement about the STORED field, and the only thing that clamps it is the
+    // sanity guard (the glass ceiling compresses the *appearance*, at the light, and takes no volume away).
+    let ceiling = super::impasto_ceiling::H_MAX;
     assert!(
         t.heights
             .get(&layer)
             .expect("relief")
             .iter()
             .all(|h| h.abs() < ceiling * 0.9),
-        "…and it is nowhere near the glass ceiling, so nothing can be clamped away"
+        "…and it is nowhere near the sanity bound, so nothing can be clamped away"
     );
 
     // A second stroke, crossing it, with the brush shoving everything aside.

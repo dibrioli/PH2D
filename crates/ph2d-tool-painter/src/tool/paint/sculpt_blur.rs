@@ -32,7 +32,7 @@
 //!
 //! Same taps, summed in the same order, by the same kernel. Not "close enough": identical.
 
-use super::impasto::H_CEIL;
+use super::impasto_ceiling::H_MAX;
 use super::region::grow_region;
 use super::sculpt::{MemoKey, SculptFamily, SculptMode};
 use super::{Region, impasto_settle};
@@ -286,7 +286,11 @@ impl PainterTool {
                         SculptMode::Fill => delta.max(0.0),
                         _ => delta,
                     };
-                    let next = (p + k * delta).clamp(-H_CEIL, H_CEIL);
+                    // The SANITY bound, not the ceiling. The ceiling is a display transform now
+                    // (`impasto_ceiling::soft_ceiling`) — clamping the stored relief here is what turned a sculpted
+                    // mound into a dead flat mesa two strokes in, because every value above it became the
+                    // same value and a constant has no slope for the light to read.
+                    let next = (p + k * delta).clamp(-H_MAX, H_MAX);
                     if (next - target[i]).abs() > impasto_settle::RELIEF_EPS {
                         let rr = Region { x, y, w: 1, h: 1 };
                         moved = Some(moved.map_or(rr, |acc| super::union_region(acc, rr)));

@@ -16,7 +16,7 @@
 //!    the stream and throws it away, so it resolves the identical bases and consumes nothing.
 //! 3. **A stroke leaves ONE thickness.** Within a stroke the deposit is an envelope — taken on the
 //!    PAINT (`stroke_paint`), so the heaviest dab owns the pixel; separate strokes ADD (committed into
-//!    the layer at stroke end, up to [`H_CEIL`]). Passing the brush back over its own line does not
+//!    the layer at stroke end; how it TOPS OUT is [`super::impasto_ceiling`]). Passing the brush back over its own line does not
 //!    build a staircase; going over it again tomorrow does.
 //! 4. **The stroke stores its INGREDIENTS, not its height.** The relief is always
 //!    `derive_height(spec, paint, grain)`, so every knob in the Body card — Depth, Body, Depth Source,
@@ -547,7 +547,10 @@ impl PainterTool {
                 } else {
                     g0
                 };
-                let next = (field[c] + under).clamp(-H_CEIL, H_CEIL);
+                let next = (field[c] + under).clamp(
+                    -super::impasto_ceiling::H_MAX,
+                    super::impasto_ceiling::H_MAX,
+                );
                 if next != 0.0 {
                     any_relief = true;
                 }
@@ -685,15 +688,6 @@ impl PainterTool {
         }
     }
 }
-
-/// The **glass ceiling** of accumulated paint, in units of a full-Depth stroke: two full loads.
-///
-/// Strokes ADD across each other (more paint IS thicker), but not forever — Corel Painter documents
-/// the same limit for its impasto buffer: *"the accumulated artwork will begin to top out and appear
-/// as if the strokes are pressed against glass"*. Unbounded stacking was the other road back to mush:
-/// the walls of a 5-stroke pile dwarf every brush-mark on top of it. Symmetric, so carving bottoms
-/// out at the same depth. // CLAMP-OK
-pub(super) const H_CEIL: f32 = 2.0;
 
 // The deposit's SETTLE (the box blur that lets paint relax under its own weight), its reach, and the
 // sub-visible threshold the dirty-rect diff uses, all live in the sibling `impasto_settle` — the physics

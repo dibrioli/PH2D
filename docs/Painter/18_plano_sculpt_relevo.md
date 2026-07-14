@@ -353,7 +353,7 @@ porque o gate se chamava *"inflate arredonda a crista"* e arredondar a crista **
 que o código faz o que você **disse**; nada nele te avisa que o que você disse está errado. **Errei no
 Chisel** pelo motivo oposto — não fui buscar nada: o
 1º corte usou `tan(36°)` cru, que inclina o plano em **0,73 load por texel** — 8,7 loads ao longo do
-footprint, **4× o `H_CEIL`**. O "ângulo" era um número num espaço sem geometria dentro, e o V que ele
+footprint, **4× o teto de vidro**. O "ângulo" era um número num espaço sem geometria dentro, e o V que ele
 cortava era um penhasco. O gate `the_chisel_carves_a_crease` pegou (0,36 load "poupado" *no próprio eixo*,
 que é meio texel de lado — o número denunciou a escala).
 
@@ -391,7 +391,7 @@ alguém a tentar, e a tentativa custa uma semana antes de bater na parede que es
    espátula com Grain é uma espátula texturizada, que é um presente. **Um passe com geometria própria é
    como nasce "Tiling não funciona no Sculpt" daqui a seis meses.**
 2. **HR-5:** zero transcendental no laço (box blur = somas; plano = 3 acumuladores).
-3. **Teto:** `H_CEIL` continua valendo — o sculpt não pode estourá-lo.
+3. ~~**Teto:** `H_CEIL` continua valendo — o sculpt não pode estourá-lo.~~ **REVISTO 2026-07-14 (smoke do Enio: *"em 3 pinceladas toda escultura é achatada no teto"*).** O teto **não é um clamp** — é uma **compressão assintótica na LUZ** (`impasto::soft_ceiling`). O clamp duro não era vidro, era **borracha**: mapeava tudo acima do teto no MESMO valor ⇒ as marcas do topo eram **apagadas**, o platô ficava com **gradiente zero**, e a luz renderizava a área mais trabalhada como **chapa morta**. Agora o **buffer guarda o relevo verdadeiro** (o sculpt ajusta planos e rola bolas sobre geometria honesta) e só a **aparência** topa — identidade abaixo de `H_KNEE = 2.0` (arte anterior byte-idêntica), assintótica até `H_ASYMPTOTE = 8.0`.
 4. **Undo:** uma entrada por traço; a sessão (`pre` + `amount`) entra no `ModelSnapshot`.
    *(Precedente fresco: o `mats` **ficou de fora** do snapshot quando o material landou, e o buraco se
    escondia — na tela vazia a cobertura zera e a luz pesa o material obsoleto por zero. Só apareceu em

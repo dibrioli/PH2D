@@ -130,6 +130,7 @@
 - [Painter "low-res" = canvas 64px](project_painter_canvas_res_64_not_sim_scale.md) — cheque a res do source ANTES do shader
 
 ## Arquitetura / norte / perf (duráveis, não-git)
+- [Contrato congelado pode ESCOLHER a arquitetura](feedback_frozen_contract_can_pick_the_architecture.md) — o desenho que sobra costuma trazer um invariante (e um gate) que o óbvio não teria
 - [Blindagem — Fase 0](project_blindagem_phase0_2026_06_20.md) — aparato mede ESTRUTURAL não COMPORTAMENTAL; Fase 0 = `ph2d-ui-testkit` seam headless + 3 gates
 - [Pintura VOLTOU = clean-room Blender](project_painter_brush_came_back_cleanroom.md) — `ph2d-painter-brush` engine NOVO (Blender Texture Paint); confie no repo, não na nota "deletada"
 - [Rebecca → PH2D Wet Paint clean-room](project_rebecca_watercolor_cleanroom.md) — rebecca era derivada do Rebelle (©Escape Motions), gitignorada; substituta em `docs/Painter/ph2d_wet_paint/`; fingering é arquitetura

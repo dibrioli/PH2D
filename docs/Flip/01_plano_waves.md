@@ -53,7 +53,7 @@
 | Fill lê camada(s) de referência (linha) — contrato desde o W4 | 04 §4 (workflow linha/cor) |
 | Ciclos = pre/post behavior por camada (None/Loop/PingPong/Hold) no sampler do playhead | 04 §4 |
 | Sem sistema de materiais: cor/gradiente = por-stroke; modo/placement/randomização/texturas = brush preset | 02 §9 |
-| Multiframe editing: modelo preparado (lista `(drawing, frame, falloff)`), UI deferida | 02 §11 |
+| Multiframe editing: **LANDOU** (W7) — seleção de chaves na tira, dedup por desenho, falloff temporal (`05 §8`) | 02 §11 |
 | VFX, modifiers, lineart, armature/vertex-groups, bake, SVG/PDF export, trace de imagem: **fora de escopo** (VFX = referência adormecida no 02 §10) | não-objetivos |
 | Budgets de perf (workstation, `--release`): traço vivo ≤ 1 ms/frame de pack+upload; playback 60 fps com ≥ 200k pontos visíveis + 4 ghosts; flip prev/next < 16 ms | WT/W3 benches |
 

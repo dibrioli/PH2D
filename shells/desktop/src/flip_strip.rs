@@ -223,8 +223,23 @@ pub(crate) fn apply_panel_event(
         }
 
         // ── Ops de chave ──────────────────────────────────────────────────────
-        PanelEvent::Click(id) if *id == ids::FLIP_KEY_ADD || *id == ids::FLIP_KEY_DUP => {
-            let dup = *id == ids::FLIP_KEY_DUP;
+        PanelEvent::Click(id)
+            if *id == ids::FLIP_KEY_ADD
+                || *id == ids::FLIP_KEY_DUP
+                || *id == ids::FLIP_KEY_INSTANCE =>
+        {
+            // O que a chave nova carrega:
+            //   `None`            → BRANCA (Key Add).
+            //   `Deep`            → uma CÓPIA da arte (Key Dup): desenho novo, independente.
+            //   `Instance`        → o MESMO desenho (`users += 1`, o *linked duplicate*):
+            //                       editar uma chave edita as DUAS. É como um ciclo reusa
+            //                       arte — e é o que acende o pontinho na célula e faz o
+            //                       multiframe deduplicar (`flip_multiframe::targets`).
+            let mode = match id {
+                i if *i == ids::FLIP_KEY_DUP => Some(DupMode::Deep),
+                i if *i == ids::FLIP_KEY_INSTANCE => Some(DupMode::Instance),
+                _ => None,
+            };
             // A chave nova entra DEPOIS da exposição da atual (o próximo quadro
             // livre) — que é onde o animador espera o próximo desenho.
             let at = match key {
@@ -237,10 +252,11 @@ pub(crate) fn apply_panel_event(
                 }
                 None => frame,
             };
-            let ok = match (dup, key) {
-                (true, Some(src)) => flip
+            let ok = match (mode, key) {
+                // Sem chave de origem não há o que duplicar: cai na chave branca.
+                (Some(m), Some(src)) => flip
                     .object_mut(oid)
-                    .is_some_and(|o| o.duplicate_frame(lid, src, at, DupMode::Deep)),
+                    .is_some_and(|o| o.duplicate_frame(lid, src, at, m)),
                 _ => flip
                     .object_mut(oid)
                     .and_then(|o| o.insert_frame(lid, at, Hold::Implicit, KeyKind::Keyframe))
@@ -424,3 +440,7 @@ fn cycle_pair(mode: u8) -> (CycleMode, CycleMode) {
         _ => (CycleMode::None, CycleMode::None),
     }
 }
+
+#[cfg(test)]
+#[path = "flip_strip_tests.rs"]
+mod tests;

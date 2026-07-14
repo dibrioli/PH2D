@@ -97,9 +97,13 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
         Item::Toggle(ids::FLIP_FALLOFF, "Falloff", snap.falloff),
         Item::Toggle(ids::FLIP_ADDITIVE, "Add.", snap.additive),
         Item::Gap,
-        // Ops de chave: + · duplicar · apagar · exposição · mover ±1
+        // Ops de chave: + · duplicar · **instanciar** · apagar · exposição · mover ±1
         Item::Icon(ids::FLIP_KEY_ADD, IconId::Plus),
         Item::Icon(ids::FLIP_KEY_DUP, IconId::Copy),
+        // **Duplicate as instance** (o *linked duplicate* do Blender): a chave nova aponta
+        // para o MESMO desenho — editar uma edita as duas. É o elo, não a cópia: daí o
+        // ícone de corrente ao lado do de cópia, e o pontinho que a célula ganha.
+        Item::Icon(ids::FLIP_KEY_INSTANCE, IconId::Link),
         Item::Icon(ids::FLIP_KEY_DELETE, IconId::Trash),
         Item::Label("Hold"),
         Item::Number(ids::FLIP_HOLD_NUM, f64::from(hold)),

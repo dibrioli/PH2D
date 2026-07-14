@@ -256,6 +256,11 @@ pub const FLIP_ADDITIVE: NodeId = hash_node_id("flip.strip.additive");
 pub const FLIP_KEY_ADD: NodeId = hash_node_id("flip.strip.key_add");
 /// Duplicate the current key (deep copy).
 pub const FLIP_KEY_DUP: NodeId = hash_node_id("flip.strip.key_dup");
+/// Duplicate the current key **as an instance**: the new key points at the SAME
+/// drawing (`FlipDrawing::users += 1`), so editing one edits both — how a cycle
+/// reuses art. Blender calls it a *linked duplicate*; the strip marks such cells
+/// with a dot.
+pub const FLIP_KEY_INSTANCE: NodeId = hash_node_id("flip.strip.key_instance");
 /// Delete the current key.
 pub const FLIP_KEY_DELETE: NodeId = hash_node_id("flip.strip.key_del");
 /// Exposure (hold) of the selected key, in frames.

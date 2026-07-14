@@ -952,6 +952,52 @@ clicar-soltar-clicar é a ergonomia que faz a ferramenta parecer morta.
 **por-entidade** (escreve num `Transform` do ECS) e um traço não é entidade: exige um
 consumidor novo (bbox da seleção → `GizmoView` → delta assado nos pontos).
 
+## W7 — Multiframe: o mesmo gesto edita N quadros (LANDOU 2026-07-13, pendente o smoke)
+
+Doc: [`Flip/05 §8`](Flip/05_frames_ghost_tween.md). Marque chaves na tira (Shift/Ctrl+clique
+numa célula) e o gesto de escultura age em **todas**. Motor: `shells/desktop/src/flip_multiframe.rs`
+(`targets` → lista `(drawing, frame, falloff)`); consumidor: `flip_reshape.rs`.
+
+**As três regras da referência (`02 §11`), e o que cada uma custou:**
+
+1. **Dedup por `DrawingId`** — duas chaves podem compartilhar a arte; sem o dedup o pincel
+   entraria **duas vezes no mesmo buffer** (a linha andaria o dobro, só nos quadros
+   instanciados).
+2. **O falloff só multiplica influência de PINCEL** — o balde e o delete usam `1.0`.
+3. **Inserir chave DESENHANDO limpa a seleção** — mas só no `FlipEdit::Draw`: limpar no
+   `Modify` mataria o multiframe no exato instante do uso.
+
+**O modificador chega à tira sem tocar o contrato congelado.** `WidgetEvent::Click(NodeId)` não
+carrega modificadores (`PanelEvent=4`, ADR-0040) — então quem lê o Shift/Ctrl é o **shell**, no
+drain (`render_loop` passa `add: bool` para `flip_strip::apply_panel_event`). Zero mudança de ABI.
+E o modificador **não move o playhead**: o quadro ativo é a âncora do falloff.
+
+**Falloff** (toggle na barra, OFF por padrão): tenda linear normalizada por **cada lado** da
+seleção (assimetria de graça, como a curva do GP) com **piso** — um quadro marcado que não se
+mexe pareceria ignorado.
+
+## W7.1 — O botão **Instance** (LANDOU 2026-07-13, pendente o smoke)
+
+Smoke do W7: o Enio perguntou o que era um "quadro instanciado" — e a pergunta expôs que
+**nenhum caminho da UI criava um**. Key Dup e o autokey usavam `DupMode::Deep`; `is_instanced()`
+nunca era verdade no app, o pontinho da célula era código morto, e o dedup do multiframe defendia
+um caso irreproduzível.
+
+Botão **Instance** (`FLIP_KEY_INSTANCE`, `IconId::Link`, ao lado do de cópia): a chave nova aponta
+para o **mesmo desenho** (`users += 1`) — editar uma edita as duas. É como um ciclo reusa arte.
+Divergência **deliberada** do GP, que expõe o `do_instance` no modelo e nunca lhe deu UI
+(`02_referencia`: *"anti-padrão do GP: 2 anos sem UI"*). Doc: [`Flip/05 §6.1`](Flip/05_frames_ghost_tween.md).
+
+Quem **não** instancia: o autokey (a duplicata de um gesto é sempre profunda — instanciar faria a
+borracha comer o quadro de origem junto). Instância é decisão explícita do animador.
+
+Gates (`shells/desktop/src/flip_strip_tests.rs`, 4): compartilha o desenho · a edição atravessa
+para a outra chave · **o Key Dup continua sendo cópia** (irmão de presença: sem ele o 1º ficaria
+verde num mundo onde tudo compartilha) · apagar uma das duas chaves **não** leva a arte junto (o
+refcount a segura). Mutação provada: `Instance` → `Deep` derruba 2 dos 4. E o `seam.rs` do painel
+ganhou o botão novo **e o Falloff** (que eu tinha esquecido de listar no W7 — o gate de pintura
+não o cobria).
+
 ## Aberto (fora do W0..W5, por design)
 
 - **A próxima recomendada: Edit Mode / seleção de traço** (o "select do traço" que o Enio

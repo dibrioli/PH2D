@@ -212,9 +212,10 @@ inferiores e não podem se sobrepor).
 - **Transporte**: play/pause + `◀`/`▶` que pulam por **DESENHO** (pulando holds). Atalhos: `↑`/`↓`
   (o *flip* do animador — o inner loop da profissão), `,`/`.` = ±1 quadro **no FPS do objeto**
   (não no tick de 60 Hz da simulação — senão "avançar um quadro" andaria um quinto de desenho).
-- **Ghost / Auto / Add.**: os toggles de fantasma e de autoria.
-- **Key ops**: Add (em branco) · Duplicate (cópia profunda) · Delete · **Hold** (a exposição, com
-  drag-scrub) · mover ±1 quadro.
+- **Ghost / Auto / Falloff / Add.**: os toggles de fantasma e de autoria (o **Falloff** é do
+  multiframe — §8).
+- **Key ops**: Add (em branco) · Duplicate (cópia profunda) · **Instance** (a MESMA arte, §6.1) ·
+  Delete · **Hold** (a exposição, com drag-scrub) · mover ±1 quadro.
 - **Tween**: quantos inbetweens + gerar (entre a chave atual e a seguinte).
 - **Cycle**: o pre/post behavior da camada (No Cycle / Hold / Loop / Ping-Pong).
 
@@ -223,6 +224,31 @@ visão multi-camada alinhada é o papel da **timeline global** (W6) — constru�
 mesma coisa duas vezes. A integração com a timeline está **adiada até ela ficar pronta** (Enio,
 2026-07-12). O playhead já é o **global** (`ph2d_core::Playhead`), então quando a hora chegar não
 há relógio para reconciliar — já é o mesmo.
+
+### §6.1 — Instância (o *linked duplicate*) — onde divergimos do GP de propósito
+
+**Uma chave é um slot no tempo; um desenho é a arte.** No caso comum cada chave tem o seu — mas
+duas chaves podem apontar para o **mesmo** `DrawingId` (`FlipDrawing::users` é o refcount). Aí a
+arte é **uma só, compartilhada**: editar no quadro 5 muda o 12 junto. É como um ciclo reusa
+desenho (o pisca-pisca que reaparece igual três vezes) sem duplicá-lo — e é o que o pontinho na
+célula anuncia: *esta arte não é só sua*.
+
+**O botão `Instance` (ícone de corrente, ao lado do de cópia) é uma divergência DELIBERADA do
+Grease Pencil**, que expõe o `do_instance` no modelo e nunca lhe deu UI (`02_referencia §"Ops de
+frame"`: *"instância só existe no modelo — anti-padrão do GP: 2 anos sem UI"*). Herdamos o modelo
+e não a omissão: sem o botão, `is_instanced()` nunca era verdade no app, o pontinho da célula era
+código morto, e o **dedup do multiframe** (§8) defendia um caso que o usuário não conseguia
+produzir. Regra que a linha aprendeu no Painter: *comentário velho e código morto MENTEM*.
+
+O refcount é o que segura a arte: apagar UMA das duas chaves decrementa para 1 e o outro quadro
+continua desenhado — apagar um quadro de um ciclo não apaga o ciclo. (Gates:
+`the_instance_button_makes_two_keys_share_one_drawing` · `editing_an_instanced_drawing_shows_up_in_the_other_key`
+· `the_dup_button_still_makes_an_independent_copy` — o irmão de PRESENÇA, senão o primeiro ficaria
+verde num mundo onde tudo compartilha · `deleting_one_of_two_instanced_keys_keeps_the_art_alive`.)
+
+**Quem NÃO instancia:** o autokey. A duplicata que nasce de um gesto é sempre **profunda** (§4) —
+instanciar faria a borracha comer o quadro de origem junto. A instância é uma decisão do animador,
+tomada com um clique explícito; nunca um efeito colateral de desenhar.
 
 **Follow-ups conscientes:** drag de célula (mover chave arrastando) e drag da borda (esticar o
 hold) — hoje isso é feito pelos botões `◀`/`▶` e pela caixa **Hold**, que dão o mesmo resultado
@@ -236,6 +262,7 @@ sem exigir a infra de dispatch 2D do painel. Multi-seleção de chaves (que dest
 | Peça | Arquivo |
 |---|---|
 | Vão, exposição, ciclos, navegação por desenho, células | `crates/ph2d-flip/src/{layer,cycle,expose}.rs` |
+| Alvo do multiframe (dedup + falloff) | `shells/desktop/src/flip_multiframe.rs` |
 | Ghost Frames (função pura) | `crates/ph2d-flip/src/onion.rs` |
 | Autokey (política + `ensure_key`) | `crates/ph2d-flip/src/autokey.rs` |
 | Tween (motor + op de documento) | `crates/ph2d-flip/src/tween.rs` |
@@ -252,3 +279,40 @@ modelo (ciclos, ghosts nos 3 modos, autokey nas 4 combinações, tween com extre
 
 **Schema:** `FLIP_SCHEMA_VERSION` 1 → **2** (a camada ganhou `cycle` + `use_onion`; o
 `OnionSettings` ganhou `kind_filter`). `PROJECT_SCHEMA` do shell acompanha.
+
+---
+
+## §8 — Multiframe (W7) — o mesmo gesto edita N quadros
+
+A feature-assinatura do GP para animação (`02_referencia §11`). Marque chaves na tira
+(Shift/Ctrl+clique numa célula — o modificador **não** move o playhead: o quadro ativo é a âncora
+do falloff) e o gesto seguinte age em **todas elas**.
+
+O alvo é resolvido **antes** do gesto e entregue como uma lista de `(drawing, frame, falloff)` —
+por isso o Sculpt e o balde continuam ignorantes do multiframe: eles iteram uma lista que, no caso
+comum, tem exatamente um item.
+
+**As três regras, e por que cada uma existe:**
+
+1. **Dedup por `DrawingId`** (a que a referência marca com exclamação). Duas chaves podem
+   compartilhar a arte (§6.1). Sem o dedup, o gesto aplicaria o pincel **duas vezes no mesmo
+   buffer** — a linha andaria o dobro, e só nos quadros instanciados. Ninguém atribuiria esse bug
+   ao multiframe.
+2. **O falloff só multiplica influência de PINCEL.** Ops discretas (o balde, o delete) usam `1.0`:
+   meio-preenchimento não existe.
+3. **Inserir uma chave DESENHANDO limpa a seleção.** Senão o próximo gesto de escultura sairia
+   deformando quadros que o usuário esqueceu de desmarcar. (Só o `FlipEdit::Draw` limpa —
+   limpar em `Modify` mataria o multiframe no exato momento do uso.)
+
+**O falloff** (`falloff_at`, toggle **Falloff** na barra, desligado por padrão): tenda linear
+normalizada por **cada lado** da seleção — dois quadros para trás e dez para a frente não fazem o
+vizinho de trás cair dez vezes mais rápido (a assimetria é de graça na curva do GP, que põe o
+quadro ativo no meio). Tem **piso** (`MIN_FALLOFF`): um quadro que o usuário marcou e que não se
+mexe pareceria ignorado — o mesmo raciocínio do `GHOST_MIN_ALPHA`.
+
+O quadro **ativo** entra sempre, com influência cheia, mesmo fora da seleção (é o *`+ frame atual
+como fallback`* da referência). Multiframe **nunca inventa quadro**: as chaves selecionadas já
+existem, e o alvo ativo veio pronto do autokey.
+
+Motor: `shells/desktop/src/flip_multiframe.rs`. Consumidor: `flip_reshape.rs` (um
+`Session::begin` por desenho; o `frame_falloff` desce pelo funil único `influence()` do solver).

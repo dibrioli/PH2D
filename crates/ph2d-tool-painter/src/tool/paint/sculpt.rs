@@ -311,16 +311,31 @@ pub(crate) struct SculptState {
     /// **Angle** track (`0..1`; mapped to `0..CHISEL_ANGLE_MAX_DEG`) — how far the Chisel's knife is tipped
     /// onto its edge. At `0` the Chisel is Scrape, to the byte.
     pub(crate) angle_norm: f32,
-    /// **Rake** — does the Chisel's V follow the direction of the stroke? (Enio 2026-07-14.) Default **on**.
+    /// **Rake** — does the Chisel's V follow the stroke **as it turns**? (Enio 2026-07-14.) Default **on**.
     ///
-    /// On, the V's axis is the dab's own smoothed heading, so the groove curves with the hand. Off, the knife
-    /// is held at a **fixed** angle — the brush's own dab rotation (the Shape card's rotate gizmo), which is
-    /// already on screen and already means *the orientation of the tip*. Two knobs, one meaning.
+    /// Both modes take their axis from the stroke; the question is *when they read it*.
+    ///
+    /// * **On** — every dab uses its **own** heading, so the angle updates in real time and the groove curves
+    ///   with the hand. A knife dragged through paint.
+    /// * **Off** — the knife enters at the angle the stroke **started** in and **holds it to the end**
+    ///   ([`Self::locked_dir`]). Drag a curve and the crease keeps pointing the way you set off: a blade held
+    ///   at a fixed attitude, which is a technique rather than a degenerate case.
+    ///
+    /// So the axis is never a *brush* setting. The first cut of this checkbox made "off" mean the brush's
+    /// `dab_angle_deg` — a number the artist never related to the stroke at all — and Enio's correction is
+    /// what it is now: *"o tool identifica a direção do traço e mantém o ângulo … até o final. Isso é bom …
+    /// mas esse é o modo onde Rake NÃO está checado."*
     ///
     /// It is NOT the brush's `shape.rake`, and the separation is the point: that box turns a silhouette
-    /// **image**, and the panel does not even draw it until one is loaded. Coupling them would mean an artist
-    /// who wants a fixed blade *picture* silently loses the groove's direction.
+    /// **image**, and the panel does not even draw it until one is loaded.
     pub(crate) rake: bool,
+    /// The heading the knife **entered** at — the axis every dab folds its V about while Rake is OFF. `None`
+    /// until the stroke has travelled far enough to have a direction at all.
+    ///
+    /// Session state, so it dies with the gesture. Cleared by [`PainterTool::restamp_reset_sculpt`] too,
+    /// which is what lets a **shape editor** re-aim: drag a Line's endpoint round and the knife re-enters at
+    /// the new start angle, instead of remembering one from a shape the artist has since redrawn.
+    pub(crate) locked_dir: Option<[f32; 2]>,
 
     /// `Σ w·plane_d(i)` over the stroke's dabs — the **plane family's** per-texel target, un-normalised.
     ///
@@ -398,6 +413,7 @@ impl Default for SculptState {
             depth_norm: 0.75, // +0.5 loads: half a stroke's thickness — a coat you can see, not a stunt
             angle_norm: 0.5,  // 30°: a knife on its edge, not a razor and not a flat blade
             rake: true, // the groove follows the stroke — what a knife dragged through paint does
+            locked_dir: None,
             pre: Arc::new(Vec::new()),
             amount: Arc::new(Vec::new()),
             plane_sum: Arc::new(Vec::new()),
@@ -578,8 +594,8 @@ impl PainterTool {
     /// only a re-stamp can turn the knife (the same reason the Angle slider re-stamps).
     pub fn toggle_sculpt_rake(&mut self) {
         self.paint.sculpt.rake = !self.paint.sculpt.rake;
-        self.sync_stroke_heading_need(); // a fixed knife needs no heading, and must not hold up the dabs
-        self.refill_open_shape();
+        self.paint.sculpt.locked_dir = None; // re-aim: the lock belongs to the stroke, not to the checkbox
+        self.refill_open_shape(); // the V's axis is baked into `plane_sum`; only a re-stamp can turn it
         self.refresh_live_sculpt();
     }
 
@@ -591,21 +607,21 @@ impl PainterTool {
 
     /// The axis the Chisel's V folds about, for a dab whose own heading is `dir`.
     ///
-    /// **Rake on** → the dab's heading: the groove curves with the hand. **Off** → the brush's *dab angle*,
-    /// the same rotation the Shape card's gizmo shows — a knife held at a fixed attitude, which is how you
-    /// cut parallel strokes that all lean the same way.
+    /// **Rake on** → the dab's own heading: the angle updates in real time and the groove curves with the
+    /// hand. **Off** → [`SculptState::locked_dir`], the heading the stroke *entered* at, held to the end.
     ///
-    /// A zero heading (a dab emitted before the stroke has travelled) would collapse the V to a flat scrape.
-    /// It cannot happen while raking — `needs_heading` makes the engine hold those dabs until a direction
-    /// settles — but the fallback is here anyway, because "cannot happen" is a claim and this is a `[0, 0]`
-    /// away from a silently blunt tool.
+    /// One function, so the checkbox and the kernel cannot disagree about what *the direction of the stroke*
+    /// means. Both modes read `Dab::dir` — which is why the engine settles a heading for the Chisel whether
+    /// or not it rakes: a locked angle still has to be locked to *something the artist did*.
+    ///
+    /// A zero heading (a dab emitted before the stroke has travelled at all) collapses the V to a flat
+    /// scrape. The warm-up makes that unreachable, and the fallback stands anyway: *cannot happen* is a
+    /// claim, and this is one `[0, 0]` away from a silently blunt tool.
     pub(super) fn chisel_dir(&self, dir: [f32; 2]) -> [f32; 2] {
-        if self.paint.sculpt.rake && dir != [0.0, 0.0] {
+        if self.paint.sculpt.rake {
             return dir;
         }
-        let a = f32::from(self.paint.brush.dab_angle_deg).to_radians();
-        let (s, c) = a.sin_cos();
-        [c, s]
+        self.paint.sculpt.locked_dir.unwrap_or(dir)
     }
 
     /// Free the target the OTHER families own, on a family switch.

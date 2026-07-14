@@ -70,7 +70,11 @@ impl PainterTool {
     /// Called from the two places that can change the answer — this card's verb, and the paint-mode switch
     /// (which swaps the whole brush slot underneath us). One function, so the two cannot disagree.
     pub(super) fn sync_stroke_heading_need(&mut self) {
-        let need = self.is_sculpt_mode() && self.is_sculpt_chisel() && self.paint.sculpt.rake;
+        // BOTH Rake modes read `Dab::dir` — one live, one LOCKED at the heading the stroke entered at — so
+        // the engine has to settle one either way. Gating this on `rake` would make the un-raked knife lock
+        // onto `[0, 0]` (the pen-down dab, before any travel) and cut a flat scrape for the whole stroke:
+        // the very bug this flag exists to kill, wearing the other checkbox state.
+        let need = self.is_sculpt_mode() && self.is_sculpt_chisel();
         self.paint.brush.needs_heading = need;
         let slot = super::PaintMode::Sculpt.slot();
         self.paint.brush_by_mode[slot].needs_heading = need;

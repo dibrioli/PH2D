@@ -132,6 +132,39 @@ argmax inteiro**. Reconstruído e re-verde. É exatamente a armadilha que já es
 ([[feedback_mutation_undo_with_cp_never_git_checkout]]): **desfazer mutação é `cp` de um backup, por caminho
 absoluto — NUNCA `git checkout`.**
 
+### 0.3 — RODADA 3 (mesmo dia) — o Rake estava com os dois modos TROCADOS
+
+> *"o tool identifica a direção do traço e mantém o ângulo … até o final. Isso é bom e deve permanecer
+> assim — **mas esse é o modo onde Rake NÃO está checado**. Com Rake checado … o ângulo se ajusta em tempo
+> real."*
+
+Eu tinha construído o **oposto**. Meu Rake OFF usava o `dab_angle_deg` do pincel — um número que o artista
+**não relaciona com o traço nenhum**. Não era o que ele pediu, e nunca foi.
+
+**Os dois modos leem o traço. A pergunta é QUANDO:**
+* **ON** (default) — cada dab usa o **próprio** heading ⇒ o ângulo se ajusta em **tempo real**, o sulco curva
+  com a mão.
+* **OFF** — a faca **entra no ângulo em que o traço começou** e o **segura até o fim** (`locked_dir`).
+
+Antes de escrever, **medi**: o motor de traço já entrega heading vivo (num quarto de círculo os dabs varrem
+de +93° a +165°). Ou seja, o mecanismo estava lá — faltava o **modelo**.
+
+Corolário que quase passou: o `needs_heading` vale para os **DOIS** modos. Gateá-lo em `rake` faria a faca
+não-raked travar em `[0,0]` (o dab do pen-down, antes de qualquer viagem) e cortar um scrape chato o traço
+inteiro — exatamente o bug que a flag existe pra matar, vestindo o outro estado do checkbox.
+
+**Gates:** o da curva (os dois sulcos TÊM de divergir num quarto de círculo) + o irmão de presença — **num
+traço RETO o Rake não muda nada**, e é ele que dá sentido ao primeiro (seguir o heading e travar o primeiro
+heading são a **mesma instrução** quando ele não vira). O reto não é byte-idêntico: o EMA do heading
+re-normaliza a cada passo, então o vetor unitário oscila no último bit — **4,8e-7 loads**, um milésimo do
+`RELIEF_EPS` que o próprio depósito usa pra decidir que um texel não mudou. Exigir `to_bits()` aqui seria
+exigir que um EMA fosse idempotente.
+
+**3 mutações, 2 mortas.** A que sobreviveu é uma **propriedade**, não um gate frouxo: com Rake ON a trava
+**nunca é populada** (o `stamp_dabs_sculpt` guarda em `!rake`), então `locked_dir.unwrap_or(dir)` já É `dir`.
+Duas coisas independentes seguram o caminho vivo. A que de fato o quebra é `if rake { return [1.0, 0.0] }` —
+e derruba o `the_chisel_carves_a_crease`. Escrito no doc do gate.
+
 ---
 
 ## 1. Estado da linha (medido em 2026-07-14, não lembrado)

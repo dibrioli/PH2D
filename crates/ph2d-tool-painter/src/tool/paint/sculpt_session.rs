@@ -178,6 +178,17 @@ impl PainterTool {
         let mut plane_sum = std::mem::take(Arc::make_mut(&mut self.paint.sculpt.plane_sum));
         let mut scratch = std::mem::take(&mut self.paint.sculpt.fit_scratch);
         let pre = Arc::clone(&self.paint.sculpt.pre);
+        // **Rake OFF: the knife enters at the angle the stroke started in, and holds it.** Lock on the first
+        // dab of the gesture that HAS a heading — not on the pen-down dab, whose heading is `[0, 0]` until
+        // the hand has travelled (the warm-up holds those dabs precisely so this is never `[0, 0]`, but the
+        // `find` says so out loud rather than trusting it).
+        //
+        // Once set it never moves again this gesture, which is the whole feature: drag a curve and the crease
+        // keeps pointing the way you set off. It is cleared in `restamp_reset_sculpt`, so a shape editor
+        // re-aims when the artist re-draws the shape.
+        if !self.paint.sculpt.rake && self.paint.sculpt.locked_dir.is_none() {
+            self.paint.sculpt.locked_dir = dabs.iter().map(|d| d.dir).find(|d| *d != [0.0, 0.0]);
+        }
         // The Chisel's tilt — `tan(angle)`, and exactly `0` in every other verb, so the `+ tilt·|lateral|`
         // term vanishes and Flatten / Scrape / Fill stay byte-for-byte the Wave 2 kernel. Computed ONCE, here.
         let chisel_tilt = self.paint.sculpt.chisel_tilt();
@@ -456,6 +467,7 @@ impl PainterTool {
         self.paint.sculpt.pre_cover = Arc::new(Vec::new());
         self.paint.sculpt.pre_mats = Arc::new(Vec::new());
         self.paint.sculpt.pre_rgba = Arc::new(Vec::new());
+        self.paint.sculpt.locked_dir = None; // the knife's angle belongs to the gesture, and it is over
         self.paint.sculpt.layer = None;
         self.paint.sculpt.bbox = None;
     }
@@ -526,6 +538,11 @@ impl PainterTool {
         };
         let (w, _) = self.source_size;
         self.restore_sculpt_window(layer, rect);
+        // …and the knife's locked angle with it. The lock is a fact about the dab list, exactly like
+        // `plane_sum` — and a shape editor rebuilds that list from scratch every frame. Keep it and dragging
+        // a Line's endpoint round would re-cut the shape with the angle of a shape the artist has since
+        // redrawn: the knife would remember a stroke that no longer exists.
+        self.paint.sculpt.locked_dir = None;
         let amount = Arc::make_mut(&mut self.paint.sculpt.amount);
         super::impasto_settle::for_each_in(rect, w, |i| {
             if let Some(a) = amount.get_mut(i) {

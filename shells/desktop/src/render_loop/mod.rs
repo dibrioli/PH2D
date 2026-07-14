@@ -268,19 +268,29 @@ impl crate::App {
                 {
                     audio.editor_batch_lufs(&dir, -16.0); // LITERAL-PX-OK: −16 LUFS target
                 }
-                // Export Pieces (Delivery) — pick a folder; the pieces land as `<stem>_01..NN`,
-                // which is exactly the naming the variation importer reads back as one group.
+                // Export Pieces (Delivery) — a Save dialog (name + folder), same as Export Set: the
+                // pieces land as `<name>_01..NN`, exactly the naming the variation importer reads
+                // back as one group. Not a folder picker (see Export Set below for why).
                 if ed::take_export_pieces()
-                    && let Some(dir) = rfd::FileDialog::new().pick_folder()
+                    && audio.editor_loaded()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .set_file_name(audio.editor_default_stem())
+                        .save_file()
                 {
-                    audio.editor_export_pieces(&dir);
+                    audio.editor_export_pieces(&path);
                 }
                 // Export Set (Delivery) — one file per shipping target, each conformed to that
-                // target's own format first, named `<stem>.<platform>.<ext>`.
+                // target's own format first, named `<name>.<platform>.<ext>`. A **Save** dialog
+                // (name + folder), NOT a folder picker: the native folder chooser makes you confirm
+                // a highlighted folder and a double-click enters it, so "pick a folder" turns into
+                // "keep opening folders". Save is one confirm and mirrors Export WAV.
                 if ed::take_export_set()
-                    && let Some(dir) = rfd::FileDialog::new().pick_folder()
+                    && audio.editor_loaded()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .set_file_name(audio.editor_default_stem())
+                        .save_file()
                 {
-                    audio.editor_export_set(&dir);
+                    audio.editor_export_set(&path);
                 }
                 // Cache the loop crossfade the panel asks for BEFORE Play reads it —
                 // Play plays the click-free region when Loop is on and a region is set.

@@ -65,25 +65,40 @@ impl super::super::AudioSystem {
         ph2d_panel_audio_editor::delivery_state::set_platforms(self.platforms.rows.clone());
     }
 
+    /// The base name a fresh export uses: the loaded clip's name without its extension. It is also
+    /// what the Save dialog pre-fills, so the default file name and the fallback never disagree.
+    pub(crate) fn editor_default_stem(&self) -> String {
+        let name = &self.editor.name;
+        if name.is_empty() {
+            return "clip".to_string();
+        }
+        // `foo.wav` -> `foo`: each target appends its own extension.
+        std::path::Path::new(name)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("clip")
+            .to_string()
+    }
+
     /// Write one file per shipping target, each conformed to that target's own format first.
     ///
-    /// The name carries the target (`footstep.mobile.ogg`), because three files called
-    /// `footstep` in three folders is how a build pipeline ships the wrong one.
-    pub(crate) fn editor_export_set(&mut self, dir: &std::path::Path) {
+    /// `base` is the path the user confirmed in the **Save** dialog: its folder is the destination
+    /// and its file stem is the shared base name, with the target and extension appended
+    /// (`footstep.mobile.ogg`) — three files called `footstep` in three folders is how a build
+    /// pipeline ships the wrong one.
+    ///
+    /// A Save dialog and **not** a folder picker, on purpose: the native folder chooser makes you
+    /// confirm a *highlighted* folder, and a double-click navigates INTO it instead of choosing
+    /// it — so "pick a folder" becomes "keep opening folders" (the bug the Enio hit). Save is one
+    /// confirm, and it matches Export WAV directly above it.
+    pub(crate) fn editor_export_set(&mut self, base: &std::path::Path) {
+        // Before borrowing the clip: the fallback stem, used when the user blanked the name field.
+        let default_stem = self.editor_default_stem();
         let Some(clip) = self.editor_sounding() else {
             return;
         };
         let data = clip.data().clone();
-        let stem = if self.editor.name.is_empty() {
-            "clip".to_string()
-        } else {
-            // `foo.wav` -> `foo`: the target's own extension is appended below.
-            std::path::Path::new(&self.editor.name)
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("clip")
-                .to_string()
-        };
+        let (dir, stem) = export_dir_and_stem(base, &default_stem);
 
         // The loop points and the markers are in FRAMES of the master. A target that conforms the
         // rate moves every frame index, so they have to move with it — see `rescale`.
@@ -167,11 +182,59 @@ fn rescale(meta: &WavMeta, from: u32, to: u32) -> WavMeta {
     }
 }
 
+/// Split the Save dialog's chosen path into `(destination folder, base name)`.
+///
+/// The base is the file stem the user typed — the target and its extension are appended, so a
+/// typed `.wav` must be dropped or the file would end up `footstep.wav.mobile.ogg`. If the stem is
+/// empty (a bare directory), `default_stem` stands in. Free and pure so the placement of three
+/// shipped files is gated without an audio device.
+pub(super) fn export_dir_and_stem<'a>(
+    base: &'a std::path::Path,
+    default_stem: &str,
+) -> (&'a std::path::Path, String) {
+    let dir = base.parent().unwrap_or_else(|| std::path::Path::new("."));
+    let stem = base
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| default_stem.to_string());
+    (dir, stem)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use ph2d_audio::{AudioFormat, ChannelLayout};
     use ph2d_audio_encode::{Codec, ram_bytes};
+    use std::path::Path;
+
+    /// The gesture the Enio was missing: pick a name and a location in the Save dialog, and the
+    /// three files land next to it — not "keep opening folders".
+    #[test]
+    fn the_save_path_places_three_files_next_to_the_chosen_name() {
+        let (dir, stem) = export_dir_and_stem(Path::new("/music/exports/footstep"), "clip");
+        assert_eq!(dir, Path::new("/music/exports"));
+        assert_eq!(stem, "footstep");
+        // -> /music/exports/footstep.mobile.ogg · .desktop.opus · .console.wav
+    }
+
+    /// A typed extension must NOT stick: each target appends its own, so `footstep.wav` in the
+    /// dialog has to become the stem `footstep`, never `footstep.wav.console.wav`.
+    #[test]
+    fn a_typed_extension_is_dropped() {
+        let (_, stem) = export_dir_and_stem(Path::new("/x/footstep.wav"), "clip");
+        assert_eq!(stem, "footstep");
+    }
+
+    /// No file component at all (a pathological return) falls back to the clip's own name, so the
+    /// export is never left without a base.
+    #[test]
+    fn no_file_component_falls_back_to_the_clip() {
+        // The root has no filename, so `file_stem()` is `None` — the only way the fallback fires.
+        let (_, stem) = export_dir_and_stem(Path::new("/"), "footstep");
+        assert_eq!(stem, "footstep");
+    }
 
     fn clip(secs: usize) -> SampleData {
         let frames = secs * 48_000;

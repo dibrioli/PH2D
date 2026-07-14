@@ -30,11 +30,17 @@ impl AudioSystem {
         self.editor.clipboard.is_some()
     }
 
-    /// Write one file per piece into `dir`, then adopt them as the variation set.
+    /// Write one file per piece (`<name>_01..NN`) next to the path the user confirmed, then adopt
+    /// them as the variation set.
+    ///
+    /// `base` is the **Save** dialog's chosen path — same reason as Export Set: a folder picker
+    /// makes "choose a destination" into "keep opening folders", while Save is one confirm.
     ///
     /// Non-destructive: the clip on screen is untouched. Emitting assets is not editing the one you
     /// have — undo has nothing to undo, and the user's take survives its own export.
-    pub(crate) fn editor_export_pieces(&mut self, dir: &std::path::Path) {
+    pub(crate) fn editor_export_pieces(&mut self, base: &std::path::Path) {
+        // Before borrowing the clip: the base name, from the same source Export Set uses.
+        let default_stem = self.editor_default_stem();
         let Some(clip) = self.editor.clip.as_ref() else {
             return;
         };
@@ -47,11 +53,7 @@ impl AudioSystem {
         }
 
         let codec = self.editor_codec();
-        let stem = if self.editor.name.is_empty() {
-            "split".to_string()
-        } else {
-            self.editor.name.clone()
-        };
+        let (dir, stem) = super::platforms::export_dir_and_stem(base, &default_stem);
 
         let mut written: Vec<std::path::PathBuf> = Vec::with_capacity(pieces.len());
         for (i, piece) in pieces.iter().enumerate() {

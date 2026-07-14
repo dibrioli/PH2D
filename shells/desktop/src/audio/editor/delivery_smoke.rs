@@ -71,7 +71,7 @@ impl AudioSystem {
              look: the Delivery section lists three targets, and their RAM figures DIFFER --\n  \
                    Mobile holds a QUARTER (24 kHz, mono). A codec swap would print the same\n  \
                    number three times; only conforming the audio buys memory back.\n  \
-             do:   Export Set -> pick a folder -> three files. Load the .mobile.ogg back and\n  \
+             do:   Export Set -> a SAVE dialog (name + folder) -> three files. Load .mobile.ogg\n  \
                    the 15 kHz shimmer is GONE -- 24 kHz cannot represent it (Nyquist is 12 kHz).\n  \
                    Only the .console.wav still carries the loop points and the markers."
         );

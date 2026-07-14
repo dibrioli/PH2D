@@ -6,7 +6,7 @@
 //!                     │ sim.zone │       │
 //!            state ←──┴──────────┘       ⊙  (the state entry: last tick's population)
 //!              ↑                         │
-//!   cull ← falloff ← drive(α) ← drive(size) ← ramp ← lifetime ← collide ← step ← buoyancy ← wind ← combine
+//!   cull ← falloff ← drive(α) ← drive(size) ← ramp ← lifetime ← collide ← step ← buoyancy ← curl ← wind ← combine
 //!                        ↑          ↑         ↑                                                     ↑ in1
 //!                        └───── map_range ← attribute("life")             poisson → move → sim.spawn
 //! ```
@@ -62,6 +62,13 @@ const SNOW_SITE_GAP: f32 = 0.33;
 const SNOW_SKY_Y: f32 = 2.6;
 const SNOW_RATE: f32 = 16.0;
 const SNOW_GUST: f32 = 0.35;
+/// **The air the snow falls through** (`force.curl`). Without it the flakes fall dead straight —
+/// measured: lateral drift **exactly zero**, across every flake. With it they wander ~1.9 world
+/// units (ten flake-widths) on the way down, and they do it SMOOTHLY (per-tick twitch ~1% of a
+/// flake): snow drifts, it does not judder.
+const SNOW_SWIRL: f32 = 1.5;
+const SNOW_SWIRL_SCALE: f32 = 0.7;
+const SNOW_SWIRL_SPEED: f32 = 0.4;
 /// A flake lives ~3.4 s (± the hashed variance) — ~1.5 s of falling, and the rest afloat.
 const SNOW_LIFE: f32 = 4.5;
 const SNOW_LIFE_VARIANCE: f32 = 0.25;
@@ -196,6 +203,7 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     let zone = g.add_node("sim.zone");
     let combine = g.add_node("motion.combine");
     let wind = g.add_node("force.wind");
+    let swirl = g.add_node("force.curl");
     let sea = g.add_node("force.buoyancy");
     let step = g.add_node("sim.step");
     let ground = g.add_node("sim.collide");
@@ -220,7 +228,7 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     chain(g, RAIN_ROW, 2, &[scale, mv, output])?;
     wire(g, (zone, 0), (scale, 0))?;
     for (i, n) in [
-        combine, wind, sea, step, ground, life, ramp, shrink, dim, falloff, cull,
+        combine, wind, swirl, sea, step, ground, life, ramp, shrink, dim, falloff, cull,
     ]
     .iter()
     .enumerate()
@@ -234,9 +242,11 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
         );
     }
     wire(g, (combine, 0), (wind, 0))?;
-    // Two forces, one integrator (the Houdini rule): gravity and the sea both ADD into the same
-    // transient `accel` column, and `sim.step` is the only thing that turns it into motion.
-    wire(g, (wind, 0), (sea, 0))?;
+    // THREE forces, one integrator (the Houdini rule): gravity, the air and the sea all ADD into
+    // the same transient `accel` column, and `sim.step` is the only thing that turns it into
+    // motion.
+    wire(g, (wind, 0), (swirl, 0))?;
+    wire(g, (swirl, 0), (sea, 0))?;
     wire(g, (sea, 0), (step, 0))?;
     wire(g, (step, 0), (ground, 0))?; // …and the world pushes BACK
     wire(g, (ground, 0), (life, 0))?;
@@ -318,6 +328,21 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     g.set_param(wind, "angle", 270.0);
     g.set_param(wind, "strength", RAIN_GRAVITY);
     g.set_param(wind, "gust", SNOW_GUST);
+    // **The air** (`force.curl`, doc 63 §6) — and this is what makes the snow SNOW.
+    //
+    // Measured, before it: every flake fell in a **perfect parabola**, and the lateral drift across
+    // all 61 of them was **exactly zero**. That is not snow. That is RAIN — which is literally what
+    // this scene used to be (the constants are still called `RAIN_*`; it was renamed, not
+    // rewritten). Snow wanders.
+    //
+    // Curl noise is the standard tool and the right one: it is **divergence-free by construction**
+    // (Bridson 2007), so the flakes swirl without piling up in sinks the way a naive noise field
+    // makes them. And it wanders **smoothly** — measured: the lateral drift goes 0 → 1.9 (ten
+    // flake-widths) while the per-tick twitch stays at ~1% of a flake. **Snow drifts; it does not
+    // judder** — which is also why `motion.delay` has no business in this scene (doc 63 §4).
+    g.set_param(swirl, "strength", SNOW_SWIRL);
+    g.set_param(swirl, "scale", SNOW_SWIRL_SCALE);
+    g.set_param(swirl, "speed", SNOW_SWIRL_SPEED);
     // The sea, into which the snow falls.
     g.set_param(sea, "level", SEA_LEVEL);
     g.set_param(sea, "density", SEA_DENSITY);
@@ -348,6 +373,7 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
         (lift, "Up To The Sky"),
         (combine, "Newborns Join In"),
         (wind, "Gravity And Gust"),
+        (swirl, "The Air"),
         (sea, "The Sea"),
         (step, "Move Everything"),
         (ground, "The Sea Bed"),

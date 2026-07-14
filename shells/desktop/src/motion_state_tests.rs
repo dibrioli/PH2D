@@ -24,11 +24,11 @@ fn new_builds_the_well_typed_snow_document() {
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
         "motion.output"
     );
-    // 20 nodes: the zone's interior {sim.zone, combine, force.wind, force.buoyancy, sim.step,
+    // 21 nodes: the zone's interior {sim.zone, combine, force.wind, force.curl, force.buoyancy, sim.step,
     // sim.collide, sim.lifetime, color_ramp, drive(size), drive(opacity), falloff, cull} + the fade
     // {value.attribute, value.map_range} + birth {distribute_poisson, move, sim.spawn} + render
     // {scale, move, output}.
-    assert_eq!(state.doc.graph.nodes().len(), 20);
+    assert_eq!(state.doc.graph.nodes().len(), 21);
     assert!(state.doc.graph.validate(&state.registry).is_ok());
 }
 

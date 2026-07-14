@@ -6,6 +6,7 @@
 //! Ele existe porque a versão anterior desta afirmação era **FALSA** — e o gate que a "provava"
 //! estava **verde**. Ver [[feedback_a_correct_number_can_carry_a_false_story]].
 
+use super::strobe::{SEA_LEVEL, SEA_WAVE_AMP};
 use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
@@ -99,5 +100,95 @@ fn the_ease_kills_the_twitch_and_keeps_the_motion() {
         eased_span > raw_span * 0.85,
         "…e o MOVIMENTO tem que sobreviver: excursão {eased_span} vs {raw_span}. Um suavizador que \
          achata o gesto não é um suavizador, é um mute"
+    );
+}
+
+/// **A neve VAGUEIA — e ela não sacode** (doc 63 §6). As duas metades, medidas sobre a **população
+/// inteira**, não sobre um floco.
+///
+/// Este gate existe por causa de dois erros meus, no mesmo dia:
+///
+/// 1. **Eu medi UM floco (`id = 0`) e concluí sobre a nevasca.** O `gust` é por-floco (cada um lê a
+///    fileira de ruído dele), então um floco não é uma amostra — é uma anedota.
+/// 2. **Eu misturei as FASES.** Filtrando por "acima da linha d'água" em vez de CORTAR no primeiro
+///    contato, o floco que mergulha e volta a boiar reentrava na trilha — e eu media a queda colada
+///    com a bóia. *"A neve que treme não é a mesma que cai"* (Enio): é a mesma neve, em outra fase,
+///    e o que treme é o **splash**.
+///
+/// O que o gate afirma agora, sobre TODOS os flocos e SÓ na fase de queda:
+/// - **eles vagueiam** (o `force.curl` existe e faz efeito — sem ele a deriva lateral é EXATAMENTE
+///   zero, e uma neve que cai reta é chuva);
+/// - **eles não sacodem** (curl noise é um campo SUAVE: o tremor por tick fica em ~1% da largura de
+///   um floco). Snow drifts; it does not judder.
+#[test]
+fn the_snow_wanders_and_it_does_not_judder() {
+    use std::collections::BTreeMap;
+    let state = MotionState::new();
+    let zone = state
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "sim.zone")
+        .expect("the snow is a zone")
+        .id;
+    let mut cook = Cook::new();
+    // A trajetória de CADA floco, **cortada no primeiro contato com a água** — a queda, e só ela.
+    let mut fall: BTreeMap<u64, Vec<[f32; 2]>> = BTreeMap::new();
+    let mut wet: BTreeMap<u64, bool> = BTreeMap::new();
+    for k in 0..=260u64 {
+        let t = k as f64 / 60.0;
+        let c = cook
+            .cook(&state.doc.graph, &state.registry, zone, t)
+            .unwrap();
+        let s = c[0].as_stream();
+        if let (Some(Column::Vec2(p)), Some(Column::Scalar(ids))) = (s.get("P"), s.get("id")) {
+            for (i, d) in ids.iter().enumerate() {
+                let id = d.to_bits() as u64;
+                let w = wet.entry(id).or_insert(false);
+                if *w {
+                    continue; // já tocou a água: a QUEDA acabou. Não volte pra trilha.
+                }
+                if p[i][1] <= SEA_LEVEL + SEA_WAVE_AMP {
+                    *w = true;
+                    continue;
+                }
+                fall.entry(id).or_default().push(p[i]);
+            }
+        }
+        cook.advance_tick(&state.doc.graph, &state.registry, t)
+            .unwrap();
+    }
+
+    const FLAKE: f32 = 0.18; // a largura do quad — a unidade em que um número quer dizer algo
+    let (mut worst_drift, mut worst_twitch, mut n) = (0.0f32, 0.0f32, 0);
+    for tr in fall.values() {
+        if tr.len() < 30 {
+            continue; // nasceu tarde demais pra medir uma queda
+        }
+        n += 1;
+        let (lo, hi) = tr
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), p| (a.min(p[0]), b.max(p[0])));
+        worst_drift = worst_drift.max(hi - lo);
+        // tremor = o desvio da aceleração em torno da média (a gravidade É a média)
+        let steps: Vec<f32> = tr.windows(2).map(|w| w[0][1] - w[1][1]).collect();
+        let d2: Vec<f32> = steps.windows(2).map(|w| w[1] - w[0]).collect();
+        let mean = d2.iter().sum::<f32>() / d2.len().max(1) as f32;
+        worst_twitch = worst_twitch.max(d2.iter().map(|x| (x - mean).abs()).fold(0.0f32, f32::max));
+    }
+
+    assert!(n > 40, "a amostra é a nevasca, não um floco: {n} flocos");
+    assert!(
+        worst_drift > 3.0 * FLAKE,
+        "a neve tem que VAGUEAR (o `force.curl` está lá pra isso). Sem ele a deriva é exatamente \
+         zero, e uma neve que cai reta é CHUVA. Medido: {worst_drift} ({:.0}% de um floco)",
+        worst_drift / FLAKE * 100.0
+    );
+    assert!(
+        worst_twitch < 0.15 * FLAKE,
+        "…e ela NÃO pode sacudir: curl noise é um campo SUAVE, e neve vagueia sem tremer. Medido: \
+         {worst_twitch} ({:.0}% de um floco por tick)",
+        worst_twitch / FLAKE * 100.0
     );
 }

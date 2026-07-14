@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | **Branch** | `line/motion-value` |
-| **HEAD** | `787e69e0` (+ este handoff) |
+| **HEAD** | `12e4e598` (+ este handoff) |
 | **Base** | `4cd8ef13` (= `main` no início da jornada) |
-| **Commits** | 20 |
-| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (fio novo entra em grupo fechado) + **FILA 2 — params dirigidos por fio** + **busca no add-menu** |
+| **Commits** | 22 |
+| **O que entregou** | **FILA 1 — subgrafos** + **FILA 1.b** (fio novo entra em grupo fechado) + **FILA 2 — params dirigidos por fio** + **busca no add-menu** + **FILA 4 (metade) — Poisson-disc + Bóia** |
 | **Notas-ADR** | [`57_subgrafos`](Motion%20Nodes/57_subgrafos_nota_adr.md) · [`58_params_dirigidos`](Motion%20Nodes/58_params_dirigidos_nota_adr.md) |
 
 > **`CLAUDE.md` §5 NÃO foi tocado de propósito** — é a maior superfície de colisão do repo, e
@@ -243,6 +243,14 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
   **oscila**. No painel de params aquela linha vira **read-only mostrando o número vivo**.
   Corte o fio (faca `K`, ou arraste a ponta pra fora) → **o socket some** e o knob volta.
 
+- **FILA 4 (doc 60):** o boot já abre com ela — **a neve cai no MAR**. Olhe: os flocos caem,
+  **atravessam** a superfície, **batem no leito** e a água os traz de volta pra **boiar e balançar**
+  na marola enquanto derretem. Os sítios de nascimento agora são Poisson (a fileira é irregular, não
+  um pente). Para brincar: selecione o card **Buoyancy** e mexa em `Level` / `Wave Amplitude` /
+  `Density` (menor que a gravidade = o floco AFUNDA — é uma pedra, não um bug); ou puxe um
+  **`value.lfo`** pro corpo dele e dirija o `Level` (a maré). O card **Poisson Disk** tem `Radius`:
+  aumente e nascem menos sítios, mais separados.
+
 ## 9. Fila restante (o próximo da linha escolhe)
 
 1. ~~**FILA 2 — promoção param → socket**~~ — **FECHADA** (doc 58; virou *param dirigido por
@@ -262,7 +270,7 @@ card só, **"Age & Fade"**, com uma pilha desenhada atrás dele e o rótulo "6 n
 5. **FILA 5 — W4.T4** (dock da timeline no `motion_timeline_slot`) — coordene com o Enio, encosta
    na linha `anim`.
 
-## 7.6 FILA 4 (metade) — Poisson + Bóia (`<COMMIT>`, doc 60)
+## 7.6 FILA 4 (metade) — Poisson + Bóia (`12e4e598`, doc 60)
 
 **2 drop-crates novas, ZERO foundational tocado.**
 

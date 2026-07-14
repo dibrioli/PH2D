@@ -13,6 +13,7 @@
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — decida no padrão-ouro e execute, reporte a decisão
 - [Estilo](feedback_communication_style.md) — pt-BR direto, opções concretas, recomendação primeiro
 - ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — pare de calibrar; questione o modelo
+- [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — tinta é substância, sculpt é operação; um gate verde pode pinar um bug de DESIGN
 - [Simplicidade](feedback_communication_simplicity.md) — sem AskUserQuestion-spam; não antecipe decisões
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md) — smoke/`cargo run` com `cd <worktree> &&` junto
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = exemplo auto-play no doc demo; não peça pro Enio montar
@@ -74,6 +75,7 @@
 - [1º caso salvo por efeito colateral](feedback_first_case_rescued_by_side_effect_test_repetition.md) — fixture de 1 traço não continha o bug do 2º; teste a REPETIÇÃO, no ritmo real do app
 - [Não-reprodução ≠ correção](feedback_nonreproduction_is_not_proof_of_fix.md) — bug intermitente que some segue VIVO; cheque o `git diff` antes de aceitar "resolveu"
 - [Unit-verde ≠ funciona no produto](feedback_tool_unit_green_integration_dead.md) — tool passa unit+CI e está morta (pill/input não wirado); só audit e2e pega
+- [Um clique é um press que DESLIZOU](feedback_a_click_is_a_press_that_drifted.md) — mão humana move 1px; Down/Up na mesma coord é robô, não teste
 - [Pintado ≠ populado: teste a PINTURA](feedback_painted_is_not_populated_paint_gate.md) — nenhum gate rodava `paint`; "o botão não existe" passava em tudo
 - [Teste com os números do PRODUTO](feedback_test_with_product_numbers_not_convenient_ones.md) — `px_to_world = 1.0` é o único valor que esconde erro de unidade
 - [Geometria sobre eixos de unidades diferentes](feedback_geometry_over_mixed_units_needs_the_consumers_conversion.md) — ângulo/normal só existe depois de converter; use a constante que o RENDERIZADOR usa

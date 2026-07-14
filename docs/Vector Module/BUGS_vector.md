@@ -643,6 +643,56 @@ gravava a mesma captura não-convergida** — o bug não era só do undo.
 
 ---
 
+## Bug #16 — O Build deixava "pedaços de linha" sobrando (2026-07-13) — **FECHADO**
+
+### Sintoma
+
+O Enio: *"a ferramenta Build funciona bem, mas está deixando pedaços de linha sobrando"* — linhas
+soltas (uma curva longa, um "Λ") flutuando no meio do desenho depois do gesto.
+
+### Causa (medida — a primeira teoria estava errada)
+
+Toda sobra é `fonte − união(faces levadas)`, e as faces vêm do **arranjo**. A borda que elas
+devolvem é uma **re-derivação** da borda da fonte, não a mesma sequência de bytes — então
+**subtrair uma curva dela mesma, depois de ela ter dado a volta pelo arranjo, deixa resíduo**.
+
+A booleana comum (os botões do painel) é **limpa**: 2 operandos, zero lasca. Isto é do Build.
+
+**E é por isso que o resíduo aparece como LINHA:** sem área, não há preenchimento para pintar —
+o que sobra na tela é o *traço* da fonte, percorrendo a borda e voltando.
+
+Medido (`PH2D_BUILD_LOG=1`), duas populações que não se tocam:
+
+| | área (fração da fonte) | verts | densidade (área/bbox) |
+|---|---|---|---|
+| resíduo de borda **curva** | **0,0000%** (área ~1e-13) | 144 | 0,00 |
+| resíduo de **quina** | 0,07% – 0,30% | 3–4 | 0,44 |
+| **arte** | **6,5% – 81%** | 3–21 | 0,41 – 0,79 |
+
+### O fixture escondia o bug
+
+Os 11 gates do Shape Builder rodavam sobre **polígonos** — e o polígono só produz o resíduo de
+quina (uma pontinha gorda). A **hairline só nasce em borda curva**, que é o que o produto entrega.
+É a lição §6.1 desta linha outra vez, e ela custou o smoke: *mutar o código dentro de um universo
+de quadrados só prova coisas sobre quadrados.*
+
+### Correção
+
+`drop_slivers` no `resolve`: uma peça abaixo de **0,5% da área da fonte** não é região, é resíduo
+de borda (13× abaixo da menor peça de arte medida; 1,7× acima do maior resíduo). Vale para a sobra
+E para a forma nova. `PH2D_BUILD_LOG=1` diz o que foi descartado e por quê — **geometria que some
+em silêncio é pior que uma lasca**, então ela não some em silêncio.
+
+### Lição — **o gate quase nasceu MORTO**
+
+A 1ª versão do gate assertava `área > 0`. Ficou **verde com o filtro desligado**: a hairline não
+tem área *exatamente* zero, tem **1e-13**. O oráculo certo não é a regra do filtro (isso é
+circular) — é a **aparência**: uma peça sem *espessura* pinta uma linha, e isso é **densidade**
+(área/bbox), que mede 0,00 na lasca e ≥ 0,41 na arte. Só mutando o código é que o gate morto
+apareceu.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de

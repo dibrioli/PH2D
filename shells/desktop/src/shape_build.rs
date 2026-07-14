@@ -193,10 +193,20 @@ impl BuildSession {
                 p.fill = src.fill.clone();
                 p.stroke = src.stroke;
             }
+            drop_slivers(
+                &mut rest,
+                ph2d_vec_boolean::area(&src),
+                &format!("sobra da fonte {i}"),
+            );
             remainder.push((i, rest));
         }
 
         let mut merged = if self.subtract { Vec::new() } else { taken };
+        // A forma NOVA também passa pelo filtro: a união das faces é geometria re-derivada
+        // como qualquer outra. A referência é a área dela mesma (a soma das peças) — se tudo
+        // degenerar, o `>` estrito não deixa nada passar.
+        let merged_area: f64 = merged.iter().map(ph2d_vec_boolean::area).sum();
+        drop_slivers(&mut merged, merged_area, "forma nova");
         // O estilo da forma nova: o da fonte do TOPO entre as tocadas (Illustrator).
         if let Some(top) = (0..self.arr.len())
             .rev()
@@ -255,6 +265,54 @@ pub(crate) fn commit(
         k += 1;
     }
     sel
+}
+
+/// Fração da área da FONTE abaixo da qual uma peça **não é região** — é resíduo de borda.
+///
+/// **De onde vem a lasca** (medido, não suposto): toda sobra é `fonte − união(faces levadas)`,
+/// e as faces vêm do **arranjo**. A borda que elas devolvem é uma *re-derivação* da borda da
+/// fonte, não a mesma sequência de bytes — então subtrair uma curva **dela mesma**, depois de
+/// ela ter dado a volta pelo arranjo, deixa resíduo. A booleana comum (os botões do painel) é
+/// **limpa**: 2 operandos, zero lasca. Isto é do Build.
+///
+/// **E é por isso que ela aparece como LINHA, não como forma pequena:** sem área, não há
+/// preenchimento para pintar — o que sobra na tela é o *traço* da fonte, percorrendo a borda
+/// e voltando. Medir bbox ou comprimento não a distingue de arte nenhuma. Só a área.
+///
+/// As duas populações, medidas no produto (`PH2D_BUILD_LOG=1`), não se tocam:
+///
+/// | | área (fração da fonte) | verts | densidade (área/bbox) |
+/// |---|---|---|---|
+/// | resíduo de borda **curva** | **0,0000%** (área exatamente 0) | 144 | 0,00 |
+/// | resíduo de **quina** | 0,07% – 0,30% | 3–4 | 0,44 |
+/// | **arte** | **6,5% – 81%** | 3–21 | 0,41 – 0,79 |
+///
+/// O piso fica em **0,5%**: 13× abaixo da menor peça de arte medida e 1,7× acima do maior
+/// resíduo. É o único número aqui, e ele sai da tabela — não de um chute.
+const SLIVER_AREA_FRACTION: f64 = 0.005;
+
+/// Tira as lascas: o que não tem área não é região.
+///
+/// O `>` é estrito de propósito — com uma referência degenerada (área 0) o piso vira 0, e uma
+/// peça de área 0 continua caindo fora. `PH2D_BUILD_LOG=1` diz o que foi descartado e por quê:
+/// geometria que some em silêncio é pior que uma lasca, então ela nunca some em silêncio.
+fn drop_slivers(pieces: &mut Vec<VecPath>, reference_area: f64, what: &str) {
+    let floor = SLIVER_AREA_FRACTION * reference_area;
+    let log = std::env::var_os("PH2D_BUILD_LOG").is_some();
+    pieces.retain(|p| {
+        let a = ph2d_vec_boolean::area(p);
+        let keep = a > floor;
+        if log {
+            let pct = 100.0 * a / reference_area.max(f64::MIN_POSITIVE);
+            let verdict = if keep { "ARTE" } else { "lasca (descartada)" };
+            let nverts = p.verts.len();
+            eprintln!(
+                "[build] {what}: area={a:.8} ({pct:.4}% de {reference_area:.4}) · \
+                 verts={nverts} · {verdict}"
+            );
+        }
+        keep
+    });
 }
 
 /// A união de um punhado de formas. Uma só é ela mesma (o `apply_many` exige duas).

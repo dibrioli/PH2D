@@ -347,3 +347,105 @@ fn the_source_key_changes_when_the_pose_or_the_geometry_changes() {
     // E a seleção mesma.
     assert_ne!(k2, crate::shape_build::source_key(&sc, &xf, &ids[..2]));
 }
+
+/// **O SMOKE DO ENIO: "está deixando pedaços de linha sobrando".**
+///
+/// Com formas CURVAS (o caso do produto — o fixture de polígonos ESCONDIA isto), a sobra vinha
+/// com uma peça de **área exatamente ZERO** e 144 vértices: uma *hairline* que percorre a borda
+/// compartilhada e volta. Sem área não há preenchimento — o que aparece na tela é o **traço** da
+/// fonte, uma linha solta no meio do desenho.
+///
+/// A causa: a sobra é `fonte − união(faces)`, e a borda das faces é uma re-derivação da borda da
+/// fonte. Subtrair uma curva dela mesma, depois da volta pelo arranjo, deixa resíduo.
+#[test]
+fn a_curved_build_leaves_no_hairline_behind() {
+    let mut sc = VecScene::new();
+    let mut xf = VecXforms::new();
+    let a = sc.push_path(live(ShapeKind::Ellipse, [1.5, 1.5], &[], 11));
+    let b = sc.push_path(live(ShapeKind::Ellipse, [1.5, 1.5], &[], 22));
+    let c = sc.push_path(live(ShapeKind::Ellipse, [1.2, 2.0], &[], 33));
+    xf.insert(a, at(-0.8, 0.0));
+    xf.insert(b, at(0.8, 0.0));
+    xf.insert(c, at(0.0, 0.9));
+    let ids = vec![a, b, c];
+
+    let mut s = session(&sc, &xf, &ids);
+    s.dragging = true;
+    s.touch([0.0, 0.0]);
+    s.touch([-0.8, 0.0]);
+    let sel = commit(&mut sc, &mut s);
+
+    // O oráculo é a APARÊNCIA, não a regra do filtro: uma peça sem ESPESSURA pinta uma linha.
+    // Isso é a densidade (área / área da bbox) — a hairline mede 0,00; a arte, 0,41 a 0,79.
+    //
+    // Asserir `área > 0` seria um gate MORTO: a hairline não tem área exatamente zero, tem
+    // 1e-13 — e passaria. (Medido: com o filtro desligado, a versão `> 0` fica VERDE.)
+    for p in sc.paths() {
+        let area = ph2d_vec_boolean::area(p);
+        let (lo, hi) = p
+            .verts
+            .iter()
+            .fold(([f64::MAX; 2], [f64::MIN; 2]), |(lo, hi), v| {
+                (
+                    [lo[0].min(v.anchor[0]), lo[1].min(v.anchor[1])],
+                    [hi[0].max(v.anchor[0]), hi[1].max(v.anchor[1])],
+                )
+            });
+        let bbox = (hi[0] - lo[0]) * (hi[1] - lo[1]);
+        let density = area / bbox.max(f64::MIN_POSITIVE);
+        assert!(
+            density > 0.01,
+            "sobrou uma lasca: área {area:e} numa bbox de {bbox:.4} (densidade {density:.6}, \
+             {} vértices) — sem espessura ela não pinta preenchimento nenhum, só o TRAÇO da \
+             fonte: uma linha solta no meio do desenho",
+            p.verts.len()
+        );
+    }
+    // E a arte continua lá (o irmão de PRESENÇA: um gate que só sabe apagar fica verde com a
+    // cena VAZIA).
+    assert!(
+        sel.len() >= 3,
+        "as fontes tocadas + a forma nova continuam na seleção"
+    );
+    assert!(
+        sc.paths().len() >= 3,
+        "o gesto levou uma região e devolveu as sobras — não varreu a cena"
+    );
+}
+
+/// **O irmão de PRESENÇA do filtro: uma sobra FINA, mas real, sobrevive.**
+///
+/// O piso é 0,5% da área da fonte. Uma lua crescente de ~10% (o gesto que o Shape Builder existe
+/// para fazer) passa longe dele — e é isto que impede o filtro de virar uma vassoura que come
+/// arte. Sem este gate, `drop_slivers` poderia apagar tudo e o gate de cima ficaria verde.
+#[test]
+fn a_thin_but_real_crescent_survives_the_sliver_filter() {
+    let mut sc = VecScene::new();
+    let mut xf = VecXforms::new();
+    // Dois discos quase concêntricos: o que sobra do de baixo é uma lua crescente FINA.
+    let disc = sc.push_path(live(ShapeKind::Ellipse, [1.5, 1.5], &[], 11));
+    let cutter = sc.push_path(live(ShapeKind::Ellipse, [1.42, 1.42], &[], 22));
+    xf.insert(disc, at(0.0, 0.0));
+    xf.insert(cutter, at(0.12, 0.0));
+    let ids = vec![disc, cutter];
+
+    let mut s = session(&sc, &xf, &ids);
+    s.dragging = true;
+    s.touch([0.12, 0.0]); // a face de dentro (a interseção): leva o miolo
+
+    let result = s.resolve();
+    let crescent: Vec<f64> = result
+        .remainder
+        .iter()
+        .flat_map(|(_, rest)| rest.iter().map(ph2d_vec_boolean::area))
+        .collect();
+    assert!(
+        !crescent.is_empty(),
+        "a lua crescente foi engolida pelo filtro de lasca — o piso está comendo ARTE"
+    );
+    let total: f64 = crescent.iter().sum();
+    assert!(
+        total > 0.0,
+        "a sobra existe mas tem área nula — então ela não é uma lua, é uma lasca"
+    );
+}

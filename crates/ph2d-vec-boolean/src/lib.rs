@@ -16,7 +16,7 @@
 //! kurbo/linesweeper são internos a esta crate (não cruzam pro render, que fala a
 //! kurbo do vello) → zero risco de version-skew.
 
-use kurbo::{BezPath, PathEl, Point};
+use kurbo::{BezPath, PathEl, Point, Shape};
 /// **O arranjo planar** — as FACES que o Shape Builder pinta. Módulo irmão: ele monta as
 /// regiões COM as ops daqui, e é por isso que mora nesta crate (o motor é o mesmo).
 pub mod arrangement;
@@ -53,6 +53,23 @@ impl BoolOp {
 #[must_use]
 pub fn apply(a: &VecPath, b: &VecPath, op: BoolOp) -> Vec<VecPath> {
     apply_many(&[a, b], op)
+}
+
+/// A **área** que a forma cobre (sempre ≥ 0), com os buracos já descontados.
+///
+/// Mora aqui porque esta crate já é a que fala as duas línguas (`VecPath` e kurbo), e
+/// porque quem pergunta "isto tem área?" é sempre um consumidor de booleana: **toda
+/// booleana produz lascas** — fatias de área ~0 ao longo das bordas que os operandos
+/// dividem, resíduo de tolerância numérica. Elas não são arte; são ruído do motor. E
+/// como uma lasca tem contorno LONGO e área NULA, ela aparece na tela como uma **linha
+/// solta** (o traço da fonte), não como uma forma pequena — medir bbox ou comprimento não
+/// a distingue de nada. Só a área.
+///
+/// Exata para cúbicas (Green, via `kurbo`), e usa a geometria **cozida** — a mesma que a
+/// booleana corta e que o render desenha.
+#[must_use]
+pub fn area(path: &VecPath) -> f64 {
+    to_bez(path).area().abs()
 }
 
 /// Booleana **N-ária** sobre `paths` em ordem de **z (fundo → topo)**.

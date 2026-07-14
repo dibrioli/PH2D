@@ -351,26 +351,40 @@ fn project_file_round_trips_through_postcard() {
     );
 }
 
-/// **Estopim de esquema.** O `ProjectState` embute o `FlipDoc` inteiro, e o
-/// postcard é POSICIONAL: qualquer campo novo em qualquer struct do Flip muda
-/// o layout do arquivo de projeto. Sem bump, o loader aceita o arquivo velho
-/// (a versão bate) e o lê com o layout novo — sai geometria embaralhada, não
-/// um erro. Foi o que quase aconteceu na W4 (`holes`/`hide_stroke`).
+/// **Estopim de esquema.** O `ProjectState` embute o `FlipDoc` E a `VecScene` inteiros, e o
+/// postcard é POSICIONAL: qualquer campo novo em qualquer struct deles muda o layout do
+/// arquivo de projeto. Sem bump, o loader aceita o arquivo velho (a versão bate) e o lê com
+/// o layout novo — sai geometria embaralhada, não um erro. Foi o que quase aconteceu na W4
+/// (`holes`/`hide_stroke`).
 ///
-/// Este par existe para que bumpar UM sem pensar no OUTRO fique vermelho.
+/// Esta tripla existe para que bumpar UM sem pensar nos OUTROS fique vermelho. E o pin só
+/// protege quem ele NOMEIA: enquanto ele era um par (só o Flip), um campo novo no
+/// `VecVertex` teria bumpado o `VEC_SCENE_SCHEMA_VERSION`, deixado o `PROJECT_SCHEMA` para
+/// trás, e **este teste teria passado**.
 ///
-/// O `PROJECT_SCHEMA` é 8 (e não o 4 que a linha Flip trazia sozinha) porque na
-/// árvore integrada ele conta TODAS as quebras de layout, não só as do Flip: v3/v4
-/// do Painter (documentos + impasto), v5 do Motion (o grafo), v6/v7 do Flip, v8 a
-/// timeline. Cada linha subiu o mesmo contador por um motivo diferente — e o
-/// contador é um só.
+/// O `PROJECT_SCHEMA` é **13** — e não o 8 que esta linha trazia sozinha, nem o 9 que outras
+/// duas traziam. Ele conta TODAS as quebras de layout do arquivo, de TODOS os módulos:
+/// v3/v4 do Painter (documentos + impasto) · v5 do Motion (o grafo) · v6/v7 e v8/v9 do Flip
+/// (o balde; depois `selected` + `offset`) · v10 do Vector (o `corner_radius` do `VecVertex`)
+/// · v11/v12 do Painter (o `mats` do impasto, e o `mats` mudando de FORMA: 4 → 7 bytes) ·
+/// v13 a timeline (5º campo do `ProjectFile`).
+///
+/// Na integração de 2026-07-13, QUATRO linhas bumparam este contador ao mesmo tempo, cada uma
+/// a partir do 7, cada uma por um motivo diferente. **O valor certo não existia em nenhum lado
+/// do conflito: ele se CONTA.** Escolher um dos lados faria os saves das outras passarem na
+/// checagem de versão e serem lidos com o layout errado — e postcard não tem nome de campo
+/// para reclamar; ele devolve lixo bem-formado.
 #[test]
-fn a_flip_schema_bump_must_bump_the_project_schema() {
+fn a_schema_bump_anywhere_must_bump_the_project_schema() {
     assert_eq!(
-        (PROJECT_SCHEMA, ph2d_flip::FLIP_SCHEMA_VERSION),
-        (8, 3),
-        "a forma do FlipDoc mudou (ou o esquema do projeto): suba o PROJECT_SCHEMA \
-         junto e atualize este par. Postcard nao avisa - ele so le errado."
+        (
+            PROJECT_SCHEMA,
+            ph2d_flip::FLIP_SCHEMA_VERSION,
+            ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
+        ),
+        (13, 5, 8),
+        "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
+         PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );
 }
 

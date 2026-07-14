@@ -336,6 +336,10 @@ pub(crate) struct HeroLive {
 }
 
 pub(crate) struct App {
+    /// A sessão de **Blend** aberta (as duas fontes + o escape + os passos produzidos).
+    /// É ela que faz *Rotate Match* / *Reverse Match* re-rodarem na hora, em vez de o artista
+    /// ter de desfazer e adivinhar (`crate::vec_blend`).
+    pub(crate) vec_blend: Option<crate::vec_blend::BlendSession>,
     pub(crate) window: Option<Arc<Window>>,
     pub(crate) host: Option<WinitHost>,
     pub(crate) gfx: Option<AppGfx>,

@@ -86,6 +86,7 @@ mod theme;
 mod timeline_persist;
 mod undo;
 mod undo_route;
+mod vec_blend;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
 mod vec_connector_panel;
@@ -299,6 +300,7 @@ impl App {
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,
+            vec_blend: None,
             vec_connect_pending: None,
             vec_connect_sides: crate::connector_live::SideCache::new(),
             vec_label_pending: None,

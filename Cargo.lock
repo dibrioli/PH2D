@@ -4994,6 +4994,7 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
  "ph2d-tool-vector",
+ "ph2d-vec-blend",
  "ph2d-vec-boolean",
  "ph2d-vec-connect",
  "ph2d-vec-edit",
@@ -6717,6 +6718,14 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-vec-blend"
+version = "0.0.0"
+dependencies = [
+ "kurbo 0.13.0",
+ "ph2d-vec-scene",
 ]
 
 [[package]]

@@ -542,7 +542,7 @@ fn every_section_header_is_registered_as_collapsible() {
     let host = MockPanelHost::with_panel::<VectorPanel>();
     assert_eq!(
         ids::VECTOR_SECTIONS.len(),
-        18,
+        19,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

@@ -553,6 +553,28 @@ pub fn marker_from_value(v: f64) -> Marker {
     Marker::from_u8(v as u8).unwrap_or(Marker::None)
 }
 
+/// **Steps do Blend** — quantas formas nascem entre as duas. O teto é de UX, não do motor:
+/// acima disso o resultado deixa de ser um blend e vira uma nuvem de paths.
+pub const MAX_BLEND_STEPS: u32 = 12;
+/// O default do Illustrator para um blend novo.
+pub const BLEND_STEPS_DEFAULT: u32 = 3;
+
+/// Track (0..1) → nº de passos (1..=[`MAX_BLEND_STEPS`]).
+#[must_use]
+pub fn blend_steps_from_track(track: f64) -> u32 {
+    let n = 1.0 + track.clamp(0.0, 1.0) * f64::from(MAX_BLEND_STEPS - 1);
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let n = n.round() as u32;
+    n.clamp(1, MAX_BLEND_STEPS)
+}
+
+/// Nº de passos → track (0..1). O inverso exato de [`blend_steps_from_track`].
+#[must_use]
+pub fn blend_steps_to_track(steps: u32) -> f32 {
+    let n = steps.clamp(1, MAX_BLEND_STEPS);
+    (f64::from(n - 1) / f64::from(MAX_BLEND_STEPS - 1)) as f32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

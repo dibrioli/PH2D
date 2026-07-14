@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=7` — a cena do **BLEND**: um quadrado e uma estrela, selecionados, com
+//!   3 passos já criados entre eles. Clique **Rotate Match** / **Reverse Match** no painel para
+//!   ver a correspondência mudar **na hora** (é o escape do dia em que o automático errar).
 //! - `PH2D_BUILD_SMOKE=1` — a cena, selecionada, no modo Build. **Passe o mouse** (o realce
 //!   segue o cursor), **arraste** para unir, **Alt+arraste** para apagar.
 //! - `PH2D_BUILD_SMOKE=2` — idem, e o gesto é dirigido por CÓDIGO: o dedo pousa e arrasta por
@@ -51,6 +54,27 @@ impl crate::App {
             // A cena. A geometria entra em MUNDO com o `Transform` na identidade — é como a
             // Shape tool deixa uma forma recém-desenhada; o `settle_origins` do frame a
             // centra no local 0 e põe a pose na entidade (ADR-0111/0112).
+            // A cena do BLEND: duas formas distantes, com contagens de âncora diferentes (4 e
+            // 10) — é o caso em que a correspondência importa.
+            3 if level == 7 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                scene.push_path(shape(
+                    ShapeKind::Rectangle,
+                    [-3.4, -1.0],
+                    [-1.4, 1.0],
+                    &[],
+                    [70, 110, 190],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Star,
+                    [1.4, -1.0],
+                    [3.4, 1.0],
+                    &[5.0, 0.45, 0.0],
+                    [200, 120, 80],
+                ));
+            }
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
@@ -76,6 +100,37 @@ impl crate::App {
                     &[5.0, 0.45, 0.0],
                     [110, 190, 130],
                 ));
+            }
+            // BLEND: seleciona as duas e roda o blend pelo caminho REAL (a mesma função que o
+            // botão do painel chama). O artista já abre o app com os passos na tela.
+            8 if level == 7 => {
+                let ids: Vec<u64> = self
+                    .gfx
+                    .as_ref()
+                    .expect("gfx")
+                    .vec_scene
+                    .paths()
+                    .iter()
+                    .map(|p| p.id)
+                    .collect();
+                self.vec_pen.select_many(&ids);
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
+                let Some(gfx) = self.gfx.as_mut() else { return };
+                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                crate::vec_blend::apply(
+                    &mut gfx.vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    &xf,
+                    &mut self.vec_blend,
+                    crate::vec_blend::BlendAction::Run,
+                    3,
+                );
+                self.any_input_this_frame = true;
+                eprintln!(
+                    "[blend-smoke] quadrado -> estrela, 3 passos. No painel (secao Blend): \
+                     Rotate Match / Reverse Match re-rodam na hora."
+                );
             }
             // Seleciona as três e entra no Build — o estado em que o Enio começa a testar.
             8 => {

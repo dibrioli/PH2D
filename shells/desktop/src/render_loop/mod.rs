@@ -1165,6 +1165,7 @@ impl crate::App {
             // capture it here and apply after the drain (mirror of the U/I/D
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
+            let mut pending_vec_blend: Option<crate::vec_blend::BlendAction> = None;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
@@ -1283,7 +1284,10 @@ impl crate::App {
                         // Copy) to apply after the drain; still forward to the tool
                         // (which ignores those ids) so mode/width/etc. flow.
                         if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
-                            if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id) {
+                            if let Some(act) = crate::vec_blend::action_for_id(*id) {
+                                pending_vec_blend = Some(act);
+                            } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
+                            {
                                 pending_vec_bool = Some(op);
                             } else if let Some(kind) =
                                 crate::input_dispatch::vec_vertex_kind_for_id(*id)
@@ -2087,6 +2091,26 @@ impl crate::App {
             // Apply a Boolean button press (drained above) to the document before
             // the bridge/render so the result selects + renders this frame
             // (mirror of the U/I/D hotkeys' `vec_boolean`).
+            if let Some(action) = pending_vec_blend {
+                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                // Os passos vêm do slider do painel — a fonte da verdade é o widget, não uma
+                // cópia no shell (uma cópia driftaria do que o artista está VENDO).
+                let steps = hero
+                    .store
+                    .slider(ph2d_editor::ids::VECTOR_BLEND_STEPS)
+                    .map_or(ph2d_tool_vector::params::BLEND_STEPS_DEFAULT, |(_, v)| {
+                        ph2d_tool_vector::params::blend_steps_from_track(f64::from(v))
+                    });
+                crate::vec_blend::apply(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    &xf,
+                    &mut self.vec_blend,
+                    action,
+                    steps,
+                );
+            }
             if let Some(op) = pending_vec_bool {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
                 crate::input_dispatch::apply_vec_boolean(

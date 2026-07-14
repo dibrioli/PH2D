@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-vec-blend"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# Interpolação de formas (Blend / Morph). kurbo é INTERNA a esta crate — como na
+# `ph2d-vec-boolean` — e serve a UMA coisa: comprimento de arco (`inv_arclen`), que é
+# o que dá a correspondência independente de onde os vértices caíram.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+kurbo = "0.13"

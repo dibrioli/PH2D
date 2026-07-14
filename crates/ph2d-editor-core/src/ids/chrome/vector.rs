@@ -436,6 +436,25 @@ pub const VECTOR_CONNECTOR_CORNER: NodeId = hash_node_id("vector.connector.corne
 /// **Curve** — o braço dos handles da rota curva ("mais perto ou mais longe do ponto").
 pub const VECTOR_CONNECTOR_CURVE: NodeId = hash_node_id("vector.connector.curve");
 
+// ── Blend: a interpolação de formas (bloco APPEND-ONLY) ──────────────────────
+// A correspondência entre duas formas é o problema que NINGUÉM resolveu (nem o
+// GSAP, nem o Corel, nem o Lottie — `docs/Vector Module/20_*` §1.3). Por isso os
+// dois botões de ESCAPE não são enfeite: são a saída do artista no dia em que o
+// automático errar, e toda ferramenta séria do mercado teve de ter uma.
+/// Seção **BLEND** — os passos intermediários entre as DUAS formas selecionadas.
+pub const VECTOR_SECTION_BLEND: NodeId = hash_node_id("vector.section.blend");
+/// **Blend** — cria (ou re-cria) os passos entre as duas formas selecionadas.
+pub const VECTOR_BLEND_RUN: NodeId = hash_node_id("vector.blend.run");
+/// **Steps** — quantas formas nascem no meio do caminho.
+pub const VECTOR_BLEND_STEPS: NodeId = hash_node_id("vector.blend.steps");
+pub const VECTOR_BLEND_STEPS_NUM: NodeId = hash_node_id("vector.blend.steps_num");
+/// **Rotate Match** — o `shapeIndex` do GSAP / *Map Nodes* do Corel: roda a
+/// correspondência em uma âncora. É o que conserta a forma que GIRA no caminho.
+pub const VECTOR_BLEND_ROTATE: NodeId = hash_node_id("vector.blend.rotate");
+/// **Reverse Match** — inverte o sentido de percurso da 2ª forma. É o que conserta a
+/// forma que vira do AVESSO (e colapsa num nó no meio do caminho).
+pub const VECTOR_BLEND_REVERSE: NodeId = hash_node_id("vector.blend.reverse");
+
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
 /// esquecer a marca faz o header virar um título MORTO, que não dobra).
@@ -450,6 +469,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_TRANSFORM,
     VECTOR_SECTION_VERTEX,
     VECTOR_SECTION_BOOLEAN,
+    VECTOR_SECTION_BLEND,
     VECTOR_SECTION_ALIGN,
     VECTOR_SECTION_ARRANGE,
     VECTOR_SECTION_PATH,

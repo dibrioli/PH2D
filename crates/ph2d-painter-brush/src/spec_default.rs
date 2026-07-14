@@ -46,6 +46,8 @@ impl Default for BrushSpec {
             texture: TextureSettings::default(),
             grain_depth: 1.0,
             shape: TextureSettings::default(),
+            // Nothing reads `Dab::dir` by default (no rake, no chisel), so the stroke need not warm up.
+            needs_heading: false,
             dab_flatten: 0.0,
             dab_angle_deg: 0,
             color_jitter_enabled: false,

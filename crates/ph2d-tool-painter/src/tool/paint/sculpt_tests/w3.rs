@@ -8,43 +8,18 @@
 //!   quietly stopped being degenerate is how a "new" verb silently becomes a slightly-wrong old one.
 //! * **Layer** — bounded build-up. `k ≤ 1` and the target is the constant `pre + Depth`, so the coat is one
 //!   Depth thick however long the artist dwells. The gate dwells.
-//! * **Inflate** — raise along the surface normal. Its entire reason to exist is that flats rise and walls do
-//!   not, so the gate measures exactly that ratio — and it uses a surface with a REAL wall, because on a
-//!   gentle one every implementation (including a plain uniform raise) looks identical.
+//!
+//! **Inflate has moved out** to [`super::inflate`], and its old gates here were DELETED rather than ported:
+//! they pinned the bug Enio's smoke found (the verb was Layer wearing a normal's name), and the synthetic
+//! cliff they ran on is a canvas the deposit cannot make. Read that module before touching this one — the
+//! two most expensive mistakes of this wave are written up there.
 
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
-use std::sync::Arc;
 
 const SCRAPE: u8 = 3;
 const CHISEL: u8 = 5;
 const LAYER: u8 = 6;
-const INFLATE: u8 = 7;
-
-/// A **plateau**: a flat mesa of paint with a genuinely steep wall, and nothing else.
-///
-/// The wall is what makes an Inflate gate mean anything. On the gentle ridge of `sculpt_canvas` the slope is
-/// 0.5 loads over 60 px, so `n_z = 0.99` and a correct Inflate is indistinguishable from a uniform raise —
-/// the gate would be green against a kernel that ignores the normal entirely. Here the wall falls a full load
-/// over 6 px, which the light reads as a 2.7:1 slope and the normal as `n_z = 0.35`.
-fn plateau_canvas(size: u32) -> (PainterTool, crate::tool::RtLayerId, Vec<f32>) {
-    let (mut t, layer, _) = sculpt_canvas(size);
-    let n = (size * size) as usize;
-    let c = size as f32 * 0.5;
-    let relief: Vec<f32> = (0..n)
-        .map(|i| {
-            let x = (i as u32 % size) as f32;
-            let y = (i as u32 / size) as f32;
-            let r = ((x - c) * (x - c) + (y - c) * (y - c)).sqrt();
-            // Flat top out to r = 30, then a wall falling one full load over 6 px.
-            (1.0 - ((r - 30.0) / 6.0).clamp(0.0, 1.0)).clamp(0.0, 1.0)
-        })
-        .collect();
-    t.heights.insert(layer, Arc::new(relief.clone()));
-    t.covers.insert(layer, Arc::new(vec![255u8; n]));
-    t.sync_relief_flags();
-    (t, layer, relief)
-}
 
 /// **At Angle 0 the Chisel IS Scrape — byte for byte.**
 ///
@@ -62,16 +37,25 @@ fn the_chisel_at_zero_degrees_is_byte_identical_to_scrape() {
     let size = 200u32;
     let path = [[100.0, 60.0], [100.0, 100.0], [100.0, 140.0]];
 
-    let run = |mode: u8, angle: f32| -> Vec<f32> {
+    // The two verbs read the Offset track through DIFFERENT maps — the Chisel's runs `−MAX..=0`, because a
+    // chisel cuts (see `SculptState::plane_offset`). So the fixture asks for the same offset in LOADS, which
+    // is the unit the kernel works in, and then checks that it got it. Comparing at equal slider positions
+    // would compare two different tools and call the difference a bug.
+    let run = |mode: u8, angle: f32, norm: f32| -> (Vec<f32>, f32) {
         let (mut t, layer, _) = sculpt_canvas(size);
         arm_sculpt(&mut t, mode, 0.5, 1.0);
-        t.set_sculpt_offset(0.3); // a real bite, so there is something to be identical ABOUT
+        t.set_sculpt_offset(norm);
         t.set_sculpt_angle(angle);
         drag(&mut t, &path);
-        heights_of(&t, layer)
+        (heights_of(&t, layer), t.sculpt_plane_offset())
     };
-    let scrape = run(SCRAPE, 0.0);
-    let chisel = run(CHISEL, 0.0);
+    let (scrape, off_s) = run(SCRAPE, 0.0, 0.3); // (0.3 − 0.5)·2 = −0.4 loads
+    let (chisel, off_c) = run(CHISEL, 0.0, 0.6); // (0.6 − 1.0)   = −0.4 loads
+    assert!(
+        (off_s - off_c).abs() < 1e-6,
+        "fixture: the two verbs were given different offsets ({off_s} vs {off_c} loads), so any difference \
+         below would be the fixture's and not the kernel's"
+    );
 
     let differing = scrape
         .iter()
@@ -112,16 +96,23 @@ fn the_chisel_carves_a_crease() {
     // axis ON a texel centre and the on-axis assert below means what it says.
     let path = [[100.5, 50.0], [100.5, 100.0], [100.5, 150.0]];
 
-    let run = |mode: u8, angle: f32| -> Vec<f32> {
+    // Same bite in LOADS, not the same slider position: the Chisel's Offset track is negative-only
+    // (`−MAX..=0`) and Scrape's is two-sided, so equal `norm`s are different tools. What the kernel sees has
+    // to match, or the "sparing" below is just the two runs cutting to different depths.
+    let run = |mode: u8, angle: f32, norm: f32| -> (Vec<f32>, f32) {
         let (mut t, layer, _) = sculpt_canvas(size);
         arm_sculpt(&mut t, mode, 0.5, 1.0);
-        t.set_sculpt_offset(0.25); // sink the plane: the knife has to bite before it can crease
+        t.set_sculpt_offset(norm); // sink the plane: the knife has to bite before it can crease
         t.set_sculpt_angle(angle);
         drag(&mut t, &path);
-        heights_of(&t, layer)
+        (heights_of(&t, layer), t.sculpt_plane_offset())
     };
-    let flat = run(SCRAPE, 0.0);
-    let chisel = run(CHISEL, 0.6); // ~36°
+    let (flat, off_f) = run(SCRAPE, 0.0, 0.25); // (0.25 − 0.5)·2 = −0.5 loads
+    let (chisel, off_c) = run(CHISEL, 0.6, 0.5); // (0.50 − 1.0)   = −0.5 loads  ·  angle ≈ 36°
+    assert!(
+        (off_f - off_c).abs() < 1e-6,
+        "fixture: the blade and the knife were sunk to different depths ({off_f} vs {off_c} loads)"
+    );
 
     // How much MORE relief the chisel left standing, as a function of |x − 100|, on the row the brush swept.
     let spared = |dx: usize| -> f64 {
@@ -205,66 +196,13 @@ fn layer_lays_one_coat_however_long_you_dwell() {
     assert_eq!(dug, 0, "a positive Layer carved {dug} texels");
 }
 
-/// **Inflate rounds the crest off; it does not translate the paint upward.**
-///
-/// The whole tool is one line — `toward = pre + Depth · n_z` — and its entire behaviour lives in `n_z`. On a
-/// flat the normal points straight up (`n_z = 1`) and the paint rises the full Depth; on a wall the normal
-/// lies over (`n_z → 0`) and the paint barely moves. So a mesa's TOP comes up while its EDGE stays put, and
-/// what was a sharp lip becomes a shoulder. That is inflation, in the only sense a height field can offer it
-/// (§1.3 — and the docs say so rather than shipping a 3D name over a 2D operation).
-///
-/// **The normal is the LIGHT's normal**, gained by `DEPTH_UNIT_PX`, and that is the load-bearing part: the
-/// height buffer's unit is not pixels, so without the gain a real wall reads `n_z = 0.999` and Inflate is a
-/// uniform raise that no gate written in "loads per texel" would ever catch. A normal the light does not use
-/// is a normal the artist cannot see ([[feedback_oracle_must_model_appearance_not_implementation]]).
-///
-/// **Mutations that must bleed** (both checked): return `1.0` from `inflate_nz`; and drop the
-/// `* DEPTH_UNIT_PX` gain from its two differences.
-#[test]
-fn inflate_rounds_the_crest_instead_of_translating_it() {
-    let size = 160u32;
-    let (mut t, layer, before) = plateau_canvas(size);
-    arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
-    t.set_sculpt_depth(0.75); // +0.5 loads
-
-    let c = f32::from(80u8);
-    // A big brush parked on the mesa's edge, so the same dab covers flat top AND wall.
-    let mut b = t.paint.brush;
-    b.radius_px = 40.0;
-    t.paint.brush = b;
-    t.paint.brush_by_mode[super::PaintMode::Sculpt.slot()] = b;
-    drag(&mut t, &[[c, c], [c + 1.0, c]]);
-
-    let after = heights_of(&t, layer);
-    let rise = |x: u32, y: u32| -> f32 {
-        let i = (y * size + x) as usize;
-        after[i] - before[i]
-    };
-
-    // The mesa's flat top (r ≈ 10 from the centre) — normal straight up.
-    let flat = rise(90, 80);
-    // Its wall (r ≈ 33, mid-fall) — the normal lies right over.
-    let wall = rise(113, 80);
-
-    assert!(
-        flat > 0.4,
-        "Inflate barely raised the flat top ({flat:.4} of a 0.50 Depth) — on a surface whose normal points \
-         straight up it is supposed to lay the whole Depth"
-    );
-    assert!(
-        wall < flat * 0.6,
-        "Inflate raised the WALL by {wall:.4} and the flat top by {flat:.4} — nearly the same. It is not \
-         reading the normal (or it is reading one without the light's `DEPTH_UNIT_PX` gain, which on a \
-         height field is the same thing as not reading one): what it is doing is translating the paint \
-         upward, which is Draw, and we have Draw."
-    );
-}
-
 /// **A Height-family stroke costs 8 B/px — it holds no target buffer at all.**
 ///
-/// Layer's target is the constant `pre + Depth`; Inflate's is `pre + Depth · n_z(pre)`, four reads and a
-/// square root. Neither is worth a canvas-sized plane, and the family therefore carries `pre` + `amount` and
-/// nothing else — a third less memory than the other six verbs, for the two that are cheapest anyway.
+/// Layer's target is the constant `pre + Depth`, evaluated per texel in the render, so the family carries
+/// `pre` + `amount` and nothing else — a third less memory than the other seven verbs, for the one that is
+/// cheapest anyway. (Inflate USED to be here, on the strength of a per-texel formula that turned out not to
+/// inflate anything; its target is a neighbourhood kernel and it now pays the memo's 4 B/px like Smooth.
+/// See [`super::inflate`].)
 ///
 /// Counted on the real thing rather than reasoned about: *a rule that never observes cannot fire*
 /// ([[feedback_a_rule_that_never_observes_cannot_fire]]).
@@ -283,11 +221,11 @@ fn a_layer_stroke_costs_eight_bytes_per_pixel() {
     let s = &t.paint.sculpt;
     assert!(s.layer.is_some(), "fixture: the gesture is in flight");
     assert!(
-        s.plane_sum.is_empty() && s.blurred.is_empty() && s.blur_done.is_empty(),
-        "a Layer stroke allocated another family's target: {} B of plane_sum + {} B of blur memo. It reads \
+        s.plane_sum.is_empty() && s.memo.is_empty() && s.memo_done.is_empty(),
+        "a Layer stroke allocated another family's target: {} B of plane_sum + {} B of kernel memo. It reads \
          neither — its target is `pre` and a knob.",
         s.plane_sum.len() * 4,
-        s.blurred.len() * 4
+        s.memo.len() * 4
     );
     let live = (s.pre.len() + s.amount.len()) * 4;
     assert_eq!(
@@ -325,5 +263,133 @@ fn switching_into_the_height_family_frees_the_other_targets() {
         "leaving Scrape for Layer kept the plane target alive ({} B) — the Height family never reads it, and \
          a session that hoards every family's buffer costs 16 B/px whatever the comments say",
         t.paint.sculpt.plane_sum.len() * 4
+    );
+}
+
+// ── The Chisel's two corrections (Enio's smoke, 2026-07-14) ──────────────────────────────────────────
+
+/// **The Chisel's Offset never goes positive — the whole track cuts.**
+///
+/// A chisel that cannot reach below the surface is not a chisel. Its target is `plane + V + offset` and it
+/// only removes (`min(Δ, 0)`), and the plane is the least-squares fit *through* the paint — so at `offset ≥ 0`
+/// the only material the blade can reach is whatever already stands above that fit. It nicks the brush marks.
+/// It cannot open a groove, which is the one thing this verb exists to do, and the upper half of its track was
+/// a slow fade into "Scrape, but weaker".
+///
+/// Swept across the whole slider rather than spot-checked at the ends: the map is a formula, and a formula is
+/// wrong in the middle just as easily.
+///
+/// **Mutation that must bleed:** give the Chisel the two-sided map (delete its arm from `plane_offset`).
+#[test]
+fn the_chisels_offset_track_is_negative_all_the_way_across() {
+    let (mut t, _layer, _) = sculpt_canvas(64);
+    arm_sculpt(&mut t, CHISEL, 0.5, 1.0);
+
+    for i in 0..=20u32 {
+        let norm = f32::from(u16::try_from(i).unwrap_or(0)) / 20.0;
+        t.set_sculpt_offset(norm);
+        let off = t.sculpt_plane_offset();
+        assert!(
+            off <= 0.0,
+            "at slider {norm:.2} the Chisel's Offset is {off:+.3} loads. A positive offset lifts the blade \
+             clear of the fitted plane, and `min(Δ, 0)` then throws away everything it might have cut: the \
+             knife stops carving and starts nicking."
+        );
+    }
+    // The far end still DOES something (a track whose bottom is a no-op is the bug from the other side).
+    t.set_sculpt_offset(0.0);
+    assert!(
+        (t.sculpt_plane_offset() + super::super::sculpt::PLANE_OFFSET_MAX).abs() < 1e-6,
+        "the Chisel's deepest cut is not the full PLANE_OFFSET_MAX below the surface"
+    );
+    // …and Scrape, which is NOT a chisel, keeps both halves: a positive offset there is a gentler skim.
+    t.set_sculpt_mode(SCRAPE);
+    t.set_sculpt_offset(1.0);
+    assert!(
+        t.sculpt_plane_offset() > 0.0,
+        "the negative-only clamp leaked out of the Chisel and onto Scrape, whose upper half is a real tool \
+         (skim only what stands proudest of the plane)"
+    );
+}
+
+/// **The Chisel asks the stroke engine for a heading — and only the Chisel does.**
+///
+/// The engine holds a stroke's opening dabs until travel has settled a direction (the rake **warm-up**), but
+/// it only knew to do that for the two texture slots. The Chisel is a third reader of `Dab::dir`, so without
+/// this its first dab carves a flat scrape (gated at the source in `ph2d_painter_brush::stroke::tests`).
+///
+/// The policy is the gate: the flag must be **on for the Chisel, off for everything else, and off the moment
+/// the artist leaves Sculpt** — otherwise a plain paint brush inherits a warm-up it has no use for, on the
+/// strength of a chisel the artist picked up ten minutes ago.
+///
+/// **Mutations that must bleed** (both checked): drop the `sync_stroke_heading_need()` call from
+/// `set_sculpt_mode` (the flag never arms); and drop it from `set_paint_tool_mode` (it never disarms — the
+/// live brush keeps it across the mode switch, because the slot swap restores a spec that was saved with it).
+#[test]
+fn only_the_chisel_asks_the_stroke_engine_for_a_heading() {
+    let (mut t, _layer, _) = sculpt_canvas(64);
+
+    arm_sculpt(&mut t, CHISEL, 0.5, 1.0);
+    assert!(
+        t.paint.brush.needs_heading,
+        "the Chisel did not ask for a heading, so its opening dabs will arrive with `dir = [0, 0]` and carve \
+         no V at all — the groove starts blunt on every stroke"
+    );
+
+    t.set_sculpt_mode(SCRAPE);
+    assert!(
+        !t.paint.brush.needs_heading,
+        "Scrape kept the Chisel's heading need. It reads no direction — the flag is an enumeration of the \
+         readers of `Dab::dir`, and a stale member is how it stops being one."
+    );
+
+    t.set_sculpt_mode(CHISEL);
+    t.set_paint_tool_mode("brush");
+    assert!(
+        !t.paint.brush.needs_heading,
+        "leaving Sculpt left the heading need on the PAINT brush. The slot swap restores a spec that was \
+         saved while the Chisel was armed, so the answer has to be re-asked after the swap, not before it."
+    );
+
+    t.set_paint_tool_mode("sculpt");
+    assert!(
+        t.paint.brush.needs_heading,
+        "coming back to Sculpt (still on the Chisel) did not restore the heading need"
+    );
+}
+
+/// **The Sculpt brush rakes by default** (Enio 2026-07-14) — and that is a DEFAULT, not the mechanism.
+///
+/// The verbs that carve are directional: the Chisel's groove runs along the stroke, and a blade-shaped Shape
+/// image has to turn with it or the silhouette points one way while the cut goes another. So the box is
+/// ticked when the artist arrives.
+///
+/// The sibling assertion is the load-bearing one: **unticking it must not take the Chisel's V away.** That is
+/// what `needs_heading` is for. If these two ever collapse into one flag, the artist who wants a fixed-angle
+/// blade silhouette silently loses the start of every groove — which is the bug this pair exists to prevent
+/// from coming back ([[feedback_two_doors_to_the_same_question_diverge]]).
+#[test]
+fn the_sculpt_brush_rakes_by_default_but_the_chisel_does_not_depend_on_it() {
+    // A bare tool, NOT `sculpt_canvas` — that fixture stamps its own spec into every brush slot, which would
+    // overwrite the very default this gate exists to read. A fixture that clobbers the thing under test is a
+    // gate that can only ever agree with itself.
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 64 * 64 * 4], 64, 64);
+    t.set_paint_tool_mode("sculpt");
+    assert!(
+        t.paint.brush.shape.rake,
+        "the Sculpt brush arrived with Rake unticked"
+    );
+
+    t.set_sculpt_mode(CHISEL);
+    // The artist unticks Rake (they want a fixed blade silhouette).
+    let mut b = t.paint.brush;
+    b.shape.rake = false;
+    t.paint.brush = b;
+    assert!(
+        t.paint.brush.needs_heading,
+        "unticking Rake took the Chisel's heading away with it. The checkbox governs a SILHOUETTE IMAGE's \
+         rotation; the V's axis is not its business, and coupling them means the groove's start depends on a \
+         box about something else."
     );
 }

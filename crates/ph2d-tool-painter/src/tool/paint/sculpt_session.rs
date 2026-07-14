@@ -54,11 +54,11 @@ impl PainterTool {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
         match self.paint.sculpt.mode_enum().family() {
-            SculptFamily::Smooth => {
-                if self.paint.sculpt.blurred.len() != n {
-                    self.paint.sculpt.blurred = vec![0.0; n];
-                    self.paint.sculpt.blur_done = vec![false; super::sculpt_blur::tile_count(w, h)];
-                    self.paint.sculpt.blur_radius = self.paint.sculpt.radius_px();
+            SculptFamily::Memo => {
+                if self.paint.sculpt.memo.len() != n {
+                    self.paint.sculpt.memo = vec![0.0; n];
+                    self.paint.sculpt.memo_done = vec![false; super::sculpt_blur::tile_count(w, h)];
+                    self.paint.sculpt.memo_key = self.paint.sculpt.memo_key();
                 }
             }
             SculptFamily::Plane => {
@@ -253,9 +253,9 @@ impl PainterTool {
         self.paint.sculpt.plane_sum = s.plane_sum;
         self.paint.sculpt.layer = s.layer;
         self.paint.sculpt.bbox = s.bbox;
-        self.paint.sculpt.blurred = Vec::new();
-        self.paint.sculpt.blur_done = Vec::new();
-        self.paint.sculpt.blur_radius = 0;
+        self.paint.sculpt.memo = Vec::new();
+        self.paint.sculpt.memo_done = Vec::new();
+        self.paint.sculpt.memo_key = super::sculpt::MemoKey::None;
     }
 
     /// **The one exit.** Drop the session WITHOUT restoring anything — the relief in `heights` is kept.
@@ -273,8 +273,8 @@ impl PainterTool {
         self.paint.sculpt.amount = Arc::new(Vec::new());
         self.paint.sculpt.plane_sum = Arc::new(Vec::new());
         self.paint.sculpt.fit_scratch = Vec::new();
-        self.paint.sculpt.blurred = Vec::new();
-        self.paint.sculpt.blur_done = Vec::new();
+        self.paint.sculpt.memo = Vec::new();
+        self.paint.sculpt.memo_done = Vec::new();
         self.paint.sculpt.layer = None;
         self.paint.sculpt.bbox = None;
     }

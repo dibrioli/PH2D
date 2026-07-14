@@ -166,8 +166,10 @@ impl Stroke {
         self.warm_buf.clear();
         self.warm_dist = 0.0;
         self.warm_from = p.pos;
+        // Every reader of `Dab::dir` must be in this list, or its opening dabs get `[0, 0]` and it silently
+        // degrades. `needs_heading` is how the third one (the Sculpt Chisel) says so — see `BrushSpec`.
         self.warming = self.spec.stroke_method.rake_warmup_eligible()
-            && (self.spec.texture.rake || self.spec.shape.rake);
+            && (self.spec.texture.rake || self.spec.shape.rake || self.spec.needs_heading);
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {

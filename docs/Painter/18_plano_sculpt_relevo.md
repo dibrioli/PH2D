@@ -25,9 +25,15 @@ compatível do impossível antes de qualquer linha de código:
 2. **Não há matéria dobrada sobre si mesma.** O Snake Hook não engancha. Ele degenera para "arrastar uma
    crista", que é o Nudge. **Não portar sob esse nome** — batizar de Snake Hook o que não engancha é
    prometer o que não se entrega.
-3. **A normal é DERIVADA** (`∇h`), não guardada. "Deslocar ao longo da normal" vira "deslocar em `z`,
-   escalado por `n_z`". O Inflate 3D empurra os lados; o nosso **não pode**. Ele vira um *estufar* que
-   arredonda cristas. Compatível e distinto do Draw — mas seja honesto no tooltip: é um parente pobre.
+3. ~~**A normal é DERIVADA** (`∇h`), não guardada. "Deslocar ao longo da normal" vira "deslocar em `z`,
+   escalado por `n_z`". O Inflate 3D empurra os lados; o nosso **não pode**.~~ **ERRADO — corrigido em
+   2026-07-14 (smoke do Enio).** Um campo de altura **PODE** empurrar os próprios lados: o deslocamento
+   exato ao longo da normal é a **dilatação morfológica por uma BOLA**, e é justamente daí que sai o
+   crescimento lateral. O `Depth·n_z` que este parágrafo prescreveu tinha a normal **de cabeça pra baixo**
+   (o correto é `Depth·S = Depth/n_z`, a *secante*), e — o que importa mais — **nenhuma** fórmula por-texel
+   pode inflar coisa alguma: `h + d·S` é UM passo de Euler da PDE de offset, e um passo não move matéria
+   *de lado*. Sobre o relevo que o depósito de fato deixa, `n_z = 1.000` na mediana, então o Inflate era
+   **Layer, ao bit**. Ver `crates/ph2d-tool-painter/src/tool/paint/sculpt_offset.rs`.
 
 Tudo o que **sobra** é uma de três coisas, e é por isso que a lista abaixo é curta e o custo é baixo:
 
@@ -282,7 +288,19 @@ card. É W3, junto do Clay, e cabe no mesmo fit (dois ajustes nas duas metades d
 
 **Oito verbos, uma expressão.** `h = pre + k·Δ`. Chisel é Scrape com um `abs`; Layer é o kernel com alvo
 **constante** (é isso que o limita: `k ≤ 1`, então nunca passa de `pre + Depth`); Inflate é o kernel com
-alvo `pre + Depth·n_z`.
+alvo `offset(pre, Depth)` — o relevo **dilatado (ou erodido) por uma bola** de raio `Depth · DEPTH_UNIT_PX`.
+
+> **CORREÇÃO 2026-07-14 (smoke do Enio: *"Inflate parece fazer a mesma coisa de Layer"*).** Ele fazia.
+> O alvo era `pre + Depth·n_z`, e (a) a normal estava **invertida** — o offset verdadeiro sobe pela
+> *secante* `Depth·S`, não pelo cosseno, e é por isso que uma parede **anda de lado** e a forma **engorda**;
+> (b) mesmo com o sinal certo, `n_z = 1.000` na **mediana do texel pintado** (o miolo de um traço é chapado),
+> então qualquer `Depth·f(|∇h|)` é `Depth`. **A família mudou:** Inflate saiu de `Height` (sem buffer) e
+> entrou no **memo** (o mesmo maquinário de tiles do blur, outro kernel) — 12 B/px, e `Height` agora é só o
+> Layer. Detalhe e prova: `sculpt_offset.rs` + `sculpt_tests/inflate.rs`.
+>
+> **Inflate e Layer CONCORDAM num plano — e isso é geometria, não bug**: deslocar um plano ao longo da
+> normal é transladá-lo (no Blender, Inflate num plano chato também é Draw). A diferença é o que fazem com a
+> **forma**, e há gate pinando a identidade pra ninguém "consertá-la" de volta pra uma inversão.
 
 **Três da lista original NÃO entraram — e cada ausência é um ACHADO, não um adiamento:**
 
@@ -312,7 +330,11 @@ alvo `pre + Depth·n_z`.
 significa alguma coisa depois que a altura vira comprimento. O conversor é o que a **LUZ** usa:
 `DEPTH_UNIT_PX = 16` (uma carga de tinta tem 16 px de altura).
 
-Eu acertei no **Inflate** porque fui procurar qual normal a luz usa. **Errei no Chisel** porque não fui: o
+~~Eu acertei no **Inflate** porque fui procurar qual normal a luz usa.~~ **Não acertei** — fui buscar a
+normal certa e a apliquei **invertida** (`·n_z` onde era `/n_z`), e ainda assim todo gate ficou verde,
+porque o gate se chamava *"inflate arredonda a crista"* e arredondar a crista **É** o bug. Um gate prova
+que o código faz o que você **disse**; nada nele te avisa que o que você disse está errado. **Errei no
+Chisel** pelo motivo oposto — não fui buscar nada: o
 1º corte usou `tan(36°)` cru, que inclina o plano em **0,73 load por texel** — 8,7 loads ao longo do
 footprint, **4× o `H_CEIL`**. O "ângulo" era um número num espaço sem geometria dentro, e o V que ele
 cortava era um penhasco. O gate `the_chisel_carves_a_crease` pegou (0,36 load "poupado" *no próprio eixo*,

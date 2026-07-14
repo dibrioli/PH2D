@@ -25,17 +25,21 @@ use ph2d_tool_painter::BrushSettings;
 ///
 /// **The card shows the knobs the active verb USES, and no others.**
 ///
-/// | family | verbs | knobs |
-/// |---|---|---|
-/// | Smooth | Smooth · Sharpen | **Radius** (the blur's own scale) |
-/// | Plane | Flatten · Scrape · Fill | **Offset** (where the fitted plane sits) |
-/// | Plane | Chisel | **Offset** + **Angle** (the plane, then the V folded about the stroke) |
-/// | Height | Layer · Inflate | **Depth** (how thick a coat, how hard a puff) |
+/// | verbs | knob |
+/// |---|---|
+/// | Smooth · Sharpen | **Radius** (the blur's own scale) |
+/// | Flatten · Scrape · Fill | **Offset** (where the fitted plane sits) |
+/// | Chisel | **Offset** + **Angle** (the plane, then the V folded about the stroke) |
+/// | Layer · Inflate | **Depth** (how thick a coat · how far the ball offsets the form) |
 ///
 /// Radius means nothing to a plane verb — the plane is fitted to the brush's own footprint, so the brush's
 /// Size already IS its scale. Offset means nothing to a blur, which has no plane. Depth means nothing to
 /// either. Painting the inert one would be a knob that lies about what the tool can do, and this card has
 /// already cost a smoke over exactly that class of mistake (see `SculptState`).
+///
+/// **These rows are the KNOB family, not the engine family**, and the two stopped coinciding when Inflate
+/// became a ball offset: it takes Depth (this table) and runs on the memo (the session's). Ask
+/// `SculptMode::knob_family` here, never `SculptMode::family`.
 pub(crate) fn paint_sculpt_section(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -132,6 +136,12 @@ fn angle_row(
 /// The **Offset** row (plane family). The chip shows **paint-loads** — signed, because the sign is the whole
 /// meaning: a negative Offset sinks the plane INTO the paint so Scrape digs, a positive one lifts it so Fill
 /// mounds. A bare `0..1` track would hide the one number the artist is steering by.
+///
+/// The chip is also the only thing on screen that says the **Chisel's track is negative all the way across**
+/// (Enio 2026-07-14): a chisel cuts, and above the fitted plane there is nothing left for it to cut. The
+/// slider is the same `0..1` widget for every verb — it is `SculptState::plane_offset` that maps it, and the
+/// chip that reports where it landed. One number, read from the tool, so the label cannot drift from the
+/// kernel.
 fn offset_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,

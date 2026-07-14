@@ -297,6 +297,11 @@ fn sculpt_perf_kill_criterion() {
             t.sync_relief_flags();
         }
         arm_sculpt(&mut t, mode, 1.0, 1.0); // the WIDEST kernel — the worst case, not the comfortable one
+        // …and for Inflate the kernel's radius is its DEPTH (a ball of `Depth · DEPTH_UNIT_PX` px), so the
+        // Radius slider above says nothing about it. At the default Depth the ball is 8 px and this would be
+        // measuring a quarter of the work the artist can ask for. `O(ρ²)` per texel means the comfortable
+        // case and the worst case are a factor of FOUR apart, which is the whole distance to the budget.
+        t.set_sculpt_depth(1.0); // +1.0 loads ⇒ a 16-px ball: the widest offset there is
         let mut b = t.paint.brush;
         b.radius_px = 100.0;
         t.paint.brush = b;
@@ -322,10 +327,10 @@ fn sculpt_perf_kill_criterion() {
         (total / f64::from(MOVES), worst, up)
     };
 
-    // All THREE engines: Smooth (the tile-memoised blur), Scrape (the per-dab plane fit) and Inflate (a
-    // square root and four reads per texel, and no buffer at all). They are different arithmetic with
-    // different failure modes, and a budget measured on one of them is a budget for a tool the artist does
-    // not have.
+    // All THREE engines: Smooth (the tile-memoised blur), Scrape (the per-dab plane fit) and Inflate (the
+    // tile-memoised BALL OFFSET — `O(ρ²)` taps per texel, by far the most arithmetic in the file, and the
+    // reason the memo it shares with Smooth is not optional). They are different arithmetic with different
+    // failure modes, and a budget measured on one of them is a budget for a tool the artist does not have.
     for (label, mode) in [("SMOOTH", 0u8), ("SCRAPE", 3u8), ("INFLATE", 7u8)] {
         for size in [2048u32, 4096] {
             let (off_mean, off_worst, off_up) = run(size, false, mode);
@@ -372,11 +377,11 @@ fn the_sculpt_session_costs_twelve_bytes_per_pixel_and_nothing_once_committed() 
     let s = &t.paint.sculpt;
     assert!(s.layer.is_some(), "fixture: the gesture is in flight");
     assert_eq!(
-        (s.amount.len(), s.blurred.len(), s.pre.len()),
+        (s.amount.len(), s.memo.len(), s.pre.len()),
         (n, n, n),
         "the session's planes are not canvas-sized — the arithmetic below is measuring the wrong thing"
     );
-    let live = s.amount.len() * 4 + s.blurred.len() * 4 + s.pre.len() * 4;
+    let live = s.amount.len() * 4 + s.memo.len() * 4 + s.pre.len() * 4;
     assert_eq!(
         live / n,
         12,
@@ -391,13 +396,13 @@ fn the_sculpt_session_costs_twelve_bytes_per_pixel_and_nothing_once_committed() 
         s.layer.is_none()
             && s.pre.is_empty()
             && s.amount.is_empty()
-            && s.blurred.is_empty()
-            && s.blur_done.is_empty(),
+            && s.memo.is_empty()
+            && s.memo_done.is_empty(),
         "a finished sculpt stroke left its session behind: {} B of `pre` + {} B of `amount` + {} B of memo. \
          Those planes exist to re-render an UNCOMMITTED gesture; this one is on the canvas.",
         s.pre.len() * 4,
         s.amount.len() * 4,
-        s.blurred.len() * 4
+        s.memo.len() * 4
     );
 }
 

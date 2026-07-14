@@ -300,16 +300,16 @@ fn the_tile_memo_is_byte_identical_to_a_whole_canvas_blur() {
     let r = t.sculpt_radius_px();
     assert_eq!(r, 16, "fixture: Radius 1.0 is the 16-px cap");
 
-    t.ensure_blur_tiles(
+    t.ensure_memo_tiles(
         Region {
             x: 0,
             y: 0,
             w: size,
             h: size,
         },
-        r,
+        super::sculpt::MemoKey::Blur(r),
     );
-    let memo = t.paint.sculpt.blurred.clone();
+    let memo = t.paint.sculpt.memo.clone();
 
     let mut oracle = relief;
     super::impasto_settle::box_blur(&mut oracle, size, size, r);
@@ -581,6 +581,7 @@ fn the_sculpt_respects_the_selection() {
 // The SESSION's lifecycle (born / parked / dead), its byte budget and the perf kill criterion live in
 // the child module: same fixtures, different question. This file gates what the kernel DOES to the
 // relief; `session` gates the lifetime of the state that lets it.
+mod inflate;
 mod plane;
 mod session;
 mod w3;

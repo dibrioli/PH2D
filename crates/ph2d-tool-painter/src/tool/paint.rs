@@ -45,7 +45,8 @@ mod jitter_settings;
 /// The canvas pointer's operation mode (Paint / Smear / Blur / Clone / Mask); split from `paint.rs` (cap).
 mod paint_mode;
 mod sculpt; // Sculpt: the MODEL — the five verbs, the two knobs, the routing — `docs/Painter/18…`
-mod sculpt_blur; // Sculpt: the kernel (one expression, five verbs) + the per-tile memo of `blur(pre)`
+mod sculpt_blur; // Sculpt: the kernel (one expression, eight verbs) + the per-tile memo the family reads
+mod sculpt_offset; // Sculpt: Inflate's kernel — the relief offset by a BALL (dilation / erosion)
 mod sculpt_session; // Sculpt: the per-stroke session — birth, the dab walk, snapshot, cancel, re-stamp
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
 mod shape_layers;

@@ -48,13 +48,50 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
 | 5 | Rail → **SCULP** → arraste sobre as cristas | Smooth derruba · Sharpen levanta |
 | 6 | **Flatten** ATRAVESSANDO o flanco de uma crista | **O flanco continua um flanco.** Uma espátula nivelada araria um vale ali — é o teste de 1 segundo do plano fit inclinado |
 | 7 | **Scrape** (só tira) · **Fill** (só põe) · gire o **Offset** | Offset negativo = a faca crava; positivo = o Fill amontoa |
-| 8 | **Chisel** ao longo de uma crista, gire o **Angle** | Poupa os flancos, corta o eixo ⇒ **sulco com vinco**. Angle 0 = vira Scrape |
+| 8 | **Chisel** ao longo de uma crista, gire o **Angle** | Poupa os flancos, corta o eixo ⇒ **sulco com vinco**. Angle 0 = vira Scrape. **O Offset do Chisel só vai pra baixo** (a pista inteira corta) e o **vinco tem direção DESDE O 1º DAB** — comece o traço e olhe o começo dele |
 | 9 | **Layer**: passe **10× no mesmo lugar, num traço só** | A demão continua com **uma** espessura de Depth. Nenhum outro verbo faz isso |
-| 10 | **Inflate** na borda de uma mancha grossa | **O topo sobe, a parede não** — a crista *arredonda* em vez de subir |
+| 10 | **Inflate** sobre uma mancha grossa, Depth alto | **A MANCHA ENGORDA** — a borda é empurrada pra fora, vincos enchem. Depois **Layer** no mesmo lugar: ele só *levanta*, a silhueta não muda. Essa diferença é o teste. Depois **Depth negativo**: a forma **encolhe** (come as bordas), não só abaixa |
+| 10b | **Inflate** numa área de tinta CHATA | Sobe igual ao Layer — **e isso é correto**, é geometria (deslocar um plano ao longo da normal é transladá-lo). A diferença mora na FORMA, não no chão |
 | 11 | Depois de um traço, **troque o verbo** | O traço que já está lá **NÃO pode mudar**. (Exceção: com um **shape aberto**, antes do Apply, ele re-renderiza — é preview, não tela.) |
 
 **Se qualquer linha falhar: PARE, e conserte antes de abrir W4.** Bug em código já integrado é o mais caro
 que existe — ele já está debaixo do trabalho de outras 5 linhas.
+
+### 0.1 — RODADA 1 DO SMOKE (2026-07-14) — 2 achados, ambos CONSERTADOS (pendente re-smoke)
+
+O Enio rodou e derrubou dois. Nenhum dos dois tinha gate vermelho; **um deles tinha gate VERDE pinando o
+bug.**
+
+**① *"Inflate parece fazer a mesma coisa de Layer"* — fazia, AO BIT.**
+O alvo era `pre + Depth·n_z`, errado duas vezes:
+* **A normal ia invertida.** O offset verdadeiro sobe pela **secante** (`Depth·S`, `S = 1/n_z`): íngreme
+  move **MAIS**. É assim que uma parede anda de lado e a forma **engorda**. `·n_z` movia MENOS, o que
+  *arredonda a crista* — ou seja, era um **Smooth pior**. (E o passo 10 deste roteiro **descrevia o bug como
+  se fosse o correto**. Um roteiro de smoke escrito pelo autor herda as ideias erradas do autor.)
+* **Consertar o sinal NÃO resolveria.** Medi `n_z` sobre o relevo do **depósito real**: `p50 = 1.000` — o
+  miolo de um traço é chapado. Logo `Depth·n_z = Depth/n_z = Depth`. **Nenhuma fórmula por-texel infla:**
+  `h + d·S` é UM passo de Euler da PDE de offset, e um passo não move matéria **de lado** — que é a palavra
+  inteira. O operador é **não-local**: dilatação/erosão por uma **BOLA** (`sculpt_offset.rs`).
+
+  Inflate **mudou de família**: `Height` (sem buffer) → **`Memo`** (o mesmo maquinário de tiles do blur,
+  outro kernel). A *engine family* deixou de coincidir com a *knob family* — o painel pergunta
+  `knob_family()`. Perf: `O(ρ²)` taps/texel, **15,9 → 8,7 → 5,7 ms/move** (kill 8); as duas quedas são
+  layout contíguo e quebrar a cadeia serial do `max`.
+
+**② Chisel — duas correções.**
+* **Offset agora é negativo na pista inteira** (`−MAX..=0`). Um chisel **corta**, e acima do plano ajustado
+  (que é o fit *através* da tinta) não sobra o que cortar: a metade de cima era "Scrape, porém mais fraco".
+* **O V tem direção desde o 1º dab.** O *warm-up* de heading era gateado em `texture.rake || shape.rake` —
+  uma **enumeração dos leitores de `Dab::dir`** escrita quando os 2 slots de textura eram os únicos. O
+  Chisel é o **terceiro leitor**: o dab do pen-down saía com `dir = [0,0]`, `perp = [0,0]`, e o **V colapsava
+  em Scrape**. `BrushSpec::needs_heading` é o canal. O pincel de Sculpt **nasce com Rake ligado** (pedido do
+  Enio), mas **desligar o Rake não pode tirar o V** — senão são duas portas pra mesma pergunta.
+
+**Placar de mutação: 9 mutações, 9 mortas** — incluindo as duas que **restauram o bug que o Enio viu**
+(`Inflate := Layer` e `Inflate := p + depth·n_z`). Duas delas **sobreviveram na 1ª tentativa** e o motivo
+está escrito em `sculpt_tests/inflate.rs`: o gate do memo (a) re-implementava o produto em vez de dirigi-lo,
+e depois (b) rodava num traço **invariante em x** que cabia **inteiro dentro de uma fileira de tiles** — uma
+fixture realista, provando nada.
 
 ---
 

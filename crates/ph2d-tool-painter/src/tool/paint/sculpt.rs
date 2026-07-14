@@ -71,7 +71,7 @@ pub(super) const CHISEL_ANGLE_MAX_DEG: f32 = 60.0;
 /// | Fill | the fitted plane | **up only** (`max(Δ, 0)`) |
 /// | Chisel | the plane **+ a V about the stroke's axis** | down only |
 /// | Layer | `pre + Depth` | both ways |
-/// | Inflate | `pre + Depth · n_z` | both ways |
+/// | Inflate | `offset(pre, Depth)` — the relief dilated/eroded by a **ball** | both ways |
 ///
 /// So Scrape and Fill are not two more engines — they are Flatten with one half of the number thrown away,
 /// and they cost one `min` each. Chisel is Scrape with one `abs`. Layer is the kernel with a *constant*
@@ -111,11 +111,15 @@ pub(super) enum SculptMode {
     /// and the coat is still one Depth thick — which is the whole point, and the one thing neither the
     /// deposit (which accumulates) nor the plane verbs (which level) can do.
     Layer,
-    /// **Puff**: raise the relief along the surface NORMAL, so flats rise fully and slopes barely move —
-    /// which rounds crests off instead of translating them. Negative Depth deflates.
+    /// **Puff**: the relief **offset along its own normal** by Depth — which, done exactly, is the
+    /// morphological dilation (or, for a negative Depth, erosion) of the height field by a **ball** of that
+    /// radius. The form gets *fatter*, not merely taller: its rim is pushed outward, creases fill in, and a
+    /// negative Depth eats thin ridges away.
     ///
-    /// It is not the 3D Inflate and the docs say so (§1.3): a height field cannot push its own sides out.
-    /// Honest name for what it does, rather than an honest-looking name for what it does not.
+    /// On a **flat** it raises by exactly Depth — the same as [`Layer`](SculptMode::Layer) — and that is
+    /// geometry, not a bug: offsetting a plane along its normal is a translation. The two verbs differ in
+    /// what they do to the *shape*. See [`super::sculpt_offset`], which also records the two bugs this line
+    /// shipped here (the normal was applied *upside down*, and a per-texel formula cannot inflate anything).
     Inflate,
 }
 
@@ -124,20 +128,70 @@ pub(super) enum SculptMode {
 /// It is not cosmetic bookkeeping: the three targets are derived from different things, and they are not
 /// equally recoverable.
 ///
-/// * [`Smooth`](SculptFamily::Smooth) → `blur(pre)`: a function of the frozen relief ALONE, so it is a pure
-///   memo — throw it away and it rebuilds itself, tile by tile, from `pre`.
+/// * [`Memo`](SculptFamily::Memo) → a **pure function of the frozen relief and one radius**, computed by a
+///   kernel over a neighbourhood: `blur(pre, r)` for Smooth / Sharpen, `offset(pre, r)` for Inflate. Throw
+///   it away and it rebuilds itself, tile by tile, from `pre` — which is exactly what makes the tile memo
+///   in [`super::sculpt_blur`] legitimate.
 /// * [`Plane`](SculptFamily::Plane) → `Σ w·plane(i)`: a function of the **dab list**, which no longer
 ///   exists once the batch has been consumed. It cannot be rebuilt without re-stamping the stroke.
 /// * [`Height`](SculptFamily::Height) → a function of `pre` and a knob, evaluated per texel in the render.
-///   **It has no buffer at all**, so a Layer or Inflate stroke costs 8 B/px where the others cost 12.
+///   **It has no buffer at all**, so a Layer stroke costs 8 B/px where the others cost 12.
 ///
 /// That first asymmetry is why [`PainterTool::set_sculpt_mode`] re-stamps an open shape when the family
 /// changes, and why it does not need to when it does not.
+///
+/// ## The engine family is NOT the knob family, and it used to be by coincidence
+///
+/// Inflate takes the **Depth** knob (like Layer) but runs on the **memo** engine (like Smooth) — because
+/// its target is `offset(pre, Depth)`, a neighbourhood kernel, not a per-texel formula. While Inflate was
+/// (wrongly) a per-texel formula the two groupings happened to coincide, and one enum served both. It does
+/// not any more, so [`SculptMode::knob_family`] answers the panel's question and this one answers the
+/// session's. Two questions that merely agreed for a while are two questions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum SculptFamily {
-    Smooth,
+    Memo,
     Plane,
     Height,
+}
+
+/// What the session's memo plane holds — and, because it is the invalidation key, what a change to it
+/// throws away.
+///
+/// The two kernels are memoised by the SAME tile machinery (`super::sculpt_blur`) because they have the
+/// same shape: each texel's target is a pure function of `pre` inside a bounded neighbourhood. That bound
+/// is [`Self::reach`], and it is the width the read window is grown by — the single number the memo's
+/// byte-identity argument rests on.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub(super) enum MemoKey {
+    /// No memo — the Plane and Height families own no kernel target.
+    #[default]
+    None,
+    /// `blur(pre, r)` — Smooth / Sharpen. `r` in texels.
+    Blur(u32),
+    /// `offset(pre, r)` — Inflate: the relief dilated (`r > 0`) or eroded (`r < 0`) by a ball of `|r|` px.
+    ///
+    /// Carried as the **bits** of the signed `f32` radius rather than the float, so the key derives `Eq`
+    /// and compares exactly. The radius is not rounded to whole pixels: a Depth of `0.05` loads is a ball
+    /// of `0.8` px, whose cap still raises a flat by exactly `0.05` — rounding it to zero would make the
+    /// bottom of the Depth track silently do nothing, which is the failure this file already gates against
+    /// elsewhere ([`SculptState::radius_px`]).
+    Offset(u32),
+}
+
+impl MemoKey {
+    /// The key for a ball offset of signed radius `r_px`.
+    pub(super) fn offset(r_px: f32) -> Self {
+        Self::Offset(r_px.to_bits())
+    }
+
+    /// How far, in texels, one output texel reads into `pre` — the tile memo's read-window growth.
+    pub(super) fn reach(self) -> u32 {
+        match self {
+            MemoKey::None => 0,
+            MemoKey::Blur(r) => r,
+            MemoKey::Offset(bits) => f32::from_bits(bits).abs().ceil() as u32,
+        }
+    }
 }
 
 impl SculptMode {
@@ -154,13 +208,24 @@ impl SculptMode {
         }
     }
 
+    /// Which **engine** the verb runs on — i.e. which per-texel target the session must carry.
     pub(super) fn family(self) -> SculptFamily {
         match self {
-            SculptMode::Smooth | SculptMode::Sharpen => SculptFamily::Smooth,
+            SculptMode::Smooth | SculptMode::Sharpen | SculptMode::Inflate => SculptFamily::Memo,
             SculptMode::Flatten | SculptMode::Scrape | SculptMode::Fill | SculptMode::Chisel => {
                 SculptFamily::Plane
             }
-            SculptMode::Layer | SculptMode::Inflate => SculptFamily::Height,
+            SculptMode::Layer => SculptFamily::Height,
+        }
+    }
+
+    /// Which **knob** the card must paint: `0` Radius · `1` Offset · `2` Depth. (The Chisel additionally
+    /// shows Angle — see [`PainterTool::is_sculpt_chisel`].) Not the same question as [`Self::family`].
+    pub(super) fn knob_family(self) -> u8 {
+        match self {
+            SculptMode::Smooth | SculptMode::Sharpen => 0,
+            SculptMode::Flatten | SculptMode::Scrape | SculptMode::Fill | SculptMode::Chisel => 1,
+            SculptMode::Layer | SculptMode::Inflate => 2,
         }
     }
 }
@@ -241,13 +306,16 @@ pub(crate) struct SculptState {
     /// [`ph2d_painter_brush::sculpt::accumulate_dab_plane`]). Never read across dabs; never snapshotted.
     pub(crate) fit_scratch: Vec<(u32, f32)>,
 
-    /// `blur(pre, radius)`, memoised tile by tile (see [`super::sculpt_blur`]). Pure derived data: it dies
-    /// with the session and is rebuilt lazily, tile by tile, on demand. Empty in the Plane family.
-    pub(crate) blurred: Vec<f32>,
-    /// One flag per tile of [`Self::blurred`] — whether that tile has been computed this session.
-    pub(crate) blur_done: Vec<bool>,
-    /// The radius [`Self::blurred`] holds. A change invalidates every tile.
-    pub(crate) blur_radius: u32,
+    /// The **memo family's** per-texel target — `blur(pre, r)` (Smooth / Sharpen) or `offset(pre, r)`
+    /// (Inflate) — memoised tile by tile (see [`super::sculpt_blur`]). Pure derived data: it dies with the
+    /// session and is rebuilt lazily, on demand. Empty in the Plane and Height families.
+    pub(crate) memo: Vec<f32>,
+    /// One flag per tile of [`Self::memo`] — whether that tile has been computed this session.
+    pub(crate) memo_done: Vec<bool>,
+    /// Which kernel and radius [`Self::memo`] holds. A change to EITHER invalidates every tile — which is
+    /// why the kernel is in the key and not merely the radius: Smooth → Inflate keeps the buffer's length
+    /// and changes every value in it.
+    pub(crate) memo_key: MemoKey,
     /// Which layer the session belongs to — and, because the session dies at commit, **this is also what
     /// "a gesture is in flight" means**. `None` ⇒ no session; every guard in this module reads it as both.
     ///
@@ -272,9 +340,9 @@ impl Default for SculptState {
             amount: Arc::new(Vec::new()),
             plane_sum: Arc::new(Vec::new()),
             fit_scratch: Vec::new(),
-            blurred: Vec::new(),
-            blur_done: Vec::new(),
-            blur_radius: 0,
+            memo: Vec::new(),
+            memo_done: Vec::new(),
+            memo_key: MemoKey::None,
             layer: None,
             bbox: None,
         }
@@ -289,10 +357,44 @@ impl SculptState {
         (1.0 + t * (SCULPT_RADIUS_MAX_PX - 1.0)).round() as u32
     }
 
-    /// The plane's Offset in **paint-loads** (`−PLANE_OFFSET_MAX ..= +PLANE_OFFSET_MAX`), from the slider's
-    /// `0..1` track. Dead centre is exactly `0.0` — the plane sits on the surface it was fitted to.
+    /// The plane's Offset in **paint-loads**, from the slider's `0..1` track.
+    ///
+    /// `−PLANE_OFFSET_MAX ..= +PLANE_OFFSET_MAX` for Flatten / Scrape / Fill — dead centre is exactly `0.0`,
+    /// the plane sitting on the surface it was fitted to.
+    ///
+    /// ## The Chisel's track is NEGATIVE ONLY (Enio, smoke of 2026-07-14)
+    ///
+    /// A chisel **cuts in**. Its target is `plane + V + offset` and it only takes material *away*
+    /// (`min(Δ, 0)`), so the offset is the one thing that decides whether the blade reaches below the
+    /// surface at all. At `offset ≥ 0` the plane is the least-squares fit *through* the paint, so all the
+    /// blade can reach is whatever already stands above that fit — the brush marks. It nicks the peaks. It
+    /// cannot make a groove, which is the only thing anybody picks this verb up to do, and the upper half of
+    /// the track is a slow fade into "Scrape, but weaker".
+    ///
+    /// So the Chisel's track runs `−PLANE_OFFSET_MAX ..= 0` and the whole of it carves. The default
+    /// (`offset_norm = 0.5`) lands at half a load below the surface: a cut you can see.
     pub(super) fn plane_offset(&self) -> f32 {
-        (self.offset_norm.clamp(0.0, 1.0) - 0.5) * 2.0 * PLANE_OFFSET_MAX
+        let t = self.offset_norm.clamp(0.0, 1.0);
+        if matches!(self.mode_enum(), SculptMode::Chisel) {
+            (t - 1.0) * PLANE_OFFSET_MAX
+        } else {
+            (t - 0.5) * 2.0 * PLANE_OFFSET_MAX
+        }
+    }
+
+    /// Which kernel target the active verb needs memoised — [`MemoKey::None`] outside the memo family.
+    ///
+    /// Inflate's radius is its **Depth**, converted from paint-loads into pixels through the light's
+    /// [`DEPTH_UNIT_PX`](super::impasto_light::DEPTH_UNIT_PX). The ball is a ball in the space the artist
+    /// *sees*, and that constant is the only place the two axes of a height field are reconciled.
+    pub(super) fn memo_key(&self) -> MemoKey {
+        match self.mode_enum() {
+            SculptMode::Smooth | SculptMode::Sharpen => MemoKey::Blur(self.radius_px()),
+            SculptMode::Inflate => {
+                MemoKey::offset(self.depth() * super::impasto_light::DEPTH_UNIT_PX)
+            }
+            _ => MemoKey::None,
+        }
     }
 
     /// The Height family's **Depth** in paint-loads (`−SCULPT_DEPTH_MAX ..= +SCULPT_DEPTH_MAX`).
@@ -358,6 +460,7 @@ impl PainterTool {
     pub fn set_sculpt_mode(&mut self, m: u8) {
         let before = self.paint.sculpt.mode_enum().family();
         self.paint.sculpt.mode = m.min(SCULPT_MODE_COUNT - 1);
+        self.sync_stroke_heading_need();
         if self.paint.sculpt.mode_enum().family() == before {
             self.refresh_live_sculpt();
         } else {
@@ -383,10 +486,12 @@ impl PainterTool {
         self.refresh_live_sculpt();
     }
 
-    /// Set the Height family's **Depth** from the slider's `0..1` track (Layer / Inflate).
+    /// Set the **Depth** from the slider's `0..1` track (Layer / Inflate).
     ///
-    /// No re-stamp: the Height family has no accumulated target at all — its target is a function of `pre`
-    /// and this knob, evaluated in the render. Turning it is a re-render and nothing more.
+    /// No re-stamp — neither verb's target owes anything to the dab list. Layer's is `pre + Depth`,
+    /// evaluated per texel in the render. Inflate's is `offset(pre, Depth)`, and Depth is that offset's
+    /// *radius*, so turning this knob changes the memo's [`MemoKey`] and the render rebuilds it from `pre`
+    /// — the same lazy, tile-by-tile rebuild that the Radius slider already triggers for Smooth.
     pub fn set_sculpt_depth(&mut self, t: f32) {
         self.paint.sculpt.depth_norm = t.clamp(0.0, 1.0);
         self.refresh_live_sculpt();
@@ -418,11 +523,7 @@ impl PainterTool {
     /// exactly that class of mistake.
     #[must_use]
     pub fn sculpt_knob_family(&self) -> u8 {
-        match self.paint.sculpt.mode_enum().family() {
-            SculptFamily::Smooth => 0,
-            SculptFamily::Plane => 1,
-            SculptFamily::Height => 2,
-        }
+        self.paint.sculpt.mode_enum().knob_family()
     }
 
     /// Whether the active verb is the **Chisel** — the one verb with two knobs (Offset *and* Angle).
@@ -457,27 +558,43 @@ impl PainterTool {
         self.paint.sculpt.chisel_angle_deg()
     }
 
+    /// Tell the stroke engine whether this stroke's dabs are useless without a **heading**.
+    ///
+    /// The Chisel carves a V about the stroke's axis, so it reads `Dab::dir`. The engine holds the opening
+    /// dabs of such a stroke until travel has settled a direction (the rake **warm-up**) — but it only knew
+    /// to do that for the two texture slots. Without this, a chisel's first dabs arrive with `dir = [0, 0]`
+    /// and carve **nothing** (the V degenerates to Scrape): the groove starts blunt, every single stroke.
+    ///
+    /// Called from the two places that can change the answer — this card's verb, and the paint-mode switch
+    /// (which swaps the whole brush slot underneath us). One function, so the two cannot disagree.
+    pub(super) fn sync_stroke_heading_need(&mut self) {
+        let need = self.is_sculpt_mode() && self.is_sculpt_chisel();
+        self.paint.brush.needs_heading = need;
+        let slot = super::PaintMode::Sculpt.slot();
+        self.paint.brush_by_mode[slot].needs_heading = need;
+    }
+
     /// Free the target the OTHER families own, on a family switch.
     ///
     /// Not an optimisation — it is what keeps the promise the cost gate makes. A session that carried every
     /// family's target would cost 16 B/px instead of 12, and the moment that is true "the session costs
     /// 12 B/px" becomes a sentence in a comment rather than a fact about the program. Both buffers are
-    /// rebuildable: `blurred` from `pre` (lazily, tile by tile) and `plane_sum` from the re-stamp that is
+    /// rebuildable: `memo` from `pre` (lazily, tile by tile) and `plane_sum` from the re-stamp that is
     /// about to run anyway. The **Height** family holds neither, so switching TO it frees both — a Layer
     /// stroke costs 8 B/px.
     fn drop_stale_family_target(&mut self) {
-        let (keep_blur, keep_plane) = match self.paint.sculpt.mode_enum().family() {
-            SculptFamily::Smooth => (true, false),
+        let (keep_memo, keep_plane) = match self.paint.sculpt.mode_enum().family() {
+            SculptFamily::Memo => (true, false),
             SculptFamily::Plane => (false, true),
             SculptFamily::Height => (false, false),
         };
         if !keep_plane {
             self.paint.sculpt.plane_sum = Arc::new(Vec::new());
         }
-        if !keep_blur {
-            self.paint.sculpt.blurred = Vec::new();
-            self.paint.sculpt.blur_done = Vec::new();
-            self.paint.sculpt.blur_radius = 0;
+        if !keep_memo {
+            self.paint.sculpt.memo = Vec::new();
+            self.paint.sculpt.memo_done = Vec::new();
+            self.paint.sculpt.memo_key = MemoKey::None;
         }
     }
 

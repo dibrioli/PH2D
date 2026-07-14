@@ -34,7 +34,7 @@
 
 use super::impasto::H_CEIL;
 use super::region::grow_region;
-use super::sculpt::{SculptFamily, SculptMode};
+use super::sculpt::{MemoKey, SculptFamily, SculptMode};
 use super::{Region, impasto_settle};
 use crate::tool::PainterTool;
 use std::sync::Arc;
@@ -52,48 +52,21 @@ pub(super) fn tile_count(w: u32, h: u32) -> usize {
     (w.div_ceil(TILE) as usize) * (h.div_ceil(TILE) as usize)
 }
 
-/// The **z component of the surface normal** at a texel of the frozen relief — Inflate's whole engine.
-///
-/// `Inflate` raises the relief *along the normal*, and a height field can only move in `z`, so what it can
-/// actually do is raise by `Depth · n_z` (doc 18 §1.3, which says to be honest about this rather than ship a
-/// 3D name over a 2D operation). The consequence is the feel: `n_z = 1` on the flats (they rise fully) and
-/// `n_z → 0` on a wall (it barely moves), so a ridge gets **rounded off** instead of translated upward — and
-/// a negative Depth deflates it the same way. That is a distinct tool from Draw, and this line is why.
-///
-/// ## It is the LIGHT's normal, and that is not a detail
-///
-/// The same central difference, the same `DEPTH_UNIT_PX` gain, as `impasto_shade::shade` — because the slope
-/// only *exists*, visually, once the height buffer's unit is converted to pixels. Without the gain a real
-/// ridge (0.1 loads over a texel) has `n_z = 0.995`: Inflate would be a uniform raise wearing a normal's
-/// name, and every gate written against it would be green. With it, that same ridge reads `n_z = 0.53` and
-/// the tool does what it says.
-///
-/// The rule this obeys is the one that has cost this project twice: **the oracle models the APPEARANCE, not
-/// the implementation** ([[feedback_oracle_must_model_appearance_not_implementation]]). A normal the light
-/// does not use is a normal the artist cannot see.
-///
-/// Edges clamp (the difference reads the nearest texel in), exactly as the light's does.
-fn inflate_nz(pre: &[f32], x: u32, y: u32, w: u32, h: u32) -> f32 {
-    let at = |cx: i64, cy: i64| -> f32 {
-        let cx = cx.clamp(0, i64::from(w) - 1) as usize;
-        let cy = cy.clamp(0, i64::from(h) - 1) as usize;
-        pre[cy * (w as usize) + cx]
-    };
-    let (xi, yi) = (i64::from(x), i64::from(y));
-    let dhx = (at(xi + 1, yi) - at(xi - 1, yi)) * 0.5 * super::impasto_light::DEPTH_UNIT_PX;
-    let dhy = (at(xi, yi + 1) - at(xi, yi - 1)) * 0.5 * super::impasto_light::DEPTH_UNIT_PX;
-    // n = normalize([-dhx, -dhy, 1]) ⇒ n_z = 1 / |[dhx, dhy, 1]|.
-    1.0 / (dhx * dhx + dhy * dhy + 1.0).sqrt()
-}
-
 impl PainterTool {
-    /// Blur every tile `rect` overlaps that this session has not blurred yet, into the memo.
+    /// Fill every tile `rect` overlaps that this session has not filled yet, into the memo.
     ///
-    /// Each tile is computed at most ONCE per stroke (that is the point), and each one is bit-for-bit
-    /// what a whole-canvas blur would have written there (see the module docs).
-    pub(super) fn ensure_blur_tiles(&mut self, rect: Region, r: u32) {
+    /// Each tile is computed at most ONCE per stroke (that is the point), and each one is bit-for-bit what
+    /// a whole-canvas run of the same kernel would have written there (see the module docs, and
+    /// [`super::sculpt_offset::ball_offset_into`] for the offset's identical argument).
+    ///
+    /// There is deliberately **no early return on a zero reach**. A zero-radius blur and a zero-radius
+    /// offset are both the identity, and both must still be *written* — bailing out would leave the memo at
+    /// `0.0`, and every verb in this family lerps TOWARD the memo, so the relief would be pulled to zero:
+    /// the paint flattened away, silently, by a knob at the bottom of its track. The same fail-closed
+    /// reasoning as the unknown-tile branch below.
+    pub(super) fn ensure_memo_tiles(&mut self, rect: Region, key: MemoKey) {
         let (w, h) = self.source_size;
-        if w == 0 || h == 0 || r == 0 {
+        if w == 0 || h == 0 || key == MemoKey::None {
             return;
         }
         let tiles_x = w.div_ceil(TILE);
@@ -108,7 +81,7 @@ impl PainterTool {
                 // memo at 0.0, and Smooth lerps toward the memo: the relief would be pulled toward ZERO,
                 // flattening the paint away instead of averaging it. A silent visual catastrophe hiding
                 // behind a defensive default. If a tile is not in the grid, do not touch it at all.
-                match self.paint.sculpt.blur_done.get(ti) {
+                match self.paint.sculpt.memo_done.get(ti) {
                     Some(true) => continue,
                     None => continue,
                     Some(false) => {}
@@ -119,17 +92,21 @@ impl PainterTool {
                     w: TILE.min(w - tx * TILE),
                     h: TILE.min(h - ty * TILE),
                 };
-                self.blur_one_tile(tile, r);
-                self.paint.sculpt.blur_done[ti] = true;
+                self.fill_one_tile(tile, key);
+                self.paint.sculpt.memo_done[ti] = true;
             }
         }
     }
 
-    /// Blur ONE tile: lift the read window (the tile grown by `r`, clipped to the canvas) out of the
-    /// frozen `pre`, run the shared box blur over it, and keep the inner tile.
-    fn blur_one_tile(&mut self, tile: Region, r: u32) {
+    /// Fill ONE tile: lift the read window (the tile grown by the kernel's [`MemoKey::reach`], clipped to
+    /// the canvas) out of the frozen `pre`, run the kernel over it, and keep the inner tile.
+    ///
+    /// The window growth is the ONE number both kernels' byte-identity arguments rest on, so it is asked of
+    /// the key rather than of the caller — a blur that grew by the offset's radius (or the reverse) would be
+    /// wrong only near a tile seam, which is the hardest possible place to notice.
+    fn fill_one_tile(&mut self, tile: Region, key: MemoKey) {
         let (w, h) = self.source_size;
-        let Some(win) = grow_region(tile, r, w, h) else {
+        let Some(win) = grow_region(tile, key.reach(), w, h) else {
             return;
         };
         let (ww, wh) = (win.w as usize, win.h as usize);
@@ -139,18 +116,43 @@ impl PainterTool {
             let start = (win.y as usize + row) * (w as usize) + win.x as usize;
             scratch.extend_from_slice(&pre[start..start + ww]);
         }
-        // The SAME box blur the settle uses — not a second one. (A second blur is how the relief a dab
-        // deposits and the relief the spatula reads start disagreeing in the last bit.)
-        impasto_settle::box_blur(&mut scratch, win.w, win.h, r);
-        // Keep the inner tile only: the window's outer ring of width `r` is where the buffer-edge clamp
-        // could have lied, and it is exactly the part we grew in order to throw away.
-        let off_x = (tile.x - win.x) as usize;
-        let off_y = (tile.y - win.y) as usize;
+        // The tile, in the WINDOW's coordinates — what each kernel is asked to produce.
+        let inner = Region {
+            x: tile.x - win.x,
+            y: tile.y - win.y,
+            w: tile.w,
+            h: tile.h,
+        };
+        let mut out: Vec<f32> = vec![0.0; (tile.w as usize) * (tile.h as usize)];
+        match key {
+            MemoKey::None => return,
+            MemoKey::Blur(r) => {
+                // The SAME box blur the settle uses — not a second one. (A second blur is how the relief a
+                // dab deposits and the relief the spatula reads start disagreeing in the last bit.)
+                impasto_settle::box_blur(&mut scratch, win.w, win.h, r);
+                for row in 0..tile.h as usize {
+                    let src = (inner.y as usize + row) * ww + inner.x as usize;
+                    let dst = row * (tile.w as usize);
+                    out[dst..dst + tile.w as usize]
+                        .copy_from_slice(&scratch[src..src + tile.w as usize]);
+                }
+            }
+            MemoKey::Offset(bits) => super::sculpt_offset::ball_offset_into(
+                &scratch,
+                win.w,
+                win.h,
+                f32::from_bits(bits),
+                inner,
+                &mut out,
+            ),
+        }
+        // Keep the inner tile only: the window's outer ring is where the buffer edge could have lied, and it
+        // is exactly the part we grew in order to throw away.
         for row in 0..tile.h as usize {
-            let src = (off_y + row) * ww + off_x;
             let dst = (tile.y as usize + row) * (w as usize) + tile.x as usize;
-            self.paint.sculpt.blurred[dst..dst + tile.w as usize]
-                .copy_from_slice(&scratch[src..src + tile.w as usize]);
+            let src = row * (tile.w as usize);
+            self.paint.sculpt.memo[dst..dst + tile.w as usize]
+                .copy_from_slice(&out[src..src + tile.w as usize]);
         }
     }
 
@@ -169,25 +171,27 @@ impl PainterTool {
             return; // a stale, differently-sized session: the shape guard, never an index panic
         }
         let mode = self.paint.sculpt.mode_enum();
-        // The blur memo belongs to the SMOOTH family, and the guard is not tidiness: without it the plane
-        // verbs would fall into the "not canvas-sized" branch below on every single render and allocate a
-        // memo they never read — 4 B/px of pure waste, and the end of the session's 12 B/px promise.
+        // The memo belongs to the MEMO family, and the guard is not tidiness: without it the plane and
+        // height verbs would fall into the "not canvas-sized" branch below on every single render and
+        // allocate a memo they never read — 4 B/px of pure waste, and the end of the session's 12 B/px
+        // promise.
         //
-        // Rebuild when the radius moved, when it is not canvas-sized, OR when its per-tile flag vec does not
-        // match the canvas's tile grid. That last clause is not paranoia: a rebind can change `w` while
-        // leaving `n` identical (a 64×128 sprite and a 128×64 one), and then `tiles_x` is wrong while every
-        // length check still passes.
-        if mode.family() == SculptFamily::Smooth {
-            let r = self.paint.sculpt.radius_px();
-            if self.paint.sculpt.blur_radius != r
-                || self.paint.sculpt.blurred.len() != n
-                || self.paint.sculpt.blur_done.len() != tile_count(w, h)
+        // Rebuild when the KEY moved (kernel or radius — Smooth → Inflate keeps the buffer's length and
+        // changes every value in it, so a radius-only check would serve a blur to the offset), when it is
+        // not canvas-sized, OR when its per-tile flag vec does not match the canvas's tile grid. That last
+        // clause is not paranoia: a rebind can change `w` while leaving `n` identical (a 64×128 sprite and a
+        // 128×64 one), and then `tiles_x` is wrong while every length check still passes.
+        let key = self.paint.sculpt.memo_key();
+        if mode.family() == SculptFamily::Memo {
+            if self.paint.sculpt.memo_key != key
+                || self.paint.sculpt.memo.len() != n
+                || self.paint.sculpt.memo_done.len() != tile_count(w, h)
             {
-                self.paint.sculpt.blurred = vec![0.0; n];
-                self.paint.sculpt.blur_done = vec![false; tile_count(w, h)];
-                self.paint.sculpt.blur_radius = r;
+                self.paint.sculpt.memo = vec![0.0; n];
+                self.paint.sculpt.memo_done = vec![false; tile_count(w, h)];
+                self.paint.sculpt.memo_key = key;
             }
-            self.ensure_blur_tiles(rect, r);
+            self.ensure_memo_tiles(rect, key);
         }
 
         let offset = self.paint.sculpt.plane_offset();
@@ -195,13 +199,13 @@ impl PainterTool {
         let pre = Arc::clone(&self.paint.sculpt.pre);
         let amount = std::mem::take(&mut self.paint.sculpt.amount);
         let plane_sum = std::mem::take(&mut self.paint.sculpt.plane_sum);
-        let blurred = std::mem::take(&mut self.paint.sculpt.blurred);
+        let memo = std::mem::take(&mut self.paint.sculpt.memo);
         let mut moved: Option<Region> = None;
         {
             let Some(entry) = self.heights.get_mut(&layer) else {
                 self.paint.sculpt.amount = amount;
                 self.paint.sculpt.plane_sum = plane_sum;
-                self.paint.sculpt.blurred = blurred;
+                self.paint.sculpt.memo = memo;
                 return;
             };
             let target = Arc::make_mut(entry);
@@ -210,14 +214,14 @@ impl PainterTool {
             // too — a family switch sizes it (`ensure_family_target`), and if that has not happened yet
             // there is nothing to render, not something to guess at.
             let family_ready = match mode.family() {
-                SculptFamily::Smooth => blurred.len() == n,
+                SculptFamily::Memo => memo.len() == n,
                 SculptFamily::Plane => plane_sum.len() == n,
                 SculptFamily::Height => true, // no buffer: the target is `pre` and a knob
             };
             if target.len() != n || !family_ready {
                 self.paint.sculpt.amount = amount;
                 self.paint.sculpt.plane_sum = plane_sum;
-                self.paint.sculpt.blurred = blurred;
+                self.paint.sculpt.memo = memo;
                 return;
             }
             for y in rect.y..rect.y + rect.h {
@@ -248,14 +252,17 @@ impl PainterTool {
                     // `k ≤ 1`, so however long the artist dwells the coat never passes one Depth. Inflate's
                     // is the same, scaled by the surface's own `n_z` — see `inflate_nz`.
                     let toward = match mode {
-                        SculptMode::Smooth => blurred[i],
-                        SculptMode::Sharpen => p + p - blurred[i],
+                        SculptMode::Smooth => memo[i],
+                        SculptMode::Sharpen => p + p - memo[i],
                         SculptMode::Flatten
                         | SculptMode::Scrape
                         | SculptMode::Fill
                         | SculptMode::Chisel => plane_sum[i] / a + offset,
                         SculptMode::Layer => p + depth,
-                        SculptMode::Inflate => p + depth * inflate_nz(&pre, x, y, w, h),
+                        // The relief offset by a ball of radius `Depth` — dilated, or eroded when Depth is
+                        // negative. The `+ Depth` on a flat is already IN it (the ball's cap), so this is
+                        // not `p + …`: the memo IS the target. See `super::sculpt_offset`.
+                        SculptMode::Inflate => memo[i],
                     };
                     // ── The verb: which SIGN of the travel is allowed through. ──────────────────────
                     //
@@ -281,7 +288,7 @@ impl PainterTool {
         }
         self.paint.sculpt.amount = amount;
         self.paint.sculpt.plane_sum = plane_sum;
-        self.paint.sculpt.blurred = blurred;
+        self.paint.sculpt.memo = memo;
 
         if let Some(m) = moved {
             // Grow by one: the light reads a texel's NEIGHBOURS (the normal is a central difference), so a

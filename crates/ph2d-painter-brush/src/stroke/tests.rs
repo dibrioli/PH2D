@@ -1461,3 +1461,82 @@ fn heading_is_independent_of_dab_spacing() {
         "dense vs sparse heading agree (dot={dot:.4}): {dense:?} vs {sparse:?}"
     );
 }
+
+// ── The heading warm-up serves every reader of `Dab::dir`, not just the two texture slots ────────────
+
+/// A stroke whose consumer reads [`Dab::dir`] — but which rakes neither texture slot. The Sculpt **Chisel**.
+fn chisel_like_spec() -> BrushSpec {
+    BrushSpec {
+        needs_heading: true,
+        ..straight_spec(10.0, 0.5)
+    }
+}
+
+/// **A stroke that says it needs a heading gets one on EVERY dab — including the first.**
+///
+/// The warm-up holds the opening dabs until enough travel has settled a direction, then flushes them at it
+/// ([`crate::heading`]). It was gated on `texture.rake || shape.rake` — an enumeration of the readers of
+/// `Dab::dir` written when the two texture slots were the only ones there were.
+///
+/// The Sculpt **Chisel** is a third reader: it carves a V about the stroke's axis, taken from `dir`. With the
+/// warm-up off, the dab emitted at pen-down carries `dir = [0, 0]`, so `perp = [0, 0]`, so the tilt term is
+/// zero — the V collapses and that dab cuts a **plain Scrape**. The groove starts blunt, on every stroke, and
+/// the only way an artist could fix it was to tick a checkbox about a *silhouette image*: two doors to one
+/// question, and they had already diverged.
+///
+/// **Mutation that must bleed:** drop `|| self.spec.needs_heading` from the `warming` gate in
+/// [`super::Stroke::begin`] — the first dab comes back with `[0, 0]` and this fails. (Checked: it does.)
+#[test]
+fn a_stroke_that_needs_a_heading_gets_one_on_its_very_first_dab() {
+    let dabs = collect_stroke(
+        chisel_like_spec(),
+        no_dynamics(),
+        &[
+            pt(20.0, 20.0, 1.0),
+            pt(40.0, 20.0, 1.0),
+            pt(60.0, 20.0, 1.0),
+        ],
+    );
+    assert!(!dabs.is_empty(), "fixture: the stroke emitted no dabs");
+
+    let blind = dabs.iter().filter(|d| d.dir == [0.0, 0.0]).count();
+    assert_eq!(
+        blind,
+        0,
+        "{blind} of {} dabs came out with no heading. Anything that reads `Dab::dir` gets NOTHING from those \
+         — for the Chisel that means the V degenerates and the dab cuts a flat scrape instead.",
+        dabs.len()
+    );
+    // …and the heading it settled on is the direction the stroke actually went (+x), not merely non-zero.
+    assert!(
+        dabs[0].dir[0] > 0.9 && dabs[0].dir[1].abs() < 0.1,
+        "the first dab's heading is {:?}, not the stroke's direction (+x). A warm-up that flushes at a \
+         heading nobody travelled is worse than none: the groove would start pointing somewhere the artist \
+         never went.",
+        dabs[0].dir
+    );
+}
+
+/// The **presence sibling** of the gate above: without the flag, the opening dab really is blind.
+///
+/// An absence gate ("no dab lacks a heading") is green on a stroke that emits no dabs, and green on an engine
+/// that hands every dab a heading for free — in which case `needs_heading` is dead code and the Chisel's bug
+/// was somewhere else entirely. This is what proves the flag is the thing doing the work
+/// ([[feedback_absence_gate_needs_a_presence_sibling]]).
+#[test]
+fn without_the_flag_the_opening_dab_is_blind() {
+    let dabs = collect_stroke(
+        straight_spec(10.0, 0.5), // the same brush, `needs_heading: false`
+        no_dynamics(),
+        &[
+            pt(20.0, 20.0, 1.0),
+            pt(40.0, 20.0, 1.0),
+            pt(60.0, 20.0, 1.0),
+        ],
+    );
+    assert!(
+        dabs.iter().any(|d| d.dir == [0.0, 0.0]),
+        "every dab of a NON-raking stroke already carries a heading, so the warm-up gate is not what was \
+         starving the Chisel — and the gate above proves nothing. Go and find the real reader."
+    );
+}

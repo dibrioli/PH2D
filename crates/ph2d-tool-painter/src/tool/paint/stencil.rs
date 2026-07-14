@@ -387,6 +387,10 @@ impl PainterTool {
             self.end_sculpt_session();
         }
         self.paint.paint_mode = new_mode;
+        // The brush slot has just been swapped underneath us, so the "does anything read `Dab::dir`?" answer
+        // has to be re-asked: leaving Sculpt must clear the Chisel's heading need, entering it must restore
+        // it. (The slot round-trips the flag, but the LIVE brush is what `Stroke::new` reads.)
+        self.sync_stroke_heading_need();
         // Leaving the Selection tool auto-hides its gizmos (the "Show Selection Gizmos" checkbox unchecks) —
         // the gizmos belong to Select and would otherwise linger over another tool (Enio 2026-07-03).
         if new_mode != PaintMode::Selection && self.paint.selection_edit_mode {

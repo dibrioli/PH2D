@@ -18,10 +18,24 @@ impl Default for PaintState {
             spacing: 0.05,
             ..base
         };
+        // Sculpt's brush RAKES by default (Enio 2026-07-14): the verbs that carve are directional — the
+        // Chisel's groove runs along the stroke, and a blade-shaped Shape image has to turn with it or the
+        // silhouette points one way while the cut goes another. A round falloff is unaffected (there is no
+        // silhouette to rotate), so the default costs nothing when it is not wanted, and the checkbox is
+        // right there. NOTE this is NOT what makes the Chisel's V follow the stroke — that is
+        // `BrushSpec::needs_heading`, precisely so unticking this box cannot take the groove's start away.
+        let sculpt = BrushSpec {
+            shape: ph2d_painter_brush::TextureSettings {
+                rake: true,
+                ..base.shape
+            },
+            ..base
+        };
         let mut brush_by_mode = [base; PAINT_MODE_COUNT];
         brush_by_mode[PaintMode::Smear.slot()] = dense;
         brush_by_mode[PaintMode::Blur.slot()] = dense;
         brush_by_mode[PaintMode::Clone.slot()] = dense;
+        brush_by_mode[PaintMode::Sculpt.slot()] = sculpt;
         Self {
             brush: base,
             brush_by_mode,

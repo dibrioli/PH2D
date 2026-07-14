@@ -121,6 +121,23 @@ pub struct BrushSpec {
     /// always View-plane (dab-relative); `angle_deg`/`rake`/`random_angle` rotate the tip frame.
     pub shape: TextureSettings,
 
+    /// **Something downstream reads [`crate::Dab::dir`]** — so the stroke must settle a heading before it
+    /// emits, even though neither texture slot rakes.
+    ///
+    /// It is not a property of the brush, and it does not pretend to be: it is the **channel** by which a
+    /// consumer of the dab list tells the stroke engine that the dabs are useless without a direction. The
+    /// engine only ever sees the spec, so the spec is where the message has to travel.
+    ///
+    /// It exists because the heading **warm-up** — holding the opening dabs until enough travel has settled
+    /// a direction ([`crate::heading`]) — was gated on `texture.rake || shape.rake`, i.e. on an enumeration
+    /// of the readers of `dir` that was written when the two texture slots were the only ones. The Sculpt
+    /// **Chisel** is a third reader: it carves a V about the stroke's axis. With the warm-up off its opening
+    /// dabs carry `dir = [0, 0]`, the V collapses (`perp = [0,0]` ⇒ the tilt term is zero), and every chisel
+    /// stroke **begins as a plain Scrape** until the heading catches up. Two doors to the same question, and
+    /// they diverged: the artist unticks a checkbox about a *silhouette image* and the *groove* loses its
+    /// start. So the enumeration gained its missing member instead of the Chisel borrowing someone else's.
+    pub needs_heading: bool,
+
     // ── Dab flatten + rotate (Procreate "Shape" panel gizmo; Enio 2026-06-26) ───────────────────
     /// **Flatten** the dab footprint, `0..1`: `0` = round, → `1` = a thin ellipse (squished on the
     /// minor axis). Deforms the falloff envelope AND everything sampled in the footprint (the Shape

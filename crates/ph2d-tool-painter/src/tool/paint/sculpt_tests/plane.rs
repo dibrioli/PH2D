@@ -408,10 +408,10 @@ fn a_plane_stroke_costs_twelve_bytes_per_pixel_too() {
         "the plane session's three planes are not canvas-sized — the arithmetic below measures nothing"
     );
     assert!(
-        s.blurred.is_empty() && s.blur_done.is_empty(),
-        "a Scrape allocated the SMOOTH family's blur memo ({} B) — it never reads it, and it is 4 B/px on \
+        s.memo.is_empty() && s.memo_done.is_empty(),
+        "a Scrape allocated the MEMO family's kernel target ({} B) — it never reads it, and it is 4 B/px on \
          top of a session that promises 12",
-        s.blurred.len() * 4
+        s.memo.len() * 4
     );
     let live = (s.pre.len() + s.amount.len() + s.plane_sum.len()) * 4;
     assert_eq!(

@@ -20,7 +20,7 @@
 //!    óbvio, e é o que o GP faz.
 
 use ph2d_core::{Playhead, Vec2};
-use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, FlipStroke, LayerId};
+use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, FlipStroke, Frame, LayerId};
 use ph2d_vec_scene::Xform;
 
 /// Raio mínimo de pick, em px de TELA. Uma linha de 1 px tem de ser clicável sem que o
@@ -39,6 +39,18 @@ pub(crate) fn visible_drawing(
     playhead: &Playhead,
     active_layer: Option<LayerId>,
 ) -> Option<(FlipObjectId, LayerId, DrawingId)> {
+    let (oid, lid, _key, did) = visible_key(flip, playhead, active_layer)?;
+    Some((oid, lid, did))
+}
+
+/// O mesmo alvo de [`visible_drawing`], **mais a CHAVE** que o segura — que é onde mora
+/// a POSE do quadro (`FlipFrame::offset`, W7.2). Quem move um desenho instanciado escreve
+/// ali, não na geometria.
+pub(crate) fn visible_key(
+    flip: &FlipDoc,
+    playhead: &Playhead,
+    active_layer: Option<LayerId>,
+) -> Option<(FlipObjectId, LayerId, Frame, DrawingId)> {
     let oid = flip.objects().first().map(|o| o.id)?;
     let obj = flip.object(oid)?;
     let lid = active_layer
@@ -50,7 +62,9 @@ pub(crate) fn visible_drawing(
     }
     let frame = layer.authoring_frame(obj.frame_at(playhead));
     let did = layer.drawing_at(frame)?;
-    Some((oid, lid, did))
+    // A CHAVE que segura o desenho — no meio de um hold, não é o quadro corrente.
+    let key = layer.active_key(frame)?;
+    Some((oid, lid, key, did))
 }
 
 /// O traço sob o ponto `local`, se houver — **o de cima primeiro** (a ordem de z é a

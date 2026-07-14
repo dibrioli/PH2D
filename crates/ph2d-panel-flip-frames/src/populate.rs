@@ -91,6 +91,7 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_KEY_ADD);
     button(store, ids::FLIP_KEY_DUP);
     button(store, ids::FLIP_KEY_INSTANCE);
+    button(store, ids::FLIP_KEY_UNLINK);
     button(store, ids::FLIP_KEY_DELETE);
     button(store, ids::FLIP_KEY_LEFT);
     button(store, ids::FLIP_KEY_RIGHT);

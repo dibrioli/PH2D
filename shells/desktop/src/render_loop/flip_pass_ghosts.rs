@@ -27,6 +27,9 @@ pub(super) struct GhostRef<'a> {
     pub(super) drawing_id: u32,
     /// Distância à corrente (negativo = passado). Entra na chave do compositor.
     pub(super) delta: i32,
+    /// **A chave de origem** — é dela que sai a POSE do fantasma (W7.2): o fantasma
+    /// mostra onde o desenho ESTAVA, e "onde" inclui o lugar.
+    pub(super) key: ph2d_flip::Frame,
     /// Cor da silhueta (verde = passado, azul = futuro).
     pub(super) tint: [f32; 3],
     /// Opacidade final (fade `1/|Δ|` × opacidade do onion × opacidade da camada).
@@ -56,6 +59,7 @@ pub(super) fn collect<'a>(
                 drawing: art,
                 drawing_id: g.drawing.0,
                 delta: g.delta,
+                key: g.key,
                 tint: [g.tint.r(), g.tint.g(), g.tint.b()],
                 // A opacidade da CAMADA entra aqui (e não pelo compositor): a fatia
                 // do fantasma compõe em Normal/1.0, senão o blend da camada (um

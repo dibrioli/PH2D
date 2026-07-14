@@ -195,3 +195,67 @@ fn fold_model_translates_local_into_clip_and_scales_thickness() {
     let q = apply4(&s.world_to_clip, 1.0, 0.0);
     assert!((q[0] - 2.0).abs() < 1e-4 && q[1].abs() < 1e-4, "{q:?}");
 }
+
+/// 🔴 **Cada fatia sai na POSE DA SUA chave** (W7.2) — a arte do quadro corrente na dele,
+/// e **cada fantasma na do quadro que ele representa**.
+///
+/// O fantasma mostra onde o desenho ESTAVA, e "onde" inclui o LUGAR: numa instância que
+/// o animador deslocou, herdar a pose do quadro corrente empilharia o fantasma em cima da
+/// arte de agora — o rastro sumiria justamente quando ele passa a existir.
+///
+/// A pose vive no `model` da fatia (o render a dobra na câmera), então o teste lê o afim:
+/// a translação dele É a pose. Mutação que sangra: usar `layer.offset_at_cycled(frame)`
+/// nos dois lugares, ou não usar pose nenhuma.
+#[test]
+fn each_slice_carries_the_pose_of_its_own_key() {
+    let mut doc = doc_bg_fg();
+    let oid = doc.objects()[0].id;
+    let fg = doc.object(oid).unwrap().layers()[1].id; // as chaves 0 e 8 do FG
+    // O quadro 8 (o que está na tela) foi deslocado; o 0 (que vira fantasma) não.
+    doc.object_mut(oid)
+        .unwrap()
+        .translate_frame(fg, 8, Vec2::new(100.0, 0.0));
+
+    let (layers, _) = collect_layers(&doc, &at(8), None, None, &[], Some(&[]));
+    // BG · fantasma do FG (quadro 0) · FG (quadro 8)
+    let (ghost, art) = (&layers[1], &layers[2]);
+
+    assert_eq!(
+        [art.model.0[4], art.model.0[5]],
+        [100.0, 0.0],
+        "a arte do quadro corrente ignorou a pose da chave: mover a instancia nao move nada"
+    );
+    assert_eq!(
+        [ghost.model.0[4], ghost.model.0[5]],
+        [0.0, 0.0],
+        "o fantasma herdou a pose do quadro CORRENTE — ele mostraria o passado no lugar do presente"
+    );
+}
+
+/// **A pose sai pelo MESMO mapa do desenho** (o do ciclo): num Loop, o quadro da 2ª volta
+/// mostra a arte do vão **e a pose dela**. Amostrar o desenho pelo ciclo e a pose pelo
+/// quadro cru poria a arte no lugar de um quadro que não existe — a assinatura do bug de
+/// coordenada derivada (`feedback_derived_coordinate_seed_must_match_sample`).
+#[test]
+fn under_a_loop_the_pose_travels_with_the_drawing() {
+    use ph2d_flip::{CycleMode, LayerCycle};
+    let mut doc = doc_bg_fg();
+    let oid = doc.objects()[0].id;
+    let fg = doc.object(oid).unwrap().layers()[1].id;
+    let obj = doc.object_mut(oid).unwrap();
+    obj.translate_frame(fg, 0, Vec2::new(50.0, 0.0)); // a chave 0 está deslocada
+    obj.set_exposure(fg, 8, 8); // vão = [0, 16)
+    obj.layer_mut(fg).unwrap().cycle = LayerCycle {
+        pre: CycleMode::Loop,
+        post: CycleMode::Loop,
+    };
+
+    // O quadro 16 é o quadro 0 de novo (2ª volta do Loop).
+    let (layers, _) = collect_layers(&doc, &at(16), None, None, &[], None);
+    let fg_slice = layers.last().expect("a camada FG compoe");
+    assert_eq!(
+        [fg_slice.model.0[4], fg_slice.model.0[5]],
+        [50.0, 0.0],
+        "a 2a volta do Loop desenhou a arte do vao na pose ERRADA (a do quadro cru)"
+    );
+}

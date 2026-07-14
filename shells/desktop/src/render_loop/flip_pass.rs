@@ -22,6 +22,7 @@
 //! loga packs vs hits por frame.
 
 use super::flip_pass_cache::TessCache;
+use crate::flip_transform::art_to_world;
 use ph2d_core::Playhead;
 use ph2d_flip::{FlipDoc, FlipDrawing, FlipObjectId, Frame, LayerId};
 use ph2d_flip_render::{CameraRaw, FlipCompose, FlipGpuData, FlipRenderer};
@@ -392,7 +393,11 @@ fn collect_layers<'a>(
                         cache_key: (obj.id.0, g.drawing_id),
                         drawing: Some(g.drawing),
                         preview: None,
-                        model,
+                        // **Cada fantasma na POSE DA SUA chave** (W7.2): o fantasma
+                        // mostra onde o desenho ESTAVA — e "onde" inclui o lugar, não
+                        // só a forma. Herdar a pose do quadro corrente empilharia todos
+                        // os fantasmas em cima da arte de agora.
+                        model: art_to_world(&model, layer.frame_offset(g.key)),
                         ghost: Some((g.tint, g.alpha)),
                     });
                 }
@@ -408,7 +413,16 @@ fn collect_layers<'a>(
                 cache_key: (obj.id.0, did.map_or(u32::MAX, |d| d.0)),
                 drawing: if has_geo { drawing } else { None },
                 preview: this_preview,
-                model,
+                // A pose da chave EXIBIDA — amostrada pelo mesmo mapa do desenho
+                // (`offset_at_cycled`), senão a arte da 2ª volta de um Loop sairia no
+                // lugar de um quadro que não existe.
+                //
+                // O PREVIEW (o traço vivo) entra nesta MESMA fatia e por isso recebe a
+                // mesma pose — e está certo: ele já foi convertido para o espaço do
+                // DESENHO pelo funil de entrada (`flip_active_world_to_local`, que desfaz
+                // a pose da chave ativa). As duas pontas usam a mesma transform, que é a
+                // única forma de o preview não folgar do traço assado.
+                model: art_to_world(&model, layer.offset_at_cycled(frame)),
                 ghost: None,
             });
         }

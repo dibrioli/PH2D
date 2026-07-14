@@ -72,7 +72,10 @@ pub use ph2d_painter_effects::BlendMode;
 /// v4 (W6): o traço ganhou `selected` — o atributo `.selection` do GP no domínio
 /// **Curve** (o Edit Mode). É atributo de documento (e não estado do shell) porque a
 /// identidade de um traço é a posição dele na lista, e o balde insere no MEIO dela.
-pub const FLIP_SCHEMA_VERSION: u32 = 4;
+/// v5 (W7.2): a CHAVE ganhou `offset` — a **pose do quadro**. É o que faz uma
+/// instância (duas chaves, um desenho) ser mais do que um hold: a arte é
+/// compartilhada e o LUGAR é de cada quadro.
+pub const FLIP_SCHEMA_VERSION: u32 = 5;
 
 #[cfg(test)]
 mod tests {

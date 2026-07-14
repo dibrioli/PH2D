@@ -13,7 +13,7 @@ use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button
 use ph2d_editor_core::tool::PanelEvent;
 
 /// Os botões/toggles da barra + o X, todos encaminhados como `Click`.
-const BUTTONS: [ph2d_a11y::NodeId; 15] = [
+const BUTTONS: [ph2d_a11y::NodeId; 16] = [
     ids::FLIP_PREV_DRAWING,
     ids::FLIP_PLAY,
     ids::FLIP_NEXT_DRAWING,
@@ -24,6 +24,7 @@ const BUTTONS: [ph2d_a11y::NodeId; 15] = [
     ids::FLIP_KEY_ADD,
     ids::FLIP_KEY_DUP,
     ids::FLIP_KEY_INSTANCE,
+    ids::FLIP_KEY_UNLINK,
     ids::FLIP_KEY_DELETE,
     ids::FLIP_KEY_LEFT,
     ids::FLIP_KEY_RIGHT,

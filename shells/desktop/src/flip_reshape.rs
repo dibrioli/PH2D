@@ -30,6 +30,23 @@ pub(crate) struct ReshapeTarget {
     pub(crate) falloff: f32,
 }
 
+// **Por que a POSE da chave (W7.2) NÃO é compensada aqui** — a pergunta que o próximo
+// leitor vai fazer, e a resposta não é óbvia (eu escrevi a compensação primeiro, e um
+// gate a derrubou).
+//
+// O cursor chega convertido pela pose do quadro ATIVO. Um alvo noutra chave, deslocada,
+// tem a arte em OUTRO lugar da tela — então "o mesmo ponto do MUNDO" cairia no vazio para
+// ele, e o multiframe silenciosamente só editaria o quadro ativo sempre que as poses
+// diferissem.
+//
+// O multiframe é ancorado na **ARTE**, não no mundo: as mesmas coordenadas na geometria
+// de cada desenho são a mesma parte do personagem. É o que o animador quer dizer com
+// *"conserta o cotovelo em todos os quadros que marquei"* — mesmo que os quadros estejam
+// espalhados pela tela (que é justamente o que uma pose faz, e o motivo de ela existir:
+// um ciclo que ANDA). Por isso a mesma `InputSample` vai para todos os alvos.
+//
+// Gate: `multiframe_is_art_anchored_not_world_anchored`.
+
 /// O gesto de escultura em curso (o que o `App` guarda entre o down e o up).
 pub(crate) struct FlipReshape {
     /// **Um alvo por DESENHO** (W7 — multiframe): com chaves selecionadas na tira, o MESMO

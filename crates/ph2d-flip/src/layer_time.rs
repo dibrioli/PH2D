@@ -12,6 +12,7 @@ use crate::cycle::{CycleMode, map_frame};
 use crate::frame::KeyKind;
 use crate::ids::{DrawingId, Frame};
 use crate::layer::FlipLayer;
+use ph2d_core::Vec2;
 use std::ops::Bound;
 
 impl FlipLayer {
@@ -94,6 +95,26 @@ impl FlipLayer {
     pub fn drawing_at_cycled(&self, frame: Frame) -> Option<DrawingId> {
         let span = self.span()?;
         self.drawing_at(map_frame(self.cycle, span, frame)?)
+    }
+
+    /// **A pose do desenho que o quadro `frame` mostra** — o par de
+    /// [`Self::drawing_at_cycled`], e pelo MESMO mapa.
+    ///
+    /// A arte e o lugar dela têm de sair pela mesma porta: amostrar o desenho pelo ciclo
+    /// e a pose pelo quadro cru poria a arte da 2ª volta do Loop no lugar do quadro que
+    /// não existe (`feedback_derived_coordinate_seed_must_match_sample`).
+    #[must_use]
+    pub fn offset_at_cycled(&self, frame: Frame) -> Vec2 {
+        let Some(span) = self.span() else {
+            return Vec2::ZERO;
+        };
+        let Some(src) = map_frame(self.cycle, span, frame) else {
+            return Vec2::ZERO;
+        };
+        // A chave ATIVA no quadro-fonte (não `frames[src]`: dentro de um hold, o quadro
+        // exibido não é a chave — a pose é a da chave que segura a tela).
+        self.active_key(src)
+            .map_or(Vec2::ZERO, |k| self.frame_offset(k))
     }
 
     // ── navegação por DESENHO (o "flip" do animador, W3.T3.5) ────────────────

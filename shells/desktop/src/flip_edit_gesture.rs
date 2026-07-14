@@ -133,6 +133,44 @@ pub(crate) fn apply_marquee(
     changed
 }
 
+/// **Mover um desenho: a arte ou a POSE?** (W7.2 — a regra que dá sentido à instância.)
+///
+/// - **Arte compartilhada** (o desenho é instanciado por 2+ chaves): o arrasto move a
+///   **pose DESTA chave** (`FlipFrame::offset`) — o desenho inteiro anda, e só neste
+///   quadro. É a razão de a instância existir: *a arte é uma só, o lugar é de cada
+///   quadro* (é assim que um ciclo reusa desenho e ainda assim ANDA). Mover a geometria
+///   arrastaria o gêmeo junto, e as duas chaves ficariam eternamente uma sobre a outra —
+///   uma instância indistinguível de um hold.
+/// - **Arte exclusiva** (o caminho comum): o arrasto move a **geometria** dos traços
+///   selecionados, exatamente como antes. Aqui pose e geometria são observacionalmente
+///   idênticas (só esta chave usa o desenho), e mexer na geometria mantém o documento
+///   simples: um desenho não-posado é geometria em coords do objeto.
+///
+/// Numa arte compartilhada o arrasto **nunca deforma**, qualquer que seja a seleção — a
+/// arte é dos dois quadros e um deles não pode reescrevê-la por baixo do outro. Quem quer
+/// divergir a arte de um quadro **quebra o vínculo** (`Unlink` na tira,
+/// [`ph2d_flip::FlipObject::make_single_user`]) e volta ao caminho comum.
+fn move_drawing(
+    flip: &mut ph2d_flip::FlipDoc,
+    oid: ph2d_flip::FlipObjectId,
+    lid: ph2d_flip::LayerId,
+    key: ph2d_flip::Frame,
+    did: ph2d_flip::DrawingId,
+    delta: Vec2,
+) -> bool {
+    let Some(obj) = flip.object_mut(oid) else {
+        return false;
+    };
+    if obj
+        .drawing(did)
+        .is_some_and(ph2d_flip::FlipDrawing::is_instanced)
+    {
+        return obj.translate_frame(lid, key, delta);
+    }
+    obj.drawing_mut(did)
+        .is_some_and(|dr| translate_selection(dr, delta))
+}
+
 /// Translada os traços selecionados — **pontos E buracos** (ver o cabeçalho).
 pub(crate) fn translate_selection(drawing: &mut FlipDrawing, delta: Vec2) -> bool {
     if delta.x == 0.0 && delta.y == 0.0 {
@@ -205,10 +243,9 @@ impl crate::App {
                 let active_layer = self.flip_active_layer;
                 let playhead = self.playhead;
                 if let Some(gfx) = self.gfx.as_mut()
-                    && let Some((oid, _l, did)) =
-                        crate::flip_select::visible_drawing(&gfx.flip, &playhead, active_layer)
-                    && let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
-                    && translate_selection(dr, delta)
+                    && let Some((oid, lid, key, did)) =
+                        crate::flip_select::visible_key(&gfx.flip, &playhead, active_layer)
+                    && move_drawing(&mut gfx.flip, oid, lid, key, did, delta)
                 {
                     self.title_dirty = true;
                 }

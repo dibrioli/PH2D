@@ -449,3 +449,70 @@ fn an_instanced_drawing_is_sculpted_only_once() {
         "o ponto andou {y}: o esperado e 1,0 (uma aplicacao). 2,0 = o pincel bateu DUAS          vezes no mesmo buffer (o dedup caiu)"
     );
 }
+
+/// 🔴 **O multiframe é ancorado na ARTE, não no mundo** (W7.2).
+///
+/// Quadros-alvo podem estar em POSES diferentes — é justamente o que uma pose serve para
+/// fazer (um ciclo que ANDA). O cursor aponta para um lugar do mundo, mas a arte de um
+/// quadro deslocado está noutro lugar da tela. Se o pincel perseguisse o ponto de MUNDO,
+/// ele cairia no vazio para esse quadro, e o multiframe silenciosamente só editaria o
+/// ativo sempre que as poses diferissem.
+///
+/// A semântica certa é a que o animador quer dizer: *"conserta o cotovelo em TODOS os
+/// quadros que marquei"* — as mesmas coordenadas na geometria de cada desenho são a mesma
+/// parte do personagem.
+///
+/// (Eu escrevi a compensação de pose primeiro. Este gate a derrubou: no quadro deslocado,
+/// nenhum ponto se mexia. **Mutação que sangra:** compensar o `pose_delta` na
+/// `InputSample` de cada alvo.)
+#[test]
+fn multiframe_is_art_anchored_not_world_anchored() {
+    let (mut doc, l) = doc_with_line();
+    let oid = doc.objects().first().unwrap().id;
+    // Chave 5: cópia PROFUNDA (arte própria), deslocada 100 no x — o quadro está longe.
+    doc.object_mut(oid)
+        .unwrap()
+        .duplicate_frame(l, 0, 5, ph2d_flip::DupMode::Deep);
+    doc.object_mut(oid)
+        .unwrap()
+        .translate_frame(l, 5, Vec2::new(100.0, 0.0));
+
+    let mut strip = crate::flip_strip::FlipStrip {
+        selection: vec![0, 5],
+        ..Default::default()
+    };
+    let p = ReshapeParams {
+        kind: ReshapeKind::Push,
+        radius: 1.0, // apertado: só o ponto SOB o cursor se mexe
+        strength: 1.0,
+        ..Default::default()
+    };
+    // O cursor está sobre o ponto x=2 da arte do quadro ATIVO.
+    let s = InputSample {
+        pos: Vec2::new(2.0, 0.0),
+        delta: Vec2::new(0.0, 1.0),
+        pressure: 1.0,
+    };
+    let ph = Playhead::new(1.0 / f64::from(ph2d_flip::DEFAULT_FPS));
+
+    let (oid, _targets) = reshape_begin(&mut doc, &ph, Some(l), &mut strip, &p, &s, false).unwrap();
+
+    // Nos DOIS quadros, quem andou é o MESMO ponto da arte (o índice 2) — inclusive no
+    // quadro que está a 100 unidades de distância na tela.
+    let obj = doc.object(oid).unwrap();
+    for (key, label) in [(0, "ativo"), (5, "deslocado")] {
+        let did = obj.layer(l).unwrap().drawing_at(key).unwrap();
+        let pts = obj.drawing(did).unwrap().strokes[0].positions();
+        let moved: Vec<usize> = pts
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.y.abs() > 1e-3)
+            .map(|(i, _)| i)
+            .collect();
+        assert_eq!(
+            moved,
+            vec![2],
+            "no quadro {label}: o pincel nao pegou a mesma parte da ARTE"
+        );
+    }
+}

@@ -227,19 +227,36 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return Xform::IDENTITY;
         };
-        let Some(oid) = gfx.flip.objects().first().map(|o| o.id) else {
+        let Some(obj) = gfx.flip.objects().first() else {
             return Xform::IDENTITY;
         };
-        let Some(&bits) = self.flip_entities.get(&oid) else {
-            return Xform::IDENTITY;
-        };
-        let e = ph2d_ecs::Entity::from_bits(bits);
-        if gfx.sim.world().get_entity(e).is_err() {
-            return Xform::IDENTITY;
-        }
-        crate::flip_transform::object_xform(&gfx.sim, e)
-            .inverse()
-            .unwrap_or(Xform::IDENTITY)
+        let oid = obj.id;
+        // **A POSE DA CHAVE ativa entra no funil** (W7.2). A cadeia da arte é
+        // `objeto ∘ pose_da_chave`, então o inverso dela é o que leva o cursor ao espaço
+        // do DESENHO — onde a geometria vive. Sem isto, desenhar/esculpir/preencher numa
+        // chave deslocada erraria pelo tanto do deslocamento: o usuário aponta para o que
+        // VÊ, e o que ele vê já está posado.
+        //
+        // A pose sai do MESMO amostrador que o render usa (`offset_at_cycled`) — seed e
+        // sample são a mesma função (`feedback_derived_coordinate_seed_must_match_sample`).
+        let frame = obj.frame_at(&self.playhead);
+        let key_pose = self
+            .flip_active_layer
+            .filter(|id| obj.layer(*id).is_some())
+            .or_else(|| obj.layers().last().map(|l| l.id))
+            .and_then(|lid| obj.layer(lid))
+            .map_or(ph2d_core::Vec2::ZERO, |l| l.offset_at_cycled(frame));
+        // O objeto (identidade se a entidade sumiu) e a pose entram na MESMA função que
+        // o render usa — só que pelo lado do inverso.
+        let object = self
+            .flip_entities
+            .get(&oid)
+            .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
+            .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
+            .map_or(Xform::IDENTITY, |e| {
+                crate::flip_transform::object_xform(&gfx.sim, e)
+            });
+        crate::flip_transform::world_to_art(&object, key_pose)
     }
 
     /// Pen-down do desenho Flip: começa um traço na coord de mundo. Devolve

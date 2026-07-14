@@ -56,7 +56,9 @@ pub(crate) fn anchor_half(
     entity: Entity,
 ) -> Option<([f32; 2], [f32; 2])> {
     let oid = object_of(sim, entity)?;
-    let (lo, hi) = doc.object(oid)?.geometry_bbox()?;
+    // A arte **como aparece** (com as poses das chaves, W7.2) — não a nuvem crua de
+    // pontos: mover uma instância deslocaria a arte e deixaria a caixa para trás.
+    let (lo, hi) = doc.object(oid)?.posed_bbox()?;
     let anchor = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
     let half = [(hi[0] - lo[0]) * 0.5, (hi[1] - lo[1]) * 0.5];
     Some((anchor, half))
@@ -148,12 +150,15 @@ fn contains_object(
     let Some(obj) = doc.object(oid) else {
         return false;
     };
-    for d in obj.drawings() {
+    // Por CHAVE, com a POSE dela descontada do cursor: o ponteiro aponta para a arte no
+    // lugar em que ela aparece, e a geometria está guardada sem a pose.
+    for (off, d) in obj.posed_drawings() {
+        let p = [local[0] - f64::from(off.x), local[1] - f64::from(off.y)];
         for s in &d.strokes {
             let pos = s.positions();
             for w in pos.windows(2) {
                 let d2 = seg_dist2(
-                    local,
+                    p,
                     [f64::from(w[0].x), f64::from(w[0].y)],
                     [f64::from(w[1].x), f64::from(w[1].y)],
                 );
@@ -163,8 +168,8 @@ fn contains_object(
             }
             // Um traço de 1 ponto (toque) ainda pega no próprio ponto.
             if pos.len() == 1 {
-                let dx = local[0] - f64::from(pos[0].x);
-                let dy = local[1] - f64::from(pos[0].y);
+                let dx = p[0] - f64::from(pos[0].x);
+                let dy = p[1] - f64::from(pos[0].y);
                 if dx * dx + dy * dy <= r2 {
                     return true;
                 }
@@ -236,7 +241,7 @@ pub(crate) fn pick_in_world_rect(
         if is_hidden_or_locked(sim, e) {
             continue;
         }
-        let Some((lo, hi)) = doc.object(oid).and_then(|o| o.geometry_bbox()) else {
+        let Some((lo, hi)) = doc.object(oid).and_then(|o| o.posed_bbox()) else {
             continue;
         };
         let x = object_xform(sim, e);

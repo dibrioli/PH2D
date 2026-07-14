@@ -13,6 +13,7 @@
 use crate::cycle::LayerCycle;
 use crate::frame::{FlipFrame, Hold, KeyKind};
 use crate::ids::{DrawingId, Frame, LayerId};
+use ph2d_core::Vec2;
 use ph2d_painter_effects::BlendMode;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -106,6 +107,37 @@ impl FlipLayer {
             .and_then(|(_, f)| f.drawing)
     }
 
+    /// **A pose da chave `key`** — o deslocamento da arte daquele quadro
+    /// ([`FlipFrame::offset`]). `ZERO` se a chave não existe.
+    #[must_use]
+    pub fn frame_offset(&self, key: Frame) -> Vec2 {
+        self.frames.get(&key).map_or(Vec2::ZERO, |f| f.offset)
+    }
+
+    /// Aponta a chave `key` para outro desenho (o refcount é do
+    /// [`crate::FlipObject`] — quem chama acerta os `users`). `false` se a chave não
+    /// existe ou é sentinela.
+    pub fn set_frame_drawing(&mut self, key: Frame, drawing: DrawingId) -> bool {
+        match self.frames.get_mut(&key) {
+            Some(f) if f.drawing.is_some() => {
+                f.drawing = Some(drawing);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Escreve a pose da chave `key`. `false` se a chave não existe.
+    pub fn set_frame_offset(&mut self, key: Frame, offset: Vec2) -> bool {
+        match self.frames.get_mut(&key) {
+            Some(f) => {
+                f.offset = offset;
+                true
+            }
+            None => false,
+        }
+    }
+
     /// A duração (em quadros) da chave em `key`: distância até a próxima chave, ou
     /// `0` se é a última (segura indefinidamente). Espelha `get_frame_duration_at`.
     #[must_use]
@@ -178,6 +210,10 @@ impl FlipLayer {
                 drawing,
                 implicit_hold,
                 kind,
+                // Pose neutra. Quem cria uma chave a partir de OUTRA (duplicar,
+                // instanciar, autokey, tween) reescreve o offset depois — senão a arte
+                // saltaria de volta para a origem no quadro novo.
+                offset: Vec2::ZERO,
             },
         );
         let duration = hold.duration();
@@ -423,6 +459,7 @@ mod tests {
                 drawing: d(0),
                 implicit_hold: true,
                 kind: KeyKind::Keyframe,
+                offset: Vec2::ZERO,
             },
         );
         l.frames.insert(
@@ -431,6 +468,7 @@ mod tests {
                 drawing: d(1),
                 implicit_hold: true,
                 kind: KeyKind::Keyframe,
+                offset: Vec2::ZERO,
             },
         );
         l.frames.insert(10, FlipFrame::end());
@@ -440,6 +478,7 @@ mod tests {
                 drawing: d(2),
                 implicit_hold: true,
                 kind: KeyKind::Keyframe,
+                offset: Vec2::ZERO,
             },
         );
 

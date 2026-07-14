@@ -35,7 +35,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v8 (ADR-0114 W6): o `FlipStroke` ganhou `selected` — a seleção é ATRIBUTO do traço
 /// (o Edit Mode; `FLIP_SCHEMA_VERSION` 3→4), e não estado do shell. Idem: a forma do
 /// `FlipDoc` mudou dentro do `ProjectState`, então o par sobe junto.
-const PROJECT_SCHEMA: u32 = 8;
+/// v9 (ADR-0114 W7.2): a CHAVE (`FlipFrame`) ganhou `offset` — a **pose do quadro**
+/// (`FLIP_SCHEMA_VERSION` 4→5). É o que faz uma instância (duas chaves, um desenho) ser
+/// mais que um hold: a arte é compartilhada e o lugar é de cada quadro.
+const PROJECT_SCHEMA: u32 = 9;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -301,7 +304,7 @@ mod tests {
     fn a_flip_schema_bump_must_bump_the_project_schema() {
         assert_eq!(
             (PROJECT_SCHEMA, ph2d_flip::FLIP_SCHEMA_VERSION),
-            (8, 4),
+            (9, 5),
             "a forma do FlipDoc mudou (ou o esquema do projeto): suba o PROJECT_SCHEMA \
              junto e atualize este par. Postcard nao avisa - ele so le errado."
         );

@@ -998,6 +998,43 @@ refcount a segura). Mutação provada: `Instance` → `Deep` derruba 2 dos 4. E 
 ganhou o botão novo **e o Falloff** (que eu tinha esquecido de listar no W7 — o gate de pintura
 não o cobria).
 
+## W7.2 — A **pose do quadro**: a outra metade da instância (LANDOU 2026-07-13, pendente o smoke)
+
+Smoke do W7.1, em um clique: *"a instância não pode ser movida sozinha, sempre fica exatamente
+sobre a outra"* (Enio). Certíssimo — do jeito como nasceu, **a instância era indistinguível de um
+hold**. Reusar arte só serve para alguma coisa se o quadro puder pô-la noutro lugar (é assim que um
+ciclo ANDA).
+
+A chave ganhou **pose** (`FlipFrame::offset`, `FLIP_SCHEMA_VERSION` 4→5, `PROJECT_SCHEMA` 8→9):
+*a arte é uma só; o LUGAR é de cada quadro*. Doc: [`Flip/05 §6.2`](Flip/05_frames_ghost_tween.md).
+
+**A regra do gesto:** arte COMPARTILHADA → arrastar move a **pose da chave** (o quadro inteiro,
+só ele; a geometria é dos dois e não pode ser reescrita por baixo do gêmeo). Arte EXCLUSIVA → move
+a **geometria**, byte a byte como antes. Botão **Unlink** (`make_single_user`) para divergir a arte
+de um quadro instanciado — sem ele, instanciar era irreversível.
+
+**A pose atravessa quatro bordas**, e em todas ela erraria calada: render (`art_to_world` por
+fatia — e cada **fantasma na pose da SUA chave**) · entrada (`world_to_art`, o inverso EXATO, do
+mesmo par de funções — as duas pontas já divergiram 3× nesta linha: BUGS #11/#14/#16) · ciclos (a
+pose sai pelo MESMO mapa do desenho: `offset_at_cycled`) · chave nova (duplicar/instanciar/autokey/
+tween **herdam a pose**, senão a arte salta para a origem no quadro seguinte). O gizmo do objeto
+passou a medir a arte **como ela aparece** (`posed_bbox`), não a nuvem crua de pontos.
+
+**O que a pose NÃO faz:** compensar o multiframe. Eu escrevi a compensação primeiro e o gate
+`multiframe_is_art_anchored_not_world_anchored` a derrubou: um quadro-alvo deslocado tem de ser
+esculpido no mesmo ponto da **ARTE** dele, não do mundo — senão o pincel cai no vazio e o
+multiframe só edita o quadro ativo sempre que as poses diferem.
+
+Gates (12 novos): a pose é da CHAVE (mover uma instância não toca a geometria — **mutação provada**:
+`translate_frame` escrevendo geometria derruba 3) · duplicar carrega a pose · Unlink separa de
+verdade (e é no-op honesto em arte exclusiva) · `posed_bbox` vs `geometry_bbox` · cada fatia na pose
+da sua chave (**mutação provada**: o fantasma herdando a pose corrente) · sob Loop a pose viaja com
+o desenho · render e entrada são inversos exatos · arte exclusiva ainda move geometria (irmão de
+PRESENÇA) · multiframe é art-anchored.
+
+**Só translação** — girar/escalar uma seleção não existe para desenho nenhum (item aberto do W6.1);
+quando existir, é a pose que ele escreve.
+
 ## Aberto (fora do W0..W5, por design)
 
 - **A próxima recomendada: Edit Mode / seleção de traço** (o "select do traço" que o Enio

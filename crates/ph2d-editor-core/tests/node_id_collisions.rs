@@ -596,6 +596,7 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("FLIP_KEY_ADD", ids::FLIP_KEY_ADD),
     ("FLIP_KEY_DUP", ids::FLIP_KEY_DUP),
     ("FLIP_KEY_INSTANCE", ids::FLIP_KEY_INSTANCE),
+    ("FLIP_KEY_UNLINK", ids::FLIP_KEY_UNLINK),
     ("FLIP_KEY_DELETE", ids::FLIP_KEY_DELETE),
     ("FLIP_HOLD_NUM", ids::FLIP_HOLD_NUM),
     ("FLIP_KEY_LEFT", ids::FLIP_KEY_LEFT),

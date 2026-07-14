@@ -104,6 +104,9 @@ pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
         // para o MESMO desenho — editar uma edita as duas. É o elo, não a cópia: daí o
         // ícone de corrente ao lado do de cópia, e o pontinho que a célula ganha.
         Item::Icon(ids::FLIP_KEY_INSTANCE, IconId::Link),
+        // **Unlink** — quebra o vínculo desta chave com a arte compartilhada. Só faz
+        // sentido ao lado do Link: um desfaz o que o outro faz.
+        Item::Icon(ids::FLIP_KEY_UNLINK, IconId::Unlink),
         Item::Icon(ids::FLIP_KEY_DELETE, IconId::Trash),
         Item::Label("Hold"),
         Item::Number(ids::FLIP_HOLD_NUM, f64::from(hold)),

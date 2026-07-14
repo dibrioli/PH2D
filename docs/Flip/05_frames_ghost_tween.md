@@ -250,6 +250,50 @@ verde num mundo onde tudo compartilha · `deleting_one_of_two_instanced_keys_kee
 instanciar faria a borracha comer o quadro de origem junto. A instância é uma decisão do animador,
 tomada com um clique explícito; nunca um efeito colateral de desenhar.
 
+**A saída:** o botão **Unlink** (`make_single_user`) devolve à chave uma arte só dela. Sem ele,
+instanciar seria irreversível — a única forma de divergir um quadro seria apagar a chave e
+redesenhar. Um botão que só entra num caminho é uma armadilha.
+
+### §6.2 — A POSE do quadro (W7.2) — a outra metade da instância
+
+O smoke da §6.1 durou um clique: *"a instância não pode ser movida sozinha, sempre fica exatamente
+sobre a outra"* (Enio). E ele estava certo — do jeito como nasceu, **a instância era
+indistinguível de um hold**: a mesma imagem, no mesmo lugar, por mais tempo. Reusar arte só vale
+alguma coisa se o quadro puder **colocá-la noutro lugar** — é assim que um ciclo de caminhada
+ANDA.
+
+Então a chave ganhou **pose** (`FlipFrame::offset`): *a arte é uma só; o LUGAR é de cada quadro.*
+A cadeia da arte passou a ser `objeto ∘ pose_da_chave ∘ geometria` — a pose entra como um `model`
+por FATIA no render (a mesma máquina que o `Transform` do objeto já usava, então custo zero em
+quem nunca moveu uma instância).
+
+É a discretização do **peg** (Harmony/Moho: uma trilha de transform animada) ao que o Flip é: um
+meio **quadro-a-quadro**, onde a posição muda por DESENHO, não continuamente. O GP não tem isso —
+lá o drawing não tem pose, e por isso a instância dele nunca serviu para nada além de economizar
+memória.
+
+**A regra do gesto** (`flip_edit_gesture::move_drawing`): em arte **compartilhada**, arrastar move
+a **pose da chave** (o desenho inteiro, só neste quadro) — nunca a geometria, que é dos dois. Em
+arte **exclusiva** (o caminho comum), arrastar move a geometria, byte a byte como antes. Quem quer
+divergir a arte de um quadro instanciado usa o **Unlink** e volta ao caminho comum.
+
+**As quatro bordas que a pose atravessa** (e onde ela erraria calada):
+
+| Borda | O que a pose faz lá |
+|---|---|
+| **Render** | `art_to_world` por fatia — e **cada fantasma na pose da SUA chave** (ele mostra onde o desenho ESTAVA, e "onde" inclui o lugar) |
+| **Entrada** (caneta, balde, escultura, seleção) | `world_to_art` — o inverso EXATO do render, do mesmo par de funções. As duas pontas já divergiram 3× nesta linha (o balde: BUGS #11/#14/#16) |
+| **Ciclos** | a pose sai pelo MESMO mapa do desenho (`offset_at_cycled`): na 2ª volta de um Loop, a arte do vão aparece na pose do vão |
+| **Chave nova** | duplicar/instanciar/autokey/tween **herdam a pose** — senão a arte saltaria para a origem no quadro seguinte |
+
+**O que a pose NÃO faz:** compensar o multiframe. Um quadro-alvo deslocado é esculpido **no mesmo
+ponto da ARTE dele**, não no mesmo ponto do mundo (§8) — perseguir o mundo faria o pincel cair no
+vazio e o multiframe editaria só o quadro ativo sempre que as poses diferissem. Escrevi a
+compensação primeiro; o gate `multiframe_is_art_anchored_not_world_anchored` a derrubou.
+
+**Só translação.** Girar/escalar uma seleção não existe para desenho nenhum (é o gizmo de seleção,
+item aberto do W6.1) — quando existir, é a pose que ele vai escrever.
+
 **Follow-ups conscientes:** drag de célula (mover chave arrastando) e drag da borda (esticar o
 hold) — hoje isso é feito pelos botões `◀`/`▶` e pela caixa **Hold**, que dão o mesmo resultado
 sem exigir a infra de dispatch 2D do painel. Multi-seleção de chaves (que destravaria o modo

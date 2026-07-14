@@ -261,6 +261,10 @@ pub const FLIP_KEY_DUP: NodeId = hash_node_id("flip.strip.key_dup");
 /// reuses art. Blender calls it a *linked duplicate*; the strip marks such cells
 /// with a dot.
 pub const FLIP_KEY_INSTANCE: NodeId = hash_node_id("flip.strip.key_instance");
+/// **Quebra o vínculo** da chave atual com a arte compartilhada (o *make single user*):
+/// ela passa a ter um desenho só dela. A saída de emergência da instância — sem ela,
+/// instanciar seria irreversível.
+pub const FLIP_KEY_UNLINK: NodeId = hash_node_id("flip.strip.key_unlink");
 /// Delete the current key.
 pub const FLIP_KEY_DELETE: NodeId = hash_node_id("flip.strip.key_del");
 /// Exposure (hold) of the selected key, in frames.

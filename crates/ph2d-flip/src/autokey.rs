@@ -20,6 +20,7 @@
 use crate::frame::{Hold, KeyKind};
 use crate::ids::{DrawingId, Frame, LayerId};
 use crate::object::{DupMode, FlipObject};
+use ph2d_core::Vec2;
 
 /// O que a ferramenta quer quando cai num quadro sem chave própria.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -70,7 +71,17 @@ impl FlipObject {
             None
         };
 
-        match source {
+        // **A POSE da chave que está NA TELA** — a nova a herda, seja duplicata ou
+        // branca. É o mesmo motivo nos dois casos: o gesto foi feito sobre a arte no
+        // lugar em que ela aparece, e a mão do usuário converte tela→local pela pose que
+        // ele está VENDO. Se a chave nova nascesse na pose neutra, o traço cairia
+        // deslocado pelo tanto que a anterior estava (o seed teria de casar com o sample
+        // — `feedback_derived_coordinate_seed_must_match_sample`).
+        let shown_offset = layer
+            .active_key(frame)
+            .map_or(Vec2::ZERO, |k| layer.frame_offset(k));
+
+        let created = match source {
             // Duplicata PROFUNDA: instanciar faria a borracha comer o quadro de
             // origem junto (é o mesmo desenho).
             Some(src) if self.duplicate_frame(layer_id, src, frame, DupMode::Deep) => {
@@ -78,7 +89,12 @@ impl FlipObject {
             }
             Some(_) => None, // colisão: só se houvesse chave real aqui — já tratado
             None => self.insert_frame(layer_id, frame, Hold::Implicit, KeyKind::Keyframe),
-        }
+        }?;
+        // (A duplicata já herdou a pose em `duplicate_frame`; a chave BRANCA não — e é
+        // ela que este passe cobre. Idempotente para as duas.)
+        self.layer_mut(layer_id)?
+            .set_frame_offset(frame, shown_offset);
+        Some(created)
     }
 }
 

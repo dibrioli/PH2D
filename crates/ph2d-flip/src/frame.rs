@@ -16,6 +16,7 @@
 //! mesma modelagem do GP (flag + sentinela), não `Fixed(n)` armazenado.
 
 use crate::ids::DrawingId;
+use ph2d_core::Vec2;
 use serde::{Deserialize, Serialize};
 
 /// Como um frame é inserido — o **parâmetro** de `insert_frame`, não um campo
@@ -57,7 +58,9 @@ pub enum KeyKind {
 }
 
 /// Uma chave da tira de frames.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// **Não é `Eq`** desde a pose (`offset` é `f32`) — a comparação é `PartialEq`.
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FlipFrame {
     /// O desenho que aparece a partir deste quadro. `None` = **end-frame**
     /// (sentinela de fim: nada aparece daqui até a próxima chave).
@@ -67,6 +70,22 @@ pub struct FlipFrame {
     pub implicit_hold: bool,
     /// Tipo do keyframe (filtro de Ghost Frames).
     pub kind: KeyKind,
+    /// **A POSE desta chave**: o deslocamento da arte, em unidades LOCAIS do objeto.
+    /// `ZERO` = o desenho está onde foi desenhado (o caminho comum — e byte-idêntico
+    /// ao de antes da pose existir).
+    ///
+    /// Por que a pose mora na CHAVE e não no desenho: uma chave é um slot no TEMPO, um
+    /// desenho é a ARTE — e duas chaves podem compartilhar a mesma arte (a instância,
+    /// [`crate::DupMode::Instance`]). Sem pose por chave, a instância seria
+    /// indistinguível de um hold: a mesma imagem, no mesmo lugar, por mais tempo. Com
+    /// ela, *a arte é uma só e o lugar é de cada quadro* — que é o que faz um ciclo
+    /// reusar desenho e ainda assim **andar**.
+    ///
+    /// É a discretização do *peg* do Harmony/Moho (uma trilha de transform animada) ao
+    /// que o Flip é: um meio **quadro-a-quadro**, onde a posição muda por DESENHO, não
+    /// continuamente. Só translação hoje — girar/escalar uma seleção ainda não existe
+    /// para desenho nenhum (é o gizmo de seleção, item aberto).
+    pub offset: Vec2,
 }
 
 impl FlipFrame {
@@ -77,6 +96,7 @@ impl FlipFrame {
             drawing: None,
             implicit_hold: false,
             kind: KeyKind::Keyframe,
+            offset: Vec2::ZERO,
         }
     }
 

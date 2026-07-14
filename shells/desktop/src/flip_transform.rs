@@ -29,6 +29,41 @@ pub(crate) fn object_xform(sim: &SimWorld, entity: Entity) -> Xform {
     xform_of_transform(world_transform(sim, entity))
 }
 
+/// **A POSE DA CHAVE** como afim (W7.2): a translação do quadro
+/// ([`ph2d_flip::FlipFrame::offset`]), em espaço LOCAL do objeto.
+///
+/// A cadeia completa da arte de um quadro é `objeto ∘ pose_da_chave`: a geometria do
+/// desenho é local, a pose a coloca dentro do objeto, e o `Transform` do objeto leva
+/// tudo ao mundo. Um quadro na pose neutra devolve a identidade — o caminho comum não
+/// paga nada.
+#[must_use]
+pub(crate) fn key_xform(offset: ph2d_core::Vec2) -> Xform {
+    Xform([1.0, 0.0, 0.0, 1.0, f64::from(offset.x), f64::from(offset.y)])
+}
+
+/// **A arte de um quadro → MUNDO**: `objeto ∘ pose_da_chave`. É o `model` que o render
+/// dobra na câmera.
+#[must_use]
+pub(crate) fn art_to_world(object: &Xform, key_offset: ph2d_core::Vec2) -> Xform {
+    key_xform(key_offset).then(object)
+}
+
+/// **MUNDO → a arte de um quadro**: o inverso exato de [`art_to_world`]. É o que o funil
+/// de entrada usa para levar o cursor ao espaço em que a geometria do desenho vive.
+///
+/// As duas existem como UM par, e as duas pontas do sistema chamam este par — não é
+/// zelo: o render e a autoria já divergiram três vezes nesta linha (o balde, BUGS
+/// #11/#14/#16), e cada vez o sintoma foi o mesmo *"funciona no zoom 1, erra no resto"*.
+/// Enquanto quem PINTA e quem ESCREVE derivam a transform da mesma função, a
+/// possibilidade some (`feedback_derived_coordinate_seed_must_match_sample`). O gate
+/// `the_render_and_the_input_are_exact_inverses` prende o par.
+#[must_use]
+pub(crate) fn world_to_art(object: &Xform, key_offset: ph2d_core::Vec2) -> Xform {
+    art_to_world(object, key_offset)
+        .inverse()
+        .unwrap_or(Xform::IDENTITY)
+}
+
 /// O afim de cada objeto Flip, uma vez por frame. Um objeto na identidade **não
 /// entra no mapa** — o render trata o ausente como identidade e não paga lookup.
 #[must_use]
@@ -243,5 +278,50 @@ mod tests {
             Transform::IDENTITY,
             "parentado: a origem é do pai"
         );
+    }
+
+    /// 🔴 **O render e a autoria são inversos EXATOS** — o par que impede o bug que já
+    /// matou o balde três vezes (BUGS #11/#14/#16, sempre o mesmo sintoma: *"funciona no
+    /// zoom 1 e erra no resto"*).
+    ///
+    /// Quem PINTA a arte de um quadro usa `art_to_world`; quem ESCREVE nela (a caneta, o
+    /// balde, a escultura, a seleção) usa `world_to_art`. Se um dos dois esquecer a POSE
+    /// da chave, um ponto apontado na tela não volta ao mesmo lugar — e o traço cai
+    /// deslocado pelo tanto do deslocamento, calado.
+    ///
+    /// Mutação que sangra: tirar o `key_xform` de qualquer uma das duas.
+    #[test]
+    fn the_render_and_the_input_are_exact_inverses() {
+        // Um objeto REAL: girado, escalado e movido (o único jeito de um erro de unidade
+        // aparecer — na identidade, tudo casa por acidente).
+        let object = Xform([0.6, 0.8, -0.8, 0.6, 30.0, -12.0]); // rot ~53°, escala 1
+        let pose = ph2d_core::Vec2::new(100.0, -40.0);
+
+        let to_world = art_to_world(&object, pose);
+        let to_art = world_to_art(&object, pose);
+
+        for p in [[0.0, 0.0], [10.0, 5.0], [-250.0, 33.0]] {
+            let round = to_art.apply(to_world.apply(p));
+            assert!(
+                (round[0] - p[0]).abs() < 1e-9 && (round[1] - p[1]).abs() < 1e-9,
+                "ida e volta nao fecham: {p:?} -> {round:?}"
+            );
+        }
+
+        // E a pose TEM de estar lá: sem ela, a arte sai no lugar do objeto sem pose.
+        let neutral = art_to_world(&object, ph2d_core::Vec2::ZERO);
+        assert_ne!(
+            to_world.apply([0.0, 0.0]),
+            neutral.apply([0.0, 0.0]),
+            "a pose da chave nao entrou no render — mover uma instancia nao moveria nada"
+        );
+    }
+
+    /// **Pose neutra = o caminho de sempre, byte a byte.** Quem nunca moveu uma instância
+    /// não pode pagar nada — nem um épsilon de afim a mais.
+    #[test]
+    fn a_neutral_pose_is_the_object_transform_untouched() {
+        let object = Xform([2.0, 0.0, 0.0, 2.0, 5.0, 7.0]);
+        assert_eq!(art_to_world(&object, ph2d_core::Vec2::ZERO), object);
     }
 }

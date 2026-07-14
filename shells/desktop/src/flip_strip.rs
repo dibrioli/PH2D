@@ -268,6 +268,15 @@ pub(crate) fn apply_panel_event(
             }
             ok
         }
+        // **Unlink** — a chave larga a arte compartilhada e ganha uma cópia SÓ dela
+        // (`make_single_user`). É a volta da instância: sem ela, compartilhar arte seria
+        // irreversível (só apagando a chave e redesenhando). No-op honesto quando o
+        // desenho já é exclusivo — não há vínculo a quebrar.
+        PanelEvent::Click(id) if *id == ids::FLIP_KEY_UNLINK => {
+            let Some(k) = key else { return false };
+            flip.object_mut(oid)
+                .is_some_and(|o| o.make_single_user(lid, k))
+        }
         PanelEvent::Click(id) if *id == ids::FLIP_KEY_DELETE => {
             let Some(k) = key else { return false };
             let Some(o) = flip.object_mut(oid) else {

@@ -16,7 +16,7 @@ use crate::frame::{Hold, KeyKind};
 use crate::ids::{DrawingId, FlipObjectId, Frame, LayerId};
 use crate::layer::FlipLayer;
 use crate::onion::OnionSettings;
-use ph2d_core::Playhead;
+use ph2d_core::{Playhead, Vec2};
 use serde::{Deserialize, Serialize};
 
 /// FPS default de um objeto Flip — 24 (padrão de cinema; a espessura de hold é
@@ -179,6 +179,44 @@ impl FlipObject {
         Some((lo, hi))
     }
 
+    /// **A arte como ela APARECE**: cada chave de cada camada, com a POSE dela — o par
+    /// `(offset, desenho)`. Um desenho instanciado por duas chaves em poses diferentes
+    /// sai **duas vezes**, em lugares diferentes, que é exatamente o que ele é na tela.
+    ///
+    /// [`Self::geometry_bbox`] responde *"onde estão os pontos"* (é geometria, e é o que
+    /// o pivô/settle usa); isto responde *"onde está a arte"* (é aparência, e é o que o
+    /// gizmo e o marquee precisam). Confundir as duas põe a caixa do gizmo longe do
+    /// desenho no instante em que alguém move uma instância.
+    pub fn posed_drawings(&self) -> impl Iterator<Item = (Vec2, &FlipDrawing)> {
+        self.layers.iter().flat_map(move |l| {
+            l.frames().values().filter_map(move |f| {
+                let d = self.drawing(f.drawing?)?;
+                Some((f.offset, d))
+            })
+        })
+    }
+
+    /// A caixa envolvente da arte **como ela aparece** (com as poses das chaves) — a que
+    /// o gizmo desenha e o marquee testa. `None` se o objeto não tem ponto nenhum.
+    #[must_use]
+    pub fn posed_bbox(&self) -> Option<([f32; 2], [f32; 2])> {
+        let mut acc: Option<([f32; 2], [f32; 2])> = None;
+        for (off, d) in self.posed_drawings() {
+            for s in &d.strokes {
+                for p in s.positions() {
+                    let (x, y) = (p.x + off.x, p.y + off.y);
+                    acc = Some(match acc {
+                        None => ([x, y], [x, y]),
+                        Some((lo, hi)) => {
+                            ([lo[0].min(x), lo[1].min(y)], [hi[0].max(x), hi[1].max(y)])
+                        }
+                    });
+                }
+            }
+        }
+        acc
+    }
+
     /// Aplica o afim 2D `m` (`[a, b, c, d, e, f]`, col-major: `x' = a·x + c·y + e`,
     /// `y' = b·x + d·y + f`) às POSIÇÕES de todos os pontos de todos os desenhos —
     /// deslocando a geometria inteira do objeto de uma vez. Usado pelo `settle`/
@@ -257,6 +295,10 @@ impl FlipObject {
         } else {
             Hold::Fixed(duration)
         };
+        // A POSE da origem viaja junto: a chave nova nasce ONDE a arte está agora. Sem
+        // isto, duplicar uma chave deslocada faria a cópia saltar para a origem do
+        // objeto — o desenho pularia no quadro seguinte.
+        let src_offset = self.layers[li].frame_offset(src);
         match mode {
             DupMode::Instance => {
                 if !self.layers[li].add_frame(dst, Some(src_id), src_kind, hold) {
@@ -274,7 +316,53 @@ impl FlipObject {
                 self.drawings.push(clone);
             }
         }
+        self.layers[li].set_frame_offset(dst, src_offset);
         true
+    }
+
+    /// **A pose da chave `key`** da camada — o deslocamento da arte naquele quadro.
+    #[must_use]
+    pub fn frame_offset(&self, layer_id: LayerId, key: Frame) -> Vec2 {
+        self.layer(layer_id)
+            .map_or(Vec2::ZERO, |l| l.frame_offset(key))
+    }
+
+    /// **Desloca a chave `key`** (a POSE, não a arte): só este quadro se move, mesmo que
+    /// o desenho seja compartilhado por outras chaves. É a outra metade da instância —
+    /// a arte é uma só, o lugar é de cada quadro. `false` se a camada/chave não existe.
+    pub fn translate_frame(&mut self, layer_id: LayerId, key: Frame, delta: Vec2) -> bool {
+        let Some(li) = self.layer_index(layer_id) else {
+            return false;
+        };
+        let now = self.layers[li].frame_offset(key);
+        self.layers[li].set_frame_offset(key, now + delta)
+    }
+
+    /// **Quebra o vínculo** da chave `key` com a arte compartilhada (o *make single
+    /// user* do Blender): a chave passa a ter um desenho SÓ dela, cópia do que
+    /// compartilhava, e os demais quadros seguem com o original intacto.
+    ///
+    /// É a saída de emergência da instância. Sem ela, instanciar seria irreversível: a
+    /// única forma de divergir a arte de um quadro seria apagar a chave e redesenhar.
+    ///
+    /// `false` se a camada/chave não existe, se a chave é sentinela, ou se o desenho
+    /// **já é exclusivo** dela (não há vínculo a quebrar — no-op honesto).
+    pub fn make_single_user(&mut self, layer_id: LayerId, key: Frame) -> bool {
+        let Some(li) = self.layer_index(layer_id) else {
+            return false;
+        };
+        let Some(src_id) = self.layers[li].frames().get(&key).and_then(|f| f.drawing) else {
+            return false; // sentinela ou chave inexistente
+        };
+        if !self.drawings[src_id.0 as usize].is_instanced() {
+            return false; // já é só dela
+        }
+        let new_id = DrawingId(self.drawings.len() as u32);
+        let mut clone = self.drawings[src_id.0 as usize].clone();
+        clone.set_users(1);
+        self.drawings.push(clone);
+        self.drawings[src_id.0 as usize].remove_user();
+        self.layers[li].set_frame_drawing(key, new_id)
     }
 
     /// Remove a chave em `key` da camada; decrementa o refcount do desenho que
@@ -588,5 +676,130 @@ mod tests {
         ph.seek(0.25); // 0.25 * 24 = quadro 6
         assert_eq!(o.frame_at(&ph), 6);
         assert_eq!(o.sample_at(&ph), vec![(l, Some(d6))]);
+    }
+
+    // ── A POSE DA CHAVE (W7.2) — a outra metade da instância ──────────────────
+
+    /// Um objeto com DUAS chaves compartilhando o MESMO desenho (uma instância), com um
+    /// traço na arte.
+    fn instanced_pair() -> (FlipObject, LayerId, DrawingId) {
+        let (mut o, l, d) = object_with_one_frame();
+        let mut st = crate::stroke::FlipStroke::new();
+        st.push_default(Vec2::new(0.0, 0.0));
+        st.push_default(Vec2::new(10.0, 0.0));
+        o.drawing_mut(d).unwrap().strokes.push(st);
+        assert!(o.duplicate_frame(l, 0, 5, DupMode::Instance));
+        assert!(
+            o.drawing(d).unwrap().is_instanced(),
+            "o fixture nao instanciou"
+        );
+        (o, l, d)
+    }
+
+    /// 🔴 **A pose é da CHAVE, não do desenho** — é isto que faz uma instância ser mais
+    /// que um hold.
+    ///
+    /// Duas chaves compartilham a arte; mover UMA move só ela. A geometria não é tocada
+    /// (senão o gêmeo andaria junto e as duas ficariam eternamente uma sobre a outra — o
+    /// bug que o Enio viu: *"a instância não pode ser movida sozinha"*).
+    ///
+    /// Mutação que sangra: `translate_frame` escrever na geometria do desenho.
+    #[test]
+    fn moving_one_instanced_key_moves_only_that_frame() {
+        let (mut o, l, d) = instanced_pair();
+        let before: Vec<Vec2> = o.drawing(d).unwrap().strokes[0].positions().to_vec();
+
+        assert!(o.translate_frame(l, 5, Vec2::new(100.0, 0.0)));
+
+        assert_eq!(
+            o.frame_offset(l, 5),
+            Vec2::new(100.0, 0.0),
+            "a chave 5 nao andou"
+        );
+        assert_eq!(
+            o.frame_offset(l, 0),
+            Vec2::ZERO,
+            "a chave 0 andou junto — a pose vazou para o gemeo"
+        );
+        assert_eq!(
+            o.drawing(d).unwrap().strokes[0].positions(),
+            &before[..],
+            "a GEOMETRIA foi tocada: o desenho e dos dois quadros, e um deles o reescreveu"
+        );
+    }
+
+    /// **Duplicar carrega a pose** (as duas formas). Sem isto, duplicar uma chave
+    /// deslocada faria a cópia saltar para a origem do objeto — o desenho pularia no
+    /// quadro seguinte, e o animador veria a arte "voltar" sozinha.
+    #[test]
+    fn duplicating_a_posed_key_carries_the_pose() {
+        for mode in [DupMode::Deep, DupMode::Instance] {
+            let (mut o, l, _d) = object_with_one_frame();
+            o.translate_frame(l, 0, Vec2::new(7.0, -3.0));
+            assert!(o.duplicate_frame(l, 0, 4, mode));
+            assert_eq!(
+                o.frame_offset(l, 4),
+                Vec2::new(7.0, -3.0),
+                "{mode:?}: a chave nova nasceu na origem, e nao onde a arte esta"
+            );
+        }
+    }
+
+    /// **Unlink** (`make_single_user`): a chave larga a arte compartilhada e ganha a
+    /// própria cópia. A saída de emergência da instância — e ela precisa de fato SEPARAR
+    /// (editar uma não pode mais alcançar a outra).
+    #[test]
+    fn unlinking_a_key_gives_it_art_of_its_own() {
+        let (mut o, l, d) = instanced_pair();
+
+        assert!(o.make_single_user(l, 5), "o unlink recusou uma instancia");
+
+        let d5 = o.layer(l).unwrap().drawing_at(5).unwrap();
+        assert_ne!(d5, d, "a chave 5 continua na arte compartilhada");
+        assert_eq!(o.drawing(d).unwrap().users(), 1, "o refcount nao desceu");
+        assert!(!o.drawing(d).unwrap().is_instanced());
+        assert_eq!(
+            o.drawing(d5).unwrap().strokes.len(),
+            1,
+            "a copia nasceu vazia: o unlink perdeu a arte"
+        );
+
+        // E agora os dois quadros divergem de verdade.
+        o.drawing_mut(d5).unwrap().strokes.clear();
+        assert_eq!(
+            o.drawing(d).unwrap().strokes.len(),
+            1,
+            "apagar no quadro 5 alcancou o quadro 0: o vinculo nao foi quebrado"
+        );
+    }
+
+    /// **Unlink numa arte exclusiva é no-op honesto** — não há vínculo a quebrar, e
+    /// duplicar o desenho à toa deixaria lixo no documento.
+    #[test]
+    fn unlinking_an_exclusive_drawing_is_a_no_op() {
+        let (mut o, l, _d) = object_with_one_frame();
+        let n = o.drawings().len();
+        assert!(!o.make_single_user(l, 0));
+        assert_eq!(o.drawings().len(), n, "criou um desenho a toa");
+    }
+
+    /// **`posed_bbox` mede a arte COMO ELA APARECE; `geometry_bbox`, onde os pontos
+    /// ESTÃO.** As duas respondem perguntas diferentes, e trocá-las põe a caixa do gizmo
+    /// longe do desenho no instante em que alguém move uma instância.
+    #[test]
+    fn the_posed_bbox_includes_the_key_offsets_and_the_geometry_bbox_does_not() {
+        let (mut o, l, _d) = instanced_pair(); // traço de (0,0) a (10,0), nas chaves 0 e 5
+        o.translate_frame(l, 5, Vec2::new(100.0, 0.0));
+
+        assert_eq!(
+            o.geometry_bbox(),
+            Some(([0.0, 0.0], [10.0, 0.0])),
+            "a bbox de GEOMETRIA nao pode saber de pose"
+        );
+        assert_eq!(
+            o.posed_bbox(),
+            Some(([0.0, 0.0], [110.0, 0.0])),
+            "a bbox da APARENCIA ignorou a chave deslocada"
+        );
     }
 }

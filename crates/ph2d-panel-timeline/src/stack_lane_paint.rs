@@ -11,8 +11,9 @@
 
 use std::borrow::Cow;
 
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
@@ -21,7 +22,7 @@ use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::graph::TimeView;
-use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, ease_grips, overlaps};
+use crate::stack_ease_grip::{EASE_BAR_W, EASE_IN, EASE_OUT, blend_px, ease_grips, overlaps};
 use crate::state::TimelinePanelState;
 use crate::{geom, ids};
 
@@ -165,6 +166,9 @@ fn paint_lane(
         band,
         lane,
     );
+    // Os dois botões CARREGAM ÍCONE. Sem ele são dois quadrados vazios idênticos, e o artista
+    // tem de descobrir por eliminação qual silencia a faixa e qual acrescenta um clipe (o Enio
+    // achou isso no smoke). Um botão sem rótulo nem ícone não é um botão, é um enigma.
     paint_lane_button(
         ctx,
         theme,
@@ -172,6 +176,13 @@ fn paint_lane(
         mute,
         band,
         lane.muted,
+        // Mudo = a faixa não contribui NADA (não é peso zero — é estar fora da pilha). O olho
+        // fechado é o mesmo verbo que a hierarquia já usa para "isto não conta".
+        if lane.muted {
+            IconId::EyeClosed
+        } else {
+            IconId::Eye
+        },
     );
     paint_lane_button(
         ctx,
@@ -180,6 +191,7 @@ fn paint_lane(
         add,
         band,
         false,
+        IconId::Add,
     );
 
     // The label itself is the right-click surface (mode, Delete Lane). Its rect
@@ -404,6 +416,7 @@ fn paint_lane_button(
     r: Rect,
     band: Rect,
     on: bool,
+    icon: IconId,
 ) {
     fill_rounded_rect(
         ctx.scene,
@@ -424,6 +437,27 @@ fn paint_lane_button(
         Radius::Xs.px(),
         StrokeToken::Thin.px(),
         resolve(ColorToken::Border, theme),
+    );
+    // O glifo, com folga para não encostar na borda do botão.
+    let pad = Spacing::Xs.px();
+    paint_icon(
+        ctx.scene,
+        icon,
+        Rect::new(
+            r.x + pad,
+            r.y + pad,
+            (r.w - pad * 2.0).max(0.0),
+            (r.h - pad * 2.0).max(0.0),
+        ),
+        resolve(
+            if on {
+                ColorToken::Text1
+            } else {
+                ColorToken::Text3
+            },
+            theme,
+        ),
+        StrokeToken::Default.px(),
     );
     ctx.host.store_mut().register(id, InteractiveState::Plain);
     if let Some(hit) = clipped(r, band) {
@@ -486,28 +520,39 @@ fn paint_strip(
         );
     }
 
-    // The ease grips (B4), at the tip of each wedge. GREYED where a neighbour defines
-    // the window — there the overlap IS the fade, and the way to change it is to move
-    // the strips; the grip is painted so the artist can SEE that the edge is spoken
-    // for, and it is not registered, so it cannot be dragged into a number nobody reads.
+    // **As alças de fade (B4): uma BARRA na ponta de cada cunha**, não um pontinho na quina.
+    //
+    // A barra vai de cima a baixo do strip porque é isso que ela É — uma borda arrastável, como a
+    // de aparar. Desenhá-la como um ponto de 7×7 num strip de 22 px de altura foi o erro que o
+    // smoke pegou: dava pra ver e não dava pra pegar. O que se vê e o que se agarra são a mesma
+    // coisa, e a barra fica NA PONTA DA CUNHA — arrastar a barra é arrastar o fade.
+    //
+    // CINZA onde um vizinho define a janela: ali a sobreposição É o fade, e o jeito de mudá-la é
+    // mover os strips. A barra continua pintada (o artista precisa VER que a borda está falada) e
+    // não é registrada — botão dimmed que ainda despacha é botão que mente.
     if let Some((a, b)) = ease_grips(
         body,
         blend_px(view, s.t_start, s.blend_in),
         blend_px(view, s.t_start, s.blend_out),
     ) {
-        for (g, locked) in [(a, s.ease_locked_in), (b, s.ease_locked_out)] {
+        for (g, locked, at_left) in [(a, s.ease_locked_in, true), (b, s.ease_locked_out, false)] {
+            let color = resolve(
+                if locked || dim {
+                    ColorToken::Border
+                } else {
+                    ColorToken::TimelinePlayhead
+                },
+                theme,
+            );
+            // A barra mora na BORDA do grip que fica sobre a ponta da cunha (a esquerda do grip de
+            // entrada, a direita do de saída) — o resto do grip é folga para o ponteiro, do lado
+            // de dentro do strip, onde não disputa nada com a borda de aparar.
+            let x = if at_left { g.x } else { g.x + g.w - EASE_BAR_W };
             fill_rounded_rect(
                 ctx.scene,
-                g,
+                Rect::new(x, g.y, EASE_BAR_W, g.h),
                 Radius::Xs.px(),
-                resolve(
-                    if locked || dim {
-                        ColorToken::Border
-                    } else {
-                        ColorToken::TimelinePlayhead
-                    },
-                    theme,
-                ),
+                color,
             );
         }
     }

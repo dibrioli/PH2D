@@ -74,13 +74,17 @@ fn the_fade_grip_is_reachable_and_the_trim_grip_survives_it() {
     assert_eq!(
         hit(&plan, 200.0, 62.0),
         Some((1, 2)),
-        "between them, the top of the strip is still the BODY: the fade grips are \
-         corners, not a bar across the whole top edge"
+        "entre as duas alças, o strip é CORPO: elas são bordas nas quinas, não uma barra \
+         atravessando o clipe"
     );
+    // A alça vai de cima a baixo, como a borda de aparar — foi o que o smoke exigiu: um alvo de
+    // 7×7 no topo de um clipe de 22 px de altura passava neste gate e NÃO se conseguia agarrar
+    // (o ponteiro caía no corpo e arrastava o clipe). A altura é gateada na pintura real, em
+    // `tests/strip_ease_grip_seam.rs::the_fade_grip_is_as_grabbable_as_the_trim_grip`.
     assert_eq!(
         hit(&plan, 159.0, 76.0),
-        Some((1, 2)),
-        "and below the grip, the same x is the BODY — the slide keeps most of the height"
+        Some((1, EASE_IN)),
+        "…e ela é agarrável em TODA a altura do clipe, não só numa faixa no topo"
     );
 }
 

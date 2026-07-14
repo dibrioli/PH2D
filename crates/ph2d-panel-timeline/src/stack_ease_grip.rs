@@ -27,6 +27,9 @@ pub(crate) fn blend_px(view: TimeView, t_start: f64, blend: f64) -> f32 {
     view.x(t_start + blend) - view.x(t_start)
 }
 
+/// Largura da BARRA que se vê (o grip que se agarra é mais largo — folga para o ponteiro).
+pub(crate) const EASE_BAR_W: f32 = 2.0; // LITERAL-PX-OK: uma linha, como o traço de uma borda
+
 /// Hit/paint code for the fade-in grip (the strip's start corner).
 pub(crate) const EASE_IN: u8 = 3;
 /// …and the fade-out grip (its end corner).
@@ -73,12 +76,20 @@ pub(crate) fn ease_grips(body: Rect, in_px: f32, out_px: f32) -> Option<(Rect, R
         a = safe_clamp(mid - EASE_W, lo, hi - EASE_W); // `hi - lo >= EASE_W` pela guarda acima
         b = a + EASE_W;
     }
-    // Top band only: the rest of the strip's height stays the BODY's, so the slide gesture is
-    // not shrunk to a sliver by a grip that only needs a corner.
-    let h = (body.h * 0.5).min(EASE_W);
+    // **Altura INTEIRA do strip** — como a borda de aparar, e pela mesma razão.
+    //
+    // A primeira versão fazia um quadradinho de 7×7 na quina de cima. Medida na pintura real: o
+    // strip tem 240×22 e a borda de aparar 6×22, então a alça era **um décimo da área** do grip
+    // vizinho, numa faixa de 7 px no topo. O ponteiro do Enio caía no CORPO e arrastava o clipe
+    // inteiro: *"não consigo arrastar a alça"*. O gate de hit passava — o alvo existia, ganhava o
+    // pixel, e era pequeno demais para alguém acertar.
+    //
+    // Isso não é calibragem, é o modelo errado ([[feedback_ergonomics_verdict_is_a_design_bug]]):
+    // a alça de fade É uma borda arrastável, igual à de aparar, e tem de ser tão agarrável quanto.
+    // O corpo perde 7 px perto de cada quina — e continua com 90% do strip para o slide.
     Some((
-        Rect::new(a, body.y, EASE_W, h),
-        Rect::new(b, body.y, EASE_W, h),
+        Rect::new(a, body.y, EASE_W, body.h),
+        Rect::new(b, body.y, EASE_W, body.h),
     ))
 }
 

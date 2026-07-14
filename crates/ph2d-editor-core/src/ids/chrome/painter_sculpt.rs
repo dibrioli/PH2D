@@ -92,13 +92,33 @@ pub const PAINTER_SCULPT_ANGLE_CHIP: NodeId = hash_node_id("painter_sculpt.angle
 /// The Sculpt card's a11y group id (a visual surface; not hit-indexed).
 pub const PAINTER_SCULPT_CARD: NodeId = hash_node_id("painter_sculpt.card");
 
+/// The Chisel's **Rake** toggle — *does the V follow the direction of the stroke?* `Click` →
+/// `toggle_sculpt_rake`.
+///
+/// It lives on the SCULPT card and not on the brush's Shape card, and the difference is not cosmetic. The
+/// Shape's own Rake checkbox rotates a silhouette **image**, so the panel only paints it once a Shape image
+/// exists (`kind != None`) — with the default round falloff there is no silhouette to turn, and the box is
+/// not drawn at all. Enio asked for a Rake and could not find one: it was there, behind a texture he had not
+/// loaded, governing something else. The chisel's V has an axis whether or not the brush has a picture.
+pub const PAINTER_SCULPT_RAKE: NodeId = hash_node_id("painter_sculpt.rake");
+
 /// Every Sculpt widget a pointer can CLICK — the sweep list for the seam gate (`tests/seam_sculpt.rs`).
 ///
 /// It exists because a widget that paints, registers a hit rect and is forwarded by `event.rs` is STILL
 /// dead if `populate` never gave it an `InteractiveState`: `is_focusable` answers `None => false`, the
 /// Down never activates it, and the `Click` never happens. That is how the Impasto light rig shipped
 /// inert. Keep this list exhaustive and the sweep cannot go stale.
-pub const PAINTER_SCULPT_CLICKS: [NodeId; 8] = PAINTER_SCULPT_MODE_IDS;
+pub const PAINTER_SCULPT_CLICKS: [NodeId; 9] = [
+    PAINTER_SCULPT_MODE_IDS[0],
+    PAINTER_SCULPT_MODE_IDS[1],
+    PAINTER_SCULPT_MODE_IDS[2],
+    PAINTER_SCULPT_MODE_IDS[3],
+    PAINTER_SCULPT_MODE_IDS[4],
+    PAINTER_SCULPT_MODE_IDS[5],
+    PAINTER_SCULPT_MODE_IDS[6],
+    PAINTER_SCULPT_MODE_IDS[7],
+    PAINTER_SCULPT_RAKE,
+];
 
 /// Every Sculpt slider (the `SetValue` half of the same sweep). All four are here even though the card only
 /// ever shows the ones the active verb USES — the sweep gates the wiring, and wiring that is reachable in

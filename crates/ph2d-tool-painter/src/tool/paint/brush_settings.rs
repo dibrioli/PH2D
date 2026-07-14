@@ -138,6 +138,9 @@ pub struct BrushSettings {
     pub sculpt_angle: f32,
     /// The Chisel Angle in degrees (`0..=60`), as the artist would read it off the chip.
     pub sculpt_angle_deg: f32,
+    /// Chisel **Rake** — does the V follow the direction of the stroke? (Default on.) Shown only for the
+    /// Chisel, the one verb with an axis.
+    pub sculpt_rake: bool,
     /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited
     /// boundary; only meaningful (and shown) in Edit mode.
     pub selection_offset: f32,

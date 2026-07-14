@@ -93,6 +93,45 @@ está escrito em `sculpt_tests/inflate.rs`: o gate do memo (a) re-implementava o
 e depois (b) rodava num traço **invariante em x** que cabia **inteiro dentro de uma fileira de tiles** — uma
 fixture realista, provando nada.
 
+### 0.2 — RODADA 2 DO SMOKE (mesmo dia) — os DOIS voltaram vermelhos
+
+> *"inflate não engorda e chisel nem recebeu o checkbox que eu pedi, nem tem rake"*
+
+**① O Inflate crescia NO VAZIO.** A bola dilatava o campo de altura certo — e **a luz pesa por COBERTURA**
+(`impasto_light::paint_body(cover) = cover`), então **relevo sobre cobertura zero não acende**. A forma
+crescia para texels **sem tinta**, e a tela não mudava um pixel. **Meus gates mediam o buffer `heights`**,
+que engordava honestamente. Terceira vez nesta linha que o oráculo modelou a implementação em vez da
+aparência — e a mais cara, porque o gate era novo e eu o escrevi *depois* do relato do Enio.
+
+E a regra **já estava escrita no meu próprio plano** (doc 18 §5): *"empurrar tinta move a matéria, e matéria
+carrega cor"* — arquivada como exceção de **W4**. Eu li o Inflate como *reshape* e não como *crescimento*.
+**Uma exceção documentada só protege quem reconhece que está dentro dela.**
+
+Fix: a bola responde a **DUAS** perguntas — *que altura* e **de onde veio a matéria** (o argmax, `memo_src`)
+— e o que chega num texel traz a **cobertura, o material e a COR** de onde veio. (Cobertura sem pixel
+pintaria *papel em relevo*: a luz **modula** o RGBA que existe, não o inventa — os dois têm de viajar.)
+`SculptMode::moves_matter()` é a porta única, e **W4 entra ali**: o modelo advectivo chegou cedo, forçado
+pelo único verbo que cresce. A sessão congela os 4 planos (`Arc` ⇒ refcount, não cópia) e há **UMA** porta
+de restore. Perf 5,7 → **6,85 ms/move** (kill 8).
+
+**② O checkbox de Rake não existia onde o Enio olhou.** O `PAINTER_SHAPE_RAKE` mora dentro de
+`if kind != TextureKind::None` — **só é pintado depois de você carregar uma imagem de Shape** (com o falloff
+redondo padrão não há silhueta pra girar). Meu "default rake = true" da rodada 1 foi um default **num
+controle invisível e inerte**. Agora há um **Rake no card do SCULPT** (só no Chisel, ligado por padrão):
+ligado, o V segue o traço; desligado, a faca fica no **ângulo fixo do dab**. O gate anti-botão-morto varre o
+**Chisel**, que é o card superset.
+
+**Placar: 13 mutações, 11 mortas — e as 2 que sobreviveram eram COMENTÁRIOS MEUS ERRADOS, não gates
+frouxos** (o `moves_matter` de um 2º verbo é inerte porque só a bola escreve `memo_src`; o `>=` é inerte
+porque no chapado o polo da bola é máximo *estrito* — não há empate a desempatar). Os dois comentários foram
+corrigidos no código: uma afirmação de mutação que você não derrubou é uma história, não um gate.
+
+⚠️ **E eu estraguei um arquivo no meio disso:** desfiz uma mutação com `git checkout -- sculpt_offset.rs`, e
+como o arquivo **já estava commitado**, o checkout não desfez a mutação — ele reverteu pro HEAD e **apagou o
+argmax inteiro**. Reconstruído e re-verde. É exatamente a armadilha que já está na memória
+([[feedback_mutation_undo_with_cp_never_git_checkout]]): **desfazer mutação é `cp` de um backup, por caminho
+absoluto — NUNCA `git checkout`.**
+
 ---
 
 ## 1. Estado da linha (medido em 2026-07-14, não lembrado)

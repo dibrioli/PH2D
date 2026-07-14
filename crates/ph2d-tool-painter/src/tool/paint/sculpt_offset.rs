@@ -64,47 +64,114 @@ use super::impasto_light::DEPTH_UNIT_PX;
 /// speed.
 ///
 /// Measured, at the WIDEST Depth (a 16-px ball, ~800 taps per texel) on a 2048² canvas: the tuple-bag first
-/// cut **15.9 ms/move**; held as contiguous rows, **8.7**; with the chain broken, **5.7**. The kill criterion
-/// is 8, so the last of those three is not a polish — it is the verb existing. // CLAMP-OK
+/// cut **15.9 ms/move**; held as contiguous rows, **8.7**; with the chain broken, **5.7**; and **6.85** once
+/// the reduction also had to carry the **argmax** (the price of the paint moving with the relief, and it is
+/// cheap for what it buys). The kill criterion is 8. // CLAMP-OK
 const LANES: usize = 8;
 
-/// `max(s[i] + c[i])` over a row of the ball — the dilation's inner loop.
+/// `max(s[i] + c[i])` over a row of the ball, and **WHERE it came from** — the dilation's inner loop.
 ///
-/// Split out (rather than inlined twice) so the erosion below is visibly the SAME loop with two operators
-/// flipped. A `min` written out by hand next to a `max` is where a sign eventually goes missing.
+/// The index matters as much as the value, and that is the whole of Enio's second smoke: dilating the paint
+/// **moves matter**, and matter carries **colour**. The texel that wins this reduction is the texel whose
+/// paint arrives here, so its coverage, its material and its pixels come with it. A ball that answered only
+/// *how high* would grow relief onto bare canvas — where the light, which weighs its shading by the
+/// coverage, renders exactly nothing. The form would not fatten. It did not.
+///
+/// Tracking the argmax keeps the lanes (the serial dependency is what the vectoriser cannot cross), so the
+/// compare becomes a select and both accumulators ride it.
+///
+/// Split out — rather than inlined twice — so the erosion below is visibly the SAME loop with two operators
+/// flipped. A `min` written by hand next to a `max` is where a sign eventually goes missing.
 #[inline]
-fn row_max(s: &[f32], c: &[f32]) -> f32 {
+fn row_max(s: &[f32], c: &[f32]) -> (f32, usize) {
     let mut acc = [f32::NEG_INFINITY; LANES];
+    let mut idx = [0usize; LANES];
     let mut si = s.chunks_exact(LANES);
     let mut ci = c.chunks_exact(LANES);
+    let mut base = 0usize;
     for (sc, cc) in si.by_ref().zip(ci.by_ref()) {
         for k in 0..LANES {
-            acc[k] = acc[k].max(sc[k] + cc[k]);
+            let v = sc[k] + cc[k];
+            if v > acc[k] {
+                acc[k] = v;
+                idx[k] = base + k;
+            }
         }
+        base += LANES;
     }
     let (rs, rc) = (si.remainder(), ci.remainder());
     for k in 0..rs.len() {
-        acc[0] = acc[0].max(rs[k] + rc[k]);
+        let v = rs[k] + rc[k];
+        if v > acc[0] {
+            acc[0] = v;
+            idx[0] = base + k;
+        }
     }
-    acc.iter().copied().fold(f32::NEG_INFINITY, f32::max)
+    let (mut best, mut at) = (acc[0], idx[0]);
+    for k in 1..LANES {
+        if acc[k] > best {
+            best = acc[k];
+            at = idx[k];
+        }
+    }
+    (best, at)
 }
 
-/// `min(s[i] − c[i])` over a row of the ball — the erosion's inner loop. The mirror of [`row_max`].
+/// `min(s[i] − c[i])` over a row of the ball, and where it came from — the erosion's inner loop. The mirror
+/// of [`row_max`]: what arrives at an eroded texel is what the ball could reach *under* it, and if that is
+/// bare canvas then bare canvas is what the texel becomes. The form shrinks, rather than merely sinking.
 #[inline]
-fn row_min(s: &[f32], c: &[f32]) -> f32 {
+fn row_min(s: &[f32], c: &[f32]) -> (f32, usize) {
     let mut acc = [f32::INFINITY; LANES];
+    let mut idx = [0usize; LANES];
     let mut si = s.chunks_exact(LANES);
     let mut ci = c.chunks_exact(LANES);
+    let mut base = 0usize;
     for (sc, cc) in si.by_ref().zip(ci.by_ref()) {
         for k in 0..LANES {
-            acc[k] = acc[k].min(sc[k] - cc[k]);
+            let v = sc[k] - cc[k];
+            if v < acc[k] {
+                acc[k] = v;
+                idx[k] = base + k;
+            }
         }
+        base += LANES;
     }
     let (rs, rc) = (si.remainder(), ci.remainder());
     for k in 0..rs.len() {
-        acc[0] = acc[0].min(rs[k] - rc[k]);
+        let v = rs[k] - rc[k];
+        if v < acc[0] {
+            acc[0] = v;
+            idx[0] = base + k;
+        }
     }
-    acc.iter().copied().fold(f32::INFINITY, f32::min)
+    let (mut best, mut at) = (acc[0], idx[0]);
+    for k in 1..LANES {
+        if acc[k] < best {
+            best = acc[k];
+            at = idx[k];
+        }
+    }
+    (best, at)
+}
+
+/// Pack a source offset `(dx, dy)` — where the matter at a texel came FROM — into one `u32`.
+///
+/// `(0, 0)` packs to `0`, which is what a texel whose own tap won gets, and which the render reads as
+/// *nothing moved here*. The flat interior of every stroke is all zeros, so the advection costs nothing
+/// where nothing happens.
+#[inline]
+pub(super) fn pack_src(dx: i64, dy: i64) -> u32 {
+    (((dx as i16) as u16 as u32) << 16) | ((dy as i16) as u16 as u32)
+}
+
+/// The inverse of [`pack_src`].
+#[inline]
+pub(super) fn unpack_src(v: u32) -> (i64, i64) {
+    (
+        i64::from(((v >> 16) as u16) as i16),
+        i64::from((v as u16) as i16),
+    )
 }
 
 /// Offset the height-field window `src` by a ball of **signed** radius `r_px`, writing the `tile` of it
@@ -137,6 +204,7 @@ pub(super) fn ball_offset_into(
     r_px: f32,
     tile: Region,
     out: &mut [f32],
+    src_out: &mut [u32],
 ) {
     let rho = r_px.abs();
     let dilate = r_px > 0.0;
@@ -189,6 +257,7 @@ pub(super) fn ball_offset_into(
             } else {
                 f32::INFINITY
             };
+            let (mut sx, mut sy) = (px, py); // where the winning matter came from
             for &(dy, half, off) in &rows {
                 let qy = py + dy;
                 if qy < 0 || qy >= sh_i {
@@ -205,13 +274,24 @@ pub(super) fn ball_offset_into(
                 let base = (qy as usize) * sw_us + (lo as usize);
                 let s = &src[base..base + n];
                 let c = &caps[k..k + n];
-                best = if dilate {
-                    best.max(row_max(s, c))
-                } else {
-                    best.min(row_min(s, c))
-                };
+                let (v, at) = if dilate { row_max(s, c) } else { row_min(s, c) };
+                // What keeps the paint from creeping across the flat interior of a stroke is NOT this
+                // comparison — it is the **pole**: on a flat, `h + cap(dx, dy)` is *strictly* greatest at
+                // `dx = dy = 0`, so the self-tap wins outright and the source comes out `(0, 0)`. There is
+                // no tie to break. (I wrote the opposite here first — "relax it to `>=` and the interior
+                // creeps" — and then mutated it to `>=` and watched every gate stay green. The mutation is
+                // INERT: exact float ties on a real relief are measure-zero, and on the one surface where a
+                // tie would matter there isn't one. The code is right; the comment was a story.)
+                let better = if dilate { v > best } else { v < best };
+                if better {
+                    best = v;
+                    sx = lo + at as i64;
+                    sy = qy;
+                }
             }
-            out[(ty as usize) * (tile.w as usize) + (tx as usize)] = best;
+            let o = (ty as usize) * (tile.w as usize) + (tx as usize);
+            out[o] = best;
+            src_out[o] = pack_src(sx - px, sy - py);
         }
     }
 }

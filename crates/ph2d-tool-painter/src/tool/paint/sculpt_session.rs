@@ -11,6 +11,15 @@ use super::sculpt::SculptFamily;
 use crate::tool::PainterTool;
 use std::sync::Arc;
 
+/// Blend two `u8` channels by `k ∈ [0, 1]` — `a` at `0`, `b` at `1`.
+///
+/// Rounds (`+ 0.5`) rather than truncating: an advection that loses half a bit per frame would darken the
+/// paint it moves, and a shape editor re-stamps every frame.
+fn lerp_u8(a: u8, b: u8, k: f32) -> u8 {
+    let v = f32::from(a) + (f32::from(b) - f32::from(a)) * k;
+    (v + 0.5).clamp(0.0, 255.0) as u8
+}
+
 impl PainterTool {
     // ── Session lifecycle ───────────────────────────────────────────────────────────────────────
 
@@ -35,11 +44,67 @@ impl PainterTool {
             return false; // no relief here: nothing to smooth, nothing to sharpen
         };
         self.paint.sculpt.pre = pre;
+        // The MATTER, frozen beside the relief — three more `Arc` clones, still zero allocation. Only
+        // Inflate reads them, but they are taken for every verb: the artist can switch the verb mid-shape,
+        // and a session that froze `pre` at dab 1 and the paint at dab 40 would re-render the gesture
+        // against a canvas that never existed. Freeze the whole state, once, at the start. (§10.4 — *ao
+        // adicionar um plano, adicione-o ao snapshot no mesmo commit* — is the scar this obeys.)
+        self.paint.sculpt.pre_cover = self.covers.get(&active).cloned().unwrap_or_default();
+        self.paint.sculpt.pre_mats = self.mats.get(&active).cloned().unwrap_or_default();
+        self.paint.sculpt.pre_rgba = Arc::clone(&self.canvas_rgba);
         self.paint.sculpt.amount = Arc::new(vec![0.0; n]);
         self.paint.sculpt.layer = Some(active);
         self.paint.sculpt.bbox = None;
         self.ensure_family_target();
         true
+    }
+
+    /// Put the gesture's window back to the state the stroke found it in — **all four planes**.
+    ///
+    /// THE one restore. Both callers (the knob re-render in [`PainterTool::refresh_live_sculpt`] and the
+    /// shape editors' re-stamp in [`Self::restamp_reset_sculpt`]) go through here, because the render only
+    /// ever WRITES texels the brush touched: a knob that shrinks the effect would otherwise leave the
+    /// stronger version standing wherever the new one writes nothing.
+    ///
+    /// It restores the matter as well as the relief, and unconditionally — not only when the verb moves
+    /// matter. Switching Inflate → Smooth mid-shape has to give the paint back; a restore that asked the
+    /// CURRENT verb what to undo would ask the wrong verb.
+    pub(super) fn restore_sculpt_window(&mut self, layer: crate::tool::RtLayerId, rect: Region) {
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        let pre = Arc::clone(&self.paint.sculpt.pre);
+        if pre.len() != n {
+            return; // a session that no longer describes this canvas is not a session
+        }
+        if let Some(entry) = self.heights.get_mut(&layer)
+            && entry.len() == n
+        {
+            let dst = Arc::make_mut(entry);
+            super::impasto_settle::for_each_in(rect, w, |i| dst[i] = pre[i]);
+        }
+        let cover = Arc::clone(&self.paint.sculpt.pre_cover);
+        if cover.len() == n
+            && let Some(entry) = self.covers.get_mut(&layer)
+            && entry.len() == n
+        {
+            let dst = Arc::make_mut(entry);
+            super::impasto_settle::for_each_in(rect, w, |i| dst[i] = cover[i]);
+        }
+        let mats = Arc::clone(&self.paint.sculpt.pre_mats);
+        if mats.len() == n
+            && let Some(entry) = self.mats.get_mut(&layer)
+            && entry.len() == n
+        {
+            let dst = Arc::make_mut(entry);
+            super::impasto_settle::for_each_in(rect, w, |i| dst[i] = mats[i]);
+        }
+        let rgba = Arc::clone(&self.paint.sculpt.pre_rgba);
+        if rgba.len() == n * 4 && self.canvas_rgba.len() == n * 4 {
+            let dst = Arc::make_mut(&mut self.canvas_rgba);
+            super::impasto_settle::for_each_in(rect, w, |i| {
+                dst[i * 4..i * 4 + 4].copy_from_slice(&rgba[i * 4..i * 4 + 4]);
+            });
+        }
     }
 
     /// Size the per-texel target the ACTIVE family needs, and only that one.
@@ -57,6 +122,7 @@ impl PainterTool {
             SculptFamily::Memo => {
                 if self.paint.sculpt.memo.len() != n {
                     self.paint.sculpt.memo = vec![0.0; n];
+                    self.paint.sculpt.memo_src = vec![0u32; n];
                     self.paint.sculpt.memo_done = vec![false; super::sculpt_blur::tile_count(w, h)];
                     self.paint.sculpt.memo_key = self.paint.sculpt.memo_key();
                 }
@@ -174,12 +240,13 @@ impl PainterTool {
                         pre: &pre,
                         scratch: &mut scratch,
                     },
-                    // The heading is the dab's OWN (`d.dir`, the engine's smoothed tangent — the same one
-                    // the Rake texture rides), so the V follows the curve of the stroke instead of some
-                    // average direction. `[0, 0]` on the first dab ⇒ that dab lays a flat scrape.
+                    // The V's axis — the dab's OWN smoothed heading while **Rake** is on (so the groove
+                    // curves with the hand, not with some average direction), or the brush's fixed dab
+                    // angle while it is off. One function answers it, so the checkbox and the kernel cannot
+                    // disagree about what "the direction of the stroke" means.
                     ph2d_painter_brush::sculpt::Chisel {
                         tilt: chisel_tilt,
-                        dir: d.dir,
+                        dir: self.chisel_dir(d.dir),
                     },
                     mask.as_ref().map(|m| m.as_slice()),
                     w,
@@ -222,6 +289,106 @@ impl PainterTool {
         // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back.
     }
 
+    /// **Move the paint with the relief** — Inflate's other half, and the half Enio's smoke was looking at.
+    ///
+    /// The ball told us, per texel, *where the matter that arrives here came from*
+    /// (`memo_src`, the argmax). This carries the rest of that matter along the same vector: the
+    /// **coverage**, the **material**, and the **pixels**.
+    ///
+    /// ## Why it has to exist
+    ///
+    /// The light shades by the coverage (`impasto_light::paint_body(cover) = cover`), so relief standing on
+    /// bare canvas renders **nothing**. Grow the height field outward and the buffer fattens while the screen
+    /// does not — which is precisely what shipped, and what "inflate não engorda" means. Paint is a
+    /// substance; a substance that moves takes its colour with it.
+    ///
+    /// ## The three fields are not treated alike, and each difference is a decision
+    ///
+    /// * **Coverage and pixels are LERPED** by `k` (the brush's accumulated touch). `k` is how far along the
+    ///   offset this texel actually travelled, so a half-strength Inflate half-grows the form — the rim
+    ///   arrives with the brush's own falloff instead of a hard step at the ball's radius.
+    /// * **The material is PICKED**, not lerped (nearest wins at `k ≥ 0.5`). It is a **key**: the light
+    ///   resolves it through a one-entry cache that assumes materials are piecewise-constant across a canvas
+    ///   (one per stroke). Lerping would hand every texel of the rim its own material and turn that cache
+    ///   into a miss per pixel — a correctness-neutral change that would quietly cost more than the kernel.
+    /// * **A source of `(0, 0)` is skipped entirely.** That is the whole flat interior of every stroke (the
+    ///   ball's pole is the strict maximum on a flat), so the advection costs nothing where nothing moves.
+    pub(super) fn advect_matter(&mut self, layer: crate::tool::RtLayerId, rect: Region) {
+        let (w, h) = self.source_size;
+        let n = (w as usize) * (h as usize);
+        let amount = Arc::clone(&self.paint.sculpt.amount);
+        let cover0 = Arc::clone(&self.paint.sculpt.pre_cover);
+        let mats0 = Arc::clone(&self.paint.sculpt.pre_mats);
+        let rgba0 = Arc::clone(&self.paint.sculpt.pre_rgba);
+        let src = std::mem::take(&mut self.paint.sculpt.memo_src);
+        // Every plane must describe THIS canvas. A rebind can change `w` while leaving `n` identical
+        // (64×128 → 128×64), and then `rect` — measured against the new width — indexes off the end of a
+        // buffer whose length checks all pass.
+        let sized = amount.len() == n
+            && src.len() == n
+            && cover0.len() == n
+            && mats0.len() == n
+            && rgba0.len() == n * 4
+            && self.canvas_rgba.len() == n * 4;
+        if !sized {
+            self.paint.sculpt.memo_src = src;
+            return;
+        }
+
+        let mut moved: Option<Region> = None;
+        {
+            let (Some(cov_e), Some(mat_e)) =
+                (self.covers.get_mut(&layer), self.mats.get_mut(&layer))
+            else {
+                self.paint.sculpt.memo_src = src;
+                return; // no paint on this layer: there is no matter to move
+            };
+            if cov_e.len() != n || mat_e.len() != n {
+                self.paint.sculpt.memo_src = src;
+                return;
+            }
+            let cov = Arc::make_mut(cov_e);
+            let mat = Arc::make_mut(mat_e);
+            let rgba = Arc::make_mut(&mut self.canvas_rgba);
+            let wu = w as usize;
+            for y in rect.y..rect.y + rect.h {
+                for x in rect.x..rect.x + rect.w {
+                    let i = (y as usize) * wu + (x as usize);
+                    let k = amount[i].clamp(0.0, 1.0);
+                    if k <= 0.0 {
+                        continue; // the brush never touched this texel
+                    }
+                    let (dx, dy) = super::sculpt_offset::unpack_src(src[i]);
+                    if dx == 0 && dy == 0 {
+                        continue; // the matter here is its own: a flat, or the inside of the form
+                    }
+                    let (qx, qy) = (i64::from(x) + dx, i64::from(y) + dy);
+                    if qx < 0 || qy < 0 || qx >= i64::from(w) || qy >= i64::from(h) {
+                        continue; // the ball never reaches off-canvas, but never is a claim, not a guard
+                    }
+                    let q = (qy as usize) * wu + (qx as usize);
+                    cov[i] = lerp_u8(cover0[i], cover0[q], k);
+                    if k >= 0.5 {
+                        mat[i] = mats0[q];
+                    }
+                    for c in 0..4 {
+                        rgba[i * 4 + c] = lerp_u8(rgba0[i * 4 + c], rgba0[q * 4 + c], k);
+                    }
+                    let rr = Region { x, y, w: 1, h: 1 };
+                    moved = Some(moved.map_or(rr, |acc| super::union_region(acc, rr)));
+                }
+            }
+        }
+        self.paint.sculpt.memo_src = src;
+        if let Some(m) = moved {
+            // The pixels changed, so the COMPOSITE is stale — not merely the light. That is the one
+            // difference from the height-only path, and it is why this is a separate call rather than a few
+            // more lines in `render_sculpt`: `mark_dirty` alone would leave the old colour on screen.
+            self.mark_dirty(m);
+            self.invalidate_composite();
+        }
+    }
+
     /// Snapshot the sculpt session for the undo model (the buffers are `tool::paint`-private, so the
     /// general `snapshot_model` reaches them through here — mirror of `deform_for_snapshot`).
     ///
@@ -237,6 +404,12 @@ impl PainterTool {
             pre: Arc::clone(&self.paint.sculpt.pre),
             amount: Arc::clone(&self.paint.sculpt.amount),
             plane_sum: Arc::clone(&self.paint.sculpt.plane_sum),
+            // The frozen MATTER rides too, and it must: Inflate re-renders the paint from it, so a restore
+            // that put back the relief and not the source of the pixels would re-derive the colour from a
+            // canvas the gesture has already written on — compounding, every undo. §10.4.
+            pre_cover: Arc::clone(&self.paint.sculpt.pre_cover),
+            pre_mats: Arc::clone(&self.paint.sculpt.pre_mats),
+            pre_rgba: Arc::clone(&self.paint.sculpt.pre_rgba),
             layer: self.paint.sculpt.layer,
             bbox: self.paint.sculpt.bbox,
         }
@@ -251,9 +424,13 @@ impl PainterTool {
         self.paint.sculpt.pre = s.pre;
         self.paint.sculpt.amount = s.amount;
         self.paint.sculpt.plane_sum = s.plane_sum;
+        self.paint.sculpt.pre_cover = s.pre_cover;
+        self.paint.sculpt.pre_mats = s.pre_mats;
+        self.paint.sculpt.pre_rgba = s.pre_rgba;
         self.paint.sculpt.layer = s.layer;
         self.paint.sculpt.bbox = s.bbox;
         self.paint.sculpt.memo = Vec::new();
+        self.paint.sculpt.memo_src = Vec::new();
         self.paint.sculpt.memo_done = Vec::new();
         self.paint.sculpt.memo_key = super::sculpt::MemoKey::None;
     }
@@ -274,7 +451,11 @@ impl PainterTool {
         self.paint.sculpt.plane_sum = Arc::new(Vec::new());
         self.paint.sculpt.fit_scratch = Vec::new();
         self.paint.sculpt.memo = Vec::new();
+        self.paint.sculpt.memo_src = Vec::new();
         self.paint.sculpt.memo_done = Vec::new();
+        self.paint.sculpt.pre_cover = Arc::new(Vec::new());
+        self.paint.sculpt.pre_mats = Arc::new(Vec::new());
+        self.paint.sculpt.pre_rgba = Arc::new(Vec::new());
         self.paint.sculpt.layer = None;
         self.paint.sculpt.bbox = None;
     }
@@ -344,13 +525,7 @@ impl PainterTool {
             return;
         };
         let (w, _) = self.source_size;
-        let pre = Arc::clone(&self.paint.sculpt.pre);
-        if let Some(target) = self.heights.get_mut(&layer)
-            && target.len() == pre.len()
-        {
-            let dst = Arc::make_mut(target);
-            super::impasto_settle::for_each_in(rect, w, |i| dst[i] = pre[i]);
-        }
+        self.restore_sculpt_window(layer, rect);
         let amount = Arc::make_mut(&mut self.paint.sculpt.amount);
         super::impasto_settle::for_each_in(rect, w, |i| {
             if let Some(a) = amount.get_mut(i) {

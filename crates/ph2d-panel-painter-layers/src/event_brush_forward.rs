@@ -49,7 +49,7 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
 
 /// `true` when `id` is a Sculpt-panel **Click** target (the five sub-mode segments).
 pub(crate) fn is_sculpt_click(id: NodeId) -> bool {
-    core_ids::PAINTER_SCULPT_MODE_IDS.contains(&id)
+    core_ids::PAINTER_SCULPT_CLICKS.contains(&id)
 }
 
 /// `true` when `id` is a Deform-panel **Click** target the panel forwards to the tool as

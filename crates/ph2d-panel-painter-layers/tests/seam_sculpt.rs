@@ -30,9 +30,26 @@ fn viewport() -> Rect {
 /// A `PainterTool` in Sculpt mode, with the panel's brush snapshot published from it — exactly as the
 /// shell publishes it each frame. The mode is entered through the tool's OWN router (the same string the
 /// rail forwards), so the fixture cannot drift from the product.
+/// The Chisel's index in the segmented control — the one verb with an axis, and so the one with the Rake.
+const CHISEL: u8 = 5;
+
 fn tool_in_sculpt() -> PainterTool {
+    tool_in_sculpt_mode(None)
+}
+
+/// The same, armed on a chosen verb — for the sweeps, which must show every clickable widget at once.
+///
+/// The **Chisel** is the fullest card: the eight verb chips, the Offset, the Angle, and the **Rake**. Any
+/// other verb hides at least one of them, so a sweep of `PAINTER_SCULPT_CLICKS` run on the default (Smooth)
+/// would demand a widget the card is deliberately not painting — and the honest response to that is not to
+/// prune the list, it is to arm the tool that shows it. (The card shows the knobs the active verb USES; a
+/// sweep that forgot this would be pressing for a knob that lies.)
+fn tool_in_sculpt_mode(mode: Option<u8>) -> PainterTool {
     let mut tool = PainterTool::default();
     tool.set_paint_tool_mode("sculpt");
+    if let Some(m) = mode {
+        tool.set_sculpt_mode(m);
+    }
     let bs = tool.brush_settings();
     assert!(
         bs.is_sculpt,
@@ -155,7 +172,7 @@ fn clicking_the_sharpen_chip_selects_sharpen() {
 #[test]
 fn every_sculpt_click_widget_is_reachable_by_a_pointer() {
     for clicked in core_ids::PAINTER_SCULPT_CLICKS {
-        let tool = tool_in_sculpt();
+        let tool = tool_in_sculpt_mode(Some(CHISEL)); // the fullest card — see `tool_in_sculpt_mode`
         let _ = &tool;
         let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
         let mut st = PainterLayersPanelState;
@@ -377,7 +394,7 @@ fn the_radius_chip_shows_the_pixels_the_kernel_uses() {
 /// artist is left holding the settings for a tool they can no longer aim.
 #[test]
 fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
-    let tool = tool_in_sculpt();
+    let tool = tool_in_sculpt_mode(Some(CHISEL)); // the fullest card — see `tool_in_sculpt_mode`
     let bs = tool.brush_settings();
     assert!(
         bs.paints_no_color(),
@@ -390,9 +407,9 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let ids: Vec<_> = painted.iter().map(|(w, _)| *w).collect();
 
-    // Every verb chip is there…
+    // Every clickable Sculpt widget is there…
     for id in core_ids::PAINTER_SCULPT_CLICKS {
-        assert!(ids.contains(&id), "sculpt verb chip {id:?} is not painted");
+        assert!(ids.contains(&id), "sculpt widget {id:?} is not painted");
     }
     // …AND the brush is still there. This is the assertion that separates Sculpt from Deform, and the
     // one that would fail if someone "fixed" the panel to be mode-exclusive like its neighbour.

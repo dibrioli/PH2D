@@ -304,6 +304,11 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // only the VISUAL is a checkbox).
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAKE,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RANDOM,
+        // Sculpt card: the Chisel's Rake toggle (does the V follow the stroke?). Painting it and
+        // hit-indexing it is NOT enough — without an `InteractiveState` from here, `is_focusable` answers
+        // `None => false`, the Down never activates it and the Click never happens. That is exactly how the
+        // Impasto light rig shipped inert, on this same line, four days ago.
+        ph2d_editor_core::ids::PAINTER_SCULPT_RAKE,
         // Shape section: Rake / Random checkboxes + the section reset (clears the image → falloff).
         ph2d_editor_core::ids::PAINTER_SHAPE_RAKE,
         ph2d_editor_core::ids::PAINTER_SHAPE_RANDOM,

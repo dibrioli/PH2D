@@ -133,6 +133,7 @@ impl PainterTool {
             sculpt_is_chisel: self.is_sculpt_chisel(),
             sculpt_radius: self.paint.sculpt.radius_norm,
             sculpt_radius_px: self.sculpt_radius_px() as f32,
+            sculpt_rake: self.sculpt_rake(),
             sculpt_offset: self.paint.sculpt.offset_norm,
             sculpt_offset_loads: self.sculpt_plane_offset(),
             sculpt_depth: self.paint.sculpt.depth_norm,

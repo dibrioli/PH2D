@@ -123,7 +123,11 @@ impl PainterTool {
             w: tile.w,
             h: tile.h,
         };
-        let mut out: Vec<f32> = vec![0.0; (tile.w as usize) * (tile.h as usize)];
+        let cells = (tile.w as usize) * (tile.h as usize);
+        let mut out: Vec<f32> = vec![0.0; cells];
+        // The ball answers TWO questions — how high, and **from where** — and the blur answers only the
+        // first. `0` is "from itself", which is what the blur means and what a flat means.
+        let mut src_out: Vec<u32> = vec![0u32; cells];
         match key {
             MemoKey::None => return,
             MemoKey::Blur(r) => {
@@ -144,15 +148,20 @@ impl PainterTool {
                 f32::from_bits(bits),
                 inner,
                 &mut out,
+                &mut src_out,
             ),
         }
         // Keep the inner tile only: the window's outer ring is where the buffer edge could have lied, and it
-        // is exactly the part we grew in order to throw away.
+        // is exactly the part we grew in order to throw away. (The source offsets are RELATIVE, so they are
+        // window-independent and survive the crop unchanged — which is the whole reason they are stored as
+        // an offset rather than as an index.)
         for row in 0..tile.h as usize {
             let dst = (tile.y as usize + row) * (w as usize) + tile.x as usize;
             let src = row * (tile.w as usize);
             self.paint.sculpt.memo[dst..dst + tile.w as usize]
                 .copy_from_slice(&out[src..src + tile.w as usize]);
+            self.paint.sculpt.memo_src[dst..dst + tile.w as usize]
+                .copy_from_slice(&src_out[src..src + tile.w as usize]);
         }
     }
 
@@ -290,6 +299,12 @@ impl PainterTool {
         self.paint.sculpt.plane_sum = plane_sum;
         self.paint.sculpt.memo = memo;
 
+        // …and the MATTER moves with it. Only Inflate grows the form, and only a form that grows onto bare
+        // canvas needs to take its paint along — see `SculptMode::moves_matter` and `advect_matter`.
+        if mode.moves_matter() {
+            self.advect_matter(layer, rect);
+        }
+
         if let Some(m) = moved {
             // Grow by one: the light reads a texel's NEIGHBOURS (the normal is a central difference), so a
             // texel just outside the changed box is lit by a slope that changed inside it. Unlike the
@@ -345,17 +360,16 @@ impl PainterTool {
         // the new width — indexes straight off the end.
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        let pre = Arc::clone(&self.paint.sculpt.pre);
-        if pre.len() != n {
+        if self.paint.sculpt.pre.len() != n {
             self.end_sculpt_session(); // a session that no longer describes this canvas is not a session
             return;
         }
-        if let Some(entry) = self.heights.get_mut(&layer)
-            && entry.len() == n
-        {
-            let dst = Arc::make_mut(entry);
-            impasto_settle::for_each_in(rect, w, |i| dst[i] = pre[i]);
-        }
+        // ALL FOUR planes, through the one restore — the relief AND the matter. Inflate writes coverage,
+        // material and pixels, so a restore that only put the height back would leave the paint it moved
+        // standing wherever the new setting moves less of it. (And it restores unconditionally: switching
+        // Inflate → Smooth must give the paint back, and asking the CURRENT verb what to undo asks the
+        // wrong verb.)
+        self.restore_sculpt_window(layer, rect);
         self.render_sculpt(rect);
         // The restore above can itself be the only change (Strength → 0), and it wrote through `heights`
         // without telling anyone. Dirty the window unconditionally rather than trusting the render to

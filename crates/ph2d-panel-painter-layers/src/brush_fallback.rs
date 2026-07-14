@@ -83,6 +83,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     sculpt_depth_loads: 0.5, // LITERAL-PX-OK: …and 0.75 maps to +0.5 paint-loads
     sculpt_angle: 0.5,  // LITERAL-PX-OK: Sculpt default (mirrors SculptState::default)
     sculpt_angle_deg: 30.0, // LITERAL-PX-OK: …and 0.5 maps to 30° of chisel
+    sculpt_rake: true,  // the groove follows the stroke (mirrors SculptState::default)
     selection_offset: 0.5, // LITERAL-PX-OK: centred Offset = no grow/shrink (mirrors shape_offset_norm)
     inpaint_patch: 0.25, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_patch_norm)
     inpaint_quality: 0.3333, // LITERAL-PX-OK: brush default (mirrors PaintState::default inpaint_quality_norm)

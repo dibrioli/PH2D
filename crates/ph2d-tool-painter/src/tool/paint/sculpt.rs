@@ -195,6 +195,27 @@ impl MemoKey {
 }
 
 impl SculptMode {
+    /// Whether the verb **moves matter** — and so carries coverage, material and colour with the relief.
+    ///
+    /// Exactly one of the eight does. The other seven reshape the height that is already there, inside the
+    /// paint that is already there; Inflate **grows the form**, and a form that grows onto bare canvas and
+    /// takes no paint with it is a form that does not grow at all (the light multiplies by the coverage).
+    ///
+    /// It is a method rather than a `matches!` at the call site so that W4's advective family — Grab, Pinch,
+    /// Nudge, Rotate, Thumb, every one of which moves matter — has one place to join.
+    ///
+    /// ## Getting this wrong is harmless, and that is on purpose
+    ///
+    /// Marking a *second* verb as moving matter does nothing at all: the advection reads
+    /// [`SculptState::memo_src`], and **only the ball offset ever writes it** — a blur leaves it all zeros,
+    /// and a zero source means *the matter here is its own*. So the invariant "only Inflate moves paint"
+    /// rests on two independent things, and a mistake in either one is caught by the other. (Checked, not
+    /// asserted: the mutation that adds `Smooth` to this list leaves every gate green. What DOES bleed is
+    /// deleting the `advect_matter` call — which is the bug Enio actually saw.)
+    pub(super) fn moves_matter(self) -> bool {
+        matches!(self, SculptMode::Inflate)
+    }
+
     pub(super) fn from_u8(v: u8) -> Self {
         match v {
             1 => SculptMode::Sharpen,
@@ -290,6 +311,16 @@ pub(crate) struct SculptState {
     /// **Angle** track (`0..1`; mapped to `0..CHISEL_ANGLE_MAX_DEG`) — how far the Chisel's knife is tipped
     /// onto its edge. At `0` the Chisel is Scrape, to the byte.
     pub(crate) angle_norm: f32,
+    /// **Rake** — does the Chisel's V follow the direction of the stroke? (Enio 2026-07-14.) Default **on**.
+    ///
+    /// On, the V's axis is the dab's own smoothed heading, so the groove curves with the hand. Off, the knife
+    /// is held at a **fixed** angle — the brush's own dab rotation (the Shape card's rotate gizmo), which is
+    /// already on screen and already means *the orientation of the tip*. Two knobs, one meaning.
+    ///
+    /// It is NOT the brush's `shape.rake`, and the separation is the point: that box turns a silhouette
+    /// **image**, and the panel does not even draw it until one is loaded. Coupling them would mean an artist
+    /// who wants a fixed blade *picture* silently loses the groove's direction.
+    pub(crate) rake: bool,
 
     /// `Σ w·plane_d(i)` over the stroke's dabs — the **plane family's** per-texel target, un-normalised.
     ///
@@ -310,12 +341,42 @@ pub(crate) struct SculptState {
     /// (Inflate) — memoised tile by tile (see [`super::sculpt_blur`]). Pure derived data: it dies with the
     /// session and is rebuilt lazily, on demand. Empty in the Plane and Height families.
     pub(crate) memo: Vec<f32>,
+    /// **Where the matter at each texel CAME FROM**, packed by
+    /// [`super::sculpt_offset::pack_src`] — the ball's argmax, and `0` (= the texel itself) everywhere
+    /// nothing moved. Filled beside [`Self::memo`], and only by the offset kernel; the blur has no such
+    /// question to answer.
+    ///
+    /// This is the plane that makes Inflate *visible*. See [`Self::pre_rgba`].
+    pub(crate) memo_src: Vec<u32>,
     /// One flag per tile of [`Self::memo`] — whether that tile has been computed this session.
     pub(crate) memo_done: Vec<bool>,
     /// Which kernel and radius [`Self::memo`] holds. A change to EITHER invalidates every tile — which is
     /// why the kernel is in the key and not merely the radius: Smooth → Inflate keeps the buffer's length
     /// and changes every value in it.
     pub(crate) memo_key: MemoKey,
+    /// The layer's **coverage**, **material** and **pixels** as this stroke found them — frozen beside
+    /// [`Self::pre`], by `Arc`, so opening a session still allocates nothing.
+    ///
+    /// ## Why a sculpt session freezes the paint, when §5 says it only writes `h`
+    ///
+    /// §5 is right about seven verbs and wrong about the eighth, and Enio's second smoke is what said so:
+    /// *"inflate não engorda"*. **Inflate is not a reshaping — it is a MOVING.** Dilating the relief pushes
+    /// the form's rim outward, onto texels that had no paint; and the light weighs its shading by the
+    /// **coverage** (`impasto_light::paint_body(cover) = cover`), so relief standing over bare canvas
+    /// renders exactly nothing. The buffer grew. The screen did not. The gate measured the buffer.
+    ///
+    /// So the matter travels with the height: what arrives at a texel came from the ball's **argmax**
+    /// ([`Self::memo_src`]), and it brings that texel's coverage, its material and its **colour** — because
+    /// paint is a substance, and a substance that moves takes its colour with it. (The same sentence is
+    /// already written for W4, the advective family. It arrived early, forced by the one verb that grows.)
+    ///
+    /// Frozen, like `pre`, so the re-render stays idempotent: every frame recomputes the whole gesture from
+    /// the state it started in, never from the state it last left.
+    pub(crate) pre_cover: Arc<Vec<u8>>,
+    /// The material plane as the stroke found it — see [`Self::pre_cover`].
+    pub(crate) pre_mats: Arc<Vec<ph2d_painter_brush::material::MaterialBytes>>,
+    /// The active layer's pixels as the stroke found them — see [`Self::pre_cover`]. RGBA8, `4·n` bytes.
+    pub(crate) pre_rgba: Arc<Vec<u8>>,
     /// Which layer the session belongs to — and, because the session dies at commit, **this is also what
     /// "a gesture is in flight" means**. `None` ⇒ no session; every guard in this module reads it as both.
     ///
@@ -336,13 +397,18 @@ impl Default for SculptState {
             offset_norm: 0.5, // dead centre = offset 0: the plane sits ON the surface it was fitted to
             depth_norm: 0.75, // +0.5 loads: half a stroke's thickness — a coat you can see, not a stunt
             angle_norm: 0.5,  // 30°: a knife on its edge, not a razor and not a flat blade
+            rake: true, // the groove follows the stroke — what a knife dragged through paint does
             pre: Arc::new(Vec::new()),
             amount: Arc::new(Vec::new()),
             plane_sum: Arc::new(Vec::new()),
             fit_scratch: Vec::new(),
             memo: Vec::new(),
+            memo_src: Vec::new(),
             memo_done: Vec::new(),
             memo_key: MemoKey::None,
+            pre_cover: Arc::new(Vec::new()),
+            pre_mats: Arc::new(Vec::new()),
+            pre_rgba: Arc::new(Vec::new()),
             layer: None,
             bbox: None,
         }
@@ -508,70 +574,38 @@ impl PainterTool {
         self.refresh_live_sculpt();
     }
 
-    /// Whether the active operation is **Sculpt** — the panel shows the Sculpt card (and hides the colour
-    /// controls, which a tool that lays no pigment has no use for).
-    #[must_use]
-    pub fn is_sculpt_mode(&self) -> bool {
-        matches!(self.paint.paint_mode, super::PaintMode::Sculpt)
+    /// Toggle the Chisel's **Rake**. Re-stamps: the V's axis is baked into `plane_sum` as each dab lands, so
+    /// only a re-stamp can turn the knife (the same reason the Angle slider re-stamps).
+    pub fn toggle_sculpt_rake(&mut self) {
+        self.paint.sculpt.rake = !self.paint.sculpt.rake;
+        self.sync_stroke_heading_need(); // a fixed knife needs no heading, and must not hold up the dabs
+        self.refill_open_shape();
+        self.refresh_live_sculpt();
     }
 
-    /// Which knob row the card must paint: `0` Radius (Smooth family) · `1` Offset (Plane) · `2` Depth
-    /// (Height). The Chisel additionally shows Angle — see [`Self::is_sculpt_chisel`].
+    /// Whether the Chisel's V follows the stroke — what the card's checkbox shows.
+    #[must_use]
+    pub fn sculpt_rake(&self) -> bool {
+        self.paint.sculpt.rake
+    }
+
+    /// The axis the Chisel's V folds about, for a dab whose own heading is `dir`.
     ///
-    /// The card shows the knobs the active verb USES and no others. A knob that does nothing to the tool in
-    /// your hand is a knob that lies about what the tool can do, and this card has already cost a smoke over
-    /// exactly that class of mistake.
-    #[must_use]
-    pub fn sculpt_knob_family(&self) -> u8 {
-        self.paint.sculpt.mode_enum().knob_family()
-    }
-
-    /// Whether the active verb is the **Chisel** — the one verb with two knobs (Offset *and* Angle).
-    #[must_use]
-    pub fn is_sculpt_chisel(&self) -> bool {
-        matches!(self.paint.sculpt.mode_enum(), SculptMode::Chisel)
-    }
-
-    /// The kernel radius in px — what the Radius chip shows the artist, and what the kernel actually uses.
-    /// One function, so the number on screen cannot drift from the number in the blur.
-    #[must_use]
-    pub fn sculpt_radius_px(&self) -> u32 {
-        self.paint.sculpt.radius_px()
-    }
-
-    /// The plane Offset in paint-loads — what the Offset chip shows, and what the kernel adds. One function,
-    /// same reason.
-    #[must_use]
-    pub fn sculpt_plane_offset(&self) -> f32 {
-        self.paint.sculpt.plane_offset()
-    }
-
-    /// The Height family's Depth in paint-loads — the chip's number and the kernel's, one function.
-    #[must_use]
-    pub fn sculpt_depth(&self) -> f32 {
-        self.paint.sculpt.depth()
-    }
-
-    /// The Chisel's Angle in degrees — the chip's number and the kernel's, one function.
-    #[must_use]
-    pub fn sculpt_chisel_angle_deg(&self) -> f32 {
-        self.paint.sculpt.chisel_angle_deg()
-    }
-
-    /// Tell the stroke engine whether this stroke's dabs are useless without a **heading**.
+    /// **Rake on** → the dab's heading: the groove curves with the hand. **Off** → the brush's *dab angle*,
+    /// the same rotation the Shape card's gizmo shows — a knife held at a fixed attitude, which is how you
+    /// cut parallel strokes that all lean the same way.
     ///
-    /// The Chisel carves a V about the stroke's axis, so it reads `Dab::dir`. The engine holds the opening
-    /// dabs of such a stroke until travel has settled a direction (the rake **warm-up**) — but it only knew
-    /// to do that for the two texture slots. Without this, a chisel's first dabs arrive with `dir = [0, 0]`
-    /// and carve **nothing** (the V degenerates to Scrape): the groove starts blunt, every single stroke.
-    ///
-    /// Called from the two places that can change the answer — this card's verb, and the paint-mode switch
-    /// (which swaps the whole brush slot underneath us). One function, so the two cannot disagree.
-    pub(super) fn sync_stroke_heading_need(&mut self) {
-        let need = self.is_sculpt_mode() && self.is_sculpt_chisel();
-        self.paint.brush.needs_heading = need;
-        let slot = super::PaintMode::Sculpt.slot();
-        self.paint.brush_by_mode[slot].needs_heading = need;
+    /// A zero heading (a dab emitted before the stroke has travelled) would collapse the V to a flat scrape.
+    /// It cannot happen while raking — `needs_heading` makes the engine hold those dabs until a direction
+    /// settles — but the fallback is here anyway, because "cannot happen" is a claim and this is a `[0, 0]`
+    /// away from a silently blunt tool.
+    pub(super) fn chisel_dir(&self, dir: [f32; 2]) -> [f32; 2] {
+        if self.paint.sculpt.rake && dir != [0.0, 0.0] {
+            return dir;
+        }
+        let a = f32::from(self.paint.brush.dab_angle_deg).to_radians();
+        let (s, c) = a.sin_cos();
+        [c, s]
     }
 
     /// Free the target the OTHER families own, on a family switch.
@@ -593,46 +627,9 @@ impl PainterTool {
         }
         if !keep_memo {
             self.paint.sculpt.memo = Vec::new();
+            self.paint.sculpt.memo_src = Vec::new();
             self.paint.sculpt.memo_done = Vec::new();
             self.paint.sculpt.memo_key = MemoKey::None;
-        }
-    }
-
-    /// Route a Sculpt-panel event to its setter. Segmented mode = `Click` on an option id (its array
-    /// position is the mode); sliders = `SetValue`. Returns `true` iff consumed. Mirrors
-    /// `route_deform_event`; hung off the `handle_panel_event` chain.
-    pub(crate) fn route_sculpt_event(
-        &mut self,
-        event: &ph2d_editor_core::tool::PanelEvent,
-    ) -> bool {
-        use ph2d_editor_core::ids as core_ids;
-        use ph2d_editor_core::tool::PanelEvent;
-        match event {
-            PanelEvent::Click(id) if core_ids::PAINTER_SCULPT_MODE_IDS.contains(id) => {
-                let idx = core_ids::PAINTER_SCULPT_MODE_IDS
-                    .iter()
-                    .position(|x| x == id)
-                    .unwrap_or(0) as u8;
-                self.set_sculpt_mode(idx);
-                true
-            }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_RADIUS_SLIDER => {
-                self.set_sculpt_radius(*v as f32);
-                true
-            }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_OFFSET_SLIDER => {
-                self.set_sculpt_offset(*v as f32);
-                true
-            }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_DEPTH_SLIDER => {
-                self.set_sculpt_depth(*v as f32);
-                true
-            }
-            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_ANGLE_SLIDER => {
-                self.set_sculpt_angle(*v as f32);
-                true
-            }
-            _ => false,
         }
     }
 }

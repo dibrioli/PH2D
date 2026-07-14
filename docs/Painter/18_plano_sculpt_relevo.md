@@ -153,9 +153,26 @@ Não escreve RGBA, não escreve `covers`, não escreve `mats`.
 cima de cobertura zero **não acende**. Isso é *certo*: sculpt não cria tinta onde não há tinta. Vira
 gate: `o_sculpt_não_acende_papel_nu`.
 
-**Exceção — a família ADVECTIVA (W4).** Empurrar tinta **move a matéria**, e matéria carrega cor. Grab /
-Pinch / Nudge têm que advectar **`h` + `covers` + `mats` + RGBA juntos**. É o que separa "sculpt numa
-imagem" de "mexer em tinta", e é uma decisão de **modelo**, não de código.
+**Exceção — a família ADVECTIVA.** Empurrar tinta **move a matéria**, e matéria carrega cor. Quem move
+matéria tem que advectar **`h` + `covers` + `mats` + RGBA juntos**. É o que separa "sculpt numa imagem" de
+"mexer em tinta", e é uma decisão de **modelo**, não de código.
+
+> ### ⚠️ O **INFLATE** É DESSA FAMÍLIA — e eu o arquivei do lado errado da minha própria regra
+>
+> (2026-07-14, 2º smoke do Enio: *"inflate não engorda"*. Não engordava.)
+>
+> A regra acima estava escrita **antes** de o Inflate existir, e prevê exatamente o que aconteceu. Mas eu a
+> li como sendo sobre **W4**, e o Inflate parecia um verbo de *reshape*. Não é: o Inflate **CRESCE A FORMA**
+> — a dilatação empurra a borda pra fora, sobre texels que **não tinham tinta**. E a consequência que este
+> mesmo parágrafo já anota (*"a luz pesa por `cover`, então relevo sobre cobertura zero não acende"*) é o
+> bug: o campo de altura engordava, e **a tela não mudava**. Os gates mediam o `heights`.
+>
+> Agora a bola responde a **DUAS** perguntas — *que altura* e **de onde veio a matéria** (o argmax,
+> `memo_src`) — e o que chega num texel traz a **cobertura, o material e a COR** de onde veio.
+> `SculptMode::moves_matter()` é o único lugar que diz quem é dessa família; W4 entra ali.
+>
+> **A lição não é "faltou um gate". É que a regra estava escrita e eu não a apliquei ao caso novo.**
+> Uma exceção documentada só protege quem *reconhece* que está dentro dela.
 
 ---
 

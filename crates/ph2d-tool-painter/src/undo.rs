@@ -137,6 +137,17 @@ pub(crate) struct SculptSnap {
     /// divides by it anyway, pulling the footprint toward height 0. Doc 18 §10.4 states the rule with a scar
     /// behind it: *ao adicionar um plano, adicione-o ao snapshot no mesmo commit.*
     pub(crate) plane_sum: Arc<Vec<f32>>,
+    /// The **matter** as the stroke found it — coverage, material and the layer's pixels.
+    ///
+    /// Here for the same reason `plane_sum` is, and the same rule (§10.4): **Inflate moves paint**, so it
+    /// re-renders the coverage / material / colour from these every frame. Restore the relief without them
+    /// and the next re-render derives the paint from a canvas the gesture has ALREADY written on — the
+    /// smear compounds, once per undo, and the first thing anyone would blame is the kernel.
+    pub(crate) pre_cover: Arc<Vec<u8>>,
+    /// See [`Self::pre_cover`].
+    pub(crate) pre_mats: Arc<Vec<ph2d_painter_brush::material::MaterialBytes>>,
+    /// See [`Self::pre_cover`]. RGBA8.
+    pub(crate) pre_rgba: Arc<Vec<u8>>,
     /// Which layer the session belongs to — and, the session dying at commit, also *whether there is an
     /// uncommitted gesture at all* (`None` ⇒ no session). The two used to be separate fields.
     pub(crate) layer: Option<RtLayerId>,

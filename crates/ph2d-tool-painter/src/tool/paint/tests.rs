@@ -16778,7 +16778,11 @@ fn impasto_canvas(size: u32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     let b = BrushSpec {
-        radius_px: 6.0,
+        // The REFERENCE radius (`height::IMPASTO_REFERENCE_RADIUS_PX`): the deposit's height now scales with
+        // brush size (Enio 2026-07-14), so a fixture at any other radius would fold that scale into every
+        // height it asserts. Pinning it here keeps these gates about Depth / Body / Grain / the ceiling, and
+        // leaves the size-scaling to its own gate (`the_relief_height_scales_with_the_brush_size`).
+        radius_px: 10.0,
         hardness: 1.0,
         falloff: Falloff::Constant,
         color: [0.1, 0.2, 0.3],
@@ -18002,7 +18006,9 @@ fn impasto_grain_textures_the_body_instead_of_removing_it() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         let mut b = BrushSpec {
-            radius_px: 40.0,
+            // The REFERENCE radius: size-scaling is off (scale 1) so `uniform_peak` is the bare Depth the
+            // sanity assert expects. The Grain-vs-Uniform comparison is a shape property, unaffected by size.
+            radius_px: 10.0,
             color: [0.9, 0.1, 0.1],
             space_attenuation: false,
             impasto: true,
@@ -18569,7 +18575,12 @@ fn impasto_light_shades_the_paint_not_the_paper_showing_through_it() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size); // WHITE paper: the hard case
         let mut b = BrushSpec {
+            // radius 40 for the wide footprint this paper/paint metric was calibrated on; Depth 0.25 so
+            // the size-scaling (×4 at this radius) lands back on the calibrated 1-load relief. Pinning the
+            // radius to 10 instead shrank the footprint and concentrated the Grain slopes, which made the
+            // ÷-coverage share metric unstable at the thinnest edge — the footprint has to stay big.
             radius_px: 40.0,
+            impasto_depth: 0.25,
             color: [0.9, 0.1, 0.1],
             space_attenuation: false,
             impasto: true,
@@ -18671,7 +18682,7 @@ fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
     b.hardness = 0.0;
     b.falloff = Falloff::Smooth;
     b.radius_px = 40.0;
-    b.impasto_depth = 0.7;
+    b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
     b.impasto_body = 1.0; // this gate IS the body curve (the artist's default is the round profile)
     b.impasto_source = DepthSource::Uniform; // isolate the body curve — grain is another gate
     t.paint.brush = b;
@@ -18818,16 +18829,24 @@ fn impasto_strokes_pile_up_only_to_the_glass() {
         "three full loads of paint ARE three loads — the buffer keeps the relief the artist built, so the \
          sculpt's plane fits and ball offsets reason about a real surface. Got {h}."
     );
-    // …and the APPEARANCE tops out: compressed, well short of the raw height, and never past the asymptote.
+    // …and the APPEARANCE is three loads too: **weight-proportional, no glass** (Enio's 2nd correction,
+    // 2026-07-14 — *"subir na proporção real do peso da ferramenta"*). Three loads is far below the knee,
+    // so the ceiling is the identity here and a stroke adds exactly its weight.
     let seen = super::impasto_ceiling::soft_ceiling(h);
     assert!(
-        seen < h - 0.1 && seen > super::impasto_ceiling::H_KNEE,
-        "three loads should LOOK like {:.2}-ish (topped out but still climbing), not {seen:.3}",
-        super::impasto_ceiling::soft_ceiling(3.0)
+        (seen - h).abs() < 1e-4,
+        "three loads should LOOK like three loads (linear, weight-proportional), not {seen:.3}. The old \
+         ceiling topped out at 2 and made stacking a fight; the artist wanted paint that piles."
+    );
+    // The runaway guard is still THERE — it just lives far out of reach: an absurd pile is bounded (the
+    // light never sees an infinite slope) and bounded SMOOTHLY (never a flat clamp).
+    assert!(
+        super::impasto_ceiling::soft_ceiling(1e6) < super::impasto_ceiling::H_ASYMPTOTE,
+        "the far-field guard is gone: an unbounded pile would hand the light an infinite normal"
     );
     assert!(
-        super::impasto_ceiling::soft_ceiling(1000.0) < super::impasto_ceiling::H_ASYMPTOTE,
-        "the glass is not glass: the apparent relief passed the asymptote"
+        super::impasto_ceiling::soft_ceiling(1e6) > super::impasto_ceiling::H_KNEE + 1.0,
+        "…but it is a GUARD, not a low ceiling — it must sit far above anything an artist reaches"
     );
 }
 
@@ -18854,10 +18873,10 @@ fn the_glass_ceiling_compresses_the_marks_it_does_not_erase_them() {
         );
     }
     // …and it really is a CEILING: the higher the pile, the less of the mark survives.
-    let low = super::impasto_ceiling::soft_ceiling(2.5 + mark)
-        - super::impasto_ceiling::soft_ceiling(2.5);
-    let high = super::impasto_ceiling::soft_ceiling(20.0 + mark)
-        - super::impasto_ceiling::soft_ceiling(20.0);
+    let low = super::impasto_ceiling::soft_ceiling(30.0 + mark)
+        - super::impasto_ceiling::soft_ceiling(30.0);
+    let high = super::impasto_ceiling::soft_ceiling(120.0 + mark)
+        - super::impasto_ceiling::soft_ceiling(120.0);
     assert!(
         high < low * 0.5 && high > 0.0,
         "the mark should read fainter on a tall pile than on a short one (got {low:e} vs {high:e}) — that \
@@ -18962,7 +18981,7 @@ fn impasto_body_zero_obeys_the_falloff() {
     b.hardness = 0.0;
     b.falloff = Falloff::Smooth;
     b.radius_px = 40.0;
-    b.impasto_depth = 0.7;
+    b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
     b.impasto_source = DepthSource::Uniform;
     b.impasto_smoothing = 0.0; // the raw deposit IS the claim — no settling on top
     b.impasto_body = 0.0; // the round school
@@ -19145,7 +19164,7 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         b.hardness = 0.0;
         b.falloff = Falloff::Smooth;
         b.radius_px = 40.0;
-        b.impasto_depth = 0.7;
+        b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
         // RED paint on white paper: the rim's "ink" is measured as `R − G`, so the canvas fixture's own
         // dark blue would read as zero ink and the bleach half of this gate would be vacuous. (It said
         // so out loud on the first run — which is the anti-vacuity clause earning its keep.)
@@ -19235,7 +19254,7 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         b.hardness = 0.0;
         b.falloff = Falloff::Smooth;
         b.radius_px = 40.0;
-        b.impasto_depth = 0.7;
+        b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
         b.color = [0.9, 0.1, 0.1];
         b.impasto_source = DepthSource::Grain;
         b.impasto_smoothing = 0.15;
@@ -21078,7 +21097,7 @@ fn impasto_material_render_with(
     b.hardness = 0.0;
     b.falloff = Falloff::Smooth;
     b.radius_px = 40.0;
-    b.impasto_depth = 0.7;
+    b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
     b.color = color;
     b.impasto_source = DepthSource::Grain;
     b.impasto_smoothing = 0.15;
@@ -21476,7 +21495,7 @@ fn adjust_last_stroke_gates_whether_the_sliders_reach_the_canvas() {
         b.hardness = 0.0;
         b.falloff = Falloff::Smooth;
         b.radius_px = 40.0;
-        b.impasto_depth = 0.7;
+        b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
         b.color = [0.9, 0.1, 0.1];
         t.paint.brush = b;
         for slot in &mut t.paint.brush_by_mode {
@@ -21507,7 +21526,7 @@ fn adjust_last_stroke_gates_whether_the_sliders_reach_the_canvas() {
         b.hardness = 0.0;
         b.falloff = Falloff::Smooth;
         b.radius_px = 40.0;
-        b.impasto_depth = 0.7;
+        b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
         b.color = [0.9, 0.1, 0.1];
         t.paint.brush = b;
         for slot in &mut t.paint.brush_by_mode {
@@ -21568,7 +21587,7 @@ fn adjust_last_stroke_does_not_destroy_the_strokes_ingredients() {
         b.hardness = 0.0;
         b.falloff = Falloff::Smooth;
         b.radius_px = 40.0;
-        b.impasto_depth = 0.7;
+        b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
         b.color = [0.9, 0.1, 0.1];
         t.paint.brush = b;
         for slot in &mut t.paint.brush_by_mode {
@@ -21780,7 +21799,7 @@ fn undoing_a_stroke_restores_the_material_underneath_it() {
     b.hardness = 0.0;
     b.falloff = Falloff::Smooth;
     b.radius_px = 40.0;
-    b.impasto_depth = 0.7;
+    b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
     b.color = [0.9, 0.1, 0.1];
     t.paint.brush = b;
     for slot in &mut t.paint.brush_by_mode {
@@ -21850,4 +21869,197 @@ fn undoing_a_stroke_restores_the_material_underneath_it() {
         restored, after_matte,
         "…and the lit canvas must be the matte one again, to the byte"
     );
+}
+
+// ── The relief obeys the brush SIZE (Enio's smoke of 2026-07-14) ─────────────────────────────────────
+
+/// Paint one dab at `radius`, on its own canvas, and hand back the peak relief and the whole height field.
+fn one_dab_relief(radius: f32, depth: f32) -> (f32, Vec<f32>, u32) {
+    let size = 220u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    let b = BrushSpec {
+        radius_px: radius,
+        hardness: 1.0,
+        falloff: Falloff::Smooth, // a rounded body, so the slope — and thus the light — is the whole story
+        color: [0.7, 0.1, 0.1],
+        space_attenuation: false,
+        impasto: true,
+        impasto_depth: depth,
+        impasto_body: 0.0, // the paint's own profile: relief follows the falloff, which is the point here
+        impasto_smoothing: 0.0,
+        ..Default::default()
+    };
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    let c = f32::from(u8::try_from(size / 2).unwrap_or(110));
+    t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+    t.on_canvas_pointer(cp([c, c], PointerPhase::Up));
+    let h = relief(&t);
+    let peak = h.iter().fold(0.0f32, |m, &v| m.max(v.abs()));
+    (peak, h, size)
+}
+
+/// **A bigger brush lays proportionally taller relief.** (Enio: *"a altura do relevo não está vinculada ao
+/// tamanho do pincel, mas é fixa."*)
+///
+/// The peak height scales with the radius, so the mound's aspect ratio (height ÷ width) is constant — which
+/// is what makes the falloff read at every scale instead of flattening out under a big brush. A dab at the
+/// reference radius is still exactly its Depth, so nothing an artist painted with a default brush changed.
+///
+/// **Mutation that must bleed:** drop the `size_scale` from `derive_height` — every radius peaks at the same
+/// Depth again, which is the bug.
+#[test]
+fn the_relief_height_scales_with_the_brush_size() {
+    let depth = 0.5f32;
+    let (small, _, _) = one_dab_relief(10.0, depth); // the reference radius
+    let (big, _, _) = one_dab_relief(40.0, depth);
+
+    assert!(
+        (small - depth).abs() < 0.03,
+        "a dab at the reference radius should peak at its Depth ({depth}), got {small} — the scaling must be \
+         1 there, or every canvas painted with the default brush just changed height"
+    );
+    // Four times the radius, four times the peak (± the settle/quantisation slack).
+    let ratio = big / small;
+    assert!(
+        (ratio - 4.0).abs() < 0.4,
+        "a 4×-bigger brush laid {ratio:.2}× the relief, not ~4×. The height is not tracking the size, so a \
+         big brush's mound spreads its Depth over a huge footprint and reads as flat paint — which is \
+         exactly Enio's report."
+    );
+}
+
+/// **A big brush still shows RELIEF — it is not just flat paint.** The appearance half of Enio's report,
+/// measured where he measured it: on the screen.
+///
+/// A flat disc of paint has `n_z = 1` everywhere, so the light — which is RELATIVE (a pixel divided by the
+/// flat response) — does **nothing** inside it: lit and unlit are the same pixels. That was the big dab under
+/// the old fixed-height deposit: its Depth smeared over a huge footprint, `n_z ≈ 1`, the light drew a flat
+/// disc — *"apenas tinta"*. So the oracle is exactly that: **how far does turning the light on move the
+/// interior of the dab?** With the height tracking the size, a big brush is a dome and the light has a great
+/// deal to say; without it, the interior barely moves.
+///
+/// The oracle is the light, not the buffer ([[feedback_oracle_must_model_appearance_not_implementation]]).
+///
+/// **Mutation that must bleed** (checked): drop the `size_scale` from `derive_height` — the big dab flattens,
+/// the light stops moving its interior, and the shading collapses to the rim.
+#[test]
+fn a_big_brush_still_shows_relief_it_is_not_just_flat_paint() {
+    // How much the RELIEF's light changes a dab, cancelling the paint underneath. Two identical dabs —
+    // one with impasto (relief + light), one without (`impasto: false`, the same colour and the same
+    // coverage, no relief) — differ ONLY by the shading. Diff them per pixel and the paint blend, the paper
+    // edge, everything but the light drops out. A flat disc has `n_z = 1` and the two are equal; a dome's
+    // walls fall away and they diverge.
+    //
+    // (This is the honest form of the light-toggle the first draft used: that toggled `impasto_show` on ONE
+    // tool, whose preview cached across the relight, so the "unlit" pass came back equal to the lit one and
+    // every dab read as flat. Two fresh tools cannot cache into each other.)
+    let shading_departure = |radius: f32| -> i32 {
+        let size = 220u32;
+        let render = |impasto: bool| -> Vec<u8> {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+            let b = BrushSpec {
+                radius_px: radius,
+                // SOFT, so the relief is a rounded dome and the slope lives across the whole dab — a hard
+                // brush is a mesa, flat-topped at every size, and would hide the very thing Enio reported.
+                hardness: 0.0,
+                falloff: Falloff::Smooth,
+                color: [0.7, 0.1, 0.1],
+                space_attenuation: false,
+                impasto,
+                impasto_depth: 0.6,
+                impasto_body: 0.0,
+                impasto_smoothing: 0.0,
+                ..Default::default()
+            };
+            t.paint.brush = b;
+            for slot in &mut t.paint.brush_by_mode {
+                *slot = b;
+            }
+            let c = f32::from(u8::try_from(size / 2).unwrap_or(110));
+            t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+            t.on_canvas_pointer(cp([c, c], PointerPhase::Up));
+            lit(&mut t)
+        };
+        let on = render(true);
+        let off = render(false);
+        let w = size as usize;
+        let cc = (size / 2) as usize;
+        let span = (radius * 0.95) as usize;
+        let mut worst = 0i32;
+        for x in (cc - span)..=(cc + span) {
+            let i = (cc * w + x) * 4;
+            let d = (0..3)
+                .map(|k| (i32::from(on[i + k]) - i32::from(off[i + k])).abs())
+                .max()
+                .unwrap_or(0);
+            worst = worst.max(d);
+        }
+        worst
+    };
+
+    let small = shading_departure(10.0);
+    let big = shading_departure(60.0);
+    assert!(
+        small > 10,
+        "sanity: the small dab's interior is shaded ({small} levels) — if not, the light is off and the \
+         comparison below is vacuous"
+    );
+    assert!(
+        big >= small,
+        "the light barely touched the big dab's INTERIOR ({big} levels, vs {small} for the small one). A \
+         flat disc has n_z = 1 and the relative light does nothing inside it — which is a big brush reading \
+         as *\"apenas tinta\"*. The relief has to track the size, or a big brush is paint with no body."
+    );
+}
+
+/// **Paint stacks in proportion to its weight — no glass to fight.** (Enio: *"o fato de ficar
+/// progressivamente mais difícil de subir não é desejável … subir na proporção real do peso da ferramenta."*)
+///
+/// Six full-Depth strokes over the same spot pile to ≈ six loads, linearly — each stroke adds its whole
+/// weight, and the apparent height equals the real height all the way up. The old ceiling topped out at two
+/// loads, so the third stroke onward did almost nothing: the wall Enio hit. Now the ceiling is a far-field
+/// guard, and nothing in the reachable range presses against it.
+///
+/// **Mutation that must bleed:** drop `H_KNEE` back to 2 (or 3) — the sixth stroke's apparent height stops
+/// tracking the real one and the ratio collapses.
+#[test]
+fn stacking_is_linear_and_weight_proportional() {
+    let mut t = impasto_canvas(48); // reference radius, so a full-Depth stroke is exactly one load
+    let mut b = t.paint.brush;
+    b.impasto_depth = 1.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    let centre = (24 * 48 + 24) as usize;
+    let mut last = 0.0f32;
+    for n in 1..=6u32 {
+        t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up));
+        let stored = relief(&t)[centre];
+        let seen = super::impasto_ceiling::soft_ceiling(stored);
+        // The stored relief is n loads (stacking adds), and the LIGHT sees all of it — linear, no topping.
+        assert!(
+            (stored - n as f32).abs() < 0.05,
+            "after {n} strokes the relief is {stored}, not ~{n} loads — stacking is not adding a full weight \
+             per stroke"
+        );
+        assert!(
+            (seen - stored).abs() < 1e-4,
+            "the {n}th load is being COMPRESSED in the display ({seen} vs {stored}) — the artist asked for \
+             weight-proportional stacking, and the reachable range must be pure linear"
+        );
+        // Each stroke moved the surface up by a real, undiminished step — no "progressively harder".
+        assert!(
+            seen - last > 0.9,
+            "the {n}th stroke lifted the surface by only {:.3} of a load — that is the glass Enio rejected",
+            seen - last
+        );
+        last = seen;
+    }
 }

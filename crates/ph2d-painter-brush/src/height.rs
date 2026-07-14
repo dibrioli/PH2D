@@ -256,6 +256,13 @@ pub(crate) fn sweep_residual(dx: f32, dy: f32, sweep: Option<([f32; 2], f32)>) -
 /// the literal reading of Enio's *"a tinta corresponde ao relevo"* — and Body then flattens that film into
 /// a slab. What the raw paint keeps doing, unchanged, is being the INGREDIENT: it is what the whole Body
 /// card re-derives from, so Depth / Body / Depth Source / Smoothing / Push all stay live.
+/// The brush radius at which impasto Depth means exactly what it says: `Depth` loads of paint.
+///
+/// The deposit's peak height scales with `radius / this`, so the mound's aspect ratio is constant and
+/// the relief reads at every brush size (see [`derive_height`]). Ten pixels is the app's default brush,
+/// so a freshly-opened brush is unchanged and every other size is relative to it. // CLAMP-OK
+pub const IMPASTO_REFERENCE_RADIUS_PX: f32 = 10.0;
+
 #[inline]
 #[must_use]
 pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
@@ -264,6 +271,21 @@ pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
     if depth == 0.0 || m <= 0.0 {
         return 0.0;
     }
+    // **The relief's height scales with the brush's SIZE** (Enio, smoke of 2026-07-14: *"a altura do relevo
+    // não está vinculada ao tamanho do pincel … pincéis grandes ficam parecendo que não têm relevo e que são
+    // apenas tinta"*).
+    //
+    // `depth` alone is an absolute thickness in loads, so a 6-px dab and a 60-px dab both peaked at the same
+    // height — and a mound that height over a 60-px footprint has a slope of nothing, `n_z ≈ 1`, and the
+    // light draws it flat. A bigger brush carries a thicker glob of paint; scaling the peak by the radius
+    // keeps the mound's **aspect ratio** (height ÷ width) constant, so the falloff reads at every scale and a
+    // big brush is a big dome instead of a puddle.
+    //
+    // Against a REFERENCE radius, so a dab at the reference is unchanged and the number stays dimensionless.
+    // Uses the brush's base radius (`clamped_radius`) — exact for a constant-size stroke, which is the case
+    // Enio is comparing; a pressure-tapered stroke scales uniformly by the base rather than per-dab, which is
+    // a refinement noted for later, not a visible error.
+    let size_scale = spec.clamped_radius() / IMPASTO_REFERENCE_RADIUS_PX;
     // The **Body** dial: at 1 the full body curve (plateau + wall), at 0 the paint's own profile
     // (falloff / Shape / Shape-Tone ramp sculpt the relief — a soft brush lays a perfectly rounded
     // ridge), in between the mesa family. Monotone in `m` at every setting, which is what lets the
@@ -277,7 +299,7 @@ pub fn derive_height(spec: &crate::BrushSpec, paint: f32, grain: f32) -> f32 {
         // film, the Painter/ArtRage signature — instead of mushing a dome.
         a *= grain_groove(grain);
     }
-    depth * a
+    depth * a * size_scale
 }
 
 /// The grain sample of a pixel that has none: a full, ungrooved body.

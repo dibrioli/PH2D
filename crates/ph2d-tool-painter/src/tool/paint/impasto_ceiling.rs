@@ -7,17 +7,33 @@
 //! The whole module is one function, and the argument for it is in that function's doc — including why the
 //! `clamp` that used to do this job was not a ceiling but an eraser.
 
-/// Where the paint stops behaving linearly — the **knee** of the glass ceiling, in units of a full-Depth
-/// stroke. Below it, nothing at all happens: the relief is the relief, byte for byte. // CLAMP-OK
-pub(super) const H_KNEE: f32 = 2.0;
+/// Where the paint stops rising **linearly** — the knee of the far-field guard, in units of a full-Depth
+/// stroke.
+///
+/// ## It is not a ceiling the artist hits — it is a runaway guard (Enio, 2nd smoke of 2026-07-14)
+///
+/// Enio: *"o fato de ficar progressivamente mais difícil de subir não é desejável — não poderia … subir na
+/// proporção real do peso da ferramenta?"* Right: paint should stack in proportion to its weight, with no
+/// glass to press against. So below this knee the relief is **exactly linear** — a stroke adds its full
+/// weight, ten strokes add ten, byte for byte.
+///
+/// The knee sits at **24 loads**, which is 384 px of relief (`× DEPTH_UNIT_PX`). Nothing an artist does in
+/// the reachable range comes near it: the whole point of the number is to be *out of reach*, so that the one
+/// thing the compression still buys — a bound on the height the LIGHT can see, so a single runaway texel
+/// cannot hand it an infinite slope — never costs the artist a linear load. The old knee was **2**, and with
+/// the new radius-scaled deposit a big brush cleared it in a single dab; that is the wall Enio saw.
+/// // CLAMP-OK
+pub(super) const H_KNEE: f32 = 24.0;
 
-/// The height the **apparent** relief approaches and never reaches. // CLAMP-OK
-pub(super) const H_ASYMPTOTE: f32 = 8.0;
+/// The height the **apparent** relief approaches and never reaches — the far-field guard's asymptote. So far
+/// past the knee that the band between them is itself effectively unreachable; it exists only so the
+/// approach is a smooth curve rather than a hard wall if a pathological pile ever climbs into it. // CLAMP-OK
+pub(super) const H_ASYMPTOTE: f32 = 128.0;
 
 /// A sanity bound on the **stored** field — not a design value, a guard. Nothing an artist can do reaches
 /// it; it exists so that a pathological accumulation cannot walk off into infinity and take the normal with
 /// it. // CLAMP-OK
-pub(super) const H_MAX: f32 = 32.0;
+pub(super) const H_MAX: f32 = 128.0;
 
 /// The **glass ceiling** — and it is a ceiling of the *appearance*, not of the data.
 ///

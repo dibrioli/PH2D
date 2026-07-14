@@ -165,6 +165,44 @@ exigir que um EMA fosse idempotente.
 Duas coisas independentes seguram o caminho vivo. A que de fato o quebra é `if rake { return [1.0, 0.0] }` —
 e derruba o `the_chisel_carves_a_crease`. Escrito no doc do gate.
 
+### 0.4 — RODADA 4 (mesmo dia) — o teto e o TAMANHO do pincel
+
+> *"em 2 pinceladas bate no teto e achata tudo … esse limite é mesmo necessário? … a altura do relevo não
+> está vinculada ao tamanho do pincel, mas é fixa … pincéis grandes ficam parecendo apenas tinta."*
+
+Dois problemas, e o 2º é a raiz do 1º.
+
+**① A altura do depósito era ABSOLUTA, sem o raio.** Um pincel de 6 px e um de 60 px picavam no MESMO pico
+(em cargas). Um monte dessa altura sobre 60 px tem `n_z ≈ 1` — a luz o desenha **chato**. Fix: `derive_height`
+escala por `radius / 10` (a referência = pincel default), então a **razão de aspecto** (altura÷largura) fica
+constante e o falloff lê em toda escala. Um dab na referência é exatamente o Depth (arte com o pincel default
+intacta). Isso EXPLICA o problema do teto: com a altura escalada, um pincel grande estourava o joelho antigo
+(2 cargas) num único dab.
+
+**② O teto não era um limite — era um clamp que ACHATAVA (de novo, do outro lado).** A compressão que eu
+tinha posto (joelho 2, assíntota 8) ainda topava em ~8 cargas e ainda ficava *progressivamente mais difícil
+de subir*. O Enio: **isso não é desejável — sobe na proporção real do peso.** Fix: joelho **2→24**, assíntota
+**8→128**. A faixa que o artista alcança agora é **LINEAR** (cada pincelada soma o peso inteiro; 6 pinceladas
+= 6 cargas, byte por byte); a compressão sobrou só como **guarda far-field** (existe para a luz nunca receber
+uma inclinação infinita, nunca porque o artista a alcança).
+
+**Gates novos:** `the_relief_height_scales_with_the_brush_size` (pico ∝ raio) · `a_big_brush_still_shows_
+relief_it_is_not_just_flat_paint` (a APARÊNCIA — a luz move o interior de um domo grande tanto quanto de um
+pequeno) · `stacking_is_linear_and_weight_proportional` (6 pinceladas = 6 cargas, sem compressão).
+
+**2 armadilhas no oráculo de aparência, ambas minhas** (a lição de sempre): (a) medi min-max da imagem
+iluminada e peguei a borda **papel→tinta** (branco→vermelho), não o relevo — todo disco parecia domo; (b)
+usei `hardness 1.0`, que faz uma **mesa** (topo chato + penhasco), e amostrei a 0.95×raio, **perdendo o
+penhasco** no dab grande → 0 de sombreamento num relevo de 3,6 cargas. Só sondando o PERFIL vi que era mesa,
+não domo. O oráculo certo: dab **impasto on vs off** (a cobertura cancela, sobra a luz), `hardness 0` (domo
+real), varrendo o dab todo.
+
+**Gate churn:** 11 gates existentes quebraram (a altura mudou). Consertados por princípio, não afrouxados:
+`impasto_canvas` e os unit tests foram **fixados na referência** (escala 1) pra testarem o perfil, não a
+escala; os gates de luz a raio 40 tiveram a profundidade compensada (×0.25) pra restaurar o relevo calibrado
+mantendo a pegada; os 2 gates de teto foram reescritos pra faixa linear. **2 mutações, 2 mortas** (altura
+ignora o raio; joelho volta pra 2).
+
 ---
 
 ## 1. Estado da linha (medido em 2026-07-14, não lembrado)

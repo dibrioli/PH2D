@@ -94,7 +94,7 @@ fn depth_source_uniform_is_level_and_grain_is_not() {
         impasto_depth: 1.0,
         hardness: 0.6,
         falloff: Falloff::Smooth,
-        radius_px: 12.0,
+        radius_px: 10.0, // the impasto REFERENCE radius: size-scaling is off (scale 1) so these test the profile math
         ..Default::default()
     };
     base.texture.kind = TextureKind::Noise; // a Grain with real per-texel variation
@@ -149,7 +149,7 @@ fn every_body_knob_is_a_pure_function_of_the_stored_ingredients() {
         impasto_depth: 0.8,
         hardness: 0.3,
         falloff: Falloff::Smooth,
-        radius_px: 12.0,
+        radius_px: 10.0, // the impasto REFERENCE radius: size-scaling is off (scale 1) so these test the profile math
         ..Default::default()
     };
     base.texture.kind = TextureKind::Noise;
@@ -223,7 +223,7 @@ fn eraser_scrubs_the_relief_it_finds() {
         impasto_depth: 1.0,
         hardness: 1.0, // hard disk → deterministic full coverage inside
         falloff: Falloff::Constant,
-        radius_px: 12.0,
+        radius_px: 10.0, // the impasto REFERENCE radius: size-scaling is off (scale 1) so these test the profile math
         ..Default::default()
     };
     let mut field = vec![0.8f32; (W * W) as usize];

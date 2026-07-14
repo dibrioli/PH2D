@@ -1398,7 +1398,8 @@ impl crate::App {
                         // Copy) to apply after the drain; still forward to the tool
                         // (which ignores those ids) so mode/width/etc. flow.
                         if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
-                            if let Some(act) = crate::vec_blend::action_for_id(*id) {
+                            let stack_up = crate::render_loop::vector_bridge::blend_stack_up(tools);
+                            if let Some(act) = crate::vec_blend::action_for_id(*id, stack_up) {
                                 pending_vec_blend = Some(act);
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
@@ -2219,6 +2220,14 @@ impl crate::App {
                     .map_or(ph2d_tool_vector::params::BLEND_STEPS_DEFAULT, |(_, v)| {
                         ph2d_tool_vector::params::blend_steps_from_track(f64::from(v))
                     });
+                let stack_up = match action {
+                    crate::vec_blend::BlendAction::StackUp(up) => {
+                        // O checkbox é da TOOL (o painel o pinta pelo snapshot dela).
+                        crate::render_loop::vector_bridge::set_blend_stack_up(tools, up);
+                        up
+                    }
+                    _ => crate::render_loop::vector_bridge::blend_stack_up(tools),
+                };
                 crate::vec_blend::apply(
                     vec_scene,
                     &mut self.vec_history,
@@ -2227,7 +2236,14 @@ impl crate::App {
                     &mut self.vec_blend,
                     action,
                     steps,
+                    stack_up,
                 );
+                // A sequência de z só pode ser escrita quando as entidades existirem — o `sync`
+                // ainda vai rodar neste frame. Ver `App::vec_restack`.
+                self.vec_restack = self
+                    .vec_blend
+                    .as_ref()
+                    .map(crate::vec_blend::BlendSession::stack);
             }
             if let Some(op) = pending_vec_bool {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
@@ -2994,6 +3010,12 @@ impl crate::App {
             // undo troca os bits, a pilha de z se reordena sozinha a cada Ctrl+Z, e o passo
             // espúrio volta vestido de outra coisa. Não ter empate > escolher desempate.
             ph2d_ecs::assign_missing_root_order(sim.world_mut());
+            // O Blend pediu uma sequência de z; agora as entidades existem (o `sync` rodou) e ela
+            // pode ser escrita na ÁRVORE — que é quem manda no z (ADR-0110). Escrever na ordem do
+            // vetor da cena seria a porta errada: a projeção abaixo a reescreve todo frame.
+            if let Some(order) = self.vec_restack.take() {
+                crate::vec_entities::restack(sim, &self.vec_entities, &order);
+            }
             if let Some(live) = hero_live.as_mut() {
                 crate::build_hierarchy_snapshot(
                     sim.world(),

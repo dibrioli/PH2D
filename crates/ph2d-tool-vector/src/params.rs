@@ -477,6 +477,9 @@ pub struct VectorStyleSnapshot {
     pub fill: [u8; 4],
     pub stroke_width_px: f64,
     pub mode: DrawMode,
+    /// **Blend:** cada passo nasce ACIMA do anterior (o checkbox da seção Blend). A tool é a dona;
+    /// o painel só o pinta.
+    pub blend_stack_up: bool,
     /// A forma ATIVA do catálogo + os parâmetros dela (unidade de UI) — o painel pinta o
     /// seletor e os campos a partir disto, sem saber que formas existem.
     pub shape: ShapeKind,
@@ -523,6 +526,7 @@ impl Default for VectorStyleSnapshot {
             fill: [90, 150, 230, 255],
             stroke_width_px: super::tool::DEFAULT_STROKE_WIDTH_PX,
             mode: DrawMode::Pen,
+            blend_stack_up: true,
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
             cap: StrokeCap::Butt,

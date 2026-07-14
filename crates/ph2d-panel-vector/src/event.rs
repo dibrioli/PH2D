@@ -326,6 +326,7 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BLEND_RUN
         || id == ids::VECTOR_BLEND_ROTATE
         || id == ids::VECTOR_BLEND_REVERSE
+        || id == ids::VECTOR_BLEND_STACK_UP
         || id == ids::VECTOR_BOOL_UNION
         || id == ids::VECTOR_BOOL_SUBTRACT
         || id == ids::VECTOR_BOOL_INTERSECT

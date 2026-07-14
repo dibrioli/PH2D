@@ -46,7 +46,7 @@ fn run(
     steps: u32,
 ) -> ph2d_vec_edit::History {
     let mut history = ph2d_vec_edit::History::default();
-    apply(scene, &mut history, pen, xf, session, action, steps);
+    apply(scene, &mut history, pen, xf, session, action, steps, true);
     history
 }
 
@@ -173,6 +173,7 @@ fn every_action_is_exactly_one_undo_step() {
         &mut session,
         BlendAction::Run,
         3,
+        true,
     );
     assert_eq!(scene.paths().len(), 5);
 
@@ -230,7 +231,58 @@ fn every_painted_blend_button_maps_to_an_action() {
         (ph2d_editor::ids::VECTOR_BLEND_ROTATE, BlendAction::Rotate),
         (ph2d_editor::ids::VECTOR_BLEND_REVERSE, BlendAction::Reverse),
     ] {
-        assert_eq!(action_for_id(id), Some(want));
+        assert_eq!(action_for_id(id, true), Some(want));
     }
-    assert_eq!(action_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
+    assert_eq!(
+        action_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION, true),
+        None
+    );
+
+    // O checkbox ALTERNA: o que ele levanta é sempre o INVERSO do estado corrente. (Um botão que
+    // levantasse o mesmo valor que já está lá seria um botão que não faz nada.)
+    assert_eq!(
+        action_for_id(ph2d_editor::ids::VECTOR_BLEND_STACK_UP, true),
+        Some(BlendAction::StackUp(false))
+    );
+    assert_eq!(
+        action_for_id(ph2d_editor::ids::VECTOR_BLEND_STACK_UP, false),
+        Some(BlendAction::StackUp(true))
+    );
+}
+
+/// **A SEQUÊNCIA de z é o resultado, não um efeito colateral de quem nasceu primeiro.**
+///
+/// O smoke do Enio: *"a primeira forma criada, que deveria ficar por cima do círculo original,
+/// ficou por baixo"*. A pilha que o blend pede vai da fonte de trás, pelos passos, até a da
+/// frente — e o checkbox inverte a coisa inteira.
+#[test]
+fn the_blend_asks_for_the_whole_sequence_in_z() {
+    let (mut scene, xf, mut pen, a, b) = two_shapes();
+    let mut session = None;
+    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 3);
+
+    let s = session.as_ref().expect("a sessão");
+    let up = s.stack();
+    assert_eq!(
+        up.first(),
+        Some(&a),
+        "com Stack Up, a fonte de trás é o FUNDO"
+    );
+    assert_eq!(up.last(), Some(&b), "e a da frente é o TOPO");
+    assert_eq!(
+        up[1..up.len() - 1],
+        s.produced[..],
+        "os passos vão no meio, em ordem"
+    );
+
+    // O checkbox desligado inverte a pilha INTEIRA (fontes inclusas).
+    let mut down = s.clone();
+    down.stack_up = false;
+    let d = down.stack();
+    let mut expect: Vec<VecPathId> = up.clone();
+    expect.reverse();
+    assert_eq!(
+        d, expect,
+        "sem Stack Up, cada passo nasce ABAIXO do anterior"
+    );
 }

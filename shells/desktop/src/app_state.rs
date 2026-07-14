@@ -350,6 +350,12 @@ pub(crate) struct App {
     /// É ela que faz *Rotate Match* / *Reverse Match* re-rodarem na hora, em vez de o artista
     /// ter de desfazer e adivinhar (`crate::vec_blend`).
     pub(crate) vec_blend: Option<crate::vec_blend::BlendSession>,
+    /// A sequência de z que o Blend pediu (**fundo → topo**), à espera das ENTIDADES.
+    ///
+    /// O blend cria os passos no documento, mas quem manda no z é a **árvore** (ADR-0110) — e a
+    /// entidade de um path novo só nasce no `vec_entities::sync`, mais adiante no mesmo frame.
+    /// Então o pedido espera aqui e é aplicado logo depois do sync (`vec_entities::restack`).
+    pub(crate) vec_restack: Option<Vec<ph2d_vec_scene::VecPathId>>,
     pub(crate) window: Option<Arc<Window>>,
     pub(crate) host: Option<WinitHost>,
     pub(crate) gfx: Option<AppGfx>,

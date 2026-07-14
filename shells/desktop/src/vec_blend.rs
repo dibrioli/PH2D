@@ -29,8 +29,28 @@ pub(crate) struct BlendSession {
     pub(crate) b: VecPathId,
     pub(crate) steps: u32,
     pub(crate) opts: BlendOpts,
+    /// Cada passo nasce **acima** do anterior (`true`) ou **abaixo** (`false`).
+    pub(crate) stack_up: bool,
     /// Os passos que a última rodada produziu — é o que a próxima apaga.
     pub(crate) produced: Vec<VecPathId>,
+}
+
+impl BlendSession {
+    /// A sequência inteira em z (**fundo → topo**): as duas fontes e os passos entre elas.
+    ///
+    /// **As fontes entram na conta**, e não é detalhe: um blend cuja 1ª intermediária fica DEBAIXO
+    /// da forma que a originou não lê como uma transição — lê como bagunça (Enio, smoke). A ordem
+    /// de z de uma sequência é parte do resultado, não um efeito colateral de quem nasceu primeiro.
+    pub(crate) fn stack(&self) -> Vec<VecPathId> {
+        let mut z = Vec::with_capacity(self.produced.len() + 2);
+        z.push(self.a);
+        z.extend(self.produced.iter().copied());
+        z.push(self.b);
+        if !self.stack_up {
+            z.reverse();
+        }
+        z
+    }
 }
 
 /// O que o painel pede.
@@ -42,11 +62,15 @@ pub(crate) enum BlendAction {
     Rotate,
     /// **Reverse Match**: inverte o sentido de percurso de B e re-roda.
     Reverse,
+    /// **Stack Up**: o checkbox — cada passo acima do anterior, ou abaixo. Re-empilha na hora.
+    StackUp(bool),
 }
 
 /// O botão do painel → a ação (`None` para qualquer outro id). Pura, gateada.
-pub(crate) fn action_for_id(id: ph2d_editor::NodeId) -> Option<BlendAction> {
-    if id == ph2d_editor::ids::VECTOR_BLEND_RUN {
+pub(crate) fn action_for_id(id: ph2d_editor::NodeId, stack_up: bool) -> Option<BlendAction> {
+    if id == ph2d_editor::ids::VECTOR_BLEND_STACK_UP {
+        Some(BlendAction::StackUp(!stack_up)) // o clique ALTERNA
+    } else if id == ph2d_editor::ids::VECTOR_BLEND_RUN {
         Some(BlendAction::Run)
     } else if id == ph2d_editor::ids::VECTOR_BLEND_ROTATE {
         Some(BlendAction::Rotate)
@@ -64,6 +88,7 @@ pub(crate) fn action_for_id(id: ph2d_editor::NodeId) -> Option<BlendAction> {
 /// - **Rotate/Reverse** mexem na sessão ABERTA. Sem sessão, não fazem nada — e dizem por quê.
 ///
 /// Um passo de undo por ação (o re-rodar é uma edição como outra qualquer).
+#[allow(clippy::too_many_arguments)] // o shell destruturado passa cada ref separada
 pub(crate) fn apply(
     scene: &mut VecScene,
     history: &mut ph2d_vec_edit::History,
@@ -72,6 +97,7 @@ pub(crate) fn apply(
     session: &mut Option<BlendSession>,
     action: BlendAction,
     steps: u32,
+    stack_up: bool,
 ) {
     let mut next = match (action, session.take()) {
         (BlendAction::Run, prev) => {
@@ -89,6 +115,7 @@ pub(crate) fn apply(
                 b,
                 steps,
                 opts,
+                stack_up,
                 produced: Vec::new(),
             }
         }
@@ -104,8 +131,15 @@ pub(crate) fn apply(
             s.opts.reverse = !s.opts.reverse;
             s
         }
+        (BlendAction::StackUp(up), Some(mut s)) => {
+            s.stack_up = up;
+            s
+        }
     };
     next.steps = steps;
+    if !matches!(action, BlendAction::StackUp(_)) {
+        next.stack_up = stack_up;
+    }
 
     let (Some(a), Some(b)) = (world(scene, xforms, next.a), world(scene, xforms, next.b)) else {
         eprintln!("[ph2d-vec] blend: uma das formas sumiu");
@@ -134,6 +168,27 @@ pub(crate) fn apply(
         .map(|(k, p)| scene.insert_path(at + k, p))
         .collect();
     history.push_undo(pre);
+    if std::env::var_os("PH2D_BLEND_LOG").is_some() {
+        for id in &next.produced {
+            let Some(pth) = scene.paths().iter().find(|p| p.id == *id) else {
+                continue;
+            };
+            let n = pth.verts.len();
+            let curved = pth
+                .verts
+                .iter()
+                .filter(|v| {
+                    let d = |h: [f64; 2], a: [f64; 2]| {
+                        (h[0] - a[0]).abs() > 1e-9 || (h[1] - a[1]).abs() > 1e-9
+                    };
+                    d(v.in_handle, v.anchor) || d(v.out_handle, v.anchor)
+                })
+                .count();
+            eprintln!(
+                "[blend] passo {id}: {n} vertices · {curved} com alca de CURVA (0 = poligono de quinas afiadas)"
+            );
+        }
+    }
     pen.select_many(&next.produced);
     eprintln!(
         "[ph2d-vec] blend: {} passo(s) · offset={} reverse={}",

@@ -125,7 +125,12 @@ impl crate::App {
                     &mut self.vec_blend,
                     crate::vec_blend::BlendAction::Run,
                     3,
+                    true, // os passos sobem: cada um acima do anterior
                 );
+                self.vec_restack = self
+                    .vec_blend
+                    .as_ref()
+                    .map(crate::vec_blend::BlendSession::stack);
                 self.any_input_this_frame = true;
                 eprintln!(
                     "[blend-smoke] quadrado -> estrela, 3 passos. No painel (secao Blend): \

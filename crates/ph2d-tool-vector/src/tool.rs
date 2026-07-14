@@ -119,6 +119,10 @@ pub struct VectorTool {
     /// Canvas gesture: Pen (draw + edit) vs a drag-to-size shape. The shell
     /// mirrors this each frame to route canvas input (`vector_bridge`).
     mode: DrawMode,
+    /// **Blend:** cada passo nasce ACIMA do anterior (`true`, o default) ou abaixo. Mora na tool
+    /// porque é uma config de ferramenta — o painel a pinta pelo snapshot e o shell a lê na hora
+    /// do blend, sem uma 2ª cópia para dessincronizar.
+    blend_stack_up: bool,
     /// A forma ATIVA do catálogo (o que o modo `Shape` desenha).
     shape: ShapeKind,
     /// Os parâmetros de CADA forma, na unidade de UI (px para raios), indexados pelo
@@ -154,6 +158,7 @@ impl Default for VectorTool {
             fill: color_of("blue").unwrap_or([90, 150, 230, 255]),
             stroke_width_px: DEFAULT_STROKE_WIDTH_PX,
             mode: DrawMode::Select,
+            blend_stack_up: true,
             shape: ShapeKind::default(),
             shape_values: default_shape_values(),
             cap: StrokeCap::Butt,
@@ -204,6 +209,16 @@ impl VectorTool {
     /// shortcut (e.g. `T` → [`DrawMode::Text`]) driven from the shell.
     pub fn set_mode(&mut self, mode: DrawMode) {
         self.mode = mode;
+    }
+
+    /// **Blend:** cada passo acima do anterior?
+    #[must_use]
+    pub fn blend_stack_up(&self) -> bool {
+        self.blend_stack_up
+    }
+
+    pub fn set_blend_stack_up(&mut self, up: bool) {
+        self.blend_stack_up = up;
     }
 
     /// A forma ativa do catálogo.
@@ -395,6 +410,7 @@ impl VectorTool {
             fill: self.fill,
             stroke_width_px: self.stroke_width_px,
             mode: self.mode,
+            blend_stack_up: self.blend_stack_up,
             shape: self.shape,
             values: self.shape_values(self.shape),
             cap: self.cap,

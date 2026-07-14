@@ -29,10 +29,12 @@
 
 use super::*;
 use crate::undo::ProjectState;
+use crate::vec_entities::sync;
 use ph2d_ecs::scene::{
     ComponentRegistry, HierarchySnapshot, HierarchyWalkState, build_hierarchy_snapshot,
     register_ecs_components,
 };
+use ph2d_ecs::{Name, Transform};
 use ph2d_ecs::{TransformPropagationState, WorklistBuf};
 use ph2d_flip::FlipDoc;
 use ph2d_vec_scene::{VecScene, rectangle};
@@ -136,13 +138,18 @@ fn a_shape_born_this_frame_is_already_in_the_z_projection() {
     }
 }
 
-/// **A pilha de z é a árvore invertida.** A Hierarquia lista a primeira linha à FRENTE
-/// (convenção Illustrator/Figma), então o fundo da pilha é a última linha.
+/// **A forma NOVA nasce na FRENTE** — e a pilha de z é a árvore lida ao contrário.
 ///
-/// Sem esta asserção o gate acima ficaria verde com a ordem embaralhada — "estar na projeção"
-/// não diz nada sobre ONDE.
+/// A Hierarquia lista a primeira linha à FRENTE (convenção Illustrator/Figma), então a pilha de z
+/// (fundo → topo) é a lista invertida. E o `sync` dá ao path novo o **menor** `RootOrder`, que é a
+/// primeira linha: **desenhar uma forma em cima de outra a põe por cima**.
+///
+/// A versão anterior fazia o contrário (o path novo levava o MAIOR número = a última linha = o
+/// fundo) — e o comentário dela dizia "em cima". O Enio viu o preço no Blend: a 1ª forma gerada
+/// saiu **debaixo** do círculo que a originou. Um gate que consagra o código em vez da aparência
+/// não pega o bug: **carimba**.
 #[test]
-fn the_z_stack_is_the_tree_read_backwards() {
+fn a_new_shape_is_born_in_front() {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
@@ -151,16 +158,23 @@ fn the_z_stack_is_the_tree_read_backwards() {
     let [a, b, c] = three_fresh_shapes(&mut scene);
     frame.run(&mut sim, &mut scene, &mut map);
 
-    // `sync` dá `RootOrder` crescente na ordem de criação ⇒ a Hierarquia lista a, b, c ⇒ a
-    // pilha de z (fundo → topo) é c, b, a: a última forma desenhada fica por CIMA.
+    // A árvore lista a mais NOVA primeiro (primeira linha = frente).
     let tree: Vec<VecPathId> = frame
         .snap
         .entries
         .iter()
         .filter_map(|e| e.vec_path)
         .collect();
-    assert_eq!(tree, vec![a, b, c], "a árvore lista na ordem de criação");
-    assert_eq!(z(&scene), vec![c, b, a], "a cena empilha ao contrário");
+    assert_eq!(
+        tree,
+        vec![c, b, a],
+        "a Hierarquia lista a mais nova na 1ª linha"
+    );
+    assert_eq!(
+        z(&scene),
+        vec![a, b, c],
+        "a pilha de z (do fundo ao topo) poe a mais nova por CIMA"
+    );
 }
 
 /// **O GATE-MÃE: a captura é ponto fixo dos sistemas.**

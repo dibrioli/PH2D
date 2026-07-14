@@ -454,6 +454,10 @@ pub const VECTOR_BLEND_ROTATE: NodeId = hash_node_id("vector.blend.rotate");
 /// **Reverse Match** — inverte o sentido de percurso da 2ª forma. É o que conserta a
 /// forma que vira do AVESSO (e colapsa num nó no meio do caminho).
 pub const VECTOR_BLEND_REVERSE: NodeId = hash_node_id("vector.blend.reverse");
+/// **Stack Up** — cada passo nasce ACIMA do anterior (ou abaixo). A ordem de z de uma
+/// sequência é parte do resultado: um blend cuja 1ª intermediária fica DEBAIXO da forma
+/// que a originou não lê como transição.
+pub const VECTOR_BLEND_STACK_UP: NodeId = hash_node_id("vector.blend.stack_up");
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

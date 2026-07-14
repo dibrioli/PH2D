@@ -14,8 +14,9 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_button};
 use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, ColorSwatch, SectionHeader, SwatchSize, paint_button,
-    paint_color_swatch, paint_section_header, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, Checkbox, CheckboxValue, ColorSwatch, SectionHeader,
+    SwatchSize, paint_button, paint_checkbox, paint_color_swatch, paint_section_header,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -47,6 +48,10 @@ pub(crate) struct BodyCtx<'a> {
     pub chip_w: f32,
     pub font: f32,
 }
+
+/// A seção **Blend** — módulo irmão (teto de 600 LOC).
+#[path = "paint_blend.rs"]
+mod blend;
 
 impl BodyCtx<'_> {
     /// A full-width slider + linked value chip row; returns the advanced `y`.
@@ -173,7 +178,7 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::transform_section);
         y = self.step(y, Self::vertex_section);
         y = self.step(y, Self::boolean_section);
-        y = self.step(y, Self::blend_section);
+        y = self.step(y, |b, y| b.blend_section(snap, y));
         y = self.step(y, Self::align_section);
         y = self.step(y, Self::arrange_section);
         self.path_section(y)
@@ -475,43 +480,6 @@ impl BodyCtx<'_> {
             y = self.action_button(id, label, y);
         }
         self.compound_row(y)
-    }
-
-    /// Seção **BLEND** — os passos intermediários entre as DUAS formas selecionadas.
-    ///
-    /// **Os dois botões de escape não são enfeite.** A correspondência entre duas formas (que
-    /// ponto de A vira que ponto de B?) é o problema que ninguém resolveu: o GSAP tem um
-    /// `shapeIndex` manual E uma ferramenta de debug que admite que o automático erra; o Corel
-    /// pede para o usuário **clicar um nó em cada forma**. Quando o automático errar aqui, a
-    /// forma **gira** (→ *Rotate Match*) ou **vira do avesso** (→ *Reverse Match*), e o artista
-    /// tem de ter a saída na mão. Os dois **re-rodam** o blend na hora: o erro se conserta à
-    /// vista, sem desfazer nada.
-    pub(crate) fn blend_section(&mut self, y: f32) -> f32 {
-        let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_BLEND,
-            tr("panel.vector.section.blend"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        let track = self
-            .store
-            .slider(ids::VECTOR_BLEND_STEPS)
-            .map_or_else(|| blend_steps_to_track(BLEND_STEPS_DEFAULT), |(_, v)| v);
-        let steps = blend_steps_from_track(f64::from(track));
-        y = self.slider_row(
-            "Steps",
-            ids::VECTOR_BLEND_STEPS,
-            ids::VECTOR_BLEND_STEPS_NUM,
-            track,
-            f64::from(steps),
-            &format!("{steps}"),
-            y,
-        );
-        y = self.action_button(ids::VECTOR_BLEND_RUN, "Blend", y);
-        y = self.action_button(ids::VECTOR_BLEND_ROTATE, "Rotate Match", y);
-        self.action_button(ids::VECTOR_BLEND_REVERSE, "Reverse Match", y)
     }
 
     /// Seção **ARRANGE** — Duplicate + z-order (2×2) + Flip + Rotate. Age sobre o path

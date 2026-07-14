@@ -334,6 +334,7 @@ impl App {
             vec_connect: None,
             vec_conn_handle: None,
             vec_blend: None,
+            vec_restack: None,
             vec_connect_pending: None,
             vec_connect_sides: crate::connector_live::SideCache::new(),
             vec_label_pending: None,

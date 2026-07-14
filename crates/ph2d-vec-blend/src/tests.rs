@@ -245,3 +245,167 @@ fn the_fill_travels_with_the_shape() {
         other => panic!("o meio perdeu o preenchimento: {other:?}"),
     }
 }
+
+/// **O SMOKE DO ENIO: quadrado→estrela ondulava.**
+///
+/// As duas pontas são POLÍGONOS (só arestas retas), então **todo** intermediário tem de ser um
+/// polígono. Media-se o contrário: até **0,24 unidade** de desvio da reta numa forma de tamanho 2
+/// — 12% da forma. As intermediárias "não representavam a transição".
+///
+/// Duas causas, e as duas moram na mesma frase — *a reta do documento é a cúbica DEGENERADA*:
+///
+/// 1. `(P0,P0,P3,P3)` é reta, mas a **parametrização não é uniforme**. Cortada em posições de arco
+///    diferentes, ela devolve controles em **frações diferentes** de cada aresta, e o lerp de
+///    frações desalinhadas tira o controle de cima da corda. Conserto: a reta entra no motor na
+///    forma **canônica** (⅓, ⅔), que é afim em `t` — e o corte de uma curva afim é afim.
+/// 2. Toda borda de peça É uma âncora, e âncora é fronteira entre segmentos: perguntar "de quem é
+///    este ponto?" ali é perguntar de que lado de um empate o `f64` caiu. Quando caía no segmento
+///    anterior, a peça **colapsava num ponto** e a aresta sumia do pareamento (3 das 10 arestas da
+///    estrela!). Conserto: o segmento se decide pelo **MEIO** da peça, que não é fronteira de nada.
+#[test]
+fn a_morph_between_two_polygons_is_a_polygon() {
+    let a = square([0.0, 0.0], 1.0);
+    let b = shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]);
+
+    for step in 0..=10 {
+        let t = f64::from(step) / 10.0;
+        let m = morph(&a, &b, t, BlendOpts::default()).expect("o passo");
+        let o = Outline::of(&m).unwrap();
+        for (k, s) in o.segs.iter().enumerate() {
+            let chord = s.p3 - s.p0;
+            let len = chord.hypot();
+            assert!(
+                len > 1e-9,
+                "t={t}: a aresta {k} colapsou num PONTO — uma aresta sumiu do pareamento"
+            );
+            for c in [s.p1, s.p2] {
+                let v = c - s.p0;
+                let off = (v.x * chord.y - v.y * chord.x).abs() / len;
+                assert!(
+                    off < 1e-9,
+                    "t={t}: a aresta {k} ondulou {off} — as duas pontas são polígonos, então o \
+                     meio do caminho também tem de ser"
+                );
+            }
+        }
+        // E o documento tem de VER um polígono: handles colapsados nas âncoras.
+        for (k, v) in m.verts.iter().enumerate() {
+            assert!(
+                close(v.in_handle, v.anchor) && close(v.out_handle, v.anchor),
+                "t={t}: o vértice {k} saiu com alça de curva — o documento escreve reta com a \
+                 alça NA âncora, e é isso que o `is_line` do resto do repo testa"
+            );
+        }
+    }
+}
+
+/// **Nenhuma peça do pareamento é um PONTO.**
+///
+/// É a causa direta do "uma intermediária ficou gigante" e do "não representam a transição": uma
+/// peça degenerada num dos lados significa que uma aresta inteira da OUTRA forma foi interpolada
+/// contra o nada, e o pareamento seguinte anda torto.
+#[test]
+fn every_piece_of_the_pairing_is_a_real_piece() {
+    let pairs = [
+        (
+            square([0.0, 0.0], 1.0),
+            shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]),
+        ),
+        (
+            circle([0.0, 0.0], 1.0),
+            shape(ShapeKind::Polygon, [5.0, 0.0], [1.0, 1.0], &[7.0, 0.0]),
+        ),
+        (
+            shape(ShapeKind::Heart, [0.0, 0.0], [1.0, 1.0], &[]),
+            square([4.0, 3.0], 1.5),
+        ),
+    ];
+    for (a, b) in &pairs {
+        let (oa, ob) = (Outline::of(a).unwrap(), Outline::of(b).unwrap());
+        let corr = search(&oa, &ob);
+        let target = if corr.reversed { ob.reversed() } else { ob };
+
+        let mut cuts: Vec<f64> = oa.anchors();
+        cuts.extend(target.anchors().iter().map(|sb| wrap(sb + corr.phase)));
+        cuts.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
+        cuts.dedup_by(|x, y| (*x - *y).abs() <= MERGE_EPS);
+        let cuts_b: Vec<f64> = cuts.iter().map(|s| wrap(s - corr.phase)).collect();
+
+        for (side, pieces) in [("A", oa.cut(&cuts)), ("B", target.cut(&cuts_b))] {
+            for (k, p) in pieces.iter().enumerate() {
+                assert!(
+                    (p.p3 - p.p0).hypot() > 1e-9 || p.p1.distance(p.p0) > 1e-9,
+                    "a peça {k} do lado {side} é um PONTO — uma aresta caiu fora do pareamento"
+                );
+            }
+        }
+    }
+}
+
+/// **A forma do meio não pode ESCAPAR das duas formas.**
+///
+/// Todo ponto do morph é `lerp(ponto de A, ponto de B, t)` — uma combinação **convexa**. Logo ele
+/// mora, obrigatoriamente, dentro do casco das duas. Uma intermediária que "fica gigante" (o que o
+/// Enio viu uma vez, e não se repetiu) **viola isso** — e um gate que só olha o caso que ele
+/// conseguiu reproduzir não teria pego.
+///
+/// A varredura é ampla de propósito: o defeito era raro, e um evento raro só aparece em volume.
+#[test]
+fn no_intermediate_shape_ever_leaves_the_hull_of_the_two() {
+    let kinds = [
+        (ShapeKind::Rectangle, &[][..]),
+        (ShapeKind::Ellipse, &[][..]),
+        (ShapeKind::Polygon, &[5.0, 0.0][..]),
+        (ShapeKind::Star, &[5.0, 0.45, 0.0][..]),
+        (ShapeKind::Heart, &[][..]),
+        (ShapeKind::Polygon, &[7.0, 0.0][..]),
+    ];
+    for (i, (ka, va)) in kinds.iter().enumerate() {
+        for (j, (kb, vb)) in kinds.iter().enumerate() {
+            // Poses e tamanhos diferentes: é onde as posições de arco deixam de ser "redondas" e
+            // os empates de fronteira aparecem.
+            let a = shape(*ka, [0.0, 0.0], [1.0 + i as f64 * 0.13, 1.0], va);
+            let b = shape(
+                *kb,
+                [5.0 + j as f64 * 0.37, 1.1],
+                [0.8, 1.0 + j as f64 * 0.11],
+                vb,
+            );
+            let (lo, hi) = hull(&a, &b);
+            for step in 0..=8 {
+                let t = f64::from(step) / 8.0;
+                let Some(m) = morph(&a, &b, t, BlendOpts::default()) else {
+                    continue;
+                };
+                for v in &m.verts {
+                    for p in [v.anchor, v.in_handle, v.out_handle] {
+                        assert!(
+                            p[0] >= lo[0] - 1e-6
+                                && p[0] <= hi[0] + 1e-6
+                                && p[1] >= lo[1] - 1e-6
+                                && p[1] <= hi[1] + 1e-6,
+                            "{ka:?}→{kb:?} em t={t}: o ponto {p:?} ESCAPOU do casco \
+                             ({lo:?}..{hi:?}) — todo ponto do morph é combinação convexa de um \
+                             ponto de A com um de B, e não pode sair de dentro dos dois"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A caixa que contém A e B (âncoras e alças — a curva nunca sai do casco dos controles).
+fn hull(a: &VecPath, b: &VecPath) -> ([f64; 2], [f64; 2]) {
+    let mut lo = [f64::MAX; 2];
+    let mut hi = [f64::MIN; 2];
+    for p in [a, b] {
+        for v in &p.cooked().verts {
+            for q in [v.anchor, v.in_handle, v.out_handle] {
+                lo = [lo[0].min(q[0]), lo[1].min(q[1])];
+                hi = [hi[0].max(q[0]), hi[1].max(q[1])];
+            }
+        }
+    }
+    (lo, hi)
+}

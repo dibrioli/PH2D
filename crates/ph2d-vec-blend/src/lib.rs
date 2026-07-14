@@ -65,6 +65,47 @@ pub struct BlendOpts {
     pub reverse: bool,
 }
 
+/// Um segmento do contorno, **com a parametrização normalizada**.
+///
+/// # A reta que entortava (o smoke do Enio: *"as intermediárias não representam a transição"*)
+///
+/// No documento, uma aresta RETA é a cúbica **degenerada** `(P0, P0, P3, P3)` — os handles
+/// colapsados na âncora. Ela é geometricamente reta, mas a **parametrização dela não é uniforme**:
+/// o ponto anda devagar, rápido, devagar. Duas retas cortadas em posições de arco diferentes
+/// devolvem sub-cúbicas cujos pontos de controle caem em **frações diferentes** de cada aresta — e
+/// o lerp de frações desalinhadas **tira o controle de cima da corda**. A aresta reta sai
+/// **ondulada**.
+///
+/// Medido no quadrado→estrela do smoke: até **0,24 unidade** de desvio numa forma de tamanho 2 —
+/// **12% da forma**. As duas pontas são polígonos, então todo intermediário TEM de ser um
+/// polígono; o desvio devia ser zero.
+///
+/// O conserto não é "endireitar depois": é **não ter parametrização torta**. Uma reta entra aqui
+/// na forma canônica (controles a ⅓ e ⅔ da corda), que é **afim em `t`** — e uma sub-cúbica de uma
+/// curva afim é afim, com os controles nos mesmos ⅓ e ⅔ da sub-corda. Aí o lerp de duas retas é
+/// uma reta, **por construção**, cortadas onde forem.
+fn segment(a: &VecVertex, b: &VecVertex) -> CubicBez {
+    let (p0, p3) = (pt(a.anchor), pt(b.anchor));
+    if is_line(a, b) {
+        let d = p3 - p0;
+        return CubicBez::new(p0, p0 + d / 3.0, p0 + d * (2.0 / 3.0), p3);
+    }
+    CubicBez::new(p0, pt(a.out_handle), pt(b.in_handle), p3)
+}
+
+/// A aresta `a → b` é RETA? (os dois handles colapsados nas âncoras — a convenção do documento,
+/// a mesma que a booleana usa.)
+fn is_line(a: &VecVertex, b: &VecVertex) -> bool {
+    close(a.out_handle, a.anchor) && close(b.in_handle, b.anchor)
+}
+
+fn close(p: [f64; 2], q: [f64; 2]) -> bool {
+    (p[0] - q[0]).abs() <= COINCIDENT_EPS && (p[1] - q[1]).abs() <= COINCIDENT_EPS
+}
+
+/// Handle a esta distância da âncora conta como colapsado.
+const COINCIDENT_EPS: f64 = 1e-9;
+
 /// O contorno de uma forma como cadeia de cúbicas, com o comprimento de arco acumulado.
 struct Outline {
     segs: Vec<CubicBez>,
@@ -89,12 +130,7 @@ impl Outline {
         for i in 0..last {
             let a = &verts[i];
             let b = &verts[(i + 1) % n];
-            segs.push(CubicBez::new(
-                pt(a.anchor),
-                pt(a.out_handle),
-                pt(b.in_handle),
-                pt(b.anchor),
-            ));
+            segs.push(segment(a, b));
         }
         let mut cum = Vec::with_capacity(segs.len() + 1);
         let mut total = 0.0;
@@ -157,6 +193,20 @@ impl Outline {
     /// caiba num único segmento e seja uma sub-cúbica EXATA.)
     ///
     /// Devolve **uma peça por corte** — sempre. É o que faz A e B saírem pareados 1-a-1.
+    ///
+    /// # O segmento se decide pelo MEIO da peça, nunca pela borda dela
+    ///
+    /// **Toda** borda de peça é uma âncora — é assim que este motor foi desenhado (a união inclui
+    /// as âncoras das duas formas). E uma âncora é exatamente a fronteira entre dois segmentos:
+    /// perguntar "de quem é este ponto?" ali é perguntar de que lado de um empate o `f64` caiu.
+    ///
+    /// A 1ª versão perguntava pela borda, e o smoke do Enio mostrou o preço: quando o corte era
+    /// atribuído ao segmento **anterior** (`t≈1`) em vez do seguinte (`t≈0`), a peça colapsava num
+    /// **ponto** — e a aresta correspondente **sumia do pareamento**. Medido no quadrado→estrela:
+    /// **3 das 10 arestas da estrela viravam pontos**. As intermediárias deixavam de representar a
+    /// transição, e uma delas chegou a explodir na tela.
+    ///
+    /// O **meio** da peça não é fronteira de nada: ele cai dentro de um único segmento, sempre.
     fn cut(&self, cuts: &[f64]) -> Vec<CubicBez> {
         let m = cuts.len();
         let mut out = Vec::with_capacity(m);
@@ -166,18 +216,32 @@ impl Outline {
             // fim dela é o fim do percurso.
             let next = cuts[(k + 1) % m];
             let s1 = if next <= s0 + MERGE_EPS { 1.0 } else { next };
-            let (i0, t0) = self.locate(s0);
-            let (i1, t1) = self.locate(s1);
-            // O corte do fim pode ter caído no COMEÇO do segmento seguinte (t≈0): a peça é do
-            // segmento de `s0`, até o fim DELE.
-            let t1 = if i1 == i0 { t1 } else { 1.0 };
-            if t1 - t0 <= MERGE_EPS {
-                out.push(self.segs[i0].subsegment(t0..t0)); // peça degenerada: preserva o PAREAMENTO
-                continue;
-            }
-            out.push(self.segs[i0].subsegment(t0..t1));
+            let i = self.segment_at(0.5 * (s0 + s1));
+            let (t0, t1) = (self.local_t(i, s0), self.local_t(i, s1));
+            out.push(self.segs[i].subsegment(t0.min(t1)..t1.max(t0)));
         }
         out
+    }
+
+    /// O segmento que contém o arco normalizado `s`. `s` tem de cair **dentro** de um segmento —
+    /// os chamadores passam o MEIO de uma peça, nunca uma borda.
+    fn segment_at(&self, s: f64) -> usize {
+        let arc = s.clamp(0.0, 1.0) * self.total;
+        self.cum[1..]
+            .partition_point(|&c| c <= arc)
+            .min(self.segs.len() - 1)
+    }
+
+    /// O `t` local do arco normalizado `s` **dentro do segmento `i`** (fora dele, satura em 0/1 —
+    /// que é o certo: a borda da peça é a borda do segmento).
+    fn local_t(&self, i: usize, s: f64) -> f64 {
+        let arc = s.clamp(0.0, 1.0) * self.total;
+        let len = self.cum[i + 1] - self.cum[i];
+        if len <= MERGE_EPS {
+            return 0.0;
+        }
+        let local = (arc - self.cum[i]).clamp(0.0, len);
+        self.segs[i].inv_arclen(local, ARCLEN_EPS).clamp(0.0, 1.0)
     }
 
     /// O contorno percorrido ao CONTRÁRIO (a saída do "forma vira do avesso").
@@ -352,28 +416,39 @@ pub fn steps(a: &VecPath, b: &VecPath, n: usize, opts: BlendOpts) -> Vec<VecPath
 /// Cadeia de cúbicas → `VecPath`. A âncora é o `p0` de cada peça; a alça de saída é o `p1` dela,
 /// e a de entrada é o `p2` da peça ANTERIOR (é o mesmo ponto do documento, visto pelos dois
 /// lados).
+///
+/// **Uma peça reta sai com os handles COLAPSADOS na âncora** — que é como o documento escreve uma
+/// reta (e o que o resto do repo testa com `is_line`). Sem isso, o blend entre dois polígonos
+/// devolveria uma forma geometricamente reta mas com alças de curva penduradas no meio de cada
+/// aresta: o artista abriria o modo Node e veria controles que ele nunca pediu, a booleana a
+/// trataria como curva, e o `Simplify` teria trabalho à toa.
 fn path_from(segs: &[CubicBez], closed: bool) -> VecPath {
     let n = segs.len();
+    let straight: Vec<bool> = segs.iter().map(is_straight).collect();
     let mut verts: Vec<VecVertex> = Vec::with_capacity(n + 1);
     for (i, s) in segs.iter().enumerate() {
-        let prev = if i == 0 {
-            if closed { segs[n - 1] } else { *s }
+        let prev_i = if i == 0 { n - 1 } else { i - 1 };
+        // A alça de ENTRADA mora na âncora quando não há aresta chegando (ponta de caminho
+        // aberto) ou quando a que chega é RETA — nos dois casos o documento não guarda controle.
+        let in_handle = if (i == 0 && !closed) || straight[prev_i] {
+            s.p0
         } else {
-            segs[i - 1]
+            segs[prev_i].p2
         };
-        let in_handle = if i == 0 && !closed { s.p0 } else { prev.p2 };
+        let out_handle = if straight[i] { s.p0 } else { s.p1 };
         verts.push(VecVertex {
             anchor: xy(s.p0),
             in_handle: xy(in_handle),
-            out_handle: xy(s.p1),
+            out_handle: xy(out_handle),
             kind: VertexKind::Corner,
             corner_radius: 0.0,
         });
     }
     if !closed && let Some(last) = segs.last() {
+        let in_handle = if straight[n - 1] { last.p3 } else { last.p2 };
         verts.push(VecVertex {
             anchor: xy(last.p3),
-            in_handle: xy(last.p2),
+            in_handle: xy(in_handle),
             out_handle: xy(last.p3),
             kind: VertexKind::Corner,
             corner_radius: 0.0,
@@ -385,6 +460,25 @@ fn path_from(segs: &[CubicBez], closed: bool) -> VecPath {
         ..VecPath::default()
     }
 }
+
+/// A cúbica é uma RETA? (os dois controles em cima da corda — que é o que o lerp de duas retas
+/// canônicas devolve, por construção).
+fn is_straight(s: &CubicBez) -> bool {
+    let chord = s.p3 - s.p0;
+    let len = chord.hypot();
+    if len <= COINCIDENT_EPS {
+        return true; // peça degenerada: não há direção para desviar
+    }
+    [s.p1, s.p2].iter().all(|c| {
+        let v = *c - s.p0;
+        (v.x * chord.y - v.y * chord.x).abs() / len <= STRAIGHT_EPS
+    })
+}
+
+/// O quanto um controle pode se afastar da corda e a aresta ainda contar como reta. É uma
+/// tolerância **de comprimento**, e ela é frouxa de propósito: o lerp é exato, mas os `f64` que
+/// chegam aqui já passaram por `inv_arclen` e por um corte — o resíduo é da ordem de 1e-12.
+const STRAIGHT_EPS: f64 = 1e-9;
 
 /// O Illustrator interpola a COR junto com a forma, e é isso que faz um blend parecer um blend
 /// em vez de N cópias. Só entre dois sólidos; qualquer outra coisa (gradiente, nada) fica com o

@@ -237,7 +237,7 @@ fn right_click_background_opens_menu_then_left_pick_adds_node() {
     assert_eq!(menu.spawn, (120.0, 90.0)); // identity view → graph == screen
     // Left-click the first (only) row → AddNode at the spawn point.
     let panel = geom::menu_panel(&menu, 1, RECT);
-    let row = geom::menu_row(panel, 0, 0.0);
+    let row = geom::menu_row(&menu, panel, 0, 0.0);
     let pick = gesture(
         GraphHitKind::Background,
         GesturePhase::Click,

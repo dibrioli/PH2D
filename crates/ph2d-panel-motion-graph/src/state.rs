@@ -153,6 +153,16 @@ pub(crate) struct Menu {
     pub body: MenuBody,
 }
 
+impl Menu {
+    /// **Only the library has a search field.** Eighty-eight node types is a list you have to
+    /// search; eight tints and a handful of ports are lists you READ. A field on those two is a
+    /// box that filters nothing and *takes the keyboard while it does it* — which is what it had
+    /// been doing on the card-ports menu since the search landed (doc 59), quietly.
+    pub(crate) fn has_search(&self) -> bool {
+        matches!(self.body, MenuBody::Library { .. })
+    }
+}
+
 /// What the popup is a list OF.
 ///
 /// An enum rather than two optional fields: the two bodies are alternatives, and a
@@ -168,6 +178,18 @@ pub(crate) enum MenuBody {
     /// the gesture already said what it wanted, so making the artist draw the wire a
     /// second time would be asking twice.
     Library { connect_from: Option<(u32, u16)> },
+    /// **The eight tints a backdrop can take** (doc 62) — R-click on a backdrop's header.
+    ///
+    /// A backdrop's colour is the only thing about it the artist could not change: the tint
+    /// cycled by id at birth and stayed there for good. The intent to set it EXISTED and was
+    /// handled by the shell; nothing emitted it — the same dead half-gesture the rename found
+    /// (doc 61 §2), one shelf down.
+    BackdropTints {
+        /// The backdrop being re-tinted.
+        backdrop: u32,
+        /// Its tint right now, so the palette can show you which one you are on.
+        current: u8,
+    },
     /// **The ports hidden inside a collapsed card** (doc 57 §5) — a wire was dropped on
     /// a card's BODY, and the card exposes no socket for it.
     ///

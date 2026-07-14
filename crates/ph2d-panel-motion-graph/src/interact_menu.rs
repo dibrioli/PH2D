@@ -41,7 +41,7 @@ pub(super) fn scroll_menu(
     if !panel.contains(z.anchor_x, z.anchor_y) {
         return false;
     }
-    let max = geom::menu_max_scroll(panel, count);
+    let max = geom::menu_max_scroll(menu, panel, count);
     menu.scroll = (menu.scroll - z.delta * MENU_WHEEL_STEP).clamp(0.0, max); // CLAMP-OK: 0..max
     true
 }
@@ -60,8 +60,8 @@ pub(super) fn grab_menu_thumb(
     let menu = state.menu.as_ref()?;
     let count = row_count(snap, menu);
     let panel = geom::menu_panel(menu, count, rect);
-    let thumb = geom::menu_thumb(panel, count, menu.scroll)?;
-    let track = geom::menu_track(panel, count)?;
+    let thumb = geom::menu_thumb(menu, panel, count, menu.scroll)?;
+    let track = geom::menu_track(menu, panel, count)?;
     if thumb.contains(x, y) {
         Some(y - thumb.y)
     } else if track.contains(x, y) {
@@ -84,7 +84,7 @@ pub(super) fn drag_menu_thumb(
     };
     let count = row_count(snap, menu);
     let panel = geom::menu_panel(menu, count, rect);
-    menu.scroll = geom::menu_scroll_at(panel, count, y, grab);
+    menu.scroll = geom::menu_scroll_at(menu, panel, count, y, grab);
 }
 
 /// Resolve a primary click at `(x, y)` against the open popup — WHICH row was hit, and
@@ -105,8 +105,8 @@ pub(super) fn resolve_menu(menu: &Menu, rect: Rect, snap: &GraphViewSnapshot, x:
         // A row half-scrolled out of the band is half-clickable: the hit is the row INTERSECTED
         // with the list's viewport — the same rect the paint clips to, because the row you can see
         // is the row you can click.
-        let row = geom::menu_row(panel, *i, menu.scroll);
-        geom::menu_list(panel).contains(x, y) && row.contains(x, y)
+        let row = geom::menu_row(menu, panel, *i, menu.scroll);
+        geom::menu_list(menu, panel).contains(x, y) && row.contains(x, y)
     });
     let Some(i) = hit else { return };
     match &menu.body {
@@ -161,6 +161,16 @@ pub(super) fn resolve_menu(menu: &Menu, rect: Rect, snap: &GraphViewSnapshot, x:
                 to_port: to.1,
             });
         }
+        // **The palette** (doc 62): the row IS the tint index — the paint enumerates
+        // `TINT_NAMES` in order and so does this, which is the whole reason there is one
+        // `menu_rows`. One undo step, and no re-cook: a colour is decoration, and a cook that
+        // depended on it would be a cook that depended on taste.
+        MenuBody::BackdropTints { backdrop, .. } => {
+            push_intent(GraphIntent::SetBackdropColor {
+                id: *backdrop,
+                color: i as u8,
+            });
+        }
         MenuBody::Library { connect_from } => {
             // The SAME list the paint drew: filtered by the query AND ranked by it. Reading
             // the raw catalog here is exactly the bug this popup already had once.
@@ -184,4 +194,53 @@ pub(super) fn resolve_menu(menu: &Menu, rect: Rect, snap: &GraphViewSnapshot, x:
             }
         }
     }
+}
+
+/// **What a right-press opens** (doc 62). On the PRESS (Begin), over ANY hit — doing it on the
+/// press rather than the release makes it movement-independent: a right-click that drifts a pixel
+/// is classified `End` by the dispatch, and would otherwise never open the menu (or would dismiss
+/// it the instant it appeared). All secondary phases are absorbed by the caller, so a right-drag /
+/// right-release never pans, selects or dismisses.
+///
+/// The BODY depends on what is under the cursor. Over the canvas, a node, a socket, a wire: the
+/// node library. Over a **backdrop's header**: its eight tints — because over a backdrop, a list of
+/// 88 node types is an answer to a question nobody asked, and the colour of the thing you are
+/// pointing at is the one you want.
+pub(super) fn open_on_right_press(
+    state: &mut MotionGraphPanelState,
+    g: ph2d_editor_core::interaction::GraphGesture,
+    rect: Rect,
+    snap: &GraphViewSnapshot,
+) {
+    use ph2d_editor_core::interaction::{GesturePhase, GraphHitKind};
+    if g.phase != GesturePhase::Begin {
+        return;
+    }
+    let spawn = super::View::new(rect, state.view).graph(g.x, g.y);
+    let body = match g.kind {
+        GraphHitKind::Backdrop { id } => {
+            let id = id as u32;
+            // A right-press selects what it is asking about, like every other press does.
+            state.selected.clear();
+            state.selected_backdrop = Some(id);
+            MenuBody::BackdropTints {
+                backdrop: id,
+                current: snap
+                    .backdrops
+                    .iter()
+                    .find(|b| b.id == id)
+                    .map_or(0, |b| b.color),
+            }
+        }
+        _ => MenuBody::Library { connect_from: None },
+    };
+    state.menu = Some(super::Menu {
+        scroll: 0.0,
+        screen: (g.x, g.y),
+        spawn,
+        query: String::new(),
+        opened: false,
+        body,
+    });
+    state.interaction = super::Interaction::Idle;
 }

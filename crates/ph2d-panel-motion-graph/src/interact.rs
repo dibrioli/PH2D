@@ -132,18 +132,10 @@ fn apply_gesture(
     // (or would dismiss) the menu. All secondary phases are absorbed here so a
     // right-drag / right-release never pans, selects, or dismisses.
     if g.button == PointerButton::Secondary {
-        if g.phase == GesturePhase::Begin {
-            let spawn = View::new(rect, state.view).graph(g.x, g.y);
-            state.menu = Some(Menu {
-                scroll: 0.0,
-                screen: (g.x, g.y),
-                spawn,
-                query: String::new(),
-                opened: false,
-                body: MenuBody::Library { connect_from: None },
-            });
-            state.interaction = Interaction::Idle;
-        }
+        // What a right-press MEANS depends on what is under it (doc 62) — the node library over
+        // the canvas, the tint palette over a backdrop's header. It lives in `interact_menu`,
+        // which owns the popups; this file was at the 600-LOC panel cap.
+        menu::open_on_right_press(state, g, rect, snap);
         return;
     }
     // The MIDDLE button pans, from anywhere on the surface — over a card, a wire, a

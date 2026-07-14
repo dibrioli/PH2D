@@ -73,7 +73,7 @@ pub fn first_menu_row(state: &MotionGraphPanelState, rect: zones::Rect) -> Optio
         return None;
     }
     let panel = geom::menu_panel(menu, rows.len(), rect);
-    Some(geom::menu_row(panel, 0, menu.scroll))
+    Some(geom::menu_row(menu, panel, 0, menu.scroll))
 }
 use ph2d_editor_core::zones;
 

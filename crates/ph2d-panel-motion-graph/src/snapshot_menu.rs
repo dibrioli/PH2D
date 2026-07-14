@@ -8,7 +8,7 @@
 
 use super::{GraphViewSnapshot, NodeChoice, PortView, current_catalog};
 use crate::state::{Menu, MenuBody};
-use ph2d_node_registry::NodeUiCategory;
+use ph2d_tokens::ColorToken;
 
 /// **One row of the popup** — a label, a tinted dot, and (for the library) the node type
 /// a pick would create.
@@ -20,8 +20,21 @@ use ph2d_node_registry::NodeUiCategory;
 /// never shown. Two derivations of the same list is the bug; one is the fix.
 pub(crate) struct MenuRow<'a> {
     pub label: &'a str,
-    pub category: NodeUiCategory,
+    /// The dot beside the label. A row does not care what its colour MEANS — for a node it is
+    /// the category, for a tint it is the tint itself — so it carries the token, not the reason.
+    pub dot: ColorToken,
+    /// Marked as the one you are already on (the backdrop's current tint). `false` everywhere
+    /// else: a list of things to ADD has no current entry.
+    pub selected: bool,
 }
+
+/// **The eight backdrop tints, named for what they are** (doc 62). They are an OKLCH hue wheel
+/// (`graph-backdrop-1..8`: hues 20, 60, 110, 150, 200, 250, 300, and a near-neutral at 320), so
+/// the names are read off the hues rather than invented — "Colour 5" is not a name anybody can
+/// use. English (app UI, HR-15).
+pub(crate) const TINT_NAMES: [&str; 8] = [
+    "Red", "Amber", "Lime", "Green", "Teal", "Blue", "Violet", "Grey",
+];
 
 /// The rows the popup shows.
 ///
@@ -40,14 +53,27 @@ pub(crate) fn menu_rows<'a>(snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<Men
             .iter()
             .map(|p| MenuRow {
                 label: &p.label,
-                category: p.category,
+                dot: crate::paint::cat_token(p.category),
+                selected: false,
             })
             .collect(),
         MenuBody::Library { connect_from } => menu_matches(snap, menu, *connect_from)
             .iter()
             .map(|c| MenuRow {
                 label: c.display,
-                category: c.category,
+                dot: crate::paint::cat_token(c.category),
+                selected: false,
+            })
+            .collect(),
+        // The palette IS its own preview: each row's dot is painted in the tint it sets, so you
+        // pick the colour by looking at it rather than by reading its name.
+        MenuBody::BackdropTints { current, .. } => TINT_NAMES
+            .iter()
+            .enumerate()
+            .map(|(i, name)| MenuRow {
+                label: name,
+                dot: crate::backdrop::tint_token(i as u8),
+                selected: i as u8 == *current,
             })
             .collect(),
     }

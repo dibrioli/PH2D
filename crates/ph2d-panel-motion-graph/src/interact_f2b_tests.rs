@@ -252,7 +252,7 @@ fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
 
     // Picking it adds AND wires, in one intent.
     let panel = geom::menu_panel(&menu, rows.len(), RECT);
-    let row = geom::menu_row(panel, 0, 0.0);
+    let row = geom::menu_row(&menu, panel, 0, 0.0);
     apply_gesture(
         &mut st,
         gesture(

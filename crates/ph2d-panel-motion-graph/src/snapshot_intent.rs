@@ -122,10 +122,9 @@ pub enum GraphIntent {
     /// Title row — it did not, and nothing ever emitted the intent. Dead plumbing with a
     /// confident comment on it: [[feedback_stale_comment_and_dead_code_lie]].)
     Rename { target: RenameTarget, name: String },
-    /// Re-tint a backdrop, 0-based into `graph-backdrop-1..8`.
-    ///
-    /// **Not wired to any gesture yet** — the tint still only cycles by id at birth. Said out
-    /// loud rather than left implied by a comment about a panel row that does not exist.
+    /// Re-tint a backdrop, 0-based into `graph-backdrop-1..8` — from the palette that R-clicking
+    /// its header opens (doc 62). One undo step, and no re-cook: a colour is decoration, and a
+    /// cook that depended on it would be a cook that depended on taste.
     SetBackdropColor { id: u32, color: u8 },
     /// Duplicate the selected nodes (Ctrl+D) — with their params, their text
     /// params and the wires **between them**, offset so the copies are visible.

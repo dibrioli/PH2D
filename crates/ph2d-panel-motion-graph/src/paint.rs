@@ -487,7 +487,7 @@ pub(crate) fn wire_target(handle: u64) -> (u32, u16) {
     ((handle >> 16) as u32, (handle & 0xffff) as u16)
 }
 
-fn cat_token(c: NodeUiCategory) -> ColorToken {
+pub(crate) fn cat_token(c: NodeUiCategory) -> ColorToken {
     match c {
         NodeUiCategory::Source => ColorToken::NodeCatSource,
         NodeUiCategory::Distribute => ColorToken::NodeCatDistribute,

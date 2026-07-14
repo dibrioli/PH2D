@@ -254,7 +254,16 @@ pub(super) fn apply_graph_intents(
             // thing keeps its name — the node's label channel, the subgraph's title, the
             // backdrop's title — and each is one undo step.
             GraphIntent::Rename { target, name } => rename(motion, target, name),
-            GraphIntent::SetBackdropColor { id, color } => backdrops::set_color(motion, id, color),
+            // The palette (doc 62) commits ONCE, on the pick — so the undo step is pushed HERE,
+            // not inside `set_color`: the params-panel path into the same setter has its own
+            // session bracket, and a push in the setter would count that one twice.
+            GraphIntent::SetBackdropColor { id, color } => {
+                let pre = motion.doc.clone();
+                backdrops::set_color(motion, id, color);
+                if motion.doc != pre {
+                    motion.history.push_undo(pre);
+                }
+            }
         }
     }
 }

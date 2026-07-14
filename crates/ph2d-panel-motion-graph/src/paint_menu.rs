@@ -3,7 +3,7 @@
 
 use super::{
     MENU_DOT_R, MENU_DOT_X, MENU_HEADER_PAD_X, MENU_HEADER_PAD_Y, MENU_HEADER_SIZE, MENU_RADIUS,
-    MENU_ROW_SIZE, MENU_ROW_TEXT_INSET_R, MENU_ROW_TEXT_X, MENU_ROW_TEXT_Y, cat_token,
+    MENU_ROW_SIZE, MENU_ROW_TEXT_INSET_R, MENU_ROW_TEXT_X, MENU_ROW_TEXT_Y,
 };
 use crate::geom;
 use crate::hits::menu_search_id;
@@ -39,6 +39,7 @@ pub(super) fn draw_menu(
     let header = match menu.body {
         MenuBody::Library { .. } => "Add Node",
         MenuBody::CardPorts { .. } => "Connect Inside Group",
+        MenuBody::BackdropTints { .. } => "Backdrop Colour",
     };
     let panel = geom::menu_panel(menu, rows.len(), canvas);
     fill_rounded_rect(
@@ -64,53 +65,71 @@ pub(super) fn draw_menu(
         panel.w - 2.0 * geom::MENU_PAD,
         resolve(ColorToken::Text2, theme),
     );
-    // **The search field** (Enio, smoke 2026-07-13: *"não encontrei value.lfo"*). It is the
-    // first thing under the header and it OWNS THE KEYBOARD as soon as the menu opens, so the
-    // gesture is: press A, type. The store owns the buffer; `interact` mirrors it into
-    // `menu.query` and every row derives from that.
-    let field = geom::menu_search_rect(panel);
-    let (fstate, text, caret, anchor) = match ctx.host.store().get(menu_search_id()) {
-        Some(InteractiveState::TextInput {
-            state,
-            text,
-            caret,
-            selection_anchor,
-        }) => (*state, text.clone(), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, String::new(), 0, None),
-    };
-    let input = TextInput::new(menu_search_id(), "")
-        .placeholder(SEARCH_PLACEHOLDER)
-        .state(fstate);
-    paint_text_input_with_buffer(
-        &input,
-        Some(&text),
-        Some(caret),
-        anchor,
-        field,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    ctx.host.hit_index_mut().register(menu_search_id(), field);
+    // **The search field belongs to the LIBRARY** (doc 62). Eighty-eight node types is a list you
+    // have to search; eight tints and a handful of ports are lists you READ — and a field there
+    // filters nothing while *taking the keyboard*, which is what it had been doing on the
+    // card-ports menu, quietly, since the search landed (doc 59).
+    //
+    // (Enio, smoke 2026-07-13: *"não encontrei value.lfo"*.) It is the first thing under the
+    // header and it owns the keyboard as soon as the library opens, so the gesture is: press A,
+    // type. The store owns the buffer; `interact` mirrors it into `menu.query` and every row
+    // derives from that.
+    if menu.has_search() {
+        let field = geom::menu_search_rect(panel);
+        let (fstate, text, caret, anchor) = match ctx.host.store().get(menu_search_id()) {
+            Some(InteractiveState::TextInput {
+                state,
+                text,
+                caret,
+                selection_anchor,
+            }) => (*state, text.clone(), *caret, *selection_anchor),
+            _ => (TextInputState::Normal, String::new(), 0, None),
+        };
+        let input = TextInput::new(menu_search_id(), "")
+            .placeholder(SEARCH_PLACEHOLDER)
+            .state(fstate);
+        paint_text_input_with_buffer(
+            &input,
+            Some(&text),
+            Some(caret),
+            anchor,
+            field,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        ctx.host.hit_index_mut().register(menu_search_id(), field);
+    }
 
     // The list SCROLLS inside the panel (86 node types do not fit on a screen). It is clipped to
     // its own band, so a row scrolled half-way out is drawn half — and hit-tested half, against
     // the same rect (`geom::menu_list`), because the row you can see is the row you can click.
-    let list = geom::menu_list(panel);
+    let list = geom::menu_list(menu, panel);
     ctx.scene.push_clip(&rect_to_vello(list));
     for (i, c) in rows.iter().enumerate() {
-        let row = geom::menu_row(panel, i, menu.scroll);
+        let row = geom::menu_row(menu, panel, i, menu.scroll);
         // Rows entirely outside the band are not drawn at all: with 86 of them, most of the menu
         // is off-list at any moment, and Vello charges per draw object (doc 53).
         if row.y + row.h < list.y || row.y > list.y + list.h {
             continue;
+        }
+        // The row you are already ON is outlined (the backdrop's current tint) — a palette that
+        // does not say where you stand makes you click one to find out.
+        if c.selected {
+            stroke_rounded_rect(
+                ctx.scene,
+                row,
+                MENU_RADIUS,
+                1.0,
+                resolve(ColorToken::Accent, theme),
+            );
         }
         fill_circle(
             ctx.scene,
             row.x + MENU_DOT_X,
             row.y + row.h * 0.5,
             MENU_DOT_R,
-            resolve(cat_token(c.category), theme),
+            resolve(c.dot, theme),
         );
         paint_text_title(
             ctx.text_system,
@@ -128,8 +147,8 @@ pub(super) fn draw_menu(
     // The scrollbar, and only when the list can actually scroll: a scrollbar on a list that fits
     // is a control that lies about there being more.
     if let (Some(track), Some(thumb)) = (
-        geom::menu_track(panel, rows.len()),
-        geom::menu_thumb(panel, rows.len(), menu.scroll),
+        geom::menu_track(menu, panel, rows.len()),
+        geom::menu_thumb(menu, panel, rows.len(), menu.scroll),
     ) {
         fill_rounded_rect(
             ctx.scene,

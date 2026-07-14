@@ -63,7 +63,11 @@ pub(crate) fn settle_focus(
 ) {
     match state.menu.as_mut() {
         Some(menu) if !menu.opened => {
-            open_search(ctx.host.store_mut());
+            // Only the LIBRARY has a field (doc 62) — a palette that grabbed the keyboard to
+            // filter eight colours would be taking it for nothing.
+            if menu.has_search() {
+                open_search(ctx.host.store_mut());
+            }
             menu.opened = true;
             menu.query.clear();
         }
@@ -126,9 +130,11 @@ pub(crate) fn pick_first(menu: &crate::state::Menu) {
                 },
             });
         }
-        // A card/param menu is short and its rows are picked by eye; Enter there would be
-        // guessing which port the artist meant.
-        crate::state::MenuBody::CardPorts { .. } => {}
+        // A card/param menu and a colour palette are short and picked by EYE; Enter there would
+        // be guessing which port (or which colour) the artist meant. Neither has a search field
+        // at all, so neither can even receive an Enter — this arm is the belt to that braces.
+        crate::state::MenuBody::CardPorts { .. } | crate::state::MenuBody::BackdropTints { .. } => {
+        }
     }
 }
 

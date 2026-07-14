@@ -227,8 +227,20 @@ fn intersects(a: Rect, b: Rect) -> bool {
 /// The library has 86 node types. A menu as tall as its list runs off the bottom of the screen and
 /// the last forty are unreachable (Enio's screenshot). So the panel is CAPPED, and what does not
 /// fit SCROLLS.
+/// The popup's chrome above the list: the header, plus the search field **when there is one**
+/// (only the library has one — doc 62). Every rect below is measured from this, so the list of a
+/// fieldless popup starts where the field would have been and nothing is left floating.
+pub(crate) fn menu_chrome_h(menu: &Menu) -> f32 {
+    MENU_HEADER_H
+        + if menu.has_search() {
+            MENU_SEARCH_H
+        } else {
+            0.0
+        }
+}
+
 pub(crate) fn menu_panel(menu: &Menu, count: usize, canvas: Rect) -> Rect {
-    let chrome = MENU_HEADER_H + MENU_SEARCH_H;
+    let chrome = menu_chrome_h(menu);
     let full = chrome + count.max(1) as f32 * MENU_ROW_H + 2.0 * MENU_PAD;
     let room = (canvas.h - 2.0 * MENU_MARGIN).max(chrome + MENU_ROW_H + 2.0 * MENU_PAD);
     let h = full.min(room);
@@ -246,8 +258,8 @@ pub(crate) fn menu_panel(menu: &Menu, count: usize, canvas: Rect) -> Rect {
 /// The scrolling VIEWPORT: the band of the panel the rows live in (everything below the header).
 /// Rows are drawn clipped to it and hit-tested against it, so a row scrolled half-way out is
 /// half-clickable and never spills over the header.
-pub(crate) fn menu_list(panel: Rect) -> Rect {
-    let top = MENU_HEADER_H + MENU_SEARCH_H;
+pub(crate) fn menu_list(menu: &Menu, panel: Rect) -> Rect {
+    let top = menu_chrome_h(menu);
     Rect::new(
         panel.x + MENU_PAD,
         panel.y + top + MENU_PAD,
@@ -268,13 +280,13 @@ pub(crate) fn menu_search_rect(panel: Rect) -> Rect {
 
 /// How far the list can scroll before its last row sits on the bottom edge. `0` when everything
 /// fits — and then there is no scrollbar and the wheel is not stolen.
-pub(crate) fn menu_max_scroll(panel: Rect, count: usize) -> f32 {
-    (count as f32 * MENU_ROW_H - menu_list(panel).h).max(0.0)
+pub(crate) fn menu_max_scroll(menu: &Menu, panel: Rect, count: usize) -> f32 {
+    (count as f32 * MENU_ROW_H - menu_list(menu, panel).h).max(0.0)
 }
 
 /// The clickable row rect for the `i`-th catalog entry, offset by the list's `scroll`.
-pub(crate) fn menu_row(panel: Rect, i: usize, scroll: f32) -> Rect {
-    let list = menu_list(panel);
+pub(crate) fn menu_row(menu: &Menu, panel: Rect, i: usize, scroll: f32) -> Rect {
+    let list = menu_list(menu, panel);
     Rect::new(
         list.x,
         list.y + i as f32 * MENU_ROW_H - scroll,
@@ -291,11 +303,11 @@ fn scrollbar_reserve(_panel: Rect, _i: usize, _scroll: f32) -> f32 {
 
 /// The scrollbar's TRACK — a thin column down the right of the list. `None` when everything fits:
 /// a scrollbar for a list that cannot scroll is a control that lies.
-pub(crate) fn menu_track(panel: Rect, count: usize) -> Option<Rect> {
-    if menu_max_scroll(panel, count) <= 0.0 {
+pub(crate) fn menu_track(menu: &Menu, panel: Rect, count: usize) -> Option<Rect> {
+    if menu_max_scroll(menu, panel, count) <= 0.0 {
         return None;
     }
-    let list = menu_list(panel);
+    let list = menu_list(menu, panel);
     Some(Rect::new(
         list.x + list.w - MENU_BAR_W,
         list.y,
@@ -306,12 +318,12 @@ pub(crate) fn menu_track(panel: Rect, count: usize) -> Option<Rect> {
 
 /// The draggable THUMB: as tall a fraction of the track as the viewport is of the list, and never
 /// shorter than a thing you can actually grab.
-pub(crate) fn menu_thumb(panel: Rect, count: usize, scroll: f32) -> Option<Rect> {
-    let track = menu_track(panel, count)?;
+pub(crate) fn menu_thumb(menu: &Menu, panel: Rect, count: usize, scroll: f32) -> Option<Rect> {
+    let track = menu_track(menu, panel, count)?;
     let list_h = count as f32 * MENU_ROW_H;
     let frac = (track.h / list_h).clamp(0.0, 1.0); // CLAMP-OK: a fraction
     let h = (track.h * frac).max(MENU_THUMB_MIN_H);
-    let max_scroll = menu_max_scroll(panel, count);
+    let max_scroll = menu_max_scroll(menu, panel, count);
     let t = if max_scroll > 0.0 {
         (scroll / max_scroll).clamp(0.0, 1.0) // CLAMP-OK: a fraction
     } else {
@@ -324,9 +336,11 @@ pub(crate) fn menu_thumb(panel: Rect, count: usize, scroll: f32) -> Option<Rect>
 /// thumb lands under the cursor and stays there. `grab` is where inside the thumb it was seized:
 /// grabbing a thumb by its middle and having it jump to put its TOP under the cursor is the
 /// scrollbar bug everyone has met.
-pub(crate) fn menu_scroll_at(panel: Rect, count: usize, y: f32, grab: f32) -> f32 {
-    let (Some(track), Some(thumb)) = (menu_track(panel, count), menu_thumb(panel, count, 0.0))
-    else {
+pub(crate) fn menu_scroll_at(menu: &Menu, panel: Rect, count: usize, y: f32, grab: f32) -> f32 {
+    let (Some(track), Some(thumb)) = (
+        menu_track(menu, panel, count),
+        menu_thumb(menu, panel, count, 0.0),
+    ) else {
         return 0.0;
     };
     let span = track.h - thumb.h;
@@ -334,7 +348,7 @@ pub(crate) fn menu_scroll_at(panel: Rect, count: usize, y: f32, grab: f32) -> f3
         return 0.0;
     }
     let t = ((y - grab - track.y) / span).clamp(0.0, 1.0); // CLAMP-OK: a fraction
-    t * menu_max_scroll(panel, count)
+    t * menu_max_scroll(menu, panel, count)
 }
 
 #[cfg(test)]

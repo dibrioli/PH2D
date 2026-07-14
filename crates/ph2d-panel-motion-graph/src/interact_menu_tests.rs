@@ -55,14 +55,20 @@ fn the_popup_is_capped_to_the_canvas_and_the_rest_scrolls() {
         "the popup fits on the canvas: {panel:?} in {RECT:?}"
     );
     assert!(
-        geom::menu_max_scroll(panel, 86) > 0.0,
+        geom::menu_max_scroll(st.menu.as_ref().unwrap(), panel, 86) > 0.0,
         "…and what did not fit is reachable by scrolling"
     );
     // A short list needs no scrollbar at all — and does not get one: a scrollbar on a list that
     // fits is a control that lies about there being more.
     let short = panel_of(&st, 3);
-    assert_eq!(geom::menu_max_scroll(short, 3), 0.0);
-    assert!(geom::menu_track(short, 3).is_none(), "no false bar");
+    assert_eq!(
+        geom::menu_max_scroll(st.menu.as_ref().unwrap(), short, 3),
+        0.0
+    );
+    assert!(
+        geom::menu_track(st.menu.as_ref().unwrap(), short, 3).is_none(),
+        "no false bar"
+    );
     set_current_node_catalog(Vec::new());
 }
 
@@ -94,7 +100,7 @@ fn the_wheel_scrolls_the_menu_and_leaves_the_canvas_alone() {
     for _ in 0..200 {
         scroll_menu(&mut st, RECT, &two_node_snapshot(), &over_menu);
     }
-    let max = geom::menu_max_scroll(panel, 86);
+    let max = geom::menu_max_scroll(st.menu.as_ref().unwrap(), panel, 86);
     assert!((st.menu.unwrap().scroll - max).abs() < 0.01, "clamped");
 
     // Away from the menu the wheel is the canvas's again.
@@ -123,7 +129,8 @@ fn dragging_the_thumb_scrolls_and_does_not_close_the_menu() {
     let snap = two_node_snapshot();
     let mut st = open_menu(0.0);
     let panel = panel_of(&st, 86);
-    let thumb = geom::menu_thumb(panel, 86, 0.0).expect("there is a thumb");
+    let thumb =
+        geom::menu_thumb(st.menu.as_ref().unwrap(), panel, 86, 0.0).expect("there is a thumb");
     let bg = GraphHitKind::Background;
 
     // Press ON the thumb…
@@ -140,7 +147,7 @@ fn dragging_the_thumb_scrolls_and_does_not_close_the_menu() {
     );
 
     // …drag it to the bottom of the track…
-    let track = geom::menu_track(panel, 86).unwrap();
+    let track = geom::menu_track(st.menu.as_ref().unwrap(), panel, 86).unwrap();
     apply_gesture(
         &mut st,
         gesture(bg, GesturePhase::Update, thumb.x + 2.0, track.y + track.h),
@@ -150,7 +157,7 @@ fn dragging_the_thumb_scrolls_and_does_not_close_the_menu() {
     );
     let scrolled = st.menu.as_ref().expect("the menu is still open").scroll;
     assert!(
-        (scrolled - geom::menu_max_scroll(panel, 86)).abs() < 0.5,
+        (scrolled - geom::menu_max_scroll(st.menu.as_ref().unwrap(), panel, 86)).abs() < 0.5,
         "dragged to the end of the list: {scrolled}"
     );
 
@@ -175,17 +182,17 @@ fn the_hit_follows_the_scroll_and_stops_at_the_band() {
     catalog(86);
     let st = open_menu(0.0);
     let panel = panel_of(&st, 86);
-    let list = geom::menu_list(panel);
+    let list = geom::menu_list(st.menu.as_ref().unwrap(), panel);
 
     // Unscrolled: row 0 sits at the top of the band.
-    let r0 = geom::menu_row(panel, 0, 0.0);
+    let r0 = geom::menu_row(st.menu.as_ref().unwrap(), panel, 0, 0.0);
     assert!(list.contains(r0.x + 1.0, r0.y + 1.0));
 
     // Scrolled by exactly three rows, row 3 is where row 0 was — and row 0 is ABOVE the band.
     let three = 3.0 * geom::MENU_ROW_H;
-    let r3 = geom::menu_row(panel, 3, three);
+    let r3 = geom::menu_row(st.menu.as_ref().unwrap(), panel, 3, three);
     assert!((r3.y - r0.y).abs() < 0.01, "row 3 took row 0's place");
-    let gone = geom::menu_row(panel, 0, three);
+    let gone = geom::menu_row(st.menu.as_ref().unwrap(), panel, 0, three);
     assert!(
         !list.contains(gone.x + 1.0, gone.y + 1.0),
         "row 0 scrolled out of the band, so it is out of reach"
@@ -282,7 +289,7 @@ fn typing_filters_the_library_and_the_first_row_is_the_best_match() {
     // Clicking that first row adds THAT type: the pick resolves against the same filtered,
     // ranked list the paint drew.
     let panel = geom::menu_panel(&menu, rows.len(), RECT);
-    let row = geom::menu_row(panel, 0, 0.0);
+    let row = geom::menu_row(st.menu.as_ref().unwrap(), panel, 0, 0.0);
     apply_gesture(
         &mut st,
         gesture(

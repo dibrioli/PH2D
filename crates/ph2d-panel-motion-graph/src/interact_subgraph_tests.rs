@@ -303,7 +303,7 @@ fn a_wire_dropped_on_a_card_offers_the_ports_hidden_inside_it() {
     // Pick the row → an ordinary Connect to the real node inside. The card grows the socket
     // by derivation, from the edge that now crosses it (the shell's gate proves that half).
     let panel = crate::geom::menu_panel(&menu, rows.len(), RECT);
-    let row = crate::geom::menu_row(panel, 0, 0.0);
+    let row = crate::geom::menu_row(&menu, panel, 0, 0.0);
     apply_gesture(
         &mut st,
         gesture(
@@ -356,7 +356,7 @@ fn a_backwards_wire_dropped_on_a_card_offers_the_outputs_hidden_inside_it() {
     assert_eq!(rows.iter().map(|p| p.node).collect::<Vec<_>>(), vec![8]);
 
     let panel = crate::geom::menu_panel(&menu, rows.len(), RECT);
-    let row = crate::geom::menu_row(panel, 0, 0.0);
+    let row = crate::geom::menu_row(&menu, panel, 0, 0.0);
     apply_gesture(
         &mut st,
         gesture(

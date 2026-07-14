@@ -91,6 +91,7 @@
 - [Heurística exige taxa de falso-positivo](feedback_heuristic_needs_false_positive_rate.md) — verde num fixture é sorte do seed
 - [Tolerância folgada esconde viés](feedback_loose_oracle_hides_systematic_bias.md) — asserte o valor EXATO na unidade do usuário
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — DC/Nyquist, 1ª/última coluna, 0 e 1
+- [Crescer geometria sem crescer MATÉRIA cresce no vazio](feedback_growing_geometry_without_growing_matter_grows_nothing.md) — se o render multiplica por cobertura/alpha, meça ELA
 - [Efeito LATERAL não sai de fórmula PONTUAL](feedback_a_lateral_effect_needs_a_nonlocal_operator.md) — sintoma: ela vira CONSTANTE no dado real
 - [Um gate só prova o que a FIXTURE contém](feedback_a_gate_only_proves_what_its_fixture_contains.md) — e meça o DOCUMENTO
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — verde na mutação = gate frouxo ou comentário errado

@@ -101,13 +101,17 @@ cargo check -p ph2d-eval-motion -p ph2d-panel-motion-graph
 
 ## 3. A fila — **tudo aqui é DECISÃO DO ENIO** (pergunte, não escolha)
 
-| # | Item | Por que não é sua escolha |
+> **Jornada de 2026-07-14 (Enio: *"faça tudo que sobrou"*): 3 das 4 FECHARAM.** `motion.delay`
+> (doc 63) · W4.T4 dock da timeline (doc 64) · `motion.path` + o **canal de externals** (doc 65).
+> **Sobrou UMA, e ela mudou de forma** — leia a linha 1.
+
+| # | Item | Estado |
 |---|---|---|
-| 1 | **FX de PASSE no compositor HDR** (glow/bloom/blur dual-Kawase/vignette/levels/hue-shift) | **Cross-module** com `ph2d-painter-effects` + `layer_fx` no documento. **É arquitetura, não fan-out. PARE e reporte.** |
-| 2 | **`motion.path`** | O plano dizia *"integra `vector.*`"*, mas aquele sistema foi **RETIRADO** (ADR-0108) e a geometria mora em `ph2d-vec-scene`, que **o cook NÃO alcança** (um nó só recebe params/inputs/playhead). Exige um **canal novo shell→cook** (uma fonte "externa" nomeada). |
-| 3 | **W4.T4 — dock da timeline** (`motion_timeline_slot`) | **Encosta na linha `anim`.** Agora está **DESBLOQUEADO** (o Motion integrou), mas é coordenação. |
-| 4 | **GPU / M5** ([plano](plans/2026-07-gpu-resident-node-pipeline.md)) | Exige **linha foundational DEDICADA** (`line/cook-parallel`, depois `line/gpu-nodes` **com ADR** — a Fase 1 **descongela o contrato**). **É ordem do Enio abrir. NUNCA enxerte aqui.** |
-| 5 | **`motion.delay`** — o único fan-out que sobrou, e é **marginal** | Não é decisão dele, é um **aviso**: o `motion.time_remap` já atrasa uma sub-árvore **Pure** de graça (exato, sem estado, scrub-perfeito), o `motion.trail` já ecoa e o `motion.slit_scan` já defasa por instância. Só se justifica pra atrasar **o que NÃO é função de `t`** — uma simulação. **Se for fazer, o valor real é o modo SMOOTH** (o Delay Effector do C4D: lag sem overshoot, que o `motion.spring` não dá). |
+| 1 | **FX de PASSE** (glow/bloom/blur/vignette/levels/hue) | 🔴 **PRECISA DE DECISÃO** — [doc 66](Motion%20Nodes/66_fx_de_passe_a_premissa_do_plano_e_FALSA.md). **A premissa do plano é FALSA:** o compositor do Painter é **8-BIT** e o `game_rt` é `Rgba16Float` — passar o HDR por ele **destrói exatamente o que o bloom precisa** (os valores > 1.0). E o Motion **não é separável** no GPU (as instâncias dele entram no mesmo passe de sprites da cena). Duas formas possíveis, donos diferentes: **A** = post stack do FRAME (afeta TUDO — outro plano, outro dono) · **B** = RT próprio do Motion (blast radius zero). **Recomendo B.** |
+| 2 | ~~**`motion.path`**~~ | ✅ **FECHADO** (doc 65) — e o que ele destravou é maior que ele: o **canal de externals** (`Cook::set_external` / `EvalCtx::external`), que é **como qualquer coisa que o APP possui entra no grafo**. |
+| 3 | ~~**W4.T4 — dock da timeline**~~ | ✅ **FECHADO** (doc 64). Não faltava sistema; faltava **geometria**. |
+| 4 | **GPU / M5** ([plano](plans/2026-07-gpu-resident-node-pipeline.md)) | 🔴 Exige **linha foundational DEDICADA** (`line/cook-parallel`, depois `line/gpu-nodes` **com ADR** — a Fase 1 **descongela o contrato**, CLAUDE.md §6). **É ordem do Enio abrir. NUNCA enxerte aqui.** |
+| 5 | ~~**`motion.delay`**~~ | ✅ **FECHADO** (doc 63). O valor real era o modo **Blend** (lag **sem overshoot** — o que a mola não dá). |
 
 ### Gaps conhecidos (nomeados, não escondidos)
 

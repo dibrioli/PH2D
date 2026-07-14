@@ -46,6 +46,7 @@
 - [Crase em msg de commit = execução](feedback_backticks_in_commit_message_are_command_substitution.md) — use `git commit -F <arquivo>`
 - [Merge limpo pode estar quebrado](feedback_clean_text_merge_can_be_semantically_broken.md) — só `check --workspace` cruza
 - [Resolva pelos ESTÁGIOS do índice](feedback_resolve_conflicts_from_index_stages_not_markers.md) — `:1`base `:2`ours `:3`theirs
+- [Lista compartilhada só se funde contra a main de HOJE](feedback_a_shared_list_is_merged_against_todays_main.md) — "limpei o MEMORY.md" apagou 4 memórias que a main ganhou pós-fork; só ADICIONE, remover é operação de integração
 - [Varra marcadores em CADA commit](feedback_sweep_conflict_markers_every_commit.md) — árvore limpa não prova o histórico
 - [Foundational editável = crie isolado](feedback_foundational_editable_design_for_isolation.md) — projete p/ isolamento; anote ids
 - [CI direto + fmt-skew](feedback_ci_direct_lint_gates_and_fmt_skew.md) — use `rustup run <pin> cargo fmt`

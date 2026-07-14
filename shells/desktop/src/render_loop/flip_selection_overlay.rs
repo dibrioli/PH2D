@@ -21,8 +21,10 @@
 //! cobria o desenho inteiro (smoke do Enio, 2026-07-13). O anel do pincel (`flip_cursor`)
 //! sempre desenhou assim, em tela, exatamente por isto.
 //!
-//! A pose do objeto e a câmera entram numa matriz só (`world_to_screen_affine ∘
-//! local→mundo`) — a MESMA que o render usa —, mas aplicada aos PONTOS.
+//! A pose do objeto (o gizmo), **a pose da CHAVE** (`FlipFrame::offset`, W7.2) e a câmera
+//! entram numa matriz só (`world_to_screen ∘ art_to_world`) — a MESMA cadeia que o render
+//! usa —, mas aplicada aos PONTOS. Sem a pose da chave, o realce fica deslocado da linha
+//! por todo o offset da chave ("o traço afastado do seu mesh", smoke do Enio 2026-07-14).
 
 use ph2d_flip::FlipDoc;
 use ph2d_host::WindowSize;
@@ -61,11 +63,14 @@ pub(super) fn draw_flip_selection(
     if !active || !editing {
         return;
     }
-    let Some((oid, _lid, did)) = crate::flip_select::visible_drawing(doc, playhead, active_layer)
+    let Some((oid, lid, did)) = crate::flip_select::visible_drawing(doc, playhead, active_layer)
     else {
         return;
     };
-    let Some(drawing) = doc.object(oid).and_then(|o| o.drawing(did)) else {
+    let Some(obj) = doc.object(oid) else {
+        return;
+    };
+    let Some(drawing) = obj.drawing(did) else {
         return;
     };
     if !drawing.any_selected() {
@@ -73,9 +78,15 @@ pub(super) fn draw_flip_selection(
     }
 
     use ph2d_vector::{Affine, Brush, Color, Stroke};
-    // local → mundo → tela, numa matriz só (a MESMA que o render usa).
-    let [a, b, c, d, e, f] = l2w.0;
-    let to_screen = camera.world_to_screen_affine(window) * Affine::new([a, b, c, d, e, f]);
+    // **A POSE DA CHAVE entra na matriz** (W7.2 fix): o render desenha o traço em
+    // `art_to_world(objeto, pose)`; o realce tem de usar EXATAMENTE a mesma cadeia, senão
+    // fica deslocado da linha pela pose — "o traço afastado do seu mesh" (smoke do Enio,
+    // 2026-07-14). A pose sai do MESMO amostrador que o render (`offset_at_cycled` no
+    // quadro atual), não de `frame_offset` — sob um ciclo os dois diferem.
+    let pose = obj.layer(lid).map_or(ph2d_core::Vec2::ZERO, |l| {
+        l.offset_at_cycled(obj.frame_at(playhead))
+    });
+    let to_screen = art_screen_affine(l2w, pose, camera.world_to_screen_affine(window));
 
     let color = Color::new(HALO_RGBA);
     for s in drawing.strokes.iter().filter(|s| s.selected) {
@@ -126,6 +137,21 @@ pub(super) fn draw_flip_marquee(
         None,
         &path,
     );
+}
+
+/// **ARTE → TELA**, a cadeia inteira numa matriz: `câmera ∘ objeto ∘ pose_da_chave`.
+///
+/// É a MESMA cadeia que o render dobra (`flip_transform::art_to_world`), fechada com a
+/// câmera. Pura, e separada por isso: a invariante que ela carrega — *o realce pousa
+/// EXATAMENTE sobre o traço renderizado, pose inclusa* — é a que quebrou no smoke do W7.2,
+/// e uma função pura é o que um gate consegue interrogar.
+fn art_screen_affine(
+    l2w: &Xform,
+    pose: ph2d_core::Vec2,
+    cam: ph2d_vector::Affine,
+) -> ph2d_vector::Affine {
+    let [a, b, c, d, e, f] = crate::flip_transform::art_to_world(l2w, pose).0;
+    cam * ph2d_vector::Affine::new([a, b, c, d, e, f])
 }
 
 /// A polilinha do realce, **já em px de TELA** (o `to_screen` é aplicado aos PONTOS, não
@@ -184,6 +210,36 @@ mod tests {
              espaco local, o Vello multiplica a espessura pelo zoom e o realce vira um \
              borrao"
         );
+    }
+
+    /// 🔴 **O realce inclui a POSE DA CHAVE** (W7.2 fix) — pousa sobre o traço no lugar
+    /// em que o render o desenha, não na geometria crua.
+    ///
+    /// O render dobra `art_to_world(objeto, pose)`; o overlay tem de dobrar o MESMO. Sem
+    /// isso, o realce âmbar fica parado enquanto a arte se move com a pose — "o traço
+    /// afastado do seu mesh" (smoke do Enio, 2026-07-14).
+    ///
+    /// Mutação que sangra: tirar a `pose` da `art_screen_affine` (voltar a `cam * l2w`).
+    #[test]
+    fn the_halo_carries_the_key_pose() {
+        let cam = Affine::new([2.0, 0.0, 0.0, 2.0, 0.0, 0.0]); // 2 px/unidade
+        let l2w = Xform::IDENTITY; // objeto na identidade: isola a pose
+        let pose = ph2d_core::Vec2::new(100.0, -40.0);
+
+        // A âncora da arte (o ponto (0,0) da geometria) sob pose = deslocada pela pose,
+        // depois pela câmera.
+        let origin = art_screen_affine(&l2w, pose, cam) * Point::new(0.0, 0.0);
+        assert!(
+            (origin.x - 200.0).abs() < 1e-6 && (origin.y - (-80.0)).abs() < 1e-6,
+            "o realce ignorou a pose da chave: {origin:?} (esperado a arte deslocada de 100,-40 \
+             e escalada por 2) — o halo ficaria parado enquanto o traco anda"
+        );
+
+        // E pose neutra reduz EXATAMENTE ao caminho antigo (`cam * l2w`) — o caso comum
+        // (nenhuma instancia movida) nao paga nada.
+        let neutral = art_screen_affine(&l2w, ph2d_core::Vec2::ZERO, cam) * Point::new(7.0, 3.0);
+        let plain = cam * Point::new(7.0, 3.0);
+        assert!((neutral.x - plain.x).abs() < 1e-9 && (neutral.y - plain.y).abs() < 1e-9);
     }
 
     /// **Um traço ABERTO não ganha o segmento de fechamento** — desenhá-lo mostraria uma

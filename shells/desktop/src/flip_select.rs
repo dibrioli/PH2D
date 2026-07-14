@@ -257,7 +257,12 @@ impl crate::App {
             Pick::Replace
         };
         let active_layer = self.flip_active_layer;
+        // Dois funis, dois usos: o **pose-aware** (arte) leva o cursor ao espaço da
+        // GEOMETRIA — é onde o hit-test tem de perguntar. O **pose-free** (objeto) semeia
+        // o `Move.last`: o gesto de mover consome no mesmo referencial pose-free (senão o
+        // 1º delta daria um salto igual à pose — ver `flip_active_world_to_object`).
         let w2l = self.flip_active_world_to_local();
+        let w2o = self.flip_active_world_to_object();
         let playhead = self.playhead;
 
         let Some(gfx) = self.gfx.as_mut() else {
@@ -268,6 +273,8 @@ impl crate::App {
         let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
         let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
         let local = Vec2::new(local[0] as f32, local[1] as f32);
+        let local_obj = w2o.apply([f64::from(world[0]), f64::from(world[1])]);
+        let move_seed = Vec2::new(local_obj[0] as f32, local_obj[1] as f32);
 
         let Some((oid, _lid, did)) = visible_drawing(&gfx.flip, &playhead, active_layer) else {
             // Camada travada, ou quadro sem desenho: DIZ, em vez de engolir o clique em
@@ -305,7 +312,7 @@ impl crate::App {
         self.title_dirty = true;
         self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift) {
             Down::Move { collapse_to } => crate::flip_edit_gesture::EditGesture::Move {
-                last: local,
+                last: move_seed,
                 down: (x, y),
                 collapse_to,
             },

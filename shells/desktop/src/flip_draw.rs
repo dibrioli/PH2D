@@ -224,13 +224,6 @@ impl crate::App {
     /// movido, sumiu, ou colapsou — caminho comum (desenho normal), no-op.
     #[must_use]
     pub(crate) fn flip_active_world_to_local(&self) -> Xform {
-        let Some(gfx) = self.gfx.as_ref() else {
-            return Xform::IDENTITY;
-        };
-        let Some(obj) = gfx.flip.objects().first() else {
-            return Xform::IDENTITY;
-        };
-        let oid = obj.id;
         // **A POSE DA CHAVE ativa entra no funil** (W7.2). A cadeia da arte é
         // `objeto ∘ pose_da_chave`, então o inverso dela é o que leva o cursor ao espaço
         // do DESENHO — onde a geometria vive. Sem isto, desenhar/esculpir/preencher numa
@@ -239,24 +232,62 @@ impl crate::App {
         //
         // A pose sai do MESMO amostrador que o render usa (`offset_at_cycled`) — seed e
         // sample são a mesma função (`feedback_derived_coordinate_seed_must_match_sample`).
-        let frame = obj.frame_at(&self.playhead);
-        let key_pose = self
-            .flip_active_layer
-            .filter(|id| obj.layer(*id).is_some())
-            .or_else(|| obj.layers().last().map(|l| l.id))
-            .and_then(|lid| obj.layer(lid))
-            .map_or(ph2d_core::Vec2::ZERO, |l| l.offset_at_cycled(frame));
-        // O objeto (identidade se a entidade sumiu) e a pose entram na MESMA função que
-        // o render usa — só que pelo lado do inverso.
-        let object = self
-            .flip_entities
+        crate::flip_transform::world_to_art(
+            &self.flip_active_object_xform(),
+            self.flip_active_pose(),
+        )
+    }
+
+    /// O afim LOCAL(objeto)→MUNDO do objeto Flip ativo — **sem a pose da chave**. É a
+    /// cadeia do `Transform` do ECS (o gizmo), e nada mais.
+    #[must_use]
+    fn flip_active_object_xform(&self) -> Xform {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return Xform::IDENTITY;
+        };
+        let Some(oid) = gfx.flip.objects().first().map(|o| o.id) else {
+            return Xform::IDENTITY;
+        };
+        self.flip_entities
             .get(&oid)
             .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
             .filter(|e| gfx.sim.world().get_entity(*e).is_ok())
             .map_or(Xform::IDENTITY, |e| {
                 crate::flip_transform::object_xform(&gfx.sim, e)
-            });
-        crate::flip_transform::world_to_art(&object, key_pose)
+            })
+    }
+
+    /// A pose (offset) da chave que está NA TELA agora — a MESMA que o render dobra
+    /// (`offset_at_cycled`, W7.2).
+    #[must_use]
+    fn flip_active_pose(&self) -> ph2d_core::Vec2 {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return ph2d_core::Vec2::ZERO;
+        };
+        let Some(obj) = gfx.flip.objects().first() else {
+            return ph2d_core::Vec2::ZERO;
+        };
+        let frame = obj.frame_at(&self.playhead);
+        self.flip_active_layer
+            .filter(|id| obj.layer(*id).is_some())
+            .or_else(|| obj.layers().last().map(|l| l.id))
+            .and_then(|lid| obj.layer(lid))
+            .map_or(ph2d_core::Vec2::ZERO, |l| l.offset_at_cycled(frame))
+    }
+
+    /// O afim MUNDO→LOCAL(objeto) **sem a pose da chave** — o funil do gesto de MOVER.
+    ///
+    /// Por que este não pode ter a pose: mover uma instância ESCREVE a pose, e a pose
+    /// entra no [`Self::flip_active_world_to_local`]. Usar aquele funil aqui criaria um
+    /// laço — cada amostra converte o cursor num referencial que a amostra anterior
+    /// acabou de mover — e o desenho **treme** (smoke do Enio, 2026-07-14). O delta é um
+    /// VETOR (uma diferença de dois pontos); a translação da pose se cancela nele, então
+    /// tirar a pose não muda o resultado no caso comum e **elimina o laço** no instanciado.
+    #[must_use]
+    pub(crate) fn flip_active_world_to_object(&self) -> Xform {
+        self.flip_active_object_xform()
+            .inverse()
+            .unwrap_or(Xform::IDENTITY)
     }
 
     /// Pen-down do desenho Flip: começa um traço na coord de mundo. Devolve

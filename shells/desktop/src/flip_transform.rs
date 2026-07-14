@@ -324,4 +324,69 @@ mod tests {
         let object = Xform([2.0, 0.0, 0.0, 2.0, 5.0, 7.0]);
         assert_eq!(art_to_world(&object, ph2d_core::Vec2::ZERO), object);
     }
+
+    /// 🔴 **O funil do MOVE tem de ser POSE-FREE, ou ele realimenta e o desenho treme**
+    /// (smoke do Enio, 2026-07-14).
+    ///
+    /// O gesto de mover uma instância ESCREVE a pose da chave. Se o cursor for convertido
+    /// pelo funil **pose-aware** (`world_to_art`, o que o desenho/escultura usam), cada
+    /// amostra mede num referencial que a amostra anterior acabou de deslocar — e um
+    /// arrasto de passo CONSTANTE na tela produz um delta que PULA a cada quadro. O funil
+    /// **pose-free** (o inverso do objeto, sem a pose) quebra o laço: passo constante →
+    /// delta constante.
+    ///
+    /// Este é um ESPELHO do laço de `flip_edit_canvas_move`, exercitando as funções REAIS
+    /// de funil (`world_to_art` / `Xform::inverse`). **O que ele prova e o que não prova:**
+    /// prova que a ESCOLHA do funil decide entre tremor e suavidade (mutação que sangra:
+    /// fazer `world_to_art` ignorar a pose → o `run(true)` para de driftar e a asserção
+    /// cai). **NÃO** prova que o gesto real usa o funil certo — esse wiring mora no
+    /// `App`+GPU (`flip_active_world_to_object`), fora do alcance de um teste de unidade, e
+    /// é o **smoke** que o cobre. É o mesmo limite dos outros seams de gesto deste módulo.
+    #[test]
+    fn the_move_funnel_must_be_pose_free_or_the_drag_trembles() {
+        // Um objeto REAL (movido/escalado): na identidade o bug se esconde.
+        let object = Xform([1.5, 0.0, 0.0, 1.5, 20.0, -8.0]);
+        // Cursor andando em PASSO CONSTANTE no mundo (o dedo em velocidade uniforme).
+        let world: [[f64; 2]; 4] = [[0.0, 0.0], [9.0, 0.0], [18.0, 0.0], [27.0, 0.0]];
+
+        // Roda o laço de `flip_edit_canvas_move` (o move de INSTÂNCIA: escreve a pose).
+        let run = |pose_aware: bool| -> Vec<f64> {
+            let funnel = |pose: ph2d_core::Vec2| -> Xform {
+                if pose_aware {
+                    world_to_art(&object, pose)
+                } else {
+                    object.inverse().unwrap()
+                }
+            };
+            let mut pose = ph2d_core::Vec2::ZERO;
+            let p0 = funnel(pose).apply(world[0]);
+            let mut last = ph2d_core::Vec2::new(p0[0] as f32, p0[1] as f32);
+            let mut deltas = Vec::new();
+            for w in &world[1..] {
+                let p = funnel(pose).apply(*w);
+                let now = ph2d_core::Vec2::new(p[0] as f32, p[1] as f32);
+                let d = now - last;
+                deltas.push(f64::from(d.x));
+                pose += d; // o move de instância escreve a pose (o feedback vive aqui)
+                last = now;
+            }
+            deltas
+        };
+
+        let free = run(false);
+        // Passo de mundo constante (9) sob o inverso do objeto (escala 1,5) = delta local
+        // constante (6) a cada amostra. Nada de tremor.
+        for d in &free {
+            assert!(
+                (d - 6.0).abs() < 1e-4,
+                "pose-free deveria dar delta constante: {free:?}"
+            );
+        }
+        // O pose-aware DRIFTA: a prova de que usar aquele funil aqui treme (e o motivo do fix).
+        let aware = run(true);
+        assert!(
+            (aware[0] - aware[1]).abs() > 1.0 || (aware[1] - aware[2]).abs() > 1.0,
+            "o funil pose-aware nao realimentou ({aware:?}) — entao nao havia tremor a corrigir?"
+        );
+    }
 }

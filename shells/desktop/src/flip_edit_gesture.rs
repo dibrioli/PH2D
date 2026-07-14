@@ -224,7 +224,11 @@ impl crate::App {
                 down,
                 collapse_to,
             } => {
-                let w2l = self.flip_active_world_to_local();
+                // **Funil SEM a pose da chave** (W7.2 fix): o delta do arrasto é um vetor,
+                // e mover uma instância ESCREVE a pose. Usar o funil pose-aware aqui
+                // realimentaria a própria mudança a cada amostra e o desenho tremeria. Ver
+                // `App::flip_active_world_to_object`.
+                let w2l = self.flip_active_world_to_object();
                 let Some(now) = self.flip_screen_to_local(x, y, &w2l) else {
                     return true;
                 };

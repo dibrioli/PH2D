@@ -5819,6 +5819,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-delay"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-distribute-curve"
 version = "0.0.0"
 dependencies = [
@@ -6270,6 +6278,7 @@ dependencies = [
  "ph2d-node-motion-color-ramp",
  "ph2d-node-motion-combine",
  "ph2d-node-motion-cull",
+ "ph2d-node-motion-delay",
  "ph2d-node-motion-distribute-curve",
  "ph2d-node-motion-distribute-poisson",
  "ph2d-node-motion-distribute-radial",

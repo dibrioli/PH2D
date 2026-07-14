@@ -335,6 +335,36 @@ fn build_sim_zone(g: &mut Graph) -> Option<Demo> {
     g.set_param(scale, "amount", RAIN_QUAD);
     g.set_param(mv, "dx", RAIN_X);
     g.set_param(mv, "dy", RAIN_Y);
+    // **The cards have names** (doc 61). A boot document whose twenty cards say `Move`, `Move`,
+    // `Drive`, `Drive` is a document you read by tracing wires; the same twenty, named, are a
+    // sentence. This is also the ready-to-smoke example: press F2 on any of them and type.
+    //
+    // (English, like every other string the app shows — HR-15. And no arrows: the `no_tofu_glyphs`
+    // gate scans string literals, not comments.)
+    for (n, label) in [
+        (zone, "The Snow"),
+        (spawn, "Birth"),
+        (sky, "Birth Sites"),
+        (lift, "Up To The Sky"),
+        (combine, "Newborns Join In"),
+        (wind, "Gravity And Gust"),
+        (sea, "The Sea"),
+        (step, "Move Everything"),
+        (ground, "The Sea Bed"),
+        (life, "Growing Old"),
+        (attr, "Read The Age"),
+        (fade, "Age Into Fade"),
+        (ramp, "Melt: Colour"),
+        (shrink, "Melt: Size"),
+        (dim, "Melt: Opacity"),
+        (falloff, "The Kill Disc"),
+        (cull, "Death By Place"),
+        (scale, "Flake Size"),
+        (mv, "Where The Scene Sits"),
+    ] {
+        g.set_label(n, label);
+    }
+
     Some(Demo {
         sinks: vec![output],
         aging: vec![life, attr, fade, ramp, shrink, dim],

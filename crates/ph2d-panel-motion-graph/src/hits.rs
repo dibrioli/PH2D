@@ -268,6 +268,12 @@ pub(crate) fn menu_search_id() -> NodeId {
     fnv_id("motion_graph/menu_search")
 }
 
+/// The inline rename box (doc 61). One id — only one thing is being renamed at a time, and the
+/// box is over it.
+pub(crate) fn rename_id() -> NodeId {
+    fnv_id("motion_graph/rename")
+}
+
 pub(crate) fn wire_hit_id(to_node: u32, to_port: u16) -> NodeId {
     fnv_id(&format!("motion_graph/wire/{to_node}/{to_port}"))
 }

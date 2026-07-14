@@ -250,8 +250,44 @@ pub(super) fn apply_graph_intents(
                 backdrops::resize(motion, id, left, dx, dy)
             }
             GraphIntent::DeleteBackdrop { id } => backdrops::delete(motion, id),
-            GraphIntent::SetBackdropTitle { id, title } => backdrops::set_title(motion, id, title),
+            // **One gesture, three targets** (doc 61). The name lands wherever that kind of
+            // thing keeps its name — the node's label channel, the subgraph's title, the
+            // backdrop's title — and each is one undo step.
+            GraphIntent::Rename { target, name } => rename(motion, target, name),
             GraphIntent::SetBackdropColor { id, color } => backdrops::set_color(motion, id, color),
         }
+    }
+}
+
+/// **Name a thing** (doc 61) — the one place the three targets' three storage places meet.
+///
+/// A name is **not semantic**: no cook reads it, so this deliberately does NOT `mark_dirty`. It is
+/// still document state, so it is undoable — and the undo step is pushed only if the name actually
+/// CHANGED, because pressing Enter on a box you did not edit is not an edit, and an undo queue
+/// that fills with those is one the artist cannot use.
+///
+/// The trim/empty rule is the graph's (`set_label`: an empty name is not a name, it is *"call it
+/// what it is"*), and the two `title` fields follow it — an emptied group card goes back to
+/// saying "Group", not to saying nothing.
+pub(super) fn rename(
+    motion: &mut MotionState,
+    target: ph2d_panel_motion_graph::RenameTarget,
+    name: String,
+) {
+    use ph2d_nodegraph::graph::NodeId;
+    use ph2d_panel_motion_graph::RenameTarget;
+    let pre = motion.doc.clone();
+    let name = name.trim().to_string();
+    match target {
+        RenameTarget::Node(id) => motion.doc.graph.set_label(NodeId(id), name),
+        RenameTarget::Subgraph(id) => {
+            if let Some(s) = motion.doc.subgraphs.iter_mut().find(|s| s.id == id) {
+                s.title = name;
+            }
+        }
+        RenameTarget::Backdrop(id) => backdrops::set_title(motion, id, name),
+    }
+    if motion.doc != pre {
+        motion.history.push_undo(pre);
     }
 }

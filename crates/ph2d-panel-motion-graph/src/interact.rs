@@ -84,6 +84,7 @@ pub(crate) fn process(
     }
 
     crate::menu_search::settle_focus(state, ctx);
+    crate::rename::settle_focus(state, ctx);
 }
 
 /// **The frame boundary a released wire-end has to survive** (doc 45.1).

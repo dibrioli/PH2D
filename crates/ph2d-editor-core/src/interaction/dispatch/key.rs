@@ -14,8 +14,8 @@ use super::clipboard::{clipboard_extract_selection, collapse_selection, delete_s
 use super::focus::{apply_click, cycle_focus};
 use super::keymap::{
     KEY_ARROW_DOWN, KEY_ARROW_LEFT, KEY_ARROW_RIGHT, KEY_ARROW_UP, KEY_BACKSPACE, KEY_DELETE,
-    KEY_ENTER, KEY_ESCAPE, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G, KEY_KEY_K,
-    KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
+    KEY_ENTER, KEY_ESCAPE, KEY_F2, KEY_KEY_A, KEY_KEY_C, KEY_KEY_D, KEY_KEY_F, KEY_KEY_G,
+    KEY_KEY_K, KEY_KEY_P, KEY_KEY_V, KEY_KEY_X, KEY_SPACE, KEY_TAB,
 };
 use super::text_ops::{next_char_boundary, prev_char_boundary};
 use super::{
@@ -444,6 +444,7 @@ pub fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
         // until now, which made it the proof of the problem: the same verb, in two
         // maps, and neither knew about the other's.
         KEY_SPACE if !cmd => GraphKey::TogglePlay,
+        KEY_F2 => GraphKey::Rename,
         _ => return None,
     })
 }

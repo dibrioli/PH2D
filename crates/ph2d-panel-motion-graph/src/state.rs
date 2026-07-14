@@ -113,6 +113,20 @@ pub(crate) enum Interaction {
     MenuScroll { grab: f32 },
 }
 
+/// The inline rename box: F2 opened it over something, and it is waiting for a name (doc 61).
+///
+/// The TEXT is not here — it lives in the `WidgetStore`, which owns the buffer, the caret and the
+/// selection. This is only what the box is *pointing at* and whether it has claimed the keyboard
+/// yet (once, on the frame it opens; re-claiming every frame would fight anything else the artist
+/// touches, and re-seeding would stomp what they are typing).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Rename {
+    pub target: crate::snapshot::RenameTarget,
+    /// What the thing was called when the box opened — the string the field is seeded with.
+    pub seed: String,
+    pub opened: bool,
+}
+
 /// An open popup (E7). Ephemeral — never undoable. The frame (panel, scrollbar,
 /// rows) is one widget; WHAT it lists and what a pick MEANS is [`MenuBody`].
 #[derive(Clone, Debug, PartialEq)]
@@ -201,6 +215,9 @@ pub struct MotionGraphPanelState {
     /// Open add-node popup, or `None`. Opened by R-click on empty canvas / `A`;
     /// closed by picking a row, clicking away, or Esc.
     pub(crate) menu: Option<Menu>,
+    /// **The open rename box** (doc 61), or `None`. Ephemeral — never undoable; what IS undoable
+    /// is the name it commits.
+    pub(crate) rename: Option<Rename>,
     /// `P` armed the probe: the NEXT click on a node picks it as the probe target.
     /// Disarmed by the pick, by Esc, or by a second `P` — same three exits as the
     /// knife (a mode you cannot leave is a trap).

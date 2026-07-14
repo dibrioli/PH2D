@@ -28,6 +28,9 @@ pub const KEY_KEY_G: u32 = 0x47;
 pub const KEY_KEY_K: u32 = 0x4B;
 pub const KEY_KEY_P: u32 = 0x50;
 pub const KEY_DELETE: u32 = 0xF728;
+// F2 — rename, everywhere it exists (Windows/Blender/Houdini all agree). macOS
+// NSEvent function-key range, like the arrows and forward-Delete above.
+pub const KEY_F2: u32 = 0xF705;
 pub const KEY_ARROW_UP: u32 = 0xF700;
 pub const KEY_ARROW_DOWN: u32 = 0xF701;
 pub const KEY_ARROW_LEFT: u32 = 0xF702;

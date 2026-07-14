@@ -83,6 +83,10 @@ mod subgraph_ports_tests;
 mod subgraph_tests;
 
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_rename_tests.rs"]
+mod rename_tests;
+
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
 

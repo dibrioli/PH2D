@@ -281,6 +281,11 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     }
 
     register_hits(ctx, rect, &hits);
+
+    // The rename box (doc 61) is drawn OVER the thing's title, after everything else and after
+    // the hit registration — it is a widget, not a graph hit, and it registers itself with the
+    // panel's widget index like the menu's search field does.
+    crate::rename::paint(state, ctx, rect, &snap, &view);
 }
 
 /// Auto-fit: scale + center the node bounding box into `rect`.

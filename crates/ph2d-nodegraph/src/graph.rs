@@ -154,6 +154,20 @@ pub struct Graph {
     /// It is a real dependency: [`Graph::would_cycle`] walks it, the cook cooks it, and
     /// [`Graph::remove_node`] cleans it up on both sides.
     param_sources: crate::param_source::All,
+    /// **The artist's name for a node** (doc 61) — what the card says instead of its type's
+    /// display name. Absent (or empty) → the card falls back to the type, which is what it
+    /// always did, so a graph nobody renamed serializes byte for byte as before.
+    ///
+    /// It is here, in a parallel map, rather than as a field on [`NodeInstance`], for the
+    /// same reason `node_text_params` is: this is a **foundational** crate that several lines
+    /// extend at once, and an append-only map is a merge that never conflicts while a new
+    /// struct field touches every construction site in the repo
+    /// ([[feedback_foundational_editable_design_for_isolation]]).
+    ///
+    /// A label is **not** semantic — no cook reads it — but it is *authored*, so it lives
+    /// above `[layout]` in the textual format (the `t` record, header `v4`) and it rides
+    /// `Clone`/`PartialEq`, which is what puts a rename in the undo queue for free.
+    node_labels: BTreeMap<NodeId, String>,
     next_id: u32,
 }
 
@@ -244,6 +258,7 @@ impl Graph {
         self.layout.remove(&id);
         self.node_params.remove(&id);
         self.node_text_params.remove(&id);
+        self.node_labels.remove(&id);
         // Both sides: the params IT drove, and the params driven BY it. A source left
         // pointing at a deleted node would cook as `Empty` forever — a socket wired to a
         // ghost.
@@ -327,6 +342,37 @@ impl Graph {
     /// the `x` record).
     pub fn node_text_params(&self) -> &BTreeMap<NodeId, BTreeMap<String, String>> {
         &self.node_text_params
+    }
+
+    // ── Labels: the artist's name for a node (doc 61) ───────────────────────
+
+    /// Name a node. An **empty** name is not a name: it removes the label, so clearing the
+    /// rename box means *"call it what it is"* rather than leaving a card with a blank
+    /// title. This is also what keeps `to_text` byte-identical for a graph that was renamed
+    /// and un-renamed.
+    ///
+    /// Whitespace is trimmed, and interior newlines are refused (the textual format is
+    /// line-oriented: a label with a newline in it would be a second, unparsable record).
+    pub fn set_label(&mut self, id: NodeId, label: impl Into<String>) {
+        let label = label.into();
+        let label = label.trim();
+        if label.is_empty() || label.contains(['\n', '\r']) {
+            self.node_labels.remove(&id);
+        } else {
+            self.node_labels.insert(id, label.to_string());
+        }
+    }
+
+    /// The artist's name for this node, if it has one. `None` → the card shows its type's
+    /// display name (the one derivation both the paint and the rename box read, so what you
+    /// see is what the box seeds with).
+    pub fn label(&self, id: NodeId) -> Option<&str> {
+        self.node_labels.get(&id).map(String::as_str)
+    }
+
+    /// Every label, in deterministic id order. Used by the textual format (the `t` record).
+    pub fn node_labels(&self) -> &BTreeMap<NodeId, String> {
+        &self.node_labels
     }
 
     // ── Driven params (doc 58) ──────────────────────────────────────────────
@@ -548,152 +594,5 @@ impl Graph {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn edge(from: NodeId, to: NodeId, delayed: bool) -> Edge {
-        Edge {
-            from: (from, 0),
-            to: (to, 0),
-            delayed,
-        }
-    }
-
-    #[test]
-    fn plain_back_edge_is_rejected_but_pre_is_allowed() {
-        let mut g = Graph::new();
-        let a = g.add_node("a");
-        let b = g.add_node("b");
-        assert_eq!(g.connect(edge(a, b, false)), Ok(()));
-        // b -> a as a plain edge would close a cycle: rejected.
-        assert_eq!(g.connect(edge(b, a, false)), Err(EdgeError::WouldCycle));
-        // b -> a as a `pre` (delayed) edge is the legal way to express feedback.
-        assert_eq!(g.connect(edge(b, a, true)), Ok(()));
-        assert_eq!(g.edges().len(), 2);
-    }
-
-    #[test]
-    fn unknown_node_is_rejected() {
-        let mut g = Graph::new();
-        let a = g.add_node("a");
-        assert_eq!(
-            g.connect(edge(a, NodeId(999), false)),
-            Err(EdgeError::UnknownNode)
-        );
-    }
-
-    #[test]
-    fn self_edge_is_a_cycle() {
-        let mut g = Graph::new();
-        let a = g.add_node("a");
-        assert_eq!(g.connect(edge(a, a, false)), Err(EdgeError::WouldCycle));
-    }
-
-    #[test]
-    #[should_panic(expected = "whitespace-free")]
-    fn add_node_rejects_whitespaced_name() {
-        // Would corrupt the whitespace-delimited textual format.
-        Graph::new().add_node("motion clone");
-    }
-
-    #[test]
-    fn duplicate_input_edge_is_rejected() {
-        let mut g = Graph::new();
-        let a = g.add_node("a");
-        let b = g.add_node("b");
-        let c = g.add_node("c");
-        g.connect(Edge {
-            from: (a, 0),
-            to: (c, 0),
-            delayed: false,
-        })
-        .unwrap();
-        // A second edge into the same input port (c, 0) is rejected.
-        assert_eq!(
-            g.connect(Edge {
-                from: (b, 0),
-                to: (c, 0),
-                delayed: false
-            }),
-            Err(EdgeError::InputAlreadyConnected)
-        );
-    }
-
-    #[test]
-    fn disconnect_removes_the_edge_into_an_input() {
-        let mut g = Graph::new();
-        let a = g.add_node("a");
-        let b = g.add_node("b");
-        g.connect(Edge {
-            from: (a, 0),
-            to: (b, 1),
-            delayed: false,
-        })
-        .unwrap();
-        assert_eq!(g.edges().len(), 1);
-        // Wrong port → nothing removed.
-        assert_eq!(g.disconnect(b, 0), None);
-        assert_eq!(g.edges().len(), 1);
-        // Right port → the edge comes back out.
-        assert_eq!(
-            g.disconnect(b, 1),
-            Some(Edge {
-                from: (a, 0),
-                to: (b, 1),
-                delayed: false
-            })
-        );
-        assert!(g.edges().is_empty());
-        // The port is free again — a fresh connect is accepted.
-        assert_eq!(
-            g.connect(Edge {
-                from: (a, 0),
-                to: (b, 1),
-                delayed: false
-            }),
-            Ok(())
-        );
-    }
-
-    #[test]
-    fn remove_node_drops_node_incident_edges_layout_and_params() {
-        let mut g = Graph::new();
-        let a = g.add_node("a");
-        let b = g.add_node("b");
-        let c = g.add_node("c");
-        g.connect(edge(a, b, false)).unwrap();
-        g.connect(edge(b, c, false)).unwrap();
-        g.set_pos(b, Pos { x: 1.0, y: 2.0 });
-        g.set_param(b, "k", 3.0);
-
-        assert!(g.remove_node(b));
-        // Node gone.
-        assert!(g.node(b).is_none());
-        assert_eq!(g.nodes().len(), 2);
-        // Both edges incident on `b` (a→b and b→c) are gone; none reference `b`.
-        assert!(g.edges().is_empty());
-        // Layout + param overrides for `b` are gone.
-        assert!(g.pos(b).is_none());
-        assert!(g.node_param_overrides(b).is_none());
-        // Untouched neighbours survive.
-        assert!(g.node(a).is_some() && g.node(c).is_some());
-        // Removing a non-existent node is a no-op.
-        assert!(!g.remove_node(b));
-        assert!(!g.remove_node(NodeId(999)));
-    }
-
-    #[test]
-    fn input_edge_resolves_source() {
-        let mut g = Graph::new();
-        let a = g.add_node("a");
-        let b = g.add_node("b");
-        g.connect(Edge {
-            from: (a, 0),
-            to: (b, 1),
-            delayed: false,
-        })
-        .unwrap();
-        assert_eq!(g.input_edge(b, 1), Some((a, 0, false)));
-        assert_eq!(g.input_edge(b, 0), None);
-    }
-}
+#[path = "graph_tests.rs"]
+mod tests;

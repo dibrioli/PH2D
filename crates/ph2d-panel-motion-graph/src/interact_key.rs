@@ -47,6 +47,9 @@ pub(super) fn apply_key(
         // A second K disarms it (so does Esc, and so does the stroke itself). The
         // toolbar chip mirrors the state (Accent ring) — a mode with no visible
         // sign is a mystery (Enio, smoke: "não entendi K o que faz").
+        // **F2 names the thing** (doc 61). Nothing selected, or many things selected, and there
+        // is no single name to ask about — so the key is inert rather than guessing.
+        GraphKey::Rename => crate::rename::arm(state, snap),
         GraphKey::Knife => state.knife_armed = !state.knife_armed,
         // `P` arms the probe: the next click on a node points the readout at it.
         GraphKey::Probe => state.probe_armed = !state.probe_armed,

@@ -16,7 +16,7 @@ use std::cell::RefCell;
 
 #[path = "snapshot_intent.rs"]
 mod intent;
-pub use intent::GraphIntent;
+pub use intent::{GraphIntent, RenameTarget};
 
 #[path = "snapshot_drop.rs"]
 mod drop_targets;
@@ -374,8 +374,13 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 // turning the nested ones into cards and the boundary-touching
                 // outsiders into ghosts — it is the only side that knows the nesting.
                 kind: NodeViewKind::Node,
-                display_name: ui
-                    .map(|u| u.display_name.to_string())
+                // **The artist's name wins** (doc 61). Absent, the card says what the node IS
+                // (its type's display name) — which is also what the rename box seeds with, so
+                // the string you edit is the string you were looking at.
+                display_name: graph
+                    .label(inst.id)
+                    .map(str::to_string)
+                    .or_else(|| ui.map(|u| u.display_name.to_string()))
                     .unwrap_or_else(|| inst.type_name.clone()),
                 category: ui.map(|u| u.category).unwrap_or(NodeUiCategory::Utility),
                 silhouette: ui.map(|u| u.silhouette).unwrap_or(NodeSilhouette::Rect),

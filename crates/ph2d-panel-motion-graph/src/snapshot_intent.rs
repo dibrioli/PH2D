@@ -5,6 +5,19 @@
 //! The rule that keeps the two apart: **ephemeral view state (pan / zoom / selection /
 //! drag / the open menu) is NEVER an intent** — it lives in `Panel::State` and dies
 //! with the panel. Only a mutation of the DOCUMENT crosses.
+/// **What a rename is pointing at** (doc 61). Three id spaces meet in the graph view — nodes,
+/// subgraph cards and backdrops — and they overlap: there is routinely a node 3 AND a subgraph 3
+/// AND a backdrop 3. A bare `u32` would be a coin toss about which one you just renamed, so the
+/// target says which space it lives in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RenameTarget {
+    /// A plain node card — the name lands in `Graph::set_label` (the `t` record).
+    Node(u32),
+    /// A collapsed group card — `Subgraph::title` (which already existed; nothing could set it).
+    Subgraph(u32),
+    /// A backdrop's title strip — `Backdrop::title` (likewise).
+    Backdrop(u32),
+}
 
 /// An edit the panel asks the shell to apply to the document (M1.E10, reverse of
 /// [`GraphViewSnapshot`]). Ephemeral view state (pan / zoom / selection / drag)
@@ -99,10 +112,20 @@ pub enum GraphIntent {
     /// Delete a backdrop (Delete with one selected). The nodes it framed stay —
     /// a backdrop owns nothing, it only draws around things. One undo step.
     DeleteBackdrop { id: u32 },
-    /// Rename a backdrop (the params panel's Title row).
-    SetBackdropTitle { id: u32, title: String },
-    /// Re-tint a backdrop (the params panel's Colour row), 0-based into
-    /// `graph-backdrop-1..8`.
+    /// **Name a thing** (doc 61) — a card, a group or a backdrop, from the one inline box F2
+    /// opens over whichever of them is selected. An EMPTY name is not a name: it clears the
+    /// label, and the thing goes back to being called what it is (its type's display name, or
+    /// the backdrop/group default). One undo step.
+    ///
+    /// One intent for three targets, because it is one gesture. (`SetBackdropTitle` used to
+    /// live here as a separate variant, with a doc comment claiming the params panel had a
+    /// Title row — it did not, and nothing ever emitted the intent. Dead plumbing with a
+    /// confident comment on it: [[feedback_stale_comment_and_dead_code_lie]].)
+    Rename { target: RenameTarget, name: String },
+    /// Re-tint a backdrop, 0-based into `graph-backdrop-1..8`.
+    ///
+    /// **Not wired to any gesture yet** — the tint still only cycles by id at birth. Said out
+    /// loud rather than left implied by a comment about a panel row that does not exist.
     SetBackdropColor { id: u32, color: u8 },
     /// Duplicate the selected nodes (Ctrl+D) — with their params, their text
     /// params and the wires **between them**, offset so the copies are visible.

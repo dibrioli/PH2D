@@ -9,12 +9,13 @@
 //!
 //! Grammar (whitespace-separated; canonical type names have no spaces):
 //! ```text
-//! v1 | v2
+//! v1 | v2 | v3 | v4
 //! n <id> <type_name>
 //! e <from_id> <from_port> <to_id> <to_port> <fwd|pre>
 //! p <id> <param_name> <value>
 //! x <id> <text_param_name> <formula...>          (v2 only)
 //! d <id> <param_name> <src_id> <src_port>        (v3 only)
+//! t <id> <label...>                              (v4 only)
 //! [layout]
 //! l <id> <x> <y>
 //! ```
@@ -41,7 +42,14 @@
 //! frozen NODE contract (`NodeManifest`/`NodeOp`/`OpResolver`) is untouched; only the
 //! serialization grammar gains an additive, versioned record. `d` follows the same policy one
 //! step up: `v3` **iff** the graph carries a driven param, else the version it would have had.
-//! A graph that never drove a param serializes **byte for byte** as it always did.
+//! A graph that never drove a param serializes **byte for byte** as it always did. The `t`
+//! record (a node's **label** — the artist's name for it, doc 61) is the third turn of the
+//! same crank: `v4` **iff** some node is named. Its last field is free text, like `x`'s.
+//!
+//! A label is the one record here that is **not semantic** (no cook reads it), and it still
+//! sits above `[layout]`: `[layout]` is for what the *editor* decides (where a card sits),
+//! and a name is what the *artist* decides. Renaming a node belongs in a diff; nudging its
+//! card does not.
 
 use crate::graph::{Edge, EdgeError, Graph, NodeId, Pos};
 use std::fmt::Write as _;
@@ -59,10 +67,13 @@ pub fn to_text(graph: &Graph) -> String {
     // A driven param (doc 58) is a post-v2 record kind, so it bumps the header again — and
     // only then. Nothing about a graph that has none of them changes by one byte.
     let has_driven = !graph.all_param_sources().is_empty();
-    let mut out = String::from(match (has_driven, has_text) {
-        (true, _) => "v3\n",
-        (false, true) => "v2\n",
-        (false, false) => "v1\n",
+    // …and a label (doc 61) is one more turn of the same crank.
+    let has_label = !graph.node_labels().is_empty();
+    let mut out = String::from(match (has_label, has_driven, has_text) {
+        (true, _, _) => "v4\n",
+        (false, true, _) => "v3\n",
+        (false, false, true) => "v2\n",
+        (false, false, false) => "v1\n",
     });
 
     let mut nodes: Vec<_> = graph.nodes().iter().collect();
@@ -107,6 +118,12 @@ pub fn to_text(graph: &Graph) -> String {
         }
     }
 
+    // Labels (authored, not semantic — see the module doc). The name is the trailing
+    // free-text field, so interior spaces round-trip: "The Sea" is one label, not two.
+    for (id, label) in graph.node_labels() {
+        let _ = writeln!(out, "t {} {}", id.0, label);
+    }
+
     out.push_str("[layout]\n");
     // `layout()` is a BTreeMap, already sorted by id.
     for (id, pos) in graph.layout() {
@@ -134,7 +151,7 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut lines = text.lines().map(str::trim).filter(|l| !l.is_empty());
 
     match lines.next() {
-        Some("v1") | Some("v2") | Some("v3") => {}
+        Some("v1") | Some("v2") | Some("v3") | Some("v4") => {}
         _ => return Err(ParseError::BadHeader),
     }
 
@@ -144,6 +161,7 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
     let mut param_recs: Vec<(NodeId, String, f32)> = Vec::new();
     let mut text_param_recs: Vec<(NodeId, String, String)> = Vec::new();
     let mut driven_recs: Vec<(NodeId, String, NodeId, u16)> = Vec::new();
+    let mut label_recs: Vec<(NodeId, String)> = Vec::new();
     let mut layout_recs: Vec<(NodeId, Pos)> = Vec::new();
     let mut seen_ids = std::collections::BTreeSet::new();
 
@@ -163,6 +181,21 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
                     .map_err(|_| ParseError::BadLine(line.into()))?,
             );
             text_param_recs.push((id, parts[2].to_string(), parts[3].to_string()));
+            continue;
+        }
+        // `t` (label) is free text too — "t 3 The Sea" is ONE name. Same trailing-field
+        // convention, one field earlier.
+        if line.starts_with("t ") {
+            let parts: Vec<&str> = line.splitn(3, ' ').collect();
+            if parts.len() < 3 {
+                return Err(ParseError::BadLine(line.into()));
+            }
+            let id = NodeId(
+                parts[1]
+                    .parse()
+                    .map_err(|_| ParseError::BadLine(line.into()))?,
+            );
+            label_recs.push((id, parts[2].to_string()));
             continue;
         }
         let mut tok = line.split_whitespace();
@@ -250,6 +283,13 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
             id.0
         )));
     }
+    // Same for `t` (label) — a name on a node that is not in the file is a phantom.
+    if let Some((id, _)) = label_recs.iter().find(|(id, _)| !seen_ids.contains(id)) {
+        return Err(ParseError::BadLine(format!(
+            "t record for unknown node id {}",
+            id.0
+        )));
+    }
     // Same for `d` (driven param) — on BOTH ends. A source pointing at a node that is not in
     // the file is a wire to nowhere, and it would cook `Empty` forever rather than fail.
     if let Some((id, _, src, _)) = driven_recs
@@ -281,6 +321,9 @@ pub fn from_text(text: &str) -> Result<Graph, ParseError> {
         graph
             .drive_param(id, name, (src, port))
             .map_err(ParseError::Edge)?;
+    }
+    for (id, label) in label_recs {
+        graph.set_label(id, label);
     }
     for (id, pos) in layout_recs {
         graph.set_pos(id, pos);
@@ -512,5 +555,76 @@ mod tests {
         ));
         let phantom = "v3\nn 0 a\nd 0 k 7 0\n[layout]\n";
         assert!(matches!(from_text(phantom), Err(ParseError::BadLine(_))));
+    }
+
+    /// **A name with a space in it is ONE name** (doc 61) — the trailing-free-text rule the
+    /// `x` record already lives by. Get this wrong and "The Sea" loads as a label of "The"
+    /// plus a parse error, or (worse) silently truncates.
+    #[test]
+    fn a_label_round_trips_with_its_spaces_and_only_then_is_the_file_v4() {
+        let mut g = Graph::new();
+        let a = g.add_node("force.buoyancy");
+        let b = g.add_node("motion.grid");
+        assert!(
+            to_text(&g).starts_with("v1\n"),
+            "nobody renamed anything - the old file is untouched, byte for byte"
+        );
+
+        g.set_label(a, "The Sea");
+        let text = to_text(&g);
+        assert!(text.starts_with("v4\n"), "{text}");
+        assert!(text.contains("t 0 The Sea\n"), "{text}");
+        let back = from_text(&text).unwrap();
+        assert_eq!(back.label(a), Some("The Sea"));
+        assert_eq!(back, g, "the document survives the round trip");
+        assert_eq!(back.label(b), None, "an unnamed node stays unnamed");
+
+        // Un-naming it takes the version back down with it — a rename you undid leaves no
+        // trace in the file.
+        g.set_label(a, "");
+        assert!(to_text(&g).starts_with("v1\n"));
+        assert!(!to_text(&g).contains("t "));
+    }
+
+    /// The version cascade is a LADDER, not a switch: a labelled graph that also drives a
+    /// param is still v4, and every older file still loads.
+    #[test]
+    fn the_version_ladder_holds_and_old_files_still_load() {
+        let mut g = Graph::new();
+        let a = g.add_node("a");
+        let b = g.add_node("b");
+        g.drive_param(b, "k", (a, 0)).unwrap();
+        assert!(to_text(&g).starts_with("v3\n"));
+        g.set_label(a, "Driver");
+        let text = to_text(&g);
+        assert!(text.starts_with("v4\n"), "the newest record wins: {text}");
+        assert!(text.contains("d 1 k 0 0\n") && text.contains("t 0 Driver\n"));
+        assert_eq!(from_text(&text).unwrap(), g);
+
+        // Every file the app has ever written still opens.
+        for old in [
+            "v1\nn 0 a\n[layout]\n",
+            "v2\nn 0 a\nx 0 formula @P.x * 2\n[layout]\n",
+            "v3\nn 0 a\nn 1 b\nd 1 k 0 0\n[layout]\n",
+        ] {
+            assert!(
+                from_text(old).is_ok(),
+                "a v-old file must still load: {old}"
+            );
+        }
+    }
+
+    /// A label on a node that is not in the file is a phantom — the same rejection every
+    /// other per-node record gets. And a `t` with nothing after the id is not a label.
+    #[test]
+    fn a_forged_label_is_rejected() {
+        assert!(matches!(
+            from_text("v4\nn 0 a\nt 7 Ghost\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
+        assert!(matches!(
+            from_text("v4\nn 0 a\nt 0\n[layout]\n"),
+            Err(ParseError::BadLine(_))
+        ));
     }
 }

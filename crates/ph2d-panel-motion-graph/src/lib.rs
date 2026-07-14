@@ -20,6 +20,7 @@ mod interact;
 mod paint;
 mod paint_chrome;
 mod probe;
+mod rename;
 mod snapshot;
 mod state;
 
@@ -31,10 +32,11 @@ pub use backdrop::{MIN_H as BACKDROP_MIN_H, MIN_W as BACKDROP_MIN_W};
 pub use snapshot::{
     ChoiceTarget, Crumb, GraphBackdropView, GraphEdgeView, GraphIntent, GraphNodeView,
     GraphViewSnapshot, HiddenPorts, NodeChoice, NodeViewKind, PROBE_SAMPLES, PortChoice, PortView,
-    ProbeView, SUBGRAPH_VIEW_TAG, card_hidden_ports, current_graph_backdrop_selection,
-    current_graph_selection, drain_intents, is_subgraph_view, pending_graph_selection, push_intent,
-    request_graph_selection, set_card_hidden_ports, set_current_motion_graph,
-    set_current_node_catalog, set_graph_backdrop_selection, set_graph_selection, snapshot_from,
+    ProbeView, RenameTarget, SUBGRAPH_VIEW_TAG, card_hidden_ports,
+    current_graph_backdrop_selection, current_graph_selection, drain_intents, is_subgraph_view,
+    pending_graph_selection, push_intent, request_graph_selection, set_card_hidden_ports,
+    set_current_motion_graph, set_current_node_catalog, set_graph_backdrop_selection,
+    set_graph_selection, snapshot_from,
 };
 pub use state::MotionGraphPanelState;
 
@@ -141,6 +143,18 @@ impl Panel for MotionGraphPanel {
             // menu on screen that no longer answers the keyboard.
             WidgetEvent::Cancel(id) if id == hits::menu_search_id() => {
                 state.menu = None;
+                EventOutcome::Consumed
+            }
+            // **Enter names the thing** (doc 61). The box is the other widget in this panel, and
+            // it owns the keyboard while it is open, so Enter and Esc are ITS events too.
+            WidgetEvent::Submit(id) if id == hits::rename_id() => {
+                rename::commit(state, _host.store());
+                EventOutcome::Consumed
+            }
+            // **Esc keeps the old name.** (`mark_cancel_on_escape` is what routes Esc here rather
+            // than merely blurring the field.)
+            WidgetEvent::Cancel(id) if id == hits::rename_id() => {
+                state.rename = None;
                 EventOutcome::Consumed
             }
             _ => EventOutcome::Ignored,

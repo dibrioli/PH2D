@@ -422,6 +422,9 @@ pub enum GraphKey {
     /// Ctrl/Cmd+Alt+G — dissolve the selected subgraph (or the one being edited).
     /// Blender's *Ungroup* and Nuke's *Expand Group* are BOTH this chord.
     Ungroup,
+    /// **F2 — rename the selected card, group or backdrop** (doc 61). The one key every
+    /// editor that has the verb at all binds it to (Windows, Blender, Houdini, Nuke).
+    Rename,
 }
 
 /// A hit target inside the general timeline's dope-sheet surface. Mirror of

@@ -54,9 +54,37 @@ iterações de ship** — é o esperado, não sinal de problema.
 5. **A lasca do Build** (BUGS #16) — uma peça sem ÁREA pinta uma LINHA. Filtro por piso relativo.
 6. **Blend** — interpolação de formas (crate nova `ph2d-vec-blend` + seção no painel).
 7. **ADR-0119 duplicado** → renumerado (§4).
+8. **A correspondência do Blend, reescrita** (2026-07-14, BUGS #17 — ver [continuação
+   14c](HANDOFF_line_vector_continuacao_2026-07-14c.md)): o quadrado **girava 45°** a caminho do
+   círculo. Só uma **quina** é candidata a nó (`features`); sem quina dos dois lados, a
+   correspondência é uma **fase contínua**. Fechou junto: o encolhimento de 7,6% entre dois círculos,
+   a **aresta que sumia do pareamento** (o `f64` não fechava o ciclo na origem), a dependência de
+   **parametrização** (picar uma aresta reta mudava o casamento), e a **costura do 2º Blend** (o Run
+   era recusado depois do 1º; com `Steps=2` ele blendava os próprios passos). **+9 gates**, todos
+   mutation-tested. **Tudo confinado a `crates/ph2d-vec-blend/` + `shells/desktop/src/vec_blend.rs`
+   + `build_smoke.rs`** — nenhuma outra linha toca esses arquivos.
 
-Documentação viva: [`docs/Vector Module/BUGS_vector.md`](Vector%20Module/BUGS_vector.md) (16 bugs, com
+> ⚠️ **`.typos.toml` (compartilhado):** +2 palavras pt-BR (`fases`, `candidata`), ao lado das que já
+> existiam. Se conflitar, é append. **Chave duplicada mata o TOML no parse e o gate inteiro fica
+> mudo** — confira `uniq -d` nas chaves depois de resolver.
+
+Documentação viva: [`docs/Vector Module/BUGS_vector.md`](Vector%20Module/BUGS_vector.md) (17 bugs, com
 sintoma / causa real / gate).
+
+---
+
+## 1.5 ⚠️ **COLISÃO DE MESMO-SÍMBOLO com `line/anim`** — `shells/desktop/src/vec_entities.rs`
+
+**As duas linhas editam o MESMO `spawn`**, e o perigo não é o conflito — é o merge que "resolve"
+perdendo um lado, **em silêncio**:
+
+| Linha | O que ela escreve nesse bloco | Se o outro lado vencer |
+|---|---|---|
+| `line/Vector` (esta) | `RootOrder(order)` na forma nova (o fix do ponto fixo, BUGS #15) | a forma volta a **nascer atrás**, e o z só converge no undo |
+| `line/anim` (`d3b7d426`) | `let name = name_unique::unique_name(sim, &initial_name(id))` | **nomes duplicados** → duas tracks da timeline colam no MESMO objeto, e a outra fica sem dono |
+
+**Os dois têm de sobreviver** (o `spawn` recebe `Name::new(name)` **e** `RootOrder(order)`). É o caso
+que a DIRETRIZ §1.5.5 manda **PARAR e reportar**: não resolva por preferência de lado — junte.
 
 ---
 

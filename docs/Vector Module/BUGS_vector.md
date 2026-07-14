@@ -693,6 +693,90 @@ apareceu.
 
 ---
 
+## Bug #17 — O quadrado GIRAVA a caminho do círculo (2026-07-14) — **FECHADO**
+
+### Sintoma
+
+O Enio, no 2º smoke do Blend: *"o porquê da rotação?"*. Um quadrado a caminho de um círculo: os
+intermediários rodavam **45°** e voltavam.
+
+### A causa não estava na busca — estava no CONJUNTO DE CANDIDATOS
+
+Medido (o probe imprimiu âncoras e viradas do catálogo):
+
+```
+quinas do quadrado:  -135°  -45°   45°  135°     virada (sen ±1, cos 0)  ← quinas de verdade
+âncoras do círculo:     0°   90°  180°  -90°     virada (sen  0, cos 1)  ← PERFEITAMENTE SUAVES
+casamento escolhido: cada quina → a âncora 45° adiante  ⇒ giro de 45°
+```
+
+**Uma âncora de contorno suave não é uma feature — é artefato da parametrização.** As 4 âncoras do
+círculo existem porque a elipse é **cozida em 4 cúbicas**; o artista nunca as autorou. Mas o motor
+**obrigava** cada quina a casar com uma âncora, e a resposta certa — a quina a 45° vai para o ponto
+do círculo a 45°, que cai **no MEIO de um segmento** — **não estava no conjunto**. O melhor de
+quatro casamentos ruins é o giro de 45°.
+
+### Correção
+
+1. **Só uma QUINA é candidata a nó** (`features()`): virada acima de um limiar (cos < cos 15°). O
+   limiar é escrito em **cosseno**, não em seno — uma **cúspide** vira ~180°, onde o seno volta a
+   zero, e `|sen| > ε` classificaria o bico mais afiado que existe como suave.
+2. **Sem quina dos dois lados, a correspondência é uma FASE CONTÍNUA** (`phase_only`): correlação
+   circular sobre 256 amostras de arco + refino parabólico. A fase deixa de estar presa às âncoras.
+
+### Os DOIS defeitos que ele escondia (nenhum tinha sido visto)
+
+- **Dois círculos iguais, com parametrizações desalinhadas, ENCOLHIAM para raio 0,924** no meio do
+  caminho (7,6%): os pontos atravessavam o disco em vez de caminhar radialmente. O catálogo esconde
+  isso — as elipses nascem todas com as âncoras nas mesmas posições de arco. Só aparece quando
+  **não** nascem (o artista desenha a segunda à mão).
+- **Uma aresta inteira SUMIA do pareamento.** Os cortes de B são as **imagens** dos cortes de A, e a
+  imagem que devia cair na origem volta do ida-e-volta `map_backward`→`map_forward` como
+  **`1 − 3,7e-14`**: o `f64` não fecha o ciclo. O `cut` então **truncava** a peça em `1.0` e o arco
+  entre a origem e o corte seguinte ficava **sem peça nenhuma**. O invariante ("a origem está na
+  lista") era **esperado do chamador**; agora é **estabelecido por quem depende dele**.
+
+### E um terceiro, que só apareceu porque eu fui procurar
+
+**Picar uma aresta reta em 20 pedaços mudava a correspondência.** Geometria idêntica, âncoras a
+mais — e o quadrado casava com **outros** vértices da estrela. O centro e a escala que normalizam o
+custo saíam da **média das âncoras**, e âncora é parametrização: os pontos novos arrastavam a média
+para o lado da aresta picada. Agora o quadro sai de amostras equiespaçadas em **arco**.
+
+Não é caso de laboratório: todo caminho traçado, importado ou passado por um `Simplify` tem âncoras
+onde o algoritmo as deixou. **Duas formas que se veem iguais têm de blendar igual.**
+
+### O limiar do "o que é uma quina" não podia sentar num ângulo que o catálogo faz
+
+A 1ª versão do fix usou `cos(15°)` — e **um polígono regular de 24 lados vira exatamente 15°**. A
+peneira das features é uma comparação estrita; o `f64` erra o cosseno no último bit; as **24 quinas
+idênticas** caíam dos dois lados da cerca por ruído. Medido: **transladar a cena** (só mover, sem
+deformar) mudava a forma do intermediário em **5,5%**; um ruído de 1e-13 no raio dava **68 resultados
+distintos**. É o mesmo `f64`-decide-um-empate que já custou o z-order (#15) e a aresta que sumia
+(acima) — desta vez no **limiar**, não na fronteira.
+
+Um polígono regular de N lados vira `360/N`. O limiar virou **`cos(16°)`**: `360/16 = 22,5` não é
+inteiro, então nenhum polígono regular consegue produzir 16°, e a cerca fica num vale vazio. O gate
+`the_corner_threshold_does_not_sit_on_a_polygon_the_catalog_can_make` **enumera** N até 128 e é ele
+que impede o próximo a mexer no número de reintroduzir o empate.
+
+### Lição — **a pergunta certa era "o que é uma FEATURE?"**
+
+Os dois handoffs anteriores desta linha apontaram um suspeito nº 1, e os dois estavam errados. O que
+resolveu foi **medir**: imprimir a virada de cada âncora do catálogo, ver `(0, 1)` nas quatro do
+círculo, e entender que **não havia nada ali para casar**. O defeito não era um erro de conta — era
+uma **pergunta mal formulada** ao dado.
+
+E dois corolários que valem além do blend:
+
+- **Quando um algoritmo escolhe entre candidatos e a resposta é sempre ruim, desconfie do CONJUNTO
+  antes de desconfiar do critério.**
+- **Um limiar mora onde o domínio é vazio.** Não se calibra um limiar para "quase nunca cair em cima
+  de um valor real" — escolhe-se um valor que **nenhuma** entrada legítima consegue produzir, e
+  gateia-se isso enumerando as entradas.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de

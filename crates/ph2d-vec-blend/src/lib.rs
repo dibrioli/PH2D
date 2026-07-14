@@ -35,7 +35,7 @@
 //! possible*). Ficam para depois, atrás do motor: a correspondência é o pré-requisito dos dois.
 
 use kurbo::{CubicBez, ParamCurve, ParamCurveArclen, Point};
-use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecVertex, VertexKind};
+use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecVertex, VertexKind};
 
 /// Precisão do comprimento de arco.
 ///
@@ -164,6 +164,15 @@ impl Outline {
         self.segs[i].eval(t)
     }
 
+    /// `n` pontos em posições de arco **igualmente espaçadas**, começando na origem do contorno.
+    ///
+    /// É a grade comum que torna a busca de fase uma **correlação circular**: amostradas assim, as
+    /// duas formas comparam-se por um simples deslocamento de índice (`matching::phase_only`), e a
+    /// fase deixa de estar presa às âncoras — que, num contorno suave, não significam nada.
+    fn samples(&self, n: usize) -> Vec<Point> {
+        (0..n).map(|k| self.at(k as f64 / n as f64)).collect()
+    }
+
     /// (índice do segmento, `t` local) do arco normalizado `s`.
     fn locate(&self, s: f64) -> (usize, f64) {
         let arc = s.clamp(0.0, 1.0) * self.total;
@@ -207,14 +216,32 @@ impl Outline {
     /// transição, e uma delas chegou a explodir na tela.
     ///
     /// O **meio** da peça não é fronteira de nada: ele cai dentro de um único segmento, sempre.
+    /// # A ORIGEM tem de ESTAR na lista — e quem depende disso é quem garante
+    ///
+    /// O parágrafo acima ("nenhuma peça atravessa a origem") não é uma observação: é um
+    /// **invariante**, e ele vale porque a origem do contorno **é** uma âncora, e toda âncora está
+    /// nos cortes. Quando ele falha, esta função **trunca** a peça que atravessaria a origem em
+    /// `1.0` — e o arco entre a origem e o corte seguinte fica **sem peça nenhuma**: uma aresta
+    /// inteira some do pareamento, em silêncio.
+    ///
+    /// E ele FALHAVA. Os cortes de B são as **imagens** dos cortes de A, e a imagem que devia cair
+    /// exatamente na origem volta do ida-e-volta `map_backward` → `map_forward` como
+    /// **`1 − 3,7e-14`** (medido, círculo → heptágono): o `f64` não fecha o ciclo. Aí a peça
+    /// `[1−ε, 1]` é um ponto, e a aresta que começava na origem desaparece.
+    ///
+    /// O invariante agora é **estabelecido aqui**, e não meramente esperado do chamador: um corte a
+    /// menos de `MERGE_EPS` da volta completa **é** a origem. É a mesma lição que já custou uma
+    /// reprovação neste motor — *nunca deixar um `f64` decidir de que lado de um empate ele caiu* —,
+    /// só que na fronteira que fecha o ciclo.
     fn cut(&self, cuts: &[f64]) -> Vec<CubicBez> {
         let m = cuts.len();
         let mut out = Vec::with_capacity(m);
+        let at_origin = |s: f64| if s >= 1.0 - MERGE_EPS { 0.0 } else { s };
         for k in 0..m {
-            let s0 = cuts[k];
+            let s0 = at_origin(cuts[k]);
             // O corte seguinte, ciclicamente. Se ele "voltou" (é a peça que fecha o contorno), o
             // fim dela é o fim do percurso.
-            let next = cuts[(k + 1) % m];
+            let next = at_origin(cuts[(k + 1) % m]);
             let s1 = if next <= s0 + MERGE_EPS { 1.0 } else { next };
             let i = self.segment_at(0.5 * (s0 + s1));
             let (t0, t1) = (self.local_t(i, s0), self.local_t(i, s1));
@@ -270,28 +297,109 @@ impl Outline {
 
 /// A **correspondência** (o mapa monótono entre as duas formas) — módulo irmão, pelo teto de LOC.
 mod matching;
-pub use matching::{Correspondence, correspondence};
 use matching::{map_backward, map_forward, search};
+
+/// **O PLANO de um blend**: a correspondência já resolvida e as duas formas já cortadas, peça a
+/// peça. Avaliar um `t` é, a partir daqui, só um lerp — `O(peças)`, sem busca nenhuma.
+///
+/// # Por que ele existe
+///
+/// A **correspondência é função só do par (A, B, opções)** — não do `t`. Enquanto ela era buscada
+/// dentro do `morph`, um blend de 10 passos a buscava **10 vezes**, e chegava dez vezes à mesma
+/// resposta. Depois que a busca de fase entrou (ela varre 256 fases contra 256 amostras), essas
+/// nove buscas jogadas fora passaram a custar **5,9 ms** por blend, contra 0,18 ms do caminho da
+/// DP — e o artista re-roda o blend a cada toque em Steps / Rotate / Reverse.
+///
+/// E é a **mesma** estrutura que o **morph vivo** (o `t` animável, o próximo da fila) precisa: o
+/// plano é montado quando a relação muda, e cada frame só avalia um `t`.
+pub struct Plan {
+    pieces_a: Vec<CubicBez>,
+    pieces_b: Vec<CubicBez>,
+    closed: bool,
+    fill: (Option<Paint>, Option<Paint>),
+    stroke: (Option<StrokeSpec>, Option<StrokeSpec>),
+}
+
+impl Plan {
+    /// Resolve a correspondência entre A e B e corta as duas na união.
+    ///
+    /// `None` se qualquer uma das duas degenerar (menos de 2 vértices, ou comprimento nulo).
+    #[must_use]
+    pub fn new(a: &VecPath, b: &VecPath, opts: BlendOpts) -> Option<Plan> {
+        let (oa, ob) = (Outline::of(a)?, Outline::of(b)?);
+        let corr = search(&oa, &ob, opts);
+        let target = if corr.reversed { ob.reversed() } else { ob };
+        let (pieces_a, pieces_b) = pair_up(&oa, &target, &corr.knots)?;
+        Some(Plan {
+            pieces_a,
+            pieces_b,
+            closed: oa.closed,
+            fill: (a.fill.clone(), b.fill.clone()),
+            stroke: (a.stroke, b.stroke),
+        })
+    }
+
+    /// **A forma no meio do caminho.** `t = 0` devolve A; `t = 1`, B.
+    ///
+    /// Um `t` **NaN** vira `0` (devolve A), e não NaN: `f64::clamp` **propaga** NaN, e o morph vivo
+    /// (§4 do handoff) vai chamar isto por frame com um `t` que sai de uma curva animada — uma
+    /// singularidade nessa curva não pode virar uma forma de vértices NaN, que suja a cena e o save.
+    #[must_use]
+    pub fn at(&self, t: f64) -> VecPath {
+        let t = if t.is_nan() { 0.0 } else { t.clamp(0.0, 1.0) };
+        let lerped: Vec<CubicBez> = self
+            .pieces_a
+            .iter()
+            .zip(&self.pieces_b)
+            .map(|(ca, cb)| {
+                CubicBez::new(
+                    mix(ca.p0, cb.p0, t),
+                    mix(ca.p1, cb.p1, t),
+                    mix(ca.p2, cb.p2, t),
+                    mix(ca.p3, cb.p3, t),
+                )
+            })
+            .collect();
+
+        let mut out = path_from(&lerped, self.closed);
+        out.fill = mix_paint(self.fill.0.as_ref(), self.fill.1.as_ref(), t);
+        out.stroke = if t < 0.5 {
+            self.stroke.0
+        } else {
+            self.stroke.1
+        };
+        out
+    }
+}
 
 /// **A forma no meio do caminho.** `t = 0` devolve A; `t = 1`, B.
 ///
 /// `None` se qualquer uma das duas degenerar (menos de 2 vértices, ou comprimento nulo).
+///
+/// Para mais de um `t` do MESMO par, monte um [`Plan`] — senão a correspondência é buscada de novo
+/// a cada chamada, e ela não depende do `t`.
 #[must_use]
 pub fn morph(a: &VecPath, b: &VecPath, t: f64, opts: BlendOpts) -> Option<VecPath> {
-    let (oa, ob) = (Outline::of(a)?, Outline::of(b)?);
-    let corr = search(&oa, &ob, opts);
-    let target = if corr.reversed { ob.reversed() } else { ob };
+    Some(Plan::new(a, b, opts)?.at(t))
+}
 
-    // O corte é na UNIÃO — as âncoras de A, mais a PRÉ-IMAGEM de cada âncora de B. É a subdivisão
-    // que faltava: cada vértice da estrela que não casou com uma quina do quadrado vira um ponto
-    // novo na aresta do quadrado, no lugar que o mapa manda.
+/// **O PAREAMENTO**: as duas formas cortadas na UNIÃO, peça a peça, na mesma ordem.
+///
+/// O corte é nas âncoras de A **mais a PRÉ-IMAGEM de cada âncora de B**. É a subdivisão que faz a
+/// ponta da estrela nascer: cada vértice dela que não casou com uma quina do quadrado vira um ponto
+/// novo na aresta do quadrado, no lugar exato que o mapa manda.
+///
+/// **Isto é uma função só, e de propósito.** Os gates precisam do mesmo pareamento que o produto
+/// usa; enquanto eles o reconstruíam à mão, o espelho e o original podiam divergir — e divergiram
+/// (o gate omitia a normalização da origem, e por sorte isso escondia um defeito em vez de inventar
+/// um). Duas portas para a mesma pergunta divergem: [[feedback_two_doors_to_the_same_question_diverge]].
+fn pair_up(
+    oa: &Outline,
+    target: &Outline,
+    knots: &[(f64, f64)],
+) -> Option<(Vec<CubicBez>, Vec<CubicBez>)> {
     let mut cuts: Vec<f64> = oa.anchors();
-    cuts.extend(
-        target
-            .anchors()
-            .iter()
-            .map(|v| map_backward(&corr.knots, *v)),
-    );
+    cuts.extend(target.anchors().iter().map(|v| map_backward(knots, *v)));
     cuts.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
     cuts.dedup_by(|x, y| (*x - *y).abs() <= MERGE_EPS);
     // O fim do percurso É o começo dele (fechado): um corte em ~1 é o corte em 0.
@@ -303,40 +411,25 @@ pub fn morph(a: &VecPath, b: &VecPath, t: f64, opts: BlendOpts) -> Option<VecPat
     }
 
     let pieces_a = oa.cut(&cuts);
-    let cuts_b: Vec<f64> = cuts.iter().map(|u| map_forward(&corr.knots, *u)).collect();
+    let cuts_b: Vec<f64> = cuts.iter().map(|u| map_forward(knots, *u)).collect();
     let pieces_b = target.cut(&cuts_b);
-    if pieces_a.is_empty() || pieces_a.len() != pieces_b.len() {
-        return None;
-    }
-
-    let t = t.clamp(0.0, 1.0);
-    let lerped: Vec<CubicBez> = pieces_a
-        .iter()
-        .zip(&pieces_b)
-        .map(|(ca, cb)| {
-            CubicBez::new(
-                mix(ca.p0, cb.p0, t),
-                mix(ca.p1, cb.p1, t),
-                mix(ca.p2, cb.p2, t),
-                mix(ca.p3, cb.p3, t),
-            )
-        })
-        .collect();
-
-    let mut out = path_from(&lerped, oa.closed);
-    out.fill = mix_paint(a.fill.as_ref(), b.fill.as_ref(), t);
-    out.stroke = if t < 0.5 { a.stroke } else { b.stroke };
-    Some(out)
+    (!pieces_a.is_empty() && pieces_a.len() == pieces_b.len()).then_some((pieces_a, pieces_b))
 }
 
 /// Os **N passos intermediários** entre A e B — o Blend do Illustrator.
 ///
 /// Só os do MEIO: as duas pontas são as formas que o artista já tem. `steps = 3` devolve as
 /// formas em `t = ¼, ½, ¾`.
+///
+/// A correspondência é buscada **uma vez** ([`Plan`]) e avaliada em cada `t`: ela é função do par,
+/// não do `t`.
 #[must_use]
 pub fn steps(a: &VecPath, b: &VecPath, n: usize, opts: BlendOpts) -> Vec<VecPath> {
+    let Some(plan) = Plan::new(a, b, opts) else {
+        return Vec::new();
+    };
     (1..=n)
-        .filter_map(|i| morph(a, b, i as f64 / (n + 1) as f64, opts))
+        .map(|i| plan.at(i as f64 / (n + 1) as f64))
         .collect()
 }
 
@@ -448,3 +541,8 @@ fn xy(p: Point) -> [f64; 2] {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+/// Os gates da correspondência SUAVE (o giro do quadrado→círculo) — arquivo irmão pelo teto de LOC.
+#[cfg(test)]
+#[path = "tests_phase.rs"]
+mod tests_phase;

@@ -101,22 +101,38 @@ pub(crate) fn apply(
 ) {
     let mut next = match (action, session.take()) {
         (BlendAction::Run, prev) => {
-            let Some((a, b)) = two_selected_closed(scene, pen) else {
+            // **De quem são as fontes?** Depois de um Blend, o que está SELECIONADO são os
+            // **passos** — é o `select_many` no fim desta função. Então "exatamente duas formas
+            // fechadas" **não descreve mais a seleção**, e o 2º Run era **RECUSADO**: o artista
+            // arrastava Steps, clicava Blend e não acontecia nada.
+            //
+            // Com `Steps = 2` era pior que recusar: a seleção **era** duas fechadas — os dois
+            // PASSOS — e o Blend seguinte comia os passos em vez das fontes, **em silêncio**.
+            //
+            // Enquanto a seleção for a que a sessão produziu, o artista está iterando no MESMO
+            // blend, e as fontes são as dela.
+            let iterating = prev.as_ref().is_some_and(|s| selection_is_produced(pen, s));
+            let pair = if iterating {
+                prev.as_ref().map(|s| (s.a, s.b))
+            } else {
+                two_selected_closed(scene, pen)
+            };
+            let Some((a, b)) = pair else {
                 eprintln!("[ph2d-vec] blend: selecione exatamente DUAS regioes fechadas");
                 return;
             };
             // Re-rodar sobre as MESMAS duas formas mantém o escape que o artista já ajustou —
-            // clicar Blend de novo não deveria jogar fora o trabalho dele.
-            let opts = prev
-                .filter(|s| s.a == a && s.b == b)
-                .map_or(BlendOpts::default(), |s| s.opts);
+            // clicar Blend de novo não deveria jogar fora o trabalho dele. E **carrega o
+            // `produced`**: é ele que o laço de remoção usa para tirar os passos velhos da cena.
+            // Zerando-o (como estava), re-rodar **empilhava** um jogo novo por cima do antigo.
+            let prev = prev.filter(|s| s.a == a && s.b == b);
             BlendSession {
                 a,
                 b,
                 steps,
-                opts,
+                opts: prev.as_ref().map_or(BlendOpts::default(), |s| s.opts),
                 stack_up,
-                produced: Vec::new(),
+                produced: prev.map(|s| s.produced).unwrap_or_default(),
             }
         }
         (_, None) => {
@@ -197,6 +213,20 @@ pub(crate) fn apply(
         next.opts.reverse
     );
     *session = Some(next);
+}
+
+/// A seleção é (parte d)o que ESTA sessão produziu?
+///
+/// É a pergunta *"o artista está iterando neste blend, ou escolhendo outras formas?"*. Depois de um
+/// Blend a seleção são os **passos** (o `select_many` no fim do `apply`), então um `Run` que só
+/// soubesse ler "duas formas fechadas" recusaria o 2º clique — e, com `Steps = 2`, blendaria os
+/// próprios passos.
+///
+/// Seleção **vazia** não é iteração: sem nada selecionado, o artista não está apontando para blend
+/// nenhum.
+fn selection_is_produced(pen: &ph2d_vec_edit::PenTool, s: &BlendSession) -> bool {
+    let sel = pen.selected_paths();
+    !sel.is_empty() && sel.iter().all(|id| s.produced.contains(id))
 }
 
 /// As DUAS formas fechadas selecionadas, em z (fundo, topo). `None` se não forem exatamente 2.

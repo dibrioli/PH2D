@@ -9,7 +9,7 @@
 //! 5. o **escape manual** existe e faz o que promete.
 
 use super::*;
-use crate::matching::{map_backward, map_forward, search};
+use crate::matching::{map_forward, search};
 use ph2d_vec_scene::{ShapeKind, cook};
 
 /// Uma forma do catálogo, centrada em `c`.
@@ -300,11 +300,21 @@ fn a_morph_between_two_polygons_is_a_polygon() {
     }
 }
 
-/// **Nenhuma peça do pareamento é um PONTO.**
+/// **Nenhuma peça do pareamento é um PONTO — e as peças COBREM o contorno inteiro.**
 ///
 /// É a causa direta do "uma intermediária ficou gigante" e do "não representam a transição": uma
 /// peça degenerada num dos lados significa que uma aresta inteira da OUTRA forma foi interpolada
 /// contra o nada, e o pareamento seguinte anda torto.
+///
+/// # A cobertura é o oráculo, e a peça-ponto é só o sintoma
+///
+/// A peça degenerada não é o dano: o dano é o **arco que ficou sem peça nenhuma**. Quando a imagem
+/// do corte não fecha o ciclo em `f64` (medido: `1 − 3,7e-14` em vez de `0`), o `cut` trunca a peça
+/// na origem e **uma aresta inteira desaparece do pareamento** — e há como isso acontecer sem
+/// deixar nenhuma peça-ponto para trás. Medir só o sintoma é apostar que os dois andam juntos.
+///
+/// Então o gate mede a **soma dos arcos das peças**: ela tem de ser o contorno todo, sem sobra e
+/// sem falta.
 #[test]
 fn every_piece_of_the_pairing_is_a_real_piece() {
     let pairs = [
@@ -325,25 +335,26 @@ fn every_piece_of_the_pairing_is_a_real_piece() {
         let (oa, ob) = (Outline::of(a).unwrap(), Outline::of(b).unwrap());
         let corr = search(&oa, &ob, BlendOpts::default());
         let target = if corr.reversed { ob.reversed() } else { ob };
+        // O MESMO pareamento que o produto usa — não um espelho dele.
+        let (pieces_a, pieces_b) = pair_up(&oa, &target, &corr.knots).expect("o pareamento");
 
-        let mut cuts: Vec<f64> = oa.anchors();
-        cuts.extend(
-            target
-                .anchors()
-                .iter()
-                .map(|v| map_backward(&corr.knots, *v)),
-        );
-        cuts.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
-        cuts.dedup_by(|x, y| (*x - *y).abs() <= MERGE_EPS);
-        let cuts_b: Vec<f64> = cuts.iter().map(|u| map_forward(&corr.knots, *u)).collect();
-
-        for (side, pieces) in [("A", oa.cut(&cuts)), ("B", target.cut(&cuts_b))] {
+        for (side, o, pieces) in [("A", &oa, &pieces_a), ("B", &target, &pieces_b)] {
             for (k, p) in pieces.iter().enumerate() {
                 assert!(
                     (p.p3 - p.p0).hypot() > 1e-9 || p.p1.distance(p.p0) > 1e-9,
                     "a peça {k} do lado {side} é um PONTO — uma aresta caiu fora do pareamento"
                 );
             }
+            let covered: f64 = pieces.iter().map(|p| p.arclen(ARCLEN_EPS)).sum();
+            let gap = (covered - o.total).abs() / o.total;
+            assert!(
+                gap < 1e-9,
+                "as peças do lado {side} cobrem {covered} de um contorno de {} ({:.4}% de \
+                 diferença) — um pedaço do contorno ficou SEM peça, e a aresta que mora nele \
+                 desapareceu do pareamento",
+                o.total,
+                gap * 100.0
+            );
         }
     }
 }
@@ -582,4 +593,3 @@ fn every_offset_gives_a_different_correspondence_in_the_same_direction() {
         seen.push(v0);
     }
 }
-

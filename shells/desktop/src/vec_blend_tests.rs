@@ -286,3 +286,84 @@ fn the_blend_asks_for_the_whole_sequence_in_z() {
         "sem Stack Up, cada passo nasce ABAIXO do anterior"
     );
 }
+
+/// **O 2º Blend NÃO é recusado — e o slider de Steps volta a valer.**
+///
+/// O gesto é o primeiro que qualquer artista faz: blenda, acha que ficou pouco, **arrasta Steps**,
+/// clica **Blend** de novo. Isso não funcionava, e a causa é uma frase que deixou de ser verdade:
+/// *"o Run exige exatamente duas formas fechadas selecionadas"*. **Depois de um Blend, o que está
+/// selecionado são os PASSOS** (o `select_many` no fim do `apply`) — então o Run seguinte não
+/// achava as duas fontes, recusava, e imprimia *"selecione exatamente DUAS regioes fechadas"* num
+/// terminal que o artista não está lendo. Na tela: **nada acontecia**.
+///
+/// Enquanto a seleção for a que a sessão produziu, o artista está iterando no MESMO blend.
+#[test]
+fn the_second_run_re_runs_the_open_blend_instead_of_refusing_it() {
+    let (mut scene, xf, mut pen, a, b) = two_shapes();
+    let mut session = None;
+
+    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 3);
+    assert_eq!(scene.paths().len(), 5, "2 fontes + 3 passos");
+    // É o `apply` que deixa os PASSOS selecionados — o gate não arruma a cena para si.
+    assert_eq!(
+        pen.selected_paths().len(),
+        3,
+        "depois do Blend, o selecionado são os passos (é isto que quebrava o 2º Run)"
+    );
+
+    // O artista arrasta Steps para 6 e clica Blend. Sem tocar na seleção.
+    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 6);
+
+    let s = session.as_ref().expect("a sessão continua aberta");
+    assert_eq!(s.produced.len(), 6, "o Steps novo tem de valer");
+    assert_eq!((s.a, s.b), (a, b), "as fontes são as MESMAS");
+    assert_eq!(
+        scene.paths().len(),
+        8,
+        "2 fontes + 6 passos — os 3 passos velhos foram TROCADOS, não empilhados"
+    );
+    for id in [a, b] {
+        assert!(
+            scene.paths().iter().any(|p| p.id == id),
+            "a fonte {id} sumiu — o Blend não consome os operandos"
+        );
+    }
+}
+
+/// **Com `Steps = 2`, o 2º Blend comia os PRÓPRIOS PASSOS — em silêncio.**
+///
+/// Este é o caso perverso, e ele é pior que a recusa: com dois passos, o que ficava selecionado
+/// **era** *"exatamente duas formas fechadas"*. O Run seguinte então achava um par válido — **os
+/// dois passos** — e blendava ELES, jogando as fontes fora do cálculo. Nada avisava; a arte só
+/// derretia para o meio a cada clique.
+///
+/// É o gate que prova que a pergunta certa não é *"há duas fechadas?"* e sim *"de quem são as
+/// fontes?"*.
+#[test]
+fn with_two_steps_the_second_run_does_not_blend_its_own_steps() {
+    let (mut scene, xf, mut pen, a, b) = two_shapes();
+    let mut session = None;
+
+    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 2);
+    let first = session.as_ref().expect("sessão").produced.clone();
+    assert_eq!(first.len(), 2);
+    assert_eq!(
+        pen.selected_paths().len(),
+        2,
+        "a seleção é DUAS formas fechadas — e elas são os passos, não as fontes"
+    );
+
+    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 2);
+
+    let s = session.as_ref().expect("sessão");
+    assert_eq!(
+        (s.a, s.b),
+        (a, b),
+        "as fontes viraram os PASSOS do blend anterior — o 2º Run blendou o próprio resultado"
+    );
+    assert_eq!(
+        scene.paths().len(),
+        4,
+        "2 fontes + 2 passos (não 2 + 2 + 2)"
+    );
+}

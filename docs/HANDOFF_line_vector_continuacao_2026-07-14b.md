@@ -1,3 +1,18 @@
+> # ⚠️ SUPERSEDIDO — leia [`HANDOFF_line_vector_continuacao_2026-07-14c.md`](HANDOFF_line_vector_continuacao_2026-07-14c.md)
+>
+> **O defeito do §2 (o giro do quadrado→círculo) está FECHADO** (BUGS #17), junto com dois que ele
+> escondia e um terceiro achado indo procurar. Este documento fica como **registro do diagnóstico**,
+> mas **duas frases dele agora dizem o INVERSO da verdade** e vão te fazer "consertar" o conserto:
+>
+> - *"o degradado `rotation_only`"* — **a função não existe mais.** O degradado de hoje é
+>   `phase_only`, que faz varredura **contínua** de fase (256 amostras + refino parabólico) — é
+>   exatamente o que o §2.2 declara impossível de expressar.
+> - *"`DP_BUDGET` … cai para `rotation_only` … é **exatamente o caminho que produz o giro**"* —
+>   hoje ele cai em `phase_only`, que é o caminho que **conserta** o giro.
+>
+> E o §3 lista os arquivos do motor sem o `tests_phase.rs`, e manda **desenhar o círculo à mão**
+> para o smoke: agora existe `PH2D_BUILD_SMOKE=8`.
+
 # HANDOFF de CONTINUAÇÃO — `line/Vector` (2026-07-14)
 
 > **Para:** o **próximo implementador** da linha `line/Vector`.

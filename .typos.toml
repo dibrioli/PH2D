@@ -111,6 +111,7 @@ discreto = "discreto"
 distribuem = "distribuem"
 polinomial = "polinomial"
 candidatas = "candidatas"
+candidata = "candidata"  # singular (ph2d-vec-blend: so uma QUINA e candidata a no)
 contribuem = "contribuem"
 conveniente = "conveniente"
 ser = "ser"
@@ -149,6 +150,8 @@ iy = "iy"
 # foundation rollout comments (Fase 0a..0f) and the Onda 2 hotfixes.
 Fase = "Fase"
 fase = "fase"
+# plural: a busca de correspondência do Blend varre 256 FASES (ph2d-vec-blend).
+fases = "fases"
 # "elipse" (pt-BR for "ellipse") + "colateral" ("efeito colateral" = side effect)
 # in the Vector data-model / edit comments (ADR-0108 `ph2d-vec-scene`/`-edit`).
 elipse = "elipse"

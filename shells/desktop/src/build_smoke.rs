@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=8` — a cena do **GIRO**: quadrado → **círculo**, 5 passos. É o par do 2º
+//!   smoke do Enio (*"o porquê da rotação?"*), e ele teve de desenhar o círculo **à mão** porque a
+//!   cena não o oferecia. As quinas têm de caminhar **reto** para fora — sem rodar 45° e voltar.
 //! - `PH2D_BUILD_SMOKE=7` — a cena do **BLEND**: um quadrado e uma estrela, selecionados, com
 //!   3 passos já criados entre eles. Clique **Rotate Match** / **Reverse Match** no painel para
 //!   ver a correspondência mudar **na hora** (é o escape do dia em que o automático errar).
@@ -75,6 +78,28 @@ impl crate::App {
                     [200, 120, 80],
                 ));
             }
+            // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o
+            // círculo à MÃO da última vez, porque a cena não o oferecia — e é justamente o par em
+            // que o defeito aparecia (as intermediárias rodavam 45° e voltavam).
+            3 if level == 8 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                scene.push_path(shape(
+                    ShapeKind::Rectangle,
+                    [-3.4, -1.0],
+                    [-1.4, 1.0],
+                    &[],
+                    [70, 110, 190],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Ellipse,
+                    [1.4, -1.0],
+                    [3.4, 1.0],
+                    &[],
+                    [200, 120, 80],
+                ));
+            }
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
@@ -100,6 +125,43 @@ impl crate::App {
                     &[5.0, 0.45, 0.0],
                     [110, 190, 130],
                 ));
+            }
+            // BLEND, o par do GIRO: quadrado → círculo, 5 passos (com 3 o giro de 45° era fácil
+            // de confundir com "a forma está virando um círculo"). O que se olha aqui é UMA coisa:
+            // as quinas caminham RETO para fora, sem rodar e voltar.
+            8 if level == 8 => {
+                let ids: Vec<u64> = self
+                    .gfx
+                    .as_ref()
+                    .expect("gfx")
+                    .vec_scene
+                    .paths()
+                    .iter()
+                    .map(|p| p.id)
+                    .collect();
+                self.vec_pen.select_many(&ids);
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
+                let Some(gfx) = self.gfx.as_mut() else { return };
+                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                crate::vec_blend::apply(
+                    &mut gfx.vec_scene,
+                    &mut self.vec_history,
+                    &mut self.vec_pen,
+                    &xf,
+                    &mut self.vec_blend,
+                    crate::vec_blend::BlendAction::Run,
+                    5,
+                    true,
+                );
+                self.vec_restack = self
+                    .vec_blend
+                    .as_ref()
+                    .map(crate::vec_blend::BlendSession::stack);
+                self.any_input_this_frame = true;
+                eprintln!(
+                    "[blend-smoke] quadrado -> CIRCULO, 5 passos (o par que girava 45 graus). \
+                     As quinas tem de sair RETO, sem rodar."
+                );
             }
             // BLEND: seleciona as duas e roda o blend pelo caminho REAL (a mesma função que o
             // botão do painel chama). O artista já abre o app com os passos na tela.
@@ -173,12 +235,18 @@ impl crate::App {
             // global registra por diff **em frames com input** — sem isto o 1º clique
             // arrastaria "as 3 formas nasceram" para dentro do mesmo passo, e o Ctrl+Z
             // voltaria para a cena VAZIA. (No produto isso não acontece: desenhar é input.)
-            9 if level >= 3 => {
+            //
+            // O `>= 3` de antes VAZAVA para as cenas 7 e 8 (o Blend): elas passam do 3, então o
+            // harness injetava um CLIQUE sintético em (0,35 · 0,15) quatro frames depois do blend
+            // rodar — e o passo do meio nasce em cima desse ponto. No modo Select o clique PEGA a
+            // forma (ADR-0112), a seleção trocava, e o Enio abria o smoke num estado que a doc
+            // não descreve. O harness de undo é dos níveis 3..=6 e de mais ninguém.
+            9 if (3..=6).contains(&level) => {
                 self.any_input_this_frame = true;
                 self.smoke_state("baseline (3 formas)");
             }
-            12 if level >= 3 => self.smoke_click(IN_STAR),
-            13 if level >= 3 => self.smoke_state("depois do clique"),
+            12 if (3..=5).contains(&level) => self.smoke_click(IN_STAR),
+            13 if (3..=5).contains(&level) => self.smoke_state("depois do clique"),
             14 if level == 3 || level == 4 => self.smoke_undo(false), // Ctrl+Z
             15 if level == 3 || level == 4 => self.smoke_state("depois do UNDO"),
             // Nível 3: redo direto. Nível 4: um clique no VAZIO ANTES do redo — é aí que um

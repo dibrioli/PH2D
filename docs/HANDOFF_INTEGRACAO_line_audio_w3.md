@@ -1,10 +1,10 @@
 # Handoff de integração — `line/audio-w3` (DIRETRIZ §1.5.9)
 
-> **Escopo:** as caudas do **W3**, do **W4** e do **W6** do plano de áudio
-> (`docs/Audio/02_plano_implementacao_completo.md` §7) — **o plano de áudio fechou** (só o W7,
-> AI/ML, fica de fora: exige ADR).
-> **Estado:** gate batched verde (workspace **6614/6614**). W3 e W4 **smokados e aprovados**
-> (Enio, 2026-07-13); W6 pendente de smoke.
+> **Escopo:** as caudas do **W3**, do **W4** e do **W6** do plano de áudio — **o plano fechou**
+> (só o W7, AI/ML, fica de fora: exige ADR) — mais o **ADR-0120** (o débito de perf que o ADR-0117
+> tinha registrado).
+> **Estado:** gate batched verde (workspace **6620/6620**). W3, W4 e W6 **smokados e aprovados**
+> (Enio, 2026-07-13).
 >
 > **A rack foi de 39 para 42 efeitos**, e o W6 achou um **bug de aliasing** no `conform` que ia
 > shipar lixo pra dentro de um jogo (§3.4). O padrão dos três waves foi o mesmo: **metade dos
@@ -18,8 +18,8 @@
 |---|---|
 | **Branch** | `line/audio-w3` (worktree `Worktrees/line-audio/`) |
 | **Base** | `main` @ `44f89ad7` |
-| **Commits** | 9 (W3 · W4 · W6 · 3 smokes · handoff · memória) |
-| **Gate batched** | `nextest --workspace` **6614/6614** · `clippy --all-targets` exit 0 · `fmt --check` · `typos` · `machete` — todos limpos |
+| **Commits** | 12 (W3 · W4 · W6 · ADR-0120 · 3 smokes · handoff · memória) |
+| **Gate batched** | `nextest --workspace` **6620/6620** · `clippy --all-targets` exit 0 · `fmt --check` · `typos` · `machete` — todos limpos |
 
 ---
 
@@ -335,3 +335,52 @@ O clipe tem um **shimmer de 15 kHz** — que um alvo de 24 kHz **não pode repre
 3. **Carregue o `.mobile.ogg` de volta:** o shimmer **sumiu** — e sumiu *limpo*, não virou um tom
    de 9 kHz (que é o que acontecia antes do fix de aliasing).
 4. Só o `.console.wav` volta com o **loop e os markers**.
+
+---
+
+## 8. ADR-0120 — o preview de knob (o débito de perf do ADR-0117 §5)
+
+Arrastar um knob num clipe de 3 min com seleção de 1 s custava **16,86 ms por frame** — o orçamento
+inteiro de 60 fps — e **74% disso era memcpy de áudio que não mudou**. O DSP que o frame de fato
+precisava: **0,17 ms**.
+
+**A descoberta:** o ADR-0117 supôs que O(seleção) exigiria **mudar o contrato de preview/playback**.
+**Não exige.** `SampleData` é `Arc<[f32]>` imutável de propósito (a thread RT o segura) — mas
+`Arc::get_mut` devolve o slice se você for o **único dono**, e **recusa sozinho** se houver clone. E
+dá pra ser o único dono, porque a máquina já existia: o hot-swap faz o mixer **devolver o buffer
+antigo pela return ring**, e a thread de controle o solta (HR-3). **O buffer que você mandou dois
+frames atrás é seu de novo.**
+
+Dois scratches alternando ⇒ **16,86 ms → 0,27 ms (62×)**, sem mexer no contrato nem no HR-3.
+
+### ⚠️ Para quem tocar nisto
+
+- **Scratch velho = áudio silenciosamente ERRADO** (pior que áudio lento). Ele é chaveado em
+  (buffer do head, seleção) e jogado fora se qualquer um se mover. O gate é **byte-identidade**
+  contra o render completo, não *"soa igual"*.
+- **Todo bail-out cai no render completo.** O caminho rápido é otimização, **nunca 2ª fonte de
+  verdade** — 2 estágios audíveis, efeito de cauda, ou o frame em que o mixer ainda não devolveu.
+- **O bug que os gates pegaram:** inicializar o scratch com `head.data().clone()`. Um `clone()` de
+  `SampleData` **bumpa o `Arc`, não copia os dados** — o `get_mut` recusaria **para sempre**, o
+  caminho rápido seria **código morto**, e **todos os outros gates continuariam verdes**. O único
+  sintoma seria que os knobs estavam tão lentos quanto antes. Daí o gate
+  `the_fast_path_fires_every_frame_while_the_mixer_is_holding_a_buffer` (8/8, dirigindo a
+  alternância real). → memória `feedback_an_optimization_needs_a_gate_that_proves_it_fires`.
+- **Não ponha barra de wall-clock na suíte do CI.** O `ci-test` compila em `opt-level = 1`: o DSP
+  fica 30× mais lento e a memcpy não muda, então a barra mede o **perfil**. Só razões.
+
+## 9. Débitos que eu NÃO fechei — e por quê (leia antes de "terminar" eles)
+
+Três dos "débitos abertos" do handoff anterior são **cercas de Chesterton**: decisões ratificadas,
+com motivo escrito, que **ainda valem**. Construí-los seria feature órfã.
+
+| Débito | Por que a cerca fica de pé |
+|---|---|
+| **Seek/scrub num stream** | ADR-0118 §5: *"Fica para quando houver um consumidor real"* — o editor é **residente por construção** (o clipe está aberto). Ainda não há consumidor. |
+| **Pitch ao vivo num stream** | ADR-0118 §5: *"é uma política de produtor, não de mixer"*. |
+| **Toggle "Streamed" no Delivery** | ADR-0118 §5, textual: ***"Botão que não faz nada é pior que botão que falta"*** — a razão pela qual ele não foi feito. |
+| **Múltiplas regiões de loop** | ADR-0119 §5: `smpl` aceita várias, **jogos usam uma**. |
+
+**Abertos de verdade:** o rename `"Gate"` → `"Gate / Expander"` (decisão do Enio: descoberta ×
+quebrar preset, que resolve por nome) · o **split de `fx.rs`** (689 linhas, no teto — o 43º efeito
+tem que orçar) · **W7** (AI/ML — ADR + autorização explícita antes de qualquer linha).

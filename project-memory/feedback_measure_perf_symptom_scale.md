@@ -17,3 +17,15 @@ For a perf/latency complaint, **establish the magnitude (ms / scale) before hypo
 - A **multi-agent audit finds the cause but inherits your framing** — if the prompt assumes "frame latency," the agents chase frames. Put the measured magnitude in the audit prompt.
 - `bench-green ≠ live`: a tight-loop bench measured the composite readback transfer at 0.03ms, but live the per-frame `device.poll(wait)` drained the whole GPU queue (~2.6ms stall, 250→140 FPS). The cost was the SYNC, not the transfer. Profile in the real app (`PH2D_FLUID_PROFILE`), cf. [[feedback_tool_unit_green_integration_dead]].
 - **A config-gated optimization can show ZERO live improvement if the user isn't on that config** (painter brush-texture, 2026-06-22): I built a Blender-style brush-stamp cache that only engaged for the **View** mapping, measured a real win, but Enio saw "não se observa melhorias!" — because he was painting with **Tiled** (canvas-fixed), which bypassed the cache entirely. I'd measured my *assumed* scenario (2048², Anchored, View), not his. Lesson: before declaring a perf fix, confirm the user's ACTUAL repro config (which mapping / size / layer-count), not just the symptom scale — an optimization gated on a branch the user never takes is invisible. Fix was a second cache for the canvas-fixed mappings (`blit_canvas_cached`: compute each canvas pixel's texture once per stroke; Tiled voronoi ~14ms→4.6ms/move). Also: a GPU mip-chain regen I *expected* to dominate measured only ~1.8ms — measure the suspect, don't assume it's big.
+
+## E a barra de perf NÃO pode morar na suíte do CI (2026-07-13)
+
+Pus uma barra de **wall-clock** num `measure_*` (o preview do ADR-0120). Passou em `--release` e
+**nasceu vermelha no `nextest`**: o perfil `ci-test` compila o workspace em **`opt-level = 1`**, e
+aí o DSP roda ~30× mais lento enquanto a **memcpy** (intrinsic da libc) não muda um grama. A barra
+tinha virado uma medida do **perfil**, não do código.
+
+**How to apply:** num teste que roda no CI, asserte só o que é **robusto a perfil** — uma **razão**
+entre dois caminhos que sofrem a mesma compilação ("o incremental faz estritamente menos trabalho
+que o completo"), nunca um número de ms. O número absoluto é **printout**, não barra — exatamente
+como `the_rack_fingerprint` recusa golden pinado ([[feedback_wide_mechanical_refactor_use_a_fingerprint]]).

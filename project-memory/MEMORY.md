@@ -87,9 +87,9 @@
 - [Gate verde contradito? RENDERIZE e olhe](feedback_render_and_look_when_a_green_gate_is_contradicted.md) — igualdade-de-conjuntos não vê névoa; o pixel é o oráculo, a métrica é sombra dele
 - [Heurística exige TAXA de falso-positivo](feedback_heuristic_needs_false_positive_rate.md) — detector verde num fixture é sorte do seed; meça FP sobre 200 realizações de ruído
 - [Tolerância folgada esconde viés sistemático](feedback_loose_oracle_hides_systematic_bias.md) — pitch shifter passou 3 jornadas 54 cents baixo; asserte o valor EXATO na unidade que o usuário ouve
-- [Cheque se o oráculo é ALCANÇÁVEL antes de escrever o gate](feedback_check_the_oracle_is_achievable_before_writing_the_gate.md) — gate herdado pode exigir o impossível (byte-identidade de um crossover); prove em 20 linhas de scratch antes do Rust
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — o miolo é onde não há bug; DC/Nyquist, 1ª/última coluna, 0 e 1 é onde o dado some
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — gate verde na mutação = ou o gate é frouxo, ou o seu COMENTÁRIO está errado
+- [Otimização precisa de gate que prove que ela DISPARA](feedback_an_optimization_needs_a_gate_that_proves_it_fires.md) — fallback silencia o bug: vira código morto, tudo verde, e o único sintoma é que nada acelerou
 - [Mutação que sobrevive pode ser gate FALTANDO](feedback_a_mutation_that_survives_may_mean_a_missing_gate.md) — 3ª causa: o gate verde está CERTO, só não fala daquilo. Explique por que ela é inofensiva ALI — a resposta nomeia o caminho sem gate
 - [Gate de AUSÊNCIA precisa do irmão de PRESENÇA](feedback_absence_gate_needs_a_presence_sibling.md) — "a cor não vaza" fica verde com o fill INVISÍVEL; e varredura só vale se a coisa medida está em quadro
 - [Regra que não OBSERVA não dispara](feedback_a_rule_that_never_observes_cannot_fire.md) — HR-13 somava declarações no boot; editor chegou a 4351 MB sem piscar

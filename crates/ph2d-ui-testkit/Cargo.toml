@@ -18,18 +18,16 @@ authors.workspace = true
 
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
-# `PointerEvent` — the harness can drive the REAL pointer dispatcher, so a gate can test
-# what the artist actually does: click a pixel, and see what the panel does about it.
-ph2d-host = { path = "../ph2d-host" }
-# The dispatcher allocates its per-frame event slice in a bump arena.
-bumpalo = "3"
+# `PointerEvent` — o harness dirige o dispatcher de ponteiro REAL, o mesmo que o shell roda.
+# É o que deixa um gate testar o que o artista de fato faz: clicar um pixel, e ver o que o
+# painel faz a respeito (`MockPanelHost::dispatch_pointer_event` e `::click_at`).
+ph2d-host        = { path = "../ph2d-host" }
+# O dispatcher aloca a fatia de eventos do frame numa arena de bump.
+bumpalo          = { version = "3", features = ["collections"] }
 ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 # O harness de PINTURA (`MockPanelHost::paint`) roda o `Panel::paint` real, que
 # exige a cena Vello + o shaper. Sem GPU: a cena é um buffer de comandos, e o
 # TextSystem::without_system_fonts() não varre o SO (é o que mantém o gate rápido).
 ph2d-vector      = { path = "../ph2d-vector" }
-ph2d-text        = { path = "../ph2d-text" }# O harness de CLIQUE (`MockPanelHost::click_at`) dirige o `dispatch_pointer` REAL — o mesmo
-# que o shell roda. Daí o `PointerEvent` (ph2d-host) e a arena do dispatcher (bumpalo).
-ph2d-host        = { path = "../ph2d-host" }
-bumpalo          = { version = "3", features = ["collections"] }
+ph2d-text        = { path = "../ph2d-text" }

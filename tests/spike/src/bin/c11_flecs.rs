@@ -61,7 +61,7 @@ fn main() {
                 y: 0.0,
             })
             .set(Velocity { x: 0.0, y: 1.0 })
-            .set(Health(50 + i as i32))
+            .set(Health(50 + i))
             .child_of(parent);
         children.push(e);
     }

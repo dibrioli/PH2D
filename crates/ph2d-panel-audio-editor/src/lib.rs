@@ -115,7 +115,7 @@ pub const AEDIT_CODEC_NEXT: NodeId = hash_node_id("audio_editor_codec_next");
 /// Ogg Vorbis quality slider (inert on a lossless codec).
 pub const AEDIT_OGG_QUALITY: NodeId = hash_node_id("audio_editor_ogg_quality");
 
-// Spectral (W5, ADR-0115): the frequency-domain tools. The view toggle swaps what the
+// Spectral (W5, ADR-0122): the frequency-domain tools. The view toggle swaps what the
 // overlay draws; the rest act on what is selected IN that view.
 /// Waveform ⇄ Spectrogram.
 pub const AEDIT_SPEC_VIEW: NodeId = hash_node_id("audio_editor_spec_view");

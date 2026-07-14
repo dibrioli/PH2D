@@ -892,7 +892,7 @@ fn the_asset_prep_sections_start_folded() {
     }
 }
 
-// ── Spectral (W5, ADR-0115) ─────────────────────────────────────────────────────────
+// ── Spectral (W5, ADR-0122) ─────────────────────────────────────────────────────────
 
 /// The view toggle is the precondition for the whole section: the box that Repair needs
 /// can only be drawn in the spectrogram, so if this click does not reach the overlay,

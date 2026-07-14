@@ -1,8 +1,20 @@
-# ADR-0115 — FFT para o módulo espectral de áudio (W5): `realfft`, em crate isolada
+# ADR-0122 — FFT para o módulo espectral de áudio (W5): `realfft`, em crate isolada
+
+> **Renumerado de `0115` para `0122` em 2026-07-14** (linha `line/audio`). Este ADR e o
+> [ADR-0115](0115-clip-composition-sequencer-overlap-crossfade-sparse-lanes.md) (composição de
+> clips, da timeline) nasceram no MESMO número: duas linhas paralelas olharam o `main` que cada
+> uma conhecia, viram o último ADR e escolheram "o próximo livre". Os **nomes de arquivo eram
+> diferentes**, então o git nunca conflitou e os dois entraram em silêncio — e `grep ADR-0115`
+> passou a devolver dois assuntos sem relação.
+>
+> Quem chegou ao `main` primeiro fica com o número; este chegou 11 minutos depois e tinha menos
+> referências, então **ele é quem se muda**. O gate `architecture_adr_numbers_are_unique` agora
+> impede a reincidência. Textos anteriores a esta data (handoffs, registros de integração) citam
+> este ADR como `0115` — é a história deles, e ficou como estava.
 
 - **Status:** **ACEITO** — Enio autorizou a dep em 2026-07-12. O conjunto de aceitação do §4 está
   **congelado** e o W5 abriu sobre ele.
-- **Data:** 2026-07-12
+- **Data:** 2026-07-12 (renumerado em 2026-07-14)
 - **Contexto:** [`docs/Audio/02_plano_implementacao_completo.md`](../../Audio/02_plano_implementacao_completo.md) §W5
 - **Relacionado:** [ADR-0113](0113-audio-export-ogg-vorbis-via-vorbis-rs-opus-deferred.md) (o precedente de dep de áudio)
 

@@ -8,7 +8,7 @@
 
 ## 1. O que entrou
 
-**[ADR-0115](architecture/decisions/0115-audio-spectral-fft-via-realfft.md) foi ACEITO pelo Enio
+**[ADR-0122](architecture/decisions/0122-audio-spectral-fft-via-realfft.md) foi ACEITO pelo Enio
 (2026-07-12)** e o W5 abriu sobre o conjunto de aceitação **congelado** do §4. Os quatro itens
 fecharam, mais o de-clip que o plano listava.
 
@@ -195,7 +195,7 @@ código**, não por leitura. Tudo abaixo está **corrigido e gateado** (commits 
 ## 9. Aberto (não é regressão — é escopo)
 
 - **Opus** ([ADR-0113](architecture/decisions/0113-audio-export-ogg-vorbis-via-vorbis-rs-opus-deferred.md) §Opus) — decisão do Enio, ainda pendente.
-- **W7 (AI/ML)** — DeepFilterNet atrás de feature-flag; o kill-criterion do ADR-0115 §4 não disparou
+- **W7 (AI/ML)** — DeepFilterNet atrás de feature-flag; o kill-criterion do ADR-0122 §4 não disparou
   (o denoise bateu o alvo), então o W7 segue opcional e não obrigatório.
 - Backlog pequeno: toggle *enabled* por-entry na variação · manifesto com caminho relativo · reverb
   por convolução.

@@ -60,7 +60,7 @@ byte_identical_to_the_old_whole_buffer_loop` + os 6 de `streaming_sounds_identic
 
 ### 2.4 Crates NOVAS (3) — drop-in, zero edit central
 
-`ph2d-audio-spectral` (ADR-0115) · `ph2d-audio-opus` (ADR-0116) · `ph2d-audio-stream` (ADR-0118).
+`ph2d-audio-spectral` (ADR-0122) · `ph2d-audio-opus` (ADR-0116) · `ph2d-audio-stream` (ADR-0118).
 
 ---
 
@@ -117,7 +117,7 @@ combinada**, porque é aí que o drift aparece ([[project_integration_prefork_li
 
 `realfft` · `rustfft` (+ `primal-check`, `strength_reduce`, `transpose`) · `ogg` · `unsafe-libopus`.
 
-- ADRs: [0115](architecture/decisions/0115-audio-spectral-fft-via-realfft.md) (realfft) ·
+- ADRs: [0115](architecture/decisions/0122-audio-spectral-fft-via-realfft.md) (realfft) ·
   [0116](architecture/decisions/0116-audio-export-opus-isolated-unsafe-crate.md) (opus).
 - `unsafe-libopus` é ABI transpilada com `unsafe` — **isolada** em `ph2d-audio-opus`, e
   `ph2d-audio-encode` mantém `#![forbid(unsafe_code)]` (gate mutation-tested).

@@ -19,7 +19,7 @@
 //!
 //! Multiplication in the frequency domain *is* convolution in the time domain. So: transform,
 //! multiply, transform back. The cost falls to `O(n log n)` and the same job takes a fraction
-//! of a second. This is the second thing the FFT bought (ADR-0115), and it needed no new
+//! of a second. This is the second thing the FFT bought (ADR-0122), and it needed no new
 //! dependency at all — which is why it lives in this crate, next to the transform.
 //!
 //! The signal is cut into blocks and the results **overlap-added**, because each block's

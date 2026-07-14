@@ -234,7 +234,7 @@ mod tests {
 
     /// Magnitude response of an impulse response, in dB, over the audible band only. A
     /// naive DFT: `N` is small, this is a test, and a real FFT would drag `realfft` into a
-    /// crate that deliberately does not depend on it (ADR-0115).
+    /// crate that deliberately does not depend on it (ADR-0122).
     fn magnitude_db(ir: &[f32]) -> Vec<(f32, f32)> {
         let mut out = Vec::new();
         let mut hz = 20.0f32;

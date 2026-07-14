@@ -1,4 +1,4 @@
-//! The Spectral bridge (W5, ADR-0115): the spectrogram the overlay draws, and the three
+//! The Spectral bridge (W5, ADR-0122): the spectrogram the overlay draws, and the three
 //! frequency-domain edits.
 //!
 //! The panel cannot do any of this — it has no clip and no FFT — so it owns the view toggle

@@ -1,4 +1,4 @@
-//! The spectrogram half of the Audio Editor overlay (W5, ADR-0115).
+//! The spectrogram half of the Audio Editor overlay (W5, ADR-0122).
 //!
 //! Same rectangle as the waveform, a different picture in it: time across, **frequency
 //! up**, brightness for level. It is drawn as one **image** (`draw_image_rgba`) rather than

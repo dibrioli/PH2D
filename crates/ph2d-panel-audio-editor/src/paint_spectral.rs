@@ -1,4 +1,4 @@
-//! The Spectral section (W5, ADR-0115): see the sound, and repair what you can see.
+//! The Spectral section (W5, ADR-0122): see the sound, and repair what you can see.
 //!
 //! Two tools, and they need different things selected — which is the one thing this
 //! section has to teach, and it teaches it by **dimming**:

@@ -5,7 +5,7 @@
 > Entregável: [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_integracao.md).
 > O worktree está limpo. Você continua daqui (rebase no main primeiro — §1).
 >
-> **O que está na mesa do Enio:** [ADR-0115](architecture/decisions/0115-audio-spectral-fft-via-realfft.md)
+> **O que está na mesa do Enio:** [ADR-0122](architecture/decisions/0122-audio-spectral-fft-via-realfft.md)
 > (dep de FFT p/ o W5) e o **Opus** (ADR-0113 §Opus). Sem essas duas palavras, o módulo de
 > áudio está **fechado no que dá pra fechar**.
 >
@@ -145,7 +145,7 @@ shifter desafinado; ver [`HANDOFF_audio_w4_integracao.md`](HANDOFF_audio_w4_inte
 
 ### 🟡 ETAPA 1 (a próxima grande) — **W5 Espectral (FFT)** — ⚠️ **PRECISA DO OK DO ENIO**
 A wave grande que sobrou. **O ADR já está escrito e à espera de uma palavra:**
-[ADR-0115](architecture/decisions/0115-audio-spectral-fft-via-realfft.md) — `realfft 3.5`
+[ADR-0122](architecture/decisions/0122-audio-spectral-fft-via-realfft.md) — `realfft 3.5`
 em crate isolada `ph2d-audio-spectral`. Fatos verificados: 8 crates, todas MIT/Apache-2.0,
 **zero C / zero `*-sys`** (mais leve que o `vorbis_rs` que já temos, que compila C), RUSTSEC
 limpa. Traz **conjunto de aceitação concreto + kill-criterion** congelados (§4 do ADR).

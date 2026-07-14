@@ -212,7 +212,7 @@ mod tests {
         10.0 * (a.max(1e-20) / b.max(1e-20)).log10()
     }
 
-    /// **The acceptance gate of the whole feature (ADR-0115 §4.2).**
+    /// **The acceptance gate of the whole feature (ADR-0122 §4.2).**
     ///
     /// A tonal beep laid over speech: erasing its time-frequency region must take the beep
     /// down by **at least 20 dB**, while the speech OUTSIDE that region changes by **less

@@ -60,20 +60,22 @@ fn no_two_adrs_share_a_number() {
         "não achei ADR nenhum — o caminho `{DECISIONS}` mudou?"
     );
 
-    // **A dívida herdada, e ela é UMA.** O `0115` já entrou duplicado no `main` (áudio
-    // espectral × composição de clips da timeline): duas linhas escolheram "o próximo número
-    // livre" contra um `main` que ainda não tinha o ADR da outra. **Não é dívida desta linha, e
-    // consertá-la é decisão do Enio** — as duas metades estão integradas e são de outros
-    // módulos (o `grep ADR-0115` devolve 45 arquivos falando de dois assuntos sem relação).
+    // **A dívida herdada FOI PAGA (2026-07-14, linha `line/audio`).** O `0115` estava duplicado
+    // (áudio espectral × composição de clips da timeline): duas linhas escolheram "o próximo
+    // número livre" contra um `main` que ainda não tinha o ADR da outra. O áudio — que chegou 11
+    // minutos depois e tinha menos referências — renumerou para o `0122`, e a allowlist
+    // `KNOWN_DEBT` que vivia aqui foi APAGADA junto.
     //
-    // A exceção é AUTO-LIMPANTE: o gate abaixo exige que ela ainda exista. No dia em que
-    // alguém renumerar, ele fica vermelho pedindo que a exceção seja APAGADA — uma allowlist
-    // que sobrevive ao conserto é como um gate morre.
-    const KNOWN_DEBT: &str = "0115";
+    // Ela era auto-limpante de propósito: um segundo assert exigia que a duplicata AINDA
+    // existisse, então o conserto derrubava o gate e cobrava a remoção da exceção. É o desenho
+    // que impede o modo de morte mais comum de um gate — a allowlist que sobrevive ao conserto e
+    // vira um buraco permanente, verde, no meio da regra.
+    //
+    // **Não há mais exceção. Duplicata nenhuma passa.**
 
     let dupes: Vec<(&String, &Vec<String>)> = by_number
         .iter()
-        .filter(|(n, v)| v.len() > 1 && n.as_str() != KNOWN_DEBT)
+        .filter(|(_, v)| v.len() > 1)
         .collect();
     assert!(
         dupes.is_empty(),
@@ -87,12 +89,5 @@ fn no_two_adrs_share_a_number() {
             .map(|(n, files)| format!("  {n}: {}", files.join("  ·  ")))
             .collect::<Vec<_>>()
             .join("\n")
-    );
-
-    assert!(
-        by_number.get(KNOWN_DEBT).is_some_and(|v| v.len() > 1),
-        "o ADR {KNOWN_DEBT} não está mais duplicado — alguém consertou a dívida herdada. \
-         APAGUE a exceção `KNOWN_DEBT` daqui: uma allowlist que sobrevive ao conserto é \
-         exatamente como um gate morre."
     );
 }

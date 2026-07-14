@@ -3,7 +3,7 @@
 - **Status:** ACCEPTED
 - **Data:** 2026-07-12
 - **Linha:** `line/audio` (Modo L)
-- **Contexto:** fecha a dívida de memória levantada pela auditoria do W5 ([ADR-0115](0115-audio-spectral-fft-via-realfft.md))
+- **Contexto:** fecha a dívida de memória levantada pela auditoria do W5 ([ADR-0122](0122-audio-spectral-fft-via-realfft.md))
 - **Toca:** `ph2d-audio` (foundational — adição append-only), `ph2d-audio-edit`, `SKILL_Stack` §HR-13 + §12.1
 
 ---

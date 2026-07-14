@@ -3,7 +3,7 @@
 //!
 //! ## Why this is its own crate
 //!
-//! It is the **only** place an FFT dependency lives (ADR-0115). That is the same
+//! It is the **only** place an FFT dependency lives (ADR-0122). That is the same
 //! containment that keeps Symphonia inside `ph2d-audio-decode` and libvorbis inside
 //! `ph2d-audio-encode`: no heavy DSP dependency is allowed to reach the RT mixer
 //! (`ph2d-audio`), which must stay allocation-free and predictable. This crate runs on the

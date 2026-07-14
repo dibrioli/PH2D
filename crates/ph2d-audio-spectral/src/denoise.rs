@@ -272,7 +272,7 @@ mod tests {
         (mono(s), clean, 0..lead, lead..lead + body)
     }
 
-    /// **The acceptance gate (ADR-0115 §4.3): ≥ 8 dB of SNR improvement at 0 dB in.**
+    /// **The acceptance gate (ADR-0122 §4.3): ≥ 8 dB of SNR improvement at 0 dB in.**
     #[test]
     fn denoise_lifts_the_signal_out_of_the_noise() {
         let (data, clean, profile_range, body) = fixture();
@@ -319,7 +319,7 @@ mod tests {
         );
     }
 
-    /// **The musical-noise gate (ADR-0115 §4.3, the "sem musical noise" half).**
+    /// **The musical-noise gate (ADR-0122 §4.3, the "sem musical noise" half).**
     ///
     /// Musical noise is a *statistical* signature, not a level: the residual stops being a
     /// smooth hiss and becomes a scatter of bins blinking on and off. That shows up as a

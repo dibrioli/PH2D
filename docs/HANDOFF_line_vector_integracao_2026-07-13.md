@@ -43,7 +43,7 @@ tem raio; vazada = afiada, só estacionada.
 
 Mas o pedido exigiu **a espinha por baixo dele**, e é ela que sobrevive à wave:
 
-**O documento guarda a quina AFIADA + um raio; o mundo consome a COZIDA** ([ADR-0119](architecture/decisions/0119-vector-live-corners-authored-source-cooked-geometry.md)).
+**O documento guarda a quina AFIADA + um raio; o mundo consome a COZIDA** ([ADR-0121](architecture/decisions/0121-vector-live-corners-authored-source-cooked-geometry.md)).
 É o `inkscape:original-d` + `d`. `VecVertex.corner_radius` é a fonte; `VecPath::cooked()` é
 o que renderiza, aponta, enquadra e corta.
 

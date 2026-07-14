@@ -489,7 +489,7 @@ viva selecionada dentro do modo Node** é outra coisa — o gate de MODO nunca a
 Uma forma viva não tem alça de raio, nem no render nem no **hit-test** (senão a alça ficaria
 invisível e ainda agarrável — um alvo fantasma). E não há conserto por preservar os raios no
 recook: a **contagem** de vértices é função dos parâmetros. O raio de uma forma viva é um
-campo dela (o painel); o por-vértice é para caminho desenhado (ADR-0119).
+campo dela (o painel); o por-vértice é para caminho desenhado (ADR-0121).
 
 ### Lição
 

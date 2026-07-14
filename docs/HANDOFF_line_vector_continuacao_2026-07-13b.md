@@ -34,7 +34,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && cargo nextest ru
 > ⚠ A wave anterior (**Live Corners** — a alça de raio de quina) foi **smokada e aprovada
 > pelo Enio**. Não a mexa. O handoff dela é
 > [`HANDOFF_line_vector_integracao_2026-07-13.md`](HANDOFF_line_vector_integracao_2026-07-13.md);
-> o ADR é o [0119](architecture/decisions/0119-vector-live-corners-authored-source-cooked-geometry.md).
+> o ADR é o [0119](architecture/decisions/0121-vector-live-corners-authored-source-cooked-geometry.md).
 
 > ⚠ Não rode cargo no repo primário (`/home/enio/Documentos/Projetos/PH2D`). Modo L: você
 > **pode** tocar foundational (ADR-0107), **não pode** integrar nem pushar sem ordem

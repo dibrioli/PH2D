@@ -189,7 +189,7 @@ ferramenta de debug que **admite que o automático erra**; o CorelDRAW pede ao u
 clicar um nó em cada forma; Lottie e Rive não têm correspondência nenhuma. **O alvo honesto é
 bom-automático + escape manual**, e isso é barato.
 
-E um pré-requisito que agora existe e vale ouro: a costura **fonte ≠ cozido** do ADR-0119
+E um pré-requisito que agora existe e vale ouro: a costura **fonte ≠ cozido** do ADR-0121
 (`VecPath::cooked()`). Um blend é exatamente isto — a fonte são as duas formas + o `t`, o
 cozido é a interpolada. **Live Path Effects como nós** (o item aberto do 13) é o mesmo
 mecanismo, e o blend seria o primeiro deles.

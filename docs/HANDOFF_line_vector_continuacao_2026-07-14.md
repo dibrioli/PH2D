@@ -136,7 +136,7 @@ formas trocariam de ordem de empilhamento na tela a cada undo, em silêncio. É 
 - **Shape Builder** (modo Build, 7º pill) — reescrito e aprovado nos gates; **o smoke do Enio
   ainda não veio**. `PH2D_BUILD_SMOKE=1` abre a cena pronta. Detalhe completo no
   [13c §3](HANDOFF_line_vector_continuacao_2026-07-13c.md).
-- **Live Corners** (ADR-0119) — **aprovada no smoke pelo Enio**. Não mexa.
+- **Live Corners** (ADR-0121) — **aprovada no smoke pelo Enio**. Não mexa.
 - **Botões Undo/Redo da barra** — eram um bug de sistema (o Undo despachava o desfazer de
   IMAGEM; o Redo era órfão). Agora os dois caem no MESMO `App::undo_or_redo` do Ctrl+Z. **Note
   que eles sofrem do bug do §2 como o atalho** — o conserto é o mesmo.
@@ -160,7 +160,7 @@ ao usuário para clicar um nó em cada forma; Lottie e Rive não têm correspond
 alvo honesto é bom-automático + escape manual**, e isso é barato. (Fonte:
 `docs/Vector Module/20_pesquisa_ferramentas_de_artista.md`.)
 
-**E o pré-requisito já existe:** a costura **fonte ≠ cozido** do ADR-0119 (`VecPath::cooked()`).
+**E o pré-requisito já existe:** a costura **fonte ≠ cozido** do ADR-0121 (`VecPath::cooked()`).
 Um blend é exatamente isso — a fonte são as duas formas + o `t`; o cozido é a interpolada. **Live
 Path Effects como nós** (o multiplicador que o handoff 13 aponta) é o MESMO mecanismo, e o blend
 seria o primeiro deles. Pense nos três juntos antes de escrever o primeiro.

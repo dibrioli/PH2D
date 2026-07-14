@@ -1,12 +1,14 @@
 # Handoff de integração — `line/audio-w3` (DIRETRIZ §1.5.9)
 
-> **Escopo:** as caudas do **W3** e do **W4** do plano de áudio
-> (`docs/Audio/02_plano_implementacao_completo.md` §7).
-> **Estado:** gate batched verde (workspace **6601/6601**). Multiband **smokado e aprovado**
-> (Enio, 2026-07-13); W4 pendente de smoke.
+> **Escopo:** as caudas do **W3**, do **W4** e do **W6** do plano de áudio
+> (`docs/Audio/02_plano_implementacao_completo.md` §7) — **o plano de áudio fechou** (só o W7,
+> AI/ML, fica de fora: exige ADR).
+> **Estado:** gate batched verde (workspace **6614/6614**). W3 e W4 **smokados e aprovados**
+> (Enio, 2026-07-13); W6 pendente de smoke.
 >
-> **A rack foi de 39 para 42 efeitos** — e o padrão dos dois waves foi o mesmo: **metade dos
-> itens da fila não eram efeitos.** Vale ler o §2 antes de acreditar num plano.
+> **A rack foi de 39 para 42 efeitos**, e o W6 achou um **bug de aliasing** no `conform` que ia
+> shipar lixo pra dentro de um jogo (§3.4). O padrão dos três waves foi o mesmo: **metade dos
+> itens da fila não eram o que o plano dizia.** Vale ler o §2 antes de acreditar num plano.
 
 ---
 
@@ -16,8 +18,8 @@
 |---|---|
 | **Branch** | `line/audio-w3` (worktree `Worktrees/line-audio/`) |
 | **Base** | `main` @ `44f89ad7` |
-| **Commits** | 7 (W3: Multiband + smoke · W4: Vocoder + Granular + smoke · handoff · memória) |
-| **Gate batched** | `nextest --workspace` **6601/6601** · `clippy --all-targets` exit 0 · `fmt --check` · `typos` · `machete` — todos limpos |
+| **Commits** | 9 (W3 · W4 · W6 · 3 smokes · handoff · memória) |
+| **Gate batched** | `nextest --workspace` **6614/6614** · `clippy --all-targets` exit 0 · `fmt --check` · `typos` · `machete` — todos limpos |
 
 ---
 
@@ -133,6 +135,50 @@ em todos os casos o defeito era a **medição**:
 **A regra:** quando um gate novo fica vermelho, o suspeito nº 1 é a **sonda**, não o código — e a
 recíproca (a mutação que não morde, §4) também. Ambas as direções custaram uma rodada nesta linha.
 
+### 3.4 W6 — o `conform` estava com **aliasing**, e ia shipar pra dentro de um jogo
+
+O item era *"variantes por plataforma com preview de tamanho"*. O primeiro achado veio de graça:
+**o ADR-0118 já provou que o codec não economiza um byte de RAM** (o mixer decodifica pro mesmo
+buffer `f32`). Então uma "variante" que só trocasse o container imprimiria **o mesmo número de RAM
+nas três linhas** — a mentira exata que aquele ADR foi escrito pra matar. Um alvo é um **FORMATO**
+primeiro, codec depois:
+
+| Alvo | Formato | Codec | O que ele compra |
+|---|---|---|---|
+| **Mobile** | **24 kHz mono** | Ogg Vorbis | **Um QUARTO** da RAM — o único que conforma o áudio |
+| **Desktop** | 48 kHz estéreo | Opus | Melhor qualidade por bit |
+| **Console** | 48 kHz estéreo | WAV16 | O único que carrega **loop points e markers** |
+
+Medido: **288.000 / 1.152.000 / 1.152.000 B**. (Opus é **48 kHz e nada mais**, então um perfil
+"24 kHz Opus" precificaria a RAM em ¼ da verdade — `a_platform_cannot_lie_about_its_sample_rate`
+proíbe, e é por isso que o Mobile leva Vorbis.)
+
+**E aí o gate do smoke ficou vermelho.** `ph2d_audio_edit::conform` reamostra por **interpolação
+linear sem filtro anti-aliasing**. Subir (44,1k → 48k — o caminho do *paste*, o **único caller que
+existia**) é inofensivo. **Descer dobra:** tudo acima do Nyquist do destino volta pra dentro da
+banda. Um shimmer de 15 kHz conformado pra 24 kHz reaparecia como um **tom de 9 kHz que nunca foi
+gravado**. O Mobile é o **primeiro caller que desce** — e teria shipado isso.
+
+Fix **portado, não inventado** (DIRETIVA §1): band-limit **antes** de decimar — FIR
+**windowed-sinc** (Smith, *Digital Audio Resampling*), janela Blackman (stopband ~−74 dB), fase
+linear com o group delay compensado.
+
+| | |
+|---|---|
+| 15 kHz num alvo de 24 kHz | **−57,3 dB** (antes: passava inteiro e dobrava) |
+| 1 kHz no mesmo alvo | **−0,00 dB** — é anti-alias, não EQ |
+| Subida de taxa | **byte-idêntica** — o paste não foi tocado |
+| Um clique | **não se move** — o delay é compensado |
+
+> É a lição do ADR-0118 pela terceira vez, e a mais barata de esquecer: **uma rotina correta para o
+> caller pra quem foi escrita não é, por isso, correta.** Aqui "o outro lado" não era outro
+> subsistema — era **a outra direção da mesma função**.
+
+**Bônus:** loop points e markers são **índices de frame**, e um alvo que reamostra muda o que um
+frame *é*. Escrever os números do master num arquivo de 24 kHz poria o loop **no dobro do tempo** —
+uma emenda no lugar errado, num asset shipado, que nada a jusante detectaria. `rescale()` + gate.
+Dormente hoje (só o Console escreve WAV, e na taxa do master), mas *"por sorte"* não é desenho.
+
 ## 4. Os gates (e por que cada um morde)
 
 Todos em `crates/ph2d-audio-edit/src/fx/multiband.rs`, exceto o último.
@@ -238,7 +284,7 @@ Extras que valem 30 s:
 - **Borda da seleção:** aplique numa seleção no meio do clipe e escute a emenda — não pode estalar
   (o crossover tem pre-roll; os compressores se primam sozinhos).
 
-### 6.2 W4 — Vocoder e Granular (**pendente**)
+### 6.2 W4 — Vocoder e Granular (**smokado, OK**)
 
 ```bash
 PH2D_AUDIO_VOICE_SMOKE=1 cargo run --release -p ph2d-host-desktop
@@ -272,3 +318,20 @@ Rack montada: `[Vocoder Breath=0: on] [Vocoder Breath=1: bypassado] [Granular: b
 | **Atrito se `main` andar** | Só `KINDS: [FxKind; 40]` + a lista pinada, **se** outra linha somar efeito — **conte, não escolha** |
 | **Pendências** | **Smoke do Enio** (§6) · decisão do rename `"Gate"` → `"Gate / Expander"` (§2.2) |
 | **Fila restante do módulo** | W4 (vocoder/robotize/granular) · W6 (export por plataforma) · débitos dos ADRs · W7 (AI/ML, exige ADR) — ver `docs/HANDOFF_line_audio_continuacao_2026-07-13.md` §3 |
+
+### 6.3 W6 — variantes por plataforma (**pendente**)
+
+```bash
+PH2D_AUDIO_DELIVERY_SMOKE=1 cargo run --release -p ph2d-host-desktop
+```
+
+O clipe tem um **shimmer de 15 kHz** — que um alvo de 24 kHz **não pode representar** (Nyquist é
+12 kHz) — mais uma imagem estéreo de verdade, um loop e dois markers.
+
+1. Na seção **Delivery**: três linhas, e **as RAMs DIFEREM** (Mobile é um quarto). Uma troca de
+   codec imprimiria o mesmo número três vezes.
+2. **Export Set** → escolha uma pasta → **três arquivos** (`delivery-smoke.mobile.ogg`,
+   `.desktop.opus`, `.console.wav`).
+3. **Carregue o `.mobile.ogg` de volta:** o shimmer **sumiu** — e sumiu *limpo*, não virou um tom
+   de 9 kHz (que é o que acontecia antes do fix de aliasing).
+4. Só o `.console.wav` volta com o **loop e os markers**.

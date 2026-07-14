@@ -68,10 +68,20 @@ fn pack_ms(d: &FlipDrawing) -> (f32, usize) {
 fn packing_a_realistic_long_stroke_is_cheap() {
     let (ms, extras) = pack_ms(&realistic_long_stroke(4000));
     eprintln!("traço real de 4000 pontos: {ms:.2} ms · {extras} vizinhos");
-    // Medido ~1.7 ms em release. O par-a-par ingênuo levaria ~1 s aqui.
+    // Medido ~1,7 ms em release. O par-a-par ingênuo levaria ~1 s aqui.
+    //
+    // **O teto é por PERFIL** — pelo MESMO motivo do gate irmão abaixo (leia o comentário
+    // dele): o `nextest --workspace` roda em DEBUG e em paralelo, então um teto calibrado
+    // em release fica verde isolado e vermelho na suíte cheia — um flaky que não denuncia
+    // regressão nenhuma, só carga de máquina. A folga relativa (~18×) é a mesma nos dois
+    // perfis; a propriedade guardada é a mesma: o pack de um traço normal não voltou a ser
+    // O(n²). (Este era o **segundo** assert do arquivo, e ficou para trás quando a linha
+    // `line/Vector` consertou o primeiro — a mesma mina, meio desarmada.)
+    let ceiling = if cfg!(debug_assertions) { 200.0 } else { 30.0 };
     assert!(
-        ms < 30.0,
-        "o pack de um traço longo NORMAL regrediu de ordem: {ms:.1} ms"
+        ms < ceiling,
+        "o pack de um traço longo NORMAL regrediu de ordem: {ms:.1} ms \
+         (teto {ceiling} ms neste perfil)"
     );
 }
 

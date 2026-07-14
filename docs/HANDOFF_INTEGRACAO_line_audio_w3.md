@@ -1,7 +1,12 @@
 # Handoff de integração — `line/audio-w3` (DIRETRIZ §1.5.9)
 
-> **Escopo:** a cauda do W3 do plano de áudio (`docs/Audio/02_plano_implementacao_completo.md` §7).
-> **Estado:** linha fechada, gate batched verde, **1 commit**. **Pendente: smoke do Enio.**
+> **Escopo:** as caudas do **W3** e do **W4** do plano de áudio
+> (`docs/Audio/02_plano_implementacao_completo.md` §7).
+> **Estado:** gate batched verde (workspace **6601/6601**). Multiband **smokado e aprovado**
+> (Enio, 2026-07-13); W4 pendente de smoke.
+>
+> **A rack foi de 39 para 42 efeitos** — e o padrão dos dois waves foi o mesmo: **metade dos
+> itens da fila não eram efeitos.** Vale ler o §2 antes de acreditar num plano.
 
 ---
 
@@ -11,8 +16,8 @@
 |---|---|
 | **Branch** | `line/audio-w3` (worktree `Worktrees/line-audio/`) |
 | **Base** | `main` @ `44f89ad7` |
-| **Commits** | 1 — `feat(audio): Multiband (40o efeito) …` |
-| **Gate batched** | `nextest --workspace` **6590/6590** · `clippy --all-targets` exit 0 · `fmt --check` · `typos` · `machete` — todos limpos |
+| **Commits** | 7 (W3: Multiband + smoke · W4: Vocoder + Granular + smoke · handoff · memória) |
+| **Gate batched** | `nextest --workspace` **6601/6601** · `clippy --all-targets` exit 0 · `fmt --check` · `typos` · `machete` — todos limpos |
 
 ---
 
@@ -41,7 +46,36 @@ kind **por nome** (`kind_by_name`), então um preset que hoje diz `"Gate"` passa
 
 ---
 
-## 3. Os dois achados de DSP (o valor real desta linha)
+### 2.3 W4 — Vocoder (41º) e Granular (42º); os outros dois itens **não eram efeitos**
+
+O plano pedia *"Vocoder · Robotize · Granular · Whisper/Shout"*. **Dois eram o mesmo motor:**
+
+- **Robotize** — um vocoder de **uma entrada** sintetiza o portador internamente, num pitch fixo.
+  E *"vocoder com portador de pitch fixo"* **é** o robô. É este efeito com **Breath = 0**.
+- **Whisper** — com portador de **ruído**, o mesmo motor **sussurra**: excitação não-vozeada
+  atravessando um trato vocal é o que sussurrar fisicamente **é**. **Breath = 1**.
+- **Whisper** e **Shout** já existiam como presets. **"Robot" também** (`RingMod + Distortion +
+  Bitcrush` — o robô *metálico*, um som válido e **diferente**). **Não toquei em nenhum.**
+
+Entregues: 2 efeitos + 2 presets (**"Vocoder"**, **"Vocoder Whisper"**).
+
+**Vocoder** — banco de band-pass log-espacados; o **Q sai da própria espaçagem** (recíproco de
+`√r − 1/√r`), não de um número escolhido — é o que faz o banco *ladrilhar* o espectro em vez de
+deixar buracos. Portador com **whitening** (cada banda em nível unitário), senão o tilt 1/f da
+serra fica assado em toda vogal. E **band-limited por síntese aditiva** numa wavetable de **um
+período inteiro em amostras**: harmônicos até Nyquist e nem um a mais.
+
+**Granular** — grão *windowed* reposto fora de ordem (scatter no tempo, pitch destoado,
+overlap-add). **Não é o WSOLA de chapéu:** aquele *sincroniza* os pedaços para **esconder** a
+emenda; este os espalha porque a emenda **é** o efeito. Mesmo maquinário, escalonador oposto.
+
+> **A armadilha do Granular, e ela está gateada nos dois sentidos:** Hann a meio-hop soma
+> **exatamente 1**, então com scatter 0 e pitch 0 a nuvem reconstrói o input **amostra por
+> amostra**. Isso é uma boa propriedade (diz que o overlap-add é transparente) — **e é por isso
+> que o Scatter default NÃO pode ser 0**: um granular totalmente wet seria um no-op e ligar o Mix
+> não faria nada. O gate `turning_an_arming_knob_wakes_the_effect_up` estaria **certo** em falhar.
+
+## 3. Os achados de DSP (o valor real desta linha)
 
 ### 3.1 O gate que o handoff anterior prescreveu é **impossível de passar**
 
@@ -79,6 +113,26 @@ que **crossovers móveis são seguros** se alguém quiser expô-los depois (hoje
 
 ---
 
+### 3.3 Os 7 gates do W4 nasceram vermelhos — e **nenhuma vez foi o DSP**
+
+Vale mais que o código. **Quatro** gates do Vocoder e **um** do Granular falharam de primeira, e
+em todos os casos o defeito era a **medição**:
+
+- **Vocoder (4 de 4).** Eu media "energia harmônica" com band-pass de **Q = 4** — largura ~180 Hz.
+  A 2ª harmônica da voz (180 Hz) e a fundamental do portador (160 Hz) caíam na **MESMA banda**, e
+  ruído de banda larga (o portador do whisper) lia como se fosse **pitch**. A sonda media a si
+  mesma. Trocada por **bin de DFT exato** (1 Hz sobre 1 s) e o fixture por um **source-filter** de
+  verdade — o antigo somava senos nas duas formantes e só trocava as amplitudes (contraste de
+  **1,4×** na fonte: um fixture que mal sustenta a propriedade não pode prová-la). Depois disso:
+  **158×**, **3,5×**, **23×**. O DSP estava certo desde o primeiro `cargo check`.
+- **Granular (1).** Media energia numa janela específica **100 ms adiante** do clique — o que só
+  acontece se algum grão sortear o deslocamento certo (~19% por grão). **Cara-ou-coroa no seed**;
+  perdeu. Trocado pela **largura RMS da distribuição de energia no tempo**, onde todo grão
+  contribui: **0,72 ms → 64,60 ms**.
+
+**A regra:** quando um gate novo fica vermelho, o suspeito nº 1 é a **sonda**, não o código — e a
+recíproca (a mutação que não morde, §4) também. Ambas as direções custaram uma rodada nesta linha.
+
 ## 4. Os gates (e por que cada um morde)
 
 Todos em `crates/ph2d-audio-edit/src/fx/multiband.rs`, exceto o último.
@@ -113,22 +167,26 @@ O gate não era cego; a *mutação* é que era. Está documentado no `Chain`.
 | `crates/ph2d-audio-edit/src/fx.rs` | `mod multiband` · variante `Effect::Multiband` (**apendada depois de `Compress`**) · braço em `apply` · `is_bypass` | **Baixo** — `Effect` é enum da `-edit`, não contrato congelado |
 | `crates/ph2d-audio-edit/src/fx/dynamics.rs` | `COMPRESS_MAX_MAKEUP` virou `pub(super)` (1 linha) | Nenhum |
 | `crates/ph2d-audio-edit/src/fx/warmup.rs` | 1 braço novo (`Effect::Multiband`) | Nenhum |
-| `shells/desktop/src/audio/fx_params_table.rs` | `KINDS: [FxKind; 39]` → **`; 40]`** + 1 row | ⚠️ **É um NÚMERO QUE SOMA** — ver abaixo |
-| `shells/desktop/src/audio/fx_param_specs.rs` | `static MULTIBAND` novo | Nenhum |
-| `shells/desktop/src/audio/fx_params/tests.rs` | lista pinada +`"Multiband"` | ⚠️ idem |
+| `shells/desktop/src/audio/fx_params_table.rs` | `KINDS: [FxKind; 39]` → **`; 42]`** + 3 rows | ⚠️ **É um NÚMERO QUE SOMA** — ver abaixo |
+| `shells/desktop/src/audio/fx_param_specs.rs` | `static MULTIBAND` / `VOCODER` / `GRANULAR` | Nenhum |
+| `shells/desktop/src/audio/fx_params/tests.rs` | lista pinada +3 | ⚠️ idem |
+| `shells/desktop/src/audio/fx_presets.rs` | `FACTORY: [Preset; 21]` → **`; 23]`** + 2 presets | ⚠️ **outro número que soma** |
+| `shells/desktop/src/main.rs` | 2 ramos de env (os smokes) | Baixo |
+| `shells/desktop/src/audio/editor.rs` | 2 `mod` novos | Baixo |
 
-### ⚠️ `KINDS: [FxKind; 40]` é um número que SOMA entre linhas
+### ⚠️ `KINDS: [FxKind; 42]` e `FACTORY: [Preset; 23]` são números que SOMAM entre linhas
 
-Se outra linha também adicionar um efeito, o merge textual vai apresentar `40` de um lado e `40`
-do outro — e **o valor certo é 41**, que não existe em nenhum dos dois lados do conflito.
+Se outra linha também adicionar um efeito, o merge textual vai apresentar `42` de um lado e `40`
+do outro — e **o valor certo é 43**, que não existe em nenhum dos dois lados do conflito.
 **Conte, não escolha.** O mesmo vale para a lista pinada em `the_kind_table_is_the_rack_layout`:
 as duas entradas novas precisam existir, e o teste é quem prova.
 (`project-memory/feedback_numbers_that_sum_across_lines_count_dont_pick.md`)
 
 ### Arquivos NOVOS (zero risco de merge)
 
-- `crates/ph2d-audio-edit/src/fx/multiband.rs`
+- `crates/ph2d-audio-edit/src/fx/multiband.rs` · `vocoder.rs` · `granular.rs`
 - `crates/ph2d-audio-edit/tests/measure_multiband.rs`
+- `shells/desktop/src/audio/editor/multiband_smoke.rs` · `voice_smoke.rs`
 
 ### Contratos congelados (§6)
 
@@ -138,9 +196,10 @@ as duas entradas novas precisam existir, e o teste é quem prova.
 
 ### LOC (medido **depois** do `fmt`)
 
-`fx.rs` foi de 602 → **633 linhas brutas** — o gate é *comment-aware* e passa, mas o arquivo está
-**perto do teto**. Quem adicionar o 41º efeito deve **orçar o split** (o candidato natural é mover
-os braços de `apply` para um módulo irmão, como `warmup.rs` já fez).
+`fx.rs` foi de 602 → **689 linhas brutas** e `fx_presets.rs` está em **596**. O gate é
+*comment-aware* e os dois passam, mas ambos estão **no teto**. Quem adicionar o **43º efeito** deve
+**orçar o split desde já** (candidato natural: mover os braços de `apply` para um módulo irmão,
+como `warmup.rs` já fez).
 
 ---
 
@@ -178,6 +237,29 @@ Extras que valem 30 s:
 - **Neutro:** puxe o Ratio do Multiband todo pra esquerda (1:1) — tem que ficar **byte-idêntico**.
 - **Borda da seleção:** aplique numa seleção no meio do clipe e escute a emenda — não pode estalar
   (o crossover tem pre-roll; os compressores se primam sozinhos).
+
+### 6.2 W4 — Vocoder e Granular (**pendente**)
+
+```bash
+PH2D_AUDIO_VOICE_SMOKE=1 cargo run --release -p ph2d-host-desktop
+```
+
+**Não dá para vocodar um seno** — sem vogais, a afirmação do efeito (*"as vogais sobrevivem, o pitch
+não"*) é intestável: você ouviria um robô e não teria como saber se as palavras foram destruídas
+junto. Então o clipe é **fala sintetizada**: buzz glotal cujo pitch **plana** (100→150 Hz, a
+entoação de uma pergunta — é isso que o vocoder tem que **jogar fora**) atravessando **formantes que
+se movem** entre 6 vogais (é isso que ele tem que **manter**), com consoante não-vozeada entre elas.
+
+Rack montada: `[Vocoder Breath=0: on] [Vocoder Breath=1: bypassado] [Granular: bypassado]`.
+
+| Stage | O que ouvir |
+|---|---|
+| **1** | A entoação **acha** no monotom do portador; as vogais continuam marchando. **É o robô.** |
+| **2** | As mesmas vogais, **sem pitch nenhum**. É um sussurro — e é o **MESMO efeito**, um knob movido. |
+| **3** | A frase **borra** numa textura. |
+
+> Gateado: vocodado, o comb do portador dá **0,0605** contra **0,00007** de pitch remanescente da
+> voz (**864×**), e as vogais continuam lá.
 
 ---
 

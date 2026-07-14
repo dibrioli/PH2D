@@ -1,5 +1,8 @@
 # HANDOFF — continuação da linha `line/motion-value` (Motion Nodes)
 
+> ⚠️ **HISTÓRICO — CONSUMIDO.** A jornada que este documento abriu FECHOU e INTEGROU (2026-07-13,
+> 7 fatias). O handoff vivo é [`HANDOFF_line_motion_value_continuacao_2026-07-14.md`](HANDOFF_line_motion_value_continuacao_2026-07-14.md).
+
 **Data:** 2026-07-12 · **Para:** o **próximo agente-de-linha** (você) · **De:** o agente que fechou as 18 fatias
 integradas em 2026-07-11/12 · **Modo:** **L** (worktree, DIRETRIZ §1.5 · [MODELO_ABERTURA_LINHA](IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md))
 

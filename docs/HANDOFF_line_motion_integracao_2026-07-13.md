@@ -1,5 +1,10 @@
 # HANDOFF DE INTEGRAÇÃO — `line/motion-value` (2026-07-13)
 
+> ⚠️ **HISTÓRICO — CONSUMIDO PELO INTEGRADOR.** A linha INTEGROU em 2026-07-13 (`main` `4d203d48`).
+> Este era o handoff PRO INTEGRADOR; o handoff vivo da linha é
+> [`HANDOFF_line_motion_value_continuacao_2026-07-14.md`](HANDOFF_line_motion_value_continuacao_2026-07-14.md).
+> O registro da integração está em [`REGISTRO_integracao_jornada_2026-07-13.md`](REGISTRO_integracao_jornada_2026-07-13.md).
+
 > **Para o agente integrador.** A linha está **FECHADA e PARADA**: não integrei, não pushei, não
 > rodei `ship.sh` (DIRETRIZ §1.5.9 · CLAUDE.md §0.7). O Enio **smoke-testou todas as 7 fatias e
 > aprovou**. Gate em lote verde **por exit code** (contrato congelado · caps de LOC · arch-gates ·

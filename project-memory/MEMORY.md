@@ -13,7 +13,6 @@
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — decida no padrão-ouro e execute, reporte a decisão
 - [Estilo](feedback_communication_style.md) — pt-BR direto, opções concretas, recomendação primeiro
 - ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — pare de calibrar; questione o modelo
-- [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — tinta é substância, sculpt é operação; um gate verde pode pinar um bug de DESIGN
 - [Simplicidade](feedback_communication_simplicity.md) — sem AskUserQuestion-spam; não antecipe decisões
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md) — smoke/`cargo run` com `cd <worktree> &&` junto
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = exemplo auto-play no doc demo; não peça pro Enio montar
@@ -75,7 +74,6 @@
 - [1º caso salvo por efeito colateral](feedback_first_case_rescued_by_side_effect_test_repetition.md) — fixture de 1 traço não continha o bug do 2º; teste a REPETIÇÃO, no ritmo real do app
 - [Não-reprodução ≠ correção](feedback_nonreproduction_is_not_proof_of_fix.md) — bug intermitente que some segue VIVO; cheque o `git diff` antes de aceitar "resolveu"
 - [Unit-verde ≠ funciona no produto](feedback_tool_unit_green_integration_dead.md) — tool passa unit+CI e está morta (pill/input não wirado); só audit e2e pega
-- [Um clique é um press que DESLIZOU](feedback_a_click_is_a_press_that_drifted.md) — mão humana move 1px; Down/Up na mesma coord é robô, não teste
 - [Pintado ≠ populado: teste a PINTURA](feedback_painted_is_not_populated_paint_gate.md) — nenhum gate rodava `paint`; "o botão não existe" passava em tudo
 - [Teste com os números do PRODUTO](feedback_test_with_product_numbers_not_convenient_ones.md) — `px_to_world = 1.0` é o único valor que esconde erro de unidade
 - [Geometria sobre eixos de unidades diferentes](feedback_geometry_over_mixed_units_needs_the_consumers_conversion.md) — ângulo/normal só existe depois de converter; use a constante que o RENDERIZADOR usa
@@ -89,9 +87,8 @@
 - [Tolerância folgada esconde viés sistemático](feedback_loose_oracle_hides_systematic_bias.md) — pitch shifter passou 3 jornadas 54 cents baixo; asserte o valor EXATO na unidade que o usuário ouve
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — o miolo é onde não há bug; DC/Nyquist, 1ª/última coluna, 0 e 1 é onde o dado some
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — gate verde na mutação = ou o gate é frouxo, ou o seu COMENTÁRIO está errado
+- [Cheque se o oráculo é ALCANÇÁVEL antes de escrever o gate](feedback_check_the_oracle_is_achievable_before_writing_the_gate.md) — LR4 soma allpass, nunca identidade; o gate prescrito era impossível e o "fix" seria afrouxá-lo até não medir nada
 - [Otimização precisa de gate que prove que ela DISPARA](feedback_an_optimization_needs_a_gate_that_proves_it_fires.md) — fallback silencia o bug: vira código morto, tudo verde, e o único sintoma é que nada acelerou
-- [Mutação que sobrevive pode ser gate FALTANDO](feedback_a_mutation_that_survives_may_mean_a_missing_gate.md) — 3ª causa: o gate verde está CERTO, só não fala daquilo. Explique por que ela é inofensiva ALI — a resposta nomeia o caminho sem gate
-- [Gate de AUSÊNCIA precisa do irmão de PRESENÇA](feedback_absence_gate_needs_a_presence_sibling.md) — "a cor não vaza" fica verde com o fill INVISÍVEL; e varredura só vale se a coisa medida está em quadro
 - [Regra que não OBSERVA não dispara](feedback_a_rule_that_never_observes_cannot_fire.md) — HR-13 somava declarações no boot; editor chegou a 4351 MB sem piscar
 - [Faça a MESMA pergunta ao outro lado](feedback_ask_the_same_question_of_the_other_side.md) — gate do editor verde → mesmo gate no runtime nasceu VERMELHO (65,9 MB/música)
 - [Mesma conta, escrituração diferente = 1 ulp](feedback_same_math_different_bookkeeping_diverges.md) — residente faz wrap do cursor, stream não fazia; gate byte-idêntico pega, "soa igual" não

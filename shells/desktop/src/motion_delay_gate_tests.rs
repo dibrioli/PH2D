@@ -110,7 +110,7 @@ fn the_ease_kills_the_twitch_and_keeps_the_motion() {
 ///
 /// 1. **Eu medi UM floco (`id = 0`) e concluí sobre a nevasca.** O `gust` é por-floco (cada um lê a
 ///    fileira de ruído dele), então um floco não é uma amostra — é uma anedota.
-/// 2. **Eu misturei as duas fases do voo.** Filtrando por "acima da linha d'água" em vez de CORTAR no primeiro
+/// 2. **Eu misturei os dois TRECHOS do voo.** Filtrando por "acima da linha d'água" em vez de CORTAR no primeiro
 ///    contato, o floco que mergulha e volta a boiar reentrava na trilha — e eu media a queda colada
 ///    com a bóia. *"A neve que treme não é a mesma que cai"* (Enio): é a mesma neve, em outra fase,
 ///    e o que treme é o **splash**.

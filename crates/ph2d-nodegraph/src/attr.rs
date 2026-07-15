@@ -11,7 +11,44 @@
 //! stream hashes identically across runs.
 
 use crate::port::Dim;
+use rayon::prelude::*;
 use std::collections::BTreeMap;
+
+/// Above this element count, [`par_build`] spreads the per-element map across
+/// cores; below it stays serial. The threshold exists because rayon's
+/// fork/join has a fixed cost that a tiny stream (the boot demo's handful of
+/// instances) would pay for nothing — and, more importantly, the small-N path
+/// must **not** touch the thread pool or allocate, so the paused/idle no-alloc
+/// guarantee (`ph2d-eval-motion/tests/paused_no_alloc.rs`) holds. Correctness is
+/// identical on both sides; this is purely a performance floor.
+///
+/// GPU/M5 Fase 0. Tunable; ~8k is well above any editor-chrome stream and well
+/// below where an O(N) node starts to hurt on one core.
+pub const PAR_THRESHOLD: usize = 8192;
+
+/// Build a per-element `Vec<T>` by index, in parallel above [`PAR_THRESHOLD`].
+///
+/// **Determinism contract (the whole reason this is one audited function):**
+/// `f(i)` MUST be a pure function of `i` plus shared *immutable* data — no
+/// cross-element read whose result depends on iteration order, and **no float
+/// reduction** (a sum/average across elements reorders under threads and IEEE
+/// addition is not associative). Nodes that reduce or read neighbours
+/// (`voronoi`, `boids`, the sims) keep their serial fixed-order pass — see the
+/// split in `motion.voronoi`. For a pure map there is nothing to reorder:
+/// rayon's indexed `collect` writes element `i` to slot `i`, so the result is
+/// **bit-identical** to the serial `(0..n).map(f).collect()`, and the ECS
+/// `transform_determinism` / replay-hash gates are unaffected.
+pub fn par_build<T, F>(n: usize, f: F) -> Vec<T>
+where
+    T: Send,
+    F: Fn(usize) -> T + Sync + Send,
+{
+    if n >= PAR_THRESHOLD {
+        (0..n).into_par_iter().map(f).collect()
+    } else {
+        (0..n).map(f).collect()
+    }
+}
 
 /// The identity of the reserved `size` column: **unit scale**.
 ///
@@ -159,5 +196,31 @@ mod tests {
     fn empty_stream_is_default() {
         assert_eq!(Stream::default(), Stream::new(0));
         assert!(Stream::default().is_empty());
+    }
+
+    #[test]
+    fn par_build_is_bit_identical_to_serial_both_sides_of_the_threshold() {
+        // A closure with the shape a node uses: a per-element f32 map that would
+        // ULP-drift if the arithmetic were reordered (mul + add of a fractional
+        // index). Above the threshold `par_build` runs on the thread pool; the
+        // result MUST equal the explicit serial map byte-for-byte, or a
+        // parallelized node would silently diverge from the CPU canon.
+        let f = |i: usize| (i as f32) * 0.1 + (i as f32).sqrt() * 1.3;
+        for n in [0usize, 1, 100, PAR_THRESHOLD - 1, PAR_THRESHOLD, PAR_THRESHOLD * 4 + 7] {
+            let serial: Vec<f32> = (0..n).map(f).collect();
+            let built = par_build(n, f);
+            assert_eq!(built, serial, "par_build diverged from serial at n = {n}");
+        }
+    }
+
+    #[test]
+    fn par_build_preserves_index_order() {
+        // The identity map: element i must land at slot i (rayon's indexed
+        // collect), not merely contain the same multiset — a set-preserving but
+        // order-shuffling collect would pass a hash-of-sorted check yet corrupt
+        // the P/tint/size correspondence across columns.
+        let n = PAR_THRESHOLD * 2;
+        let built = par_build(n, |i| i as u32);
+        assert!(built.iter().copied().eq(0..n as u32));
     }
 }

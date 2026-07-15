@@ -12,7 +12,7 @@
 //! Params (read via `ctx.param`): `amount` (1.0).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream};
+use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -73,13 +73,13 @@ impl NodeOp for MotionScale {
                 Some(Column::Vec2(v)) => v.clone(),
                 _ => vec![SIZE_IDENTITY; n],
             };
-            let scaled: Vec<[f32; 2]> = (0..n)
-                .map(|i| {
-                    let f = eff_factor(amount, falloff_at(input, i));
-                    let s = base.get(i).copied().unwrap_or(SIZE_IDENTITY);
-                    [s[0] * f, s[1] * f]
-                })
-                .collect();
+            // Pure per-instance map → parallel above the threshold
+            // (bit-identical, no reduction). GPU/M5 Fase 0.
+            let scaled: Vec<[f32; 2]> = par_build(n, |i| {
+                let f = eff_factor(amount, falloff_at(input, i));
+                let s = base.get(i).copied().unwrap_or(SIZE_IDENTITY);
+                [s[0] * f, s[1] * f]
+            });
             let mut out = Stream::new(n);
             for (name, col) in input.columns() {
                 if name != "size" {

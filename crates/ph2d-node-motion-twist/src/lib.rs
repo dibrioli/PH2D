@@ -22,7 +22,7 @@
 #![forbid(unsafe_code)]
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -135,16 +135,17 @@ fn twist(
         })
         .fold(0.0_f32, f32::max)
         .max(MIN_RADIUS);
-    base.iter()
-        .enumerate()
-        .map(|(i, &p)| {
-            let (dx, dy) = (p[0] - pivot[0], p[1] - pivot[1]);
-            let r = (dx * dx + dy * dy).sqrt();
-            let deg = angle * amount_at(amount, i) * (r / r_max);
-            let f = falloff.get(i).copied().unwrap_or(1.0).clamp(0.0, 1.0);
-            twist_point(p, pivot, deg, f)
-        })
-        .collect()
+    // `r_max` is a max-reduction across all instances (kept serial above); given
+    // it, output element `i` is a pure per-instance map → parallel above the
+    // threshold (bit-identical, no reduction). GPU/M5 Fase 0.
+    par_build(base.len(), |i| {
+        let p = base[i];
+        let (dx, dy) = (p[0] - pivot[0], p[1] - pivot[1]);
+        let r = (dx * dx + dy * dy).sqrt();
+        let deg = angle * amount_at(amount, i) * (r / r_max);
+        let f = falloff.get(i).copied().unwrap_or(1.0).clamp(0.0, 1.0);
+        twist_point(p, pivot, deg, f)
+    })
 }
 
 struct MotionTwist;
@@ -167,7 +168,9 @@ impl NodeOp for MotionTwist {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
-        let falloff: Vec<f32> = (0..n).map(|i| falloff_at(input, i)).collect();
+        // Pure per-instance map → parallel above the threshold
+        // (bit-identical, no reduction). GPU/M5 Fase 0.
+        let falloff: Vec<f32> = par_build(n, |i| falloff_at(input, i));
         let moved = twist(&base, pivot, angle, &amount, &falloff);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {

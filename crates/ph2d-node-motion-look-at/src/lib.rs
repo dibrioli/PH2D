@@ -21,7 +21,7 @@
 #![forbid(unsafe_code)]
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -131,13 +131,13 @@ impl NodeOp for MotionLookAt {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
-        let rot: Vec<f32> = (0..n)
-            .map(|i| {
-                let dx = target_at(&tx, i) - p[i][0];
-                let dy = target_at(&ty, i) - p[i][1];
-                atan2_approx(dy, dx) * RAD_TO_DEG + offset
-            })
-            .collect();
+        // Pure per-instance map → parallel above the threshold
+        // (bit-identical, no reduction). GPU/M5 Fase 0.
+        let rot: Vec<f32> = par_build(n, |i| {
+            let dx = target_at(&tx, i) - p[i][0];
+            let dy = target_at(&ty, i) - p[i][1];
+            atan2_approx(dy, dx) * RAD_TO_DEG + offset
+        });
         // Copy every column through, then set the freshly-aimed rotation.
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {

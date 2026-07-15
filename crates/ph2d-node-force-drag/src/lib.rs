@@ -16,6 +16,7 @@
 //! Drag (without drag a pure vortex spirals outward by centrifugal drift).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -58,13 +59,13 @@ impl NodeOp for ForceDrag {
         let k = ctx.param("coefficient").max(0.0);
         let out = {
             let input = ctx.input(0);
-            let contrib: Vec<[f32; 2]> = (0..input.count())
-                .map(|i| {
-                    let vel = vec2_at(input, "vel", i, [0.0, 0.0]);
-                    let w = k * falloff_at(input, i);
-                    [-vel[0] * w, -vel[1] * w]
-                })
-                .collect();
+            // Pure per-instance map → parallel above the threshold
+            // (bit-identical, no reduction). GPU/M5 Fase 0.
+            let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
+                let vel = vec2_at(input, "vel", i, [0.0, 0.0]);
+                let w = k * falloff_at(input, i);
+                [-vel[0] * w, -vel[1] * w]
+            });
             add_accel(input, &contrib)
         };
         ctx.emit(out);

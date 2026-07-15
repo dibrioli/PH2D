@@ -53,7 +53,7 @@
 //! rather than pairing unrelated elements by index.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
@@ -196,11 +196,10 @@ fn step(rest: &Stream, state: &Stream, playhead: f32) -> Stream {
         }
     }
 
-    let p: Vec<[f32; 2]> = rest_p
-        .iter()
-        .zip(&sim_d)
-        .map(|(r, d)| [r[0] + d[0], r[1] + d[1]])
-        .collect();
+    // Pure per-instance map → parallel above the threshold
+    // (bit-identical, no reduction). GPU/M5 Fase 0.
+    let p: Vec<[f32; 2]> =
+        par_build(n, |i| [rest_p[i][0] + sim_d[i][0], rest_p[i][1] + sim_d[i][1]]);
     out.set("P", Column::Vec2(p));
     out.set("vel", Column::Vec2(vel));
     out.set("sim_d", Column::Vec2(sim_d));

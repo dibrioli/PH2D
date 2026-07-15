@@ -18,6 +18,7 @@
 //! 2 Smooth · 3 Smoother), `repel` (0/1).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -102,20 +103,20 @@ impl NodeOp for ForceAttractor {
         let sign = if ctx.param("repel") >= 0.5 { -1.0 } else { 1.0 };
         let out = {
             let input = ctx.input(0);
-            let contrib: Vec<[f32; 2]> = (0..input.count())
-                .map(|i| {
-                    let p = vec2_at(input, "P", i, [0.0, 0.0]);
-                    let dx = target[0] - p[0];
-                    let dy = target[1] - p[1];
-                    let d = (dx * dx + dy * dy).sqrt();
-                    if d < DEAD_ZONE || d > radius {
-                        return [0.0, 0.0];
-                    }
-                    let w = curve(kind, (1.0 - d / radius).clamp(0.0, 1.0));
-                    let mag = strength * w * sign * falloff_at(input, i);
-                    [(dx / d) * mag, (dy / d) * mag]
-                })
-                .collect();
+            // Pure per-instance map → parallel above the threshold
+            // (bit-identical, no reduction). GPU/M5 Fase 0.
+            let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
+                let p = vec2_at(input, "P", i, [0.0, 0.0]);
+                let dx = target[0] - p[0];
+                let dy = target[1] - p[1];
+                let d = (dx * dx + dy * dy).sqrt();
+                if d < DEAD_ZONE || d > radius {
+                    return [0.0, 0.0];
+                }
+                let w = curve(kind, (1.0 - d / radius).clamp(0.0, 1.0));
+                let mag = strength * w * sign * falloff_at(input, i);
+                [(dx / d) * mag, (dy / d) * mag]
+            });
             add_accel(input, &contrib)
         };
         ctx.emit(out);

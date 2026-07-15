@@ -16,7 +16,7 @@
 //! param value can overflow the allocation.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
@@ -71,19 +71,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// (the cap is a pathological guard; normal grids are never capped).
 fn build_grid(rows: usize, cols: usize, gap_x: f32, gap_y: f32, max: usize) -> Vec<[f32; 2]> {
     let count = rows.saturating_mul(cols).min(max);
-    let mut positions = Vec::with_capacity(count);
     // Lattice midpoint at (0,0): shift each index by half the span.
     let cx = (cols as f32 - 1.0) * 0.5;
     let cy = (rows as f32 - 1.0) * 0.5;
-    'outer: for r in 0..rows {
-        for c in 0..cols {
-            if positions.len() == count {
-                break 'outer;
-            }
-            positions.push([(c as f32 - cx) * gap_x, (r as f32 - cy) * gap_y]);
-        }
-    }
-    positions
+    // Row-major: element `i` is cell `(r = i/cols, c = i%cols)`. The old nested
+    // push produced exactly this order (the cap keeps the first `count` cells),
+    // so the parallel build is bit-identical. `count == 0` when `cols == 0`, so
+    // the div/mod never runs on a zero divisor. GPU/M5 Fase 0.
+    par_build(count, |i| {
+        let (r, c) = (i / cols, i % cols);
+        [(c as f32 - cx) * gap_x, (r as f32 - cy) * gap_y]
+    })
 }
 
 struct MotionGrid;
@@ -110,7 +108,7 @@ impl NodeOp for MotionGrid {
         // Per-instance identity: `Index` (0..n) + `Count` (n) — the stable handle
         // downstream palette / ramp / normalized effects read. `clone` replicates
         // them per copy, so each copy is a self-contained indexed set.
-        let index: Vec<f32> = (0..n).map(|i| i as f32).collect();
+        let index: Vec<f32> = par_build(n, |i| i as f32);
         let count = vec![n as f32; n];
         ctx.emit(
             Stream::new(n)

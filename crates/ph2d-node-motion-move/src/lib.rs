@@ -8,7 +8,7 @@
 //! `P'_i = P_i + (dx, dy) * falloff_i`.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -68,14 +68,13 @@ impl NodeOp for MotionMove {
             for (name, col) in input.columns() {
                 match (name.as_str(), col) {
                     ("P", Column::Vec2(v)) => {
-                        let moved: Vec<[f32; 2]> = v
-                            .iter()
-                            .enumerate()
-                            .map(|(i, p)| {
-                                let f = falloff_at(input, i);
-                                [p[0] + dx * f, p[1] + dy * f]
-                            })
-                            .collect();
+                        // Pure per-instance map → parallel above the threshold
+                        // (bit-identical, no reduction). GPU/M5 Fase 0.
+                        let moved: Vec<[f32; 2]> = par_build(v.len(), |i| {
+                            let p = v[i];
+                            let f = falloff_at(input, i);
+                            [p[0] + dx * f, p[1] + dy * f]
+                        });
                         out.set("P", Column::Vec2(moved));
                     }
                     _ => out.set(name.clone(), col.clone()),

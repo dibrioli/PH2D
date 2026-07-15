@@ -23,6 +23,7 @@
 //! (1..=4 scales of swirl), `seed`.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -115,14 +116,14 @@ impl NodeOp for ForceCurl {
         let seed = ctx.param("seed");
         let out = {
             let input = ctx.input(0);
-            let contrib: Vec<[f32; 2]> = (0..input.count())
-                .map(|i| {
-                    let p = vec2_at(input, "P", i, [0.0, 0.0]);
-                    let v = curl(p[0] * scale, p[1] * scale, drift, seed, octaves);
-                    let w = strength * falloff_at(input, i);
-                    [v[0] * w, v[1] * w]
-                })
-                .collect();
+            // Pure per-instance map → parallel above the threshold
+            // (bit-identical, no reduction). GPU/M5 Fase 0.
+            let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
+                let p = vec2_at(input, "P", i, [0.0, 0.0]);
+                let v = curl(p[0] * scale, p[1] * scale, drift, seed, octaves);
+                let w = strength * falloff_at(input, i);
+                [v[0] * w, v[1] * w]
+            });
             add_accel(input, &contrib)
         };
         ctx.emit(out);

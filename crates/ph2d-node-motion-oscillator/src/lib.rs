@@ -33,6 +33,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
 use channel::{apply_channel_delta, falloff_at};
+use ph2d_nodegraph::attr::par_build;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -156,14 +157,14 @@ impl NodeOp for MotionOscillator {
         let out = {
             let input = ctx.input(0);
             let n = input.count();
-            let deltas: Vec<f32> = (0..n)
-                .map(|i| {
-                    let phase = t * frequency + i as f32 * phase_stagger + phase0;
-                    // DC `offset` shifts the oscillation centre; the whole
-                    // contribution is falloff-masked (like every behaviour).
-                    (waveform(wave, phase) * amplitude + offset) * falloff_at(input, i)
-                })
-                .collect();
+            // Pure per-instance map → parallel above the threshold (bit-identical,
+            // no reduction). GPU/M5 Fase 0.
+            let deltas: Vec<f32> = par_build(n, |i| {
+                let phase = t * frequency + i as f32 * phase_stagger + phase0;
+                // DC `offset` shifts the oscillation centre; the whole
+                // contribution is falloff-masked (like every behaviour).
+                (waveform(wave, phase) * amplitude + offset) * falloff_at(input, i)
+            });
             apply_channel_delta(input, channel, &deltas)
         };
         ctx.emit(out);

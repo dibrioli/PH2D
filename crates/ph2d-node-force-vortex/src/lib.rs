@@ -16,6 +16,7 @@
 //! counter-clockwise is `(−dy, dx)`. Anchored by test.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -82,24 +83,24 @@ impl NodeOp for ForceVortex {
         let clockwise = ctx.param("clockwise") >= 0.5;
         let out = {
             let input = ctx.input(0);
-            let contrib: Vec<[f32; 2]> = (0..input.count())
-                .map(|i| {
-                    let p = vec2_at(input, "P", i, [0.0, 0.0]);
-                    let dx = p[0] - center[0];
-                    let dy = p[1] - center[1];
-                    let d = (dx * dx + dy * dy).sqrt();
-                    if d < DEAD_ZONE || d > radius {
-                        return [0.0, 0.0];
-                    }
-                    // Linear edge falloff (reference parity) × the focus field.
-                    let mag = strength * (1.0 - d / radius) * falloff_at(input, i) / d;
-                    if clockwise {
-                        [dy * mag, -dx * mag]
-                    } else {
-                        [-dy * mag, dx * mag]
-                    }
-                })
-                .collect();
+            // Pure per-instance map → parallel above the threshold
+            // (bit-identical, no reduction). GPU/M5 Fase 0.
+            let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
+                let p = vec2_at(input, "P", i, [0.0, 0.0]);
+                let dx = p[0] - center[0];
+                let dy = p[1] - center[1];
+                let d = (dx * dx + dy * dy).sqrt();
+                if d < DEAD_ZONE || d > radius {
+                    return [0.0, 0.0];
+                }
+                // Linear edge falloff (reference parity) × the focus field.
+                let mag = strength * (1.0 - d / radius) * falloff_at(input, i) / d;
+                if clockwise {
+                    [dy * mag, -dx * mag]
+                } else {
+                    [-dy * mag, dx * mag]
+                }
+            });
             add_accel(input, &contrib)
         };
         ctx.emit(out);

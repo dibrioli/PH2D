@@ -15,6 +15,10 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-render = { path = "../ph2d-render" }
+# GPU/M5 Fase 0: the Stream→RenderInstance marshalling is a per-frame O(N) hotspot
+# (a gather + sin_cos per instance); `par_extend` spreads it across cores above
+# the threshold, order-preserving (bit-identical). See `lower_to_instances_onto`.
+rayon = "1"
 
 [dev-dependencies]
 # Real Motion nodes, to prove the headless vertical (grid→transform→clone).
@@ -22,6 +26,9 @@ ph2d-node-registry = { path = "../ph2d-node-registry" }
 ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
+# GPU/M5 Fase 0 cook-determinism golden: a chain of retrofitted (parallel) nodes.
+ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }
+ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
 # dhat-rs: the paused-frame zero-alloc gate (Motion Nodes M0.T12) — counts
 # heap allocations across a warm, paused re-cook of the sink into a reused
 # buffer (mirror of editor-core's interaction_no_alloc bench).

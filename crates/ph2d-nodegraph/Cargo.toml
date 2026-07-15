@@ -9,8 +9,12 @@ authors.workspace = true
 
 [lib]
 
-# v1 contract skeleton is intentionally dependency-free: it is the leaf-level
-# substrate every node crate depends on, so it must not pull anything heavy.
-# serde (textual format), glam (math), and hashing land in later tasks per the
-# node-centric plan.
+# The v1 contract skeleton was intentionally dependency-free (leaf-level
+# substrate every node crate depends on). GPU/M5 Fase 0 (2026-07-15, the
+# `docs/plans/2026-07-gpu-resident-node-pipeline.md` cook-parallel line)
+# deliberately adds `rayon`: the one audited `attr::par_build` seam lets any node
+# spread its per-instance map across cores (already a workspace dep — voronoi's
+# PoC). Bit-identical (indexed collect preserves order; a pure map has no float
+# reduction to reorder). Nothing else heavy lands here.
 [dependencies]
+rayon = "1"

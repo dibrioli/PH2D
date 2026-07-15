@@ -36,7 +36,8 @@
 //! unit tests below. A later node that sets them needs no change here — the
 //! lowering already reads them.
 
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, PAR_THRESHOLD, Stream};
+use rayon::prelude::*;
 use ph2d_nodegraph::cook::{Cook, CookError, OpResolver, TimeScopes};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::RenderInstance;
@@ -82,7 +83,11 @@ pub fn lower_to_instances_onto(
     let tint = stream.get("tint");
     let uv_rect = stream.get("uv_rect");
     out.reserve(n);
-    for i in 0..n {
+    // Each instance is a pure function of its own index (a five-column gather +
+    // one `sin_cos`); no cross-element dependency. Above the threshold
+    // `par_extend` spreads it across cores, order-preserving → byte-identical to
+    // the serial extend, so the render is unchanged. GPU/M5 Fase 0.
+    let make = |i: usize| -> RenderInstance {
         // ADR-0070-amendment-4: RenderInstance carries the 2×2 world
         // basis, not a rotation scalar. A Motion stream emits only a
         // rotation (no skew), so the basis is a pure rotation matrix
@@ -94,7 +99,7 @@ pub fn lower_to_instances_onto(
         // Radians live nowhere in the Motion authoring surface; only this
         // conversion, at the very edge where the basis is built.
         let (sin_r, cos_r) = scalar_at(rot, i, 0.0).to_radians().sin_cos();
-        out.push(RenderInstance {
+        RenderInstance {
             world_pos: vec2_at(p, i, [0.0, 0.0]),
             size: vec2_at(size, i, default_size),
             atlas_uv: vec4_at(uv_rect, i, default_uv_rect),
@@ -119,7 +124,12 @@ pub fn lower_to_instances_onto(
             // Node-graph emit has no hierarchy → no clip silhouette.
             clip_group: RenderInstance::CLIP_GROUP_NONE,
             clip_meta: 0,
-        });
+        }
+    };
+    if n >= PAR_THRESHOLD {
+        out.par_extend((0..n).into_par_iter().map(make));
+    } else {
+        out.extend((0..n).map(make));
     }
 }
 

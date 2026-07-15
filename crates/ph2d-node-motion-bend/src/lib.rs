@@ -21,7 +21,7 @@
 #![forbid(unsafe_code)]
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -113,28 +113,29 @@ fn bend(
         .iter()
         .map(|p| (p[0] - pivot[0]).abs())
         .fold(0.0_f32, f32::max);
-    base.iter()
-        .enumerate()
-        .map(|(i, &p)| {
-            let dx = p[0] - pivot[0];
-            let dy = p[1] - pivot[1];
-            let theta_max = angle_deg * amount_at(amount, i) * PI / 180.0;
-            let bent = if x_extent < MIN_ANGLE_RAD || theta_max.abs() < MIN_ANGLE_RAD {
-                [dx, dy] // no extent / no angle → identity
-            } else {
-                let k = theta_max / x_extent; // curvature (rad per world unit)
-                let r = 1.0 / k; // radius of the spine arc
-                let (c, s) = cos_sin_cycles((k * dx) / TAU); // cos/sin of the arc angle
-                [(r - dy) * s, r * (1.0 - c) + dy * c]
-            };
-            let f = falloff.get(i).copied().unwrap_or(1.0).clamp(0.0, 1.0);
-            // Blend from the original toward the bent position by the falloff.
-            [
-                p[0] + (pivot[0] + bent[0] - p[0]) * f,
-                p[1] + (pivot[1] + bent[1] - p[1]) * f,
-            ]
-        })
-        .collect()
+    // `x_extent` is a max-reduction across all instances (kept serial above);
+    // given it, output element `i` is a pure per-instance map → parallel above
+    // the threshold (bit-identical, no reduction). GPU/M5 Fase 0.
+    par_build(base.len(), |i| {
+        let p = base[i];
+        let dx = p[0] - pivot[0];
+        let dy = p[1] - pivot[1];
+        let theta_max = angle_deg * amount_at(amount, i) * PI / 180.0;
+        let bent = if x_extent < MIN_ANGLE_RAD || theta_max.abs() < MIN_ANGLE_RAD {
+            [dx, dy] // no extent / no angle → identity
+        } else {
+            let k = theta_max / x_extent; // curvature (rad per world unit)
+            let r = 1.0 / k; // radius of the spine arc
+            let (c, s) = cos_sin_cycles((k * dx) / TAU); // cos/sin of the arc angle
+            [(r - dy) * s, r * (1.0 - c) + dy * c]
+        };
+        let f = falloff.get(i).copied().unwrap_or(1.0).clamp(0.0, 1.0);
+        // Blend from the original toward the bent position by the falloff.
+        [
+            p[0] + (pivot[0] + bent[0] - p[0]) * f,
+            p[1] + (pivot[1] + bent[1] - p[1]) * f,
+        ]
+    })
 }
 
 struct MotionBend;
@@ -157,7 +158,9 @@ impl NodeOp for MotionBend {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
-        let falloff: Vec<f32> = (0..n).map(|i| falloff_at(input, i)).collect();
+        // Pure per-instance map → parallel above the threshold
+        // (bit-identical, no reduction). GPU/M5 Fase 0.
+        let falloff: Vec<f32> = par_build(n, |i| falloff_at(input, i));
         let moved = bend(&base, pivot, angle, &amount, &falloff);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {

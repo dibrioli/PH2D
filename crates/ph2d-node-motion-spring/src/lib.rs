@@ -28,7 +28,7 @@
 //! raw state keeps evolving regardless, exactly like the reference.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -124,7 +124,9 @@ fn step(
     playhead: f32,
 ) -> Stream {
     let n = input.count();
-    let targets: Vec<f32> = (0..n).map(|i| channel_get(input, channel, i)).collect();
+    // Pure per-instance map → parallel above the threshold
+    // (bit-identical, no reduction). GPU/M5 Fase 0.
+    let targets: Vec<f32> = par_build(n, |i| channel_get(input, channel, i));
 
     // Every element starts seeded AT its target (no snap); the ones the state
     // knows then step. Identity is the `id` column when present (a particle
@@ -178,16 +180,16 @@ fn step(
     // field, times the pin weight (falloff 0 or a pinned element → the spring is
     // transparent there; a free element with no pin multiplies by an exact 1.0,
     // so every pre-pin graph keeps its bit-identical trajectory).
-    let blended: Vec<f32> = (0..n)
-        .map(|i| {
-            let fs = falloff_at(input, i) * inv_mass_at(input, i);
-            if fs >= 1.0 {
-                value[i]
-            } else {
-                targets[i] + (value[i] - targets[i]) * fs.max(0.0)
-            }
-        })
-        .collect();
+    // Pure per-instance map → parallel above the threshold
+    // (bit-identical, no reduction). GPU/M5 Fase 0.
+    let blended: Vec<f32> = par_build(n, |i| {
+        let fs = falloff_at(input, i) * inv_mass_at(input, i);
+        if fs >= 1.0 {
+            value[i]
+        } else {
+            targets[i] + (value[i] - targets[i]) * fs.max(0.0)
+        }
+    });
     let mut out = channel_set(input, channel, &blended);
     out.set("spring_value", Column::Scalar(value));
     out.set("spring_vel", Column::Scalar(vel));

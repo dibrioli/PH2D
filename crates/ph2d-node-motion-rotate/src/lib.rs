@@ -14,7 +14,7 @@
 //! Params (read via `ctx.param`): `angle` (0.0). `rot'_i = rot_i + angle * falloff_i`.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -68,9 +68,10 @@ impl NodeOp for MotionRotate {
                 Some(Column::Scalar(v)) => v.clone(),
                 _ => vec![0.0; n],
             };
-            let rotated: Vec<f32> = (0..n)
-                .map(|i| base.get(i).copied().unwrap_or(0.0) + angle * falloff_at(input, i))
-                .collect();
+            // Pure per-instance map → parallel above the threshold
+            // (bit-identical, no reduction). GPU/M5 Fase 0.
+            let rotated: Vec<f32> =
+                par_build(n, |i| base.get(i).copied().unwrap_or(0.0) + angle * falloff_at(input, i));
             let mut out = Stream::new(n);
             for (name, col) in input.columns() {
                 if name != "rot" {

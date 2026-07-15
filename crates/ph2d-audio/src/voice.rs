@@ -539,4 +539,46 @@ mod tests {
         assert!(v.is_free());
         assert!(v.free().is_none());
     }
+
+    /// **A 24 kHz mono clip must actually SOUND at a 48 kHz output.** This is the Mobile export
+    /// (`PLATFORMS` Mobile = 24 kHz mono) played back in the editor. Every existing gate either
+    /// checks the RETURN of `render_add` (alive/finished) or compares stream-vs-resident — and two
+    /// silent paths compare equal, so none proves the output is non-zero. This one measures it.
+    #[test]
+    fn a_24k_mono_clip_is_audible_at_48k_out() {
+        let tau = std::f32::consts::TAU;
+        // A 220 Hz sine, at 24 kHz, half a second — the kind of body the Mobile file carries.
+        let src: Vec<f32> = (0..12_000)
+            .map(|i| 0.5 * (tau * 220.0 * (i as f32 / 24_000.0)).sin())
+            .collect();
+        let clip = SampleData::from_interleaved(src, AudioFormat::mono(24_000));
+
+        let mut v = Voice::silent();
+        v.start(VoiceId(1), clip, &PlayParams::default(), 48_000);
+
+        // 24k -> 48k is advance 0.5, so 12 000 source frames become ~24 000 output frames.
+        let mut peak = 0.0f32;
+        let mut sum_sq = 0.0f64;
+        let mut n = 0usize;
+        let mut buf = [0.0f32; 256]; // 128 stereo frames
+        for _ in 0..250 {
+            buf.fill(0.0);
+            let done = v.render_add(&mut buf, 128).is_some();
+            for &s in &buf {
+                peak = peak.max(s.abs());
+                sum_sq += (s as f64) * (s as f64);
+                n += 1;
+            }
+            if done {
+                break;
+            }
+        }
+        let rms = (sum_sq / n as f64).sqrt();
+        println!("24k mono @ 48k out: peak {peak:.4}, rms {rms:.4}");
+        assert!(
+            peak > 0.1,
+            "a 24 kHz mono clip rendered SILENT at 48 kHz out (peak {peak:.4}) -- this is the \
+             Mobile export the Enio could not hear"
+        );
+    }
 }

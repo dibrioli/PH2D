@@ -624,6 +624,38 @@ mod tests {
         _assert_send::<AudioRenderer>();
     }
 
+    /// **The Mobile export, played through the WHOLE preview path.** `editor_toggle_play` calls
+    /// `play_preview`; the renderer drains that command onto its dedicated preview voice and mixes
+    /// it into `out`. A 24 kHz mono clip (the Mobile target) against a 48 kHz device must come out
+    /// of `render` audible — the report is that it does not. Every prior gate stops at a return
+    /// value or a stream-vs-resident diff; this drives the real door end to end.
+    #[test]
+    fn a_24k_mono_preview_is_audible_through_the_full_renderer() {
+        let tau = std::f32::consts::TAU;
+        let (engine, mut r) = AudioEngine::new(AudioFormat::stereo(48_000));
+        let src: Vec<f32> = (0..12_000)
+            .map(|i| 0.5 * (tau * 220.0 * (i as f32 / 24_000.0)).sin())
+            .collect();
+        let clip = SampleData::from_interleaved(src, AudioFormat::mono(24_000));
+        engine.play_preview(clip, PlayParams::default()).unwrap();
+
+        let mut peak = 0.0f32;
+        let mut out = [0.0f32; 256];
+        for _ in 0..250 {
+            out.fill(0.0);
+            r.render(&mut out, 128);
+            for &s in &out {
+                peak = peak.max(s.abs());
+            }
+        }
+        println!("full renderer, 24k mono preview @ 48k: peak {peak:.4}");
+        assert!(
+            peak > 0.1,
+            "the 24 kHz mono Mobile clip came out of the FULL renderer silent (peak {peak:.4}) -- \
+             this is what the Enio hears when he loads .mobile.ogg back and presses Play"
+        );
+    }
+
     #[test]
     fn play_returns_distinct_handles() {
         let (mut engine, _r) = AudioEngine::new(AudioFormat::stereo(48_000));

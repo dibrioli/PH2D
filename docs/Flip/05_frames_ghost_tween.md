@@ -361,14 +361,19 @@ vizinho de trás cair dez vezes mais rápido (a assimetria é de graça na curva
 quadro ativo no meio). Tem **piso** (`MIN_FALLOFF`): um quadro que o usuário marcou e que não se
 mexe pareceria ignorado — o mesmo raciocínio do `GHOST_MIN_ALPHA`.
 
-**A prévia na tira (smoke do Enio 2026-07-14: *"não percebo o efeito de falloff"*).** O falloff só
+**A prévia na tira (smoke do Enio 2026-07-14: *"não percebo o efeito de falloff"*; 2026-07-15:
+*"coloque graduações da cor de acento… 50% mais claro a cada frame de distância"*).** O falloff só
 afeta os quadros VIZINHOS (o ativo sempre recebe 100%), então antes ele era invisível: você
-esculpia, dava scrub e comparava magnitudes entre quadros. Agora a **altura da barra de seleção de
-cada célula É o peso** (`FlipCell.weight`, computado por `flip_multiframe::cell_weight` — a MESMA
-`falloff_at` que a escultura, seed = sample): com o Falloff **desligado** todas as barras ficam
-cheias e iguais; **ligado**, viram um gradiente (ativo cheio, vizinhos curtos, o distante no piso).
-O efeito passa a se VER na hora de marcar/togglear, sem precisar esculpir — a mesma lição de *"uma
-seleção que não se vê não existe"*.
+esculpia, dava scrub e comparava magnitudes entre quadros. Agora a **célula marcada veste a cor de
+ACENTO no fundo, e CLAREIA com a distância**: o quadro ativo/âncora fica no acento cheio, os vizinhos
+mais claros (um véu branco de opacidade `1 − peso` sobre o acento). Com o Falloff **desligado** todo
+peso é `1.0` ⇒ o acento é cheio e uniforme; **ligado**, vira um gradiente de claridade (ativo cheio,
+distante quase branco — mas nunca branco pleno: o piso do falloff mantém a célula visível). O peso é
+`FlipCell.weight` (computado por `flip_multiframe::cell_weight` — a MESMA `falloff_at` que a
+escultura, **seed = sample**: a cor não mente sobre a força do gesto). O efeito se VÊ na hora de
+marcar/togglear, sem esculpir — *"uma seleção que não se vê não existe"*. (Substituiu a barra de
+altura-por-peso; o clareamento segue o falloff REAL, não uma taxa fixa de 50%/quadro — a barra
+mentiria sobre o sculpt.)
 
 O quadro **ativo** entra sempre, com influência cheia, mesmo fora da seleção (é o *`+ frame atual
 como fallback`* da referência). Multiframe **nunca inventa quadro**: as chaves selecionadas já

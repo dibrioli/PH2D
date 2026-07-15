@@ -1047,13 +1047,11 @@ Cinco achados do smoke do W7.x, todos com gate + mutação provada:
 - **Unlink "religava" no multiframe** (`3c94e28d`): não era religamento — a multissselecão ainda
   ativa fazia o Sculpt editar os dois, e a cópia idêntica parecia religada → o Unlink encerra a
   multissselecão.
-- **"Não percebo o efeito de falloff"** (`3a95954b`): o falloff só afeta os VIZINHOS e não tinha
-  feedback — você teria de esculpir + scrub + comparar magnitudes. Agora a **altura da barra de
-  seleção de cada célula é o peso** (`FlipCell.weight` ← `flip_multiframe::cell_weight`, a MESMA
-  `falloff_at` da escultura): Falloff off = barras iguais, on = gradiente. O efeito se VÊ ao
-  togglear, sem esculpir. Doc: [`Flip/05 §8`](Flip/05_frames_ghost_tween.md). Gates:
-  `the_selection_bar_height_tracks_the_multiframe_weight` (painel) +
-  `the_cell_weight_preview_matches_the_sculpt_falloff` (seed = sample).
+- **"Não percebo o efeito de falloff"** (`3a95954b`, depois reestilizado — ver W7.4): o falloff só
+  afeta os VIZINHOS e não tinha feedback — você teria de esculpir + scrub + comparar magnitudes.
+  Agora o peso do falloff é PINTADO na tira (`FlipCell.weight` ← `flip_multiframe::cell_weight`, a
+  MESMA `falloff_at` da escultura, seed = sample). Doc: [`Flip/05 §8`](Flip/05_frames_ghost_tween.md).
+  Gate: `the_cell_weight_preview_matches_the_sculpt_falloff` (seed = sample).
 
 ## W7.3 — A **régua de scrub** (LANDOU 2026-07-14, pendente o smoke)
 
@@ -1090,6 +1088,29 @@ separação-padrão de toda ferramenta de animação: **a régua faz scrub, as c
   pintado ≠ registrado — mutação: tirar o `register`) · `scrub_is_the_exact_inverse_of_the_handle_placement`
   + `a_value_between_frames_snaps_to_the_nearest_frame` (state — mutação: `round`→`floor`, pega só no
   caso de meio-quadro; o gate do inverso sozinho era frouxo, `mute o CÓDIGO não só o teste`).
+
+## W7.4 — O falloff no FUNDO do quadro (cor de acento que clareia) (LANDOU 2026-07-15, pendente o smoke)
+
+Smoke do W7.3 (Enio): *"em vez da barra de graduação do falloff coloque graduações da cor de acento
+do fundo do quadro… torne o rose 50% mais claro a cada frame de distância."* A barra de altura-por-
+peso saiu; agora **a célula marcada veste a cor de ACENTO no fundo e CLAREIA com a distância**.
+
+- **Como** (`paint_cells::lighten_cell_by_falloff`): a célula marcada é pintada com `ButtonKind::Accent`
+  (fundo no acento — rosa no tema original), e por cima vai um **véu BRANCO** de opacidade
+  `falloff_veil(weight) = (1 − peso)·255`. Peso cheio (ativo / falloff off) ⇒ véu zero ⇒ acento puro;
+  peso baixo ⇒ véu forte ⇒ claro. O piso do falloff (`MIN_FALLOFF`) mantém a célula visível (o véu
+  nunca chega ao branco pleno). A cor é construída por `token_to_vello(TokenColor{…})` — o painel não
+  depende de `ph2d_vector`.
+- **Seed = sample preservado.** O clareamento é dirigido pelo `weight` (= `flip_multiframe::cell_weight`
+  = `falloff_at`, o MESMO número que o pincel usa), **não** por uma taxa fixa de 50%/quadro. Uma cor
+  que clareasse 50%/quadro independentemente do peso mentiria sobre a força do gesto (o linear-tent
+  não é geométrico) — exatamente o bug que o W7 (a barra) resolveu. O pedido "50% mais claro" é
+  entregue em espírito (acento que clareia visivelmente com a distância), atado ao falloff REAL.
+  **Se o Enio quiser um 50%/quadro literal desacoplado do sculpt, é uma troca de uma linha** (o
+  `falloff_veil` passa a `1 − 0.5^passo`), mas aí a tira deixa de ser seed = sample.
+- **Gate**: `the_lightening_veil_grows_as_the_falloff_weight_falls` (mutação: véu constante que ignora
+  o peso sangra) + `the_cell_weight_preview_matches_the_sculpt_falloff` (seed = sample, intacto). A
+  barra (`selected_bar_height` + seu gate + os consts `SELECTED_BAR*`) foi removida.
 
 ## Aberto (fila viva — detalhe em [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md))
 

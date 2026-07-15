@@ -28,9 +28,11 @@ pub struct FlipCell {
     pub selected: bool,
     /// **O PESO do multiframe** desta chave `[0,1]` — a força com que o pincel a edita
     /// (o falloff temporal, W7). `1.0` fora do multiframe ou com o falloff desligado. A
-    /// altura da barra de seleção o desenha: ligar o Falloff transforma barras uniformes
-    /// num gradiente (ativo cheio, vizinhos curtos), que é como o efeito — antes invisível
-    /// até esculpir e dar scrub — passa a se VER na hora (smoke do Enio, 2026-07-14).
+    /// COR DO FUNDO da célula o desenha: a célula marcada veste o acento e CLAREIA por
+    /// `(1 − peso)` — cheio (acento puro) no ativo, mais claro nos vizinhos. Ligar o Falloff
+    /// transforma um bloco de acento uniforme num gradiente de claridade, que é como o efeito
+    /// — antes invisível até esculpir e dar scrub — se VÊ na hora (Enio 2026-07-14/15). O peso
+    /// é o do pincel (`falloff_at`), então a cor não mente sobre a força do gesto.
     pub weight: f32,
 }
 

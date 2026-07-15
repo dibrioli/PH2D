@@ -15,11 +15,11 @@
 use crate::ids;
 use crate::state::FlipStripSnapshot;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, token_to_vello};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{Color as TokenColor, ColorToken, Radius, Spacing, Theme, TypeToken};
 
 /// Largura máxima de um quadro em px (senão 3 chaves viram 3 painéis gigantes).
 const MAX_PX_PER_FRAME: f32 = 26.0; // LITERAL-PX-OK: strip cell scale cap
@@ -27,12 +27,6 @@ const MAX_PX_PER_FRAME: f32 = 26.0; // LITERAL-PX-OK: strip cell scale cap
 const MIN_CELL_W: f32 = 3.0; // LITERAL-PX-OK: strip minimum cell width
 /// Lado do marcador de desenho instanciado.
 const INSTANCE_DOT: f32 = 4.0; // LITERAL-PX-OK: instanced-drawing marker
-/// Altura MÍNIMA da barra de seleção (px de tela) — o piso, para que peso baixo ainda se
-/// veja (espelha o `MIN_FALLOFF` do multiframe: a chave marcada nunca "some").
-const SELECTED_BAR: f32 = 3.0; // LITERAL-PX-OK: marcador de chrome, espessura de tela
-/// Fração da altura da célula que a barra ocupa com peso CHEIO (`1.0`). A barra é um
-/// medidor de influência: a altura conta o peso do falloff, então escala com a célula.
-const SELECTED_BAR_FULL_FRAC: f32 = 0.42; // LITERAL-OK: fração da célula, não medida fixa
 /// Espessura da linha do playhead.
 const PLAYHEAD_W: f32 = 2.0; // LITERAL-PX-OK: playhead line width
 /// A célula só ganha rótulo se couber ~um glifo e meio (senão o número sai cortado).
@@ -137,8 +131,11 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
         } else {
             String::new()
         };
-        let kind = if snap.current_key == Some(cell.key) {
-            ButtonKind::Accent // a chave que está NA TELA
+        // **Uma célula marcada para o MULTIFRAME veste a cor de ACENTO** (W7): o quadro
+        // ativo/âncora e as chaves marcadas ficam no acento; o resto, `Default`. A chave que
+        // está NA TELA também é acento (ela é sempre um alvo do gesto, com influência cheia).
+        let kind = if cell.selected || snap.current_key == Some(cell.key) {
+            ButtonKind::Accent
         } else {
             ButtonKind::Default
         };
@@ -149,25 +146,16 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
             ctx.text_system,
             theme,
         );
-        // **Marcada para o MULTIFRAME** (W7): uma barra na base da célula.
-        //
-        // Não é o `ButtonKind::Accent`: esse é da chave que está NA TELA, e ela e uma
-        // chave marcada precisam se distinguir de uma olhada — a ativa é a ÂNCORA (recebe
-        // influência cheia e é de onde o falloff mede), as marcadas são os outros alvos do
-        // mesmo gesto. Confundi-las faria o animador não saber onde o pincel vai bater.
-        // A ALTURA da barra é o **peso do multiframe** (o falloff, W7): cheia no quadro
-        // ativo, mais curta nos vizinhos. Com o Falloff DESLIGADO todo peso é `1.0` → todas
-        // as barras cheias e iguais; LIGADO, vira um gradiente. É o que torna o falloff
-        // visível na HORA, sem ter de esculpir e dar scrub (smoke do Enio, 2026-07-14).
+        // **O falloff pintado no FUNDO do quadro** (W7, Enio 2026-07-15: trocar a barra pela
+        // cor de acento que CLAREIA com a distância). A célula marcada veste o acento e
+        // clareia em direção ao branco por `(1 − peso)` — cheio (acento puro) no ativo, mais
+        // claro nos vizinhos. O peso é o MESMO que o pincel usa (`cell.weight` ← `falloff_at`,
+        // seed = sample), então a cor não pode mentir sobre a força do gesto. Falloff
+        // DESLIGADO ⇒ peso `1.0` ⇒ véu nulo ⇒ todas as marcadas no acento cheio e uniforme;
+        // LIGADO ⇒ gradiente. O piso do falloff mantém a célula VISÍVEL (o véu nunca chega ao
+        // branco), espelhando "a chave marcada nunca some".
         if cell.selected {
-            let h = selected_bar_height(r.h, cell.weight);
-            let bar = Rect::new(r.x, r.y + r.h - h, r.w, h);
-            fill_rounded_rect(
-                ctx.scene,
-                bar,
-                Radius::Sm.px(),
-                resolve(ColorToken::Selection, theme),
-            );
+            lighten_cell_by_falloff(ctx, r, cell.weight);
         }
         // Desenho instanciado (a MESMA arte em várias chaves): um ponto discreto.
         if cell.instanced && w > INSTANCE_DOT * 2.0 {
@@ -246,41 +234,58 @@ fn paint_scrub_lane(
     ctx.host.hit_index_mut().register(ids::FLIP_SCRUB, lane);
 }
 
-/// **A altura da barra de seleção = o PESO do multiframe** (o falloff, W7), em px de tela.
+/// **A opacidade do véu de clareamento** para um peso de falloff, em `0..=255`.
 ///
-/// Cheia (fração da célula) no peso `1.0`; encolhe com o peso; nunca abaixo do piso
-/// `SELECTED_BAR` (peso baixo ainda tem de se ver — espelha o `MIN_FALLOFF`). É a função
-/// que torna o falloff visível NA TIRA: com ele desligado todo peso é `1.0` (barras iguais
-/// e cheias), ligado vira gradiente.
-fn selected_bar_height(cell_h: f32, weight: f32) -> f32 {
-    let full = (cell_h * SELECTED_BAR_FULL_FRAC).max(SELECTED_BAR);
-    (full * weight.clamp(0.0, 1.0)).max(SELECTED_BAR)
+/// `(1 − peso)`: peso CHEIO (`1.0` — o quadro ativo, ou o falloff desligado) ⇒ `0` (véu
+/// nulo, acento puro); peso baixo (vizinho distante) ⇒ véu forte (célula clara). É o
+/// `1 − peso` porque o véu é BRANCO: quanto mais véu, mais claro o acento. O peso é o do
+/// pincel (`falloff_at`, seed = sample), então a cor não mente sobre a força do gesto.
+fn falloff_veil(weight: f32) -> u8 {
+    ((1.0 - weight.clamp(0.0, 1.0)) * 255.0) as u8 // CLAMP-OK: 1−[0,1] ∈ [0,1] ⇒ [0,255]
+}
+
+/// Clareia a célula marcada pintando um véu BRANCO sobre o acento, com opacidade
+/// [`falloff_veil`]. Substitui a barra do falloff (Enio 2026-07-15): o falloff se vê no
+/// FUNDO do quadro — acento cheio no ativo, mais claro nos vizinhos.
+fn lighten_cell_by_falloff(ctx: &mut PaintCtx, r: Rect, weight: f32) {
+    let veil = falloff_veil(weight);
+    if veil == 0 {
+        return; // peso cheio: acento puro, nada a clarear
+    }
+    // Branco com opacidade `veil` = o acento clareado por alpha-blend. Construído por
+    // `token_to_vello` (o painel não depende de `ph2d_vector`); o raio casa com o do botão.
+    let white = TokenColor {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: veil,
+    }; // LITERAL-COLOR-OK: véu de clareamento — o branco é o LIMITE do "mais claro", não uma cor de design
+    fill_rounded_rect(ctx.scene, r, Radius::Md.px(), token_to_vello(white));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// 🔴 **A barra ENCOLHE com o peso, e o gradiente do falloff aparece na tira** — é o
-    /// que responde ao "não percebo o efeito de falloff" (smoke do Enio, 2026-07-14).
-    ///
-    /// Peso cheio (`1.0`, falloff off ou quadro ativo) = barra alta; peso baixo (vizinho
-    /// distante) = barra baixa, mas nunca abaixo do piso. Mutação que sangra: ignorar o
-    /// `weight` (barra de altura fixa) — a alta e a baixa colapsam no mesmo valor.
+    /// 🔴 **O véu CLAREIA com a distância** (o peso do falloff cai) — é o que responde a
+    /// *"coloque graduações da cor de acento… 50% mais claro a cada frame de distância"*
+    /// (Enio 2026-07-15). Peso cheio (`1.0`, ativo / falloff off) ⇒ véu ZERO (acento puro);
+    /// peso menor ⇒ véu MAIOR (mais claro), monotônico. Mutação que sangra: ignorar o `weight`
+    /// (véu constante) — cheio e fraco colapsam no mesmo valor.
     #[test]
-    fn the_selection_bar_height_tracks_the_multiframe_weight() {
-        let cell_h = 40.0;
-        let full = selected_bar_height(cell_h, 1.0);
-        let weak = selected_bar_height(cell_h, 0.15);
-
-        assert!(
-            full > weak + 1.0,
-            "peso cheio ({full}) e peso fraco ({weak}) dao quase a mesma barra — o \
-             gradiente do falloff nao apareceria"
+    fn the_lightening_veil_grows_as_the_falloff_weight_falls() {
+        assert_eq!(
+            falloff_veil(1.0),
+            0,
+            "peso cheio tem de ser acento PURO (véu zero)"
         );
-        // Cheio ocupa a fração prevista da célula (o medidor "enche").
-        assert!((full - cell_h * SELECTED_BAR_FULL_FRAC).abs() < 1e-3);
-        // Nunca some: até o peso mais baixo respeita o piso.
-        assert!(selected_bar_height(cell_h, 0.0) >= SELECTED_BAR);
+        // Menos peso ⇒ mais véu (mais claro), estritamente monotônico.
+        assert!(falloff_veil(0.5) > falloff_veil(1.0));
+        assert!(falloff_veil(0.15) > falloff_veil(0.5));
+        // O piso do falloff (0.15) nunca deixa o véu chegar ao branco puro (a célula some).
+        assert!(
+            falloff_veil(0.15) < 255,
+            "no piso do falloff a célula ainda tem de aparecer (véu < branco pleno)"
+        );
     }
 }

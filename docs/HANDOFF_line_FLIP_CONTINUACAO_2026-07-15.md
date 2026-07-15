@@ -29,7 +29,8 @@
 
 | commit | o quê | smoke |
 |---|---|---|
-| `a93d29a2` | **W7.5 Fase 2**: o GIZMO da pose no modo Edit (rotate/escala da instância) + latentes da linha fechados | **pendente** (roteiro acima) |
+| `816fff9c` | **W8**: seleção no domínio POINT (meia-traço + máscara fina do Sculpt) | **pendente** (§6 abaixo) |
+| `a93d29a2` | **W7.5 Fase 2**: o GIZMO da pose no modo Edit (rotate/escala da instância) + latentes da linha fechados | **OK** (Enio, 2026-07-15) |
 | `df809109` | **W7.5 Fase 1**: a pose da chave vira AFIM (`Pose`) | fundação, sem UI nova |
 | `78754294` | falloff SIMÉTRICO 50%/quadro + número da célula não é mais lavado | **OK** (Enio) |
 | `93b8bac7` | W7.4: falloff no FUNDO do quadro (cor de acento que clareia) | reestilizado por `78754294` |
@@ -208,14 +209,57 @@ gira/escala e confere que a OUTRA instância e o objeto não se mexem.
 
 ## 4. Fila aberta (herdada — detalhe em `HANDOFF_flip_impl.md` §Aberto)
 
-- ~~**W7.5 Fase 2**~~ — ✅ fechou (`a93d29a2`, pendente smoke; §3).
-- **Seleção no domínio POINT** (hoje por TRAÇO): mover uma âncora só, máscara fina pro Sculpt.
+- ~~**W7.5 Fase 2**~~ — ✅ fechou (`a93d29a2`, smoke OK; §3).
+- ~~**Seleção no domínio POINT**~~ — ✅ fechou (`816fff9c`, **W8**, pendente smoke; §6).
+- ~~**`pack_perf.rs` — defeito latente**~~ — ✅ já estava fechado: os DOIS tetos são por-perfil
+  (o 2º pela linha Vector, o 1º por `ace54f41`); a nota anterior estava defasada.
 - **W6 (timeline global): ADIADA** (a timeline principal ainda está em dev; o playhead do Flip já é
   o global, então a integração não terá relógio a reconciliar).
 - **Refinos não-bloqueantes**: reorder de camada por drag, duplicar/agrupar camada, raio dedicado
   da borracha + preview, curva de pressão editável, round caps/joins, cache de tesselação com LRU.
-- **`pack_perf.rs` — defeito latente** (flag da linha/Vector): o 2º assert (`ms < 30.0`) é uma mina
-  no CI; o 1º teto já foi tornado por-perfil em `ace54f41`, o 2º ainda não.
+- **Sequelas naturais do W8** (não começadas): *segment mode* (corte por interseção visual — o
+  §11 dá a receita: raycast por segmento + fallback da cíclica) · transformar a SELEÇÃO com
+  gizmo (bbox da seleção → delta assado nos pontos — o `trs_to_pose`/`compute_gizmo_transform`
+  do W7.5 já são o precedente) · write-back do painel (espelhar o estilo da seleção).
+
+---
+
+## 6. W8 — seleção no domínio POINT (✅ FEITO, `816fff9c`; pendente o smoke)
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && PH2D_FLIP_EDIT_SMOKE=1 cargo run --release -p ph2d-host-desktop
+```
+
+Abre com uma senoide de 24 âncoras + um quadrado preenchido, tool Flip em modo **Edit**,
+domínio **Point** já armado (âncoras na tela). Roteiro: (1) clique numa âncora = só ela
+(acento); Shift alterna; (2) **marquee** pega as de dentro; (3) **arrastar** uma
+selecionada move a seleção — as outras ficam; (4) **Delete** dissolve (o traço continua
+ligado); (5) **All/None** do painel agem por ponto; (6) selecionar **meia** senoide e
+trocar pro **Sculpt** (Smooth): alisa SÓ a metade — a máscara fina; (7) voltar o toggle a
+**Stroke**: a seleção promove por `any()` e o clique volta a pegar o traço inteiro; (8)
+mover TODOS os pontos do quadrado leva o miolo junto; (9) Ctrl+Z desfaz gesto a gesto.
+
+**Como foi construído (não re-derive):**
+- **Modelo:** `FlipStroke.point_sel` privado (choke points `set_point_selected`/
+  `broadcast_selection_to_points`/`promote_points_to_stroke`). Invariante-mãe: **vazio =
+  a seleção vive no Curve; não-vazio ⇒ `selected == any(point_sel)`** — o Curve é a
+  projeção `any()` permanente, e é isso que mantém painel/halo/máscara-grossa certos sem
+  tocá-los. `FLIP_SCHEMA` **6→7**, `PROJECT_SCHEMA` **14→15** (pin `(15, 7, 8)`).
+- **Funil de delta novo** (`flip_transform::object_delta_to_art`): o delta do move desce
+  ao espaço da ARTE pela parte linear inversa da pose — fechou um **latente do W7.5**
+  (mover geometria sob pose girada ia na direção errada; translação pura = identidade
+  byte a byte). Vale pro move de traço E de ponto.
+- **Sculpt:** máscara por ponto por **snapshot-e-restaura** no `Session::apply` (o pincel
+  roda livre; a máscara devolve os não-selecionados + buracos) — vale pros 8 pincéis sem
+  mudar assinatura; Grab filtra no `begin`. Buracos não têm seleção própria: só andam com
+  o traço INTEIRO.
+- **Instância:** mover ponto de arte compartilhada é **recusado com toast** (a regra
+  W7.2: arrasto nunca deforma o gêmeo) — selecionar pode; Unlink libera.
+- **Foundational tocado (integrador, anote):** ids novos `FLIP_EDIT_DOM_STROKE`/
+  `FLIP_EDIT_DOM_POINT` em `ids/chrome/flip.rs` (editor-core, append-only).
+- 4 mutações provadas vermelhas (any-projection · restauração da máscara · ramo parcial
+  do estilo · descida do delta). Módulo novo `flip_select_points.rs` (split pelo cap de
+  LOC — o `flip_select.rs` re-exporta, uma porta só).
 
 ---
 

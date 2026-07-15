@@ -21,7 +21,9 @@
 | `b9d0ef28` | **feat(sculpt): W5** — Conserve, a *bow wave*: o que o Scrape tira, o aro recebe (ledger < 1%); checkbox opt-in nos cards Scrape/Chisel — **pendente smoke** |
 | `82107b4d` | docs: fechamento do W5 |
 | `923ba951` | **fix(painter): fase D** — pipeline de preview inocentado ao byte (9 gates, 1 em wgpu REAL na RTX) + 2 defeitos latentes corrigidos na costura de produtores (`take_preview_dirty` órfão · Partial sobre slot GPU) — **pendente smoke dos sintomas** |
-| (este) | docs: fechamento da fase D |
+| `16700d79` | docs: fechamento da fase D |
+| `fc96ef27` | **fix(impasto): a lei da CÁPSULA** — o smoke do D confirmou e NOMEOU o sintoma ("uma reta de relevo ligando os pontos"); o sweep do relevo agora exige sobreposição (`dist ≤ min(r, r_prev)`); dabs espalhados viram CONTAS como a cor — **pendente re-smoke** |
+| (este) | docs: fechamento da cápsula |
 
 ## 2. Superfície tocada
 
@@ -134,12 +136,15 @@ relevo, costurado nos 7 sites com seam test que CLICA.
    offset novo, mas o `bank` guarda o volume do offset de stamp — auto-cura no próximo re-stamp de
    geometria (o toggle do Conserve re-stampa; o slider do Offset não). Se o Enio sentir, o fix é
    re-stampar também no `set_sculpt_offset`.
-4. **D — bugs de display, SMOKE de confirmação**: o pipeline headless está inocentado + blindado
-   (§4-D); se os sintomas AINDA aparecerem no app vivo, rode com **`PH2D_PREVIEW_DIAG=1`** (loga o
-   dono do slot + bbox por frame) e **`PH2D_PREVIEW_DUMP=<dir>`** (PNG do composite CPU por frame —
-   se o PNG do frame do pen-up está certo e a tela não, o defeito é present/cadência; se o PNG já
-   está errado, é condição que meu harness não armou — traga a receita exata). O gate GPU real roda
-   com `cd <worktree> && cargo test -p ph2d-host-desktop the_screen_survives -- --ignored`.
+4. **D — RE-SMOKE pós-cápsula (`fc96ef27`)**: o smoke confirmou os sintomas e a causa era a
+   CÁPSULA do relevo (tool-side, não display): jitter/Airbrush devem agora deixar CONTAS de relevo
+   coincidentes com a tinta, sem barras cinzas. **Anchored**: não reproduzido em 5 sondas headless —
+   a hipótese é que ele sempre commitou relevo e o "some" era CONTRASTE com o relevo fantasma
+   inflado dos outros métodos (sobre pilha alta o teto comprime o acréscimo: delta medido 339
+   bytes); se pós-fix o Anchored ainda parecer morto, traga a receita exata (tamanho do drag, sobre
+   pilha ou tela nua). Instrumentação de display continua disponível (`PH2D_PREVIEW_DIAG=1` /
+   `PH2D_PREVIEW_DUMP=<dir>`); o gate GPU real roda com
+   `cd <worktree> && cargo test -p ph2d-host-desktop the_screen_survives -- --ignored`.
 5. **A TINTA EMPURRADA (Push)**: fim da fila, ordem do Enio. Nota: o W5 reusa `bank_dab_push` — o
    diagnóstico do desenho do Push e o da pilha do Conserve agora são O MESMO problema no MESMO motor.
 6. **Perf do Deform NÃO é gateada** (nunca foi): o W4 adiciona 3 amostragens/texel quando há relevo +

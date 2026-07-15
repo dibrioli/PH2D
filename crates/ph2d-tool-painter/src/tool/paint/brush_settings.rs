@@ -147,6 +147,13 @@ pub struct BrushSettings {
     /// Chisel **Rake** — does the V follow the direction of the stroke? (Default on.) Shown only for the
     /// Chisel, the one verb with an axis.
     pub sculpt_rake: bool,
+    /// **Conserve** (W5) — the down-only verbs bank the removed volume on the rim (the bow wave).
+    /// Painted on the Scrape and Chisel cards only: the pure removers, the verbs the flag governs.
+    pub sculpt_conserve: bool,
+    /// Whether the ACTIVE verb is one the Conserve flag governs (`SculptMode::conserves`) — projected
+    /// here so the panel asks the tool instead of keeping its own copy of the verb list (two doors to
+    /// the same question diverge).
+    pub sculpt_conserves: bool,
     /// Inflate **Smoothness** (Radius), `0..1` track — softens the ball's hard edge. Shown only for Inflate.
     pub sculpt_smooth: f32,
     /// The Smoothness in texels (`0..16`), as the chip reads it.

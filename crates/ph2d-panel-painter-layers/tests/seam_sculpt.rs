@@ -654,3 +654,45 @@ fn the_smoothness_slider_is_wired_to_the_tool() {
         "SetValue on the Smoothness slider did not reach the kernel — `route_sculpt_event` has no arm for it"
     );
 }
+
+/// **Clicking Conserve flips the flag — and back.** (W5.) The sweep above proves the row is reachable;
+/// this proves the arm's EFFECT: the click lands in `toggle_sculpt_conserve` and the tool state moves.
+///
+/// **Mutation that must bleed:** drop the `PAINTER_SCULPT_CONSERVE` arm from `route_sculpt_event` — the
+/// click is dispatched, forwarded, and applied to nothing.
+#[test]
+fn clicking_conserve_flips_the_flag() {
+    let mut tool = tool_in_sculpt_mode(Some(CHISEL));
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+
+    assert!(
+        !tool.brush_settings().sculpt_conserve,
+        "fixture: Conserve defaults OFF (the bow wave is opt-in until its drawing survives a smoke)"
+    );
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let (_, rect) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_CONSERVE && r.w > 0.0 && r.h > 0.0)
+        .copied()
+        .expect("the Conserve row is not painted with a clickable rect on the Chisel card");
+    let (x, y) = centre(rect);
+    click_through(&mut host, &mut st, &mut tool, x, y);
+    assert!(
+        tool.brush_settings().sculpt_conserve,
+        "the click never reached the tool — the Conserve seam has a dead link (populate / forward / route)"
+    );
+    set_current_brush(Some(tool.brush_settings()));
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let (_, rect) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_CONSERVE && r.w > 0.0 && r.h > 0.0)
+        .copied()
+        .expect("the row vanished after one click");
+    let (x, y) = centre(rect);
+    click_through(&mut host, &mut st, &mut tool, x, y);
+    assert!(
+        !tool.brush_settings().sculpt_conserve,
+        "the second click did not flip it back"
+    );
+}

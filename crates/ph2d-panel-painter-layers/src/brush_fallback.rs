@@ -86,6 +86,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     sculpt_angle: 0.5,  // LITERAL-PX-OK: Sculpt default (mirrors SculptState::default)
     sculpt_angle_deg: 30.0, // LITERAL-PX-OK: …and 0.5 maps to 30° of chisel
     sculpt_rake: true,  // the groove follows the stroke (mirrors SculptState::default)
+    sculpt_conserve: false, // opt-in bow wave (mirrors SculptState::default)
+    sculpt_conserves: false,
     sculpt_smooth: 0.0, // Inflate's edge is hard by default (mirrors SculptState::default)
     sculpt_smooth_px: 0,
     sculpt_is_inflate: false,

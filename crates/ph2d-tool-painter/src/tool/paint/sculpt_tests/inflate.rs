@@ -35,11 +35,9 @@
 //! a closed form.
 
 use super::*;
-use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
-use ph2d_painter_brush::{BrushSpec, Falloff};
+use ph2d_painter_brush::Falloff;
 use std::sync::Arc;
 
-const LAYER: u8 = 6;
 const INFLATE: u8 = 7;
 
 /// The light's height→pixel gain — the constant that makes the two axes of a height field comparable, and
@@ -49,8 +47,6 @@ const UNIT: f32 = super::super::impasto_light::DEPTH_UNIT_PX;
 
 /// Depth `+0.5` loads on the `0..1` track (`depth = (t − 0.5) · 2`).
 const DEPTH_UP: f32 = 0.75;
-/// Depth `−0.5` loads.
-const DEPTH_DOWN: f32 = 0.25;
 
 // ── The analytic oracle: a ramp, where the offset of a plane is a closed form ────────────────────────
 

@@ -153,6 +153,7 @@ pub fn accumulate_dab_plane(
         plane_sum,
         pre,
         scratch,
+        mut bite,
     } = out;
     let n = (width as usize) * (height as usize);
     if amount.len() < n || plane_sum.len() < n || pre.len() < n {
@@ -182,8 +183,24 @@ pub fn accumulate_dab_plane(
         let dx = ((i % w_us) as f32 + 0.5) - cx;
         let dy = ((i / w_us) as f32 + 0.5) - cy;
         let v = (dx * perp[0] + dy * perp[1]).abs() * tilt;
+        let target = plane.at(dx, dy) + v;
+        // The Conserve bite — the render's own removal expression, differenced across this dab's
+        // arrival, with old and new field values in hand (see [`PlaneBite`]). Before the `+=`s below.
+        if let Some(b) = bite.as_mut() {
+            let p = pre[i];
+            let a_old = amount[i];
+            let a_new = a_old + add;
+            let rem_new = a_new.clamp(0.0, 1.0)
+                * (p - ((plane_sum[i] + add * target) / a_new + b.offset)).max(0.0);
+            let rem_old = if a_old > 0.0 {
+                a_old.clamp(0.0, 1.0) * (p - (plane_sum[i] / a_old + b.offset)).max(0.0)
+            } else {
+                0.0
+            };
+            *b.displaced += rem_new - rem_old;
+        }
         amount[i] += add;
-        plane_sum[i] += add * (plane.at(dx, dy) + v);
+        plane_sum[i] += add * target;
     }
     Some(rect)
 }
@@ -222,6 +239,27 @@ pub struct Chisel {
     pub dir: [f32; 2],
 }
 
+/// The **Conserve** bite — how much volume THIS dab's arrival removes, measured incrementally against
+/// the fields as they stood before it (W5, `docs/Painter/18…` §6).
+///
+/// It rides inside [`accumulate_dab_plane`]'s second pass, where `amount`/`plane_sum` old-and-new are
+/// already in hand — a separate walk to answer the same question is what put the deposit's impasto at
+/// 5.0 ms/move once before ([`crate::height_push::PushBite`] rides its walk for exactly this reason).
+///
+/// The measure mirrors the RENDER's own arithmetic for the down-only verbs: at a texel, the render
+/// removes `k·max(0, pre − (plane_sum/amount + offset))` with `k = min(amount, 1)`; the bite is the
+/// difference of that expression after and before this dab's `(add, add·plane)` lands. Summed over the
+/// stroke it telescopes to exactly what the final render removes — which is what lets
+/// [`crate::height_push::bank_dab_push`] put precisely that much back on the rim.
+pub struct PlaneBite<'a> {
+    /// The verb's plane offset at stamp time — the render applies it live, so the bite must count the
+    /// same target. (A knob edit after the stroke re-renders with the new offset but the bank keeps the
+    /// stamp-time volume until the next re-stamp; the shape editors re-stamp on every geometry drag.)
+    pub offset: f32,
+    /// Running total of removed volume, in loads·px² — what the caller hands to `bank_dab_push`.
+    pub displaced: &'a mut f32,
+}
+
 /// What a plane-family dab writes, and what it reads to decide. Grouped because they travel together and
 /// mean nothing apart — and because six loose buffer arguments is a call site nobody can read.
 pub struct PlaneOut<'a> {
@@ -233,6 +271,9 @@ pub struct PlaneOut<'a> {
     /// surface: fitting to the live one would let each dab flatten what the last dab flattened, making the
     /// result a function of the spacing and of how fast the artist moved.
     pub pre: &'a [f32],
+    /// The Conserve bite, when the verb removes and the tool wants the volume counted ([`PlaneBite`]).
+    /// `None` for Flatten/Fill (they are not pure removers) and while nothing will consume the number.
+    pub bite: Option<PlaneBite<'a>>,
     /// Caller-owned `(index, weight)` scratch, so the silhouette is sampled once and the fit still gets a
     /// second pass. Cleared on entry; never read across dabs.
     pub scratch: &'a mut Vec<(u32, f32)>,

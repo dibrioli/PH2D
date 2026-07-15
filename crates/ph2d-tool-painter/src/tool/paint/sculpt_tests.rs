@@ -581,6 +581,7 @@ fn the_sculpt_respects_the_selection() {
 // The SESSION's lifecycle (born / parked / dead), its byte budget and the perf kill criterion live in
 // the child module: same fixtures, different question. This file gates what the kernel DOES to the
 // relief; `session` gates the lifetime of the state that lets it.
+mod conserve;
 mod inflate;
 mod inflate_matter;
 mod inflate_smooth;

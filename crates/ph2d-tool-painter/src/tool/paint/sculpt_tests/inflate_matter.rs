@@ -6,7 +6,6 @@
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_painter_brush::{BrushSpec, Falloff};
-use std::sync::Arc;
 
 const LAYER: u8 = 6;
 const INFLATE: u8 = 7;

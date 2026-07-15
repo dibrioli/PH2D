@@ -140,6 +140,10 @@ impl PainterTool {
                 self.toggle_sculpt_rake();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SCULPT_CONSERVE => {
+                self.toggle_sculpt_conserve();
+                true
+            }
             _ => false,
         }
     }

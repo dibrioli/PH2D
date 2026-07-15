@@ -52,14 +52,14 @@ pub(crate) fn paint_sculpt_section(
     let mut y = mode_card(ctx, theme, x, content_w, y, brush.sculpt_mode as usize);
     y = match brush.sculpt_knob_family {
         1 => {
-            let y = offset_row(ctx, theme, x, content_w, y, brush);
+            let mut y = offset_row(ctx, theme, x, content_w, y, brush);
             // The Chisel places the plane AND folds the V about it — two questions, two knobs — and then
             // there is a third: *does the V follow the stroke?* That is Rake, and it lives HERE and not on
             // the Shape card, where the box of the same name turns a silhouette IMAGE and is not even drawn
             // until one is loaded. Enio went looking for a Rake and found none (Enio 2026-07-14).
             if brush.sculpt_is_chisel {
-                let y = angle_row(ctx, theme, x, content_w, y, brush);
-                crate::paint_brush_top::paint_checkbox_row(
+                y = angle_row(ctx, theme, x, content_w, y, brush);
+                y = crate::paint_brush_top::paint_checkbox_row(
                     ctx,
                     theme,
                     x,
@@ -68,10 +68,23 @@ pub(crate) fn paint_sculpt_section(
                     core_ids::PAINTER_SCULPT_RAKE,
                     "Rake",
                     brush.sculpt_rake,
-                )
-            } else {
-                y
+                );
             }
+            // **Conserve** (W5): only the verbs it governs get the row — the tool says which
+            // (`sculpt_conserves`), the panel never keeps its own copy of the verb list.
+            if brush.sculpt_conserves {
+                y = crate::paint_brush_top::paint_checkbox_row(
+                    ctx,
+                    theme,
+                    x,
+                    content_w,
+                    y,
+                    core_ids::PAINTER_SCULPT_CONSERVE,
+                    "Conserve",
+                    brush.sculpt_conserve,
+                );
+            }
+            y
         }
         2 => {
             let y = depth_row(ctx, theme, x, content_w, y, brush);

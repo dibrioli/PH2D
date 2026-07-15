@@ -153,6 +153,10 @@ pub(crate) struct SculptSnap {
     /// divides by it anyway, pulling the footprint toward height 0. Doc 18 §10.4 states the rule with a scar
     /// behind it: *ao adicionar um plano, adicione-o ao snapshot no mesmo commit.*
     pub(crate) plane_sum: Arc<Vec<f32>>,
+    /// The Conserve bow-wave field (W5) — `plane_sum`'s exact situation: derived from the dab list, so
+    /// the restore cannot rebuild it, and a bank dropped here would un-pile the ridge on the first undo
+    /// while the channel it balances stays cut. Same §10.4 rule, same commit.
+    pub(crate) bank: Arc<Vec<f32>>,
     /// The **matter** as the stroke found it — coverage, material and the layer's pixels.
     ///
     /// Here for the same reason `plane_sum` is, and the same rule (§10.4): **Inflate moves paint**, so it

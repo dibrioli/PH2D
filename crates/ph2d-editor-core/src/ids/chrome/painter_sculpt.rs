@@ -110,13 +110,18 @@ pub const PAINTER_SCULPT_CARD: NodeId = hash_node_id("painter_sculpt.card");
 /// loaded, governing something else. The chisel's V has an axis whether or not the brush has a picture.
 pub const PAINTER_SCULPT_RAKE: NodeId = hash_node_id("painter_sculpt.rake");
 
+/// **Conserve** (W5, plan §6) — the down-only verbs (Scrape / Chisel) bank the volume they remove onto
+/// the spatula's rim as a *bow wave*, instead of deleting it the way Blender deletes it. Paint is a
+/// substance; the flag is opt-in until the pile's drawing survives a smoke.
+pub const PAINTER_SCULPT_CONSERVE: NodeId = hash_node_id("painter_sculpt.conserve");
+
 /// Every Sculpt widget a pointer can CLICK — the sweep list for the seam gate (`tests/seam_sculpt.rs`).
 ///
 /// It exists because a widget that paints, registers a hit rect and is forwarded by `event.rs` is STILL
 /// dead if `populate` never gave it an `InteractiveState`: `is_focusable` answers `None => false`, the
 /// Down never activates it, and the `Click` never happens. That is how the Impasto light rig shipped
 /// inert. Keep this list exhaustive and the sweep cannot go stale.
-pub const PAINTER_SCULPT_CLICKS: [NodeId; 9] = [
+pub const PAINTER_SCULPT_CLICKS: [NodeId; 10] = [
     PAINTER_SCULPT_MODE_IDS[0],
     PAINTER_SCULPT_MODE_IDS[1],
     PAINTER_SCULPT_MODE_IDS[2],
@@ -126,6 +131,7 @@ pub const PAINTER_SCULPT_CLICKS: [NodeId; 9] = [
     PAINTER_SCULPT_MODE_IDS[6],
     PAINTER_SCULPT_MODE_IDS[7],
     PAINTER_SCULPT_RAKE,
+    PAINTER_SCULPT_CONSERVE,
 ];
 
 /// Every Sculpt slider (the `SetValue` half of the same sweep). All four are here even though the card only

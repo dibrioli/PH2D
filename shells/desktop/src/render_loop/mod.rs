@@ -572,6 +572,7 @@ impl crate::App {
         self.flip_edit_smoke();
         self.flip_selection_smoke();
         self.flip_segment_smoke();
+        self.blend_smoke();
         self.build_session_upkeep();
 
         let Some(gfx) = self.gfx.as_mut() else {
@@ -2980,6 +2981,17 @@ impl crate::App {
                 self.vec_connect.as_ref().map(|d| (d.path, &d.conn)),
                 &mut self.vec_connect_pending,
             );
+            // **Blend Objects, 1ª metade:** pendura o `VecBlend` na entidade (nascida no `sync`)
+            // do blend recém-criado. ANTES do `settle`, pela mesma razão do conector: o `settle`
+            // pula o blend, mas só o que ENXERGA — sem o componente já pendurado, o spine
+            // recém-empurrado seria assentado como um path comum e o recook do frame seguinte
+            // sairia deslocado (ADR-0122).
+            crate::blend_live::upkeep(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &mut self.vec_blend_pending,
+            );
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
             // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e
@@ -3040,6 +3052,16 @@ impl crate::App {
                 &vec_xf,
                 &mut self.vec_connect_sides,
             );
+            // **Blend Objects, 2ª metade:** os passos são função pura das fontes — re-cozidos
+            // aqui, todo frame, sobre os afins DESTE frame. É o que faz a transição SEGUIR a
+            // forma que o gizmo acabou de mover (ADR-0122). O buffer é zerado e repopulado.
+            crate::blend_live::recook(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &vec_xf,
+                &mut self.vec_blend_steps,
+            );
             // **Rótulos:** o texto que pertence a uma forma (ou a um conector) e a segue. A pose
             // é uma função pura do hospedeiro — como a rota do conector é da relação dele.
             //
@@ -3084,6 +3106,11 @@ impl crate::App {
 
             let cam_affine = camera.world_to_screen_affine(window_size);
             ph2d_vec_render::dispatch(vec_scene, &vec_view, &vec_xf, cam_affine, vector_scene);
+            // Os passos VIRTUAIS do Blend Object (ADR-0122): N formas interpoladas que não estão
+            // na cena. Por cima das fontes (elas já saíram no `dispatch`); os passos vivem ENTRE
+            // as fontes, então não as cobrem. O z-interleaving fino (passo entre A e B na pilha)
+            // é da Fase C.
+            ph2d_vec_render::draw_blend_steps(&self.vec_blend_steps, cam_affine, vector_scene);
             // Âncoras/handles/gradiente/marquee só interessam a quem edita nós; no
             // modo Select quem fala é o gizmo (ADR-0112). As guias de snap são caso à
             // parte (valem em TODOS os modos) — `vec_overlay` separa as duas políticas

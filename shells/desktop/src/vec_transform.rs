@@ -162,6 +162,12 @@ pub(crate) fn settle_origins(
                 // isso que o torna (corretamente) não-arrastável pelo gizmo: mover um
                 // conector não quer dizer nada; o que se move são as pontas dele.
                 && sim.world().get::<ph2d_ecs::VecConnector>(e).is_none()
+                // BLEND OBJECT (ADR-0122): pela MESMA razão do conector. O spine é geometria de
+                // MUNDO, reescrita a cada frame (`blend_live`) a partir dos centros das fontes —
+                // assentar somaria geometria + `Transform` e o deslocaria. Ele vive na
+                // identidade, e é isso que o torna não-arrastável pelo gizmo: mover um blend não
+                // quer dizer nada; o que se move são as formas-fonte.
+                && sim.world().get::<ph2d_ecs::VecBlend>(e).is_none()
                 && sim
                     .world()
                     .get::<Transform>(e)

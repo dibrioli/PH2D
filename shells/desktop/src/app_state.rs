@@ -698,6 +698,15 @@ pub(crate) struct App {
     /// O lado por onde cada ponta de cada conector saiu no frame anterior — a memória da
     /// histerese de `side_towards` (sem ela a saída pisca na diagonal). Runtime-only.
     pub(crate) vec_connect_sides: crate::connector_live::SideCache,
+    /// O **Blend Object recém-criado** (ADR-0122), esperando a entidade dele nascer no
+    /// `vec_entities::sync` para receber o `VecBlend`. Espelho do `vec_connect_pending`: o spine
+    /// já está na cena, e sem esta fila de um item a linha ficaria sem componente — um path
+    /// invisível que não interpola ninguém.
+    pub(crate) vec_blend_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecBlend)>,
+    /// Os **passos virtuais** de TODOS os blends, cozidos em MUNDO a cada frame pelo
+    /// `blend_live::recook` e desenhados por `ph2d_vec_render::draw_blend_steps`. Não estão na
+    /// cena (não são pickáveis) — é o que torna o blend UM objeto, e não N. Runtime-only.
+    pub(crate) vec_blend_steps: Vec<ph2d_vec_scene::VecPath>,
     /// O **hospedeiro** do rótulo que o duplo-clique acabou de abrir, esperando a 1ª letra
     /// materializar o objeto de texto (e com ele a entidade) para receber o `VecLabel`. Um
     /// rótulo nasce VAZIO — sem geometria não há path, sem path não há entidade, e sem entidade

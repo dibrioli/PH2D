@@ -25,12 +25,10 @@ mod tests {
         let mut reg = ComponentRegistry::new();
         register_ecs_components(&mut reg);
         register_script_components(&mut reg);
-        // 28 ecs components (4 foundational + 16 W3 sorting/visibility/
-        // sampling/mask + 1 §10 BlendMode + 4 undo: Locked/GroupedChildren/
-        // VecPathRef/FlipObjectRef + 1 Live Shapes: VecShape + 1 Painter
-        // persistence: PaintedDoc)
+        // 30 ecs components (ver `register_ecs_components_populates_registry` —
+        // inclui VecShape/VecConnector/VecBlend/VecLabel)
         // + 1 script component (LuauScript).
-        assert_eq!(reg.len(), 30);
+        assert_eq!(reg.len(), 31);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

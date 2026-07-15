@@ -112,12 +112,53 @@ mode capturando faces, e do `shape_under_cursor` do conector.
 | Fase | O quê | Onde |
 |---|---|---|
 | **1 ✅** | Retirar o Rotate/Reverse Match — correspondência 100% automática | (feito, commitado) |
-| **A** | Motor **multi-forma** puro: `chain(shapes, spacing)` → passos, cadeia pairwise; cor **OKLCH** | `ph2d-vec-blend` |
-| **B** | O objeto **vivo**: componente `VecBlend` + recook por frame + passe de render dos passos + skip no `settle_origins`. Spine AUTO (linha entre centros) | `ph2d-ecs` + shell |
+| **A ✅** | Motor **multi-forma** puro: `chain(shapes, n)` → passos, cadeia pairwise; cor **OKLab** | `ph2d-vec-blend` |
+| **B ✅** | O objeto **vivo**: componente `VecBlend` + recook por frame + passe de render dos passos + skip no `settle_origins`. Spine AUTO (linha entre centros) | `ph2d-ecs` + shell |
 | **C** | **Spine editável** (modo Node), **Pick Shapes** mode, painel (spacing/orientation/steps até 1000) | shell + painel |
 | **D** | **Expand** / **Release** | shell |
 
 Cada fase fecha com gate + smoke do Enio antes da próxima (a regra desta linha).
+
+## O que a Fase B LANDOU (2026-07-14, pendente smoke do Enio)
+
+O objeto vivo, ponta a ponta, **espelhando o conector** (o padrão de entidade-cuja-geometria-é-
+função-pura-de-outras que a linha já domina):
+
+- **`ph2d-ecs::VecBlend { sources: Vec<u64>, steps: u32 }`** — registrado no `ComponentRegistry`
+  (undo/save de graça). As fontes são `VecPathId`, nunca bits de entidade (o undo respawna). Os 3
+  contadores "que existem para doer" (`registry.rs` 29→30, `ph2d-render`/`ph2d-script` 30→31)
+  somados.
+- **`shells/desktop/src/blend_live.rs`** — `create`/`recook`/`attach`/`upkeep`, espelho exato do
+  `connector_live`. O recook resolve as fontes no MUNDO, roda `chain`, e deposita os passos num
+  `Vec<VecPath>` de mundo (o `vec_blend_steps` do `App`); atualiza o **spine** (polilinha entre os
+  centros) em lugar; devolve o `Transform` à identidade.
+- **`ph2d-vec-render::draw_blend_steps`** — o passe de render dos passos virtuais. Desenha pela
+  **mesma porta** que a arte real: o corpo por-path do `dispatch` foi extraído para `draw_path`, e
+  os passos e a cena passam os dois por ele (senão a transição divergiria do que a mesma forma
+  pareceria como path real — [[feedback_two_doors_to_the_same_question_diverge]]).
+- **`settle_origins` pula o `VecBlend`** (gate mutation-testado: sem o pulo, o settle assenta o
+  spine em (2,0) e a transição sai deslocada).
+- Wiring no `render_loop`: `upkeep` antes do `settle`, `recook` depois do `build`, `draw_blend_steps`
+  depois do `dispatch` — os mesmos três pontos do conector.
+- **Smoke `PH2D_BLEND_SMOKE`**: `=1` estrela→círculo vivo (5 passos); `=2` retângulo→estrela→círculo
+  em **cadeia** (4 passos/elo — a capacidade nova). Arraste uma fonte: a transição se refaz.
+
+**Gotchas para a Fase C (o próximo que mexer):**
+
+- **O spine é a geometria da PRÓPRIA entidade do blend, mas os passos NÃO estão na cena.** O path
+  que o `VecPathRef` aponta é o spine (invisível na Fase B: sem fill/stroke); os passos são desenho.
+  Quem for tornar o spine editável (modo Node) mexe no path da entidade; quem for pegar um passo no
+  canvas descobre que ele **não é pickável** (é o Illustrator — pega-se o objeto, não o passo).
+- **O recook recomputa `chain` por frame** (a busca de correspondência é 256×256, ~ms). Na Fase B
+  isso é aceitável (poucas fontes pequenas); se o painel deixar subir a centenas de passos ou o
+  smoke gaguejar, **memoizar o `Plan` por (fontes-em-mundo, steps)** é a alavanca (o `Plan` existe
+  exatamente para isto — a correspondência é função do par, não do `t`).
+- **z dos passos:** hoje eles desenham por cima das fontes (um passe após o `dispatch`). Como vivem
+  ENTRE as fontes no espaço, não as cobrem — mas o z-interleaving fino (passo entre A e B na pilha)
+  é da Fase C, junto com o Expand (que materializa os passos como paths reais na ordem certa).
+- **Criar por UI:** na Fase B o `create` é dirigido pelo smoke. A Fase C liga o **Pick Shapes**
+  (um `DrawMode` novo, ~3 linhas em `tool.rs`, espelho do `Connect`/`Build`) + o botão do painel a
+  ele. O `create` já é a função certa — só falta a UI que junta a seleção e o chama.
 
 ## Consequências
 

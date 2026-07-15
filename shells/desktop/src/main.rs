@@ -40,6 +40,10 @@
 mod app_state;
 mod atlas_loader;
 mod audio;
+/// Blend Objects vivos (ADR-0122): o objeto único que interpola 2..=5 formas e as segue
+/// (re-cook por frame). Espelha `connector_live`.
+mod blend_live;
+mod blend_smoke;
 mod build_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
@@ -337,6 +341,8 @@ impl App {
             vec_restack: None,
             vec_connect_pending: None,
             vec_connect_sides: crate::connector_live::SideCache::new(),
+            vec_blend_pending: None,
+            vec_blend_steps: Vec::new(),
             vec_label_pending: None,
             vec_label_poses: crate::label_live::LabelPoses::new(),
             vec_history: ph2d_vec_edit::History::new(),

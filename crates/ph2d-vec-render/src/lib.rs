@@ -50,6 +50,11 @@ pub use corner::draw_corner_handles;
 mod build_faces;
 pub use build_faces::draw_build_faces;
 
+/// Os **passos virtuais** do Blend Object (ADR-0122) — módulo irmão (LOC cap). Desenha N formas
+/// interpoladas que NÃO estão na cena, pela mesma porta ([`draw_path`]) que a arte real.
+mod blend_steps;
+pub use blend_steps::draw_blend_steps;
+
 /// Constrói o `BezPath` (world-space) de um path editável: para CADA contorno
 /// (primário + `subpaths`), `move_to` na 1ª âncora, depois uma cúbica por segmento
 /// usando `out_handle(i)` e `in_handle(i+1)`; fecha com uma cúbica final se
@@ -159,51 +164,65 @@ pub fn dispatch(
             continue;
         }
         let transform = path_to_screen(xforms, path.id, camera);
-        let bp = build_bezpath(path);
-        if let Some(fill) = &path.fill {
-            // O preenchimento ignora os contornos ABERTOS (linhas de construção — as
-            // arestas internas do cubo, a tampa do cilindro): eles não têm interior, e
-            // fechá-los implicitamente recorta a silhueta. Ver [`build_fill_bezpath`].
-            let fp = build_fill_bezpath(path);
-            if let Paint::MultiPoint { points } = fill {
-                fill_multipoint(target, &fp, path, points, transform);
-            } else {
-                // `VectorScene::fill_path` assume NonZero; um compound precisa da
-                // regra do path (EvenOdd vaza o contorno de dentro).
-                target.inner_mut().fill(
-                    fill_rule(path),
-                    transform,
-                    &fill_brush(fill, path),
-                    None,
-                    &fp,
-                );
-            }
+        draw_path(path, transform, target);
+    }
+}
+
+/// Desenha UM path já posicionado — o `transform` leva a geometria dele à tela. Fill primeiro,
+/// stroke por cima; pontas por último.
+///
+/// É o corpo de um item de [`dispatch`], **extraído de propósito**: os passos VIRTUAIS de um
+/// Blend Object (ADR-0122, [`draw_blend_steps`]) não estão na cena, mas são arte de verdade — e
+/// desenhá-los por uma segunda porta faria a transição divergir do que a MESMA forma pareceria
+/// como path real ([[feedback_two_doors_to_the_same_question_diverge]]). Os dois passam por AQUI.
+///
+/// Ao contrário dos overlays (gizmos, véu do Build), aqui a espessura do traço **escala com o
+/// mundo** — é o contorno de uma forma, como o de um sprite ampliado, não uma borda de px.
+pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorScene) {
+    let bp = build_bezpath(path);
+    if let Some(fill) = &path.fill {
+        // O preenchimento ignora os contornos ABERTOS (linhas de construção — as
+        // arestas internas do cubo, a tampa do cilindro): eles não têm interior, e
+        // fechá-los implicitamente recorta a silhueta. Ver [`build_fill_bezpath`].
+        let fp = build_fill_bezpath(path);
+        if let Paint::MultiPoint { points } = fill {
+            fill_multipoint(target, &fp, path, points, transform);
+        } else {
+            // `VectorScene::fill_path` assume NonZero; um compound precisa da
+            // regra do path (EvenOdd vaza o contorno de dentro).
+            target.inner_mut().fill(
+                fill_rule(path),
+                transform,
+                &fill_brush(fill, path),
+                None,
+                &fp,
+            );
         }
-        if let Some(s) = path.stroke {
-            // Com PONTAS, a linha é encurtada para caber nelas — senão o traço aparece por
-            // dentro de uma seta vazada e faz uma bolha na base de uma cheia. Sem pontas
-            // (o caso de 99% dos paths) nada disto roda: `bp` vai direto.
-            //
-            // `None` = a linha é mais curta que os recuos somados (uma linha de 2 px com uma
-            // seta gorda): aí NÃO se desenha linha nenhuma — só as pontas. Cair de volta na
-            // linha inteira seria desenhar exatamente o traço que o recuo existe para
-            // esconder.
-            let line = if s.has_markers() {
-                markers::stroked_line(path, &s).map(|p| build_bezpath(&p))
-            } else {
-                Some(bp.clone())
-            };
-            if let Some(line) = line {
-                target.inner_mut().stroke(
-                    &kurbo_stroke(&s),
-                    transform,
-                    &Brush::Solid(color(s.color)),
-                    None,
-                    &line,
-                );
-            }
-            markers::draw(target, path, &s, transform);
+    }
+    if let Some(s) = path.stroke {
+        // Com PONTAS, a linha é encurtada para caber nelas — senão o traço aparece por
+        // dentro de uma seta vazada e faz uma bolha na base de uma cheia. Sem pontas
+        // (o caso de 99% dos paths) nada disto roda: `bp` vai direto.
+        //
+        // `None` = a linha é mais curta que os recuos somados (uma linha de 2 px com uma
+        // seta gorda): aí NÃO se desenha linha nenhuma — só as pontas. Cair de volta na
+        // linha inteira seria desenhar exatamente o traço que o recuo existe para
+        // esconder.
+        let line = if s.has_markers() {
+            markers::stroked_line(path, &s).map(|p| build_bezpath(&p))
+        } else {
+            Some(bp.clone())
+        };
+        if let Some(line) = line {
+            target.inner_mut().stroke(
+                &kurbo_stroke(&s),
+                transform,
+                &Brush::Solid(color(s.color)),
+                None,
+                &line,
+            );
         }
+        markers::draw(target, path, &s, transform);
     }
 }
 

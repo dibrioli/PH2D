@@ -1095,22 +1095,25 @@ Smoke do W7.3 (Enio): *"em vez da barra de graduação do falloff coloque gradua
 do fundo do quadro… torne o rose 50% mais claro a cada frame de distância."* A barra de altura-por-
 peso saiu; agora **a célula marcada veste a cor de ACENTO no fundo e CLAREIA com a distância**.
 
-- **Como** (`paint_cells::lighten_cell_by_falloff`): a célula marcada é pintada com `ButtonKind::Accent`
-  (fundo no acento — rosa no tema original), e por cima vai um **véu BRANCO** de opacidade
-  `falloff_veil(weight) = (1 − peso)·255`. Peso cheio (ativo / falloff off) ⇒ véu zero ⇒ acento puro;
-  peso baixo ⇒ véu forte ⇒ claro. O piso do falloff (`MIN_FALLOFF`) mantém a célula visível (o véu
-  nunca chega ao branco pleno). A cor é construída por `token_to_vello(TokenColor{…})` — o painel não
-  depende de `ph2d_vector`.
-- **Seed = sample preservado.** O clareamento é dirigido pelo `weight` (= `flip_multiframe::cell_weight`
-  = `falloff_at`, o MESMO número que o pincel usa), **não** por uma taxa fixa de 50%/quadro. Uma cor
-  que clareasse 50%/quadro independentemente do peso mentiria sobre a força do gesto (o linear-tent
-  não é geométrico) — exatamente o bug que o W7 (a barra) resolveu. O pedido "50% mais claro" é
-  entregue em espírito (acento que clareia visivelmente com a distância), atado ao falloff REAL.
-  **Se o Enio quiser um 50%/quadro literal desacoplado do sculpt, é uma troca de uma linha** (o
-  `falloff_veil` passa a `1 − 0.5^passo`), mas aí a tira deixa de ser seed = sample.
-- **Gate**: `the_lightening_veil_grows_as_the_falloff_weight_falls` (mutação: véu constante que ignora
-  o peso sangra) + `the_cell_weight_preview_matches_the_sculpt_falloff` (seed = sample, intacto). A
-  barra (`selected_bar_height` + seu gate + os consts `SELECTED_BAR*`) foi removida.
+- **Como** (`paint_cells::paint_marked_cell`): a célula marcada é pintada À MÃO — fundo no acento
+  (rosa no tema original) + um **véu BRANCO** de opacidade `falloff_veil(weight) = (1 − peso)·255` +
+  **o número da exposição POR CIMA**, em tinta escura do acento. Peso cheio (ativo / falloff off) ⇒
+  véu zero ⇒ acento puro; peso baixo ⇒ véu forte ⇒ claro. O piso do falloff (`MIN_FALLOFF`) mantém a
+  célula visível. Cores por `token_to_vello(TokenColor{…})` — o painel não depende de `ph2d_vector`.
+- **Fix do smoke: o número não é mais LAVADO** (Enio 2026-07-15: *"apagou o número"*). Antes era
+  `paint_button(Accent)` + véu por cima de TUDO (fundo E rótulo) → nas células claras o número sumia.
+  Agora a ordem é acento → véu → número, então o número entra depois do véu e fica sempre legível.
+- **Falloff SIMÉTRICO e geométrico — 50%/quadro** (`flip_multiframe::falloff_at` agora `0.5^|delta|`
+  com piso). Smoke (Enio): *"por que não gradua simetricamente?"* — a tenda linear normalizada-por-lado
+  do GP fazia o mesmo `|delta|` pesar diferente nos dois lados quando o ativo não estava centrado.
+  Agora só depende de `|delta|`, e o clareamento é **literalmente** 50% por quadro (o `weight` é
+  `falloff_at`, **seed = sample**: a cor É a força). Sumiram os `span_before/after` e a fn `spans`.
+- **NB: "não graduou" era o toggle Falloff DESLIGADO** (Enio: *"esqueci de ligar falloff"*), não bug —
+  com falloff off o peso é `1.0` para todas ⇒ acento uniforme (correto). O default segue **off**.
+- **Gate**: `the_lightening_veil_grows_as_the_falloff_weight_falls` (véu constante sangra) +
+  `the_falloff_halves_each_frame_and_is_symmetric` (mutação: `0.5→1.0` não decai; medir com sinal
+  quebra a simetria — ambas provadas) + `the_cell_weight_preview_matches_the_sculpt_falloff` (seed =
+  sample). A barra (`selected_bar_height` + consts `SELECTED_BAR*`) e a fn `spans` foram removidas.
 
 ## Aberto (fila viva — detalhe em [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md))
 

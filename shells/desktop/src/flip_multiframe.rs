@@ -41,49 +41,30 @@ pub(crate) struct Target {
 /// dos fantasmas.
 const MIN_FALLOFF: f32 = 0.15; // LITERAL-OK: piso de influencia, medido pelo mesmo criterio do ghost
 
-/// **O falloff temporal** — a curva do GP, achatada no essencial.
+/// **O falloff temporal** — meia-vida geométrica: **50% por quadro de distância**.
 ///
-/// A referência descreve UMA curva com o quadro ativo em `x = 0.5`, os anteriores em
-/// `[0, 0.5)` e os posteriores em `(0.5, 1]` — o que dá **atenuação assimétrica de graça**
-/// (o passado e o futuro podem cair em ritmos diferentes). Aqui a curva é a tenda linear
-/// normalizada por cada LADO da seleção, o que preserva essa assimetria: dois quadros para
-/// trás e dez para a frente não fazem o vizinho de trás cair dez vezes mais rápido.
+/// `presença = 0.5^|delta|`, com piso em `MIN_FALLOFF`. É **SIMÉTRICO** (só depende de
+/// `|delta|` — não do lado nem de quão espalhada está a seleção) e independente do span:
+/// *"cada quadro de distância, metade da influência"* (Enio 2026-07-15, *"50% mais claro a
+/// cada frame"* + *"por que não gradua simetricamente?"*). Substituiu a tenda linear
+/// normalizada-por-lado da referência do GP — que era assimétrica de propósito, mas fazia o
+/// mesmo `|delta|` pesar diferente nos dois lados quando o ativo não estava centrado, e o
+/// animador leu isso como bug. O piso impede que um quadro marcado fique totalmente inerte
+/// (o mesmo raciocínio do `GHOST_MIN_ALPHA`); e é por ele — não pela meia-vida — que a
+/// mutação de retirar o `max(MIN_FALLOFF)` sangra.
 ///
-/// `delta` = distância em quadros do alvo ao quadro ATIVO (negativo = antes).
+/// `delta` = distância em quadros do alvo ao quadro ATIVO (o SINAL não importa: simétrico).
 #[must_use]
-pub(crate) fn falloff_at(delta: i32, span_before: i32, span_after: i32) -> f32 {
-    // (Sem caso especial para `delta == 0`: a aritmética abaixo já devolve `1.0` ali —
-    // `t = 0` ⇒ influência cheia. Um early-return redundante mentiria sobre onde a
-    // invariante mora, e a mutação que o removia não derrubava gate nenhum. Quem guarda a
-    // propriedade é o teste `falloff_at(0, …) == 1.0`.)
-    let span = if delta < 0 { span_before } else { span_after };
-    if span <= 0 {
-        return 1.0;
-    }
-    let t = (delta.abs() as f32 / span as f32).clamp(0.0, 1.0);
-    (1.0 - t).mul_add(1.0 - MIN_FALLOFF, MIN_FALLOFF)
-}
-
-/// **Os dois alcances da seleção**, medidos a partir do quadro ATIVO: `(antes, depois)`.
-/// É o denominador de cada lado da tenda do falloff — é ele que dá a assimetria (ver
-/// `falloff_at`). Compartilhado por [`targets`] (o que a escultura aplica) e pela PRÉVIA
-/// da tira (a barra de peso por célula), para que o que o animador VÊ seja o que o pincel
-/// FAZ — seed = sample (`feedback_derived_coordinate_seed_must_match_sample`).
-#[must_use]
-pub(crate) fn spans(selection: &[Frame], active_frame: Frame) -> (i32, i32) {
-    let (mut before, mut after) = (0, 0);
-    for &k in selection {
-        let d = k - active_frame;
-        before = before.max(-d);
-        after = after.max(d);
-    }
-    (before, after)
+pub(crate) fn falloff_at(delta: i32) -> f32 {
+    // `delta == 0` ⇒ `0.5^0 = 1.0` (influência cheia), sem caso especial. `powi` é
+    // multiplicação repetida — determinístico e transcendental-free (HR-5).
+    0.5f32.powi(delta.abs()).max(MIN_FALLOFF)
 }
 
 /// **O peso do multiframe que a chave `k` recebe** — a PRÉVIA que a tira pinta em cada
 /// célula selecionada. `1.0` fora do multiframe (0/1 chave marcada) ou com o falloff
-/// desligado; senão a tenda do falloff. É a MESMA `falloff_at` que a escultura usa, então
-/// a barra da célula não pode mentir sobre a força do gesto.
+/// desligado; senão a meia-vida do falloff. É a MESMA `falloff_at` que a escultura usa,
+/// então a cor da célula não pode mentir sobre a força do gesto.
 #[must_use]
 pub(crate) fn cell_weight(
     selection: &[Frame],
@@ -94,8 +75,7 @@ pub(crate) fn cell_weight(
     if selection.len() < 2 || !falloff_on {
         return 1.0;
     }
-    let (before, after) = spans(selection, active_frame);
-    falloff_at(k - active_frame, before, after)
+    falloff_at(k - active_frame)
 }
 
 /// **Os quadros que este gesto edita.**
@@ -137,10 +117,6 @@ pub(crate) fn targets(
     // chave → desenho (a API canônica da camada; sentinelas de fim já filtradas).
     let cells = layer.cells();
 
-    // Os dois lados da seleção, medidos a partir do quadro ATIVO — é o que dá a
-    // assimetria da curva (ver `falloff_at`).
-    let (span_before, span_after) = spans(selection, active_frame);
-
     for &k in selection {
         let Some(&(_, did, _)) = cells.iter().find(|(f, _, _)| *f == k) else {
             continue; // a chave sumiu (apagada) — a seleção é estado de UI, o doc manda
@@ -151,7 +127,7 @@ pub(crate) fn targets(
             continue;
         }
         let falloff = if falloff_on {
-            falloff_at(k - active_frame, span_before, span_after)
+            falloff_at(k - active_frame)
         } else {
             1.0
         };

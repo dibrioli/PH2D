@@ -355,25 +355,27 @@ comum, tem exatamente um item.
    deformando quadros que o usuário esqueceu de desmarcar. (Só o `FlipEdit::Draw` limpa —
    limpar em `Modify` mataria o multiframe no exato momento do uso.)
 
-**O falloff** (`falloff_at`, toggle **Falloff** na barra, desligado por padrão): tenda linear
-normalizada por **cada lado** da seleção — dois quadros para trás e dez para a frente não fazem o
-vizinho de trás cair dez vezes mais rápido (a assimetria é de graça na curva do GP, que põe o
-quadro ativo no meio). Tem **piso** (`MIN_FALLOFF`): um quadro que o usuário marcou e que não se
-mexe pareceria ignorado — o mesmo raciocínio do `GHOST_MIN_ALPHA`.
+**O falloff** (`falloff_at`, toggle **Falloff** na barra, desligado por padrão): **meia-vida
+geométrica — `0.5^|delta|`, 50% por quadro de distância**, com **piso** (`MIN_FALLOFF`) para que um
+quadro marcado distante não fique totalmente inerte (o mesmo raciocínio do `GHOST_MIN_ALPHA`). É
+**SIMÉTRICO** (só depende de `|delta|`) e independente do espalhamento da seleção. Substituiu a tenda
+linear normalizada-por-lado da referência do GP: aquela era assimétrica de propósito, mas fazia o
+mesmo `|delta|` pesar diferente nos dois lados quando o ativo não estava centrado, e o animador leu
+isso como bug (Enio 2026-07-15: *"por que não gradua simetricamente?"*).
 
 **A prévia na tira (smoke do Enio 2026-07-14: *"não percebo o efeito de falloff"*; 2026-07-15:
 *"coloque graduações da cor de acento… 50% mais claro a cada frame de distância"*).** O falloff só
 afeta os quadros VIZINHOS (o ativo sempre recebe 100%), então antes ele era invisível: você
 esculpia, dava scrub e comparava magnitudes entre quadros. Agora a **célula marcada veste a cor de
-ACENTO no fundo, e CLAREIA com a distância**: o quadro ativo/âncora fica no acento cheio, os vizinhos
-mais claros (um véu branco de opacidade `1 − peso` sobre o acento). Com o Falloff **desligado** todo
-peso é `1.0` ⇒ o acento é cheio e uniforme; **ligado**, vira um gradiente de claridade (ativo cheio,
-distante quase branco — mas nunca branco pleno: o piso do falloff mantém a célula visível). O peso é
-`FlipCell.weight` (computado por `flip_multiframe::cell_weight` — a MESMA `falloff_at` que a
-escultura, **seed = sample**: a cor não mente sobre a força do gesto). O efeito se VÊ na hora de
-marcar/togglear, sem esculpir — *"uma seleção que não se vê não existe"*. (Substituiu a barra de
-altura-por-peso; o clareamento segue o falloff REAL, não uma taxa fixa de 50%/quadro — a barra
-mentiria sobre o sculpt.)
+ACENTO no fundo, e CLAREIA com a distância** (`paint_marked_cell`): o quadro ativo/âncora fica no
+acento cheio, os vizinhos mais claros (um véu branco de opacidade `1 − peso` sobre o acento). Como o
+falloff é geométrico 50%/quadro, o 1º vizinho fica **meio acento**, o 2º **um quarto** — literalmente
+*"50% mais claro a cada frame de distância"* (Enio). Com o Falloff **desligado** todo peso é `1.0` ⇒
+acento cheio e uniforme; **ligado**, gradiente. O **número da exposição é pintado POR CIMA do véu**,
+em tinta escura do acento — senão o clareamento o lavava (Enio: *"apagou o número"*). O peso é
+`FlipCell.weight` (= `flip_multiframe::cell_weight` = a MESMA `falloff_at` da escultura, **seed =
+sample**: a cor não mente sobre a força do gesto). O efeito se VÊ na hora de marcar/togglear, sem
+esculpir — *"uma seleção que não se vê não existe"*.
 
 O quadro **ativo** entra sempre, com influência cheia, mesmo fora da seleção (é o *`+ frame atual
 como fallback`* da referência). Multiframe **nunca inventa quadro**: as chaves selecionadas já

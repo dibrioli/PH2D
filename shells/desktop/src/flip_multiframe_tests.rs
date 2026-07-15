@@ -88,35 +88,31 @@ fn two_keys_sharing_one_drawing_are_a_single_target() {
     assert_eq!(t.iter().filter(|x| x.did == d5).count(), 1);
 }
 
-/// **O falloff cai com a distância temporal, e é ASSIMÉTRICO** — cada lado é normalizado
-/// pelo seu próprio alcance (a curva do GP tem o quadro ativo no meio, e por isso passado e
-/// futuro caem em ritmos independentes).
+/// 🔴 **O falloff HALVA a cada quadro e é SIMÉTRICO** (Enio 2026-07-15: *"50% mais claro a
+/// cada frame"* + *"por que não gradua simetricamente?"*): `0.5^|delta|`, com PISO para que o
+/// quadro marcado mais distante nunca fique totalmente inerte.
 ///
-/// E ele tem PISO: o quadro mais distante da seleção não pode receber influência zero — ele
-/// seria um alvo que o usuário marcou e que não se mexe.
+/// Mutação que sangra: trocar `0.5` por `1.0` (não decai); tirar o `max(MIN_FALLOFF)` (a
+/// borda cai a ~0); ou medir com sinal (quebra a simetria).
 #[test]
-fn the_falloff_decays_with_temporal_distance_and_never_reaches_zero() {
-    assert_eq!(
-        falloff_at(0, 5, 5),
-        1.0,
-        "o quadro ativo e influencia CHEIA"
-    );
-
-    // Simétrico: mesma distância, mesmo peso.
-    assert!((falloff_at(-2, 4, 4) - falloff_at(2, 4, 4)).abs() < 1e-6);
-    // Monotônico: mais longe, menos influência.
-    assert!(falloff_at(1, 4, 4) > falloff_at(3, 4, 4));
-    // Piso: a borda ainda se mexe.
+fn the_falloff_halves_each_frame_and_is_symmetric() {
+    // O quadro ativo: influência CHEIA (`0.5^0 = 1`).
+    assert_eq!(falloff_at(0), 1.0, "o quadro ativo e influencia CHEIA");
+    // **50% por quadro de distância** — a meia-vida geométrica.
     assert!(
-        falloff_at(4, 4, 4) >= MIN_FALLOFF,
-        "o quadro da borda recebeu influencia ZERO — seria um alvo inerte"
+        (falloff_at(1) - 0.5).abs() < 1e-6,
+        "o 1o vizinho tinha de ser 50%"
     );
-
-    // **Assimetria**: 2 quadros para trás num alcance de 2, e 2 para a frente num alcance
-    // de 10. O de trás está na BORDA do lado dele; o da frente, no começo.
+    assert!((falloff_at(2) - 0.25).abs() < 1e-6, "o 2o vizinho, 25%");
+    // **SIMÉTRICO**: o SINAL do delta não muda o peso.
+    assert_eq!(falloff_at(-1), falloff_at(1));
+    assert_eq!(falloff_at(-3), falloff_at(3));
+    // Monotônico: mais longe, menos (ou igual, no piso).
+    assert!(falloff_at(1) > falloff_at(3));
+    // Piso: a borda distante ainda se mexe (nunca zero).
     assert!(
-        falloff_at(-2, 2, 10) < falloff_at(2, 2, 10),
-        "os dois lados foram normalizados pelo MESMO alcance — a assimetria sumiu"
+        falloff_at(8) >= MIN_FALLOFF,
+        "o quadro distante recebeu influencia ZERO — seria um alvo inerte"
     );
 }
 
@@ -149,7 +145,7 @@ fn a_selection_that_names_a_deleted_key_is_ignored() {
 }
 
 /// 🔴 **A PRÉVIA da tira (o peso por célula) usa a MESMA `falloff_at` que a escultura** —
-/// senão a barra da célula mentiria sobre a força do gesto (seed = sample). É o que dá ao
+/// senão a COR da célula mentiria sobre a força do gesto (seed = sample). É o que dá ao
 /// animador o falloff VISÍVEL na hora, respondendo ao "não percebo o efeito" (Enio).
 #[test]
 fn the_cell_weight_preview_matches_the_sculpt_falloff() {
@@ -161,18 +157,17 @@ fn the_cell_weight_preview_matches_the_sculpt_falloff() {
     assert_eq!(cell_weight(&[0, 5], 0, 5, false), 1.0);
 
     // Multiframe com falloff LIGADO ⇒ o peso da célula é EXATAMENTE o `falloff_at` que o
-    // pincel aplica (a barra e a força saem da mesma função).
-    let sel = [0, 4, 8];
-    let (before, after) = spans(&sel, 0);
+    // pincel aplica (a cor e a força saem da mesma função).
+    let sel = [0, 1, 2];
     for &k in &sel {
         assert_eq!(
             cell_weight(&sel, 0, k, true),
-            falloff_at(k, before, after),
+            falloff_at(k),
             "o peso da celula {k} divergiu do falloff que a escultura usa"
         );
     }
-    // E o gradiente EXISTE: o quadro ativo (0) cheio, o distante (8) no piso.
+    // E o gradiente EXISTE e é 50%/quadro: ativo cheio, 1o vizinho meio, 2o menos.
     assert_eq!(cell_weight(&sel, 0, 0, true), 1.0);
-    assert!(cell_weight(&sel, 0, 8, true) < cell_weight(&sel, 0, 4, true));
-    assert!(cell_weight(&sel, 0, 8, true) >= MIN_FALLOFF);
+    assert!((cell_weight(&sel, 0, 1, true) - 0.5).abs() < 1e-6);
+    assert!(cell_weight(&sel, 0, 2, true) < cell_weight(&sel, 0, 1, true));
 }

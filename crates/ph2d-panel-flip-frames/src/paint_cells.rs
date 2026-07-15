@@ -15,7 +15,9 @@
 use crate::ids;
 use crate::state::FlipStripSnapshot;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, token_to_vello};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text, paint_text_centered, resolve, token_to_vello,
+};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
@@ -131,31 +133,25 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
         } else {
             String::new()
         };
-        // **Uma célula marcada para o MULTIFRAME veste a cor de ACENTO** (W7): o quadro
-        // ativo/âncora e as chaves marcadas ficam no acento; o resto, `Default`. A chave que
-        // está NA TELA também é acento (ela é sempre um alvo do gesto, com influência cheia).
-        let kind = if cell.selected || snap.current_key == Some(cell.key) {
-            ButtonKind::Accent
-        } else {
-            ButtonKind::Default
-        };
-        paint_button(
-            &Button::new(id, label).state(st).kind(kind),
-            r,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-        );
-        // **O falloff pintado no FUNDO do quadro** (W7, Enio 2026-07-15: trocar a barra pela
-        // cor de acento que CLAREIA com a distância). A célula marcada veste o acento e
-        // clareia em direção ao branco por `(1 − peso)` — cheio (acento puro) no ativo, mais
-        // claro nos vizinhos. O peso é o MESMO que o pincel usa (`cell.weight` ← `falloff_at`,
-        // seed = sample), então a cor não pode mentir sobre a força do gesto. Falloff
-        // DESLIGADO ⇒ peso `1.0` ⇒ véu nulo ⇒ todas as marcadas no acento cheio e uniforme;
-        // LIGADO ⇒ gradiente. O piso do falloff mantém a célula VISÍVEL (o véu nunca chega ao
-        // branco), espelhando "a chave marcada nunca some".
+        // **Uma célula marcada para o MULTIFRAME veste a cor de ACENTO** (W7, Enio 2026-07-15).
+        // A marcada é pintada à mão (fundo clareado pelo falloff + número por CIMA) para o
+        // número NÃO ser lavado pelo clareamento ("apagou o número"); as demais são o botão
+        // canônico (`Default`, ou `Accent` para a chave que está NA TELA — sempre um alvo).
         if cell.selected {
-            lighten_cell_by_falloff(ctx, r, cell.weight);
+            paint_marked_cell(ctx, theme, r, &label, cell.weight);
+        } else {
+            let kind = if snap.current_key == Some(cell.key) {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            };
+            paint_button(
+                &Button::new(id, label).state(st).kind(kind),
+                r,
+                ctx.scene,
+                ctx.text_system,
+                theme,
+            );
         }
         // Desenho instanciado (a MESMA arte em várias chaves): um ponto discreto.
         if cell.instanced && w > INSTANCE_DOT * 2.0 {
@@ -244,23 +240,53 @@ fn falloff_veil(weight: f32) -> u8 {
     ((1.0 - weight.clamp(0.0, 1.0)) * 255.0) as u8 // CLAMP-OK: 1−[0,1] ∈ [0,1] ⇒ [0,255]
 }
 
-/// Clareia a célula marcada pintando um véu BRANCO sobre o acento, com opacidade
-/// [`falloff_veil`]. Substitui a barra do falloff (Enio 2026-07-15): o falloff se vê no
-/// FUNDO do quadro — acento cheio no ativo, mais claro nos vizinhos.
-fn lighten_cell_by_falloff(ctx: &mut PaintCtx, r: Rect, weight: f32) {
+/// Quanto o número escurece o acento para virar TINTA legível (fração do acento em direção
+/// ao preto). Escuro o bastante para contrastar tanto no acento cheio quanto no bem
+/// clareado — o véu branco deixava o número claro-no-claro, invisível ("apagou o número").
+const ACCENT_INK_MUL: f32 = 0.35; // LITERAL-OK: fração de escurecimento, não medida de design
+
+/// **Pinta uma célula MARCADA para o multiframe** (W7): fundo no ACENTO clareado pelo
+/// falloff + o número da exposição por CIMA, em tinta ESCURA.
+///
+/// A ordem importa: acento → véu de clareamento → número. O número entra DEPOIS do véu, então
+/// nunca é lavado por ele (Enio 2026-07-15: *"apagou o número"*). O clareamento segue o
+/// `weight` (= `falloff_at`, seed = sample): cheio no ativo, mais claro nos vizinhos (falloff
+/// off ⇒ peso `1.0` ⇒ véu nulo ⇒ acento cheio e uniforme). O piso do falloff mantém a célula
+/// visível (o véu nunca chega ao branco).
+fn paint_marked_cell(ctx: &mut PaintCtx, theme: Theme, r: Rect, label: &str, weight: f32) {
+    let radius = Radius::Md.px();
+    // Fundo: acento cheio.
+    fill_rounded_rect(ctx.scene, r, radius, resolve(ColorToken::Accent, theme));
+    // Véu de clareamento (o falloff): branco com opacidade `1 − peso`.
     let veil = falloff_veil(weight);
-    if veil == 0 {
-        return; // peso cheio: acento puro, nada a clarear
+    if veil > 0 {
+        let white = TokenColor {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: veil,
+        }; // LITERAL-COLOR-OK: véu de clareamento — o branco é o LIMITE do "mais claro", não uma cor de design
+        fill_rounded_rect(ctx.scene, r, radius, token_to_vello(white));
     }
-    // Branco com opacidade `veil` = o acento clareado por alpha-blend. Construído por
-    // `token_to_vello` (o painel não depende de `ph2d_vector`); o raio casa com o do botão.
-    let white = TokenColor {
-        r: 255,
-        g: 255,
-        b: 255,
-        a: veil,
-    }; // LITERAL-COLOR-OK: véu de clareamento — o branco é o LIMITE do "mais claro", não uma cor de design
-    fill_rounded_rect(ctx.scene, r, Radius::Md.px(), token_to_vello(white));
+    // O número, por CIMA, em tinta escura do acento (contraste garantido do claro ao cheio).
+    if !label.is_empty() {
+        let a = ColorToken::Accent.resolve(theme);
+        let ink = |c: u8| (c as f32 * ACCENT_INK_MUL) as u8;
+        let dark = TokenColor {
+            r: ink(a.r),
+            g: ink(a.g),
+            b: ink(a.b),
+            a: 255,
+        };
+        paint_text_centered(
+            ctx.text_system,
+            ctx.scene,
+            label,
+            r,
+            TypeToken::Base.px(),
+            token_to_vello(dark),
+        );
+    }
 }
 
 #[cfg(test)]

@@ -190,3 +190,79 @@ fn deleting_one_of_two_instanced_keys_keeps_the_art_alive() {
         "o desenho continua se dizendo instanciado com uma chave so"
     );
 }
+
+// ── criar chave no MEIO da tira (não só na última) + Unlink encerra multiframe ──
+
+/// 🔴 **Uma chave nova entra no MEIO da tira**, não só depois da última (smoke do Enio
+/// 2026-07-14: *"quadros ou instâncias só podem ser criados no fim dos quadros"*).
+///
+/// Estando numa chave que NÃO é a última, o alvo `chave + duração` cai sobre a próxima
+/// chave real — antes o insert colidia e falhava mudo. Agora `open_gap_at` abre a fenda.
+///
+/// Mutação que sangra: tirar o `open_gap_at` do braço de Key Add/Dup/Instance (as chaves
+/// ficam `[0, 5]`, a nova nunca entra).
+#[test]
+fn a_new_key_is_inserted_in_the_middle_not_only_at_the_end() {
+    let (mut doc, oid, lid, mut ph) = doc_with_key0(); // chave 0
+    doc.object_mut(oid)
+        .unwrap()
+        .insert_frame(lid, 5, Hold::Implicit, KeyKind::Keyframe);
+    let mut strip = FlipStrip::default(); // playhead em 0 → a chave 0 (não é a última)
+
+    assert!(click(
+        ph2d_editor::ids::FLIP_KEY_DUP,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip
+    ));
+
+    let keys: Vec<Frame> = doc
+        .object(oid)
+        .unwrap()
+        .layer(lid)
+        .unwrap()
+        .frames()
+        .keys()
+        .copied()
+        .collect();
+    assert_eq!(
+        keys,
+        vec![0, 5, 6],
+        "a chave nova nao entrou no meio: o alvo colidiu com a chave 5 e o insert falhou (o bug)"
+    );
+}
+
+/// **O Unlink ENCERRA a multisseleção** — senão o próximo Sculpt seria multiframe e
+/// editaria os dois quadros de novo, e como a cópia nasce idêntica à origem o resultado
+/// idêntico PARECE que o vínculo voltou (smoke do Enio 2026-07-14).
+#[test]
+fn unlink_ends_the_multi_selection() {
+    let (mut doc, oid, lid, mut ph) = doc_with_key0();
+    let mut strip = FlipStrip::default();
+    // Instancia a chave 0 (o playhead vai para a chave nova).
+    click(
+        ph2d_editor::ids::FLIP_KEY_INSTANCE,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip,
+    );
+    // O usuário multi-seleciona os dois quadros na tira (para multiframe).
+    strip.selection = vec![0, 1];
+
+    // Desvincula a chave sob o playhead (a instância).
+    assert!(click(
+        ph2d_editor::ids::FLIP_KEY_UNLINK,
+        &mut doc,
+        lid,
+        &mut ph,
+        &mut strip
+    ));
+    assert_eq!(
+        strip.selection.len(),
+        1,
+        "o Unlink nao encerrou a multissselecao — o proximo Sculpt religaria os quadros"
+    );
+    let _ = oid;
+}

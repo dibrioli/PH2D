@@ -252,6 +252,19 @@ pub(crate) fn apply_panel_event(
                 }
                 None => frame,
             };
+            // **Se `at` cai numa CHAVE REAL, abre espaço** (ripple do bloco contíguo). Sem
+            // isto, criar quadro só funcionava na ÚLTIMA chave — em qualquer outra o alvo
+            // `chave + duração` colidia com a próxima e o insert falhava mudo (smoke do
+            // Enio, 2026-07-14). Uma sentinela em `at` NÃO precisa de fenda: o insert a
+            // sobrescreve.
+            let on_real_key = flip
+                .object(oid)
+                .and_then(|o| o.layer(lid))
+                .and_then(|l| l.frames().get(&at))
+                .is_some_and(|f| f.drawing.is_some());
+            if on_real_key {
+                flip.object_mut(oid).map(|o| o.open_gap_at(lid, at));
+            }
             let ok = match (mode, key) {
                 // Sem chave de origem não há o que duplicar: cai na chave branca.
                 (Some(m), Some(src)) => flip
@@ -274,8 +287,19 @@ pub(crate) fn apply_panel_event(
         // desenho já é exclusivo — não há vínculo a quebrar.
         PanelEvent::Click(id) if *id == ids::FLIP_KEY_UNLINK => {
             let Some(k) = key else { return false };
-            flip.object_mut(oid)
-                .is_some_and(|o| o.make_single_user(lid, k))
+            let ok = flip
+                .object_mut(oid)
+                .is_some_and(|o| o.make_single_user(lid, k));
+            if ok {
+                // **Desvincular ENCERRA a multisseleção** (só esta chave fica marcada). O
+                // sentido do Unlink é "este quadro agora é independente"; se a tira
+                // continuasse com 2+ chaves marcadas, o próximo Sculpt seria MULTIFRAME e
+                // editaria os dois de novo — e como a cópia nasce idêntica à origem, o
+                // resultado idêntico PARECE que o vínculo voltou (smoke do Enio,
+                // 2026-07-14). Uma chave só ⇒ multiframe desligado (`selection.len() < 2`).
+                strip.selection = vec![k];
+            }
+            ok
         }
         PanelEvent::Click(id) if *id == ids::FLIP_KEY_DELETE => {
             let Some(k) = key else { return false };

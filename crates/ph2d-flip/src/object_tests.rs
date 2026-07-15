@@ -322,3 +322,51 @@ fn the_posed_bbox_includes_the_key_offsets_and_the_geometry_bbox_does_not() {
         "a bbox da APARENCIA ignorou a chave deslocada"
     );
 }
+
+// ── open_gap_at: criar chave no MEIO da tira, não só depois da última ─────────
+
+/// 🔴 **`open_gap_at` abre espaço numa chave real** — o que deixa Key Add/Dup/Instance
+/// criarem quadro no meio da tira, e não só na última chave (smoke do Enio 2026-07-14).
+///
+/// Empurra à frente **só o bloco contíguo** que começa em `at`, com a pose de cada chave
+/// junto. Quadros separados por um buraco não são tocados.
+///
+/// Mutação que sangra: fazer `open_gap_at` empurrar TUDO `>= at` (o `10` andaria à toa),
+/// ou não empurrar nada (o insert em cima da chave real falharia).
+#[test]
+fn open_gap_at_ripples_only_the_contiguous_block() {
+    let mut o = FlipObject::new(FlipObjectId(1), "O");
+    let l = o.add_layer("L");
+    for k in [0, 5, 6, 10] {
+        o.insert_frame(l, k, Hold::Implicit, KeyKind::Keyframe);
+    }
+    // Uma pose na chave 5, para provar que ela viaja no ripple.
+    o.translate_frame(l, 5, Vec2::new(7.0, -3.0));
+
+    assert!(o.open_gap_at(l, 5), "nao abriu espaco numa chave ocupada");
+
+    let keys: Vec<Frame> = o.layer(l).unwrap().frames().keys().copied().collect();
+    assert_eq!(
+        keys,
+        vec![0, 6, 7, 10],
+        "o bloco contiguo 5-6 andou +1; a chave 10 (apos o buraco) nao pode ter se mexido"
+    );
+    assert_eq!(
+        o.frame_offset(l, 6),
+        Vec2::new(7.0, -3.0),
+        "a pose da chave 5 nao viajou com ela para 6"
+    );
+}
+
+/// **`open_gap_at` numa chave livre é no-op** — não há bloco a empurrar.
+#[test]
+fn open_gap_at_a_free_frame_moves_nothing() {
+    let mut o = FlipObject::new(FlipObjectId(1), "O");
+    let l = o.add_layer("L");
+    for k in [0, 5] {
+        o.insert_frame(l, k, Hold::Implicit, KeyKind::Keyframe);
+    }
+    assert!(!o.open_gap_at(l, 3), "quadro 3 esta livre: nada a empurrar");
+    let keys: Vec<Frame> = o.layer(l).unwrap().frames().keys().copied().collect();
+    assert_eq!(keys, vec![0, 5]);
+}

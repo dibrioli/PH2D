@@ -327,6 +327,36 @@ impl FlipObject {
             .map_or(Vec2::ZERO, |l| l.frame_offset(key))
     }
 
+    /// **Abre espaço em `at`** para uma chave nova, empurrando à frente **só o bloco
+    /// contíguo** de quadros que começa em `at` (até o primeiro buraco). Do fim para o
+    /// começo, senão a 1ª mudança cairia sobre a vizinha ainda parada — a mesma disciplina
+    /// do ripple de [`Self::set_exposure`]. A POSE de cada chave viaja junto
+    /// (`relocate_frame` move o `FlipFrame` inteiro).
+    ///
+    /// É o que deixa CRIAR uma chave no meio da tira, e não só depois da última: sem isto
+    /// o alvo `chave + duração` caía sobre a próxima chave real e o insert falhava em
+    /// silêncio (smoke do Enio, 2026-07-14). Empurra o bloco contíguo, não tudo à frente —
+    /// quadros separados por um buraco não têm o ritmo mexido à toa.
+    ///
+    /// Devolve `true` se moveu algo. No-op (`false`) se `at` já está livre.
+    pub fn open_gap_at(&mut self, layer_id: LayerId, at: Frame) -> bool {
+        let Some(li) = self.layer_index(layer_id) else {
+            return false;
+        };
+        // O bloco contíguo a partir de `at`, até o primeiro quadro livre.
+        let mut run: Vec<Frame> = Vec::new();
+        let mut f = at;
+        while self.layers[li].frames().contains_key(&f) {
+            run.push(f);
+            f += 1;
+        }
+        let mut moved = false;
+        for &f in run.iter().rev() {
+            moved |= self.layers[li].relocate_frame(f, f + 1);
+        }
+        moved
+    }
+
     /// **Desloca a chave `key`** (a POSE, não a arte): só este quadro se move, mesmo que
     /// o desenho seja compartilhado por outras chaves. É a outra metade da instância —
     /// a arte é uma só, o lugar é de cada quadro. `false` se a camada/chave não existe.

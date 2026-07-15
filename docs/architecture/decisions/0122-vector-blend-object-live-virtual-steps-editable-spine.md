@@ -132,16 +132,33 @@ função-pura-de-outras que a linha já domina):
   `connector_live`. O recook resolve as fontes no MUNDO, roda `chain`, e deposita os passos num
   `Vec<VecPath>` de mundo (o `vec_blend_steps` do `App`); atualiza o **spine** (polilinha entre os
   centros) em lugar; devolve o `Transform` à identidade.
-- **`ph2d-vec-render::draw_blend_steps`** — o passe de render dos passos virtuais. Desenha pela
+- **`ph2d-vec-render::draw_blend_overlay`** — o passe de render do overlay virtual. Desenha pela
   **mesma porta** que a arte real: o corpo por-path do `dispatch` foi extraído para `draw_path`, e
-  os passos e a cena passam os dois por ele (senão a transição divergiria do que a mesma forma
+  o overlay e a cena passam os dois por ele (senão a transição divergiria do que a mesma forma
   pareceria como path real — [[feedback_two_doors_to_the_same_question_diverge]]).
 - **`settle_origins` pula o `VecBlend`** (gate mutation-testado: sem o pulo, o settle assenta o
   spine em (2,0) e a transição sai deslocada).
 - Wiring no `render_loop`: `upkeep` antes do `settle`, `recook` depois do `build`, `draw_blend_steps`
   depois do `dispatch` — os mesmos três pontos do conector.
-- **Smoke `PH2D_BLEND_SMOKE`**: `=1` estrela→círculo vivo (5 passos); `=2` retângulo→estrela→círculo
-  em **cadeia** (4 passos/elo — a capacidade nova). Arraste uma fonte: a transição se refaz.
+- **Smoke `PH2D_BLEND_SMOKE`**: `=1` estrela→elipse vivo (5 passos); `=2` retângulo→estrela→elipse
+  em **cadeia** (4 passos/elo — a capacidade nova). Arraste OU gire uma fonte: a transição se refaz.
+
+### Os 2 achados do smoke do Enio (2026-07-15, no mesmo commit da Fase B)
+
+- **Z-order — a última forma ficava enterrada sob o último passo.** O passe desenhava TODOS os
+  passos por cima de TODAS as fontes. Fix: o `out` do recook virou o **overlay ORDENADO** — os
+  passos de cada elo intercalados com a fonte "de cima" dele (`pair[1]`), redesenhada por cima
+  deles. A pilha vira monotônica (fonte0 embaixo → passos → fonte1 → …), como o Illustrator. Só a
+  fonte0 fica no z da cena; as demais são redesenhadas (overdraw barato de forma opaca), porque não
+  dá para reordenar UM item no meio do `dispatch` sem mexer na assinatura dele. Gate
+  `the_last_source_is_drawn_on_top` (mutation-testado: reverter para steps-only põe o último item em
+  (7,0) em vez de (8,0)).
+- **"A rotação da última forma não influencia" — NÃO era bug: era o CÍRCULO.** Um círculo é
+  rotacionalmente simétrico; girá-lo não muda geometria nenhuma. O motor é **simétrico** (gate
+  `rotating_either_endpoint_reflows_the_blend`: as duas pontas, sendo quadrados, refluem). O smoke
+  agora usa uma **elipse não-circular** na ponta (orientada) para que girar a última forma seja
+  visível — e o gate `rotating_a_smooth_noncircular_endpoint_reflows_the_blend` prova que o reflow
+  chega ao lado liso.
 
 **Gotchas para a Fase C (o próximo que mexer):**
 
@@ -153,9 +170,13 @@ função-pura-de-outras que a linha já domina):
   isso é aceitável (poucas fontes pequenas); se o painel deixar subir a centenas de passos ou o
   smoke gaguejar, **memoizar o `Plan` por (fontes-em-mundo, steps)** é a alavanca (o `Plan` existe
   exatamente para isto — a correspondência é função do par, não do `t`).
-- **z dos passos:** hoje eles desenham por cima das fontes (um passe após o `dispatch`). Como vivem
-  ENTRE as fontes no espaço, não as cobrem — mas o z-interleaving fino (passo entre A e B na pilha)
-  é da Fase C, junto com o Expand (que materializa os passos como paths reais na ordem certa).
+- **z dos passos:** a pilha INTERNA do blend já está certa (o overlay é intercalado: fonte0 →
+  passos → fonte1 → …). O que resta para a Fase C: (a) o overlay desenha DEPOIS do `dispatch`, então
+  o blend inteiro fica por cima dos OUTROS objetos da cena (z-vs-resto) — resolver isso quer dizer
+  ou esconder as fontes do `dispatch` e desenhar tudo no overlay, ou dar um passe por z; (b) fontes
+  **translúcidas** sofrem overdraw (a fonte é desenhada 2×: pelo `dispatch` embaixo e pelo overlay
+  em cima) — para opaco é inócuo, para alpha<1 duplica a borda. As duas somem se a Fase C esconder
+  as fontes-de-blend do `dispatch`.
 - **Criar por UI:** na Fase B o `create` é dirigido pelo smoke. A Fase C liga o **Pick Shapes**
   (um `DrawMode` novo, ~3 linhas em `tool.rs`, espelho do `Connect`/`Build`) + o botão do painel a
   ele. O `create` já é a função certa — só falta a UI que junta a seleção e o chama.

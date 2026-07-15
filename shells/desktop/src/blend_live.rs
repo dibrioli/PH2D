@@ -13,7 +13,7 @@
 //!
 //! A entidade do blend carrega um `VecPathRef` como qualquer forma; o `VecPath` dela é o **spine**
 //! (a linha que une as fontes). Os N passos NÃO entram na cena — a shell os coze aqui, num
-//! `Vec<VecPath>` de MUNDO, e um passe de render ([`ph2d_vec_render::draw_blend_steps`]) os
+//! `Vec<VecPath>` de MUNDO, e um passe de render ([`ph2d_vec_render::draw_blend_overlay`]) os
 //! desenha. É o que torna o blend **um objeto**, e não N formas (o pedido do Enio). Consequência:
 //! os passos não são pickáveis (igual ao Illustrator — pega-se o objeto, não um passo).
 //!
@@ -101,8 +101,9 @@ pub(crate) fn create(
 /// (os afins das fontes já são os deste frame), e ANTES do render — o mesmo lugar do
 /// `connector_live::recook`.
 ///
-/// `out` é ZERADO aqui e preenchido com os passos de TODOS os blends, em MUNDO — é o que o passe
-/// [`ph2d_vec_render::draw_blend_steps`] desenha.
+/// `out` é ZERADO aqui e preenchido com o **overlay ordenado** de TODOS os blends, em MUNDO — os
+/// passos de cada elo INTERCALADOS com a fonte de cima dele (a pilha de z: fonte0 embaixo → passos
+/// → fonte1 → …). É o que o passe [`ph2d_vec_render::draw_blend_overlay`] desenha, nessa ordem.
 pub(crate) fn recook(
     sim: &mut SimWorld,
     scene: &mut VecScene,
@@ -137,13 +138,26 @@ pub(crate) fn recook(
             continue;
         }
 
-        // Os passos: as fontes assadas no MUNDO → a cadeia pairwise do motor. As fontes NÃO
-        // entram (elas se desenham sozinhas — são paths reais); só os intermediários virtuais.
+        // As fontes assadas no MUNDO. A cadeia é pairwise (fonte[i]→fonte[i+1]); os passos de
+        // cada elo entram no overlay INTERCALADOS com a fonte "de cima" dele (`pair[1]`),
+        // redesenhada por cima deles. É a pilha de z do Illustrator: fonte0 (que o `dispatch`
+        // desenha, embaixo) → passos → fonte1 → passos → fonte2 … Sem intercalar, o passe
+        // desenharia TODOS os passos por cima de TODAS as fontes, e a última forma ficaria
+        // enterrada sob o último passo (o smoke do Enio: "a última devia ficar acima da
+        // penúltima"). A fonte é REDESENHADA (o `dispatch` já a pôs embaixo) porque não dá, na
+        // Fase B, para reordenar UM item no meio do `dispatch`; o overdraw de uma forma opaca é
+        // barato. A fonte0 fica no z da cena; o interleaving fino contra o resto é da Fase C.
         let worlds: Vec<VecPath> = live
             .iter()
             .filter_map(|&id| world(scene, xforms, id))
             .collect();
-        out.extend(ph2d_vec_blend::chain(&worlds, blend.steps as usize));
+        let n = blend.steps as usize;
+        for pair in worlds.windows(2) {
+            if let Some(plan) = ph2d_vec_blend::Plan::new(&pair[0], &pair[1]) {
+                out.extend((1..=n).map(|i| plan.at(i as f64 / (n + 1) as f64)));
+            }
+            out.push(pair[1].clone()); // a fonte de cima do elo, por cima dos passos dele
+        }
 
         // O spine = a polilinha entre os centros das fontes vivas.
         let centers: Vec<[f64; 2]> = live

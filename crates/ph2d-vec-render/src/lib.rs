@@ -50,10 +50,11 @@ pub use corner::draw_corner_handles;
 mod build_faces;
 pub use build_faces::draw_build_faces;
 
-/// Os **passos virtuais** do Blend Object (ADR-0122) — módulo irmão (LOC cap). Desenha N formas
-/// interpoladas que NÃO estão na cena, pela mesma porta ([`draw_path`]) que a arte real.
-mod blend_steps;
-pub use blend_steps::draw_blend_steps;
+/// O **overlay do Blend Object** (ADR-0122) — módulo irmão (LOC cap). Desenha o overlay ordenado
+/// (passos + fontes reempilhadas) que NÃO está na cena, pela mesma porta ([`draw_path`]) que a
+/// arte real.
+mod blend_overlay;
+pub use blend_overlay::draw_blend_overlay;
 
 /// Constrói o `BezPath` (world-space) de um path editável: para CADA contorno
 /// (primário + `subpaths`), `move_to` na 1ª âncora, depois uma cúbica por segmento
@@ -172,7 +173,7 @@ pub fn dispatch(
 /// stroke por cima; pontas por último.
 ///
 /// É o corpo de um item de [`dispatch`], **extraído de propósito**: os passos VIRTUAIS de um
-/// Blend Object (ADR-0122, [`draw_blend_steps`]) não estão na cena, mas são arte de verdade — e
+/// Blend Object (ADR-0122, [`draw_blend_overlay`]) não estão na cena, mas são arte de verdade — e
 /// desenhá-los por uma segunda porta faria a transição divergir do que a MESMA forma pareceria
 /// como path real ([[feedback_two_doors_to_the_same_question_diverge]]). Os dois passam por AQUI.
 ///

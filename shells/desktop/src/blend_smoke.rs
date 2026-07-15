@@ -5,10 +5,13 @@
 //! passos são virtuais e cujas fontes seguem editáveis. O que se olha aqui é UMA coisa: os passos
 //! aparecem ENTRE as formas, e mover uma fonte (o gizmo) refaz a transição — sem re-clicar "Blend".
 //!
-//! - `PH2D_BLEND_SMOKE=1` — **estrela → círculo**, 5 passos, VIVO. O par que o Enio testou. Depois
-//!   de aparecer, arraste uma das duas formas: os passos se recalculam sozinhos.
-//! - `PH2D_BLEND_SMOKE=2` — **retângulo → estrela → círculo** (3 formas em CADEIA), 4 passos por
+//! - `PH2D_BLEND_SMOKE=1` — **estrela → elipse**, 5 passos, VIVO. Depois de aparecer, arraste ou
+//!   **gire** qualquer das duas formas: os passos se recalculam. A ponta é uma elipse (não um
+//!   círculo) DE PROPÓSITO — um círculo é rotacionalmente simétrico, e girá-lo não muda nada; a
+//!   elipse tem orientação, então girar a ÚLTIMA forma também influencia os intermediários.
+//! - `PH2D_BLEND_SMOKE=2` — **retângulo → estrela → elipse** (3 formas em CADEIA), 4 passos por
 //!   elo. É a capacidade nova do ADR-0122 (até 5 formas); a transição corre pelas três na ordem.
+//!   Gire a do MEIO: os ângulos das intermediárias dos dois lados se adaptam.
 
 use ph2d_vec_scene::{Paint, Rgba8, ShapeKind, VecPath, cook};
 use std::sync::OnceLock;
@@ -56,10 +59,12 @@ impl crate::App {
                     &[5.0, 0.45, 0.0],
                     [70, 110, 190],
                 ));
+                // Elipse NÃO-circular (2×1,3): orientada, então girá-la influencia os passos (um
+                // círculo 2×2 seria simétrico e "não influenciaria" — foi o que confundiu no smoke).
                 scene.push_path(shape(
                     ShapeKind::Ellipse,
-                    [1.4, -1.0],
-                    [3.4, 1.0],
+                    [1.4, -0.65],
+                    [3.4, 0.65],
                     &[],
                     [200, 120, 80],
                 ));
@@ -84,8 +89,8 @@ impl crate::App {
                 ));
                 scene.push_path(shape(
                     ShapeKind::Ellipse,
-                    [2.4, -1.0],
-                    [4.4, 1.0],
+                    [2.4, -0.65],
+                    [4.4, 0.65],
                     &[],
                     [110, 190, 130],
                 ));

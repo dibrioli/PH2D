@@ -3060,7 +3060,7 @@ impl crate::App {
                 vec_scene,
                 &self.vec_entities,
                 &vec_xf,
-                &mut self.vec_blend_steps,
+                &mut self.vec_blend_overlay,
             );
             // **Rótulos:** o texto que pertence a uma forma (ou a um conector) e a segue. A pose
             // é uma função pura do hospedeiro — como a rota do conector é da relação dele.
@@ -3106,11 +3106,11 @@ impl crate::App {
 
             let cam_affine = camera.world_to_screen_affine(window_size);
             ph2d_vec_render::dispatch(vec_scene, &vec_view, &vec_xf, cam_affine, vector_scene);
-            // Os passos VIRTUAIS do Blend Object (ADR-0122): N formas interpoladas que não estão
-            // na cena. Por cima das fontes (elas já saíram no `dispatch`); os passos vivem ENTRE
-            // as fontes, então não as cobrem. O z-interleaving fino (passo entre A e B na pilha)
-            // é da Fase C.
-            ph2d_vec_render::draw_blend_steps(&self.vec_blend_steps, cam_affine, vector_scene);
+            // O **overlay** do Blend Object (ADR-0122): os passos virtuais + as fontes de cima
+            // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois
+            // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a
+            // pilha do blend por cima. O interleaving fino contra o resto da cena é da Fase C.
+            ph2d_vec_render::draw_blend_overlay(&self.vec_blend_overlay, cam_affine, vector_scene);
             // Âncoras/handles/gradiente/marquee só interessam a quem edita nós; no
             // modo Select quem fala é o gizmo (ADR-0112). As guias de snap são caso à
             // parte (valem em TODOS os modos) — `vec_overlay` separa as duas políticas

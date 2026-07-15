@@ -1115,8 +1115,22 @@ peso saiu; agora **a célula marcada veste a cor de ACENTO no fundo e CLAREIA co
   quebra a simetria — ambas provadas) + `the_cell_weight_preview_matches_the_sculpt_falloff` (seed =
   sample). A barra (`selected_bar_height` + consts `SELECTED_BAR*`) e a fn `spans` foram removidas.
 
-## Aberto (fila viva — detalhe em [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md))
+## W7.5 — A pose da chave vira AFIM + o gizmo de rotate/escala (FASE 1 LANDOU 2026-07-15; FASE 2 = TODO)
 
+Escolha do Enio de próxima etapa (*"girar/escalar a seleção"*). A instância podia ser MOVIDA
+(W7.2), mas não girada/escalada. **Fase 1 (fundação, `df809109`, feita):** `FlipFrame.offset: Vec2`
+→ `FlipFrame.pose: Pose([f32;6])` (afim, layout do `Xform`) — translate byte-idêntico, o afim é um
+superconjunto. ph2d-flip só ARMAZENA os coeficientes; a composição rot/escala mora no shell.
+`FLIP_SCHEMA` 5→6, `PROJECT_SCHEMA` 13→14. 76 + 116 testes verdes. **Fase 2 (TODO): o gizmo no modo
+Edit** (UX escolhida pelo Enio) — publicar a `GizmoView` da POSE no Edit quando o quadro ativo é
+instância + retargetar o apply do gizmo para escrever a pose em vez do `Transform`. **Sem helper de
+delta reusável** (a math vive no `advance_gizmo_drag`); a recomendação é um drag DEDICADO (isolado
+do gizmo do objeto). **Mapa preciso + gates + smoke em
+[`HANDOFF_line_FLIP_CONTINUACAO_2026-07-15.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-15.md).**
+
+## Aberto (fila viva — detalhe em [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-15.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-15.md))
+
+- 🔴 **W7.5 Fase 2 — o gizmo de rotate/escala da pose** (a próxima; mapa no handoff de continuação).
 - 🔴 **ITEM 0 — W7 · W7.1 · W7.2 entraram no `main` SEM SMOKE** (registro da integração de
   2026-07-13). O smoke dessas três vem ANTES de feature nova.
 - **A próxima recomendada: girar/escalar a seleção.** O Edit Mode só translada; assim que o

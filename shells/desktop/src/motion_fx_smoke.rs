@@ -73,13 +73,15 @@ fn sparks(g: &mut Graph) -> Option<NodeId> {
     g.set_param(tint, "g2", HOT[1]);
     g.set_param(tint, "b2", HOT[2]);
     g.set_label(tint, "White \u{2192} Hot");
-    g.set_param(scale, "amount", 0.16);
-    // The glow node the shell reads for the pass. Strong intensity + wide radius
-    // so the hot end of the ramp clearly halos.
+    // Solid blocks — a small spark has little light to spread, so the halo comes
+    // out thin; a fuller block gives the glow real energy.
+    g.set_param(scale, "amount", 0.28);
+    // The glow node the shell reads for the pass. Strong intensity + a moderately
+    // tight radius so the hot end of the ramp halos brightly instead of fogging.
     g.set_param(glow, "threshold", 1.0);
     g.set_param(glow, "knee", 0.6);
-    g.set_param(glow, "intensity", 1.3);
-    g.set_param(glow, "radius", 1.6);
+    g.set_param(glow, "intensity", 1.7);
+    g.set_param(glow, "radius", 1.3);
     g.set_label(out, "GLOW");
     Some(out)
 }

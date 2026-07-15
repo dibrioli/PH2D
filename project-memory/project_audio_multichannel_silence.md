@@ -31,3 +31,20 @@ inofensiva, recomendada pela pesquisa cpal, mas não era o fix.
 ~/.local/state/wireplumber/stream-properties` + `grep ph2d` no mesmo. Com o app
 rodando: `pactl list sink-inputs`. O app aparece como "PipeWire ALSA [ph2d-host-desktop]".
 Ver [[feedback-run-command-include-cd]].
+
+**REINCIDÊNCIA (2026-07-15) — MESMO sintoma, causa NOVA: VOLUME do sink, não mute.**
+"mobile.ogg sem áudio" no editor. O meter mexia, o WirePlumber tinha ph2d `mute:false`,
+o sink não estava mutado — mas o **sink default `USB Audio Speakers` estava em 24%
+(−37 dB)**, e com conteúdo a −15 dB o total (~−52 dB) era inaudível. **O navegador tocava
+o mesmo arquivo audível** (pista de que era roteamento/volume, não o app). Fix: `wpctl
+set-volume 57 0.8` + `wpctl set-default 57`. O DAC USB tem **3 saídas** (`57` Speakers /
+`56` Front Headphones / `45` S/PDIF); apps nativos (cpal/pipewire-alsa) vão pro **default**,
+e se as caixas estão noutra saída OU o default está baixo, é "sem som". **Diagnóstico que
+funcionou:** `wpctl status` (árvore de roteamento + volume por sink) → tocar tom em cada
+saída (`paplay --device=<sink> tom.wav`) → o Enio diz qual ouve → `set-default` nela.
+**Regra:** ao investigar "sem áudio", cheque **mute E volume do sink E qual sink é o
+default**, não só o mute do app. E provei o lado do código com 2 gates novos que **MEDEM
+a saída** (`voice::a_24k_mono_clip_is_audible_at_48k_out`,
+`engine::a_24k_mono_preview_is_audible_through_the_full_renderer`) — antes, todo gate de
+reprodução comparava stream-vs-resident ou o retorno de `render_add`, e dois silêncios
+comparam iguais ([[feedback_absence_gate_needs_a_presence_sibling]]).

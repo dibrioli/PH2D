@@ -283,6 +283,84 @@ pub(crate) fn reset_spine(
     changed
 }
 
+/// **Modo Node: arrastar uma PONTA do spine MOVE a forma-fonte dela** (ADR-0122 C2b) — o inverso da
+/// pinagem, e o que faltava para "editar a curva no Node é igual a mover a forma no Select".
+///
+/// A 1ª e a última âncora do spine correspondem à 1ª e à última forma da cadeia. Se o artista as
+/// arrastou (no modo Node), a âncora difere do centro da fonte; movemos a FONTE para lá
+/// (`vec_transform::move_shape_origin_to`). O `recook` logo em seguida re-encosta a âncora no centro
+/// — agora coincidentes, **sem salto** —, os passos re-cozem das novas posições e a curva se adapta.
+///
+/// Roda ANTES do [`recook`] e SÓ no modo Node (no Select a fonte se move pelo gizmo e a âncora a
+/// segue). Só as PONTAS movem fontes; os pontos INTERIORES editam a curva (fluem os passos) — para
+/// cadeias de 3+, as pontas do MEIO ainda editam a curva, não movem a forma (follow-up).
+///
+/// **Não autora o spine** ao mover uma ponta (mover a forma ≠ curvar a curva): quando o spine é
+/// automático, atualiza a ponta na memória do auto (`spines`) para o mesmo valor do novo centro, e
+/// a detecção do `recook` não a confunde com uma edição de curva (só o interior autora).
+pub(crate) fn drag_endpoints_move_sources(
+    sim: &mut SimWorld,
+    scene: &VecScene,
+    map: &VecEntityMap,
+    xforms: &VecXforms,
+    spines: &mut BlendSpines,
+) {
+    let blends: Vec<(VecPathId, VecBlend)> = map
+        .iter()
+        .filter_map(|(&id, &bits)| {
+            let b = sim
+                .world()
+                .get::<VecBlend>(Entity::from_bits(bits))?
+                .clone();
+            Some((id, b))
+        })
+        .collect();
+    for (spine_id, blend) in blends {
+        let live: Vec<VecPathId> = blend
+            .sources
+            .iter()
+            .copied()
+            .filter(|id| scene.paths().iter().any(|p| p.id == *id))
+            .collect();
+        if live.len() < 2 {
+            continue;
+        }
+        let Some(sp) = scene.paths().iter().find(|p| p.id == spine_id) else {
+            continue;
+        };
+        let n = sp.verts.len();
+        if n < 2 {
+            continue;
+        }
+        // (índice do vértice de PONTA no spine, id da forma que ela representa).
+        for (vi, src_id) in [(0usize, live[0]), (n - 1, live[live.len() - 1])] {
+            let e = sp.verts[vi].anchor;
+            let Some(c) = center_of(scene, xforms, src_id) else {
+                continue;
+            };
+            let (dx, dy) = (e[0] - c[0], e[1] - c[1]);
+            if dx * dx + dy * dy <= 1e-18 {
+                continue; // a ponta está sobre o centro: nada foi arrastado
+            }
+            let Some(&bits) = map.get(&src_id) else {
+                continue;
+            };
+            if crate::vec_transform::translate_shape_world(sim, Entity::from_bits(bits), [dx, dy]) {
+                // A ponta agora É o centro da fonte: atualiza a memória do auto para que a detecção
+                // do `recook` não trate o movimento da forma como uma edição de curva (só o interior
+                // autora). Só quando o spine é automático — no autorado a detecção já é ignorada.
+                // Move o vértice INTEIRO (âncora + alças) como o arrasto fez — só a âncora deixaria
+                // as alças divergindo do spine atual, e a detecção autoraria à toa.
+                if let Some(mem) = spines.get_mut(&spine_id)
+                    && let Some(mv) = mem.get_mut(vi)
+                {
+                    shift_vertex_to(mv, e);
+                }
+            }
+        }
+    }
+}
+
 /// **O re-cook de todo frame.** Para cada entidade com um [`VecBlend`]: resolve as fontes no
 /// MUNDO, coze os passos (cor interpolada em OKLab pelo motor) para `out`, e atualiza o spine.
 ///

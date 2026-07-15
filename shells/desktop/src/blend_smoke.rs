@@ -190,8 +190,9 @@ impl crate::App {
                 self.any_input_this_frame = true;
                 eprintln!(
                     "[blend-smoke] SPINE editavel: 6 passos ao longo de um ARCO autorado, em modo \
-                     Node (o spine no TOPO, com ancoras). Arraste os pontos do spine e os passos \
-                     re-fluem; as PONTAS voltam para os centros das fontes (ADR-0122)."
+                     Node (o spine no TOPO, com ancoras). Arraste um ponto INTERIOR e os passos \
+                     re-fluem; arraste uma PONTA e a FORMA daquela ponta se move junto (editar a \
+                     curva no Node = mover a forma no Select), a curva toda se adapta (ADR-0122)."
                 );
             }
             // Pick Shapes (C2b): entra no modo Pick. NÃO cria o blend — o artista clica as formas

@@ -141,9 +141,6 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.mode.shape" => "Shape",
         "panel.vector.mode.text" => "Text",
         "panel.vector.mode.connect" => "Connect",
-        // Pick Shapes (Blend): coleta as formas na ordem de clique. Rótulo curto (cabe no pill de
-        // 3 colunas, como os outros modos de uma palavra).
-        "panel.vector.mode.pickblend" => "Pick",
         "panel.vector.category" => "Category",
         "panel.vector.shape.no_params" => "No parameters",
         // Stroke markers (arrowheads) — the two selectors in the STROKE section.

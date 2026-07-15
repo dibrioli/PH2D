@@ -123,6 +123,39 @@ pub(crate) fn move_origin_to(
     true
 }
 
+/// **Translada a FORMA** de `entity` por `delta_world` (um vetor em MUNDO) — o gizmo-move reduzido
+/// a uma translação, sem escala/rotação, e o OPOSTO do [`move_origin_to`] (a geometria NÃO recua,
+/// então a forma SE MOVE). Por ser uma DELTA (e não um alvo absoluto), não presume nada sobre onde
+/// a origem está — vale settled ou não.
+///
+/// É o que faz uma forma-fonte do blend SEGUIR a ponta do spine arrastada no modo Node (ADR-0122
+/// C2b): arrastar a ponta é o MESMO que mover a forma pelo gizmo. `false` se a entidade sumiu ou o
+/// afim do pai é degenerado.
+pub(crate) fn translate_shape_world(
+    sim: &mut SimWorld,
+    entity: Entity,
+    delta_world: [f64; 2],
+) -> bool {
+    if sim.world().get_entity(entity).is_err() {
+        return false;
+    }
+    // A translação vive no espaço do PAI; a delta é um VETOR, então só a parte linear do afim do
+    // pai a converte (a translação do pai não entra).
+    let parent = ph2d_ecs::parent_world_transform(sim.world(), entity);
+    let Some(parent_inv) = xform_of_transform(parent).inverse() else {
+        return false;
+    };
+    let dp = parent_inv.apply_vec(delta_world);
+    let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity) else {
+        return false;
+    };
+    t.translation = ph2d_core::Vec2::new(
+        t.translation.x + dp[0] as f32,
+        t.translation.y + dp[1] as f32,
+    );
+    true
+}
+
 /// Põe a origem de cada path recém-criado no **centro da bbox dele**.
 ///
 /// Um path nasce com a geometria em coordenadas de mundo e a entidade na

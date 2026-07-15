@@ -131,7 +131,8 @@ fn mode_button_click_switches_tool_mode_through_seam() {
         (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
         // O 6º pill: o CONECTOR.
         (ids::VECTOR_MODE_CONNECT, DrawMode::Connect),
-        // O 8º pill: **Pick Shapes** (Blend) — coleta formas na ordem de clique.
+        // **Pick Shapes** (Blend) — coleta formas na ordem de clique. O botão dele mora na seção
+        // BLEND (não nesta fileira), mas o id/seam é o mesmo.
         (ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),
     ] {
         let outcome =
@@ -853,15 +854,20 @@ fn clicking_build_pill_reaches_the_tool() {
     );
 }
 
-/// **O pill do Pick Shapes chega à tool.** Mesmo gate, mesma razão: um pill que PINTA e não
+/// **O botão Pick Shapes chega à tool.** Mesmo gate, mesma razão: um botão que PINTA e não
 /// despacha deixa a feature (escolher as formas do blend na ordem) inalcançável — e o motor de
-/// correspondência, onde mora a matemática, continua verde.
+/// correspondência, onde mora a matemática, continua verde. (O botão mora na seção BLEND, não na
+/// fileira de modos, mas o seam é o mesmo id.)
 #[test]
-fn clicking_pick_pill_reaches_the_tool() {
+fn clicking_pick_button_reaches_the_tool() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     let mut tool = VectorTool::default();
-    assert_ne!(tool.mode(), DrawMode::PickBlend, "precondition: nao e PickBlend");
+    assert_ne!(
+        tool.mode(),
+        DrawMode::PickBlend,
+        "precondition: nao e PickBlend"
+    );
 
     let outcome = host.apply_panel_event::<VectorPanel>(
         &mut panel_state,
@@ -870,7 +876,7 @@ fn clicking_pick_pill_reaches_the_tool() {
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
-        "o pill Pick nao foi consumido — falta o id na allowlist de `event.rs`"
+        "o botão Pick nao foi consumido — falta o id na allowlist de `event.rs`"
     );
     assert!(
         drain_into_tool(&mut host, &mut tool),

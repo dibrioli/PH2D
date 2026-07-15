@@ -196,8 +196,8 @@ fn populate_shape(store: &mut WidgetStore) {
     // clicável — pintar e dar hit-rect não basta.
     button(store, ids::VECTOR_MODE_BUILD);
 
-    // O 8º: **Pick Shapes** (Blend). Coleta as formas na ordem de clique — idem: só é clicável
-    // porque está registrado aqui.
+    // **Pick Shapes** (Blend). É um modo de tool, mas o botão dele mora na seção BLEND (não nesta
+    // fileira) — registrar aqui é o que o torna clicável onde quer que seja pintado.
     button(store, ids::VECTOR_MODE_PICKBLEND);
 
     // O CATÁLOGO: um botão por forma + uma opção de dropdown por família. Registrados por

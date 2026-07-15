@@ -3095,6 +3095,21 @@ impl crate::App {
                 &vec_xf,
                 &mut self.vec_connect_sides,
             );
+            // **Modo Node: arrastar uma PONTA do spine move a forma-fonte dela** (ADR-0122 C2b) —
+            // o inverso da pinagem. Roda ANTES do recook: move a fonte para a ponta arrastada e o
+            // recook então re-encosta a ponta no centro (agora coincidentes, sem salto). Como a
+            // fonte se moveu, o `vec_xf` é refeito para os passos deste frame já saírem do lugar
+            // novo. Só no Node — no Select a fonte se move pelo gizmo e a ponta a segue.
+            if vector_active && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node {
+                crate::blend_live::drag_endpoints_move_sources(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &vec_xf,
+                    &mut self.vec_blend_spines,
+                );
+                vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
+            }
             // **Blend Objects, 2ª metade:** os passos são função pura das fontes — re-cozidos
             // aqui, todo frame, sobre os afins DESTE frame. É o que faz a transição SEGUIR a
             // forma que o gizmo acabou de mover (ADR-0122). O buffer é zerado e repopulado.

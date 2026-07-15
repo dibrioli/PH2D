@@ -260,3 +260,76 @@ fn a_pinned_spine_endpoint_follows_its_source() {
         "a ponta seguiu a fonte para y=5: {last:?}"
     );
 }
+
+/// **Arrastar uma ponta do spine MOVE a forma-fonte dela** (ADR-0122 C2b, ajuste do Enio) — o
+/// inverso da pinagem. A fonte 1 está em (4,0); o artista arrasta a última âncora do spine para
+/// (4,5) no modo Node, e a fonte SEGUE (seu centro vira (4,5)). É o que faz editar a curva no Node
+/// equivaler a mover a forma no Select.
+#[test]
+fn dragging_a_spine_endpoint_moves_its_source() {
+    let (mut sim, mut scene, map, spine, src) = scene_with_blend(2, 3);
+    // Auto spine = [(0,0), (4,0)]. A mão arrasta a última ponta para (4,5).
+    set_spine(&mut scene, spine, &[[0.0, 0.0], [4.0, 5.0]]);
+    let mut spines = BlendSpines::new();
+    let xf = crate::vec_transform::build(&sim, &map);
+    drag_endpoints_move_sources(&mut sim, &scene, &map, &xf, &mut spines);
+
+    // A fonte 1 seguiu: seu centro é agora (4,5).
+    let xf = crate::vec_transform::build(&sim, &map);
+    let c = center_of(&scene, &xf, src[1]).expect("centro");
+    assert!(
+        (c[0] - 4.0).abs() < 1e-6 && (c[1] - 5.0).abs() < 1e-6,
+        "a fonte seguiu a ponta arrastada: {c:?}"
+    );
+}
+
+/// **Mover a ponta NÃO autora o spine — e não há salto** (mover a forma ≠ curvar a curva). Passa
+/// pelo auto primeiro (memoriza), arrasta a ponta, move a fonte + atualiza a memória do auto, e o
+/// recook seguinte deixa o spine AUTOMÁTICO (a ponta ficou onde foi arrastada, sobre o novo centro).
+/// Mutation-testado: sem atualizar a memória do auto (`spines`) no `drag_endpoints_move_sources`, a
+/// detecção confundiria o movimento da forma com uma edição de curva e autoraria.
+#[test]
+fn dragging_an_endpoint_moves_the_source_without_authoring_the_spine() {
+    let (mut sim, mut scene, map, spine, src) = scene_with_blend(2, 3);
+    let e = Entity::from_bits(map[&spine]);
+    let mut spines = BlendSpines::new();
+    let mut out = Vec::new();
+
+    // Frame 1: auto — memoriza o auto.
+    let xf = crate::vec_transform::build(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
+
+    // A mão arrasta a última ponta (modo Node): (4,0) → (4,5).
+    set_spine(&mut scene, spine, &[[0.0, 0.0], [4.0, 5.0]]);
+    let xf = crate::vec_transform::build(&sim, &map);
+    drag_endpoints_move_sources(&mut sim, &scene, &map, &xf, &mut spines);
+
+    // Frame 2: a fonte seguiu, o spine segue AUTOMÁTICO, e a ponta ficou onde foi arrastada.
+    let xf = crate::vec_transform::build(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
+    let c = center_of(&scene, &xf, src[1]).expect("centro");
+    assert!(
+        (c[0] - 4.0).abs() < 1e-6 && (c[1] - 5.0).abs() < 1e-6,
+        "a fonte seguiu: {c:?}"
+    );
+    assert!(
+        !sim.world()
+            .get::<VecBlend>(e)
+            .expect("blend")
+            .spine_authored,
+        "mover a ponta NÃO autora o spine (mover a forma ≠ curvar a curva)"
+    );
+    let last = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == spine)
+        .expect("spine")
+        .verts
+        .last()
+        .expect("ponta")
+        .anchor;
+    assert!(
+        (last[1] - 5.0).abs() < 1e-6,
+        "a ponta ficou onde foi arrastada (sem salto de volta): {last:?}"
+    );
+}

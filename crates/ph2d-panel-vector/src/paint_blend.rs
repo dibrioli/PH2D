@@ -8,6 +8,8 @@
 //! resolveu — GSAP/Corel exigem controle manual; o nosso não pede nada ao artista).
 
 use super::*;
+use ph2d_tool_vector::VectorStyleSnapshot;
+use ph2d_tool_vector::params::DrawMode;
 
 impl BodyCtx<'_> {
     /// Seção **BLEND** — os passos intermediários entre as formas selecionadas (Blend Object vivo).
@@ -17,7 +19,11 @@ impl BodyCtx<'_> {
     /// admite que o automático erra; o Corel pede para o usuário clicar um nó em cada forma), e o
     /// nosso motor o resolve sem pedir nada ao artista. O ajuste, no modelo vivo, é **editar as
     /// formas-fonte** (mover/girar/escalar uma adapta os intermediários), não um botão de escape.
-    pub(crate) fn blend_section(&mut self, y: f32) -> f32 {
+    ///
+    /// O **Pick Shapes** vive AQUI (não na fileira de modos): é uma etapa DO blend — escolher as
+    /// formas na ORDEM de clique —, e sua casa natural é ao lado do botão que as liga. O botão acende
+    /// quando o modo Pick está ativo (`snap.mode`).
+    pub(crate) fn blend_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
             ids::VECTOR_SECTION_BLEND,
             tr("panel.vector.section.blend"),
@@ -26,6 +32,12 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
+        // **Pick Shapes** — entra no modo de escolher as formas na ORDEM de clique (acende quando
+        // ativo). É um botão segmentado (não `action_button`) para poder realçar o estado do modo.
+        let picking = snap.mode == DrawMode::PickBlend;
+        y = self.button_grid(y, 1, 1, |_| {
+            (ids::VECTOR_MODE_PICKBLEND, "Pick Shapes", picking)
+        });
         let track = self
             .store
             .slider(ids::VECTOR_BLEND_STEPS)

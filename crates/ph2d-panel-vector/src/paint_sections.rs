@@ -177,7 +177,7 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::transform_section);
         y = self.step(y, Self::vertex_section);
         y = self.step(y, Self::boolean_section);
-        y = self.step(y, |b, y| b.blend_section(y));
+        y = self.step(y, |b, y| b.blend_section(snap, y));
         y = self.step(y, Self::align_section);
         y = self.step(y, Self::arrange_section);
         self.path_section(y)

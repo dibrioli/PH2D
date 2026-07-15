@@ -244,16 +244,36 @@ volta — as duas coisas convivem).
   o spine BENT ainda na cena com o auto memorizado e RE-autoraria na hora. Gate mutation-testado
   (sem o `spines.remove`, re-autora), e passa pelo AUTO antes (senão a memória estaria vazia e a
   mutação não apareceria).
-- **Pick Shapes** = `DrawMode::PickBlend` (8º pill, espelho do Build/Connect): no canvas, o clique
-  coleta a forma FECHADA sob o cursor em `vec_blend_picks`, na ORDEM de clique (clicar de novo numa
-  já escolhida a remove); o botão Blend liga essa lista em vez da ordem de z. A prévia
+- **Pick Shapes** = `DrawMode::PickBlend` (modo de tool, espelho do Build/Connect): no canvas, o
+  clique coleta a forma FECHADA sob o cursor em `vec_blend_picks`, na ORDEM de clique (clicar de novo
+  numa já escolhida a remove); o botão Blend liga essa lista em vez da ordem de z. A prévia
   (`blend_live::pick_preview`) realça cada escolha (contorno) + costura a ordem numa polilinha azul
   (a prévia do spine-a-ser) — o artista VÊ a cadeia se formar. Feito o blend, volta ao Select e a
-  lista esvazia. Gates: o pill chega à tool (seam) · a prévia usa a ordem de CLIQUE, não a de z.
+  lista esvazia. Gates: o botão chega à tool (seam) · a prévia usa a ordem de CLIQUE, não a de z.
   Smoke `PH2D_BLEND_SMOKE=4` (3 formas + modo Pick ativo).
 - **`spacing` (Steps | Distance | SmoothColor) DEFERIDO:** não foi pedido pelo Enio (a visão dele é
   ordem + spine editável + Expand), e Distance exige distribuir por comprimento de arco. Fica para
   quando/se pedido. `Steps` é o único hoje (o slider).
+
+### Ajustes do Enio (2026-07-15, mesmo dia)
+
+- **Arrastar uma PONTA do spine MOVE a forma-fonte dela** (`blend_live::drag_endpoints_move_sources`
+  + `vec_transform::translate_shape_world`): o inverso da pinagem. Antes, mover a fonte movia a
+  ponta, mas mover a ponta no Node não fazia nada (a pinagem a devolvia). Agora, no modo Node, a 1ª e
+  a última âncora do spine que diferem do centro da fonte movem a FONTE por essa delta (roda ANTES do
+  `recook`, que re-encosta a ponta no novo centro — coincidentes, sem salto; o `vec_xf` é refeito).
+  Assim **editar a curva no Node ≡ mover a forma no Select** — o pedido do Enio. Só as PONTAS movem
+  fontes; os pontos interiores editam a curva (para cadeias de 3+, as pontas do MEIO ainda editam a
+  curva, não movem a forma — follow-up). **Não autora o spine** ao mover uma ponta (mover a forma ≠
+  curvar a curva): atualiza a ponta na memória do auto (`spines`, vértice INTEIRO via `shift_vertex_to`
+  — só a âncora deixava as alças divergindo e a detecção autorava à toa). 2 gates (a fonte segue a
+  ponta · mover a ponta não autora e não salta).
+- **O botão Pick Shapes MUDOU da fileira de MODOS para a seção BLEND** — ele é uma etapa DO blend
+  (escolher as formas na ordem), e sua casa é ao lado do botão que as liga. `DrawMode::PickBlend`
+  segue sendo um modo de tool (o gesto de canvas é o mesmo); só o BOTÃO mudou de lugar
+  (`paint_blend`, botão segmentado que acende quando o modo está ativo), e saiu do `paint_modes`. A
+  chave i18n `panel.vector.mode.pickblend` foi removida (a seção Blend usa labels hardcoded, como
+  "Blend"/"Steps"/"Reset Spine").
 
 **Gotchas para a Fase C (o próximo que mexer):**
 

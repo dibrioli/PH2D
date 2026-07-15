@@ -13,7 +13,28 @@
 
 ---
 
-## 0. TL;DR
+> ## ⚡ STATUS (fim do dia 2026-07-15) — P0 FECHADO · W4 FECHADO · linha PARADA aguardando ordem
+>
+> - **P0 (§1) está CORRIGIDO** (`8b21acb8`, pendente smoke): o experimento A-vs-B decidiu **(A) ALTURA**
+>   — e o mecanismo era maior que as hipóteses: **dilatação AMBIENTE do terreno** (fonte NÃO-tocada
+>   entrava no envelope enraizada no próprio chão e dilatava os vizinhos; recortada no `kr`, virava o
+>   retângulo). Fix em 3 camadas (sentinela · alcance por-fonte `2ρ²·amount` · taper² C¹) + blur
+>   mascarado + janelas honestas. Gate-repro com números do produto nasceu VERMELHO (11.830 texels,
+>   pior 7,09 loads); fora do suporte agora é **byte-identidade**. Perf MELHOROU: 3,36 ms/move @2048²
+>   (era 4,57). Gates novos em `sculpt_tests/inflate_support.rs` (4, mutação provada camada a camada).
+> - **W4 (fila §3) está FEITO** (`cac2db77`, pendente smoke): o warp do Deform advecta
+>   `h`+`covers`+`mats` pelo MESMO `disp` (porta única `warp/relief.rs`); toggle **Affect Relief**
+>   (default ON, pintado só com relevo) costurado nos 7 sites com seam que CLICA; sessão congela/
+>   restaura/rebasa os 4 planos; `DeformSnap` carrega os baselines pelo undo. 7 gates tool + 2 seam,
+>   8/8 mutações mortas.
+> - **Detalhe de integração:** [`HANDOFF_line_Painter_integracao_2026-07-15.md`](HANDOFF_line_Painter_integracao_2026-07-15.md).
+> - **Fila que sobra:** P1 (smoke do Enio — o roteiro do handoff 07-14 §0 + o repro do §1 abaixo) →
+>   **W5 Conserve** (começar RENDERIZANDO E OLHANDO — é o mesmo problema do Push pelo outro lado) →
+>   **D display** (precisa do app vivo) → Push (fim da fila, ordem do Enio).
+> - `inflate.rs` estourou o teto de LOC no fechamento (728 > 700, herdado) → **split por
+>   responsabilidade**: `inflate_matter.rs` (aparência/matéria) saiu dele; gate de LOC verde.
+
+## 0. TL;DR (do início do dia — mantido como histórico do diagnóstico)
 
 O **Inflate** (o Blob do Sculpt) teve 3 smokes do Enio. Os dois primeiros bugs (era Layer; não engordava)
 e o do 3º (topo chato → virou o Blob) estão **fechados**. O 3º smoke abriu uma cauda: **"falloff de

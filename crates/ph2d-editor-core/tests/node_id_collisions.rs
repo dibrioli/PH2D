@@ -590,6 +590,7 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     // Frame strip (W3) — the bottom-docked cells + transport + tween.
     ("FLIP_STRIP_PANEL", ids::FLIP_STRIP_PANEL),
     ("FLIP_STRIP_CLOSE", ids::FLIP_STRIP_CLOSE),
+    ("FLIP_SCRUB", ids::FLIP_SCRUB),
     ("FLIP_PLAY", ids::FLIP_PLAY),
     ("FLIP_PREV_DRAWING", ids::FLIP_PREV_DRAWING),
     ("FLIP_NEXT_DRAWING", ids::FLIP_NEXT_DRAWING),

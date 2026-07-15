@@ -266,3 +266,51 @@ fn unlink_ends_the_multi_selection() {
     );
     let _ = oid;
 }
+
+// ── régua de scrub: move o playhead sem tocar na seleção ────────────────────────
+
+/// 🔴 **A régua de scrub move o playhead SEM tocar na multisseleção** (W7.3, smoke do
+/// Enio 2026-07-14: *"não podemos arrastar o playhead sem desselecionar os outros
+/// quadros"*).
+///
+/// É o ponto INTEIRO da régua — o animador scrubba entre os quadros marcados (para ver o
+/// falloff / re-ancorar) sem desmontar o multiframe. Clicar numa CÉLULA é que seleciona; a
+/// régua só transporta. O painel já resolveu o QUADRO (`FlipStripSnapshot::scrub_frame`);
+/// o shell aqui só faz o seek.
+///
+/// Mutação que sangra: fazer o braço de `FLIP_SCRUB` reescrever `strip.selection` (como o
+/// clique de célula faz) — a seleção deixa de ser `[0, 4, 8]`; ou não fazer o seek — o
+/// playhead não chega ao 4.
+#[test]
+fn the_scrub_lane_moves_the_playhead_without_touching_the_selection() {
+    let (mut doc, oid, lid, mut ph) = doc_with_key0();
+    doc.object_mut(oid)
+        .unwrap()
+        .insert_frame(lid, 4, Hold::Implicit, KeyKind::Keyframe);
+    doc.object_mut(oid)
+        .unwrap()
+        .insert_frame(lid, 8, Hold::Implicit, KeyKind::Keyframe);
+    let mut strip = FlipStrip::default();
+    strip.selection = vec![0, 4, 8]; // multiframe armado
+
+    let edited = apply_panel_event(
+        &PanelEvent::SetValue(ph2d_editor::ids::FLIP_SCRUB, 4.0),
+        &mut doc,
+        Some(lid),
+        &mut ph,
+        &mut strip,
+        false,
+    );
+
+    assert!(!edited, "scrub e transporte, nao edicao de documento");
+    assert_eq!(
+        doc.object(oid).unwrap().frame_at(&ph),
+        4,
+        "a regua nao levou o playhead ao quadro 4"
+    );
+    assert_eq!(
+        strip.selection,
+        vec![0, 4, 8],
+        "a regua DESMONTOU a multiselecao — o ponto inteiro dela e nao tocar a selecao"
+    );
+}

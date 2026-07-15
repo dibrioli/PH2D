@@ -5,7 +5,7 @@
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
-use ph2d_editor_core::widget::{ButtonState, TextInputState};
+use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 // As FAIXAS das caixas numéricas. Não são medidas de design (px/espaçamento) — são
 // os limites do DOMÍNIO (quadros, fps, inbetweens), e o `set_number_range` os usa
@@ -57,6 +57,21 @@ fn number(store: &mut WidgetStore, id: ph2d_a11y::NodeId, value: f64, min: f64, 
     store.set_number_range(id, min, max, STEP);
 }
 
+/// A **faixa de scrub** (W7.3): um Slider horizontal cuja mecânica de arrasto (o
+/// primitivo 1D per-Move) move o playhead. Não pinta o visual de slider — a régua e o
+/// handle são desenhados à mão em `paint_cells`; aqui só se registra a máquina de
+/// arrasto (a `value` `0..1` é recalculada da posição do ponteiro a cada Move).
+fn scrub(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
+    store.register(
+        id,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+}
+
 /// Registra os widgets fixos da tira de frames.
 pub fn populate(store: &mut WidgetStore) {
     // Transporte.
@@ -64,6 +79,9 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_PLAY);
     button(store, ids::FLIP_NEXT_DRAWING);
     number(store, ids::FLIP_FPS_NUM, FPS_DEFAULT, FPS_MIN, FPS_MAX);
+
+    // A régua de scrub (move o playhead sem tocar na seleção).
+    scrub(store, ids::FLIP_SCRUB);
 
     // Ghost Frames.
     button(store, ids::FLIP_GHOST);

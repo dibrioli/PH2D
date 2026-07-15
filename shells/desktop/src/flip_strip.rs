@@ -186,6 +186,15 @@ pub(crate) fn apply_panel_event(
             }
             true
         }
+        // **A régua de scrub** (W7.3): o painel já resolveu o QUADRO (o inverso do handle,
+        // `scrub_frame`); aqui só se leva o playhead até lá. **NÃO tocamos a seleção** — é o
+        // ponto INTEIRO da régua: mover o playhead entre os quadros marcados (p/ ver o
+        // falloff, re-ancorar) sem desmontar o multiframe. Clicar numa CÉLULA é que
+        // seleciona; a régua só scrubba (smoke do Enio, 2026-07-14). Transporte, não edição.
+        PanelEvent::SetValue(id, v) if *id == ids::FLIP_SCRUB => {
+            seek(playhead, fps, *v as Frame);
+            false
+        }
 
         // ── Ghost Frames ──────────────────────────────────────────────────────
         PanelEvent::Click(id) if *id == ids::FLIP_GHOST => {

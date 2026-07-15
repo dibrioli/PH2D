@@ -209,6 +209,13 @@ inferiores e não podem se sobrepor).
   visível como espaço) e o número da exposição dentro. A célula é um **botão canônico**
   (`paint_button`) — clicável, com estados e a11y de graça (HR-12), não um retângulo improvisado.
   A escala é derivada do vão: **a tira sempre cabe** (sem scroll, sem estado de pan escondido).
+- **Régua de scrub** (W7.3, no TOPO das células): um handle de playhead arrastável — arrastar move
+  o playhead **sem tocar na seleção** (a régua faz scrub, as células selecionam). Fecha o smoke
+  *"não podemos arrastar o playhead sem desselecionar os outros quadros"*: sem ela, mover o playhead
+  (clicar numa célula) substituía o multiframe, e não dava para scrubbar entre os quadros marcados
+  para inspecionar o falloff. É um `Slider` (o gesto 1D per-Move) desenhado à mão; o `value 0..1` vira
+  QUADRO por `FlipStripSnapshot::scrub_frame` — o **inverso exato** da posição do handle (§8 / HANDOFF
+  W7.3), então régua e handle nunca divergem.
 - **Transporte**: play/pause + `◀`/`▶` que pulam por **DESENHO** (pulando holds). Atalhos: `↑`/`↓`
   (o *flip* do animador — o inner loop da profissão), `,`/`.` = ±1 quadro **no FPS do objeto**
   (não no tick de 60 Hz da simulação — senão "avançar um quadro" andaria um quinto de desenho).

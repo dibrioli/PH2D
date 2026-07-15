@@ -96,6 +96,21 @@ pub(crate) fn apply_event(
                 None => id == ids::FLIP_CYCLE_DD,
             }
         }
+        // A régua de scrub: a mecânica de slider deu um `value` `0..1`; mapeamos ao
+        // quadro pelo vão exibido (o inverso do handle — `scrub_frame`) e mandamos o
+        // QUADRO ao shell, que só faz seek. O mapa mora aqui (o painel é o dono do
+        // layout), não no shell: `PanelEvent` está congelado, então reusamos `SetValue`.
+        WidgetEvent::ValueChanged(id) if id == ids::FLIP_SCRUB => {
+            let value = host.store().slider(id).map_or(0.0, |(_, v)| v);
+            if let Some(frame) = current_flip_strip().scrub_frame(value) {
+                host.bus_mut()
+                    .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                        id,
+                        f64::from(frame),
+                    )));
+            }
+            true
+        }
         WidgetEvent::ValueChanged(id) if NUMBERS.contains(&id) => {
             let v = host.store().number_value(id).unwrap_or_default();
             host.bus_mut()

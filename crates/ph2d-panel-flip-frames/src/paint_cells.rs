@@ -85,10 +85,22 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
     let ppf = (inner.w / total).min(MAX_PX_PER_FRAME);
     let font = TypeToken::Sm.px();
 
+    // **A régua de scrub** (W7.3): uma faixa no TOPO da tira que move o playhead sem
+    // tocar na seleção (a separação-padrão de toda ferramenta de animação — a régua faz
+    // scrub, as células selecionam). Ela cobre exatamente a largura ÚTIL das células
+    // (`total·ppf`, que pode ser menor que `inner.w` quando o `ppf` bate no teto), então
+    // o handle e as células ficam alinhados 1:1. As células descem uma faixa.
+    let used_w = (total * ppf).max(MIN_CELL_W);
+    let lane_h = Spacing::Lg.px();
+    let lane = Rect::new(inner.x, inner.y, used_w, lane_h);
+    paint_scrub_lane(ctx, theme, lane, snap, inner.x, first, ppf);
+    let cells_top = inner.y + lane_h + Spacing::Xs.px();
+    let cell_h = (inner.y + inner.h - cells_top).max(1.0);
+
     for (i, cell) in snap.cells.iter().enumerate() {
         let x = inner.x + (cell.key - first) as f32 * ppf;
         let w = (cell.exposure.max(1) as f32 * ppf - 1.0).max(MIN_CELL_W);
-        let r = Rect::new(x, inner.y, w, inner.h);
+        let r = Rect::new(x, cells_top, w, cell_h);
         let id = ids::flip_cell_id(i);
         ctx.host.store_mut().register_if_absent(
             id,
@@ -169,6 +181,51 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
             resolve(ColorToken::BorderEmph, theme),
         );
     }
+}
+
+/// **A régua de scrub** (W7.3): um rail fino sobre a largura útil das células + um handle
+/// de playhead arrastável no quadro corrente. O rail INTEIRO é a zona de arrasto (clicar
+/// em qualquer ponto leva o playhead até lá), então registramos o rect no hit index sob
+/// [`ids::FLIP_SCRUB`] — o Slider registrado no `populate` dá a mecânica de arrasto (1D
+/// per-Move), e o shell faz o seek SEM tocar na seleção. O handle é desenhado a partir do
+/// `current_frame` (a fonte de verdade), NÃO do value do slider, e no MESMO `x` que a
+/// linha do playhead das células (`inner.x + (frame − first)·ppf`) — régua e linha são o
+/// mesmo playhead.
+fn paint_scrub_lane(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    lane: Rect,
+    snap: &FlipStripSnapshot,
+    inner_x: f32,
+    first: i32,
+    ppf: f32,
+) {
+    // O rail: um trilho fino centrado na faixa (onde o playhead corre).
+    let rail_h = Spacing::Xs.px();
+    let rail = Rect::new(lane.x, lane.y + (lane.h - rail_h) * 0.5, lane.w, rail_h);
+    fill_rounded_rect(
+        ctx.scene,
+        rail,
+        Radius::Sm.px(),
+        resolve(ColorToken::Bg1, theme),
+    );
+
+    // O handle: uma pílula no quadro corrente, no MESMO x da linha do playhead. Clampada
+    // ao rail (o playhead pode estar fora do vão exibido — num ciclo — mas o pega-mão
+    // vive no rail).
+    let px = inner_x + (snap.current_frame - first) as f32 * ppf;
+    let handle_w = Spacing::Sm.px();
+    let hx = (px - handle_w * 0.5).clamp(lane.x, lane.x + lane.w - handle_w);
+    let handle = Rect::new(hx, lane.y, handle_w, lane.h);
+    fill_rounded_rect(
+        ctx.scene,
+        handle,
+        Radius::Sm.px(),
+        resolve(ColorToken::BorderEmph, theme),
+    );
+
+    // A faixa INTEIRA é arrastável — o Slider (registrado no `populate`) dá o gesto.
+    ctx.host.hit_index_mut().register(ids::FLIP_SCRUB, lane);
 }
 
 /// **A altura da barra de seleção = o PESO do multiframe** (o falloff, W7), em px de tela.

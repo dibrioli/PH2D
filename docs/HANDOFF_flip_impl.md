@@ -1047,13 +1047,42 @@ Cinco achados do smoke do W7.x, todos com gate + mutação provada:
 - **Unlink "religava" no multiframe** (`3c94e28d`): não era religamento — a multissselecão ainda
   ativa fazia o Sculpt editar os dois, e a cópia idêntica parecia religada → o Unlink encerra a
   multissselecão.
-- **"Não percebo o efeito de falloff"** (este commit): o falloff só afeta os VIZINHOS e não tinha
+- **"Não percebo o efeito de falloff"** (`3a95954b`): o falloff só afeta os VIZINHOS e não tinha
   feedback — você teria de esculpir + scrub + comparar magnitudes. Agora a **altura da barra de
   seleção de cada célula é o peso** (`FlipCell.weight` ← `flip_multiframe::cell_weight`, a MESMA
   `falloff_at` da escultura): Falloff off = barras iguais, on = gradiente. O efeito se VÊ ao
   togglear, sem esculpir. Doc: [`Flip/05 §8`](Flip/05_frames_ghost_tween.md). Gates:
   `the_selection_bar_height_tracks_the_multiframe_weight` (painel) +
   `the_cell_weight_preview_matches_the_sculpt_falloff` (seed = sample).
+
+## W7.3 — A **régua de scrub** (LANDOU 2026-07-14, pendente o smoke)
+
+Smoke do falloff, em uma frase (Enio): *"não temos visível a linha do tempo/tira e não podemos
+arrastar o playhead sem desselecionar os outros quadros."* Mover o playhead (clicar numa célula)
+**substituía** a multissselecão, então não dava para scrubbar entre os quadros marcados para ver o
+falloff — nem havia um pega-mão visível de playhead.
+
+**A régua** (`ids::FLIP_SCRUB`): uma faixa fina no TOPO da tira, com um handle de playhead no quadro
+corrente. Arrastar em qualquer ponto dela move o playhead **sem tocar na seleção** — é a
+separação-padrão de toda ferramenta de animação: **a régua faz scrub, as células selecionam**. As
+células descem uma faixa.
+
+- **Mecânica reusada, contrato intacto.** A régua é um `Slider` horizontal (o primitivo 1D per-Move)
+  registrado no `populate` — mas **não pinta visual de slider**: a régua e o handle são desenhados à
+  mão em `paint_scrub_lane` (o Slider só dá o gesto de arrasto). O `ValueChanged` `0..1` vira QUADRO
+  no `event.rs` (via `FlipStripSnapshot::scrub_frame`) e sai como `PanelEvent::SetValue(FLIP_SCRUB, frame)`
+  — **`PanelEvent` está congelado (ADR-0040)**, então reusamos `SetValue`; nenhum contrato tocado. O
+  shell só faz `seek`, **sem mexer em `strip.selection`**.
+- **Régua e handle são o MESMO playhead** (seed = sample). `scrub_frame` é o **inverso exato** da
+  colocação do handle (`first + round(value·total)`, o `ppf` cancela) — clicar sob o handle devolve o
+  quadro do handle. A régua cobre a largura ÚTIL das células (`total·ppf`), então alinha 1:1 com elas
+  mesmo quando o `ppf` bate no teto. `feedback_two_doors_to_the_same_question_diverge`.
+- **Gates** (4 mutações provadas): `the_scrub_lane_moves_the_playhead_without_touching_the_selection`
+  (shell — mutação: limpar a seleção sangra) · `dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value`
+  (seam — mutação: mandar o value cru) · `the_scrub_lane_is_painted_with_a_hittable_rect` (seam,
+  pintado ≠ registrado — mutação: tirar o `register`) · `scrub_is_the_exact_inverse_of_the_handle_placement`
+  + `a_value_between_frames_snaps_to_the_nearest_frame` (state — mutação: `round`→`floor`, pega só no
+  caso de meio-quadro; o gate do inverso sozinho era frouxo, `mute o CÓDIGO não só o teste`).
 
 ## Aberto (fila viva — detalhe em [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md))
 

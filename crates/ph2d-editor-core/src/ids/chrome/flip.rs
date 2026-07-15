@@ -223,6 +223,11 @@ pub fn flip_layer_blend_option_id(layer_id: u64, mode: u8) -> NodeId {
 pub const FLIP_STRIP_PANEL: NodeId = hash_node_id("flip.strip.panel");
 /// Frame-strip close (X) button.
 pub const FLIP_STRIP_CLOSE: NodeId = hash_node_id("flip.strip.close");
+/// **Scrub lane** (W7.3): the draggable ruler at the top of the strip that moves the
+/// playhead WITHOUT touching the multiframe selection — the standard split of every
+/// animation tool (the ruler scrubs, the cells select). A horizontal `Slider` drives
+/// the drag; the panel maps its `0..1` value to a frame and the shell seeks there.
+pub const FLIP_SCRUB: NodeId = hash_node_id("flip.strip.scrub");
 
 // ── Transport ────────────────────────────────────────────────────────────────
 /// Play / pause toggle.

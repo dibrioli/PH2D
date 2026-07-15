@@ -154,6 +154,65 @@ fn clicking_a_cell_reaches_the_bus() {
     ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
 }
 
+/// 🔴 **Arrastar a régua de scrub chega ao barramento como um QUADRO, não o value cru**
+/// (W7.3). A mecânica de slider dá um `value` `0..1`; o `event.rs` o mapeia ao quadro pelo
+/// vão exibido (`FlipStripSnapshot::scrub_frame`) e manda o QUADRO. Sem o mapa, o shell
+/// receberia `1.0` (o value) e faria seek para o quadro 1 — a régua andaria errado.
+///
+/// Mutação que sangra: mandar `value` em vez de `scrub_frame(value)` — o barramento traz
+/// `1.0`, não `8.0`.
+#[test]
+fn dragging_the_scrub_lane_reaches_the_bus_as_a_frame_not_a_raw_value() {
+    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut state = FlipStripState;
+    // Vão exibido [0, 9): chaves 0 e 4 seguram 4 quadros, a última expõe 1.
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
+        has_layer: true,
+        cells: vec![
+            FlipCell {
+                key: 0,
+                exposure: 4,
+                breakdown: false,
+                instanced: false,
+                selected: false,
+                weight: 1.0,
+            },
+            FlipCell {
+                key: 4,
+                exposure: 4,
+                breakdown: false,
+                instanced: false,
+                selected: false,
+                weight: 1.0,
+            },
+            FlipCell {
+                key: 8,
+                exposure: 1,
+                breakdown: false,
+                instanced: false,
+                selected: false,
+                weight: 1.0,
+            },
+        ],
+        ..Default::default()
+    });
+    // Arrasta a régua até o fim (`value = 1.0`) — o último quadro EXIBIDO é o 8 (`end − 1`).
+    host.set_slider_value(ids::FLIP_SCRUB, 1.0);
+    let outcome = host.apply_panel_event::<FlipFramesPanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ids::FLIP_SCRUB),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed, "a régua não é roteada");
+    assert!(
+        drain(&mut host).iter().any(|e| matches!(
+            e,
+            PanelEvent::SetValue(i, v) if *i == ids::FLIP_SCRUB && (*v - 8.0).abs() < 1e-6
+        )),
+        "o arrasto não chegou como o QUADRO 8 (mapeou o value cru, não pelo vão?)"
+    );
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
+}
+
 /// A opção do dropdown de ciclo chega como `SelectOption` no id do CHIP (é o chip
 /// que o shell decodifica, não a opção).
 #[test]
@@ -253,4 +312,54 @@ fn every_toolbar_control_is_actually_painted() {
             .any(|(w, r)| *w == cell && r.w > 0.0 && r.h > 0.0),
         "a celula do quadro 0 nao e pintada: a tira esta vazia na tela"
     );
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
+}
+
+/// 🔴 **A régua de scrub é PINTADA com área clicável** (W7.3). O Slider está no `populate`
+/// e roteado no `event.rs`, mas nada disso a coloca NA TELA: se `paint_cells` esquecer de
+/// registrar o rect (`hit_index`), a régua não existe para o ponteiro — e o
+/// `dragging_the_scrub_lane_reaches_the_bus` seguiria verde (ele injeta o value direto,
+/// pulando o hit). Pergunta diferente: aqui é o pixel.
+///
+/// Mutação que sangra: remover o `register(FLIP_SCRUB, lane)` de `paint_scrub_lane`.
+#[test]
+fn the_scrub_lane_is_painted_with_a_hittable_rect() {
+    let mut host = MockPanelHost::with_panel::<FlipFramesPanel>();
+    let mut state = FlipStripState;
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot {
+        has_layer: true,
+        layer_name: "L".into(),
+        cells: vec![
+            FlipCell {
+                key: 0,
+                exposure: 4,
+                breakdown: false,
+                instanced: false,
+                selected: false,
+                weight: 1.0,
+            },
+            FlipCell {
+                key: 4,
+                exposure: 1,
+                breakdown: false,
+                instanced: false,
+                selected: false,
+                weight: 1.0,
+            },
+        ],
+        fps: 12.0,
+        ..Default::default()
+    });
+
+    let painted = host.paint::<FlipFramesPanel>(
+        &mut state,
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
+    );
+    assert!(
+        painted
+            .iter()
+            .any(|(w, r)| *w == ids::FLIP_SCRUB && r.w > 0.0 && r.h > 0.0),
+        "a régua de scrub não é pintada com área clicável: não existe para o ponteiro"
+    );
+    ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
 }

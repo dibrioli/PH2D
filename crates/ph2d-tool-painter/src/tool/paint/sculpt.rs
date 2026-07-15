@@ -355,8 +355,10 @@ pub(crate) struct SculptState {
     /// **coverage** (`impasto_light::paint_body(cover) = cover`), so relief standing over bare canvas
     /// renders exactly nothing. The buffer grew. The screen did not. The gate measured the buffer.
     ///
-    /// So the matter travels with the height: what arrives at a texel came from the ball's **argmax**
-    /// ([`Self::memo_src`]), and it brings that texel's coverage, its material and its **colour** — because
+    /// So the matter travels with the height: what arrives at a texel came from the ball's **argmax** (the
+    /// packed source [`super::sculpt_offset::blob_dilate`] returns, consumed in
+    /// [`super::sculpt_blur::PainterTool::render_inflate`]), and it brings that texel's coverage, its material
+    /// and its **colour** — because
     /// paint is a substance, and a substance that moves takes its colour with it. (The same sentence is
     /// already written for W4, the advective family. It arrived early, forced by the one verb that grows.)
     ///

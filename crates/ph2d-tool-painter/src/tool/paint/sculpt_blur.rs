@@ -56,11 +56,12 @@ impl PainterTool {
     /// Fill every tile `rect` overlaps that this session has not filled yet, into the memo.
     ///
     /// Each tile is computed at most ONCE per stroke (that is the point), and each one is bit-for-bit what
-    /// a whole-canvas run of the same kernel would have written there (see the module docs, and
-    /// [`super::sculpt_offset::ball_offset_into`] for the offset's identical argument).
+    /// a whole-canvas run of the same kernel would have written there (see the module docs). Only the blur
+    /// (Smooth / Sharpen) is memoised now — Inflate became the Blob, whose ball radius rides the live
+    /// `amount`, so it is not a stroke-constant and recomputes each render in [`Self::render_inflate`].
     ///
-    /// There is deliberately **no early return on a zero reach**. A zero-radius blur and a zero-radius
-    /// offset are both the identity, and both must still be *written* — bailing out would leave the memo at
+    /// There is deliberately **no early return on a zero reach**. A zero-radius blur is the identity, and it
+    /// must still be *written* — bailing out would leave the memo at
     /// `0.0`, and every verb in this family lerps TOWARD the memo, so the relief would be pulled to zero:
     /// the paint flattened away, silently, by a knob at the bottom of its track. The same fail-closed
     /// reasoning as the unknown-tile branch below.
@@ -388,7 +389,56 @@ impl PainterTool {
             }
         }
         let a_curv = 1.0 / (2.0 * depth.abs() * unit * unit); // 1/(2·|Depth|·unit²)
-        let (mut hbuf, sbuf) = super::sculpt_offset::blob_dilate(&g, cr.w, cr.h, a_curv, dilate);
+        let (mut hbuf, mut sbuf) = super::sculpt_offset::blob_dilate(&g, cr.w, cr.h, a_curv, dilate);
+        // The ball has a RADIUS. The parabola is a ball only within ρ√2 of its source — that is exactly where
+        // it has fallen by the full |Depth| (the ball's own height), and a real ball ends there. Past it the
+        // parabola keeps lifting neighbours out of nothing, and on THICK paint that runaway skirt reaches a
+        // hundred texels and gets clipped by the rectangular write region into a hard shelf: Enio's 3rd smoke,
+        // *"funciona mas com um falloff de influência retangular bizarra"*. The composed argmax already carries
+        // how far the winning matter travelled, so bounding `dx²+dy²` is a CIRCULAR reach cap (never a square)
+        // for one comparison per texel. At ρ√2 the lift dome has already reached `pre`, so on a flat this clamp
+        // touches nothing — it only ever cuts the runaway tail. Clamped texels fall back to `pre` and carry no
+        // matter (`src = 0`), and the fall-back happens BEFORE the smooth blur so its shoulder stays clean.
+        let reach2 = 2 * rho * rho;
+        let r_edge = (reach2 as f64).sqrt();
+        for i in 0..(cw * ch) {
+            let (dx, dy) = super::sculpt_offset::unpack_src(sbuf[i]);
+            let d2 = dx * dx + dy * dy;
+            if d2 <= reach2 {
+                continue; // the ball genuinely reaches this source — the exact result stands
+            }
+            // The winning source is past ρ√2 — the parabola's runaway. Re-clamp it ONTO the ball's rim and
+            // read the height THERE: the true bounded offset is a dome that stops at ρ√2, not the unbounded
+            // parabola clipped to the rectangular write region. This is symmetric, which a blunt fall-to-`pre`
+            // is not: a dilation of bare canvas beside a tall wall lands on a low rim source (→ `pre`, no
+            // spurious lift), while an erosion of a THIN ridge still reaches its shoulder inside ρ√2 (the rim
+            // source is that shoulder, and the dig survives) — the form being eroded surrounds the texel, so
+            // `pre` would have been the one height it must NOT keep.
+            let (rx, ry) = ((i % cw) as i64, (i / cw) as i64);
+            let gi = (cr.y as usize + ry as usize) * wu + cr.x as usize + rx as usize;
+            let s = r_edge / (d2 as f64).sqrt();
+            let (cdx, cdy) = ((dx as f64 * s).round() as i64, (dy as f64 * s).round() as i64);
+            let (sx, sy) = (rx + cdx, ry + cdy);
+            let rim = if sx >= 0 && sy >= 0 && (sx as usize) < cw && (sy as usize) < ch {
+                g[(sy as usize) * cw + sx as usize]
+            } else {
+                pre[gi]
+            };
+            let drop = a_curv * (cdx * cdx + cdy * cdy) as f32;
+            if dilate {
+                let v = rim - drop;
+                hbuf[i] = v.max(pre[gi]);
+                // Advect only if the rim source actually lifted this texel (else it fell back to `pre`).
+                sbuf[i] = if v > pre[gi] {
+                    super::sculpt_offset::pack_src(cdx, cdy)
+                } else {
+                    0
+                };
+            } else {
+                hbuf[i] = (rim + drop).min(pre[gi]);
+                sbuf[i] = 0; // erosion advects nothing — the matter loop skips a less-painted source anyway
+            }
+        }
         if smooth > 0 {
             impasto_settle::box_blur(&mut hbuf, cr.w, cr.h, smooth);
         }

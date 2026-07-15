@@ -193,6 +193,23 @@ matéria tem que advectar **`h` + `covers` + `mats` + RGBA juntos**. É o que se
 > composto nos 2 passes**. O **sinal do lift** já me virou o domo do avesso uma vez — gate byte-idêntico vs
 > força-bruta O(N²) pega (`the_parabolic_blob_matches_the_brute_force_dilation`). Código morto da bola
 > constante (memo `Offset`, `ball_offset_into`) removido.
+>
+> ### ⚠️ 3º SMOKE, PARTE 2 — *"falloff de influência retangular bizarra"* (2026-07-15)
+>
+> O domo *funcionava* mas vinha cercado por um **quadrado duro** em tinta **grossa**. Causa: a parábola
+> separável **não tem suporte** — um `pre` alto (paint acumulado) lança um "saia" de `√(H/a)` ≈ **100+ texels**,
+> e escrita só dentro de `kr = brush + 2ρ` isso é **recortado no retângulo**. Uma bola de raio ρ alcança ρ,
+> por mais alto que seja o penhasco em que ela rola; a parábola não. Fix (`render_inflate`, **um `sqrt` por
+> texel recortado**): o **argmax composto já diz a distância** que a matéria vencedora viajou, então
+> `dx²+dy² > 2ρ²` (o raio ρ√2 onde a parábola já caiu o `|Depth|` inteiro — onde a bola de verdade termina)
+> **re-crava a fonte no aro da bola e lê a altura ali**. É **circular** (limita `dx²+dy²`, não cada eixo →
+> nunca desenha um quadrado) e **simétrico**: dilatação de tela nua ao lado dum muro cai em `pre` (a fonte do
+> aro é baixa), erosão dum sulco fino ainda alcança o ombro dentro de ρ√2 (a fonte do aro **é** o ombro, e a
+> cavada sobrevive — um `fall-to-pre` cru mataria a erosão porque a forma a ser cavada **cerca** o texel). Em
+> `pre` chato o aro coincide com `pre` ⇒ o clamp não muda **nada** (só corta a cauda de runaway). Gate:
+> `the_inflate_offset_reach_is_bounded_not_a_runaway_rectangle` (mutação = clamp nunca dispara → probe a 35 px
+> sobe pra **19,78 loads**); a erosão de sulco fino (`a_negative_depth_erodes…`) prova que o **re-sample no
+> aro** é a decisão certa vs `fall-to-pre`. Perf intacto (**4,57 ms/move** a 4096 px).
 
 ---
 

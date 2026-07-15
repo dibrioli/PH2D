@@ -69,8 +69,11 @@ const DEPTH_DOWN: f32 = 0.25;
 /// The shipped formula computed `Depth / S`. At this slope that is `0.4` where the truth is `0.625`: the two
 /// answers differ by 56%, and no tolerance can hide the difference between a number and its reciprocal.
 ///
-/// **Mutations that must bleed** (both checked): flip the cap's sign in `ball_offset_into` (`v − cap` for the
-/// dilation); and drop the `/ DEPTH_UNIT_PX` from the cap, which makes the ball sixteen times too tall.
+/// **Mutation that must bleed:** drop a `DEPTH_UNIT_PX` from the curvature `a_curv = 1/(2·|Depth|·unit²)` in
+/// `render_inflate`, which makes the ball sixteen times too tall and the raise sixteen times too large. (The
+/// lift *sign* is not what this gate catches — a ramp is symmetric enough that the centre still rises by
+/// ≈ Depth·S with the sign flipped; that inversion is pinned by
+/// [`the_parabolic_blob_matches_the_brute_force_dilation`] instead. Verified: the flip leaves this one green.)
 #[test]
 fn the_inflate_raises_a_ramp_by_the_secant_of_its_slope() {
     let size = 96u32;
@@ -174,6 +177,88 @@ fn on_a_flat_the_inflate_is_a_rounded_dome_not_a_layer_raise() {
         (r0 - r8) > 0.01,
         "the blob's top is FLAT (centre {r0:.3} vs 8 px {r8:.3}) — a flat top is the *mistura com layer* \
          Enio rejected; the ball radius must follow the falloff so the centre is a rounded peak"
+    );
+}
+
+/// **The offset reaches ρ√2 and then STOPS — it is a ball, not a runaway rectangle.** (Enio's 3rd smoke,
+/// 2026-07-14: *"funciona mas com um falloff de influência retangular bizarra"*.)
+///
+/// The Blob dilates the absolute height `pre + lift`, which is right — that is what rolls the ball over the
+/// existing form and pushes its rim out. But the separable engine is a **parabola**, and a parabola has no
+/// support: a source of height `H` lifts everything within `√(H/a)` of it, which for THICK built-up paint is a
+/// hundred texels. Written only inside `kr = brush + 2ρ`, that runaway is clipped to the rectangle — the hard
+/// square Enio saw around the dome.
+///
+/// A true ball of radius ρ reaches ρ, no matter how tall the cliff it rolls against. The fix caps the composed
+/// argmax distance at ρ√2 (`dx² + dy² ≤ 2ρ²`, the radius where the parabola has fallen the full |Depth| and a
+/// real ball ends) and falls the rest back to `pre`. It is **circular** — it bounds `dx²+dy²`, not each axis —
+/// so it can never itself draw a square.
+///
+/// The fixture is the screenshot: a tall isolated plateau (thick paint) with bare canvas around it, inflated.
+/// The near probe (inside ρ√2) is the **presence sibling** — the form genuinely fattens by the ball's radius,
+/// so the far probe reading `pre` proves the reach is BOUNDED, not that Inflate does nothing. The far probe
+/// (past ρ√2, still inside `kr`) must stay at `pre`: no shelf, no square.
+///
+/// **Mutation that must bleed:** let the clamp never fire (widen `reach2`) — the far probe rises to ~20 loads
+/// (verified: 19.78), the plateau's parabola clipped to `kr`, which is exactly the shelf Enio saw. The erode
+/// sibling below is what proves the *rim re-sample* (rather than a blunt fall-to-`pre`) is the right fall-back:
+/// snapping the argmin to `pre` there would cancel the dig on a thin ridge.
+#[test]
+fn the_inflate_offset_reach_is_bounded_not_a_runaway_rectangle() {
+    let size = 160u32;
+    let n = (size * size) as usize;
+    let (mut t, layer, _) = sculpt_canvas(size);
+    // A tall plateau — thick built-up paint — of radius 10, over bare canvas. The height (20 loads) is what
+    // makes the parabola's reach run away: √(20/a) ≈ 100 texels at Depth 1.
+    let c = 80i32;
+    let plateau: Vec<f32> = (0..n)
+        .map(|i| {
+            let (x, y) = ((i as i32 % size as i32) - c, (i as i32 / size as i32) - c);
+            if x * x + y * y <= 100 { 20.0 } else { 0.0 }
+        })
+        .collect();
+    t.heights.insert(layer, Arc::new(plateau.clone()));
+    t.covers.insert(layer, Arc::new(vec![0u8; n]));
+    if let Some(cov) = t.covers.get_mut(&layer) {
+        let cov = Arc::make_mut(cov);
+        for (i, c0) in cov.iter_mut().enumerate() {
+            let (x, y) = ((i as i32 % size as i32) - c, (i as i32 / size as i32) - c);
+            if x * x + y * y <= 100 {
+                *c0 = 255;
+            }
+        }
+    }
+    t.sync_relief_flags();
+
+    arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.falloff = Falloff::Constant;
+    t.paint.brush = b;
+    t.paint.brush_by_mode[super::super::PaintMode::Sculpt.slot()] = b;
+    t.set_sculpt_depth(1.0); // Depth +1.0 ⇒ ρ = 16 px, ρ√2 ≈ 22.6, reach² = 512
+    drag(&mut t, &[[c as f32, c as f32]]);
+
+    let after = heights_of(&t, layer);
+    let at = |dx: i32| -> f32 { after[((c + dx) + c * size as i32) as usize] };
+
+    // NEAR (18 px out, inside ρ√2): the plateau grew outward — the form is genuinely fatter here. This is the
+    // presence sibling: it must be lifted so the far probe's `pre` reads as BOUNDED, not as a dead tool.
+    assert!(
+        at(18) > 5.0,
+        "the offset did not fatten the plateau at 18 px (inside ρ√2): rose {:.2}, expected the ball to carry \
+         the form outward. If this is ~0 the offset is not reaching at all and the far-probe check below is \
+         vacuous.",
+        at(18)
+    );
+    // FAR (35 px out, past ρ√2 but still inside kr = brush + 2ρ): must be untouched canvas. The runaway
+    // parabola would put ~18 loads of shelf here, and the rectangular kr would clip it into the square.
+    assert!(
+        at(35) < 1.0,
+        "35 px past the plateau — beyond the ball's ρ√2 reach but inside the write region — rose to {:.2} \
+         loads. A ball of radius ρ cannot reach here; this is the unbounded parabola's runaway skirt, and \
+         clipped to the rectangular kr it is exactly the *falloff retangular bizarra* Enio reported.",
+        at(35)
     );
 }
 
@@ -397,9 +482,9 @@ fn covers_of(t: &PainterTool, layer: crate::tool::RtLayerId) -> Vec<u8> {
 /// colour with it. (That sentence was already written down — for W4, the advective family. It arrived early,
 /// forced by the one verb that grows.)
 ///
-/// **Mutations that must bleed** (both checked): delete the `advect_matter` call from `render_sculpt` — the
-/// coverage stops moving and this reads exactly the shipped bug; and return `false` from
-/// `SculptMode::moves_matter`.
+/// **Mutation that must bleed:** delete the matter loop in `render_inflate` (the block guarded by
+/// `matter_ok` that copies `pre_cover` / `pre_mats` / `pre_rgba` along the ball's `sbuf` argmax) — the
+/// coverage stops moving and this reads exactly the shipped bug.
 #[test]
 fn the_inflate_fattens_the_paint_and_not_just_the_height_buffer() {
     let size = 200u32;
@@ -451,7 +536,8 @@ fn the_inflate_fattens_the_paint_and_not_just_the_height_buffer() {
 /// travel too, and it travels along the same vector the height did — one ball, one answer to *where did this
 /// come from*, so the relief and the colour cannot disagree about it.
 ///
-/// **Mutation that must bleed:** stop writing `rgba` in `advect_matter` (keep coverage + material).
+/// **Mutation that must bleed:** stop writing `rgba` in `render_inflate`'s matter loop (keep the coverage +
+/// material copies, drop the `copy_from_slice` into `rgba`).
 #[test]
 fn the_inflated_rim_carries_the_paints_colour() {
     let size = 200u32;
@@ -525,14 +611,13 @@ fn the_inflated_rim_carries_the_paints_colour() {
 /// The sweep is the gate. A `matches!(mode, Inflate)` written at a call site would be a claim; this is a
 /// measurement, over all eight, on the real dab path.
 ///
-/// **Mutation that must bleed:** delete the `advect_matter` call from `render_sculpt`. (Checked.)
+/// **Mutation that must bleed:** delete the matter loop in `render_inflate` — the Inflate branch stops moving
+/// coverage and the `INFLATE` arm below fails. (Checked in the sibling above.)
 ///
-/// Adding a second verb to `moves_matter` does NOT bleed it, and that is worth knowing rather than hiding:
-/// the advection reads `memo_src`, and only the ball offset ever writes it — a blur leaves it all zeros, and
-/// a zero source means *this matter is its own*. Two independent things hold the invariant up. I claimed the
-/// opposite in this comment first, mutated it, and watched the gate stay green
-/// ([[feedback_a_mutation_that_survives_may_mean_a_missing_gate]] — third cause: the gate is right, it just
-/// does not speak about that).
+/// The invariant is held STRUCTURALLY: the matter loop lives inside `render_inflate`, and `render_sculpt`
+/// routes only Inflate there — every other verb goes through the memo / plane / height paths, which never
+/// touch `covers` or `rgba`. There is no per-verb flag to get wrong; a second verb could move matter only by
+/// growing its own advection, which the sweep would catch on that verb's row.
 #[test]
 fn exactly_one_verb_moves_the_matter() {
     let size = 160u32;

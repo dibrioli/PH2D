@@ -204,6 +204,9 @@ fn steps_are_the_in_betweens_and_only_them() {
 }
 
 /// A cor caminha junto com a forma — é o que faz um blend parecer um blend, e não N cópias.
+///
+/// E caminha em **OKLab** (perceptual), não em sRGB device-space. As pontas continuam exatas
+/// (t=0 é a cor de A, t=1 é a de B); o meio é o meio **perceptual**.
 #[test]
 fn the_fill_travels_with_the_shape() {
     let mut a = square([0.0, 0.0], 1.0);
@@ -211,17 +214,29 @@ fn the_fill_travels_with_the_shape() {
     a.fill = Some(Paint::solid(Rgba8::new(0, 0, 0, 255)));
     b.fill = Some(Paint::solid(Rgba8::new(200, 100, 50, 255)));
 
-    let mid = morph(&a, &b, 0.5).expect("o meio");
-    match mid.fill {
-        Some(Paint::Solid(c)) => {
-            assert_eq!(
-                (c.r, c.g, c.b),
-                (100, 50, 25),
-                "a cor do meio é o meio da cor"
-            );
-        }
-        other => panic!("o meio perdeu o preenchimento: {other:?}"),
-    }
+    // As pontas são EXATAS.
+    let solid = |p: &VecPath| match p.fill {
+        Some(Paint::Solid(c)) => (c.r, c.g, c.b, c.a),
+        ref other => panic!("sem preenchimento sólido: {other:?}"),
+    };
+    assert_eq!(
+        solid(&morph(&a, &b, 0.0).unwrap()),
+        (0, 0, 0, 255),
+        "t=0 é A"
+    );
+    assert_eq!(
+        solid(&morph(&a, &b, 1.0).unwrap()),
+        (200, 100, 50, 255),
+        "t=1 é B"
+    );
+
+    // O meio é o meio PERCEPTUAL (OKLab), medido — NÃO o meio device (100,50,25).
+    let (r, g, b_, _) = solid(&morph(&a, &b, 0.5).unwrap());
+    assert_eq!(
+        (r, g, b_),
+        (76, 34, 13),
+        "a cor do meio é o meio OKLab (perceptual), não o meio linear device"
+    );
 }
 
 /// **O SMOKE DO ENIO: quadrado→estrela ondulava.**

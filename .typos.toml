@@ -112,6 +112,7 @@ distribuem = "distribuem"
 polinomial = "polinomial"
 candidatas = "candidatas"
 candidata = "candidata"  # singular (ph2d-vec-blend: so uma QUINA e candidata a no)
+regulares = "regulares"  # pt-BR: poligonos REGULARES (ph2d-vec-blend)
 contribuem = "contribuem"
 conveniente = "conveniente"
 ser = "ser"

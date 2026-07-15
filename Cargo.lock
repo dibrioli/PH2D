@@ -7053,6 +7053,7 @@ name = "ph2d-vec-blend"
 version = "0.0.0"
 dependencies = [
  "kurbo 0.13.0",
+ "ph2d-color",
  "ph2d-vec-scene",
 ]
 

@@ -14,4 +14,7 @@ authors.workspace = true
 # `ph2d-vec-boolean` — e serve a UMA coisa: comprimento de arco (`inv_arclen`), que é
 # o que dá a correspondência independente de onde os vértices caíram.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# Interpolação de COR em OKLab (perceptual): o Blend do Illustrator interpola em RGB device-space
+# e passa por cinza lamacento entre matizes opostos; o nosso passa pelo caminho perceptual.
+ph2d-color = { path = "../ph2d-color" }
 kurbo = "0.13"

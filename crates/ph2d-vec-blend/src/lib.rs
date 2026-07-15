@@ -428,6 +428,30 @@ pub fn steps(a: &VecPath, b: &VecPath, n: usize) -> Vec<VecPath> {
         .collect()
 }
 
+/// Os passos intermediários de uma **CADEIA** de formas — o Blend multi-forma do Illustrator.
+///
+/// Para N fontes (a linha aceita 2..=5), liga `fonte[0]→fonte[1]`, `fonte[1]→fonte[2]`, … — cada
+/// par consecutivo é um [`Plan`] independente, com `n` passos entre eles, unidos na fonte
+/// compartilhada. É a **cadeia pairwise** do Illustrator.
+///
+/// As **fontes NÃO entram no resultado** — elas se desenham sozinhas (são paths reais); aqui saem
+/// só os intermediários **virtuais**, na ordem da cadeia. Um par que degenera (uma forma inválida)
+/// é **pulado** — a cadeia não quebra por causa de um elo.
+///
+/// O spine é **emergente**: as fontes estão em posições diferentes do mundo, e o lerp de
+/// coordenadas move os pontos, então os passos já se distribuem entre elas numa reta. O spine
+/// editável (ADR-0122, Fase C) é uma re-distribuição por cima disto.
+#[must_use]
+pub fn chain(shapes: &[VecPath], n: usize) -> Vec<VecPath> {
+    let mut out = Vec::new();
+    for pair in shapes.windows(2) {
+        if let Some(plan) = Plan::new(&pair[0], &pair[1]) {
+            out.extend((1..=n).map(|i| plan.at(i as f64 / (n + 1) as f64)));
+        }
+    }
+    out
+}
+
 /// Cadeia de cúbicas → `VecPath`. A âncora é o `p0` de cada peça; a alça de saída é o `p1` dela,
 /// e a de entrada é o `p2` da peça ANTERIOR (é o mesmo ponto do documento, visto pelos dois
 /// lados).
@@ -498,24 +522,33 @@ const STRAIGHT_EPS: f64 = 1e-9;
 /// O Illustrator interpola a COR junto com a forma, e é isso que faz um blend parecer um blend
 /// em vez de N cópias. Só entre dois sólidos; qualquer outra coisa (gradiente, nada) fica com o
 /// lado mais próximo.
+///
+/// # A cor caminha em OKLab, não em sRGB
+///
+/// É onde superamos o Illustrator: ele interpola em **device-space** (RGB/CMYK, canal a canal), e o
+/// meio de dois matizes opostos passa por um **cinza lamacento**. Em OKLab o caminho é
+/// **perceptual** — a luminosidade e os eixos oponentes interpolam sem o meio-tom sujo. Preferimos
+/// OKLab (cartesiano) a OKLCH (polar): o polar preserva o matiz mas força escolher o SENTIDO da
+/// volta do matiz, e para um blend o caminho reto do OKLab é o esperado.
 fn mix_paint(a: Option<&Paint>, b: Option<&Paint>, t: f64) -> Option<Paint> {
     match (a, b) {
-        (Some(Paint::Solid(ca)), Some(Paint::Solid(cb))) => Some(Paint::solid(Rgba8::new(
-            mix_u8(ca.r, cb.r, t),
-            mix_u8(ca.g, cb.g, t),
-            mix_u8(ca.b, cb.b, t),
-            mix_u8(ca.a, cb.a, t),
-        ))),
+        (Some(Paint::Solid(ca)), Some(Paint::Solid(cb))) => {
+            Some(Paint::solid(mix_oklab(*ca, *cb, t)))
+        }
         _ if t < 0.5 => a.cloned(),
         _ => b.cloned(),
     }
 }
 
+/// Interpola duas cores no espaço **OKLab** (perceptual). O ida-e-volta sRGB→linear→OKLab→…→sRGB
+/// clampa+quantiza só na fronteira do display (`to_srgb`), como manda a `ph2d-color`.
 #[inline]
-fn mix_u8(a: u8, b: u8, t: f64) -> u8 {
-    (f64::from(a) + (f64::from(b) - f64::from(a)) * t)
-        .round()
-        .clamp(0.0, 255.0) as u8
+fn mix_oklab(a: Rgba8, b: Rgba8, t: f64) -> Rgba8 {
+    use ph2d_color::{OklabColor, SrgbRgba};
+    let ok = |c: Rgba8| OklabColor::from_linear(SrgbRgba([c.r, c.g, c.b, c.a]).to_linear());
+    #[allow(clippy::cast_possible_truncation)]
+    let m = ok(a).lerp(ok(b), t as f32).to_linear().to_srgb().0;
+    Rgba8::new(m[0], m[1], m[2], m[3])
 }
 
 #[inline]
@@ -541,3 +574,8 @@ mod tests;
 #[cfg(test)]
 #[path = "tests_phase.rs"]
 mod tests_phase;
+
+/// Os gates da Fase A (cadeia multi-forma + cor OKLab) — arquivo irmão pelo teto de LOC.
+#[cfg(test)]
+#[path = "tests_chain.rs"]
+mod tests_chain;

@@ -232,12 +232,12 @@ fn moving_one_instanced_key_moves_only_that_frame() {
     assert!(o.translate_frame(l, 5, Vec2::new(100.0, 0.0)));
 
     assert_eq!(
-        o.frame_offset(l, 5),
+        o.frame_pose(l, 5).translation(),
         Vec2::new(100.0, 0.0),
         "a chave 5 nao andou"
     );
     assert_eq!(
-        o.frame_offset(l, 0),
+        o.frame_pose(l, 0).translation(),
         Vec2::ZERO,
         "a chave 0 andou junto — a pose vazou para o gemeo"
     );
@@ -258,7 +258,7 @@ fn duplicating_a_posed_key_carries_the_pose() {
         o.translate_frame(l, 0, Vec2::new(7.0, -3.0));
         assert!(o.duplicate_frame(l, 0, 4, mode));
         assert_eq!(
-            o.frame_offset(l, 4),
+            o.frame_pose(l, 4).translation(),
             Vec2::new(7.0, -3.0),
             "{mode:?}: a chave nova nasceu na origem, e nao onde a arte esta"
         );
@@ -352,7 +352,7 @@ fn open_gap_at_ripples_only_the_contiguous_block() {
         "o bloco contiguo 5-6 andou +1; a chave 10 (apos o buraco) nao pode ter se mexido"
     );
     assert_eq!(
-        o.frame_offset(l, 6),
+        o.frame_pose(l, 6).translation(),
         Vec2::new(7.0, -3.0),
         "a pose da chave 5 nao viajou com ela para 6"
     );

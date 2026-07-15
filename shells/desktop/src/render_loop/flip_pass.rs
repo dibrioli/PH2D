@@ -397,7 +397,7 @@ fn collect_layers<'a>(
                         // mostra onde o desenho ESTAVA — e "onde" inclui o lugar, não
                         // só a forma. Herdar a pose do quadro corrente empilharia todos
                         // os fantasmas em cima da arte de agora.
-                        model: art_to_world(&model, layer.frame_offset(g.key)),
+                        model: art_to_world(&model, layer.frame_pose(g.key)),
                         ghost: Some((g.tint, g.alpha)),
                     });
                 }
@@ -422,7 +422,7 @@ fn collect_layers<'a>(
                 // DESENHO pelo funil de entrada (`flip_active_world_to_local`, que desfaz
                 // a pose da chave ativa). As duas pontas usam a mesma transform, que é a
                 // única forma de o preview não folgar do traço assado.
-                model: art_to_world(&model, layer.offset_at_cycled(frame)),
+                model: art_to_world(&model, layer.pose_at_cycled(frame)),
                 ghost: None,
             });
         }

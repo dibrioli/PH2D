@@ -53,7 +53,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// era código morto — o Ctrl+S global já retornava antes). Os bytes trazem a própria versão
 /// (`DOC_VERSION`), então um bump lá é RECUSADO com erro honesto e não obriga a bumpar aqui;
 /// o campo NOVO, sim, obriga (posicional).
-const PROJECT_SCHEMA: u32 = 13;
+/// v14 (W7.5): a **pose da chave** do Flip virou AFIM (`FlipFrame.pose: Pose([f32;6])`, era
+/// `offset: Vec2`) — o `ProjectState` embute o `FlipDoc`, e postcard é posicional: 8 bytes → 24
+/// por chave posada. Sem o bump um v13 leria os coeficientes do afim como o `Vec2` + lixo.
+const PROJECT_SCHEMA: u32 = 14;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

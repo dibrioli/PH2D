@@ -83,8 +83,8 @@ pub(super) fn draw_flip_selection(
     // fica deslocado da linha pela pose — "o traço afastado do seu mesh" (smoke do Enio,
     // 2026-07-14). A pose sai do MESMO amostrador que o render (`offset_at_cycled` no
     // quadro atual), não de `frame_offset` — sob um ciclo os dois diferem.
-    let pose = obj.layer(lid).map_or(ph2d_core::Vec2::ZERO, |l| {
-        l.offset_at_cycled(obj.frame_at(playhead))
+    let pose = obj.layer(lid).map_or(ph2d_flip::Pose::IDENTITY, |l| {
+        l.pose_at_cycled(obj.frame_at(playhead))
     });
     let to_screen = art_screen_affine(l2w, pose, camera.world_to_screen_affine(window));
 
@@ -147,7 +147,7 @@ pub(super) fn draw_flip_marquee(
 /// e uma função pura é o que um gate consegue interrogar.
 fn art_screen_affine(
     l2w: &Xform,
-    pose: ph2d_core::Vec2,
+    pose: ph2d_flip::Pose,
     cam: ph2d_vector::Affine,
 ) -> ph2d_vector::Affine {
     let [a, b, c, d, e, f] = crate::flip_transform::art_to_world(l2w, pose).0;
@@ -224,7 +224,7 @@ mod tests {
     fn the_halo_carries_the_key_pose() {
         let cam = Affine::new([2.0, 0.0, 0.0, 2.0, 0.0, 0.0]); // 2 px/unidade
         let l2w = Xform::IDENTITY; // objeto na identidade: isola a pose
-        let pose = ph2d_core::Vec2::new(100.0, -40.0);
+        let pose = ph2d_flip::Pose::from_translation(ph2d_core::Vec2::new(100.0, -40.0));
 
         // A âncora da arte (o ponto (0,0) da geometria) sob pose = deslocada pela pose,
         // depois pela câmera.
@@ -237,7 +237,8 @@ mod tests {
 
         // E pose neutra reduz EXATAMENTE ao caminho antigo (`cam * l2w`) — o caso comum
         // (nenhuma instancia movida) nao paga nada.
-        let neutral = art_screen_affine(&l2w, ph2d_core::Vec2::ZERO, cam) * Point::new(7.0, 3.0);
+        let neutral =
+            art_screen_affine(&l2w, ph2d_flip::Pose::IDENTITY, cam) * Point::new(7.0, 3.0);
         let plain = cam * Point::new(7.0, 3.0);
         assert!((neutral.x - plain.x).abs() < 1e-9 && (neutral.y - plain.y).abs() < 1e-9);
     }

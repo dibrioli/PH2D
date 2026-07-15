@@ -13,7 +13,7 @@
 use crate::cycle::LayerCycle;
 use crate::frame::{FlipFrame, Hold, KeyKind};
 use crate::ids::{DrawingId, Frame, LayerId};
-use ph2d_core::Vec2;
+use crate::pose::Pose;
 use ph2d_painter_effects::BlendMode;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -107,11 +107,11 @@ impl FlipLayer {
             .and_then(|(_, f)| f.drawing)
     }
 
-    /// **A pose da chave `key`** — o deslocamento da arte daquele quadro
-    /// ([`FlipFrame::offset`]). `ZERO` se a chave não existe.
+    /// **A pose da chave `key`** — o afim da arte daquele quadro ([`FlipFrame::pose`]).
+    /// Identidade se a chave não existe.
     #[must_use]
-    pub fn frame_offset(&self, key: Frame) -> Vec2 {
-        self.frames.get(&key).map_or(Vec2::ZERO, |f| f.offset)
+    pub fn frame_pose(&self, key: Frame) -> Pose {
+        self.frames.get(&key).map_or(Pose::IDENTITY, |f| f.pose)
     }
 
     /// Aponta a chave `key` para outro desenho (o refcount é do
@@ -128,10 +128,10 @@ impl FlipLayer {
     }
 
     /// Escreve a pose da chave `key`. `false` se a chave não existe.
-    pub fn set_frame_offset(&mut self, key: Frame, offset: Vec2) -> bool {
+    pub fn set_frame_pose(&mut self, key: Frame, pose: Pose) -> bool {
         match self.frames.get_mut(&key) {
             Some(f) => {
-                f.offset = offset;
+                f.pose = pose;
                 true
             }
             None => false,
@@ -213,7 +213,7 @@ impl FlipLayer {
                 // Pose neutra. Quem cria uma chave a partir de OUTRA (duplicar,
                 // instanciar, autokey, tween) reescreve o offset depois — senão a arte
                 // saltaria de volta para a origem no quadro novo.
-                offset: Vec2::ZERO,
+                pose: Pose::IDENTITY,
             },
         );
         let duration = hold.duration();
@@ -459,7 +459,7 @@ mod tests {
                 drawing: d(0),
                 implicit_hold: true,
                 kind: KeyKind::Keyframe,
-                offset: Vec2::ZERO,
+                pose: Pose::IDENTITY,
             },
         );
         l.frames.insert(
@@ -468,7 +468,7 @@ mod tests {
                 drawing: d(1),
                 implicit_hold: true,
                 kind: KeyKind::Keyframe,
-                offset: Vec2::ZERO,
+                pose: Pose::IDENTITY,
             },
         );
         l.frames.insert(10, FlipFrame::end());
@@ -478,7 +478,7 @@ mod tests {
                 drawing: d(2),
                 implicit_hold: true,
                 kind: KeyKind::Keyframe,
-                offset: Vec2::ZERO,
+                pose: Pose::IDENTITY,
             },
         );
 

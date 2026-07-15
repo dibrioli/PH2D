@@ -151,9 +151,14 @@ fn contains_object(
         return false;
     };
     // Por CHAVE, com a POSE dela descontada do cursor: o ponteiro aponta para a arte no
-    // lugar em que ela aparece, e a geometria está guardada sem a pose.
-    for (off, d) in obj.posed_drawings() {
-        let p = [local[0] - f64::from(off.x), local[1] - f64::from(off.y)];
+    // lugar em que ela aparece, e a geometria está guardada sem a pose. A pose é um AFIM
+    // (translação hoje, rot/escala com o gizmo), então o cursor desce ao espaço do desenho
+    // pelo INVERSO dela — numa pose de translação pura é o `local − off` de antes.
+    for (pose, d) in obj.posed_drawings() {
+        let Some(pinv) = crate::flip_transform::key_xform(pose).inverse() else {
+            continue; // pose colapsada (escala zero)
+        };
+        let p = pinv.apply(local);
         for s in &d.strokes {
             let pos = s.positions();
             for w in pos.windows(2) {

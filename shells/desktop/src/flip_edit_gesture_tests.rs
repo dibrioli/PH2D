@@ -192,12 +192,12 @@ fn dragging_shared_art_moves_the_key_pose_not_the_geometry() {
 
     let obj = doc.object(oid).unwrap();
     assert_eq!(
-        obj.frame_offset(lid, 5),
+        obj.frame_pose(lid, 5).translation(),
         Vec2::new(100.0, 0.0),
         "a instancia nao andou: a pose nao foi escrita"
     );
     assert_eq!(
-        obj.frame_offset(lid, 0),
+        obj.frame_pose(lid, 0).translation(),
         Vec2::ZERO,
         "o quadro 0 andou junto — as duas chaves seguem uma sobre a outra"
     );
@@ -243,7 +243,7 @@ fn dragging_exclusive_art_still_moves_the_geometry() {
         "a geometria nao andou: o caminho comum regrediu"
     );
     assert_eq!(
-        obj.frame_offset(lid, 0),
+        obj.frame_pose(lid, 0).translation(),
         Vec2::ZERO,
         "escreveu POSE numa arte exclusiva — o documento ganhou estado que ninguem le"
     );
@@ -277,7 +277,7 @@ fn moving_shared_art_carries_every_stroke_of_the_frame() {
 
     // A pose move o quadro inteiro — nada de "metade do desenho ficou para trás".
     assert_eq!(
-        doc.object(oid).unwrap().frame_offset(lid, 5),
+        doc.object(oid).unwrap().frame_pose(lid, 5).translation(),
         Vec2::new(100.0, 0.0)
     );
 }

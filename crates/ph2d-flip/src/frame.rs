@@ -16,7 +16,7 @@
 //! mesma modelagem do GP (flag + sentinela), não `Fixed(n)` armazenado.
 
 use crate::ids::DrawingId;
-use ph2d_core::Vec2;
+use crate::pose::Pose;
 use serde::{Deserialize, Serialize};
 
 /// Como um frame é inserido — o **parâmetro** de `insert_frame`, não um campo
@@ -83,9 +83,9 @@ pub struct FlipFrame {
     ///
     /// É a discretização do *peg* do Harmony/Moho (uma trilha de transform animada) ao
     /// que o Flip é: um meio **quadro-a-quadro**, onde a posição muda por DESENHO, não
-    /// continuamente. Só translação hoje — girar/escalar uma seleção ainda não existe
-    /// para desenho nenhum (é o gizmo de seleção, item aberto).
-    pub offset: Vec2,
+    /// continuamente. É um **afim** ([`Pose`]) — translação até o gizmo de rotate/escala,
+    /// afim daí em diante; a identidade é o caminho comum, byte-idêntico ao pré-pose.
+    pub pose: Pose,
 }
 
 impl FlipFrame {
@@ -96,7 +96,7 @@ impl FlipFrame {
             drawing: None,
             implicit_hold: false,
             kind: KeyKind::Keyframe,
-            offset: Vec2::ZERO,
+            pose: Pose::IDENTITY,
         }
     }
 

@@ -15,7 +15,7 @@
 //! `xform_of_transform`) — eles não tocam `VecScene`, só o `SimWorld`/`Transform`.
 
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_flip::{FlipDoc, FlipObjectId};
+use ph2d_flip::{FlipDoc, FlipObjectId, Pose};
 use ph2d_vec_scene::Xform;
 
 use crate::flip_entities::FlipEntityMap;
@@ -29,23 +29,33 @@ pub(crate) fn object_xform(sim: &SimWorld, entity: Entity) -> Xform {
     xform_of_transform(world_transform(sim, entity))
 }
 
-/// **A POSE DA CHAVE** como afim (W7.2): a translação do quadro
-/// ([`ph2d_flip::FlipFrame::offset`]), em espaço LOCAL do objeto.
+/// **A POSE DA CHAVE** como afim (W7.2): o afim do quadro ([`ph2d_flip::FlipFrame::pose`]),
+/// em espaço LOCAL do objeto. Translação até o gizmo de rotate/escala; afim daí em diante —
+/// e como a `Pose` já carrega os 6 coeficientes no MESMO layout do `Xform`, isto é só uma
+/// conversão de tipo.
 ///
 /// A cadeia completa da arte de um quadro é `objeto ∘ pose_da_chave`: a geometria do
 /// desenho é local, a pose a coloca dentro do objeto, e o `Transform` do objeto leva
 /// tudo ao mundo. Um quadro na pose neutra devolve a identidade — o caminho comum não
 /// paga nada.
 #[must_use]
-pub(crate) fn key_xform(offset: ph2d_core::Vec2) -> Xform {
-    Xform([1.0, 0.0, 0.0, 1.0, f64::from(offset.x), f64::from(offset.y)])
+pub(crate) fn key_xform(pose: Pose) -> Xform {
+    let c = pose.coeffs();
+    Xform([
+        f64::from(c[0]),
+        f64::from(c[1]),
+        f64::from(c[2]),
+        f64::from(c[3]),
+        f64::from(c[4]),
+        f64::from(c[5]),
+    ])
 }
 
 /// **A arte de um quadro → MUNDO**: `objeto ∘ pose_da_chave`. É o `model` que o render
 /// dobra na câmera.
 #[must_use]
-pub(crate) fn art_to_world(object: &Xform, key_offset: ph2d_core::Vec2) -> Xform {
-    key_xform(key_offset).then(object)
+pub(crate) fn art_to_world(object: &Xform, key_pose: Pose) -> Xform {
+    key_xform(key_pose).then(object)
 }
 
 /// **MUNDO → a arte de um quadro**: o inverso exato de [`art_to_world`]. É o que o funil
@@ -58,8 +68,8 @@ pub(crate) fn art_to_world(object: &Xform, key_offset: ph2d_core::Vec2) -> Xform
 /// possibilidade some (`feedback_derived_coordinate_seed_must_match_sample`). O gate
 /// `the_render_and_the_input_are_exact_inverses` prende o par.
 #[must_use]
-pub(crate) fn world_to_art(object: &Xform, key_offset: ph2d_core::Vec2) -> Xform {
-    art_to_world(object, key_offset)
+pub(crate) fn world_to_art(object: &Xform, key_pose: Pose) -> Xform {
+    art_to_world(object, key_pose)
         .inverse()
         .unwrap_or(Xform::IDENTITY)
 }
@@ -295,7 +305,7 @@ mod tests {
         // Um objeto REAL: girado, escalado e movido (o único jeito de um erro de unidade
         // aparecer — na identidade, tudo casa por acidente).
         let object = Xform([0.6, 0.8, -0.8, 0.6, 30.0, -12.0]); // rot ~53°, escala 1
-        let pose = ph2d_core::Vec2::new(100.0, -40.0);
+        let pose = Pose::from_translation(ph2d_core::Vec2::new(100.0, -40.0));
 
         let to_world = art_to_world(&object, pose);
         let to_art = world_to_art(&object, pose);
@@ -309,7 +319,7 @@ mod tests {
         }
 
         // E a pose TEM de estar lá: sem ela, a arte sai no lugar do objeto sem pose.
-        let neutral = art_to_world(&object, ph2d_core::Vec2::ZERO);
+        let neutral = art_to_world(&object, Pose::IDENTITY);
         assert_ne!(
             to_world.apply([0.0, 0.0]),
             neutral.apply([0.0, 0.0]),
@@ -322,7 +332,7 @@ mod tests {
     #[test]
     fn a_neutral_pose_is_the_object_transform_untouched() {
         let object = Xform([2.0, 0.0, 0.0, 2.0, 5.0, 7.0]);
-        assert_eq!(art_to_world(&object, ph2d_core::Vec2::ZERO), object);
+        assert_eq!(art_to_world(&object, Pose::IDENTITY), object);
     }
 
     /// 🔴 **O funil do MOVE tem de ser POSE-FREE, ou ele realimenta e o desenho treme**
@@ -353,7 +363,7 @@ mod tests {
         let run = |pose_aware: bool| -> Vec<f64> {
             let funnel = |pose: ph2d_core::Vec2| -> Xform {
                 if pose_aware {
-                    world_to_art(&object, pose)
+                    world_to_art(&object, Pose::from_translation(pose))
                 } else {
                     object.inverse().unwrap()
                 }

@@ -345,7 +345,7 @@ impl FlipObject {
         // extremos com a mesma arte em poses diferentes (uma instância deslocada) tweenam
         // num deslizamento — sem isto, os inbetweens nasceriam na pose neutra e a arte
         // pularia para a origem no meio do movimento.
-        let (off_a, off_b) = (layer.frame_offset(from), layer.frame_offset(to));
+        let (pose_a, pose_b) = (layer.frame_pose(from), layer.frame_pose(to));
         // Os quadros livres do intervalo (o que sobrou de chaves reais fica).
         let count = req.count.min((gap - 1) as u32);
         let a = self.drawing(da).expect("chave A tem desenho").clone();
@@ -377,7 +377,7 @@ impl FlipObject {
                 made += 1;
             }
             if let Some(l) = self.layer_mut(req.layer) {
-                l.set_frame_offset(f, off_a.lerp(off_b, t));
+                l.set_frame_pose(f, pose_a.lerp(&pose_b, t));
             }
         }
         made

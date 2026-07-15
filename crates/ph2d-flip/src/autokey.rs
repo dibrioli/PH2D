@@ -20,7 +20,7 @@
 use crate::frame::{Hold, KeyKind};
 use crate::ids::{DrawingId, Frame, LayerId};
 use crate::object::{DupMode, FlipObject};
-use ph2d_core::Vec2;
+use crate::pose::Pose;
 
 /// O que a ferramenta quer quando cai num quadro sem chave própria.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -77,9 +77,9 @@ impl FlipObject {
         // ele está VENDO. Se a chave nova nascesse na pose neutra, o traço cairia
         // deslocado pelo tanto que a anterior estava (o seed teria de casar com o sample
         // — `feedback_derived_coordinate_seed_must_match_sample`).
-        let shown_offset = layer
+        let shown_pose = layer
             .active_key(frame)
-            .map_or(Vec2::ZERO, |k| layer.frame_offset(k));
+            .map_or(Pose::IDENTITY, |k| layer.frame_pose(k));
 
         let created = match source {
             // Duplicata PROFUNDA: instanciar faria a borracha comer o quadro de
@@ -92,8 +92,7 @@ impl FlipObject {
         }?;
         // (A duplicata já herdou a pose em `duplicate_frame`; a chave BRANCA não — e é
         // ela que este passe cobre. Idempotente para as duas.)
-        self.layer_mut(layer_id)?
-            .set_frame_offset(frame, shown_offset);
+        self.layer_mut(layer_id)?.set_frame_pose(frame, shown_pose);
         Some(created)
     }
 }

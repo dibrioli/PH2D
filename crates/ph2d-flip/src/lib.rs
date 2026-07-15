@@ -36,6 +36,7 @@ mod layer;
 mod layer_time;
 mod object;
 mod onion;
+mod pose;
 mod stroke;
 mod tween;
 mod tween_flip;
@@ -50,6 +51,7 @@ pub use ids::{DrawingId, FlipObjectId, Frame, LayerId, MaterialId};
 pub use layer::{FlipLayer, LayerMask};
 pub use object::{DEFAULT_FPS, DupMode, FlipObject};
 pub use onion::{GHOST_MIN_ALPHA, Ghost, OnionMode, OnionSettings, ghosts};
+pub use pose::Pose;
 pub use stroke::{Cap, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_WIDTH, Fill, FlipStroke, Point};
 pub use tween::{TweenOptions, TweenRequest, tween_drawing};
 
@@ -75,7 +77,7 @@ pub use ph2d_painter_effects::BlendMode;
 /// v5 (W7.2): a CHAVE ganhou `offset` — a **pose do quadro**. É o que faz uma
 /// instância (duas chaves, um desenho) ser mais do que um hold: a arte é
 /// compartilhada e o LUGAR é de cada quadro.
-pub const FLIP_SCHEMA_VERSION: u32 = 5;
+pub const FLIP_SCHEMA_VERSION: u32 = 6;
 
 #[cfg(test)]
 mod tests {

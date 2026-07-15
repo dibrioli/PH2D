@@ -16,6 +16,7 @@ use crate::frame::{Hold, KeyKind};
 use crate::ids::{DrawingId, FlipObjectId, Frame, LayerId};
 use crate::layer::FlipLayer;
 use crate::onion::OnionSettings;
+use crate::pose::Pose;
 use ph2d_core::{Playhead, Vec2};
 use serde::{Deserialize, Serialize};
 
@@ -187,11 +188,11 @@ impl FlipObject {
     /// o pivô/settle usa); isto responde *"onde está a arte"* (é aparência, e é o que o
     /// gizmo e o marquee precisam). Confundir as duas põe a caixa do gizmo longe do
     /// desenho no instante em que alguém move uma instância.
-    pub fn posed_drawings(&self) -> impl Iterator<Item = (Vec2, &FlipDrawing)> {
+    pub fn posed_drawings(&self) -> impl Iterator<Item = (Pose, &FlipDrawing)> {
         self.layers.iter().flat_map(move |l| {
             l.frames().values().filter_map(move |f| {
                 let d = self.drawing(f.drawing?)?;
-                Some((f.offset, d))
+                Some((f.pose, d))
             })
         })
     }
@@ -201,15 +202,19 @@ impl FlipObject {
     #[must_use]
     pub fn posed_bbox(&self) -> Option<([f32; 2], [f32; 2])> {
         let mut acc: Option<([f32; 2], [f32; 2])> = None;
-        for (off, d) in self.posed_drawings() {
+        for (pose, d) in self.posed_drawings() {
             for s in &d.strokes {
                 for p in s.positions() {
-                    let (x, y) = (p.x + off.x, p.y + off.y);
+                    // A pose é um AFIM: o ponto sobe por ela (rot/escala inclusas), não só
+                    // por uma soma de translação — senão a caixa mentiria numa instância
+                    // girada.
+                    let q = pose.apply(*p);
                     acc = Some(match acc {
-                        None => ([x, y], [x, y]),
-                        Some((lo, hi)) => {
-                            ([lo[0].min(x), lo[1].min(y)], [hi[0].max(x), hi[1].max(y)])
-                        }
+                        None => ([q.x, q.y], [q.x, q.y]),
+                        Some((lo, hi)) => (
+                            [lo[0].min(q.x), lo[1].min(q.y)],
+                            [hi[0].max(q.x), hi[1].max(q.y)],
+                        ),
                     });
                 }
             }
@@ -298,7 +303,7 @@ impl FlipObject {
         // A POSE da origem viaja junto: a chave nova nasce ONDE a arte está agora. Sem
         // isto, duplicar uma chave deslocada faria a cópia saltar para a origem do
         // objeto — o desenho pularia no quadro seguinte.
-        let src_offset = self.layers[li].frame_offset(src);
+        let src_pose = self.layers[li].frame_pose(src);
         match mode {
             DupMode::Instance => {
                 if !self.layers[li].add_frame(dst, Some(src_id), src_kind, hold) {
@@ -316,15 +321,24 @@ impl FlipObject {
                 self.drawings.push(clone);
             }
         }
-        self.layers[li].set_frame_offset(dst, src_offset);
+        self.layers[li].set_frame_pose(dst, src_pose);
         true
     }
 
-    /// **A pose da chave `key`** da camada — o deslocamento da arte naquele quadro.
+    /// **A pose da chave `key`** da camada — o afim da arte naquele quadro.
     #[must_use]
-    pub fn frame_offset(&self, layer_id: LayerId, key: Frame) -> Vec2 {
+    pub fn frame_pose(&self, layer_id: LayerId, key: Frame) -> Pose {
         self.layer(layer_id)
-            .map_or(Vec2::ZERO, |l| l.frame_offset(key))
+            .map_or(Pose::IDENTITY, |l| l.frame_pose(key))
+    }
+
+    /// **Escreve a pose** da chave `key` (o gizmo de rotate/escala assa o afim resultante e
+    /// chama isto). `false` se a camada/chave não existe.
+    pub fn set_frame_pose(&mut self, layer_id: LayerId, key: Frame, pose: Pose) -> bool {
+        let Some(li) = self.layer_index(layer_id) else {
+            return false;
+        };
+        self.layers[li].set_frame_pose(key, pose)
     }
 
     /// **Abre espaço em `at`** para uma chave nova, empurrando à frente **só o bloco
@@ -364,8 +378,9 @@ impl FlipObject {
         let Some(li) = self.layer_index(layer_id) else {
             return false;
         };
-        let now = self.layers[li].frame_offset(key);
-        self.layers[li].set_frame_offset(key, now + delta)
+        let mut pose = self.layers[li].frame_pose(key);
+        pose.translate(delta); // pós-translada o afim (identidade ⇒ `offset += delta`)
+        self.layers[li].set_frame_pose(key, pose)
     }
 
     /// **Quebra o vínculo** da chave `key` com a arte compartilhada (o *make single

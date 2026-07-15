@@ -71,6 +71,13 @@ pub const PAINTER_DEFORM_STRENGTH_CHIP: NodeId = hash_node_id("painter_deform.st
 // (Freeze removed — Deform is confined to the active selection automatically, or the whole sprite when
 // nothing is selected; the old protect/invert toggles were redundant with that rule.)
 
+// ── Relief (W4 — the advective family) ──────────────────────────────────────────────────────────────
+/// **Affect Relief** — the warp carries the impasto planes (`heights` + `covers` + `mats`) along the SAME
+/// displacement as the pixels. Paint is a substance: what moves takes its body with it (doc 18 §5's
+/// exception, arrived in full). Off = warp the colour only. Painted only when the active layer carries
+/// relief — a toggle over a plane that does not exist would be a control that silently does nothing.
+pub const PAINTER_DEFORM_RELIEF: NodeId = hash_node_id("painter_deform.relief");
+
 // ── Session actions (Card D) ─────────────────────────────────────────────────────────────────────────
 /// **Reset** — discard the whole session's deformation (restore the pre-deform pixels).
 pub const PAINTER_DEFORM_RESET: NodeId = hash_node_id("painter_deform.reset");

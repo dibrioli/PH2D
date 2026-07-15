@@ -15,7 +15,7 @@ impl PainterTool {
         let (mask_scratch, mask_scratch_target) = self.mask_scratch_for_snapshot();
         let (selection_mask, selection_active, selection_crisp, selection_feather) =
             self.selection_for_snapshot();
-        let (deform_disp, deform_pre, deform_active) = self.deform_for_snapshot();
+        let deform = self.deform_for_snapshot();
         let sculpt = self.sculpt_for_snapshot();
         crate::undo::ModelSnapshot {
             layers: self.layers.clone(),
@@ -44,9 +44,7 @@ impl PainterTool {
             // The parametric shape list is the source of truth the mask derives from — capture it so undo
             // restores the editable shapes (curve points/handles, box params), not just the raster mask.
             selection_shapes: self.selection_shapes_snapshot(),
-            deform_disp,
-            deform_pre,
-            deform_active,
+            deform,
             sculpt,
         }
     }
@@ -109,7 +107,7 @@ impl PainterTool {
         // composite cache + bump the panel `layers_revision`.
         // Reinstate the Deform session (displacement + `pre` + active) in lock-step with the pixels, so
         // undoing a deform stroke rolls the warp back AND keeps Reconstruct able to un-warp what remains.
-        self.restore_deform(m.deform_disp, m.deform_pre, m.deform_active);
+        self.restore_deform(m.deform);
         self.bump_all_layer_pixels();
         self.invalidate_composite();
         // Watercolor: the canvas identity just changed under the wet session — its moisture map (+ frozen

@@ -309,6 +309,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // `None => false`, the Down never activates it and the Click never happens. That is exactly how the
         // Impasto light rig shipped inert, on this same line, four days ago.
         ph2d_editor_core::ids::PAINTER_SCULPT_RAKE,
+        // Deform card: the Affect Relief toggle (W4 — the warp advects the impasto planes). Same trap as
+        // the Rake above: painted + hit-indexed is still inert without an InteractiveState from here.
+        ph2d_editor_core::ids::PAINTER_DEFORM_RELIEF,
         // Shape section: Rake / Random checkboxes + the section reset (clears the image → falloff).
         ph2d_editor_core::ids::PAINTER_SHAPE_RAKE,
         ph2d_editor_core::ids::PAINTER_SHAPE_RANDOM,

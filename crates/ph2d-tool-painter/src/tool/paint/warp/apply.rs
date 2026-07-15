@@ -67,6 +67,8 @@ impl PainterTool {
                 buf[b..b + 4].copy_from_slice(&px);
             }
         }
+        // W4: the body rides the same displacement — one door for every warp render (`warp/relief.rs`).
+        self.warp_render_relief(bbox);
         self.mark_dirty(bbox);
     }
 }

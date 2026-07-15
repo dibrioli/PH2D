@@ -181,6 +181,21 @@ fn paint_reshape_body(
             brush.deform_strength,
         );
     }
+    // Affect Relief (W4): the warp carries the impasto planes with the pixels. Painted only when the
+    // active layer HAS relief (same rule that gives the Depth row to exactly the rows it can act on) —
+    // and in EVERY sub-mode including Reconstruct, whose un-warp slides the body back too.
+    if brush.deform_layer_has_relief {
+        y = crate::paint_brush_top::paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_DEFORM_RELIEF,
+            "Affect Relief",
+            brush.deform_affect_relief,
+        );
+    }
     y
 }
 

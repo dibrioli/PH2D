@@ -62,6 +62,8 @@ impl PainterTool {
                 buf[b..b + 4].copy_from_slice(&px);
             }
         }
+        // W4: the un-warp slides the body back with the colour — the same one door the dab kernel uses.
+        self.warp_render_relief(bbox);
         self.mark_dirty(bbox);
     }
 }

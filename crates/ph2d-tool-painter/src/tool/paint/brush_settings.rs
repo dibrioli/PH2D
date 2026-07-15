@@ -106,6 +106,12 @@ pub struct BrushSettings {
     pub deform_temperament: u8,
     /// Transform sub-mode (`0` Uniform aspect-locked · `1` Free independent axes) — only shown in Transform.
     pub deform_transform_mode: u8,
+    /// **Affect Relief** (W4): the warp advects the impasto planes with the pixels. Painted only when
+    /// [`Self::deform_layer_has_relief`] — a toggle over a plane that does not exist would be a control
+    /// that silently does nothing.
+    pub deform_affect_relief: bool,
+    /// Whether the ACTIVE layer carries impasto relief — decides whether the Affect Relief row exists.
+    pub deform_layer_has_relief: bool,
     /// **Sculpt** mode — the panel ADDS the Sculpt card (it does NOT swap the body out, the way Deform
     /// does). That difference is the design, not an oversight: the sculpt rides the same dab list the
     /// colour does, so the brush's own Size / Spacing / Falloff / Shape / Grain / Symmetry / Tiling / stroke

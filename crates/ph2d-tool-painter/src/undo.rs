@@ -104,9 +104,7 @@ pub struct ModelSnapshot {
     /// pixels: without it, undoing a deform stroke restored the pixels but dropped the displacement, so
     /// Reconstruct could no longer un-warp the remaining deform (Enio 2026-07-04). Empty `Arc`s + `false`
     /// = no session. `Arc`-shared, so a non-deform snapshot carries an empty (0-byte) map for free.
-    pub(crate) deform_disp: Arc<Vec<[f32; 2]>>,
-    pub(crate) deform_pre: Arc<Vec<u8>>,
-    pub(crate) deform_active: bool,
+    pub(crate) deform: DeformSnap,
     /// The **Sculpt** session at capture time (`docs/Painter/18…` §10.4).
     ///
     /// Captured for a reason the Deform did NOT have, and it is the reason the plan demanded it: the
@@ -119,6 +117,24 @@ pub struct ModelSnapshot {
     /// Rolling the session back with the relief makes the restored state a state the sculpt can *continue
     /// from*, which is the same thing `deform_disp` buys the warp.
     pub(crate) sculpt: SculptSnap,
+}
+
+/// The Deform session as an undo snapshot — `Arc`-shared, so a snapshot taken while nobody is deforming
+/// carries empty (0-byte) buffers and costs nothing.
+///
+/// The frozen impasto planes (`pre_h` / `pre_cover` / `pre_mats`, W4) ride beside the pixels' `pre` for
+/// the same reason `disp` does (Enio 2026-07-04): an undo mid-session must leave Reconstruct able to
+/// un-warp what remains — of the BODY as much as of the colour. Empty when the session's layer carried
+/// no relief.
+#[derive(Clone, Debug)]
+pub(crate) struct DeformSnap {
+    pub(crate) disp: Arc<Vec<[f32; 2]>>,
+    pub(crate) pre: Arc<Vec<u8>>,
+    pub(crate) pre_h: Arc<Vec<f32>>,
+    pub(crate) pre_cover: Arc<Vec<u8>>,
+    pub(crate) pre_mats: Arc<Vec<ph2d_painter_brush::material::MaterialBytes>>,
+    pub(crate) relief_layer: Option<RtLayerId>,
+    pub(crate) active: bool,
 }
 
 /// The Sculpt session as an undo snapshot — `Arc`-shared, so a snapshot taken while nobody is sculpting
@@ -457,9 +473,15 @@ mod tests {
             selection_crisp: Arc::new(Vec::new()),
             selection_feather: 0.0,
             selection_shapes: Vec::new(),
-            deform_disp: Arc::new(Vec::new()),
-            deform_pre: Arc::new(Vec::new()),
-            deform_active: false,
+            deform: DeformSnap {
+                disp: Arc::new(Vec::new()),
+                pre: Arc::new(Vec::new()),
+                pre_h: Arc::new(Vec::new()),
+                pre_cover: Arc::new(Vec::new()),
+                pre_mats: Arc::new(Vec::new()),
+                relief_layer: None,
+                active: false,
+            },
             sculpt: SculptSnap::default(),
         }
     }

@@ -61,4 +61,6 @@ pub(crate) fn is_deform_click(id: NodeId) -> bool {
         || core_ids::PAINTER_DEFORM_TEMPERAMENT_IDS.contains(&id)
         || core_ids::PAINTER_DEFORM_TRANSFORM_MODE_IDS.contains(&id)
         || core_ids::PAINTER_DEFORM_ACTION_IDS.contains(&id)
+        // W4: the Affect Relief toggle (forwarded as a Button Click, like every checkbox row here).
+        || id == core_ids::PAINTER_DEFORM_RELIEF
 }

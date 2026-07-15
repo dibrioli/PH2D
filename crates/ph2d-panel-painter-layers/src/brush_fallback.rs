@@ -71,6 +71,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     deform_strength: 0.5, // LITERAL-PX-OK: centred bipolar Strength (neutral)
     deform_temperament: 0,
     deform_transform_mode: 0,
+    deform_affect_relief: true,
+    deform_layer_has_relief: false,
     is_sculpt: false,
     sculpt_mode: 0,
     sculpt_knob_family: 0, // mode 0 is Smooth ⇒ the Radius row

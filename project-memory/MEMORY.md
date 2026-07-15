@@ -89,6 +89,7 @@
 - [Regra que não OBSERVA não dispara](feedback_a_rule_that_never_observes_cannot_fire.md) — HR-13 somava declarações; 4351 MB
 - [Faça a MESMA pergunta ao outro lado](feedback_ask_the_same_question_of_the_other_side.md) — o gate gêmeo nasceu VERMELHO
 - [Mesma conta, escrituração diferente](feedback_same_math_different_bookkeeping_diverges.md) — 1 ulp; "soa igual" não é gate
+- [round ≠ round entre CPU e GPU](feedback_cpu_gpu_rounding_conventions_diverge.md) — Rust half-away, WGSL half-even; enum-por-param diverge de RAMO no meio-ponto
 - [Barra congelada? cheque a ARITMÉTICA](feedback_frozen_bar_check_the_arithmetic_before_gaming_it.md) — o piso pode já estourar a barra
 - [Refactor mecânico = impressão digital](feedback_wide_mechanical_refactor_use_a_fingerprint.md) — golden pinado é mina no CI
 - [Gate de emenda precisa de frac](feedback_seam_gates_need_fractional_advance.md) — taxa 1:1 nunca lê o 2º frame

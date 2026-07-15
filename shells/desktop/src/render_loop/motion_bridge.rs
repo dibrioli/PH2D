@@ -123,6 +123,7 @@ mod edit_tests;
 ///   toast here when a dragged edge is rejected (cycle / occupied / typing /
 ///   membrane).
 #[cfg_attr(not(feature = "panel-motion-graph"), allow(unused_variables))]
+#[allow(clippy::too_many_arguments)] // the per-frame bridge seam: clock + input + GPU context
 pub(super) fn dispatch(
     hero: &mut HeroScreen,
     tools: &ToolRegistry,

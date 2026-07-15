@@ -8,6 +8,12 @@
   o kernel GPU entra por um canal lateral no registry, então `NodeOp=2` / `OpResolver=1` / `NodeManifest=8`
   ficam **intactos** (gate `architecture_contract_surface` verde).
 - **Número tentativo:** linhas paralelas podem reivindicar 0122 antes; renumerar na integração se colidir.
+- **IMPLEMENTADO (F1.1, `line/gpu-nodes`, 2026-07-15):** `ph2d_nodegraph::gpu` (tipos) +
+  `NodeRegistry::register_gpu_kernel` + crate **`ph2d-gpu-cook`** (plano sufixo-GPU/prefixo-CPU,
+  sequenciador single-submit, lowering compute → layout `RenderInstance`, zero readback) +
+  `SpriteRenderer::render_with_streams` + shell `PH2D_GPU_COOK=1`. Gate de paridade ε verde
+  (full 4,4e-4 · híbrido bit-exato); contrato **8/2/1 intacto**; 500k instâncias = 1,0 ms/frame
+  na RTX (CPU Fase 0: 4,93 ms). Handoff: `docs/HANDOFF_line_gpu_nodes_fase1_2026-07-15.md`.
 
 ## Contexto
 

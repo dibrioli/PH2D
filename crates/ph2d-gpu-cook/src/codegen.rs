@@ -87,12 +87,10 @@ pub fn plan_bindings(
         .iter()
         .map(|b| {
             let here = present(b);
-            let read = b.access.reads().then(|| {
-                if here {
-                    BindingPlan::ReadBuffer
-                } else {
-                    BindingPlan::ReadIdentity
-                }
+            let read = b.access.reads().then_some(if here {
+                BindingPlan::ReadBuffer
+            } else {
+                BindingPlan::ReadIdentity
             });
             let write = match (b.access, here) {
                 (ColumnAccess::Read, _) => None,

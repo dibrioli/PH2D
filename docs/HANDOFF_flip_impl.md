@@ -1062,10 +1062,17 @@ arrastar o playhead sem desselecionar os outros quadros."* Mover o playhead (cli
 **substituía** a multissselecão, então não dava para scrubbar entre os quadros marcados para ver o
 falloff — nem havia um pega-mão visível de playhead.
 
-**A régua** (`ids::FLIP_SCRUB`): uma faixa fina no TOPO da tira, com um handle de playhead no quadro
+**A régua** (`ids::FLIP_SCRUB`): uma faixa no TOPO da tira, com um handle de playhead no quadro
 corrente. Arrastar em qualquer ponto dela move o playhead **sem tocar na seleção** — é a
-separação-padrão de toda ferramenta de animação: **a régua faz scrub, as células selecionam**. As
-células descem uma faixa.
+separação-padrão de toda ferramenta de animação: **a régua faz scrub, as células selecionam**.
+
+- **A régua tem banda PRÓPRIA — não espreme os frames** (smoke do Enio 2026-07-14: *"ficou apertado
+  na vertical"*). O painel CRESCE por `paint_cells::scrub_reserved_h()` (a régua + o respiro) — a
+  MESMA função que posiciona o topo das células, então o crescimento do painel e o recuo das células
+  nunca divergem. Os frames mantêm a altura de sempre; a régua ganha espaço no topo, não roubado
+  delas. Gate: `the_scrub_lane_is_painted_with_a_hittable_rect` também exige a régua ACIMA da célula
+  0 e a célula mais alta que a régua (mutação: tirar o `+ scrub_reserved_h()` do grow do painel →
+  célula 10 px < régua 16 px, "espremidos").
 
 - **Mecânica reusada, contrato intacto.** A régua é um `Slider` horizontal (o primitivo 1D per-Move)
   registrado no `populate` — mas **não pinta visual de slider**: a régua e o handle são desenhados à

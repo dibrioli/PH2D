@@ -40,7 +40,11 @@ pub(crate) fn paint(_state: &mut FlipStripState, ctx: &mut PaintCtx) {
     // pelo mesmo plano que a barra vai pintar.
     let bar_w = (base.w - PANEL_HEAD_PAD * 2.0).max(0.0);
     let bar_rows = crate::toolbar_plan::rows(Rect::new(0.0, 0.0, bar_w, ROW_H_PX), ROW_H_PX, &snap);
-    let grow = crate::toolbar_plan::bar_height(bar_rows, ROW_H_PX) - ROW_H_PX;
+    // A tira cresce pela barra que quebrou em linhas E pela faixa reservada da régua de
+    // scrub — assim os frames mantêm a altura de sempre (a régua ganha espaço PRÓPRIO no
+    // topo, não roubado das células). Enio 2026-07-14.
+    let grow = crate::toolbar_plan::bar_height(bar_rows, ROW_H_PX) - ROW_H_PX
+        + crate::paint_cells::scrub_reserved_h();
     let rect = Rect::new(
         base.x,
         (base.y - lift - grow).max(0.0),

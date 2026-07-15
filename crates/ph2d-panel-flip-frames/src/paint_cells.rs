@@ -38,6 +38,22 @@ const PLAYHEAD_W: f32 = 2.0; // LITERAL-PX-OK: playhead line width
 /// A célula só ganha rótulo se couber ~um glifo e meio (senão o número sai cortado).
 const LABEL_FIT: f32 = 1.6; // LITERAL-PX-OK: fator de caber-o-glifo, não medida de design
 
+/// **Altura da régua de scrub** (o pega-mão do playhead), em px de tela. Um Spacing token
+/// (medida de design, não parâmetro geométrico) — generosa o bastante para ser um alvo de
+/// arrasto confortável (Enio pediu *"mais espaço da tira de tempo"*).
+fn scrub_lane_h() -> f32 {
+    Spacing::Xl.px()
+}
+
+/// **A faixa reservada ACIMA das células** para a régua = a régua + o respiro até elas. O
+/// painel CRESCE por ela (`paint::paint`), então os frames mantêm a altura de sempre — a
+/// régua não os espreme (Enio 2026-07-14: *"ficou apertado na vertical"*). É a MESMA função
+/// que `paint_cells` usa para posicionar o topo das células, então o crescimento do painel e
+/// o recuo das células nunca divergem.
+pub(crate) fn scrub_reserved_h() -> f32 {
+    scrub_lane_h() + Spacing::Xs.px()
+}
+
 pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStripSnapshot) {
     if area.w <= 0.0 || area.h <= 0.0 {
         return;
@@ -91,10 +107,12 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
     // (`total·ppf`, que pode ser menor que `inner.w` quando o `ppf` bate no teto), então
     // o handle e as células ficam alinhados 1:1. As células descem uma faixa.
     let used_w = (total * ppf).max(MIN_CELL_W);
-    let lane_h = Spacing::Lg.px();
-    let lane = Rect::new(inner.x, inner.y, used_w, lane_h);
+    let lane = Rect::new(inner.x, inner.y, used_w, scrub_lane_h());
     paint_scrub_lane(ctx, theme, lane, snap, inner.x, first, ppf);
-    let cells_top = inner.y + lane_h + Spacing::Xs.px();
+    // As células começam DEPOIS da faixa reservada. O painel já cresceu por
+    // `scrub_reserved_h()` (ver `paint.rs`), então elas mantêm a altura de sempre — a régua
+    // não as espreme (Enio 2026-07-14: *"ficou apertado na vertical"*).
+    let cells_top = inner.y + scrub_reserved_h();
     let cell_h = (inner.y + inner.h - cells_top).max(1.0);
 
     for (i, cell) in snap.cells.iter().enumerate() {

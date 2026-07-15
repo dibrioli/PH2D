@@ -355,11 +355,33 @@ fn the_scrub_lane_is_painted_with_a_hittable_rect() {
         &mut state,
         ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
     );
+    let lane = painted
+        .iter()
+        .find(|(w, r)| *w == ids::FLIP_SCRUB && r.w > 0.0 && r.h > 0.0)
+        .map(|(_, r)| *r)
+        .expect("a régua de scrub não é pintada com área clicável: não existe para o ponteiro");
+
+    // 🔴 **A régua tem BANDA PRÓPRIA acima das células** — ela não pode se sobrepor à
+    // célula 0 (senão estaria roubando a altura dos frames, o que deixou a tira "apertada
+    // na vertical"; Enio 2026-07-14). O painel cresce por `scrub_reserved_h()` justamente
+    // para a régua morar num espaço seu. E as células continuam sendo a banda DOMINANTE (a
+    // régua é um pega-mão fino, não a metade da tira).
+    let cell0 = painted
+        .iter()
+        .find(|(w, r)| *w == ph2d_editor_core::ids::flip_cell_id(0) && r.h > 0.0)
+        .map(|(_, r)| *r)
+        .expect("a célula 0 não foi pintada");
     assert!(
-        painted
-            .iter()
-            .any(|(w, r)| *w == ids::FLIP_SCRUB && r.w > 0.0 && r.h > 0.0),
-        "a régua de scrub não é pintada com área clicável: não existe para o ponteiro"
+        lane.y + lane.h <= cell0.y + 0.5,
+        "a régua invade a célula 0 (régua até y={}, célula começa em y={}) — está roubando a altura dos frames",
+        lane.y + lane.h,
+        cell0.y
+    );
+    assert!(
+        cell0.h > lane.h,
+        "a célula ({}) ficou mais baixa que a régua ({}) — os frames foram espremidos",
+        cell0.h,
+        lane.h
     );
     ph2d_panel_flip_frames::set_current_flip_strip(FlipStripSnapshot::default());
 }

@@ -195,8 +195,14 @@ código**, não por leitura. Tudo abaixo está **corrigido e gateado** (commits 
 ## 9. Aberto (não é regressão — é escopo)
 
 - **Opus** ([ADR-0113](architecture/decisions/0113-audio-export-ogg-vorbis-via-vorbis-rs-opus-deferred.md) §Opus) — decisão do Enio, ainda pendente.
-- **W7 (AI/ML)** — DeepFilterNet atrás de feature-flag; o kill-criterion do ADR-0122 §4 não disparou
-  (o denoise bateu o alvo), então o W7 segue opcional e não obrigatório.
+- **W7 (AI/ML)** — a fronteira foi **pesquisada e PROPOSTA** em
+  [ADR-0123](architecture/decisions/0123-audio-w7-ml-boundary-tract-native-denoise-reject-ort.md)
+  (pendente da palavra do Enio §7). Fatos verificados: o `deep_filter` publicado é **só DSP** (não
+  denoiza — o runner tract não é publicado); `ort`/ONNX é **rejeitado** (pré-release, baixa a
+  runtime C++ da rede no build, 72 crates). Recomendação: **deferir** — o kill-criterion do
+  ADR-0122 §4 **não disparou** (o denoise espectral do W5 bateu o alvo), então o W7 é melhora
+  marginal, não buraco. Se construído: denoise nativo via `tract` (opt-in, `ph2d-audio-ml`),
+  Demucs fora do workspace.
 - Backlog pequeno: toggle *enabled* por-entry na variação · manifesto com caminho relativo · reverb
   por convolução.
 - **Débito de LOC:** `fx.rs` voltou a 601/700 e `fx/dynamics.rs` está em 662/700 — **o próximo efeito

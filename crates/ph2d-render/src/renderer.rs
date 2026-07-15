@@ -657,6 +657,57 @@ impl SpriteRenderer {
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
         self.clip_stencil = Some(ClipStencil { view, size });
     }
+
+    /// [`render`](Self::render) plus two Motion Nodes hooks. `extra` (M0.T11) is
+    /// an external instance slice appended to the scene, sorted + batched in the
+    /// same pass — a cooked node-graph stream draws without being spawned into
+    /// `PresentWorld` (stream ≠ ECS, ADR-0035); `&[]` = scene-only. `scene_viewport`
+    /// (M0.T13) optionally frames the scene into a target sub-rect `[x, y, w, h]`
+    /// px via `set_viewport`/`set_scissor_rect` + [`Camera2d::uniform_for_subrect`]
+    /// (the split viewport-vs-graph); it applies only on the plain single-pass
+    /// path — a clip/mask frame ignores it and renders full-window (still covered
+    /// by the graph panel on top).
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_with_extra(
+        &mut self,
+        target: &wgpu::TextureView,
+        present: &mut PresentWorld,
+        camera: &Camera2d,
+        window: WindowSize,
+        clear_color: wgpu::Color,
+        extra: &[RenderInstance],
+        scene_viewport: Option<[f32; 4]>,
+    ) {
+        // Collect scene instances + the `extra` slice into `scratch` and sort
+        // (extracted to keep this file under its LOC cap; M0.T11).
+        crate::sprite_collect::collect_sorted_instances(&mut self.scratch, present, extra);
+        self.draw_scratch(target, camera, window, clear_color, scene_viewport);
+    }
+
+    /// Render ONLY `instances` into `target` — the isolation path for Motion's
+    /// own HDR FX pass (glow). Unlike [`render_with_extra`](Self::render_with_extra)
+    /// it does **not** drain `PresentWorld`: the scene is exactly the slice you
+    /// pass, drawn into a target you own (a second `Rgba16Float` RT). The scene's
+    /// fused sprite+motion pass is untouched — this is an *additional* render, so
+    /// the frame is byte-identical whenever the caller declines to run it.
+    ///
+    /// Motion instances are all atlas (`texture_id == 0`), no clip/mask — the
+    /// plain single-pass branch of [`draw_scratch`](Self::draw_scratch). Clearing
+    /// with a transparent `clear_color` yields a premultiplied HDR image the FX
+    /// pass can bright-pass and blur.
+    pub fn render_instances_only(
+        &mut self,
+        target: &wgpu::TextureView,
+        camera: &Camera2d,
+        window: WindowSize,
+        clear_color: wgpu::Color,
+        instances: &[RenderInstance],
+    ) {
+        self.scratch.clear();
+        self.scratch.extend_from_slice(instances);
+        crate::sprite_collect::sort_render_order(&mut self.scratch);
+        self.draw_scratch(target, camera, window, clear_color, None);
+    }
 }
 
 #[path = "renderer_draw.rs"]

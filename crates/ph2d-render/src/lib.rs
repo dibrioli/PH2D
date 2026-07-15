@@ -49,6 +49,7 @@ pub mod ktx2_format;
 /// [`docs/Painter_projeto/02_layers.md`](../../../docs/Painter_projeto/02_layers.md).
 pub mod layer_compositor;
 pub mod mipgen;
+pub mod motion_fx;
 pub mod picking;
 pub mod pipeline;
 pub mod premul;
@@ -83,6 +84,7 @@ pub use compressed_pipeline::{
 pub use cooked_texture::{CookedTextureError, CookedTextureStore};
 pub use fx_stack::{FxOpGpu, FxStackPass, make_output_texture, stack_reach};
 pub use game_rt::GameRt;
+pub use motion_fx::{BloomParams, MotionFx};
 pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
 pub use impasto_light::{
     IMPASTO_MAX_LIGHTS, ImpastoLamp, ImpastoLightError, ImpastoLightInput, ImpastoLightPass,

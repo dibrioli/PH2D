@@ -53,6 +53,7 @@ impl crate::App {
             toasts,
             tools,
             game_rt,
+            motion_fx,
             tonemap,
             compositor,
             vello_pass,
@@ -205,6 +206,41 @@ impl crate::App {
                     window_size,
                     surface.gpu(),
                 );
+                // Pass 1c: Motion glow (doc 67, Option B) — the Motion module's
+                //   OWN HDR effect, authored as an `fx.glow` node in the graph.
+                //   Only runs when the artist has dropped that node (and dialed
+                //   intensity > 0); otherwise this whole block is skipped and the
+                //   frame is byte-identical (the fused sprite+Motion pass and the
+                //   tonemap are untouched → blast radius zero). Re-render the
+                //   Motion instances IN ISOLATION into motion_fx's own Rgba16Float
+                //   RT, bright-pass + blur them, and ADD the glow over game_rt
+                //   (before the tonemap, so the glow tonemaps with everything
+                //   else). Additive = emitted light, so it bleeds over whatever is
+                //   in front — the sparks look lit, not pasted.
+                let glow = ph2d_node_fx_glow::from_graph(&motion.doc.graph);
+                if let Some(glow) = glow
+                    && motion_active
+                    && glow.intensity > 0.0
+                    && !motion.pump.instances.is_empty()
+                {
+                    renderer.render_instances_only(
+                        motion_fx.rt_view(),
+                        camera,
+                        window_size,
+                        wgpu::Color::TRANSPARENT,
+                        &motion.pump.instances,
+                    );
+                    motion_fx.bloom_over(
+                        surface.gpu(),
+                        game_rt.view(),
+                        &ph2d_render::BloomParams {
+                            threshold: glow.threshold,
+                            knee: glow.knee,
+                            intensity: glow.intensity,
+                            radius: glow.radius,
+                        },
+                    );
+                }
                 // Pass 2: AgX tonemap
                 //   target: `tonemap.output_view()` (Bgra8UnormSrgb LDR)
                 tonemap.run(surface.gpu());

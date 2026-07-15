@@ -259,6 +259,9 @@ pub(crate) fn build_initial_state(
     // sample views are extracted here at boot; rebound on resize
     // alongside game_rt/tonemap output recreation.
     let game_rt = GameRt::new(surface.gpu(), (size.width, size.height));
+    // doc 67: the Motion module's own HDR glow pass, sized to the surface like
+    // game_rt. Inert until the artist authors bloom on the active Motion doc.
+    let motion_fx = ph2d_render::MotionFx::new(surface.gpu(), (size.width, size.height));
     let tonemap = Tonemap::new(
         surface.gpu(),
         game_rt
@@ -420,6 +423,7 @@ pub(crate) fn build_initial_state(
         tools,
         layout,
         game_rt,
+        motion_fx,
         tonemap,
         compositor,
         vello_pass,

@@ -653,6 +653,7 @@ impl crate::App {
         self.blend_smoke();
         self.motion_node_path_smoke();
         self.motion_delay_smoke();
+        self.motion_fx_smoke();
         self.build_session_upkeep();
         // Tween v2: a sessão de correção de pares SEGUE o artista a um novo intervalo (no-op
         // se o intervalo é o mesmo, ou se a sessão está fechada).
@@ -698,6 +699,7 @@ impl crate::App {
             tools,
             layout,
             game_rt,
+            motion_fx,
             tonemap,
             compositor,
             vello_pass,
@@ -956,6 +958,8 @@ impl crate::App {
             *layout = EditorLayout::new(clamped.width as f32, clamped.height as f32);
             let dim = (clamped.width, clamped.height);
             game_rt.ensure_size(surface.gpu(), dim);
+            // doc 67: the Motion glow RT + blur chain track the surface too.
+            motion_fx.ensure_size(surface.gpu(), dim);
             tonemap.ensure_size(surface.gpu(), dim);
             tonemap.rebind_game_view(
                 surface.gpu(),

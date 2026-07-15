@@ -103,11 +103,11 @@ cargo check -p ph2d-eval-motion -p ph2d-panel-motion-graph
 
 > **Jornada de 2026-07-14 (Enio: *"faça tudo que sobrou"*): 3 das 4 FECHARAM.** `motion.delay`
 > (doc 63) · W4.T4 dock da timeline (doc 64) · `motion.path` + o **canal de externals** (doc 65).
-> **Sobrou UMA, e ela mudou de forma** — leia a linha 1.
+> **Sobrou UMA — o Enio decidiu (Opção B) e ela FECHOU** — leia a linha 1.
 
 | # | Item | Estado |
 |---|---|---|
-| 1 | **FX de PASSE** (glow/bloom/blur/vignette/levels/hue) | 🔴 **PRECISA DE DECISÃO** — [doc 66](Motion%20Nodes/66_fx_de_passe_a_premissa_do_plano_e_FALSA.md). **A premissa do plano é FALSA:** o compositor do Painter é **8-BIT** e o `game_rt` é `Rgba16Float` — passar o HDR por ele **destrói exatamente o que o bloom precisa** (os valores > 1.0). E o Motion **não é separável** no GPU (as instâncias dele entram no mesmo passe de sprites da cena). Duas formas possíveis, donos diferentes: **A** = post stack do FRAME (afeta TUDO — outro plano, outro dono) · **B** = RT próprio do Motion (blast radius zero). **Recomendo B.** |
+| 1 | ~~**FX de PASSE** (glow)~~ | ✅ **FECHADO (Opção B, [doc 67](Motion%20Nodes/67_fx_de_passe_glow_opcao_B_nota_adr.md))** — Enio decidiu B. O **glow** é o efeito que justifica o B, e virou o nó **`fx.glow`** (o grafo É o documento, então "declarar no doc" é um nó — e o painel de params o edita **de graça**, sem UI nova). Forma: glow **ADITIVO** (o core do Motion fica fundido no `game_rt` intocado; um passe extra re-renderiza o Motion **isolado** num RT HDR próprio → bright-pass + Kawase → **soma** o halo antes do tonemap). **Byte-idêntico no ponto neutro** (sem nó = zero passe). Foundational: `SpriteRenderer::render_instances_only` (um laço de draw só) + `motion_fx.rs`/`BloomParams` + `shaders/bloom.wgsl`. Smoke: `PH2D_MOTION_FX_SMOKE=1`. **Vignette/levels/hue NÃO entram** — são grades do frame inteiro = **Opção A**, dono de outro plano (doc 67 §6). |
 | 2 | ~~**`motion.path`**~~ | ✅ **FECHADO** (doc 65) — e o que ele destravou é maior que ele: o **canal de externals** (`Cook::set_external` / `EvalCtx::external`), que é **como qualquer coisa que o APP possui entra no grafo**. |
 | 3 | ~~**W4.T4 — dock da timeline**~~ | ✅ **FECHADO** (doc 64). Não faltava sistema; faltava **geometria**. |
 | 4 | **GPU / M5** ([plano](plans/2026-07-gpu-resident-node-pipeline.md)) | 🔴 Exige **linha foundational DEDICADA** (`line/cook-parallel`, depois `line/gpu-nodes` **com ADR** — a Fase 1 **descongela o contrato**, CLAUDE.md §6). **É ordem do Enio abrir. NUNCA enxerte aqui.** |

@@ -96,6 +96,11 @@ pub(crate) struct AppGfx {
     /// here; the tonemap pass reads here and writes to LDR. Recreated
     /// on resize.
     pub(crate) game_rt: GameRt,
+    /// doc 67: the Motion module's own HDR glow pass. Owns a Motion-only
+    /// `Rgba16Float` RT + the bloom chain. Runs only when the artist has
+    /// authored bloom on the active Motion doc (`fx.bloom.enabled`); otherwise it
+    /// is inert and the frame is byte-identical. Sized alongside `game_rt`.
+    pub(crate) motion_fx: ph2d_render::MotionFx,
     /// M14.5: AgX tonemap pass — owns its own LDR output texture
     /// (`game_rt_ldr`). Sampled by the compositor as the "game layer"
     /// input. Identity LUT by default; swap in real AgX via

@@ -28,6 +28,18 @@ pub(crate) fn collect_sorted_instances(
         scratch.push(*inst);
     }
     scratch.extend_from_slice(extra);
+    sort_render_order(scratch);
+}
+
+/// Sort an instance buffer into canonical render order, in place. Shared by
+/// [`collect_sorted_instances`] (scene + extra) and
+/// [`SpriteRenderer::render_instances_only`](crate::SpriteRenderer::render_instances_only)
+/// (an isolated slice) so the two entry points key on the **same** order — the
+/// draw loop downstream (`compute_runs`) requires contiguous `(texture_id,
+/// sampling, clip, blend)` runs, and a second sort with different keys would
+/// batch differently and silently mis-draw.
+///
+pub(crate) fn sort_render_order(scratch: &mut [RenderInstance]) {
     // Sort by (clip anchor, z_order, texture_id, sampling).
     //
     // z_order is the extract-time sequential counter from

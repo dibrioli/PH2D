@@ -5329,6 +5329,7 @@ dependencies = [
  "ph2d-imageio-registry-init",
  "ph2d-input",
  "ph2d-motion-doc",
+ "ph2d-node-fx-glow",
  "ph2d-node-motion-time-remap",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
@@ -5739,6 +5740,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-fx-drop-shadow"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-fx-glow"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -6277,6 +6286,7 @@ dependencies = [
  "ph2d-node-force-vortex",
  "ph2d-node-force-wind",
  "ph2d-node-fx-drop-shadow",
+ "ph2d-node-fx-glow",
  "ph2d-node-fx-rgb-split",
  "ph2d-node-motion-bend",
  "ph2d-node-motion-boids",

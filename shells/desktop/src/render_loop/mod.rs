@@ -69,6 +69,14 @@ pub(crate) mod painter_bridge_shape_preview;
 /// On-canvas wetness sheen veil (Watercolor render-path), split from `painter_bridge_overlays` for the
 /// HR-18 file-LOC cap.
 pub(crate) mod painter_bridge_wetness;
+/// Display gates, producer-handoff half (upload-plan refusals + the CPU→GPU→CPU dance on real
+/// hardware) — split from the pipeline tests for the HR-18 file-LOC cap.
+#[cfg(test)]
+mod painter_preview_handoff_tests;
+/// Display gates: the preview slot (what the sprite shader samples) is held byte-equal to the
+/// tool's composite across a stroke's whole life — phase D of the impasto smoke.
+#[cfg(test)]
+mod painter_preview_pipeline_tests;
 mod timeline_bridge;
 mod timeline_presets;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside

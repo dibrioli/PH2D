@@ -1,0 +1,312 @@
+//! Display gates, the PRODUCER-HANDOFF half — the upload plan's pure refusals + the
+//! CPU→GPU→CPU dance on real hardware. Split from `painter_preview_pipeline_tests.rs` (HR-18 file
+//! LOC cap); the harness (Screen, oracles, the smoke arming) lives there and is shared.
+
+use super::painter_bridge::{UploadPlan, plan_upload};
+use super::painter_preview_pipeline_tests::{
+    ENTITY, assert_screen_equals, cp, impasto_tool, screen_truth,
+};
+use crate::app_state::{PainterPreview, PainterPreviewGpu};
+use ph2d_editor::tool::{CanvasPaintTool, PointerPhase};
+use ph2d_tool_painter::PainterTool;
+use std::sync::Arc;
+
+/// One frame of the app's preview lifecycle, in `dispatch`'s exact order: the GPU producer gets
+/// first refusal (`try_drive`), a GPU-owned frame clears the CPU cache, a CPU-owned frame drains
+/// the tool and runs the real upload door ([`super::painter_bridge::upload_cpu_preview`]).
+/// Returns whether the GPU producer owned the slot this frame.
+#[allow(clippy::too_many_arguments)]
+fn app_frame(
+    renderer: &mut ph2d_render::SpriteRenderer,
+    painter: &mut PainterTool,
+    session: &mut Option<super::painter_gpu_preview::PainterGpuPreview>,
+    preview: &mut Option<PainterPreview>,
+    preview_gpu: &mut Option<PainterPreviewGpu>,
+    toasts: &mut ph2d_editor::toast::ToastQueue,
+) -> bool {
+    let gpu_owns = super::painter_gpu_preview::try_drive(
+        session,
+        renderer,
+        painter,
+        Some(ENTITY),
+        preview_gpu,
+        toasts,
+    );
+    let mut dirty_bbox = None;
+    if gpu_owns {
+        *preview = None;
+    } else if let Some((rgba, w, h)) = painter.take_preview_arc() {
+        dirty_bbox = painter.take_preview_upload_bbox();
+        *preview = Some(PainterPreview {
+            entity_bits: ENTITY,
+            rgba,
+            width: w,
+            height: h,
+        });
+    }
+    super::painter_bridge::upload_cpu_preview(
+        renderer,
+        preview.as_ref().filter(|_| !gpu_owns),
+        dirty_bbox,
+        gpu_owns,
+        preview_gpu,
+        toasts,
+    );
+    gpu_owns
+}
+
+/// **The screen survives the producer handoffs — CPU→GPU→CPU, on real hardware.**
+///
+/// The dance the live app performs around `impasto_visible`: the CPU producer owns while relief
+/// is on screen, the GPU producer takes the SAME slot texture when it is not (non-trivial
+/// representable stack), and the first CPU frame after a GPU stretch must re-seed the slot whole
+/// — the two defects this phase found (`take_preview_dirty` leaving the CPU composite stale +
+/// the partial plan patching a GPU-seeded slot) both live exactly on that seam, latent today only
+/// because every eligibility-flipping door happens to invalidate the composite. This gate runs
+/// the seam end-to-end — real `try_drive`, real upload door, real wgpu textures, real readback —
+/// and holds the final screen bytes to a from-scratch recompose.
+///
+/// `#[ignore]`: needs a GPU adapter (none on CI); run locally with `--ignored`.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to assert");
+        return;
+    };
+    let size = 240u32;
+    let mut renderer = ph2d_render::SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_render::GameRt::FORMAT,
+        ph2d_render::TextureAtlas::dummy(&gpu),
+        8,
+    );
+    let mut t = impasto_tool(size);
+    let mut session = None;
+    let mut preview = None;
+    let mut preview_gpu: Option<PainterPreviewGpu> = None;
+    let mut toasts = ph2d_editor::toast::ToastQueue::default();
+    let counter = std::cell::Cell::new(0u32);
+    let frame = |t: &mut PainterTool,
+                 renderer: &mut ph2d_render::SpriteRenderer,
+                 session: &mut _,
+                 preview: &mut Option<PainterPreview>,
+                 preview_gpu: &mut Option<PainterPreviewGpu>,
+                 toasts: &mut _| {
+        let n = counter.get();
+        counter.set(n + 1);
+        let owns = app_frame(renderer, t, session, preview, preview_gpu, toasts);
+        eprintln!(
+            "[handoff-diag] frame {n}: gpu_owns={owns} cache={} slot={:?}",
+            preview.is_some(),
+            preview_gpu.map(|g| (g.texture_id, g.arc_token != 0)),
+        );
+        owns
+    };
+
+    // 1. Trivial stack + impasto stroke → the CPU producer owns; the slot holds lit CPU bytes.
+    assert!(
+        !frame(
+            &mut t,
+            &mut renderer,
+            &mut session,
+            &mut preview,
+            &mut preview_gpu,
+            &mut toasts
+        ),
+        "a trivial stack stays on the CPU path"
+    );
+    t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Down));
+    frame(
+        &mut t,
+        &mut renderer,
+        &mut session,
+        &mut preview,
+        &mut preview_gpu,
+        &mut toasts,
+    );
+    for i in 1u8..=4 {
+        t.on_canvas_pointer(cp([80.0 + 12.0 * f32::from(i), 120.0], PointerPhase::Move));
+        frame(
+            &mut t,
+            &mut renderer,
+            &mut session,
+            &mut preview,
+            &mut preview_gpu,
+            &mut toasts,
+        );
+    }
+    t.on_canvas_pointer(cp([128.0, 120.0], PointerPhase::Up));
+    frame(
+        &mut t,
+        &mut renderer,
+        &mut session,
+        &mut preview,
+        &mut preview_gpu,
+        &mut toasts,
+    );
+
+    // 2. Second layer at half opacity: non-trivial but representable — still CPU while the
+    //    relief is visible.
+    let l2 = t.add_raster_layer("Layer 2").expect("layer 2");
+    t.set_layer_opacity(l2, 0.5);
+    assert!(
+        !frame(
+            &mut t,
+            &mut renderer,
+            &mut session,
+            &mut preview,
+            &mut preview_gpu,
+            &mut toasts
+        ),
+        "impasto visible must keep the CPU producer (the GPU compositor cannot light relief)"
+    );
+
+    // 3. Light OFF → the GPU producer takes the slot (CPU→GPU handoff), and owns it across a
+    //    plain stroke.
+    t.toggle_impasto_show();
+    assert!(
+        frame(
+            &mut t,
+            &mut renderer,
+            &mut session,
+            &mut preview,
+            &mut preview_gpu,
+            &mut toasts
+        ),
+        "light off + representable stack: the GPU producer owns the preview"
+    );
+    t.on_canvas_pointer(cp([60.0, 180.0], PointerPhase::Down));
+    frame(
+        &mut t,
+        &mut renderer,
+        &mut session,
+        &mut preview,
+        &mut preview_gpu,
+        &mut toasts,
+    );
+    for i in 1u8..=4 {
+        t.on_canvas_pointer(cp([60.0 + 15.0 * f32::from(i), 180.0], PointerPhase::Move));
+        assert!(
+            frame(
+                &mut t,
+                &mut renderer,
+                &mut session,
+                &mut preview,
+                &mut preview_gpu,
+                &mut toasts
+            ),
+            "plain strokes on the representable stack stay GPU-owned"
+        );
+    }
+    t.on_canvas_pointer(cp([120.0, 180.0], PointerPhase::Up));
+    frame(
+        &mut t,
+        &mut renderer,
+        &mut session,
+        &mut preview,
+        &mut preview_gpu,
+        &mut toasts,
+    );
+
+    // 4. Light back ON → GPU→CPU handoff; then one more impasto stroke so the partial lane runs
+    //    over the re-seeded slot.
+    t.toggle_impasto_show();
+    assert!(
+        !frame(
+            &mut t,
+            &mut renderer,
+            &mut session,
+            &mut preview,
+            &mut preview_gpu,
+            &mut toasts
+        ),
+        "light on + relief: the CPU producer reclaims the slot"
+    );
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Down));
+    frame(
+        &mut t,
+        &mut renderer,
+        &mut session,
+        &mut preview,
+        &mut preview_gpu,
+        &mut toasts,
+    );
+    t.on_canvas_pointer(cp([130.0, 60.0], PointerPhase::Move));
+    frame(
+        &mut t,
+        &mut renderer,
+        &mut session,
+        &mut preview,
+        &mut preview_gpu,
+        &mut toasts,
+    );
+    t.on_canvas_pointer(cp([130.0, 60.0], PointerPhase::Up));
+    frame(
+        &mut t,
+        &mut renderer,
+        &mut session,
+        &mut preview,
+        &mut preview_gpu,
+        &mut toasts,
+    );
+    frame(
+        &mut t,
+        &mut renderer,
+        &mut session,
+        &mut preview,
+        &mut preview_gpu,
+        &mut toasts,
+    );
+
+    // The screen (the real slot texture, read back) equals the document composited from scratch.
+    let slot = preview_gpu.expect("the CPU lane owns a live slot (no upload error)");
+    let (w, h, shown) = renderer
+        .individual()
+        .readback(&gpu, slot.texture_id)
+        .expect("readback of the preview slot");
+    assert_eq!((w, h), (size, size), "slot dims match the canvas");
+    let truth = screen_truth(&mut t);
+    assert_screen_equals(
+        &shown,
+        &truth,
+        size,
+        "after the CPU->GPU->CPU producer dance",
+    );
+}
+
+/// **A slot the GPU producer seeded is never PATCHED — the handoff must re-seed it whole.**
+///
+/// The GPU preview producer stamps its slots with `arc_token: 0` ("no CPU Arc") precisely so the
+/// first CPU frame after a GPU-owned stretch forces a full re-upload — the slot holds the GPU
+/// compositor's output (unlit, another era), and a rect patched over it leaves every other pixel
+/// to a different producer. The dims/entity guards can't tell the producers apart (the GPU lane
+/// reuses the same slot at the same dims), so the token is the ONLY witness. Today this is latent
+/// — every door that flips producer eligibility happens to invalidate the tool's composite, so no
+/// bbox reaches this plan on a handoff frame — but that safety is an enumeration of doors, and
+/// door N+1 (a future eligibility flip that forgets to invalidate) lands on exactly this line.
+///
+/// **Mutation that must bleed:** drop the `g.arc_token != 0` arm of the partial guard in
+/// [`plan_upload`] — the plan below comes back `Partial`.
+#[test]
+fn a_gpu_seeded_slot_is_reseeded_whole_never_patched() {
+    let preview = PainterPreview {
+        entity_bits: ENTITY,
+        rgba: Arc::new(vec![3u8; 16 * 16 * 4]),
+        width: 16,
+        height: 16,
+    };
+    let gpu_seeded = PainterPreviewGpu {
+        texture_id: 9,
+        width: 16,
+        height: 16,
+        arc_token: 0, // the GPU producer's stamp (`ensure_slot`)
+        entity_bits: ENTITY,
+    };
+    assert_eq!(
+        plan_upload(&preview, Some(gpu_seeded), Some((4, 4, 8, 8)), false),
+        UploadPlan::Full { reuse: Some(9) },
+        "a valid bbox over a GPU-seeded slot must still plan a FULL upload — a Partial here \
+         patches CPU-lit bytes into the GPU compositor's unlit frame"
+    );
+}

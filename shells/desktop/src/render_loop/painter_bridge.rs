@@ -524,100 +524,95 @@ pub(super) fn dispatch(
     //
     // On a GPU-owned frame the GPU producer fills the slot; hide the CPU cache
     // from this block so it neither re-uploads nor releases that slot.
-    let cpu_preview = painter_preview.as_ref().filter(|_| !gpu_owns_preview);
+    upload_cpu_preview(
+        renderer,
+        painter_preview.as_ref().filter(|_| !gpu_owns_preview),
+        painter_dirty_bbox,
+        gpu_owns_preview,
+        painter_preview_gpu,
+        toasts,
+    );
+    !apply_selection.is_empty()
+}
+
+/// The CPU lane's slot upkeep for one frame — plan the upload ([`plan_upload`]), execute it
+/// against the renderer, keep the bookkeeping, release the slot when the CPU cache is gone. The
+/// single door both [`dispatch`] and the display gates drive, so what the tests hold byte-exact is
+/// the code the app runs — not a mirror of it.
+pub(super) fn upload_cpu_preview(
+    renderer: &mut SpriteRenderer,
+    cpu_preview: Option<&PainterPreview>,
+    painter_dirty_bbox: Option<(u32, u32, u32, u32)>,
+    gpu_owns_preview: bool,
+    painter_preview_gpu: &mut Option<PainterPreviewGpu>,
+    toasts: &mut ToastQueue,
+) {
     match cpu_preview {
         Some(preview) => {
-            let cache_token = Arc::as_ptr(&preview.rgba) as usize;
-            let needs_upload = match *painter_preview_gpu {
-                None => true,
-                Some(gpu) => {
-                    gpu.arc_token != cache_token
-                        || gpu.entity_bits != preview.entity_bits
-                        || gpu.width != preview.width
-                        || gpu.height != preview.height
-                }
-            };
-            if needs_upload {
-                // B.1: partial sub-rect upload when the drain reported a tracked
-                // dirty bbox AND a matching GPU texture already holds the prior
-                // full frame (same entity + dims). The fast lane only fires after
-                // a full upload synced the texture (the composite cache is `Some`
-                // only post-full-recompose, which uploads `bbox == None`), and any
-                // structural / metadata / dims / entity change forces a full
-                // upload — so the un-touched GPU pixels are always current. The
-                // `bx+bw<=w && by+bh<=h` guard keeps `extract_region` in bounds
-                // (defensive — a bad bbox falls back to full, never panics the
-                // render loop). Everything else → full upload.
-                // Bisection toggle `PH2D_PAINT_FULL_UPLOAD=1`: force a FULL upload (disable the B.1 partial
-                // lane) to bisect the "rectangular artifacts". See `HANDOFF_per_layer_color_perf_artifacts`.
-                static FORCE_FULL_UPLOAD: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-                let force_full = *FORCE_FULL_UPLOAD
-                    .get_or_init(|| std::env::var_os("PH2D_PAINT_FULL_UPLOAD").is_some());
-                let partial = (!force_full)
-                    .then_some(painter_dirty_bbox)
-                    .flatten()
-                    .and_then(|(bx, by, bw, bh)| match *painter_preview_gpu {
-                        Some(gpu)
-                            if gpu.entity_bits == preview.entity_bits
-                                && gpu.width == preview.width
-                                && gpu.height == preview.height
-                                && bw > 0
-                                && bh > 0
-                                && bx + bw <= preview.width
-                                && by + bh <= preview.height =>
-                        {
-                            Some((gpu.texture_id, bx, by, bw, bh))
-                        }
-                        _ => None,
-                    });
-                let upload_result: Result<u32, _> = match partial {
-                    Some((texture_id, bx, by, bw, bh)) => {
-                        // Gather + premultiply ONLY the bbox sub-rect (tightly
-                        // packed bw*bh*4) and upload it over the existing texture.
-                        let mut region =
-                            extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
-                        premultiply_rgba8(&mut region);
+            // Bisection toggle `PH2D_PAINT_FULL_UPLOAD=1`: force a FULL upload (disable the B.1 partial
+            // lane) to bisect the "rectangular artifacts". See `HANDOFF_per_layer_color_perf_artifacts`.
+            static FORCE_FULL_UPLOAD: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+            let force_full = *FORCE_FULL_UPLOAD
+                .get_or_init(|| std::env::var_os("PH2D_PAINT_FULL_UPLOAD").is_some());
+            let plan = plan_upload(
+                preview,
+                *painter_preview_gpu,
+                painter_dirty_bbox,
+                force_full,
+            );
+            let upload_result: Option<Result<u32, _>> = match plan {
+                UploadPlan::Skip => None,
+                UploadPlan::Partial {
+                    texture_id,
+                    rect: (bx, by, bw, bh),
+                } => {
+                    // Gather + premultiply ONLY the bbox sub-rect (tightly
+                    // packed bw*bh*4) and upload it over the existing texture.
+                    let mut region = extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
+                    premultiply_rgba8(&mut region);
+                    Some(
                         renderer
                             .replace_individual_pixels_region(texture_id, bx, by, bw, bh, &region)
-                            .map(|()| texture_id)
-                    }
-                    None => {
-                        let mut premul_bytes = (*preview.rgba).clone();
-                        premultiply_rgba8(&mut premul_bytes);
-                        match *painter_preview_gpu {
-                            Some(gpu) => renderer
-                                .replace_individual_pixels(
-                                    gpu.texture_id,
-                                    preview.width,
-                                    preview.height,
-                                    &premul_bytes,
-                                )
-                                .map(|()| gpu.texture_id),
-                            None => renderer.acquire_individual(
+                            .map(|()| texture_id),
+                    )
+                }
+                UploadPlan::Full { reuse } => {
+                    let mut premul_bytes = (*preview.rgba).clone();
+                    premultiply_rgba8(&mut premul_bytes);
+                    Some(match reuse {
+                        Some(texture_id) => renderer
+                            .replace_individual_pixels(
+                                texture_id,
                                 preview.width,
                                 preview.height,
                                 &premul_bytes,
-                            ),
-                        }
-                    }
-                };
-                match upload_result {
-                    Ok(texture_id) => {
-                        *painter_preview_gpu = Some(PainterPreviewGpu {
-                            texture_id,
-                            width: preview.width,
-                            height: preview.height,
-                            arc_token: cache_token,
-                            entity_bits: preview.entity_bits,
-                        });
-                    }
-                    Err(e) => {
-                        toasts.push(Toast::error(format!(
-                            "Painter: upload da preview pra GPU falhou ({e}). \
-                             Tentando novamente no próximo frame."
-                        )));
-                        release_preview_texture(renderer, painter_preview_gpu);
-                    }
+                            )
+                            .map(|()| texture_id),
+                        None => renderer.acquire_individual(
+                            preview.width,
+                            preview.height,
+                            &premul_bytes,
+                        ),
+                    })
+                }
+            };
+            match upload_result {
+                None => {}
+                Some(Ok(texture_id)) => {
+                    *painter_preview_gpu = Some(PainterPreviewGpu {
+                        texture_id,
+                        width: preview.width,
+                        height: preview.height,
+                        arc_token: Arc::as_ptr(&preview.rgba) as usize,
+                        entity_bits: preview.entity_bits,
+                    });
+                }
+                Some(Err(e)) => {
+                    toasts.push(Toast::error(format!(
+                        "Painter: upload da preview pra GPU falhou ({e}). \
+                         Tentando novamente no próximo frame."
+                    )));
+                    release_preview_texture(renderer, painter_preview_gpu);
                 }
             }
         }
@@ -629,14 +624,98 @@ pub(super) fn dispatch(
             }
         }
     }
-    !apply_selection.is_empty()
+}
+
+/// What the CPU lane must send the preview-slot texture this frame, decided from the drained
+/// composite + the slot's bookkeeping — the DECISION half of the upload block, pure so a headless
+/// test can drive it over a real stroke (the `hit_plan` pattern: the policy is a function, the wgpu
+/// copies stay in [`dispatch`]). The screen samples the slot, so this plan — applied to the slot's
+/// bytes — is exactly "what the artist sees"; the display gates in
+/// `painter_preview_pipeline_tests.rs` hold it byte-equal to the tool's composite across a stroke's
+/// whole life.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(super) enum UploadPlan {
+    /// The slot already holds this composite (same buffer identity, entity and dims) — no upload.
+    Skip,
+    /// Premultiply + upload the WHOLE canvas; `reuse` = overwrite that slot texture, `None` =
+    /// acquire a fresh one (first frame, or dims/entity changed and the old slot was released).
+    Full { reuse: Option<u32> },
+    /// Premultiply + upload only `rect` (x, y, w, h) over the already-seeded slot texture — the
+    /// B.1 partial lane. Only offered when the seeded texture matches the composite's entity+dims
+    /// and the rect is in bounds; anything else falls back to `Full` (never panics the render loop).
+    Partial {
+        texture_id: u32,
+        rect: (u32, u32, u32, u32),
+    },
+}
+
+/// The B.1 upload decision (see [`UploadPlan`]). The fast lane only fires after a full upload
+/// seeded the texture (the composite cache is `Some` only post-full-recompose, which uploads
+/// `bbox == None`), and any structural / metadata / dims / entity change forces a full upload — so
+/// the un-touched slot pixels are always current.
+pub(super) fn plan_upload(
+    preview: &PainterPreview,
+    gpu: Option<PainterPreviewGpu>,
+    dirty_bbox: Option<(u32, u32, u32, u32)>,
+    force_full: bool,
+) -> UploadPlan {
+    let cache_token = Arc::as_ptr(&preview.rgba) as usize;
+    let needs_upload = match gpu {
+        None => true,
+        Some(g) => {
+            g.arc_token != cache_token
+                || g.entity_bits != preview.entity_bits
+                || g.width != preview.width
+                || g.height != preview.height
+        }
+    };
+    if !needs_upload {
+        return UploadPlan::Skip;
+    }
+    let partial = (!force_full)
+        .then_some(dirty_bbox)
+        .flatten()
+        .and_then(|(bx, by, bw, bh)| match gpu {
+            // `g.arc_token != 0`: a partial patch is only sound over a slot the CPU lane itself
+            // seeded. The GPU producer stamps its slots with token 0 (it has no CPU `Arc`) exactly
+            // so this transition forces a FULL re-upload — a rect patched over the GPU
+            // compositor's output would leave every other pixel to a different producer (unlit,
+            // and possibly older than the CPU cache), which is the GPU→CPU handoff artifact.
+            Some(g)
+                if g.arc_token != 0
+                    && g.entity_bits == preview.entity_bits
+                    && g.width == preview.width
+                    && g.height == preview.height
+                    && bw > 0
+                    && bh > 0
+                    && bx + bw <= preview.width
+                    && by + bh <= preview.height =>
+            {
+                Some(UploadPlan::Partial {
+                    texture_id: g.texture_id,
+                    rect: (bx, by, bw, bh),
+                })
+            }
+            _ => None,
+        });
+    partial.unwrap_or(UploadPlan::Full {
+        reuse: gpu.map(|g| g.texture_id),
+    })
 }
 
 /// Gather a tightly-packed `w*h*4` RGBA8 sub-rect at `(x, y)` out of a
 /// canvas-sized straight buffer (row stride `stride_px*4`) — the inverse of the
 /// compositor's `blit_region`, for the B.1 partial GPU upload. The caller's
 /// guard (`x+w <= stride_px`, `y+h <= height`) keeps every row copy in bounds.
-fn extract_region(full: &[u8], stride_px: u32, x: u32, y: u32, w: u32, h: u32) -> Vec<u8> {
+/// `pub(super)` so the display-pipeline gates apply the real gather, not a mirror of it.
+pub(super) fn extract_region(
+    full: &[u8],
+    stride_px: u32,
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
+) -> Vec<u8> {
     let row_bytes = (w * 4) as usize;
     let mut out = vec![0u8; (w as usize) * (h as usize) * 4];
     for ry in 0..h {

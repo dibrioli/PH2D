@@ -62,12 +62,26 @@ impl PainterTool {
     /// `true` iff the preview changed since the last drain (so the bridge
     /// recomposites this frame). Mirrors `take_preview_arc`'s empty-canvas
     /// guard so an un-sourced tool reports clean.
+    ///
+    /// **A drain that bypasses the CPU composite leaves the CPU composite stale by definition** —
+    /// the change that raised the flag was never folded into `composited`, and the dirty-rect that
+    /// described it is about to be thrown away by the GPU lane. So a `true` drain drops both: the
+    /// next `take_preview_arc` (a GPU→CPU producer handoff — e.g. the first impasto/sculpt dab on
+    /// a GPU-composited stack) then does a FULL recompose + full upload instead of blitting the
+    /// new rect into a cache whose *other* pixels predate every GPU-owned edit. Before this, the
+    /// handoff frame could show a mix of eras: fresh paint inside the last dirty rect, pre-GPU
+    /// pixels everywhere else (display gate `the_screen_survives_the_gpu_to_cpu_producer_handoff`).
     #[must_use]
     pub fn take_preview_dirty(&mut self) -> bool {
         if self.canvas_rgba.is_empty() {
             return false;
         }
-        std::mem::take(&mut self.preview_dirty)
+        let dirty = std::mem::take(&mut self.preview_dirty);
+        if dirty {
+            self.composited = None;
+            self.dirty_rect = None;
+        }
+        dirty
     }
 
     /// Public projection of [`Self::is_trivial_stack`] for the shell's GPU

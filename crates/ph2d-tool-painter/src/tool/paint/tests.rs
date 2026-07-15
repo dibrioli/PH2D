@@ -19666,6 +19666,56 @@ fn impasto_smoothing_settles_every_stroke_the_moment_the_pen_leaves_the_canvas()
     }
 }
 
+#[test]
+fn a_gpu_lane_drain_leaves_no_partial_lane_behind() {
+    // The GPU preview producer drains the dirty flag WITHOUT compositing (`take_preview_dirty`) —
+    // so the change that raised the flag is never folded into `composited`, and the dirty-rect
+    // describing it is consumed by a lane that doesn't read it. If both survive the drain, the
+    // next `take_preview_arc` (a GPU→CPU producer handoff: the first impasto dab on a
+    // GPU-composited stack) takes the PARTIAL lane over a cache from another era, and hands the
+    // bridge a sub-rect bbox — which the bridge trusts to patch the slot ("the fast lane only
+    // fires after a full upload synced the texture" is the invariant its B.1 comment states, and
+    // this drain used to break it). Today every eligibility-flipping door happens to also
+    // invalidate the composite, so the stale blit is latent — held shut by an ENUMERATION of
+    // doors, which is exactly the condition that rots when door N+1 arrives. The contract, held
+    // here: a `true` GPU drain ⇒ the next CPU drain is a FULL recompose (bbox `None`).
+    //
+    // **Mutation that must bleed:** in `take_preview_dirty`, keep returning the flag but stop
+    // dropping `composited`/`dirty_rect` — the bbox below comes back `Some`.
+    //
+    // The stack must be NON-trivial: the trivial fast lane hands back the live `canvas_rgba`
+    // Arc — a buffer that cannot go stale — and a `Some(bbox)` there is correct. The hazard
+    // under gate lives in the COMPOSITE lane's cache. (This gate's first draft was trivial and
+    // red in BOTH worlds — a gate that was never seen green.)
+    let mut t = white_canvas(64, 6.0);
+    let active = t.layers.active().expect("a layer");
+    t.set_layer_opacity(active, 0.9);
+    let _ = t.take_preview_arc(); // seed the composite cache (composited = Some)
+    let _ = t.take_preview_upload_bbox();
+
+    // A stroke marks a rect; the GPU lane drains the flag (a GPU-owned frame).
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Up));
+    assert!(
+        t.take_preview_dirty(),
+        "fixture: the stroke marked the preview dirty"
+    );
+
+    // Handoff: the next CPU drain must not trust a cache the GPU frames left behind.
+    t.on_canvas_pointer(cp([44.0, 44.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([44.0, 44.0], PointerPhase::Up));
+    let drained = t.take_preview_arc();
+    assert!(drained.is_some(), "fixture: the second stroke re-dirtied");
+    assert_eq!(
+        t.take_preview_upload_bbox(),
+        None,
+        "the first CPU drain after a GPU-lane drain must be a FULL recompose + full upload — a \
+         Some(bbox) here is the partial lane running over a composite cache that missed every \
+         GPU-owned frame"
+    );
+}
+
 /// Drive one stroke of `method` and make it PERMANENT the way the artist does — pen-up for the freehand
 /// methods, Apply for the five that leave an editable shape behind. Returns the layer's committed relief.
 fn sculpt_and_apply(size: u32, method: StrokeMethod, smoothing: f32) -> Vec<f32> {

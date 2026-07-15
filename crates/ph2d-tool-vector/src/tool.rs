@@ -512,6 +512,11 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_BUILD => {
                 self.mode = DrawMode::Build;
             }
+            // **Pick Shapes** — o 8º pill (Blend). Arma a coleta de formas na ordem de clique; a
+            // shell junta a lista e o botão Blend a liga (ADR-0122 C2b).
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_PICKBLEND => {
+                self.mode = DrawMode::PickBlend;
+            }
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_BUTT => self.set_cap(StrokeCap::Butt),

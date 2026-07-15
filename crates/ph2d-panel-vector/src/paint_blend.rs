@@ -40,6 +40,9 @@ impl BodyCtx<'_> {
             &format!("{steps}"),
             y,
         );
-        self.action_button(ids::VECTOR_BLEND_RUN, "Blend", y)
+        y = self.action_button(ids::VECTOR_BLEND_RUN, "Blend", y);
+        // **Reset Spine** — desfaz a edição do spine (modo Node), voltando à reta pelos centros
+        // das fontes. Sem ele, a única saída da edição do spine é o undo global (ADR-0122 C2b).
+        self.action_button(ids::VECTOR_BLEND_RESET_SPINE, "Reset Spine", y)
     }
 }

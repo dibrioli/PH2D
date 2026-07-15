@@ -1187,6 +1187,33 @@ fn gizmo_anchor_half(
 }
 
 impl App {
+    /// **Pick Shapes** (ADR-0122 C2b): alterna a forma FECHADA sob `world` na lista de escolhidas
+    /// ([`crate::App::vec_blend_picks`]), na ordem de clique. Já escolhida → removida (corrigir a
+    /// ordem sem recomeçar); nova → anexada, até o teto de [`crate::blend_live::MAX_BLEND_SOURCES`].
+    /// Só FECHADAS entram — uma curva aberta não tem interior para interpolar. Marca
+    /// `any_input_this_frame` para a prévia do spine redesenhar.
+    pub(crate) fn blend_pick_at(&mut self, world: [f64; 2]) {
+        let px = self.vec_px_to_world();
+        let hit = {
+            let Some(gfx) = self.gfx.as_ref() else { return };
+            self.vec_pen
+                .path_at(&gfx.vec_scene, world, 10.0 * px)
+                .filter(|id| {
+                    gfx.vec_scene
+                        .paths()
+                        .iter()
+                        .any(|p| p.id == *id && p.closed)
+                })
+        };
+        let Some(id) = hit else { return };
+        if let Some(pos) = self.vec_blend_picks.iter().position(|&p| p == id) {
+            self.vec_blend_picks.remove(pos);
+        } else if self.vec_blend_picks.len() < crate::blend_live::MAX_BLEND_SOURCES {
+            self.vec_blend_picks.push(id);
+        }
+        self.any_input_this_frame = true;
+    }
+
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
         match self.handler.on_close_request() {
             CloseAction::Close => {
@@ -2571,6 +2598,16 @@ impl App {
                     if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Connect {
                         if let Some(w) = self.vec_world_at(self.last_pointer) {
                             self.connector_down(w);
+                        }
+                        return;
+                    }
+                    // Modo Pick Shapes (Blend): a pressão coleta a forma FECHADA sob o
+                    // cursor na ordem de clique (ADR-0122 C2b). Não há pen/shape/gizmo — o
+                    // que se escolhe é a LISTA de formas, e o botão Blend a liga. Clicar de
+                    // novo numa já escolhida a remove (corrigir sem recomeçar).
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend {
+                        if let Some(w) = self.vec_world_at(self.last_pointer) {
+                            self.blend_pick_at(w);
                         }
                         return;
                     }

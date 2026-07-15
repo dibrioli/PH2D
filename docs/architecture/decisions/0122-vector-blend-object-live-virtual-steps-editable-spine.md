@@ -118,7 +118,7 @@ mode capturando faces, e do `shape_under_cursor` do conector.
 | **B ✅** | O objeto **vivo**: componente `VecBlend` + recook por frame + passe de render dos passos + skip no `settle_origins`. Spine AUTO (linha entre centros) | `ph2d-ecs` + shell |
 | **C1 ✅** | **Painel cria e ajusta** o blend vivo: botão "Blend" (seleção fechada, 2..=5, em z), slider Steps ao vivo (teto 200) | shell + painel |
 | **C2a ✅** | **Spine editável** (modo Node): os passos FLUEM por comprimento de arco ao longo da curva editada | motor + shell |
-| **C2b** | **Pick Shapes** mode (escolher a ORDEM), Reset Spine, spacing | shell + painel |
+| **C2b ✅** | **Pick Shapes** mode (escolher a ORDEM) + **Reset Spine** + o spine SOBE no modo Node. `spacing` **deferido** (não pedido; Distance exige arco) | shell + painel |
 | **D** | **Expand** / **Release** | shell |
 
 Cada fase fecha com gate + smoke do Enio antes da próxima (a regra desta linha).
@@ -228,6 +228,32 @@ volta — as duas coisas convivem).
 - **O spine visível é dado de documento** (persiste no save, apareceria no Expand). Um **guia por
   overlay** (screen-space, largura em px, só quando o blend está selecionado, cor por token) é o
   refinamento correto — hoje é um `StrokeSpec` em MUNDO.
+
+## O que a Fase C2b LANDOU (2026-07-15) — Pick Shapes + Reset Spine + o spine no topo
+
+- **O spine SOBE no modo Node** (`blend_live::elevate_spines`): o spine é path de documento pickável
+  (fica na cena), mas seu TRAÇO virou função do modo — em Node ele é retirado da cena (some do
+  z-order do `dispatch`) e vira o ÚLTIMO item do overlay do blend (`draw_blend_overlay`, desenhado
+  por último), acima de TODAS as formas e passos. Em Select fica no seu z (traço sutil), como o
+  Illustrator. Sem desenhar duas vezes (a dobra somaria o alpha). O `recook` garante o traço-base
+  todo frame, então voltar de Node não deixa o spine invisível. 2 gates (elevação tira da cena + põe
+  no topo TRAÇADO · a elevação não gruda em Select).
+- **Reset Spine** (`blend_live::reset_spine`, botão no painel `VECTOR_BLEND_RESET_SPINE`): volta o(s)
+  blend(s) selecionado(s) ao spine automático (a reta pelos centros), limpando `spine_authored`. O
+  gotcha: precisa apagar TAMBÉM a memória do auto (`spines`) — senão a detecção do recook compararia
+  o spine BENT ainda na cena com o auto memorizado e RE-autoraria na hora. Gate mutation-testado
+  (sem o `spines.remove`, re-autora), e passa pelo AUTO antes (senão a memória estaria vazia e a
+  mutação não apareceria).
+- **Pick Shapes** = `DrawMode::PickBlend` (8º pill, espelho do Build/Connect): no canvas, o clique
+  coleta a forma FECHADA sob o cursor em `vec_blend_picks`, na ORDEM de clique (clicar de novo numa
+  já escolhida a remove); o botão Blend liga essa lista em vez da ordem de z. A prévia
+  (`blend_live::pick_preview`) realça cada escolha (contorno) + costura a ordem numa polilinha azul
+  (a prévia do spine-a-ser) — o artista VÊ a cadeia se formar. Feito o blend, volta ao Select e a
+  lista esvazia. Gates: o pill chega à tool (seam) · a prévia usa a ordem de CLIQUE, não a de z.
+  Smoke `PH2D_BLEND_SMOKE=4` (3 formas + modo Pick ativo).
+- **`spacing` (Steps | Distance | SmoothColor) DEFERIDO:** não foi pedido pelo Enio (a visão dele é
+  ordem + spine editável + Expand), e Distance exige distribuir por comprimento de arco. Fica para
+  quando/se pedido. `Steps` é o único hoje (o slider).
 
 **Gotchas para a Fase C (o próximo que mexer):**
 

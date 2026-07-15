@@ -79,6 +79,8 @@ fn mode_buttons_switch_the_draw_mode() {
         (ids::VECTOR_MODE_TEXT, DrawMode::Text),
         // O 5º pill: sem ele, desenhar uma forma deixava a fileira toda apagada.
         (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
+        // O 8º pill (Pick Shapes / Blend): coleta formas na ordem de clique.
+        (ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),
         (ids::VECTOR_MODE_SELECT, DrawMode::Select),
     ] {
         Tool::handle_panel_event(&mut t, PanelEvent::Click(id));

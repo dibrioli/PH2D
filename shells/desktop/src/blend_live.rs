@@ -156,6 +156,50 @@ pub(crate) fn create(
 /// idioma do Illustrator é uma cadeia curta.
 pub(crate) const MAX_BLEND_SOURCES: usize = 5;
 
+/// O traço de REALCE do modo Pick Shapes — um azul de acento, distinto do cinza sutil do spine.
+/// Como o [`spine_stroke`], é um `Rgba8` em MUNDO por ora; o refinamento correto é um guia por
+/// overlay em screen-space com cor por token (ADR-0122 C2b), quando a preview virar UI de verdade.
+fn pick_stroke() -> ph2d_vec_scene::StrokeSpec {
+    ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(80, 150, 240, 230), 0.04)
+}
+
+/// A **prévia do modo Pick Shapes** (ADR-0122 C2b): o contorno realçado de cada forma escolhida +
+/// a polilinha que as costura na ORDEM de clique (a prévia do spine-a-ser). Tudo em MUNDO, para o
+/// [`ph2d_vec_render::draw_blend_overlay`] desenhar por cima. `picks` na ordem de clique; formas
+/// que sumiram são puladas. Vazio ⇒ nada é desenhado.
+///
+/// É o que torna a escolha VISÍVEL: o artista clica as formas e vê a cadeia se formar (a linha
+/// cresce do 1º clique), então sabe a ordem que o Blend vai usar sem um número na tela.
+pub(crate) fn pick_preview(
+    scene: &VecScene,
+    xforms: &VecXforms,
+    picks: &[VecPathId],
+) -> Vec<VecPath> {
+    let mut out = Vec::new();
+    // O contorno de cada forma escolhida (sem fill — só o realce da silhueta).
+    for &id in picks {
+        if let Some(mut p) = world(scene, xforms, id) {
+            p.fill = None;
+            p.stroke = Some(pick_stroke());
+            out.push(p);
+        }
+    }
+    // A polilinha pela ordem de clique — a prévia do spine (a linha que unirá as formas).
+    let centers: Vec<[f64; 2]> = picks
+        .iter()
+        .filter_map(|&id| center_of(scene, xforms, id))
+        .collect();
+    if centers.len() >= 2 {
+        out.push(VecPath {
+            verts: spine_verts(&centers),
+            closed: false,
+            stroke: Some(pick_stroke()),
+            ..VecPath::default()
+        });
+    }
+    out
+}
+
 /// As formas FECHADAS selecionadas, na ordem de **z** (a de `paths()`), capadas em
 /// [`MAX_BLEND_SOURCES`]. É o que o botão "Blend" liga — a ordem da cadeia é a de z, como o "Make"
 /// do Illustrator (formas abertas não têm interior para interpolar, então são descartadas).
@@ -202,6 +246,37 @@ pub(crate) fn set_selected_steps(
             && let Some(mut b) = sim.world_mut().get_mut::<VecBlend>(e)
         {
             b.steps = steps;
+            changed = true;
+        }
+    }
+    changed
+}
+
+/// **Reset Spine:** volta o(s) blend(s) selecionado(s) ao spine AUTOMÁTICO (a reta pelos centros),
+/// desfazendo a edição do modo Node. Devolve `true` se algum blend foi resetado.
+///
+/// Limpa `spine_authored` **E** a memória do auto (`spines`): sem apagar a memória, a detecção do
+/// [`recook`] compararia o spine BENT ainda na cena com o último auto memorizado (diferentes) e o
+/// RE-autoraria no mesmo frame — o reset não pegaria. Com a memória vazia, a detecção não dispara
+/// (`is_some_and` é falso) e o ramo automático reescreve a reta e a memoriza de novo.
+pub(crate) fn reset_spine(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    pen: &ph2d_vec_edit::PenTool,
+    spines: &mut BlendSpines,
+) -> bool {
+    let mut changed = false;
+    for id in pen.selected_paths() {
+        let Some(&bits) = map.get(id) else { continue };
+        let e = Entity::from_bits(bits);
+        if sim
+            .world()
+            .get::<VecBlend>(e)
+            .is_some_and(|b| b.spine_authored)
+            && let Some(mut b) = sim.world_mut().get_mut::<VecBlend>(e)
+        {
+            b.spine_authored = false;
+            spines.remove(id); // esquece o auto memorizado (senão o recook re-autora na hora)
             changed = true;
         }
     }
@@ -370,10 +445,16 @@ pub(crate) fn elevate_spines(
     out: &mut Vec<VecPath>,
 ) {
     for (&id, &bits) in map.iter() {
-        if sim.world().get::<VecBlend>(Entity::from_bits(bits)).is_none() {
+        if sim
+            .world()
+            .get::<VecBlend>(Entity::from_bits(bits))
+            .is_none()
+        {
             continue;
         }
-        let Some(p) = scene.path_mut(id) else { continue };
+        let Some(p) = scene.path_mut(id) else {
+            continue;
+        };
         if p.verts.len() < 2 {
             continue; // spine vazio (blend sem 2 fontes vivas): não há linha a subir
         }

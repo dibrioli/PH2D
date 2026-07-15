@@ -242,6 +242,11 @@ pub enum DrawMode {
     /// conector não é autorada, é **derivada** (uma função pura de a quem cada ponta se
     /// prende), e a shell a re-cozinha a cada frame (`connector_live`).
     Connect,
+    /// **Pick Shapes** (Blend): coleta as formas fechadas clicadas **na ordem**; o botão Blend as
+    /// liga nessa sequência (ADR-0122 C2b). É um modo — como o Build e o Connect — porque o gesto é
+    /// escolher formas no canvas, não editar a selecionada; a ORDEM da cadeia é a de clique, não a
+    /// de z.
+    PickBlend,
 }
 
 /// UI-facing vertex type for the docked panel's Vertex section (mirror of

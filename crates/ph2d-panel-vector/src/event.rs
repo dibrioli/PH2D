@@ -307,6 +307,8 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_MODE_CONNECT
         // O 7º pill (Build / Shape Builder).
         || id == ids::VECTOR_MODE_BUILD
+        // O 8º pill (Pick Shapes / Blend). Fora daqui, o pill pinta e está MORTO.
+        || id == ids::VECTOR_MODE_PICKBLEND
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT
         || id == ids::VECTOR_TEXT_FONT_IMPORT
@@ -324,6 +326,7 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_VERT_SYMMETRIC
         || id == ids::VECTOR_VERT_DELETE
         || id == ids::VECTOR_BLEND_RUN
+        || id == ids::VECTOR_BLEND_RESET_SPINE
         || id == ids::VECTOR_BOOL_UNION
         || id == ids::VECTOR_BOOL_SUBTRACT
         || id == ids::VECTOR_BOOL_INTERSECT

@@ -45,8 +45,13 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
         // O **Build** também fica de fora, e pela mesma razão do Select: o que ele
         // manipula é a REGIÃO, não a âncora. Âncoras e handles por cima de um emaranhado
         // de formas sobrepostas só atrapalham a leitura das faces — que é a única coisa
-        // que o artista precisa enxergar ali.
-        edit: vector_active && !matches!(mode, DrawMode::Select | DrawMode::Build),
+        // que o artista precisa enxergar ali. O **Pick Shapes** (Blend) idem: o que se
+        // manipula é a LISTA de formas, não os nós de uma delas.
+        edit: vector_active
+            && !matches!(
+                mode,
+                DrawMode::Select | DrawMode::Build | DrawMode::PickBlend
+            ),
         snap_guides: vector_active,
         corner_handles: vector_active && mode == DrawMode::Node,
     }
@@ -86,6 +91,16 @@ mod tests {
             assert!(plan.edit, "{mode:?} desenha âncoras/handles");
             assert!(plan.snap_guides, "{mode:?} desenha guias de snap");
         }
+    }
+
+    /// **Pick Shapes (Blend) não desenha âncoras** — como o Build, o que ele manipula é a lista de
+    /// formas, não os nós de uma. O realce das escolhidas + a prévia do spine vêm de outro passe.
+    #[test]
+    fn pickblend_mode_shows_no_node_overlays() {
+        let plan = vec_overlay_plan(true, DrawMode::PickBlend);
+        assert!(!plan.edit, "sem âncoras/handles no Pick Shapes");
+        assert!(!plan.corner_handles, "e sem alça de raio de quina");
+        assert!(plan.snap_guides, "guias de snap valem em todo modo");
     }
 
     /// Tool inativa: nenhum overlay vetorial (o canvas é de outra ferramenta).

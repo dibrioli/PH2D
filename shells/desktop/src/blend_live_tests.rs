@@ -533,3 +533,34 @@ fn after_a_node_frame_select_mode_restores_the_spine_stroke() {
         "modo Select restaura o traço do spine (o `recook` o garante todo frame)"
     );
 }
+
+/// **Pick Shapes: a prévia realça as escolhas E as costura na ORDEM DE CLIQUE** (ADR-0122 C2b) —
+/// não na de z. Três retângulos em x = 0, 4, 8; escolhidos fora de ordem (8, 0, 4). A prévia tem um
+/// contorno por escolha (sem fill, com traço) + uma polilinha aberta pelos centros nessa mesma
+/// ordem. Se a prévia usasse a ordem de z, os x sairiam 0, 4, 8 — o oráculo distingue as duas.
+#[test]
+fn pick_preview_outlines_the_picks_and_threads_them_in_click_order() {
+    let (sim, scene, map, _spine, src) = scene_with_blend(3, 3); // retângulos em x = 0, 4, 8
+    let picks = vec![src[2], src[0], src[1]]; // ordem de CLIQUE: 8, 0, 4
+    let xf = crate::vec_transform::build(&sim, &map);
+    let preview = crate::blend_live::pick_preview(&scene, &xf, &picks);
+
+    assert_eq!(preview.len(), 4, "3 contornos + a polilinha");
+    for outline in &preview[..3] {
+        assert!(
+            outline.fill.is_none() && outline.stroke.is_some(),
+            "cada escolha vira um CONTORNO realçado (sem fill)"
+        );
+    }
+    let line = preview.last().expect("polilinha");
+    assert!(
+        !line.closed && line.stroke.is_some(),
+        "a costura é uma polilinha ABERTA e traçada"
+    );
+    let xs: Vec<f64> = line.verts.iter().map(|v| v.anchor[0]).collect();
+    assert_eq!(xs.len(), 3, "um vértice por escolha");
+    assert!(
+        (xs[0] - 8.0).abs() < 1e-6 && (xs[1] - 0.0).abs() < 1e-6 && (xs[2] - 4.0).abs() < 1e-6,
+        "a polilinha segue a ORDEM DE CLIQUE (8, 0, 4), não a de z: {xs:?}"
+    );
+}

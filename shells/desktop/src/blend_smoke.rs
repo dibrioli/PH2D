@@ -15,6 +15,10 @@
 //! - `PH2D_BLEND_SMOKE=3` — o **SPINE editável**: estrela → elipse com um spine CURVO autorado. Os
 //!   6 passos **fluem ao longo do arco**, não pela reta. Modo Node no objeto: arraste os pontos do
 //!   spine e os passos re-fluem (é o "path unindo as formas, editável" do pedido do Enio).
+//! - `PH2D_BLEND_SMOKE=4` — **Pick Shapes** (C2b): três formas + o modo **Pick** já ativo. Clique
+//!   as formas **na ordem** que quiser (a linha azul costura a cadeia; clicar de novo remove),
+//!   depois Painel Vector > Blend. A ordem do blend é a de CLIQUE, não a de z (o pedido do Enio de
+//!   "escolher as formas na ordem que queremos").
 
 use ph2d_vec_scene::{Paint, Rgba8, ShapeKind, VecPath, cook};
 use std::sync::OnceLock;
@@ -93,6 +97,34 @@ impl crate::App {
                     [200, 120, 80],
                 ));
             }
+            // Pick Shapes (C2b): 3 formas distintas, espalhadas. O blend NÃO nasce pronto — o
+            // artista entra no modo Pick (frame 8) e as clica na ordem que quiser.
+            3 if level == 4 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                scene.push_path(shape(
+                    ShapeKind::Star,
+                    [-4.4, -1.0],
+                    [-2.4, 1.0],
+                    &[5.0, 0.45, 0.0],
+                    [70, 110, 190],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Ellipse,
+                    [-0.6, -0.7],
+                    [1.4, 0.7],
+                    &[],
+                    [200, 120, 80],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Rectangle,
+                    [2.4, -1.0],
+                    [4.4, 1.0],
+                    &[],
+                    [110, 190, 130],
+                ));
+            }
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
@@ -160,6 +192,18 @@ impl crate::App {
                     "[blend-smoke] SPINE editavel: 6 passos ao longo de um ARCO autorado, em modo \
                      Node (o spine no TOPO, com ancoras). Arraste os pontos do spine e os passos \
                      re-fluem; as PONTAS voltam para os centros das fontes (ADR-0122)."
+                );
+            }
+            // Pick Shapes (C2b): entra no modo Pick. NÃO cria o blend — o artista clica as formas
+            // na ordem que quiser (a linha azul mostra a cadeia se formando) e aperta Blend.
+            8 if level == 4 => {
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::PickBlend);
+                self.any_input_this_frame = true;
+                eprintln!(
+                    "[blend-smoke] Pick Shapes: modo Pick ATIVO. Clique as 3 formas NA ORDEM que \
+                     quiser (a linha azul costura a cadeia; clicar de novo numa escolhida a \
+                     remove), depois Painel Vector > Blend. A ordem do blend e a de CLIQUE, nao a \
+                     de z (ADR-0122 C2b)."
                 );
             }
             // Cria o Blend Object VIVO sobre as formas da cena, na ordem de z. As fontes

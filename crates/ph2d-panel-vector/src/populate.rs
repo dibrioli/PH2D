@@ -196,6 +196,10 @@ fn populate_shape(store: &mut WidgetStore) {
     // clicável — pintar e dar hit-rect não basta.
     button(store, ids::VECTOR_MODE_BUILD);
 
+    // O 8º: **Pick Shapes** (Blend). Coleta as formas na ordem de clique — idem: só é clicável
+    // porque está registrado aqui.
+    button(store, ids::VECTOR_MODE_PICKBLEND);
+
     // O CATÁLOGO: um botão por forma + uma opção de dropdown por família. Registrados por
     // ÍNDICE — uma forma nova entra na tabela e já nasce clicável, sem tocar aqui.
     for i in 0..shapes::SHAPES.len() {
@@ -359,6 +363,9 @@ fn populate_ops(store: &mut WidgetStore) {
         1.0,
     );
     button(store, ids::VECTOR_BLEND_RUN);
+    // **Reset Spine** — volta o spine editado (modo Node) ao automático. Registrar aqui é o que o
+    // torna clicável (pintar + hit-rect não basta — a classe de bug dos botões do vetor).
+    button(store, ids::VECTOR_BLEND_RESET_SPINE);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);

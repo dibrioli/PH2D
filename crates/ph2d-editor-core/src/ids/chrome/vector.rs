@@ -452,6 +452,15 @@ pub const VECTOR_BLEND_STEPS_NUM: NodeId = hash_node_id("vector.blend.steps_num"
 /// sequência é parte do resultado: um blend cuja 1ª intermediária fica DEBAIXO da forma
 /// que a originou não lê como transição.
 pub const VECTOR_BLEND_STACK_UP: NodeId = hash_node_id("vector.blend.stack_up");
+/// **Reset Spine** — volta o spine do blend selecionado ao AUTOMÁTICO (a reta pelos centros das
+/// fontes), desfazendo a edição do modo Node (ADR-0122 C2b). Sem ele, a única saída da edição do
+/// spine é o undo global.
+pub const VECTOR_BLEND_RESET_SPINE: NodeId = hash_node_id("vector.blend.reset_spine");
+
+/// **Pick Shapes** — o 8º pill de modo (ADR-0122 C2b): coleta as formas fechadas clicadas **na
+/// ordem**, e o botão Blend as liga nessa sequência. É o análogo do Build (que captura faces) e do
+/// Connect (que pega a forma sob o cursor) — a ORDEM da cadeia é escolhida a dedo, não a de z.
+pub const VECTOR_MODE_PICKBLEND: NodeId = hash_node_id("vector.mode.pickblend");
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

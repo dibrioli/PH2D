@@ -83,6 +83,11 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.build"),
                 DrawMode::Build,
             ),
+            (
+                ids::VECTOR_MODE_PICKBLEND,
+                tr("panel.vector.mode.pickblend"),
+                DrawMode::PickBlend,
+            ),
         ];
         let cols = 3usize;
         self.button_grid(y, cols, modes.len(), |i| {

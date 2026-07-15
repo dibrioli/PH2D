@@ -161,6 +161,63 @@ fn the_spine_endpoints_are_pinned_to_the_sources() {
     );
 }
 
+/// **Reset Spine volta ao automático — e NÃO re-autora.** É o caminho completo (ADR-0122 C2b): o
+/// spine é automático (o recook o memoriza), depois autorado e curvado, depois resetado. A prova de
+/// que o `spines.remove` é necessário: sem apagar a memória do auto, a detecção do recook seguinte
+/// compararia o spine BENT ainda na cena com o auto memorizado (diferentes) e o RE-autoraria na
+/// hora — o reset não pegaria. Por isso o teste passa pelo AUTO antes (senão a memória estaria
+/// vazia e a mutação não apareceria).
+#[test]
+fn reset_spine_returns_to_the_automatic_straight_line_and_does_not_reauthor() {
+    let (mut sim, mut scene, map, spine, _src) = scene_with_blend(2, 3);
+    let e = Entity::from_bits(map[&spine]);
+    let mut spines = BlendSpines::new();
+    let mut out = Vec::new();
+    let xf = crate::vec_transform::build(&sim, &map);
+
+    // Frame 1: automático — o recook memoriza a reta em `spines` (é o que o reset precisa apagar).
+    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
+    assert!(spines.contains_key(&spine), "o auto foi memorizado");
+
+    // A mão autora e curva o spine (modo Node); o recook authored NÃO atualiza `spines`.
+    sim.world_mut()
+        .get_mut::<VecBlend>(e)
+        .expect("blend")
+        .spine_authored = true;
+    set_spine(&mut scene, spine, &[[0.0, 0.0], [2.0, 5.0], [4.0, 0.0]]);
+    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
+
+    // Reset: limpa o flag E a memória do auto.
+    let mut pen = ph2d_vec_edit::PenTool::default();
+    pen.select_many(&[spine]);
+    assert!(
+        reset_spine(&mut sim, &map, &pen, &mut spines),
+        "resetou o spine"
+    );
+    assert!(
+        !sim.world()
+            .get::<VecBlend>(e)
+            .expect("blend")
+            .spine_authored,
+        "o flag foi limpo"
+    );
+
+    // Frame seguinte: o ramo automático reescreve a RETA e NÃO re-autora (a memória sumiu).
+    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
+    assert!(
+        !sim.world()
+            .get::<VecBlend>(e)
+            .expect("blend")
+            .spine_authored,
+        "o recook NÃO re-autora após o reset (a memória do auto foi apagada)"
+    );
+    let p = scene.paths().iter().find(|p| p.id == spine).expect("spine");
+    assert_eq!(p.verts.len(), 2, "voltou à reta pelos 2 centros");
+    for v in &p.verts {
+        assert!(v.anchor[1].abs() < 1e-9, "reta em y=0: {:?}", v.anchor);
+    }
+}
+
 /// Uma ponta fixada **segue a fonte** quando ela se move (a curva vai junto).
 #[test]
 fn a_pinned_spine_endpoint_follows_its_source() {

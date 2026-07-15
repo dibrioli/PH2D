@@ -52,6 +52,20 @@ pub(super) fn tile_count(w: u32, h: u32) -> usize {
     (w.div_ceil(TILE) as usize) * (h.div_ceil(TILE) as usize)
 }
 
+/// The stand-in "height" of an UNTOUCHED texel in the Blob's envelope — low enough (dilating; mirrored
+/// high when eroding) that it can never win against any real source in any window this tool can build.
+///
+/// Why untouched texels must not compete at all: rooting their parabolas at their own ground (`g = pre`)
+/// turns the Blob into an **ambient terrain dilation** — on sloped thick paint, ground the brush never
+/// touched lifts its downhill neighbours by `max(m·d − a·d²)` wherever the window reaches, and the
+/// window's edge (a rectangle) becomes a visible tonal shelf: Enio's 4th smoke (2026-07-15), the residual
+/// square that survived the runaway fix. An untouched texel can RECEIVE matter; it has none to give.
+///
+/// The margin that keeps the sentinel a sentinel: a real source's worst envelope value is
+/// `−H_MAX − a·diag²`; with `a ≤ 1/32` (ρ ≥ 1 texel ⇒ |Depth| ≥ 1/16) and a 4096² canvas that is
+/// ≈ `−1.05e6` — ten times shy of this. // CLAMP-OK
+const UNTOUCHED_G: f32 = 1.0e7;
+
 impl PainterTool {
     /// Fill every tile `rect` overlaps that this session has not filled yet, into the memo.
     ///
@@ -358,89 +372,164 @@ impl PainterTool {
         }
         let smooth = self.paint.sculpt.inflate_smooth_px();
         let dilate = depth > 0.0;
-        // The parabola reaches ~√2·ρ before it drops below its neighbours — so the compute region is `rect`
-        // grown by `2ρ` (a safe bound on that reach) PLUS the blur's reach; the write region is `rect + 2ρ`.
-        let reach = 2 * rho as u32;
-        let Some(cr) = grow_region(rect, reach + smooth, w, h) else {
+        // A full-strength ball has spent its whole |Depth| by ⌈ρ√2⌉ — the farthest ANY source may reach
+        // (weaker sources reach less; the post-pass holds each to its own budget). The write region covers
+        // that support plus the blur's spread; the compute region additionally sees every source (≤ reach)
+        // and every blur tap (≤ smooth) that a write-region texel consults, so the crop inside `kr` is
+        // exactly what a whole-canvas run would have written there.
+        let reach = ((2 * rho * rho) as f64).sqrt().ceil() as u32;
+        let Some(kr) = grow_region(rect, reach + smooth, w, h) else {
             return;
         };
-        let Some(kr) = grow_region(rect, reach, w, h) else {
+        let Some(cr) = grow_region(rect, 2 * (reach + smooth), w, h) else {
             return;
         };
         let pre = Arc::clone(&self.paint.sculpt.pre);
         let amount = Arc::clone(&self.paint.sculpt.amount);
         let (cw, ch) = (cr.w as usize, cr.h as usize);
         let (wu, wi, hi) = (w as usize, i64::from(w), i64::from(h));
-        // The parabola's PEAK field over the region: `pre ± |Depth|·amount`, the falloff as the height budget.
-        // (`+` inflates, `−` deflates.) The curvature `a` matches the sphere of radius `|Depth|·unit` at its
-        // apex, so the separable parabolic dilation is a rounded, fattening dome — the exact spherical ball's
-        // `O(area·ρ²)` collapsed to `O(area)`, which is the difference between 73 ms/move and shippable.
+        // The parabola's PEAK field over the region: `pre ± |Depth|·amount`, the falloff as the height
+        // budget (`+` inflates, `−` deflates) — for TOUCHED texels. An untouched texel stands as the
+        // sentinel, not as its own ground: see [`UNTOUCHED_G`] for the shelf that rooting it at `pre`
+        // painted. The curvature `a` matches the sphere of radius `|Depth|·unit` at its apex, so the
+        // separable parabolic dilation is a rounded, fattening dome — the exact spherical ball's
+        // `O(area·ρ²)` collapsed to `O(area)`, the difference between 73 ms/move and shippable.
         let mut g = vec![0.0f32; cw * ch];
         for ry in 0..ch {
             let gy = (cr.y as usize + ry) * wu + cr.x as usize;
             for rx in 0..cw {
                 let a = amount[gy + rx].clamp(0.0, 1.0);
-                let peak = depth.abs() * a; // in loads
-                g[ry * cw + rx] = if dilate {
-                    pre[gy + rx] + peak
+                g[ry * cw + rx] = if a <= 0.0 {
+                    if dilate { -UNTOUCHED_G } else { UNTOUCHED_G }
+                } else if dilate {
+                    pre[gy + rx] + depth.abs() * a
                 } else {
-                    pre[gy + rx] - peak
+                    pre[gy + rx] - depth.abs() * a
                 };
             }
         }
         let a_curv = 1.0 / (2.0 * depth.abs() * unit * unit); // 1/(2·|Depth|·unit²)
         let (mut hbuf, mut sbuf) = super::sculpt_offset::blob_dilate(&g, cr.w, cr.h, a_curv, dilate);
-        // The ball has a RADIUS. The parabola is a ball only within ρ√2 of its source — that is exactly where
-        // it has fallen by the full |Depth| (the ball's own height), and a real ball ends there. Past it the
-        // parabola keeps lifting neighbours out of nothing, and on THICK paint that runaway skirt reaches a
-        // hundred texels and gets clipped by the rectangular write region into a hard shelf: Enio's 3rd smoke,
-        // *"funciona mas com um falloff de influência retangular bizarra"*. The composed argmax already carries
-        // how far the winning matter travelled, so bounding `dx²+dy²` is a CIRCULAR reach cap (never a square)
-        // for one comparison per texel. At ρ√2 the lift dome has already reached `pre`, so on a flat this clamp
-        // touches nothing — it only ever cuts the runaway tail. Clamped texels fall back to `pre` and carry no
-        // matter (`src = 0`), and the fall-back happens BEFORE the smooth blur so its shoulder stays clean.
-        let reach2 = 2 * rho * rho;
-        let r_edge = (reach2 as f64).sqrt();
+        // The ball has a RADIUS, and it is EACH SOURCE'S OWN. A parabola of peak `p` has spent itself
+        // after `d² = p/a` — that is where that source's ball ends (`2ρ²·amount`, the full ρ√2 only at
+        // full strength). Past it the parabola is flank fiction: a real sphere's side plunges vertically
+        // and lands, the parabola glides on and keeps lifting neighbours out of nothing — on THICK paint
+        // that skirt reaches a hundred texels and gets clipped by the write region into a hard shelf
+        // (Enio's 3rd smoke), and even inside a global ρ√2 cap it kept shelving sloped flanks (the 4th).
+        // The composed argmax carries the winner and how far its matter travelled, so holding every texel
+        // to ITS winner's budget is one comparison — CIRCULAR (it bounds `dx²+dy²`, never each axis), so
+        // it cannot itself draw a square.
+        //
+        // Two more facts close the ball's edge:
+        // * **The taper.** The parabola equals the sphere only near the apex — the outer 30% of the reach
+        //   (past `d² = R²/2`, the sphere's equator) is where the two diverge, so the lift is faded to
+        //   ZERO across it. Without it the support's edge is a cliff of exactly the local slope × R: a
+        //   circular wall standing on every thick flank. With it, the field meets `pre` continuously and
+        //   the support's boundary is not paintable at all. The plane-offset physics is untouched: a
+        //   supporting sphere contacts a slope `G` at `d = ρG/S < ρ`, always inside the untapered zone.
+        // * **The self-floor.** A texel's own ball always lifts it by its own falloff budget
+        //   (`pre ± |Depth|·amount`), whatever happens to a far winner in the taper — so the falloff dome
+        //   the artist aims never dents. When the floor wins, the matter is the texel's own (`src = 0`):
+        //   height and matter answer "where did this come from" identically.
+        //
+        // Clamped and sentinel-won texels fall back to `pre` — bit-for-bit, which is what makes "outside
+        // the ball nothing moves" a byte-identity gate rather than a tolerance — and it all happens
+        // BEFORE the smooth blur, so the blur's shoulder grows from a clean field.
+        let full_reach2 = (2 * rho * rho) as f32;
         for i in 0..(cw * ch) {
+            let (rx, ry) = (i % cw, i / cw);
+            let gi = (cr.y as usize + ry) * wu + cr.x as usize + rx;
+            let p0 = pre[gi];
             let (dx, dy) = super::sculpt_offset::unpack_src(sbuf[i]);
-            let d2 = dx * dx + dy * dy;
-            if d2 <= reach2 {
-                continue; // the ball genuinely reaches this source — the exact result stands
-            }
-            // The winning source is past ρ√2 — the parabola's runaway. Re-clamp it ONTO the ball's rim and
-            // read the height THERE: the true bounded offset is a dome that stops at ρ√2, not the unbounded
-            // parabola clipped to the rectangular write region. This is symmetric, which a blunt fall-to-`pre`
-            // is not: a dilation of bare canvas beside a tall wall lands on a low rim source (→ `pre`, no
-            // spurious lift), while an erosion of a THIN ridge still reaches its shoulder inside ρ√2 (the rim
-            // source is that shoulder, and the dig survives) — the form being eroded surrounds the texel, so
-            // `pre` would have been the one height it must NOT keep.
-            let (rx, ry) = ((i % cw) as i64, (i / cw) as i64);
-            let gi = (cr.y as usize + ry as usize) * wu + cr.x as usize + rx as usize;
-            let s = r_edge / (d2 as f64).sqrt();
-            let (cdx, cdy) = ((dx as f64 * s).round() as i64, (dy as f64 * s).round() as i64);
-            let (sx, sy) = (rx + cdx, ry + cdy);
-            let rim = if sx >= 0 && sy >= 0 && (sx as usize) < cw && (sy as usize) < ch {
-                g[(sy as usize) * cw + sx as usize]
+            // The winner's own budget, read at the winner (always inside `cr` — the envelope only ever
+            // picks from the window it was handed).
+            let sgi = ((cr.y as i64 + ry as i64 + dy) as usize) * wu
+                + (cr.x as i64 + rx as i64 + dx) as usize;
+            let a_s = amount[sgi].clamp(0.0, 1.0);
+            let d2 = (dx * dx + dy * dy) as f32;
+            let reach2_s = full_reach2 * a_s;
+            let own = depth.abs() * amount[gi].clamp(0.0, 1.0);
+            // A disqualified winner — untouched (a sentinel), or past its own ball — contributes nothing:
+            // its travel collapses to zero. It does NOT erase the texel's own ball (`own` below): a crest
+            // whose min-envelope winner was some far valley must still dig by its own falloff budget, or
+            // erosion under the brush's centre silently stops happening the moment the terrain around it
+            // is interesting. Only a texel with NEITHER — no reachable winner, no touch of its own —
+            // falls back to `pre`, bit for bit, before any arithmetic can move a sign bit.
+            let t = if a_s <= 0.0 || d2 >= reach2_s {
+                0.0
             } else {
-                pre[gi]
+                // 1 at the sphere's equator (`d² = R²/2`), 0 at the reach — the flank the parabola
+                // cannot do. SQUARED, so the fade lands C¹: the linear ramp still reached the boundary
+                // at `−4m` loads/texel (a slope-0.15 flank kept a ~0.6-load/texel shoulder ring — a
+                // softer edition of the very ring this pass exists to kill); squaring zeroes the
+                // gradient exactly where the lift zeroes, and the support's edge stops being drawable.
+                let lin = (2.0 - 2.0 * d2 / reach2_s).clamp(0.0, 1.0);
+                lin * lin
             };
-            let drop = a_curv * (cdx * cdx + cdy * cdy) as f32;
+            if t <= 0.0 && own <= 0.0 {
+                hbuf[i] = p0;
+                sbuf[i] = 0;
+                continue;
+            }
             if dilate {
-                let v = rim - drop;
-                hbuf[i] = v.max(pre[gi]);
-                // Advect only if the rim source actually lifted this texel (else it fell back to `pre`).
-                sbuf[i] = if v > pre[gi] {
-                    super::sculpt_offset::pack_src(cdx, cdy)
+                let lifted = p0 + t * (hbuf[i].max(p0) - p0);
+                let own_v = p0 + own;
+                if own_v >= lifted {
+                    hbuf[i] = own_v;
+                    sbuf[i] = 0; // the floor won: the matter here is its own
                 } else {
-                    0
-                };
+                    hbuf[i] = lifted;
+                }
             } else {
-                hbuf[i] = (rim + drop).min(pre[gi]);
-                sbuf[i] = 0; // erosion advects nothing — the matter loop skips a less-painted source anyway
+                let lowered = p0 + t * (hbuf[i].min(p0) - p0);
+                let own_v = p0 - own;
+                if own_v <= lowered {
+                    hbuf[i] = own_v;
+                    sbuf[i] = 0;
+                } else {
+                    hbuf[i] = lowered;
+                    if lowered >= p0 {
+                        sbuf[i] = 0; // erosion that dug nothing advects nothing
+                    }
+                }
             }
         }
         if smooth > 0 {
-            impasto_settle::box_blur(&mut hbuf, cr.w, cr.h, smooth);
+            // The knob smooths the ABSOLUTE surface where the ball acted — not the lift alone (adding a
+            // blurred lift back onto a sharp `pre` would exhume, along the old silhouette, an edge the
+            // raw ball had buried under its advance), and never the whole window (blurring `pre` out to
+            // the region's corners is the rectangular shelf again, wearing the knob). A support mask,
+            // blurred by the SAME kernel, feathers between the two exactly as far as the blur itself can
+            // see: `m = 1` (exact — a window of ones sums to its own count) keeps the pure blur, `m = 0`
+            // (exact) keeps `pre` to the bit, so the byte-identity of the support survives the knob.
+            let mut mask: Vec<f32> = Vec::with_capacity(cw * ch);
+            for ry in 0..ch {
+                let gy = (cr.y as usize + ry) * wu + cr.x as usize;
+                for rx in 0..cw {
+                    mask.push(if hbuf[ry * cw + rx] != pre[gy + rx] {
+                        1.0
+                    } else {
+                        0.0
+                    });
+                }
+            }
+            let mut blurred = hbuf.clone();
+            impasto_settle::box_blur(&mut blurred, cr.w, cr.h, smooth);
+            impasto_settle::box_blur(&mut mask, cr.w, cr.h, smooth);
+            for ry in 0..ch {
+                let gy = (cr.y as usize + ry) * wu + cr.x as usize;
+                for rx in 0..cw {
+                    let i = ry * cw + rx;
+                    let m = mask[i];
+                    hbuf[i] = if m <= 0.0 {
+                        pre[gy + rx]
+                    } else if m >= 1.0 {
+                        blurred[i]
+                    } else {
+                        pre[gy + rx] + m * (blurred[i] - pre[gy + rx])
+                    };
+                }
+            }
         }
 
         // ── Write the height + advect the matter, over the write region `kr`. ───────────────────────────

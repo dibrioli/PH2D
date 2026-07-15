@@ -583,6 +583,7 @@ fn the_sculpt_respects_the_selection() {
 // relief; `session` gates the lifetime of the state that lets it.
 mod inflate;
 mod inflate_smooth;
+mod inflate_support;
 mod plane;
 mod session;
 mod w3;

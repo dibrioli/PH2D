@@ -695,6 +695,12 @@ impl SpriteRenderer {
     /// plain single-pass branch of [`draw_scratch`](Self::draw_scratch). Clearing
     /// with a transparent `clear_color` yields a premultiplied HDR image the FX
     /// pass can bright-pass and blur.
+    ///
+    /// `scene_viewport` **must be the same sub-rect the fused scene pass used**
+    /// this frame (`render_with_extra`'s `scene_viewport`): the FX target has to
+    /// place the Motion pixels at the SAME screen coordinates as the scene, or the
+    /// glow lands somewhere the sparks aren't — the halo desyncs from its source
+    /// ([[feedback_derived_coordinate_seed_must_match_sample]]).
     pub fn render_instances_only(
         &mut self,
         target: &wgpu::TextureView,
@@ -702,11 +708,12 @@ impl SpriteRenderer {
         window: WindowSize,
         clear_color: wgpu::Color,
         instances: &[RenderInstance],
+        scene_viewport: Option<[f32; 4]>,
     ) {
         self.scratch.clear();
         self.scratch.extend_from_slice(instances);
         crate::sprite_collect::sort_render_order(&mut self.scratch);
-        self.draw_scratch(target, camera, window, clear_color, None);
+        self.draw_scratch(target, camera, window, clear_color, scene_viewport);
     }
 }
 

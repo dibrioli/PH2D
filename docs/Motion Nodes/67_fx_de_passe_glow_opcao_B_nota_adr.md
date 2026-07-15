@@ -88,6 +88,16 @@ só o Motion" é impossível a jusante. A costura:
   linha muda. Molde: o `Tonemap` (owns pipeline+bgl+sampler+bind group, triângulo
   fullscreen, WGSL por `include_str!`).
 
+**⚠️ Gotcha do smoke (o glow desgrudava da faísca):** com a tool ativa a cena do
+Motion renderiza num **sub-rect** (a faixa de cima do split Cavalry, `scene_viewport`),
+não na tela cheia. O `render_instances_only` precisa usar **o MESMO sub-rect** do passe
+fundido — senão os pixels do Motion caem em coordenadas de tela diferentes no RT de FX,
+e o halo aparece **onde a faísca não está** (no primeiro smoke ele flutuava lá embaixo,
+um borrão marrom sem miolo, enquanto os miolos — HDR clampado pra **branco** pelo tonemap
+— ficavam na faixa de cima). É a lição [[feedback_derived_coordinate_seed_must_match_sample]]
+aplicada à projeção: *a autoria (render do FX) usa a MESMA transform da leitura (o passe da
+cena)*. O `scene_viewport` agora atravessa o `render_instances_only`.
+
 **A cadeia** (`shaders/bloom.wgsl`, sem transcendentais — HR-5):
 `prefilter (bright-pass soft-knee, COD/Karis) + downsample p/ ½-res` → **4 iterações
 Kawase** ping-pong `a→b→a→b→a` (Gaussiana larga barata) → **composite aditivo** (color

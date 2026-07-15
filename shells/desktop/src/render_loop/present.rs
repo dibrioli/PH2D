@@ -229,6 +229,9 @@ impl crate::App {
                         window_size,
                         wgpu::Color::TRANSPARENT,
                         &motion.pump.instances,
+                        // SAME sub-rect the fused scene used above — or the glow
+                        // desyncs from the sparks (the halo floats away).
+                        scene_viewport,
                     );
                     motion_fx.bloom_over(
                         surface.gpu(),

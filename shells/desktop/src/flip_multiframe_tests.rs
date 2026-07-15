@@ -147,3 +147,32 @@ fn a_selection_that_names_a_deleted_key_is_ignored() {
 
     assert_eq!(t.len(), 2, "a chave inexistente virou alvo");
 }
+
+/// 🔴 **A PRÉVIA da tira (o peso por célula) usa a MESMA `falloff_at` que a escultura** —
+/// senão a barra da célula mentiria sobre a força do gesto (seed = sample). É o que dá ao
+/// animador o falloff VISÍVEL na hora, respondendo ao "não percebo o efeito" (Enio).
+#[test]
+fn the_cell_weight_preview_matches_the_sculpt_falloff() {
+    // Sem multiframe (0/1 chave) ⇒ peso cheio, seja qual for o falloff.
+    assert_eq!(cell_weight(&[], 0, 0, true), 1.0);
+    assert_eq!(cell_weight(&[5], 0, 5, true), 1.0);
+
+    // Multiframe com falloff DESLIGADO ⇒ tudo cheio (barras iguais na tira).
+    assert_eq!(cell_weight(&[0, 5], 0, 5, false), 1.0);
+
+    // Multiframe com falloff LIGADO ⇒ o peso da célula é EXATAMENTE o `falloff_at` que o
+    // pincel aplica (a barra e a força saem da mesma função).
+    let sel = [0, 4, 8];
+    let (before, after) = spans(&sel, 0);
+    for &k in &sel {
+        assert_eq!(
+            cell_weight(&sel, 0, k, true),
+            falloff_at(k, before, after),
+            "o peso da celula {k} divergiu do falloff que a escultura usa"
+        );
+    }
+    // E o gradiente EXISTE: o quadro ativo (0) cheio, o distante (8) no piso.
+    assert_eq!(cell_weight(&sel, 0, 0, true), 1.0);
+    assert!(cell_weight(&sel, 0, 8, true) < cell_weight(&sel, 0, 4, true));
+    assert!(cell_weight(&sel, 0, 8, true) >= MIN_FALLOFF);
+}

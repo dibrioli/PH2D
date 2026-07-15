@@ -64,6 +64,40 @@ pub(crate) fn falloff_at(delta: i32, span_before: i32, span_after: i32) -> f32 {
     (1.0 - t).mul_add(1.0 - MIN_FALLOFF, MIN_FALLOFF)
 }
 
+/// **Os dois alcances da seleção**, medidos a partir do quadro ATIVO: `(antes, depois)`.
+/// É o denominador de cada lado da tenda do falloff — é ele que dá a assimetria (ver
+/// `falloff_at`). Compartilhado por [`targets`] (o que a escultura aplica) e pela PRÉVIA
+/// da tira (a barra de peso por célula), para que o que o animador VÊ seja o que o pincel
+/// FAZ — seed = sample (`feedback_derived_coordinate_seed_must_match_sample`).
+#[must_use]
+pub(crate) fn spans(selection: &[Frame], active_frame: Frame) -> (i32, i32) {
+    let (mut before, mut after) = (0, 0);
+    for &k in selection {
+        let d = k - active_frame;
+        before = before.max(-d);
+        after = after.max(d);
+    }
+    (before, after)
+}
+
+/// **O peso do multiframe que a chave `k` recebe** — a PRÉVIA que a tira pinta em cada
+/// célula selecionada. `1.0` fora do multiframe (0/1 chave marcada) ou com o falloff
+/// desligado; senão a tenda do falloff. É a MESMA `falloff_at` que a escultura usa, então
+/// a barra da célula não pode mentir sobre a força do gesto.
+#[must_use]
+pub(crate) fn cell_weight(
+    selection: &[Frame],
+    active_frame: Frame,
+    k: Frame,
+    falloff_on: bool,
+) -> f32 {
+    if selection.len() < 2 || !falloff_on {
+        return 1.0;
+    }
+    let (before, after) = spans(selection, active_frame);
+    falloff_at(k - active_frame, before, after)
+}
+
 /// **Os quadros que este gesto edita.**
 ///
 /// - Sem seleção múltipla (0 ou 1 chave marcada): devolve **só o quadro ativo**, com
@@ -105,12 +139,7 @@ pub(crate) fn targets(
 
     // Os dois lados da seleção, medidos a partir do quadro ATIVO — é o que dá a
     // assimetria da curva (ver `falloff_at`).
-    let (mut span_before, mut span_after) = (0, 0);
-    for &k in selection {
-        let d = k - active_frame;
-        span_before = span_before.max(-d);
-        span_after = span_after.max(d);
-    }
+    let (span_before, span_after) = spans(selection, active_frame);
 
     for &k in selection {
         let Some(&(_, did, _)) = cells.iter().find(|(f, _, _)| *f == k) else {

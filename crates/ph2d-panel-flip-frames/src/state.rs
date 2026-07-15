@@ -9,7 +9,9 @@
 use std::cell::RefCell;
 
 /// Uma célula da tira: uma chave real da camada ativa.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// **Não é `Eq`** desde o `weight` (é `f32`) — só `PartialEq`.
+#[derive(Clone, Debug, PartialEq)]
 pub struct FlipCell {
     /// O quadro em que a chave começa.
     pub key: i32,
@@ -24,6 +26,12 @@ pub struct FlipCell {
     /// as chaves marcadas. Sem o realce a feature seria invisível — o usuário marcaria
     /// quadros sem saber quais, e um gesto agiria onde ele não vê.
     pub selected: bool,
+    /// **O PESO do multiframe** desta chave `[0,1]` — a força com que o pincel a edita
+    /// (o falloff temporal, W7). `1.0` fora do multiframe ou com o falloff desligado. A
+    /// altura da barra de seleção o desenha: ligar o Falloff transforma barras uniformes
+    /// num gradiente (ativo cheio, vizinhos curtos), que é como o efeito — antes invisível
+    /// até esculpir e dar scrub — passa a se VER na hora (smoke do Enio, 2026-07-14).
+    pub weight: f32,
 }
 
 /// Tudo que a tira pinta, publicado pelo shell a cada frame.

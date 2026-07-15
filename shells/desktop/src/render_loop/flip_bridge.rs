@@ -77,6 +77,10 @@ fn strip_snapshot(
     // (a do vão), não a do quadro cru — que na 2ª volta já saiu da tira.
     let raw = obj.frame_at(playhead);
     let frame = layer.source_frame(raw);
+    // O peso do multiframe (falloff) é medido a partir do quadro ATIVO CRU — o MESMO
+    // `active_frame` que `flip_multiframe::targets` usa na escultura (`obj.frame_at`,
+    // não o `source_frame`), senão a barra da tira mentiria sobre a força do gesto.
+    let sel = strip.selected_keys();
     let cells = layer
         .cells()
         .into_iter()
@@ -88,7 +92,8 @@ fn strip_snapshot(
                 .get(&key)
                 .is_some_and(|f| f.kind == ph2d_flip::KeyKind::Breakdown),
             instanced: obj.drawing(drawing).is_some_and(|d| d.is_instanced()),
-            selected: strip.selected_keys().contains(&key),
+            selected: sel.contains(&key),
+            weight: crate::flip_multiframe::cell_weight(sel, raw, key, strip.falloff),
         })
         .collect();
     FlipStripSnapshot {

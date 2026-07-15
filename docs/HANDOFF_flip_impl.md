@@ -1035,6 +1035,26 @@ PRESENÇA) · multiframe é art-anchored.
 **Só translação** — girar/escalar uma seleção não existe para desenho nenhum (item aberto do W6.1);
 quando existir, é a pose que ele escreve.
 
+## Fixes do smoke pós-integração (2026-07-14)
+
+Cinco achados do smoke do W7.x, todos com gate + mutação provada:
+
+- **Mover instância TREMIA + o realce DESCOLAVA da linha** (`fce56856`): o Move consumia o funil
+  pose-aware (que a pose realimentava) → funil pose-free novo; o overlay não dobrava a pose da chave
+  → `art_screen_affine` (a mesma cadeia do render).
+- **Criar quadro/instância só na ÚLTIMA chave** (`3c94e28d`): o alvo `chave + duração` colidia com a
+  próxima chave e o insert falhava mudo → `FlipObject::open_gap_at` (ripple do bloco contíguo).
+- **Unlink "religava" no multiframe** (`3c94e28d`): não era religamento — a multissselecão ainda
+  ativa fazia o Sculpt editar os dois, e a cópia idêntica parecia religada → o Unlink encerra a
+  multissselecão.
+- **"Não percebo o efeito de falloff"** (este commit): o falloff só afeta os VIZINHOS e não tinha
+  feedback — você teria de esculpir + scrub + comparar magnitudes. Agora a **altura da barra de
+  seleção de cada célula é o peso** (`FlipCell.weight` ← `flip_multiframe::cell_weight`, a MESMA
+  `falloff_at` da escultura): Falloff off = barras iguais, on = gradiente. O efeito se VÊ ao
+  togglear, sem esculpir. Doc: [`Flip/05 §8`](Flip/05_frames_ghost_tween.md). Gates:
+  `the_selection_bar_height_tracks_the_multiframe_weight` (painel) +
+  `the_cell_weight_preview_matches_the_sculpt_falloff` (seed = sample).
+
 ## Aberto (fila viva — detalhe em [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-14.md))
 
 - 🔴 **ITEM 0 — W7 · W7.1 · W7.2 entraram no `main` SEM SMOKE** (registro da integração de

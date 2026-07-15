@@ -119,6 +119,7 @@ fn clicking_a_cell_reaches_the_bus() {
                 breakdown: false,
                 instanced: false,
                 selected: false,
+                weight: 1.0,
             },
             FlipCell {
                 key: 4,
@@ -126,6 +127,7 @@ fn clicking_a_cell_reaches_the_bus() {
                 breakdown: true,
                 instanced: false,
                 selected: false,
+                weight: 1.0,
             },
         ],
         ..Default::default()
@@ -201,6 +203,7 @@ fn every_toolbar_control_is_actually_painted() {
             breakdown: false,
             instanced: false,
             selected: false,
+            weight: 1.0,
         }],
         fps: 12.0,
         ..Default::default()

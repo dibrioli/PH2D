@@ -27,8 +27,12 @@ const MAX_PX_PER_FRAME: f32 = 26.0; // LITERAL-PX-OK: strip cell scale cap
 const MIN_CELL_W: f32 = 3.0; // LITERAL-PX-OK: strip minimum cell width
 /// Lado do marcador de desenho instanciado.
 const INSTANCE_DOT: f32 = 4.0; // LITERAL-PX-OK: instanced-drawing marker
-/// Altura da barra que marca uma chave selecionada para o multiframe (px de tela).
+/// Altura MÍNIMA da barra de seleção (px de tela) — o piso, para que peso baixo ainda se
+/// veja (espelha o `MIN_FALLOFF` do multiframe: a chave marcada nunca "some").
 const SELECTED_BAR: f32 = 3.0; // LITERAL-PX-OK: marcador de chrome, espessura de tela
+/// Fração da altura da célula que a barra ocupa com peso CHEIO (`1.0`). A barra é um
+/// medidor de influência: a altura conta o peso do falloff, então escala com a célula.
+const SELECTED_BAR_FULL_FRAC: f32 = 0.42; // LITERAL-OK: fração da célula, não medida fixa
 /// Espessura da linha do playhead.
 const PLAYHEAD_W: f32 = 2.0; // LITERAL-PX-OK: playhead line width
 /// A célula só ganha rótulo se couber ~um glifo e meio (senão o número sai cortado).
@@ -121,8 +125,12 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
         // chave marcada precisam se distinguir de uma olhada — a ativa é a ÂNCORA (recebe
         // influência cheia e é de onde o falloff mede), as marcadas são os outros alvos do
         // mesmo gesto. Confundi-las faria o animador não saber onde o pincel vai bater.
+        // A ALTURA da barra é o **peso do multiframe** (o falloff, W7): cheia no quadro
+        // ativo, mais curta nos vizinhos. Com o Falloff DESLIGADO todo peso é `1.0` → todas
+        // as barras cheias e iguais; LIGADO, vira um gradiente. É o que torna o falloff
+        // visível na HORA, sem ter de esculpir e dar scrub (smoke do Enio, 2026-07-14).
         if cell.selected {
-            let h = SELECTED_BAR;
+            let h = selected_bar_height(r.h, cell.weight);
             let bar = Rect::new(r.x, r.y + r.h - h, r.w, h);
             fill_rounded_rect(
                 ctx.scene,
@@ -160,5 +168,44 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, area: Rect, snap: &FlipStr
             Radius::Sm.px(),
             resolve(ColorToken::BorderEmph, theme),
         );
+    }
+}
+
+/// **A altura da barra de seleção = o PESO do multiframe** (o falloff, W7), em px de tela.
+///
+/// Cheia (fração da célula) no peso `1.0`; encolhe com o peso; nunca abaixo do piso
+/// `SELECTED_BAR` (peso baixo ainda tem de se ver — espelha o `MIN_FALLOFF`). É a função
+/// que torna o falloff visível NA TIRA: com ele desligado todo peso é `1.0` (barras iguais
+/// e cheias), ligado vira gradiente.
+fn selected_bar_height(cell_h: f32, weight: f32) -> f32 {
+    let full = (cell_h * SELECTED_BAR_FULL_FRAC).max(SELECTED_BAR);
+    (full * weight.clamp(0.0, 1.0)).max(SELECTED_BAR)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 🔴 **A barra ENCOLHE com o peso, e o gradiente do falloff aparece na tira** — é o
+    /// que responde ao "não percebo o efeito de falloff" (smoke do Enio, 2026-07-14).
+    ///
+    /// Peso cheio (`1.0`, falloff off ou quadro ativo) = barra alta; peso baixo (vizinho
+    /// distante) = barra baixa, mas nunca abaixo do piso. Mutação que sangra: ignorar o
+    /// `weight` (barra de altura fixa) — a alta e a baixa colapsam no mesmo valor.
+    #[test]
+    fn the_selection_bar_height_tracks_the_multiframe_weight() {
+        let cell_h = 40.0;
+        let full = selected_bar_height(cell_h, 1.0);
+        let weak = selected_bar_height(cell_h, 0.15);
+
+        assert!(
+            full > weak + 1.0,
+            "peso cheio ({full}) e peso fraco ({weak}) dao quase a mesma barra — o \
+             gradiente do falloff nao apareceria"
+        );
+        // Cheio ocupa a fração prevista da célula (o medidor "enche").
+        assert!((full - cell_h * SELECTED_BAR_FULL_FRAC).abs() < 1e-3);
+        // Nunca some: até o peso mais baixo respeita o piso.
+        assert!(selected_bar_height(cell_h, 0.0) >= SELECTED_BAR);
     }
 }

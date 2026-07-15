@@ -2,8 +2,9 @@
 
 > **Para o agente INTEGRADOR** (DIRETRIZ §1.5.9). A linha está FECHADA e **parada**: integração e ship
 > só por ordem explícita do Enio. Jornada de hoje: **P0 (retângulo residual do Inflate) + W4 (família
-> advectiva do Deform)** — **ambos SMOKADOS OK pelo Enio** — **+ W5 (Conserve, a bow wave)**, pendente
-> smoke (o desenho da pilha é opt-in, default OFF).
+> advectiva do Deform)** — **ambos SMOKADOS OK pelo Enio** — **+ W5 (Conserve, a bow wave)** e a
+> **fase D (display)**, pendentes de smoke (o Conserve é opt-in default OFF; a D inocentou o pipeline
+> headless e blindou a costura — a confirmação dos 2 sintomas é do app vivo).
 
 ## 1. Base e commits
 
@@ -18,7 +19,9 @@
 | `c78e1a70` | test(sculpt): split de LOC (`inflate_matter.rs`) + fmt |
 | `38c92fad` | docs: handoffs + CLAUDE.md |
 | `b9d0ef28` | **feat(sculpt): W5** — Conserve, a *bow wave*: o que o Scrape tira, o aro recebe (ledger < 1%); checkbox opt-in nos cards Scrape/Chisel — **pendente smoke** |
-| (este) | docs: fechamento do W5 |
+| `82107b4d` | docs: fechamento do W5 |
+| `923ba951` | **fix(painter): fase D** — pipeline de preview inocentado ao byte (9 gates, 1 em wgpu REAL na RTX) + 2 defeitos latentes corrigidos na costura de produtores (`take_preview_dirty` órfão · Partial sobre slot GPU) — **pendente smoke dos sintomas** |
+| (este) | docs: fechamento da fase D |
 
 ## 2. Superfície tocada
 
@@ -38,6 +41,12 @@
   `PAINTER_SCULPT_CONSERVE`** (hash de string) + `PAINTER_SCULPT_CLICKS` 9→10 · painel `paint_sculpt.rs`/
   `populate.rs`/`brush_fallback.rs` + flip test em `tests/seam_sculpt.rs` · **novo**
   `sculpt_tests/conserve.rs`.
+- **Fase D (display):** tool `layers/preview.rs` (`take_preview_dirty` derruba `composited`/
+  `dirty_rect` num drain true) + gate em `paint/tests.rs` · shell `render_loop/painter_bridge.rs`
+  (**`plan_upload` puro** — Skip/Full/Partial, o padrão `hit_plan` — + executor `upload_cpu_preview`,
+  porta única do dispatch E dos testes; Partial agora exige `arc_token != 0`) · **novos**
+  `render_loop/painter_preview_pipeline_tests.rs` + `painter_preview_handoff_tests.rs` (split LOC) ·
+  `render_loop/mod.rs` (2 `mod` de teste).
 - **Contratos congelados: intactos** (`Tool`/`NodeOp`/`NodeManifest`/`CanvasPaintTool` não tocados).
   Nenhum schema bumpado. Nenhum arquivo de outra linha tocado.
 
@@ -55,6 +64,10 @@
 - **Pós-W5:** tool lib **691/0** · seam_sculpt **11/0** · `cargo test --workspace` **verde** (2ª rodada;
   a 1ª pegou o estouro de LOC do inflate.rs e virou o split) · Scrape desarmado **3,19 ms/move** (como
   era) · armado ≈ 4,3 (kill 8).
+- **Pós-D:** tool lib **692/0** · shell **570 verdes / 0 FAILED** (o LOC cap pegou o arquivo de gates
+  em 818 e virou o split) · gate GPU real na RTX **verde**
+  (`cargo test -p ph2d-host-desktop the_screen_survives -- --ignored`) · clippy 0 · workspace verde ·
+  **placar de mutação da jornada: 18 provadas + 1 born-red** (D: 2/2 no ciclo verde→RED→verde).
 
 ## 4. O que landou (uma linha cada)
 
@@ -68,6 +81,22 @@ zero com gradiente zero — C¹; sem ele a borda do suporte é uma parede de `m�
 desqualificado não apaga a bola do próprio texel — o gate da erosão pegou ao vivo) + blur mascarado (o
 Smooth borra o campo absoluto SÓ onde a bola agiu; `m=0` exato preserva `pre` ao bit) + janelas honestas
 (`kr = rect ⊕ (⌈ρ√2⌉+smooth)`, `cr = kr ⊕ o mesmo`). **Fora do suporte a lei é BYTE-IDENTIDADE.**
+
+**D — a tela é blindada ao tool (2026-07-15, tarde).** Os 2 bugs de display diferidos (relevo
+*Anchored* some no pen-up · relevo do *jitter* estica) estavam marcados "precisa do app vivo" — era
+90% falso: o pipeline inteiro (tool sob a armação EXATA do smoke → drain → `plan_upload` → gather+
+premul → bytes do slot que o sprite shader amostra) é dirigível **sem janela**, e a dança de
+produtores roda com **wgpu real headless** na RTX (readback byte-exato vs recompose do zero). Os 9
+gates INOCENTARAM os estágios 1-4 pros dois sintomas (Anchored através do pen-up · jitter frame-a-
+frame · tabela dos 10 métodos · sculpt/Inflate idem) — e ACHARAM **2 defeitos latentes** na costura
+que a nota de deferral apontava, segurados só por acidente enumerado (toda porta que flipa a
+elegibilidade GPU↔CPU invalida o composite por conta própria; a porta N+1 cai ali): **(A)**
+`take_preview_dirty` deixava `composited`/`dirty_rect` órfãos → o 1º drain CPU pós-GPU blitaria um
+rect sobre cache de outra era (fix: drain true derruba os dois) · **(B)** o guard parcial da ponte
+aceitava slot semeado pelo produtor GPU (`arc_token: 0` — o carimbo que EXISTE pra forçar Full no
+handoff) e rebaixava o re-seed a um patch (fix: Partial exige token de CPU). **O que sobra pros
+sintomas é só-janela** (cadência winit/present, ou condições do smoke que diferem das minhas) —
+protocolo no §6.
 
 **W4 — a família advectiva.** O warp do Deform (Push/Twist/Pinch/Wrinkle/Fold + Reconstruct) carrega os
 3 planos do impasto pelo MESMO `disp` da sessão, na porta única `warp_render_relief` (chamada pelos dois
@@ -105,8 +134,12 @@ relevo, costurado nos 7 sites com seam test que CLICA.
    offset novo, mas o `bank` guarda o volume do offset de stamp — auto-cura no próximo re-stamp de
    geometria (o toggle do Conserve re-stampa; o slider do Offset não). Se o Enio sentir, o fix é
    re-stampar também no `set_sculpt_offset`.
-4. **D — bugs de display** (relevo anchored some no pen-up; jitter estica): provados corretos na tool;
-   vivem no pipeline GPU de preview do shell. Precisam do app vivo.
+4. **D — bugs de display, SMOKE de confirmação**: o pipeline headless está inocentado + blindado
+   (§4-D); se os sintomas AINDA aparecerem no app vivo, rode com **`PH2D_PREVIEW_DIAG=1`** (loga o
+   dono do slot + bbox por frame) e **`PH2D_PREVIEW_DUMP=<dir>`** (PNG do composite CPU por frame —
+   se o PNG do frame do pen-up está certo e a tela não, o defeito é present/cadência; se o PNG já
+   está errado, é condição que meu harness não armou — traga a receita exata). O gate GPU real roda
+   com `cd <worktree> && cargo test -p ph2d-host-desktop the_screen_survives -- --ignored`.
 5. **A TINTA EMPURRADA (Push)**: fim da fila, ordem do Enio. Nota: o W5 reusa `bank_dab_push` — o
    diagnóstico do desenho do Push e o da pilha do Conserve agora são O MESMO problema no MESMO motor.
 6. **Perf do Deform NÃO é gateada** (nunca foi): o W4 adiciona 3 amostragens/texel quando há relevo +

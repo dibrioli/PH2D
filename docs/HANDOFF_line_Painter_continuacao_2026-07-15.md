@@ -34,8 +34,10 @@
 >   porta única `conserve_active` + checkbox costurado com seam que clica. Ledger fecha < 1%; off é
 >   off ao bit; só acumula ARMADO (Scrape desarmado 3,19 ms/move, como era). 4 gates + flip; 5/5
 >   mutações mortas. **Default OFF: o desenho da pilha é do smoke.**
-> - **Fila que sobra:** smoke do W5 → **D display** (precisa do app vivo) → Push (fim da fila, ordem
->   do Enio — e agora Push e Conserve são o MESMO motor: `bank_dab_push`).
+> - **Fila que sobra:** smoke do W5 → **smoke de CONFIRMAÇÃO do D** (a fase D rodou: pipeline
+>   inocentado headless + 2 defeitos latentes corrigidos na costura de produtores, `923ba951` — se os
+>   sintomas persistirem no app vivo, protocolo no handoff de integração §6.4) → Push (fim da fila,
+>   ordem do Enio — e agora Push e Conserve são o MESMO motor: `bank_dab_push`).
 > - `inflate.rs` estourou o teto de LOC no fechamento (728 > 700, herdado) → **split por
 >   responsabilidade**: `inflate_matter.rs` (aparência/matéria) saiu dele; gate de LOC verde.
 
@@ -162,7 +164,7 @@ Em ordem. O §1 é P0 e bloqueia declarar o Sculpt "smokado".
 | **P1** | **Smoke completo do Sculpt** | A linha inteira do impasto+sculpt foi INTEGRADA sem smoke (ver §0 do handoff 07-14). Rodar o roteiro de lá + o do §1. | roteiro `PH2D_IMPASTO_SMOKE=1` |
 | **W4** | **Família ADVECTIVA** (Grab/Pinch/Nudge/Rotate/Thumb) | **NÃO construir motor novo.** Fazer o warp do Deform carregar `h`+`covers`+`mats`+RGBA junto ⇒ 5 pincéis de uma vez. A advecção do Inflate (matter loop em `render_inflate`) já é o padrão: o que chega num texel traz cobertura+material+cor de onde veio. | `18_plano_sculpt_relevo.md` §5; `sculpt_blur.rs` matter loop |
 | **W5** | **Conserve (bow wave)** | O kernel do Scrape/Flatten **já computa** o volume deslocado (`height_push`, conservativo). Empilhar na borda da espátula = um **flag**, não motor novo. | `18_plano` §6 |
-| **D** | **Bugs de DISPLAY (diferidos, precisam do app vivo)** | (a) relevo *anchored* some no pen-**up**; (b) relevo do *jitter* estica. **Provados corretos na TOOL** (buffers + composto iluminado certos antes/depois do up) — vivem no **pipeline GPU de preview do shell** (`render_loop/painter_gpu_preview`, o caminho GPU que difere pro CPU quando o impasto está visível). Precisa instrumentar o app real. | shell `render_loop` |
+| **D** | **Bugs de DISPLAY — FASE RODOU (`923ba951`): headless inocentado + costura blindada; falta o smoke de confirmação** | (a) relevo *anchored* some no pen-**up**; (b) relevo do *jitter* estica. **Provados corretos na TOOL** (buffers + composto iluminado certos antes/depois do up) — vivem no **pipeline GPU de preview do shell** (`render_loop/painter_gpu_preview`, o caminho GPU que difere pro CPU quando o impasto está visível). Precisa instrumentar o app real. | shell `render_loop` |
 
 Contexto extra que pode ajudar no §1: o `matter_ok`/`invalidate_composite` no ramo da advecção
 (`sculpt_blur.rs:509,516-519`) é o único lugar do Sculpt que escreve `canvas_rgba` direto E chama

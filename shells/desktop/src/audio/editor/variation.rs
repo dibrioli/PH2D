@@ -282,9 +282,8 @@ fn decode_file(path: &Path) -> Option<SampleData> {
 /// Whether `path` has an audio extension the folder import considers (same set as the
 /// file picker). Decode still gates the real add — this only skips obvious non-audio.
 fn is_audio_path(path: &Path) -> bool {
-    const AUDIO_EXTS: [&str; 6] = ["wav", "flac", "ogg", "mp3", "aiff", "aif"];
     path.extension()
         .and_then(|e| e.to_str())
         .map(|e| e.to_ascii_lowercase())
-        .is_some_and(|e| AUDIO_EXTS.contains(&e.as_str()))
+        .is_some_and(|e| crate::audio::decode_any::AUDIO_IMPORT_EXTS.contains(&e.as_str()))
 }

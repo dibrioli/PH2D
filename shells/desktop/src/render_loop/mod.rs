@@ -244,7 +244,7 @@ impl crate::App {
                 use ph2d_panel_audio_editor as ed;
                 if ed::take_load()
                     && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("audio", &["wav", "flac", "ogg", "mp3", "aiff", "aif"])
+                        .add_filter("audio", crate::audio::decode_any::AUDIO_IMPORT_EXTS)
                         .pick_file()
                 {
                     audio.editor_load(&path);
@@ -346,7 +346,12 @@ impl crate::App {
                 );
                 if ed::take_load_ir()
                     && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("impulse response", &["wav", "flac", "aiff", "aif", "ogg"])
+                        // IR keeps its own list (an impulse response is normally lossless), but if
+                        // ogg is allowed then opus is too — both lossy, both decodable here.
+                        .add_filter(
+                            "impulse response",
+                            &["wav", "flac", "aiff", "aif", "ogg", "opus"],
+                        )
                         .pick_file()
                 {
                     crate::audio::editor::ir::load(&path);
@@ -438,7 +443,7 @@ impl crate::App {
                 // labels + strategy name + count back each frame.
                 if ed::take_add_variation()
                     && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("audio", &["wav", "flac", "ogg", "mp3", "aiff", "aif"])
+                        .add_filter("audio", crate::audio::decode_any::AUDIO_IMPORT_EXTS)
                         .pick_file()
                 {
                     audio.editor_add_variation(&path);

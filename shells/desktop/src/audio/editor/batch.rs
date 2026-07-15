@@ -8,8 +8,9 @@ use std::path::Path;
 
 use super::AudioSystem;
 
-/// Audio file extensions the batch walks (matches the editor's Load filter).
-const AUDIO_EXTS: &[&str] = &["wav", "flac", "ogg", "mp3", "aiff", "aif"];
+/// Audio file extensions the batch walks — the SAME list the Load picker uses, so a format the
+/// editor can open is a format the batch will find (Opus was missing from both).
+use crate::audio::decode_any::AUDIO_IMPORT_EXTS as AUDIO_EXTS;
 
 impl AudioSystem {
     /// Normalise every audio file directly inside `folder` to `target_lufs`. Thin

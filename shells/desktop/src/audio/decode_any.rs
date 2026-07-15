@@ -16,6 +16,15 @@
 
 use ph2d_audio::SampleData;
 
+/// Every extension the app can OPEN — the **single list** every import picker and folder scan
+/// shares, so adding a format is one edit and not five.
+///
+/// `opus` lives here because the app both *writes* it (ADR-0116: the Opus export, the Desktop
+/// shipping target) and *decodes* it just below — yet it was missing from all five pickers, so an
+/// `.opus` the tool exported could be decoded but never SELECTED. That is precisely the broken
+/// promise this module exists to close, left half-open: the door decoded, the picker hid the file.
+pub(crate) const AUDIO_IMPORT_EXTS: &[&str] = &["wav", "flac", "ogg", "mp3", "opus", "aiff", "aif"];
+
 /// Decode any audio file the app supports, routing Opus to the crate that can read it.
 pub(crate) fn decode(bytes: &[u8]) -> Result<SampleData, String> {
     if ph2d_audio_opus::is_opus(bytes) {
@@ -74,5 +83,21 @@ mod tests {
             !ph2d_audio_opus::is_opus(&wav),
             "a WAV was taken for an Opus"
         );
+    }
+
+    /// **What the app WRITES, a picker must be able to SELECT.** Every export codec's extension has
+    /// to be in the shared import list, or the tool exports a file its own Open dialog hides — the
+    /// exact gap Opus fell into (decoded, but filtered out of every picker). This gate is why the
+    /// list cannot drift away from the encoders again.
+    #[test]
+    fn every_export_codec_extension_is_importable() {
+        for codec in ph2d_audio_encode::Codec::ALL {
+            assert!(
+                super::AUDIO_IMPORT_EXTS.contains(&codec.extension()),
+                "the app exports {} as .{}, but no import picker lists that extension",
+                codec.name(),
+                codec.extension()
+            );
+        }
     }
 }

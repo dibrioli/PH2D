@@ -290,8 +290,10 @@ fn the_scrub_lane_moves_the_playhead_without_touching_the_selection() {
     doc.object_mut(oid)
         .unwrap()
         .insert_frame(lid, 8, Hold::Implicit, KeyKind::Keyframe);
-    let mut strip = FlipStrip::default();
-    strip.selection = vec![0, 4, 8]; // multiframe armado
+    let mut strip = FlipStrip {
+        selection: vec![0, 4, 8], // multiframe armado
+        ..FlipStrip::default()
+    };
 
     let edited = apply_panel_event(
         &PanelEvent::SetValue(ph2d_editor::ids::FLIP_SCRUB, 4.0),

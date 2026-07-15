@@ -362,12 +362,13 @@ fn project_file_round_trips_through_postcard() {
 /// `VecVertex` teria bumpado o `VEC_SCENE_SCHEMA_VERSION`, deixado o `PROJECT_SCHEMA` para
 /// trás, e **este teste teria passado**.
 ///
-/// O `PROJECT_SCHEMA` é **13** — e não o 8 que esta linha trazia sozinha, nem o 9 que outras
+/// O `PROJECT_SCHEMA` é **14** — e não o 8 que esta linha trazia sozinha, nem o 9 que outras
 /// duas traziam. Ele conta TODAS as quebras de layout do arquivo, de TODOS os módulos:
 /// v3/v4 do Painter (documentos + impasto) · v5 do Motion (o grafo) · v6/v7 e v8/v9 do Flip
 /// (o balde; depois `selected` + `offset`) · v10 do Vector (o `corner_radius` do `VecVertex`)
 /// · v11/v12 do Painter (o `mats` do impasto, e o `mats` mudando de FORMA: 4 → 7 bytes) ·
-/// v13 a timeline (5º campo do `ProjectFile`).
+/// v13 a timeline (5º campo do `ProjectFile`) · v14 a pose AFIM do Flip (W7.5:
+/// `FlipFrame.offset: Vec2` → `pose: Pose([f32; 6])`, FLIP v5→6).
 ///
 /// Na integração de 2026-07-13, QUATRO linhas bumparam este contador ao mesmo tempo, cada uma
 /// a partir do 7, cada uma por um motivo diferente. **O valor certo não existia em nenhum lado
@@ -382,7 +383,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (13, 5, 8),
+        (14, 6, 8),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

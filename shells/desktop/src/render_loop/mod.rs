@@ -568,6 +568,7 @@ impl crate::App {
         // arranjo e cada hover voltaria a pagar a booleana.
         self.build_smoke();
         self.stack_smoke();
+        self.flip_pose_smoke();
         self.build_session_upkeep();
 
         let Some(gfx) = self.gfx.as_mut() else {
@@ -1159,6 +1160,33 @@ impl crate::App {
                         Some(ph2d_tool_flip::FlipMode::Select)
                     ),
             );
+            // Flip W7.5: o gizmo da POSE da chave — só na tool Flip em modo Edit, e só
+            // quando o quadro visível é uma INSTÂNCIA (a `pose_view` decide o resto).
+            // Campo próprio no `GizmoStateGroup` (append-only): o painter o desenha
+            // keyed (`GizmoTarget::FlipPose`), sem interior — a seleção de traço do
+            // Edit continua dona do canvas.
+            hero.gizmo.pose_view = if tools
+                .active()
+                .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("flip"))
+                && matches!(
+                    self.flip_style.map(|s| s.mode),
+                    Some(ph2d_tool_flip::FlipMode::Edit)
+                ) {
+                crate::flip_pose_gizmo::pose_view(
+                    sim,
+                    flip,
+                    &self.flip_entities,
+                    crate::flip_pose_gizmo::PoseViewInputs {
+                        playhead: &self.playhead,
+                        active_layer: self.flip_active_layer,
+                        last_pointer: self.last_pointer,
+                    },
+                    camera,
+                    window_size,
+                )
+            } else {
+                None
+            };
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
             // ─────────────────────────────────────────────────────────

@@ -94,8 +94,11 @@ impl FlipStripSnapshot {
     pub fn scrub_frame(&self, value: f32) -> Option<i32> {
         let (first, end) = self.frame_span()?;
         let total = (end - first).max(1);
-        let frame = first + (value.clamp(0.0, 1.0) * total as f32).round() as i32;
-        Some(frame.clamp(first, end - 1))
+        let frame = first + (value.clamp(0.0, 1.0) * total as f32).round() as i32; // CLAMP-OK: bounds literais 0..1
+        // Não é `clamp(first, end - 1)`: num vão de 1 quadro (`end == first`) os bounds
+        // invertem e o clamp de i32 entra em PÂNICO — o par min/max degrada para "sempre
+        // o primeiro quadro", que é o certo.
+        Some(frame.min(end - 1).max(first))
     }
 }
 

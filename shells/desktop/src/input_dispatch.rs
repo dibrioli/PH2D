@@ -1986,6 +1986,11 @@ impl App {
         if self.flip_edit_canvas_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Flip W7.5: arrasto do gizmo de POSE em curso — cada movimento recomputa a
+        // pose da chave (rotate/scale) a partir do snapshot do Down. No-op sem gesto.
+        if self.flip_pose_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Fill (Bucket) ColorDrop drag (SHELL-only): while a colour is being dragged from the Fill rail
         // button onto the canvas, deliver it to the painter's Fill. Early-return so it doesn't pan.
         if self.fill_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2292,6 +2297,14 @@ impl App {
         {
             return;
         }
+        // Flip W7.5: o pen-UP fecha um arrasto do gizmo de pose (o passo de undo sai
+        // do diff pós-frame, como os outros gestos).
+        if kind == PointerKind::Up
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && self.flip_pose_gizmo_up()
+        {
+            return;
+        }
         if self.flip_wants_canvas()
             && kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary
@@ -2331,6 +2344,18 @@ impl App {
             && on_canvas
             && !menu_open_before
             && self.flip_reshape_canvas_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
+        // Flip W7.5: um handle do gizmo de POSE sob o cursor abre o arrasto de pose
+        // (rotate/scale da instância). Vem ANTES do arm de canvas do Edit — um handle
+        // registrado no hit-index torna `on_canvas` falso, então sem este arm o clique
+        // cairia no caminho genérico de gizmo (que escreve o `Transform` do OBJETO).
+        // O método só consome quando o hit é `GizmoTarget::FlipPose`.
+        if kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && !menu_open_before
+            && self.flip_pose_gizmo_down(self.last_pointer.0, self.last_pointer.1)
         {
             return;
         }

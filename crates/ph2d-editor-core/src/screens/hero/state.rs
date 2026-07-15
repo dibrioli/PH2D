@@ -141,6 +141,12 @@ pub struct GizmoStateGroup {
     /// when `selected_len() > 1`. The painter draws a distinctive
     /// outline.
     pub global_view: Option<crate::gizmo::GizmoView>,
+    /// Flip W7.5: a view do gizmo da **POSE da chave** (modo Edit da tool Flip,
+    /// quadro instanciado). Publicada pelo shell a cada frame; o painter a desenha
+    /// como um gizmo keyed (`GizmoTarget::FlipPose`) — handles de rotate/scale,
+    /// SEM interior (o translate da instância é o arrasto de canvas do Edit, e um
+    /// interior aqui roubaria o clique da seleção de traço). `None` ⇒ nada pintado.
+    pub pose_view: Option<crate::gizmo::GizmoView>,
     /// Onda 2C: reverse lookup from a hit NodeId to which gizmo (and
     /// which handle of it) was clicked. The painters populate this
     /// map every frame for the primary, every extra, and the global

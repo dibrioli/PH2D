@@ -302,7 +302,7 @@ pub(crate) fn apply_panel_event(
             if ok {
                 // **Desvincular ENCERRA a multisseleção** (só esta chave fica marcada). O
                 // sentido do Unlink é "este quadro agora é independente"; se a tira
-                // continuasse com 2+ chaves marcadas, o próximo Sculpt seria MULTIFRAME e
+                // seguisse com 2+ chaves marcadas, o próximo Sculpt seria MULTIFRAME e
                 // editaria os dois de novo — e como a cópia nasce idêntica à origem, o
                 // resultado idêntico PARECE que o vínculo voltou (smoke do Enio,
                 // 2026-07-14). Uma chave só ⇒ multiframe desligado (`selection.len() < 2`).

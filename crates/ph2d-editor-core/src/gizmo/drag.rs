@@ -81,6 +81,12 @@ pub enum GizmoTarget {
     /// sprite (per Enio — "transforms via global gizmo behave as
     /// if the group is one rigid object").
     Global,
+    /// Flip W7.5: o gizmo da **POSE de uma chave** (modo Edit da tool Flip, quadro
+    /// instanciado). Os handles vivem num espaço de id PRÓPRIO (ver
+    /// `keyed_handle_id`) e o apply escreve a pose da chave (`FlipFrame::pose`),
+    /// nunca o `Transform` da entidade — o dispatch do shell reconhece este alvo
+    /// ANTES do caminho genérico de gizmo e o consome.
+    FlipPose,
 }
 
 /// Onda 2C: a single drag-target lookup entry, populated by the

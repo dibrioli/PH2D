@@ -54,6 +54,8 @@ mod flip_gizmo_view;
 mod flip_layers;
 mod flip_live;
 mod flip_multiframe;
+mod flip_pose_gizmo;
+mod flip_pose_smoke;
 mod flip_reshape;
 mod flip_select;
 mod flip_smooth;
@@ -313,6 +315,7 @@ impl App {
             flip_reshape: None,
             flip_edit_style: None,
             flip_edit_gesture: None,
+            flip_pose_drag: None,
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,

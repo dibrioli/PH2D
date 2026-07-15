@@ -654,6 +654,10 @@ pub(crate) struct App {
     /// ADR-0114 W6.1: o GESTO em curso no modo Edit — a caixa do marquee, ou a translação
     /// da seleção. `None` fora de um arrasto. Ver `flip_edit_gesture`.
     pub(crate) flip_edit_gesture: Option<crate::flip_edit_gesture::EditGesture>,
+    /// ADR-0114 W7.5: o arrasto do gizmo de POSE em curso (modo Edit, quadro
+    /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
+    /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.
+    pub(crate) flip_pose_drag: Option<crate::flip_pose_gizmo::FlipPoseDrag>,
     /// ADR-0114 W6: o estilo do painel no frame ANTERIOR, enquanto há seleção no modo
     /// Edit. É o que deixa **só a MUDANÇA** agir sobre os traços selecionados: sem esta
     /// memória, o passe reaplicaria o estilo a cada frame e selecionar um traço vermelho

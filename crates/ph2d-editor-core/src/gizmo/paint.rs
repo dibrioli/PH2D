@@ -39,6 +39,10 @@ pub(crate) fn keyed_handle_id(target: GizmoTarget, canonical_id: NodeId) -> Node
             NodeId(canonical_id.0 ^ h)
         }
         GizmoTarget::Global => NodeId(canonical_id.0 ^ 0x_91A0_5B12_4FE9_3A8D),
+        // Flip W7.5: espaço de id próprio para os handles da POSE — nunca colide com
+        // os canônicos do primário, com os dos extras (que multiplicam os bits da
+        // entidade) nem com o global (scrambler distinto).
+        GizmoTarget::FlipPose => NodeId(canonical_id.0 ^ 0x_C3A5_C85C_97CB_3127),
     }
 }
 

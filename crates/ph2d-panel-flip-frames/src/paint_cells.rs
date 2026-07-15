@@ -217,7 +217,8 @@ fn paint_scrub_lane(
     // vive no rail).
     let px = inner_x + (snap.current_frame - first) as f32 * ppf;
     let handle_w = Spacing::Sm.px();
-    let hx = (px - handle_w * 0.5).clamp(lane.x, lane.x + lane.w - handle_w);
+    let hx =
+        ph2d_editor_core::math::safe_clamp(px - handle_w * 0.5, lane.x, lane.x + lane.w - handle_w);
     let handle = Rect::new(hx, lane.y, handle_w, lane.h);
     fill_rounded_rect(
         ctx.scene,
@@ -237,13 +238,13 @@ fn paint_scrub_lane(
 /// `1 − peso` porque o véu é BRANCO: quanto mais véu, mais claro o acento. O peso é o do
 /// pincel (`falloff_at`, seed = sample), então a cor não mente sobre a força do gesto.
 fn falloff_veil(weight: f32) -> u8 {
-    ((1.0 - weight.clamp(0.0, 1.0)) * 255.0) as u8 // CLAMP-OK: 1−[0,1] ∈ [0,1] ⇒ [0,255]
+    ((1.0 - weight.clamp(0.0, 1.0)) * 255.0) as u8 // CLAMP-OK + LITERAL-PX-OK: normalizacao sRGB byte, 1−[0,1] ⇒ [0,255]
 }
 
 /// Quanto o número escurece o acento para virar TINTA legível (fração do acento em direção
 /// ao preto). Escuro o bastante para contrastar tanto no acento cheio quanto no bem
 /// clareado — o véu branco deixava o número claro-no-claro, invisível ("apagou o número").
-const ACCENT_INK_MUL: f32 = 0.35; // LITERAL-OK: fração de escurecimento, não medida de design
+const ACCENT_INK_MUL: f32 = 0.35; // LITERAL-PX-OK: fração de escurecimento, não medida de design
 
 /// **Pinta uma célula MARCADA para o multiframe** (W7): fundo no ACENTO clareado pelo
 /// falloff + o número da exposição por CIMA, em tinta ESCURA.

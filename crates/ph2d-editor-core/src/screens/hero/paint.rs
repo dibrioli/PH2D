@@ -162,6 +162,22 @@ pub fn paint_hero_screen(
     if let Some(view) = hero.gizmo.view {
         crate::gizmo::paint_sprite_gizmo(scene, &view, hero.theme, &mut hero.hit_index);
     }
+    // Flip W7.5: o gizmo da POSE da chave (modo Edit + quadro instanciado). Pintado
+    // como gizmo KEYED — rotate/scale nos ids do espaço `FlipPose`, sem interior
+    // (o arrasto de canvas do Edit já move a instância; um interior aqui comeria o
+    // clique da seleção de traço) e sem pivot dot (o pivô da pose é o centro da
+    // arte, que a caixa já mostra).
+    if let Some(v) = hero.gizmo.pose_view {
+        crate::gizmo::paint_sprite_gizmo_keyed(
+            scene,
+            &v,
+            hero.theme,
+            &mut hero.hit_index,
+            &mut hero.gizmo.gizmo_hit_map,
+            crate::gizmo::GizmoTarget::FlipPose,
+            1.5, // LITERAL-PX-OK: espessura do contorno do gizmo de pose (mesma do primário)
+        );
+    }
     // Onda 2C + z-order fix: the multi-selection extra + global gizmos
     // paint here — at the SAME layer as the primary gizmo, i.e. above the
     // scene but BELOW the floating panels (painted later in this fn). They

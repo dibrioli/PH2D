@@ -53,7 +53,9 @@ outras entidades, **re-cozida por frame**.
 VecBlend {
     sources: SmallVec<[u64; 5]>,   // VecPathId estáveis das fontes, NA ORDEM (2..=5)
     spacing: Spacing,              // Steps(u32) | Distance(f64) | SmoothColor
-    orientation: Orient,           // Page (upright) | Path (tangente do spine)
+    // Os passos ficam SEMPRE upright — NÃO giram para a tangente do spine (Enio 2026-07-15,
+    // ver Descartado). O giro dos intermediários vem de GIRAR AS FONTES (a interpolação já dá
+    // os ângulos). Por isso NÃO há campo `orientation`.
     // o SPINE é a geometria da PRÓPRIA entidade do blend (o `VecPath` dela na cena),
     // editável no modo Node. Default = polilinha entre os centros das fontes.
 }
@@ -76,8 +78,8 @@ modo **Node** (adicionar pontos, mover, handles), exatamente como o Enio pediu (
 polilinha entre os centros das fontes, **regenerada enquanto o artista não o edita** (um flag
 `spine_authored`, como o conector distingue auto de fixado).
 
-Os passos saem de posicionar cada intermediário **ao longo do spine** por comprimento de arco. Com
-`Orient::Page` ficam upright; com `Orient::Path` giram para a tangente. Isto é a camada nova sobre o
+Os passos saem de posicionar cada intermediário **ao longo do spine** por comprimento de arco, e
+ficam **SEMPRE upright** (só transladam — não giram; ver Descartado). Isto é a camada nova sobre o
 motor — que hoje já interpola posição (as fontes estão em lugares diferentes, e o lerp move os
 pontos): o spine default é **emergente** do lerp, e a edição do spine **re-flui** os passos.
 
@@ -116,7 +118,7 @@ mode capturando faces, e do `shape_under_cursor` do conector.
 | **B ✅** | O objeto **vivo**: componente `VecBlend` + recook por frame + passe de render dos passos + skip no `settle_origins`. Spine AUTO (linha entre centros) | `ph2d-ecs` + shell |
 | **C1 ✅** | **Painel cria e ajusta** o blend vivo: botão "Blend" (seleção fechada, 2..=5, em z), slider Steps ao vivo (teto 200) | shell + painel |
 | **C2a ✅** | **Spine editável** (modo Node): os passos FLUEM por comprimento de arco ao longo da curva editada | motor + shell |
-| **C2b** | **Pick Shapes** mode (escolher a ORDEM), spacing/orientation (Align-to-Path), Reset Spine | shell + painel |
+| **C2b** | **Pick Shapes** mode (escolher a ORDEM), pinar pontas do spine às fontes, Reset Spine, spacing | shell + painel |
 | **D** | **Expand** / **Release** | shell |
 
 Cada fase fecha com gate + smoke do Enio antes da próxima (a regra desta linha).
@@ -218,9 +220,9 @@ comprimento de arco: editou a curva (modo Node), os passos re-fluem.
   refinamento faltante.
 - **Falta um "Reset Spine"** (limpar `spine_authored` → volta ao automático). É um botão de painel
   + um `clear` do flag; sem ele o artista não desfaz a edição do spine a não ser pelo undo global.
-- **Orientation** (Align-to-Path): hoje os passos ficam **upright** (Orient::Page). Girar cada passo
-  para a **tangente** do spine é a próxima camada — o `spine_offsets` já tem o ponto de arco; a
-  tangente sai do mesmo `SpineArc`.
+- **Orientation por tangente NÃO existe** (decisão do Enio, ver Descartado): os passos ficam sempre
+  upright; o giro dos intermediários é controlado **girando as formas-fonte**. Não construir
+  Align-to-Path.
 - **O spine visível é dado de documento** (persiste no save, apareceria no Expand). Um **guia por
   overlay** (screen-space, largura em px, só quando o blend está selecionado, cor por token) é o
   refinamento correto — hoje é um `StrokeSpec` em MUNDO.
@@ -262,4 +264,8 @@ passos) — documentada aqui para o próximo não se surpreender.
 e não é "um objeto" (o pedido explícito do Enio). (b) **passos num compound path** (subpaths de uma
 entidade) — um compound path tem UM estilo, e cada passo tem cor interpolada própria. (c) o **escape
 manual de correspondência** (Rotate/Reverse) — já removido; no modelo vivo o ajuste é **editar as
-fontes**, que é o idioma do Illustrator e é melhor.
+fontes**, que é o idioma do Illustrator e é melhor. (d) **orientação por tangente do spine**
+(Align-to-Path, o `Orient::Path` do Illustrator) — **rejeitada pelo Enio (2026-07-15)**: os passos
+NÃO giram com a curva; ficam sempre upright, e o giro dos intermediários é controlado **girando as
+formas-fonte** (a interpolação das fontes giradas já dá os ângulos, como no início). Por isso o
+`spine_offsets` só **translada** (nunca gira), e não há campo `orientation` no componente.

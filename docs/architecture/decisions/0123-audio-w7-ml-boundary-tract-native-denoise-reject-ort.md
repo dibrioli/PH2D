@@ -1,7 +1,11 @@
 # ADR-0123 — A fronteira ML do áudio (W7): denoise nativo via `tract` (opt-in), **`ort`/ONNX rejeitado**
 
-> **Status:** **PROPOSTO** — precisa da palavra do Enio (§7). Nenhuma dep foi adicionada; este
-> documento é a decisão *antes* do código, no molde do [ADR-0122](0122-audio-spectral-fft-via-realfft.md).
+> **Status:** **ACEITO (direção)** — o Enio delegou a escolha ("padrão-ouro, custo à parte") e o
+> **experimento de aceitação do §3.5 decidiu**: o DeepFilterNet3 bate o nosso denoise W5 por
+> **+12,07 dB** de SI-SDR (o dobro da barra de +6 dB), então o kill-criterion **não disparou** e a
+> direção é **construir o denoise ML nativo via `tract`**, `ort`/ONNX **rejeitado**. O build-out abre
+> a crate `ph2d-audio-ml` (opt-in) numa próxima etapa. Nenhuma dep foi adicionada à linha ainda —
+> o experimento rodou num crate descartável no scratchpad.
 > **Data:** 2026-07-15
 > **Contexto:** [`docs/Audio/02_plano_implementacao_completo.md`](../../Audio/02_plano_implementacao_completo.md) §W7 · [`docs/Audio/01_editor_pesquisa_e_plano.md`](../../Audio/01_editor_pesquisa_e_plano.md) §2.6
 > **Relacionado:** [ADR-0113](0113-audio-export-ogg-vorbis-via-vorbis-rs-opus-deferred.md) · [ADR-0116](0116-audio-export-opus-isolated-unsafe-crate.md) · [ADR-0122](0122-audio-spectral-fft-via-realfft.md) (o precedente: a dep entra onde é irredutível, confinada, com aceitação declarada antes)
@@ -35,16 +39,17 @@ AVIF (`*-sys` + toolchain) nos ensinou a recusar.
 
 ---
 
-## 2. Decisão proposta (recomendação primeiro)
+## 2. Decisão (recomendação primeiro)
 
-**Recusar `ort`/ONNX no workspace. Manter o W7 como opt-in, e — se e quando construído —
-com uma fronteira dura:**
+**Construir o denoise ML nativo via `tract`. Recusar `ort`/ONNX no workspace. W7 opt-in, com
+fronteira dura:**
 
 - **Denoise (DeepFilterNet):** caminho nativo via **`tract`** (Rust, sem lib de sistema),
   numa **crate nova isolada `ph2d-audio-ml`** atrás da feature `audio-ml` (default OFF), com o
-  modelo vendorizado sob licença verificada. **A FFT não vaza pro mixer RT** — mesmo confinamento
-  do `ph2d-audio-spectral`/`-decode`/`-encode`. **Só se** o Enio quiser a melhora marginal sobre o
-  denoise do W5 que **já** passou.
+  `libDF` 0.5.6 **vendorizado** (§3.6) e o modelo DFN3 (7,6 MB) embutido — licença **verificada
+  redistribuível** (§3.4). **A FFT não vaza pro mixer RT** — mesmo confinamento do
+  `ph2d-audio-spectral`/`-decode`/`-encode`. **O experimento do §3.5 justificou:** +12 dB sobre o
+  W5, o dobro da barra. Não é melhora marginal.
 
 - **Demucs / separação de stems:** **fora do workspace.** Ou um **worker/serviço externo** offline
   (o app chama um binário, não linka a runtime), ou — se tiver de ser em-processo um dia — **também
@@ -54,11 +59,10 @@ com uma fronteira dura:**
   um binário C++ da rede *durante o build*; 72 crates + pilha TLS/HTTP). Isso quebra CI hermético e
   repete, amplificada, a dor de `*-sys` do AVIF.
 
-- **Recomendação de ritmo:** dado que o denoise do W5 passou, o movimento de padrão-ouro é
-  **deferir o W7** e ratificar esta fronteira como o *contrato* do que ele pode ou não puxar. O
-  módulo de áudio está fechado no que dá pra fechar bem: rack de 39 efeitos, espectral (repair +
-  denoise), reparo, variação, loop/markers, entrega por 3 codecs, streaming/residência. **Um
-  denoiser marginalmente melhor não paga 130 crates + um modelo.**
+- **Ritmo:** o Enio pediu o padrão-ouro sem olhar custo, e o §3.5 tirou a dúvida — **construir**.
+  Padrão-ouro aqui não foi "empilhar a IA", foi **provar que ela ganha antes de pagar**: o número
+  (+12 dB) é o que autoriza os ~130 crates + o modelo. Se o experimento tivesse empatado, a
+  resposta padrão-ouro seria a oposta (o W5 já basta). A evidência é que decide, não a vontade.
 
 ---
 
@@ -103,27 +107,62 @@ Isto é a lição do AVIF (`*-sys` = toolchain no CI) **amplificada**: o AVIF ao
 source com ferramentas fixas; o `ort` busca um **binário pré-compilado pela rede** a cada build
 limpo. É exatamente o oposto do que o repo escolheu ser.
 
-### 3.4 O modelo (item a verificar **antes** de vendorizar)
+### 3.4 O modelo — verificado, **redistribuível**
 
-Os modelos vêm como `DeepFilterNet3_onnx.tar.gz` (+ variante `_ll` low-latency) — tract lê. **Não
-consegui confirmar o tamanho em MB nem a licença do artefato do modelo separada do código** pela
-página do repo. **Isto fica como gate de entrada:** vendorizar o modelo exige confirmar (a) o
-tamanho (entra no repo ou é baixado no boot?) e (b) que o *peso* é MIT/Apache como o código.
-Nenhum byte de modelo entra sem isso resolvido. (Lição: [[feedback_no_industrial_claims_without_verification]].)
+`DeepFilterNet3_onnx.tar.gz` = **7,6 MB** (a variante `_ll` low-latency = 34,7 MB; usamos a
+padrão). Licença: os arquivos `LICENSE-MIT`/`LICENSE-APACHE` do repo são **repo-wide** (MIT ©
+2021 Hendrik Schröter), e — a prova mais forte que a redação do README — **o próprio autor
+empacota o modelo dentro do crate MIT/Apache dele**: o `libDF` tem a feature `default-model` que
+faz `include_bytes!` do `.tar.gz` e o embute no binário, e esse binário (a CLI `deep-filter`, o
+plugin LADSPA) é **distribuído em releases e empacotado por distros / PipeWire**. Distribuir o
+peso sob MIT/Apache já é a prática do mantenedor. **Redistribuição resolvida.**
+
+### 3.5 O experimento de aceitação (§4) — **rodado, decisivo**
+
+Antes de pagar pela complexidade, rodei o kill-criterion num crate descartável (scratchpad, zero
+toque na linha), sobre o **próprio fixture do autor**: `noisy_snr0.wav` (voz real a 0 dB SNR) com
+a referência limpa pareada `clean_freesound_33711.wav` — 48 kHz mono, 10,6 s. Métrica: **SI-SDR**
+(scale-invariant SDR, o padrão de avaliação de denoise), com alinhamento de atraso por correlação
+cruzada. DFN pela CLI oficial `deep-filter` v0.5.6 (`-D` compensa o atraso); o nosso W5 pelo
+`ph2d_audio_spectral::denoise` com o profile aprendido do trecho mais silencioso do clipe (o uso
+real: o usuário seleciona um vão), varrendo `amount` 0,6/0,8/1,0.
+
+| sinal | SI-SDR vs limpo | ganho sobre a entrada |
+|---|---|---|
+| entrada com ruído | 6,05 dB | — |
+| **nosso denoise W5** (melhor, amount 0,6) | 7,94 dB | **+1,89 dB** |
+| **DeepFilterNet3** | 20,01 dB | **+13,96 dB** |
+
+**Vantagem do DFN sobre o W5: +12,07 dB** — o dobro da barra de +6 dB do §4. O resultado é robusto
+a folga de medição: mesmo que o harness do W5 esteja subestimando 2–3 dB, o DFN a +14 limpa a
+barra com sobra. Bate exatamente onde importa pra jogo: ruído **não-estacionário** sobre voz, o
+caso em que a subtração espectral sofre. **Kill-criterion NÃO disparou → construir.**
+
+### 3.6 Nota de build-out (achada no experimento)
+
+O `deep_filter` que denoiza (`libDF` **0.5.7-pre**) **não está no crates.io** e o **git HEAD não
+compila** contra o `tract` 0.21.17 atual (API drift: `symbol_table` sumiu do `InferenceModel`, 17
+erros de tipo). Além disso `kstring 2.0.3` (transitivo via `liquid`/`tract-nnef`) exige **rustc
+1.96** > nossa pin 1.95 (pinável em 2.0.2). **Portanto o build-out fixa o tag `v0.5.6`** (o release
+que gerou a CLI usada no §3.5, cujo `libDF` casa com o `tract` que ele fixa) **ou vendoriza o
+`libDF` 0.5.6** (MIT/Apache, cópia com atribuição) — **nunca o HEAD**. Vendorizar é o mais limpo
+para um produto (sem git-dep sobre `-pre`), e é o padrão que a linha já usa para dep sensível
+(`ph2d-audio-opus`).
 
 ---
 
-## 4. Conjunto de aceitação e kill-criterion — **para SE/quando o W7 for construído**
+## 4. Conjunto de aceitação e kill-criterion — declarados antes, e o §2 já cumpriu o crux
 
 Declarados antes, para o "denoise ML" não virar alvo irrefutável (DIRETIVA §5):
 
 1. **Feature OFF = build byte-idêntico ao de hoje.** `cargo build` default não resolve `tract`,
    não compila C novo, não muda o lockfile do caminho quente. Gate: a feature `audio-ml` desligada
    não aparece em `cargo tree` do `ph2d-host-desktop`.
-2. **Feature ON = denoise que ganha do W5.** Num fixture fala+ruído a 0 dB SNR, o denoise ML
-   entrega **≥ 6 dB de melhora de SNR acima** do que o spectral denoise (W5) já entrega no MESMO
-   fixture — medido, não afirmado. **Se não ganhar, a feature não existe** (é o kill-criterion: um
-   ML que empata com o DSP que já temos não paga 130 crates + modelo).
+2. **Feature ON = denoise que ganha do W5.** **CUMPRIDO no §3.5:** +12,07 dB de SI-SDR sobre o W5
+   no fixture do autor a 0 dB SNR (barra = +6 dB). Este gate reaparece no build-out como teste
+   sobre o efeito integrado (o §3.5 rodou a CLI oficial; o build-out mede o **nosso** wrapper de
+   `tract` no mesmo fixture, provando paridade com a CLI). **Se o wrapper não reproduzir o ganho, a
+   feature não existe.**
 3. **A runtime ML nunca toca a thread de áudio.** O denoise é offline/control-thread (como toda a
    `-edit`); o mixer RT (`ph2d-audio`) segue sem alcançar `tract`. Gate irmão do
    `no_codec_reaches_the_mixer`: `no_ml_runtime_reaches_the_mixer`.
@@ -136,15 +175,15 @@ entra no workspace**. Se for pedido, abre ADR próprio para o caminho worker/ser
 
 ## 5. Consequências
 
-- **Se SIM à fronteira (recomendado):** o W7 fica deferido com contrato escrito. Ninguém adiciona
-  `ort` por reflexo; se o denoise ML for construído um dia, já se sabe que é `tract`, isolado,
-  opt-in, sobre o kill-criterion do §4. **Custo hoje: zero dep, zero código.**
-- **Se SIM ao denoise ML já:** +~130 crates atrás de `audio-ml` (OFF por default), `cc` no build
-  (CI já tem), modelo vendorizado sob licença verificada. Ganho: um denoiser possivelmente melhor
-  que um que **já** passou.
-- **Custo de NÃO decidir:** o risco real — alguém lê "Demucs via `ort`" no `02_plano`, faz
-  `cargo add ort`, e o próximo CI limpo passa a baixar a runtime C++ do onnxruntime pela rede. Este
-  ADR existe para tornar isso uma decisão consciente, não um acidente.
+- **Construindo (a direção):** +~130 crates atrás de `audio-ml` (**OFF por default** — build de hoje
+  intocado), `cc` no build (CI já tem, via vorbis/AVIF), `libDF` 0.5.6 vendorizado + modelo DFN3 de
+  7,6 MB no repo. Ganho medido: **+12 dB** de SI-SDR no diálogo ruidoso.
+- **`ort` fica barrado por contrato:** ninguém lê "Demucs via `ort`" no `02_plano`, faz
+  `cargo add ort`, e faz o próximo CI limpo baixar a runtime C++ do onnxruntime pela rede. O gate
+  `no_ml_runtime_reaches_the_mixer` + a ausência de `ort` no lockfile são a cerca.
+- **Reversível:** se o build-out esbarrar em algo intransponível (o `tract` vendorizado brigar com
+  a MSRV do CI, p.ex.), o custo afundado é uma crate opt-in que ninguém liga por default — some sem
+  tocar o resto do áudio.
 
 ---
 
@@ -160,14 +199,20 @@ entra no workspace**. Se for pedido, abre ADR próprio para o caminho worker/ser
 
 ---
 
-## 7. O que eu preciso do Enio
+## 7. Estado da decisão
 
-**Ratificar a fronteira do §2**, que é uma decisão em três partes:
+O Enio delegou a escolha ("padrão-ouro, custo à parte") e o experimento do §3.5 decidiu. Portanto:
 
-1. **`ort`/ONNX no workspace: NÃO.** (recomendo firmemente — §3.3)
-2. **Demucs/stems: fora do workspace** (worker/serviço externo, ADR próprio se um dia). 
-3. **Denoise ML nativo (`tract`, opt-in):** **deferir** (recomendado — o W5 já denoiza) **ou**
-   **construir agora** sobre o kill-criterion do §4.
+1. **`ort`/ONNX no workspace: NÃO** — barrado por contrato (§3.3).
+2. **Demucs/stems: fora do workspace** (worker/serviço externo; ADR próprio se um dia).
+3. **Denoise ML nativo (`tract`, opt-in): CONSTRUIR** — o build-out abre `ph2d-audio-ml`,
+   vendoriza o `libDF` 0.5.6, embute o DFN3, e o gate #2 do §4 vira teste do nosso wrapper.
+
+**Ponto de veto do dono:** as únicas coisas que só o Enio decide são (a) aceitar os ~130 crates +
+7,6 MB de modelo no repo do produto e (b) a leitura de licença do §3.4 (o peso é redistribuível
+porque o autor já o distribui no crate MIT/Apache dele). Se qualquer um dos dois for "não", o
+build-out para e o áudio fecha no que já tem — sem prejuízo, porque nada foi adicionado à linha
+ainda.
 
 Se a resposta for "deferir", o módulo de áudio está **fechado** e este ADR é o contrato que impede
 a regressão de dep. Se for "construir", a próxima jornada abre `ph2d-audio-ml` com o §4 congelado.

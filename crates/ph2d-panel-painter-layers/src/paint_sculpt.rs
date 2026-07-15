@@ -30,7 +30,8 @@ use ph2d_tool_painter::BrushSettings;
 /// | Smooth · Sharpen | **Radius** (the blur's own scale) |
 /// | Flatten · Scrape · Fill | **Offset** (where the fitted plane sits) |
 /// | Chisel | **Offset** + **Angle** (the plane, then the V folded about the stroke) |
-/// | Layer · Inflate | **Depth** (how thick a coat · how far the ball offsets the form) |
+/// | Layer | **Depth** (how thick a coat) |
+/// | Inflate | **Depth** + **Smoothness** (how far the ball offsets · how soft its edge) |
 ///
 /// Radius means nothing to a plane verb — the plane is fitted to the brush's own footprint, so the brush's
 /// Size already IS its scale. Offset means nothing to a blur, which has no plane. Depth means nothing to
@@ -72,7 +73,17 @@ pub(crate) fn paint_sculpt_section(
                 y
             }
         }
-        2 => depth_row(ctx, theme, x, content_w, y, brush),
+        2 => {
+            let y = depth_row(ctx, theme, x, content_w, y, brush);
+            // Inflate is the one Height-knob verb with a second row: **Smoothness** rounds the ball
+            // dilation's hard edge, the way Smooth's Radius sets its kernel (Enio 2026-07-14). Layer has no
+            // edge to soften, so it shows Depth alone.
+            if brush.sculpt_is_inflate {
+                smooth_row(ctx, theme, x, content_w, y, brush)
+            } else {
+                y
+            }
+        }
         _ => radius_row(ctx, theme, x, content_w, y, brush),
     };
     y
@@ -135,6 +146,41 @@ fn angle_row(
         Some(&display),
         core_ids::PAINTER_SCULPT_ANGLE_SLIDER,
         core_ids::PAINTER_SCULPT_ANGLE_CHIP,
+        DEFAULT_LABEL_W,
+        DEFAULT_CHIP_W,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y + used + Spacing::Xs.px()
+}
+
+/// The **Smoothness** row (Inflate only) — the Radius knob for the ball dilation's hard edge (Enio
+/// 2026-07-14). The chip shows a texel radius; `0` is the raw ball, and up to 16 rounds the edge off the way
+/// Smooth's own Radius sets its kernel — the parallel Enio drew.
+fn smooth_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: BrushSettings,
+) -> f32 {
+    let px = brush.sculpt_smooth_px;
+    let display = format!("{px} px");
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_slider_with_chip_layout_adaptive(
+        Rect::new(x, y, content_w, ROW_H_PX),
+        "Smooth",
+        brush.sculpt_smooth,
+        f64::from(px),
+        Some(&display),
+        core_ids::PAINTER_SCULPT_SMOOTH_SLIDER,
+        core_ids::PAINTER_SCULPT_SMOOTH_CHIP,
         DEFAULT_LABEL_W,
         DEFAULT_CHIP_W,
         store,

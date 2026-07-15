@@ -69,6 +69,14 @@ pub(crate) fn register_sculpt_widgets(store: &mut WidgetStore) {
     store.link_slider_number_mapped_integer(angle, angle_chip, 60.0, 0.0); // LITERAL-PX-OK: 0..1 → 0..60°
     store.set_number_range(angle_chip, 0.0, 60.0, 1.0); // LITERAL-PX-OK: the knife's tilt, in degrees
 
+    let smooth = ph2d_editor_core::ids::PAINTER_SCULPT_SMOOTH_SLIDER;
+    let smooth_chip = ph2d_editor_core::ids::PAINTER_SCULPT_SMOOTH_CHIP;
+    register_slider_with_chip(store, smooth, smooth_chip);
+    // The chip speaks TEXELS: `track·16`, exactly `SculptState::inflate_smooth_px`, so the number on screen
+    // is the blur radius the kernel uses. `0..16`, bottom = 0 (the raw ball — no smoothing).
+    store.link_slider_number_mapped_integer(smooth, smooth_chip, 16.0, 0.0); // LITERAL-PX-OK: 0..1 → 0..16 px
+    store.set_number_range(smooth_chip, 0.0, 16.0, 1.0); // LITERAL-PX-OK: the Smoothness range, in texels
+
     for id in ph2d_editor_core::ids::PAINTER_SCULPT_MODE_IDS {
         store.register(
             id,

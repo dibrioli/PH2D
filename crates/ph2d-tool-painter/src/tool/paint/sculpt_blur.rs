@@ -141,15 +141,50 @@ impl PainterTool {
                         .copy_from_slice(&scratch[src..src + tile.w as usize]);
                 }
             }
-            MemoKey::Offset(bits) => super::sculpt_offset::ball_offset_into(
-                &scratch,
-                win.w,
-                win.h,
-                f32::from_bits(bits),
-                inner,
-                &mut out,
-                &mut src_out,
-            ),
+            MemoKey::Offset { depth_bits, smooth } => {
+                let r_px = f32::from_bits(depth_bits);
+                if smooth == 0 {
+                    super::sculpt_offset::ball_offset_into(
+                        &scratch,
+                        win.w,
+                        win.h,
+                        r_px,
+                        inner,
+                        &mut out,
+                        &mut src_out,
+                    );
+                } else {
+                    // **Soften the ball's hard edge** (the Radius knob). Offset the WHOLE window, blur it by
+                    // `smooth`, then crop the inner tile. The window was grown by `⌈ρ⌉ + smooth`, so the tile
+                    // sits `smooth` inside the ball-valid region and its blur reads only correct offset
+                    // values — byte-identical to offsetting-then-blurring the whole canvas (the same argument
+                    // the memo already rests on, one kernel deeper). The SOURCE plane is NOT blurred: the
+                    // paint follows the ball's argmax, only the height gets the soft shoulder.
+                    let whole = Region {
+                        x: 0,
+                        y: 0,
+                        w: win.w,
+                        h: win.h,
+                    };
+                    let cells = (win.w as usize) * (win.h as usize);
+                    let mut wh = vec![0.0f32; cells];
+                    let mut ws = vec![0u32; cells];
+                    super::sculpt_offset::ball_offset_into(
+                        &scratch, win.w, win.h, r_px, whole, &mut wh, &mut ws,
+                    );
+                    impasto_settle::box_blur(&mut wh, win.w, win.h, smooth);
+                    let ww = win.w as usize;
+                    for row in 0..tile.h as usize {
+                        let sy = inner.y as usize + row;
+                        for col in 0..tile.w as usize {
+                            let si = sy * ww + (inner.x as usize + col);
+                            let di = row * (tile.w as usize) + col;
+                            out[di] = wh[si];
+                            src_out[di] = ws[si];
+                        }
+                    }
+                }
+            }
         }
         // Keep the inner tile only: the window's outer ring is where the buffer edge could have lied, and it
         // is exactly the part we grew in order to throw away. (The source offsets are RELATIVE, so they are

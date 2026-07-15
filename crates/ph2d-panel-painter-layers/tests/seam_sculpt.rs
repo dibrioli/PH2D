@@ -440,6 +440,7 @@ fn every_verb_paints_exactly_the_knobs_it_uses() {
     use core_ids::{
         PAINTER_SCULPT_ANGLE_SLIDER as ANGLE, PAINTER_SCULPT_DEPTH_SLIDER as DEPTH,
         PAINTER_SCULPT_OFFSET_SLIDER as OFFSET, PAINTER_SCULPT_RADIUS_SLIDER as RADIUS,
+        PAINTER_SCULPT_SMOOTH_SLIDER as SMOOTH,
     };
     // (verb, its name, the knobs it must paint — and by omission, the ones it must not)
     let cases: [(u8, &str, &[ph2d_a11y::NodeId]); 8] = [
@@ -450,9 +451,9 @@ fn every_verb_paints_exactly_the_knobs_it_uses() {
         (4, "Fill", &[OFFSET]),
         (5, "Chisel", &[OFFSET, ANGLE]), // the plane must be placed BEFORE the V is folded about it
         (6, "Layer", &[DEPTH]),
-        (7, "Inflate", &[DEPTH]),
+        (7, "Inflate", &[DEPTH, SMOOTH]), // Depth offsets the form; Smoothness rounds the ball's hard edge
     ];
-    let all = [RADIUS, OFFSET, DEPTH, ANGLE];
+    let all = [RADIUS, OFFSET, DEPTH, ANGLE, SMOOTH];
 
     for (mode, name, wanted) in cases {
         let mut tool = tool_in_sculpt();
@@ -593,5 +594,63 @@ fn the_depth_and_angle_sliders_are_wired_to_the_tool() {
         (tool.sculpt_chisel_angle_deg() - 60.0).abs() < 1e-4,
         "SetValue on the Angle slider did not reach the kernel (angle is {}°, want 60)",
         tool.sculpt_chisel_angle_deg()
+    );
+}
+
+/// **The Smoothness slider reaches the tool — driven in Inflate, the only verb that paints it.**
+///
+/// Inflate's Radius knob (Enio 2026-07-14). Same two legs as Depth/Angle, in the verb whose card shows it: a
+/// gate that drove it in Smooth would test a widget the artist can never reach there.
+///
+/// The chip speaks **texels**, `0..16` — the box-blur radius the kernel uses — so the number on screen is the
+/// number in the softening, one function apart.
+///
+/// **Mutation that must bleed:** delete the `PAINTER_SCULPT_SMOOTH_SLIDER` arm from `route_sculpt_event`, or
+/// drop the id from `event_brush_forward`'s slider list.
+#[test]
+fn the_smoothness_slider_is_wired_to_the_tool() {
+    const INFLATE: u8 = 7;
+    let mut tool = tool_in_sculpt();
+    tool.set_sculpt_mode(INFLATE);
+    set_current_brush(Some(tool.brush_settings()));
+
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let Some((_, rect)) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_SMOOTH_SLIDER && r.w > 0.0 && r.h > 0.0)
+        .copied()
+    else {
+        panic!("the Smoothness slider is not painted with a clickable rect in Inflate");
+    };
+    let (x, y) = centre(rect);
+    assert_eq!(
+        host.hit_at(x, y),
+        Some(core_ids::PAINTER_SCULPT_SMOOTH_SLIDER),
+        "the Smoothness slider's own pixel does not resolve to it"
+    );
+    host.apply_panel_event::<PainterLayersPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(core_ids::PAINTER_SCULPT_SMOOTH_SLIDER),
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, _))
+                if *i == core_ids::PAINTER_SCULPT_SMOOTH_SLIDER
+        )),
+        "a Smoothness drag was never forwarded as SetValue — the id is missing from \
+         `event_brush_forward`'s slider list. drained = {actions:?}"
+    );
+    tool.handle_panel_event(PanelEvent::SetValue(
+        core_ids::PAINTER_SCULPT_SMOOTH_SLIDER,
+        1.0,
+    ));
+    assert_eq!(
+        tool.sculpt_smooth_px(),
+        16,
+        "SetValue on the Smoothness slider did not reach the kernel — `route_sculpt_event` has no arm for it"
     );
 }

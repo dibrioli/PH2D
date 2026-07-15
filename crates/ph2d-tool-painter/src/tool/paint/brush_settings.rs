@@ -141,6 +141,12 @@ pub struct BrushSettings {
     /// Chisel **Rake** — does the V follow the direction of the stroke? (Default on.) Shown only for the
     /// Chisel, the one verb with an axis.
     pub sculpt_rake: bool,
+    /// Inflate **Smoothness** (Radius), `0..1` track — softens the ball's hard edge. Shown only for Inflate.
+    pub sculpt_smooth: f32,
+    /// The Smoothness in texels (`0..16`), as the chip reads it.
+    pub sculpt_smooth_px: u32,
+    /// Whether the active verb is **Inflate** (shows Depth + Smoothness).
+    pub sculpt_is_inflate: bool,
     /// **Offset** (grow/shrink) slider position (`0..1`, `0.5` = no change) — expands/contracts the edited
     /// boundary; only meaningful (and shown) in Edit mode.
     pub selection_offset: f32,

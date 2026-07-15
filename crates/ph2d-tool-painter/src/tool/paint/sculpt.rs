@@ -50,6 +50,12 @@ pub(super) const PLANE_OFFSET_MAX: f32 = 1.0;
 /// lays at most one stroke's worth of paint however long you dwell, and negative carves the same. // CLAMP-OK
 pub(super) const SCULPT_DEPTH_MAX: f32 = 1.0;
 
+/// How far the **Inflate** Smoothness (Radius) knob can blur the ball's hard edge, in texels.
+///
+/// Sixteen, the same ceiling Smooth's own Radius uses — past it the dilation's shape is lost to the blur,
+/// which is Smooth's job, not Inflate's. At `0` the edge is the raw ball. // CLAMP-OK
+pub(super) const INFLATE_SMOOTH_MAX_PX: f32 = 16.0;
+
 /// The **Chisel**'s widest angle, in degrees — how far the knife can be tipped onto its edge.
 ///
 /// Sixty, not ninety: `tilt = tan(angle)` runs to infinity at 90°, and past ~60° the V is already steeper
@@ -168,28 +174,38 @@ pub(super) enum MemoKey {
     None,
     /// `blur(pre, r)` — Smooth / Sharpen. `r` in texels.
     Blur(u32),
-    /// `offset(pre, r)` — Inflate: the relief dilated (`r > 0`) or eroded (`r < 0`) by a ball of `|r|` px.
+    /// `blur(offset(pre, r), smooth)` — Inflate: the relief dilated (`r > 0`) or eroded (`r < 0`) by a ball
+    /// of `|r|` px, then **softened** by a box blur of `smooth` texels.
     ///
-    /// Carried as the **bits** of the signed `f32` radius rather than the float, so the key derives `Eq`
-    /// and compares exactly. The radius is not rounded to whole pixels: a Depth of `0.05` loads is a ball
-    /// of `0.8` px, whose cap still raises a flat by exactly `0.05` — rounding it to zero would make the
-    /// bottom of the Depth track silently do nothing, which is the failure this file already gates against
-    /// elsewhere ([`SculptState::radius_px`]).
-    Offset(u32),
+    /// `depth_bits` is the **bits** of the signed `f32` ball radius (so the key derives `Eq` and compares
+    /// exactly; the radius is not rounded — a Depth of `0.05` loads is a `0.8`-px ball that still raises a
+    /// flat by exactly `0.05`). `smooth` is the **Radius** knob (Enio 2026-07-14): morphological dilation
+    /// makes flat-topped plateaus with **hard edges** — it is Smooth's own complaint at large radius — so a
+    /// small blur rounds that edge off, exactly the way Smooth's Radius controls its kernel. `smooth = 0` is
+    /// the pure offset, byte-identical to before this knob existed.
+    Offset { depth_bits: u32, smooth: u32 },
 }
 
 impl MemoKey {
-    /// The key for a ball offset of signed radius `r_px`.
-    pub(super) fn offset(r_px: f32) -> Self {
-        Self::Offset(r_px.to_bits())
+    /// The key for a ball offset of signed radius `r_px`, softened by a `smooth`-texel blur.
+    pub(super) fn offset(r_px: f32, smooth: u32) -> Self {
+        Self::Offset {
+            depth_bits: r_px.to_bits(),
+            smooth,
+        }
     }
 
     /// How far, in texels, one output texel reads into `pre` — the tile memo's read-window growth.
+    ///
+    /// For the softened offset the two reaches ADD: the ball reads `⌈ρ⌉`, and the blur that follows reads
+    /// `smooth` more around it, so the window has to be grown by both or the seam between tiles would show.
     pub(super) fn reach(self) -> u32 {
         match self {
             MemoKey::None => 0,
             MemoKey::Blur(r) => r,
-            MemoKey::Offset(bits) => f32::from_bits(bits).abs().ceil() as u32,
+            MemoKey::Offset { depth_bits, smooth } => {
+                f32::from_bits(depth_bits).abs().ceil() as u32 + smooth
+            }
         }
     }
 }
@@ -311,6 +327,12 @@ pub(crate) struct SculptState {
     /// **Angle** track (`0..1`; mapped to `0..CHISEL_ANGLE_MAX_DEG`) — how far the Chisel's knife is tipped
     /// onto its edge. At `0` the Chisel is Scrape, to the byte.
     pub(crate) angle_norm: f32,
+    /// **Smoothness** track (`0..1`; mapped to `0..INFLATE_SMOOTH_MAX_PX` texels) — Inflate's Radius knob.
+    ///
+    /// A ball dilation makes flat-topped plateaus with a hard edge; this blurs that edge off, the way
+    /// Smooth's own Radius sets its kernel. Default **0** — the pure offset, so Inflate is byte-unchanged
+    /// until the artist reaches for it.
+    pub(crate) smooth_norm: f32,
     /// **Rake** — does the Chisel's V follow the stroke **as it turns**? (Enio 2026-07-14.) Default **on**.
     ///
     /// Both modes take their axis from the stroke; the question is *when they read it*.
@@ -412,6 +434,7 @@ impl Default for SculptState {
             offset_norm: 0.5, // dead centre = offset 0: the plane sits ON the surface it was fitted to
             depth_norm: 0.75, // +0.5 loads: half a stroke's thickness — a coat you can see, not a stunt
             angle_norm: 0.5,  // 30°: a knife on its edge, not a razor and not a flat blade
+            smooth_norm: 0.0, // Inflate's edge is hard by default — the artist softens it deliberately
             rake: true, // the groove follows the stroke — what a knife dragged through paint does
             locked_dir: None,
             pre: Arc::new(Vec::new()),
@@ -464,17 +487,25 @@ impl SculptState {
         }
     }
 
+    /// Inflate's **Smoothness** (Radius) in texels — how far the ball's hard edge is blurred. `0` = the raw
+    /// offset. Whole texels: a box blur's radius is a count of taps.
+    pub(super) fn inflate_smooth_px(&self) -> u32 {
+        (self.smooth_norm.clamp(0.0, 1.0) * INFLATE_SMOOTH_MAX_PX).round() as u32
+    }
+
     /// Which kernel target the active verb needs memoised — [`MemoKey::None`] outside the memo family.
     ///
     /// Inflate's radius is its **Depth**, converted from paint-loads into pixels through the light's
     /// [`DEPTH_UNIT_PX`](super::impasto_light::DEPTH_UNIT_PX). The ball is a ball in the space the artist
-    /// *sees*, and that constant is the only place the two axes of a height field are reconciled.
+    /// *sees*, and that constant is the only place the two axes of a height field are reconciled. The
+    /// **Smoothness** rides the key too, so turning it rebuilds the memo like any other radius change.
     pub(super) fn memo_key(&self) -> MemoKey {
         match self.mode_enum() {
             SculptMode::Smooth | SculptMode::Sharpen => MemoKey::Blur(self.radius_px()),
-            SculptMode::Inflate => {
-                MemoKey::offset(self.depth() * super::impasto_light::DEPTH_UNIT_PX)
-            }
+            SculptMode::Inflate => MemoKey::offset(
+                self.depth() * super::impasto_light::DEPTH_UNIT_PX,
+                self.inflate_smooth_px(),
+            ),
             _ => MemoKey::None,
         }
     }
@@ -576,6 +607,15 @@ impl PainterTool {
     /// — the same lazy, tile-by-tile rebuild that the Radius slider already triggers for Smooth.
     pub fn set_sculpt_depth(&mut self, t: f32) {
         self.paint.sculpt.depth_norm = t.clamp(0.0, 1.0);
+        self.refresh_live_sculpt();
+    }
+
+    /// Set Inflate's **Smoothness** (Radius) from the slider's `0..1` track.
+    ///
+    /// No re-stamp: like the Smooth Radius, it changes the memo's [`MemoKey`], and the render rebuilds it
+    /// from `pre` — a bigger blur on the offset, nothing the dab list owns.
+    pub fn set_sculpt_smooth(&mut self, t: f32) {
+        self.paint.sculpt.smooth_norm = t.clamp(0.0, 1.0);
         self.refresh_live_sculpt();
     }
 

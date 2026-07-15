@@ -89,6 +89,14 @@ pub const PAINTER_SCULPT_DEPTH_CHIP: NodeId = hash_node_id("painter_sculpt.depth
 pub const PAINTER_SCULPT_ANGLE_SLIDER: NodeId = hash_node_id("painter_sculpt.angle_slider");
 pub const PAINTER_SCULPT_ANGLE_CHIP: NodeId = hash_node_id("painter_sculpt.angle_chip");
 
+/// Inflate's **Smoothness** (Radius) slider — softens the ball dilation's hard edge (Enio 2026-07-14).
+///
+/// The paired chip shows a texel radius (`0..16`). It is Inflate's second knob, next to Depth, the way the
+/// Chisel's Angle sits next to its Offset: `0` is the raw ball, and turning it up rounds the edge off exactly
+/// the way Smooth's own Radius sets its kernel — which is the parallel Enio drew.
+pub const PAINTER_SCULPT_SMOOTH_SLIDER: NodeId = hash_node_id("painter_sculpt.smooth_slider");
+pub const PAINTER_SCULPT_SMOOTH_CHIP: NodeId = hash_node_id("painter_sculpt.smooth_chip");
+
 /// The Sculpt card's a11y group id (a visual surface; not hit-indexed).
 pub const PAINTER_SCULPT_CARD: NodeId = hash_node_id("painter_sculpt.card");
 
@@ -123,9 +131,10 @@ pub const PAINTER_SCULPT_CLICKS: [NodeId; 9] = [
 /// Every Sculpt slider (the `SetValue` half of the same sweep). All four are here even though the card only
 /// ever shows the ones the active verb USES — the sweep gates the wiring, and wiring that is reachable in
 /// only one mode is still wiring that can be dead.
-pub const PAINTER_SCULPT_FIELDS: [NodeId; 4] = [
+pub const PAINTER_SCULPT_FIELDS: [NodeId; 5] = [
     PAINTER_SCULPT_RADIUS_SLIDER,
     PAINTER_SCULPT_OFFSET_SLIDER,
     PAINTER_SCULPT_DEPTH_SLIDER,
     PAINTER_SCULPT_ANGLE_SLIDER,
+    PAINTER_SCULPT_SMOOTH_SLIDER,
 ];

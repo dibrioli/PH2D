@@ -45,6 +45,7 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || id == core_ids::PAINTER_SCULPT_OFFSET_SLIDER
         || id == core_ids::PAINTER_SCULPT_DEPTH_SLIDER
         || id == core_ids::PAINTER_SCULPT_ANGLE_SLIDER
+        || id == core_ids::PAINTER_SCULPT_SMOOTH_SLIDER
 }
 
 /// `true` when `id` is a Sculpt-panel **Click** target (the five sub-mode segments).

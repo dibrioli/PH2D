@@ -582,6 +582,7 @@ fn the_sculpt_respects_the_selection() {
 // the child module: same fixtures, different question. This file gates what the kernel DOES to the
 // relief; `session` gates the lifetime of the state that lets it.
 mod inflate;
+mod inflate_smooth;
 mod plane;
 mod session;
 mod w3;

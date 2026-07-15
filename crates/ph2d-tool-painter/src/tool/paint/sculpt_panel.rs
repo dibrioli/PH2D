@@ -83,6 +83,24 @@ impl PainterTool {
     /// Route a Sculpt-panel event to its setter. Segmented mode = `Click` on an option id (its array
     /// position is the mode); sliders = `SetValue`. Returns `true` iff consumed. Mirrors
     /// `route_deform_event`; hung off the `handle_panel_event` chain.
+    /// Inflate's Smoothness track (`0..1`) — the card paints it, the chip shows the mapped texel radius.
+    #[must_use]
+    pub fn sculpt_smooth(&self) -> f32 {
+        self.paint.sculpt.smooth_norm
+    }
+
+    /// Inflate's Smoothness in texels (`0..16`), as the chip reads it.
+    #[must_use]
+    pub fn sculpt_smooth_px(&self) -> u32 {
+        self.paint.sculpt.inflate_smooth_px()
+    }
+
+    /// Whether the active verb is **Inflate** — the one Memo verb that shows Depth *and* Smoothness.
+    #[must_use]
+    pub fn is_sculpt_inflate(&self) -> bool {
+        matches!(self.paint.sculpt.mode_enum(), SculptMode::Inflate)
+    }
+
     pub(crate) fn route_sculpt_event(
         &mut self,
         event: &ph2d_editor_core::tool::PanelEvent,
@@ -112,6 +130,10 @@ impl PainterTool {
             }
             PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_ANGLE_SLIDER => {
                 self.set_sculpt_angle(*v as f32);
+                true
+            }
+            PanelEvent::SetValue(id, v) if *id == core_ids::PAINTER_SCULPT_SMOOTH_SLIDER => {
+                self.set_sculpt_smooth(*v as f32);
                 true
             }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SCULPT_RAKE => {

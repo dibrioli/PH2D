@@ -76,12 +76,13 @@ fn sparks(g: &mut Graph) -> Option<NodeId> {
     // Solid blocks — a small spark has little light to spread, so the halo comes
     // out thin; a fuller block gives the glow real energy.
     g.set_param(scale, "amount", 0.28);
-    // The glow node the shell reads for the pass. Strong intensity + a moderately
-    // tight radius so the hot end of the ramp halos brightly instead of fogging.
+    // The glow node the shell reads for the pass. The COD mip chain accumulates
+    // energy across levels, so a moderate intensity already reads as a bright,
+    // ROUND halo (no longer the square of a single-scale box blur).
     g.set_param(glow, "threshold", 1.0);
     g.set_param(glow, "knee", 0.6);
-    g.set_param(glow, "intensity", 1.7);
-    g.set_param(glow, "radius", 1.3);
+    g.set_param(glow, "intensity", 1.0);
+    g.set_param(glow, "radius", 1.0);
     g.set_label(out, "GLOW");
     Some(out)
 }

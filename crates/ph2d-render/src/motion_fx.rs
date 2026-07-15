@@ -16,29 +16,36 @@
 //! ## Why HDR (the whole reason this is Motion's pass and not the compositor's)
 //!
 //! Every target here is `Rgba16Float`. Bloom lives on the values **above 1.0**:
-//! a spark tinted `(3, 2, 1)` glows three times as hard as one tinted white. The
-//! Painter's 8-bit compositor would clip those to white on the way in — which is
-//! exactly why routing Motion glow through it was rejected (doc 66). The tonemap
-//! downstream still clamps the summed result, so the brightest cores read as
-//! white and the halo falls off through the mid-tones — a real bloom.
+//! a spark tinted `(6, 4, 2)` glows harder than one tinted white. The Painter's
+//! 8-bit compositor would clip those to white on the way in — which is why
+//! routing Motion glow through it was rejected (doc 66). The tonemap downstream
+//! still clamps the summed result, so the brightest cores read as white and the
+//! halo falls off through the mid-tones — a real bloom.
 //!
-//! ## The chain
+//! ## The chain — Call of Duty / Jimenez mip bloom (round, not square)
+//!
+//! A single wide box blur keeps the SQUARE of the source quad. This is the
+//! technique Unity/Unreal ship (SIGGRAPH 2014; reference: LearnOpenGL "Physically
+//! Based Bloom"): the bright-passed image is progressively **downsampled** (13-tap)
+//! into a mip chain, then **upsampled** back (9-tap tent) with additive
+//! accumulation. The repeated bilinear halving dissolves the source's corners into
+//! a ROUND falloff with energy at every scale — a tight core halo AND a soft wide
+//! glow.
 //!
 //! ```text
-//!   motion RT (full-res HDR) ──prefilter──▶ a (½-res) ─blur─▶ b ─blur─▶ a ─blur─▶ b ─blur─▶ a
-//!                                                                                            │
-//!                                    game_rt ◀────────────── additive composite ◀───────────┘
+//!   motion RT ──prefilter──▶ mip0 ─down─▶ mip1 ─down─▶ … ─down─▶ mipN
+//!                             ▲            ▲                      │
+//!                             └── +up ─────┴──── +up ─── … ── +up┘   (additive)
+//!                             │
+//!             game_rt ◀── additive composite (× intensity) ◀── mip0
 //! ```
 //!
-//! Prefilter (soft-knee bright-pass) also downsamples to half-res; four Kawase
-//! iterations ping-pong `a`/`b` with a growing offset (a cheap wide Gaussian);
-//! the composite adds the result over `game_rt` with One/One color blend. All in
-//! `shaders/bloom.wgsl`; no transcendentals (HR-5).
+//! All in `shaders/bloom.wgsl`; no transcendentals (HR-5).
 
 use ph2d_gpu::GpuContext;
 
-/// The three glow knobs the document carries (doc 67). Plain data — the panel
-/// authors it, the shell hands it to [`bloom_over`](MotionFx::bloom_over).
+/// The three glow knobs the document carries (doc 67). Plain data — the `fx.glow`
+/// node authors it, the shell hands it to [`bloom_over`](MotionFx::bloom_over).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct BloomParams {
     /// Brightness above which a pixel starts to glow (premult `max(r,g,b)`).
@@ -47,9 +54,9 @@ pub struct BloomParams {
     /// Soft-knee width around the threshold — the glow ramps in over
     /// `[threshold-knee, threshold]` instead of switching on hard.
     pub knee: f32,
-    /// Multiplier on the blurred glow before it is added to the scene.
+    /// Multiplier on the accumulated glow before it is added to the scene.
     pub intensity: f32,
-    /// Scales the blur offsets — a wider radius spreads the halo further.
+    /// Scales the upsample tent radius — a wider radius spreads the halo further.
     pub radius: f32,
 }
 
@@ -73,22 +80,26 @@ impl BloomParams {
     }
 }
 
-/// Base blur offsets in half-res texels, scaled by [`BloomParams::radius`]. Four
-/// growing steps ping-ponged `a→b→a→b→a` widen the halo.
-const BLUR_OFFSETS: [f32; 4] = [1.0, 2.0, 3.0, 4.0];
+/// Upsample tent radius in UV at `radius = 1` (the mip chain does the heavy
+/// spreading; this is the per-level tent overlap). Scaled by `BloomParams::radius`.
+const BASE_FILTER_RADIUS: f32 = 0.006;
+/// Cap on mip-chain depth (6 halvings reach a wide soft glow at any editor size).
+const MAX_MIPS: usize = 6;
 
 struct Tex {
     #[allow(dead_code)]
     texture: wgpu::Texture,
     view: wgpu::TextureView,
+    size: (u32, u32),
 }
 
 fn make_tex(gpu: &GpuContext, size: (u32, u32), label: &str) -> Tex {
+    let size = (size.0.max(1), size.1.max(1));
     let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some(label),
         size: wgpu::Extent3d {
-            width: size.0.max(1),
-            height: size.1.max(1),
+            width: size.0,
+            height: size.1,
             depth_or_array_layers: 1,
         },
         mip_level_count: 1,
@@ -99,7 +110,26 @@ fn make_tex(gpu: &GpuContext, size: (u32, u32), label: &str) -> Tex {
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    Tex { texture, view }
+    Tex {
+        texture,
+        view,
+        size,
+    }
+}
+
+/// The mip resolutions: mip0 = half the RT, then halve while both dims stay ≥ 2,
+/// capped at [`MAX_MIPS`]. Always at least one level.
+fn mip_sizes(size: (u32, u32)) -> Vec<(u32, u32)> {
+    let mut out = Vec::new();
+    let mut s = (size.0.max(2) / 2, size.1.max(2) / 2);
+    for _ in 0..MAX_MIPS {
+        out.push(s);
+        if s.0 <= 2 || s.1 <= 2 {
+            break;
+        }
+        s = ((s.0 / 2).max(1), (s.1 / 2).max(1));
+    }
+    out
 }
 
 pub struct MotionFx {
@@ -107,23 +137,25 @@ pub struct MotionFx {
     bgl: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     prefilter_pipeline: wgpu::RenderPipeline,
-    blur_pipeline: wgpu::RenderPipeline,
+    downsample_pipeline: wgpu::RenderPipeline,
+    upsample_pipeline: wgpu::RenderPipeline,
     composite_pipeline: wgpu::RenderPipeline,
     u_prefilter: wgpu::Buffer,
-    u_blur: [wgpu::Buffer; 4],
+    u_up: wgpu::Buffer,
     u_composite: wgpu::Buffer,
 
     // Size-dependent (rebuilt on resize):
     rt: Tex,
-    a: Tex,
-    b: Tex,
+    mips: Vec<Tex>,
+    /// One per downsample pass (`mips.len() - 1`), holding that pass's source texel size.
+    u_down: Vec<wgpu::Buffer>,
     bg_prefilter: wgpu::BindGroup,
-    /// One per blur iteration: source alternates `a,b,a,b`, each paired with its
-    /// own offset uniform.
-    bg_blur: [wgpu::BindGroup; 4],
+    /// Downsample pass `i` reads `mips[i]` → writes `mips[i+1]`.
+    bg_down: Vec<wgpu::BindGroup>,
+    /// Upsample pass `i` reads `mips[i+1]` → writes `mips[i]` (additive).
+    bg_up: Vec<wgpu::BindGroup>,
     bg_composite: wgpu::BindGroup,
     size: (u32, u32),
-    half: (u32, u32),
 }
 
 impl MotionFx {
@@ -218,8 +250,7 @@ impl MotionFx {
                 })
         };
 
-        // Additive over the scene: color One/One (glow only brightens), alpha
-        // kept from the destination (the opaque scene stays opaque).
+        // Additive: color One/One (light only brightens), alpha kept from the dst.
         let additive = wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::One,
@@ -233,7 +264,11 @@ impl MotionFx {
             },
         };
         let prefilter_pipeline = pipeline("ph2d-render motion-fx prefilter", "fs_prefilter", None);
-        let blur_pipeline = pipeline("ph2d-render motion-fx blur", "fs_blur", None);
+        let downsample_pipeline =
+            pipeline("ph2d-render motion-fx downsample", "fs_downsample", None);
+        // Upsample accumulates onto the finer mip's existing downsample content.
+        let upsample_pipeline =
+            pipeline("ph2d-render motion-fx upsample", "fs_upsample", Some(additive));
         let composite_pipeline =
             pipeline("ph2d-render motion-fx composite", "fs_composite", Some(additive));
 
@@ -257,86 +292,87 @@ impl MotionFx {
             })
         };
         let u_prefilter = uniform("ph2d-render motion-fx u_prefilter");
-        let u_blur = [
-            uniform("ph2d-render motion-fx u_blur0"),
-            uniform("ph2d-render motion-fx u_blur1"),
-            uniform("ph2d-render motion-fx u_blur2"),
-            uniform("ph2d-render motion-fx u_blur3"),
-        ];
+        let u_up = uniform("ph2d-render motion-fx u_up");
         let u_composite = uniform("ph2d-render motion-fx u_composite");
 
-        let (rt, a, b, bg_prefilter, bg_blur, bg_composite, half) =
-            build_targets(gpu, &bgl, &sampler, &u_prefilter, &u_blur, &u_composite, size);
+        let t = build_targets(gpu, &bgl, &sampler, &u_prefilter, &u_up, &u_composite, size);
 
         Self {
             bgl,
             sampler,
             prefilter_pipeline,
-            blur_pipeline,
+            downsample_pipeline,
+            upsample_pipeline,
             composite_pipeline,
             u_prefilter,
-            u_blur,
+            u_up,
             u_composite,
-            rt,
-            a,
-            b,
-            bg_prefilter,
-            bg_blur,
-            bg_composite,
+            rt: t.rt,
+            mips: t.mips,
+            u_down: t.u_down,
+            bg_prefilter: t.bg_prefilter,
+            bg_down: t.bg_down,
+            bg_up: t.bg_up,
+            bg_composite: t.bg_composite,
             size,
-            half,
         }
     }
 
-    /// The full-resolution HDR target the shell renders the Motion instances
-    /// into (via [`render_instances_only`](crate::SpriteRenderer::render_instances_only))
+    /// The full-resolution HDR target the shell renders the Motion instances into
+    /// (via [`render_instances_only`](crate::SpriteRenderer::render_instances_only))
     /// before calling [`bloom_over`](Self::bloom_over).
     pub fn rt_view(&self) -> &wgpu::TextureView {
         &self.rt.view
     }
 
-    /// Recreate the RT + blur chain if the surface size changed. Call alongside
+    /// Recreate the RT + mip chain if the surface size changed. Call alongside
     /// `game_rt.ensure_size`.
     pub fn ensure_size(&mut self, gpu: &GpuContext, size: (u32, u32)) {
         if size == self.size || size.0 == 0 || size.1 == 0 {
             return;
         }
-        let (rt, a, b, bg_prefilter, bg_blur, bg_composite, half) = build_targets(
+        let t = build_targets(
             gpu,
             &self.bgl,
             &self.sampler,
             &self.u_prefilter,
-            &self.u_blur,
+            &self.u_up,
             &self.u_composite,
             size,
         );
-        self.rt = rt;
-        self.a = a;
-        self.b = b;
-        self.bg_prefilter = bg_prefilter;
-        self.bg_blur = bg_blur;
-        self.bg_composite = bg_composite;
+        self.rt = t.rt;
+        self.mips = t.mips;
+        self.u_down = t.u_down;
+        self.bg_prefilter = t.bg_prefilter;
+        self.bg_down = t.bg_down;
+        self.bg_up = t.bg_up;
+        self.bg_composite = t.bg_composite;
         self.size = size;
-        self.half = half;
     }
 
-    /// Bright-pass + blur the Motion RT and add the glow over `target` (the game
+    /// Bright-pass, downsample, upsample and add the glow over `target` (the game
     /// RT). Assumes the shell already rendered the Motion instances into
-    /// [`rt_view`](Self::rt_view) this frame.
+    /// [`rt_view`](Self::rt_view) this frame, at the SAME sub-rect the scene used.
     pub fn bloom_over(&self, gpu: &GpuContext, target: &wgpu::TextureView, params: &BloomParams) {
-        // Per-pass uniforms. Distinct buffers → all queue writes land before the
-        // single submit, and no pass mutates another's value mid-encoder.
+        // Per-pass uniforms (distinct buffers → all queue writes land before the
+        // single submit; no pass mutates another's value mid-encoder).
         gpu.queue.write_buffer(
             &self.u_prefilter,
             0,
             bytemuck::cast_slice(&params.prefilter_curve()),
         );
-        let texel = (1.0 / self.half.0.max(1) as f32, 1.0 / self.half.1.max(1) as f32);
-        for (off, buf) in BLUR_OFFSETS.iter().zip(&self.u_blur) {
-            let s = off * params.radius;
-            let v: [f32; 4] = [texel.0 * s, texel.1 * s, 0.0, 0.0];
+        for (i, buf) in self.u_down.iter().enumerate() {
+            // Downsample pass i reads mips[i]; its taps step by that mip's texel.
+            let s = self.mips[i].size;
+            let v: [f32; 4] = [1.0 / s.0 as f32, 1.0 / s.1 as f32, 0.0, 0.0];
             gpu.queue.write_buffer(buf, 0, bytemuck::cast_slice(&v));
         }
+        // Tent radius in UV; y scaled by aspect so the spread is round in pixels.
+        let aspect = self.size.0.max(1) as f32 / self.size.1.max(1) as f32;
+        let fr = BASE_FILTER_RADIUS * params.radius.max(0.0);
+        let up: [f32; 4] = [fr, fr * aspect, 0.0, 0.0];
+        gpu.queue
+            .write_buffer(&self.u_up, 0, bytemuck::cast_slice(&up));
         let comp: [f32; 4] = [params.intensity, 0.0, 0.0, 0.0];
         gpu.queue
             .write_buffer(&self.u_composite, 0, bytemuck::cast_slice(&comp));
@@ -347,28 +383,38 @@ impl MotionFx {
                 label: Some("ph2d-render motion-fx encoder"),
             });
 
-        // Prefilter: motion RT → a (½-res).
+        // Prefilter: motion RT → mip0 (bright-pass + half-res downsample).
         fullscreen(
             &mut encoder,
             &self.prefilter_pipeline,
             &self.bg_prefilter,
-            &self.a.view,
+            &self.mips[0].view,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             "render.motion_fx.prefilter",
         );
-        // Four Kawase iterations ping-ponging a→b→a→b→a.
-        let dst = [&self.b.view, &self.a.view, &self.b.view, &self.a.view];
-        for (bg, dst_view) in self.bg_blur.iter().zip(dst) {
+        // Downsample chain: mip[i] → mip[i+1].
+        for (i, bg) in self.bg_down.iter().enumerate() {
             fullscreen(
                 &mut encoder,
-                &self.blur_pipeline,
+                &self.downsample_pipeline,
                 bg,
-                dst_view,
+                &self.mips[i + 1].view,
                 wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                "render.motion_fx.blur",
+                "render.motion_fx.down",
             );
         }
-        // Composite: final glow (in `a`) added over the scene.
+        // Upsample chain, coarse → fine: add mip[i+1] onto mip[i] (Load + additive).
+        for i in (0..self.bg_up.len()).rev() {
+            fullscreen(
+                &mut encoder,
+                &self.upsample_pipeline,
+                &self.bg_up[i],
+                &self.mips[i].view,
+                wgpu::LoadOp::Load,
+                "render.motion_fx.up",
+            );
+        }
+        // Composite: the accumulated glow (mip0) added over the scene.
         fullscreen(
             &mut encoder,
             &self.composite_pipeline,
@@ -411,32 +457,44 @@ fn fullscreen(
     pass.draw(0..3, 0..1);
 }
 
-/// (Re)create the full-res RT + the two half-res ping-pong textures and the
-/// bind groups that reference them. The bind groups pair each pass's source
-/// view with its uniform: prefilter reads the RT; blur `i` reads `a` on even
-/// iterations and `b` on odd; composite reads `a` (the final blur target).
-#[allow(clippy::type_complexity)]
+/// Everything size-dependent: the full-res RT, the mip chain, the per-pass
+/// downsample uniforms, and all bind groups.
+struct Targets {
+    rt: Tex,
+    mips: Vec<Tex>,
+    u_down: Vec<wgpu::Buffer>,
+    bg_prefilter: wgpu::BindGroup,
+    bg_down: Vec<wgpu::BindGroup>,
+    bg_up: Vec<wgpu::BindGroup>,
+    bg_composite: wgpu::BindGroup,
+}
+
 fn build_targets(
     gpu: &GpuContext,
     bgl: &wgpu::BindGroupLayout,
     sampler: &wgpu::Sampler,
     u_prefilter: &wgpu::Buffer,
-    u_blur: &[wgpu::Buffer; 4],
+    u_up: &wgpu::Buffer,
     u_composite: &wgpu::Buffer,
     size: (u32, u32),
-) -> (
-    Tex,
-    Tex,
-    Tex,
-    wgpu::BindGroup,
-    [wgpu::BindGroup; 4],
-    wgpu::BindGroup,
-    (u32, u32),
-) {
-    let half = (size.0.max(2) / 2, size.1.max(2) / 2);
+) -> Targets {
     let rt = make_tex(gpu, size, "ph2d-render motion-fx RT (Rgba16Float HDR)");
-    let a = make_tex(gpu, half, "ph2d-render motion-fx blur a");
-    let b = make_tex(gpu, half, "ph2d-render motion-fx blur b");
+    let mips: Vec<Tex> = mip_sizes(size)
+        .into_iter()
+        .map(|d| make_tex(gpu, d, "ph2d-render motion-fx mip"))
+        .collect();
+    let passes = mips.len().saturating_sub(1);
+
+    let u_down: Vec<wgpu::Buffer> = (0..passes)
+        .map(|_| {
+            gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ph2d-render motion-fx u_down"),
+                size: 16,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            })
+        })
+        .collect();
 
     let bind = |src: &wgpu::TextureView, u: &wgpu::Buffer| {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -460,15 +518,23 @@ fn build_targets(
     };
 
     let bg_prefilter = bind(&rt.view, u_prefilter);
-    // Sources alternate a,b,a,b (matching the a→b→a→b→a ping-pong in bloom_over).
-    let bg_blur = [
-        bind(&a.view, &u_blur[0]),
-        bind(&b.view, &u_blur[1]),
-        bind(&a.view, &u_blur[2]),
-        bind(&b.view, &u_blur[3]),
-    ];
-    let bg_composite = bind(&a.view, u_composite);
-    (rt, a, b, bg_prefilter, bg_blur, bg_composite, half)
+    let bg_down: Vec<_> = (0..passes)
+        .map(|i| bind(&mips[i].view, &u_down[i]))
+        .collect();
+    let bg_up: Vec<_> = (0..passes)
+        .map(|i| bind(&mips[i + 1].view, u_up))
+        .collect();
+    let bg_composite = bind(&mips[0].view, u_composite);
+
+    Targets {
+        rt,
+        mips,
+        u_down,
+        bg_prefilter,
+        bg_down,
+        bg_up,
+        bg_composite,
+    }
 }
 
 #[cfg(test)]
@@ -477,8 +543,8 @@ mod tests {
 
     #[test]
     fn default_bloom_is_threshold_one() {
-        // The neutral authored bloom only lights genuinely-HDR (emissive)
-        // pixels: threshold 1.0 leaves an LDR scene untouched.
+        // The neutral authored bloom only lights genuinely-HDR (emissive) pixels:
+        // threshold 1.0 leaves an LDR scene untouched.
         assert_eq!(BloomParams::default().threshold, 1.0);
     }
 
@@ -505,6 +571,17 @@ mod tests {
         assert!(p.prefilter_curve().iter().all(|v| v.is_finite()));
     }
 
+    #[test]
+    fn mip_chain_halves_and_is_capped() {
+        // Half-res start, then halving, capped at MAX_MIPS, always ≥ 1 level.
+        let m = mip_sizes((1024, 768));
+        assert_eq!(m[0], (512, 384));
+        assert!(m.len() <= MAX_MIPS);
+        assert!(m.windows(2).all(|w| w[1].0 <= w[0].0 && w[1].1 <= w[0].1));
+        // A tiny surface still yields a usable single mip, never an empty chain.
+        assert!(!mip_sizes((2, 2)).is_empty());
+    }
+
     /// Build a headless GpuContext (see `game_rt` tests). `None` on an
     /// adapter-less runner → the test no-ops there.
     fn try_headless_gpu() -> Option<GpuContext> {
@@ -519,12 +596,12 @@ mod tests {
     }
 
     /// **The blank-screen guard.** Constructing `MotionFx` compiles `bloom.wgsl`
-    /// and builds the three pipelines + every bind group against a real device —
-    /// a shader error, a layout mismatch, or a wrong texture format dies HERE, not
-    /// as an empty glow at runtime. `ensure_size` exercises the resize rebuild, and
-    /// `bloom_over` encodes + submits the whole chain (prefilter → 4 blur → additive
-    /// composite) into a Motion-format target; `poll(Wait)` drains it so any
-    /// deferred validation surfaces before the test returns.
+    /// and builds the four pipelines + every bind group against a real device — a
+    /// shader error, a layout mismatch, or a wrong texture format dies HERE, not
+    /// as an empty glow at runtime. `ensure_size` exercises the resize rebuild
+    /// (and a mip count change), and `bloom_over` encodes + submits the whole
+    /// chain (prefilter → downsample → upsample → composite); `poll(Wait)` drains
+    /// it so any deferred validation surfaces before the test returns.
     #[test]
     fn the_bloom_chain_is_a_valid_pipeline_on_a_real_device() {
         let Some(gpu) = try_headless_gpu() else {

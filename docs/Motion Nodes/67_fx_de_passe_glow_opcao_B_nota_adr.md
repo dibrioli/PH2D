@@ -98,12 +98,25 @@ um borrão marrom sem miolo, enquanto os miolos — HDR clampado pra **branco** 
 aplicada à projeção: *a autoria (render do FX) usa a MESMA transform da leitura (o passe da
 cena)*. O `scene_viewport` agora atravessa o `render_instances_only`.
 
-**A cadeia** (`shaders/bloom.wgsl`, sem transcendentais — HR-5):
-`prefilter (bright-pass soft-knee, COD/Karis) + downsample p/ ½-res` → **4 iterações
-Kawase** ping-pong `a→b→a→b→a` (Gaussiana larga barata) → **composite aditivo** (color
-One/One) sobre o `game_rt`. Tudo `Rgba16Float`: o `tint` da instância é `[f32;4]` **sem
-clamp** no lowering, então uma faísca `(6,4,2)` some 6× mais luz que uma branca — o excesso
-> 1.0 sobrevive ao blur (era exatamente isso que o round-trip 8-bit mataria).
+**A cadeia — o mip bloom do Call of Duty / Jimenez** (SIGGRAPH 2014; referência
+[LearnOpenGL "Physically Based Bloom"](https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom),
+`shaders/bloom.wgsl`, sem transcendentais — HR-5): `prefilter (bright-pass soft-knee) p/
+½-res` → **downsample 13-tap** progressivo numa cadeia de mips (≤6 níveis) → **upsample
+tent 9-tap** de volta, somando aditivamente cada nível → **composite aditivo** sobre o
+`game_rt`. Tudo `Rgba16Float`: o `tint` da instância é `[f32;4]` **sem clamp** no lowering,
+então uma faísca `(6,4,2)` some mais luz que uma branca — o excesso > 1.0 sobrevive à
+cadeia (era exatamente isso que o round-trip 8-bit mataria).
+
+**⚠️ Por que a 1ª versão saiu QUADRADA (e a lição):** o primeiro motor era um **Kawase de
+passe único** (4 taps em caixa). Um box-filter fraco sobre um quad quadrado **preserva a
+caixa** — o Enio viu o halo retangular e perguntou *"o efeito natural não tenderia ao
+arredondamento?"*. Ele estava certo, e a resposta estava no **código dos apros**, não no
+meu instinto: Unity/Unreal usam a cadeia de mips, e o **bilinear repetido do
+downsample/upsample dissolve as quinas** num caimento redondo e multi-escala (halo apertado
+no miolo **e** brilho macio longe). Trocar o motor foi blast-radius-zero — só `motion_fx.rs`
++ `bloom.wgsl`, a interface (`bloom_over`/`BloomParams`) intacta. [[feedback_render_and_look_when_a_green_gate_is_contradicted]]:
+os gates estavam verdes (o pipeline É válido), mas **o pixel é o oráculo** — a forma do halo
+só se julga olhando.
 
 ## 5. A demo: `PH2D_MOTION_FX_SMOKE=1`
 

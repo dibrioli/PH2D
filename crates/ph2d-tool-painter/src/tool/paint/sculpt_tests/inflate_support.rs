@@ -195,8 +195,7 @@ fn the_inflate_writes_nothing_beyond_the_balls_reach_on_thick_paint() {
         }
     }
     assert_eq!(
-        violations,
-        0,
+        violations, 0,
         "Inflate wrote {violations} texels BEYOND the ball's reach (worst: {worst:.3} loads at \
          {worst_at:?}). A ball pressed along the brush's falloff cannot span there; these writes are the \
          compute window showing through — and the window is a rectangle, which is exactly the residual \
@@ -258,7 +257,10 @@ fn an_untouched_wall_does_not_shadow_the_balls_lift() {
     // The receiver: bare floor 3 px past the brush's edge, 5 px shy of the wall — inside the touched
     // sources' own reach, and inside the wall's shadow if the wall is allowed to compete.
     let recv = (80 * size + 95) as usize;
-    assert!(touched[recv] <= 0.0, "fixture: the receiver must be UNtouched");
+    assert!(
+        touched[recv] <= 0.0,
+        "fixture: the receiver must be UNtouched"
+    );
 
     let lift = after[recv] - field[recv];
     assert!(
@@ -360,9 +362,7 @@ fn a_weak_dabs_ball_is_small_and_its_reach_shrinks_with_it() {
     let (mut t, layer, _) = sculpt_canvas(size);
 
     // A ramp: pre rises 0.05 loads per texel of x. Covered everywhere (it is all paint).
-    let ramp: Vec<f32> = (0..n)
-        .map(|i| (i as u32 % size) as f32 * 0.05)
-        .collect();
+    let ramp: Vec<f32> = (0..n).map(|i| (i as u32 % size) as f32 * 0.05).collect();
     t.heights.insert(layer, Arc::new(ramp.clone()));
     t.covers.insert(layer, Arc::new(vec![255u8; n]));
     t.sync_relief_flags();

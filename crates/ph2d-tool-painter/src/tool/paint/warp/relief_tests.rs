@@ -49,7 +49,9 @@ fn deformable_relief_tool() -> (PainterTool, crate::tool::RtLayerId) {
     }
     t.on_canvas_pointer(cp([x, 80.0], PointerPhase::Up));
     assert!(
-        t.heights.get(&layer).is_some_and(|h| h.iter().any(|v| *v > 0.5)),
+        t.heights
+            .get(&layer)
+            .is_some_and(|h| h.iter().any(|v| *v > 0.5)),
         "fixture: the deposit laid no relief"
     );
 
@@ -119,7 +121,10 @@ fn the_warp_carries_the_body_with_the_colour() {
     let h0 = heights_of(&t, layer);
     let c0 = covers_of(&t, layer);
     let m0 = mats_of(&t, layer);
-    assert!(t.paint.deform.affect_relief, "fixture: the toggle defaults ON");
+    assert!(
+        t.paint.deform.affect_relief,
+        "fixture: the toggle defaults ON"
+    );
 
     push_right(&mut t);
 
@@ -166,8 +171,8 @@ fn the_toggle_off_leaves_the_body_byte_identical() {
     push_right(&mut t);
 
     let h1 = heights_of(&t, layer);
-    let same_h = h0.len() == h1.len()
-        && h0.iter().zip(&h1).all(|(a, b)| a.to_bits() == b.to_bits());
+    let same_h =
+        h0.len() == h1.len() && h0.iter().zip(&h1).all(|(a, b)| a.to_bits() == b.to_bits());
     assert!(
         same_h,
         "Affect Relief is OFF and the heights still moved — the toggle is cosmetic, which is worse than \
@@ -326,8 +331,7 @@ fn undo_rolls_the_warp_session_back_with_the_body() {
         }
         t.on_canvas_pointer(cp([122.0, 80.0], PointerPhase::Up));
     }
-    let displaced_now =
-        centroid_x_f32(&heights_of(&t, layer), w) - centroid_x_f32(&h0, w);
+    let displaced_now = centroid_x_f32(&heights_of(&t, layer), w) - centroid_x_f32(&h0, w);
     let displaced_mid = centroid_x_f32(&after_undo, w) - centroid_x_f32(&h0, w);
     assert!(
         displaced_now.abs() < displaced_mid.abs() * 0.5 + 0.05,
@@ -378,7 +382,10 @@ fn a_bare_layer_gains_no_planes_from_a_warp() {
         !t.heights.contains_key(&layer),
         "warping a layer with no impasto invented a heights plane for it"
     );
-    assert!(t.paint.deform.pre_h.is_empty(), "…and froze a baseline for it");
+    assert!(
+        t.paint.deform.pre_h.is_empty(),
+        "…and froze a baseline for it"
+    );
     assert!(t.paint.deform.relief_layer.is_none());
     let _ = Arc::clone(&t.canvas_rgba); // the pixels exist and moved; the body correctly never did
 }

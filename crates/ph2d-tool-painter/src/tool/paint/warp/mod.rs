@@ -254,7 +254,12 @@ impl PainterTool {
             // The relief baseline rebases WITH the pixel baseline — the two are one canvas. Leaving the
             // old planes frozen would make the next Reconstruct slide the body back to a state the
             // pixels can no longer reach.
-            if let Some(l) = self.paint.deform.relief_layer.filter(|l| self.layers.active() == Some(*l)) {
+            if let Some(l) = self
+                .paint
+                .deform
+                .relief_layer
+                .filter(|l| self.layers.active() == Some(*l))
+            {
                 let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
                 self.paint.deform.pre_h = self
                     .heights

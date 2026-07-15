@@ -409,7 +409,8 @@ impl PainterTool {
             }
         }
         let a_curv = 1.0 / (2.0 * depth.abs() * unit * unit); // 1/(2·|Depth|·unit²)
-        let (mut hbuf, mut sbuf) = super::sculpt_offset::blob_dilate(&g, cr.w, cr.h, a_curv, dilate);
+        let (mut hbuf, mut sbuf) =
+            super::sculpt_offset::blob_dilate(&g, cr.w, cr.h, a_curv, dilate);
         // The ball has a RADIUS, and it is EACH SOURCE'S OWN. A parabola of peak `p` has spent itself
         // after `d² = p/a` — that is where that source's ball ends (`2ρ²·amount`, the full ρ√2 only at
         // full strength). Past it the parabola is flank fiction: a real sphere's side plunges vertically

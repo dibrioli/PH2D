@@ -22113,3 +22113,92 @@ fn stacking_is_linear_and_weight_proportional() {
         last = seen;
     }
 }
+
+/// **The relief of scattered dabs is BEADS, not bars — the capsule law** (Enio's live smoke,
+/// 2026-07-15, twice: "relevo fora tinta com jitter" and, with the Airbrush, "de um ponto de relevo
+/// a outro, uma reta de relevo ligasse os pontos").
+///
+/// The height pass sweeps each dab's body back to the previous dab's centre — a capsule — so
+/// overlapping stamps join into the stroke's true distance field instead of sagging between
+/// centres. The sweep's premise is that the segment between the two centres is GUARANTEED PAINT,
+/// and three product knobs break it: per-dab position scatter, Jitter-Scale-shrunken dabs, and the
+/// Airbrush's timer dabs under a fast cursor. The colour paints beads there; the height swept a
+/// TUBE across bare canvas — film + relief with no pigment under them, which the light dutifully
+/// shades: grey bars beside the paint. The law now: sweep only when each disc contains the other's
+/// centre (`dist <= min(r, r_prev)`); otherwise the dab is a bead, exactly like its pigment.
+///
+/// The oracle models the APPEARANCE: no strong film (the coverage the light weighs, > 8/255)
+/// farther than 8 px from any pigment. The 8 px allowance is the soft-rim rounding band that soft
+/// edges always had (measured: every residual sits within 8 px of paint, most within 2); the bars
+/// this gate exists for sat 10-80 px out at FULL film, so the gap between artifact and allowance
+/// is an order of magnitude.
+///
+/// **Mutation that must bleed:** drop the `sweepable` gate on `prev_center` in
+/// `stamp_dabs_height` (sweep unconditionally, the old behaviour) — both fixtures light up bars.
+#[test]
+fn the_relief_of_scattered_dabs_is_beads_not_bars() {
+    let size = 300u32;
+    // Fixture A: the smoke's brush + full position scatter (the first screenshot).
+    // Fixture B: the Airbrush with a fast cursor — consecutive timer dabs far apart (the second
+    // screenshot: "uma reta de relevo ligando os pontos").
+    for (name, method, jitter, step) in [
+        ("scatter", 3u8, 1.0f32, 22.0f32),
+        ("airbrush jump", 1, 0.0, 60.0),
+    ] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.set_brush_size_px(40.0);
+        t.toggle_brush_impasto();
+        t.set_brush_stroke_method(method);
+        t.set_brush_jitter_norm(jitter);
+        t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
+        let moves = (220.0 / step) as u32;
+        for i in 1..=moves {
+            t.on_canvas_pointer(cp([40.0 + step * i as f32, 150.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
+
+        let id = t.layers.active().expect("a layer");
+        let cov = t.covers.get(&id).map(|c| (**c).clone()).unwrap_or_default();
+        assert!(
+            cov.iter().filter(|&&c| c > 8).count() > 500,
+            "{name}: fixture laid no film — the absence below would be vacuous"
+        );
+        let w = size as usize;
+        let px = &t.canvas_rgba;
+        let is_pig = |x: i64, y: i64| -> bool {
+            if x < 0 || y < 0 || x >= size as i64 || y >= size as i64 {
+                return false;
+            }
+            let i = (y as usize * w + x as usize) * 4;
+            px[i] != 255 || px[i + 1] != 255 || px[i + 2] != 255
+        };
+        let mut bars = 0usize;
+        let mut worst: Option<(i64, i64, u8)> = None;
+        for y in 0..size as i64 {
+            for x in 0..size as i64 {
+                let i = y as usize * w + x as usize;
+                if cov[i] <= 8 || is_pig(x, y) {
+                    continue;
+                }
+                let near = (1..=8i64).any(|r| {
+                    (-r..=r).any(|dy| {
+                        (-r..=r).any(|dx| dx.abs().max(dy.abs()) == r && is_pig(x + dx, y + dy))
+                    })
+                });
+                if !near {
+                    bars += 1;
+                    if worst.is_none_or(|(_, _, c)| cov[i] > c) {
+                        worst = Some((x, y, cov[i]));
+                    }
+                }
+            }
+        }
+        assert_eq!(
+            bars, 0,
+            "{name}: {bars} texels carry film > 8 farther than 8 px from ANY pigment (worst \
+             {worst:?}) — the light will shade bare canvas there: the grey bar linking the beads. \
+             The capsule swept a segment that is not paint."
+        );
+    }
+}

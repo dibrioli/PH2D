@@ -31,12 +31,15 @@ pub(super) struct ReliefState {
     /// dab: the body curve runs on the silhouette and the dynamics scale it, which is what keeps the light
     /// alive under a light touch. Merged into the layer's `covers` at stroke end.
     pub(super) stroke_film: Vec<u8>,
-    /// **Impasto**: where each Symmetry copy of the stroke was when the LAST pointer batch ended, so the
-    /// first dab of the next batch can sweep back to it. Without it the relief would bead at every
-    /// pointer event — a beading chosen by the artist's mouse polling rate, not by their hand. One slot
-    /// per copy; cleared on pen-down. Mirrors `last_smear_pos` (which is the same idea, for the smear
-    /// chain), but per-copy, because Symmetry paints several strokes at once.
-    pub(super) last_height_center: Vec<Option<[f32; 2]>>,
+    /// **Impasto**: where each Symmetry copy of the stroke was when the LAST pointer batch ended — and
+    /// how BIG that dab was — so the first dab of the next batch can sweep back to it. Without it the
+    /// relief would bead at every pointer event — a beading chosen by the artist's mouse polling rate,
+    /// not by their hand. One slot per copy; cleared on pen-down. Mirrors `last_smear_pos` (which is
+    /// the same idea, for the smear chain), but per-copy, because Symmetry paints several strokes at
+    /// once. The radius rides along because the sweep is CONDITIONAL on overlap (`(center, radius)` —
+    /// see the capsule law in `stamp_dabs_height`): the batch-boundary sweep must ask the same
+    /// question the in-batch sweep asks, or the phantom bar would come back once per pointer event.
+    pub(super) last_height_center: Vec<Option<([f32; 2], f32)>>,
     /// **Impasto live-edit** — the LAST stroke's ingredients, so the whole Body card re-derives that
     /// stroke after the fact instead of only affecting the next one (Enio 2026-07-12). Storing the
     /// HEIGHT instead bakes Body and Depth Source into it, leaving nothing to re-derive them from — the

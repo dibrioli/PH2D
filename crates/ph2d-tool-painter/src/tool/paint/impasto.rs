@@ -166,6 +166,28 @@ impl PainterTool {
                 |first| dabs[first].center,
             )
         };
+        // …and its radius: the capsule law below needs to know how big the PREDECESSOR was.
+        let origin_radius = |gi: usize| -> f32 {
+            groups.iter().position(|&g| g as usize == gi).map_or_else(
+                || dabs.get(gi).map_or(0.0, |d| d.radius_px),
+                |first| dabs[first].radius_px,
+            )
+        };
+        // **The capsule law.** A dab's body is swept back to the previous dab's centre so overlapping
+        // stamps join into the stroke's true distance field instead of a string of beads — but the
+        // sweep's whole premise is that the SEGMENT between the two centres is guaranteed paint. That
+        // is only true when the stamps genuinely overlap: each disc contains the other's centre
+        // (`dist ≤ min(r, r_prev)`). Airbrush jumps (timer dabs under a fast cursor), per-dab position
+        // scatter and Jitter-Scale-shrunken dabs all violate it — and the colour paints BEADS there,
+        // while the height swept a TUBE across bare canvas: film + relief with no pigment under it,
+        // which the light dutifully shades. That is Enio's live smoke of 2026-07-15, twice — the grey
+        // bars "ligando os pontos" beside the paint. Where the premise fails, the dab is a bead,
+        // exactly like its pigment.
+        let sweepable = |center: [f32; 2], radius: f32, prev: [f32; 2], prev_r: f32| -> bool {
+            let (dx, dy) = (center[0] - prev[0], center[1] - prev[1]);
+            let lim = radius.min(prev_r).max(0.0);
+            dx * dx + dy * dy <= lim * lim
+        };
 
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
@@ -195,13 +217,15 @@ impl PainterTool {
                     fp,
                 )
             });
-            // The path predecessor, carrying THIS entry's Tiling wrap.
+            // The path predecessor, carrying THIS entry's Tiling wrap — kept only when the capsule law
+            // holds (see `sweepable` above); a non-overlapping predecessor makes this dab a bead.
             let gi = groups.get(di).map_or(di, |g| *g as usize);
             let prev_center = if gi >= copies {
                 let here = origin_center(gi);
                 let there = origin_center(gi - copies);
                 let off = [d.center[0] - here[0], d.center[1] - here[1]];
-                Some([there[0] + off[0], there[1] + off[1]])
+                let prev = [there[0] + off[0], there[1] + off[1]];
+                sweepable(d.center, d.radius_px, prev, origin_radius(gi - copies)).then_some(prev)
             } else {
                 // First sample of this batch: chain to where the stroke was when the last batch ended,
                 // per symmetry copy — without this the relief would bead at every pointer event, which is
@@ -212,10 +236,11 @@ impl PainterTool {
                     .get(gi)
                     .copied()
                     .flatten()
-                    .map(|prev| {
+                    .and_then(|(prev, prev_r)| {
                         let here = origin_center(gi);
                         let off = [d.center[0] - here[0], d.center[1] - here[1]];
-                        [prev[0] + off[0], prev[1] + off[1]]
+                        let prev = [prev[0] + off[0], prev[1] + off[1]];
+                        sweepable(d.center, d.radius_px, prev, prev_r).then_some(prev)
                     })
             };
             let hd = HeightDab {
@@ -306,7 +331,8 @@ impl PainterTool {
             for c in 0..copies {
                 // The last full round of copies in this batch: group indices `last_group - (copies-1) ..= last_group`.
                 let gi = last_group.saturating_sub(copies - 1 - c);
-                self.paint.relief.last_height_center[c] = Some(origin_center(gi));
+                self.paint.relief.last_height_center[c] =
+                    Some((origin_center(gi), origin_radius(gi)));
             }
         }
         // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back (rule 2).

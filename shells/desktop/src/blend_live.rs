@@ -75,6 +75,37 @@ fn spine_stroke() -> ph2d_vec_scene::StrokeSpec {
     ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(150, 150, 165, 190), 0.03)
 }
 
+/// Fixa as PONTAS do spine autorado aos centros das fontes — só o INTERIOR é editável (o
+/// Illustrator: mover uma ponta não faz sentido, ela pertence à forma). As alças acompanham (a
+/// tangente é preservada), então uma fonte que se move **arrasta a ponta e a curva junto**, e um
+/// arrasto do artista na ponta **volta** para o centro. Sem isto, mover uma ponta descolaria os
+/// passos daquela extremidade da fonte.
+fn pin_spine_endpoints(scene: &mut VecScene, id: VecPathId, centers: &[[f64; 2]]) {
+    let (Some(&first), Some(&last)) = (centers.first(), centers.last()) else {
+        return;
+    };
+    let Some(p) = scene.path_mut(id) else {
+        return;
+    };
+    if let Some(v) = p.verts.first_mut() {
+        shift_vertex_to(v, first);
+    }
+    if let Some(v) = p.verts.last_mut() {
+        shift_vertex_to(v, last);
+    }
+}
+
+/// Move a âncora do vértice para `anchor`, arrastando as duas alças pelo mesmo delta (a tangente
+/// fica igual — a ponta translada inteira).
+fn shift_vertex_to(v: &mut VecVertex, anchor: [f64; 2]) {
+    let d = [anchor[0] - v.anchor[0], anchor[1] - v.anchor[1]];
+    v.anchor = anchor;
+    for h in [&mut v.in_handle, &mut v.out_handle] {
+        h[0] += d[0];
+        h[1] += d[1];
+    }
+}
+
 /// Escreve o spine **em lugar** no path `id` — id, estilo (invisível na Fase B) e entidade
 /// preservados, como o `write_route` do conector. `centers` vazio ⇒ o spine some (blend sem
 /// fontes vivas).
@@ -256,7 +287,9 @@ pub(crate) fn recook(
             }
         }
         let offsets = if authored {
-            // Os passos FLUEM ao longo do spine editado — deslocamento por comprimento de arco.
+            // As pontas seguem as fontes (só o interior é editável); depois os passos FLUEM ao
+            // longo do spine editado — deslocamento por comprimento de arco.
+            pin_spine_endpoints(scene, spine_id, &centers);
             scene
                 .paths()
                 .iter()
@@ -360,3 +393,9 @@ pub(crate) fn upkeep(
 #[cfg(test)]
 #[path = "blend_live_tests.rs"]
 mod tests;
+
+/// Os testes do SPINE editável (ADR-0122 Fase C2) — arquivo irmão pelo teto de LOC; reusa os
+/// helpers de `tests` (`pub(super)`).
+#[cfg(test)]
+#[path = "blend_live_spine_tests.rs"]
+mod spine_tests;

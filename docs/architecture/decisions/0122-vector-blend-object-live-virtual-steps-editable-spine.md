@@ -118,7 +118,7 @@ mode capturando faces, e do `shape_under_cursor` do conector.
 | **B ✅** | O objeto **vivo**: componente `VecBlend` + recook por frame + passe de render dos passos + skip no `settle_origins`. Spine AUTO (linha entre centros) | `ph2d-ecs` + shell |
 | **C1 ✅** | **Painel cria e ajusta** o blend vivo: botão "Blend" (seleção fechada, 2..=5, em z), slider Steps ao vivo (teto 200) | shell + painel |
 | **C2a ✅** | **Spine editável** (modo Node): os passos FLUEM por comprimento de arco ao longo da curva editada | motor + shell |
-| **C2b** | **Pick Shapes** mode (escolher a ORDEM), pinar pontas do spine às fontes, Reset Spine, spacing | shell + painel |
+| **C2b** | **Pick Shapes** mode (escolher a ORDEM), Reset Spine, spacing | shell + painel |
 | **D** | **Expand** / **Release** | shell |
 
 Cada fase fecha com gate + smoke do Enio antes da próxima (a regra desta linha).
@@ -211,13 +211,15 @@ comprimento de arco: editou a curva (modo Node), os passos re-fluem.
 - **Smoke `PH2D_BLEND_SMOKE=3`**: estrela→elipse com um spine em ARCO autorado — os 6 passos seguem
   o arco. No app: modo Node no objeto, arraste os pontos do spine, os passos re-fluem.
 
+**Pontas pinadas às fontes (landou 2026-07-15, mesma sessão):** o `blend_live::pin_spine_endpoints`
+fixa a 1ª e a última âncora do spine autorado aos centros das fontes a cada frame (as alças
+acompanham — a tangente é preservada). Só o INTERIOR é editável (o Illustrator), e uma fonte que se
+move arrasta a ponta e a curva junto. 2 gates (a ponta afastada volta ao centro · a ponta segue a
+fonte que se move). O gate de detecção passou a editar o INTERIOR (uma ponta editada é pinada de
+volta — as duas coisas convivem).
+
 **Gotchas para o próximo (C2b):**
 
-- **As pontas do spine NÃO são fixadas às fontes.** O flow usa a fração de arco na reta default
-  (pelos centros) e a avalia no spine editado. Se o artista mover uma PONTA do spine para longe do
-  centro da fonte, os passos daquela extremidade se descolam da fonte. O Illustrator PINA as pontas
-  às fontes (só o interior é editável) — pinar as pontas no recook (mesmo quando autorado) é o
-  refinamento faltante.
 - **Falta um "Reset Spine"** (limpar `spine_authored` → volta ao automático). É um botão de painel
   + um `clear` do flag; sem ele o artista não desfaz a edição do spine a não ser pelo undo global.
 - **Orientation por tangente NÃO existe** (decisão do Enio, ver Descartado): os passos ficam sempre

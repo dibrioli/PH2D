@@ -113,56 +113,67 @@ fn the_inflate_raises_a_ramp_by_the_secant_of_its_slope() {
     );
 }
 
-/// **On a flat, Inflate IS Layer — and that is geometry, not the bug.**
+/// **On a flat, Inflate makes a ROUNDED DOME — not a flat Layer raise.** (Enio's 3rd smoke, 2026-07-14:
+/// *"parece uma mistura de inflate com layer … estude o Blob do Blender."*)
 ///
-/// Offsetting a *plane* along its normal is a *translation*: every offset operator, by any algorithm, raises
-/// flat ground by exactly the offset. (Blender's Inflate is likewise Draw on a flat plane.) So the two verbs
-/// agreeing over the flat interior of a stroke is **correct**, and it is precisely the observation that looks
-/// like the bug — it is what Enio saw. What separates them is what they do to the *shape*, which is the
-/// sibling gate below.
+/// The old gate here asserted the OPPOSITE — that Inflate equals Layer on a flat — and it was the behaviour
+/// Enio rejected. Inflate is the **Blob** now: a ball whose radius follows the falloff, so on a flat it lifts
+/// a smooth spherical mound — a rounded peak at the centre, tapering to nothing at the brush edge — instead
+/// of the flat, falloff-scaled raise a Layer gives. That rounded centre is the whole of the fix.
 ///
-/// This one exists so that the next person to read that report does not "fix" the agreement back into an
-/// inversion. The `−` in `Depth · n_z` is one keystroke away, it makes this gate greener than green, and it
-/// is exactly wrong.
+/// The gate reads the profile down a radius: it must rise ≈ Depth at the centre, fall **monotonically and
+/// convexly** (no flat plateau — the flat top is precisely the *"mistura com layer"* complaint), and reach
+/// zero by the brush edge (*"na borda nada se move"*).
 ///
-/// **Mutation that must bleed:** scale the target by any function of the local slope that is not `1` at zero
-/// slope — e.g. restore `p + depth * inflate_nz(…)` and *also* dent the flat.
+/// **Mutation that must bleed:** make `render_inflate`'s ball radius constant (`depth.abs()·unit` instead of
+/// `·amount·unit`) — the dome flat-tops and the plateau check fails.
 #[test]
-fn on_a_flat_the_inflate_and_the_layer_agree_and_that_is_geometry() {
-    let size = 128u32;
-    let run = |mode: u8| -> Vec<f32> {
-        let (mut t, layer, _) = sculpt_canvas(size);
-        let n = (size * size) as usize;
-        // Dead-flat paint, one load thick. No structure at all: the one surface on which the two verbs are
-        // required to be indistinguishable.
-        t.heights.insert(layer, Arc::new(vec![1.0f32; n]));
-        t.covers.insert(layer, Arc::new(vec![255u8; n]));
-        t.sync_relief_flags();
-        arm_sculpt(&mut t, mode, 0.5, 1.0);
-        t.set_sculpt_depth(DEPTH_UP);
-        drag(&mut t, &[[50.0, 64.0], [64.0, 64.0], [78.0, 64.0]]);
-        heights_of(&t, layer)
-    };
-    let layer = run(LAYER);
-    let inflate = run(INFLATE);
+fn on_a_flat_the_inflate_is_a_rounded_dome_not_a_layer_raise() {
+    let size = 160u32;
+    let n = (size * size) as usize;
+    let (mut t, layer, _) = sculpt_canvas(size);
+    t.heights.insert(layer, Arc::new(vec![0.5f32; n])); // dead-flat paint, half a load thick
+    t.covers.insert(layer, Arc::new(vec![255u8; n]));
+    t.sync_relief_flags();
 
-    let worst = layer
-        .iter()
-        .zip(&inflate)
-        .map(|(a, b)| (a - b).abs())
-        .fold(0.0f32, f32::max);
+    arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
+    let mut b = t.paint.brush;
+    b.radius_px = 40.0;
+    b.hardness = 0.0;
+    b.falloff = Falloff::Smooth; // a soft brush: the falloff is the ball's size profile
+    t.paint.brush = b;
+    t.paint.brush_by_mode[super::super::PaintMode::Sculpt.slot()] = b;
+    t.set_sculpt_depth(DEPTH_UP); // +0.5 loads
+    let c = 80.0f32;
+    drag(&mut t, &[[c, c]]);
+
+    let h = heights_of(&t, layer);
+    let rise = |r: u32| -> f32 { h[(80 * size + 80 + r) as usize] - 0.5 };
+
+    // Rises ≈ Depth at the centre.
     assert!(
-        worst < 1e-3,
-        "on dead-flat paint Inflate and Layer differ by up to {worst:.4} loads. They must not: an offset \
-         along the normal of a PLANE is a translation. If this fails, the kernel is doing something to a \
-         flat that a ball cannot do."
+        (rise(0) - 0.5).abs() < 0.08,
+        "the blob's centre rose {:.3}, not ≈ 0.5 (Depth)",
+        rise(0)
     );
-    // …and the fixture is not vacuously equal because neither verb did anything.
-    let risen = inflate.iter().filter(|v| **v > 1.4).count();
+    // Tapers to nothing at the brush edge — *"na borda nada se move"*.
     assert!(
-        risen > 200,
-        "fixture: Inflate raised nothing (only {risen} texels above 1.4), so the equality above is the \
-         equality of two no-ops"
+        rise(40).abs() < 0.02,
+        "the blob is still {:.3} loads high at the brush edge (40 px); it must taper to zero",
+        rise(40)
+    );
+    // Monotonically decreasing AND rounded (no flat top): the drop from centre to quarter-radius is real,
+    // which a flat Layer plateau would not have. This is the assertion the old "agree with Layer" gate had
+    // exactly backwards.
+    let (r0, r8, r16) = (rise(0), rise(8), rise(16));
+    assert!(
+        r0 > r8 && r8 > r16 && r16 > rise(24),
+        "the blob's profile is not a monotone dome (centre {r0:.3}, 8px {r8:.3}, 16px {r16:.3})"
+    );
+    assert!(
+        (r0 - r8) > 0.01,
+        "the blob's top is FLAT (centre {r0:.3} vs 8 px {r8:.3}) — a flat top is the *mistura com layer* \
+         Enio rejected; the ball radius must follow the falloff so the centre is a rounded peak"
     );
 }
 
@@ -351,112 +362,6 @@ fn a_negative_depth_erodes_the_form_instead_of_just_lowering_it() {
 }
 
 // ── The memo ────────────────────────────────────────────────────────────────────────────────────────
-
-/// **A tile of the PRODUCT's offset memo is bit-for-bit the whole canvas's offset.**
-///
-/// The sibling of the blur's gate, and the same argument (the read window is grown by `⌈ρ⌉`, and a truncated
-/// window's edge IS the canvas's). It is here because the tile memo now serves TWO kernels and takes its
-/// window growth from [`MemoKey::reach`](super::super::sculpt::MemoKey::reach). A `reach` that answered for
-/// the blur while the offset ran would be wrong ONLY at a tile seam — 64 px apart, in a thin line, in a tool
-/// whose whole job is to change the relief. The single hardest artefact in this file to attribute.
-///
-/// ## Two drafts of this gate were green with the bug in. Both failures were the FIXTURE's
-///
-/// **Draft 1 walked the tiles itself**, calling `ball_offset_into` with a `reach` it computed on the spot. It
-/// was byte-exact, and it survived the mutation that makes `MemoKey::reach` return `0` for the offset —
-/// because it never asked `MemoKey::reach` anything. A gate that re-implements the product tests the copy.
-///
-/// **Draft 2 drove the product, and was still green** — because it ran on the *deposited stroke* used by the
-/// gates above, and that stroke cannot see a seam. It is a straight horizontal band: **constant along x**, so
-/// a max over a disc of it is achieved at `dx = 0` whatever the disc is truncated to, and truncation in `x`
-/// changes nothing; and it happens to fit **entirely inside one 64-px tile row** in `y` (the paint plus the
-/// ball spans 76..124), so the horizontal seams never look at it either. A realistic fixture, proving nothing
-/// ([[feedback_a_gate_only_proves_what_its_fixture_contains]] — for the third time on this line).
-///
-/// So it runs on `sculpt_canvas`'s ridge-with-a-sawtooth, which is what the **blur's** memo gate uses and for
-/// the same reason: a memo gate needs structure at every seam, in both axes. Realism belongs to the gates that
-/// measure the *tool*; this one measures the *tiling*.
-///
-/// **Mutation that must bleed:** return `0` (or the blur's radius) from `reach`'s `Offset` arm. Checked: it
-/// does now — and it did not in either earlier draft.
-#[test]
-fn the_offset_memo_is_byte_identical_to_a_whole_canvas_offset() {
-    use super::super::Region;
-    use super::super::sculpt_offset::ball_offset_into;
-
-    let size = 200u32; // deliberately not a multiple of the 64-px tile: the edge tiles are truncated
-    let (mut t, _layer, _) = sculpt_canvas(size);
-
-    arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
-    t.set_sculpt_depth(DEPTH_UP); // +0.5 loads ⇒ a ball of 8 px
-    assert!(
-        t.ensure_sculpt_session(),
-        "fixture: no session — there is no memo to fill"
-    );
-    let key = t.paint.sculpt.memo_key();
-    let pre = (*t.paint.sculpt.pre).clone();
-
-    // The product's own memo, filled through its own tile loop, over the whole canvas.
-    let whole = Region {
-        x: 0,
-        y: 0,
-        w: size,
-        h: size,
-    };
-    t.ensure_memo_tiles(whole, key);
-    let memo = t.paint.sculpt.memo.clone();
-
-    // The oracle: the same kernel, once, over the entire canvas — no tiles, no windows, nothing to get wrong.
-    let mut oracle = vec![0.0f32; (size * size) as usize];
-    let mut oracle_src = vec![0u32; (size * size) as usize];
-    ball_offset_into(
-        &pre,
-        size,
-        size,
-        0.5 * UNIT,
-        whole,
-        &mut oracle,
-        &mut oracle_src,
-    );
-
-    let differing = memo
-        .iter()
-        .zip(&oracle)
-        .filter(|(a, b)| a.to_bits() != b.to_bits())
-        .count();
-    assert_eq!(
-        differing, 0,
-        "{differing} texels of the tiled memo differ from the whole-canvas offset. The memo is only \
-         legitimate if a tile is the canvas's answer, restricted — otherwise every 64-px seam is a place \
-         where the relief quietly changes, and nothing on screen says which side is right."
-    );
-    // The SOURCE plane too — the ball answers two questions and both are memoised. A seam that agreed on
-    // the height and disagreed on where the paint came from would move the wrong pixels, in a 64-px grid,
-    // and the relief would look right while the colour did not.
-    let src_differ = t
-        .paint
-        .sculpt
-        .memo_src
-        .iter()
-        .zip(&oracle_src)
-        .filter(|(a, b)| a != b)
-        .count();
-    assert_eq!(
-        src_differ, 0,
-        "{src_differ} texels of the tiled memo disagree about WHERE their matter came from"
-    );
-    // The fixture must contain paint the ball actually MOVED, or byte-equality is the equality of two copies
-    // of `pre` ([[feedback_zero_valued_fixture_is_a_gate_that_cannot_fail]]).
-    let moved = oracle
-        .iter()
-        .zip(&pre)
-        .filter(|(a, b)| (*a - *b).abs() > 1e-4)
-        .count();
-    assert!(
-        moved > 1000,
-        "fixture: the offset moved only {moved} texels, so the identity above proves nothing"
-    );
-}
 
 // ── The APPEARANCE: what the artist sees is the COVERAGE, not the height buffer ──────────────────────
 
@@ -669,4 +574,70 @@ fn exactly_one_verb_moves_the_matter() {
             );
         }
     }
+}
+
+/// **The separable parabolic dilation equals the brute-force `O(N²)` one — the fast path is the true one.**
+///
+/// The Blob's engine is Felzenszwalb's `O(N)` lower-envelope sweep, twice (x then y). A subtle sign or
+/// intersection error would give a plausible-but-wrong dome — the first cut inverted the lift sign and
+/// turned a flat top into a peak (the fatten gates caught it, but only on a shaped fixture). This pins the
+/// algorithm itself: for a random field, the swept result must match the naïve `max over all p of
+/// [f(p) − a·|q−p|²]`, to the visible bit.
+///
+/// **Mutation that must bleed:** flip the `out_val` lift sign in `ParabolaScratch::transform` (`sign` →
+/// `−sign`); the dome inverts and this diverges everywhere.
+#[test]
+fn the_parabolic_blob_matches_the_brute_force_dilation() {
+    use super::super::sculpt_offset::{blob_dilate, unpack_src};
+    let (w, h) = (24u32, 18u32);
+    let (wu, hu) = (w as usize, h as usize);
+    // A deterministic, bumpy field (HR-5: no RNG in a gate).
+    let g: Vec<f32> = (0..wu * hu)
+        .map(|i| {
+            let x = (i % wu) as f32;
+            let y = (i / wu) as f32;
+            0.3 * (x * 0.7).fract() + 0.5 * (y * 0.4 + x * 0.1).fract()
+        })
+        .collect();
+    let a = 1.0 / (2.0 * 0.5 * 16.0 * 16.0); // the Blob's curvature at Depth 0.5
+
+    let (fast, src) = blob_dilate(&g, w, h, a, true);
+
+    // The naïve dilation: for each output, the max over EVERY source of the parabola, and its argmax.
+    let mut worst = 0.0f32;
+    let mut src_mismatch = 0u32;
+    for qy in 0..hu {
+        for qx in 0..wu {
+            let mut best = f32::NEG_INFINITY;
+            for py in 0..hu {
+                for px in 0..wu {
+                    let d2 = ((qx as f32 - px as f32).powi(2)) + ((qy as f32 - py as f32).powi(2));
+                    best = best.max(g[py * wu + px] - a * d2);
+                }
+            }
+            let o = qy * wu + qx;
+            worst = worst.max((fast[o] - best).abs());
+            // The argmax can tie; only count a mismatch when the fast pick's VALUE is worse than the
+            // brute pick's (a real error), not when two equal-value sources were chosen differently.
+            let (dx, dy) = unpack_src(src[o]);
+            let (sx, sy) = (qx as i64 + dx, qy as i64 + dy);
+            if sx >= 0 && sy >= 0 && (sx as usize) < wu && (sy as usize) < hu {
+                let picked = g[(sy as usize) * wu + (sx as usize)]
+                    - a * ((qx as f32 - sx as f32).powi(2) + (qy as f32 - sy as f32).powi(2));
+                if picked < best - 1e-4 {
+                    src_mismatch += 1;
+                }
+            }
+        }
+    }
+    assert!(
+        worst < 1e-4,
+        "the separable parabolic dome differs from the brute-force one by {worst:e} — the O(N) sweep is not \
+         the O(N²) truth, so the fast Blob is a different (wrong) shape"
+    );
+    assert_eq!(
+        src_mismatch, 0,
+        "the composed argmax pointed at a source the brute force beats — the paint would follow the wrong \
+         texel and the fattening would carry the wrong colour"
+    );
 }

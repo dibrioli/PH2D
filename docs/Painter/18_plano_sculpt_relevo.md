@@ -174,6 +174,26 @@ matéria tem que advectar **`h` + `covers` + `mats` + RGBA juntos**. É o que se
 > **A lição não é "faltou um gate". É que a regra estava escrita e eu não a apliquei ao caso novo.**
 > Uma exceção documentada só protege quem *reconhece* que está dentro dela.
 
+> ### ⚠️ 3º SMOKE — VIROU O BLOB (2026-07-14)
+>
+> *"não é inflate … puxa as faces na direção das normais usando para intensidade o falloff … estude o Blob
+> do Blender."* Corretíssimo. A bola de raio **constante** (mesclada pelo falloff no render) engordava mas
+> deixava **topo chato** — dilatação morfológica é filtro de máximo, plana onde a bola cabe: o *"mistura de
+> inflate com layer"*. Estudei o Blender: **Inflate** move o vértice pela normal (o componente **lateral** é
+> o que engorda — 2.5D não tem); **Blob** impõe uma **esfera** moldada pelo falloff.
+>
+> Fix: o raio da bola **segue o falloff** — `|Depth|·amount·DEPTH_UNIT_PX`. Centro cheio, borda→0. Domo
+> **redondo** (pico=Depth no centro; no chato `[0.5, 0.45, 0.34, 0.19, 0.06, 0]`), **engorda** (a borda
+> sobe), **afunila** na borda do pincel. É o Blob no 2.5D.
+>
+> **Não é memoizável** (o raio depende do `amount` vivo). A esfera exata é `O(área·ρ²)` = **73 ms/move** num
+> pincel grande. Uma esfera é bem aproximada perto do topo por uma **parábola**, e dilatação por parábola é
+> **separável** (`O(N)`, Felzenszwalb 2004) — mesma aparência, **4,2 ms/move**. Pico da parábola =
+> `pre±|Depth|·amount`; curvatura constante = a esfera no ápice. A matéria segue a bola pelo **argmax
+> composto nos 2 passes**. O **sinal do lift** já me virou o domo do avesso uma vez — gate byte-idêntico vs
+> força-bruta O(N²) pega (`the_parabolic_blob_matches_the_brute_force_dilation`). Código morto da bola
+> constante (memo `Offset`, `ball_offset_into`) removido.
+
 ---
 
 ## §6 — BIFURCAÇÃO 1 (adiada): para onde vai a tinta raspada?

@@ -125,9 +125,6 @@ impl PainterTool {
         };
         let cells = (tile.w as usize) * (tile.h as usize);
         let mut out: Vec<f32> = vec![0.0; cells];
-        // The ball answers TWO questions — how high, and **from where** — and the blur answers only the
-        // first. `0` is "from itself", which is what the blur means and what a flat means.
-        let mut src_out: Vec<u32> = vec![0u32; cells];
         match key {
             MemoKey::None => return,
             MemoKey::Blur(r) => {
@@ -141,50 +138,6 @@ impl PainterTool {
                         .copy_from_slice(&scratch[src..src + tile.w as usize]);
                 }
             }
-            MemoKey::Offset { depth_bits, smooth } => {
-                let r_px = f32::from_bits(depth_bits);
-                if smooth == 0 {
-                    super::sculpt_offset::ball_offset_into(
-                        &scratch,
-                        win.w,
-                        win.h,
-                        r_px,
-                        inner,
-                        &mut out,
-                        &mut src_out,
-                    );
-                } else {
-                    // **Soften the ball's hard edge** (the Radius knob). Offset the WHOLE window, blur it by
-                    // `smooth`, then crop the inner tile. The window was grown by `⌈ρ⌉ + smooth`, so the tile
-                    // sits `smooth` inside the ball-valid region and its blur reads only correct offset
-                    // values — byte-identical to offsetting-then-blurring the whole canvas (the same argument
-                    // the memo already rests on, one kernel deeper). The SOURCE plane is NOT blurred: the
-                    // paint follows the ball's argmax, only the height gets the soft shoulder.
-                    let whole = Region {
-                        x: 0,
-                        y: 0,
-                        w: win.w,
-                        h: win.h,
-                    };
-                    let cells = (win.w as usize) * (win.h as usize);
-                    let mut wh = vec![0.0f32; cells];
-                    let mut ws = vec![0u32; cells];
-                    super::sculpt_offset::ball_offset_into(
-                        &scratch, win.w, win.h, r_px, whole, &mut wh, &mut ws,
-                    );
-                    impasto_settle::box_blur(&mut wh, win.w, win.h, smooth);
-                    let ww = win.w as usize;
-                    for row in 0..tile.h as usize {
-                        let sy = inner.y as usize + row;
-                        for col in 0..tile.w as usize {
-                            let si = sy * ww + (inner.x as usize + col);
-                            let di = row * (tile.w as usize) + col;
-                            out[di] = wh[si];
-                            src_out[di] = ws[si];
-                        }
-                    }
-                }
-            }
         }
         // Keep the inner tile only: the window's outer ring is where the buffer edge could have lied, and it
         // is exactly the part we grew in order to throw away. (The source offsets are RELATIVE, so they are
@@ -195,8 +148,6 @@ impl PainterTool {
             let src = row * (tile.w as usize);
             self.paint.sculpt.memo[dst..dst + tile.w as usize]
                 .copy_from_slice(&out[src..src + tile.w as usize]);
-            self.paint.sculpt.memo_src[dst..dst + tile.w as usize]
-                .copy_from_slice(&src_out[src..src + tile.w as usize]);
         }
     }
 
@@ -215,6 +166,13 @@ impl PainterTool {
             return; // a stale, differently-sized session: the shape guard, never an index panic
         }
         let mode = self.paint.sculpt.mode_enum();
+        // Inflate is the Blob: its own render, from `pre` + the live `amount` field, not memoised. It fattens
+        // the form BEYOND the touched texels (a big central ball pushes the boundary out), so it owns its own
+        // write region and matter advection — see `render_inflate`.
+        if mode == SculptMode::Inflate {
+            self.render_inflate(rect);
+            return;
+        }
         // The memo belongs to the MEMO family, and the guard is not tidiness: without it the plane and
         // height verbs would fall into the "not canvas-sized" branch below on every single render and
         // allocate a memo they never read — 4 B/px of pure waste, and the end of the session's 12 B/px
@@ -338,12 +296,6 @@ impl PainterTool {
         self.paint.sculpt.plane_sum = plane_sum;
         self.paint.sculpt.memo = memo;
 
-        // …and the MATTER moves with it. Only Inflate grows the form, and only a form that grows onto bare
-        // canvas needs to take its paint along — see `SculptMode::moves_matter` and `advect_matter`.
-        if mode.moves_matter() {
-            self.advect_matter(layer, rect);
-        }
-
         if let Some(m) = moved {
             // Grow by one: the light reads a texel's NEIGHBOURS (the normal is a central difference), so a
             // texel just outside the changed box is lit by a slope that changed inside it. Unlike the
@@ -361,6 +313,160 @@ impl PainterTool {
             if let Some(g) = grow_region(m, 1, w, h) {
                 self.mark_dirty(g);
             }
+        }
+    }
+
+    /// **Inflate — the Blob** (Enio 2026-07-14, third smoke: *"não é inflate … puxa as faces na direção das
+    /// normais usando para intensidade o falloff … estude o Blob do Blender"*).
+    ///
+    /// A morphological offset by a ball whose **radius follows the falloff**: at the brush centre the ball is
+    /// full (`|Depth|·DEPTH_UNIT_PX` px), tapering to zero at the edge. That is the whole correction. The
+    /// constant-radius ball this replaced fattened the form but left a **flat top** (a max filter plateaus
+    /// where the ball fits), and it was faded in by `amount` afterward — so the centre read as a flat Layer
+    /// raise with an inflate rim, the *"mistura de inflate com layer"*. With the radius IN the falloff, the
+    /// centre is the sphere's own curvature (a rounded peak), the rim fattens, and the edge tapers to
+    /// nothing — a rounded blob, which is what a height field can offer of Blender's Blob.
+    ///
+    /// ## Why it is not memoised
+    ///
+    /// The ball radius is `|Depth|·amount(source)`, and `amount` grows across the stroke — so the offset is
+    /// not a stroke-constant and the tile memo (which caches a function of the frozen `pre` alone) cannot
+    /// hold it. It recomputes each render, over the batch's rect grown by the ball's reach. That is `O(ρ²)`
+    /// per texel, but a source with zero coverage contributes nothing (the disc is mostly empty near the
+    /// rim), so the real cost is well under the worst case.
+    ///
+    /// ## The form fattens BEYOND the brush, so the window is grown
+    ///
+    /// A big-radius source near the centre pushes the boundary out past where the brush touched — that IS the
+    /// fattening — so this writes to `rect` grown by the ball's reach, not just the touched texels. And the
+    /// **matter follows** (coverage / material / colour), the way it must for a form that grows onto bare
+    /// canvas (the round-2 lesson): the paint dilates with the relief.
+    pub(super) fn render_inflate(&mut self, rect: Region) {
+        let (Some(layer), (w, h)) = (self.paint.sculpt.layer, self.source_size) else {
+            return;
+        };
+        let n = (w as usize) * (h as usize);
+        if self.paint.sculpt.pre.len() != n || self.paint.sculpt.amount.len() != n {
+            return;
+        }
+        let depth = self.paint.sculpt.depth();
+        let unit = super::impasto_light::DEPTH_UNIT_PX;
+        let rho = (depth.abs() * unit).ceil() as i64;
+        if rho == 0 {
+            return; // Depth 0 is the identity — nothing to offset
+        }
+        let smooth = self.paint.sculpt.inflate_smooth_px();
+        let dilate = depth > 0.0;
+        // The parabola reaches ~√2·ρ before it drops below its neighbours — so the compute region is `rect`
+        // grown by `2ρ` (a safe bound on that reach) PLUS the blur's reach; the write region is `rect + 2ρ`.
+        let reach = 2 * rho as u32;
+        let Some(cr) = grow_region(rect, reach + smooth, w, h) else {
+            return;
+        };
+        let Some(kr) = grow_region(rect, reach, w, h) else {
+            return;
+        };
+        let pre = Arc::clone(&self.paint.sculpt.pre);
+        let amount = Arc::clone(&self.paint.sculpt.amount);
+        let (cw, ch) = (cr.w as usize, cr.h as usize);
+        let (wu, wi, hi) = (w as usize, i64::from(w), i64::from(h));
+        // The parabola's PEAK field over the region: `pre ± |Depth|·amount`, the falloff as the height budget.
+        // (`+` inflates, `−` deflates.) The curvature `a` matches the sphere of radius `|Depth|·unit` at its
+        // apex, so the separable parabolic dilation is a rounded, fattening dome — the exact spherical ball's
+        // `O(area·ρ²)` collapsed to `O(area)`, which is the difference between 73 ms/move and shippable.
+        let mut g = vec![0.0f32; cw * ch];
+        for ry in 0..ch {
+            let gy = (cr.y as usize + ry) * wu + cr.x as usize;
+            for rx in 0..cw {
+                let a = amount[gy + rx].clamp(0.0, 1.0);
+                let peak = depth.abs() * a; // in loads
+                g[ry * cw + rx] = if dilate {
+                    pre[gy + rx] + peak
+                } else {
+                    pre[gy + rx] - peak
+                };
+            }
+        }
+        let a_curv = 1.0 / (2.0 * depth.abs() * unit * unit); // 1/(2·|Depth|·unit²)
+        let (mut hbuf, sbuf) = super::sculpt_offset::blob_dilate(&g, cr.w, cr.h, a_curv, dilate);
+        if smooth > 0 {
+            impasto_settle::box_blur(&mut hbuf, cr.w, cr.h, smooth);
+        }
+
+        // ── Write the height + advect the matter, over the write region `kr`. ───────────────────────────
+        let pre_cover = Arc::clone(&self.paint.sculpt.pre_cover);
+        let pre_mats = Arc::clone(&self.paint.sculpt.pre_mats);
+        let pre_rgba = Arc::clone(&self.paint.sculpt.pre_rgba);
+        let matter_ok = pre_cover.len() == n
+            && pre_mats.len() == n
+            && pre_rgba.len() == n * 4
+            && self.canvas_rgba.len() == n * 4;
+        let mut moved: Option<Region> = None;
+        {
+            let Some(entry) = self.heights.get_mut(&layer) else {
+                return;
+            };
+            if entry.len() != n {
+                return;
+            }
+            let target = Arc::make_mut(entry);
+            for y in kr.y..kr.y + kr.h {
+                for x in kr.x..kr.x + kr.w {
+                    let ci = ((y - cr.y) as usize) * cw + (x - cr.x) as usize;
+                    let gi = (y as usize) * wu + (x as usize);
+                    let next = hbuf[ci].clamp(-H_MAX, H_MAX);
+                    if (next - target[gi]).abs() > impasto_settle::RELIEF_EPS {
+                        let rr = Region { x, y, w: 1, h: 1 };
+                        moved = Some(moved.map_or(rr, |acc| super::union_region(acc, rr)));
+                    }
+                    target[gi] = next;
+                }
+            }
+        }
+        // The MATTER dilates with the form: where the ball carried paint from a source, that source's
+        // coverage / material / colour extend to here — a form that grows onto bare canvas takes its paint
+        // with it (round-2 lesson). `max` on the coverage: the paint extends, it does not thin.
+        if matter_ok
+            && let (Some(cov_e), Some(mat_e)) =
+                (self.covers.get_mut(&layer), self.mats.get_mut(&layer))
+            && cov_e.len() == n
+            && mat_e.len() == n
+        {
+            let cov = Arc::make_mut(cov_e);
+            let mat = Arc::make_mut(mat_e);
+            let rgba = Arc::make_mut(&mut self.canvas_rgba);
+            for y in kr.y..kr.y + kr.h {
+                for x in kr.x..kr.x + kr.w {
+                    let ci = ((y - cr.y) as usize) * cw + (x - cr.x) as usize;
+                    let (dx, dy) = super::sculpt_offset::unpack_src(sbuf[ci]);
+                    if dx == 0 && dy == 0 {
+                        continue; // the matter here is its own — nothing dilated onto it
+                    }
+                    let (sx, sy) = (i64::from(x) + dx, i64::from(y) + dy);
+                    if sx < 0 || sy < 0 || sx >= wi || sy >= hi {
+                        continue;
+                    }
+                    let si = (sy as usize) * wu + (sx as usize);
+                    let gi = (y as usize) * wu + (x as usize);
+                    if pre_cover[si] <= cov[gi] {
+                        continue; // the source is no more painted than here — leave it
+                    }
+                    cov[gi] = pre_cover[si];
+                    mat[gi] = pre_mats[si];
+                    rgba[gi * 4..gi * 4 + 4].copy_from_slice(&pre_rgba[si * 4..si * 4 + 4]);
+                }
+            }
+            self.invalidate_composite();
+        }
+
+        if let Some(m) = moved {
+            if let Some(g) = grow_region(m, 1, w, h) {
+                self.mark_dirty(g);
+            }
+        } else if matter_ok {
+            // The matter can change with no height crossing `RELIEF_EPS` (a flat blob fattening sideways),
+            // and that write went straight to `canvas_rgba`. Dirty the write region so it uploads.
+            self.mark_dirty(kr);
         }
     }
 
@@ -390,6 +496,19 @@ impl PainterTool {
         if self.layers.active() != Some(layer) {
             return;
         }
+        // Inflate FATTENS beyond the touched texels, and a PREVIOUS render at a larger Depth reached
+        // further than the current one — so the restore has to cover the widest the Blob can ever reach
+        // (`2·⌈MAX·unit⌉ + MAX_SMOOTH`), or lowering Depth would leave a ghost ring of the old fattening. It
+        // is a per-knob-edit cost, not per-move, so the generous bound is cheap.
+        let rect = if self.paint.sculpt.mode_enum() == SculptMode::Inflate {
+            let pad = 2
+                * (super::sculpt::SCULPT_DEPTH_MAX * super::impasto_light::DEPTH_UNIT_PX).ceil()
+                    as u32
+                + super::sculpt::INFLATE_SMOOTH_MAX_PX as u32;
+            grow_region(rect, pad, self.source_size.0, self.source_size.1).unwrap_or(rect)
+        } else {
+            rect
+        };
         // Put the window back to the frozen source first: the render only ever WRITES texels the brush
         // touched, so a knob that shrinks the effect (Strength down, Radius down) would otherwise leave the
         // stronger version standing wherever the new one writes nothing. Restore, then re-render.

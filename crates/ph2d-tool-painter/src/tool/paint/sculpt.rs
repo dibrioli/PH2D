@@ -77,7 +77,7 @@ pub(super) const CHISEL_ANGLE_MAX_DEG: f32 = 60.0;
 /// | Fill | the fitted plane | **up only** (`max(Δ, 0)`) |
 /// | Chisel | the plane **+ a V about the stroke's axis** | down only |
 /// | Layer | `pre + Depth` | both ways |
-/// | Inflate | `offset(pre, Depth)` — the relief dilated/eroded by a **ball** | both ways |
+/// | Inflate | the **Blob**: a ball whose radius follows the falloff (`render_inflate`) | both ways |
 ///
 /// So Scrape and Fill are not two more engines — they are Flatten with one half of the number thrown away,
 /// and they cost one `min` each. Chisel is Scrape with one `abs`. Layer is the kernel with a *constant*
@@ -174,64 +174,19 @@ pub(super) enum MemoKey {
     None,
     /// `blur(pre, r)` — Smooth / Sharpen. `r` in texels.
     Blur(u32),
-    /// `blur(offset(pre, r), smooth)` — Inflate: the relief dilated (`r > 0`) or eroded (`r < 0`) by a ball
-    /// of `|r|` px, then **softened** by a box blur of `smooth` texels.
-    ///
-    /// `depth_bits` is the **bits** of the signed `f32` ball radius (so the key derives `Eq` and compares
-    /// exactly; the radius is not rounded — a Depth of `0.05` loads is a `0.8`-px ball that still raises a
-    /// flat by exactly `0.05`). `smooth` is the **Radius** knob (Enio 2026-07-14): morphological dilation
-    /// makes flat-topped plateaus with **hard edges** — it is Smooth's own complaint at large radius — so a
-    /// small blur rounds that edge off, exactly the way Smooth's Radius controls its kernel. `smooth = 0` is
-    /// the pure offset, byte-identical to before this knob existed.
-    Offset { depth_bits: u32, smooth: u32 },
 }
 
 impl MemoKey {
-    /// The key for a ball offset of signed radius `r_px`, softened by a `smooth`-texel blur.
-    pub(super) fn offset(r_px: f32, smooth: u32) -> Self {
-        Self::Offset {
-            depth_bits: r_px.to_bits(),
-            smooth,
-        }
-    }
-
     /// How far, in texels, one output texel reads into `pre` — the tile memo's read-window growth.
-    ///
-    /// For the softened offset the two reaches ADD: the ball reads `⌈ρ⌉`, and the blur that follows reads
-    /// `smooth` more around it, so the window has to be grown by both or the seam between tiles would show.
     pub(super) fn reach(self) -> u32 {
         match self {
             MemoKey::None => 0,
             MemoKey::Blur(r) => r,
-            MemoKey::Offset { depth_bits, smooth } => {
-                f32::from_bits(depth_bits).abs().ceil() as u32 + smooth
-            }
         }
     }
 }
 
 impl SculptMode {
-    /// Whether the verb **moves matter** — and so carries coverage, material and colour with the relief.
-    ///
-    /// Exactly one of the eight does. The other seven reshape the height that is already there, inside the
-    /// paint that is already there; Inflate **grows the form**, and a form that grows onto bare canvas and
-    /// takes no paint with it is a form that does not grow at all (the light multiplies by the coverage).
-    ///
-    /// It is a method rather than a `matches!` at the call site so that W4's advective family — Grab, Pinch,
-    /// Nudge, Rotate, Thumb, every one of which moves matter — has one place to join.
-    ///
-    /// ## Getting this wrong is harmless, and that is on purpose
-    ///
-    /// Marking a *second* verb as moving matter does nothing at all: the advection reads
-    /// [`SculptState::memo_src`], and **only the ball offset ever writes it** — a blur leaves it all zeros,
-    /// and a zero source means *the matter here is its own*. So the invariant "only Inflate moves paint"
-    /// rests on two independent things, and a mistake in either one is caught by the other. (Checked, not
-    /// asserted: the mutation that adds `Smooth` to this list leaves every gate green. What DOES bleed is
-    /// deleting the `advect_matter` call — which is the bug Enio actually saw.)
-    pub(super) fn moves_matter(self) -> bool {
-        matches!(self, SculptMode::Inflate)
-    }
-
     pub(super) fn from_u8(v: u8) -> Self {
         match v {
             1 => SculptMode::Sharpen,
@@ -248,11 +203,16 @@ impl SculptMode {
     /// Which **engine** the verb runs on — i.e. which per-texel target the session must carry.
     pub(super) fn family(self) -> SculptFamily {
         match self {
-            SculptMode::Smooth | SculptMode::Sharpen | SculptMode::Inflate => SculptFamily::Memo,
+            SculptMode::Smooth | SculptMode::Sharpen => SculptFamily::Memo,
             SculptMode::Flatten | SculptMode::Scrape | SculptMode::Fill | SculptMode::Chisel => {
                 SculptFamily::Plane
             }
-            SculptMode::Layer => SculptFamily::Height,
+            // Inflate has NO persistent target buffer: its ball radius follows the falloff (`amount`), which
+            // grows across the stroke, so the offset is not a stroke-constant and cannot be memoised (that is
+            // the whole reason the constant-ball memo was retired — Enio 2026-07-14, the *"parece mistura de
+            // inflate com layer"* smoke). It recomputes per render in `render_inflate`, like Layer, and holds
+            // no buffer either.
+            SculptMode::Layer | SculptMode::Inflate => SculptFamily::Height,
         }
     }
 
@@ -378,13 +338,6 @@ pub(crate) struct SculptState {
     /// (Inflate) — memoised tile by tile (see [`super::sculpt_blur`]). Pure derived data: it dies with the
     /// session and is rebuilt lazily, on demand. Empty in the Plane and Height families.
     pub(crate) memo: Vec<f32>,
-    /// **Where the matter at each texel CAME FROM**, packed by
-    /// [`super::sculpt_offset::pack_src`] — the ball's argmax, and `0` (= the texel itself) everywhere
-    /// nothing moved. Filled beside [`Self::memo`], and only by the offset kernel; the blur has no such
-    /// question to answer.
-    ///
-    /// This is the plane that makes Inflate *visible*. See [`Self::pre_rgba`].
-    pub(crate) memo_src: Vec<u32>,
     /// One flag per tile of [`Self::memo`] — whether that tile has been computed this session.
     pub(crate) memo_done: Vec<bool>,
     /// Which kernel and radius [`Self::memo`] holds. A change to EITHER invalidates every tile — which is
@@ -442,7 +395,6 @@ impl Default for SculptState {
             plane_sum: Arc::new(Vec::new()),
             fit_scratch: Vec::new(),
             memo: Vec::new(),
-            memo_src: Vec::new(),
             memo_done: Vec::new(),
             memo_key: MemoKey::None,
             pre_cover: Arc::new(Vec::new()),
@@ -502,10 +454,8 @@ impl SculptState {
     pub(super) fn memo_key(&self) -> MemoKey {
         match self.mode_enum() {
             SculptMode::Smooth | SculptMode::Sharpen => MemoKey::Blur(self.radius_px()),
-            SculptMode::Inflate => MemoKey::offset(
-                self.depth() * super::impasto_light::DEPTH_UNIT_PX,
-                self.inflate_smooth_px(),
-            ),
+            // Inflate is NOT memoised — its variable-radius ball depends on the live `amount` field. See
+            // `super::sculpt_blur::render_inflate`; it reads `depth()` and `inflate_smooth_px()` straight.
             _ => MemoKey::None,
         }
     }
@@ -683,7 +633,6 @@ impl PainterTool {
         }
         if !keep_memo {
             self.paint.sculpt.memo = Vec::new();
-            self.paint.sculpt.memo_src = Vec::new();
             self.paint.sculpt.memo_done = Vec::new();
             self.paint.sculpt.memo_key = MemoKey::None;
         }

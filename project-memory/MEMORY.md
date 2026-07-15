@@ -92,10 +92,12 @@
 - [Tolerância folgada esconde viés](feedback_loose_oracle_hides_systematic_bias.md) — asserte o valor EXATO na unidade do usuário
 - [Gateie as BORDAS do domínio](feedback_gate_the_edges_of_the_domain.md) — DC/Nyquist, 1ª/última coluna, 0 e 1
 - [Limiar mora onde o domínio é VAZIO](feedback_a_threshold_must_live_where_the_domain_is_empty.md) — cos(15°) sentava no 24-gon; escolha um valor que nenhuma entrada produz
+- [Escape que nunca ajuda é enfeite](feedback_an_escape_that_never_helps_is_a_design_bug.md) — o Reverse Match colapsava em 3/3 casos; meça em vários antes de calibrar, às vezes remova
 - [Unidade ABSOLUTA que deveria parecer relativa escala com a geometria](feedback_an_absolute_unit_that_should_feel_relative_must_scale_with_the_geometry.md) — altura de relevo ∝ raio: preserve a razão de aspecto, não calibre o número
 - [Clamp duro NÃO é teto — é BORRACHA](feedback_a_hard_clamp_is_not_a_ceiling_it_is_an_eraser.md) — colapsa o detalhe acima dele; se o consumidor lê DERIVADA, o platô vira NADA
 - [Crescer geometria sem crescer MATÉRIA cresce no vazio](feedback_growing_geometry_without_growing_matter_grows_nothing.md) — se o render multiplica por cobertura/alpha, meça ELA
 - [Efeito LATERAL não sai de fórmula PONTUAL](feedback_a_lateral_effect_needs_a_nonlocal_operator.md) — sintoma: ela vira CONSTANTE no dado real
+- [Análogo 2.5D de operador 3D precisa RECUPERAR o lateral](feedback_a_2_5d_analog_of_a_3d_operator_needs_the_lateral_recovered.md) — pontual não engorda; use morfológico, e a parábola separável salva a perf
 - [Um gate só prova o que a FIXTURE contém](feedback_a_gate_only_proves_what_its_fixture_contains.md) — e meça o DOCUMENTO
 - [Mute o CÓDIGO, não só o teste](feedback_mutate_the_code_not_just_the_test.md) — verde na mutação = gate frouxo ou comentário errado
 - [Oráculo ALCANÇÁVEL antes do gate](feedback_check_the_oracle_is_achievable_before_writing_the_gate.md) — o prescrito pode ser impossível
@@ -162,6 +164,7 @@
 - [Flip: traço = UNIÃO GLOBAL](project_flip_stroke_analytic_coverage_gp.md) — mordida morta; vizinhos GEOMÉTRICOS, 1 passe
 - [Composição de clips ≠ NLA](project_clip_composition_not_blender_nla.md) — no 2D o idioma é NESTING; overlap = crossfade
 - [Modelo multi-agente = f(HW)](project_multiagent_modo_l_2026_07_05.md) — workstation = Modo L; constrained = Modo C
+- [Modo L lento não é RAM, é disco + build 6×](project_modo_l_speed_hole_worktree_targets_slow_path.md) — tmpfs foi só pro primário; sccache pequeno demais → recompila tudo por worktree
 - [Tool isolation ADR-0040](project_tool_isolation_freeze_2026_05_22.md) — tools = drop-crates + tool-sync
 - [Vector node carrier opaco](project_vector_node_opaque_carrier.md) — VectorNetwork via `CookValue::Opaque`
 - [Brush bridge = satélite](project_brush_along_path_satellite_not_node.md) — 1 consumidor → satélite; defira foundational

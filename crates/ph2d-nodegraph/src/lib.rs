@@ -23,7 +23,10 @@
 //! - the acyclic-by-construction graph with `pre` delay; [`graph::Graph::validate`]
 //!   enforces the membrane + port types ([`graph`]),
 //! - the demand-driven incremental cook engine ([`cook`]),
-//! - the diffable textual format ([`format`]).
+//! - the diffable textual format ([`format`]),
+//! - GPU kernel **side-metadata** ([`gpu`], ADR-0122 — outside the frozen
+//!   surface by design: a kernel rides the registry's side channel like the
+//!   UI manifests, never a `NodeManifest` field).
 //!
 //! Not yet built (separate crates per the plan): per-node `lowerings` →
 //! WGSL|Luau (`ph2d-expr`, ADR-0033), the node registry + codegen
@@ -34,6 +37,7 @@ pub mod attr;
 pub mod cook;
 pub mod effect;
 pub mod format;
+pub mod gpu;
 pub mod graph;
 pub mod node;
 pub mod param_source;

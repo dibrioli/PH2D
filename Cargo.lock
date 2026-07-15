@@ -4908,6 +4908,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-gpu-cook"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "naga",
+ "ph2d-eval-motion",
+ "ph2d-gpu",
+ "ph2d-node-motion-grid",
+ "ph2d-node-motion-move",
+ "ph2d-node-motion-oscillator",
+ "ph2d-node-motion-output",
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+ "ph2d-render",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-grid"
 version = "0.0.0"
 
@@ -4948,6 +4966,7 @@ dependencies = [
  "ph2d-flip-render",
  "ph2d-flip-reshape",
  "ph2d-gpu",
+ "ph2d-gpu-cook",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-imageio",

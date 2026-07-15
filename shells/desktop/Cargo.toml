@@ -20,6 +20,8 @@ libm = { version = "=0.2.16", default-features = false }
 ph2d-host = { path = "../../crates/ph2d-host" }
 ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-gpu = { path = "../../crates/ph2d-gpu" }
+# GPU/M5 Fase 1 (ADR-0122): GPU-resident node cook (PH2D_GPU_COOK=1).
+ph2d-gpu-cook = { path = "../../crates/ph2d-gpu-cook" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers

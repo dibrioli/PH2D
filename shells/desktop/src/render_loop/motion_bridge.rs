@@ -131,6 +131,7 @@ pub(super) fn dispatch(
     fixed_dt: f64,
     cursor: (f32, f32),
     toasts: &mut ToastQueue,
+    gpu: &ph2d_gpu::GpuContext,
 ) {
     let motion_active = tools
         .active()
@@ -288,6 +289,47 @@ pub(super) fn dispatch(
     // its unscoped path unchanged.
     let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
     let target = motion_tick(playhead, fixed_dt);
+
+    // ── GPU-resident cook (GPU/M5 Fase 1, ADR-0122) — opt-in preview path ────
+    // With `PH2D_GPU_COOK=1`, a single-sink, unscoped document whose whole
+    // chain is kernel-covered cooks on the GPU: compute passes in one submit,
+    // the lowering writes the renderer's instance buffer directly, and the CPU
+    // pump is skipped entirely (zero readback, zero marshalling). Any chain the
+    // plan can't fully claim falls through to the CPU pump below — never a
+    // wrong answer. A fully-GPU chain is stateless by construction (no `pre`
+    // edge passes eligibility), so cooking straight at the target tick's time
+    // is exact and scrubbing needs no checkpoint ring. Trade-off while the
+    // flag is on: the graph panel's readouts/probe read the CPU memo, which
+    // this path doesn't feed — wiring those to the GPU is Fase 4.
+    motion.gpu_live = false;
+    if motion.gpu_enabled && motion.sinks.len() == 1 && scopes.is_empty() {
+        let plan = ph2d_gpu_cook::plan(
+            &motion.doc.graph,
+            &motion.registry,
+            &motion.registry,
+            motion.sinks[0],
+        );
+        if plan.is_fully_gpu() {
+            motion.gpu_live = motion
+                .gpu_cook
+                .cook(
+                    gpu,
+                    &motion.doc.graph,
+                    &motion.registry,
+                    &motion.registry,
+                    &plan,
+                    None,
+                    target as f64 * fixed_dt,
+                    motion.default_uv_rect,
+                    motion.default_size,
+                )
+                .is_ok();
+        }
+    }
+    if motion.gpu_live {
+        return;
+    }
+
     for tick in ticks_owed(motion.pump.last_cooked_tick(), target) {
         motion.pump.advance_or_scrub_scoped(
             &motion.doc.graph,

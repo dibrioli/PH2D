@@ -689,6 +689,40 @@ impl SpriteRenderer {
         extra: &[RenderInstance],
         scene_viewport: Option<[f32; 4]>,
     ) {
+        self.render_with_streams(
+            target,
+            present,
+            camera,
+            window,
+            clear_color,
+            extra,
+            None,
+            scene_viewport,
+        );
+    }
+
+    /// [`render_with_extra`](Self::render_with_extra) plus a **GPU-resident**
+    /// extra (GPU/M5 Fase 1, ADR-0122): `gpu_extra` is a buffer ALREADY laid
+    /// out as `[RenderInstance; n]` — the `ph2d-gpu-cook` lowering's output —
+    /// bound directly as the instance vertex buffer for one appended draw.
+    /// **No readback, no CPU marshalling**: the cook's last write is this
+    /// pass's input. Drawn after the scene's normal runs with the shared-atlas
+    /// material, default sampler and default blend (exactly the run a lowered
+    /// Motion stream produces on the CPU path — its instances are all
+    /// `texture_id 0 / z_order 0 / sampling 0 / no clip`), on the plain
+    /// single-pass path only (a clip/mask frame ignores it, like `subrect`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_with_streams(
+        &mut self,
+        target: &wgpu::TextureView,
+        present: &mut PresentWorld,
+        camera: &Camera2d,
+        window: WindowSize,
+        clear_color: wgpu::Color,
+        extra: &[RenderInstance],
+        gpu_extra: Option<(&wgpu::Buffer, u32)>,
+        scene_viewport: Option<[f32; 4]>,
+    ) {
         // Collect scene instances + the `extra` slice into `scratch` and sort
         // (extracted to keep this file under its LOC cap; M0.T11).
         crate::sprite_collect::collect_sorted_instances(&mut self.scratch, present, extra);
@@ -802,6 +836,23 @@ impl SpriteRenderer {
                     pass.set_bind_group(1, bg, &[]);
                     pass.draw(0..4, run.start..run.end);
                 }
+            }
+            // GPU-resident extra (ADR-0122): one draw whose instance vertex
+            // buffer IS the compute lowering's output — the readback-free
+            // seam. Shared-atlas material + default blend, the exact run a
+            // CPU-lowered Motion stream forms. Plain path only (mirrors the
+            // `subrect` rule: a clip/mask frame renders scene-only).
+            if let Some((buffer, n)) = gpu_extra
+                && n > 0
+                && !has_clip
+                && !has_mask
+            {
+                pass.set_bind_group(0, &self.frame_bind_group, &[]);
+                pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
+                pass.set_vertex_buffer(1, buffer.slice(..));
+                pass.set_pipeline(self.pipeline.blend_pipeline(0));
+                pass.set_bind_group(1, &self.material_bind_group, &[]);
+                pass.draw(0..4, 0..n);
             }
         }
         // Clip pass (only if a clip group exists): stencil mark → test the

@@ -76,6 +76,18 @@ pub(crate) struct MotionState {
     /// has to be able to put you back on solid ground, and only the shell sees the
     /// undo (`subgraph::clamp_level`, every frame).
     pub(crate) level: Option<u32>,
+    /// GPU/M5 Fase 1 (ADR-0122): the GPU-resident sequencer. Only driven when
+    /// [`Self::gpu_enabled`]; persistent so its pipeline caches + buffer pool
+    /// survive across frames (the GPU twin of the pump's reused buffer).
+    pub(crate) gpu_cook: ph2d_gpu_cook::GpuCook,
+    /// Did THIS frame's instances come from the GPU path? When `true`, present
+    /// binds `gpu_cook.instances()` directly (zero readback) and
+    /// `pump.instances` is stale — set/cleared by the bridge every frame.
+    pub(crate) gpu_live: bool,
+    /// `PH2D_GPU_COOK=1` — the Fase 1 opt-in. The CPU pump stays the default
+    /// (it feeds the graph panel's readouts/probe and is the canonical path);
+    /// flipping the default is a Fase 4 decision, after the editor reads GPU.
+    pub(crate) gpu_enabled: bool,
 }
 
 impl MotionState {
@@ -93,7 +105,16 @@ impl MotionState {
         ph2d_node_registry_init::register_all_nodes(&mut registry)
             .expect("motion node registry builds");
         let mut doc = MotionDoc::new();
-        let sinks = build_default_document(&mut doc, &registry).unwrap_or_default();
+        // GPU/M5 Fase 1 ready-to-smoke document: a 512×512 (262k-instance)
+        // grid→oscillator→move→output chain — every node has a kernel, so with
+        // `PH2D_GPU_COOK=1` it cooks 100% on the GPU. Opt-in; the regular boot
+        // document is untouched.
+        let gpu_demo = std::env::var("PH2D_GPU_COOK_DEMO").is_ok_and(|v| v == "1");
+        let sinks = if gpu_demo {
+            build_gpu_demo_document(&mut doc, &registry).unwrap_or_default()
+        } else {
+            build_default_document(&mut doc, &registry).unwrap_or_default()
+        };
         Self {
             doc,
             history: MotionHistory::new(),
@@ -109,6 +130,9 @@ impl MotionState {
             probe_ring: Vec::new(),
             flow_digest: std::collections::BTreeMap::new(),
             level: None,
+            gpu_cook: ph2d_gpu_cook::GpuCook::new(),
+            gpu_live: false,
+            gpu_enabled: std::env::var("PH2D_GPU_COOK").is_ok_and(|v| v == "1"),
         }
     }
 
@@ -156,6 +180,9 @@ impl MotionState {
         self.probe_ring.clear();
         self.flow_digest.clear();
         self.level = None;
+        // The GPU path re-plans against the new graph next frame; until then
+        // its instance buffer describes the OLD document, so it must not draw.
+        self.gpu_live = false;
         #[cfg(feature = "panel-motion-graph")]
         ph2d_panel_motion_graph::set_graph_selection(Vec::new());
     }
@@ -211,6 +238,40 @@ fn build_default_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec
     }
     Some(demo.sinks)
 }
+/// The GPU/M5 Fase 1 **ready-to-smoke** document (`PH2D_GPU_COOK_DEMO=1`):
+/// `grid(512×512) → oscillator(Y wave) → move → output` — 262.144 instances,
+/// every node kernel-covered, so `PH2D_GPU_COOK=1` runs it 100% GPU-resident
+/// (`ph2d_gpu_cook::plan` claims the whole chain; the renderer binds the
+/// lowering's buffer with zero readback). The same chain, at 25.6k, is the
+/// parity gate's fixture. Auto-plays on tool entry like every boot document.
+fn build_gpu_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 512.0);
+    g.set_param(grid, "cols", 512.0);
+    // A dense lattice: span = 511 × gap. The quads are unit-sized (the shell's
+    // `default_size` identity), so gap 1.0 tiles them edge-to-edge — zoom out
+    // and the whole field reads as a shimmering cloth.
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+    let osc = g.add_node("motion.oscillator");
+    g.set_param(osc, "channel", 1.0); // Y — the kernel-covered channels are X/Y
+    g.set_param(osc, "amplitude", 6.0);
+    g.set_param(osc, "frequency", 0.5);
+    g.set_param(osc, "phase_stagger", 0.002); // a travelling wave across the field
+    let mv = g.add_node("motion.move");
+    let out = g.add_node("motion.output");
+    for (i, n) in [grid, osc, mv, out].into_iter().enumerate() {
+        g.set_pos(n, Pos { x: 80.0 + i as f32 * 180.0, y: 120.0 });
+    }
+    g.connect(Edge { from: (grid, 0), to: (osc, 0), delayed: false }).ok()?;
+    g.connect(Edge { from: (osc, 0), to: (mv, 0), delayed: false }).ok()?;
+    g.connect(Edge { from: (mv, 0), to: (out, 0), delayed: false }).ok()?;
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}
+
 #[cfg(test)]
 #[path = "motion_state_tests.rs"]
 mod tests;

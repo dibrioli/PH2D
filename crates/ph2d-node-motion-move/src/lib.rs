@@ -11,6 +11,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -51,6 +52,37 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
         _ => 1.0,
     }
 }
+
+/// GPU compute kernel (GPU/M5 Fase 1, ADR-0122): `P' = P + (dx, dy) · falloff`,
+/// the exact per-element map of the CPU `eval` (same multiply/add order → same
+/// float result up to GPU FMA contraction, covered by the ε parity gate).
+/// `ReadWriteExisting` mirrors the CPU's pattern-match: a stream WITHOUT a `P`
+/// column passes through untouched (the CPU only rewrites `P` when it exists),
+/// so absence means the same thing on both paths.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let mv_f = read_falloff(i);\n\
+        let mv_p = read_P(i);\n\
+        write_P(i, vec2<f32>(mv_p.x + params.dx * mv_f, mv_p.y + params.dy * mv_f));\n",
+    wgsl_lib: "",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWriteExisting,
+            identity: [0.0; 4],
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+        },
+    ],
+    params: &["dx", "dy"],
+    source_count: None,
+    applicable: None,
+};
 
 struct MotionMove;
 
@@ -100,6 +132,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 Fase 1 (ADR-0122): the WGSL lowering, registered on the side.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

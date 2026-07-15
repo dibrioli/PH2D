@@ -2602,6 +2602,7 @@ impl crate::App {
                 self.fixed_step.fixed_dt(),
                 self.last_pointer,
                 toasts,
+                surface.gpu(),
             );
             // Mirror the tool's mode + shape params for the input dispatch's
             // pen-vs-shape routing (the downcast lives in the bridge).

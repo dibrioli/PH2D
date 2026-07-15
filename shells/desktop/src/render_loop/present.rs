@@ -121,18 +121,30 @@ impl crate::App {
                 // Motion Nodes M0.T11: append the cooked node-graph stream to the
                 // sprite pass (empty when the tool is inactive) — drawn without
                 // being spawned into the ECS `present` (stream ≠ ECS, ADR-0035).
-                let motion_slice: &[ph2d_render::RenderInstance] = if motion_active {
-                    &motion.pump.instances
-                } else {
-                    &[]
-                };
-                renderer.render_with_extra(
+                // GPU/M5 Fase 1 (ADR-0122): when the bridge cooked this frame on
+                // the GPU (`PH2D_GPU_COOK=1`, fully-covered chain), the instance
+                // buffer to draw ALREADY lives on the GPU — bind it directly and
+                // pass an empty CPU slice (the pump never ran; its buffer is
+                // stale). Otherwise the classic CPU slice path, byte-identical.
+                let motion_gpu: Option<(&wgpu::Buffer, u32)> = (motion_active
+                    && motion.gpu_live)
+                    .then(|| motion.gpu_cook.instances())
+                    .flatten()
+                    .map(|gi| (gi.buffer(), gi.len()));
+                let motion_slice: &[ph2d_render::RenderInstance] =
+                    if motion_active && motion_gpu.is_none() {
+                        &motion.pump.instances
+                    } else {
+                        &[]
+                    };
+                renderer.render_with_streams(
                     game_rt.view(),
                     present,
                     camera,
                     window_size,
                     wgpu::Color { r, g, b, a: 1.0 },
                     motion_slice,
+                    motion_gpu,
                     scene_viewport,
                 );
                 // Pass 1b: Flip (ADR-0114 W1) composto por-camada (blend/opacity via

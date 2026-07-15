@@ -28,6 +28,7 @@
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -138,6 +139,101 @@ fn waveform(kind: i32, phase: f32) -> f32 {
     }
 }
 
+/// GPU compute kernel (GPU/M5 Fase 1, ADR-0122). The waveform library is a
+/// straight WGSL port of [`waveform`] — same piecewise polynomials, same
+/// Capens 2nd-order sine correction (HR-5: WGSL `sin` has no cross-vendor
+/// guarantee; the parabola is plain mul/abs arithmetic, so GPU-vs-CPU parity
+/// holds within float ULPs). `osc_round` is round-half-AWAY-from-zero to match
+/// Rust's `f32::round` (WGSL's builtin `round` is half-to-even, which would
+/// pick a different waveform at `wave = 2.5`).
+///
+/// **Covers the X/Y channels only** (`applicable`): the Rotation/Size channels
+/// write a different column, which a static binding set cannot switch on — a
+/// graph oscillating those falls back to the CPU `eval` (the explicit
+/// boundary), never to a wrong answer. The channel test in the body is
+/// `< 0.5`, which agrees with the CPU's `round()` for every value `applicable`
+/// admits.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let osc_f = read_falloff(i);\n\
+        let osc_phase = params.playhead * params.frequency + f32(i) * params.phase_stagger + params.phase;\n\
+        let osc_w = osc_wave(i32(osc_round(params.wave)), osc_phase);\n\
+        let osc_d = (osc_w * params.amplitude + params.offset) * osc_f;\n\
+        var osc_p = read_P(i);\n\
+        if (params.channel < 0.5) {\n\
+            osc_p.x = osc_p.x + osc_d;\n\
+        } else {\n\
+            osc_p.y = osc_p.y + osc_d;\n\
+        }\n\
+        write_P(i, osc_p);\n",
+    wgsl_lib: "\
+        fn osc_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn osc_wave(kind: i32, phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            if (kind == 1) {\n\
+                // Triangle: 0 at 0, +1 at 1/4, 0 at 1/2, -1 at 3/4.\n\
+                if (f < 0.25) { return 4.0 * f; }\n\
+                if (f < 0.75) { return 2.0 - 4.0 * f; }\n\
+                return 4.0 * f - 4.0;\n\
+            }\n\
+            if (kind == 2) {\n\
+                if (f < 0.5) { return 1.0; }\n\
+                return -1.0;\n\
+            }\n\
+            if (kind == 3) { return 2.0 * f - 1.0; }\n\
+            if (kind == 4) {\n\
+                if (f < 0.08) { return 1.0; }\n\
+                return 0.0;\n\
+            }\n\
+            // Parabolic sine-approximation + Capens correction (~0.09% off a\n\
+            // true sine, transcendental-free) — the port of `waveform`'s default.\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n",
+    bindings: &[
+        // The target channel is materialized from its identity when absent —
+        // the CPU's `apply_channel_delta` does the same (`base_vec2`).
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+        },
+    ],
+    params: &[
+        "channel",
+        "wave",
+        "amplitude",
+        "frequency",
+        "phase_stagger",
+        "offset",
+        "phase",
+    ],
+    source_count: None,
+    applicable: Some(|param| {
+        // Same rounding the CPU `eval` applies. Only X (0) / Y (1) write `P`;
+        // Rotation (2) / Size (3) write other columns → CPU fallback.
+        let channel = param("channel").round();
+        channel == 0.0 || channel == 1.0
+    }),
+};
+
 struct MotionOscillator;
 
 impl NodeOp for MotionOscillator {
@@ -186,6 +282,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 Fase 1 (ADR-0122): the WGSL lowering, registered on the side.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

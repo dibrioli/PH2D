@@ -75,6 +75,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Circle,
         },
     );
+    // GPU/M5 Fase 1 (ADR-0122): the render sink is a pure copy, so on the GPU
+    // it is the PASSTHROUGH kernel — the sequencer emits no pass and the
+    // upstream stream flows straight into the lowering.
+    reg.register_gpu_kernel(MANIFEST.id, ph2d_nodegraph::gpu::GpuKernel::PASSTHROUGH);
     Ok(())
 }
 

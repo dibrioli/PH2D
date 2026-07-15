@@ -13,6 +13,7 @@
 //! node is dropping a crate, never hand-editing a central list.
 
 use ph2d_nodegraph::cook::OpResolver;
+use ph2d_nodegraph::gpu::{GpuKernel, KernelResolver};
 use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
@@ -32,6 +33,12 @@ pub struct NodeRegistry {
     /// declared `ParamSpec`), keyed the same way. A `&'static` slice per type so
     /// registration is a single insert; the params panel reads it to build rows.
     param_ui: BTreeMap<NodeTypeId, &'static [ParamUiHint]>,
+    /// GPU/M5 Fase 1 (ADR-0122) — per-type WGSL compute kernel, keyed the same
+    /// way and kept OUT of the frozen `NodeManifest` exactly like the UI
+    /// metadata. Opt-in: a node without one runs its CPU `eval` (the canonical
+    /// path); the GPU sequencer (`ph2d-gpu-cook`) resolves kernels through
+    /// [`KernelResolver`].
+    gpu_kernels: BTreeMap<NodeTypeId, GpuKernel>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -95,6 +102,20 @@ impl NodeRegistry {
     /// param has no hint).
     pub fn param_ui(&self, id: NodeTypeId) -> Option<&'static [ParamUiHint]> {
         self.param_ui.get(&id).copied()
+    }
+
+    /// Register a node type's GPU compute kernel (GPU/M5 Fase 1, ADR-0122).
+    /// Additive to [`Self::register`], exactly like [`Self::register_ui`]; last
+    /// write wins. The kernel is pure `'static` data (`ph2d_nodegraph::gpu`) —
+    /// registering one adds no GPU dependency here.
+    pub fn register_gpu_kernel(&mut self, id: NodeTypeId, kernel: GpuKernel) {
+        self.gpu_kernels.insert(id, kernel);
+    }
+}
+
+impl KernelResolver for NodeRegistry {
+    fn gpu_kernel(&self, ty: NodeTypeId) -> Option<&GpuKernel> {
+        self.gpu_kernels.get(&ty)
     }
 }
 

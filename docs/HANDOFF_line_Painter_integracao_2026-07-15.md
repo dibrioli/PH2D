@@ -2,7 +2,8 @@
 
 > **Para o agente INTEGRADOR** (DIRETRIZ §1.5.9). A linha está FECHADA e **parada**: integração e ship
 > só por ordem explícita do Enio. Jornada de hoje: **P0 (retângulo residual do Inflate) + W4 (família
-> advectiva do Deform)**.
+> advectiva do Deform)** — **ambos SMOKADOS OK pelo Enio** — **+ W5 (Conserve, a bow wave)**, pendente
+> smoke (o desenho da pilha é opt-in, default OFF).
 
 ## 1. Base e commits
 
@@ -12,9 +13,12 @@
 
 | | |
 |---|---|
-| `8b21acb8` | **fix(sculpt): P0** — o retângulo residual do Inflate era a dilatação AMBIENTE do terreno; 3 camadas seguram o suporte |
-| `cac2db77` | **feat(deform): W4** — o warp carrega o CORPO da tinta (`h`+`covers`+`mats`) junto dos pixels |
-| (este) | docs: handoffs + CLAUDE.md |
+| `8b21acb8` | **fix(sculpt): P0** — o retângulo residual do Inflate era a dilatação AMBIENTE do terreno; 3 camadas seguram o suporte — **smoke OK** |
+| `cac2db77` | **feat(deform): W4** — o warp carrega o CORPO da tinta (`h`+`covers`+`mats`) junto dos pixels — **smoke OK** |
+| `c78e1a70` | test(sculpt): split de LOC (`inflate_matter.rs`) + fmt |
+| `38c92fad` | docs: handoffs + CLAUDE.md |
+| `b9d0ef28` | **feat(sculpt): W5** — Conserve, a *bow wave*: o que o Scrape tira, o aro recebe (ledger < 1%); checkbox opt-in nos cards Scrape/Chisel — **pendente smoke** |
+| (este) | docs: fechamento do W5 |
 
 ## 2. Superfície tocada
 
@@ -28,6 +32,12 @@
 - **`ph2d-editor-core`** (foundational, append-only): **id novo `PAINTER_DEFORM_RELIEF`** =
   `hash_node_id("painter_deform.relief")` em `ids/chrome/painter_deform.rs`. Hash de string — sem
   contador compartilhado; colisão só se outra linha criar o MESMO nome (grep antes de fundir).
+- **W5 (Conserve):** `ph2d-painter-brush/sculpt.rs` (`PlaneBite` + campo `bite` no `PlaneOut` — o único
+  call-site externo é o da própria linha) · tool `sculpt.rs`/`sculpt_session.rs`/`sculpt_blur.rs`/
+  `sculpt_panel.rs`/`snapshot.rs`/`brush_settings.rs`/`undo.rs` (`SculptSnap.bank`) · **id novo
+  `PAINTER_SCULPT_CONSERVE`** (hash de string) + `PAINTER_SCULPT_CLICKS` 9→10 · painel `paint_sculpt.rs`/
+  `populate.rs`/`brush_fallback.rs` + flip test em `tests/seam_sculpt.rs` · **novo**
+  `sculpt_tests/conserve.rs`.
 - **Contratos congelados: intactos** (`Tool`/`NodeOp`/`NodeManifest`/`CanvasPaintTool` não tocados).
   Nenhum schema bumpado. Nenhum arquivo de outra linha tocado.
 
@@ -40,8 +50,11 @@
 - Perf (`--release --ignored`): **Inflate 3,36 ms/move @2048² · 3,73 @4096²** (era 4,57; kill 8) —
   o P0 DEIXOU O INFLATE MAIS RÁPIDO (janela de escrita menor + rim-resample com sqrt morreu).
   Impasto 4,22/4,10 · Smooth 3,47/3,73 · Scrape 2,83/3,20 — tudo dentro.
-- **Placar de mutação da jornada: 11 provadas + 1 born-red** (P0: sentinela/budget/taper + gate-repro
-  nascido vermelho com 11.830 texels; W4: 8/8).
+- **Placar de mutação da jornada: 16 provadas + 1 born-red** (P0: sentinela/budget/taper + gate-repro
+  nascido vermelho com 11.830 texels; W4: 8/8; W5: 5/5).
+- **Pós-W5:** tool lib **691/0** · seam_sculpt **11/0** · `cargo test --workspace` **verde** (2ª rodada;
+  a 1ª pegou o estouro de LOC do inflate.rs e virou o split) · Scrape desarmado **3,19 ms/move** (como
+  era) · armado ≈ 4,3 (kill 8).
 
 ## 4. O que landou (uma linha cada)
 
@@ -81,17 +94,24 @@ relevo, costurado nos 7 sites com seam test que CLICA.
 
 ## 6. Aberto (a fila que sobra)
 
-1. **P1 — smoke do Enio** (bloqueia declarar o Sculpt smokado): roteiro no handoff de continuação.
-   P0 e W4 estão **pendentes de smoke**.
-2. **W5 — Conserve (bow wave)**: o kernel já computa o volume deslocado (`sculpt_displaced_volume`,
-   gateado); é um flag + o DESENHO da pilha na borda — e o desenho é exatamente onde o Push falhou:
-   **começar renderizando e olhando** no app vivo, não pela teoria. Plano §6.
-3. **D — bugs de display** (relevo anchored some no pen-up; jitter estica): provados corretos na tool;
+1. **Smoke do W5** (Conserve): arme o checkbox **Conserve** no card do Scrape (ou Chisel) e raspe tinta
+   grossa — a MECÂNICA está gateada (ledger < 1%, off é off ao bit, re-stamp idempotente, undo carrega);
+   o **DESENHO da pilha** é o que só o olho julga, e é onde o Push ganhou as cicatrizes. Se a pilha
+   parecer errada, os knobs do desenho moram em `push_reach_px` (largura do aro) e `push_rim_weight`
+   (perfil C¹) — compartilhados com o Push do depósito.
+2. **Conserve no Flatten/Fill** — deliberadamente FORA (v1): conservar quem também ADICIONA exige decidir
+   de onde o volume vem (a pilha alimenta os vales?). Decisão de design, não flag.
+3. **Gap documentado do v1:** knob **Offset** editado depois do traço num shape aberto re-renderiza com o
+   offset novo, mas o `bank` guarda o volume do offset de stamp — auto-cura no próximo re-stamp de
+   geometria (o toggle do Conserve re-stampa; o slider do Offset não). Se o Enio sentir, o fix é
+   re-stampar também no `set_sculpt_offset`.
+4. **D — bugs de display** (relevo anchored some no pen-up; jitter estica): provados corretos na tool;
    vivem no pipeline GPU de preview do shell. Precisam do app vivo.
-4. **A TINTA EMPURRADA (Push)**: fim da fila, ordem do Enio.
-5. **Perf do Deform NÃO é gateada** (nunca foi): o W4 adiciona 3 amostragens/texel no bbox do dab quando
-   a camada tem relevo + toggle ON. Nenhum critério de kill existia para o warp; se o smoke sentir peso,
-   medir antes de otimizar.
+5. **A TINTA EMPURRADA (Push)**: fim da fila, ordem do Enio. Nota: o W5 reusa `bank_dab_push` — o
+   diagnóstico do desenho do Push e o da pilha do Conserve agora são O MESMO problema no MESMO motor.
+6. **Perf do Deform NÃO é gateada** (nunca foi): o W4 adiciona 3 amostragens/texel quando há relevo +
+   toggle ON. **Scrape com Conserve armado ≈ 4,3 ms/move @2048²** (kill 8; desarmado 3,19 — o custo é
+   opt-in). `sculpt.rs` está a **698/700 LOC** — o próximo campo orça um split.
 
 ## 7. Como rodar
 

@@ -13,7 +13,8 @@
 
 ---
 
-> ## ⚡ STATUS (fim do dia 2026-07-15) — P0 FECHADO · W4 FECHADO · linha PARADA aguardando ordem
+> ## ⚡ STATUS (fim do dia 2026-07-15, atualizado pós-smoke) — P0 e W4 **SMOKADOS OK** · **W5 FECHADO**
+> (`b9d0ef28`, pendente smoke — arme o checkbox **Conserve** no Scrape/Chisel) · linha PARADA aguardando ordem
 >
 > - **P0 (§1) está CORRIGIDO** (`8b21acb8`, pendente smoke): o experimento A-vs-B decidiu **(A) ALTURA**
 >   — e o mecanismo era maior que as hipóteses: **dilatação AMBIENTE do terreno** (fonte NÃO-tocada
@@ -28,9 +29,13 @@
 >   restaura/rebasa os 4 planos; `DeformSnap` carrega os baselines pelo undo. 7 gates tool + 2 seam,
 >   8/8 mutações mortas.
 > - **Detalhe de integração:** [`HANDOFF_line_Painter_integracao_2026-07-15.md`](HANDOFF_line_Painter_integracao_2026-07-15.md).
-> - **Fila que sobra:** P1 (smoke do Enio — o roteiro do handoff 07-14 §0 + o repro do §1 abaixo) →
->   **W5 Conserve** (começar RENDERIZANDO E OLHANDO — é o mesmo problema do Push pelo outro lado) →
->   **D display** (precisa do app vivo) → Push (fim da fila, ordem do Enio).
+> - **W5 (Conserve) FECHADO no mesmo dia** (`b9d0ef28`): bite incremental DENTRO do walk do plano
+>   (`PlaneBite`) + `bank_dab_push` reusado + campo `bank` na sessão (undo §10.4 no mesmo commit) +
+>   porta única `conserve_active` + checkbox costurado com seam que clica. Ledger fecha < 1%; off é
+>   off ao bit; só acumula ARMADO (Scrape desarmado 3,19 ms/move, como era). 4 gates + flip; 5/5
+>   mutações mortas. **Default OFF: o desenho da pilha é do smoke.**
+> - **Fila que sobra:** smoke do W5 → **D display** (precisa do app vivo) → Push (fim da fila, ordem
+>   do Enio — e agora Push e Conserve são o MESMO motor: `bank_dab_push`).
 > - `inflate.rs` estourou o teto de LOC no fechamento (728 > 700, herdado) → **split por
 >   responsabilidade**: `inflate_matter.rs` (aparência/matéria) saiu dele; gate de LOC verde.
 

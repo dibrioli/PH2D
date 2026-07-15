@@ -31,6 +31,21 @@ const SECS: usize = 3;
 /// bitrate. This is the tone that makes the trade audible instead of theoretical.
 const SHIMMER_HZ: f32 = 15_000.0;
 
+/// A tone with harmonics, so it is **present on any speaker** and not a bare bass sine.
+///
+/// The first delivery clip made the body a single 220/330 Hz sine. Correct on paper, and the
+/// Mobile export measured a healthy −15 dB — but Mobile is the target that *loses the 15 kHz
+/// shimmer*, so what is left is only that low sine, and next to the master (which keeps the bright
+/// shimmer a speaker reproduces loudest) it reads as "nothing". The fix is not more level, it is
+/// **mid-range content**: a fundamental plus two harmonics puts energy from `hz` up to `3·hz`,
+/// which every speaker plays, so the Mobile file stands on its own as a sound.
+fn voiced(t: f32, hz: f32) -> f32 {
+    let tau = std::f32::consts::TAU;
+    0.30 * (tau * hz * t).sin()
+        + 0.15 * (tau * 2.0 * hz * t).sin()
+        + 0.09 * (tau * 3.0 * hz * t).sin()
+}
+
 /// The smoke's material. See the module docs for why each ingredient is there.
 pub(crate) fn delivery_clip() -> SampleData {
     let tau = std::f32::consts::TAU;
@@ -39,11 +54,12 @@ pub(crate) fn delivery_clip() -> SampleData {
         let t = (i / 2) as f32 / SR as f32;
         let right = i % 2 == 1;
         // A real stereo image: the two channels are NOT the same signal, so folding to mono is a
-        // loss you can hear and not just a number that halves.
+        // loss you can hear. Different notes per channel, each with harmonics up to ~1 kHz — all
+        // well under Mobile's 12 kHz Nyquist, so the whole body survives to the Mobile file.
         let body = if right {
-            0.35 * (tau * 330.0 * t).sin()
+            voiced(t, 330.0)
         } else {
-            0.35 * (tau * 220.0 * t).sin()
+            voiced(t, 220.0)
         };
         // The shimmer that a 24 kHz variant is physically unable to represent.
         let shimmer = 0.25 * (tau * SHIMMER_HZ * t).sin();
@@ -72,8 +88,9 @@ impl AudioSystem {
                    Mobile holds a QUARTER (24 kHz, mono). A codec swap would print the same\n  \
                    number three times; only conforming the audio buys memory back.\n  \
              do:   Export Set -> a SAVE dialog (name + folder) -> three files. Load .mobile.ogg\n  \
-                   the 15 kHz shimmer is GONE -- 24 kHz cannot represent it (Nyquist is 12 kHz).\n  \
-                   Only the .console.wav still carries the loop points and the markers."
+                   back: it STILL PLAYS (the body tone), but duller -- the bright 15 kHz shimmer\n  \
+                   is GONE, because 24 kHz cannot represent it (Nyquist is 12 kHz). Compare it to\n  \
+                   .console.wav (full + loop points + markers) to hear the trade."
         );
     }
 }
@@ -146,6 +163,73 @@ mod tests {
             "Mobile ({}) is not meaningfully cheaper than Desktop ({}) on this clip",
             ram[0],
             ram[1]
+        );
+    }
+
+    /// Broadband RMS of the left channel, at whatever rate the clip is.
+    fn rms(d: &SampleData) -> f32 {
+        let ch = d.format().channel_count().max(1);
+        let s: Vec<f32> = d.samples().iter().step_by(ch).copied().collect();
+        (s.iter().map(|x| x * x).sum::<f32>() / s.len().max(1) as f32).sqrt()
+    }
+
+    /// Manual helper: write the real Mobile file to `$PROBE_OUT` so it can be played in an external
+    /// player or inspected with ffprobe. `#[ignore]` — it is a probe, not a gate.
+    #[test]
+    #[ignore]
+    fn write_mobile_to_disk() {
+        let mobile = PLATFORMS.iter().find(|p| p.name == "Mobile").unwrap();
+        let conformed = ph2d_audio_edit::conform(&delivery_clip(), mobile.format());
+        let bytes = ph2d_audio_encode::encode_ogg(&conformed, mobile.quality).unwrap();
+        let path = std::env::var("PROBE_OUT").expect("set PROBE_OUT=/path/to/out.ogg");
+        std::fs::write(&path, &bytes).unwrap();
+        println!("wrote {} bytes to {path}", bytes.len());
+    }
+
+    /// **The sibling my shimmer gate was missing: the Mobile file has to still HAVE the body.**
+    ///
+    /// Every earlier gate proved the 15 kHz shimmer is *gone* from Mobile — an ABSENCE. None
+    /// proved the 220/330 Hz body *survives* — the PRESENCE. A Mobile export that is dead silence
+    /// passes every one of them (no shimmer, right RAM), which is exactly what shipped: the Enio
+    /// loaded `…mobile.ogg` back and heard nothing. This walks the real product path
+    /// (conform → encode_ogg → decode) and asserts the body is still there.
+    #[test]
+    fn the_mobile_export_is_not_silent() {
+        let mobile = PLATFORMS.iter().find(|p| p.name == "Mobile").unwrap();
+        let master = delivery_clip();
+        let conformed = ph2d_audio_edit::conform(&master, mobile.format());
+        let after_conform = rms(&conformed);
+
+        let bytes = ph2d_audio_encode::encode_ogg(&conformed, mobile.quality)
+            .expect("Mobile is Ogg Vorbis");
+        // An Ogg Vorbis file must NOT sniff as Opus — both ride an Ogg container, so a check that
+        // only saw "OggS" would send this to the Opus decoder, which cannot read Vorbis: the load
+        // would fail, the editor would hold no clip, and Play would be silence.
+        assert!(
+            !ph2d_audio_opus::is_opus(&bytes),
+            "the Mobile .ogg (Vorbis) sniffed as Opus -- the decode door would misroute it and the \
+             editor would load nothing"
+        );
+        // Route through the SAME door `editor_load` uses, not `ph2d_audio_decode::decode` direct.
+        let decoded = crate::audio::decode_any::decode(&bytes)
+            .expect("the editor's own door must read the file the editor wrote");
+        let after_ogg = rms(&decoded);
+
+        println!(
+            "RMS  master {:.4}  ->  conform(24k mono) {after_conform:.4}  ->  ogg round-trip {after_ogg:.4}",
+            rms(&master)
+        );
+        // The surviving body has real mid-range presence, not a bare bass sine, so the Mobile file
+        // is clearly a SOUND and not just numerically non-zero.
+        assert!(
+            after_conform > 0.1,
+            "conform to Mobile produced near-silence ({after_conform:.4}) -- the body did not \
+             survive the resample/fold, so the bug is in `conform`, not the codec"
+        );
+        assert!(
+            after_ogg > 0.05,
+            "the Mobile .ogg is silent after a round-trip ({after_ogg:.4}) though conform kept the \
+             body ({after_conform:.4}) -- the bug is in encode_ogg or the decode"
         );
     }
 }

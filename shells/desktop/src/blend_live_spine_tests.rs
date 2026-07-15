@@ -361,3 +361,52 @@ fn dragging_an_endpoint_moves_the_source_without_authoring_the_spine() {
         "a ponta ficou onde foi arrastada (sem salto de volta): {last:?}"
     );
 }
+
+/// **Arrastar o SPINE (o objeto blend) move TODAS as fontes juntas** (ADR-0122, ajuste do Enio: as
+/// formas seguem a linha "como filhas"). O gizmo escreve a translação no `Transform` do blend; a
+/// função a consome em cada fonte e devolve o blend à identidade. Duas frames provam que é
+/// INCREMENTAL — o gizmo dá o TOTAL do gesto a cada frame, e re-aplicá-lo dobraria o movimento.
+#[test]
+fn dragging_the_blend_object_moves_all_sources_as_children() {
+    let (mut sim, scene, map, spine, src) = scene_with_blend(3, 3); // fontes em x = 0, 4, 8
+    let be = Entity::from_bits(map[&spine]);
+    let mut drags = BlendDrag::new();
+
+    // Frame 1: o gizmo pôs o Transform do blend em (3,2).
+    sim.world_mut()
+        .get_mut::<Transform>(be)
+        .expect("transform")
+        .translation = ph2d_core::Vec2::new(3.0, 2.0);
+    assert!(
+        drag_blend_moves_sources(&mut sim, &scene, &map, &mut drags),
+        "moveu as fontes"
+    );
+    // O blend voltou à identidade; TODAS as fontes andaram (3,2).
+    assert_eq!(
+        *sim.world().get::<Transform>(be).expect("transform"),
+        Transform::IDENTITY,
+        "o blend volta à identidade (a pose foi para as fontes)"
+    );
+    let xf = crate::vec_transform::build(&sim, &map);
+    for (i, s) in src.iter().enumerate() {
+        let c = center_of(&scene, &xf, *s).expect("centro");
+        let want = [i as f64 * 4.0 + 3.0, 2.0];
+        assert!(
+            (c[0] - want[0]).abs() < 1e-6 && (c[1] - want[1]).abs() < 1e-6,
+            "fonte {i} em {c:?}, esperado {want:?}"
+        );
+    }
+
+    // Frame 2: o gizmo levou o TOTAL do gesto a (5,2). Aplica só o INCREMENTO (2,0) — não re-soma.
+    sim.world_mut()
+        .get_mut::<Transform>(be)
+        .expect("transform")
+        .translation = ph2d_core::Vec2::new(5.0, 2.0);
+    drag_blend_moves_sources(&mut sim, &scene, &map, &mut drags);
+    let xf = crate::vec_transform::build(&sim, &map);
+    let c0 = center_of(&scene, &xf, src[0]).expect("centro");
+    assert!(
+        (c0[0] - 5.0).abs() < 1e-6 && (c0[1] - 2.0).abs() < 1e-6,
+        "incremental: a fonte 0 está em (5,2), não em (8,4): {c0:?}"
+    );
+}

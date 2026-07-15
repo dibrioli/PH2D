@@ -31,10 +31,23 @@ use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, VecXforms, bake_xf
 
 use crate::vec_entities::VecEntityMap;
 
+/// As operações de edição/interação do blend (painel + canvas) — módulo irmão pelo teto de 600 LOC.
+#[path = "blend_live_edit.rs"]
+mod edit;
+pub(crate) use edit::{
+    drag_blend_moves_sources, drag_spine_anchors_move_sources, pick_preview, reset_spine,
+    selected_closed_in_z, set_selected_steps,
+};
+
 /// A memória do spine AUTOMÁTICO que a shell escreveu por último, por blend. É como a shell
 /// detecta que o artista editou a curva (modo Node): se o spine ATUAL difere do último auto, a
 /// mão mexeu → o blend vira `spine_authored`. Runtime-only (o flag em si viaja no componente).
 pub(crate) type BlendSpines = BTreeMap<VecPathId, Vec<VecVertex>>;
+
+/// A última translação do gizmo já aplicada às fontes, por blend. O gizmo escreve a translação
+/// TOTAL do gesto no `Transform` do blend; guardamos a última consumida para aplicar só o
+/// INCREMENTO a cada frame (`drag_blend_moves_sources`). Runtime-only.
+pub(crate) type BlendDrag = BTreeMap<VecPathId, [f64; 2]>;
 
 /// Translada TODOS os pontos de um path (âncora + as duas alças) por `off`. É como um passo é
 /// movido do seu lugar do lerp para o lugar dele no spine.
@@ -78,8 +91,8 @@ fn spine_stroke() -> ph2d_vec_scene::StrokeSpec {
 /// Fixa as ÂNCORAS do spine autorado aos centros das fontes — cada âncora pertence a uma forma (o
 /// Illustrator: a curva se edita pelas ALÇAS, não movendo a âncora para fora da forma). As alças
 /// acompanham (a tangente é preservada, `shift_vertex_to`), então uma fonte que se move **arrasta a
-/// âncora e a curva junto** — inclusive as fontes do MEIO da cadeia ([`anchor_source_pairs`]). Sem
-/// isto, uma fonte movida no Select descolaria os passos da sua âncora.
+/// âncora e a curva junto** — inclusive as fontes do MEIO da cadeia ([`edit::anchor_source_pairs`]).
+/// Sem isto, uma fonte movida no Select descolaria os passos da sua âncora.
 ///
 /// `live` são as formas vivas na ordem da cadeia (uma por âncora, no caso normal). Passar os centros
 /// direto não bastava: com pontos de dobra extras, âncora ≠ fonte por índice.
@@ -93,8 +106,8 @@ fn pin_spine_anchors(
         return;
     };
     // O mapa usa o Nº de fontes; os centros vêm na MESMA ordem de `live`, então o índice em `live`
-    // indexa `centers`.
-    for (vi, src_id) in anchor_source_pairs(p.verts.len(), live) {
+    // indexa `centers`. O mapa mora no módulo irmão `edit` (junto com quem mais o usa).
+    for (vi, src_id) in edit::anchor_source_pairs(p.verts.len(), live) {
         let Some(li) = live.iter().position(|&s| s == src_id) else {
             continue;
         };
@@ -165,219 +178,6 @@ pub(crate) fn create(
 /// O teto de fontes por blend (o "até 5 formas" do Enio, ADR-0122). O motor aceita mais, mas o
 /// idioma do Illustrator é uma cadeia curta.
 pub(crate) const MAX_BLEND_SOURCES: usize = 5;
-
-/// O traço de REALCE do modo Pick Shapes — um azul de acento, distinto do cinza sutil do spine.
-/// Como o [`spine_stroke`], é um `Rgba8` em MUNDO por ora; o refinamento correto é um guia por
-/// overlay em screen-space com cor por token (ADR-0122 C2b), quando a preview virar UI de verdade.
-fn pick_stroke() -> ph2d_vec_scene::StrokeSpec {
-    ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(80, 150, 240, 230), 0.04)
-}
-
-/// A **prévia do modo Pick Shapes** (ADR-0122 C2b): o contorno realçado de cada forma escolhida +
-/// a polilinha que as costura na ORDEM de clique (a prévia do spine-a-ser). Tudo em MUNDO, para o
-/// [`ph2d_vec_render::draw_blend_overlay`] desenhar por cima. `picks` na ordem de clique; formas
-/// que sumiram são puladas. Vazio ⇒ nada é desenhado.
-///
-/// É o que torna a escolha VISÍVEL: o artista clica as formas e vê a cadeia se formar (a linha
-/// cresce do 1º clique), então sabe a ordem que o Blend vai usar sem um número na tela.
-pub(crate) fn pick_preview(
-    scene: &VecScene,
-    xforms: &VecXforms,
-    picks: &[VecPathId],
-) -> Vec<VecPath> {
-    let mut out = Vec::new();
-    // O contorno de cada forma escolhida (sem fill — só o realce da silhueta).
-    for &id in picks {
-        if let Some(mut p) = world(scene, xforms, id) {
-            p.fill = None;
-            p.stroke = Some(pick_stroke());
-            out.push(p);
-        }
-    }
-    // A polilinha pela ordem de clique — a prévia do spine (a linha que unirá as formas).
-    let centers: Vec<[f64; 2]> = picks
-        .iter()
-        .filter_map(|&id| center_of(scene, xforms, id))
-        .collect();
-    if centers.len() >= 2 {
-        out.push(VecPath {
-            verts: spine_verts(&centers),
-            closed: false,
-            stroke: Some(pick_stroke()),
-            ..VecPath::default()
-        });
-    }
-    out
-}
-
-/// As formas FECHADAS selecionadas, na ordem de **z** (a de `paths()`), capadas em
-/// [`MAX_BLEND_SOURCES`]. É o que o botão "Blend" liga — a ordem da cadeia é a de z, como o "Make"
-/// do Illustrator (formas abertas não têm interior para interpolar, então são descartadas).
-pub(crate) fn selected_closed_in_z(
-    scene: &VecScene,
-    pen: &ph2d_vec_edit::PenTool,
-) -> Vec<VecPathId> {
-    let mut zs: Vec<(usize, VecPathId)> = pen
-        .selected_paths()
-        .iter()
-        .filter_map(|id| {
-            scene
-                .paths()
-                .iter()
-                .position(|p| p.id == *id && p.closed)
-                .map(|z| (z, *id))
-        })
-        .collect();
-    zs.sort_unstable_by_key(|(z, _)| *z);
-    zs.dedup_by_key(|(z, _)| *z);
-    zs.into_iter()
-        .take(MAX_BLEND_SOURCES)
-        .map(|(_, id)| id)
-        .collect()
-}
-
-/// Ajusta os passos do(s) Blend Object(s) SELECIONADO(s) — o slider Steps ao vivo. Devolve `true`
-/// se algum blend foi retunado (nenhum selecionado ⇒ `false`, e o valor é só o de criação futura).
-/// Idempotente: não marca a entidade suja se o valor já é o mesmo.
-pub(crate) fn set_selected_steps(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    pen: &ph2d_vec_edit::PenTool,
-    steps: u32,
-) -> bool {
-    let mut changed = false;
-    for id in pen.selected_paths() {
-        let Some(&bits) = map.get(id) else { continue };
-        let e = Entity::from_bits(bits);
-        if sim
-            .world()
-            .get::<VecBlend>(e)
-            .is_some_and(|b| b.steps != steps)
-            && let Some(mut b) = sim.world_mut().get_mut::<VecBlend>(e)
-        {
-            b.steps = steps;
-            changed = true;
-        }
-    }
-    changed
-}
-
-/// **Reset Spine:** volta o(s) blend(s) selecionado(s) ao spine AUTOMÁTICO (a reta pelos centros),
-/// desfazendo a edição do modo Node. Devolve `true` se algum blend foi resetado.
-///
-/// Limpa `spine_authored` **E** a memória do auto (`spines`): sem apagar a memória, a detecção do
-/// [`recook`] compararia o spine BENT ainda na cena com o último auto memorizado (diferentes) e o
-/// RE-autoraria no mesmo frame — o reset não pegaria. Com a memória vazia, a detecção não dispara
-/// (`is_some_and` é falso) e o ramo automático reescreve a reta e a memoriza de novo.
-pub(crate) fn reset_spine(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    pen: &ph2d_vec_edit::PenTool,
-    spines: &mut BlendSpines,
-) -> bool {
-    let mut changed = false;
-    for id in pen.selected_paths() {
-        let Some(&bits) = map.get(id) else { continue };
-        let e = Entity::from_bits(bits);
-        if sim
-            .world()
-            .get::<VecBlend>(e)
-            .is_some_and(|b| b.spine_authored)
-            && let Some(mut b) = sim.world_mut().get_mut::<VecBlend>(e)
-        {
-            b.spine_authored = false;
-            spines.remove(id); // esquece o auto memorizado (senão o recook re-autora na hora)
-            changed = true;
-        }
-    }
-    changed
-}
-
-/// O mapa (índice de vértice do spine → forma-fonte que ele representa), para o
-/// [`drag_spine_anchors_move_sources`] e a [`pin_spine_anchors`] concordarem.
-///
-/// Quando o spine tem **um vértice por fonte** (o caso normal — o modo Node MOVE âncoras, não cria),
-/// TODA âncora é de uma fonte, e o `zip` 1-a-1 as liga (inclusive as do MEIO da cadeia). Se o spine
-/// tiver MAIS vértices que fontes (pontos de dobra extras — hoje só via smoke), só a 1ª e a última
-/// âncora são fontes garantidas.
-fn anchor_source_pairs(n_verts: usize, live: &[VecPathId]) -> Vec<(usize, VecPathId)> {
-    if n_verts == live.len() {
-        live.iter().copied().enumerate().collect()
-    } else if n_verts >= 2 && live.len() >= 2 {
-        vec![(0, live[0]), (n_verts - 1, live[live.len() - 1])]
-    } else {
-        Vec::new()
-    }
-}
-
-/// **Modo Node: arrastar uma ÂNCORA do spine MOVE a forma-fonte dela** (ADR-0122 C2b) — o inverso da
-/// pinagem, e o que faz "editar a curva no Node ser igual a mover a forma no Select".
-///
-/// Cada âncora do spine corresponde a uma forma da cadeia ([`anchor_source_pairs`] — inclusive as do
-/// MEIO). Se o artista a arrastou (modo Node), ela difere do centro da fonte; movemos a FONTE por
-/// essa delta (`vec_transform::translate_shape_world`). O `recook` logo em seguida re-encosta a
-/// âncora no centro — agora coincidentes, **sem salto** —, os passos re-cozem e a curva se adapta.
-///
-/// Roda ANTES do [`recook`] e SÓ no modo Node (no Select a fonte se move pelo gizmo e a âncora a
-/// segue). Arrastar uma ALÇA (bézier) em vez da âncora curva o spine sem mover a forma (a âncora não
-/// muda → delta zero → nada aqui; a detecção do `recook` autora a curva).
-///
-/// **Não autora o spine** ao mover uma âncora (mover a forma ≠ curvar a curva): quando o spine é
-/// automático, atualiza a âncora na memória do auto (`spines`) para o novo centro, e a detecção do
-/// `recook` não a confunde com uma edição de curva (só mexer numa alça ou num ponto de dobra autora).
-pub(crate) fn drag_spine_anchors_move_sources(
-    sim: &mut SimWorld,
-    scene: &VecScene,
-    map: &VecEntityMap,
-    xforms: &VecXforms,
-    spines: &mut BlendSpines,
-) {
-    let blends: Vec<(VecPathId, VecBlend)> = map
-        .iter()
-        .filter_map(|(&id, &bits)| {
-            let b = sim
-                .world()
-                .get::<VecBlend>(Entity::from_bits(bits))?
-                .clone();
-            Some((id, b))
-        })
-        .collect();
-    for (spine_id, blend) in blends {
-        let live: Vec<VecPathId> = blend
-            .sources
-            .iter()
-            .copied()
-            .filter(|id| scene.paths().iter().any(|p| p.id == *id))
-            .collect();
-        let Some(sp) = scene.paths().iter().find(|p| p.id == spine_id) else {
-            continue;
-        };
-        for (vi, src_id) in anchor_source_pairs(sp.verts.len(), &live) {
-            let e = sp.verts[vi].anchor;
-            let Some(c) = center_of(scene, xforms, src_id) else {
-                continue;
-            };
-            let (dx, dy) = (e[0] - c[0], e[1] - c[1]);
-            if dx * dx + dy * dy <= 1e-18 {
-                continue; // a âncora está sobre o centro: nada foi arrastado
-            }
-            let Some(&bits) = map.get(&src_id) else {
-                continue;
-            };
-            if crate::vec_transform::translate_shape_world(sim, Entity::from_bits(bits), [dx, dy]) {
-                // A âncora agora É o centro da fonte: atualiza a memória do auto para que a detecção
-                // do `recook` não trate o movimento da forma como uma edição de curva. Move o vértice
-                // INTEIRO (âncora + alças) como o arrasto fez — só a âncora deixaria as alças
-                // divergindo do spine atual, e a detecção autoraria à toa.
-                if let Some(mem) = spines.get_mut(&spine_id)
-                    && let Some(mv) = mem.get_mut(vi)
-                {
-                    shift_vertex_to(mv, e);
-                }
-            }
-        }
-    }
-}
 
 /// **O re-cook de todo frame.** Para cada entidade com um [`VecBlend`]: resolve as fontes no
 /// MUNDO, coze os passos (cor interpolada em OKLab pelo motor) para `out`, e atualiza o spine.

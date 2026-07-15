@@ -363,11 +363,7 @@ impl Plan {
 
         let mut out = path_from(&lerped, self.closed);
         out.fill = mix_paint(self.fill.0.as_ref(), self.fill.1.as_ref(), t);
-        out.stroke = if t < 0.5 {
-            self.stroke.0
-        } else {
-            self.stroke.1
-        };
+        out.stroke = mix_stroke(self.stroke.0, self.stroke.1, t);
         out
     }
 }
@@ -542,6 +538,33 @@ fn mix_paint(a: Option<&Paint>, b: Option<&Paint>, t: f64) -> Option<Paint> {
         }
         _ if t < 0.5 => a.cloned(),
         _ => b.cloned(),
+    }
+}
+
+/// O TRAÇO também interpola — como a cor e a forma, é o que faz o blend parecer uma transição e não
+/// N cópias. A **largura** e a **cor** caminham (largura por lerp, cor em OKLab como o fill); o resto
+/// (cap/join/dash/pontas) é discreto e vem do lado mais próximo.
+///
+/// **Um lado só com traço** (o outro sem): a largura some **suave** (fade a 0) em vez de aparecer/
+/// sumir de repente no meio — uma forma traçada que blenda para uma sem traço vê o contorno afinar.
+fn mix_stroke(a: Option<StrokeSpec>, b: Option<StrokeSpec>, t: f64) -> Option<StrokeSpec> {
+    match (a, b) {
+        (Some(sa), Some(sb)) => Some(StrokeSpec {
+            color: mix_oklab(sa.color, sb.color, t),
+            width: sa.width + (sb.width - sa.width) * t,
+            // cap/join/dash/pontas são discretos — o lado mais próximo (o mesmo critério do fill).
+            ..(if t < 0.5 { sa } else { sb })
+        }),
+        // Só um lado tem traço: a largura afina até 0 (fade), com a cor/estilo do lado que existe.
+        (Some(sa), None) => Some(StrokeSpec {
+            width: sa.width * (1.0 - t),
+            ..sa
+        }),
+        (None, Some(sb)) => Some(StrokeSpec {
+            width: sb.width * t,
+            ..sb
+        }),
+        (None, None) => None,
     }
 }
 

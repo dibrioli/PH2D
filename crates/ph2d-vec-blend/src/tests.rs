@@ -239,6 +239,47 @@ fn the_fill_travels_with_the_shape() {
     );
 }
 
+/// **O TRAÇO caminha junto** (ajuste do Enio: "não há transição suave de espessura de strokes").
+/// A largura interpola por lerp e a cor em OKLab; as pontas são exatas. E quando só um lado tem
+/// traço, a largura AFINA até 0 (fade), em vez de o traço aparecer/sumir de repente no meio.
+#[test]
+fn the_stroke_travels_with_the_shape() {
+    let mut a = square([0.0, 0.0], 1.0);
+    let mut b = square([6.0, 0.0], 1.0);
+    a.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 2.0));
+    b.stroke = Some(StrokeSpec::new(Rgba8::new(200, 100, 50, 255), 10.0));
+
+    let stroke = |p: &VecPath| p.stroke.expect("traço");
+    // Pontas EXATAS.
+    assert!(
+        (stroke(&morph(&a, &b, 0.0).unwrap()).width - 2.0).abs() < 1e-9,
+        "t=0 é a largura de A"
+    );
+    assert!(
+        (stroke(&morph(&a, &b, 1.0).unwrap()).width - 10.0).abs() < 1e-9,
+        "t=1 é a largura de B"
+    );
+    // O meio: a largura é o lerp (6), e a cor está ENTRE as duas (não é nenhuma das pontas).
+    let mid = stroke(&morph(&a, &b, 0.5).unwrap());
+    assert!(
+        (mid.width - 6.0).abs() < 1e-9,
+        "a largura do meio é o lerp: {}",
+        mid.width
+    );
+    assert_ne!((mid.color.r, mid.color.g, mid.color.b), (0, 0, 0));
+    assert_ne!((mid.color.r, mid.color.g, mid.color.b), (200, 100, 50));
+
+    // Um lado SEM traço: a largura afina (fade a 0), não troca de repente no meio.
+    let mut c = square([12.0, 0.0], 1.0);
+    c.stroke = None;
+    let faded = morph(&a, &c, 0.5).unwrap().stroke.expect("traço em fade");
+    assert!(
+        (faded.width - 1.0).abs() < 1e-9,
+        "A(2)→sem-traço: no meio a largura afina a 1: {}",
+        faded.width
+    );
+}
+
 /// **O SMOKE DO ENIO: quadrado→estrela ondulava.**
 ///
 /// As duas pontas são POLÍGONOS (só arestas retas), então **todo** intermediário tem de ser um

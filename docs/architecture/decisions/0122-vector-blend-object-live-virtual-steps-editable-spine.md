@@ -279,6 +279,25 @@ volta — as duas coisas convivem).
   chave i18n `panel.vector.mode.pickblend` foi removida (a seção Blend usa labels hardcoded, como
   "Blend"/"Steps"/"Reset Spine").
 
+### Ajustes do Enio (2026-07-15, do smoke do `=2`)
+
+- **O TRAÇO interpola** (`ph2d_vec_blend::mix_stroke`): antes o `Plan::at` só TROCAVA o stroke de A
+  para B em `t=0.5` (sem transição de espessura — o que o Enio viu). Agora a **largura** interpola
+  por lerp e a **cor** em OKLab (como o fill); cap/join/dash/pontas (discretos) vêm do lado mais
+  próximo. Um lado SEM traço faz a largura **afinar até 0** (fade), em vez de o traço aparecer de
+  repente no meio. Gate `the_stroke_travels_with_the_shape` (largura lerp + fade do lado único).
+- **Arrastar o SPINE (o objeto blend) no Select move TODAS as fontes juntas** ("como filhas",
+  `blend_live_edit::drag_blend_moves_sources` + `vec_transform::translate_shape_world`): o gizmo
+  escreve a translação no `Transform` do blend (que a `recook` mantém na identidade); a função
+  consome o **INCREMENTO** dela em cada fonte (o gizmo dá o TOTAL do gesto a cada frame → guarda a
+  última já aplicada em `BlendDrag`) e devolve o blend à identidade, ANTES do `recook` (as fontes
+  movidas fazem o spine e os passos segui-las). Translação só — girar/escalar o grupo é follow-up.
+  Gate mutation-testado (2 frames provam que é incremental, não re-soma o total).
+- **`blend_live.rs` foi dividido** (teto de 600 LOC): as ações de edição/interação (pick/select/
+  steps/reset/os dois drags) saíram para o módulo-filho `blend_live_edit.rs` (`use super::*` para os
+  privados do pai); o núcleo (component + `recook` + helpers de geometria) ficou. `pin_spine_anchors`
+  chama `edit::anchor_source_pairs`.
+
 **Gotchas para a Fase C (o próximo que mexer):**
 
 - **O spine é a geometria da PRÓPRIA entidade do blend, mas os passos NÃO estão na cena.** O path

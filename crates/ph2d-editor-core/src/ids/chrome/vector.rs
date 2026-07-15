@@ -448,9 +448,6 @@ pub const VECTOR_BLEND_RUN: NodeId = hash_node_id("vector.blend.run");
 /// **Steps** — quantas formas nascem no meio do caminho.
 pub const VECTOR_BLEND_STEPS: NodeId = hash_node_id("vector.blend.steps");
 pub const VECTOR_BLEND_STEPS_NUM: NodeId = hash_node_id("vector.blend.steps_num");
-/// **Rotate Match** — o `shapeIndex` do GSAP / *Map Nodes* do Corel: roda a
-/// correspondência em uma âncora. É o que conserta a forma que GIRA no caminho.
-pub const VECTOR_BLEND_ROTATE: NodeId = hash_node_id("vector.blend.rotate");
 /// **Stack Up** — cada passo nasce ACIMA do anterior (ou abaixo). A ordem de z de uma
 /// sequência é parte do resultado: um blend cuja 1ª intermediária fica DEBAIXO da forma
 /// que a originou não lê como transição.

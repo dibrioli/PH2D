@@ -40,7 +40,6 @@
 //! exatamente a subdivisão que faltava.
 
 use super::{COST_SAMPLES, MERGE_EPS, Outline};
-use crate::BlendOpts;
 use kurbo::Point;
 
 /// A correspondência escolhida: os **nós** que amarram as duas formas, e o sentido de percurso.
@@ -76,7 +75,7 @@ thread_local! {
     pub(crate) static SEARCH_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
-pub(crate) fn search(oa: &Outline, ob: &Outline, opts: BlendOpts) -> Correspondence {
+pub(crate) fn search(oa: &Outline, ob: &Outline) -> Correspondence {
     #[cfg(test)]
     SEARCH_COUNT.with(|c| c.set(c.get() + 1));
     let ob_rev = ob.reversed();
@@ -90,23 +89,14 @@ pub(crate) fn search(oa: &Outline, ob: &Outline, opts: BlendOpts) -> Corresponde
     // quadrado→estrela e círculo→círculo. E ele era **redundante**: quando B de fato tem winding
     // oposto (uma forma importada/desenhada ao contrário), este `auto_reversed` já a percorre no
     // sentido certo sozinho. O gate `opposite_winding_does_not_collapse_the_middle` prova isso.
-    let (cost_fwd, knots_fwd) = align(oa, ob, 0);
-    let (cost_rev, knots_rev) = align(oa, &ob_rev, 0);
+    let (cost_fwd, knots_fwd) = align(oa, ob);
+    let (cost_rev, knots_rev) = align(oa, &ob_rev);
     let reversed = cost_rev < cost_fwd;
-
-    if opts.offset == 0 {
-        let knots = if reversed { knots_rev } else { knots_fwd };
-        return Correspondence { knots, reversed };
-    }
-    let target = if reversed { &ob_rev } else { ob };
-    let (_, knots) = align(oa, target, opts.offset);
+    let knots = if reversed { knots_rev } else { knots_fwd };
     Correspondence { knots, reversed }
 }
 
 /// O casamento cíclico monótono entre as **quinas** de `oa` e `ob`, e o custo dele.
-///
-/// `offset` roda o nó inicial em B — é o **escape manual** (o `shapeIndex` do GSAP / *Map Nodes*
-/// do Corel), agora com um significado exato: *"case a minha primeira quina com a k-ésima dela"*.
 ///
 /// # Os nós são as QUINAS, não as âncoras
 ///
@@ -114,7 +104,12 @@ pub(crate) fn search(oa: &Outline, ob: &Outline, opts: BlendOpts) -> Corresponde
 /// artefato da parametrização —, e obrigar uma quina a casar com uma delas **inventa uma rotação**.
 /// Quando um dos dois lados não tem quina nenhuma para oferecer, não há nó a escolher: a
 /// correspondência é uma **fase contínua** ([`phase_only`]), e é ela que o varrimento acha.
-pub(crate) fn align(oa: &Outline, ob: &Outline, offset: i32) -> (f64, Vec<(f64, f64)>) {
+///
+/// A correspondência é **100% automática** — não há escape manual. Houve um (o "Rotate Match", um
+/// `offset` que rodava o nó inicial), removido 2026-07-14: ele era péssimo, e no modelo vivo o
+/// ajuste é feito **editando as formas-fonte** (girar a do meio adapta os intermediários), não um
+/// botão que gira a correspondência às cegas.
+pub(crate) fn align(oa: &Outline, ob: &Outline) -> (f64, Vec<(f64, f64)>) {
     let (ua_all, ub_all) = (oa.anchors(), ob.anchors());
     if ua_all.is_empty() || ub_all.is_empty() {
         return (f64::INFINITY, vec![(0.0, 0.0)]);
@@ -130,7 +125,7 @@ pub(crate) fn align(oa: &Outline, ob: &Outline, offset: i32) -> (f64, Vec<(f64, 
     // Também é aqui que cai a forma com quinas DEMAIS (fora do orçamento da DP): centenas de
     // quinas não são "a" quina, e o contorno volta a ser tratado como o que ele é — uma curva.
     if n == 0 || m == 0 || n.min(m).saturating_mul(n.max(m).saturating_pow(3)) > DP_BUDGET {
-        return phase_only(oa, ob, offset);
+        return phase_only(oa, ob);
     }
 
     // As âncoras, NORMALIZADAS (centro + escala): o custo compara FORMA, não posição no mundo. O
@@ -158,36 +153,19 @@ pub(crate) fn align(oa: &Outline, ob: &Outline, offset: i32) -> (f64, Vec<(f64, 
     };
     let (n, m) = (ua.len(), ub.len());
 
-    // O AUTOMÁTICO primeiro: qual âncora de B casa com a 1ª de A?
-    let mut best: Option<(f64, usize, Vec<usize>)> = None;
+    // Qual âncora de B casa com a 1ª de A? A busca é exaustiva sobre o nó inicial — e o de menor
+    // custo é a correspondência automática.
+    let mut best: Option<(f64, Vec<usize>)> = None;
     for c in 0..m {
         if let Some((cost, js)) = dp_from(&ua, &ub, &pa, &pb, &ta, &tb, c)
-            && best.as_ref().is_none_or(|(bc, _, _)| cost < *bc)
+            && best.as_ref().is_none_or(|(bc, _)| cost < *bc)
         {
-            best = Some((cost, c, js));
+            best = Some((cost, js));
         }
     }
-    let Some((mut cost, c_auto, mut js)) = best else {
-        return phase_only(oa, ob, offset);
+    let Some((cost, js)) = best else {
+        return phase_only(oa, ob);
     };
-    // **O escape manual é RELATIVO ao automático**, e isso não é detalhe: fosse absoluto, o dia em
-    // que o automático já escolhesse aquele nó o botão **não faria nada** — e um escape que às
-    // vezes é inerte é pior que escape nenhum (o artista conclui que a ferramenta travou).
-    if offset != 0 {
-        // A soma é em **i64**: `c_auto + offset` estoura o `i32` quando o `offset` chega perto do
-        // teto (pânico em debug, wrap silencioso em release — e o `offset` é um campo PÚBLICO do
-        // `BlendOpts`). Em i64 a soma de dois i32 nunca estoura, e o `rem_euclid` a traz de volta.
-        let c = usize::try_from(
-            (i64::from(c_auto_i32(c_auto)) + i64::from(offset))
-                .rem_euclid(i64::try_from(m).unwrap_or(1)),
-        )
-        .unwrap_or(0);
-        let Some((c2, js2)) = dp_from(&ua, &ub, &pa, &pb, &ta, &tb, c) else {
-            return phase_only(oa, ob, offset);
-        };
-        cost = c2;
-        js = js2;
-    }
     let mut knots: Vec<(f64, f64)> = (0..n)
         .map(|i| {
             if swapped {
@@ -226,7 +204,7 @@ pub(crate) fn align(oa: &Outline, ob: &Outline, offset: i32) -> (f64, Vec<(f64, 
 /// constante (o termo cruzado com o deslocamento soma zero sobre o contorno inteiro, porque as
 /// duas amostragens são centradas nos respectivos centroides de arco). O que sobra é a correlação
 /// de FORMA — que é exatamente o que decide onde a quina do quadrado quer cair no círculo.
-fn phase_only(oa: &Outline, ob: &Outline, offset: i32) -> (f64, Vec<(f64, f64)>) {
+fn phase_only(oa: &Outline, ob: &Outline) -> (f64, Vec<(f64, f64)>) {
     let (sa, sb) = (oa.samples(PHASE_STEPS), ob.samples(PHASE_STEPS));
     let cost: Vec<f64> = (0..PHASE_STEPS)
         .map(|p| {
@@ -237,23 +215,6 @@ fn phase_only(oa: &Outline, ob: &Outline, offset: i32) -> (f64, Vec<(f64, f64)>)
         .collect();
     let p = (0..PHASE_STEPS).fold(0, |best, i| if cost[i] < cost[best] { i } else { best });
     let phi = (p as f64 + parabolic(&cost, p)) / PHASE_STEPS as f64;
-
-    // **O escape manual, no caso suave.** Aqui um dos dois lados NÃO tem quina, então não há nós
-    // discretos a ciclar: girar a fase só torce o morph (o lado liso não oferece posição de
-    // encaixe). O quantum vem das **quinas da forma que TEM quinas** — são elas que o artista
-    // percebe como pontos de ajuste —, e não das âncoras arbitrárias da lisa.
-    //
-    // O smoke do Enio (estrela→círculo): o quantum era `1/âncoras-do-círculo` = **1/4 = 90°/toque**,
-    // e o 2º toque (180°) **colapsava** a forma. Pelas 10 quinas da estrela dá 36°/toque — passos
-    // finos, e o artista sente a torção crescer em vez de colapsar de uma vez. A torção em rotação
-    // grande é intrínseca ao lerp de coordenadas (o gap Sederberg/Alexa, ainda aberto).
-    let corners = features(oa).len().max(features(ob).len());
-    let m = if corners > 0 {
-        corners
-    } else {
-        ob.segs.len().max(1) // as duas lisas (círculo→círculo): girar não muda nada visível
-    };
-    let phi = wrap(phi + f64::from(offset) / m as f64);
     let knots = vec![(0.0, phi)];
     (travel_cost(oa, ob, &knots), knots)
 }
@@ -515,13 +476,6 @@ fn dp_from(
         }
     }
     Some((cost, js))
-}
-
-/// O índice do nó automático como `i32` (satura se, por absurdo, não couber — não pode acontecer:
-/// `c_auto < m ≤ nº de âncoras`).
-#[inline]
-fn c_auto_i32(c_auto: usize) -> i32 {
-    i32::try_from(c_auto).unwrap_or(i32::MAX)
 }
 
 /// Delta de arco cíclico, sempre **positivo** (uma volta completa vale 1).

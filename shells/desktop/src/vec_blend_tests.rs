@@ -85,58 +85,10 @@ fn the_sources_survive_and_the_steps_are_born_between_them() {
     }
 }
 
-/// **O escape RE-RODA** — e é isso que o torna usável.
-///
-/// Um blend destrutivo de tiro único obrigaria o artista a: blend → ver o erro → Ctrl+Z → mexer
-/// num número → blend de novo, às cegas. Aqui, *Rotate Match* troca os passos por outros **na
-/// hora**: mesmos ids de fonte, mesma contagem, geometria diferente.
-#[test]
-fn rotate_match_replaces_the_steps_in_place() {
-    let (mut scene, xf, mut pen, ..) = two_shapes();
-    let mut session = None;
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 2);
-    let before: Vec<[f64; 2]> = session
-        .as_ref()
-        .unwrap()
-        .produced
-        .iter()
-        .filter_map(|id| scene.paths().iter().find(|p| p.id == *id))
-        .map(|p| p.verts[0].anchor)
-        .collect();
-    let count_before = scene.paths().len();
-
-    run(
-        &mut scene,
-        &mut pen,
-        &xf,
-        &mut session,
-        BlendAction::Rotate,
-        2,
-    );
-
-    let s = session.as_ref().expect("a sessão continua aberta");
-    assert_eq!(s.opts.offset, 1, "o Rotate tem de mexer no `offset`");
-    assert_eq!(
-        scene.paths().len(),
-        count_before,
-        "o re-rodar tem de TROCAR os passos, não empilhar outros por cima"
-    );
-    let after: Vec<[f64; 2]> = s
-        .produced
-        .iter()
-        .filter_map(|id| scene.paths().iter().find(|p| p.id == *id))
-        .map(|p| p.verts[0].anchor)
-        .collect();
-    assert_ne!(
-        before, after,
-        "o Rotate não mudou a geometria — o escape é decorativo"
-    );
-}
-
-// (O "Reverse Match" foi REMOVIDO 2026-07-14: inverter o sentido de percurso de B inverte o
-// winding, e interpolar entre windings opostos colapsa a forma no meio — colapsava em 100% dos
-// pares do catálogo. O sentido correto já é escolhido automaticamente pelo motor. O gate do winding
-// oposto vive no motor: `ph2d_vec_blend::tests::opposite_winding_does_not_collapse_the_middle`.)
+// (O "Rotate Match" e o "Reverse Match" foram REMOVIDOS 2026-07-14: os dois eram bugs de design (o
+// Reverse invertia o winding e colapsava a forma; o Rotate rodava a correspondência às cegas). A
+// correspondência é 100% automática; o ajuste, no modelo vivo, é editar as formas-fonte. O gate do
+// winding oposto vive no motor: `ph2d_vec_blend::tests::opposite_winding_does_not_collapse_the_middle`.)
 
 /// **Uma ação = UM passo de undo** (inclusive o re-rodar).
 ///
@@ -188,8 +140,8 @@ fn without_exactly_two_closed_shapes_the_button_does_nothing() {
     assert!(session.is_none() && scene.paths().len() == 3);
 }
 
-/// **Rotate sem um Blend aberto não faz nada** — não há o que rodar, e inventar uma sessão a
-/// partir da seleção faria o botão significar duas coisas.
+/// **StackUp sem um Blend aberto não faz nada** — não há o que re-empilhar, e inventar uma sessão
+/// a partir da seleção faria o botão significar duas coisas.
 #[test]
 fn the_escape_without_an_open_blend_is_a_no_op() {
     let (mut scene, xf, mut pen, ..) = two_shapes();
@@ -199,7 +151,7 @@ fn the_escape_without_an_open_blend_is_a_no_op() {
         &mut pen,
         &xf,
         &mut session,
-        BlendAction::Rotate,
+        BlendAction::StackUp(false),
         3,
     );
     assert!(session.is_none());
@@ -210,12 +162,12 @@ fn the_escape_without_an_open_blend_is_a_no_op() {
 /// ninguém traduz é um botão morto (e a suíte inteira fica verde).
 #[test]
 fn every_painted_blend_button_maps_to_an_action() {
-    for (id, want) in [
-        (ph2d_editor::ids::VECTOR_BLEND_RUN, BlendAction::Run),
-        (ph2d_editor::ids::VECTOR_BLEND_ROTATE, BlendAction::Rotate),
-    ] {
-        assert_eq!(action_for_id(id, true), Some(want));
-    }
+    // O único action-button pintado é o Blend (o Rotate/Reverse Match saíram); o Stack Up é um
+    // checkbox e é testado abaixo pelos dois valores.
+    assert_eq!(
+        action_for_id(ph2d_editor::ids::VECTOR_BLEND_RUN, true),
+        Some(BlendAction::Run)
+    );
     assert_eq!(
         action_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION, true),
         None

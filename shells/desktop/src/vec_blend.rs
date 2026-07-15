@@ -8,32 +8,30 @@
 //! A correspondência entre duas formas — *que ponto de A vira que ponto de B?* — é o problema
 //! que **ninguém** resolveu (`docs/Vector Module/20_*` §1.3: o GSAP tem `shapeIndex` manual **e**
 //! uma ferramenta de debug que admite o erro; o Corel pede pro usuário clicar um nó em cada
-//! forma). Quando o automático erra, a forma **gira** no meio do caminho.
+//! forma). A correspondência é 100% AUTOMÁTICA — o motor escolhe o sentido de menor custo e o
+//! melhor casamento de quinas sozinho.
 //!
-//! Um blend destrutivo de tiro único deixaria o artista assim: blend, ver o erro, Ctrl+Z, mexer
-//! num número, blend de novo — às cegas. Então o blend **guarda a sessão** (as duas fontes, as
-//! opções, e o que ele produziu): **Rotate Match** apaga os passos anteriores e re-roda na hora. O
-//! erro se conserta **à vista**, e é isso que separa o escape de um enfeite.
+//! Houve **dois** botões de escape manual, **Rotate Match** e **Reverse Match**, e os dois foram
+//! removidos (2026-07-14) por serem bugs de design: o Reverse invertia o winding e colapsava a
+//! forma; o Rotate rodava a correspondência às cegas e produzia torção. **O ajuste, no modelo vivo,
+//! é editar as formas-fonte** — girar/mover/escalar uma adapta os intermediários —, não um botão.
 //!
-//! Houve um **Reverse Match**, removido 2026-07-14: inverter o sentido de percurso de B inverte o
-//! **winding**, e interpolar entre windings opostos **colapsa a forma no meio** — ele colapsava em
-//! 100% dos pares do catálogo, e o sentido correto já é escolhido automaticamente (o motor testa os
-//! dois e fica com o de menor custo). Era um botão que nunca ajudava.
+//! > ⚠️ Este é o modelo DESTRUTIVO (a `BlendSession` produz paths reais). Está sendo substituído
+//! > pelo **Blend Object VIVO** (o Blend do Illustrator): um objeto único, não-destrutivo, sobre um
+//! > spine editável, com as fontes sempre editáveis. Ver o ADR do Blend vivo.
 //!
 //! As **fontes sobrevivem** (ao contrário da booleana, que consome os operandos) — é o Blend do
 //! Illustrator: os passos nascem ENTRE elas, no z delas.
 
-use ph2d_vec_blend::BlendOpts;
 use ph2d_vec_scene::{VecPathId, VecScene, VecXforms};
 
-/// O blend vivo: o que re-rodar quando o artista mexe no escape.
+/// O blend: as duas fontes + o que ele produziu (re-roda quando o artista mexe no Steps/Stack).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct BlendSession {
     /// As duas fontes, em z (fundo → topo). Elas **não** são consumidas.
     pub(crate) a: VecPathId,
     pub(crate) b: VecPathId,
     pub(crate) steps: u32,
-    pub(crate) opts: BlendOpts,
     /// Cada passo nasce **acima** do anterior (`true`) ou **abaixo** (`false`).
     pub(crate) stack_up: bool,
     /// Os passos que a última rodada produziu — é o que a próxima apaga.
@@ -63,8 +61,6 @@ impl BlendSession {
 pub(crate) enum BlendAction {
     /// **Blend**: (re)cria os passos entre as duas formas selecionadas.
     Run,
-    /// **Rotate Match**: roda a correspondência em uma quina e re-roda.
-    Rotate,
     /// **Stack Up**: o checkbox — cada passo acima do anterior, ou abaixo. Re-empilha na hora.
     StackUp(bool),
 }
@@ -75,8 +71,6 @@ pub(crate) fn action_for_id(id: ph2d_editor::NodeId, stack_up: bool) -> Option<B
         Some(BlendAction::StackUp(!stack_up)) // o clique ALTERNA
     } else if id == ph2d_editor::ids::VECTOR_BLEND_RUN {
         Some(BlendAction::Run)
-    } else if id == ph2d_editor::ids::VECTOR_BLEND_ROTATE {
-        Some(BlendAction::Rotate)
     } else {
         None
     }
@@ -86,7 +80,7 @@ pub(crate) fn action_for_id(id: ph2d_editor::NodeId, stack_up: bool) -> Option<B
 ///
 /// - **Run** abre uma sessão nova com as duas formas fechadas selecionadas (exige exatamente
 ///   duas: três formas não têm um "entre" definido, e adivinhar seria pior que recusar).
-/// - **Rotate** mexe na sessão ABERTA. Sem sessão, não faz nada — e diz por quê.
+/// - **StackUp** mexe na sessão ABERTA. Sem sessão, não faz nada — e diz por quê.
 ///
 /// Um passo de undo por ação (o re-rodar é uma edição como outra qualquer).
 #[allow(clippy::too_many_arguments)] // o shell destruturado passa cada ref separada
@@ -131,18 +125,15 @@ pub(crate) fn apply(
                 a,
                 b,
                 steps,
-                opts: prev.as_ref().map_or(BlendOpts::default(), |s| s.opts),
                 stack_up,
+                // Carrega o `produced` da rodada anterior: é ele que o laço de remoção usa para
+                // tirar os passos velhos. Zerando-o, re-rodar empilharia um jogo novo por cima.
                 produced: prev.map(|s| s.produced).unwrap_or_default(),
             }
         }
         (_, None) => {
             eprintln!("[ph2d-vec] blend: nao ha blend aberto — clique Blend primeiro");
             return;
-        }
-        (BlendAction::Rotate, Some(mut s)) => {
-            s.opts.offset = s.opts.offset.wrapping_add(1);
-            s
         }
         (BlendAction::StackUp(up), Some(mut s)) => {
             s.stack_up = up;
@@ -158,7 +149,7 @@ pub(crate) fn apply(
         eprintln!("[ph2d-vec] blend: uma das formas sumiu");
         return;
     };
-    let made = ph2d_vec_blend::steps(&a, &b, next.steps as usize, next.opts);
+    let made = ph2d_vec_blend::steps(&a, &b, next.steps as usize);
     if made.is_empty() {
         eprintln!("[ph2d-vec] blend: resultado vazio (forma degenerada?)");
         return;
@@ -203,11 +194,7 @@ pub(crate) fn apply(
         }
     }
     pen.select_many(&next.produced);
-    eprintln!(
-        "[ph2d-vec] blend: {} passo(s) · offset={}",
-        next.produced.len(),
-        next.opts.offset,
-    );
+    eprintln!("[ph2d-vec] blend: {} passo(s)", next.produced.len());
     *session = Some(next);
 }
 

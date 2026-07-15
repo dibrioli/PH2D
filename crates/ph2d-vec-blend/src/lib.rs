@@ -13,7 +13,7 @@
 //! | **CorelDRAW Blend** | *"Map Nodes"*: o usuário **clica um nó em cada forma** |
 //! | **Lottie / AE** · **Rive** | **nenhuma** — lerp por índice, exige a mesma contagem de pontos |
 //!
-//! Então o alvo aqui é o honesto: **bom automático + escape manual óbvio** ([`BlendOpts`]).
+//! O alvo aqui é o **melhor automático possível** — não há escape manual (ver a nota no corpo).
 //!
 //! # As duas decisões que separam este motor do flubber
 //!
@@ -52,26 +52,13 @@ const MERGE_EPS: f64 = 1e-9;
 /// Quantas amostras a busca de correspondência usa para medir o custo de um candidato.
 const COST_SAMPLES: usize = 64;
 
-/// O **escape manual** — o `shapeIndex` do GSAP, o *Map Nodes* do Corel.
-///
-/// O automático acerta a maioria das vezes e erra em algumas; quando erra, a forma "gira" no meio
-/// do caminho. O `offset` é a saída, e existe porque **toda** ferramenta séria do mercado teve de
-/// ter uma.
-///
-/// # Onde foi o `reverse`?
-///
-/// Houve um segundo campo, `reverse` (o "Reverse Match" do painel), e ele foi **removido**: inverter
-/// o sentido de percurso de B inverte o **winding** do resultado, e interpolar entre windings
-/// opostos **colapsa a forma no meio**. Como o catálogo nasce todo com o mesmo winding, o botão
-/// colapsava sempre. E era redundante — o sentido de menor custo já é escolhido automaticamente
-/// ([`matching::search`]), inclusive quando B tem winding oposto de verdade.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub struct BlendOpts {
-    /// Roda a correspondência em `offset` posições. `0` = o que o automático escolheu. Só tem
-    /// efeito quando **as duas** formas têm quinas (alinhamentos discretos a ciclar); contra um
-    /// contorno suave (um círculo) não há posições distintas, e girar só torce.
-    pub offset: i32,
-}
+// A correspondência é 100% AUTOMÁTICA — não há escape manual.
+//
+// Houve um (`BlendOpts { offset, reverse }`, o "Rotate Match" / "Reverse Match" do painel), e os
+// dois foram REMOVIDOS por serem bugs de design: o **Reverse** invertia o winding e colapsava a
+// forma; o **Rotate** rodava a correspondência às cegas e produzia torção. No modelo vivo (o Blend
+// do Illustrator), o ajuste é feito **editando as formas-fonte** — girar a do meio adapta os
+// intermediários dos dois lados —, não um botão que gira a correspondência sem o artista ver.
 
 /// Um segmento do contorno, **com a parametrização normalizada**.
 ///
@@ -333,9 +320,9 @@ impl Plan {
     ///
     /// `None` se qualquer uma das duas degenerar (menos de 2 vértices, ou comprimento nulo).
     #[must_use]
-    pub fn new(a: &VecPath, b: &VecPath, opts: BlendOpts) -> Option<Plan> {
+    pub fn new(a: &VecPath, b: &VecPath) -> Option<Plan> {
         let (oa, ob) = (Outline::of(a)?, Outline::of(b)?);
-        let corr = search(&oa, &ob, opts);
+        let corr = search(&oa, &ob);
         let target = if corr.reversed { ob.reversed() } else { ob };
         let (pieces_a, pieces_b) = pair_up(&oa, &target, &corr.knots)?;
         Some(Plan {
@@ -387,8 +374,8 @@ impl Plan {
 /// Para mais de um `t` do MESMO par, monte um [`Plan`] — senão a correspondência é buscada de novo
 /// a cada chamada, e ela não depende do `t`.
 #[must_use]
-pub fn morph(a: &VecPath, b: &VecPath, t: f64, opts: BlendOpts) -> Option<VecPath> {
-    Some(Plan::new(a, b, opts)?.at(t))
+pub fn morph(a: &VecPath, b: &VecPath, t: f64) -> Option<VecPath> {
+    Some(Plan::new(a, b)?.at(t))
 }
 
 /// **O PAREAMENTO**: as duas formas cortadas na UNIÃO, peça a peça, na mesma ordem.
@@ -432,8 +419,8 @@ fn pair_up(
 /// A correspondência é buscada **uma vez** ([`Plan`]) e avaliada em cada `t`: ela é função do par,
 /// não do `t`.
 #[must_use]
-pub fn steps(a: &VecPath, b: &VecPath, n: usize, opts: BlendOpts) -> Vec<VecPath> {
-    let Some(plan) = Plan::new(a, b, opts) else {
+pub fn steps(a: &VecPath, b: &VecPath, n: usize) -> Vec<VecPath> {
+    let Some(plan) = Plan::new(a, b) else {
         return Vec::new();
     };
     (1..=n)

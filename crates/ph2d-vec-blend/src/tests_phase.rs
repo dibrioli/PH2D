@@ -72,7 +72,7 @@ fn angle_between(a: kurbo::Vec2, b: kurbo::Vec2) -> f64 {
 fn a_square_does_not_spin_on_its_way_to_a_circle() {
     let (a, b) = (square([0.0, 0.0], 1.0), circle([6.0, 0.0], 1.0));
     let (oa, ob) = (Outline::of(&a).unwrap(), Outline::of(&b).unwrap());
-    let corr = search(&oa, &ob, BlendOpts::default());
+    let corr = search(&oa, &ob);
     let target = if corr.reversed { ob.reversed() } else { ob };
     let (ca, cb) = (center(&oa), center(&target));
 
@@ -105,7 +105,7 @@ fn the_middle_shape_keeps_the_orientation_of_the_square() {
 
     for step in 1..=5 {
         let t = f64::from(step) / 10.0; // até t=0,5: além disso a quina já derreteu no círculo
-        let m = morph(&a, &b, t, BlendOpts::default()).expect("o passo");
+        let m = morph(&a, &b, t).expect("o passo");
         let o = Outline::of(&m).unwrap();
         let c = center(&o);
 
@@ -212,7 +212,7 @@ fn the_phase_is_the_number_not_the_nearest_sample_of_the_grid() {
         }
 
         let (oa, ob) = (Outline::of(&a).unwrap(), Outline::of(&b).unwrap());
-        let corr = search(&oa, &ob, BlendOpts::default());
+        let corr = search(&oa, &ob);
         assert_eq!(
             corr.knots.len(),
             1,
@@ -257,7 +257,7 @@ fn a_circle_walking_to_a_rotated_circle_stays_a_circle() {
         v.out_handle = rot(v.out_handle, [5.0, 0.0]);
     }
 
-    let mid = morph(&a, &b, 0.5, BlendOpts::default()).expect("o meio");
+    let mid = morph(&a, &b, 0.5).expect("o meio");
     let o = Outline::of(&mid).unwrap();
     let c = center(&o);
     let (mut lo, mut hi) = (f64::MAX, 0.0f64);
@@ -290,7 +290,7 @@ fn the_correspondence_is_searched_once_per_blend_not_once_per_step() {
     let (a, b) = (square([0.0, 0.0], 1.0), circle([6.0, 0.0], 1.0));
 
     SEARCH_COUNT.with(|c| c.set(0));
-    let out = steps(&a, &b, 12, BlendOpts::default());
+    let out = steps(&a, &b, 12);
     let searches = SEARCH_COUNT.with(std::cell::Cell::get);
 
     assert_eq!(out.len(), 12, "os 12 passos");
@@ -303,10 +303,10 @@ fn the_correspondence_is_searched_once_per_blend_not_once_per_step() {
 
     // E o plano avaliado em `t` tem de dar EXATAMENTE o que o `morph` daria — senão o hoist mudou
     // o produto, e não só o custo.
-    let plan = Plan::new(&a, &b, BlendOpts::default()).expect("o plano");
+    let plan = Plan::new(&a, &b).expect("o plano");
     for i in 1..=12 {
         let t = f64::from(i) / 13.0;
-        let direct = morph(&a, &b, t, BlendOpts::default()).expect("o morph direto");
+        let direct = morph(&a, &b, t).expect("o morph direto");
         let from_plan = plan.at(t);
         assert_eq!(
             from_plan.verts.len(),
@@ -343,11 +343,7 @@ fn the_correspondence_is_searched_once_per_blend_not_once_per_step() {
 fn extra_anchors_on_a_straight_edge_do_not_change_the_correspondence() {
     let a = square([0.0, 0.0], 1.0);
     let b = shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]);
-    let base = search(
-        &Outline::of(&a).unwrap(),
-        &Outline::of(&b).unwrap(),
-        BlendOpts::default(),
-    );
+    let base = search(&Outline::of(&a).unwrap(), &Outline::of(&b).unwrap());
 
     for k in [2usize, 5, 20] {
         // O MESMO quadrado, com a 1ª aresta picada em `k` pedaços: geometria idêntica, âncoras a
@@ -370,11 +366,7 @@ fn extra_anchors_on_a_straight_edge_do_not_change_the_correspondence() {
         verts.extend_from_slice(&a.verts[1..]);
         chopped.verts = verts;
 
-        let got = search(
-            &Outline::of(&chopped).unwrap(),
-            &Outline::of(&b).unwrap(),
-            BlendOpts::default(),
-        );
+        let got = search(&Outline::of(&chopped).unwrap(), &Outline::of(&b).unwrap());
         assert_eq!(
             got.knots.len(),
             base.knots.len(),
@@ -440,13 +432,7 @@ fn moving_the_art_across_the_canvas_does_not_change_the_blend() {
     let sq = |c: [f64; 2]| square(c, 1.0);
 
     let reference: Vec<[f64; 2]> = {
-        let m = morph(
-            &poly([0.0, 0.0]),
-            &sq([5.0, 0.0]),
-            0.5,
-            BlendOpts::default(),
-        )
-        .expect("o meio");
+        let m = morph(&poly([0.0, 0.0]), &sq([5.0, 0.0]), 0.5).expect("o meio");
         let o = Outline::of(&m).unwrap();
         let c = center(&o);
         (0..128)
@@ -458,8 +444,7 @@ fn moving_the_art_across_the_canvas_does_not_change_the_blend() {
     };
 
     for d in [1.0, 7.5, 33.25, 100.0] {
-        let m = morph(&poly([d, d]), &sq([5.0 + d, d]), 0.5, BlendOpts::default())
-            .expect("o meio, deslocado");
+        let m = morph(&poly([d, d]), &sq([5.0 + d, d]), 0.5).expect("o meio, deslocado");
         let o = Outline::of(&m).unwrap();
         let c = center(&o);
         for (k, want) in reference.iter().enumerate() {
@@ -476,26 +461,8 @@ fn moving_the_art_across_the_canvas_does_not_change_the_blend() {
     }
 }
 
-/// **Um `offset` gigante não PANICA e não faz lixo** (achado adversarial: overflow em `i32`).
-///
-/// `BlendOpts.offset` é campo público. `c_auto + offset` estourava o `i32` (pânico em debug, wrap
-/// silencioso em release) quando o offset chegava perto do teto. A soma é em `i64` agora; o
-/// `rem_euclid` traz de volta para um índice válido.
-#[test]
-fn a_giant_offset_neither_panics_nor_corrupts() {
-    let a = square([0.0, 0.0], 1.0);
-    let b = shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]);
-    for offset in [i32::MAX, i32::MIN, i32::MAX - 1, 1_000_000, -1_000_000] {
-        let opts = BlendOpts { offset };
-        let m = morph(&a, &b, 0.5, opts).expect("o meio");
-        for v in &m.verts {
-            assert!(
-                v.anchor[0].is_finite() && v.anchor[1].is_finite(),
-                "offset={offset}: a correspondência produziu um vértice não-finito"
-            );
-        }
-    }
-}
+// (`a_giant_offset_neither_panics_nor_corrupts` saiu com o `offset` — o escape manual foi removido
+// 2026-07-14. Sem campo público de offset, não há como estourar o `i32`.)
 
 /// **Um `t` NaN devolve A — não uma forma de vértices NaN** (achado adversarial: `clamp` propaga
 /// NaN).
@@ -506,7 +473,7 @@ fn a_giant_offset_neither_panics_nor_corrupts() {
 fn a_nan_t_yields_a_not_a_shape_of_nans() {
     let a = square([0.0, 0.0], 1.0);
     let b = circle([6.0, 0.0], 1.0);
-    let plan = Plan::new(&a, &b, BlendOpts::default()).expect("o plano");
+    let plan = Plan::new(&a, &b).expect("o plano");
     let at_nan = plan.at(f64::NAN);
     let at_zero = plan.at(0.0);
     assert_eq!(
@@ -522,46 +489,5 @@ fn a_nan_t_yields_a_not_a_shape_of_nans() {
     }
 }
 
-/// **O quantum do Rotate vem das QUINAS, não das âncoras da forma lisa** (o smoke do Enio:
-/// estrela → círculo, Rotate/Reverse "estranhos").
-///
-/// Quando um lado é suave (o círculo, 0 features), não há nós discretos a ciclar — girar só torce.
-/// O quantum era `1/âncoras-do-círculo = 1/4 = 90°`, e o 2º toque (180°) **colapsava** a forma. As
-/// quinas da estrela (10) são o que o artista percebe como pontos de ajuste, e dão 36°/toque —
-/// passos finos, a torção cresce em vez de colapsar de uma vez.
-///
-/// O gate mede a fase: um toque de Rotate desloca a correspondência por `1/10`, não por `1/4`.
-#[test]
-fn rotate_steps_by_the_corners_not_by_the_smooth_shapes_anchors() {
-    let star = shape(ShapeKind::Star, [0.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]);
-    let circ = circle([6.0, 0.0], 1.0);
-    let (oa, ob) = (Outline::of(&star).unwrap(), Outline::of(&circ).unwrap());
-    assert_eq!(features(&oa).len(), 10, "a estrela tem 10 quinas");
-    assert_eq!(features(&ob).len(), 0, "o círculo é liso — 0 quinas");
-    assert_eq!(ob.segs.len(), 4, "e 4 âncoras (o quantum ERRADO, de antes)");
-
-    let phi = |off: i32| search(&oa, &ob, BlendOpts { offset: off }).knots[0].1;
-    let step = (phi(1) - phi(0)).rem_euclid(1.0);
-    // 1/10 = 0,1 (as quinas da estrela), NÃO 1/4 = 0,25 (as âncoras do círculo).
-    assert!(
-        (step - 0.1).abs() < 1e-9,
-        "um toque de Rotate deslocou a fase em {step:.4} (= {:.0}°) — devia ser 1/10 = 36° (as 10 \
-         quinas da estrela), não 1/4 = 90° (as 4 âncoras arbitrárias do círculo), que colapsava a \
-         forma no 2º toque",
-        step * 360.0
-    );
-
-    // **O OUTRO SENTIDO: círculo → estrela** (agora a forma com quinas é a B). O quantum tem de ser
-    // o MESMO 1/10 — o `max(features_a, features_b)` é simétrico, e o fallback nas âncoras da lisa
-    // não pode vazar quando o outro lado tem quinas. Sem este par, a fixture só provaria o caso
-    // A-tem-quinas ([[feedback_a_gate_only_proves_what_its_fixture_contains]]).
-    let (ob2, oa2) = (Outline::of(&star).unwrap(), Outline::of(&circ).unwrap());
-    let phi2 = |off: i32| search(&oa2, &ob2, BlendOpts { offset: off }).knots[0].1;
-    let step2 = (phi2(1) - phi2(0)).rem_euclid(1.0);
-    assert!(
-        (step2 - 0.1).abs() < 1e-9,
-        "círculo → estrela deu quantum {step2:.4} (= {:.0}°) — o quantum tem de vir das quinas \
-         seja qual for o lado que as tem; aqui a estrela é a B",
-        step2 * 360.0
-    );
-}
+// (`rotate_steps_by_the_corners_not_by_the_smooth_shapes_anchors` saiu com o `offset` — o Rotate
+// Match foi removido 2026-07-14. Não há mais quantum de escape a provar.)

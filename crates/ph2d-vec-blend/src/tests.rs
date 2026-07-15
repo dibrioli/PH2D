@@ -6,7 +6,7 @@
 //! 2. a forma **não gira** no meio do caminho (é o sintoma nº 1 da correspondência errada);
 //! 3. a forma **não vira do avesso** (o sintoma nº 2 — sentidos de percurso opostos);
 //! 4. as **quinas sobrevivem** (é onde a reamostragem uniforme do flubber perde);
-//! 5. o **escape manual** existe e faz o que promete.
+//! 5. as **pontas** e a **cobertura** do pareamento.
 
 use super::*;
 use crate::matching::{map_forward, search};
@@ -35,7 +35,7 @@ fn circle(c: [f64; 2], r: f64) -> VecPath {
 /// vértices, que é justamente o que muda no morph.
 fn max_gap(a: &VecPath, b: &VecPath) -> f64 {
     let (oa, ob) = (Outline::of(a).unwrap(), Outline::of(b).unwrap());
-    let corr = search(&oa, &ob, BlendOpts::default());
+    let corr = search(&oa, &ob);
     let target = if corr.reversed { ob.reversed() } else { ob };
     (0..256)
         .map(|k| {
@@ -63,8 +63,8 @@ fn centroid(p: &VecPath) -> [f64; 2] {
 #[test]
 fn the_ends_of_the_morph_are_the_shapes_themselves() {
     let (a, b) = (square([0.0, 0.0], 1.0), circle([4.0, 0.0], 1.0));
-    let at0 = morph(&a, &b, 0.0, BlendOpts::default()).expect("t=0");
-    let at1 = morph(&a, &b, 1.0, BlendOpts::default()).expect("t=1");
+    let at0 = morph(&a, &b, 0.0).expect("t=0");
+    let at1 = morph(&a, &b, 1.0).expect("t=1");
 
     assert!(
         max_gap(&at0, &a) < 1e-6,
@@ -87,7 +87,7 @@ fn the_ends_of_the_morph_are_the_shapes_themselves() {
 #[test]
 fn a_square_walking_to_a_square_does_not_spin() {
     let (a, b) = (square([0.0, 0.0], 1.0), square([6.0, 0.0], 1.0));
-    let mid = morph(&a, &b, 0.5, BlendOpts::default()).expect("o meio");
+    let mid = morph(&a, &b, 0.5).expect("o meio");
 
     let expected = square([3.0, 0.0], 1.0);
     let gap = max_gap(&mid, &expected);
@@ -111,7 +111,7 @@ fn opposite_winding_does_not_collapse_the_middle() {
         std::mem::swap(&mut v.in_handle, &mut v.out_handle);
     }
 
-    let mid = morph(&a, &b, 0.5, BlendOpts::default()).expect("o meio");
+    let mid = morph(&a, &b, 0.5).expect("o meio");
     // O meio tem de ser um círculo de raio ~1 em (2.5, 0) — e não um ponto.
     let c = centroid(&mid);
     let o = Outline::of(&mid).unwrap();
@@ -137,7 +137,7 @@ fn opposite_winding_does_not_collapse_the_middle() {
 #[test]
 fn the_corners_survive_the_correspondence() {
     let (a, b) = (square([0.0, 0.0], 1.0), circle([0.0, 0.0], 1.0));
-    let at0 = morph(&a, &b, 0.0, BlendOpts::default()).expect("t=0");
+    let at0 = morph(&a, &b, 0.0).expect("t=0");
 
     // As 4 quinas do quadrado têm de estar LÁ, exatas.
     for corner in [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]] {
@@ -154,7 +154,7 @@ fn the_corners_survive_the_correspondence() {
     // (Contra o círculo do catálogo isso não aparece: as 4 âncoras dele caem exatamente nas
     // mesmas posições de arco das 4 quinas — a união é legitimamente 4.)
     let pent = shape(ShapeKind::Polygon, [0.0, 0.0], [1.0, 1.0], &[5.0, 0.0]);
-    let with_pent = morph(&a, &pent, 0.0, BlendOpts::default()).expect("t=0 contra o pentágono");
+    let with_pent = morph(&a, &pent, 0.0).expect("t=0 contra o pentágono");
     assert!(
         with_pent.verts.len() > 4,
         "o corte tem de ser na UNIÃO das âncoras das duas formas (achei {})",
@@ -172,39 +172,25 @@ fn the_corners_survive_the_correspondence() {
     }
 }
 
-/// **O escape manual existe e MUDA a correspondência** (o `shapeIndex` do GSAP / *Map Nodes* do
-/// Corel). Sem ele, o dia em que o automático errar o artista não tem saída nenhuma.
-#[test]
-fn the_manual_escape_actually_rotates_the_correspondence() {
-    let (a, b) = (square([0.0, 0.0], 1.0), square([6.0, 0.0], 1.0));
-    let auto = morph(&a, &b, 0.5, BlendOpts::default()).expect("auto");
-    let turned = morph(&a, &b, 0.5, BlendOpts { offset: 1 }).expect("rodado uma âncora");
-
-    // Rodar a correspondência em uma quina faz o quadrado GIRAR durante a viagem — então o meio
-    // deixa de ser o quadrado limpo. É exatamente o poder que o escape dá ao artista (e, aqui,
-    // a prova de que ele age).
-    let gap = max_gap(&auto, &turned);
-    assert!(
-        gap > 0.1,
-        "o `offset` não mudou nada (gap {gap}) — o escape manual é decorativo"
-    );
-}
+// (O "escape manual" — o `offset`/Rotate Match — foi REMOVIDO 2026-07-14. A correspondência é 100%
+// automática; o ajuste, no modelo vivo, é editar as formas-fonte. Os gates que provavam o offset
+// saíram com ele.)
 
 /// Uma forma degenerada não derruba o motor — devolve `None`, e o chamador não faz nada.
 #[test]
 fn a_degenerate_shape_is_refused_not_crashed() {
     let a = square([0.0, 0.0], 1.0);
     let empty = VecPath::default();
-    assert!(morph(&a, &empty, 0.5, BlendOpts::default()).is_none());
-    assert!(morph(&empty, &a, 0.5, BlendOpts::default()).is_none());
-    assert!(steps(&a, &empty, 3, BlendOpts::default()).is_empty());
+    assert!(morph(&a, &empty, 0.5).is_none());
+    assert!(morph(&empty, &a, 0.5).is_none());
+    assert!(steps(&a, &empty, 3).is_empty());
 }
 
 /// O Blend do Illustrator: `n` passos, só os do MEIO, na ordem.
 #[test]
 fn steps_are_the_in_betweens_and_only_them() {
     let (a, b) = (square([0.0, 0.0], 1.0), square([8.0, 0.0], 1.0));
-    let out = steps(&a, &b, 3, BlendOpts::default());
+    let out = steps(&a, &b, 3);
     assert_eq!(out.len(), 3);
     // t = ¼, ½, ¾ ⇒ os centros caminham 2, 4, 6.
     for (i, p) in out.iter().enumerate() {
@@ -225,7 +211,7 @@ fn the_fill_travels_with_the_shape() {
     a.fill = Some(Paint::solid(Rgba8::new(0, 0, 0, 255)));
     b.fill = Some(Paint::solid(Rgba8::new(200, 100, 50, 255)));
 
-    let mid = morph(&a, &b, 0.5, BlendOpts::default()).expect("o meio");
+    let mid = morph(&a, &b, 0.5).expect("o meio");
     match mid.fill {
         Some(Paint::Solid(c)) => {
             assert_eq!(
@@ -261,7 +247,7 @@ fn a_morph_between_two_polygons_is_a_polygon() {
 
     for step in 0..=10 {
         let t = f64::from(step) / 10.0;
-        let m = morph(&a, &b, t, BlendOpts::default()).expect("o passo");
+        let m = morph(&a, &b, t).expect("o passo");
         let o = Outline::of(&m).unwrap();
         for (k, s) in o.segs.iter().enumerate() {
             let chord = s.p3 - s.p0;
@@ -324,7 +310,7 @@ fn every_piece_of_the_pairing_is_a_real_piece() {
     ];
     for (a, b) in &pairs {
         let (oa, ob) = (Outline::of(a).unwrap(), Outline::of(b).unwrap());
-        let corr = search(&oa, &ob, BlendOpts::default());
+        let corr = search(&oa, &ob);
         let target = if corr.reversed { ob.reversed() } else { ob };
         // O MESMO pareamento que o produto usa — não um espelho dele.
         let (pieces_a, pieces_b) = pair_up(&oa, &target, &corr.knots).expect("o pareamento");
@@ -382,7 +368,7 @@ fn no_intermediate_shape_ever_leaves_the_hull_of_the_two() {
             let (lo, hi) = hull(&a, &b);
             for step in 0..=8 {
                 let t = f64::from(step) / 8.0;
-                let Some(m) = morph(&a, &b, t, BlendOpts::default()) else {
+                let Some(m) = morph(&a, &b, t) else {
                     continue;
                 };
                 for v in &m.verts {
@@ -436,7 +422,7 @@ fn every_corner_of_the_square_lands_on_a_vertex_of_the_star() {
     let a = square([0.0, 0.0], 1.0);
     let b = shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]);
     let (oa, ob) = (Outline::of(&a).unwrap(), Outline::of(&b).unwrap());
-    let corr = search(&oa, &ob, BlendOpts::default());
+    let corr = search(&oa, &ob);
     let target = if corr.reversed { ob.reversed() } else { ob };
     let vb = target.anchors();
 
@@ -468,7 +454,7 @@ fn every_corner_of_the_square_lands_on_a_vertex_of_the_star() {
 fn the_leftover_vertices_subdivide_the_smaller_shape() {
     let a = square([0.0, 0.0], 1.0);
     let b = shape(ShapeKind::Star, [6.0, 0.0], [1.0, 1.0], &[5.0, 0.45, 0.0]);
-    let at0 = morph(&a, &b, 0.0, BlendOpts::default()).expect("t=0");
+    let at0 = morph(&a, &b, 0.0).expect("t=0");
 
     // 4 quinas + 6 subdivisões = 10 (o número de âncoras da ESTRELA — é ela que manda a
     // resolução, porque é a mais detalhada).
@@ -518,7 +504,7 @@ fn no_convex_corner_ever_marries_a_reflex_vertex() {
     ];
     for (a, b) in &pairs {
         let (oa, ob) = (Outline::of(a).unwrap(), Outline::of(b).unwrap());
-        let corr = search(&oa, &ob, BlendOpts::default());
+        let corr = search(&oa, &ob);
         let target = if corr.reversed { ob.reversed() } else { ob };
         let (ua, ub) = (oa.anchors(), target.anchors());
         let (ta, tb) = (crate::matching::turns(&oa), crate::matching::turns(&target));
@@ -542,42 +528,5 @@ fn no_convex_corner_ever_marries_a_reflex_vertex() {
     }
 }
 
-/// **O escape ROTACIONA de verdade — e não troca o sentido nas costas do artista.**
-///
-/// Cada `offset` tem de dar uma correspondência DIFERENTE, e todas no mesmo sentido de percurso.
-///
-/// A 1ª versão re-decidia o sentido junto com o offset: numa forma simétrica (uma elipse), rodar
-/// 1 âncora + inverter o percurso davam o MESMO resultado físico — e o botão de escape parecia
-/// **não fazer nada**. Um escape que às vezes é inerte é pior que escape nenhum: o artista conclui
-/// que a ferramenta travou.
-#[test]
-fn every_offset_gives_a_different_correspondence_in_the_same_direction() {
-    let a = square([0.0, 0.0], 1.0);
-    let b = circle([6.0, 0.0], 1.0);
-
-    let mut seen: Vec<[f64; 2]> = Vec::new();
-    let mut dir: Option<bool> = None;
-    for offset in 0..4 {
-        let opts = BlendOpts { offset };
-        let (oa, ob) = (Outline::of(&a).unwrap(), Outline::of(&b).unwrap());
-        let corr = search(&oa, &ob, opts);
-        match dir {
-            None => dir = Some(corr.reversed),
-            Some(d) => assert_eq!(
-                d, corr.reversed,
-                "o `offset` trocou o SENTIDO de percurso — o motor mudou de ideia nas costas do \
-                 artista, e numa forma simétrica isso devolve o mesmo resultado (o escape vira \
-                 inerte)"
-            ),
-        }
-        let v0 = morph(&a, &b, 0.5, opts).expect("o meio").verts[0].anchor;
-        assert!(
-            !seen
-                .iter()
-                .any(|p| (p[0] - v0[0]).abs() < 1e-9 && (p[1] - v0[1]).abs() < 1e-9),
-            "o offset {offset} repetiu uma correspondência que já existia — o escape não está \
-             rodando nada"
-        );
-        seen.push(v0);
-    }
-}
+// (`every_offset_gives_a_different_correspondence_in_the_same_direction` saiu com o `offset` —
+// o escape manual foi removido, ver a nota acima.)

@@ -3074,6 +3074,21 @@ impl crate::App {
                 &mut self.vec_blend_spines,
                 &mut self.vec_blend_overlay,
             );
+            // **Modo Node: o spine sobe para o topo** (ADR-0122) — acima de TODAS as formas e
+            // passos, para ser visto e editado. Retira o traço da cena (some do `dispatch`, logo
+            // abaixo) e o acrescenta ao fim do overlay do blend (desenhado por último). Em Select
+            // o spine fica no seu z (traço sutil), como o Illustrator — o `recook` restaura o
+            // traço-base todo frame, então voltar de Node não o deixa invisível.
+            if vector_active
+                && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node
+            {
+                crate::blend_live::elevate_spines(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &mut self.vec_blend_overlay,
+                );
+            }
             // **Rótulos:** o texto que pertence a uma forma (ou a um conector) e a segue. A pose
             // é uma função pura do hospedeiro — como a rota do conector é da relação dele.
             //

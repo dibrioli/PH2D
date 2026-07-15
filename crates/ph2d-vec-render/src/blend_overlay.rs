@@ -10,6 +10,10 @@
 //! não são pickáveis, não poluem a hierarquia, e somem no frame em que o blend deixa de existir.
 //! É o que torna o blend **um objeto**, e não N formas.
 //!
+//! Em **modo Node** a shell acrescenta o SPINE ao fim deste buffer
+//! (`crate::blend_live::elevate_spines`), então ele é o ÚLTIMO item — desenhado por cima de tudo,
+//! porque ali é o path que se edita. Em Select o spine fica no seu z na cena (traço sutil).
+//!
 //! # Desenha pela MESMA porta que a arte real
 //!
 //! Cada item do overlay é arte de verdade (fill + stroke que **escalam com o mundo**, ao contrário

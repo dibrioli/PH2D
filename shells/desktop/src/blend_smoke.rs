@@ -151,10 +151,15 @@ impl crate::App {
                     self.vec_pen.select_many(&[*spine]);
                 }
                 self.vec_blend_pending = made;
+                // Entra em modo Node: o spine sobe para o TOPO (acima das formas e dos passos) e
+                // aparece com as âncoras — pronto para arrastar (ADR-0122). Em Select ele ficaria
+                // no z dele (traço sutil), possivelmente sob as formas.
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
                 self.any_input_this_frame = true;
                 eprintln!(
-                    "[blend-smoke] SPINE editavel: 6 passos ao longo de um ARCO autorado. \
-                     Modo Node no objeto: arraste os pontos do spine e os passos re-fluem (ADR-0122)."
+                    "[blend-smoke] SPINE editavel: 6 passos ao longo de um ARCO autorado, em modo \
+                     Node (o spine no TOPO, com ancoras). Arraste os pontos do spine e os passos \
+                     re-fluem; as PONTAS voltam para os centros das fontes (ADR-0122)."
                 );
             }
             // Cria o Blend Object VIVO sobre as formas da cena, na ordem de z. As fontes

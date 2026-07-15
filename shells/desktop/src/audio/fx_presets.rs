@@ -120,7 +120,10 @@ static WIDE_AND_BRIGHT: [FStage; 3] = [
     stage("Limiter", &[ovr("Ceiling", -1.0)]),
 ];
 static GATE_TIGHTEN: [FStage; 2] = [
-    stage("Gate", &[ovr("Threshold", 0.04), ovr("Ratio", 8.0)]),
+    stage(
+        "Gate / Expander",
+        &[ovr("Threshold", 0.04), ovr("Ratio", 8.0)],
+    ),
     stage("Compress", &[ovr("Threshold", 0.3), ovr("Ratio", 3.0)]),
 ];
 // Character presets that lean on the newer effects (ring mod, distortion, exciter,
@@ -348,9 +351,22 @@ pub(crate) fn factory_names() -> Vec<&'static str> {
     FACTORY.iter().map(|p| p.name).collect()
 }
 
-/// Look up an effect kind by its display name.
+/// Look up an effect kind by its display name, honouring legacy aliases so a preset saved before
+/// an effect was renamed still resolves (rather than silently dropping the stage).
 fn kind_by_name(name: &str) -> Option<usize> {
-    KINDS.iter().position(|k| k.name == name)
+    let want = legacy_alias(name).unwrap_or(name);
+    KINDS.iter().position(|k| k.name == want)
+}
+
+/// Old display names that presets on disk may still carry, mapped to the current name.
+/// "Gate" → "Gate / Expander" (it always did both; the label just started saying so). A dropped
+/// entry here is a user's saved preset silently losing an effect, so it is gated
+/// (`the_legacy_gate_name_still_resolves`).
+fn legacy_alias(name: &str) -> Option<&'static str> {
+    match name {
+        "Gate" => Some("Gate / Expander"),
+        _ => None,
+    }
 }
 
 /// Resolve one factory stage into an `FxStage`: start from the effect's neutral
@@ -550,6 +566,25 @@ mod tests {
                 assert!((na - nb).abs() < 1e-3, "norm drifted: {na} vs {nb}");
             }
         }
+    }
+
+    /// **The rename does not orphan old saves.** A preset written before "Gate" became
+    /// "Gate / Expander" stores the string "Gate"; it must still resolve to the same effect, not
+    /// silently drop the stage. The alias is the only thing standing between the rename and every
+    /// user's saved gate turning into nothing.
+    #[test]
+    fn the_legacy_gate_name_still_resolves() {
+        let now = kind_by_name("Gate / Expander").expect("the effect exists under its new name");
+        assert_eq!(
+            kind_by_name("Gate"),
+            Some(now),
+            "a preset saved as \"Gate\" no longer resolves -- the rename orphaned it"
+        );
+        // And a real preset line keyed by the old name parses to that effect.
+        let text = format!("{HEADER}\nGate | on | 0.04 0.80\n");
+        let chain = parse_chain(&text);
+        assert_eq!(chain.len(), 1, "the legacy \"Gate\" line was dropped");
+        assert_eq!(chain[0].kind, now);
     }
 
     /// A file keyed by name survives a `KINDS` reorder: the string "Limiter" resolves

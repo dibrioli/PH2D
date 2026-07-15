@@ -116,7 +116,10 @@ pub(crate) static KINDS: [FxKind; 42] = [
         },
     },
     FxKind {
-        name: "Gate",
+        // One knob (Ratio) spans gentle downward expander → hard noise gate — the effect is
+        // literally both, so the label says both (`gate()` doc in `ph2d-audio-edit`). Presets
+        // saved as "Gate" still resolve via the legacy alias in `kind_by_name`.
+        name: "Gate / Expander",
         params: &GATE,
         arms: &[1], // Ratio
         build: |v| {

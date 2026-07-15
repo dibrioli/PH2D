@@ -58,7 +58,7 @@ fn the_kind_table_is_the_rack_layout() {
             "De-Hum",
             "Compress",
             "Multiband",
-            "Gate",
+            "Gate / Expander",
             "De-Esser",
             "De-Plosive",
             "De-Click",

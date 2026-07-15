@@ -75,23 +75,33 @@ fn spine_stroke() -> ph2d_vec_scene::StrokeSpec {
     ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(150, 150, 165, 190), 0.03)
 }
 
-/// Fixa as PONTAS do spine autorado aos centros das fontes — só o INTERIOR é editável (o
-/// Illustrator: mover uma ponta não faz sentido, ela pertence à forma). As alças acompanham (a
-/// tangente é preservada), então uma fonte que se move **arrasta a ponta e a curva junto**, e um
-/// arrasto do artista na ponta **volta** para o centro. Sem isto, mover uma ponta descolaria os
-/// passos daquela extremidade da fonte.
-fn pin_spine_endpoints(scene: &mut VecScene, id: VecPathId, centers: &[[f64; 2]]) {
-    let (Some(&first), Some(&last)) = (centers.first(), centers.last()) else {
-        return;
-    };
+/// Fixa as ÂNCORAS do spine autorado aos centros das fontes — cada âncora pertence a uma forma (o
+/// Illustrator: a curva se edita pelas ALÇAS, não movendo a âncora para fora da forma). As alças
+/// acompanham (a tangente é preservada, `shift_vertex_to`), então uma fonte que se move **arrasta a
+/// âncora e a curva junto** — inclusive as fontes do MEIO da cadeia ([`anchor_source_pairs`]). Sem
+/// isto, uma fonte movida no Select descolaria os passos da sua âncora.
+///
+/// `live` são as formas vivas na ordem da cadeia (uma por âncora, no caso normal). Passar os centros
+/// direto não bastava: com pontos de dobra extras, âncora ≠ fonte por índice.
+fn pin_spine_anchors(
+    scene: &mut VecScene,
+    id: VecPathId,
+    live: &[VecPathId],
+    centers: &[[f64; 2]],
+) {
     let Some(p) = scene.path_mut(id) else {
         return;
     };
-    if let Some(v) = p.verts.first_mut() {
-        shift_vertex_to(v, first);
-    }
-    if let Some(v) = p.verts.last_mut() {
-        shift_vertex_to(v, last);
+    // O mapa usa o Nº de fontes; os centros vêm na MESMA ordem de `live`, então o índice em `live`
+    // indexa `centers`.
+    for (vi, src_id) in anchor_source_pairs(p.verts.len(), live) {
+        let Some(li) = live.iter().position(|&s| s == src_id) else {
+            continue;
+        };
+        let (Some(v), Some(&c)) = (p.verts.get_mut(vi), centers.get(li)) else {
+            continue;
+        };
+        shift_vertex_to(v, c);
     }
 }
 
@@ -283,22 +293,39 @@ pub(crate) fn reset_spine(
     changed
 }
 
-/// **Modo Node: arrastar uma PONTA do spine MOVE a forma-fonte dela** (ADR-0122 C2b) — o inverso da
-/// pinagem, e o que faltava para "editar a curva no Node é igual a mover a forma no Select".
+/// O mapa (índice de vértice do spine → forma-fonte que ele representa), para o
+/// [`drag_spine_anchors_move_sources`] e a [`pin_spine_anchors`] concordarem.
 ///
-/// A 1ª e a última âncora do spine correspondem à 1ª e à última forma da cadeia. Se o artista as
-/// arrastou (no modo Node), a âncora difere do centro da fonte; movemos a FONTE para lá
-/// (`vec_transform::move_shape_origin_to`). O `recook` logo em seguida re-encosta a âncora no centro
-/// — agora coincidentes, **sem salto** —, os passos re-cozem das novas posições e a curva se adapta.
+/// Quando o spine tem **um vértice por fonte** (o caso normal — o modo Node MOVE âncoras, não cria),
+/// TODA âncora é de uma fonte, e o `zip` 1-a-1 as liga (inclusive as do MEIO da cadeia). Se o spine
+/// tiver MAIS vértices que fontes (pontos de dobra extras — hoje só via smoke), só a 1ª e a última
+/// âncora são fontes garantidas.
+fn anchor_source_pairs(n_verts: usize, live: &[VecPathId]) -> Vec<(usize, VecPathId)> {
+    if n_verts == live.len() {
+        live.iter().copied().enumerate().collect()
+    } else if n_verts >= 2 && live.len() >= 2 {
+        vec![(0, live[0]), (n_verts - 1, live[live.len() - 1])]
+    } else {
+        Vec::new()
+    }
+}
+
+/// **Modo Node: arrastar uma ÂNCORA do spine MOVE a forma-fonte dela** (ADR-0122 C2b) — o inverso da
+/// pinagem, e o que faz "editar a curva no Node ser igual a mover a forma no Select".
+///
+/// Cada âncora do spine corresponde a uma forma da cadeia ([`anchor_source_pairs`] — inclusive as do
+/// MEIO). Se o artista a arrastou (modo Node), ela difere do centro da fonte; movemos a FONTE por
+/// essa delta (`vec_transform::translate_shape_world`). O `recook` logo em seguida re-encosta a
+/// âncora no centro — agora coincidentes, **sem salto** —, os passos re-cozem e a curva se adapta.
 ///
 /// Roda ANTES do [`recook`] e SÓ no modo Node (no Select a fonte se move pelo gizmo e a âncora a
-/// segue). Só as PONTAS movem fontes; os pontos INTERIORES editam a curva (fluem os passos) — para
-/// cadeias de 3+, as pontas do MEIO ainda editam a curva, não movem a forma (follow-up).
+/// segue). Arrastar uma ALÇA (bézier) em vez da âncora curva o spine sem mover a forma (a âncora não
+/// muda → delta zero → nada aqui; a detecção do `recook` autora a curva).
 ///
-/// **Não autora o spine** ao mover uma ponta (mover a forma ≠ curvar a curva): quando o spine é
-/// automático, atualiza a ponta na memória do auto (`spines`) para o mesmo valor do novo centro, e
-/// a detecção do `recook` não a confunde com uma edição de curva (só o interior autora).
-pub(crate) fn drag_endpoints_move_sources(
+/// **Não autora o spine** ao mover uma âncora (mover a forma ≠ curvar a curva): quando o spine é
+/// automático, atualiza a âncora na memória do auto (`spines`) para o novo centro, e a detecção do
+/// `recook` não a confunde com uma edição de curva (só mexer numa alça ou num ponto de dobra autora).
+pub(crate) fn drag_spine_anchors_move_sources(
     sim: &mut SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -322,35 +349,26 @@ pub(crate) fn drag_endpoints_move_sources(
             .copied()
             .filter(|id| scene.paths().iter().any(|p| p.id == *id))
             .collect();
-        if live.len() < 2 {
-            continue;
-        }
         let Some(sp) = scene.paths().iter().find(|p| p.id == spine_id) else {
             continue;
         };
-        let n = sp.verts.len();
-        if n < 2 {
-            continue;
-        }
-        // (índice do vértice de PONTA no spine, id da forma que ela representa).
-        for (vi, src_id) in [(0usize, live[0]), (n - 1, live[live.len() - 1])] {
+        for (vi, src_id) in anchor_source_pairs(sp.verts.len(), &live) {
             let e = sp.verts[vi].anchor;
             let Some(c) = center_of(scene, xforms, src_id) else {
                 continue;
             };
             let (dx, dy) = (e[0] - c[0], e[1] - c[1]);
             if dx * dx + dy * dy <= 1e-18 {
-                continue; // a ponta está sobre o centro: nada foi arrastado
+                continue; // a âncora está sobre o centro: nada foi arrastado
             }
             let Some(&bits) = map.get(&src_id) else {
                 continue;
             };
             if crate::vec_transform::translate_shape_world(sim, Entity::from_bits(bits), [dx, dy]) {
-                // A ponta agora É o centro da fonte: atualiza a memória do auto para que a detecção
-                // do `recook` não trate o movimento da forma como uma edição de curva (só o interior
-                // autora). Só quando o spine é automático — no autorado a detecção já é ignorada.
-                // Move o vértice INTEIRO (âncora + alças) como o arrasto fez — só a âncora deixaria
-                // as alças divergindo do spine atual, e a detecção autoraria à toa.
+                // A âncora agora É o centro da fonte: atualiza a memória do auto para que a detecção
+                // do `recook` não trate o movimento da forma como uma edição de curva. Move o vértice
+                // INTEIRO (âncora + alças) como o arrasto fez — só a âncora deixaria as alças
+                // divergindo do spine atual, e a detecção autoraria à toa.
                 if let Some(mem) = spines.get_mut(&spine_id)
                     && let Some(mv) = mem.get_mut(vi)
                 {
@@ -440,9 +458,9 @@ pub(crate) fn recook(
             }
         }
         let offsets = if authored {
-            // As pontas seguem as fontes (só o interior é editável); depois os passos FLUEM ao
+            // As âncoras seguem as fontes (a curva se edita pelas alças); depois os passos FLUEM ao
             // longo do spine editado — deslocamento por comprimento de arco.
-            pin_spine_endpoints(scene, spine_id, &centers);
+            pin_spine_anchors(scene, spine_id, &live, &centers);
             scene
                 .paths()
                 .iter()

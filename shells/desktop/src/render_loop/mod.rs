@@ -3101,7 +3101,7 @@ impl crate::App {
             // fonte se moveu, o `vec_xf` é refeito para os passos deste frame já saírem do lugar
             // novo. Só no Node — no Select a fonte se move pelo gizmo e a ponta a segue.
             if vector_active && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node {
-                crate::blend_live::drag_endpoints_move_sources(
+                crate::blend_live::drag_spine_anchors_move_sources(
                     sim,
                     vec_scene,
                     &self.vec_entities,

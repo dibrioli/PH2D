@@ -257,17 +257,21 @@ volta — as duas coisas convivem).
 
 ### Ajustes do Enio (2026-07-15, mesmo dia)
 
-- **Arrastar uma PONTA do spine MOVE a forma-fonte dela** (`blend_live::drag_endpoints_move_sources`
+- **Arrastar uma ÂNCORA do spine MOVE a forma-fonte dela** (`blend_live::drag_spine_anchors_move_sources`
   + `vec_transform::translate_shape_world`): o inverso da pinagem. Antes, mover a fonte movia a
-  ponta, mas mover a ponta no Node não fazia nada (a pinagem a devolvia). Agora, no modo Node, a 1ª e
-  a última âncora do spine que diferem do centro da fonte movem a FONTE por essa delta (roda ANTES do
-  `recook`, que re-encosta a ponta no novo centro — coincidentes, sem salto; o `vec_xf` é refeito).
-  Assim **editar a curva no Node ≡ mover a forma no Select** — o pedido do Enio. Só as PONTAS movem
-  fontes; os pontos interiores editam a curva (para cadeias de 3+, as pontas do MEIO ainda editam a
-  curva, não movem a forma — follow-up). **Não autora o spine** ao mover uma ponta (mover a forma ≠
-  curvar a curva): atualiza a ponta na memória do auto (`spines`, vértice INTEIRO via `shift_vertex_to`
-  — só a âncora deixava as alças divergindo e a detecção autorava à toa). 2 gates (a fonte segue a
-  ponta · mover a ponta não autora e não salta).
+  âncora, mas mover a âncora no Node não fazia nada (a pinagem a devolvia). Agora, no modo Node, a
+  âncora que difere do centro da fonte move a FONTE por essa delta (roda ANTES do `recook`, que
+  re-encosta a âncora no novo centro — coincidentes, sem salto; o `vec_xf` é refeito). Assim **editar
+  a curva no Node ≡ mover a forma no Select** — o pedido do Enio. **Vale para TODA âncora, inclusive
+  as do MEIO da cadeia** (2º ajuste do Enio): `anchor_source_pairs` mapeia vértice↔fonte 1-a-1 quando
+  o spine tem um vértice por fonte (o caso normal — o Node move âncoras, não cria; a curva se faz
+  pelas ALÇAS). Com pontos de dobra extras (hoje só via smoke), só 1ª/última âncora são fontes
+  garantidas. A `pin_spine_anchors` (ex-`pin_spine_endpoints`) usa o MESMO mapa, então as fontes do
+  meio também SEGUEM no Select. **Não autora o spine** ao mover uma âncora (mover a forma ≠ curvar a
+  curva): atualiza a âncora na memória do auto (`spines`, vértice INTEIRO via `shift_vertex_to` — só
+  a âncora deixava as alças divergindo e a detecção autorava à toa). Arrastar uma ALÇA (bézier) curva
+  o spine sem mover a forma. 3 gates (a fonte da ponta segue · a do MEIO segue e as pontas ficam ·
+  mover a âncora não autora e não salta).
 - **O botão Pick Shapes MUDOU da fileira de MODOS para a seção BLEND** — ele é uma etapa DO blend
   (escolher as formas na ordem), e sua casa é ao lado do botão que as liga. `DrawMode::PickBlend`
   segue sendo um modo de tool (o gesto de canvas é o mesmo); só o BOTÃO mudou de lugar

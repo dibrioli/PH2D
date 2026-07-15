@@ -51,6 +51,14 @@ pub(crate) enum EditGesture {
         down: (f32, f32),
         collapse_to: Option<usize>,
     },
+    /// Translação da seleção de PONTOS (domínio Point, W8) — o espelho do `Move`, com o
+    /// colapso adiado apontando um `(traço, ponto)`. Só existe em arte EXCLUSIVA (mover
+    /// ponto de instância deformaria o gêmeo — recusado no down, com aviso).
+    MovePoints {
+        last: Vec2,
+        down: (f32, f32),
+        collapse_to: Option<(usize, usize)>,
+    },
     /// **Um clique que já se resolveu no Down** (o Shift+clique, que alterna e não
     /// arrasta). Existe só para o pen-UP ter o que CONSUMIR.
     ///
@@ -167,8 +175,37 @@ fn move_drawing(
     {
         return obj.translate_frame(lid, key, delta);
     }
+    // Arte exclusiva: o delta foi medido no espaço do OBJETO (funil pose-free, ver o
+    // chamador) e a geometria vive no espaço da ARTE — desde o W7.5 a pose pode girar/
+    // escalar, então a parte linear dela não se cancela mais no delta. Numa pose de
+    // translação pura (o caso comum) a conversão é a identidade, byte a byte.
+    let delta = crate::flip_transform::object_delta_to_art(obj.frame_pose(lid, key), delta);
     obj.drawing_mut(did)
         .is_some_and(|dr| translate_selection(dr, delta))
+}
+
+/// O espelho de [`move_drawing`] no domínio POINT: translada os PONTOS selecionados de
+/// todos os traços. Só chega aqui arte EXCLUSIVA (o down recusa instância), então o
+/// alvo é sempre geometria — com a MESMA descida de delta pela pose.
+fn move_points(
+    flip: &mut ph2d_flip::FlipDoc,
+    oid: ph2d_flip::FlipObjectId,
+    lid: ph2d_flip::LayerId,
+    key: ph2d_flip::Frame,
+    did: ph2d_flip::DrawingId,
+    delta: Vec2,
+) -> bool {
+    let Some(obj) = flip.object_mut(oid) else {
+        return false;
+    };
+    let delta = crate::flip_transform::object_delta_to_art(obj.frame_pose(lid, key), delta);
+    obj.drawing_mut(did).is_some_and(|dr| {
+        let mut moved = false;
+        for s in &mut dr.strokes {
+            moved |= s.translate_selected_points(delta);
+        }
+        moved
+    })
 }
 
 /// Translada os traços selecionados — **pontos E buracos** (ver o cabeçalho).
@@ -219,6 +256,39 @@ impl crate::App {
                 true
             }
             EditGesture::Click => true, // resolvido no down; nada a arrastar
+            // Domínio POINT (W8): o MESMO laço do Move — funil pose-free, slop mata o
+            // colapso — mas quem anda são os PONTOS selecionados.
+            EditGesture::MovePoints {
+                last,
+                down,
+                collapse_to,
+            } => {
+                let w2o = self.flip_active_world_to_object();
+                let Some(now) = self.flip_screen_to_local(x, y, &w2o) else {
+                    return true;
+                };
+                let delta = now - last;
+                let collapse_to = if passed_slop(down, (x, y)) {
+                    None
+                } else {
+                    collapse_to
+                };
+                self.flip_edit_gesture = Some(EditGesture::MovePoints {
+                    last: now,
+                    down,
+                    collapse_to,
+                });
+                let active_layer = self.flip_active_layer;
+                let playhead = self.playhead;
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some((oid, lid, key, did)) =
+                        crate::flip_select::visible_key(&gfx.flip, &playhead, active_layer)
+                    && move_points(&mut gfx.flip, oid, lid, key, did, delta)
+                {
+                    self.title_dirty = true;
+                }
+                true
+            }
             EditGesture::Move {
                 last,
                 down,
@@ -296,6 +366,30 @@ impl crate::App {
                     self.title_dirty = true;
                 }
             }
+            // O colapso adiado do domínio POINT: soltar sem arrastar num ponto já
+            // selecionado = "agora só este ponto".
+            if let EditGesture::MovePoints {
+                collapse_to: Some((si, pi)),
+                ..
+            } = gesture
+            {
+                let active_layer = self.flip_active_layer;
+                let playhead = self.playhead;
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some((oid, _l, did)) =
+                        crate::flip_select::visible_drawing(&gfx.flip, &playhead, active_layer)
+                    && let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
+                {
+                    let mut changed = dr.clear_selection();
+                    changed |= dr
+                        .strokes
+                        .get_mut(si)
+                        .is_some_and(|s| s.set_point_selected(pi, true));
+                    if changed {
+                        self.title_dirty = true;
+                    }
+                }
+            }
             return true;
         };
         // Um marquee que não passou do slop foi um CLIQUE no vazio: desmarcar (o clique é
@@ -319,11 +413,21 @@ impl crate::App {
 
         let active_layer = self.flip_active_layer;
         let playhead = self.playhead;
+        // No domínio POINT a caixa acende ÂNCORAS; no Stroke, traços (ponto-dentro OU
+        // segmento-cruza). A escolha vem do snapshot da tool — a mesma porta do down.
+        let point_domain = matches!(
+            self.flip_style.map(|s| s.edit_domain),
+            Some(ph2d_tool_flip::EditDomain::Point)
+        );
         if let Some(gfx) = self.gfx.as_mut()
             && let Some((oid, _l, did)) =
                 crate::flip_select::visible_drawing(&gfx.flip, &playhead, active_layer)
             && let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
-            && apply_marquee(dr, min, max, additive)
+            && (if point_domain {
+                crate::flip_select::apply_marquee_points(dr, min, max, additive)
+            } else {
+                apply_marquee(dr, min, max, additive)
+            })
         {
             self.title_dirty = true;
         }

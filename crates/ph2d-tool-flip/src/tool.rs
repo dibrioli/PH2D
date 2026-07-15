@@ -15,7 +15,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 use crate::params::{
-    EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
+    EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
     PRECISION_MAX, PRECISION_MIN, ReshapeKind, slider_to_px, slider_to_unit,
 };
 
@@ -59,6 +59,9 @@ pub struct FlipTool {
     // ── O Reshape (W5). Sem raio/força próprios: usa o Size + o Strength do
     //    pincel (ver `FlipStyleSnapshot::reshape`).
     reshape: ReshapeKind,
+    // ── O domínio da seleção no Edit (W8): traço ou ponto. A conversão no doc é
+    //    do shell; a tool só guarda a escolha.
+    edit_domain: EditDomain,
 }
 
 impl Default for FlipTool {
@@ -82,6 +85,7 @@ impl Default for FlipTool {
             precision: DEFAULT_PRECISION,
             draw_filled: false,
             reshape: ReshapeKind::Smooth,
+            edit_domain: EditDomain::Stroke,
         }
     }
 }
@@ -137,6 +141,11 @@ impl FlipTool {
     pub fn reshape_kind(&self) -> ReshapeKind {
         self.reshape
     }
+    /// O domínio da seleção (só relevante em `FlipMode::Edit`) — traço ou ponto (W8).
+    #[must_use]
+    pub fn edit_domain(&self) -> EditDomain {
+        self.edit_domain
+    }
 
     /// Define a cor do traço (read-back do picker).
     pub fn set_stroke_rgba(&mut self, rgba: [u8; 4]) {
@@ -182,6 +191,7 @@ impl FlipTool {
             fill_mode: self.fill_mode,
             draw_filled: self.draw_filled,
             reshape: self.reshape,
+            edit_domain: self.edit_domain,
             gap_px: self.gap_px,
             grow: self.grow,
             precision: self.precision,
@@ -240,6 +250,13 @@ impl Tool for FlipTool {
             // Shape (modo Draw): o traço carrega o próprio preenchimento?
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_LINE => self.draw_filled = false,
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_FILLED => self.draw_filled = true,
+            // O domínio da seleção (modo Edit, W8): traço inteiro ou ponto.
+            PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_STROKE => {
+                self.edit_domain = EditDomain::Stroke;
+            }
+            PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_POINT => {
+                self.edit_domain = EditDomain::Point;
+            }
             // Os oito pincéis de escultura (W5). A tabela `FLIP_RESHAPE_KIND_IDS` está
             // na MESMA ordem que `ReshapeKind::ALL` — o zip é o decodificador, e o
             // seam test dirige os oito ids para provar que as duas listas não derivam.

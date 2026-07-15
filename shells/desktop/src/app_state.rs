@@ -658,6 +658,11 @@ pub(crate) struct App {
     /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
     /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.
     pub(crate) flip_pose_drag: Option<crate::flip_pose_gizmo::FlipPoseDrag>,
+    /// ADR-0114 W8: o DOMÍNIO da seleção do frame ANTERIOR — a memória que deixa a
+    /// troca do toggle (Stroke↔Point) converter a seleção no documento UMA vez
+    /// (broadcast/promoção, `flip_select::flip_edit_domain_refresh`). `None` = tool
+    /// inativa.
+    pub(crate) flip_edit_domain: Option<ph2d_tool_flip::EditDomain>,
     /// ADR-0114 W6: o estilo do painel no frame ANTERIOR, enquanto há seleção no modo
     /// Edit. É o que deixa **só a MUDANÇA** agir sobre os traços selecionados: sem esta
     /// memória, o passe reaplicaria o estilo a cada frame e selecionar um traço vermelho

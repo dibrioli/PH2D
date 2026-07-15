@@ -114,9 +114,22 @@ pub struct FlipStroke {
     /// contra qualquer uma dessas ops: você seleciona um traço, preenche outro, e o painel
     /// recolore o traço errado. **O atributo VIAJA com o traço** e é imune às três.
     ///
-    /// (O domínio Point — meio-traço selecionado — é a wave seguinte; ele exige um vetor
-    /// paralelo aos pontos e a conversão de domínio explícita do §11.)
+    /// (O domínio Point — meio-traço selecionado — vive em [`Self::point_sel`], com a
+    /// conversão de domínio explícita do §11.)
     pub selected: bool,
+    /// **Seleção no domínio Point** (W8 — `02_referencia §11`): vetor paralelo aos pontos.
+    ///
+    /// **VAZIO = sem dado de ponto** — a seleção vive no domínio Curve ([`Self::selected`])
+    /// e todo ponto herda o estado do traço (o "ausente = broadcast" do GP). Não-vazio ⇒
+    /// mesmo comprimento dos arrays SoA **e `selected == any(point_sel)`** — o domínio
+    /// Curve é mantido como a PROJEÇÃO `any()` do Point (a regra de promoção do §11,
+    /// permanente), para que os consumidores por-traço (painel, delete de traço, máscara
+    /// grossa do Sculpt, realce) nunca divirjam do que os pontos dizem.
+    ///
+    /// Privado de propósito: toda escrita passa pelos choke points ([`Self::set_point_selected`],
+    /// [`Self::broadcast_selection_to_points`], [`Self::promote_points_to_stroke`]), que
+    /// mantêm as DUAS invariantes acima. Ler é [`Self::point_selected`].
+    point_sel: Vec<bool>,
 }
 
 impl Default for FlipStroke {
@@ -134,6 +147,7 @@ impl Default for FlipStroke {
             holes: Vec::new(),
             hide_stroke: false,
             selected: false,
+            point_sel: Vec::new(),
         }
     }
 }
@@ -214,6 +228,7 @@ impl FlipStroke {
             holes: self.holes.clone(),
             hide_stroke: self.hide_stroke,
             selected: false, // um traço novo nasce não-selecionado (ver acima)
+            point_sel: Vec::new(),
         }
     }
 
@@ -234,6 +249,11 @@ impl FlipStroke {
         self.width.push(p.width);
         self.opacity.push(p.opacity);
         self.color.push(p.color);
+        // Domínio Point materializado: o ponto novo nasce não-selecionado (o vetor
+        // acompanha os arrays SoA; vazio = domínio Curve, nada a manter).
+        if !self.point_sel.is_empty() {
+            self.point_sel.push(false);
+        }
     }
 
     /// Acrescenta um ponto na posição `pos` com os atributos default.
@@ -248,6 +268,9 @@ impl FlipStroke {
         self.width.insert(i, p.width);
         self.opacity.insert(i, p.opacity);
         self.color.insert(i, p.color);
+        if !self.point_sel.is_empty() {
+            self.point_sel.insert(i, false);
+        }
     }
 
     /// Remove o ponto `i`; devolve-o se existia.
@@ -261,15 +284,148 @@ impl FlipStroke {
             opacity: self.opacity.remove(i),
             color: self.color.remove(i),
         };
+        if !self.point_sel.is_empty() {
+            self.point_sel.remove(i);
+            self.selected = self.point_sel.iter().any(|&b| b);
+        }
         Some(p)
     }
 
-    /// Verdadeiro se os quatro arrays SoA têm o mesmo comprimento (invariante).
-    /// Usado em `debug_assert` e nos testes; nunca deve ser falso em uso normal.
+    /// Verdadeiro se os quatro arrays SoA têm o mesmo comprimento (invariante) — e, com o
+    /// domínio Point materializado, se o vetor de seleção acompanha E o Curve é o `any()`
+    /// dele. Usado em `debug_assert` e nos testes; nunca deve ser falso em uso normal.
     #[must_use]
     pub fn soa_is_consistent(&self) -> bool {
         let n = self.pos.len();
-        self.width.len() == n && self.opacity.len() == n && self.color.len() == n
+        let soa = self.width.len() == n && self.opacity.len() == n && self.color.len() == n;
+        let sel = self.point_sel.is_empty()
+            || (self.point_sel.len() == n && self.selected == self.point_sel.iter().any(|&b| b));
+        soa && sel
+    }
+
+    // ── Seleção no domínio POINT (W8 — `02_referencia §11`) ──
+
+    /// Há dado de seleção no domínio Point? (Vazio = a seleção vive no Curve.)
+    #[must_use]
+    pub fn has_point_selection(&self) -> bool {
+        !self.point_sel.is_empty()
+    }
+
+    /// O ponto `i` está selecionado? Sem dado de ponto, herda o estado do TRAÇO
+    /// (o "ausente = broadcast" do GP). Fora do range = `false`.
+    #[must_use]
+    pub fn point_selected(&self, i: usize) -> bool {
+        if self.point_sel.is_empty() {
+            return self.selected && i < self.len();
+        }
+        self.point_sel.get(i).copied().unwrap_or(false)
+    }
+
+    /// Escreve a seleção do ponto `i`, **materializando** o domínio Point se preciso
+    /// (broadcast do estado do traço — a conversão explícita do §11) e re-derivando o
+    /// Curve como `any()`. Devolve `true` se algo mudou. Fora do range = no-op.
+    pub fn set_point_selected(&mut self, i: usize, on: bool) -> bool {
+        if i >= self.len() {
+            return false;
+        }
+        if self.point_sel.is_empty() {
+            self.point_sel = vec![self.selected; self.len()];
+        }
+        let changed = std::mem::replace(&mut self.point_sel[i], on) != on;
+        self.selected = self.point_sel.iter().any(|&b| b);
+        changed
+    }
+
+    /// **Curve → Point** (troca de domínio): materializa o vetor com o estado do traço
+    /// em todo ponto. Idempotente sobre um domínio já materializado? NÃO — sobrescreve
+    /// (é a conversão do §11: o dado é do domínio NOVO). No-op num traço vazio.
+    pub fn broadcast_selection_to_points(&mut self) {
+        if self.is_empty() {
+            return;
+        }
+        self.point_sel = vec![self.selected; self.len()];
+    }
+
+    /// **Point → Curve** (troca de domínio): promove `any(point_sel)` ao traço e
+    /// DESmaterializa o vetor (half-selected só existe em Point, §11).
+    pub fn promote_points_to_stroke(&mut self) {
+        if !self.point_sel.is_empty() {
+            self.selected = self.point_sel.iter().any(|&b| b);
+            self.point_sel.clear();
+        }
+    }
+
+    /// Os índices dos pontos selecionados (domínio Point materializado; com o vetor
+    /// ausente, o broadcast: todos se o traço está selecionado, nenhum senão).
+    #[must_use]
+    pub fn selected_point_indices(&self) -> Vec<usize> {
+        (0..self.len())
+            .filter(|&i| self.point_selected(i))
+            .collect()
+    }
+
+    /// Todos os pontos estão efetivamente selecionados? (Domínio Curve: o estado do
+    /// traço. Point: `all()`.) `false` num traço vazio.
+    #[must_use]
+    pub fn all_points_selected(&self) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        if self.point_sel.is_empty() {
+            return self.selected;
+        }
+        self.point_sel.iter().all(|&b| b)
+    }
+
+    /// Translada os pontos SELECIONADOS por `delta`. Os **buracos** só andam quando o
+    /// traço INTEIRO está selecionado — eles não têm seleção própria, e mover o contorno
+    /// parcialmente é deformação (o anel fica; é o render que re-tria o fill). Devolve
+    /// `true` se algo se moveu.
+    pub fn translate_selected_points(&mut self, delta: Vec2) -> bool {
+        if delta.x == 0.0 && delta.y == 0.0 {
+            return false;
+        }
+        let all = self.all_points_selected();
+        let mut moved = false;
+        for i in 0..self.len() {
+            if self.point_selected(i) {
+                self.pos[i] += delta;
+                moved = true;
+            }
+        }
+        if moved && all {
+            for h in &mut self.holes {
+                for p in h.iter_mut() {
+                    *p += delta;
+                }
+            }
+        }
+        moved
+    }
+
+    /// Remove os pontos selecionados (dissolve — o traço continua ligado pelos que
+    /// ficam). Devolve quantos saíram. O Curve é re-derivado (vetor sem `true` ⇒
+    /// `selected = false`).
+    pub fn remove_selected_points(&mut self) -> usize {
+        if self.point_sel.is_empty() {
+            return 0; // domínio Curve: quem apaga traço inteiro é `delete_selected`
+        }
+        let keep: Vec<bool> = self.point_sel.iter().map(|&b| !b).collect();
+        let removed = keep.iter().filter(|&&k| !k).count();
+        if removed == 0 {
+            return 0;
+        }
+        let mut it = keep.iter().copied();
+        self.pos.retain(|_| it.next().unwrap_or(true));
+        let mut it = keep.iter().copied();
+        self.width.retain(|_| it.next().unwrap_or(true));
+        let mut it = keep.iter().copied();
+        self.opacity.retain(|_| it.next().unwrap_or(true));
+        let mut it = keep.iter().copied();
+        self.color.retain(|_| it.next().unwrap_or(true));
+        self.point_sel.retain(|&b| !b);
+        self.selected = self.point_sel.iter().any(|&b| b);
+        removed
     }
 }
 
@@ -319,6 +475,102 @@ mod tests {
         assert_eq!(p.width, DEFAULT_WIDTH);
         assert_eq!(p.opacity, DEFAULT_OPACITY);
         assert_eq!(p.color, Rgba::WHITE);
+    }
+
+    /// 🔴 **O domínio Curve é a projeção `any()` do Point** — selecionar UM ponto acende
+    /// o traço (os consumidores por-traço continuam certos); desmarcar todos o apaga.
+    /// Mutação que sangra: `set_point_selected` não re-derivar o `selected`.
+    #[test]
+    fn the_curve_domain_is_the_any_projection_of_the_points() {
+        let mut s = FlipStroke::new();
+        for i in 0..4 {
+            s.push_default(Vec2::new(i as f32, 0.0));
+        }
+        assert!(!s.selected);
+        assert!(s.set_point_selected(2, true));
+        assert!(s.selected, "um ponto aceso tem de ligar o traco (any)");
+        assert!(s.soa_is_consistent());
+        assert!(s.set_point_selected(2, false));
+        assert!(!s.selected, "nenhum ponto aceso = traco apagado");
+    }
+
+    /// **A conversão de domínio é a do §11**: Curve→Point é broadcast (traço selecionado
+    /// ⇒ todos os pontos); Point→Curve é promoção `any()` + desmaterializa (half-selected
+    /// só existe em Point).
+    #[test]
+    fn domain_conversion_is_broadcast_down_and_any_up() {
+        let mut s = FlipStroke::new();
+        for i in 0..3 {
+            s.push_default(Vec2::new(i as f32, 0.0));
+        }
+        s.selected = true;
+        s.broadcast_selection_to_points();
+        assert!((0..3).all(|i| s.point_selected(i)), "broadcast: todos");
+        assert!(s.set_point_selected(0, false));
+        assert!(s.set_point_selected(1, false));
+        s.promote_points_to_stroke();
+        assert!(s.selected, "um ponto vivo promove o traco");
+        assert!(!s.has_point_selection(), "Point desmaterializado na volta");
+    }
+
+    /// **Sem dado de ponto, o ponto herda o TRAÇO** (ausente = broadcast) — é o que faz
+    /// a máscara do Sculpt e o overlay lerem `point_selected` sem se importar com o
+    /// domínio corrente.
+    #[test]
+    fn absent_point_data_inherits_the_stroke_state() {
+        let mut s = FlipStroke::new();
+        s.push_default(Vec2::ZERO);
+        assert!(!s.point_selected(0));
+        s.selected = true;
+        assert!(s.point_selected(0));
+        assert!(
+            !s.point_selected(99),
+            "fora do range nunca esta selecionado"
+        );
+    }
+
+    /// 🔴 **Dissolver pontos mantém o invariante SoA** (todos os arrays encolhem juntos)
+    /// e re-deriva o Curve. Mutação que sangra: esquecer um dos `retain`.
+    #[test]
+    fn dissolving_selected_points_keeps_the_soa_invariant() {
+        let mut s = FlipStroke::new();
+        for i in 0..5 {
+            s.push_point(Point {
+                pos: Vec2::new(i as f32, 0.0),
+                width: i as f32,
+                opacity: 1.0,
+                color: Rgba::WHITE,
+            });
+        }
+        s.set_point_selected(1, true);
+        s.set_point_selected(3, true);
+        assert_eq!(s.remove_selected_points(), 2);
+        assert!(s.soa_is_consistent());
+        assert_eq!(s.len(), 3);
+        // Os que ficam são os certos (0, 2, 4) — largura carrega a identidade.
+        assert_eq!(s.widths(), &[0.0, 2.0, 4.0]);
+        assert!(!s.selected, "nada mais selecionado depois do dissolve");
+    }
+
+    /// **Os buracos só andam com o traço INTEIRO selecionado** — eles não têm seleção
+    /// própria; num move parcial (deformação) o anel fica, e o fill re-tria no render.
+    #[test]
+    fn holes_follow_only_a_fully_selected_stroke() {
+        let mut s = FlipStroke::new();
+        for i in 0..3 {
+            s.push_default(Vec2::new(i as f32, 0.0));
+        }
+        s.holes.push(vec![Vec2::new(5.0, 5.0)]);
+        // Parcial: o buraco fica.
+        s.set_point_selected(0, true);
+        assert!(s.translate_selected_points(Vec2::new(1.0, 0.0)));
+        assert_eq!(s.holes[0][0], Vec2::new(5.0, 5.0));
+        // Inteiro: o buraco anda.
+        for i in 0..3 {
+            s.set_point_selected(i, true);
+        }
+        assert!(s.translate_selected_points(Vec2::new(1.0, 0.0)));
+        assert_eq!(s.holes[0][0], Vec2::new(6.0, 5.0));
     }
 
     #[test]

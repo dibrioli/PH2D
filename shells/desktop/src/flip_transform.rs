@@ -58,6 +58,30 @@ pub(crate) fn art_to_world(object: &Xform, key_pose: Pose) -> Xform {
     key_xform(key_pose).then(object)
 }
 
+/// **Um DELTA do espaço do OBJETO → o espaço da ARTE** (a parte LINEAR inversa da pose).
+///
+/// O gesto de mover (traço ou ponto) mede o delta no funil pose-free do objeto (a regra
+/// W7.2: o funil pose-aware realimenta quando o alvo é a POSE). Quando o alvo é a
+/// **GEOMETRIA** (arte exclusiva), o delta ainda precisa descer ao espaço do desenho —
+/// e desde o W7.5 a pose pode ter rotação/escala, então a parte linear dela não se
+/// cancela mais no delta (numa pose de translação pura isto é a identidade, byte a
+/// byte). A translação da pose NÃO entra: delta é vetor.
+///
+/// Pose degenerada (det≈0) devolve o delta intacto — mover algo é melhor que travar.
+#[must_use]
+pub(crate) fn object_delta_to_art(pose: Pose, delta: ph2d_core::Vec2) -> ph2d_core::Vec2 {
+    let c = pose.coeffs(); // apply = [a·x + c·y + tx, b·x + d·y + ty]
+    let det = f64::from(c[0]) * f64::from(c[3]) - f64::from(c[2]) * f64::from(c[1]);
+    if det.abs() < 1e-12 {
+        return delta;
+    }
+    let (dx, dy) = (f64::from(delta.x), f64::from(delta.y));
+    ph2d_core::Vec2::new(
+        ((f64::from(c[3]) * dx - f64::from(c[2]) * dy) / det) as f32,
+        ((-f64::from(c[1]) * dx + f64::from(c[0]) * dy) / det) as f32,
+    )
+}
+
 /// **MUNDO → a arte de um quadro**: o inverso exato de [`art_to_world`]. É o que o funil
 /// de entrada usa para levar o cursor ao espaço em que a geometria do desenho vive.
 ///
@@ -325,6 +349,37 @@ mod tests {
             neutral.apply([0.0, 0.0]),
             "a pose da chave nao entrou no render — mover uma instancia nao moveria nada"
         );
+    }
+
+    /// 🔴 **O delta do gesto desce ao espaço da ARTE pela parte linear inversa da pose**
+    /// (W8) — sob uma pose GIRADA, transladar geometria pelo delta cru do objeto moveria
+    /// a arte na direção errada (o render aplica a pose por cima). Numa pose de
+    /// translação pura a conversão é a identidade, byte a byte (o caminho de sempre).
+    ///
+    /// Mutação que sangra: `object_delta_to_art` devolver o delta intacto.
+    #[test]
+    fn a_move_delta_descends_through_the_pose_linear_inverse() {
+        // Pose de translação pura: identidade no delta (o caso comum não paga nada).
+        let t = Pose::from_translation(ph2d_core::Vec2::new(50.0, -3.0));
+        let d = ph2d_core::Vec2::new(7.0, -2.0);
+        assert_eq!(object_delta_to_art(t, d), d);
+
+        // Pose girada 90° CCW (a=0, b=1, c=-1, d=0): um delta +x do OBJETO tem de virar
+        // −y na ARTE — para que, aplicado pela pose, volte a ser +x na tela.
+        let rot90 = Pose::from_coeffs([0.0, 1.0, -1.0, 0.0, 10.0, 20.0]);
+        let da = object_delta_to_art(rot90, ph2d_core::Vec2::new(1.0, 0.0));
+        assert!(
+            (da.x - 0.0).abs() < 1e-6 && (da.y - (-1.0)).abs() < 1e-6,
+            "delta nao desceu pela pose: {da:?}"
+        );
+        // A volta fecha: pose_linear · delta_art == delta_objeto.
+        let back =
+            rot90.apply(ph2d_core::Vec2::new(da.x, da.y)) - rot90.apply(ph2d_core::Vec2::ZERO);
+        assert!((back.x - 1.0).abs() < 1e-6 && back.y.abs() < 1e-6);
+
+        // Degenerada (escala 0): devolve o delta — mover é melhor que travar.
+        let flat = Pose::from_coeffs([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(object_delta_to_art(flat, d), d);
     }
 
     /// **Pose neutra = o caminho de sempre, byte a byte.** Quem nunca moveu uma instância

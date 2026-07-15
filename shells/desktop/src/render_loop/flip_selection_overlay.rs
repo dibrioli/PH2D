@@ -42,6 +42,13 @@ const MARQUEE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay, espessura de t
 /// Cor do realce (âmbar do editor) — chrome, não arte.
 const HALO_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay de selecao
 
+/// Raio do PONTO no domínio Point (W8), em px de tela — a âncora que se clica.
+const POINT_DOT_PX: f64 = 3.0; // LITERAL-PX-OK: chrome de overlay, raio de tela
+/// Raio do ponto NÃO-selecionado (menor: presença, não destaque).
+const POINT_DIM_PX: f64 = 2.0; // LITERAL-PX-OK: chrome de overlay, raio de tela
+/// Cor do ponto não-selecionado — visível sobre a arte sem competir com o acento.
+const POINT_DIM_RGBA: [f32; 4] = [0.85, 0.87, 0.95, 0.85]; // LITERAL-COLOR-OK: overlay de selecao
+
 /// Desenha o contorno de realce sobre cada traço selecionado do desenho VISÍVEL.
 ///
 /// `l2w` é o afim LOCAL→mundo do objeto (a pose do gizmo). Nada é desenhado fora do modo
@@ -52,6 +59,7 @@ const HALO_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay
 pub(super) fn draw_flip_selection(
     active: bool,
     editing: bool,
+    point_domain: bool,
     doc: &FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<ph2d_flip::LayerId>,
@@ -73,7 +81,10 @@ pub(super) fn draw_flip_selection(
     let Some(drawing) = obj.drawing(did) else {
         return;
     };
-    if !drawing.any_selected() {
+    // No domínio POINT as âncoras aparecem SEMPRE (dim; selecionadas em acento) — é a
+    // linguagem do modo (GP): sem os pontos na tela não há o que mirar. No Stroke, sem
+    // seleção não há nada a realçar.
+    if !point_domain && !drawing.any_selected() {
         return;
     }
 
@@ -87,6 +98,33 @@ pub(super) fn draw_flip_selection(
         l.pose_at_cycled(obj.frame_at(playhead))
     });
     let to_screen = art_screen_affine(l2w, pose, camera.world_to_screen_affine(window));
+
+    // ── Domínio POINT (W8): âncoras como PONTOS — dim nas não-selecionadas, acento nas
+    // selecionadas. Sem halo de traço: com um ponto aceso o `any()` acenderia o traço
+    // inteiro e o realce mentiria sobre O QUE está selecionado.
+    if point_domain {
+        let dim = Color::new(POINT_DIM_RGBA);
+        let hot = Color::new(HALO_RGBA);
+        for s in &drawing.strokes {
+            for (i, p) in s.positions().iter().enumerate() {
+                let c = to_screen * Point::new(f64::from(p.x), f64::from(p.y));
+                let selected = s.point_selected(i);
+                let (r, col) = if selected {
+                    (POINT_DOT_PX, hot)
+                } else {
+                    (POINT_DIM_PX, dim)
+                };
+                vector_scene.inner_mut().fill(
+                    ph2d_vector::Fill::NonZero,
+                    Affine::IDENTITY, // px de TELA (como todo o chrome deste módulo)
+                    &Brush::Solid(col),
+                    None,
+                    &ph2d_vector::Circle::new(c, r),
+                );
+            }
+        }
+        return;
+    }
 
     let color = Color::new(HALO_RGBA);
     for s in drawing.strokes.iter().filter(|s| s.selected) {

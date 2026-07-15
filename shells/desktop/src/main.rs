@@ -47,6 +47,7 @@ mod flip_autokey;
 mod flip_demo;
 mod flip_draw;
 mod flip_edit_gesture;
+mod flip_edit_smoke;
 mod flip_entities;
 mod flip_erase;
 mod flip_fill;
@@ -58,6 +59,7 @@ mod flip_pose_gizmo;
 mod flip_pose_smoke;
 mod flip_reshape;
 mod flip_select;
+mod flip_select_points;
 mod flip_smooth;
 mod flip_strip;
 mod flip_transform;
@@ -316,6 +318,7 @@ impl App {
             flip_edit_style: None,
             flip_edit_gesture: None,
             flip_pose_drag: None,
+            flip_edit_domain: None,
             vec_marquee: None,
             vec_connect: None,
             vec_conn_handle: None,
@@ -439,6 +442,9 @@ impl App {
         // **A SELEÇÃO** (`flip_select`, W6): no modo Edit ela é o alvo dos ajustes do
         // painel, e enquanto existe ela aposenta o alvo vivo. Só a MUDANÇA de estilo age.
         crate::flip_select::flip_edit_style_refresh(self);
+        // **O DOMÍNIO da seleção** (W8): a troca Stroke↔Point converte a seleção no
+        // documento (broadcast/promoção) — uma vez, quando o toggle muda.
+        crate::flip_select::flip_edit_domain_refresh(self);
         // Depois do frame (estado já reconciliado pelo `sync`, `self` livre do borrow
         // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
         // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).

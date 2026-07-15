@@ -17,7 +17,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_tool_flip::{
-    EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
+    EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
     PRECISION_MAX, PRECISION_MIN, ReshapeKind, px_to_slider,
 };
 use ph2d_vector::VectorScene;
@@ -185,6 +185,24 @@ impl BodyCtx<'_> {
         if snap.mode != FlipMode::Edit {
             return y;
         }
+        // O DOMÍNIO da seleção (W8): traço inteiro (Curve do GP) ou ponto. O shell faz a
+        // conversão broadcast/promoção no documento quando o toggle muda.
+        y = self.segmented(
+            "Select",
+            [
+                (
+                    ids::FLIP_EDIT_DOM_STROKE,
+                    "Stroke",
+                    snap.edit_domain == EditDomain::Stroke,
+                ),
+                (
+                    ids::FLIP_EDIT_DOM_POINT,
+                    "Point",
+                    snap.edit_domain == EditDomain::Point,
+                ),
+            ],
+            y,
+        );
         y = self.segmented(
             "Selection",
             [

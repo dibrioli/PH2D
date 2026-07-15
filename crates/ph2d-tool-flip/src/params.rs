@@ -50,6 +50,22 @@ impl FlipMode {
     ];
 }
 
+/// **O DOMÍNIO da seleção no modo Edit** (W8 — o `.selection` do GP vive em Point OU
+/// Curve, `02_referencia §11`). O toggle da toolbar do GP vira duas pills aqui:
+/// `Stroke` = domínio Curve (clique pega o traço inteiro — o comportamento W6);
+/// `Point` = domínio Point (clique pega UMA âncora; o traço vira a projeção `any()`).
+///
+/// A conversão de domínio na troca (broadcast/promoção) é feita pelo SHELL sobre o
+/// documento — a tool só guarda a escolha (ela não tem, e não deve ter, acesso ao doc).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum EditDomain {
+    /// Traços inteiros (o domínio Curve do GP) — o default e o comportamento W6.
+    #[default]
+    Stroke,
+    /// Âncoras individuais (o domínio Point do GP) — meio-traço selecionável.
+    Point,
+}
+
 /// Os pincéis de **escultura de traço** (W5). Espelha `ph2d_flip_reshape::ReshapeKind`
 /// — mesmo precedente do [`FillMode`]: a tool e o painel são vocabulário de UI e não
 /// carregam o solver; o shell traduz na fronteira.
@@ -220,6 +236,8 @@ pub struct FlipStyleSnapshot {
     /// as mesmas duas grandezas seria estado duplicado, e o usuário teria de
     /// re-ajustar o pincel a cada troca de modo.
     pub reshape: ReshapeKind,
+    /// O DOMÍNIO da seleção (só relevante em [`FlipMode::Edit`]) — traço ou ponto (W8).
+    pub edit_domain: EditDomain,
     /// Alcance do Gap Closure em px de tela (`0` = desligado).
     pub gap_px: f64,
     /// Grow/Shrink em px de tela: offset assinado do contorno a partir do EIXO da
@@ -246,6 +264,7 @@ impl Default for FlipStyleSnapshot {
             fill_mode: FillMode::Paint,
             draw_filled: false,
             reshape: ReshapeKind::Smooth,
+            edit_domain: EditDomain::Stroke,
             gap_px: 0.0,
             grow: 0.0,
             precision: 1.6, // = DEFAULT_PRECISION (tool.rs); o teste-espelho cobre

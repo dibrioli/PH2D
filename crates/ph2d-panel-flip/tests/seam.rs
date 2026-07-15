@@ -561,3 +561,63 @@ fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
         );
     }
 }
+
+/// 🔴 **O toggle de DOMÍNIO (W8) chega à tool — e a linha Select só existe no Edit.**
+///
+/// É o seam completo do pill: pintado → hit → Click → bus → `handle_panel_event` →
+/// `edit_domain` muda. Mutação que sangra: tirar os dois ids do arm de eventos do
+/// painel (o clique é engolido e a tool nunca vê o domínio).
+#[test]
+fn the_domain_toggle_reaches_the_tool_and_lives_only_in_edit_mode() {
+    use ph2d_tool_flip::EditDomain;
+    // (a) o seam: o clique chega e a tool muda de domínio (e volta).
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState;
+    let mut tool = FlipTool::default();
+    assert_eq!(tool.edit_domain(), EditDomain::Stroke, "o default e Stroke");
+
+    let outcome =
+        host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_EDIT_DOM_POINT));
+    assert_eq!(outcome, EventOutcome::Consumed, "o clique foi IGNORADO");
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+        }
+    }
+    assert_eq!(
+        tool.edit_domain(),
+        EditDomain::Point,
+        "o Point nao chegou na tool"
+    );
+
+    host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_EDIT_DOM_STROKE));
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+        }
+    }
+    assert_eq!(
+        tool.edit_domain(),
+        EditDomain::Stroke,
+        "o Stroke nao voltou na tool"
+    );
+
+    // (b) a PINTURA: a linha do domínio existe no Edit e em nenhum outro modo.
+    for mode in ph2d_tool_flip::FlipMode::ALL {
+        let want = mode == FlipMode::Edit;
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut st = FlipPanelState;
+        ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+            mode,
+            ..Default::default()
+        }));
+        let painted = host.paint::<FlipPanel>(&mut st, viewport());
+        let shown = painted
+            .iter()
+            .any(|(w, r)| *w == ids::FLIP_EDIT_DOM_POINT && r.w > 0.0);
+        assert_eq!(
+            shown, want,
+            "modo {mode:?}: a linha de dominio deveria aparecer? {want}"
+        );
+    }
+}

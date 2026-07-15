@@ -42,6 +42,10 @@ pub const FLIP_MODE_RESHAPE: NodeId = hash_node_id("flip.mode.reshape");
 pub const FLIP_MODE_EDIT: NodeId = hash_node_id("flip.mode.edit");
 /// Edit section: deletes the selected strokes.
 pub const FLIP_EDIT_DELETE: NodeId = hash_node_id("flip.edit.delete");
+/// Edit section (W8): the selection DOMAIN — whole strokes (the GP Curve domain).
+pub const FLIP_EDIT_DOM_STROKE: NodeId = hash_node_id("flip.edit.dom.stroke");
+/// Edit section (W8): the selection DOMAIN — individual points (the GP Point domain).
+pub const FLIP_EDIT_DOM_POINT: NodeId = hash_node_id("flip.edit.dom.point");
 /// Edit section: clears the selection (deselect all).
 pub const FLIP_EDIT_DESELECT: NodeId = hash_node_id("flip.edit.deselect");
 /// Edit section: selects every stroke of the active drawing.

@@ -77,7 +77,10 @@ pub use ph2d_painter_effects::BlendMode;
 /// v5 (W7.2): a CHAVE ganhou `offset` — a **pose do quadro**. É o que faz uma
 /// instância (duas chaves, um desenho) ser mais do que um hold: a arte é
 /// compartilhada e o LUGAR é de cada quadro.
-pub const FLIP_SCHEMA_VERSION: u32 = 6;
+/// v6 (W7.5): a pose virou AFIM (`Pose([f32; 6])`, era `Vec2`) — rotate/escala por chave.
+/// v7 (W8): o traço ganhou `point_sel` — o `.selection` do GP no domínio **Point**
+/// (vetor paralelo aos pontos; vazio = a seleção vive no Curve).
+pub const FLIP_SCHEMA_VERSION: u32 = 7;
 
 #[cfg(test)]
 mod tests {

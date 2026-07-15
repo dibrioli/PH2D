@@ -368,7 +368,8 @@ fn project_file_round_trips_through_postcard() {
 /// (o balde; depois `selected` + `offset`) · v10 do Vector (o `corner_radius` do `VecVertex`)
 /// · v11/v12 do Painter (o `mats` do impasto, e o `mats` mudando de FORMA: 4 → 7 bytes) ·
 /// v13 a timeline (5º campo do `ProjectFile`) · v14 a pose AFIM do Flip (W7.5:
-/// `FlipFrame.offset: Vec2` → `pose: Pose([f32; 6])`, FLIP v5→6).
+/// `FlipFrame.offset: Vec2` → `pose: Pose([f32; 6])`, FLIP v5→6) · v15 a seleção no
+/// domínio Point do Flip (W8: `FlipStroke.point_sel`, FLIP v6→7).
 ///
 /// Na integração de 2026-07-13, QUATRO linhas bumparam este contador ao mesmo tempo, cada uma
 /// a partir do 7, cada uma por um motivo diferente. **O valor certo não existia em nenhum lado
@@ -383,7 +384,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (14, 6, 8),
+        (15, 7, 8),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

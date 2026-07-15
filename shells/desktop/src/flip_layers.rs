@@ -33,6 +33,9 @@ pub(crate) fn apply_panel_event(
     flip: &mut FlipDoc,
     active_layer: &mut Option<LayerId>,
     playhead: &ph2d_core::Playhead,
+    // W8: o DOMÍNIO da seleção (do snapshot da tool) — All/Delete agem em pontos ou em
+    // traços conforme o toggle do painel.
+    point_domain: bool,
 ) -> bool {
     let Some(oid) = flip.objects().first().map(|o| o.id) else {
         return false;
@@ -60,13 +63,20 @@ pub(crate) fn apply_panel_event(
                 return false;
             };
             if *id == ids::FLIP_EDIT_SELECT_ALL {
-                let mut changed = false;
-                for s in &mut drawing.strokes {
-                    changed |= !std::mem::replace(&mut s.selected, true);
+                if point_domain {
+                    drawing.select_all_points()
+                } else {
+                    let mut changed = false;
+                    for s in &mut drawing.strokes {
+                        changed |= !std::mem::replace(&mut s.selected, true);
+                    }
+                    changed
                 }
-                changed
             } else if *id == ids::FLIP_EDIT_DESELECT {
                 drawing.clear_selection()
+            } else if point_domain {
+                // Delete no domínio Point: dissolve as âncoras (o traço fica).
+                drawing.delete_selected_points() > 0
             } else {
                 drawing.delete_selected() > 0
             }
@@ -197,6 +207,7 @@ mod tests {
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
+            false,
         ));
         assert_eq!(doc.object(oid).unwrap().layers().len(), 3);
         assert!(active.is_some(), "new layer becomes active");
@@ -206,6 +217,7 @@ mod tests {
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
+            false,
         ));
         assert_eq!(doc.object(oid).unwrap().layers().len(), 2);
     }
@@ -220,6 +232,7 @@ mod tests {
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
+            false,
         ));
         assert_eq!(active, Some(a));
     }
@@ -234,6 +247,7 @@ mod tests {
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
+            false,
         ));
         assert!(!doc.object(oid).unwrap().layer(a).unwrap().visible);
         assert!(apply_panel_event(
@@ -241,6 +255,7 @@ mod tests {
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
+            false,
         ));
         assert!(doc.object(oid).unwrap().layer(a).unwrap().locked);
     }
@@ -256,6 +271,7 @@ mod tests {
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
+            false,
         ));
         let ids_now: Vec<LayerId> = doc
             .object(oid)
@@ -278,6 +294,7 @@ mod tests {
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
+            false,
         ));
         assert!((doc.object(oid).unwrap().layer(b).unwrap().opacity - 0.4).abs() < 1e-6);
         // Blend dropdown option → SelectOption(blend_chip_id, mode). Mode 1 = Multiply.
@@ -286,6 +303,7 @@ mod tests {
             &mut doc,
             &mut active,
             &ph2d_core::Playhead::default(),
+            false,
         ));
         assert_eq!(
             doc.object(oid).unwrap().layer(b).unwrap().blend,

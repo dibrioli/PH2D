@@ -569,6 +569,7 @@ impl crate::App {
         self.build_smoke();
         self.stack_smoke();
         self.flip_pose_smoke();
+        self.flip_edit_smoke();
         self.build_session_upkeep();
 
         let Some(gfx) = self.gfx.as_mut() else {
@@ -1527,6 +1528,10 @@ impl crate::App {
                             flip,
                             &mut self.flip_active_layer,
                             &self.playhead,
+                            matches!(
+                                self.flip_style.map(|s| s.edit_domain),
+                                Some(ph2d_tool_flip::EditDomain::Point)
+                            ),
                         );
                         // ADR-0114 W3: e os eventos da TIRA (transporte, ops de
                         // chave, exposição, tween, ciclo, Ghost Frames) — documento
@@ -2745,6 +2750,12 @@ impl crate::App {
                     matches!(
                         flip_style.map(|s| s.mode),
                         Some(ph2d_tool_flip::FlipMode::Edit)
+                    ),
+                    // W8: no domínio Point o realce vira PONTOS (âncoras dim + selecionadas
+                    // em acento); no Stroke, o halo de traço de sempre.
+                    matches!(
+                        flip_style.map(|s| s.edit_domain),
+                        Some(ph2d_tool_flip::EditDomain::Point)
                     ),
                     flip,
                     &self.playhead,

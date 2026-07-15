@@ -56,7 +56,9 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v14 (W7.5): a **pose da chave** do Flip virou AFIM (`FlipFrame.pose: Pose([f32;6])`, era
 /// `offset: Vec2`) — o `ProjectState` embute o `FlipDoc`, e postcard é posicional: 8 bytes → 24
 /// por chave posada. Sem o bump um v13 leria os coeficientes do afim como o `Vec2` + lixo.
-const PROJECT_SCHEMA: u32 = 14;
+/// v15 (W8): o traço do Flip ganhou `point_sel` (seleção no domínio Point, FLIP v6→7) —
+/// campo novo no `FlipStroke`, layout posicional muda.
+const PROJECT_SCHEMA: u32 = 15;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

@@ -24,7 +24,7 @@ pub mod params;
 pub mod tool;
 
 pub use params::{
-    EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
+    EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
     OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN, ReshapeKind, WIDTH_MAX_PX, WIDTH_MIN_PX,
     WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider, slider_to_px, slider_to_unit,
 };

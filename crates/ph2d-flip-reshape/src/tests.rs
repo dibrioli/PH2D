@@ -580,3 +580,67 @@ fn the_sculpt_touches_only_the_selected_strokes_when_there_is_a_selection() {
         "o Sculpt esculpiu o traco ERRADO (o nao-selecionado)"
     );
 }
+
+/// 🔴 **A máscara por PONTO (W8): com seleção PARCIAL, os pontos não-selecionados saem
+/// BYTE-IDÊNTICOS do gesto** — posição, largura e opacidade — e os selecionados mudam.
+///
+/// É a "máscara fina" do domínio Point: o pincel roda livre e o `apply` devolve o que
+/// ele não podia tocar (é o que faz valer para os oito pincéis sem mudar nenhum).
+///
+/// Mutação que sangra: tirar a restauração do `apply` (o `saved`) — o Smooth alisa o
+/// traço inteiro e os congelados se movem.
+#[test]
+fn a_partial_point_selection_freezes_the_unselected_points() {
+    let p = params(ReshapeKind::Smooth, 1000.0); // o pincel cobre tudo
+    let s0 = sample(Vec2::new(0.0, 0.0), Vec2::new(0.0, 0.0));
+    let mut strokes = vec![wobbly(12)];
+    // Seleciona SÓ a metade da frente (índices 0..6).
+    for i in 0..6 {
+        strokes[0].set_point_selected(i, true);
+    }
+    let before = strokes[0].positions().to_vec();
+    let widths_before = strokes[0].widths().to_vec();
+
+    let mut sess = Session::begin(&strokes, &p, &s0);
+    assert!(sess.apply(&mut strokes, &p, &s0), "o gesto tem de agir");
+
+    let after = strokes[0].positions().to_vec();
+    // (a) Os NÃO-selecionados (6..12) não se moveram um bit.
+    for i in 6..12 {
+        assert_eq!(
+            before[i], after[i],
+            "o ponto congelado {i} se moveu — a mascara por ponto nao segurou"
+        );
+    }
+    assert_eq!(
+        widths_before,
+        strokes[0].widths(),
+        "largura de ponto congelado mudou"
+    );
+    // (b) Ao menos um SELECIONADO mudou (senão a máscara virou um no-op e o gate é
+    // falso-zero — a lição do BUGS #17).
+    assert!(
+        (0..6).any(|i| before[i] != after[i]),
+        "nenhum ponto selecionado se moveu — o gesto nao agiu onde devia"
+    );
+}
+
+/// **O Grab com seleção parcial só agarra os pontos selecionados — e os BURACOS ficam**
+/// (não têm seleção própria; só andam com o traço inteiro).
+#[test]
+fn a_partial_point_selection_limits_what_the_grab_grabs() {
+    let p = params(ReshapeKind::Grab, 1000.0);
+    let s0 = sample(Vec2::new(0.0, 0.0), Vec2::new(0.0, 0.0));
+    let mut st = wobbly(8);
+    st.holes
+        .push(vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0)]);
+    st.set_point_selected(2, true);
+    st.set_point_selected(3, true);
+    let strokes = vec![st];
+    let sess = Session::begin(&strokes, &p, &s0);
+    assert_eq!(
+        sess.grabbed(),
+        2,
+        "o Grab parcial tem de agarrar SO os 2 pontos selecionados (sem os buracos)"
+    );
+}

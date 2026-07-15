@@ -176,6 +176,11 @@ pub fn influence(p: &ReshapeParams, s: &InputSample, point: Vec2) -> f32 {
     p.strength.clamp(0.0, 1.0) * s.pressure.clamp(0.0, 1.0) * p.frame_falloff * falloff
 }
 
+/// O retrato dos pontos CONGELADOS pela máscara por ponto, tirado antes do pincel e
+/// devolvido depois: `(índice, posição, largura, opacidade)` de cada não-selecionado +
+/// os buracos inteiros (eles não têm seleção própria).
+type FrozenSnapshot = (Vec<(usize, Vec2, f32, f32)>, Vec<Vec<Vec2>>);
+
 /// Um gesto de escultura em curso.
 ///
 /// Nasce no pen-down ([`Session::begin`]) — que é onde a **máscara congela** — e
@@ -189,6 +194,14 @@ pub struct Session {
     /// novos a cada milímetro. O `anel` é `None` para o contorno e `Some(k)` para o
     /// k-ésimo buraco de uma região.
     grab: Vec<(usize, Option<usize>, usize, f32)>,
+    /// **Máscara por PONTO** (W8 — o domínio Point do Edit): por traço do `mask` com
+    /// seleção de ponto PARCIAL, os índices **não-selecionados**. O `apply` deixa o
+    /// pincel rodar LIVRE e depois DEVOLVE o que ele não podia tocar (posição, largura,
+    /// opacidade — e os buracos, que não têm seleção própria e só andam com o traço
+    /// inteiro). Restaurar em vez de filtrar é o que faz a máscara valer para os OITO
+    /// pincéis sem mudar a assinatura de nenhum — e o Smooth ainda usa os vizinhos
+    /// congelados como âncora, que é a semântica de máscara do GP.
+    point_mask: Vec<(usize, Vec<usize>)>,
     /// Contador de amostras — a semente do Randomize é **re-semeada por amostra**
     /// (parado, o pincel faz um passeio browniano; é assim no GP).
     sample_no: u64,
@@ -249,6 +262,20 @@ impl Session {
             .filter(|(_, st)| !any_selected || st.selected)
             .map(|(i, _)| i)
             .collect();
+        // A máscara por PONTO (W8): traço do conjunto com seleção de ponto PARCIAL —
+        // congela os índices não-selecionados (o `apply` os devolve depois do pincel).
+        // Total ou sem dado de ponto = sem entrada (o caminho de sempre, byte a byte).
+        let point_mask: Vec<(usize, Vec<usize>)> = mask
+            .iter()
+            .filter_map(|&si| {
+                let st = &strokes[si];
+                if !st.has_point_selection() || st.all_points_selected() {
+                    return None;
+                }
+                let frozen: Vec<usize> = (0..st.len()).filter(|&i| !st.point_selected(i)).collect();
+                (!frozen.is_empty()).then_some((si, frozen))
+            })
+            .collect();
         let mut grab = Vec::new();
         if p.kind == ReshapeKind::Grab {
             // Pressão FIXA em 1.0 no congelamento (o GP faz isso): o peso de cada
@@ -260,14 +287,23 @@ impl Session {
             };
             for &si in &mask {
                 let st = &strokes[si];
+                // Seleção de ponto PARCIAL: o Grab só agarra os selecionados — e os
+                // buracos ficam (não têm seleção própria; só andam com o traço inteiro).
+                let partial = st.has_point_selection() && !st.all_points_selected();
                 // `ring = None` é o contorno; `Some(k)` é o k-ésimo buraco (o "O" tem
                 // um — e se o buraco não fosse agarrado junto, ele ficaria para trás e a
                 // rosquinha viraria uma mancha).
                 for (pi, &pos) in st.positions().iter().enumerate() {
+                    if partial && !st.point_selected(pi) {
+                        continue;
+                    }
                     let w = influence(p, &frozen, pos);
                     if w > 0.0 {
                         grab.push((si, None, pi, w));
                     }
+                }
+                if partial {
+                    continue;
                 }
                 for (k, hole) in st.holes.iter().enumerate() {
                     for (pi, &pos) in hole.iter().enumerate() {
@@ -282,6 +318,7 @@ impl Session {
         Self {
             mask,
             grab,
+            point_mask,
             sample_no: 0,
         }
     }
@@ -303,7 +340,24 @@ impl Session {
             let Some(st) = strokes.get_mut(si) else {
                 continue;
             };
-            changed |= match p.kind {
+            // A máscara por PONTO: congela o que o pincel não pode tocar (posição,
+            // largura, opacidade dos NÃO-selecionados + os buracos) e o devolve depois.
+            // O pincel roda livre — é o que faz a máscara valer para os oito sem mudar
+            // nenhum, e o Smooth ancorar nos vizinhos congelados.
+            let frozen = self
+                .point_mask
+                .iter()
+                .find(|(i, _)| *i == si)
+                .map(|(_, f)| f);
+            let saved: Option<FrozenSnapshot> = frozen.map(|f| {
+                (
+                    f.iter()
+                        .map(|&i| (i, st.positions()[i], st.widths()[i], st.opacities()[i]))
+                        .collect(),
+                    st.holes.clone(),
+                )
+            });
+            let hit = match p.kind {
                 ReshapeKind::Thickness => brushes::thickness(st, p, s),
                 ReshapeKind::Strength => brushes::strength(st, p, s),
                 // Os pincéis de POSIÇÃO valem para o contorno **e para os buracos**: um
@@ -317,6 +371,15 @@ impl Session {
                     hit
                 }
             };
+            if let Some((pts, holes)) = saved {
+                for (i, pos, w, o) in pts {
+                    st.positions_mut()[i] = pos;
+                    st.widths_mut()[i] = w;
+                    st.opacities_mut()[i] = o;
+                }
+                st.holes = holes;
+            }
+            changed |= hit;
         }
         changed
     }

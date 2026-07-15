@@ -288,6 +288,45 @@ impl crate::App {
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
             return true;
         };
+        // ── Domínio POINT (W8): o clique pega uma ÂNCORA, não o traço. ──
+        if matches!(
+            self.flip_style.map(|s| s.edit_domain),
+            Some(ph2d_tool_flip::EditDomain::Point)
+        ) {
+            let hit = point_at(drawing, local, px_to_world, &w2l);
+            let shift = pick == Pick::Toggle;
+            // **Mover ponto de uma INSTÂNCIA deformaria o gêmeo** (a arte é compartilhada
+            // — a regra W7.2: arrasto nunca deforma arte compartilhada). Selecionar pode;
+            // mover não: o gesto vira Click e o usuário é AVISADO (zero no-op silencioso).
+            let instanced = drawing.is_instanced();
+            let plan = plan_down_points(drawing, hit, shift);
+            self.title_dirty = true;
+            self.flip_edit_gesture = Some(match plan {
+                DownPoints::Move { .. } if instanced => {
+                    gfx.toasts.push(ph2d_editor::Toast::warning(
+                        "Point move needs exclusive art - Unlink the key first",
+                    ));
+                    crate::flip_edit_gesture::EditGesture::Click
+                }
+                DownPoints::Move { collapse_to } => {
+                    crate::flip_edit_gesture::EditGesture::MovePoints {
+                        last: move_seed,
+                        down: (x, y),
+                        collapse_to,
+                    }
+                }
+                DownPoints::Click => crate::flip_edit_gesture::EditGesture::Click,
+                DownPoints::Marquee { additive } => {
+                    crate::flip_edit_gesture::EditGesture::Marquee {
+                        start: (x, y),
+                        cur: (x, y),
+                        additive,
+                    }
+                }
+            });
+            self.flip_live_clear();
+            return true;
+        }
         let hit = stroke_at(drawing, local, px_to_world, &w2l);
         // `PH2D_FLIP_SELECT_DEBUG=1` — a régua do Edit Mode no app REAL. O seam
         // modificador→pick é a única linha que um teste de unidade não alcança (ele não
@@ -345,7 +384,16 @@ impl crate::App {
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
             return false;
         };
-        let n = drawing.delete_selected();
+        // Domínio POINT: dissolve as âncoras selecionadas (o traço continua ligado pelos
+        // que ficam; traço esvaziado sai). Domínio Stroke: apaga os traços, como sempre.
+        let n = if matches!(
+            self.flip_style.map(|s| s.edit_domain),
+            Some(ph2d_tool_flip::EditDomain::Point)
+        ) {
+            drawing.delete_selected_points()
+        } else {
+            drawing.delete_selected()
+        };
         if n > 0 {
             self.title_dirty = true;
             self.flip_live_clear(); // o alvo vivo pode ter sido um dos apagados
@@ -425,6 +473,55 @@ pub(crate) fn apply_style_delta(
     let mut changed = false;
     let fill_color = crate::flip_draw::srgb8_to_linear(now.fill_color);
     for s in drawing.strokes.iter_mut().filter(|s| s.selected) {
+        // **Domínio Point com seleção PARCIAL: os atributos POR-PONTO miram só os pontos
+        // selecionados** (cor, opacidade, largura — o GP faz o mesmo: atributo de ponto
+        // obedece à seleção de ponto). Os por-CURVA (dureza, cor do miolo) continuam do
+        // traço inteiro: meio-traço não tem meia-dureza.
+        let partial = s.has_point_selection() && !s.all_points_selected();
+        if partial {
+            let sel: Vec<bool> = (0..s.len()).map(|i| s.point_selected(i)).collect();
+            if now.stroke != prev.stroke && !s.hide_stroke {
+                for (i, c) in s.colors_mut().iter_mut().enumerate() {
+                    if sel[i] {
+                        *c = color;
+                        changed = true;
+                    }
+                }
+            }
+            if (now.opacity - prev.opacity).abs() > f32::EPSILON {
+                for (i, o) in s.opacities_mut().iter_mut().enumerate() {
+                    if sel[i] {
+                        *o = now.opacity;
+                        changed = true;
+                    }
+                }
+            }
+            if (now.width_px - prev.width_px).abs() > f64::EPSILON {
+                // O mesmo perfil-preservado do caminho de traço (razão `w_i / w_max`),
+                // aplicado só aos pontos selecionados.
+                let max = s.widths().iter().copied().fold(0.0f32, f32::max);
+                if max > 0.0 {
+                    let size = now.width_px as f32;
+                    for (i, w) in s.widths_mut().iter_mut().enumerate() {
+                        if sel[i] {
+                            *w = size * (*w / max);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+            if (now.hardness - prev.hardness).abs() > f32::EPSILON {
+                s.hardness = now.hardness;
+                changed = true;
+            }
+            if now.fill_color != prev.fill_color
+                && let Some(f) = s.fill.as_mut()
+            {
+                f.color = fill_color;
+                changed = true;
+            }
+            continue;
+        }
         // **A cor da LINHA e a cor do MIOLO são dois atributos, com dois controles.**
         //
         // O 1º corte fazia o swatch do traço recolorir o miolo junto ("um traço com fill é
@@ -475,6 +572,12 @@ pub(crate) fn apply_style_delta(
     }
     changed
 }
+
+// O domínio POINT (W8) mora no módulo-irmão; re-exportado para os consumidores
+// continuarem falando com `flip_select` (uma porta só para a pergunta "seleção").
+pub(crate) use crate::flip_select_points::{
+    DownPoints, apply_marquee_points, flip_edit_domain_refresh, plan_down_points, point_at,
+};
 
 #[cfg(test)]
 #[path = "flip_select_tests.rs"]

@@ -91,12 +91,18 @@ impl FlipDrawing {
         self.strokes.iter().any(|s| s.selected)
     }
 
-    /// Desmarca tudo. Devolve `true` se algo mudou (o chamador decide se isso é um
-    /// passo de undo).
+    /// Desmarca tudo — o traço E os pontos (o domínio Point materializado fica, todo
+    /// falso; a projeção `any()` zera o Curve junto). Devolve `true` se algo mudou (o
+    /// chamador decide se isso é um passo de undo).
     pub fn clear_selection(&mut self) -> bool {
         let mut changed = false;
         for s in &mut self.strokes {
             changed |= std::mem::replace(&mut s.selected, false);
+            for i in 0..s.len() {
+                if s.point_selected(i) {
+                    changed |= s.set_point_selected(i, false);
+                }
+            }
         }
         changed
     }
@@ -106,6 +112,53 @@ impl FlipDrawing {
         let before = self.strokes.len();
         self.strokes.retain(|s| !s.selected);
         before - self.strokes.len()
+    }
+
+    // ── Domínio POINT (W8 — `02_referencia §11`): conversão explícita + agregadas ──
+
+    /// **Curve → Point** (o toggle do painel foi para Point): materializa o vetor de
+    /// pontos nos traços SELECIONADOS (broadcast). Os não-selecionados ficam sem dado —
+    /// vetor ausente lê como o estado do traço (`false`), então a semântica observável é
+    /// a mesma e o caso comum não paga memória.
+    pub fn selection_to_point_domain(&mut self) {
+        for s in &mut self.strokes {
+            if s.selected {
+                s.broadcast_selection_to_points();
+            }
+        }
+    }
+
+    /// **Point → Curve** (o toggle voltou para Stroke): promove `any()` por traço e
+    /// desmaterializa os vetores (half-selected só existe em Point, §11).
+    pub fn selection_to_stroke_domain(&mut self) {
+        for s in &mut self.strokes {
+            s.promote_points_to_stroke();
+        }
+    }
+
+    /// Seleciona TODOS os pontos de todos os traços (o botão "All" no domínio Point).
+    /// Devolve `true` se algo mudou.
+    pub fn select_all_points(&mut self) -> bool {
+        let mut changed = false;
+        for s in &mut self.strokes {
+            for i in 0..s.len() {
+                changed |= s.set_point_selected(i, true);
+            }
+        }
+        changed
+    }
+
+    /// Remove os pontos selecionados (dissolve, por traço) e descarta os traços que
+    /// ficaram VAZIOS. Devolve quantos pontos saíram.
+    pub fn delete_selected_points(&mut self) -> usize {
+        let mut removed = 0;
+        for s in &mut self.strokes {
+            removed += s.remove_selected_points();
+        }
+        if removed > 0 {
+            self.strokes.retain(|s| !s.is_empty());
+        }
+        removed
     }
 }
 

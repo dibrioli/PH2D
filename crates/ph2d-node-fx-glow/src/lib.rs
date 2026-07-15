@@ -79,6 +79,30 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "radius",
             default: 1.0,
         },
+        // Glow colour (doc 67, 2nd pass). `saturation` pulls the halo toward
+        // grey (0 = a white bloom regardless of source colour); `tint_*`
+        // multiplies it (default white = the source's own colour). What Unity /
+        // Unreal / After Effects all expose on a bloom.
+        ParamSpec {
+            name: "saturation",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "tint_r",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "tint_g",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "tint_b",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "tint_a",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -92,6 +116,10 @@ pub struct Glow {
     pub knee: f32,
     pub intensity: f32,
     pub radius: f32,
+    /// `0` = a white bloom, `1` = the source's own colour.
+    pub saturation: f32,
+    /// Multiplies the (desaturated) glow — default white is a no-op.
+    pub tint: [f32; 4],
 }
 
 /// The manifest default for a param name (the single source of a knob's neutral
@@ -125,6 +153,13 @@ pub fn from_graph(graph: &Graph) -> Option<Glow> {
         knee: read(ov, "knee"),
         intensity: read(ov, "intensity"),
         radius: read(ov, "radius"),
+        saturation: read(ov, "saturation"),
+        tint: [
+            read(ov, "tint_r"),
+            read(ov, "tint_g"),
+            read(ov, "tint_b"),
+            read(ov, "tint_a"),
+        ],
     })
 }
 
@@ -192,6 +227,26 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 0.05,
         widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "saturation",
+        label: "Saturation",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // A real OKLCH swatch (the panel wires the picker for a Color widget); the 4
+    // channels are the tint params. White is the neutral no-op.
+    ParamUiHint {
+        param: "tint_r",
+        label: "Tint",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Color {
+            channels: ["tint_r", "tint_g", "tint_b", "tint_a"],
+        },
     },
 ];
 
@@ -289,7 +344,7 @@ mod tests {
     fn reads_defaults_then_overrides() {
         let mut g = Graph::new();
         let n = g.add_node(TYPE_NAME);
-        // Untouched → manifest defaults.
+        // Untouched → manifest defaults (white, full-saturation glow).
         assert_eq!(
             from_graph(&g),
             Some(Glow {
@@ -297,21 +352,28 @@ mod tests {
                 knee: 0.6,
                 intensity: 0.8,
                 radius: 1.0,
+                saturation: 1.0,
+                tint: [1.0, 1.0, 1.0, 1.0],
             })
         );
         // A dragged slider overrides just that knob; the rest stay at default.
         g.set_param(n, "intensity", 2.5);
         g.set_param(n, "threshold", 1.5);
+        g.set_param(n, "saturation", 0.0);
+        g.set_param(n, "tint_r", 0.5);
         let glow = from_graph(&g).unwrap();
         assert_eq!(glow.intensity, 2.5);
         assert_eq!(glow.threshold, 1.5);
+        assert_eq!(glow.saturation, 0.0, "a white bloom");
+        assert_eq!(glow.tint, [0.5, 1.0, 1.0, 1.0], "just the red channel moved");
         assert_eq!(glow.radius, 1.0, "untouched knob keeps its default");
     }
 
     #[test]
-    fn passthrough_default_matches_the_manifest_param_count() {
-        // Four authored knobs — the render pass reads exactly these.
-        assert_eq!(MANIFEST.params.len(), 4);
+    fn manifest_exposes_every_authored_knob() {
+        // threshold, knee, intensity, radius, saturation, tint_{r,g,b,a}.
+        assert_eq!(MANIFEST.params.len(), 9);
         assert_eq!(default_of("knee"), 0.6);
+        assert_eq!(default_of("tint_g"), 1.0);
     }
 }

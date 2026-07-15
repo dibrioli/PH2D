@@ -135,7 +135,11 @@ faíscas ficam com o **mesmo** brilho, só sem o halo — o ponto neutro é byte
 ## 6. Superfície
 
 - **Drop-crate nova:** `ph2d-node-fx-glow` (`fx.glow`, passthrough Pure, params
-  threshold/knee/intensity/radius + `ParamUiHint`s). **`registry-init` regenerado por
+  threshold/knee/intensity/radius + **saturation/tint** — a cor do glow que
+  Unity/Unreal/AE expõem: `saturation` puxa o halo pro cinza — bloom branco — e o
+  `tint` é um **swatch OKLCH real** (`ParamWidget::Color`, o painel liga o picker
+  sozinho) que multiplica o halo; default branco = no-op. `Rgba16Float` até o
+  composite, então dessaturar/tingir acontece em HDR). **`registry-init` regenerado por
   `cargo run -p ph2d-node-sync` — 92 crates-nó.** Conflito esperado no rebase:
   **gere de novo pelo `node-sync`, nunca resolva à mão.**
 - **Foundational `ph2d-render`:** `render_instances_only` + `draw_scratch` (extração,

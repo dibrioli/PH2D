@@ -31,11 +31,12 @@ fn vs_main(@builtin(vertex_index) vid: u32) -> VsOut {
 
 struct Params {
     // Meaning is per-pass; see each fragment:
-    //  prefilter  → (threshold, threshold-knee, 2·knee, 0.25/knee)
-    //  downsample → (srcTexel.x, srcTexel.y, _, _)
-    //  upsample   → (filterRadius.x, filterRadius.y, _, _)  (UV; y already aspect-scaled)
-    //  composite  → (intensity, _, _, _)
+    //  prefilter  → v = (threshold, threshold-knee, 2·knee, 0.25/knee)
+    //  downsample → v = (srcTexel.x, srcTexel.y, _, _)
+    //  upsample   → v = (filterRadius.x, filterRadius.y, _, _)  (UV; y aspect-scaled)
+    //  composite  → v = (intensity, saturation, _, _), v2 = tint rgba
     v: vec4<f32>,
+    v2: vec4<f32>,
 };
 @group(0) @binding(2) var<uniform> P: Params;
 
@@ -108,12 +109,21 @@ fn fs_upsample(in: VsOut) -> @location(0) vec4<f32> {
     return vec4<f32>(o, 1.0);
 }
 
-// Scale the accumulated glow (in mip0) by intensity. The pipeline blends this
-// ADDITIVELY over the scene (color One/One) — emitted light only brightens, so it
-// bleeds over whatever is in front. Alpha 0 + the pipeline keeps the destination
-// alpha, so the opaque scene stays opaque for the compositor.
+// The accumulated glow (mip0), coloured then scaled: desaturate toward luminance
+// by `saturation` (0 = a white bloom), multiply by the tint (default white =
+// no-op), then by intensity. The pipeline blends this ADDITIVELY over the scene
+// (color One/One) — emitted light only brightens, so it bleeds over whatever is
+// in front. Alpha 0 + the pipeline keeps the destination alpha, so the opaque
+// scene stays opaque for the compositor.
 @fragment
 fn fs_composite(in: VsOut) -> @location(0) vec4<f32> {
-    let glow = textureSample(src, samp, in.uv).rgb * P.v.x;
+    let intensity = P.v.x;
+    let saturation = P.v.y;
+    let tint = P.v2;
+    var glow = textureSample(src, samp, in.uv).rgb;
+    // Rec.709 luminance; mix toward grey for a white bloom at saturation 0.
+    let lum = dot(glow, vec3<f32>(0.2126, 0.7152, 0.0722));
+    glow = mix(vec3<f32>(lum), glow, saturation);
+    glow = glow * tint.rgb * (intensity * tint.a);
     return vec4<f32>(glow, 0.0);
 }

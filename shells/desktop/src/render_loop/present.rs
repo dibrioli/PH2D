@@ -241,6 +241,8 @@ impl crate::App {
                             knee: glow.knee,
                             intensity: glow.intensity,
                             radius: glow.radius,
+                            saturation: glow.saturation,
+                            tint: glow.tint,
                         },
                     );
                 }

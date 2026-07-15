@@ -58,6 +58,10 @@ pub struct BloomParams {
     pub intensity: f32,
     /// Scales the upsample tent radius — a wider radius spreads the halo further.
     pub radius: f32,
+    /// `0` pulls the glow to grey (a white bloom), `1` keeps the source colour.
+    pub saturation: f32,
+    /// Multiplies the (desaturated) glow — default white `[1,1,1,1]` is a no-op.
+    pub tint: [f32; 4],
 }
 
 impl Default for BloomParams {
@@ -67,6 +71,8 @@ impl Default for BloomParams {
             knee: 0.6,
             intensity: 0.8,
             radius: 1.0,
+            saturation: 1.0,
+            tint: [1.0, 1.0, 1.0, 1.0],
         }
     }
 }
@@ -286,7 +292,7 @@ impl MotionFx {
         let uniform = |label: &str| {
             gpu.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
-                size: 16, // one vec4<f32>
+                size: 32, // two vec4<f32> (Params.v + Params.v2; composite uses both)
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
@@ -373,7 +379,18 @@ impl MotionFx {
         let up: [f32; 4] = [fr, fr * aspect, 0.0, 0.0];
         gpu.queue
             .write_buffer(&self.u_up, 0, bytemuck::cast_slice(&up));
-        let comp: [f32; 4] = [params.intensity, 0.0, 0.0, 0.0];
+        // Composite reads both vec4s: v = (intensity, saturation, _, _),
+        // v2 = tint rgba.
+        let comp: [f32; 8] = [
+            params.intensity,
+            params.saturation.clamp(0.0, 1.0),
+            0.0,
+            0.0,
+            params.tint[0],
+            params.tint[1],
+            params.tint[2],
+            params.tint[3],
+        ];
         gpu.queue
             .write_buffer(&self.u_composite, 0, bytemuck::cast_slice(&comp));
 
@@ -489,7 +506,7 @@ fn build_targets(
         .map(|_| {
             gpu.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("ph2d-render motion-fx u_down"),
-                size: 16,
+                size: 32,
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
@@ -553,8 +570,7 @@ mod tests {
         let p = BloomParams {
             threshold: 1.0,
             knee: 0.5,
-            intensity: 1.0,
-            radius: 1.0,
+            ..BloomParams::default()
         };
         // (threshold, threshold-knee, 2·knee, 0.25/knee)
         assert_eq!(p.prefilter_curve(), [1.0, 0.5, 1.0, 0.5]);
@@ -563,10 +579,8 @@ mod tests {
     #[test]
     fn zero_knee_does_not_divide_by_zero() {
         let p = BloomParams {
-            threshold: 1.0,
             knee: 0.0,
-            intensity: 1.0,
-            radius: 1.0,
+            ..BloomParams::default()
         };
         assert!(p.prefilter_curve().iter().all(|v| v.is_finite()));
     }

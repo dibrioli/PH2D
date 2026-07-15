@@ -1,9 +1,25 @@
 # Handoff — linha `line/FLIP`, continuação (2026-07-15)
 
-> **Para o próximo implementador que pega a linha E o rotate/escala da pose (W7.5).**
-> Modo L: worktree `Worktrees/line-FLIP`, branch `line/FLIP`. **Você NÃO integra nem pusha**
+> **Para o próximo implementador que pega a linha.** Modo L: worktree
+> `Worktrees/line-FLIP`, branch `line/FLIP`. **Você NÃO integra nem pusha**
 > (§0.7 do CLAUDE.md) — fecha, escreve o handoff e o Enio ordena a integração via agente
-> integrador. Este documento é o estado + o mapa preciso da Fase 2.
+> integrador.
+>
+> ## ✅ A W7.5 FECHOU INTEIRA (Fase 2 em `a93d29a2`, 2026-07-15) — pendente o smoke do Enio
+>
+> O **gizmo da pose no modo Edit** está construído e gateado (§3 abaixo virou o REGISTRO
+> do que foi feito — leia antes de tocar no gizmo). Smoke pronto:
+>
+> ```
+> cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && PH2D_FLIP_POSE_SMOKE=1 cargo run --release -p ph2d-host-desktop
+> ```
+> A cena abre com a tool Flip em modo **Edit**, playhead na **instância** (chave 12, já
+> movida) e o gizmo enquadrando a arte posada. Roteiro: (1) arrastar **quina** = escala /
+> anel de hover = **gira** — em torno do centro da arte; (2) **borda** = escala 1 eixo;
+> (3) arrastar a **arte** = move (o gesto de sempre); (4) a **chave 0** e o objeto não se
+> mexem; (5) **Ctrl+Z** desfaz o gesto INTEIRO (1 passo); (6) voltar o playhead à chave 0
+> (arte exclusiva) — o gizmo de pose **some**; (7) trocar pro modo **Select** — o gizmo de
+> OBJETO volta e segue movendo o objeto todo.
 
 ---
 
@@ -13,6 +29,7 @@
 
 | commit | o quê | smoke |
 |---|---|---|
+| `a93d29a2` | **W7.5 Fase 2**: o GIZMO da pose no modo Edit (rotate/escala da instância) + latentes da linha fechados | **pendente** (roteiro acima) |
 | `df809109` | **W7.5 Fase 1**: a pose da chave vira AFIM (`Pose`) | fundação, sem UI nova |
 | `78754294` | falloff SIMÉTRICO 50%/quadro + número da célula não é mais lavado | **OK** (Enio) |
 | `93b8bac7` | W7.4: falloff no FUNDO do quadro (cor de acento que clareia) | reestilizado por `78754294` |
@@ -60,7 +77,44 @@ uma instância. A pose agora é um afim `Pose([f32;6])`, no MESMO layout do `Xfo
 
 ---
 
-## 3. W7.5 Fase 2 — o GIZMO da pose no modo Edit (TODO — o que falta)
+## 3. W7.5 Fase 2 — o GIZMO da pose no modo Edit (✅ FEITO, `a93d29a2`)
+
+**Como foi construído (não re-derive):** a opção escolhida foi a **B1 turbinada** — em vez
+de replicar a math de 3-4 kinds, a pose é **reparametrizada como um TRS ancorado no CENTRO
+da arte crua** (`pose(p) = t_c + R·S·(p − c_local)`, `t_c = pose.apply(c_local)`), e o
+`compute_gizmo_transform` canônico (modifiers/snap/contador de voltas/re-ancoragem do canto
+oposto) é reusado **byte a byte**: `start_transform` = TRS da pose, `parent_world` = afim do
+OBJETO, `sprite_half_intrinsic` = meia-bbox crua do desenho. A volta é `trs_to_pose`
+(inverso exato). Rotate pivota no centro da arte posada; scale segura o canto oposto.
+
+- **Módulo:** `shells/desktop/src/flip_pose_gizmo.rs` (+ `_tests`, 6 gates com 3 mutações
+  provadas) e a cena `flip_pose_smoke.rs`. Estado do arrasto: `App.flip_pose_drag`
+  (`FlipPoseDrag` = `GizmoDragState` + alvo `oid/lid/key` + `c_local`).
+- **Foundational tocado (append-only — integrador, anote):** `GizmoTarget::FlipPose`
+  (variante NOVA no enum de `ph2d-editor-core/src/gizmo/drag.rs`) · scrambler de id próprio
+  `0x_C3A5_C85C_97CB_3127` em `keyed_handle_id` · campo novo `GizmoStateGroup.pose_view` ·
+  braço de pintura keyed em `screens/hero/paint.rs` (**sem interior, sem pivot dot** — o
+  interior roubaria o clique da seleção de traço do Edit; o translate da instância é o
+  arrasto de canvas que já existia, `move_drawing`).
+- **Fiação:** o Down do handle vem **ANTES** do arm de canvas do Edit no `input_dispatch`
+  (um handle no hit-index torna `on_canvas` falso — sem o arm próprio o clique cairia no
+  caminho genérico de gizmo, que escreve o `Transform` do OBJETO). Move/Up com early-return
+  como os outros gestos Flip. A `pose_view` é publicada no `render_loop` logo após o
+  `snapshots::publish`, gated em tool Flip + modo Edit; o resto (instância, arte, entidade
+  viva) o `pose_target` decide.
+- **Seed = sample:** caixa/pivô saem do MESMO `frame_pose` que o render dobra — gate
+  `the_pose_gizmo_box_lands_on_the_posed_art` (espelho do `the_halo_carries_the_key_pose`).
+- **Latentes da linha fechados de carona** (o fail-fast dos runs anteriores os escondia):
+  pin da tripla de schema `(13,5,8)→(14,6,8)` em `project_tests.rs` (a Fase 1 bumpou os
+  contadores e esqueceu o pin) · `scrub_frame` clampava i32 com bounds INVERTÍVEIS (vão de
+  1 quadro = pânico; virou min/max) · `safe_clamp` no handle da régua · tags
+  `LITERAL-PX-OK` erradas no véu do multiframe (`CLAMP-OK`/`LITERAL-OK` não satisfazem o
+  gate numérico) · clippy field-assignment em `flip_strip_tests`.
+- **Limitação documentada:** escala não-uniforme do OBJETO + rotate da pose cisalha (mesma
+  limitação do gizmo de sprite — o TRS não representa shear). Poses tweenadas (lerp de
+  coeficientes) não são chaves, então o gizmo nunca decompõe um afim com shear.
+
+### O plano original da Fase 2 (mantido como registro — a exploração do §3.1 segue válida)
 
 **Decisão de UX do Enio (2026-07-15):** *"gizmo no modo Edit"*. Quando o quadro ativo é uma
 **instância**, aparece um gizmo (handles de sprite) enquadrando a arte posada dela; arrastar corpo
@@ -154,7 +208,7 @@ gira/escala e confere que a OUTRA instância e o objeto não se mexem.
 
 ## 4. Fila aberta (herdada — detalhe em `HANDOFF_flip_impl.md` §Aberto)
 
-- **W7.5 Fase 2** (acima) — a próxima.
+- ~~**W7.5 Fase 2**~~ — ✅ fechou (`a93d29a2`, pendente smoke; §3).
 - **Seleção no domínio POINT** (hoje por TRAÇO): mover uma âncora só, máscara fina pro Sculpt.
 - **W6 (timeline global): ADIADA** (a timeline principal ainda está em dev; o playhead do Flip já é
   o global, então a integração não terá relógio a reconciliar).
@@ -170,7 +224,14 @@ gira/escala e confere que a OUTRA instância e o objeto não se mexem.
 - **A linha tocou `ph2d-flip`** (crate de modelo — foundational-ish) com **mudança de schema**
   (`FLIP_SCHEMA` 5→6) e o **`PROJECT_SCHEMA` 13→14** no shell. Se outra linha bumpou o
   `PROJECT_SCHEMA` em paralelo, os números que **SOMAM** têm de ser reconciliados (não escolha um
-  lado — `feedback_numbers_that_sum_across_lines_count_dont_pick`).
+  lado — `feedback_numbers_that_sum_across_lines_count_dont_pick`). O pin da tripla em
+  `project_tests.rs` está em `(14, 6, 8)` — reconcilie o pin JUNTO com os contadores.
+- **A Fase 2 tocou `ph2d-editor-core`** (foundational, append-only): variante nova
+  **`GizmoTarget::FlipPose`** (`gizmo/drag.rs` — apendada por último) · scrambler de id
+  `0x_C3A5_C85C_97CB_3127` em `keyed_handle_id` (`gizmo/paint.rs`) · campo novo
+  **`GizmoStateGroup.pose_view`** (`screens/hero/state.rs`) · braço de pintura keyed em
+  `screens/hero/paint.rs`. Se outra linha adicionou variante ao `GizmoTarget` ou campo ao
+  `GizmoStateGroup`, é colisão de mesmo-símbolo — resolva pelos estágios do índice.
 - **Colisão de mesmo-símbolo provável** em `flip_transform.rs`/`flip_gizmo_view.rs`/`object.rs` se
   outra linha mexeu na pose — resolva pelos ESTÁGIOS do índice, não pelos marcadores
   (`feedback_resolve_conflicts_from_index_stages_not_markers`), e rode `check --workspace` (merge

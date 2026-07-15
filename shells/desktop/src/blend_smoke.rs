@@ -12,6 +12,9 @@
 //! - `PH2D_BLEND_SMOKE=2` — **retângulo → estrela → elipse** (3 formas em CADEIA), 4 passos por
 //!   elo. É a capacidade nova do ADR-0122 (até 5 formas); a transição corre pelas três na ordem.
 //!   Gire a do MEIO: os ângulos das intermediárias dos dois lados se adaptam.
+//! - `PH2D_BLEND_SMOKE=3` — o **SPINE editável**: estrela → elipse com um spine CURVO autorado. Os
+//!   6 passos **fluem ao longo do arco**, não pela reta. Modo Node no objeto: arraste os pontos do
+//!   spine e os passos re-fluem (é o "path unindo as formas, editável" do pedido do Enio).
 
 use ph2d_vec_scene::{Paint, Rgba8, ShapeKind, VecPath, cook};
 use std::sync::OnceLock;
@@ -69,6 +72,27 @@ impl crate::App {
                     [200, 120, 80],
                 ));
             }
+            // A cena do SPINE editável: estrela → elipse, bem separadas (há espaço para a curva
+            // subir). No frame 8 o blend nasce com um spine CURVO e autorado.
+            3 if level == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                scene.push_path(shape(
+                    ShapeKind::Star,
+                    [-4.4, -1.0],
+                    [-2.4, 1.0],
+                    &[5.0, 0.45, 0.0],
+                    [70, 110, 190],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Ellipse,
+                    [2.4, -0.65],
+                    [4.4, 0.65],
+                    &[],
+                    [200, 120, 80],
+                ));
+            }
             3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
@@ -94,6 +118,44 @@ impl crate::App {
                     &[],
                     [110, 190, 130],
                 ));
+            }
+            // O SPINE editável: cria o blend e o entrega com um spine CURVO e AUTORADO — os passos
+            // FLUEM ao longo do arco (não pela reta). É o que a edição no modo Node faz ao vivo:
+            // selecione o objeto, modo Node, arraste os pontos do spine e os passos re-fluem.
+            8 if level == 3 => {
+                let ids: Vec<u64> = self
+                    .gfx
+                    .as_ref()
+                    .expect("gfx")
+                    .vec_scene
+                    .paths()
+                    .iter()
+                    .map(|p| p.id)
+                    .collect();
+                self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Select);
+                let Some(gfx) = self.gfx.as_mut() else { return };
+                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let mut made = crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, 6);
+                if let Some((spine, blend)) = made.as_mut() {
+                    blend.spine_authored = true; // o artista "editou" a curva
+                    // Curva o spine num arco: pontas nos centros das fontes, pico acima do meio.
+                    if let Some(p) = gfx.vec_scene.path_mut(*spine)
+                        && p.verts.len() == 2
+                    {
+                        let (a, b) = (p.verts[0].anchor, p.verts[1].anchor);
+                        let peak = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5 + 3.0];
+                        p.verts = [a, peak, b].map(ph2d_vec_scene::VecVertex::corner).to_vec();
+                    }
+                }
+                if let Some((spine, _)) = &made {
+                    self.vec_pen.select_many(&[*spine]);
+                }
+                self.vec_blend_pending = made;
+                self.any_input_this_frame = true;
+                eprintln!(
+                    "[blend-smoke] SPINE editavel: 6 passos ao longo de um ARCO autorado. \
+                     Modo Node no objeto: arraste os pontos do spine e os passos re-fluem (ADR-0122)."
+                );
             }
             // Cria o Blend Object VIVO sobre as formas da cena, na ordem de z. As fontes
             // sobrevivem e seguem editáveis — o `create` só empurra o spine (invisível) e enfileira

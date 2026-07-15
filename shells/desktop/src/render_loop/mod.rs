@@ -3071,6 +3071,7 @@ impl crate::App {
                 vec_scene,
                 &self.vec_entities,
                 &vec_xf,
+                &mut self.vec_blend_spines,
                 &mut self.vec_blend_overlay,
             );
             // **Rótulos:** o texto que pertence a uma forma (ou a um conector) e a segue. A pose

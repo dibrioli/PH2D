@@ -115,7 +115,8 @@ mode capturando faces, e do `shape_under_cursor` do conector.
 | **A ✅** | Motor **multi-forma** puro: `chain(shapes, n)` → passos, cadeia pairwise; cor **OKLab** | `ph2d-vec-blend` |
 | **B ✅** | O objeto **vivo**: componente `VecBlend` + recook por frame + passe de render dos passos + skip no `settle_origins`. Spine AUTO (linha entre centros) | `ph2d-ecs` + shell |
 | **C1 ✅** | **Painel cria e ajusta** o blend vivo: botão "Blend" (seleção fechada, 2..=5, em z), slider Steps ao vivo (teto 200) | shell + painel |
-| **C2** | **Pick Shapes** mode (escolher a ORDEM), **spine editável** (modo Node), spacing/orientation | shell + painel |
+| **C2a ✅** | **Spine editável** (modo Node): os passos FLUEM por comprimento de arco ao longo da curva editada | motor + shell |
+| **C2b** | **Pick Shapes** mode (escolher a ORDEM), spacing/orientation (Align-to-Path), Reset Spine | shell + painel |
 | **D** | **Expand** / **Release** | shell |
 
 Cada fase fecha com gate + smoke do Enio antes da próxima (a regra desta linha).
@@ -180,10 +181,49 @@ O botão **Blend** do painel Vector foi **repontado** do modelo destrutivo para 
   `set_selected_steps_retunes_only_the_selected_blend` (idempotente).
 
 **Aberto na Fase C2:** o botão cria da **seleção em z** (não há ainda o **Pick Shapes** que escolhe
-a ORDEM); o **spine é invisível e não-editável** (o "path unindo as formas" editável no modo Node é
-C2); sem controles de spacing/orientation. Selecionar um blend **não sincroniza** o slider Steps
-para o valor DELE (o slider é o valor de autoria; arrastá-lo aplica ao selecionado) — o sync
+a ORDEM); sem controles de spacing/orientation. Selecionar um blend **não sincroniza** o slider
+Steps para o valor DELE (o slider é o valor de autoria; arrastá-lo aplica ao selecionado) — o sync
 select→store é polish.
+
+## O que a Fase C2a LANDOU (2026-07-15) — o SPINE editável
+
+O "path unindo as formas, editável" do pedido do Enio. Os passos **fluem ao longo do spine** por
+comprimento de arco: editou a curva (modo Node), os passos re-fluem.
+
+- **Motor `ph2d-vec-blend::spine_offsets`** (módulo `spine.rs`, geometria de arco pura): dá o
+  **deslocamento** de cada passo (da reta do lerp para o ponto de arco correspondente no spine).
+  Quando o spine É a reta default, o deslocamento é **zero** — e o recook nem chama (o caminho
+  não-editado fica byte-idêntico à Fase B). 3 gates (reta→0, curva→segue, cadeia→link-major).
+- **`VecBlend.spine_authored`** (`#[serde(default)]`): `false` = a shell regenera o spine (reta) e
+  os passos seguem o lerp; `true` = o artista é dono da curva, a shell NÃO a sobrescreve, os passos
+  fluem por ela. Mesma família do "autorado" do conector.
+- **`blend_live::recook`** ganhou a **detecção de edição** (o padrão "snapshot = ponto fixo"):
+  compara o spine ATUAL ao último auto escrito (`App.vec_blend_spines`); se difere, a mão mexeu →
+  marca `spine_authored` no componente e para de sobrescrever. Aí os passos são deslocados pelos
+  `spine_offsets`. Gate `editing_the_spine_authors_it_and_stops_the_auto_regen` (mutation-testado:
+  sem a detecção, a edição é sobrescrita).
+- **O spine é VISÍVEL** (um traço fino, `StrokeSpec` — dado de documento) para ser clicável/editável
+  no canvas.
+- Gates novos no shell: o spine curvo autorado puxa os passos para a curva · o não-editado deixa os
+  passos na reta · editar autora e trava o auto-regen.
+- **Smoke `PH2D_BLEND_SMOKE=3`**: estrela→elipse com um spine em ARCO autorado — os 6 passos seguem
+  o arco. No app: modo Node no objeto, arraste os pontos do spine, os passos re-fluem.
+
+**Gotchas para o próximo (C2b):**
+
+- **As pontas do spine NÃO são fixadas às fontes.** O flow usa a fração de arco na reta default
+  (pelos centros) e a avalia no spine editado. Se o artista mover uma PONTA do spine para longe do
+  centro da fonte, os passos daquela extremidade se descolam da fonte. O Illustrator PINA as pontas
+  às fontes (só o interior é editável) — pinar as pontas no recook (mesmo quando autorado) é o
+  refinamento faltante.
+- **Falta um "Reset Spine"** (limpar `spine_authored` → volta ao automático). É um botão de painel
+  + um `clear` do flag; sem ele o artista não desfaz a edição do spine a não ser pelo undo global.
+- **Orientation** (Align-to-Path): hoje os passos ficam **upright** (Orient::Page). Girar cada passo
+  para a **tangente** do spine é a próxima camada — o `spine_offsets` já tem o ponto de arco; a
+  tangente sai do mesmo `SpineArc`.
+- **O spine visível é dado de documento** (persiste no save, apareceria no Expand). Um **guia por
+  overlay** (screen-space, largura em px, só quando o blend está selecionado, cor por token) é o
+  refinamento correto — hoje é um `StrokeSpec` em MUNDO.
 
 **Gotchas para a Fase C (o próximo que mexer):**
 

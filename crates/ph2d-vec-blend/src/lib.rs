@@ -294,6 +294,11 @@ impl Outline {
 mod matching;
 use matching::{map_backward, map_forward, search};
 
+/// O **flow dos passos ao longo do SPINE editável** (ADR-0122) — a camada nova sobre o motor. É
+/// geometria de arco pura (deslocamentos), separada da correspondência.
+pub mod spine;
+pub use spine::spine_offsets;
+
 /// **O PLANO de um blend**: a correspondência já resolvida e as duas formas já cortadas, peça a
 /// peça. Avaliar um `t` é, a partir daqui, só um lerp — `O(peças)`, sem busca nenhuma.
 ///

@@ -96,7 +96,14 @@ fn overlay_of(
     }
     let mut out = Vec::new();
     let xf = crate::vec_transform::build(&sim, map);
-    recook(&mut sim, &mut scene, map, &xf, &mut out);
+    recook(
+        &mut sim,
+        &mut scene,
+        map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
     fingerprint(&out)
 }
 
@@ -114,7 +121,14 @@ fn overlay_with_rotation(rot_a: f32, rot_b: f32) -> Vec<[f64; 2]> {
     }
     let mut out = Vec::new();
     let xf = crate::vec_transform::build(&sim, &map);
-    recook(&mut sim, &mut scene, &map, &xf, &mut out);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
     fingerprint(&out)
 }
 
@@ -129,7 +143,14 @@ fn moving_a_source_reflows_the_blend() {
     let mut out = Vec::new();
 
     let xf = crate::vec_transform::build(&sim, &map);
-    recook(&mut sim, &mut scene, &map, &xf, &mut out);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
     // 2 fontes, 1 elo: 5 passos + a fonte de cima = 6 no overlay.
     assert_eq!(out.len(), 6, "5 passos + a fonte de cima");
     let before = fingerprint(&out);
@@ -144,7 +165,14 @@ fn moving_a_source_reflows_the_blend() {
         .translation = ph2d_core::Vec2::new(d[0], d[1]);
 
     let xf = crate::vec_transform::build(&sim, &map);
-    recook(&mut sim, &mut scene, &map, &xf, &mut out);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
     let b_after = centroid(out.last().expect("a fonte de cima"));
 
     assert_ne!(
@@ -212,7 +240,14 @@ fn the_last_source_is_drawn_on_top() {
     let (mut sim, mut scene, map, _spine, sources) = scene_with_blend(3, 3);
     let mut out = Vec::new();
     let xf = crate::vec_transform::build(&sim, &map);
-    recook(&mut sim, &mut scene, &map, &xf, &mut out);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
 
     let last_source = world(&scene, &xf, *sources.last().expect("fonte"));
     assert_eq!(
@@ -236,7 +271,14 @@ fn chain_is_pairwise_across_sources() {
         let (mut sim, mut scene, map, _s, _src) = scene_with_blend(n, steps);
         let mut out = Vec::new();
         let xf = crate::vec_transform::build(&sim, &map);
-        recook(&mut sim, &mut scene, &map, &xf, &mut out);
+        recook(
+            &mut sim,
+            &mut scene,
+            &map,
+            &xf,
+            &mut BlendSpines::new(),
+            &mut out,
+        );
         assert_eq!(
             out.len(),
             want,
@@ -260,7 +302,14 @@ fn the_blend_object_lives_at_identity() {
 
     let mut out = Vec::new();
     let xf = crate::vec_transform::build(&sim, &map);
-    recook(&mut sim, &mut scene, &map, &xf, &mut out);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
 
     assert_eq!(
         sim.world().get::<Transform>(es).copied(),
@@ -301,13 +350,27 @@ fn a_dead_source_is_skipped_and_below_two_the_blend_vanishes() {
     // Apaga a fonte do MEIO — restam 2, a cadeia vira 1 elo (4 passos + 1 fonte = 5 no overlay).
     scene.remove_path(sources[1]);
     let xf = crate::vec_transform::build(&sim, &map);
-    recook(&mut sim, &mut scene, &map, &xf, &mut out);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
     assert_eq!(out.len(), 5, "3→2 fontes vivas: 1 elo, 4 passos + 1 fonte");
 
     // Apaga mais uma — resta 1, não há transição.
     scene.remove_path(sources[0]);
     let xf = crate::vec_transform::build(&sim, &map);
-    recook(&mut sim, &mut scene, &map, &xf, &mut out);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
     assert!(out.is_empty(), "menos de 2 fontes vivas: overlay vazio");
 }
 
@@ -362,5 +425,128 @@ fn set_selected_steps_retunes_only_the_selected_blend() {
     assert!(
         !set_selected_steps(&mut sim, &map, &pen, 10),
         "o MESMO valor não marca a entidade suja (idempotente)"
+    );
+}
+
+/// Bota o spine `id` com os vértices `pts` (o que a edição no modo Node faria).
+fn set_spine(scene: &mut VecScene, id: VecPathId, pts: &[[f64; 2]]) {
+    let p = scene.path_mut(id).expect("spine");
+    p.verts = pts.iter().map(|&q| VecVertex::corner(q)).collect();
+    p.closed = false;
+}
+
+/// **O spine EDITADO puxa os passos para a curva** (o coração do pedido do Enio). As fontes estão
+/// em (0,0) e (4,0); um spine com pico em (2,3) leva o passo do meio (fração de arco ½) para o
+/// topo. Prova o flow por comprimento de arco no caminho real do recook.
+#[test]
+fn an_authored_bent_spine_flows_the_steps_onto_the_curve() {
+    let (mut sim, mut scene, map, spine, _src) = scene_with_blend(2, 1); // 1 passo (no meio)
+    let e = Entity::from_bits(map[&spine]);
+    sim.world_mut()
+        .get_mut::<VecBlend>(e)
+        .expect("blend")
+        .spine_authored = true;
+    set_spine(&mut scene, spine, &[[0.0, 0.0], [2.0, 3.0], [4.0, 0.0]]); // pico no meio
+
+    let mut out = Vec::new();
+    let xf = crate::vec_transform::build(&sim, &map);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
+
+    // out = [passo, fonte_de_cima]. O passo (lerp em (2,0)) subiu para ~(2,3).
+    let step = centroid(&out[0]);
+    assert!(
+        (step[0] - 2.0).abs() < 0.5 && step[1] > 2.0,
+        "o passo tinha de subir para a curva do spine: {step:?}"
+    );
+}
+
+/// **O spine NÃO-editado deixa os passos na reta do lerp** — o caminho automático é byte-idêntico
+/// à Fase B (as fontes estão em y=0, então todo passo fica em y=0; um flow espúrio o tiraria).
+#[test]
+fn an_unedited_spine_leaves_the_steps_on_the_lerp() {
+    let (mut sim, mut scene, map, _spine, _src) = scene_with_blend(2, 5);
+    let mut out = Vec::new();
+    let xf = crate::vec_transform::build(&sim, &map);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
+    for step in &out {
+        let c = centroid(step);
+        assert!(
+            c[1].abs() < 1e-9,
+            "não-autorado: passo na reta (y=0): {c:?}"
+        );
+    }
+}
+
+/// **Editar o spine o AUTORA — e o recook para de sobrescrevê-lo.** É a detecção (spine atual ≠
+/// último auto): frame 1 escreve o auto e o memoriza; a mão move um vértice; frame 2 detecta,
+/// marca `spine_authored` e a edição SOBREVIVE.
+#[test]
+fn editing_the_spine_authors_it_and_stops_the_auto_regen() {
+    let (mut sim, mut scene, map, spine, _src) = scene_with_blend(2, 3);
+    let e = Entity::from_bits(map[&spine]);
+    let mut spines = BlendSpines::new();
+    let mut out = Vec::new();
+    let xf = crate::vec_transform::build(&sim, &map);
+
+    // Frame 1: automático. O recook escreve o auto e o memoriza.
+    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
+    assert!(
+        !sim.world()
+            .get::<VecBlend>(e)
+            .expect("blend")
+            .spine_authored,
+        "ainda automático"
+    );
+
+    // A mão edita o spine (modo Node): sobe um vértice.
+    let bent: Vec<[f64; 2]> = scene
+        .path_mut(spine)
+        .expect("spine")
+        .verts
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            if i == 0 {
+                [v.anchor[0], v.anchor[1] + 5.0]
+            } else {
+                v.anchor
+            }
+        })
+        .collect();
+    set_spine(&mut scene, spine, &bent);
+
+    // Frame 2: detecta a edição → autora, e NÃO sobrescreve.
+    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
+    assert!(
+        sim.world()
+            .get::<VecBlend>(e)
+            .expect("blend")
+            .spine_authored,
+        "a edição tinha de autorar o spine"
+    );
+    let survived = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == spine)
+        .expect("spine")
+        .verts[0]
+        .anchor[1];
+    assert!(
+        survived > 4.0,
+        "o recook sobrescreveu o spine editado: y={survived}"
     );
 }

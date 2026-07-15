@@ -708,6 +708,9 @@ pub(crate) struct App {
     /// `ph2d_vec_render::draw_blend_overlay`. Não está na cena (não é pickável) — é o que torna o
     /// blend UM objeto, e não N. Runtime-only.
     pub(crate) vec_blend_overlay: Vec<ph2d_vec_scene::VecPath>,
+    /// O spine AUTOMÁTICO que o `blend_live::recook` escreveu por último, por blend — a memória que
+    /// detecta a edição do spine (modo Node) para marcar `spine_authored` (ADR-0122). Runtime-only.
+    pub(crate) vec_blend_spines: crate::blend_live::BlendSpines,
     /// O **hospedeiro** do rótulo que o duplo-clique acabou de abrir, esperando a 1ª letra
     /// materializar o objeto de texto (e com ele a entidade) para receber o `VecLabel`. Um
     /// rótulo nasce VAZIO — sem geometria não há path, sem path não há entidade, e sem entidade

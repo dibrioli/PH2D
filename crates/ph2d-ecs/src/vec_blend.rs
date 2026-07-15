@@ -36,14 +36,27 @@ pub struct VecBlend {
     /// `fonte[0]→fonte[1]`, `fonte[1]→fonte[2]`, … com `steps` passos em cada par. Não para em 12
     /// (o teto do Illustrator) — vai a centenas; o clamp mora no painel (ADR-0122, Fase C).
     pub steps: u32,
+    /// O **spine** (a linha que une as fontes, a geometria do `VecPath` desta entidade) foi
+    /// **editado pelo artista** (modo Node)? `false` = a shell o re-gera por frame (a reta pelos
+    /// centros) e os passos seguem o lerp; `true` = o artista é dono da curva, a shell NÃO a
+    /// sobrescreve, e os passos **fluem ao longo dela** por comprimento de arco (ADR-0122). É o
+    /// análogo do flag "autorado" do conector — o mesmo motivo: distinguir a geometria derivada da
+    /// autorada.
+    #[serde(default)]
+    pub spine_authored: bool,
 }
 
 impl SimComponent for VecBlend {}
 
 impl VecBlend {
-    /// Um blend novo sobre `sources` (na ordem de z), com `steps` passos por elo.
+    /// Um blend novo sobre `sources` (na ordem de z), com `steps` passos por elo. O spine nasce
+    /// **automático** (a reta pelos centros); o artista o torna autorado editando-o no modo Node.
     #[must_use]
     pub fn new(sources: Vec<u64>, steps: u32) -> Self {
-        Self { sources, steps }
+        Self {
+            sources,
+            steps,
+            spine_authored: false,
+        }
     }
 }

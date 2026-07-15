@@ -24,10 +24,28 @@
 //! o que o torna (corretamente) não-arrastável pelo gizmo: mover o blend não quer dizer nada; o
 //! que se move são as formas-fonte, e a transição as segue (ADR-0122, o idioma do Illustrator).
 
+use std::collections::BTreeMap;
+
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecBlend};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecVertex, VecXforms, bake_xform, xform_of};
 
 use crate::vec_entities::VecEntityMap;
+
+/// A memória do spine AUTOMÁTICO que a shell escreveu por último, por blend. É como a shell
+/// detecta que o artista editou a curva (modo Node): se o spine ATUAL difere do último auto, a
+/// mão mexeu → o blend vira `spine_authored`. Runtime-only (o flag em si viaja no componente).
+pub(crate) type BlendSpines = BTreeMap<VecPathId, Vec<VecVertex>>;
+
+/// Translada TODOS os pontos de um path (âncora + as duas alças) por `off`. É como um passo é
+/// movido do seu lugar do lerp para o lugar dele no spine.
+fn translate_verts(path: &mut VecPath, off: [f64; 2]) {
+    for v in &mut path.verts {
+        for p in [&mut v.anchor, &mut v.in_handle, &mut v.out_handle] {
+            p[0] += off[0];
+            p[1] += off[1];
+        }
+    }
+}
 
 /// A forma assada no MUNDO (ADR-0111: as fontes podem ter poses diferentes, e a transição vive
 /// num frame só — como na booleana e no blend destrutivo). `None` se a forma sumiu.
@@ -44,9 +62,17 @@ fn center_of(scene: &VecScene, xforms: &VecXforms, id: VecPathId) -> Option<[f64
 }
 
 /// O spine default: a polilinha (aberta) que passa pelos centros das fontes, na ordem. É a
-/// posição-base dos passos, e o que a Fase C torna editável no modo Node.
+/// posição-base dos passos, e o que o modo Node torna editável (ADR-0122).
 fn spine_verts(centers: &[[f64; 2]]) -> Vec<VecVertex> {
     centers.iter().map(|&c| VecVertex::corner(c)).collect()
+}
+
+/// O traço FINO do spine — é o que o torna visível e selecionável/clicável no canvas (para editar
+/// no modo Node). É **dado de documento** (um `StrokeSpec` de um path, como o fill de uma forma),
+/// não chrome de UI. Cinza sutil, largura pequena em MUNDO. (Um guia por-overlay ancorado à
+/// seleção, com token e largura em px, é um refinamento — ADR-0122.)
+fn spine_stroke() -> ph2d_vec_scene::StrokeSpec {
+    ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(150, 150, 165, 190), 0.03)
 }
 
 /// Escreve o spine **em lugar** no path `id` — id, estilo (invisível na Fase B) e entidade
@@ -88,6 +114,7 @@ pub(crate) fn create(
     let spine = VecPath {
         verts: spine_verts(&centers),
         closed: false,
+        stroke: Some(spine_stroke()),
         ..VecPath::default()
     };
     let spine_id = scene.push_path(spine);
@@ -160,11 +187,20 @@ pub(crate) fn set_selected_steps(
 /// `out` é ZERADO aqui e preenchido com o **overlay ordenado** de TODOS os blends, em MUNDO — os
 /// passos de cada elo INTERCALADOS com a fonte de cima dele (a pilha de z: fonte0 embaixo → passos
 /// → fonte1 → …). É o que o passe [`ph2d_vec_render::draw_blend_overlay`] desenha, nessa ordem.
+///
+/// # O SPINE: automático ou AUTORADO (ADR-0122)
+///
+/// Enquanto o artista não edita o spine, a shell o regenera (a reta pelos centros) e os passos
+/// seguem o **lerp** (byte-idêntico à Fase B). Quando o artista edita a curva no modo Node, a
+/// detecção (spine atual ≠ último auto escrito, em `spines`) marca `spine_authored`, a shell PARA
+/// de sobrescrever, e os passos passam a **FLUIR ao longo do spine** por comprimento de arco
+/// ([`ph2d_vec_blend::spine_offsets`]).
 pub(crate) fn recook(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
     xforms: &VecXforms,
+    spines: &mut BlendSpines,
     out: &mut Vec<VecPath>,
 ) {
     out.clear();
@@ -176,6 +212,7 @@ pub(crate) fn recook(
             Some((id, e, b))
         })
         .collect();
+    spines.retain(|id, _| blends.iter().any(|(b, _, _)| b == id));
     if blends.is_empty() {
         return;
     }
@@ -191,36 +228,72 @@ pub(crate) fn recook(
             .collect();
         if live.len() < 2 {
             write_spine(scene, spine_id, &[]); // sem transição: o spine some
+            spines.remove(&spine_id);
             continue;
         }
 
-        // As fontes assadas no MUNDO. A cadeia é pairwise (fonte[i]→fonte[i+1]); os passos de
-        // cada elo entram no overlay INTERCALADOS com a fonte "de cima" dele (`pair[1]`),
-        // redesenhada por cima deles. É a pilha de z do Illustrator: fonte0 (que o `dispatch`
-        // desenha, embaixo) → passos → fonte1 → passos → fonte2 … Sem intercalar, o passe
-        // desenharia TODOS os passos por cima de TODAS as fontes, e a última forma ficaria
-        // enterrada sob o último passo (o smoke do Enio: "a última devia ficar acima da
-        // penúltima"). A fonte é REDESENHADA (o `dispatch` já a pôs embaixo) porque não dá, na
-        // Fase B, para reordenar UM item no meio do `dispatch`; o overdraw de uma forma opaca é
-        // barato. A fonte0 fica no z da cena; o interleaving fino contra o resto é da Fase C.
         let worlds: Vec<VecPath> = live
             .iter()
             .filter_map(|&id| world(scene, xforms, id))
             .collect();
-        let n = blend.steps as usize;
-        for pair in worlds.windows(2) {
-            if let Some(plan) = ph2d_vec_blend::Plan::new(&pair[0], &pair[1]) {
-                out.extend((1..=n).map(|i| plan.at(i as f64 / (n + 1) as f64)));
-            }
-            out.push(pair[1].clone()); // a fonte de cima do elo, por cima dos passos dele
-        }
-
-        // O spine = a polilinha entre os centros das fontes vivas.
         let centers: Vec<[f64; 2]> = live
             .iter()
             .filter_map(|&id| center_of(scene, xforms, id))
             .collect();
-        write_spine(scene, spine_id, &centers);
+
+        // O spine: detecta a edição (atual ≠ último auto) e, se autorado, os passos fluem por ele.
+        let current: Vec<VecVertex> = scene
+            .paths()
+            .iter()
+            .find(|p| p.id == spine_id)
+            .map(|p| p.verts.clone())
+            .unwrap_or_default();
+        let mut authored = blend.spine_authored;
+        if !authored && spines.get(&spine_id).is_some_and(|last| *last != current) {
+            authored = true; // a mão mexeu na curva (modo Node)
+            if let Some(mut b) = sim.world_mut().get_mut::<VecBlend>(entity) {
+                b.spine_authored = true; // persiste (viaja no save/undo)
+            }
+        }
+        let offsets = if authored {
+            // Os passos FLUEM ao longo do spine editado — deslocamento por comprimento de arco.
+            scene
+                .paths()
+                .iter()
+                .find(|p| p.id == spine_id)
+                .map(|sp| ph2d_vec_blend::spine_offsets(sp, &centers, blend.steps as usize))
+                .unwrap_or_default()
+        } else {
+            // Spine automático (a reta pelos centros): escreve e MEMORIZA (para detectar a edição
+            // no frame seguinte). Sem deslocamento — os passos seguem o lerp, byte-idêntico.
+            write_spine(scene, spine_id, &centers);
+            let auto = scene
+                .paths()
+                .iter()
+                .find(|p| p.id == spine_id)
+                .map(|p| p.verts.clone())
+                .unwrap_or_default();
+            spines.insert(spine_id, auto);
+            Vec::new()
+        };
+
+        // Os passos de cada elo, INTERCALADOS com a fonte "de cima" dele (`pair[1]`), redesenhada
+        // por cima deles. É a pilha de z do Illustrator: fonte0 (que o `dispatch` desenha, embaixo)
+        // → passos → fonte1 → passos → fonte2 … Cada passo é deslocado para o seu lugar no spine
+        // (`offsets`, vazio quando não-autorado → sem deslocamento).
+        let n = blend.steps as usize;
+        for (i, pair) in worlds.windows(2).enumerate() {
+            if let Some(plan) = ph2d_vec_blend::Plan::new(&pair[0], &pair[1]) {
+                for j in 1..=n {
+                    let mut step = plan.at(j as f64 / (n + 1) as f64);
+                    if let Some(off) = offsets.get(i * n + (j - 1)) {
+                        translate_verts(&mut step, *off);
+                    }
+                    out.push(step);
+                }
+            }
+            out.push(pair[1].clone());
+        }
 
         // O blend vive na IDENTIDADE (a geometria acima é MUNDO): devolvê-la é o que torna o
         // gizmo inócuo sobre ele — mover o blend não quer dizer nada.

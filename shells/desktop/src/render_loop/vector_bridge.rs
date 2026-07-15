@@ -51,28 +51,6 @@ pub(crate) fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMod
     }
 }
 
-/// **Blend:** o checkbox "cada passo acima do anterior". A tool é a dona (o painel a pinta pelo
-/// snapshot; o shell a lê na hora do blend) — uma 2ª cópia no shell dessincronizaria.
-pub(crate) fn set_blend_stack_up(tools: &mut ToolRegistry, up: bool) {
-    if let Some(tool) = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
-        t.as_any_mut()
-            .downcast_mut::<ph2d_tool_vector::VectorTool>()
-    }) {
-        tool.set_blend_stack_up(up);
-    }
-}
-
-/// O valor corrente do checkbox (a tool é a dona). `true` (acima) quando a tool não está lá.
-pub(crate) fn blend_stack_up(tools: &mut ToolRegistry) -> bool {
-    tools
-        .tool_by_id_mut(&ToolId::new("vector"))
-        .and_then(|t| {
-            t.as_any_mut()
-                .downcast_mut::<ph2d_tool_vector::VectorTool>()
-        })
-        .is_none_or(|t| t.blend_stack_up())
-}
-
 /// A tool ADOTA os parâmetros (unidade de UI) da forma `kind`. A shell chama isto quando
 /// o usuário seleciona uma forma VIVA: eles viram os correntes DAQUELA forma, então o
 /// painel (que pinta a partir da tool) para de mentir e a próxima desenhada os herda.

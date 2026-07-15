@@ -557,9 +557,10 @@ pub fn marker_from_value(v: f64) -> Marker {
     Marker::from_u8(v as u8).unwrap_or(Marker::None)
 }
 
-/// **Steps do Blend** — quantas formas nascem entre as duas. O teto é de UX, não do motor:
-/// acima disso o resultado deixa de ser um blend e vira uma nuvem de paths.
-pub const MAX_BLEND_STEPS: u32 = 12;
+/// **Steps do Blend** — quantas formas nascem entre CADA par. No modelo VIVO (ADR-0122) os passos
+/// são virtuais (desenho, não paths na cena), então centenas são baratas — o Enio pediu "não 12,
+/// mas centenas". O slider é grosso neste teto; o chip numérico ligado dá o valor exato.
+pub const MAX_BLEND_STEPS: u32 = 200;
 /// O default do Illustrator para um blend novo.
 pub const BLEND_STEPS_DEFAULT: u32 = 3;
 

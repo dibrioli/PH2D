@@ -1,22 +1,23 @@
 //! A seção **BLEND** do painel Vector — módulo irmão do [`super`] (teto de 600 LOC do painel).
 //!
-//! Hoje: **Steps** + o botão **Blend** + o checkbox **Stack Each Above**. A correspondência é 100%
-//! automática (o problema difícil, que ninguém do mercado resolveu — GSAP/Corel exigem controle
-//! manual; o nosso é automático), e o modelo está migrando para o **Blend Object VIVO** (o Blend
-//! do Illustrator: objeto único, não-destrutivo, spine editável, fontes sempre editáveis).
+//! **Steps** + o botão **Blend**, sobre o **Blend Object VIVO** (ADR-0122 — o Blend do Illustrator:
+//! objeto único, não-destrutivo, fontes sempre editáveis). O botão cria um blend vivo sobre as
+//! formas fechadas selecionadas (2..=5, em z); o slider Steps ajusta o blend selecionado **ao
+//! vivo**. Não há mais **Stack Each Above** — no modelo vivo o z é automático (fonte0 embaixo →
+//! passos → fonteN em cima). A correspondência é 100% automática (o problema que ninguém do mercado
+//! resolveu — GSAP/Corel exigem controle manual; o nosso não pede nada ao artista).
 
 use super::*;
 
 impl BodyCtx<'_> {
-    /// Seção **BLEND** — os passos intermediários entre as DUAS formas selecionadas.
+    /// Seção **BLEND** — os passos intermediários entre as formas selecionadas (Blend Object vivo).
     ///
     /// **A correspondência é automática** — que ponto de A vira que ponto de B é o problema que
     /// ninguém do mercado resolveu (o GSAP tem um `shapeIndex` manual E uma ferramenta de debug que
     /// admite que o automático erra; o Corel pede para o usuário clicar um nó em cada forma), e o
-    /// nosso motor o resolve sem pedir nada ao artista. Houve **dois** botões de escape manual
-    /// (*Rotate Match* e *Reverse Match*), removidos 2026-07-14 por serem bugs de design; no modelo
-    /// vivo, o ajuste é **editar as formas-fonte**, não um botão.
-    pub(crate) fn blend_section(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+    /// nosso motor o resolve sem pedir nada ao artista. O ajuste, no modelo vivo, é **editar as
+    /// formas-fonte** (mover/girar/escalar uma adapta os intermediários), não um botão de escape.
+    pub(crate) fn blend_section(&mut self, y: f32) -> f32 {
         let (mut y, collapsed) = self.section_header(
             ids::VECTOR_SECTION_BLEND,
             tr("panel.vector.section.blend"),
@@ -39,34 +40,6 @@ impl BodyCtx<'_> {
             &format!("{steps}"),
             y,
         );
-        y = self.checkbox_row(
-            ids::VECTOR_BLEND_STACK_UP,
-            "Stack Each Above",
-            snap.blend_stack_up,
-            y,
-        );
         self.action_button(ids::VECTOR_BLEND_RUN, "Blend", y)
-    }
-
-    /// Uma linha de checkbox (caixa + rótulo). O id fica **`Button`** no store — o clique viaja
-    /// pelo canal de Click que já existe, e só o VISUAL é de checkbox (o mesmo arranjo do painel
-    /// do Painter). O valor vem do snapshot: a **tool** é a dona, não o painel.
-    pub(crate) fn checkbox_row(
-        &mut self,
-        id: ph2d_a11y::NodeId,
-        label: &str,
-        checked: bool,
-        y: f32,
-    ) -> f32 {
-        let value = if checked {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        };
-        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
-        let cb = Checkbox::new(id, label).value(value);
-        paint_checkbox(&cb, rect, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, rect);
-        y + self.row_h + self.row_gap
     }
 }

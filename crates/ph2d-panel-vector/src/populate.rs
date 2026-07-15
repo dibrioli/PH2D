@@ -359,7 +359,6 @@ fn populate_ops(store: &mut WidgetStore) {
         1.0,
     );
     button(store, ids::VECTOR_BLEND_RUN);
-    button(store, ids::VECTOR_BLEND_STACK_UP);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);

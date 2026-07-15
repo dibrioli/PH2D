@@ -14,9 +14,8 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_button};
 use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Checkbox, CheckboxValue, ColorSwatch, SectionHeader,
-    SwatchSize, paint_button, paint_checkbox, paint_color_swatch, paint_section_header,
-    paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, ColorSwatch, SectionHeader, SwatchSize, paint_button,
+    paint_color_swatch, paint_section_header, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -178,7 +177,7 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::transform_section);
         y = self.step(y, Self::vertex_section);
         y = self.step(y, Self::boolean_section);
-        y = self.step(y, |b, y| b.blend_section(snap, y));
+        y = self.step(y, |b, y| b.blend_section(y));
         y = self.step(y, Self::align_section);
         y = self.step(y, Self::arrange_section);
         self.path_section(y)

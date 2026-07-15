@@ -114,7 +114,8 @@ mode capturando faces, e do `shape_under_cursor` do conector.
 | **1 ✅** | Retirar o Rotate/Reverse Match — correspondência 100% automática | (feito, commitado) |
 | **A ✅** | Motor **multi-forma** puro: `chain(shapes, n)` → passos, cadeia pairwise; cor **OKLab** | `ph2d-vec-blend` |
 | **B ✅** | O objeto **vivo**: componente `VecBlend` + recook por frame + passe de render dos passos + skip no `settle_origins`. Spine AUTO (linha entre centros) | `ph2d-ecs` + shell |
-| **C** | **Spine editável** (modo Node), **Pick Shapes** mode, painel (spacing/orientation/steps até 1000) | shell + painel |
+| **C1 ✅** | **Painel cria e ajusta** o blend vivo: botão "Blend" (seleção fechada, 2..=5, em z), slider Steps ao vivo (teto 200) | shell + painel |
+| **C2** | **Pick Shapes** mode (escolher a ORDEM), **spine editável** (modo Node), spacing/orientation | shell + painel |
 | **D** | **Expand** / **Release** | shell |
 
 Cada fase fecha com gate + smoke do Enio antes da próxima (a regra desta linha).
@@ -159,6 +160,30 @@ função-pura-de-outras que a linha já domina):
   agora usa uma **elipse não-circular** na ponta (orientada) para que girar a última forma seja
   visível — e o gate `rotating_a_smooth_noncircular_endpoint_reflows_the_blend` prova que o reflow
   chega ao lado liso.
+
+## O que a Fase C1 LANDOU (2026-07-15) — o painel cria e ajusta o blend vivo
+
+O botão **Blend** do painel Vector foi **repontado** do modelo destrutivo para o vivo, e o slider
+**Steps** passou a ajustar o blend selecionado **ao vivo**:
+
+- **Botão "Blend"** → `blend_live::create` sobre as formas **fechadas** selecionadas (2..=5, em z —
+  o "Make" do Illustrator; abertas caem). Seleciona o objeto blend (o spine) para o Steps mirar
+  nele. Antes o botão chamava o destrutivo `vec_blend::apply`.
+- **Slider Steps** → `blend_live::set_selected_steps` retuna o `VecBlend.steps` do blend
+  selecionado (o recook lê o componente). O teto subiu de **12 → 200** (`MAX_BLEND_STEPS`) — o "não
+  12, mas centenas" do Enio; os passos são virtuais, então centenas são baratas. O chip numérico
+  ligado dá o valor exato (o slider linear é grosso neste teto).
+- **"Stack Each Above" REMOVIDO** — no modelo vivo o z é automático (o overlay intercalado). O
+  destrutivo `apply` foi simplificado junto (a variante `BlendAction::StackUp` e o `action_for_id`
+  saíram; `apply` agora é sempre "criar/re-rodar", chamado só pelos smokes `PH2D_BUILD_SMOKE=7/8/9`).
+- Gates: `selected_closed_in_z_drops_open_sorts_by_z_and_caps_at_five` +
+  `set_selected_steps_retunes_only_the_selected_blend` (idempotente).
+
+**Aberto na Fase C2:** o botão cria da **seleção em z** (não há ainda o **Pick Shapes** que escolhe
+a ORDEM); o **spine é invisível e não-editável** (o "path unindo as formas" editável no modo Node é
+C2); sem controles de spacing/orientation. Selecionar um blend **não sincroniza** o slider Steps
+para o valor DELE (o slider é o valor de autoria; arrastá-lo aplica ao selecionado) — o sync
+select→store é polish.
 
 **Gotchas para a Fase C (o próximo que mexer):**
 

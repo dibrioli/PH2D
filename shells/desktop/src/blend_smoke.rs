@@ -112,13 +112,19 @@ impl crate::App {
                 let Some(gfx) = self.gfx.as_mut() else { return };
                 let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
                 let steps = if level == 1 { 5 } else { 4 };
-                self.vec_blend_pending =
-                    crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, steps);
-                self.vec_pen.select_many(&ids); // as FONTES seguem selecionáveis/editáveis
+                let made = crate::blend_live::create(&mut gfx.vec_scene, &xf, &ids, steps);
+                // Seleciona o OBJETO blend (o spine) — assim o slider Steps do painel já mira nele
+                // (arraste-o e veja os passos mudarem ao vivo, inclusive além de 12). Clique numa
+                // fonte para movê-la/girá-la: a transição se refaz sozinha.
+                if let Some((spine, _)) = &made {
+                    self.vec_pen.select_many(&[*spine]);
+                }
+                self.vec_blend_pending = made;
                 self.any_input_this_frame = true;
                 eprintln!(
                     "[blend-smoke] Blend Object VIVO sobre {} forma(s), {steps} passos/elo. \
-                     Arraste uma fonte: a transicao se refaz sozinha (ADR-0122).",
+                     Painel Vector > Blend: arraste Steps (retuna ao vivo); clique numa fonte para \
+                     move-la/gira-la (ADR-0122).",
                     ids.len()
                 );
             }

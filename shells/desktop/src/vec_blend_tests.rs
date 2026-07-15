@@ -4,9 +4,11 @@
 //!
 //! 1. as **fontes sobrevivem** (é um Blend, não uma booleana — ela é que consome os operandos);
 //! 2. os passos nascem **entre** elas, no z delas;
-//! 3. o **escape re-roda** (o Rotate troca os passos por outros, sem o artista desfazer);
-//! 4. cada ação é **UM** passo de undo;
-//! 5. sem duas formas fechadas, o botão **não faz nada** (e não corrompe a cena).
+//! 3. cada chamada é **UM** passo de undo;
+//! 4. sem duas formas fechadas, não faz nada (e não corrompe a cena).
+//!
+//! (Este é o modelo DESTRUTIVO legado — só os smokes `PH2D_BUILD_SMOKE=7/8/9` o chamam. O painel
+//! usa o Blend Object VIVO; os gates dele estão em `blend_live_tests.rs`.)
 
 use super::*;
 use ph2d_vec_scene::{ShapeKind, cook};
@@ -42,11 +44,10 @@ fn run(
     pen: &mut ph2d_vec_edit::PenTool,
     xf: &VecXforms,
     session: &mut Option<BlendSession>,
-    action: BlendAction,
     steps: u32,
 ) -> ph2d_vec_edit::History {
     let mut history = ph2d_vec_edit::History::default();
-    apply(scene, &mut history, pen, xf, session, action, steps, true);
+    apply(scene, &mut history, pen, xf, session, steps, true);
     history
 }
 
@@ -58,7 +59,7 @@ fn run(
 fn the_sources_survive_and_the_steps_are_born_between_them() {
     let (mut scene, xf, mut pen, a, b) = two_shapes();
     let mut session = None;
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 3);
+    run(&mut scene, &mut pen, &xf, &mut session, 3);
 
     let ids: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
     assert!(
@@ -107,7 +108,6 @@ fn every_action_is_exactly_one_undo_step() {
         &mut pen,
         &xf,
         &mut session,
-        BlendAction::Run,
         3,
         true,
     );
@@ -132,57 +132,12 @@ fn without_exactly_two_closed_shapes_the_button_does_nothing() {
     let mut session = None;
 
     pen.select_many(&[a]); // uma só
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 3);
+    run(&mut scene, &mut pen, &xf, &mut session, 3);
     assert!(session.is_none() && scene.paths().len() == 3);
 
     pen.select_many(&[a, _b, c]); // três
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 3);
+    run(&mut scene, &mut pen, &xf, &mut session, 3);
     assert!(session.is_none() && scene.paths().len() == 3);
-}
-
-/// **StackUp sem um Blend aberto não faz nada** — não há o que re-empilhar, e inventar uma sessão
-/// a partir da seleção faria o botão significar duas coisas.
-#[test]
-fn the_escape_without_an_open_blend_is_a_no_op() {
-    let (mut scene, xf, mut pen, ..) = two_shapes();
-    let mut session = None;
-    run(
-        &mut scene,
-        &mut pen,
-        &xf,
-        &mut session,
-        BlendAction::StackUp(false),
-        3,
-    );
-    assert!(session.is_none());
-    assert_eq!(scene.paths().len(), 2, "a cena não foi tocada");
-}
-
-/// O botão do painel → a ação. O gate anti-item-morto do seam: um id que o painel PINTA e que
-/// ninguém traduz é um botão morto (e a suíte inteira fica verde).
-#[test]
-fn every_painted_blend_button_maps_to_an_action() {
-    // O único action-button pintado é o Blend (o Rotate/Reverse Match saíram); o Stack Up é um
-    // checkbox e é testado abaixo pelos dois valores.
-    assert_eq!(
-        action_for_id(ph2d_editor::ids::VECTOR_BLEND_RUN, true),
-        Some(BlendAction::Run)
-    );
-    assert_eq!(
-        action_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION, true),
-        None
-    );
-
-    // O checkbox ALTERNA: o que ele levanta é sempre o INVERSO do estado corrente. (Um botão que
-    // levantasse o mesmo valor que já está lá seria um botão que não faz nada.)
-    assert_eq!(
-        action_for_id(ph2d_editor::ids::VECTOR_BLEND_STACK_UP, true),
-        Some(BlendAction::StackUp(false))
-    );
-    assert_eq!(
-        action_for_id(ph2d_editor::ids::VECTOR_BLEND_STACK_UP, false),
-        Some(BlendAction::StackUp(true))
-    );
 }
 
 /// **A SEQUÊNCIA de z é o resultado, não um efeito colateral de quem nasceu primeiro.**
@@ -194,7 +149,7 @@ fn every_painted_blend_button_maps_to_an_action() {
 fn the_blend_asks_for_the_whole_sequence_in_z() {
     let (mut scene, xf, mut pen, a, b) = two_shapes();
     let mut session = None;
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 3);
+    run(&mut scene, &mut pen, &xf, &mut session, 3);
 
     let s = session.as_ref().expect("a sessão");
     let up = s.stack();
@@ -237,7 +192,7 @@ fn the_second_run_re_runs_the_open_blend_instead_of_refusing_it() {
     let (mut scene, xf, mut pen, a, b) = two_shapes();
     let mut session = None;
 
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 3);
+    run(&mut scene, &mut pen, &xf, &mut session, 3);
     assert_eq!(scene.paths().len(), 5, "2 fontes + 3 passos");
     // É o `apply` que deixa os PASSOS selecionados — o gate não arruma a cena para si.
     assert_eq!(
@@ -247,7 +202,7 @@ fn the_second_run_re_runs_the_open_blend_instead_of_refusing_it() {
     );
 
     // O artista arrasta Steps para 6 e clica Blend. Sem tocar na seleção.
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 6);
+    run(&mut scene, &mut pen, &xf, &mut session, 6);
 
     let s = session.as_ref().expect("a sessão continua aberta");
     assert_eq!(s.produced.len(), 6, "o Steps novo tem de valer");
@@ -279,7 +234,7 @@ fn with_two_steps_the_second_run_does_not_blend_its_own_steps() {
     let (mut scene, xf, mut pen, a, b) = two_shapes();
     let mut session = None;
 
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 2);
+    run(&mut scene, &mut pen, &xf, &mut session, 2);
     let first = session.as_ref().expect("sessão").produced.clone();
     assert_eq!(first.len(), 2);
     assert_eq!(
@@ -288,7 +243,7 @@ fn with_two_steps_the_second_run_does_not_blend_its_own_steps() {
         "a seleção é DUAS formas fechadas — e elas são os passos, não as fontes"
     );
 
-    run(&mut scene, &mut pen, &xf, &mut session, BlendAction::Run, 2);
+    run(&mut scene, &mut pen, &xf, &mut session, 2);
 
     let s = session.as_ref().expect("sessão");
     assert_eq!(

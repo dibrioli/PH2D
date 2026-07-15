@@ -1280,7 +1280,11 @@ impl crate::App {
             // capture it here and apply after the drain (mirror of the U/I/D
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
-            let mut pending_vec_blend: Option<crate::vec_blend::BlendAction> = None;
+            // ADR-0122: o botão "Blend" cria um Blend Object VIVO da seleção; o slider Steps
+            // ajusta o blend selecionado ao vivo. (O destrutivo `vec_blend::apply` sobrevive só
+            // para os smokes — o painel não o alcança mais.)
+            let mut pending_create_blend = false;
+            let mut pending_blend_steps: Option<u32> = None;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
@@ -1399,9 +1403,9 @@ impl crate::App {
                         // Copy) to apply after the drain; still forward to the tool
                         // (which ignores those ids) so mode/width/etc. flow.
                         if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
-                            let stack_up = crate::render_loop::vector_bridge::blend_stack_up(tools);
-                            if let Some(act) = crate::vec_blend::action_for_id(*id, stack_up) {
-                                pending_vec_blend = Some(act);
+                            if *id == ph2d_editor::ids::VECTOR_BLEND_RUN {
+                                // ADR-0122: cria o Blend Object VIVO da seleção (não o destrutivo).
+                                pending_create_blend = true;
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -1523,6 +1527,10 @@ impl crate::App {
                                 // VIVA selecionada — o track cru vai junto, porque a
                                 // conversão depende da variante da forma.
                                 pending_vec_shape_param = Some((*id, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_STEPS {
+                                // ADR-0122: arrastar Steps ajusta o blend selecionado AO VIVO.
+                                pending_blend_steps =
+                                    Some(ph2d_tool_vector::params::blend_steps_from_track(*v));
                             } else {
                                 // Variation-axis field carries the axis VALUE directly
                                 // (not a 0..1 track): match the slot to its font axis.
@@ -2211,7 +2219,11 @@ impl crate::App {
             // Apply a Boolean button press (drained above) to the document before
             // the bridge/render so the result selects + renders this frame
             // (mirror of the U/I/D hotkeys' `vec_boolean`).
-            if let Some(action) = pending_vec_blend {
+            // ADR-0122: o botão "Blend" cria o Blend Object VIVO sobre as formas fechadas
+            // selecionadas (2..=5, em z). `create` empurra o spine e devolve o componente; o
+            // `sync`/`upkeep`/`recook` do frame dão vida a ele. Seleciona o OBJETO (o spine) para
+            // o slider Steps passar a mirar nele.
+            if pending_create_blend {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
                 // Os passos vêm do slider do painel — a fonte da verdade é o widget, não uma
                 // cópia no shell (uma cópia driftaria do que o artista está VENDO).
@@ -2221,30 +2233,29 @@ impl crate::App {
                     .map_or(ph2d_tool_vector::params::BLEND_STEPS_DEFAULT, |(_, v)| {
                         ph2d_tool_vector::params::blend_steps_from_track(f64::from(v))
                     });
-                let stack_up = match action {
-                    crate::vec_blend::BlendAction::StackUp(up) => {
-                        // O checkbox é da TOOL (o painel o pinta pelo snapshot dela).
-                        crate::render_loop::vector_bridge::set_blend_stack_up(tools, up);
-                        up
-                    }
-                    _ => crate::render_loop::vector_bridge::blend_stack_up(tools),
-                };
-                crate::vec_blend::apply(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &mut self.vec_pen,
-                    &xf,
-                    &mut self.vec_blend,
-                    action,
+                let sources = crate::blend_live::selected_closed_in_z(vec_scene, &self.vec_pen);
+                if let Some((spine, blend)) =
+                    crate::blend_live::create(vec_scene, &xf, &sources, steps)
+                {
+                    self.vec_pen.select_many(&[spine]);
+                    self.vec_blend_pending = Some((spine, blend));
+                    eprintln!(
+                        "[ph2d-vec] blend: objeto vivo sobre {} formas, {steps} passos/elo",
+                        sources.len()
+                    );
+                } else {
+                    eprintln!("[ph2d-vec] blend: selecione de 2 a 5 formas FECHADAS");
+                }
+            }
+            // Arrastar o slider Steps retuna o blend SELECIONADO ao vivo (o recook lê
+            // `VecBlend.steps`). Sem blend selecionado, é o valor de criação do próximo Blend.
+            if let Some(steps) = pending_blend_steps {
+                crate::blend_live::set_selected_steps(
+                    sim,
+                    &self.vec_entities,
+                    &self.vec_pen,
                     steps,
-                    stack_up,
                 );
-                // A sequência de z só pode ser escrita quando as entidades existirem — o `sync`
-                // ainda vai rodar neste frame. Ver `App::vec_restack`.
-                self.vec_restack = self
-                    .vec_blend
-                    .as_ref()
-                    .map(crate::vec_blend::BlendSession::stack);
             }
             if let Some(op) = pending_vec_bool {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);

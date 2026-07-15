@@ -174,7 +174,6 @@ impl crate::App {
                     &mut self.vec_pen,
                     &xf,
                     &mut self.vec_blend,
-                    crate::vec_blend::BlendAction::Run,
                     5,
                     true,
                 );
@@ -210,7 +209,6 @@ impl crate::App {
                     &mut self.vec_pen,
                     &xf,
                     &mut self.vec_blend,
-                    crate::vec_blend::BlendAction::Run,
                     5,
                     true,
                 );
@@ -246,7 +244,6 @@ impl crate::App {
                     &mut self.vec_pen,
                     &xf,
                     &mut self.vec_blend,
-                    crate::vec_blend::BlendAction::Run,
                     3,
                     true, // os passos sobem: cada um acima do anterior
                 );

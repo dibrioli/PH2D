@@ -310,3 +310,57 @@ fn a_dead_source_is_skipped_and_below_two_the_blend_vanishes() {
     recook(&mut sim, &mut scene, &map, &xf, &mut out);
     assert!(out.is_empty(), "menos de 2 fontes vivas: overlay vazio");
 }
+
+/// **A criação pelo painel: a seleção FECHADA, em z, capada em 5.** É o que o botão "Blend" liga.
+/// Formas abertas (sem interior para interpolar) caem; a ordem é a de z (a cadeia do "Make" do
+/// Illustrator), não a de clique.
+#[test]
+fn selected_closed_in_z_drops_open_sorts_by_z_and_caps_at_five() {
+    let mut scene = VecScene::new();
+    // 6 fechadas em z crescente + 1 ABERTA.
+    let closed: Vec<VecPathId> = (0..6)
+        .map(|i| {
+            let x = i as f64 * 3.0;
+            scene.push_path(rectangle([x - 1.0, -1.0], [x + 1.0, 1.0]))
+        })
+        .collect();
+    let open = scene.push_path(ph2d_vec_scene::line([0.0, 5.0], [1.0, 5.0]));
+
+    let mut pen = ph2d_vec_edit::PenTool::default();
+    // Seleciona TUDO fora de ordem, com a aberta no meio.
+    pen.select_many(&[
+        closed[3], open, closed[0], closed[5], closed[1], closed[4], closed[2],
+    ]);
+
+    let got = selected_closed_in_z(&scene, &pen);
+    assert_eq!(
+        got.as_slice(),
+        &closed[..MAX_BLEND_SOURCES],
+        "fechadas em z, a aberta fora, capado em {MAX_BLEND_SOURCES}"
+    );
+}
+
+/// **O slider Steps retuna SÓ o blend selecionado, ao vivo.** Sem blend selecionado, não faz nada
+/// (o valor é só o de criação futura). Idempotente: o mesmo valor não marca a entidade suja.
+#[test]
+fn set_selected_steps_retunes_only_the_selected_blend() {
+    let (mut sim, _scene, map, spine, _src) = scene_with_blend(2, 3);
+
+    let mut pen = ph2d_vec_edit::PenTool::default();
+    assert!(
+        !set_selected_steps(&mut sim, &map, &pen, 10),
+        "sem blend selecionado, nada é retunado"
+    );
+
+    pen.select_many(&[spine]); // seleciona o OBJETO blend (o spine)
+    assert!(
+        set_selected_steps(&mut sim, &map, &pen, 10),
+        "o blend selecionado retuna"
+    );
+    let e = Entity::from_bits(map[&spine]);
+    assert_eq!(sim.world().get::<VecBlend>(e).expect("blend").steps, 10);
+    assert!(
+        !set_selected_steps(&mut sim, &map, &pen, 10),
+        "o MESMO valor não marca a entidade suja (idempotente)"
+    );
+}

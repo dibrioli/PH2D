@@ -16,9 +16,11 @@
 //! forma; o Rotate rodava a correspondência às cegas e produzia torção. **O ajuste, no modelo vivo,
 //! é editar as formas-fonte** — girar/mover/escalar uma adapta os intermediários —, não um botão.
 //!
-//! > ⚠️ Este é o modelo DESTRUTIVO (a `BlendSession` produz paths reais). Está sendo substituído
-//! > pelo **Blend Object VIVO** (o Blend do Illustrator): um objeto único, não-destrutivo, sobre um
-//! > spine editável, com as fontes sempre editáveis. Ver o ADR do Blend vivo.
+//! > ⚠️ Este é o modelo DESTRUTIVO (a `BlendSession` produz paths reais). O **painel já NÃO o
+//! > usa** — o botão "Blend" cria o **Blend Object VIVO** (ADR-0122, `crate::blend_live`): um objeto
+//! > único, não-destrutivo, com as fontes sempre editáveis. Este `apply` sobrevive só para os
+//! > smokes de correspondência (`PH2D_BUILD_SMOKE=7/8/9`, que mostram star→circle etc.); a remoção
+//! > completa (com os smokes repontados ao vivo) é uma limpeza posterior.
 //!
 //! As **fontes sobrevivem** (ao contrário da booleana, que consome os operandos) — é o Blend do
 //! Illustrator: os passos nascem ENTRE elas, no z delas.
@@ -56,33 +58,12 @@ impl BlendSession {
     }
 }
 
-/// O que o painel pede.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum BlendAction {
-    /// **Blend**: (re)cria os passos entre as duas formas selecionadas.
-    Run,
-    /// **Stack Up**: o checkbox — cada passo acima do anterior, ou abaixo. Re-empilha na hora.
-    StackUp(bool),
-}
-
-/// O botão do painel → a ação (`None` para qualquer outro id). Pura, gateada.
-pub(crate) fn action_for_id(id: ph2d_editor::NodeId, stack_up: bool) -> Option<BlendAction> {
-    if id == ph2d_editor::ids::VECTOR_BLEND_STACK_UP {
-        Some(BlendAction::StackUp(!stack_up)) // o clique ALTERNA
-    } else if id == ph2d_editor::ids::VECTOR_BLEND_RUN {
-        Some(BlendAction::Run)
-    } else {
-        None
-    }
-}
-
-/// Aplica a ação. `steps` vem do slider do painel.
+/// (Re)cria os passos do blend DESTRUTIVO entre as duas formas fechadas selecionadas — o modelo
+/// legado, hoje só chamado pelos smokes de correspondência (`PH2D_BUILD_SMOKE=7/8/9`). O painel
+/// passou a usar o Blend Object VIVO ([`crate::blend_live`]).
 ///
-/// - **Run** abre uma sessão nova com as duas formas fechadas selecionadas (exige exatamente
-///   duas: três formas não têm um "entre" definido, e adivinhar seria pior que recusar).
-/// - **StackUp** mexe na sessão ABERTA. Sem sessão, não faz nada — e diz por quê.
-///
-/// Um passo de undo por ação (o re-rodar é uma edição como outra qualquer).
+/// Exige exatamente DUAS fechadas (três não têm um "entre" definido, e adivinhar seria pior que
+/// recusar). Um passo de undo por chamada. `steps`/`stack_up` vêm do chamador.
 #[allow(clippy::too_many_arguments)] // o shell destruturado passa cada ref separada
 pub(crate) fn apply(
     scene: &mut VecScene,
@@ -90,60 +71,33 @@ pub(crate) fn apply(
     pen: &mut ph2d_vec_edit::PenTool,
     xforms: &VecXforms,
     session: &mut Option<BlendSession>,
-    action: BlendAction,
     steps: u32,
     stack_up: bool,
 ) {
-    let mut next = match (action, session.take()) {
-        (BlendAction::Run, prev) => {
-            // **De quem são as fontes?** Depois de um Blend, o que está SELECIONADO são os
-            // **passos** — é o `select_many` no fim desta função. Então "exatamente duas formas
-            // fechadas" **não descreve mais a seleção**, e o 2º Run era **RECUSADO**: o artista
-            // arrastava Steps, clicava Blend e não acontecia nada.
-            //
-            // Com `Steps = 2` era pior que recusar: a seleção **era** duas fechadas — os dois
-            // PASSOS — e o Blend seguinte comia os passos em vez das fontes, **em silêncio**.
-            //
-            // Enquanto a seleção for a que a sessão produziu, o artista está iterando no MESMO
-            // blend, e as fontes são as dela.
-            let iterating = prev.as_ref().is_some_and(|s| selection_is_produced(pen, s));
-            let pair = if iterating {
-                prev.as_ref().map(|s| (s.a, s.b))
-            } else {
-                two_selected_closed(scene, pen)
-            };
-            let Some((a, b)) = pair else {
-                eprintln!("[ph2d-vec] blend: selecione exatamente DUAS regioes fechadas");
-                return;
-            };
-            // Re-rodar sobre as MESMAS duas formas mantém o escape que o artista já ajustou —
-            // clicar Blend de novo não deveria jogar fora o trabalho dele. E **carrega o
-            // `produced`**: é ele que o laço de remoção usa para tirar os passos velhos da cena.
-            // Zerando-o (como estava), re-rodar **empilhava** um jogo novo por cima do antigo.
-            let prev = prev.filter(|s| s.a == a && s.b == b);
-            BlendSession {
-                a,
-                b,
-                steps,
-                stack_up,
-                // Carrega o `produced` da rodada anterior: é ele que o laço de remoção usa para
-                // tirar os passos velhos. Zerando-o, re-rodar empilharia um jogo novo por cima.
-                produced: prev.map(|s| s.produced).unwrap_or_default(),
-            }
-        }
-        (_, None) => {
-            eprintln!("[ph2d-vec] blend: nao ha blend aberto — clique Blend primeiro");
-            return;
-        }
-        (BlendAction::StackUp(up), Some(mut s)) => {
-            s.stack_up = up;
-            s
-        }
+    // **De quem são as fontes?** Depois de um Blend a seleção são os PASSOS (o `select_many` no
+    // fim), então enquanto ela for a que a sessão produziu o artista está iterando no MESMO blend
+    // (as fontes são as dela); senão, são as duas formas fechadas selecionadas.
+    let prev = session.take();
+    let iterating = prev.as_ref().is_some_and(|s| selection_is_produced(pen, s));
+    let pair = if iterating {
+        prev.as_ref().map(|s| (s.a, s.b))
+    } else {
+        two_selected_closed(scene, pen)
     };
-    next.steps = steps;
-    if !matches!(action, BlendAction::StackUp(_)) {
-        next.stack_up = stack_up;
-    }
+    let Some((a, b)) = pair else {
+        eprintln!("[ph2d-vec] blend: selecione exatamente DUAS regioes fechadas");
+        return;
+    };
+    // Re-rodar sobre as MESMAS duas formas carrega o `produced` (o laço de remoção tira os passos
+    // velhos da cena); sobre outras, começa do zero (senão re-rodar empilharia um jogo novo).
+    let prev = prev.filter(|s| s.a == a && s.b == b);
+    let mut next = BlendSession {
+        a,
+        b,
+        steps,
+        stack_up,
+        produced: prev.map(|s| s.produced).unwrap_or_default(),
+    };
 
     let (Some(a), Some(b)) = (world(scene, xforms, next.a), world(scene, xforms, next.b)) else {
         eprintln!("[ph2d-vec] blend: uma das formas sumiu");

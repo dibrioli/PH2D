@@ -94,6 +94,62 @@ pub(crate) fn create(
     Some((spine_id, VecBlend::new(sources.to_vec(), steps)))
 }
 
+/// O teto de fontes por blend (o "até 5 formas" do Enio, ADR-0122). O motor aceita mais, mas o
+/// idioma do Illustrator é uma cadeia curta.
+pub(crate) const MAX_BLEND_SOURCES: usize = 5;
+
+/// As formas FECHADAS selecionadas, na ordem de **z** (a de `paths()`), capadas em
+/// [`MAX_BLEND_SOURCES`]. É o que o botão "Blend" liga — a ordem da cadeia é a de z, como o "Make"
+/// do Illustrator (formas abertas não têm interior para interpolar, então são descartadas).
+pub(crate) fn selected_closed_in_z(
+    scene: &VecScene,
+    pen: &ph2d_vec_edit::PenTool,
+) -> Vec<VecPathId> {
+    let mut zs: Vec<(usize, VecPathId)> = pen
+        .selected_paths()
+        .iter()
+        .filter_map(|id| {
+            scene
+                .paths()
+                .iter()
+                .position(|p| p.id == *id && p.closed)
+                .map(|z| (z, *id))
+        })
+        .collect();
+    zs.sort_unstable_by_key(|(z, _)| *z);
+    zs.dedup_by_key(|(z, _)| *z);
+    zs.into_iter()
+        .take(MAX_BLEND_SOURCES)
+        .map(|(_, id)| id)
+        .collect()
+}
+
+/// Ajusta os passos do(s) Blend Object(s) SELECIONADO(s) — o slider Steps ao vivo. Devolve `true`
+/// se algum blend foi retunado (nenhum selecionado ⇒ `false`, e o valor é só o de criação futura).
+/// Idempotente: não marca a entidade suja se o valor já é o mesmo.
+pub(crate) fn set_selected_steps(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    pen: &ph2d_vec_edit::PenTool,
+    steps: u32,
+) -> bool {
+    let mut changed = false;
+    for id in pen.selected_paths() {
+        let Some(&bits) = map.get(id) else { continue };
+        let e = Entity::from_bits(bits);
+        if sim
+            .world()
+            .get::<VecBlend>(e)
+            .is_some_and(|b| b.steps != steps)
+            && let Some(mut b) = sim.world_mut().get_mut::<VecBlend>(e)
+        {
+            b.steps = steps;
+            changed = true;
+        }
+    }
+    changed
+}
+
 /// **O re-cook de todo frame.** Para cada entidade com um [`VecBlend`]: resolve as fontes no
 /// MUNDO, coze os passos (cor interpolada em OKLab pelo motor) para `out`, e atualiza o spine.
 ///

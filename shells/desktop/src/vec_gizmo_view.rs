@@ -90,6 +90,13 @@ pub(crate) fn view(
     if sim.world().get::<ph2d_ecs::VecConnector>(entity).is_some() {
         return None;
     }
+    // **O SPINE de um Blend Object também não tem gizmo** (ADR-0122, Enio 2026-07-15) — pela mesma
+    // razão do conector: a linha é editável só no modo Node, e no Select o que se move são as
+    // FORMAS-fonte (cada uma com o seu gizmo). Uma caixa fina sobre a linha, além de inútil, roubaria
+    // o clique. A linha também não é PICKÁVEL no Select (o dispatch a filtra dos hits).
+    if sim.world().get::<ph2d_ecs::VecBlend>(entity).is_some() {
+        return None;
+    }
     let (anchor, half_intrinsic) = anchor_half(sim, scene, entity)?;
     let wt = world_transform(sim, entity);
     let (sx, sy) = (wt.scale.x, wt.scale.y);
@@ -398,6 +405,29 @@ mod tests {
         assert_eq!(v.pivot_world, [10.0, 5.0]);
         assert_eq!(v.bbox_min_world, [7.0, 2.0], "10±3, 5±3");
         assert_eq!(v.bbox_max_world, [13.0, 8.0]);
+    }
+
+    /// **O SPINE de um Blend não publica gizmo** (ADR-0122, Enio 2026-07-15) — como o conector. A
+    /// linha é editável só no modo Node; no Select o que se move são as formas-fonte. Uma forma
+    /// normal publica; a MESMA forma com um `VecBlend` (é um spine) não.
+    #[test]
+    fn a_blend_spine_publishes_no_gizmo() {
+        let (mut sim, scene, _, e) = scene_with_square();
+        let cam = Camera2d::default();
+        let ws = WindowSize {
+            width: 800,
+            height: 600,
+        };
+        // Sem o componente, a forma tem gizmo.
+        assert!(view(&sim, &scene, e, &cam, ws, (0.0, 0.0), false).is_some());
+        // Com o `VecBlend` (a entidade é um spine de blend), NÃO tem.
+        sim.world_mut()
+            .entity_mut(e)
+            .insert(ph2d_ecs::VecBlend::new(vec![1, 2], 3));
+        assert!(
+            view(&sim, &scene, e, &cam, ws, (0.0, 0.0), false).is_none(),
+            "o spine do blend não tem gizmo (a linha é Node-only)"
+        );
     }
 
     /// O picking respeita o `Transform`: o interior está onde a forma é DESENHADA,

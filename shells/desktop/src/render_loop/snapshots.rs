@@ -275,6 +275,8 @@ pub(super) fn publish(
                     if !vec_gizmo_on {
                         return None;
                     }
+                    // (O SPINE de um Blend não publica gizmo — o `vec_gizmo_view::view` o pula, como
+                    // faz com o conector. ADR-0122.)
                     return crate::vec_gizmo_view::view(
                         sim,
                         vec_scene,

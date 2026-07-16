@@ -286,35 +286,21 @@ volta — as duas coisas convivem).
   por lerp e a **cor** em OKLab (como o fill); cap/join/dash/pontas (discretos) vêm do lado mais
   próximo. Um lado SEM traço faz a largura **afinar até 0** (fade), em vez de o traço aparecer de
   repente no meio. Gate `the_stroke_travels_with_the_shape` (largura lerp + fade do lado único).
-- **Arrastar o objeto blend no Select move as fontes — o gizmo mira as FONTES, não o spine**
-  (`vec_selection::sync_selection`): selecionar a linha do blend e arrastá-la move as formas juntas,
-  "como filhas". **Por que as fontes e não o spine** (foram DUAS versões descartadas antes desta):
-  um gizmo sobre o SPINE **dobra** — a bbox do spine segue as fontes que se movem, e o gizmo aplica a
-  translação dele POR CIMA disso (`Transform ∘ bbox_que_já_andou` = 2×), o "drift brutal" que o Enio
-  viu. Consumir a translação do `Transform` do blend nas fontes e zerá-lo (as 2 versões descartadas)
-  não resolve: (a) o `advance_gizmo_drag` só roda no `CursorMoved` e a `recook` zera o `Transform`
-  todo render, então o total memorizado se perde entre frames (drift acumulado); (b) mesmo com o
-  total certo, o BOX do gizmo (pintado do estado vivo do arrasto ∘ bbox do spine) segue dobrando. A
-  raiz: o spine tem **geometria que se move** (segue as fontes), e um gizmo sobre geometria móvel
-  dobra. **As fontes têm geometria FIXA (só o `Transform` delas se move)** — então o gizmo as move
-  NATIVAMENTE (group drag) sem dobrar, e o spine as segue no `recook`. O PEN mantém o spine (o painel
-  de Blend e o modo Node dependem dele); só a seleção do GIZMO é redirecionada. O box do gizmo é
-  construído da seleção do GIZMO (`snapshots::build_view` trata entidades vetoriais), então as fontes
-  englobam de fato. **O redirecionamento roda nos DOIS sentidos da sincronia** (`gizmo_bits_for`): o
-  caso 1 (pen mandou — a criação programática) E o caso 2 (o **clique** no modo Select mexe no gizmo
-  PRIMEIRO, e só depois adota o pen) — sem o caso 2 o clique deixava o gizmo na linha ("não engloba,
-  não move as shapes", 3º smoke). 2 gates (`the_gizmo_of_a_blend_spine_targets_its_sources` caso 1 ·
-  `clicking_a_blend_spine_retargets_the_gizmo_to_the_sources` caso 2), mutation-testados.
-- **Arrastar em QUALQUER lugar do box global move o grupo** (4º/5º smoke do Enio): antes era preciso
-  pegar o gizmo de uma das FORMAS; o vazio ENTRE elas (dentro do box que cobre tudo) não pegava, e só
-  o gizmo da PRIMÁRIA respondia. Raiz: `paint_sprite_gizmo_keyed` **NÃO registra hit de interior para
-  os extras nem o global** (o AABB deles é grande e sombrearia as alças na varredura back-to-front),
-  e o Translate deles ia pelo `pick_sprites_at_world` — que **não acha entidade VETORIAL**. Então
-  clicar no vazio do box global caía em `hits` vazio e não virava arrasto. Fix: quando nada está sob
-  o cursor mas ele está DENTRO do `global_view` (a geometria do box que cobre a seleção), o alvo é o
-  grupo (`interior_translate_falls_back_to_selection` ganhou `in_global_box`, função pura + gate).
-  Vale para toda multi-seleção vetorial, não só o blend. (O 4º smoke, `8c8a1977`, tentou via
-  `is_keyed_translate` — errado, pois o interior do global nunca é registrado; corrigido aqui.)
+- **A LINHA (spine) é Node-only; no Select movem-se as FORMAS** (decisão final do Enio, 2026-07-15,
+  depois de 5 smokes iterando a interação): o spine **não é selecionável nem tem gizmo no modo
+  Select** — a linha só se toca no modo Node (arrastar âncoras move as fontes; arrastar alças curva).
+  No Select, cada forma-fonte é uma forma normal, com o seu próprio gizmo; movê-la re-coza o blend.
+  Duas mudanças pequenas: (1) `vec_gizmo_view::view` devolve `None` para um spine (entidade com
+  `VecBlend`) — como já fazia com o conector; e (2) o dispatch de canvas **filtra os spines dos
+  `hits`** do pick, então clicar na linha não seleciona nada. Gate `a_blend_spine_publishes_no_gizmo`.
+  **Descartadas** (5 smokes de iteração, todas revertidas): (a) mover o spine pelo gizmo (dobra — a
+  bbox dele segue as fontes e o gizmo soma por cima); (b) consumir o `Transform` do blend nas fontes
+  e zerá-lo (o `advance_gizmo_drag` só roda no `CursorMoved` e a `recook` zera todo render → drift
+  acumulado; e o BOX segue dobrando pois é pintado do estado vivo do arrasto); (c) redirecionar o
+  gizmo para as FONTES (multi-seleção — funcionava, mas o box global e o clique-por-forma não eram o
+  que o Enio queria); (d) arrastar o vazio do box global (o interior do global não é registrado como
+  hit — `paint_sprite_gizmo_keyed`, de propósito). O modelo final é o mais simples: a linha sai do
+  Select, e o Select vira "mover as formas".
 - **`blend_live.rs` foi dividido** (teto de 600 LOC): as ações de edição/interação (pick/select/
   steps/reset/os dois drags) saíram para o módulo-filho `blend_live_edit.rs` (`use super::*` para os
   privados do pai); o núcleo (component + `recook` + helpers de geometria) ficou. `pin_spine_anchors`

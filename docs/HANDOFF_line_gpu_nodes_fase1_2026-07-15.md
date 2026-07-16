@@ -1,8 +1,10 @@
 # HANDOFF — linha `line/gpu-nodes` (GPU/M5 **Fase 1 / F1.1**), 2026-07-15
 
-> **Status:** FECHADA, pronta para integração. **NÃO integrei, NÃO pushei** (§0.7 — só por
-> ordem explícita do Enio, via integrador dedicado). Ramificada de **`line/cook-parallel`**
-> (`8310d3cb`) — o integrador landa a Fase 0 primeiro, depois esta.
+> **Status:** FECHADA, pronta para integração — **smoke visual OK (Enio, 2026-07-15)**.
+> **NÃO integrei, NÃO pushei** (§0.7 — só por ordem explícita do Enio, via integrador
+> dedicado). Ramificada de **`line/cook-parallel`** (`8310d3cb`) — o integrador landa a
+> Fase 0 primeiro, depois esta. **Continuação:** a Fase 2 tem briefing próprio —
+> [`HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md).
 > ADR: [`0122`](architecture/decisions/0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md) (ACEITO; agora com stamp de implementação).
 > Briefing que esta linha executou: [`HANDOFF_line_gpu_nodes_fase1_briefing_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase1_briefing_2026-07-15.md).
 

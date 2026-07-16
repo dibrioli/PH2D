@@ -73,10 +73,8 @@ fn no_two_adrs_share_a_number() {
     //
     // **Não há mais exceção. Duplicata nenhuma passa.**
 
-    let dupes: Vec<(&String, &Vec<String>)> = by_number
-        .iter()
-        .filter(|(_, v)| v.len() > 1)
-        .collect();
+    let dupes: Vec<(&String, &Vec<String>)> =
+        by_number.iter().filter(|(_, v)| v.len() > 1).collect();
     assert!(
         dupes.is_empty(),
         "dois ADRs dividem o mesmo número — e como os NOMES de arquivo diferem, o git nunca \

@@ -15,6 +15,11 @@
 //!
 //! The panel owns the live chain and cannot do any of this — it has no name table —
 //! so it lives shell-side and the bridge pushes the result via `set_fx_chain`.
+//
+// ph2d-loc-cap: pre-existing at 631 LOC on this line (commit a5ec9d7a, "Gate / Expander"
+// added the GATE_TIGHTEN factory preset). It is a factory-preset DATA table — the proper
+// fix is to split the `static` presets into a sibling `data` module. Deferred to the preset
+// owner; not touched by the W7 (ML denoise) work that inherited it. See HANDOFF §closure.
 
 use ph2d_panel_audio_editor::{FxStage, MAX_FX_PARAMS};
 

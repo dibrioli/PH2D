@@ -2,9 +2,10 @@
 
 > **Para o agente INTEGRADOR** (DIRETRIZ §1.5.9). A linha está FECHADA e **parada**: integração e ship
 > só por ordem explícita do Enio. Jornada de hoje: **P0 (retângulo residual do Inflate) + W4 (família
-> advectiva do Deform)** — **ambos SMOKADOS OK pelo Enio** — **+ W5 (Conserve, a bow wave)** e a
-> **fase D (display)**, pendentes de smoke (o Conserve é opt-in default OFF; a D inocentou o pipeline
-> headless e blindou a costura — a confirmação dos 2 sintomas é do app vivo).
+> advectiva do Deform)** — **ambos SMOKADOS OK pelo Enio** — **+ W5 (Conserve, a bow wave)**, a
+> **fase D (display)** e o **BOW WAVE + a ÂNCORA do aro (`fd77f9c5`)**, pendentes de smoke (o Conserve
+> é opt-in default OFF; a D inocentou o pipeline headless; a âncora corrige o colar duro que o smoke do
+> bow wave reprovou — e MOVE o desenho do Conserve, que precisa de re-smoke — ver §6.3½).
 
 ## 1. Base e commits
 
@@ -26,9 +27,10 @@
 | `98ee8edb` | docs: fechamento da cápsula |
 | `63e7cf2f` | **fix(impasto): o RAIO é o 3º ingrediente** — a bola do Anchored não achata ao soltar (commit re-derivava no raio do PINCEL; agora deriva no raio do DAB, guardado por-texel) + **o undo leva o relevo da Line junto** (`restore_model` reseta o envelope; a crista órfã de 14.440 texels morreu) — **pendente re-smoke** |
 | `afd325b6` | docs: fechamento dos 2 fixes do smoke vivo |
-| `2b44eaf2` | **feat(impasto): o BOW WAVE** — fim da fila por ordem; a tinta arada viaja com o bico (escalar por cópia + lóbulo re-pintado, remoção bit-exata) e descansa na fronteira (IMPaSTo); Conserve byte-intocado (share 0) — **pendente smoke** |
+| `2b44eaf2` | **feat(impasto): o BOW WAVE** — fim da fila por ordem; a tinta arada viaja com o bico (escalar por cópia + lóbulo re-pintado, remoção bit-exata) e descansa na fronteira (IMPaSTo); Conserve byte-intocado (share 0) — **smoke REPROVADO (âncora), corrigido em `fd77f9c5`** |
 | `4615ba38` | test: split LOC `impasto_live.rs` |
-| (este) | docs: fechamento do Push |
+| `fd77f9c5` | **fix(impasto): a ÂNCORA do aro** — o aro nasce na borda do CORPO (`t0`, onde a silhueta cruza `W_TAIL`), não na circunferência do gizmo (`t=1`); porta única `rim_t0`→`rim_lift` pros 2 kernels + 2 chamadores; Constant byte-idêntico; **Conserve MOVEU (re-smoke)** — **pendente smoke** |
+| (este) | docs: fechamento da âncora do aro |
 
 ## 2. Superfície tocada
 
@@ -141,15 +143,20 @@ relevo, costurado nos 7 sites com seam test que CLICA.
    offset novo, mas o `bank` guarda o volume do offset de stamp — auto-cura no próximo re-stamp de
    geometria (o toggle do Conserve re-stampa; o slider do Offset não). Se o Enio sentir, o fix é
    re-stampar também no `set_sculpt_offset`.
-3½. **BOW WAVE: smoke REPROVADO (Enio, 2026-07-15)** — *"é usada a circunferência do gizmo do
-   brush para empurrar a massa e não o alpha do falloff"*: o aro/onda ancora em `t = 1` do
-   footprint (o círculo geométrico), e num pincel macio a tinta termina muito antes (W_TAIL em
-   t≈0,61 no Smooth — doc 16 §14.1) ⇒ colar duro e circular com tela nua entre ele e a tinta.
-   A mecânica da onda (viajar/descansar/ledger) está certa e gateada; a ÂNCORA está errada.
-   **Handoff dedicado para o próximo agente:**
-   [`HANDOFF_line_Painter_push_rim_anchor_2026-07-15.md`](HANDOFF_line_Painter_push_rim_anchor_2026-07-15.md)
-   (mecanismo, direção de fix — o aro nasce onde o CORPO termina, a lei do §14 —, o aviso do
-   Conserve compartilhar o motor, gate red-first prescrito e o instrumento de render).
+3½. **BOW WAVE: âncora do aro CORRIGIDA (`fd77f9c5`, 2026-07-15) — pendente smoke.** O smoke
+   REPROVOU o desenho (*"é usada a circunferência do gizmo do brush para empurrar a massa e não o
+   alpha do falloff"*): o aro ancorava em `t = 1` (círculo geométrico) e num pincel macio a tinta
+   termina em `t≈0,61` (W_TAIL, doc 16 §14.1) ⇒ colar duro circular com tela nua entre ele e a tinta.
+   **Fix:** o aro nasce em `t0` (`body_edge_t`, a MESMA lei do filme §14), por porta única
+   `rim_t0`→`rim_lift` compartilhada pelos 2 kernels (`bank_dab_push`/`wave_lobe`) e os 2 chamadores
+   (deposit + Conserve). Reach conta a partir de `t0` ⇒ aro de largura constante. **Constant/hardness≥1
+   = byte-idêntico** (fast-path `RIM_PROBE`, fingerprint gate). **Shape image = mantém `t=1`** (carimbo
+   tem borda dura). Gates novos mutation-tested (`the_rim_rises_from_the_body_edge_not_the_geometric_rim`
+   + o irmão do Constant); as zonas do Push medem contra a FRONTEIRA da tinta (`t0·r`), não o raio.
+   Sonda `push_look` ganhou a cena 5 (pincel grande e macio) e o before/after confirma. **⚠️ O Conserve
+   compartilha o motor e o pincel de sculpt default é Smooth macio ⇒ o DESENHO aprovado moveu pra
+   dentro (mais colado à tinta) — RE-SMOKE do Conserve declarado** (ledger e byte-identidade do OFF
+   intactos). Detalhe: [`HANDOFF_line_Painter_push_rim_anchor_2026-07-15.md`](HANDOFF_line_Painter_push_rim_anchor_2026-07-15.md) §7.
 4. **D — RE-SMOKE (pós `fc96ef27` + `63e7cf2f`)**: (a) jitter/Airbrush = contas de relevo
    coincidentes com a tinta, sem barras; (b) **Anchored** = a bola commitada mantém a altura do
    drag (era o raio do pincel na re-derivação — o gate segura bit-exato); (c) **Line + undo até o
@@ -163,8 +170,9 @@ relevo, costurado nos 7 sites com seam test que CLICA.
    pilha ou tela nua). Instrumentação de display continua disponível (`PH2D_PREVIEW_DIAG=1` /
    `PH2D_PREVIEW_DUMP=<dir>`); o gate GPU real roda com
    `cd <worktree> && cargo test -p ph2d-host-desktop the_screen_survives -- --ignored`.
-5. **A TINTA EMPURRADA (Push)**: fim da fila, ordem do Enio. Nota: o W5 reusa `bank_dab_push` — o
-   diagnóstico do desenho do Push e o da pilha do Conserve agora são O MESMO problema no MESMO motor.
+5. **A TINTA EMPURRADA (Push)**: bow wave LANDOU (`2b44eaf2`) + âncora corrigida (`fd77f9c5`) — ver
+   §6.3½. O W5 reusa `bank_dab_push` e agora o `rim_t0`: o desenho do Push e o da pilha do Conserve
+   nascem na MESMA borda (a do CORPO). Aberto: knob de `forward_share`? (hoje const 0.6).
 6. **Perf do Deform NÃO é gateada** (nunca foi): o W4 adiciona 3 amostragens/texel quando há relevo +
    toggle ON. **Scrape com Conserve armado ≈ 4,3 ms/move @2048²** (kill 8; desarmado 3,19 — o custo é
    opt-in). `sculpt.rs` está a **698/700 LOC** — o próximo campo orça um split.

@@ -55,6 +55,8 @@ fn read(rel: &str) -> String {
 /// `protect_dab` is on this list because the gate FOUND it: its two siblings were patched for the panel
 /// leak in 2026-05-26 and the core dab was missed entirely — an armed protection brush painted through the
 /// UI and swallowed the click, and nothing said a word.
+const DOOR: &str = "shells/desktop/src/chrome_hit.rs";
+
 const CANVAS_CONSUMERS: &[(&str, &str)] = &[
     (
         "shells/desktop/src/input_dispatch/painter_canvas_input.rs",
@@ -179,5 +181,54 @@ fn the_fill_buttons_one_off_is_a_gesture_not_a_second_occlusion_check() {
         src.contains("FILL_DRAG.with"),
         "`arm_fill_drag_if_on_button` no longer ARMS anything, so it is now a per-button occlusion check \
          — exactly the thing `chrome_claims` exists to make unnecessary. Delete it and let the door do it."
+    );
+}
+
+/// **The live door asks the gizmo BOTH ways** — the canonical table AND the map the gizmo filled in while
+/// painting.
+///
+/// The gizmo registers its hit rects under two id schemes: the **canonical** ids (what the PRIMARY
+/// selection paints, and what `is_gizmo_id` knows) and **keyed** ids — `canonical ^ hash(entity bits)` —
+/// for every EXTRA selection and for the global gizmo (`register_keyed_handle`). Keyed ids are unforgeable
+/// by construction; no static table can classify them. The only thing that knows them is
+/// `hero.gizmo.gizmo_hit_map`, which is exactly what the pick cascade consults for the same reason.
+///
+/// Ask only the table and every extra/global handle is called "chrome": the Painter refuses the press, it
+/// falls through to the pick, and **the brush silently becomes a move gesture with the tool still saying
+/// Paint** — Enio's regression of 2026-07-16, caused by this very door.
+///
+/// It is an arch-gate because the unit tests cannot reach it: `chrome_claims` takes the classifier as an
+/// argument (so it is testable at all), and the LIVE classifier is assembled inside `pointer_over_chrome`,
+/// which needs a painted hero — GPU and a window. Deleting the map half there survived every unit test,
+/// and a surviving mutant is a missing gate.
+///
+/// **Mutation that must bleed:** drop `|| hero.gizmo.gizmo_hit_map.contains_key(&id)` from
+/// `pointer_over_chrome`'s classifier.
+#[test]
+fn the_live_door_asks_the_gizmo_both_ways() {
+    let src = read(DOOR);
+    let start = src
+        .find("pub fn pointer_over_chrome")
+        .expect("`pointer_over_chrome` vanished — this gate is stale, not passing");
+    let body = &src[start..];
+    let end = body.find("\n}").expect("unterminated fn");
+    let body = &body[..end];
+    // Whitespace-stripped, and it MUST be: the first draft of this gate looked for `gizmo_hit_map`
+    // anywhere in the body and passed on the DIAGNOSTIC `eprintln!` that also names it — green because of
+    // a debug print, while the classifier itself had been gutted. The gate has to read the ANSWER, not the
+    // vocabulary.
+    let dense: String = body.chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(
+        dense.contains("is_gizmo_id(id)"),
+        "the live door no longer asks the canonical gizmo table, so the PRIMARY selection's handles \
+         (bbox interior included) are called chrome and the brush cannot paint its own sprite"
+    );
+    assert!(
+        dense.contains("is_gizmo_id(id)||hero.gizmo.gizmo_hit_map.contains_key(&id)"),
+        "the live door asks only the canonical gizmo table. Every EXTRA selection and the global gizmo \
+         register KEYED ids (`canonical ^ hash(bits)`, `register_keyed_handle`) that no static table can \
+         recognise — so they get called chrome, the Painter refuses the press, and the brush turns into a \
+         move gesture with the tool still saying Paint. That is exactly the regression of 2026-07-16. The \
+         map is the only thing that knows those ids; the pick cascade consults it for the same reason."
     );
 }

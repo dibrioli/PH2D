@@ -130,7 +130,7 @@ impl App {
         // forbids the half-question: its two siblings above were patched for the panel leak in 2026-05-26
         // and the core dab was missed, so an armed protection brush painted (and consumed the click)
         // straight through the UI. One door, all four arms.
-        if crate::forwarding::pointer_over_chrome(self.gfx.as_ref(), px, py) {
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), px, py) {
             return false;
         }
         let Some(gfx) = self.gfx.as_mut() else {
@@ -228,7 +228,7 @@ impl App {
         // The CHROME first — same reason and same door as the eyedropper's (this arm consumes
         // "regardless of in/out" too). Asked `panel_at` alone until 2026-07-16: half the question, so
         // the rail's buttons leaked.
-        if crate::forwarding::pointer_over_chrome(self.gfx.as_ref(), px, py) {
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), px, py) {
             return false;
         }
         let Some(gfx) = self.gfx.as_mut() else {

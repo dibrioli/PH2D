@@ -181,7 +181,7 @@ impl App {
         //
         // A stroke already open keeps painting over the chrome via the Move path (it does not re-enter
         // here) — dragging off the artwork must not chop the stroke at the panel's edge.
-        if crate::forwarding::pointer_over_chrome(self.gfx.as_ref(), px, py) {
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), px, py) {
             return false;
         }
         let started = self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Down);

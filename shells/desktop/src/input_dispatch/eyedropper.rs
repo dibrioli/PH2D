@@ -30,7 +30,7 @@ impl App {
         // the UI's own widgets: sliders inside the BgRemoval panel went clickable-but-un-draggable
         // (Enio 2026-05-26), and the left rail / top bars leaked the same way until 2026-07-16 because
         // this asked `panel_at` alone — half the question. One door, asked before anything else.
-        if crate::forwarding::pointer_over_chrome(self.gfx.as_ref(), px, py) {
+        if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), px, py) {
             return false;
         }
         let Some(gfx) = self.gfx.as_mut() else {

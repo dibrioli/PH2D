@@ -89,6 +89,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     sculpt_conserve: false, // opt-in bow wave (mirrors SculptState::default)
     sculpt_conserves: false,
     sculpt_filters: false,
+    sculpt_can_filter_stroke: false,
     sculpt_smooth: 0.0, // Inflate's edge is hard by default (mirrors SculptState::default)
     sculpt_smooth_px: 0,
     sculpt_is_inflate: false,

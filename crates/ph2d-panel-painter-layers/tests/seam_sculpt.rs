@@ -61,6 +61,38 @@ fn tool_in_sculpt_mode(mode: Option<u8>) -> PainterTool {
     tool
 }
 
+/// The same, plus a real impasto stroke already laid — the fixture the **sweep** needs.
+///
+/// "The fullest card" is a function of the STATE as well as the verb: `Filter Stroke` is offered only once
+/// a last stroke exists on the layer (a button that could only refuse would be a button that lies). A sweep
+/// armed on a virgin canvas would demand a widget the card is right not to paint — so the sweep's fixture
+/// has to be a tool that has actually painted, exactly as the artist's is when they reach for the button.
+fn tool_in_sculpt_with_a_stroke(mode: u8) -> PainterTool {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+    let size = 96u32;
+    let mut tool = PainterTool::default();
+    tool.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    tool.set_brush_size_px(8.0);
+    tool.toggle_brush_impasto();
+    let cp = |p: [f32; 2], phase| CanvasPointer {
+        pos: p,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    tool.on_canvas_pointer(cp([20.0, 40.0], PointerPhase::Down));
+    for i in 1..=5u8 {
+        tool.on_canvas_pointer(cp([20.0 + 8.0 * f32::from(i), 40.0], PointerPhase::Move));
+    }
+    tool.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Up));
+    tool.set_paint_tool_mode("sculpt");
+    tool.set_sculpt_mode(mode);
+    let bs = tool.brush_settings();
+    assert!(bs.is_sculpt, "fixture: the router did not enter Sculpt");
+    set_current_brush(Some(bs));
+    tool
+}
+
 /// Run one real click at `(x, y)` all the way through: dispatcher → panel → bus → tool.
 fn click_through(
     host: &mut MockPanelHost,
@@ -183,7 +215,9 @@ fn every_sculpt_click_widget_is_reachable_by_a_pointer() {
     for clicked in core_ids::PAINTER_SCULPT_CLICKS {
         let mut reached = false;
         for verb in 0..8u8 {
-            let tool = tool_in_sculpt_mode(Some(verb));
+            // A tool that has PAINTED: some widgets (Filter Stroke) are offered only once there is a last
+            // stroke to act on, and the sweep must not demand a button the card is right to withhold.
+            let tool = tool_in_sculpt_with_a_stroke(verb);
             let _ = &tool;
             let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
             let mut st = PainterLayersPanelState;
@@ -820,5 +854,122 @@ fn the_filter_button_is_not_offered_for_a_footprint_fitted_verb() {
             .iter()
             .any(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER && r.w > 0.0 && r.h > 0.0),
         "the Filter Layer button is painted on the Chisel card — a verb it cannot filter"
+    );
+}
+
+/// **Clicking Filter Stroke filters the last stroke — and not the layer** (W5b, Enio 2026-07-16).
+///
+/// The sibling above proves the Layer button; this proves the STROKE one is a different button wired to a
+/// different scope. The fixture paints a stroke in one corner, plants relief far away, and demands the far
+/// relief survive: a Filter Stroke wired to `FilterScope::Layer` would smooth it and go red here while
+/// staying green in every "did the relief move?" test.
+///
+/// **Mutation that must bleed:** route `PAINTER_SCULPT_FILTER_STROKE` to `FilterScope::Layer` in
+/// `route_sculpt_event` — the far relief moves.
+#[test]
+fn clicking_filter_stroke_filters_only_the_last_stroke() {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+
+    let size = 120u32;
+    let mut tool = PainterTool::default();
+    tool.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    tool.set_brush_size_px(9.0);
+    tool.toggle_brush_impasto();
+    let cp = |p: [f32; 2], phase| CanvasPointer {
+        pos: p,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    // Stroke 1, far away — the control. Stroke 2, the LAST one — the target.
+    tool.on_canvas_pointer(cp([20.0, 95.0], PointerPhase::Down));
+    for i in 1..=6u8 {
+        tool.on_canvas_pointer(cp([20.0 + 8.0 * f32::from(i), 95.0], PointerPhase::Move));
+    }
+    tool.on_canvas_pointer(cp([68.0, 95.0], PointerPhase::Up));
+    tool.on_canvas_pointer(cp([20.0, 25.0], PointerPhase::Down));
+    for i in 1..=6u8 {
+        tool.on_canvas_pointer(cp([20.0 + 8.0 * f32::from(i), 25.0], PointerPhase::Move));
+    }
+    tool.on_canvas_pointer(cp([68.0, 25.0], PointerPhase::Up));
+
+    let layer = tool.layers().active().expect("a layer");
+    let before = tool.layer_height_view(layer).expect("relief");
+    assert!(
+        before[(95 * size + 40) as usize] > 0.05 && before[(25 * size + 40) as usize] > 0.05,
+        "fixture: BOTH strokes must have laid relief, else 'only the last one' proves nothing"
+    );
+
+    tool.set_paint_tool_mode("sculpt");
+    tool.set_sculpt_mode(0); // Smooth
+    let bs = tool.brush_settings();
+    assert!(
+        bs.sculpt_can_filter_stroke,
+        "fixture: a stroke exists on this layer, so the button must be on offer"
+    );
+    set_current_brush(Some(bs));
+
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let (_, rect) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER_STROKE && r.w > 0.0 && r.h > 0.0)
+        .copied()
+        .expect("the Filter Stroke button is not painted with a clickable rect");
+    let (x, y) = centre(rect);
+    click_through(&mut host, &mut st, &mut tool, x, y);
+
+    let after = tool.layer_height_view(layer).expect("relief");
+    let band = |y0: u32, y1: u32| -> usize {
+        let mut n = 0;
+        for yy in y0..y1 {
+            for xx in 0..size {
+                let i = (yy * size + xx) as usize;
+                if (after[i] - before[i]).abs() > 1e-4 {
+                    n += 1;
+                }
+            }
+        }
+        n
+    };
+    assert!(
+        band(0, 60) > 0,
+        "the click never reached the tool — the Filter Stroke seam has a dead link"
+    );
+    assert_eq!(
+        band(60, size),
+        0,
+        "the FIRST stroke moved too — the button is scoped to the layer, not to the last stroke"
+    );
+}
+
+/// **The Filter Stroke button is not offered before there is a stroke to filter.**
+///
+/// A button that can only refuse is a button that lies. `live_paint` is empty until a stroke commits.
+///
+/// **Mutation that must bleed:** paint the second option unconditionally (drop the `can_filter_stroke`
+/// branch in `filter_row`) — the rect appears on a virgin canvas.
+#[test]
+fn the_filter_stroke_button_waits_for_a_stroke_to_exist() {
+    let tool = tool_in_sculpt_mode(Some(0)); // Smooth, nothing painted yet
+    assert!(
+        !tool.brush_settings().sculpt_can_filter_stroke,
+        "fixture: nothing has been painted, so there is no last stroke"
+    );
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    assert!(
+        painted
+            .iter()
+            .any(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER && r.w > 0.0 && r.h > 0.0),
+        "fixture: the Layer button IS offered on Smooth — else this gate is vacuous"
+    );
+    assert!(
+        !painted
+            .iter()
+            .any(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER_STROKE && r.w > 0.0 && r.h > 0.0),
+        "the Filter Stroke button is painted with no stroke to filter — it can only refuse"
     );
 }

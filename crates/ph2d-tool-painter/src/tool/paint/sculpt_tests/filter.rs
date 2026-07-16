@@ -5,6 +5,7 @@
 //! Selection, Strength means the same thing it means to a stroke, and it refuses the verbs whose target
 //! needs a footprint. Each names the mutation that reddens it.
 
+use super::super::sculpt_filter::FilterScope;
 use super::super::sculpt_tests::{arm_sculpt, sculpt_canvas};
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::RasterEditTool; // `set_source` on the blank-layer gate
@@ -45,7 +46,7 @@ fn the_filter_reaches_the_whole_layer_not_only_where_a_brush_went() {
     const SIZE: u32 = 200;
     let (mut t, layer, before) = sculpt_canvas(SIZE);
     arm_sculpt(&mut t, 0, 0.5, 1.0); // Smooth
-    assert!(t.filter_sculpt_layer(), "the filter ran");
+    assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
     let (count, peak) = moved(&t, layer, &before, SIZE);
     // The fixture's saw-tooth covers the whole canvas, so a whole-layer Smooth must move a LOT of it.
     // (Not every texel: the saw is every third, and the blur leaves flats flat — which is the point.)
@@ -67,24 +68,29 @@ fn the_filter_reaches_the_whole_layer_not_only_where_a_brush_went() {
     );
 }
 
-/// **The filter refuses the verbs whose target is fitted to the FOOTPRINT** — and refusing is not a
-/// no-op, it is the honest answer (`sculpt_filter::filters_layer`).
+/// **The filter refuses every verb that does not RESHAPE** — and refusing is not a no-op, it is the honest
+/// answer (`sculpt_filter::filters_layer`).
 ///
-/// Flatten / Scrape / Fill / Chisel pull toward a plane least-squares fitted to the dab. A whole layer has
-/// no dab, so "the whole layer's plane" is a DIFFERENT operation (flatten the art to its mean plane) and a
-/// verb to design — not a flag. The Chisel is refused twice: its V folds around the stroke's axis.
+/// Two exclusions, two reasons. Flatten / Scrape / Fill / Chisel pull toward a plane least-squares fitted to
+/// the dab: a whole layer has no dab, so "the layer's plane" is a DIFFERENT operation (flatten the art to
+/// its mean plane) and a verb to design, not a flag. The Chisel is refused twice — its V folds around the
+/// stroke's axis. And **Layer** (Enio, 2026-07-16): its target is the constant `pre + Depth`, so filtering a
+/// layer with it lifts every texel by the same `k·Depth` — and **the light reads `∇h`**, which a constant
+/// does not change. It would not move one pixel. I shipped it reasoning it "fell out for free"; that is how
+/// dead knobs get shipped.
 ///
-/// **Mutation that must bleed:** make `filters_layer` return `true` unconditionally — the Plane verbs then
-/// render against an unfitted `plane_sum` and the relief moves (or the call reports success).
+/// **Mutation that must bleed:** make `filters_layer` return `true` unconditionally (or re-admit
+/// `SculptMode::Layer`) — the refusal reports success.
 #[test]
-fn the_filter_refuses_the_verbs_whose_target_is_a_footprint() {
-    for mode in [2u8, 3, 4, 5] {
-        // Flatten · Scrape · Fill · Chisel
+fn the_filter_refuses_the_verbs_that_do_not_reshape() {
+    for mode in [2u8, 3, 4, 5, 6] {
+        // Flatten · Scrape · Fill · Chisel (targets fitted to the footprint) · Layer (a translation:
+        // the light reads the gradient, so a uniform lift is invisible — a dead knob)
         const SIZE: u32 = 200;
         let (mut t, layer, before) = sculpt_canvas(SIZE);
         arm_sculpt(&mut t, mode, 0.5, 1.0);
         assert!(
-            !t.filter_sculpt_layer(),
+            !t.filter_sculpt_layer(FilterScope::Layer),
             "mode {mode}: a footprint-fitted verb must refuse the whole-layer filter"
         );
         let now = t.heights.get(&layer).expect("relief");
@@ -94,13 +100,13 @@ fn the_filter_refuses_the_verbs_whose_target_is_a_footprint() {
         );
     }
     // …and the ones it accepts really do run, so the gate above is not vacuously green.
-    for mode in [0u8, 1, 6, 7] {
-        // Smooth · Sharpen · Layer · Inflate
+    for mode in [0u8, 1, 7] {
+        // Smooth · Sharpen · Inflate — the three that RESHAPE
         const SIZE: u32 = 200;
         let (mut t, _l, _b) = sculpt_canvas(SIZE);
         arm_sculpt(&mut t, mode, 0.5, 1.0);
         assert!(
-            t.filter_sculpt_layer(),
+            t.filter_sculpt_layer(FilterScope::Layer),
             "mode {mode}: this verb's target is a function of `pre` — it must filter"
         );
     }
@@ -130,7 +136,7 @@ fn the_filter_honours_the_selection_and_leaves_the_rest_byte_identical() {
         t.selection_restricts_paint(),
         "fixture: the Selection must actually restrict, else this gate is vacuous"
     );
-    assert!(t.filter_sculpt_layer(), "the filter ran");
+    assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
     let now = t.heights.get(&layer).expect("relief");
     let (mut inside, mut outside) = (0usize, 0usize);
     for i in 0..n {
@@ -165,10 +171,10 @@ fn the_filters_strength_is_how_far_along_the_travel_it_goes() {
     const SIZE: u32 = 200;
     let (mut full, layer, before) = sculpt_canvas(SIZE);
     arm_sculpt(&mut full, 0, 0.5, 1.0);
-    assert!(full.filter_sculpt_layer());
+    assert!(full.filter_sculpt_layer(FilterScope::Layer));
     let (mut half, _l, _b) = sculpt_canvas(SIZE);
     arm_sculpt(&mut half, 0, 0.5, 0.5);
-    assert!(half.filter_sculpt_layer());
+    assert!(half.filter_sculpt_layer(FilterScope::Layer));
 
     let (hf, hh) = (
         full.heights.get(&layer).expect("relief"),
@@ -206,7 +212,7 @@ fn the_filter_is_one_undo_step_and_the_relief_comes_back() {
     const SIZE: u32 = 200;
     let (mut t, layer, before) = sculpt_canvas(SIZE);
     arm_sculpt(&mut t, 0, 0.5, 1.0);
-    assert!(t.filter_sculpt_layer());
+    assert!(t.filter_sculpt_layer(FilterScope::Layer));
     assert!(
         t.heights
             .get(&layer)
@@ -238,7 +244,7 @@ fn a_layer_with_no_relief_has_nothing_to_filter() {
     arm_sculpt(&mut t, 0, 0.5, 1.0);
     let layer = t.layers.active().expect("a layer");
     assert!(
-        !t.filter_sculpt_layer(),
+        !t.filter_sculpt_layer(FilterScope::Layer),
         "a layer with no relief must refuse — there is nothing to smooth"
     );
     assert!(
@@ -246,5 +252,159 @@ fn a_layer_with_no_relief_has_nothing_to_filter() {
             .get(&layer)
             .is_none_or(|h| h.iter().all(|&v| v == 0.0)),
         "the refusal invented a relief"
+    );
+}
+
+/// A canvas with real impasto relief laid by a real stroke in ONE band, so "the last stroke" is a fact of
+/// the product and the rest of the layer is a control surface. Returns the tool, the layer, and the relief
+/// as the stroke left it.
+fn canvas_with_one_stroke(size: u32) -> (PainterTool, crate::tool::RtLayerId, Vec<f32>) {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.set_brush_size_px(10.0);
+    t.toggle_brush_impasto();
+    let cp = |p: [f32; 2], phase| CanvasPointer {
+        pos: p,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    t.on_canvas_pointer(cp([20.0, 30.0], PointerPhase::Down));
+    for i in 1..=8u8 {
+        t.on_canvas_pointer(cp([20.0 + 8.0 * f32::from(i), 30.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([84.0, 30.0], PointerPhase::Up));
+    let layer = t.layers.active().expect("a layer");
+    let relief = t
+        .heights
+        .get(&layer)
+        .expect("the stroke laid relief")
+        .to_vec();
+    (t, layer, relief)
+}
+
+/// **Filter Stroke touches the last stroke and NOTHING else** (Enio, 2026-07-16).
+///
+/// The whole point of the second button: smooth the stroke you just made without touching the art around
+/// it. The mask is that stroke's own paint envelope (`relief.live_paint`) — the record the Body card
+/// already re-derives it from — so it is the honest answer to *"where did the last stroke go"*, and it
+/// carries the stroke's **soft falloff edge**, so the filter feathers exactly where the paint did.
+///
+/// **Mutation that must bleed:** ignore the scope (fill `amount` uniformly) — the far half of the layer
+/// moves and `untouched` stops being zero.
+#[test]
+fn filter_stroke_touches_the_last_stroke_and_nothing_else() {
+    const SIZE: u32 = 120;
+    let (mut t, layer, before) = canvas_with_one_stroke(SIZE);
+    // Relief far from the stroke, so "it left the rest alone" is a claim with something to be wrong about.
+    {
+        let h = Arc::make_mut(t.heights.get_mut(&layer).expect("relief"));
+        for y in 80..110u32 {
+            for x in 10..110u32 {
+                h[(y * SIZE + x) as usize] = if (x + y).is_multiple_of(3) { 0.6 } else { 0.2 };
+            }
+        }
+    }
+    let before_far: Vec<f32> = t.heights.get(&layer).expect("relief").to_vec();
+    let _ = before;
+
+    arm_sculpt(&mut t, 0, 0.5, 1.0); // Smooth
+    assert!(
+        t.can_filter_last_stroke(),
+        "fixture: a stroke was made on this layer, so the button must be on offer"
+    );
+    assert!(
+        t.filter_sculpt_layer(FilterScope::LastStroke),
+        "the filter ran"
+    );
+
+    let now = t.heights.get(&layer).expect("relief");
+    let (mut on_stroke, mut far) = (0usize, 0usize);
+    for i in 0..(SIZE * SIZE) as usize {
+        if (now[i] - before_far[i]).abs() > 1e-4 {
+            let y = i as u32 / SIZE;
+            if y < 60 {
+                on_stroke += 1;
+            } else {
+                far += 1;
+            }
+        }
+    }
+    assert!(
+        on_stroke > 100,
+        "the last stroke was not filtered ({on_stroke} texels moved)"
+    );
+    assert_eq!(
+        far, 0,
+        "{far} texels far from the last stroke moved — Filter Stroke is filtering the LAYER"
+    );
+}
+
+/// **Filter Stroke is strictly narrower than Filter Layer** — the two buttons are not the same button.
+///
+/// A gate that only checked "the stroke moved" would pass for a Filter Layer wired to the wrong id. This
+/// pins the DIFFERENCE: the layer scope reaches the relief the stroke never went near, and the stroke scope
+/// does not.
+///
+/// **Mutation that must bleed:** route `PAINTER_SCULPT_FILTER_STROKE` to `FilterScope::Layer` — the two
+/// counts converge.
+#[test]
+fn filter_stroke_is_strictly_narrower_than_filter_layer() {
+    const SIZE: u32 = 120;
+    let count_moved = |scope: FilterScope| -> usize {
+        let (mut t, layer, _) = canvas_with_one_stroke(SIZE);
+        {
+            let h = Arc::make_mut(t.heights.get_mut(&layer).expect("relief"));
+            for y in 80..110u32 {
+                for x in 10..110u32 {
+                    h[(y * SIZE + x) as usize] = if (x + y).is_multiple_of(3) { 0.6 } else { 0.2 };
+                }
+            }
+        }
+        let before: Vec<f32> = t.heights.get(&layer).expect("relief").to_vec();
+        arm_sculpt(&mut t, 0, 0.5, 1.0);
+        assert!(t.filter_sculpt_layer(scope));
+        let now = t.heights.get(&layer).expect("relief");
+        now.iter()
+            .zip(before.iter())
+            .filter(|(a, b)| (*a - *b).abs() > 1e-4)
+            .count()
+    };
+    let layer_scope = count_moved(FilterScope::Layer);
+    let stroke_scope = count_moved(FilterScope::LastStroke);
+    assert!(
+        stroke_scope > 0 && layer_scope > stroke_scope * 2,
+        "Filter Layer moved {layer_scope} texels and Filter Stroke {stroke_scope} — the stroke scope is \
+         not narrower, so the two buttons are doing the same thing"
+    );
+}
+
+/// **With no last stroke there is no stroke to filter — and the button is never offered.**
+///
+/// `live_paint` is empty until a stroke commits, and it belongs to the layer that stroke was on. Filtering
+/// layer B by the envelope of a stroke made on layer A would mask B's relief with the silhouette of a
+/// stroke that was never there — a filter shaped like a ghost.
+///
+/// **Mutation that must bleed:** drop the `live_relief_layer != active` check (or the emptiness check) in
+/// `live_stroke_envelope` — the refusals become successes.
+#[test]
+fn with_no_last_stroke_on_this_layer_there_is_nothing_to_filter() {
+    const SIZE: u32 = 200;
+    // A layer with relief but NO stroke behind it (the fixture plants the field directly).
+    let (mut t, _layer, _before) = sculpt_canvas(SIZE);
+    arm_sculpt(&mut t, 0, 0.5, 1.0);
+    assert!(
+        !t.can_filter_last_stroke(),
+        "there is no last stroke, so the button must not be on offer"
+    );
+    assert!(
+        !t.filter_sculpt_layer(FilterScope::LastStroke),
+        "a filter scoped to a stroke that does not exist must refuse"
+    );
+    // …and the layer scope, which needs no stroke, still runs — so the refusal above is about the SCOPE.
+    assert!(
+        t.filter_sculpt_layer(FilterScope::Layer),
+        "the layer scope needs no last stroke"
     );
 }

@@ -3,7 +3,7 @@
 //! reference whose drawing Enio approved — to `PH2D_PUSH_LOOK_DIR`. Diagnostic, `#[ignore]`d.
 
 use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
-use ph2d_tool_painter::PainterTool;
+use ph2d_tool_painter::{FilterScope, PainterTool};
 
 fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
@@ -179,7 +179,7 @@ fn probe_push_render_and_look() {
     t.set_paint_tool_mode("sculpt");
     t.set_sculpt_mode(0); // Smooth
     t.set_sculpt_radius(0.6);
-    assert!(t.filter_sculpt_layer(), "the filter ran");
+    assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
     save(&mut t, &dir, "7_filter_layer_smooth", size);
 
     // …and Inflate, the verb that moves MATTER: the whole form fattens at once.
@@ -187,8 +187,29 @@ fn probe_push_render_and_look() {
     lay_ground(&mut t);
     t.set_paint_tool_mode("sculpt");
     t.set_sculpt_mode(7); // Inflate
-    assert!(t.filter_sculpt_layer(), "the filter ran");
+    assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
     save(&mut t, &dir, "8_filter_layer_inflate", size);
+
+    // 9. **Filter STROKE** (Enio, 2026-07-16): the same ground + ONE more stroke across it, then Smooth
+    //    scoped to that LAST stroke. Only the newest stroke goes soft; the three under it are untouched —
+    //    the scope is the stroke's own paint envelope, so it feathers exactly where its paint did.
+    let mut t = tool(size);
+    lay_ground(&mut t);
+    t.set_brush_size_px(26.0);
+    t.on_canvas_pointer(cp([200.0, 60.0], PointerPhase::Down));
+    for i in 1u8..=10 {
+        t.on_canvas_pointer(cp([200.0, 60.0 + 26.0 * f32::from(i)], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([200.0, 320.0], PointerPhase::Up));
+    save(&mut t, &dir, "9a_before_filter_stroke", size);
+    t.set_paint_tool_mode("sculpt");
+    t.set_sculpt_mode(0); // Smooth
+    t.set_sculpt_radius(0.8);
+    assert!(
+        t.filter_sculpt_layer(FilterScope::LastStroke),
+        "the stroke filter ran"
+    );
+    save(&mut t, &dir, "9b_filter_stroke_smooth", size);
 
     eprintln!("PNGs written to {dir}");
 }

@@ -148,7 +148,11 @@ impl PainterTool {
             // footprint (the panel does not offer the button for them either — one door, `filters_layer`),
             // and the refusal is a documented `false`, not a silent shrug.
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SCULPT_FILTER => {
-                self.filter_sculpt_layer();
+                self.filter_sculpt_layer(super::sculpt_filter::FilterScope::Layer);
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SCULPT_FILTER_STROKE => {
+                self.filter_sculpt_layer(super::sculpt_filter::FilterScope::LastStroke);
                 true
             }
             _ => false,

@@ -158,6 +158,10 @@ pub struct BrushSettings {
     /// **Filter Layer** button is painted only then. Same law as `sculpt_conserves` above: the panel asks
     /// the tool which verbs qualify instead of keeping a second copy of the list.
     pub sculpt_filters: bool,
+    /// Whether the **Filter Stroke** button has anything to act on: the verb reshapes AND there is a last
+    /// stroke on THIS layer to scope it to (`PainterTool::can_filter_last_stroke`). The card paints the
+    /// second button only then — the first stroke of a session has no predecessor to filter.
+    pub sculpt_can_filter_stroke: bool,
     /// Inflate **Smoothness** (Radius), `0..1` track — softens the ball's hard edge. Shown only for Inflate.
     pub sculpt_smooth: f32,
     /// The Smoothness in texels (`0..16`), as the chip reads it.

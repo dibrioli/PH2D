@@ -313,6 +313,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_SCULPT_CONSERVE,
         // Sculpt card: the Filter Layer action button (W5b — the verb applied to the whole layer).
         ph2d_editor_core::ids::PAINTER_SCULPT_FILTER,
+        ph2d_editor_core::ids::PAINTER_SCULPT_FILTER_STROKE,
         // Deform card: the Affect Relief toggle (W4 — the warp advects the impasto planes). Same trap as
         // the Rake above: painted + hit-indexed is still inert without an InteractiveState from here.
         ph2d_editor_core::ids::PAINTER_DEFORM_RELIEF,

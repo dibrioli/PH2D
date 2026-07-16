@@ -122,13 +122,19 @@ pub const PAINTER_SCULPT_CONSERVE: NodeId = hash_node_id("painter_sculpt.conserv
 /// (`sculpt_filter::filters_layer`, the one door the panel and the tool both ask).
 pub const PAINTER_SCULPT_FILTER: NodeId = hash_node_id("painter_sculpt.filter");
 
+/// **Filter Stroke** (W5b, Enio 2026-07-16) — the same verb, scoped to the LAST stroke instead of the
+/// whole layer. Weighted by that stroke's own paint envelope (`relief.live_paint`), so it feathers out
+/// exactly where the paint did. Offered only when the verb reshapes AND a last stroke exists on this layer
+/// (`PainterTool::can_filter_last_stroke`) — a button with nothing to act on would be a button that refuses.
+pub const PAINTER_SCULPT_FILTER_STROKE: NodeId = hash_node_id("painter_sculpt.filter_stroke");
+
 /// Every Sculpt widget a pointer can CLICK — the sweep list for the seam gate (`tests/seam_sculpt.rs`).
 ///
 /// It exists because a widget that paints, registers a hit rect and is forwarded by `event.rs` is STILL
 /// dead if `populate` never gave it an `InteractiveState`: `is_focusable` answers `None => false`, the
 /// Down never activates it, and the `Click` never happens. That is how the Impasto light rig shipped
 /// inert. Keep this list exhaustive and the sweep cannot go stale.
-pub const PAINTER_SCULPT_CLICKS: [NodeId; 11] = [
+pub const PAINTER_SCULPT_CLICKS: [NodeId; 12] = [
     PAINTER_SCULPT_MODE_IDS[0],
     PAINTER_SCULPT_MODE_IDS[1],
     PAINTER_SCULPT_MODE_IDS[2],
@@ -140,6 +146,7 @@ pub const PAINTER_SCULPT_CLICKS: [NodeId; 11] = [
     PAINTER_SCULPT_RAKE,
     PAINTER_SCULPT_CONSERVE,
     PAINTER_SCULPT_FILTER,
+    PAINTER_SCULPT_FILTER_STROKE,
 ];
 
 /// Every Sculpt slider (the `SetValue` half of the same sweep). All four are here even though the card only

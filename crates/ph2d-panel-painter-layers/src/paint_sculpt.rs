@@ -99,36 +99,46 @@ pub(crate) fn paint_sculpt_section(
         }
         _ => radius_row(ctx, theme, x, content_w, y, brush),
     };
-    // **Filter Layer** (W5b): the selected verb, applied to the WHOLE layer at the brush's Strength. It is
-    // a button and not a mode because the card already says *what* (the chips) and *how much* (the verb's
-    // knob + the brush's Strength) — this only says *everywhere*.
+    // **Filter** (W5b): the selected verb applied without a stroke, at the brush's Strength — to the whole
+    // LAYER, or to the last STROKE (Enio, 2026-07-16). Buttons and not modes because the card already says
+    // *what* (the chips) and *how much* (the verb's knob + the brush's Strength); these only say *where*.
     //
-    // Offered only where the verb HAS a whole-layer meaning, and the tool answers that
-    // (`sculpt_filters` ⇐ `SculptMode::filters_layer`): the plane verbs fit their target to the brush's
-    // footprint, and a layer has none. Not painting it is the honest refusal — a dimmed button that still
-    // dispatches would be a lie, and a second copy of the verb list here would drift from the tool's.
+    // Offered only where the verb RESHAPES, and the tool answers that (`sculpt_filters` ⇐
+    // `SculptMode::filters_layer`): the plane verbs fit their target to the brush's footprint (a layer has
+    // none), and Layer would only translate the field (the light reads `∇h`, so it would move nothing).
+    // The stroke button additionally needs a last stroke to exist on THIS layer (`sculpt_can_filter_stroke`).
+    // Not painting them is the honest refusal — a dimmed button that still dispatches would be a lie, and a
+    // second copy of the verb list here would drift from the tool's.
     if brush.sculpt_filters {
-        y = filter_row(ctx, theme, x, content_w, y);
+        y = filter_row(ctx, theme, x, content_w, y, brush.sculpt_can_filter_stroke);
     }
     y
 }
 
-/// The **Filter Layer** action button — a one-option segmented with nothing selected (the panel's action-row
-/// idiom, as `paint_watercolor`'s wetness actions use).
+/// The **Filter** action buttons — a segmented with nothing selected (the panel's action-row idiom, as
+/// `paint_watercolor`'s wetness actions use). One option, or two once there is a last stroke to scope to.
 fn filter_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
     content_w: f32,
     y: f32,
+    can_filter_stroke: bool,
 ) -> f32 {
+    let mut opts = vec![SegmentedOption::new(
+        core_ids::PAINTER_SCULPT_FILTER,
+        "Filter Layer",
+    )];
+    if can_filter_stroke {
+        opts.push(SegmentedOption::new(
+            core_ids::PAINTER_SCULPT_FILTER_STROKE,
+            "Filter Stroke",
+        ));
+    }
     let seg = SegmentedAdaptive::new(
         ph2d_a11y::NodeId(0),
-        "Apply the sculpt verb to the whole layer",
-        vec![SegmentedOption::new(
-            core_ids::PAINTER_SCULPT_FILTER,
-            "Filter Layer",
-        )],
+        "Apply the sculpt verb to the whole layer, or to the last stroke",
+        opts,
     )
     .selected(usize::MAX);
     let scene = &mut *ctx.scene;

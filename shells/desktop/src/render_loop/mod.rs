@@ -307,6 +307,18 @@ impl crate::App {
                 // Live Loop toggle — takes effect on the sounding preview immediately.
                 audio.editor_set_looping(ed::looping());
                 audio.editor_poll();
+                // The AI Denoise (W7) runs off the UI thread — this is where its result comes
+                // home, and where the bar of a just-started one is handed to the app-wide
+                // queue. Both are per-frame and both are no-ops when nothing is running.
+                #[cfg(feature = "audio-ml")]
+                {
+                    audio.editor_poll_ml();
+                    if let Some(progress) = audio.editor_take_started_job()
+                        && let Some(gfx) = self.gfx.as_mut()
+                    {
+                        gfx.jobs.push(progress);
+                    }
+                }
                 audio.editor_publish_delivery();
                 audio.editor_publish_platforms();
                 audio.editor_publish_spectral();
@@ -555,6 +567,7 @@ impl crate::App {
             theme,
             zen,
             toasts,
+            jobs,
             tools,
             layout,
             game_rt,
@@ -613,6 +626,11 @@ impl crate::App {
         if toasts.len() != prev_toasts {
             self.title_dirty = true;
         }
+        // Long-operation bars: drop the ones whose worker has stopped. Same once-per-frame
+        // settle as the toasts above, and the same reason it lives here rather than at the
+        // paint site — a queue that only prunes when someone draws it is a queue that leaks
+        // on any frame that is skipped.
+        jobs.tick();
 
         // M14.A: drive the NumberInput stepper continuous-hold. Each
         // frame we ask the dispatcher whether a held arrow should
@@ -3693,6 +3711,11 @@ impl crate::App {
             // panel re-painted; Move/Brush were stubs anyway).
             let _ = tools;
             toasts.paint(vector_scene, &mut paint_ctx);
+            // The job bars share the toasts' column and stack UNDER them, so they are handed
+            // the number of rows already spoken for. The count, not the geometry: the column's
+            // ruler lives in `progress::column_row` and neither the shell nor the toast painter
+            // gets to have an opinion about where row N is.
+            jobs.paint_below(toasts.len(), vector_scene, &mut paint_ctx);
             // Drain frame-local arena AFTER the dispatch + paint pass
             // so any events emitted earlier this frame are still alive
             // for downstream consumers — wired in Phase A+ (currently
@@ -3732,6 +3755,7 @@ impl crate::App {
             // chrome above remains because it's the click entrypoint
             // to switch tools; the per-tool panel itself is gone.
             toasts.paint(vector_scene, &mut paint_ctx);
+            jobs.paint_below(toasts.len(), vector_scene, &mut paint_ctx);
         }
 
         // Paint + present + title — extracted to `present.rs` sibling

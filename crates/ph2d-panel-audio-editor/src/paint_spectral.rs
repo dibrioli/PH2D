@@ -43,6 +43,16 @@ pub(crate) fn paint_spectral_section(
 ) -> f32 {
     let gap = Spacing::Sm.px();
     let label_h = TypeToken::Xs.px();
+    // An AI Denoise in flight (W7 — it runs off the UI thread, `ph2d_editor_core::progress`)
+    // makes every EDITING control here inert: each one commits to the clip, so a second edit
+    // fired mid-flight would land on top of the first and whichever finished last would
+    // silently win. The view toggle is deliberately NOT included — it draws, it does not edit,
+    // and being forbidden to look at the spectrogram while you wait would protect nothing.
+    //
+    // The user is not left guessing why: a progress bar is on screen for exactly as long as
+    // this lasts, and the status line below says so in words.
+    let busy = spectral_state::ml_busy();
+    let can_edit = loaded && !busy;
 
     // The view toggle. It is the first thing here because it is the precondition for
     // everything else: the box Repair needs can only be drawn in the spectrogram.
@@ -60,7 +70,7 @@ pub(crate) fn paint_spectral_section(
     y += row_h + gap;
 
     // Repair — lit only when there is a time-frequency box to act on.
-    let can_repair = loaded && spectral_state::has_band();
+    let can_repair = can_edit && spectral_state::has_band();
     button(
         Rect::new(x, y, w, row_h),
         "Repair Selection",
@@ -78,7 +88,7 @@ pub(crate) fn paint_spectral_section(
     button(
         Rect::new(x, y, half, row_h),
         "Learn Noise",
-        loaded && has_sel,
+        can_edit && has_sel,
         AEDIT_SPEC_LEARN,
         scene,
         text_system,
@@ -88,7 +98,7 @@ pub(crate) fn paint_spectral_section(
     button(
         Rect::new(x + half + gap, y, half, row_h),
         "Denoise",
-        loaded && spectral_state::has_profile(),
+        can_edit && spectral_state::has_profile(),
         AEDIT_SPEC_DENOISE,
         scene,
         text_system,
@@ -112,7 +122,7 @@ pub(crate) fn paint_spectral_section(
         button(
             Rect::new(x, y, w, row_h),
             "AI Denoise (Voice)",
-            loaded,
+            can_edit,
             AEDIT_SPEC_DENOISE_ML,
             scene,
             text_system,
@@ -124,7 +134,7 @@ pub(crate) fn paint_spectral_section(
 
     // The Amount slider drives whichever denoise is used: the W5 one (needs a profile) or the
     // AI one (always available in this build). Live when either can run.
-    let live = loaded && (spectral_state::has_profile() || ml);
+    let live = can_edit && (spectral_state::has_profile() || ml);
     paint_text(
         text_system,
         scene,
@@ -152,8 +162,14 @@ pub(crate) fn paint_spectral_section(
     y += Spacing::Md.px() + gap;
 
     // The status line is the section's teacher: it says what is selected and what is
-    // missing, so a dimmed button is never a mystery.
-    let status = spectral_state::status();
+    // missing, so a dimmed button is never a mystery. While a job runs it says *that* instead:
+    // the reason every control above is dark is the one fact that matters, and the rest of the
+    // line ("select silence, then Learn") would be instructions the user cannot act on.
+    let status = if busy {
+        "AI Denoise is running \u{b7} see the progress bar at the top".to_string()
+    } else {
+        spectral_state::status()
+    };
     if loaded && !status.is_empty() {
         paint_text(
             text_system,

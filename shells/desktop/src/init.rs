@@ -22,7 +22,7 @@ use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components, stable_type_id
 use ph2d_ecs::scene::{EditorCommandQueue, HierarchySnapshot, HierarchyWalkState};
 use ph2d_ecs::{PresentWorld, SimWorld, TransformPropagationState, WorklistBuf};
 use ph2d_editor::{
-    HeroScreen, Layout as EditorLayout, NodeId, Toast, ToastQueue, ToolRegistry, ZenMode,
+    HeroScreen, JobQueue, Layout as EditorLayout, NodeId, Toast, ToastQueue, ToolRegistry, ZenMode,
 };
 use ph2d_gpu::{GpuContext, SurfaceContext};
 use ph2d_host::{Lifecycle, PlatformHost};
@@ -210,6 +210,7 @@ pub(crate) fn build_initial_state(
     let theme = parse_theme_env();
     eprintln!("[ph2d] theme = {}", theme.id());
     let zen = ZenMode::new();
+    let jobs = JobQueue::new();
     let mut toasts = ToastQueue::new();
     toasts.push(Toast::success("Editor data layer wired (M12)"));
     toasts.push(Toast::info("Press 1=Brush, 2=Move, 3=Bg Removal, Tab=Zen"));
@@ -402,6 +403,7 @@ pub(crate) fn build_initial_state(
         theme,
         zen,
         toasts,
+        jobs,
         tools,
         layout,
         game_rt,

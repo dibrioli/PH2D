@@ -66,42 +66,44 @@ fn tool_click(id: NodeId) -> Option<EventOutcome> {
     Some(EventOutcome::Consumed)
 }
 
-/// Spectral clicks (W5). The view toggle is free; the three tools each need something
-/// selected, and **the seam refuses without it** — the panel dims them, but a dim is
+/// Spectral clicks (W5 + the W7 AI Denoise). The view toggle is free; the four tools each need
+/// something selected, and **the seam refuses without it** — the panel dims them, but a dim is
 /// cosmetic, and the cost of getting this wrong is not a no-op: Learn against a stretch of
 /// *signal* would teach the denoiser that the voice is the noise, and then remove it.
 fn spectral_click(id: NodeId) -> Option<EventOutcome> {
     if id == AEDIT_SPEC_VIEW {
+        // **Looking is free, even mid-job.** This is the one control here that stays live while
+        // an AI Denoise runs: it changes what the overlay draws and touches no clip. Freezing it
+        // would protect nothing and would mean sitting out five seconds forbidden to look at the
+        // spectrogram. The paint agrees — it is the one thing `busy` does not dim.
         spectral_state::toggle_view();
         return Some(EventOutcome::Consumed);
     }
-    if id == AEDIT_SPEC_REPAIR {
+    // Every tool below EDITS the clip: what it would arm, and what it needs before it may.
+    //
+    // **`ml_busy` is asked once, here, for all four** — not remembered in each arm. It was
+    // per-arm first, and Repair was promptly forgotten; the seam gate caught it firing mid-job.
+    // A condition that each new reader has to remember is a condition that the next reader
+    // will not ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+    let (cmd, ready) = if id == AEDIT_SPEC_REPAIR {
         // Needs a time-AND-frequency box, which only exists in the spectrogram.
-        if spectral_state::has_band() {
-            snapshot::request_edit(AudioEditCmd::SpectralRepair);
-        }
-        return Some(EventOutcome::Consumed);
-    }
-    if id == AEDIT_SPEC_LEARN {
-        if snapshot::has_selection() {
-            snapshot::request_edit(AudioEditCmd::LearnNoise);
-        }
-        return Some(EventOutcome::Consumed);
-    }
-    if id == AEDIT_SPEC_DENOISE {
-        if spectral_state::has_profile() {
-            snapshot::request_edit(AudioEditCmd::Denoise);
-        }
-        return Some(EventOutcome::Consumed);
-    }
-    if id == AEDIT_SPEC_DENOISE_ML {
-        // No profile check: DeepFilterNet learns the noise itself. The button is only painted
+        (AudioEditCmd::SpectralRepair, spectral_state::has_band())
+    } else if id == AEDIT_SPEC_LEARN {
+        (AudioEditCmd::LearnNoise, snapshot::has_selection())
+    } else if id == AEDIT_SPEC_DENOISE {
+        (AudioEditCmd::Denoise, spectral_state::has_profile())
+    } else if id == AEDIT_SPEC_DENOISE_ML {
+        // No profile needed: DeepFilterNet learns the noise itself. The button is only painted
         // when `audio-ml` is compiled in, so a click can only reach here in that build; if the
         // command still arrived without the feature, the shell's arm is a compiled-out no-op.
-        snapshot::request_edit(AudioEditCmd::DenoiseMl);
-        return Some(EventOutcome::Consumed);
+        (AudioEditCmd::DenoiseMl, true)
+    } else {
+        return None;
+    };
+    if ready && !spectral_state::ml_busy() {
+        snapshot::request_edit(cmd);
     }
-    None
+    Some(EventOutcome::Consumed)
 }
 
 /// W6 asset-prep clicks that arm a `loop_state` intent (Batch LUFS · force-mono toggle ·

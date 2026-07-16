@@ -144,25 +144,119 @@ design) — the default build is untouched by W7.
 
 ## 7 — Open / follow-ups
 
-- **Progress bar for a long AI Denoise — BACKLOG, end of the queue (Enio, 2026-07-15).** Smoked and
-  deliberately deferred, so read the numbers before reviving it: in **release** the model runs at
-  **0.03× real-time** (a 4 s clip in 0.16 s — Enio's word: *"praticamente instantâneo"*), and model
-  load is only ~50 ms, so **caching the `DfTract` is not the win the code reads like**. The wait
-  that prompted the request was a **debug build** (16× slower: the same clip took 2.68 s) — hence
-  the `--release` now baked into the smoke's docs. It becomes real only on a **long take**: 3 min of
-  VO ≈ **5 s** of frozen UI. **Why it is not a small job:** the shell has **no async pattern** (zero
-  worker threads for editor ops) and the design system has **no progress widget**, and
-  `editor_denoise_ml` blocks the UI thread — so *no bar can be painted at all* until the work moves
-  off-thread; a bar that cannot advance is worse than none. Proper shape: worker thread (`SampleData`
-  is `Arc`-backed, so handing it over is free) + a progress sink through `denoise_ml`'s hop loop +
-  a busy state that disables the Spectral buttons + the bar. ~250–400 LOC, and it would be the
-  **first async editor op** — a precedent batch LUFS and export would copy, which is exactly why it
-  deserves its own task rather than a graft.
+- **Progress bar — BUILT (2026-07-16), and it is APP infrastructure.** See §8 below and
+  `docs/Audio/03_o_que_falta.md` §2.1. The AI Denoise is the first consumer, not the owner.
 - **Stereo** clips are processed by running the model per the (resampled) channel count; the
   boundary keeps the layout. Not exercised by the mono fixture — worth a stereo smoke if it matters.
 - The dev-profile parity test runs DFN at opt-0 (~6 s). Acceptable for a gate; if it ever grates,
   add a `[profile.dev.package]` opt bump for the tract crates (mirrors what `-spectral` did).
 - Vendored `deep_filter` is trimmed to the compiled subset; a future re-vendor must re-apply §4.
 - The three inherited-debt items in §5 want their owners' proper fixes (esp. the `fx_presets` split).
+
+**Do NOT integrate or push. Fence held; hand this to Enio.**
+
+
+---
+
+## 8 — Long-operation progress (2026-07-16) — the shell's first async pattern
+
+Enio's call: **it serves the whole app**, not the audio. Batch LUFS, export, upscale and the
+painter have the identical shape, and each inventing its own thread + bar would give the app four
+progress idioms and four sets of bugs. The AI Denoise is the first consumer.
+
+### 8.1 What landed
+
+**`crates/ph2d-editor-core/src/progress.rs`** (+ `progress/tests.rs`), sibling of `toast.rs`:
+
+| | |
+|---|---|
+| `Progress` | Cloneable, thread-safe (`Arc` + `AtomicU32` fixed-point ppm + `AtomicBool` + label). Worker stores, painter loads, **one `Arc`**. |
+| `Job<T>` | `spawn(label, FnOnce(&Progress) -> T)` · `try_take()` **never blocks** · `is_finished()`. |
+| `JobQueue` | Holds `Progress` (not `Job<T>`) · `tick()` per frame · cap 8, silent drop. |
+
+Shell: `AppGfx.jobs` (beside `toasts`), ticked at the toast tick, painted at the toast paint.
+`AudioSystem` keeps the typed `ml_job` + a one-shot `started_job` outbox (the `take_*` idiom the
+panel bridge already uses — the spawn happens deep inside `editor_apply`, which has no business
+reaching for the shell's chrome).
+
+### 8.2 The decisions that matter (and the two the brief got wrong)
+
+1. **The design system ALREADY had a progress widget.** The brief said it did not. `widget::
+   ProgressBar` (determinate/indeterminate, `show_percent`, `Role::ProgressIndicator`, the
+   small-value radius clamp) existed with the **gallery as its only consumer**. The job bar is
+   that widget — a hand-rolled track would be a second answer to "what does progress look like
+   here", and the day someone retunes the widget the job bars would keep the old look. The card
+   around it (elevated surface, border, label) is the *column's* chrome and is `progress.rs`'s.
+2. **`impl Paint for JobQueue` could NOT go in `paint.rs`.** The brief asked for it there;
+   `paint.rs` is **frozen at 884 LOC** in `architecture_workspace_file_loc_cap`'s allowlist —
+   "may shrink, never grow", and raising it needs Coordenador sign-off + an ADR. It is colocated
+   with the model instead, which is this crate's own documented pattern anyway ("data + state enum
+   + tokens + a11y::Node + colocated `paint_X` helper"). paint.rs 884 → **879**.
+3. **Column order: toasts on top, bars below.** A toast self-destructs in 3 s — one chance to be
+   read — so its slot must not depend on whether an unrelated job happens to be running. A bar is
+   persistent and self-announcing (it is the thing *moving*), so it absorbs the offset. One ruler
+   (`column_row`), which the toast painter now measures against too, so they cannot drift.
+4. **The `-ml` crate takes `&dyn Fn(f32)`, not `Progress`.** The containment that put `tract` in
+   there cuts both ways. `denoise_ml` delegates with an empty callback — **one code path**, so the
+   parity gate still measures the function the app runs.
+5. **`done` comes from a drop guard.** `denoise_ml` has two `.expect()`s; a panicking worker that
+   left the flag false would leave a bar that can never advance and never leave.
+6. **Stale results are dropped.** The UI stays live (the point), and only Spectral is dimmed —
+   Cut/Paste/Normalize are still there. The worker returns `MlDenoise { source, out }` and the
+   installer compares buffer identity. Sound because `source` comes back **alive**: an address
+   cannot have been recycled by a buffer we are still holding.
+7. **The view toggle stays live during a job** — it draws, it does not edit. Pinned by a gate so
+   it is not "fixed" later.
+
+### 8.3 Gates
+
+| Gate | Where |
+|---|---|
+| Work leaves the UI thread; `try_take` does not block; result arrives | `progress/tests.rs` (deterministic: the worker is held on a channel the test controls — no sleep) |
+| A panicking worker still takes its bar down | same |
+| `tick` drops the finished, keeps the running (out-of-order) | same |
+| The bar paints, an empty queue does not, the fill tracks the fraction | same — **counts `Scene::encoding().n_paths`**, not "did not panic" |
+| a11y bounds are the track that gets painted | same |
+| **Progress climbs across the run** (not `{0,1}`, spread over all four quarters) | `ph2d-audio-ml/tests/progress_is_reported_as_the_model_runs.rs` |
+| Watching the run changes no sample; `amount 0` reports nothing | same |
+| Every Spectral control is inert while a job runs — **and works again after** | `ph2d-panel-audio-editor/tests/seam.rs` |
+| Parity with the reference CLI still green | `parity_with_reference_cli` (untouched) |
+
+**Mutation-tested (4 mutants, all killed):**
+- hop loop reports nothing → survivor `[1.0]`, killed by the *spread* assertion. **A naive "did
+  progress arrive?" test would have passed** — that is why the assertion is about the middle.
+- wrong denominator (samples, not hops) → progress crawls to 0.6 %, monotone, ends at 1.0 → killed.
+- `ml_busy` refusal removed → seam red.
+- `paint_bar` no-op → both paint gates red.
+
+**The seam gate found a real bug while being written:** the busy check was per-arm and **Repair was
+forgotten**. Fixed by asking once for all four ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+
+### 8.4 Smoke — and how to actually SEE the bar
+
+The default 4 s clip denoises in ~0.16 s: **the bar flashes past**, which is the product being fast.
+`PH2D_AUDIO_ML_SMOKE_SECS` stages the case the bar exists for:
+
+```text
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-audio && \
+  PH2D_AUDIO_ML_SMOKE=1 PH2D_AUDIO_ML_SMOKE_SECS=180 \
+  cargo run --release -p ph2d-host-desktop --features audio-ml
+```
+
+3-minute take → ~5.4 s of inference (the console prints the estimate for whatever you staged).
+Expect: the window keeps redrawing, the bar climbs top-centre, the percentage moves, the Spectral
+section is dimmed with the reason on its status line, the view toggle still works — and the hiss is
+gone at the end. An indicator nobody can observe has not been verified, which is why this knob is
+part of the feature.
+
+### 8.5 Open
+
+- **One consumer.** Batch LUFS / export / upscale / painter are next; copying is their work.
+- **No cancel.** Nothing aborts a job in flight. Defensible at 5 s; not at the first minutes-long
+  job — and then it is an `AtomicBool` the callback reads (it is already called per hop).
+- **`build_a11y` is not grafted into the tree** — neither is `ToastQueue`'s. Designed, unconsumed:
+  same status as the rest of the design system. When the shell grafts toasts, it grafts bars.
+- **No error toast if a worker panics** (the panic goes to stderr; the bar comes down).
+- The bar sits at 0 % during the boundary resample for a clip that is not already 48 kHz.
 
 **Do NOT integrate or push. Fence held; hand this to Enio.**

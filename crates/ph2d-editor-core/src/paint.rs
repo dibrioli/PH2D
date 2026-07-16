@@ -652,19 +652,14 @@ impl Paint for ToastQueue {
     fn paint(&self, scene: &mut VectorScene, ctx: &mut PaintCtx) {
         use crate::toast::ToastSeverity;
         use ph2d_tokens::Radius;
-        let toast_w = 360.0_f32;
-        let toast_h = 44.0_f32;
-        let gap = 8.0_f32;
-        let top_margin = 16.0_f32;
-        let center_x = ctx.viewport.x + (ctx.viewport.w - toast_w) / 2.0;
+        // The toast stream owns the TOP of the top-center column and the job bars
+        // (`progress::JobQueue`) stack under it — a toast lives three seconds and gets one
+        // chance to be read, so its slot must not move because some background job happens to
+        // be running. `column_row` is the shared ruler for both tenants; it lives over there
+        // because this file is at its frozen LOC ceiling (see the workspace LOC-cap gate).
         let radius = Radius::Md.px();
         for (i, toast) in self.iter().enumerate() {
-            let r = Rect {
-                x: center_x,
-                y: ctx.viewport.y + top_margin + (toast_h + gap) * i as f32,
-                w: toast_w,
-                h: toast_h,
-            };
+            let r = crate::progress::column_row(ctx.viewport, i);
             // Body uses BgElev so the toast lifts off the canvas
             // independently of its severity tint; the severity color
             // is reserved for the icon + accent stripe on the left.

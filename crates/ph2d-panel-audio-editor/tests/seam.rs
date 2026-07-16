@@ -29,8 +29,9 @@ use ph2d_panel_audio_editor::{
     take_toggle_mono,
 };
 use ph2d_panel_audio_editor::{
-    AEDIT_FX_LOAD_IR, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR,
-    AEDIT_SPEC_VIEW, AEDIT_VAR_ENABLED, spectral_state, take_load_ir, take_toggle_enabled,
+    AEDIT_FX_LOAD_IR, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_DENOISE_ML,
+    AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, AEDIT_VAR_ENABLED, spectral_state,
+    take_load_ir, take_toggle_enabled,
 };
 use ph2d_panel_audio_editor::{
     AEDIT_VAR_ADD, AEDIT_VAR_ADD_FOLDER, AEDIT_VAR_GAIN, AEDIT_VAR_LOAD, AEDIT_VAR_PITCH,
@@ -957,6 +958,74 @@ fn the_spectral_tools_refuse_to_fire_without_what_they_need() {
         Some(AudioEditCmd::Denoise),
         "Denoise never armed its command, even with a profile"
     );
+}
+
+/// **Every Spectral control goes inert while an AI Denoise is running — and stays that way
+/// through the dispatch, not just in the paint.**
+///
+/// The AI Denoise (W7) is the app's first off-thread job: it takes ~5 s on a 3-minute take, the
+/// UI stays live throughout (that is the point), and the section is dimmed for the duration.
+/// A dim is cosmetic — the 2026-07-09 audit found disabled buttons still registering hit rects
+/// — so the refusal has to be in `event.rs`. Without it, a second click mid-flight arms a
+/// second edit, and the result that lands second silently discards the first.
+///
+/// Written as refuse/allow, because a gate that only proves the refusal passes just as happily
+/// when the button is dead in both states ([[feedback_absence_gate_needs_a_presence_sibling]]).
+#[test]
+fn every_spectral_control_is_inert_while_an_ai_denoise_runs() {
+    let mut host = MockPanelHost::with_panel::<AudioEditorPanel>();
+    let mut state = AudioEditorState;
+    let _ = take_edit_cmd();
+
+    // Everything each tool needs IS present — so the only thing refusing is the job.
+    spectral_state::set_ready(true, true, "");
+    set_has_selection(true);
+    spectral_state::set_ml_busy(true);
+
+    for (id, what) in [
+        (AEDIT_SPEC_REPAIR, "Repair"),
+        (AEDIT_SPEC_DENOISE, "Denoise"),
+        (AEDIT_SPEC_LEARN, "Learn"),
+        (AEDIT_SPEC_DENOISE_ML, "AI Denoise"),
+    ] {
+        host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(
+            take_edit_cmd(),
+            None,
+            "{what} armed an edit while a denoise was still running — the result that lands \
+             second would silently throw away the first"
+        );
+    }
+
+    // **The view toggle is NOT inert** — and this is a decision, not an omission, so it is
+    // pinned here before someone "fixes" it. It draws; it does not edit. Nothing it can do
+    // collides with a running job, and forbidding a look at the spectrogram for the five
+    // seconds you are waiting would be a rule that protects nothing.
+    let before = spectral_state::view();
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_VIEW));
+    assert_ne!(
+        spectral_state::view(),
+        before,
+        "the view toggle went dead during a job — looking is free, it edits nothing"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_VIEW));
+
+    // The presence sibling: when the job lands, the same clicks work again. Without this half,
+    // deleting the whole Spectral section would keep the test above green.
+    spectral_state::set_ml_busy(false);
+    host.apply_panel_event::<AudioEditorPanel>(
+        &mut state,
+        WidgetEvent::Click(AEDIT_SPEC_DENOISE_ML),
+    );
+    assert_eq!(
+        take_edit_cmd(),
+        Some(AudioEditCmd::DenoiseMl),
+        "AI Denoise stayed dead after its job finished — the section never came back"
+    );
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_REPAIR));
+    assert_eq!(take_edit_cmd(), Some(AudioEditCmd::SpectralRepair));
+    host.apply_panel_event::<AudioEditorPanel>(&mut state, WidgetEvent::Click(AEDIT_SPEC_LEARN));
+    assert_eq!(take_edit_cmd(), Some(AudioEditCmd::LearnNoise));
 }
 
 /// **Learn refuses without a selection** — and this is the one that could do real harm.

@@ -34,6 +34,14 @@ thread_local! {
     /// feature the shell never flips this, the button is never painted, and nothing dead is
     /// shown — the panel crate stays feature-agnostic, the shell owns the one switch.
     static ML_AVAILABLE: Cell<bool> = const { Cell::new(false) };
+    /// Shell → panel: an AI Denoise is running right now (on a worker thread — see
+    /// `ph2d_editor_core::progress`), so this whole section is inert until it lands.
+    ///
+    /// Every button here reads the clip, and two of them (`Denoise`, `AI Denoise`) would
+    /// **commit** to it. Letting a second one fire mid-flight means the result that lands
+    /// second silently throws away the first. The section is dimmed for the seconds it takes,
+    /// and the progress bar says why — that is the whole trade the bar buys.
+    static ML_BUSY: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Panel: flip between waveform and spectrogram.
@@ -85,4 +93,16 @@ pub fn set_ml_available(v: bool) {
 /// Panel: is AI Denoise available in this build?
 pub(crate) fn ml_available() -> bool {
     ML_AVAILABLE.with(Cell::get)
+}
+
+/// Shell: an AI Denoise is running (or has just finished). Published every frame.
+pub fn set_ml_busy(v: bool) {
+    ML_BUSY.with(|c| c.set(v));
+}
+
+/// Panel + shell: is a long AI Denoise in flight? Dims this section — and, because a dimmed
+/// button that still dispatches is a lie, it is also read by `event.rs` to REFUSE the click.
+/// (The shell refuses a third time, in `editor_denoise_ml`, where the work is.)
+pub fn ml_busy() -> bool {
+    ML_BUSY.with(Cell::get)
 }

@@ -95,6 +95,20 @@ pub(crate) struct AudioSystem {
     /// transport state, driven by the `panel-audio-editor` bridge.
     #[cfg(feature = "panel-audio-editor")]
     editor: AudioEditorRuntime,
+    /// The AI Denoise (W7) running off-thread, if one is (`editor::spectral`).
+    ///
+    /// The typed job lives here — with the code that knows a `SampleData` is a clip and what
+    /// to do with one — while its *bar* goes to the app-wide `AppGfx.jobs`. That split is the
+    /// pattern, not an accident: `Job<T>` is generic over the result, so a queue of jobs could
+    /// only ever hold one kind of work.
+    #[cfg(feature = "audio-ml")]
+    ml_job: Option<ph2d_editor::Job<editor::spectral::MlDenoise>>,
+    /// One-shot outbox: a job was just started and its bar has not been handed to the app's
+    /// `JobQueue` yet. The same request/take idiom the panel bridge uses everywhere else
+    /// (`take_edit_cmd`, `take_export`, `take_batch_lufs`) — the spawn happens deep inside
+    /// `editor_apply`, which has no business reaching for the shell's chrome.
+    #[cfg(feature = "audio-ml")]
+    started_job: Option<ph2d_editor::Progress>,
     // Kept alive for the app's lifetime; the callback (which owns the renderer)
     // runs on cpal's thread until this drops. `cpal::Stream` is `!Send` on ALSA,
     // which is fine — `App` never leaves the main thread.
@@ -207,6 +221,10 @@ impl AudioSystem {
             duck_env: std::cell::Cell::new(1.0),
             #[cfg(feature = "panel-audio-editor")]
             editor: AudioEditorRuntime::default(),
+            #[cfg(feature = "audio-ml")]
+            ml_job: None,
+            #[cfg(feature = "audio-ml")]
+            started_job: None,
             _stream: stream,
         })
     }

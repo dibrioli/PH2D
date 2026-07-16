@@ -30,6 +30,22 @@
 //! ```text
 //! PH2D_AUDIO_ML_SMOKE=1 cargo run --release -p ph2d-host-desktop --features audio-ml
 //! ```
+//!
+//! ## Seeing the progress bar
+//!
+//! The default 4 s clip denoises in ~0.16 s, so **the bar flashes past** — which is the product
+//! working, and is also why it cannot be checked here. `PH2D_AUDIO_ML_SMOKE_SECS` stages a clip of
+//! any length, and the interesting one is the case the bar was built for: a 3-minute take, ~5 s of
+//! inference.
+//!
+//! ```text
+//! PH2D_AUDIO_ML_SMOKE=1 PH2D_AUDIO_ML_SMOKE_SECS=180 cargo run --release -p ph2d-host-desktop --features audio-ml
+//! ```
+//!
+//! While it runs: the window still redraws, the bar climbs, the percentage moves, the Spectral
+//! section is dimmed with a reason on its status line — and when it lands the hiss is gone. An
+//! indicator nobody can observe has not been verified, so this knob is part of the feature, not a
+//! convenience.
 
 use ph2d_audio::{AudioFormat, ChannelLayout, SampleData};
 
@@ -37,6 +53,24 @@ use crate::audio::AudioSystem;
 use crate::audio::editor::EditorTransport;
 
 const SR: u32 = 48_000; // DeepFilterNet's rate, so the smoke exercises the no-resample path.
+
+/// Clip length when `PH2D_AUDIO_ML_SMOKE_SECS` says nothing. Long enough to hear the model work,
+/// short enough that the button feels instant — which is the honest default, since that IS how it
+/// feels on the material this feature was built for.
+const DEFAULT_SECS: f32 = 4.0;
+
+/// How long a clip to stage, in seconds (`PH2D_AUDIO_ML_SMOKE_SECS`).
+///
+/// Clamped to something a smoke can survive: 0 s is not a clip, and past 10 minutes the staging
+/// itself (a few million transcendentals) starts to be the thing you are waiting for.
+fn clip_secs() -> f32 {
+    std::env::var("PH2D_AUDIO_ML_SMOKE_SECS")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .filter(|v| v.is_finite())
+        .map(|v| v.clamp(0.5, 600.0))
+        .unwrap_or(DEFAULT_SECS)
+}
 
 /// A cheap deterministic white-noise source (splitmix64) — a smoke must not be flaky, so no `rand`.
 fn hiss(state: &mut u64) -> f32 {
@@ -61,9 +95,10 @@ fn hiss(state: &mut u64) -> f32 {
 /// The AI Denoise ignores the lead-in: it learns the noise itself and needs no Learn.
 const LEAD_IN_S: f32 = 0.75;
 
-fn noisy_clip() -> SampleData {
+fn noisy_clip(secs: f32) -> SampleData {
     let tau = std::f32::consts::TAU;
-    let frames = SR as usize * 4; // 0.75 s of hiss alone, then 3.25 s of tone under hiss
+    // 0.75 s of hiss alone, then tone under hiss for the rest.
+    let frames = (SR as f32 * secs) as usize;
     let mut rng = 0x5EEDu64;
     // Pre-roll the noise so the value at frame 0 is already mixed (splitmix has no warmup, but this
     // keeps the generator's state independent of the interleaving order below).
@@ -88,13 +123,16 @@ impl AudioSystem {
     /// Stage the noisy clip for the AI Denoise smoke.
     pub(crate) fn editor_ml_smoke(&mut self) {
         let _ = self.engine.stop_preview();
+        let secs = clip_secs();
         self.editor.name = "ai-denoise-smoke".to_string();
-        self.editor.clip = Some(ph2d_audio_edit::EditClip::new(noisy_clip()));
+        self.editor.clip = Some(ph2d_audio_edit::EditClip::new(noisy_clip(secs)));
         self.editor.state = EditorTransport::Stopped;
         self.editor.scrub_frame = Some(0);
+        // 0.03x real-time, measured in release (ADR-0123 / the W7 closure handoff).
+        let est = secs * 0.03; // LITERAL-PX-OK: measured release-build speed ratio, not a dimension
         println!(
             "audio: AI Denoise smoke staged (PH2D_AUDIO_ML_SMOKE)\n  \
-             clip: 0.75 s of hiss alone, then 3.25 s of a voiced tone under that hiss (~0 dB SNR).\n  \
+             clip: {secs:.2} s -- 0.75 s of hiss alone, then a voiced tone under that hiss (~0 dB SNR).\n  \
              do:   open the Audio Editor (top bar) -> expand the Spectral section -> Play -> click\n  \
                    AI Denoise (Voice) -> Play again. The hiss should fall away, the tone stay.\n  \
              a/b:  for the W5 Denoise, select the OPENING HISS -> Learn Noise -> Denoise. It pulls\n  \
@@ -103,8 +141,18 @@ impl AudioSystem {
              note: the two do NOT overlap. The AI model is speech-trained -- it deletes whatever is\n  \
                    not a voice (0% of a game SFX survives), so the W5 stays as the denoise for SFX,\n  \
                    ambience and music. The AI button exists ONLY with --features audio-ml.\n  \
-             speed: RELEASE builds run the model at 0.03x real-time (this clip: ~0.16 s). A DEBUG\n  \
-                   build is ~16x slower (~2.7 s) and makes the button feel broken -- use --release."
+             bar:  the denoise runs OFF the UI thread with a progress bar at the top-centre. This\n  \
+                   clip should take ~{est:.2} s in release, so the bar {bar}.\n  \
+                   For the case it was built for, stage a real take: PH2D_AUDIO_ML_SMOKE_SECS=180\n  \
+                   (~5 s of work) -- the window keeps redrawing, the bar climbs, and the Spectral\n  \
+                   section is dimmed until it lands.\n  \
+             speed: RELEASE builds run the model at 0.03x real-time. A DEBUG build is ~16x slower\n  \
+                   and makes the button feel broken -- use --release.",
+            bar = if est < 1.0 {
+                "will flash past (that is the product being fast, not the bar being broken)"
+            } else {
+                "should be plainly visible"
+            }
         );
     }
 }

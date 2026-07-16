@@ -73,6 +73,11 @@ impl super::super::AudioSystem {
         // build without `audio-ml` never shows it. Published before the no-clip early return so it
         // is always current.
         ss::set_ml_available(cfg!(feature = "audio-ml"));
+        // Is one running right now? What dims this whole section (and what `event.rs` reads to
+        // refuse a click that reaches it anyway). Always false without the feature — no job can
+        // exist in a build with no model.
+        #[cfg(feature = "audio-ml")]
+        ss::set_ml_busy(self.editor_ml_busy());
 
         let Some(clip) = self.editor.clip.as_ref() else {
             ss::set_ready(false, false, "");
@@ -251,23 +256,125 @@ impl super::super::AudioSystem {
     ///
     /// The sibling of [`Self::editor_denoise`] without the Learn step — DeepFilterNet learns the
     /// noise itself, so there is no profile. `amount` is the same slider: `0` is a byte-identical
-    /// no-op (guarded below so it never costs an undo step), `1` is the full model output. Only
-    /// compiled when the shell was built with `audio-ml`.
+    /// no-op, `1` is the full model output. Only compiled when the shell was built with `audio-ml`.
+    ///
+    /// ## Why this one is a job and the W5 denoise is not
+    ///
+    /// The model runs at 0.03× real-time, which is *instant* on the 4 s clips this feature was
+    /// developed against (0.16 s) and **~5 s on a 3-minute take** — five seconds in which the
+    /// window would not redraw, not resize, and not answer. Every other edit in the rack is
+    /// milliseconds; this is the one that had to leave the UI thread, and it is the first thing
+    /// in the shell that ever has.
+    ///
+    /// The bar this raises is app infrastructure (`ph2d_editor_core::progress`), not an audio
+    /// widget: batch LUFS, export and upscale have the identical shape and are meant to copy
+    /// this, not reinvent it.
     #[cfg(feature = "audio-ml")]
     pub(crate) fn editor_denoise_ml(&mut self) {
+        // Refuse to stack jobs. The button is dimmed while one runs (`set_ml_busy`), but a
+        // dimmed button that still dispatches is a lie — the refusal has to be here, where the
+        // work is, not only in the paint.
+        if self.ml_job.is_some() {
+            return;
+        }
         let amount = ph2d_panel_audio_editor::spectral_state::amount();
-        let Some(clip) = self.editor.clip.as_mut() else {
+        let Some(clip) = self.editor.clip.as_ref() else {
             return;
         };
-        let out = ph2d_audio_ml::denoise_ml(clip.data(), amount);
-        // Same guard as the W5 denoise: at amount 0 (and on an empty clip) `denoise_ml` returns
-        // the input untouched, and an undo step for an edit that never happened is a lie.
-        if out.samples() == clip.data().samples() {
+        // `amount == 0` is a byte-identical no-op. Answer it HERE rather than paying a thread,
+        // a bar and a frame of latency to have `denoise_ml` hand the clip straight back — and
+        // an undo step for an edit that never happened would be a lie either way.
+        if amount <= 0.0 {
             return;
+        }
+        // Cheap to send: `SampleData` is an `Arc<[f32]>`, so this clones a refcount, not a
+        // clip. (The engine may be sounding the very same buffer on the RT thread — it is
+        // immutable, and that is exactly why this is safe to hand to a worker.)
+        let data = clip.data().clone();
+        let job = ph2d_editor::Job::spawn("AI Denoise (Voice)", move |p| {
+            // The bridge from this crate's `Progress` to the DSP crate's `&dyn Fn(f32)`. It is
+            // one line, and it is the whole reason `ph2d-audio-ml` does not depend on the
+            // editor: a DSP crate that must link a UI to report a percentage is a DSP crate
+            // that cannot be used without one.
+            let out = ph2d_audio_ml::denoise_ml_with_progress(&data, amount, &|f| p.set(f));
+            MlDenoise { source: data, out }
+        });
+        self.started_job = Some(job.progress().clone());
+        self.ml_job = Some(job);
+    }
+
+    /// Hand the bar of a just-started job to the app-wide queue. Called once per frame by the
+    /// bridge; `None` on every frame but the one after a click.
+    #[cfg(feature = "audio-ml")]
+    pub(crate) fn editor_take_started_job(&mut self) -> Option<ph2d_editor::Progress> {
+        self.started_job.take()
+    }
+
+    /// Is an AI Denoise running? What dims the Spectral section.
+    #[cfg(feature = "audio-ml")]
+    pub(crate) fn editor_ml_busy(&self) -> bool {
+        self.ml_job.is_some()
+    }
+
+    /// Install the AI Denoise result once the worker has it. Called once per frame.
+    ///
+    /// **Both branches drop the job**, including the one where `try_take` comes back empty: a
+    /// worker that panicked (the model failing to initialise is an `expect`) is finished and has
+    /// no result, and a caller that only cleared the slot on success would leave the section
+    /// dimmed for the rest of the session, waiting on a thread that is gone.
+    #[cfg(feature = "audio-ml")]
+    pub(crate) fn editor_poll_ml(&mut self) {
+        let Some(job) = self.ml_job.as_mut() else {
+            return;
+        };
+        if !job.is_finished() {
+            return;
+        }
+        let taken = job.try_take();
+        self.ml_job = None;
+        let Some(MlDenoise { source, out }) = taken else {
+            return; // the worker panicked; it has already said so on stderr
+        };
+        let Some(clip) = self.editor.clip.as_mut() else {
+            return; // the clip was closed while we worked — the result is about nothing now
+        };
+        // **The clip may have been EDITED while the model ran** — the UI stayed live, which was
+        // the entire point of moving the work off it, and only the Spectral section is dimmed
+        // (Cut, Paste and Normalize are all still there). Committing a result computed from a
+        // buffer that is no longer on screen would silently throw away whatever the user did in
+        // the meantime. `SampleData` is an immutable `Arc<[f32]>`, so buffer identity answers it
+        // exactly: same pointer = same samples. This is the `BufKey` idiom used at the top of
+        // this file, and it is sound here because `source` came back from the worker still
+        // alive — an address cannot be recycled by a buffer we are still holding.
+        if !same_buffer(&source, clip.data()) {
+            return;
+        }
+        if out.samples() == clip.data().samples() {
+            return; // nothing changed → no undo step for an edit that never happened
         }
         clip.commit_rendered(out);
         self.editor_hot_swap();
     }
+}
+
+/// What the AI Denoise worker hands back: the result **and the buffer it was computed from**.
+///
+/// The source travels with the result for one reason — it is what lets the installer ask "is
+/// this still about the clip on screen?" — and carrying it (rather than, say, an address noted
+/// down before the spawn) is what makes that question answerable: the buffer is still alive, so
+/// its identity cannot have been recycled by a different clip while we were not looking.
+#[cfg(feature = "audio-ml")]
+pub(crate) struct MlDenoise {
+    source: ph2d_audio::SampleData,
+    out: ph2d_audio::SampleData,
+}
+
+/// Are these two the same buffer? `SampleData` is an immutable `Arc<[f32]>`, so a shared
+/// pointer means shared samples. Same question `BufKey` asks at the top of this file.
+#[cfg(feature = "audio-ml")]
+fn same_buffer(a: &ph2d_audio::SampleData, b: &ph2d_audio::SampleData) -> bool {
+    std::ptr::eq(a.samples().as_ptr(), b.samples().as_ptr())
+        && a.samples().len() == b.samples().len()
 }
 
 /// A resolved theme colour as plain RGB — the spectral crate takes bytes, so it never has

@@ -46,6 +46,8 @@ pub mod paint;
 /// Batched paint primitives (many shapes, one draw call) — see the module docs.
 pub mod paint_batch;
 pub mod panel;
+/// Long-operation pattern: off-thread work + a bar that can be painted while it runs.
+pub mod progress;
 pub mod project;
 pub mod screens;
 pub mod text_elide;
@@ -116,6 +118,7 @@ pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
     paint_text_title, paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,
 };
+pub use progress::{Job, JobQueue, Progress};
 pub use project::{
     DEFAULT_PIXELS_PER_METER, DisplayUnit, ImageFilterMode, MAX_PIXELS_PER_METER,
     MIN_PIXELS_PER_METER, ProjectSettings, image_quality_for,

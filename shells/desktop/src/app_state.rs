@@ -26,7 +26,9 @@ use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommandQueue, HierarchySnapshot, HierarchyWalkState,
 };
 use ph2d_ecs::{PresentWorld, SimWorld, TransformPropagationState, WorklistBuf};
-use ph2d_editor::{HeroScreen, Layout as EditorLayout, NodeId, ToastQueue, ToolRegistry, ZenMode};
+use ph2d_editor::{
+    HeroScreen, JobQueue, Layout as EditorLayout, NodeId, ToastQueue, ToolRegistry, ZenMode,
+};
 use ph2d_gpu::SurfaceContext;
 use ph2d_host::WindowSize;
 use ph2d_imageio::{ExporterRegistry, ImporterRegistry};
@@ -74,6 +76,14 @@ pub(crate) struct AppGfx {
     pub(crate) theme: Theme,
     pub(crate) zen: ZenMode,
     pub(crate) toasts: ToastQueue,
+    /// Bars for work that outlives a frame (`ph2d_editor_core::progress`). Sibling of
+    /// `toasts` in every way: ticked once per frame, painted into the same top-center
+    /// column (under the toasts), and app-wide rather than per-feature — the AI Denoise
+    /// is only the first caller, and batch LUFS / export / upscale have the same shape.
+    ///
+    /// It holds `Progress` handles, not the jobs: the typed `Job<T>` stays with whoever
+    /// knows what to do with the result (e.g. `AudioSystem::ml_job`).
+    pub(crate) jobs: JobQueue,
     /// Registered editor tools. Keys 1/2 switch active tool; the
     /// active tool's `build_panel()` is painted each frame as the
     /// FloatingPanel that shows in the bottom-center of the canvas.

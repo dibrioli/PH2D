@@ -69,7 +69,7 @@ aberto: a 500k o custo é dominado por overhead fixo, não pelo N.
 ### Smoke (pronto — é rodar e clicar na tool Motion)
 
 ```
-cd Worktrees/line-gpu-nodes && PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=1 cargo run --release
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=1 cargo run --release -p ph2d-host-desktop
 ```
 
 `PH2D_GPU_COOK_DEMO=1` troca o boot document por `grid 512×512 (262k) → oscillator (onda Y
@@ -97,7 +97,7 @@ lado lêem como um tecido ondulando.
 
 Comando dos gates de GPU (rodam headless; precisam de adapter):
 ```
-cd Worktrees/line-gpu-nodes && cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture
 ```
 
 ## Gotchas (custaram iteração aqui; a Fase 2 VAI esbarrar neles)

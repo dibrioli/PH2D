@@ -13,7 +13,7 @@
 //! share the float comparator for uniformity.
 //!
 //! `#[ignore]`: needs a real adapter. Run on a dev machine / GPU lane:
-//!   cd Worktrees/line-gpu-nodes && cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture
+//!   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture
 
 use ph2d_gpu::GpuContext;
 use ph2d_node_registry::NodeRegistry;
@@ -234,7 +234,7 @@ fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
 /// chain at 707×707 ≈ 500k instances, steady-state cook + full GPU wait per
 /// frame. Compare against the CPU baseline (4,93 ms @ 32 threads).
 ///
-///   cd Worktrees/line-gpu-nodes && cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture gpu_cook_500k_timing
+///   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture gpu_cook_500k_timing
 #[test]
 #[ignore = "perf probe; requires a GPU adapter"]
 fn gpu_cook_500k_timing() {

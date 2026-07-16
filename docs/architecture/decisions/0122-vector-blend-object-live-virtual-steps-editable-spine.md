@@ -305,13 +305,16 @@ volta — as duas coisas convivem).
   PRIMEIRO, e só depois adota o pen) — sem o caso 2 o clique deixava o gizmo na linha ("não engloba,
   não move as shapes", 3º smoke). 2 gates (`the_gizmo_of_a_blend_spine_targets_its_sources` caso 1 ·
   `clicking_a_blend_spine_retargets_the_gizmo_to_the_sources` caso 2), mutation-testados.
-- **Arrastar em QUALQUER lugar do box global move o grupo** (4º smoke do Enio): antes era preciso
-  pegar o gizmo de uma das FORMAS; o vazio ENTRE elas (dentro do box que cobre tudo) não pegava. O
-  fallback "clique no interior vazio de um gizmo de Translate → move a seleção" só aceitava o
-  `Translate` canônico (`gizmo_kind`), mas o interior do box GLOBAL tem id **hasheado**
-  (`is_keyed_translate`, não reconhecido por `gizmo_kind_for_id`). Fix de uma linha
-  (`interior_translate_falls_back_to_selection`, função pura + gate): o fallback também aceita o
-  keyed. Vale para toda multi-seleção vetorial, não só o blend.
+- **Arrastar em QUALQUER lugar do box global move o grupo** (4º/5º smoke do Enio): antes era preciso
+  pegar o gizmo de uma das FORMAS; o vazio ENTRE elas (dentro do box que cobre tudo) não pegava, e só
+  o gizmo da PRIMÁRIA respondia. Raiz: `paint_sprite_gizmo_keyed` **NÃO registra hit de interior para
+  os extras nem o global** (o AABB deles é grande e sombrearia as alças na varredura back-to-front),
+  e o Translate deles ia pelo `pick_sprites_at_world` — que **não acha entidade VETORIAL**. Então
+  clicar no vazio do box global caía em `hits` vazio e não virava arrasto. Fix: quando nada está sob
+  o cursor mas ele está DENTRO do `global_view` (a geometria do box que cobre a seleção), o alvo é o
+  grupo (`interior_translate_falls_back_to_selection` ganhou `in_global_box`, função pura + gate).
+  Vale para toda multi-seleção vetorial, não só o blend. (O 4º smoke, `8c8a1977`, tentou via
+  `is_keyed_translate` — errado, pois o interior do global nunca é registrado; corrigido aqui.)
 - **`blend_live.rs` foi dividido** (teto de 600 LOC): as ações de edição/interação (pick/select/
   steps/reset/os dois drags) saíram para o módulo-filho `blend_live_edit.rs` (`use super::*` para os
   privados do pai); o núcleo (component + `recook` + helpers de geometria) ficou. `pin_spine_anchors`

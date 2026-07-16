@@ -246,5 +246,30 @@ fn probe_push_render_and_look() {
     t.on_canvas_pointer(cp([204.0, 200.0], PointerPhase::Up));
     save(&mut t, &dir, "10c_blob_inflate_brush", size);
 
+    // 11. **ENIO'S SCREENSHOT** (2026-07-16, second smoke): a vertical capsule stroke crossed by a row of
+    //     three fat blobs, then Inflate — the exact arrangement of the photograph, where the silhouette
+    //     comes out in STEPS and the concave junctions show white gashes. The single blob of scene 10 is
+    //     convex everywhere and has no junction; this one has both.
+    let mut t = tool(size);
+    t.set_brush_impasto_depth(1.0);
+    t.set_brush_size_px(46.0);
+    // The vertical capsule.
+    t.on_canvas_pointer(cp([200.0, 90.0], PointerPhase::Down));
+    for i in 1u8..=9 {
+        t.on_canvas_pointer(cp([200.0, 90.0 + 24.0 * f32::from(i)], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([200.0, 306.0], PointerPhase::Up));
+    // The row of three blobs across its middle.
+    for cx in [140.0f32, 200.0, 260.0] {
+        t.on_canvas_pointer(cp([cx, 200.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([cx, 200.0], PointerPhase::Up));
+    }
+    save(&mut t, &dir, "11a_enio_before", size);
+    t.set_paint_tool_mode("sculpt");
+    t.set_sculpt_mode(7); // Inflate
+    t.set_sculpt_depth(1.0);
+    assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
+    save(&mut t, &dir, "11b_enio_inflated", size);
+
     eprintln!("PNGs written to {dir}");
 }

@@ -117,6 +117,47 @@ pub fn push_rim_weight(u: f32) -> f32 {
     s((u * 2.0).min(1.0)) * s(((1.0 - u) * 2.0).min(1.0))
 }
 
+/// The rim's INNER anchor, in normalised dab distance `t` — where the banked ridge begins.
+///
+/// It is where the brush's paint stops carrying a body ([`crate::height_film::body_edge_t`]), so
+/// displaced paint piles up against the paint it was shoved by, not against the dab's geometric
+/// circle. Anchoring at the circle (`t = 1`) left a hard collar of banked paint a silhouette's-width
+/// of bare canvas out from the soft paint (Enio's smoke, 2026-07-15 — see [`crate::height_film::body_edge_t`]).
+///
+/// A **Shape** silhouette (Image or procedural) has no radial body edge — a stamp keeps its hard edge
+/// by definition — so the anchor stays at the geometric rim there, byte-identical to a stamped dab.
+///
+/// **One door for BOTH kernels** ([`bank_dab_push`] and [`wave_lobe`]) and BOTH callers (the deposit's
+/// Push and the Sculpt's Conserve, which share this motor): a second copy of "where does the rim
+/// start" would let the lateral bank and the forward lobe be born on different circles. Hoist it once
+/// per stroke — the falloff, hardness and Shape state do not change mid-stroke.
+#[must_use]
+pub fn rim_t0(spec: &crate::BrushSpec, has_shape: bool) -> f32 {
+    if has_shape {
+        1.0
+    } else {
+        crate::height_film::body_edge_t(spec)
+    }
+}
+
+/// The rim's lift at one texel: zero inside the body (`t ≤ t0`), else the C¹ bank profile
+/// ([`push_rim_weight`]) across a reach that starts AT the body edge `t0`.
+///
+/// Shared by [`bank_dab_push`] and [`wave_lobe`] so the lateral bank and the forward lobe cannot
+/// anchor on different circles. `inv_reach = radius / reach`, so `u = (t − t0) · radius / reach` is
+/// the rim's width measured in PIXELS from `t0` — a **constant-width** bank however far in the body
+/// edge sits (receding the anchor without receding the reach would stretch the bank into a spike, and
+/// a narrow bank is the spike that MUT-history's `push_reach_px` fix already paid for). `t0 = 1`
+/// reproduces the pre-2026-07-15 rim bit-for-bit.
+#[inline]
+#[must_use]
+fn rim_lift(t: f32, t0: f32, inv_reach: f32) -> f32 {
+    if t <= t0 {
+        return 0.0;
+    }
+    push_rim_weight((t - t0) * inv_reach)
+}
+
 /// The bite, carried into [`crate::height::accumulate_dab_height`]'s own walk — the paint the brush is
 /// taking out from under itself, and the running total of it.
 ///
@@ -156,7 +197,8 @@ pub struct PushBite<'a> {
 /// (the bow wave's cargo, painted by [`wave_lobe`] at the tip), the rest banks laterally here.
 /// `0.0` reproduces the purely lateral banking bit for bit (the Conserve's approved drawing). A
 /// directionless dab (a tap) always banks everything radially — a pressed stamp has no "ahead".
-/// Returns the banked rect and the carried volume.
+/// `t0` is the rim's inner anchor ([`rim_t0`]): the ridge rises from where the paint's body ends,
+/// not from the dab's geometric rim. Returns the banked rect and the carried volume.
 #[allow(clippy::too_many_arguments)]
 pub fn bank_dab_push(
     plane: &mut [f32],
@@ -165,6 +207,7 @@ pub fn bank_dab_push(
     width: u32,
     height: u32,
     dab: &HeightDab<'_>,
+    t0: f32,
     displaced: f32,
     forward_share: f32,
 ) -> (Option<crate::dab::DirtyRect>, f32) {
@@ -228,10 +271,10 @@ pub fn bank_dab_push(
             let dx = (px as f32 + 0.5) - cx;
             let (rx, ry) = sweep_residual(dx, dy, sweep);
             let t = dab.footprint.falloff_t(rx * inv_radius, ry * inv_radius);
-            if t <= 1.0 {
-                continue; // the bite already landed, inside the deposit's own walk
-            }
-            let k = push_rim_weight((t - 1.0) * inv_reach);
+            // The ridge rises from the paint's body edge `t0`, not the geometric rim: `rim_lift` is
+            // zero inside the body (`t ≤ t0`) and past the reach, so the bank butts against the paint
+            // instead of standing a hard circle out at `t = 1` (Enio's smoke, 2026-07-15).
+            let k = rim_lift(t, t0, inv_reach);
             if k <= 0.0 {
                 continue;
             }
@@ -301,6 +344,7 @@ pub fn wave_lobe(
     width: u32,
     height: u32,
     dab: &HeightDab<'_>,
+    t0: f32,
     volume: f32,
     sign: f32,
 ) -> Option<crate::dab::DirtyRect> {
@@ -336,12 +380,11 @@ pub fn wave_lobe(
         for bx in 0..bw {
             let px = x0 + bx as i64;
             let dx = (px as f32 + 0.5) - cx;
-            // The lobe stands on the dab's own annulus (no sweep: the wave lives at the TIP).
+            // The lobe stands on the dab's own annulus (no sweep: the wave lives at the TIP), rising
+            // from the paint's body edge `t0` — the SAME anchor the lateral bank uses, so the wave and
+            // the wake are born on one circle, not two.
             let t = dab.footprint.falloff_t(dx * inv_radius, dy * inv_radius);
-            if t <= 1.0 {
-                continue;
-            }
-            let k = push_rim_weight((t - 1.0) * inv_reach) * forward_weight(dx, dy, Some(dir));
+            let k = rim_lift(t, t0, inv_reach) * forward_weight(dx, dy, Some(dir));
             if k <= 0.0 {
                 continue;
             }

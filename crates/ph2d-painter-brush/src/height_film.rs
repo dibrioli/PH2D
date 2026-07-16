@@ -51,6 +51,55 @@ pub fn body_profile(w: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// The normalised dab distance `t` at which a bare-falloff silhouette's BODY ends — where its
+/// coverage first drops to [`W_TAIL`], the SAME threshold [`film_of`] uses to decide a texel carries
+/// paint at all. Inside this `t` the paint has a body; beyond it there is only the translucent stain,
+/// then bare canvas.
+///
+/// It is the anchor the displaced paint must bank from: **a brush shoves paint to where the paint
+/// STOPS**, which is the body's edge — not the dab's geometric rim (`t = 1`). Anchoring the rim at
+/// `t = 1` on a soft falloff stood a hard, perfectly circular collar of banked paint a whole
+/// silhouette's-width of BARE CANVAS out from the soft paint it was meant to be shoved by — Enio's
+/// smoke, 2026-07-15: *"é usada a circunferência do gizmo do brush para empurrar a massa e não o
+/// alpha do falloff"*. Under `Smooth`, `W_TAIL` sits at `t ≈ 0.61` (§14.1 of doc 16): on a 40 px
+/// brush the visible paint ends at ~24 px and the old rim was born at 40 px — 16 px of naked canvas
+/// between them. This closes that gap; the ridge's foot now rises from the body's edge.
+///
+/// A **hard-edged** falloff (Constant, or hardness ≥ 1) carries its body right out to the geometric
+/// rim, so its edge IS `t = 1` and the rim anchors exactly where it always did — **byte-identical**,
+/// and there was no soft skirt to leave a gap in the first place. The [`RIM_PROBE`] guard returns
+/// exactly `1.0` for those, so the bisection never approximates a value a hair below it.
+///
+/// The silhouette is monotone in `t`, so this is a bisection on [`crate::BrushSpec::falloff_weight`]
+/// (which folds in the brush's hardness) — cheap, and meant to be hoisted **once per stroke** (the
+/// falloff and hardness do not change mid-stroke). The **Shape** slot has no radial body edge (an
+/// Image tip is a stamp, a procedural one is masked per-pixel); the caller keeps `t = 1` there — see
+/// [`crate::height_push::rim_t0`].
+#[must_use]
+pub fn body_edge_t(spec: &crate::BrushSpec) -> f32 {
+    /// A hair inside the geometric rim: if the silhouette is still solid here, the body reaches the
+    /// edge (Constant / hardness ≥ 1) and the anchor is exactly `t = 1`. No soft falloff comes within
+    /// `W_TAIL` of the rim (Sphere, the flattest, is ~0.045 here), so this fires only for hard tips.
+    const RIM_PROBE: f32 = 0.999;
+    if spec.falloff_weight(RIM_PROBE) >= W_TAIL {
+        return 1.0;
+    }
+    // Bisection: `falloff_weight` decreases monotonically from 1 at the centre to 0 at the rim, so the
+    // invariant `weight(lo) ≥ W_TAIL > weight(hi)` holds from `lo = 0` / `hi = 1` and is preserved.
+    // 24 halvings ⇒ ~6e-8 px of `t`, far under a texel; `lo` is the last distance that still has body.
+    let mut lo = 0.0f32;
+    let mut hi = 1.0f32;
+    for _ in 0..24 {
+        let mid = 0.5 * (lo + hi);
+        if spec.falloff_weight(mid) >= W_TAIL {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    lo
+}
+
 /// The **film** the brush actually lays: a dab's coverage, cut to the paint that carries a BODY.
 ///
 /// ## The bug this closes

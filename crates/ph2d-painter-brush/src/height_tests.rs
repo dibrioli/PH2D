@@ -258,9 +258,9 @@ fn eraser_scrubs_the_relief_it_finds() {
 /// Drive a plough (uniform 1-load ground, a straight run of overlapping dabs with `impasto_push`)
 /// through the REAL kernel sequence the deposit runs — un-paint the standing wave lobe, bite, bank
 /// with `share`, re-lay the lobe at the new tip — and return the displacement plane.
-fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32) {
+fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32, f32) {
     use crate::height::{HeightDab, HeightFields, accumulate_dab_height};
-    use crate::height_push::{PushBite, bank_dab_push, wave_lobe};
+    use crate::height_push::{PushBite, bank_dab_push, rim_t0, wave_lobe};
     const W: u32 = 200;
     let n = (W * W) as usize;
     let radius = 12.0f32;
@@ -280,6 +280,9 @@ fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32) {
         space_attenuation: false,
         ..Default::default()
     };
+    // The default falloff is a soft Smooth, so the rim anchors INSIDE the geometric rim (`t0 ≈ 0.6`)
+    // — the whole point of the 2026-07-15 fix. Stroke-constant, resolved once, as the tool does.
+    let t0 = rim_t0(&spec, false);
     let (y, x0, step) = (100.0f32, 60.0f32, 6.0f32);
     let mut wave = 0.0f32;
     let mut last_tip: Option<HeightDab> = None;
@@ -298,7 +301,7 @@ fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32) {
         // The tool's order: un-paint the standing lobe FIRST (paint unchanged since it was laid,
         // so the (1 − paint) weights recompute to the exact numbers that laid it).
         if let (Some(tip), true) = (last_tip.take(), wave > 0.0) {
-            let _ = wave_lobe(&mut plane, &paint, &mut scratch, W, W, &tip, wave, -1.0);
+            let _ = wave_lobe(&mut plane, &paint, &mut scratch, W, W, &tip, t0, wave, -1.0);
         }
         let mut fields = HeightFields {
             height: &mut height,
@@ -321,12 +324,13 @@ fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32) {
             W,
             W,
             &dab,
+            t0,
             displaced,
             share,
         );
         wave += carried;
         if wave > 0.0
-            && wave_lobe(&mut plane, &paint, &mut scratch, W, W, &dab, wave, 1.0).is_some()
+            && wave_lobe(&mut plane, &paint, &mut scratch, W, W, &dab, t0, wave, 1.0).is_some()
         {
             last_tip = Some(HeightDab { ..dab });
         }
@@ -339,12 +343,18 @@ fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32) {
              move paint, never create or destroy it"
         );
     }
-    (plane, x0, step * (count - 1) as f32 + x0, radius)
+    (plane, x0, step * (count - 1) as f32 + x0, radius, t0)
 }
 
 /// Zone split of a plough's banked (positive) plane: (ahead of the end, behind the start,
 /// lateral, inside the swath), as fractions of the banked total.
-fn plough_zones(plane: &[f32], first_x: f32, last_x: f32, radius: f32) -> (f64, f64, f64, f64) {
+///
+/// `edge` is the stroke's BODY half-width (`t0 · radius`) — the paint's own frontier, which is where
+/// the rim now anchors (2026-07-15). "Ahead of the stroke" means ahead of the PAINT, not ahead of the
+/// dab's geometric circle; measuring against `radius` would count the ridge butting the body's front
+/// edge as if it sat inside the channel. With a hard falloff (`t0 = 1`) `edge = radius` and the split
+/// is exactly the pre-fix one.
+fn plough_zones(plane: &[f32], first_x: f32, last_x: f32, edge: f32) -> (f64, f64, f64, f64) {
     const W: usize = 200;
     let y = 100.0f32;
     let (mut ahead, mut behind, mut lateral, mut total) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
@@ -356,11 +366,11 @@ fn plough_zones(plane: &[f32], first_x: f32, last_x: f32, radius: f32) -> (f64, 
             }
             total += f64::from(v);
             let (fx, fy) = (px as f32 + 0.5, py as f32 + 0.5);
-            if fx > last_x + radius {
+            if fx > last_x + edge {
                 ahead += f64::from(v);
-            } else if fx < first_x - radius {
+            } else if fx < first_x - edge {
                 behind += f64::from(v);
-            } else if (fy - y).abs() > radius {
+            } else if (fy - y).abs() > edge {
                 lateral += f64::from(v);
             }
         }
@@ -387,8 +397,10 @@ fn plough_zones(plane: &[f32], first_x: f32, last_x: f32, radius: f32) -> (f64, 
 /// lateral wake) painted as an exactly-removable lobe at the CURRENT tip ([`wave_lobe`]) — it
 /// travels with the brush and rests at the frontier when the stroke ends.
 ///
-/// Measured on this fixture: share 0.6 ⇒ ahead 42.8% · lateral 45.8% · behind 4.5% · swath 6.9%;
-/// share 0 (the old drawing) ⇒ ahead 0.7%. The bars are an order of magnitude on both sides.
+/// Measured on this fixture, against the PAINT's frontier (the body edge `t0 ≈ 0.60`, where the rim
+/// now anchors): share 0.6 ⇒ ahead 52.2% · lateral 41.8% · behind 5.7% · swath 0.3%; share 0 (the old
+/// purely-lateral drawing) ⇒ ahead 1.2% · lateral 92.4%. The bars are an order of magnitude on both
+/// sides. (Before the 2026-07-15 anchor fix, measured against the geometric rim: ahead 42.8%.)
 ///
 /// **Mutations that must bleed:** (a) `DEPOSIT_FORWARD_SHARE → 0.0` — no wave, `ahead` collapses;
 /// (b) drop the un-paint of the standing lobe — a fossil lobe trail down the whole swath, the
@@ -397,12 +409,12 @@ fn plough_zones(plane: &[f32], first_x: f32, last_x: f32, radius: f32) -> (f64, 
 #[test]
 fn the_ploughed_paint_waits_at_the_strokes_frontier() {
     use crate::height_push::DEPOSIT_FORWARD_SHARE;
-    let (plane, first_x, last_x, radius) = ploughed_plane(DEPOSIT_FORWARD_SHARE, 12);
-    let (ahead, behind, lateral, swath) = plough_zones(&plane, first_x, last_x, radius);
+    let (plane, first_x, last_x, radius, t0) = ploughed_plane(DEPOSIT_FORWARD_SHARE, 12);
+    let (ahead, behind, lateral, swath) = plough_zones(&plane, first_x, last_x, t0 * radius);
     assert!(
         ahead >= 0.30,
         "only {:.1}% of the banked paint waits ahead of the stroke's end — the wave never made it \
-         to the frontier (measured healthy: 42.8%)",
+         to the frontier (measured healthy: 52.2%)",
         ahead * 100.0
     );
     assert!(
@@ -428,8 +440,8 @@ fn the_ploughed_paint_waits_at_the_strokes_frontier() {
 
     // The presence sibling: with the share at 0 the old, purely lateral drawing must come back —
     // this pins that the wave is OPT-IN plumbing, and keeps the baseline the Conserve relies on.
-    let (plane0, f0, l0, r0) = ploughed_plane(0.0, 12);
-    let (ahead0, _, lateral0, _) = plough_zones(&plane0, f0, l0, r0);
+    let (plane0, f0, l0, r0, t0_0) = ploughed_plane(0.0, 12);
+    let (ahead0, _, lateral0, _) = plough_zones(&plane0, f0, l0, t0_0 * r0);
     assert!(
         ahead0 < 0.05 && lateral0 > 0.75,
         "share 0 must reproduce the purely lateral bank (ahead {:.1}%, lateral {:.1}%)",
@@ -448,7 +460,7 @@ fn the_ploughed_paint_waits_at_the_strokes_frontier() {
 fn the_wave_travels_with_the_tip() {
     use crate::height_push::DEPOSIT_FORWARD_SHARE;
     const W: usize = 200;
-    let (plane, _, last_x, radius) = ploughed_plane(DEPOSIT_FORWARD_SHARE, 12);
+    let (plane, _, last_x, radius, _t0) = ploughed_plane(DEPOSIT_FORWARD_SHARE, 12);
     let y = 100.0f32;
     // Positive plane in the forward half-disc of a tip position.
     let probe = |cx: f32| -> f64 {
@@ -478,5 +490,152 @@ fn the_wave_travels_with_the_tip() {
         at_tip >= 2.0 * at_old_tip,
         "the wave left as much standing at an OLD tip ({at_old_tip:.1}) as at the current one \
          ({at_tip:.1}) — it is being laid but not taken back up: a trail, not a travelling wave"
+    );
+}
+
+const IB_W: u32 = 256;
+const IB_CENTER: f32 = 128.0;
+
+/// A single directed dab's lateral bank, in ISOLATION — a fresh plane, no bite, no neighbours, and no
+/// paint anywhere (so no `(1 − paint)` suppression). The plane is PURELY the rim, so where its first
+/// positive texel sits on the perpendicular is exactly where the anchor `t0` puts it — undiluted by
+/// the bite's tail or a neighbour's diagonal bank (which is why the integrated plough's inner edge is
+/// noisy). The dab carries a synthetic predecessor one radius back, so its heading is `+x` and the
+/// whole annulus banks LATERALLY (±y): the axis the inner edge is read on. share 0.0 ⇒ all lateral.
+fn isolated_bank_plane(spec: &crate::BrushSpec, t0: f32) -> Vec<f32> {
+    use crate::height::HeightDab;
+    use crate::height_push::bank_dab_push;
+    let radius = spec.radius_px;
+    let center = [IB_CENTER, IB_CENTER];
+    let dab = HeightDab {
+        center,
+        radius,
+        coverage: 1.0,
+        footprint: spec.footprint_deform(),
+        prev_center: Some([center[0] - radius, center[1]]),
+        shape: None,
+        grain: None,
+        grain_image: None,
+    };
+    let mut plane = vec![0.0f32; (IB_W * IB_W) as usize];
+    let paint = vec![0.0f32; (IB_W * IB_W) as usize];
+    let mut scratch = Vec::new();
+    let _ = bank_dab_push(
+        &mut plane,
+        &paint,
+        &mut scratch,
+        IB_W,
+        IB_W,
+        &dab,
+        t0,
+        1000.0,
+        0.0,
+    );
+    plane
+}
+
+/// The perpendicular inner edge of an isolated bank plane: first positive texel scanning +y from the
+/// dab centre, in pixels. `u8::MAX` if no ridge is found — a loud failure, not a silent zero.
+fn isolated_inner_edge(plane: &[f32], radius: f32) -> f32 {
+    let (cx, cy) = (IB_CENTER as usize, IB_CENTER as usize);
+    for dy in 0..(radius as usize + 24) {
+        if plane[(cy + dy) * IB_W as usize + cx] > 1e-4 {
+            return dy as f32;
+        }
+    }
+    f32::from(u8::MAX)
+}
+
+fn impasto_spec(falloff: crate::Falloff, radius: f32) -> crate::BrushSpec {
+    crate::BrushSpec {
+        radius_px: radius,
+        impasto: true,
+        impasto_depth: 0.5,
+        impasto_push: 1.0,
+        falloff,
+        space_attenuation: false,
+        ..Default::default()
+    }
+}
+
+/// **The banked ridge rises from the paint's BODY edge — not the dab's geometric circle.**
+///
+/// Enio's smoke, 2026-07-15: *"é usada a circunferência do gizmo do brush para empurrar a massa e não
+/// o alpha do falloff"* — on a soft falloff the displaced paint stood a whole silhouette's-width of
+/// bare canvas out from the paint, a hard, perfectly circular collar clamped to the geometric rim
+/// (`t = 1`). The physics of the wave was right; its ANCHOR was wrong. The rim now begins at
+/// [`crate::height_push::rim_t0`] — the body edge `t0`, where the silhouette crosses [`W_TAIL`], the
+/// SAME threshold the film uses to decide a texel carries paint.
+///
+/// The zone gates ([`the_ploughed_paint_waits_at_the_strokes_frontier`]) never pinned this — they
+/// measure where the volume GOES (ahead / beside / behind), not where the ridge's inner edge is BORN.
+/// This is the missing pin, on the handoff's own example (a Smooth brush of radius 40): the ridge's
+/// foot sits at the body edge (`t0 ≈ 0.60`, so ~24 px), well inside the geometric rim (40 px) where
+/// the old anchor stood it — the 16 px of bare canvas the smoke saw.
+///
+/// **Mutation that must bleed:** anchor the rim at the rim again — `rim_lift`'s guard `t <= t0` back
+/// to `t <= 1.0`, or the caller's `rim_t0` → `1.0`. The inner edge jumps out to ~`radius` and the
+/// `radius`-referenced bound (not the `t0`-referenced one, which the mutation moves with it) goes red.
+/// The companion [`a_hard_falloff_anchors_the_rim_at_the_geometric_rim`] pins that a Constant brush is
+/// byte-identical, so the fix cannot be "just always recede".
+#[test]
+fn the_rim_rises_from_the_body_edge_not_the_geometric_rim() {
+    use crate::height_push::rim_t0;
+    let radius = 40.0f32;
+    let spec = impasto_spec(crate::Falloff::Smooth, radius);
+    let t0 = rim_t0(&spec, false);
+    let plane = isolated_bank_plane(&spec, t0);
+    let inner = isolated_inner_edge(&plane, radius);
+    let body_edge = t0 * radius;
+    // The ridge's foot is AT the paint's body edge (±3 px), not floating somewhere else.
+    assert!(
+        (inner - body_edge).abs() <= 3.0,
+        "the rim's inner edge is {inner:.1} px, but the paint's body ends at {body_edge:.1} px \
+         (t0={t0:.2}·r) — the ridge should butt against the paint"
+    );
+    // The crisp, NON-self-referential discriminator: the inner edge is clearly INSIDE the geometric
+    // rim. Referenced against `radius` (a fixed fact), not `t0` (which the anchor mutation moves), so
+    // reverting the anchor to the rim pushes `inner` out to ~40 px, past this bound, and it goes red.
+    assert!(
+        inner < radius * 0.75,
+        "the inner edge {inner:.1} px is not clearly inside the geometric rim {radius:.1} px — the \
+         anchor never receded to the body edge (a value that also passes for t0 = 1 is not measuring \
+         the fix)"
+    );
+}
+
+/// **A hard falloff keeps the rim at the geometric rim — byte-identical to the pre-fix drawing.**
+///
+/// The fix is not "always recede the rim": a Constant brush (and any `hardness ≥ 1` disk) carries its
+/// body right out to `t = 1`, so [`crate::height_push::rim_t0`] returns **exactly** `1.0` and the whole
+/// bank is byte-for-byte the pre-2026-07-15 drawing. The [`crate::height_film::body_edge_t`] fast-path
+/// guarantees that exact `1.0` — a bisection would land a hair below and shift the ridge sub-pixel.
+///
+/// **Mutations that must bleed:** (a) make `rim_t0` recede unconditionally (drop the hard-edge guard)
+/// — `t0 ≠ 1.0` and the `assert_eq` fails; (b) let `body_edge_t` skip its `RIM_PROBE` fast-path and
+/// bisect Constant to `0.99999…` — the fingerprint (bank at the resolved anchor vs at a hard-coded
+/// `1.0`) diverges. Either way the "byte-identical" claim is refuted.
+#[test]
+fn a_hard_falloff_anchors_the_rim_at_the_geometric_rim() {
+    use crate::height_push::rim_t0;
+    let radius = 40.0f32;
+    let spec = impasto_spec(crate::Falloff::Constant, radius);
+    let t0 = rim_t0(&spec, false);
+    assert_eq!(
+        t0, 1.0,
+        "a Constant falloff's body reaches the geometric rim → t0 must be exactly 1.0"
+    );
+    // Fingerprint: the bank at the resolved anchor is byte-for-byte the bank at a hard-coded t0 = 1.
+    let resolved = isolated_bank_plane(&spec, t0);
+    let forced = isolated_bank_plane(&spec, 1.0);
+    assert!(
+        resolved == forced,
+        "Constant's bank drifted off the geometric-rim anchor — not byte-identical to the pre-fix rim"
+    );
+    // …and that anchor really is the geometric rim (not some other constant): inner edge ≈ radius.
+    let inner = isolated_inner_edge(&resolved, radius);
+    assert!(
+        (inner - radius).abs() <= 2.0,
+        "a Constant falloff's rim inner edge is {inner:.1} px, not at the geometric rim {radius:.1} px"
     );
 }

@@ -198,6 +198,10 @@ impl PainterTool {
             dx * dx + dy * dy <= lim * lim
         };
 
+        // Where the banked paint's ridge begins: the paint's body edge, not the dab's geometric rim
+        // (Enio's smoke, 2026-07-15). Falloff / hardness / Shape state are stroke-constant, so the
+        // rim's inner anchor is resolved ONCE here and handed to every bank and lobe of the stroke.
+        let rim_t0 = ph2d_painter_brush::height_push::rim_t0(brush, shape_active);
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
@@ -299,6 +303,7 @@ impl PainterTool {
                     w,
                     h,
                     &tip_hd,
+                    rim_t0,
                     vol,
                     -1.0,
                 ) {
@@ -349,6 +354,7 @@ impl PainterTool {
                         w,
                         h,
                         &bank_hd,
+                        rim_t0,
                         displaced,
                         DEPOSIT_FORWARD_SHARE,
                     )
@@ -374,6 +380,7 @@ impl PainterTool {
                             w,
                             h,
                             &bank_hd,
+                            rim_t0,
                             slot.0,
                             1.0,
                         )

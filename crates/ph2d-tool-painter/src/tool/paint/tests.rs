@@ -22381,6 +22381,11 @@ fn the_deposits_wave_travels_through_the_real_stroke() {
     let tip_x = tip.center[0];
 
     let radius = 14.0f32;
+    // The rim now anchors at the paint's BODY edge (`t0·radius`), not the dab's geometric rim
+    // (2026-07-15) — so "ahead of the stroke" is measured against the PAINT's frontier, exactly as the
+    // kernel's zone gate does. Against `radius` the ridge butting the body's front would be miscounted
+    // as sitting inside the channel. On the default Smooth brush `t0 ≈ 0.60`, so the edge is ~8.4 px.
+    let edge = ph2d_painter_brush::height_push::rim_t0(&t.paint.brush, false) * radius;
     let (mut ahead, mut behind, mut lateral, mut total) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
     for py in 0..size as usize {
         for px in 0..size as usize {
@@ -22390,11 +22395,11 @@ fn the_deposits_wave_travels_through_the_real_stroke() {
             }
             total += f64::from(v);
             let (fx, fy) = (px as f32 + 0.5, py as f32 + 0.5);
-            if fx > tip_x + radius {
+            if fx > tip_x + edge {
                 ahead += f64::from(v);
-            } else if fx < x0 - radius {
+            } else if fx < x0 - edge {
                 behind += f64::from(v);
-            } else if (fy - y).abs() > radius {
+            } else if (fy - y).abs() > edge {
                 lateral += f64::from(v);
             }
         }

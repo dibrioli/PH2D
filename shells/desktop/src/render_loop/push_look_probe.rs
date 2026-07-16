@@ -117,6 +117,22 @@ fn probe_push_render_and_look() {
     t.on_canvas_pointer(cp([260.0, 330.0], PointerPhase::Up));
     save(&mut t, &dir, "4_push_curve", size);
 
+    // 6. THE COLLAR SCENE: a BIG SOFT brush (radius 45, Smooth default) at Push=1 stopping in the
+    //    middle of thick paint. This is where the 2026-07-15 bug is loudest — the old rim anchored at
+    //    the geometric rim (45 px) while the soft paint's body ends at ~27 px (t0 ≈ 0.60), so a hard
+    //    circular collar stood ~18 px of bare canvas out from the paint. After the fix the ridge rises
+    //    from the body edge and butts the paint.
+    let mut t = tool(size);
+    lay_ground(&mut t);
+    t.set_brush_size_px(45.0);
+    t.set_brush_impasto_push(1.0);
+    t.on_canvas_pointer(cp([70.0, 190.0], PointerPhase::Down));
+    for i in 1u8..=7 {
+        t.on_canvas_pointer(cp([70.0 + 20.0 * f32::from(i), 190.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([210.0, 190.0], PointerPhase::Up));
+    save(&mut t, &dir, "5_push_stops_big_soft", size);
+
     // 6. THE REFERENCE: Scrape + Conserve through the same ground (the drawing Enio approved).
     let mut t = tool(size);
     lay_ground(&mut t);
@@ -129,7 +145,7 @@ fn probe_push_render_and_look() {
         t.on_canvas_pointer(cp([200.0, 60.0 + 26.0 * f32::from(i)], PointerPhase::Move));
     }
     t.on_canvas_pointer(cp([200.0, 320.0], PointerPhase::Up));
-    save(&mut t, &dir, "5_reference_scrape_conserve", size);
+    save(&mut t, &dir, "6_reference_scrape_conserve", size);
 
     eprintln!("PNGs written to {dir}");
 }

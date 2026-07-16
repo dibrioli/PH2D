@@ -196,6 +196,11 @@ impl PainterTool {
         // The Chisel's tilt — `tan(angle)`, and exactly `0` in every other verb, so the `+ tilt·|lateral|`
         // term vanishes and Flatten / Scrape / Fill stay byte-for-byte the Wave 2 kernel. Computed ONCE, here.
         let chisel_tilt = self.paint.sculpt.chisel_tilt();
+        // The Conserve's bank shares the deposit's motor, so its ridge anchors at the same body edge:
+        // where the sculpt brush's paint stops carrying a body, not the geometric rim. Stroke-constant
+        // (falloff / hardness / Shape), so resolved once. The default sculpt brush is a SOFT `Smooth`,
+        // so this DOES move the approved drawing inward — a re-smoke is declared in the handoff.
+        let rim_t0 = ph2d_painter_brush::height_push::rim_t0(brush, shape_active);
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);
@@ -313,8 +318,9 @@ impl PainterTool {
                     w,
                     h,
                     &bank_dab,
+                    rim_t0,
                     displaced,
-                    0.0, // Conserve keeps the approved purely-lateral drawing, to the byte
+                    0.0, // Conserve sheds purely laterally (no bow wave); the anchor is the body edge
                 ) {
                     let rect = Region {
                         x: r.x,

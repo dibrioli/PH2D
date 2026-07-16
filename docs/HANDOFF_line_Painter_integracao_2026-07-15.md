@@ -25,7 +25,10 @@
 | `fc96ef27` | **fix(impasto): a lei da CÁPSULA** — o smoke do D confirmou e NOMEOU o sintoma ("uma reta de relevo ligando os pontos"); o sweep do relevo agora exige sobreposição (`dist ≤ min(r, r_prev)`); dabs espalhados viram CONTAS como a cor — **pendente re-smoke** |
 | `98ee8edb` | docs: fechamento da cápsula |
 | `63e7cf2f` | **fix(impasto): o RAIO é o 3º ingrediente** — a bola do Anchored não achata ao soltar (commit re-derivava no raio do PINCEL; agora deriva no raio do DAB, guardado por-texel) + **o undo leva o relevo da Line junto** (`restore_model` reseta o envelope; a crista órfã de 14.440 texels morreu) — **pendente re-smoke** |
-| (este) | docs: fechamento dos 2 fixes do smoke vivo |
+| `afd325b6` | docs: fechamento dos 2 fixes do smoke vivo |
+| `2b44eaf2` | **feat(impasto): o BOW WAVE** — fim da fila por ordem; a tinta arada viaja com o bico (escalar por cópia + lóbulo re-pintado, remoção bit-exata) e descansa na fronteira (IMPaSTo); Conserve byte-intocado (share 0) — **pendente smoke** |
+| `4615ba38` | test: split LOC `impasto_live.rs` |
+| (este) | docs: fechamento do Push |
 
 ## 2. Superfície tocada
 
@@ -138,6 +141,13 @@ relevo, costurado nos 7 sites com seam test que CLICA.
    offset novo, mas o `bank` guarda o volume do offset de stamp — auto-cura no próximo re-stamp de
    geometria (o toggle do Conserve re-stampa; o slider do Offset não). Se o Enio sentir, o fix é
    re-stampar também no `set_sculpt_offset`.
+3½. **SMOKE DO BOW WAVE (`2b44eaf2`)**: tinta grossa → pincel menor com **Push** alto → arraste
+   ATRAVÉS dela e PARE no meio. O que deve ler: canal raso, esteiras finas nas laterais, e a
+   **onda de tinta acumulada ADIANTE de onde o traço parou** (nada empilhado atrás do ponto de
+   partida). Compare com Push=0. A sonda de render que me serviu de olho fica disponível:
+   `PH2D_PUSH_LOOK_DIR=/tmp/push cargo test -p ph2d-host-desktop probe_push_render_and_look -- --ignored`.
+   Se a PROPORÇÃO onda/esteira parecer errada, o knob é `DEPOSIT_FORWARD_SHARE` (0,6) — pode virar
+   slider no card se você quiser controle.
 4. **D — RE-SMOKE (pós `fc96ef27` + `63e7cf2f`)**: (a) jitter/Airbrush = contas de relevo
    coincidentes com a tinta, sem barras; (b) **Anchored** = a bola commitada mantém a altura do
    drag (era o raio do pincel na re-derivação — o gate segura bit-exato); (c) **Line + undo até o

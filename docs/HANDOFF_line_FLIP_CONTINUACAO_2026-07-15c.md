@@ -18,10 +18,21 @@
 
 | commit | wave | o quê | smoke |
 |---|---|---|---|
+| `b793b47c` | **BUGS #18** | a **COSTURA** do traço fechado agora é clicável (pick/marquee/hover) — achado do smoke do §4.A | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `1b51f59b` | **§4.A** | o **gizmo da SELEÇÃO** no modo Edit (rotate/escala assado nos pontos de arte exclusiva) | **PENDENTE — rode `PH2D_FLIP_XFORM_SMOKE=1`** |
 
 Tudo abaixo do `1b51f59b` já tinha smoke OK (ver 15b): W8 (domínio Point), W7.5 (gizmo
-da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 20 commits.
+da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 21 commits.
+
+**O achado do 1º smoke do §4.A (Enio):** *"uma linha do triângulo e uma linha do quadrado
+não são sensíveis à seleção"* — a **aresta de fechamento**. `positions().windows(2)` não
+tem como produzir a costura, e o pick/marquee/hover a perdiam **enquanto o render e o halo
+a desenhavam**: dava pra VER e REALÇAR uma linha que não dava pra APONTAR. Fechado em
+`b793b47c` com uma porta única no modelo (`FlipStroke::segments()`, convenção espelhada do
+render) + 3 gates / 2 mutações provadas. Saga completa: [`Flip/BUGS_flip.md`](Flip/BUGS_flip.md) **#18**.
+**Por que só o §4.A expôs:** o `hits` testa fill OU tinta, e o fill pega o interior inteiro
+— toda forma fechada dos fixtures anteriores era **preenchida**, e a cena do §4.A é a
+primeira com forma fechada **sem fill**.
 
 **Schema:** INTACTO — `FLIP_SCHEMA_VERSION` **7**, `PROJECT_SCHEMA` **15**, pin `(15, 7, 8)`.
 O §4.A **não bumpou nada** (o `FlipSelectionDrag` é estado de runtime no `App`, não é
@@ -117,6 +128,10 @@ O par render/input inverso e o funil pose-free do move (em `flip_transform`/`fli
 - **Sem bump de schema** — o pin `(15, 7, 8)` de `project_tests.rs` fica. Se outra linha
   bumpou `PROJECT_SCHEMA`/`FLIP_SCHEMA` em paralelo, reconcilie os que SOMAM
   (`feedback_numbers_that_sum_across_lines_count_dont_pick`) — mas o §4.A não contribui número.
+- **`ph2d-flip` (modelo) ganhou `FlipStroke::segments()`** (`b793b47c`, método novo — nada
+  serializado muda, sem bump). É a **porta única** de "quais são os segmentos deste traço?".
+  Se outra linha tiver adicionado um consumidor que itere `positions().windows(2)` sobre um
+  traço que pode ser `closed`, ele tem o bug **#18** e deve passar por `segments()`.
 - **Shell:** `flip_selection_gizmo.rs`/`_tests`/`_smoke.rs` novos; `main.rs` (2 `mod` + 1 init
   de campo), `app_state.rs` (campo `flip_selection_drag`), `input_dispatch.rs` (down/move/up,
   espelho dos 3 sítios do pose gizmo), `render_loop/mod.rs` (publica `selection_view`; o gate

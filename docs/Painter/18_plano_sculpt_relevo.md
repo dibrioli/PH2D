@@ -412,8 +412,17 @@ Decisão de superfície a tomar em W4: os warps de relevo são **sub-modos do Sc
 **Conserve** landou 2026-07-15 (`b9d0ef28`) e foi **smokado OK** pelo Enio (2026-07-16, depois do fix da
 âncora do aro mover o desenho dele pra dentro).
 
-**Filtro de camada inteira** landou 2026-07-16 (`57d9881e`): botão **Filter Layer** no card, aplica o verbo
-SELECIONADO na camada toda, na **Strength do pincel**, honrando a Selection, em 1 passo de undo.
+**Filtro** landou 2026-07-16 (`57d9881e` + `ea0a5c02`): **dois botões** no card — **Filter Layer** e
+**Filter Stroke** — aplicam o verbo SELECIONADO sem traço nenhum, na **Strength do pincel**, honrando a
+Selection, em 1 passo de undo.
+
+**Os 2 escopos são UM fator por texel** (`amount = strength × selection × envelope`), não duas features:
+`Layer` é o caso degenerado onde o envelope é 1. **Filter Stroke** escopa ao **último traço**, mascarado
+pelo **envelope de tinta dele** (`relief.live_paint`) — o registro que o Painter JÁ mantém, porque é dele
+que o card do Body re-deriva o traço depois do pen-up. É a resposta honesta pra *"onde o último traço
+passou"*, e carrega a **borda macia do próprio falloff**: o filtro feather exatamente onde a tinta feather.
+(Um bbox era a máscara óbvia e estaria errada 2×: borda dura, e retangular.) Oferecido só quando existe
+último traço **nesta camada** — um botão que só pode recusar é um botão que mente.
 
 **Não há kernel novo, e isso é o desenho inteiro.** O render já é `h = pre + k·Δ(verbo)` lendo o `amount`
 pro `k`; um traço preenche `amount` andando dabs, e **não contribui mais nada que um filtro precise**.
@@ -435,14 +444,26 @@ filtro não tem traço (W3 pagou pela regra de que o eixo nunca é um ajuste do 
 `SculptMode::filters_layer()`: o **painel** pergunta pra OFERECER o botão, o **tool** pergunta pra HONRAR
 o clique — botão dimmed que despacha é mentira, e duas cópias da lista de verbos divergem.
 
+**⚠️ `Layer` foi CORTADO — o Enio pegou um knob morto meu** (2026-07-16). Eu o incluí raciocinando que
+*"cai de graça: o alvo dele é a constante `pre + Depth`"*. Cai — num knob que não faz **nada**: filtrar a
+camada com Layer soma `k·Depth` em TODO texel = **translação uniforme** do campo, e **a luz lê `∇h`**, que
+uma constante não muda. Não moveria um pixel. Escopado ao traço ele varia (por `live_paint`), e aí
+**duplica o slider Depth**, que já re-deriva esse mesmo traço do mesmo plano. Invisível ou redundante —
+nunca uma ferramenta. É a MESMA espécie que este plano matou no `DepthSource::Shape` (*"um knob que não faz
+nada"*), e eu repeti; a lição é que *"cai de graça"* é como um knob morto entra.
+
 **⚠️ `Relax` foi CORTADO, com motivo** (o 4º nome que esta linha da W5 citava). Relaxar é **redistribuir
 VÉRTICES** preservando a forma; num campo de altura a grade é fixa e não há distribuição pra consertar —
 então Relax **colapsa em Smooth**, e seria um knob morto (a mesma espécie que matou o `DepthSource::Shape`
 e os chips de Clay/Clay Strips/Draw Sharp). O **§9 já recusava Slide Relax pela mesma razão**: precisa de
-topologia que um campo de altura não tem. A lista honesta da W5b é **Smooth · Sharpen · Inflate** (+ Layer,
-que cai de graça: o alvo dele é a constante `pre + Depth`).
+topologia que um campo de altura não tem. A lista honesta da W5b é **Smooth · Sharpen · Inflate** — os três que
+**RESHAPE**.
 
-**Gates:** 6 no tool (`sculpt_tests/filter.rs` — alcança a camada toda incl. os cantos onde pincel nenhum
+**Um bug REAL que o gate novo pegou:** `live_stroke_envelope` dizia SIM num tool sem canvas — `n = 0`, o
+`live_paint` vazio "casa" com 0, e `live_relief_layer == layers.active()` porque os DOIS são `None`. O botão
+aparecia numa tela virgem. É a lei da fixture pelo avesso: **zero não falha, a menos que você faça falhar.**
+
+**Gates:** 9 no tool (`sculpt_tests/filter.rs` — alcança a camada toda incl. os cantos onde pincel nenhum
 foi · recusa os de pegada e não move NADA · a Selection é a borda, fora dela byte-idêntico · Strength = `k`
 (metade = metade do trajeto, medido 0,5±0,02) · 1 undo devolve o relevo · camada sem relevo recusa em vez
 de inventar) + **2 de seam que CLICAM o botão de verdade**. 5/5 mutações sangram. Sondas de render: cenas

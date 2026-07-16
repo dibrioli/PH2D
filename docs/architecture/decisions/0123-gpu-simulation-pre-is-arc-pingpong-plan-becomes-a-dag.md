@@ -1,5 +1,16 @@
 # ADR-0123 — A simulação na GPU: o `pre` é ping-pong de `Arc`, o plano vira **DAG**, e o scrub fica no device
 
+- **IMPLEMENTADO (Fase 3, `line/gpu-nodes`, 2026-07-16):** as 5 fatias fecharam —
+  plano DAG + `prev` ping-pong + `motion.integrate` e as 5 forças + os gates + o ring no device.
+  17 gates de paridade ε verdes na RTX. Handoff:
+  [`docs/HANDOFF_line_gpu_nodes_fase3_2026-07-16.md`](../../HANDOFF_line_gpu_nodes_fase3_2026-07-16.md).
+  **Duas emendas que a execução impôs** (detalhe no handoff §3 e §9): (a) o D5 dizia "estourou o cap →
+  o sim recua pra CPU" — não recua, porque o pump não estava marchando e responderia com uma simulação
+  DIFERENTE, não com um rewind; alvo fora da janela ancora no seed do tick 0 e re-simula (a política do
+  próprio ring da CPU). (b) uma armadilha que este ADR não nomeia: um nó do laço na CPU faz o pump
+  re-cozinhar o integrador com o `prev` DELE — **duas simulações do mesmo estado** —, então o plano
+  recusa a reivindicação inteira quando um staged é fonte de `pre` e sobrou fronteira.
+  `motion.spring` ficou de fora (handoff §9.1, com receita).
 - **Status:** PROPOSTA (fatia 3 do briefing da Fase 2 — *"é uma extensão do MOTOR, não um port de
   kernel. Desenhe antes de codar; pode virar o journey seguinte"*). Escrito ANTES do código.
 - **Linha:** `line/gpu-nodes` (Modo L, ADR-0107 — foundational é editável pela linha).

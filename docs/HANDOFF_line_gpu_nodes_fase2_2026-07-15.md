@@ -14,6 +14,13 @@
 > vai pro device). Briefing do novo agente:
 > [`HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md`](HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md).
 > O item 1 do §Aberto abaixo (estado na GPU) está agora COBERTO por esse ADR — leia o ADR, não o bullet.
+> **A Fase 3 LANDOU** (2026-07-16): o laço roda na GPU. Handoff:
+> [`HANDOFF_line_gpu_nodes_fase3_2026-07-16.md`](HANDOFF_line_gpu_nodes_fase3_2026-07-16.md). Ela
+> também corrigiu um **latente da Fase 1** que o fixture da sim expôs: `presence_signature` colidia
+> num `ColumnAccess::ReadWrite` (presente e ausente compartilhavam a chave do cache de pipeline), o
+> que fazia `grid → scale → scale → output` **crashar** — nenhuma cadeia da Fase 2 muda a presença de
+> uma coluna, por isso ficou invisível. E o item 3 do §Aberto (multi-input) saiu de graça: o plano
+> agora anda em N inputs; falta só o kernel de cada nó.
 
 ---
 

@@ -12,6 +12,14 @@ members = [
     "shells/desktop",
     "tests/spike",
 ]
+# Vendored third-party code (ADR-0123 W7): the DeepFilterNet `libDF` runner, copied
+# under `ph2d-audio-ml` and consumed as a path dependency. Excluded from the
+# workspace so it is treated as an ordinary dependency (`--cap-lints allow`) rather
+# than a member: our `-D warnings` clippy, `machete`, `deny` and fmt do not police
+# code we did not write. Its own `[lints]` and licences travel with it.
+exclude = [
+    "crates/ph2d-audio-ml/vendor/deep_filter",
+]
 
 [workspace.package]
 version = "0.0.0"

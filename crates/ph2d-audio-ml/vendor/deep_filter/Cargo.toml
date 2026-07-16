@@ -1,0 +1,86 @@
+# VENDORED from DeepFilterNet v0.5.6 (https://github.com/Rikorose/DeepFilterNet),
+# `libDF` crate, MIT OR Apache-2.0 (c) 2021 Hendrik Schröter. See VENDOR.md.
+#
+# Why vendored and not a git dependency: the repo is hermetic on purpose
+# (`deny.toml`: `unknown-git = "deny"`, `allow-git = []`), and depending on a
+# `-pre` git tag would put CI at the mercy of GitHub (ADR-0123 §3.6, the same
+# stance that rejected `ort`). This is the pattern `ph2d-audio-opus` already uses.
+#
+# Trimmed to ONLY the runner path we use: `tract` + `default-model` (+ the
+# `transforms`/`logging` they pull). The dataset/bin/vorbis/flac/capi/wav-utils
+# features and their deps — including the crate's one git dependency (`hdf5`) —
+# are dropped. Their source files ship for completeness but are `cfg`'d out and
+# never compiled.
+# Its own workspace root, so the outer workspace's `cargo metadata`/`fmt --all` treat
+# it as an ordinary path dependency and do not try to adopt it as a member (it is in
+# the outer `exclude` for the same reason). Dependency resolution still flows through
+# the parent lock — this only affects tooling run from inside this directory.
+[workspace]
+
+[package]
+name = "deep_filter"
+version = "0.5.6"
+authors = ["Hendrik Schröter"]
+edition = "2021"
+description = "DeepFilterNet noise suppression runner — vendored from DeepFilterNet v0.5.6"
+license = "MIT OR Apache-2.0"
+rust-version = "1.60"
+publish = false
+
+[lib]
+name = "df"
+path = "src/lib.rs"
+
+[features]
+default = []
+transforms = ["dep:thiserror", "dep:ndarray", "dep:rubato"]
+logging = ["dep:log"]
+default-model = []    # embed DeepFilterNet3_onnx.tar.gz
+default-model-ll = [] # (kept as a declared feature so the cfg'd-out `include_bytes!` is not "unexpected")
+tract = [
+    "transforms",
+    "logging",
+    "dep:tract-core",
+    "dep:tract-onnx",
+    "dep:tract-pulse",
+    "dep:tract-hir",
+    "dep:rust-ini",
+    "dep:ndarray",
+    "dep:anyhow",
+    "dep:flate2",
+    "dep:tar",
+]
+
+[dependencies]
+rustfft = "^6.1.0"
+realfft = "^3.1.0"
+itertools = "0.10"
+num-complex = { version = "^0.4", features = ["serde"] }
+log = { version = "0.4", features = ["std"], optional = true }
+rubato = { version = "0.14", optional = true }
+thiserror = { version = "1.0", optional = true }
+anyhow = { version = "1.0", optional = true, features = ["backtrace"] }
+ndarray = { version = "^0.15", optional = true, features = ["serde"] }
+rust-ini = { version = "^0.19", optional = true }
+tract-core = { version = "^0.19.4", optional = true }
+tract-onnx = { version = "^0.19.4", optional = true }
+tract-pulse = { version = "^0.19.4", optional = true }
+tract-hir = { version = "^0.19.4", optional = true }
+flate2 = { version = "1.0.24", optional = true }
+tar = { version = "0.4.38", optional = true }
+
+[package.metadata.cargo-machete]
+# `rust-ini`'s library is named `ini` (the source says `use ini::Ini`), so machete's
+# name heuristic misses it — false positive. `rustfft` is declared by upstream but
+# only reached transitively through `realfft` in our compiled subset; kept as
+# upstream ships it rather than editing third-party deps.
+ignored = ["rust-ini", "rustfft"]
+
+[lints.rust]
+# The vendored source references features this trimmed manifest does not carry
+# (dataset/bin/vorbis/flac/capi/wav-utils/timings/…). Their `cfg(feature = …)`
+# blocks are dead here; silence the lint rather than edit third-party code.
+unexpected_cfgs = { level = "allow" }
+# Third-party code, kept verbatim: do not police lint styles we did not choose
+# (e.g. `mismatched_lifetime_syntaxes` on the spectrogram accessors).
+mismatched_lifetime_syntaxes = { level = "allow" }

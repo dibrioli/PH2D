@@ -72,5 +72,7 @@
 *.mp3     binary
 *.ogg     binary
 *.zip     binary
+*.tar.gz  binary
+*.onnx    binary
 *.pdf     binary
 *.ph2d-vector binary

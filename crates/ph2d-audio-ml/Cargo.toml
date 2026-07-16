@@ -28,16 +28,20 @@ ph2d-audio = { path = "../ph2d-audio" }
 # and back to its own rate on the way out, at the boundary, so the model only
 # ever sees the rate it was trained on.
 ph2d-audio-edit = { path = "../ph2d-audio-edit" }
-# DeepFilterNet's `libDF` runner (crate lib name `df`), pinned to the release tag
-# whose `libDF` matches the `tract 0.19.x` it fixes (ADR-0123 §3.6 — the git HEAD
-# does NOT compile against current tract). `default-features = false` drops the
-# `vorbis`/`flac` decoders `libDF` bundles for its CLI (lewton/ogg/claxon) — we
-# feed it samples, not files. `default-model` embeds the 7.6 MB DFN3 weights via
-# `include_bytes!` (license verified redistributable, ADR-0123 §3.4).
-deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", tag = "v0.5.6", default-features = false, features = [
-    "tract",
-    "default-model",
-] }
+# DeepFilterNet's `libDF` runner (crate lib name `df`), VENDORED from the release
+# tag `v0.5.6` whose `libDF` matches the `tract 0.19.x` it fixes (ADR-0123 §3.6 —
+# the git HEAD does NOT compile against current tract). Vendored, not a git dep, to
+# keep CI hermetic (`deny.toml`: `unknown-git = "deny"`) — the same pattern
+# `ph2d-audio-opus` uses; see `vendor/deep_filter/VENDOR.md`. The vendored manifest
+# is already trimmed to `tract` + `default-model` (which embeds the 7.6 MB DFN3
+# weights, license verified redistributable, ADR-0123 §3.4).
+deep_filter = { path = "vendor/deep_filter", features = ["tract", "default-model"] }
 # The tensor type `DfTract::process` speaks (`ArrayView2<f32>`). Matched to the
 # `^0.15` that `libDF` uses, so the `Array2` we build is the one it accepts.
 ndarray = "0.15"
+
+[package.metadata.cargo-machete]
+# `deep_filter`'s library is named `df` (`[lib] name = "df"`), so the code says
+# `use df::tract::*` — machete's name-match heuristic cannot connect the package
+# name to it and reports a false positive. It is used; see `src/lib.rs`.
+ignored = ["deep_filter"]

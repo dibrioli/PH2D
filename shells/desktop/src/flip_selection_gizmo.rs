@@ -42,12 +42,13 @@
 //! dentro da caixa ainda o seleciona. Os handles keyed (`GizmoTarget::FlipSelection`)
 //! registram só rotate/scale, que é o que falta ao gesto de canvas.
 //!
-//! **O gizmo é do domínio STROKE** (ADR-0112 parity): no domínio **Point** o alvo do
-//! clique são as âncoras, e os handles pousariam em cima delas — trocar o toggle para
-//! Point some com o gizmo na hora. E **sem EXTENSÃO não há gizmo**: um ponto único não se
-//! rotaciona nem se escalona. As duas regras (e a da instância) moram numa função só —
-//! [`grabbable_selection_box`], a porta que decide onde a seleção é agarrável. **Se você
-//! mexer neste módulo, é ela que decide tudo.**
+//! **Vale nos DOIS domínios:** no Stroke a caixa enquadra os traços selecionados; no
+//! Point, **os pontos selecionados** — girar/escalar um punhado de âncoras é metade do que
+//! o §4.A existe para dar. Só **sem EXTENSÃO não há gizmo** (um ponto único não se
+//! rotaciona nem se escalona), e o *"o gizmo do stroke some no `Select: Point`"* vem de
+//! entrar no domínio **limpo** (`FlipDrawing::enter_point_domain`), não de recusar o
+//! domínio. As regras moram numa função só — [`grabbable_selection_box`], a porta que
+//! decide onde a seleção é agarrável. **Se você mexer neste módulo, é ela que decide tudo.**
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::SimWorld;
@@ -129,28 +130,23 @@ pub(crate) fn selection_center_half(d: &FlipDrawing) -> Option<([f32; 2], [f32; 
 /// divergiriam — e o artista veria uma caixa que não pega, ou pegaria onde não vê. É a
 /// mesma família do BUGS #18 (a costura), e a razão de isto ser uma porta só.
 ///
-/// **Três recusas:**
-/// - **Domínio POINT** — *o gizmo é do domínio STROKE*. No Point o alvo do clique são as
-///   **âncoras**, e os handles pousariam em cima delas (a bbox de um retângulo tem as
-///   âncoras NAS quinas) — a queixa do ponto único, generalizada. É a MESMA regra que o
-///   [ADR-0112] já tomou no Vector (*"o gizmo da forma só publica `GizmoView` no modo
-///   Select — em Node ele comeria o clique do nó"*): Stroke/Point aqui é o análogo exato de
-///   Select/Node lá, e o idioma do Illustrator é esse (seta preta = caixa; seta branca =
-///   âncoras, sem caixa). Trocar o toggle para Point some com o gizmo NA HORA (Enio).
-/// - **Arte INSTANCIADA** — a instância é do gizmo de POSE (arte compartilhada não deforma).
-/// - **Seleção sem EXTENSÃO** — um traço de um ponto só (ou N coincidentes) **não se
-///   rotaciona nem se escalona**, e os 8 handles empilhados sobre ele roubariam justamente o
-///   clique que o MOVE. O limiar é o **zero exato** — a meia-extensão de um ponto é `0.0`
-///   por construção, então não há épsilon a inventar
-///   (`feedback_a_threshold_must_live_where_the_domain_is_empty`).
+/// **Vale nos DOIS domínios** — no Stroke a caixa enquadra os traços selecionados; no
+/// Point, **os pontos selecionados** (2+). *"O gizmo do stroke deve sumir no `Select:
+/// Point`"* (Enio) é entregue por `FlipDrawing::enter_point_domain`, que entra **limpo**:
+/// sem seleção não há caixa. Recusar o domínio inteiro seria tirar o gizmo de **múltiplos
+/// pontos**, que é metade do que o §4.A existe para dar.
 ///
-/// [ADR-0112]: ../../docs/architecture/decisions/0112-vector-select-node-pen-are-three-tools.md
+/// **Duas recusas:**
+/// - **Arte INSTANCIADA** — a instância é do gizmo de POSE (arte compartilhada não deforma).
+/// - **Seleção sem EXTENSÃO** — um ponto único (ou N coincidentes) **não se rotaciona nem
+///   se escalona**, e os 8 handles empilhados sobre ele roubariam justamente o clique que o
+///   MOVE (Enio). O realce do ponto já diz que ele está selecionado; o arrasto dele é o
+///   gesto do W8. O limiar é o **zero exato** — a meia-extensão de um ponto é `0.0` por
+///   construção, então não há épsilon a inventar
+///   (`feedback_a_threshold_must_live_where_the_domain_is_empty`).
 #[must_use]
-pub(crate) fn grabbable_selection_box(
-    d: &FlipDrawing,
-    domain: ph2d_tool_flip::EditDomain,
-) -> Option<([f32; 2], [f32; 2])> {
-    if domain == ph2d_tool_flip::EditDomain::Point || d.is_instanced() {
+pub(crate) fn grabbable_selection_box(d: &FlipDrawing) -> Option<([f32; 2], [f32; 2])> {
+    if d.is_instanced() {
         return None;
     }
     let (c, h) = selection_center_half(d)?;
@@ -162,12 +158,8 @@ pub(crate) fn grabbable_selection_box(
 /// §4.A: *"qualquer clique na área do gizmo"*). Sem gizmo publicado, sempre `false` — a
 /// área não existe.
 #[must_use]
-pub(crate) fn selection_box_contains(
-    d: &FlipDrawing,
-    p: Vec2,
-    domain: ph2d_tool_flip::EditDomain,
-) -> bool {
-    grabbable_selection_box(d, domain)
+pub(crate) fn selection_box_contains(d: &FlipDrawing, p: Vec2) -> bool {
+    grabbable_selection_box(d)
         .is_some_and(|(c, h)| (p.x - c[0]).abs() <= h[0] && (p.y - c[1]).abs() <= h[1])
 }
 
@@ -259,14 +251,13 @@ fn selection_target(
     flip: &FlipDoc,
     playhead: &Playhead,
     active_layer: Option<LayerId>,
-    domain: ph2d_tool_flip::EditDomain,
 ) -> Option<SelTarget> {
     let (oid, lid, key, did) = crate::flip_select::visible_key(flip, playhead, active_layer)?;
     let obj = flip.object(oid)?;
     let drawing = obj.drawing(did)?;
     // A MESMA porta que o down do Edit usa para decidir o interior arrastável — desenhar
     // uma caixa que não pega (ou pegar onde não se vê) seria o bug de sempre.
-    let (c_local, h_local) = grabbable_selection_box(drawing, domain)?;
+    let (c_local, h_local) = grabbable_selection_box(drawing)?;
     Some(SelTarget {
         oid,
         did,
@@ -282,9 +273,6 @@ pub(crate) struct SelectionViewInputs<'a> {
     pub(crate) playhead: &'a Playhead,
     pub(crate) active_layer: Option<LayerId>,
     pub(crate) last_pointer: (f32, f32),
-    /// O domínio do toggle do painel: **Point não publica gizmo** (ver
-    /// [`grabbable_selection_box`]).
-    pub(crate) domain: ph2d_tool_flip::EditDomain,
 }
 
 /// A `GizmoView` da SELEÇÃO — `None` fora do alvo. O chamador (render_loop) já gateia
@@ -300,7 +288,7 @@ pub(crate) fn selection_view(
     camera: &Camera2d,
     window_size: WindowSize,
 ) -> Option<GizmoView> {
-    let t = selection_target(flip, inputs.playhead, inputs.active_layer, inputs.domain)?;
+    let t = selection_target(flip, inputs.playhead, inputs.active_layer)?;
     let e = map
         .get(&t.oid)
         .map(|&b| ph2d_ecs::Entity::from_bits(b))
@@ -345,7 +333,6 @@ impl crate::App {
         }
         let playhead = self.playhead;
         let active_layer = self.flip_active_layer;
-        let domain = self.flip_edit_domain_now();
         let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
@@ -362,7 +349,7 @@ impl crate::App {
         if hit.target != ph2d_editor::GizmoTarget::FlipSelection {
             return false;
         }
-        let Some(t) = selection_target(&gfx.flip, &playhead, active_layer, domain) else {
+        let Some(t) = selection_target(&gfx.flip, &playhead, active_layer) else {
             return false;
         };
         let Some(e) = self

@@ -108,7 +108,7 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
         None,
         "o fixture tem de ERRAR a tinta no centro (senao o teste passa pelo motivo errado)"
     );
-    let in_box = selection_box_contains(&d, center, ph2d_tool_flip::EditDomain::Stroke);
+    let in_box = selection_box_contains(&d, center);
     assert!(in_box, "o centro da selecao tem de estar na area do gizmo");
     assert_eq!(
         crate::flip_select::plan_down(&mut d, None, false, in_box),
@@ -121,7 +121,7 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
     );
     // 🔴 O par de AUSÊNCIA: FORA da caixa o gesto continua sendo o marquee (que limpa).
     let outside = Vec2::new(100.0, 100.0);
-    let out_box = selection_box_contains(&d, outside, ph2d_tool_flip::EditDomain::Stroke);
+    let out_box = selection_box_contains(&d, outside);
     assert!(!out_box, "(100,100) esta fora da caixa 0..20");
     assert_eq!(
         crate::flip_select::plan_down(&mut d, None, false, out_box),
@@ -130,53 +130,35 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
     );
 }
 
-/// 🔴 **O domínio POINT não tem gizmo — trocar o toggle some com ele NA HORA** (Enio,
-/// smoke do §4.A: *"se eu seleciono no painel Select:Point, o gizmo do stroke deve sumir
-/// imediatamente"*).
+/// 🔴 **DOIS pontos selecionados ABREM o gizmo, e ele enquadra SÓ eles** — é metade do
+/// que o §4.A existe para dar (girar/escalar um punhado de âncoras), e o smoke do §4.A
+/// custou uma regressão até isto virar gate: eu tinha recusado o domínio Point INTEIRO
+/// para atender *"o gizmo do stroke deve sumir no Select: Point"*, quando quem entrega
+/// isso é o `enter_point_domain` (que entra LIMPO — sem seleção não há caixa).
 ///
-/// O gizmo é do domínio **Stroke**. No Point o alvo do clique são as **âncoras**, e os
-/// handles pousariam em cima delas — a bbox de um retângulo tem as âncoras NAS quinas. É a
-/// mesma regra que o ADR-0112 já tomou no Vector (o gizmo da forma só publica no modo
-/// Select; em Node ele comeria o clique do nó).
+/// Enio: *"não temos o gizmo para manipular múltiplos pontos. (…) não precisamos de gizmo
+/// para um único ponto selecionado. Mas precisamos para dois ou mais"*.
 ///
-/// **A seleção do fixture é a que o CLIQUE do artista produz** (`set_point_selected` — o
-/// pick do W8), NÃO a troca de domínio: entrar no Point hoje **limpa**
-/// (`enter_point_domain`), e armar por ali deixaria este gate verde por falta de seleção,
-/// não pela regra do domínio. Com âncoras acesas a caixa TEM extensão, e o gizmo só some
-/// se a regra olhar o DOMÍNIO — é isso que este gate prende.
-///
-/// Mutação que sangra: tirar o teste de domínio da `grabbable_selection_box`.
+/// Mutação que sangra: recusar `EditDomain::Point` na `grabbable_selection_box` (era o
+/// bug); ou `selection_center_half` varrer todos os pontos (a caixa deixa de ser dos DOIS).
 #[test]
-fn the_point_domain_never_opens_the_gizmo() {
-    use ph2d_tool_flip::EditDomain;
+fn two_selected_points_open_a_gizmo_around_only_them() {
+    // Um retângulo 0..20; o artista acende só os DOIS de baixo.
     let mut r = seg_line(&[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0), (0.0, 20.0)], 4.0);
     r.closed = true;
-    r.selected = true;
     let mut d = bare_drawing(vec![r]);
-    // No STROKE a mesma selecao abre o gizmo (senao a recusa no Point nao prova nada).
-    assert!(
-        grabbable_selection_box(&d, EditDomain::Stroke).is_some(),
-        "o fixture tem de abrir gizmo no Stroke"
+    d.strokes[0].set_point_selected(0, true);
+    d.strokes[0].set_point_selected(1, true);
+    let (c, h) = grabbable_selection_box(&d).expect("dois pontos abrem o gizmo");
+    // A caixa é a dos DOIS pontos (y=0), nao a do retangulo inteiro (que teria h[1]=10).
+    assert_eq!(c, [10.0, 0.0]);
+    assert_eq!(
+        h,
+        [10.0, 0.0],
+        "a caixa tem de ser a dos pontos SELECIONADOS"
     );
-    // O artista entra no Point e ACENDE ancoras (o pick do W8) — a caixa tem extensao.
-    d.enter_point_domain();
-    for i in 0..4 {
-        d.strokes[0].set_point_selected(i, true);
-    }
-    assert!(
-        selection_center_half(&d).is_some_and(|(_, h)| h[0] > 0.0 && h[1] > 0.0),
-        "com ancoras acesas a caixa AINDA teria extensao — o gizmo so some pelo DOMINIO"
-    );
-    assert!(
-        grabbable_selection_box(&d, EditDomain::Point).is_none(),
-        "Select:Point tem de sumir com o gizmo do stroke NA HORA"
-    );
-    // Sem gizmo nao ha area: o clique no meio volta a ser o gesto do W8.
-    assert!(!selection_box_contains(
-        &d,
-        Vec2::new(10.0, 10.0),
-        EditDomain::Point
-    ));
+    // E o meio deles agarra a selecao (o interior vale no Point tambem).
+    assert!(selection_box_contains(&d, Vec2::new(10.0, 0.0)));
 }
 
 /// 🔴 **Uma seleção sem EXTENSÃO não abre o gizmo** — *"não se rotaciona ou escalona um
@@ -187,27 +169,23 @@ fn the_point_domain_never_opens_the_gizmo() {
 /// Mutação que sangra: tirar o teste de extensão da `grabbable_selection_box`.
 #[test]
 fn a_selection_without_extent_never_opens_the_gizmo() {
-    use ph2d_tool_flip::EditDomain;
-    let mut dot = seg_line(&[(7.0, -3.0)], 4.0);
-    dot.selected = true;
-    let d = bare_drawing(vec![dot]);
+    // O caso que o Enio descreveu: UMA âncora acesa no domínio Point.
+    let mut d = bare_drawing(vec![seg_line(
+        &[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0)],
+        4.0,
+    )]);
+    d.strokes[0].set_point_selected(1, true);
     assert!(
-        grabbable_selection_box(&d, EditDomain::Stroke).is_none(),
+        grabbable_selection_box(&d).is_none(),
         "um ponto so nao se rotaciona nem se escalona: nao pode abrir gizmo"
     );
-    assert!(!selection_box_contains(
-        &d,
-        Vec2::new(7.0, -3.0),
-        EditDomain::Stroke
-    ));
-    // Dois pontos distintos ja tem extensao ⇒ o gizmo abre.
-    let mut two = seg_line(&[(7.0, -3.0), (7.0, 17.0)], 4.0);
-    two.selected = true;
-    let d2 = bare_drawing(vec![two]);
-    let (c, h) =
-        grabbable_selection_box(&d2, EditDomain::Stroke).expect("dois pontos tem extensao");
-    assert_eq!(c, [7.0, 7.0]);
-    assert_eq!(h, [0.0, 10.0]);
+    // E o interior não existe: o clique EM CIMA dele continua sendo o gesto do W8.
+    assert!(!selection_box_contains(&d, Vec2::new(20.0, 0.0)));
+    // Idem no Stroke: um traço de um ponto só (um toque) selecionado.
+    let mut dot = seg_line(&[(7.0, -3.0)], 4.0);
+    dot.selected = true;
+    let d2 = bare_drawing(vec![dot]);
+    assert!(grabbable_selection_box(&d2).is_none());
 }
 
 /// 🔴 **Seed = sample: a caixa do gizmo pousa na SELEÇÃO posada** — o pivô é
@@ -249,7 +227,6 @@ fn the_selection_gizmo_box_lands_on_the_posed_selection() {
             playhead: &ph,
             active_layer: None,
             last_pointer: (0.0, 0.0),
-            domain: ph2d_tool_flip::EditDomain::Stroke,
         },
         &cam,
         ws,
@@ -414,7 +391,6 @@ fn an_instanced_drawing_never_opens_the_selection_gizmo() {
                 playhead: &paused(),
                 active_layer: Some(lid),
                 last_pointer: (0.0, 0.0),
-                domain: ph2d_tool_flip::EditDomain::Stroke,
             },
             &cam,
             ws,
@@ -453,7 +429,6 @@ fn an_empty_selection_never_opens_the_gizmo() {
                 playhead: &paused(),
                 active_layer: Some(lid),
                 last_pointer: (0.0, 0.0),
-                domain: ph2d_tool_flip::EditDomain::Stroke,
             },
             &cam,
             ws,

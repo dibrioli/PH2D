@@ -249,8 +249,7 @@ impl crate::App {
             let shift = pick == Pick::Toggle;
             // A ÁREA do gizmo da seleção (mesma caixa que ele desenha, em coords da ARTE
             // — `local` já está nelas): errar a âncora ali dentro ARRASTA a seleção.
-            let in_box =
-                crate::flip_selection_gizmo::selection_box_contains(drawing, local, domain);
+            let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local);
             // **Mover ponto de uma INSTÂNCIA deformaria o gêmeo** (a arte é compartilhada
             // — a regra W7.2: arrasto nunca deforma arte compartilhada). Selecionar pode;
             // mover não: o gesto vira Click e o usuário é AVISADO (zero no-op silencioso).
@@ -305,7 +304,7 @@ impl crate::App {
         // Shift manda, e o gesto vira alternar — o arrasto não pega.
         let shift = pick == Pick::Toggle;
         self.title_dirty = true;
-        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local, domain);
+        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local);
         self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift, in_box) {
             Down::Move { collapse_to } => crate::flip_edit_gesture::EditGesture::Move {
                 last: move_seed,

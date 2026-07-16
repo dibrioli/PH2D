@@ -126,8 +126,16 @@ pub struct TimelineViewSnapshot {
     /// `loop_range.is_some() && !ping_pong` and `loop_range.is_some() && ping_pong`,
     /// which is what makes them look mutually exclusive — because they ARE.
     pub loop_ping_pong: bool,
-    /// Active-clip duration in seconds.
-    pub duration_seconds: f64,
+    /// The active clip's **effective length** in seconds — its authored duration OR its last
+    /// keyframe, whichever is later ([`crate::TimelineDoc::end_seconds`]).
+    ///
+    /// **NOT `duration()`.** A hand-keyed clip has an authored duration of `0` (keys never extend
+    /// it), so `duration()` would report a 5-second animation as 0. This is the length a NEW STRIP
+    /// is sized to, and `add_strip` sizes the strip's SLICE to the same `end_seconds`: read the
+    /// two through different doors and a strip is born with `span ≠ slice`, i.e. a `speed` the
+    /// artist never asked for — a 5 s clip crammed into a 1 s box at 5×. Transport's go-to-end
+    /// reads `end_seconds` for the very same reason; this field is the panel's copy of that answer.
+    pub clip_length_seconds: f64,
     /// Track rows (active clip).
     pub tracks: Vec<TrackView>,
     /// Markers as `(seconds, label)`.
@@ -161,7 +169,7 @@ impl TimelineViewSnapshot {
         self.playing = playhead.is_playing();
         self.loop_range = playhead.loop_range();
         self.loop_ping_pong = doc.active_ping_pong();
-        self.duration_seconds = doc.active_clip().duration().to_seconds();
+        self.clip_length_seconds = doc.end_seconds();
         self.auto_key = state.flags.auto_key;
         self.frame_snap = state.flags.frame_snap;
         self.performing = state.flags.performing;

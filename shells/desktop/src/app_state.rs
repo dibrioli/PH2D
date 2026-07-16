@@ -391,6 +391,8 @@ pub(crate) struct App {
     /// One-shot latch for the `PH2D_IMPASTO_SMOKE` canvas (spawned on the first frame the atlas
     /// plumbing is in scope, not at init — where `atlas_asset_map` does not exist yet).
     pub(crate) impasto_smoke_done: bool,
+    /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
+    pub(crate) stack_smoke_done: bool,
     /// gilrs context (M8). `None` if init failed (e.g. Linux without
     /// /dev/input read perms in CI sandboxes — we degrade gracefully
     /// instead of crashing the renderer).

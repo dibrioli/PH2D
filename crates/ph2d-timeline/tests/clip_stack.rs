@@ -853,3 +853,59 @@ fn two_fades_cannot_take_the_strip_twice() {
          permanentemente meio-misturado com a pose de baixo"
     );
 }
+
+/// **Um clip de 5 s adicionado vira um strip de 5 s a speed 1 — não um de 1 s a 5×.**
+///
+/// O bug que o Enio achou: uma animação de 5 s, ao virar strip, tocava inteira no primeiro
+/// segundo, acelerada 5×. Causa: DUAS PORTAS para "qual o tamanho do clip?". O botão "+strip" lia
+/// a duração AUTORADA (`duration()` = 0 para um clip feito à mão) e caía num mínimo de 1 s; o
+/// `add_strip` dimensionava a FATIA pela última key (5 s). Fatia 5 / span 1 = speed 5.
+///
+/// Este gate atravessa a costura real: o snapshot (o que o botão lê) e o `add_strip` (o que o
+/// botão chama) têm de concordar. FALSIFICADO por repopular `clip_length_seconds` de `duration()`.
+#[test]
+fn a_five_second_clip_becomes_a_five_second_strip_at_real_time() {
+    use ph2d_anim::{AnimValue, Interp, RationalTime};
+    use ph2d_core::Playhead;
+    use ph2d_timeline::{PropKind, TimelineState, TimelineViewSnapshot};
+
+    let mut state = TimelineState::new();
+    // Uma animação feita à mão: uma key a 5 s. A duração AUTORADA do clip continua 0.
+    state.doc.insert_key(
+        7,
+        PropKind::TranslationX,
+        RationalTime::from_seconds(5.0),
+        AnimValue::Float(1.0),
+        Interp::Linear,
+    );
+    assert_eq!(
+        state.doc.active_clip().duration().to_seconds(),
+        0.0,
+        "premissa: um clip feito à mão não tem duração autorada"
+    );
+
+    // O que o botão "+strip" LÊ.
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&state, &Playhead::new(1.0 / 60.0));
+    assert_eq!(
+        snap.clip_length_seconds, 5.0,
+        "o botão tem de ver 5 s (a última key), não 0 (a duração autorada)"
+    );
+
+    // O que o botão FAZ com isso: add_strip no mesmo comprimento.
+    let lane = state.doc.add_lane("L".to_string()).unwrap();
+    let id = state
+        .doc
+        .add_strip(lane, 0, 0.0, snap.clip_length_seconds)
+        .unwrap();
+    let s = state.doc.strip(lane, id).unwrap();
+    assert!(
+        (s.speed - 1.0).abs() < 1e-9,
+        "o strip nasce em tempo REAL, não espremido: speed {}",
+        s.speed
+    );
+    assert!(
+        (s.span() - 5.0).abs() < 1e-9 && (s.slice() - 5.0).abs() < 1e-9,
+        "span == fatia == 5 s: a animação ocupa os 5 s que ela dura"
+    );
+}

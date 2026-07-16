@@ -432,8 +432,11 @@ fn stack_click(id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
             // The ACTIVE clip, dropped AT THE PLAYHEAD — the clip you are looking
             // at, where you are looking.
             let t = snap.time_seconds.max(0.0);
-            let len = if snap.duration_seconds > 0.0 {
-                snap.duration_seconds
+            // The clip's EFFECTIVE length (last key, not authored duration) — the same number
+            // `add_strip` sizes the slice to, so the strip is born at speed 1 instead of crammed.
+            // Only an empty clip (no keys) falls back to a grabbable minimum.
+            let len = if snap.clip_length_seconds > 0.0 {
+                snap.clip_length_seconds
             } else {
                 MIN_NEW_STRIP_S
             };

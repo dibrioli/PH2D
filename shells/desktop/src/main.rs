@@ -83,6 +83,7 @@ mod render_loop;
 mod shape_build;
 mod shape_build_gesture;
 mod sim_populate;
+mod stack_smoke;
 mod theme;
 mod timeline_persist;
 mod undo;
@@ -237,6 +238,7 @@ impl App {
             dragging: None,
             title_dirty: true,
             impasto_smoke_done: false,
+            stack_smoke_done: false,
             gilrs,
             audio,
             #[cfg(feature = "panel-audio-editor")]

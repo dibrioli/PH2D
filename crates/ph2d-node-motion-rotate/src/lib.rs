@@ -103,8 +103,9 @@ impl NodeOp for MotionRotate {
             };
             // Pure per-instance map → parallel above the threshold
             // (bit-identical, no reduction). GPU/M5 Fase 0.
-            let rotated: Vec<f32> =
-                par_build(n, |i| base.get(i).copied().unwrap_or(0.0) + angle * falloff_at(input, i));
+            let rotated: Vec<f32> = par_build(n, |i| {
+                base.get(i).copied().unwrap_or(0.0) + angle * falloff_at(input, i)
+            });
             let mut out = Stream::new(n);
             for (name, col) in input.columns() {
                 if name != "rot" {

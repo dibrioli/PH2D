@@ -597,7 +597,7 @@ fn scrubbing_back_reproduces_the_past_state_instead_of_the_marching_future() {
     let plan = plan(&g, &reg, &reg, out);
     assert!(plan.drives_a_loop());
     let mut gc = GpuCook::new();
-    let mut march = |gc: &mut GpuCook, target: u64| {
+    let march = |gc: &mut GpuCook, target: u64| {
         for t in gc.rewind_for(target)..=target {
             gc.cook(
                 &gpu,

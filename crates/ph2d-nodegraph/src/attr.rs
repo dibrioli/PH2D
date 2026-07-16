@@ -206,7 +206,14 @@ mod tests {
         // result MUST equal the explicit serial map byte-for-byte, or a
         // parallelized node would silently diverge from the CPU canon.
         let f = |i: usize| (i as f32) * 0.1 + (i as f32).sqrt() * 1.3;
-        for n in [0usize, 1, 100, PAR_THRESHOLD - 1, PAR_THRESHOLD, PAR_THRESHOLD * 4 + 7] {
+        for n in [
+            0usize,
+            1,
+            100,
+            PAR_THRESHOLD - 1,
+            PAR_THRESHOLD,
+            PAR_THRESHOLD * 4 + 7,
+        ] {
             let serial: Vec<f32> = (0..n).map(f).collect();
             let built = par_build(n, f);
             assert_eq!(built, serial, "par_build diverged from serial at n = {n}");

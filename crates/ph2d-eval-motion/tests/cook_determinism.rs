@@ -20,10 +20,10 @@
 //!    libm pinned), so it is expected cross-OS stable like the ECS golden. A
 //!    legitimate drift = re-pin with a captured value + an explanation.
 
-use ph2d_nodegraph::attr::{Column, Stream, PAR_THRESHOLD};
+use ph2d_node_registry::NodeRegistry;
+use ph2d_nodegraph::attr::{Column, PAR_THRESHOLD, Stream};
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
-use ph2d_node_registry::NodeRegistry;
 
 fn registry() -> NodeRegistry {
     let mut r = NodeRegistry::new();
@@ -83,9 +83,18 @@ fn fingerprint(s: &Stream) -> u64 {
         eat(name.as_bytes(), &mut h);
         let words: Vec<u32> = match col {
             Column::Scalar(v) => v.iter().map(|x| x.to_bits()).collect(),
-            Column::Vec2(v) => v.iter().flat_map(|p| p.iter().map(|x| x.to_bits())).collect(),
-            Column::Vec3(v) => v.iter().flat_map(|p| p.iter().map(|x| x.to_bits())).collect(),
-            Column::Vec4(v) => v.iter().flat_map(|p| p.iter().map(|x| x.to_bits())).collect(),
+            Column::Vec2(v) => v
+                .iter()
+                .flat_map(|p| p.iter().map(|x| x.to_bits()))
+                .collect(),
+            Column::Vec3(v) => v
+                .iter()
+                .flat_map(|p| p.iter().map(|x| x.to_bits()))
+                .collect(),
+            Column::Vec4(v) => v
+                .iter()
+                .flat_map(|p| p.iter().map(|x| x.to_bits()))
+                .collect(),
         };
         for w in words {
             eat(&w.to_le_bytes(), &mut h);

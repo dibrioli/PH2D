@@ -37,10 +37,10 @@
 //! lowering already reads them.
 
 use ph2d_nodegraph::attr::{Column, PAR_THRESHOLD, Stream};
-use rayon::prelude::*;
 use ph2d_nodegraph::cook::{Cook, CookError, OpResolver, TimeScopes};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_render::RenderInstance;
+use rayon::prelude::*;
 
 mod checkpoint;
 pub use checkpoint::{CheckpointRing, RECENT_CAPACITY};

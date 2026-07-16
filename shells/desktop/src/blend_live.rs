@@ -163,7 +163,9 @@ pub(crate) fn create(
     let spine = VecPath {
         verts: spine_verts(&centers),
         closed: false,
-        stroke: Some(spine_stroke()),
+        // Invisível na cena: a linha só aparece no modo Node, elevada ao overlay (`elevate_spines`).
+        // No Select ela é Node-only. O `recook` mantém o traço em `None` todo frame.
+        stroke: None,
         ..VecPath::default()
     };
     let spine_id = scene.push_path(spine);
@@ -276,13 +278,13 @@ pub(crate) fn recook(
             Vec::new()
         };
 
-        // O spine tem SEMPRE seu traço na cena — é o que o `dispatch` desenha no z dele (modo
-        // Select). Em modo Node, `elevate_spines` o retira daqui e o sobe para o topo; sem esta
-        // linha, um único frame em Node (que zera o traço) deixaria o spine invisível ao voltar a
-        // Select, pois nem `write_spine` nem o pin mexem no traço. O traço é função determinística
-        // do frame, não estado que gruda.
+        // O spine é INVISÍVEL na cena — ele só aparece no modo Node, elevado ao topo do overlay
+        // (`elevate_spines`), que é o único modo em que a linha se toca (ADR-0122). No Select a linha
+        // é Node-only e não deve aparecer: mantê-la traçada na cena a mostrava como um "fantasma" que
+        // ainda dava drift ao mover as formas (Enio 2026-07-15). Zerar o traço todo frame é função
+        // determinística do frame, não estado que gruda.
         if let Some(p) = scene.path_mut(spine_id) {
-            p.stroke = Some(spine_stroke());
+            p.stroke = None;
         }
 
         // Os passos de cada elo, INTERCALADOS com a fonte "de cima" dele (`pair[1]`), redesenhada
@@ -316,19 +318,15 @@ pub(crate) fn recook(
     }
 }
 
-/// **Modo Node: o SPINE sobe para o topo** (acima de TODAS as formas e passos) — é o path que o
-/// artista edita, e tem de estar visível e clicável ali (ADR-0122). Sem isto o spine fica no z
-/// dele (o `dispatch` o desenha ali), e formas opacas por cima o escondem justo quando se quer
-/// mexer nele.
+/// **Modo Node: o SPINE aparece, elevado ao topo** (acima de TODAS as formas e passos) — é o path
+/// que o artista edita, e tem de estar visível e clicável ali (ADR-0122). Na cena o spine é
+/// INVISÍVEL (`recook` mantém o traço em `None`); aqui empurramos um clone TRAÇADO no fim de `out` —
+/// o mesmo buffer que o [`recook`] encheu com os passos, desenhado por último
+/// ([`ph2d_vec_render::draw_blend_overlay`]). Assim o spine só se vê no Node, por cima de tudo.
 ///
-/// Tira o traço do spine da cena (`stroke = None` ⇒ some do `dispatch`, que o desenharia embaixo)
-/// e empurra um clone TRAÇADO no fim de `out` — o mesmo buffer que o [`recook`] encheu com os
-/// passos, desenhado por último ([`ph2d_vec_render::draw_blend_overlay`]). Assim o spine fica por
-/// cima de tudo, e NÃO se desenha duas vezes (a dobra somaria o alpha do traço).
-///
-/// Roda DEPOIS de [`recook`] (o spine já tem geometria e o traço-base) e ANTES do `dispatch`, e SÓ
-/// em modo Node — em Select o spine fica no seu z (traço sutil), como o Illustrator. Fora do modo
-/// Node o `recook` restaura o traço-base todo frame, então esta remoção não gruda.
+/// Roda DEPOIS de [`recook`] e ANTES do `dispatch`, e SÓ em modo Node. Em Select a linha não é
+/// desenhada (é Node-only) — mantê-la visível a mostrava como um "fantasma" com drift ao mover as
+/// formas (Enio 2026-07-15).
 pub(crate) fn elevate_spines(
     sim: &SimWorld,
     scene: &mut VecScene,

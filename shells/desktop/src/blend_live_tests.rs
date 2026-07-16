@@ -428,13 +428,13 @@ fn set_selected_steps_retunes_only_the_selected_blend() {
     );
 }
 
-/// **Modo Node: o spine SAI da cena e vira o item de topo do overlay.** Depois do `recook` (que
-/// deixa o traço-base na cena), `elevate_spines` tira o traço do path na cena (some do `dispatch`)
-/// e acrescenta um clone TRAÇADO no fim do overlay — desenhado por último, acima de tudo. O sibling
-/// de PRESENÇA (o clone tem traço VISÍVEL) é essencial: sem ele, "não está na cena" ficaria verde
-/// com um spine que não é desenhado em lugar nenhum.
+/// **Modo Node: o spine aparece elevado ao topo do overlay — e a cena segue invisível.** Na cena o
+/// spine é sempre INVISÍVEL (o `recook` mantém o traço em `None`, para não virar fantasma no Select);
+/// `elevate_spines` acrescenta um clone TRAÇADO no fim do overlay — desenhado por último, acima de
+/// tudo. O sibling de PRESENÇA (o clone tem traço VISÍVEL) é essencial: sem ele, "não está na cena"
+/// ficaria verde com um spine que não é desenhado em lugar nenhum.
 #[test]
-fn in_node_mode_the_spine_is_lifted_out_of_the_scene_onto_the_overlay_top() {
+fn in_node_mode_the_spine_is_lifted_onto_the_overlay_top_and_the_scene_stays_invisible() {
     let (mut sim, mut scene, map, spine, _src) = scene_with_blend(2, 3);
     let mut out = Vec::new();
     let xf = crate::vec_transform::build(&sim, &map);
@@ -447,7 +447,7 @@ fn in_node_mode_the_spine_is_lifted_out_of_the_scene_onto_the_overlay_top() {
         &mut out,
     );
 
-    // Baseline (o que o modo Select desenha): o spine tem traço no seu z na cena.
+    // O spine é INVISÍVEL na cena (nem no Select ele aparece — é Node-only).
     let spine_verts = scene
         .paths()
         .iter()
@@ -462,14 +462,14 @@ fn in_node_mode_the_spine_is_lifted_out_of_the_scene_onto_the_overlay_top() {
             .find(|p| p.id == spine)
             .expect("spine")
             .stroke
-            .is_some(),
-        "modo Select: o spine tem traço na cena (z-order)"
+            .is_none(),
+        "o spine é invisível na cena (Select não o mostra)"
     );
 
     let before = out.len();
     crate::blend_live::elevate_spines(&sim, &mut scene, &map, &mut out);
 
-    // AUSÊNCIA: o traço saiu da cena (o `dispatch` não o desenha embaixo).
+    // A cena segue invisível; o topo do overlay é o spine, TRAÇADO (visível no Node).
     assert!(
         scene
             .paths()
@@ -478,14 +478,13 @@ fn in_node_mode_the_spine_is_lifted_out_of_the_scene_onto_the_overlay_top() {
             .expect("spine")
             .stroke
             .is_none(),
-        "modo Node: o traço do spine saiu da cena"
+        "a cena segue invisível"
     );
-    // PRESENÇA: o topo do overlay é o spine, TRAÇADO (visível) e com a mesma geometria.
     assert_eq!(out.len(), before + 1, "o spine foi acrescentado ao overlay");
     let top = out.last().expect("topo");
     assert!(
         top.stroke.is_some(),
-        "o spine elevado é desenhado (traço visível)"
+        "o spine elevado é desenhado (traço visível no Node)"
     );
     assert!(!top.closed, "o spine é um path ABERTO");
     let top_verts: Vec<_> = top.verts.iter().map(|v| v.anchor).collect();
@@ -496,42 +495,29 @@ fn in_node_mode_the_spine_is_lifted_out_of_the_scene_onto_the_overlay_top() {
     );
 }
 
-/// **A elevação NÃO gruda: um frame em Node não deixa o spine invisível em Select.** É a razão do
-/// `recook` restaurar o traço-base todo frame — sem essa linha, o `stroke = None` do `elevate` de
-/// um frame Node persistiria e o spine sumiria ao voltar a Select.
+/// **No modo Select o spine é INVISÍVEL na cena** (Enio 2026-07-15) — mantê-lo traçado o mostrava
+/// como um "fantasma" com drift ao mover as formas. O `recook` zera o traço todo frame, então nem a
+/// criação (que nasce sem traço) nem um frame anterior o deixam aparecer.
 #[test]
-fn after_a_node_frame_select_mode_restores_the_spine_stroke() {
+fn the_spine_is_invisible_in_the_scene_in_select_mode() {
     let (mut sim, mut scene, map, spine, _src) = scene_with_blend(2, 3);
     let mut out = Vec::new();
     let mut spines = BlendSpines::new();
     let xf = crate::vec_transform::build(&sim, &map);
 
-    // Frame em modo Node: o `elevate` zera o traço na cena.
-    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
-    crate::blend_live::elevate_spines(&sim, &mut scene, &map, &mut out);
-    assert!(
-        scene
-            .paths()
-            .iter()
-            .find(|p| p.id == spine)
-            .expect("spine")
-            .stroke
-            .is_none(),
-        "após Node o traço saiu da cena"
-    );
-
-    // Frame seguinte em modo Select (só `recook`): o traço-base volta.
-    recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
-    assert!(
-        scene
-            .paths()
-            .iter()
-            .find(|p| p.id == spine)
-            .expect("spine")
-            .stroke
-            .is_some(),
-        "modo Select restaura o traço do spine (o `recook` o garante todo frame)"
-    );
+    for _ in 0..3 {
+        recook(&mut sim, &mut scene, &map, &xf, &mut spines, &mut out);
+        assert!(
+            scene
+                .paths()
+                .iter()
+                .find(|p| p.id == spine)
+                .expect("spine")
+                .stroke
+                .is_none(),
+            "o spine fica invisível na cena todo frame (sem fantasma no Select)"
+        );
+    }
 }
 
 /// **Pick Shapes: a prévia realça as escolhas E as costura na ORDEM DE CLIQUE** (ADR-0122 C2b) —

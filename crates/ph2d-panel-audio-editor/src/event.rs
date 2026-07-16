@@ -12,10 +12,10 @@ use crate::{
     AEDIT_LOOP, AEDIT_LOOP_CLEAR, AEDIT_LOOP_SET, AEDIT_LOOP_XFADE, AEDIT_MARK_ADD, AEDIT_MARK_DEL,
     AEDIT_MONO, AEDIT_NORM_LUFS, AEDIT_NORMALIZE, AEDIT_PASTE, AEDIT_PLAY, AEDIT_PRESET_APPLY,
     AEDIT_PRESET_LOAD, AEDIT_PRESET_NEXT, AEDIT_PRESET_PREV, AEDIT_PRESET_SAVE, AEDIT_REDO,
-    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN,
-    AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, AEDIT_SPLIT, AEDIT_SPLIT_PLAYHEAD, AEDIT_STOP,
-    AEDIT_TOOL_MOVE, AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT, AEDIT_TRIM, AEDIT_UNDO, AudioEditCmd,
-    AudioEditorPanel, loop_state, presets, snapshot, spectral_state, variation_state,
+    AEDIT_REVERSE, AEDIT_SILENCE, AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_DENOISE_ML,
+    AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, AEDIT_SPLIT, AEDIT_SPLIT_PLAYHEAD,
+    AEDIT_STOP, AEDIT_TOOL_MOVE, AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT, AEDIT_TRIM, AEDIT_UNDO,
+    AudioEditCmd, AudioEditorPanel, loop_state, presets, snapshot, spectral_state, variation_state,
 };
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -92,6 +92,13 @@ fn spectral_click(id: NodeId) -> Option<EventOutcome> {
         if spectral_state::has_profile() {
             snapshot::request_edit(AudioEditCmd::Denoise);
         }
+        return Some(EventOutcome::Consumed);
+    }
+    if id == AEDIT_SPEC_DENOISE_ML {
+        // No profile check: DeepFilterNet learns the noise itself. The button is only painted
+        // when `audio-ml` is compiled in, so a click can only reach here in that build; if the
+        // command still arrived without the feature, the shell's arm is a compiled-out no-op.
+        snapshot::request_edit(AudioEditCmd::DenoiseMl);
         return Some(EventOutcome::Consumed);
     }
     None

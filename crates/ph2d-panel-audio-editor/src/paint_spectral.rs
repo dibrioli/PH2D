@@ -17,8 +17,8 @@
 
 use crate::paint::{ClippedHits, button, toggle};
 use crate::{
-    AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_LEARN, AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW,
-    spectral_state,
+    AEDIT_SPEC_AMOUNT, AEDIT_SPEC_DENOISE, AEDIT_SPEC_DENOISE_ML, AEDIT_SPEC_LEARN,
+    AEDIT_SPEC_REPAIR, AEDIT_SPEC_VIEW, spectral_state,
 };
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{Slider, SliderOrientation, paint_slider};
@@ -97,7 +97,27 @@ pub(crate) fn paint_spectral_section(
     );
     y += row_h + gap;
 
-    let live = loaded && spectral_state::has_profile();
+    // AI Denoise (W7, ADR-0123) — DeepFilterNet, which learns the noise itself, so it needs no
+    // profile and no Learn: it is lit whenever a clip is loaded. Painted only when the shell was
+    // built with the `audio-ml` feature (it publishes availability); otherwise nothing is shown.
+    let ml = spectral_state::ml_available();
+    if ml {
+        button(
+            Rect::new(x, y, w, row_h),
+            "AI Denoise",
+            loaded,
+            AEDIT_SPEC_DENOISE_ML,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+        y += row_h + gap;
+    }
+
+    // The Amount slider drives whichever denoise is used: the W5 one (needs a profile) or the
+    // AI one (always available in this build). Live when either can run.
+    let live = loaded && (spectral_state::has_profile() || ml);
     paint_text(
         text_system,
         scene,

@@ -273,6 +273,11 @@ ph2d-audio-edit = { path = "../../crates/ph2d-audio-edit", optional = true }
 ph2d-audio-encode = { path = "../../crates/ph2d-audio-encode", optional = true }
 ph2d-audio-spectral = { path = "../../crates/ph2d-audio-spectral", optional = true }
 ph2d-audio-opus = { path = "../../crates/ph2d-audio-opus", optional = true }
+# W7 ML denoise (ADR-0123). Optional, pulled ONLY by the `audio-ml` feature (OFF by default): a
+# default build never resolves `tract`, never compiles the inference stack, never embeds the
+# model. It carries the whole DeepFilterNet dependency; the RT mixer (`ph2d-audio`) must never
+# reach it (gate `no_ml_runtime_reaches_the_mixer`).
+ph2d-audio-ml = { path = "../../crates/ph2d-audio-ml", optional = true }
 cpal = "0.15"
 # arboard: system clipboard read/write for the Cmd+C/V/X handlers in
 # ph2d-editor's dispatch. Constructed once at startup; pasted text is
@@ -369,3 +374,7 @@ panel-timeline       = ["ph2d-panel-registry-init/panel-timeline"]
 # Direct dep too: the render_loop editor bridge reads the transport intents +
 # drives the preview engine + publishes position back for the readout/playhead.
 panel-audio-editor   = ["ph2d-panel-registry-init/panel-audio-editor", "dep:ph2d-panel-audio-editor", "dep:ph2d-audio-edit", "dep:ph2d-audio-encode", "dep:ph2d-audio-spectral", "dep:ph2d-audio-opus"]
+# W7 AI Denoise (ADR-0123), OFF by default — NOT in `default`. Turning it on pulls the native
+# DeepFilterNet stack (`ph2d-audio-ml` → `tract`) and lights the "AI Denoise" button in the audio
+# editor. It implies `panel-audio-editor`, which is where the button and its bridge live.
+audio-ml             = ["panel-audio-editor", "dep:ph2d-audio-ml"]

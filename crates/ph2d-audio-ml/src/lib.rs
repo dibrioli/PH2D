@@ -125,7 +125,9 @@ fn enhance_48k(planar: &Array2<f32>, n_ch: usize) -> Array2<f32> {
 
     let frames = planar.ncols();
     // Round up so the input is a whole number of hops AND covers the delay tail.
-    let padded = frames.next_multiple_of(hop).max((frames + delay).next_multiple_of(hop));
+    let padded = frames
+        .next_multiple_of(hop)
+        .max((frames + delay).next_multiple_of(hop));
 
     let mut noisy = Array2::<f32>::zeros((n_ch, padded));
     noisy

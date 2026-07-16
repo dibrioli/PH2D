@@ -127,6 +127,11 @@ pub const AEDIT_SPEC_LEARN: NodeId = hash_node_id("audio_editor_spec_learn");
 pub const AEDIT_SPEC_AMOUNT: NodeId = hash_node_id("audio_editor_spec_amount");
 /// Apply the denoise across the clip.
 pub const AEDIT_SPEC_DENOISE: NodeId = hash_node_id("audio_editor_spec_denoise");
+/// Denoise the whole clip with DeepFilterNet (W7, ADR-0123). No profile — the model learns the
+/// noise itself. Offered only when the shell was built with the `audio-ml` feature (the shell
+/// publishes availability via `spectral_state::set_ml_available`); otherwise the button is never
+/// painted, so nothing dead is shown.
+pub const AEDIT_SPEC_DENOISE_ML: NodeId = hash_node_id("audio_editor_spec_denoise_ml");
 /// **Enable / disable** the selected variation — take it out of the pick WITHOUT deleting it.
 ///
 /// The model has always carried the flag (the picker skips disabled entries, the row already
@@ -422,6 +427,10 @@ pub enum AudioEditCmd {
     LearnNoise,
     /// Suppress the learned noise across the whole clip.
     Denoise,
+    /// Denoise the whole clip with DeepFilterNet3 (W7, ADR-0123). The model learns the noise
+    /// itself, so unlike [`AudioEditCmd::Denoise`] there is no profile to learn first. The shell
+    /// only acts on it when built with the `audio-ml` feature.
+    DenoiseMl,
 }
 
 /// Zero-size marker implementing the typed Audio Editor panel contract.

@@ -68,6 +68,12 @@ impl super::super::AudioSystem {
     pub(crate) fn editor_publish_spectral(&mut self) {
         use ph2d_panel_audio_editor::spectral_state as ss;
 
+        // Tell the panel whether AI Denoise (DeepFilterNet, W7) has a home in this build. Compiled
+        // to a constant `true`/`false` — the panel paints the button only when it is `true`, so a
+        // build without `audio-ml` never shows it. Published before the no-clip early return so it
+        // is always current.
+        ss::set_ml_available(cfg!(feature = "audio-ml"));
+
         let Some(clip) = self.editor.clip.as_ref() else {
             ss::set_ready(false, false, "");
             self.spectral = SpectralState::default();
@@ -234,6 +240,28 @@ impl super::super::AudioSystem {
         // Same guard as the repair: `denoise` returns the input untouched at amount 0 (and
         // when the profile's rate does not match the clip's), and an undo step for nothing is
         // a lie about what happened.
+        if out.samples() == clip.data().samples() {
+            return;
+        }
+        clip.commit_rendered(out);
+        self.editor_hot_swap();
+    }
+
+    /// **AI Denoise** (W7, ADR-0123): suppress noise across the whole clip with DeepFilterNet.
+    ///
+    /// The sibling of [`Self::editor_denoise`] without the Learn step — DeepFilterNet learns the
+    /// noise itself, so there is no profile. `amount` is the same slider: `0` is a byte-identical
+    /// no-op (guarded below so it never costs an undo step), `1` is the full model output. Only
+    /// compiled when the shell was built with `audio-ml`.
+    #[cfg(feature = "audio-ml")]
+    pub(crate) fn editor_denoise_ml(&mut self) {
+        let amount = ph2d_panel_audio_editor::spectral_state::amount();
+        let Some(clip) = self.editor.clip.as_mut() else {
+            return;
+        };
+        let out = ph2d_audio_ml::denoise_ml(clip.data(), amount);
+        // Same guard as the W5 denoise: at amount 0 (and on an empty clip) `denoise_ml` returns
+        // the input untouched, and an undo step for an edit that never happened is a lie.
         if out.samples() == clip.data().samples() {
             return;
         }

@@ -29,6 +29,11 @@ thread_local! {
     static HAS_BAND: Cell<bool> = const { Cell::new(false) };
     /// Shell → panel: the finished status line (what is selected, what was learned).
     static STATUS: RefCell<String> = const { RefCell::new(String::new()) };
+    /// Shell → panel: the shell was built with the `audio-ml` feature, so the AI Denoise
+    /// (DeepFilterNet, W7) button has a home to dispatch to. Default `false`: without the
+    /// feature the shell never flips this, the button is never painted, and nothing dead is
+    /// shown — the panel crate stays feature-agnostic, the shell owns the one switch.
+    static ML_AVAILABLE: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Panel: flip between waveform and spectrogram.
@@ -68,4 +73,16 @@ pub(crate) fn has_band() -> bool {
 
 pub(crate) fn status() -> String {
     STATUS.with(|c| c.borrow().clone())
+}
+
+/// Shell: whether AI Denoise (DeepFilterNet, W7) is compiled in. The shell publishes this once
+/// it knows its own build features (`cfg!(feature = "audio-ml")`); the panel paints the button
+/// only when it is `true`.
+pub fn set_ml_available(v: bool) {
+    ML_AVAILABLE.with(|c| c.set(v));
+}
+
+/// Panel: is AI Denoise available in this build?
+pub(crate) fn ml_available() -> bool {
+    ML_AVAILABLE.with(Cell::get)
 }

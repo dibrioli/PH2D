@@ -29,7 +29,11 @@ fn read_wav(path: &Path) -> SampleData {
     assert_eq!(&bytes[0..4], b"RIFF", "not a RIFF file");
     assert_eq!(&bytes[8..12], b"WAVE", "not a WAVE file");
     // Canonical layout: fmt chunk (16 bytes) then data chunk header, PCM16 payload at byte 44.
-    assert_eq!(&bytes[36..40], b"data", "fixture is not canonical 44-byte-header PCM WAV");
+    assert_eq!(
+        &bytes[36..40],
+        b"data",
+        "fixture is not canonical 44-byte-header PCM WAV"
+    );
     let sr = u32::from_le_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]);
     let pcm = &bytes[44..];
     let samples: Vec<f32> = pcm
@@ -83,9 +87,8 @@ fn si_sdr(est: &[f32], clean: &[f32]) -> f64 {
     let n = shifted.len().min(clean.len());
     let est = &shifted[..n];
     let clean = &clean[..n];
-    let dot = |a: &[f32], b: &[f32]| -> f64 {
-        a.iter().zip(b).map(|(x, y)| *x as f64 * *y as f64).sum()
-    };
+    let dot =
+        |a: &[f32], b: &[f32]| -> f64 { a.iter().zip(b).map(|(x, y)| *x as f64 * *y as f64).sum() };
     let alpha = dot(clean, est) / dot(clean, clean).max(1e-20);
     let mut tt = 0.0f64;
     let mut nn = 0.0f64;
@@ -128,7 +131,9 @@ fn denoise_ml_reproduces_the_reference_cli_gain() {
     let out = ph2d_audio_ml::denoise_ml(&noisy, 1.0);
     let after = si_sdr(out.samples(), clean_s);
     let gain = after - before;
-    println!("SI-SDR: noisy {before:.2} dB -> denoised {after:.2} dB  (gain {gain:+.2} dB; CLI reference 20.59 dB / +14.04 dB)");
+    println!(
+        "SI-SDR: noisy {before:.2} dB -> denoised {after:.2} dB  (gain {gain:+.2} dB; CLI reference 20.59 dB / +14.04 dB)"
+    );
     assert!(
         after >= 18.0,
         "denoise_ml scored only {after:.2} dB (CLI reference 20.6) — the wrapper is not \

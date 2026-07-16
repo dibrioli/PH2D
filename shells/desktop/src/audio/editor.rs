@@ -428,9 +428,9 @@ impl AudioSystem {
                 ),
                 // Handled above (they act on the audition, not on `clip`).
                 Cmd::ApplyFx | Cmd::CancelFx => {}
-                // Spectral (W5) — they need the FFT and the shell's spectral state, so
-                // they are run below, outside this `clip` borrow.
-                Cmd::SpectralRepair | Cmd::LearnNoise | Cmd::Denoise => {}
+                // Spectral (W5) + AI Denoise (W7) — they need the shell's spectral state (and,
+                // for the ML one, the model), so they run below, outside this `clip` borrow.
+                Cmd::SpectralRepair | Cmd::LearnNoise | Cmd::Denoise | Cmd::DenoiseMl => {}
             }
         }
         // Split at the playhead. The frame comes from the transport (or the scrub), which the clip
@@ -466,6 +466,14 @@ impl AudioSystem {
             }
             Cmd::Denoise => {
                 self.editor_denoise();
+                return;
+            }
+            Cmd::DenoiseMl => {
+                // The DeepFilterNet path exists only when the shell was built with `audio-ml`;
+                // without it the button is never painted, so this command never arrives, and the
+                // arm is a compiled-out no-op that simply returns.
+                #[cfg(feature = "audio-ml")]
+                self.editor_denoise_ml();
                 return;
             }
             _ => {}

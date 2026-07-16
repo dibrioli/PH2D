@@ -5257,6 +5257,7 @@ dependencies = [
  "ph2d-audio-decode",
  "ph2d-audio-edit",
  "ph2d-audio-encode",
+ "ph2d-audio-ml",
  "ph2d-audio-opus",
  "ph2d-audio-spectral",
  "ph2d-color",

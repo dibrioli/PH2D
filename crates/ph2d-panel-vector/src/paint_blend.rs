@@ -1,4 +1,9 @@
-//! A seção **BLEND** do painel Vector — módulo irmão do [`super`] (teto de 600 LOC do painel).
+//! As seções **BLEND** e **MORPH** do painel Vector — módulo irmão do [`super`] (teto de 600 LOC).
+//!
+//! As duas moram no mesmo arquivo porque partilham o motor (a correspondência de
+//! `ph2d-vec-blend`), mas são **seções separadas** na tela, e isso é deliberado: o que elas
+//! produzem são objetos diferentes — o Blend dá N passos virtuais em volta de um spine; o Morph dá
+//! UMA forma real, cujo `t` a timeline keya. O Morph não é um modo do Blend.
 //!
 //! **Steps** + o botão **Blend**, sobre o **Blend Object VIVO** (ADR-0122 — o Blend do Illustrator:
 //! objeto único, não-destrutivo, fontes sempre editáveis). O botão cria um blend vivo sobre as
@@ -73,18 +78,28 @@ impl BodyCtx<'_> {
         for (id, label) in commands {
             y = self.action_button(id, label, y);
         }
-        self.morph_rows(y)
+        y
     }
 
-    /// O **MORPH** — o irmão animável do Blend, e por isso ele mora nesta seção: são as mesmas duas
-    /// formas, o mesmo motor de correspondência, e a escolha é entre eles. O Blend mostra os N
-    /// passos **de uma vez** (uma transição vista de fora, ilustração); o Morph mostra **UM**, e o
-    /// `t` dele é um número que a **timeline keya** — é a mesma relação, animada.
+    /// Seção **MORPH** — a forma única entre duas, com o `t` animável.
+    ///
+    /// **Seção própria, e não uma linha dentro do Blend** (Enio, 2026-07-16): eles partilham o
+    /// motor de correspondência, mas o que produzem são objetos DIFERENTES — o Blend dá N passos
+    /// virtuais em volta de um spine, o Morph dá UMA forma real cujo `t` a timeline keya. Encaixar
+    /// um dentro do outro sugeria que o Morph é um modo do Blend; ele não é.
     ///
     /// O slider é a autoria ao vivo: o artista estaciona a forma onde ela fica bem e aperta **K**
     /// (o `sample_prop_value` captura o `t` como captura uma pose). Sem ele, keyar exigiria digitar
     /// números às cegas numa track vazia.
-    fn morph_rows(&mut self, y: f32) -> f32 {
+    pub(crate) fn morph_section(&mut self, y: f32) -> f32 {
+        let (y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_MORPH,
+            tr("panel.vector.section.morph"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
         let mut y = self.action_button(ids::VECTOR_MORPH_RUN, "Morph", y);
         let t = self
             .store

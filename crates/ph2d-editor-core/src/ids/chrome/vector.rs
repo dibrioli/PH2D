@@ -443,6 +443,8 @@ pub const VECTOR_CONNECTOR_CURVE: NodeId = hash_node_id("vector.connector.curve"
 // automático errar, e toda ferramenta séria do mercado teve de ter uma.
 /// Seção **BLEND** — os passos intermediários entre as DUAS formas selecionadas.
 pub const VECTOR_SECTION_BLEND: NodeId = hash_node_id("vector.section.blend");
+/// A seção **Morph** — o `t` animável (irmã da Blend, mas objeto próprio: uma forma, não N).
+pub const VECTOR_SECTION_MORPH: NodeId = hash_node_id("vector.section.morph");
 /// **Blend** — cria (ou re-cria) os passos entre as duas formas selecionadas.
 pub const VECTOR_BLEND_RUN: NodeId = hash_node_id("vector.blend.run");
 /// **Steps** — quantas formas nascem no meio do caminho.
@@ -490,6 +492,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_VERTEX,
     VECTOR_SECTION_BOOLEAN,
     VECTOR_SECTION_BLEND,
+    VECTOR_SECTION_MORPH,
     VECTOR_SECTION_ALIGN,
     VECTOR_SECTION_ARRANGE,
     VECTOR_SECTION_PATH,

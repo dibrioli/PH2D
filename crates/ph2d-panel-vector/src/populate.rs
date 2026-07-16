@@ -72,7 +72,7 @@ fn number_field(
 }
 
 /// Register a slider + its linked value chip, seeded at `track` / `display`.
-fn slider_chip(
+pub(super) fn slider_chip(
     store: &mut WidgetStore,
     slider: ph2d_a11y::NodeId,
     chip: ph2d_a11y::NodeId,
@@ -80,6 +80,39 @@ fn slider_chip(
     display: f64,
     scale: f32,
     offset: f32,
+) {
+    slider_chip_inner(store, slider, chip, track, display, scale, offset, false);
+}
+
+/// Como [`slider_chip`], mas o valor digitado é **arredondado ao inteiro** antes de voltar ao
+/// slider — para o chip cuja unidade pintada é uma CONTAGEM (o Steps do blend). Sem isto, digitar
+/// "3.5" deixa o chip em 3,5 enquanto o painel mostra "4", e o Tab revela a inconsistência.
+///
+/// Os dois delegam ao mesmo `_inner`, que é a forma que o próprio
+/// `WidgetStore::link_slider_number_mapped{,_integer}` usa — a decisão "inteiro?" mora num
+/// parâmetro, não num 2º construtor que pode divergir do 1º.
+pub(super) fn slider_chip_int(
+    store: &mut WidgetStore,
+    slider: ph2d_a11y::NodeId,
+    chip: ph2d_a11y::NodeId,
+    track: f32,
+    display: f64,
+    scale: f32,
+    offset: f32,
+) {
+    slider_chip_inner(store, slider, chip, track, display, scale, offset, true);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn slider_chip_inner(
+    store: &mut WidgetStore,
+    slider: ph2d_a11y::NodeId,
+    chip: ph2d_a11y::NodeId,
+    track: f32,
+    display: f64,
+    scale: f32,
+    offset: f32,
+    integer: bool,
 ) {
     store.register(
         slider,
@@ -100,7 +133,11 @@ fn slider_chip(
             selection_anchor: None,
         },
     );
-    store.link_slider_number_mapped(slider, chip, scale, offset);
+    if integer {
+        store.link_slider_number_mapped_integer(slider, chip, scale, offset);
+    } else {
+        store.link_slider_number_mapped(slider, chip, scale, offset);
+    }
 }
 
 /// Registra os widgets do painel Vector. Delegado a helpers por seção — o corpo

@@ -109,10 +109,13 @@ impl MotionState {
         // untouched): `PH2D_GPU_COOK_DEMO=1` = the F1.1 1250×1600 (2.000.000)
         // chain that is 100% GPU under `PH2D_GPU_COOK=1`; `=2` = the F1.2 HYBRID
         // chain whose first node (an oscillator on the uncovered Rotation channel)
-        // has no kernel, so the CPU cooks the prefix and the GPU runs the suffix.
+        // has no kernel, so the CPU cooks the prefix and the GPU runs the suffix;
+        // `=3` = the Fase 3 SIMULATION (490.000 particles in a force loop whose
+        // state ping-pongs on the device, ADR-0123).
         let sinks = match std::env::var("PH2D_GPU_COOK_DEMO").as_deref() {
             Ok("1") => build_gpu_demo_document(&mut doc, &registry).unwrap_or_default(),
             Ok("2") => build_gpu_hybrid_demo_document(&mut doc, &registry).unwrap_or_default(),
+            Ok("3") => build_gpu_sim_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {
@@ -269,11 +272,139 @@ fn build_gpu_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Ve
     let mv = g.add_node("motion.move");
     let out = g.add_node("motion.output");
     for (i, n) in [grid, osc, mv, out].into_iter().enumerate() {
-        g.set_pos(n, Pos { x: 80.0 + i as f32 * 180.0, y: 120.0 });
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 120.0,
+            },
+        );
     }
-    g.connect(Edge { from: (grid, 0), to: (osc, 0), delayed: false }).ok()?;
-    g.connect(Edge { from: (osc, 0), to: (mv, 0), delayed: false }).ok()?;
-    g.connect(Edge { from: (mv, 0), to: (out, 0), delayed: false }).ok()?;
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (osc, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (osc, 0),
+        to: (mv, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (mv, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}
+
+/// The GPU/M5 **Fase 3 simulation** ready-to-smoke document
+/// (`PH2D_GPU_COOK_DEMO=3`, ADR-0123): `grid(700×700) → integrate → output` with
+/// the force loop `integrate --pre--> vortex → attractor → drag → curl -->
+/// integrate.forces` — **490.000 particles, simulated 100% on the GPU**.
+///
+/// The forces existed since M2 but had never run a frame on the GPU: they are
+/// only ever evaluated INSIDE the `pre` loop, and the loop was what the plan
+/// refused. Under `PH2D_GPU_COOK=1` the whole thing is claimed (no boundary),
+/// the state ping-pongs as held `Arc`s across ticks, and scrubbing the playhead
+/// backwards restores a device-side checkpoint instead of showing the future.
+///
+/// The mix is the classic stable orbit (vortex + attractor at one centre + drag
+/// — without drag a pure vortex spirals outward by centrifugal drift), plus curl
+/// noise so the cloud breathes instead of settling into a clean ring.
+fn build_gpu_sim_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 700.0);
+    g.set_param(grid, "cols", 700.0);
+    g.set_param(grid, "gap_x", 0.12);
+    g.set_param(grid, "gap_y", 0.12);
+    let ig = g.add_node("motion.integrate");
+    let out = g.add_node("motion.output");
+
+    // The force chain, source→sink inside the loop.
+    let vortex = g.add_node("force.vortex");
+    g.set_param(vortex, "strength", 14.0);
+    g.set_param(vortex, "radius", 46.0);
+    g.set_param(vortex, "clockwise", 1.0);
+    let attractor = g.add_node("force.attractor");
+    g.set_param(attractor, "strength", 9.0);
+    g.set_param(attractor, "radius", 46.0);
+    g.set_param(attractor, "curve", 0.0); // Linear: a steady inward pull
+    let drag = g.add_node("force.drag");
+    g.set_param(drag, "coefficient", 0.35);
+    let curl = g.add_node("force.curl");
+    g.set_param(curl, "strength", 6.0);
+    g.set_param(curl, "scale", 0.06);
+    g.set_param(curl, "speed", 0.4);
+    g.set_param(curl, "octaves", 2.0);
+
+    for (i, n) in [grid, ig, out].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 220.0,
+                y: 120.0,
+            },
+        );
+    }
+    for (i, n) in [vortex, attractor, drag, curl].into_iter().enumerate() {
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 300.0,
+            },
+        );
+    }
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (ig, 0),
+        delayed: false,
+    })
+    .ok()?;
+    // The feedback the user never draws: last tick's state into the chain head.
+    g.connect(Edge {
+        from: (ig, 0),
+        to: (vortex, 0),
+        delayed: true,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (vortex, 0),
+        to: (attractor, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (attractor, 0),
+        to: (drag, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (drag, 0),
+        to: (curl, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (curl, 0),
+        to: (ig, 1),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (ig, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .ok()?;
     g.validate(reg).ok()?;
     Some(vec![out])
 }
@@ -313,12 +444,38 @@ fn build_gpu_hybrid_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Op
     g.set_param(scale, "amount", 1.6);
     let out = g.add_node("motion.output");
     for (i, n) in [grid, spin, wave, scale, out].into_iter().enumerate() {
-        g.set_pos(n, Pos { x: 80.0 + i as f32 * 180.0, y: 120.0 });
+        g.set_pos(
+            n,
+            Pos {
+                x: 80.0 + i as f32 * 180.0,
+                y: 120.0,
+            },
+        );
     }
-    g.connect(Edge { from: (grid, 0), to: (spin, 0), delayed: false }).ok()?;
-    g.connect(Edge { from: (spin, 0), to: (wave, 0), delayed: false }).ok()?;
-    g.connect(Edge { from: (wave, 0), to: (scale, 0), delayed: false }).ok()?;
-    g.connect(Edge { from: (scale, 0), to: (out, 0), delayed: false }).ok()?;
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (spin, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (spin, 0),
+        to: (wave, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (wave, 0),
+        to: (scale, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (scale, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .ok()?;
     g.validate(reg).ok()?;
     Some(vec![out])
 }
@@ -326,3 +483,7 @@ fn build_gpu_hybrid_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Op
 #[cfg(test)]
 #[path = "motion_state_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_state_gpu_tests.rs"]
+mod gpu_tests;

@@ -126,8 +126,7 @@ impl crate::App {
                 // buffer to draw ALREADY lives on the GPU — bind it directly and
                 // pass an empty CPU slice (the pump never ran; its buffer is
                 // stale). Otherwise the classic CPU slice path, byte-identical.
-                let motion_gpu: Option<(&wgpu::Buffer, u32)> = (motion_active
-                    && motion.gpu_live)
+                let motion_gpu: Option<(&wgpu::Buffer, u32)> = (motion_active && motion.gpu_live)
                     .then(|| motion.gpu_cook.instances())
                     .flatten()
                     .map(|gi| (gi.buffer(), gi.len()));

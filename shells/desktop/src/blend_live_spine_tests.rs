@@ -363,25 +363,31 @@ fn dragging_an_endpoint_moves_the_source_without_authoring_the_spine() {
 }
 
 /// **Arrastar o SPINE (o objeto blend) move TODAS as fontes juntas** (ADR-0122, ajuste do Enio: as
-/// formas seguem a linha "como filhas"). O gizmo escreve a translação no `Transform` do blend; a
-/// função a consome em cada fonte e devolve o blend à identidade. Duas frames provam que é
-/// INCREMENTAL — o gizmo dá o TOTAL do gesto a cada frame, e re-aplicá-lo dobraria o movimento.
+/// formas seguem a linha "como filhas"). O gizmo escreve o TOTAL do gesto no `Transform` do blend; a
+/// função consome só o INCREMENTO em cada fonte e devolve o blend à identidade.
+///
+/// **O gate do DRIFT** (o "drift brutal" do Enio): entre um `CursorMoved` e o render seguinte o
+/// `Transform` fica na identidade (o gizmo só escreve no Move). Um FRAME ESTÁTICO no meio do arrasto
+/// (`gizmo_dragging=true`, `Transform` identidade) não pode esquecer o total já consumido — senão o
+/// Move seguinte re-aplica o TOTAL inteiro. Com o total preservado, o incremento fica certo.
 #[test]
-fn dragging_the_blend_object_moves_all_sources_as_children() {
+fn dragging_the_blend_object_moves_all_sources_as_children_without_drift() {
     let (mut sim, scene, map, spine, src) = scene_with_blend(3, 3); // fontes em x = 0, 4, 8
     let be = Entity::from_bits(map[&spine]);
     let mut drags = BlendDrag::new();
+    let set_t = |sim: &mut SimWorld, xy: [f32; 2]| {
+        sim.world_mut()
+            .get_mut::<Transform>(be)
+            .expect("transform")
+            .translation = ph2d_core::Vec2::new(xy[0], xy[1]);
+    };
 
-    // Frame 1: o gizmo pôs o Transform do blend em (3,2).
-    sim.world_mut()
-        .get_mut::<Transform>(be)
-        .expect("transform")
-        .translation = ph2d_core::Vec2::new(3.0, 2.0);
+    // Frame 1 (Move): o gizmo pôs o TOTAL do gesto em (3,2).
+    set_t(&mut sim, [3.0, 2.0]);
     assert!(
-        drag_blend_moves_sources(&mut sim, &scene, &map, &mut drags),
+        drag_blend_moves_sources(&mut sim, &scene, &map, &mut drags, true),
         "moveu as fontes"
     );
-    // O blend voltou à identidade; TODAS as fontes andaram (3,2).
     assert_eq!(
         *sim.world().get::<Transform>(be).expect("transform"),
         Transform::IDENTITY,
@@ -397,16 +403,21 @@ fn dragging_the_blend_object_moves_all_sources_as_children() {
         );
     }
 
-    // Frame 2: o gizmo levou o TOTAL do gesto a (5,2). Aplica só o INCREMENTO (2,0) — não re-soma.
-    sim.world_mut()
-        .get_mut::<Transform>(be)
-        .expect("transform")
-        .translation = ph2d_core::Vec2::new(5.0, 2.0);
-    drag_blend_moves_sources(&mut sim, &scene, &map, &mut drags);
+    // Frame ESTÁTICO (render sem Move): o `Transform` está na identidade, mas o arrasto CONTINUA.
+    // Não pode limpar o total memorizado (se limpar, o próximo Move dá drift).
+    drag_blend_moves_sources(&mut sim, &scene, &map, &mut drags, true);
+
+    // Frame 2 (Move): o gizmo levou o TOTAL a (5,2). Aplica só o INCREMENTO (2,0) — não (5,2).
+    set_t(&mut sim, [5.0, 2.0]);
+    drag_blend_moves_sources(&mut sim, &scene, &map, &mut drags, true);
     let xf = crate::vec_transform::build(&sim, &map);
     let c0 = center_of(&scene, &xf, src[0]).expect("centro");
     assert!(
         (c0[0] - 5.0).abs() < 1e-6 && (c0[1] - 2.0).abs() < 1e-6,
-        "incremental: a fonte 0 está em (5,2), não em (8,4): {c0:?}"
+        "sem drift: a fonte 0 está em (5,2), não em (8,4): {c0:?}"
     );
+
+    // Fim do arrasto: `!gizmo_dragging` esquece o total, para o próximo gesto começar do zero.
+    drag_blend_moves_sources(&mut sim, &scene, &map, &mut drags, false);
+    assert!(drags.is_empty(), "o total é esquecido ao acabar o arrasto");
 }

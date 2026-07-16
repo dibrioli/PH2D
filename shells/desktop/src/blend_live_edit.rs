@@ -144,10 +144,17 @@ pub(crate) fn reset_spine(
 /// **Select: arrastar o SPINE (o objeto blend) move TODAS as fontes juntas** (ADR-0122, ajuste do
 /// Enio: "as formas seguem a linha como filhas"). Devolve `true` se moveu algo.
 ///
-/// O gizmo escreve a translação do gesto no `Transform` do blend (que a `recook` mantém na
-/// identidade, pois a geometria dele é MUNDO). Aqui aplicamos o INCREMENTO dessa translação a CADA
-/// fonte — o gizmo dá o TOTAL do gesto, então `drags` guarda a última já consumida — e devolvemos o
-/// blend à identidade. As fontes movidas fazem o spine (e os passos) segui-las no `recook` seguinte.
+/// O gizmo escreve a translação **TOTAL do gesto** (desde o início do arrasto) no `Transform` do
+/// blend a cada `CursorMoved`; a `recook` o devolve à identidade a cada frame (a geometria dele é
+/// MUNDO). Aqui, quando o `Transform` não é identidade, aplicamos só o INCREMENTO desde a última
+/// leitura (`drags` guarda o total já consumido, por blend) a CADA fonte, e o zeramos. As fontes
+/// movidas fazem o spine (e os passos) segui-las no `recook` seguinte.
+///
+/// **`gizmo_dragging` é o que evita o drift:** o `Transform` fica na identidade entre um `CursorMoved`
+/// e o render seguinte (o `advance` do gizmo só roda no Move); se limpássemos o total memorizado toda
+/// vez que ele é identidade, o Move seguinte re-aplicaria o TOTAL inteiro (o drift brutal). Em vez
+/// disso: identidade **durante** um arrasto = pular (guarda o total); só ao **acabar** o arrasto
+/// (`!gizmo_dragging`) esquecemos o total, para o próximo gesto começar do zero.
 ///
 /// Translação só — girar/escalar o grupo é follow-up (o gizmo os escreveria no `Transform`, que
 /// zeramos; o efeito hoje é nulo, como antes deste ajuste).
@@ -156,6 +163,7 @@ pub(crate) fn drag_blend_moves_sources(
     scene: &VecScene,
     map: &VecEntityMap,
     drags: &mut BlendDrag,
+    gizmo_dragging: bool,
 ) -> bool {
     let blends: Vec<(VecPathId, Entity, VecBlend)> = map
         .iter()
@@ -165,20 +173,18 @@ pub(crate) fn drag_blend_moves_sources(
             Some((id, e, b))
         })
         .collect();
-    drags.retain(|id, _| blends.iter().any(|(b, _, _)| b == id));
     let mut moved = false;
-    for (spine_id, entity, blend) in blends {
+    for (spine_id, entity, blend) in &blends {
         let t = sim
             .world()
-            .get::<Transform>(entity)
+            .get::<Transform>(*entity)
             .copied()
             .unwrap_or(Transform::IDENTITY);
         if t == Transform::IDENTITY {
-            drags.remove(&spine_id); // não está sendo arrastado (a recook já o devolveu à identidade)
-            continue;
+            continue; // identidade: o gizmo não escreveu neste render — guarda o total, não limpa
         }
         let cur = [f64::from(t.translation.x), f64::from(t.translation.y)];
-        let last = drags.get(&spine_id).copied().unwrap_or([0.0, 0.0]);
+        let last = drags.get(spine_id).copied().unwrap_or([0.0, 0.0]);
         let delta = [cur[0] - last[0], cur[1] - last[1]];
         if delta[0] != 0.0 || delta[1] != 0.0 {
             for src_id in &blend.sources {
@@ -194,12 +200,19 @@ pub(crate) fn drag_blend_moves_sources(
                 }
             }
         }
-        drags.insert(spine_id, cur);
+        drags.insert(*spine_id, cur);
         // Consumida a pose, o blend volta à identidade (a geometria dele é MUNDO; a recook faria o
         // mesmo, mas aqui é ANTES dela ler os centros das fontes).
-        if let Some(mut bt) = sim.world_mut().get_mut::<Transform>(entity) {
+        if let Some(mut bt) = sim.world_mut().get_mut::<Transform>(*entity) {
             *bt = Transform::IDENTITY;
         }
+    }
+    // Fim do arrasto (ou nenhum): esquece os totais, para o próximo gesto começar do zero. Durante o
+    // arrasto o total PERSISTE, mesmo nos frames em que o `Transform` está na identidade.
+    if gizmo_dragging {
+        drags.retain(|id, _| blends.iter().any(|(b, _, _)| b == id));
+    } else {
+        drags.clear();
     }
     moved
 }

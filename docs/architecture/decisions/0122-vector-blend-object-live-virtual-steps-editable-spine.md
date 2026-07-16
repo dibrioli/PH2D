@@ -292,7 +292,13 @@ volta — as duas coisas convivem).
   consome o **INCREMENTO** dela em cada fonte (o gizmo dá o TOTAL do gesto a cada frame → guarda a
   última já aplicada em `BlendDrag`) e devolve o blend à identidade, ANTES do `recook` (as fontes
   movidas fazem o spine e os passos segui-las). Translação só — girar/escalar o grupo é follow-up.
-  Gate mutation-testado (2 frames provam que é incremental, não re-soma o total).
+- **Fix do "drift brutal" (2º smoke do Enio):** o `advance_gizmo_drag` só roda no `CursorMoved`, mas
+  a `recook` zera o `Transform` do blend TODO render — então entre um Move e o render seguinte o
+  `Transform` fica na identidade. A 1ª versão LIMPAVA o total memorizado quando via a identidade, e o
+  Move seguinte re-aplicava o TOTAL inteiro (drift acumulado). Fix: identidade **durante** o arrasto =
+  pular (guarda o total); só ao ACABAR o arrasto (`gizmo_dragging=false`, de `hero.gizmo.drag`) o
+  total é esquecido. Gate com um FRAME ESTÁTICO no meio do arrasto (mutation-testado: reintroduzir o
+  `remove` na identidade → a fonte 0 vai para (8,4) em vez de (5,2)).
 - **`blend_live.rs` foi dividido** (teto de 600 LOC): as ações de edição/interação (pick/select/
   steps/reset/os dois drags) saíram para o módulo-filho `blend_live_edit.rs` (`use super::*` para os
   privados do pai); o núcleo (component + `recook` + helpers de geometria) ficou. `pin_spine_anchors`

@@ -3104,6 +3104,7 @@ impl crate::App {
                 vec_scene,
                 &self.vec_entities,
                 &mut self.vec_blend_drag,
+                dragging_entity.is_some(),
             ) {
                 vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
             }

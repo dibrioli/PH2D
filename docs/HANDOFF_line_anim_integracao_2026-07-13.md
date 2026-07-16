@@ -226,3 +226,111 @@ headless).
 
 **Não integre, não pushe, não faça ship sem ordem EXPLÍCITA do Enio** (CLAUDE.md §0.7). E lembre:
 **o smoke desta linha é amanhã.**
+
+---
+
+## §10 — Pós-integração: as duas ABAS (`910404a0`, 2026-07-16, **pendente smoke**)
+
+> Escrito depois de a linha ter integrado. Se você é o integrador, esta seção é o que mudou
+> desde então; commits `910404a0` (código) + `78329f70`/`7c6409ec` (memória).
+
+### O pedido, e o que ele escondia
+
+O Enio (com screenshots): *"Penso que a time line com keys e com strips misturadas é confusa.
+Melhor um modo isolado para lanes/strips e um checkbox na timeline para mudar o modo."* Depois,
+perguntado sobre o padrão-ouro e o controle: **"b = Abas"**.
+
+Investigar a queixa antes de atendê-la achou uma causa mais forte que "poluído": **a régua
+significava duas coisas.** Uma key é carimbada no tempo do **CLIP** (`snapshot.rs`: as rows são
+do clip ativo); um strip senta no tempo da **TIMELINE**. Mesma coluna de pixels, dois instantes.
+Repro: `PH2D_STACK_SMOKE=1`, escolha **Right** no dropdown — keys em 0..3, strip em 2..5; com o
+playhead em 4.0 o relógio do clip lê **2.0** e a régua desenhava 4.0 (um segundo *depois* do fim
+de um clip de 3 s). Sem pilha os dois relógios são um só — por isso ninguém viu.
+
+### A cerca de Chesterton (ADR-0115 R8)
+
+O R8 decidiu **"sem modo, sem tweak mode"** e chamou dois modos exclusivos de *"dívida escondida
+disfarçada de simplificação"*. **Ele fica de pé**: a rejeição é sobre um MODO, e o tweak mode do
+Blender existe só porque os editores dele prendem numa Action por vez — o dropdown já resolve.
+Uma **aba é uma vista**: muda o que se vê e o que a régua mede, nunca o que uma edição significa,
+e o dropdown segue escolhendo o clip. O R8 errou o **corolário** (as metades podiam coabitar uma
+vista) por não notar que coabitavam uma régua. **Emenda registrada no próprio ADR-0115**, não
+escondida no commit.
+
+Padrão-ouro conferido: Unity **não deixa** editar key na janela do Timeline (manda pra Animation
+window) · Blender: NLA e Dope Sheet são **editores diferentes** · Premiere: Effect Controls · AE:
+mistura num nível, **aba** por nível de nesting · Unreal (o mais parecido conosco) mistura e tem
+usuário pedindo socorro.
+
+### Superfície tocada (para o merge)
+
+| Arquivo | O quê |
+|---|---|
+| `ph2d-timeline/src/apply.rs` | **`clip_playhead(doc, t)`** + `debug_assert_scratch_at` extraído (o `key_home` usa o mesmo) |
+| `ph2d-timeline/src/snapshot.rs` | `clip_time: Option<f64>` · `stacked()` · **`rebuild` agora é `&mut TimelineState`** |
+| `ph2d-timeline/src/lib.rs` | exporta `clip_playhead` |
+| `ph2d-panel-timeline/src/tab.rs` | **novo** — `Tab::{Keys,Arrange}` + a tabela ÚNICA `TABS` |
+| `ph2d-panel-timeline/src/transport_tabs.rs` | **novo** — a tira (split de LOC) |
+| `ph2d-panel-timeline/src/geom_tests.rs` | **novo** — split de LOC do `geom.rs` |
+| `geom.rs` · `ruler.rs` · `paint.rs` · `event.rs` · `state.rs` · `populate.rs` · `transport.rs` · `tracks.rs` · `box_select.rs` · `summary_paint.rs` · `stack_lane_paint.rs` | ver abaixo |
+| `ph2d-editor-core/src/ids/chrome/timeline.rs` | `TIMELINE_TABS` / `_TAB_KEYS` / `_TAB_ARRANGE` |
+| `ph2d-i18n/src/lib.rs` | `panel.timeline.tab.{keys,arrange}` |
+| `shells/desktop/src/render_loop/mod.rs` | `rebuild(&mut self.timeline, …)` |
+| `shells/desktop/src/stack_smoke.rs` | só docs (diz pra clicar **Arrange**) |
+
+**Mudança de assinatura que cruza crates:** `TimelineViewSnapshot::rebuild(&mut TimelineState, …)`.
+Se outra linha chamar `rebuild`, o merge quebra no compilador (bom) — o fix é `&mut`.
+
+### As decisões que valem revisão
+
+1. **Uma porta para "o clip toca aqui?"** — `clip_playhead` e `key_home` passam os dois por
+   `stack_eval::sole_strip_of`. Uma régua que desenha playhead num instante onde o K **recusa**
+   é uma régua que mente. Diferem no que devolvem onde toca: o `key_home` compõe o Time Remap da
+   entidade; a régua não tem entidade a quem perguntar.
+2. **`rebuild` PRIMA o scratch.** Segui primeiro o contrato existente ("o caller prima") e **4
+   gates ficaram vermelhos na hora** — o `debug_assert` do módulo fez seu trabalho. Um publicador
+   de view é o pior lugar possível pra um contrato de ordem escondido. Custo zero sem pilha.
+   → [[feedback_a_view_publisher_must_not_require_a_primed_cache]]
+3. **A aba é perguntada UMA vez, na raiz do `geom`** (`stack_h`/`summary_h`). Todo o resto
+   (`content_h`/`row_bands`/`stack_bands`/`summary_band`) é construído dali, então "uma aba
+   mostrando as duas metades" não é expressável.
+4. **`ruler::clock_for` é PURO e testado.** O playhead é pintura, não widget — nenhum hit index o
+   lembra, então sem extrair a decisão a linha não teria **oráculo nenhum**. Mesmo movimento que o
+   `hit_plan` já fez. (Um gate meu foi **deletado** por não poder falhar: só afirmava que a
+   fixture tinha zoom.)
+5. **Sob pilha a régua do clip é read-only** — sem scrub, sem braces, sem markers. Não é cautela:
+   **o inverso não existe** (um strip em loop manda muitos instantes da timeline num só instante
+   do clip). Sem pilha, tudo funciona exatamente como sempre.
+6. **`min_label_w` pergunta a aba** — a coluna tem mínimo por causa do que **vive** nela, e os
+   controles de lane não existem na aba Keys.
+7. **`drop_row_gestures`** — uma porta para o *hide* do painel e para a troca de aba.
+
+### Gates
+
+`clip_clock.rs` (7) · `view_tabs_seam.rs` (4, **clica** as abas pela pintura real) ·
+`ruler::tests` (4) · `tab::tests` (4) · `geom_tests` (2 novos).
+**Mutation-proof: 5 mutações, 5 vermelhos** (régua lê o playhead · régua escreve sob pilha ·
+`clip_playhead` ignora o `sole_strip_of` · `geom` esquece a aba · `populate` esquece as abas —
+essa derruba **só** o gate de clique, que é a divisão certa).
+
+Suíte completa + clippy `--all-targets` + fmt + typos: **verde**. `cargo build`: verde.
+
+### Smoke que o Enio deve rodar
+
+```
+PH2D_STACK_SMOKE=1 cargo run
+```
+**L** abre o painel (aba **Keys**). Clique **Arrange** → as lanes/strips. No dropdown escolha
+**Right** e volte a **Keys**: o playhead cai **sobre** as keys (não um segundo depois do fim), e
+fora da janela do strip **não há playhead** — não há onde apontar.
+
+### Aberto (novo, honesto)
+
+- **Pan/zoom é UM só para as duas abas.** Sem pilha é o mesmo eixo (correto). Sob pilha são eixos
+  diferentes compartilhando `view_start_s`/`px_per_s` — trocar de aba mantém o número, não o
+  significado. Não incomodou no desenho; é o primeiro candidato se incomodar no smoke.
+- **`F` (fit) na aba Arrange ainda ajusta às KEYS**, não aos strips (`view::apply_fit`).
+- **Sem dica de recusa**: quando o clip não toca (ou toca duas vezes) a régua simplesmente não
+  desenha playhead. O `refusal.rs` argumenta que recusa invisível ≈ bug; aqui a aba **Arrange**
+  ao lado mostra os strips, que é a explicação visível — mas se o smoke disser que confunde, o
+  `KeyRefusal::message()` já existe.

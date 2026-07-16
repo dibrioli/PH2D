@@ -18,6 +18,7 @@
 
 | commit | wave | o quê | smoke |
 |---|---|---|---|
+| `1b090473` | **§4.A fix** | a caixa do gizmo tem **FOLGA** — handles fora das âncoras e **nunca sobrepostos** (folga DERIVADA do `HANDLE_SIZE_PX`) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `33d7784d` | **§4.A fix** | **revert:** 2+ pontos **precisam** de gizmo — a regra "Point nunca tem gizmo" foi regressão minha | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `994ce21c` | **§4.A fix** | **`Select: Point` começa DESSELECIONADO** (o broadcast do §11 saiu — diverge do GP de propósito) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `08ba6358` | **§4.A fix** | **`Select: Point` some com o gizmo NA HORA** — o gizmo é do domínio **Stroke** (ADR-0112 parity) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
@@ -26,7 +27,7 @@
 | `1b51f59b` | **§4.A** | o **gizmo da SELEÇÃO** no modo Edit (rotate/escala assado nos pontos de arte exclusiva) | **PENDENTE — rode `PH2D_FLIP_XFORM_SMOKE=1`** |
 
 Tudo abaixo do `1b51f59b` já tinha smoke OK (ver 15b): W8 (domínio Point), W7.5 (gizmo
-da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 29 commits.
+da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 31 commits.
 
 **O achado do 1º smoke do §4.A (Enio):** *"uma linha do triângulo e uma linha do quadrado
 não são sensíveis à seleção"* — a **aresta de fechamento**. `positions().windows(2)` não
@@ -78,11 +79,42 @@ arte instanciada · seleção sem extensão**. Vale nos DOIS domínios. A `selec
 juntos (sem gizmo não há área). **Se você mexer no gizmo da seleção, é essa função que
 decide tudo.**
 
+**O 6º achado (`1b090473`) — a FOLGA:** *"o gizmo deve ser maior que os componentes que ele
+move (…) nunca os handles podem se sobrepor"* (com foto: dois pontos colineares, handles
+empilhados sobre as âncoras). **A folga não é gosto — é o piso que a regra impõe, e por isso
+é DERIVADA:** os handles de um lado são o **canto** e o **meio-da-borda**, e a distância
+entre eles é a **meia-extensão** da caixa; com a arte degenerada num eixo essa meia-extensão
+**É** a folga, então `pad < HANDLE` funde os quadrados. `GIZMO_PAD_PX = HANDLE_SIZE_PX·1.5`
+— um `18.0` solto apodreceria no dia em que o handle mudasse.
+
+- **Foundational (append-only):** `HANDLE_SIZE_PX` virou **`pub`** + exportado
+  (`gizmo/mod.rs`, `lib.rs`), com o doc explicando POR QUE é público (senão a próxima linha
+  re-chuta o número).
+- **A folga é CHROME** (px de TELA): desce à arte por `px_to_art` — o MESMO degrau do raio
+  de pick — e mede o mesmo em qualquer zoom. Sai pela porta **`padded_gizmo_box`**: a view a
+  **desenha** e o hit do interior a **testa** pela mesma função. (Com 2 pontos colineares a
+  caixa CRUA tem altura zero — sem a folga, clicar no meio do gizmo erraria *por definição*.)
+- **A recusa é avaliada ANTES da folga**, de propósito: somar a folga primeiro daria
+  extensão a um ponto único e o gizmo voltaria a nascer em cima dele.
+- **O DRAG segue ancorado na caixa da ARTE** (`sprite_half_intrinsic` = h cru): chrome não
+  muda a semântica do scale — o canto oposto da ARTE fica parado, e como a folga é constante
+  em px, o canto oposto da CAIXA fica parado junto. **Preço conhecido:** o handle agarrado
+  atrasa `(ratio−1)·pad` em relação ao cursor (cosmético). Se incomodar, o conserto é passar
+  a meia-extensão PADDED ao drag — e aí a arte é que deriva.
+- **Aberto:** o **gizmo da POSE** não ganhou folga (ele enquadra o desenho INTEIRO, que na
+  prática sempre tem extensão). Se o Enio reclamar de handle em cima da arte lá, é a mesma
+  `padded_gizmo_box` — mas o gate `the_pose_gizmo_box_lands_on_the_posed_art` afirma
+  `half == 60/45` **exato** e vira piso+teto, como o da seleção virou.
+
 **Os gates que prendem isso:** `two_selected_points_open_a_gizmo_around_only_them` (a
 CAPACIDADE — a caixa é a dos dois pontos, não a do retângulo; mutação: re-introduzir a
 recusa do domínio, que é exatamente a regressão que o smoke pegou) ·
 `a_selection_without_extent_never_opens_the_gizmo` (uma âncora só) ·
-`entering_the_point_domain_starts_deselected` (o modelo, em `ph2d-flip::drawing`).
+`entering_the_point_domain_starts_deselected` (o modelo, em `ph2d-flip::drawing`) ·
+`two_collinear_points_never_overlap_their_handles` (a folga — **o oráculo é a
+não-sobreposição em PIXELS**, `meia ≥ HANDLE`, não a fórmula da folga: afirmar
+`GIZMO_PAD_PX` seria o gate repetindo a própria constante; a mutação "caixa crua" reproduz
+a foto do Enio *ipsis litteris*).
 
 **Split pelo cap de LOC** (HR-18, nunca allowlist): o **pick de TRAÇO** saiu para o módulo
 irmão **`flip_select_pick.rs`** (`MIN_PICK_PX`/`stroke_at`/`hits`/`seg_dist2` — o gêmeo do
@@ -184,6 +216,9 @@ O par render/input inverso e o funil pose-free do move (em `flip_transform`/`fli
 - **Sem bump de schema** — o pin `(15, 7, 8)` de `project_tests.rs` fica. Se outra linha
   bumpou `PROJECT_SCHEMA`/`FLIP_SCHEMA` em paralelo, reconcilie os que SOMAM
   (`feedback_numbers_that_sum_across_lines_count_dont_pick`) — mas o §4.A não contribui número.
+- **`ph2d-editor-core` (foundational) — `HANDLE_SIZE_PX` virou `pub`** (`gizmo/paint.rs`) +
+  entrou nas listas de `pub use` de `gizmo/mod.rs` e `lib.rs`. Append-only; colisão só se
+  outra linha mexeu nessas listas.
 - **`ph2d-flip` (modelo) ganhou `FlipStroke::segments()`** (`b793b47c`, método novo — nada
   serializado muda, sem bump). É a **porta única** de "quais são os segmentos deste traço?".
   Se outra linha tiver adicionado um consumidor que itere `positions().windows(2)` sobre um

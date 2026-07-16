@@ -1,0 +1,43 @@
+[package]
+name = "ph2d-audio-ml"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The ML boundary of the audio module (ADR-0123, W7): a native DeepFilterNet
+# denoiser over `tract` (Sonos' Rust inference engine — no system library, no
+# network download at build time). The heavy inference stack is CONFINED here,
+# exactly like `realfft` in `ph2d-audio-spectral`, libvorbis in
+# `ph2d-audio-encode` and symphonia in `ph2d-audio-decode`: `tract` must never
+# reach the RT mixer (`ph2d-audio`). Gate: `ph2d-audio/tests/no_ml_runtime_reaches_the_mixer.rs`.
+#
+# Control thread only, offline: HR-3 (no-alloc) and HR-5 (no transcendentals) do
+# NOT apply here — it may allocate and call the model freely.
+[dependencies]
+# For `SampleData` (the interleaved-PCM currency the rack speaks) — the same
+# dependency `ph2d-audio-spectral` takes, and the reason the containment holds:
+# this crate depends on the mixer's data type, the mixer never depends on this.
+ph2d-audio = { path = "../ph2d-audio" }
+# For `conform` — the tested windowed-sinc resampler (W6). DeepFilterNet runs at
+# a fixed 48 kHz; a clip at any other rate is resampled to 48 kHz on the way in
+# and back to its own rate on the way out, at the boundary, so the model only
+# ever sees the rate it was trained on.
+ph2d-audio-edit = { path = "../ph2d-audio-edit" }
+# DeepFilterNet's `libDF` runner (crate lib name `df`), pinned to the release tag
+# whose `libDF` matches the `tract 0.19.x` it fixes (ADR-0123 §3.6 — the git HEAD
+# does NOT compile against current tract). `default-features = false` drops the
+# `vorbis`/`flac` decoders `libDF` bundles for its CLI (lewton/ogg/claxon) — we
+# feed it samples, not files. `default-model` embeds the 7.6 MB DFN3 weights via
+# `include_bytes!` (license verified redistributable, ADR-0123 §3.4).
+deep_filter = { git = "https://github.com/Rikorose/DeepFilterNet", tag = "v0.5.6", default-features = false, features = [
+    "tract",
+    "default-model",
+] }
+# The tensor type `DfTract::process` speaks (`ArrayView2<f32>`). Matched to the
+# `^0.15` that `libDF` uses, so the `Array2` we build is the one it accepts.
+ndarray = "0.15"

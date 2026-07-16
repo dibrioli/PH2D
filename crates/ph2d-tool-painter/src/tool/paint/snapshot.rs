@@ -141,6 +141,7 @@ impl PainterTool {
             sculpt_rake: self.sculpt_rake(),
             sculpt_conserve: self.paint.sculpt.conserve,
             sculpt_conserves: self.paint.sculpt.mode_enum().conserves(),
+            sculpt_filters: self.paint.sculpt.mode_enum().filters_layer(),
             sculpt_smooth: self.sculpt_smooth(),
             sculpt_smooth_px: self.sculpt_smooth_px(),
             sculpt_is_inflate: self.is_sculpt_inflate(),

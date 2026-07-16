@@ -99,7 +99,51 @@ pub(crate) fn paint_sculpt_section(
         }
         _ => radius_row(ctx, theme, x, content_w, y, brush),
     };
+    // **Filter Layer** (W5b): the selected verb, applied to the WHOLE layer at the brush's Strength. It is
+    // a button and not a mode because the card already says *what* (the chips) and *how much* (the verb's
+    // knob + the brush's Strength) — this only says *everywhere*.
+    //
+    // Offered only where the verb HAS a whole-layer meaning, and the tool answers that
+    // (`sculpt_filters` ⇐ `SculptMode::filters_layer`): the plane verbs fit their target to the brush's
+    // footprint, and a layer has none. Not painting it is the honest refusal — a dimmed button that still
+    // dispatches would be a lie, and a second copy of the verb list here would drift from the tool's.
+    if brush.sculpt_filters {
+        y = filter_row(ctx, theme, x, content_w, y);
+    }
     y
+}
+
+/// The **Filter Layer** action button — a one-option segmented with nothing selected (the panel's action-row
+/// idiom, as `paint_watercolor`'s wetness actions use).
+fn filter_row(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+) -> f32 {
+    let seg = SegmentedAdaptive::new(
+        ph2d_a11y::NodeId(0),
+        "Apply the sculpt verb to the whole layer",
+        vec![SegmentedOption::new(
+            core_ids::PAINTER_SCULPT_FILTER,
+            "Filter Layer",
+        )],
+    )
+    .selected(usize::MAX);
+    let scene = &mut *ctx.scene;
+    let text_system = &mut *ctx.text_system;
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_segmented_adaptive(
+        &seg,
+        Rect::new(x, y, content_w, ROW_H_PX),
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    y + used + Spacing::Xs.px()
 }
 
 /// The **Depth** row (Height family). Paint-loads, signed: the sign is the tool. Positive Layer lays a coat,

@@ -144,6 +144,13 @@ impl PainterTool {
                 self.toggle_sculpt_conserve();
                 true
             }
+            // W5b — the whole-layer filter. `filter_sculpt_layer` refuses the verbs whose target is a
+            // footprint (the panel does not offer the button for them either — one door, `filters_layer`),
+            // and the refusal is a documented `false`, not a silent shrug.
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SCULPT_FILTER => {
+                self.filter_sculpt_layer();
+                true
+            }
             _ => false,
         }
     }

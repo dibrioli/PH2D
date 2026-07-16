@@ -154,6 +154,10 @@ pub struct BrushSettings {
     /// here so the panel asks the tool instead of keeping its own copy of the verb list (two doors to
     /// the same question diverge).
     pub sculpt_conserves: bool,
+    /// Whether the ACTIVE verb can be applied to the whole layer (`SculptMode::filters_layer`) — the
+    /// **Filter Layer** button is painted only then. Same law as `sculpt_conserves` above: the panel asks
+    /// the tool which verbs qualify instead of keeping a second copy of the list.
+    pub sculpt_filters: bool,
     /// Inflate **Smoothness** (Radius), `0..1` track — softens the ball's hard edge. Shown only for Inflate.
     pub sculpt_smooth: f32,
     /// The Smoothness in texels (`0..16`), as the chip reads it.

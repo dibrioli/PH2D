@@ -311,6 +311,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_editor_core::ids::PAINTER_SCULPT_RAKE,
         // Sculpt card: the Conserve toggle (W5 — the bow wave). Same registration law as the Rake.
         ph2d_editor_core::ids::PAINTER_SCULPT_CONSERVE,
+        // Sculpt card: the Filter Layer action button (W5b — the verb applied to the whole layer).
+        ph2d_editor_core::ids::PAINTER_SCULPT_FILTER,
         // Deform card: the Affect Relief toggle (W4 — the warp advects the impasto planes). Same trap as
         // the Rake above: painted + hit-indexed is still inert without an InteractiveState from here.
         ph2d_editor_core::ids::PAINTER_DEFORM_RELIEF,

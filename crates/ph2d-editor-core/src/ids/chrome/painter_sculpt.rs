@@ -115,13 +115,20 @@ pub const PAINTER_SCULPT_RAKE: NodeId = hash_node_id("painter_sculpt.rake");
 /// substance; the flag is opt-in until the pile's drawing survives a smoke.
 pub const PAINTER_SCULPT_CONSERVE: NodeId = hash_node_id("painter_sculpt.conserve");
 
+/// **Filter Layer** (W5b, plan §8) — apply the selected verb to the WHOLE layer at once, with no stroke
+/// (Blender's *Mesh Filter*). A button, not a mode: the verb chips and the verb's own knob already say
+/// *what* and *how much*; this says *everywhere*. Offered only for the verbs whose target is a function of
+/// the relief itself — the plane family is fitted to the brush's footprint, and a layer has none
+/// (`sculpt_filter::filters_layer`, the one door the panel and the tool both ask).
+pub const PAINTER_SCULPT_FILTER: NodeId = hash_node_id("painter_sculpt.filter");
+
 /// Every Sculpt widget a pointer can CLICK — the sweep list for the seam gate (`tests/seam_sculpt.rs`).
 ///
 /// It exists because a widget that paints, registers a hit rect and is forwarded by `event.rs` is STILL
 /// dead if `populate` never gave it an `InteractiveState`: `is_focusable` answers `None => false`, the
 /// Down never activates it, and the `Click` never happens. That is how the Impasto light rig shipped
 /// inert. Keep this list exhaustive and the sweep cannot go stale.
-pub const PAINTER_SCULPT_CLICKS: [NodeId; 10] = [
+pub const PAINTER_SCULPT_CLICKS: [NodeId; 11] = [
     PAINTER_SCULPT_MODE_IDS[0],
     PAINTER_SCULPT_MODE_IDS[1],
     PAINTER_SCULPT_MODE_IDS[2],
@@ -132,6 +139,7 @@ pub const PAINTER_SCULPT_CLICKS: [NodeId; 10] = [
     PAINTER_SCULPT_MODE_IDS[7],
     PAINTER_SCULPT_RAKE,
     PAINTER_SCULPT_CONSERVE,
+    PAINTER_SCULPT_FILTER,
 ];
 
 /// Every Sculpt slider (the `SetValue` half of the same sweep). All four are here even though the card only

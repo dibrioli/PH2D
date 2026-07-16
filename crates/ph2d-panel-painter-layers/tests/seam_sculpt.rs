@@ -37,13 +37,14 @@ fn tool_in_sculpt() -> PainterTool {
     tool_in_sculpt_mode(None)
 }
 
-/// The same, armed on a chosen verb — for the sweeps, which must show every clickable widget at once.
+/// The same, armed on a chosen verb.
 ///
-/// The **Chisel** is the fullest card: the eight verb chips, the Offset, the Angle, and the **Rake**. Any
-/// other verb hides at least one of them, so a sweep of `PAINTER_SCULPT_CLICKS` run on the default (Smooth)
-/// would demand a widget the card is deliberately not painting — and the honest response to that is not to
-/// prune the list, it is to arm the tool that shows it. (The card shows the knobs the active verb USES; a
-/// sweep that forgot this would be pressing for a knob that lies.)
+/// **There is no "fullest card".** The Chisel was the fullest one — eight chips, Offset, Angle, Rake — until
+/// W5b gave `Smooth` a **Filter Layer** button the Chisel cannot have (a plane verb's target is fitted to
+/// the brush's footprint, and a whole layer has none). So no single verb shows every clickable widget, and
+/// the sweep asks each verb in turn rather than arming one and demanding everything
+/// (`every_sculpt_click_widget_is_reachable_by_a_pointer`). The card shows the knobs the active verb USES;
+/// a sweep that forgot this would be pressing for a knob that lies.
 fn tool_in_sculpt_mode(mode: Option<u8>) -> PainterTool {
     let mut tool = PainterTool::default();
     tool.set_paint_tool_mode("sculpt");
@@ -169,32 +170,51 @@ fn clicking_the_sharpen_chip_selects_sharpen() {
 /// Every Sculpt click id, not just the one in the example — a card where 1 of 2 chips works is the same
 /// defect with better luck. (Waves 2-3 append verbs to `PAINTER_SCULPT_CLICKS`; this sweep grows with it,
 /// so the next one cannot ship inert either.)
+///
+/// **It asks every verb, because no single card is the fullest one any more.** That used to be the Chisel,
+/// and W5b ended it: the Chisel carries the Rake and Conserve, `Smooth` carries **Filter Layer**, and
+/// neither card carries the other's — the plane verbs cannot be filtered (their target is fitted to the
+/// brush's footprint) and the blur verbs have no plane to Rake. The property that actually matters is
+/// unchanged, and this states it directly: **a widget SOME card paints must be clickable there**, and a
+/// widget NO card paints is dead. Sweeping the verbs answers both without a hand-written id→verb table,
+/// which would be a second copy of the panel's rules and would drift from them.
 #[test]
 fn every_sculpt_click_widget_is_reachable_by_a_pointer() {
     for clicked in core_ids::PAINTER_SCULPT_CLICKS {
-        let tool = tool_in_sculpt_mode(Some(CHISEL)); // the fullest card — see `tool_in_sculpt_mode`
-        let _ = &tool;
-        let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
-        let mut st = PainterLayersPanelState;
-        let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+        let mut reached = false;
+        for verb in 0..8u8 {
+            let tool = tool_in_sculpt_mode(Some(verb));
+            let _ = &tool;
+            let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+            let mut st = PainterLayersPanelState;
+            let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
 
-        let Some((_, rect)) = painted
-            .iter()
-            .find(|(w, r)| *w == clicked && r.w > 0.0 && r.h > 0.0)
-            .copied()
-        else {
-            panic!("sculpt widget {clicked:?} is not painted with a clickable rect");
-        };
-
-        let (x, y) = centre(rect);
-        let events = host.click_at(x, y);
-        assert!(
-            events
+            let Some((_, rect)) = painted
                 .iter()
-                .any(|e| matches!(e, WidgetEvent::Click(id) if *id == clicked)),
-            "a real pointer click on sculpt widget {clicked:?} emitted NO Click event ({events:?}) — it \
-             is painted and hit-registered but absent from the WidgetStore, so `is_focusable` rejects it \
-             on Down and it is dead under the mouse. Register it in `populate.rs`."
+                .find(|(w, r)| *w == clicked && r.w > 0.0 && r.h > 0.0)
+                .copied()
+            else {
+                continue; // this verb's card does not offer it — try the next
+            };
+
+            let (x, y) = centre(rect);
+            let events = host.click_at(x, y);
+            assert!(
+                events
+                    .iter()
+                    .any(|e| matches!(e, WidgetEvent::Click(id) if *id == clicked)),
+                "a real pointer click on sculpt widget {clicked:?} (verb {verb}) emitted NO Click event \
+                 ({events:?}) — it is painted and hit-registered but absent from the WidgetStore, so \
+                 `is_focusable` rejects it on Down and it is dead under the mouse. Register it in \
+                 `populate.rs`."
+            );
+            reached = true;
+            break;
+        }
+        assert!(
+            reached,
+            "sculpt widget {clicked:?} is painted by NO verb's card — it is unreachable by any pointer, \
+             which is the definition of dead"
         );
     }
 }
@@ -407,9 +427,13 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
     let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
     let ids: Vec<_> = painted.iter().map(|(w, _)| *w).collect();
 
-    // Every clickable Sculpt widget is there…
-    for id in core_ids::PAINTER_SCULPT_CLICKS {
-        assert!(ids.contains(&id), "sculpt widget {id:?} is not painted");
+    // The verb chips are there — they are the widgets EVERY card carries, whichever verb is armed. (The
+    // verb-conditional ones — Rake, Conserve, Filter Layer — are swept per-verb by
+    // `every_sculpt_click_widget_is_reachable_by_a_pointer`; demanding them all on one card asserted that
+    // some verb shows everything, which stopped being true when W5b gave `Smooth` a button the Chisel
+    // cannot have.)
+    for id in core_ids::PAINTER_SCULPT_MODE_IDS {
+        assert!(ids.contains(&id), "sculpt verb chip {id:?} is not painted");
     }
     // …AND the brush is still there. This is the assertion that separates Sculpt from Deform, and the
     // one that would fail if someone "fixed" the panel to be mode-exclusive like its neighbour.
@@ -694,5 +718,107 @@ fn clicking_conserve_flips_the_flag() {
     assert!(
         !tool.brush_settings().sculpt_conserve,
         "the second click did not flip it back"
+    );
+}
+
+/// **Clicking Filter Layer filters the layer** (W5b) — the button's whole reason to exist, driven from the
+/// pixel the artist aims at.
+///
+/// The fixture lays REAL relief with a real impasto stroke first (the tool's `heights` is private, and it
+/// should be: a seam gate that reached inside to plant a field would be testing a fixture, not the
+/// product). Then it clicks the button and asks the layer whether it moved — **far from where the stroke
+/// went**, which is the one thing a brush cannot do and this button must.
+///
+/// **Mutation that must bleed:** drop the `PAINTER_SCULPT_FILTER` arm from `route_sculpt_event`, or the id
+/// from `populate` — the button paints, the Down never activates it, the relief never moves.
+#[test]
+fn clicking_filter_layer_filters_the_whole_layer() {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+
+    let size = 120u32;
+    let mut tool = PainterTool::default();
+    tool.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    tool.set_brush_size_px(10.0);
+    tool.toggle_brush_impasto();
+    // A short stroke in ONE corner: it lays relief, and it leaves the rest of the layer untouched — which
+    // is what makes the "far from the stroke" assertion below mean something.
+    let cp = |p: [f32; 2], phase| CanvasPointer {
+        pos: p,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    tool.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    for i in 1..=6u8 {
+        tool.on_canvas_pointer(cp([20.0 + 6.0 * f32::from(i), 20.0], PointerPhase::Move));
+    }
+    tool.on_canvas_pointer(cp([56.0, 20.0], PointerPhase::Up));
+    let layer = tool.layers().active().expect("a layer");
+    let before = tool
+        .layer_height_view(layer)
+        .expect("the stroke laid relief");
+    assert!(
+        before.iter().any(|&v| v > 0.05),
+        "fixture: the stroke must leave relief, else the filter has nothing to filter"
+    );
+
+    tool.set_paint_tool_mode("sculpt");
+    tool.set_sculpt_mode(0); // Smooth — a verb whose target is a function of `pre`
+    let bs = tool.brush_settings();
+    assert!(
+        bs.sculpt_filters,
+        "fixture: Smooth must be offered the button, else the paint below finds no rect"
+    );
+    set_current_brush(Some(bs));
+
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let (_, rect) = painted
+        .iter()
+        .find(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER && r.w > 0.0 && r.h > 0.0)
+        .copied()
+        .expect("the Filter Layer button is not painted with a clickable rect on the Smooth card");
+    let (x, y) = centre(rect);
+    click_through(&mut host, &mut st, &mut tool, x, y);
+
+    let after = tool.layer_height_view(layer).expect("relief");
+    let moved = before
+        .iter()
+        .zip(after.iter())
+        .filter(|(a, b)| (*a - *b).abs() > 1e-4)
+        .count();
+    assert!(
+        moved > 0,
+        "the click never reached the tool — the Filter Layer seam has a dead link \
+         (populate / forward / route)"
+    );
+}
+
+/// **The button is not offered where the verb has no whole-layer meaning** — and that is the refusal, not a
+/// dim.
+///
+/// The plane verbs (here: the Chisel) fit their target to the brush's FOOTPRINT; a layer has none. The
+/// panel asks the tool (`sculpt_filters` ⇐ `SculptMode::filters_layer`) and simply does not paint the row.
+/// A dimmed-but-painted button would still be hit-indexed, and a dimmed button that dispatches is the bug
+/// this codebase has already paid for.
+///
+/// **Mutation that must bleed:** paint the row unconditionally (drop the `if brush.sculpt_filters`) — the
+/// rect appears on the Chisel card and this goes red.
+#[test]
+fn the_filter_button_is_not_offered_for_a_footprint_fitted_verb() {
+    let tool = tool_in_sculpt_mode(Some(CHISEL));
+    assert!(
+        !tool.brush_settings().sculpt_filters,
+        "fixture: the Chisel's target is a fitted plane — the tool must say it cannot be filtered"
+    );
+    let mut host = MockPanelHost::with_panel::<PainterLayersPanel>();
+    let mut st = PainterLayersPanelState;
+    let painted = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    assert!(
+        !painted
+            .iter()
+            .any(|(w, r)| *w == core_ids::PAINTER_SCULPT_FILTER && r.w > 0.0 && r.h > 0.0),
+        "the Filter Layer button is painted on the Chisel card — a verb it cannot filter"
     );
 }

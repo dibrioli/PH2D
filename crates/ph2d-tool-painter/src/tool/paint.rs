@@ -48,6 +48,7 @@ mod jitter_settings;
 mod paint_mode;
 mod sculpt; // Sculpt: the MODEL — the five verbs, the two knobs, the routing — `docs/Painter/18…`
 mod sculpt_blur; // Sculpt: the kernel (one expression, eight verbs) + the per-tile memo the family reads
+mod sculpt_filter; // Sculpt: the WHOLE-LAYER filter (W5b) — the same kernel, driven by a uniform `amount`
 mod sculpt_offset; // Sculpt: Inflate's kernel — the relief offset by a BALL (dilation / erosion)
 mod sculpt_panel; // Sculpt: the seam with the card — the accessors it paints from + the event router
 mod sculpt_session; // Sculpt: the per-stroke session — birth, the dab walk, snapshot, cancel, re-stamp

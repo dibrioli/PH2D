@@ -57,6 +57,10 @@ fn closed(verts: &[[f32; 2]], selected: bool) -> FlipStroke {
     s
 }
 
+/// 1 px de TELA em unidades de arte, para os fixtures — um zoom qualquer; o que importa é
+/// que a folga do gizmo seja convertida por ELE (a folga é chrome, medida em px).
+const PX_TO_ART: f32 = 0.1;
+
 fn paused() -> Playhead {
     let mut p = Playhead::new(1.0 / 60.0);
     p.pause();
@@ -108,7 +112,7 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
         None,
         "o fixture tem de ERRAR a tinta no centro (senao o teste passa pelo motivo errado)"
     );
-    let in_box = selection_box_contains(&d, center);
+    let in_box = selection_box_contains(&d, center, PX_TO_ART);
     assert!(in_box, "o centro da selecao tem de estar na area do gizmo");
     assert_eq!(
         crate::flip_select::plan_down(&mut d, None, false, in_box),
@@ -121,12 +125,53 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
     );
     // 🔴 O par de AUSÊNCIA: FORA da caixa o gesto continua sendo o marquee (que limpa).
     let outside = Vec2::new(100.0, 100.0);
-    let out_box = selection_box_contains(&d, outside);
+    let out_box = selection_box_contains(&d, outside, PX_TO_ART);
     assert!(!out_box, "(100,100) esta fora da caixa 0..20");
     assert_eq!(
         crate::flip_select::plan_down(&mut d, None, false, out_box),
         crate::flip_select::Down::Marquee { additive: false },
         "fora da caixa o vazio ainda e marquee"
+    );
+}
+
+/// 🔴 **Dois pontos COLINEARES: os handles não se sobrepõem** — a foto do Enio (smoke do
+/// §4.A): *"no caso de 2 pontos selecionados na horizontal os handles do gizmo se sobrepõem.
+/// Mas nunca os handles dos gizmos podem se sobrepor"*.
+///
+/// **O oráculo é a NÃO-SOBREPOSIÇÃO em PIXELS, não a fórmula da folga.** Os handles de um
+/// lado são o canto e o meio-da-borda, e a distância entre eles é a **meia-extensão** da
+/// caixa — com a arte degenerada num eixo, essa meia-extensão É a folga. Então o gate mede
+/// a caixa em **px de tela** e exige `meia ≥ HANDLE`; afirmar `GIZMO_PAD_PX` seria o gate
+/// repetindo a própria constante (`reference_topic_oracle_discipline`).
+///
+/// Mutação que sangra: `padded_gizmo_box` devolver a caixa CRUA (folga = 0) — a
+/// meia-extensão vertical cai a zero e os quadrados se fundem, que é exatamente a foto.
+#[test]
+fn two_collinear_points_never_overlap_their_handles() {
+    // Dois pontos na MESMA horizontal (y = 0) — a caixa crua tem altura ZERO.
+    let mut r = seg_line(&[(0.0, 0.0), (20.0, 0.0)], 4.0);
+    r.selected = true;
+    let d = bare_drawing(vec![r]);
+    let (_, h_raw) = grabbable_selection_box(&d).expect("dois pontos abrem o gizmo");
+    assert_eq!(h_raw[1], 0.0, "o fixture TEM de ser degenerado em y");
+
+    let (_, h_pad) = padded_gizmo_box(&d, PX_TO_ART).expect("a caixa com folga");
+    let half_px = [h_pad[0] / PX_TO_ART, h_pad[1] / PX_TO_ART];
+    assert!(
+        half_px[1] >= ph2d_editor::HANDLE_SIZE_PX,
+        "canto e meio-da-borda a {} px: os handles de {} px se sobrepoem",
+        half_px[1],
+        ph2d_editor::HANDLE_SIZE_PX
+    );
+    // E a caixa e MAIOR que a arte nos DOIS eixos (o "offset" que o Enio pediu).
+    assert!(h_pad[0] > h_raw[0] && h_pad[1] > h_raw[1]);
+    // A folga e de TELA: noutro zoom ela mede os MESMOS px (senao sobrepunha ao afastar).
+    let (_, h_far) = padded_gizmo_box(&d, PX_TO_ART * 10.0).expect("caixa");
+    let half_far_px = h_far[1] / (PX_TO_ART * 10.0);
+    assert!(
+        (half_far_px - half_px[1]).abs() < 1e-3,
+        "a folga tem de medir os mesmos px em qualquer zoom: {half_far_px} != {}",
+        half_px[1]
     );
 }
 
@@ -158,7 +203,7 @@ fn two_selected_points_open_a_gizmo_around_only_them() {
         "a caixa tem de ser a dos pontos SELECIONADOS"
     );
     // E o meio deles agarra a selecao (o interior vale no Point tambem).
-    assert!(selection_box_contains(&d, Vec2::new(10.0, 0.0)));
+    assert!(selection_box_contains(&d, Vec2::new(10.0, 0.0), PX_TO_ART));
 }
 
 /// 🔴 **Uma seleção sem EXTENSÃO não abre o gizmo** — *"não se rotaciona ou escalona um
@@ -180,7 +225,7 @@ fn a_selection_without_extent_never_opens_the_gizmo() {
         "um ponto so nao se rotaciona nem se escalona: nao pode abrir gizmo"
     );
     // E o interior não existe: o clique EM CIMA dele continua sendo o gesto do W8.
-    assert!(!selection_box_contains(&d, Vec2::new(20.0, 0.0)));
+    assert!(!selection_box_contains(&d, Vec2::new(20.0, 0.0), PX_TO_ART));
     // Idem no Stroke: um traço de um ponto só (um toque) selecionado.
     let mut dot = seg_line(&[(7.0, -3.0)], 4.0);
     dot.selected = true;
@@ -243,13 +288,18 @@ fn the_selection_gizmo_box_lands_on_the_posed_selection() {
         v.pivot_world
     );
     // O retângulo selecionado é 2×2 (half 1×1); com pose 2×1.5 ⊙ objeto 3: 1·2·3 × 1·1.5·3.
+    // A caixa é a arte escalada MAIS a folga do gizmo — que é CHROME (px de tela), e neste
+    // enquadramento vale uma fração de unidade de mundo. O piso prova que as duas escalas
+    // compõem (perder a da pose derrubaria para 3 × 3); o teto prova que a folga é chrome e
+    // não escala com a arte. Quanto ela vale em px é do
+    // `two_collinear_points_never_overlap_their_handles` — este gate não repete a fórmula.
     let half = [
         (v.bbox_max_world[0] - v.bbox_min_world[0]) * 0.5,
         (v.bbox_max_world[1] - v.bbox_min_world[1]) * 0.5,
     ];
     assert!(
-        (half[0] - 6.0).abs() < 1e-2 && (half[1] - 4.5).abs() < 1e-2,
-        "meia-extensão {half:?} (esperado 6 × 4.5)"
+        half[0] >= 6.0 && half[0] < 7.0 && half[1] >= 4.5 && half[1] < 5.5,
+        "meia-extensão {half:?} (esperado 6 × 4.5 + a folga do gizmo)"
     );
     assert!((v.rotation - std::f32::consts::FRAC_PI_4).abs() < 1e-4);
 }

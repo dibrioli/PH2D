@@ -228,6 +228,9 @@ impl crate::App {
         let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
         let local = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
         let local = Vec2::new(local[0] as f32, local[1] as f32);
+        // 1 px de TELA em unidades de ARTE — o MESMO degrau que o raio de pick usa; a folga
+        // do gizmo é chrome e tem de medir igual na tela em qualquer zoom.
+        let px_to_art = px_to_world * w2l.mean_scale() as f32;
         let local_obj = w2o.apply([f64::from(world[0]), f64::from(world[1])]);
         let move_seed = Vec2::new(local_obj[0] as f32, local_obj[1] as f32);
 
@@ -249,7 +252,8 @@ impl crate::App {
             let shift = pick == Pick::Toggle;
             // A ÁREA do gizmo da seleção (mesma caixa que ele desenha, em coords da ARTE
             // — `local` já está nelas): errar a âncora ali dentro ARRASTA a seleção.
-            let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local);
+            let in_box =
+                crate::flip_selection_gizmo::selection_box_contains(drawing, local, px_to_art);
             // **Mover ponto de uma INSTÂNCIA deformaria o gêmeo** (a arte é compartilhada
             // — a regra W7.2: arrasto nunca deforma arte compartilhada). Selecionar pode;
             // mover não: o gesto vira Click e o usuário é AVISADO (zero no-op silencioso).
@@ -304,7 +308,7 @@ impl crate::App {
         // Shift manda, e o gesto vira alternar — o arrasto não pega.
         let shift = pick == Pick::Toggle;
         self.title_dirty = true;
-        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local);
+        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local, px_to_art);
         self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift, in_box) {
             Down::Move { collapse_to } => crate::flip_edit_gesture::EditGesture::Move {
                 last: move_seed,

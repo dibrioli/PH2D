@@ -112,7 +112,14 @@ pub struct GizmoView {
 }
 
 /// Side length of the square handle hit + visual rects.
-const HANDLE_SIZE_PX: f32 = 12.0;
+///
+/// **Public** because it is the floor of "two handles must never overlap": the handles
+/// along one side are the CORNER and the EDGE-MIDPOINT, and the distance between them is
+/// the box's HALF-extent. Anyone framing a selection that can be degenerate on an axis
+/// (Flip's `flip_selection_gizmo`: two collinear points) must pad its box by at least this
+/// — so it derives the pad from here instead of re-guessing a number that silently rots
+/// when this one changes.
+pub const HANDLE_SIZE_PX: f32 = 12.0;
 /// Radial offset around each corner-handle's center where the rotate
 /// hover ring sits.
 // Onda 2 hotfix: bumped from 12 → 20 (Enio: "aumente a área sensível

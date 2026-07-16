@@ -23,6 +23,10 @@
 //!   e ela arrasta. **DUAS ou mais = o gizmo volta**, enquadrando SÓ as âncoras acesas, e
 //!   gira/escala só elas. Voltar ao **Stroke** promove por `any()` (o traço cujas âncoras
 //!   você tocou fica selecionado) e o gizmo passa a enquadrar o traço inteiro.
+//! - **A caixa tem FOLGA**: ela é sempre maior que o que move, então os handles ficam FORA
+//!   das âncoras (dá para clicar no ponto) e **nunca se sobrepõem** — nem com duas âncoras
+//!   na MESMA horizontal, em que a caixa crua teria altura zero. A folga mede o mesmo em
+//!   qualquer zoom (é chrome, px de tela).
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
@@ -111,8 +115,10 @@ impl crate::App {
                      desmarca e o gizmo some; as 3 linhas do triangulo e as 4 do retangulo sao \
                      todas clicaveis (a costura, BUGS #18). O toggle Select:Point SOME com o \
                      gizmo na hora porque comeca DESSELECIONADO; UMA ancora = sem gizmo (so o \
-                     realce, e ela arrasta), DUAS ou mais = gizmo enquadrando SO elas. Voltar a \
-                     Stroke promove por any() e o gizmo volta ao traco inteiro."
+                     realce, e ela arrasta), DUAS ou mais = gizmo enquadrando SO elas -- com \
+                     FOLGA: os handles ficam FORA das ancoras e nunca se sobrepoem, nem com \
+                     duas na mesma horizontal. Voltar a Stroke promove por any() e o gizmo \
+                     volta ao traco inteiro."
                 );
             }
             9 => self.any_input_this_frame = true, // arma o baseline do undo

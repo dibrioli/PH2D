@@ -153,13 +153,44 @@ pub(crate) fn grabbable_selection_box(d: &FlipDrawing) -> Option<([f32; 2], [f32
     (h[0] > 0.0 || h[1] > 0.0).then_some((c, h))
 }
 
-/// O ponto (coords da ARTE) está DENTRO da caixa agarrável da seleção? É o que faz um
-/// clique no **vazio dentro do gizmo** virar um MOVE em vez de um marquee (Enio, smoke do
-/// §4.A: *"qualquer clique na área do gizmo"*). Sem gizmo publicado, sempre `false` — a
-/// área não existe.
+/// **A FOLGA entre a arte e a caixa do gizmo**, em px de TELA (Enio, smoke do §4.A: *"o
+/// gizmo deve ser maior que os componentes que ele move (…) nunca os handles podem se
+/// sobrepor"*).
+///
+/// **Não é gosto — é o piso que a regra impõe, e por isso sai do tamanho do HANDLE.** Os
+/// handles de um lado são o **canto** e o **meio-da-borda**, e a distância entre eles é a
+/// **meia-extensão** da caixa. Com a arte degenerada num eixo (dois pontos colineares — a
+/// foto do Enio) essa meia-extensão **É** a folga: `pad < HANDLE` funde os dois quadrados.
+/// `1.5×` deixa meio handle de ar entre eles — e, de quebra, tira os handles de cima das
+/// âncoras (era por isso que não dava para clicar no ponto).
+///
+/// Derivada, não chutada: um `18.0` solto aqui apodreceria em silêncio no dia em que o
+/// `HANDLE_SIZE_PX` mudasse.
+const GIZMO_PAD_PX: f32 = ph2d_editor::HANDLE_SIZE_PX * 1.5;
+
+/// **A caixa do gizmo, JÁ COM A FOLGA** — em coords da ARTE. `px_to_art` = quanto vale 1 px
+/// de TELA em unidades de arte (o MESMO degrau que o raio de pick usa,
+/// `px_to_world * w2l.mean_scale()`), porque a folga é chrome: ela tem de medir o mesmo na
+/// tela em qualquer zoom.
+///
+/// A recusa (instância · sem extensão) mora na [`grabbable_selection_box`] e é avaliada
+/// **antes** da folga — de propósito: somar a folga primeiro daria extensão a um ponto
+/// único e o gizmo voltaria a nascer em cima dele.
 #[must_use]
-pub(crate) fn selection_box_contains(d: &FlipDrawing, p: Vec2) -> bool {
-    grabbable_selection_box(d)
+pub(crate) fn padded_gizmo_box(d: &FlipDrawing, px_to_art: f32) -> Option<([f32; 2], [f32; 2])> {
+    let (c, h) = grabbable_selection_box(d)?;
+    let pad = GIZMO_PAD_PX * px_to_art;
+    Some((c, [h[0] + pad, h[1] + pad]))
+}
+
+/// O ponto (coords da ARTE) está DENTRO da caixa do gizmo? É o que faz um clique no
+/// **vazio dentro do gizmo** virar um MOVE em vez de um marquee (Enio: *"qualquer clique na
+/// área do gizmo"*). Usa a caixa **COM A FOLGA** — a área é a que o artista VÊ, e com dois
+/// pontos colineares a caixa crua tem altura zero: sem a folga, clicar no meio do gizmo
+/// erraria por definição. Sem gizmo publicado, sempre `false`.
+#[must_use]
+pub(crate) fn selection_box_contains(d: &FlipDrawing, p: Vec2, px_to_art: f32) -> bool {
+    padded_gizmo_box(d, px_to_art)
         .is_some_and(|(c, h)| (p.x - c[0]).abs() <= h[0] && (p.y - c[1]).abs() <= h[1])
 }
 
@@ -255,8 +286,8 @@ fn selection_target(
     let (oid, lid, key, did) = crate::flip_select::visible_key(flip, playhead, active_layer)?;
     let obj = flip.object(oid)?;
     let drawing = obj.drawing(did)?;
-    // A MESMA porta que o down do Edit usa para decidir o interior arrastável — desenhar
-    // uma caixa que não pega (ou pegar onde não se vê) seria o bug de sempre.
+    // A caixa CRUA da arte (a recusa mora aqui). A FOLGA é somada pelo consumidor, que é
+    // quem conhece a cadeia até a tela — ver `padded_gizmo_box`.
     let (c_local, h_local) = grabbable_selection_box(drawing)?;
     Some(SelTarget {
         oid,
@@ -296,9 +327,17 @@ pub(crate) fn selection_view(
     let parent = snapshot_of(world_transform(sim, e));
     let start = pose_trs(t.pose, t.c_local);
     let world = ph2d_editor::compose_snapshot(parent, start);
+    // A FOLGA sai pela MESMA porta que o hit usa (`padded_gizmo_box`) — desenhar uma caixa
+    // e testar outra é o bug de sempre. Ela é chrome (px de TELA), então desce ao espaço da
+    // arte pela escala COMPOSTA `objeto ∘ pose`; a média é a convenção que o raio de pick já
+    // usa (exata sob escala uniforme, que é o caso comum).
+    let drawing = flip.object(t.oid)?.drawing(t.did)?;
+    let mean = ((world.scale[0].abs() + world.scale[1].abs()) * 0.5).max(f32::EPSILON);
+    let px_to_world = camera.height_world / (window_size.height.max(1) as f32);
+    let (_, h_pad) = padded_gizmo_box(drawing, px_to_world / mean)?;
     let half = [
-        (t.h_local[0] * world.scale[0]).abs(),
-        (t.h_local[1] * world.scale[1]).abs(),
+        (h_pad[0] * world.scale[0]).abs(),
+        (h_pad[1] * world.scale[1]).abs(),
     ];
     let (cx, cy) = (world.translation[0], world.translation[1]);
     Some(GizmoView {

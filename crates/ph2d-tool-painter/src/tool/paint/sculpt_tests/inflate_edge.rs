@@ -48,9 +48,9 @@ const GHOST_TEXELS: usize = 2;
 const GHOST_DEPTH: u8 = 4;
 
 /// The canvas the fixture paints on, and the blob's centre.
-const SIZE: u32 = 220;
-const CX: f32 = 110.0;
-const CY: f32 = 110.0;
+pub(super) const SIZE: u32 = 220;
+pub(super) const CX: f32 = 110.0;
+pub(super) const CY: f32 = 110.0;
 
 /// **A round blob of THICK paint, laid by the real deposit** — Enio's repro.
 ///
@@ -58,7 +58,7 @@ const CY: f32 = 110.0;
 /// (12 loads), and the `Smooth` falloff gives it the **soft, curved border** the slab has not got. Not a
 /// synthetic dome: the failure this file exists to prevent is a gate measuring a canvas the product cannot
 /// produce, and this line has already paid for that one twice.
-fn thick_round_blob() -> (PainterTool, crate::tool::RtLayerId) {
+pub(super) fn thick_round_blob() -> (PainterTool, crate::tool::RtLayerId) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
     let b = BrushSpec {
@@ -87,7 +87,7 @@ fn thick_round_blob() -> (PainterTool, crate::tool::RtLayerId) {
     (t, layer)
 }
 
-fn covers_of(t: &PainterTool, layer: crate::tool::RtLayerId) -> Vec<u8> {
+pub(super) fn covers_of(t: &PainterTool, layer: crate::tool::RtLayerId) -> Vec<u8> {
     t.covers
         .get(&layer)
         .map(|c| (**c).clone())
@@ -95,7 +95,7 @@ fn covers_of(t: &PainterTool, layer: crate::tool::RtLayerId) -> Vec<u8> {
 }
 
 /// Enio's exact repro: SCULP → Inflate → **Filter Layer**, at full Depth.
-fn inflate_the_whole_layer(t: &mut PainterTool) {
+pub(super) fn inflate_the_whole_layer(t: &mut PainterTool) {
     arm_sculpt(t, INFLATE, 0.5, 1.0);
     t.set_sculpt_depth(1.0);
     assert!(
@@ -106,14 +106,14 @@ fn inflate_the_whole_layer(t: &mut PainterTool) {
 
 /// The coverage along the ray from the blob's centre out to `+x` — the blob is round, so a radius IS its
 /// cross-section.
-fn radial_cover(cov: &[u8]) -> Vec<u8> {
+pub(super) fn radial_cover(cov: &[u8]) -> Vec<u8> {
     ((CX as u32)..SIZE - 2)
         .map(|x| cov[((CY as u32) * SIZE + x) as usize])
         .collect()
 }
 
 /// The biggest step between neighbours — how hard an edge is, in coverage units.
-fn max_step(profile: &[u8]) -> u8 {
+pub(super) fn max_step(profile: &[u8]) -> u8 {
     profile
         .windows(2)
         .map(|w| w[0].abs_diff(w[1]))
@@ -520,210 +520,4 @@ fn a_knob_touched_mid_stroke_does_not_move_the_picture() {
          the rim darkens with how slowly the hand moved and JUMPS the moment a knob is touched. Measured \
          with the live-pixel destination: 2520 bytes."
     );
-}
-
-/// DIAGNOSTIC (2026-07-16, Enio's 2nd smoke) — his arrangement: a vertical capsule crossed by a row of
-/// blobs, then Filter Layer + Inflate. Prints the cover and the height down the capsule's spine, hunting
-/// for the white gashes and the stepped silhouette.
-#[test]
-#[ignore = "diagnostic"]
-fn diag_enio_capsule_and_blobs() {
-    const S: u32 = 400;
-    let mut t = PainterTool::default();
-    t.set_source(vec![255u8; (S * S * 4) as usize], S, S);
-    let b = BrushSpec {
-        radius_px: 23.0,
-        hardness: 0.3,
-        falloff: Falloff::Smooth,
-        strength: 1.0,
-        color: [0.1, 0.2, 0.3],
-        space_attenuation: false,
-        impasto: true,
-        ..Default::default()
-    };
-    t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
-    t.set_paint_tool_mode("brush");
-    t.set_brush_impasto_depth(1.0);
-    let layer = t.layers.active().expect("a layer");
-
-    t.on_canvas_pointer(cp([200.0, 90.0], PointerPhase::Down));
-    let mut y = 100.0;
-    while y <= 306.0 {
-        t.on_canvas_pointer(cp([200.0, y], PointerPhase::Move));
-        y += 8.0;
-    }
-    t.on_canvas_pointer(cp([200.0, 306.0], PointerPhase::Up));
-    for cx in [140.0f32, 200.0, 260.0] {
-        t.on_canvas_pointer(cp([cx, 200.0], PointerPhase::Down));
-        t.on_canvas_pointer(cp([cx, 200.0], PointerPhase::Up));
-    }
-
-    let c0 = covers_of(&t, layer);
-    let h0 = heights_of(&t, layer);
-    arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
-    t.set_sculpt_depth(1.0);
-    assert!(t.filter_sculpt_layer(FilterScope::Layer), "filter ran");
-    let c1 = covers_of(&t, layer);
-    let h1 = heights_of(&t, layer);
-
-    // Let the MEASUREMENT find the artefact: the biggest neighbour jumps in the height, anywhere.
-    let jump = |h: &[f32]| -> (f32, Vec<(u32, u32, f32)>) {
-        let mut worst = 0.0f32;
-        let mut hot: Vec<(u32, u32, f32)> = Vec::new();
-        for y in 81..319u32 {
-            for x in 81..319u32 {
-                let i = (y * S + x) as usize;
-                let dx = (h[i + 1] - h[i]).abs();
-                let dy = (h[i + S as usize] - h[i]).abs();
-                let d = dx.max(dy);
-                worst = worst.max(d);
-                if d > 1.0 {
-                    hot.push((x, y, d));
-                }
-            }
-        }
-        hot.sort_by(|a, b| b.2.total_cmp(&a.2));
-        (worst, hot)
-    };
-    let (w0, hot0) = jump(&h0);
-    let (w1, hot1) = jump(&h1);
-    println!("height max neighbour jump: BEFORE={w0:.2}  AFTER={w1:.2}");
-    println!(
-        "texels jumping >1 load:    BEFORE={}  AFTER={}",
-        hot0.len(),
-        hot1.len()
-    );
-    println!("worst AFTER (x,y,jump): {:?}", &hot1[..hot1.len().min(8)]);
-    // At the worst spot, what does the MATTER say?
-    if let Some((x, y, d)) = hot1.first().copied() {
-        let i = (y * S + x) as usize;
-        println!(
-            "at ({x},{y}) jump={d:.2}: cover before={} after={} | height before={:.2} after={:.2}",
-            c0[i], c1[i], h0[i], h1[i]
-        );
-        let row: Vec<u8> = (x - 6..x + 7).map(|xx| c1[(y * S + xx) as usize]).collect();
-        let rowh: Vec<i32> = (x - 6..x + 7)
-            .map(|xx| h1[(y * S + xx) as usize].round() as i32)
-            .collect();
-        println!("  cover  across it: {row:?}");
-        println!("  height across it: {rowh:?}");
-    }
-    let lost = (0..c0.len())
-        .filter(|i| c0[*i] > 200 && c1[*i] < 200)
-        .count();
-    println!("cover LOST (was solid, now not): {lost} texels");
-}
-
-/// DIAGNOSTIC — is the edge's hardness a function of the paint's THICKNESS? If the self-floor
-/// (`own = |Depth|·amount`, a full load laid on EVERY texel by the filter) is what truncates the ball's
-/// taper, then thin paint must cliff and thick paint must ramp, on the same code.
-#[test]
-#[ignore = "diagnostic"]
-fn diag_edge_hardness_vs_paint_thickness() {
-    for taps in [1usize, 2, 3, 6, 10] {
-        let mut t = PainterTool::default();
-        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
-        let b = BrushSpec {
-            radius_px: 40.0,
-            hardness: 0.3,
-            falloff: Falloff::Smooth,
-            strength: 1.0,
-            color: [0.1, 0.2, 0.3],
-            space_attenuation: false,
-            impasto: true,
-            ..Default::default()
-        };
-        t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
-        t.set_paint_tool_mode("brush");
-        t.set_brush_impasto_depth(1.0);
-        let layer = t.layers.active().expect("a layer");
-        for _ in 0..taps {
-            t.on_canvas_pointer(cp([CX, CY], PointerPhase::Down));
-            t.on_canvas_pointer(cp([CX, CY], PointerPhase::Up));
-        }
-        let peak = heights_of(&t, layer)
-            .iter()
-            .copied()
-            .fold(f32::MIN, f32::max);
-        inflate_the_whole_layer(&mut t);
-        let prof = radial_cover(&covers_of(&t, layer));
-        let step = max_step(&prof);
-        let tail: Vec<u8> = prof
-            .iter()
-            .copied()
-            .skip_while(|c| *c == 255)
-            .take(8)
-            .collect();
-        println!(
-            "taps={taps:2} peak={peak:5.2} loads -> edge max step {step:3}  tail after solid: {tail:?}"
-        );
-    }
-}
-
-/// DIAGNOSTIC — ONE form vs TWO forms competing. If the artefact is the argmax's seam (where two sources
-/// contend and the winner flips), a lone blob must be clean and two blobs 60 px apart must crack open
-/// exactly between them.
-#[test]
-#[ignore = "diagnostic"]
-fn diag_one_form_vs_two_competing() {
-    let build = |centres: &[[f32; 2]]| -> (f32, usize, u8) {
-        let mut t = PainterTool::default();
-        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
-        let b = BrushSpec {
-            radius_px: 30.0,
-            hardness: 0.3,
-            falloff: Falloff::Smooth,
-            strength: 1.0,
-            color: [0.1, 0.2, 0.3],
-            space_attenuation: false,
-            impasto: true,
-            ..Default::default()
-        };
-        t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
-        t.set_paint_tool_mode("brush");
-        t.set_brush_impasto_depth(1.0);
-        let layer = t.layers.active().expect("a layer");
-        for c in centres {
-            for _ in 0..2 {
-                t.on_canvas_pointer(cp(*c, PointerPhase::Down));
-                t.on_canvas_pointer(cp(*c, PointerPhase::Up));
-            }
-        }
-        inflate_the_whole_layer(&mut t);
-        let h = heights_of(&t, layer);
-        let c = covers_of(&t, layer);
-        let (mut worst, mut hot) = (0.0f32, 0usize);
-        for y in 5..SIZE - 5 {
-            for x in 5..SIZE - 5 {
-                let i = (y * SIZE + x) as usize;
-                let d = (h[i + 1] - h[i])
-                    .abs()
-                    .max((h[i + SIZE as usize] - h[i]).abs());
-                worst = worst.max(d);
-                if d > 1.0 {
-                    hot += 1;
-                }
-            }
-        }
-        // The coverage cliff anywhere on the mid row.
-        let row: Vec<u8> = (5..SIZE - 5)
-            .map(|x| c[((SIZE / 2) * SIZE + x) as usize])
-            .collect();
-        (worst, hot, max_step(&row))
-    };
-    let (w1, h1, s1) = build(&[[110.0, 110.0]]);
-    println!("ONE form   : worst height jump {w1:.2}, texels>1 = {h1:3}, cover max step {s1}");
-    let (w2, h2, s2) = build(&[[80.0, 110.0], [140.0, 110.0]]);
-    println!("TWO forms  : worst height jump {w2:.2}, texels>1 = {h2:3}, cover max step {s2}");
-    let (w3, h3, s3) = build(&[[70.0, 110.0], [150.0, 110.0]]);
-    println!("TWO far    : worst height jump {w3:.2}, texels>1 = {h3:3}, cover max step {s3}");
 }

@@ -585,6 +585,7 @@ mod conserve;
 mod filter;
 mod inflate;
 mod inflate_edge;
+mod inflate_edge_probes;
 mod inflate_matter;
 mod inflate_smooth;
 mod inflate_support;

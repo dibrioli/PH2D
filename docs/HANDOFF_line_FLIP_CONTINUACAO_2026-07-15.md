@@ -29,7 +29,8 @@
 
 | commit | o quê | smoke |
 |---|---|---|
-| `816fff9c` | **W8**: seleção no domínio POINT (meia-traço + máscara fina do Sculpt) | **pendente** (§6 abaixo) |
+| `5a529e1d` | fix W8: o dot não-selecionado **contrasta** com a cor da linha (luminância WCAG, limiar Y≈0.179 com bordas gateadas; por ponto, recomputado por frame) | reconferir junto do W8 |
+| `816fff9c` | **W8**: seleção no domínio POINT (meia-traço + máscara fina do Sculpt) | **OK** (Enio, 2026-07-15; o achado do smoke — dots brancos invisíveis — fechou em `5a529e1d`) |
 | `a93d29a2` | **W7.5 Fase 2**: o GIZMO da pose no modo Edit (rotate/escala da instância) + latentes da linha fechados | **OK** (Enio, 2026-07-15) |
 | `df809109` | **W7.5 Fase 1**: a pose da chave vira AFIM (`Pose`) | fundação, sem UI nova |
 | `78754294` | falloff SIMÉTRICO 50%/quadro + número da célula não é mais lavado | **OK** (Enio) |

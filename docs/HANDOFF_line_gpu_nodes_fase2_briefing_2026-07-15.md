@@ -16,14 +16,14 @@
    - [`docs/architecture/decisions/0122-…`](architecture/decisions/0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md) —
      a decisão de contrato (kernel = metadata LATERAL; agora com stamp de implementação).
    - [`docs/plans/2026-07-gpu-resident-node-pipeline.md`](plans/2026-07-gpu-resident-node-pipeline.md) —
-     o roadmap (você faz a Fase 2; Fases 3–4 são journeys futuros).
+     o roadmap (você faz a Fase 2; as etapas 3–4 são journeys futuros).
    - `CLAUDE.md` §0 (os 7 inegociáveis) + §6 (contratos congelados).
 2. **Abra a linha:**
    `git worktree add Worktrees/line-gpu-nodes-2 -b line/gpu-nodes-2 line/gpu-nodes`
    — ramifique de **`line/gpu-nodes`** (HEAD `41e7a461`+), **não** de `main` nem de
-   `line/cook-parallel`: você precisa do motor. O integrador do Enio landa as fases em ordem
+   `line/cook-parallel`: você precisa do motor. O integrador do Enio landa as etapas em ordem
    (Fase 0 → F1.1 → a sua).
-3. **As regras permanentes (Modo L):** trabalhe SÓ no seu worktree (**SEMPRE prefixe
+3. **As regras permanentes (Modo L):** trabalhe SÓ no seu worktree (**SEMPRE comece o comando com
    `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes-2 &&`** — o cwd escorrega
    pro repo primário, aconteceu nas duas jornadas anteriores) · foundational é editável aqui
    (ADR-0107) · `git commit --no-verify` · inner loop = `cargo check -p` · gates 1× no
@@ -93,7 +93,7 @@ Para cada nó, nesta ordem — **não pule o passo 1**:
      coluna da GPU — isso é readback no hot path, o anti-padrão.
    - *lê vizinho / estado pareado / `pre`?* → fora da Fase 2 (fatia 3 ou Fase 3).
 2. **Escreva o `GpuKernel` const** no crate do nó (drop-crate isolation — o kernel mora com o
-   dono): corpo em `wgsl`, helpers em `wgsl_lib` (prefixe `<nó>_` — ex.: `osc_wave`), bindings
+   dono): corpo em `wgsl`, helpers em `wgsl_lib` (com o prefixo `<nó>_` — ex.: `osc_wave`), bindings
    com o `ColumnAccess` que ESPELHA a semântica de ausência da CPU (materializa vs. ignora —
    confira no código, não chute), `identity` = o fallback que a CPU usa (falloff→1,
    size→`SIZE_IDENTITY`, P/rot→0), `applicable` se a cobertura for parcial, `source_count`
@@ -131,7 +131,7 @@ Hoje em `motion_bridge.rs`: `if plan.is_fully_gpu() { gpu_cook.cook(…, None, �
   desenhe-o pra servir os dois chamadores (o CPU-only de hoje reusa? cheque; duas portas pra
   mesma pergunta divergem — [[feedback_two_doors_to_the_same_question_diverge]]).
 - O stream de fronteira sobe por `GpuCook::cook(…, Some(&stream), …)` — 1 upload/frame, a
-  fronteira explícita. NÃO otimize o upload antes de medir.
+  fronteira explícita. NÃO acelere o upload antes de medir.
 - **Gate no seam do shell:** os testes do bridge são headless e não têm device — teste a
   DECISÃO (que plano/qual caminho o bridge escolhe, `gpu_live` vs pump) com um `GpuContext`
   opcional/mock na função de decisão extraída, não o dispatch inteiro. A paridade do híbrido

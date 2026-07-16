@@ -19,6 +19,8 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::{PanelEvent, Tool}; // brings `handle_panel_event` into scope
+use ph2d_editor_core::zones::Rect;
+use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, ids};
 use ph2d_tool_vector::params::slider_to_px;
@@ -887,4 +889,80 @@ fn clicking_pick_button_reaches_the_tool() {
         DrawMode::PickBlend,
         "o clique chegou ao bus mas nao virou modo — falta o arm em `handle_panel_event`"
     );
+}
+
+/// Um evento de ponteiro real, para o dispatcher real.
+fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
+    PointerEvent {
+        x,
+        y,
+        pressure: 1.0,
+        kind,
+        source: PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: t,
+    }
+}
+
+/// Os botões de COMANDO da seção Blend chegam ao bus quando o artista CLICA NELES — todos os
+/// quatro, pelo caminho inteiro: `paint` → o retângulo que ele registrou → ponteiro real →
+/// dispatcher real → `event.rs` → bus.
+///
+/// Eles não viram estado de tool (a shell os consome como comandos de DOCUMENTO: criar o objeto
+/// vivo, resetar o spine, expandir, soltar), então a asserção termina no `ToolPanelEvent` — que é
+/// exatamente onde a shell os lê.
+///
+/// **O clique é achado, não inventado.** Sintetizar `WidgetEvent::Click(id)` provaria só a allowlist
+/// do `event.rs`: sem `button()` no `populate` o widget não existe, o `paint` não registra hit-rect
+/// nenhum, e um clique de verdade cai no vazio — com o gate sintético verde. Foi um mutante
+/// sobrevivente que mostrou isso (2026-07-15): a seção Blend inteira não tinha seam, e apagar o
+/// registro deixava o botão pintado, clicável no olho e **morto**. É a classe do Redo órfão da barra
+/// (pintado ≠ populado; populado ≠ despachado).
+#[test]
+fn every_blend_command_button_reaches_the_bus_when_clicked() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    for (id, name) in [
+        (ids::VECTOR_BLEND_RUN, "Blend"),
+        (ids::VECTOR_BLEND_RESET_SPINE, "Reset Spine"),
+        (ids::VECTOR_BLEND_EXPAND, "Expand"),
+        (ids::VECTOR_BLEND_RELEASE, "Release"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| {
+                panic!("o botao {name} nao foi PINTADO com area clicavel na secao Blend")
+            });
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        // O dispatcher produziu o Click? É aqui que o REGISTRO no `populate` se prova: sem widget
+        // no store, o ponteiro cai sobre o desenho do botão e não vira evento nenhum.
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} nao virou Click — falta `button()` no `populate` \
+             (o botao esta desenhado, mas nao existe para o dispatcher)"
+        );
+        // …e o painel o encaminha ao bus? É aqui que a allowlist do `event.rs` se prova.
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        let reached = host
+            .drained_actions()
+            .into_iter()
+            .any(|a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id));
+        assert!(
+            reached,
+            "o Click em {name} nao chegou ao bus — falta o id na allowlist do `event.rs` \
+             (o botao e clicavel e MORTO)"
+        );
+    }
 }

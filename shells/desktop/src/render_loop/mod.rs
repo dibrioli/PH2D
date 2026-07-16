@@ -1285,6 +1285,8 @@ impl crate::App {
             // para os smokes — o painel não o alcança mais.)
             let mut pending_create_blend = false;
             let mut pending_reset_spine = false;
+            let mut pending_expand_blend = false;
+            let mut pending_release_blend = false;
             let mut pending_blend_steps: Option<u32> = None;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
@@ -1410,6 +1412,12 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_BLEND_RESET_SPINE {
                                 // ADR-0122 C2b: volta o spine editado ao automático.
                                 pending_reset_spine = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_EXPAND {
+                                // ADR-0122 D: materializa os passos e descarta o objeto vivo.
+                                pending_expand_blend = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BLEND_RELEASE {
+                                // ADR-0122 D: desfaz o blend; as fontes ficam.
+                                pending_release_blend = true;
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -2268,6 +2276,32 @@ impl crate::App {
                     eprintln!("[ph2d-vec] blend: selecione de 2 a 5 formas FECHADAS");
                 }
             }
+            // ADR-0122 Fase D: **Expand** — materializa os passos VIRTUAIS em formas REAIS e
+            // descarta o objeto vivo. A sequência de z que ele pede espera em `vec_restack`: as
+            // entidades dos passos só nascem no `sync`, e quem manda no z é a ÁRVORE (ADR-0110).
+            if pending_expand_blend {
+                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let runs = crate::blend_live::expand(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &xf,
+                    &mut self.vec_pen,
+                );
+                if runs.is_empty() {
+                    eprintln!("[ph2d-vec] blend: selecione um blend (a linha, ou uma forma dele)");
+                } else {
+                    let n: usize = runs.iter().map(Vec::len).sum();
+                    eprintln!("[ph2d-vec] blend: expandido em {n} forma(s)");
+                    self.vec_restack.extend(runs);
+                }
+            }
+            // ADR-0122 Fase D: **Release** — desfaz o blend (os passos somem, as fontes ficam).
+            if pending_release_blend
+                && crate::blend_live::release(sim, vec_scene, &self.vec_entities, &mut self.vec_pen)
+            {
+                eprintln!("[ph2d-vec] blend: solto (as formas-fonte ficam)");
+            }
             // ADR-0122 C2b: Reset Spine — volta o(s) blend(s) selecionado(s) ao spine automático.
             if pending_reset_spine
                 && crate::blend_live::reset_spine(
@@ -3068,7 +3102,7 @@ impl crate::App {
             // O Blend pediu uma sequência de z; agora as entidades existem (o `sync` rodou) e ela
             // pode ser escrita na ÁRVORE — que é quem manda no z (ADR-0110). Escrever na ordem do
             // vetor da cena seria a porta errada: a projeção abaixo a reescreve todo frame.
-            if let Some(order) = self.vec_restack.take() {
+            for order in std::mem::take(&mut self.vec_restack) {
                 crate::vec_entities::restack(sim, &self.vec_entities, &order);
             }
             if let Some(live) = hero_live.as_mut() {

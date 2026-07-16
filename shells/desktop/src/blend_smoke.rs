@@ -19,6 +19,13 @@
 //!   as formas **na ordem** que quiser (a linha azul costura a cadeia; clicar de novo remove),
 //!   depois Painel Vector > Blend. A ordem do blend é a de CLIQUE, não a de z (o pedido do Enio de
 //!   "escolher as formas na ordem que queremos").
+//!
+//! **Expand / Release** (Fase D) não pedem cena própria — são o que se faz COM um blend, então
+//! qualquer cena acima serve: selecione a linha (Node) ou uma forma (Select) e clique o botão no
+//! Painel Vector > Blend. Os dois casos que valem o olho: **=3** (spine curvo), onde o Expand tem de
+//! entregar os passos NA CURVA, exatamente onde estavam — se algum saltar para a reta, o Expand
+//! virou uma 2ª porta de cozedura; e **=2** (cadeia de 3), onde a pilha de z do resultado tem de
+//! continuar fonte → passos → fonte → passos → fonte.
 
 use ph2d_vec_scene::{Paint, Rgba8, ShapeKind, VecPath, cook};
 use std::sync::OnceLock;

@@ -35,8 +35,8 @@ use crate::vec_entities::VecEntityMap;
 #[path = "blend_live_edit.rs"]
 mod edit;
 pub(crate) use edit::{
-    drag_spine_anchors_move_sources, pick_preview, reset_spine, selected_closed_in_z,
-    set_selected_steps,
+    drag_spine_anchors_move_sources, expand, pick_preview, release, reset_spine,
+    selected_closed_in_z, set_selected_steps,
 };
 
 /// A memória do spine AUTOMÁTICO que a shell escreveu por último, por blend. É como a shell
@@ -176,6 +176,71 @@ pub(crate) fn create(
 /// idioma do Illustrator é uma cadeia curta.
 pub(crate) const MAX_BLEND_SOURCES: usize = 5;
 
+/// As fontes de um blend que ainda RESOLVEM, na ordem da cadeia. Um elo morto (forma apagada) é
+/// PULADO — a cadeia não quebra por causa de um id que sumiu.
+fn live_sources(scene: &VecScene, blend: &VecBlend) -> Vec<VecPathId> {
+    blend
+        .sources
+        .iter()
+        .copied()
+        .filter(|id| scene.paths().iter().any(|p| p.id == *id))
+        .collect()
+}
+
+/// Os deslocamentos dos passos ao longo do spine AUTORADO — a posição de cada passo deixa de ser o
+/// lerp e passa a ser um ponto da CURVA, por comprimento de arco. Vazio (⇒ sem deslocamento) quando
+/// o spine é automático: aí os passos seguem o lerp puro, byte-idêntico à Fase B.
+///
+/// **Só LÊ o spine** (não o reescreve nem o pina) — é o que permite ao [`edit::expand`] chamá-la
+/// sobre o estado que o [`recook`] deste frame já assentou.
+fn spine_offsets_of(
+    scene: &VecScene,
+    spine_id: VecPathId,
+    centers: &[[f64; 2]],
+    blend: &VecBlend,
+) -> Vec<[f64; 2]> {
+    if !blend.spine_authored {
+        return Vec::new();
+    }
+    scene
+        .paths()
+        .iter()
+        .find(|p| p.id == spine_id)
+        .map(|sp| ph2d_vec_blend::spine_offsets(sp, centers, blend.steps as usize))
+        .unwrap_or_default()
+}
+
+/// Os passos de um blend, **agrupados por elo** (`[[passo…], [passo…]]`), em MUNDO e já deslocados
+/// para os seus lugares no spine.
+///
+/// É a **única porta que produz um passo**: o [`recook`] os intercala com as fontes para o overlay,
+/// e o [`edit::expand`] os materializa na cena. Duas portas divergiriam — e aqui a divergência seria
+/// VISÍVEL: as formas **saltariam** no instante do Expand, que é justamente a operação que promete
+/// entregar o que estava na tela.
+///
+/// `offsets` vazio ⇒ sem deslocamento (spine automático). Um elo cujo `Plan` não resolve (forma
+/// degenerada) devolve zero passos, sem derrubar os outros.
+fn cook_links(worlds: &[VecPath], n: usize, offsets: &[[f64; 2]]) -> Vec<Vec<VecPath>> {
+    worlds
+        .windows(2)
+        .enumerate()
+        .map(|(i, pair)| {
+            let Some(plan) = ph2d_vec_blend::Plan::new(&pair[0], &pair[1]) else {
+                return Vec::new();
+            };
+            (1..=n)
+                .map(|j| {
+                    let mut step = plan.at(j as f64 / (n + 1) as f64);
+                    if let Some(off) = offsets.get(i * n + (j - 1)) {
+                        translate_verts(&mut step, *off);
+                    }
+                    step
+                })
+                .collect()
+        })
+        .collect()
+}
+
 /// **O re-cook de todo frame.** Para cada entidade com um [`VecBlend`]: resolve as fontes no
 /// MUNDO, coze os passos (cor interpolada em OKLab pelo motor) para `out`, e atualiza o spine.
 ///
@@ -216,15 +281,8 @@ pub(crate) fn recook(
         return;
     }
 
-    for (spine_id, entity, blend) in blends {
-        // As fontes que ainda resolvem, na ordem da cadeia. Um elo morto (forma apagada) é
-        // PULADO — a cadeia não quebra por causa de um id que sumiu.
-        let live: Vec<VecPathId> = blend
-            .sources
-            .iter()
-            .copied()
-            .filter(|id| scene.paths().iter().any(|p| p.id == *id))
-            .collect();
+    for (spine_id, entity, mut blend) in blends {
+        let live = live_sources(scene, &blend);
         if live.len() < 2 {
             write_spine(scene, spine_id, &[]); // sem transição: o spine some
             spines.remove(&spine_id);
@@ -254,16 +312,12 @@ pub(crate) fn recook(
                 b.spine_authored = true; // persiste (viaja no save/undo)
             }
         }
+        blend.spine_authored = authored; // a cópia local acompanha o componente
         let offsets = if authored {
             // As âncoras seguem as fontes (a curva se edita pelas alças); depois os passos FLUEM ao
             // longo do spine editado — deslocamento por comprimento de arco.
             pin_spine_anchors(scene, spine_id, &live, &centers);
-            scene
-                .paths()
-                .iter()
-                .find(|p| p.id == spine_id)
-                .map(|sp| ph2d_vec_blend::spine_offsets(sp, &centers, blend.steps as usize))
-                .unwrap_or_default()
+            spine_offsets_of(scene, spine_id, &centers, &blend)
         } else {
             // Spine automático (a reta pelos centros): escreve e MEMORIZA (para detectar a edição
             // no frame seguinte). Sem deslocamento — os passos seguem o lerp, byte-idêntico.
@@ -287,22 +341,16 @@ pub(crate) fn recook(
             p.stroke = None;
         }
 
-        // Os passos de cada elo, INTERCALADOS com a fonte "de cima" dele (`pair[1]`), redesenhada
-        // por cima deles. É a pilha de z do Illustrator: fonte0 (que o `dispatch` desenha, embaixo)
-        // → passos → fonte1 → passos → fonte2 … Cada passo é deslocado para o seu lugar no spine
-        // (`offsets`, vazio quando não-autorado → sem deslocamento).
-        let n = blend.steps as usize;
-        for (i, pair) in worlds.windows(2).enumerate() {
-            if let Some(plan) = ph2d_vec_blend::Plan::new(&pair[0], &pair[1]) {
-                for j in 1..=n {
-                    let mut step = plan.at(j as f64 / (n + 1) as f64);
-                    if let Some(off) = offsets.get(i * n + (j - 1)) {
-                        translate_verts(&mut step, *off);
-                    }
-                    out.push(step);
-                }
-            }
-            out.push(pair[1].clone());
+        // Os passos de cada elo, INTERCALADOS com a fonte "de cima" dele, redesenhada por cima
+        // deles. É a pilha de z do Illustrator: fonte0 (que o `dispatch` desenha, embaixo) → passos
+        // → fonte1 → passos → fonte2 … Os passos saem de `cook_links` — a mesma porta que o
+        // `expand` materializa, para o que se vê e o que se assa nunca divergirem.
+        for (i, steps) in cook_links(&worlds, blend.steps as usize, &offsets)
+            .into_iter()
+            .enumerate()
+        {
+            out.extend(steps);
+            out.push(worlds[i + 1].clone());
         }
 
         // O blend vive na IDENTIDADE (a geometria acima é MUNDO): devolvê-la é o que torna o
@@ -412,3 +460,8 @@ mod tests;
 #[cfg(test)]
 #[path = "blend_live_spine_tests.rs"]
 mod spine_tests;
+
+/// Os testes do **Expand / Release** (ADR-0122 Fase D) — idem.
+#[cfg(test)]
+#[path = "blend_live_expand_tests.rs"]
+mod expand_tests;

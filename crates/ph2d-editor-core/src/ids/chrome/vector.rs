@@ -456,6 +456,14 @@ pub const VECTOR_BLEND_STACK_UP: NodeId = hash_node_id("vector.blend.stack_up");
 /// fontes), desfazendo a edição do modo Node (ADR-0122 C2b). Sem ele, a única saída da edição do
 /// spine é o undo global.
 pub const VECTOR_BLEND_RESET_SPINE: NodeId = hash_node_id("vector.blend.reset_spine");
+/// **Expand** — materializa os passos VIRTUAIS do blend em formas REAIS e descarta o objeto vivo
+/// (ADR-0122 Fase D): o "vira múltiplas formas com um botão" do Enio. As fontes persistem; o que
+/// morre é a relação. Espelho do "Convert to Curves" da Live Shape.
+pub const VECTOR_BLEND_EXPAND: NodeId = hash_node_id("vector.blend.expand");
+/// **Release** — desfaz o blend: os passos somem e as fontes ficam (ADR-0122 Fase D). Nada é
+/// materializado. É a saída do blend pelo canvas: a linha não é selecionável no modo Select, então o
+/// Delete não a alcança. NÃO confundir com `VECTOR_COMPOUND_RELEASE` (que solta um compound path).
+pub const VECTOR_BLEND_RELEASE: NodeId = hash_node_id("vector.blend.release");
 
 /// **Pick Shapes** — o 8º pill de modo (ADR-0122 C2b): coleta as formas fechadas clicadas **na
 /// ordem**, e o botão Blend as liga nessa sequência. É o análogo do Build (que captura faces) e do

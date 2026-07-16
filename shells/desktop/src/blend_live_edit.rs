@@ -163,6 +163,116 @@ pub(crate) fn reset_spine(
     }
     changed
 }
+/// **Expand** (ADR-0122 Fase D) — o *"pode ser expandido em múltiplas formas com um botão"* do Enio
+/// (#7): materializa os passos VIRTUAIS do(s) blend(s) que a seleção toca em paths REAIS na cena, e
+/// descarta o objeto vivo. Espelha o `drop_shape_params` da Live Shape ("Convert to Curves") — o
+/// objeto vivo vira geometria morta, editável ponto a ponto.
+///
+/// **As fontes PERSISTEM.** Expandir não consome os operandos (≠ booleana): é o Illustrator, e é o
+/// que o `recook` já dizia ao redesenhar cada fonte por cima dos passos dela.
+///
+/// Os passos saem de [`super::cook_links`] — a MESMA porta que o `recook` desenha. É o ponto todo:
+/// uma 2ª porta faria as formas **saltarem** no clique, justo na operação que promete entregar o que
+/// estava na tela. Cada passo já vem com o estilo interpolado e assado em MUNDO; o path nasce sem
+/// pose (a entidade nasce na identidade no `sync`), então a geometria de mundo está certa.
+///
+/// **O spine morre junto:** ele era o corpo do objeto vivo; sem o componente ficaria um path
+/// invisível e órfão na Hierarquia. Removê-lo da cena basta — o `vec_entities::sync` despawna a
+/// entidade dele, e o `VecBlend` vai junto.
+///
+/// Devolve **uma sequência de z (fundo → topo) por blend expandido**, para o chamador enfileirar em
+/// `vec_restack`: quem manda no z é a ÁRVORE (ADR-0110), e as entidades dos passos só nascem no
+/// `sync` seguinte — por isso o pedido espera em vez de ser escrito aqui.
+pub(crate) fn expand(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    xforms: &VecXforms,
+    pen: &mut ph2d_vec_edit::PenTool,
+) -> Vec<Vec<VecPathId>> {
+    let mut runs: Vec<Vec<VecPathId>> = Vec::new();
+    let mut selection: Vec<VecPathId> = Vec::new();
+    for (spine_id, e) in blends_touched_by(sim, map, pen.selected_paths()) {
+        let Some(blend) = sim.world().get::<VecBlend>(e).cloned() else {
+            continue;
+        };
+        let live = live_sources(scene, &blend);
+        if live.len() < 2 {
+            continue; // sem transição para materializar; o Release é quem limpa um blend morto
+        }
+        let worlds: Vec<VecPath> = live
+            .iter()
+            .filter_map(|&id| world(scene, xforms, id))
+            .collect();
+        let centers: Vec<[f64; 2]> = live
+            .iter()
+            .filter_map(|&id| center_of(scene, xforms, id))
+            .collect();
+        let offsets = spine_offsets_of(scene, spine_id, &centers, &blend);
+        let links = cook_links(&worlds, blend.steps as usize, &offsets);
+        scene.remove_path(spine_id);
+
+        // A sequência de z, como o overlay a desenhava: fonte0 → passos do elo0 → fonte1 → … Os
+        // passos de um elo entram logo ACIMA da fonte de trás DELE (a posição é buscada a cada elo:
+        // a inserção anterior já moveu os índices).
+        let mut run: Vec<VecPathId> = Vec::new();
+        for (i, steps) in links.into_iter().enumerate() {
+            run.push(live[i]);
+            let at = scene
+                .paths()
+                .iter()
+                .position(|p| p.id == live[i])
+                .map_or(0, |z| z + 1);
+            for (k, p) in steps.into_iter().enumerate() {
+                run.push(scene.insert_path(at + k, p));
+            }
+        }
+        run.push(live[live.len() - 1]);
+        selection.extend(run.iter().copied());
+        runs.push(run);
+    }
+    if !selection.is_empty() {
+        // A seleção vira o RESULTADO inteiro (fontes + passos): é o que o Expand entregou, e o spine
+        // que podia estar selecionado acabou de sair da cena — deixar a seleção num id morto faria o
+        // painel falar de um objeto que não existe.
+        pen.select_many(&selection);
+    }
+    runs
+}
+
+/// **Release** (ADR-0122 Fase D) — desfaz o blend: os passos somem e as formas-fonte ficam, como
+/// antes de o objeto existir. Nada é materializado (≠ [`expand`]). `true` se algum blend foi solto.
+///
+/// Como os passos são VIRTUAIS (só o spine está na cena), soltar o blend é **remover o spine**: o
+/// `vec_entities::sync` despawna a entidade, o `VecBlend` vai junto, o overlay do frame seguinte
+/// nasce vazio, e as fontes — que nunca foram tocadas — seguem lá.
+///
+/// **É a saída do blend pelo canvas.** A linha não é selecionável no modo Select (ADR-0122), então o
+/// Delete não a alcança; sem este botão, desfazer um blend exigiria caçar "Blend N" na Hierarquia ou
+/// bater Ctrl+Z até antes da criação — e o Ctrl+Z leva junto tudo o que veio depois.
+pub(crate) fn release(
+    sim: &SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    pen: &mut ph2d_vec_edit::PenTool,
+) -> bool {
+    let mut sources: Vec<VecPathId> = Vec::new();
+    let mut released = false;
+    for (spine_id, e) in blends_touched_by(sim, map, pen.selected_paths()) {
+        if let Some(blend) = sim.world().get::<VecBlend>(e) {
+            sources.extend(live_sources(scene, blend));
+        }
+        scene.remove_path(spine_id);
+        released = true;
+    }
+    if released {
+        // A seleção passa às FONTES (o spine acabou de sair da cena): o artista fica com o material
+        // na mão, pronto para re-blendar — e a seleção não aponta para um id morto.
+        pen.select_many(&sources);
+    }
+    released
+}
+
 /// O mapa (índice de vértice do spine → forma-fonte que ele representa), para o
 /// [`drag_spine_anchors_move_sources`] e a [`super::pin_spine_anchors`] concordarem.
 ///

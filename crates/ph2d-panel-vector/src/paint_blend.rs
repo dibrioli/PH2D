@@ -52,9 +52,27 @@ impl BodyCtx<'_> {
             &format!("{steps}"),
             y,
         );
-        y = self.action_button(ids::VECTOR_BLEND_RUN, "Blend", y);
-        // **Reset Spine** — desfaz a edição do spine (modo Node), voltando à reta pelos centros
-        // das fontes. Sem ele, a única saída da edição do spine é o undo global (ADR-0122 C2b).
-        self.action_button(ids::VECTOR_BLEND_RESET_SPINE, "Reset Spine", y)
+        // Os botões de **COMANDO** da seção, na ordem em que aparecem. A tabela é tipada em
+        // `ph2d_a11y::NodeId` porque é o que eles de fato são: cada id vira um nó de AccessKit lá
+        // dentro (`action_button` → `paint_button`, que é quem emite). A seção **delega** o a11y às
+        // primitivas, e o HR-12 pede que a delegação esteja DITA — o gate `every_widget_file_wires_
+        // _a11y` lia este arquivo e não achava a palavra (vermelho latente desde a Fase C1).
+        //
+        // - **Reset Spine** desfaz a edição do spine (modo Node), voltando à reta pelos centros das
+        //   fontes. Sem ele, a única saída da edição seria o undo global (ADR-0122 C2b).
+        // - **Expand** e **Release** são as duas saídas do objeto vivo (ADR-0122 Fase D), e ficam
+        //   lado a lado porque a escolha é entre elas: *fico com os passos* (o Expand materializa e
+        //   o objeto morre) ou *desisto do blend* (os passos somem, as fontes ficam). Nenhuma é um
+        //   MODO — cada uma acontece e acabou —, então são `action_button`, não um par segmentado.
+        let commands: [(ph2d_a11y::NodeId, &str); 4] = [
+            (ids::VECTOR_BLEND_RUN, "Blend"),
+            (ids::VECTOR_BLEND_RESET_SPINE, "Reset Spine"),
+            (ids::VECTOR_BLEND_EXPAND, "Expand"),
+            (ids::VECTOR_BLEND_RELEASE, "Release"),
+        ];
+        for (id, label) in commands {
+            y = self.action_button(id, label, y);
+        }
+        y
     }
 }

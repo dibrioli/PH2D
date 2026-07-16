@@ -44,3 +44,7 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 # → bus → handle_panel_event). Dev-dep only — the `architecture_cycle_prevention`
 # gate reads `[dependencies]` only, so this builds no runtime cycle.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# `PointerEvent` — o seam dos botões de comando dirige o ponteiro REAL contra o hit-index que o
+# `paint` encheu. Sintetizar `WidgetEvent::Click` pularia justamente o registro do widget, que é
+# metade do que o gate existe para provar. Dev-dep pelo mesmo motivo acima (sem ciclo em runtime).
+ph2d-host = { path = "../ph2d-host" }

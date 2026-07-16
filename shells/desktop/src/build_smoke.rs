@@ -180,7 +180,9 @@ impl crate::App {
                 self.vec_restack = self
                     .vec_blend
                     .as_ref()
-                    .map(crate::vec_blend::BlendSession::stack);
+                    .map(crate::vec_blend::BlendSession::stack)
+                    .into_iter()
+                    .collect();
                 self.any_input_this_frame = true;
                 eprintln!(
                     "[blend-smoke] quadrado -> CIRCULO, 5 passos (o par que girava 45 graus). \
@@ -215,7 +217,9 @@ impl crate::App {
                 self.vec_restack = self
                     .vec_blend
                     .as_ref()
-                    .map(crate::vec_blend::BlendSession::stack);
+                    .map(crate::vec_blend::BlendSession::stack)
+                    .into_iter()
+                    .collect();
                 self.any_input_this_frame = true;
                 eprintln!(
                     "[blend-smoke] estrela -> CIRCULO, 5 passos. A transicao tem de encolher \
@@ -250,7 +254,9 @@ impl crate::App {
                 self.vec_restack = self
                     .vec_blend
                     .as_ref()
-                    .map(crate::vec_blend::BlendSession::stack);
+                    .map(crate::vec_blend::BlendSession::stack)
+                    .into_iter()
+                    .collect();
                 self.any_input_this_frame = true;
                 eprintln!(
                     "[blend-smoke] quadrado -> estrela, 3 passos. As quinas casam com as PONTAS \

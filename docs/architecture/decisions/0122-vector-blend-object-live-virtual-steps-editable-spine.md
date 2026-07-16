@@ -119,7 +119,7 @@ mode capturando faces, e do `shape_under_cursor` do conector.
 | **C1 ✅** | **Painel cria e ajusta** o blend vivo: botão "Blend" (seleção fechada, 2..=5, em z), slider Steps ao vivo (teto 200) | shell + painel |
 | **C2a ✅** | **Spine editável** (modo Node): os passos FLUEM por comprimento de arco ao longo da curva editada | motor + shell |
 | **C2b ✅** | **Pick Shapes** mode (escolher a ORDEM) + **Reset Spine** + o spine SOBE no modo Node. `spacing` **deferido** (não pedido; Distance exige arco) | shell + painel |
-| **D** | **Expand** / **Release** | shell |
+| **D ✅** | **Expand** / **Release** | shell + painel |
 
 Cada fase fecha com gate + smoke do Enio antes da próxima (a regra desta linha).
 
@@ -339,6 +339,50 @@ volta — as duas coisas convivem).
   A **costura do shell** (o ramo em `input_dispatch.rs`) é verificada por smoke, não gateada: dirigir
   ponteiro em modo Node exige `AppGfx` = janela + GPU (o mesmo bloqueio do harness headless do
   `project_save`). A decisão toda mora no `toggle_vert_at`, que é puro e gateado.
+
+## O que a Fase D LANDOU (2026-07-15) — Expand / Release
+
+As duas saídas do objeto vivo, lado a lado no painel (`VECTOR_BLEND_EXPAND` / `VECTOR_BLEND_RELEASE`).
+A escolha é entre elas: *fico com os passos* ou *desisto do blend*.
+
+- **Expand** (`blend_live_edit::expand`) — materializa os passos VIRTUAIS em paths REAIS e descarta o
+  objeto vivo; é o item #7 do Enio ("pode ser expandido em múltiplas formas com um botão") e o
+  espelho do `drop_shape_params` da Live Shape. **As fontes persistem** (≠ booleana). O spine morre
+  junto: sem o componente ele seria um path invisível e órfão na Hierarquia — removê-lo da cena basta
+  (o `sync` despawna a entidade e leva o `VecBlend`).
+- **Release** (`blend_live_edit::release`) — os passos somem, as fontes ficam. Como os passos são
+  VIRTUAIS, soltar o blend **é** remover o spine; o resto é consequência. É a saída pelo canvas: a
+  linha não é selecionável no Select, então o Delete não a alcança, e sem o botão desfazer um blend
+  exigiria caçar "Blend N" na Hierarquia (ou Ctrl+Z levando junto tudo o que veio depois).
+- Os dois usam a porta `blends_touched_by` (a linha OU qualquer forma dele), como o Steps e o Reset.
+
+**A decisão que governa a fase: UMA porta produz um passo.** O `recook` (que desenha) e o `expand`
+(que assa) chamam a MESMA `blend_live::cook_links`. Uma 2ª porta faria as formas **saltarem** no
+clique — justo na operação que promete entregar o que está na tela. O gate
+`expand_materializes_exactly_what_the_overlay_drew` compara path a path com o overlay (geometria E
+estilo, byte a byte); um gate que só CONTASSE as formas ficaria verde com as duas portas divergindo.
+Note o que ele NÃO prova: a correção da cozedura (isso é dos 22 gates do recook) — ele prova
+**acordo**. Uma mutação em `cook_links` é invisível para ele, e deve ser: os dois lados mudam juntos.
+
+**O fixture dobrado se paga:** mutar o `expand` para ignorar o spine autorado (`&[]` em vez de
+`&offsets`) mata SÓ `expand_of_a_bent_spine_...`. O caso da reta é cego para esse bug — lá o
+`offsets` é vazio de qualquer jeito. Fixture só prova o que contém.
+
+**A fila de z virou uma LISTA** (`vec_restack: Vec<Vec<VecPathId>>`): o Expand age sobre todos os
+blends tocados, e cada um pede a sua fatia contígua. Guardar só uma seria um corte silencioso — o 2º
+blend sairia com a pilha errada e ninguém saberia.
+
+**O gate dos botões nasceu de um mutante sobrevivente.** A seção Blend inteira não tinha seam: apagar
+o `button()` do `populate` OU o braço do `event.rs` deixava o botão pintado, clicável no olho e
+**morto**, com a suíte inteira verde — a classe do Redo órfão da barra. `seam.rs::
+every_blend_command_button_reaches_the_bus_when_clicked` fecha para os **quatro** (Blend, Reset
+Spine, Expand, Release), e o clique é **achado, não inventado**: pinta o painel, lê o retângulo que
+o `paint` registrou e dirige o ponteiro real contra o dispatcher real. Sintetizar `WidgetEvent::
+Click(id)` provaria só a allowlist — foi a 1ª versão, e o mutante do `populate` sobreviveu a ela.
+(Dev-dep nova: `ph2d-host`, pelo `PointerEvent`.)
+
+**Aberto:** o `spacing` (Distance/SmoothColor) segue deferido; o blend destrutivo (`vec_blend.rs`,
+hoje só dos smokes `PH2D_BUILD_SMOKE=7..=9`) segue à espera da limpeza.
 
 **Gotchas para a Fase C (o próximo que mexer):**
 

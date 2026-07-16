@@ -355,7 +355,11 @@ pub(crate) struct App {
     /// O blend cria os passos no documento, mas quem manda no z é a **árvore** (ADR-0110) — e a
     /// entidade de um path novo só nasce no `vec_entities::sync`, mais adiante no mesmo frame.
     /// Então o pedido espera aqui e é aplicado logo depois do sync (`vec_entities::restack`).
-    pub(crate) vec_restack: Option<Vec<ph2d_vec_scene::VecPathId>>,
+    ///
+    /// É uma LISTA de sequências, uma por blend: o Expand (ADR-0122 Fase D) age sobre todos os
+    /// blends que a seleção toca, e cada um pede a sua própria fatia contígua de z. Guardar só uma
+    /// seria um corte silencioso — o 2º blend sairia com a pilha errada e ninguém saberia.
+    pub(crate) vec_restack: Vec<Vec<ph2d_vec_scene::VecPathId>>,
     pub(crate) window: Option<Arc<Window>>,
     pub(crate) host: Option<WinitHost>,
     pub(crate) gfx: Option<AppGfx>,

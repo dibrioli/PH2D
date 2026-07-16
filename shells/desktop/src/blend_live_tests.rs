@@ -358,7 +358,7 @@ fn a_dead_source_is_skipped_and_below_two_the_blend_vanishes() {
         &mut BlendSpines::new(),
         &mut out,
     );
-    assert_eq!(out.len(), 5, "3→2 fontes vivas: 1 elo, 4 passos + 1 fonte");
+    assert_eq!(out.len(), 5, "de 3 para 2 fontes vivas: 1 elo, 4 passos + 1 fonte");
 
     // Apaga mais uma — resta 1, não há transição.
     scene.remove_path(sources[0]);

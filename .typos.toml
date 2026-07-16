@@ -354,6 +354,10 @@ extend-exclude = [
     "backups/**",
     # Snapshots are auto-generated; reviewing typos there is the snapshot's job.
     "**/snapshots/*.snap",
+    # Vendored third-party code (DeepFilterNet libDF, ADR-0123 W7). We do not police
+    # upstream's spelling — same stance as the workspace `exclude`, the machete
+    # ignores and the `[lints]` allow that keep our tooling off code we did not write.
+    "crates/ph2d-audio-ml/vendor/**",
     # Spike fixtures may contain Luau intentionally
     "docs/scripting/examples/spike/**/*.luau",
     # PT-BR docs — typos-cli only knows en-US, would flag every "rever",

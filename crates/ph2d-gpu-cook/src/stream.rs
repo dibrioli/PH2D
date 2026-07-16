@@ -66,6 +66,11 @@ pub struct BufferPool {
     /// Everything handed out since the last reclaim (still referenced by the
     /// frame's `GpuStream`s until they drop).
     handed_out: Vec<Arc<wgpu::Buffer>>,
+    /// Buffers this pool has ever created — the number a "steady scene
+    /// allocates NOTHING" claim is about. Declaring that property without a way
+    /// to observe it is how a budget rule goes years without firing
+    /// ([[feedback_a_rule_that_never_observes_cannot_fire]]).
+    allocations: usize,
 }
 
 impl BufferPool {
@@ -81,15 +86,33 @@ impl BufferPool {
         let class = bytes.max(16).next_power_of_two();
         let buf = match self.free.get_mut(&class).and_then(Vec::pop) {
             Some(b) => b,
-            None => Arc::new(gpu.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("ph2d-gpu-cook column"),
-                size: class,
-                usage: Self::USAGE,
-                mapped_at_creation: false,
-            })),
+            None => {
+                self.allocations += 1;
+                Arc::new(gpu.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("ph2d-gpu-cook column"),
+                    size: class,
+                    usage: Self::USAGE,
+                    mapped_at_creation: false,
+                }))
+            }
         };
         self.handed_out.push(Arc::clone(&buf));
         buf
+    }
+
+    /// How many buffers this pool has ever created — flat across a steady
+    /// scene's frames, by construction.
+    pub fn allocations(&self) -> usize {
+        self.allocations
+    }
+
+    /// Buffers handed out that something still holds — for a sim, exactly last
+    /// tick's state columns.
+    pub fn retained(&self) -> usize {
+        self.handed_out
+            .iter()
+            .filter(|b| Arc::strong_count(b) > 1)
+            .count()
     }
 
     /// Return every no-longer-referenced buffer to the free lists. Call after

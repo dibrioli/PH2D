@@ -33,3 +33,12 @@ ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
 ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
 ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }
+# GPU/M5 Fase 3 — the simulation loop: the integrator + the five forces.
+ph2d-node-motion-integrate = { path = "../ph2d-node-motion-integrate" }
+ph2d-node-force-wind = { path = "../ph2d-node-force-wind" }
+ph2d-node-force-drag = { path = "../ph2d-node-force-drag" }
+ph2d-node-force-attractor = { path = "../ph2d-node-force-attractor" }
+ph2d-node-force-vortex = { path = "../ph2d-node-force-vortex" }
+ph2d-node-force-curl = { path = "../ph2d-node-force-curl" }
+# The `id` stream the D3 refusal exists for (plan_simulation).
+ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }

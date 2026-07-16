@@ -19,6 +19,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -67,6 +68,62 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the exact
+/// per-element map of the CPU `eval` — a tangential push around the centre with
+/// a linear edge falloff, gated by the radius and the focus field.
+///
+/// The `/ d` normalization and the dead zone are the CPU's, verbatim; so is the
+/// **sign** of the tangent, which is the porting hazard this node's own test
+/// pins (Y-up world vs the Y-down reference): clockwise pushes −Y on the right
+/// side. `clockwise` is a `>= 0.5` test, not a rounded enum, so no round hazard.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let vx_radius = max(params.radius, VX_DEAD_ZONE);\n\
+        let vx_p = read_P(i);\n\
+        let vx_dx = vx_p.x - params.center_x;\n\
+        let vx_dy = vx_p.y - params.center_y;\n\
+        let vx_d = sqrt(vx_dx * vx_dx + vx_dy * vx_dy);\n\
+        var vx_c = vec2<f32>(0.0, 0.0);\n\
+        if (vx_d >= VX_DEAD_ZONE && vx_d <= vx_radius) {\n\
+        \x20   let vx_mag =\n\
+        \x20       params.strength * (1.0 - vx_d / vx_radius) * read_falloff(i) / vx_d;\n\
+        \x20   if (params.clockwise >= 0.5) {\n\
+        \x20       vx_c = vec2<f32>(vx_dy * vx_mag, -vx_dx * vx_mag);\n\
+        \x20   } else {\n\
+        \x20       vx_c = vec2<f32>(-vx_dy * vx_mag, vx_dx * vx_mag);\n\
+        \x20   }\n\
+        }\n\
+        write_accel(i, read_accel(i) + vx_c);\n",
+    wgsl_lib: "\
+        const VX_DEAD_ZONE: f32 = 1e-3;\n",
+    bindings: &[
+        ColumnBinding {
+            column: "accel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["center_x", "center_y", "strength", "radius", "clockwise"],
+    source_count: None,
+    applicable: None,
 };
 
 struct ForceVortex;
@@ -120,6 +177,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

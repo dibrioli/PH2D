@@ -23,6 +23,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -75,6 +76,92 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the exact
+/// per-element map of the CPU `eval` — a constant direction, gusted by a noise
+/// row per instance that scrolls with the playhead.
+///
+/// **HR-5:** the direction uses this node's OWN corrected parabolic sine (a port
+/// of `trig.rs`), never WGSL's `sin`/`cos`, which carry no cross-vendor
+/// guarantee; and the gust is the same integer-hash value noise as `noise.rs`
+/// (`bitcast<u32>` == Rust's `as u32` — `u32(x)` is a VALUE cast and diverges on
+/// negatives; WGSL u32 wraps mod 2^32 like `wrapping_*`). A single lattice cell
+/// of divergence would not be ε — the noise would jump to an unrelated
+/// pseudo-random value.
+///
+/// The CPU resolves the direction once per node rather than per element; the
+/// arithmetic is identical either way, so recomputing it per invocation costs a
+/// few ALU and keeps the body a pure function of `(i, params)`.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let wd_dir = wd_cos_sin_cycles(params.angle / 360.0);\n\
+        let wd_var = params.gust\n\
+        \x20   * wd_noise(params.playhead * params.gust_freq, f32(i) * 0.5 + params.seed);\n\
+        let wd_mag = params.strength * (1.0 + wd_var) * read_falloff(i);\n\
+        write_accel(i, read_accel(i) + vec2<f32>(wd_dir.x * wd_mag, wd_dir.y * wd_mag));\n",
+    wgsl_lib: "\
+        fn wd_sin_cycles(phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n\
+        fn wd_cos_sin_cycles(phase: f32) -> vec2<f32> {\n\
+            return vec2<f32>(wd_sin_cycles(phase + 0.25), wd_sin_cycles(phase));\n\
+        }\n\
+        fn wd_hash2(ix: i32, iy: i32) -> f32 {\n\
+            var h: u32 = bitcast<u32>(ix) * 0x27d4eb2du + bitcast<u32>(iy) * 0x165667b1u;\n\
+            h = h ^ (h >> 15u);\n\
+            h = h * 0x2c1b3c6du;\n\
+            h = h ^ (h >> 12u);\n\
+            h = h * 0x297175f9u;\n\
+            h = h ^ (h >> 15u);\n\
+            return (f32(h) / f32(0xffffffffu)) * 2.0 - 1.0;\n\
+        }\n\
+        fn wd_fade(t: f32) -> f32 {\n\
+            return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);\n\
+        }\n\
+        fn wd_noise(x: f32, y: f32) -> f32 {\n\
+            let x0 = floor(x);\n\
+            let y0 = floor(y);\n\
+            let ix = i32(x0);\n\
+            let iy = i32(y0);\n\
+            let u = wd_fade(x - x0);\n\
+            let v = wd_fade(y - y0);\n\
+            let n00 = wd_hash2(ix, iy);\n\
+            let n10 = wd_hash2(ix + 1, iy);\n\
+            let n01 = wd_hash2(ix, iy + 1);\n\
+            let n11 = wd_hash2(ix + 1, iy + 1);\n\
+            let nx0 = n00 + u * (n10 - n00);\n\
+            let nx1 = n01 + u * (n11 - n01);\n\
+            return nx0 + v * (nx1 - nx0);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "accel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["angle", "strength", "gust", "gust_freq", "seed"],
+    source_count: None,
+    applicable: None,
+};
+
 struct ForceWind;
 
 impl NodeOp for ForceWind {
@@ -120,6 +207,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

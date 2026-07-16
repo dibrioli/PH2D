@@ -26,6 +26,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -101,6 +102,121 @@ fn curl(x: f32, y: f32, drift: f32, seed: f32, octaves: u32) -> [f32; 2] {
     [dpsi_dy * inv, -dpsi_dx * inv]
 }
 
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the exact
+/// per-element map of the CPU `eval` — the divergence-free curl of an fBm
+/// potential (Bridson 2007), drifting with the playhead.
+///
+/// **HR-5:** the potential is this node's OWN integer-hash value noise (a port
+/// of `noise.rs`, the same mix `motion.wiggle` proved bit-exact on the RTX) —
+/// `bitcast<u32>` is Rust's `as u32`, `u32(x)` would be a value cast and diverge
+/// on negatives. The divergence-free property is a *cancellation* of mixed
+/// differences at exactly step `EPS`, so the stencil must be the CPU's to the
+/// letter: a different `h` would measure the noise's curvature instead.
+///
+/// The octave count is a rounded param (half-AWAY, like Rust) and bounds a real
+/// loop — 4 octaves × 4 psi samples × 4 lattice hashes is the heaviest kernel of
+/// the five, and still a pure per-element map.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let cl_p = read_P(i);\n\
+        let cl_oct = i32(min(max(cl_round(params.octaves), 1.0), CL_MAX_OCTAVES));\n\
+        let cl_v = cl_curl(\n\
+        \x20   cl_p.x * params.scale,\n\
+        \x20   cl_p.y * params.scale,\n\
+        \x20   params.playhead * params.speed,\n\
+        \x20   params.seed,\n\
+        \x20   cl_oct);\n\
+        let cl_w = params.strength * read_falloff(i);\n\
+        write_accel(i, read_accel(i) + vec2<f32>(cl_v.x * cl_w, cl_v.y * cl_w));\n",
+    wgsl_lib: "\
+        const CL_EPS: f32 = 0.01;\n\
+        const CL_MAX_OCTAVES: f32 = 4.0;\n\
+        fn cl_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn cl_hash2(ix: i32, iy: i32) -> f32 {\n\
+            var h: u32 = bitcast<u32>(ix) * 0x27d4eb2du + bitcast<u32>(iy) * 0x165667b1u;\n\
+            h = h ^ (h >> 15u);\n\
+            h = h * 0x2c1b3c6du;\n\
+            h = h ^ (h >> 12u);\n\
+            h = h * 0x297175f9u;\n\
+            h = h ^ (h >> 15u);\n\
+            return (f32(h) / f32(0xffffffffu)) * 2.0 - 1.0;\n\
+        }\n\
+        fn cl_fade(t: f32) -> f32 {\n\
+            return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);\n\
+        }\n\
+        fn cl_noise(x: f32, y: f32) -> f32 {\n\
+            let x0 = floor(x);\n\
+            let y0 = floor(y);\n\
+            let ix = i32(x0);\n\
+            let iy = i32(y0);\n\
+            let u = cl_fade(x - x0);\n\
+            let v = cl_fade(y - y0);\n\
+            let n00 = cl_hash2(ix, iy);\n\
+            let n10 = cl_hash2(ix + 1, iy);\n\
+            let n01 = cl_hash2(ix, iy + 1);\n\
+            let n11 = cl_hash2(ix + 1, iy + 1);\n\
+            let nx0 = n00 + u * (n10 - n00);\n\
+            let nx1 = n01 + u * (n11 - n01);\n\
+            return nx0 + v * (nx1 - nx0);\n\
+        }\n\
+        fn cl_fbm(x: f32, y: f32, octaves: i32) -> f32 {\n\
+            var freq = 1.0;\n\
+            var amp = 1.0;\n\
+            var sum = 0.0;\n\
+            var norm = 0.0;\n\
+            let n = max(octaves, 1);\n\
+            for (var k = 0; k < n; k = k + 1) {\n\
+                sum = sum + cl_noise(x * freq, y * freq) * amp;\n\
+                norm = norm + amp;\n\
+                freq = freq * 2.0;\n\
+                amp = amp * 0.5;\n\
+            }\n\
+            return sum / norm;\n\
+        }\n\
+        fn cl_psi(x: f32, y: f32, drift: f32, seed: f32, octaves: i32) -> f32 {\n\
+            return cl_fbm(x + drift + seed, y, octaves);\n\
+        }\n\
+        fn cl_curl(x: f32, y: f32, drift: f32, seed: f32, octaves: i32) -> vec2<f32> {\n\
+            let dpsi_dx =\n\
+                cl_psi(x + CL_EPS, y, drift, seed, octaves)\n\
+                - cl_psi(x - CL_EPS, y, drift, seed, octaves);\n\
+            let dpsi_dy =\n\
+                cl_psi(x, y + CL_EPS, drift, seed, octaves)\n\
+                - cl_psi(x, y - CL_EPS, drift, seed, octaves);\n\
+            let inv = 1.0 / (2.0 * CL_EPS);\n\
+            return vec2<f32>(dpsi_dy * inv, -dpsi_dx * inv);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "accel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["strength", "scale", "speed", "octaves", "seed"],
+    source_count: None,
+    applicable: None,
+};
+
 struct ForceCurl;
 
 impl NodeOp for ForceCurl {
@@ -143,6 +259,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

@@ -131,17 +131,47 @@ pub fn plan_bindings(
         .collect()
 }
 
-/// The presence signature a pipeline is cached under: one bit per readable
-/// binding, in declaration order. Two frames whose streams carry the same
-/// columns (the steady state) hit the same compiled pipeline.
-pub fn presence_signature(kernel: &GpuKernel, present: impl FnMut(&ColumnBinding) -> bool) -> u64 {
+/// How many **storage buffers** the generated module binds for this column set
+/// — one per `ReadBuffer` plus one per `WriteBuffer`, which is exactly what
+/// [`kernel_module`] emits and therefore what the device's
+/// `max_storage_buffers_per_shader_stage` is counted against. Derived by
+/// replaying [`plan_bindings`], so it cannot drift from the module it describes.
+pub fn storage_bindings(kernel: &GpuKernel, present: impl FnMut(&ColumnBinding) -> bool) -> u32 {
     plan_bindings(kernel, present)
         .iter()
+        .map(|(read, write)| {
+            u32::from(matches!(read, Some(BindingPlan::ReadBuffer)))
+                + u32::from(matches!(write, Some(BindingPlan::WriteBuffer)))
+        })
+        .sum()
+}
+
+/// The presence signature a pipeline is cached under: one bit per binding, in
+/// declaration order — **did it find its column?**, the single `here` that
+/// [`plan_bindings`] branches on. Two frames whose streams carry the same
+/// columns (the steady state) hit the same compiled pipeline; two that differ
+/// anywhere cannot, because for a fixed kernel `here` determines the module's
+/// text exactly.
+///
+/// It must be derived from `here` and not from the resulting [`BindingPlan`]s:
+/// a [`ColumnAccess::ReadWrite`] binding emits a `WriteBuffer` whether or not
+/// its column was there, so "binds any buffer" is TRUE in both cases and the
+/// two modules — which differ by a whole read binding — would collide on one
+/// cache entry. wgpu then rejects the bind group against the wrong layout
+/// (a crash), and it stays invisible until something makes a column's presence
+/// CHANGE: two nodes of one type at different points of a chain, or a
+/// simulation, whose state is absent on tick 0 and present on tick 1.
+pub fn presence_signature(
+    kernel: &GpuKernel,
+    mut present: impl FnMut(&ColumnBinding) -> bool,
+) -> u64 {
+    kernel
+        .bindings
+        .iter()
         .enumerate()
-        .fold(0u64, |sig, (i, (read, write))| {
-            let bit = matches!(read, Some(BindingPlan::ReadBuffer))
-                || matches!(write, Some(BindingPlan::WriteBuffer));
-            sig | ((bit as u64) << i)
+        .fold(0u64, |sig, (i, b)| {
+            let here = b.access.reads() && present(b);
+            sig | ((here as u64) << i)
         })
 }
 
@@ -334,6 +364,38 @@ mod tests {
         assert_ne!(all, none);
         assert_ne!(all, p_only);
         assert_ne!(p_only, none);
+    }
+
+    #[test]
+    fn a_read_write_columns_presence_moves_the_signature() {
+        // The collision that shipped in Fase 1 and hid until Fase 3: a
+        // `ReadWrite` binding emits its write buffer either way, so a signature
+        // derived from "binds any buffer" was IDENTICAL present and absent —
+        // while the modules differ by an entire read binding. Two chains, one
+        // cache entry, and wgpu rejecting the bind group against the layout it
+        // compiled for the other one.
+        const RW: GpuKernel = GpuKernel {
+            wgsl: "write_size(i, read_size(i) * params.amount);\n",
+            wgsl_lib: "",
+            bindings: &[ColumnBinding {
+                column: "size",
+                dim: Dim::Vec2,
+                access: ColumnAccess::ReadWrite,
+                identity: [1.0; 4],
+                port: 0,
+            }],
+            params: &["amount"],
+            source_count: None,
+            applicable: None,
+        };
+        assert_ne!(
+            presence_signature(&RW, |_| true),
+            presence_signature(&RW, |_| false),
+            "present and absent MUST key different pipelines"
+        );
+        // …and they really are different modules, which is why.
+        assert!(kernel_module(&RW, &["in"], |_| true).contains("in_size"));
+        assert!(!kernel_module(&RW, &["in"], |_| false).contains("in_size"));
     }
 
     #[test]

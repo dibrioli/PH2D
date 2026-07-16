@@ -56,6 +56,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -112,6 +113,136 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     clock: Clock::Frame,
     params: &[],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel + ADR-0123):
+/// the WGSL port of [`step`], element for element.
+///
+/// **Pairing is POSITIONAL only** (ADR-0123 D3). The CPU pairs state to elements
+/// by `id` when the stream has identity — a gather this engine does not do — so
+/// the `id` binding below is a [`ColumnAccess::RefuseIfPresent`]: a `rest` that
+/// might carry one keeps the whole node on the CPU. That is exactly the CPU's
+/// own condition, `pairing`'s `(Some(rest_ids), Some(state_ids))` arm: without
+/// `id` on `rest` it falls to the positional arm regardless of the state.
+///
+/// The other half of `pairing` — `_ if sn == n`, "a changed count means the set
+/// was rebuilt, so re-seed" — needs no code here: the sequencer only calls a
+/// port's column present when that port's stream is the length being dispatched,
+/// so a stale-length state reads as ABSENT and the seed path below fires.
+///
+/// **The seed is not a zeroed step.** With no prior state the CPU takes neither
+/// branch of the step: `vel` comes from `rest` (an emitter's muzzle velocity)
+/// and `sim_d` is 0. Stepping from zeroed identities would instead give
+/// `vel = 0` — the same for a grid, different the moment `rest` carries `vel`.
+/// `HAS_forces_sim_d` is what tells the two apart (`read_*` cannot: it answers
+/// the identity either way).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let ig_w = read_rest_inv_mass(i);\n\
+        var ig_vel = read_rest_vel(i) * ig_w;\n\
+        var ig_d = vec2<f32>(0.0, 0.0);\n\
+        if (HAS_forces_sim_d) {\n\
+        \x20   let ig_t_prev = select(params.playhead, read_forces_sim_t(0u), HAS_forces_sim_t);\n\
+        \x20   let ig_dt = clamp(params.playhead - ig_t_prev, 0.0, INTEGRATE_MAX_DT);\n\
+        \x20   var v = read_forces_vel(i);\n\
+        \x20   var d = read_forces_sim_d(i);\n\
+        \x20   let a = read_forces_accel(i);\n\
+        \x20   v = v + a * ig_dt * ig_w;\n\
+        \x20   d = d + v * ig_dt * ig_w;\n\
+        \x20   if (integrate_finite(v) && integrate_finite(d)) {\n\
+        \x20       ig_vel = v;\n\
+        \x20       ig_d = d;\n\
+        \x20   }\n\
+        }\n\
+        write_P(i, read_rest_P(i) + ig_d);\n\
+        write_vel(i, ig_vel);\n\
+        write_sim_d(i, ig_d);\n\
+        write_sim_t(i, params.playhead);\n",
+    wgsl_lib: "\
+        const INTEGRATE_MAX_DT: f32 = 0.1;\n\
+        // `f32::MAX`. WGSL has no `isFinite`, but Rust's `is_finite()` is exactly\n\
+        // \"not NaN and not ±inf\", and `abs(x) <= F32_MAX` answers both: every\n\
+        // comparison against NaN is false, and ±inf exceeds the max. Written per\n\
+        // lane rather than through `max()`, whose NaN behaviour WGSL leaves\n\
+        // implementation-defined.\n\
+        const INTEGRATE_F32_MAX: f32 = 3.4028235e38;\n\
+        fn integrate_finite(v: vec2<f32>) -> bool {\n\
+        \x20   return abs(v.x) <= INTEGRATE_F32_MAX && abs(v.y) <= INTEGRATE_F32_MAX;\n\
+        }\n",
+    bindings: &[
+        // ── port 0: `rest`, the live chain. Also the BASE: every column this
+        // kernel never mentions (tint/size/uv/falloff — and `id`, were it not
+        // refused) rides through it, which is the CPU's "copy rest, rewrite the
+        // sim columns".
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: INV_MASS,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            // Absent = every element free (`w = 1`), so a pre-pin graph
+            // integrates exactly as it did — and `·1.0` is exact.
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            // The SEED velocity — `rest`'s, not the state's (see the doc above).
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // ── port 1: `forces`, last tick's state with `accel` accumulated.
+        ColumnBinding {
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: "sim_d",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            // The state's own clock, from which `dt` is derived — element 0's,
+            // like the CPU's `t_prev.first()`. Absent → the body falls back to
+            // `params.playhead` (`dt = 0`), matching `scalar_to_n`'s fill.
+            column: "sim_t",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            // Transient: eaten here so every tick starts from zero acceleration.
+            column: "accel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Consume,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        // ── D3: identity means a gather. Recede (see the doc above).
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::RefuseIfPresent,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[],
+    source_count: None,
+    applicable: None,
 };
 
 struct MotionIntegrate;
@@ -198,8 +329,9 @@ fn step(rest: &Stream, state: &Stream, playhead: f32) -> Stream {
 
     // Pure per-instance map → parallel above the threshold
     // (bit-identical, no reduction). GPU/M5 Fase 0.
-    let p: Vec<[f32; 2]> =
-        par_build(n, |i| [rest_p[i][0] + sim_d[i][0], rest_p[i][1] + sim_d[i][1]]);
+    let p: Vec<[f32; 2]> = par_build(n, |i| {
+        [rest_p[i][0] + sim_d[i][0], rest_p[i][1] + sim_d[i][1]]
+    });
     out.set("P", Column::Vec2(p));
     out.set("vel", Column::Vec2(vel));
     out.set("sim_d", Column::Vec2(sim_d));
@@ -245,6 +377,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     // No params → no param hints to register (the panel renders no rows).
     Ok(())
 }

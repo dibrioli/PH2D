@@ -88,6 +88,20 @@ impl GpuContext {
         // allocates at full-res 4K where the hardware has the VRAM (Apple Silicon unified memory,
         // modern dGPUs). Smaller devices advertise less → the field stays low-res grid (canvas/4,
         // the production default) + the perf bench skips oversized configs (no silent cap).
+        //
+        // **Storage bindings per stage.** The default is 8 — the WebGPU
+        // guaranteed minimum, which no desktop adapter is actually limited by.
+        // A GPU-cook kernel binds one storage buffer per stream column it
+        // touches, so a multi-input node reaches past 8 easily:
+        // `motion.integrate` reads `P`/`vel`/`inv_mass` off `rest` and
+        // `vel`/`sim_d`/`sim_t`/`accel` off last tick's state, and writes four
+        // — 11 with every column present (ADR-0123 fatia 3). Raised to the
+        // adapter's advertised max by the SAME argument as the sizes above: a
+        // superset of the default, so `request_device` cannot fail on it and
+        // nothing that worked breaks. A device that really does stop at 8
+        // cannot run the integrator; the sequencer REFUSES such a kernel at cook
+        // time (`GpuCookError::TooManyBindings`) and the caller falls back to the
+        // CPU, rather than the pipeline blowing up at first dispatch.
         let adapter_limits = adapter.limits();
         let mut required_limits = wgpu::Limits::default();
         required_limits.max_storage_buffer_binding_size = required_limits
@@ -96,6 +110,9 @@ impl GpuContext {
         required_limits.max_buffer_size = required_limits
             .max_buffer_size
             .max(adapter_limits.max_buffer_size);
+        required_limits.max_storage_buffers_per_shader_stage = required_limits
+            .max_storage_buffers_per_shader_stage
+            .max(adapter_limits.max_storage_buffers_per_shader_stage);
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("ph2d-gpu device"),
             required_features: compression_features,

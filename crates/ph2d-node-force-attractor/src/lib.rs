@@ -21,6 +21,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -88,6 +89,79 @@ fn curve(kind: i32, s: f32) -> f32 {
     }
 }
 
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the exact
+/// per-element map of the CPU `eval` — pull (or push) toward the target, gated
+/// by the radius, shaped by the curve, scaled by the focus field.
+///
+/// Two ports of note. The dead zone and the radius test are the CPU's
+/// `if d < DEAD_ZONE || d > radius { return [0,0] }` — the `d` in the
+/// denominator is why, and a zero contribution is not the same as "skip the
+/// add": the add still happens (of zero), which is what a chain expects. And the
+/// `curve` enum goes through `at_round` (half-AWAY, like Rust's `f32::round`)
+/// rather than WGSL's `round`, which is half-EVEN and would pick a different
+/// branch at `x.5` — [[feedback_cpu_gpu_rounding_conventions_diverge]].
+///
+/// `sqrt` is IEEE correctly-rounded on both sides (HR-5 bars transcendentals,
+/// not exact operations), so no approximation is needed here.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let at_radius = max(params.radius, AT_DEAD_ZONE);\n\
+        let at_sign = select(1.0, -1.0, params.repel >= 0.5);\n\
+        let at_p = read_P(i);\n\
+        let at_dx = params.target_x - at_p.x;\n\
+        let at_dy = params.target_y - at_p.y;\n\
+        let at_d = sqrt(at_dx * at_dx + at_dy * at_dy);\n\
+        var at_c = vec2<f32>(0.0, 0.0);\n\
+        if (at_d >= AT_DEAD_ZONE && at_d <= at_radius) {\n\
+        \x20   let at_w = at_curve(\n\
+        \x20       i32(at_round(params.curve)),\n\
+        \x20       clamp(1.0 - at_d / at_radius, 0.0, 1.0));\n\
+        \x20   let at_mag = params.strength * at_w * at_sign * read_falloff(i);\n\
+        \x20   at_c = vec2<f32>((at_dx / at_d) * at_mag, (at_dy / at_d) * at_mag);\n\
+        }\n\
+        write_accel(i, read_accel(i) + at_c);\n",
+    wgsl_lib: "\
+        const AT_DEAD_ZONE: f32 = 1e-3;\n\
+        fn at_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn at_curve(kind: i32, s: f32) -> f32 {\n\
+            if (kind == 0) { return s; }\n\
+            if (kind == 1) { return s * s; }\n\
+            if (kind == 2) { return s * s * (3.0 - 2.0 * s); }\n\
+            return s * s * s * (s * (s * 6.0 - 15.0) + 10.0);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "accel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[
+        "target_x", "target_y", "strength", "radius", "curve", "repel",
+    ],
+    source_count: None,
+    applicable: None,
+};
+
 struct ForceAttractor;
 
 impl NodeOp for ForceAttractor {
@@ -136,6 +210,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

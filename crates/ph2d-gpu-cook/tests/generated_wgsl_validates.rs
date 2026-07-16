@@ -42,6 +42,13 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_motion_falloff::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
+    // GPU/M5 Fase 3 — the simulation loop.
+    ph2d_node_motion_integrate::register(&mut reg).unwrap();
+    ph2d_node_force_wind::register(&mut reg).unwrap();
+    ph2d_node_force_drag::register(&mut reg).unwrap();
+    ph2d_node_force_attractor::register(&mut reg).unwrap();
+    ph2d_node_force_vortex::register(&mut reg).unwrap();
+    ph2d_node_force_curl::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

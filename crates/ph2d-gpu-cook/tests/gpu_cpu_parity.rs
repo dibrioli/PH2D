@@ -550,3 +550,82 @@ fn gpu_cook_millions_timing() {
     let per = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
     eprintln!("gpu cook of {n} instances: {per:.3} ms/frame (encode+submit+wait)");
 }
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn two_nodes_of_one_type_at_different_column_presence_get_different_pipelines() {
+    // A Fase 1 latent, found by Fase 3's fixtures and gated at the level it
+    // actually broke: `grid → scale → scale → output`. The grid emits no `size`,
+    // so scale #1 runs with the column ABSENT (materializing it from
+    // `SIZE_IDENTITY`) and scale #2 with it PRESENT — two different modules, one
+    // node TYPE, and the pipeline cache is keyed by type + presence signature.
+    //
+    // While that signature could not tell a `ReadWrite` column's presence apart,
+    // both stages hit ONE cached pipeline and wgpu rejected the second bind
+    // group against the first's layout: not a wrong number, a crash. Nothing in
+    // Fase 2 caught it because a single-deformer chain never changes a presence.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let s1 = g.add_node("motion.scale");
+    g.set_param(s1, "amount", 1.75);
+    let s2 = g.add_node("motion.scale");
+    g.set_param(s2, "amount", 0.625);
+    let out = g.add_node("motion.output");
+    for (a, b) in [(grid, s1), (s1, s2), (s2, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(&reg).expect("well-typed");
+
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
+    )
+    .expect("cpu cook");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu());
+    assert_eq!(plan.dispatching_stages(&reg), 3, "grid + both scales");
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+    assert_parity(&cpu, &gpu_out);
+    // Both stages composed. The value is the CPU's — `scale` materializes an
+    // absent `size` from SIZE_IDENTITY (`[1, 1]`), NOT from the lowering's
+    // `default_size`, so the product is 1.75 × 0.625 off unit scale and the
+    // sprite's default never enters ([[feedback_test_with_product_numbers_not_convenient_ones]]:
+    // this asserted `DEFAULT_SIZE × …` on the first draft — plausible, and wrong).
+    assert!(
+        (gpu_out[0].size[0] - 1.75 * 0.625).abs() < 1e-5,
+        "size {} — both stages must have run",
+        gpu_out[0].size[0]
+    );
+}

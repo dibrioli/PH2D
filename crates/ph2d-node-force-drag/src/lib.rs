@@ -19,6 +19,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::par_build;
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -46,6 +47,48 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         default: 1.0,
     }],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): `a += −k·v·falloff`,
+/// the exact per-element map of the CPU `eval` in the same operand order. No
+/// transcendentals, so parity is FMA-ε at worst.
+///
+/// `accel` is `ReadWrite` with a zero identity — the CPU's `add_accel`
+/// ("create at zero when absent, else ADD"), which is what makes a chain of
+/// forces accumulate (Houdini POP: microsolvers add, one solver integrates).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dg_w = max(params.coefficient, 0.0) * read_falloff(i);\n\
+        let dg_v = read_vel(i);\n\
+        write_accel(i, read_accel(i) + vec2<f32>(-dg_v.x * dg_w, -dg_v.y * dg_w));\n",
+    wgsl_lib: "",
+    bindings: &[
+        ColumnBinding {
+            column: "accel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            // No velocity column (or no motion yet) → drag is a no-op.
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["coefficient"],
+    source_count: None,
+    applicable: None,
 };
 
 struct ForceDrag;
@@ -85,6 +128,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

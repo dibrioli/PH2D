@@ -170,13 +170,17 @@ fn eligible(
         return false;
     }
     // A `pre` edge is a STOP, not a refusal (D1/D2) — but only when it closes a
-    // loop back onto a node this walk is already staging (the sim's self-loop:
-    // `integrate.out --pre--> forces --> integrate.forces`). A `pre` from
-    // anywhere else wants the CPU's previous output, and this engine has no
-    // seam that hands one over; claiming the node would silently feed it an
-    // empty stream. Recede.
+    // loop onto a node this plan also stages, i.e. either an ancestor the walk
+    // is already committed to (`integrate.out --pre--> force₁ … --> integrate`)
+    // or the node ITSELF (the bare `out --pre--> forces` self-loop the editor
+    // auto-wires when no force chain is present — the default shape, and the
+    // node is not in `claimed` yet because eligibility is settled BEFORE the
+    // walk commits to it). A `pre` from anywhere else wants the CPU's previous
+    // output, and this engine has no seam that hands one over; claiming the node
+    // would silently feed it an empty stream. Recede.
     for port in 0..manifest.inputs.len() {
         if let Some((src, _, true)) = graph.input_edge(node, port)
+            && src != node
             && !claimed.contains(&src)
         {
             return false;

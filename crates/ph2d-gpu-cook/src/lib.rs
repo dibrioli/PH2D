@@ -63,7 +63,7 @@ use ph2d_nodegraph::attr::Stream;
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::{GpuKernel, KernelResolver};
 use ph2d_nodegraph::graph::{Graph, NodeId};
-use ph2d_nodegraph::node::NodeManifest;
+use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// The GPU-resident instance output of a cook: a buffer laid out as
@@ -92,6 +92,16 @@ pub enum GpuCookError {
     /// `plan.boundaries` and the `boundary_streams` argument disagree — the
     /// caller cooked (or skipped) the CPU prefix against a stale plan.
     BoundaryMismatch,
+    /// A stage's kernel needs more storage bindings than the device allows
+    /// (`max_storage_buffers_per_shader_stage`): `(node type, needed, limit)`.
+    ///
+    /// A kernel binds one buffer per column it touches, which is a fact about
+    /// the STREAM, not the graph — so [`plan`], which never sees a device or a
+    /// stream, cannot refuse it. The check lives here because the alternative is
+    /// not a wrong answer but a **crash**: `create_compute_pipeline` reports an
+    /// over-limit layout through the device's error scope, i.e. a panic, not a
+    /// `Result`. The caller falls back to the CPU for the frame.
+    TooManyBindings(NodeTypeId, u32, u32),
 }
 
 /// When a cook happens: the continuous `playhead` the kernels see, and the
@@ -180,6 +190,18 @@ impl GpuCook {
         self.last_tick
     }
 
+    /// Column buffers the pool has ever created — flat across a steady scene,
+    /// which is the whole claim of the ping-pong (D1) and is otherwise
+    /// unobservable from outside.
+    pub fn pool_allocations(&self) -> usize {
+        self.pool.allocations()
+    }
+
+    /// Column buffers something still holds — for a sim, last tick's state.
+    pub fn pool_retained(&self) -> usize {
+        self.pool.retained()
+    }
+
     /// Run `plan` at `clock`, producing the instance buffer. Each entry of
     /// `boundary_streams` is a [`GpuPlan::boundaries`] node's freshly cooked
     /// output stream (cook them with the ordinary
@@ -266,6 +288,16 @@ impl GpuCook {
             if count == 0 {
                 streams.insert(stage.node, GpuStream::default());
                 continue;
+            }
+            // Refuse an over-limit layout BEFORE wgpu turns it into a panic.
+            let needed = codegen::storage_bindings(kernel, |b| {
+                inputs
+                    .get(b.port)
+                    .is_some_and(|s| s.count == count && s.cols.contains_key(b.column))
+            });
+            let limit = gpu.device.limits().max_storage_buffers_per_shader_stage;
+            if needed > limit {
+                return Err(GpuCookError::TooManyBindings(stage.ty, needed, limit));
             }
             let out = self.encode_kernel_stage(
                 gpu,

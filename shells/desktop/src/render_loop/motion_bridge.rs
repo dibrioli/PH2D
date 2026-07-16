@@ -297,92 +297,11 @@ pub(super) fn dispatch(
     let target = motion_tick(playhead, fixed_dt);
 
     // ── GPU-resident cook (GPU/M5 Fase 1 + F1.2, ADR-0122) — opt-in preview ──
-    // With `PH2D_GPU_COOK=1`, a single-sink, unscoped document cooks on the GPU
-    // (compute passes in one submit; the lowering writes the renderer's instance
-    // buffer directly; zero readback). Fully-GPU when the plan claims the whole
-    // chain; **hybrid** (F1.2) when a node has no kernel: the CPU prefix cooks up
-    // to that boundary on the persistent pump (memo + `pre` feedback + the tick
-    // march, so a sequential prefix sims correctly), and only its output stream
-    // crosses to the GPU, which runs the covered suffix. Any chain the plan can't
-    // usefully claim falls through to the CPU pump below — never a wrong answer.
-    // Trade-off while the flag is on: the graph panel's readouts/probe read the
-    // CPU memo, which the fully-GPU path doesn't feed — wiring those is Fase 4.
-    motion.gpu_live = false;
-    if motion.gpu_enabled && motion.sinks.len() == 1 {
-        let plan = ph2d_gpu_cook::plan(
-            &motion.doc.graph,
-            &motion.registry,
-            &motion.registry,
-            motion.sinks[0],
-        );
-        let route = gpu::gpu_route(
-            motion.gpu_enabled,
-            motion.sinks.len(),
-            scopes.is_empty(),
-            plan.boundary.map(|(node, _)| node),
-            plan.dispatching_stages(&motion.registry),
-        );
-        match route {
-            gpu::GpuRoute::Cpu => {}
-            gpu::GpuRoute::FullyGpu => {
-                // Stateless by construction (no `pre` edge passes eligibility) →
-                // cook straight at the target tick's time; no checkpoint ring.
-                motion.gpu_live = motion
-                    .gpu_cook
-                    .cook(
-                        gpu,
-                        &motion.doc.graph,
-                        &motion.registry,
-                        &motion.registry,
-                        &plan,
-                        None,
-                        target as f64 * fixed_dt,
-                        motion.default_uv_rect,
-                        motion.default_size,
-                    )
-                    .is_ok();
-            }
-            gpu::GpuRoute::Hybrid(boundary) => {
-                // Cook the CPU prefix up to the boundary node on the pump,
-                // marching every owed tick (a sequential prefix must sim each),
-                // then upload that node's stream to the GPU suffix. Time scopes
-                // are empty here (the route gate refused otherwise).
-                for tick in ticks_owed(motion.pump.last_cooked_tick(), target) {
-                    motion.pump.advance_or_scrub_to_node_scoped(
-                        &motion.doc.graph,
-                        &motion.registry,
-                        boundary,
-                        tick,
-                        |t| t as f64 * fixed_dt,
-                        &scopes,
-                    );
-                }
-                if let Some(stream) = motion.pump.boundary_stream() {
-                    motion.gpu_live = motion
-                        .gpu_cook
-                        .cook(
-                            gpu,
-                            &motion.doc.graph,
-                            &motion.registry,
-                            &motion.registry,
-                            &plan,
-                            Some(stream),
-                            target as f64 * fixed_dt,
-                            motion.default_uv_rect,
-                            motion.default_size,
-                        )
-                        .is_ok();
-                }
-                // Whether or not the GPU cook succeeded, the pump was marched to
-                // the boundary this frame — do NOT also run the sink loop below
-                // (it would early-return on the same tick and leave `instances`
-                // holding the boundary lowering). A GPU failure here renders
-                // nothing this frame rather than corrupt the pump's clock.
-                return;
-            }
-        }
-    }
-    if motion.gpu_live {
+    // With `PH2D_GPU_COOK=1` a single-sink, unscoped document cooks on the GPU
+    // (fully, or hybrid from a CPU boundary). `Handled` = the GPU produced this
+    // frame → skip the CPU pump; `FellThrough` = run the pump below. The whole
+    // policy + dispatch lives in the `gpu` module (see there); this stays a seam.
+    if let gpu::GpuOutcome::Handled = gpu::cook_gpu(motion, gpu, target, fixed_dt, &scopes) {
         return;
     }
 
@@ -419,7 +338,7 @@ pub(super) fn dispatch(
 /// **Standing still: the same tick.** A paused playhead re-issues its current tick,
 /// which the pump early-returns on unless a param drag / rewire dirtied the cook
 /// (zero-alloc paused frame, M0.T12).
-fn ticks_owed(last_cooked: Option<u64>, target: u64) -> std::ops::RangeInclusive<u64> {
+pub(super) fn ticks_owed(last_cooked: Option<u64>, target: u64) -> std::ops::RangeInclusive<u64> {
     match last_cooked {
         Some(last) if target > last => last + 1..=target,
         _ => target..=target,

@@ -1,163 +1,187 @@
-# HANDOFF — a borda do Inflate: a bola tem DUAS bordas e elas discordam (`line/Painter`, 2026-07-16)
+# HANDOFF — a borda do Inflate: FECHADA (`line/Painter`, 2026-07-16)
 
-> **Para o PRÓXIMO agente da linha.** O smoke do Enio aprovou o **Filter Layer para Inflate** (*"ficou muito
-> bom!"*) e reprovou a **BORDA**: o relevo cresce com a borda **serrilhada/rasgada**, e — o mais grave —
-> *"essa irregularidade externa é imune ao filtro global e ao pincel smooth, nada pode corrigi-la."*
+> **Estado: a borda foi corrigida, gateada, medida e OLHADA. Pendente SMOKE do Enio.**
+> A linha está commitada e verde. **NÃO integrei, NÃO pushei, NÃO rodei ship** (§0.7).
 >
-> **O diagnóstico está FECHADO e confirmado no código** (não é teoria — os números de linha estão abaixo).
-> Não re-derive nada: comece implementando. A linha está commitada e verde; só isto está aberto.
+> Este arquivo SUBSTITUI a versão anterior (o diagnóstico + direção de fix). O diagnóstico estava
+> **correto ao pé da letra** e o fix prescrito (§3.1) era o certo — implementado como prescrito, com
+> 3 desvios que a medição obrigou (§4). O §3.2 foi **decidido pela medição**, como o handoff mandava.
 
-## 0. Protocolo (não pule)
+## 0. O que mudou (commit `8ea5f91c`)
 
-Modo L (worktree `Worktrees/line-Painter`, base `main = 12ccaecd`). **Você NÃO integra, NÃO pusha, NÃO roda
-ship** — fecha, escreve handoff, PARA. Fast mode: `git commit --no-verify -- <seus paths>`. Inner loop
-`cargo check -p`. Mutações por caminho ABSOLUTO. Restaure mutação por replace reverso com `assert old in s`,
-NUNCA `git checkout`. Mutação-RED só vale sobre gate visto VERDE.
-**Leia [`DIRETIVA_IMPLEMENTACAO.md`](IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md) antes de cada passo.**
+**A matéria segue o MESMO taper da altura, por porta única.** `sculpt_offset::ball_taper(d2, reach2)` —
+os **dois** sítios perguntam a ela (o post-pass da altura e a advecção da matéria).
 
-⚠️ **O gate de LOC mora na `ph2d-editor-core`, NÃO roda com `cargo test -p ph2d-painter-brush`.** Ele já
-pegou 2 arquivos meus hoje. Rode `cargo test -p ph2d-editor-core` no fechamento. `sculpt.rs` está a
-**698/700** — campo novo lá = split.
+- **Cobertura** = PRESENÇA → `max`, desvanecida pelo taper (`pre_cover[si] · t`).
+- **Material e pigmento** = IDENTIDADE → compõem **`over`** na opacidade que de fato chegou (`t`), pelo
+  mesmo operador do depósito (`impasto_live::commit_stroke_height`) e pela porta do próprio pigmento
+  (`ph2d_painter_brush::blend_over(Mix)` — straight-alpha, o espaço em que o `canvas_rgba` já é
+  guardado e blendado).
+- **Em `t = 1` sobre fonte opaca os dois REDUZEM à cópia literal que shipou, bit a bit** — o interior
+  que o Enio aprovou não se move.
 
-## 1. O MECANISMO (leia isto antes de qualquer código)
+## 1. Os números (medidos, no caminho real do produto)
 
-O Inflate é a **bola** (`render_inflate` em `sculpt_blur.rs`): uma dilatação parabólica separável
-(Felzenszwalb) que devolve `hbuf` (a altura) + `sbuf` (o **argmax**: de que texel a matéria veio, como um
-offset **INTEIRO** empacotado — `sculpt_offset::unpack_src`).
+Perfil radial de cobertura — blob grosso (12 loads), Filter Layer + Inflate, Depth 1:
 
-**O post-pass do orçamento** (`sculpt_blur.rs:470-480`) aplica um **taper**: a parábola só é esfera perto do
-ápice, então do equador (`d² = R²/2`) até o alcance o lift é desvanecido a ZERO, **ao quadrado**, C¹ — é o
-que matou a prateleira retangular do P0.
-
-```rust
-// sculpt_blur.rs:470
-let t = if a_s <= 0.0 || d2 >= reach2_s { 0.0 } else { let lin = (2.0 - 2.0*d2/reach2_s).clamp(0.0,1.0); lin*lin };
-// :487
-let lifted = p0 + t * (hbuf[i].max(p0) - p0);   // a ALTURA desvanece suave
+```text
+depósito (uma borda de tinta REAL)   255, 251, 222, 125,  11, 0      passo máx 114
+inflado ANTES                        255, 255, 255, 255, 255, 0      passo máx 255   ← o cortador de biscoito
+inflado DEPOIS                       255, 193, 193, 137,  88, 48, 0  passo máx  62   ← uma rampa
 ```
 
-**Mas o `sbuf` só é zerado quando `t == 0`** (`:482-484`, `:491`). Dentro da zona de taper ele segue
-apontando pro vencedor. E 120 linhas depois, a matéria é copiada **CHEIA**:
+**A borda crescida ficou mais MACIA que qualquer borda que o pincel consegue depositar** (62 < 114) —
+e é esse o oráculo do gate: a referência não é um número inventado, é *o que tinta parece* neste
+produto. O Inflate faz crescer tinta; se a borda que ele cria é mais dura que qualquer borda que o
+pincel consegue pintar, o que cresceu não é tinta.
 
-```rust
-// sculpt_blur.rs:592-607  — a advecção da matéria
-let (dx, dy) = super::sculpt_offset::unpack_src(sbuf[ci]);   // offset INTEIRO
-if dx == 0 && dy == 0 { continue; }
-...
-if pre_cover[si] <= cov[gi] { continue; }
-cov[gi] = pre_cover[si];                                     // 255 CHEIO — o taper NÃO existe aqui
-mat[gi] = pre_mats[si];
-rgba[gi*4..gi*4+4].copy_from_slice(&pre_rgba[si*4..si*4+4]); // o alpha do pigmento idem
-```
-
-> **A altura desvanece suavemente até zero; a cobertura fica em 255 até o último texel e cai de uma vez.**
-
-A luz **pesa por cobertura** (`impasto_light::paint_body(cover) = cover`), então a silhueta que o artista vê
-tem uma borda **BINÁRIA**, cortada em `d² = reach2_s`. E `reach2_s = full_reach2 · a_s` é lido **no
-vencedor**, através de um **argmax discreto** — o vencedor muda de texel pra texel num padrão tipo Voronoi.
-**A borda É esse padrão, binarizado. É a escada das fotos.**
-
-É a MESMA classe de todo bug que esta linha pagou: **duas coisas que precisam concordar sobre um fato,
-discordando** (o filme vs o pigmento · a âncora do aro · seed vs sample · o produto da mordida). Aqui: **a
-altura e a matéria discordam sobre onde a forma termina — e a luz acredita na matéria.**
-
-## 2. Por que o Smooth é IMPOTENTE (a 2ª metade, e a mais funda)
-
-Não é fraqueza do Smooth — é **estrutural**. O §5 do plano 18 diz *"o sculpt escreve `h` e SÓ `h`"*, e era
-verdade até o **Inflate virar o verbo que MOVE MATÉRIA** (a 2ª rodada de 2026-07-14: *"inflate não
-engorda"* — a bola passou a responder **duas** perguntas, que altura e **de onde veio a matéria**). Hoje:
-
-- **O Inflate é o ÚNICO verbo que ESCREVE `covers`/`mats`/`canvas_rgba`.**
-- **NENHUM verbo consegue EDITAR `covers`.** Smooth/Sharpen escrevem só `heights`.
-
-A borda que o Inflate cria é **write-once, para sempre**. A 3ª foto do Enio é exatamente isso: o interior
-(`h`) alisou, a borda (`cover`) não se moveu um pixel. O `SculptMode::moves_matter()` é a porta única que
-diz quem é dessa família — mas não existe a porta simétrica: *quem pode CONSERTAR a matéria?*
-
-## 3. A DIREÇÃO DE FIX
-
-### 3.1 — A matéria segue o MESMO taper da altura (o conserto 1 do Enio)
-
-*"Subdivisões mais finas + um smooth embutido"* — **o taper já é as duas coisas**: ele é a gradação
-sub-texel e é o alisamento. Ele só não chega na matéria.
-
-```rust
-let v = f32::from(pre_cover[si]) * t;              // a cobertura desvanece ONDE a altura desvanece
-if (v as u8) <= cov[gi] { continue; }
-cov[gi] = v as u8;
-```
-
-⚠️ **O `t` mora no post-pass (`:470`) e a advecção roda depois, sem ele.** Duas cópias da fórmula
-DIVERGEM (a lição desta linha inteira) — então **extraia `ball_taper(d2, reach2) -> f32` para
-`sculpt_offset.rs`** (o dono do `unpack_src`/`blob_dilate`) e faça os DOIS sítios perguntarem a ela.
-Recomputar na advecção é barato: `(dx,dy)` vem do `sbuf`, `d2 = dx²+dy²`, `a_s = amount[si]`,
-`reach2_s = full_reach2 · a_s`.
-
-⚠️ **O ALPHA DO PIGMENTO também** (`rgba[si*4+3]`): a silhueta vermelho-vs-branco das fotos é o alpha do
-`canvas_rgba`, não a cobertura. Se só a cobertura desvanecer, a *sombra* suaviza e a *tinta* continua com
-recorte duro. O que chega tem opacidade `t` e deve **compor `over`** o que está lá — é o mesmo operador
-que o `commit_stroke_height` usa pro material, e pela mesma razão (cobertura é PRESENÇA → `max`; material
-e cor são IDENTIDADE → `over`).
-
-### 3.2 — A borda tem que ser EDITÁVEL (o conserto 2 — decisão de arquitetura, não um fix)
-
-O Enio: *"vc precisa encontrar um modo de deixar as bordas sensíveis às edições dos filtros e dos
-pincéis."* Isso **revoga o §5 no ponto exato onde o Inflate já o revogou**: se um verbo pode escrever
-matéria, algum verbo tem de poder editá-la.
-
-Candidato (não implementado — **projete antes**): o Smooth, quando o alvo tem matéria, borra também a
-**borda da cobertura** (o alpha), não só `h`. Perguntas que a decisão tem de responder ANTES do código:
-- Isso borra a ARTE (a cobertura é o alpha do pigmento) ou só a franja que o Inflate fabricou? Um Smooth
-  que come a borda de uma pincelada que o artista pintou à mão é um bug pior que o serrilhado.
-- Precisa de um `moves_matter()` simétrico (`edits_matter()`), com **porta única**?
-- O 3.1 pode DISSOLVER o sintoma (a borda nasce macia e não há o que consertar). **Meça primeiro:** se
-  depois do 3.1 a borda ficar boa, o 3.2 vira uma capacidade a nomear, não uma urgência — e o Enio decide.
-
-## 4. Estado da linha (tudo commitado, verde; NÃO refaça)
-
-| | |
-|---|---|
-| `fd77f9c5` | âncora do aro no CORPO (`rim_t0`/`rim_lift`) — **smoke OK** |
-| `2e1806fb` | a mordida é função do CAMINHO (share sobre a SOBRA telescopa) — **smoke OK** (o Push ficou mais forte: Push=1 limpa o canal; knob ≈0,63 devolve o antigo) |
-| `57d9881e` | **W5b** — o filtro de camada inteira (botão Filter Layer) |
-| `ea0a5c02` | **W5b** — 2 escopos (Layer + **último traço**, mascarado por `relief.live_paint`) + **Layer cortado da lista** (knob morto: a luz lê `∇h`, e uma constante não tem gradiente) |
-| `493665c2` | sondas 7/8/9a/9b do filtro |
-
-Gates: tool **705** · brush **255** · seam_sculpt **15** · clippy **0** · `test --workspace` verde · LOC cap
-verde. Mutações da jornada: **9/9** (W5b) + 3 (âncora) + 1 (mordida).
-
-**Aprovado no smoke e NÃO deve se mover:** Conserve · Push · Filter Layer/Stroke para Smooth · **o Inflate
-por-traço** (só o filtro de camada expôs a borda — o pincel Inflate usa o MESMO `render_inflate`, então
-o 3.1 melhora os dois; **re-smoke do Inflate por-pincel declarado**).
-
-## 5. O INSTRUMENTO
+**RENDER-AND-LOOK (o método desta linha, não teoria):** sonda `push_look`, **cena 10 = o blob do Enio**
+(o handoff pediu; a laje da sonda esconde o fenômeno — borda alinhada aos eixos, o padrão do argmax ao
+longo dela é regular e a escada não tem o que subir). **A escada sumiu** — antes: silhueta em blocos,
+serrilhada; depois: aro redondo e macio. Vale para os DOIS (Filter Layer e pincel Inflate — mesmo
+`render_inflate`). O slab também melhorou visivelmente (delta máx 107).
 
 ```bash
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
   PH2D_PUSH_LOOK_DIR=/tmp/look cargo test -p ph2d-host-desktop probe_push_render_and_look -- --ignored
+# 10a_blob_before · 10b_blob_inflated (filtro) · 10c_blob_inflate_brush (pincel)
 ```
-Cena **8** (`8_filter_layer_inflate`) é o Inflate de camada inteira — **a cena da borda**. ⚠️ A laje da
-sonda é uma forma retangular grande e a borda serrilhada aparece pouco nela; o repro do Enio é um **blob
-com relevo alto e borda curva** (as fotos). **Acrescente uma cena com a forma dele** — a fixture TEM de
-conter o fenômeno, e esta linha já foi mordida 3× por fixture que não continha (o falloff macio da âncora,
-o Sphere da coria, o polígono da lasca do Vector).
 
-Gate a escrever (**red-first**): *num blob de relevo alto, a borda da cobertura depois do Inflate é
-**monótona e suave** — a diferença de `cover` entre texels vizinhos ao longo da borda não pode dar saltos
-de 255* (hoje dá: 0→255 num texel). E o irmão: **a borda do `cover` termina onde a do `h` termina** (as
-duas concordam sobre onde a forma acaba) — é a afirmação direta do bug, e nasce VERMELHA.
+**Perf:** INFLATE **3,30 ms/move @2048² · 3,79 @4096²** (alvo ≤4, kill 8). Era 3,36/3,73 — de graça.
 
-Smoke do Enio: `PH2D_IMPASTO_SMOKE=1 cargo run --release -p ph2d-host-desktop` → tinta grossa → SCULP →
-Inflate → **Filter Layer**. O certo: a forma engorda com a borda **macia e redonda**, e o Smooth (filtro ou
-pincel) consegue mexer nela.
+## 2. Smoke do Enio (o que decide)
 
-## 6. Aberto depois disto (a fila do impasto inteiro)
+```bash
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
+  PH2D_IMPASTO_SMOKE=1 cargo run --release -p ph2d-host-desktop
+```
+Tinta grossa → **SCULP** → **Inflate** → **Filter Layer**. O certo: a forma engorda com a borda **macia
+e redonda**, sem serrilhado. **Re-smoke declarado do Inflate por-PINCEL** (compartilha o kernel).
 
-1. **Este handoff** (a borda do Inflate: 3.1 e depois a decisão do 3.2).
-2. **Passe de luz na GPU** — a luz é CPU, e **enquanto for, relevo visível DESLIGA o compositor GPU
-   inteiro** (`painter_gpu_preview::gpu_eligible` retorna `None` se `impasto_visible()`). Exige
-   reconciliação bit-a-bit contra a CPU (doc 16 §6).
-3. **Relevo do PAPEL** — acopla impasto↔aquarela: **exige ordem nova do Enio** (§2 do doc 16 é barreira).
-4. Dar ao **BANCO** do Push a cura que a mordida ganhou (cada dab ainda normaliza o próprio aro = um
-   produto sobre a lista de dabs; residual medido 0,0286 — invisível hoje).
-5. Conserve p/ Flatten/Fill (decisão de design) · perf do Deform não é gateada · knob de `forward_share`?
+⚠️ **O que este fix NÃO faz:** a borda continua **imune ao Smooth**. O §5 do plano 18 (*"o sculpt escreve
+`h` e SÓ `h`"*) segue valendo para os outros 7 verbos, e **nenhum verbo consegue EDITAR `covers`** — só o
+Inflate escreve. A metade da queixa que dizia *"nada pode corrigi-la"* é **estrutural e continua de pé**;
+o que sumiu foi a irregularidade que dava vontade de corrigir. Ver §3.
+
+## 3. O §3.2 (borda editável) — DECIDIDO PELA MEDIÇÃO, como o handoff mandava
+
+> *"O 3.1 pode DISSOLVER o sintoma… **Meça primeiro:** se depois do 3.1 a borda ficar boa, o 3.2 vira uma
+> capacidade a nomear, não uma urgência — e o Enio decide."*
+
+**Medido: a borda ficou boa.** ⇒ **O 3.2 NÃO foi construído**, e a recomendação é que continue assim até
+o Enio pedir. Motivos, na ordem em que pesam:
+
+1. **O sintoma sumiu.** Um Smooth que come a borda de uma pincelada que o artista pintou à mão é um bug
+   PIOR que o serrilhado (o próprio handoff anterior já dizia isto), e agora não há prêmio para pagar
+   esse preço.
+2. **Não é um fix, é um ADR.** Exige a porta simétrica (`edits_matter()`), decidir se borra a ARTE ou só
+   a franja que o Inflate fabricou, e o que "editar cobertura" significa no undo/restore dos 4 planos.
+3. Se o Enio ainda quiser a capacidade, ela deve nascer **nomeada** (um verbo/knob que o artista escolhe),
+   nunca como efeito colateral do Smooth.
+
+## 4. Os 3 desvios da prescrição (a medição obrigou) — LEIA, é onde estão as lições
+
+### 4.1 — O `over` compõe sobre o plano CONGELADO, nunca sobre o pixel vivo
+
+O caminho freehand re-renderiza o traço INTEIRO a partir do `pre` **a cada batch de pointer-move, SEM
+restore** (`sculpt_session.rs:349`). Isso só é sadio porque toda escrita da advecção é **ASSIGNMENT
+sobre estado congelado** — um render é uma resposta nova a *"o que este traço, no `amount` de agora, faz
+com a tela em que começou"*, exatamente como a altura (`target[gi] = f(pre, amount)`).
+
+`over` no pixel VIVO tomaria uma demão por batch ⇒ **a borda escureceria com a lentidão da mão**. É a
+acumulação sequencial que esta linha já pagou duas vezes ([[feedback_a_sequential_accumulation_is_sampling_dependent]]).
+**Medido:** com destino vivo o desacordo incremental-vs-refresh vai de **6 → 2520 bytes**.
+
+O guard também foi para o congelado (`v <= pre_cover[gi]`), pela mesma razão — e foi ELE que derrubou os
+2520 de volta a 6.
+
+### 4.2 — GHOST PRÉ-EXISTENTE (não é meu; medido no kernel shipado `f8902dfc`)
+
+`a_knob_touched_mid_stroke_does_not_move_the_picture` nasceu **VERMELHO no código correto**. Investigado:
+o caminho incremental e o mesmo traço re-renderizado uma vez discordam em **2 texels a 4/255** — e
+**discordavam ANTES deste fix também** (6 bytes no kernel shipado). São (103,78) e (103,141) no fixture,
+simétricos, na borda do próprio pincel: um render antigo advectou um sopro ali, um posterior não advecta
+mais, e **a advecção não sabe DES-pintar** (escreve onde a bola entrega e `continue` no resto).
+
+- **Fecha assim:** tornar o render TOTAL — atribuir cada texel de `kr`, restaurando os planos congelados
+  onde a bola não entrega nada. É a forma honesta ("função pura de (congelado, amount)").
+- **Por que não aqui:** escreve a janela inteira a cada pointer-move ⇒ é uma **decisão de perf** contra o
+  kill criterion, não um drive-by dentro de um fix de borda. **Fica ABERTO** (§6).
+- **O que o gate faz enquanto isso:** guarda o que ESTE commit é responsável por — *o taper não pode fazer
+  o histórico de render importar mais do que já importava*. As constantes `GHOST_TEXELS`/`GHOST_DEPTH`
+  são o orçamento do defeito herdado, **nunca licença para aumentá-lo**.
+
+### 4.3 — LOC cap: `sculpt_blur.rs` 736/700 → split `sculpt_inflate.rs` (399 + 363)
+
+O gate mora na `ph2d-editor-core` e **não roda com `cargo test -p ph2d-tool-painter`** — exatamente o
+aviso do handoff anterior. Split, nunca allowlist ([[feedback_loc_cap_split_not_allowlist_and_fmt_reexpands]]),
+e na costura que o código **já defendia**: o Blob **não é um blur e nunca foi** (raio na `amount` VIVA ⇒
+não é constante do traço ⇒ não memoizável; e é o ÚNICO verbo que move matéria). O motor dele já morava
+ao lado (`sculpt_offset.rs`); agora o render mora junto.
+
+## 5. Os gates (`sculpt_tests/inflate_edge.rs`, 6) — e o que eles ensinaram
+
+Fixture = **o repro do Enio**: blob de relevo alto (12 loads) e borda **CURVA**, pelo depósito REAL.
+
+| gate | a lei |
+|---|---|
+| `the_inflated_rim_is_feathered_not_cut` | a borda crescida não é mais dura que a que o depósito lava (oráculo = o produto) |
+| `the_matter_fades_where_the_ball_fades` | a transição TEM texels parciais; o último sopro é sopro (255 → 48) |
+| `the_grown_rim_wears_the_paints_material_and_fades_with_it` | material e cobertura são **o mesmo `255·t`** — um taper, dois planos |
+| `the_inflate_does_not_repaint_the_forms_interior` | byte-identidade do miolo (o `over` não lava o aprovado) |
+| `a_knob_touched_mid_stroke_does_not_move_the_picture` | o traço é o que o `amount` diz, não o que o histórico diz |
+| `diag_inflate_edge_profile` (`#[ignore]`) | o instrumento: imprime os perfis acima |
+
+**Mutações 5/6 matam.** A que sobrevive (`a8 = (t*255.0) as u32`, arredondar p/ baixo) mexe ≤1/255 no
+material NA FRANJA, onde a cobertura é ~0 e **a luz pesa material POR cobertura**: está abaixo da
+resolução do dado e de qualquer oráculo de aparência. Gate para ela seria modelar a ARITMÉTICA em vez da
+figura — o que a disciplina de oráculo desta linha proíbe. Documentado no gate, não gateado.
+
+### ⚠️ 3 armadilhas que quase passaram (as lições reais desta jornada)
+
+1. **Dois gates ÓBVIOS não alcançam o bug — os dois ficaram VERDES contra código quebrado.**
+   * *"o mesmo caminho, 2 amostragens, é a mesma figura"* — **pina um claim que o DESIGN rejeita**:
+     `amount[i] += w` é **SOMA, não envelope** (`ph2d_painter_brush::sculpt`), então **demorar esculpe
+     mais**, de propósito (é o Blender). E passava só porque `strength = 1.0` satura o `amount` no 1º dab
+     e esconde a pergunta inteira.
+   * *"renderizar o mesmo estado 2× pinta 1×"* — o guard (`v <= cov[gi]`) pula o 2º render, então é
+     idempotente **qualquer que seja** o destino do composite.
+   A divergência precisa do `amount` **CRESCER** entre dois renders do mesmo texel. Em `strength = 0.25`
+   há **ZERO** advecção (a bola não bate o próprio piso); em **0.4** há 4090 composites sobre 1346 texels
+   (**2744 re-composites**). *O fixture tem de conter o fenômeno* — pela quarta vez nesta linha.
+2. **O MATERIAL não tinha gate nenhum.** Nada lia `mats` depois de um sculpt; um mutante sobrevivente
+   denunciou. Agora a lei é uma IGUALDADE (`mat == cov`, ambos `255·t`), que é o que a torna afiada.
+3. **O fixture do blob na SONDA não reproduzia** (byte-idêntico antes/depois) enquanto o unit test
+   reproduzia. Causa: sem `set_brush_impasto_depth(1.0)` + no tamanho de pincel errado, a borda do
+   RELEVO fica bem dentro da borda da TINTA ⇒ a bola cresce sobre tela já pintada ⇒ o guard pula ⇒ o
+   taper nunca se aplica. **Instrumentei em vez de adivinhar** (`matter_ok`, `touched`, `pre_peak`) — 3
+   palpites erraram antes.
+
+## 6. Aberto depois disto (a fila do impasto)
+
+1. **O ghost pré-existente do §4.2** — render TOTAL da advecção (des-pintar). É decisão de PERF: mede
+   contra o kill 8 antes.
+2. **§3.2 — a borda editável**: só por ordem do Enio, e como capacidade NOMEADA (ADR), não como efeito
+   colateral do Smooth.
+3. **Passe de luz na GPU** — a luz é CPU e, enquanto for, **relevo visível DESLIGA o compositor GPU
+   inteiro** (`painter_gpu_preview::gpu_eligible` → `None` se `impasto_visible()`). Exige reconciliação
+   bit-a-bit contra a CPU (doc 16 §6).
+4. **Relevo do PAPEL** — acopla impasto↔aquarela: **exige ordem nova do Enio** (§2 do doc 16 é barreira).
+5. Dar ao **BANCO** do Push a cura que a mordida ganhou (residual medido 0,0286 — invisível hoje).
+6. Conserve p/ Flatten/Fill (design) · perf do Deform não é gateada · knob de `forward_share`?
+
+## 7. Estado da linha (tudo commitado, verde)
+
+| | |
+|---|---|
+| `8ea5f91c` | **a matéria segue o taper** (+ porta única `ball_taper`, split `sculpt_inflate.rs`, 6 gates, cena 10 da sonda) |
+| `f8902dfc` | o handoff do diagnóstico (substituído por este) |
+| `ea0a5c02` · `57d9881e` | W5b — filtro de camada + 2 escopos |
+| `2e1806fb` · `fd77f9c5` | a mordida é função do caminho · âncora do aro no corpo — **smoke OK** |
+
+Gates: tool **710** · clippy **0** · LOC cap **verde** · `check --workspace --all-targets` verde ·
+perf INFLATE 3,30/3,79 (kill 8). Mutações da jornada: **5/6** (a 6ª é sub-LSB, §5).
+
+**Ids/consts novos** (para o integrador detectar colisão): `sculpt_offset::ball_taper` (fn `pub(super)`),
+módulo novo `paint::sculpt_inflate`, `sculpt_tests::inflate_edge`. **Nenhum contrato congelado tocado**
+(`Tool`/`CanvasPaintTool` intactos); nenhum id de UI, i18n ou token novo.

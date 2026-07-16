@@ -29,8 +29,10 @@
 | `afd325b6` | docs: fechamento dos 2 fixes do smoke vivo |
 | `2b44eaf2` | **feat(impasto): o BOW WAVE** — fim da fila por ordem; a tinta arada viaja com o bico (escalar por cópia + lóbulo re-pintado, remoção bit-exata) e descansa na fronteira (IMPaSTo); Conserve byte-intocado (share 0) — **smoke REPROVADO (âncora), corrigido em `fd77f9c5`** |
 | `4615ba38` | test: split LOC `impasto_live.rs` |
-| `fd77f9c5` | **fix(impasto): a ÂNCORA do aro** — o aro nasce na borda do CORPO (`t0`, onde a silhueta cruza `W_TAIL`), não na circunferência do gizmo (`t=1`); porta única `rim_t0`→`rim_lift` pros 2 kernels + 2 chamadores; Constant byte-idêntico; **Conserve MOVEU (re-smoke)** — **pendente smoke** |
-| (este) | docs: fechamento da âncora do aro |
+| `fd77f9c5` | **fix(impasto): a ÂNCORA do aro** — o aro nasce na borda do CORPO (`t0`, onde a silhueta cruza `W_TAIL`), não na circunferência do gizmo (`t=1`); porta única `rim_t0`→`rim_lift` pros 2 kernels + 2 chamadores; Constant byte-idêntico; **Conserve MOVEU (re-smoke)** — **smoke APROVOU o Smooth** |
+| `0ab83ff1` | docs: fechamento da âncora do aro |
+| `2e1806fb` | **fix(impasto): a MORDIDA é função do CAMINHO, não do espaçamento** — o smoke da âncora expôs a coria do Sphere (a âncora foi INOCENTADA por medição: mesma coria com o aro velho); `(g+p)·Δm` é um PRODUTO fase-dependente ⇒ piso ondulado no período do dab; share sobre a SOBRA telescopa exato ⇒ `g·m_final`. **⚠️ Push=1 agora limpa o canal** (antes removia ~63%, acidente do espaçamento; knob Push ≈0,63 devolve) — **pendente smoke** |
+| (este) | docs: fechamento da mordida |
 
 ## 2. Superfície tocada
 
@@ -157,6 +159,15 @@ relevo, costurado nos 7 sites com seam test que CLICA.
    compartilha o motor e o pincel de sculpt default é Smooth macio ⇒ o DESENHO aprovado moveu pra
    dentro (mais colado à tinta) — RE-SMOKE do Conserve declarado** (ledger e byte-identidade do OFF
    intactos). Detalhe: [`HANDOFF_line_Painter_push_rim_anchor_2026-07-15.md`](HANDOFF_line_Painter_push_rim_anchor_2026-07-15.md) §7.
+   **O smoke APROVOU o Smooth e expôs OUTRO bug (`2e1806fb`, §7½ do mesmo handoff):** a coria do
+   **Sphere**. A âncora foi **inocentada por medição** (a mesma coria renderiza com o aro velho em
+   `t=1`; e o depósito Sphere puro sai liso ⇒ é do PUSH, não do falloff). A causa é a **mordida**:
+   `(g+p)·Δm` é um PRODUTO sobre os incrementos ⇒ depende da FASE de cada texel contra a grade de dabs
+   ⇒ piso ondulado no período do dab (o Sphere tem tangente vertical no aro e grita; o Smooth esconde).
+   Mesma doença que a cápsula curou no depósito. Fix: share sobre a SOBRA (`Δm/(1−paint)`), telescopa
+   exato ⇒ `g·m_final`, em qualquer espaçamento. **⚠️ Push=1 agora LIMPA o canal** (a lei antiga
+   removia ~63% — acidente do espaçamento); knob Push é vivo, `≈0,63` devolve o antigo. Gate novo:
+   `the_trench_is_a_fact_of_the_path_not_of_the_dab_spacing`.
 4. **D — RE-SMOKE (pós `fc96ef27` + `63e7cf2f`)**: (a) jitter/Airbrush = contas de relevo
    coincidentes com a tinta, sem barras; (b) **Anchored** = a bola commitada mantém a altura do
    drag (era o raio do pincel na re-derivação — o gate segura bit-exato); (c) **Line + undo até o

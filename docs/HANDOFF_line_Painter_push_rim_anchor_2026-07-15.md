@@ -102,9 +102,60 @@ pincel MACIO menor, Push alto → atravessar e parar no meio. O certo: o aro/ond
 da tinta (sem tela nua entre tinta e colar, sem círculo perfeito). **E** re-smoke do Conserve (Scrape,
 checkbox Conserve, raspar tinta grossa).
 
+## 7½. O SMOKE DA ÂNCORA: Smooth aprovado, Sphere expôs OUTRO bug (`2e1806fb`)
+
+> Enio, 2026-07-15: *"Ficou muito bom para falloff com bordas suaves como smooth mas criou efeito
+> colateral em falloff de borda menos macia como Sphere"* — uma **coria/mola** onde o arado morde tinta
+> grossa.
+
+**A âncora foi INOCENTADA por medição, não por argumento:** a MESMA coria renderiza com o aro velho em
+`t = 1` (probe cena 5b, before/after praticamente idênticos). A coria veio junto com o **bow wave**
+(`2b44eaf2`, mesmo dia) — o Sphere apenas foi o primeiro falloff a expô-la. E a cena **5c** (depósito
+Sphere puro, sem Push) sai **lisa**: o artefato é do PUSH, não do falloff.
+
+**A causa.** `take = (g + p)·Δm` faz `q = g + p` evoluir como `q ← q·(1 − Δm)`, logo o total é
+`g·(1 − Π(1 − Δm_k))` — um **PRODUTO** sobre os incrementos. Produto depende de *em quantos passos* o
+envelope foi alcançado e da **FASE** de cada texel contra a grade de dabs. O Smooth esconde (Δm pequenos
+e parelhos); a silhueta do Sphere tem **tangente VERTICAL** no aro (`√(1−t²)`), então o Δm salta, o termo
+de fase grita, e o piso do canal sai ondulado **no período exato do dab**.
+
+É a **MESMA doença que a cápsula curou no DEPÓSITO** (*"o relevo é propriedade do pincel e do CAMINHO,
+nunca de quão fino o motor amostrou o caminho"*): o depósito é imune porque toma um **ENVELOPE** (`max`,
+função pura da distância ao caminho); a mordida era uma **acumulação sequencial**, então não era.
+
+**O fix.** O share é o incremento sobre a **SOBRA** (`Δm / (1 − paint)`), que **telescopa exato**
+(`Π (1−m_k)/(1−m_{k−1}) = 1 − m_final`) ⇒ a mordida pousa em `g·m_final`, em QUALQUER espaçamento, em
+QUALQUER ordem. Sem transcendental (HR-5). E é a lei honesta: o pincel empurra o chão na proporção do
+que cobriu; em cobertura total leva tudo e **nunca mais** (a garantia *self-limiting* que a forma crua
+dava, agora exata).
+
+**⚠️ MUDA O DESENHO dos DOIS falloffs — e isso é uma CORREÇÃO, não uma regressão.** A lei antiga
+convergia para `g·(1 − e^{−m})` ≈ **63% do chão**: o *"Push = 1"* aprovado só removia 63% da tinta, e
+esse número era um **acidente do espaçamento**. Agora `Push = 1` limpa o canal (canal mais fundo, aro
+maior). **O knob Push é vivo e re-deriva o traço** — `Push ≈ 0.63` devolve o desenho antigo. Medido no
+kernel: piso do canal `−2.5 → −3.6` (= `−g` no eixo, cobertura total), aro `+1.1 → +1.5`.
+
+**Gate novo** (mutation-tested): `the_trench_is_a_fact_of_the_path_not_of_the_dab_spacing` — o MESMO
+caminho amostrado a **1 px e a 2 px** tem de dar o mesmo canal, e o piso não pode ondular. Fixture inclui
+**Sphere** (a fixture TEM de conter o fenômeno — foi a ausência dele que deixou isto passar). A mutação
+(voltar ao `Δm` cru) sangra — e sangra **primeiro no Smooth**, pela dependência de espaçamento
+(`−0.649` @1px vs `−0.670` @2px), que é a lei no seu ponto mais afiado. Ripple do piso Sphere:
+**0.0235 → 0.0000**.
+
+**Residual honesto:** a `lat+9` (encostado no aro do Sphere) sobra um ripple de **0.0286** (era 0.0477).
+Ele NÃO é da mordida — é a granularidade por-dab do **banco lateral** (tirar a onda o PIORA:
+0.0286 → 0.0723, porque mais volume desce pro lado). É o mesmo mecanismo, e da mesma ordem, que o Smooth
+sempre teve (0.0170) sem ninguém reclamar; o render mostra a coria FORA. Não gateado de propósito — o
+gate mora no **piso** (mordida pura), que é onde a coria vive.
+
 ## 8. Aberto (a fila que sobra)
 
-- **Smoke do Enio** deste fix (deposit Push) **+ re-smoke do Conserve** (o desenho moveu — §3).
+- **Smoke do Enio** deste fix (deposit Push) **+ re-smoke do Conserve** (o desenho moveu — §3) **+ o
+  Push ficou mais forte** (§7½: `Push = 1` agora limpa o canal; se parecer demais, o knob Push é vivo e
+  `≈ 0.63` devolve o desenho antigo — mas a pergunta certa é se o novo é o CERTO, não se é o antigo).
+- **O residual do banco lateral** (§7½): granularidade por-dab do aro, `0.0286` em `lat+9` no Sphere.
+  Invisível no render de hoje; se um smoke futuro o pegar, o alvo é dar ao BANCO a mesma cura que a
+  mordida ganhou (hoje cada dab normaliza o próprio aro — um produto sobre a lista de dabs, de novo).
 - **Conserve p/ Flatten/Fill**: decisão de design (conservar quem ADICIONA exige decidir de onde o
   volume vem) — fora do v1.
 - **Knob de `forward_share`?** hoje const `0.6` (`DEPOSIT_FORWARD_SHARE`).

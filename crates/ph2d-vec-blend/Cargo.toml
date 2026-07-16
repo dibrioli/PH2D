@@ -18,3 +18,10 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # e passa por cinza lamacento entre matizes opostos; o nosso passa pelo caminho perceptual.
 ph2d-color = { path = "../ph2d-color" }
 kurbo = "0.13"
+
+[dev-dependencies]
+# **Só os gates.** A rosquinha de verdade — a que o artista blenda — não é montada à mão: ela sai
+# de um Subtract. Um fixture escrito à mão só prova o que ele contém, e o que ele contém é a MINHA
+# ideia de compound path, não a que a booleana de fato produz (contagem de vértices, ordem dos
+# contornos, regra de preenchimento). O motor não depende da booleana; o gate depende.
+ph2d-vec-boolean = { path = "../ph2d-vec-boolean" }

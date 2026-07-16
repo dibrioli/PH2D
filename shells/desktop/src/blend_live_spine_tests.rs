@@ -6,8 +6,75 @@
 //! edição AUTORA o spine (e trava o auto-regen); as ÂNCORAS seguem as fontes e arrastar uma âncora
 //! (ponta OU meio da cadeia) MOVE a forma dela; o Reset volta ao automático.
 
-use super::tests::{centroid, scene_with_blend};
+use super::tests::{blend_two, centroid, scene_with_blend};
 use super::*;
+
+/// Uma **rosquinha** de raio `r_out` com buraco `r_in`, centrada em `c` — como a booleana a monta
+/// (contorno de fora primário, buraco em `subpaths`, `EvenOdd`).
+fn donut(c: [f64; 2], r_out: f64, r_in: f64) -> ph2d_vec_scene::VecPath {
+    let ring = |r: f64| {
+        ph2d_vec_scene::cook(
+            ph2d_vec_scene::ShapeKind::Ellipse,
+            [c[0] - r, c[1] - r],
+            [c[0] + r, c[1] + r],
+            &[],
+        )
+    };
+    ph2d_vec_scene::VecPath {
+        verts: ring(r_out).verts,
+        closed: true,
+        subpaths: vec![ph2d_vec_scene::Contour::new_closed(ring(r_in).verts)],
+        fill_rule: ph2d_vec_scene::FillRule::EvenOdd,
+        ..ph2d_vec_scene::VecPath::default()
+    }
+}
+
+/// **O BURACO FLUI JUNTO COM O PASSO.**
+///
+/// O deslocamento do spine é aplicado ao passo INTEIRO, não ao contorno de fora dele. Um laço só
+/// sobre `verts` mandava a parede para a curva e **deixava o buraco para trás**, na posição do
+/// lerp: o passo lá em cima ficava sólido, e um buraco órfão pairava lá embaixo, dentro de nada.
+///
+/// Não é hipótese — era o código, e ele não tinha gate nenhum: o motor nunca produzia um passo com
+/// buraco, então o defeito era inalcançável e ficou dormente até a rosquinha chegar aqui.
+/// [[feedback_two_doors_to_the_same_question_diverge]]
+#[test]
+fn an_authored_spine_flows_the_hole_with_the_step() {
+    let (mut sim, mut scene, map, _src) = blend_two(
+        donut([0.0, 0.0], 1.0, 0.5),
+        donut([4.0, 0.0], 1.0, 0.5),
+        1, // um passo, no meio
+    );
+    let spine = *map
+        .keys()
+        .find(|id| scene.paths().iter().any(|p| p.id == **id && !p.closed))
+        .expect("o spine é o único path ABERTO da cena");
+    let e = Entity::from_bits(map[&spine]);
+    sim.world_mut()
+        .get_mut::<VecBlend>(e)
+        .expect("blend")
+        .spine_authored = true;
+    set_spine(&mut scene, spine, &[[0.0, 0.0], [2.0, 3.0], [4.0, 0.0]]);
+
+    let mut out = Vec::new();
+    let xf = crate::vec_transform::build(&sim, &map);
+    recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut BlendSpines::new(),
+        &mut out,
+    );
+
+    let step = &out[0];
+    let at = centroid(step); // o centro do contorno de FORA — para onde a parede foi
+    assert!(at[1] > 2.0, "o passo nem subiu para a curva: {at:?}");
+    assert!(
+        !ph2d_vec_scene::contains_point(step, at),
+        "o passo subiu para o spine SÓLIDO: o buraco ficou para trás, na posição do lerp"
+    );
+}
 
 /// Bota o spine `id` com os vértices `pts` (o que a edição no modo Node faria).
 fn set_spine(scene: &mut VecScene, id: VecPathId, pts: &[[f64; 2]]) {

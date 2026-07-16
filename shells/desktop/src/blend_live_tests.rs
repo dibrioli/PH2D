@@ -62,7 +62,8 @@ fn fingerprint(out: &[ph2d_vec_scene::VecPath]) -> Vec<[f64; 2]> {
 }
 
 /// Um blend sobre DUAS formas quaisquer (não só retângulos). Devolve `(sim, scene, map, sources)`.
-fn blend_two(
+/// `pub(super)` — o irmão `spine_tests` o reusa para blendar rosquinhas.
+pub(super) fn blend_two(
     a: ph2d_vec_scene::VecPath,
     b: ph2d_vec_scene::VecPath,
     steps: u32,

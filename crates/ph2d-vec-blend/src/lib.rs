@@ -34,8 +34,8 @@
 //! Sederberg & Greenwood 1992 (deformação de trabalho mínimo) e Alexa 2000 (*as-rigid-as-
 //! possible*). Ficam para depois, atrás do motor: a correspondência é o pré-requisito dos dois.
 
-use kurbo::{CubicBez, ParamCurve, ParamCurveArclen, Point};
-use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecVertex, VertexKind};
+use kurbo::{CubicBez, Point};
+use ph2d_vec_scene::{Contour, FillRule, Paint, Rgba8, StrokeSpec, VecPath, VecVertex, VertexKind};
 
 /// Precisão do comprimento de arco.
 ///
@@ -43,14 +43,14 @@ use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec, VecPath, VecVertex, VertexKind};
 /// de Casteljau). Ainda assim é apertada, e por um motivo medido: a 1e-6, `t=0` devolvia A com
 /// um desvio de **2,2e-6** — pequeno, mas é **viés sistemático**, não ruído, e um viés desses
 /// vira "a forma tremeu" quando o `t` é animado quadro a quadro.
-const ARCLEN_EPS: f64 = 1e-11;
+pub(crate) const ARCLEN_EPS: f64 = 1e-11;
 
 /// Duas posições de arco mais próximas que isto são a MESMA — cortar entre elas produziria uma
 /// peça de comprimento zero (e um vértice duplicado na saída).
-const MERGE_EPS: f64 = 1e-9;
+pub(crate) const MERGE_EPS: f64 = 1e-9;
 
 /// Quantas amostras a busca de correspondência usa para medir o custo de um candidato.
-const COST_SAMPLES: usize = 64;
+pub(crate) const COST_SAMPLES: usize = 64;
 
 // A correspondência é 100% AUTOMÁTICA — não há escape manual.
 //
@@ -60,235 +60,15 @@ const COST_SAMPLES: usize = 64;
 // do Illustrator), o ajuste é feito **editando as formas-fonte** — girar a do meio adapta os
 // intermediários dos dois lados —, não um botão que gira a correspondência sem o artista ver.
 
-/// Um segmento do contorno, **com a parametrização normalizada**.
-///
-/// # A reta que entortava (o smoke do Enio: *"as intermediárias não representam a transição"*)
-///
-/// No documento, uma aresta RETA é a cúbica **degenerada** `(P0, P0, P3, P3)` — os handles
-/// colapsados na âncora. Ela é geometricamente reta, mas a **parametrização dela não é uniforme**:
-/// o ponto anda devagar, rápido, devagar. Duas retas cortadas em posições de arco diferentes
-/// devolvem sub-cúbicas cujos pontos de controle caem em **frações diferentes** de cada aresta — e
-/// o lerp de frações desalinhadas **tira o controle de cima da corda**. A aresta reta sai
-/// **ondulada**.
-///
-/// Medido no quadrado→estrela do smoke: até **0,24 unidade** de desvio numa forma de tamanho 2 —
-/// **12% da forma**. As duas pontas são polígonos, então todo intermediário TEM de ser um
-/// polígono; o desvio devia ser zero.
-///
-/// O conserto não é "endireitar depois": é **não ter parametrização torta**. Uma reta entra aqui
-/// na forma canônica (controles a ⅓ e ⅔ da corda), que é **afim em `t`** — e uma sub-cúbica de uma
-/// curva afim é afim, com os controles nos mesmos ⅓ e ⅔ da sub-corda. Aí o lerp de duas retas é
-/// uma reta, **por construção**, cortadas onde forem.
-fn segment(a: &VecVertex, b: &VecVertex) -> CubicBez {
-    let (p0, p3) = (pt(a.anchor), pt(b.anchor));
-    if is_line(a, b) {
-        let d = p3 - p0;
-        return CubicBez::new(p0, p0 + d / 3.0, p0 + d * (2.0 / 3.0), p3);
-    }
-    CubicBez::new(p0, pt(a.out_handle), pt(b.in_handle), p3)
-}
+/// O **compound path** (qual contorno de A vira qual contorno de B) — a camada ACIMA da
+/// correspondência, num módulo irmão. É ela que faz o buraco da rosquinha sobreviver ao morph.
+/// O **contorno** como cadeia de cúbicas com arco acumulado — o primitivo do motor, num módulo
+/// irmão pelo teto de LOC.
+mod outline;
+use outline::{COINCIDENT_EPS, Outline};
 
-/// A aresta `a → b` é RETA? (os dois handles colapsados nas âncoras — a convenção do documento,
-/// a mesma que a booleana usa.)
-fn is_line(a: &VecVertex, b: &VecVertex) -> bool {
-    close(a.out_handle, a.anchor) && close(b.in_handle, b.anchor)
-}
-
-fn close(p: [f64; 2], q: [f64; 2]) -> bool {
-    (p[0] - q[0]).abs() <= COINCIDENT_EPS && (p[1] - q[1]).abs() <= COINCIDENT_EPS
-}
-
-/// Handle a esta distância da âncora conta como colapsado.
-const COINCIDENT_EPS: f64 = 1e-9;
-
-/// O contorno de uma forma como cadeia de cúbicas, com o comprimento de arco acumulado.
-struct Outline {
-    segs: Vec<CubicBez>,
-    /// `cum[i]` = arco até o INÍCIO de `segs[i]`; `cum[n]` = o total.
-    cum: Vec<f64>,
-    total: f64,
-    closed: bool,
-}
-
-impl Outline {
-    /// A partir do contorno externo da geometria **COZIDA** (é ela que está na tela — mesma
-    /// escolha da booleana: o raio de quina vivo já entra assado).
-    fn of(path: &VecPath) -> Option<Outline> {
-        let cooked = path.cooked();
-        let verts = &cooked.verts;
-        if verts.len() < 2 {
-            return None;
-        }
-        let n = verts.len();
-        let last = if cooked.closed { n } else { n - 1 };
-        let mut segs = Vec::with_capacity(last);
-        for i in 0..last {
-            let a = &verts[i];
-            let b = &verts[(i + 1) % n];
-            segs.push(segment(a, b));
-        }
-        let mut cum = Vec::with_capacity(segs.len() + 1);
-        let mut total = 0.0;
-        for s in &segs {
-            cum.push(total);
-            total += s.arclen(ARCLEN_EPS);
-        }
-        cum.push(total);
-        if total <= MERGE_EPS {
-            return None; // forma degenerada: não há o que percorrer
-        }
-        Some(Outline {
-            segs,
-            cum,
-            total,
-            closed: cooked.closed,
-        })
-    }
-
-    /// As posições (arco normalizado, em [0,1)) das âncoras ORIGINAIS.
-    fn anchors(&self) -> Vec<f64> {
-        self.cum[..self.segs.len()]
-            .iter()
-            .map(|c| c / self.total)
-            .collect()
-    }
-
-    /// O ponto no arco normalizado `s`.
-    fn at(&self, s: f64) -> Point {
-        let (i, t) = self.locate(s);
-        self.segs[i].eval(t)
-    }
-
-    /// `n` pontos em posições de arco **igualmente espaçadas**, começando na origem do contorno.
-    ///
-    /// É a grade comum que torna a busca de fase uma **correlação circular**: amostradas assim, as
-    /// duas formas comparam-se por um simples deslocamento de índice (`matching::phase_only`), e a
-    /// fase deixa de estar presa às âncoras — que, num contorno suave, não significam nada.
-    fn samples(&self, n: usize) -> Vec<Point> {
-        (0..n).map(|k| self.at(k as f64 / n as f64)).collect()
-    }
-
-    /// (índice do segmento, `t` local) do arco normalizado `s`.
-    fn locate(&self, s: f64) -> (usize, f64) {
-        let arc = s.clamp(0.0, 1.0) * self.total;
-        // O último segmento absorve o fim exato (`s == 1`).
-        let i = match self.cum[1..].partition_point(|&c| c <= arc) {
-            i if i >= self.segs.len() => self.segs.len() - 1,
-            i => i,
-        };
-        let local = (arc - self.cum[i]).max(0.0);
-        let seg = &self.segs[i];
-        // O comprimento já está no acumulado — recalculá-lo aqui seria um `arclen` por consulta.
-        let len = self.cum[i + 1] - self.cum[i];
-        let t = if len <= MERGE_EPS {
-            0.0
-        } else {
-            seg.inv_arclen(local.min(len), ARCLEN_EPS)
-        };
-        (i, t.clamp(0.0, 1.0))
-    }
-
-    /// A cadeia de cúbicas que sai de cortar este contorno nas posições `cuts`.
-    ///
-    /// **O percurso é CÍCLICO, e isso não é detalhe.** As posições de B saem de `wrap(s − fase)`,
-    /// então elas são uma **rotação** da ordem crescente, não a ordem crescente: exatamente uma
-    /// peça atravessa a origem do contorno. (Nunca *mais* de uma, e nunca uma âncora: a origem de
-    /// B **é** uma âncora de B, e toda âncora de B está em `cuts` — é o que garante que cada peça
-    /// caiba num único segmento e seja uma sub-cúbica EXATA.)
-    ///
-    /// Devolve **uma peça por corte** — sempre. É o que faz A e B saírem pareados 1-a-1.
-    ///
-    /// # O segmento se decide pelo MEIO da peça, nunca pela borda dela
-    ///
-    /// **Toda** borda de peça é uma âncora — é assim que este motor foi desenhado (a união inclui
-    /// as âncoras das duas formas). E uma âncora é exatamente a fronteira entre dois segmentos:
-    /// perguntar "de quem é este ponto?" ali é perguntar de que lado de um empate o `f64` caiu.
-    ///
-    /// A 1ª versão perguntava pela borda, e o smoke do Enio mostrou o preço: quando o corte era
-    /// atribuído ao segmento **anterior** (`t≈1`) em vez do seguinte (`t≈0`), a peça colapsava num
-    /// **ponto** — e a aresta correspondente **sumia do pareamento**. Medido no quadrado→estrela:
-    /// **3 das 10 arestas da estrela viravam pontos**. As intermediárias deixavam de representar a
-    /// transição, e uma delas chegou a explodir na tela.
-    ///
-    /// O **meio** da peça não é fronteira de nada: ele cai dentro de um único segmento, sempre.
-    /// # A ORIGEM tem de ESTAR na lista — e quem depende disso é quem garante
-    ///
-    /// O parágrafo acima ("nenhuma peça atravessa a origem") não é uma observação: é um
-    /// **invariante**, e ele vale porque a origem do contorno **é** uma âncora, e toda âncora está
-    /// nos cortes. Quando ele falha, esta função **trunca** a peça que atravessaria a origem em
-    /// `1.0` — e o arco entre a origem e o corte seguinte fica **sem peça nenhuma**: uma aresta
-    /// inteira some do pareamento, em silêncio.
-    ///
-    /// E ele FALHAVA. Os cortes de B são as **imagens** dos cortes de A, e a imagem que devia cair
-    /// exatamente na origem volta do ida-e-volta `map_backward` → `map_forward` como
-    /// **`1 − 3,7e-14`** (medido, círculo → heptágono): o `f64` não fecha o ciclo. Aí a peça
-    /// `[1−ε, 1]` é um ponto, e a aresta que começava na origem desaparece.
-    ///
-    /// O invariante agora é **estabelecido aqui**, e não meramente esperado do chamador: um corte a
-    /// menos de `MERGE_EPS` da volta completa **é** a origem. É a mesma lição que já custou uma
-    /// reprovação neste motor — *nunca deixar um `f64` decidir de que lado de um empate ele caiu* —,
-    /// só que na fronteira que fecha o ciclo.
-    fn cut(&self, cuts: &[f64]) -> Vec<CubicBez> {
-        let m = cuts.len();
-        let mut out = Vec::with_capacity(m);
-        let at_origin = |s: f64| if s >= 1.0 - MERGE_EPS { 0.0 } else { s };
-        for k in 0..m {
-            let s0 = at_origin(cuts[k]);
-            // O corte seguinte, ciclicamente. Se ele "voltou" (é a peça que fecha o contorno), o
-            // fim dela é o fim do percurso.
-            let next = at_origin(cuts[(k + 1) % m]);
-            let s1 = if next <= s0 + MERGE_EPS { 1.0 } else { next };
-            let i = self.segment_at(0.5 * (s0 + s1));
-            let (t0, t1) = (self.local_t(i, s0), self.local_t(i, s1));
-            out.push(self.segs[i].subsegment(t0.min(t1)..t1.max(t0)));
-        }
-        out
-    }
-
-    /// O segmento que contém o arco normalizado `s`. `s` tem de cair **dentro** de um segmento —
-    /// os chamadores passam o MEIO de uma peça, nunca uma borda.
-    fn segment_at(&self, s: f64) -> usize {
-        let arc = s.clamp(0.0, 1.0) * self.total;
-        self.cum[1..]
-            .partition_point(|&c| c <= arc)
-            .min(self.segs.len() - 1)
-    }
-
-    /// O `t` local do arco normalizado `s` **dentro do segmento `i`** (fora dele, satura em 0/1 —
-    /// que é o certo: a borda da peça é a borda do segmento).
-    fn local_t(&self, i: usize, s: f64) -> f64 {
-        let arc = s.clamp(0.0, 1.0) * self.total;
-        let len = self.cum[i + 1] - self.cum[i];
-        if len <= MERGE_EPS {
-            return 0.0;
-        }
-        let local = (arc - self.cum[i]).clamp(0.0, len);
-        self.segs[i].inv_arclen(local, ARCLEN_EPS).clamp(0.0, 1.0)
-    }
-
-    /// O contorno percorrido ao CONTRÁRIO (a saída do "forma vira do avesso").
-    fn reversed(&self) -> Outline {
-        let segs: Vec<CubicBez> = self
-            .segs
-            .iter()
-            .rev()
-            .map(|s| CubicBez::new(s.p3, s.p2, s.p1, s.p0))
-            .collect();
-        let mut cum = Vec::with_capacity(segs.len() + 1);
-        let mut total = 0.0;
-        for s in &segs {
-            cum.push(total);
-            total += s.arclen(ARCLEN_EPS);
-        }
-        cum.push(total);
-        Outline {
-            segs,
-            cum,
-            total,
-            closed: self.closed,
-        }
-    }
-}
+mod compound;
+use compound::Ring;
 
 /// A **correspondência** (o mapa monótono entre as duas formas) — módulo irmão, pelo teto de LOC.
 mod matching;
@@ -312,12 +92,24 @@ pub use spine::spine_offsets;
 ///
 /// E é a **mesma** estrutura que o **morph vivo** (o `t` animável, o próximo da fila) precisa: o
 /// plano é montado quando a relação muda, e cada frame só avalia um `t`.
+/// # Um plano por CONTORNO
+///
+/// Uma forma pode ter mais de um contorno (a rosquinha: o de fora e o buraco), e a correspondência
+/// é resolvida **dentro de cada par de contornos** — o nível-2 (fase/quinas/virada) não sabe que
+/// existe um buraco. Quem decide *qual* contorno de A vira *qual* de B é [`compound`].
 pub struct Plan {
+    /// Um por par de contornos. `links[0]` vira o contorno PRIMÁRIO do passo.
+    links: Vec<Link>,
+    fill_rule: FillRule,
+    fill: (Option<Paint>, Option<Paint>),
+    stroke: (Option<StrokeSpec>, Option<StrokeSpec>),
+}
+
+/// Um par de contornos já cortado na união, peça a peça.
+struct Link {
     pieces_a: Vec<CubicBez>,
     pieces_b: Vec<CubicBez>,
     closed: bool,
-    fill: (Option<Paint>, Option<Paint>),
-    stroke: (Option<StrokeSpec>, Option<StrokeSpec>),
 }
 
 impl Plan {
@@ -326,14 +118,17 @@ impl Plan {
     /// `None` se qualquer uma das duas degenerar (menos de 2 vértices, ou comprimento nulo).
     #[must_use]
     pub fn new(a: &VecPath, b: &VecPath) -> Option<Plan> {
-        let (oa, ob) = (Outline::of(a)?, Outline::of(b)?);
-        let corr = search(&oa, &ob);
-        let target = if corr.reversed { ob.reversed() } else { ob };
-        let (pieces_a, pieces_b) = pair_up(&oa, &target, &corr.knots)?;
+        let (ra, rb) = (compound::rings(a), compound::rings(b));
+        let links: Vec<Link> = compound::pair(&ra, &rb)
+            .into_iter()
+            .filter_map(|p| link_of(&ra, &rb, p))
+            .collect();
+        if links.is_empty() {
+            return None;
+        }
         Some(Plan {
-            pieces_a,
-            pieces_b,
-            closed: oa.closed,
+            fill_rule: compound::fill_rule_for(links.len()),
+            links,
             fill: (a.fill.clone(), b.fill.clone()),
             stroke: (a.stroke, b.stroke),
         })
@@ -347,6 +142,30 @@ impl Plan {
     #[must_use]
     pub fn at(&self, t: f64) -> VecPath {
         let t = if t.is_nan() { 0.0 } else { t.clamp(0.0, 1.0) };
+        let mut contours = self.links.iter().map(|l| l.at(t));
+        // `links` nunca é vazio (o `new` recusa), então o primário existe.
+        let (verts, closed) = contours.next().unwrap_or_default();
+        let mut out = VecPath {
+            verts,
+            closed,
+            subpaths: contours
+                .map(|(v, c)| Contour {
+                    verts: v,
+                    closed: c,
+                })
+                .collect(),
+            fill_rule: self.fill_rule,
+            ..VecPath::default()
+        };
+        out.fill = mix_paint(self.fill.0.as_ref(), self.fill.1.as_ref(), t);
+        out.stroke = mix_stroke(self.stroke.0, self.stroke.1, t);
+        out
+    }
+}
+
+impl Link {
+    /// Os vértices deste contorno em `t`.
+    fn at(&self, t: f64) -> (Vec<VecVertex>, bool) {
         let lerped: Vec<CubicBez> = self
             .pieces_a
             .iter()
@@ -360,12 +179,60 @@ impl Plan {
                 )
             })
             .collect();
-
-        let mut out = path_from(&lerped, self.closed);
-        out.fill = mix_paint(self.fill.0.as_ref(), self.fill.1.as_ref(), t);
-        out.stroke = mix_stroke(self.stroke.0, self.stroke.1, t);
-        out
+        (verts_from(&lerped, self.closed), self.closed)
     }
+}
+
+/// O [`Link`] de um par de contornos: a correspondência resolvida e os dois cortados na união.
+///
+/// Um lado `None` é um contorno **sem par** — o buraco que nasce ou morre. Ele não tem
+/// correspondência a resolver: o lado que existe é cortado nas próprias âncoras (as peças dele são
+/// os próprios segmentos), e o lado que não existe é a MESMA contagem de peças **degeneradas**,
+/// todas no ponto de colapso. O lerp faz o resto — o buraco cresce do ponto, ou encolhe até ele.
+fn link_of(ra: &[Ring], rb: &[Ring], pair: (Option<usize>, Option<usize>)) -> Option<Link> {
+    match pair {
+        (Some(i), Some(j)) => {
+            let (oa, ob) = (&ra[i].outline, &rb[j].outline);
+            let corr = search(oa, ob);
+            // O invertido, quando existe, precisa de um dono — e o não-invertido já tem um (`rb`).
+            let flipped;
+            let target: &Outline = if corr.reversed {
+                flipped = ob.reversed();
+                &flipped
+            } else {
+                ob
+            };
+            let (pieces_a, pieces_b) = pair_up(oa, target, &corr.knots)?;
+            Some(Link {
+                pieces_a,
+                pieces_b,
+                closed: oa.closed,
+            })
+        }
+        (Some(i), None) => collapsed(&ra[i].outline, compound::collapse_point(rb)?, true),
+        (None, Some(j)) => collapsed(&rb[j].outline, compound::collapse_point(ra)?, false),
+        (None, None) => None,
+    }
+}
+
+/// O link de um contorno **sem par**, contra um ponto. `live_is_a` diz de que lado o contorno está.
+fn collapsed(o: &Outline, point: [f64; 2], live_is_a: bool) -> Option<Link> {
+    let live = o.cut(&o.anchors());
+    if live.is_empty() {
+        return None;
+    }
+    let p = Point::new(point[0], point[1]);
+    let dead = vec![CubicBez::new(p, p, p, p); live.len()];
+    let (pieces_a, pieces_b) = if live_is_a {
+        (live, dead)
+    } else {
+        (dead, live)
+    };
+    Some(Link {
+        pieces_a,
+        pieces_b,
+        closed: o.closed,
+    })
 }
 
 /// **A forma no meio do caminho.** `t = 0` devolve A; `t = 1`, B.
@@ -453,16 +320,19 @@ pub fn chain(shapes: &[VecPath], n: usize) -> Vec<VecPath> {
     out
 }
 
-/// Cadeia de cúbicas → `VecPath`. A âncora é o `p0` de cada peça; a alça de saída é o `p1` dela,
-/// e a de entrada é o `p2` da peça ANTERIOR (é o mesmo ponto do documento, visto pelos dois
-/// lados).
+/// Cadeia de cúbicas → os vértices de **UM** contorno. A âncora é o `p0` de cada peça; a alça de
+/// saída é o `p1` dela, e a de entrada é o `p2` da peça ANTERIOR (é o mesmo ponto do documento,
+/// visto pelos dois lados).
+///
+/// É o construtor de **todo** contorno de um passo — o primário e cada buraco. Um 2º construtor
+/// para os buracos divergiria do primário.
 ///
 /// **Uma peça reta sai com os handles COLAPSADOS na âncora** — que é como o documento escreve uma
 /// reta (e o que o resto do repo testa com `is_line`). Sem isso, o blend entre dois polígonos
 /// devolveria uma forma geometricamente reta mas com alças de curva penduradas no meio de cada
 /// aresta: o artista abriria o modo Node e veria controles que ele nunca pediu, a booleana a
 /// trataria como curva, e o `Simplify` teria trabalho à toa.
-fn path_from(segs: &[CubicBez], closed: bool) -> VecPath {
+fn verts_from(segs: &[CubicBez], closed: bool) -> Vec<VecVertex> {
     let n = segs.len();
     let straight: Vec<bool> = segs.iter().map(is_straight).collect();
     let mut verts: Vec<VecVertex> = Vec::with_capacity(n + 1);
@@ -494,11 +364,7 @@ fn path_from(segs: &[CubicBez], closed: bool) -> VecPath {
             corner_radius: 0.0,
         });
     }
-    VecPath {
-        verts,
-        closed,
-        ..VecPath::default()
-    }
+    verts
 }
 
 /// A cúbica é uma RETA? (os dois controles em cima da corda — que é o que o lerp de duas retas
@@ -585,12 +451,12 @@ fn mix(a: Point, b: Point, t: f64) -> Point {
 }
 
 #[inline]
-fn pt(p: [f64; 2]) -> Point {
+pub(crate) fn pt(p: [f64; 2]) -> Point {
     Point::new(p[0], p[1])
 }
 
 #[inline]
-fn xy(p: Point) -> [f64; 2] {
+pub(crate) fn xy(p: Point) -> [f64; 2] {
     [p.x, p.y]
 }
 
@@ -607,3 +473,8 @@ mod tests_phase;
 #[cfg(test)]
 #[path = "tests_chain.rs"]
 mod tests_chain;
+
+/// Os gates do compound path (o buraco da rosquinha) — arquivo irmão pelo teto de LOC.
+#[cfg(test)]
+#[path = "tests_compound.rs"]
+mod tests_compound;

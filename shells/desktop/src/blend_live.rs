@@ -62,13 +62,17 @@ pub(crate) type BlendSpines = BTreeMap<VecPathId, BlendMemo>;
 
 /// Translada TODOS os pontos de um path (âncora + as duas alças) por `off`. É como um passo é
 /// movido do seu lugar do lerp para o lugar dele no spine.
+/// **TODO contorno**, não só o primário: a porta é a mesma das outras transformações
+/// ([`VecPath::for_each_vert_mut`]). Um laço próprio sobre `verts` era uma 2ª porta para a mesma
+/// pergunta, e ela divergiu: o passo de um blend de rosquinhas fluía pelo spine com o contorno de
+/// FORA, e deixava o buraco para trás. [[feedback_two_doors_to_the_same_question_diverge]]
 fn translate_verts(path: &mut VecPath, off: [f64; 2]) {
-    for v in &mut path.verts {
+    path.for_each_vert_mut(|v| {
         for p in [&mut v.anchor, &mut v.in_handle, &mut v.out_handle] {
             p[0] += off[0];
             p[1] += off[1];
         }
-    }
+    });
 }
 
 /// A forma assada no MUNDO (ADR-0111: as fontes podem ter poses diferentes, e a transição vive

@@ -10,6 +10,8 @@
 
 use super::*;
 use crate::matching::{map_forward, search};
+use crate::outline::close;
+use kurbo::ParamCurveArclen;
 use ph2d_vec_scene::{ShapeKind, cook};
 
 /// Uma forma do catálogo, centrada em `c`.

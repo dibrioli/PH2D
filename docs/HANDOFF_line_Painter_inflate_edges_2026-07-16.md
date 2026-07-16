@@ -119,7 +119,7 @@ e na costura que o código **já defendia**: o Blob **não é um blur e nunca fo
 não é constante do traço ⇒ não memoizável; e é o ÚNICO verbo que move matéria). O motor dele já morava
 ao lado (`sculpt_offset.rs`); agora o render mora junto.
 
-## 5. Os gates (`sculpt_tests/inflate_edge.rs`, 6) — e o que eles ensinaram
+## 5. Os gates (`sculpt_tests/inflate_edge.rs`, 7) — e o que eles ensinaram
 
 Fixture = **o repro do Enio**: blob de relevo alto (12 loads) e borda **CURVA**, pelo depósito REAL.
 
@@ -129,33 +129,41 @@ Fixture = **o repro do Enio**: blob de relevo alto (12 loads) e borda **CURVA**,
 | `the_matter_fades_where_the_ball_fades` | a transição TEM texels parciais; o último sopro é sopro (255 → 48) |
 | `the_grown_rim_wears_the_paints_material_and_fades_with_it` | material e cobertura são **o mesmo `255·t`** — um taper, dois planos |
 | `the_inflate_does_not_repaint_the_forms_interior` | byte-identidade do miolo (o `over` não lava o aprovado) |
+| `a_faster_mouse_does_not_grow_a_different_rim` | a metade da MATÉRIA da lei que `a_faster_mouse_does_not_sculpt_deeper` já diz da altura |
 | `a_knob_touched_mid_stroke_does_not_move_the_picture` | o traço é o que o `amount` diz, não o que o histórico diz |
 | `diag_inflate_edge_profile` (`#[ignore]`) | o instrumento: imprime os perfis acima |
 
-**Mutações 5/6 matam.** A que sobrevive (`a8 = (t*255.0) as u32`, arredondar p/ baixo) mexe ≤1/255 no
+**Mutações 6/7 matam.** A que sobrevive (`a8 = (t*255.0) as u32`, arredondar p/ baixo) mexe ≤1/255 no
 material NA FRANJA, onde a cobertura é ~0 e **a luz pesa material POR cobertura**: está abaixo da
 resolução do dado e de qualquer oráculo de aparência. Gate para ela seria modelar a ARITMÉTICA em vez da
 figura — o que a disciplina de oráculo desta linha proíbe. Documentado no gate, não gateado.
 
-### ⚠️ 3 armadilhas que quase passaram (as lições reais desta jornada)
+### ⚠️ 4 armadilhas que quase passaram (as lições reais desta jornada)
 
-1. **Dois gates ÓBVIOS não alcançam o bug — os dois ficaram VERDES contra código quebrado.**
-   * *"o mesmo caminho, 2 amostragens, é a mesma figura"* — **pina um claim que o DESIGN rejeita**:
-     `amount[i] += w` é **SOMA, não envelope** (`ph2d_painter_brush::sculpt`), então **demorar esculpe
-     mais**, de propósito (é o Blender). E passava só porque `strength = 1.0` satura o `amount` no 1º dab
-     e esconde a pergunta inteira.
-   * *"renderizar o mesmo estado 2× pinta 1×"* — o guard (`v <= cov[gi]`) pula o 2º render, então é
-     idempotente **qualquer que seja** o destino do composite.
-   A divergência precisa do `amount` **CRESCER** entre dois renders do mesmo texel. Em `strength = 0.25`
-   há **ZERO** advecção (a bola não bate o próprio piso); em **0.4** há 4090 composites sobre 1346 texels
-   (**2744 re-composites**). *O fixture tem de conter o fenômeno* — pela quarta vez nesta linha.
-2. **O MATERIAL não tinha gate nenhum.** Nada lia `mats` depois de um sculpt; um mutante sobrevivente
+1. **EU ESCREVI UMA EXPLICAÇÃO CONFIANTE E ERRADA num doc comment — e o repo já tinha o gate que a
+   desmentia.** Afirmei que *"o mesmo caminho, 2 amostragens, é a mesma figura"* seria **falso p/ o sculpt
+   por design**, porque `amount[i] += w` é SOMA e "demorar esculpe mais". **Errado:** o motor espaça dabs
+   por **DISTÂNCIA** ⇒ a lista de dabs é IDÊNTICA em qualquer taxa de polling; só o *batching* muda. A
+   soma é sobre dabs SOBREPOSTOS ao longo do caminho, não sobre a taxa do mouse. O
+   `a_faster_mouse_does_not_sculpt_deeper` (sculpt_tests.rs:200) já dizia isso, com todas as letras, para
+   a ALTURA. Corrigido: escrevi o irmão dele para a **MATÉRIA**
+   (`a_faster_mouse_does_not_grow_a_different_rim`) — mutação do pixel vivo o derruba com **45/255** de
+   diferença entre um mouse lento e um rápido. **Antes de declarar que o design rejeita um invariante,
+   grepe: pode existir um gate afirmando o contrário.**
+2. **Dois outros gates ÓBVIOS ficaram VERDES contra código quebrado.**
+   * *"renderizar o mesmo estado 2× pinta 1×"* — o guard pula o 2º render ⇒ idempotente **qualquer que
+     seja** o destino do composite.
+   * o mesmo drive em `strength = 0.25` — **ZERO advecção acontece**: a bola não bate o próprio piso
+     (`own = |Depth|·amount`), `sbuf` zera, o laço `continue` em tudo. O gate mediu NADA e passou.
+   A divergência precisa do `amount` **CRESCER** entre 2 renders do mesmo texel: em **0.4** são 4090
+   composites sobre 1346 texels (**2744 re-composites**). **Instrumentei o produto e CONTEI** — 3 palpites
+   erraram antes. *O fixture tem de conter o fenômeno*, pela quarta vez nesta linha.
+3. **O MATERIAL não tinha gate nenhum.** Nada lia `mats` depois de um sculpt; um mutante sobrevivente
    denunciou. Agora a lei é uma IGUALDADE (`mat == cov`, ambos `255·t`), que é o que a torna afiada.
-3. **O fixture do blob na SONDA não reproduzia** (byte-idêntico antes/depois) enquanto o unit test
-   reproduzia. Causa: sem `set_brush_impasto_depth(1.0)` + no tamanho de pincel errado, a borda do
+4. **O fixture do blob na SONDA não reproduzia** (byte-idêntico antes/depois) enquanto o unit test
+   reproduzia. Causa: sem `set_brush_impasto_depth(1.0)` e no tamanho de pincel errado, a borda do
    RELEVO fica bem dentro da borda da TINTA ⇒ a bola cresce sobre tela já pintada ⇒ o guard pula ⇒ o
-   taper nunca se aplica. **Instrumentei em vez de adivinhar** (`matter_ok`, `touched`, `pre_peak`) — 3
-   palpites erraram antes.
+   taper nunca se aplica. Instrumentar (`matter_ok`, `touched`, `pre_peak`) resolveu em 1 tentativa.
 
 ## 6. Aberto depois disto (a fila do impasto)
 
@@ -179,8 +187,8 @@ figura — o que a disciplina de oráculo desta linha proíbe. Documentado no ga
 | `ea0a5c02` · `57d9881e` | W5b — filtro de camada + 2 escopos |
 | `2e1806fb` · `fd77f9c5` | a mordida é função do caminho · âncora do aro no corpo — **smoke OK** |
 
-Gates: tool **710** · clippy **0** · LOC cap **verde** · `check --workspace --all-targets` verde ·
-perf INFLATE 3,30/3,79 (kill 8). Mutações da jornada: **5/6** (a 6ª é sub-LSB, §5).
+Gates: tool **711** · clippy **0** · LOC cap **verde** · `check --workspace --all-targets` verde ·
+perf INFLATE 3,30/3,79 (kill 8). Mutações da jornada: **6/7** (a 7ª é sub-LSB, §5).
 
 **Ids/consts novos** (para o integrador detectar colisão): `sculpt_offset::ball_taper` (fn `pub(super)`),
 módulo novo `paint::sculpt_inflate`, `sculpt_tests::inflate_edge`. **Nenhum contrato congelado tocado**

@@ -219,6 +219,61 @@ fn the_matter_fades_where_the_ball_fades() {
     );
 }
 
+/// **A faster mouse does not grow a different rim** — the matter's half of
+/// [`super::a_faster_mouse_does_not_sculpt_deeper`].
+///
+/// That gate says it for the height, in the sentence this line already owns: *the same geometry, delivered
+/// coarsely and delivered finely, must leave the same relief* — byte for byte, because the dab list is
+/// identical either way (the stroke engine spaces dabs **by DISTANCE**; only the batching differs), so
+/// anything less than equality is the batching leaking into the result. A 1000 Hz mouse must not sculpt
+/// deeper than a 125 Hz one.
+///
+/// The advection is the one write the height's gate cannot see, and it is now a composite — so it can leak
+/// the batching in its own way: read the LIVE pixel for the destination and each batch lays another coat,
+/// so the rim darkens with the polling rate. Same law, same sentence, one plane over.
+///
+/// A LIGHT touch, for the reason the sibling spells out: at saturation `amount` is 1 from the first dab, `v`
+/// never grows, each texel composites exactly once, and the bug hides. (Too light and the ball never beats
+/// its self-floor and nothing advects at all — the window is real but it is a window.)
+///
+/// **Mutation that must bleed:** compose against `rgba[gi*4+k]` (the live pixel) instead of
+/// `pre_rgba[gi*4+k]` (the frozen plane) in `render_inflate`'s advection.
+#[test]
+fn a_faster_mouse_does_not_grow_a_different_rim() {
+    let run = |samples: u32| -> Vec<u8> {
+        let (mut t, _) = thick_round_blob();
+        arm_sculpt(&mut t, INFLATE, 0.5, 0.4);
+        t.set_sculpt_depth(1.0);
+        // The SAME straight line, reported by a lazy mouse and by a frantic one. The dab list is identical
+        // (spacing is by distance); only the number of batches — and therefore of renders — changes.
+        let (a, b) = ([70.0f32, CY], [150.0f32, CY]);
+        let mut path = vec![a];
+        for k in 1..=samples {
+            let f = k as f32 / samples as f32;
+            path.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
+        }
+        drag(&mut t, &path);
+        (*t.canvas_rgba).clone()
+    };
+
+    let coarse = run(3);
+    let fine = run(40);
+    let worst = coarse
+        .iter()
+        .zip(&fine)
+        .map(|(a, b)| a.abs_diff(*b))
+        .max()
+        .unwrap_or(0);
+    assert_eq!(
+        worst, 0,
+        "the same line, delivered in 3 pointer batches and in 40, left pixels differing by up to \
+         {worst}/255. The dab list is identical either way — the engine spaces dabs by DISTANCE — so this \
+         is the batching leaking into the picture: an advection that composes onto the LIVE canvas takes one \
+         coat per batch, and the rim darkens with the polling rate of the mouse. The artist would feel it \
+         constantly and never once be able to describe it."
+    );
+}
+
 /// **The grown rim is made of the PAINT'S material, and it fades with the paint.**
 ///
 /// The third plane the ball carries, and the one **no gate reached at all** until a surviving mutant said
@@ -381,17 +436,25 @@ fn the_inflate_does_not_repaint_the_forms_interior() {
 /// accumulating coats, the rim would visibly JUMP the instant a knob was touched — and the artist would have
 /// no word for it.
 ///
-/// ## Why the obvious two gates do NOT reach this
+/// ## Its sibling, and what it cost to find the reachable state
 ///
-/// Both were written first and both passed against the broken code:
-/// * *"the same path sampled twice as finely is the same picture"* — true of the DEPOSIT, **false of the
-///   sculpt by design**: `amount[i] += w` is a sum, not an envelope (`ph2d_painter_brush::sculpt`), so
-///   dwelling sculpts more, as in Blender. It passed only because `strength = 1.0` saturates `amount` on the
-///   first dab, which hides the question entirely.
-/// * *"rendering the same state twice paints it once"* — the guard (`v <= cov[gi]`) skips the second render
-///   outright, so it is idempotent whichever destination the composite reads.
+/// [`super::a_faster_mouse_does_not_sculpt_deeper`] is this same law for the **height**, and it was written
+/// off the same mutation (`pre` → live) surviving the shape-editor gate. This is the **matter's** half: the
+/// advection is the one write in the sculpt that the height gate cannot see.
 ///
-/// The divergence needs `amount` to GROW between two renders of the same texel. That is what this drives.
+/// Reaching the divergence took three tries, all of which passed against the broken code:
+/// * *"rendering the same state twice paints it once"* — the guard (`v <= pre_cover[gi]`) skips the second
+///   render outright, so it is idempotent whichever destination the composite reads.
+/// * the same drive at `strength = 0.25` — **zero advection happens at all**: the ball never beats its own
+///   self-floor (`own = |Depth|·amount`), so `sbuf` is zeroed and the loop `continue`s on every texel. The
+///   gate measured nothing and said so with a tick.
+/// * at `strength = 1.0` the first dab saturates `amount`, so `v` never grows and each texel composites
+///   exactly once — the same blind spot, and the same one the height's gate documents ("a LIGHT touch, on
+///   purpose").
+///
+/// The divergence needs `amount` to GROW between two renders of the same texel. Measured at
+/// `strength = 0.4`: 4090 composites over 1346 texels — 2744 re-composites. That is why the number is that
+/// number, and it was found by **instrumenting the product and counting**, after three guesses missed.
 ///
 /// ## The residual, named — a PRE-EXISTING ghost this fix does not own
 ///

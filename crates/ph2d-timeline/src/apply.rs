@@ -271,6 +271,17 @@ fn write_prop(world: &mut World, entity: Entity, prop: PropKind, v: AnimValue) {
         }
         return;
     }
+    // The Morph `t` (the Vector line's animatable channel). `VecMorph` lives in `ph2d-ecs`, which
+    // this crate already depends on for `Transform`/`World` — no feature gate, no new dep. The
+    // clamp is the motor's (`Plan::at`), so an ease with overshoot (back/elastic) touches the end
+    // and stops instead of breaking the shape.
+    if prop == PropKind::Morph
+        && let AnimValue::Float(f) = v
+        && let Some(mut m) = world.get_mut::<ph2d_ecs::VecMorph>(entity)
+    {
+        m.t = f;
+        return;
+    }
     // Non-Transform properties. `Opacity` needs the render crate (Sprite lives
     // there); gated so the base timeline runtime stays GPU-free.
     #[cfg(feature = "render")]

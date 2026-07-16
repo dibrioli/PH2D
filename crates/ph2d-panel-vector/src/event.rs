@@ -30,6 +30,15 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     let consumed = match ev {
+        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_MORPH_T => {
+            let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
+            host.bus_mut()
+                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                    id,
+                    f64::from(track),
+                )));
+            true
+        }
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_BLEND_STEPS => {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
             host.bus_mut()
@@ -329,6 +338,7 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BLEND_RESET_SPINE
         || id == ids::VECTOR_BLEND_EXPAND
         || id == ids::VECTOR_BLEND_RELEASE
+        || id == ids::VECTOR_MORPH_RUN
         || id == ids::VECTOR_BOOL_UNION
         || id == ids::VECTOR_BOOL_SUBTRACT
         || id == ids::VECTOR_BOOL_INTERSECT

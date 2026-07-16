@@ -28,7 +28,7 @@ mod tests {
         // 30 ecs components (ver `register_ecs_components_populates_registry` —
         // inclui VecShape/VecConnector/VecBlend/VecLabel)
         // + 1 script component (LuauScript).
-        assert_eq!(reg.len(), 31);
+        assert_eq!(reg.len(), 32);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

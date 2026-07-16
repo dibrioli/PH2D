@@ -464,6 +464,11 @@ pub const VECTOR_BLEND_EXPAND: NodeId = hash_node_id("vector.blend.expand");
 /// materializado. É a saída do blend pelo canvas: a linha não é selecionável no modo Select, então o
 /// Delete não a alcança. NÃO confundir com `VECTOR_COMPOUND_RELEASE` (que solta um compound path).
 pub const VECTOR_BLEND_RELEASE: NodeId = hash_node_id("vector.blend.release");
+/// **Morph** — cria o objeto morph vivo (a forma única entre DUAS formas, com o `t` animável).
+pub const VECTOR_MORPH_RUN: NodeId = hash_node_id("vector.morph.run");
+/// O `t` do morph selecionado: onde no caminho entre as duas fontes a forma está.
+pub const VECTOR_MORPH_T: NodeId = hash_node_id("vector.morph.t");
+pub const VECTOR_MORPH_T_NUM: NodeId = hash_node_id("vector.morph.t_num");
 
 /// **Pick Shapes** — o 8º pill de modo (ADR-0122 C2b): coleta as formas fechadas clicadas **na
 /// ordem**, e o botão Blend as liga nessa sequência. É o análogo do Build (que captura faces) e do

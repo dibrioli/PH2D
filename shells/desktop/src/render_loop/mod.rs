@@ -1288,6 +1288,8 @@ impl crate::App {
             let mut pending_expand_blend = false;
             let mut pending_release_blend = false;
             let mut pending_blend_steps: Option<u32> = None;
+            let mut pending_create_morph = false;
+            let mut pending_morph_t: Option<f32> = None;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
@@ -1418,6 +1420,9 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_BLEND_RELEASE {
                                 // ADR-0122 D: desfaz o blend; as fontes ficam.
                                 pending_release_blend = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_MORPH_RUN {
+                                // O irmão animável do blend: UMA forma, com o `t` keyável.
+                                pending_create_morph = true;
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -1543,6 +1548,12 @@ impl crate::App {
                                 // ADR-0122: arrastar Steps ajusta o blend selecionado AO VIVO.
                                 pending_blend_steps =
                                     Some(ph2d_tool_vector::params::blend_steps_from_track(*v));
+                            } else if *id == ph2d_editor::ids::VECTOR_MORPH_T {
+                                // Arrastar o `t` move a forma pelo caminho AO VIVO — e é assim que
+                                // o artista a estaciona onde ela fica bem, antes do K.
+                                #[allow(clippy::cast_possible_truncation)]
+                                let t = *v as f32;
+                                pending_morph_t = Some(t);
                             } else {
                                 // Variation-axis field carries the axis VALUE directly
                                 // (not a 0..1 track): match the slot to its font axis.
@@ -2274,6 +2285,50 @@ impl crate::App {
                     );
                 } else {
                     eprintln!("[ph2d-vec] blend: selecione de 2 a 5 formas FECHADAS");
+                }
+            }
+            // **MORPH** — o irmão animável do blend: UMA forma entre DUAS, com o `t` keyável.
+            // Mesma mecânica do `create` acima (`push` do path + componente; o
+            // `sync`/`upkeep`/`recook` do frame lhe dão vida), e a mesma escolha de fontes: no
+            // Pick Shapes a ordem de CLIQUE, fora dele a ordem de z.
+            if pending_create_morph {
+                let picking = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend;
+                let sources = if picking && self.vec_blend_picks.len() >= 2 {
+                    self.vec_blend_picks.clone()
+                } else {
+                    crate::blend_live::selected_closed_in_z(vec_scene, &self.vec_pen)
+                };
+                // DUAS, e exatamente duas: o morph é um `t` sobre UM par. Uma cadeia de 3+ formas
+                // é o Blend — e recusar aqui em voz alta é melhor do que morfar as duas primeiras
+                // e deixar o artista a descobrir sozinho quais foram escolhidas.
+                if let [a, b] = sources[..] {
+                    let (id, morph) = crate::morph_live::create(vec_scene, a, b);
+                    self.vec_pen.select_many(&[id]);
+                    self.vec_morph_pending = Some((id, morph));
+                    self.vec_blend_picks.clear();
+                    crate::render_loop::vector_bridge::set_mode(
+                        tools,
+                        ph2d_tool_vector::DrawMode::Select,
+                    );
+                    self.vec_draw_config.mode = ph2d_tool_vector::DrawMode::Select;
+                    eprintln!("[ph2d-vec] morph: objeto vivo entre 2 formas (t animável)");
+                } else {
+                    eprintln!(
+                        "[ph2d-vec] morph: selecione exatamente 2 formas FECHADAS (tem {})",
+                        sources.len()
+                    );
+                }
+            }
+            // Arrastar o slider `t` move o morph SELECIONADO pelo caminho, ao vivo.
+            if let Some(t) = pending_morph_t {
+                for id in self.vec_pen.selected_paths() {
+                    let Some(&bits) = self.vec_entities.get(id) else {
+                        continue;
+                    };
+                    let e = ph2d_ecs::Entity::from_bits(bits);
+                    if let Some(mut m) = sim.world_mut().get_mut::<ph2d_ecs::VecMorph>(e) {
+                        m.t = t;
+                    }
                 }
             }
             // ADR-0122 Fase D: **Expand** — materializa os passos VIRTUAIS em formas REAIS e
@@ -3069,6 +3124,15 @@ impl crate::App {
                 &self.vec_entities,
                 &mut self.vec_blend_pending,
             );
+            // **Morph Objects, 1ª metade:** idem, e pela MESMA razão — sem o componente pendurado
+            // antes do `settle`, o path recém-empurrado seria assentado como um path comum e o
+            // recook do frame seguinte sairia deslocado.
+            crate::morph_live::upkeep(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &mut self.vec_morph_pending,
+            );
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
             // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e
@@ -3128,6 +3192,17 @@ impl crate::App {
                 &self.vec_entities,
                 &vec_xf,
                 &mut self.vec_connect_sides,
+            );
+            // **Morph Objects, 2ª metade:** a forma é função pura das duas fontes e do `t` —
+            // re-cozida aqui, todo frame, sobre os afins DESTE frame. É o que a faz SEGUIR a
+            // forma que o gizmo acabou de mover, e o que faz o `t` da timeline virar movimento.
+            // (O `t` já foi escrito: o apply da timeline roda antes desta metade do frame.)
+            crate::morph_live::recook(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &vec_xf,
+                &mut self.vec_morph_plans,
             );
             // **Select: arrastar o objeto blend move as fontes** — o gizmo mira as FONTES (não o
             // spine), então ele as move NATIVAMENTE como grupo (`vec_selection::sync_selection`

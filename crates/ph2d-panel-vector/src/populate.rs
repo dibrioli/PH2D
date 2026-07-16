@@ -16,14 +16,14 @@ use ph2d_editor_core::widget::{
     ButtonState, DropdownState, SliderOrientation, SliderState, TextInputState,
 };
 use ph2d_tool_vector::params::{
-    BLEND_STEPS_DEFAULT, DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE, DEFAULT_TEXT_LINE_HEIGHT,
-    DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT, GAP_DEFAULT, GAP_SLIDER_OFFSET,
-    GAP_SLIDER_SCALE, MAX_BLEND_STEPS, OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE,
-    TEXT_LINE_HEIGHT_SLIDER_OFFSET, TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET,
-    TEXT_SIZE_SLIDER_SCALE, TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE,
-    TEXT_WEIGHT_SLIDER_OFFSET, TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
-    blend_steps_to_track, gap_to_slider, text_line_height_to_slider, text_size_to_slider,
-    text_tracking_to_slider, text_weight_to_slider,
+    DASH_SLIDER_OFFSET, DASH_SLIDER_SCALE, DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE,
+    DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT, GAP_DEFAULT, GAP_SLIDER_OFFSET, GAP_SLIDER_SCALE,
+    OPACITY_SLIDER_OFFSET, OPACITY_SLIDER_SCALE, TEXT_LINE_HEIGHT_SLIDER_OFFSET,
+    TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE,
+    TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE, TEXT_WEIGHT_SLIDER_OFFSET,
+    TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, gap_to_slider,
+    text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
+    text_weight_to_slider,
 };
 use ph2d_tool_vector::shapes;
 use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, params, px_to_slider};
@@ -325,6 +325,11 @@ fn populate_shape(store: &mut WidgetStore) {
 }
 
 /// Vértice, Boolean + Compound, Fill Rule, Snap, tipo de Fill, Align/Distribute.
+/// O registro dos widgets do **Blend / Morph** — módulo irmão (teto de 600 LOC), par do
+/// `paint_blend` que os pinta.
+#[path = "populate_blend.rs"]
+mod blend;
+
 fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
     // is selected, but registered unconditionally — the store is mode-agnostic)
@@ -335,40 +340,7 @@ fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_VERT_DELETE);
 
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
-    // BLEND: o slider de passos (com a caixa ligada) + os 3 botões, sendo 2 deles o ESCAPE
-    // manual da correspondência (sem eles, o dia em que o automático errar não tem saída).
-    store.register(
-        ids::VECTOR_BLEND_STEPS,
-        InteractiveState::Slider {
-            state: SliderState::Normal,
-            value: blend_steps_to_track(BLEND_STEPS_DEFAULT),
-            orientation: SliderOrientation::Horizontal,
-        },
-    );
-    store.register(
-        ids::VECTOR_BLEND_STEPS_NUM,
-        InteractiveState::NumberInput {
-            state: TextInputState::Normal,
-            value: f64::from(BLEND_STEPS_DEFAULT),
-            buffer: format!("{BLEND_STEPS_DEFAULT}"),
-            caret: 0,
-            last_committed: f64::from(BLEND_STEPS_DEFAULT),
-            selection_anchor: None,
-        },
-    );
-    store.set_number_range(
-        ids::VECTOR_BLEND_STEPS_NUM,
-        1.0,
-        f64::from(MAX_BLEND_STEPS),
-        1.0,
-    );
-    button(store, ids::VECTOR_BLEND_RUN);
-    // **Reset Spine** — volta o spine editado (modo Node) ao automático. Registrar aqui é o que o
-    // torna clicável (pintar + hit-rect não basta — a classe de bug dos botões do vetor).
-    button(store, ids::VECTOR_BLEND_RESET_SPINE);
-    // **Expand** / **Release** (ADR-0122 Fase D) — o mesmo motivo: sem registro, sao pintura.
-    button(store, ids::VECTOR_BLEND_EXPAND);
-    button(store, ids::VECTOR_BLEND_RELEASE);
+    blend::populate_blend(store);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);

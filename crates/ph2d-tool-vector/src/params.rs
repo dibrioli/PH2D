@@ -569,6 +569,20 @@ pub const MAX_BLEND_STEPS: u32 = 200;
 /// O default do Illustrator para um blend novo.
 pub const BLEND_STEPS_DEFAULT: u32 = 3;
 
+/// O `t` de um morph recém-criado: **no meio do caminho**.
+///
+/// No meio, e não em `0`: um morph que nasce em `t=0` é uma cópia exata da forma A, EM CIMA da
+/// forma A — o artista clica e não vê nada acontecer. No meio, o objeto novo se anuncia.
+/// (O mesmo número que o `VecMorph::new` escolhe; aqui ele é o que o slider mostra ao nascer.)
+pub const MORPH_T_DEFAULT: f32 = 0.5;
+
+/// O passo do campo numérico do `t` — **1% do caminho**.
+///
+/// O `t` é uma fração de `0` a `1`, então o passo é o quantum do DOMÍNIO, não uma medida de tela:
+/// 100 paradas entre as duas formas é fino o bastante para o olho não ver degrau e grosso o
+/// bastante para a seta do teclado ser útil. (O slider é contínuo; isto é só a caixa.)
+pub const MORPH_T_STEP: f64 = 0.01;
+
 /// Track (0..1) → nº de passos (1..=[`MAX_BLEND_STEPS`]).
 #[must_use]
 pub fn blend_steps_from_track(track: f64) -> u32 {

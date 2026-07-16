@@ -151,6 +151,10 @@ pub(crate) fn sample_prop_value(
         PropKind::ScaleX => Float(xf()?.scale.x),
         PropKind::ScaleY => Float(xf()?.scale.y),
         PropKind::Opacity => Float(world.get::<ph2d_render::Sprite>(e)?.tint[3]),
+        // The morph `t`: unlike the clock below, this IS a scene value, so K captures it the same
+        // way it captures a pose — the artist parks the slider where the shape looks right and
+        // presses K. (No `VecMorph` on the entity ⇒ nothing to capture, and the `?` refuses.)
+        PropKind::Morph => Float(world.get::<ph2d_ecs::VecMorph>(e)?.t),
         // The timeline's own clock has no scene value to sample — the K flow
         // seeds it through `key_value_for` instead.
         PropKind::TimeRemap => return None,

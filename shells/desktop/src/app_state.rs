@@ -707,6 +707,11 @@ pub(crate) struct App {
     /// já está na cena, e sem esta fila de um item a linha ficaria sem componente — um path
     /// invisível que não interpola ninguém.
     pub(crate) vec_blend_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecBlend)>,
+    /// O morph recém-criado, à espera de a entidade dele nascer no `sync` (espelho do blend).
+    pub(crate) vec_morph_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecMorph)>,
+    /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
+    /// fora do save e do undo.
+    pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,
     /// O **overlay ordenado** de TODOS os blends (passos + fontes reempilhadas, em z), cozido em
     /// MUNDO a cada frame pelo `blend_live::recook` e desenhado por
     /// `ph2d_vec_render::draw_blend_overlay`. Não está na cena (não é pickável) — é o que torna o

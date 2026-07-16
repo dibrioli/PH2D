@@ -272,6 +272,9 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // O vínculo do RÓTULO com o objeto que ele nomeia. Mesma razão, e mais forte: a pose do
     // rótulo é DERIVADA dele — sem o componente no snapshot, o undo devolveria um texto solto
     // no meio da forma, com o offset do usuário perdido.
+    // O Morph vivo (o irmão animável do Blend). Mesma razão: sem o registro, o snapshot o
+    // DESCARTA e o undo/save perderiam o vínculo morph↔fontes — e o `t` autorado junto.
+    reg.register::<crate::VecMorph>("ph2d::ecs::VecMorph");
     reg.register::<crate::VecLabel>("ph2d::ecs::VecLabel");
 }
 
@@ -319,7 +322,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 30);
+        assert_eq!(reg.len(), 31);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());

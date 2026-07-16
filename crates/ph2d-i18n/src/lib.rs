@@ -108,6 +108,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.prop.scale_y" => "Scale Y",
         "panel.timeline.prop.opacity" => "Opacity",
         "panel.timeline.prop.time" => "Time",
+        "panel.timeline.prop.morph" => "Morph",
         // ── Vector panel (ADR-0108/0112) — section headers, tool modes and the
         // shape catalogue. The panel is a 17-section stack; every section title
         // and every chrome word routes through here (the shape NAMES themselves

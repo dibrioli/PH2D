@@ -256,9 +256,9 @@ fn every_prop_kind_interpolates_and_a_discrete_one_would_break_this() {
             PropKind::Rotation => xf.rotation,
             PropKind::ScaleX => xf.scale.x,
             PropKind::ScaleY => xf.scale.y,
-            // Opacity lives on `Sprite`, which this bare Transform entity has not
-            // got; the blend math is the same code and is covered above.
-            PropKind::Opacity | PropKind::TimeRemap => continue,
+            // Opacity lives on `Sprite` and Morph on `VecMorph`, neither of which this bare
+            // Transform entity has got; the blend math is the same code and is covered above.
+            PropKind::Opacity | PropKind::TimeRemap | PropKind::Morph => continue,
         };
         assert!(
             (got - 2.0).abs() < 1e-4,

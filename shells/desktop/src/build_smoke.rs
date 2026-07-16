@@ -6,6 +6,11 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=10` — a cena do **MORPH** (o `t` animável): um quadrado e uma estrela, já
+//!   SELECIONADOS. Clique **Morph** no painel — nasce UMA forma no meio do caminho. Arraste
+//!   **Morph t**: ela caminha entre as duas, ao vivo. As fontes ficam (mexa numa e a forma
+//!   refaz-se). Para animar: com o morph selecionado, **+ Track → Morph** na timeline, ponha o
+//!   playhead e aperte **K** — o `t` vira uma curva.
 //! - `PH2D_BUILD_SMOKE=9` — estrela → **círculo**, 5 passos — o par que o Enio testou à mão. A
 //!   transição tem de ser limpa (as pontas encolhem radialmente, sem torcer). Rotate/Reverse Match
 //!   foram removidos; o ajuste é editar as formas-fonte.
@@ -80,6 +85,44 @@ impl crate::App {
                     &[5.0, 0.45, 0.0],
                     [200, 120, 80],
                 ));
+            }
+            // A cena do MORPH: as duas formas do blend, mas o objetivo é UMA forma animável. Elas
+            // ficam SELECIONADAS (frame 4, depois de o `sync` lhes ter dado entidade) para o smoke
+            // ser um clique só — o Enio não deve ter de montar nada.
+            3 if level == 10 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                let scene = &mut gfx.vec_scene;
+                scene.push_path(shape(
+                    ShapeKind::Rectangle,
+                    [-3.4, -1.0],
+                    [-1.4, 1.0],
+                    &[],
+                    [70, 110, 190],
+                ));
+                scene.push_path(shape(
+                    ShapeKind::Star,
+                    [1.4, -1.0],
+                    [3.4, 1.0],
+                    &[5.0, 0.45, 0.0],
+                    [200, 120, 80],
+                ));
+            }
+            4 if level == 10 => {
+                let ids: Vec<_> = self
+                    .gfx
+                    .as_ref()
+                    .expect("gfx")
+                    .vec_scene
+                    .paths()
+                    .iter()
+                    .map(|p| p.id)
+                    .collect();
+                self.vec_pen.select_many(&ids);
+                eprintln!(
+                    "[smoke] morph: 2 formas selecionadas — clique **Morph** no painel, depois \
+                     arraste **Morph t**"
+                );
             }
             // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o
             // círculo à MÃO da última vez, porque a cena não o oferecia — e é justamente o par em

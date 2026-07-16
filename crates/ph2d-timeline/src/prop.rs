@@ -39,6 +39,16 @@ pub enum PropKind {
     /// entity's clock) and never auto-keys (it is not in [`PropKind::ALL`],
     /// the pose list). Appended — the discriminant is a frozen wire value.
     TimeRemap = 6,
+    /// **Morph** — the `t` of a `ph2d_ecs::VecMorph`: where along the path between its two source
+    /// shapes the morphed shape sits (`0` = A, `1` = B). The Vector line's animatable channel, and
+    /// the reason the Morph object exists at all: without a keyed `t` it is a slider, not
+    /// animation.
+    ///
+    /// Outside [`PropKind::ALL`], like [`PropKind::TimeRemap`] and for the same reason: `ALL` is
+    /// the sprite POSE that the auto-key samples ([`crate::PoseSample`] is exactly that array's
+    /// shape), and `t` is not part of any sprite's pose. The artist keys it from the "+ Track"
+    /// list. Appended — the discriminant is a frozen wire value.
+    Morph = 7,
 }
 
 impl PropKind {
@@ -89,6 +99,7 @@ impl PropKind {
             PropKind::ScaleY => "scale_y",
             PropKind::Opacity => "opacity",
             PropKind::TimeRemap => "time",
+            PropKind::Morph => "morph",
         }
     }
 
@@ -103,7 +114,7 @@ impl PropKind {
             PropKind::Rotation => Some(SpriteProp::Rotation),
             PropKind::ScaleX => Some(SpriteProp::ScaleX),
             PropKind::ScaleY => Some(SpriteProp::ScaleY),
-            PropKind::Opacity | PropKind::TimeRemap => None,
+            PropKind::Opacity | PropKind::TimeRemap | PropKind::Morph => None,
         }
     }
 
@@ -118,6 +129,12 @@ impl PropKind {
     /// `Sprite.tint`; a least-squares cubic through a fade that settles on 1.0
     /// otherwise overshoots past it, which the graph editor draws.
     ///
+    /// [`PropKind::Morph`] is **bounded** to `[0, 1]` for the same reason as `Opacity`, and it
+    /// is not a coincidence: both are a fraction with two hard ends. A least-squares cubic through
+    /// a morph that settles on B overshoots past `t = 1`, and the motor clamps there — so the
+    /// graph editor would draw a curve that leaves the shape standing still, which reads as a bug
+    /// in the easing rather than in the fit.
+    ///
     /// The rest are unbounded scalars. [`PropKind::TimeRemap`] never records (it
     /// is not in [`PropKind::ALL`], the auto-key pose list), so its value here is
     /// only the safe default.
@@ -125,7 +142,7 @@ impl PropKind {
     pub const fn fit_channel(self) -> ph2d_anim::FitChannel {
         match self {
             PropKind::Rotation => ph2d_anim::FitChannel::ANGLE,
-            PropKind::Opacity => ph2d_anim::FitChannel::bounded(0.0, 1.0),
+            PropKind::Opacity | PropKind::Morph => ph2d_anim::FitChannel::bounded(0.0, 1.0),
             PropKind::TranslationX
             | PropKind::TranslationY
             | PropKind::ScaleX
@@ -153,6 +170,10 @@ impl PropKind {
             // Never stacked: it IS the clock (ADR-0115 R6). The value is a safe
             // default, not a semantic claim.
             PropKind::TimeRemap => Algebra::Sum,
+            // The morph `t` is a POSITION along a path, not a proportion: neutral 0, and an
+            // additive lane means "advance further along it". By ratio, two lanes at 0.3 and 0.5
+            // would give 0.15 — less progress than either, which is not a thing anyone meant.
+            PropKind::Morph => Algebra::Sum,
         }
     }
 }

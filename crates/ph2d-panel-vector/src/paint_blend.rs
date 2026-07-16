@@ -73,6 +73,32 @@ impl BodyCtx<'_> {
         for (id, label) in commands {
             y = self.action_button(id, label, y);
         }
+        self.morph_rows(y)
+    }
+
+    /// O **MORPH** — o irmão animável do Blend, e por isso ele mora nesta seção: são as mesmas duas
+    /// formas, o mesmo motor de correspondência, e a escolha é entre eles. O Blend mostra os N
+    /// passos **de uma vez** (uma transição vista de fora, ilustração); o Morph mostra **UM**, e o
+    /// `t` dele é um número que a **timeline keya** — é a mesma relação, animada.
+    ///
+    /// O slider é a autoria ao vivo: o artista estaciona a forma onde ela fica bem e aperta **K**
+    /// (o `sample_prop_value` captura o `t` como captura uma pose). Sem ele, keyar exigiria digitar
+    /// números às cegas numa track vazia.
+    fn morph_rows(&mut self, y: f32) -> f32 {
+        let mut y = self.action_button(ids::VECTOR_MORPH_RUN, "Morph", y);
+        let t = self
+            .store
+            .slider(ids::VECTOR_MORPH_T)
+            .map_or(MORPH_T_DEFAULT, |(_, v)| v);
+        y = self.slider_row(
+            "Morph t",
+            ids::VECTOR_MORPH_T,
+            ids::VECTOR_MORPH_T_NUM,
+            t,
+            f64::from(t),
+            &format!("{t:.2}"),
+            y,
+        );
         y
     }
 }

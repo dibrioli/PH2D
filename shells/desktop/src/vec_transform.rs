@@ -201,6 +201,9 @@ pub(crate) fn settle_origins(
                 // identidade, e é isso que o torna não-arrastável pelo gizmo: mover um blend não
                 // quer dizer nada; o que se move são as formas-fonte.
                 && sim.world().get::<ph2d_ecs::VecBlend>(e).is_none()
+                // MORPH OBJECT: idem — a forma morfada é reescrita em MUNDO a cada frame
+                // (`morph_live`) a partir das duas fontes.
+                && sim.world().get::<ph2d_ecs::VecMorph>(e).is_none()
                 && sim
                     .world()
                     .get::<Transform>(e)

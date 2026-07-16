@@ -215,6 +215,12 @@ impl App {
             if std::env::var_os("PH2D_AUDIO_KNOB_SMOKE").is_some() {
                 a.editor_knob_smoke();
             }
+            // Stage the W7 AI Denoise smoke: a voiced tone buried under broadband hiss at ~0 dB
+            // SNR. Play, click AI Denoise (needs `--features audio-ml`), play again -- the hiss
+            // falls away. The hand on the door for the +12 dB the parity gate already proved.
+            if std::env::var_os("PH2D_AUDIO_ML_SMOKE").is_some() {
+                a.editor_ml_smoke();
+            }
         }
         Self {
             window: None,

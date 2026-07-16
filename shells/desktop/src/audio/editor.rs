@@ -21,6 +21,7 @@ mod loops;
 mod manifest_path;
 mod markers;
 mod meta;
+mod ml_smoke;
 mod multiband_smoke;
 pub(crate) mod pieces;
 pub(crate) mod platforms;

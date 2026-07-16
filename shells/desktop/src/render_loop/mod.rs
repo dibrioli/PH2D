@@ -572,6 +572,10 @@ impl crate::App {
         self.flip_edit_smoke();
         self.flip_selection_smoke();
         self.build_session_upkeep();
+        // O domínio do Edit (Stroke|Point) — resolvido ANTES do empréstimo de `gfx`, que
+        // dura até o fim da função. É a porta única (`flip_edit_domain_now`); ler o campo
+        // de novo lá embaixo seria uma 2ª resposta à mesma pergunta.
+        let flip_domain = self.flip_edit_domain_now();
 
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -1202,6 +1206,7 @@ impl crate::App {
                             playhead: &self.playhead,
                             active_layer: self.flip_active_layer,
                             last_pointer: self.last_pointer,
+                            domain: flip_domain,
                         },
                         camera,
                         window_size,

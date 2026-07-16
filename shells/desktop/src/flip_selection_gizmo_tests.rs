@@ -108,7 +108,7 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
         None,
         "o fixture tem de ERRAR a tinta no centro (senao o teste passa pelo motivo errado)"
     );
-    let in_box = selection_box_contains(&d, center);
+    let in_box = selection_box_contains(&d, center, ph2d_tool_flip::EditDomain::Stroke);
     assert!(in_box, "o centro da selecao tem de estar na area do gizmo");
     assert_eq!(
         crate::flip_select::plan_down(&mut d, None, false, in_box),
@@ -121,7 +121,7 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
     );
     // 🔴 O par de AUSÊNCIA: FORA da caixa o gesto continua sendo o marquee (que limpa).
     let outside = Vec2::new(100.0, 100.0);
-    let out_box = selection_box_contains(&d, outside);
+    let out_box = selection_box_contains(&d, outside, ph2d_tool_flip::EditDomain::Stroke);
     assert!(!out_box, "(100,100) esta fora da caixa 0..20");
     assert_eq!(
         crate::flip_select::plan_down(&mut d, None, false, out_box),
@@ -130,33 +130,78 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
     );
 }
 
-/// 🔴 **Um ponto ÚNICO selecionado NÃO abre o gizmo** — o achado mais sério do smoke do
-/// §4.A (Enio): *"se seleciona um único ponto, o gizmo fica com todos os handles sobre os
-/// pontos e não é possível clicar no ponto para movê-lo. (…) não se rotaciona ou escalona
-/// um único ponto. Então é melhor apenas destacar o ponto único selecionado"*.
+/// 🔴 **O domínio POINT não tem gizmo — trocar o toggle some com ele NA HORA** (Enio,
+/// smoke do §4.A: *"se eu seleciono no painel Select:Point, o gizmo do stroke deve sumir
+/// imediatamente"*).
 ///
-/// A caixa de um ponto tem meia-extensão `(0,0)`: os 8 handles empilham sobre ele e roubam
-/// o clique que o move. Sem extensão, sem gizmo — o realce do W8 já o mostra.
+/// O gizmo é do domínio **Stroke**. No Point o alvo do clique são as **âncoras**, e os
+/// handles pousariam em cima delas — a bbox de um retângulo tem as âncoras NAS quinas. É a
+/// mesma regra que o ADR-0112 já tomou no Vector (o gizmo da forma só publica no modo
+/// Select; em Node ele comeria o clique do nó).
+///
+/// **A troca de domínio faz BROADCAST** (`selection_to_point_domain`, W8): a MESMA seleção
+/// que abria o gizmo no Stroke continua lá, ponto a ponto — a caixa segue com extensão.
+/// Então o gizmo só some se a regra olhar o DOMÍNIO, e é isso que este gate prende.
+///
+/// Mutação que sangra: tirar o teste de domínio da `grabbable_selection_box`.
+#[test]
+fn the_point_domain_never_opens_the_gizmo() {
+    use ph2d_tool_flip::EditDomain;
+    let mut r = seg_line(&[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0), (0.0, 20.0)], 4.0);
+    r.closed = true;
+    r.selected = true;
+    let mut d = bare_drawing(vec![r]);
+    // No STROKE a mesma selecao abre o gizmo (senao a recusa no Point nao prova nada).
+    assert!(
+        grabbable_selection_box(&d, EditDomain::Stroke).is_some(),
+        "o fixture tem de abrir gizmo no Stroke"
+    );
+    // A troca de dominio REAL (o broadcast do W8): todo ponto do traco fica selecionado.
+    d.selection_to_point_domain();
+    assert!(
+        d.strokes[0].all_points_selected(),
+        "o broadcast mantem a selecao — e por isso a caixa AINDA teria extensao"
+    );
+    assert!(
+        grabbable_selection_box(&d, EditDomain::Point).is_none(),
+        "Select:Point tem de sumir com o gizmo do stroke NA HORA"
+    );
+    // Sem gizmo nao ha area: o clique no meio volta a ser o gesto do W8.
+    assert!(!selection_box_contains(
+        &d,
+        Vec2::new(10.0, 10.0),
+        EditDomain::Point
+    ));
+}
+
+/// 🔴 **Uma seleção sem EXTENSÃO não abre o gizmo** — *"não se rotaciona ou escalona um
+/// único ponto"* (Enio). Os 8 handles empilhariam sobre ele e roubariam o clique que o
+/// move. O caso ALCANÇÁVEL no domínio Stroke é um traço de um ponto só (um toque): a bbox
+/// dele tem meia-extensão `(0,0)` — o zero exato, sem épsilon inventado.
 ///
 /// Mutação que sangra: tirar o teste de extensão da `grabbable_selection_box`.
 #[test]
-fn a_single_selected_point_never_opens_the_gizmo() {
-    let mut d = bare_drawing(vec![seg_line(
-        &[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0)],
-        4.0,
-    )]);
-    // UM ponto selecionado (domínio Point) ⇒ caixa degenerada ⇒ sem gizmo.
-    d.strokes[0].set_point_selected(1, true);
+fn a_selection_without_extent_never_opens_the_gizmo() {
+    use ph2d_tool_flip::EditDomain;
+    let mut dot = seg_line(&[(7.0, -3.0)], 4.0);
+    dot.selected = true;
+    let d = bare_drawing(vec![dot]);
     assert!(
-        grabbable_selection_box(&d).is_none(),
-        "um ponto unico nao se rotaciona nem se escalona: nao pode abrir gizmo"
+        grabbable_selection_box(&d, EditDomain::Stroke).is_none(),
+        "um ponto so nao se rotaciona nem se escalona: nao pode abrir gizmo"
     );
-    // E o interior não existe: o clique EM CIMA do ponto continua sendo o gesto do W8.
-    assert!(!selection_box_contains(&d, Vec2::new(20.0, 0.0)));
-    // DOIS pontos já têm extensão ⇒ o gizmo volta (rotacionar/escalar faz sentido).
-    d.strokes[0].set_point_selected(2, true);
-    let (c, h) = grabbable_selection_box(&d).expect("dois pontos tem extensao");
-    assert_eq!(c, [20.0, 10.0]);
+    assert!(!selection_box_contains(
+        &d,
+        Vec2::new(7.0, -3.0),
+        EditDomain::Stroke
+    ));
+    // Dois pontos distintos ja tem extensao ⇒ o gizmo abre.
+    let mut two = seg_line(&[(7.0, -3.0), (7.0, 17.0)], 4.0);
+    two.selected = true;
+    let d2 = bare_drawing(vec![two]);
+    let (c, h) =
+        grabbable_selection_box(&d2, EditDomain::Stroke).expect("dois pontos tem extensao");
+    assert_eq!(c, [7.0, 7.0]);
     assert_eq!(h, [0.0, 10.0]);
 }
 
@@ -199,6 +244,7 @@ fn the_selection_gizmo_box_lands_on_the_posed_selection() {
             playhead: &ph,
             active_layer: None,
             last_pointer: (0.0, 0.0),
+            domain: ph2d_tool_flip::EditDomain::Stroke,
         },
         &cam,
         ws,
@@ -363,6 +409,7 @@ fn an_instanced_drawing_never_opens_the_selection_gizmo() {
                 playhead: &paused(),
                 active_layer: Some(lid),
                 last_pointer: (0.0, 0.0),
+                domain: ph2d_tool_flip::EditDomain::Stroke,
             },
             &cam,
             ws,
@@ -401,6 +448,7 @@ fn an_empty_selection_never_opens_the_gizmo() {
                 playhead: &paused(),
                 active_layer: Some(lid),
                 last_pointer: (0.0, 0.0),
+                domain: ph2d_tool_flip::EditDomain::Stroke,
             },
             &cam,
             ws,

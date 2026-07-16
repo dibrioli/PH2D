@@ -11,13 +11,16 @@
 //! (desmarca) **some** com o gizmo. Trocar pro domínio **Point** e selecionar meia
 //! geometria: o gizmo passa a enquadrar SÓ os pontos selecionados e gira só eles.
 //!
-//! **Os dois achados do 1º smoke (2026-07-15) têm alvo próprio na cena:**
+//! **Os achados dos smokes anteriores têm alvo próprio na cena:**
 //! - O retângulo é **VAZADO** (sem fill) de propósito: arrastar do **meio dele** (onde não
 //!   há tinta nenhuma) tem de **agarrar a seleção** — antes virava marquee e ainda limpava
 //!   a seleção. É a área do gizmo inteira que pega, não só a tinta.
-//! - No domínio **Point**, clicar **UM** ponto: o gizmo **não aparece** (um ponto não se
-//!   rotaciona nem se escalona) — só o realce dele —, e o ponto continua arrastável. Um
-//!   **segundo** ponto (Shift+clique) faz o gizmo voltar.
+//! - As **3 linhas** do triângulo e as **4** do retângulo são clicáveis, inclusive a de
+//!   fechamento (a costura — BUGS #18).
+//! - **O toggle `Select: Point` some com o gizmo NA HORA** — o gizmo é do domínio
+//!   **Stroke** (ADR-0112 parity: no Vector o gizmo só aparece no modo Select; em Node ele
+//!   comeria o clique do nó). No Point o alvo são as âncoras, e os handles pousariam em
+//!   cima delas. Voltar pro **Stroke** traz o gizmo de volta com a seleção intacta.
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
@@ -104,8 +107,8 @@ impl crate::App {
                      MEIO do retangulo (sem tinta ali) AGARRA a selecao. Confira: o triangulo \
                      NAO se mexe; Ctrl+Z desfaz o gesto inteiro; clicar no vazio FORA da caixa \
                      desmarca e o gizmo some; as 3 linhas do triangulo e as 4 do retangulo sao \
-                     todas clicaveis (a costura, BUGS #18). No dominio Point: UM ponto = SEM \
-                     gizmo (so o realce, e ele arrasta); um 2o ponto traz o gizmo de volta."
+                     todas clicaveis (a costura, BUGS #18). O toggle Select:Point SOME com o \
+                     gizmo na hora (ele e do dominio Stroke); voltar a Stroke o traz de volta."
                 );
             }
             9 => self.any_input_this_frame = true, // arma o baseline do undo

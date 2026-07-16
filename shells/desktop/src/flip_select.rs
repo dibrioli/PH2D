@@ -175,6 +175,16 @@ pub(crate) fn apply_pick(drawing: &mut FlipDrawing, hit: Option<usize>, pick: Pi
 }
 
 impl crate::App {
+    /// O DOMÍNIO do toggle do painel (Stroke|Point) agora. Tool inativa = `Stroke` (o
+    /// default): quem pergunta isto está sempre dentro do Edit, e um `Option` obrigaria
+    /// cada chamador a inventar a mesma resposta.
+    #[must_use]
+    pub(crate) fn flip_edit_domain_now(&self) -> ph2d_tool_flip::EditDomain {
+        self.flip_style
+            .map(|s| s.edit_domain)
+            .unwrap_or(ph2d_tool_flip::EditDomain::Stroke)
+    }
+
     /// A tool Flip quer o canvas para SELECIONAR agora? (ativa + modo Edit.)
     #[must_use]
     pub(crate) fn flip_wants_edit(&self) -> bool {
@@ -201,6 +211,7 @@ impl crate::App {
             Pick::Replace
         };
         let active_layer = self.flip_active_layer;
+        let domain = self.flip_edit_domain_now();
         // Dois funis, dois usos: o **pose-aware** (arte) leva o cursor ao espaço da
         // GEOMETRIA — é onde o hit-test tem de perguntar. O **pose-free** (objeto) semeia
         // o `Move.last`: o gesto de mover consome no mesmo referencial pose-free (senão o
@@ -233,15 +244,13 @@ impl crate::App {
             return true;
         };
         // ── Domínio POINT (W8): o clique pega uma ÂNCORA, não o traço. ──
-        if matches!(
-            self.flip_style.map(|s| s.edit_domain),
-            Some(ph2d_tool_flip::EditDomain::Point)
-        ) {
+        if domain == ph2d_tool_flip::EditDomain::Point {
             let hit = point_at(drawing, local, px_to_world, &w2l);
             let shift = pick == Pick::Toggle;
             // A ÁREA do gizmo da seleção (mesma caixa que ele desenha, em coords da ARTE
             // — `local` já está nelas): errar a âncora ali dentro ARRASTA a seleção.
-            let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local);
+            let in_box =
+                crate::flip_selection_gizmo::selection_box_contains(drawing, local, domain);
             // **Mover ponto de uma INSTÂNCIA deformaria o gêmeo** (a arte é compartilhada
             // — a regra W7.2: arrasto nunca deforma arte compartilhada). Selecionar pode;
             // mover não: o gesto vira Click e o usuário é AVISADO (zero no-op silencioso).
@@ -296,7 +305,7 @@ impl crate::App {
         // Shift manda, e o gesto vira alternar — o arrasto não pega.
         let shift = pick == Pick::Toggle;
         self.title_dirty = true;
-        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local);
+        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local, domain);
         self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift, in_box) {
             Down::Move { collapse_to } => crate::flip_edit_gesture::EditGesture::Move {
                 last: move_seed,

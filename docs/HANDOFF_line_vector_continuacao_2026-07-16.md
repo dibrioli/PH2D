@@ -17,13 +17,14 @@ A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (
 | | |
 |---|---|
 | **Branch** | `line/Vector` (worktree `Worktrees/line-Vector/`) |
-| **HEAD** | `e2cf1262` |
+| **HEAD** | `c8d47966` |
 | **Base do fork** | `4d203d48` (merge-base com `main`) |
-| **Commits** | 33 |
+| **Commits** | 34 |
 | **Contratos congelados encostados** | **NENHUM** (§4 abaixo) |
 
-Os 6 commits desta sessão, do mais novo:
+Os 7 commits desta sessão, do mais novo:
 
+- `c8d47966` — a caixa do Steps era **MUDA** (chip sem link) + Morph em seção própria (§10)
 - `e2cf1262` — **MORPH VIVO**: a forma única entre duas, com o `t` keyável (fila #1 — §9)
 - `ef41f447` — handoff: fila #2 fechada
 - `62c93fa7` — **o blend PERDIA o buraco**: compound path sobrevive ao morph (fila #2 — §8)
@@ -97,6 +98,7 @@ dois lados** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]):
 | `ph2d-ecs/src/scene/registry.rs` | `reg.len()` **29 → 31** (`VecBlend` **e** `VecMorph`) | ✔ |
 | `ph2d-render/src/registry.rs` | `reg.len()` **30 → 32** | ✔ |
 | `ph2d-script/src/registry.rs` | `reg.len()` **30 → 32** | ✔ |
+| `ph2d-panel-vector/tests/seam.rs` | `VECTOR_SECTIONS.len()` **19 → 20** (a seção Morph) | ✔ |
 
 **⚠️ `.typos.toml` — allowlist duplicada MATA o gate no parse** (o TOML morre e nada é escaneado,
 [[feedback_duplicate_allowlist_key_kills_the_gate_at_parse]]). Eu adicionei 3 chaves: `candidata`,
@@ -113,6 +115,7 @@ VECTOR_MODE_PICKBLEND     = hash_node_id("vector.mode.pickblend")
 VECTOR_MORPH_RUN          = hash_node_id("vector.morph.run")
 VECTOR_MORPH_T            = hash_node_id("vector.morph.t")
 VECTOR_MORPH_T_NUM        = hash_node_id("vector.morph.t_num")
+VECTOR_SECTION_MORPH      = hash_node_id("vector.section.morph")   -- e em ids::VECTOR_SECTIONS
 ```
 Cada um tem uma linha em `ph2d-editor-core/tests/node_id_collisions.rs` **e** em
 `ph2d-panel-vector/src/ids.rs` (re-export por nome). As três listas têm de andar juntas.
@@ -174,7 +177,7 @@ GPU, o mesmo bloqueio do harness headless do `project_save`). Isso vale para o r
 **Cenas prontas (`feedback_ready_to_smoke_example` — não peça montagem ao Enio):**
 
 ```bash
-cd Worktrees/line-Vector
+# O `cd` é ABSOLUTO e vai JUNTO — relativo só funciona da raiz do projeto ([[feedback_run_command_include_cd]]).
 PH2D_BLEND_SMOKE=1 cargo run -p ph2d-host-desktop --features panel-vector  # estrela → elipse
 PH2D_BLEND_SMOKE=2 …  # cadeia de 3 (a pilha de z do Expand)
 PH2D_BLEND_SMOKE=3 …  # spine CURVO (o Expand tem de entregar os passos NA CURVA)
@@ -367,14 +370,47 @@ renumerar o código não renumera os arquivos do Enio.
 ### Cena pronta (não peça montagem ao Enio)
 
 ```bash
-cd Worktrees/line-Vector
-PH2D_BUILD_SMOKE=10 cargo run -p ph2d-host-desktop --features panel-vector
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && PH2D_BUILD_SMOKE=10 cargo run -p ph2d-host-desktop --features panel-vector
 ```
 
 Duas formas já **selecionadas**. Clique **Morph** → nasce UMA forma no meio do caminho (no meio, e
 não em `t=0`: em 0 ela seria uma cópia exata de A, em cima de A, e o clique pareceria não fazer
 nada). Arraste **Morph t** → ela caminha entre as duas, ao vivo. Mexa numa fonte → ela refaz-se.
 **Para animar:** com o morph selecionado, `+ Track → Morph` na timeline, ponha o playhead, **K**.
+
+---
+
+## §10 — O smoke do Enio (2026-07-16): a caixa muda + a seção do Morph
+
+**"O slider Step funciona, mas a edição na caixa numérica não afeta o blend."** Não era do blend —
+era do **registro**. O par slider+chip nasceu com dois `store.register` à mão e **sem o link**. O
+espelho vive no `commit_number_buffer` do editor-core, e o galho é literal:
+
+```rust
+if let Some(slider_id) = store.linked_slider(id) {
+    events.push(WidgetEvent::ValueChanged(slider_id));
+}
+```
+
+Sem o link, `linked_slider` devolve `None` ⇒ **nenhum `ValueChanged` do slider** ⇒ o `event.rs`
+nunca vê nada ⇒ nada no barramento ⇒ o blend nunca é re-afinado. A caixa fica registrada, pintada,
+focável, editável — e **inerte**. Nenhum gate de contagem de símbolo a pega: os dois widgets
+EXISTEM.
+
+**E o `Morph t` que eu tinha acabado de escrever herdou o defeito** — copiei o padrão à mão do
+vizinho. *Um bug propaga-se por cópia; o helper não.* Conserto pela porta que já existia
+(`slider_chip`, que registra **e** liga) + o irmão `slider_chip_int` para o Steps (é uma CONTAGEM:
+meio passo não existe), os dois delegando ao mesmo `_inner`.
+
+**Gate novo `every_chip_is_linked_to_its_slider`** — ele afirma a **condição do galho** acima, nos
+dois sentidos, sobre os 14 pares do painel. Nasceu vermelho nomeando exatamente 2 (os outros 12
+estavam certos: não grita lobo). Mutação: link em no-op derruba 13/14.
+
+**O Morph saiu da seção Blend e ganhou seção própria** (pedido do Enio). Partilham o motor, mas
+produzem objetos **diferentes**: o Blend dá N passos virtuais em volta de um spine; o Morph dá UMA
+forma real cujo `t` a timeline keya. Dentro do Blend, ele parecia um *modo* dele. O gate
+`every_section_header_is_registered_as_collapsible` cobrou o contador (19→20) — tripwire deliberado,
+e mais uma **conta que soma** (§3.2).
 
 ---
 

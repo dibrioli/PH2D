@@ -2,7 +2,8 @@
 
 **Para:** o próximo agente (contexto novo) **e** o agente integrador.
 **Estado:** o **Blend Object vivo (ADR-0122) está COMPLETO** — Fases A, B, C1, C2a, C2b e D fechadas.
-**+ o item #2 da fila (compound path perde o buraco) FECHOU** (`62c93fa7`, 2026-07-16 — §8 abaixo).
+**+ os itens #2 e #1 da fila FECHARAM** — o buraco do compound path (`62c93fa7`, §8) e o
+**MORPH VIVO** (o `t` keyável, §9).
 A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (Modo L, CLAUDE.md §0.7).
 
 > **Leia primeiro:** `CLAUDE.md` (inteiro, é curto) + `docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md`.
@@ -16,13 +17,15 @@ A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (
 | | |
 |---|---|
 | **Branch** | `line/Vector` (worktree `Worktrees/line-Vector/`) |
-| **HEAD** | `62c93fa7` |
+| **HEAD** | `e2cf1262` |
 | **Base do fork** | `4d203d48` (merge-base com `main`) |
-| **Commits** | 31 |
+| **Commits** | 33 |
 | **Contratos congelados encostados** | **NENHUM** (§4 abaixo) |
 
-Os 4 commits desta sessão, do mais novo:
+Os 6 commits desta sessão, do mais novo:
 
+- `e2cf1262` — **MORPH VIVO**: a forma única entre duas, com o `t` keyável (fila #1 — §9)
+- `ef41f447` — handoff: fila #2 fechada
 - `62c93fa7` — **o blend PERDIA o buraco**: compound path sobrevive ao morph (fila #2 — §8)
 - `92553b22` — os pontos LIVRES do spine acompanham quando o conjunto translada
 - `22a368be` — **Fase D**: Expand / Release
@@ -91,9 +94,9 @@ dois lados** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]):
 
 | Arquivo | Eu mudei | Se outra linha somou, RECONTE |
 |---|---|---|
-| `ph2d-ecs/src/scene/registry.rs` | `reg.len()` **29 → 30** | ✔ |
-| `ph2d-render/src/registry.rs` | `reg.len()` **30 → 31** | ✔ |
-| `ph2d-script/src/registry.rs` | `reg.len()` **30 → 31** | ✔ |
+| `ph2d-ecs/src/scene/registry.rs` | `reg.len()` **29 → 31** (`VecBlend` **e** `VecMorph`) | ✔ |
+| `ph2d-render/src/registry.rs` | `reg.len()` **30 → 32** | ✔ |
+| `ph2d-script/src/registry.rs` | `reg.len()` **30 → 32** | ✔ |
 
 **⚠️ `.typos.toml` — allowlist duplicada MATA o gate no parse** (o TOML morre e nada é escaneado,
 [[feedback_duplicate_allowlist_key_kills_the_gate_at_parse]]). Eu adicionei 3 chaves: `candidata`,
@@ -107,6 +110,9 @@ VECTOR_BLEND_EXPAND       = hash_node_id("vector.blend.expand")
 VECTOR_BLEND_RELEASE      = hash_node_id("vector.blend.release")
 VECTOR_BLEND_STACK_UP     = hash_node_id("vector.blend.stack_up")
 VECTOR_MODE_PICKBLEND     = hash_node_id("vector.mode.pickblend")
+VECTOR_MORPH_RUN          = hash_node_id("vector.morph.run")
+VECTOR_MORPH_T            = hash_node_id("vector.morph.t")
+VECTOR_MORPH_T_NUM        = hash_node_id("vector.morph.t_num")
 ```
 Cada um tem uma linha em `ph2d-editor-core/tests/node_id_collisions.rs` **e** em
 `ph2d-panel-vector/src/ids.rs` (re-export por nome). As três listas têm de andar juntas.
@@ -183,12 +189,11 @@ Expand (os passos têm de nascer onde estavam — se algum saltar para a reta, v
 
 ## §5 — A FILA (a ordem é do Enio)
 
-1. **Morph vivo** (o `t` animável) — **a próxima**, e agora com o pré-requisito PAGO: o `Plan` tomou
-   a forma final (um `Link` por par de contornos) ao fechar o #2, então o morph nasce em cima dela em
-   vez de a reformar debaixo de um consumidor vivo. **Escoteirado, não construído** — §9 abaixo tem
-   o desenho, as duas armadilhas que achei olhando o código, e a decisão de wire-format que ele pede.
+1. ~~**Morph vivo**~~ — **FECHADO** (§9). **Aberto por cima dele:** o morph só liga DOIS objetos
+   (uma cadeia é o Blend); o `t` não tem alça no canvas (só o slider); e o Expand/Release do Blend
+   não têm par aqui (um morph "assado" é `Convert to Curves`, que ainda não existe para ele).
 2. ~~**Compound path perde o BURACO**~~ — **FECHADO** em `62c93fa7` (§8).
-3. **Envelope / puppet warp.**
+3. **Envelope / puppet warp.** — **a próxima.**
 4. Do Illustrator, o que falta no Blend: **Replace Spine** (os passos seguem um caminho desenhado) e
    **Smooth Color** (o nº de passos sai do degradê).
 5. Backlog antigo: **Live Path Effects como nós** (o multiplicador — a costura fonte≠cozido do
@@ -304,51 +309,81 @@ duas rosquinhas → Blend. O buraco tem de existir em todo passo.
 
 ---
 
-## §9 — O item #1 (morph vivo): o que eu escoteirei, e a decisão que ele pede
+## §9 — O item #1: o MORPH VIVO (`e2cf1262`)
 
-**Não construí.** O que segue é o resultado de ler o código com o morph em mente — para o próximo
-não redescobrir.
+O `t` animável. O Blend mostra os N passos **de uma vez** (ilustração); o Morph mostra **UM**, e o
+`t` dele é um número que a timeline keya. É a mesma relação, animada.
 
-**O modelo é o do conector, não o do blend.** O `VecPath` do blend é o *spine* (invisível) e os
-passos são overlay virtual; o do morph é a **forma de verdade** — `Plan::at(t)` escrito **em lugar**
-(`scene.path_mut`, como o `connector_live::write_route`: um `push` novo daria id novo por frame e a
-entidade/seleção/gizmo piscariam). Componente espelhando o `VecBlend`:
-`VecMorph { sources: [u64; 2], t: f32 }` — `VecPathId`, **nunca** bits de entidade (o undo
-respawna).
+**O `Plan` é CACHEADO aqui, e no `blend_live` não é — e a diferença não é gosto.** No blend o `t`
+não existe, então montar o plano por frame não custa nada percebido. No morph o `t` muda **todo
+frame** (é essa a feature): sem cache, a busca de fase 256×256 rodaria por frame — os **5,9 ms** que
+o `Plan` foi inventado para matar, agora dentro do orçamento de quadro, num caminho que roda
+**enquanto a timeline toca**. A chave é a **geometria em MUNDO** das duas fontes (geometria *e*
+pose), e ela é o próprio input do plano: não há chave paralela que possa divergir dele.
 
-**Armadilha 1 — o `Plan` PRECISA de cache aqui, e o blend não o tem.** O `blend_live::cook_links`
-chama `Plan::new` **por frame** e ninguém reclamou, porque o blend só re-coze quando a relação muda
-de fato. No morph o `t` muda **todo frame** (é keyado): sem cache, a busca de fase 256×256 roda por
-frame — os 5,9 ms que o `Plan` foi inventado para matar, de volta, agora dentro do orçamento de
-frame. A chave do cache tem de incluir **geometria E pose** das duas fontes (a mesma lição da chave
-de sessão do Shape Builder: sem a pose, o cache descreve a forma onde ela *estava*).
+**Herdado do conector, e não é decoração:** o morph vive na **identidade** (a geometria é mundo; uma
+pose por cima a deslocaria — e é isso que torna o gizmo inócuo sobre ele: move-se uma FONTE); e uma
+fonte apagada **CONGELA** a forma em vez de a apagar.
 
-**Armadilha 2 — o morph vive na IDENTIDADE.** A geometria sai em MUNDO das duas fontes, então uma
-pose por cima a deslocaria. É a regra que o conector já aplica (`Transform::IDENTITY` forçado) e é
-a mesma razão pela qual o Blend é **Node-only**: *um gizmo sobre geometria que se move DOBRA*
-(ADR-0122 lista as 5 tentativas revertidas). Não dê gizmo ao morph — move-se uma FONTE.
+**O canal da timeline:** `PropKind::Morph = 7`, apendado, **fora do `ALL`** (o `ALL` é a POSE do
+autokey, e `t` não é pose de sprite nenhum), `as_sprite_transform() -> None`. O `write_prop` escreve
+no `VecMorph.t` — `ph2d-timeline` já depende de `ph2d-ecs`, então **sem dep nova e sem feature
+gate**. E o `sample_prop_value` **captura** o `t`, o que faz o **K funcionar de graça**: o artista
+estaciona o slider onde a forma fica bem e aperta K.
 
-**A decisão de wire-format (é do Enio, e é por isso que eu parei aqui):** para o `t` ser keyável, a
-timeline precisa de um `PropKind::Morph = 7`. O precedente existe e é limpo — `TimeRemap = 6` foi
-apendado, fica **FORA do `PropKind::ALL`** (o `ALL` é a POSE do autokey) e tem
-`as_sprite_transform() -> None`, com o apply a consumi-lo à parte. **Mas `PropKind` é foundational
-da linha da ANIM, e o discriminante é valor de wire congelado (postcard, em arquivo salvo).** Se as
-duas linhas apendarem `= 7` com significados diferentes, o integrador renumera o CÓDIGO mas **não
-renumera os projetos já salvos**. Isto é um **NÚMERO QUE SOMA** da pior espécie
-([[feedback_numbers_that_sum_across_lines_count_dont_pick]]) — quem for fazer isto **anuncia ao Enio
-antes**, para ele saber se a linha da anim está a mexer no enum.
+Três respostas que o compilador cobrou, cada uma com razão própria:
+- **`fit_channel` = bounded [0,1]**, igual ao `Opacity`, e não por acaso: os dois são uma fração com
+  duas pontas duras. Uma cúbica de mínimos quadrados por um morph que assenta em B passa de `t=1`, o
+  motor clampa lá, e o graph editor desenharia uma curva que deixa a forma **parada** — que lê como
+  bug do easing, não do fit.
+- **`algebra` = `Sum`**: o `t` é uma POSIÇÃO num caminho, não uma proporção. Por razão, duas faixas
+  a 0,3 e 0,5 dariam 0,15 — *menos* progresso que qualquer uma delas.
+- **`i18n_suffix` = `"morph"`** (+ `panel.timeline.prop.morph`, o rótulo do `+ Track`).
 
-Alternativa se o Enio não quiser o acoplamento agora: o morph landa com o `t` **só no painel**
-(slider vivo) e a keyagem vira uma fatia B. Entrega menos — o headline do item é *animação* —, mas
-é 100% dentro da linha.
+**A colisão de wire que eu tinha escalado NÃO existe:** verifiquei as 8 worktrees — `PropKind` está
+intocado fora da `main` (termina em `TimeRemap = 6`) e não há um `= 7` em lugar nenhum. **O
+integrador reconfirme**: se outra linha apendar, o discriminante é valor de wire em projeto SALVO, e
+renumerar o código não renumera os arquivos do Enio.
+
+### As minas que eu declaro
+
+- **[ARMADILHA nova, gateada] O `filter` do `settle_origins` ENUMERA os seus leitores.** São quatro
+  componentes de geometria derivada, e o 5º que esquecer a linha não vê erro de compilação — vê a
+  forma nova a saltar, um frame depois, num sítio que não é o dela. Gate novo:
+  `shells/desktop/tests/settle_skips_every_derived_geometry.rs`, com um **irmão que guarda a lista
+  do gate contra o próprio drift**. [[feedback_a_condition_that_enumerates_its_readers_rots]]
+- **A 1ª versão desse gate gritou LOBO**, e a lição vale: ela varria `*_live.rs` e cobrava que todo
+  host estivesse na lista — mas o `flip_live.rs` é *"o alvo vivo"* do painel do Flip e não tem uma
+  linha de geometria vetorial. **`live` ali é outra palavra.** O sinal certo não é o nome do
+  arquivo: é **forçar a identidade**, que é a assinatura de *"a minha geometria é mundo"*. Um gate
+  com falso positivo é um gate que alguém desliga. [[reference_topic_oracle_discipline]]
+- **[LIMITE] O morph liga DOIS objetos, e recusa em voz alta fora disso.** Uma cadeia é o Blend.
+  Morfar "as duas primeiras" de uma seleção de três seria escolher por ele, em silêncio.
+- **[ABERTO] O `t` não tem alça no canvas** — só o slider e a timeline. Uma alça (arrastar a forma
+  ao longo do caminho) é o gesto óbvio, e não existe.
+- **[ABERTO] Não há Expand/Release para o morph.** O par do Blend não foi portado: "assar" um morph
+  é um `Convert to Curves`, que ainda não existe para ele.
+
+### Cena pronta (não peça montagem ao Enio)
+
+```bash
+cd Worktrees/line-Vector
+PH2D_BUILD_SMOKE=10 cargo run -p ph2d-host-desktop --features panel-vector
+```
+
+Duas formas já **selecionadas**. Clique **Morph** → nasce UMA forma no meio do caminho (no meio, e
+não em `t=0`: em 0 ela seria uma cópia exata de A, em cima de A, e o clique pareceria não fazer
+nada). Arraste **Morph t** → ela caminha entre as duas, ao vivo. Mexa numa fonte → ela refaz-se.
+**Para animar:** com o morph selecionado, `+ Track → Morph` na timeline, ponha o playhead, **K**.
 
 ---
 
 ## §7 — Resumo de fechamento (o formato da DIRETRIZ)
 
-> Linha `Vector` pronta (HEAD `62c93fa7`, 31 commits sobre `4d203d48`). **ADR-0122 completo** (Blend
-> Object vivo, Fases A→D) **+ o item #2 da fila fechado** (o blend perdia o BURACO de um compound
-> path — resultado errado em silêncio, pré-existente em `main`; §8). Handoff de integração:
+> Linha `Vector` pronta (HEAD `e2cf1262`, 33 commits sobre `4d203d48`). **ADR-0122 completo** (Blend
+> Object vivo, Fases A→D) **+ os itens #2 e #1 da fila fechados**: o blend perdia o BURACO de um
+> compound path (resultado errado em silêncio, pré-existente em `main`; §8) e o **MORPH VIVO** (o
+> `t` keyável — `PropKind::Morph = 7` apendado, **valor de wire**; §9). Handoff de integração:
 > foundational **aditivo** (`ph2d-ecs::VecBlend` em arquivo próprio + 2 linhas no
 > `lib.rs`/`registry.rs`); **3 contagens de registry que SOMAM** (29→30 e 30→31 ×2 — reconte se outra
 > linha registrou componente); **3 chaves novas no `.typos.toml`** (dedupe se colidirem); 5 ids novos

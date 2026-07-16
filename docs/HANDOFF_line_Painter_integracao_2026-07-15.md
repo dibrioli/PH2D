@@ -5,7 +5,9 @@
 > advectiva do Deform)** — **ambos SMOKADOS OK pelo Enio** — **+ W5 (Conserve, a bow wave)**, a
 > **fase D (display)** e o **BOW WAVE + a ÂNCORA do aro (`fd77f9c5`)**, pendentes de smoke (o Conserve
 > é opt-in default OFF; a D inocentou o pipeline headless; a âncora corrige o colar duro que o smoke do
-> bow wave reprovou — e MOVE o desenho do Conserve, que precisa de re-smoke — ver §6.3½).
+> bow wave reprovou — ver §6.3½). **Conserve e Push SMOKADOS OK pelo Enio (2026-07-16)**, e com a fila
+> aberta a **W5 FECHOU**: o filtro de camada inteira (W5b, `57d9881e`) — a última wave incompleta do
+> sculpt. Pendente de smoke: W4 · fase D · a mordida/Sphere · W5b.
 
 ## 1. Base e commits
 
@@ -32,7 +34,10 @@
 | `fd77f9c5` | **fix(impasto): a ÂNCORA do aro** — o aro nasce na borda do CORPO (`t0`, onde a silhueta cruza `W_TAIL`), não na circunferência do gizmo (`t=1`); porta única `rim_t0`→`rim_lift` pros 2 kernels + 2 chamadores; Constant byte-idêntico; **Conserve MOVEU (re-smoke)** — **smoke APROVOU o Smooth** |
 | `0ab83ff1` | docs: fechamento da âncora do aro |
 | `2e1806fb` | **fix(impasto): a MORDIDA é função do CAMINHO, não do espaçamento** — o smoke da âncora expôs a coria do Sphere (a âncora foi INOCENTADA por medição: mesma coria com o aro velho); `(g+p)·Δm` é um PRODUTO fase-dependente ⇒ piso ondulado no período do dab; share sobre a SOBRA telescopa exato ⇒ `g·m_final`. **⚠️ Push=1 agora limpa o canal** (antes removia ~63%, acidente do espaçamento; knob Push ≈0,63 devolve) — **pendente smoke** |
-| (este) | docs: fechamento da mordida |
+| `2e1806fb`+ | docs: fechamento da mordida |
+| `57d9881e` | **feat(sculpt): W5b — o FILTRO DE CAMADA INTEIRA** — botão **Filter Layer**: o verbo selecionado aplicado na camada toda, na Strength do pincel, honrando a Selection, 1 undo. **Sem kernel novo** (o mesmo `render_sculpt`, `amount` uniforme). Recusa os verbos de PLANO (alvo ajustado à PEGADA); **Relax cortado** (colapsa em Smooth num campo de altura). Fecha a W5 — **pendente smoke** |
+| `493665c2` | test(probe): cenas 7/8 do filtro |
+| (este) | docs: fechamento da W5b |
 
 ## 2. Superfície tocada
 

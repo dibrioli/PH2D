@@ -17,13 +17,14 @@ A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (
 | | |
 |---|---|
 | **Branch** | `line/Vector` (worktree `Worktrees/line-Vector/`) |
-| **HEAD** | `c8d47966` |
+| **HEAD** | `be6748e4` |
 | **Base do fork** | `4d203d48` (merge-base com `main`) |
-| **Commits** | 34 |
+| **Commits** | 36 |
 | **Contratos congelados encostados** | **NENHUM** (§4 abaixo) |
 
 Os 7 commits desta sessão, do mais novo:
 
+- (o mais novo) — o **stroke width chega a ZERO** = sem traço (§10)
 - `c8d47966` — a caixa do Steps era **MUDA** (chip sem link) + Morph em seção própria (§10)
 - `e2cf1262` — **MORPH VIVO**: a forma única entre duas, com o `t` keyável (fila #1 — §9)
 - `ef41f447` — handoff: fila #2 fechada
@@ -411,6 +412,32 @@ produzem objetos **diferentes**: o Blend dá N passos virtuais em volta de um sp
 forma real cujo `t` a timeline keya. Dentro do Blend, ele parecia um *modo* dele. O gate
 `every_section_header_is_registered_as_collapsible` cobrou o contador (19→20) — tripwire deliberado,
 e mais uma **conta que soma** (§3.2).
+
+---
+
+
+### O stroke width chega a ZERO (mesmo smoke)
+
+`WIDTH_MIN_PX: 1.0 → 0.0` — o slider batia numa parede a 1px. **O renderer já honrava o zero sem
+uma linha de código**: o Vello não encoda um traço de largura 0 (medido pelo `n_paths` do encoding,
+não suposto). Os gates de `stroke_zero_tests` não provam um conserto — provam o que **dá sentido**
+ao `MIN = 0`: um `max(width, 0.5)` posto lá um dia faria o zero mentir em silêncio.
+
+**Duas portas para "sem traço"** (o zero e a swatch None) é assumido, não acidente: elas não
+divergem no que a TELA mostra; divergem no que o DOCUMENTO guarda — `width:0` preserva a cor, `None`
+a esquece. É o que torna o zero **reversível**, e há gate para isso.
+
+**Duas coisas que eu NÃO fiz, e ficam declaradas:**
+
+- **Largura NEGATIVA desenha** (medido) e **não a guardei**: não é alcançável — o slider clampa em
+  `[0,1]`, o `bake_xform` não toca a largura (só geometria de fill + `corner_radius`), e o
+  `mix_stroke` lerpa entre larguras ≥ 0. O gate do negativo foi escrito, ficou vermelho, e foi
+  **removido** em vez de virar guarda de um estado que não existe.
+  [[feedback_an_escape_that_never_helps_is_a_design_bug]]
+- **O `set_number_range` "ausente" na caixa do Width não é bug** — eu o chamei de bug e estava
+  errado. O `slider_chip` **deliberadamente** não o chama: um chip ligado a slider é limitado pelo
+  ESPELHO (o clamp `[0,1]` do slider), não por um range; range/`drag_rate` são dos campos avulsos
+  (Transform, conector). Cerca de Chesterton.
 
 ---
 

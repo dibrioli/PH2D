@@ -21,6 +21,7 @@
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -65,6 +66,87 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
     ],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122). The value-noise library is a
+/// straight WGSL port of [`noise`]: the integer path (the `hash2` mix) is
+/// **bit-exact** — WGSL u32 arithmetic wraps mod 2³² like Rust's
+/// `wrapping_mul`/`add`, and `bitcast<u32>` reinterprets the i32 lattice bits
+/// exactly as Rust's `as u32` does (a value cast could diverge on negatives);
+/// only the `f32(h) / f32(u32::MAX)` divide and the bilinear lerp carry
+/// float ε, well inside the parity budget. HR-5: no `sin`/`cos`.
+///
+/// **Covers the X/Y channels only** (`applicable`, like the oscillator): the
+/// Rotation/Size channels write a different column a static binding set cannot
+/// switch on, so a Wiggle on those falls back to the CPU `eval`. The `< 0.5`
+/// channel test agrees with the CPU's `round()` for every value `applicable`
+/// admits (0 → X, 1 → Y).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let wg_f = read_falloff(i);\n\
+        let wg_nx = params.playhead * params.frequency;\n\
+        let wg_ny = f32(i) + params.seed;\n\
+        let wg_d = wg_noise(wg_nx, wg_ny) * params.amplitude * wg_f;\n\
+        var wg_p = read_P(i);\n\
+        if (params.channel < 0.5) {\n\
+            wg_p.x = wg_p.x + wg_d;\n\
+        } else {\n\
+            wg_p.y = wg_p.y + wg_d;\n\
+        }\n\
+        write_P(i, wg_p);\n",
+    wgsl_lib: "\
+        fn wg_hash2(ix: i32, iy: i32) -> f32 {\n\
+            // Same mix as noise::hash2 — u32 wraps mod 2^32 (== Rust wrapping_*),\n\
+            // bitcast<u32> == Rust `as u32` (bit reinterpretation, not a value cast).\n\
+            var h: u32 = bitcast<u32>(ix) * 0x27d4eb2du + bitcast<u32>(iy) * 0x165667b1u;\n\
+            h = h ^ (h >> 15u);\n\
+            h = h * 0x2c1b3c6du;\n\
+            h = h ^ (h >> 12u);\n\
+            h = h * 0x297175f9u;\n\
+            h = h ^ (h >> 15u);\n\
+            return (f32(h) / f32(0xffffffffu)) * 2.0 - 1.0;\n\
+        }\n\
+        fn wg_fade(t: f32) -> f32 {\n\
+            return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);\n\
+        }\n\
+        fn wg_noise(x: f32, y: f32) -> f32 {\n\
+            let x0 = floor(x);\n\
+            let y0 = floor(y);\n\
+            let ix = i32(x0);\n\
+            let iy = i32(y0);\n\
+            let u = wg_fade(x - x0);\n\
+            let v = wg_fade(y - y0);\n\
+            let n00 = wg_hash2(ix, iy);\n\
+            let n10 = wg_hash2(ix + 1, iy);\n\
+            let n01 = wg_hash2(ix, iy + 1);\n\
+            let n11 = wg_hash2(ix + 1, iy + 1);\n\
+            let nx0 = n00 + u * (n10 - n00);\n\
+            let nx1 = n01 + u * (n11 - n01);\n\
+            return nx0 + v * (nx1 - nx0);\n\
+        }\n",
+    bindings: &[
+        // The target channel is materialized from its identity when absent —
+        // the CPU's `apply_channel_delta` does the same (`base_vec2`).
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+        },
+    ],
+    params: &["channel", "amplitude", "frequency", "seed"],
+    source_count: None,
+    applicable: Some(|param| {
+        // Same rounding the CPU `eval` applies. Only X (0) / Y (1) write `P`.
+        let channel = param("channel").round();
+        channel == 0.0 || channel == 1.0
+    }),
 };
 
 struct MotionWiggle;
@@ -113,6 +195,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

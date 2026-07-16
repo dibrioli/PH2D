@@ -18,6 +18,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -63,8 +64,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 0.0,
         },
     ],
-    // CPU-only by design: no Instances-domain WGSL runtime yet, and this writes a
-    // Vec2-derived scalar column, not a scalar `ph2d-expr` map `eval_column` lowers.
+    // `lowerings` stays `Cpu`: `LoweringKind::Wgsl` is the scalar `eval_column`
+    // route (`ph2d-expr`), which this Vec2-derived write does not fit. The GPU
+    // lowering it DOES have is the ADR-0122 side channel (`GPU_KERNEL`, via
+    // `register_gpu_kernel`) — a separate mechanism that never touches the frozen
+    // `NodeManifest`.
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -110,6 +114,78 @@ fn field(shape: i32, dx: f32, dy: f32, radius: f32, curve_kind: i32, invert: boo
     };
     if invert { 1.0 - f } else { f }
 }
+
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): a straight WGSL port of
+/// [`field`] × [`curve`] multiplied into the existing `falloff` — same
+/// polynomials, same IEEE `sqrt`/`floor` (HR-5), so parity holds within float
+/// ULPs. No `applicable`: it covers every `shape`/`curve`. The `shape`/`curve`
+/// enums are routed through `fl_round` (round-half-AWAY, matching Rust's
+/// `f32::round`; WGSL's builtin `round` is half-even and would pick a different
+/// branch at `x.5` — [[feedback_cpu_gpu_rounding_conventions_diverge]]), and
+/// `invert` through the CPU's own `>= 0.5` threshold. `ReadWrite` on `falloff`
+/// mirrors the CPU: a stream without a `falloff` column starts from the `1.0`
+/// identity (fields multiply) and the column is always written; `P` reads its
+/// `0` identity when absent (the CPU's `positions.get(i).unwrap_or([0,0])`).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let fl_p = read_P(i);\n\
+        let fl_v = fl_field(\n\
+            i32(fl_round(params.shape)),\n\
+            fl_p.x - params.center_x,\n\
+            fl_p.y - params.center_y,\n\
+            params.radius,\n\
+            i32(fl_round(params.curve)),\n\
+            params.invert >= 0.5);\n\
+        write_falloff(i, read_falloff(i) * fl_v);\n",
+    wgsl_lib: "\
+        fn fl_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn fl_curve(kind: i32, s: f32) -> f32 {\n\
+            if (kind == 1) { return s * s; }\n\
+            if (kind == 2) { return s * s * (3.0 - 2.0 * s); }\n\
+            if (kind == 3) { return s * s * s * (s * (s * 6.0 - 15.0) + 10.0); }\n\
+            return s;\n\
+        }\n\
+        fn fl_field(shape: i32, dx: f32, dy: f32, radius: f32, curve_kind: i32, invert: bool) -> f32 {\n\
+            var f: f32;\n\
+            if (radius > 0.0) {\n\
+                if (shape == 1) {\n\
+                    let s = clamp(max(abs(dx), abs(dy)) / radius, 0.0, 1.0);\n\
+                    f = 1.0 - fl_curve(curve_kind, s);\n\
+                } else if (shape == 2) {\n\
+                    let s = clamp(dx / radius * 0.5 + 0.5, 0.0, 1.0);\n\
+                    f = fl_curve(curve_kind, s);\n\
+                } else {\n\
+                    let d = sqrt(dx * dx + dy * dy);\n\
+                    let s = clamp(d / radius, 0.0, 1.0);\n\
+                    f = 1.0 - fl_curve(curve_kind, s);\n\
+                }\n\
+            } else {\n\
+                f = 0.0;\n\
+            }\n\
+            if (invert) { return 1.0 - f; }\n\
+            return f;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [1.0; 4],
+        },
+    ],
+    params: &["shape", "curve", "center_x", "center_y", "radius", "invert"],
+    source_count: None,
+    applicable: None,
+};
 
 struct MotionFalloff;
 
@@ -170,6 +246,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

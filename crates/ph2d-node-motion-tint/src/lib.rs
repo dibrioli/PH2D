@@ -21,6 +21,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -123,6 +124,47 @@ fn mixed_tint(existing: [f32; 4], target: [f32; 4], f: f32) -> [f32; 4] {
     ]
 }
 
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): `tint' = lerp(existing, target,
+/// falloff)` per RGBA channel — the exact `mixed_tint` form, so parity is
+/// bit-exact (no transcendentals). **Solid mode only** (`applicable`): the
+/// Gradient ramp keys off `Index/(Count−1)` with a POSITIONAL fallback (`i`,
+/// `n`) when those columns are absent, which a constant-identity binding cannot
+/// express (`read_Index`'s identity is a constant, not `f32(i)`) — so a Gradient
+/// Tint falls back to the CPU `eval`, the explicit boundary, never a wrong
+/// answer. `ReadWrite` on `tint` mirrors the CPU: an absent `tint` column starts
+/// from opaque white `[1,1,1,1]` and the column is always written.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let tn_e = read_tint(i);\n\
+        let tn_t = vec4<f32>(params.r, params.g, params.b, params.a);\n\
+        let tn_f = read_falloff(i);\n\
+        write_tint(i, vec4<f32>(\n\
+            tn_e.x * (1.0 - tn_f) + tn_t.x * tn_f,\n\
+            tn_e.y * (1.0 - tn_f) + tn_t.y * tn_f,\n\
+            tn_e.z * (1.0 - tn_f) + tn_t.z * tn_f,\n\
+            tn_e.w * (1.0 - tn_f) + tn_t.w * tn_f));\n",
+    wgsl_lib: "",
+    bindings: &[
+        ColumnBinding {
+            column: "tint",
+            dim: Dim::Vec4,
+            access: ColumnAccess::ReadWrite,
+            identity: [1.0; 4],
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+        },
+    ],
+    params: &["r", "g", "b", "a"],
+    source_count: None,
+    // Solid only — Gradient (`mode.round() == 1`) needs the Index/Count
+    // positional fallback and stays on the CPU. Matches the CPU's `gradient`.
+    applicable: Some(|param| param("mode").round() as i32 != 1),
+};
+
 struct MotionTint;
 
 impl NodeOp for MotionTint {
@@ -202,6 +244,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering (Solid mode), on the side.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

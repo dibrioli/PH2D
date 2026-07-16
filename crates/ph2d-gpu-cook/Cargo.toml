@@ -26,7 +26,10 @@ ph2d-node-motion-grid = { path = "../ph2d-node-motion-grid" }
 ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }
 ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
 ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
-# GPU/M5 Fase 2 — the ported deformers, cooked on both paths by the parity gate.
+# GPU/M5 Fase 2 — the ported nodes, cooked on both paths by the parity gate.
 ph2d-node-motion-transform = { path = "../ph2d-node-motion-transform" }
 ph2d-node-motion-rotate = { path = "../ph2d-node-motion-rotate" }
 ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
+ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
+ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
+ph2d-node-motion-wiggle = { path = "../ph2d-node-motion-wiggle" }

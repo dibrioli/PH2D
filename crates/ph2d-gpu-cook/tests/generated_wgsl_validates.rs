@@ -35,10 +35,13 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
     ph2d_node_motion_oscillator::register(&mut reg).unwrap();
     ph2d_node_motion_move::register(&mut reg).unwrap();
     ph2d_node_motion_output::register(&mut reg).unwrap();
-    // GPU/M5 Fase 2 deformers.
+    // GPU/M5 Fase 2 nodes.
     ph2d_node_motion_transform::register(&mut reg).unwrap();
     ph2d_node_motion_rotate::register(&mut reg).unwrap();
     ph2d_node_motion_scale::register(&mut reg).unwrap();
+    ph2d_node_motion_falloff::register(&mut reg).unwrap();
+    ph2d_node_motion_tint::register(&mut reg).unwrap();
+    ph2d_node_motion_wiggle::register(&mut reg).unwrap();
 
     let mut validated = 0usize;
     for manifest in reg.manifests() {

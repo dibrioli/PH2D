@@ -35,10 +35,13 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_oscillator::register(&mut reg).unwrap();
     ph2d_node_motion_move::register(&mut reg).unwrap();
     ph2d_node_motion_output::register(&mut reg).unwrap();
-    // GPU/M5 Fase 2 deformers.
+    // GPU/M5 Fase 2 nodes.
     ph2d_node_motion_transform::register(&mut reg).unwrap();
     ph2d_node_motion_rotate::register(&mut reg).unwrap();
     ph2d_node_motion_scale::register(&mut reg).unwrap();
+    ph2d_node_motion_falloff::register(&mut reg).unwrap();
+    ph2d_node_motion_tint::register(&mut reg).unwrap();
+    ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     reg
 }
 
@@ -249,24 +252,35 @@ fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
 // must match ([[feedback_a_gate_only_proves_what_its_fixture_contains]]); the
 // naga gate covers the present/absent WGSL variants exhaustively.
 
-/// Build `grid → <ty> → output` at `rows²` instances (≥ `PAR_THRESHOLD` at 160).
-/// Returns the deformer node (for param overrides) and the output sink.
-fn deformer_chain(g: &mut Graph, rows: f32, ty: &str) -> (NodeId, NodeId) {
+/// A `rows²`-instance grid (≥ `PAR_THRESHOLD` at 160), the source every Fase 2
+/// parity chain roots on. Emits `P`/`Index`/`Count` (no `size`/`rot`/`tint`/
+/// `falloff`), so the deformers run with their target columns ABSENT.
+fn grid_node(g: &mut Graph, rows: f32) -> NodeId {
     let grid = g.add_node("motion.grid");
     g.set_param(grid, "rows", rows);
     g.set_param(grid, "cols", rows);
     g.set_param(grid, "gap_x", 0.35);
     g.set_param(grid, "gap_y", 0.25);
+    grid
+}
+
+fn connect(g: &mut Graph, a: NodeId, b: NodeId) {
+    g.connect(Edge {
+        from: (a, 0),
+        to: (b, 0),
+        delayed: false,
+    })
+    .unwrap();
+}
+
+/// Build `grid → <ty> → output` at `rows²` instances.
+/// Returns the deformer node (for param overrides) and the output sink.
+fn deformer_chain(g: &mut Graph, rows: f32, ty: &str) -> (NodeId, NodeId) {
+    let grid = grid_node(g, rows);
     let node = g.add_node(ty);
     let out = g.add_node("motion.output");
-    for (a, b) in [(grid, node), (node, out)] {
-        g.connect(Edge {
-            from: (a, 0),
-            to: (b, 0),
-            delayed: false,
-        })
-        .unwrap();
-    }
+    connect(g, grid, node);
+    connect(g, node, out);
     (node, out)
 }
 
@@ -351,6 +365,84 @@ fn scale_kernel_matches_the_cpu_within_epsilon() {
     // Grows each sprite's `size` (materialized from SIZE_IDENTITY, grid emits none).
     g.set_param(node, "amount", 1.85);
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn wiggle_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 160.0, "motion.wiggle");
+    // Y channel, non-round amplitude/frequency/seed. The integer-hash noise must
+    // land bit-exact per lattice cell or the offset diverges by O(amplitude) —
+    // far outside ε — so this gate is the real proof the u32 mix ported right.
+    g.set_param(node, "channel", 1.0);
+    g.set_param(node, "amplitude", 1.7);
+    g.set_param(node, "frequency", 0.9);
+    g.set_param(node, "seed", 3.0);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn tint_solid_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    // A focus field upstream so the tint lerps between the existing white and the
+    // target ACROSS the grid — exercising `mixed_tint` at intermediate falloff,
+    // not just the f=1 endpoint (radius 27.3 spans the grid → a smooth ramp).
+    let foc = g.add_node("motion.falloff");
+    g.set_param(foc, "radius", 27.3);
+    g.set_param(foc, "center_x", 2.9);
+    g.set_param(foc, "center_y", -1.7);
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 0.0); // Solid — the GPU-covered mode
+    g.set_param(tint, "r", 0.31);
+    g.set_param(tint, "g", 0.72);
+    g.set_param(tint, "b", 0.16);
+    g.set_param(tint, "a", 0.85);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, foc);
+    connect(&mut g, foc, tint);
+    connect(&mut g, tint, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + falloff + tint
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn falloff_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let foc = g.add_node("motion.falloff");
+    g.set_param(foc, "shape", 1.0); // Rect — the Chebyshev max/abs branch
+    g.set_param(foc, "curve", 3.0); // Smoother — the quintic
+    g.set_param(foc, "center_x", 2.9);
+    g.set_param(foc, "center_y", -1.7);
+    g.set_param(foc, "radius", 27.3);
+    // The falloff column is not a RenderInstance field; a `move` reads it and
+    // scales its offset by it, so the field value shows up in world_pos.
+    let mv = g.add_node("motion.move");
+    g.set_param(mv, "dx", 3.1);
+    g.set_param(mv, "dy", -1.9);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, foc);
+    connect(&mut g, foc, mv);
+    connect(&mut g, mv, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + falloff + move
 }
 
 /// Perf probe, not a gate (mirrors Fase 0's `cook_500k_timing`): the F1.1

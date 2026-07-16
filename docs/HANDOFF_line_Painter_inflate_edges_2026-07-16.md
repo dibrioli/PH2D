@@ -241,6 +241,11 @@ Uma 3ª exige o modelo provado ANTES do código.
 
 | | |
 |---|---|
+| `10bd2a10` | **REGRESSÃO minha, corrigida** — o gizmo tem 2 esquemas de id (canônico + **keyed**) e a porta só conhecia um ⇒ o pincel virava gesto de mover. **smoke OK** |
+| `a07b30ca` | sonda do knob Smooth — **2 px já zera os degraus** (188 → 0 texels), forma intacta; perf +35% |
+| `6f4c84ea` · `611f4f22` | sondas da borda quebrada (a altura salta 1,39 vs 0,38 do depósito) + split gates/sondas |
+| `518c91a5` | **o clique num botão é do botão** — a porta única do chrome (4 braços pediam meia pergunta) — **smoke OK** |
+| `d6616168` | o irmão da MATÉRIA p/ "a faster mouse does not sculpt deeper" (+ correção de um doc comment meu que negava um gate existente) |
 | `8ea5f91c` | **a matéria segue o taper** (+ porta única `ball_taper`, split `sculpt_inflate.rs`, 6 gates, cena 10 da sonda) |
 | `f8902dfc` | o handoff do diagnóstico (substituído por este) |
 | `ea0a5c02` · `57d9881e` | W5b — filtro de camada + 2 escopos |
@@ -249,6 +254,20 @@ Uma 3ª exige o modelo provado ANTES do código.
 Gates: tool **711** · clippy **0** · LOC cap **verde** · `check --workspace --all-targets` verde ·
 perf INFLATE 3,30/3,79 (kill 8). Mutações da jornada: **6/7** (a 7ª é sub-LSB, §5).
 
-**Ids/consts novos** (para o integrador detectar colisão): `sculpt_offset::ball_taper` (fn `pub(super)`),
-módulo novo `paint::sculpt_inflate`, `sculpt_tests::inflate_edge`. **Nenhum contrato congelado tocado**
-(`Tool`/`CanvasPaintTool` intactos); nenhum id de UI, i18n ou token novo.
+## 9. Para o INTEGRADOR (DIRETRIZ §1.5.9) — o que esta linha criou
+
+⚠️ **Esta linha TOCOU FOUNDATIONAL** (`ph2d-editor-core`) — projetado para isolamento (ADR-0107): é uma
+**fn irmã append-only no módulo que já é dono dos ids**, nada removido, nada renomeado.
+
+| onde | o quê | risco de colisão |
+|---|---|---|
+| **`ph2d-editor-core`** `gizmo/hit.rs` | **`is_gizmo_id(id)`** (fn `pub` nova, ao lado de `is_gizmo_handle_id`) + re-export em `gizmo/mod.rs` e `lib.rs` | baixo — nome novo; a linha que também exportar de `gizmo` colide **textualmente** nas 2 linhas de `pub use` |
+| **shell** | módulo NOVO `shells/desktop/src/chrome_hit.rs` + `mod chrome_hit;` em `main.rs` | o `mod` em `main.rs` é o único ponto compartilhado |
+| **shell** | `forwarding.rs` **encolheu** 614 → 422 (a porta saiu para `chrome_hit.rs`) | quem editar `forwarding.rs` na mesma jornada conflita — **avisar** |
+| **shell** | 4 braços passaram a chamar `chrome_hit::pointer_over_chrome` (`painter_canvas_input`, `eyedropper`, `protect_brush` ×2) | baixo |
+| `ph2d-tool-painter` | `sculpt_offset::ball_taper` (`pub(super)`), módulos novos `paint::sculpt_inflate`, `sculpt_tests::inflate_edge{,_probes}` | baixo — só a linha Painter |
+| env novos | `PH2D_CHROME_DIAG=1` (quem recusou o canvas) · `PH2D_DIAG_SMOOTH=<0..1>` (sonda) | nenhum |
+| gates novos | `shells/desktop/tests/the_chrome_swallows_the_click_it_was_given.rs` (4) | nenhum |
+
+**Nenhum contrato congelado tocado** (`Tool`/`CanvasPaintTool`/`NodeOp` intactos); nenhum id de UI, i18n
+ou token novo. **`smooth_norm` default segue 0** — a mudança está RECOMENDADA (§8) e é decisão do Enio.

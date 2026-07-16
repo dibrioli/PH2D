@@ -18,13 +18,14 @@
 
 | commit | wave | o quê | smoke |
 |---|---|---|---|
+| `994ce21c` | **§4.A fix** | **`Select: Point` começa DESSELECIONADO** (o broadcast do §11 saiu — diverge do GP de propósito) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `08ba6358` | **§4.A fix** | **`Select: Point` some com o gizmo NA HORA** — o gizmo é do domínio **Stroke** (ADR-0112 parity) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `017b8f00` | **§4.A fix** | a **ÁREA** do gizmo agarra a seleção · **ponto único não abre gizmo** — 2 achados do smoke | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `b793b47c` | **BUGS #18** | a **COSTURA** do traço fechado agora é clicável (pick/marquee/hover) — achado do smoke do §4.A | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `1b51f59b` | **§4.A** | o **gizmo da SELEÇÃO** no modo Edit (rotate/escala assado nos pontos de arte exclusiva) | **PENDENTE — rode `PH2D_FLIP_XFORM_SMOKE=1`** |
 
 Tudo abaixo do `1b51f59b` já tinha smoke OK (ver 15b): W8 (domínio Point), W7.5 (gizmo
-da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 25 commits.
+da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 27 commits.
 
 **O achado do 1º smoke do §4.A (Enio):** *"uma linha do triângulo e uma linha do quadrado
 não são sensíveis à seleção"* — a **aresta de fechamento**. `positions().windows(2)` não
@@ -67,6 +68,23 @@ gizmo não há área). Duas funções divergiriam — e o artista veria uma caix
 **Se você mexer no gizmo da seleção, é essa função que decide tudo.** O domínio vem de
 `App::flip_edit_domain_now` (uma porta) e é **içado antes do empréstimo de `gfx`** no
 `render_loop` (método em `&self` colide com `self.gfx.as_mut()`).
+
+**O 4º achado (`994ce21c`):** *"quando `Select: Point` os pontos ficam todos selecionados.
+faça com que comece com pontos desselecionados"*. A troca de domínio fazia **broadcast** (o
+`02_referencia §11` do GP: traço aceso ⇒ todos os pontos dele acesos) — e o 1º gesto do
+artista no Point é quase sempre *"quero estas duas âncoras"*, ou seja, ele começava
+**desmarcando**. **Diverge do GP de propósito.** A volta ao Stroke continua **promovendo**
+por `any()`; a assimetria é deliberada (entrar no Point = *"vou escolher âncoras"*; voltar
+ao Stroke = *"as âncoras que toquei são deste traço"*). Par renomeado para o que de fato
+acontece: **`enter_point_domain`/`enter_stroke_domain`** (`selection_to_point_domain`
+mentiria — não converte mais, limpa). O **`broadcast_selection_to_points` ficou órfão e
+saiu** (só o próprio teste o chamava; `select_all_points` usa `set_point_selected`), junto
+com a doc que o listava como choke point do `point_sel` — **hoje são 2 choke points**.
+
+**Esta regra e a do domínio são COMPLEMENTARES, não redundantes** — e o gate prova: com
+`enter_point_domain` mutado para no-op, o gate do gizmo continua **verde** (ele arma a
+seleção pelo CLIQUE, não pela troca de domínio) e só o gate novo cai. Entrar limpa; a regra
+do domínio impede o gizmo **depois** que o artista acende âncoras.
 
 **Gate partido em dois, de propósito:** o do ponto único passaria **pelo motivo errado**
 depois da regra do domínio (o caso do ponto único só existe NO domínio Point). Então virou

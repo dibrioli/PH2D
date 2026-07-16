@@ -1,6 +1,30 @@
-# HANDOFF — a borda do Inflate: FECHADA (`line/Painter`, 2026-07-16)
+# HANDOFF — a borda do Inflate (`line/Painter`, 2026-07-16)
 
-> **Estado: a borda foi corrigida, gateada, medida e OLHADA. Pendente SMOKE do Enio.**
+> ## ⚠️ LEIA ISTO PRIMEIRO — o 2º smoke do Enio REPROVOU a borda de novo, e o fix abaixo NÃO a alcança
+>
+> **Medido, não teorizado:** na cena do Enio o render é **byte-IDÊNTICO** com e sem o fix desta linha.
+> O que sobrou **não é a matéria — é a ALTURA**, e é PRÉ-EXISTENTE:
+>
+> ```text
+> depósito              maior salto entre vizinhos  0,38 load     0 texels acima de 1 load
+> Blob (taper LIGADO)   maior salto                 1,39-1,69     188-444 texels acima de 1
+> Blob (taper DESLIG.)  maior salto                 4,91          cobertura volta ao penhasco 255
+> ```
+>
+> **A luz lê a DERIVADA: um degrau de 1,4 load entre 2 texels É uma parede.** Os degraus e as fissuras
+> brancas da foto são essa parede, iluminada. Duas coisas que a medição REFUTOU (não re-derive):
+> * **não é espessura** — blob de 4 a 40 loads faz a mesma rampa (passo 62-88);
+> * **não é o taper** — desligá-lo TRIPLICA o salto (4,91) e devolve o penhasco de 255. O taper é a
+>   **mitigação**; sem ele o cap de alcance é um precipício sem nada que o suavize.
+>
+> **O residual é a COSTURA do argmax:** atravessando-a o envelope é contínuo (é o que um lower envelope
+> É), mas a **distância ao vencedor** não é — e o taper é função dela. Uma forma sozinha já faceta (444
+> texels): não precisa de junção. Detalhe + instrumentos: `sculpt_tests/inflate_edge_probes.rs`,
+> `PH2D_PUSH_LOOK_DIR=<dir> ... probe_push_render_and_look -- --ignored` (cena **11** = o arranjo da foto).
+>
+> **Isto é decisão de ARQUITETURA no kernel, não um fix de carona** — §8 abaixo.
+>
+> **Estado do que ESTE handoff fechou (a cobertura): corrigido, gateado, medido e OLHADO. Pendente smoke.**
 > A linha está commitada e verde. **NÃO integrei, NÃO pushei, NÃO rodei ship** (§0.7).
 >
 > Este arquivo SUBSTITUI a versão anterior (o diagnóstico + direção de fix). O diagnóstico estava
@@ -165,8 +189,43 @@ figura — o que a disciplina de oráculo desta linha proíbe. Documentado no ga
    RELEVO fica bem dentro da borda da TINTA ⇒ a bola cresce sobre tela já pintada ⇒ o guard pula ⇒ o
    taper nunca se aplica. Instrumentar (`matter_ok`, `touched`, `pre_peak`) resolveu em 1 tentativa.
 
+## 8. ⚠️ A BORDA AINDA ESTÁ QUEBRADA — o achado do 2º smoke (o item nº 1 da fila)
+
+**O que este handoff fechou:** a **matéria** (a cobertura) parava seca — cortador de biscoito. Fechado,
+medido (255 → 62), olhado.
+
+**O que sobrou, e o Enio viu na hora:** a **ALTURA** do Blob é descontínua. Números no topo deste arquivo.
+O depósito nunca passa de 0,38 load entre vizinhos; o Blob salta **1,39-1,69**, em 188-444 texels.
+
+**A mecânica, medida:** o envelope cru (`blob_dilate`) é contínuo — é a definição de lower envelope. O
+**cap de alcance** (`d² ≥ reach2_s`) é um precipício, e o **taper** existe para suavizá-lo (por isso
+desligá-lo piora 3×). Mas o taper é `t(d²)` — função da **distância ao vencedor** — e o vencedor é um
+**argmax DISCRETO**: atravessando uma costura de célula, `hbuf` é contínuo mas `d` **salta**, então `t`
+salta, e `lifted = p0 + t·(hbuf − p0)` herda o salto. **O taper quebra a continuidade que o envelope
+garantia.**
+
+**O Enio pediu "subdivisões antes de inflar".** É a analogia de malha (subdividir antes do Inflate do
+Blender). Num campo de altura não há topologia para subdividir — a "resolução" é o canvas (1024² no smoke,
+verificado: **não** é o caso do canvas 64px). Traduzido para cá, o pedido dele é: *o offset tem de ser
+computado numa representação que não grude na grade do argmax*.
+
+**As 3 saídas (nenhuma é drive-by — o Enio decide):**
+1. **O envelope maximiza o objetivo TAPERADO.** Correto por construção (um max de contínuas é contínuo),
+   mata a costura na raiz — e **não é separável**: perde-se Felzenszwalb e volta-se ao `O(área·ρ²)` que
+   custou **73 ms/move** e foi rejeitado. Precisaria de outra estrutura (pirâmide? jump-flood?).
+2. **Suavizar o campo tapered depois** — o knob **Smooth** do Inflate já faz isso e é `0` por default. Se
+   um Smooth ≥ 2 px dissolve os degraus, a saída barata é **mudar o default** (e o Enio decide o número
+   olhando). ⚠️ **MEÇA antes de propor**: é a única das três que cabe numa sessão.
+3. **Taper por uma grandeza CONTÍNUA na costura** em vez da distância. Projeto aberto: `hbuf` é contínuo,
+   `d` não; achar o substituto é a pesquisa.
+
+**Regra desta linha antes de tentar:** *bateu na 2ª reconstrução de topologia → PARE e prove o modelo*
+(DIRETIVA §5, two-strikes). O Blob já foi reconstruído 2× (raio-no-falloff; a bola que move matéria).
+Uma 3ª exige o modelo provado ANTES do código.
+
 ## 6. Aberto depois disto (a fila do impasto)
 
+0. **A BORDA (§8) — o item nº 1**, e é decisão do Enio entre as 3 saídas.
 1. **O ghost pré-existente do §4.2** — render TOTAL da advecção (des-pintar). É decisão de PERF: mede
    contra o kill 8 antes.
 2. **§3.2 — a borda editável**: só por ordem do Enio, e como capacidade NOMEADA (ADR), não como efeito

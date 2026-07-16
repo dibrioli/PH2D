@@ -144,6 +144,20 @@ design) — the default build is untouched by W7.
 
 ## 7 — Open / follow-ups
 
+- **Progress bar for a long AI Denoise — BACKLOG, end of the queue (Enio, 2026-07-15).** Smoked and
+  deliberately deferred, so read the numbers before reviving it: in **release** the model runs at
+  **0.03× real-time** (a 4 s clip in 0.16 s — Enio's word: *"praticamente instantâneo"*), and model
+  load is only ~50 ms, so **caching the `DfTract` is not the win the code reads like**. The wait
+  that prompted the request was a **debug build** (16× slower: the same clip took 2.68 s) — hence
+  the `--release` now baked into the smoke's docs. It becomes real only on a **long take**: 3 min of
+  VO ≈ **5 s** of frozen UI. **Why it is not a small job:** the shell has **no async pattern** (zero
+  worker threads for editor ops) and the design system has **no progress widget**, and
+  `editor_denoise_ml` blocks the UI thread — so *no bar can be painted at all* until the work moves
+  off-thread; a bar that cannot advance is worse than none. Proper shape: worker thread (`SampleData`
+  is `Arc`-backed, so handing it over is free) + a progress sink through `denoise_ml`'s hop loop +
+  a busy state that disables the Spectral buttons + the bar. ~250–400 LOC, and it would be the
+  **first async editor op** — a precedent batch LUFS and export would copy, which is exactly why it
+  deserves its own task rather than a graft.
 - **Stereo** clips are processed by running the model per the (resampled) channel count; the
   boundary keeps the layout. Not exercised by the mono fixture — worth a stereo smoke if it matters.
 - The dev-profile parity test runs DFN at opt-0 (~6 s). Acceptable for a gate; if it ever grates,

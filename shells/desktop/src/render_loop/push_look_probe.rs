@@ -172,5 +172,23 @@ fn probe_push_render_and_look() {
     t.on_canvas_pointer(cp([200.0, 320.0], PointerPhase::Up));
     save(&mut t, &dir, "6_reference_scrape_conserve", size);
 
+    // 7. W5b — the WHOLE-LAYER FILTER: the same ground, then Smooth applied to the entire layer with no
+    //    stroke at all. The ridges must go soft everywhere at once — including where no brush ever went.
+    let mut t = tool(size);
+    lay_ground(&mut t);
+    t.set_paint_tool_mode("sculpt");
+    t.set_sculpt_mode(0); // Smooth
+    t.set_sculpt_radius(0.6);
+    assert!(t.filter_sculpt_layer(), "the filter ran");
+    save(&mut t, &dir, "7_filter_layer_smooth", size);
+
+    // …and Inflate, the verb that moves MATTER: the whole form fattens at once.
+    let mut t = tool(size);
+    lay_ground(&mut t);
+    t.set_paint_tool_mode("sculpt");
+    t.set_sculpt_mode(7); // Inflate
+    assert!(t.filter_sculpt_layer(), "the filter ran");
+    save(&mut t, &dir, "8_filter_layer_inflate", size);
+
     eprintln!("PNGs written to {dir}");
 }

@@ -490,3 +490,40 @@ fn a_saved_document_comes_back_whole() {
         "and the loaded graph is still well-typed"
     );
 }
+
+/// The **F1.2 hybrid smoke document really is a hybrid** (`PH2D_GPU_COOK_DEMO=2`).
+///
+/// A demo meant to show the CPU-prefix / GPU-suffix seam is worthless if it
+/// secretly plans as fully-GPU (the boundary node accidentally covered) or as
+/// all-CPU (nothing covered) — the artist would smoke the wrong path and never
+/// know. So this asserts the PLAN, headless: the boundary lands on the un-covered
+/// Rotation oscillator, and the GPU suffix carries real compute (the Y wave + the
+/// scale), so the route decision returns `Hybrid` and the smoke exercises F1.2.
+#[test]
+fn the_hybrid_demo_document_plans_as_a_cpu_boundary_with_a_gpu_suffix() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_hybrid_demo_document(&mut doc, &registry).expect("well-typed hybrid demo");
+    let out = *sinks.first().expect("one sink");
+
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    // NOT fully-GPU — the first oscillator (Rotation) has no kernel.
+    assert!(
+        !plan.is_fully_gpu(),
+        "the demo must exercise the HYBRID path, not fully-GPU"
+    );
+    let (boundary, _) = plan.boundary.expect("a CPU boundary");
+    assert_eq!(
+        doc.graph.node(boundary).unwrap().type_name,
+        "motion.oscillator",
+        "the boundary is the Rotation oscillator the kernel does not cover"
+    );
+    // The GPU suffix does real work (oscillator(Y) + scale dispatch; output is
+    // pass-through), so the route is Hybrid, not a boundary-with-nothing-to-run.
+    assert!(
+        plan.dispatching_stages(&registry) >= 2,
+        "the GPU suffix must carry compute stages, got {}",
+        plan.dispatching_stages(&registry)
+    );
+}

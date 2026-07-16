@@ -413,6 +413,12 @@ fn the_state_is_double_buffered_and_a_steady_sim_stops_allocating() {
     // a still-referenced buffer would free it the moment the sim released it,
     // and a 2M-element sim would allocate its whole state every frame: the exact
     // thing the pool exists to prevent, and invisible to every parity gate.
+    //
+    // The scrub ring is squeezed to one checkpoint first, deliberately. It pins
+    // VRAM BY DESIGN (that is what a window costs), so leaving it at its default
+    // budget would measure the ring's growth and say nothing about the
+    // ping-pong. Two properties, two knobs, one at a time
+    // ([[feedback_layered_defenses_need_per_layer_gates]]).
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("no GPU adapter — skipping");
         return;
@@ -422,6 +428,7 @@ fn the_state_is_double_buffered_and_a_steady_sim_stops_allocating() {
     let plan = plan(&g, &reg, &reg, out);
     assert!(plan.drives_a_loop());
     let mut gc = GpuCook::new();
+    gc.set_ring_budget(0);
     let cook = |gc: &mut GpuCook, t: u64| {
         gc.cook(
             &gpu,
@@ -439,12 +446,13 @@ fn the_state_is_double_buffered_and_a_steady_sim_stops_allocating() {
         )
         .expect("gpu cook");
     };
-    // Warm up: the first ticks legitimately allocate (pool empty, pipelines cold).
-    for t in 0..8 {
+    // Warm up: the first ticks legitimately allocate (pool empty, pipelines
+    // cold), and the stride's checkpoints churn until the budget evicts them.
+    for t in 0..24 {
         cook(&mut gc, t);
     }
     let warm = gc.pool_allocations();
-    for t in 8..24 {
+    for t in 24..64 {
         cook(&mut gc, t);
     }
     assert_eq!(
@@ -542,4 +550,93 @@ mod velgen {
         reg.register(Box::new(Op)).unwrap();
         reg.register_gpu_kernel(MAN.id, KERNEL);
     }
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn scrubbing_back_reproduces_the_past_state_instead_of_the_marching_future() {
+    // D5 — the whole reason the ring exists, and the failure it prevents is a
+    // QUIET one: cook tick 4 holding tick 20's state and the integrator's own
+    // guard clamps `dt` to zero (the playhead went backwards), so nothing
+    // explodes, nothing NaNs — the field just sits at the future's pose while
+    // the ruler says 4. That is the naive-scrub bug the CPU ring was built
+    // against, on the other side of the fence.
+    //
+    // The oracle is the CPU's tick 4, cooked forward from scratch: the same
+    // question this engine has to answer after having marched past it.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let (g, _, out) = sim_chain(
+        &reg,
+        &[(
+            "force.wind",
+            &[
+                ("angle", 37.5),
+                ("strength", 42.0),
+                ("gust", 0.65),
+                ("gust_freq", 1.7),
+                ("seed", 3.25),
+            ],
+        )],
+    );
+    const BACK_TO: u64 = 4;
+    const MARCHED: u64 = 20;
+
+    let cpu = cpu_ticks(&g, &reg, out, MARCHED);
+    // The state at 4 and at 20 must be far apart, or "reproduced the past" and
+    // "showed the future" are the same picture and this proves nothing.
+    let travelled = max_move(&cpu[BACK_TO as usize], &cpu[MARCHED as usize]);
+    assert!(
+        travelled > MUST_MOVE,
+        "the sim must have gone somewhere between the two ticks ({travelled})"
+    );
+
+    let plan = plan(&g, &reg, &reg, out);
+    assert!(plan.drives_a_loop());
+    let mut gc = GpuCook::new();
+    let mut march = |gc: &mut GpuCook, target: u64| {
+        for t in gc.rewind_for(target)..=target {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+        }
+        read_instances(&gpu, gc.instances().expect("cooked"))
+    };
+
+    // March forward past the target, then scrub back to it.
+    let _ = march(&mut gc, MARCHED);
+    let (checkpoints, bytes) = gc.ring_stats();
+    assert!(
+        checkpoints > 1,
+        "the ring must hold a window: {checkpoints}"
+    );
+    eprintln!("ring: {checkpoints} checkpoints pinning {bytes} B");
+
+    let scrubbed = march(&mut gc, BACK_TO);
+    assert_eq!(
+        gc.last_cooked_tick(),
+        Some(BACK_TO),
+        "the sim's clock must stand where the playhead does"
+    );
+    assert_parity("scrub back", &cpu[BACK_TO as usize], &scrubbed);
+
+    // And forward again from there — the restore left a state the march can
+    // continue from, not a dead end.
+    let resumed = march(&mut gc, MARCHED);
+    assert_parity("re-marched", &cpu[MARCHED as usize], &resumed);
 }

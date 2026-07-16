@@ -322,7 +322,6 @@ mod nokernel {
 /// no `pre` loop — the engine rule `motion.integrate` is one instance of,
 /// isolated so the "unprovable ⇒ recede" layer can be gated on its own.
 mod refuser {
-    use ph2d_nodegraph::attr::Stream;
     use ph2d_nodegraph::cook::EvalCtx;
     use ph2d_nodegraph::effect::Effect;
     use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};

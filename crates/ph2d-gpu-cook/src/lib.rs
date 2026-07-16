@@ -52,9 +52,11 @@
 pub mod codegen;
 pub mod lower;
 pub mod plan;
+pub mod ring;
 pub mod stream;
 
 pub use plan::{GpuPlan, GpuSource, GpuStage, plan};
+pub use ring::GpuCheckpointRing;
 pub use stream::{BufferPool, GpuColumn, GpuStream};
 
 use crate::plan::resolve_param;
@@ -162,6 +164,9 @@ pub struct GpuCook {
     /// step per tick, so the caller needs to know which one it last took; a
     /// stateless plan never reads this.
     last_tick: Option<u64>,
+    /// The backwards-scrub ring (D5): past states, held by refcount, on the
+    /// device. See [`ring`].
+    ring: GpuCheckpointRing,
 }
 
 /// Uniform slot size: count + playhead + up to 14 params, pow2-rounded.
@@ -228,6 +233,16 @@ impl GpuCook {
         let got: BTreeSet<NodeId> = boundary_streams.iter().map(|(n, _)| *n).collect();
         if want != got {
             return Err(GpuCookError::BoundaryMismatch);
+        }
+        // D5 — the scrub ring: `prev` right now IS the state this tick cooks
+        // from, so record it BEFORE the cook overwrites it. Free in time (a map
+        // of refcounts); the cost is the VRAM it pins, which is what the ring
+        // caps. A stateless plan has no `tick` and records nothing.
+        if let Some(t) = tick
+            && plan.drives_a_loop()
+            && self.ring.should_record(t)
+        {
+            self.ring.record(t, &self.prev);
         }
         self.pool.reclaim();
 
@@ -356,13 +371,54 @@ impl GpuCook {
         Ok(count)
     }
 
-    /// Forget the simulation state — the next cook seeds from scratch, exactly
-    /// as at tick 0 (when the `pre` edge reads Empty). The sim's continuity
-    /// broke: the caller is starting a run the held state is not the
-    /// predecessor of.
+    /// Forget the simulation state AND its scrub history — the next cook seeds
+    /// from scratch, exactly as at tick 0 (when the `pre` edge reads Empty).
+    ///
+    /// Call this when the **graph changes**: a cached state is a function of the
+    /// graph that produced it, so an edit invalidates every checkpoint (the
+    /// Blender/Houdini semantics the CPU ring already follows — its `clear` has
+    /// the same trigger). It also releases the ring's pinned VRAM.
     pub fn forget_state(&mut self) {
         self.prev.clear();
         self.last_tick = None;
+        self.ring.clear();
+    }
+
+    /// Rewind (if needed) so that cooking `first..=target` in order stands the
+    /// sim at `target`; returns that first tick. Call BEFORE the march.
+    ///
+    /// Forward — the overwhelming case, one tick per frame — this is
+    /// `last_tick + 1` and touches nothing. Backwards (a scrub), it restores the
+    /// newest checkpoint at or before the target and hands back its tick to
+    /// re-sim from: **GGPO save/load/advance, without leaving the device**
+    /// (ADR-0123 D5). A target the ring no longer covers anchors at the tick-0
+    /// seed and re-sims forward, which is slow but always right — and is the CPU
+    /// ring's own answer to the same question.
+    ///
+    /// Without this, a backwards scrub would cook `target` against the state of
+    /// a LATER tick: `dt` would clamp to zero (the integrator's guard) so nothing
+    /// would explode — it would just quietly show the future's pose and call it
+    /// the past.
+    pub fn rewind_for(&mut self, target: u64) -> u64 {
+        match self.last_tick {
+            Some(t) if target > t => t + 1,
+            _ => {
+                let (anchor, state) = self.ring.anchor_at_or_before(target);
+                self.prev = state;
+                self.last_tick = None;
+                anchor
+            }
+        }
+    }
+
+    /// Retune the scrub ring's VRAM cap (default [`ring::RING_BYTES`]).
+    pub fn set_ring_budget(&mut self, bytes: u64) {
+        self.ring.set_budget(bytes);
+    }
+
+    /// Checkpoints the scrub ring holds, and the VRAM they pin (an upper bound).
+    pub fn ring_stats(&self) -> (usize, u64) {
+        (self.ring.len(), self.ring.bytes())
     }
 
     /// Encode one kernel stage: resolve/compile the pipeline for the inputs'

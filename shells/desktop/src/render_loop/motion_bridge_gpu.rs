@@ -111,8 +111,15 @@ pub(super) fn cook_gpu(
             // so it owes one cook per fixed tick, under the same law as the CPU
             // pump (`ticks_owed`) and for the same reason — one big jump would
             // make the motion depend on the frame rate.
+            //
+            // `rewind_for` is the scrub (D5): forward it just answers
+            // `last + 1`; backwards it restores the newest checkpoint at or
+            // before the target, on the device, and says which tick to re-sim
+            // from. It replaces `ticks_owed` here rather than wrapping it —
+            // `ticks_owed` answers `target..=target` for a backwards jump, which
+            // for a sim means "cook the past against the future's state".
             let ticks: Vec<u64> = match plan.drives_a_loop() {
-                true => super::ticks_owed(motion.gpu_cook.last_cooked_tick(), target).collect(),
+                true => (motion.gpu_cook.rewind_for(target)..=target).collect(),
                 false => vec![target],
             };
             motion.gpu_live = ticks.iter().all(|&tick| {

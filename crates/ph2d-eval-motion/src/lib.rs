@@ -232,6 +232,38 @@ pub struct MotionCookPump {
     /// future. Cleared on a graph edit (the cached sim is invalid for the new
     /// graph). See [`Self::scrub_to_scoped`].
     ring: CheckpointRing,
+    /// The output stream of the last node cooked by
+    /// [`Self::advance_or_scrub_to_node_scoped`] (the GPU/M5 F1.2 boundary hand-off),
+    /// held so the caller can upload it after the tick march. `None` until that
+    /// method cooks; NOT touched by the sink pump (which lowers to `instances`).
+    boundary_stream: Option<Stream>,
+}
+
+/// What one pump cook produces this frame — the two consumers of the SAME
+/// forward/scrub tick march + `pre` feedback, kept as one path so a "fast
+/// preview" boundary cook can never drift from the sink cook
+/// ([[feedback_two_doors_to_the_same_question_diverge]]).
+enum CookTarget<'a> {
+    /// The render sinks, lowered into `instances` (the CPU render path).
+    Sinks {
+        sinks: &'a [NodeId],
+        default_uv_rect: [f32; 4],
+        default_size: [f32; 2],
+    },
+    /// One node's raw output stream, stored in `boundary_stream` (the CPU→GPU
+    /// boundary: the lowering is the GPU's job now, so the CPU stops at the stream).
+    Boundary(NodeId),
+}
+
+impl CookTarget<'_> {
+    /// Is there work to cook? Drives the once-per-frame `pre`-feedback advance
+    /// (a boundary node is always work; an empty sink list is not).
+    fn has_work(&self) -> bool {
+        match self {
+            CookTarget::Sinks { sinks, .. } => !sinks.is_empty(),
+            CookTarget::Boundary(_) => true,
+        }
+    }
 }
 
 impl Default for MotionCookPump {
@@ -251,6 +283,7 @@ impl MotionCookPump {
             dirty: true,
             last_error: None,
             ring: CheckpointRing::new(),
+            boundary_stream: None,
         }
     }
 
@@ -325,6 +358,32 @@ impl MotionCookPump {
         default_size: [f32; 2],
         scopes: &TimeScopes,
     ) -> bool {
+        self.pump_target_scoped(
+            graph,
+            ops,
+            &CookTarget::Sinks {
+                sinks,
+                default_uv_rect,
+                default_size,
+            },
+            tick,
+            playhead,
+            scopes,
+        )
+    }
+
+    /// The forward cook for either target (sinks-lower or boundary-stream) — the
+    /// one place the dirty gate, the ring record and the `pre`-feedback advance
+    /// live, so both callers march identically.
+    fn pump_target_scoped(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        target: &CookTarget,
+        tick: u64,
+        playhead: f64,
+        scopes: &TimeScopes,
+    ) -> bool {
         if !self.dirty && self.last_cooked_tick == Some(tick) {
             return false; // paused + unchanged → reuse the buffer, no heap traffic
         }
@@ -335,16 +394,8 @@ impl MotionCookPump {
         if self.last_cooked_tick != Some(tick) {
             self.ring.record(tick, self.cook.checkpoint());
         }
-        self.cook_sinks_into(
-            graph,
-            ops,
-            sinks,
-            playhead,
-            default_uv_rect,
-            default_size,
-            scopes,
-        );
-        if !sinks.is_empty() {
+        self.cook_target_into(graph, ops, target, playhead, scopes);
+        if target.has_work() {
             // Advance the 1-tick `pre` feedback once per cooked frame — ONCE for
             // the whole graph, not per sink (each sink's `pre` sources are
             // snapshotted by the same call).
@@ -355,40 +406,61 @@ impl MotionCookPump {
         true
     }
 
-    /// Cook every sink into `instances` at `playhead` (clears + refills the
-    /// buffer, keeping capacity). Shared by the forward [`Self::pump_scoped`] and
-    /// the backwards [`Self::scrub_to_scoped`] so both take the IDENTICAL cook
+    /// Cook one target at `playhead`: either every sink lowered into `instances`
+    /// (clears + refills, keeping capacity) or one node's stream into
+    /// `boundary_stream`. Shared by the forward [`Self::pump_target_scoped`] and
+    /// the backwards [`Self::scrub_target_scoped`] so both take the IDENTICAL cook
     /// path — a "fast preview" scrub that diverged from playback is the classic
     /// determinism trap (the state-of-the-art survey's warning).
-    #[allow(clippy::too_many_arguments)]
-    fn cook_sinks_into(
+    fn cook_target_into(
         &mut self,
         graph: &Graph,
         ops: &dyn OpResolver,
-        sinks: &[NodeId],
+        target: &CookTarget,
         playhead: f64,
-        default_uv_rect: [f32; 4],
-        default_size: [f32; 2],
         scopes: &TimeScopes,
     ) {
-        self.instances.clear();
         self.last_error = None;
-        for &sink in sinks {
-            // A sink that fails to cook (an unknown type mid-edit, or a
-            // sequential node caught inside a remapped time scope) contributes
-            // nothing; the others still draw. The error is kept for the shell.
-            match self.cook.cook_scoped(graph, ops, sink, playhead, scopes) {
-                Ok(outputs) => {
-                    if let Some(v) = outputs.first() {
-                        lower_to_instances_onto(
-                            v.as_stream(),
-                            default_uv_rect,
-                            default_size,
-                            &mut self.instances,
-                        );
+        match *target {
+            CookTarget::Sinks {
+                sinks,
+                default_uv_rect,
+                default_size,
+            } => {
+                self.instances.clear();
+                for &sink in sinks {
+                    // A sink that fails to cook (an unknown type mid-edit, or a
+                    // sequential node caught inside a remapped time scope)
+                    // contributes nothing; the others still draw. The error is
+                    // kept for the shell.
+                    match self.cook.cook_scoped(graph, ops, sink, playhead, scopes) {
+                        Ok(outputs) => {
+                            if let Some(v) = outputs.first() {
+                                lower_to_instances_onto(
+                                    v.as_stream(),
+                                    default_uv_rect,
+                                    default_size,
+                                    &mut self.instances,
+                                );
+                            }
+                        }
+                        Err(e) => self.last_error = Some(e),
                     }
                 }
-                Err(e) => self.last_error = Some(e),
+            }
+            CookTarget::Boundary(node) => {
+                // The CPU prefix's hand-off to the GPU (F1.2): cook the boundary
+                // node on the SAME canonical `Cook` (memo + `pre` feedback), then
+                // hold its output stream for the caller to upload. No lowering —
+                // that runs on the GPU. A cook failure leaves `boundary_stream`
+                // None so the caller falls back cleanly.
+                self.boundary_stream = None;
+                match self.cook.cook_scoped(graph, ops, node, playhead, scopes) {
+                    Ok(outputs) => {
+                        self.boundary_stream = outputs.first().map(|v| v.as_stream().clone());
+                    }
+                    Err(e) => self.last_error = Some(e),
+                }
             }
         }
     }
@@ -416,6 +488,31 @@ impl MotionCookPump {
         default_size: [f32; 2],
         scopes: &TimeScopes,
     ) -> bool {
+        self.scrub_target_scoped(
+            graph,
+            ops,
+            &CookTarget::Sinks {
+                sinks,
+                default_uv_rect,
+                default_size,
+            },
+            target_tick,
+            playhead_of,
+            scopes,
+        )
+    }
+
+    /// The backwards re-sim for either target — restores the newest checkpoint
+    /// ≤ target and re-cooks forward, the same GGPO path for sinks and boundary.
+    fn scrub_target_scoped(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        target: &CookTarget,
+        target_tick: u64,
+        playhead_of: impl Fn(u64) -> f64,
+        scopes: &TimeScopes,
+    ) -> bool {
         let (anchor, cp) = self.ring.anchor_at_or_before(target_tick);
         self.cook.restore(&cp);
         let mut t = anchor;
@@ -427,16 +524,8 @@ impl MotionCookPump {
             if self.ring.should_record(t) {
                 self.ring.record(t, self.cook.checkpoint());
             }
-            self.cook_sinks_into(
-                graph,
-                ops,
-                sinks,
-                playhead,
-                default_uv_rect,
-                default_size,
-                scopes,
-            );
-            if sinks.is_empty() {
+            self.cook_target_into(graph, ops, target, playhead, scopes);
+            if !target.has_work() {
                 break;
             }
             // Advance the `pre` feedback exactly as the forward pump does — so
@@ -474,33 +563,75 @@ impl MotionCookPump {
         default_size: [f32; 2],
         scopes: &TimeScopes,
     ) -> bool {
+        self.advance_or_scrub_target_scoped(
+            graph,
+            ops,
+            &CookTarget::Sinks {
+                sinks,
+                default_uv_rect,
+                default_size,
+            },
+            tick,
+            playhead_of,
+            scopes,
+        )
+    }
+
+    /// Render `tick` into `boundary_stream` (NOT `instances`): cook the CPU
+    /// prefix up to `node` on the persistent pump — marching every owed tick, so
+    /// a sequential prefix node (`integrate`/`emitter`) sims correctly and a
+    /// scrub is bit-exact — then leave the node's output stream in
+    /// [`Self::boundary_stream`] for the GPU sequencer to upload (GPU/M5 F1.2,
+    /// the hybrid CPU-prefix / GPU-suffix cook). The forward/scrub decision, the
+    /// ring and the `pre` feedback are the SAME as the sink pump; only the
+    /// consume step differs (stream vs lowered instances).
+    #[allow(clippy::too_many_arguments)]
+    pub fn advance_or_scrub_to_node_scoped(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        node: NodeId,
+        tick: u64,
+        playhead_of: impl Fn(u64) -> f64,
+        scopes: &TimeScopes,
+    ) -> bool {
+        self.advance_or_scrub_target_scoped(
+            graph,
+            ops,
+            &CookTarget::Boundary(node),
+            tick,
+            playhead_of,
+            scopes,
+        )
+    }
+
+    /// The output stream of the last [`Self::advance_or_scrub_to_node_scoped`]
+    /// cook — the boundary hand-off the GPU sequencer uploads. `None` before the
+    /// first boundary cook (or if that cook failed).
+    #[must_use]
+    pub fn boundary_stream(&self) -> Option<&Stream> {
+        self.boundary_stream.as_ref()
+    }
+
+    /// The shared forward/scrub dispatch for either target.
+    fn advance_or_scrub_target_scoped(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        target: &CookTarget,
+        tick: u64,
+        playhead_of: impl Fn(u64) -> f64,
+        scopes: &TimeScopes,
+    ) -> bool {
         let forward = match self.last_cooked_tick {
             None => tick == 0,
             Some(last) => tick == last || tick == last + 1,
         };
         if forward {
             let playhead = playhead_of(tick);
-            self.pump_scoped(
-                graph,
-                ops,
-                sinks,
-                tick,
-                playhead,
-                default_uv_rect,
-                default_size,
-                scopes,
-            )
+            self.pump_target_scoped(graph, ops, target, tick, playhead, scopes)
         } else {
-            self.scrub_to_scoped(
-                graph,
-                ops,
-                sinks,
-                tick,
-                playhead_of,
-                default_uv_rect,
-                default_size,
-                scopes,
-            )
+            self.scrub_target_scoped(graph, ops, target, tick, playhead_of, scopes)
         }
     }
 

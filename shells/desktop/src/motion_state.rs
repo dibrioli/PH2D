@@ -105,15 +105,15 @@ impl MotionState {
         ph2d_node_registry_init::register_all_nodes(&mut registry)
             .expect("motion node registry builds");
         let mut doc = MotionDoc::new();
-        // GPU/M5 Fase 1 ready-to-smoke document: a 512×512 (262k-instance)
-        // grid→oscillator→move→output chain — every node has a kernel, so with
-        // `PH2D_GPU_COOK=1` it cooks 100% on the GPU. Opt-in; the regular boot
-        // document is untouched.
-        let gpu_demo = std::env::var("PH2D_GPU_COOK_DEMO").is_ok_and(|v| v == "1");
-        let sinks = if gpu_demo {
-            build_gpu_demo_document(&mut doc, &registry).unwrap_or_default()
-        } else {
-            build_default_document(&mut doc, &registry).unwrap_or_default()
+        // GPU/M5 ready-to-smoke documents (opt-in; the regular boot document is
+        // untouched): `PH2D_GPU_COOK_DEMO=1` = the F1.1 512×512 (262k) chain that
+        // is 100% GPU under `PH2D_GPU_COOK=1`; `=2` = the F1.2 HYBRID chain whose
+        // first node (an oscillator on the uncovered Rotation channel) has no
+        // kernel, so the CPU cooks the prefix and the GPU runs the suffix.
+        let sinks = match std::env::var("PH2D_GPU_COOK_DEMO").as_deref() {
+            Ok("1") => build_gpu_demo_document(&mut doc, &registry).unwrap_or_default(),
+            Ok("2") => build_gpu_hybrid_demo_document(&mut doc, &registry).unwrap_or_default(),
+            _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {
             doc,
@@ -268,6 +268,51 @@ fn build_gpu_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Ve
     g.connect(Edge { from: (grid, 0), to: (osc, 0), delayed: false }).ok()?;
     g.connect(Edge { from: (osc, 0), to: (mv, 0), delayed: false }).ok()?;
     g.connect(Edge { from: (mv, 0), to: (out, 0), delayed: false }).ok()?;
+    g.validate(reg).ok()?;
+    Some(vec![out])
+}
+
+/// The GPU/M5 **F1.2 hybrid** ready-to-smoke document (`PH2D_GPU_COOK_DEMO=2`):
+/// `grid(360×360) → oscillator(Rotation) → oscillator(Y) → scale → output`.
+///
+/// The FIRST oscillator targets the **Rotation** channel, which the oscillator
+/// kernel does not cover (`applicable` = X/Y only) — so the plan puts the CPU
+/// boundary there: the CPU pump cooks `grid → oscillator(Rotation)` (a travelling
+/// spin wave in the `rot` column), its stream crosses to the GPU ONCE, and the
+/// GPU runs `oscillator(Y) → scale → output` (a travelling height wave + a size
+/// pulse) plus the lowering — zero readback. So the field waves in Y AND the
+/// quads spin, the two halves computed on opposite sides of the CPU↔GPU seam.
+/// 129.600 instances. Auto-plays on tool entry like every boot document.
+fn build_gpu_hybrid_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
+    use ph2d_nodegraph::graph::{Edge, Pos};
+    let g = &mut doc.graph;
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 360.0);
+    g.set_param(grid, "cols", 360.0);
+    g.set_param(grid, "gap_x", 1.0);
+    g.set_param(grid, "gap_y", 1.0);
+    // CPU boundary: Rotation is outside the kernel's X/Y coverage.
+    let spin = g.add_node("motion.oscillator");
+    g.set_param(spin, "channel", 2.0); // Rotation — no kernel → the boundary
+    g.set_param(spin, "amplitude", 45.0); // degrees
+    g.set_param(spin, "frequency", 0.5);
+    g.set_param(spin, "phase_stagger", 0.004);
+    // GPU suffix: a Y wave, then a size pulse.
+    let wave = g.add_node("motion.oscillator");
+    g.set_param(wave, "channel", 1.0); // Y — kernel-covered
+    g.set_param(wave, "amplitude", 5.0);
+    g.set_param(wave, "frequency", 0.5);
+    g.set_param(wave, "phase_stagger", 0.003);
+    let scale = g.add_node("motion.scale");
+    g.set_param(scale, "amount", 1.6);
+    let out = g.add_node("motion.output");
+    for (i, n) in [grid, spin, wave, scale, out].into_iter().enumerate() {
+        g.set_pos(n, Pos { x: 80.0 + i as f32 * 180.0, y: 120.0 });
+    }
+    g.connect(Edge { from: (grid, 0), to: (spin, 0), delayed: false }).ok()?;
+    g.connect(Edge { from: (spin, 0), to: (wave, 0), delayed: false }).ok()?;
+    g.connect(Edge { from: (wave, 0), to: (scale, 0), delayed: false }).ok()?;
+    g.connect(Edge { from: (scale, 0), to: (out, 0), delayed: false }).ok()?;
     g.validate(reg).ok()?;
     Some(vec![out])
 }

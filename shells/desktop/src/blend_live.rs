@@ -35,19 +35,14 @@ use crate::vec_entities::VecEntityMap;
 #[path = "blend_live_edit.rs"]
 mod edit;
 pub(crate) use edit::{
-    drag_blend_moves_sources, drag_spine_anchors_move_sources, pick_preview, reset_spine,
-    selected_closed_in_z, set_selected_steps,
+    drag_spine_anchors_move_sources, pick_preview, reset_spine, selected_closed_in_z,
+    set_selected_steps,
 };
 
 /// A memória do spine AUTOMÁTICO que a shell escreveu por último, por blend. É como a shell
 /// detecta que o artista editou a curva (modo Node): se o spine ATUAL difere do último auto, a
 /// mão mexeu → o blend vira `spine_authored`. Runtime-only (o flag em si viaja no componente).
 pub(crate) type BlendSpines = BTreeMap<VecPathId, Vec<VecVertex>>;
-
-/// A última translação do gizmo já aplicada às fontes, por blend. O gizmo escreve a translação
-/// TOTAL do gesto no `Transform` do blend; guardamos a última consumida para aplicar só o
-/// INCREMENTO a cada frame (`drag_blend_moves_sources`). Runtime-only.
-pub(crate) type BlendDrag = BTreeMap<VecPathId, [f64; 2]>;
 
 /// Translada TODOS os pontos de um path (âncora + as duas alças) por `off`. É como um passo é
 /// movido do seu lugar do lerp para o lugar dele no spine.

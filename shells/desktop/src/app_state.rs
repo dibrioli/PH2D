@@ -711,9 +711,6 @@ pub(crate) struct App {
     /// O spine AUTOMÁTICO que o `blend_live::recook` escreveu por último, por blend — a memória que
     /// detecta a edição do spine (modo Node) para marcar `spine_authored` (ADR-0122). Runtime-only.
     pub(crate) vec_blend_spines: crate::blend_live::BlendSpines,
-    /// A última translação do gizmo já aplicada às fontes de cada blend — o arrasto do SPINE (o
-    /// objeto blend) move todas as fontes juntas ("como filhas", ADR-0122). Runtime-only.
-    pub(crate) vec_blend_drag: crate::blend_live::BlendDrag,
     /// **Pick Shapes** (ADR-0122 C2b): as formas fechadas que o artista clicou **na ordem**, no
     /// modo `DrawMode::PickBlend`. O botão Blend as liga nessa sequência (em vez da ordem de z), e a
     /// prévia do spine as costura no canvas. Esvaziado ao criar o blend ou ao sair do modo.

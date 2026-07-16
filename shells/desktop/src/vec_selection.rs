@@ -8,7 +8,7 @@
 //! A ponte de identidade (path ⟺ entidade) é o módulo irmão [`crate::vec_entities`].
 
 use crate::vec_entities::{VecEntityMap, subtree_paths};
-use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, VecBlend, VecPathRef};
 use ph2d_editor::screens::hero::GizmoStateGroup;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -78,16 +78,27 @@ pub(crate) fn sync_selection(
     // 1. O canvas mandou.
     let pen_now = pen.selected_paths().to_vec();
     if vector_active && pen_now != state.paths {
-        let mut bits: Vec<u64> = pen_now
-            .iter()
-            .filter_map(|id| map.get(id).copied())
-            .collect();
+        // O gizmo de um **blend spine** mira as FONTES dele (ADR-0122): arrastar a linha move as
+        // formas juntas, "como filhas". É a única forma de o gizmo não fazer drift — as fontes têm
+        // geometria FIXA (só o `Transform` delas se move), enquanto o spine tem geometria que segue
+        // as fontes, e um gizmo sobre ela dobraria (Transform + bbox que já andou). O PEN mantém o
+        // spine (o painel e o modo Node dependem dele) — só o gizmo é redirecionado.
+        let mut bits: Vec<u64> = Vec::new();
+        for id in &pen_now {
+            let Some(&b) = map.get(id) else { continue };
+            match w.get::<VecBlend>(Entity::from_bits(b)) {
+                Some(blend) => {
+                    bits.extend(blend.sources.iter().filter_map(|s| map.get(s).copied()))
+                }
+                None => bits.push(b),
+            }
+        }
         for ancestor in fully_selected_ancestors(sim, scene, map, &bits) {
             if !bits.contains(&ancestor) {
                 bits.push(ancestor);
             }
         }
-        let primary = pen_now.last().and_then(|id| map.get(id).copied());
+        let primary = bits.last().copied();
         gizmo.replace_selection(primary);
         for b in &bits {
             if Some(*b) != primary {
@@ -95,6 +106,7 @@ pub(crate) fn sync_selection(
             }
         }
         bits.sort_unstable();
+        bits.dedup();
         state.bits = bits;
         state.paths = pen_now;
         return;
@@ -250,6 +262,55 @@ mod tests {
             None,
             "desselecionar na árvore chega no canvas"
         );
+    }
+
+    /// **O gizmo de um blend spine mira as FONTES** (ADR-0122): selecionar a linha do blend e
+    /// arrastá-la move as formas juntas, "como filhas". Tem de ser as fontes — um gizmo sobre o
+    /// spine faria DRIFT (a bbox dele segue as fontes que se movem, e o gizmo somaria a isso). O pen
+    /// mantém o spine (o painel de Blend e o modo Node dependem dele).
+    #[test]
+    fn the_gizmo_of_a_blend_spine_targets_its_sources() {
+        let (mut sim, mut scene, mut map) = setup();
+        let a = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+        let b = scene.push_path(rectangle([4.0, 0.0], [5.0, 1.0]));
+        sync(&mut sim, &mut scene, &mut map);
+        // O spine (geometria irrelevante ao teste) + o componente VecBlend sobre as duas formas.
+        let spine = scene.push_path(rectangle([0.0, 0.0], [5.0, 0.1]));
+        sync(&mut sim, &mut scene, &mut map);
+        let se = Entity::from_bits(map[&spine]);
+        sim.world_mut()
+            .get_entity_mut(se)
+            .expect("spine entity")
+            .insert(VecBlend::new(vec![a, b], 3));
+
+        let mut gizmo = GizmoStateGroup::default();
+        let mut pen = ph2d_vec_edit::PenTool::default();
+        let mut state = VecSelSync::default();
+
+        pen.select_many(&[spine]);
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+
+        // O gizmo mira as FONTES (a, b), não o spine.
+        let mut got: Vec<u64> = gizmo.iter_selected().collect();
+        got.sort_unstable();
+        let mut want = vec![map[&a], map[&b]];
+        want.sort_unstable();
+        assert_eq!(got, want, "o gizmo mira as fontes do blend");
+        assert!(
+            !got.contains(&map[&spine]),
+            "e NÃO o spine (ele faria drift)"
+        );
+        // O pen mantém o spine — o painel e o modo Node dependem dele.
+        assert_eq!(pen.selected_paths(), [spine], "o pen mantém o spine");
+
+        // Frames seguintes sem input: a seleção fica estável (nem o pen nem o gizmo se reescrevem).
+        for _ in 0..3 {
+            sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+        }
+        assert_eq!(pen.selected_paths(), [spine], "o pen segue no spine");
+        let mut got2: Vec<u64> = gizmo.iter_selected().collect();
+        got2.sort_unstable();
+        assert_eq!(got2, want, "o gizmo segue nas fontes");
     }
 
     /// A árvore manda quando é o subconjunto VETORIAL do gizmo que muda: clicar a

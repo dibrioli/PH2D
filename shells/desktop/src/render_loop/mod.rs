@@ -3095,19 +3095,11 @@ impl crate::App {
                 &vec_xf,
                 &mut self.vec_connect_sides,
             );
-            // **Select: arrastar o SPINE (o objeto blend) move TODAS as fontes juntas** (ADR-0122,
-            // ajuste do Enio: "as formas seguem a linha como filhas"). O gizmo escreveu a translação
-            // no `Transform` do blend; aqui ela é consumida nas fontes e o blend volta à identidade.
-            // Roda ANTES do recook para os passos já saírem do lugar novo (o `vec_xf` é refeito).
-            if crate::blend_live::drag_blend_moves_sources(
-                sim,
-                vec_scene,
-                &self.vec_entities,
-                &mut self.vec_blend_drag,
-                dragging_entity.is_some(),
-            ) {
-                vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
-            }
+            // **Select: arrastar o objeto blend move as fontes** — o gizmo mira as FONTES (não o
+            // spine), então ele as move NATIVAMENTE como grupo (`vec_selection::sync_selection`
+            // redireciona a seleção do gizmo). O spine as segue no `recook`. Nada a fazer aqui: um
+            // gizmo sobre o spine dobraria (Transform + bbox que já andou); sobre as fontes não, a
+            // geometria delas é fixa e só o `Transform` se move.
             // **Modo Node: arrastar uma ÂNCORA do spine move a forma-fonte dela** (ADR-0122 C2b) —
             // o inverso da pinagem. Roda ANTES do recook: move a fonte para a âncora arrastada e o
             // recook então re-encosta a âncora no centro (agora coincidentes, sem salto). Como a

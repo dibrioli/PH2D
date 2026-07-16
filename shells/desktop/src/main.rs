@@ -344,7 +344,6 @@ impl App {
             vec_blend_pending: None,
             vec_blend_overlay: Vec::new(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),
-            vec_blend_drag: crate::blend_live::BlendDrag::new(),
             vec_blend_picks: Vec::new(),
             vec_label_pending: None,
             vec_label_poses: crate::label_live::LabelPoses::new(),

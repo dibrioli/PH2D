@@ -19,9 +19,17 @@
 //! ambience and music.
 //!
 //! Staged unconditionally (it is just audio), but the **AI Denoise (Voice)** button only exists in
-//! a build made with `--features audio-ml` — so the smoke is run as
-//! `cargo run --features audio-ml` with the env var set. Without the feature the clip still
-//! stages, and the W5 (spectral) Denoise is there to compare against.
+//! a build made with `--features audio-ml`. Without the feature the clip still stages, and the W5
+//! (spectral) Denoise is there to compare against.
+//!
+//! **Run it with `--release`, and that is not a preference.** Measured on this machine, the model
+//! runs at 0.03× real-time in release (a 4 s clip in 0.16 s — instant) and **16× slower in debug**
+//! (the same clip takes 2.7 s). A debug build makes the button feel broken and invites a bug report
+//! about a wait that the product does not have:
+//!
+//! ```text
+//! PH2D_AUDIO_ML_SMOKE=1 cargo run --release -p ph2d-host-desktop --features audio-ml
+//! ```
 
 use ph2d_audio::{AudioFormat, ChannelLayout, SampleData};
 
@@ -94,7 +102,9 @@ impl AudioSystem {
                    bin favours the signal. That is the +1.9 dB (vs the AI's +12.8) as a picture.\n  \
              note: the two do NOT overlap. The AI model is speech-trained -- it deletes whatever is\n  \
                    not a voice (0% of a game SFX survives), so the W5 stays as the denoise for SFX,\n  \
-                   ambience and music. The AI button exists ONLY with --features audio-ml."
+                   ambience and music. The AI button exists ONLY with --features audio-ml.\n  \
+             speed: RELEASE builds run the model at 0.03x real-time (this clip: ~0.16 s). A DEBUG\n  \
+                   build is ~16x slower (~2.7 s) and makes the button feel broken -- use --release."
         );
     }
 }

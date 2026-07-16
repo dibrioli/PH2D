@@ -18,11 +18,12 @@
 
 | commit | wave | o quê | smoke |
 |---|---|---|---|
+| `017b8f00` | **§4.A fix** | a **ÁREA** do gizmo agarra a seleção · **ponto único não abre gizmo** — 2 achados do smoke | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `b793b47c` | **BUGS #18** | a **COSTURA** do traço fechado agora é clicável (pick/marquee/hover) — achado do smoke do §4.A | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `1b51f59b` | **§4.A** | o **gizmo da SELEÇÃO** no modo Edit (rotate/escala assado nos pontos de arte exclusiva) | **PENDENTE — rode `PH2D_FLIP_XFORM_SMOKE=1`** |
 
 Tudo abaixo do `1b51f59b` já tinha smoke OK (ver 15b): W8 (domínio Point), W7.5 (gizmo
-da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 21 commits.
+da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 23 commits.
 
 **O achado do 1º smoke do §4.A (Enio):** *"uma linha do triângulo e uma linha do quadrado
 não são sensíveis à seleção"* — a **aresta de fechamento**. `positions().windows(2)` não
@@ -33,6 +34,30 @@ render) + 3 gates / 2 mutações provadas. Saga completa: [`Flip/BUGS_flip.md`](
 **Por que só o §4.A expôs:** o `hits` testa fill OU tinta, e o fill pega o interior inteiro
 — toda forma fechada dos fixtures anteriores era **preenchida**, e a cena do §4.A é a
 primeira com forma fechada **sem fill**.
+
+**Os outros 2 achados do mesmo smoke (`017b8f00`)** — e os dois são a MESMA pergunta mal
+respondida, *"onde a seleção é agarrável?"*:
+1. *"qualquer clique na área do gizmo"* — errar a tinta **dentro** da caixa abria marquee
+   (que ainda LIMPAVA a seleção). Agora é um `Move` do grupo. O interior **não** entra no
+   hit-index (tornaria `on_canvas` falso sobre a seleção inteira e mataria a re-seleção ali
+   dentro): quem responde é o **down do canvas do Edit**, que já roda lá. **Tinta primeiro**
+   (clicar noutro traço dentro da caixa ainda o seleciona); **Shift** preserva o marquee
+   aditivo — a saída de dentro da caixa.
+2. *"um ponto único: os handles ficam sobre o ponto e não dá pra movê-lo"* — a caixa de um
+   ponto tem meia-extensão `(0,0)`. **Sem EXTENSÃO, sem gizmo** (não se rotaciona nem se
+   escalona um ponto): só o realce do W8, e o arrasto dele é o gesto de sempre. O limiar é o
+   **zero exato**, não um épsilon.
+
+A porta única é a **`grabbable_selection_box`** (`flip_selection_gizmo.rs`): a
+`selection_view` a **desenha** e o `plan_down`/`plan_down_points` a tornam **arrastável**.
+Duas funções divergiriam — e o artista veria uma caixa que não pega. **Se você mexer no
+gizmo da seleção, é essa função que decide tudo.**
+
+**Split pelo cap de LOC** (HR-18, nunca allowlist): o **pick de TRAÇO** saiu para o módulo
+irmão **`flip_select_pick.rs`** (`MIN_PICK_PX`/`stroke_at`/`hits`/`seg_dist2` — o gêmeo do
+`flip_select_points`, que faz o pick de PONTO), com o `flip_select` **re-exportando** o
+`stroke_at` (uma porta só). `flip_select.rs` 611→534; os 2 gates de área foram para
+`flip_selection_gizmo_tests.rs`, e `flip_select_tests.rs` 648→571.
 
 **Schema:** INTACTO — `FLIP_SCHEMA_VERSION` **7**, `PROJECT_SCHEMA` **15**, pin `(15, 7, 8)`.
 O §4.A **não bumpou nada** (o `FlipSelectionDrag` é estado de runtime no `App`, não é
@@ -132,7 +157,7 @@ O par render/input inverso e o funil pose-free do move (em `flip_transform`/`fli
   serializado muda, sem bump). É a **porta única** de "quais são os segmentos deste traço?".
   Se outra linha tiver adicionado um consumidor que itere `positions().windows(2)` sobre um
   traço que pode ser `closed`, ele tem o bug **#18** e deve passar por `segments()`.
-- **Shell:** `flip_selection_gizmo.rs`/`_tests`/`_smoke.rs` novos; `main.rs` (2 `mod` + 1 init
+- **Shell:** `flip_selection_gizmo.rs`/`_tests`/`_smoke.rs` + **`flip_select_pick.rs`** (split do cap de LOC) novos; `main.rs` (2 `mod` + 1 init
   de campo), `app_state.rs` (campo `flip_selection_drag`), `input_dispatch.rs` (down/move/up,
   espelho dos 3 sítios do pose gizmo), `render_loop/mod.rs` (publica `selection_view`; o gate
   Flip+Edit foi extraído p/ `flip_edit_mode` e reusado pelas duas views).

@@ -15,6 +15,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -53,6 +54,40 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
 fn eff_factor(amount: f32, falloff: f32) -> f32 {
     1.0 + (amount - 1.0) * falloff
 }
+
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): `size' = size · (1 + (amount −
+/// 1)·falloff)`, the exact per-element map of the CPU `eval` in the same
+/// mul/add order (parity within FMA ε; with `falloff` absent it is bit-exact —
+/// no transcendentals). No `applicable`: a plain multiply covers the whole
+/// param space. `ReadWrite` on `size` mirrors the CPU: a stream without a
+/// `size` column starts each instance from the `SIZE_IDENTITY` (`[1, 1]`) the
+/// lowering itself falls back to — the identity that makes `amount = 1` a true
+/// render no-op — and the column is always written.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let sc_factor = 1.0 + (params.amount - 1.0) * read_falloff(i);\n\
+        let sc_s = read_size(i);\n\
+        write_size(i, vec2<f32>(sc_s.x * sc_factor, sc_s.y * sc_factor));\n",
+    wgsl_lib: "",
+    bindings: &[
+        ColumnBinding {
+            column: "size",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            // SIZE_IDENTITY = [1, 1]; only the first `dim` (Vec2) lanes are read.
+            identity: [1.0; 4],
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+        },
+    ],
+    params: &["amount"],
+    source_count: None,
+    applicable: None,
+};
 
 struct MotionScale;
 
@@ -107,6 +142,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

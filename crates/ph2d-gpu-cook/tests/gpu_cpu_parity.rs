@@ -35,6 +35,10 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_oscillator::register(&mut reg).unwrap();
     ph2d_node_motion_move::register(&mut reg).unwrap();
     ph2d_node_motion_output::register(&mut reg).unwrap();
+    // GPU/M5 Fase 2 deformers.
+    ph2d_node_motion_transform::register(&mut reg).unwrap();
+    ph2d_node_motion_rotate::register(&mut reg).unwrap();
+    ph2d_node_motion_scale::register(&mut reg).unwrap();
     reg
 }
 
@@ -228,6 +232,125 @@ fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
     assert_eq!(n as usize, cpu.len());
     let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
     assert_parity(&cpu, &gpu_out);
+}
+
+// ── Fase 2: one parity test per ported deformer ───────────────────────────
+//
+// Each is the SMALLEST fully-GPU chain that exercises the node — `grid →
+// <deformer> → output` — cooked on both paths and compared within ε. Params
+// are non-default and non-round ([[feedback_test_with_product_numbers_not_convenient_ones]])
+// so a unit slip (deg↔rad, a swapped operand) can't hide behind a tidy number,
+// and `assert_gpu_parity` PROVES the plan dispatches before it compares — a
+// silent CPU fallback would compare CPU to CPU and stay green with the kernel
+// dead ([[feedback_an_optimization_needs_a_gate_that_proves_it_fires]]).
+//
+// The grid emits no `falloff`, so these run with the column ABSENT — the common
+// case, and the one the kernel's `read_falloff` identity (1.0 = full effect)
+// must match ([[feedback_a_gate_only_proves_what_its_fixture_contains]]); the
+// naga gate covers the present/absent WGSL variants exhaustively.
+
+/// Build `grid → <ty> → output` at `rows²` instances (≥ `PAR_THRESHOLD` at 160).
+/// Returns the deformer node (for param overrides) and the output sink.
+fn deformer_chain(g: &mut Graph, rows: f32, ty: &str) -> (NodeId, NodeId) {
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", rows);
+    g.set_param(grid, "cols", rows);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let node = g.add_node(ty);
+    let out = g.add_node("motion.output");
+    for (a, b) in [(grid, node), (node, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    (node, out)
+}
+
+/// Cook `g→out` on the canonical CPU path and the GPU sequencer and assert
+/// ε-parity, after asserting the plan claims the whole chain and dispatches
+/// exactly `expected_stages` compute passes (grid + the deformer; `output` is
+/// pass-through and dispatches nothing).
+fn assert_gpu_parity(
+    gpu: &GpuContext,
+    reg: &NodeRegistry,
+    g: &Graph,
+    out: NodeId,
+    expected_stages: usize,
+) {
+    g.validate(reg).expect("well-typed");
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook, g, reg, out, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE, &mut cpu,
+    )
+    .expect("cpu cook");
+
+    let plan = ph2d_gpu_cook::plan(g, reg, reg, out);
+    assert!(plan.is_fully_gpu(), "the chain must be claimed whole");
+    assert_eq!(
+        plan.dispatching_stages(reg),
+        expected_stages,
+        "the optimization must actually dispatch"
+    );
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    let n = gc
+        .cook(gpu, g, reg, reg, &plan, None, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE)
+        .expect("gpu cook");
+    assert_eq!(n as usize, cpu.len());
+    let gpu_out = ph2d_gpu_cook::read_instances(gpu, gc.instances().expect("cooked"));
+    assert_parity(&cpu, &gpu_out);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn transform_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 160.0, "motion.transform");
+    // Spread the layout about the origin (scale ≠ 1) and offset it — non-round.
+    g.set_param(node, "scale", 1.37);
+    g.set_param(node, "offset_x", 2.9);
+    g.set_param(node, "offset_y", -1.4);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn rotate_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 160.0, "motion.rotate");
+    // Degrees → the lowering turns `rot` into the sin/cos basis; a non-round,
+    // non-90° angle catches a deg↔rad slip or a swapped basis lane.
+    g.set_param(node, "angle", 27.3);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn scale_kernel_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 160.0, "motion.scale");
+    // Grows each sprite's `size` (materialized from SIZE_IDENTITY, grid emits none).
+    g.set_param(node, "amount", 1.85);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
 }
 
 /// Perf probe, not a gate (mirrors Fase 0's `cook_500k_timing`): the F1.1

@@ -17,6 +17,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -50,6 +51,36 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
         _ => 1.0,
     }
 }
+
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): `rot' = rot + angle·falloff`,
+/// the exact per-element map of the CPU `eval` (transcendental-free — the sin/cos
+/// of `rot` is the lowering's job, at the render edge, in degrees→radians). No
+/// `applicable`: a plain scalar accumulate covers the whole param space.
+/// `ReadWrite` on `rot` mirrors the CPU: a stream without a `rot` column starts
+/// each instance from the `0.0` identity and the column is always written (the
+/// CPU builds `vec![0.0; n]` and `out.set("rot", …)` unconditionally).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        write_rot(i, read_rot(i) + params.angle * read_falloff(i));\n",
+    wgsl_lib: "",
+    bindings: &[
+        ColumnBinding {
+            column: "rot",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+        },
+    ],
+    params: &["angle"],
+    source_count: None,
+    applicable: None,
+};
 
 struct MotionRotate;
 
@@ -99,6 +130,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

@@ -481,6 +481,11 @@ mod tests {
     }
 }
 
+/// Os gates da largura ZERO (o slider chega a 0 = sem traço) — arquivo irmão.
+#[cfg(test)]
+#[path = "stroke_zero_tests.rs"]
+mod stroke_zero_tests;
+
 #[cfg(test)]
 mod open_contour_tests {
     use super::*;

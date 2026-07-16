@@ -62,7 +62,22 @@ pub fn both_ends_label(on: bool) -> &'static str {
 
 /// Minimum / maximum stroke width in screen pixels (inclusive range the Width
 /// slider spans).
-pub const WIDTH_MIN_PX: f64 = 1.0;
+/// **ZERO é alcançável, e significa SEM TRAÇO** (Enio, 2026-07-16).
+///
+/// Era `1.0`, e o slider batia numa parede: arrastar até o fim deixava uma linha de 1px que o
+/// artista não pediu. `0` = sem traço é o Illustrator (stroke weight 0), e é o que o olho espera
+/// de um slider que chega ao fim.
+///
+/// **O renderer já honra isso sem uma linha de código**: o Vello não encoda um traço de largura 0
+/// (medido — `stroke_zero_tests`), então o `0` some de verdade em vez de virar hairline. Esse gate
+/// não é cerimônia: sem ele, um `max(width, 0.5)` posto lá dentro um dia faria este `0` mentir, em
+/// silêncio, e o slider prometeria uma coisa e entregaria outra.
+///
+/// Consequência assumida: há **duas** portas para "sem traço" — este zero e a swatch None. Elas não
+/// divergem no que a TELA mostra (as duas não desenham nada); divergem no que o documento guarda
+/// (`StrokeSpec{width:0}` preserva a COR, `None` a esquece). É o que faz o zero ser reversível:
+/// arrastar de volta devolve o traço que estava lá.
+pub const WIDTH_MIN_PX: f64 = 0.0;
 pub const WIDTH_MAX_PX: f64 = 20.0;
 
 /// Affine slider mapping `display_px = track * SCALE + OFFSET` (track `0..=1`),

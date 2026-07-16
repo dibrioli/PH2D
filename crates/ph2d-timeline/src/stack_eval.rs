@@ -123,10 +123,18 @@ impl StackScratch {
                     continue; // muting REMOVES the lane; it is not a zero weight
                 }
                 for (si, strip) in lane.strips.iter().enumerate() {
+                    // **O que decide se um strip está ATIVO é COBRIR o tempo, não pesar mais que
+                    // zero.** O peso é DADO — a resposta da lane —, não um filtro.
+                    //
+                    // Descartar o peso zero aqui apagava a diferença entre "esta lane não keya o
+                    // canal" (silêncio) e "ela keya, e neste instante não influi" (o primeiro
+                    // instante de um fade-in). O avaliador lia as duas como silêncio, ninguém
+                    // escrevia, e o objeto segurava a pose do frame anterior: o mesmo `t` dava
+                    // poses diferentes conforme o lado de onde o playhead chegava.
+                    //
+                    // Custo: no máximo um punhado de strips de peso zero na lista, e só nas beiras
+                    // exatas de um fade (o clamp da soma garante que o peso só zera nos extremos).
                     let w = lane.weight_at(si, t);
-                    if w <= 0.0 {
-                        continue;
-                    }
                     let (Some(t_clip), true) = (
                         strip.source_time(t),
                         (strip.clip as usize) < doc.clips().len(),
@@ -221,6 +229,11 @@ fn sample_stack_probed(
 
         // ── inside the lane: normalize (see the module docs) ──
         let (mut num, mut den) = (0.0_f64, 0.0_f64);
+        // **A lane pode FALAR deste canal e mesmo assim somar peso zero** — é o instante inicial
+        // de um fade, ou a beirada de um fade-out. Silêncio (a lane não keya este canal) e peso
+        // zero (ela keya, e agora não influi) NÃO são a mesma coisa, e confundi-los foi o bug:
+        // ver o `den <= 0` lá embaixo.
+        let mut speaks = false;
         for (i, a) in scratch.active.iter().enumerate() {
             if a.lane != li {
                 continue;
@@ -263,11 +276,29 @@ fn sample_stack_probed(
             } else {
                 v
             };
+            speaks = true; // há track para este canal — a lane TEM opinião, seja qual for o peso
             num += a.w * x;
             den += a.w;
         }
         if den <= 0.0 {
-            continue; // the lane is silent on this channel: it passes through
+            // **Peso zero NÃO é silêncio.** Se a lane keya este canal mas os strips vivos somam
+            // peso 0 (o primeiro instante de um fade-in, a última lasca de um fade-out), a
+            // resposta dela é "influência 0" — ou seja, a pose de REPOUSO —, e não "não sei".
+            //
+            // Confundir os dois quebrava o invariante mais básico da animação: **a pose tem de
+            // ser função do PLAYHEAD**. Lida como silêncio, ninguém escrevia, e o objeto segurava
+            // o valor que o frame anterior tinha deixado — então o mesmo `t` dava poses
+            // diferentes conforme o lado de onde você chegava nele (Enio, smoke: dois strips
+            // encostados davam x=-3 vindo da esquerda e x=+3 vindo da direita, no mesmo t=3.0).
+            //
+            // `influence = 0` faz `acc` passar intacto em qualquer um dos três modos
+            // (`lerp(acc, _, 0)` · `acc + _*0` · `acc * lerp(1, _, 0)`), então basta marcar que
+            // esta lane se pronunciou: o `acc` que sai é o de repouso (ou o das lanes de baixo).
+            //
+            // Silêncio de verdade — a lane não keya este canal (esparsidade, R2) — continua
+            // passando batido: é o que deixa o pose do artista em paz num canal que ninguém anima.
+            touched |= speaks;
+            continue;
         }
 
         // ── across lanes: coverage becomes influence ──

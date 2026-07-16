@@ -131,3 +131,40 @@ fn the_fade_grip_is_as_grabbable_as_the_trim_grip() {
         );
     }
 }
+
+/// **O nome do strip nunca pode ser da cor do corpo do strip.**
+///
+/// O corpo é pintado com `TimelineKey`, que é um token de PRIMEIRO PLANO: ele vale exatamente o
+/// mesmo que `Text1` em TODOS os temas (forge: os dois `oklch(0.940 …)`; sunstone: os dois
+/// `oklch(0.220 …)`). Escrever o rótulo em `Text1` era escrever branco no branco — o nome só
+/// aparecia onde a cunha do fade escurecia o fundo (Enio, smoke).
+///
+/// O gate compara os tokens RESOLVIDOS, em todos os temas: é a pergunta de verdade ("dá para
+/// ler?"), e não "o código cita o token X" — que ficaria verde se alguém trocasse `Text1` por
+/// outro apelido do mesmo valor.
+#[test]
+fn the_strip_name_is_never_the_colour_of_the_strip_body() {
+    use ph2d_editor_core::paint::resolve;
+    use ph2d_tokens::{ColorToken, Theme};
+
+    for theme in [
+        Theme::Forge,
+        Theme::Workshop,
+        Theme::Sunstone,
+        Theme::Blueprint,
+    ] {
+        let body = resolve(ColorToken::TimelineKey, theme).components;
+        let name = resolve(ColorToken::Accent, theme).components; // o que `paint_strip` usa
+        assert_ne!(
+            body, name,
+            "{theme:?}: o nome do strip tem a cor do corpo do strip — invisível"
+        );
+        // …e a armadilha nomeada: `Text1` É o corpo. Se um dia deixar de ser, este par cai e
+        // alguém relê a decisão em vez de herdá-la.
+        let text1 = resolve(ColorToken::Text1, theme).components;
+        assert_eq!(
+            body, text1,
+            "{theme:?}: `TimelineKey` deixou de ser igual a `Text1` — reveja a cor do rótulo"
+        );
+    }
+}

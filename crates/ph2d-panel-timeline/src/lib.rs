@@ -38,6 +38,7 @@ mod stack_ease_grip;
 mod stack_lane_paint;
 pub mod state;
 mod strip_drag;
+mod strip_paint;
 mod summary;
 mod summary_paint;
 mod tracks;

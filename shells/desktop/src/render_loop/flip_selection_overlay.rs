@@ -46,8 +46,35 @@ const HALO_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay
 const POINT_DOT_PX: f64 = 3.0; // LITERAL-PX-OK: chrome de overlay, raio de tela
 /// Raio do ponto NÃO-selecionado (menor: presença, não destaque).
 const POINT_DIM_PX: f64 = 2.0; // LITERAL-PX-OK: chrome de overlay, raio de tela
-/// Cor do ponto não-selecionado — visível sobre a arte sem competir com o acento.
-const POINT_DIM_RGBA: [f32; 4] = [0.85, 0.87, 0.95, 0.85]; // LITERAL-COLOR-OK: overlay de selecao
+
+/// O ponto não-selecionado sobre linha CLARA: quase-preto (chrome, não arte).
+const POINT_DIM_DARK: [f32; 4] = [0.06, 0.07, 0.10, 0.9]; // LITERAL-COLOR-OK: overlay de selecao
+/// O ponto não-selecionado sobre linha ESCURA: quase-branco.
+const POINT_DIM_LIGHT: [f32; 4] = [0.92, 0.93, 0.97, 0.9]; // LITERAL-COLOR-OK: overlay de selecao
+
+/// O limiar de luminância em que o contraste WCAG contra o branco e contra o preto
+/// EMPATA (`(1.05)/(Y+0.05) == (Y+0.05)/0.05` ⇒ `Y ≈ 0.179`). Acima dele, o escuro
+/// contrasta mais; abaixo, o claro. É a fronteira canônica do "texto preto ou branco?",
+/// e o mesmo raciocínio vale para um ponto sobre a linha.
+const CONTRAST_FLIP_Y: f32 = 0.179; // LITERAL-COLOR-OK: limiar WCAG, nao cor de design
+
+/// Luminância relativa (Rec.709/WCAG) de uma cor LINEAR — que é como o Flip guarda as
+/// cores de ponto (`srgb8_to_linear` na autoria). Polinomial (HR-5).
+fn relative_luminance(c: ph2d_flip::Rgba) -> f32 {
+    0.2126 * c.0[0] + 0.7152 * c.0[1] + 0.0722 * c.0[2]
+}
+
+/// **A cor do ponto NÃO-selecionado, CONTRASTANDO com a linha** (smoke do Enio,
+/// 2026-07-15: *"em linhas muito claras não são visíveis"*): escuro sobre linha clara,
+/// claro sobre linha escura. Recomputada por frame a partir da cor VIVA do ponto —
+/// recolorir o traço (painel, per-point) muda o ponto junto, por construção.
+fn dim_dot_rgba(line: ph2d_flip::Rgba) -> [f32; 4] {
+    if relative_luminance(line) > CONTRAST_FLIP_Y {
+        POINT_DIM_DARK
+    } else {
+        POINT_DIM_LIGHT
+    }
+}
 
 /// Desenha o contorno de realce sobre cada traço selecionado do desenho VISÍVEL.
 ///
@@ -103,16 +130,19 @@ pub(super) fn draw_flip_selection(
     // selecionadas. Sem halo de traço: com um ponto aceso o `any()` acenderia o traço
     // inteiro e o realce mentiria sobre O QUE está selecionado.
     if point_domain {
-        let dim = Color::new(POINT_DIM_RGBA);
         let hot = Color::new(HALO_RGBA);
         for s in &drawing.strokes {
+            let colors = s.colors();
             for (i, p) in s.positions().iter().enumerate() {
                 let c = to_screen * Point::new(f64::from(p.x), f64::from(p.y));
                 let selected = s.point_selected(i);
+                // O ponto dim contrasta com a COR DO PONTO da linha (por ponto — o
+                // per-point color do Edit pode variar dentro do mesmo traço).
                 let (r, col) = if selected {
                     (POINT_DOT_PX, hot)
                 } else {
-                    (POINT_DIM_PX, dim)
+                    let line = colors.get(i).copied().unwrap_or(ph2d_flip::Rgba::WHITE);
+                    (POINT_DIM_PX, Color::new(dim_dot_rgba(line)))
                 };
                 vector_scene.inner_mut().fill(
                     ph2d_vector::Fill::NonZero,
@@ -279,6 +309,39 @@ mod tests {
             art_screen_affine(&l2w, ph2d_flip::Pose::IDENTITY, cam) * Point::new(7.0, 3.0);
         let plain = cam * Point::new(7.0, 3.0);
         assert!((neutral.x - plain.x).abs() < 1e-9 && (neutral.y - plain.y).abs() < 1e-9);
+    }
+
+    /// 🔴 **O ponto não-selecionado CONTRASTA com a cor da linha** (smoke do Enio,
+    /// 2026-07-15: dots brancos somem em linha clara): linha clara ⇒ ponto escuro;
+    /// linha escura ⇒ ponto claro. O limiar é a fronteira WCAG onde o contraste contra
+    /// branco e contra preto empata (Y ≈ 0.179) — e as BORDAS dele são gateadas dos
+    /// dois lados (`feedback_gate_the_edges_of_the_domain`).
+    ///
+    /// Mutação que sangra: devolver sempre o claro (o bug original), ou inverter o
+    /// limiar.
+    #[test]
+    fn the_dim_dot_contrasts_with_the_line_colour() {
+        use ph2d_flip::Rgba;
+        // Linha branca (o caso do smoke): o ponto tem de ser ESCURO.
+        assert_eq!(dim_dot_rgba(Rgba::new(1.0, 1.0, 1.0, 1.0)), POINT_DIM_DARK);
+        // Linha preta: claro.
+        assert_eq!(dim_dot_rgba(Rgba::new(0.0, 0.0, 0.0, 1.0)), POINT_DIM_LIGHT);
+        // Cor saturada ESCURA em luminância (vermelho puro: Y = 0.2126): logo acima do
+        // limiar ⇒ escuro; azul puro (Y = 0.0722): bem abaixo ⇒ claro. É o que pega a
+        // troca r/g/b por uma média ingênua.
+        assert_eq!(dim_dot_rgba(Rgba::new(1.0, 0.0, 0.0, 1.0)), POINT_DIM_DARK);
+        assert_eq!(dim_dot_rgba(Rgba::new(0.0, 0.0, 1.0, 1.0)), POINT_DIM_LIGHT);
+        // As BORDAS do limiar, dos dois lados (cinza linear Y == c).
+        let just_above = CONTRAST_FLIP_Y + 1e-4;
+        let just_below = CONTRAST_FLIP_Y - 1e-4;
+        assert_eq!(
+            dim_dot_rgba(Rgba::new(just_above, just_above, just_above, 1.0)),
+            POINT_DIM_DARK
+        );
+        assert_eq!(
+            dim_dot_rgba(Rgba::new(just_below, just_below, just_below, 1.0)),
+            POINT_DIM_LIGHT
+        );
     }
 
     /// **Um traço ABERTO não ganha o segmento de fechamento** — desenhá-lo mostraria uma

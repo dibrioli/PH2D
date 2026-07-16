@@ -34,7 +34,7 @@
 | `fd77f9c5` | **fix(impasto): a ÂNCORA do aro** — o aro nasce na borda do CORPO (`t0`, onde a silhueta cruza `W_TAIL`), não na circunferência do gizmo (`t=1`); porta única `rim_t0`→`rim_lift` pros 2 kernels + 2 chamadores; Constant byte-idêntico; **Conserve MOVEU (re-smoke)** — **smoke APROVOU o Smooth** |
 | `0ab83ff1` | docs: fechamento da âncora do aro |
 | `2e1806fb` | **fix(impasto): a MORDIDA é função do CAMINHO, não do espaçamento** — o smoke da âncora expôs a coria do Sphere (a âncora foi INOCENTADA por medição: mesma coria com o aro velho); `(g+p)·Δm` é um PRODUTO fase-dependente ⇒ piso ondulado no período do dab; share sobre a SOBRA telescopa exato ⇒ `g·m_final`. **⚠️ Push=1 agora limpa o canal** (antes removia ~63%, acidente do espaçamento; knob Push ≈0,63 devolve) — **pendente smoke** |
-| `2e1806fb`+ | docs: fechamento da mordida |
+| `051ac9fa` | docs: fechamento da mordida |
 | `57d9881e` | **feat(sculpt): W5b — o FILTRO DE CAMADA INTEIRA** — botão **Filter Layer**: o verbo selecionado aplicado na camada toda, na Strength do pincel, honrando a Selection, 1 undo. **Sem kernel novo** (o mesmo `render_sculpt`, `amount` uniforme). Recusa os verbos de PLANO (alvo ajustado à PEGADA); **Relax cortado** (colapsa em Smooth num campo de altura). Fecha a W5 — **pendente smoke** |
 | `493665c2` | test(probe): cenas 7/8 do filtro |
 | (este) | docs: fechamento da W5b |
@@ -80,6 +80,15 @@
 - **Pós-W5:** tool lib **691/0** · seam_sculpt **11/0** · `cargo test --workspace` **verde** (2ª rodada;
   a 1ª pegou o estouro de LOC do inflate.rs e virou o split) · Scrape desarmado **3,19 ms/move** (como
   era) · armado ≈ 4,3 (kill 8).
+- **Pós-W5b (2026-07-16, o fechamento desta jornada):** brush **255/0** · tool lib **702/0** ·
+  `ph2d-panel-painter-layers` **13/0** no `seam_sculpt` (2 novos que CLICAM o Filter Layer) ·
+  **`cargo check --workspace` e `cargo test --workspace` verdes** (o split de `height_modes.rs` mexe num
+  re-export público — o workspace é quem prova que ninguém lá fora consumia o caminho antigo) · clippy
+  `--all-targets` nas 4 crates **0** · **todos os `architecture_*` da `editor-core` verdes**, incluindo o
+  **LOC cap** — que pegou 2 arquivos que os commits da âncora/mordida haviam estourado sem eu ver (ele
+  mora na `editor-core` e NÃO roda com `cargo test -p ph2d-painter-brush`): splits
+  `height_push_tests.rs` + `height_modes.rs`. **Mutações da rodada: 5/5** (filters_layer→true · amount=1
+  ignora a Strength · fill ignora a Selection · sem commit_structural_edit · id fora do populate).
 - **Pós-D:** tool lib **692/0** · shell **570 verdes / 0 FAILED** (o LOC cap pegou o arquivo de gates
   em 818 e virou o split) · gate GPU real na RTX **verde**
   (`cargo test -p ph2d-host-desktop the_screen_survives -- --ignored`) · clippy 0 · workspace verde ·

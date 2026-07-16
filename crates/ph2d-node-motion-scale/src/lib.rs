@@ -76,12 +76,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             access: ColumnAccess::ReadWrite,
             // SIZE_IDENTITY = [1, 1]; only the first `dim` (Vec2) lanes are read.
             identity: [1.0; 4],
+            port: 0,
         },
         ColumnBinding {
             column: "falloff",
             dim: Dim::Scalar,
             access: ColumnAccess::Read,
             identity: [1.0; 4],
+            port: 0,
         },
     ],
     params: &["amount"],

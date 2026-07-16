@@ -53,11 +53,11 @@ pub fn lower_module(present: [bool; 5]) -> String {
     // Reader per column: buffer when present, else the SAME default the CPU
     // lowering applies (`scalar_at`/`vec2_at`/`vec4_at` fallbacks).
     let defaults = [
-        "vec2<f32>(0.0, 0.0)",       // P
-        "params.default_size",       // size (caller-supplied, like the CPU)
-        "0.0",                       // rot
+        "vec2<f32>(0.0, 0.0)",           // P
+        "params.default_size",           // size (caller-supplied, like the CPU)
+        "0.0",                           // rot
         "vec4<f32>(1.0, 1.0, 1.0, 1.0)", // tint
-        "params.default_uv",         // uv_rect (caller-supplied)
+        "params.default_uv",             // uv_rect (caller-supplied)
     ];
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
         if present[i] {

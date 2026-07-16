@@ -10,17 +10,42 @@
 //! Contract seen by a kernel body (documented on [`GpuKernel`]):
 //! - `i` — the element index (one invocation per element, `0..params.count`);
 //! - `params.count`, `params.playhead`, `params.<name>` per declared param;
-//! - `read_<col>(i)` — the input column's value, or the binding's declared
-//!   identity when the input stream lacks the column (generated as a constant
+//! - `read_<col>(i)` — the bound port's column value, or the binding's declared
+//!   identity when that stream lacks the column (generated as a constant
 //!   function, the same absent-column fallback the CPU nodes apply);
+//! - `HAS_<col>` — a `bool` const: was the column actually there, or is
+//!   `read_<col>` handing back the identity? (The CPU nodes that *branch* on
+//!   absence rather than substituting need this; see [`GpuKernel`].)
 //! - `write_<col>(i, v)` — writes the node's output column; a no-op (and no
 //!   buffer) for an absent [`ColumnAccess::ReadWriteExisting`] column.
+//!
+//! On a **multi-input** node every reader is qualified by port name
+//! (`read_rest_P`, `HAS_forces_vel`) — see [`accessor_suffix`].
 
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::port::Dim;
 
 /// One invocation per element; must match the generated `@workgroup_size`.
 pub const WORKGROUP_SIZE: u32 = 256;
+
+/// The identifier suffix a binding's `read_*` / `HAS_*` symbols carry.
+///
+/// Single-input (and generator) kernels keep the bare column name — the input
+/// is unambiguous, and every Fase 1/2 kernel body is written against it. A node
+/// with **several** input ports qualifies by port name, because the same column
+/// can be bound on two ports (`motion.integrate` reads `vel` from both `rest`
+/// and `forces`) and a bare `read_vel` would silently resolve to whichever came
+/// first. Writers are never qualified: a node has one output.
+pub fn accessor_suffix(port_names: &[&str], b: &ColumnBinding) -> String {
+    match port_names.len() > 1 {
+        true => format!(
+            "{}_{}",
+            port_names.get(b.port).copied().unwrap_or("in"),
+            b.column
+        ),
+        false => b.column.to_string(),
+    }
+}
 
 /// The WGSL scalar/vector type of a column element.
 pub fn wgsl_type(dim: Dim) -> &'static str {
@@ -77,7 +102,7 @@ pub enum BindingPlan {
 
 /// The per-binding plan for a kernel against a concrete input column set:
 /// `(read plan, write plan)` in `kernel.bindings` order. `present` answers
-/// "does the input stream carry this column?".
+/// "does the binding's port carry this column?".
 pub fn plan_bindings(
     kernel: &GpuKernel,
     mut present: impl FnMut(&ColumnBinding) -> bool,
@@ -86,14 +111,18 @@ pub fn plan_bindings(
         .bindings
         .iter()
         .map(|b| {
-            let here = present(b);
+            let here = b.access.reads() && present(b);
             let read = b.access.reads().then_some(if here {
                 BindingPlan::ReadBuffer
             } else {
                 BindingPlan::ReadIdentity
             });
             let write = match (b.access, here) {
-                (ColumnAccess::Read, _) => None,
+                (ColumnAccess::Read | ColumnAccess::Consume, _) => None,
+                // A refusal is not an access: it binds nothing on either side —
+                // by the time a plan reaches codegen the node was accepted, so
+                // the refused column is provably absent anyway.
+                (ColumnAccess::RefuseIfPresent, _) => None,
                 (ColumnAccess::ReadWriteExisting, false) => Some(BindingPlan::WriteDropped),
                 _ => Some(BindingPlan::WriteBuffer),
             };
@@ -117,11 +146,16 @@ pub fn presence_signature(kernel: &GpuKernel, present: impl FnMut(&ColumnBinding
 }
 
 /// Generate the full compute module for `kernel` against a concrete input
-/// column set. `params` must be `kernel.params` (passed for the uniform
-/// struct); binding indices are: `0` = uniforms, then one slot per
-/// `ReadBuffer`, then one per `WriteBuffer`, in `kernel.bindings` order —
-/// the sequencer builds the bind group by replaying [`plan_bindings`].
-pub fn kernel_module(kernel: &GpuKernel, present: impl FnMut(&ColumnBinding) -> bool) -> String {
+/// column set. `port_names` are the node manifest's input port names (they name
+/// the readers of a multi-input kernel — [`accessor_suffix`]); binding indices
+/// are: `0` = uniforms, then one slot per `ReadBuffer`, then one per
+/// `WriteBuffer`, in `kernel.bindings` order — the sequencer builds the bind
+/// group by replaying [`plan_bindings`].
+pub fn kernel_module(
+    kernel: &GpuKernel,
+    port_names: &[&str],
+    present: impl FnMut(&ColumnBinding) -> bool,
+) -> String {
     let plans = plan_bindings(kernel, present);
     let mut src = String::with_capacity(1024);
 
@@ -140,7 +174,7 @@ pub fn kernel_module(kernel: &GpuKernel, present: impl FnMut(&ColumnBinding) -> 
         if matches!(read, Some(BindingPlan::ReadBuffer)) {
             src.push_str(&format!(
                 "@group(0) @binding({slot}) var<storage, read> in_{}: array<{}>;\n",
-                b.column,
+                accessor_suffix(port_names, b),
                 wgsl_type(b.dim)
             ));
             slot += 1;
@@ -158,17 +192,19 @@ pub fn kernel_module(kernel: &GpuKernel, present: impl FnMut(&ColumnBinding) -> 
     }
     src.push('\n');
 
-    // read_/write_ helpers — the body's whole view of the stream.
+    // read_/write_ helpers + the HAS_ presence consts — the body's whole view
+    // of the stream.
     for (b, (read, write)) in kernel.bindings.iter().zip(&plans) {
         let ty = wgsl_type(b.dim);
+        let c = accessor_suffix(port_names, b);
         match read {
             Some(BindingPlan::ReadBuffer) => src.push_str(&format!(
-                "fn read_{c}(i: u32) -> {ty} {{ return in_{c}[i]; }}\n",
-                c = b.column
+                "const HAS_{c}: bool = true;\n\
+                 fn read_{c}(i: u32) -> {ty} {{ return in_{c}[i]; }}\n"
             )),
             Some(BindingPlan::ReadIdentity) => src.push_str(&format!(
-                "fn read_{c}(i: u32) -> {ty} {{ _ = i; return {id}; }}\n",
-                c = b.column,
+                "const HAS_{c}: bool = false;\n\
+                 fn read_{c}(i: u32) -> {ty} {{ _ = i; return {id}; }}\n",
                 id = identity_literal(b.dim, b.identity)
             )),
             _ => {}
@@ -213,12 +249,14 @@ mod tests {
                 dim: Dim::Vec2,
                 access: ColumnAccess::ReadWriteExisting,
                 identity: [0.0; 4],
+                port: 0,
             },
             ColumnBinding {
                 column: "falloff",
                 dim: Dim::Scalar,
                 access: ColumnAccess::Read,
                 identity: [1.0; 4],
+                port: 0,
             },
         ],
         params: &["dx"],
@@ -226,11 +264,52 @@ mod tests {
         applicable: None,
     };
 
+    /// A two-input kernel shaped like `motion.integrate`: the same column
+    /// (`vel`) bound on both ports, a consumed transient, and a refusal.
+    const SIM: GpuKernel = GpuKernel {
+        wgsl: "write_vel(i, read_rest_vel(i) + read_forces_vel(i) + read_forces_accel(i));\n",
+        wgsl_lib: "",
+        bindings: &[
+            ColumnBinding {
+                column: "vel",
+                dim: Dim::Vec2,
+                access: ColumnAccess::Read,
+                identity: [0.0; 4],
+                port: 0,
+            },
+            ColumnBinding {
+                column: "vel",
+                dim: Dim::Vec2,
+                access: ColumnAccess::ReadWrite,
+                identity: [0.0; 4],
+                port: 1,
+            },
+            ColumnBinding {
+                column: "accel",
+                dim: Dim::Vec2,
+                access: ColumnAccess::Consume,
+                identity: [0.0; 4],
+                port: 1,
+            },
+            ColumnBinding {
+                column: "id",
+                dim: Dim::Scalar,
+                access: ColumnAccess::RefuseIfPresent,
+                identity: [0.0; 4],
+                port: 0,
+            },
+        ],
+        params: &[],
+        source_count: None,
+        applicable: None,
+    };
+    const SIM_PORTS: &[&str] = &["rest", "forces"];
+
     #[test]
     fn present_columns_bind_buffers_absent_read_becomes_identity() {
         // P present, falloff absent → P reads+writes buffers; falloff reads
         // its identity constant (1.0) with no binding.
-        let src = kernel_module(&K, |b| b.column == "P");
+        let src = kernel_module(&K, &["in"], |b| b.column == "P");
         assert!(src.contains("var<storage, read> in_P"));
         assert!(src.contains("var<storage, read_write> out_P"));
         assert!(!src.contains("in_falloff"));
@@ -242,7 +321,7 @@ mod tests {
     fn absent_read_write_existing_drops_the_write() {
         // Nothing present → P's write is a no-op (the CPU pass-through), and
         // NO storage binding exists at all.
-        let src = kernel_module(&K, |_| false);
+        let src = kernel_module(&K, &["in"], |_| false);
         assert!(!src.contains("var<storage"));
         assert!(src.contains("fn write_P(i: u32, v: vec2<f32>) { _ = i; _ = v; }"));
     }
@@ -255,5 +334,63 @@ mod tests {
         assert_ne!(all, none);
         assert_ne!(all, p_only);
         assert_ne!(p_only, none);
+    }
+
+    #[test]
+    fn the_has_const_tells_presence_apart_from_an_identity_read() {
+        // The whole point: `read_falloff` answers 1.0 either way, so a body
+        // that must BRANCH on absence (integrate's seed) has no other signal.
+        let present = kernel_module(&K, &["in"], |_| true);
+        assert!(present.contains("const HAS_falloff: bool = true;"));
+        let absent = kernel_module(&K, &["in"], |_| false);
+        assert!(absent.contains("const HAS_falloff: bool = false;"));
+    }
+
+    #[test]
+    fn a_multi_input_kernel_names_every_reader_by_its_port() {
+        // `vel` is bound on BOTH ports: unqualified readers would collide, and
+        // whichever won would be a plausible wrong answer.
+        let src = kernel_module(&SIM, SIM_PORTS, |_| true);
+        assert!(src.contains("fn read_rest_vel(i: u32) -> vec2<f32> { return in_rest_vel[i]; }"));
+        assert!(
+            src.contains("fn read_forces_vel(i: u32) -> vec2<f32> { return in_forces_vel[i]; }")
+        );
+        assert!(src.contains("const HAS_rest_vel: bool = true;"));
+        assert!(src.contains("const HAS_forces_vel: bool = true;"));
+        // Two distinct read buffers, and no bare `read_vel` to grab by mistake.
+        assert!(src.contains("var<storage, read> in_rest_vel"));
+        assert!(src.contains("var<storage, read> in_forces_vel"));
+        assert!(!src.contains("fn read_vel("));
+        // One output → the writer stays unqualified.
+        assert!(src.contains("fn write_vel(i: u32, v: vec2<f32>) { out_vel[i] = v; }"));
+        assert!(src.contains("var<storage, read_write> out_vel"));
+    }
+
+    #[test]
+    fn a_consumed_column_is_read_but_never_written() {
+        let src = kernel_module(&SIM, SIM_PORTS, |_| true);
+        assert!(src.contains("fn read_forces_accel(i: u32) -> vec2<f32>"));
+        // No output buffer, no writer: the sequencer drops it from the output
+        // stream instead (`GpuStream` threading), which is what "transient" means.
+        assert!(!src.contains("out_accel"));
+        assert!(!src.contains("fn write_accel("));
+    }
+
+    #[test]
+    fn a_refusal_generates_nothing_at_all() {
+        // It answers eligibility at plan time; by codegen the column is
+        // provably absent, so a binding for it would be dead weight in every
+        // pipeline.
+        let src = kernel_module(&SIM, SIM_PORTS, |_| true);
+        // (Not a bare `contains("id")` — the entry point takes `global_invocation_id`.)
+        assert!(!src.contains("in_rest_id"), "no read buffer");
+        assert!(!src.contains("fn read_rest_id("), "no accessor");
+        assert!(!src.contains("HAS_rest_id"), "no presence const");
+        assert!(!src.contains("out_id"), "no write buffer");
+        // And it never moves the signature (which keys the pipeline cache).
+        assert_eq!(
+            presence_signature(&SIM, |b| b.column != "id"),
+            presence_signature(&SIM, |_| true)
+        );
     }
 }

@@ -38,25 +38,29 @@ pub(super) enum GpuRoute {
 /// - GPU is opt-in (`gpu_enabled`, `PH2D_GPU_COOK=1`) and only for a **single**
 ///   sink with **no time scopes** — multi-sink and `motion.time_remap` recuse to
 ///   the CPU whole (F1.1's scope; F2+ territory).
-/// - Fully-GPU when the plan claims the whole chain (`boundary` is `None`).
-/// - Hybrid when the plan leaves a CPU boundary **and** the GPU suffix has at
-///   least one dispatching stage — a boundary whose only GPU stage is the
+/// - Fully-GPU when the plan claims the whole chain (no boundaries).
+/// - Hybrid when the plan leaves **one** CPU boundary **and** the GPU suffix has
+///   at least one dispatching stage — a boundary whose only GPU stage is the
 ///   pass-through `output` would upload the sink stream just to lower it (no
 ///   compute win), so that recuses to the CPU.
+/// - Several boundaries recuse: the motor plans a DAG with N seams (ADR-0123
+///   D2), but the pump hands over ONE cooked node per tick — marching it twice
+///   would advance its clock twice. The N-seam shell is a later slice; until
+///   then the CPU, which needs no seam at all, owns those documents.
 pub(super) fn gpu_route(
     gpu_enabled: bool,
     n_sinks: usize,
     scopes_empty: bool,
-    boundary: Option<NodeId>,
+    boundaries: &[(NodeId, usize)],
     dispatching_stages: usize,
 ) -> GpuRoute {
     if !gpu_enabled || n_sinks != 1 || !scopes_empty {
         return GpuRoute::Cpu;
     }
-    match boundary {
-        None => GpuRoute::FullyGpu,
-        Some(node) if dispatching_stages >= 1 => GpuRoute::Hybrid(node),
-        Some(_) => GpuRoute::Cpu,
+    match boundaries {
+        [] => GpuRoute::FullyGpu,
+        [(node, _)] if dispatching_stages >= 1 => GpuRoute::Hybrid(*node),
+        _ => GpuRoute::Cpu,
     }
 }
 
@@ -95,28 +99,41 @@ pub(super) fn cook_gpu(
         motion.gpu_enabled,
         motion.sinks.len(),
         scopes.is_empty(),
-        plan.boundary.map(|(node, _)| node),
+        &plan.boundaries,
         plan.dispatching_stages(&motion.registry),
     );
     match route {
         GpuRoute::Cpu => GpuOutcome::FellThrough,
         GpuRoute::FullyGpu => {
-            // Stateless by construction (no `pre` edge passes eligibility) → cook
-            // straight at the target tick's time; no checkpoint ring, no pump.
-            motion.gpu_live = motion
-                .gpu_cook
-                .cook(
-                    gpu,
-                    &motion.doc.graph,
-                    &motion.registry,
-                    &motion.registry,
-                    &plan,
-                    None,
-                    target as f64 * fixed_dt,
-                    motion.default_uv_rect,
-                    motion.default_size,
-                )
-                .is_ok();
+            // A stateless plan is `f(params, playhead)` — one cook at the target
+            // tick's time, as F1.1 always did. A plan that drives a `pre` loop
+            // (ADR-0123) is SEQUENTIAL: its trajectory is the sum of its steps,
+            // so it owes one cook per fixed tick, under the same law as the CPU
+            // pump (`ticks_owed`) and for the same reason — one big jump would
+            // make the motion depend on the frame rate.
+            let ticks: Vec<u64> = match plan.drives_a_loop() {
+                true => super::ticks_owed(motion.gpu_cook.last_cooked_tick(), target).collect(),
+                false => vec![target],
+            };
+            motion.gpu_live = ticks.iter().all(|&tick| {
+                motion
+                    .gpu_cook
+                    .cook(
+                        gpu,
+                        &motion.doc.graph,
+                        &motion.registry,
+                        &motion.registry,
+                        &plan,
+                        &[],
+                        ph2d_gpu_cook::CookClock {
+                            playhead: tick as f64 * fixed_dt,
+                            tick: plan.drives_a_loop().then_some(tick),
+                        },
+                        motion.default_uv_rect,
+                        motion.default_size,
+                    )
+                    .is_ok()
+            });
             // A cook that errored leaves `gpu_live` false → let the CPU pump draw.
             if motion.gpu_live {
                 GpuOutcome::Handled
@@ -148,8 +165,12 @@ pub(super) fn cook_gpu(
                         &motion.registry,
                         &motion.registry,
                         &plan,
-                        Some(stream),
-                        target as f64 * fixed_dt,
+                        &[(boundary, stream)],
+                        // A hybrid plan never drives a loop: a staged `pre`
+                        // source plus a boundary is refused whole at plan time
+                        // (it would be two sims of one state), so there is no
+                        // sequence to keep here.
+                        ph2d_gpu_cook::CookClock::at(target as f64 * fixed_dt),
                         motion.default_uv_rect,
                         motion.default_size,
                     )
@@ -178,26 +199,26 @@ mod tests {
     fn disabled_or_multi_sink_or_scoped_is_always_cpu() {
         // Every gate is independent: flip one and the GPU is refused even when a
         // fully-claimed plan is on offer.
-        assert_eq!(gpu_route(false, 1, true, None, 3), GpuRoute::Cpu);
-        assert_eq!(gpu_route(true, 2, true, None, 3), GpuRoute::Cpu);
-        assert_eq!(gpu_route(true, 0, true, None, 3), GpuRoute::Cpu);
-        assert_eq!(gpu_route(true, 1, false, None, 3), GpuRoute::Cpu);
+        assert_eq!(gpu_route(false, 1, true, &[], 3), GpuRoute::Cpu);
+        assert_eq!(gpu_route(true, 2, true, &[], 3), GpuRoute::Cpu);
+        assert_eq!(gpu_route(true, 0, true, &[], 3), GpuRoute::Cpu);
+        assert_eq!(gpu_route(true, 1, false, &[], 3), GpuRoute::Cpu);
     }
 
     #[test]
     fn fully_claimed_plan_runs_fully_on_the_gpu() {
-        assert_eq!(gpu_route(true, 1, true, None, 3), GpuRoute::FullyGpu);
+        assert_eq!(gpu_route(true, 1, true, &[], 3), GpuRoute::FullyGpu);
     }
 
     #[test]
     fn a_boundary_with_gpu_work_is_hybrid() {
         assert_eq!(
-            gpu_route(true, 1, true, Some(node()), 2),
+            gpu_route(true, 1, true, &[(node(), 0)], 2),
             GpuRoute::Hybrid(node())
         );
         // One dispatching stage is enough.
         assert_eq!(
-            gpu_route(true, 1, true, Some(node()), 1),
+            gpu_route(true, 1, true, &[(node(), 0)], 1),
             GpuRoute::Hybrid(node())
         );
     }
@@ -206,6 +227,6 @@ mod tests {
     fn a_boundary_with_no_dispatching_suffix_recuses_to_cpu() {
         // A lone pass-through `output` above the boundary is no compute win —
         // uploading the sink stream just to lower it — so it stays on the CPU.
-        assert_eq!(gpu_route(true, 1, true, Some(node()), 0), GpuRoute::Cpu);
+        assert_eq!(gpu_route(true, 1, true, &[(node(), 0)], 0), GpuRoute::Cpu);
     }
 }

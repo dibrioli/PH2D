@@ -16,6 +16,7 @@
 //!   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture
 
 use ph2d_gpu::GpuContext;
+use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
@@ -142,7 +143,14 @@ fn the_fully_gpu_chain_matches_the_cpu_within_epsilon() {
     let mut cook = Cook::new();
     let mut cpu = Vec::new();
     ph2d_eval_motion::evaluate_motion_into(
-        &mut cook, &g, &reg, out, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE, &mut cpu,
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
     )
     .expect("cpu cook");
     assert_eq!(cpu.len(), 160 * 160);
@@ -156,7 +164,15 @@ fn the_fully_gpu_chain_matches_the_cpu_within_epsilon() {
     let mut gc = ph2d_gpu_cook::GpuCook::new();
     let n = gc
         .cook(
-            &gpu, &g, &reg, &reg, &plan, None, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE,
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
         )
         .expect("gpu cook");
     assert_eq!(n, 160 * 160);
@@ -169,7 +185,15 @@ fn the_fully_gpu_chain_matches_the_cpu_within_epsilon() {
     // cross-VENDOR bit-equality is deliberately NOT asserted — ADR-0122).
     let n2 = gc
         .cook(
-            &gpu, &g, &reg, &reg, &plan, None, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE,
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
         )
         .expect("gpu cook 2");
     assert_eq!(n2, n);
@@ -201,12 +225,23 @@ fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
     let mut cook = Cook::new();
     let mut cpu = Vec::new();
     ph2d_eval_motion::evaluate_motion_into(
-        &mut cook, &g, &reg, out, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE, &mut cpu,
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
     )
     .expect("cpu cook");
 
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
-    assert_eq!(plan.boundary, Some((osc, 0)), "boundary at the uncovered node");
+    assert_eq!(
+        plan.boundaries,
+        vec![(osc, 0)],
+        "boundary at the uncovered node"
+    );
     assert_eq!(
         plan.stages.iter().map(|s| s.node).collect::<Vec<_>>(),
         vec![mv, out]
@@ -226,8 +261,8 @@ fn the_hybrid_boundary_chain_matches_the_cpu_within_epsilon() {
             &reg,
             &reg,
             &plan,
-            Some(&boundary),
-            PLAYHEAD,
+            &[(osc, &boundary)],
+            CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
         )
@@ -299,7 +334,14 @@ fn assert_gpu_parity(
     let mut cook = Cook::new();
     let mut cpu = Vec::new();
     ph2d_eval_motion::evaluate_motion_into(
-        &mut cook, g, reg, out, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE, &mut cpu,
+        &mut cook,
+        g,
+        reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
     )
     .expect("cpu cook");
 
@@ -312,7 +354,17 @@ fn assert_gpu_parity(
     );
     let mut gc = ph2d_gpu_cook::GpuCook::new();
     let n = gc
-        .cook(gpu, g, reg, reg, &plan, None, PLAYHEAD, DEFAULT_UV, DEFAULT_SIZE)
+        .cook(
+            gpu,
+            g,
+            reg,
+            reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
         .expect("gpu cook");
     assert_eq!(n as usize, cpu.len());
     let gpu_out = ph2d_gpu_cook::read_instances(gpu, gc.instances().expect("cooked"));
@@ -465,7 +517,17 @@ fn gpu_cook_millions_timing() {
     let mut gc = ph2d_gpu_cook::GpuCook::new();
     // Warm-up: compiles the pipelines + allocates the pool.
     let n = gc
-        .cook(&gpu, &g, &reg, &reg, &plan, None, 0.0, DEFAULT_UV, DEFAULT_SIZE)
+        .cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(0.0),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
         .unwrap();
     let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
     let frames = 100u32;
@@ -477,8 +539,8 @@ fn gpu_cook_millions_timing() {
             &reg,
             &reg,
             &plan,
-            None,
-            f64::from(f) / 60.0,
+            &[],
+            CookClock::at(f64::from(f) / 60.0),
             DEFAULT_UV,
             DEFAULT_SIZE,
         )

@@ -208,12 +208,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             dim: Dim::Vec2,
             access: ColumnAccess::ReadWrite,
             identity: [0.0; 4],
+            port: 0,
         },
         ColumnBinding {
             column: "falloff",
             dim: Dim::Scalar,
             access: ColumnAccess::Read,
             identity: [1.0; 4],
+            port: 0,
         },
     ],
     params: &[

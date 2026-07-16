@@ -59,7 +59,7 @@ fn an_uncovered_param_space_puts_the_boundary_at_that_node() {
     let (mut g, [_, osc, mv, out]) = chain(&reg);
     g.set_param(osc, "channel", 2.0);
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
-    assert_eq!(plan.boundary, Some((osc, 0)));
+    assert_eq!(plan.boundaries, vec![(osc, 0)]);
     let nodes: Vec<NodeId> = plan.stages.iter().map(|s| s.node).collect();
     assert_eq!(nodes, vec![mv, out]);
 }
@@ -73,8 +73,12 @@ fn a_driven_param_puts_the_boundary_at_the_driven_node() {
     let (mut g, [grid, _, mv, out]) = chain(&reg);
     g.drive_param(mv, "dx", (grid, 0)).unwrap();
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
-    assert_eq!(plan.boundary, Some((mv, 0)));
-    assert_eq!(plan.dispatching_stages(&reg), 0, "only the pass-through sink");
+    assert_eq!(plan.boundaries, vec![(mv, 0)]);
+    assert_eq!(
+        plan.dispatching_stages(&reg),
+        0,
+        "only the pass-through sink"
+    );
 }
 
 #[test]
@@ -85,9 +89,7 @@ fn a_node_without_a_kernel_breaks_the_suffix_exactly_there() {
     use ph2d_nodegraph::attr::Stream;
     use ph2d_nodegraph::cook::EvalCtx;
     use ph2d_nodegraph::effect::Effect;
-    use ph2d_nodegraph::node::{
-        LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec,
-    };
+    use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
     use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
     const T: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
     static NOKERNEL: NodeManifest = NodeManifest {
@@ -127,7 +129,7 @@ fn a_node_without_a_kernel_breaks_the_suffix_exactly_there() {
     }
     g.validate(&reg).expect("well-typed");
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
-    assert_eq!(plan.boundary, Some((alien, 0)), "the CPU cooks up to it");
+    assert_eq!(plan.boundaries, vec![(alien, 0)], "the CPU cooks up to it");
     let nodes: Vec<NodeId> = plan.stages.iter().map(|s| s.node).collect();
     assert_eq!(nodes, vec![mv, out], "the GPU runs the suffix below it");
 }

@@ -23,9 +23,9 @@ fn validate(label: &str, src: &str) {
         naga::valid::ValidationFlags::all(),
         naga::valid::Capabilities::all(),
     );
-    validator
-        .validate(&module)
-        .unwrap_or_else(|e| panic!("{label}: naga validation failed: {e:?}\n--- module ---\n{src}"));
+    validator.validate(&module).unwrap_or_else(|e| {
+        panic!("{label}: naga validation failed: {e:?}\n--- module ---\n{src}")
+    });
 }
 
 #[test]
@@ -51,9 +51,12 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
         if kernel.is_passthrough() {
             continue;
         }
+        // The readers of a multi-input kernel are named by port, exactly as the
+        // sequencer names them (`encode_kernel_stage`).
+        let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
         let n = kernel.bindings.len().min(16);
         for mask in 0u32..(1 << n) {
-            let src = ph2d_gpu_cook::codegen::kernel_module(kernel, |b| {
+            let src = ph2d_gpu_cook::codegen::kernel_module(kernel, &port_names, |b| {
                 let idx = kernel
                     .bindings
                     .iter()

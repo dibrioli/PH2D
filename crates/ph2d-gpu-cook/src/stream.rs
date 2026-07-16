@@ -95,12 +95,19 @@ impl BufferPool {
     /// Return every no-longer-referenced buffer to the free lists. Call after
     /// the frame's `GpuStream`s have been dropped (top of the next cook).
     pub fn reclaim(&mut self) {
-        for buf in self.handed_out.drain(..) {
+        for buf in std::mem::take(&mut self.handed_out) {
             if Arc::strong_count(&buf) == 1 {
                 self.free.entry(buf.size()).or_default().push(buf);
+            } else {
+                // Still referenced — a simulation's state, held across the tick
+                // by `GpuCook::prev` (ADR-0123 D1). Keep TRACKING it: dropping
+                // our `Arc` here would forget the buffer, and when the sim
+                // finally released it the allocation would be freed instead of
+                // pooled — i.e. the steady-state sim would allocate its whole
+                // state every frame, which is the one thing this pool exists to
+                // prevent.
+                self.handed_out.push(buf);
             }
-            // Still referenced (a stream kept alive across frames): the Arc
-            // drops here; the buffer simply isn't pooled this round.
         }
     }
 }

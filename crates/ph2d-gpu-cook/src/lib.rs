@@ -11,18 +11,30 @@
 //!
 //! ## The plan and the explicit CPU↔GPU boundary
 //!
-//! [`plan`] walks upstream from the sink and claims the longest **suffix** of
-//! the chain that can run on the GPU (kernel registered + applicable to the
-//! node's params + single forward input + no `pre` edge + no driven params).
-//! Whatever sits above that suffix is cooked by the ordinary CPU [`Cook`] —
-//! with ALL of its semantics (memo, `pre` feedback, time scopes, driven
-//! params) — and its output stream is uploaded ONCE at the seam
-//! ([`stream::upload_stream`]). The boundary is a plan-time fact the caller
-//! can see ([`GpuPlan::boundary`]), never a silent per-node copy: readback
-//! never happens on this path (the anti-pattern of
+//! [`plan`] walks upstream from the sink on **every** input port and claims the
+//! part of the chain that can run on the GPU (kernel registered + applicable to
+//! the node's params + no driven params + a derivable column shape). The result
+//! is a **DAG** in topological order where each input names its source
+//! ([`GpuSource`]) — ADR-0123 D2. Whatever it cannot claim is cooked by the
+//! ordinary CPU [`Cook`] — with ALL of its semantics (memo, `pre` feedback,
+//! time scopes, driven params) — and its output stream is uploaded ONCE at the
+//! seam ([`stream::upload_stream`]). The boundaries are a plan-time fact the
+//! caller can see ([`GpuPlan::boundaries`]), never a silent per-node copy:
+//! readback never happens on this path (the anti-pattern of
 //! [[project_painter_fluid_4k_perf_architecture]]).
 //!
-//! ## Determinism (ADR-0122 — do not reopen)
+//! ## Simulation: the state is a column, so `pre` is a refcount
+//!
+//! A `pre` (delayed) edge is a **stop**, not a refusal: that input reads last
+//! tick's output, which this engine already holds — a `GpuStream` is
+//! `Arc<wgpu::Buffer>` columns, and `motion.integrate` keeps its state in
+//! visible columns (`vel`/`sim_d`/`sim_t`), so "last tick's state" is literally
+//! last tick's buffers ([`GpuCook::prev`], ADR-0123 D1). No readback, no copy,
+//! no barrier. The loop must be claimed WHOLE, though: a CPU boundary inside it
+//! would make the pump re-cook the sim with its own `prev`, and two simulations
+//! of one state diverge — [`plan`] refuses that outright.
+//!
+//! ## Determinism (ADR-0122/0123 — do not reopen)
 //!
 //! The CPU `eval` is the CANONICAL path: the replay-hash, `cook_determinism`
 //! and `transform_determinism` all run on it, and anything that needs a
@@ -30,155 +42,29 @@
 //! reconciled against the CPU by ε-tolerance parity gates (float on a GPU is
 //! not bit-reproducible cross-vendor). Kernels port the HR-5 polynomial
 //! approximations (see `motion.oscillator`'s parabolic sine) so ε stays tiny.
+//!
+//! A **sequential** node changes what that means: `x_{n+1} = f(x_n)` feeds ε
+//! back, so after N ticks the GPU and the CPU are different animations, and
+//! that is not a bug (ADR-0123 D4). Hence a sim's parity gate asserts **one
+//! step** from a seeded state — never a trajectory with ε loosened until it
+//! passes.
 
 pub mod codegen;
 pub mod lower;
+pub mod plan;
 pub mod stream;
 
+pub use plan::{GpuPlan, GpuSource, GpuStage, plan};
 pub use stream::{BufferPool, GpuColumn, GpuStream};
 
+use crate::plan::resolve_param;
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::attr::Stream;
 use ph2d_nodegraph::cook::OpResolver;
 use ph2d_nodegraph::gpu::{GpuKernel, KernelResolver};
 use ph2d_nodegraph::graph::{Graph, NodeId};
-use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
-use std::collections::BTreeMap;
-
-/// One GPU stage of a plan: a node whose kernel runs as a compute pass
-/// (pass-through kernels are planned but dispatch nothing).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GpuStage {
-    pub node: NodeId,
-    pub ty: NodeTypeId,
-}
-
-/// The result of [`plan`]: the GPU-runnable suffix of a sink's chain.
-#[derive(Clone, Debug, Default)]
-pub struct GpuPlan {
-    /// `Some((node, out_port))` — the chain continues above the suffix on the
-    /// CPU: cook this node with the ordinary [`Cook`] and hand its output
-    /// stream to [`GpuCook::cook`]. `None` — the suffix reaches a generator
-    /// (or an unconnected input): the whole chain is GPU-resident.
-    pub boundary: Option<(NodeId, usize)>,
-    /// Stages in source→sink order (pass-throughs included; they emit no pass).
-    pub stages: Vec<GpuStage>,
-}
-
-impl GpuPlan {
-    /// `true` when the entire chain runs on the GPU (no CPU prefix).
-    pub fn is_fully_gpu(&self) -> bool {
-        self.boundary.is_none()
-    }
-
-    /// Number of stages that actually dispatch a compute pass (excludes
-    /// pass-throughs) — what a "the optimization FIRES" gate should assert.
-    pub fn dispatching_stages(&self, kernels: &dyn KernelResolver) -> usize {
-        self.stages
-            .iter()
-            .filter(|s| kernels.gpu_kernel(s.ty).is_some_and(|k| !k.is_passthrough()))
-            .count()
-    }
-}
-
-/// Why a node broke the GPU suffix — plan-time diagnostics (the editor can
-/// badge the boundary; the handoff's F1.2 wires that).
-fn eligible(
-    graph: &Graph,
-    ops: &dyn OpResolver,
-    kernels: &dyn KernelResolver,
-    node: NodeId,
-) -> bool {
-    let Some(inst) = graph.node(node) else {
-        return false;
-    };
-    let Some(op) = ops.resolve(inst.type_id()) else {
-        return false;
-    };
-    let manifest = op.manifest();
-    let Some(kernel) = kernels.gpu_kernel(inst.type_id()) else {
-        return false;
-    };
-    // A driven param is a live wire into another subtree — the CPU cook
-    // resolves those; a GPU stage has no lane for them (F1.2+).
-    if graph.param_sources(node).is_some_and(|s| !s.is_empty()) {
-        return false;
-    }
-    // Multi-input nodes (merge/lattice deform) are F2 territory.
-    if manifest.inputs.len() > 1 {
-        return false;
-    }
-    // A `pre` edge means sequential state over the outer tick — CPU-only here.
-    if manifest.inputs.len() == 1
-        && let Some((_, _, delayed)) = graph.input_edge(node, 0)
-        && delayed
-    {
-        return false;
-    }
-    // A generator must say how many elements it emits (dispatch is host-sized).
-    if manifest.inputs.is_empty() && kernel.source_count.is_none() && !kernel.is_passthrough() {
-        return false;
-    }
-    // Kernel params must be declared manifest params and must not shadow the
-    // built-in uniform fields the generated module owns.
-    if !kernel.params.iter().all(|p| {
-        *p != "count" && *p != "playhead" && manifest.param_default(p).is_some()
-    }) {
-        return false;
-    }
-    // Param-dependent coverage (e.g. the oscillator's X/Y-only kernel).
-    match kernel.applicable {
-        Some(f) => f(&|name| resolve_param(graph, node, manifest, name)),
-        None => true,
-    }
-}
-
-/// The node's live param value: per-instance override else manifest default —
-/// the same override>default resolution as `EvalCtx::param` (driven params
-/// were excluded by [`eligible`], so the wire tier cannot apply here).
-fn resolve_param(graph: &Graph, node: NodeId, manifest: &NodeManifest, name: &str) -> f32 {
-    graph
-        .node_param_overrides(node)
-        .and_then(|m| m.get(name).copied())
-        .or_else(|| manifest.param_default(name))
-        .unwrap_or(0.0)
-}
-
-/// Claim the longest GPU-runnable suffix of `sink`'s chain (see the crate
-/// docs). Pure and cheap — a walk of the chain, no GPU objects — so calling
-/// it every frame is fine; compiled pipelines are cached by [`GpuCook`].
-pub fn plan(
-    graph: &Graph,
-    ops: &dyn OpResolver,
-    kernels: &dyn KernelResolver,
-    sink: NodeId,
-) -> GpuPlan {
-    let mut stages: Vec<GpuStage> = Vec::new();
-    let mut cur = sink;
-    let mut cur_port = 0usize;
-    let boundary = loop {
-        if !eligible(graph, ops, kernels, cur) {
-            break Some((cur, cur_port));
-        }
-        let ty = graph.node(cur).expect("eligible checked").type_id();
-        stages.push(GpuStage { node: cur, ty });
-        let manifest = ops.resolve(ty).expect("eligible checked").manifest();
-        if manifest.inputs.is_empty() {
-            break None; // a generator roots the chain
-        }
-        match graph.input_edge(cur, 0) {
-            // Unconnected input = the empty stream (the CPU cook's value for
-            // it) — nothing above to run, the chain is fully resident.
-            None => break None,
-            Some((src, port, _forward)) => {
-                cur = src;
-                cur_port = port;
-            }
-        }
-    };
-    stages.reverse();
-    GpuPlan { boundary, stages }
-}
+use ph2d_nodegraph::node::NodeManifest;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// The GPU-resident instance output of a cook: a buffer laid out as
 /// `[RenderInstance; len]`, usable directly as the sprite renderer's instance
@@ -203,9 +89,34 @@ impl GpuInstances {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GpuCookError {
-    /// `plan.boundary` and the `boundary_stream` argument disagree — the
+    /// `plan.boundaries` and the `boundary_streams` argument disagree — the
     /// caller cooked (or skipped) the CPU prefix against a stale plan.
     BoundaryMismatch,
+}
+
+/// When a cook happens: the continuous `playhead` the kernels see, and the
+/// fixed `tick` it stands on.
+///
+/// They are not redundant. The playhead is what a kernel reads (and what a sim
+/// derives its own `dt` from — the state carries `sim_t`); the tick is the
+/// SEQUENCE number, which is how the caller knows whether it is continuing this
+/// sim or jumping. A stateless plan has no sequence to keep, hence `Option`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CookClock {
+    pub playhead: f64,
+    /// The fixed tick, for a plan that [`GpuPlan::drives_a_loop`]. `None` — a
+    /// stateless cook (`f(params, playhead)`, F1.1/Fase 2): nothing to sequence.
+    pub tick: Option<u64>,
+}
+
+impl CookClock {
+    /// A stateless cook at `playhead` — the F1.1/Fase 2 shape.
+    pub fn at(playhead: f64) -> Self {
+        Self {
+            playhead,
+            tick: None,
+        }
+    }
 }
 
 /// A compiled compute pipeline + the uniform buffer its dispatches write.
@@ -226,6 +137,21 @@ pub struct GpuCook {
     uniforms: Vec<wgpu::Buffer>,
     /// The persistent instance output (grow-only, like `InstanceBuffer`).
     instances: Option<GpuInstances>,
+    /// **Last tick's output** of each node that feeds a `pre` edge — the GPU
+    /// mirror of `Cook::prev_outputs`, populated at the end of every cook by
+    /// the same rule as `Cook::advance_tick_scoped` (ADR-0123 D1).
+    ///
+    /// This IS the simulation state, and holding it costs a refcount: a
+    /// `GpuStream` is `Arc<wgpu::Buffer>` columns, so "last tick's output" is
+    /// literally the buffers the last tick wrote, and [`BufferPool::reclaim`]
+    /// skips anything still referenced. No readback, no copy, no barrier —
+    /// the ping-pong falls out of the fact that state was always a column.
+    prev: BTreeMap<NodeId, GpuStream>,
+    /// The fixed tick [`Self::prev`] belongs to — the GPU sim's own clock,
+    /// mirroring `MotionCookPump::last_cooked_tick`. A sequential cook owes one
+    /// step per tick, so the caller needs to know which one it last took; a
+    /// stateless plan never reads this.
+    last_tick: Option<u64>,
 }
 
 /// Uniform slot size: count + playhead + up to 14 params, pow2-rounded.
@@ -242,13 +168,26 @@ impl GpuCook {
         self.instances.as_ref()
     }
 
-    /// Run `plan` at `playhead`, producing the instance buffer. When the plan
-    /// has a CPU boundary, `boundary_stream` is that node's freshly cooked
-    /// output stream (cook it with the ordinary [`ph2d_nodegraph::cook::Cook`]
-    /// — that keeps every CPU semantic canonical); `None` iff the plan is
-    /// fully GPU. `default_uv_rect`/`default_size` are the CPU lowering's
-    /// fallbacks, applied by the lowering kernel to absent columns. Returns
-    /// the instance count. **One queue submit.**
+    /// The fixed tick this sim's state ([`Self::prev`]) belongs to — the GPU
+    /// mirror of `MotionCookPump::last_cooked_tick`, and the caller's input for
+    /// "how many ticks do I owe?". `None` before the first sequential cook.
+    ///
+    /// A sequential trajectory is the SUM of its steps, so a caller must cook
+    /// EVERY owed tick rather than one big jump — the same law the CPU pump
+    /// states (`ticks_owed`: "forward: every tick, never a skip"), for the same
+    /// reason: otherwise the motion depends on the frame rate.
+    pub fn last_cooked_tick(&self) -> Option<u64> {
+        self.last_tick
+    }
+
+    /// Run `plan` at `clock`, producing the instance buffer. Each entry of
+    /// `boundary_streams` is a [`GpuPlan::boundaries`] node's freshly cooked
+    /// output stream (cook them with the ordinary
+    /// [`ph2d_nodegraph::cook::Cook`] — that keeps every CPU semantic
+    /// canonical); the set must match the plan's exactly, and is empty iff the
+    /// plan is fully GPU. `default_uv_rect`/`default_size` are the CPU
+    /// lowering's fallbacks, applied by the lowering kernel to absent columns.
+    /// Returns the instance count. **One queue submit.**
     #[allow(clippy::too_many_arguments)] // the cook seam: graph + resolvers + plan + clock + defaults
     pub fn cook(
         &mut self,
@@ -257,20 +196,25 @@ impl GpuCook {
         ops: &dyn OpResolver,
         kernels: &dyn KernelResolver,
         plan: &GpuPlan,
-        boundary_stream: Option<&Stream>,
-        playhead: f64,
+        boundary_streams: &[(NodeId, &Stream)],
+        clock: CookClock,
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
     ) -> Result<u32, GpuCookError> {
-        if plan.boundary.is_some() != boundary_stream.is_some() {
+        let CookClock { playhead, tick } = clock;
+        let want: BTreeSet<NodeId> = plan.boundaries.iter().map(|(n, _)| *n).collect();
+        let got: BTreeSet<NodeId> = boundary_streams.iter().map(|(n, _)| *n).collect();
+        if want != got {
             return Err(GpuCookError::BoundaryMismatch);
         }
         self.pool.reclaim();
 
-        let mut stream = match boundary_stream {
-            Some(s) => stream::upload_stream(gpu, &mut self.pool, s),
-            None => GpuStream::default(),
-        };
+        // The CPU→GPU crossings: one upload per boundary node, before anything
+        // is encoded (a node consumed twice uploads once).
+        let mut uploaded: BTreeMap<NodeId, GpuStream> = BTreeMap::new();
+        for (node, s) in boundary_streams {
+            uploaded.insert(*node, stream::upload_stream(gpu, &mut self.pool, s));
+        }
 
         let mut encoder = gpu
             .device
@@ -278,13 +222,34 @@ impl GpuCook {
                 label: Some("ph2d-gpu-cook chain"),
             });
 
+        // Every claimed node's output, threaded in topological order. The plan
+        // named each input's source, so this is a lookup, never a search.
+        let mut streams: BTreeMap<NodeId, GpuStream> = BTreeMap::new();
         for (stage_idx, stage) in plan.stages.iter().enumerate() {
+            let inputs: Vec<GpuStream> = stage
+                .inputs
+                .iter()
+                .map(|src| match src {
+                    GpuSource::Stage(n) => streams.get(n).cloned().unwrap_or_default(),
+                    GpuSource::Boundary(n, _) => uploaded.get(n).cloned().unwrap_or_default(),
+                    // Tick 0 (or a re-plan): no state yet — the empty stream,
+                    // which is exactly what the CPU's `pre` reads then, and what
+                    // makes a kernel take its seed path.
+                    GpuSource::Prev(n) => self.prev.get(n).cloned().unwrap_or_default(),
+                    GpuSource::Empty => GpuStream::default(),
+                })
+                .collect();
+            // Port 0 is the base the output rides on (`ColumnBinding::port`).
+            let base = inputs.first().cloned().unwrap_or_default();
+
             let Some(kernel) = kernels.gpu_kernel(stage.ty) else {
                 // The registry changed under a stale plan; treat as pass-through
                 // rather than dispatch garbage — the next frame replans.
+                streams.insert(stage.node, base);
                 continue;
             };
             if kernel.is_passthrough() {
+                streams.insert(stage.node, base);
                 continue;
             }
             let manifest = ops
@@ -296,13 +261,13 @@ impl GpuCook {
                     let get = |name: &str| resolve_param(graph, stage.node, manifest, name);
                     f(&get).min(u32::MAX as usize) as u32
                 }
-                None => stream.count,
+                None => base.count,
             };
             if count == 0 {
-                stream = GpuStream::default();
+                streams.insert(stage.node, GpuStream::default());
                 continue;
             }
-            self.encode_kernel_stage(
+            let out = self.encode_kernel_stage(
                 gpu,
                 &mut encoder,
                 stage_idx,
@@ -312,28 +277,65 @@ impl GpuCook {
                 manifest,
                 count,
                 playhead,
-                &mut stream,
+                &inputs,
+                base,
             );
+            streams.insert(stage.node, out);
         }
 
-        let count = stream.count;
+        // The sink is the walk's post-order root, so it is the last stage.
+        let sink_stream = plan
+            .stages
+            .last()
+            .and_then(|s| streams.get(&s.node))
+            .cloned()
+            .unwrap_or_default();
+        let count = sink_stream.count;
         self.encode_lowering(
             gpu,
             &mut encoder,
             plan.stages.len(),
-            &stream,
+            &sink_stream,
             default_uv_rect,
             default_size,
         );
         gpu.queue.submit(Some(encoder.finish()));
+
+        // D1 — the ping-pong: hold the `Arc`s of every node a `pre` edge reads,
+        // by the SAME rule the CPU pump uses (`Cook::advance_tick_scoped`
+        // snapshots exactly the sources of delayed edges). Assigning drops last
+        // tick's streams, so their buffers return to the pool on the next
+        // `reclaim` — the state is double-buffered and nothing else is.
+        let pre_sources: BTreeSet<NodeId> = graph
+            .edges()
+            .iter()
+            .filter(|e| e.delayed)
+            .map(|e| e.from.0)
+            .collect();
+        self.prev = streams
+            .iter()
+            .filter(|(node, _)| pre_sources.contains(node))
+            .map(|(node, s)| (*node, s.clone()))
+            .collect();
+        self.last_tick = tick;
+
         // Drop the frame's streams so the pool can reclaim next cook.
-        drop(stream);
+        drop(streams);
         Ok(count)
     }
 
-    /// Encode one kernel stage: resolve/compile the pipeline for the stream's
-    /// column set, allocate output columns, write the uniform, dispatch, and
-    /// advance `stream` to the node's output.
+    /// Forget the simulation state — the next cook seeds from scratch, exactly
+    /// as at tick 0 (when the `pre` edge reads Empty). The sim's continuity
+    /// broke: the caller is starting a run the held state is not the
+    /// predecessor of.
+    pub fn forget_state(&mut self) {
+        self.prev.clear();
+        self.last_tick = None;
+    }
+
+    /// Encode one kernel stage: resolve/compile the pipeline for the inputs'
+    /// column sets, allocate output columns, write the uniform, dispatch, and
+    /// return the node's output stream.
     #[allow(clippy::too_many_arguments)] // private seam of `cook`
     fn encode_kernel_stage(
         &mut self,
@@ -346,16 +348,33 @@ impl GpuCook {
         manifest: &'static NodeManifest,
         count: u32,
         playhead: f64,
-        stream: &mut GpuStream,
-    ) {
+        inputs: &[GpuStream],
+        base: GpuStream,
+    ) -> GpuStream {
         use codegen::BindingPlan;
 
+        // Is the binding's column readable off its port? Only if that port's
+        // stream carries it AND is the length we are dispatching: a column of a
+        // different length cannot be paired element-for-element, and reading it
+        // would index past its end. This is the CPU's re-seed rule — a state
+        // whose count no longer matches the live set was rebuilt, so pair
+        // nothing (`motion.integrate`'s `pairing`: `_ if sn == n`) — expressed
+        // once, generally. For a single-input node port 0's count IS the
+        // dispatch count, so this is the presence test the Fase 1/2 kernels
+        // already had.
+        let present = |b: &ph2d_nodegraph::gpu::ColumnBinding| {
+            inputs
+                .get(b.port)
+                .is_some_and(|s| s.count == count && s.cols.contains_key(b.column))
+        };
+        let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
+
         let ty_key = manifest.id.0;
-        let sig = codegen::presence_signature(kernel, |b| stream.cols.contains_key(b.column));
+        let sig = codegen::presence_signature(kernel, present);
         self.kernel_pipelines
             .entry((ty_key, sig))
             .or_insert_with(|| {
-                let src = codegen::kernel_module(kernel, |b| stream.cols.contains_key(b.column));
+                let src = codegen::kernel_module(kernel, &port_names, present);
                 CachedPipeline {
                     pipeline: create_pipeline(gpu, &src, manifest.name),
                 }
@@ -376,7 +395,7 @@ impl GpuCook {
 
         // Bind group: uniform, then read buffers, then fresh write buffers —
         // the exact order `codegen::kernel_module` assigned.
-        let plans = codegen::plan_bindings(kernel, |b| stream.cols.contains_key(b.column));
+        let plans = codegen::plan_bindings(kernel, present);
         let mut new_cols: Vec<(String, GpuColumn)> = Vec::new();
         let mut entries: Vec<wgpu::BindGroupEntry> = Vec::new();
         // (entries borrow buffers; collect the write buffers first)
@@ -396,7 +415,7 @@ impl GpuCook {
         let mut slot = 1u32;
         for (b, (read, _)) in kernel.bindings.iter().zip(&plans) {
             if matches!(read, Some(BindingPlan::ReadBuffer)) {
-                let col = stream.cols.get(b.column).expect("presence checked");
+                let col = inputs[b.port].cols.get(b.column).expect("presence checked");
                 entries.push(wgpu::BindGroupEntry {
                     binding: slot,
                     resource: col.buffer.as_entire_binding(),
@@ -433,11 +452,19 @@ impl GpuCook {
             pass.dispatch_workgroups(count.div_ceil(codegen::WORKGROUP_SIZE), 1, 1);
         }
 
-        // The node's output stream: written columns replace, the rest share.
-        stream.count = count;
-        for (name, col) in new_cols {
-            stream.cols.insert(name, col);
+        // The node's output stream: the base (port 0) rides through, consumed
+        // columns are dropped, written ones replace. The CPU nodes are written
+        // the same way — copy the primary input, rewrite my channels — so this
+        // threading IS the shared semantic, not a GPU convention.
+        let mut out = base;
+        out.count = count;
+        for b in kernel.bindings.iter().filter(|b| b.access.consumes()) {
+            out.cols.remove(b.column);
         }
+        for (name, col) in new_cols {
+            out.cols.insert(name, col);
+        }
+        out
     }
 
     /// Encode the final lowering pass into the persistent instance buffer.
@@ -579,9 +606,9 @@ impl GpuCook {
 fn expected_lower_dim(i: usize) -> ph2d_nodegraph::port::Dim {
     use ph2d_nodegraph::port::Dim;
     match i {
-        0 | 1 => Dim::Vec2,  // P, size
-        2 => Dim::Scalar,    // rot
-        _ => Dim::Vec4,      // tint, uv_rect
+        0 | 1 => Dim::Vec2, // P, size
+        2 => Dim::Scalar,   // rot
+        _ => Dim::Vec4,     // tint, uv_rect
     }
 }
 
@@ -607,7 +634,10 @@ fn create_pipeline(gpu: &GpuContext, wgsl: &str, label: &str) -> wgpu::ComputePi
 /// crossing** for the parity gates and any future canonical need (ADR-0122:
 /// if the replay ever wants a value, it comes from the CPU; this readback
 /// exists to CHECK the GPU, not to feed the frame). Blocks on the GPU.
-pub fn read_instances(gpu: &GpuContext, instances: &GpuInstances) -> Vec<ph2d_render::RenderInstance> {
+pub fn read_instances(
+    gpu: &GpuContext,
+    instances: &GpuInstances,
+) -> Vec<ph2d_render::RenderInstance> {
     let n = instances.len as usize;
     if n == 0 {
         return Vec::new();

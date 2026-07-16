@@ -24,7 +24,7 @@ use crate::port::Dim;
 ///
 /// Writes always land in a **fresh** buffer (the sequencer never mutates a
 /// cooked column in place — the implicit ping-pong), so `ReadWrite` means
-/// "read the input stream's column, write this node's output column".
+/// "read the bound input port's column, write this node's output column".
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ColumnAccess {
     /// Read-only. If the input stream lacks the column, the generated module
@@ -44,29 +44,72 @@ pub enum ColumnAccess {
     /// CPU modifiers that pattern-match the column and otherwise pass through
     /// (`motion.move` touches `P` only if `P` exists).
     ReadWriteExisting,
+    /// Read + **consume**: the body reads the column, and the node's output
+    /// does NOT carry it — the transient-channel convention
+    /// (`motion.integrate` eats the `accel` the in-loop forces accumulated, so
+    /// every tick starts from zero acceleration). Without this the column would
+    /// ride through from the base input (see [`ColumnBinding::port`]) and the
+    /// next tick's forces would add onto a stale value, which is exactly what
+    /// the CPU's `add_accel` does — divergence, not ε.
+    Consume,
+    /// **Not an access — a plan-time refusal.** The kernel declares that it
+    /// cannot answer correctly for a stream carrying this column on this port,
+    /// so [`crate::gpu`]'s sequencer refuses to claim the node and the CPU
+    /// `eval` (the canonical path) owns it.
+    ///
+    /// The case that named it: `motion.integrate` pairs state to elements by
+    /// **`id`** when the stream has identity (a gather) and **positionally**
+    /// otherwise; the GPU kernel only does positional, so an `id` column on its
+    /// `rest` port is a refusal (ADR-0123 D3). The eligibility answer must be
+    /// provable, so an input whose columns the plan cannot derive (a CPU
+    /// boundary feeds it) is refused too — **the default is to recede, never to
+    /// answer wrong**.
+    ///
+    /// [`ColumnBinding::dim`] / [`ColumnBinding::identity`] are meaningless
+    /// here (nothing is read): the binding declares only *which column on which
+    /// port* is disqualifying.
+    RefuseIfPresent,
 }
 
 impl ColumnAccess {
-    /// Does this access read the input stream's column?
+    /// Does this access read the bound port's column?
     pub const fn reads(self) -> bool {
-        !matches!(self, ColumnAccess::Write)
+        matches!(
+            self,
+            ColumnAccess::Read
+                | ColumnAccess::ReadWrite
+                | ColumnAccess::ReadWriteExisting
+                | ColumnAccess::Consume
+        )
     }
 
     /// Does this access write an output column (given whether the input
     /// stream carries it)?
     pub const fn writes(self, present_on_input: bool) -> bool {
         match self {
-            ColumnAccess::Read => false,
+            ColumnAccess::Read | ColumnAccess::Consume | ColumnAccess::RefuseIfPresent => false,
             ColumnAccess::Write | ColumnAccess::ReadWrite => true,
             ColumnAccess::ReadWriteExisting => present_on_input,
         }
+    }
+
+    /// Does the node's output stream **drop** this column (rather than let the
+    /// base input's copy ride through)?
+    pub const fn consumes(self) -> bool {
+        matches!(self, ColumnAccess::Consume)
+    }
+
+    /// Is this binding a plan-time refusal rather than an access?
+    pub const fn refuses(self) -> bool {
+        matches!(self, ColumnAccess::RefuseIfPresent)
     }
 }
 
 /// One stream column a kernel touches: its name (the stream convention —
 /// `P`, `size`, `rot`, `tint`, `falloff`, …), its element type, how it is
-/// accessed, and the per-element identity used when a readable column is
-/// absent (only the first [`Dim`]-many lanes are meaningful).
+/// accessed, which input port it is read from, and the per-element identity
+/// used when a readable column is absent (only the first [`Dim`]-many lanes
+/// are meaningful).
 #[derive(Copy, Clone, Debug)]
 pub struct ColumnBinding {
     pub column: &'static str,
@@ -77,6 +120,22 @@ pub struct ColumnBinding {
     /// — the same identities the CPU paths use, so absence means the same
     /// thing on both sides.
     pub identity: [f32; 4],
+    /// Which **input port** of the node the column is read from (writes always
+    /// land on the node's single output, so this only qualifies the read).
+    /// `0` for every single-input node — the overwhelming case, and the reason
+    /// this is spelled on each binding rather than inferred: a multi-input
+    /// kernel that got it wrong would read the right column off the wrong
+    /// stream and answer plausibly.
+    ///
+    /// **Port 0 is the base:** the node's output stream starts as port 0's
+    /// (columns the kernel never mentions ride through it, exactly like the CPU
+    /// nodes that copy their primary input and rewrite a channel), then written
+    /// columns replace and [`ColumnAccess::Consume`]d ones are dropped.
+    /// `motion.integrate` is the shape that named this: `rest` (port 0) carries
+    /// the live animation forward while `forces` (port 1) carries last tick's
+    /// state — and `vel` is read from BOTH (the seed from `rest`, the step from
+    /// `forces`), which is why the port cannot be a property of the column name.
+    pub port: usize,
 }
 
 /// A signature for "how many elements does this generator emit", evaluated on
@@ -114,6 +173,21 @@ pub type ApplicableFn = fn(&dyn Fn(&str) -> f32) -> bool;
 /// discipline: waveform/trig math in a body must use the same polynomial
 /// approximations as the node's CPU `eval` (WGSL `sin`/`cos` carry no
 /// cross-vendor guarantee), so GPU-vs-CPU parity holds within ε.
+///
+/// **Multi-input nodes** (`manifest.inputs.len() > 1`) get readers named by
+/// **port** instead — `read_<port>_<column>(i)`, e.g. `read_rest_P(i)` /
+/// `read_forces_vel(i)` — because the same column can be bound on two ports and
+/// a bare `read_vel` would silently mean one of them. Writers stay
+/// `write_<column>` (there is one output).
+///
+/// Every reader also gets a companion `const HAS_<same-suffix>: bool` telling
+/// the body whether the column was actually **present** on that port, as
+/// opposed to reading its identity. Presence is fixed per compiled pipeline
+/// (the cache is keyed on exactly that signature), so branching on it is free —
+/// and it is the only way to express a CPU behaviour that *branches* on absence
+/// rather than substituting a value: `motion.integrate` seeds a fresh element
+/// when there is no prior state at all, which is not the same as stepping it
+/// with a zeroed one.
 #[derive(Copy, Clone, Debug)]
 pub struct GpuKernel {
     /// The per-element kernel body (see the type-level contract above). An
@@ -183,6 +257,7 @@ mod tests {
                 dim: Dim::Vec2,
                 access: ColumnAccess::ReadWrite,
                 identity: [0.0; 4],
+                port: 0,
             }],
             params: &[],
             source_count: None,
@@ -201,5 +276,32 @@ mod tests {
         assert!(ReadWriteExisting.reads());
         assert!(ReadWriteExisting.writes(true));
         assert!(!ReadWriteExisting.writes(false));
+    }
+
+    #[test]
+    fn consume_reads_but_never_writes_and_drops_the_column() {
+        use ColumnAccess::*;
+        // The transient channel: the body sees it, the output does not carry it
+        // — whether or not the base input had one.
+        assert!(Consume.reads());
+        assert!(!Consume.writes(true) && !Consume.writes(false));
+        assert!(Consume.consumes());
+        // Nothing else drops a column: an unmentioned column rides the base.
+        for a in [Read, Write, ReadWrite, ReadWriteExisting, RefuseIfPresent] {
+            assert!(!a.consumes(), "{a:?} must not drop the base's column");
+        }
+    }
+
+    #[test]
+    fn refuse_is_inert_as_an_access_and_only_answers_eligibility() {
+        use ColumnAccess::*;
+        // It binds no buffer and generates no accessor: a refusal that read or
+        // wrote would cost a slot in every pipeline that never fires.
+        assert!(!RefuseIfPresent.reads());
+        assert!(!RefuseIfPresent.writes(true) && !RefuseIfPresent.writes(false));
+        assert!(RefuseIfPresent.refuses());
+        for a in [Read, Write, ReadWrite, ReadWriteExisting, Consume] {
+            assert!(!a.refuses(), "{a:?} must not refuse the node");
+        }
     }
 }

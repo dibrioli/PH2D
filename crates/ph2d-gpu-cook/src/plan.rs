@@ -1,0 +1,335 @@
+//! The **plan**: which part of a sink's chain the GPU can claim, and where each
+//! claimed node's inputs come from.
+//!
+//! Pure and cheap — a walk of the graph, no GPU objects, no streams — so the
+//! caller re-derives it every frame and the sequencer ([`crate::GpuCook`])
+//! merely executes it. Keeping the decision here, in one testable function, is
+//! what lets `plan_analysis` gate the CPU↔GPU boundary on every CI lane: a
+//! wrong decision is a silent wrong render (a node skipped on both paths) or a
+//! wasted fallback (a coverable chain cooked on the CPU).
+
+use ph2d_nodegraph::cook::OpResolver;
+use ph2d_nodegraph::gpu::KernelResolver;
+use ph2d_nodegraph::graph::{Graph, NodeId};
+use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
+use std::collections::BTreeSet;
+
+/// Where one input port of a [`GpuStage`] gets its stream.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GpuSource {
+    /// Another planned stage's output, threaded GPU-side (the common case).
+    Stage(NodeId),
+    /// A CPU-cooked stream, uploaded once at the seam: `(node, out_port)`.
+    Boundary(NodeId, usize),
+    /// The **previous tick's** output of a planned node — a `pre` edge (D1).
+    /// The sequencer simply held that tick's `Arc`s, so this costs nothing.
+    Prev(NodeId),
+    /// An unconnected input: the empty stream (the CPU cook's value for it).
+    Empty,
+}
+
+/// One GPU stage of a plan: a node whose kernel runs as a compute pass
+/// (pass-through kernels are planned but dispatch nothing).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GpuStage {
+    pub node: NodeId,
+    pub ty: NodeTypeId,
+    /// Where each of the node's manifest input ports reads from, in port order.
+    pub inputs: Vec<GpuSource>,
+}
+
+/// The result of [`plan`]: the GPU-runnable part of a sink's chain — a **DAG**
+/// (ADR-0123 D2), not a chain: a node's inputs are walked on every port, so the
+/// stages come out in topological order and each input names its own source.
+#[derive(Clone, Debug, Default)]
+pub struct GpuPlan {
+    /// One per input the walk could not claim: cook that node with the ordinary
+    /// [`Cook`] and hand its output stream to [`GpuCook::cook`]. Empty — every
+    /// input bottoms out at a generator, an unconnected port or a `pre` stop:
+    /// the whole chain is GPU-resident.
+    pub boundaries: Vec<(NodeId, usize)>,
+    /// Stages in **topological** (source→sink) order, each node once; the sink
+    /// is last. Pass-throughs are included and emit no pass.
+    pub stages: Vec<GpuStage>,
+}
+
+impl GpuPlan {
+    /// `true` when the entire chain runs on the GPU (no CPU prefix).
+    pub fn is_fully_gpu(&self) -> bool {
+        self.boundaries.is_empty()
+    }
+
+    /// Number of stages that actually dispatch a compute pass (excludes
+    /// pass-throughs) — what a "the optimization FIRES" gate should assert.
+    pub fn dispatching_stages(&self, kernels: &dyn KernelResolver) -> usize {
+        self.stages
+            .iter()
+            .filter(|s| {
+                kernels
+                    .gpu_kernel(s.ty)
+                    .is_some_and(|k| !k.is_passthrough())
+            })
+            .count()
+    }
+
+    /// `true` when any stage feeds a `pre` edge — i.e. the plan owns a
+    /// simulation loop, and its state lives GPU-side across ticks (D1).
+    pub fn drives_a_loop(&self) -> bool {
+        self.stages
+            .iter()
+            .any(|s| s.inputs.iter().any(|i| matches!(i, GpuSource::Prev(_))))
+    }
+}
+
+/// The columns a node's output stream provably carries, or `None` when that is
+/// **unknowable** — a CPU boundary (or a `pre` stop) feeds its base, so only the
+/// CPU `eval` knows what comes out.
+///
+/// Derived from the same rule [`GpuCook::cook`] threads at runtime: the output
+/// starts as port 0's stream, written columns are added and
+/// [`ColumnAccess::Consume`]d ones dropped. It exists for the plan-time
+/// refusals ([`ColumnAccess::RefuseIfPresent`], ADR-0123 D3) — those must be
+/// *provable*, so unknown means refuse.
+///
+/// `budget` bounds the recursion: a well-formed graph's forward edges are
+/// acyclic (a loop must go through a `pre`, which stops here), but a plan is not
+/// the place to discover otherwise by overflowing the stack.
+fn output_shape(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    node: NodeId,
+    budget: u32,
+) -> Option<BTreeSet<&'static str>> {
+    let budget = budget.checked_sub(1)?;
+    let inst = graph.node(node)?;
+    let manifest = ops.resolve(inst.type_id())?.manifest();
+    let kernel = kernels.gpu_kernel(inst.type_id())?;
+    // The base (port 0) the output rides on. A generator starts from nothing;
+    // an unconnected input is the empty stream. Note this deliberately does NOT
+    // ask `eligible` — a node the plan refuses still emits the columns its
+    // kernel declares (that is the parity contract), and asking would recurse.
+    let mut cols = match manifest.inputs.first() {
+        None => BTreeSet::new(),
+        Some(_) => match graph.input_edge(node, 0) {
+            None => BTreeSet::new(),
+            // A `pre` stop: last tick's stream, which the walk has not derived.
+            Some((_, _, true)) => return None,
+            Some((src, _, false)) => output_shape(graph, ops, kernels, src, budget)?,
+        },
+    };
+    for b in kernel.bindings {
+        let present = cols.contains(b.column);
+        if b.access.consumes() {
+            cols.remove(b.column);
+        } else if b.access.writes(present) {
+            cols.insert(b.column);
+        }
+    }
+    Some(cols)
+}
+
+/// Can the GPU claim this node? Every reason a node breaks the GPU claim lives
+/// here — plan-time diagnostics (the editor can badge the boundary).
+///
+/// `claimed` is the set of nodes the in-flight walk is already staging; it
+/// answers the one question a `pre` edge asks (see below).
+fn eligible(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    node: NodeId,
+    claimed: &BTreeSet<NodeId>,
+) -> bool {
+    let Some(inst) = graph.node(node) else {
+        return false;
+    };
+    let Some(op) = ops.resolve(inst.type_id()) else {
+        return false;
+    };
+    let manifest = op.manifest();
+    let Some(kernel) = kernels.gpu_kernel(inst.type_id()) else {
+        return false;
+    };
+    // A driven param is a live wire into another subtree — the CPU cook
+    // resolves those; a GPU stage has no lane for them (F1.2+).
+    if graph.param_sources(node).is_some_and(|s| !s.is_empty()) {
+        return false;
+    }
+    // A generator must say how many elements it emits (dispatch is host-sized).
+    if manifest.inputs.is_empty() && kernel.source_count.is_none() && !kernel.is_passthrough() {
+        return false;
+    }
+    // Kernel params must be declared manifest params and must not shadow the
+    // built-in uniform fields the generated module owns.
+    if !kernel
+        .params
+        .iter()
+        .all(|p| *p != "count" && *p != "playhead" && manifest.param_default(p).is_some())
+    {
+        return false;
+    }
+    // A `pre` edge is a STOP, not a refusal (D1/D2) — but only when it closes a
+    // loop back onto a node this walk is already staging (the sim's self-loop:
+    // `integrate.out --pre--> forces --> integrate.forces`). A `pre` from
+    // anywhere else wants the CPU's previous output, and this engine has no
+    // seam that hands one over; claiming the node would silently feed it an
+    // empty stream. Recede.
+    for port in 0..manifest.inputs.len() {
+        if let Some((src, _, true)) = graph.input_edge(node, port)
+            && !claimed.contains(&src)
+        {
+            return false;
+        }
+    }
+    // Column-shape refusals (D3): the kernel names a column whose presence it
+    // cannot answer for — `motion.integrate` + `id` is a gather. The shape must
+    // be PROVABLE, so an input the plan cannot derive refuses too.
+    for b in kernel.bindings.iter().filter(|b| b.access.refuses()) {
+        let known = match graph.input_edge(node, b.port) {
+            None => Some(BTreeSet::new()),
+            Some((_, _, true)) => None,
+            Some((src, _, false)) => output_shape(graph, ops, kernels, src, SHAPE_DEPTH),
+        };
+        match known {
+            None => return false,
+            Some(cols) if cols.contains(b.column) => return false,
+            Some(_) => {}
+        }
+    }
+    // Param-dependent coverage (e.g. the oscillator's X/Y-only kernel).
+    match kernel.applicable {
+        Some(f) => f(&|name| resolve_param(graph, node, manifest, name)),
+        None => true,
+    }
+}
+
+/// Recursion bound for [`output_shape`] — far above any real chain; it exists
+/// so a malformed (forward-cyclic) graph is a refusal, not a stack overflow.
+const SHAPE_DEPTH: u32 = 256;
+
+/// The node's live param value: per-instance override else manifest default —
+/// the same override>default resolution as `EvalCtx::param` (driven params
+/// were excluded by [`eligible`], so the wire tier cannot apply here).
+pub(crate) fn resolve_param(
+    graph: &Graph,
+    node: NodeId,
+    manifest: &NodeManifest,
+    name: &str,
+) -> f32 {
+    graph
+        .node_param_overrides(node)
+        .and_then(|m| m.get(name).copied())
+        .or_else(|| manifest.param_default(name))
+        .unwrap_or(0.0)
+}
+
+/// The in-flight DFS of [`plan`].
+struct Walk<'a> {
+    graph: &'a Graph,
+    ops: &'a dyn OpResolver,
+    kernels: &'a dyn KernelResolver,
+    stages: Vec<GpuStage>,
+    boundaries: Vec<(NodeId, usize)>,
+    /// Nodes this walk is staging — inserted on ENTRY, so a `pre` edge that
+    /// closes a loop back onto an ancestor still on the stack sees it. Since
+    /// eligibility is settled before `accept`, "claimed" is never withdrawn:
+    /// at the end this set is exactly `stages`.
+    claimed: BTreeSet<NodeId>,
+}
+
+impl Walk<'_> {
+    /// Stage `node` (already found [`eligible`]) after its inputs — post-order,
+    /// so `stages` comes out topologically sorted and the sink lands last.
+    /// Re-entry is a no-op: a diamond stages its shared ancestor once.
+    fn accept(&mut self, node: NodeId, ty: NodeTypeId) {
+        if !self.claimed.insert(node) {
+            return;
+        }
+        let manifest = self.ops.resolve(ty).expect("eligible checked").manifest();
+        let inputs = (0..manifest.inputs.len())
+            .map(|port| self.source_of(node, port))
+            .collect();
+        self.stages.push(GpuStage { node, ty, inputs });
+    }
+
+    /// Resolve one input port to its stream source, recursing into a claimable
+    /// upstream and recording a boundary otherwise.
+    fn source_of(&mut self, node: NodeId, port: usize) -> GpuSource {
+        let Some((src, out_port, delayed)) = self.graph.input_edge(node, port) else {
+            return GpuSource::Empty;
+        };
+        if delayed {
+            // `eligible` already proved the source is one we stage (else this
+            // node would not be here) — the loop closes GPU-side.
+            return GpuSource::Prev(src);
+        }
+        match self.graph.node(src).map(|i| i.type_id()) {
+            Some(ty) if eligible(self.graph, self.ops, self.kernels, src, &self.claimed) => {
+                self.accept(src, ty);
+                GpuSource::Stage(src)
+            }
+            _ => {
+                self.boundaries.push((src, out_port));
+                GpuSource::Boundary(src, out_port)
+            }
+        }
+    }
+}
+
+/// Claim the GPU-runnable part of `sink`'s chain (see the crate docs). Pure and
+/// cheap — a walk of the graph, no GPU objects — so calling it every frame is
+/// fine; compiled pipelines are cached by [`GpuCook`].
+pub fn plan(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    sink: NodeId,
+) -> GpuPlan {
+    let claimed = BTreeSet::new();
+    let sink_ty = match graph.node(sink).map(|i| i.type_id()) {
+        Some(ty) if eligible(graph, ops, kernels, sink, &claimed) => ty,
+        // The sink itself is CPU: nothing to claim. (`dispatching_stages` is 0,
+        // so the caller's route recuses whole.)
+        _ => {
+            return GpuPlan {
+                boundaries: vec![(sink, 0)],
+                stages: Vec::new(),
+            };
+        }
+    };
+    let mut walk = Walk {
+        graph,
+        ops,
+        kernels,
+        stages: Vec::new(),
+        boundaries: Vec::new(),
+        claimed,
+    };
+    walk.accept(sink, sink_ty);
+
+    // A staged node that feeds a `pre` edge owns simulation state. If the plan
+    // ALSO leaves a CPU boundary, the caller will cook that boundary on the
+    // pump — and the pump, to do so, re-cooks this node's chain with ITS OWN
+    // `prev`. That is two simulations of one state: the GPU would integrate an
+    // `accel` computed from the CPU's divergent trajectory, every tick. The
+    // node's own loop being GPU-resident is not enough (a force node without a
+    // kernel puts the boundary INSIDE the loop). Refuse the claim whole; the
+    // CPU already runs this document correctly.
+    let sim_state_on_gpu = walk
+        .graph
+        .edges()
+        .iter()
+        .any(|e| e.delayed && walk.claimed.contains(&e.from.0));
+    if sim_state_on_gpu && !walk.boundaries.is_empty() {
+        return GpuPlan {
+            boundaries: vec![(sink, 0)],
+            stages: Vec::new(),
+        };
+    }
+
+    GpuPlan {
+        boundaries: walk.boundaries,
+        stages: walk.stages,
+    }
+}

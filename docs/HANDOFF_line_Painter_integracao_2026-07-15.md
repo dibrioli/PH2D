@@ -7,7 +7,11 @@
 > é opt-in default OFF; a D inocentou o pipeline headless; a âncora corrige o colar duro que o smoke do
 > bow wave reprovou — ver §6.3½). **Conserve e Push SMOKADOS OK pelo Enio (2026-07-16)**, e com a fila
 > aberta a **W5 FECHOU**: o filtro de camada inteira (W5b, `57d9881e`) — a última wave incompleta do
-> sculpt. Pendente de smoke: W4 · fase D · a mordida/Sphere · W5b.
+> sculpt. **Conserve · Push · Filter Layer/Stroke: SMOKADOS OK.** Pendente de smoke: W4 · fase D.
+> **⚠️ ABERTO — a BORDA do Inflate:** o smoke do W5b aprovou o Filter Layer no Inflate e **reprovou a
+> borda** (serrilhada, e imune ao Smooth). Diagnóstico FECHADO e confirmado no código; a linha está
+> commitada e verde, e este é o único item aberto. Handoff dedicado:
+> [`HANDOFF_line_Painter_inflate_edges_2026-07-16.md`](HANDOFF_line_Painter_inflate_edges_2026-07-16.md).
 
 ## 1. Base e commits
 

@@ -36,6 +36,47 @@ fn drawing(strokes: Vec<FlipStroke>) -> FlipDrawing {
     d
 }
 
+/// 🔴 **O clique pega a COSTURA de um traço fechado** — o repro do smoke do Enio (§4.A):
+/// *"uma linha do triângulo e uma linha do quadrado não são sensíveis à seleção"*.
+///
+/// A aresta de fechamento (último→primeiro vértice) é desenhada pelo render
+/// (`pack::stroke_segments`) e realçada pelo halo, mas o pick iterava
+/// `positions().windows(2)` e a perdia: um triângulo tinha **3 linhas na tela e 2
+/// clicáveis**, um quadrado 4 e 3. O fill mascarava isso (o `ring_contains` pega o
+/// interior), então só uma forma fechada **sem preenchimento** expunha o buraco — que é
+/// exatamente o que a cena do §4.A tem.
+///
+/// Mutação que sangra: `hits` voltar a iterar `positions().windows(2)`.
+#[test]
+fn a_click_on_the_seam_of_a_closed_stroke_picks_it() {
+    // Triângulo SEM fill: a costura é a aresta (0,100)→(0,0). O ponto de mira (0,50) está
+    // no meio dela — e a 50 da base e a ~35 da hipotenusa, MUITO além do `MIN_PICK_PX`
+    // (5). O isolamento é o ponto do fixture: num triângulo pequeno o alcance do pick
+    // alcança a hipotenusa e o teste passa pelo motivo errado (foi o que aconteceu na 1ª
+    // tentativa — `feedback_test_with_product_numbers_not_convenient_ones`).
+    let seam_mid = Vec2::new(0.0, 50.0);
+    let verts = [(0.0, 0.0), (100.0, 0.0), (0.0, 100.0)];
+    let mut tri = line(&verts, 4.0);
+    tri.closed = true;
+    let d = drawing(vec![tri]);
+    assert_eq!(
+        stroke_at(&d, seam_mid, 1.0, &Xform::IDENTITY),
+        Some(0),
+        "o clique no meio da COSTURA nao pegou o triangulo (as 3 linhas sao clicaveis)"
+    );
+    // 🔴 O par de AUSÊNCIA: o MESMO traço ABERTO não tem costura — o clique ali erra.
+    // (Sem este, "feche sempre" passaria e a senoide do W8 ganharia uma aresta fantasma
+    // ligando as pontas: clicar no vazio entre elas selecionaria o traço.)
+    let mut open = line(&verts, 4.0);
+    open.closed = false;
+    let d_open = drawing(vec![open]);
+    assert_eq!(
+        stroke_at(&d_open, seam_mid, 1.0, &Xform::IDENTITY),
+        None,
+        "traco ABERTO nao tem costura: clicar na aresta que ninguem desenhou nao pega nada"
+    );
+}
+
 /// **O pick pega o traço de CIMA.** Dois traços sobrepostos: o clique tem de escolher o
 /// que o usuário VÊ (o último da lista — a ordem da lista é a ordem de z).
 ///

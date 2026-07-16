@@ -176,6 +176,29 @@ impl FlipStroke {
     pub fn positions(&self) -> &[Vec2] {
         &self.pos
     }
+
+    /// **Os SEGMENTOS da polilinha** — `(i, a, b)`, com `i` = índice do ponto de PARTIDA
+    /// (de onde o consumidor tira espessura/atributo). Menos de 2 pontos = vazio.
+    ///
+    /// **Um traço `closed` inclui a COSTURA** (último → primeiro); um traço aberto NUNCA
+    /// a ganha (desenhar/apontar a linha que liga as pontas mostraria algo que o usuário
+    /// não fez — BUGS #17).
+    ///
+    /// **Por que isto é uma porta só:** "quais são os segmentos deste traço?" tinha
+    /// QUATRO respostas independentes — o render (`ph2d_flip_render::pack::stroke_segments`)
+    /// e o halo fechavam; o pick (`flip_select::hits`), o marquee
+    /// (`flip_edit_gesture::stroke_touches_rect`) e o hover de arte (`flip_gizmo_view`)
+    /// iteravam `positions().windows(2)` e **perdiam a costura**. O sintoma (Enio,
+    /// smoke do §4.A): *"uma linha do triângulo e uma linha do quadrado não são sensíveis
+    /// à seleção"* — dava para VER e REALÇAR uma aresta que não dava para APONTAR. Esta é
+    /// a resposta única; a convenção espelha a do render (`for a in 0..last` + a costura).
+    pub fn segments(&self) -> impl Iterator<Item = (usize, Vec2, Vec2)> + '_ {
+        let n = self.pos.len();
+        let seam = self.closed && n >= 2;
+        (0..n.saturating_sub(1))
+            .chain(seam.then(|| n - 1))
+            .map(move |i| (i, self.pos[i], self.pos[(i + 1) % n]))
+    }
     #[must_use]
     pub fn widths(&self) -> &[f32] {
         &self.width
@@ -432,6 +455,47 @@ impl FlipStroke {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 🔴 **`segments()` é a porta única: o fechado tem COSTURA, o aberto não.**
+    ///
+    /// Um traço fechado de N pontos tem N arestas (a última liga o fim ao começo — é o
+    /// que o render desenha); o mesmo traço aberto tem N−1. Foi a divergência dessa
+    /// resposta entre o render e o pick/marquee/hover que produziu *"uma linha do
+    /// triângulo e uma linha do quadrado não são sensíveis à seleção"* (Enio, §4.A).
+    ///
+    /// Mutações que sangram: dropar a costura (`seam = false`) → o fechado cai para N−1;
+    /// emiti-la sempre (ignorar `closed`) → o aberto sobe para N.
+    #[test]
+    fn the_seam_exists_only_on_a_closed_stroke() {
+        let mut tri = FlipStroke::new();
+        for p in [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(20.0, 0.0),
+            Vec2::new(0.0, 10.0),
+        ] {
+            tri.push_default(p);
+        }
+        // Aberto: 2 arestas, e nenhuma volta ao ponto 0.
+        assert_eq!(tri.segments().count(), 2);
+        assert!(
+            tri.segments().all(|(_, _, b)| b != tri.positions()[0]),
+            "traco aberto nao pode ligar a ponta ao comeco"
+        );
+        // Fechado: 3 arestas, e a última é EXATAMENTE (último → primeiro), com o índice
+        // do ponto de partida (de onde o `hits` tira a espessura).
+        tri.closed = true;
+        let segs: Vec<_> = tri.segments().collect();
+        assert_eq!(segs.len(), 3);
+        assert_eq!(segs[2].0, 2, "a costura parte do ULTIMO ponto");
+        assert_eq!(segs[2].1, Vec2::new(0.0, 10.0));
+        assert_eq!(segs[2].2, Vec2::new(0.0, 0.0));
+        // Menos de 2 pontos não tem aresta nenhuma (fechado ou não).
+        let mut dot = FlipStroke::new();
+        dot.push_default(Vec2::new(1.0, 1.0));
+        dot.closed = true;
+        assert_eq!(dot.segments().count(), 0);
+        assert_eq!(FlipStroke::new().segments().count(), 0);
+    }
 
     #[test]
     fn push_and_insert_keep_soa_consistent() {

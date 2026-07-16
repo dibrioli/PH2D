@@ -122,9 +122,12 @@ fn hits(s: &FlipStroke, p: Vec2, px_to_local: f32) -> bool {
         let d = p - pos[0];
         return d.x * d.x + d.y * d.y <= reach(0) * reach(0);
     }
-    pos.windows(2).enumerate().any(|(i, w)| {
+    // `segments()` — a porta única (inclui a COSTURA de um traço fechado, que é o que o
+    // render desenha). Iterar `positions().windows(2)` aqui perdia a última aresta: um
+    // triângulo tinha 3 linhas na tela e 2 clicáveis.
+    s.segments().any(|(i, a, b)| {
         let r = reach(i);
-        seg_dist2(p, w[0], w[1]) <= r * r
+        seg_dist2(p, a, b) <= r * r
     })
 }
 

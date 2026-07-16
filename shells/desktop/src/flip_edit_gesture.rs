@@ -20,7 +20,7 @@
 //! do usuário, meses depois.
 
 use ph2d_core::Vec2;
-use ph2d_flip::FlipDrawing;
+use ph2d_flip::{FlipDrawing, FlipStroke};
 use ph2d_vec_scene::Xform;
 
 /// O gesto em curso no modo Edit.
@@ -95,10 +95,13 @@ pub(crate) fn passed_slop(start: (f32, f32), cur: (f32, f32)) -> bool {
 /// Não basta "algum ponto dentro": uma reta longa pode ATRAVESSAR a caixa sem ter um
 /// vértice nela, e o usuário que desenhou a caixa em cima dela espera pegá-la. Então o
 /// teste é ponto-dentro **ou** segmento-cruza. (Um traço de 1 ponto cai no primeiro.)
+/// Recebe o TRAÇO (não só os pontos): a caixa que cruza apenas a **costura** de um traço
+/// fechado tem de pegá-lo, e `&[Vec2]` não sabe dizer se o traço fecha — era por isso que
+/// esta porta divergia do render. Ver [`ph2d_flip::FlipStroke::segments`].
 #[must_use]
-pub(crate) fn stroke_touches_rect(pts: &[Vec2], min: Vec2, max: Vec2) -> bool {
+pub(crate) fn stroke_touches_rect(s: &FlipStroke, min: Vec2, max: Vec2) -> bool {
     let inside = |p: Vec2| p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y;
-    if pts.iter().any(|p| inside(*p)) {
+    if s.positions().iter().any(|p| inside(*p)) {
         return true;
     }
     // Segmento × as quatro bordas da caixa.
@@ -108,8 +111,8 @@ pub(crate) fn stroke_touches_rect(pts: &[Vec2], min: Vec2, max: Vec2) -> bool {
         Vec2::new(max.x, max.y),
         Vec2::new(min.x, max.y),
     ];
-    pts.windows(2)
-        .any(|w| (0..4).any(|i| segments_cross(w[0], w[1], corners[i], corners[(i + 1) % 4])))
+    s.segments()
+        .any(|(_, a, b)| (0..4).any(|i| segments_cross(a, b, corners[i], corners[(i + 1) % 4])))
 }
 
 /// Dois segmentos se cruzam? (Orientação — sem transcendental, HR-5.)
@@ -134,7 +137,7 @@ pub(crate) fn apply_marquee(
         changed |= drawing.clear_selection();
     }
     for s in &mut drawing.strokes {
-        if stroke_touches_rect(s.positions(), min, max) {
+        if stroke_touches_rect(s, min, max) {
             changed |= !std::mem::replace(&mut s.selected, true);
         }
     }

@@ -33,18 +33,50 @@ fn drawing(strokes: Vec<FlipStroke>) -> FlipDrawing {
 #[test]
 fn the_marquee_catches_a_stroke_it_crosses_without_containing_a_vertex() {
     // Uma reta de (-100, 5) a (100, 5): nenhum vértice dentro da caixa 0..10 × 0..10.
-    let pts = [Vec2::new(-100.0, 5.0), Vec2::new(100.0, 5.0)];
+    let s = line(&[(-100.0, 5.0), (100.0, 5.0)]);
     assert!(
-        stroke_touches_rect(&pts, Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)),
+        stroke_touches_rect(&s, Vec2::new(0.0, 0.0), Vec2::new(10.0, 10.0)),
         "a caixa nao pegou a linha que a ATRAVESSA de lado a lado"
     );
     // E uma linha que passa longe não é pega.
-    let far = [Vec2::new(-100.0, 50.0), Vec2::new(100.0, 50.0)];
+    let far = line(&[(-100.0, 50.0), (100.0, 50.0)]);
     assert!(!stroke_touches_rect(
         &far,
         Vec2::new(0.0, 0.0),
         Vec2::new(10.0, 10.0)
     ));
+}
+
+/// 🔴 **O marquee pega o traço pela COSTURA** — a caixa que cruza APENAS a aresta de
+/// fechamento (último→primeiro vértice) tem de pegar o traço: é uma linha que o render
+/// desenha. Antes do fix o marquee iterava `windows(2)` e a costura era invisível.
+///
+/// Mutação que sangra: `stroke_touches_rect` voltar a iterar `positions().windows(2)`.
+#[test]
+fn the_marquee_catches_a_closed_stroke_by_its_seam() {
+    // Um triângulo; a costura é a aresta (0,10)→(0,0), no x=0. A caixa mira SÓ ela:
+    // longe dos vértices e das outras duas arestas.
+    let mut tri = line(&[(0.0, 0.0), (20.0, 0.0), (0.0, 10.0)]);
+    tri.closed = true;
+    let (min, max) = (Vec2::new(-1.0, 4.0), Vec2::new(1.0, 6.0));
+    assert!(
+        tri.positions()
+            .iter()
+            .all(|p| { !(p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y) }),
+        "o fixture tem de mirar a COSTURA, nao um vertice"
+    );
+    assert!(
+        stroke_touches_rect(&tri, min, max),
+        "a caixa sobre a costura nao pegou o triangulo fechado"
+    );
+    // 🔴 O par de AUSÊNCIA: o MESMO traço ABERTO não tem costura — a caixa não pega nada.
+    // (Sem este, "feche sempre" passaria e o traço aberto ganharia uma aresta fantasma.)
+    let mut open = tri.clone();
+    open.closed = false;
+    assert!(
+        !stroke_touches_rect(&open, min, max),
+        "traco ABERTO nao tem costura: a caixa nao pode pegar a aresta que ninguem desenhou"
+    );
 }
 
 /// **Marquee simples SUBSTITUI; com Shift, SOMA.**

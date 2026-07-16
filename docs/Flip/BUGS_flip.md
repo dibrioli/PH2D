@@ -1004,3 +1004,60 @@ decorativo**:
 > pré-condição do laboratório virou, sem ninguém decidir, a pré-condição do produto. *Um caminho
 > novo só existe quando algo que o usuário de fato produz entra nele* — e a pergunta que fecha isso
 > em um minuto é: **"quem, no app real, satisfaz esta condição?"**
+
+---
+
+## #18 — ✅ Dava para VER e REALÇAR uma aresta que não dava para APONTAR (a costura)
+
+**Sintoma** (smoke do §4.A, Enio, 2026-07-15): *"uma linha do triângulo e uma linha do quadrado não
+são sensíveis à seleção"*.
+
+A contagem é o diagnóstico inteiro: um **triângulo** tem 3 arestas e **2** pares consecutivos de
+vértices; um **quadrado**, 4 e **3**. "Uma linha de cada" = **a aresta de fechamento** — a que liga o
+último vértice ao primeiro. Ela era desenhada e nunca era clicável.
+
+### A causa — quatro portas para "quais são os segmentos deste traço?"
+
+| quem | como respondia | fecha? |
+|---|---|---|
+| render (`ph2d_flip_render::pack::stroke_segments`) | `for a in first..last` + `if closed { push(last, first) }` | ✅ |
+| halo do Edit (`flip_selection_overlay::halo_path`) | recebe `s.closed` e fecha o `BezPath` | ✅ |
+| **pick** (`flip_select::hits`) | `positions().windows(2)` | ❌ |
+| **marquee** (`flip_edit_gesture::stroke_touches_rect`) | `positions().windows(2)` | ❌ |
+| **hover de arte** (`flip_gizmo_view`) | `positions().windows(2)` | ❌ |
+
+`windows(2)` **não tem como** produzir a costura: ele para no penúltimo ponto. E o
+`stroke_touches_rect` recebia `pts: &[Vec2]` — uma assinatura que **não podia nem saber** se o traço
+fecha. A porta estava errada na forma, não só no corpo.
+
+### Por que nenhum gate pegou (e por que só o §4.A expôs)
+
+O `hits` testa **fill OU tinta**, e o `ring_contains` do fill pega o interior inteiro — então numa
+forma fechada **preenchida** o clique na costura acerta *pelo fill* e o buraco fica invisível. Toda
+forma fechada dos fixtures e do smoke do W8 era preenchida ou uma região. A cena do §4.A é a
+primeira com forma fechada **sem fill** — e o buraco apareceu no primeiro clique do Enio.
+
+### O fix — uma porta só, no modelo
+
+`FlipStroke::segments() -> impl Iterator<Item = (usize, Vec2, Vec2)>` (`stroke.rs`), com a convenção
+**espelhada do render**; os três consumidores passaram a consumi-la (o `stroke_touches_rect` mudou de
+`&[Vec2]` para `&FlipStroke` — a assinatura que podia mentir foi a primeira coisa a sair).
+
+### Os gates — e a armadilha do fixture que quase repetiu o erro
+
+Três gates, **duas mutações provadas**: dropar a costura (= o código pré-fix) derruba os três;
+**emiti-la sempre** (ignorar o `closed`) derruba os **pares de ausência** — o traço aberto não pode
+ganhar a aresta que ninguém desenhou (a senoide do W8 selecionável pelo vazio entre as pontas).
+
+O 1º fixture do pick era um triângulo `(0,0),(20,0),(0,10)` mirado em `(0,5)`: o teste **falhou com o
+fix aplicado**. Não era o fix — o ponto está a **4,47** da hipotenusa e o `MIN_PICK_PX` é **5,0**,
+então o triângulo *aberto* era pego **pela hipotenusa**, não por uma costura fantasma. O fixture não
+isolava o que dizia isolar; escalado para `(0,0),(100,0),(0,100)` mirado em `(0,50)` (50 da base, ~35
+da hipotenusa), ele passou a provar a costura e só ela.
+
+> **Lição — uma pergunta respondida em N lugares diverge em silêncio, e o consumidor MAIS VISÍVEL
+> costuma ser o que acerta.** O render fechava; era o *input* que não. Enquanto "quais são os
+> segmentos deste traço?" tinha quatro donos, nada obrigava os quatro a concordarem — e o único que o
+> usuário podia *ver* estava certo, o que fez o defeito parecer "só" uma linha teimosa. Corolário de
+> assinatura: **um parâmetro que não carrega o suficiente para responder certo é um bug esperando
+> data** — `&[Vec2]` não sabia fechar, e por isso o marquee não tinha como acertar.

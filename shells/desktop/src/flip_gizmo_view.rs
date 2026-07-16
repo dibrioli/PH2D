@@ -161,11 +161,13 @@ fn contains_object(
         let p = pinv.apply(local);
         for s in &d.strokes {
             let pos = s.positions();
-            for w in pos.windows(2) {
+            // `segments()` — a porta única: a COSTURA de um traço fechado é arte que o
+            // render desenha, então passar sobre ela É estar sobre a arte.
+            for (_, sa, sb) in s.segments() {
                 let d2 = seg_dist2(
                     p,
-                    [f64::from(w[0].x), f64::from(w[0].y)],
-                    [f64::from(w[1].x), f64::from(w[1].y)],
+                    [f64::from(sa.x), f64::from(sa.y)],
+                    [f64::from(sb.x), f64::from(sb.y)],
                 );
                 if d2 <= r2 {
                     return true;

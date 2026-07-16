@@ -106,10 +106,10 @@ impl MotionState {
             .expect("motion node registry builds");
         let mut doc = MotionDoc::new();
         // GPU/M5 ready-to-smoke documents (opt-in; the regular boot document is
-        // untouched): `PH2D_GPU_COOK_DEMO=1` = the F1.1 512×512 (262k) chain that
-        // is 100% GPU under `PH2D_GPU_COOK=1`; `=2` = the F1.2 HYBRID chain whose
-        // first node (an oscillator on the uncovered Rotation channel) has no
-        // kernel, so the CPU cooks the prefix and the GPU runs the suffix.
+        // untouched): `PH2D_GPU_COOK_DEMO=1` = the F1.1 1250×1600 (2.000.000)
+        // chain that is 100% GPU under `PH2D_GPU_COOK=1`; `=2` = the F1.2 HYBRID
+        // chain whose first node (an oscillator on the uncovered Rotation channel)
+        // has no kernel, so the CPU cooks the prefix and the GPU runs the suffix.
         let sinks = match std::env::var("PH2D_GPU_COOK_DEMO").as_deref() {
             Ok("1") => build_gpu_demo_document(&mut doc, &registry).unwrap_or_default(),
             Ok("2") => build_gpu_hybrid_demo_document(&mut doc, &registry).unwrap_or_default(),
@@ -239,27 +239,33 @@ fn build_default_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec
     Some(demo.sinks)
 }
 /// The GPU/M5 Fase 1 **ready-to-smoke** document (`PH2D_GPU_COOK_DEMO=1`):
-/// `grid(512×512) → oscillator(Y wave) → move → output` — 262.144 instances,
-/// every node kernel-covered, so `PH2D_GPU_COOK=1` runs it 100% GPU-resident
-/// (`ph2d_gpu_cook::plan` claims the whole chain; the renderer binds the
-/// lowering's buffer with zero readback). The same chain, at 25.6k, is the
-/// parity gate's fixture. Auto-plays on tool entry like every boot document.
+/// `grid(1250×1600) → oscillator(Y wave) → move → output` — **2.000.000
+/// instances**, every node kernel-covered, so `PH2D_GPU_COOK=1` runs it 100%
+/// GPU-resident (`ph2d_gpu_cook::plan` claims the whole chain; the renderer binds
+/// the lowering's buffer with zero readback). Measured on the RTX at ~4 ms/frame
+/// for the cook (probe `gpu_cook_millions_timing`), i.e. the roadmap's "millions
+/// at 60fps" with headroom. The same chain, at 25.6k, is the parity gate's
+/// fixture. Auto-plays on tool entry like every boot document.
 fn build_gpu_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
     let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 512.0);
-    g.set_param(grid, "cols", 512.0);
-    // A dense lattice: span = 511 × gap. The quads are unit-sized (the shell's
-    // `default_size` identity), so gap 1.0 tiles them edge-to-edge — zoom out
-    // and the whole field reads as a shimmering cloth.
+    // 1250 × 1600 = exactly 2.000.000 cells (well under the grid's 16.7M cap).
+    g.set_param(grid, "rows", 1250.0);
+    g.set_param(grid, "cols", 1600.0);
+    // A dense lattice: the quads are unit-sized (the shell's `default_size`
+    // identity), so gap 1.0 tiles them edge-to-edge — zoom out and the whole
+    // 1600×1250 field reads as a shimmering cloth of two million quads.
     g.set_param(grid, "gap_x", 1.0);
     g.set_param(grid, "gap_y", 1.0);
     let osc = g.add_node("motion.oscillator");
     g.set_param(osc, "channel", 1.0); // Y — the kernel-covered channels are X/Y
     g.set_param(osc, "amplitude", 6.0);
     g.set_param(osc, "frequency", 0.5);
-    g.set_param(osc, "phase_stagger", 0.002); // a travelling wave across the field
+    // A travelling wave across the field. The phase advances per row-major index,
+    // so the stagger is scaled down for 2M cells (~500 cycles across the cloth,
+    // the same band density the 262k version read at 0.002).
+    g.set_param(osc, "phase_stagger", 0.00025);
     let mv = g.add_node("motion.move");
     let out = g.add_node("motion.output");
     for (i, n) in [grid, osc, mv, out].into_iter().enumerate() {

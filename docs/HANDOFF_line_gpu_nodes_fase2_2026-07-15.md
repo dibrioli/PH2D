@@ -71,11 +71,14 @@ verde); faltava o shell ligar o caso `plan.boundary == Some(...)`.
 - **nextest** nos 6 crates-nó + `ph2d-gpu-cook` + `ph2d-eval-motion` + `ph2d-ecs` + **shell 566** ✓
 - `clippy --all-targets` (crates tocados + shell) **zero** · `typos` **zero** · `file_loc_caps` ✓
   (o bloco GPU foi extraído pro módulo `gpu` — `motion_bridge.rs` 628→547) · `cargo machete` limpo
-- Perf baseline intacto: 500k full-GPU ≈ **1,0–1,2 ms/frame** na RTX.
+- Perf na RTX (full-GPU, `--release`): 500k ≈ **1,0–1,2 ms/frame**; **2M ≈ 4,0 ms/frame**
+  (`gpu_cook_millions_timing`, o demo `DEMO=1`). Domina overhead fixo, não o N.
 
 ## Smoke (pronto — rodar e clicar na tool Motion)
 
-**Full-GPU (F1.1, 262k, 100% GPU):**
+**Full-GPU (F1.1, `1250×1600` = 2.000.000 instâncias, 100% GPU):** cozinha em
+**~4 ms/frame** na RTX (probe `gpu_cook_millions_timing`) — os "milhões a 60fps"
+do roadmap, com folga. Zoom out pra ver o campo inteiro.
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=1 cargo run --release -p ph2d-host-desktop
 ```

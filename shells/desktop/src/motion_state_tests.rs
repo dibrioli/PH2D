@@ -527,3 +527,46 @@ fn the_hybrid_demo_document_plans_as_a_cpu_boundary_with_a_gpu_suffix() {
         plan.dispatching_stages(&registry)
     );
 }
+
+/// The **full-GPU smoke document is 2.000.000 instances, claimed whole**
+/// (`PH2D_GPU_COOK_DEMO=1`). Guards the count against a silent edit (a grid
+/// resized without noticing the smoke stopped being "millions") and the routing
+/// (any un-covered node would split it into a hybrid, changing what the smoke
+/// exercises). No cook, no device — just the grid params + the plan.
+#[test]
+fn the_gpu_demo_document_is_two_million_instances_claimed_fully_on_the_gpu() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    let sinks = build_gpu_demo_document(&mut doc, &registry).expect("well-typed GPU demo");
+    let out = *sinks.first().expect("one sink");
+
+    // The grid emits `rows × cols` cells (both are element counts, capped at
+    // 16.7M — 2M is well under). Read them off the graph and assert the product.
+    let grid = doc
+        .graph
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.grid")
+        .expect("a grid roots the chain");
+    let ov = doc.graph.node_param_overrides(grid.id).expect("grid params");
+    let (rows, cols) = (ov["rows"], ov["cols"]);
+    assert_eq!(
+        rows as u64 * cols as u64,
+        2_000_000,
+        "the GPU smoke document must be 2.000.000 instances ({rows} × {cols})"
+    );
+
+    // Every node is kernel-covered → the plan claims the WHOLE chain (no CPU
+    // boundary), with the grid + oscillator + move all dispatching.
+    let plan = ph2d_gpu_cook::plan(&doc.graph, &registry, &registry, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the full-GPU smoke must be claimed whole, not split into a hybrid"
+    );
+    assert_eq!(
+        plan.dispatching_stages(&registry),
+        3,
+        "grid + oscillator + move dispatch; output is pass-through"
+    );
+}

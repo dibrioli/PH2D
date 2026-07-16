@@ -446,19 +446,20 @@ fn falloff_kernel_matches_the_cpu_within_epsilon() {
 }
 
 /// Perf probe, not a gate (mirrors Fase 0's `cook_500k_timing`): the F1.1
-/// chain at 707×707 ≈ 500k instances, steady-state cook + full GPU wait per
-/// frame. Compare against the CPU baseline (4,93 ms @ 32 threads).
+/// chain at 1415×1415 ≈ **2M instances** — the roadmap's "millions" target —
+/// steady-state cook + full GPU wait per frame. Compare against the CPU
+/// baseline (Fase 0: 4,93 ms @ 32 threads for 500k).
 ///
-///   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture gpu_cook_500k_timing
+///   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture gpu_cook_millions_timing
 #[test]
 #[ignore = "perf probe; requires a GPU adapter"]
-fn gpu_cook_500k_timing() {
+fn gpu_cook_millions_timing() {
     let Some(gpu) = try_headless_gpu() else {
         eprintln!("no GPU adapter — skipping");
         return;
     };
     let reg = registry();
-    let (g, [_, _, _, out]) = chain(&reg, 707.0);
+    let (g, [_, _, _, out]) = chain(&reg, 1415.0);
     let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
     assert!(plan.is_fully_gpu());
     let mut gc = ph2d_gpu_cook::GpuCook::new();

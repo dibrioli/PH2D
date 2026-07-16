@@ -18,6 +18,7 @@
 
 | commit | wave | o quê | smoke |
 |---|---|---|---|
+| `33d7784d` | **§4.A fix** | **revert:** 2+ pontos **precisam** de gizmo — a regra "Point nunca tem gizmo" foi regressão minha | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `994ce21c` | **§4.A fix** | **`Select: Point` começa DESSELECIONADO** (o broadcast do §11 saiu — diverge do GP de propósito) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `08ba6358` | **§4.A fix** | **`Select: Point` some com o gizmo NA HORA** — o gizmo é do domínio **Stroke** (ADR-0112 parity) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
 | `017b8f00` | **§4.A fix** | a **ÁREA** do gizmo agarra a seleção · **ponto único não abre gizmo** — 2 achados do smoke | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
@@ -25,7 +26,7 @@
 | `1b51f59b` | **§4.A** | o **gizmo da SELEÇÃO** no modo Edit (rotate/escala assado nos pontos de arte exclusiva) | **PENDENTE — rode `PH2D_FLIP_XFORM_SMOKE=1`** |
 
 Tudo abaixo do `1b51f59b` já tinha smoke OK (ver 15b): W8 (domínio Point), W7.5 (gizmo
-da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 27 commits.
+da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 29 commits.
 
 **O achado do 1º smoke do §4.A (Enio):** *"uma linha do triângulo e uma linha do quadrado
 não são sensíveis à seleção"* — a **aresta de fechamento**. `positions().windows(2)` não
@@ -50,47 +51,38 @@ respondida, *"onde a seleção é agarrável?"*:
    escalona um ponto): só o realce do W8, e o arrasto dele é o gesto de sempre. O limiar é o
    **zero exato**, não um épsilon.
 
-**O 3º achado (`08ba6358`):** *"se eu seleciono no painel `Select: Point`, o gizmo do stroke
-deve sumir imediatamente"*. Não sumia porque a troca de domínio faz **broadcast**
-(`selection_to_point_domain`, W8): a MESMA seleção continua lá ponto a ponto, a caixa segue
-com extensão, e só a regra do **domínio** some com ele. E é a regra certa, não só a
-preferência: no Point o alvo do clique são as **âncoras**, e os handles pousariam em cima
-delas (a bbox de um retângulo tem as âncoras NAS quinas). **O projeto já tinha tomado essa
-decisão no Vector** — [ADR-0112](architecture/decisions/0112-vector-select-node-pen-are-three-tools.md):
-*"o gizmo da forma só publica `GizmoView` no modo Select — em Node ele comeria o clique do
-nó"*. **Stroke/Point aqui é o análogo exato de Select/Node lá** (e o idioma do Illustrator:
-seta preta = caixa, seta branca = âncoras sem caixa).
+**O 3º e o 5º achado — a regra do domínio, e o REVERT dela (`08ba6358` → `33d7784d`):**
+*"se eu seleciono `Select: Point`, o gizmo do stroke deve sumir imediatamente"* — eu fiz
+**duas** correções para isso e **só uma era necessária**. Entrar no Point **limpo**
+(`enter_point_domain`, o 4º achado) já entrega: sem seleção não há caixa. A outra —
+*"domínio Point ⇒ nunca gizmo"* — foi **exagero, e matou girar/escalar múltiplos pontos**,
+que é METADE do que o §4.A existe para dar (Enio: *"agora não temos o gizmo para manipular
+múltiplos pontos… precisamos para dois ou mais"*). **Revertida em `33d7784d`.**
 
-A porta única é a **`grabbable_selection_box`** (`flip_selection_gizmo.rs`) — hoje com **3
-recusas: domínio Point · arte instanciada · sem extensão**. A `selection_view` a **desenha**
-e o `plan_down`/`plan_down_points` a tornam **arrastável**, então os dois somem juntos (sem
-gizmo não há área). Duas funções divergiriam — e o artista veria uma caixa que não pega.
-**Se você mexer no gizmo da seleção, é essa função que decide tudo.** O domínio vem de
-`App::flip_edit_domain_now` (uma porta) e é **içado antes do empréstimo de `gfx`** no
-`render_loop` (método em `&self` colide com `self.gfx.as_mut()`).
+O **precedente do ADR-0112 que citei não se aplica** — e isso é a lição: lá o gizmo do modo
+Node seria o da **forma inteira**; aqui o gizmo é o dos **pontos selecionados**, que é outro
+objeto. A analogia era falsa, e "o projeto já decidiu isso" é um argumento forte demais para
+usar sem conferir se é a MESMA pergunta.
 
-**O 4º achado (`994ce21c`):** *"quando `Select: Point` os pontos ficam todos selecionados.
-faça com que comece com pontos desselecionados"*. A troca de domínio fazia **broadcast** (o
-`02_referencia §11` do GP: traço aceso ⇒ todos os pontos dele acesos) — e o 1º gesto do
-artista no Point é quase sempre *"quero estas duas âncoras"*, ou seja, ele começava
-**desmarcando**. **Diverge do GP de propósito.** A volta ao Stroke continua **promovendo**
-por `any()`; a assimetria é deliberada (entrar no Point = *"vou escolher âncoras"*; voltar
-ao Stroke = *"as âncoras que toquei são deste traço"*). Par renomeado para o que de fato
-acontece: **`enter_point_domain`/`enter_stroke_domain`** (`selection_to_point_domain`
-mentiria — não converte mais, limpa). O **`broadcast_selection_to_points` ficou órfão e
-saiu** (só o próprio teste o chamava; `select_all_points` usa `set_point_selected`), junto
-com a doc que o listava como choke point do `point_sel` — **hoje são 2 choke points**.
+**O modelo final (é este que vale):**
+| estado | gizmo |
+|---|---|
+| entrar no `Select: Point` | **some** — a entrada limpa a seleção |
+| 1 âncora acesa | **não** — não se rotaciona um ponto; só o realce, e ela arrasta (W8) |
+| 2+ âncoras acesas | **sim**, enquadrando **só elas** |
+| voltar ao `Select: Stroke` | promove por `any()` → gizmo do traço inteiro |
 
-**Esta regra e a do domínio são COMPLEMENTARES, não redundantes** — e o gate prova: com
-`enter_point_domain` mutado para no-op, o gate do gizmo continua **verde** (ele arma a
-seleção pelo CLIQUE, não pela troca de domínio) e só o gate novo cai. Entrar limpa; a regra
-do domínio impede o gizmo **depois** que o artista acende âncoras.
+A porta única é a **`grabbable_selection_box`** (`flip_selection_gizmo.rs`) — **2 recusas:
+arte instanciada · seleção sem extensão**. Vale nos DOIS domínios. A `selection_view` a
+**desenha** e o `plan_down`/`plan_down_points` a tornam **arrastável**, então os dois somem
+juntos (sem gizmo não há área). **Se você mexer no gizmo da seleção, é essa função que
+decide tudo.**
 
-**Gate partido em dois, de propósito:** o do ponto único passaria **pelo motivo errado**
-depois da regra do domínio (o caso do ponto único só existe NO domínio Point). Então virou
-`the_point_domain_never_opens_the_gizmo` (faz o broadcast REAL e exige a recusa) +
-`a_selection_without_extent_never_opens_the_gizmo` (o caso alcançável no Stroke: um traço de
-um ponto só). **Cada camada sangra sozinha** — `feedback_layered_defenses_need_per_layer_gates`.
+**Os gates que prendem isso:** `two_selected_points_open_a_gizmo_around_only_them` (a
+CAPACIDADE — a caixa é a dos dois pontos, não a do retângulo; mutação: re-introduzir a
+recusa do domínio, que é exatamente a regressão que o smoke pegou) ·
+`a_selection_without_extent_never_opens_the_gizmo` (uma âncora só) ·
+`entering_the_point_domain_starts_deselected` (o modelo, em `ph2d-flip::drawing`).
 
 **Split pelo cap de LOC** (HR-18, nunca allowlist): o **pick de TRAÇO** saiu para o módulo
 irmão **`flip_select_pick.rs`** (`MIN_PICK_PX`/`stroke_at`/`hits`/`seg_dist2` — o gêmeo do

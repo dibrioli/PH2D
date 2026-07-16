@@ -116,21 +116,24 @@ impl FlipDrawing {
 
     // ── Domínio POINT (W8 — `02_referencia §11`): conversão explícita + agregadas ──
 
-    /// **Curve → Point** (o toggle do painel foi para Point): materializa o vetor de
-    /// pontos nos traços SELECIONADOS (broadcast). Os não-selecionados ficam sem dado —
-    /// vetor ausente lê como o estado do traço (`false`), então a semântica observável é
-    /// a mesma e o caso comum não paga memória.
-    pub fn selection_to_point_domain(&mut self) {
-        for s in &mut self.strokes {
-            if s.selected {
-                s.broadcast_selection_to_points();
-            }
-        }
+    /// **Entrar no domínio Point** (o toggle do painel foi para Point): **começa
+    /// DESSELECIONADO** (Enio, smoke do §4.A — *"faça com que em Select: Point comece com
+    /// pontos desselecionados"*).
+    ///
+    /// **Isto DIVERGE do GP de propósito** (o `02_referencia §11` faz broadcast: traço
+    /// selecionado ⇒ todos os pontos dele acesos). O broadcast entrega o domínio Point com
+    /// TUDO aceso, e o 1º gesto do artista ali é quase sempre *"quero estas duas âncoras"*
+    /// — ou seja, ele começa **desmarcando**. Entrar limpo torna o gesto seguinte o pick,
+    /// que é o que o modo existe para fazer. (A volta ao Stroke **promove** por `any()`:
+    /// ver [`Self::enter_stroke_domain`]. A assimetria é deliberada — entrar no Point é
+    /// "vou escolher âncoras"; voltar ao Stroke é "as âncoras que toquei são deste traço".)
+    pub fn enter_point_domain(&mut self) {
+        self.clear_selection();
     }
 
-    /// **Point → Curve** (o toggle voltou para Stroke): promove `any()` por traço e
-    /// desmaterializa os vetores (half-selected só existe em Point, §11).
-    pub fn selection_to_stroke_domain(&mut self) {
+    /// **Entrar no domínio Stroke** (o toggle voltou para Stroke): promove `any()` por
+    /// traço e desmaterializa os vetores (half-selected só existe em Point, §11).
+    pub fn enter_stroke_domain(&mut self) {
         for s in &mut self.strokes {
             s.promote_points_to_stroke();
         }
@@ -164,6 +167,63 @@ impl FlipDrawing {
 
 #[cfg(test)]
 mod tests {
+    /// 🔴 **Entrar no domínio Point começa DESSELECIONADO** (Enio, smoke do §4.A: *"faça
+    /// com que em Select: Point comece com pontos desselecionados"*).
+    ///
+    /// O `02 §11` do GP faz **broadcast** aqui (traço aceso ⇒ todos os pontos dele acesos),
+    /// e era isso que entregava o Point com tudo selecionado — obrigando o artista a
+    /// desmarcar antes de escolher as âncoras que queria. A ida limpa; a **volta** ao
+    /// Stroke ainda promove por `any()`, e a assimetria é deliberada.
+    ///
+    /// Mutação que sangra: `enter_point_domain` voltar a fazer broadcast (ou virar no-op —
+    /// a seleção de traço sobreviveria e todo ponto leria `true` pelo "ausente = broadcast").
+    #[test]
+    fn entering_the_point_domain_starts_deselected() {
+        let mut d = FlipDrawing::new();
+        let mut s = crate::FlipStroke::new();
+        for i in 0..3 {
+            s.push_default(ph2d_core::Vec2::new(i as f32, 0.0));
+        }
+        s.selected = true;
+        d.strokes.push(s);
+        // Antes: o traço está aceso, e sem dado de ponto TODO ponto lê como aceso.
+        assert!((0..3).all(|i| d.strokes[0].point_selected(i)));
+
+        d.enter_point_domain();
+
+        assert!(
+            (0..3).all(|i| !d.strokes[0].point_selected(i)),
+            "Select: Point tem de comecar com TODOS os pontos desselecionados"
+        );
+        assert!(
+            !d.strokes[0].selected,
+            "e o traco tambem sai (any() = false)"
+        );
+        assert!(
+            d.strokes[0].soa_is_consistent(),
+            "a invariante do §11 fica de pe"
+        );
+        assert!(!d.any_selected());
+    }
+
+    /// **A volta ao Stroke PROMOVE** — o par do gate acima: as âncoras que o artista tocou
+    /// dizem de que traço ele estava cuidando.
+    #[test]
+    fn entering_the_stroke_domain_promotes_by_any() {
+        let mut d = FlipDrawing::new();
+        let mut s = crate::FlipStroke::new();
+        for i in 0..3 {
+            s.push_default(ph2d_core::Vec2::new(i as f32, 0.0));
+        }
+        d.strokes.push(s);
+        d.strokes[0].set_point_selected(1, true);
+        d.enter_stroke_domain();
+        assert!(d.strokes[0].selected, "uma ancora acesa promove o traco");
+        assert!(
+            !d.strokes[0].has_point_selection(),
+            "desmaterializa na volta"
+        );
+    }
     use super::*;
 
     #[test]

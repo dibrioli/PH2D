@@ -8,8 +8,7 @@
 //! do centro DELE; uma **borda** escala num eixo; arrastar a arte (fora dos handles)
 //! **move** a seleção (o gesto do W6.1). Conferir que o **triângulo não se mexe**, que
 //! **Ctrl+Z** desfaz o gesto inteiro (1 passo), e que clicar no vazio **fora** da caixa
-//! (desmarca) **some** com o gizmo. Trocar pro domínio **Point** e selecionar meia
-//! geometria: o gizmo passa a enquadrar SÓ os pontos selecionados e gira só eles.
+//! (desmarca) **some** com o gizmo.
 //!
 //! **Os achados dos smokes anteriores têm alvo próprio na cena:**
 //! - O retângulo é **VAZADO** (sem fill) de propósito: arrastar do **meio dele** (onde não
@@ -20,7 +19,11 @@
 //! - **O toggle `Select: Point` some com o gizmo NA HORA** — o gizmo é do domínio
 //!   **Stroke** (ADR-0112 parity: no Vector o gizmo só aparece no modo Select; em Node ele
 //!   comeria o clique do nó). No Point o alvo são as âncoras, e os handles pousariam em
-//!   cima delas. Voltar pro **Stroke** traz o gizmo de volta com a seleção intacta.
+//!   cima delas.
+//! - **O Point começa DESSELECIONADO** — entrar nele limpa a seleção (o gesto seguinte ali
+//!   é escolher âncoras). Selecionar 2+ âncoras **não** traz o gizmo de volta: ele é do
+//!   Stroke. Voltar ao **Stroke** promove por `any()` (o traço cujas âncoras você tocou
+//!   fica selecionado) e o gizmo reaparece nele.
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
@@ -108,7 +111,9 @@ impl crate::App {
                      NAO se mexe; Ctrl+Z desfaz o gesto inteiro; clicar no vazio FORA da caixa \
                      desmarca e o gizmo some; as 3 linhas do triangulo e as 4 do retangulo sao \
                      todas clicaveis (a costura, BUGS #18). O toggle Select:Point SOME com o \
-                     gizmo na hora (ele e do dominio Stroke); voltar a Stroke o traz de volta."
+                     gizmo na hora (ele e do dominio Stroke) e comeca DESSELECIONADO; \
+                     selecionar ancoras nao traz o gizmo de volta. Voltar a Stroke promove por \
+                     any() e o gizmo reaparece."
                 );
             }
             9 => self.any_input_this_frame = true, // arma o baseline do undo

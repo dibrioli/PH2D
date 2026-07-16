@@ -139,9 +139,11 @@ fn a_click_inside_the_gizmo_box_grabs_the_selection() {
 /// mesma regra que o ADR-0112 já tomou no Vector (o gizmo da forma só publica no modo
 /// Select; em Node ele comeria o clique do nó).
 ///
-/// **A troca de domínio faz BROADCAST** (`selection_to_point_domain`, W8): a MESMA seleção
-/// que abria o gizmo no Stroke continua lá, ponto a ponto — a caixa segue com extensão.
-/// Então o gizmo só some se a regra olhar o DOMÍNIO, e é isso que este gate prende.
+/// **A seleção do fixture é a que o CLIQUE do artista produz** (`set_point_selected` — o
+/// pick do W8), NÃO a troca de domínio: entrar no Point hoje **limpa**
+/// (`enter_point_domain`), e armar por ali deixaria este gate verde por falta de seleção,
+/// não pela regra do domínio. Com âncoras acesas a caixa TEM extensão, e o gizmo só some
+/// se a regra olhar o DOMÍNIO — é isso que este gate prende.
 ///
 /// Mutação que sangra: tirar o teste de domínio da `grabbable_selection_box`.
 #[test]
@@ -156,11 +158,14 @@ fn the_point_domain_never_opens_the_gizmo() {
         grabbable_selection_box(&d, EditDomain::Stroke).is_some(),
         "o fixture tem de abrir gizmo no Stroke"
     );
-    // A troca de dominio REAL (o broadcast do W8): todo ponto do traco fica selecionado.
-    d.selection_to_point_domain();
+    // O artista entra no Point e ACENDE ancoras (o pick do W8) — a caixa tem extensao.
+    d.enter_point_domain();
+    for i in 0..4 {
+        d.strokes[0].set_point_selected(i, true);
+    }
     assert!(
-        d.strokes[0].all_points_selected(),
-        "o broadcast mantem a selecao — e por isso a caixa AINDA teria extensao"
+        selection_center_half(&d).is_some_and(|(_, h)| h[0] > 0.0 && h[1] > 0.0),
+        "com ancoras acesas a caixa AINDA teria extensao — o gizmo so some pelo DOMINIO"
     );
     assert!(
         grabbable_selection_box(&d, EditDomain::Point).is_none(),

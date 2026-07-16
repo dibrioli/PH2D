@@ -115,9 +115,10 @@ pub(crate) fn apply_marquee_points(
     changed
 }
 
-/// **A troca de DOMÍNIO converte a seleção no documento** (W8 — a conversão explícita
-/// do `02 §11`): Stroke→Point é broadcast (traço aceso ⇒ todos os pontos dele), Point→
-/// Stroke é promoção `any()` + desmaterializa. Roda 1×/frame ao lado do
+/// **A troca de DOMÍNIO reescreve a seleção no documento** (W8): entrar no **Point**
+/// começa **desselecionado** (Enio — o gesto seguinte ali é escolher âncoras; o broadcast
+/// do `02 §11` entregava tudo aceso e obrigava a desmarcar antes); voltar ao **Stroke**
+/// promove por `any()` + desmaterializa. Roda 1×/frame ao lado do
 /// [`flip_edit_style_refresh`]; só age quando o toggle do painel MUDOU (a tool guarda a
 /// escolha, o documento guarda o dado — e as duas pontas se encontram aqui).
 pub(crate) fn flip_edit_domain_refresh(app: &mut crate::App) {
@@ -141,8 +142,8 @@ pub(crate) fn flip_edit_domain_refresh(app: &mut crate::App) {
         return;
     };
     match now {
-        ph2d_tool_flip::EditDomain::Point => drawing.selection_to_point_domain(),
-        ph2d_tool_flip::EditDomain::Stroke => drawing.selection_to_stroke_domain(),
+        ph2d_tool_flip::EditDomain::Point => drawing.enter_point_domain(),
+        ph2d_tool_flip::EditDomain::Stroke => drawing.enter_stroke_domain(),
     }
     app.title_dirty = true;
 }

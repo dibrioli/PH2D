@@ -126,9 +126,9 @@ pub struct FlipStroke {
     /// permanente), para que os consumidores por-traço (painel, delete de traço, máscara
     /// grossa do Sculpt, realce) nunca divirjam do que os pontos dizem.
     ///
-    /// Privado de propósito: toda escrita passa pelos choke points ([`Self::set_point_selected`],
-    /// [`Self::broadcast_selection_to_points`], [`Self::promote_points_to_stroke`]), que
-    /// mantêm as DUAS invariantes acima. Ler é [`Self::point_selected`].
+    /// Privado de propósito: toda escrita passa pelos choke points ([`Self::set_point_selected`]
+    /// e [`Self::promote_points_to_stroke`]), que mantêm as DUAS invariantes acima. Ler é
+    /// [`Self::point_selected`].
     point_sel: Vec<bool>,
 }
 
@@ -359,16 +359,6 @@ impl FlipStroke {
         changed
     }
 
-    /// **Curve → Point** (troca de domínio): materializa o vetor com o estado do traço
-    /// em todo ponto. Idempotente sobre um domínio já materializado? NÃO — sobrescreve
-    /// (é a conversão do §11: o dado é do domínio NOVO). No-op num traço vazio.
-    pub fn broadcast_selection_to_points(&mut self) {
-        if self.is_empty() {
-            return;
-        }
-        self.point_sel = vec![self.selected; self.len()];
-    }
-
     /// **Point → Curve** (troca de domínio): promove `any(point_sel)` ao traço e
     /// DESmaterializa o vetor (half-selected só existe em Point, §11).
     pub fn promote_points_to_stroke(&mut self) {
@@ -558,23 +548,36 @@ mod tests {
         assert!(!s.selected, "nenhum ponto aceso = traco apagado");
     }
 
-    /// **A conversão de domínio é a do §11**: Curve→Point é broadcast (traço selecionado
-    /// ⇒ todos os pontos); Point→Curve é promoção `any()` + desmaterializa (half-selected
-    /// só existe em Point).
+    /// **Point → Curve é promoção `any()` + desmaterializa** (half-selected só existe em
+    /// Point, §11). A volta ao Stroke diz *"as âncoras que toquei são deste traço"*.
+    ///
+    /// (A ida — Curve→Point — **não** é mais broadcast: entrar no Point começa
+    /// desselecionado, ver `FlipDrawing::enter_point_domain`. Era o que o
+    /// `broadcast_selection_to_points` servia, e ele saiu junto.)
     #[test]
-    fn domain_conversion_is_broadcast_down_and_any_up() {
+    fn the_point_to_curve_promotion_is_any_and_dematerializes() {
         let mut s = FlipStroke::new();
         for i in 0..3 {
             s.push_default(Vec2::new(i as f32, 0.0));
         }
-        s.selected = true;
-        s.broadcast_selection_to_points();
-        assert!((0..3).all(|i| s.point_selected(i)), "broadcast: todos");
-        assert!(s.set_point_selected(0, false));
-        assert!(s.set_point_selected(1, false));
+        // O artista acendeu UMA âncora no domínio Point.
+        assert!(s.set_point_selected(2, true));
+        assert!(s.has_point_selection());
         s.promote_points_to_stroke();
         assert!(s.selected, "um ponto vivo promove o traco");
         assert!(!s.has_point_selection(), "Point desmaterializado na volta");
+        // E nenhum ponto aceso NÃO promove.
+        let mut t = FlipStroke::new();
+        for i in 0..3 {
+            t.push_default(Vec2::new(i as f32, 0.0));
+        }
+        assert!(t.set_point_selected(1, true));
+        assert!(t.set_point_selected(1, false));
+        t.promote_points_to_stroke();
+        assert!(
+            !t.selected,
+            "nenhuma ancora acesa nao pode promover o traco"
+        );
     }
 
     /// **Sem dado de ponto, o ponto herda o TRAÇO** (ausente = broadcast) — é o que faz

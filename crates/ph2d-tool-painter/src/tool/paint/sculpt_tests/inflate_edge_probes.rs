@@ -79,6 +79,12 @@ fn diag_enio_capsule_and_blobs() {
     let h0 = heights_of(&t, layer);
     arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
     t.set_sculpt_depth(1.0);
+    t.set_sculpt_smooth(
+        std::env::var("PH2D_DIAG_SMOOTH")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0.0),
+    );
     assert!(t.filter_sculpt_layer(FilterScope::Layer), "filter ran");
     let c1 = covers_of(&t, layer);
     let h1 = heights_of(&t, layer);
@@ -240,4 +246,57 @@ fn diag_one_form_vs_two_competing() {
     println!("TWO forms  : worst height jump {w2:.2}, texels>1 = {h2:3}, cover max step {s2}");
     let (w3, h3, s3) = build(&[[70.0, 110.0], [150.0, 110.0]]);
     println!("TWO far    : worst height jump {w3:.2}, texels>1 = {h3:3}, cover max step {s3}");
+}
+
+/// DIAGNOSTIC — **does the Smoothness knob dissolve the facets, and at what price?** (Enio's 2nd smoke,
+/// 2026-07-16: the cheap way out of the argmax's seam, if it works.)
+///
+/// Two numbers, because a blur that flattens the artefact by flattening the ART is not a fix:
+/// * the FACET: max neighbour jump + how many texels jump over a load (the deposit's own ceiling is 0.38);
+/// * the FORM: the blob's peak and its width at half-max — the thing the artist asked the verb for.
+#[test]
+#[ignore = "diagnostic"]
+fn diag_does_the_smooth_knob_dissolve_the_facets() {
+    let probe = |smooth_norm: f32| -> (f32, usize, f32, usize, u8) {
+        let (mut t, layer) = super::inflate_edge::thick_round_blob();
+        arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
+        t.set_sculpt_depth(1.0);
+        t.set_sculpt_smooth(smooth_norm);
+        assert!(t.filter_sculpt_layer(FilterScope::Layer), "filter ran");
+        let h = heights_of(&t, layer);
+        let c = covers_of(&t, layer);
+        let (mut worst, mut hot) = (0.0f32, 0usize);
+        for y in 5..SIZE - 5 {
+            for x in 5..SIZE - 5 {
+                let i = (y * SIZE + x) as usize;
+                let d = (h[i + 1] - h[i])
+                    .abs()
+                    .max((h[i + SIZE as usize] - h[i]).abs());
+                worst = worst.max(d);
+                if d > 1.0 {
+                    hot += 1;
+                }
+            }
+        }
+        let peak = h.iter().copied().fold(f32::MIN, f32::max);
+        // The FORM: how wide the paint is across the blob's middle.
+        let width = ((CX as u32) - 60..(CX as u32) + 60)
+            .filter(|x| c[((CY as u32) * SIZE + x) as usize] > 128)
+            .count();
+        let step = max_step(&radial_cover(&c));
+        (worst, hot, peak, width, step)
+    };
+    println!("  knob   px | facet: max jump / texels>1 | form: peak  width | cover step");
+    for (norm, px) in [
+        (0.0f32, 0),
+        (0.125, 2),
+        (0.25, 4),
+        (0.375, 6),
+        (0.5, 8),
+        (0.75, 12),
+        (1.0, 16),
+    ] {
+        let (w, hot, peak, width, step) = probe(norm);
+        println!("  {norm:5.3} {px:2}px | {w:8.2} / {hot:6} | {peak:8.2} {width:4} | {step:3}");
+    }
 }

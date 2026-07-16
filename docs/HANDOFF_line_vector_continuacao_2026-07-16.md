@@ -2,6 +2,7 @@
 
 **Para:** o próximo agente (contexto novo) **e** o agente integrador.
 **Estado:** o **Blend Object vivo (ADR-0122) está COMPLETO** — Fases A, B, C1, C2a, C2b e D fechadas.
+**+ o item #2 da fila (compound path perde o buraco) FECHOU** (`62c93fa7`, 2026-07-16 — §8 abaixo).
 A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (Modo L, CLAUDE.md §0.7).
 
 > **Leia primeiro:** `CLAUDE.md` (inteiro, é curto) + `docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md`.
@@ -15,13 +16,14 @@ A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (
 | | |
 |---|---|
 | **Branch** | `line/Vector` (worktree `Worktrees/line-Vector/`) |
-| **HEAD** | `92553b22` |
+| **HEAD** | `62c93fa7` |
 | **Base do fork** | `4d203d48` (merge-base com `main`) |
-| **Commits** | 29 |
+| **Commits** | 31 |
 | **Contratos congelados encostados** | **NENHUM** (§4 abaixo) |
 
-Os 3 commits desta sessão, do mais novo:
+Os 4 commits desta sessão, do mais novo:
 
+- `62c93fa7` — **o blend PERDIA o buraco**: compound path sobrevive ao morph (fila #2 — §8)
 - `92553b22` — os pontos LIVRES do spine acompanham quando o conjunto translada
 - `22a368be` — **Fase D**: Expand / Release
 - `f0706d0b` — Steps responde a qualquer objeto do blend + Shift soma pontos no modo Node
@@ -126,8 +128,10 @@ guardar só uma seria um corte silencioso). Quem **usa**: `app_state.rs` (declar
 
 ### 3.4 O que SÓ o `ship.sh` pega (§1.5.9.5)
 
-- **2 deps novas** (`cargo machete`): `ph2d-color` em `ph2d-vec-blend` (a cor OKLab) e **`ph2d-host`
-  como dev-dep** em `ph2d-panel-vector` (o `PointerEvent` do seam dos botões). As duas são usadas.
+- **3 deps novas** (`cargo machete`): `ph2d-color` em `ph2d-vec-blend` (a cor OKLab) · **`ph2d-host`
+  como dev-dep** em `ph2d-panel-vector` (o `PointerEvent` do seam dos botões) · **`ph2d-vec-boolean`
+  como dev-dep** em `ph2d-vec-blend` (§8: um gate blenda a rosquinha REAL da booleana, em vez da
+  minha ideia de rosquinha). As três são usadas; nenhuma cria ciclo.
 - **`.typos.toml`** — vide 3.2.
 - clippy latente / RUSTSEC / fmt pré-fork: nada conhecido, mas o gate de integração não roda.
 
@@ -179,15 +183,11 @@ Expand (os passos têm de nascer onde estavam — se algum saltar para a reta, v
 
 ## §5 — A FILA (a ordem é do Enio)
 
-1. **Morph vivo** (o `t` animável) — **a próxima**. É o que transforma o Blend de objeto estático numa
-   feature de **animação**: uma forma única cujo `t` se keya na timeline. **O caro já está pago:**
-   `ph2d_vec_blend::Plan::at(t)` existe e a correspondência (a busca 256×256, ~ms) é função do PAR,
-   não do `t` — monte o `Plan` quando a relação mudar e chame `at(t)` por frame. O desenho é o do
-   **conector** (`shells/desktop/src/connector_live.rs`), o mesmo que o `blend_live` já espelha.
-2. **Compound path perde o BURACO** — ⚠️ **eu puxaria para cá** (a fila é sua). Não é falta de feature,
-   é **resultado errado em silêncio**: `Outline::of` lê só o contorno externo, e o shell aceita porque
-   uma rosquinha *é* `closed`. Blendar uma rosquinha — **a saída típica da booleana** — a vira um
-   disco, sem aviso. Pré-existente (idêntico em `main`), o motor nunca suportou compound path.
+1. **Morph vivo** (o `t` animável) — **a próxima**, e agora com o pré-requisito PAGO: o `Plan` tomou
+   a forma final (um `Link` por par de contornos) ao fechar o #2, então o morph nasce em cima dela em
+   vez de a reformar debaixo de um consumidor vivo. **Escoteirado, não construído** — §9 abaixo tem
+   o desenho, as duas armadilhas que achei olhando o código, e a decisão de wire-format que ele pede.
+2. ~~**Compound path perde o BURACO**~~ — **FECHADO** em `62c93fa7` (§8).
 3. **Envelope / puppet warp.**
 4. Do Illustrator, o que falta no Blend: **Replace Spine** (os passos seguem um caminho desenhado) e
    **Smooth Color** (o nº de passos sai do degradê).
@@ -223,14 +223,137 @@ Expand (os passos têm de nascer onde estavam — se algum saltar para a reta, v
 
 ---
 
+## §8 — O item #2 da fila: o buraco (`62c93fa7`)
+
+Blendar uma rosquinha a virava um **disco**, sem aviso. O defeito tinha **três sítios
+independentes**, cada um bastando sozinho — e é por isso que ele sobreviveu: consertar um só não
+faz o buraco aparecer, então quem tentasse pela metade concluiria que a teoria estava errada.
+
+| Sítio | Era | É |
+|---|---|---|
+| `ph2d-vec-blend/src/lib.rs` `Outline::of` | lia só `cooked.verts` | `compound::rings` — todos os contornos |
+| idem, `path_from` | `..VecPath::default()` (subpaths vazio, `fill_rule` → `NonZero`) | emite subpaths + regra |
+| `shells/desktop/src/blend_live.rs` `translate_verts` | laço só sobre `.verts` | `VecPath::for_each_vert_mut` |
+
+O 3º é o mais instrutivo: a scene **já tinha** a porta certa (`for_each_vert_mut`, documentada como
+*"base das transformações"*), e o `translate_verts` era uma 2ª porta que divergiu. Ela era
+**inalcançável** — o motor nunca produzia um passo com buraco —, então dormiu até a rosquinha
+chegar. [[feedback_two_doors_to_the_same_question_diverge]]
+
+**As duas decisões de desenho** (as duas com mutação que mata):
+
+- **O papel de um contorno é a profundidade de aninhamento dele** (0 = fora, 1 = buraco, 2 = ilha),
+  medida por continência através da porta única `contains_point`. O par só sai da MESMA
+  profundidade. Sem isso o contorno de fora casa com o buraco e a forma vira do avesso no meio.
+- **Contorno sem par colapsa num PONTO, no centroide do lado OPOSTO** — o buraco viaja com a forma
+  e fecha *dentro* dela. No centroide dele mesmo ficaria parado onde a forma **estava**, e
+  encolheria saindo pela borda.
+
+**A pesquisa (5 agentes) — ninguém resolveu isto**, e vale saber para não procurar de novo: o
+flubber destrói o winding no `normalizeRing` (`if (area > 0) points.reverse()`) e ignora tudo menos
+o contorno de fora (*"Deal with holes?"* aberto desde 2017); o GSAP ordena por tamanho **sem
+sinal** — um contorno externo e um buraco de mesma magnitude são indistinguíveis — e a doc manda
+*"split your path and morph each one"*; o Illustrator não consegue **formular** a pergunta (uma
+âncora por *objeto*); o Inkscape descarta o resto em silêncio; o Blender recusa; e o **Sederberg &
+Greenwood 1992** usa a palavra "hole" **uma vez**, no §6 *Future Work*, pondo exatamente este
+problema. O modelo de profundidade tem validação independente no `correctContourDirection` do
+**defcon** (fontes: paridade-como-continência, ilhas inclusive).
+
+Do que a pesquisa mudou no código: o pareamento era **guloso** e virou o **`bestOrder` do flubber**
+(branch-and-bound exato sobre `squaredDistance` de centroides). A degradação silenciosa dele
+(> 8 peças ⇒ **ordem identidade**, sem contar a ninguém) **não** foi portada — acima de
+`EXACT_MAX` o escape é guloso, que ao menos responde sobre a geometria.
+
+**Teoria por trás do ponto de colapso** (Cohen-Or/Solomovici/Levin, TOG 17(2)): *"pure-warp blending
+does not allow changes in the genus"* — um warp é homeomorfismo, e homeomorfismo preserva gênero.
+Mantendo a representação por FRONTEIRA, a semente degenerada não é um hack: é **forçada**. A
+alternativa é largar o BezPath por um level set.
+
+**[DECLARADO] O quadrado do custo não tem gate.** Trocá-lo por `Σd` não derruba nada — os dois
+escolhem igual em toda forma que sabemos desenhar, e só divergem numa configuração construída, onde
+os dois têm defesa (o quadrado faz os buracos **cruzarem**; o linear deixa um parado e manda o outro
+atravessar a forma). Sem verdade-fundamental publicada, a regra é portar a referência; um gate ali
+afirmaria a minha intuição estética com cara de medição. **Não fabrique esse gate.**
+
+**[LIMITAÇÃO conhecida, declarada] O centroide não é garantidamente interior.** Numa lua/C/U ele cai
+FORA da forma — e aí o buraco órfão nasce fora dela e pinta uma mancha (que encolhe a zero em `t=1`,
+onde um contorno degenerado não desenha nada). Bajaj/Coyle/Lin (GMIP 58(6)) são explícitos: o
+ponto-cap só é correto quando a região é um **disco**; a resposta geral é o **eixo medial**. O
+conserto barato, se aparecer no smoke: *pole of inaccessibility* em vez do centroide.
+
+**Duas armadilhas que quase passaram, as duas de oráculo/fixture** (as duas documentadas nos gates):
+
+- O probe caía **em cima** da fronteira onde a hipótese errada colapsa (`r=2,5`). Um ponto sobre a
+  borda **não tem resposta**: a contagem de cruzamentos vira empate de `f64`. O gate ficava VERDE
+  com o filtro de profundidade removido.
+- O 1º fixture usava rosquinhas **idênticas e concêntricas**, apostando num empate de custo. Não
+  havia empate: geometria idêntica dá centroide **exatamente** igual (`0.0`) e geometria diferente
+  dá `1e-16` de ruído — então a distância, por acidente de `f64`, já fazia o trabalho do filtro.
+  **Fixture simétrico não arma desempate.**
+  [[feedback_identical_fixtures_hide_the_tiebreak_you_meant_to_test]]
+
+**Gates:** 7 novos (`ph2d-vec-blend/src/tests_compound.rs` + `an_authored_spine_flows_the_hole_with_the_step`
+no `blend_live_spine_tests.rs`), **5 mutações, 5 mortes**: só-o-primário · sem-o-filtro-de-papel ·
+ponto-de-colapso-errado · `fill_rule`-sempre-`NonZero` · `translate_verts`-só-`verts`. Um gate usa a
+rosquinha **real da booleana**. **`lib.rs` estourou o teto** (717/700) e foi DIVIDIDO: o `Outline`
+(o primitivo de `matching`/`compound`/`spine`) saiu para `outline.rs` — 480 LOC.
+
+**Pendente de smoke.** Nenhuma cena de smoke nova: a rosquinha se faz com **Subtract** de dois
+círculos, e o Blend já tem as cenas dele. Sugestão: dois círculos → Subtract → repita → selecione as
+duas rosquinhas → Blend. O buraco tem de existir em todo passo.
+
+---
+
+## §9 — O item #1 (morph vivo): o que eu escoteirei, e a decisão que ele pede
+
+**Não construí.** O que segue é o resultado de ler o código com o morph em mente — para o próximo
+não redescobrir.
+
+**O modelo é o do conector, não o do blend.** O `VecPath` do blend é o *spine* (invisível) e os
+passos são overlay virtual; o do morph é a **forma de verdade** — `Plan::at(t)` escrito **em lugar**
+(`scene.path_mut`, como o `connector_live::write_route`: um `push` novo daria id novo por frame e a
+entidade/seleção/gizmo piscariam). Componente espelhando o `VecBlend`:
+`VecMorph { sources: [u64; 2], t: f32 }` — `VecPathId`, **nunca** bits de entidade (o undo
+respawna).
+
+**Armadilha 1 — o `Plan` PRECISA de cache aqui, e o blend não o tem.** O `blend_live::cook_links`
+chama `Plan::new` **por frame** e ninguém reclamou, porque o blend só re-coze quando a relação muda
+de fato. No morph o `t` muda **todo frame** (é keyado): sem cache, a busca de fase 256×256 roda por
+frame — os 5,9 ms que o `Plan` foi inventado para matar, de volta, agora dentro do orçamento de
+frame. A chave do cache tem de incluir **geometria E pose** das duas fontes (a mesma lição da chave
+de sessão do Shape Builder: sem a pose, o cache descreve a forma onde ela *estava*).
+
+**Armadilha 2 — o morph vive na IDENTIDADE.** A geometria sai em MUNDO das duas fontes, então uma
+pose por cima a deslocaria. É a regra que o conector já aplica (`Transform::IDENTITY` forçado) e é
+a mesma razão pela qual o Blend é **Node-only**: *um gizmo sobre geometria que se move DOBRA*
+(ADR-0122 lista as 5 tentativas revertidas). Não dê gizmo ao morph — move-se uma FONTE.
+
+**A decisão de wire-format (é do Enio, e é por isso que eu parei aqui):** para o `t` ser keyável, a
+timeline precisa de um `PropKind::Morph = 7`. O precedente existe e é limpo — `TimeRemap = 6` foi
+apendado, fica **FORA do `PropKind::ALL`** (o `ALL` é a POSE do autokey) e tem
+`as_sprite_transform() -> None`, com o apply a consumi-lo à parte. **Mas `PropKind` é foundational
+da linha da ANIM, e o discriminante é valor de wire congelado (postcard, em arquivo salvo).** Se as
+duas linhas apendarem `= 7` com significados diferentes, o integrador renumera o CÓDIGO mas **não
+renumera os projetos já salvos**. Isto é um **NÚMERO QUE SOMA** da pior espécie
+([[feedback_numbers_that_sum_across_lines_count_dont_pick]]) — quem for fazer isto **anuncia ao Enio
+antes**, para ele saber se a linha da anim está a mexer no enum.
+
+Alternativa se o Enio não quiser o acoplamento agora: o morph landa com o `t` **só no painel**
+(slider vivo) e a keyagem vira uma fatia B. Entrega menos — o headline do item é *animação* —, mas
+é 100% dentro da linha.
+
+---
+
 ## §7 — Resumo de fechamento (o formato da DIRETRIZ)
 
-> Linha `Vector` pronta (HEAD `92553b22`, 29 commits sobre `4d203d48`). **ADR-0122 completo** (Blend
-> Object vivo, Fases A→D). Handoff de integração: foundational **aditivo** (`ph2d-ecs::VecBlend` em
-> arquivo próprio + 2 linhas no `lib.rs`/`registry.rs`); **3 contagens de registry que SOMAM** (29→30
-> e 30→31 ×2 — reconte se outra linha registrou componente); **3 chaves novas no `.typos.toml`**
-> (dedupe se colidirem); 5 ids novos (o gate de colisão os cobre); `DrawMode::PickBlend` apendado;
-> `AppState.vec_restack` mudou de tipo (5 sítios). **Contrato congelado: nenhum.** Só o `ship.sh`
-> pega: 2 deps novas (`ph2d-color`, `ph2d-host` dev-dep) + typos. Workspace 7039/7039 verde.
-> **Pendente de smoke: Expand/Release, os pontos livres, e o Shift+clique em ponto.** Aguardo ordem
-> de integração.
+> Linha `Vector` pronta (HEAD `62c93fa7`, 31 commits sobre `4d203d48`). **ADR-0122 completo** (Blend
+> Object vivo, Fases A→D) **+ o item #2 da fila fechado** (o blend perdia o BURACO de um compound
+> path — resultado errado em silêncio, pré-existente em `main`; §8). Handoff de integração:
+> foundational **aditivo** (`ph2d-ecs::VecBlend` em arquivo próprio + 2 linhas no
+> `lib.rs`/`registry.rs`); **3 contagens de registry que SOMAM** (29→30 e 30→31 ×2 — reconte se outra
+> linha registrou componente); **3 chaves novas no `.typos.toml`** (dedupe se colidirem); 5 ids novos
+> (o gate de colisão os cobre); `DrawMode::PickBlend` apendado; `AppState.vec_restack` mudou de tipo
+> (5 sítios). **Contrato congelado: nenhum.** Só o `ship.sh` pega: **3** deps novas (`ph2d-color`,
+> `ph2d-host` dev-dep, **`ph2d-vec-boolean` dev-dep**) + typos. Workspace **7046/7046** verde.
+> **Pendente de smoke: Expand/Release, os pontos livres, o Shift+clique em ponto, e a rosquinha
+> (§8).** Aguardo ordem de integração.

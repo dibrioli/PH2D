@@ -306,6 +306,40 @@ volta — as duas coisas convivem).
   privados do pai); o núcleo (component + `recook` + helpers de geometria) ficou. `pin_spine_anchors`
   chama `edit::anchor_source_pairs`.
 
+### Ajustes do Enio (2026-07-15, do smoke do modelo final)
+
+- **O Steps responde a QUALQUER objeto do blend selecionado**, em Select ou Node. Antes só o spine
+  contava — e como o ajuste anterior tirou a linha do Select, o slider ficava inerte justo no modo em
+  que se mexe nas formas. A pergunta *"de que blend o painel fala?"* virou **uma porta**
+  (`blend_live_edit::blends_touched_by` → `Vec<(spine_id, Entity)>`): o spine selecionado **ou**
+  qualquer forma-fonte selecionada. O **Reset Spine** compartilha a mesma porta (duas respostas
+  divergiriam); ele precisa do `spine_id` junto porque a memória do automático (`BlendSpines`) é
+  chaveada pelo SPINE, não pelo path que o artista clicou. Gate
+  `set_selected_steps_retunes_the_blend_touched_by_the_selection` (spine · forma-fonte · forasteiro
+  não faz nada), mutation-tested.
+- **Multi-seleção de pontos no modo Node:** só faltava o **Shift+clique num ponto**. O **retângulo**
+  já funcionava (Shift+arrasto no vazio arma o `vec_marquee`; o release chama `PenTool::box_select`,
+  sem gate de modo) e o **retipar já agia sobre TODOS os selecionados**
+  (`set_selected_vertex_kind` percorre `selected_verts`) — o gate
+  `multi_retype_and_multi_delete_apply_to_all_selected` já provava isso pela via do retângulo. O
+  buraco: o ramo de Shift+Down tratava o clique como **objeto** (`path_at`), então somar pontos a
+  dedo era impossível. Novo `PenTool::toggle_vert_at(scene, p, hit_r) -> bool`, chamado ANTES do
+  toggle de objeto quando `mode == Node`, com o **mesmo** `hit_r = 10 px` do `on_press_node`.
+  **Três decisões, cada uma com mutante morto:** (a) alternar, não substituir (é o que "somar" quer
+  dizer); (b) uma **ALÇA não é âncora** — o `hit_test` dá prioridade à alça, então sem a guarda
+  `Part::Anchor` o Shift+clique numa alça alternaria a âncora dela **e engoliria o arrasto da
+  alça**; (c) clicar a âncora de **outro path** RETARGETA (não soma): `selected_verts` são índices
+  de UM path, então somar entre paths não é representável no modelo, e empurrar o índice forasteiro
+  na lista do path antigo selecionaria o vértice errado — ou um além do fim. É a mesma resposta que
+  o `box_select` já dá.
+  ⚠️ **O fixture escondeu a guarda (b) num primeiro momento:** o `square_path` é todo `Corner`, cujas
+  alças coincidem com a âncora e não são agarráveis, então o mutante que apagava a guarda
+  **sobreviveu**. O gate agora retipa para `Smooth` primeiro (o que dá alças de verdade) e mede que
+  elas saíram de cima da âncora antes de clicar nelas.
+  A **costura do shell** (o ramo em `input_dispatch.rs`) é verificada por smoke, não gateada: dirigir
+  ponteiro em modo Node exige `AppGfx` = janela + GPU (o mesmo bloqueio do harness headless do
+  `project_save`). A decisão toda mora no `toggle_vert_at`, que é puro e gateado.
+
 **Gotchas para a Fase C (o próximo que mexer):**
 
 - **O spine é a geometria da PRÓPRIA entidade do blend, mas os passos NÃO estão na cena.** O path

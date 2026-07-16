@@ -84,9 +84,35 @@ pub(crate) fn selected_closed_in_z(
         .collect()
 }
 
-/// Ajusta os passos do(s) Blend Object(s) SELECIONADO(s) — o slider Steps ao vivo. Devolve `true`
-/// se algum blend foi retunado (nenhum selecionado ⇒ `false`, e o valor é só o de criação futura).
+/// Os blends que a seleção TOCA, como `(spine_id, entidade)`: aquele cujo **spine** está selecionado
+/// (o modo Node) **ou** aquele que tem QUALQUER **forma-fonte** selecionada (o modo Select — onde a
+/// linha nem é selecionável, e portanto são as FORMAS que dizem de que blend se fala).
+///
+/// É a ÚNICA porta para "de que blend o painel fala" (Enio 2026-07-15) — o Steps e o Reset Spine a
+/// compartilham; duas respostas divergiriam. Devolve o `spine_id` junto porque a memória do auto
+/// (`BlendSpines`) é chaveada por ELE, não pelo path que o artista selecionou.
+fn blends_touched_by(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    sel: &[VecPathId],
+) -> Vec<(VecPathId, Entity)> {
+    map.iter()
+        .filter_map(|(&id, &bits)| {
+            let e = Entity::from_bits(bits);
+            let b = sim.world().get::<VecBlend>(e)?;
+            let touched = sel.contains(&id) || b.sources.iter().any(|s| sel.contains(s));
+            touched.then_some((id, e))
+        })
+        .collect()
+}
+
+/// Ajusta os passos do(s) Blend Object(s) que a seleção TOCA — o slider Steps ao vivo. Devolve
+/// `true` se algum blend foi retunado (nada tocado ⇒ `false`, e o valor é só o de criação futura).
 /// Idempotente: não marca a entidade suja se o valor já é o mesmo.
+///
+/// **Basta QUALQUER objeto do blend estar selecionado** ([`blends_touched_by`]) — a linha (modo
+/// Node) ou uma das formas (modo Select). Antes só o spine contava, e como a linha não é selecionável
+/// no Select, o slider ficava inerte justo no modo em que se mexe nas formas (Enio 2026-07-15).
 pub(crate) fn set_selected_steps(
     sim: &mut SimWorld,
     map: &VecEntityMap,
@@ -94,9 +120,7 @@ pub(crate) fn set_selected_steps(
     steps: u32,
 ) -> bool {
     let mut changed = false;
-    for id in pen.selected_paths() {
-        let Some(&bits) = map.get(id) else { continue };
-        let e = Entity::from_bits(bits);
+    for (_, e) in blends_touched_by(sim, map, pen.selected_paths()) {
         if sim
             .world()
             .get::<VecBlend>(e)
@@ -110,13 +134,14 @@ pub(crate) fn set_selected_steps(
     changed
 }
 
-/// **Reset Spine:** volta o(s) blend(s) selecionado(s) ao spine AUTOMÁTICO (a reta pelos centros),
-/// desfazendo a edição do modo Node. Devolve `true` se algum blend foi resetado.
+/// **Reset Spine:** volta ao spine AUTOMÁTICO (a reta pelos centros) o(s) blend(s) que a seleção
+/// TOCA — a linha OU qualquer forma dele ([`blends_touched_by`], a mesma porta do Steps). Desfaz a
+/// edição do modo Node. Devolve `true` se algum blend foi resetado.
 ///
-/// Limpa `spine_authored` **E** a memória do auto (`spines`): sem apagar a memória, a detecção do
-/// [`super::recook`] compararia o spine BENT ainda na cena com o último auto memorizado (diferentes)
-/// e o RE-autoraria no mesmo frame — o reset não pegaria. Com a memória vazia, a detecção não
-/// dispara (`is_some_and` é falso) e o ramo automático reescreve a reta e a memoriza de novo.
+/// Limpa `spine_authored` **E** a memória do auto (`spines`, chaveada pelo SPINE): sem apagar a
+/// memória, a detecção do [`super::recook`] compararia o spine BENT ainda na cena com o último auto
+/// memorizado (diferentes) e o RE-autoraria no mesmo frame — o reset não pegaria. Com a memória
+/// vazia, a detecção não dispara (`is_some_and` é falso) e o ramo automático reescreve a reta.
 pub(crate) fn reset_spine(
     sim: &mut SimWorld,
     map: &VecEntityMap,
@@ -124,9 +149,7 @@ pub(crate) fn reset_spine(
     spines: &mut BlendSpines,
 ) -> bool {
     let mut changed = false;
-    for id in pen.selected_paths() {
-        let Some(&bits) = map.get(id) else { continue };
-        let e = Entity::from_bits(bits);
+    for (spine_id, e) in blends_touched_by(sim, map, pen.selected_paths()) {
         if sim
             .world()
             .get::<VecBlend>(e)
@@ -134,7 +157,7 @@ pub(crate) fn reset_spine(
             && let Some(mut b) = sim.world_mut().get_mut::<VecBlend>(e)
         {
             b.spine_authored = false;
-            spines.remove(id); // esquece o auto memorizado (senão o recook re-autora na hora)
+            spines.remove(&spine_id); // esquece o auto memorizado (senão o recook re-autora na hora)
             changed = true;
         }
     }

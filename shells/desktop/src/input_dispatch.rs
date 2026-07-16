@@ -2528,6 +2528,23 @@ impl App {
                 (ph2d_host::PointerButton::Primary, PointerKind::Down)
                     if on_canvas && self.modifiers.shift_key() =>
                 {
+                    // **Modo Node: Shift+clique num PONTO alterna-o na multi-seleção de pontos**
+                    // (Enio 2026-07-15). Tentado ANTES do toggle de OBJETO: no Node é no ponto que
+                    // se mexe, e o Shift sobre a forma (que cobre o ponto) alternava o objeto —
+                    // somar pontos a dedo era impossível (só o retângulo). Mesmo raio do grab do
+                    // Node (`10 px`), então o que se agarra é o que se alterna. Sem ponto sob o
+                    // cursor, cai no comportamento de sempre (objeto / marquee).
+                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node
+                        && let Some(wp) = self.vec_world_at(self.last_pointer)
+                    {
+                        let hit_r = 10.0 * self.vec_px_to_world();
+                        // `gfx.vec_scene` e `vec_pen` são campos DISJUNTOS de `self`.
+                        if let Some(gfx) = self.gfx.as_ref()
+                            && self.vec_pen.toggle_vert_at(&gfx.vec_scene, wp, hit_r)
+                        {
+                            return;
+                        }
+                    }
                     let hit = self.gfx.as_ref().and_then(|gfx| {
                         let win = gfx.surface.size();
                         let w = gfx.camera.screen_to_world(self.last_pointer, win);

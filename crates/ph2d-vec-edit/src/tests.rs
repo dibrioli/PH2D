@@ -244,6 +244,82 @@ fn box_select_picks_the_anchors_inside_the_box() {
     assert_eq!(pen2.selected_verts().len(), 4);
 }
 
+/// Shift+click on an anchor toggles it in the point selection (Enio 2026-07-15) — the by-hand
+/// sibling of the marquee. The gate ends on a retype because that composition IS the ask: sum the
+/// points with Shift, then change the handle type of all of them at once.
+#[test]
+fn shift_click_toggles_a_vertex_and_the_retype_hits_every_summed_point() {
+    let mut scene = VecScene::new();
+    let id = square_path(&mut scene);
+    let mut pen = PenTool::new();
+    pen.select(Some(id));
+    // Empty space grabs nothing → the caller is free to fall through to object/marquee.
+    assert!(!pen.toggle_vert_at(&scene, [2.0, 2.0], 0.5));
+    assert!(pen.selected_verts().is_empty());
+    // Sum anchors 0 (0,0) and 2 (4,4) — BOTH stay.
+    assert!(pen.toggle_vert_at(&scene, [0.0, 0.0], 0.5));
+    assert!(pen.toggle_vert_at(&scene, [4.0, 4.0], 0.5));
+    let mut got = pen.selected_verts().to_vec();
+    got.sort_unstable();
+    assert_eq!(got, vec![0, 2], "Shift summed both points");
+    // The retype reaches every summed point, and only them.
+    assert!(pen.set_selected_vertex_kind(&mut scene, VertexKind::Smooth));
+    assert_eq!(scene.paths()[0].verts[0].kind, VertexKind::Smooth);
+    assert_eq!(scene.paths()[0].verts[2].kind, VertexKind::Smooth);
+    assert_eq!(scene.paths()[0].verts[1].kind, VertexKind::Corner);
+    // A HANDLE is not an anchor. The Smooth retype above gave vertex 0 real, grabbable handles, and
+    // `hit_test` gives them priority over the anchor — so without the `Part::Anchor` guard a
+    // Shift+click on a handle would toggle its anchor AND swallow the handle drag.
+    let h = scene.paths()[0].verts[0].out_handle;
+    assert!(
+        (h[0] - 0.0).hypot(h[1] - 0.0) > 0.5,
+        "the retype must move the handle clear of its anchor, else this proves nothing"
+    );
+    assert!(
+        !pen.toggle_vert_at(&scene, h, 0.5),
+        "a handle grabs nothing"
+    );
+    // Re-clicking anchor 0 REMOVES it (it toggles) and leaves 2 selected.
+    assert!(pen.toggle_vert_at(&scene, [0.0, 0.0], 0.5));
+    assert_eq!(
+        pen.selected_verts(),
+        [2],
+        "re-click drops only the re-clicked"
+    );
+}
+
+/// The point selection indexes ONE path, so Shift+clicking an anchor of a DIFFERENT path retargets
+/// rather than sums — the same answer `box_select` gives. Summing across paths is not representable
+/// here, and pushing the foreign index onto the old path's list would select the wrong vertex (or
+/// one past the end).
+#[test]
+fn shift_click_on_another_paths_anchor_retargets_the_point_selection() {
+    let mut scene = VecScene::new();
+    let a = square_path(&mut scene);
+    let b = scene.push_path(VecPath {
+        verts: vec![
+            VecVertex::corner([10.0, 10.0]),
+            VecVertex::corner([12.0, 10.0]),
+            VecVertex::corner([11.0, 12.0]),
+        ],
+        closed: true,
+        ..VecPath::default()
+    });
+    let mut pen = PenTool::new();
+    pen.select(Some(a));
+    assert!(pen.toggle_vert_at(&scene, [0.0, 0.0], 0.5));
+    assert!(pen.toggle_vert_at(&scene, [4.0, 4.0], 0.5)); // verts 0 + 2 of `a`
+    // Cross over to `b`: the target follows the click and ONLY b's anchor stays selected.
+    assert!(pen.toggle_vert_at(&scene, [12.0, 10.0], 0.5));
+    assert_eq!(pen.selected(), Some(b));
+    assert_eq!(pen.selected_paths(), [b]);
+    assert_eq!(
+        pen.selected_verts(),
+        [1],
+        "b's own index, not a's leftovers"
+    );
+}
+
 #[test]
 fn dragging_a_grouped_anchor_moves_the_whole_selection() {
     let mut scene = VecScene::new();

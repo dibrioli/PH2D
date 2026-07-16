@@ -6,10 +6,42 @@
 //! Índices de vértice são **planos** entre contornos (ver `ph2d_vec_scene`
 //! `compound`): um buraco de compound path seleciona e edita como qualquer outro.
 
-use crate::{INSERT_SAMPLES, PenTool};
+use crate::{INSERT_SAMPLES, Part, PenTool};
 use ph2d_vec_scene::{VecPathId, VecScene, VecVertex, VertexKind};
 
 impl PenTool {
+    /// **Shift+clique num vértice: alterna-o na seleção de pontos** (a multi-seleção do modo Node —
+    /// Enio 2026-07-15). Hit-testa a ÂNCORA sob `p` (raio `hit_r` em MUNDO, como o resto do pen) e a
+    /// acrescenta/remove de [`Self::selected_verts`], **mantendo o resto** — é o que permite retipar
+    /// vários pontos de uma vez ([`Self::set_selected_vertex_kind`] já age sobre todos).
+    ///
+    /// Devolve `true` se havia uma âncora ali (o chamador então NÃO trata o clique como seleção de
+    /// objeto nem abre marquee). Só âncora: um HANDLE não entra na seleção de pontos — ele pertence
+    /// a uma âncora, e retipar/apagar agem sobre âncoras.
+    ///
+    /// Um vértice de OUTRO path TROCA o alvo (a seleção de pontos é de um path só, como o resto do
+    /// pen), começando a multi-seleção nele.
+    pub fn toggle_vert_at(&mut self, scene: &VecScene, p: [f64; 2], hit_r: f64) -> bool {
+        let Some(g) = self.hit_test(scene, p, hit_r, None) else {
+            return false;
+        };
+        if g.part != Part::Anchor {
+            return false;
+        }
+        if self.selected != Some(g.path) {
+            self.selected = Some(g.path);
+            self.selected_paths = vec![g.path];
+            self.selected_verts = vec![g.vert];
+            return true;
+        }
+        if let Some(i) = self.selected_verts.iter().position(|&v| v == g.vert) {
+            self.selected_verts.remove(i);
+        } else {
+            self.selected_verts.push(g.vert);
+        }
+        true
+    }
+
     /// Path selecionado (o shell mostra seus gizmos de handle).
     pub fn selected(&self) -> Option<VecPathId> {
         self.selected

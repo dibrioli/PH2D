@@ -403,29 +403,52 @@ fn selected_closed_in_z_drops_open_sorts_by_z_and_caps_at_five() {
     );
 }
 
-/// **O slider Steps retuna SÓ o blend selecionado, ao vivo.** Sem blend selecionado, não faz nada
-/// (o valor é só o de criação futura). Idempotente: o mesmo valor não marca a entidade suja.
+/// **O slider Steps retuna o blend que a seleção TOCA, ao vivo — pela LINHA ou por uma FORMA.**
+/// Nada tocado ⇒ não faz nada (o valor é só o de criação futura). Idempotente.
+///
+/// A FORMA é o caso que importa (Enio 2026-07-15): no modo Select a linha nem é selecionável, então
+/// se só o spine contasse o slider ficaria inerte justo no modo em que se mexe nas formas.
 #[test]
-fn set_selected_steps_retunes_only_the_selected_blend() {
-    let (mut sim, _scene, map, spine, _src) = scene_with_blend(2, 3);
+fn set_selected_steps_retunes_the_blend_touched_by_the_selection() {
+    let (mut sim, _scene, map, spine, src) = scene_with_blend(2, 3);
+    let e = Entity::from_bits(map[&spine]);
+    let steps_of = |sim: &SimWorld| sim.world().get::<VecBlend>(e).expect("blend").steps;
 
     let mut pen = ph2d_vec_edit::PenTool::default();
     assert!(
         !set_selected_steps(&mut sim, &map, &pen, 10),
-        "sem blend selecionado, nada é retunado"
+        "nada selecionado, nada é retunado"
     );
 
-    pen.select_many(&[spine]); // seleciona o OBJETO blend (o spine)
+    // (a) Pela LINHA (o modo Node seleciona o spine).
+    pen.select_many(&[spine]);
     assert!(
         set_selected_steps(&mut sim, &map, &pen, 10),
-        "o blend selecionado retuna"
+        "o spine selecionado retuna"
     );
-    let e = Entity::from_bits(map[&spine]);
-    assert_eq!(sim.world().get::<VecBlend>(e).expect("blend").steps, 10);
+    assert_eq!(steps_of(&sim), 10);
     assert!(
         !set_selected_steps(&mut sim, &map, &pen, 10),
         "o MESMO valor não marca a entidade suja (idempotente)"
     );
+
+    // (b) Por uma FORMA-fonte (o modo Select — a linha não é selecionável lá).
+    pen.select_many(&[src[1]]);
+    assert!(
+        set_selected_steps(&mut sim, &map, &pen, 7),
+        "uma FORMA do blend selecionada também retuna"
+    );
+    assert_eq!(steps_of(&sim), 7);
+
+    // (c) Uma forma que NÃO é do blend não retuna nada.
+    let mut other_scene = _scene;
+    let outsider = other_scene.push_path(rectangle([99.0, 99.0], [100.0, 100.0]));
+    pen.select_many(&[outsider]);
+    assert!(
+        !set_selected_steps(&mut sim, &map, &pen, 3),
+        "uma forma fora do blend não o retuna"
+    );
+    assert_eq!(steps_of(&sim), 7, "os passos ficaram como estavam");
 }
 
 /// **Modo Node: o spine aparece elevado ao topo do overlay — e a cena segue invisível.** Na cena o

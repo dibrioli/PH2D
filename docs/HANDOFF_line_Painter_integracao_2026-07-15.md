@@ -141,13 +141,15 @@ relevo, costurado nos 7 sites com seam test que CLICA.
    offset novo, mas o `bank` guarda o volume do offset de stamp — auto-cura no próximo re-stamp de
    geometria (o toggle do Conserve re-stampa; o slider do Offset não). Se o Enio sentir, o fix é
    re-stampar também no `set_sculpt_offset`.
-3½. **SMOKE DO BOW WAVE (`2b44eaf2`)**: tinta grossa → pincel menor com **Push** alto → arraste
-   ATRAVÉS dela e PARE no meio. O que deve ler: canal raso, esteiras finas nas laterais, e a
-   **onda de tinta acumulada ADIANTE de onde o traço parou** (nada empilhado atrás do ponto de
-   partida). Compare com Push=0. A sonda de render que me serviu de olho fica disponível:
-   `PH2D_PUSH_LOOK_DIR=/tmp/push cargo test -p ph2d-host-desktop probe_push_render_and_look -- --ignored`.
-   Se a PROPORÇÃO onda/esteira parecer errada, o knob é `DEPOSIT_FORWARD_SHARE` (0,6) — pode virar
-   slider no card se você quiser controle.
+3½. **BOW WAVE: smoke REPROVADO (Enio, 2026-07-15)** — *"é usada a circunferência do gizmo do
+   brush para empurrar a massa e não o alpha do falloff"*: o aro/onda ancora em `t = 1` do
+   footprint (o círculo geométrico), e num pincel macio a tinta termina muito antes (W_TAIL em
+   t≈0,61 no Smooth — doc 16 §14.1) ⇒ colar duro e circular com tela nua entre ele e a tinta.
+   A mecânica da onda (viajar/descansar/ledger) está certa e gateada; a ÂNCORA está errada.
+   **Handoff dedicado para o próximo agente:**
+   [`HANDOFF_line_Painter_push_rim_anchor_2026-07-15.md`](HANDOFF_line_Painter_push_rim_anchor_2026-07-15.md)
+   (mecanismo, direção de fix — o aro nasce onde o CORPO termina, a lei do §14 —, o aviso do
+   Conserve compartilhar o motor, gate red-first prescrito e o instrumento de render).
 4. **D — RE-SMOKE (pós `fc96ef27` + `63e7cf2f`)**: (a) jitter/Airbrush = contas de relevo
    coincidentes com a tinta, sem barras; (b) **Anchored** = a bola commitada mantém a altura do
    drag (era o raio do pincel na re-derivação — o gate segura bit-exato); (c) **Line + undo até o

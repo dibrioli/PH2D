@@ -298,8 +298,13 @@ volta — as duas coisas convivem).
   raiz: o spine tem **geometria que se move** (segue as fontes), e um gizmo sobre geometria móvel
   dobra. **As fontes têm geometria FIXA (só o `Transform` delas se move)** — então o gizmo as move
   NATIVAMENTE (group drag) sem dobrar, e o spine as segue no `recook`. O PEN mantém o spine (o painel
-  de Blend e o modo Node dependem dele); só a seleção do GIZMO é redirecionada. Gate
-  `the_gizmo_of_a_blend_spine_targets_its_sources` (mutation-testado).
+  de Blend e o modo Node dependem dele); só a seleção do GIZMO é redirecionada. O box do gizmo é
+  construído da seleção do GIZMO (`snapshots::build_view` trata entidades vetoriais), então as fontes
+  englobam de fato. **O redirecionamento roda nos DOIS sentidos da sincronia** (`gizmo_bits_for`): o
+  caso 1 (pen mandou — a criação programática) E o caso 2 (o **clique** no modo Select mexe no gizmo
+  PRIMEIRO, e só depois adota o pen) — sem o caso 2 o clique deixava o gizmo na linha ("não engloba,
+  não move as shapes", 3º smoke). 2 gates (`the_gizmo_of_a_blend_spine_targets_its_sources` caso 1 ·
+  `clicking_a_blend_spine_retargets_the_gizmo_to_the_sources` caso 2), mutation-testados.
 - **`blend_live.rs` foi dividido** (teto de 600 LOC): as ações de edição/interação (pick/select/
   steps/reset/os dois drags) saíram para o módulo-filho `blend_live_edit.rs` (`use super::*` para os
   privados do pai); o núcleo (component + `recook` + helpers de geometria) ficou. `pin_spine_anchors`

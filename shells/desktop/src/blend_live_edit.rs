@@ -9,8 +9,8 @@
 //!   ÂNCORA move a forma dela (Node) — o que faz "editar a curva ≡ mover a forma".
 //!
 //! `use super::*` traz os privados do pai (`center_of`/`world`/`spine_verts`/`spine_stroke`/
-//! `shift_vertex_to`/`MAX_BLEND_SOURCES`/`BlendSpines`/`BlendDrag` + os `use` dele), como os módulos
-//! de teste já fazem.
+//! `shift_vertex_to`/`MAX_BLEND_SOURCES`/`BlendSpines` + os `use` dele), como os módulos de teste já
+//! fazem.
 
 use super::*;
 

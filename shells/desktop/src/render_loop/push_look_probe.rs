@@ -133,6 +133,31 @@ fn probe_push_render_and_look() {
     t.on_canvas_pointer(cp([210.0, 190.0], PointerPhase::Up));
     save(&mut t, &dir, "5_push_stops_big_soft", size);
 
+    // 6b. SPHERE — the steep-edged falloff. Enio's 2026-07-15 smoke of the anchor fix: Smooth came
+    //     out right, Sphere grew a ribbed/coiled artefact where the plough bites thick paint. Sphere's
+    //     silhouette is `√(1−t²)`: it still lays 35% coverage at t = 0.94 and 0% at t = 1, so its BITE
+    //     ends in a near-vertical trench wall, and the light reads the derivative.
+    //     Ground stays the DEFAULT Smooth (as in Enio's smoke, where the slab reads clean and only the
+    //     plough's crossing coils) — so this isolates the SPHERE plough, not a Sphere deposit.
+    let mut t = tool(size);
+    lay_ground(&mut t);
+    t.set_brush_falloff(2); // Falloff::Sphere — the plough only
+    t.set_brush_size_px(24.0);
+    t.set_brush_impasto_push(1.0);
+    t.on_canvas_pointer(cp([200.0, 60.0], PointerPhase::Down));
+    for i in 1u8..=10 {
+        t.on_canvas_pointer(cp([200.0, 60.0 + 26.0 * f32::from(i)], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([200.0, 320.0], PointerPhase::Up));
+    save(&mut t, &dir, "5b_push_sphere", size);
+
+    //     And the Sphere DEPOSIT alone (no push): if this ribs too, the artefact is the deposit's, not
+    //     the displacement's — and the Push is being blamed for the falloff's own trench wall.
+    let mut t = tool(size);
+    t.set_brush_falloff(2);
+    lay_ground(&mut t);
+    save(&mut t, &dir, "5c_sphere_ground_only", size);
+
     // 6. THE REFERENCE: Scrape + Conserve through the same ground (the drawing Enio approved).
     let mut t = tool(size);
     lay_ground(&mut t);

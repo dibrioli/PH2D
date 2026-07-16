@@ -639,3 +639,172 @@ fn a_hard_falloff_anchors_the_rim_at_the_geometric_rim() {
         "a Constant falloff's rim inner edge is {inner:.1} px, not at the geometric rim {radius:.1} px"
     );
 }
+
+/// Plough a straight run of `count` dabs spaced `step` px through a uniform 1-load ground with the
+/// given falloff, and return the displacement plane. Same PATH (same start, same end) at any `step` —
+/// only the SAMPLING of it changes, which is exactly what the trench must not depend on.
+fn ploughed_at_spacing(falloff: crate::Falloff, step: f32, count: u32) -> (Vec<f32>, f32) {
+    use crate::height::{HeightDab, HeightFields, accumulate_dab_height};
+    use crate::height_push::{DEPOSIT_FORWARD_SHARE, PushBite, bank_dab_push, rim_t0, wave_lobe};
+    const WD: u32 = 200;
+    let n = (WD * WD) as usize;
+    let radius = 12.0f32;
+    let spec = crate::BrushSpec {
+        radius_px: radius,
+        impasto: true,
+        impasto_depth: 0.5,
+        impasto_push: 1.0,
+        falloff,
+        space_attenuation: false,
+        ..Default::default()
+    };
+    let t0 = rim_t0(&spec, false);
+    let ground = vec![1.0f32; n];
+    let (mut plane, mut height, mut paint, mut grain, mut film, mut radp) = (
+        vec![0.0f32; n],
+        vec![0.0f32; n],
+        vec![0.0f32; n],
+        vec![0u8; n],
+        vec![0u8; n],
+        vec![0.0f32; n],
+    );
+    let mut scratch = Vec::new();
+    let (y, x0) = (100.0f32, 60.0f32);
+    let mut wave = 0.0f32;
+    let mut last_tip: Option<HeightDab> = None;
+    for k in 0..count {
+        let cx = x0 + step * k as f32;
+        let dab = HeightDab {
+            center: [cx, y],
+            radius,
+            coverage: 1.0,
+            footprint: spec.footprint_deform(),
+            prev_center: (k > 0).then_some([cx - step, y]),
+            shape: None,
+            grain: None,
+            grain_image: None,
+        };
+        if let (Some(tip), true) = (last_tip.take(), wave > 0.0) {
+            let _ = wave_lobe(
+                &mut plane,
+                &paint,
+                &mut scratch,
+                WD,
+                WD,
+                &tip,
+                t0,
+                wave,
+                -1.0,
+            );
+        }
+        let mut fields = HeightFields {
+            height: &mut height,
+            paint: &mut paint,
+            grain: &mut grain,
+            film: &mut film,
+            radius: &mut radp,
+        };
+        let mut bite = PushBite {
+            ground: &ground,
+            plane: &mut plane,
+            displaced: 0.0,
+        };
+        let _ = accumulate_dab_height(&mut fields, WD, WD, &spec, &dab, Some(&mut bite));
+        let d = bite.displaced;
+        let (_, carried) = bank_dab_push(
+            &mut plane,
+            &paint,
+            &mut scratch,
+            WD,
+            WD,
+            &dab,
+            t0,
+            d,
+            DEPOSIT_FORWARD_SHARE,
+        );
+        wave += carried;
+        if wave > 0.0
+            && wave_lobe(
+                &mut plane,
+                &paint,
+                &mut scratch,
+                WD,
+                WD,
+                &dab,
+                t0,
+                wave,
+                1.0,
+            )
+            .is_some()
+        {
+            last_tip = Some(HeightDab { ..dab });
+        }
+    }
+    (plane, x0 + step * (count - 1) as f32)
+}
+
+/// The peak-to-peak ripple of the trench floor ALONG the stroke, sampled every texel over a window
+/// well inside the run (away from the ends), at lateral offset `lat`.
+fn trench_ripple(plane: &[f32], lat: usize, x_lo: usize, x_hi: usize) -> f32 {
+    let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+    for x in x_lo..x_hi {
+        let v = plane[(100 + lat) * 200 + x];
+        lo = lo.min(v);
+        hi = hi.max(v);
+    }
+    hi - lo
+}
+
+/// **The trench is a fact of the PATH, not of the dab spacing** — and that is what killed the coil.
+///
+/// Enio's smoke of the anchor fix (2026-07-15): Smooth came out right, but `Sphere` grew a ribbed,
+/// coiled artefact where the plough bites thick paint. The anchor was innocent (the same coil renders
+/// with the old `t = 1` rim). The culprit was the BITE: `take = (g + p)·Δm` makes `q = g + p` evolve as
+/// `q ← q·(1 − Δm)`, so the total is `g·(1 − Π(1 − Δm_k))` — a PRODUCT over the increments. A product
+/// depends on how many steps the envelope was reached in and on each texel's PHASE against the dab
+/// grid, so the trench floor ripples at exactly the dab period. `Smooth` hides it (small, even `Δm`);
+/// `Sphere`'s silhouette has a VERTICAL tangent at the rim, so its `Δm` jumps and the phase term is
+/// loud enough to read as a coil.
+///
+/// This is the same disease the capsule sweep cured for the DEPOSIT (*"the relief must be a property of
+/// the brush and the PATH — never of how finely the engine happened to sample that path"*,
+/// [`accumulate_dab_height`]) — the deposit is immune because it takes an ENVELOPE (a `max`, a pure
+/// function of distance to the path); the bite was a sequential accumulation, so it was not.
+///
+/// Normalising the increment by the remaining headroom telescopes the product exactly
+/// (`Π (1 − m_k)/(1 − m_{k−1}) = 1 − m_final`), so the bite lands on `g·m_final` at ANY spacing.
+///
+/// **Mutation that must bleed:** drop the `/ head` normalisation in [`accumulate_dab_height`]'s bite
+/// (back to the raw `(m − paint[i])`). The Sphere ripple returns (measured ~10× this bound) and the two
+/// spacings stop agreeing.
+#[test]
+fn the_trench_is_a_fact_of_the_path_not_of_the_dab_spacing() {
+    for falloff in [crate::Falloff::Smooth, crate::Falloff::Sphere] {
+        // The SAME path, sampled two ways: 60 dabs of 1 px and 30 of 2 px both run 60 px.
+        let (fine, end_a) = ploughed_at_spacing(falloff, 1.0, 61);
+        let (coarse, end_b) = ploughed_at_spacing(falloff, 2.0, 31);
+        assert_eq!(
+            end_a, end_b,
+            "fixture: the two samplings walk the same path"
+        );
+        // Deep inside the run, away from both ends, at the trench floor and on its flank.
+        for lat in [0usize, 3] {
+            let ripple = trench_ripple(&coarse, lat, 80, 110);
+            assert!(
+                ripple < 0.010,
+                "{falloff:?} lat+{lat}: the trench floor ripples {ripple:.3} loads along the stroke \
+                 — a per-dab corrugation the light reads as a coil (Enio, 2026-07-15). The bite must \
+                 be a function of the envelope, not of the increment sequence"
+            );
+            for x in 80..110 {
+                let (a, b) = (fine[(100 + lat) * 200 + x], coarse[(100 + lat) * 200 + x]);
+                assert!(
+                    (a - b).abs() < 0.02,
+                    "{falloff:?} lat+{lat} x={x}: the trench is {a:.3} at 1 px spacing and {b:.3} at \
+                     2 px — the artist's relief must not depend on how finely the engine sampled \
+                     their stroke"
+                );
+            }
+        }
+    }
+}

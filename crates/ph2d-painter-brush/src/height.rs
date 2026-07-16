@@ -469,13 +469,31 @@ pub fn accumulate_dab_height(
             if let Some(b) = bite.as_deref_mut() {
                 // The bite takes from the ground AND from the stroke's own accumulated plane — the
                 // bow wave the previous dab banked ahead is picked up here and shoved on (see
-                // `forward_weight`). `(g + p)` is what actually stands at the texel right now;
-                // `.max(0)` guards float fuzz, and the series is self-limiting: each take shrinks
-                // `(g + p)` toward zero, so the swath can never be drained below bare canvas.
-                let take = (b.ground[i] + b.plane[i]).max(0.0) * (m - fields.paint[i]);
-                if take != 0.0 {
-                    b.plane[i] -= take;
-                    b.displaced += take;
+                // `forward_weight`). `(g + p)` is what actually stands at the texel right now, and
+                // `.max(0)` guards float fuzz.
+                //
+                // **The share is the increment over the REMAINING HEADROOM, not the raw increment** —
+                // and that is what makes the trench a fact of the PATH instead of a fact of the dab
+                // spacing. With the raw `Δm`, `q = g + p` evolves as `q ← q·(1 − Δm)`, so the total
+                // bite is `g·(1 − Π(1 − Δm_k))`: a PRODUCT over the increments, which depends on how
+                // many steps the envelope was reached in and on each texel's phase against the dab
+                // grid. A soft falloff hides it (its `Δm` are small and even); `Sphere`'s silhouette
+                // has a VERTICAL tangent at the rim, so `Δm` jumps hard, the phase term explodes, and
+                // the trench floor comes out RIPPLED at exactly the dab period — the coil Enio's smoke
+                // caught (2026-07-15). Normalising by `(1 − paint)` telescopes the product exactly:
+                // `Π (1 − Δm/(1 − m_{k−1})) = Π (1 − m_k)/(1 − m_{k−1}) = (1 − m_final)`, so the bite
+                // lands on `g·m_final` — a pure function of the envelope, at ANY spacing, in ANY
+                // order. It is also the honest law: the brush shoves the ground in proportion to how
+                // much it ended up covering the texel, and at full coverage it takes all of it and
+                // never more (the self-limiting guarantee the raw form gave, now exact).
+                let head = 1.0 - fields.paint[i];
+                if head > 1e-6 {
+                    let share = ((m - fields.paint[i]) / head).clamp(0.0, 1.0);
+                    let take = (b.ground[i] + b.plane[i]).max(0.0) * share;
+                    if take != 0.0 {
+                        b.plane[i] -= take;
+                        b.displaced += take;
+                    }
                 }
             }
             fields.paint[i] = m;

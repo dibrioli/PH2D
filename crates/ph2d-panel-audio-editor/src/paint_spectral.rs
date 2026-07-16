@@ -100,11 +100,18 @@ pub(crate) fn paint_spectral_section(
     // AI Denoise (W7, ADR-0123) — DeepFilterNet, which learns the noise itself, so it needs no
     // profile and no Learn: it is lit whenever a clip is loaded. Painted only when the shell was
     // built with the `audio-ml` feature (it publishes availability); otherwise nothing is shown.
+    //
+    // **The label names its domain, and that is not decoration.** The model is trained on SPEECH,
+    // so it keeps what sounds like a voice and removes everything else — measured on non-voice
+    // material, it leaves 0% of a game SFX and 1% of an ambience. On anything but dialogue this
+    // button is a delete key. Naming the domain in the button is what the field does (iZotope RX
+    // ships "Voice De-noise" beside a general "Spectral De-noise"); the W5 `Denoise` above is the
+    // content-agnostic one that handles SFX, ambience and music.
     let ml = spectral_state::ml_available();
     if ml {
         button(
             Rect::new(x, y, w, row_h),
-            "AI Denoise",
+            "AI Denoise (Voice)",
             loaded,
             AEDIT_SPEC_DENOISE_ML,
             scene,

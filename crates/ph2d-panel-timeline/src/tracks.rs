@@ -142,6 +142,7 @@ pub(crate) fn paint_rows(
     summary_paint::paint(ctx, theme, g, view, preview_dx, state, snap);
     let bands: Vec<(usize, f32, f32)> = geom::row_bands(
         snap,
+        state.tab,
         &state.expanded,
         state.graph_h,
         region.y,
@@ -347,9 +348,7 @@ fn paint_twirl(
 pub(crate) fn keys_in_rect(
     rows: Rect,
     view: graph::TimeView,
-    scroll_y: f32,
-    expanded: &[u64],
-    graph_h: f32,
+    state: &TimelinePanelState,
     snap: &TimelineViewSnapshot,
     sel: Rect,
 ) -> Vec<SelectedKey> {
@@ -359,7 +358,14 @@ pub(crate) fn keys_in_rect(
     if top_y > bot_y {
         return out;
     }
-    for (i, y, _h) in geom::row_bands(snap, expanded, graph_h, rows.y, scroll_y) {
+    for (i, y, _h) in geom::row_bands(
+        snap,
+        state.tab,
+        &state.expanded,
+        state.graph_h,
+        rows.y,
+        state.scroll_y,
+    ) {
         // The diamonds sit on the row's dope-sheet STRIP, never in its graph
         // band — a marquee over the curve must not grab the keys under it.
         let cy = y + ROW_H_PX * 0.5;

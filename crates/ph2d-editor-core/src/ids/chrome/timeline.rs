@@ -42,6 +42,21 @@ pub const TIMELINE_PINGPONG: NodeId = hash_node_id("timeline.ping_pong");
 /// VALUE curve and the VELOCITY (speed) curve. Panel-local view state.
 pub const TIMELINE_SPEED: NodeId = hash_node_id("timeline.speed");
 
+// ── View tabs (ADR-0115 R8, amended) ─────────────────────────────────────────
+/// The tab strip itself (the `TabList` a11y parent).
+pub const TIMELINE_TABS: NodeId = hash_node_id("timeline.tabs");
+/// **Keys** tab — the active clip's dope sheet + graph editor, ruled by the
+/// CLIP's clock.
+pub const TIMELINE_TAB_KEYS: NodeId = hash_node_id("timeline.tab_keys");
+/// **Arrange** tab — the clip stack (lanes + strips), ruled by the TIMELINE's
+/// clock.
+///
+/// A tab is a VIEW, not a mode: it changes what the panel shows and what its
+/// ruler measures, never what an edit means. The clip dropdown still decides
+/// which clip's keys the Keys tab holds — which is why ADR-0115 R8's rejection of
+/// Blender's *tweak mode* survives this amendment intact.
+pub const TIMELINE_TAB_ARRANGE: NodeId = hash_node_id("timeline.tab_arrange");
+
 // ── Clip selector (W5 / NLA step 1) ──────────────────────────────────────────
 /// The clip dropdown chip — shows the active clip's name, opens the clip list.
 pub const TIMELINE_CLIP_DD: NodeId = hash_node_id("timeline.clip_dd");

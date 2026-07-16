@@ -12,6 +12,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_timeline::TimelinePanel;
 use ph2d_panel_timeline::state::{TimelinePanelState, set_current_timeline};
+use ph2d_panel_timeline::tab::Tab;
 use ph2d_timeline::{
     ClipLane, ClipStrip, LaneMode, LaneView, StripId, StripLoop, StripView, TimelineViewSnapshot,
 };
@@ -63,7 +64,12 @@ fn hit_at(
 #[test]
 fn the_fade_grips_of_a_lone_strip_are_painted_and_clickable() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-    let mut state = TimelinePanelState::default();
+    // Strips live in the Arrange tab now (ADR-0115 R8, amended): a default panel opens
+    // on Keys and would paint no strip at all.
+    let mut state = TimelinePanelState {
+        tab: Tab::Arrange,
+        ..TimelinePanelState::default()
+    };
     set_current_timeline(Some(one_lone_strip()));
 
     let regs = host.paint::<TimelinePanel>(&mut state, Rect::new(0.0, 0.0, 1600.0, 900.0));
@@ -103,7 +109,12 @@ fn the_fade_grips_of_a_lone_strip_are_painted_and_clickable() {
 #[test]
 fn the_fade_grip_is_as_grabbable_as_the_trim_grip() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-    let mut state = TimelinePanelState::default();
+    // Strips live in the Arrange tab now (ADR-0115 R8, amended): a default panel opens
+    // on Keys and would paint no strip at all.
+    let mut state = TimelinePanelState {
+        tab: Tab::Arrange,
+        ..TimelinePanelState::default()
+    };
     set_current_timeline(Some(one_lone_strip()));
     let regs = host.paint::<TimelinePanel>(&mut state, Rect::new(0.0, 0.0, 1600.0, 900.0));
 

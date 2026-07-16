@@ -35,17 +35,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
         // marquee to resolve (or repaint) when it comes back — nor an undo
         // bracket open, which would swallow the next atomic edit.
-        state.box_drag = None;
-        state.box_commit = None;
-        // One pointer means at most one of these is armed, but take all three
-        // before testing: `||` would short-circuit and strand the others.
-        let key = state.key_drag.take().is_some();
-        let handle = state.handle_drag.take().is_some();
-        let anchor = state.anchor_drag.take().is_some();
-        state.summary_press = None;
-        if key || handle || anchor {
-            state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
-        }
+        state::drop_row_gestures(state);
         set_last_content_h(0.0);
         set_last_visible_h(0.0);
         return;
@@ -61,9 +51,9 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     // Pass 1: drain this frame's wheel + gestures against the rect we start with.
     let rect0 = geom::clamp_to(state.rect.unwrap_or(docked), viewport);
-    // The label column's floor depends on what it HOLDS: a lane row carries
-    // controls a track row does not (`geom::min_label_w`).
-    let min_label = geom::min_label_w(&snapshot);
+    // The label column's floor depends on what it HOLDS — which is what the TAB
+    // shows: a lane row carries controls a track row does not (`geom::min_label_w`).
+    let min_label = geom::min_label_w(&snapshot, state.tab);
     let time_x0 = geom::time_x(rect0, state.label_w, min_label);
     crate::interact::process(state, ctx, rect0, time_x0, viewport, &snapshot);
 
@@ -81,8 +71,17 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // The transport now flows BESIDE the title and only spills to a row of its own
     // when the panel is too narrow to hold it (Enio: "a timeline ficou apertada").
     let head_strip = geom::header_controls(rect, title_size);
-    let (after_transport, clip_dd_chip) =
-        transport::paint_bar(ctx, theme, head_strip, body, &snapshot, state.speed_view);
+    let (after_transport, clip_dd_chip) = transport::paint_bar(
+        ctx,
+        theme,
+        head_strip,
+        body,
+        &snapshot,
+        transport::BarView {
+            tab: state.tab,
+            speed_view: state.speed_view,
+        },
+    );
     let g = geom::resolve(rect, after_transport, state.label_w, min_label);
     // Write the clamped width back, so a drag that ran past the bounds does not
     // have to be dragged all the way back before the column moves again.
@@ -96,7 +95,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     // Measure the scroll range, then clamp the model into it.
     state.graph_h = graph::clamp_graph_h(state.graph_h);
-    let content_h = geom::content_h(&snapshot, &state.expanded, state.graph_h);
+    let content_h = geom::content_h(&snapshot, state.tab, &state.expanded, state.graph_h);
     state.scroll_max = geom::scroll_max(content_h, g.rows.h);
     state.scroll_y = state.scroll_y.clamp(0.0, state.scroll_max); // CLAMP-OK: measured bounds, min<=max
 
@@ -140,17 +139,17 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     let preview_dx = crate::key_drag::preview_dx(state);
 
-    // "+Track" and "+Lane" share the label column's header strip, aligned with the
-    // ruler. Two buttons, one row: a track binds a property, a lane holds clips.
+    // The label column's header strip, aligned with the ruler: whichever ADD this
+    // tab's half is made of, and only that one. Sharing the strip was right while
+    // both halves were on screen; now a "+Lane" in the Keys tab would add a lane
+    // the tab cannot show — a button whose result is invisible is worse than a
+    // button that is not there ([[feedback_disabled_button_still_dispatches]]).
     let header = Rect::new(g.region.x, g.region.y, g.label_w, ruler::RULER_H);
-    let half = (header.w * 0.5).max(0.0);
-    let header = Rect::new(header.x, header.y, half, header.h);
-    tracks::paint_add_track(ctx, theme, header);
-    crate::stack_lane_paint::paint_add_lane(
-        ctx,
-        theme,
-        Rect::new(header.x + half, header.y, half, header.h),
-    );
+    if state.tab.shows_keys() {
+        tracks::paint_add_track(ctx, theme, header);
+    } else {
+        crate::stack_lane_paint::paint_add_lane(ctx, theme, header);
+    }
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
     // A handle or anchor drag whose row got culled (scrolled away, or its track
@@ -169,8 +168,20 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         tracks::paint_marquee(ctx, theme, b.rect());
     }
     scrollbar::paint(ctx, theme, g.scrollbar, state, content_h);
-    // Time axis last, so ticks + playhead overlay the rows.
-    ruler::paint(ctx, theme, g.time_area, view_start, px_per_s, &snapshot);
+    // Time axis last, so ticks + playhead overlay the rows. **What it measures is
+    // the tab's** (`RulerClock`): the Arrange tab rules the timeline, the Keys tab
+    // rules the clip — and without a stack those are one clock, which is why a
+    // document that never touches the feature sees no change at all.
+    let clock = ruler::clock_for(state.tab, &snapshot);
+    ruler::paint(
+        ctx,
+        theme,
+        g.time_area,
+        view_start,
+        px_per_s,
+        &snapshot,
+        clock,
+    );
 
     // The label/time splitter sits over the lanes AND the ruler, so it is
     // registered after both — a grab on the seam must not scrub the ruler.

@@ -306,9 +306,9 @@ mod tests {
             .binding_for(1, PropKind::TranslationX)
             .unwrap()
             .target;
-        let track: &Track = st.doc.active_clip().track(target).unwrap();
         let mut snap = TimelineViewSnapshot::default();
-        snap.rebuild(&st, &ph);
+        snap.rebuild(&mut st, &ph);
+        let track: &Track = st.doc.active_clip().track(target).unwrap();
         let keys = &snap.tracks[0].keys;
 
         // Sweep past both ends so the flat clamps are covered too.

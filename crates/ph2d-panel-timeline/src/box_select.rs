@@ -65,15 +65,7 @@ pub(crate) fn commit(
     if !b.additive {
         state::push_intent(TimelineIntent::ClearSelection);
     }
-    for sel in crate::tracks::keys_in_rect(
-        rows,
-        view,
-        state.scroll_y,
-        &state.expanded,
-        state.graph_h,
-        snap,
-        b.rect(),
-    ) {
+    for sel in crate::tracks::keys_in_rect(rows, view, state, snap, b.rect()) {
         state::push_intent(TimelineIntent::AddToSelection(sel));
     }
 }

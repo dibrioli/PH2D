@@ -49,7 +49,7 @@ pub(crate) fn paint(
     snap: &TimelineViewSnapshot,
 ) {
     let region = g.rows;
-    let Some((y, h)) = geom::summary_band(snap, region.y, state.scroll_y) else {
+    let Some((y, h)) = geom::summary_band(snap, state.tab, region.y, state.scroll_y) else {
         return;
     };
     // Scrolled out from under the ruler: neither paint nor leave hits behind.

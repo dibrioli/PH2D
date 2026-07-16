@@ -40,7 +40,9 @@ pub mod stack_edit;
 mod stack_eval;
 pub mod state;
 
-pub use apply::{apply_from_doc, apply_from_doc_except, key_home, key_time, remapped_time};
+pub use apply::{
+    apply_from_doc, apply_from_doc_except, clip_playhead, key_home, key_time, remapped_time,
+};
 pub use autokey::{AutokeyPlan, PoseSample, autokey_props, key_value_in_active_clip};
 pub use binding::{TargetBinding, WireId};
 pub use clipboard::{ClipboardKey, TimelineClipboard};

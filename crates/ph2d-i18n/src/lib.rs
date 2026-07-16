@@ -97,6 +97,10 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.record" => "Record",
         "panel.timeline.snap" => "Snap",
         "panel.timeline.speed" => "Speed",
+        // The two view tabs. "Keys" is the clip's dope sheet; "Arrange" is the
+        // clip stack. Named for what you SEE there, not for a mode you enter.
+        "panel.timeline.tab.keys" => "Keys",
+        "panel.timeline.tab.arrange" => "Arrange",
         "panel.timeline.prop.translate_x" => "Translate X",
         "panel.timeline.prop.translate_y" => "Translate Y",
         "panel.timeline.prop.rotation" => "Rotation",

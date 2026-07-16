@@ -117,6 +117,25 @@ pub(crate) fn apply_event(
                 )));
             EventOutcome::Consumed
         }
+        // The view tabs — panel-local VIEW state, never a document command, so they
+        // are answered here and never reach the shell (mirror of `TIMELINE_SPEED`
+        // below). Switching takes the rows out from under any in-flight gesture, so
+        // it is cleaned up exactly as hiding the panel is: same cause, same door.
+        //
+        // The arm walks `tab::TABS` rather than naming ids, so a third tab is a row
+        // in that table and nothing else — a hand-written match here would paint a
+        // tab that clicks into the void.
+        WidgetEvent::Click(id) if crate::tab::TABS.iter().any(|(tid, _)| *tid == id) => {
+            let want = crate::tab::TABS
+                .iter()
+                .position(|(tid, _)| *tid == id)
+                .map_or(crate::tab::Tab::default(), crate::tab::Tab::from_index);
+            if want != state.tab {
+                state.tab = want;
+                crate::state::drop_row_gestures(state);
+            }
+            EventOutcome::Consumed
+        }
         // Speed-graph view toggle (W5) — panel-local view state, NOT a document
         // command: flip it here (no bus/intent), like the +Track dropdown. The
         // transport bar mirrors `speed_view` back into the store's switch each

@@ -91,6 +91,10 @@ pub struct TimelinePanelState {
     /// (`d(value)/dt`) instead of the value curve, toggled from the transport
     /// bar. Panel-local view state — never undoable, never saved.
     pub speed_view: bool,
+    /// Which half of the document is on screen: the clip's keys, or the clip
+    /// stack ([`crate::tab::Tab`]). Panel-local VIEW state — never undoable,
+    /// never saved, and never the meaning of an edit.
+    pub tab: crate::tab::Tab,
     /// The Summary channel's column lock, toggled by its padlock. **Open by
     /// default** (Enio, 2026-07-11): clicking a key selects just that key.
     /// Close it and grabbing any single key grabs its whole time column, so
@@ -358,6 +362,7 @@ impl Default for TimelinePanelState {
             graph_resize: None,
             expanded: Vec::new(),
             speed_view: false,
+            tab: crate::tab::Tab::default(),
             column_lock: false,
             handle_drag: None,
             anchor_drag: None,
@@ -429,6 +434,27 @@ pub(crate) fn current_snapshot() -> TimelineViewSnapshot {
 /// Raise a dope-sheet edit intent (called by `interact` while draining gestures).
 pub(crate) fn push_intent(intent: TimelineIntent) {
     INTENTS.with(|c| c.borrow_mut().push(intent));
+}
+
+/// Drop every in-flight row gesture and close the undo bracket it left open.
+///
+/// Called wherever **the rows a gesture lives on stop existing**: the panel being
+/// hidden mid-drag, or the tab switching out from under it. One door for both —
+/// a gesture stranded by either is stranded the same way, and the failure mode is
+/// identical and silent: an open bracket swallows the NEXT atomic edit, so the
+/// animator's following action lands inside a Ctrl+Z step that is not its own.
+pub(crate) fn drop_row_gestures(state: &mut TimelinePanelState) {
+    state.box_drag = None;
+    state.box_commit = None;
+    // One pointer means at most one of these is armed, but take all three
+    // before testing: `||` would short-circuit and strand the others.
+    let key = state.key_drag.take().is_some();
+    let handle = state.handle_drag.take().is_some();
+    let anchor = state.anchor_drag.take().is_some();
+    state.summary_press = None;
+    if key || handle || anchor {
+        push_intent(TimelineIntent::EndEdit);
+    }
 }
 
 /// Drain the dope-sheet edit intents raised since the last call. The shell calls

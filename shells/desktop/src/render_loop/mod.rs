@@ -994,7 +994,8 @@ impl crate::App {
         // Publish the view snapshot the docked timeline panel paints
         // (transport state; tracks/keys from E3+). Rebuilt into a reused
         // buffer, then handed to the panel's thread-local.
-        self.timeline_view.rebuild(&self.timeline, &self.playhead);
+        self.timeline_view
+            .rebuild(&mut self.timeline, &self.playhead);
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
         sim_extract::run(
             dt,

@@ -886,7 +886,7 @@ fn a_five_second_clip_becomes_a_five_second_strip_at_real_time() {
 
     // O que o botão "+strip" LÊ.
     let mut snap = TimelineViewSnapshot::default();
-    snap.rebuild(&state, &Playhead::new(1.0 / 60.0));
+    snap.rebuild(&mut state, &Playhead::new(1.0 / 60.0));
     assert_eq!(
         snap.clip_length_seconds, 5.0,
         "o botão tem de ver 5 s (a última key), não 0 (a duração autorada)"

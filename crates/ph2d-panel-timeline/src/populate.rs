@@ -99,6 +99,19 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     toggle(store, ids::TIMELINE_SNAP, true);
     toggle(store, ids::TIMELINE_SPEED, false);
 
+    // The view tabs. Each is a plain Button — which is what makes its Click reach
+    // `apply_event` at all: `dispatch_pointer`'s Down only makes a hit ACTIVE when
+    // it is focusable, and an id absent from the store is not. Paint it, register
+    // its rect, route it in `event.rs` — every gate green — and it is still stone
+    // dead under the mouse without this line
+    // ([[feedback_widget_is_done_when_a_test_clicks_it]]).
+    //
+    // Walks `tab::TABS`, the same table the strip paints and the router matches, so
+    // a third tab is a row there and nothing else.
+    for (id, _) in crate::tab::TABS {
+        button(store, id);
+    }
+
     // Clip selector (W5). The chip is a Dropdown (the generic dispatch flips
     // `open` on a click and emits no event — the paint reads it back); each option
     // is a plain Button, which is what makes its Click reach `apply_event`.

@@ -6,12 +6,22 @@
 //! sai só do blend — ninguém digitou duração), e fica à direita.
 //!
 //! É o antídoto da montagem-na-mão ([[feedback_ready_to_smoke_example]]): abra o painel com **L**
-//! e o sistema já está rodando. Para experimentar:
+//! e o sistema já está rodando.
+//!
+//! O painel abre na aba **Keys** (o dope sheet do clip ativo). Os strips moram na aba
+//! **Arrange** — são metades diferentes com relógios diferentes, e é por isso que elas não
+//! dividem mais uma régua (`ph2d_panel_timeline::tab`). Para experimentar, clique **Arrange**:
 //!
 //! - **arraste a borda lateral** de um strip → **TRIM** (muda QUAIS frames tocam; a taxa fica).
 //! - **Cmd/Ctrl + a mesma borda** → **STRETCH** (dilata o TEMPO; a mesma animação, mais devagar).
 //! - **a barrinha na quina de cima** → **FADE** do próprio strip (só aparece onde não há vizinho).
 //! - **arraste um strip para dentro do outro** → a sobreposição É o crossfade.
+//!
+//! E o que a separação conserta: no dropdown escolha **Right** e volte à aba **Keys**. As keys
+//! dele são autoradas em 0..3 (tempo do CLIP) enquanto o strip dele toca em 2..5 (tempo da
+//! TIMELINE) — a régua da aba Keys agora mede o relógio do clip, então o playhead cai SOBRE as
+//! keys em vez de um segundo depois do fim de um clip de 3 s. Fora da janela do strip o clip não
+//! toca, e a régua não desenha playhead nenhum: não há onde apontar.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
@@ -94,7 +104,8 @@ impl crate::App {
         self.playhead.play();
 
         eprintln!(
-            "[stack-smoke] StackDemo: Left[0,3) x Right[2,5), overlap [2,3) = crossfade. Abra L."
+            "[stack-smoke] StackDemo: Left[0,3) x Right[2,5), overlap [2,3) = crossfade. \
+             Abra L, depois a aba Arrange (os strips) — Keys mostra o dope sheet do clip."
         );
     }
 }

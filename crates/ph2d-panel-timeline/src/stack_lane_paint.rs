@@ -67,7 +67,8 @@ pub(crate) fn paint(
     snap: &TimelineViewSnapshot,
 ) {
     let region = g.rows;
-    let bands: Vec<(usize, f32, f32)> = geom::stack_bands(snap, region.y, state.scroll_y).collect();
+    let bands: Vec<(usize, f32, f32)> =
+        geom::stack_bands(snap, state.tab, region.y, state.scroll_y).collect();
     for (i, y, h) in bands {
         // Scrolled out of the band: neither paint nor leave hits behind.
         if y + h <= region.y || y >= region.y + region.h {

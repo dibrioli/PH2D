@@ -41,8 +41,10 @@ mod strip_drag;
 mod strip_paint;
 mod summary;
 mod summary_paint;
+pub mod tab;
 mod tracks;
 mod transport;
+mod transport_tabs;
 mod view;
 
 pub use state::{

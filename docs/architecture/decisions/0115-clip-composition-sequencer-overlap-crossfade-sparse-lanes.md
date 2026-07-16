@@ -197,6 +197,37 @@ entregou); a cena mostra a **pilha**. O tweak mode do Blender existe *só* porqu
 presos a uma Action por vez — **nós já não temos esse problema.** A "decisão dos dois modos exclusivos" da
 v1 deste ADR era dívida escondida disfarçada de simplificação.
 
+> **R8 — emenda (2026-07-16): duas ABAS, porque uma régua mede um relógio.**
+>
+> A rejeição do *tweak mode* **fica de pé, e pelo motivo original** — ela é sobre um MODO, e uma aba não é
+> um modo: ela muda *o que se vê e o que a régua mede*, nunca o que uma edição significa, e o **dropdown de
+> clip segue sendo quem escolhe o clip**. Nada de `Tab` pra entrar e sair.
+>
+> O que o R8 errou foi um corolário, e ele é estrutural: concluiu que, sem tweak mode, as duas metades
+> podiam **coabitar uma vista**. Elas não podem, porque coabitam **uma régua com dois significados** — uma
+> key é carimbada no tempo do **CLIP**, um strip senta no tempo da **TIMELINE**. Escolha `Right` no dropdown
+> e as keys dele desenham em 0..3 enquanto o strip dele toca em 2..5: a mesma coluna de pixels, dois
+> instantes, e nada na tela admitindo isso. **Sem pilha os dois relógios são um só** — que é exatamente por
+> que passou despercebido: a feature que os separa era a feature que ninguém tinha usado ainda.
+>
+> O Enio leu isso da tela antes de qualquer pesquisa (*"a timeline com keys e com strips misturadas é
+> confusa"*), e o padrão-ouro concorda — e **separa mais do que nós**: o Unity nem deixa editar keyframe na
+> janela do Timeline (manda pra Animation window); o NLA Editor e o Dope Sheet do Blender são **editores
+> diferentes**; o Premiere põe as keys no Effect Controls. O AE mistura num nível só, mas dá **aba** a cada
+> nível de nesting. O único que mistura à vontade — o Sequencer do Unreal, o mais parecido conosco — tem
+> usuário pedindo socorro (*"scrolling through endless expanded tracks of keyframed data can be
+> fatiguing"*).
+>
+> **Desenho:** abas **Keys** (dope sheet + graph do clip ativo, régua no relógio do CLIP) e **Arrange**
+> (lanes + strips, régua no relógio da TIMELINE), em `ph2d_panel_timeline::tab`. O relógio do clip é
+> publicado no snapshot (`clip_time`) por `ph2d_timeline::clip_playhead`, que sai da **mesma porta** que o
+> K (`sole_strip_of`): se o clip não toca aqui, ou toca **duas vezes**, não há playhead — porque não há
+> onde apontar, e é a mesma razão pela qual o K recusa (R9). Sob pilha a régua do clip é **read-only** (sem
+> scrub, sem braces de loop, sem markers): o inverso não existe — um strip em loop manda muitos instantes
+> da timeline no mesmo instante do clip.
+>
+> **Sem pilha nada muda**: o clip É a timeline, então a aba Keys é o painel que sempre foi.
+
 **R9 — Autokey sob pilha: inverta, ou RECUSE.** Pra gravar a pose vista, inverte-se as faixas acima do clip
 ativo — `Override` com peso `w`: `v = (alvo − w·acima) / (1 − w)`; `Additive`: `v = alvo − delta`. Com
 `w → 1` não é inversível → **recusa a key + toast**. Nunca mover o objeto em silêncio. *(É a resposta nova

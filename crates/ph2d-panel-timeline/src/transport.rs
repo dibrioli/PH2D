@@ -24,6 +24,7 @@ use ph2d_timeline::{DEFAULT_FPS, TimelineViewSnapshot};
 use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::ids;
+use crate::tab::Tab;
 
 const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-button
 const ADD_MARKER_W: f32 = 40.0; // LITERAL-PX-OK: "+M" add-marker button width
@@ -37,8 +38,15 @@ const TRANSPORT_BTNS: usize = 5;
 /// The controls, in the order Enio set (2026-07-12): the CLIP everything else
 /// acts on, then the transport, then **+M** right after Go-to-End, then the
 /// readouts, then the toggles.
+///
+/// [`Item::Tabs`] leads, because it decides what everything after it is talking
+/// about. It rides the flow rather than taking a row of its own for a reason the
+/// panel has already been told once — *"a timeline ficou apertada"* (Enio,
+/// 2026-07-12): a dock this short cannot spend 28 px on two words, and as item
+/// zero the strip always lands on the title row anyway.
 #[derive(Clone, Copy, PartialEq)]
 enum Item {
+    Tabs,
     Clips,
     Transport,
     AddMarker,
@@ -52,7 +60,8 @@ enum Item {
     Speed,
 }
 
-const ITEMS: [Item; 11] = [
+const ITEMS: [Item; 12] = [
+    Item::Tabs,
     Item::Clips,
     Item::Transport,
     Item::AddMarker,
@@ -65,6 +74,17 @@ const ITEMS: [Item; 11] = [
     Item::Snap,
     Item::Speed,
 ];
+
+/// The panel-local VIEW state the bar reflects — what the panel is SHOWING, as
+/// opposed to what the document holds. Grouped so the painters take one argument
+/// instead of trailing a widening tail of bools (HR-12).
+#[derive(Clone, Copy)]
+pub(crate) struct BarView {
+    /// Which half of the document is on screen.
+    pub tab: Tab,
+    /// Expanded graph bands plot velocity instead of value.
+    pub speed_view: bool,
+}
 
 /// Flow the transport controls beside the panel title, wrapping onto as many rows
 /// as the panel's width needs.
@@ -87,7 +107,7 @@ pub(crate) fn paint_bar(
     header: Rect,
     body: Rect,
     snap: &TimelineViewSnapshot,
-    speed_view: bool,
+    view: BarView,
 ) -> (f32, Option<Rect>) {
     let gap = Spacing::Sm.px();
     let row_step = ROW_H_PX + gap;
@@ -111,7 +131,7 @@ pub(crate) fn paint_bar(
             );
             x = row.x;
         }
-        if let Some(chip) = paint_item(ctx, theme, item, x, row.y, snap, speed_view) {
+        if let Some(chip) = paint_item(ctx, theme, item, x, row.y, snap, view) {
             clip_chip = Some(chip);
         }
         x += w + gap;
@@ -127,6 +147,8 @@ fn width(item: Item, snap: &TimelineViewSnapshot) -> f32 {
     let gap = Spacing::Sm.px();
     let half = gap * 0.5;
     match item {
+        // One cell per tab, side by side inside the segmented pill.
+        Item::Tabs => crate::transport_tabs::width(),
         // [ Main v ] [+] [pencil] [trash] — the trash only exists above one clip.
         Item::Clips => {
             let trash = if snap.clips.len() > 1 {
@@ -164,7 +186,7 @@ fn paint_item(
     x: f32,
     y: f32,
     snap: &TimelineViewSnapshot,
-    speed_view: bool,
+    view: BarView,
 ) -> Option<Rect> {
     let gap = Spacing::Sm.px();
     let half = gap * 0.5;
@@ -174,6 +196,7 @@ fn paint_item(
         DEFAULT_FPS
     };
     match item {
+        Item::Tabs => crate::transport_tabs::paint(ctx, theme, x, y, view.tab),
         Item::Clips => return clip_cluster(ctx, theme, x, y, snap),
         Item::Transport => {
             // |< < >/|| > >| — jump to start, step back, play/pause, step forward,
@@ -316,7 +339,7 @@ fn paint_item(
                 y,
                 ids::TIMELINE_SPEED,
                 ph2d_i18n::tr("panel.timeline.speed"),
-                speed_view,
+                view.speed_view,
             );
         }
     }

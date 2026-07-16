@@ -38,6 +38,53 @@ const MARKER_H: f32 = 8.0; // LITERAL-PX-OK: marker pennant height
 /// Extra grab padding either side of a marker pennant.
 const MARKER_HIT_PAD: f32 = 4.0; // LITERAL-PX-OK: marker grab padding
 
+/// **What this ruler measures — and therefore what it may offer.**
+///
+/// The Arrange tab rules the TIMELINE: the playhead is the transport's, and every
+/// gesture on the strip (scrub, loop braces, markers) edits the very thing it
+/// points at.
+///
+/// The Keys tab rules the active CLIP. **Without a stack the two are one clock**,
+/// so the Keys ruler is the ruler it has always been and everything works exactly
+/// as before. Under a stack they are two clocks, and the clip's ruler goes
+/// read-only — not out of caution, but because *the inverse does not exist*: a
+/// looping strip maps many timeline instants onto the same clip instant, so
+/// "scrub the clip to 2.0 s" names no single place to put the playhead. The loop
+/// braces and the markers are the timeline's, and drawing them on the clip's ruler
+/// would stand them at the wrong second.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct RulerClock {
+    /// Where the playhead stands **on this ruler**, or `None` when the clock it
+    /// measures has no answer here (the clip is not playing, or plays twice).
+    pub now: Option<f64>,
+    /// This ruler measures the timeline, so it scrubs and carries the loop braces
+    /// and the markers. False = a clip ruler under a stack: it reads, never writes.
+    pub live: bool,
+}
+
+/// **Which clock this tab's ruler measures.** Pure, and tested as such.
+///
+/// The playhead is paint, not a widget — no hit index remembers it, so a seam test
+/// can prove the ruler's *hits* and never its *line*. Answering here rather than
+/// inside the paint loop is what gives that line an oracle at all: the same move
+/// the strip's locked-grip refusal already made when it went to `hit_plan`.
+pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> RulerClock {
+    if tab.shows_lanes() {
+        // The Arrange tab IS the timeline: the transport's playhead, and every
+        // gesture on the strip edits the thing it points at.
+        return RulerClock {
+            now: Some(snap.time_seconds),
+            live: true,
+        };
+    }
+    RulerClock {
+        // The clip's own clock — which without a stack the snapshot publishes as the
+        // playhead itself, so this is the ruler it has always been.
+        now: snap.clip_time,
+        live: !snap.stacked(),
+    }
+}
+
 /// Paint the ruler strip (ticks + labels), the playhead line across `region`,
 /// and register the scrub hit. The view (`view_start`, `px_per_s`) is computed
 /// once in `paint.rs` (page-follow) and shared with the lanes so ticks and key
@@ -49,6 +96,7 @@ pub(crate) fn paint(
     view_start: f64,
     px_per_s: f64,
     snap: &TimelineViewSnapshot,
+    clock: RulerClock,
 ) {
     let span = f64::from(region.w) / px_per_s;
     let time_to_x = |t: f64| region.x + ((t - view_start) * px_per_s) as f32;
@@ -62,8 +110,11 @@ pub(crate) fn paint(
         resolve(ColorToken::TimelineRulerBg, theme),
     );
     // The loop's shaded band goes BEHIND the ticks + labels so it tints the strip
-    // without hiding the time numbers.
-    paint_loop_band(ctx, theme, region, &time_to_x, snap);
+    // without hiding the time numbers. It is the TIMELINE's loop, so it only
+    // belongs on a ruler that measures the timeline.
+    if clock.live {
+        paint_loop_band(ctx, theme, region, &time_to_x, snap);
+    }
 
     // Minor + major ticks (+ labels on majors).
     paint_ticks(
@@ -89,16 +140,30 @@ pub(crate) fn paint(
         &time_to_x,
     );
 
-    // Playhead line across the whole body (ruler + lanes area below).
-    let px = time_to_x(snap.time_seconds);
-    if px >= region.x && px <= region.x + region.w {
-        let line = Rect::new(px - PLAYHEAD_W * 0.5, region.y, PLAYHEAD_W, region.h);
-        fill_rounded_rect(
-            ctx.scene,
-            line,
-            Radius::Xs.px(),
-            resolve(ColorToken::TimelinePlayhead, theme),
-        );
+    // Playhead line across the whole body (ruler + lanes area below) — at the
+    // instant THIS ruler's clock reads. `None` means that clock has no answer
+    // here, and no line is the honest drawing: a playhead is a claim about where
+    // you are, and under a stack a clip that is not playing has no "where".
+    if let Some(now) = clock.now {
+        let px = time_to_x(now);
+        if px >= region.x && px <= region.x + region.w {
+            let line = Rect::new(px - PLAYHEAD_W * 0.5, region.y, PLAYHEAD_W, region.h);
+            fill_rounded_rect(
+                ctx.scene,
+                line,
+                Radius::Xs.px(),
+                resolve(ColorToken::TimelinePlayhead, theme),
+            );
+        }
+    }
+
+    // Everything below WRITES the timeline: the scrub, the loop braces, the
+    // markers. A clip ruler under a stack registers none of it — not even dimmed.
+    // The inverse map does not exist, so there is nothing honest for a drag here
+    // to do, and a hit that is registered but meaningless is a control that lies
+    // ([[feedback_disabled_button_still_dispatches]]).
+    if !clock.live {
+        return;
     }
 
     // Register the scrub hit (the strip) + mirror the playhead into the slider
@@ -364,5 +429,89 @@ fn paint_ticks(
             );
         }
         i += 1.0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tab::Tab;
+
+    fn snap(stacked: bool, playhead: f64, clip_time: Option<f64>) -> TimelineViewSnapshot {
+        TimelineViewSnapshot {
+            time_seconds: playhead,
+            clip_time,
+            lanes: if stacked {
+                vec![ph2d_timeline::LaneView {
+                    name: "L".into(),
+                    muted: false,
+                    weight: 1.0,
+                    mode: ph2d_timeline::LaneMode::Override,
+                    strips: Vec::new(),
+                }]
+            } else {
+                Vec::new()
+            },
+            ..TimelineViewSnapshot::default()
+        }
+    }
+
+    /// **Nothing changes without a stack** — the case an animator is in almost all of
+    /// the time. The clip IS the timeline, so the Keys ruler shows the playhead and
+    /// writes it, exactly as it always has.
+    #[test]
+    fn without_a_stack_both_tabs_rule_the_one_clock_there_is() {
+        let s = snap(false, 1.25, Some(1.25));
+        for tab in [Tab::Keys, Tab::Arrange] {
+            assert_eq!(
+                clock_for(tab, &s),
+                RulerClock {
+                    now: Some(1.25),
+                    live: true
+                },
+                "{tab:?} lost the ruler it always had"
+            );
+        }
+    }
+
+    /// **The bug, as a number.** Playhead at timeline 4.0, the active clip reading 2.0.
+    /// The Keys ruler must stand at 2.0 — over the clip's keys — and the Arrange ruler
+    /// at 4.0. One ruler cannot be both.
+    #[test]
+    fn under_a_stack_each_tab_reads_its_own_clock() {
+        let s = snap(true, 4.0, Some(2.0));
+        assert_eq!(clock_for(Tab::Keys, &s).now, Some(2.0), "the CLIP's clock");
+        assert_eq!(
+            clock_for(Tab::Arrange, &s).now,
+            Some(4.0),
+            "the TIMELINE's clock"
+        );
+    }
+
+    /// A clip that is not playing (or plays twice) has no instant to point at, and a
+    /// playhead is a claim about where you are. No line is the honest drawing.
+    #[test]
+    fn a_clip_with_no_answer_gets_no_playhead() {
+        let s = snap(true, 4.0, None);
+        assert_eq!(clock_for(Tab::Keys, &s).now, None);
+        assert_eq!(
+            clock_for(Tab::Arrange, &s).now,
+            Some(4.0),
+            "the timeline always knows where it is"
+        );
+    }
+
+    /// The clip's ruler under a stack never WRITES: the inverse map does not exist.
+    /// The Arrange ruler always does.
+    #[test]
+    fn only_a_ruler_that_measures_the_timeline_may_write_it() {
+        assert!(!clock_for(Tab::Keys, &snap(true, 4.0, Some(2.0))).live);
+        assert!(clock_for(Tab::Keys, &snap(false, 4.0, Some(4.0))).live);
+        for stacked in [false, true] {
+            assert!(
+                clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).live,
+                "the Arrange tab IS the timeline"
+            );
+        }
     }
 }

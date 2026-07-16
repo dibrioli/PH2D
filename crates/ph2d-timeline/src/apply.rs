@@ -204,21 +204,56 @@ pub fn key_home(doc: &TimelineDoc, entity: u64, t: f64) -> Result<f64, crate::Ke
         return Ok(remapped_time(doc, entity, t));
     }
     let scratch = doc.scratch();
-    // Under a stack the answer comes from the SCRATCH, so this function is only as
-    // honest as the caller's promise that the scratch describes `t`
-    // (`TimelineDoc::prime_stack`). Check the promise rather than trusting it: a
-    // caller reading a scratch built for another instant gets a confidently wrong
-    // key time, and that is the exact bug class this module has now paid for three
-    // times ([[feedback_derived_coordinate_seed_must_match_sample]]).
+    debug_assert_scratch_at(scratch, t);
+    let strip = stack_eval::sole_strip_of(scratch, doc.active_index())?;
+    // The strip is live (`sole_strip_of` said so), so its clock has an entry —
+    // `NotPlaying` here would mean the scratch disagreed with itself.
+    stack_eval::strip_source_time(scratch, &strip, entity).ok_or(crate::KeyRefusal::NotPlaying)
+}
+
+/// **Where the active clip's own clock stands at timeline time `t`** — or why it
+/// has no single answer.
+///
+/// This is [`key_home`] with the entity half taken off: the OUTER map only
+/// (timeline → clip), which is what a *ruler* measures. `key_home` then composes
+/// the INNER map (that clip's Time Remap for one entity) on top; a ruler has no
+/// entity to ask, and the tracks it rules over may each carry a different one.
+///
+/// The two share [`stack_eval::sole_strip_of`] deliberately: "is the clip I am
+/// editing playing exactly once right now" must have ONE answer, or the ruler
+/// would draw a playhead at an instant K refuses to key
+/// ([[feedback_two_doors_to_the_same_question_diverge]]).
+///
+/// **Without a stack the clip IS the timeline**, so the answer is `t` itself —
+/// which is why a document that never touches the feature sees a ruler that
+/// behaves exactly as it always has.
+///
+/// Same precondition as [`key_home`]: under a stack the answer comes from the
+/// scratch, so the caller must have primed it at `t`
+/// ([`TimelineDoc::prime_stack`]).
+pub fn clip_playhead(doc: &TimelineDoc, t: f64) -> Result<f64, crate::KeyRefusal> {
+    if doc.stack().is_empty() {
+        return Ok(t);
+    }
+    let scratch = doc.scratch();
+    debug_assert_scratch_at(scratch, t);
+    Ok(stack_eval::sole_strip_of(scratch, doc.active_index())?.t_clip)
+}
+
+/// Hold the caller to the promise that the scratch describes `t`.
+///
+/// Under a stack every answer here comes from the SCRATCH, so these functions are
+/// only as honest as that promise. In production the apply has just built it at
+/// this same instant, which is exactly what makes the coupling invisible — and
+/// exactly the shape of bug that has broken this module three times over
+/// ([[feedback_derived_coordinate_seed_must_match_sample]]). Check it rather than
+/// trust it: a reader pointed at another instant gets a confidently wrong answer.
+fn debug_assert_scratch_at(scratch: &stack_eval::StackScratch, t: f64) {
     debug_assert!(
         scratch.built_at().to_bits() == t.to_bits(),
         "the stack scratch describes t={}, not t={t}: prime_stack first",
         scratch.built_at()
     );
-    let strip = stack_eval::sole_strip_of(scratch, doc.active_index())?;
-    // The strip is live (`sole_strip_of` said so), so its clock has an entry —
-    // `NotPlaying` here would mean the scratch disagreed with itself.
-    stack_eval::strip_source_time(scratch, &strip, entity).ok_or(crate::KeyRefusal::NotPlaying)
 }
 
 /// Write one resolved property value into an entity, via the sprite resolver.

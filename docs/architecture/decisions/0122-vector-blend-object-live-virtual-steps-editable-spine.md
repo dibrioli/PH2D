@@ -305,6 +305,13 @@ volta — as duas coisas convivem).
   PRIMEIRO, e só depois adota o pen) — sem o caso 2 o clique deixava o gizmo na linha ("não engloba,
   não move as shapes", 3º smoke). 2 gates (`the_gizmo_of_a_blend_spine_targets_its_sources` caso 1 ·
   `clicking_a_blend_spine_retargets_the_gizmo_to_the_sources` caso 2), mutation-testados.
+- **Arrastar em QUALQUER lugar do box global move o grupo** (4º smoke do Enio): antes era preciso
+  pegar o gizmo de uma das FORMAS; o vazio ENTRE elas (dentro do box que cobre tudo) não pegava. O
+  fallback "clique no interior vazio de um gizmo de Translate → move a seleção" só aceitava o
+  `Translate` canônico (`gizmo_kind`), mas o interior do box GLOBAL tem id **hasheado**
+  (`is_keyed_translate`, não reconhecido por `gizmo_kind_for_id`). Fix de uma linha
+  (`interior_translate_falls_back_to_selection`, função pura + gate): o fallback também aceita o
+  keyed. Vale para toda multi-seleção vetorial, não só o blend.
 - **`blend_live.rs` foi dividido** (teto de 600 LOC): as ações de edição/interação (pick/select/
   steps/reset/os dois drags) saíram para o módulo-filho `blend_live_edit.rs` (`use super::*` para os
   privados do pai); o núcleo (component + `recook` + helpers de geometria) ficou. `pin_spine_anchors`

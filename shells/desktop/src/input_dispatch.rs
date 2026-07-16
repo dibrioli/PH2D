@@ -1164,6 +1164,20 @@ fn shape_up_consumes(mode: ph2d_tool_vector::DrawMode, shape_active: bool) -> bo
     mode == ph2d_tool_vector::DrawMode::Shape && shape_active
 }
 
+/// Quando o canvas-pick não achou NADA sob o cursor, mas o clique foi no INTERIOR de um gizmo de
+/// Translate, o arrasto move a **seleção atual** (a bbox inteira é área de arrasto, como num
+/// sprite). Vale para o interior do gizmo ÚNICO (`translate_kind`, id canônico) **e** para o do box
+/// GLOBAL da multi-seleção (`keyed_translate`, id hasheado → `gizmo_kind` não o reconhece) — é o que
+/// permite arrastar em qualquer lugar do box que cobre tudo, inclusive sobre o vazio entre as formas
+/// de um blend. `false` ⇒ o clique no vazio não vira arrasto (cai na seleção/deselect normal).
+fn interior_translate_falls_back_to_selection(
+    hits_empty: bool,
+    translate_kind: bool,
+    keyed_translate: bool,
+) -> bool {
+    hits_empty && (translate_kind || keyed_translate)
+}
+
 /// O `anchor` e o meio-tamanho **intrínsecos** de um objeto do canvas, na linguagem
 /// do gizmo de sprite: do `Sprite`, se houver; da bbox local da curva, se for uma
 /// forma vetorial (ADR-0111). `([0,0], [0,0])` para o que não é nem um nem outro —
@@ -3413,9 +3427,16 @@ impl App {
                         // Translate) É o pedido de mover: a bbox inteira é área de
                         // arrasto, como num sprite. Sem nada sob o cursor, cai na
                         // seleção atual (Enio 2026-07-09).
-                        if hits.is_empty()
-                            && matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate))
-                            && let Some(sel) = hero.gizmo.selection
+                        //
+                        // Inclui o interior do box GLOBAL da multi-seleção (`is_keyed_translate`):
+                        // o id dele é hasheado, então `gizmo_kind` é `None` ali, mas arrastar em
+                        // QUALQUER lugar do box que cobre tudo tem de mover o grupo — inclusive
+                        // sobre o vazio ENTRE as formas de um blend (Enio 2026-07-15).
+                        if interior_translate_falls_back_to_selection(
+                            hits.is_empty(),
+                            matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate)),
+                            is_keyed_translate,
+                        ) && let Some(sel) = hero.gizmo.selection
                         {
                             hits.push(sel);
                         }
@@ -3888,9 +3909,9 @@ impl App {
 mod tests {
     use super::{
         VecPathShapeOp, VecTransformField, apply_vec_path_shape, apply_vec_transform,
-        shape_kind_for_mode, shape_up_consumes, vec_bool_op_for_id, vec_flip_for_id,
-        vec_path_shape_for_id, vec_reorder_for_id, vec_rotate_for_id, vec_transform_field_for_id,
-        vec_vertex_kind_for_id,
+        interior_translate_falls_back_to_selection, shape_kind_for_mode, shape_up_consumes,
+        vec_bool_op_for_id, vec_flip_for_id, vec_path_shape_for_id, vec_reorder_for_id,
+        vec_rotate_for_id, vec_transform_field_for_id, vec_vertex_kind_for_id,
     };
     use ph2d_tool_vector::DrawMode;
     use ph2d_vec_boolean::BoolOp;
@@ -4169,6 +4190,31 @@ mod tests {
             !shape_up_consumes(DrawMode::Pen, true),
             "a caneta nao e forma"
         );
+    }
+
+    /// **Arrastar no VAZIO do box global move o grupo** (Enio 2026-07-15). O interior do box global
+    /// tem id hasheado (`keyed_translate`), não o `Translate` canônico (`gizmo_kind` = None ali):
+    /// sem aceitar o keyed, clicar entre as formas de um blend não pegava e o grupo não movia. E só
+    /// quando NADA está sob o cursor (`hits_empty`) é que a seleção é o alvo — sobre uma forma, é ela
+    /// que manda.
+    #[test]
+    fn interior_translate_falls_back_to_selection_including_the_global_box() {
+        // O box global (keyed) sobre o vazio → cai na seleção (o fix).
+        assert!(interior_translate_falls_back_to_selection(
+            true, false, true
+        ));
+        // O gizmo único (Translate canônico) sobre o vazio → idem (já funcionava).
+        assert!(interior_translate_falls_back_to_selection(
+            true, true, false
+        ));
+        // Nem um nem outro → não vira arrasto (deselect/seleção normal).
+        assert!(!interior_translate_falls_back_to_selection(
+            true, false, false
+        ));
+        // Há algo sob o cursor → é ELE o alvo, não a seleção (não força o fallback).
+        assert!(!interior_translate_falls_back_to_selection(
+            false, true, true
+        ));
     }
 
     #[test]

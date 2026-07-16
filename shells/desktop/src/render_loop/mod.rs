@@ -77,6 +77,9 @@ mod painter_preview_handoff_tests;
 /// tool's composite across a stroke's whole life — phase D of the impasto smoke.
 #[cfg(test)]
 mod painter_preview_pipeline_tests;
+/// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
+#[cfg(test)]
+mod push_look_probe;
 mod timeline_bridge;
 mod timeline_presets;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside

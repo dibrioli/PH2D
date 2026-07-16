@@ -22333,3 +22333,89 @@ fn an_undone_line_takes_its_relief_with_it() {
         );
     }
 }
+
+/// **The deposit's bow wave, through the REAL stroke** — the tool-level half of the frontier law
+/// (`ph2d-painter-brush`'s `the_ploughed_paint_waits_at_the_strokes_frontier` proves the kernels;
+/// this proves the LOOP that drives them: un-paint the standing lobe BEFORE the dab deposits, one
+/// wave per Symmetry copy, reset with the stroke). Plough a Push=1 stroke through committed thick
+/// paint and read the displacement plane mid-stroke, the moment the artist is looking at it.
+///
+/// **Mutation that must bleed:** drop the un-paint block in `stamp_dabs_height` (the standing lobe
+/// is laid and never taken back) — a fossil lobe trail down the whole channel; the swath bound
+/// explodes and the frontier share collapses.
+#[test]
+fn the_deposits_wave_travels_through_the_real_stroke() {
+    let size = 300u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.set_brush_size_px(30.0);
+    t.toggle_brush_impasto();
+    // The slab: thick committed paint for the plough to shove.
+    for y in [130.0f32, 150.0, 170.0] {
+        t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp([40.0 + 28.0 * i as f32, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([264.0, y], PointerPhase::Up));
+    }
+    // The plough, mid-stroke (captured before the Up — real-time is the law here).
+    t.set_brush_size_px(14.0);
+    t.set_brush_impasto_push(1.0);
+    let (x0, x1, y) = (70.0f32, 220.0f32, 150.0f32);
+    t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
+    for i in 1..=10 {
+        t.on_canvas_pointer(cp([x0 + 15.0 * i as f32, y], PointerPhase::Move));
+    }
+    let plane = t.paint.relief.stroke_push.clone();
+    // THE TIP IS THE LAST DAB, not the pointer: the stabilizer holds the stroke ~a radius behind
+    // the cursor, and this gate's first draft measured "ahead" from the pointer — red over a wave
+    // that was standing exactly where it should. The wave state itself says where the tip is.
+    let tip = t.paint.relief.stroke_wave.first().and_then(|(_, t)| *t);
+    t.on_canvas_pointer(cp([x1, y], PointerPhase::Up));
+    assert_eq!(
+        plane.len(),
+        (size * size) as usize,
+        "fixture: the plough recorded R1"
+    );
+    let tip = tip.expect("fixture: the plough carried a wave (tip recorded)");
+    let tip_x = tip.center[0];
+
+    let radius = 14.0f32;
+    let (mut ahead, mut behind, mut lateral, mut total) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+    for py in 0..size as usize {
+        for px in 0..size as usize {
+            let v = plane[py * size as usize + px];
+            if v <= 0.0 {
+                continue;
+            }
+            total += f64::from(v);
+            let (fx, fy) = (px as f32 + 0.5, py as f32 + 0.5);
+            if fx > tip_x + radius {
+                ahead += f64::from(v);
+            } else if fx < x0 - radius {
+                behind += f64::from(v);
+            } else if (fy - y).abs() > radius {
+                lateral += f64::from(v);
+            }
+        }
+    }
+    assert!(
+        total > 10.0,
+        "fixture: the plough banked almost nothing ({total:.1}) — no ground under it?"
+    );
+    let swath = total - ahead - behind - lateral;
+    assert!(
+        ahead / total >= 0.30,
+        "only {:.1}% of the shoved paint stands ahead of the tip mid-stroke — the wave is not \
+         travelling through the REAL stroke (kernel gate green means the loop is the suspect: \
+         warm-up, per-copy slot, or the un-paint order)",
+        100.0 * ahead / total
+    );
+    assert!(
+        swath / total <= 0.20,
+        "{:.1}% of the shoved paint sits inside the channel — a fossil lobe trail: the standing \
+         lobe is being laid but never taken back up as the tip moves",
+        100.0 * swath / total
+    );
+    let _ = behind;
+}

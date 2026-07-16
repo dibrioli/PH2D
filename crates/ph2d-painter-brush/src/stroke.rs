@@ -168,8 +168,13 @@ impl Stroke {
         self.warm_from = p.pos;
         // Every reader of `Dab::dir` must be in this list, or its opening dabs get `[0, 0]` and it silently
         // degrades. `needs_heading` is how the third one (the Sculpt Chisel) says so — see `BrushSpec`.
+        // The fourth is the deposit's PUSH (the bow-wave bank aims by the heading): derived from the
+        // spec itself rather than enumerated by a caller, so it cannot rot the way this list once did.
         self.warming = self.spec.stroke_method.rake_warmup_eligible()
-            && (self.spec.texture.rake || self.spec.shape.rake || self.spec.needs_heading);
+            && (self.spec.texture.rake
+                || self.spec.shape.rake
+                || self.spec.needs_heading
+                || self.spec.effective_impasto_push() > 0.0);
         self.sampler.reset(p);
         self.started = true;
         if self.spec.stroke_method.emits_on_begin() {

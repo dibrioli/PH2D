@@ -30,7 +30,9 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::height::{
     HeightDab, HeightFields, accumulate_dab_height, derive_height, erase_dab_height,
 };
-use ph2d_painter_brush::height_push::{PUSH_REACH_MAX_PX, PushBite, bank_dab_push};
+use ph2d_painter_brush::height_push::{
+    DEPOSIT_FORWARD_SHARE, PUSH_REACH_MAX_PX, PushBite, bank_dab_push, wave_lobe,
+};
 use ph2d_painter_brush::{BrushSpec, Dab};
 
 impl PainterTool {
@@ -162,6 +164,12 @@ impl PainterTool {
         } else {
             2
         };
+        // The bow wave's cargo + last-painted lobe, one per Symmetry copy (each copy has its own
+        // travelling tip). Sized here because `copies` is a fact about THIS batch's brush.
+        let mut wave = std::mem::take(&mut self.paint.relief.stroke_wave);
+        if ground.is_some() {
+            wave.resize(copies.max(1), (0.0, None));
+        }
         // The un-wrapped centre of each original dab (indexed by group), so a wrapped copy can recover
         // its own offset. With Tiling off, `groups` is empty and the entry IS its own original.
         let origin_center = |gi: usize| -> [f32; 2] {
@@ -263,6 +271,44 @@ impl PainterTool {
                 grain: grain_basis.as_ref(),
                 grain_image: grain_image.as_ref(),
             };
+            // UN-paint this copy's standing wave lobe FIRST — before the dab's own deposit
+            // touches `stroke_paint`, so the `(1 − paint)` weights recompute to the exact numbers
+            // that painted it and the subtraction is bit-for-bit (the single-book law).
+            let copy_slot = gi % copies.max(1);
+            let mut plane_touched: Option<ph2d_painter_brush::dab::DirtyRect> = None;
+            if !erasing
+                && ground.is_some()
+                && let Some((vol, Some(tip))) = wave.get(copy_slot).map(|(v, t)| (*v, *t))
+                && vol > 0.0
+            {
+                let tip_spec = BrushSpec {
+                    radius_px: tip.radius,
+                    ..*brush
+                };
+                let tip_hd = ph2d_painter_brush::height::HeightDab {
+                    center: tip.center,
+                    radius: tip.radius,
+                    coverage: 1.0,
+                    footprint: tip_spec.footprint_deform().rotated_by(tip.rotation),
+                    prev_center: tip.prev_center,
+                    shape: None,
+                    grain: None,
+                    grain_image: None,
+                };
+                if let Some(r) = wave_lobe(
+                    &mut push_plane,
+                    &paint,
+                    &mut scratch,
+                    w,
+                    h,
+                    &tip_hd,
+                    vol,
+                    -1.0,
+                ) {
+                    plane_touched = Some(r);
+                }
+                wave[copy_slot].1 = None;
+            }
             let hit = if erasing {
                 erase_dab_height(&mut field, &mut cover, w, h, &spec, &hd)
             } else {
@@ -285,9 +331,69 @@ impl PainterTool {
                 };
                 let laid = accumulate_dab_height(&mut fields, w, h, &spec, &hd, bite.as_mut());
                 let displaced = bite.map_or(0.0, |b| b.displaced);
-                let banked = ground.as_ref().and_then(|_| {
-                    bank_dab_push(&mut push_plane, &paint, &mut scratch, w, h, &hd, displaced)
+                // The bank AIMS by the path: a first dab with no predecessor still has a heading
+                // (`d.dir`, warmed up when Push > 0), and a one-pixel synthetic prev turns it into
+                // the bank's direction WITHOUT changing the sweep — the W5 Conserve paid for this
+                // pattern first. Without it the pen-down dab banks a radial ring, and the stroke's
+                // start reads as a stamped cookie-cutter instead of where a blade set off.
+                let bank_hd = if hd.prev_center.is_none() && d.dir != [0.0, 0.0] {
+                    ph2d_painter_brush::height::HeightDab {
+                        prev_center: Some([d.center[0] - d.dir[0], d.center[1] - d.dir[1]]),
+                        ..hd
+                    }
+                } else {
+                    ph2d_painter_brush::height::HeightDab { ..hd }
+                };
+                let banked = ground.as_ref().map(|_| {
+                    bank_dab_push(
+                        &mut push_plane,
+                        &paint,
+                        &mut scratch,
+                        w,
+                        h,
+                        &bank_hd,
+                        displaced,
+                        DEPOSIT_FORWARD_SHARE,
+                    )
                 });
+                let (banked, carried) = match banked {
+                    Some((r, c)) => (r, c),
+                    None => (None, 0.0),
+                };
+                // The wave rolls: this dab's carried share joins the copy's cargo, and the whole
+                // cargo is painted as a lobe ahead of THIS tip (the old lobe was un-painted above).
+                // A directionless dab refuses the lobe and keeps the cargo for the next one that
+                // moves; at pen-up whatever lobe stands last simply STAYS — the wave rests at the
+                // stroke's frontier, which is the whole point (IMPaSTo's `v_p = −c∇p`).
+                let mut waved: Option<ph2d_painter_brush::dab::DirtyRect> = None;
+                if ground.is_some() && copies > 0 {
+                    let slot = &mut wave[copy_slot];
+                    slot.0 += carried;
+                    if slot.0 > 0.0
+                        && let Some(r) = wave_lobe(
+                            &mut push_plane,
+                            &paint,
+                            &mut scratch,
+                            w,
+                            h,
+                            &bank_hd,
+                            slot.0,
+                            1.0,
+                        )
+                    {
+                        waved = Some(r);
+                        slot.1 = Some(crate::tool::paint::relief_state::WaveTip {
+                            center: bank_hd.center,
+                            radius: bank_hd.radius,
+                            rotation: d.rotation,
+                            prev_center: bank_hd.prev_center,
+                        });
+                    }
+                }
+                let banked = [banked, waved, plane_touched]
+                    .into_iter()
+                    .flatten()
+                    .reduce(union_dirty);
                 // The relief the artist SEES while dragging is `field` (the light's `live_h`). The deposit
                 // wrote itself in; the displacement has to be folded in too, or the ridge would appear
                 // only at pen-up — which is exactly what Enio's smoke found (2026-07-12).
@@ -343,6 +449,7 @@ impl PainterTool {
         // The RNG copy dies here: `self.paint.tex_rng` is deliberately NOT written back (rule 2).
         self.paint.relief.stroke_push = push_plane; // the displacement banked so far, at Push = 1
         self.paint.relief.push_scratch = scratch;
+        self.paint.relief.stroke_wave = wave;
 
         if erasing {
             // The eraser scrubs the LAYER directly, so the live stroke's ground is no longer what it
@@ -374,6 +481,7 @@ impl PainterTool {
         self.paint.relief.stroke_film.clear();
         self.paint.relief.stroke_radius.clear();
         self.paint.relief.stroke_push.clear(); // the displacement is per-stroke; a re-stamp starts it over
+        self.paint.relief.stroke_wave.clear(); // the wave is a fact about the dab list; it restarts with it
         self.paint.relief.stroke_relief_bbox = None; // the commit's window is per-stroke too
         self.paint.relief.last_height_center.clear(); // the sweep chain restarts with the stroke
     }

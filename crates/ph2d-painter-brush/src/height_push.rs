@@ -52,6 +52,44 @@ fn lateral_weight(dx: f32, dy: f32, dir: Option<[f32; 2]>) -> f32 {
     (cross * cross) / len2
 }
 
+/// The **bow-wave lobe**: how much of the rim at this offset lies AHEAD of the moving blade —
+/// `cos²θ` for `cos θ > 0`, zero behind. `0` for a tap (no direction: a pressed stamp squeezes
+/// radially, and [`lateral_weight`]'s `1` already covers the whole annulus).
+///
+/// This is the half of the physics the first build deliberately deferred (*"o traço desloca como
+/// uma forma, não como uma lâmina — não há bow wave"*, plano §13.1): a blade pushes a wave AHEAD
+/// of its tip. Banking forward was tried and reverted once (MUT S: the next dab painted over the
+/// forward bank and half the paint ended up inside the channel) — what makes it sound now is that
+/// the bite **re-takes the accumulated plane** ([`PushBite::plane`] rides into the take), so the
+/// wave the last dab banked is picked up by the next and shoved on: it ROLLS with the tip and
+/// rests at the stroke's frontier, which is where IMPaSTo (NPAR 2004, `v_p = −c∇p`) says the
+/// displaced paint accumulates. The lateral wake still forms on its own: whatever the rolling wave
+/// sheds sideways lands outside the swath, where no later dab ever re-bites it.
+#[inline]
+fn forward_weight(dx: f32, dy: f32, dir: Option<[f32; 2]>) -> f32 {
+    let Some(u) = dir else { return 0.0 };
+    let len2 = dx * dx + dy * dy;
+    if len2 <= 1e-6 {
+        return 0.0;
+    }
+    let along = dx * u[0] + dy * u[1];
+    if along <= 0.0 {
+        return 0.0;
+    }
+    (along * along) / len2
+}
+
+/// The share of each dab's displaced paint that travels with the BOW WAVE instead of shedding
+/// into the lateral wake (the `forward_share` the deposit passes to [`bank_dab_push`]). Measured
+/// on the zone probe: per-dab forward *banking* cannot make a wave — the next dab paints over it
+/// and the envelope bite (a one-shot `ground × Δm` extraction) cannot re-transport it (0.4% ever
+/// landed ahead; 16% fossilised inside the swath — MUT S, quantified). So the wave is carried as a
+/// session SCALAR and painted as a lobe at the CURRENT tip ([`wave_lobe`]), exactly removable,
+/// finally resting at the stroke's frontier — which is where IMPaSTo (NPAR 2004, `v_p = −c∇p`)
+/// puts it. The Sculpt's Conserve passes `0.0`: all paint sheds laterally, byte-identical to its
+/// approved drawing. // CLAMP-OK
+pub const DEPOSIT_FORWARD_SHARE: f32 = 0.6;
+
 /// The rim's profile: how the displaced paint banks up outside the cut, as a function of `u` — the
 /// distance beyond the silhouette, normalised to the reach (`0` at the edge of the cut, `1` at the far
 /// side of the rim).
@@ -114,6 +152,12 @@ pub struct PushBite<'a> {
 ///
 /// Conservation is exact **per dab**: what the bite took is normalised into what this banks, so paint
 /// shoved against the canvas edge lands in whatever rim is left instead of vanishing.
+/// `forward_share` splits the displaced volume: `share × displaced` is RETURNED to the caller
+/// (the bow wave's cargo, painted by [`wave_lobe`] at the tip), the rest banks laterally here.
+/// `0.0` reproduces the purely lateral banking bit for bit (the Conserve's approved drawing). A
+/// directionless dab (a tap) always banks everything radially — a pressed stamp has no "ahead".
+/// Returns the banked rect and the carried volume.
+#[allow(clippy::too_many_arguments)]
 pub fn bank_dab_push(
     plane: &mut [f32],
     paint: &[f32],
@@ -122,10 +166,11 @@ pub fn bank_dab_push(
     height: u32,
     dab: &HeightDab<'_>,
     displaced: f32,
-) -> Option<crate::dab::DirtyRect> {
+    forward_share: f32,
+) -> (Option<crate::dab::DirtyRect>, f32) {
     let n = (width as usize) * (height as usize);
     if plane.len() < n || paint.len() < n || width == 0 || height == 0 {
-        return None;
+        return (None, 0.0);
     }
     let radius = dab.radius.max(0.5);
     let reach = push_reach_px(radius);
@@ -136,12 +181,22 @@ pub fn bank_dab_push(
     let x1 = ((cx + span).ceil() as i64 + 1).min(width as i64);
     let y1 = ((cy + span).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 || displaced == 0.0 {
-        return None;
+        return (None, 0.0);
     }
     let inv_radius = 1.0 / radius;
     let inv_reach = radius / reach; // u = (t - 1) * radius / reach
     let sweep = sweep_axis(dab);
     let dir = sweep.map(|(u, _)| u);
+    // The wave's cargo leaves FIRST: only a moving dab feeds it (a tap sheds everything radially).
+    let carried = if dir.is_some() {
+        displaced * forward_share.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let displaced = displaced - carried;
+    if displaced == 0.0 {
+        return (None, carried);
+    }
 
     // The weight of the rim at one texel: its profile across the bank, TIMES how far to the SIDE of the
     // brush it lies (a blade leaves nothing standing in front of itself — it runs it over on the next dab),
@@ -194,9 +249,116 @@ pub fn bank_dab_push(
     } else if swath_weight > 0.0 {
         (swath_weight, false)
     } else {
-        return None; // the rim is entirely off-canvas: the paint really was shoved off the edge
+        // The rim is entirely off-canvas: the paint really was shoved off the edge.
+        return (None, carried);
     };
     let scale = displaced / weight;
+    for by in 0..bh {
+        let row = (y0 + by as i64) as usize * (width as usize);
+        for bx in 0..bw {
+            let base = scratch[by * bw + bx];
+            if base <= 0.0 {
+                continue;
+            }
+            let i = row + (x0 + bx as i64) as usize;
+            let k = if use_clear {
+                base * (1.0 - paint[i].clamp(0.0, 1.0))
+            } else {
+                base
+            };
+            if k > 0.0 {
+                plane[i] += k * scale;
+            }
+        }
+    }
+    (
+        Some(crate::dab::DirtyRect {
+            x: x0 as u32,
+            y: y0 as u32,
+            w: (x1 - x0) as u32,
+            h: (y1 - y0) as u32,
+        }),
+        carried,
+    )
+}
+
+/// Paint (or exactly un-paint) the **bow wave** — the carried volume standing as a lobe AHEAD of
+/// the tip. Weights: the rim profile ([`push_rim_weight`]) × the forward lobe
+/// ([`forward_weight`]), preferring un-painted texels exactly like the lateral bank. `sign` is
+/// `+1.0` to lay the lobe and `-1.0` to take it back — the caller re-lays it at every dab (remove
+/// at the OLD tip with the OLD volume, lay at the new tip with the new volume), which is what
+/// makes the wave visibly TRAVEL with the brush and finally REST at the stroke's frontier at
+/// pen-up. Writes through the same single book (`plane`), so `Σ plane = 0` needs no second ledger:
+/// lay and un-lay are exact negations of each other.
+///
+/// A directionless dab has no "ahead" — the lobe is refused (`None`) and the caller keeps the
+/// cargo for the next dab that moves.
+#[allow(clippy::too_many_arguments)]
+pub fn wave_lobe(
+    plane: &mut [f32],
+    paint: &[f32],
+    scratch: &mut Vec<f32>,
+    width: u32,
+    height: u32,
+    dab: &HeightDab<'_>,
+    volume: f32,
+    sign: f32,
+) -> Option<crate::dab::DirtyRect> {
+    let n = (width as usize) * (height as usize);
+    if plane.len() < n || paint.len() < n || width == 0 || height == 0 || volume <= 0.0 {
+        return None;
+    }
+    let sweep = sweep_axis(dab);
+    // `sweep_axis` points BACK toward the previous dab (it is the sweep's axis); the wave stands
+    // AHEAD of the travel, which is its negation.
+    let dir = sweep.map(|(u, _)| [-u[0], -u[1]])?;
+    let radius = dab.radius.max(0.5);
+    let reach = push_reach_px(radius);
+    let (cx, cy) = (dab.center[0], dab.center[1]);
+    let span = radius + reach;
+    let x0 = (cx - span).floor().max(0.0) as i64;
+    let y0 = (cy - span).floor().max(0.0) as i64;
+    let x1 = ((cx + span).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + span).ceil() as i64 + 1).min(height as i64);
+    if x0 >= x1 || y0 >= y1 {
+        return None;
+    }
+    let inv_radius = 1.0 / radius;
+    let inv_reach = radius / reach;
+    let (bw, bh) = ((x1 - x0) as usize, (y1 - y0) as usize);
+    scratch.clear();
+    scratch.resize(bw * bh, 0.0);
+    let mut rim_weight = 0.0f32;
+    let mut lobe_weight = 0.0f32;
+    for by in 0..bh {
+        let py = y0 + by as i64;
+        let dy = (py as f32 + 0.5) - cy;
+        for bx in 0..bw {
+            let px = x0 + bx as i64;
+            let dx = (px as f32 + 0.5) - cx;
+            // The lobe stands on the dab's own annulus (no sweep: the wave lives at the TIP).
+            let t = dab.footprint.falloff_t(dx * inv_radius, dy * inv_radius);
+            if t <= 1.0 {
+                continue;
+            }
+            let k = push_rim_weight((t - 1.0) * inv_reach) * forward_weight(dx, dy, Some(dir));
+            if k <= 0.0 {
+                continue;
+            }
+            let i = (py as usize) * (width as usize) + px as usize;
+            scratch[by * bw + bx] = k;
+            rim_weight += k * (1.0 - paint[i].clamp(0.0, 1.0));
+            lobe_weight += k;
+        }
+    }
+    let (weight, use_clear) = if rim_weight > 0.0 {
+        (rim_weight, true)
+    } else if lobe_weight > 0.0 {
+        (lobe_weight, false)
+    } else {
+        return None; // the whole lobe is off-canvas
+    };
+    let scale = sign * volume / weight;
     for by in 0..bh {
         let row = (y0 + by as i64) as usize * (width as usize);
         for bx in 0..bw {

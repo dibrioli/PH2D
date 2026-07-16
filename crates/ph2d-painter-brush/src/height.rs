@@ -467,7 +467,12 @@ pub fn accumulate_dab_height(
             // `silhouette_at` twice per texel, and that alone put the impasto cost at 5.0 ms/move, over
             // budget, on every stroke. Three operations, folded into a loop that was already running.
             if let Some(b) = bite.as_deref_mut() {
-                let take = b.ground[i] * (m - fields.paint[i]);
+                // The bite takes from the ground AND from the stroke's own accumulated plane — the
+                // bow wave the previous dab banked ahead is picked up here and shoved on (see
+                // `forward_weight`). `(g + p)` is what actually stands at the texel right now;
+                // `.max(0)` guards float fuzz, and the series is self-limiting: each take shrinks
+                // `(g + p)` toward zero, so the swath can never be drained below bare canvas.
+                let take = (b.ground[i] + b.plane[i]).max(0.0) * (m - fields.paint[i]);
                 if take != 0.0 {
                     b.plane[i] -= take;
                     b.displaced += take;

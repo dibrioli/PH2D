@@ -5,6 +5,16 @@
 
 use super::Region;
 
+/// The tip a Symmetry copy's bow wave is standing at: exactly what [`ph2d_painter_brush::height_push::
+/// wave_lobe`] needs to recompute — and therefore exactly negate — the lobe it painted there.
+#[derive(Clone, Copy)]
+pub(super) struct WaveTip {
+    pub(super) center: [f32; 2],
+    pub(super) radius: f32,
+    pub(super) rotation: [f32; 2],
+    pub(super) prev_center: Option<[f32; 2]>,
+}
+
 /// See the module docs. Fields are `pub(super)` so the whole `paint` module tree reaches them exactly as
 /// it did when they lived on `PaintState` directly.
 #[derive(Default)]
@@ -44,6 +54,12 @@ pub(super) struct ReliefState {
     /// see the capsule law in `stamp_dabs_height`): the batch-boundary sweep must ask the same
     /// question the in-batch sweep asks, or the phantom bar would come back once per pointer event.
     pub(super) last_height_center: Vec<Option<([f32; 2], f32)>>,
+    /// **The bow wave, one per Symmetry copy**: the cargo each copy's tip is carrying (loads·px²)
+    /// and the exact lobe last painted for it — enough to UN-paint it bit-for-bit before the next
+    /// dab of that copy repaints it further along (`height_push::wave_lobe`; the removal runs
+    /// BEFORE the dab's own deposit touches `stroke_paint`, so the `(1−paint)` weights are the
+    /// same numbers that laid it). Cleared with the stroke: the wave is a fact about the dab list.
+    pub(super) stroke_wave: Vec<(f32, Option<WaveTip>)>,
     /// **Impasto live-edit** — the LAST stroke's ingredients, so the whole Body card re-derives that
     /// stroke after the fact instead of only affecting the next one (Enio 2026-07-12). Storing the
     /// HEIGHT instead bakes Body and Depth Source into it, leaving nothing to re-derive them from — the

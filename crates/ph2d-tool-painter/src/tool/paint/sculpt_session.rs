@@ -306,7 +306,7 @@ impl PainterTool {
                         .or(prev_center),
                     ..hd
                 };
-                if let Some(r) = ph2d_painter_brush::height_push::bank_dab_push(
+                if let (Some(r), _carried) = ph2d_painter_brush::height_push::bank_dab_push(
                     &mut bank,
                     &amount,
                     &mut bank_scratch,
@@ -314,6 +314,7 @@ impl PainterTool {
                     h,
                     &bank_dab,
                     displaced,
+                    0.0, // Conserve keeps the approved purely-lateral drawing, to the byte
                 ) {
                     let rect = Region {
                         x: r.x,

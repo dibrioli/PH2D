@@ -23,6 +23,37 @@ pub(super) fn unpack_src(v: u32) -> (i64, i64) {
     )
 }
 
+/// **The ball's TAPER — how much of a source's lift survives at squared distance `d2`, for a ball whose
+/// budget is `reach2` (`2ρ²·amount`, the source's own).** `1` out to the sphere's equator, `0` at the reach.
+///
+/// The parabola equals the sphere only near the apex; past `d² = R²/2` — the equator — the two diverge, and
+/// the outer 30% of the reach is flank fiction (a real sphere's side plunges and lands; the parabola glides
+/// on). So the lift is faded to zero across it, **squared**, which puts the fade C¹: the gradient zeroes
+/// exactly where the lift does, and the support's edge stops being drawable. A linear ramp still reached
+/// the boundary at ~0.6 loads/texel — a softer edition of the very ring this exists to kill.
+///
+/// ## Why this is a function and not two copies of a formula
+///
+/// It answers **one** question — *how much of the ball got here?* — and the Blob asks it **twice**: once for
+/// the HEIGHT (the post-pass fades the lift) and once for the MATTER (the advection fades the coverage,
+/// material and pigment it carries). They shipped as one formula and one omission: the height tapered, the
+/// matter was copied at full strength to the last qualifying texel and then stopped dead. The light weighs
+/// by coverage, so the artist saw the *matter's* edge — a binary cut at `d² = reach2`, read at the winner of
+/// a discrete argmax, i.e. a Voronoi pattern binarised. That is the staircase of Enio's 2026-07-16 smoke,
+/// and it is this line's oldest bug wearing a new hat: **two things that must agree about a fact,
+/// disagreeing** — here, where the form ends.
+///
+/// `reach2 <= 0` (an untouched source: `amount = 0`) returns `0` through the same comparison, since `d2` is
+/// never negative — the sentinel needs no special case.
+#[inline]
+pub(super) fn ball_taper(d2: f32, reach2: f32) -> f32 {
+    if d2 >= reach2 {
+        return 0.0; // past its own ball — or never had one
+    }
+    let lin = (2.0 - 2.0 * d2 / reach2).clamp(0.0, 1.0);
+    lin * lin
+}
+
 /// **The Blob's engine — a separable parabolic dilation.** (Enio 2026-07-14, 3rd smoke.)
 ///
 /// Inflate is a ball whose radius follows the falloff, and the exact spherical version is `O(area·ρ²)`,

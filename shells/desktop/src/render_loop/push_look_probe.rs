@@ -211,5 +211,40 @@ fn probe_push_render_and_look() {
     );
     save(&mut t, &dir, "9b_filter_stroke_smooth", size);
 
+    // 10. **ENIO'S BLOB** (2026-07-16) — the shape the report is actually about, and the one the slab above
+    //     cannot show. The slab's border is axis-aligned, so the ball's argmax pattern along it is regular
+    //     and the staircase has nothing to climb; the photographs are *a blob with high relief and a CURVED
+    //     border*. Three taps of a big soft brush on one spot (strokes add ⇒ thick), then Filter Layer +
+    //     Inflate at full Depth: the form must fatten with a SOFT, round rim, not a serrated cut-out.
+    let mut t = tool(size);
+    t.set_brush_impasto_depth(1.0);
+    for _ in 0..3 {
+        t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Up));
+    }
+    save(&mut t, &dir, "10a_blob_before", size);
+    t.set_paint_tool_mode("sculpt");
+    t.set_sculpt_mode(7); // Inflate
+    t.set_sculpt_depth(1.0);
+    assert!(t.filter_sculpt_layer(FilterScope::Layer), "the filter ran");
+    save(&mut t, &dir, "10b_blob_inflated", size);
+
+    //     …and the same blob grown by the Inflate BRUSH rather than the filter — the per-stroke verb Enio
+    //     approved, which shares `render_inflate` and therefore shares this rim.
+    let mut t = tool(size);
+    t.set_brush_impasto_depth(1.0);
+    for _ in 0..3 {
+        t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Up));
+    }
+    t.set_paint_tool_mode("sculpt");
+    t.set_sculpt_mode(7);
+    t.set_sculpt_depth(1.0);
+    t.set_brush_size_px(70.0);
+    t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([204.0, 200.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([204.0, 200.0], PointerPhase::Up));
+    save(&mut t, &dir, "10c_blob_inflate_brush", size);
+
     eprintln!("PNGs written to {dir}");
 }

@@ -37,6 +37,12 @@ fn await_result<T: Send + 'static>(job: &mut Job<T>) -> T {
 ///
 /// Deterministic without a sleep: the worker is held on a channel the test controls, so "the
 /// worker has started but has not finished" is a state the test *creates* rather than races for.
+///
+/// **The order inside the worker is the whole trick, and it is not cosmetic.** `set` happens
+/// *before* the "I started" send, because the channel is what publishes the write: `send`/`recv`
+/// is the happens-before edge, so by the time the test is unblocked the 0.5 is provably visible.
+/// Announcing first and reporting after is a **race** — the test would read the fraction while the
+/// worker had only reached the announcement, and 0.0 would come back. It did, on ~1 run in 3.
 #[test]
 fn the_work_leaves_the_ui_thread_and_the_result_comes_back() {
     let ui = thread::current().id();
@@ -44,8 +50,8 @@ fn the_work_leaves_the_ui_thread_and_the_result_comes_back() {
     let (release_tx, release_rx) = mpsc::channel::<()>();
 
     let mut job = Job::spawn("Work", move |p| {
-        started_tx.send(thread::current().id()).expect("test alive");
         p.set(0.5);
+        started_tx.send(thread::current().id()).expect("test alive");
         release_rx.recv().expect("test releases the worker");
         7_u32
     });

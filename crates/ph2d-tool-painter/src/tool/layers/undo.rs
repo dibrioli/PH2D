@@ -62,6 +62,14 @@ impl PainterTool {
         // The live-edit buffer describes a stroke on a ground that no longer exists — forget it, or the
         // next Depth drag would rebuild an undone stroke out of thin air.
         self.drop_live_relief();
+        // And the in-progress ENVELOPE too. The shape editors reset it before each re-stamp, so when
+        // the restored snapshot still carries a shape, `restore_shape_overlay` below rebuilds it in
+        // lock-step with the pixels. But the LAST undo restores a snapshot with NO shape — that path
+        // only clears the editors, and the previous re-stamp's envelope survived with no pigment
+        // under it: the light kept shading a Line whose colour was gone (Enio, live smoke
+        // 2026-07-15: "desfez a cor mas restou o relevo"). A gesture cannot be in flight during an
+        // undo, so there is never a live envelope this reset could legitimately lose.
+        self.reset_stroke_height();
         self.canvas_rgba = m.canvas_rgba;
         self.selection = m.selection;
         // Reinstate the Mask brush scratch + target so an undo/redo across a mask stroke restores the

@@ -321,6 +321,15 @@ pub struct HeightFields<'a> {
     /// different function of the dab (the body curve runs on the silhouette, the dynamics scale it), so
     /// the dab that laid the most paint here is not always the one that laid the most body.
     pub film: &'a mut [u8],
+    /// The winning dab's **radius** (raw `radius_px`, the value its `spec` carried) — the third
+    /// ingredient. The relief's height scales with the dab's size ([`IMPASTO_REFERENCE_RADIUS_PX`]),
+    /// and for the drag-sized methods (Anchored/Drag Dot) and pressure-tapered strokes the dab's
+    /// radius is NOT the panel brush's: re-deriving the commit with the base radius flattened an
+    /// Anchored ball by `brush/drag` — Enio's live smoke, 2026-07-15, *"ao soltar o mouse, achata
+    /// relevo"*. Stored per texel with the same winner as `paint`/`grain`, so every Body-card knob
+    /// re-derives the stroke at the size that actually made it — and the Size slider AFTER a stroke
+    /// no longer silently re-scales relief that is already on the canvas.
+    pub radius: &'a mut [f32],
 }
 
 impl HeightFields<'_> {
@@ -331,6 +340,7 @@ impl HeightFields<'_> {
             && self.paint.len() >= n
             && self.grain.len() >= n
             && self.film.len() >= n
+            && self.radius.len() >= n
     }
 }
 
@@ -465,6 +475,7 @@ pub fn accumulate_dab_height(
             }
             fields.paint[i] = m;
             fields.grain[i] = gq;
+            fields.radius[i] = spec.radius_px;
             // Derived from the STORED (quantised) grain, so the buffer and the re-derivation always
             // agree to the last bit — a live edit can never make the relief jump.
             fields.height[i] = derive_height(spec, m, f32::from(gq) / 255.0);

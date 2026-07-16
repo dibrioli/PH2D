@@ -22202,3 +22202,134 @@ fn the_relief_of_scattered_dabs_is_beads_not_bars() {
         );
     }
 }
+
+/// **An Anchored ball is as tall committed as it was live — the radius is the third ingredient.**
+///
+/// Enio's live smoke (2026-07-15, two screenshots): drag an Anchored ball and the relief reads as a
+/// strong sphere; release, and it flattens. The arithmetic was in plain sight: the live envelope
+/// derives each texel at the DAB's radius (`d.radius_px` — for Anchored, the drag distance), while
+/// the commit re-derived the same ingredients at the PANEL brush's radius — and the height scales
+/// with the radius (`IMPASTO_REFERENCE_RADIUS_PX`), so a 100 px ball drawn with a 40 px brush came
+/// back `40/100` as tall. (`derive_height`'s own comment called per-dab radius "a refinement…, not
+/// a visible error" — true for pressure taper, false by 2.5-10x for the drag-sized methods.) The
+/// radius is now stored per texel with the same envelope winner as `paint`/`grain`, and the commit
+/// derives each texel at the radius that made it.
+///
+/// The oracle is BIT-equality: with Smoothing 0 the settle is skipped, and the rule of this module
+/// is that the relief is *always exactly* `derive_height(ingredients)` — so the committed field
+/// must equal the live envelope to the bit. A corollary rides along: the Size slider AFTER a stroke
+/// no longer re-scales relief that is already on the canvas.
+///
+/// **Mutation that must bleed:** in `rebuild_live_layer_relief`, derive at `brush.radius_px`
+/// instead of `live_radius[i]` (the old code) — the ball comes back flattened by `brush/drag`.
+#[test]
+fn an_anchored_ball_is_as_tall_committed_as_it_was_live() {
+    let size = 300u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.set_brush_size_px(40.0);
+    t.toggle_brush_impasto();
+    t.set_brush_impasto_smoothing(0.0);
+    t.set_brush_stroke_method(2); // Anchored: the drag sizes the disc
+
+    t.on_canvas_pointer(cp([150.0, 150.0], PointerPhase::Down));
+    for i in 1u8..=5 {
+        t.on_canvas_pointer(cp([150.0 + 20.0 * f32::from(i), 150.0], PointerPhase::Move));
+    }
+    // The live relief the artist is looking at, one frame before release (nothing committed yet, so
+    // the view IS the stroke envelope).
+    let live = relief(&t);
+    let live_peak = live.iter().fold(0.0f32, |m, &v| m.max(v));
+    assert!(
+        live_peak > 2.0 * t.paint.brush.impasto_depth.abs() * 40.0 / 10.0,
+        "fixture: the drag-sized dab must be derived at the DRAG's radius (live peak {live_peak:.2} \
+         should far exceed a brush-radius dab's) — else this gate is comparing two flat balls"
+    );
+    // Release at the same point: the final stamp is the same disc the artist saw.
+    t.on_canvas_pointer(cp([250.0, 150.0], PointerPhase::Up));
+    let committed = relief(&t);
+
+    let differing = live
+        .iter()
+        .zip(&committed)
+        .filter(|(a, b)| a.to_bits() != b.to_bits())
+        .count();
+    assert_eq!(
+        differing,
+        0,
+        "with Smoothing 0 the committed relief must BE the live envelope, to the bit — {differing} \
+         texels differ (live peak {live_peak:.2}, committed peak {:.2}). The commit re-derived the \
+         stroke at a radius that is not the one that made it: the ball flattens the moment the mouse \
+         is released.",
+        committed.iter().fold(0.0f32, |m, &v| m.max(v))
+    );
+}
+
+/// **An undone Line takes its relief with it** (Enio, live smoke 2026-07-15: *"ao usar linha, ao
+/// fazer a última etapa do undo, desfez a cor mas restou o relevo"*).
+///
+/// The shape editors reset the stroke's relief envelope before each re-stamp, so every undo that
+/// restores a snapshot WITH a shape rebuilds envelope and pixels in lock-step. The LAST undo
+/// restores a snapshot with no shape — that path only cleared the editors, and the previous
+/// re-stamp's envelope survived with no pigment under it: a lit crest floating over bare canvas,
+/// the same ghost the eraser gate refuses, entering through Ctrl+Z. `restore_model` now resets the
+/// envelope unconditionally (a gesture cannot be in flight during an undo, so there is never a
+/// live envelope the reset could legitimately lose).
+///
+/// Both commit paths are covered — the OPEN shape (undo across the live preview) and the applied
+/// one — because they die through different code and each once had its own ghost.
+///
+/// **Mutation that must bleed:** drop the `reset_stroke_height()` call in `restore_model` — the
+/// open-shape variant keeps a 4-load crest over zero painted pixels.
+#[test]
+fn an_undone_line_takes_its_relief_with_it() {
+    let size = 300u32;
+    for (name, apply) in [("open shape", false), ("applied", true)] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.set_brush_size_px(40.0);
+        t.toggle_brush_impasto();
+        t.set_brush_stroke_method(5); // Line: authored click-by-click
+        for p in [[80.0f32, 150.0], [220.0, 150.0]] {
+            t.on_canvas_pointer(cp(p, PointerPhase::Down));
+            t.on_canvas_pointer(cp(p, PointerPhase::Up));
+        }
+        if apply {
+            assert!(t.commit_open_shape(), "{name}: fixture applies the shape");
+        }
+        let id = t.layers.active().expect("a layer");
+        let before = t.layer_height_view(id).unwrap_or_default();
+        assert!(
+            before.iter().any(|&v| v > 0.5),
+            "{name}: fixture laid relief — else the absence below is vacuous"
+        );
+
+        let mut steps = 0;
+        while t.undo_last() && steps < 10 {
+            steps += 1;
+        }
+        assert!(steps > 0, "{name}: fixture had something to undo");
+        assert_eq!(
+            t.canvas_rgba
+                .chunks_exact(4)
+                .filter(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
+                .count(),
+            0,
+            "{name}: sanity — the undo took every painted pixel back"
+        );
+        let after = t.layer_height_view(id).unwrap_or_default();
+        let (mut peak, mut n) = (0.0f32, 0usize);
+        for &v in &after {
+            if v.abs() > 0.05 {
+                n += 1;
+            }
+            peak = peak.max(v.abs());
+        }
+        assert_eq!(
+            n, 0,
+            "{name}: the colour is undone but {n} texels still carry relief (peak {peak:.2}) — a \
+             lit crest floating over bare canvas. The last undo cleared the shape editors without \
+             clearing the stroke envelope they had stamped."
+        );
+    }
+}

@@ -58,11 +58,13 @@ fn deposit_fields(spec: &BrushSpec) -> (Vec<f32>, Vec<f32>, Vec<u8>) {
     let mut paint = vec![0.0f32; (W * W) as usize];
     let mut grain = vec![0u8; (W * W) as usize];
     let mut film = vec![0u8; (W * W) as usize];
+    let mut radius = vec![0.0f32; (W * W) as usize];
     let mut fields = HeightFields {
         height: &mut dst,
         paint: &mut paint,
         grain: &mut grain,
         film: &mut film,
+        radius: &mut radius,
     };
     let _ = accumulate_dab_height(&mut fields, W, W, spec, &dab, None);
     (dst, paint, grain)

@@ -31,6 +31,10 @@ pub(super) struct ReliefState {
     /// dab: the body curve runs on the silhouette and the dynamics scale it, which is what keeps the light
     /// alive under a light touch. Merged into the layer's `covers` at stroke end.
     pub(super) stroke_film: Vec<u8>,
+    /// The winning dab's radius per texel — the THIRD ingredient (see `HeightFields::radius`): the
+    /// height scales with the dab's size, and the drag-sized methods make that size a per-stroke
+    /// fact, not the panel knob. Same envelope winner as `stroke_paint`.
+    pub(super) stroke_radius: Vec<f32>,
     /// **Impasto**: where each Symmetry copy of the stroke was when the LAST pointer batch ended — and
     /// how BIG that dab was — so the first dab of the next batch can sweep back to it. Without it the
     /// relief would bead at every pointer event — a beading chosen by the artist's mouse polling rate,
@@ -47,6 +51,8 @@ pub(super) struct ReliefState {
     pub(super) live_paint: Vec<f32>,
     /// That stroke's grain plane — the second ingredient (see [`Self::stroke_grain`]).
     pub(super) live_grain: Vec<u8>,
+    /// That stroke's per-texel dab radius — the third ingredient (see [`Self::stroke_radius`]).
+    pub(super) live_radius: Vec<f32>,
     pub(super) live_push: Vec<f32>, // that stroke's displacement at `Push = 1` — see [`Self::stroke_push`]
     pub(super) push_scratch: Vec<f32>, // per-dab rim weights, reused (so `bank_dab_push` allocates nothing)
     /// The active layer's committed relief BEFORE that stroke — the ground the re-derived stroke is

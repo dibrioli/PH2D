@@ -90,13 +90,14 @@ impl PainterTool {
             }
         }
         let (mut field, mut cover) = erase_buffers.unwrap_or_default();
-        let (mut paint, mut grain, mut film) = if erasing {
-            (Vec::new(), Vec::new(), Vec::new())
+        let (mut paint, mut grain, mut film, mut radius) = if erasing {
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new())
         } else {
             let mut h = std::mem::take(&mut self.paint.relief.stroke_height);
             let mut p = std::mem::take(&mut self.paint.relief.stroke_paint);
             let mut g = std::mem::take(&mut self.paint.relief.stroke_grain);
             let mut f = std::mem::take(&mut self.paint.relief.stroke_film);
+            let mut r = std::mem::take(&mut self.paint.relief.stroke_radius);
             // Lazily sized by the first dab of the stroke; zero cost for a document nobody sculpts.
             if h.len() != n {
                 h = vec![0.0; n];
@@ -110,8 +111,11 @@ impl PainterTool {
             if f.len() != n {
                 f = vec![0u8; n];
             }
+            if r.len() != n {
+                r = vec![0.0; n];
+            }
             field = h;
-            (p, g, f)
+            (p, g, f, r)
         };
         // The displacement's own plane, and the GROUND it bites into — the layer's relief as the stroke
         // found it. Recorded whenever there IS paint to shove, NOT only when the knob is up: Push has to
@@ -277,6 +281,7 @@ impl PainterTool {
                     paint: &mut paint,
                     grain: &mut grain,
                     film: &mut film,
+                    radius: &mut radius,
                 };
                 let laid = accumulate_dab_height(&mut fields, w, h, &spec, &hd, bite.as_mut());
                 let displaced = bite.map_or(0.0, |b| b.displaced);
@@ -351,6 +356,7 @@ impl PainterTool {
             self.paint.relief.stroke_paint = paint;
             self.paint.relief.stroke_grain = grain;
             self.paint.relief.stroke_film = film;
+            self.paint.relief.stroke_radius = radius;
         }
         if let Some(rect) = touched {
             self.mark_dirty(rect);
@@ -361,11 +367,12 @@ impl PainterTool {
     /// shape editors' live preview (Line / Curve / Ellipse / Polygon / Free Hand re-stamp the WHOLE
     /// shape every pointer move over a restored canvas — without this the envelope would keep the
     /// relief of every shape the artist dragged THROUGH, and a curve would leave a trail of ghosts).
-    pub(super) fn reset_stroke_height(&mut self) {
+    pub(crate) fn reset_stroke_height(&mut self) {
         self.paint.relief.stroke_height.clear();
         self.paint.relief.stroke_paint.clear();
         self.paint.relief.stroke_grain.clear();
         self.paint.relief.stroke_film.clear();
+        self.paint.relief.stroke_radius.clear();
         self.paint.relief.stroke_push.clear(); // the displacement is per-stroke; a re-stamp starts it over
         self.paint.relief.stroke_relief_bbox = None; // the commit's window is per-stroke too
         self.paint.relief.last_height_center.clear(); // the sweep chain restarts with the stroke
@@ -384,6 +391,7 @@ impl PainterTool {
         let paint = std::mem::take(&mut self.paint.relief.stroke_paint);
         let grain = std::mem::take(&mut self.paint.relief.stroke_grain);
         let film = std::mem::take(&mut self.paint.relief.stroke_film);
+        let radius = std::mem::take(&mut self.paint.relief.stroke_radius);
         self.paint.relief.stroke_height.clear(); // it is derived; the ingredients are the truth
         let (Some(active), Some(bbox)) =
             (self.layers.active(), self.paint.relief.stroke_relief_bbox)
@@ -482,6 +490,7 @@ impl PainterTool {
         self.paint.relief.live_relief_layer = Some(active);
         self.paint.relief.live_paint = paint;
         self.paint.relief.live_grain = grain;
+        self.paint.relief.live_radius = radius;
         // The displacement at Push = 1 — the third ingredient. The whole displacement is LINEAR in Push,
         // so keeping it lets the knob stay live after the stroke without replaying a single dab.
         self.paint.relief.live_push = std::mem::take(&mut self.paint.relief.stroke_push);
@@ -504,7 +513,10 @@ impl PainterTool {
         };
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        if self.paint.relief.live_paint.len() != n || self.paint.relief.live_grain.len() != n {
+        if self.paint.relief.live_paint.len() != n
+            || self.paint.relief.live_grain.len() != n
+            || self.paint.relief.live_radius.len() != n
+        {
             return; // a stale, differently-sized ingredient plane: the shape guard, never an index panic
         }
         let (rw, rh) = (rect.w as usize, rect.h as usize);
@@ -512,11 +524,16 @@ impl PainterTool {
 
         // 1. Derive the stroke's relief — inside the WINDOW only. Outside it the paint is zero, so the
         //    relief is zero, so there is nothing to derive and nothing to write.
+        // Derived at the radius that MADE each texel (the third ingredient), not at the panel
+        // brush's: a drag-sized Anchored ball is as tall committed as it was live, and dialling the
+        // Size slider after the stroke does not re-scale relief already on the canvas.
         let brush = self.paint.brush;
+        let mut spec_i = brush;
         let mut field: Vec<f32> = Vec::with_capacity(cells);
         for_each_in(rect, w, |i| {
             let g = f32::from(self.paint.relief.live_grain[i]) / 255.0;
-            field.push(derive_height(&brush, self.paint.relief.live_paint[i], g));
+            spec_i.radius_px = self.paint.relief.live_radius[i];
+            field.push(derive_height(&spec_i, self.paint.relief.live_paint[i], g));
         });
 
         // 2. Settle it. The window's border is zero (it was grown by the blur's reach), so the settle's
@@ -679,6 +696,7 @@ impl PainterTool {
     pub(crate) fn drop_live_relief(&mut self) {
         self.paint.relief.live_paint = Vec::new();
         self.paint.relief.live_grain = Vec::new();
+        self.paint.relief.live_radius = Vec::new();
         self.paint.relief.live_push = Vec::new();
         self.paint.relief.live_relief_base = Vec::new();
         self.paint.relief.live_film = Vec::new();

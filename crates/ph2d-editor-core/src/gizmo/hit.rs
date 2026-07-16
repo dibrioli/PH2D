@@ -63,8 +63,27 @@ pub fn gizmo_kind_for_id(id: NodeId) -> Option<GizmoDragKind> {
 /// the host's canvas-click guard: when a gizmo handle was hit, the
 /// host suppresses the canvas-pick fallback (which would otherwise
 /// re-select the same sprite needlessly).
+///
+/// Note it is the 13 zones that BEGIN A DRAG — [`ids::GIZMO_PIVOT`] is deliberately not one of them
+/// (the pivot dot is the Pivot tool's, not a drag kind). Ask [`is_gizmo_id`] for *"is this id the
+/// gizmo's at all"*.
 pub fn is_gizmo_handle_id(id: NodeId) -> bool {
     gizmo_kind_for_id(id).is_some()
+}
+
+/// True iff `id` belongs to the gizmo **at all** — any of its reserved hit zones, the pivot dot
+/// included.
+///
+/// This is the question *"is this thing CHROME, or is it drawn on the artwork?"*, answered by the module
+/// that owns the ids. The gizmo is **not chrome**: it is painted over the very sprite the artist is
+/// painting, so a host guard that treats "the hit index claims this pixel" as "the editor's UI owns this
+/// pixel" would carve dead zones out of the picture exactly at the sprite's corners and edges.
+///
+/// [`is_gizmo_handle_id`] cannot answer it: the pivot dot is a hit zone and is not a drag kind, so it
+/// reports `false` for `GIZMO_PIVOT`. Every caller that wanted *"the gizmo's"* had to remember to add
+/// `|| id == GIZMO_PIVOT` by hand — which is a list, and lists rot. This is the door.
+pub fn is_gizmo_id(id: NodeId) -> bool {
+    is_gizmo_handle_id(id) || id == ids::GIZMO_PIVOT
 }
 
 /// Reserved [`NodeId`]s for the gizmo's 13 hit zones (8 handles +

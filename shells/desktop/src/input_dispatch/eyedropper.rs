@@ -25,6 +25,14 @@ impl App {
     /// appears (ADR-0040 TG-B; previously the overlay went stale until
     /// an unrelated panel edit nudged it).
     pub(crate) fn try_eyedropper_sample(&mut self, px: f32, py: f32) -> bool {
+        // The CHROME first — the eyedropper consumes the event "regardless of in/out" of the sprite to
+        // keep the canvas from moving/deselecting, so an unguarded arm swallows Down events headed for
+        // the UI's own widgets: sliders inside the BgRemoval panel went clickable-but-un-draggable
+        // (Enio 2026-05-26), and the left rail / top bars leaked the same way until 2026-07-16 because
+        // this asked `panel_at` alone — half the question. One door, asked before anything else.
+        if crate::forwarding::pointer_over_chrome(self.gfx.as_ref(), px, py) {
+            return false;
+        }
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -39,19 +47,6 @@ impl App {
         let Some(hero) = gfx.hero_screen.as_ref() else {
             return false;
         };
-        // Bail when the click lands on ANY published panel rect — the
-        // eyedropper consumes the event "regardless of in/out" of the
-        // sprite to keep the canvas from moving/deselecting, but that
-        // also swallowed Down events headed for sliders inside the
-        // BgRemoval panel, leaving them clickable but un-draggable
-        // (Enio 2026-05-26: "ao selecionar cores com pick colors os
-        // sliders não podem mais ser arrastados e sim clicados").
-        // Panels paint on top of the canvas, so a click on the panel
-        // is unambiguously panel-targeted — let the widget dispatcher
-        // route it.
-        if hero.store.panel_at(px, py).is_some() {
-            return false;
-        }
         let Some(bits) = hero.gizmo.selection else {
             return false;
         };

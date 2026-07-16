@@ -168,19 +168,20 @@ impl App {
     /// click) iff the painter started a stroke, so it doesn't also pick/move the
     /// sprite.
     pub(crate) fn painter_canvas_down(&mut self, px: f32, py: f32, pressure: f32) -> bool {
-        // A press over a docked panel (Layers / Brush properties) belongs to the
-        // panel's own widgets — sliders, colour picker, buttons. Don't start a
-        // canvas stroke there: that painted *through* the panel and stole the
-        // slider drag (the stroke's Move capture swallowed the drag). Mirror of
-        // the gizmo/canvas-pick gate (`store.panel_at(..).is_none()`). A stroke
-        // already open keeps painting over the panel via the Move path (it does
-        // not re-enter here).
-        let over_panel = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| h.store.panel_at(px, py).is_some());
-        if over_panel {
+        // A press over the editor's CHROME belongs to the chrome's own widgets — sliders, colour picker,
+        // buttons. Don't start a canvas stroke there: that paints *through* the UI and steals the drag
+        // (the stroke's Move capture swallows it).
+        //
+        // This asked `store.panel_at(..)` and ONLY that, which is half the question — and the half that
+        // misses exactly what Enio reported on 2026-07-16: the left rail's buttons and the top bars are
+        // **not inside any panel rect**, so `panel_at` said "not a panel" and the brush painted behind the
+        // button the artist had just clicked. (The C&F button was patched for this one-off in 2026-07-03,
+        // by hard-coding its id in `arm_fill_drag_if_on_button` — one button, the same bug.) The whole
+        // question, gizmo exception included, lives in `forwarding::chrome_claims`.
+        //
+        // A stroke already open keeps painting over the chrome via the Move path (it does not re-enter
+        // here) — dragging off the artwork must not chop the stroke at the panel's edge.
+        if crate::forwarding::pointer_over_chrome(self.gfx.as_ref(), px, py) {
             return false;
         }
         let started = self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Down);

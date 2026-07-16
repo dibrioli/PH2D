@@ -126,6 +126,13 @@ impl App {
     /// Core dab: footprint hit-test + paint/erase + arm the drag. Returns
     /// `true` when the brush is armed (so the click is consumed).
     fn protect_dab(&mut self, px: f32, py: f32, erase: bool) -> bool {
+        // The CHROME first. This one had **no guard at all** — found 2026-07-16 by the arch-gate that
+        // forbids the half-question: its two siblings above were patched for the panel leak in 2026-05-26
+        // and the core dab was missed, so an armed protection brush painted (and consumed the click)
+        // straight through the UI. One door, all four arms.
+        if crate::forwarding::pointer_over_chrome(self.gfx.as_ref(), px, py) {
+            return false;
+        }
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -218,6 +225,12 @@ impl App {
     /// click can't move / deselect the sprite while the selector is
     /// armed.
     pub(crate) fn try_add_area_click(&mut self, px: f32, py: f32) -> bool {
+        // The CHROME first — same reason and same door as the eyedropper's (this arm consumes
+        // "regardless of in/out" too). Asked `panel_at` alone until 2026-07-16: half the question, so
+        // the rail's buttons leaked.
+        if crate::forwarding::pointer_over_chrome(self.gfx.as_ref(), px, py) {
+            return false;
+        }
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -232,15 +245,6 @@ impl App {
         let Some(hero) = gfx.hero_screen.as_ref() else {
             return false;
         };
-        // Bail when the click lands on ANY published panel rect — the
-        // selector consumes the event "regardless of in/out" of the
-        // sprite to keep canvas/gizmo clicks from leaking, but that
-        // also swallowed Down events headed for sliders inside the
-        // BgRemoval panel (mirror of the eyedropper's panel-guard,
-        // same Enio 2026-05-26 cause).
-        if hero.store.panel_at(px, py).is_some() {
-            return false;
-        }
         let Some(bits) = hero.gizmo.selection else {
             return false;
         };

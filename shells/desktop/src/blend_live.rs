@@ -39,10 +39,26 @@ pub(crate) use edit::{
     selected_closed_in_z, set_selected_steps,
 };
 
-/// A memória do spine AUTOMÁTICO que a shell escreveu por último, por blend. É como a shell
-/// detecta que o artista editou a curva (modo Node): se o spine ATUAL difere do último auto, a
-/// mão mexeu → o blend vira `spine_authored`. Runtime-only (o flag em si viaja no componente).
-pub(crate) type BlendSpines = BTreeMap<VecPathId, Vec<VecVertex>>;
+/// A memória runtime de UM blend (chaveada pelo spine). Nada aqui é documento: o que precisa
+/// sobreviver ao save/undo viaja no componente (`spine_authored`).
+#[derive(Default, Clone, PartialEq)]
+pub(crate) struct BlendMemo {
+    /// O último spine **AUTOMÁTICO** que a shell escreveu. É como ela detecta que o artista editou
+    /// a curva (modo Node): spine ATUAL ≠ este ⇒ a mão mexeu ⇒ o blend vira `spine_authored`.
+    ///
+    /// `Option` e não `Vec` vazio: *"não memorizei auto nenhum"* e *"memorizei um spine sem
+    /// vértices"* são estados diferentes, e só o primeiro deve calar a detecção.
+    pub(crate) auto: Option<Vec<VecVertex>>,
+    /// Os centros das fontes no frame **ANTERIOR** — é como se sabe que as FORMAS se moveram.
+    ///
+    /// *"A forma se moveu"* e *"a âncora está deslocada do centro"* **não são a mesma pergunta**, e
+    /// a diferença decide se os pontos livres do spine acompanham: a segunda também é verdade quando
+    /// é a ÂNCORA que foi arrastada (e aí o interior é do artista, e fica).
+    pub(crate) centers: Vec<[f64; 2]>,
+}
+
+/// A memória runtime de todos os blends vivos, por spine ([`BlendMemo`]).
+pub(crate) type BlendSpines = BTreeMap<VecPathId, BlendMemo>;
 
 /// Translada TODOS os pontos de um path (âncora + as duas alças) por `off`. É como um passo é
 /// movido do seu lugar do lerp para o lugar dele no spine.
@@ -91,18 +107,48 @@ fn spine_stroke() -> ph2d_vec_scene::StrokeSpec {
 ///
 /// `live` são as formas vivas na ordem da cadeia (uma por âncora, no caso normal). Passar os centros
 /// direto não bastava: com pontos de dobra extras, âncora ≠ fonte por índice.
+///
+/// E os pontos de dobra **LIVRES** (os criados além das formas, que não pertencem a fonte nenhuma)
+/// acompanham quando o conjunto TRANSLADA ([`rigid_move`]) — senão arrastar todas as formas juntas
+/// deixaria a curva para trás.
 fn pin_spine_anchors(
     scene: &mut VecScene,
     id: VecPathId,
     live: &[VecPathId],
     centers: &[[f64; 2]],
+    prev_centers: &[[f64; 2]],
 ) {
     let Some(p) = scene.path_mut(id) else {
         return;
     };
     // O mapa usa o Nº de fontes; os centros vêm na MESMA ordem de `live`, então o índice em `live`
     // indexa `centers`. O mapa mora no módulo irmão `edit` (junto com quem mais o usa).
-    for (vi, src_id) in edit::anchor_source_pairs(p.verts.len(), live) {
+    let pairs = edit::anchor_source_pairs(p.verts.len(), live);
+
+    // **O conjunto inteiro TRANSLADOU? Então os pontos LIVRES vão junto** (Enio 2026-07-16). Os
+    // pontos de dobra criados ALÉM das formas não pertencem a fonte nenhuma, então nada os movia:
+    // arrastar todas as formas em multi-seleção deixava a curva para trás e deformava a transição,
+    // quando o que o artista fez foi mover o conjunto de lugar.
+    //
+    // A pergunta é feita aos **CENTROS entre frames**, não à distância âncora↔centro: *"a forma
+    // andou?"* e *"a âncora está fora do centro?"* dão a mesma resposta quase sempre — mas a segunda
+    // também é SIM quando é a âncora que foi arrastada, e aí o interior é do artista e fica parado.
+    //
+    // Só translação, de propósito: girar/escalar os livres exigiria re-derivá-los do estado do frame
+    // ANTERIOR (não há coords de frame guardadas — eles são autorados), e re-cozinhar o próprio
+    // cozido a cada frame é acumulação sequencial, com o erro compondo 60×/s. Somar um delta não
+    // compõe, e em repouso o delta é exatamente zero.
+    if let Some(d) = rigid_move(centers, prev_centers) {
+        let bound: Vec<usize> = pairs.iter().map(|&(vi, _)| vi).collect();
+        for (i, v) in p.verts.iter_mut().enumerate() {
+            if !bound.contains(&i) {
+                shift_vertex_to(v, [v.anchor[0] + d[0], v.anchor[1] + d[1]]);
+            }
+        }
+    }
+    // As âncoras-fonte pousam EXATAMENTE nos centros (nunca por `+ d`: um ulp por frame anda
+    // sozinho).
+    for (vi, src_id) in pairs {
         let Some(li) = live.iter().position(|&s| s == src_id) else {
             continue;
         };
@@ -111,6 +157,46 @@ fn pin_spine_anchors(
         };
         shift_vertex_to(v, c);
     }
+}
+
+/// **Todas as fontes andaram pelo MESMO delta desde o frame anterior?** Devolve esse delta — é o
+/// conjunto sendo movido de lugar. `None` se elas andaram umas em relação às outras (aí cada âncora
+/// vai para o seu centro e a curva se deforma entre elas, o comportamento de sempre), se nada andou,
+/// ou se ainda não há frame anterior com que comparar.
+///
+/// **O limiar não é calibração — ele separa ruído de arredondamento de MOVIMENTO, e entre os dois
+/// não existe entrada nenhuma.** Os centros saem de `Transform.translation`, que é `f32`: o gizmo
+/// soma o MESMO delta a poses diferentes, e o arredondamento faz os centros andarem por deltas que
+/// diferem em ~1e-7·|pos|. Do outro lado, movimento relativo de verdade vem de pixels arrastados —
+/// nada entre `1e-6·|pos|` e isso é produzível por um artista (seria mover uma forma por menos que
+/// um nanômetro numa tela de metros).
+///
+/// Parado devolve `None`, não `Some([0,0])` — é o contrato: *"as formas andaram juntas?"* responde
+/// **não** quando ninguém andou. Nenhum gate separa os dois (transladar por zero já é exato: `x +
+/// 0.0` não muda bit nenhum, então o comportamento é idêntico e o mutante sobrevive) — é honestidade
+/// de contrato, não uma barreira. Quem procurar uma barreira aqui não vai achar.
+fn rigid_move(centers: &[[f64; 2]], prev: &[[f64; 2]]) -> Option<[f64; 2]> {
+    if prev.len() != centers.len() {
+        return None; // 1º frame do blend: não há "antes" para comparar
+    }
+    let moves: Vec<[f64; 2]> = centers
+        .iter()
+        .zip(prev)
+        .map(|(c, p)| [c[0] - p[0], c[1] - p[1]])
+        .collect();
+    let first = *moves.first()?;
+    if first == [0.0, 0.0] && moves.iter().all(|m| *m == [0.0, 0.0]) {
+        return None; // ninguém andou
+    }
+    let scale = centers
+        .iter()
+        .flat_map(|c| [c[0].abs(), c[1].abs()])
+        .fold(0.0, f64::max);
+    let eps = 1e-6 * scale.max(1.0);
+    moves
+        .iter()
+        .all(|m| (m[0] - first[0]).abs() <= eps && (m[1] - first[1]).abs() <= eps)
+        .then_some(first)
 }
 
 /// Move a âncora do vértice para `anchor`, arrastando as duas alças pelo mesmo delta (a tangente
@@ -305,8 +391,17 @@ pub(crate) fn recook(
             .find(|p| p.id == spine_id)
             .map(|p| p.verts.clone())
             .unwrap_or_default();
+        let prev_centers: Vec<[f64; 2]> = spines
+            .get(&spine_id)
+            .map(|m| m.centers.clone())
+            .unwrap_or_default();
         let mut authored = blend.spine_authored;
-        if !authored && spines.get(&spine_id).is_some_and(|last| *last != current) {
+        if !authored
+            && spines
+                .get(&spine_id)
+                .and_then(|m| m.auto.as_ref())
+                .is_some_and(|last| *last != current)
+        {
             authored = true; // a mão mexeu na curva (modo Node)
             if let Some(mut b) = sim.world_mut().get_mut::<VecBlend>(entity) {
                 b.spine_authored = true; // persiste (viaja no save/undo)
@@ -316,7 +411,7 @@ pub(crate) fn recook(
         let offsets = if authored {
             // As âncoras seguem as fontes (a curva se edita pelas alças); depois os passos FLUEM ao
             // longo do spine editado — deslocamento por comprimento de arco.
-            pin_spine_anchors(scene, spine_id, &live, &centers);
+            pin_spine_anchors(scene, spine_id, &live, &centers, &prev_centers);
             spine_offsets_of(scene, spine_id, &centers, &blend)
         } else {
             // Spine automático (a reta pelos centros): escreve e MEMORIZA (para detectar a edição
@@ -328,9 +423,14 @@ pub(crate) fn recook(
                 .find(|p| p.id == spine_id)
                 .map(|p| p.verts.clone())
                 .unwrap_or_default();
-            spines.insert(spine_id, auto);
+            spines.entry(spine_id).or_default().auto = Some(auto);
             Vec::new()
         };
+
+        // Os centros DESTE frame viram o "antes" do próximo — é assim que o frame seguinte sabe que
+        // as formas andaram (e não que uma âncora foi arrastada). Nos DOIS ramos: um spine que
+        // acabou de ser autorado precisa do "antes" já na mão.
+        spines.entry(spine_id).or_default().centers = centers.clone();
 
         // O spine é INVISÍVEL na cena — ele só aparece no modo Node, elevado ao topo do overlay
         // (`elevate_spines`), que é o único modo em que a linha se toca (ADR-0122). No Select a linha

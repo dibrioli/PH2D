@@ -361,3 +361,78 @@ fn dragging_an_endpoint_moves_the_source_without_authoring_the_spine() {
         "a ponta ficou onde foi arrastada (sem salto de volta): {last:?}"
     );
 }
+
+/// Um spine autorado com um ponto de dobra LIVRE no meio (o artista criou um ponto além das duas
+/// formas), e as `n` fontes movidas por `deltas[i]`. Devolve a âncora do ponto livre depois do
+/// recook — é ela que tem de acompanhar (ou não).
+fn free_bend_after_moving(deltas: &[[f32; 2]]) -> [f64; 2] {
+    let (mut sim, mut scene, map, spine, src) = scene_with_blend(2, 3);
+    let e = Entity::from_bits(map[&spine]);
+    sim.world_mut()
+        .get_mut::<VecBlend>(e)
+        .expect("blend")
+        .spine_authored = true;
+    // 3 vértices para 2 fontes: o do meio é LIVRE (`anchor_source_pairs` liga só a 1ª e a última).
+    set_spine(&mut scene, spine, &[[0.0, 0.0], [2.0, 3.0], [4.0, 0.0]]);
+    // **Dois frames com a MESMA memória** — é o que o produto faz, e é o que dá ao 2º frame um
+    // "antes" com que comparar os centros. Um frame só nunca vê movimento nenhum.
+    let mut mem = BlendSpines::new();
+    let xf = crate::vec_transform::build(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut mem, &mut Vec::new());
+    // O artista arrasta as formas.
+    for (id, d) in src.iter().zip(deltas) {
+        let mut t = sim
+            .world_mut()
+            .get_mut::<Transform>(Entity::from_bits(map[id]))
+            .expect("Transform");
+        t.translation.x += d[0];
+        t.translation.y += d[1];
+    }
+    let xf = crate::vec_transform::build(&sim, &map);
+    recook(&mut sim, &mut scene, &map, &xf, &mut mem, &mut Vec::new());
+    scene
+        .paths()
+        .iter()
+        .find(|p| p.id == spine)
+        .expect("spine")
+        .verts[1]
+        .anchor
+}
+
+/// **Arrastar TODAS as formas leva a curva INTEIRA** (Enio 2026-07-16) — inclusive os pontos de
+/// dobra que o artista criou além delas. Eles não pertencem a fonte nenhuma, então nada os movia: a
+/// multi-seleção arrastava as formas e deixava a curva para trás, deformando a transição, quando o
+/// que o artista fez foi mover o conjunto de lugar.
+#[test]
+fn dragging_every_source_together_carries_the_free_bend_points() {
+    let moved = free_bend_after_moving(&[[5.0, -2.0], [5.0, -2.0]]);
+    let want = [2.0 + 5.0, 3.0 - 2.0];
+    assert!(
+        (moved[0] - want[0]).abs() < 1e-9 && (moved[1] - want[1]).abs() < 1e-9,
+        "o ponto livre tinha de andar o mesmo delta das formas: {moved:?} != {want:?}"
+    );
+}
+
+/// …e mover UMA fonte só **não** leva os pontos livres: aí as formas se moveram uma em relação à
+/// outra, cada âncora vai para o seu centro e a curva se DEFORMA entre elas — que é o que o artista
+/// pediu ao mover uma só. É o outro lado da mesma decisão, e sem este gate "translada sempre"
+/// passaria.
+#[test]
+fn moving_a_single_source_leaves_the_free_bend_points_alone() {
+    let moved = free_bend_after_moving(&[[5.0, -2.0], [0.0, 0.0]]);
+    assert!(
+        (moved[0] - 2.0).abs() < 1e-9 && (moved[1] - 3.0).abs() < 1e-9,
+        "o ponto livre nao podia se mexer: {moved:?}"
+    );
+}
+
+/// **Em repouso o spine não anda um bit.** Nada se moveu ⇒ nada a transladar. A captura do undo é
+/// tirada no fim do frame e o diff registra QUALQUER diferença como ação do usuário, então um passe
+/// por-frame que ande um ulp vira um passo espúrio a cada frame (BUGS #15 — o "undo só faz uma
+/// etapa"). Este gate é a rede sob o passe INTEIRO, não sob o early-return do `rigid_move`: aquele é
+/// contrato, e nenhum mutante o distingue (transladar por zero já é exato).
+#[test]
+fn at_rest_the_spine_does_not_move_by_a_single_bit() {
+    let before = free_bend_after_moving(&[[0.0, 0.0], [0.0, 0.0]]);
+    assert_eq!(before, [2.0, 3.0], "repouso tem de ser bit-identico");
+}

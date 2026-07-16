@@ -130,7 +130,10 @@ fn expand_returns_the_z_run_with_the_steps_between_the_sources() {
     let mut want = vec![src[0]];
     want.extend(made.iter().map(|p| p.id));
     want.push(src[1]);
-    assert_eq!(runs[0], want, "fonte0 · passos · fonte1, de baixo para cima");
+    assert_eq!(
+        runs[0], want,
+        "fonte0 · passos · fonte1, de baixo para cima"
+    );
 }
 
 /// **O objeto vivo morre e as FONTES ficam** — expandir não consome os operandos (≠ booleana). O

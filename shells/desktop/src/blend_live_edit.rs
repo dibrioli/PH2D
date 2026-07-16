@@ -350,7 +350,8 @@ pub(crate) fn drag_spine_anchors_move_sources(
                 // INTEIRO (âncora + alças) como o arrasto fez — só a âncora deixaria as alças
                 // divergindo do spine atual, e a detecção autoraria à toa.
                 if let Some(mem) = spines.get_mut(&spine_id)
-                    && let Some(mv) = mem.get_mut(vi)
+                    && let Some(auto) = mem.auto.as_mut()
+                    && let Some(mv) = auto.get_mut(vi)
                 {
                     shift_vertex_to(mv, e);
                 }

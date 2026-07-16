@@ -384,6 +384,38 @@ Click(id)` provaria só a allowlist — foi a 1ª versão, e o mutante do `popul
 **Aberto:** o `spacing` (Distance/SmoothColor) segue deferido; o blend destrutivo (`vec_blend.rs`,
 hoje só dos smokes `PH2D_BUILD_SMOKE=7..=9`) segue à espera da limpeza.
 
+### Ajuste do Enio (2026-07-16) — os pontos LIVRES acompanham o conjunto
+
+Pontos de dobra criados **além** das formas não pertencem a fonte nenhuma, então nada os movia:
+arrastar todas as formas em multi-seleção deixava a curva para trás e deformava a transição, quando o
+que o artista fez foi **mover o conjunto de lugar**. Agora, quando todas as fontes andam pelo MESMO
+delta, os pontos livres andam junto (`blend_live::rigid_move` + `pin_spine_anchors`).
+
+**A pergunta é feita aos CENTROS entre frames, não à distância âncora↔centro** — e a distinção não é
+sutileza. *"A forma andou?"* e *"a âncora está fora do centro?"* dão a mesma resposta quase sempre,
+mas a segunda também é SIM quando é a **âncora** que foi arrastada, e aí o interior é do artista e
+fica parado. A 1ª implementação usava `centro − âncora` e **derrubou o gate
+`the_spine_endpoints_are_pinned_to_the_sources`** — que constrói exatamente esse caso (pontas
+deslocadas, formas paradas) e afirma "o interior fica". O gate estava certo; a regra é que confundia
+duas perguntas. Custo: `BlendSpines` virou `BTreeMap<VecPathId, BlendMemo>` (o auto memorizado **+**
+os centros do frame anterior). O `auto` virou `Option` — *"não memorizei auto nenhum"* e *"memorizei
+um spine vazio"* são estados diferentes, e só o 1º deve calar a detecção de autoria.
+
+**Só translação, de propósito.** Girar/escalar os pontos livres exigiria re-derivá-los do estado do
+frame ANTERIOR (não há coords de frame guardadas — eles são autorados), e re-cozinhar o próprio
+cozido a cada frame é **acumulação sequencial**: o erro multiplicativo compõe 60×/s. Somar um delta
+não compõe.
+
+**O limiar não é calibração.** Ele separa ruído de arredondamento de MOVIMENTO, e entre os dois não
+existe entrada nenhuma: `Transform.translation` é `f32`, o gizmo soma o mesmo delta a poses
+diferentes, e o arredondamento faz os centros andarem por deltas que diferem em ~1e-7·|pos|; do outro
+lado, movimento relativo vem de pixels arrastados. Nada entre `1e-6·|pos|` e isso é produzível.
+
+**Um mutante sobreviveu, e estava certo:** apagar o early-return de "ninguém andou" não muda
+comportamento — transladar por zero já é exato (`x + 0.0` não muda bit). O comentário que dizia que
+ele barrava passo espúrio de undo era **falso**, e foi corrigido em vez de defendido: o guard é
+honestidade de contrato, não barreira. O gate do repouso continua (ele cobre o passe inteiro).
+
 **Gotchas para a Fase C (o próximo que mexer):**
 
 - **O spine é a geometria da PRÓPRIA entidade do blend, mas os passos NÃO estão na cena.** O path

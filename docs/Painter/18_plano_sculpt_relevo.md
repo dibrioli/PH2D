@@ -398,7 +398,7 @@ que é meio texel de lado — o número denunciou a escala).
 `DEPTH_UNIT_PX` na entrada.* As duas mutações estão gateadas (M4 e M7), porque uma lição só gateada onde
 você já sabia olhar não está gateada.
 
-### W4 e W5 (abertas)
+### W4 e W5 (FECHADAS — 2026-07-15/16)
 
 ### W4 — A família ADVECTIVA: Grab · Pinch · Nudge · Rotate · Thumb
 **Não construir um motor novo.** Fazer o motor do Deform **carregar os planos do relevo** (`h`,
@@ -407,7 +407,51 @@ você já sabia olhar não está gateada.
 Decisão de superfície a tomar em W4: os warps de relevo são **sub-modos do Sculpt** ou um **toggle
 "afeta o relevo" no Deform**? Recomendação: o segundo — um motor, um lugar.
 
-### W5 — Conserve (a *bow wave*, §6) + filtros de camada inteira (Smooth/Sharpen/Inflate/Relax)
+### W5 ✅ **FECHADA** — Conserve (a *bow wave*, §6) + o filtro de camada inteira
+
+**Conserve** landou 2026-07-15 (`b9d0ef28`) e foi **smokado OK** pelo Enio (2026-07-16, depois do fix da
+âncora do aro mover o desenho dele pra dentro).
+
+**Filtro de camada inteira** landou 2026-07-16 (`57d9881e`): botão **Filter Layer** no card, aplica o verbo
+SELECIONADO na camada toda, na **Strength do pincel**, honrando a Selection, em 1 passo de undo.
+
+**Não há kernel novo, e isso é o desenho inteiro.** O render já é `h = pre + k·Δ(verbo)` lendo o `amount`
+pro `k`; um traço preenche `amount` andando dabs, e **não contribui mais nada que um filtro precise**.
+Então o filtro preenche `amount` DIRETO (uniforme) e chama o MESMO `render_sculpt` — §10.1 respeitado ao
+pé da letra (*"um passe com geometria própria é como nasce 'Tiling não funciona no Sculpt' daqui a seis
+meses"*). Tudo que o traço comprou vem junto de graça: o memo (Smooth/Sharpen), a bola + advecção de
+matéria (Inflate), a idempotência do `pre` congelado, o restore dos 4 planos, o teto morando na luz.
+
+**Zero knob novo:** os chips dizem QUAL verbo, o knob do verbo diz QUANTO, e a **Strength do pincel É o
+`k`** — que é literalmente *"quão longe ao longo do trajeto vamos"* (o comentário do render já dizia).
+Um slider próprio seria um 2º modelo de um número que o card já mostra (§2: *"o Strength do pincel é o do
+sculpt"*).
+
+**Recusa os verbos de PLANO** (Flatten/Scrape/Fill/Chisel) — e a recusa é a resposta honesta, não uma
+limitação: o alvo deles é um plano **ajustado por mínimos quadrados à PEGADA do dab**, e uma camada não
+tem pegada. *"O plano da camada inteira"* é **outra operação** (achatar a arte no plano médio dela) — um
+**verbo a projetar**, não um flag a virar. O Chisel é recusado 2×: o V dobra no **eixo do traço**, e um
+filtro não tem traço (W3 pagou pela regra de que o eixo nunca é um ajuste do pincel). Porta única
+`SculptMode::filters_layer()`: o **painel** pergunta pra OFERECER o botão, o **tool** pergunta pra HONRAR
+o clique — botão dimmed que despacha é mentira, e duas cópias da lista de verbos divergem.
+
+**⚠️ `Relax` foi CORTADO, com motivo** (o 4º nome que esta linha da W5 citava). Relaxar é **redistribuir
+VÉRTICES** preservando a forma; num campo de altura a grade é fixa e não há distribuição pra consertar —
+então Relax **colapsa em Smooth**, e seria um knob morto (a mesma espécie que matou o `DepthSource::Shape`
+e os chips de Clay/Clay Strips/Draw Sharp). O **§9 já recusava Slide Relax pela mesma razão**: precisa de
+topologia que um campo de altura não tem. A lista honesta da W5b é **Smooth · Sharpen · Inflate** (+ Layer,
+que cai de graça: o alvo dele é a constante `pre + Depth`).
+
+**Gates:** 6 no tool (`sculpt_tests/filter.rs` — alcança a camada toda incl. os cantos onde pincel nenhum
+foi · recusa os de pegada e não move NADA · a Selection é a borda, fora dela byte-idêntico · Strength = `k`
+(metade = metade do trajeto, medido 0,5±0,02) · 1 undo devolve o relevo · camada sem relevo recusa em vez
+de inventar) + **2 de seam que CLICAM o botão de verdade**. 5/5 mutações sangram. Sondas de render: cenas
+7/8 do `push_look_probe`.
+
+**O sweep do seam perdeu a premissa *"o Chisel é o card mais cheio"*** — a W5b a matou (o Chisel tem
+Rake+Conserve, o Smooth tem Filter Layer, nenhum tem o do outro). Ele agora pergunta a **CADA verbo** e
+exige que **ALGUM** card pinte o widget: a propriedade que importa, sem tabela id→verbo escrita à mão pra
+driftar.
 
 ---
 

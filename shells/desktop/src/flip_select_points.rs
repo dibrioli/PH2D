@@ -55,13 +55,20 @@ pub(crate) enum DownPoints {
     Marquee { additive: bool },
 }
 
-/// **O plano do pen-DOWN no domínio Point** — espelho de [`plan_down`], ponto a ponto.
+/// **O plano do pen-DOWN no domínio Point** — espelho de [`plan_down`], ponto a ponto,
+/// **inclusive o interior do gizmo** (`in_box`): errar a âncora dentro da caixa da seleção
+/// arrasta os pontos selecionados. Um ponto ÚNICO selecionado não tem caixa (a
+/// `grabbable_selection_box` recusa a seleção sem extensão), então ali o `in_box` é sempre
+/// `false` e o gesto é o de sempre — que é exatamente o que o Enio pediu: *"a seleção de um
+/// único ponto, o gizmo da sprite não deve ser usado"*.
 pub(crate) fn plan_down_points(
     drawing: &mut FlipDrawing,
     hit: Option<(usize, usize)>,
     shift: bool,
+    in_box: bool,
 ) -> DownPoints {
     match (hit, shift) {
+        (None, false) if in_box => DownPoints::Move { collapse_to: None },
         (None, shift) => {
             if !shift {
                 drawing.clear_selection();

@@ -33,10 +33,18 @@
 //! selecionado são congeladas no Down; cada Move recomputa `p' = M_art(p₀)` do snapshot
 //! — nunca compõe por-frame (deltas compostos driftariam, como no gizmo da pose).
 //!
-//! **Por que não tem interior (Translate):** o arrasto de canvas do Edit JÁ translada
-//! a seleção (`flip_edit_gesture`), e um interior registrado no hit-index roubaria o
-//! clique de re-seleção. Os handles keyed (`GizmoTarget::FlipSelection`) registram só
-//! rotate/scale.
+//! **O interior NÃO é um handle — mas a área ARRASTA** (smoke do §4.A, Enio: *"qualquer
+//! clique na área do gizmo"*). Registrar um interior no hit-index tornaria `on_canvas`
+//! falso sobre a seleção inteira e mataria a re-seleção ali dentro; então quem responde
+//! pelo interior é o **down do canvas do Edit**, que já roda lá: errar a tinta dentro da
+//! [`grabbable_selection_box`] vira um `Move` do grupo em vez de um marquee
+//! (`flip_select::plan_down`). **Tinta primeiro** — clicar num outro traço que passa por
+//! dentro da caixa ainda o seleciona. Os handles keyed (`GizmoTarget::FlipSelection`)
+//! registram só rotate/scale, que é o que falta ao gesto de canvas.
+//!
+//! **Sem EXTENSÃO não há gizmo:** um ponto único não se rotaciona nem se escalona, e os
+//! handles empilhados sobre ele roubariam o clique que o MOVE — ver
+//! [`grabbable_selection_box`], a porta única que decide onde a seleção é agarrável.
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::SimWorld;
@@ -108,6 +116,41 @@ pub(crate) fn selection_center_half(d: &FlipDrawing) -> Option<([f32; 2], [f32; 
         [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5],
         [(hi[0] - lo[0]) * 0.5, (hi[1] - lo[1]) * 0.5],
     ))
+}
+
+/// **A caixa AGARRÁVEL da seleção**, em coords da ARTE (`(centro, meia-extensão)`) —
+/// `None` **exatamente** quando o gizmo da seleção não é publicado.
+///
+/// Uma pergunta, dois consumidores: a [`selection_view`] a **desenha** e o down do Edit
+/// (`flip_select::flip_edit_canvas_down`) a torna **arrastável**. Se fossem duas funções,
+/// divergiriam — e o artista veria uma caixa que não pega, ou pegaria onde não vê. É a
+/// mesma família do BUGS #18 (a costura), e a razão de isto ser uma porta só.
+///
+/// **Duas recusas:**
+/// - **Arte INSTANCIADA** — a instância é do gizmo de POSE (arte compartilhada não deforma).
+/// - **Seleção sem EXTENSÃO** — um ponto único (ou N coincidentes) **não se rotaciona nem
+///   se escalona**, e os 8 handles empilhados sobre ele roubariam justamente o clique que o
+///   MOVE (Enio, smoke do §4.A). O realce do ponto já diz que ele está selecionado; o
+///   arrasto dele é o gesto do W8. O limiar é o **zero exato** — a meia-extensão de um
+///   ponto é `0.0` por construção, então não há épsilon a inventar
+///   (`feedback_a_threshold_must_live_where_the_domain_is_empty`).
+#[must_use]
+pub(crate) fn grabbable_selection_box(d: &FlipDrawing) -> Option<([f32; 2], [f32; 2])> {
+    if d.is_instanced() {
+        return None;
+    }
+    let (c, h) = selection_center_half(d)?;
+    (h[0] > 0.0 || h[1] > 0.0).then_some((c, h))
+}
+
+/// O ponto (coords da ARTE) está DENTRO da caixa agarrável da seleção? É o que faz um
+/// clique no **vazio dentro do gizmo** virar um MOVE em vez de um marquee (Enio, smoke do
+/// §4.A: *"qualquer clique na área do gizmo"*). Sem gizmo publicado, sempre `false` — a
+/// área não existe.
+#[must_use]
+pub(crate) fn selection_box_contains(d: &FlipDrawing, p: Vec2) -> bool {
+    grabbable_selection_box(d)
+        .is_some_and(|(c, h)| (p.x - c[0]).abs() <= h[0] && (p.y - c[1]).abs() <= h[1])
 }
 
 /// O `Transform` do ECS na linguagem do gizmo (espelho do `flip_pose_gizmo`).
@@ -190,9 +233,9 @@ struct SelTarget {
     pose: Pose,
 }
 
-/// O alvo do gizmo de seleção — `None` fora dele: sem chave visível, arte INSTANCIADA
-/// (a pose gizmo é dona da instância), ou sem seleção. É o inverso exato do
-/// `flip_pose_gizmo::pose_target` (que exige instância).
+/// O alvo do gizmo de seleção — `None` fora dele: sem chave visível, ou fora do que a
+/// [`grabbable_selection_box`] admite (arte instanciada · sem seleção · seleção sem
+/// extensão). É o inverso exato do `flip_pose_gizmo::pose_target` (que exige instância).
 #[must_use]
 fn selection_target(
     flip: &FlipDoc,
@@ -202,10 +245,9 @@ fn selection_target(
     let (oid, lid, key, did) = crate::flip_select::visible_key(flip, playhead, active_layer)?;
     let obj = flip.object(oid)?;
     let drawing = obj.drawing(did)?;
-    if drawing.is_instanced() {
-        return None; // a instância é da pose gizmo (arte compartilhada não deforma)
-    }
-    let (c_local, h_local) = selection_center_half(drawing)?;
+    // A MESMA porta que o down do Edit usa para decidir o interior arrastável — desenhar
+    // uma caixa que não pega (ou pegar onde não se vê) seria o bug de sempre.
+    let (c_local, h_local) = grabbable_selection_box(drawing)?;
     Some(SelTarget {
         oid,
         did,

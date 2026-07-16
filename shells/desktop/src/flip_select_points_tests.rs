@@ -59,14 +59,14 @@ fn the_point_pick_takes_the_nearest_anchor_within_reach() {
 fn the_point_down_defers_the_collapse_like_the_stroke_down() {
     let mut d = drawing(vec![line(&[(0.0, 0.0), (10.0, 0.0), (20.0, 0.0)], 4.0)]);
     // Clique num ponto NÃO selecionado (sem shift): vira a seleção e abre Move.
-    let plan = plan_down_points(&mut d, Some((0, 1)), false);
+    let plan = plan_down_points(&mut d, Some((0, 1)), false, false);
     assert_eq!(plan, DownPoints::Move { collapse_to: None });
     assert!(d.strokes[0].point_selected(1));
     assert!(!d.strokes[0].point_selected(0));
 
     // Acende mais um; clique no já-selecionado: NÃO mexe na seleção, adia o colapso.
     d.strokes[0].set_point_selected(2, true);
-    let plan = plan_down_points(&mut d, Some((0, 1)), false);
+    let plan = plan_down_points(&mut d, Some((0, 1)), false, false);
     assert_eq!(
         plan,
         DownPoints::Move {
@@ -79,12 +79,12 @@ fn the_point_down_defers_the_collapse_like_the_stroke_down() {
     );
 
     // Shift+clique alterna e resolve no down.
-    let plan = plan_down_points(&mut d, Some((0, 2)), true);
+    let plan = plan_down_points(&mut d, Some((0, 2)), true, false);
     assert_eq!(plan, DownPoints::Click);
     assert!(!d.strokes[0].point_selected(2));
 
     // Vazio sem shift: limpa e abre marquee.
-    let plan = plan_down_points(&mut d, None, false);
+    let plan = plan_down_points(&mut d, None, false, false);
     assert_eq!(plan, DownPoints::Marquee { additive: false });
     assert!(!d.strokes[0].point_selected(1));
 }

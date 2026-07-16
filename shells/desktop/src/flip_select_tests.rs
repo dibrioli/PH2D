@@ -2,7 +2,8 @@
 //! Declarado pelo pai via `#[path]`, então `super` é `flip_select`.
 
 use super::*;
-use ph2d_flip::{Fill, Point, Rgba};
+use ph2d_flip::{Fill, FlipStroke, Point, Rgba};
+use ph2d_vec_scene::Xform;
 
 /// Um traço de line-art, com os pontos dados (largura em px de TELA, como o produto).
 fn line(pts: &[(f32, f32)], width: f32) -> FlipStroke {
@@ -513,7 +514,7 @@ fn grabbing_one_of_several_selected_strokes_keeps_the_whole_selection() {
     d.strokes[2].selected = true;
 
     // Pen-down no traço 0, que JÁ está selecionado, sem Shift.
-    let down = plan_down(&mut d, Some(0), false);
+    let down = plan_down(&mut d, Some(0), false, false);
 
     assert_eq!(
         d.selected_indices(),
@@ -542,7 +543,7 @@ fn releasing_without_dragging_collapses_the_selection_to_the_stroke() {
 
     let Down::Move {
         collapse_to: Some(i),
-    } = plan_down(&mut d, Some(0), false)
+    } = plan_down(&mut d, Some(0), false, false)
     else {
         panic!("o down num traco selecionado tem de abrir um Move com colapso adiado");
     };
@@ -560,7 +561,7 @@ fn grabbing_an_unselected_stroke_selects_it_at_once() {
     ]);
     d.strokes[1].selected = true;
 
-    let down = plan_down(&mut d, Some(0), false);
+    let down = plan_down(&mut d, Some(0), false, false);
 
     assert_eq!(
         d.selected_indices(),

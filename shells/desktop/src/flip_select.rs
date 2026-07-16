@@ -20,12 +20,11 @@
 //!    óbvio, e é o que o GP faz.
 
 use ph2d_core::{Playhead, Vec2};
-use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, FlipStroke, Frame, LayerId};
-use ph2d_vec_scene::Xform;
+use ph2d_flip::{DrawingId, FlipDoc, FlipDrawing, FlipObjectId, Frame, LayerId};
 
-/// Raio mínimo de pick, em px de TELA. Uma linha de 1 px tem de ser clicável sem que o
-/// usuário mire no pixel — é a mesma folga que o gizmo usa para pegar a arte.
-const MIN_PICK_PX: f32 = 5.0; // LITERAL-PX-OK: folga de pick, nao metrica de design
+/// O pick de TRAÇO mora no módulo-irmão (cap de LOC), mas a porta é ESTA: quem seleciona
+/// chama `flip_select::stroke_at`, e não existe um 2º hit-test.
+pub(crate) use crate::flip_select_pick::stroke_at;
 
 /// O desenho que está **na tela** para a camada ativa — sem criar chave nenhuma.
 ///
@@ -67,84 +66,6 @@ pub(crate) fn visible_key(
     Some((oid, lid, key, did))
 }
 
-/// O traço sob o ponto `local`, se houver — **o de cima primeiro** (a ordem de z é a
-/// ordem da lista, fundo → topo; então a varredura é de trás para a frente).
-///
-/// `px_to_world` converte px de tela em unidades de MUNDO e `w2l` desce de mundo para o
-/// espaço LOCAL do objeto — a mesma conversão que o balde faz (`flip_fill::boundaries`):
-/// a espessura do traço é absoluta em px de tela (brush absoluto, Enio 2026-07-11)
-/// enquanto os pontos são unidades de documento, e é por isso que o raio de pick
-/// **acompanha o zoom**: aproximar a câmera não pode exigir mira mais fina.
-#[must_use]
-pub(crate) fn stroke_at(
-    drawing: &FlipDrawing,
-    local: Vec2,
-    px_to_world: f32,
-    w2l: &Xform,
-) -> Option<usize> {
-    // px de TELA → unidade LOCAL (o `mean_scale` do objeto é o último degrau).
-    let px_to_local = px_to_world * w2l.mean_scale() as f32;
-    drawing
-        .strokes
-        .iter()
-        .enumerate()
-        .rev() // o de CIMA primeiro
-        .find(|(_, s)| hits(s, local, px_to_local))
-        .map(|(i, _)| i)
-}
-
-/// O ponto `local` pega este traço? (Tinta OU preenchimento.)
-fn hits(s: &FlipStroke, p: Vec2, px_to_local: f32) -> bool {
-    // (a) O INTERIOR do preenchimento — inclusive o de uma região (`hide_stroke`), que
-    //     não tem linha nenhuma para se aproximar. Os buracos não pegam: clicar no furo
-    //     de um "O" é clicar no que está ATRÁS dele.
-    if s.fill.is_some()
-        && crate::flip_fill::ring_contains(s.positions(), p)
-        && !s
-            .holes
-            .iter()
-            .any(|h| crate::flip_fill::ring_contains(h, p))
-    {
-        return true;
-    }
-    // (b) A TINTA: a meia-espessura do traço (px de tela → local, como o balde), com um
-    //     piso para que uma linha fina não exija mira de pixel. Uma região não tem tinta.
-    if s.hide_stroke {
-        return false;
-    }
-    let pos = s.positions();
-    let widths = s.widths();
-    let reach = |i: usize| -> f32 {
-        let half = widths.get(i).copied().unwrap_or(0.0) * 0.5;
-        (half.max(MIN_PICK_PX) * px_to_local).max(f32::EPSILON)
-    };
-    if pos.len() == 1 {
-        let d = p - pos[0];
-        return d.x * d.x + d.y * d.y <= reach(0) * reach(0);
-    }
-    // `segments()` — a porta única (inclui a COSTURA de um traço fechado, que é o que o
-    // render desenha). Iterar `positions().windows(2)` aqui perdia a última aresta: um
-    // triângulo tinha 3 linhas na tela e 2 clicáveis.
-    s.segments().any(|(i, a, b)| {
-        let r = reach(i);
-        seg_dist2(p, a, b) <= r * r
-    })
-}
-
-/// Distância² de `p` ao segmento `a`→`b`.
-fn seg_dist2(p: Vec2, a: Vec2, b: Vec2) -> f32 {
-    let ab = b - a;
-    let len2 = ab.x * ab.x + ab.y * ab.y;
-    let t = if len2 > 0.0 {
-        (((p - a).x * ab.x + (p - a).y * ab.y) / len2).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let c = a + ab * t;
-    let d = p - c;
-    d.x * d.x + d.y * d.y
-}
-
 /// O que um clique faz com a seleção.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Pick {
@@ -180,8 +101,28 @@ pub(crate) enum Down {
 /// arrastá-la **destrói a multisseleção no instante do toque** — e o arrasto leva um traço
 /// só. As duas leituras do mesmo gesto (colapsar × arrastar o grupo) só se distinguem pelo
 /// que acontece DEPOIS do down; então a decisão espera.
-pub(crate) fn plan_down(drawing: &mut FlipDrawing, hit: Option<usize>, shift: bool) -> Down {
+///
+/// **`in_box` = o clique caiu na ÁREA do gizmo da seleção** (`flip_selection_gizmo::
+/// selection_box_contains`, a mesma caixa que o gizmo DESENHA). Errar a tinta ali dentro
+/// **arrasta a seleção**, não abre marquee — o segundo achado do smoke do §4.A (Enio):
+/// *"se clicar em qualquer lugar dentro do gizmo que não seja sobre ponto ou linha ou
+/// fill não funciona. Isso precisa funcionar"*. A precedência é **tinta primeiro**: clicar
+/// num OUTRO traço que passa por dentro da caixa ainda o seleciona (os arms `Some(i)`
+/// vêm antes), e é isso que mantém o Edit utilizável dentro da própria seleção.
+///
+/// O **Shift preserva o marquee aditivo** de dentro da caixa (é a única saída para somar
+/// à seleção sem sair dela) — modificador manda, como no resto do modo.
+pub(crate) fn plan_down(
+    drawing: &mut FlipDrawing,
+    hit: Option<usize>,
+    shift: bool,
+    in_box: bool,
+) -> Down {
     match (hit, shift) {
+        // O INTERIOR do gizmo: sem tinta sob o cursor, mas dentro da caixa ⇒ agarrar a
+        // seleção. NÃO limpa a seleção (clicar no que já está selecionado não desmarca) e
+        // não colapsa no UP (não há traço específico a colapsar).
+        (None, false) if in_box => Down::Move { collapse_to: None },
         (None, shift) => {
             if !shift {
                 drawing.clear_selection();
@@ -298,11 +239,14 @@ impl crate::App {
         ) {
             let hit = point_at(drawing, local, px_to_world, &w2l);
             let shift = pick == Pick::Toggle;
+            // A ÁREA do gizmo da seleção (mesma caixa que ele desenha, em coords da ARTE
+            // — `local` já está nelas): errar a âncora ali dentro ARRASTA a seleção.
+            let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local);
             // **Mover ponto de uma INSTÂNCIA deformaria o gêmeo** (a arte é compartilhada
             // — a regra W7.2: arrasto nunca deforma arte compartilhada). Selecionar pode;
             // mover não: o gesto vira Click e o usuário é AVISADO (zero no-op silencioso).
             let instanced = drawing.is_instanced();
-            let plan = plan_down_points(drawing, hit, shift);
+            let plan = plan_down_points(drawing, hit, shift, in_box);
             self.title_dirty = true;
             self.flip_edit_gesture = Some(match plan {
                 DownPoints::Move { .. } if instanced => {
@@ -352,7 +296,8 @@ impl crate::App {
         // Shift manda, e o gesto vira alternar — o arrasto não pega.
         let shift = pick == Pick::Toggle;
         self.title_dirty = true;
-        self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift) {
+        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local);
+        self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift, in_box) {
             Down::Move { collapse_to } => crate::flip_edit_gesture::EditGesture::Move {
                 last: move_seed,
                 down: (x, y),

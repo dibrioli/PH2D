@@ -59,6 +59,7 @@ mod flip_pose_gizmo;
 mod flip_pose_smoke;
 mod flip_reshape;
 mod flip_select;
+mod flip_select_pick;
 mod flip_select_points;
 mod flip_selection_gizmo;
 mod flip_selection_smoke;

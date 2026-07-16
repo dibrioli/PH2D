@@ -7,9 +7,17 @@
 //! Roteiro: arrastar uma **quina** gira (anel de hover) / escala o retângulo em torno
 //! do centro DELE; uma **borda** escala num eixo; arrastar a arte (fora dos handles)
 //! **move** a seleção (o gesto do W6.1). Conferir que o **triângulo não se mexe**, que
-//! **Ctrl+Z** desfaz o gesto inteiro (1 passo), e que clicar no vazio (desmarca) **some**
-//! com o gizmo. Trocar pro domínio **Point** e selecionar meia geometria: o gizmo passa
-//! a enquadrar SÓ os pontos selecionados e gira só eles.
+//! **Ctrl+Z** desfaz o gesto inteiro (1 passo), e que clicar no vazio **fora** da caixa
+//! (desmarca) **some** com o gizmo. Trocar pro domínio **Point** e selecionar meia
+//! geometria: o gizmo passa a enquadrar SÓ os pontos selecionados e gira só eles.
+//!
+//! **Os dois achados do 1º smoke (2026-07-15) têm alvo próprio na cena:**
+//! - O retângulo é **VAZADO** (sem fill) de propósito: arrastar do **meio dele** (onde não
+//!   há tinta nenhuma) tem de **agarrar a seleção** — antes virava marquee e ainda limpava
+//!   a seleção. É a área do gizmo inteira que pega, não só a tinta.
+//! - No domínio **Point**, clicar **UM** ponto: o gizmo **não aparece** (um ponto não se
+//!   rotaciona nem se escalona) — só o realce dele —, e o ponto continua arrastável. Um
+//!   **segundo** ponto (Shift+clique) faz o gizmo voltar.
 
 use ph2d_core::Vec2;
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
@@ -90,12 +98,14 @@ impl crate::App {
                         ));
                 }
                 eprintln!(
-                    "[xform-smoke] retangulo SELECIONADO (roxo) + triangulo (azul); modo Edit, \
-                     dominio Stroke. O gizmo da SELECAO enquadra o retangulo: quina = \
-                     rotate(anel)/scale, borda = scale-1-eixo, arrastar a arte = move. \
-                     Confira: o triangulo NAO se mexe; Ctrl+Z desfaz o gesto inteiro; clicar \
-                     no vazio desmarca e o gizmo some. No dominio Point o gizmo enquadra so os \
-                     pontos selecionados."
+                    "[xform-smoke] retangulo VAZADO e SELECIONADO (roxo) + triangulo (azul); \
+                     modo Edit, dominio Stroke. O gizmo da SELECAO enquadra o retangulo: quina \
+                     = rotate(anel)/scale, borda = scale-1-eixo. AREA do gizmo: arrastar do \
+                     MEIO do retangulo (sem tinta ali) AGARRA a selecao. Confira: o triangulo \
+                     NAO se mexe; Ctrl+Z desfaz o gesto inteiro; clicar no vazio FORA da caixa \
+                     desmarca e o gizmo some; as 3 linhas do triangulo e as 4 do retangulo sao \
+                     todas clicaveis (a costura, BUGS #18). No dominio Point: UM ponto = SEM \
+                     gizmo (so o realce, e ele arrasta); um 2o ponto traz o gizmo de volta."
                 );
             }
             9 => self.any_input_this_frame = true, // arma o baseline do undo

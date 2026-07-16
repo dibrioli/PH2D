@@ -5,6 +5,7 @@
 use super::*;
 use ph2d_ecs::{FlipObjectRef, Name, Transform};
 use ph2d_flip::{FlipStroke, Hold, KeyKind, Point, Rgba};
+use ph2d_vec_scene::Xform;
 
 /// Um objeto (1 camada, chave 0 de arte EXCLUSIVA) com dois traços fechados: um
 /// **retângulo SELECIONADO** (x∈[-3,-1], y∈[-1,1] ⇒ centro (-2,0)) e um triângulo NÃO
@@ -60,6 +61,103 @@ fn paused() -> Playhead {
     let mut p = Playhead::new(1.0 / 60.0);
     p.pause();
     p
+}
+
+/// Um traço de line-art com os pontos dados (helper local dos gates de ÁREA — o
+/// `doc_two_shapes` monta um doc inteiro, e aqui basta o desenho).
+fn seg_line(pts: &[(f32, f32)], width: f32) -> FlipStroke {
+    let mut s = FlipStroke::new();
+    for &(x, y) in pts {
+        s.push_point(Point {
+            pos: Vec2::new(x, y),
+            width,
+            opacity: 1.0,
+            color: Rgba::BLACK,
+        });
+    }
+    s
+}
+
+fn bare_drawing(strokes: Vec<FlipStroke>) -> FlipDrawing {
+    let mut d = FlipDrawing::new();
+    d.strokes = strokes;
+    d
+}
+
+/// 🔴 **O INTERIOR do gizmo arrasta a seleção** — o 2º achado do smoke do §4.A (Enio):
+/// *"se clicar em qualquer lugar dentro do gizmo que não seja sobre ponto ou linha ou fill
+/// não funciona. Isso precisa funcionar: qualquer clique na área do gizmo"*.
+///
+/// Um retângulo VAZADO (sem fill) selecionado: o clique no meio dele erra a tinta e o
+/// interior do fill, e antes disso virava **marquee** — que ainda por cima LIMPAVA a
+/// seleção. Agora é um `Move` do grupo.
+///
+/// Mutações que sangram: dropar o arm `(None, false) if in_box`; ou a
+/// `grabbable_selection_box` deixar de recusar o que não tem extensão (o 2º assert cai).
+#[test]
+fn a_click_inside_the_gizmo_box_grabs_the_selection() {
+    // Retângulo 0..20 × 0..20 SEM fill, selecionado. O centro (10,10) está a 10 de toda
+    // aresta — muito além do MIN_PICK_PX (5), então a tinta é MESMO errada.
+    let mut r = seg_line(&[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0), (0.0, 20.0)], 4.0);
+    r.closed = true;
+    r.selected = true;
+    let mut d = bare_drawing(vec![r]);
+    let center = Vec2::new(10.0, 10.0);
+    assert_eq!(
+        crate::flip_select::stroke_at(&d, center, 1.0, &Xform::IDENTITY),
+        None,
+        "o fixture tem de ERRAR a tinta no centro (senao o teste passa pelo motivo errado)"
+    );
+    let in_box = selection_box_contains(&d, center);
+    assert!(in_box, "o centro da selecao tem de estar na area do gizmo");
+    assert_eq!(
+        crate::flip_select::plan_down(&mut d, None, false, in_box),
+        crate::flip_select::Down::Move { collapse_to: None },
+        "clicar no vazio DENTRO do gizmo tem de agarrar a selecao"
+    );
+    assert!(
+        d.strokes[0].selected,
+        "agarrar o interior nao pode LIMPAR a selecao (era o que o marquee fazia)"
+    );
+    // 🔴 O par de AUSÊNCIA: FORA da caixa o gesto continua sendo o marquee (que limpa).
+    let outside = Vec2::new(100.0, 100.0);
+    let out_box = selection_box_contains(&d, outside);
+    assert!(!out_box, "(100,100) esta fora da caixa 0..20");
+    assert_eq!(
+        crate::flip_select::plan_down(&mut d, None, false, out_box),
+        crate::flip_select::Down::Marquee { additive: false },
+        "fora da caixa o vazio ainda e marquee"
+    );
+}
+
+/// 🔴 **Um ponto ÚNICO selecionado NÃO abre o gizmo** — o achado mais sério do smoke do
+/// §4.A (Enio): *"se seleciona um único ponto, o gizmo fica com todos os handles sobre os
+/// pontos e não é possível clicar no ponto para movê-lo. (…) não se rotaciona ou escalona
+/// um único ponto. Então é melhor apenas destacar o ponto único selecionado"*.
+///
+/// A caixa de um ponto tem meia-extensão `(0,0)`: os 8 handles empilham sobre ele e roubam
+/// o clique que o move. Sem extensão, sem gizmo — o realce do W8 já o mostra.
+///
+/// Mutação que sangra: tirar o teste de extensão da `grabbable_selection_box`.
+#[test]
+fn a_single_selected_point_never_opens_the_gizmo() {
+    let mut d = bare_drawing(vec![seg_line(
+        &[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0)],
+        4.0,
+    )]);
+    // UM ponto selecionado (domínio Point) ⇒ caixa degenerada ⇒ sem gizmo.
+    d.strokes[0].set_point_selected(1, true);
+    assert!(
+        grabbable_selection_box(&d).is_none(),
+        "um ponto unico nao se rotaciona nem se escalona: nao pode abrir gizmo"
+    );
+    // E o interior não existe: o clique EM CIMA do ponto continua sendo o gesto do W8.
+    assert!(!selection_box_contains(&d, Vec2::new(20.0, 0.0)));
+    // DOIS pontos já têm extensão ⇒ o gizmo volta (rotacionar/escalar faz sentido).
+    d.strokes[0].set_point_selected(2, true);
+    let (c, h) = grabbable_selection_box(&d).expect("dois pontos tem extensao");
+    assert_eq!(c, [20.0, 10.0]);
+    assert_eq!(h, [0.0, 10.0]);
 }
 
 /// 🔴 **Seed = sample: a caixa do gizmo pousa na SELEÇÃO posada** — o pivô é

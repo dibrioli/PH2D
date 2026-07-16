@@ -23,7 +23,9 @@
 | `923ba951` | **fix(painter): fase D** — pipeline de preview inocentado ao byte (9 gates, 1 em wgpu REAL na RTX) + 2 defeitos latentes corrigidos na costura de produtores (`take_preview_dirty` órfão · Partial sobre slot GPU) — **pendente smoke dos sintomas** |
 | `16700d79` | docs: fechamento da fase D |
 | `fc96ef27` | **fix(impasto): a lei da CÁPSULA** — o smoke do D confirmou e NOMEOU o sintoma ("uma reta de relevo ligando os pontos"); o sweep do relevo agora exige sobreposição (`dist ≤ min(r, r_prev)`); dabs espalhados viram CONTAS como a cor — **pendente re-smoke** |
-| (este) | docs: fechamento da cápsula |
+| `98ee8edb` | docs: fechamento da cápsula |
+| `63e7cf2f` | **fix(impasto): o RAIO é o 3º ingrediente** — a bola do Anchored não achata ao soltar (commit re-derivava no raio do PINCEL; agora deriva no raio do DAB, guardado por-texel) + **o undo leva o relevo da Line junto** (`restore_model` reseta o envelope; a crista órfã de 14.440 texels morreu) — **pendente re-smoke** |
+| (este) | docs: fechamento dos 2 fixes do smoke vivo |
 
 ## 2. Superfície tocada
 
@@ -136,7 +138,11 @@ relevo, costurado nos 7 sites com seam test que CLICA.
    offset novo, mas o `bank` guarda o volume do offset de stamp — auto-cura no próximo re-stamp de
    geometria (o toggle do Conserve re-stampa; o slider do Offset não). Se o Enio sentir, o fix é
    re-stampar também no `set_sculpt_offset`.
-4. **D — RE-SMOKE pós-cápsula (`fc96ef27`)**: o smoke confirmou os sintomas e a causa era a
+4. **D — RE-SMOKE (pós `fc96ef27` + `63e7cf2f`)**: (a) jitter/Airbrush = contas de relevo
+   coincidentes com a tinta, sem barras; (b) **Anchored** = a bola commitada mantém a altura do
+   drag (era o raio do pincel na re-derivação — o gate segura bit-exato); (c) **Line + undo até o
+   fim** = zero crista órfã; (d) corolário novo a sentir: o slider de **Size** depois do traço não
+   re-escala mais o relevo já commitado (era um latente do mesmo mecanismo). Item antigo: o smoke confirmou os sintomas e a causa era a
    CÁPSULA do relevo (tool-side, não display): jitter/Airbrush devem agora deixar CONTAS de relevo
    coincidentes com a tinta, sem barras cinzas. **Anchored**: não reproduzido em 5 sondas headless —
    a hipótese é que ele sempre commitou relevo e o "some" era CONTRASTE com o relevo fantasma

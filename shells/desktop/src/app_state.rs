@@ -658,6 +658,10 @@ pub(crate) struct App {
     /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
     /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.
     pub(crate) flip_pose_drag: Option<crate::flip_pose_gizmo::FlipPoseDrag>,
+    /// ADR-0114 §4.A: o arrasto do gizmo de SELEÇÃO em curso (modo Edit, arte
+    /// exclusiva) — rotate/scale assando o delta na geometria dos pontos selecionados.
+    /// `None` fora de um arrasto. Ver `flip_selection_gizmo`.
+    pub(crate) flip_selection_drag: Option<crate::flip_selection_gizmo::FlipSelectionDrag>,
     /// ADR-0114 W8: o DOMÍNIO da seleção do frame ANTERIOR — a memória que deixa a
     /// troca do toggle (Stroke↔Point) converter a seleção no documento UMA vez
     /// (broadcast/promoção, `flip_select::flip_edit_domain_refresh`). `None` = tool

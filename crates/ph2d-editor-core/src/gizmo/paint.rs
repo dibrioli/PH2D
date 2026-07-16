@@ -43,6 +43,10 @@ pub(crate) fn keyed_handle_id(target: GizmoTarget, canonical_id: NodeId) -> Node
         // os canônicos do primário, com os dos extras (que multiplicam os bits da
         // entidade) nem com o global (scrambler distinto).
         GizmoTarget::FlipPose => NodeId(canonical_id.0 ^ 0x_C3A5_C85C_97CB_3127),
+        // Flip §4.A: espaço de id próprio para os handles da SELEÇÃO — scrambler
+        // distinto do da pose (os dois nunca coexistem, mas a distinção mantém o
+        // gizmo_hit_map limpo se um frame publicar os dois por engano).
+        GizmoTarget::FlipSelection => NodeId(canonical_id.0 ^ 0x_5F1E_C7A0_2B94_D6E3),
     }
 }
 

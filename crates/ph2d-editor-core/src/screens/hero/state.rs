@@ -147,6 +147,12 @@ pub struct GizmoStateGroup {
     /// SEM interior (o translate da instância é o arrasto de canvas do Edit, e um
     /// interior aqui roubaria o clique da seleção de traço). `None` ⇒ nada pintado.
     pub pose_view: Option<crate::gizmo::GizmoView>,
+    /// Flip §4.A: a view do gizmo da **SELEÇÃO** (modo Edit da tool Flip, quadro de
+    /// arte EXCLUSIVA com pontos selecionados). Espelho do `pose_view`, keyed em
+    /// `GizmoTarget::FlipSelection` — handles de rotate/scale, SEM interior (o
+    /// translate da seleção é o arrasto de canvas do W6.1/W8). Mutuamente exclusiva
+    /// com `pose_view` (pose = instância, seleção = arte exclusiva). `None` ⇒ nada.
+    pub selection_view: Option<crate::gizmo::GizmoView>,
     /// Onda 2C: reverse lookup from a hit NodeId to which gizmo (and
     /// which handle of it) was clicked. The painters populate this
     /// map every frame for the primary, every extra, and the global

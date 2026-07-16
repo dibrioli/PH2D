@@ -1991,6 +1991,11 @@ impl App {
         if self.flip_pose_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // Flip §4.A: arrasto do gizmo de SELEÇÃO em curso — cada movimento recomputa os
+        // pontos selecionados (rotate/scale) a partir do snapshot do Down. No-op sem gesto.
+        if self.flip_selection_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Fill (Bucket) ColorDrop drag (SHELL-only): while a colour is being dragged from the Fill rail
         // button onto the canvas, deliver it to the painter's Fill. Early-return so it doesn't pan.
         if self.fill_drag_move(self.last_pointer.0, self.last_pointer.1) {
@@ -2305,6 +2310,13 @@ impl App {
         {
             return;
         }
+        // Flip §4.A: o pen-UP fecha um arrasto do gizmo de seleção (idem — undo pós-frame).
+        if kind == PointerKind::Up
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && self.flip_selection_gizmo_up()
+        {
+            return;
+        }
         if self.flip_wants_canvas()
             && kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary
@@ -2356,6 +2368,18 @@ impl App {
             && mapped_button == ph2d_host::PointerButton::Primary
             && !menu_open_before
             && self.flip_pose_gizmo_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
+        // Flip §4.A: um handle do gizmo de SELEÇÃO sob o cursor abre o arrasto de
+        // seleção (rotate/scale assado nos pontos). Como o da pose, vem ANTES do arm de
+        // canvas do Edit — um handle no hit-index torna `on_canvas` falso. O método só
+        // consome quando o hit é `GizmoTarget::FlipSelection` (mutuamente exclusivo com
+        // o da pose, então nunca disputam o mesmo clique).
+        if kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && !menu_open_before
+            && self.flip_selection_gizmo_down(self.last_pointer.0, self.last_pointer.1)
         {
             return;
         }

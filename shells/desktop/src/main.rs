@@ -60,6 +60,8 @@ mod flip_pose_smoke;
 mod flip_reshape;
 mod flip_select;
 mod flip_select_points;
+mod flip_selection_gizmo;
+mod flip_selection_smoke;
 mod flip_smooth;
 mod flip_strip;
 mod flip_transform;
@@ -318,6 +320,7 @@ impl App {
             flip_edit_style: None,
             flip_edit_gesture: None,
             flip_pose_drag: None,
+            flip_selection_drag: None,
             flip_edit_domain: None,
             vec_marquee: None,
             vec_connect: None,

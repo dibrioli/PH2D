@@ -87,6 +87,13 @@ pub enum GizmoTarget {
     /// nunca o `Transform` da entidade — o dispatch do shell reconhece este alvo
     /// ANTES do caminho genérico de gizmo e o consome.
     FlipPose,
+    /// Flip §4.A: o gizmo da **SELEÇÃO** (modo Edit da tool Flip, quadro de arte
+    /// EXCLUSIVA com pontos selecionados). Espelho do `FlipPose`, mas o apply **assa
+    /// o delta na GEOMETRIA** dos pontos selecionados (não na pose — a pose é o alvo
+    /// da instância, e os dois são mutuamente exclusivos por `is_instanced`). Espaço
+    /// de id próprio (ver `keyed_handle_id`); o dispatch do shell o reconhece ANTES do
+    /// caminho genérico de gizmo e o consome.
+    FlipSelection,
 }
 
 /// Onda 2C: a single drag-target lookup entry, populated by the

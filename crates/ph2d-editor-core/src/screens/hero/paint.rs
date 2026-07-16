@@ -178,6 +178,21 @@ pub fn paint_hero_screen(
             1.5, // LITERAL-PX-OK: espessura do contorno do gizmo de pose (mesma do primário)
         );
     }
+    // Flip §4.A: o gizmo da SELEÇÃO (modo Edit + arte exclusiva + há seleção). Keyed
+    // como `FlipSelection`, sem interior (o translate da seleção é o arrasto de canvas
+    // do W6.1/W8; um interior comeria o clique de re-seleção). Mutuamente exclusivo
+    // com `pose_view`, então nunca pintam juntos.
+    if let Some(v) = hero.gizmo.selection_view {
+        crate::gizmo::paint_sprite_gizmo_keyed(
+            scene,
+            &v,
+            hero.theme,
+            &mut hero.hit_index,
+            &mut hero.gizmo.gizmo_hit_map,
+            crate::gizmo::GizmoTarget::FlipSelection,
+            1.5, // LITERAL-PX-OK: espessura do contorno do gizmo de seleção (mesma do primário)
+        );
+    }
     // Onda 2C + z-order fix: the multi-selection extra + global gizmos
     // paint here — at the SAME layer as the primary gizmo, i.e. above the
     // scene but BELOW the floating panels (painted later in this fn). They

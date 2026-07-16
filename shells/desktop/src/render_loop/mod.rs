@@ -570,6 +570,7 @@ impl crate::App {
         self.stack_smoke();
         self.flip_pose_smoke();
         self.flip_edit_smoke();
+        self.flip_selection_smoke();
         self.build_session_upkeep();
 
         let Some(gfx) = self.gfx.as_mut() else {
@@ -1161,33 +1162,52 @@ impl crate::App {
                         Some(ph2d_tool_flip::FlipMode::Select)
                     ),
             );
-            // Flip W7.5: o gizmo da POSE da chave — só na tool Flip em modo Edit, e só
-            // quando o quadro visível é uma INSTÂNCIA (a `pose_view` decide o resto).
-            // Campo próprio no `GizmoStateGroup` (append-only): o painter o desenha
-            // keyed (`GizmoTarget::FlipPose`), sem interior — a seleção de traço do
-            // Edit continua dona do canvas.
-            hero.gizmo.pose_view = if tools
+            // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
+            // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
+            // EXCLUSIVOS por `is_instanced`: a `pose_view` só publica quando o quadro
+            // visível é uma INSTÂNCIA (rotate/escala da pose), a `selection_view` só
+            // quando é arte EXCLUSIVA com seleção (rotate/escala assado na geometria).
+            // O painter os desenha keyed (`FlipPose`/`FlipSelection`), sem interior — a
+            // seleção de traço do Edit continua dona do canvas.
+            let flip_edit_mode = tools
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("flip"))
                 && matches!(
                     self.flip_style.map(|s| s.mode),
                     Some(ph2d_tool_flip::FlipMode::Edit)
-                ) {
-                crate::flip_pose_gizmo::pose_view(
-                    sim,
-                    flip,
-                    &self.flip_entities,
-                    crate::flip_pose_gizmo::PoseViewInputs {
-                        playhead: &self.playhead,
-                        active_layer: self.flip_active_layer,
-                        last_pointer: self.last_pointer,
-                    },
-                    camera,
-                    window_size,
-                )
-            } else {
-                None
-            };
+                );
+            hero.gizmo.pose_view = flip_edit_mode
+                .then(|| {
+                    crate::flip_pose_gizmo::pose_view(
+                        sim,
+                        flip,
+                        &self.flip_entities,
+                        crate::flip_pose_gizmo::PoseViewInputs {
+                            playhead: &self.playhead,
+                            active_layer: self.flip_active_layer,
+                            last_pointer: self.last_pointer,
+                        },
+                        camera,
+                        window_size,
+                    )
+                })
+                .flatten();
+            hero.gizmo.selection_view = flip_edit_mode
+                .then(|| {
+                    crate::flip_selection_gizmo::selection_view(
+                        sim,
+                        flip,
+                        &self.flip_entities,
+                        crate::flip_selection_gizmo::SelectionViewInputs {
+                            playhead: &self.playhead,
+                            active_layer: self.flip_active_layer,
+                            last_pointer: self.last_pointer,
+                        },
+                        camera,
+                        window_size,
+                    )
+                })
+                .flatten();
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
             // ─────────────────────────────────────────────────────────

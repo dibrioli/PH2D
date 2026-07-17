@@ -300,3 +300,157 @@ fn diag_does_the_smooth_knob_dissolve_the_facets() {
         println!("  {norm:5.3} {px:2}px | {w:8.2} / {hot:6} | {peak:8.2} {width:4} | {step:3}");
     }
 }
+
+/// **PROVE THE MODEL** (two-strikes, DIRETIVA §5) — before anyone rebuilds the Blob's kernel a third
+/// time, does the TRUE BALL actually fix the border?
+///
+/// The hypothesis every artefact points at: the parabola has **unbounded support**, so it needs a reach
+/// cap, and the cap is a cliff, so it needs a taper — and the taper is a function of the travel distance to
+/// a DISCRETE argmax, which tears the height across every seam (measured: 1.39-1.69 load).
+///
+/// The true ball needs none of it: `b(d) = √(ρ² − d²)` for `d ≤ ρ` is bounded BY CONSTRUCTION and lands at
+/// zero on its own, so the envelope is a max of continuous functions — continuous, by construction.
+///
+/// Brute force, `O(area·ρ²)`, on a small canvas: this is a REFERENCE, not a candidate. It answers one
+/// question — *is the model right?* — and the answer decides whether the perf work is worth starting.
+#[test]
+#[ignore = "model proof; slow by design"]
+fn diag_prove_the_true_ball_model() {
+    const N: usize = 220;
+    let unit = super::super::impasto_light::DEPTH_UNIT_PX; // the light's height→px gain
+    let depth = 1.0f32; // loads
+    let rho = depth * unit; // the ball's radius, in TEXELS
+
+    // The same ground the gates use: a real deposited blob (thick, curved border).
+    let (t, layer) = super::inflate_edge::thick_round_blob();
+    let pre = heights_of(&t, layer);
+    let cov = covers_of(&t, layer);
+    assert_eq!(pre.len(), N * N, "fixture size drifted");
+
+    // `amount` as the whole-layer filter fills it: uniform, at full strength.
+    let amount = vec![1.0f32; N * N];
+
+    // ── The TRUE ball: max over the disc of `pre[p] + √(ρ² − d²)`. Bounded support, lands at 0. ──
+    let r = rho.ceil() as i64;
+    let mut ball = vec![0.0f32; N * N];
+    for qy in 0..N as i64 {
+        for qx in 0..N as i64 {
+            let mut best = pre[(qy as usize) * N + qx as usize];
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    let (px, py) = (qx + dx, qy + dy);
+                    if px < 0 || py < 0 || px >= N as i64 || py >= N as i64 {
+                        continue;
+                    }
+                    let d2 = (dx * dx + dy * dy) as f32;
+                    let rho_p = rho * amount[(py as usize) * N + px as usize];
+                    if d2 > rho_p * rho_p {
+                        continue; // outside THIS source's ball — bounded, no cap needed
+                    }
+                    // ⚠️ THE TWO AXES ARE NOT THE SAME UNIT — `d` is texels, the lift is LOADS. The ball
+                    // is a sphere in the space the ARTIST SEES (px), so in (texel, load) space it is an
+                    // ellipsoid: horizontal radius `ρ` texels, vertical radius `ρ/unit = |Depth|` loads.
+                    // Adding `√(ρ²−d²)` raw adds 16 TEXELS as if they were 16 LOADS — the first draft of
+                    // this probe did exactly that and reported a peak of 28 loads and a form 220 texels
+                    // wide (the whole canvas). [[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]
+                    let lift = depth * (1.0 - d2 / (rho_p * rho_p)).max(0.0).sqrt();
+                    let v = pre[(py as usize) * N + px as usize] + lift;
+                    if v > best {
+                        best = v;
+                    }
+                }
+            }
+            ball[(qy as usize) * N + qx as usize] = best;
+        }
+    }
+
+    let jumps = |h: &[f32]| -> (f32, usize) {
+        let (mut worst, mut hot) = (0.0f32, 0usize);
+        for y in 5..N - 5 {
+            for x in 5..N - 5 {
+                let i = y * N + x;
+                let d = (h[i + 1] - h[i]).abs().max((h[i + N] - h[i]).abs());
+                worst = worst.max(d);
+                if d > 1.0 {
+                    hot += 1;
+                }
+            }
+        }
+        (worst, hot)
+    };
+
+    // The shipped kernel, same ground, same Depth.
+    let (mut t2, layer2) = super::inflate_edge::thick_round_blob();
+    super::inflate_edge::inflate_the_whole_layer(&mut t2);
+    let shipped = heights_of(&t2, layer2);
+
+    let (dw, dh) = jumps(&pre);
+    let (sw, sh) = jumps(&shipped);
+    let (bw, bh) = jumps(&ball);
+    println!("                    max neighbour jump | texels > 1 load");
+    println!("  the deposit             {dw:8.2}   | {dh:6}");
+    println!("  the SHIPPED parabola    {sw:8.2}   | {sh:6}");
+    println!("  the TRUE BALL           {bw:8.2}   | {bh:6}");
+
+    // Does it still GROW the form? (A smooth verb that does nothing is not the verb.)
+    let width = |h: &[f32], lvl: f32| (0..N).filter(|x| h[110 * N + x] > lvl).count();
+    println!(
+        "  form width @1 load: deposit {} | shipped {} | true ball {}",
+        width(&pre, 1.0),
+        width(&shipped, 1.0),
+        width(&ball, 1.0)
+    );
+    let peak = |h: &[f32]| h.iter().copied().fold(f32::MIN, f32::max);
+    println!(
+        "  peak: deposit {:.2} | shipped {:.2} | true ball {:.2}",
+        peak(&pre),
+        peak(&shipped),
+        peak(&ball)
+    );
+    let _ = cov;
+}
+
+/// DIAGNOSTIC — is there a RULE for the Smooth default, or only a number tuned to one fixture?
+///
+/// The seams' scale rides the ball's radius (`ρ = |Depth|·unit`), so a fixed pixel count cannot be right at
+/// every Depth. If `smooth = ρ/4` zeroes the facets across the whole Depth track, that is a **law** (a
+/// fraction of the structuring element). If it does not, a default is a fudge and the knob stays the
+/// artist's.
+#[test]
+#[ignore = "diagnostic"]
+fn diag_is_there_a_rule_for_the_smooth_default() {
+    let unit = super::super::impasto_light::DEPTH_UNIT_PX;
+    println!("  depth  rho | smooth=0        | smooth=rho/4    | smooth=rho/2");
+    for dnorm in [0.625f32, 0.75, 0.875, 1.0] {
+        let depth = (dnorm - 0.5) * 2.0;
+        let rho = depth * unit;
+        let run = |smooth_px: f32| -> (f32, usize) {
+            let (mut t, layer) = super::inflate_edge::thick_round_blob();
+            arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
+            t.set_sculpt_depth(dnorm);
+            t.set_sculpt_smooth((smooth_px / 16.0).clamp(0.0, 1.0));
+            assert!(t.filter_sculpt_layer(FilterScope::Layer), "filter ran");
+            let h = heights_of(&t, layer);
+            let (mut worst, mut hot) = (0.0f32, 0usize);
+            for y in 5..SIZE - 5 {
+                for x in 5..SIZE - 5 {
+                    let i = (y * SIZE + x) as usize;
+                    let d = (h[i + 1] - h[i])
+                        .abs()
+                        .max((h[i + SIZE as usize] - h[i]).abs());
+                    worst = worst.max(d);
+                    if d > 1.0 {
+                        hot += 1;
+                    }
+                }
+            }
+            (worst, hot)
+        };
+        let (a, ah) = run(0.0);
+        let (b, bh) = run(rho / 4.0);
+        let (c, ch) = run(rho / 2.0);
+        println!(
+            "  {depth:4.2} {rho:5.1} | {a:5.2} / {ah:5}   | {b:5.2} / {bh:5}   | {c:5.2} / {ch:5}"
+        );
+    }
+}

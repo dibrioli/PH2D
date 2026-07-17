@@ -209,7 +209,52 @@ Blender). Num campo de altura não há topologia para subdividir — a "resoluç
 verificado: **não** é o caso do canvas 64px). Traduzido para cá, o pedido dele é: *o offset tem de ser
 computado numa representação que não grude na grade do argmax*.
 
-**As 3 saídas (nenhuma é drive-by — o Enio decide):**
+## ⚖️ A DECISÃO (o Enio delegou: *"decida por mim"*, 2026-07-16) — o padrão-ouro é a BOLA VERDADEIRA
+
+**Provado hoje**, por força bruta contra o kernel shipado, no mesmo chão (blob grosso, borda curva):
+
+```text
+                        maior salto entre vizinhos | texels acima de 1 load | largura @1 load | pico
+o depósito                                    0,62 |            0           |       72        | 12,00
+a parábola + taper (shipado)                  2,05 |          886           |       88        | 13,00
+a BOLA VERDADEIRA  √(ρ²−d²)                   0,62 |            0           |      104        | 13,00
+```
+
+A bola é **exatamente tão lisa quanto o próprio depósito**, tem o pico certo, e **engorda MAIS** (104 vs
+88 — o taper come o flanco). Ela não precisa de cap, nem de taper, nem do knob Smooth: **suporte limitado
+por construção e aterrissa em zero sozinha**, então o envelope é um max de contínuas — contínuo, por
+construção. Toda a patologia (cap → precipício → taper → rasgo na costura) existe só porque **a parábola
+tem suporte ILIMITADO**. Sonda: `inflate_edge_probes::diag_prove_the_true_ball_model`.
+
+⚠️ **A regra two-strikes está SATISFEITA**: o modelo está provado. A próxima linha pode reconstruir o
+kernel a partir de prova, não de palpite — que era exatamente a condição.
+
+**O que falta é ALGORITMO, não desenho:** a bola não é separável (a única função separável em max-plus é a
+parábola: `−a(x²+y²) = −ax² − ay²`; suporte separável **e** limitado seria um QUADRADO, que é o artefato
+que o cap existe para evitar). Medida: **73 ms/move contra kill 8**. É um projeto, com pesquisa de verdade.
+
+### Por que o knob Smooth NÃO é a resposta (medido, e me fez mudar de ideia)
+
+```text
+Depth   ρ    smooth=0        ρ/4             ρ/2         (maior salto / texels acima de 1 load)
+0,25    4    0,87 /   0      0,62 /   0      0,61 /  0
+0,50    8    1,47 / 229      0,91 /   0      0,74 /  0
+0,75   12    1,87 / 559      1,10 / 240      0,80 /  0
+1,00   16    2,05 / 886      1,15 / 512      0,68 /  0
+```
+
+A escala das costuras **acompanha ρ**, então só `smooth = ρ/2` limpa a pista inteira — isso é **lei**
+(metade do elemento estruturante), não número. E `ρ/2` no Depth 1 = 8 px = **7,30 ms contra kill 8**. O
+número que CABE (2 px fixos) **não generaliza**: sobram 56-512 texels facetados em Depth ≥ 0,75.
+
+⇒ **A regra que funciona não cabe; o número que cabe é fudge.** Cheguei a trocar o default para 2 px e
+**revertí**: taxar todo artista 35% para meio-esconder um defeito não é um default. O `smooth_norm` fica
+**0**, agora por medição e não por compatibilidade — e o comentário no `sculpt.rs` diz isso.
+
+**Enquanto isso, o artista tem o knob** (Smoothness ≈ ρ/2 → no Depth 1, ~0,5). É escolha dele, por traço,
+em vez de um imposto em todo mundo.
+
+**As 3 saídas (a nº 1 é a decidida; as outras ficam registradas):**
 1. **O envelope maximiza o objetivo TAPERADO.** Correto por construção (um max de contínuas é contínuo),
    mata a costura na raiz — e **não é separável**: perde-se Felzenszwalb e volta-se ao `O(área·ρ²)` que
    custou **73 ms/move** e foi rejeitado. Precisaria de outra estrutura (pirâmide? jump-flood?).

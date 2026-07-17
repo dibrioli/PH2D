@@ -413,7 +413,9 @@ impl Default for SculptState {
             offset_norm: 0.5, // dead centre = offset 0: the plane sits ON the surface it was fitted to
             depth_norm: 0.75, // +0.5 loads: half a stroke's thickness — a coat you can see, not a stunt
             angle_norm: 0.5,  // 30°: a knife on its edge, not a razor and not a flat blade
-            smooth_norm: 0.0, // Inflate's edge is hard by default — the artist softens it deliberately
+            // **0 — MEASURED, not the old compatibility default**: only `ρ/2` clears the Blob's torn
+            // seams and it costs 7.30 ms vs a kill of 8. Gold standard = the TRUE BALL, proven: handoff §8.
+            smooth_norm: 0.0,
             rake: true, // the groove follows the stroke — what a knife dragged through paint does
             conserve: false, // opt-in until the bow wave's DRAWING survives a smoke (plan §6)
             bank: Arc::new(Vec::new()),

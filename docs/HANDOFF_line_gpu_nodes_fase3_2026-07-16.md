@@ -326,9 +326,11 @@ cook híbrido CPU-prefixo/GPU-sufixo no shell) → **Fase 3** (o laço de simula
   Praticamente todo dele é desta linha.
 - **`ph2d-render`** (`renderer.rs`): **só um split** — as 3 fns `render*` saíram pro
   `renderer_draw.rs` (o débito de LOC que a F1.1 tinha deixado). Comportamento idêntico.
-- **~20 node-crates**: 9 × `port: 0` mecânico (1 campo no binding) + **9 kernels novos**
-  (integrate · wind/drag/attractor/vortex/curl/**buoyancy** · **spring** · color_ramp). `ph2d-node-registry`
-  ganhou `register_gpu_kernel`.
+- **23 node-crates tocadas** (diff vs `main`): o arco GPU/M5 inteiro registra kernel em **19** delas
+  (`ph2d-node-registry` ganhou `register_gpu_kernel`; `motion.output` é passthrough). O grosso é da
+  Fase 2/F1.1 (grid/oscillator/move/transform/rotate/scale/falloff/tint/wiggle); **esta fatia (Fase 3)
+  adicionou 9**: `motion.integrate` · as 6 forças (wind/drag/attractor/vortex/curl/**buoyancy**) ·
+  **`motion.spring`** · `motion.color_ramp`. As demais só ganharam o campo mecânico `port: 0` no binding.
 - **shell** (`shells/desktop`): `render_loop/motion_bridge_gpu.rs` (a rota GPU) + `motion_state.rs`
   (opt-in via env) + os irmãos novos `motion_state_gpu_demos.rs` / `motion_state_gpu_tests.rs`.
 

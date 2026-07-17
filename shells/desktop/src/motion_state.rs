@@ -22,6 +22,14 @@
 #[path = "motion_demo_strobe.rs"]
 mod strobe;
 
+#[path = "motion_state_gpu_demos.rs"]
+mod gpu_demos;
+
+use gpu_demos::{
+    build_gpu_demo_document, build_gpu_hybrid_demo_document, build_gpu_sea_demo_document,
+    build_gpu_sim_demo_document,
+};
+
 use ph2d_eval_motion::MotionCookPump;
 use ph2d_motion_doc::{MotionDoc, MotionHistory};
 use ph2d_node_registry::NodeRegistry;
@@ -116,6 +124,7 @@ impl MotionState {
             Ok("1") => build_gpu_demo_document(&mut doc, &registry).unwrap_or_default(),
             Ok("2") => build_gpu_hybrid_demo_document(&mut doc, &registry).unwrap_or_default(),
             Ok("3") => build_gpu_sim_demo_document(&mut doc, &registry).unwrap_or_default(),
+            Ok("4") => build_gpu_sea_demo_document(&mut doc, &registry).unwrap_or_default(),
             _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
         };
         Self {
@@ -241,273 +250,6 @@ fn build_default_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec
     }
     Some(demo.sinks)
 }
-/// The GPU/M5 Fase 1 **ready-to-smoke** document (`PH2D_GPU_COOK_DEMO=1`):
-/// `grid(1250×1600) → oscillator(Y wave) → move → output` — **2.000.000
-/// instances**, every node kernel-covered, so `PH2D_GPU_COOK=1` runs it 100%
-/// GPU-resident (`ph2d_gpu_cook::plan` claims the whole chain; the renderer binds
-/// the lowering's buffer with zero readback). Measured on the RTX at ~4 ms/frame
-/// for the cook (probe `gpu_cook_millions_timing`), i.e. the roadmap's "millions
-/// at 60fps" with headroom. The same chain, at 25.6k, is the parity gate's
-/// fixture. Auto-plays on tool entry like every boot document.
-fn build_gpu_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    use ph2d_nodegraph::graph::{Edge, Pos};
-    let g = &mut doc.graph;
-    let grid = g.add_node("motion.grid");
-    // 1250 × 1600 = exactly 2.000.000 cells (well under the grid's 16.7M cap).
-    g.set_param(grid, "rows", 1250.0);
-    g.set_param(grid, "cols", 1600.0);
-    // A dense lattice: the quads are unit-sized (the shell's `default_size`
-    // identity), so gap 1.0 tiles them edge-to-edge — zoom out and the whole
-    // 1600×1250 field reads as a shimmering cloth of two million quads.
-    g.set_param(grid, "gap_x", 1.0);
-    g.set_param(grid, "gap_y", 1.0);
-    let osc = g.add_node("motion.oscillator");
-    g.set_param(osc, "channel", 1.0); // Y — the kernel-covered channels are X/Y
-    g.set_param(osc, "amplitude", 6.0);
-    g.set_param(osc, "frequency", 0.5);
-    // A travelling wave across the field. The phase advances per row-major index,
-    // so the stagger is scaled down for 2M cells (~500 cycles across the cloth,
-    // the same band density the 262k version read at 0.002).
-    g.set_param(osc, "phase_stagger", 0.00025);
-    let mv = g.add_node("motion.move");
-    let out = g.add_node("motion.output");
-    for (i, n) in [grid, osc, mv, out].into_iter().enumerate() {
-        g.set_pos(
-            n,
-            Pos {
-                x: 80.0 + i as f32 * 180.0,
-                y: 120.0,
-            },
-        );
-    }
-    g.connect(Edge {
-        from: (grid, 0),
-        to: (osc, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (osc, 0),
-        to: (mv, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (mv, 0),
-        to: (out, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.validate(reg).ok()?;
-    Some(vec![out])
-}
-
-/// The GPU/M5 **Fase 3 simulation** ready-to-smoke document
-/// (`PH2D_GPU_COOK_DEMO=3`, ADR-0123): `grid(700×700) → color_ramp → integrate →
-/// output` with the force loop `integrate --pre--> vortex → attractor → drag →
-/// curl --> integrate.forces` — **490.000 particles, simulated 100% on the GPU**.
-///
-/// The forces existed since M2 but had never run a frame on the GPU: they are
-/// only ever evaluated INSIDE the `pre` loop, and the loop was what the plan
-/// refused. Under `PH2D_GPU_COOK=1` the whole thing is claimed (no boundary),
-/// the state ping-pongs as held `Arc`s across ticks, and scrubbing the playhead
-/// backwards restores a device-side checkpoint instead of showing the future.
-///
-/// The mix is the classic stable orbit (vortex + attractor at one centre + drag
-/// — without drag a pure vortex spirals outward by centrifugal drift), plus curl
-/// noise so the cloud breathes instead of settling into a clean ring.
-///
-/// **The colour waves are dye advection.** The ramp colours the SOURCE — a full
-/// hue circle laid across the grid's row-major index, so the field starts as
-/// horizontal rainbow bands — and then the sim carries each particle's tint with
-/// it. The vortex winds those bands into spirals that keep tightening, the curl
-/// noise frays them, and the drag lets the inner ones lap the outer: the waves
-/// are the FLOW made visible, not a colour animation played over it. It is what
-/// a dye tracer does in a real vortex, and it costs one node.
-///
-/// The ramp sits in the `rest` chain rather than after the integrator on
-/// purpose: the tint belongs to the particle, so colour the source and let the
-/// simulation carry it. (Downstream would look identical — the integrator pairs
-/// positionally, so element `i` keeps index `i` — but it would say the wrong
-/// thing about where colour comes from.)
-fn build_gpu_sim_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    use ph2d_nodegraph::graph::{Edge, Pos};
-    let g = &mut doc.graph;
-    let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 700.0);
-    g.set_param(grid, "cols", 700.0);
-    g.set_param(grid, "gap_x", 0.12);
-    g.set_param(grid, "gap_y", 0.12);
-    // Rainbow: 7 stops closing the hue circle, so the field reads as bands
-    // rather than one gradient. `t` stays unconnected — the ramp keys on the
-    // normalised index, which is the only shape the kernel claims (a connected
-    // `t` would put the node back on the CPU, and the CPU would then own the
-    // whole document: this graph drives a `pre` loop).
-    let ramp = g.add_node("motion.color_ramp");
-    g.set_param(ramp, "preset", 0.0);
-    g.set_param(ramp, "interp", 1.0); // Ease — the bands blend instead of banding hard
-    let ig = g.add_node("motion.integrate");
-    let out = g.add_node("motion.output");
-
-    // The force chain, source→sink inside the loop.
-    let vortex = g.add_node("force.vortex");
-    g.set_param(vortex, "strength", 14.0);
-    g.set_param(vortex, "radius", 46.0);
-    g.set_param(vortex, "clockwise", 1.0);
-    let attractor = g.add_node("force.attractor");
-    g.set_param(attractor, "strength", 9.0);
-    g.set_param(attractor, "radius", 46.0);
-    g.set_param(attractor, "curve", 0.0); // Linear: a steady inward pull
-    let drag = g.add_node("force.drag");
-    g.set_param(drag, "coefficient", 0.35);
-    let curl = g.add_node("force.curl");
-    g.set_param(curl, "strength", 6.0);
-    g.set_param(curl, "scale", 0.06);
-    g.set_param(curl, "speed", 0.4);
-    g.set_param(curl, "octaves", 2.0);
-
-    for (i, n) in [grid, ramp, ig, out].into_iter().enumerate() {
-        g.set_pos(
-            n,
-            Pos {
-                x: 80.0 + i as f32 * 220.0,
-                y: 120.0,
-            },
-        );
-    }
-    for (i, n) in [vortex, attractor, drag, curl].into_iter().enumerate() {
-        g.set_pos(
-            n,
-            Pos {
-                x: 80.0 + i as f32 * 180.0,
-                y: 300.0,
-            },
-        );
-    }
-    g.connect(Edge {
-        from: (grid, 0),
-        to: (ramp, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (ramp, 0),
-        to: (ig, 0),
-        delayed: false,
-    })
-    .ok()?;
-    // The feedback the user never draws: last tick's state into the chain head.
-    g.connect(Edge {
-        from: (ig, 0),
-        to: (vortex, 0),
-        delayed: true,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (vortex, 0),
-        to: (attractor, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (attractor, 0),
-        to: (drag, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (drag, 0),
-        to: (curl, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (curl, 0),
-        to: (ig, 1),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (ig, 0),
-        to: (out, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.validate(reg).ok()?;
-    Some(vec![out])
-}
-
-/// The GPU/M5 **F1.2 hybrid** ready-to-smoke document (`PH2D_GPU_COOK_DEMO=2`):
-/// `grid(360×360) → oscillator(Rotation) → oscillator(Y) → scale → output`.
-///
-/// The FIRST oscillator targets the **Rotation** channel, which the oscillator
-/// kernel does not cover (`applicable` = X/Y only) — so the plan puts the CPU
-/// boundary there: the CPU pump cooks `grid → oscillator(Rotation)` (a travelling
-/// spin wave in the `rot` column), its stream crosses to the GPU ONCE, and the
-/// GPU runs `oscillator(Y) → scale → output` (a travelling height wave + a size
-/// pulse) plus the lowering — zero readback. So the field waves in Y AND the
-/// quads spin, the two halves computed on opposite sides of the CPU↔GPU seam.
-/// 129.600 instances. Auto-plays on tool entry like every boot document.
-fn build_gpu_hybrid_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    use ph2d_nodegraph::graph::{Edge, Pos};
-    let g = &mut doc.graph;
-    let grid = g.add_node("motion.grid");
-    g.set_param(grid, "rows", 360.0);
-    g.set_param(grid, "cols", 360.0);
-    g.set_param(grid, "gap_x", 1.0);
-    g.set_param(grid, "gap_y", 1.0);
-    // CPU boundary: Rotation is outside the kernel's X/Y coverage.
-    let spin = g.add_node("motion.oscillator");
-    g.set_param(spin, "channel", 2.0); // Rotation — no kernel → the boundary
-    g.set_param(spin, "amplitude", 45.0); // degrees
-    g.set_param(spin, "frequency", 0.5);
-    g.set_param(spin, "phase_stagger", 0.004);
-    // GPU suffix: a Y wave, then a size pulse.
-    let wave = g.add_node("motion.oscillator");
-    g.set_param(wave, "channel", 1.0); // Y — kernel-covered
-    g.set_param(wave, "amplitude", 5.0);
-    g.set_param(wave, "frequency", 0.5);
-    g.set_param(wave, "phase_stagger", 0.003);
-    let scale = g.add_node("motion.scale");
-    g.set_param(scale, "amount", 1.6);
-    let out = g.add_node("motion.output");
-    for (i, n) in [grid, spin, wave, scale, out].into_iter().enumerate() {
-        g.set_pos(
-            n,
-            Pos {
-                x: 80.0 + i as f32 * 180.0,
-                y: 120.0,
-            },
-        );
-    }
-    g.connect(Edge {
-        from: (grid, 0),
-        to: (spin, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (spin, 0),
-        to: (wave, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (wave, 0),
-        to: (scale, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.connect(Edge {
-        from: (scale, 0),
-        to: (out, 0),
-        delayed: false,
-    })
-    .ok()?;
-    g.validate(reg).ok()?;
-    Some(vec![out])
-}
-
 #[cfg(test)]
 #[path = "motion_state_tests.rs"]
 mod tests;

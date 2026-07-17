@@ -7083,6 +7083,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-vec-envelope"
+version = "0.0.0"
+dependencies = [
+ "kurbo 0.13.0",
+ "ph2d-vec-scene",
+]
+
+[[package]]
 name = "ph2d-vec-render"
 version = "0.0.0"
 dependencies = [

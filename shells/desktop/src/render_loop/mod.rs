@@ -320,7 +320,25 @@ impl crate::App {
                     }
                 }
                 audio.editor_publish_delivery();
-                audio.editor_publish_platforms();
+                // **Pricing the shipping targets is EXPORT work** (ADR-0125). It costs three
+                // conforms and three real encodes of the whole clip — 1549 ms on a 3-minute take —
+                // so it is gated on someone actually looking at the rows, and when they are, it
+                // runs on a worker. The section ships FOLDED, so the usual answer here is "no".
+                //
+                // Asked of the shell's own `HeroScreen`, which already owns both halves of the
+                // question. Note `is_panel_visible` is not enough on its own: the panel can be open
+                // with this section folded away, which is the default.
+                let delivery_open = self
+                    .gfx
+                    .as_ref()
+                    .and_then(|g| g.hero_screen.as_ref())
+                    .is_some_and(|h| {
+                        h.is_panel_visible("audio_editor")
+                            && !h
+                                .store
+                                .is_collapsed(ph2d_panel_audio_editor::AEDIT_SEC_DELIVERY)
+                    });
+                audio.editor_publish_platforms(delivery_open);
                 audio.editor_publish_spectral();
                 ed::set_playing(audio.editor_playing());
                 ed::set_loaded(audio.editor_loaded());

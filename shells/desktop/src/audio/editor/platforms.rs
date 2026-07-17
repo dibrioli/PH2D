@@ -6,29 +6,30 @@
 //! write three files.
 //!
 //! **Sizing is measuring, not guessing**, exactly as the single-codec readout already is: the
-//! same writers that produce the file produce the figure. Which means Export Set's preview costs
-//! three real encodes, so it is **cached on the buffer** — without that the panel would conform
-//! and re-encode the clip three times on every frame it is painted.
+//! same writers that produce the file produce the figure. Which means this readout costs three
+//! `conform`s and three real encodes of the whole clip — **1549 ms on a 3-minute take**, which is
+//! why it does not happen on the UI thread and does not happen at all unless the section is open.
+//! See [`super::pricing`] (ADR-0125) for the whole argument; the short version is that a cache
+//! keyed on the buffer cannot help a readout whose key an edit moves *by definition*.
 
 use ph2d_audio::SampleData;
 use ph2d_audio_encode::{Codec, PLATFORMS, Platform, WavMeta, format_bytes};
 
-/// The cached price of the whole set, for one buffer.
-#[derive(Default)]
-pub(crate) struct PlatformCache {
-    /// Identified by `SampleData::version`, never by address: since ADR-0124 an edit can rewrite a
-    /// clip **in place**, and an address would then report the edited clip as the one already
-    /// priced.
-    key: Option<ph2d_audio::BufferVersion>,
-    rows: Vec<(String, String, f32)>,
-}
+/// One finished readout line: `(platform name, "Disk · RAM (n%)", budget fraction)`.
+type Row = (String, String, f32);
+
+/// The priced set, and the machinery that keeps the pricing off this thread.
+///
+/// Keyed by `SampleData::version`, never by address: since ADR-0124 an edit can rewrite a clip
+/// **in place**, and an address would then report the edited clip as the one already priced.
+pub(crate) type PlatformCache = super::pricing::OffThread<ph2d_audio::BufferVersion, Vec<Row>>;
 
 /// Conform the clip into what this platform actually ships, and price THAT.
 ///
 /// The conform is the whole point: it is the only step that moves RAM (a codec never does), so
 /// pricing the unconformed master under a different codec would print the same memory figure for
 /// every target — which is the lie `ph2d_audio_encode::platform` documents at length.
-fn price(data: &SampleData, p: &Platform) -> Option<(String, String, f32)> {
+fn price(data: &SampleData, p: &Platform) -> Option<Row> {
     let conformed = ph2d_audio_edit::conform(data, p.format());
     let cost = ph2d_audio_encode::cost(&conformed, p.codec, p.quality).ok()?;
     let disk = if cost.disk_exact {
@@ -47,23 +48,64 @@ fn price(data: &SampleData, p: &Platform) -> Option<(String, String, f32)> {
     ))
 }
 
+/// Price every target. **This is what runs on the worker** — free of `self`, so there is no way for
+/// it to reach the UI thread's state, and one obvious thing to hand to `Job::spawn`.
+pub(crate) fn price_all(data: &SampleData) -> Vec<Row> {
+    PLATFORMS.iter().filter_map(|p| price(data, p)).collect()
+}
+
+/// What the rows say while a worker is computing them.
+///
+/// The names stay (the section keeps its shape) and every number becomes `…`. **Not the previous
+/// numbers**: those describe the clip as it was before the edit the user just made, and a stale
+/// price presented as a current one is a wrong answer wearing a right answer's clothes. The budget
+/// fraction goes to 0 with them, so nothing paints a warning colour about a figure that is not
+/// there.
+fn pending_rows() -> Vec<Row> {
+    PLATFORMS
+        .iter()
+        .map(|p| (p.name.to_string(), "\u{2026}".to_string(), 0.0))
+        .collect()
+}
+
 impl super::super::AudioSystem {
-    /// Price every shipping target and publish the rows. A cache hit on all but the frame after
-    /// the buffer actually changed.
-    pub(crate) fn editor_publish_platforms(&mut self) {
+    /// Price every shipping target and publish the rows — **off the UI thread, and only when the
+    /// Delivery section is actually open**.
+    ///
+    /// `visible` is the gate that fixes the reported bug on its own: the section ships **folded**
+    /// (`populate_sections`), so in the default case this returns without pricing anything, and the
+    /// 1549 ms that Enio's Gain click paid for three invisible strings is simply not spent. When it
+    /// *is* open, the work goes to a worker and the readout says `…` until it lands.
+    ///
+    /// The gate is asked of the shell's own `HeroScreen` rather than published by the panel: the
+    /// shell already holds the fold state and the panel's visibility, and routing the question
+    /// through a thread-local would add a frame of lag and a second copy of a fact that has an
+    /// owner.
+    pub(crate) fn editor_publish_platforms(&mut self, visible: bool) {
+        use ph2d_panel_audio_editor::delivery_state as ds;
+
         let Some(clip) = self.editor_sounding() else {
-            ph2d_panel_audio_editor::delivery_state::set_platforms(Vec::new());
-            self.platforms.key = None;
-            self.platforms.rows.clear();
+            ds::set_platforms(Vec::new());
+            self.platforms.clear();
             return;
         };
-        let data = clip.data();
-        let key = data.version();
-        if self.platforms.key != Some(key) {
-            self.platforms.rows = PLATFORMS.iter().filter_map(|p| price(data, p)).collect();
-            self.platforms.key = Some(key);
+        // Nobody is looking. Publish nothing and — the whole point — compute nothing. The cache is
+        // kept: reopening the section on an unchanged clip is then instant, which is the case where
+        // a cache genuinely helps.
+        if !visible {
+            ds::set_platforms(Vec::new());
+            return;
         }
-        ph2d_panel_audio_editor::delivery_state::set_platforms(self.platforms.rows.clone());
+        // Taken before the cache is touched, so the borrow of `self` ends here. Cheap: `SampleData`
+        // is an `Arc<[f32]>`, so this clones a refcount and not a clip. (The mixer may be sounding
+        // this very buffer — it is immutable, which is exactly why it is safe to hand to a worker.)
+        let owned = clip.data().clone();
+        let key = owned.version();
+        let rows = self
+            .platforms
+            .current(key, "Pricing shipping targets", move || price_all(&owned))
+            .cloned();
+        ds::set_platforms(rows.unwrap_or_else(pending_rows));
     }
 
     /// The base name a fresh export uses: the loaded clip's name without its extension. It is also

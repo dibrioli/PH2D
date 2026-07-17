@@ -5,25 +5,32 @@
 //! owns the two knobs (codec, quality) and the shell owns every number.
 //!
 //! **Sizing is measuring, not guessing:** the same writers that produce the file produce
-//! the figure ([`ph2d_audio_encode::cost`]). That means an encode, so the result is
-//! **cached** on everything it depends on — the buffer, the codec, the quality — and
-//! recomputed only when one of them moves. Without the cache the panel would re-encode
-//! the clip on every frame it is painted.
+//! the figure ([`ph2d_audio_encode::cost`]). That means an encode — 561 ms of one on a 3-minute
+//! clip under Opus — so **it does not happen on this thread**: see [`super::pricing`] (ADR-0125).
+//!
+//! **RAM is not part of that trade.** It is `size_of_val` on a slice; it costs nothing and it is
+//! always exact. Only the *disk* figure needs an encoder, so only the disk figure is ever `…` —
+//! the half of the readout that can be honest for free stays honest for free.
+//!
+//! Unlike the shipping targets below it, this readout has **no visibility gate**: the download size
+//! is painted on the section's own header (`delivery_readout`), which is on screen whether the
+//! section is folded or not. A gate on "is the section open" would blank a number the user can see.
 
-use ph2d_audio_encode::{Codec, DeliveryCost, format_bytes};
+use ph2d_audio_encode::{Codec, format_bytes, ram_bytes};
 
-/// The cached price of one (clip, codec, quality) — recomputed only when the key moves.
-#[derive(Default)]
-pub(crate) struct DeliveryCache {
-    key: Option<CostKey>,
-    cost: Option<DeliveryCost>,
-}
+/// The measured size of the encoded file, and whether that size is the whole truth (see
+/// `DeliveryCost::disk_exact` — a capped figure is an estimate and must print with a `~`).
+type Disk = (usize, bool);
 
-/// Everything the cost depends on. The buffer is identified by `SampleData::version`, never by its
-/// address: since ADR-0124 an edit can rewrite a clip **in place**, so the address of the edited
-/// clip is the address of the old one — and this panel would price audio the user has changed.
+/// The priced download size, and the machinery that keeps the encode off this thread.
+pub(crate) type DeliveryCache = super::pricing::OffThread<CostKey, Disk>;
+
+/// Everything the **disk** figure depends on. The buffer is identified by `SampleData::version`,
+/// never by its address: since ADR-0124 an edit can rewrite a clip **in place**, so the address of
+/// the edited clip is the address of the old one — and this panel would price audio the user has
+/// changed.
 #[derive(PartialEq, Eq, Clone, Copy)]
-struct CostKey {
+pub(crate) struct CostKey {
     buf: ph2d_audio::BufferVersion,
     codec: usize,
     /// Quality, quantised: a slider drag must not re-encode on every pixel of travel.
@@ -61,37 +68,53 @@ impl super::super::AudioSystem {
 
         let Some(clip) = self.editor_sounding() else {
             ds::set_cost("", "", 0.0, false);
-            self.delivery.key = None;
-            self.delivery.cost = None;
+            self.delivery.clear();
             return;
         };
         let quality = ds::quality();
-        let data = clip.data();
+        // Everything that needs the clip is taken HERE, in one place, so the borrow of `self` ends
+        // before the cache below is touched. `data` is an `Arc<[f32]>`: this clones a refcount, not
+        // a clip (see `platforms`). The mixer may be sounding this very buffer — it is immutable,
+        // which is exactly why it is safe to hand to a worker.
+        let data = clip.data().clone();
         let key = CostKey {
             buf: data.version(),
             codec: codec_idx,
             quality_step: (quality * QUALITY_STEPS) as u8,
         };
-        if self.delivery.key != Some(key) {
-            self.delivery.cost = ph2d_audio_encode::cost(data, codec, quality).ok();
-            self.delivery.key = Some(key);
-        }
-        let Some(cost) = self.delivery.cost else {
-            ds::set_cost("", "", 0.0, false);
-            return;
-        };
+        // RAM is free (`size_of_val`) and needs no encoder — taken on this thread, on this frame.
+        let ram_b = ram_bytes(&data);
 
-        // A scaled figure says so, rather than passing an estimate off as a measurement.
-        let disk = if cost.disk_exact {
-            format_bytes(cost.disk_bytes)
-        } else {
-            format!("~{}", format_bytes(cost.disk_bytes))
+        let owned = data;
+        let sized = self
+            .delivery
+            .current(key, "Pricing the export", move || {
+                ph2d_audio_encode::cost(&owned, codec, quality)
+                    .map(|c| (c.disk_bytes, c.disk_exact))
+                    .unwrap_or((0, false))
+            })
+            .copied();
+
+        // A scaled figure says so, rather than passing an estimate off as a measurement — and a
+        // figure that is not known yet says THAT, rather than leaving the previous clip's number on
+        // screen wearing this clip's name.
+        let disk = match sized {
+            Some((bytes, true)) => format_bytes(bytes),
+            Some((bytes, false)) => format!("~{}", format_bytes(bytes)),
+            None => "\u{2026}".to_string(),
         };
-        // RAM carries its share of the budget with it, or the number means nothing.
+        // RAM is exact on the very frame of the edit — it never waits on a worker and never shows
+        // `…`. It carries its share of the budget with it, or the number means nothing.
+        let budget = ph2d_audio::budget().ram_mb as f64 * 1_024.0 * 1_024.0;
+        let ram_budget_frac = if budget > 0.0 {
+            (ram_b as f64 / budget) as f32
+        } else {
+            0.0
+        };
         let ram = format!(
             "RAM {} \u{b7} {:.0}% of budget",
-            format_bytes(cost.ram_bytes),
-            cost.ram_budget_frac * 100.0
+            format_bytes(ram_b),
+            ram_budget_frac * 100.0
         );
         // Warn only when there is something to lose: a clip with no loop and no markers
         // loses nothing by shipping as Vorbis.
@@ -103,7 +126,7 @@ impl super::super::AudioSystem {
         ds::set_cost(
             &disk,
             &ram,
-            cost.ram_budget_frac,
+            ram_budget_frac,
             has_meta && !codec.carries_metadata(),
         );
     }

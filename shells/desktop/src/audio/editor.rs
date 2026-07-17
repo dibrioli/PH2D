@@ -25,6 +25,7 @@ mod ml_smoke;
 mod multiband_smoke;
 pub(crate) mod pieces;
 pub(crate) mod platforms;
+pub(crate) mod pricing;
 pub(crate) mod spectral;
 mod variation;
 mod voice_smoke;

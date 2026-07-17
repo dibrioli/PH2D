@@ -13,6 +13,30 @@ use crate::format::{AudioFormat, ChannelLayout, Sample};
 pub struct SampleData {
     samples: Arc<[Sample]>,
     format: AudioFormat,
+    /// How many times these samples have been rewritten **through this handle** — see
+    /// [`SampleData::version`]. Not the audio; bookkeeping about the audio's identity.
+    revision: u64,
+}
+
+/// A value that changes whenever a buffer's **contents** may have changed — the thing to cache on.
+///
+/// The *address* of the samples used to answer this, and the whole editor asked it that way: a
+/// `SampleData` was immutable, so a new buffer was a new pointer and every edit reallocated. Six
+/// caches were built on that sentence, each repeating it in its own comment.
+///
+/// [`SampleData::get_mut`] (ADR-0120) ended it. An editor that owns its buffer now rewrites the
+/// samples where they lie, and the address does not move — so an address is no longer an answer to
+/// "is this the same audio?". A cache keyed on the address alone would serve the **pre-edit** audio
+/// and never know: the spectrogram would draw the old waveform, the delivery panel would price the
+/// old bytes, and nothing would look broken.
+///
+/// So the question gets an explicit answer instead of an inferred one, in the one place that can
+/// keep it honest — the buffer itself. Ask `version()`, never `samples().as_ptr()`.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct BufferVersion {
+    ptr: usize,
+    len: usize,
+    revision: u64,
 }
 
 impl SampleData {
@@ -21,6 +45,7 @@ impl SampleData {
         Self {
             samples: samples.into(),
             format,
+            revision: 0,
         }
     }
 
@@ -51,6 +76,7 @@ impl SampleData {
         Self {
             samples: (0..len).map(f).collect(),
             format,
+            revision: 0,
         }
     }
 
@@ -67,7 +93,11 @@ impl SampleData {
         if let Some(slice) = Arc::get_mut(&mut samples) {
             f(slice);
         }
-        Self { samples, format }
+        Self {
+            samples,
+            format,
+            revision: 0,
+        }
     }
 
     /// The samples, **mutably** — but only if nobody else holds this buffer.
@@ -85,8 +115,28 @@ impl SampleData {
     ///
     /// Callers must have a **full re-render fallback** for the `None` case: the mixer may not
     /// have handed the buffer back yet, and a frame that cannot mutate must still be correct.
+    ///
+    /// Rewriting samples in place moves no pointer, so this is also the one operation that can
+    /// change a buffer's contents without changing its address. It therefore bumps the
+    /// [`SampleData::version`] — the counter exists *because* this method does.
     pub fn get_mut(&mut self) -> Option<&mut [Sample]> {
-        std::sync::Arc::get_mut(&mut self.samples)
+        // Probe first: the bump must not happen when the buffer is shared and the answer is `None`
+        // — a version that moved without a write would invalidate every cache for nothing.
+        Arc::get_mut(&mut self.samples)?;
+        self.revision = self.revision.wrapping_add(1);
+        Arc::get_mut(&mut self.samples)
+    }
+
+    /// A value that changes whenever these samples may have changed — see [`BufferVersion`].
+    ///
+    /// **Cache on this, never on `samples().as_ptr()`.** The address stopped being an answer the
+    /// moment [`SampleData::get_mut`] existed.
+    pub fn version(&self) -> BufferVersion {
+        BufferVersion {
+            ptr: self.samples.as_ptr() as usize,
+            len: self.samples.len(),
+            revision: self.revision,
+        }
     }
 
     /// Copy `src` and let `f` rewrite it in place — **one allocation** (ADR-0117 D2).
@@ -109,6 +159,7 @@ impl SampleData {
         Self {
             samples,
             format: src.format(),
+            revision: 0,
         }
     }
 
@@ -122,8 +173,13 @@ impl SampleData {
     /// That is copy-on-write, and it is not a fallback — it is the correct semantics. The RT
     /// thread never sees a half-written buffer, and the editor never pays for a copy it did not
     /// need.
+    ///
+    /// The same question as [`SampleData::get_mut`], so it is **the same code**: this asked
+    /// `Arc::get_mut` itself until `get_mut` grew the version bump, at which point two doors to one
+    /// question would have meant a caller could rewrite the samples through *this* one and leave
+    /// every cache believing nothing had happened.
     pub fn samples_mut(&mut self) -> Option<&mut [Sample]> {
-        Arc::get_mut(&mut self.samples)
+        self.get_mut()
     }
 
     /// Raw interleaved samples.
@@ -268,6 +324,55 @@ mod tests {
         assert_eq!(d.frame_stereo(1), [-0.5, -0.5]);
         // out of range → silence
         assert_eq!(d.frame_stereo(99), [0.0, 0.0]);
+    }
+
+    /// Rewriting samples in place moves no pointer, so the version is the only thing that can tell
+    /// a cache the audio changed (ADR-0124).
+    #[test]
+    fn an_in_place_write_moves_the_version() {
+        let mut d =
+            SampleData::from_interleaved(vec![0.1, 0.2, 0.3, 0.4], AudioFormat::mono(48_000));
+        let v = d.version();
+        let ptr = d.samples().as_ptr();
+        d.get_mut().expect("sole owner")[0] = 0.9;
+        assert_eq!(d.samples().as_ptr(), ptr, "expected an in-place write");
+        assert_ne!(
+            d.version(),
+            v,
+            "the samples changed and the version did not: every cache keyed on this buffer is now \
+             serving the pre-edit audio"
+        );
+    }
+
+    /// The mirror, and the reason the bump probes before it fires: a version that moved on a write
+    /// that **never happened** would make every cache re-derive for nothing.
+    #[test]
+    fn a_refused_write_does_not_move_the_version() {
+        let mut d = SampleData::from_interleaved(vec![0.1, 0.2], AudioFormat::mono(48_000));
+        let keep = d.clone(); // a second owner: the mixer, holding the clip it is playing
+        let v = d.version();
+        assert!(d.get_mut().is_none(), "a shared buffer must refuse");
+        assert_eq!(d.version(), v, "the version moved on a refused write");
+        drop(keep);
+    }
+
+    /// `samples_mut` and `get_mut` are one question, so they must be one door: a caller that could
+    /// rewrite the samples through the other one would leave every cache believing nothing happened.
+    #[test]
+    fn samples_mut_is_the_same_door_as_get_mut() {
+        let mut d = SampleData::from_interleaved(vec![0.1, 0.2], AudioFormat::mono(48_000));
+        let v = d.version();
+        d.samples_mut().expect("sole owner")[0] = 0.5;
+        assert_ne!(
+            d.version(),
+            v,
+            "samples_mut wrote without moving the version"
+        );
+
+        let mut d = SampleData::from_interleaved(vec![0.1, 0.2], AudioFormat::mono(48_000));
+        let keep = d.clone();
+        assert!(d.samples_mut().is_none(), "a shared buffer must refuse");
+        drop(keep);
     }
 
     #[test]

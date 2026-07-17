@@ -40,6 +40,7 @@ ph2d-node-force-drag = { path = "../ph2d-node-force-drag" }
 ph2d-node-force-attractor = { path = "../ph2d-node-force-attractor" }
 ph2d-node-force-vortex = { path = "../ph2d-node-force-vortex" }
 ph2d-node-force-curl = { path = "../ph2d-node-force-curl" }
+ph2d-node-force-buoyancy = { path = "../ph2d-node-force-buoyancy" }
 # The colour ramp: the positional key `HAS_<col>` unblocked.
 ph2d-node-motion-color-ramp = { path = "../ph2d-node-motion-color-ramp" }
 # A VALUE producer, to gate the color-ramp refusal (its `t` port).

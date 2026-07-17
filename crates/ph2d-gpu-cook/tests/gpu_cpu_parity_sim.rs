@@ -50,6 +50,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_force_attractor::register(&mut reg).unwrap();
     ph2d_node_force_vortex::register(&mut reg).unwrap();
     ph2d_node_force_curl::register(&mut reg).unwrap();
+    ph2d_node_force_buoyancy::register(&mut reg).unwrap();
     reg
 }
 
@@ -316,6 +317,143 @@ fn one_step_of_wind_and_drag_matches_the_cpu() {
     );
     eprintln!("wind+drag moved the field by {moved}");
     assert_parity("wind+drag one step", &cpu[2], &gpu_out);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn one_step_of_buoyancy_matches_the_cpu() {
+    // `force.buoyancy` alone — it carries a drag term of its own, so two ticks
+    // for the same reason `force.drag` needs them: a fresh seed has no velocity
+    // and `−k·v` would be gated against nothing.
+    //
+    // The fixture is built so that **all three submersion regimes are present**.
+    // The 80×80 grid spans y ≈ ±9.9 and the sea sits at 0, so half the field is
+    // dry, half is under, and the `depth = 0.3` band between them is thin enough
+    // that the partial fraction is a real value and not a saturated 1. A fixture
+    // wholly underwater would take neither side of `clamp(sub, 0, 1)` and would
+    // stay green with the clamp deleted ([[reference_topic_fixture_discipline]]).
+    // The assertion below pins that: the dry ones must not move AT ALL and the
+    // wet ones must move a lot — that is the surface, observed through the
+    // product's own lowering rather than asserted about an internal.
+    //
+    // `density = 40`, not the default 12, and the reason is arithmetic, not
+    // taste: at `dt = 0.05` the default displaces the field 0.0859 in two ticks,
+    // *under* the `MUST_MOVE` floor of 0.1. The honest move is a fixture that
+    // pushes harder, never a floor lowered until the gate agrees
+    // ([[feedback_frozen_bar_check_the_arithmetic_before_gaming_it]]).
+    //
+    // The wave is deliberately steep (`amplitude 0.6` over `wave_length 2.5`
+    // tilts the normal by up to ~56°): the surface slope is the whole reason the
+    // parabolic sine is ported, and a flat sea would leave `slope = 0`,
+    // `inv_len = 1` and never read the cosine at all.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let (g, _, out) = sim_chain(
+        &reg,
+        &[(
+            "force.buoyancy",
+            &[
+                ("level", 0.0),
+                ("density", 40.0),
+                ("depth", 0.3),
+                ("drag", 2.75),
+                ("wave_amplitude", 0.6),
+                ("wave_length", 2.5),
+                ("wave_speed", 0.4),
+            ],
+        )],
+    );
+    let cpu = cpu_ticks(&g, &reg, out, 2);
+    // grid + buoyancy + integrate.
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 3);
+
+    let moves: Vec<f32> = cpu[0]
+        .iter()
+        .zip(&cpu[2])
+        .map(|(x, y)| {
+            (0..2)
+                .map(|k| (x.world_pos[k] - y.world_pos[k]).abs())
+                .fold(0.0f32, f32::max)
+        })
+        .collect();
+    let dry = moves.iter().filter(|m| **m < 1e-6).count();
+    let wet = moves.iter().filter(|m| **m > MUST_MOVE).count();
+    assert!(
+        dry > 0 && wet > 0,
+        "the fixture must straddle the waterline — {dry} dry, {wet} afloat; with \
+         everything on one side of it this compares two seeds and would pass \
+         with the submersion clamp dead"
+    );
+    eprintln!(
+        "buoyancy: {dry} dry, {wet} afloat, max move {}",
+        max_move(&cpu[0], &cpu[2])
+    );
+    assert_parity("buoyancy one step", &cpu[2], &gpu_out);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_sea_of_no_wavelength_matches_the_cpu() {
+    // `eval` reads `wave_length` through `.max(1e-3)`, so the kernel must too —
+    // and this is the layer the gate above does NOT reach. Removing both param
+    // clamps from the kernel **survived** the whole suite, because that fixture's
+    // `wave_length = 2.5` never goes near the floor: a clamp is only observable
+    // where its domain is empty ([[feedback_a_threshold_must_live_where_the_domain_is_empty]],
+    // [[feedback_layered_defenses_need_per_layer_gates]]).
+    //
+    // At `wave_length = 0` an unclamped kernel computes `phase = x/0 = inf`,
+    // `frac(inf) = NaN`, and NaNs the field — which `motion.integrate`'s
+    // finiteness guard then freezes, so the tell is a GPU field that sits still
+    // while the CPU's moves.
+    //
+    // **The amplitude is 1e-4 and that is the whole design of this fixture.** The
+    // clamp lands the pair at `wave_length = 1e-3` — a wave far finer than the
+    // grid — and at the gate above's `amplitude = 0.6` that sea is genuinely
+    // CHAOTIC: `slope = amp·2π/λ ≈ 3770·cos`, so the normal lies almost flat and
+    // its direction flips with the *sign* of the cosine. Bounded magnitude
+    // (`|a| ≤ density`, the normal is a unit vector) with a flipping sign is a
+    // 2·density divergence, and one ulp of phase decides it: measured, the two
+    // paths split by 0.2022 ≈ 2·40·dt². That is ADR-0123 D4's own point, not a
+    // porting bug, and gating it would gate chaos — the fix is a fixture that is
+    // well-conditioned, never an ε loosened until the chaos fits under it.
+    // At `1e-4` the same clamped sea has `slope ≈ 0.63`, the normal is honest,
+    // and the clamp is just as observable: what NaNs an unclamped kernel is the
+    // `phase`, which the amplitude never touches. (Not `0.0` — `0·NaN` is NaN by
+    // IEEE and would work, but only until a driver's fast-math folds it to 0.)
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let (g, _, out) = sim_chain(
+        &reg,
+        &[(
+            "force.buoyancy",
+            &[
+                ("level", 0.0),
+                ("density", 40.0),
+                ("depth", 0.3),
+                ("drag", 2.75),
+                // Keeps the clamped `λ = 1e-3` sea out of the sign-flip regime.
+                ("wave_amplitude", 1e-4),
+                // Below the floor: the node under test is the CLAMPED sea.
+                ("wave_length", 0.0),
+                ("wave_speed", 0.4),
+            ],
+        )],
+    );
+    let cpu = cpu_ticks(&g, &reg, out, 2);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 3);
+    let moved = max_move(&cpu[0], &cpu[2]);
+    assert!(
+        moved > MUST_MOVE,
+        "the clamped sea must still float things — moved {moved} ≤ {MUST_MOVE}; a \
+         frozen CPU field would match a NaN-frozen GPU one and prove nothing"
+    );
+    assert_parity("buoyancy, clamped wavelength", &cpu[2], &gpu_out);
 }
 
 #[test]

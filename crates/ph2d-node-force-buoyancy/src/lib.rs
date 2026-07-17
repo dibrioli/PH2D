@@ -45,6 +45,7 @@
 use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -169,10 +170,120 @@ impl NodeOp for ForceBuoyancy {
     }
 }
 
+/// The GPU kernel (ADR-0122): **side metadata**, not a lowering — the manifest above is
+/// untouched and `eval` stays the canonical answer. This one exists because a force with no
+/// kernel is not "one node slower": a single uncovered node **inside the loop** leaves a
+/// boundary, and the boundary makes `plan` refuse the whole simulation (the two-sims rule).
+/// Five forces on the GPU are worth nothing in the graph that drops a buoy in the water.
+///
+/// The wave is the sibling `trig.rs` ported literally — the same corrected parabolic sine
+/// `force.wind` already carries, so the sea has one shape on both sides (HR-5). `sqrt` and
+/// `/` are *not* bit-exact by the Vulkan guarantee (3 / 2.5 ULP), which is why this is
+/// gated at the ε the sim parity already budgets, and why `force.attractor` — sqrt and a
+/// divide in the same breath — is the precedent that says the budget holds.
+///
+/// **The param clamps are part of the model, not hygiene** — `eval` reads `depth`/`wave_length`
+/// through `.max(1e-3)` and `density`/`drag` through `.max(0.0)`, and a kernel taking the raw
+/// uniform would answer a different node. They are not equally *observable*, and the gates say
+/// which is which rather than implying they all are:
+///
+/// - `wave_length` is gated (`a_sea_of_no_wavelength_matches_the_cpu`): drop the clamp and
+///   `phase = x/0 = inf`, `frac(inf) = NaN`, and the whole field NaNs while the CPU sails on.
+/// - `depth` **cannot be caught by any fixture**, and that is worth knowing rather than
+///   papering over: the downstream `clamp(sub, 0, 1)` already tames the ±inf, so the two paths
+///   differ only for an instance sitting *exactly* on the waterline — where the CPU reads
+///   `0/1e-3 = 0` (dry, does not move) and an unclamped GPU reads `0/0 = NaN`, which
+///   `motion.integrate`'s own finiteness guard rejects (so it also does not move). The
+///   integrator's guard converges them. It stays because it mirrors `eval`, which is the
+///   contract — not because a red gate is holding it here.
+/// - `density`/`drag` `.max(0.0)` is likewise below the resolution of a parity gate (a
+///   negative density is a well-defined, if odd, sea on both sides).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let by_p = read_P(i);\n\
+        let by_vel = read_vel(i);\n\
+        let by_lambda = max(params.wave_length, 1e-3);\n\
+        let by_cs = by_cos_sin_cycles(\n\
+        \x20   (by_p.x - params.wave_speed * params.playhead) / by_lambda);\n\
+        let by_surface = params.level + params.wave_amplitude * by_cs.y;\n\
+        // d/dx of `amp·sin(2π·(x − vt)/λ)` — the surface slope under it.\n\
+        let by_slope = params.wave_amplitude * (6.2831855 / by_lambda) * by_cs.x;\n\
+        let by_sub = clamp((by_surface - by_p.y) / max(params.depth, 1e-3), 0.0, 1.0);\n\
+        let by_w = by_sub * read_falloff(i);\n\
+        // Buoyancy is normal to the surface: n = normalize(-slope, 1).\n\
+        let by_inv_len = 1.0 / sqrt(by_slope * by_slope + 1.0);\n\
+        let by_dens = max(params.density, 0.0);\n\
+        let by_drag = max(params.drag, 0.0);\n\
+        write_accel(i, read_accel(i) + vec2<f32>(\n\
+        \x20   (by_dens * -by_slope * by_inv_len - by_drag * by_vel.x) * by_w,\n\
+        \x20   (by_dens * by_inv_len - by_drag * by_vel.y) * by_w));\n",
+    wgsl_lib: "\
+        fn by_sin_cycles(phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n\
+        fn by_cos_sin_cycles(phase: f32) -> vec2<f32> {\n\
+            return vec2<f32>(by_sin_cycles(phase + 0.25), by_sin_cycles(phase));\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "accel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // The drag term reads velocity. A field with no `vel` is a still sea acting on
+        // still things: identity 0 makes `−drag·v` vanish, exactly as `vec2_at`'s default
+        // does on the CPU.
+        ColumnBinding {
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[
+        "level",
+        "density",
+        "depth",
+        "drag",
+        "wave_amplitude",
+        "wave_length",
+        "wave_speed",
+    ],
+    source_count: None,
+    applicable: None,
+};
+
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ForceBuoyancy))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -4916,6 +4916,7 @@ dependencies = [
  "ph2d-eval-motion",
  "ph2d-gpu",
  "ph2d-node-force-attractor",
+ "ph2d-node-force-buoyancy",
  "ph2d-node-force-curl",
  "ph2d-node-force-drag",
  "ph2d-node-force-vortex",

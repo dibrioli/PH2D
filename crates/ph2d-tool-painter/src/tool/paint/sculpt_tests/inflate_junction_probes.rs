@@ -232,6 +232,15 @@ fn diag_the_parabola_captures_what_it_cannot_serve() {
 
 /// **Enio's CROSS** (2026-07-16, 4th smoke): two PERPENDICULAR strokes — the tightest junction there is,
 /// and the one whose four armpits came back with WHITE GASHES in them.
+/// Re-exports so the ball workshop ([`super::inflate_ball_candidate`]) can drive Enio's cross fixture
+/// against a candidate kernel without duplicating it.
+pub(super) fn the_cross_pub() -> (PainterTool, crate::tool::RtLayerId) {
+    the_cross()
+}
+pub(super) fn inflate_cross(t: &mut PainterTool) {
+    inflate_the_whole_layer(t);
+}
+
 fn the_cross() -> (PainterTool, crate::tool::RtLayerId) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);

@@ -1,9 +1,14 @@
-# Handoff de INTEGRAÇÃO — linha `line/FLIP` (2026-07-17)
+# Handoff de INTEGRAÇÃO — linha `line/FLIP` (2026-07-17) · ✅ **CONCLUÍDO**
 
-> **Para o agente integrador** (DIRETRIZ §1.5.9), por ordem EXPLÍCITA do Enio. A linha está
-> **fechada, com smoke OK, e PARADA**. O implementador não integra, não pusha, não roda ship.
-> Este é o documento de integração; o [`…CONTINUACAO_2026-07-17`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-17.md)
-> é o estado técnico do módulo (leia se precisar do porquê de cada decisão).
+> **✅ INTEGRAÇÃO REALIZADA (2026-07-17).** O delta (W7.5 + W8 + §4.A + §4.B) está na `main`
+> (o `segment.rs` = `8775a027`); a branch foi fast-forwardada para a main integrada. Este doc
+> fica como **registro** de como a integração foi feita — não re-execute nada aqui. A próxima
+> rodada parte da base limpa; o roteiro dela está no
+> [`…CONTINUACAO_2026-07-17`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-17.md) §4 (§4.C).
+>
+> ---
+>
+> _(abaixo, o handoff original que orientou o integrador — histórico.)_
 
 ---
 

@@ -16,38 +16,33 @@
 
 ---
 
-## 1. Estado da linha — **o §4.B FECHOU com smoke OK** (Enio, 2026-07-17: *"smoke ok"*)
+## 1. Estado da linha — **o §4.B INTEGROU (smoke OK)**; a branch está SINCRONIZADA com a main
 
-| commit | o quê | smoke |
-|---|---|---|
-| `c4fb6ade` | **§4.B — Segment mode** (o 3º domínio: o pedaço entre dois cruzamentos) | **OK** |
-| `1b090473` | a caixa do gizmo tem **FOLGA** (handles fora das âncoras) | OK |
-| `33d7784d` | **revert:** 2+ pontos **precisam** de gizmo | OK |
-| `994ce21c` | `Select: Point` começa **DESSELECIONADO** | OK |
-| `017b8f00` | a **ÁREA** do gizmo agarra a seleção | OK |
-| `b793b47c` | a **COSTURA** do traço fechado é clicável (BUGS #18) | OK |
-| `1b51f59b` | **§4.A**: o gizmo da SELEÇÃO no modo Edit | OK |
+**Enio, 2026-07-17: *"smoke ok"* → integração realizada.** O §4.B (Segment mode) está na
+`main` (o `segment.rs` = `8775a027`), e a branch `line/FLIP` foi **fast-forwardada** para a
+main integrada — **base limpa `cdc3acc1`, 0 à frente / 0 atrás**, worktree limpo, o shell
+compila. **A próxima rodada começa daqui, no §4.C.**
 
-Abaixo disso: **W8** (domínio Point), **W7.5** (gizmo da pose), W7.4/W7.3/W7.2 — todos OK.
+**Integrado desde a última rodada:** §4.B (Segment mode) · §4.A (gizmo da seleção) · W8
+(domínio Point) · W7.5 (pose afim + gizmo da pose) · W7.4/W7.3/W7.2. Todos com smoke OK.
 
-**Schema:** `FLIP_SCHEMA_VERSION` **7** · `PROJECT_SCHEMA` **15** · pin `(15, 7, 8)` em
-`shells/desktop/src/project_tests.rs`. **O §4.B não bumpou nada** (métodos + política de
-pick, não layout). Se você bumpar um, bumpe os que SOMAM
-([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+**Schema na base integrada:** `FLIP_SCHEMA_VERSION` **7** · `PROJECT_SCHEMA` **15** · pin
+`(15, 7, 8)` em `shells/desktop/src/project_tests.rs`. Se a sua rodada bumpar um, bumpe os que
+SOMAM ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]) — e conte o `PROJECT_SCHEMA`
+contra o valor da main **no dia**, não contra 15.
 
-**Gates no fechamento do §4.B:** 64 suítes verdes · clippy `--all-targets` limpo · typos ·
-`fmt` (rustup 1.95) · release builda · LOC caps OK (o `flip_select.rs` está a **568/600** —
-o mais apertado do módulo; campo novo ali → orce o split).
+**LOC a vigiar:** `flip_select.rs` a **568/600** (o mais apertado do módulo) — campo novo ali
+→ orce o split em módulo irmão (`flip_select_pick.rs`/`flip_select_points.rs`/
+`flip_select_segment.rs` já são os irmãos).
 
-### O smoke que falta (é o entregável do Enio)
+### O smoke do §4.B (já aprovado — reproduza se precisar do contexto do modo)
 
 ```bash
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-FLIP && \
   PH2D_FLIP_SEGMENT_SMOKE=1 ./target/release/ph2d-host-desktop
 ```
 
-A cena abre no modo **Edit**, domínio **Segment** armado (verificado ponta a ponta no app
-real), com **quatro alvos**:
+A cena abre no modo **Edit**, domínio **Segment** armado, com **quatro alvos**:
 
 1. **O X** (cima-esq): clicar num braço acende SÓ aquele braço, do cruzamento à ponta.
 2. **O triângulo** (cima-dir): nada o cruza ⇒ clicar em qualquer aresta acende a forma
@@ -154,7 +149,12 @@ Qualquer um serve de tarefa curta entre smokes:
 
 ---
 
-## 6. Notas de INTEGRAÇÃO (pro agente integrador do Enio) — **acumuladas, nada foi integrado**
+## 6. Notas de INTEGRAÇÃO — ✅ **CONSUMIDAS (integrado 2026-07-17)**, mantidas como registro
+
+> Estas notas foram para o agente integrador e **já foram aplicadas**. Ficam aqui só como
+> histórico do que este delta tocou (os sítios foundational append-only, os contadores). Uma
+> rodada nova NÃO age sobre esta seção — a base já é a main integrada.
+
 
 - **`ph2d-editor-core` tocada append-only** (foundational) — **5 sítios** (4 antigos + 1 do §4.B):
   - variantes **`GizmoTarget::FlipPose`** (W7.5) e **`GizmoTarget::FlipSelection`** (§4.A) em

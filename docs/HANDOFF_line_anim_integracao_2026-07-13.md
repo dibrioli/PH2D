@@ -318,8 +318,9 @@ Suíte completa + clippy `--all-targets` + fmt + typos: **verde**. `cargo build`
 ### Smoke que o Enio deve rodar
 
 ```
-PH2D_STACK_SMOKE=1 cargo run
+cd Worktrees/line-anim && PH2D_STACK_SMOKE=1 cargo run -p ph2d-host-desktop
 ```
+(o `-p` não é opcional: o workspace tem 27 binários e um `cargo run` seco recusa)
 **L** abre o painel (aba **Keys**). Clique **Arrange** → as lanes/strips. No dropdown escolha
 **Right** e volte a **Keys**: o playhead cai **sobre** as keys (não um segundo depois do fim), e
 fora da janela do strip **não há playhead** — não há onde apontar.

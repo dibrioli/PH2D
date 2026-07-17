@@ -6,6 +6,12 @@
 **MORPH VIVO** (o `t` keyável, §9).
 A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (Modo L, CLAUDE.md §0.7).
 
+> **Vais ASSUMIR a linha para construir o envelope / puppet warp?** Lê antes o irmão
+> [`HANDOFF_line_vector_envelope_warp_2026-07-16.md`](HANDOFF_line_vector_envelope_warp_2026-07-16.md)
+> — o terreno do envelope, a armadilha que decide a arquitetura, e o que o repo já tem. **Este
+> documento continua sendo a fonte da identidade da linha e dos riscos de INTEGRAÇÃO** (§1, §3): o
+> outro não os duplica, de propósito.
+
 > **Leia primeiro:** `CLAUDE.md` (inteiro, é curto) + `docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md`.
 > Este handoff assume os dois. O ADR-0122 é a fonte da verdade do Blend; aqui está o que **não** cabe
 > nele: identidade da linha, riscos de integração, a fila, e as minas que eu declaro.
@@ -161,14 +167,20 @@ skipped). Clippy limpo. LOC no teto (`blend_live.rs` 567/600 — **orce um split
 
 **⚠️ Honestidade sobre o que foi SMOKADO pelo Enio, e o que não:**
 
+**A linha está TODA SMOKADA** (2026-07-16) — o pendente que este handoff listava fechou.
+
 | Commit | Smoke |
 |---|---|
 | Fases A→C2b + o modelo de arrasto | ✅ **Smokado e aprovado** (o Enio iterou 5 vezes na interação) |
 | `8ba7c889` (o fantasma da linha) | ✅ Aprovado |
 | `f0706d0b` Steps por qualquer objeto | ✅ Aprovado |
-| `f0706d0b` **Shift+clique em ponto** | ⚠️ **Não confirmado** — ele aprovou a mensagem, não relatou o clique |
-| `22a368be` **Expand / Release** | ⚠️ **PENDENTE** — nenhuma evidência de que os botões foram clicados |
-| `92553b22` **pontos livres** | ⚠️ **PENDENTE** — landou depois da última resposta dele |
+| `22a368be` **Expand / Release** | ✅ **Aprovado** (2026-07-16) |
+| `92553b22` **pontos livres do spine** | ✅ **Aprovado** (2026-07-16) |
+| `62c93fa7` **Blend com rosquinhas** (compound) | ✅ *"parece perfeito"* |
+| `e2cf1262` **Morph vivo** (o `t` keyável) | ✅ *"parece perfeito"* |
+| `c8d47966` Steps: slider **e** caixa | ✅ Aprovado |
+| `be6748e4` **stroke width chega a zero** | ✅ Aprovado |
+| `f0706d0b` **Shift+clique em ponto** | ⚠️ **Não confirmado** — ele aprovou a mensagem, nunca relatou o clique. É o ÚNICO que sobra. |
 
 **A costura do shell não é gateada** (por que: dirigir ponteiro em modo Node exige `AppGfx` = janela +
 GPU, o mesmo bloqueio do harness headless do `project_save`). Isso vale para o ramo Shift+Down do

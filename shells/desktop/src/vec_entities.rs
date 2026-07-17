@@ -109,7 +109,7 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
         // Nome duplicado não é cosmético desde o W4.T6: a animação reencontra o objeto **pelo
         // nome** (`wire_id` = hash do `Name`), então dois homônimos fazem duas tracks colarem no
         // MESMO objeto — e a outra fica sem dono, em silêncio. O nome é identidade agora.
-        let name = crate::name_unique::unique_name(sim, &initial_name(id));
+        let name = crate::name_unique::unique_name(sim, &initial_name(*id));
         let order = shift
             .saturating_sub(u32::try_from(k).unwrap_or(0))
             .saturating_sub(1);

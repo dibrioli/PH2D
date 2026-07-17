@@ -29,7 +29,11 @@ Rápido, porque o risco aqui é reconstruir, não esquecer:
   default. [ADR-0123](../architecture/decisions/0123-audio-w7-ml-boundary-tract-native-denoise-reject-ort.md).
 - **Motor:** streaming/residência ([ADR-0118](../architecture/decisions/0118-audio-streaming-voices-residency.md)),
   memória medida ([ADR-0117](../architecture/decisions/0117-audio-editor-memory-is-measured-not-declared.md)),
-  preview O(1) ([ADR-0120](../architecture/decisions/0120-audio-preview-is-a-buffer-you-own-not-a-buffer-you-rebuild.md)).
+  **edição por-intervalo O(seleção)** ([ADR-0124](../architecture/decisions/0124-audio-a-range-edit-must-be-told-its-range.md)
+  — gain/normalize/reverse/invert/DC/fade/silence/Apply: 22,4 ms → 0,011 ms num clipe de 3 min, e
+  **não escala com o clipe**), render de preview O(seleção)
+  ([ADR-0120](../architecture/decisions/0120-audio-preview-is-a-buffer-you-own-not-a-buffer-you-rebuild.md)
+  — mas o **frame** do drag ainda paga a waveform inteira: §2.2, medido).
 
 ---
 
@@ -140,18 +144,35 @@ e no fim o chiado sumiu. (O console imprime a estimativa do clipe encenado.)
   minutos deixa de ser (e aí é um `AtomicBool` que o callback lê — o callback já é chamado por hop).
 - **A barra some se o job entra em pânico** e não há toast de erro (o pânico vai pro stderr).
 
-### 2.2 Split do `fx_presets.rs` (631 LOC) — **dono: os presets, não o W7**
-### 2.2 Split do `fx_presets.rs` (631 LOC) — **dono: os presets, não o W7**
+### 2.2 O preview de knob ainda RECONSTRÓI a waveform inteira por frame — **medido**
+
+**O que é:** `PreviewScratch::step` termina em `EditClip::new(buf.clone())`, e `EditClip::new` **é**
+`PeakCache::build`: **21,9 ms por frame** num clipe stereo de 3 min. Ou seja, o ganho de 62× do
+[ADR-0120](../architecture/decisions/0120-audio-preview-is-a-buffer-you-own-not-a-buffer-you-rebuild.md)
+(0,27 ms) **nunca chegou ao produto** — a medição do próprio ADR (`measure_preview.rs`) escreve a
+região direto e nunca chama o `step`. É o MESMO bug do [ADR-0124](../architecture/decisions/0124-audio-a-range-edit-must-be-told-its-range.md),
+no caminho do preview em vez do commit; achado escrevendo aquele.
+
+**Por que não fechou junto:** o `patch` já existe (é O(seleção)), mas o scratch precisaria guardar um
+`EditClip` por slot e pedir a ele "reescreva esta região **sem passo de undo**" — API nova numa
+superfície que não é a desta linha, e a dança de posse do ADR-0120 (2 slots alternando com o mixer)
+tem gates próprios e sutis. Enxertar meio-testado numa linha fechando é pior que nomear.
+
+**O que acorda:** arrastar um knob num clipe longo e sentir. O fix é `[Option<EditClip>; 2]` no
+scratch + `EditClip::rewrite_preview_region(r, region)`, com um gate que conte o patch como o
+ADR-0120 conta o disparo.
+
+### 2.3 Split do `fx_presets.rs` (631 LOC) — **dono: os presets, não o W7**
 
 Herdado do rename do Gate (`a5ec9d7a`), greened com o marker sancionado `ph2d-loc-cap` para a linha
 fechar. O conserto de verdade é um split por dados (a tabela de presets sai para um módulo irmão).
 
-### 2.3 Smoke de stereo do AI Denoise
+### 2.4 Smoke de stereo do AI Denoise
 
 O wrapper processa por contagem de canais e o fixture é **mono** — o caminho stereo compila e nunca
 foi exercido. Um clipe stereo com ruído fecharia o buraco.
 
-### 2.4 Backlog pequeno (do `02_plano` §4)
+### 2.5 Backlog pequeno (do `02_plano` §4)
 
 - Toggle *enabled* por-entry na UI de variação (o modelo **já** carrega o campo — é só UI).
 - O manifesto de variação guarda **caminho absoluto** (relativo seria portátil).

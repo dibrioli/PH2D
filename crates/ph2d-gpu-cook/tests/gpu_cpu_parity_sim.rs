@@ -51,7 +51,51 @@ fn registry() -> NodeRegistry {
     ph2d_node_force_vortex::register(&mut reg).unwrap();
     ph2d_node_force_curl::register(&mut reg).unwrap();
     ph2d_node_force_buoyancy::register(&mut reg).unwrap();
+    ph2d_node_motion_oscillator::register(&mut reg).unwrap();
+    ph2d_node_motion_spring::register(&mut reg).unwrap();
     reg
+}
+
+/// `grid → oscillator [→ spring] → output` — the spring on its own `pre`
+/// self-loop (`out --pre--> state`, the sequential-node convention).
+///
+/// The oscillator is not scenery: `motion.spring` chases a target and its own
+/// doc opens with the warning that it **only acts on targets that CHANGE**. A
+/// spring behind a static grid is a pass-through, and every assertion below
+/// would hold with the node deleted.
+fn spring_chain(
+    reg: &NodeRegistry,
+    with_spring: bool,
+    tension: f32,
+) -> (Graph, NodeId, Option<NodeId>) {
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    g.set_param(grid, "rows", 80.0);
+    g.set_param(grid, "cols", 80.0);
+    g.set_param(grid, "gap_x", 0.35);
+    g.set_param(grid, "gap_y", 0.25);
+    let osc = g.add_node("motion.oscillator");
+    g.set_param(osc, "channel", 1.0);
+    g.set_param(osc, "amplitude", 3.0);
+    g.set_param(osc, "frequency", 2.0);
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, osc, 0, false);
+    let mut spring = None;
+    if with_spring {
+        let sp = g.add_node("motion.spring");
+        spring = Some(sp);
+        g.set_param(sp, "channel", 1.0);
+        g.set_param(sp, "tension", tension);
+        g.set_param(sp, "friction", 1.5);
+        edge(&mut g, osc, sp, 0, false);
+        // The feedback port: the node's own previous output.
+        edge(&mut g, sp, sp, 1, true);
+        edge(&mut g, sp, out, 0, false);
+    } else {
+        edge(&mut g, osc, out, 0, false);
+    }
+    g.validate(reg).expect("well-typed");
+    (g, out, spring)
 }
 
 const DEFAULT_UV: [f32; 4] = [0.25, 0.25, 0.75, 0.75];
@@ -392,6 +436,86 @@ fn one_step_of_buoyancy_matches_the_cpu() {
         max_move(&cpu[0], &cpu[2])
     );
     assert_parity("buoyancy one step", &cpu[2], &gpu_out);
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn one_step_of_spring_matches_the_cpu() {
+    // The second sequential node, and the one this suite's `MUST_MOVE` idiom
+    // does NOT protect. Everywhere else the mover under test is the only thing
+    // moving the field, so "did it move?" and "did the kernel fire?" are the
+    // same question. Here they come apart: the **oscillator** moves the field,
+    // and a spring compiled to a pass-through would sail through `MUST_MOVE`
+    // and through parity, because the CPU pass-through and the GPU one agree
+    // perfectly ([[reference_topic_oracle_discipline]] — the oracle has to model
+    // the appearance, and the appearance of a spring is LAG).
+    //
+    // So the oracle is the same chain WITHOUT the spring: the raw target. The
+    // spring's whole job is to not be there yet, and that gap is what is
+    // asserted before any comparison is believed.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let (gt, out_t, _) = spring_chain(&reg, false, 0.0);
+    let cpu_target = cpu_ticks(&gt, &reg, out_t, 2);
+
+    // BOTH sub-step regimes. `steps = ceil(dt/sqrt(STABLE/tension))`, so at the
+    // default tension of 8 the adaptive loop runs exactly ONCE — the whole
+    // reason it is a loop goes untested, and a kernel that hardcoded one step
+    // would be green. 60 (the UI's max) is the first fixture in reach that
+    // takes two ([[reference_topic_fixture_discipline]]).
+    for (tension, want_steps) in [(8.0f32, 1), (60.0f32, 2)] {
+        let (gs, out_s, _) = spring_chain(&reg, true, tension);
+        let cpu_spring = cpu_ticks(&gs, &reg, out_s, 2);
+
+        let lag = max_move(&cpu_target[2], &cpu_spring[2]);
+        assert!(
+            lag > MUST_MOVE,
+            "tension {tension}: the spring must LAG its target — gap {lag} ≤ \
+             {MUST_MOVE}, so this compares the oscillator to itself and would \
+             pass with the spring compiled to a pass-through"
+        );
+        // grid + oscillator + spring.
+        let gpu_out = gpu_ticks(&gpu, &gs, &reg, out_s, 2, 3);
+        eprintln!("spring tension {tension} ({want_steps} sub-step/s): lags by {lag}");
+        assert_parity(
+            &format!("spring one step, tension {tension}"),
+            &cpu_spring[2],
+            &gpu_out,
+        );
+    }
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_spring_on_rotation_recedes_to_the_cpu() {
+    // `applicable` covers X/Y only: Rotation writes `rot`, which a static
+    // binding set cannot switch to. The refusal must be visible in the PLAN —
+    // and inside a `pre` loop it is not a local one: the boundary makes the
+    // whole simulation recede (the two-sims rule), which is the honest answer
+    // and the expensive one. Gating it here is what keeps a later "just let it
+    // through" from silently animating `P` when the artist asked for `rot`.
+    let reg = registry();
+    let (mut g, out, sp) = spring_chain(&reg, true, 8.0);
+    let sp = sp.expect("the chain has a spring");
+    g.set_param(sp, "channel", 2.0); // Rotation
+    let refused = plan(&g, &reg, &reg, out);
+    assert!(
+        !refused.is_fully_gpu(),
+        "a spring on Rotation must leave a boundary, not write P"
+    );
+    // The control: the SAME graph on Y is claimed whole. Without this the
+    // assertion above would hold for a plan that refused everything always
+    // ([[feedback_absence_gate_needs_a_presence_sibling]]).
+    g.set_param(sp, "channel", 1.0);
+    let claimed = plan(&g, &reg, &reg, out);
+    assert!(
+        claimed.is_fully_gpu(),
+        "the same chain on Y must be claimed: {:?}",
+        claimed.boundaries
+    );
 }
 
 #[test]

@@ -31,6 +31,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -218,10 +219,159 @@ fn pairing(input: &Stream, state: &Stream, n: usize) -> Option<Vec<Option<usize>
     }
 }
 
+/// GPU compute kernel (GPU/M5 Fase 3, ADR-0122/0123): **side metadata**, not a
+/// lowering — the manifest is untouched and `eval` above stays canonical. The
+/// second sequential node after `motion.integrate`, and it reuses that node's
+/// whole shape: state on the `pre` port, `sim_t` for the timestep, a NaN guard.
+///
+/// **`pairing` needs no translation, and that is the load-bearing observation.**
+/// The CPU pairs positionally exactly when the state carries `spring_value` AND
+/// `state.count() == n`; the sequencer's presence rule is *"port has this column
+/// AND its count matches"* — the same predicate. So `HAS_state_spring_value` IS
+/// `pairing().is_some()`, and the seed/step branch is not a re-derivation of the
+/// CPU's condition (two doors to one question drift apart —
+/// [[feedback_two_doors_to_the_same_question_diverge]]).
+///
+/// **Covers the X/Y channels only** (`applicable`, the `motion.wiggle`/
+/// `oscillator` precedent): Rotation writes `rot` and Size writes `size`, and a
+/// static binding set cannot switch its output column on a param. A spring on
+/// those recedes to `eval`, which is a boundary — and inside a `pre` loop a
+/// boundary makes `plan` refuse the whole simulation, so this is a real coverage
+/// edge, not a rounding of one.
+///
+/// The sub-step loop is dynamic (`ceil(dt/ideal)`, the reference's stability
+/// bound), like `force.curl`'s. Iterating on the GPU is not a translation of the
+/// CPU's loop into something cheaper: a stiff spring is stiff on both sides, and
+/// the sub-step count is part of the ANSWER, not of the schedule.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        var sp_p = read_in_P(i);\n\
+        let sp_target = select(sp_p.y, sp_p.x, params.channel < 0.5);\n\
+        let sp_tension = max(params.tension, 0.1);\n\
+        let sp_friction = max(params.friction, 0.05);\n\
+        // Seeded AT the target (no snap); only what the state knows then steps.\n\
+        var sp_x = sp_target;\n\
+        var sp_v = 0.0;\n\
+        if (HAS_state_spring_value) {\n\
+            var x = read_state_spring_value(i);\n\
+            var v = read_state_spring_vel(i);\n\
+            let sp_t_prev =\n\
+        \x20       select(params.playhead, read_state_sim_t(0u), HAS_state_sim_t);\n\
+            let sp_dt = clamp(params.playhead - sp_t_prev, 0.0, SPRING_MAX_DT);\n\
+            // Adaptive sub-step from the stability limit (reference parity).\n\
+            let sp_ideal = sqrt(SPRING_STABLE / sp_tension);\n\
+            var sp_steps = 1u;\n\
+            if (sp_dt > 0.0) {\n\
+                sp_steps = u32(clamp(ceil(sp_dt / sp_ideal), 1.0, 64.0));\n\
+            }\n\
+            let sp_sub_dt = sp_dt / f32(sp_steps);\n\
+            // A diverged instance recovers AT ITS TARGET (reference parity).\n\
+            if (!(spring_finite(x) && spring_finite(v))) {\n\
+                x = sp_target;\n\
+                v = 0.0;\n\
+            }\n\
+            for (var s = 0u; s < sp_steps; s = s + 1u) {\n\
+                let a = -sp_friction * v - sp_tension * (x - sp_target);\n\
+                v = v + a * sp_sub_dt;\n\
+                x = x + v * sp_sub_dt;\n\
+            }\n\
+            sp_x = x;\n\
+            sp_v = v;\n\
+        }\n\
+        // The OUTPUT blends toward the raw target by falloff x inv_mass; the raw\n\
+        // state keeps evolving regardless, exactly like the reference. The test\n\
+        // is `!(fs >= 1.0)`, not `fs < 1.0`: they part on a NaN weight, and the\n\
+        // CPU's branch is the `>=` one.\n\
+        let sp_fs = read_in_falloff(i) * read_in_inv_mass(i);\n\
+        var sp_out = sp_x;\n\
+        if (!(sp_fs >= 1.0)) {\n\
+            sp_out = sp_target + (sp_x - sp_target) * max(sp_fs, 0.0);\n\
+        }\n\
+        if (params.channel < 0.5) {\n\
+            sp_p.x = sp_out;\n\
+        } else {\n\
+            sp_p.y = sp_out;\n\
+        }\n\
+        write_P(i, sp_p);\n\
+        write_spring_value(i, sp_x);\n\
+        write_spring_vel(i, sp_v);\n\
+        write_sim_t(i, params.playhead);\n",
+    wgsl_lib: "\
+        const SPRING_MAX_DT: f32 = 0.1;\n\
+        const SPRING_STABLE: f32 = 0.05;\n\
+        fn spring_finite(x: f32) -> bool {\n\
+            return abs(x) <= 3.4028235e38;\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "inv_mass",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        // The state, off the `pre` port. `spring_value`'s presence IS the CPU's
+        // `pairing().is_some()` — see the note above.
+        ColumnBinding {
+            column: "spring_value",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: "spring_vel",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: "sim_t",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        // Identity pairing is a gather (`BTreeMap<id, row>`), which this engine
+        // does not do yet (ADR-0123 D3). Refuse at plan time rather than pair
+        // positionally and animate the wrong particles in silence.
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::RefuseIfPresent,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &["channel", "tension", "friction"],
+    source_count: None,
+    applicable: Some(|param| {
+        // Same rounding the CPU `eval` applies. Only X (0) / Y (1) write `P`.
+        let channel = param("channel").round();
+        channel == 0.0 || channel == 1.0
+    }),
+};
+
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionSpring))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -173,7 +173,7 @@ fn the_smoke_sequence_deforms_the_shape() {
     // (2) e é a saída do motor (o fio está certo mesmo pós-settle).
     assert_eq!(
         out.verts, expected.verts,
-        "pós-settle o recook divergiu do motor — a reconstrução mundo↔local corrompeu a fonte"
+        "pós-settle o recook divergiu do motor — a reconstrução mundo<->local corrompeu a fonte"
     );
 }
 

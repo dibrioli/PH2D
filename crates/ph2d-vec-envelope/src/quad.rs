@@ -348,7 +348,7 @@ mod tests {
                     && (j[1][0] - du[1]).abs() < 1e-5
                     && (j[0][1] - dv[0]).abs() < 1e-5
                     && (j[1][1] - dv[1]).abs() < 1e-5,
-                "jacobiana ≠ diferença finita em {p:?}: J={j:?} du={du:?} dv={dv:?}"
+                "jacobiana != diferença finita em {p:?}: J={j:?} du={du:?} dv={dv:?}"
             );
         }
     }

@@ -25,6 +25,7 @@ primeiro.
 | `05632829` | 3 + 4 | `motion.integrate` + as 5 forças + os gates |
 | `b7977f2d` | 5 | o **scrub no device** (ring de checkpoints) |
 | `b82678f9` | — | cena de smoke `PH2D_GPU_COOK_DEMO=3` + gate de plano |
+| `b044742e` | — | **ondas de cor**: `motion.color_ramp` na GPU (a pedido do Enio) |
 | `20c04bf5` | — | `cargo fmt --all` + `Cargo.lock` (paridade com o ship) |
 | `f4c576a7` | — | splits de LOC (o meu **e** o que a F1.1 tinha estourado) |
 
@@ -97,10 +98,10 @@ que determina o texto do módulo.
 
 - `cargo check --workspace --all-targets` ✓ · **contrato `8/2/1`** ✓ · `cook_determinism` +
   `transform_determinism` ✓ (a CPU segue canônica)
-- **Paridade ε na RTX** (`--release --ignored`): **10 + 7 = 17**
+- **Paridade ε na RTX** (`--release --ignored`): **11 + 7 = 18**
   - os 9 da Fase 2 **com os ε idênticos** (4,386902e-4 full chain · 1,9e-6 falloff/wiggle · 3,8e-6
     transform · 0 nos bit-exatos) — o oráculo de que o DAG não regrediu o linear
-  - o 10º é novo: a regressão do §4
+  - o 10º é novo: a regressão do §4 · o 11º é o `color_ramp` (5 presets × 2 interps)
   - os 7 do sim: `seed` **Δ=0** · `seed velocity` 3,8e-6 · `wind+drag` 9,5e-7 ·
     `attractor+vortex` 9,5e-7 · `curl` 1,6e-5 · o pool · o **scrub** 9,5e-7
 - **naga**: todo subconjunto de colunas de todo kernel (250 variantes) ✓
@@ -133,8 +134,11 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK
 
 **O que olhar no `DEMO=3`:** a nuvem entra em órbita (vortex + attractor no mesmo centro + drag — sem
 o drag um vortex puro espirala pra fora por deriva centrífuga) e o curl noise faz ela respirar em vez
-de assentar num anel limpo. **Arraste o playhead pra trás**: a pose tem de VOLTAR (é o ring, §D5) —
-sem ele o campo ficaria congelado na pose do futuro, calado.
+de assentar num anel limpo. As **ondas de cor** são advecção de corante: o campo nasce em bandas
+horizontais de arco-íris (o ramp atravessado no índice do grid) e o vortex as enrola em espirais que
+apertam — a onda é o escoamento ficando visível, não uma animação de cor por cima.
+**Arraste o playhead pra trás**: a pose tem de VOLTAR (é o ring, §D5) — sem ele o campo ficaria
+congelado na pose do futuro, calado.
 
 Gates de GPU (headless, precisa de adapter):
 ```
@@ -209,8 +213,16 @@ half-away) · noise integer-hash: `bitcast<u32>`, **nunca `u32(x)`** (value-cast
 4. **Reduções na GPU** (destrava twist/bend: `r_max`/`x_extent`) — extensão do motor; desenhe antes.
 5. **Multi-input real** (`look_at`/`combine`): o motor **já suporta** (o DAG anda em N inputs) — falta
    só o kernel de cada um. Era item 3 do Aberto da Fase 2 e **saiu de graça** nesta.
-6. **N fronteiras no shell** (o motor planeja; o pump entrega uma por tick) · **Gradient do tint** +
-   canais Rotation/Size (precisam de identidade posicional — `identity` é CONSTANTE, não `f32(i)`) ·
+6. **Gradient do `motion.tint`** — o item 4 do Aberto da Fase 2, agora **trivial**: era "precisa de
+   identidade posicional (`identity` é CONSTANTE, não `f32(i)`)", e o `const HAS_<col>` resolve isso
+   (o `motion.color_ramp` já foi portado assim — copie o padrão dele).
+7. **`t` do `color_ramp`** (e todo nó `value.*`): dois bloqueios de MOTOR, nomeados —
+   (a) `value.attribute` lê a coluna por **text param**, e `ColumnBinding.column` é `&'static str`:
+   um nome dinâmico não vira binding estático; (b) os nós `value.*` **descartam a base** (`Stream::new(n).with("v")`),
+   e o output deste motor nasce sempre da porta 0 — não há como expressar "base: nenhuma".
+   Destravar os dois daria colorir-por-velocidade (`vel → v → t`), que é a onda que o campo
+   *calcula* em vez de carregar.
+8. **N fronteiras no shell** (o motor planeja; o pump entrega uma por tick) ·
    **readouts/probe no modo GPU** (Fase 4) · **Fases 3–4 do plano** (JFA voronoi, spatial-hash boids,
    renderer consumindo colunas cruas).
 
@@ -236,8 +248,8 @@ sim alocar o estado inteiro TODO TICK. Medido: mesma janela, 21 checkpoints/5,9 
   `4d176f9d` (ADR-0123) · **`2d66217e`..`f4c576a7` (Fase 3)**.
 - **Foundational tocado nesta fatia:** `ph2d-nodegraph` (`gpu.rs` — 3 adições ao canal lateral;
   contrato **8/2/1 intocado**) · `ph2d-gpu` (`context.rs`: 1 limite) · `ph2d-gpu-cook` (motor;
-  `plan.rs`/`ring.rs`/`instances.rs` novos) · `ph2d-render` (só o split `renderer_draw.rs`) · 15 node
-  crates (9 × `port: 0` mecânico + 6 kernels novos) · shell (`motion_bridge_gpu` + `motion_state`
+  `plan.rs`/`ring.rs`/`instances.rs` novos) · `ph2d-render` (só o split `renderer_draw.rs`) · 16 node
+  crates (9 × `port: 0` mecânico + **7 kernels novos**) · shell (`motion_bridge_gpu` + `motion_state`
   demo + `motion_state_gpu_tests.rs` novo).
 - **Conflitos esperados:** `Cargo.lock` (7 dev-deps novas — regenerar) · o número do ADR-0122/0123 se
   outra linha reivindicou (renumerar; os stamps vão junto) · `renderer.rs`/`motion_state_tests.rs`

@@ -36,7 +36,7 @@ pub(crate) fn paint(
     state: &mut TimelinePanelState,
     ctx: &mut PaintCtx,
     theme: Theme,
-    body: Rect,
+    chip: Rect,
     snap: &TimelineViewSnapshot,
 ) {
     let Some(mut cr) = state.clip_rename else {
@@ -49,8 +49,10 @@ pub(crate) fn paint(
         return;
     };
 
-    // Over the chip it renames, at the far left of the bar.
-    let rect = Rect::new(body.x, body.y, FIELD_W.min(body.w), ROW_H_PX);
+    // **Over the chip it renames** — same left edge, same row, at least as wide as
+    // the chip so it covers it rather than sitting beside it. A rename field that
+    // floats somewhere else is a field with nothing to say what it is renaming.
+    let rect = Rect::new(chip.x, chip.y, FIELD_W.max(chip.w), ROW_H_PX);
 
     // First frame the rename is open: seed the field with the current name, caret
     // at the end, and claim focus — ONCE (re-seeding every frame would stomp the

@@ -62,6 +62,10 @@ pub const TIMELINE_TAB_ARRANGE: NodeId = hash_node_id("timeline.tab_arrange");
 pub const TIMELINE_CLIP_DD: NodeId = hash_node_id("timeline.clip_dd");
 /// "+" — append a new, empty clip and make it active.
 pub const TIMELINE_ADD_CLIP: NodeId = hash_node_id("timeline.clip_add");
+/// Duplicate — copy the ACTIVE clip (curves and all) into a new one.
+pub const TIMELINE_DUP_CLIP: NodeId = hash_node_id("timeline.clip_dup");
+/// **I** — play the ACTIVE clip's keys backwards (mirrored in its own extent).
+pub const TIMELINE_REVERSE_CLIP: NodeId = hash_node_id("timeline.clip_reverse");
 /// Pencil — open the inline rename field for the ACTIVE clip.
 pub const TIMELINE_RENAME_CLIP: NodeId = hash_node_id("timeline.clip_rename");
 /// Trash — delete the ACTIVE clip. Never painted (nor hit-registered) while the

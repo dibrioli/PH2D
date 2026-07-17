@@ -251,6 +251,22 @@ pub enum TimelineIntent {
         /// Index into [`crate::TimelineDoc::clips`].
         index: usize,
     },
+    /// **Copy clip `index`** — curves, loop and all — as a new clip, and make it
+    /// active. Refused past [`crate::MAX_CLIPS`].
+    ///
+    /// Distinct from [`Self::AddClip`], which can only ever make an EMPTY clip:
+    /// bindings are document-wide, so a variation of an existing animation means
+    /// copying its curves, and hand-copying every key is not a workflow.
+    DuplicateClip {
+        /// Index into [`crate::TimelineDoc::clips`].
+        index: usize,
+    },
+    /// **Play clip `index` backwards**: every track mirrored inside the clip's own
+    /// extent, segment shapes and all ([`crate::TimelineDoc::reverse_clip`]).
+    ReverseClip {
+        /// Index into [`crate::TimelineDoc::clips`].
+        index: usize,
+    },
 
     // ── the clip stack (ADR-0115 — each is one undo step) ───────────────────
     /// Append an empty lane. Refused past [`crate::MAX_LANES`].

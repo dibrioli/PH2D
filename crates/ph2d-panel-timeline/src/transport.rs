@@ -15,9 +15,8 @@ use ph2d_editor_core::paint::{paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
-    Button, ButtonState, Dropdown, DropdownOption, DropdownState, IconButtonStyle, IconGlyph,
-    NumberInput, Toggle, ToggleState, paint_button, paint_dropdown_chip, paint_icon_button,
-    paint_number_input_with_buffer, paint_toggle,
+    Button, ButtonState, IconButtonStyle, IconGlyph, NumberInput, Toggle, ToggleState,
+    paint_button, paint_icon_button, paint_number_input_with_buffer, paint_toggle,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{DEFAULT_FPS, TimelineViewSnapshot};
@@ -26,12 +25,11 @@ use ph2d_tokens::{ColorToken, Density, ROW_H_PX, Radius, Spacing, StrokeToken, T
 use crate::ids;
 use crate::tab::Tab;
 
-const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-button
+pub(crate) const BTN_W: f32 = 30.0; // LITERAL-PX-OK: square transport icon-button
 const ADD_MARKER_W: f32 = 40.0; // LITERAL-PX-OK: "+M" add-marker button width
 const CHIP_W: f32 = 72.0; // LITERAL-PX-OK: seconds/frame number chip width
 const CHIP_LABEL_W: f32 = 48.0; // LITERAL-PX-OK: "Time(s)"/"Frames" chip-label column
 const TOGGLE_LABEL_W: f32 = 52.0; // LITERAL-PX-OK: "AutoKey" label column
-const CLIP_DD_W: f32 = 108.0; // LITERAL-PX-OK: clip dropdown chip width
 /// Buttons in the transport cluster: go-start, step-back, play, step-forward, go-end.
 const TRANSPORT_BTNS: usize = 5;
 
@@ -49,6 +47,7 @@ enum Item {
     Tabs,
     Clips,
     Transport,
+    ReverseKeys,
     AddMarker,
     TimeChip,
     FrameChip,
@@ -60,10 +59,11 @@ enum Item {
     Speed,
 }
 
-const ITEMS: [Item; 12] = [
+const ITEMS: [Item; 13] = [
     Item::Tabs,
     Item::Clips,
     Item::Transport,
+    Item::ReverseKeys,
     Item::AddMarker,
     Item::TimeChip,
     Item::FrameChip,
@@ -78,6 +78,21 @@ const ITEMS: [Item; 12] = [
 /// The panel-local VIEW state the bar reflects — what the panel is SHOWING, as
 /// opposed to what the document holds. Grouped so the painters take one argument
 /// instead of trailing a widening tail of bools (HR-12).
+/// Where the clip dropdown's chip landed this frame, and whether its list is open.
+///
+/// Reported ALWAYS, not only when open: two things anchor on this chip and both are
+/// painted after the dope sheet (draw order — see [`paint_bar`]). The list only exists
+/// while open; the RENAME FIELD anchors on it whenever it is open, because it renames
+/// *that chip* and a field floating somewhere else is a field pointing at nothing
+/// (Enio, 2026-07-16: *"renomear o clip deve abrir a caixa de texto sobre o dropdown"*).
+#[derive(Clone, Copy)]
+pub(crate) struct ClipChip {
+    /// The chip's rect — where the dropdown painted, this frame, at this width.
+    pub rect: Rect,
+    /// Its option list is open.
+    pub open: bool,
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct BarView {
     /// Which half of the document is on screen.
@@ -108,7 +123,7 @@ pub(crate) fn paint_bar(
     body: Rect,
     snap: &TimelineViewSnapshot,
     view: BarView,
-) -> (f32, Option<Rect>) {
+) -> (f32, Option<ClipChip>) {
     let gap = Spacing::Sm.px();
     let row_step = ROW_H_PX + gap;
     let mut clip_chip = None;
@@ -149,20 +164,17 @@ fn width(item: Item, snap: &TimelineViewSnapshot) -> f32 {
     match item {
         // One cell per tab, side by side inside the segmented pill.
         Item::Tabs => crate::transport_tabs::width(),
-        // [ Main v ] [+] [pencil] [trash] — the trash only exists above one clip.
-        Item::Clips => {
-            let trash = if snap.clips.len() > 1 {
-                BTN_W + half
-            } else {
-                0.0
-            };
-            CLIP_DD_W + half + BTN_W + half + BTN_W + half + trash
-        }
+        // [ Main v ] [+] [copy] [pencil] [trash] — the trash only exists above one
+        // clip. Duplicate sits beside the `+` that made the clip (Enio, 2026-07-16):
+        // they are the two ways to get a clip, and the difference between them is
+        // whether it starts empty.
+        Item::Clips => crate::transport_clips::width(snap),
         // |< < >/|| > >| — five buttons, four gaps between them.
         Item::Transport => {
             let n = TRANSPORT_BTNS as f32;
             BTN_W * n + half * (n - 1.0)
         }
+        Item::ReverseKeys => BTN_W,
         Item::AddMarker => ADD_MARKER_W,
         Item::TimeChip | Item::FrameChip => CHIP_LABEL_W + half + CHIP_W,
         Item::Loop | Item::PingPong | Item::AutoKey | Item::Record | Item::Snap | Item::Speed => {
@@ -187,7 +199,7 @@ fn paint_item(
     y: f32,
     snap: &TimelineViewSnapshot,
     view: BarView,
-) -> Option<Rect> {
+) -> Option<ClipChip> {
     let gap = Spacing::Sm.px();
     let half = gap * 0.5;
     let fps = if snap.fps > 0.0 {
@@ -197,7 +209,7 @@ fn paint_item(
     };
     match item {
         Item::Tabs => crate::transport_tabs::paint(ctx, theme, x, y, view.tab),
-        Item::Clips => return clip_cluster(ctx, theme, x, y, snap),
+        Item::Clips => return crate::transport_clips::cluster(ctx, theme, x, y, snap),
         Item::Transport => {
             // |< < >/|| > >| — jump to start, step back, play/pause, step forward,
             // jump to end. The skip glyphs bracket the frame-steppers, as every
@@ -227,6 +239,18 @@ fn paint_item(
                 IconId::ChevronRight,
             ) + half;
             icon_button(ctx, theme, x, y, ids::TIMELINE_GO_END, IconId::SkipForward);
+        }
+        // **I** — the active clip's keys, played backwards. Beside the transport it
+        // reads as what it is: a thing you do to the whole clip, not to a selection.
+        Item::ReverseKeys => {
+            icon_button(
+                ctx,
+                theme,
+                x,
+                y,
+                ids::TIMELINE_REVERSE_CLIP,
+                IconId::LetterI,
+            );
         }
         Item::AddMarker => add_marker_button(ctx, theme, x, y),
         Item::TimeChip => {
@@ -346,62 +370,6 @@ fn paint_item(
     None
 }
 
-/// The clip cluster: `[ Main ▾ ] [+] [✎] [🗑]`.
-///
-/// Returns the `x` after it, and the chip rect when the dropdown is open (the
-/// caller defers the popover paint — see [`paint_bar`]).
-///
-/// The TRASH is not painted, and — the part that matters —  **not hit-registered**,
-/// while the document holds a single clip: a document must always have one to edit,
-/// and a dimmed button that still dispatches is a click that silently does nothing
-/// ([[feedback_disabled_button_still_dispatches]]).
-fn clip_cluster(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    x: f32,
-    y: f32,
-    snap: &TimelineViewSnapshot,
-) -> Option<Rect> {
-    let gap = Spacing::Sm.px();
-    let mut x = x;
-
-    let chip = Rect::new(x, y, CLIP_DD_W, ROW_H_PX);
-    ctx.host
-        .hit_index_mut()
-        .register(ids::TIMELINE_CLIP_DD, chip);
-    let (state, open) = match ctx.host.store().get(ids::TIMELINE_CLIP_DD) {
-        Some(InteractiveState::Dropdown { state, open, .. }) => (*state, *open),
-        _ => (DropdownState::Normal, false),
-    };
-    let dd = Dropdown::new(ids::TIMELINE_CLIP_DD, "", clip_options(snap))
-        .selected(snap.active_clip)
-        .open(open)
-        .state(state);
-    paint_dropdown_chip(&dd, chip, ctx.scene, ctx.text_system, theme);
-    x += CLIP_DD_W + gap * 0.5;
-
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_ADD_CLIP, IconId::Plus) + gap * 0.5;
-    x = icon_button(ctx, theme, x, y, ids::TIMELINE_RENAME_CLIP, IconId::Text) + gap * 0.5;
-    if snap.clips.len() > 1 {
-        icon_button(ctx, theme, x, y, ids::TIMELINE_DELETE_CLIP, IconId::Trash);
-    }
-
-    open.then_some(chip)
-}
-
-/// One dropdown option per clip: the VALUE is the clip's index (what the dispatch
-/// needs) and the label is its name (what the animator reads). Truncated at the id
-/// array — a clip past it could be painted but never clicked, so
-/// `ph2d_timeline::MAX_CLIPS` refuses to create one and a gate holds the two equal.
-pub(crate) fn clip_options(snap: &TimelineViewSnapshot) -> Vec<DropdownOption<usize>> {
-    snap.clips
-        .iter()
-        .enumerate()
-        .take(ids::TIMELINE_CLIP_OPT.len())
-        .map(|(i, name)| DropdownOption::new(ids::TIMELINE_CLIP_OPT[i], i, name.clone()))
-        .collect()
-}
-
 /// Paint the "+M" add-marker button + register its hit. `+` matches the
 /// "+Track" convention (the affordance that ADDS something).
 fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
@@ -423,7 +391,7 @@ fn add_marker_button(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32) {
 }
 
 /// Paint one square icon-button; register its hit rect. Returns the right edge.
-fn icon_button(
+pub(crate) fn icon_button(
     ctx: &mut PaintCtx,
     theme: Theme,
     x: f32,

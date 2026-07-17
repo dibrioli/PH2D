@@ -10,7 +10,7 @@ use core::cmp::Ordering;
 use ph2d_vector_traits::{AnimValue, AnimationCurveSampler, LinearInterp};
 use serde::{Deserialize, Serialize};
 
-use crate::easing::Easing;
+use crate::easing::{Easing, EasingMode};
 
 /// How a keyframe segment is interpolated from its start value to its end value.
 ///
@@ -86,6 +86,52 @@ impl Interp {
             dy1,
             x2: x2.clamp(0.0, 1.0),
             dy2,
+        }
+    }
+
+    /// **This same segment, played backwards.**
+    ///
+    /// Reversing a track is not "mirror the key times": a segment's shape lives in
+    /// its `Interp`, and a curve that eases *out* forwards eases *in* backwards. Move
+    /// the times and leave the interps where they are and the animation plays back
+    /// with every acceleration inverted — the slow-out becomes a slow-in — which is
+    /// the exact thing an animator reverses a clip to preserve.
+    ///
+    /// Per variant:
+    /// - `Hold` stays `Hold`. A hold is a step, and reversed it is still a step —
+    ///   at the other end of the segment. (Blender and AE both keep it; the step
+    ///   moving is what reversal *means* here.)
+    /// - `Linear` is its own mirror.
+    /// - `Eased` swaps `In` ↔ `Out`; `InOut` is symmetric and stays.
+    /// - `Bezier` reflects its control points through `(0.5, 0.5)` and swaps them:
+    ///   `P1' = (1 − x2, 1 − y2)`, `P2' = (1 − x1, 1 − y1)`.
+    /// - `BezierW` reflects the influences the same way, but its `dy` are offsets
+    ///   from their **anchors** — and reversal swaps the anchors, so the offsets
+    ///   travel with the handles rather than being negated.
+    #[must_use]
+    pub fn reversed(self) -> Self {
+        match self {
+            Self::Hold | Self::Linear => self,
+            Self::Eased(e) => Self::Eased(Easing {
+                family: e.family,
+                mode: match e.mode {
+                    EasingMode::In => EasingMode::Out,
+                    EasingMode::Out => EasingMode::In,
+                    EasingMode::InOut => EasingMode::InOut,
+                },
+            }),
+            Self::Bezier { x1, y1, x2, y2 } => Self::Bezier {
+                x1: 1.0 - x2,
+                y1: 1.0 - y2,
+                x2: 1.0 - x1,
+                y2: 1.0 - y1,
+            },
+            Self::BezierW { x1, dy1, x2, dy2 } => Self::BezierW {
+                x1: 1.0 - x2,
+                dy1: dy2,
+                x2: 1.0 - x1,
+                dy2: dy1,
+            },
         }
     }
 

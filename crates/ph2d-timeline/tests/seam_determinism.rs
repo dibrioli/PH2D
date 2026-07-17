@@ -76,16 +76,30 @@ fn the_pose_at_a_seam_does_not_depend_on_which_side_you_came_from() {
     );
 }
 
-/// E o valor não é só consistente — é o CERTO: no primeiro instante do fade-in, a influência do
-/// strip é 0, então a pose é a de REPOUSO (o objeto nasceu em 0). Um gate que só comparasse os
-/// dois caminhos ficaria verde com os dois igualmente errados.
+/// E o valor não é só consistente — é o CERTO. Um gate que só comparasse os dois caminhos ficaria
+/// verde com os dois igualmente errados, então este crava o número.
+///
+/// **O número mudou em 2026-07-16, por decisão do Enio, e a espinha do gate não.** Este teste
+/// pinava `0.0`: no primeiro instante do fade-in a influência do strip é 0, logo a pose era a de
+/// REPOUSO. Path-independente e determinística — e, na tela, um SALTO: o sprite estava em -3
+/// (deixado pelo Left) e pulava 3 unidades até o repouso pra só então rampear
+/// (*"a sprite não faz a transição a partir de onde está mas pula para mais perto da posição
+/// inicial da outra strip"*).
+///
+/// A causa não era o peso zero (silenciá-lo é o que quebrava a path-independence, ver o teste
+/// acima): era a **lacuna nunca ter sido silêncio**. O strip que acabou segue afirmando o último
+/// frame dele (`ClipLane::hold_at`), e o fade-in cruza a partir DALI. Continua sendo função pura
+/// do playhead — só que agora a função é contínua. Trajetória completa: `tests/lone_fade.rs`.
 #[test]
-fn a_zero_weight_fade_edge_reports_the_rest_pose_not_a_stale_one() {
+fn a_zero_weight_fade_edge_reports_the_held_pose_not_a_stale_one() {
     let (mut sim, mut st, bits) = seam_scene();
     x_at(&mut sim, &mut st, bits, 0.5); // captura o rest (= 0) e põe o objeto em -3
     assert_eq!(
         x_at(&mut sim, &mut st, bits, 3.0),
-        0.0,
-        "influência 0 é a pose de repouso, não o valor que sobrou do frame anterior"
+        -3.0,
+        "influência 0 do Right = a pose que o Left SEGURA, não o repouso e não uma sobra do \
+         frame anterior"
     );
+    // …e o repouso não sumiu do modelo: sem nada antes pra segurar, um fade-in ainda entra
+    // de lá (`lone_fade::the_first_strip_has_nothing_to_hold_and_fades_in_from_rest`).
 }

@@ -228,6 +228,35 @@ v1 deste ADR era dívida escondida disfarçada de simplificação.
 >
 > **Sem pilha nada muda**: o clip É a timeline, então a aba Keys é o painel que sempre foi.
 
+**R10 — A LACUNA não é silêncio: é o strip anterior SEGURANDO** (2026-07-16, Enio).
+*"O fade das strips quando não há sobreposição ainda provoca saltos — a sprite não faz a transição a
+partir de onde está mas pula para mais perto da posição inicial da outra strip."* **Medido:** `Left[0,3)`,
+lacuna, `Right[4,7)` com fade-in — em `t=3.9` a sprite está em `-3`, em `t=4.0` em `0.000`. **3 unidades
+num frame.**
+
+A causa não era o fade: era **duas respostas discordando através de um pixel de régua.** Onde nenhum strip
+cobria, a lane era *silenciosa* (ninguém escrevia, o objeto segurava a pose); no primeiro instante do
+fade-in — strip cobrindo com peso **zero** — ela respondia **repouso**. O fade rampeava a partir do
+repouso, e a sprite não estava no repouso.
+
+**Não se conserta silenciando o peso zero** — isso é o que quebrava a path-independence (a pose passava a
+depender do lado de onde o playhead chegava; o gate `seam_determinism` existe por isso e **fica**). A
+lacuna é que nunca foi silêncio: o strip que acabou **segue afirmando o último frame dele**
+(`ClipLane::hold_at`, peso = complemento do que está vivo), e o fade-in **cruza a partir dali**. É a
+extrapolação `Hold` do Blender / clip extrapolation do Unity — e faz o fade solitário se comportar como a
+sobreposição que o Enio já aprovou.
+
+Consequências que valem saber: **a sobreposição é intocada** (dois strips somam exatamente 1 no overlap →
+nada é segurado) · o hold é **forward-only** (nada atrás do primeiro strip pra segurar, e entrar de fade a
+partir do repouso no topo da timeline é coisa legítima de querer) · um strip **held NÃO está tocando**
+(`sole_strip_of` o pula, senão o **K** keyaria num strip que já acabou) · depois do último strip a lane
+segura a última pose para sempre — o que já era o efeito visível, agora por afirmação e não por inércia.
+Trajetórias em `tests/lone_fade.rs`; o número que este R10 mudou está anotado no
+`seam_determinism::a_zero_weight_fade_edge_reports_the_held_pose_not_a_stale_one`.
+
+**Aberto:** hold **backward** e por-strip (`Hold`/`Hold Forward`/`Nothing` são um enum no Blender) — hoje é
+uma política só, e nenhuma cena pediu a escolha ainda.
+
 **R9 — Autokey sob pilha: inverta, ou RECUSE.** Pra gravar a pose vista, inverte-se as faixas acima do clip
 ativo — `Override` com peso `w`: `v = (alvo − w·acima) / (1 − w)`; `Additive`: `v = alvo − delta`. Com
 `w → 1` não é inversível → **recusa a key + toast**. Nunca mover o objeto em silêncio. *(É a resposta nova

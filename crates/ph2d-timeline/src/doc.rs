@@ -242,6 +242,73 @@ impl TimelineDoc {
         }
     }
 
+    /// **Copy clip `index`** — curves, loop and all — as a new clip at the end, and
+    /// return its index. Refuses past [`MAX_CLIPS`], or on an index out of range.
+    ///
+    /// This is the "start from what I have" button, and it is the one thing
+    /// [`Self::add_clip`] cannot be: bindings are document-wide, so a *new* clip is
+    /// always empty — a variation ("walk" → "walk, tired") means copying the curves
+    /// and editing them, and hand-copying every key is not an authoring workflow.
+    ///
+    /// The copy is **deep and independent**: the keys carry fresh [`ph2d_anim::KeyId`]s
+    /// via [`Clip`]'s own clone, so editing the copy never reaches back into the
+    /// original. Its loop travels too — a loop is a property of the animation it
+    /// brackets, so a copy of the animation has the same one.
+    pub fn duplicate_clip(&mut self, index: usize) -> Option<usize> {
+        if self.clips.len() >= MAX_CLIPS {
+            return None;
+        }
+        let src = self.clips.get(index)?;
+        let copy = NamedClip {
+            name: self.fresh_copy_name(&src.name),
+            clip: src.clip.clone(),
+            loop_range: src.loop_range,
+            loop_ping_pong: src.loop_ping_pong,
+        };
+        self.clips.push(copy);
+        Some(self.clips.len() - 1)
+    }
+
+    /// **Play clip `index` backwards**: every track of it mirrored inside
+    /// `[0, clip_end_seconds(index)]`. Returns `false` on an index out of range.
+    ///
+    /// The pivot is the clip's **effective end** — the same door the strip sizing and
+    /// go-to-end read ([`Self::clip_end_seconds`]), never `duration()`. A hand-keyed
+    /// clip has an authored duration of `0`, so mirroring about *that* would fold every
+    /// key onto the negative side of zero and the animation would vanish from the
+    /// panel. (This is the two-doors bug that already shipped once here, as a 5-second
+    /// clip in a 1-second strip.)
+    ///
+    /// Reversal is a **mirror, not a re-typing of key times**: each segment's shape
+    /// travels with it ([`ph2d_anim::Track::reverse_about`]), so an ease-out stays an
+    /// ease-out when read backwards.
+    pub fn reverse_clip(&mut self, index: usize) -> bool {
+        let span = self.clip_end_seconds(index);
+        let Some(c) = self.clips.get_mut(index) else {
+            return false;
+        };
+        c.clip.reverse_about(span);
+        true
+    }
+
+    /// `"Walk copy"`, then `"Walk copy 2"`… — a name no clip is using yet.
+    ///
+    /// Two clips sharing a label make the dropdown unreadable and the rename
+    /// ambiguous, which is the same reason [`Self::fresh_clip_name`] exists.
+    fn fresh_copy_name(&self, of: &str) -> String {
+        let first = format!("{of} copy");
+        if !self.clips.iter().any(|c| c.name == first) {
+            return first;
+        }
+        for n in 2..=MAX_CLIPS + 1 {
+            let candidate = format!("{of} copy {n}");
+            if !self.clips.iter().any(|c| c.name == candidate) {
+                return candidate;
+            }
+        }
+        first
+    }
+
     /// Delete clip `index`, returning `true` if it went.
     ///
     /// **The last clip never goes** — a document must always have one to edit, and

@@ -47,6 +47,14 @@ pub(crate) struct ActiveStrip {
     /// The first frame of its slice — the reference an additive lane measures
     /// its delta against.
     pub src_in: f64,
+    /// This entry is a strip that has **ENDED** and is holding its last frame
+    /// ([`crate::ClipLane::hold_at`]) — not one that is playing.
+    ///
+    /// It contributes to the POSE (that is its whole job: a fade-in against nothing
+    /// crossfades from it), but it is not *playing*, so everything that asks "where
+    /// is this clip right now" must skip it — `sole_strip_of` above all, or `K` would
+    /// key into a strip that is over.
+    pub held: bool,
 }
 
 /// Per-frame scratch: which strips are live, and each one's entity clocks.
@@ -116,6 +124,7 @@ impl StackScratch {
                 w: 1.0,
                 t_clip: t,
                 src_in: 0.0,
+                held: false,
             });
         } else {
             for (li, lane) in doc.stack().iter().enumerate() {
@@ -147,6 +156,23 @@ impl StackScratch {
                         w,
                         t_clip,
                         src_in: strip.src_in,
+                        held: false,
+                    });
+                }
+                // Whatever coverage the live strips leave unaccounted for is HELD by
+                // the last strip to end — the gap is not silence, and a fade-in
+                // against nothing crosses from there rather than from the rest pose
+                // (`ClipLane::hold_at` carries the whole argument).
+                if let Some((strip, w)) = lane.hold_at(t)
+                    && (strip.clip as usize) < doc.clips().len()
+                {
+                    self.active.push(ActiveStrip {
+                        lane: li,
+                        clip: strip.clip as usize,
+                        w,
+                        t_clip: strip.hold_source_time(),
+                        src_in: strip.src_in,
+                        held: true,
                     });
                 }
             }
@@ -358,7 +384,10 @@ pub(crate) fn sole_strip_of(
 ) -> Result<ActiveStrip, KeyRefusal> {
     let mut found = None;
     for a in &scratch.active {
-        if a.clip != clip {
+        // A HELD strip is over. It still shapes the pose (a fade crosses from it), but
+        // "where is this clip playing right now" must not answer with a strip that has
+        // ended — `K` would drop the key past the end of a strip nobody is watching.
+        if a.clip != clip || a.held {
             continue;
         }
         if found.is_some() {

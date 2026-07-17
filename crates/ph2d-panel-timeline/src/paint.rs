@@ -243,8 +243,9 @@ struct Overlays {
     body: Rect,
     header: Rect,
     time_area: Rect,
-    /// The clip dropdown's chip rect, when the list is OPEN.
-    clip_dd_chip: Option<Rect>,
+    /// Where the clip dropdown's chip landed, and whether its list is open. The
+    /// option popover and the rename field both hang off it.
+    clip_dd_chip: Option<transport::ClipChip>,
     view_start: f64,
     px_per_s: f64,
 }
@@ -266,11 +267,11 @@ fn paint_overlays(
 ) {
     tracks::paint_add_track_popover(ctx, theme, o.header, state.add_track_open);
 
-    if let Some(chip) = o.clip_dd_chip {
+    if let Some(chip) = o.clip_dd_chip.filter(|c| c.open).map(|c| c.rect) {
         let dd = ph2d_editor_core::widget::Dropdown::new(
             ids::TIMELINE_CLIP_DD,
             "",
-            transport::clip_options(snapshot),
+            crate::transport_clips::clip_options(snapshot),
         )
         .selected(snapshot.active_clip)
         .open(true);
@@ -306,7 +307,18 @@ fn paint_overlays(
         o.px_per_s,
         snapshot,
     );
-    crate::clip_rename::paint(state, ctx, theme, o.body, snapshot);
+    // Over the CHIP it renames — not at the corner of the body, where it used to
+    // float with nothing to say what it was for (Enio, 2026-07-16). The chip's rect
+    // is only knowable from the bar's flow, which is why it is reported back rather
+    // than re-derived here: two answers to "where is the chip" would drift the moment
+    // the bar wraps to a second row.
+    crate::clip_rename::paint(
+        state,
+        ctx,
+        theme,
+        o.clip_dd_chip.map_or(o.body, |c| c.rect),
+        snapshot,
+    );
 }
 
 /// Register the eight edge/corner grippers as `TimelineSurface` hits so dispatch

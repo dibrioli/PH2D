@@ -111,6 +111,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for (id, _) in crate::tab::TABS {
         button(store, id);
     }
+    button(store, ids::TIMELINE_DUP_CLIP);
+    button(store, ids::TIMELINE_REVERSE_CLIP);
 
     // Clip selector (W5). The chip is a Dropdown (the generic dispatch flips
     // `open` on a click and emits no event — the paint reads it back); each option

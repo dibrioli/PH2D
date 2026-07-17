@@ -136,6 +136,20 @@ impl Clip {
         }
     }
 
+    /// **Play the whole clip backwards inside `[0, span]`**
+    /// ([`Track::reverse_about`] on every track).
+    ///
+    /// One `span` for the lot, not each track's own extent: the tracks of a clip are
+    /// one performance, and mirroring each about its own last key would slide them
+    /// against each other — the arm would finish before the body it belongs to.
+    ///
+    /// Applying twice returns the original (up to `f64` rounding on the handles).
+    pub fn reverse_about(&mut self, span: f64) {
+        for (_, track) in &mut self.tracks {
+            track.reverse_about(span);
+        }
+    }
+
     /// The track bound to `target` for mutation (first match).
     pub fn track_mut(&mut self, target: AnimTarget) -> Option<&mut Track> {
         let i = self.slot(target).ok()?;

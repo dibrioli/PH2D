@@ -156,14 +156,37 @@ impl ClipStrip {
     /// one direction: never a second clock running beside the first.
     #[must_use]
     pub fn source_time(&self, t: f64) -> Option<f64> {
-        if !self.covers(t) {
-            return None;
-        }
+        self.covers(t).then(|| self.fold(t - self.t_start))
+    }
+
+    /// **The clip time this strip HOLDS once it is over** — its reading at the very
+    /// end of its span.
+    ///
+    /// A strip's pose does not evaporate at its edge: it persists until something
+    /// else takes over, which is what makes a lone fade-in *cross* from the previous
+    /// strip instead of from the rest pose (Blender's `Hold` extrapolation, Unity's
+    /// clip extrapolation). See [`ClipLane::hold_at`].
+    ///
+    /// The limit of [`Self::source_time`] as `t → t_end`, not a second opinion about
+    /// it: both fold through [`Self::fold`], so a looping strip holds exactly the
+    /// frame it was on and cannot disagree with the frame it was showing a moment
+    /// before.
+    #[must_use]
+    pub fn hold_source_time(&self) -> f64 {
+        self.fold(self.span())
+    }
+
+    /// How far into the clip a strip that has been running for `elapsed` seconds of
+    /// TIMELINE time is reading — rate, then whatever the source does past its slice.
+    ///
+    /// The one place the folding lives. [`Self::source_time`] asks it for an instant
+    /// inside the span and [`Self::hold_source_time`] for the span's end.
+    fn fold(&self, elapsed: f64) -> f64 {
         let slice = self.slice();
         if slice <= 0.0 {
-            return Some(self.src_in); // a zero-length slice is a pose, not a clip
+            return self.src_in; // a zero-length slice is a pose, not a clip
         }
-        let advanced = (t - self.t_start) * self.speed;
+        let advanced = elapsed * self.speed;
         let folded = match self.loop_mode {
             StripLoop::Once => advanced.clamp(0.0, slice),
             StripLoop::Loop => advanced.rem_euclid(slice),
@@ -173,7 +196,7 @@ impl ClipStrip {
                 if u <= slice { u } else { slice * 2.0 - u }
             }
         };
-        Some(self.src_in + folded)
+        self.src_in + folded
     }
 }
 
@@ -325,6 +348,56 @@ impl ClipLane {
         let fade_in = ramp(t - s.t_start, self.blend_in(i));
         let fade_out = ramp(s.t_end - t, self.blend_out(i));
         fade_in * fade_out
+    }
+
+    /// **Which strip is HOLDING at `t`, and how strongly** — the lane's answer for
+    /// whatever coverage its live strips do not account for.
+    ///
+    /// `None` when the live strips already sum to a full 1 (a strip mid-span, or two
+    /// crossfading through their overlap: the overlap sums to exactly 1, so nothing
+    /// is held and the crossfade is untouched), or when nothing has ended yet.
+    ///
+    /// # A strip's pose does not evaporate at its edge
+    ///
+    /// Before this, a lane's answer where no strip covered was *silence* — nobody
+    /// wrote, and the object simply kept the pose it had. But a strip covering `t`
+    /// with weight 0 (the first instant of a fade-in) answered **rest**. The two
+    /// disagreed across one pixel of ruler, so a fade-in against nothing began with a
+    /// jump: the sprite sat where the previous strip left it, then snapped to the rest
+    /// pose to start the ramp it was supposed to start from *where it was* (Enio,
+    /// 2026-07-16: *"a sprite não faz a transição a partir de onde está mas pula para
+    /// mais perto da posição inicial da outra strip"* — measured at 3 units in one
+    /// frame).
+    ///
+    /// The fix is not to silence weight zero — that is what made the pose depend on
+    /// which side the playhead arrived from. It is that **the gap was never silence**:
+    /// the previous strip is still asserting its last frame, and the incoming fade
+    /// crossfades against *that*. This is Blender's `Hold` extrapolation and Unity's
+    /// clip extrapolation, and it is what makes the lone fade behave like the overlap
+    /// the animator already trusts.
+    ///
+    /// **Forward only.** A strip does not reach back before it starts: fading in from
+    /// the rest pose at the top of a timeline is a real thing to want, and there is
+    /// nothing behind the first strip to hold anyway.
+    ///
+    /// The weight is the complement of what is live, which is exactly what turns the
+    /// normalized mix into a plain `lerp(held, incoming, w)` — see the tests.
+    #[must_use]
+    pub fn hold_at(&self, t: f64) -> Option<(&ClipStrip, f64)> {
+        let live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, t)).sum();
+        let w = 1.0 - live;
+        if w <= 0.0 {
+            return None;
+        }
+        // The most recently ENDED strip. A scan, not `strips.last()`: the lane is
+        // sorted by START time, and a long strip can begin before a short one and
+        // outlive it.
+        let held = self
+            .strips
+            .iter()
+            .filter(|s| s.t_end <= t)
+            .max_by(|a, b| a.t_end.total_cmp(&b.t_end))?;
+        Some((held, w))
     }
 }
 

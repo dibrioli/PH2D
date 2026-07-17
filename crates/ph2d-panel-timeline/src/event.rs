@@ -21,7 +21,7 @@ use ph2d_a11y::NodeId;
 const MIN_NEW_STRIP_S: f64 = 1.0;
 
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_timeline::TimelineIntent;
@@ -203,57 +203,11 @@ pub(crate) fn apply_event(
             EventOutcome::Consumed
         }
 
-        // ── Clip selector (W5) ──────────────────────────────────────────────
-        // Picking a clip from the open list. The store's `selected_index` is set
-        // too, so the chip reads right on the SAME frame — the document round-trip
-        // only lands on the next one.
-        WidgetEvent::Click(id) if ids::TIMELINE_CLIP_OPT.contains(&id) => {
-            if let Some(index) = ids::TIMELINE_CLIP_OPT.iter().position(|&o| o == id) {
-                state::push_intent(TimelineIntent::SetActiveClip { index });
-                if let Some(InteractiveState::Dropdown {
-                    open,
-                    selected_index,
-                    ..
-                }) = host.store_mut().get_mut(ids::TIMELINE_CLIP_DD)
-                {
-                    *open = false;
-                    *selected_index = Some(index);
-                }
-            }
-            EventOutcome::Consumed
-        }
-        WidgetEvent::Click(id) if id == ids::TIMELINE_ADD_CLIP => {
-            state::push_intent(TimelineIntent::AddClip);
-            EventOutcome::Consumed
-        }
-        WidgetEvent::Click(id) if id == ids::TIMELINE_RENAME_CLIP => {
-            crate::clip_rename::open(state, &state::current_snapshot());
-            EventOutcome::Consumed
-        }
-        WidgetEvent::Click(id) if id == ids::TIMELINE_DELETE_CLIP => {
-            // The SECOND barrier: the paint does not even hit-register the trash
-            // while a single clip remains, but a dimmed control that still
-            // dispatches is precisely the bug that guard is for — so refuse here
-            // too, and let the document refuse a third time
-            // ([[feedback_disabled_button_still_dispatches]]).
-            let snap = state::current_snapshot();
-            if snap.clips.len() > 1 {
-                state::push_intent(TimelineIntent::DeleteClip {
-                    index: snap.active_clip,
-                });
-            }
-            EventOutcome::Consumed
-        }
-        // Clip rename field — same Enter/click-away/Esc contract as the marker's.
-        WidgetEvent::Submit(id) | WidgetEvent::Blur(id)
-            if id == ids::TIMELINE_CLIP_RENAME_INPUT =>
-        {
-            crate::clip_rename::commit(state, host.store());
-            EventOutcome::Consumed
-        }
-        WidgetEvent::Cancel(id) if id == ids::TIMELINE_CLIP_RENAME_INPUT => {
-            crate::clip_rename::cancel(state);
-            EventOutcome::Consumed
+        // The clip cluster (chip, +, duplicate, I, pencil, trash, rename field) answers
+        // in its own module — it is one coherent thing, and it is what pushed this
+        // function past its cap.
+        ev if crate::transport_clips::owns(&ev) => {
+            crate::transport_clips::apply_event(state, host, ev)
         }
         _ => EventOutcome::Ignored,
     }

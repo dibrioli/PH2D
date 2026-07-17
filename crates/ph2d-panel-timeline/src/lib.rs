@@ -44,6 +44,7 @@ mod summary_paint;
 pub mod tab;
 mod tracks;
 mod transport;
+mod transport_clips;
 mod transport_tabs;
 mod view;
 

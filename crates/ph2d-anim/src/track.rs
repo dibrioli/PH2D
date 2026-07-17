@@ -388,6 +388,51 @@ impl Track {
         self.resort();
     }
 
+    /// **Play this track backwards inside `[0, span]`**: every key's time becomes
+    /// `span − t`, and every segment's shape is mirrored with it.
+    ///
+    /// The subtle half is that a key's `Interp` describes the segment **leaving**
+    /// it, so reversal moves each interp to a different key: the segment between
+    /// keys `i` and `i+1` is, reversed, the one leaving key `n−2−i`. Mirror the
+    /// times and leave the interps in place and the curve keeps its old
+    /// accelerations while the values run backwards — every ease-out becomes an
+    /// ease-in, which is precisely the thing reversing is meant to preserve. The
+    /// LAST key has no outgoing segment, so its interp is not data: it is dropped,
+    /// and the new last key inherits the same non-role.
+    ///
+    /// Ids ride with their keys ([`KeyId`] names a key, not a position), and so do
+    /// the roving flags — a key whose time is derived is still that key afterwards.
+    pub fn reverse_about(&mut self, span: f64) {
+        if self.keys.is_empty() {
+            return;
+        }
+        let n = self.keys.len();
+        for k in &mut self.keys {
+            k.t = RationalTime::from_seconds(span - k.t.to_seconds());
+        }
+        // Hand each segment's shape to the key that will own it after the flip. The
+        // walk is over the OLD order, so read the interps out first.
+        let old: Vec<Interp> = self.keys.iter().map(|k| k.interp).collect();
+        for i in 0..n {
+            // Key `i` ends up at position `n-1-i`; the segment leaving it there is
+            // the OLD segment leaving key `n-2-(n-1-i)` = `i-1`, played backwards.
+            self.keys[i].interp = if i == 0 {
+                // The new LAST key: no outgoing segment. Keep it inert.
+                Interp::Linear
+            } else {
+                old[i - 1].reversed()
+            };
+        }
+        self.keys.reverse();
+        self.ids.reverse();
+        self.roving.reverse();
+        // The times were mirrored, so the reverse above already restores sort order
+        // — but a `span` that does not bracket every key (a key past the clip's end)
+        // would not. Re-sort rather than assume the caller measured well.
+        self.resort();
+        self.invalidate_cursor();
+    }
+
     /// Remove every listed key. Unknown ids ignored.
     pub fn remove_keys(&mut self, ids: &[KeyId]) {
         let mut idxs: Vec<usize> = ids.iter().filter_map(|&id| self.index_of(id)).collect();

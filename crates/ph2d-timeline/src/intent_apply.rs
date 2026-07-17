@@ -272,6 +272,21 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             });
             sync_loop(&state.doc, playhead);
         }
+        I::DuplicateClip { index } => {
+            edit(state, |doc, sel| {
+                // The copy is where you want to be — you asked for it to work on it.
+                if let Some(i) = doc.duplicate_clip(index) {
+                    doc.set_active(i);
+                    sel.clear(); // the selection names keys of the clip we just left
+                }
+            });
+            sync_loop(&state.doc, playhead);
+        }
+        // The selection SURVIVES: a reversed key is the same key at a new time
+        // (`KeyId` names a key, not a position), so what was selected still is.
+        I::ReverseClip { index } => edit(state, |doc, _| {
+            doc.reverse_clip(index);
+        }),
 
         // ── the clip stack ──────────────────────────────────────────────────
         // None of these touch the SELECTION: a strip is not a key, and the two

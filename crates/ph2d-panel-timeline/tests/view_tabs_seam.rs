@@ -243,3 +243,93 @@ fn without_a_stack_the_keys_tab_is_the_panel_it_has_always_been() {
     assert!(rect_of(&regs, ids::timeline_marker_hit_id(0)).is_some());
     assert!(rect_of(&regs, ids::timeline_row_id(7)).is_some());
 }
+
+/// **The clip buttons Enio asked for exist on screen and CLICK** (2026-07-16).
+///
+/// Duplicate and `I` both push their intent from inside the panel, like `+` does — so
+/// there are three ways each could be dead: unpainted, unregistered in `populate` (the
+/// Down never makes it active), or unclaimed by `transport_clips::owns` (the router
+/// hands it to nobody). This drives the real pointer through all three.
+#[test]
+fn the_duplicate_and_reverse_buttons_are_painted_and_click() {
+    for (id, what) in [
+        (ids::TIMELINE_DUP_CLIP, "Duplicate"),
+        (ids::TIMELINE_REVERSE_CLIP, "I (reverse)"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
+        let r = rect_of(&regs, id)
+            .unwrap_or_else(|| panic!("{what} was painted but never hit-registered"));
+
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        let evs = host.click_at(cx, cy);
+        assert!(
+            evs.contains(&WidgetEvent::Click(id)),
+            "{what}: the pointer landed on {:?}, not on it — got {evs:?}",
+            host.hit_at(cx, cy)
+        );
+        // Only the CLICK must be consumed: a press/focus event alongside it is the
+        // dispatcher's business and the panel is right to let it pass.
+        assert_eq!(
+            host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id)),
+            ph2d_editor_core::panel::EventOutcome::Consumed,
+            "{what}: the panel ignored its own button"
+        );
+    }
+}
+
+/// …and each raises the intent its glyph promises. A button that consumes the click and
+/// pushes nothing is the same dead button, one layer in.
+#[test]
+fn the_clip_buttons_raise_the_intents_their_glyphs_promise() {
+    use ph2d_timeline::TimelineIntent;
+    for (id, want) in [
+        (
+            ids::TIMELINE_DUP_CLIP,
+            TimelineIntent::DuplicateClip { index: 1 },
+        ),
+        (
+            ids::TIMELINE_REVERSE_CLIP,
+            TimelineIntent::ReverseClip { index: 1 },
+        ),
+    ] {
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        // `active_clip` is 1 ("Right") in this fixture — the intent must name the clip
+        // the animator is LOOKING at, not clip zero.
+        set_current_timeline(Some(keys_and_a_stack(Some(1.0), 3.0)));
+        let _ = ph2d_panel_timeline::state::drain_intents();
+        host.apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(id));
+        assert!(
+            ph2d_panel_timeline::state::drain_intents().contains(&want),
+            "{id:?} consumed its click and raised no {want:?}"
+        );
+    }
+}
+
+/// **The rename field opens OVER the chip it renames** (Enio, 2026-07-16). It used to
+/// paint at the corner of the panel body, with nothing to say what it was for.
+#[test]
+fn the_clip_rename_field_opens_over_the_dropdown_it_renames() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+    let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
+    let chip = rect_of(&regs, ids::TIMELINE_CLIP_DD).expect("the clip chip");
+
+    host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::Click(ids::TIMELINE_RENAME_CLIP),
+    );
+    let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
+    let field = rect_of(&regs, ids::TIMELINE_CLIP_RENAME_INPUT).expect("the rename field");
+
+    assert_eq!(field.x, chip.x, "same left edge as the chip");
+    assert_eq!(field.y, chip.y, "same row as the chip");
+    assert!(
+        field.w >= chip.w,
+        "it must COVER the chip, not sit beside it: {} vs {}",
+        field.w,
+        chip.w
+    );
+}

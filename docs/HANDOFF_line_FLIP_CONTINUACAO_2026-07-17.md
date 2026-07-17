@@ -16,11 +16,11 @@
 
 ---
 
-## 1. Estado da linha — **o §4.B FECHOU, pendente smoke do Enio** (33 commits, nada pushado)
+## 1. Estado da linha — **o §4.B FECHOU com smoke OK** (Enio, 2026-07-17: *"smoke ok"*)
 
 | commit | o quê | smoke |
 |---|---|---|
-| `c4fb6ade` | **§4.B — Segment mode** (o 3º domínio: o pedaço entre dois cruzamentos) | ⏳ **PENDENTE** |
+| `c4fb6ade` | **§4.B — Segment mode** (o 3º domínio: o pedaço entre dois cruzamentos) | **OK** |
 | `1b090473` | a caixa do gizmo tem **FOLGA** (handles fora das âncoras) | OK |
 | `33d7784d` | **revert:** 2+ pontos **precisam** de gizmo | OK |
 | `994ce21c` | `Select: Point` começa **DESSELECIONADO** | OK |

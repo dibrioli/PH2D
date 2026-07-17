@@ -275,6 +275,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // O Morph vivo (o irmão animável do Blend). Mesma razão: sem o registro, o snapshot o
     // DESCARTA e o undo/save perderiam o vínculo morph↔fontes — e o `t` autorado junto.
     reg.register::<crate::VecMorph>("ph2d::ecs::VecMorph");
+    // ADR-0123: o Envelope Object vivo. Mesma razão de todos acima — sem o registro, o snapshot o
+    // DESCARTA e o undo/save perderiam a gaiola E a fonte autorada em silêncio (e a fonte, aqui,
+    // é insubstituível: o recook já sobrescreveu o path da cena com a cozida).
+    reg.register::<crate::VecEnvelope>("ph2d::ecs::VecEnvelope");
     reg.register::<crate::VecLabel>("ph2d::ecs::VecLabel");
 }
 
@@ -310,7 +314,7 @@ mod tests {
         // + 1 §10 BlendMode + 5 save/undo
         // (Locked/GroupedChildren/VecPathRef/FlipObjectRef/PaintedDoc)
         // + 1 Live Shapes (VecShape) + 1 conector (VecConnector) + 1 Blend Object (VecBlend)
-        // + 1 rótulo (VecLabel).
+        // + 1 rótulo (VecLabel) + 1 Envelope Object (VecEnvelope, ADR-0123).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -322,7 +326,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 31);
+        assert_eq!(reg.len(), 32);
         assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());

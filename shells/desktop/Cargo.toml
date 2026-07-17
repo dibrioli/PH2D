@@ -96,6 +96,8 @@ ph2d-painter-effects = { path = "../../crates/ph2d-painter-effects" }
 # routes the pointer to the shell-held Pen over `AppGfx.vec_scene`
 # (vector_bridge.rs). Replaces the retired Pen/Pencil/Shape/Select/Direct tools.
 ph2d-vec-blend = { path = "../../crates/ph2d-vec-blend" }
+# ADR-0123: o motor do envelope/warp (deformação não-afim de geometria Bézier).
+ph2d-vec-envelope = { path = "../../crates/ph2d-vec-envelope" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 # Flip drawing tool (ADR-0114 W2) — the shell's `flip_bridge` downcasts it for
 # the brush style + routes canvas pointer → world → `FlipDoc` stroke.

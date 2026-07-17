@@ -204,6 +204,9 @@ pub(crate) fn settle_origins(
                 // MORPH OBJECT: idem — a forma morfada é reescrita em MUNDO a cada frame
                 // (`morph_live`) a partir das duas fontes.
                 && sim.world().get::<ph2d_ecs::VecMorph>(e).is_none()
+                // ENVELOPE OBJECT (ADR-0123): idem — a forma é a fonte autorada deformada pela
+                // gaiola, reescrita em MUNDO a cada frame (`envelope_live`). Vive na identidade.
+                && sim.world().get::<ph2d_ecs::VecEnvelope>(e).is_none()
                 && sim
                     .world()
                     .get::<Transform>(e)

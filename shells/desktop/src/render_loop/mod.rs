@@ -3133,6 +3133,14 @@ impl crate::App {
                 &self.vec_entities,
                 &mut self.vec_morph_pending,
             );
+            // **Envelope Objects, 1ª metade (ADR-0123):** idem — sem o componente pendurado
+            // antes do `settle`, o path seria assentado como comum e o recook sairia deslocado.
+            crate::envelope_live::upkeep(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &mut self.vec_envelope_pending,
+            );
             // ADR-0112: a origem (o pivô) de um path nasce no centro do MUNDO. Assim
             // que a forma pára de crescer, ela vai para o centro dela.
             // Os dois gestos que escrevem geometria em MUNDO a cada frame: a caneta e
@@ -3204,6 +3212,10 @@ impl crate::App {
                 &vec_xf,
                 &mut self.vec_morph_plans,
             );
+            // **Envelope Objects, 2ª metade (ADR-0123):** a forma é a fonte autorada deformada
+            // pela gaiola — re-cozida aqui, todo frame. Sem xforms: a fonte está congelada em MUNDO
+            // no componente (ela não se move; é a gaiola que deforma).
+            crate::envelope_live::recook(sim, vec_scene, &self.vec_entities);
             // **Select: arrastar o objeto blend move as fontes** — o gizmo mira as FONTES (não o
             // spine), então ele as move NATIVAMENTE como grupo (`vec_selection::sync_selection`
             // redireciona a seleção do gizmo). O spine as segue no `recook`. Nada a fazer aqui: um

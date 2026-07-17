@@ -104,6 +104,9 @@ pub use vec_blend::VecBlend;
 mod vec_morph;
 pub use vec_morph::VecMorph;
 
+mod vec_envelope;
+pub use vec_envelope::VecEnvelope;
+
 /// **O RÓTULO** — o texto que pertence a uma forma (ou a um conector) e a segue. Mesma família
 /// do conector, e pela mesma razão: o componente guarda a RELAÇÃO (de quem, e onde em relação a
 /// ele), e a pose é uma função pura dela. O alvo é um `VecPathId`, nunca bits de entidade.

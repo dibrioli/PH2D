@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=11` — a cena do **ENVELOPE** (ADR-0123): uma elipse **já deformada** por
+//!   uma gaiola de perspectiva. OLHE O MEIO DOS SEGMENTOS — as laterais curvam liso; é aí que
+//!   o defeito ingênuo (só os cantos) apareceria, não nos cantos.
 //! - `PH2D_BUILD_SMOKE=10` — a cena do **MORPH** (o `t` animável): um quadrado e uma estrela, já
 //!   SELECIONADOS. Clique **Morph** no painel — nasce UMA forma no meio do caminho. Arraste
 //!   **Morph t**: ela caminha entre as duas, ao vivo. As fontes ficam (mexa numa e a forma
@@ -123,6 +126,57 @@ impl crate::App {
                     "[smoke] morph: 2 formas selecionadas — clique **Morph** no painel, depois \
                      arraste **Morph t**"
                 );
+            }
+            // A cena do ENVELOPE (ADR-0123, Fatia B): UMA elipse, e a gaiola já vem PUXADA num
+            // trapézio de perspectiva forte — a forma nasce deformada, para o Enio ver a correção
+            // sem arrastar nada. A prova NÃO é o canto obedecer (o ingênuo também acerta o canto);
+            // é a lateral curvar liso ENTRE os cantos.
+            3 if level == 11 => {
+                let Some(gfx) = self.gfx.as_mut() else { return };
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("vector"));
+                gfx.vec_scene.push_path(shape(
+                    ShapeKind::Ellipse,
+                    [-2.6, -1.6],
+                    [2.6, 1.6],
+                    &[],
+                    [90, 140, 200],
+                ));
+            }
+            4 if level == 11 => {
+                // A entidade já nasceu (sync do frame anterior) e a forma já foi assentada; `create`
+                // assa a aparência em MUNDO e nasce em repouso (cantos = bbox).
+                let created = {
+                    let Some(gfx) = self.gfx.as_ref() else { return };
+                    let Some(id) = gfx.vec_scene.paths().first().map(|p| p.id) else {
+                        return;
+                    };
+                    let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                    crate::envelope_live::create(&gfx.vec_scene, &xf, id)
+                };
+                if let Some((eid, mut env)) = created {
+                    // Estreita o topo para 35% da base: trapézio convexo forte (perspectiva). BL/BR
+                    // ficam; TR/TL vêm para o centro-topo.
+                    let [bl, br, tr, tl] = env.corners;
+                    let cx = (tl[0] + tr[0]) * 0.5;
+                    let k = 0.35;
+                    env.corners = [
+                        bl,
+                        br,
+                        [cx + (tr[0] - cx) * k, tr[1]],
+                        [cx + (tl[0] - cx) * k, tl[1]],
+                    ];
+                    debug_assert!(
+                        ph2d_vec_envelope::QuadWarp::is_convex(&env.corners),
+                        "a gaiola do smoke tem de ser convexa (mantém o horizonte fora)"
+                    );
+                    self.vec_envelope_pending = Some((eid, env));
+                    eprintln!(
+                        "[envelope-smoke] elipse deformada por gaiola de perspectiva. \
+                         OLHE O MEIO DOS SEGMENTOS: as laterais curvam LISO — se so os 4 cantos \
+                         obedecessem e o meio ficasse reto/quebrado, seria o bug ingenuo. \
+                         Arrastar canto engana; a curva ENTRE eles e a prova."
+                    );
+                }
             }
             // A cena do GIRO (o 2º smoke do Enio): quadrado → CÍRCULO. Ele teve de desenhar o
             // círculo à MÃO da última vez, porque a cena não o oferecia — e é justamente o par em

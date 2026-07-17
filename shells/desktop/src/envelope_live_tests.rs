@@ -1,0 +1,196 @@
+//! Os gates do [`crate::envelope_live`] — o Envelope vivo (ADR-0123, Fatia B).
+//!
+//! O que eles medem é o comportamento do HOST; a **correção** da deformação (curva sobrevive, não
+//! só os pontos de controle) é da crate `ph2d-vec-envelope` e já está gateada lá (invariância à
+//! subdivisão). Aqui: em repouso não muda nada · a gaiola puxada deforma **pelo motor** · vive na
+//! identidade · a fonte autorada sobrevive no componente · gaiola degenerada congela.
+
+use super::*;
+use ph2d_vec_scene::{ShapeKind, cook};
+
+/// Uma cena com um envelope sobre uma forma. Devolve `(sim, scene, map, id, componente)`.
+///
+/// Os `corners` são passados já puxados (ou em repouso) — `create` nasce em repouso, e o teste
+/// sobrescreve antes de pendurar, que é o que a UI da fatia seguinte fará.
+fn scene_with_envelope(
+    shape: VecPath,
+    corners: [[f64; 2]; 4],
+) -> (SimWorld, VecScene, VecEntityMap, VecPathId, VecEnvelope) {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let id = scene.push_path(shape);
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let xf = crate::vec_transform::build(&mut sim, &map);
+    let (eid, mut env) = create(&scene, &xf, id).expect("create");
+    env.corners = corners;
+    assert!(attach(&mut sim, &map, eid, &env));
+    (sim, scene, map, id, env)
+}
+
+/// Roda um frame de recook e devolve o path da cena.
+fn frame(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMap, id: VecPathId) -> VecPath {
+    recook(sim, scene, map);
+    scene
+        .paths()
+        .iter()
+        .find(|p| p.id == id)
+        .expect("o path")
+        .clone()
+}
+
+fn ellipse(c: [f64; 2], r: f64) -> VecPath {
+    cook(
+        ShapeKind::Ellipse,
+        [c[0] - r, c[1] - r],
+        [c[0] + r, c[1] + r],
+        &[],
+    )
+}
+
+/// A fonte que o recook usa (a cozida, desserializada dos bytes do componente).
+fn source_of(env: &VecEnvelope) -> VecPath {
+    postcard::from_bytes(&env.source).expect("source")
+}
+
+/// **EM REPOUSO A FORMA NÃO MUDA.** Gaiola = cantos do bbox ⇒ identidade ⇒ a forma volta igual.
+///
+/// É a metade "presença" do par: um motor que não escrevesse nada também deixaria a forma "igual"
+/// (vazia). Este teste afirma o contrário — a forma continua **cheia** e com o mesmo bbox.
+#[test]
+fn at_rest_the_envelope_leaves_the_shape_unchanged() {
+    let src = ellipse([5.0, 3.0], 2.0);
+    let (origin, size) = control_bbox(&src).unwrap();
+    let (mut sim, mut scene, map, id, _) =
+        scene_with_envelope(src.clone(), bbox_corners(origin, size));
+
+    let out = frame(&mut sim, &mut scene, &map, id);
+    assert!(!out.verts.is_empty(), "a forma sumiu em repouso");
+    let (o2, s2) = control_bbox(&out).expect("bbox");
+    let d = (o2[0] - origin[0]).abs()
+        + (o2[1] - origin[1]).abs()
+        + (s2[0] - size[0]).abs()
+        + (s2[1] - size[1]).abs();
+    assert!(
+        d < 1e-6,
+        "repouso deslocou o bbox em {d:.3e} (devia ser identidade)"
+    );
+}
+
+/// **A GAIOLA PUXADA DEFORMA — e escreve a saída do MOTOR, não a ingênua.**
+///
+/// Duas afirmações num teste: (a) a forma **mudou** (o bbox saiu do lugar), e (b) o que foi escrito
+/// é **exatamente** `warp_path(fonte, QuadWarp)` — o host liga o motor, não uma 2ª porta. A correção
+/// do motor (curva sobrevive) é gateada na crate; aqui prova-se o **fio**.
+#[test]
+fn a_pulled_cage_deforms_the_shape_through_the_engine() {
+    let src = ellipse([5.0, 3.0], 2.0);
+    let (origin, size) = control_bbox(&src).unwrap();
+    // Topo estreitado: trapézio convexo forte (perspectiva).
+    let [bl, br, _tr, _tl] = bbox_corners(origin, size);
+    let pulled = [
+        bl,
+        br,
+        [origin[0] + size[0] * 0.7, origin[1] + size[1]],
+        [origin[0] + size[0] * 0.3, origin[1] + size[1]],
+    ];
+    assert!(QuadWarp::is_convex(&pulled), "o fixture devia ser convexo");
+
+    let (mut sim, mut scene, map, id, env) = scene_with_envelope(src, pulled);
+    let out = frame(&mut sim, &mut scene, &map, id);
+
+    // (a) mudou
+    let source = source_of(&env);
+    assert_ne!(
+        out.verts, source.verts,
+        "a gaiola foi puxada e a forma não mudou"
+    );
+
+    // (b) é a saída do motor, byte a byte
+    let (o, s) = control_bbox(&source).unwrap();
+    let warp = QuadWarp::new(o, s, pulled).unwrap();
+    let expected = warp_path(&source, &warp, accuracy(s));
+    assert_eq!(
+        out.verts, expected.verts,
+        "o recook não escreveu a saída do motor — 2ª porta para a mesma pergunta"
+    );
+}
+
+/// **O envelope vive na IDENTIDADE.** A geometria é MUNDO; uma pose por cima a deslocaria.
+#[test]
+fn the_envelope_lives_at_identity() {
+    let src = ellipse([5.0, 3.0], 2.0);
+    let (origin, size) = control_bbox(&src).unwrap();
+    let (mut sim, mut scene, map, id, _) = scene_with_envelope(src, bbox_corners(origin, size));
+
+    let e = Entity::from_bits(map[&id]);
+    sim.world_mut()
+        .get_mut::<Transform>(e)
+        .expect("Transform")
+        .translation = ph2d_core::Vec2::new(7.0, -3.0);
+
+    frame(&mut sim, &mut scene, &map, id);
+    assert_eq!(
+        *sim.world().get::<Transform>(e).expect("Transform"),
+        Transform::IDENTITY,
+        "uma pose sobreviveu — ela somaria com a geometria de mundo e deslocaria a forma"
+    );
+}
+
+/// **A FONTE AUTORADA SOBREVIVE no componente.** O recook sobrescreveu o path da cena com a
+/// deformada — mas a fonte afiada continua nos bytes do `VecEnvelope`, e é ela que o undo/save
+/// recuperam. Sem isto, o 1º frame varreria o desenho sem retorno (o *"funciona e depois esquece"*).
+#[test]
+fn the_authored_source_survives_in_the_component() {
+    let src = ellipse([5.0, 3.0], 2.0);
+    let (origin, size) = control_bbox(&src).unwrap();
+    let [bl, br, tr, tl] = bbox_corners(origin, size);
+    let pulled = [bl, br, [tr[0] - size[0] * 0.3, tr[1]], tl];
+
+    let (mut sim, mut scene, map, id, _) = scene_with_envelope(src.clone(), pulled);
+    let scene_before = scene.paths().iter().find(|p| p.id == id).unwrap().clone();
+    let out = frame(&mut sim, &mut scene, &map, id);
+    assert_ne!(
+        out.verts, scene_before.verts,
+        "o recook devia ter deformado"
+    );
+
+    // A fonte no componente continua a ser a original (cozida), intacta.
+    let e = Entity::from_bits(map[&id]);
+    let env = sim.world().get::<VecEnvelope>(e).expect("componente");
+    let kept = source_of(env);
+    let cooked_src = src.cooked().into_owned();
+    assert_eq!(
+        kept.verts, cooked_src.verts,
+        "a fonte autorada foi corrompida — o undo/save recuperariam a forma errada"
+    );
+}
+
+/// **UMA GAIOLA DEGENERADA CONGELA a forma, não a apaga.** 3 cantos colineares ⇒ `QuadWarp::new`
+/// devolve `None` ⇒ o recook pula, e o path da cena fica onde estava (não some, não vira lixo). É a
+/// mesma escolha do morph com uma fonte perdida.
+#[test]
+fn a_degenerate_cage_freezes_the_shape() {
+    let src = ellipse([5.0, 3.0], 2.0);
+    let (origin, size) = control_bbox(&src).unwrap();
+    // Cantos 1,2,3 (BR/TR/TL) colineares — todos em x = ox+w. É essa a singularidade da homografia
+    // de Heckbert (o denominador de Cramer sobre q1,q2,q3 some), não "três cantos quaisquer".
+    let degenerate = [
+        [origin[0], origin[1]],
+        [origin[0] + size[0], origin[1]],
+        [origin[0] + size[0], origin[1] + size[1] * 0.5],
+        [origin[0] + size[0], origin[1] + size[1]],
+    ];
+    assert!(
+        QuadWarp::new(origin, size, degenerate).is_none(),
+        "o fixture devia ser degenerado"
+    );
+
+    let (mut sim, mut scene, map, id, _) = scene_with_envelope(src, degenerate);
+    let before = scene.paths().iter().find(|p| p.id == id).unwrap().clone();
+    let after = frame(&mut sim, &mut scene, &map, id);
+    assert_eq!(
+        after.verts, before.verts,
+        "gaiola degenerada mexeu na forma — ela tinha de CONGELAR onde estava"
+    );
+}

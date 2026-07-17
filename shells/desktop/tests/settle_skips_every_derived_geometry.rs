@@ -26,7 +26,15 @@ use std::fs;
 ///   e eles vivem na **identidade**. Assentar somaria geometria + `Transform` e os deslocaria.
 /// - `VecShape`: a geometria é derivada dos parâmetros, mas ele **tem pose própria** — está aqui
 ///   por outra razão (a origem fica onde a forma foi criada; "Set Center" a move).
-const DERIVED: &[&str] = &["VecShape", "VecConnector", "VecBlend", "VecMorph"];
+/// - `VecEnvelope` (ADR-0123): geometria de MUNDO, a fonte autorada deformada pela gaiola,
+///   reescrita por `envelope_live` a cada frame; vive na identidade.
+const DERIVED: &[&str] = &[
+    "VecShape",
+    "VecConnector",
+    "VecBlend",
+    "VecMorph",
+    "VecEnvelope",
+];
 
 /// A assinatura de "a minha geometria é MUNDO": o host **força a identidade** na entidade.
 ///

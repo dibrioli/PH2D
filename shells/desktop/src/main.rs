@@ -93,6 +93,7 @@ mod keymap;
 mod ktx2_smoke;
 mod label_live;
 mod morph_live;
+mod envelope_live;
 mod motion_state;
 mod name_unique;
 mod palette_persist;
@@ -344,6 +345,7 @@ impl App {
             vec_connect_sides: crate::connector_live::SideCache::new(),
             vec_blend_pending: None,
             vec_morph_pending: None,
+            vec_envelope_pending: None,
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

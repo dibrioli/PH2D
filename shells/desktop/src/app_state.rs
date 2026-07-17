@@ -709,6 +709,10 @@ pub(crate) struct App {
     pub(crate) vec_blend_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecBlend)>,
     /// O morph recém-criado, à espera de a entidade dele nascer no `sync` (espelho do blend).
     pub(crate) vec_morph_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecMorph)>,
+    /// O envelope recém-criado, à espera de a entidade dele nascer no `sync` (espelho do
+    /// morph). ADR-0123 Fatia B.
+    pub(crate) vec_envelope_pending:
+        Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecEnvelope)>,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
     /// fora do save e do undo.
     pub(crate) vec_morph_plans: crate::morph_live::MorphPlans,

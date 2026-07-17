@@ -11,7 +11,9 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_icon, rect_to_vello, resolve, stroke_rounded_rect,
+};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
@@ -219,7 +221,21 @@ fn paint_lane(
     // edge, which is precisely the edge you reach for to tune the crossfade you
     // just made. Bodies first for the whole lane, edges after, and every edge
     // outranks every body.
+    // Clipped to the TIME area, never the label column: a strip that starts left of
+    // the view has an x0 far off to the left. The HITS below intersect with this
+    // band (`hit_plan`); the PAINT must too, or the body's fill blankets the lane's
+    // name/weight/mute/"+ strip" while it scrolls left (Enio, 2026-07-16: *"a barra
+    // da lane deslocada para esquerda aparece acima das opções do painel"*). One
+    // band for the ink and the hit, so what is drawn and what is clickable end at
+    // the same pixel.
+    let time_band = Rect::new(
+        view.time_x,
+        g.rows.y,
+        (view.right - view.time_x).max(0.0),
+        g.rows.h,
+    );
     let mut boxes: Vec<(&ph2d_timeline::StripView, Rect)> = Vec::new();
+    ctx.scene.push_clip(&rect_to_vello(time_band));
     for s in &lane.strips {
         let (x0, x1) = (view.x(s.t_start), view.x(s.t_end));
         // Off-screen, or collapsed to nothing: no rect, no hit.
@@ -235,16 +251,7 @@ fn paint_lane(
         paint_strip(ctx, theme, view, body, s, dim);
         boxes.push((s, body));
     }
-    // Clipped to the TIME area, never the label column: a strip that starts left of
-    // the view has an x0 far off to the left, and an unclipped body rect would
-    // blanket the lane's name, weight, mute and "+ strip" — and, registered after
-    // them, win every one of their clicks.
-    let time_band = Rect::new(
-        view.time_x,
-        g.rows.y,
-        (view.right - view.time_x).max(0.0),
-        g.rows.h,
-    );
+    ctx.scene.pop_layer();
     let spans: Vec<(u64, Rect)> = boxes.iter().map(|(s, b)| (s.id.0, *b)).collect();
     // The ease grips (B4) — only where the strip owns the edge. Where a neighbour
     // overlaps it, the OVERLAP is the fade (Unity's rule): the grip is painted greyed

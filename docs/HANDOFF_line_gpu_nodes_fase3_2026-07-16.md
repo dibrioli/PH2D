@@ -289,20 +289,84 @@ E o ring é **esparso** (`RING_STRIDE = 8`) onde o da CPU é **denso** — de pr
 lugar: **residência**. Um buffer em checkpoint é um que o pool não recicla, então um ring denso faz a
 sim alocar o estado inteiro TODO TICK. Medido: mesma janela, 21 checkpoints/5,9 MB → **3/590 KB**.
 
-## §10 — Integração (pro integrador do Enio)
+## §10 — Integração (briefing pro integrador do Enio)
 
-- **Base:** `line/cook-parallel` (Fase 0) → F1.1 → Fase 2/F1.2 → **esta**, tudo em `line/gpu-nodes` em
-  ordem de commit. Fast-forward natural. Marcos: `74a19784` (Fase 0) · `74aa2b00`..`e7605cfd` (F1.1) ·
-  `6325a3a8`/`86a2fe35` (Fase 2) · `f877b8a0`/`88326d00`/`8c018447` (F1.2) · `72301921` (2M) ·
-  `4d176f9d` (ADR-0123) · **`2d66217e`..`f4c576a7` (Fase 3)**.
-- **Foundational tocado nesta fatia:** `ph2d-nodegraph` (`gpu.rs` — 3 adições ao canal lateral;
-  contrato **8/2/1 intocado**) · `ph2d-gpu` (`context.rs`: 1 limite) · `ph2d-gpu-cook` (motor;
-  `plan.rs`/`ring.rs`/`instances.rs` novos) · `ph2d-render` (só o split `renderer_draw.rs`) · 16 node
-  crates (9 × `port: 0` mecânico + **7 kernels novos**) · shell (`motion_bridge_gpu` + `motion_state`
-  demo + `motion_state_gpu_tests.rs` novo).
-- **Conflitos esperados:** `Cargo.lock` (7 dev-deps novas — regenerar) · o número do ADR-0122/0123 se
-  outra linha reivindicou (renumerar; os stamps vão junto) · `renderer.rs`/`motion_state_tests.rs`
-  **encolheram por split** — se outra linha os editou, o Mergiraf pode precisar de ajuda (os blocos
-  movidos estão intactos em `renderer_draw.rs` / `motion_state_gpu_tests.rs`).
-- **Nenhum escape §1.5.5.** Nenhum ADR novo (o 0122 cobre o canal lateral; o 0123 já estava escrito e
-  esta linha o EXECUTOU — vale emendar o D5 com o §9 acima).
+> **Como ler:** esta seção é autossuficiente. O QUE a linha entrega está no topo + §Aberto; o PORQUÊ de
+> cada peça está em §1–§4; os gates de fechamento em §5. Você **funde e faz o ship** — a linha só fecha.
+
+### O que é
+
+Todo o arco **GPU/M5** numa branch linear: **Fase 0** (cook paralelo na CPU, rayon, bit-idêntico) →
+**F1.1** (motor de cook GPU-resident, `ph2d-gpu-cook`) → **Fase 2 / F1.2** (10 kernels stateless + o
+cook híbrido CPU-prefixo/GPU-sufixo no shell) → **Fase 3** (o laço de simulação na GPU) →
+**`force.buoyancy` + `motion.spring` + a cena do mar**. O escopo do ADR-0123 está fechado.
+
+### Base e forma do merge
+
+- **Fork:** `12ccaecd` — **o HEAD atual de `main`**. `main..line/gpu-nodes` é **fast-forward puro,
+  31 commits, zero merge, zero divergência.** Se `main` não andou desde então, é `git merge --ff-only`.
+- **Se `main` andou** (outra linha integrou antes): os conflitos prováveis estão listados abaixo. O
+  gate combinado é `scripts/foundational-integrate.sh` (ADR-0107) + Mergiraf no resíduo textual.
+- Marcos (todos em ordem de commit, do fork ao HEAD `e99a19bd`): `74a19784` Fase 0 · `74aa2b00` F1.1 ·
+  `6325a3a8`/`86a2fe35` kernels Fase 2 · `f877b8a0`/`88326d00`/`8c018447` F1.2 · `72301921` 2M ·
+  `4d176f9d` ADR-0123 · `2d66217e` (DAG+ping-pong) · `05632829` (integrate + 5 forças) · `b7977f2d`
+  (scrub no device) · `b82678f9` (`DEMO=3`) · `b044742e` (color_ramp/ondas de cor) · `f4c576a7` (splits
+  de LOC) · **`ced76b73` (buoyancy) · `1c09f865` (spring) · `cc4f4345` (o mar `DEMO=4`)**.
+
+### O que foi tocado (e o que NÃO foi)
+
+- **`ph2d-nodegraph` — foundational, mas o CONTRATO CONGELADO está intocado.** Só `gpu.rs` mudou (o
+  **canal lateral** do ADR-0122: `ColumnBinding.port` + `ColumnAccess::{Consume, RefuseIfPresent}` —
+  §1). `node.rs` (`NodeManifest=8`/`NodeOp=2`/`OpResolver=1`) **não mudou** — verificado por diff, e o
+  gate `architecture_contract_surface` **passa** (§5). `gpu.rs` é **append-only por design** (§0.2:
+  foundation projetada pra isolamento), então uma linha irmã que só ADICIONE ali funde sem colidir.
+- **`ph2d-gpu`** (`context.rs`): **1 limite** subido (`max_storage_buffers_per_shader_stage`, o
+  `integrate` precisa de 11; o default WebGPU é 8), seguindo o precedente documentado do próprio arquivo.
+- **`ph2d-gpu-cook`**: o motor. Módulos novos `plan.rs`/`ring.rs`/`instances.rs`/`codegen.rs`/`stream.rs`.
+  Praticamente todo dele é desta linha.
+- **`ph2d-render`** (`renderer.rs`): **só um split** — as 3 fns `render*` saíram pro
+  `renderer_draw.rs` (o débito de LOC que a F1.1 tinha deixado). Comportamento idêntico.
+- **~20 node-crates**: 9 × `port: 0` mecânico (1 campo no binding) + **9 kernels novos**
+  (integrate · wind/drag/attractor/vortex/curl/**buoyancy** · **spring** · color_ramp). `ph2d-node-registry`
+  ganhou `register_gpu_kernel`.
+- **shell** (`shells/desktop`): `render_loop/motion_bridge_gpu.rs` (a rota GPU) + `motion_state.rs`
+  (opt-in via env) + os irmãos novos `motion_state_gpu_demos.rs` / `motion_state_gpu_tests.rs`.
+
+### Conflitos prováveis (se `main` andou)
+
+- **`Cargo.lock`** — 34 linhas de dep novas (as node-crates viraram dev-deps do gate de paridade).
+  **Regenerar** com `cargo build`/`check`, não fundir à mão.
+- **Número do ADR (0122/0123)** — se uma linha irmã reivindicou 0122/0123 antes, **renumerar os dois
+  arquivos + os stamps** (`grep -rn "0122\|0123"`). São doc; não há gate sobre o número.
+- **`renderer.rs` · `motion_state.rs` · `motion_state_tests.rs` ENCOLHERAM por split.** Se outra linha
+  os editou, o Mergiraf pode precisar de mão — mas os blocos movidos estão **intactos** em
+  `renderer_draw.rs` / `motion_state_gpu_demos.rs` / `motion_state_gpu_tests.rs`. Resolva pelos estágios
+  do índice, não pelos marcadores ([[feedback_resolve_conflicts_from_index_stages_not_markers]]).
+
+### Ship — o que o `ship.sh` NÃO cobre sozinho
+
+**Os 22 gates de paridade GPU são `#[ignore]`** (precisam de adaptador). O `nextest` do `ship.sh` **não
+os roda** — eles são o **audit** desta linha (§5), então rode-os você, **na RTX**, como parte do
+fechamento:
+
+```
+cd <worktree-ou-arvore-integrada> && cargo test -p ph2d-gpu-cook --release -- --ignored
+```
+
+Fora isso, `ship.sh` é a paridade normal (fmt/clippy/machete/deny/audit/nextest/typos) — no fechamento
+desta linha estava **tudo verde** (§5). O ship do integrador drena latentes de 2–4 iterações
+([[project_integrator_ship_catches_latents_budget_iterations]]); o gate per-linha não basta.
+
+### Sem escapes
+
+**Nenhum caso §1.5.5** (nenhuma colisão de mesmo-símbolo fora dos meus arquivos; nenhum contrato
+congelado tocado). **Nenhum ADR novo** — o 0122 cobre o canal lateral e o 0123 já estava escrito; esta
+linha o **executou**. Vale emendar o D5 do 0123 com o desvio deliberado documentado acima (§9, "Desvio
+deliberado do ADR").
+
+### Nota ao Enio (fora do escopo do integrador)
+
+As 2 lições de gate desta jornada (o **fixture em regime caótico** e o **4º desfecho de um sobrevivente**)
+foram escritas na memória versionada (`project-memory/`, via symlink → repo **primário**, `main`), e estão
+**sem commit** lá, junto dos ~24 arquivos de memória que já estavam `??` desde o começo da sessão. Não são
+desta linha (repo/branch diferente) — ficam pra você decidir quando commitar a memória.

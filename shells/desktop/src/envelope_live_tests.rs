@@ -21,7 +21,7 @@ fn scene_with_envelope(
     let mut map = VecEntityMap::new();
     let id = scene.push_path(shape);
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    let xf = crate::vec_transform::build(&mut sim, &map);
+    let xf = crate::vec_transform::build(&sim, &map);
     let (eid, mut env) = create(&scene, &xf, id).expect("create");
     env.corners = corners;
     assert!(attach(&mut sim, &map, eid, &env));

@@ -219,6 +219,14 @@ por `w` negativo **espelha a geometria pela origem**. *Renderiza*, e por isso é
    nunca a Eq. 8 do paper).
 6. **Nenhum contrato congelado encostado.**
 
+> ⚠️ **ARMADILHA DE SMOKE — e ela explica por que este bug shipa em produto sério.** O caminho
+> ingênuo, sob homografia suave, acerta a verdade em `t=0` e `t=1` **exatamente (100% das vezes)** e
+> em **todo ponto interior, nunca (0%)** — medido. Ou seja: **as alças pousam exatamente onde o
+> artista espera; só a curva ENTRE elas está errada.** Um smoke que arrasta um canto e vê o canto
+> obedecer **aprova um envelope quebrado**. O olho tem de ir para o **meio do segmento**, numa forma
+> **muito curva**, sob gaiola **curva** — e é exatamente isso que o gate #1 (invariância à
+> subdivisão) automatiza. **Não peça ao Enio para julgar isto a olho sem o gate verde antes.**
+
 ## Kill-criterion (declarado ANTES do build)
 
 **Se, depois da 2ª tentativa de otimização, o recook de uma forma de ~200 âncoras sob gaiola curva

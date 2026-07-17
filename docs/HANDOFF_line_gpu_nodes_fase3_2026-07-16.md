@@ -7,8 +7,9 @@
 > Briefing executado: [`HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md`](HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md).
 > Documento central: [ADR-0123](architecture/decisions/0123-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md).
 >
-> **As 5 fatias do ADR estão fechadas.** O que ficou aberto está em §Aberto — e o item 1 é o único
-> pedaço do escopo do ADR que NÃO entregou (`motion.spring`), com receita pronta.
+> **As 5 fatias do ADR estão fechadas, e o escopo dele também** — o `motion.spring` (o último item que
+> faltava) e o `force.buoyancy` (a 6ª força) entraram depois, a mando do Enio ("siga implementando").
+> O que ficou aberto está em §Aberto; nada ali é do escopo do ADR-0123.
 
 ---
 
@@ -28,6 +29,15 @@ primeiro.
 | `b044742e` | — | **ondas de cor**: `motion.color_ramp` na GPU (a pedido do Enio) |
 | `20c04bf5` | — | `cargo fmt --all` + `Cargo.lock` (paridade com o ship) |
 | `f4c576a7` | — | splits de LOC (o meu **e** o que a F1.1 tinha estourado) |
+| `ced76b73` | 3 | **`force.buoyancy`** — a 6ª e última força sem cobertura |
+| `1c09f865` | 3 | **`motion.spring`** — o escopo do ADR-0123 FECHOU |
+| `cc4f4345` | — | cena **o MAR** (`PH2D_GPU_COOK_DEMO=4`) + gate + split de LOC |
+
+**O escopo do ADR-0123 está fechado.** As 6 forças + `motion.integrate` + `motion.spring` têm kernel;
+`motion.color_ramp` entrou de brinde. **16 dos 90 nós** têm kernel — e o número que importa não é
+esse: cobertura de força **não é aditiva, é penhasco**. Um nó sem kernel DENTRO do laço deixa
+fronteira, e a fronteira faz o `plan` recusar a simulação inteira (§3). Cinco forças na GPU valiam
+zero no grafo que jogasse uma boia n'água; agora não há força que derrube o laço.
 
 ### Perf medida (RTX, `--release`)
 
@@ -98,14 +108,16 @@ que determina o texto do módulo.
 
 - `cargo check --workspace --all-targets` ✓ · **contrato `8/2/1`** ✓ · `cook_determinism` +
   `transform_determinism` ✓ (a CPU segue canônica)
-- **Paridade ε na RTX** (`--release --ignored`): **11 + 7 = 18**
+- **Paridade ε na RTX** (`--release --ignored`): **11 + 11 = 22**
   - os 9 da Fase 2 **com os ε idênticos** (4,386902e-4 full chain · 1,9e-6 falloff/wiggle · 3,8e-6
     transform · 0 nos bit-exatos) — o oráculo de que o DAG não regrediu o linear
   - o 10º é novo: a regressão do §4 · o 11º é o `color_ramp` (5 presets × 2 interps)
-  - os 7 do sim: `seed` **Δ=0** · `seed velocity` 3,8e-6 · `wind+drag` 9,5e-7 ·
-    `attractor+vortex` 9,5e-7 · `curl` 1,6e-5 · o pool · o **scrub** 9,5e-7
+  - os 11 do sim: `seed` **Δ=0** · `seed velocity` 3,8e-6 · `wind+drag` 9,5e-7 ·
+    `attractor+vortex` 9,5e-7 · `curl` 1,6e-5 · **`buoyancy` 9,5e-7** · **o mar clampado** 7,0e-4 ·
+    **`spring`** 3,6e-5 (tension 8) / 2,2e-4 (tension 60) · **`spring` em Rotation recua** (com o
+    irmão de presença) · o pool · o **scrub** 9,5e-7
 - **naga**: todo subconjunto de colunas de todo kernel (250 variantes) ✓
-- `plan_simulation` (6, sem device) · `plan_analysis` (5) · shell **578** (era 566) ✓
+- `plan_simulation` (6, sem device) · `plan_analysis` (5) · shell **569 + 10 gates de plano** ✓
 - `clippy --all-targets` **zero** · `typos` **zero** · `cargo fmt --all --check` **limpo** ·
   `cargo machete` limpo · **LOC: workspace + shell** ✓
 
@@ -128,6 +140,9 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK
 # Full-GPU stateless (F1.1): 2.000.000 instancias, ~4 ms/frame. Zoom out.
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=1 cargo run --release -p ph2d-host-desktop
 
+# O MAR: 490.000 particulas caindo numa onda viajante (gravidade + buoyancy).
+PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=4 cargo run --release -p ph2d-host-desktop
+
 # Hibrido (F1.2): ondula em Y (GPU) E gira (CPU), nos dois lados da costura.
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=2 cargo run --release -p ph2d-host-desktop
 ```
@@ -139,6 +154,13 @@ horizontais de arco-íris (o ramp atravessado no índice do grid) e o vortex as 
 apertam — a onda é o escoamento ficando visível, não uma animação de cor por cima.
 **Arraste o playhead pra trás**: a pose tem de VOLTAR (é o ring, §D5) — sem ele o campo ficaria
 congelado na pose do futuro, calado.
+
+**O que olhar no `DEMO=4` (o mar):** metade do campo nasce seca e CAI, metade nasce submersa e SOBE —
+as duas na tela ao mesmo tempo. Elas se encontram na superfície e **ficam boiando**: cada uma passa do
+ponto e o `drag` tira a energia devagar. Repare que elas também derivam **de lado, pros vales** — o
+empuxo é normal à superfície, não pra cima, então um flanco empurra ladeira abaixo. A gravidade é um
+`force.wind` apontado pra baixo (o nó de empuxo não tem param de gravidade de propósito: força
+direcional constante já existe), e é a **disputa** 12-contra-4 que assenta o campo em vez de lançá-lo.
 
 Gates de GPU (headless, precisa de adapter):
 ```
@@ -177,7 +199,7 @@ half-away) · noise integer-hash: `bitcast<u32>`, **nunca `u32(x)`** (value-cast
   `rotate`) — o `ship.sh` roda `cargo fmt --all -- --check` e reprovaria. Absorvido; rode
   `cargo fmt --all`, não `-p`.
 
-## §8 — Duas lições de gate desta jornada (as duas me pegaram)
+## §8 — Lições de gate desta jornada (todas me pegaram)
 
 1. **[[feedback_layered_defenses_need_per_layer_gates]] — no arquivo onde eu tinha citado a lição.**
    O gate "forma inderivável ⇒ recuo" passava pela razão ERRADA: quem segurava o documento
@@ -191,20 +213,47 @@ half-away) · noise integer-hash: `bitcast<u32>`, **nunca `u32(x)`** (value-cast
    pra impedir. Não removi o binding (seria uma mina pro dia do emitter na GPU, que é a próxima
    fatia): tornei o caso **alcançável** com `test.velgen`, a forma que um emitter na GPU vai ter.
 
-**5 rodadas de mutação no total** (plano ×4, kernel ×3, ring ×2); 2 sobreviventes → 2 gates novos.
+3. **Um fixture pode cair num regime CAÓTICO, e aí o ε não é o problema — o fixture é.** O clamp
+   `wave_length.max(1e-3)` do `buoyancy` só é observável **onde o domínio dele é vazio**
+   ([[feedback_a_threshold_must_live_where_the_domain_is_empty]]), então o gate dele usa
+   `wave_length = 0`. Mas o valor que o clamp ENTREGA (`1e-3`) é ele próprio um mar patológico: com
+   `amplitude = 0.6`, `slope = amp·2π/λ ≈ 3770·cos`, a normal deita quase horizontal e a **direção**
+   dela vira com o **sinal do cosseno**. Magnitude limitada (`|a| ≤ density`, a normal é unitária) com
+   sinal virando **é** uma divergência de 2·density, e 1 ulp de fase decide: medido, os dois caminhos
+   se separaram por **0,2022 ≈ 2·40·dt²**. Isso é o **D4 do ADR**, não bug de porte. O conserto é
+   `amplitude = 1e-4` — o mesmo mar clampado com `slope ≈ 0,63`, bem-condicionado, e o clamp segue
+   igualmente observável (quem NaN-a um kernel sem clamp é a **`phase`**, que a amplitude não toca).
+   **Nunca um ε afrouxado até o caos caber embaixo** — esse oráculo modelaria o filtro, não a verdade.
+4. **Um sobrevivente pode ser inobservável por CONSTRUÇÃO, e vale dizer isso em vez de fingir.** Tirar
+   o clamp de `depth` sobreviveu e **fica sem gate, deliberadamente**: o `clamp(sub, 0, 1)` a jusante
+   já doma o ±inf, então os dois caminhos só diferem numa instância exatamente **na** linha d'água —
+   onde o CPU lê `0/1e-3 = 0` (seca, não move) e o GPU sem clamp lê `0/0 = NaN`, que o guard de
+   finitude do `motion.integrate` rejeita (**também** não move). O guard converge os dois. O clamp fica
+   porque espelha o `eval`, que é o contrato — não porque um gate vermelho o segura, e o doc do kernel
+   diz exatamente isso.
+
+**8 rodadas de mutação no total** (plano ×4, kernel ×6, ring ×2); 3 sobreviventes → 3 gates novos
+(1 sobrevivente **aceito e documentado**, o `depth`).
 
 ## §9 — Aberto (a próxima fatia / journeys futuros)
 
-1. **`motion.spring` — o único item do escopo do ADR que não entregou.** Deferido conscientemente:
-   a fatia 5 (o scrub) é **correção** (sem ela o scrub mente calado) e o spring é **mais um nó** sobre
-   um padrão que já está provado. **Receita** (é o `integrate` de novo): 2 inputs (`in`/`state`, o
-   mesmo `pre`) · bindings `P` ReadWrite porta 0 + `falloff`/`inv_mass` Read porta 0 +
-   `spring_value`/`spring_vel`/`sim_t` ReadWrite porta 1 + `id` **RefuseIfPresent** porta 0 ·
-   `applicable` = `channel ∈ {0,1}` (X/Y — o precedente exato do `wiggle`/`oscillator`; Rotation/Size
-   recuam) · o sub-passo adaptativo (`steps = ceil(dt/ideal)`, `ideal = sqrt(STABLE/tension)`) é um
-   laço WGSL, como o do `curl` · guard de NaN reseta pro TARGET (não pro seed) · o blend final é
-   `falloff × inv_mass`. Gate: `sim_chain` já aceita a topologia; copie
-   `one_step_of_wind_and_drag_matches_the_cpu` e **faça o campo MOVER** acima do `MUST_MOVE`.
+1. ~~**`motion.spring`**~~ — **LANDOU** (`1c09f865`), junto com o `force.buoyancy` (`ced76b73`). A
+   receita desta seção estava certa e foi seguida à risca; 3 coisas que ela não previa e a próxima
+   fatia vai reencontrar:
+   - **O `pairing` não precisou de tradução.** O CPU pareia posicionalmente exatamente quando o state
+     tem `spring_value` **e** `state.count() == n`; a regra de presença do sequenciador é *"a porta
+     tem a coluna E o count bate"* — o **mesmo predicado**. Então `HAS_state_spring_value` **é** o
+     `pairing().is_some()`, e o ramo seed/step não é uma re-derivação da condição do CPU.
+   - **O idioma `MUST_MOVE` desta suíte não protege a mola.** Em todo outro gate o mover sob teste é
+     a única coisa mexendo o campo, então *"moveu?"* e *"o kernel disparou?"* são a mesma pergunta.
+     Na mola elas se separam: quem move é o **oscilador**, e uma mola compilada como pass-through
+     passaria por `MUST_MOVE` **e** por paridade (o pass-through do CPU e o do GPU concordam
+     perfeitamente). O oráculo é a mesma cadeia **sem** a mola: o trabalho dela é *não ter chegado
+     ainda*, e é esse atraso que se afirma.
+   - **O sub-passo adaptativo não estava sendo exercitado.** No `tension = 8` default, `steps =
+     ceil(dt/sqrt(STABLE/tension)) = 1` — o laço roda uma vez e um kernel com `steps = 1` fixo ficava
+     verde. O gate roda os dois regimes (8 → 1 passo, 60 → 2); a mutação `steps = 1u` só derruba
+     depois disso.
 2. **O gather por `id`** (emitter/partículas com nascimento e morte) — o regime mais interessante, e a
    fatia que o D3 nomeia. O `test.idgen`/`test.velgen` já existem como a forma que um emitter na GPU
    vai ter, e o `RefuseIfPresent` já está gateado pro dia em que o gather chegar.

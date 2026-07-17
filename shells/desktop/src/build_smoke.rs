@@ -153,6 +153,12 @@ impl crate::App {
                     let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
                     crate::envelope_live::create(&gfx.vec_scene, &xf, id)
                 };
+                if std::env::var("PH2D_ENVELOPE_LOG").is_ok() {
+                    eprintln!(
+                        "[envelope-smoke] frame 4: create -> {}",
+                        if created.is_some() { "Some" } else { "None" }
+                    );
+                }
                 if let Some((eid, mut env)) = created {
                     // Estreita o topo para 35% da base: trapézio convexo forte (perspectiva). BL/BR
                     // ficam; TR/TL vêm para o centro-topo.

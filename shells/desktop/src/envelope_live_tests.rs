@@ -116,6 +116,67 @@ fn a_pulled_cage_deforms_the_shape_through_the_engine() {
     );
 }
 
+/// **A SEQUÊNCIA DO SMOKE deforma** — e é a que difere: no smoke o `create` roda **depois** de o
+/// `settle_origins` ter centrado a forma (geometria vira LOCAL, `Transform` ganha a pose). O teste
+/// acima cria antes de qualquer settle (forma em MUNDO, identidade), e por isso não pegava um bug
+/// de reconstrução mundo↔local. Este reproduz o frame real: push → sync → **settle** → build →
+/// create → pull → attach → recook.
+#[test]
+fn the_smoke_sequence_deforms_the_shape() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let id = scene.push_path(ellipse([0.0, 0.0], 2.0));
+
+    // Frame N: sync + settle (o que o smoke deixa acontecer antes de criar o envelope).
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+
+    // Frame N+1 prólogo: create sobre a forma JÁ assentada.
+    let xf = crate::vec_transform::build(&sim, &map);
+    let (eid, mut env) = create(&scene, &xf, id).expect("create pós-settle");
+
+    // Puxa como o smoke: topo a 35% da base.
+    let [bl, br, tr, tl] = env.corners;
+    let cx = (tl[0] + tr[0]) * 0.5;
+    let k = 0.35;
+    env.corners = [
+        bl,
+        br,
+        [cx + (tr[0] - cx) * k, tr[1]],
+        [cx + (tl[0] - cx) * k, tl[1]],
+    ];
+    assert!(attach(&mut sim, &map, eid, &env));
+
+    let out = frame(&mut sim, &mut scene, &map, id);
+
+    // A fonte que o recook desta sequência de facto usou, e a saída que o motor produziria dela.
+    let e = Entity::from_bits(map[&id]);
+    let env_now = sim
+        .world()
+        .get::<VecEnvelope>(e)
+        .expect("componente")
+        .clone();
+    let source = source_of(&env_now);
+    let (o, s) = control_bbox(&source).expect("bbox");
+    let expected = warp_path(
+        &source,
+        &QuadWarp::new(o, s, env_now.corners).unwrap(),
+        accuracy(s),
+    );
+
+    // (1) a DEFORMAÇÃO aconteceu — a saída difere da fonte em repouso.
+    assert_ne!(
+        out.verts, source.verts,
+        "a sequência do smoke NÃO deformou: o recook devolveu a fonte intacta"
+    );
+    // (2) e é a saída do motor (o fio está certo mesmo pós-settle).
+    assert_eq!(
+        out.verts, expected.verts,
+        "pós-settle o recook divergiu do motor — a reconstrução mundo↔local corrompeu a fonte"
+    );
+}
+
 /// **O envelope vive na IDENTIDADE.** A geometria é MUNDO; uma pose por cima a deslocaria.
 #[test]
 fn the_envelope_lives_at_identity() {

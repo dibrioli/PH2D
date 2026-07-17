@@ -336,11 +336,29 @@ não o refatora.**
   container — rejeitado: o container reusa hierarquia/z/seleção/undo que já existem, e **nesting já é
   o stack**, sem UI de reordenar.
 - **ARAP, MLS com pesos geodésicos/harmônicos, BBW** — rejeitados **por ora**; todos exigem malha. Se
-  a Fatia E bater na parede da topologia (membro perto do tronco), a saída **não é** Igarashi: é
-  BBW-family, e é ADR próprio. Nota: **"Photoshop Puppet = ARAP" é folclore não-verificado** — a Adobe
-  nunca citou o Igarashi, o Igarashi nunca citou a Adobe, e a única família de patentes da Adobe sobre
-  deformação 2D por handles (Wampler, 2015/2018) cita **BBW + FAST + CCCP** e trata ARAP como a arte
-  anterior *lenta demais* que ela está substituindo.
+  a Fatia E bater na parede da topologia (membro perto do tronco), a saída é **BBW-family**, e é ADR
+  próprio.
+
+  > **CORREÇÃO (fonte primária, posterior à 1ª redação deste ADR).** Uma versão anterior dizia que
+  > *"Photoshop Puppet = ARAP é folclore não-verificado"*. **Estava errado, e a correção é uma LINHA
+  > DO TEMPO, não um veredito** — os dois fatos que eu tratei como concorrentes são de eras
+  > diferentes:
+  >
+  > | Era | Motor | Prova |
+  > |---|---|---|
+  > | **AE CS3 (2007)** | **ARAP (Igarashi)** | O **próprio Igarashi** anunciou na homepage dele, *antes* do CS3 sair: *"As-Rigid-As-Possible Shape Manipulation will appear in the next Adobe AfterEffects as Puppet Tool"* — ainda no fonte da página viva, num comentário HTML malformado |
+  > | **PS CS5 (2010)** | **ARAP-family, código NOVO** | US9053553B2 (Adobe, **Jovan Popović** et al., 7 semanas antes do ship) **cita o paper do ARAP**; e o PM do Photoshop, no registro: *"the algorithm is newer than the one that shipped in AE CS3"* |
+  > | **AE 15.1+ (2018)** | **Wampler: BBW + FAST + CCCP** | US9865073B2 trata ARAP como a arte anterior **lenta demais** que ela substitui (*"too slow… particularly on mobile"*) |
+  >
+  > **O que continua verdadeiro: a Adobe nunca creditou ninguém** (grep na doc do AE: `igarashi: 0`,
+  > `siggraph: 0`) — a frase-assinatura *"as rigid as possible"* aparece sem citação. O folclore era
+  > circular; a afirmação é verdadeira mesmo assim, por uma fonte que quase ninguém cita.
+  >
+  > **Efeito na decisão: NENHUM — mas o contra-sinal do §4 fica MAIS forte, não menos.** A Adobe
+  > entra na lista dos que shiparam ARAP para pinos (com OpenToonz e o N-Point do GIMP) — e depois
+  > **saiu dela**, por perf. Para nós o argumento decisivo continua sendo o operando: eles deformam
+  > **malha/pixel**, nós deformamos **path**, e o C⁰ é fatal só para nós. Mas quem abrir a Fatia E
+  > lê isto primeiro.
 - **Família meshless boundary-only** (Weber; Chen & Weber 2015/2017) — **localmente injetiva por
   construção**, que é o antídoto do fold e a mais nativa a um documento de paths. **Adiada e sinalizada:
   patenteada** (Technion US8400472 ≈ 2029; Max Planck + Bar-Ilan US11403796 ≈ 2037). Exige avaliação

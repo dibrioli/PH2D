@@ -33,7 +33,9 @@ Rápido, porque o risco aqui é reconstruir, não esquecer:
   — gain/normalize/reverse/invert/DC/fade/silence/Apply: 22,4 ms → 0,011 ms num clipe de 3 min, e
   **não escala com o clipe**), render de preview O(seleção)
   ([ADR-0120](../architecture/decisions/0120-audio-preview-is-a-buffer-you-own-not-a-buffer-you-rebuild.md)
-  — mas o **frame** do drag ainda paga a waveform inteira: §2.2, medido).
+  — mas o **frame** do drag ainda paga a waveform inteira: §2.2, medido), **precificação fora do
+  frame de edição** ([ADR-0125](../architecture/decisions/0125-audio-pricing-a-shipping-target-is-export-work-not-edit-work.md)
+  — o clique de Gain era **1758 ms** e 98,5% era precificar plataformas invisíveis; agora **24,3 ms**).
 
 ---
 
@@ -162,17 +164,64 @@ tem gates próprios e sutis. Enxertar meio-testado numa linha fechando é pior q
 scratch + `EditClip::rewrite_preview_region(r, region)`, com um gate que conte o patch como o
 ADR-0120 conta o disparo.
 
-### 2.3 Split do `fx_presets.rs` (631 LOC) — **dono: os presets, não o W7**
+### 2.3 O FIR do `conform` roda na taxa da FONTE (o Mobile paga 2×) — **deferido com razão**
+
+**O que é:** `resample::band_limit` filtra **8,64 M frames × 127 taps ≈ 1,1 G multiply-adds** num
+clipe de 3 min (**~430-600 ms**, medido), e devolve um buffer **na taxa da fonte** que o `conform`
+só então dizima. O Mobile (24 kHz) é o único alvo que *desce*, logo o único que entra no filtro.
+Prova de mecanismo: **baixar mais o alvo não muda o custo** (24k/16k/12k/8k = 425/421/419/410 ms) —
+o `band_limit` sempre produz `src.len()` amostras, seja o destino qual for.
+
+**Por que não fechou com o [ADR-0125](../architecture/decisions/0125-audio-pricing-a-shipping-target-is-export-work-not-edit-work.md),
+e o achado que muda a pergunta:** *"só compute as amostras que sobrevivem à dizimação"* **não é
+byte-preserving aqui**, e isso não é óbvio:
+
+- O `conform` interpola linearmente entre `i0` e `i0+1`. Para **48k→24k** a razão é exatamente 0,5,
+  então `frac == 0.0` **exato** e o vizinho ímpar é lido, multiplicado por zero e jogado fora —
+  metade do filtro é desperdício. Mas isso vale **só para razão inteira**.
+- Para uma razão **não-inteira** (48k→32k: `frac` alterna ~0/~0,5 com erro de f64), os **dois**
+  vizinhos contribuem de verdade. Não há amostra morta para pular. A frase "metade do trabalho é
+  jogada fora na dizimação" é verdadeira **apenas no caso do Mobile**, por acidente aritmético.
+- Logo a única otimização que rende de fato é **fundir filtro + resample num sinc polyphase**
+  (calcular cada saída direto na posição dela). Isso custa `dst_frames × TAPS` (2× menos a 24 kHz,
+  6× menos a 8 kHz), **elimina o buffer intermediário de 33 MB** e é **áudio melhor** (some o
+  estágio de interpolação linear depois do band-limit) — **e muda os bytes de todo asset Mobile
+  já shipado**. É um redesenho de resampler com aceitação e listening test próprios, não um fix de
+  perf contrabandeado dentro de "deixe o clique de Gain rápido" (DIRETIVA §1).
+
+**Por que dá pra esperar:** o ADR-0125 tirou isto do frame de edição. O custo agora cai num
+**worker** (o readout preenche ~0,8 s depois que você solta o knob) e no **Export Set** (onde o
+usuário pediu para escrever arquivos). Nenhum dos dois é um stall de UI.
+
+**O que acorda:** (a) o Export Set virar reclamação de wall-clock; (b) alguém querer um resampler
+de qualidade (aí o polyphase vem pelo motivo certo, e a perf é o brinde); (c) um alvo novo que
+desça de taxa e não seja razão inteira. **Meio-caminho byte-preserving, se alguém quiser só a
+perf:** o laço interno de `band_limit` tem um `if t >= delay && t - delay < frames` **por tap**
+(1,1 G branches); partir em head/body/tail deixa o corpo sem branch com a *mesma* sequência de
+acumulação — byte-idêntico, sem tocar na semântica.
+
+### 2.4 `apply_gain` sem seleção paga a waveform inteira — **é trabalho honesto, verificado**
+
+**Não é um bug, e foi checado explicitamente** (ADR-0125): o remendo de bins **já existente**
+(`PeakCache::patch`) **não cobre**, porque não há o que cobrir. Uma edição de clipe-inteiro deixa
+**todo bin stale**, e `patch(0..frames)` percorre `b0=0..b1=bins` rodando o *mesmo* `bin_minmax` que
+o `build` — é o `build` menos uma alocação. Mudar toda amostra custa toda amostra
+([ADR-0124](../architecture/decisions/0124-audio-a-range-edit-must-be-told-its-range.md) já nomeou
+esta classe como irredutível). São **24,3 ms** num clipe de 3 min: um frame perdido no trabalho que
+o usuário pediu, não um stall. **Nada a fazer** — a entrada existe para que ninguém "otimize" isto
+de novo do zero.
+
+### 2.5 Split do `fx_presets.rs` (631 LOC) — **dono: os presets, não o W7**
 
 Herdado do rename do Gate (`a5ec9d7a`), greened com o marker sancionado `ph2d-loc-cap` para a linha
 fechar. O conserto de verdade é um split por dados (a tabela de presets sai para um módulo irmão).
 
-### 2.4 Smoke de stereo do AI Denoise
+### 2.6 Smoke de stereo do AI Denoise
 
 O wrapper processa por contagem de canais e o fixture é **mono** — o caminho stereo compila e nunca
 foi exercido. Um clipe stereo com ruído fecharia o buraco.
 
-### 2.5 Backlog pequeno (do `02_plano` §4)
+### 2.7 Backlog pequeno (do `02_plano` §4)
 
 - Toggle *enabled* por-entry na UI de variação (o modelo **já** carrega o campo — é só UI).
 - O manifesto de variação guarda **caminho absoluto** (relativo seria portátil).

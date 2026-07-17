@@ -347,6 +347,13 @@ envolve = "envolve"
 # palavras portuguesas.
 acender = "acender"
 Repare = "Repare"
+# pt-BR do Blend de formas (`ph2d-vec-blend`): a heurística PREFERE um pareamento e o custo
+# ajuda a FORMAR o resultado (lidos como "prefer"/"former"). São as palavras portuguesas.
+prefere = "prefere"
+formar = "formar"
+# Termo cunhado do sculpt Inflate (`ph2d-tool-painter`): fontes que estouram o orçamento são
+# "over-reachers" (alcançam longe demais), não "over-readers".
+reachers = "reachers"
 
 [files]
 extend-exclude = [

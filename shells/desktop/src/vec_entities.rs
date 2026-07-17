@@ -114,11 +114,11 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
             .saturating_sub(u32::try_from(k).unwrap_or(0))
             .saturating_sub(1);
         let e = sim.world_mut().spawn((
-        Transform::default(),
-        Name::new(name),
-        VecPathRef(*id),
-        RootOrder(order),
-    ));
+            Transform::default(),
+            Name::new(name),
+            VecPathRef(*id),
+            RootOrder(order),
+        ));
         map.insert(*id, e.id().to_bits());
     }
 }

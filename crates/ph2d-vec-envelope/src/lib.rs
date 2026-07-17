@@ -30,8 +30,10 @@ use kurbo::{BezPath, CubicBez, ParamCurve, ParamCurveDeriv, PathEl, Point, Vec2}
 use ph2d_vec_scene::{VecPath, VecVertex, VertexKind};
 
 mod fit;
+mod quad;
 
 pub use fit::WarpedCubic;
+pub use quad::QuadWarp;
 
 /// Um mapa `R2 -> R2` **arbitrário** (afim ou não), com a sua diferencial.
 ///

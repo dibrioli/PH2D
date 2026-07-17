@@ -90,7 +90,6 @@ fn accuracy(size: [f64; 2]) -> f64 {
 /// Roda DEPOIS de `vec_entities::sync` (a entidade existe) e depois de `vec_transform::build`, no
 /// mesmo lugar do `morph_live::recook` — mas sem os xforms (a fonte já é MUNDO).
 pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMap) {
-    let log = std::env::var("PH2D_ENVELOPE_LOG").is_ok();
     let envs: Vec<(VecPathId, Entity, VecEnvelope)> = map
         .iter()
         .filter_map(|(&id, &bits)| {
@@ -99,9 +98,6 @@ pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMa
             Some((id, e, env))
         })
         .collect();
-    if log && !envs.is_empty() {
-        eprintln!("[envelope] recook: {} envelope(s) no mapa", envs.len());
-    }
 
     for (id, entity, env) in envs {
         let Ok(source) = postcard::from_bytes::<VecPath>(&env.source) else {
@@ -113,23 +109,9 @@ pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene, map: &VecEntityMa
         // Gaiola degenerada (3 cantos colineares): o `QuadWarp` recusa, e a forma **congela** onde
         // está — a mesma escolha do morph com uma fonte perdida. Nunca some, nunca vira lixo.
         let Some(warp) = QuadWarp::new(origin, size, env.corners) else {
-            if log {
-                eprintln!(
-                    "[envelope] id={id}: gaiola degenerada, CONGELA (corners={:?})",
-                    env.corners
-                );
-            }
             continue;
         };
         let cooked = warp_path(&source, &warp, accuracy(size));
-        if log {
-            eprintln!(
-                "[envelope] id={id}: deformou {} -> {} verts | bbox origin={origin:?} size={size:?} | corners={:?}",
-                source.verts.len(),
-                cooked.verts.len(),
-                env.corners
-            );
-        }
         write_shape(scene, id, cooked);
 
         // Vive na IDENTIDADE: a geometria acima é MUNDO. É a mesma regra do morph, e é ela que põe o

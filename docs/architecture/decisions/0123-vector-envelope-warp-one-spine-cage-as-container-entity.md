@@ -30,7 +30,19 @@ tem o certo e o errado **no mesmo framework, separados por qual virtual a classe
 
 **Fazer o ingênuo sabendo é companhia respeitável. O que não se pode é não saber.** E note o que
 *todos* eles pagam por não ter tolerância: o "cop-out" do Skia é exatamente o que o Illustrator
-(Fidelity), o Cavalry (Quality) e o Inkscape (Add Nodes) **shiparam** — porque é a resposta certa.
+(Fidelity), o Cavalry (Add Divisions) e o Inkscape (Add Nodes) **shiparam** — porque é a resposta certa.
+
+**⚠️ E o argumento decisivo contra o ingênuo NÃO é a precisão — é o DOMÍNIO.** A alça de uma cúbica
+vive **fora do casco convexo da curva**. Uma gaiola é um domínio **limitado**. Logo o mapa ingênuo
+**amostra o campo de deformação num ponto que não está na arte, e pode não estar na gaiola** — onde o
+mapa é indefinido, não meramente impreciso. Não é teoria: é o [bug #17338 do Blender](https://projects.blender.org/blender/blender/issues/17338),
+**aberto desde 2008**, na voz do próprio dev: *"the curve modifier **sees the bezier control vertices
+that go beyond the visible part of the curve**, and takes them into account... Modifiers should really
+operate on the control vertices all the time, **but I'm not sure how to handle control vertices that
+go beyond the visible part of the curve.**"*
+
+**Precisão se calibra; domínio não.** Este argumento sobrevive até no warp suave onde o ingênuo
+*"parece certo"* — e é por isso que ele fecha a questão sozinho.
 
 ---
 
@@ -254,6 +266,23 @@ o padrão do `MorphPlans`: cachear o fit com chave na **geometria + pose + gaiol
   Registrado como risco; não é bloqueio da Fatia A.
 - Uma **Live Shape** não pode hospedar gaiola pelo mesmo motivo do raio (o `recook_into` reescreve
   `verts`). Escape: Convert to Curves. Mesma divisão do ADR-0121.
+
+**⚠️ A colisão com a NOSSA `ph2d-vec-blend` — decidir explicitamente, não descobrir depois**
+
+O fit adaptativo escolhe a contagem de segmentos **por curva, em função do erro daquela curva**. Isso
+**destrói correspondência de pontos** entre duas formas — que é exatamente o problema que a
+`ph2d-vec-blend` acabou de resolver a um custo alto (o giro do quadrado, a fase contínua, o `Plan`).
+Precedente: o `Cu2QuMultiPen` do fontTools escalona uma contagem de segmentos **COMPARTILHADA** até
+todas as curvas caberem, *"in an interpolation-compatible manner"* — porque fit por-curva quebra o
+pareamento.
+
+**Consequência:** se um dia um passo de blend/morph tiver de interpolar **duas formas envelopadas**, o
+fit por-curva as torna incompatíveis, e a saída seria uma contagem compartilhada (pagando o pior caso
+globalmente). **Decisão para a Fatia A:** o envelope coza para geometria **cozida**, e o blend consome
+o **cozido** — ou seja, blendar duas formas envelopadas é blendar dois `VecPath` normais, e a
+correspondência é resolvida pelo `Plan` que já existe, depois do fit, não através dele. **Não
+compartilhamos contagem.** Se o smoke mostrar tremor ao animar `t` sobre formas envelopadas, esta
+linha é a primeira suspeita.
 
 **As duas armadilhas a resolver NO ADR, não no smoke**
 1. **A gaiola é invisível mas está na árvore** ⇒ cai no `RootOrder`/ponto-fixo de z que esta linha já

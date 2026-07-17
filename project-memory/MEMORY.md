@@ -73,6 +73,8 @@
 - [Geometria com unidades mistas](feedback_geometry_over_mixed_units_needs_the_consumers_conversion.md) — converta com a const do RENDERER
 - [Snapshot = PONTO FIXO dos sistemas](feedback_a_snapshot_must_be_a_fixed_point_of_the_systems.md) — senão a normalização vira "ação"
 - [Uma régua mede UM relógio](feedback_one_ruler_measures_one_clock.md) — dois dados no mesmo eixo com BASES diferentes; o "confuso" do usuário era bug de modelo
+- [Lacuna não é silêncio](feedback_a_gap_is_not_silence_two_answers_across_one_pixel.md) — "ausente" e "presente com influência 0" têm de coincidir no limite, senão é salto
+- [Espelhar tempo espelha a FORMA](feedback_mirroring_time_must_mirror_the_shape.md) — o interp mora no key de saída: muda de dono E se espelha
 - [Publicador de view não exige cache primed](feedback_a_view_publisher_must_not_require_a_primed_cache.md) — quem AUTORA num instante pode; quem PUBLICA prima sozinho
 - [Coordenada derivada: seed = sample](feedback_derived_coordinate_seed_must_match_sample.md) — autoria usa a MESMA transform da leitura
 - [Âncora invariante sob transform](feedback_anchor_must_be_invariant_under_user_transforms.md) — ancore em geometria, não em aparência

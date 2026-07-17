@@ -1,4 +1,9 @@
-# Handoff — linha `line/FLIP`, continuação (2026-07-15c) · **COMECE AQUI**
+# Handoff — linha `line/FLIP`, continuação (2026-07-15c) · **HISTÓRICO**
+
+> ⚠️ **O COMECE AQUI é o [`HANDOFF_line_FLIP_CONTINUACAO_2026-07-16.md`](HANDOFF_line_FLIP_CONTINUACAO_2026-07-16.md).**
+> Este arquivo é o **registro detalhado do §4.A e dos 6 achados do smoke** — leia-o quando
+> for mexer no gizmo da seleção. **Todos os smokes marcados "PENDENTE" abaixo voltaram OK**
+> (Enio, 2026-07-16: *"perfeito!"*).
 
 > **Para o próximo agente-de-linha do Flip** (o 4º meio do PH2D: animação quadro-a-quadro,
 > fork 2D clean-room do Grease Pencil — [ADR-0114](architecture/decisions/0114-grease-pencil-as-native-2d-medium-flip-no-3d-viewport.md)).
@@ -18,13 +23,13 @@
 
 | commit | wave | o quê | smoke |
 |---|---|---|---|
-| `1b090473` | **§4.A fix** | a caixa do gizmo tem **FOLGA** — handles fora das âncoras e **nunca sobrepostos** (folga DERIVADA do `HANDLE_SIZE_PX`) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
-| `33d7784d` | **§4.A fix** | **revert:** 2+ pontos **precisam** de gizmo — a regra "Point nunca tem gizmo" foi regressão minha | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
-| `994ce21c` | **§4.A fix** | **`Select: Point` começa DESSELECIONADO** (o broadcast do §11 saiu — diverge do GP de propósito) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
-| `08ba6358` | **§4.A fix** | **`Select: Point` some com o gizmo NA HORA** — o gizmo é do domínio **Stroke** (ADR-0112 parity) | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
-| `017b8f00` | **§4.A fix** | a **ÁREA** do gizmo agarra a seleção · **ponto único não abre gizmo** — 2 achados do smoke | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
-| `b793b47c` | **BUGS #18** | a **COSTURA** do traço fechado agora é clicável (pick/marquee/hover) — achado do smoke do §4.A | **PENDENTE (re-rode o `XFORM_SMOKE`)** |
-| `1b51f59b` | **§4.A** | o **gizmo da SELEÇÃO** no modo Edit (rotate/escala assado nos pontos de arte exclusiva) | **PENDENTE — rode `PH2D_FLIP_XFORM_SMOKE=1`** |
+| `1b090473` | **§4.A fix** | a caixa do gizmo tem **FOLGA** — handles fora das âncoras e **nunca sobrepostos** (folga DERIVADA do `HANDLE_SIZE_PX`) | **OK** |
+| `33d7784d` | **§4.A fix** | **revert:** 2+ pontos **precisam** de gizmo — a regra "Point nunca tem gizmo" foi regressão minha | **OK** |
+| `994ce21c` | **§4.A fix** | **`Select: Point` começa DESSELECIONADO** (o broadcast do §11 saiu — diverge do GP de propósito) | **OK** |
+| `08ba6358` | **§4.A fix** | **`Select: Point` some com o gizmo NA HORA** — o gizmo é do domínio **Stroke** (ADR-0112 parity) | **OK** |
+| `017b8f00` | **§4.A fix** | a **ÁREA** do gizmo agarra a seleção · **ponto único não abre gizmo** — 2 achados do smoke | **OK** |
+| `b793b47c` | **BUGS #18** | a **COSTURA** do traço fechado agora é clicável (pick/marquee/hover) — achado do smoke do §4.A | **OK** |
+| `1b51f59b` | **§4.A** | o **gizmo da SELEÇÃO** no modo Edit (rotate/escala assado nos pontos de arte exclusiva) | **OK** |
 
 Tudo abaixo do `1b51f59b` já tinha smoke OK (ver 15b): W8 (domínio Point), W7.5 (gizmo
 da pose), W7.5-F1 (pose afim). **`git log --oneline main..HEAD`** = 31 commits.

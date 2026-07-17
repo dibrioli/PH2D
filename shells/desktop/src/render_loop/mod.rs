@@ -3303,6 +3303,18 @@ impl crate::App {
             );
 
             let cam_affine = camera.world_to_screen_affine(window_size);
+            if std::env::var("PH2D_ENVELOPE_LOG").is_ok()
+                && let Some(p) = vec_scene.paths().first()
+                && let Some(v) = p.verts.first()
+            {
+                let hidden = vec_view.is_hidden(p.id);
+                eprintln!(
+                    "[envelope] PRÉ-DISPATCH: path id={} verts={} v0.anchor={:?} hidden={hidden}",
+                    p.id,
+                    p.verts.len(),
+                    v.anchor
+                );
+            }
             ph2d_vec_render::dispatch(vec_scene, &vec_view, &vec_xf, cam_affine, vector_scene);
             // O **overlay** do Blend Object (ADR-0122): os passos virtuais + as fontes de cima
             // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois

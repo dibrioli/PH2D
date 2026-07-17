@@ -134,6 +134,21 @@ S = Σ wᵢ·q̂ᵢ·conj(p̂ᵢ)        f_r(v) = S·(v − p_*) / |S| + q_*    
 Sem solver, sem fatoração, sem re-malhar a cada edição autorada. **Custo:** o paper mede 2,6–3,8 ms
 para **10.000** pontos em hardware de 2006; arte vetorial densificada tem 10²–10³.
 
+> ⚠️ **O NOME MENTE: "rigid MLS" não é localmente rígido.** A restrição rígida vale para a
+> transformação **ajustada** `l_v(x)` — **não** para a diferencial do mapa `f(v) = l_v(v)`, porque
+> `p_*` e `q_*` são **funções de `v`**. Medido (valores singulares de `J(f)` por diferença central):
+> a **45°** de torção, σ ∈ **[0,38 · 1,44]** — esticando 44%, comprimindo a 38%; a **90°**, `det J`
+> **muda de sinal** (dobra). Um pino interior arrastado 1 unidade numa forma 10×6 já dá σ ∈
+> [0,78 · 1,22]. **A precisão rígida é exata** (movimento rígido global reproduzido a 2e-15) — o que
+> não é rígido é o mapa entre os pinos. Quem ler "rigid" e esperar isometria local vai se enganar.
+>
+> ⚠️ **Armadilha de dia-um, irmã do "1 pino = NaN": com 2 pinos, movimento isométrico ⇒ deformação
+> ZERO.** Girar/transladar o par (qualquer isometria) devolve **movimento rígido global do plano
+> inteiro** — `det J = 1,0000` em todo ponto, medido. Segue da precisão rígida + duas
+> correspondências isométricas determinarem uma rigidez única. **Não se dobra uma forma de 2 pinos.**
+> (E o **afim** com 2 pinos é **singular**: os `p̂ᵢ` ficam colineares. A condição real do afim não é
+> contagem, é **span**: ≥3 pinos **não-colineares**.)
+
 > ⚠️ **O contra-sinal, e ele é real — registrado aqui de propósito.** A pesquisa varreu o mercado e o
 > resultado é desconfortável: **a pegada inteira do MLS em software criativo é o Warp do Krita.** O
 > nicho que o MLS foi *desenhado* para ocupar (warp por handles) está ocupado, em software shipado,
@@ -142,6 +157,14 @@ para **10.000** pontos em hardware de 2006; arte vetorial densificada tem 10²�
 > plausíveis, visíveis na evidência: MLS não tem **acoplamento de rigidez entre regiões distantes**
 > (não segura estrutura numa dobra articulada — exatamente o que o ARAP do OpenToonz existe para
 > fazer), e não tem **escape por-vértice** — você fica com o que os pinos implicam.
+>
+> **E o enquadramento canônico do porquê — Sorkine & Alexa 2007 §1.1, sobre os dois papers:** o
+> Igarashi e o MLS-rigid **são o MESMO truque em altitudes diferentes** — *ajustar uma similaridade
+> (que É linearmente parametrizável em 2D), depois eliminar a escala isotrópica*. O Igarashi faz isso
+> numa **MALHA** (a influência segue as arestas ⇒ distância geodésica); o Schaefer faz no **PLANO** (a
+> influência segue distância euclidiana ⇒ pesos de **Shepard**, que a BBW classifica textualmente como
+> *"dense and not shape-aware"*). **Tudo o mais decorre dessa única diferença** — e é por isso que a
+> escolha é sobre o **operando**, não sobre o algoritmo.
 >
 > **Isto NÃO derruba a decisão, e a razão é o operando.** OpenToonz e GIMP deformam **malha/pixel**; a
 > nossa arte é **path**. O argumento C⁰ (§6) é fatal para nós e inofensivo para eles. Mas a Fatia E

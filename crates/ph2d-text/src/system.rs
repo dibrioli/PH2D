@@ -549,7 +549,7 @@ mod tests {
     #[test]
     fn diag_weight_widths() {
         let mut sys = TextSystem::without_system_fonts();
-        let text = "Inspector Hierarchy 0127";
+        let text = "Inspector Hierarchy 0123";
         eprintln!("\n=== weight diagnostic: '{text}' @ 11px ===");
         for w in [300.0_f32, 400.0, 500.0, 550.0, 600.0, 700.0, 800.0, 900.0] {
             let layout = sys.layout_with_weight(text, 11.0, f32::INFINITY, FontWeight::new(w));

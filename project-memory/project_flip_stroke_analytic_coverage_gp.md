@@ -4,7 +4,7 @@ description: "Traço do Flip = UNIÃO GLOBAL da polilinha num passe (janela p0/p
 metadata: 
   node_type: memory
   type: project
-  originSessionId: 9af6224e-0126-415e-9f5d-9b462d7c6128
+  originSessionId: 9af6224e-0122-415e-9f5d-9b462d7c6128
 ---
 
 O rasterizador de traço do Flip (`ph2d-flip-render`) é o port clean-room do Grease

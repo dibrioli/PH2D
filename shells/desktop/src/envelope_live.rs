@@ -1,4 +1,4 @@
-//! **O host do Envelope vivo** (ADR-0123, Fatia B) — a forma deformada por uma gaiola de 4 cantos.
+//! **O host do Envelope vivo** (ADR-0129, Fatia B) — a forma deformada por uma gaiola de 4 cantos.
 //!
 //! Espelho do [`crate::morph_live`], e mais simples: o morph interpola DUAS fontes e cacheia um
 //! `Plan`; o envelope deforma UMA fonte por um mapa `R2→R2` (a homografia do gesto Quad,

@@ -10,7 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-# Deformação NÃO-AFIM de geometria Bézier (ADR-0123). A espinha é `sample + fit`, e o fit é do
+# Deformação NÃO-AFIM de geometria Bézier (ADR-0129). A espinha é `sample + fit`, e o fit é do
 # kurbo: a doc do `ParamCurveFit` diz, textualmente, que ele existe para "distortion effects such
 # as perspective transform". kurbo é INTERNA a esta crate — mesmo arranjo da `ph2d-vec-boolean` e
 # da `ph2d-vec-blend` — e a `ph2d-vec-scene` continua pura (só `serde` + `postcard`).

@@ -513,7 +513,7 @@ impl Tool for VectorTool {
                 self.mode = DrawMode::Build;
             }
             // **Pick Shapes** — o 8º pill (Blend). Arma a coleta de formas na ordem de clique; a
-            // shell junta a lista e o botão Blend a liga (ADR-0122 C2b).
+            // shell junta a lista e o botão Blend a liga (ADR-0128 C2b).
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PICKBLEND => {
                 self.mode = DrawMode::PickBlend;
             }

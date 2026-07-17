@@ -1,4 +1,4 @@
-//! **O Blend Object vivo** (ADR-0122) — o objeto único que interpola 2..=5 formas.
+//! **O Blend Object vivo** (ADR-0128) — o objeto único que interpola 2..=5 formas.
 //!
 //! Espelha o padrão do [`crate::VecConnector`] e da *Live Shape* ([`crate::VecShape`]): o
 //! componente guarda a **relação** (quais formas, na ordem, e quantos passos entre cada par); a
@@ -24,7 +24,7 @@ use crate::SimComponent;
 
 /// **O Blend Object.** A entidade que o carrega também tem um [`crate::VecPathRef`]: o componente
 /// é a relação, e o `VecPath` dela é o **spine** (a linha que une as fontes, editável no modo
-/// Node — ADR-0122). Os passos intermediários NÃO entram na cena: são desenho, gerado por um
+/// Node — ADR-0128). Os passos intermediários NÃO entram na cena: são desenho, gerado por um
 /// passe de render que lê este componente. É o que torna o blend **um objeto**, e não N.
 #[derive(Component, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VecBlend {
@@ -34,12 +34,12 @@ pub struct VecBlend {
     pub sources: Vec<u64>,
     /// Passos intermediários **por elo** (entre cada par consecutivo). `chain` liga
     /// `fonte[0]→fonte[1]`, `fonte[1]→fonte[2]`, … com `steps` passos em cada par. Não para em 12
-    /// (o teto do Illustrator) — vai a centenas; o clamp mora no painel (ADR-0122, Fase C).
+    /// (o teto do Illustrator) — vai a centenas; o clamp mora no painel (ADR-0128, Fase C).
     pub steps: u32,
     /// O **spine** (a linha que une as fontes, a geometria do `VecPath` desta entidade) foi
     /// **editado pelo artista** (modo Node)? `false` = a shell o re-gera por frame (a reta pelos
     /// centros) e os passos seguem o lerp; `true` = o artista é dono da curva, a shell NÃO a
-    /// sobrescreve, e os passos **fluem ao longo dela** por comprimento de arco (ADR-0122). É o
+    /// sobrescreve, e os passos **fluem ao longo dela** por comprimento de arco (ADR-0128). É o
     /// análogo do flag "autorado" do conector — o mesmo motivo: distinguir a geometria derivada da
     /// autorada.
     #[serde(default)]

@@ -1187,7 +1187,7 @@ fn gizmo_anchor_half(
 }
 
 impl App {
-    /// **Pick Shapes** (ADR-0122 C2b): alterna a forma FECHADA sob `world` na lista de escolhidas
+    /// **Pick Shapes** (ADR-0128 C2b): alterna a forma FECHADA sob `world` na lista de escolhidas
     /// ([`crate::App::vec_blend_picks`]), na ordem de clique. Já escolhida → removida (corrigir a
     /// ordem sem recomeçar); nova → anexada, até o teto de [`crate::blend_live::MAX_BLEND_SOURCES`].
     /// Só FECHADAS entram — uma curva aberta não tem interior para interpolar. Marca
@@ -2619,7 +2619,7 @@ impl App {
                         return;
                     }
                     // Modo Pick Shapes (Blend): a pressão coleta a forma FECHADA sob o
-                    // cursor na ordem de clique (ADR-0122 C2b). Não há pen/shape/gizmo — o
+                    // cursor na ordem de clique (ADR-0128 C2b). Não há pen/shape/gizmo — o
                     // que se escolhe é a LISTA de formas, e o botão Blend a liga. Clicar de
                     // novo numa já escolhida a remove (corrigir sem recomeçar).
                     if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend {
@@ -3425,7 +3425,7 @@ impl App {
                             gfx.present.world_mut(),
                             world_pos,
                         ));
-                        // O SPINE de um Blend Object NÃO é selecionável no modo Select (ADR-0122,
+                        // O SPINE de um Blend Object NÃO é selecionável no modo Select (ADR-0128,
                         // Enio 2026-07-15): a linha é editável só no modo Node. Tirá-la dos hits faz
                         // o clique nela não selecionar nada — o que se move no Select são as
                         // FORMAS-fonte, cada uma com o seu gizmo.

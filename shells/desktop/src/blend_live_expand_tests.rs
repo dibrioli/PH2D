@@ -1,4 +1,4 @@
-//! Testes do **Expand / Release** (ADR-0122 Fase D) — irmão de `blend_live_tests.rs`, separado pelo
+//! Testes do **Expand / Release** (ADR-0128 Fase D) — irmão de `blend_live_tests.rs`, separado pelo
 //! teto de 600 LOC. Reusa `scene_with_blend` de lá (`super::tests`, `pub(super)`).
 //!
 //! O gate que carrega a fase é `expand_materializes_exactly_what_the_overlay_drew`. O Expand promete

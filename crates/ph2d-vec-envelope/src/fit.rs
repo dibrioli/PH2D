@@ -46,7 +46,7 @@ impl<W: Warp> ParamCurveFit for WarpedCubic<'_, W> {
     /// ela é a *fronteira* de um segmento, nunca o interior — os segmentos entram aqui um a um), ou
     /// **`J_W` é singular**, isto é, o mapa dobra.
     ///
-    /// Nenhum mapa das fatias A–D dobra: a gaiola do Quad é **convexa por construção** (ADR-0123
+    /// Nenhum mapa das fatias A–D dobra: a gaiola do Quad é **convexa por construção** (ADR-0129
     /// §5), e uma homografia de retângulo para quadrilátero estritamente convexo não põe a linha de
     /// fuga dentro do retângulo — `J_W` é não-singular em todo o domínio. Coons e presets são
     /// suaves.

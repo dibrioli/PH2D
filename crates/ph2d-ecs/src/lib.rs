@@ -94,7 +94,7 @@ pub use vec_shape::{MAX_SHAPE_VALUES, VecShape, VecTextParams};
 mod vec_connector;
 pub use vec_connector::{Anchor, ConnectorEnd, DEFAULT_CURVE_ARM, RouteKind, VecConnector};
 
-/// **O Blend Object vivo** (ADR-0122) — o objeto único que interpola 2..=5 formas. Mesma família
+/// **O Blend Object vivo** (ADR-0128) — o objeto único que interpola 2..=5 formas. Mesma família
 /// do conector, e pela mesma razão: o componente guarda a RELAÇÃO (quais formas, na ordem, e
 /// quantos passos), e a aparência é uma função pura dela. As fontes são `VecPathId`, nunca bits
 /// de entidade — o undo respawna tudo, e um blend guardado por bits se soltaria a cada Ctrl+Z.

@@ -1,4 +1,4 @@
-//! As operações de **edição e interação** do Blend Object (ADR-0122 C1/C2b) — módulo irmão do
+//! As operações de **edição e interação** do Blend Object (ADR-0128 C1/C2b) — módulo irmão do
 //! [`super`] (teto de 600 LOC do shell). O núcleo do objeto vivo (component, `recook`, os helpers de
 //! geometria) fica em `blend_live.rs`; aqui moram as ações que o painel e o canvas disparam:
 //!
@@ -16,12 +16,12 @@ use super::*;
 
 /// O traço de REALCE do modo Pick Shapes — um azul de acento, distinto do cinza sutil do spine.
 /// Como o [`super::spine_stroke`], é um `Rgba8` em MUNDO por ora; o refinamento correto é um guia por
-/// overlay em screen-space com cor por token (ADR-0122 C2b), quando a preview virar UI de verdade.
+/// overlay em screen-space com cor por token (ADR-0128 C2b), quando a preview virar UI de verdade.
 fn pick_stroke() -> ph2d_vec_scene::StrokeSpec {
     ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(80, 150, 240, 230), 0.04)
 }
 
-/// A **prévia do modo Pick Shapes** (ADR-0122 C2b): o contorno realçado de cada forma escolhida +
+/// A **prévia do modo Pick Shapes** (ADR-0128 C2b): o contorno realçado de cada forma escolhida +
 /// a polilinha que as costura na ORDEM de clique (a prévia do spine-a-ser). Tudo em MUNDO, para o
 /// [`ph2d_vec_render::draw_blend_overlay`] desenhar por cima. `picks` na ordem de clique; formas
 /// que sumiram são puladas. Vazio ⇒ nada é desenhado.
@@ -163,7 +163,7 @@ pub(crate) fn reset_spine(
     }
     changed
 }
-/// **Expand** (ADR-0122 Fase D) — o *"pode ser expandido em múltiplas formas com um botão"* do Enio
+/// **Expand** (ADR-0128 Fase D) — o *"pode ser expandido em múltiplas formas com um botão"* do Enio
 /// (#7): materializa os passos VIRTUAIS do(s) blend(s) que a seleção toca em paths REAIS na cena, e
 /// descarta o objeto vivo. Espelha o `drop_shape_params` da Live Shape ("Convert to Curves") — o
 /// objeto vivo vira geometria morta, editável ponto a ponto.
@@ -240,14 +240,14 @@ pub(crate) fn expand(
     runs
 }
 
-/// **Release** (ADR-0122 Fase D) — desfaz o blend: os passos somem e as formas-fonte ficam, como
+/// **Release** (ADR-0128 Fase D) — desfaz o blend: os passos somem e as formas-fonte ficam, como
 /// antes de o objeto existir. Nada é materializado (≠ [`expand`]). `true` se algum blend foi solto.
 ///
 /// Como os passos são VIRTUAIS (só o spine está na cena), soltar o blend é **remover o spine**: o
 /// `vec_entities::sync` despawna a entidade, o `VecBlend` vai junto, o overlay do frame seguinte
 /// nasce vazio, e as fontes — que nunca foram tocadas — seguem lá.
 ///
-/// **É a saída do blend pelo canvas.** A linha não é selecionável no modo Select (ADR-0122), então o
+/// **É a saída do blend pelo canvas.** A linha não é selecionável no modo Select (ADR-0128), então o
 /// Delete não a alcança; sem este botão, desfazer um blend exigiria caçar "Blend N" na Hierarquia ou
 /// bater Ctrl+Z até antes da criação — e o Ctrl+Z leva junto tudo o que veio depois.
 pub(crate) fn release(
@@ -290,7 +290,7 @@ pub(crate) fn anchor_source_pairs(n_verts: usize, live: &[VecPathId]) -> Vec<(us
     }
 }
 
-/// **Modo Node: arrastar uma ÂNCORA do spine MOVE a forma-fonte dela** (ADR-0122 C2b) — o inverso da
+/// **Modo Node: arrastar uma ÂNCORA do spine MOVE a forma-fonte dela** (ADR-0128 C2b) — o inverso da
 /// pinagem, e o que faz "editar a curva no Node ser igual a mover a forma no Select".
 ///
 /// Cada âncora do spine corresponde a uma forma da cadeia ([`anchor_source_pairs`] — inclusive as do

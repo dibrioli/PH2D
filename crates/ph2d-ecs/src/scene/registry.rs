@@ -266,7 +266,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // Sem este registro, o conector seria DESCARTADO pelo snapshot — o undo e o save o
     // perderiam em silêncio (foi o que aconteceu com Locked/GroupedChildren/VecPathRef).
     reg.register::<crate::VecConnector>("ph2d::ecs::VecConnector");
-    // ADR-0122: o Blend Object vivo. Mesma razão do conector — sem este registro o snapshot o
+    // ADR-0128: o Blend Object vivo. Mesma razão do conector — sem este registro o snapshot o
     // DESCARTA, e o undo/save perderiam o vínculo blend↔fontes em silêncio.
     reg.register::<crate::VecBlend>("ph2d::ecs::VecBlend");
     // O vínculo do RÓTULO com o objeto que ele nomeia. Mesma razão, e mais forte: a pose do
@@ -275,7 +275,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // O Morph vivo (o irmão animável do Blend). Mesma razão: sem o registro, o snapshot o
     // DESCARTA e o undo/save perderiam o vínculo morph↔fontes — e o `t` autorado junto.
     reg.register::<crate::VecMorph>("ph2d::ecs::VecMorph");
-    // ADR-0123: o Envelope Object vivo. Mesma razão de todos acima — sem o registro, o snapshot o
+    // ADR-0129: o Envelope Object vivo. Mesma razão de todos acima — sem o registro, o snapshot o
     // DESCARTA e o undo/save perderiam a gaiola E a fonte autorada em silêncio (e a fonte, aqui,
     // é insubstituível: o recook já sobrescreveu o path da cena com a cozida).
     reg.register::<crate::VecEnvelope>("ph2d::ecs::VecEnvelope");
@@ -314,7 +314,7 @@ mod tests {
         // + 1 §10 BlendMode + 5 save/undo
         // (Locked/GroupedChildren/VecPathRef/FlipObjectRef/PaintedDoc)
         // + 1 Live Shapes (VecShape) + 1 conector (VecConnector) + 1 Blend Object (VecBlend)
-        // + 1 rótulo (VecLabel) + 1 Envelope Object (VecEnvelope, ADR-0123).
+        // + 1 rótulo (VecLabel) + 1 Envelope Object (VecEnvelope, ADR-0129).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só

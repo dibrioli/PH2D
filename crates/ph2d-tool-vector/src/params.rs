@@ -258,7 +258,7 @@ pub enum DrawMode {
     /// prende), e a shell a re-cozinha a cada frame (`connector_live`).
     Connect,
     /// **Pick Shapes** (Blend): coleta as formas fechadas clicadas **na ordem**; o botão Blend as
-    /// liga nessa sequência (ADR-0122 C2b). É um modo — como o Build e o Connect — porque o gesto é
+    /// liga nessa sequência (ADR-0128 C2b). É um modo — como o Build e o Connect — porque o gesto é
     /// escolher formas no canvas, não editar a selecionada; a ORDEM da cadeia é a de clique, não a
     /// de z.
     PickBlend,
@@ -577,7 +577,7 @@ pub fn marker_from_value(v: f64) -> Marker {
     Marker::from_u8(v as u8).unwrap_or(Marker::None)
 }
 
-/// **Steps do Blend** — quantas formas nascem entre CADA par. No modelo VIVO (ADR-0122) os passos
+/// **Steps do Blend** — quantas formas nascem entre CADA par. No modelo VIVO (ADR-0128) os passos
 /// são virtuais (desenho, não paths na cena), então centenas são baratas — o Enio pediu "não 12,
 /// mas centenas". O slider é grosso neste teto; o chip numérico ligado dá o valor exato.
 pub const MAX_BLEND_STEPS: u32 = 200;

@@ -1,8 +1,8 @@
-# ADR-0123 — Envelope / Warp: UMA espinha (`sample + fit`), a gaiola é uma ENTIDADE-container, e os gestos são dois
+# ADR-0129 — Envelope / Warp: UMA espinha (`sample + fit`), a gaiola é uma ENTIDADE-container, e os gestos são dois
 
 **Status:** proposto · **Data:** 2026-07-16 · **Linha:** `line/Vector`
 **Pesquisa:** [`docs/Vector Module/21_pesquisa_envelope_warp.md`](../../Vector%20Module/21_pesquisa_envelope_warp.md) (fan-out, fontes primárias)
-**Precede:** [ADR-0121](0121-vector-live-corners-authored-source-cooked-geometry.md) (fonte≠cozido) · [ADR-0122](0122-vector-blend-object-live-virtual-steps-editable-spine.md) (objeto vivo) · [ADR-0110](0110-vector-nodes-are-ecs-entities-one-hierarchy.md) (toda forma é entidade)
+**Precede:** [ADR-0121](0121-vector-live-corners-authored-source-cooked-geometry.md) (fonte≠cozido) · [ADR-0128](0128-vector-blend-object-live-virtual-steps-editable-spine.md) (objeto vivo) · [ADR-0110](0110-vector-nodes-are-ecs-entities-one-hierarchy.md) (toda forma é entidade)
 
 ---
 

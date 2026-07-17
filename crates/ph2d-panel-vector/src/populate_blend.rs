@@ -51,7 +51,7 @@ pub(super) fn populate_blend(store: &mut WidgetStore) {
     // **Reset Spine** — volta o spine editado (modo Node) ao automático. Registrar aqui é o que o
     // torna clicável (pintar + hit-rect não basta — a classe de bug dos botões do vetor).
     button(store, ids::VECTOR_BLEND_RESET_SPINE);
-    // **Expand** / **Release** (ADR-0122 Fase D) — o mesmo motivo: sem registro, sao pintura.
+    // **Expand** / **Release** (ADR-0128 Fase D) — o mesmo motivo: sem registro, sao pintura.
     button(store, ids::VECTOR_BLEND_EXPAND);
     button(store, ids::VECTOR_BLEND_RELEASE);
     // **MORPH** — o irmão animável do Blend: uma forma só, e o `t` dela é keyável. O slider é a

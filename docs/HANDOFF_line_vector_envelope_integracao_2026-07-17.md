@@ -1,14 +1,14 @@
-# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope / Warp (ADR-0123, Fatias A + B)
+# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope / Warp (ADR-0129, Fatias A + B)
 
 **Para:** o **agente integrador** (e o próximo implementador da linha).
 **De:** a sessão de 2026-07-17 (assumiu a linha para construir o envelope/puppet warp).
 **Estado:** a fatia está **fechada e smokada pelo Enio**. **NÃO integrei nem fiz ship** (Modo L,
 CLAUDE.md §0.7) — este handoff existe para que o integrador o faça **por ordem explícita do Enio**.
 
-> **Leia primeiro:** `CLAUDE.md` + `DIRETIVA_IMPLEMENTACAO.md`. Depois o **ADR-0123**
-> ([`docs/architecture/decisions/0123-vector-envelope-warp-one-spine-cage-as-container-entity.md`](architecture/decisions/0123-vector-envelope-warp-one-spine-cage-as-container-entity.md))
+> **Leia primeiro:** `CLAUDE.md` + `DIRETIVA_IMPLEMENTACAO.md`. Depois o **ADR-0129**
+> ([`docs/architecture/decisions/0129-vector-envelope-warp-one-spine-cage-as-container-entity.md`](architecture/decisions/0129-vector-envelope-warp-one-spine-cage-as-container-entity.md))
 > — é a fonte da verdade do desenho. Este handoff é só a **identidade da linha + os riscos de
-> INTEGRAÇÃO**. Para o estado da linha ANTES do envelope (o Blend/Morph vivo, ADR-0122), o handoff
+> INTEGRAÇÃO**. Para o estado da linha ANTES do envelope (o Blend/Morph vivo, ADR-0128), o handoff
 > irmão [`HANDOFF_line_vector_continuacao_2026-07-16.md`](HANDOFF_line_vector_continuacao_2026-07-16.md)
 > continua sendo a fonte — este NÃO o duplica.
 
@@ -33,13 +33,13 @@ anteriores, já cobertas pelos handoffs anteriores):
 - `1e389055` — o gesto **Quad** como `Warp` (homografia de Heckbert em f64 + gate do horizonte)
 - `e257fba9` — `Cargo.lock` (a crate nova entra no lock)
 - `9ada9a6f` — **Fatia A**: a espinha do envelope (`sample + fit`) + o gate da armadilha
-- `40c06fbd`..`c62138c1` — o **ADR-0123** + a wave de pesquisa (`21_pesquisa_envelope_warp.md`)
+- `40c06fbd`..`c62138c1` — o **ADR-0129** + a wave de pesquisa (`21_pesquisa_envelope_warp.md`)
 
 ---
 
 ## §2 — O que a fatia entrega (contexto de 30 s)
 
-**Deformar geometria Bézier por um mapa NÃO-AFIM** (ADR-0123). A espinha é `densificar → deformar →
+**Deformar geometria Bézier por um mapa NÃO-AFIM** (ADR-0129). A espinha é `densificar → deformar →
 refitar`; envelope e puppet são **um pipeline, dois gestos** (o que troca é `warp: R2→R2`). Esta
 fatia entrega o motor + o **1º gesto (Quad/perspectiva)** + o **Envelope Object vivo** (a forma que
 é a fonte autorada deformada por uma gaiola, re-cozida por frame). **Sem UI ainda** — a gaiola é
@@ -159,10 +159,10 @@ fechada é isso. A correção mid-segment está gateada; a olho, numa elipse, é
 
 ## §6 — A FILA (a ordem é do Enio)
 
-Dentro do envelope (ADR-0123, as fatias que faltam):
+Dentro do envelope (ADR-0129, as fatias que faltam):
 
 1. **Arrastar os cantos da gaiola** no modo Node (a interação — o gesto vivo). Precisa de alças
-   próprias (não o gizmo de sprite — *um gizmo sobre geometria que se move DOBRA*, ADR-0122).
+   próprias (não o gizmo de sprite — *um gizmo sobre geometria que se move DOBRA*, ADR-0128).
 2. **Mover o objeto-envelope inteiro** (a fonte está congelada em MUNDO no componente; mover o
    conjunto re-baka ou aplica um afim aos cantos + fonte).
 3. **O container multi-filho** (o ADR §2 quer 1 gaiola para N formas; esta fatia é **1-para-1**, o

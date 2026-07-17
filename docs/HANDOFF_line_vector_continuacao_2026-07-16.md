@@ -1,7 +1,7 @@
 # HANDOFF — linha `line/Vector`, continuação (2026-07-16)
 
 **Para:** o próximo agente (contexto novo) **e** o agente integrador.
-**Estado:** o **Blend Object vivo (ADR-0122) está COMPLETO** — Fases A, B, C1, C2a, C2b e D fechadas.
+**Estado:** o **Blend Object vivo (ADR-0128) está COMPLETO** — Fases A, B, C1, C2a, C2b e D fechadas.
 **+ os itens #2 e #1 da fila FECHARAM** — o buraco do compound path (`62c93fa7`, §8) e o
 **MORPH VIVO** (o `t` keyável, §9).
 A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (Modo L, CLAUDE.md §0.7).
@@ -13,7 +13,7 @@ A linha está parada, esperando ordem do Enio. **Não integre nem faça ship** (
 > outro não os duplica, de propósito.
 
 > **Leia primeiro:** `CLAUDE.md` (inteiro, é curto) + `docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md`.
-> Este handoff assume os dois. O ADR-0122 é a fonte da verdade do Blend; aqui está o que **não** cabe
+> Este handoff assume os dois. O ADR-0128 é a fonte da verdade do Blend; aqui está o que **não** cabe
 > nele: identidade da linha, riscos de integração, a fila, e as minas que eu declaro.
 
 ---
@@ -63,7 +63,7 @@ formas — e é por isso que um passo não é pickável (o Illustrator faz igual
 **3. A linha é Node-only.** No modo Select o spine **não é selecionável nem tem gizmo** — quem se move
 são as FORMAS, cada uma com o gizmo dela. Isso não é preferência: **um gizmo sobre geometria que se
 move dobra** (a bbox segue as fontes e o gizmo soma por cima). Cinco tentativas de dar gizmo à linha
-foram revertidas; o ADR-0122 lista as cinco e por que cada uma falhou. **Não as tente de novo.**
+foram revertidas; o ADR-0128 lista as cinco e por que cada uma falhou. **Não as tente de novo.**
 
 ### As armadilhas que custaram caro (não repita)
 
@@ -455,7 +455,7 @@ a esquece. É o que torna o zero **reversível**, e há gate para isso.
 
 ## §7 — Resumo de fechamento (o formato da DIRETRIZ)
 
-> Linha `Vector` pronta (HEAD `e2cf1262`, 33 commits sobre `4d203d48`). **ADR-0122 completo** (Blend
+> Linha `Vector` pronta (HEAD `e2cf1262`, 33 commits sobre `4d203d48`). **ADR-0128 completo** (Blend
 > Object vivo, Fases A→D) **+ os itens #2 e #1 da fila fechados**: o blend perdia o BURACO de um
 > compound path (resultado errado em silêncio, pré-existente em `main`; §8) e o **MORPH VIVO** (o
 > `t` keyável — `PropKind::Morph = 7` apendado, **valor de wire**; §9). Handoff de integração:

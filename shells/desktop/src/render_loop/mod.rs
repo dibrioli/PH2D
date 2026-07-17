@@ -1280,7 +1280,7 @@ impl crate::App {
             // capture it here and apply after the drain (mirror of the U/I/D
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
-            // ADR-0122: o botão "Blend" cria um Blend Object VIVO da seleção; o slider Steps
+            // ADR-0128: o botão "Blend" cria um Blend Object VIVO da seleção; o slider Steps
             // ajusta o blend selecionado ao vivo. (O destrutivo `vec_blend::apply` sobrevive só
             // para os smokes — o painel não o alcança mais.)
             let mut pending_create_blend = false;
@@ -1409,16 +1409,16 @@ impl crate::App {
                         // (which ignores those ids) so mode/width/etc. flow.
                         if let ph2d_editor::tool::PanelEvent::Click(id) = &ev {
                             if *id == ph2d_editor::ids::VECTOR_BLEND_RUN {
-                                // ADR-0122: cria o Blend Object VIVO da seleção (não o destrutivo).
+                                // ADR-0128: cria o Blend Object VIVO da seleção (não o destrutivo).
                                 pending_create_blend = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BLEND_RESET_SPINE {
-                                // ADR-0122 C2b: volta o spine editado ao automático.
+                                // ADR-0128 C2b: volta o spine editado ao automático.
                                 pending_reset_spine = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BLEND_EXPAND {
-                                // ADR-0122 D: materializa os passos e descarta o objeto vivo.
+                                // ADR-0128 D: materializa os passos e descarta o objeto vivo.
                                 pending_expand_blend = true;
                             } else if *id == ph2d_editor::ids::VECTOR_BLEND_RELEASE {
-                                // ADR-0122 D: desfaz o blend; as fontes ficam.
+                                // ADR-0128 D: desfaz o blend; as fontes ficam.
                                 pending_release_blend = true;
                             } else if *id == ph2d_editor::ids::VECTOR_MORPH_RUN {
                                 // O irmão animável do blend: UMA forma, com o `t` keyável.
@@ -1545,7 +1545,7 @@ impl crate::App {
                                 // conversão depende da variante da forma.
                                 pending_vec_shape_param = Some((*id, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_BLEND_STEPS {
-                                // ADR-0122: arrastar Steps ajusta o blend selecionado AO VIVO.
+                                // ADR-0128: arrastar Steps ajusta o blend selecionado AO VIVO.
                                 pending_blend_steps =
                                     Some(ph2d_tool_vector::params::blend_steps_from_track(*v));
                             } else if *id == ph2d_editor::ids::VECTOR_MORPH_T {
@@ -2242,7 +2242,7 @@ impl crate::App {
             // Apply a Boolean button press (drained above) to the document before
             // the bridge/render so the result selects + renders this frame
             // (mirror of the U/I/D hotkeys' `vec_boolean`).
-            // ADR-0122: o botão "Blend" cria o Blend Object VIVO sobre as formas fechadas
+            // ADR-0128: o botão "Blend" cria o Blend Object VIVO sobre as formas fechadas
             // selecionadas (2..=5, em z). `create` empurra o spine e devolve o componente; o
             // `sync`/`upkeep`/`recook` do frame dão vida a ele. Seleciona o OBJETO (o spine) para
             // o slider Steps passar a mirar nele.
@@ -2257,7 +2257,7 @@ impl crate::App {
                         ph2d_tool_vector::params::blend_steps_from_track(f64::from(v))
                     });
                 // A ORDEM da cadeia: no modo Pick Shapes, a de CLIQUE (a lista escolhida a dedo);
-                // fora dele, a de z da seleção (ADR-0122 C2b). O Pick é o "escolher a ordem" do Enio.
+                // fora dele, a de z da seleção (ADR-0128 C2b). O Pick é o "escolher a ordem" do Enio.
                 let picking = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend;
                 let sources = if picking && self.vec_blend_picks.len() >= 2 {
                     self.vec_blend_picks.clone()
@@ -2331,7 +2331,7 @@ impl crate::App {
                     }
                 }
             }
-            // ADR-0122 Fase D: **Expand** — materializa os passos VIRTUAIS em formas REAIS e
+            // ADR-0128 Fase D: **Expand** — materializa os passos VIRTUAIS em formas REAIS e
             // descarta o objeto vivo. A sequência de z que ele pede espera em `vec_restack`: as
             // entidades dos passos só nascem no `sync`, e quem manda no z é a ÁRVORE (ADR-0110).
             if pending_expand_blend {
@@ -2351,13 +2351,13 @@ impl crate::App {
                     self.vec_restack.extend(runs);
                 }
             }
-            // ADR-0122 Fase D: **Release** — desfaz o blend (os passos somem, as fontes ficam).
+            // ADR-0128 Fase D: **Release** — desfaz o blend (os passos somem, as fontes ficam).
             if pending_release_blend
                 && crate::blend_live::release(sim, vec_scene, &self.vec_entities, &mut self.vec_pen)
             {
                 eprintln!("[ph2d-vec] blend: solto (as formas-fonte ficam)");
             }
-            // ADR-0122 C2b: Reset Spine — volta o(s) blend(s) selecionado(s) ao spine automático.
+            // ADR-0128 C2b: Reset Spine — volta o(s) blend(s) selecionado(s) ao spine automático.
             if pending_reset_spine
                 && crate::blend_live::reset_spine(
                     sim,
@@ -3117,7 +3117,7 @@ impl crate::App {
             // do blend recém-criado. ANTES do `settle`, pela mesma razão do conector: o `settle`
             // pula o blend, mas só o que ENXERGA — sem o componente já pendurado, o spine
             // recém-empurrado seria assentado como um path comum e o recook do frame seguinte
-            // sairia deslocado (ADR-0122).
+            // sairia deslocado (ADR-0128).
             crate::blend_live::upkeep(
                 sim,
                 vec_scene,
@@ -3133,7 +3133,7 @@ impl crate::App {
                 &self.vec_entities,
                 &mut self.vec_morph_pending,
             );
-            // **Envelope Objects, 1ª metade (ADR-0123):** idem — sem o componente pendurado
+            // **Envelope Objects, 1ª metade (ADR-0129):** idem — sem o componente pendurado
             // antes do `settle`, o path seria assentado como comum e o recook sairia deslocado.
             crate::envelope_live::upkeep(
                 sim,
@@ -3212,7 +3212,7 @@ impl crate::App {
                 &vec_xf,
                 &mut self.vec_morph_plans,
             );
-            // **Envelope Objects, 2ª metade (ADR-0123):** a forma é a fonte autorada deformada
+            // **Envelope Objects, 2ª metade (ADR-0129):** a forma é a fonte autorada deformada
             // pela gaiola — re-cozida aqui, todo frame. Sem xforms: a fonte está congelada em MUNDO
             // no componente (ela não se move; é a gaiola que deforma).
             crate::envelope_live::recook(sim, vec_scene, &self.vec_entities);
@@ -3221,7 +3221,7 @@ impl crate::App {
             // redireciona a seleção do gizmo). O spine as segue no `recook`. Nada a fazer aqui: um
             // gizmo sobre o spine dobraria (Transform + bbox que já andou); sobre as fontes não, a
             // geometria delas é fixa e só o `Transform` se move.
-            // **Modo Node: arrastar uma ÂNCORA do spine move a forma-fonte dela** (ADR-0122 C2b) —
+            // **Modo Node: arrastar uma ÂNCORA do spine move a forma-fonte dela** (ADR-0128 C2b) —
             // o inverso da pinagem. Roda ANTES do recook: move a fonte para a âncora arrastada e o
             // recook então re-encosta a âncora no centro (agora coincidentes, sem salto). Como a
             // fonte se moveu, o `vec_xf` é refeito para os passos deste frame já saírem do lugar
@@ -3238,7 +3238,7 @@ impl crate::App {
             }
             // **Blend Objects, 2ª metade:** os passos são função pura das fontes — re-cozidos
             // aqui, todo frame, sobre os afins DESTE frame. É o que faz a transição SEGUIR a
-            // forma que o gizmo acabou de mover (ADR-0122). O buffer é zerado e repopulado.
+            // forma que o gizmo acabou de mover (ADR-0128). O buffer é zerado e repopulado.
             crate::blend_live::recook(
                 sim,
                 vec_scene,
@@ -3247,7 +3247,7 @@ impl crate::App {
                 &mut self.vec_blend_spines,
                 &mut self.vec_blend_overlay,
             );
-            // **Modo Node: o spine sobe para o topo** (ADR-0122) — acima de TODAS as formas e
+            // **Modo Node: o spine sobe para o topo** (ADR-0128) — acima de TODAS as formas e
             // passos, para ser visto e editado. Retira o traço da cena (some do `dispatch`, logo
             // abaixo) e o acrescenta ao fim do overlay do blend (desenhado por último). Em Select
             // o spine fica no seu z (traço sutil), como o Illustrator — o `recook` restaura o
@@ -3304,12 +3304,12 @@ impl crate::App {
 
             let cam_affine = camera.world_to_screen_affine(window_size);
             ph2d_vec_render::dispatch(vec_scene, &vec_view, &vec_xf, cam_affine, vector_scene);
-            // O **overlay** do Blend Object (ADR-0122): os passos virtuais + as fontes de cima
+            // O **overlay** do Blend Object (ADR-0128): os passos virtuais + as fontes de cima
             // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois
             // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a
             // pilha do blend por cima. O interleaving fino contra o resto da cena é da Fase C.
             ph2d_vec_render::draw_blend_overlay(&self.vec_blend_overlay, cam_affine, vector_scene);
-            // **Pick Shapes** (ADR-0122 C2b): realça as formas escolhidas e costura a ORDEM de
+            // **Pick Shapes** (ADR-0128 C2b): realça as formas escolhidas e costura a ORDEM de
             // clique numa polilinha (a prévia do spine). Fora do modo Pick, a lista não vale —
             // limpa, para não vazar escolhas velhas para o próximo blend.
             if vector_active && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::PickBlend {

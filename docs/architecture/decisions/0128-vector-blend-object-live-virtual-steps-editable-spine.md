@@ -1,4 +1,4 @@
-# ADR-0122 — Blend Object VIVO: passos virtuais, fontes editáveis, spine editável
+# ADR-0128 — Blend Object VIVO: passos virtuais, fontes editáveis, spine editável
 
 - **Status:** aceito (desenho; implementação faseada em curso)
 - **Data:** 2026-07-14

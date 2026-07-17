@@ -129,7 +129,7 @@ quarto:
   comportamento nenhum.
 - **É o pré-requisito declarado dos Live Path Effects**, e um envelope **é** um Live Path Effect. A
   pergunta *"onde mora o envelope?"* já tem resposta: **na fonte**, e o `cooked()` aplica-o.
-- **O ADR-0122 (Blend/Morph vivo)** e o `connector_live`/`morph_live` dão o outro padrão, para quando
+- **O ADR-0128 (Blend/Morph vivo)** e o `connector_live`/`morph_live` dão o outro padrão, para quando
   a geometria é função de uma RELAÇÃO: componente ECS guarda a relação, um `*_live::recook` re-coze
   por frame, a entidade vive na **identidade**. Um envelope cujo deformador é **outra forma** (o
   "Envelope by top object" do Illustrator) é exatamente essa forma.
@@ -154,7 +154,7 @@ Cada uma custou um bug, esta semana:
   porta faria as formas saltarem no clique. Se o teu envelope tiver "preview" e "aplicar", eles têm
   de sair da mesma função. [[feedback_two_doors_to_the_same_question_diverge]]
 - **Um gizmo sobre geometria que se MOVE dobra.** Cinco tentativas de dar gizmo ao spine do Blend
-  foram revertidas (ADR-0122 lista as cinco). Se o teu envelope tem alças, elas não são um gizmo de
+  foram revertidas (ADR-0128 lista as cinco). Se o teu envelope tem alças, elas não são um gizmo de
   sprite — são alças próprias, no modo Node.
 - **Fixture simétrico não arma desempate.** Duas rosquinhas *idênticas* dão centroides exatamente
   iguais (`0.0`) e diferentes dão `1e-16` de ruído — o float fazia, por acidente, o trabalho do

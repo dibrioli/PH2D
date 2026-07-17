@@ -50,7 +50,7 @@ pub use corner::draw_corner_handles;
 mod build_faces;
 pub use build_faces::draw_build_faces;
 
-/// O **overlay do Blend Object** (ADR-0122) — módulo irmão (LOC cap). Desenha o overlay ordenado
+/// O **overlay do Blend Object** (ADR-0128) — módulo irmão (LOC cap). Desenha o overlay ordenado
 /// (passos + fontes reempilhadas) que NÃO está na cena, pela mesma porta ([`draw_path`]) que a
 /// arte real.
 mod blend_overlay;
@@ -173,7 +173,7 @@ pub fn dispatch(
 /// stroke por cima; pontas por último.
 ///
 /// É o corpo de um item de [`dispatch`], **extraído de propósito**: os passos VIRTUAIS de um
-/// Blend Object (ADR-0122, [`draw_blend_overlay`]) não estão na cena, mas são arte de verdade — e
+/// Blend Object (ADR-0128, [`draw_blend_overlay`]) não estão na cena, mas são arte de verdade — e
 /// desenhá-los por uma segunda porta faria a transição divergir do que a MESMA forma pareceria
 /// como path real ([[feedback_two_doors_to_the_same_question_diverge]]). Os dois passam por AQUI.
 ///

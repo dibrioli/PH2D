@@ -264,7 +264,7 @@ fn the_last_source_is_drawn_on_top() {
 }
 
 /// A cadeia é **pairwise**: N fontes ⇒ (N−1) elos, e cada elo contribui `steps` passos + 1 fonte
-/// de cima. É o Blend multi-forma do Illustrator, a capacidade nova do ADR-0122.
+/// de cima. É o Blend multi-forma do Illustrator, a capacidade nova do ADR-0128.
 #[test]
 fn chain_is_pairwise_across_sources() {
     for (n, steps) in [(2, 5), (3, 4), (5, 2)] {
@@ -548,7 +548,7 @@ fn the_spine_is_invisible_in_the_scene_in_select_mode() {
     }
 }
 
-/// **Pick Shapes: a prévia realça as escolhas E as costura na ORDEM DE CLIQUE** (ADR-0122 C2b) —
+/// **Pick Shapes: a prévia realça as escolhas E as costura na ORDEM DE CLIQUE** (ADR-0128 C2b) —
 /// não na de z. Três retângulos em x = 0, 4, 8; escolhidos fora de ordem (8, 0, 4). A prévia tem um
 /// contorno por escolha (sem fill, com traço) + uma polilinha aberta pelos centros nessa mesma
 /// ordem. Se a prévia usasse a ordem de z, os x sairiam 0, 4, 8 — o oráculo distingue as duas.

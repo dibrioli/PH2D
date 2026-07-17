@@ -90,7 +90,7 @@ pub(crate) fn view(
     if sim.world().get::<ph2d_ecs::VecConnector>(entity).is_some() {
         return None;
     }
-    // **O SPINE de um Blend Object também não tem gizmo** (ADR-0122, Enio 2026-07-15) — pela mesma
+    // **O SPINE de um Blend Object também não tem gizmo** (ADR-0128, Enio 2026-07-15) — pela mesma
     // razão do conector: a linha é editável só no modo Node, e no Select o que se move são as
     // FORMAS-fonte (cada uma com o seu gizmo). Uma caixa fina sobre a linha, além de inútil, roubaria
     // o clique. A linha também não é PICKÁVEL no Select (o dispatch a filtra dos hits).
@@ -407,7 +407,7 @@ mod tests {
         assert_eq!(v.bbox_max_world, [13.0, 8.0]);
     }
 
-    /// **O SPINE de um Blend não publica gizmo** (ADR-0122, Enio 2026-07-15) — como o conector. A
+    /// **O SPINE de um Blend não publica gizmo** (ADR-0128, Enio 2026-07-15) — como o conector. A
     /// linha é editável só no modo Node; no Select o que se move são as formas-fonte. Uma forma
     /// normal publica; a MESMA forma com um `VecBlend` (é um spine) não.
     #[test]

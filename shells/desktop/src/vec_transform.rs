@@ -128,7 +128,7 @@ pub(crate) fn move_origin_to(
 /// então a forma SE MOVE). Por ser uma DELTA (e não um alvo absoluto), não presume nada sobre onde
 /// a origem está — vale settled ou não.
 ///
-/// É o que faz uma forma-fonte do blend SEGUIR a ponta do spine arrastada no modo Node (ADR-0122
+/// É o que faz uma forma-fonte do blend SEGUIR a ponta do spine arrastada no modo Node (ADR-0128
 /// C2b): arrastar a ponta é o MESMO que mover a forma pelo gizmo. `false` se a entidade sumiu ou o
 /// afim do pai é degenerado.
 pub(crate) fn translate_shape_world(
@@ -195,7 +195,7 @@ pub(crate) fn settle_origins(
                 // isso que o torna (corretamente) não-arrastável pelo gizmo: mover um
                 // conector não quer dizer nada; o que se move são as pontas dele.
                 && sim.world().get::<ph2d_ecs::VecConnector>(e).is_none()
-                // BLEND OBJECT (ADR-0122): pela MESMA razão do conector. O spine é geometria de
+                // BLEND OBJECT (ADR-0128): pela MESMA razão do conector. O spine é geometria de
                 // MUNDO, reescrita a cada frame (`blend_live`) a partir dos centros das fontes —
                 // assentar somaria geometria + `Transform` e o deslocaria. Ele vive na
                 // identidade, e é isso que o torna não-arrastável pelo gizmo: mover um blend não
@@ -204,7 +204,7 @@ pub(crate) fn settle_origins(
                 // MORPH OBJECT: idem — a forma morfada é reescrita em MUNDO a cada frame
                 // (`morph_live`) a partir das duas fontes.
                 && sim.world().get::<ph2d_ecs::VecMorph>(e).is_none()
-                // ENVELOPE OBJECT (ADR-0123): idem — a forma é a fonte autorada deformada pela
+                // ENVELOPE OBJECT (ADR-0129): idem — a forma é a fonte autorada deformada pela
                 // gaiola, reescrita em MUNDO a cada frame (`envelope_live`). Vive na identidade.
                 && sim.world().get::<ph2d_ecs::VecEnvelope>(e).is_none()
                 && sim

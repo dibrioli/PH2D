@@ -1,4 +1,4 @@
-//! Deformação **não-afim** de geometria Bézier — a espinha do envelope / puppet warp (ADR-0123).
+//! Deformação **não-afim** de geometria Bézier — a espinha do envelope / puppet warp (ADR-0129).
 //!
 //! # A armadilha, e por que esta crate existe
 //!
@@ -24,7 +24,7 @@
 //!
 //! `amostrar W(C(t)) + J_W·C'(t)` → [`kurbo::fit_to_bezpath`]. Nada de composição simbólica (medido:
 //! é o *mesmo* problema de aproximação, e o grau 18 não tem onde morar) e nada de Bézier racional
-//! (exigiria peso por ponto de controle, que o [`VecVertex`] não tem). Ver ADR-0123 §2.
+//! (exigiria peso por ponto de controle, que o [`VecVertex`] não tem). Ver ADR-0129 §2.
 
 use kurbo::{BezPath, CubicBez, ParamCurve, ParamCurveDeriv, PathEl, Point, Vec2};
 use ph2d_vec_scene::{VecPath, VecVertex, VertexKind};
@@ -39,7 +39,7 @@ pub use quad::QuadWarp;
 ///
 /// É o único ponto de extensão da crate: todo gesto de envelope (preset, quad/perspectiva, 4
 /// curvas de lado, pinos) é um `Warp` diferente plugado na **mesma** espinha. Foi essa unificação
-/// que o ADR-0123 §4 decidiu — envelope e puppet não são features distintas, são dois gestos sobre
+/// que o ADR-0129 §4 decidiu — envelope e puppet não são features distintas, são dois gestos sobre
 /// um pipeline.
 pub trait Warp {
     /// A imagem de `p`.
@@ -48,7 +48,7 @@ pub trait Warp {
     /// A jacobiana em `p`, em ordem de linha: `[[dx/du, dx/dv], [dy/du, dy/dv]]`.
     ///
     /// É o que dá a derivada da curva deformada pela regra da cadeia — e é por isso que o `Warp`
-    /// a exige em vez de estimá-la por diferença finita: para todo mapa que o ADR-0123 adota
+    /// a exige em vez de estimá-la por diferença finita: para todo mapa que o ADR-0129 adota
     /// (homografia, Coons, presets, MLS) ela é **fechada**, e uma diferença finita trocaria uma
     /// derivada exata por um epsilon inventado.
     ///

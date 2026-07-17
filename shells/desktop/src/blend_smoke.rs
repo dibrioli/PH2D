@@ -1,4 +1,4 @@
-//! **A cena pronta para o smoke do Blend Object VIVO** (`PH2D_BLEND_SMOKE`, ADR-0122).
+//! **A cena pronta para o smoke do Blend Object VIVO** (`PH2D_BLEND_SMOKE`, ADR-0128).
 //!
 //! O Blend destrutivo (a `BlendSession` de [`crate::vec_blend`]) tem o próprio smoke em
 //! `PH2D_BUILD_SMOKE=7..=9`. Este é o do **objeto VIVO**: um objeto único, não-destrutivo, cujos
@@ -10,7 +10,7 @@
 //!   círculo) DE PROPÓSITO — um círculo é rotacionalmente simétrico, e girá-lo não muda nada; a
 //!   elipse tem orientação, então girar a ÚLTIMA forma também influencia os intermediários.
 //! - `PH2D_BLEND_SMOKE=2` — **retângulo → estrela → elipse** (3 formas em CADEIA), 4 passos por
-//!   elo. É a capacidade nova do ADR-0122 (até 5 formas); a transição corre pelas três na ordem.
+//!   elo. É a capacidade nova do ADR-0128 (até 5 formas); a transição corre pelas três na ordem.
 //!   Gire a do MEIO: os ângulos das intermediárias dos dois lados se adaptam.
 //! - `PH2D_BLEND_SMOKE=3` — o **SPINE editável**: estrela → elipse com um spine CURVO autorado. Os
 //!   6 passos **fluem ao longo do arco**, não pela reta. Modo Node no objeto: arraste os pontos do
@@ -191,7 +191,7 @@ impl crate::App {
                 }
                 self.vec_blend_pending = made;
                 // Entra em modo Node: o spine sobe para o TOPO (acima das formas e dos passos) e
-                // aparece com as âncoras — pronto para arrastar (ADR-0122). Em Select ele ficaria
+                // aparece com as âncoras — pronto para arrastar (ADR-0128). Em Select ele ficaria
                 // no z dele (traço sutil), possivelmente sob as formas.
                 self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
                 self.any_input_this_frame = true;
@@ -199,7 +199,7 @@ impl crate::App {
                     "[blend-smoke] SPINE editavel: 6 passos ao longo de um ARCO autorado, em modo \
                      Node (o spine no TOPO, com ancoras). Arraste um ponto INTERIOR e os passos \
                      re-fluem; arraste uma PONTA e a FORMA daquela ponta se move junto (editar a \
-                     curva no Node = mover a forma no Select), a curva toda se adapta (ADR-0122)."
+                     curva no Node = mover a forma no Select), a curva toda se adapta (ADR-0128)."
                 );
             }
             // Pick Shapes (C2b): entra no modo Pick. NÃO cria o blend — o artista clica as formas
@@ -211,7 +211,7 @@ impl crate::App {
                     "[blend-smoke] Pick Shapes: modo Pick ATIVO. Clique as 3 formas NA ORDEM que \
                      quiser (a linha azul costura a cadeia; clicar de novo numa escolhida a \
                      remove), depois Painel Vector > Blend. A ordem do blend e a de CLIQUE, nao a \
-                     de z (ADR-0122 C2b)."
+                     de z (ADR-0128 C2b)."
                 );
             }
             // Cria o Blend Object VIVO sobre as formas da cena, na ordem de z. As fontes
@@ -243,7 +243,7 @@ impl crate::App {
                 eprintln!(
                     "[blend-smoke] Blend Object VIVO sobre {} forma(s), {steps} passos/elo. \
                      Painel Vector > Blend: arraste Steps (retuna ao vivo); clique numa fonte para \
-                     move-la/gira-la (ADR-0122).",
+                     move-la/gira-la (ADR-0128).",
                     ids.len()
                 );
             }

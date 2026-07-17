@@ -1,4 +1,4 @@
-//! **O gate-mãe do ADR-0123: invariância à subdivisão.**
+//! **O gate-mãe do ADR-0129: invariância à subdivisão.**
 //!
 //! Uma transformação correta é invariante a **como se subdivide a entrada**: partir uma cúbica em
 //! duas e deformar as metades tem de dar a mesma curva que deformar a inteira. O caminho ingênuo

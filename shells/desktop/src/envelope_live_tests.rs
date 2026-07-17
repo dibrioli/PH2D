@@ -1,4 +1,4 @@
-//! Os gates do [`crate::envelope_live`] — o Envelope vivo (ADR-0123, Fatia B).
+//! Os gates do [`crate::envelope_live`] — o Envelope vivo (ADR-0129, Fatia B).
 //!
 //! O que eles medem é o comportamento do HOST; a **correção** da deformação (curva sobrevive, não
 //! só os pontos de controle) é da crate `ph2d-vec-envelope` e já está gateada lá (invariância à

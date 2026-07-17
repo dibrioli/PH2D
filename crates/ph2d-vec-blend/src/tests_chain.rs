@@ -1,4 +1,4 @@
-//! Os gates da **Fase A** do ADR-0122 (o Blend Object vivo): a cadeia multi-forma e a cor OKLab.
+//! Os gates da **Fase A** do ADR-0128 (o Blend Object vivo): a cadeia multi-forma e a cor OKLab.
 //!
 //! Arquivo irmão do [`super::tests`] pelo teto de LOC (600).
 
@@ -26,7 +26,7 @@ fn centroid(p: &VecPath) -> [f64; 2] {
     [x / 256.0, y / 256.0]
 }
 
-/// **A CADEIA multi-forma** (ADR-0122): N fontes, ligadas pairwise, só os intermediários.
+/// **A CADEIA multi-forma** (ADR-0128): N fontes, ligadas pairwise, só os intermediários.
 ///
 /// Três quadrados a x=0, 6, 12 com 2 passos cada gap ⇒ 2 gaps × 2 = 4 passos. Os do 1º gap
 /// caminham entre 0 e 6 (centros 2, 4); os do 2º, entre 6 e 12 (centros 8, 10). As FONTES não

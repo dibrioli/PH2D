@@ -6,7 +6,7 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
-//! - `PH2D_BUILD_SMOKE=11` — a cena do **ENVELOPE** (ADR-0123): uma elipse **já deformada** por
+//! - `PH2D_BUILD_SMOKE=11` — a cena do **ENVELOPE** (ADR-0129): uma elipse **já deformada** por
 //!   uma gaiola de perspectiva. OLHE O MEIO DOS SEGMENTOS — as laterais curvam liso; é aí que
 //!   o defeito ingênuo (só os cantos) apareceria, não nos cantos.
 //! - `PH2D_BUILD_SMOKE=10` — a cena do **MORPH** (o `t` animável): um quadrado e uma estrela, já
@@ -127,7 +127,7 @@ impl crate::App {
                      arraste **Morph t**"
                 );
             }
-            // A cena do ENVELOPE (ADR-0123, Fatia B): UMA elipse, e a gaiola já vem PUXADA num
+            // A cena do ENVELOPE (ADR-0129, Fatia B): UMA elipse, e a gaiola já vem PUXADA num
             // trapézio de perspectiva forte — a forma nasce deformada, para o Enio ver a correção
             // sem arrastar nada. A prova NÃO é o canto obedecer (o ingênuo também acerta o canto);
             // é a lateral curvar liso ENTRE os cantos.

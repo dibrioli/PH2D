@@ -1,4 +1,4 @@
-//! **O Envelope vivo** (ADR-0123): a forma cuja geometria é a fonte autorada **deformada por uma
+//! **O Envelope vivo** (ADR-0129): a forma cuja geometria é a fonte autorada **deformada por uma
 //! gaiola de 4 cantos**, re-cozida a cada frame.
 //!
 //! Irmão do [`crate::VecMorph`] e do [`crate::VecBlend`] no padrão, e diferente no que deforma: o
@@ -45,7 +45,7 @@ pub struct VecEnvelope {
     /// deformação é a identidade (a forma não muda). Arrastá-los deforma.
     ///
     /// São 4 números por canto que a UI (fatia seguinte) move; a **convexidade** deles é o que
-    /// mantém a linha de fuga fora da gaiola (ADR-0123 §5, `QuadWarp::is_convex`).
+    /// mantém a linha de fuga fora da gaiola (ADR-0129 §5, `QuadWarp::is_convex`).
     pub corners: [[f64; 2]; 4],
 }
 

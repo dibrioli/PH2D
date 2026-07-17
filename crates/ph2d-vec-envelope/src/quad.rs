@@ -1,4 +1,4 @@
-//! O gesto **Quad / perspectiva** (ADR-0123 §4): a gaiola de 4 cantos, como um mapa [`Warp`].
+//! O gesto **Quad / perspectiva** (ADR-0129 §4): a gaiola de 4 cantos, como um mapa [`Warp`].
 //!
 //! # A matemática, e de onde ela vem
 //!
@@ -15,7 +15,7 @@
 //! sob homografia **toda reta continua reta**. É por isso que o modo "perspectiva" do CorelDRAW é
 //! documentado como *"adding perspective"* — perspectiva exige o mapa projetivo. E a imagem é
 //! **degenerada** (a divisão perde sentido) só na linha de fuga; a gaiola **convexa** a mantém fora
-//! (ADR-0123 §5, e [`QuadWarp::is_convex`]).
+//! (ADR-0129 §5, e [`QuadWarp::is_convex`]).
 
 use crate::Warp;
 
@@ -143,7 +143,7 @@ impl QuadWarp {
 
     /// O quad é **estritamente convexo**?
     ///
-    /// É o que mantém a linha de fuga **fora** da gaiola (ADR-0123 §5): uma homografia de retângulo
+    /// É o que mantém a linha de fuga **fora** da gaiola (ADR-0129 §5): uma homografia de retângulo
     /// para quad estritamente convexo não põe o horizonte dentro do retângulo. A UI da Fatia B
     /// recusa quad não-convexo por isto — não é enfeite, é o que torna o caso degenerado
     /// **inalcançável pelo gesto**, sem clipping e sem epsilon.

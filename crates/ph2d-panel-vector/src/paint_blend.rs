@@ -5,7 +5,7 @@
 //! produzem são objetos diferentes — o Blend dá N passos virtuais em volta de um spine; o Morph dá
 //! UMA forma real, cujo `t` a timeline keya. O Morph não é um modo do Blend.
 //!
-//! **Steps** + o botão **Blend**, sobre o **Blend Object VIVO** (ADR-0122 — o Blend do Illustrator:
+//! **Steps** + o botão **Blend**, sobre o **Blend Object VIVO** (ADR-0128 — o Blend do Illustrator:
 //! objeto único, não-destrutivo, fontes sempre editáveis). O botão cria um blend vivo sobre as
 //! formas fechadas selecionadas (2..=5, em z); o slider Steps ajusta o blend selecionado **ao
 //! vivo**. Não há mais **Stack Each Above** — no modelo vivo o z é automático (fonte0 embaixo →
@@ -64,8 +64,8 @@ impl BodyCtx<'_> {
         // _a11y` lia este arquivo e não achava a palavra (vermelho latente desde a Fase C1).
         //
         // - **Reset Spine** desfaz a edição do spine (modo Node), voltando à reta pelos centros das
-        //   fontes. Sem ele, a única saída da edição seria o undo global (ADR-0122 C2b).
-        // - **Expand** e **Release** são as duas saídas do objeto vivo (ADR-0122 Fase D), e ficam
+        //   fontes. Sem ele, a única saída da edição seria o undo global (ADR-0128 C2b).
+        // - **Expand** e **Release** são as duas saídas do objeto vivo (ADR-0128 Fase D), e ficam
         //   lado a lado porque a escolha é entre elas: *fico com os passos* (o Expand materializa e
         //   o objeto morre) ou *desisto do blend* (os passos somem, as fontes ficam). Nenhuma é um
         //   MODO — cada uma acontece e acabou —, então são `action_button`, não um par segmentado.

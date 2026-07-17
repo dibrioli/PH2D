@@ -1,4 +1,4 @@
-//! **Blend Objects vivos** (ADR-0122) — o objeto único que interpola 2..=5 formas e as SEGUE.
+//! **Blend Objects vivos** (ADR-0128) — o objeto único que interpola 2..=5 formas e as SEGUE.
 //!
 //! Espelho exato do padrão do [`crate::connector_live`]: o componente [`VecBlend`] guarda a
 //! **relação** (quais formas, na ordem, e quantos passos) e os passos intermediários são uma
@@ -22,7 +22,7 @@
 //! O spine e os passos são geometria de MUNDO; uma pose na entidade os deslocaria. Por isso
 //! `vec_transform::settle_origins` o **pula** e este módulo devolve o `Transform` à identidade —
 //! o que o torna (corretamente) não-arrastável pelo gizmo: mover o blend não quer dizer nada; o
-//! que se move são as formas-fonte, e a transição as segue (ADR-0122, o idioma do Illustrator).
+//! que se move são as formas-fonte, e a transição as segue (ADR-0128, o idioma do Illustrator).
 
 use std::collections::BTreeMap;
 
@@ -90,7 +90,7 @@ fn center_of(scene: &VecScene, xforms: &VecXforms, id: VecPathId) -> Option<[f64
 }
 
 /// O spine default: a polilinha (aberta) que passa pelos centros das fontes, na ordem. É a
-/// posição-base dos passos, e o que o modo Node torna editável (ADR-0122).
+/// posição-base dos passos, e o que o modo Node torna editável (ADR-0128).
 fn spine_verts(centers: &[[f64; 2]]) -> Vec<VecVertex> {
     centers.iter().map(|&c| VecVertex::corner(c)).collect()
 }
@@ -98,7 +98,7 @@ fn spine_verts(centers: &[[f64; 2]]) -> Vec<VecVertex> {
 /// O traço FINO do spine — é o que o torna visível e selecionável/clicável no canvas (para editar
 /// no modo Node). É **dado de documento** (um `StrokeSpec` de um path, como o fill de uma forma),
 /// não chrome de UI. Cinza sutil, largura pequena em MUNDO. (Um guia por-overlay ancorado à
-/// seleção, com token e largura em px, é um refinamento — ADR-0122.)
+/// seleção, com token e largura em px, é um refinamento — ADR-0128.)
 fn spine_stroke() -> ph2d_vec_scene::StrokeSpec {
     ph2d_vec_scene::StrokeSpec::new(ph2d_vec_scene::Rgba8::new(150, 150, 165, 190), 0.03)
 }
@@ -262,7 +262,7 @@ pub(crate) fn create(
     Some((spine_id, VecBlend::new(sources.to_vec(), steps)))
 }
 
-/// O teto de fontes por blend (o "até 5 formas" do Enio, ADR-0122). O motor aceita mais, mas o
+/// O teto de fontes por blend (o "até 5 formas" do Enio, ADR-0128). O motor aceita mais, mas o
 /// idioma do Illustrator é uma cadeia curta.
 pub(crate) const MAX_BLEND_SOURCES: usize = 5;
 
@@ -342,7 +342,7 @@ fn cook_links(worlds: &[VecPath], n: usize, offsets: &[[f64; 2]]) -> Vec<Vec<Vec
 /// passos de cada elo INTERCALADOS com a fonte de cima dele (a pilha de z: fonte0 embaixo → passos
 /// → fonte1 → …). É o que o passe [`ph2d_vec_render::draw_blend_overlay`] desenha, nessa ordem.
 ///
-/// # O SPINE: automático ou AUTORADO (ADR-0122)
+/// # O SPINE: automático ou AUTORADO (ADR-0128)
 ///
 /// Enquanto o artista não edita o spine, a shell o regenera (a reta pelos centros) e os passos
 /// seguem o **lerp** (byte-idêntico à Fase B). Quando o artista edita a curva no modo Node, a
@@ -437,7 +437,7 @@ pub(crate) fn recook(
         spines.entry(spine_id).or_default().centers = centers.clone();
 
         // O spine é INVISÍVEL na cena — ele só aparece no modo Node, elevado ao topo do overlay
-        // (`elevate_spines`), que é o único modo em que a linha se toca (ADR-0122). No Select a linha
+        // (`elevate_spines`), que é o único modo em que a linha se toca (ADR-0128). No Select a linha
         // é Node-only e não deve aparecer: mantê-la traçada na cena a mostrava como um "fantasma" que
         // ainda dava drift ao mover as formas (Enio 2026-07-15). Zerar o traço todo frame é função
         // determinística do frame, não estado que gruda.
@@ -471,7 +471,7 @@ pub(crate) fn recook(
 }
 
 /// **Modo Node: o SPINE aparece, elevado ao topo** (acima de TODAS as formas e passos) — é o path
-/// que o artista edita, e tem de estar visível e clicável ali (ADR-0122). Na cena o spine é
+/// que o artista edita, e tem de estar visível e clicável ali (ADR-0128). Na cena o spine é
 /// INVISÍVEL (`recook` mantém o traço em `None`); aqui empurramos um clone TRAÇADO no fim de `out` —
 /// o mesmo buffer que o [`recook`] encheu com os passos, desenhado por último
 /// ([`ph2d_vec_render::draw_blend_overlay`]). Assim o spine só se vê no Node, por cima de tudo.
@@ -559,13 +559,13 @@ pub(crate) fn upkeep(
 #[path = "blend_live_tests.rs"]
 mod tests;
 
-/// Os testes do SPINE editável (ADR-0122 Fase C2) — arquivo irmão pelo teto de LOC; reusa os
+/// Os testes do SPINE editável (ADR-0128 Fase C2) — arquivo irmão pelo teto de LOC; reusa os
 /// helpers de `tests` (`pub(super)`).
 #[cfg(test)]
 #[path = "blend_live_spine_tests.rs"]
 mod spine_tests;
 
-/// Os testes do **Expand / Release** (ADR-0122 Fase D) — idem.
+/// Os testes do **Expand / Release** (ADR-0128 Fase D) — idem.
 #[cfg(test)]
 #[path = "blend_live_expand_tests.rs"]
 mod expand_tests;

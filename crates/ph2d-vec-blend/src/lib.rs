@@ -74,7 +74,7 @@ use compound::Ring;
 mod matching;
 use matching::{map_backward, map_forward, search};
 
-/// O **flow dos passos ao longo do SPINE editável** (ADR-0122) — a camada nova sobre o motor. É
+/// O **flow dos passos ao longo do SPINE editável** (ADR-0128) — a camada nova sobre o motor. É
 /// geometria de arco pura (deslocamentos), separada da correspondência.
 pub mod spine;
 pub use spine::spine_offsets;
@@ -308,7 +308,7 @@ pub fn steps(a: &VecPath, b: &VecPath, n: usize) -> Vec<VecPath> {
 ///
 /// O spine é **emergente**: as fontes estão em posições diferentes do mundo, e o lerp de
 /// coordenadas move os pontos, então os passos já se distribuem entre elas numa reta. O spine
-/// editável (ADR-0122, Fase C) é uma re-distribuição por cima disto.
+/// editável (ADR-0128, Fase C) é uma re-distribuição por cima disto.
 #[must_use]
 pub fn chain(shapes: &[VecPath], n: usize) -> Vec<VecPath> {
     let mut out = Vec::new();

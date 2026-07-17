@@ -356,7 +356,7 @@ pub(crate) struct App {
     /// entidade de um path novo só nasce no `vec_entities::sync`, mais adiante no mesmo frame.
     /// Então o pedido espera aqui e é aplicado logo depois do sync (`vec_entities::restack`).
     ///
-    /// É uma LISTA de sequências, uma por blend: o Expand (ADR-0122 Fase D) age sobre todos os
+    /// É uma LISTA de sequências, uma por blend: o Expand (ADR-0128 Fase D) age sobre todos os
     /// blends que a seleção toca, e cada um pede a sua própria fatia contígua de z. Guardar só uma
     /// seria um corte silencioso — o 2º blend sairia com a pilha errada e ninguém saberia.
     pub(crate) vec_restack: Vec<Vec<ph2d_vec_scene::VecPathId>>,
@@ -702,7 +702,7 @@ pub(crate) struct App {
     /// O lado por onde cada ponta de cada conector saiu no frame anterior — a memória da
     /// histerese de `side_towards` (sem ela a saída pisca na diagonal). Runtime-only.
     pub(crate) vec_connect_sides: crate::connector_live::SideCache,
-    /// O **Blend Object recém-criado** (ADR-0122), esperando a entidade dele nascer no
+    /// O **Blend Object recém-criado** (ADR-0128), esperando a entidade dele nascer no
     /// `vec_entities::sync` para receber o `VecBlend`. Espelho do `vec_connect_pending`: o spine
     /// já está na cena, e sem esta fila de um item a linha ficaria sem componente — um path
     /// invisível que não interpola ninguém.
@@ -710,7 +710,7 @@ pub(crate) struct App {
     /// O morph recém-criado, à espera de a entidade dele nascer no `sync` (espelho do blend).
     pub(crate) vec_morph_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecMorph)>,
     /// O envelope recém-criado, à espera de a entidade dele nascer no `sync` (espelho do
-    /// morph). ADR-0123 Fatia B.
+    /// morph). ADR-0129 Fatia B.
     pub(crate) vec_envelope_pending:
         Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecEnvelope)>,
     /// O `Plan` de cada morph enquanto a relação não muda. Runtime-only: derivável das fontes,
@@ -722,9 +722,9 @@ pub(crate) struct App {
     /// blend UM objeto, e não N. Runtime-only.
     pub(crate) vec_blend_overlay: Vec<ph2d_vec_scene::VecPath>,
     /// O spine AUTOMÁTICO que o `blend_live::recook` escreveu por último, por blend — a memória que
-    /// detecta a edição do spine (modo Node) para marcar `spine_authored` (ADR-0122). Runtime-only.
+    /// detecta a edição do spine (modo Node) para marcar `spine_authored` (ADR-0128). Runtime-only.
     pub(crate) vec_blend_spines: crate::blend_live::BlendSpines,
-    /// **Pick Shapes** (ADR-0122 C2b): as formas fechadas que o artista clicou **na ordem**, no
+    /// **Pick Shapes** (ADR-0128 C2b): as formas fechadas que o artista clicou **na ordem**, no
     /// modo `DrawMode::PickBlend`. O botão Blend as liga nessa sequência (em vez da ordem de z), e a
     /// prévia do spine as costura no canvas. Esvaziado ao criar o blend ou ao sair do modo.
     /// Runtime-only.

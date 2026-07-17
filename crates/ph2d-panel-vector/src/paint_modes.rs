@@ -85,7 +85,7 @@ impl BodyCtx<'_> {
             ),
             // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
-            // liga (ADR-0122 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.
+            // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.
         ];
         let cols = 3usize;
         self.button_grid(y, cols, modes.len(), |i| {

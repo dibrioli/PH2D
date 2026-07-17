@@ -17,7 +17,7 @@
 //! é editar as formas-fonte** — girar/mover/escalar uma adapta os intermediários —, não um botão.
 //!
 //! > ⚠️ Este é o modelo DESTRUTIVO (a `BlendSession` produz paths reais). O **painel já NÃO o
-//! > usa** — o botão "Blend" cria o **Blend Object VIVO** (ADR-0122, `crate::blend_live`): um objeto
+//! > usa** — o botão "Blend" cria o **Blend Object VIVO** (ADR-0128, `crate::blend_live`): um objeto
 //! > único, não-destrutivo, com as fontes sempre editáveis. Este `apply` sobrevive só para os
 //! > smokes de correspondência (`PH2D_BUILD_SMOKE=7/8/9`, que mostram star→circle etc.); a remoção
 //! > completa (com os smokes repontados ao vivo) é uma limpeza posterior.

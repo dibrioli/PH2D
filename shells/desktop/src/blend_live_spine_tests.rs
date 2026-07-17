@@ -1,4 +1,4 @@
-//! Testes do **SPINE editável** do [`crate::blend_live`] (ADR-0122 Fase C2) — irmão de
+//! Testes do **SPINE editável** do [`crate::blend_live`] (ADR-0128 Fase C2) — irmão de
 //! `blend_live_tests.rs`, separado pelo teto de 600 LOC. Reusa `scene_with_blend`/`centroid` de lá
 //! (`super::tests`, `pub(super)`).
 //!
@@ -229,7 +229,7 @@ fn the_spine_endpoints_are_pinned_to_the_sources() {
     );
 }
 
-/// **Reset Spine volta ao automático — e NÃO re-autora.** É o caminho completo (ADR-0122 C2b): o
+/// **Reset Spine volta ao automático — e NÃO re-autora.** É o caminho completo (ADR-0128 C2b): o
 /// spine é automático (o recook o memoriza), depois autorado e curvado, depois resetado. A prova de
 /// que o `spines.remove` é necessário: sem apagar a memória do auto, a detecção do recook seguinte
 /// compararia o spine BENT ainda na cena com o auto memorizado (diferentes) e o RE-autoraria na
@@ -329,7 +329,7 @@ fn a_pinned_spine_endpoint_follows_its_source() {
     );
 }
 
-/// **Arrastar uma ponta do spine MOVE a forma-fonte dela** (ADR-0122 C2b, ajuste do Enio) — o
+/// **Arrastar uma ponta do spine MOVE a forma-fonte dela** (ADR-0128 C2b, ajuste do Enio) — o
 /// inverso da pinagem. A fonte 1 está em (4,0); o artista arrasta a última âncora do spine para
 /// (4,5) no modo Node, e a fonte SEGUE (seu centro vira (4,5)). É o que faz editar a curva no Node
 /// equivaler a mover a forma no Select.

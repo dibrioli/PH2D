@@ -1,9 +1,9 @@
-//! **O flow dos passos ao longo do SPINE** (ADR-0122) — módulo irmão, pelo teto de LOC.
+//! **O flow dos passos ao longo do SPINE** (ADR-0128) — módulo irmão, pelo teto de LOC.
 //!
 //! O motor de correspondência dá a cada passo uma FORMA (a interpolada) e uma posição default: o
 //! **lerp dos centros das fontes**, numa reta. O spine editável re-distribui os passos por
 //! **comprimento de arco** — cada passo, cujo lugar natural é a fração `s` da reta entre os
-//! centros, é movido para a fração `s` do spine. É a "camada nova sobre o motor" do ADR-0122.
+//! centros, é movido para a fração `s` do spine. É a "camada nova sobre o motor" do ADR-0128.
 //!
 //! Devolve um **deslocamento** por passo (não a forma pronta): o chamador tem a forma (do `Plan`) e
 //! só a translada. `offset[k] = spine(s) − reta(s)`. Quando o spine **É** a reta default, todo

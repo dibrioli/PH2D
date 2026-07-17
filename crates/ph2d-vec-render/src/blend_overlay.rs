@@ -1,4 +1,4 @@
-//! O **overlay do Blend Object** (ADR-0122) — módulo irmão (LOC cap).
+//! O **overlay do Blend Object** (ADR-0128) — módulo irmão (LOC cap).
 //!
 //! O Blend do Illustrator é um objeto único cujos passos intermediários são **virtuais**: *"they
 //! do not have anchor points, control handles, fills or strokes, but are merely an appearance

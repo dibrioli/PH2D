@@ -250,12 +250,15 @@ impl Tool for FlipTool {
             // Shape (modo Draw): o traço carrega o próprio preenchimento?
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_LINE => self.draw_filled = false,
             PanelEvent::Click(id) if id == ids::FLIP_SHAPE_FILLED => self.draw_filled = true,
-            // O domínio da seleção (modo Edit, W8): traço inteiro ou ponto.
+            // O domínio da seleção (modo Edit, W8 + §4.B): traço inteiro, ponto ou pedaço.
             PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_STROKE => {
                 self.edit_domain = EditDomain::Stroke;
             }
             PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_POINT => {
                 self.edit_domain = EditDomain::Point;
+            }
+            PanelEvent::Click(id) if id == ids::FLIP_EDIT_DOM_SEGMENT => {
+                self.edit_domain = EditDomain::Segment;
             }
             // Os oito pincéis de escultura (W5). A tabela `FLIP_RESHAPE_KIND_IDS` está
             // na MESMA ordem que `ReshapeKind::ALL` — o zip é o decodificador, e o

@@ -338,6 +338,11 @@ Mata = "Mata"
 definitivos = "definitivos"
 convencional = "convencional"
 envolve = "envolve"
+# pt-BR do domínio Segment do Flip (ADR-0114 §4.B): um clique ACENDE o pedaço (lido como
+# "ascender") e o doc pede que se REPARE no `c` esperado (lido como "repair"). São as
+# palavras portuguesas.
+acender = "acender"
+Repare = "Repare"
 
 [files]
 extend-exclude = [

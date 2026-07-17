@@ -562,47 +562,53 @@ fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
     }
 }
 
-/// 🔴 **O toggle de DOMÍNIO (W8) chega à tool — e a linha Select só existe no Edit.**
+/// 🔴 **Os toggles de DOMÍNIO (W8 + §4.B) chegam à tool — e a linha Select só existe no
+/// Edit.**
 ///
-/// É o seam completo do pill: pintado → hit → Click → bus → `handle_panel_event` →
-/// `edit_domain` muda. Mutação que sangra: tirar os dois ids do arm de eventos do
-/// painel (o clique é engolido e a tool nunca vê o domínio).
+/// É o seam completo dos pills: pintado → hit → Click → bus → `handle_panel_event` →
+/// `edit_domain` muda. Mutação que sangra: tirar um id do arm de eventos do painel (o
+/// clique é engolido e a tool nunca vê o domínio) ou tirar o braço do
+/// `handle_panel_event` (o clique chega e não faz nada).
+///
+/// A tabela é conferida contra o [`EditDomain::ALL`]: um domínio novo sem caso aqui é uma
+/// pill pintada e inerte, e o `assert_eq!` de comprimento o barra na hora.
 #[test]
-fn the_domain_toggle_reaches_the_tool_and_lives_only_in_edit_mode() {
+fn the_domain_toggles_reach_the_tool_and_live_only_in_edit_mode() {
     use ph2d_tool_flip::EditDomain;
-    // (a) o seam: o clique chega e a tool muda de domínio (e volta).
+
+    let cases = [
+        (ids::FLIP_EDIT_DOM_POINT, EditDomain::Point),
+        (ids::FLIP_EDIT_DOM_SEGMENT, EditDomain::Segment),
+        (ids::FLIP_EDIT_DOM_STROKE, EditDomain::Stroke),
+    ];
+    assert_eq!(
+        cases.len(),
+        EditDomain::ALL.len(),
+        "dominio novo sem seam test: pill pintada e inerte e o bug no 1 do projeto"
+    );
+
+    // (a) o seam: cada clique chega e a tool muda de domínio.
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
     let mut st = FlipPanelState;
     let mut tool = FlipTool::default();
     assert_eq!(tool.edit_domain(), EditDomain::Stroke, "o default e Stroke");
-
-    let outcome =
-        host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_EDIT_DOM_POINT));
-    assert_eq!(outcome, EventOutcome::Consumed, "o clique foi IGNORADO");
-    for action in host.drained_actions() {
-        if let EditorAction::ToolPanelEvent(pe) = action {
-            tool.handle_panel_event(pe);
+    for (id, want) in cases {
+        let outcome = host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "o clique {want:?} foi IGNORADO"
+        );
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+            }
         }
+        assert_eq!(tool.edit_domain(), want, "o {want:?} nao chegou na tool");
     }
-    assert_eq!(
-        tool.edit_domain(),
-        EditDomain::Point,
-        "o Point nao chegou na tool"
-    );
 
-    host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_EDIT_DOM_STROKE));
-    for action in host.drained_actions() {
-        if let EditorAction::ToolPanelEvent(pe) = action {
-            tool.handle_panel_event(pe);
-        }
-    }
-    assert_eq!(
-        tool.edit_domain(),
-        EditDomain::Stroke,
-        "o Stroke nao voltou na tool"
-    );
-
-    // (b) a PINTURA: a linha do domínio existe no Edit e em nenhum outro modo.
+    // (b) a PINTURA: a linha do domínio existe no Edit e em nenhum outro modo — e os TRÊS
+    // pills são pintados (um id sem pintura é um domínio inalcançável pelo mouse).
     for mode in ph2d_tool_flip::FlipMode::ALL {
         let want = mode == FlipMode::Edit;
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
@@ -612,12 +618,12 @@ fn the_domain_toggle_reaches_the_tool_and_lives_only_in_edit_mode() {
             ..Default::default()
         }));
         let painted = host.paint::<FlipPanel>(&mut st, viewport());
-        let shown = painted
-            .iter()
-            .any(|(w, r)| *w == ids::FLIP_EDIT_DOM_POINT && r.w > 0.0);
-        assert_eq!(
-            shown, want,
-            "modo {mode:?}: a linha de dominio deveria aparecer? {want}"
-        );
+        for (id, dom) in cases {
+            let shown = painted.iter().any(|(w, r)| *w == id && r.w > 0.0);
+            assert_eq!(
+                shown, want,
+                "modo {mode:?}: o pill {dom:?} deveria aparecer? {want}"
+            );
+        }
     }
 }

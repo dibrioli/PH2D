@@ -571,6 +571,7 @@ impl crate::App {
         self.flip_pose_smoke();
         self.flip_edit_smoke();
         self.flip_selection_smoke();
+        self.flip_segment_smoke();
         self.build_session_upkeep();
 
         let Some(gfx) = self.gfx.as_mut() else {

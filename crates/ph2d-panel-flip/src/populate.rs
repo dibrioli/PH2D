@@ -92,9 +92,10 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_EDIT_SELECT_ALL);
     button(store, ids::FLIP_EDIT_DESELECT);
     button(store, ids::FLIP_EDIT_DELETE);
-    // O domínio da seleção (W8): traço ou ponto.
+    // O domínio da seleção (W8 + §4.B): traço, ponto ou pedaço-entre-cruzamentos.
     button(store, ids::FLIP_EDIT_DOM_STROKE);
     button(store, ids::FLIP_EDIT_DOM_POINT);
+    button(store, ids::FLIP_EDIT_DOM_SEGMENT);
     // Shape (Draw): o traço carrega o próprio preenchimento?
     button(store, ids::FLIP_SHAPE_LINE);
     button(store, ids::FLIP_SHAPE_FILLED);

@@ -50,10 +50,11 @@ impl FlipMode {
     ];
 }
 
-/// **O DOMÍNIO da seleção no modo Edit** (W8 — o `.selection` do GP vive em Point OU
-/// Curve, `02_referencia §11`). O toggle da toolbar do GP vira duas pills aqui:
+/// **O DOMÍNIO da seleção no modo Edit** (W8/§4.B — o `.selection` do GP vive em Point OU
+/// Curve, `02_referencia §11`). O toggle da toolbar do GP vira três pills aqui:
 /// `Stroke` = domínio Curve (clique pega o traço inteiro — o comportamento W6);
-/// `Point` = domínio Point (clique pega UMA âncora; o traço vira a projeção `any()`).
+/// `Point` = domínio Point (clique pega UMA âncora; o traço vira a projeção `any()`);
+/// `Segment` = o pedaço entre dois CRUZAMENTOS (§4.B).
 ///
 /// A conversão de domínio na troca (broadcast/promoção) é feita pelo SHELL sobre o
 /// documento — a tool só guarda a escolha (ela não tem, e não deve ter, acesso ao doc).
@@ -64,6 +65,17 @@ pub enum EditDomain {
     Stroke,
     /// Âncoras individuais (o domínio Point do GP) — meio-traço selecionável.
     Point,
+    /// **O pedaço entre dois cruzamentos** (§4.B). No DADO é o domínio Point (é o que a
+    /// referência crava: *"segment→Point + pós-processo"*) — o que muda é a POLÍTICA de
+    /// pick: um clique acende o trecho inteiro entre os traços que cruzam este.
+    Segment,
+}
+
+impl EditDomain {
+    /// Os domínios na ordem das pills. Existe para o seam test **contar** — um domínio
+    /// novo que não passe pelo seam é uma pill pintada e inerte, o bug nº 1 do projeto
+    /// (o mesmo papel do [`ReshapeKind::ALL`] para os oito pincéis).
+    pub const ALL: [EditDomain; 3] = [EditDomain::Stroke, EditDomain::Point, EditDomain::Segment];
 }
 
 /// Os pincéis de **escultura de traço** (W5). Espelha `ph2d_flip_reshape::ReshapeKind`

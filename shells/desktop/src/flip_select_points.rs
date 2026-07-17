@@ -115,19 +115,34 @@ pub(crate) fn apply_marquee_points(
     changed
 }
 
-/// **A troca de DOMÍNIO reescreve a seleção no documento** (W8): entrar no **Point**
+/// **A troca de DOMÍNIO reescreve a seleção no documento** (W8 + §4.B): entrar no **Point**
 /// começa **desselecionado** (Enio — o gesto seguinte ali é escolher âncoras; o broadcast
 /// do `02 §11` entregava tudo aceso e obrigava a desmarcar antes); voltar ao **Stroke**
 /// promove por `any()` + desmaterializa. Roda 1×/frame ao lado do
 /// [`flip_edit_style_refresh`]; só age quando o toggle do painel MUDOU (a tool guarda a
 /// escolha, o documento guarda o dado — e as duas pontas se encontram aqui).
+///
+/// **O Segment (§4.B) não converte nada, e o porquê é o mesmo que faz o Point limpar.**
+/// Ele é o domínio Point com outro pick, e o dado dos dois é o MESMO `point_sel` — logo
+/// Point↔Segment não tem o que materializar: a seleção que estava lá continua válida e
+/// continua desenhada igual. Só a fronteira com o **Stroke** é uma troca de domínio de
+/// verdade: entrar (Stroke→Segment) **limpa**, exatamente como o Point, porque o gesto
+/// seguinte é escolher pedaços e herdar o traço todo aceso obrigaria a desmarcar antes;
+/// sair (Segment→Stroke) **promove por `any()`**, também como o Point. Ou seja: a
+/// assimetria documentada do W8 vale, com o Segment do lado do Point — e é por isso que
+/// este `match` casa os dois juntos em vez de dar ao Segment um braço próprio.
 pub(crate) fn flip_edit_domain_refresh(app: &mut crate::App) {
     let now = app.flip_style.map(|s| s.edit_domain);
     let prev = std::mem::replace(&mut app.flip_edit_domain, now);
     let (Some(prev), Some(now)) = (prev, now) else {
         return; // tool inativa (ou 1ª volta): nada a converter
     };
-    if prev == now || !app.flip_wants_edit() {
+    // Point↔Segment: o dado é o mesmo vetor; não há domínio a trocar.
+    use ph2d_tool_flip::EditDomain::{Point, Segment};
+    if prev == now || matches!((prev, now), (Point | Segment, Point | Segment)) {
+        return;
+    }
+    if !app.flip_wants_edit() {
         return;
     }
     let active_layer = app.flip_active_layer;
@@ -142,7 +157,9 @@ pub(crate) fn flip_edit_domain_refresh(app: &mut crate::App) {
         return;
     };
     match now {
-        ph2d_tool_flip::EditDomain::Point => drawing.enter_point_domain(),
+        // O Segment anda com o Point: mesmo dado, mesma entrada (limpa) e mesma saída
+        // (promove por `any()`) — ver o doc acima.
+        Point | Segment => drawing.enter_point_domain(),
         ph2d_tool_flip::EditDomain::Stroke => drawing.enter_stroke_domain(),
     }
     app.title_dirty = true;

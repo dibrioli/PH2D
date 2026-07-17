@@ -185,8 +185,9 @@ impl BodyCtx<'_> {
         if snap.mode != FlipMode::Edit {
             return y;
         }
-        // O DOMÍNIO da seleção (W8): traço inteiro (Curve do GP) ou ponto. O shell faz a
-        // conversão broadcast/promoção no documento quando o toggle muda.
+        // O DOMÍNIO da seleção (W8 + §4.B): traço inteiro (Curve do GP), ponto, ou o
+        // pedaço entre dois cruzamentos. O shell faz a conversão no documento quando o
+        // toggle muda.
         y = self.segmented(
             "Select",
             [
@@ -199,6 +200,11 @@ impl BodyCtx<'_> {
                     ids::FLIP_EDIT_DOM_POINT,
                     "Point",
                     snap.edit_domain == EditDomain::Point,
+                ),
+                (
+                    ids::FLIP_EDIT_DOM_SEGMENT,
+                    "Segment",
+                    snap.edit_domain == EditDomain::Segment,
                 ),
             ],
             y,

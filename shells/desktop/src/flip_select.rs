@@ -234,7 +234,7 @@ impl crate::App {
         let local_obj = w2o.apply([f64::from(world[0]), f64::from(world[1])]);
         let move_seed = Vec2::new(local_obj[0] as f32, local_obj[1] as f32);
 
-        let Some((oid, _lid, did)) = visible_drawing(&gfx.flip, &playhead, active_layer) else {
+        let Some((oid, lid, did)) = visible_drawing(&gfx.flip, &playhead, active_layer) else {
             // Camada travada, ou quadro sem desenho: DIZ, em vez de engolir o clique em
             // silêncio (o mesmo princípio dos erros do balde).
             gfx.toasts.push(ph2d_editor::Toast::warning(
@@ -243,22 +243,47 @@ impl crate::App {
             self.title_dirty = true;
             return true;
         };
+        // **Os cortadores do QUADRO** (§4.B) saem do objeto INTEIRO — todas as camadas
+        // visíveis, não só o desenho ativo (o corte é VISUAL). Colhidos AQUI porque o
+        // empréstimo mutável do desenho, logo abaixo, tranca o objeto.
+        let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
+            .then(|| {
+                gfx.flip.object(oid).map(|o| {
+                    crate::flip_select_segment::frame_cutters(o, o.frame_at(&playhead), lid)
+                })
+            })
+            .flatten();
         let Some(drawing) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) else {
             return true;
         };
-        // ── Domínio POINT (W8): o clique pega uma ÂNCORA, não o traço. ──
-        if domain == ph2d_tool_flip::EditDomain::Point {
-            let hit = point_at(drawing, local, px_to_world, &w2l);
-            let shift = pick == Pick::Toggle;
-            // A ÁREA do gizmo da seleção (mesma caixa que ele desenha, em coords da ARTE
-            // — `local` já está nelas): errar a âncora ali dentro ARRASTA a seleção.
-            let in_box =
-                crate::flip_selection_gizmo::selection_box_contains(drawing, local, px_to_art);
+        // ── Domínios POINT (W8) e SEGMENT (§4.B) ──
+        //
+        // O DADO dos dois é o mesmo (`point_sel`), e o gesto também: o que muda é só o
+        // PICK — uma âncora × o pedaço entre dois cruzamentos. Por isso os dois desembocam
+        // no MESMO `DownPoints` e no mesmo mapeamento para gesto; o Segment não é um gesto
+        // novo, é uma política de pick (`02_referencia §11`: *"segment→Point + pós-processo"*).
+        let shift = pick == Pick::Toggle;
+        // A ÁREA do gizmo da seleção (mesma caixa que ele desenha, em coords da ARTE —
+        // `local` já está nelas): errar o alvo ali dentro ARRASTA a seleção.
+        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local, px_to_art);
+        let plan = match domain {
+            ph2d_tool_flip::EditDomain::Point => {
+                let hit = point_at(drawing, local, px_to_world, &w2l);
+                Some(plan_down_points(drawing, hit, shift, in_box))
+            }
+            ph2d_tool_flip::EditDomain::Segment => {
+                let hit = crate::flip_select_pick::hit_at(drawing, local, px_to_world, &w2l);
+                cutters.as_ref().map(|c| {
+                    crate::flip_select_segment::plan_down_segment(drawing, c, hit, shift, in_box)
+                })
+            }
+            ph2d_tool_flip::EditDomain::Stroke => None,
+        };
+        if let Some(plan) = plan {
             // **Mover ponto de uma INSTÂNCIA deformaria o gêmeo** (a arte é compartilhada
             // — a regra W7.2: arrasto nunca deforma arte compartilhada). Selecionar pode;
             // mover não: o gesto vira Click e o usuário é AVISADO (zero no-op silencioso).
             let instanced = drawing.is_instanced();
-            let plan = plan_down_points(drawing, hit, shift, in_box);
             self.title_dirty = true;
             self.flip_edit_gesture = Some(match plan {
                 DownPoints::Move { .. } if instanced => {
@@ -286,6 +311,7 @@ impl crate::App {
             self.flip_live_clear();
             return true;
         }
+        // ── Domínio STROKE (W6): o clique pega o traço inteiro. ──
         let hit = stroke_at(drawing, local, px_to_world, &w2l);
         // `PH2D_FLIP_SELECT_DEBUG=1` — a régua do Edit Mode no app REAL. O seam
         // modificador→pick é a única linha que um teste de unidade não alcança (ele não
@@ -306,9 +332,7 @@ impl crate::App {
         //
         // Shift+arrasto num traço já selecionado seria ambíguo (alternar ou mover?): o
         // Shift manda, e o gesto vira alternar — o arrasto não pega.
-        let shift = pick == Pick::Toggle;
         self.title_dirty = true;
-        let in_box = crate::flip_selection_gizmo::selection_box_contains(drawing, local, px_to_art);
         self.flip_edit_gesture = Some(match plan_down(drawing, hit, shift, in_box) {
             Down::Move { collapse_to } => crate::flip_edit_gesture::EditGesture::Move {
                 last: move_seed,

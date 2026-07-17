@@ -37,6 +37,7 @@ mod layer_time;
 mod object;
 mod onion;
 mod pose;
+mod segment;
 mod stroke;
 mod tween;
 mod tween_flip;
@@ -52,6 +53,7 @@ pub use layer::{FlipLayer, LayerMask};
 pub use object::{DEFAULT_FPS, DupMode, FlipObject};
 pub use onion::{GHOST_MIN_ALPHA, Ghost, OnionMode, OnionSettings, ghosts};
 pub use pose::Pose;
+pub use segment::{Cutter, cuts, piece_of_point, probe_point};
 pub use stroke::{Cap, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_WIDTH, Fill, FlipStroke, Point};
 pub use tween::{TweenOptions, TweenRequest, tween_drawing};
 

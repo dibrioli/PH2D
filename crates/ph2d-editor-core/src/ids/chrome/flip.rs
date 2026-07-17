@@ -46,6 +46,9 @@ pub const FLIP_EDIT_DELETE: NodeId = hash_node_id("flip.edit.delete");
 pub const FLIP_EDIT_DOM_STROKE: NodeId = hash_node_id("flip.edit.dom.stroke");
 /// Edit section (W8): the selection DOMAIN — individual points (the GP Point domain).
 pub const FLIP_EDIT_DOM_POINT: NodeId = hash_node_id("flip.edit.dom.point");
+/// Edit section (ADR-0114 §4.B): the selection DOMAIN — the stretch of a stroke between
+/// two crossings (the GP Segment mode; Point domain plus a pick policy).
+pub const FLIP_EDIT_DOM_SEGMENT: NodeId = hash_node_id("flip.edit.dom.segment");
 /// Edit section: clears the selection (deselect all).
 pub const FLIP_EDIT_DESELECT: NodeId = hash_node_id("flip.edit.deselect");
 /// Edit section: selects every stroke of the active drawing.

@@ -370,7 +370,9 @@ impl crate::App {
                 }
             }
             // O colapso adiado do domínio POINT: soltar sem arrastar num ponto já
-            // selecionado = "agora só este ponto".
+            // selecionado = "agora só este ponto". No SEGMENT o `collapse_to` é o
+            // ponto-SONDA e o colapso é para o PEDAÇO dele — colapsar para o ponto solto
+            // ali seria trocar o que o modo inteiro promete por uma âncora.
             if let EditGesture::MovePoints {
                 collapse_to: Some((si, pi)),
                 ..
@@ -378,18 +380,37 @@ impl crate::App {
             {
                 let active_layer = self.flip_active_layer;
                 let playhead = self.playhead;
+                let domain = self.flip_edit_domain_now();
                 if let Some(gfx) = self.gfx.as_mut()
-                    && let Some((oid, _l, did)) =
+                    && let Some((oid, lid, did)) =
                         crate::flip_select::visible_drawing(&gfx.flip, &playhead, active_layer)
-                    && let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
                 {
-                    let mut changed = dr.clear_selection();
-                    changed |= dr
-                        .strokes
-                        .get_mut(si)
-                        .is_some_and(|s| s.set_point_selected(pi, true));
-                    if changed {
-                        self.title_dirty = true;
+                    let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
+                        .then(|| {
+                            gfx.flip.object(oid).map(|o| {
+                                crate::flip_select_segment::frame_cutters(
+                                    o,
+                                    o.frame_at(&playhead),
+                                    lid,
+                                )
+                            })
+                        })
+                        .flatten();
+                    if let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did)) {
+                        let changed = match &cutters {
+                            Some(c) => crate::flip_select_segment::collapse_to_piece(dr, c, si, pi),
+                            None => {
+                                let mut ch = dr.clear_selection();
+                                ch |= dr
+                                    .strokes
+                                    .get_mut(si)
+                                    .is_some_and(|s| s.set_point_selected(pi, true));
+                                ch
+                            }
+                        };
+                        if changed {
+                            self.title_dirty = true;
+                        }
                     }
                 }
             }
@@ -416,23 +437,38 @@ impl crate::App {
 
         let active_layer = self.flip_active_layer;
         let playhead = self.playhead;
-        // No domínio POINT a caixa acende ÂNCORAS; no Stroke, traços (ponto-dentro OU
-        // segmento-cruza). A escolha vem do snapshot da tool — a mesma porta do down.
-        let point_domain = matches!(
-            self.flip_style.map(|s| s.edit_domain),
-            Some(ph2d_tool_flip::EditDomain::Point)
-        );
+        // No domínio POINT a caixa acende ÂNCORAS; no SEGMENT ela acende os PEDAÇOS que
+        // tocou (o pós-processo da referência: a caixa dá uma máscara de pontos, o modo a
+        // expande — senão a caixa recortaria o traço na borda dela, que é o oposto do que
+        // o modo promete); no Stroke, traços (ponto-dentro OU segmento-cruza). A escolha
+        // vem do snapshot da tool — a mesma porta do down.
+        let domain = self.flip_edit_domain_now();
         if let Some(gfx) = self.gfx.as_mut()
-            && let Some((oid, _l, did)) =
+            && let Some((oid, lid, did)) =
                 crate::flip_select::visible_drawing(&gfx.flip, &playhead, active_layer)
-            && let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
-            && (if point_domain {
-                crate::flip_select::apply_marquee_points(dr, min, max, additive)
-            } else {
-                apply_marquee(dr, min, max, additive)
-            })
         {
-            self.title_dirty = true;
+            let cutters = (domain == ph2d_tool_flip::EditDomain::Segment)
+                .then(|| {
+                    gfx.flip.object(oid).map(|o| {
+                        crate::flip_select_segment::frame_cutters(o, o.frame_at(&playhead), lid)
+                    })
+                })
+                .flatten();
+            if let Some(dr) = gfx.flip.object_mut(oid).and_then(|o| o.drawing_mut(did))
+                && (match (domain, &cutters) {
+                    (ph2d_tool_flip::EditDomain::Segment, Some(c)) => {
+                        crate::flip_select_segment::apply_marquee_segments(
+                            dr, c, min, max, additive,
+                        )
+                    }
+                    (ph2d_tool_flip::EditDomain::Point, _) => {
+                        crate::flip_select::apply_marquee_points(dr, min, max, additive)
+                    }
+                    _ => apply_marquee(dr, min, max, additive),
+                })
+            {
+                self.title_dirty = true;
+            }
         }
         true
     }

@@ -1,4 +1,9 @@
 #![forbid(unsafe_code)]
+// ph2d-loc-cap: crate-root module hub — the 80+ `mod` declarations are an
+// append-only extension point (every drop-in line adds one, and `mod`
+// declarations cannot leave the crate root) alongside the winit `App` entry
+// impl + `fn main`. Grew past the HR-18 cap by cross-line `mod` accumulation
+// during the 2026-07-17 multi-line integration; the growth is structural.
 
 //! Desktop shell — winit 0.30 + wgpu + ECS + sprite render + M6+M7+M12.
 //!

@@ -1,4 +1,4 @@
-//! Plan-level gates for the **simulation loop** (GPU/M5 Fase 3, ADR-0123) — no
+//! Plan-level gates for the **simulation loop** (GPU/M5 Fase 3, ADR-0127) — no
 //! GPU device needed, so they run on every CI lane.
 //!
 //! A wrong plan here is worse than a slow one. The three it must never get

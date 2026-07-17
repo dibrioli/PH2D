@@ -5,11 +5,11 @@
 > (`994c1aa2`), no MESMO branch `line/gpu-nodes` (stack de commits).
 > **Autor:** o agente da Fase 3, a pedido do Enio ("linha Motion, doc na pasta da linha").
 > Briefing executado: [`HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md`](HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md).
-> Documento central: [ADR-0123](architecture/decisions/0123-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md).
+> Documento central: [ADR-0127](architecture/decisions/0127-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md).
 >
 > **As 5 fatias do ADR estão fechadas, e o escopo dele também** — o `motion.spring` (o último item que
 > faltava) e o `force.buoyancy` (a 6ª força) entraram depois, a mando do Enio ("siga implementando").
-> O que ficou aberto está em §Aberto; nada ali é do escopo do ADR-0123.
+> O que ficou aberto está em §Aberto; nada ali é do escopo do ADR-0127.
 
 ---
 
@@ -30,10 +30,10 @@ primeiro.
 | `20c04bf5` | — | `cargo fmt --all` + `Cargo.lock` (paridade com o ship) |
 | `f4c576a7` | — | splits de LOC (o meu **e** o que a F1.1 tinha estourado) |
 | `ced76b73` | 3 | **`force.buoyancy`** — a 6ª e última força sem cobertura |
-| `1c09f865` | 3 | **`motion.spring`** — o escopo do ADR-0123 FECHOU |
+| `1c09f865` | 3 | **`motion.spring`** — o escopo do ADR-0127 FECHOU |
 | `cc4f4345` | — | cena **o MAR** (`PH2D_GPU_COOK_DEMO=4`) + gate + split de LOC |
 
-**O escopo do ADR-0123 está fechado.** As 6 forças + `motion.integrate` + `motion.spring` têm kernel;
+**O escopo do ADR-0127 está fechado.** As 6 forças + `motion.integrate` + `motion.spring` têm kernel;
 `motion.color_ramp` entrou de brinde. **16 dos 90 nós** têm kernel — e o número que importa não é
 esse: cobertura de força **não é aditiva, é penhasco**. Um nó sem kernel DENTRO do laço deixa
 fronteira, e a fronteira faz o `plan` recusar a simulação inteira (§3). Cinco forças na GPU valiam
@@ -46,7 +46,7 @@ zero no grafo que jogasse uma boia n'água; agora não há força que derrube o 
 
 ---
 
-## §1 — As peças novas do contrato lateral (ADR-0122: **8/2/1 intocado**)
+## §1 — As peças novas do contrato lateral (ADR-0126: **8/2/1 intocado**)
 
 `ph2d_nodegraph::gpu` ganhou 3 coisas. Nenhuma toca `NodeOp`/`OpResolver`/`NodeManifest`.
 
@@ -299,7 +299,7 @@ sim alocar o estado inteiro TODO TICK. Medido: mesma janela, 21 checkpoints/5,9 
 Todo o arco **GPU/M5** numa branch linear: **Fase 0** (cook paralelo na CPU, rayon, bit-idêntico) →
 **F1.1** (motor de cook GPU-resident, `ph2d-gpu-cook`) → **Fase 2 / F1.2** (10 kernels stateless + o
 cook híbrido CPU-prefixo/GPU-sufixo no shell) → **Fase 3** (o laço de simulação na GPU) →
-**`force.buoyancy` + `motion.spring` + a cena do mar**. O escopo do ADR-0123 está fechado.
+**`force.buoyancy` + `motion.spring` + a cena do mar**. O escopo do ADR-0127 está fechado.
 
 ### Base e forma do merge
 
@@ -309,14 +309,14 @@ cook híbrido CPU-prefixo/GPU-sufixo no shell) → **Fase 3** (o laço de simula
   gate combinado é `scripts/foundational-integrate.sh` (ADR-0107) + Mergiraf no resíduo textual.
 - Marcos (todos em ordem de commit, do fork ao HEAD `e99a19bd`): `74a19784` Fase 0 · `74aa2b00` F1.1 ·
   `6325a3a8`/`86a2fe35` kernels Fase 2 · `f877b8a0`/`88326d00`/`8c018447` F1.2 · `72301921` 2M ·
-  `4d176f9d` ADR-0123 · `2d66217e` (DAG+ping-pong) · `05632829` (integrate + 5 forças) · `b7977f2d`
+  `4d176f9d` ADR-0127 · `2d66217e` (DAG+ping-pong) · `05632829` (integrate + 5 forças) · `b7977f2d`
   (scrub no device) · `b82678f9` (`DEMO=3`) · `b044742e` (color_ramp/ondas de cor) · `f4c576a7` (splits
   de LOC) · **`ced76b73` (buoyancy) · `1c09f865` (spring) · `cc4f4345` (o mar `DEMO=4`)**.
 
 ### O que foi tocado (e o que NÃO foi)
 
 - **`ph2d-nodegraph` — foundational, mas o CONTRATO CONGELADO está intocado.** Só `gpu.rs` mudou (o
-  **canal lateral** do ADR-0122: `ColumnBinding.port` + `ColumnAccess::{Consume, RefuseIfPresent}` —
+  **canal lateral** do ADR-0126: `ColumnBinding.port` + `ColumnAccess::{Consume, RefuseIfPresent}` —
   §1). `node.rs` (`NodeManifest=8`/`NodeOp=2`/`OpResolver=1`) **não mudou** — verificado por diff, e o
   gate `architecture_contract_surface` **passa** (§5). `gpu.rs` é **append-only por design** (§0.2:
   foundation projetada pra isolamento), então uma linha irmã que só ADICIONE ali funde sem colidir.
@@ -338,8 +338,8 @@ cook híbrido CPU-prefixo/GPU-sufixo no shell) → **Fase 3** (o laço de simula
 
 - **`Cargo.lock`** — 34 linhas de dep novas (as node-crates viraram dev-deps do gate de paridade).
   **Regenerar** com `cargo build`/`check`, não fundir à mão.
-- **Número do ADR (0122/0123)** — se uma linha irmã reivindicou 0122/0123 antes, **renumerar os dois
-  arquivos + os stamps** (`grep -rn "0122\|0123"`). São doc; não há gate sobre o número.
+- **Número do ADR (0126/0127)** — se uma linha irmã reivindicou 0126/0127 antes, **renumerar os dois
+  arquivos + os stamps** (`grep -rn "0126\|0127"`). São doc; não há gate sobre o número.
 - **`renderer.rs` · `motion_state.rs` · `motion_state_tests.rs` ENCOLHERAM por split.** Se outra linha
   os editou, o Mergiraf pode precisar de mão — mas os blocos movidos estão **intactos** em
   `renderer_draw.rs` / `motion_state_gpu_demos.rs` / `motion_state_gpu_tests.rs`. Resolva pelos estágios
@@ -362,8 +362,8 @@ desta linha estava **tudo verde** (§5). O ship do integrador drena latentes de 
 ### Sem escapes
 
 **Nenhum caso §1.5.5** (nenhuma colisão de mesmo-símbolo fora dos meus arquivos; nenhum contrato
-congelado tocado). **Nenhum ADR novo** — o 0122 cobre o canal lateral e o 0123 já estava escrito; esta
-linha o **executou**. Vale emendar o D5 do 0123 com o desvio deliberado documentado acima (§9, "Desvio
+congelado tocado). **Nenhum ADR novo** — o 0126 cobre o canal lateral e o 0127 já estava escrito; esta
+linha o **executou**. Vale emendar o D5 do 0127 com o desvio deliberado documentado acima (§9, "Desvio
 deliberado do ADR").
 
 ### Nota ao Enio (fora do escopo do integrador)

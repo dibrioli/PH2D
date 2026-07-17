@@ -1,7 +1,7 @@
 # BRIEFING — continuação de `line/gpu-nodes` (GPU/M5 **Fase 3**): a **simulação** na GPU
 
 > Para o **novo agente implementador** que assume a linha Motion/GPU. A Fase 2 + a F1.2 landaram e
-> estão fechadas; o **desenho da sua fatia já está escrito** ([ADR-0123](architecture/decisions/0123-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md))
+> estão fechadas; o **desenho da sua fatia já está escrito** ([ADR-0127](architecture/decisions/0127-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md))
 > — você **executa** o ADR, não o re-inventa. **Autor:** o agente da Fase 2/F1.2, 2026-07-16, a pedido
 > do Enio. Leia inteiro antes de tocar em código — é curto de propósito.
 
@@ -12,10 +12,10 @@
 1. **Leia, nesta ordem:**
    - [`HANDOFF_line_gpu_nodes_fase2_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase2_2026-07-15.md) — o
      que você herda (10 kernels, o híbrido, os gates, os gotchas).
-   - **[ADR-0123](architecture/decisions/0123-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md)
+   - **[ADR-0127](architecture/decisions/0127-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md)
      — É O SEU DOCUMENTO CENTRAL.** As 5 decisões (D1..D5) e as 5 fatias já estão desenhadas, com o
      porquê. Não reabra D4 (determinismo) nem D5 (scrub).
-   - [ADR-0122](architecture/decisions/0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md)
+   - [ADR-0126](architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md)
      — o kernel é metadata LATERAL; o contrato de nós fica **8/2/1**.
    - [`docs/plans/2026-07-gpu-resident-node-pipeline.md`](plans/2026-07-gpu-resident-node-pipeline.md)
      — o roadmap (você faz a Fase 3; a 4 é journey futuro).
@@ -37,11 +37,11 @@
    primário; aconteceu nas 3 jornadas anteriores) · foundational é editável aqui (ADR-0107) ·
    `git commit --no-verify` · inner loop = `cargo check -p` · gates 1× no fechamento · **NÃO integre,
    NÃO pushe, NÃO rode `ship.sh`** — feche, escreva o handoff, PARE (§0.7). · **Se sentir vontade de
-   bumpar o `NodeManifest`: PARE e releia o ADR-0122** — a resposta é sempre o canal lateral.
+   bumpar o `NodeManifest`: PARE e releia o ADR-0126** — a resposta é sempre o canal lateral.
 
 ---
 
-## §1 — A missão: **as 5 fatias do ADR-0123, nesta ordem**
+## §1 — A missão: **as 5 fatias do ADR-0127, nesta ordem**
 
 O ADR tem o desenho; aqui está o porquê da ORDEM. **Feche cada fatia antes da próxima.**
 
@@ -212,8 +212,8 @@ rode ship. **Só por ordem EXPLÍCITA do Enio**, via integrador dedicado.
 - **Base:** `line/cook-parallel` (Fase 0) → F1.1 → Fase 2/F1.2 → a sua, tudo em `line/gpu-nodes` em
   ordem de commit. Fast-forward natural. Marcos: `74a19784` (Fase 0) · `74aa2b00`..`e7605cfd` (F1.1)
   · `6325a3a8`/`86a2fe35` (Fase 2) · `f877b8a0`/`88326d00`/`8c018447` (F1.2) · `72301921` (2M) ·
-  `4d176f9d` (ADR-0123).
+  `4d176f9d` (ADR-0127).
 - **Foundational tocado até aqui:** `ph2d-nodegraph` (+`gpu.rs`) · `ph2d-node-registry` · `ph2d-render`
   · `ph2d-eval-motion` (pump) · 10 node crates · shell · crate nova `ph2d-gpu-cook`.
-- **Conflitos esperados:** `Cargo.lock` (dev-deps novas) · o número do ADR-0122/0123 se outra linha
+- **Conflitos esperados:** `Cargo.lock` (dev-deps novas) · o número do ADR-0126/0127 se outra linha
   reivindicou (renumerar; os stamps vão junto). Contrato **8/2/1** intocado — nenhum escape §1.5.5.

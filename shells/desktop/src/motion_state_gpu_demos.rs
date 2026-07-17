@@ -76,7 +76,7 @@ pub(super) fn build_gpu_demo_document(
 }
 
 /// The GPU/M5 **Fase 3 simulation** ready-to-smoke document
-/// (`PH2D_GPU_COOK_DEMO=3`, ADR-0123): `grid(700×700) → color_ramp → integrate →
+/// (`PH2D_GPU_COOK_DEMO=3`, ADR-0127): `grid(700×700) → color_ramp → integrate →
 /// output` with the force loop `integrate --pre--> vortex → attractor → drag →
 /// curl --> integrate.forces` — **490.000 particles, simulated 100% on the GPU**.
 ///

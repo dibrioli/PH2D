@@ -52,7 +52,7 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
     }
 }
 
-/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): `rot' = rot + angle·falloff`,
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0126): `rot' = rot + angle·falloff`,
 /// the exact per-element map of the CPU `eval` (transcendental-free — the sin/cos
 /// of `rot` is the lowering's job, at the render edge, in degrees→radians). No
 /// `applicable`: a plain scalar accumulate covers the whole param space.
@@ -133,7 +133,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

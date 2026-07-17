@@ -124,7 +124,7 @@ fn mixed_tint(existing: [f32; 4], target: [f32; 4], f: f32) -> [f32; 4] {
     ]
 }
 
-/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): `tint' = lerp(existing, target,
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0126): `tint' = lerp(existing, target,
 /// falloff)` per RGBA channel — the exact `mixed_tint` form, so parity is
 /// bit-exact (no transcendentals). **Solid mode only** (`applicable`): the
 /// Gradient ramp keys off `Index/(Count−1)` with a POSITIONAL fallback (`i`,
@@ -246,7 +246,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering (Solid mode), on the side.
+    // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering (Solid mode), on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

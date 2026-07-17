@@ -123,7 +123,7 @@ impl BufferPool {
                 self.free.entry(buf.size()).or_default().push(buf);
             } else {
                 // Still referenced — a simulation's state, held across the tick
-                // by `GpuCook::prev` (ADR-0123 D1). Keep TRACKING it: dropping
+                // by `GpuCook::prev` (ADR-0127 D1). Keep TRACKING it: dropping
                 // our `Arc` here would forget the buffer, and when the sim
                 // finally released it the allocation would be freed instead of
                 // pooled — i.e. the steady-state sim would allocate its whole
@@ -137,7 +137,7 @@ impl BufferPool {
 
 /// Upload a CPU [`Stream`] into a [`GpuStream`] — the **explicit CPU→GPU
 /// boundary** (one crossing per frame, at the seam between the CPU-cooked
-/// prefix and the GPU suffix; ADR-0122 "fronteira explícita").
+/// prefix and the GPU suffix; ADR-0126 "fronteira explícita").
 pub fn upload_stream(gpu: &GpuContext, pool: &mut BufferPool, stream: &Stream) -> GpuStream {
     let count = stream.count() as u32;
     let mut cols = BTreeMap::new();

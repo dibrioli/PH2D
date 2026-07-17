@@ -60,7 +60,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     // `lowerings` describes the `ph2d-expr` path only, and the grid is a
     // structural *generator* (it produces an element count), not a per-element
     // expression map — so `Cpu` stays. The GPU compute lowering exists, but it
-    // rides the ADR-0122 SIDE CHANNEL (`register_gpu_kernel` below, `GPU_KERNEL`),
+    // rides the ADR-0126 SIDE CHANNEL (`register_gpu_kernel` below, `GPU_KERNEL`),
     // never this frozen manifest field.
     lowerings: &[LoweringKind::Cpu],
 };
@@ -86,7 +86,7 @@ fn build_grid(rows: usize, cols: usize, gap_x: f32, gap_y: f32, max: usize) -> V
     })
 }
 
-/// GPU compute kernel (GPU/M5 Fase 1, ADR-0122) — the same row-major centered
+/// GPU compute kernel (GPU/M5 Fase 1, ADR-0126) — the same row-major centered
 /// lattice as [`build_grid`], one element per invocation. `source_count`
 /// mirrors the CPU's `param_as_count` + product cap EXACTLY (the dispatch size
 /// must equal the CPU stream count, or parity is dead on arrival); the body
@@ -195,7 +195,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     // M1.P1 — param rows: whole-number row/column counts, continuous per-axis gap.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 1 (ADR-0122): the WGSL lowering, registered on the side.
+    // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

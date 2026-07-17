@@ -76,7 +76,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the exact
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel): the exact
 /// per-element map of the CPU `eval` — a constant direction, gusted by a noise
 /// row per instance that scrolls with the playhead.
 ///

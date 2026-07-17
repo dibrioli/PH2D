@@ -139,7 +139,7 @@ fn waveform(kind: i32, phase: f32) -> f32 {
     }
 }
 
-/// GPU compute kernel (GPU/M5 Fase 1, ADR-0122). The waveform library is a
+/// GPU compute kernel (GPU/M5 Fase 1, ADR-0126). The waveform library is a
 /// straight WGSL port of [`waveform`] — same piecewise polynomials, same
 /// Capens 2nd-order sine correction (HR-5: WGSL `sin` has no cross-vendor
 /// guarantee; the parabola is plain mul/abs arithmetic, so GPU-vs-CPU parity
@@ -284,7 +284,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 1 (ADR-0122): the WGSL lowering, registered on the side.
+    // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

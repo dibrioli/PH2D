@@ -70,7 +70,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the exact
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel): the exact
 /// per-element map of the CPU `eval` — a tangential push around the centre with
 /// a linear edge falloff, gated by the radius and the focus field.
 ///

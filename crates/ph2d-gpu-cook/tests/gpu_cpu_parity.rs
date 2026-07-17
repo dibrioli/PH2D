@@ -4,7 +4,7 @@
 //! Cooks the SAME graph through the canonical CPU path (`evaluate_motion`,
 //! the exact production lowering) and through the GPU sequencer, and compares
 //! every `RenderInstance` field within ε. Tolerance, not bit-equality:
-//! ADR-0122 — GPU floats are not bit-reproducible cross-vendor, and WGSL may
+//! ADR-0126 — GPU floats are not bit-reproducible cross-vendor, and WGSL may
 //! contract `a*b + c` into an FMA the CPU didn't use. The ε budget is derived,
 //! not hand-waved: positions carry the oscillator's phase arithmetic (one
 //! possible FMA rounding on a phase of magnitude ≤ ~256 → ~3e-5 in the frac,
@@ -184,7 +184,7 @@ fn the_fully_gpu_chain_matches_the_cpu_within_epsilon() {
 
     // Same-device reproducibility: a second cook of the same frame must be
     // byte-identical to the first (catches a racing pass / a stale binding;
-    // cross-VENDOR bit-equality is deliberately NOT asserted — ADR-0122).
+    // cross-VENDOR bit-equality is deliberately NOT asserted — ADR-0126).
     let n2 = gc
         .cook(
             &gpu,

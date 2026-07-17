@@ -1,4 +1,4 @@
-# ADR-0123 — A simulação na GPU: o `pre` é ping-pong de `Arc`, o plano vira **DAG**, e o scrub fica no device
+# ADR-0127 — A simulação na GPU: o `pre` é ping-pong de `Arc`, o plano vira **DAG**, e o scrub fica no device
 
 - **IMPLEMENTADO (Fase 3, `line/gpu-nodes`, 2026-07-16):** as 5 fatias fecharam —
   plano DAG + `prev` ping-pong + `motion.integrate` e as 5 forças + os gates + o ring no device.
@@ -14,10 +14,10 @@
 - **Status:** PROPOSTA (fatia 3 do briefing da Fase 2 — *"é uma extensão do MOTOR, não um port de
   kernel. Desenhe antes de codar; pode virar o journey seguinte"*). Escrito ANTES do código.
 - **Linha:** `line/gpu-nodes` (Modo L, ADR-0107 — foundational é editável pela linha).
-- **Não amende** [ADR-0122](0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md): o kernel
+- **Não amende** [ADR-0126](0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md): o kernel
   segue metadata lateral e o contrato de nós fica **8/2/1**. O que muda é o **motor**
   (`ph2d-gpu-cook`), não a superfície congelada.
-- **Número tentativo:** 0123 (0122 é o último desta linha); renumerar na integração se colidir.
+- **Número tentativo:** 0127 (0126 é o último desta linha); renumerar na integração se colidir.
 
 ## Contexto
 
@@ -103,7 +103,7 @@ Portanto: **o gate de paridade de um nó sequencial afirma UM passo a partir de 
 nunca uma trajetória longa. Comparar 1000 ticks e afrouxar o ε até passar seria um oráculo que
 modela o filtro, não a verdade ([[reference_topic_oracle_discipline]]).
 
-A política do ADR-0122 **não muda e é o que autoriza isto**: a **CPU é o caminho canônico**
+A política do ADR-0126 **não muda e é o que autoriza isto**: a **CPU é o caminho canônico**
 (replay-hash, `cook_determinism`); a GPU é **performance/preview**. Por-device a GPU segue
 determinística — o re-cook byte-idêntico da F1.1 já prova.
 
@@ -132,7 +132,7 @@ inteiro) por escala, sem precisar — D5 entrega os dois.
   forças deixam de ser inventário inerte.
 - **+** O plano DAG é o alvo que o roadmap §2 sempre descreveu — destrava também **multi-input**
   (`look_at`, `combine`) e é pré-requisito das Fases 3–4.
-- **+** Nenhum contrato descongelado (8/2/1 intacto); o kernel segue lateral (ADR-0122).
+- **+** Nenhum contrato descongelado (8/2/1 intacto); o kernel segue lateral (ADR-0126).
 - **−** É um **rewrite do modelo de plano** (linear → DAG) + o threading do `cook()`. A F1.1/Fase 2
   continuam verdes por construção (a cadeia linear é um DAG de um caminho só).
 - **−** O 1º corte não cobre pareamento por `id` (emitter/partículas com nascimento e morte) — o

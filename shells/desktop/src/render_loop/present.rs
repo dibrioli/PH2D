@@ -121,7 +121,7 @@ impl crate::App {
                 // Motion Nodes M0.T11: append the cooked node-graph stream to the
                 // sprite pass (empty when the tool is inactive) — drawn without
                 // being spawned into the ECS `present` (stream ≠ ECS, ADR-0035).
-                // GPU/M5 Fase 1 (ADR-0122): when the bridge cooked this frame on
+                // GPU/M5 Fase 1 (ADR-0126): when the bridge cooked this frame on
                 // the GPU (`PH2D_GPU_COOK=1`, fully-covered chain), the instance
                 // buffer to draw ALREADY lives on the GPU — bind it directly and
                 // pass an empty CPU slice (the pump never ran; its buffer is

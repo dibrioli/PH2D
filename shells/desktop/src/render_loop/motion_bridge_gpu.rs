@@ -1,4 +1,4 @@
-//! GPU-resident cook routing (GPU/M5 Fase 1 F1.1 + F1.2, ADR-0122).
+//! GPU-resident cook routing (GPU/M5 Fase 1 F1.1 + F1.2, ADR-0126).
 //!
 //! The per-frame decision — does this document's chain cook on the GPU, and if
 //! so fully or from a CPU boundary — is a **pure function** of the plan and a
@@ -43,7 +43,7 @@ pub(super) enum GpuRoute {
 ///   at least one dispatching stage — a boundary whose only GPU stage is the
 ///   pass-through `output` would upload the sink stream just to lower it (no
 ///   compute win), so that recuses to the CPU.
-/// - Several boundaries recuse: the motor plans a DAG with N seams (ADR-0123
+/// - Several boundaries recuse: the motor plans a DAG with N seams (ADR-0127
 ///   D2), but the pump hands over ONE cooked node per tick — marching it twice
 ///   would advance its clock twice. The N-seam shell is a later slice; until
 ///   then the CPU, which needs no seam at all, owns those documents.
@@ -64,7 +64,7 @@ pub(super) fn gpu_route(
     }
 }
 
-/// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0122).
+/// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
 ///
 /// With `PH2D_GPU_COOK=1` a single-sink, unscoped document cooks on the GPU:
 /// compute passes in one submit, the lowering writes the renderer's instance
@@ -107,7 +107,7 @@ pub(super) fn cook_gpu(
         GpuRoute::FullyGpu => {
             // A stateless plan is `f(params, playhead)` — one cook at the target
             // tick's time, as F1.1 always did. A plan that drives a `pre` loop
-            // (ADR-0123) is SEQUENTIAL: its trajectory is the sum of its steps,
+            // (ADR-0127) is SEQUENTIAL: its trajectory is the sum of its steps,
             // so it owes one cook per fixed tick, under the same law as the CPU
             // pump (`ticks_owed`) and for the same reason — one big jump would
             // make the motion depend on the frame rate.

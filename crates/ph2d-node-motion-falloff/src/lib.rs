@@ -66,7 +66,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     ],
     // `lowerings` stays `Cpu`: `LoweringKind::Wgsl` is the scalar `eval_column`
     // route (`ph2d-expr`), which this Vec2-derived write does not fit. The GPU
-    // lowering it DOES have is the ADR-0122 side channel (`GPU_KERNEL`, via
+    // lowering it DOES have is the ADR-0126 side channel (`GPU_KERNEL`, via
     // `register_gpu_kernel`) — a separate mechanism that never touches the frozen
     // `NodeManifest`.
     lowerings: &[LoweringKind::Cpu],
@@ -115,7 +115,7 @@ fn field(shape: i32, dx: f32, dy: f32, radius: f32, curve_kind: i32, invert: boo
     if invert { 1.0 - f } else { f }
 }
 
-/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): a straight WGSL port of
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0126): a straight WGSL port of
 /// [`field`] × [`curve`] multiplied into the existing `falloff` — same
 /// polynomials, same IEEE `sqrt`/`floor` (HR-5), so parity holds within float
 /// ULPs. No `applicable`: it covers every `shape`/`curve`. The `shape`/`curve`
@@ -248,7 +248,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

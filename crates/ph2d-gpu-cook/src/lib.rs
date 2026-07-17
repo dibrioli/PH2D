@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! `ph2d-gpu-cook` — the GPU-resident node cook (GPU/M5 **Fase 1**, ADR-0122).
+//! `ph2d-gpu-cook` — the GPU-resident node cook (GPU/M5 **Fase 1**, ADR-0126).
 //!
 //! Takes a motion chain whose nodes registered WGSL kernels (the registry's
 //! side channel, `register_gpu_kernel`) and runs it as a sequence of compute
@@ -15,7 +15,7 @@
 //! part of the chain that can run on the GPU (kernel registered + applicable to
 //! the node's params + no driven params + a derivable column shape). The result
 //! is a **DAG** in topological order where each input names its source
-//! ([`GpuSource`]) — ADR-0123 D2. Whatever it cannot claim is cooked by the
+//! ([`GpuSource`]) — ADR-0127 D2. Whatever it cannot claim is cooked by the
 //! ordinary CPU [`Cook`] — with ALL of its semantics (memo, `pre` feedback,
 //! time scopes, driven params) — and its output stream is uploaded ONCE at the
 //! seam ([`stream::upload_stream`]). The boundaries are a plan-time fact the
@@ -29,12 +29,12 @@
 //! tick's output, which this engine already holds — a `GpuStream` is
 //! `Arc<wgpu::Buffer>` columns, and `motion.integrate` keeps its state in
 //! visible columns (`vel`/`sim_d`/`sim_t`), so "last tick's state" is literally
-//! last tick's buffers ([`GpuCook::prev`], ADR-0123 D1). No readback, no copy,
+//! last tick's buffers ([`GpuCook::prev`], ADR-0127 D1). No readback, no copy,
 //! no barrier. The loop must be claimed WHOLE, though: a CPU boundary inside it
 //! would make the pump re-cook the sim with its own `prev`, and two simulations
 //! of one state diverge — [`plan`] refuses that outright.
 //!
-//! ## Determinism (ADR-0122/0123 — do not reopen)
+//! ## Determinism (ADR-0126/0127 — do not reopen)
 //!
 //! The CPU `eval` is the CANONICAL path: the replay-hash, `cook_determinism`
 //! and `transform_determinism` all run on it, and anything that needs a
@@ -45,7 +45,7 @@
 //!
 //! A **sequential** node changes what that means: `x_{n+1} = f(x_n)` feeds ε
 //! back, so after N ticks the GPU and the CPU are different animations, and
-//! that is not a bug (ADR-0123 D4). Hence a sim's parity gate asserts **one
+//! that is not a bug (ADR-0127 D4). Hence a sim's parity gate asserts **one
 //! step** from a seeded state — never a trajectory with ε loosened until it
 //! passes.
 
@@ -132,7 +132,7 @@ pub struct GpuCook {
     instances: Option<GpuInstances>,
     /// **Last tick's output** of each node that feeds a `pre` edge — the GPU
     /// mirror of `Cook::prev_outputs`, populated at the end of every cook by
-    /// the same rule as `Cook::advance_tick_scoped` (ADR-0123 D1).
+    /// the same rule as `Cook::advance_tick_scoped` (ADR-0127 D1).
     ///
     /// This IS the simulation state, and holding it costs a refcount: a
     /// `GpuStream` is `Arc<wgpu::Buffer>` columns, so "last tick's output" is
@@ -372,7 +372,7 @@ impl GpuCook {
     /// `last_tick + 1` and touches nothing. Backwards (a scrub), it restores the
     /// newest checkpoint at or before the target and hands back its tick to
     /// re-sim from: **GGPO save/load/advance, without leaving the device**
-    /// (ADR-0123 D5). A target the ring no longer covers anchors at the tick-0
+    /// (ADR-0127 D5). A target the ring no longer covers anchors at the tick-0
     /// seed and re-sims forward, which is slow but always right — and is the CPU
     /// ring's own answer to the same question.
     ///
@@ -556,7 +556,7 @@ pub(crate) fn create_pipeline(gpu: &GpuContext, wgsl: &str, label: &str) -> wgpu
 }
 
 /// Read the cooked instances back to the CPU — **the deliberate boundary
-/// crossing** for the parity gates and any future canonical need (ADR-0122:
+/// crossing** for the parity gates and any future canonical need (ADR-0126:
 /// if the replay ever wants a value, it comes from the CPU; this readback
 /// exists to CHECK the GPU, not to feed the frame). Blocks on the GPU.
 pub fn read_instances(

@@ -5,7 +5,7 @@
 > dedicado). Ramificada de **`line/cook-parallel`** (`8310d3cb`) — o integrador landa a
 > Fase 0 primeiro, depois esta. **Continuação:** a Fase 2 tem briefing próprio —
 > [`HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md).
-> ADR: [`0122`](architecture/decisions/0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md) (ACEITO; agora com stamp de implementação).
+> ADR: [`0126`](architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md) (ACEITO; agora com stamp de implementação).
 > Briefing que esta linha executou: [`HANDOFF_line_gpu_nodes_fase1_briefing_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase1_briefing_2026-07-15.md).
 
 ## O que landou (F1.1 — o chain simples 100% na GPU, renderer sem readback)
@@ -34,7 +34,7 @@ aberto: a 500k o custo é dominado por overhead fixo, não pelo N.
      cobre todo o espaço de params (ex.: oscillator só X/Y) → o plano recua pra CPU, nunca
      responde errado.
 2. **`NodeRegistry::register_gpu_kernel(id, kernel)`** + `impl KernelResolver` — o canal
-   lateral do ADR-0122, idêntico ao `register_ui`. Opt-in; 92 nós intocados.
+   lateral do ADR-0126, idêntico ao `register_ui`. Opt-in; 92 nós intocados.
 3. **Kernels registrados (4):** `motion.grid` (gerador; `source_count` espelha o
    `param_as_count` + cap EXATOS — o dispatch tem que igualar o count da CPU) ·
    `motion.oscillator` (X/Y; waveform HR-5 portada no `wgsl_lib` — parábola + correção Capens) ·
@@ -151,7 +151,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && cargo test -p
   (campo+métodos aditivos) · `ph2d-render` (`render_with_streams` aditivo; `render_with_extra`
   delega) · 4 node crates (kernel + 1 linha no `register`) · shell (bridge/present/motion_state,
   +dep `ph2d-gpu-cook`) · crate nova `ph2d-gpu-cook` (drop-in, glob membership).
-- **Conflitos esperados:** `Cargo.lock` (crate nova — regenerar) · número do ADR-0122 se outra
+- **Conflitos esperados:** `Cargo.lock` (crate nova — regenerar) · número do ADR-0126 se outra
   linha reivindicou (renumerar; o stamp de implementação vai junto) · registry-init NÃO mudou
   (register() das crates é o mesmo entry point).
 - **Contrato congelado:** intocado (gate 8/2/1 verde) — nenhum escape §1.5.5 nesta linha.

@@ -84,7 +84,7 @@ pub(crate) struct MotionState {
     /// has to be able to put you back on solid ground, and only the shell sees the
     /// undo (`subgraph::clamp_level`, every frame).
     pub(crate) level: Option<u32>,
-    /// GPU/M5 Fase 1 (ADR-0122): the GPU-resident sequencer. Only driven when
+    /// GPU/M5 Fase 1 (ADR-0126): the GPU-resident sequencer. Only driven when
     /// [`Self::gpu_enabled`]; persistent so its pipeline caches + buffer pool
     /// survive across frames (the GPU twin of the pump's reused buffer).
     pub(crate) gpu_cook: ph2d_gpu_cook::GpuCook,
@@ -119,7 +119,7 @@ impl MotionState {
         // chain whose first node (an oscillator on the uncovered Rotation channel)
         // has no kernel, so the CPU cooks the prefix and the GPU runs the suffix;
         // `=3` = the Fase 3 SIMULATION (490.000 particles in a force loop whose
-        // state ping-pongs on the device, ADR-0123).
+        // state ping-pongs on the device, ADR-0127).
         let sinks = match std::env::var("PH2D_GPU_COOK_DEMO").as_deref() {
             Ok("1") => build_gpu_demo_document(&mut doc, &registry).unwrap_or_default(),
             Ok("2") => build_gpu_hybrid_demo_document(&mut doc, &registry).unwrap_or_default(),

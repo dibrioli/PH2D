@@ -55,7 +55,7 @@ fn eff_factor(amount: f32, falloff: f32) -> f32 {
     1.0 + (amount - 1.0) * falloff
 }
 
-/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): `size' = size · (1 + (amount −
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0126): `size' = size · (1 + (amount −
 /// 1)·falloff)`, the exact per-element map of the CPU `eval` in the same
 /// mul/add order (parity within FMA ε; with `falloff` absent it is bit-exact —
 /// no transcendentals). No `applicable`: a plain multiply covers the whole
@@ -144,7 +144,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

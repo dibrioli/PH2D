@@ -1,4 +1,4 @@
-//! The GPU sim's backwards-scrub ring (GPU/M5 Fase 3, ADR-0123 **D5**) — the
+//! The GPU sim's backwards-scrub ring (GPU/M5 Fase 3, ADR-0127 **D5**) — the
 //! device-side mirror of `ph2d-eval-motion`'s `CheckpointRing`.
 //!
 //! ## A checkpoint is a refcount, not a copy
@@ -54,7 +54,7 @@ pub const RING_BYTES: u64 = 128 * 1024 * 1024;
 /// **residency**. A checkpointed buffer is one the pool cannot recycle, so a
 /// dense ring makes the sim allocate its whole state EVERY tick — it would spend
 /// the ping-pong's entire win to buy a window a stride gets for an eighth of the
-/// VRAM. Same reasoning, different dominant cost, opposite answer (ADR-0123 D5,
+/// VRAM. Same reasoning, different dominant cost, opposite answer (ADR-0127 D5,
 /// which asked for sparse).
 pub const RING_STRIDE: u64 = 8;
 

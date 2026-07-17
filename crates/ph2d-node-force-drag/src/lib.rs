@@ -49,7 +49,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): `a += −k·v·falloff`,
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel): `a += −k·v·falloff`,
 /// the exact per-element map of the CPU `eval` in the same operand order. No
 /// transcendentals, so parity is FMA-ε at worst.
 ///

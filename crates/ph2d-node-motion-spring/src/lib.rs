@@ -219,7 +219,7 @@ fn pairing(input: &Stream, state: &Stream, n: usize) -> Option<Vec<Option<usize>
     }
 }
 
-/// GPU compute kernel (GPU/M5 Fase 3, ADR-0122/0123): **side metadata**, not a
+/// GPU compute kernel (GPU/M5 Fase 3, ADR-0126/0127): **side metadata**, not a
 /// lowering — the manifest is untouched and `eval` above stays canonical. The
 /// second sequential node after `motion.integrate`, and it reuses that node's
 /// whole shape: state on the `pre` port, `sim_t` for the timestep, a NaN guard.
@@ -348,7 +348,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 1,
         },
         // Identity pairing is a gather (`BTreeMap<id, row>`), which this engine
-        // does not do yet (ADR-0123 D3). Refuse at plan time rather than pair
+        // does not do yet (ADR-0127 D3). Refuse at plan time rather than pair
         // positionally and animate the wrong particles in silence.
         ColumnBinding {
             column: "id",

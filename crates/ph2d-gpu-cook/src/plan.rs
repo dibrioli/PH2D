@@ -39,7 +39,7 @@ pub struct GpuStage {
 }
 
 /// The result of [`plan`]: the GPU-runnable part of a sink's chain — a **DAG**
-/// (ADR-0123 D2), not a chain: a node's inputs are walked on every port, so the
+/// (ADR-0127 D2), not a chain: a node's inputs are walked on every port, so the
 /// stages come out in topological order and each input names its own source.
 #[derive(Clone, Debug, Default)]
 pub struct GpuPlan {
@@ -88,7 +88,7 @@ impl GpuPlan {
 /// Derived from the same rule [`GpuCook::cook`] threads at runtime: the output
 /// starts as port 0's stream, written columns are added and
 /// [`ColumnAccess::Consume`]d ones dropped. It exists for the plan-time
-/// refusals ([`ColumnAccess::RefuseIfPresent`], ADR-0123 D3) — those must be
+/// refusals ([`ColumnAccess::RefuseIfPresent`], ADR-0127 D3) — those must be
 /// *provable*, so unknown means refuse.
 ///
 /// `budget` bounds the recursion: a well-formed graph's forward edges are

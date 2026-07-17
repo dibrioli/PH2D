@@ -102,7 +102,7 @@ fn curl(x: f32, y: f32, drift: f32, seed: f32, octaves: u32) -> [f32; 2] {
     [dpsi_dy * inv, -dpsi_dx * inv]
 }
 
-/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the exact
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel): the exact
 /// per-element map of the CPU `eval` — the divergence-free curl of an fBm
 /// potential (Bridson 2007), drifting with the playhead.
 ///

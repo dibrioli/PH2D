@@ -89,7 +89,7 @@ fn curve(kind: i32, s: f32) -> f32 {
     }
 }
 
-/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the exact
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel): the exact
 /// per-element map of the CPU `eval` — pull (or push) toward the target, gated
 /// by the radius, shaped by the curve, scaled by the focus field.
 ///

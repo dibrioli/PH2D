@@ -24,7 +24,7 @@
 //!   enforces the membrane + port types ([`graph`]),
 //! - the demand-driven incremental cook engine ([`cook`]),
 //! - the diffable textual format ([`format`]),
-//! - GPU kernel **side-metadata** ([`gpu`], ADR-0122 — outside the frozen
+//! - GPU kernel **side-metadata** ([`gpu`], ADR-0126 — outside the frozen
 //!   surface by design: a kernel rides the registry's side channel like the
 //!   UI manifests, never a `NodeManifest` field).
 //!

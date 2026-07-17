@@ -1,4 +1,4 @@
-# ADR-0122 — O kernel GPU de um nó é metadata LATERAL (o contrato congelado NÃO é tocado)
+# ADR-0126 — O kernel GPU de um nó é metadata LATERAL (o contrato congelado NÃO é tocado)
 
 - **Status:** **ACEITO** (Enio, 2026-07-15: *"temos a liberdade para trabalhar na fundação **dessa linha**
   e não na fundação do main"* + seguir para a Fase 1). O trabalho da Fase 1 é feito **no worktree da linha
@@ -7,7 +7,7 @@
 - **NÃO amende** [ADR-0039](0039-nodegraph-contract-freeze-w2t4.md) — ao contrário, **reafirma o freeze**:
   o kernel GPU entra por um canal lateral no registry, então `NodeOp=2` / `OpResolver=1` / `NodeManifest=8`
   ficam **intactos** (gate `architecture_contract_surface` verde).
-- **Número tentativo:** linhas paralelas podem reivindicar 0122 antes; renumerar na integração se colidir.
+- **Número tentativo:** linhas paralelas podem reivindicar 0126 antes; renumerar na integração se colidir.
 - **IMPLEMENTADO (F1.1, `line/gpu-nodes`, 2026-07-15):** `ph2d_nodegraph::gpu` (tipos) +
   `NodeRegistry::register_gpu_kernel` + crate **`ph2d-gpu-cook`** (plano sufixo-GPU/prefixo-CPU,
   sequenciador single-submit, lowering compute → layout `RenderInstance`, zero readback) +

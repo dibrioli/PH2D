@@ -296,7 +296,7 @@ pub(super) fn dispatch(
     let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
     let target = motion_tick(playhead, fixed_dt);
 
-    // ── GPU-resident cook (GPU/M5 Fase 1 + F1.2, ADR-0122) — opt-in preview ──
+    // ── GPU-resident cook (GPU/M5 Fase 1 + F1.2, ADR-0126) — opt-in preview ──
     // With `PH2D_GPU_COOK=1` a single-sink, unscoped document cooks on the GPU
     // (fully, or hybrid from a CPU boundary). `Handled` = the GPU produced this
     // frame → skip the CPU pump; `FellThrough` = run the pump below. The whole

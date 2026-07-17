@@ -68,7 +68,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122). The value-noise library is a
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0126). The value-noise library is a
 /// straight WGSL port of [`noise`]: the integer path (the `hash2` mix) is
 /// **bit-exact** — WGSL u32 arithmetic wraps mod 2³² like Rust's
 /// `wrapping_mul`/`add`, and `bitcast<u32>` reinterprets the i32 lattice bits
@@ -197,7 +197,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

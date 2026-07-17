@@ -10,7 +10,7 @@
 
 1. **Leia, nesta ordem:**
    - [`docs/plans/2026-07-gpu-resident-node-pipeline.md`](plans/2026-07-gpu-resident-node-pipeline.md) — o roadmap das 4 etapas.
-   - [`docs/architecture/decisions/0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md`](architecture/decisions/0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md) — **ACEITO pelo Enio**; a decisão de contrato que você EXECUTA (§3 abaixo).
+   - [`docs/architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md`](architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md) — **ACEITO pelo Enio**; a decisão de contrato que você EXECUTA (§3 abaixo).
    - [`docs/HANDOFF_line_cook_parallel_2026-07-15.md`](HANDOFF_line_cook_parallel_2026-07-15.md) — o que a Fase 0 entregou (você herda).
    - `CLAUDE.md` §0 (os 7 inegociáveis) + §6 (contratos congelados).
 2. **Abra a linha:** `git worktree add Worktrees/line-gpu-nodes -b line/gpu-nodes line/cook-parallel`
@@ -53,7 +53,7 @@ se sobrar, começa a **Fase 2** (portar os primeiros nós). As etapas 3–4 são
 
 ---
 
-## §3 — O contrato: kernel GPU é metadata LATERAL (ADR-0122, ACEITO)
+## §3 — O contrato: kernel GPU é metadata LATERAL (ADR-0126, ACEITO)
 
 **NÃO toque o `NodeManifest`.** O kernel entra por um canal novo no `NodeRegistry`, exatamente como a UI:
 
@@ -65,7 +65,7 @@ se sobrar, começa a **Fase 2** (portar os primeiros nós). As etapas 3–4 são
 - **Por quê:** um campo no `NodeManifest` obrigaria `gpu_kernel: None` em 92 literais **e** descongelaria o
   §6. O canal lateral não tem nem um nem outro — e é o padrão que manteve o contrato intacto a linha Motion
   inteira (params no `Graph`, UI no registry). **Se você sentir vontade de bumpar o `NodeManifest`, PARE —
-  releia o ADR-0122; a resposta é o canal lateral.**
+  releia o ADR-0126; a resposta é o canal lateral.**
 
 ---
 

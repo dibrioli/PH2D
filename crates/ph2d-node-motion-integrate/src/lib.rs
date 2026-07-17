@@ -115,10 +115,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel + ADR-0123):
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel + ADR-0127):
 /// the WGSL port of [`step`], element for element.
 ///
-/// **Pairing is POSITIONAL only** (ADR-0123 D3). The CPU pairs state to elements
+/// **Pairing is POSITIONAL only** (ADR-0127 D3). The CPU pairs state to elements
 /// by `id` when the stream has identity — a gather this engine does not do — so
 /// the `id` binding below is a [`ColumnAccess::RefuseIfPresent`]: a `rest` that
 /// might carry one keeps the whole node on the CPU. That is exactly the CPU's

@@ -128,7 +128,7 @@ builder.push_default(StyleProperty::FontVariations(FontSettings::List(
 
 **Verificação via diagnostic test** ([system.rs::diag_weight_widths](../../crates/ph2d-text/src/system.rs)):
 ```
-=== weight diagnostic: 'Inspector Hierarchy 0123' @ 11px ===
+=== weight diagnostic: 'Inspector Hierarchy 0127' @ 11px ===
   wght=  300  width= 127.99
   wght=  400  width= 130.36
   wght=  500  width= 132.02
@@ -513,7 +513,7 @@ Enio sugeriu que "um pouco de AA" poderia melhorar Crisp Heavy. Vello 0.8 oferec
 cargo test -p ph2d-text diag_weight_widths -- --nocapture
 ```
 
-Deve imprimir widths monotonicamente crescentes para "Inspector Hierarchy 0123" @ 11px de wght 300 a 900. Se não: **algo regrediu no axis pipeline** (FontVariations não está pushando wght, ou parley não está respeitando, ou Inter Variable foi trocado).
+Deve imprimir widths monotonicamente crescentes para "Inspector Hierarchy 0127" @ 11px de wght 300 a 900. Se não: **algo regrediu no axis pipeline** (FontVariations não está pushando wght, ou parley não está respeitando, ou Inter Variable foi trocado).
 
 ### 8.3 Confirmação que normalized_coords flui pro Vello
 

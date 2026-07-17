@@ -33,7 +33,7 @@ pub struct NodeRegistry {
     /// declared `ParamSpec`), keyed the same way. A `&'static` slice per type so
     /// registration is a single insert; the params panel reads it to build rows.
     param_ui: BTreeMap<NodeTypeId, &'static [ParamUiHint]>,
-    /// GPU/M5 Fase 1 (ADR-0122) — per-type WGSL compute kernel, keyed the same
+    /// GPU/M5 Fase 1 (ADR-0126) — per-type WGSL compute kernel, keyed the same
     /// way and kept OUT of the frozen `NodeManifest` exactly like the UI
     /// metadata. Opt-in: a node without one runs its CPU `eval` (the canonical
     /// path); the GPU sequencer (`ph2d-gpu-cook`) resolves kernels through
@@ -104,7 +104,7 @@ impl NodeRegistry {
         self.param_ui.get(&id).copied()
     }
 
-    /// Register a node type's GPU compute kernel (GPU/M5 Fase 1, ADR-0122).
+    /// Register a node type's GPU compute kernel (GPU/M5 Fase 1, ADR-0126).
     /// Additive to [`Self::register`], exactly like [`Self::register_ui`]; last
     /// write wins. The kernel is pure `'static` data (`ph2d_nodegraph::gpu`) —
     /// registering one adds no GPU dependency here.

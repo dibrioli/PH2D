@@ -62,7 +62,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     // `lowerings` stays `Cpu`: the `LoweringKind::Wgsl` path is the scalar
     // `eval_column` route (`ph2d-expr`), and `P` is a `Vec2` column, so that
     // route still doesn't apply. The GPU lowering this node DOES have is the
-    // ADR-0122 side-channel kernel (`GPU_KERNEL` below, registered via
+    // ADR-0126 side-channel kernel (`GPU_KERNEL` below, registered via
     // `register_gpu_kernel`) — a separate mechanism that never touches the
     // frozen `NodeManifest`, exactly like `motion.move`/`motion.oscillator`.
     lowerings: &[LoweringKind::Cpu],
@@ -92,7 +92,7 @@ fn xform_masked(p: [f32; 2], scale: f32, ox: f32, oy: f32, f: f32) -> [f32; 2] {
     [p[0] + (full[0] - p[0]) * f, p[1] + (full[1] - p[1]) * f]
 }
 
-/// GPU compute kernel (GPU/M5 Fase 2, ADR-0122): the exact per-element map of
+/// GPU compute kernel (GPU/M5 Fase 2, ADR-0126): the exact per-element map of
 /// the CPU `eval` — `full = p·scale + (ox, oy)` then `p' = p + (full − p)·falloff`
 /// — in the SAME multiply/add order, so parity holds within GPU-FMA ε (the ε
 /// gate). No `applicable`: a plain affine covers the whole param space (no enum,
@@ -190,7 +190,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     // M1.P1 — param rows: uniform scale + signed offsets.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 2 (ADR-0122): the WGSL lowering, registered on the side.
+    // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

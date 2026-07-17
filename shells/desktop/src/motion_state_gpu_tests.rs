@@ -153,7 +153,7 @@ fn the_sea_demo_document_plans_as_a_fully_gpu_loop() {
 }
 
 /// The Fase 3 **simulation** demo (`PH2D_GPU_COOK_DEMO=3`) must plan as a
-/// fully-GPU chain that DRIVES A LOOP — the whole claim of ADR-0123. Without
+/// fully-GPU chain that DRIVES A LOOP — the whole claim of ADR-0127. Without
 /// this, the smoke could be quietly cooking on the CPU (the route falls back
 /// silently, by design) and it would look exactly the same, just slower: the
 /// forces would still swirl, because the CPU has run them since M2.

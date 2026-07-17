@@ -1,6 +1,6 @@
 [package]
 name = "ph2d-gpu-cook"
-description = "GPU-resident node cook (GPU/M5 Fase 1, ADR-0122): Stream columns as wgpu buffers, node kernels as compute passes, lowering straight into the renderer's instance layout — zero readback on the hot path. The CPU eval stays canonical; this is the performance path, reconciled by ε-tolerance parity gates."
+description = "GPU-resident node cook (GPU/M5 Fase 1, ADR-0126): Stream columns as wgpu buffers, node kernels as compute passes, lowering straight into the renderer's instance layout — zero readback on the hot path. The CPU eval stays canonical; this is the performance path, reconciled by ε-tolerance parity gates."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

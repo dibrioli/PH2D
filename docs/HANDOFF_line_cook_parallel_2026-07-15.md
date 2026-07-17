@@ -50,12 +50,12 @@ maps têm pouquíssimo flop por elemento (bandwidth-bound; 32 threads ≠ 32×).
   é um método/const inerente do substrato, não mexe em `NodeOp`/`NodeManifest`/`OpResolver`.
 - **`rayon` no `ph2d-nodegraph`** contraria o comentário "dependency-free" do `Cargo.toml` — **atualizei o
   comentário** (não silenciei a cerca). Decisão do plano aprovado.
-- **ADR-0122 número TENTATIVO** — [`0122-gpu-resident-node-engine-appends-the-frozen-contract.md`](architecture/decisions/0122-gpu-resident-node-engine-appends-the-frozen-contract.md).
-  Linhas paralelas (audio/vector) podem ter reivindicado 0122; renumerar na integração se colidir.
+- **ADR-0126 número TENTATIVO** — [`0126-gpu-resident-node-engine-appends-the-frozen-contract.md`](architecture/decisions/0126-gpu-resident-node-engine-appends-the-frozen-contract.md).
+  Linhas paralelas (audio/vector) podem ter reivindicado 0126; renumerar na integração se colidir.
 
 ## Fase 1 — o próximo journey (DESENHADO, aguarda "aprova" do Enio)
 
-**ADR-0122 (PROPOSTO):** o motor GPU-resident estende o contrato de forma **append-only** —
+**ADR-0126 (PROPOSTO):** o motor GPU-resident estende o contrato de forma **append-only** —
 `NodeManifest` ganha `gpu_kernel: Option<GpuKernel>` (contagem **8→9**, o ADR autoriza o bump do gate);
 `NodeOp` fica em 2; a **CPU permanece canônica** (replay-hash), a GPU é performance reconciliada por
 **tolerância** (float cross-vendor não é bit-reproduzível). **Nada do contrato foi tocado nesta linha.**

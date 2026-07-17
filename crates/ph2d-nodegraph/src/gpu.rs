@@ -1,4 +1,4 @@
-//! GPU kernel **side-metadata** for node types (GPU/M5 Fase 1, ADR-0122).
+//! GPU kernel **side-metadata** for node types (GPU/M5 Fase 1, ADR-0126).
 //!
 //! A node's optional WGSL compute kernel is registered NEXT TO its op (the
 //! registry's `register_gpu_kernel`, mirroring `register_ui`), never inside the
@@ -60,7 +60,7 @@ pub enum ColumnAccess {
     /// The case that named it: `motion.integrate` pairs state to elements by
     /// **`id`** when the stream has identity (a gather) and **positionally**
     /// otherwise; the GPU kernel only does positional, so an `id` column on its
-    /// `rest` port is a refusal (ADR-0123 D3). The eligibility answer must be
+    /// `rest` port is a refusal (ADR-0127 D3). The eligibility answer must be
     /// provable, so an input whose columns the plan cannot derive (a CPU
     /// boundary feeds it) is refused too — **the default is to recede, never to
     /// answer wrong**.
@@ -152,7 +152,7 @@ pub type SourceCountFn = fn(&dyn Fn(&str) -> f32) -> usize;
 pub type ApplicableFn = fn(&dyn Fn(&str) -> f32) -> bool;
 
 /// A node type's WGSL compute kernel — pure `'static` data, registered on the
-/// side (ADR-0122). The sequencer wraps [`Self::wgsl`] in a generated module:
+/// side (ADR-0126). The sequencer wraps [`Self::wgsl`] in a generated module:
 ///
 /// ```wgsl
 /// // generated: uniforms (count, playhead, one f32 per declared param) +

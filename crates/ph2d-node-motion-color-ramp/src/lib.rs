@@ -164,7 +164,7 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     }
 }
 
-/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the WGSL port
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel): the WGSL port
 /// of [`colorize`] + `ColorRamp::eval`, element for element.
 ///
 /// **The positional key is why this node could not be ported before.** With `t`
@@ -179,7 +179,7 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 /// `t_field[i]` and pads a short field with `0.0`, while this engine calls a
 /// column of the wrong length absent, which here would silently mean "use the
 /// positional key" instead. The plan cannot prove the lengths match (a `t` chain
-/// may root at another generator), so it recedes — the default of ADR-0123 D3.
+/// may root at another generator), so it recedes — the default of ADR-0127 D3.
 /// It costs nothing today: every `value.*` node is CPU-only, so a connected `t`
 /// is already a boundary.
 ///

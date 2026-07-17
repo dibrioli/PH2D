@@ -95,7 +95,7 @@ impl GpuContext {
         // touches, so a multi-input node reaches past 8 easily:
         // `motion.integrate` reads `P`/`vel`/`inv_mass` off `rest` and
         // `vel`/`sim_d`/`sim_t`/`accel` off last tick's state, and writes four
-        // — 11 with every column present (ADR-0123 fatia 3). Raised to the
+        // — 11 with every column present (ADR-0127 fatia 3). Raised to the
         // adapter's advertised max by the SAME argument as the sizes above: a
         // superset of the default, so `request_device` cannot fail on it and
         // nothing that worked breaks. A device that really does stop at 8

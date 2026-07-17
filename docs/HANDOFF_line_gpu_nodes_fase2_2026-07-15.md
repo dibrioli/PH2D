@@ -6,10 +6,10 @@
 > Fase 0 → F1.1 → F1.2/Fase 2 pela fronteira de commit; ver §Integração).
 > **Autor:** o agente da continuação (a pedido do Enio, "linha motion nodes, doc na linha e não no main").
 > Briefing que esta linha executou: [`HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase2_briefing_2026-07-15.md).
-> Documento central herdado: [`HANDOFF_line_gpu_nodes_fase1_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase1_2026-07-15.md). ADR: [`0122`](architecture/decisions/0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md).
+> Documento central herdado: [`HANDOFF_line_gpu_nodes_fase1_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase1_2026-07-15.md). ADR: [`0126`](architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md).
 >
 > **➜ CONTINUAÇÃO (a próxima janela de contexto):** a fatia seguinte é **a simulação na GPU**, já
-> **desenhada** em [ADR-0123](architecture/decisions/0123-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md)
+> **desenhada** em [ADR-0127](architecture/decisions/0127-gpu-simulation-pre-is-arc-pingpong-plan-becomes-a-dag.md)
 > (o `pre` é ping-pong de `Arc` · o plano vira **DAG** · o gate de um sim mede **UM passo** · o scrub
 > vai pro device). Briefing do novo agente:
 > [`HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md`](HANDOFF_line_gpu_nodes_fase3_briefing_2026-07-16.md).
@@ -158,4 +158,4 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && cargo test -p
   (só testes + 6 dev-deps no `Cargo.toml`) · shell (`motion_bridge` seam + módulo `gpu` novo +
   `motion_state` demo). Contrato **8/2/1** intocado — nenhum escape §1.5.5.
 - **Conflitos esperados:** `Cargo.lock` (6 dev-deps novas — regenerar). O resto é aditivo.
-- **NÃO precisa** de ADR novo (o ADR-0122 já cobre o canal lateral; nenhum contrato descongelado).
+- **NÃO precisa** de ADR novo (o ADR-0126 já cobre o canal lateral; nenhum contrato descongelado).

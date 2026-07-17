@@ -170,7 +170,7 @@ impl NodeOp for ForceBuoyancy {
     }
 }
 
-/// The GPU kernel (ADR-0122): **side metadata**, not a lowering — the manifest above is
+/// The GPU kernel (ADR-0126): **side metadata**, not a lowering — the manifest above is
 /// untouched and `eval` stays the canonical answer. This one exists because a force with no
 /// kernel is not "one node slower": a single uncovered node **inside the loop** leaves a
 /// boundary, and the boundary makes `plan` refuse the whole simulation (the two-sims rule).

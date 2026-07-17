@@ -53,7 +53,7 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
     }
 }
 
-/// GPU compute kernel (GPU/M5 Fase 1, ADR-0122): `P' = P + (dx, dy) · falloff`,
+/// GPU compute kernel (GPU/M5 Fase 1, ADR-0126): `P' = P + (dx, dy) · falloff`,
 /// the exact per-element map of the CPU `eval` (same multiply/add order → same
 /// float result up to GPU FMA contraction, covered by the ε parity gate).
 /// `ReadWriteExisting` mirrors the CPU's pattern-match: a stream WITHOUT a `P`
@@ -134,7 +134,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // GPU/M5 Fase 1 (ADR-0122): the WGSL lowering, registered on the side.
+    // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }

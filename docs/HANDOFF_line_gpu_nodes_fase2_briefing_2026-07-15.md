@@ -13,7 +13,7 @@
 1. **Leia, nesta ordem:**
    - [`HANDOFF_line_gpu_nodes_fase1_2026-07-15.md`](HANDOFF_line_gpu_nodes_fase1_2026-07-15.md) —
      o que você herda (as peças, os gates, os gotchas §"Gotchas"). **É o documento central.**
-   - [`docs/architecture/decisions/0122-…`](architecture/decisions/0122-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md) —
+   - [`docs/architecture/decisions/0126-…`](architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md) —
      a decisão de contrato (kernel = metadata LATERAL; agora com stamp de implementação).
    - [`docs/plans/2026-07-gpu-resident-node-pipeline.md`](plans/2026-07-gpu-resident-node-pipeline.md) —
      o roadmap (você faz a Fase 2; as etapas 3–4 são journeys futuros).
@@ -28,7 +28,7 @@
    pro repo primário, aconteceu nas duas jornadas anteriores) · foundational é editável aqui
    (ADR-0107) · `git commit --no-verify` · inner loop = `cargo check -p` · gates 1× no
    fechamento · **NÃO integre, NÃO pushe, NÃO rode `ship.sh`** — feche, escreva o handoff,
-   PARE (§0.7). · **Se sentir vontade de bumpar o `NodeManifest`: PARE e releia o ADR-0122** —
+   PARE (§0.7). · **Se sentir vontade de bumpar o `NodeManifest`: PARE e releia o ADR-0126** —
    a resposta é sempre o canal lateral (`register_gpu_kernel`).
 
 ---

@@ -6,7 +6,7 @@
 //! `PresentWorld`, sort it into runs, and encode the passes. The split is along
 //! that seam, not at a convenient line count.
 //!
-//! `render_with_streams` is the GPU-cook path (ADR-0122): its `gpu_extra` buffer
+//! `render_with_streams` is the GPU-cook path (ADR-0126): its `gpu_extra` buffer
 //! is the cook's lowering output, bound straight as an instance vertex buffer —
 //! the cook's last write is this pass's input, with no readback in between.
 
@@ -57,7 +57,7 @@ impl SpriteRenderer {
     }
 
     /// [`render_with_extra`](Self::render_with_extra) plus a **GPU-resident**
-    /// extra (GPU/M5 Fase 1, ADR-0122): `gpu_extra` is a buffer ALREADY laid
+    /// extra (GPU/M5 Fase 1, ADR-0126): `gpu_extra` is a buffer ALREADY laid
     /// out as `[RenderInstance; n]` — the `ph2d-gpu-cook` lowering's output —
     /// bound directly as the instance vertex buffer for one appended draw.
     /// **No readback, no CPU marshalling**: the cook's last write is this
@@ -192,7 +192,7 @@ impl SpriteRenderer {
                     pass.draw(0..4, run.start..run.end);
                 }
             }
-            // GPU-resident extra (ADR-0122): one draw whose instance vertex
+            // GPU-resident extra (ADR-0126): one draw whose instance vertex
             // buffer IS the compute lowering's output — the readback-free
             // seam. Shared-atlas material + default blend, the exact run a
             // CPU-lowered Motion stream forms. Plain path only (mirrors the

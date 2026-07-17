@@ -1,4 +1,4 @@
-//! GPU-vs-CPU parity for the **simulation loop** (GPU/M5 Fase 3, ADR-0123) —
+//! GPU-vs-CPU parity for the **simulation loop** (GPU/M5 Fase 3, ADR-0127) —
 //! THE audit of the slice ("o gate de paridade É o audit").
 //!
 //! ## Why this gate is shaped differently from Fase 2's
@@ -6,8 +6,8 @@
 //! A stateless kernel is `f(params, playhead)`: every frame is independent, so
 //! its ε is bounded per frame and the Fase 2 gates compare no trajectory at all.
 //! A sim is `x_{n+1} = f(x_n)` — ε feeds back, and after N ticks the GPU and the
-//! CPU are legitimately **different animations** (ADR-0123 D4; the CPU stays the
-//! canonical path, ADR-0122). So this compares a **seeded state plus one step**,
+//! CPU are legitimately **different animations** (ADR-0127 D4; the CPU stays the
+//! canonical path, ADR-0126). So this compares a **seeded state plus one step**,
 //! against the same ε budget Fase 2 derived. It never runs a long trajectory and
 //! loosens the tolerance until it passes — that oracle would model the filter,
 //! not the truth ([[reference_topic_oracle_discipline]]).
@@ -540,7 +540,7 @@ fn a_sea_of_no_wavelength_matches_the_cpu() {
     // its direction flips with the *sign* of the cosine. Bounded magnitude
     // (`|a| ≤ density`, the normal is a unit vector) with a flipping sign is a
     // 2·density divergence, and one ulp of phase decides it: measured, the two
-    // paths split by 0.2022 ≈ 2·40·dt². That is ADR-0123 D4's own point, not a
+    // paths split by 0.2022 ≈ 2·40·dt². That is ADR-0127 D4's own point, not a
     // porting bug, and gating it would gate chaos — the fix is a fixture that is
     // well-conditioned, never an ε loosened until the chaos fits under it.
     // At `1e-4` the same clamped sea has `slope ≈ 0.63`, the normal is honest,

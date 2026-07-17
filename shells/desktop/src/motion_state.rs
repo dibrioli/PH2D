@@ -303,9 +303,9 @@ fn build_gpu_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Ve
 }
 
 /// The GPU/M5 **Fase 3 simulation** ready-to-smoke document
-/// (`PH2D_GPU_COOK_DEMO=3`, ADR-0123): `grid(700×700) → integrate → output` with
-/// the force loop `integrate --pre--> vortex → attractor → drag → curl -->
-/// integrate.forces` — **490.000 particles, simulated 100% on the GPU**.
+/// (`PH2D_GPU_COOK_DEMO=3`, ADR-0123): `grid(700×700) → color_ramp → integrate →
+/// output` with the force loop `integrate --pre--> vortex → attractor → drag →
+/// curl --> integrate.forces` — **490.000 particles, simulated 100% on the GPU**.
 ///
 /// The forces existed since M2 but had never run a frame on the GPU: they are
 /// only ever evaluated INSIDE the `pre` loop, and the loop was what the plan
@@ -316,6 +316,20 @@ fn build_gpu_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Ve
 /// The mix is the classic stable orbit (vortex + attractor at one centre + drag
 /// — without drag a pure vortex spirals outward by centrifugal drift), plus curl
 /// noise so the cloud breathes instead of settling into a clean ring.
+///
+/// **The colour waves are dye advection.** The ramp colours the SOURCE — a full
+/// hue circle laid across the grid's row-major index, so the field starts as
+/// horizontal rainbow bands — and then the sim carries each particle's tint with
+/// it. The vortex winds those bands into spirals that keep tightening, the curl
+/// noise frays them, and the drag lets the inner ones lap the outer: the waves
+/// are the FLOW made visible, not a colour animation played over it. It is what
+/// a dye tracer does in a real vortex, and it costs one node.
+///
+/// The ramp sits in the `rest` chain rather than after the integrator on
+/// purpose: the tint belongs to the particle, so colour the source and let the
+/// simulation carry it. (Downstream would look identical — the integrator pairs
+/// positionally, so element `i` keeps index `i` — but it would say the wrong
+/// thing about where colour comes from.)
 fn build_gpu_sim_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
     use ph2d_nodegraph::graph::{Edge, Pos};
     let g = &mut doc.graph;
@@ -324,6 +338,14 @@ fn build_gpu_sim_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Optio
     g.set_param(grid, "cols", 700.0);
     g.set_param(grid, "gap_x", 0.12);
     g.set_param(grid, "gap_y", 0.12);
+    // Rainbow: 7 stops closing the hue circle, so the field reads as bands
+    // rather than one gradient. `t` stays unconnected — the ramp keys on the
+    // normalised index, which is the only shape the kernel claims (a connected
+    // `t` would put the node back on the CPU, and the CPU would then own the
+    // whole document: this graph drives a `pre` loop).
+    let ramp = g.add_node("motion.color_ramp");
+    g.set_param(ramp, "preset", 0.0);
+    g.set_param(ramp, "interp", 1.0); // Ease — the bands blend instead of banding hard
     let ig = g.add_node("motion.integrate");
     let out = g.add_node("motion.output");
 
@@ -344,7 +366,7 @@ fn build_gpu_sim_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Optio
     g.set_param(curl, "speed", 0.4);
     g.set_param(curl, "octaves", 2.0);
 
-    for (i, n) in [grid, ig, out].into_iter().enumerate() {
+    for (i, n) in [grid, ramp, ig, out].into_iter().enumerate() {
         g.set_pos(
             n,
             Pos {
@@ -364,6 +386,12 @@ fn build_gpu_sim_demo_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Optio
     }
     g.connect(Edge {
         from: (grid, 0),
+        to: (ramp, 0),
+        delayed: false,
+    })
+    .ok()?;
+    g.connect(Edge {
+        from: (ramp, 0),
         to: (ig, 0),
         delayed: false,
     })

@@ -19,6 +19,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -163,6 +164,137 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     }
 }
 
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0122 side channel): the WGSL port
+/// of [`colorize`] + `ColorRamp::eval`, element for element.
+///
+/// **The positional key is why this node could not be ported before.** With `t`
+/// unconnected the CPU keys the ramp on `i/(n−1)` — a *positional* identity, and
+/// `ColumnBinding.identity` is a CONSTANT, which is exactly the gap the Fase 2
+/// handoff logged against `motion.tint`'s Gradient. The generated `HAS_<col>`
+/// const closes it: the body asks whether the column was really there, and takes
+/// the CPU's other branch when it was not (see [`GpuKernel`]).
+///
+/// **`t` connected keeps the node on the CPU** (the `v` refusal below). Not
+/// because the maths is hard — because the ANSWER would differ: the CPU reads
+/// `t_field[i]` and pads a short field with `0.0`, while this engine calls a
+/// column of the wrong length absent, which here would silently mean "use the
+/// positional key" instead. The plan cannot prove the lengths match (a `t` chain
+/// may root at another generator), so it recedes — the default of ADR-0123 D3.
+/// It costs nothing today: every `value.*` node is CPU-only, so a connected `t`
+/// is already a boundary.
+///
+/// **HR-5:** the interpolation is this crate's `lerp` (`a + (b − a)·t`), NOT
+/// WGSL's `mix` (`a·(1 − t) + b·t`) — same value, different expression, and
+/// therefore different rounding; likewise `smoothstep` is the node's own
+/// polynomial, not the builtin. The stop positions are recomputed as `k/(n − 1)`
+/// rather than derived from `t·(n − 1)`, so the bracket search and the blend
+/// factor are the CPU's arithmetic to the letter.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let cr_a = vec4<f32>(params.a_r, params.a_g, params.a_b, 1.0);\n\
+        let cr_b = vec4<f32>(params.b_r, params.b_g, params.b_b, 1.0);\n\
+        // `t` unconnected → the normalised index (the gradient laid across the set).\n\
+        var cr_t = 0.0;\n\
+        if (params.count > 1u) {\n\
+        \x20   cr_t = f32(i) / (f32(params.count) - 1.0);\n\
+        }\n\
+        write_tint(i, cr_eval(\n\
+        \x20   i32(cr_round(params.preset)),\n\
+        \x20   i32(cr_round(params.interp)) != 0,\n\
+        \x20   cr_a, cr_b, cr_t));\n",
+    wgsl_lib: "\
+        fn cr_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn cr_stop_count(preset: i32) -> i32 {\n\
+            if (preset == 0) { return 7; }\n\
+            if (preset == 1) { return 5; }\n\
+            if (preset == 2) { return 3; }\n\
+            if (preset == 3) { return 2; }\n\
+            return 2;\n\
+        }\n\
+        fn cr_stop(preset: i32, k: i32, a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {\n\
+            if (preset == 0) {\n\
+                if (k == 0) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }\n\
+                if (k == 1) { return vec4<f32>(1.0, 1.0, 0.0, 1.0); }\n\
+                if (k == 2) { return vec4<f32>(0.0, 1.0, 0.0, 1.0); }\n\
+                if (k == 3) { return vec4<f32>(0.0, 1.0, 1.0, 1.0); }\n\
+                if (k == 4) { return vec4<f32>(0.0, 0.0, 1.0, 1.0); }\n\
+                if (k == 5) { return vec4<f32>(1.0, 0.0, 1.0, 1.0); }\n\
+                return vec4<f32>(1.0, 0.0, 0.0, 1.0);\n\
+            }\n\
+            if (preset == 1) {\n\
+                if (k == 0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }\n\
+                if (k == 1) { return vec4<f32>(0.7, 0.0, 0.0, 1.0); }\n\
+                if (k == 2) { return vec4<f32>(1.0, 0.4, 0.0, 1.0); }\n\
+                if (k == 3) { return vec4<f32>(1.0, 1.0, 0.2, 1.0); }\n\
+                return vec4<f32>(1.0, 1.0, 1.0, 1.0);\n\
+            }\n\
+            if (preset == 2) {\n\
+                if (k == 0) { return vec4<f32>(0.0, 0.0, 0.25, 1.0); }\n\
+                if (k == 1) { return vec4<f32>(0.0, 0.55, 1.0, 1.0); }\n\
+                return vec4<f32>(0.75, 1.0, 1.0, 1.0);\n\
+            }\n\
+            if (preset == 3) {\n\
+                if (k == 0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }\n\
+                return vec4<f32>(1.0, 1.0, 1.0, 1.0);\n\
+            }\n\
+            if (k == 0) { return a; }\n\
+            return b;\n\
+        }\n\
+        // RampStop::new clamps, and k/(n-1) is already in [0,1].\n\
+        fn cr_pos(k: i32, n: i32) -> f32 {\n\
+            return f32(k) / (f32(n) - 1.0);\n\
+        }\n\
+        fn cr_lerp4(a: vec4<f32>, b: vec4<f32>, t: f32) -> vec4<f32> {\n\
+            // `lerp(a, b, t) = a + (b - a) * t` — NOT WGSL `mix`, which is\n\
+            // `a * (1 - t) + b * t`: same value, different rounding.\n\
+            return a + (b - a) * t;\n\
+        }\n\
+        fn cr_eval(preset: i32, ease: bool, a: vec4<f32>, b: vec4<f32>, t: f32) -> vec4<f32> {\n\
+            let n = cr_stop_count(preset);\n\
+            let first = cr_stop(preset, 0, a, b);\n\
+            if (n == 1 || t <= cr_pos(0, n)) { return first; }\n\
+            let last = cr_stop(preset, n - 1, a, b);\n\
+            if (t >= cr_pos(n - 1, n)) { return last; }\n\
+            // `partition_point(|s| s.pos <= t) - 1`: the last stop at or before t.\n\
+            var idx = 0;\n\
+            for (var k = 1; k < n; k = k + 1) {\n\
+                if (cr_pos(k, n) <= t) { idx = k; }\n\
+            }\n\
+            let ca = cr_stop(preset, idx, a, b);\n\
+            let cb = cr_stop(preset, idx + 1, a, b);\n\
+            let span = max(cr_pos(idx + 1, n) - cr_pos(idx, n), 1e-8);\n\
+            var fac = clamp((t - cr_pos(idx, n)) / span, 0.0, 1.0);\n\
+            if (ease) { fac = fac * fac * (3.0 - 2.0 * fac); }\n\
+            return cr_lerp4(ca, cb, fac);\n\
+        }\n",
+    bindings: &[
+        ColumnBinding {
+            // Written, never read: the node REPLACES the tint rather than
+            // blending onto it (`out.set(\"tint\", …)` after copying the rest).
+            column: "tint",
+            dim: Dim::Vec4,
+            access: ColumnAccess::Write,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            // See the doc above: a connected `t` is a shape this kernel cannot
+            // answer for, so it keeps the whole node on the CPU.
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::RefuseIfPresent,
+            identity: [0.0; 4],
+            port: 1,
+        },
+    ],
+    params: &["preset", "interp", "a_r", "a_g", "a_b", "b_r", "b_g", "b_b"],
+    source_count: None,
+    applicable: None,
+};
+
 struct MotionColorRamp;
 
 impl NodeOp for MotionColorRamp {
@@ -208,6 +340,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 

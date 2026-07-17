@@ -43,6 +43,8 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_falloff::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
+    // GPU/M5 Fase 3 — colour.
+    ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     reg
 }
 
@@ -627,5 +629,166 @@ fn two_nodes_of_one_type_at_different_column_presence_get_different_pipelines() 
         (gpu_out[0].size[0] - 1.75 * 0.625).abs() < 1e-5,
         "size {} — both stages must have run",
         gpu_out[0].size[0]
+    );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn color_ramp_kernel_matches_the_cpu_within_epsilon() {
+    // `grid → color_ramp → output`, every preset × both interpolations. The ramp
+    // is keyed on the POSITIONAL index (`t` unconnected — the only shape the
+    // kernel claims), which is precisely the identity a constant
+    // `ColumnBinding.identity` could not express and the generated `HAS_<col>`
+    // now can.
+    //
+    // Every preset, because they are different STOP TABLES (7 / 5 / 3 / 2 / 2)
+    // and the bracket search is what a fixture of one table would never
+    // exercise. `interp` is rounded, so it goes through the half-away helper —
+    // WGSL's `round` is half-even and would pick the other branch at x.5.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for preset in 0..5 {
+        for interp in 0..2 {
+            let mut g = Graph::new();
+            let grid = grid_node(&mut g, 160.0);
+            let cr = g.add_node("motion.color_ramp");
+            g.set_param(cr, "preset", preset as f32);
+            g.set_param(cr, "interp", interp as f32);
+            // Custom's two stops: non-round, and NOT the defaults.
+            g.set_param(cr, "a_r", 0.8125);
+            g.set_param(cr, "a_g", 0.1875);
+            g.set_param(cr, "a_b", 0.4375);
+            g.set_param(cr, "b_r", 0.0625);
+            g.set_param(cr, "b_g", 0.9375);
+            g.set_param(cr, "b_b", 0.5625);
+            let out = g.add_node("motion.output");
+            for (a, b) in [(grid, cr), (cr, out)] {
+                g.connect(Edge {
+                    from: (a, 0),
+                    to: (b, 0),
+                    delayed: false,
+                })
+                .unwrap();
+            }
+            g.validate(&reg).expect("well-typed");
+
+            let mut cook = Cook::new();
+            let mut cpu = Vec::new();
+            ph2d_eval_motion::evaluate_motion_into(
+                &mut cook,
+                &g,
+                &reg,
+                out,
+                PLAYHEAD,
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+                &mut cpu,
+            )
+            .expect("cpu cook");
+
+            let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+            assert!(
+                plan.is_fully_gpu(),
+                "preset {preset}: {:?}",
+                plan.boundaries
+            );
+            assert_eq!(plan.dispatching_stages(&reg), 2, "grid + the ramp");
+            let mut gc = ph2d_gpu_cook::GpuCook::new();
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock::at(PLAYHEAD),
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+            let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+
+            // The ramp must actually COLOUR: a fixture where every instance came
+            // out the same would compare two flat fields and pass with the
+            // bracket search dead.
+            let spread = cpu
+                .iter()
+                .flat_map(|c| (0..3).map(move |k| c.tint[k]))
+                .fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)));
+            assert!(
+                spread.1 - spread.0 > 0.5,
+                "preset {preset} must span colours, got {spread:?}"
+            );
+            eprintln!("color_ramp preset {preset} interp {interp}: spread {spread:?}");
+            assert_parity(&cpu, &gpu_out);
+        }
+    }
+}
+
+#[test]
+fn a_connected_t_keeps_the_color_ramp_on_the_cpu() {
+    // The refusal (no device needed). The kernel only claims the positional key;
+    // a `t` field is a length this plan cannot prove, and answering with the
+    // index instead of the field would be a silently different colour.
+    let mut reg = registry();
+    ph2d_node_value_instance_field::register(&mut reg).unwrap();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 8.0);
+    let field = g.add_node("value.instance_field");
+    let cr = g.add_node("motion.color_ramp");
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (field, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (cr, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (field, 0),
+        to: (cr, 1),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (cr, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(
+        !plan.stages.iter().any(|s| s.node == cr),
+        "a connected `t` must keep the ramp on the CPU"
+    );
+
+    // …and the SAME graph without the `t` wire is claimed — otherwise this would
+    // pass with the ramp refused for any reason at all.
+    let mut g2 = Graph::new();
+    let grid2 = grid_node(&mut g2, 8.0);
+    let cr2 = g2.add_node("motion.color_ramp");
+    let out2 = g2.add_node("motion.output");
+    for (a, b) in [(grid2, cr2), (cr2, out2)] {
+        g2.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    let plan2 = ph2d_gpu_cook::plan(&g2, &reg, &reg, out2);
+    assert!(
+        plan2.stages.iter().any(|s| s.node == cr2),
+        "the `t` wire is what refuses — not the fixture"
     );
 }

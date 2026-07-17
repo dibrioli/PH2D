@@ -117,8 +117,9 @@ fn the_simulation_demo_document_plans_as_a_fully_gpu_loop() {
         plan.drives_a_loop(),
         "the state must live on the GPU across ticks — otherwise this is not a sim"
     );
-    // grid + the four forces + integrate dispatch; `output` is a pass-through.
-    assert_eq!(plan.dispatching_stages(&registry), 6);
+    // grid + the ramp + the four forces + integrate dispatch; `output` is a
+    // pass-through.
+    assert_eq!(plan.dispatching_stages(&registry), 7);
     // The loop closes GPU-side: the chain HEAD reads the integrator's PREVIOUS
     // output (that is where the `pre` edge is), and the integrator's `forces`
     // port reads the chain's tail — this tick's accumulated `accel`.

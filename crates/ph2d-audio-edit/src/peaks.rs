@@ -7,6 +7,8 @@
 //! ([`ColumnPeaks`] with fewer frames-per-column than `bin_size`), the query
 //! falls back to raw samples so close-ups stay exact.
 
+use std::ops::Range;
+
 use ph2d_audio::SampleData;
 
 /// Default frames per bin — ~5 ms at 48 kHz, ~1 MB of cache for a 3-min stereo
@@ -24,6 +26,30 @@ pub struct PeakCache {
     max: Vec<f32>,
 }
 
+/// The min/max of one bin, for one channel — **the** definition, so that [`PeakCache::build`] and
+/// [`PeakCache::patch`] cannot disagree about what a bin holds. A patched waveform that differed
+/// from a rebuilt one by a single bin would be a drawing bug nobody could reproduce.
+fn bin_minmax(
+    samples: &[f32],
+    channels: usize,
+    frames: usize,
+    bin_size: usize,
+    b: usize,
+    ch: usize,
+) -> (f32, f32) {
+    let f0 = b * bin_size;
+    let f1 = (f0 + bin_size).min(frames);
+    let mut lo = f32::INFINITY;
+    let mut hi = f32::NEG_INFINITY;
+    for f in f0..f1 {
+        let s = samples[f * channels + ch];
+        lo = lo.min(s);
+        hi = hi.max(s);
+    }
+    // Empty bin (shouldn't happen given div_ceil) → flat zero.
+    if lo.is_finite() { (lo, hi) } else { (0.0, 0.0) }
+}
+
 impl PeakCache {
     /// Build the cache from a clip. `bin_size` is clamped to at least 1 frame.
     pub fn build(data: &SampleData, bin_size: usize) -> Self {
@@ -36,21 +62,8 @@ impl PeakCache {
         let mut min = vec![0.0f32; bins * channels];
         let mut max = vec![0.0f32; bins * channels];
         for b in 0..bins {
-            let f0 = b * bin_size;
-            let f1 = (f0 + bin_size).min(frames);
             for ch in 0..channels {
-                let mut lo = f32::INFINITY;
-                let mut hi = f32::NEG_INFINITY;
-                for f in f0..f1 {
-                    let s = samples[f * channels + ch];
-                    lo = lo.min(s);
-                    hi = hi.max(s);
-                }
-                // Empty bin (shouldn't happen given div_ceil) → flat zero.
-                if !lo.is_finite() {
-                    lo = 0.0;
-                    hi = 0.0;
-                }
+                let (lo, hi) = bin_minmax(samples, channels, frames, bin_size, b, ch);
                 min[b * channels + ch] = lo;
                 max[b * channels + ch] = hi;
             }
@@ -61,6 +74,39 @@ impl PeakCache {
             bins,
             min,
             max,
+        }
+    }
+
+    /// Recompute **only the bins that `range` touches** — the waveform of an edit that changed only
+    /// `range` differs only there.
+    ///
+    /// Rebuilding the whole envelope to redraw one selection is O(clip), and it was the single
+    /// biggest cost of an ordinary edit: on a 3-minute clip it was **10.8 ms of the 22.4 ms** that
+    /// raising the gain on a 100 ms selection took, all of it re-deriving bins that could not have
+    /// changed (ADR-0124).
+    ///
+    /// Falls back to a full [`PeakCache::build`] when the clip's **shape** changed — a different
+    /// length or channel count is a different cache, not a patchable one. Callers that trim, delete
+    /// or paste land here and pay what they always did, which is correct: they moved every frame
+    /// after the edit, so every bin after it really is stale.
+    pub fn patch(&mut self, data: &SampleData, range: Range<usize>) {
+        let frames = data.frame_count();
+        let channels = data.format().channel_count().max(1);
+        if frames.div_ceil(self.bin_size) != self.bins || channels != self.channels {
+            *self = Self::build(data, self.bin_size);
+            return;
+        }
+        let samples = data.samples();
+        // A bin is stale iff it overlaps the range — including the partial bins at either end,
+        // which is why the low edge floors and the high edge ceils.
+        let b0 = (range.start / self.bin_size).min(self.bins);
+        let b1 = range.end.div_ceil(self.bin_size).min(self.bins);
+        for b in b0..b1 {
+            for ch in 0..self.channels {
+                let (lo, hi) = bin_minmax(samples, self.channels, frames, self.bin_size, b, ch);
+                self.min[b * self.channels + ch] = lo;
+                self.max[b * self.channels + ch] = hi;
+            }
         }
     }
 

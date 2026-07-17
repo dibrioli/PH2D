@@ -44,13 +44,13 @@ pub(crate) struct SpectralState {
     band: Option<(f32, f32)>,
 }
 
-/// Identifies a clip buffer. `SampleData` is an immutable `Arc<[f32]>`, so a new pointer
-/// is a new buffer and any edit hands us a different one.
-#[derive(PartialEq, Eq, Clone, Copy)]
-struct BufKey {
-    ptr: usize,
-    len: usize,
-}
+/// Identifies a clip buffer — see `ph2d_audio::SampleData::version`.
+///
+/// This used to be the buffer's ADDRESS, on the reasoning that a `SampleData` is immutable, so a
+/// new buffer is a new pointer and any edit hands us a different one. ADR-0124 ended that: a range
+/// edit now rewrites the samples where they lie, and the address of an edited clip is the address
+/// of the clip before it. Asking the buffer is the same question with an answer that survives.
+type BufKey = ph2d_audio::BufferVersion;
 
 /// What a rendered image depends on: the buffer, the size it is drawn at, and the theme
 /// (which supplies the colour ramp).
@@ -140,10 +140,7 @@ impl super::super::AudioSystem {
             return None;
         }
         let data = clip.data();
-        let buf = BufKey {
-            ptr: data.samples().as_ptr() as usize,
-            len: data.samples().len(),
-        };
+        let buf = data.version();
         if self.spectral.sg_key != Some(buf) {
             self.spectral.sg = Some(Spectrogram::build(data));
             self.spectral.sg_key = Some(buf);
@@ -342,10 +339,11 @@ impl super::super::AudioSystem {
         // the entire point of moving the work off it, and only the Spectral section is dimmed
         // (Cut, Paste and Normalize are all still there). Committing a result computed from a
         // buffer that is no longer on screen would silently throw away whatever the user did in
-        // the meantime. `SampleData` is an immutable `Arc<[f32]>`, so buffer identity answers it
-        // exactly: same pointer = same samples. This is the `BufKey` idiom used at the top of
-        // this file, and it is sound here because `source` came back from the worker still
-        // alive — an address cannot be recycled by a buffer we are still holding.
+        // the meantime. Buffer identity answers it exactly, and `SampleData::version` is what
+        // identity means since ADR-0124: an edited clip can keep its address, so the address alone
+        // would say "still the same audio" about audio the user has since changed. This is the
+        // `BufKey` idiom used at the top of this file, and it is sound here because `source` came
+        // back from the worker still alive — an identity cannot be recycled by a buffer we hold.
         if !same_buffer(&source, clip.data()) {
             return;
         }
@@ -369,12 +367,12 @@ pub(crate) struct MlDenoise {
     out: ph2d_audio::SampleData,
 }
 
-/// Are these two the same buffer? `SampleData` is an immutable `Arc<[f32]>`, so a shared
-/// pointer means shared samples. Same question `BufKey` asks at the top of this file.
+/// Are these two the same audio? Same question `BufKey` asks at the top of this file, and it is
+/// asked the same way — an address stopped being an answer when ADR-0124 let an edit rewrite a
+/// buffer in place.
 #[cfg(feature = "audio-ml")]
 fn same_buffer(a: &ph2d_audio::SampleData, b: &ph2d_audio::SampleData) -> bool {
-    std::ptr::eq(a.samples().as_ptr(), b.samples().as_ptr())
-        && a.samples().len() == b.samples().len()
+    a.version() == b.version()
 }
 
 /// A resolved theme colour as plain RGB — the spectral crate takes bytes, so it never has

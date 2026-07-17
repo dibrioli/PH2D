@@ -240,44 +240,112 @@ impl EditClip {
         self.selection.clone().unwrap_or(0..self.frame_count())
     }
 
+    /// Apply a **length-preserving** op to `r`, paying for `r` and not for the clip (ADR-0124).
+    ///
+    /// The sibling of [`in_range`], and the same DSP: the op is handed the extracted region, so it
+    /// sees byte-for-byte what it saw before and computes byte-for-byte what it computed before.
+    /// What changes is everything *downstream* of the arithmetic — the three passes that used to
+    /// re-derive, at O(clip), the range this function was given as an argument:
+    ///
+    /// 1. the **splice** rebuilt the whole buffer to replace one selection;
+    /// 2. the **history** scanned both buffers to rediscover the range;
+    /// 3. the **peak cache** rebuilt the whole waveform.
+    ///
+    /// Raising the gain on 100 ms of a 3-minute clip cost 22.4 ms — past a 60 fps frame, on an
+    /// operation the user repeats. ADR-0117 established that *an edit is an interval* for memory;
+    /// this is the same sentence about time.
+    ///
+    /// Falls back to the splice — always correct, merely O(clip) — when the buffer is **shared**
+    /// (the mixer is playing it, so nothing may scribble on it: HR-3), or when the op does not
+    /// return the region it was given.
+    fn edit_range(&mut self, r: Range<usize>, op: impl Fn(&SampleData) -> SampleData) {
+        let r = ops::clamp_range(&self.data, r);
+        // Nothing to do, or nothing to be clever about: changing every sample is irreducibly
+        // O(clip), and `in_range` already short-circuits the whole-clip case without a splice.
+        if r.start >= r.end || (r.start == 0 && r.end == self.frame_count()) {
+            self.commit(ops::in_range(&self.data, r, op));
+            return;
+        }
+        let region = ops::trim(&self.data, r.clone()); // O(range)
+        let processed = op(&region); // O(range)
+        let fits =
+            processed.frame_count() == r.end - r.start && processed.format() == self.data.format();
+        if fits && self.rewrite_in_place(r.clone(), &processed) {
+            return;
+        }
+        // The splice path, given the region we already computed — byte-identical to what
+        // `in_range` would have produced, and without running the DSP a second time.
+        self.commit(ops::splice(&self.data, &r, processed.samples(), 0));
+    }
+
+    /// Write `processed` over `r` **in place**, record the step, patch the waveform. `false` when
+    /// the buffer is shared and the caller must splice instead.
+    ///
+    /// Length-preserving by contract, which is what makes this safe to do piecemeal: the selection
+    /// and the structure are clamped to a frame count that did not move, so the clamps `install`
+    /// would run are no-ops, and every position in the document still means what it meant.
+    fn rewrite_in_place(&mut self, r: Range<usize>, processed: &SampleData) -> bool {
+        let ch = ops::channels(&self.data);
+        let (lo, hi) = (r.start * ch, r.end * ch);
+        // The step needs the audio this edit is about to destroy, so it is taken BEFORE the write.
+        // O(range) — and it is exactly the delta the timeline would have kept anyway (ADR-0117).
+        let old: Box<[f32]> = self.data.samples()[lo..hi].into();
+        let Some(slice) = self.data.get_mut() else {
+            return false; // shared: the mixer is reading it
+        };
+        slice[lo..hi].copy_from_slice(processed.samples());
+
+        // The structure cannot have moved: no frame changed index. It still travels with the step,
+        // because the step is what an undo swaps and a step that dropped it would put the clip back
+        // with someone else's cuts.
+        let structure = self.structure.clone();
+        self.history.push_rewrite(
+            lo,
+            &old,
+            processed.samples(),
+            self.data.format(),
+            &structure,
+            &structure,
+        );
+        // Only the bins the edit touched are stale.
+        self.peaks.patch(&self.data, r);
+        true
+    }
+
     /// Scale the target range (selection, or whole clip) by `linear` gain.
     pub fn apply_gain(&mut self, linear: f32) {
         let t = self.target();
-        self.commit(ops::in_range(&self.data, t, |d| ops::gain(d, linear)));
+        self.edit_range(t, |d| ops::gain(d, linear));
     }
 
     /// Peak-normalize the target range to `target_peak` (linear).
     pub fn apply_normalize_peak(&mut self, target_peak: f32) {
         let t = self.target();
-        self.commit(ops::in_range(&self.data, t, |d| {
-            ops::normalize_peak(d, target_peak)
-        }));
+        self.edit_range(t, |d| ops::normalize_peak(d, target_peak));
     }
 
     /// Loudness-normalize the target range to `target_lufs` (BS.1770).
     pub fn apply_normalize_lufs(&mut self, target_lufs: f32) {
         let t = self.target();
-        self.commit(ops::in_range(&self.data, t, |d| {
-            ops::normalize_lufs(d, target_lufs)
-        }));
+        self.edit_range(t, |d| ops::normalize_lufs(d, target_lufs));
     }
 
     /// Reverse the target range (selection, or whole clip).
     pub fn apply_reverse(&mut self) {
         let t = self.target();
-        self.commit(ops::in_range(&self.data, t, ops::reverse));
+        self.edit_range(t, ops::reverse);
     }
 
     /// Invert polarity of the target range.
     pub fn apply_invert(&mut self) {
         let t = self.target();
-        self.commit(ops::in_range(&self.data, t, ops::invert));
+        self.edit_range(t, ops::invert);
     }
 
     /// Remove DC offset from the target range.
     pub fn apply_remove_dc_offset(&mut self) {
         let t = self.target();
-        self.commit(ops::in_range(&self.data, t, ops::remove_dc_offset));
+        self.edit_range(t, ops::remove_dc_offset);
     }
 
     /// Downmix the WHOLE clip to mono (for 3D positional audio). No-op if already
@@ -330,7 +398,27 @@ impl EditClip {
     }
 
     /// Render + commit an [`Effect`] in one step (one undo step).
+    ///
+    /// Takes the same O(range) path as [`EditClip::apply_gain`] (ADR-0124), but through
+    /// [`EditClip::render_effect_region`] rather than `edit_range`: an effect over a mid-clip
+    /// selection is **pre-rolled** with the audio before it, and a region trimmed without that
+    /// warm-up would click at its leading edge. The region that comes back is post-warm-up, so it
+    /// is exactly what the splice would have written.
     pub fn apply_effect(&mut self, fx: Effect) {
+        let t = self.target();
+        // The whole clip is excluded on purpose: `render_effect_region` would trim it twice over to
+        // hand back a copy of itself, which is slower than the splice path it is meant to beat.
+        if t.start < t.end
+            && !(t.start == 0 && t.end == self.frame_count())
+            && let Some((r, region)) = self.render_effect_region(fx)
+        {
+            if self.rewrite_in_place(r.clone(), &region) {
+                return;
+            }
+            // Shared buffer: splice the region we already rendered rather than run the DSP again.
+            self.commit(ops::splice(&self.data, &r, region.samples(), 0));
+            return;
+        }
         let out = self.render_effect(fx);
         self.commit(out);
     }
@@ -343,13 +431,19 @@ impl EditClip {
     }
 
     /// Fade the target range (selection or whole clip).
+    ///
+    /// The envelope is a function of the position *within the range* (`t = i / span`), so the region
+    /// faded on its own is the same audio as the range of a whole-clip fade — which is what lets
+    /// this take the O(range) path (ADR-0124).
     pub fn apply_fade(&mut self, shape: FadeShape, dir: FadeDir) {
-        self.commit(ops::fade(&self.data, self.target(), shape, dir));
+        let t = self.target();
+        self.edit_range(t, |d| ops::fade(d, 0..d.frame_count(), shape, dir));
     }
 
     /// Silence the target range.
     pub fn apply_silence(&mut self) {
-        self.commit(ops::silence(&self.data, self.target()));
+        let t = self.target();
+        self.edit_range(t, |d| ops::silence(d, 0..d.frame_count()));
     }
 
     /// Crop to the selection (no-op with no selection). Clears the selection.

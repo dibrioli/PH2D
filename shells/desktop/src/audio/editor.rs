@@ -96,9 +96,10 @@ pub(super) struct AudioEditorRuntime {
     /// Cached mono downmix of the current output base while [`force_mono`] is on,
     /// rebuilt only when the base buffer changes (see [`mono_sig`]).
     mono_view: Option<ph2d_audio_edit::EditClip>,
-    /// Signature `(ptr, len)` of the base buffer `mono_view` was built from — so the
-    /// downmix is not recomputed every frame.
-    mono_sig: Option<(usize, usize)>,
+    /// Which base buffer `mono_view` was built from — so the downmix is not recomputed every
+    /// frame. `SampleData::version` and not an address: since ADR-0124 an edit can rewrite the base
+    /// in place, and a stale mono view would keep playing the audio from before it.
+    mono_sig: Option<ph2d_audio::BufferVersion>,
     /// Variation container (W6 asset-prep): the model (entries + strategy + jitter),
     /// its decoded clips (index-aligned with `variation_set.entries`; `None` = decode
     /// failed), and the picker's selection state. Independent of the loaded clip — it
@@ -209,10 +210,7 @@ impl AudioSystem {
             self.editor.mono_sig = None;
             return;
         }
-        let sig = self.editor_base().map(|c| {
-            let s = c.data().samples();
-            (s.as_ptr() as usize, s.len())
-        });
+        let sig = self.editor_base().map(|c| c.data().version());
         if sig.is_none() {
             self.editor.mono_view = None;
             self.editor.mono_sig = None;

@@ -19,13 +19,12 @@ pub(crate) struct DeliveryCache {
     cost: Option<DeliveryCost>,
 }
 
-/// Everything the cost depends on. The buffer is identified by its pointer + length:
-/// `SampleData` is an immutable `Arc<[f32]>`, so a new buffer is a new pointer, and any
-/// edit (or an audition, or force-mono) hands us a different one.
+/// Everything the cost depends on. The buffer is identified by `SampleData::version`, never by its
+/// address: since ADR-0124 an edit can rewrite a clip **in place**, so the address of the edited
+/// clip is the address of the old one — and this panel would price audio the user has changed.
 #[derive(PartialEq, Eq, Clone, Copy)]
 struct CostKey {
-    ptr: usize,
-    len: usize,
+    buf: ph2d_audio::BufferVersion,
     codec: usize,
     /// Quality, quantised: a slider drag must not re-encode on every pixel of travel.
     quality_step: u8,
@@ -69,8 +68,7 @@ impl super::super::AudioSystem {
         let quality = ds::quality();
         let data = clip.data();
         let key = CostKey {
-            ptr: data.samples().as_ptr() as usize,
-            len: data.samples().len(),
+            buf: data.version(),
             codec: codec_idx,
             quality_step: (quality * QUALITY_STEPS) as u8,
         };

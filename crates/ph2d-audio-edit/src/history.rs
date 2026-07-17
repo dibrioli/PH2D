@@ -173,6 +173,49 @@ impl History {
         new: &SampleData,
         new_structure: &Structure,
     ) -> bool {
+        self.record(diff(old, new, old_structure, new_structure))
+    }
+
+    /// Record an edit that rewrote **exactly `at .. at + old.len()`** and nothing else, where the
+    /// caller hands over the two sides of that range instead of two whole buffers (ADR-0124).
+    ///
+    /// `diff` exists to *discover* the range an edit touched by scanning both buffers end to end.
+    /// But an editor acting on a selection has known the range since before it started — `apply_gain`
+    /// reads it on its first line — so the scan re-derives, at O(clip), a fact the caller was holding
+    /// the whole time. On a 3-minute clip that was 2.1 ms of every 100 ms gain nudge.
+    ///
+    /// **The caller's promise:** nothing outside the range differs between the two sides. Break it
+    /// and undo silently restores the wrong audio — so it is not taken on trust anywhere it could be
+    /// wrong. The in-place path is the only caller, it has just written the range itself, and
+    /// `an_informed_step_is_the_step_the_diff_would_have_found` re-derives both and compares.
+    ///
+    /// `at` is an **interleaved sample** index, not a frame: it indexes the same space as `Step.at`.
+    pub(crate) fn push_rewrite(
+        &mut self,
+        at: usize,
+        old: &[f32],
+        new: &[f32],
+        format: AudioFormat,
+        old_structure: &Structure,
+        new_structure: &Structure,
+    ) -> bool {
+        let structure_moved = old_structure != new_structure;
+        self.record(step_for(
+            at,
+            old,
+            new,
+            format,
+            old_structure,
+            structure_moved,
+        ))
+    }
+
+    /// Truncate the redo tail, then record `step` — the one place a step enters the timeline.
+    ///
+    /// The tail dies even when `step` is `None`: that is the behaviour `push` always had, and it is
+    /// the right one — the edit *happened*, it simply changed nothing, and a redo tail that survived
+    /// it would step forward into a future the user has already left.
+    fn record(&mut self, step: Option<Step>) -> bool {
         // The redo tail is unreachable the moment a new edit lands.
         while self.steps.len() > self.applied {
             if let Some(s) = self.steps.pop_back() {
@@ -180,7 +223,7 @@ impl History {
             }
         }
 
-        let Some(step) = diff(old, new, old_structure, new_structure) else {
+        let Some(step) = step else {
             return false;
         };
         self.bytes += step.bytes();
@@ -289,6 +332,30 @@ fn diff(
         });
     }
 
+    // The whole buffer IS the range when nobody told us a smaller one.
+    step_for(0, a, b, old.format(), old_structure, structure_moved)
+}
+
+/// Build the step for a range whose two sides are `a` (old) and `b` (new), starting at interleaved
+/// index `at`. `None` when nothing changed and no boundary moved.
+///
+/// **The one place a `Step` is made from audio**, and deliberately so: `diff` hands it the whole
+/// buffer because it has not been told the range, and `push_rewrite` hands it just the range because
+/// it has. Two constructors would be two answers to "what is a step?", and the informed one — the
+/// one nothing scans to check — would be the one that drifted.
+///
+/// Trimming still happens *inside* the range: the given bounds are where the edit was *allowed* to
+/// write, not where it did. A gain over a selection that opens on silence leaves those samples at
+/// `0.0`, and a step that carried them would be paying to restore audio no edit ever touched.
+fn step_for(
+    at: usize,
+    a: &[f32],
+    b: &[f32],
+    old_format: AudioFormat,
+    old_structure: &Structure,
+    structure_moved: bool,
+) -> Option<Step> {
+    // Samples are compared **by bits** — see this function's caller docs.
     let same = |x: f32, y: f32| x.to_bits() == y.to_bits();
     let head = a.iter().zip(b).take_while(|(x, y)| same(**x, **y)).count();
     if head == a.len() && a.len() == b.len() {
@@ -301,7 +368,7 @@ fn diff(
             at: 0,
             other: Box::new([]),
             in_doc: 0,
-            other_format: old.format(),
+            other_format: old_format,
             other_structure: old_structure.clone(),
         });
     }
@@ -316,10 +383,10 @@ fn diff(
         .count();
 
     Some(Step {
-        at: head,
+        at: at + head,
         other: a[head..a.len() - tail].into(),
         in_doc: b.len() - head - tail,
-        other_format: old.format(),
+        other_format: old_format,
         other_structure: old_structure.clone(),
     })
 }

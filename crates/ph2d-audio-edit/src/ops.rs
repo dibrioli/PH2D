@@ -49,7 +49,7 @@ pub(crate) fn channels(data: &SampleData) -> usize {
 }
 
 /// Clamp a frame range to the clip.
-fn clamp_range(data: &SampleData, range: Range<usize>) -> Range<usize> {
+pub(crate) fn clamp_range(data: &SampleData, range: Range<usize>) -> Range<usize> {
     let frames = data.frame_count();
     let start = range.start.min(frames);
     let end = range.end.clamp(start, frames);

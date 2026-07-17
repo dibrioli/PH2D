@@ -49,10 +49,10 @@ use ph2d_panel_audio_editor::FxStage;
 use super::fx_rack::is_audible;
 use crate::audio::fx_params::{FxCommand, build};
 
-/// What the scratch's out-of-region audio belongs to: the head buffer (identified by pointer +
-/// length — `SampleData` is an immutable `Arc`, so a new buffer is a new pointer) and the
-/// selection. Either moves and every byte outside the region is stale.
-type ScratchKey = (usize, usize, Option<(usize, usize)>);
+/// What the scratch's out-of-region audio belongs to: the head buffer (identified by
+/// `SampleData::version` — an address would not do, since ADR-0124 lets an edit rewrite the head in
+/// place) and the selection. Either moves and every byte outside the region is stale.
+type ScratchKey = (ph2d_audio::BufferVersion, Option<(usize, usize)>);
 
 /// The two alternating audition buffers, and what they were built from.
 #[derive(Default)]
@@ -91,11 +91,7 @@ impl PreviewScratch {
     ) -> Option<EditClip> {
         let hd = head.data();
         let selection = head.selection().map(|r| (r.start, r.end));
-        let key = (
-            hd.samples().as_ptr() as usize,
-            hd.samples().len(),
-            selection,
-        );
+        let key = (hd.version(), selection);
         if self.key != Some(key) {
             self.reset(key);
         }

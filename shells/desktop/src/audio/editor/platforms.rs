@@ -16,9 +16,10 @@ use ph2d_audio_encode::{Codec, PLATFORMS, Platform, WavMeta, format_bytes};
 /// The cached price of the whole set, for one buffer.
 #[derive(Default)]
 pub(crate) struct PlatformCache {
-    /// `SampleData` is an immutable `Arc<[f32]>`, so a new buffer is a new pointer — and any
-    /// edit, audition or force-mono hands us a different one. Pointer + length identifies it.
-    key: Option<(usize, usize)>,
+    /// Identified by `SampleData::version`, never by address: since ADR-0124 an edit can rewrite a
+    /// clip **in place**, and an address would then report the edited clip as the one already
+    /// priced.
+    key: Option<ph2d_audio::BufferVersion>,
     rows: Vec<(String, String, f32)>,
 }
 
@@ -57,7 +58,7 @@ impl super::super::AudioSystem {
             return;
         };
         let data = clip.data();
-        let key = (data.samples().as_ptr() as usize, data.samples().len());
+        let key = data.version();
         if self.platforms.key != Some(key) {
             self.platforms.rows = PLATFORMS.iter().filter_map(|p| price(data, p)).collect();
             self.platforms.key = Some(key);

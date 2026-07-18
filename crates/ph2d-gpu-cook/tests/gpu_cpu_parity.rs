@@ -46,6 +46,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     ph2d_node_motion_noise::register(&mut reg).unwrap();
+    ph2d_node_value_lfo::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -1226,4 +1227,77 @@ fn the_noise_recuses_on_the_channels_its_kernel_cannot_write() {
             "channel {channel} writes rot/size — the boundary is AT the noise"
         );
     }
+}
+
+/// **A node that emits a different KIND of stream than it consumes.**
+///
+/// `value.lfo` takes instances and emits a VALUE stream: one `v` column, and
+/// nothing else. Every kernel before it was `INST_VEC2 → INST_VEC2`, where the
+/// engine's `out = base + written` is exactly right; here riding the base would
+/// hand downstream a VALUE stream still carrying `P`/`Index`/`Count`, which the
+/// CPU's does not have. That is not an ε — it is a different shape, and it would
+/// surface far away, as some later node reading a column that should be gone.
+///
+/// So this gate compares the COLUMN SET, not only the numbers. A parity check on
+/// `v` alone would stay green with the base wrongly riding through.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_value_node_emits_a_bare_stream_not_the_instance_base() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 12.0);
+    let lfo = g.add_node("value.lfo");
+    connect(&mut g, grid, lfo);
+    // Non-round, and a waveform that is a BRANCH (triangle) so the rounding of
+    // `wave` is exercised, not just the default parabolic sine.
+    g.set_param(lfo, "wave", 1.0);
+    g.set_param(lfo, "period", 0.73);
+    g.set_param(lfo, "amplitude", 1.9);
+    g.set_param(lfo, "offset", 0.37);
+    g.set_param(lfo, "phase", 0.21);
+    g.set_param(lfo, "phase_stagger", 0.013);
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, lfo);
+    assert!(plan.is_fully_gpu(), "grid → lfo is covered end to end");
+
+    // The CPU's answer, on the canonical path.
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, lfo, PLAYHEAD).expect("cpu cook");
+    let cpu_stream = cpu[0].as_stream();
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+
+    // THE assertion: the same columns, not merely the same `v`. The grid feeds
+    // `P`/`Index`/`Count`, so a base that rode through would show up right here.
+    let gpu_cols: Vec<&str> = gc
+        .node_columns(lfo)
+        .expect("the lfo is staged")
+        .iter()
+        .map(String::as_str)
+        .collect();
+    let mut cpu_cols: Vec<&str> = cpu_stream.columns().map(|(n, _)| n.as_str()).collect();
+    cpu_cols.sort_unstable();
+    assert_eq!(
+        gpu_cols, cpu_cols,
+        "the GPU stream must carry the SAME columns as the CPU's — a VALUE stream \
+         is `v` and nothing else, never the instance base with `v` bolted on"
+    );
+    assert_eq!(gpu_cols, vec!["v"], "and that column set is exactly `v`");
 }

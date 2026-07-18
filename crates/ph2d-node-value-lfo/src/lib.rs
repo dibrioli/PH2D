@@ -27,6 +27,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -101,6 +102,80 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// GPU compute kernel (ADR-0126) — the WGSL port of [`wave::waveform`], element
+/// for element.
+///
+/// **This node is the first that does NOT ride its input through.** The engine's
+/// default is `out = base + written columns`, which is what every instance
+/// deformer wants; this one takes instances and emits a **VALUE** stream — one
+/// `v` column and nothing else. The sequencer derives that from the manifest
+/// (port 0 in-type vs out-type differ), so the kernel declares nothing extra —
+/// and riding the base would have handed downstream a VALUE stream still
+/// carrying `P`/`Index`, which the CPU's does not have.
+///
+/// `lfo_round` is round-half-away-from-zero to match Rust's `f32::round`: `wave`
+/// picks a BRANCH, so the two conventions would choose different waveforms at a
+/// half-integer ([[feedback_cpu_gpu_rounding_conventions_diverge]]). The period
+/// takes the same `MIN_PERIOD` floor as the CPU — a zero period is a divide.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let lfo_period = max(params.period, 1e-3);\n\
+        let lfo_phase = params.playhead / lfo_period + params.phase\n\
+        \x20   + f32(i) * params.phase_stagger;\n\
+        let lfo_v = lfo_wave(i32(lfo_round(params.wave)), lfo_phase)\n\
+        \x20   * params.amplitude + params.offset;\n\
+        write_v(i, lfo_v);\n",
+    wgsl_lib: "\
+        fn lfo_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn lfo_wave(kind: i32, phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            if (kind == 1) {\n\
+                if (f < 0.25) { return 4.0 * f; }\n\
+                if (f < 0.75) { return 2.0 - 4.0 * f; }\n\
+                return 4.0 * f - 4.0;\n\
+            }\n\
+            if (kind == 2) {\n\
+                if (f < 0.5) { return 1.0; }\n\
+                return -1.0;\n\
+            }\n\
+            if (kind == 3) { return 2.0 * f - 1.0; }\n\
+            if (kind == 4) {\n\
+                if (f < 0.08) { return 1.0; }\n\
+                return 0.0;\n\
+            }\n\
+            // Parabolic sine + Capens 2nd-order correction (HR-5, no sin).\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n",
+    bindings: &[ColumnBinding {
+        column: VALUE_COL,
+        dim: Dim::Scalar,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    }],
+    params: &[
+        "wave",
+        "period",
+        "amplitude",
+        "offset",
+        "phase",
+        "phase_stagger",
+    ],
+    source_window: None,
+    applicable: None,
+};
+
 struct ValueLfo;
 
 impl NodeOp for ValueLfo {
@@ -133,6 +208,7 @@ impl NodeOp for ValueLfo {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueLfo))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

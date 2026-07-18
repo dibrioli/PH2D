@@ -36,12 +36,29 @@ use ph2d_ecs::{
 };
 use ph2d_vec_envelope::{CoonsWarp, QuadWarp, rest_edges, warp_path};
 
-/// O domínio-fonte de um envelope, exposto ao gesto (o guard de dobra dos pinos precisa dele — a
-/// dobra é uma pergunta sobre o pedaço de plano ONDE HÁ ARTE, não sobre o plano todo).
-pub(crate) fn domain_of(sim: &SimWorld, bits: u64) -> Option<([f64; 2], [f64; 2])> {
-    sim.world()
-        .get::<VecEnvelope>(Entity::from_bits(bits))
-        .and_then(rest_domain)
+/// Os pontos da **ARTE** de um envelope, em local do container — onde o guard de dobra dos pinos
+/// pergunta se o mapa vira do avesso.
+///
+/// São os pontos de controle das fontes AUTORADAS (âncoras e alças), que é o espaço em que o mapa é
+/// avaliado. ⚠️ **Não é a bbox:** perguntar pela caixa incluía cantos VAZIOS, e uma dobra onde não
+/// há contorno não produz o auto-cruzamento que o guard existe para impedir — media-se que isso
+/// recusava arrastos legítimos a partir de 0,70 numa altura de 2,80 (o *"os pontos travam"*).
+///
+/// Uma Bézier vive no casco convexo dos seus controles, então amostrá-los cobre a vizinhança da
+/// curva; é aproximação, e é a aproximação certa: ela olha para a geometria que EXISTE.
+pub(crate) fn art_samples(sim: &SimWorld, bits: u64) -> Vec<[f64; 2]> {
+    let Some(env) = sim.world().get::<VecEnvelope>(Entity::from_bits(bits)) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for child in &env.children {
+        if let Ok(src) = postcard::from_bytes::<VecPath>(&child.source) {
+            for v in src.verts_all() {
+                out.extend([v.anchor, v.in_handle, v.out_handle]);
+            }
+        }
+    }
+    out
 }
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 

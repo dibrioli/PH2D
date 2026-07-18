@@ -2706,6 +2706,7 @@ impl App {
                                     env_container,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
+                                    self.modifiers.alt_key(),
                                     &mut self.vec_envelope_drag,
                                 ) {
                                     // canto agarrado — o pen fica de fora

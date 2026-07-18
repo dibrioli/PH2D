@@ -138,6 +138,7 @@ fn a_side_handle_is_only_grabbable_in_the_mesh_gesture() {
         Some(container),
         on_handle,
         PX_TO_WORLD,
+        false,
         &mut drag,
     );
     assert_eq!(
@@ -152,6 +153,7 @@ fn a_side_handle_is_only_grabbable_in_the_mesh_gesture() {
             Some(container),
             on_handle,
             PX_TO_WORLD,
+            false,
             &mut drag
         ),
         "o Mesh nao pegou a alca de lado sob o cursor"

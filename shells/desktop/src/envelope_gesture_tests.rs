@@ -92,6 +92,7 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
         Some(container),
         [tr[0] + 0.3, tr[1] + 0.2],
         PX_TO_WORLD,
+        false,
         &mut drag
     ));
     assert_eq!(
@@ -107,6 +108,7 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
         Some(container),
         rect_corners()[2],
         PX_TO_WORLD,
+        false,
         &mut miss
     ));
     assert_eq!(
@@ -130,6 +132,7 @@ fn press_misses_when_far_from_every_corner_and_off_the_art() {
         Some(container),
         [50.0 + POSE[0], 50.0 + POSE[1]],
         PX_TO_WORLD,
+        false,
         &mut drag
     ));
     assert_eq!(drag, None, "o centro nao esta perto de canto nenhum");
@@ -148,6 +151,7 @@ fn press_ignores_a_non_envelope_entity() {
         Some(plain),
         [7.0, 5.0],
         PX_TO_WORLD,
+        false,
         &mut drag
     ));
     assert_eq!(drag, None);
@@ -164,6 +168,7 @@ fn press_with_no_selection_arms_nothing() {
         None,
         world_corners()[2],
         PX_TO_WORLD,
+        false,
         &mut drag
     ));
     assert_eq!(drag, None);
@@ -275,6 +280,7 @@ fn a_press_on_the_cooked_art_is_swallowed_without_arming() {
             Some(container),
             [5.0 + POSE[0], 3.0 + POSE[1]],
             PX_TO_WORLD,
+            false,
             &mut drag
         ),
         "o clique na arte cozida caiu no pen — o ponto vai andar e voltar"

@@ -42,7 +42,7 @@ pub use gesture::{
     CageMove, MESH_HANDLE_COUNT, edge_handle_index, move_corner_convex, move_handle,
     nearest_corner, nearest_handle,
 };
-pub use mls::{MlsWarp, Pin, pins_fold};
+pub use mls::{MlsWarp, Pin, domain_samples, pins_fold_at};
 pub use preset::{AMP, EdgeBows, UNIT_CAGE, preset_cage};
 pub use quad::QuadWarp;
 

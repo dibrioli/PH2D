@@ -26,6 +26,7 @@ fn pressing_empty_space_in_pins_mode_nails_a_resting_pin() {
             Some(container),
             [4.0, 4.0],
             0.05,
+            false,
             &mut drag
         ),
         "o gesto Pinos devia tomar o clique no vazio"
@@ -53,6 +54,7 @@ fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
         Some(container),
         [4.0, 4.0],
         0.05,
+        false,
         &mut drag,
     );
     assert_eq!(env_of(&sim, container).pins.len(), 1);
@@ -65,8 +67,15 @@ fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
     assert_ne!(moved, [4.0, 4.0], "fixture morto: o pino não andou");
 
     let mut drag2 = None;
-    let _ =
-        crate::envelope_gesture::press(&mut sim, &scene, Some(container), moved, 0.05, &mut drag2);
+    let _ = crate::envelope_gesture::press(
+        &mut sim,
+        &scene,
+        Some(container),
+        moved,
+        0.05,
+        false,
+        &mut drag2,
+    );
     assert_eq!(
         env_of(&sim, container).pins.len(),
         1,
@@ -83,6 +92,7 @@ fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
         Some(container),
         [4.0, 4.0],
         0.05,
+        false,
         &mut drag3,
     );
     assert_eq!(
@@ -328,5 +338,109 @@ fn the_pins_survive_an_undo() {
     assert!(
         crate::envelope_gesture::view(&sim, Some(live), None).is_some(),
         "a gaiola também some depois do undo — é o mesmo bits morto"
+    );
+}
+
+/// **ALT+CLIQUE REMOVE O PINO SOB O CURSOR** — o idioma do Puppet Warp do Photoshop.
+///
+/// Sem ele, pregar era porta de mão única: todo clique no vazio prega, e um smoke real acumulou
+/// **13 pinos**. A essa densidade quase nenhum arrasto passa o guard, e o `Clear Pins` — tudo ou
+/// nada — é um machado onde faltava uma pinça.
+#[test]
+fn alt_click_removes_the_pin_under_the_cursor() {
+    let (mut sim, scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    pins_mode(&mut sim, container);
+    set_pins(
+        &mut sim,
+        container,
+        vec![[[4.0, 4.0], [4.0, 4.0]], [[6.0, 6.0], [6.0, 6.0]]],
+    );
+    let mut drag = None;
+
+    assert!(crate::envelope_gesture::press(
+        &mut sim,
+        &scene,
+        Some(container),
+        [4.0, 4.0],
+        0.05,
+        true, // Alt
+        &mut drag
+    ));
+    let pins = env_of(&sim, container).pins;
+    assert_eq!(pins.len(), 1, "o Alt+clique nao removeu o pino");
+    assert_eq!(pins[0][0], [6.0, 6.0], "removeu o pino errado");
+    assert_eq!(drag, None, "o Alt+clique armou um arrasto");
+}
+
+/// **ALT NO VAZIO NÃO PREGA NADA.** O modificador diz *remover*; criar ali seria o oposto do que o
+/// dedo pediu — e é o erro fácil, porque o caminho sem Alt prega exatamente nessa situação.
+#[test]
+fn alt_on_empty_space_nails_nothing() {
+    let (mut sim, scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    pins_mode(&mut sim, container);
+    set_pins(&mut sim, container, vec![[[4.0, 4.0], [4.0, 4.0]]]);
+    let mut drag = None;
+
+    let _ = crate::envelope_gesture::press(
+        &mut sim,
+        &scene,
+        Some(container),
+        [40.0, 40.0],
+        0.05,
+        true,
+        &mut drag,
+    );
+    assert_eq!(
+        env_of(&sim, container).pins.len(),
+        1,
+        "o Alt no vazio pregou um pino — o modificador diz o CONTRARIO"
+    );
+}
+
+/// **O GUARD DE DOBRA PERGUNTA PELA ARTE, NÃO PELA CAIXA — e as duas respostas DIFEREM.**
+///
+/// A bbox-união é a caixa dos pontos de CONTROLE, então ela tem cantos por onde nenhum contorno
+/// passa. Uma dobra ali não produz o auto-cruzamento que este guard existe para impedir — e mesmo
+/// assim vetava o gesto. Medido antes do fix: 13 pinos recusavam qualquer arrasto além de **0,70
+/// numa altura de 2,80**; é o *"os pontos estão travando"* do Enio.
+///
+/// ⚠️ **A 1ª versão deste gate NÃO discriminava** (12 pinos, arrasto de 0,5: as duas perguntas
+/// respondiam o mesmo, e a mutação "volte a perguntar pela caixa" sobreviveu). Os números abaixo
+/// foram MEDIDOS até achar o regime em que elas divergem — um fixture só prova o que contém.
+#[test]
+fn the_fold_guard_asks_about_the_art_not_the_bounding_box() {
+    let (mut sim, _scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    pins_mode(&mut sim, container);
+    // 13 pinos em anel sobre a arte — a densidade que o smoke real produziu.
+    let pins: Vec<[[f64; 2]; 2]> = (0..13)
+        .map(|i| {
+            let a = f64::from(i) * std::f64::consts::TAU / 13.0;
+            let p = [5.0 + 2.6 * a.cos(), 5.0 + 2.6 * a.sin()];
+            [p, p]
+        })
+        .collect();
+    set_pins(&mut sim, container, pins.clone());
+
+    let art = crate::envelope_live::art_samples(&sim, container);
+    assert!(!art.is_empty(), "fixture morto: a arte nao tem pontos");
+    let env = env_of(&sim, container);
+    let grid = ph2d_vec_envelope::domain_samples(
+        env.corners[0],
+        [
+            env.corners[1][0] - env.corners[0][0],
+            env.corners[3][1] - env.corners[0][1],
+        ],
+    );
+
+    // Um arrasto de 1,2 unidade — gesto comum, e o regime em que as duas perguntas divergem.
+    let mut moved = pins;
+    moved[0][1] = [moved[0][0][0], moved[0][0][1] + 1.2];
+    assert!(
+        ph2d_vec_envelope::pins_fold_at(&moved, &grid),
+        "fixture morto: a CAIXA tinha de recusar este arrasto (senao o gate nao mede nada)"
+    );
+    assert!(
+        !ph2d_vec_envelope::pins_fold_at(&moved, &art),
+        "o guard recusou um arrasto que a ARTE aguenta — e' o 'os pontos travam' de volta"
     );
 }

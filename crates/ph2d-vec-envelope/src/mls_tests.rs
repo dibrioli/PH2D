@@ -186,11 +186,11 @@ fn a_moderate_pin_pull_does_not_fold() {
     let origin = [0.0, 0.0];
     let size = [10.0, 6.0];
     assert!(
-        !pins_fold(&three_pins(), origin, size),
+        !pins_fold_at(&three_pins(), &domain_samples(origin, size)),
         "um puxão moderado foi acusado de dobrar"
     );
     // E sem pino nenhum não há mapa, logo não há dobra.
-    assert!(!pins_fold(&[], origin, size));
+    assert!(!pins_fold_at(&[], &domain_samples(origin, size)));
 }
 
 /// **PRESENÇA:** o MESMO amostrador vê a dobra quando ela existe — um pino atirado para o outro lado
@@ -204,7 +204,7 @@ fn the_sampler_detects_a_fold_when_there_is_one() {
         [[5.0, 3.0], [5.0, -30.0]],
     ];
     assert!(
-        pins_fold(&folded, [0.0, 0.0], [10.0, 6.0]),
+        pins_fold_at(&folded, &domain_samples([0.0, 0.0], [10.0, 6.0])),
         "o amostrador não viu uma dobra grosseira"
     );
 }

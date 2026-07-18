@@ -109,6 +109,7 @@ pub(crate) fn press(
     selected: Option<u64>,
     world_pt: [f64; 2],
     px_to_world: f64,
+    alt: bool,
     drag: &mut Option<(u64, usize)>,
 ) -> bool {
     let Some(bits) = selected else { return false };
@@ -120,7 +121,7 @@ pub(crate) fn press(
     };
     let radius = ENVELOPE_HANDLE_R_PX * px_to_world;
     if kind == EnvelopeKind::Pins {
-        return press_pin(sim, bits, &xf, world_pt, radius, drag);
+        return press_pin(sim, bits, &xf, world_pt, radius, alt, drag);
     }
     let world = to_world(corners, &xf);
     let world_edges = offered_edges(edges, kind).map(|e| edges_to_world(e, &xf));
@@ -186,6 +187,7 @@ fn press_pin(
     xf: &Xform,
     world_pt: [f64; 2],
     radius: f64,
+    alt: bool,
     drag: &mut Option<(u64, usize)>,
 ) -> bool {
     let Some(inv) = xf.inverse() else {
@@ -204,6 +206,19 @@ fn press_pin(
         let w = xf.apply(p[1]);
         (w[0] - world_pt[0]).powi(2) + (w[1] - world_pt[1]).powi(2) <= r2
     });
+    // **Alt = remover** (o idioma do Puppet Warp do Photoshop). Sem ele, pregar era porta de mão
+    // única: todo clique no vazio prega, e um smoke real acumulou **13 pinos** — a essa densidade o
+    // mapa fica tão restrito que quase nenhum arrasto passa, e o `Clear Pins` (tudo ou nada) é um
+    // machado onde faltava uma pinça.
+    if alt {
+        let removed = hit.map(|i| env.pins.remove(i)).is_some();
+        // Alt no vazio não prega nada: o modificador diz "remover", e criar ali seria o oposto do
+        // que o dedo pediu. O clique é consumido de qualquer forma — o pen não tem nada a fazer com
+        // ele no gesto de pinos.
+        let _ = removed;
+        *drag = None;
+        return true;
+    }
     let index = hit.unwrap_or_else(|| {
         env.pins.push([local_pt, local_pt]);
         env.pins.len() - 1
@@ -300,9 +315,7 @@ fn drag_pin(
     index: usize,
     local_pt: [f64; 2],
 ) -> bool {
-    let Some(domain) = crate::envelope_live::domain_of(sim, bits) else {
-        return true;
-    };
+    let samples = crate::envelope_live::art_samples(sim, bits);
     let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity) else {
         return true;
     };
@@ -311,7 +324,7 @@ fn drag_pin(
     };
     let mut next = env.pins.clone();
     next[index][1] = local_pt;
-    if ph2d_vec_envelope::pins_fold(&next, domain.0, domain.1) {
+    if ph2d_vec_envelope::pins_fold_at(&next, &samples) {
         // O pino PARA na fronteira. É por construção — e é exatamente o que o artista lê como
         // "travou", então tem de ser dizível.
         crate::vec_overlay_diag::refused(

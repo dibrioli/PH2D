@@ -309,10 +309,21 @@ impl Warp for MlsWarp {
     }
 }
 
-/// **Esta configuração de pinos dobra a arte dentro de `domain`?**
+/// **Esta configuração de pinos dobra a arte NOS PONTOS `samples`?**
 ///
-/// `domain` é `(origem, tamanho)` — o retângulo-fonte do envelope, que é exatamente o pedaço de
-/// plano onde há arte. Amostra o sinal de `det J` numa grade; `true` se ele zera ou vira.
+/// ⚠️ **Os pontos são a ARTE, não a caixa em volta dela — e a diferença foi medida.** A 1ª versão
+/// amostrava uma grade sobre a bbox-união, e com 13 pinos (o que o smoke do Enio produziu) ela
+/// recusava qualquer arrasto além de **0,70 unidades num domínio de 2,80**: o artista puxava e o
+/// pino parava quase de imediato — o *"os pontos estão travando"*.
+///
+/// A recusa nem sempre estava errada, mas a **pergunta** estava: o mal que este guard existe para
+/// impedir é um **contorno auto-interseccionado**, e um contorno só se auto-intersecta onde há
+/// contorno. Uma dobra num canto VAZIO da caixa não produz defeito nenhum e mesmo assim vetava o
+/// gesto. Perguntar pelos pontos da geometria é mais preciso, mais barato, e é o que o ADR-0129 já
+/// dizia: *"o container É o escopo — a gaiola contém a arte"*.
+///
+/// É amostragem, e o código diz isso: uma dobra entre duas amostras escapa. O que ela cobre é o que
+/// a arte de facto ocupa.
 ///
 /// É o guard do gesto, e o irmão do `cage_folds`. **Ele restitui a premissa do `break_cusp`:** o
 /// `fit.rs` avisava que a Fatia E quebraria o *"nenhum mapa em escopo dobra"*, e a resposta desta
@@ -324,23 +335,31 @@ impl Warp for MlsWarp {
 /// método (medido no ADR), não do guard — e se o smoke mostrar que o gesto quer posar personagem, a
 /// decisão de usar MLS é **reaberta**, não calibrada (ADR-0129 §4, o contra-sinal do ARAP).
 #[must_use]
-pub fn pins_fold(pins: &[Pin], origin: [f64; 2], size: [f64; 2]) -> bool {
+pub fn pins_fold_at(pins: &[Pin], samples: &[[f64; 2]]) -> bool {
     let Some(w) = MlsWarp::new(pins) else {
         return false;
     };
+    samples.iter().any(|&p| {
+        let j = w.jacobian(p);
+        j[0][0] * j[1][1] - j[0][1] * j[1][0] <= 0.0
+    })
+}
+
+/// Uma grade sobre `(origem, tamanho)` — o gerador de amostras dos GATES do motor, que não têm arte
+/// à mão. **Não é uma segunda resposta**: quem responde é sempre [`pins_fold_at`]; isto só diz
+/// *onde perguntar* quando o chamador é um teste e não o produto.
+#[must_use]
+pub fn domain_samples(origin: [f64; 2], size: [f64; 2]) -> Vec<[f64; 2]> {
+    let mut out = Vec::with_capacity((FOLD_GRID + 1) * (FOLD_GRID + 1));
     for i in 0..=FOLD_GRID {
         for j in 0..=FOLD_GRID {
-            let p = [
+            out.push([
                 origin[0] + size[0] * (i as f64 / FOLD_GRID as f64),
                 origin[1] + size[1] * (j as f64 / FOLD_GRID as f64),
-            ];
-            let j2 = w.jacobian(p);
-            if j2[0][0] * j2[1][1] - j2[0][1] * j2[1][0] <= 0.0 {
-                return true;
-            }
+            ]);
         }
     }
-    false
+    out
 }
 
 #[cfg(test)]

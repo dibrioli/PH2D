@@ -259,3 +259,48 @@ fn under_a_loop_the_pose_travels_with_the_drawing() {
         "a 2a volta do Loop desenhou a arte do vao na pose ERRADA (a do quadro cru)"
     );
 }
+
+/// 🔴 **A espessura do traço é fixa no MUNDO — o render a projeta pelo ZOOM** (§4.C.6).
+///
+/// Enio 2026-07-17: *"a largura do traço está relativa ao zoom do canvas e não é fixa no
+/// mundo"*. O `camera_raw` passava `1.0` na escala de espessura, o que forçava a largura
+/// guardada a ser lida como PX DE TELA: o traço ficava com a mesma grossura na tela em
+/// qualquer aproximação — ou seja, ENCOLHIA em relação à arte ao dar zoom.
+///
+/// Agora ele passa o `px_per_world` real, que é o que o `ph2d-flip-render` sempre
+/// documentou querer (`thickness_px = raio_mundo · px_per_world`). Aproximar 2× engrossa
+/// o traço 2× na tela, como uma foto ampliada.
+///
+/// Mutação que sangra: voltar a `CameraRaw::new(vp, viewport, 1.0)` — os dois zooms
+/// devolvem a mesma escala e a razão vira 1.
+#[test]
+fn the_stroke_thickness_is_fixed_in_the_world_and_scales_with_the_zoom() {
+    let window = ph2d_host::WindowSize {
+        width: 1920,
+        height: 1080,
+    };
+    let far = ph2d_render::Camera2d {
+        center: [0.0, 0.0],
+        height_world: 10.0,
+        cull_mask: u32::MAX,
+    };
+    let near = ph2d_render::Camera2d {
+        height_world: 5.0, // 2× mais perto
+        ..far
+    };
+
+    let s_far = camera_raw(&far, window).px_per_world;
+    let s_near = camera_raw(&near, window).px_per_world;
+
+    // A escala de espessura É o px_per_world da câmera.
+    assert!(
+        (s_far - 1080.0 / 10.0).abs() < 1e-3,
+        "escala de espessura {s_far} != px_per_world da camera"
+    );
+    // E aproximar 2× DOBRA a espessura na tela: a largura mora no mundo.
+    assert!(
+        (s_near / s_far - 2.0).abs() < 1e-6,
+        "2x de zoom nao dobrou a espessura ({s_near}/{s_far}): a largura voltou a ser \
+         de TELA (absoluta), e o traço encolhe em relação à arte ao aproximar"
+    );
+}

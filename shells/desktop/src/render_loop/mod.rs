@@ -2942,6 +2942,8 @@ impl crate::App {
                 hero,
                 vector_scene,
                 self.last_pointer,
+                // §4.C.6: o Size mede o MUNDO — o anel se projeta pelo zoom, como a tinta.
+                f64::from(window_size.height as f32 / camera.height_world.max(f32::EPSILON)),
             );
             // O contorno dos colliders: um sprite é um QUAD e um collider é
             // invisível, então sem isto "que forma isto tem, fisicamente?"

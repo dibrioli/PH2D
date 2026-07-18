@@ -485,7 +485,8 @@ pub(crate) fn apply_style_delta(
                 // aplicado só aos pontos selecionados.
                 let max = s.widths().iter().copied().fold(0.0f32, f32::max);
                 if max > 0.0 {
-                    let size = now.width_px as f32;
+                    // Size -> MUNDO (§4.C.6, porta única — igual ao `build_stroke`).
+                    let size = ph2d_tool_flip::size_to_world(now.width_px);
                     for (i, w) in s.widths_mut().iter_mut().enumerate() {
                         if sel[i] {
                             *w = size * (*w / max);
@@ -546,7 +547,8 @@ pub(crate) fn apply_style_delta(
             // `w_i := size` chapado destruiria em silêncio.
             let max = s.widths().iter().copied().fold(0.0f32, f32::max);
             if max > 0.0 {
-                let size = now.width_px as f32;
+                // Size -> MUNDO (§4.C.6, porta única — igual ao `build_stroke`).
+                let size = ph2d_tool_flip::size_to_world(now.width_px);
                 for w in s.widths_mut() {
                     *w = size * (*w / max);
                 }

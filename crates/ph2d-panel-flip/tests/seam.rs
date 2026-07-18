@@ -970,3 +970,55 @@ fn the_link_toggles_live_only_in_erase_mode() {
         }
     }
 }
+
+/// 🔴 **A Strength é SOFT-only** (Enio 2026-07-17: *"borracha hard não obedece a
+/// strength"* — não obedecia mesmo).
+///
+/// Hard CORTA o ponto e Stroke apaga o traço inteiro: as duas são binárias e não têm o que
+/// dosar — o `erase_at` sempre documentou o parâmetro como *"(Soft only)"*. O slider ficava
+/// pintado e INERTE, que é o controle morto proibido pela doutrina modal deste painel
+/// (*"o usuário mexe, nada muda, e conclui que o app está quebrado"*).
+///
+/// O toggle de LINK da Strength vai junto: ele governa um número que, ali, não existe.
+///
+/// Mutação que sangra: pintar a linha da Strength em qualquer sub-modo (tirar o
+/// `strength_applies` do `brush()`) — os casos Hard/Stroke caem.
+#[test]
+fn the_strength_row_lives_only_in_the_soft_eraser() {
+    use ph2d_tool_flip::EraseMode;
+
+    let cases = [
+        (EraseMode::Soft, true),
+        (EraseMode::Hard, false),
+        (EraseMode::Stroke, false),
+    ];
+    for (erase, want) in cases {
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut st = FlipPanelState::default();
+        ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+            mode: FlipMode::Erase,
+            erase,
+            ..Default::default()
+        }));
+        let painted = host.paint::<FlipPanel>(&mut st, viewport());
+        let on = |id: ph2d_a11y::NodeId| painted.iter().any(|(w, r)| *w == id && r.w > 0.0);
+
+        assert_eq!(
+            on(ids::FLIP_OPACITY),
+            want,
+            "borracha {erase:?}: a Strength deveria aparecer? {want} \
+             (Hard/Stroke sao binarias — o slider ali nao faz NADA)"
+        );
+        assert_eq!(
+            on(ids::FLIP_LINK_STRENGTH),
+            want,
+            "borracha {erase:?}: o link da Strength segue a propria Strength"
+        );
+        // O Size (e o link dele) existem nos TRÊS: raio toda borracha tem.
+        assert!(on(ids::FLIP_SIZE), "borracha {erase:?}: o Size sumiu");
+        assert!(
+            on(ids::FLIP_LINK_SIZE),
+            "borracha {erase:?}: o link do Size sumiu"
+        );
+    }
+}

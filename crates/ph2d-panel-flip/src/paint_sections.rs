@@ -247,7 +247,18 @@ impl BodyCtx<'_> {
         } else {
             self.slider_row("Size", size_id, size_num, track, px, &px_display, y)
         };
+        // **A Strength é SOFT-only** (Enio 2026-07-17: *"borracha hard não obedece a
+        // strength"* — não obedecia mesmo). Hard CORTA o ponto e Stroke apaga o traço
+        // inteiro: as duas são binárias, não têm o que dosar, e o `erase_at` sempre
+        // documentou o parâmetro como *"(Soft only)"*. O slider ficava pintado e inerte —
+        // o controle morto que a doutrina modal deste painel proíbe *"um controle que não
+        // faz nada é pior que a ausência dele: o usuário mexe, nada muda, e conclui que o
+        // app está quebrado"*. Agora ele (e o link dele) somem fora do Soft.
+        let strength_applies = !eraser || snap.erase == EraseMode::Soft;
         // Hardness (0..1) — só o pincel de DESENHO tem borda.
+        if radius_force && !strength_applies {
+            return y; // Hard/Stroke: o raio é tudo o que a borracha tem
+        }
         if radius_force {
             // Mesma regra de link do Size, no outro eixo (§4.C).
             let (str_id, str_num, str_val) = if eraser && !snap.link_strength {

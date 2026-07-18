@@ -167,11 +167,12 @@ pub(crate) fn stroke_from_samples(
 /// Constrói um `FlipStroke` a partir das amostras (MUNDO) + estilo. Compartilhado
 /// pelo bake (pen-up) e pelo preview ao vivo (durante o arrasto).
 ///
-/// A largura é guardada em **PIXELS DE TELA** (tamanho de brush ABSOLUTO — o render
-/// usa escala de espessura 1.0, sem multiplicar pelo zoom). ADR-0111: a geometria é
-/// LOCAL (o gizmo pode ter movido/escalado o objeto), então a largura recua pela
-/// escala do objeto (`world_to_local.mean_scale`) — o render refaz `× object_scale`
-/// e devolve os `width_px` de tela pretendidos. Objeto não-movido = `wscale=1`.
+/// A largura é guardada em **unidades de MUNDO** (ADR-0114 §4.C.6 — `size_to_world` é a
+/// porta única; o render multiplica por `px_per_world`, então dar zoom engrossa o traço
+/// na tela, como qualquer arte). ADR-0111: a geometria é LOCAL (o gizmo pode ter movido/
+/// escalado o objeto), então a largura recua pela escala do objeto
+/// (`world_to_local.mean_scale`) — o render refaz `× object_scale`. Objeto não-movido =
+/// `wscale=1`. Com isto, POSIÇÃO e LARGURA do `Point` ficam finalmente na MESMA unidade.
 fn build_stroke(
     style: &FlipStyleSnapshot,
     points: &[Vec2],
@@ -180,7 +181,8 @@ fn build_stroke(
 ) -> FlipStroke {
     let color = srgb8_to_linear(style.stroke);
     let wscale = world_to_local.mean_scale() as f32;
-    let base_w = (style.width_px as f32) * wscale; // px de tela (÷ escala do objeto)
+    // Size → MUNDO (porta única), recuado pela escala do objeto (ADR-0111).
+    let base_w = ph2d_tool_flip::size_to_world(style.width_px) * wscale;
     let mut s = FlipStroke::new();
     for (&p, &pr) in points.iter().zip(pressures.iter()) {
         let l = world_to_local.apply([f64::from(p.x), f64::from(p.y)]);

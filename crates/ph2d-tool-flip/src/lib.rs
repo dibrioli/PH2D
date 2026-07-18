@@ -25,8 +25,9 @@ pub mod tool;
 
 pub use params::{
     EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
-    OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN, ReshapeKind, WIDTH_MAX_PX, WIDTH_MIN_PX,
-    WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider, slider_to_px, slider_to_unit,
+    OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN, ReshapeKind, SIZE_PX_PER_WORLD,
+    WIDTH_MAX_PX, WIDTH_MIN_PX, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider,
+    size_to_world, slider_to_px, slider_to_unit,
 };
 pub use tool::{
     DEFAULT_FILL, DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_PRECISION, DEFAULT_SMOOTHING,

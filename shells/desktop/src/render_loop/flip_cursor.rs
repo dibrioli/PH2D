@@ -2,11 +2,15 @@
 //! que vai acontecer (smoke do Enio 2026-07-13: *"não vemos o círculo da ferramenta e
 //! não é possível saber o tamanho no canvas"*).
 //!
-//! Ele é bem mais simples que o do Painter, e por um motivo que vale registrar: **o
-//! pincel do Flip é ABSOLUTO em px de tela** (Enio 2026-07-11 — a largura não escala
-//! com o zoom). Então o raio do anel é `Size/2` em pixels, direto, sem passar por
-//! câmera, afim de objeto ou espaço de imagem. O que o anel mostra é exatamente o que o
-//! traço vai medir.
+//! **O Size mede o MUNDO** (§4.C.6 — Enio 2026-07-17 reverteu o brush absoluto em px de
+//! tela de 2026-07-11), então o anel se PROJETA: `raio = size_to_world(Size)/2 ·
+//! px_per_world`. Dar zoom engrossa a tinta, e o anel engrossa junto — é essa a única
+//! coisa que ele tem de fazer: mostrar o tamanho do que vai acontecer. Um anel de tamanho
+//! fixo na tela sobre um traço que segue o zoom seria o anel mentindo, e é para não ter
+//! essa mentira que este módulo existe.
+//!
+//! (Ele segue mais simples que o do Painter: não passa por afim de objeto nem espaço de
+//! imagem — só pelo zoom.)
 //!
 //! Modos: **Draw** (a espessura do traço), **Erase** (o raio da borracha) e **Sculpt**
 //! (o raio do pincel de escultura) — os três usam o mesmo Size. Em **Select** e
@@ -32,11 +36,13 @@ pub(super) fn draw_flip_cursor(
     hero: &HeroScreen,
     vector_scene: &mut VectorScene,
     cursor: (f32, f32),
+    // §4.C.6: o Size mede o MUNDO, então o anel precisa do zoom para se projetar.
+    px_per_world: f64,
 ) {
     if !active {
         return;
     }
-    let Some(r) = ring_radius(style) else {
+    let Some(r) = ring_radius(style, px_per_world) else {
         return;
     };
     let (cx, cy) = cursor;
@@ -74,22 +80,43 @@ pub(super) fn draw_flip_cursor(
 /// no modo Fill seria uma mentira (não há raio em jogo), e um anel que some quando o
 /// pincel é fino é pior que nenhum — daí o piso.
 #[must_use]
-pub(crate) fn ring_radius(style: Option<FlipStyleSnapshot>) -> Option<f64> {
+pub(crate) fn ring_radius(style: Option<FlipStyleSnapshot>, px_per_world: f64) -> Option<f64> {
     let style = style?;
     // **A borracha usa o raio EFETIVO dela** (§4.C) — `erase_px` já vem com o link
     // resolvido pela tool. Com o link ligado (default) esse número É o `width_px`, então
     // o anel não muda; deslinkado, o anel mostra o tamanho com que se vai APAGAR, que é
     // o ponto inteiro de ter um anel.
-    match style.mode {
-        FlipMode::Erase => Some((style.erase_px * 0.5).max(MIN_RING_R_PX)),
-        FlipMode::Draw | FlipMode::Reshape => Some((style.width_px * 0.5).max(MIN_RING_R_PX)),
-        _ => None,
-    }
+    let size = match style.mode {
+        FlipMode::Erase => style.erase_px,
+        FlipMode::Draw | FlipMode::Reshape => style.width_px,
+        _ => return None,
+    };
+    // **Mundo → TELA** (§4.C.6): o Size mede o MUNDO, e o anel promete o que vai
+    // acontecer — então ele acompanha o zoom, como a tinta. Um anel de tamanho fixo na
+    // tela sobre um traço que engrossa com o zoom seria o anel MENTINDO, que é o defeito
+    // que este arquivo existe para não ter.
+    let r = f64::from(ph2d_tool_flip::size_to_world(size)) * 0.5 * px_per_world;
+    Some(r.max(MIN_RING_R_PX))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **O zoom de referência**: com `px_per_world == SIZE_PX_PER_WORLD`, uma unidade de
+    /// Size projeta exatamente 1 px — então o anel vale `Size/2` e os números aqui leem
+    /// como liam quando o pincel era absoluto em tela. É só a vista onde as duas leis
+    /// coincidem; o gate `the_ring_follows_the_zoom` cobre o resto.
+    const REF_PPW: f64 = ph2d_tool_flip::SIZE_PX_PER_WORLD as f64;
+
+    /// Compara raio de anel com tolerância: a conversão passa por `f32`
+    /// (`size_to_world` devolve a largura que o `Point` guarda), então 40 px viram
+    /// 20,0000003. Erro de 3e-7 px num cursor — comparar exato seria testar o `f32`.
+    #[track_caller]
+    fn assert_ring(got: Option<f64>, want: f64, msg: &str) {
+        let g = got.unwrap_or_else(|| panic!("sem anel: {msg}"));
+        assert!((g - want).abs() < 1e-4, "{msg}: esperado {want}, veio {g}");
+    }
 
     /// O anel aparece nos três modos que TÊM raio, e em nenhum outro. Um anel no Fill
     /// (que não tem raio) seria um controle mentindo — o mesmo princípio do painel modal.
@@ -102,22 +129,52 @@ mod tests {
             (FlipMode::Fill, false),
             (FlipMode::Select, false),
         ] {
-            let r = ring_radius(Some(FlipStyleSnapshot {
-                mode,
-                width_px: 40.0,
-                // A borracha lê o raio EFETIVO dela; com o link LIGADO (o default) ele é
-                // o próprio Size do pincel, então os três modos concordam aqui.
-                erase_px: 40.0,
-                ..Default::default()
-            }));
+            let r = ring_radius(
+                Some(FlipStyleSnapshot {
+                    mode,
+                    width_px: 40.0,
+                    // A borracha lê o raio EFETIVO dela; com o link LIGADO (o default) ele
+                    // é o próprio Size do pincel, então os três modos concordam aqui.
+                    erase_px: 40.0,
+                    ..Default::default()
+                }),
+                REF_PPW,
+            );
             assert_eq!(r.is_some(), want, "modo {mode:?}: deveria ter anel? {want}");
             if want {
-                assert_eq!(r, Some(20.0), "o anel e METADE do Size, em px de TELA");
+                assert_ring(r, 20.0, "no zoom de referencia o anel e METADE do Size");
             }
         }
         assert!(
-            ring_radius(None).is_none(),
+            ring_radius(None, REF_PPW).is_none(),
             "sem estilo publicado, sem anel"
+        );
+    }
+
+    /// 🔴 **O anel SEGUE o zoom** (§4.C.6) — porque o Size mede o MUNDO e o anel promete
+    /// o que a tinta vai fazer. Aproximar 2× engrossa o traço 2× na tela; um anel de
+    /// tamanho fixo ali seria o anel MENTINDO, que é o defeito que este módulo existe
+    /// para não ter.
+    ///
+    /// Mutação que sangra: ignorar o `px_per_world` (voltar a `Size·0,5`, o brush absoluto
+    /// de 2026-07-11) — os três zooms passam a devolver o mesmo número.
+    #[test]
+    fn the_ring_follows_the_zoom() {
+        let style = FlipStyleSnapshot {
+            mode: FlipMode::Draw,
+            width_px: 40.0,
+            ..Default::default()
+        };
+        assert_ring(ring_radius(Some(style), REF_PPW), 20.0, "zoom de referencia");
+        assert_ring(
+            ring_radius(Some(style), REF_PPW * 2.0),
+            40.0,
+            "2x de zoom tem de DOBRAR o anel — o traço dobra",
+        );
+        assert_ring(
+            ring_radius(Some(style), REF_PPW * 0.5),
+            10.0,
+            "afastar a camera encolhe o anel junto com a tinta",
         );
     }
 
@@ -130,47 +187,59 @@ mod tests {
     /// dois números coincidem e a mutação NÃO sangra: é preciso o par.
     #[test]
     fn an_unlinked_eraser_draws_its_own_ring() {
-        let r = ring_radius(Some(FlipStyleSnapshot {
-            mode: FlipMode::Erase,
-            width_px: 40.0,  // o pincel
-            erase_px: 120.0, // a borracha, deslinkada (efetivo já resolvido pela tool)
-            link_size: false,
-            ..Default::default()
-        }));
-        assert_eq!(r, Some(60.0), "o anel da borracha e METADE do raio DELA");
+        let r = ring_radius(
+            Some(FlipStyleSnapshot {
+                mode: FlipMode::Erase,
+                width_px: 40.0,  // o pincel
+                erase_px: 120.0, // a borracha, deslinkada (efetivo resolvido pela tool)
+                link_size: false,
+                ..Default::default()
+            }),
+            REF_PPW,
+        );
+        assert_ring(r, 60.0, "o anel da borracha e METADE do raio DELA");
         // E o pincel não foi contaminado: no Draw o anel volta a ser o do Size.
-        let r = ring_radius(Some(FlipStyleSnapshot {
-            mode: FlipMode::Draw,
-            width_px: 40.0,
-            erase_px: 120.0,
-            link_size: false,
-            ..Default::default()
-        }));
-        assert_eq!(r, Some(20.0), "o anel do PINCEL nao segue a borracha");
+        let r = ring_radius(
+            Some(FlipStyleSnapshot {
+                mode: FlipMode::Draw,
+                width_px: 40.0,
+                erase_px: 120.0,
+                link_size: false,
+                ..Default::default()
+            }),
+            REF_PPW,
+        );
+        assert_ring(r, 20.0, "o anel do PINCEL nao segue a borracha");
     }
 
     /// **O anel nunca some**: um pincel de 1 px ainda desenha um alvo visível (o piso).
     /// Um cursor que desaparece justo quando o traço fica fino é pior que nenhum.
     #[test]
     fn a_hairline_brush_still_shows_a_visible_ring() {
-        let r = ring_radius(Some(FlipStyleSnapshot {
-            mode: FlipMode::Draw,
-            width_px: 1.0,
-            ..Default::default()
-        }))
+        let r = ring_radius(
+            Some(FlipStyleSnapshot {
+                mode: FlipMode::Draw,
+                width_px: 1.0,
+                ..Default::default()
+            }),
+            REF_PPW,
+        )
         .unwrap();
         assert!(r >= MIN_RING_R_PX, "o anel sumiu num pincel fino: {r}");
     }
 
-    /// E o anel é ABSOLUTO: `Size = 200 px` desenha 100 px de raio na tela, ponto —
-    /// nenhuma câmera entra na conta (o pincel do Flip não escala com o zoom).
+    /// O Sculpt usa o MESMO Size do pincel, e no zoom de referência `Size = 200` desenha
+    /// 100 px de raio.
     #[test]
-    fn the_ring_is_half_the_size_in_screen_pixels() {
-        let r = ring_radius(Some(FlipStyleSnapshot {
-            mode: FlipMode::Reshape,
-            width_px: 200.0,
-            ..Default::default()
-        }));
-        assert_eq!(r, Some(100.0));
+    fn the_sculpt_ring_is_half_the_size_at_the_reference_zoom() {
+        let r = ring_radius(
+            Some(FlipStyleSnapshot {
+                mode: FlipMode::Reshape,
+                width_px: 200.0,
+                ..Default::default()
+            }),
+            REF_PPW,
+        );
+        assert_ring(r, 100.0, "Sculpt no zoom de referencia");
     }
 }

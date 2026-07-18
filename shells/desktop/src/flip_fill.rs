@@ -6,13 +6,13 @@
 //!
 //! Três decisões que moram nesta fronteira:
 //!
-//! 1. **A espessura do traço é em px de TELA** (brush absoluto — Enio 2026-07-11), e o
-//!    fill é assado em unidades de DOCUMENTO — a relação entre os dois MUDA com o zoom.
-//!    Por isso **a âncora do solver é o EIXO da linha** (BUGS #14), que é geometria
-//!    pura: a espessura convertida abaixo só folga o bbox da grade, nunca decide onde a
-//!    cor para. (O 1º corte ancorava na silhueta — congelada no zoom do clique, ela
-//!    transbordava `(w/2)·(zoom−1)` px ao aproximar a câmera depois.) O `Precision`
-//!    multiplica a resolução do buffer por cima disso.
+//! 1. **A espessura do traço é em unidades de MUNDO** (§4.C.6 — Enio 2026-07-17 reverteu
+//!    o brush absoluto em px de tela de 2026-07-11), e o fill é assado nas MESMAS
+//!    unidades: a relação entre os dois virou CONSTANTE, imune ao zoom, e a conversão que
+//!    morava aqui SUMIU (ver `boundaries`). A âncora do solver segue sendo o **EIXO da
+//!    linha** (BUGS #14), que é geometria pura. (O 1º corte ancorava na silhueta —
+//!    congelada no zoom do clique, ela transbordava `(w/2)·(zoom−1)` px ao aproximar a
+//!    câmera depois.) O `Precision` multiplica a resolução do buffer por cima disso.
 //! 2. **Os fechamentos de gap viram traços INVISÍVEIS persistentes** (o twist do
 //!    Harmony): eles entram no desenho como qualquer outro traço, com `hide_stroke` e
 //!    sem fill. Assim o vão fica fechado para sempre — re-preencher com outra cor, ou
@@ -54,7 +54,7 @@ const FILL_TUCK_PX: f32 = 0.5; // LITERAL-PX-OK: erro de vetorizacao do contorno
 /// entrar por baixo da 1ª. Mas um fechamento de gap persistente (que também é
 /// `hide_stroke`) **é** — é exatamente para isso que ele existe. Os dois se distinguem
 /// pelo `fill`: o preenchimento tem cor; o fechamento não.
-fn boundaries(drawing: &FlipDrawing, px_to_world: f32) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
+fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
     drawing
         .strokes
         .iter()
@@ -62,20 +62,19 @@ fn boundaries(drawing: &FlipDrawing, px_to_world: f32) -> Vec<(Vec<Vec2>, Vec<f3
         .filter(|s| s.len() >= 2)
         .map(|s| {
             let pts = s.positions().to_vec();
-            // **A conversão de unidade que faltava** (e que matava o balde no produto):
-            // `width` é guardado em px de TELA já recuados pela escala do objeto
-            // (`width_px × mean_scale`, `flip_draw::build_stroke`), enquanto os PONTOS
-            // são unidades do documento. Misturar os dois punha uma linha de 3 unidades
-            // de mundo (≈324 px!) num desenho de 2,8 unidades: o clique caía sempre
-            // DENTRO do traço e o balde respondia "clicked on a line", sempre.
+            // **A conversão SUMIU em §4.C.6, e some por CURA, não por descuido.**
             //
-            // `× px_to_world` — NÃO `× doc_per_px`: o `mean_scale` já está embutido no
-            // `width`, e multiplicá-lo de novo aplicaria a escala do objeto duas vezes.
-            // É exatamente o que a borracha faz (`flip_erase`: raio = w·0,5·px_to_world).
+            // Ela existia porque o documento falava duas línguas: os PONTOS em unidades de
+            // mundo e as LARGURAS em px de TELA. Misturar as duas punha uma linha de 3
+            // unidades de mundo (≈324 px!) num desenho de 2,8 — o clique caía sempre
+            // DENTRO do traço e o balde respondia "clicked on a line", sempre. O `×
+            // px_to_world` era o remendo.
             //
-            // (Desde a âncora no eixo — BUGS #14 — o solver usa isto SÓ para o bbox da
-            // grade; a parede e a borda da cor são o eixo, imunes ao zoom do clique.)
-            let half: Vec<f32> = s.widths().iter().map(|w| w * 0.5 * px_to_world).collect();
+            // Agora o Size é uma medida do MUNDO (`size_to_world`), então `width` e `pos`
+            // são a mesma unidade e a meia-espessura é só `w/2`. De quebra o balde deixa
+            // de depender do ZOOM do clique — o mesmo clique no mesmo lugar responde o
+            // mesmo em qualquer aproximação.
+            let half: Vec<f32> = s.widths().iter().map(|w| w * 0.5).collect();
             (pts, half, s.closed)
         })
         .collect()
@@ -92,8 +91,8 @@ fn boundaries(drawing: &FlipDrawing, px_to_world: f32) -> Vec<(Vec<Vec2>, Vec<f3
 /// da linha não tem cor por baixo: com um pincel MACIO ela mistura com o fundo, e o
 /// contorno ganha um halo escuro (o *"o fill não se ajusta à linha"* do smoke). Com a
 /// dilatação, a cor vai exatamente até a silhueta — e como as duas grandezas estão na
-/// MESMA unidade (px de tela, absoluta), elas escalam juntas: o encaixe é invariante
-/// ao zoom, que era todo o ponto da âncora no eixo.
+/// MESMA unidade (MUNDO, §4.C.6), o encaixe é invariante ao zoom por CONSTRUÇÃO, que era
+/// todo o ponto da âncora no eixo.
 ///
 /// Largura VARIÁVEL (pressão): usa-se a média. A dilatação erra por (w_local − w_média)/2
 /// nos pontos extremos — sub-pixel num traço de mouse (largura constante), e sempre
@@ -103,13 +102,13 @@ fn fill_stroke(
     holes: Vec<Vec<Vec2>>,
     color: Rgba,
     opacity: f32,
-    line_width_px: f32,
+    line_width_world: f32,
 ) -> FlipStroke {
     let mut s = FlipStroke::new();
     for &p in outer {
         s.push_point(Point {
             pos: p,
-            width: line_width_px, // a dilatação: a cor entra por baixo da linha
+            width: line_width_world, // a dilatação: a cor entra por baixo da linha
             opacity: 1.0,
             color,
         });
@@ -121,7 +120,7 @@ fn fill_stroke(
     s
 }
 
-/// A espessura MÉDIA do line-art que delimita a região (px de tela) — a dilatação que
+/// A espessura MÉDIA do line-art que delimita a região (unidades de MUNDO) — a dilatação que
 /// o contorno do fill veste. Ignora as regiões (que não têm tinta) e os fechamentos de
 /// gap (largura zero).
 fn mean_line_width(drawing: &FlipDrawing) -> f32 {
@@ -312,7 +311,7 @@ pub(crate) fn fill_click(
         }
     };
 
-    let strokes = boundaries(drawing, px_to_world);
+    let strokes = boundaries(drawing);
     if strokes.is_empty() {
         return Err(FillError::Empty);
     }

@@ -180,6 +180,38 @@ pub enum EraseMode {
 pub const WIDTH_MIN_PX: f64 = 1.0;
 pub const WIDTH_MAX_PX: f64 = 256.0;
 
+/// **Quantos "px" de Size cabem em UMA unidade de mundo** (ADR-0114 §4.C.6).
+///
+/// O Size é uma medida do **MUNDO**, não da tela — Enio 2026-07-17: *"a largura do traço
+/// está relativa ao zoom do canvas e não é fixa no mundo"*. Isto **reverte** a escolha de
+/// 2026-07-11 (pincel absoluto em px de tela), e é a escolha certa: um traço é ARTE, e
+/// arte não muda de espessura porque o artista aproximou a câmera. Dar zoom agora amplia
+/// o desenho como uma foto — e é assim que todo app de desenho de documento se comporta
+/// (o traço de 2 pt do Illustrator tem 2 pt em qualquer zoom).
+///
+/// **Ela também cura uma incoerência do próprio documento:** as POSIÇÕES sempre foram
+/// unidades de mundo enquanto as LARGURAS eram px de tela. Misturar as duas já tinha
+/// custado um bug real ao balde (`flip_fill::boundaries`: *"uma linha de 3 unidades de
+/// mundo (≈324 px!)"*), que precisava converter na mão. Com o Size em mundo, os dois
+/// eixos do `Point` falam a mesma língua e a conversão SOME.
+///
+/// O número é redondo de propósito: **Size 100 = 1 unidade de mundo**. Na vista default
+/// (`height_world = 10`) ele lê perto de px, que é a intuição que o slider já vendia.
+pub const SIZE_PX_PER_WORLD: f32 = 100.0;
+
+/// **Size (o número do slider) → largura em unidades de MUNDO** — a porta ÚNICA da
+/// conversão (ADR-0114 §4.C.6).
+///
+/// Todo sítio que AUTORA com o Size passa por aqui: o traço (`flip_draw`), a reescrita da
+/// seleção no Edit (`flip_select`), o raio da borracha (`flip_erase`) e o do sculpt
+/// (`flip_reshape`). O anel do cursor faz o caminho de volta (mundo → tela) porque ele
+/// mostra na TELA o que vai acontecer no MUNDO. Duas cópias da regra divergem — e aqui
+/// divergir significa a ferramenta desenhar numa espessura e o anel prometer outra.
+#[must_use]
+pub fn size_to_world(size_px: f64) -> f32 {
+    (size_px as f32) / SIZE_PX_PER_WORLD
+}
+
 /// Mapa afim do slider Size → chip px (o painel usa em `link_slider_number_mapped`:
 /// `px = track·SCALE + OFFSET`). Mantém painel e tool em lock-step com
 /// [`slider_to_px`]/[`px_to_slider`].

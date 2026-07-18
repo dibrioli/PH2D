@@ -14,22 +14,30 @@ fn style(kind: ToolKind, width_px: f64, strength: f32) -> FlipStyleSnapshot {
     }
 }
 
-/// **O raio do pincel é METADE do Size, em unidades LOCAIS.**
+/// 🔴 **O raio do pincel é METADE do Size em MUNDO — e o ZOOM não entra na conta**
+/// (§4.C.6).
 ///
-/// Três conversões se compõem aqui, e nenhuma delas é opcional: o Size é o DIÂMETRO
-/// em px de tela (como na borracha), o zoom da câmera dá `px_to_world`, e a escala do
-/// objeto (ADR-0111) recua o mundo para o espaço local do desenho. Errar qualquer uma
-/// dá um pincel que não alcança nada (ou que alcança o desenho inteiro) — e foi
-/// exatamente essa classe de erro que matou o balde no produto (BUGS #10a).
+/// Duas conversões se compõem, e nenhuma é opcional: o Size é o DIÂMETRO em unidades de
+/// mundo (`size_to_world`, a mesma porta do traço e da borracha) e a escala do objeto
+/// (ADR-0111) recua o mundo para o espaço local do desenho. Errar qualquer uma dá um
+/// pincel que não alcança nada (ou que alcança o desenho inteiro) — foi essa classe de
+/// erro que matou o balde no produto (BUGS #10a).
+///
+/// A **terceira** conversão morreu em §4.C.6: o `px_to_world` do zoom. O pincel de
+/// escultura esculpe uma porção fixa de ARTE, então aproximar a câmera não muda o que ele
+/// pega — só o tamanho com que você o vê. (O `px_to_local` FICA no `ReshapeParams`, mas
+/// só para o DELTA do arrasto, que é gesto de tela por definição.)
+///
+/// Mutação que sangra: devolver o raio ao `× px_to_local` — o assert do zoom-invariante
+/// cai na hora.
 #[test]
-fn the_brush_radius_is_half_the_size_in_local_units() {
-    // Câmera default: 10 unidades de mundo na altura de uma janela de 1080p.
-    let px_to_world = 10.0f32 / 1080.0;
+fn the_brush_radius_is_half_the_size_in_world_and_ignores_the_zoom() {
+    let px_to_world = 10.0f32 / 1080.0; // câmera default numa janela 1080p
     let s = style(ToolKind::Smooth, 40.0, 1.0);
+    let want = ph2d_tool_flip::size_to_world(40.0) * 0.5;
 
-    // Objeto na identidade: raio = 20 px de tela em unidades de mundo.
+    // Objeto na identidade: raio = metade do Size, em mundo.
     let p = params_from(&s, px_to_world, &Xform::IDENTITY, false);
-    let want = 20.0 * px_to_world;
     assert!(
         (p.radius - want).abs() < 1e-6,
         "raio {} != {want} (metade do Size, em mundo)",
@@ -37,8 +45,16 @@ fn the_brush_radius_is_half_the_size_in_local_units() {
     );
     assert!((p.px_to_local - px_to_world).abs() < 1e-9);
 
+    // **O ZOOM não muda o raio**: 10× mais perto, o mesmo pedaço de arte.
+    let p_zoom = params_from(&s, px_to_world * 0.1, &Xform::IDENTITY, false);
+    assert!(
+        (p_zoom.radius - want).abs() < 1e-6,
+        "o zoom mexeu no raio ({} != {want}): o pincel voltou a ser de TELA",
+        p_zoom.radius
+    );
+
     // Objeto ESCALADO 2× pelo gizmo: o `world_to_local` dele encolhe por 0,5, então o
-    // MESMO pincel de 40 px de tela cobre METADE das unidades locais.
+    // MESMO pincel cobre METADE das unidades locais.
     let scaled = Xform([0.5, 0.0, 0.0, 0.5, 0.0, 0.0]);
     let p2 = params_from(&s, px_to_world, &scaled, false);
     assert!(

@@ -479,13 +479,25 @@ pub(super) fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
 
 /// Converte a `Camera2d` (mundo→clip ortográfico) no uniform do passe. O
 /// `view_proj` é o MESMO afim que os sprites usam (as POSIÇÕES acompanham o zoom).
-/// O 3º campo é a **escala de espessura** = `1.0`: a largura do traço é guardada em
-/// PIXELS DE TELA e o render NÃO a multiplica pelo zoom → tamanho de brush ABSOLUTO
-/// (constante na tela em qualquer zoom — Enio 2026-07-11). O `fold_model` de um
-/// objeto escalado sobrescreve isto por `mean_scale` (aí a arte engrossa junto).
+///
+/// O 3º campo é a **escala de espessura** = **`px_per_world`** (ADR-0114 §4.C.6): a
+/// largura do traço é guardada em unidades de MUNDO e o render a projeta como qualquer
+/// outra grandeza geométrica (`thickness_px = raio_mundo · px_per_world`, que é o que o
+/// `ph2d-flip-render` sempre documentou querer). Dar zoom engrossa o traço na tela —
+/// arte é arte, não chrome.
+///
+/// Antes daqui passava `1.0`, que forçava a largura a ser lida como PX DE TELA (brush
+/// absoluto, Enio 2026-07-11). Enio 2026-07-17 reverteu: *"a largura do traço está
+/// relativa ao zoom do canvas e não é fixa no mundo"*. O `fold_model` de um objeto
+/// escalado multiplica por `mean_scale` por cima (a arte engrossa junto com o gizmo).
 fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
     let vp = camera.view_proj(window).to_cols_array_2d();
-    CameraRaw::new(vp, [window.width as f32, window.height as f32], 1.0)
+    let px_per_world = window.height as f32 / camera.height_world.max(f32::EPSILON);
+    CameraRaw::new(
+        vp,
+        [window.width as f32, window.height as f32],
+        px_per_world,
+    )
 }
 
 #[cfg(test)]

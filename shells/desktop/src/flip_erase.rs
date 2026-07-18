@@ -310,12 +310,18 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut() {
             let win = gfx.surface.size();
             let w = gfx.camera.screen_to_world((x, y), win);
-            let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
             // Raio/força EFETIVOS da borracha (§4.C): `erase_px`/`erase_strength` já vêm
             // com o link resolvido pela tool — linkados, são o Size/Strength do pincel
             // (o comportamento de sempre); deslinkados, os próprios dela. Um só campo:
             // re-derivar a regra aqui seria a 2ª porta que diverge.
-            let radius = (style.erase_px as f32 * 0.5) * px_to_world;
+            //
+            // **O raio é fixo no MUNDO** (§4.C.6): o Size é uma medida do mundo, então a
+            // borracha morde sempre o mesmo pedaço de ARTE — dar zoom não muda o que ela
+            // leva, só o tamanho com que você a vê. (Antes ele saía de `px_to_world`, ou
+            // seja, era constante na TELA e variável na arte.) O Size é COMPARTILHADO com
+            // o pincel — e agora literalmente o mesmo número, quando linkado —, então ele
+            // não pode significar mundo pra desenhar e tela pra apagar.
+            let radius = ph2d_tool_flip::size_to_world(style.erase_px) * 0.5;
             let local = w2l.apply([f64::from(w[0]), f64::from(w[1])]);
             let radius_local = radius * w2l.mean_scale() as f32;
             erase_at(

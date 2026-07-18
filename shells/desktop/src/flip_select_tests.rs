@@ -320,7 +320,7 @@ fn each_field_acts_alone() {
         "mexer no SIZE repintou o traco"
     );
     assert!(
-        (d.strokes[0].widths()[0] - 16.0).abs() < 1e-3,
+        (d.strokes[0].widths()[0] - ph2d_tool_flip::size_to_world(16.0)).abs() < 1e-3,
         "o Size nao chegou no traco"
     );
 }
@@ -336,11 +336,14 @@ fn each_field_acts_alone() {
 fn resizing_preserves_the_pressure_profile_and_is_reversible() {
     let mut d = drawing(vec![line(&[(0.0, 0.0), (10.0, 0.0), (20.0, 0.0)], 4.0)]);
     d.strokes[0].selected = true;
-    // Perfil de pressão: 2 px na ponta, 8 px no meio, 4 px no fim.
+    // Perfil de pressão 1:4:2, em unidades de MUNDO (§4.C.6) e coerente com o Size do
+    // estilo `a` (8 → `size_to_world(8)` no pico): é assim que o `build_stroke` autora,
+    // e é isso que torna o ida-e-volta EXATO em vez de só proporcional.
+    let peak = ph2d_tool_flip::size_to_world(8.0);
     let w = d.strokes[0].widths_mut();
-    w[0] = 2.0;
-    w[1] = 8.0;
-    w[2] = 4.0;
+    w[0] = peak * 0.25;
+    w[1] = peak;
+    w[2] = peak * 0.5;
     let original: Vec<f32> = d.strokes[0].widths().to_vec();
 
     let a = style(); // width_px = 8
@@ -350,8 +353,9 @@ fn resizing_preserves_the_pressure_profile_and_is_reversible() {
     };
     apply_style_delta(&mut d, &a, &b);
     let scaled: Vec<f32> = d.strokes[0].widths().to_vec();
+    let peak16 = ph2d_tool_flip::size_to_world(16.0);
     assert!(
-        (scaled[0] - 4.0).abs() < 1e-3 && (scaled[1] - 16.0).abs() < 1e-3,
+        (scaled[0] - peak16 * 0.25).abs() < 1e-6 && (scaled[1] - peak16).abs() < 1e-6,
         "o perfil da pressao (1:4:2) nao sobreviveu ao Size: {scaled:?}"
     );
 

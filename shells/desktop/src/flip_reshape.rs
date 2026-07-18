@@ -91,10 +91,16 @@ pub(crate) fn params_from(
     invert: bool,
 ) -> ReshapeParams {
     let obj_scale = w2l.mean_scale() as f32;
+    // O `px_to_local` FICA — mas só para o DELTA do arrasto: um gesto de N px na tela tem
+    // de mover a arte junto com o cursor, e isso é conversão de tela por definição. O
+    // RAIO é outra grandeza (§4.C.6): ele é a porção de ARTE que o pincel abrange.
     let px_to_local = px_to_world * obj_scale;
     ReshapeParams {
         kind: kind_of(style.reshape),
-        radius: (style.width_px as f32 * 0.5) * px_to_local,
+        // **Raio fixo no MUNDO** (§4.C.6, porta única `size_to_world`), recuado à escala
+        // do objeto: o pincel de escultura esculpe sempre a mesma porção de ARTE. O Size é
+        // o MESMO número do pincel de desenho, então ele não pode ser mundo lá e tela cá.
+        radius: ph2d_tool_flip::size_to_world(style.width_px) * 0.5 * obj_scale,
         strength: style.opacity,
         invert,
         frame_falloff: 1.0,

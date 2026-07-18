@@ -377,7 +377,9 @@ fn project_file_round_trips_through_postcard() {
 /// **v17** os campos `restitution`/`friction` APENDADOS ao `Collider` (ADR-0131 W2, a autoria
 /// no Inspector). Nenhuma constante de esquema mudou, então **nenhum gate podia ver isto** —
 /// postcard é posicional, e um save v16 lido como v17 devolveria lixo bem-formado. ·
-/// **v19** as settings de MUNDO da física (ADR-0131 W2b: 6º campo do `ProjectFile`).
+/// **v19** as settings de MUNDO da física (ADR-0131 W2b: 6º campo do `ProjectFile`) ·
+/// **v20** o `air_drag` APENDADO ao `PhysicsSettings` (o smoke do W2b mostrou que o
+/// damping uniforme não é ar; o modelo de arrasto real é campo novo).
 /// (O v18 é do Flip, e é o caso do PONTO CEGO abaixo.)
 ///
 /// Na integração de 2026-07-13, QUATRO linhas bumparam este contador ao mesmo tempo, cada uma
@@ -405,7 +407,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (19, 8, 8),
+        (20, 8, 8),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

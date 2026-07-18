@@ -100,6 +100,22 @@ pub const MAX_CONTACT_HZ: f32 = 480.0;
 /// "stopped".
 pub const MAX_DAMPING: f32 = 10.0;
 
+/// Air-drag coefficient — the world's "how thick is the air", lumping `½·ρ·Cd`.
+///
+/// **Resource: the sleep threshold.** Terminal fall speed is `√(mg/(k·L))`, so a
+/// big enough `k` pushes a SMALL body's terminal speed under the sleep threshold
+/// and it stops in mid-air — which reads as a bug, not as thick air. Measured
+/// terminal speed after 10 s (free fall would be ~98 m/s):
+///
+/// | k | 0.28 m | 0.50 m | 1.00 m | 2.00 m | |
+/// |---|---|---|---|---|---|
+/// | 0.1 | 5.24 | 7.00 | 9.90 | 14.01 | noticeable |
+/// | 1 | 1.66 | 2.21 | 3.13 | 4.43 | underwater |
+/// | **10** | **0.52** | **0.70** | 0.99 | 1.40 | syrup — the last honest value |
+/// | 20 | **0.00** | 0.50 | 0.70 | 0.99 | the small body FELL ASLEEP mid-air |
+/// | 50 | **0.00** | **0.00** | 0.44 | 0.63 | two of them did |
+pub const MAX_AIR_DRAG: f32 = 10.0;
+
 /// Speed below which a body may fall asleep (m/s and rad/s).
 ///
 /// Semantic, not resource: the threshold is compared against a body's own
@@ -144,6 +160,15 @@ pub struct PhysicsSettings {
     pub sleep_angular_threshold: f32,
     /// Time under both thresholds before a body sleeps, seconds.
     pub time_until_sleep: f32,
+    /// Air-drag coefficient. **Appended** — postcard is positional, so new
+    /// fields go at the END and `Default` must keep meaning "what the engine
+    /// did before this existed" (here: `0.0`, a vacuum).
+    ///
+    /// ⚠️ Not a tuning of [`Self::linear_damping`] — a different MODEL. Damping
+    /// is a uniform velocity decay (mass cannot enter it); this is the drag
+    /// equation, so it scales with cross-section and is resisted by mass. See
+    /// `ph2d_physics::world::drag`.
+    pub air_drag: f32,
 }
 
 impl Default for PhysicsSettings {
@@ -167,6 +192,7 @@ impl Default for PhysicsSettings {
             sleep_linear_threshold: b.sleep_linear_threshold,
             sleep_angular_threshold: b.sleep_angular_threshold,
             time_until_sleep: b.time_until_sleep,
+            air_drag: 0.0,
         }
     }
 }
@@ -194,6 +220,7 @@ impl PhysicsSettings {
             sleep_linear_threshold: self.sleep_linear_threshold.clamp(0.0, MAX_SLEEP_THRESHOLD),
             sleep_angular_threshold: self.sleep_angular_threshold.clamp(0.0, MAX_SLEEP_THRESHOLD),
             time_until_sleep: self.time_until_sleep.clamp(0.0, MAX_TIME_UNTIL_SLEEP),
+            air_drag: self.air_drag.clamp(0.0, MAX_AIR_DRAG),
         }
     }
 
@@ -221,5 +248,6 @@ impl PhysicsSettings {
         world.set_solver_iterations(self.solver_iterations as usize);
         world.set_contact_frequency(self.contact_hz);
         world.set_body_defaults(self.body_defaults());
+        world.set_air_drag(self.air_drag);
     }
 }

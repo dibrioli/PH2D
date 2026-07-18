@@ -113,33 +113,6 @@ pub fn tr(key: &str) -> &'static str {
         // shape catalogue. The panel is a 17-section stack; every section title
         // and every chrome word routes through here (the shape NAMES themselves
         // stay in the `ph2d-tool-vector` catalogue, which is their single source).
-        // ── Physics world panel (ADR-0131 D8 / W2b) — the WORLD half of physics
-        // authoring. The per-BODY half is the Inspector's "Physics Body" section.
-        // Labels say what the number DOES, not what rapier calls it: an artist
-        // reads "Air Drag", not "linear damping".
-        "panel.physics.title" => "Physics",
-        "panel.physics.section.world" => "World",
-        "panel.physics.section.solver" => "Solver",
-        "panel.physics.section.damping" => "Air Drag",
-        "panel.physics.section.sleep" => "Sleep",
-        "panel.physics.section.debug" => "Debug",
-        "panel.physics.gravity_x" => "Gravity X",
-        "panel.physics.gravity_y" => "Gravity Y",
-        "panel.physics.substeps" => "Sub-steps",
-        "panel.physics.iterations" => "Iterations",
-        "panel.physics.contact_hz" => "Contact Hz",
-        "panel.physics.linear_damping" => "Linear",
-        "panel.physics.angular_damping" => "Angular",
-        "panel.physics.sleep_speed" => "Speed",
-        "panel.physics.sleep_spin" => "Spin",
-        "panel.physics.sleep_delay" => "Delay",
-        "panel.physics.show_colliders" => "Show Colliders",
-        "panel.physics.reset_defaults" => "Reset to Defaults",
-        // The world scale is `ProjectSettings::pixels_per_meter` — a PROJECT
-        // setting. This panel shows it so the metre-valued knobs above can be
-        // read in pixels, and deliberately does not own or duplicate it (D4).
-        "panel.physics.scale" => "Scale",
-        "panel.physics.bodies" => "Bodies",
         "panel.vector.title" => "Vector",
         "panel.vector.section.tool" => "Tool",
         "panel.vector.section.shape" => "Shape",
@@ -164,6 +137,43 @@ pub fn tr(key: &str) -> &'static str {
         // campos (Route / Jetty / Spread) vêm do catálogo em `ph2d-tool-vector::connector`,
         // que é a fonte única deles (a mesma regra do catálogo de formas).
         "panel.vector.section.connector" => "Connector",
+
+        // ── Physics world panel (ADR-0131 D8 / W2b) — the WORLD half of physics
+        // authoring. The per-BODY half is the Inspector's "Physics Body" section.
+        // Labels say what the number DOES — but ⚠️ that cuts both ways: calling
+        // the UNIFORM damping "Air Drag" is exactly what made the first smoke
+        // fail (Enio: "todos os objetos grandes e pequenos caem na mesma
+        // velocidade"). A label has to promise what the model can deliver.
+        "panel.physics.title" => "Physics",
+        "panel.physics.section.world" => "World",
+        "panel.physics.section.solver" => "Solver",
+        // Two DIFFERENT models, and the section headers are what keeps them
+        // apart: "Air Drag" scales with a body's cross-section and is resisted
+        // by its mass (big things fall faster); "Damping" is a uniform velocity
+        // decay that mass cannot enter (everything slows equally). Labelling
+        // the uniform one "Air Drag" is what made the first smoke fail.
+        "panel.physics.section.air" => "Air Drag",
+        "panel.physics.section.damping" => "Damping",
+        "panel.physics.air_drag" => "Density",
+        "panel.physics.section.sleep" => "Sleep",
+        "panel.physics.section.debug" => "Debug",
+        "panel.physics.gravity_x" => "Gravity X",
+        "panel.physics.gravity_y" => "Gravity Y",
+        "panel.physics.substeps" => "Sub-steps",
+        "panel.physics.iterations" => "Iterations",
+        "panel.physics.contact_hz" => "Contact Hz",
+        "panel.physics.linear_damping" => "Linear",
+        "panel.physics.angular_damping" => "Angular",
+        "panel.physics.sleep_speed" => "Speed",
+        "panel.physics.sleep_spin" => "Spin",
+        "panel.physics.sleep_delay" => "Delay",
+        "panel.physics.show_colliders" => "Show Colliders",
+        "panel.physics.reset_defaults" => "Reset to Defaults",
+        // The world scale is `ProjectSettings::pixels_per_meter` — a PROJECT
+        // setting. This panel shows it so the metre-valued knobs above can be
+        // read in pixels, and deliberately does not own or duplicate it (D4).
+        "panel.physics.scale" => "Scale",
+        "panel.physics.bodies" => "Bodies",
         "panel.vector.mode.build" => "Build",
         "panel.vector.mode.select" => "Select",
         "panel.vector.mode.node" => "Node",

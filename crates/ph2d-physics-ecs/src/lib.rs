@@ -22,8 +22,9 @@ pub mod settings;
 pub use bridge::PhysicsBridge;
 pub use components::{BodyKind, Collider, ColliderShape, RigidBody};
 pub use settings::{
-    DEFAULT_SOLVER_ITERATIONS, GRAVITY_LIMIT, MAX_CONTACT_HZ, MAX_DAMPING, MAX_SLEEP_THRESHOLD,
-    MAX_SOLVER_ITERATIONS, MAX_SUBSTEPS, MAX_TIME_UNTIL_SLEEP, MIN_CONTACT_HZ, PhysicsSettings,
+    DEFAULT_SOLVER_ITERATIONS, GRAVITY_LIMIT, MAX_AIR_DRAG, MAX_CONTACT_HZ, MAX_DAMPING,
+    MAX_SLEEP_THRESHOLD, MAX_SOLVER_ITERATIONS, MAX_SUBSTEPS, MAX_TIME_UNTIL_SLEEP, MIN_CONTACT_HZ,
+    PhysicsSettings,
 };
 
 use ph2d_ecs::scene::ComponentRegistry;

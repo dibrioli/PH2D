@@ -75,7 +75,11 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// layout posicional muda. Sem ele o painel do W2b seria um painel de knobs que
 /// ESQUECEM: gravidade zero para um jogo top-down é uma decisão do projeto, e
 /// perdê-la ao reabrir é o mesmo que não tê-la.
-const PROJECT_SCHEMA: u32 = 19;
+/// v20 (ADR-0131 W2b, pós-smoke): `PhysicsSettings` ganhou `air_drag` APENDADO —
+/// o campo entra no layout de `ProjectFile.physics`. Nenhuma constante de esquema
+/// mudou, então **nenhum gate podia ver isto**: postcard é posicional e um save
+/// v19 lido como v20 devolveria lixo bem-formado.
+const PROJECT_SCHEMA: u32 = 20;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

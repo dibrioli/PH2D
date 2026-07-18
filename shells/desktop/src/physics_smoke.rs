@@ -191,8 +191,11 @@ impl crate::App {
     /// ([[feedback_ready_to_smoke_example]]).
     ///
     /// The scene is chosen per knob, not for looks:
-    /// - **bodies of three sizes**, so *Gravity* and *Air Drag* separate the
-    ///   heavy from the light instead of moving everything together;
+    /// - **bodies of three sizes**, so *Air Drag* can separate the heavy from
+    ///   the light. ⚠️ *Damping* deliberately will NOT: it is a uniform decay,
+    ///   and the first smoke failed precisely because that knob was labelled
+    ///   "Air Drag" (Enio: *"todos os objetos grandes e pequenos caem na mesma
+    ///   velocidade"*). The scene proves both behaviours;
     /// - **a tall stack**, because *Sub-steps* and *Iterations* are visible in
     ///   how a stack settles and in how deep a fast body sinks on impact — a
     ///   single body shows neither;
@@ -241,7 +244,11 @@ impl crate::App {
              Try, in order:\n\
                · Gravity Y -> 0      : everything stops falling, mid-air.\n\
                · Gravity X           : the pile slides sideways.\n\
-               · Air Drag / Linear   : the small bodies slow first.\n\
+               · Air Drag / Density  : the BIG bodies fall fastest (drag scales\n\
+                                       with cross-section, mass resists it).\n\
+               · Damping / Linear    : everything slows EQUALLY (uniform decay;\n\
+                                       mass cannot enter it -- this is the knob\n\
+                                       whose old 'Air Drag' label was the bug).\n\
                · Sub-steps           : less sink on impact (watch a body land).\n\
                · Sleep / Delay -> 0  : the settled pile freezes sooner.\n\
                · Show Colliders      : must agree with the `B` key, always.\n\

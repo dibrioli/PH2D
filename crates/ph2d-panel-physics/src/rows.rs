@@ -17,8 +17,8 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_physics_ecs::{
-    GRAVITY_LIMIT, MAX_CONTACT_HZ, MAX_DAMPING, MAX_SLEEP_THRESHOLD, MAX_SOLVER_ITERATIONS,
-    MAX_SUBSTEPS, MAX_TIME_UNTIL_SLEEP, MIN_CONTACT_HZ, PhysicsSettings,
+    GRAVITY_LIMIT, MAX_AIR_DRAG, MAX_CONTACT_HZ, MAX_DAMPING, MAX_SLEEP_THRESHOLD,
+    MAX_SOLVER_ITERATIONS, MAX_SUBSTEPS, MAX_TIME_UNTIL_SLEEP, MIN_CONTACT_HZ, PhysicsSettings,
 };
 
 /// One slider+chip row: which setting it edits, and the range it edits it over.
@@ -151,7 +151,21 @@ static SOLVER: &[Row] = &[
     },
 ];
 
-/// Air drag, applied to every body in the world.
+/// Air drag — the SIZE-AWARE model (`F = k·L·|v|·v`, so `a ∝ v²/s`).
+static AIR: &[Row] = &[Row {
+    label: "panel.physics.air_drag",
+    slider: ids::PHYSICS_AIR_DRAG,
+    chip: ids::PHYSICS_AIR_DRAG_NUM,
+    min: 0.0,
+    max: MAX_AIR_DRAG,
+    step: 0.05, // LITERAL-PX-OK: drag step of a dimensionless physical knob, not a design metric
+    decimals: 2,
+    get: |s| s.air_drag,
+    set: |s, v| s.air_drag = v,
+}];
+
+/// Uniform damping — mass and size cannot enter it. A different model from
+/// [`AIR`], not a tuning of it.
 static DAMPING: &[Row] = &[
     Row {
         label: "panel.physics.linear_damping",
@@ -225,6 +239,11 @@ pub static SECTIONS: &[Section] = &[
         id: ids::PHYSICS_SEC_SOLVER,
         title: "panel.physics.section.solver",
         rows: SOLVER,
+    },
+    Section {
+        id: ids::PHYSICS_SEC_AIR,
+        title: "panel.physics.section.air",
+        rows: AIR,
     },
     Section {
         id: ids::PHYSICS_SEC_DAMPING,

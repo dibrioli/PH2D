@@ -6,6 +6,7 @@
 
 pub mod checkpoint;
 pub mod defaults;
+pub mod drag;
 
 use defaults::BodyDefaults;
 
@@ -90,6 +91,10 @@ pub struct PhysicsWorld {
     /// [`BodyDefaults`] for why a per-body rapier concept is a world setting
     /// here — and for the one rule that keeps it a single door.
     body_defaults: BodyDefaults,
+    /// Air-drag coefficient (lumps `½·ρ·Cd`). `0.0` = vacuum, and byte-identical
+    /// to a build without the feature. See [`drag`] for why this is a separate
+    /// model from `body_defaults.linear_damping` rather than a tuning of it.
+    air_drag: f32,
 }
 
 impl PhysicsWorld {
@@ -152,6 +157,7 @@ impl PhysicsWorld {
             substeps: Self::DEFAULT_SUBSTEPS,
             base_dt: Self::DEFAULT_DT,
             body_defaults: BodyDefaults::rapier(),
+            air_drag: 0.0,
         }
     }
 
@@ -221,6 +227,20 @@ impl PhysicsWorld {
     pub fn set_body_defaults(&mut self, d: BodyDefaults) {
         self.body_defaults = d;
         d.apply_to_all(&mut self.bodies);
+    }
+
+    /// The air-drag coefficient. `0.0` = vacuum.
+    pub fn air_drag(&self) -> f32 {
+        self.air_drag
+    }
+
+    /// Set the air-drag coefficient (lumps `½·ρ·Cd` — "how thick is the air").
+    ///
+    /// Unlike [`Self::set_body_defaults`], this touches no body: drag is a
+    /// property of the WORLD, applied as a force each substep, so there is
+    /// nothing to stamp and nothing to wake.
+    pub fn set_air_drag(&mut self, k: f32) {
+        self.air_drag = k.max(0.0);
     }
 
     /// Stamp the world defaults onto a body that was just inserted — the single
@@ -399,6 +419,14 @@ impl PhysicsWorld {
     /// wrapper boundary (HR-5).
     pub fn step(&mut self) {
         for _ in 0..self.substeps {
+            // Per SUBSTEP, not per tick: a force applied once per tick would be
+            // wrong by the substep count.
+            drag::apply(
+                &mut self.bodies,
+                &self.colliders,
+                self.air_drag,
+                self.integration_parameters.dt,
+            );
             let physics_hooks = ();
             let event_handler = ();
             self.physics_pipeline.step(

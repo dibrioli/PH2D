@@ -23,7 +23,9 @@ pub const PHYSICS_CLOSE: NodeId = hash_node_id("physics.close");
 pub const PHYSICS_SEC_WORLD: NodeId = hash_node_id("physics.sec.world");
 /// Solver section (sub-steps, iterations, contact frequency).
 pub const PHYSICS_SEC_SOLVER: NodeId = hash_node_id("physics.sec.solver");
-/// Air-drag section.
+/// Air-drag section (the size-aware model).
+pub const PHYSICS_SEC_AIR: NodeId = hash_node_id("physics.sec.air");
+/// Damping section (the uniform model).
 pub const PHYSICS_SEC_DAMPING: NodeId = hash_node_id("physics.sec.damping");
 /// Sleep section.
 pub const PHYSICS_SEC_SLEEP: NodeId = hash_node_id("physics.sec.sleep");
@@ -53,6 +55,12 @@ pub const PHYSICS_ITERATIONS_NUM: NodeId = hash_node_id("physics.iterations_num"
 pub const PHYSICS_CONTACT_HZ: NodeId = hash_node_id("physics.contact_hz");
 /// Chip linked to [`PHYSICS_CONTACT_HZ`].
 pub const PHYSICS_CONTACT_HZ_NUM: NodeId = hash_node_id("physics.contact_hz_num");
+
+// ── Air drag ────────────────────────────────────────────────────────────────
+/// Air density — the size-aware drag coefficient.
+pub const PHYSICS_AIR_DRAG: NodeId = hash_node_id("physics.air_drag");
+/// Chip linked to [`PHYSICS_AIR_DRAG`].
+pub const PHYSICS_AIR_DRAG_NUM: NodeId = hash_node_id("physics.air_drag_num");
 
 // ── Damping ─────────────────────────────────────────────────────────────────
 /// World linear drag.

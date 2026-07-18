@@ -47,6 +47,14 @@ pub struct FlipTool {
     smoothing: f32,
     mode: FlipMode,
     erase: EraseMode,
+    // ── Borracha: valores PRÓPRIOS + os links (§4.C, Unified Paint Settings do
+    //    Blender). Enquanto o link está ligado (default) estes números não são lidos
+    //    por ninguém — a borracha usa o `width_px`/`opacity` do pincel, como sempre.
+    //    Nascem iguais aos defaults do pincel, então o 1º deslink não pula.
+    erase_px: f64,
+    erase_strength: f32,
+    link_size: bool,
+    link_strength: bool,
     // ── O balde (W4). Cor PRÓPRIA: colorir usa outra paleta que desenhar, e obrigar
     //    a trocar a cor do traço para pintar uma região seria hostil.
     fill_color: [u8; 4],
@@ -76,6 +84,10 @@ impl Default for FlipTool {
             // O painel docado (T2.15) tem a linha de modos Select/Draw/Erase.
             mode: FlipMode::Select,
             erase: EraseMode::Soft,
+            erase_px: DEFAULT_WIDTH_PX,
+            erase_strength: DEFAULT_OPACITY,
+            link_size: true,
+            link_strength: true,
             fill_color: DEFAULT_FILL,
             fill_mode: FillMode::Paint,
             gap_px: 0.0,
@@ -130,6 +142,38 @@ impl FlipTool {
     #[must_use]
     pub fn erase_mode(&self) -> EraseMode {
         self.erase
+    }
+
+    /// **O raio EFETIVO da borracha** (§4.C) — a PORTA ÚNICA da pergunta "que raio a
+    /// borracha usa?". Linkada (default) devolve o Size do pincel; deslinkada, o dela.
+    /// O snapshot publica o resultado disto, então quem apaga e quem desenha o anel
+    /// nunca re-derivam a regra (duas cópias divergem).
+    #[must_use]
+    pub fn eraser_size_px(&self) -> f64 {
+        if self.link_size {
+            self.width_px
+        } else {
+            self.erase_px
+        }
+    }
+    /// A força EFETIVA da borracha (mesma porta, outro eixo).
+    #[must_use]
+    pub fn eraser_strength(&self) -> f32 {
+        if self.link_strength {
+            self.opacity
+        } else {
+            self.erase_strength
+        }
+    }
+    /// O Size da borracha segue o do pincel? (estado do toggle de link.)
+    #[must_use]
+    pub fn link_size(&self) -> bool {
+        self.link_size
+    }
+    /// A Strength da borracha segue a do pincel?
+    #[must_use]
+    pub fn link_strength(&self) -> bool {
+        self.link_strength
     }
     /// O traço nasce preenchido? (só relevante em `FlipMode::Draw`.)
     #[must_use]
@@ -187,6 +231,11 @@ impl FlipTool {
             smoothing: self.smoothing,
             mode: self.mode,
             erase: self.erase,
+            // EFETIVOS (link já resolvido) — ver `eraser_size_px`/`eraser_strength`.
+            erase_px: self.eraser_size_px(),
+            erase_strength: self.eraser_strength(),
+            link_size: self.link_size,
+            link_strength: self.link_strength,
             fill_color: self.fill_color,
             fill_mode: self.fill_mode,
             draw_filled: self.draw_filled,
@@ -297,6 +346,22 @@ impl Tool for FlipTool {
             PanelEvent::Click(id) if id == ids::FLIP_ERASE_SOFT => self.erase = EraseMode::Soft,
             PanelEvent::Click(id) if id == ids::FLIP_ERASE_HARD => self.erase = EraseMode::Hard,
             PanelEvent::Click(id) if id == ids::FLIP_ERASE_STROKE => self.erase = EraseMode::Stroke,
+            // Links da borracha (§4.C): o toggle na LINHA da propriedade. Deslinkar não
+            // move número nenhum — só troca QUAL valor a borracha lê (os próprios já
+            // nascem iguais aos do pincel, então o 1º deslink não pula).
+            PanelEvent::Click(id) if id == ids::FLIP_LINK_SIZE => {
+                self.link_size = !self.link_size;
+            }
+            PanelEvent::Click(id) if id == ids::FLIP_LINK_STRENGTH => {
+                self.link_strength = !self.link_strength;
+            }
+            // Sliders PRÓPRIOS da borracha (só existem na tela com o link desligado).
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_ERASE_SIZE => {
+                self.erase_px = slider_to_px(v as f32);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_ERASE_STRENGTH => {
+                self.erase_strength = slider_to_unit(v as f32);
+            }
             // Sliders de brush (track `0..1` → valor; o mapa afim é o mesmo do painel).
             PanelEvent::SetValue(id, v) if id == ids::FLIP_SIZE => {
                 self.width_px = slider_to_px(v as f32);
@@ -356,6 +421,101 @@ mod tests {
         // A layer-op id (document edit) is ignored by the tool.
         t.handle_panel_event(PanelEvent::Click(ids::FLIP_LAYER_ADD));
         assert_eq!(t.mode(), FlipMode::Erase, "layer op didn't touch the tool");
+    }
+
+    // ── §4.C — os links da borracha (Unified Paint Settings do Blender) ───────────
+
+    /// 🔴 **Linkado (o DEFAULT) a borracha É o pincel** — um número só, como sempre foi.
+    /// Mexer no Size do pincel move o raio da borracha junto; esse é o comportamento
+    /// que o projeto tinha antes do §4.C e que o toggle preserva por default.
+    #[test]
+    fn linked_by_default_the_eraser_follows_the_brush() {
+        let mut t = FlipTool::new();
+        assert!(t.link_size() && t.link_strength(), "o default e LINKADO");
+        assert_eq!(t.eraser_size_px(), t.width_px());
+        assert_eq!(t.eraser_strength(), t.opacity());
+
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_SIZE, 1.0));
+        assert_eq!(
+            t.eraser_size_px(),
+            crate::params::WIDTH_MAX_PX,
+            "linkada, a borracha segue o Size do pincel"
+        );
+        t.set_opacity(0.25);
+        assert!((t.eraser_strength() - 0.25).abs() < 1e-6);
+    }
+
+    /// 🔴 **Deslinkada, cada uma tem a sua** — e mexer numa NÃO move a outra.
+    ///
+    /// Mutação que sangra: `eraser_size_px` devolver `width_px` incondicionalmente (ou
+    /// o toggle não inverter o flag) — o raio da borracha passa a seguir o pincel e os
+    /// dois `assert` de independência caem.
+    #[test]
+    fn unlinked_the_eraser_and_the_brush_keep_their_own_numbers() {
+        let mut t = FlipTool::new();
+        // O toggle na linha do Size desliga o link.
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_STRENGTH));
+        assert!(!t.link_size() && !t.link_strength());
+
+        // Deslinkar NÃO move número nenhum: os próprios nascem nos defaults do pincel,
+        // então o 1º deslink não pula na cara do artista.
+        assert_eq!(t.eraser_size_px(), DEFAULT_WIDTH_PX);
+        assert_eq!(t.eraser_strength(), DEFAULT_OPACITY);
+
+        // O slider PRÓPRIO da borracha move só ela.
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_SIZE, 1.0));
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_STRENGTH, 0.5));
+        assert_eq!(t.eraser_size_px(), crate::params::WIDTH_MAX_PX);
+        assert!((t.eraser_strength() - 0.5).abs() < 1e-6);
+        assert_eq!(t.width_px(), DEFAULT_WIDTH_PX, "o PINCEL nao se mexeu");
+        assert_eq!(t.opacity(), DEFAULT_OPACITY, "a forca do pincel nao se mexeu");
+
+        // E o inverso: mexer no pincel não toca a borracha deslinkada.
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_SIZE, 0.0));
+        assert_eq!(t.width_px(), crate::params::WIDTH_MIN_PX);
+        assert_eq!(
+            t.eraser_size_px(),
+            crate::params::WIDTH_MAX_PX,
+            "a borracha deslinkada ignora o Size do pincel"
+        );
+    }
+
+    /// **Re-linkar devolve a borracha ao pincel** — e o valor próprio dela SOBREVIVE,
+    /// então deslinkar de novo o recupera (o modelo do Blender: cada pincel guarda o
+    /// seu; o link só escolhe QUEM responde).
+    #[test]
+    fn relinking_returns_to_the_brush_and_the_own_value_survives() {
+        let mut t = FlipTool::new();
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_SIZE, 1.0));
+        assert_eq!(t.eraser_size_px(), crate::params::WIDTH_MAX_PX);
+
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE)); // re-linka
+        assert_eq!(t.eraser_size_px(), t.width_px(), "voltou a seguir o pincel");
+
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE)); // deslinka de novo
+        assert_eq!(
+            t.eraser_size_px(),
+            crate::params::WIDTH_MAX_PX,
+            "o valor PROPRIO da borracha sobreviveu ao re-link"
+        );
+    }
+
+    /// O snapshot publica os valores **EFETIVOS** (link já resolvido) — é o que o anel
+    /// do cursor e o `flip_erase` leem, e por isso eles nunca re-derivam a regra.
+    #[test]
+    fn the_snapshot_publishes_effective_eraser_values() {
+        let mut t = FlipTool::new();
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
+        t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_SIZE, 1.0));
+        let s = t.ui_snapshot();
+        assert_eq!(s.erase_px, crate::params::WIDTH_MAX_PX, "efetivo = o proprio");
+        assert!(!s.link_size, "o snapshot carrega o estado do toggle");
+        assert_eq!(s.width_px, DEFAULT_WIDTH_PX, "o Size do pincel vai separado");
+        // Linkado, o efetivo volta a ser o do pincel.
+        t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
+        assert_eq!(t.ui_snapshot().erase_px, DEFAULT_WIDTH_PX);
     }
 
     #[test]

@@ -4,18 +4,18 @@
 //! shaper, widget store, hit index) + the shared layout metrics; each `paint_*`
 //! takes the running `y` and returns the advanced `y`. Mirror of the Vector
 //! panel's `BodyCtx`.
+//!
+//! **As PRIMITIVAS de linha vivem no irmão [`crate::paint_rows`]** (`section_label`,
+//! `slider_row`, `slider_row_linked`, `segmented`): aqui é a COMPOSIÇÃO — quais linhas
+//! cada modo mostra. O split saiu do teto de LOC, na costura que o arquivo já tinha.
 
 use crate::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::ButtonState;
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
-use ph2d_editor_core::widget::{
-    ColorSwatch, SwatchSize, paint_color_swatch, paint_slider_with_chip_layout_adaptive,
-};
+use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Theme};
 use ph2d_tool_flip::{
     EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
     PRECISION_MAX, PRECISION_MIN, ReshapeKind, px_to_slider,
@@ -42,99 +42,6 @@ pub(crate) struct BodyCtx<'a> {
 }
 
 impl BodyCtx<'_> {
-    /// A `Section` label line (Sm, Text2) + its advance.
-    pub(crate) fn section_label(&mut self, label: &str, mut y: f32) -> f32 {
-        let label_font = TypeToken::Sm.px();
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y,
-            label_font,
-            self.inner_w,
-            resolve(ColorToken::Text2, self.theme),
-        );
-        y += label_font + Spacing::Xs.px();
-        y
-    }
-
-    /// A full-width slider + linked value chip row; returns the advanced `y`.
-    #[allow(clippy::too_many_arguments)]
-    fn slider_row(
-        &mut self,
-        label: &str,
-        slider_id: ph2d_a11y::NodeId,
-        chip_id: ph2d_a11y::NodeId,
-        track: f32,
-        val: f64,
-        display: &str,
-        y: f32,
-    ) -> f32 {
-        let used = paint_slider_with_chip_layout_adaptive(
-            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
-            label,
-            track,
-            val,
-            Some(display),
-            slider_id,
-            chip_id,
-            LABEL_COL_W,
-            self.chip_w,
-            self.store,
-            self.hit_index,
-            self.scene,
-            self.text_system,
-            self.theme,
-        );
-        y + used + self.row_gap
-    }
-
-    /// A labelled N-across segmented button row; returns the advanced `y`.
-    ///
-    /// An EMPTY label paints no caption and reserves no space for one — that is how
-    /// a control with more options than fit one row (the eight Reshape brushes)
-    /// becomes two rows under a single caption, instead of two captioned rows.
-    fn segmented<const N: usize>(
-        &mut self,
-        label: &str,
-        opts: [(ph2d_a11y::NodeId, &str, bool); N],
-        mut y: f32,
-    ) -> f32 {
-        let sd_font = TypeToken::Sm.px();
-        let sd_gap = Spacing::Sm.px();
-        let cols = N as f32;
-        let sd_w = ((self.inner_w - sd_gap * (cols - 1.0)) / cols).max(1.0);
-        if !label.is_empty() {
-            paint_text(
-                self.text_system,
-                self.scene,
-                label,
-                self.inner_x,
-                y,
-                sd_font,
-                self.inner_w,
-                resolve(ColorToken::Text2, self.theme),
-            );
-            y += sd_font + Spacing::Xs.px();
-        }
-        for (i, (id, lbl, active)) in opts.iter().enumerate() {
-            let rx = self.inner_x + i as f32 * (sd_w + sd_gap);
-            let rect = Rect::new(rx, y, sd_w, self.row_h);
-            let st = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
-            paint_segmented_button(
-                rect,
-                lbl,
-                *active,
-                st,
-                self.scene,
-                self.text_system,
-                self.theme,
-            );
-            self.hit_index.register(*id, rect);
-        }
-        y + self.row_h + self.row_gap
-    }
 
     /// Mode row (Select / Draw / Erase · Fill / Sculpt / Edit) — the gizmo is live only
     /// in Select.
@@ -307,41 +214,70 @@ impl BodyCtx<'_> {
         };
         y = self.section_label(label, y);
         // Size (px) — o raio da borracha / do pincel de escultura.
+        //
+        // §4.C: na BORRACHA a linha ganha um toggle de LINK. Ligado (o default) ela usa
+        // o Size do PINCEL — literalmente os ids de sempre, então nada muda pra quem
+        // nunca tocar no toggle; desligado, ela passa a ler/escrever os ids PRÓPRIOS.
+        // O Sculpt segue compartilhando de propósito (a decisão documentada no
+        // `params.rs`): você escolheu linkar pintura↔borracha, não pincel↔escultura.
+        let (size_id, size_num, size_val) = if eraser && !snap.link_size {
+            (ids::FLIP_ERASE_SIZE, ids::FLIP_ERASE_SIZE_NUM, snap.erase_px)
+        } else {
+            (ids::FLIP_SIZE, ids::FLIP_SIZE_NUM, snap.width_px)
+        };
         let track = self
             .store
-            .slider(ids::FLIP_SIZE)
+            .slider(size_id)
             .map(|(_, v)| v)
-            .unwrap_or_else(|| px_to_slider(snap.width_px));
-        let px = self
-            .store
-            .number_value(ids::FLIP_SIZE_NUM)
-            .unwrap_or(snap.width_px);
-        y = self.slider_row(
-            "Size",
-            ids::FLIP_SIZE,
-            ids::FLIP_SIZE_NUM,
-            track,
-            px,
-            &format!("{}", px.round() as i64),
-            y,
-        );
+            .unwrap_or_else(|| px_to_slider(size_val));
+        let px = self.store.number_value(size_num).unwrap_or(size_val);
+        let px_display = format!("{}", px.round() as i64);
+        y = if eraser {
+            self.slider_row_linked(
+                "Size",
+                size_id,
+                size_num,
+                track,
+                px,
+                &px_display,
+                ids::FLIP_LINK_SIZE,
+                snap.link_size,
+                y,
+            )
+        } else {
+            self.slider_row("Size", size_id, size_num, track, px, &px_display, y)
+        };
         // Hardness (0..1) — só o pincel de DESENHO tem borda.
         if radius_force {
-            let track = self
-                .store
-                .slider(ids::FLIP_OPACITY)
-                .map(|(_, v)| v)
-                .unwrap_or(snap.opacity);
+            // Mesma regra de link do Size, no outro eixo (§4.C).
+            let (str_id, str_num, str_val) = if eraser && !snap.link_strength {
+                (
+                    ids::FLIP_ERASE_STRENGTH,
+                    ids::FLIP_ERASE_STRENGTH_NUM,
+                    snap.erase_strength,
+                )
+            } else {
+                (ids::FLIP_OPACITY, ids::FLIP_OPACITY_NUM, snap.opacity)
+            };
+            let track = self.store.slider(str_id).map(|(_, v)| v).unwrap_or(str_val);
             let pct = f64::from(track) * 100.0; // LITERAL-PX-OK: fraction→percent chip
-            return self.slider_row(
-                "Strength", // é o que a opacidade SIGNIFICA para a borracha e o sculpt
-                ids::FLIP_OPACITY,
-                ids::FLIP_OPACITY_NUM,
-                track,
-                pct,
-                &format!("{}", pct.round() as i64),
-                y,
-            );
+            let pct_display = format!("{}", pct.round() as i64);
+            // "Strength" é o que a opacidade SIGNIFICA para a borracha e o sculpt.
+            return if eraser {
+                self.slider_row_linked(
+                    "Strength",
+                    str_id,
+                    str_num,
+                    track,
+                    pct,
+                    &pct_display,
+                    ids::FLIP_LINK_STRENGTH,
+                    snap.link_strength,
+                    y,
+                )
+            } else {
+                self.slider_row("Strength", str_id, str_num, track, pct, &pct_display, y)
+            };
         }
         let track = self
             .store

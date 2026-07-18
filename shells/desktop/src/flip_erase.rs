@@ -281,8 +281,11 @@ impl crate::App {
             let win = gfx.surface.size();
             let w = gfx.camera.screen_to_world((x, y), win);
             let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
-            // Eraser radius = the brush size (px → world); strength = brush opacity.
-            let radius = (style.width_px as f32 * 0.5) * px_to_world;
+            // Raio/força EFETIVOS da borracha (§4.C): `erase_px`/`erase_strength` já vêm
+            // com o link resolvido pela tool — linkados, são o Size/Strength do pincel
+            // (o comportamento de sempre); deslinkados, os próprios dela. Um só campo:
+            // re-derivar a regra aqui seria a 2ª porta que diverge.
+            let radius = (style.erase_px as f32 * 0.5) * px_to_world;
             let local = w2l.apply([f64::from(w[0]), f64::from(w[1])]);
             let radius_local = radius * w2l.mean_scale() as f32;
             erase_at(
@@ -293,7 +296,7 @@ impl crate::App {
                 style.erase,
                 Vec2::new(local[0] as f32, local[1] as f32),
                 radius_local,
-                style.opacity,
+                style.erase_strength,
             );
         }
     }

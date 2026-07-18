@@ -85,7 +85,11 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_SMOOTHING
                 || id == ids::FLIP_GAP
                 || id == ids::FLIP_GROW
-                || id == ids::FLIP_PRECISION =>
+                || id == ids::FLIP_PRECISION
+                // Os sliders PRÓPRIOS da borracha (§4.C) — só existem na tela com o
+                // link desligado, mas o arm vale sempre (o painel não gateia evento).
+                || id == ids::FLIP_ERASE_SIZE
+                || id == ids::FLIP_ERASE_STRENGTH =>
         {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
             host.bus_mut()
@@ -104,7 +108,9 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_SMOOTHING_NUM
                 || id == ids::FLIP_GAP_NUM
                 || id == ids::FLIP_GROW_NUM
-                || id == ids::FLIP_PRECISION_NUM =>
+                || id == ids::FLIP_PRECISION_NUM
+                || id == ids::FLIP_ERASE_SIZE_NUM
+                || id == ids::FLIP_ERASE_STRENGTH_NUM =>
         {
             true
         }
@@ -124,6 +130,9 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_ERASE_SOFT
                 || id == ids::FLIP_ERASE_HARD
                 || id == ids::FLIP_ERASE_STROKE
+                // Os toggles de LINK da borracha (§4.C) — a tool inverte o flag.
+                || id == ids::FLIP_LINK_SIZE
+                || id == ids::FLIP_LINK_STRENGTH
                 || id == ids::FLIP_FILL_PAINT
                 || id == ids::FLIP_FILL_BEHIND
                 || id == ids::FLIP_FILL_UNPAINT

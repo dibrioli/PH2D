@@ -187,6 +187,36 @@ pub fn populate(store: &mut WidgetStore) {
     button(store, ids::FLIP_ERASE_HARD);
     button(store, ids::FLIP_ERASE_STROKE);
 
+    // §4.C — os LINKS da borracha (Unified Paint Settings do Blender) + os sliders
+    // PRÓPRIOS dela. Os toggles são pintados só no modo Erase; os sliders, só no modo
+    // Erase E com o link desligado. Registrados SEMPRE (registrar é o que os torna
+    // focáveis/clicáveis — a mesma regra dos botões de borracha acima).
+    //
+    // Os próprios nascem nos MESMOS defaults do pincel: deslinkar não pode fazer o
+    // número saltar na cara do artista da primeira vez.
+    button(store, ids::FLIP_LINK_SIZE);
+    button(store, ids::FLIP_LINK_STRENGTH);
+    slider_chip(
+        store,
+        ids::FLIP_ERASE_SIZE,
+        ids::FLIP_ERASE_SIZE_NUM,
+        px_to_slider(DEFAULT_WIDTH_PX),
+        DEFAULT_WIDTH_PX,
+        WIDTH_SLIDER_SCALE,
+        WIDTH_SLIDER_OFFSET,
+        1.0, // step do dominio: unidades inteiras (px / %)
+    );
+    slider_chip(
+        store,
+        ids::FLIP_ERASE_STRENGTH,
+        ids::FLIP_ERASE_STRENGTH_NUM,
+        DEFAULT_OPACITY,
+        f64::from(DEFAULT_OPACITY) * 100.0, // LITERAL-PX-OK: fraction→percent display
+        OPACITY_SLIDER_SCALE,
+        0.0,
+        1.0, // step do dominio: unidades inteiras (px / %)
+    );
+
     // Os oito pincéis de escultura (W5; pintados só no modo Reshape, registrados
     // sempre — como os de cima). Um botão pintado e NÃO registrado aqui é focável
     // por ninguém e o clique dele é dropado em silêncio.

@@ -115,6 +115,31 @@ pub const FLIP_OPACITY_NUM: NodeId = hash_node_id("flip.opacity_num");
 pub const FLIP_SMOOTHING: NodeId = hash_node_id("flip.smoothing");
 pub const FLIP_SMOOTHING_NUM: NodeId = hash_node_id("flip.smoothing_num");
 
+// ── Eraser's OWN size / strength + the LINK toggles (ADR-0114 §4.C) ──────────
+//
+// Blender's *Unified Paint Settings*: a property is either shared between the paint
+// brush and the eraser or owned by each, and a small link toggle ON THE PROPERTY ROW
+// says which. **Linked is the default**, so the eraser keeps using the brush's Size /
+// Strength (`FLIP_SIZE` / `FLIP_OPACITY`) exactly as it always has — unlinking is
+// opt-in, and only then do the ids below get painted and drive the eraser.
+//
+// Two widgets per property (never one re-seeded): a slider slot holds ONE value, and
+// a single slot could not remember the brush's number and the eraser's at once.
+/// Link toggle on the Size row (paint brush ↔ eraser). ON = the eraser uses the
+/// brush's Size; OFF = it uses [`FLIP_ERASE_SIZE`].
+pub const FLIP_LINK_SIZE: NodeId = hash_node_id("flip.link.size");
+/// Link toggle on the Strength row. ON = the eraser uses the brush's Strength
+/// (`FLIP_OPACITY`); OFF = it uses [`FLIP_ERASE_STRENGTH`].
+pub const FLIP_LINK_STRENGTH: NodeId = hash_node_id("flip.link.strength");
+/// The eraser's OWN radius slider + px chip — painted only in Erase mode with the
+/// Size link OFF.
+pub const FLIP_ERASE_SIZE: NodeId = hash_node_id("flip.erase.size");
+pub const FLIP_ERASE_SIZE_NUM: NodeId = hash_node_id("flip.erase.size_num");
+/// The eraser's OWN strength slider + % chip — painted only in Erase mode with the
+/// Strength link OFF.
+pub const FLIP_ERASE_STRENGTH: NodeId = hash_node_id("flip.erase.strength");
+pub const FLIP_ERASE_STRENGTH_NUM: NodeId = hash_node_id("flip.erase.strength_num");
+
 // ── Color section ────────────────────────────────────────────────────────────
 /// Stroke-colour swatch — a picker swatch (opens the shared OKLCH picker on
 /// Down); the shell `flip_bridge` reads the pick back into the tool.

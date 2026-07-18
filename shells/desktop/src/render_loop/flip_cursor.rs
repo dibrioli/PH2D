@@ -76,11 +76,15 @@ pub(super) fn draw_flip_cursor(
 #[must_use]
 pub(crate) fn ring_radius(style: Option<FlipStyleSnapshot>) -> Option<f64> {
     let style = style?;
-    matches!(
-        style.mode,
-        FlipMode::Draw | FlipMode::Erase | FlipMode::Reshape
-    )
-    .then(|| (style.width_px * 0.5).max(MIN_RING_R_PX))
+    // **A borracha usa o raio EFETIVO dela** (§4.C) — `erase_px` já vem com o link
+    // resolvido pela tool. Com o link ligado (default) esse número É o `width_px`, então
+    // o anel não muda; deslinkado, o anel mostra o tamanho com que se vai APAGAR, que é
+    // o ponto inteiro de ter um anel.
+    match style.mode {
+        FlipMode::Erase => Some((style.erase_px * 0.5).max(MIN_RING_R_PX)),
+        FlipMode::Draw | FlipMode::Reshape => Some((style.width_px * 0.5).max(MIN_RING_R_PX)),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -101,6 +105,9 @@ mod tests {
             let r = ring_radius(Some(FlipStyleSnapshot {
                 mode,
                 width_px: 40.0,
+                // A borracha lê o raio EFETIVO dela; com o link LIGADO (o default) ele é
+                // o próprio Size do pincel, então os três modos concordam aqui.
+                erase_px: 40.0,
                 ..Default::default()
             }));
             assert_eq!(r.is_some(), want, "modo {mode:?}: deveria ter anel? {want}");
@@ -112,6 +119,34 @@ mod tests {
             ring_radius(None).is_none(),
             "sem estilo publicado, sem anel"
         );
+    }
+
+    /// 🔴 **Deslinkada, a borracha desenha o anel DELA** (§4.C) — e o pincel segue com o
+    /// dele. O anel existe pra dizer o tamanho do que vai acontecer; se ele mostrasse o
+    /// Size do pincel enquanto a borracha apaga noutro raio, seria uma mentira na tela.
+    ///
+    /// Mutação que sangra: o braço `Erase` ler `width_px` (o comportamento pré-§4.C) —
+    /// o anel volta a 20 e este teste cai. O irmão acima cobre o caso LINKADO, onde os
+    /// dois números coincidem e a mutação NÃO sangra: é preciso o par.
+    #[test]
+    fn an_unlinked_eraser_draws_its_own_ring() {
+        let r = ring_radius(Some(FlipStyleSnapshot {
+            mode: FlipMode::Erase,
+            width_px: 40.0,  // o pincel
+            erase_px: 120.0, // a borracha, deslinkada (efetivo já resolvido pela tool)
+            link_size: false,
+            ..Default::default()
+        }));
+        assert_eq!(r, Some(60.0), "o anel da borracha e METADE do raio DELA");
+        // E o pincel não foi contaminado: no Draw o anel volta a ser o do Size.
+        let r = ring_radius(Some(FlipStyleSnapshot {
+            mode: FlipMode::Draw,
+            width_px: 40.0,
+            erase_px: 120.0,
+            link_size: false,
+            ..Default::default()
+        }));
+        assert_eq!(r, Some(20.0), "o anel do PINCEL nao segue a borracha");
     }
 
     /// **O anel nunca some**: um pincel de 1 px ainda desenha um alvo visível (o piso).

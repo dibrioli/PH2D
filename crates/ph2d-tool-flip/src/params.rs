@@ -227,6 +227,21 @@ pub struct FlipStyleSnapshot {
     pub mode: FlipMode,
     /// Modo de borracha atual (só relevante em `FlipMode::Erase`).
     pub erase: EraseMode,
+    /// **O raio EFETIVO da borracha, em px de tela** — já resolvido contra o link
+    /// (§4.C): linkado = o `width_px` do pincel, deslinkado = o valor próprio dela.
+    ///
+    /// Quem apaga e quem desenha o anel do cursor leem ESTE campo e mais nenhum: a
+    /// pergunta *"que raio a borracha usa?"* tem uma resposta só, e ela é respondida
+    /// no [`crate::FlipTool::ui_snapshot`] — duas cópias divergiriam.
+    pub erase_px: f64,
+    /// A força EFETIVA da borracha `0..=1` (idem: linkada = `opacity` do pincel).
+    pub erase_strength: f32,
+    /// O Size da borracha segue o do pincel? (só desenha o toggle de link; quem
+    /// precisa do NÚMERO usa `erase_px`.) Default **ligado** — a borracha sempre
+    /// compartilhou o Size, e deslinkar é opt-in.
+    pub link_size: bool,
+    /// A Strength da borracha segue a do pincel? (idem.)
+    pub link_strength: bool,
     /// Cor do PREENCHIMENTO (sRGB8) — distinta da cor do traço: colorir usa outra
     /// paleta que desenhar, e obrigar a trocar a cor do traço para pintar seria
     /// hostil.
@@ -272,6 +287,11 @@ impl Default for FlipStyleSnapshot {
             smoothing: 0.5,
             mode: FlipMode::Select,
             erase: EraseMode::Soft,
+            // Linkados por default ⇒ os efetivos são os do pincel.
+            erase_px: 6.0,
+            erase_strength: 1.0,
+            link_size: true,
+            link_strength: true,
             fill_color: [230, 190, 120, 255],
             fill_mode: FillMode::Paint,
             draw_filled: false,

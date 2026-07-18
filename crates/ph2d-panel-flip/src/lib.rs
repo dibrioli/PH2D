@@ -29,6 +29,7 @@ mod event;
 pub mod ids;
 mod paint;
 mod paint_layers;
+mod paint_rows;
 mod paint_sections;
 pub mod populate;
 pub mod state;

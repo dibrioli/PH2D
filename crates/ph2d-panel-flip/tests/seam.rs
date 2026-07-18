@@ -205,6 +205,9 @@ fn every_number_box_has_a_registered_range() {
         ("Gap", ids::FLIP_GAP_NUM),
         ("Grow", ids::FLIP_GROW_NUM),
         ("Precision", ids::FLIP_PRECISION_NUM),
+        // §4.C — as caixas dos valores PRÓPRIOS da borracha (link desligado).
+        ("Eraser size", ids::FLIP_ERASE_SIZE_NUM),
+        ("Eraser strength", ids::FLIP_ERASE_STRENGTH_NUM),
     ];
     for (name, id) in boxes {
         assert!(
@@ -395,10 +398,16 @@ fn each_mode_shows_only_its_own_attributes() {
     }
 }
 
-/// O **Size** é o atributo compartilhado: a espessura do pincel, o raio da borracha, o
-/// raio do pincel de escultura (W5 — de propósito: um 2º par de sliders para raio e força
-/// seria estado duplicado, e trocar de modo obrigaria a re-ajustar tudo) e, no **Edit**
-/// (W6), a espessura dos traços SELECIONADOS. Ele some no balde e no Select.
+/// O **Size** é o atributo compartilhado **POR DEFAULT**: a espessura do pincel, o raio da
+/// borracha, o raio do pincel de escultura (W5 — de propósito: um 2º par de sliders para
+/// raio e força seria estado duplicado, e trocar de modo obrigaria a re-ajustar tudo) e,
+/// no **Edit** (W6), a espessura dos traços SELECIONADOS. Ele some no balde e no Select.
+///
+/// ⚠️ **§4.C emendou isto para a BORRACHA, sem revogar o default:** a linha do Size ganhou
+/// um toggle de LINK (Unified Paint Settings do Blender) e ele nasce LIGADO — então a
+/// borracha continua pintando o `FLIP_SIZE` do pincel, que é o que esta varredura afirma.
+/// Deslinkar é opt-in e troca o widget (ver o gate irmão `an_unlinked_eraser_paints_...`).
+/// O Sculpt e o Edit seguem compartilhando incondicionalmente.
 ///
 /// A varredura cobre `FlipMode::ALL` (e afirma isso): um modo novo que mostrasse o Size
 /// sem passar por aqui escaparia do gate — foi exatamente o que o Edit fez quando a lista
@@ -790,4 +799,174 @@ fn the_rename_field_owns_the_name_strip_while_renaming() {
         !painted.iter().any(|(w, _)| *w == row_id),
         "o hit da row-select tem de CEDER ao campo enquanto renomeia"
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §4.C — os LINKS da borracha (Unified Paint Settings do Blender).
+//
+// Um toggle na LINHA da propriedade diz se o Size/Strength da borracha SEGUE o do
+// pincel. Ligado é o default (e o comportamento histórico); desligado, a borracha
+// passa a ler/escrever widgets PRÓPRIOS. Três coisas a provar: o toggle chega na
+// tool, o slider próprio chega na tool, e a tela troca o widget conforme o link.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Um snapshot no modo Erase com os links no estado dado.
+fn erase_snap(link_size: bool, link_strength: bool) -> ph2d_tool_flip::FlipStyleSnapshot {
+    ph2d_tool_flip::FlipStyleSnapshot {
+        mode: FlipMode::Erase,
+        link_size,
+        link_strength,
+        ..Default::default()
+    }
+}
+
+/// 🔴 **Os dois toggles de link CHEGAM na tool** e invertem o flag certo.
+///
+/// Mutação que sangra: tirar `FLIP_LINK_SIZE`/`FLIP_LINK_STRENGTH` do arm de eventos do
+/// painel (o clique é engolido) ou o braço do `handle_panel_event` (chega e não faz nada).
+#[test]
+fn the_link_toggles_reach_the_tool() {
+    for (id, name) in [
+        (ids::FLIP_LINK_SIZE, "Size"),
+        (ids::FLIP_LINK_STRENGTH, "Strength"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut st = FlipPanelState::default();
+        let mut tool = FlipTool::default();
+        assert!(
+            tool.link_size() && tool.link_strength(),
+            "o default e LINKADO"
+        );
+
+        let outcome = host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "o clique no link de {name} foi IGNORADO — falta o arm em `event.rs`"
+        );
+        for action in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = action {
+                tool.handle_panel_event(pe);
+            }
+        }
+        let (size, strength) = (tool.link_size(), tool.link_strength());
+        if id == ids::FLIP_LINK_SIZE {
+            assert!(!size && strength, "o toggle de Size mexeu no flag errado");
+        } else {
+            assert!(size && !strength, "o toggle de Strength mexeu no flag errado");
+        }
+    }
+}
+
+/// 🔴 **O slider PRÓPRIO da borracha chega na tool** — e move só ela.
+///
+/// Mutação que sangra: tirar `FLIP_ERASE_SIZE` do arm de `ValueChanged` (o arrasto é
+/// engolido) ou do `handle_panel_event` (chega e não escreve `erase_px`).
+#[test]
+fn the_unlinked_eraser_slider_reaches_the_tool() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+    let mut tool = FlipTool::default();
+    tool.handle_panel_event(ph2d_editor_core::tool::PanelEvent::Click(
+        ids::FLIP_LINK_SIZE,
+    )); // deslinka
+
+    host.set_slider_value(ids::FLIP_ERASE_SIZE, 1.0);
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(ids::FLIP_ERASE_SIZE),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o arrasto do Size da borracha foi IGNORADO"
+    );
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+        }
+    }
+    assert_eq!(
+        tool.eraser_size_px(),
+        WIDTH_MAX_PX,
+        "o slider proprio nao chegou na borracha"
+    );
+    assert_eq!(
+        tool.width_px(),
+        ph2d_tool_flip::DEFAULT_WIDTH_PX,
+        "e o PINCEL nao pode ter se mexido"
+    );
+}
+
+/// 🔴 **O link TROCA o widget que a linha pinta** (§4.C): linkado é o slider do pincel,
+/// deslinkado é o da borracha — nunca os dois, nunca nenhum.
+///
+/// É o gate que impede as duas patologias: um slider deslinkado que ainda escreve no
+/// pincel (linkado pintando o id próprio) e um controle morto na tela (o id do pincel
+/// pintado enquanto a borracha lê outro número).
+///
+/// Mutação que sangra: o `brush()` ignorar `snap.link_size` — o par de asserts inverte.
+#[test]
+fn an_unlinked_eraser_paints_its_own_slider_and_a_linked_one_paints_the_brushs() {
+    // (a) LINKADO (o default): a linha é a do PINCEL.
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+    ph2d_panel_flip::set_current_flip_style(Some(erase_snap(true, true)));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    let on = |p: &Vec<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)>,
+              id: ph2d_a11y::NodeId| p.iter().any(|(w, r)| *w == id && r.w > 0.0);
+    assert!(on(&painted, ids::FLIP_SIZE), "linkado: o Size do pincel");
+    assert!(on(&painted, ids::FLIP_OPACITY), "linkado: a Strength do pincel");
+    assert!(
+        !on(&painted, ids::FLIP_ERASE_SIZE) && !on(&painted, ids::FLIP_ERASE_STRENGTH),
+        "linkado NAO pode pintar os sliders proprios da borracha"
+    );
+
+    // (b) DESLINKADO: a linha vira a da BORRACHA.
+    ph2d_panel_flip::set_current_flip_style(Some(erase_snap(false, false)));
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    assert!(
+        on(&painted, ids::FLIP_ERASE_SIZE) && on(&painted, ids::FLIP_ERASE_STRENGTH),
+        "deslinkado: os sliders PROPRIOS da borracha"
+    );
+    assert!(
+        !on(&painted, ids::FLIP_SIZE) && !on(&painted, ids::FLIP_OPACITY),
+        "deslinkado, o slider do PINCEL nao pode continuar na tela (ele escreveria no \
+         pincel enquanto a borracha le outro numero)"
+    );
+
+    // (c) Os TOGGLES existem nos dois estados (é por eles que se volta atrás).
+    for linked in [true, false] {
+        ph2d_panel_flip::set_current_flip_style(Some(erase_snap(linked, linked)));
+        let painted = host.paint::<FlipPanel>(&mut st, viewport());
+        assert!(
+            on(&painted, ids::FLIP_LINK_SIZE) && on(&painted, ids::FLIP_LINK_STRENGTH),
+            "os toggles de link somem com link={linked} — nao da pra desfazer"
+        );
+    }
+}
+
+/// 🔴 **Os toggles de link só existem na BORRACHA.** Eles governam pintura↔borracha; num
+/// modo sem borracha seriam um controle que não decide nada — a doutrina modal do painel.
+///
+/// A varredura cobre `FlipMode::ALL`: um modo novo que os pintasse escaparia do gate.
+#[test]
+fn the_link_toggles_live_only_in_erase_mode() {
+    for mode in ph2d_tool_flip::FlipMode::ALL {
+        let want = mode == FlipMode::Erase;
+        let mut host = MockPanelHost::with_panel::<FlipPanel>();
+        let mut st = FlipPanelState::default();
+        ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
+            mode,
+            ..Default::default()
+        }));
+        let painted = host.paint::<FlipPanel>(&mut st, viewport());
+        for (id, name) in [
+            (ids::FLIP_LINK_SIZE, "link Size"),
+            (ids::FLIP_LINK_STRENGTH, "link Strength"),
+        ] {
+            let shown = painted.iter().any(|(w, r)| *w == id && r.w > 0.0);
+            assert_eq!(shown, want, "modo {mode:?}: o '{name}' deveria aparecer? {want}");
+        }
+    }
 }

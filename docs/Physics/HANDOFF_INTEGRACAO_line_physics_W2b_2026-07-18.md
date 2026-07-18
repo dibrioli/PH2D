@@ -12,7 +12,7 @@
 
 - Branch **`line/physics`**, worktree `Worktrees/line-physics`, árvore limpa.
 - Base (merge-base com `main`): **`389676f9`**.
-- Commits desta jornada (`git log --oneline 389676f9..HEAD`): **10** (este doc inclusive)
+- Commits desta jornada (`git log --oneline 389676f9..HEAD`): **12** (este doc inclusive)
   - `4062529b` docs(physics): baseline pos-integracao -- o que a integracao MUDOU e o terreno re-verificado
   - `2bf00ba4` docs(physics): handoff de CONTINUACAO -- W2b em janela nova
   - `f53fb928` docs(physics): o roteador passa a saber que a fisica existe (TAREFA ZERO)
@@ -22,26 +22,28 @@
   - `6e50419b` feat(physics): as settings de mundo VIAJAM no arquivo (PROJECT_SCHEMA 18->19) + cena de smoke 4
   - `75df6697` docs(physics): W2b FECHADO -- tracker, plano, roteador e handoff de integracao
   - `f939255d` style: cargo fmt --all (alfabetizacao do mod/pub use novo + reflow das listas)
+  - `1eeb6f16` docs(physics): a contagem de gates estava errada (22/21 -> 24/22) e a identidade do handoff
+  - `a4067033` fix(physics): o painel estava INALCANCAVEL e o "Air Drag" nao era ar -- os 2 achados do smoke
 - A `main` **não** andou desde o fork (`git log HEAD..main` vazio no fechamento).
 
 ## 2. Foundational / compartilhado tocado
 
 | Arquivo | O quê |
 |---|---|
-| `crates/ph2d-physics/` | **meu módulo**, aditivo: `BodyDefaults` + `world/defaults.rs` + `set_body_defaults`/`stamp_defaults`. ⚠️ os 4 caminhos de spawn passam a carimbar os defaults — **byte-idêntico** nos defaults (gate), então o hash C9 não se move. |
+| `crates/ph2d-physics/` | **meu módulo**, aditivo: `world/drag.rs` (**NOVO**, o modelo de arrasto real) + `BodyDefaults` + `world/defaults.rs` + `set_body_defaults`/`stamp_defaults`. ⚠️ os 4 caminhos de spawn passam a carimbar os defaults — **byte-idêntico** nos defaults (gate), então o hash C9 não se move. |
 | `crates/ph2d-physics-ecs/` | **meu módulo**, aditivo: `settings.rs`. O campo `PhysicsBridge.gravity` virou `settings` (privado). |
 | `crates/ph2d-editor-core/` | **ids/chrome/physics.rs (NOVO)** + `mod`/`pub use` · `screens/hero/paint.rs` (1 linha na lista de z-order) · `widget/scrollbar.rs` (+id 836 e a linha da auto-checagem) · `widget/mod.rs` (re-export) · `interaction/dispatch/scroll.rs` (1 braço) · `tests/node_id_collisions.rs` (29 linhas) |
 | `crates/ph2d-i18n/` | 21 chaves `panel.physics.*` (bloco novo, antes do `panel.vector.title`) |
 | `crates/ph2d-panel-registry-init/` | `src/lib.rs` (bloco **GERADO** + `EXPECTED_TYPED` à mão) · `Cargo.toml` (2 blocos gerados + a lista `default` à mão) |
 | `crates/ph2d-panel-physics/` | **crate NOVA** (glob `crates/*` — zero edit central) |
-| `shells/desktop/` | `Cargo.toml` (+dep) · `render_loop/mod.rs` (+`mod` +1 call) · `render_loop/physics_panel_bridge.rs` (**NOVO**) · `forwarding.rs` (import + `|| inside(PHYSICS_PANEL)`) · `input_handlers.rs` (tecla `W`) · `project.rs` (schema + campo + save + load) · `project_tests.rs` (tripla-pin + 2 gates + 2 initializers) · `physics_smoke.rs` (cena 4) |
+| `shells/desktop/` | `Cargo.toml` (+dep, **+feature `panel-physics` e a entrada no `default`**) · `render_loop/mod.rs` (+`mod` +1 call) · `render_loop/physics_panel_bridge.rs` (**NOVO**) · `forwarding.rs` (import + `|| inside(PHYSICS_PANEL)`) · `input_handlers.rs` (tecla `W`) · `project.rs` (schema + campo + save + load) · `project_tests.rs` (tripla-pin + 2 gates + 2 initializers) · `physics_smoke.rs` (cena 4) |
 | `CLAUDE.md` | §5 (entrada de física + o W2b) e §1 (linha nova no roteador) |
 
 **`ph2d-ecs` NÃO foi tocado.** Contratos congelados (§6): **NENHUM**.
 
 ## 3. Símbolos que podem COLIDIR — grepe
 
-1. ⚠️ **`PROJECT_SCHEMA = 19` + tripla-pin `(19, 8, 8)`.** Se outra linha desta janela também
+1. ⚠️ **`PROJECT_SCHEMA = 20` + tripla-pin `(20, 8, 8)`.** Se outra linha desta janela também
    bumpar o schema, **o valor se CONTA, não se escolhe**
    ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]): some os deltas e atualize a
    tripla. O gate `a_schema_bump_anywhere_must_bump_the_project_schema` fica vermelho até
@@ -85,8 +87,10 @@ ordem que o `eprintln` da cena repete:
 
 1. **Gravity Y → 0** — tudo para de cair, no ar.
 2. **Gravity X** — a pilha escorrega de lado.
-3. **Air Drag / Linear** — os corpos **pequenos** desaceleram primeiro (é assim que se vê que o
-   arrasto é força, não um freio uniforme).
+3. **Air Drag / Density** — os corpos **GRANDES** caem mais rápido (o arrasto escala com a
+   secção transversal e é resistido pela massa).
+   E logo abaixo: **Damping / Linear** — tudo desacelera **igual**. São dois modelos, e é a
+   seção que os separa; rotular o uniforme de "Air Drag" foi o que reprovou o 1º smoke.
 4. **Sub-steps** — menos afundamento no impacto (olhe um corpo aterrissar).
 5. **Sleep / Delay → 0** — a pilha assentada congela mais cedo.
 6. **Show Colliders** — tem de concordar com a tecla **`B`**, sempre e nos dois sentidos.
@@ -96,9 +100,13 @@ ordem que o `eprintln` da cena repete:
 E confirme que **o app normal (sem a env) segue igual**: o painel nasce fechado
 (`DEFAULT_VISIBLE = false`) e a ponte é no-op sem corpos.
 
-⚠️ **O smoke que mais importa é o 3 e o 6**, porque são os dois em que uma implementação errada
-ainda parece plausível: o arrasto podendo parecer um freio global, e as duas portas do contorno
-podendo divergir.
+⚠️ **O smoke que mais importa é o 3**: é onde o 1º smoke reprovou. Air Drag tem de separar
+grande de pequeno; Damping tem de NÃO separar. Se os dois se comportarem igual, os modelos foram
+fundidos em algum ponto e os rótulos voltaram a mentir.
+
+⚠️ **E confira que a tecla `W` abre o painel** — no 1º smoke ela não abria porque o painel não
+estava no build. O gate `every_panel_the_shell_drives_is_in_its_registry` agora guarda isso, mas
+é uma tecla: veja com o olho.
 
 ## 6. Resumo
 
@@ -106,8 +114,9 @@ podendo divergir.
 `ph2d-physics` + `ph2d-physics-ecs` (meus módulos, aditivos, C9 intacto) · `ph2d-editor-core`
 (ids/z-order/scrollbar/dispatch) · `ph2d-i18n` · `ph2d-panel-registry-init` (blocos GERADOS) ·
 shell (consumidor). Crate nova `ph2d-panel-physics`. Contratos congelados: nenhum. Colisões a
-grepar: `PROJECT_SCHEMA=19`+tripla-pin · `EXPECTED_TYPED=19` · `NodeId(836)` · tecla `W` — os
-três primeiros **se CONTAM** se outra linha também bumpar. 24 gates novos, 22 mutações, 22
-sangram. Gate batched verde: fmt · clippy `--all-targets` · `check --workspace --all-targets` ·
-`nextest-impacted` (**4407 testes, 0 falhas**). Smoke pendente: `PH2D_PHYSICS_SMOKE=4`. Aguardo
+grepar: `PROJECT_SCHEMA=20`+tripla-pin · `EXPECTED_TYPED=19` · `NodeId(836)` · tecla `W` — os
+três primeiros **se CONTAM** se outra linha também bumpar. 30 gates novos, 26 mutações, 25 sangram
+(1 sobrevive POR PROJETO — o early-out de `k<=0` no drag: o contrato é honrado duas
+vezes, pelo ramo e pela aritmética). Gate batched verde: fmt · clippy `--all-targets` · `check --workspace --all-targets` ·
+`nextest-impacted` (**4413 testes, 0 falhas**). Smoke pendente: `PH2D_PHYSICS_SMOKE=4`. Aguardo
 ordem de integração / W2c / W3.*

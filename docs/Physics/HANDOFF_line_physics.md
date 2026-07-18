@@ -44,7 +44,7 @@
 | **W1 — Ponte ECS + tick + hash** | ✅ **INTEGRADO** (smoke aprovado) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
 | **W1.5 — Scrub (checkpoint ring)** | ✅ **INTEGRADO** (smoke aprovado) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
 | **W2a — Inspector body** | ✅ **INTEGRADO** (smoke aprovado) | ver §W2 | a autoria |
-| **W2b — Painel global de mundo** | ✅ **LANDOU** (pendente smoke) | ver §W2b | gravidade/solver/arrasto/sono + persistência |
+| **W2b — Painel global de mundo** | ✅ **LANDOU** (2 achados do smoke fechados; pendente re-smoke) | ver §W2b | gravidade/solver/arrasto/sono + persistência |
 | **W2c — Camadas de colisão** | ⏳ pendente | — | a matriz É metade: a outra é a camada por-corpo (Inspector) |
 | **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll; bumpa o schema **19 → 20** |
 | **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
@@ -459,7 +459,7 @@ joga fora, e a cena carregaria com a gravidade do documento ANTERIOR, em silênc
 arch-gate sobre o fonte (o fato é uma ORDEM; nenhum teste de unidade a alcança porque `gfx` é
 `None` sem janela).
 
-### Gates: 24 novos, 22 mutações, 22 sangram
+### Gates: 30 novos, 26 mutações, 25 sangram (1 sobrevive por projeto — ver acima)
 
 `ph2d-physics/tests/body_defaults.rs` (6 + 1 unit) · `ph2d-physics-ecs/tests/settings.rs` (6) ·
 `ph2d-panel-physics/tests/seam.rs` (9) · `project_tests` (2). Mutações: 7 + 6 + 8 + 1.
@@ -485,6 +485,71 @@ E duas metades do sono ficaram verdes **uma sem a outra**: uma bola ASSENTADA es
 qualquer threshold são e parada por qualquer timer são, então o knob sobrevivente decidia
 sozinho. Agora o threshold é provado por **queda livre** (a bola dorme NO AR — que é também o
 bug que o artista reportaria) e o timer por oráculo **diferencial** (dois timers, mesma cena).
+
+### ⚠️ O SMOKE DO W2b REPROVOU DUAS COISAS — e as duas já fecharam
+
+**1. *"não vejo o painel, não abre com w"* — ele não existia no build.**
+O shell declara `ph2d-panel-registry-init = { default-features = false }` e
+re-enumera os painéis na **própria** lista `default`. Eu liguei `panel-physics`
+na lista `default` da crate de registry, **que não alcança ninguém**. O painel
+nunca foi compilado no registro, e tudo a jusante funcionou perfeitamente sobre
+um painel que não existe: a tecla vira `panel_visibility["physics"]`, o walk de
+z-order pergunta o id ao registro, recebe `None`, não pinta nada. Sem erro, sem
+warning, sem símbolo faltando. E o `EXPECTED_TYPED` ficou **verde o tempo todo**,
+porque roda dentro da crate de registry com as features DELA — nada olhava o
+build do shell. Gate novo, escrito **onde o shell é compilado**:
+`every_panel_the_shell_drives_is_in_its_registry` (duas asserções: a feature está
+no `default` do shell · o registro que o grafo produz de fato contém o id, porque
+o push é codegen). Memória: [[feedback_a_default_feature_list_does_not_reach_a_consumer_that_disables_defaults]].
+
+**2. *"Air Drag… todos os objetos grandes e pequenos caem na mesma velocidade"* —
+verdade, e o erro era o RÓTULO.** Medido: com `linear_damping = 2.0`, quatro
+caixas cobrindo **25× de massa** caíram a **4,8925 m/s**, idênticas até a 4ª
+decimal. O `linear_damping` do rapier é um decaimento **uniforme** — massa e
+tamanho não podem entrar nele — e isso é o comportamento **correto** daquele
+knob (é o que Godot e Unity shipam). Só não é ar. Portei a equação publicada
+(`F = ½ρCdA|v|v` ⇒ para corpo 2D de densidade uniforme, `a ∝ v²/s`) em
+`ph2d-physics/src/world/drag.rs`, e os **dois modelos coexistem, separados por
+SEÇÃO** — é a seção que os mantém distinguíveis:
+
+| seção | knob | o que faz |
+|---|---|---|
+| **Air Drag** | Density | escala com a secção transversal, resistido pela massa ⇒ **o grande cai mais rápido** |
+| **Damping** | Linear · Angular | decaimento uniforme ⇒ **tudo desacelera igual** |
+
+Memória: [[feedback_a_label_must_promise_what_the_model_delivers]].
+
+⚠️ **`add_force` do rapier é força CONSTANTE até `reset_forces`, e o pipeline
+nunca a limpa** — aplicar por substep acumulou ~720× pela terceira segunda, e as
+velocidades terminais saíram **não-monotônicas** (0,05 / 0,51 / 0,52 / 0,01 m/s),
+que foi o que me mandou olhar. O primitivo certo para *"esta força, por esta
+fatia de tempo"* é o **impulso** (`F·dt`): não carrega estado e deixa o canal de
+força do usuário livre.
+
+**Teto MEDIDO `MAX_AIR_DRAG = 10`, e o recurso é o LIMIAR DE SONO:** terminal é
+`√(mg/(k·L))`, então a `k=20` o corpo de 0,28 m cai abaixo do threshold e
+**dorme no ar** (leu 0,00). Parece bug, não ar grosso.
+
+**`PROJECT_SCHEMA` 19 → 20** (o `air_drag` é campo apendado ao `PhysicsSettings`,
+que entra no layout do `ProjectFile.physics`).
+
+**Gates novos: 6** (4 de drag + 2 de registro), **4 mutações de drag**:
+- o oráculo do terminal é a **forma fechada publicada**, não um número que este
+  código produziu (barra de 2%);
+- ⚠️ *"o maior cai mais rápido"* **sozinho não basta**: com `length = 1.0` o
+  terminal ainda cresce com o tamanho (a massa ainda varia) — quem pega a
+  regressão é a equação;
+- *"zero é byte-idêntico"* (trajetória, não endpoint) protege os hashes C9;
+- e um gate afirma que o **damping continua UNIFORME**: se um refactor fundir os
+  dois modelos, o knob que DEVE ignorar tamanho para de ignorar em silêncio, e a
+  rotulagem honesta do painel volta a ser mentira;
+- ⚠️ a mutação que remove o early-out de `k<=0` **SOBREVIVE, por projeto**: a
+  força seria o vetor zero e o impulso um no-op, então o contrato é honrado
+  **duas vezes** (pelo ramo e pela aritmética) — mesma forma do early-out de
+  tinta plana na luz GPU do impasto. O comentário dizia mais do que o ramo faz;
+  agora diz que é só caminho rápido.
+
+---
 
 ### Fiação (o mapa do handoff de continuação, agora percorrido)
 

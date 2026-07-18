@@ -17,6 +17,7 @@
 - ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — pare de calibrar; questione o modelo
 - [Remédio novo torna o velho CONTAGEM DUPLA](feedback_a_new_remedy_makes_the_old_one_double_counting.md) — obsoleto não quebra gate; ao 3º ajuste da mesma constante, questione o modelo
 - [Parâmetro que não muda NADA = resultado descartado a jusante](feedback_a_parameter_that_changes_nothing_is_discarded_downstream.md) — grepe o consumidor, não o produtor; área é proxy fraco de "mesma região"
+- [O rótulo promete o que o MODELO entrega](feedback_a_label_must_promise_what_the_model_delivers.md) — "Air Drag" sobre damping uniforme: bug sem uma linha errada
 - [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — gate verde pode pinar bug de DESIGN
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md) — smoke com `cd <worktree> &&` junto
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = exemplo auto-play; não peça montagem
@@ -75,6 +76,7 @@
 - [1º caso salvo por efeito colateral](feedback_first_case_rescued_by_side_effect_test_repetition.md) — teste a REPETIÇÃO
 - [Não-reprodução ≠ correção](feedback_nonreproduction_is_not_proof_of_fix.md) — cheque o `git diff` antes de aceitar
 - [Unit-verde ≠ funciona no produto](feedback_tool_unit_green_integration_dead.md) — tool passa CI e está morta; só e2e pega
+- [Lista `default` não alcança quem desliga defaults](feedback_a_default_feature_list_does_not_reach_a_consumer_that_disables_defaults.md) — painel invisível com `EXPECTED_TYPED` verde; gate mora onde o binário compila
 - [Um clique é um press que DESLIZOU](feedback_a_click_is_a_press_that_drifted.md) — Down/Up na mesma coord é robô
 - [Pintado ≠ populado](feedback_painted_is_not_populated_paint_gate.md) — teste a PINTURA; nenhum gate rodava `paint`
 - [Widget pronto = um teste CLICA nele](feedback_widget_is_done_when_a_test_clicks_it.md) — sem `WidgetStore` não há Click

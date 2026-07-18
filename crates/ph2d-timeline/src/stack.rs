@@ -471,14 +471,33 @@ impl ClipLane {
     /// clip extrapolation, and it is what makes the lone fade behave like the overlap
     /// the animator already trusts.
     ///
-    /// **Forward only.** A strip does not reach back before it starts: fading in from
-    /// the rest pose at the top of a timeline is a real thing to want, and there is
-    /// nothing behind the first strip to hold anyway.
+    /// **Forward only — UNLESS a loop makes the lane cyclic.** A strip does not reach
+    /// back before it starts: fading in from the rest pose at the top of a timeline is
+    /// a real thing to want, and there is nothing behind the first strip to hold.
+    ///
+    /// That last clause is true of a timeline you play once, and **false of one you
+    /// loop**: what is "before the first strip" on the ruler is "after the last one"
+    /// in playback. With a loop armed the wrap put the object at the last strip's pose
+    /// one frame and at the rest pose the next, so a fade-in at the top jumped instead
+    /// of crossing from where the object actually was (Enio, 2026-07-16). Inside the
+    /// loop the lane therefore holds **what the loop's end leaves asserting** — read at
+    /// the instant the wrap happens, which is that strip's frozen last frame when it
+    /// ends inside the loop and its live pose when it straddles the end. Outside the
+    /// loop range nothing wraps and the fade-from-rest above is untouched.
+    ///
+    /// Returns the held strip, **the clip second it is asserting**, and the weight. The
+    /// time is returned rather than re-derived by the caller because the two cases
+    /// answer it differently, and a caller that picked would be a second opinion about
+    /// which frame is being held.
     ///
     /// The weight is the complement of what is live, which is exactly what turns the
     /// normalized mix into a plain `lerp(held, incoming, w)` — see the tests.
     #[must_use]
-    pub fn hold_at(&self, t: f64) -> Option<(&ClipStrip, f64)> {
+    pub fn hold_at(
+        &self,
+        t: f64,
+        loop_range: Option<(f64, f64)>,
+    ) -> Option<(&ClipStrip, f64, f64)> {
         let live: f64 = (0..self.strips.len()).map(|i| self.weight_at(i, t)).sum();
         let w = 1.0 - live;
         if w <= 0.0 {
@@ -487,12 +506,30 @@ impl ClipLane {
         // The most recently ENDED strip. A scan, not `strips.last()`: the lane is
         // sorted by START time, and a long strip can begin before a short one and
         // outlive it.
-        let held = self
+        if let Some(held) = self
             .strips
             .iter()
             .filter(|s| s.t_end <= t)
-            .max_by(|a, b| a.t_end.total_cmp(&b.t_end))?;
-        Some((held, w))
+            .max_by(|a, b| a.t_end.total_cmp(&b.t_end))
+        {
+            return Some((held, held.hold_source_time(), w));
+        }
+        // Nothing has ended yet. Under a loop that brackets `t`, wrap: the pose the
+        // object is coming FROM is the one the loop's end leaves behind.
+        let (a, b) = loop_range?;
+        if t < a || t >= b {
+            return None;
+        }
+        let last = self
+            .strips
+            .iter()
+            .max_by(|x, y| x.t_end.total_cmp(&y.t_end))?;
+        // Read it AT the wrap. Clamped into its own span, so this is `hold_source_time`
+        // for a strip that ended before the loop does, and its live pose for one that
+        // is still playing when the loop wraps — one expression, no branch to keep in
+        // step with the other case.
+        let elapsed = (b - last.t_start).clamp(0.0, last.span()); // CLAMP-OK: span() >= 0
+        Some((last, last.fold(elapsed), w))
     }
 }
 

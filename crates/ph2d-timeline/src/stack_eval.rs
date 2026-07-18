@@ -168,14 +168,17 @@ impl StackScratch {
                 // the last strip to end — the gap is not silence, and a fade-in
                 // against nothing crosses from there rather than from the rest pose
                 // (`ClipLane::hold_at` carries the whole argument).
-                if let Some((strip, w)) = lane.hold_at(t)
+                // The TIMELINE loop (`false` = the Arrange view's), because the stack
+                // runs on the timeline's clock: under it the lane is CYCLIC and the
+                // hold at the top wraps to what the loop's end leaves asserting.
+                if let Some((strip, t_clip, w)) = lane.hold_at(t, doc.active_loop_for(false))
                     && (strip.clip as usize) < doc.clips().len()
                 {
                     self.active.push(ActiveStrip {
                         lane: li,
                         clip: strip.clip as usize,
                         w,
-                        t_clip: strip.hold_source_time(),
+                        t_clip,
                         src_in: strip.src_in,
                         held: true,
                     });

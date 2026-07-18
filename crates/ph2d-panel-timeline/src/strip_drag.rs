@@ -45,12 +45,14 @@ pub(crate) fn apply(
                 edge,
                 start_x: g.x,
                 start_span: (s.t_start, s.t_end),
-                // The fade the panel DREW at this edge. Reading `blend_*` (and not the
-                // strip's `ease_*`, which the snapshot does not even carry) is what keeps
-                // the handle and the wedge the same object: the grip starts where the
-                // wedge tip is, so it cannot jump on the first pixel of the drag.
+                // The fade the panel DREW at this edge, as a SIGNED offset from the start
+                // corner: `+blend_in` when the fade-in reaches INWARD, `-lead_in` when it
+                // reaches OUTWARD into the gap (the two are exclusive). Reading the drawn
+                // numbers (not the strip's raw `ease_*`) is what keeps the handle and the
+                // wedge the same object: the grip starts where the wedge tip is, so it
+                // cannot jump on the first pixel of the drag.
                 start_ease: match edge {
-                    EASE_IN => s.blend_in,
+                    EASE_IN => s.blend_in - s.lead_in,
                     EASE_OUT => s.blend_out,
                     _ => 0.0,
                 },
@@ -129,21 +131,35 @@ fn emit(
         // (`ease_locked_*`), so a drag that reaches here is always about a fade the
         // strip owns. The apply clamps to `[0, span]` anyway: the document is not a
         // place to trust the caller.
-        EASE_IN | EASE_OUT => {
-            let ease = if d.edge == EASE_IN {
-                let tip = snapped(state, snap, a0 + (d.start_ease + dt));
-                tip - a0
-            } else {
-                let tip = snapped(state, snap, b0 - (d.start_ease - dt));
-                b0 - tip
-            };
+        // The fade-out grip is inward-only. The fade-in grip's tip can cross the start
+        // edge: RIGHT of it grows `ease_in` (blend against the clip PLAYING); LEFT of it,
+        // into the gap, grows `lead_in` (the OUTWARD travel fade — blend against the clip's
+        // FROZEN first frame). One handle, two intents, the edge is the pivot.
+        EASE_OUT => {
+            let tip = snapped(state, snap, b0 - (d.start_ease - dt));
             TimelineIntent::SetStripEase {
                 lane: d.lane,
                 id: d.id,
-                // The panel's grip codes are 3/4; the document's edge vocabulary is the
-                // same 0/1 as Trim and Stretch. One edge, one name.
-                edge: u8::from(d.edge == EASE_OUT),
-                seconds: ease.max(0.0),
+                edge: 1, // the document's edge vocabulary — same 0/1 as Trim and Stretch
+                seconds: (b0 - tip).max(0.0),
+            }
+        }
+        EASE_IN => {
+            let tip = snapped(state, snap, a0 + (d.start_ease + dt));
+            let extent = tip - a0;
+            if extent >= 0.0 {
+                TimelineIntent::SetStripEase {
+                    lane: d.lane,
+                    id: d.id,
+                    edge: 0,
+                    seconds: extent,
+                }
+            } else {
+                TimelineIntent::SetStripLead {
+                    lane: d.lane,
+                    id: d.id,
+                    seconds: -extent, // the tip dragged into the gap: the outward length
+                }
             }
         }
         // The body SLIDES, rigidly. Clamped at zero so a strip cannot be dragged

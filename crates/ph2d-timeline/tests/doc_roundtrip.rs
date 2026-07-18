@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_five() {
+fn schema_version_is_six() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -97,10 +97,12 @@ fn schema_version_is_five() {
     // v5 = a SECOND loop per clip (`keys_loop_range` + `keys_loop_ping_pong`,
     //      appended) — the Keys view loops the clip's clock independently of the
     //      Arrange timeline loop (Enio, 2026-07-16).
+    // v6 = a strip's fade-in can reach OUTWARD into the gap before it
+    //      (`ClipStrip.lead_in`, appended) — the travel fade (Enio, 2026-07-16).
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 5);
-    assert_eq!(TimelineDoc::new().version, 5);
+    assert_eq!(DOC_VERSION, 6);
+    assert_eq!(TimelineDoc::new().version, 6);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and
@@ -122,6 +124,21 @@ fn each_clips_two_loops_round_trip_independently() {
     assert!(!back.active_ping_pong_for(false), "Arrange wraps");
     assert_eq!(back.active_loop_for(true), Some((1.5, 4.0)), "Keys loop");
     assert!(back.active_ping_pong_for(true), "Keys ping-pongs");
+}
+
+/// **A strip's outward lead-in survives the trip.** Appended field (v6), positional
+/// format — a layout slip would read it from the wrong bytes.
+#[test]
+fn a_strips_outward_lead_survives_the_trip() {
+    let mut doc = TimelineDoc::new();
+    let lane = doc.add_lane("L".into()).unwrap();
+    let id = doc.add_strip(lane, 0, 3.0, 6.0).unwrap();
+    doc.strip_mut(lane, id).unwrap().lead_in = 1.25;
+    let back = roundtrip(&doc);
+    assert!(
+        (back.strip(lane, id).unwrap().lead_in - 1.25).abs() < 1e-12,
+        "the outward lead-in survives serialization"
+    );
 }
 
 #[test]

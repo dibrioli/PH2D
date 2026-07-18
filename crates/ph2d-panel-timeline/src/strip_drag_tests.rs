@@ -27,6 +27,7 @@ fn snap() -> TimelineViewSnapshot {
                 // `arch_no_absolute_drag_pattern` existe para pegar.
                 blend_in: 0.25,
                 blend_out: 0.25,
+                lead_in: 0.0,
                 ease_locked_in: false,
                 ease_locked_out: false,
                 loop_mode: StripLoop::Once,
@@ -303,6 +304,34 @@ fn dragging_the_fade_in_grip_authors_the_strips_own_fade() {
     assert!(
         (*seconds - 0.75).abs() < 1e-9,
         "o arrasto e um DELTA sobre a fade que ja existe (0,25 + 0,5): {seconds}"
+    );
+}
+
+/// **Dragging the fade-in grip PAST the start edge, into the gap, authors the OUTWARD
+/// fade (`SetStripLead`)** — the travel across the gap (Enio, 2026-07-16). Right of the
+/// edge it is the inward `SetStripEase` (the gate above); the edge is the pivot, one
+/// handle two intents.
+#[test]
+fn dragging_the_fade_in_grip_into_the_gap_authors_the_outward_lead() {
+    // The fixture's fade-in tip sits at t = 1.25 (blend_in 0.25). Drag the pointer left
+    // to x = 50 (−0.5 s): the tip lands at t = 0.75, which is 0.25 s BEFORE the strip's
+    // start — an outward lead of 0.25 s, not a negative inward fade.
+    let out = drag(3, 50.0);
+    let lead = out.iter().find_map(|i| match i {
+        TimelineIntent::SetStripLead { lane, id, seconds } => {
+            assert_eq!((*lane, *id), (0, StripId(7)));
+            Some(*seconds)
+        }
+        _ => None,
+    });
+    assert!(
+        lead.is_some_and(|s| (s - 0.25).abs() < 1e-9),
+        "into the gap → SetStripLead(0.25): {out:?}"
+    );
+    assert!(
+        !out.iter()
+            .any(|i| matches!(i, TimelineIntent::SetStripEase { .. })),
+        "and NOT an inward SetStripEase — the tip crossed the start edge"
     );
 }
 

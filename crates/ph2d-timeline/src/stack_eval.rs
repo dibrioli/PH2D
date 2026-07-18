@@ -144,11 +144,16 @@ impl StackScratch {
                     // Custo: no máximo um punhado de strips de peso zero na lista, e só nas beiras
                     // exatas de um fade (o clamp da soma garante que o peso só zera nos extremos).
                     let w = lane.weight_at(si, t);
+                    // `source_time_with_lead`, not `source_time`: in the strip's outward
+                    // lead-in window (in the gap before it) this returns the FROZEN first
+                    // frame, so the strip contributes a still pose there — the travel the
+                    // lead-in is. `weight_at` above already ramps over the same window, so
+                    // the two agree on where the strip is present.
                     let (Some(t_clip), true) = (
-                        strip.source_time(t),
+                        strip.source_time_with_lead(t),
                         (strip.clip as usize) < doc.clips().len(),
                     ) else {
-                        continue; // outside the strip, or a clip that was deleted
+                        continue; // outside the strip (+ its lead-in), or a deleted clip
                     };
                     self.active.push(ActiveStrip {
                         lane: li,

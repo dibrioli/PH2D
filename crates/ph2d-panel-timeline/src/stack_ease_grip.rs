@@ -93,6 +93,29 @@ pub(crate) fn ease_grips(body: Rect, in_px: f32, out_px: f32) -> Option<(Rect, R
     ))
 }
 
+/// Both fade grips, honouring an **outward** fade-in (`lead_px`).
+///
+/// When `lead_px > 0` the fade-in grip sits in the GAP to the LEFT of the body — at
+/// the outer tip of the travel wedge (`t_start - lead`) — where it cannot collide with
+/// the fade-out grip, so the two are placed independently (no pairing dance). Its bar,
+/// like the inward fade-in's, marks the wedge's outer tip (`g.x`). With `lead_px == 0`
+/// this is exactly [`ease_grips`] — the inward pair, byte-for-byte unchanged.
+pub(crate) fn strip_grips(
+    body: Rect,
+    lead_px: f32,
+    in_px: f32,
+    out_px: f32,
+) -> Option<(Rect, Rect)> {
+    if lead_px <= 0.0 {
+        return ease_grips(body, in_px, out_px);
+    }
+    // The fade-out at its inward spot; the fade-in is outward, so there is nothing for
+    // it to collide with (borrow the out placement from the pair, ignore the in).
+    let (_, out) = ease_grips(body, 0.0, out_px)?;
+    let fade_in = Rect::new(body.x - lead_px, body.y, EASE_W, body.h);
+    Some((fade_in, out))
+}
+
 /// Do two rects share a pixel?
 pub(crate) fn overlaps(a: Rect, b: Rect) -> bool {
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h

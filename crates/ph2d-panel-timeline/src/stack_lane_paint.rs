@@ -22,7 +22,7 @@ use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::graph::TimeView;
-use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, ease_grips, overlaps};
+use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, overlaps, strip_grips};
 use crate::state::TimelinePanelState;
 use crate::strip_paint::paint_strip;
 use crate::{geom, ids};
@@ -260,8 +260,9 @@ fn paint_lane(
     let eases: Vec<(u64, u8, Rect, bool)> = boxes
         .iter()
         .filter_map(|(s, body)| {
-            let (a, b) = ease_grips(
+            let (a, b) = strip_grips(
                 *body,
+                blend_px(view, s.t_start, s.lead_in),
                 blend_px(view, s.t_start, s.blend_in),
                 blend_px(view, s.t_start, s.blend_out),
             )?;

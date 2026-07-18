@@ -12,7 +12,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::graph::TimeView;
-use crate::stack_ease_grip::{EASE_BAR_W, blend_px, ease_grips};
+use crate::stack_ease_grip::{EASE_BAR_W, blend_px, strip_grips};
 
 /// Below this, a rate is real time and the strip says nothing about it.
 const SPEED_EPS: f64 = 1e-6; // LITERAL-PX-OK: not a length — a "is it exactly 1" epsilon
@@ -72,6 +72,26 @@ pub(crate) fn paint_strip(
         );
     }
 
+    // **The OUTWARD fade-in wedge — the travel band in the gap BEFORE the strip.** It
+    // sits to the LEFT of the box (over empty lane time), so it cannot reuse the loop
+    // above, which clamps every wedge inside the body. It reads as "this clip's entry
+    // reaches back here": the object crosses from the previous strip's pose to this
+    // clip's first frame over this band, and then the clip plays clean (Enio,
+    // 2026-07-16). Drawn within the lane's time-band clip, so a lead that runs off the
+    // left is clipped, not spilled.
+    if s.lead_in > 0.0 {
+        let a = view.x(s.t_start - s.lead_in);
+        let b = view.x(s.t_start);
+        if b > a {
+            fill_rounded_rect(
+                ctx.scene,
+                Rect::new(a, body.y, b - a, body.h),
+                Radius::Xs.px(),
+                wedge,
+            );
+        }
+    }
+
     // **As alças de fade (B4): uma BARRA na ponta de cada cunha**, não um pontinho na quina.
     //
     // A barra vai de cima a baixo do strip porque é isso que ela É — uma borda arrastável, como a
@@ -82,8 +102,9 @@ pub(crate) fn paint_strip(
     // CINZA onde um vizinho define a janela: ali a sobreposição É o fade, e o jeito de mudá-la é
     // mover os strips. A barra continua pintada (o artista precisa VER que a borda está falada) e
     // não é registrada — botão dimmed que ainda despacha é botão que mente.
-    if let Some((a, b)) = ease_grips(
+    if let Some((a, b)) = strip_grips(
         body,
+        blend_px(view, s.t_start, s.lead_in),
         blend_px(view, s.t_start, s.blend_in),
         blend_px(view, s.t_start, s.blend_out),
     ) {

@@ -385,6 +385,24 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 }
             }
         }),
+        // The OUTWARD fade-in (the travel across the gap). Clamped to the gap before the
+        // strip so it never overruns the previous strip's live span, and it CLEARS the
+        // inward `ease_in`: the fade-in handle authors one side of the edge or the other,
+        // never both (the evaluator would blend against both a frozen and a live opening).
+        // The gap is read from the LANE (it needs the neighbours), so the strip index is
+        // resolved first.
+        I::SetStripLead { lane, id, seconds } => edit(state, |doc, _| {
+            let Some(l) = doc.stack_mut().get_mut(lane) else {
+                return;
+            };
+            let Some(i) = l.index_of(id) else {
+                return;
+            };
+            let gap = l.gap_before(i);
+            let s = &mut l.strips[i];
+            s.lead_in = seconds.clamp(0.0, gap); // CLAMP-OK: 0..the empty time before it
+            s.ease_in = 0.0; // the inward fade-in and the outward one are exclusive
+        }),
         I::SetStripSpeed { lane, id, speed } => edit(state, |doc, _| {
             if let Some(s) = doc.strip_mut(lane, id) {
                 // The span follows the rate, `t_start` pinned — the same edit

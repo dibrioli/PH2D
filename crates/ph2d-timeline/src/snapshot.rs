@@ -75,6 +75,11 @@ pub struct StripView {
     pub blend_in: f64,
     /// Mirror of `blend_in`, at the end.
     pub blend_out: f64,
+    /// The OUTWARD fade-in ("lead-in"), in seconds — the fade that lives in the gap
+    /// BEFORE the strip (the travel to this clip's start pose). The panel draws its
+    /// wedge and grip to the LEFT of the strip's box, and it is mutually exclusive with
+    /// `blend_in` (the fade-in grip is on one side of the start edge or the other).
+    pub lead_in: f64,
     /// The window at this edge is defined by a NEIGHBOUR (the overlap), not by the
     /// strip's own `ease_in`/`ease_out` — so the ease handle there is **read-only**:
     /// the overlap wins, and the way to change the fade is to move the strips.
@@ -267,6 +272,7 @@ impl TimelineViewSnapshot {
                     t_end: st.t_end,
                     blend_in: lane.blend_in(i),
                     blend_out: lane.blend_out(i),
+                    lead_in: st.lead_in,
                     ease_locked_in: lane.neighbour_reach_in(i) > 0.0,
                     ease_locked_out: lane.neighbour_reach_out(i) > 0.0,
                     loop_mode: st.loop_mode,

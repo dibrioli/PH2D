@@ -69,6 +69,7 @@ fn keys_and_a_stack(clip_time: Option<f64>, playhead: f64) -> TimelineViewSnapsh
                 t_end: 5.0,
                 blend_in: 0.0,
                 blend_out: 0.0,
+                lead_in: 0.0,
                 ease_locked_in: false,
                 ease_locked_out: false,
                 loop_mode: StripLoop::Once,

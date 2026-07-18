@@ -98,6 +98,16 @@ pub struct ClipStrip {
     pub ease_in: f64,
     /// Authored fade-out, in seconds. Same rule.
     pub ease_out: f64,
+    /// **Outward fade-in ("lead-in"), in seconds** — the fade that lives in the GAP
+    /// *before* the strip, not inside it (Enio, 2026-07-16). Where `ease_in` blends
+    /// against this clip while it PLAYS (its opening is spent in the crossfade), the
+    /// lead-in blends against the clip's FROZEN first frame: the object travels from
+    /// the previous strip's held pose to this clip's start pose during the gap, and
+    /// then the clip plays from frame 0 untouched. It reaches back from `t_start` and
+    /// is mutually exclusive with `ease_in` (the fade-in grip is on one side of the
+    /// edge or the other). Appended (`DOC_VERSION` 5 -> 6); `0.0` is the old
+    /// behaviour byte-for-byte.
+    pub lead_in: f64,
 }
 
 impl ClipStrip {
@@ -119,6 +129,7 @@ impl ClipStrip {
             loop_mode: StripLoop::Once,
             ease_in: 0.0,
             ease_out: 0.0,
+            lead_in: 0.0,
         }
     }
 
@@ -157,6 +168,30 @@ impl ClipStrip {
     #[must_use]
     pub fn source_time(&self, t: f64) -> Option<f64> {
         self.covers(t).then(|| self.fold(t - self.t_start))
+    }
+
+    /// Where the outward fade-in reaches back to — `t_start - lead_in`, clamped so a
+    /// lead never starts before time zero.
+    #[must_use]
+    pub fn lead_start(&self) -> f64 {
+        (self.t_start - self.lead_in.max(0.0)).max(0.0)
+    }
+
+    /// The clip time this strip reads INCLUDING its outward lead-in.
+    ///
+    /// In the lead-in window `[lead_start, t_start)` it returns `src_in` — the clip's
+    /// FROZEN first frame, the pose the object travels TO across the gap — regardless
+    /// of loop mode (the travel is to the first frame, not to a wrapped one). Inside
+    /// the span it is [`Self::source_time`]; outside both, `None`. This is the door the
+    /// evaluator samples through, so the lead-in window contributes a still pose, not a
+    /// negative/extrapolated time.
+    #[must_use]
+    pub fn source_time_with_lead(&self, t: f64) -> Option<f64> {
+        if self.lead_in > 0.0 && t >= self.lead_start() && t < self.t_start {
+            Some(self.src_in) // the frozen first frame — the travel target
+        } else {
+            self.source_time(t)
+        }
     }
 
     /// **The clip time this strip HOLDS once it is over** — its reading at the very
@@ -339,15 +374,42 @@ impl ClipLane {
     /// The product is Unity's shape (`mixIn(t) * mixOut(t)`), and the ramp is
     /// smoothstep — an S, not a line, because a linear crossfade has a visible
     /// corner in velocity at both ends. Transcendental-free (HR-5).
+    ///
+    /// **The fade-in reaches OUTWARD by `lead_in`.** The ramp runs `0 -> 1` over
+    /// `[lead_start, t_start + blend_in]`, so the strip is "present" in its lead-in
+    /// window (in the gap), and [`Self::hold_at`] gives the complement to the previous
+    /// strip's held pose: the object travels from that pose to this clip's frozen first
+    /// frame ([`ClipStrip::source_time_with_lead`]) across the gap, and reaches full
+    /// weight exactly at `t_start` — where the clip starts playing clean. With no lead
+    /// (`lead_in == 0`) the window is `[t_start, ...]` and this is byte-for-byte the old
+    /// behaviour.
     #[must_use]
     pub fn weight_at(&self, i: usize, t: f64) -> f64 {
         let s = &self.strips[i];
-        if !s.covers(t) {
+        let lead = s.lead_in.max(0.0);
+        if t < s.lead_start() || t >= s.t_end {
             return 0.0;
         }
-        let fade_in = ramp(t - s.t_start, self.blend_in(i));
+        let fade_in = ramp(t - s.lead_start(), lead + self.blend_in(i));
         let fade_out = ramp(s.t_end - t, self.blend_out(i));
         fade_in * fade_out
+    }
+
+    /// The empty span before strip `i` — from the end of the nearest strip that ends
+    /// at or before it (or time 0 if none) up to its start. This is how far a lead-in
+    /// may reach without overrunning a neighbour's live span: the outward fade lives in
+    /// the GAP, and the gap ends where the previous strip does.
+    #[must_use]
+    pub fn gap_before(&self, i: usize) -> f64 {
+        let s = &self.strips[i];
+        let prev_end = self
+            .strips
+            .iter()
+            .enumerate()
+            .filter(|(j, o)| *j != i && o.t_end <= s.t_start)
+            .map(|(_, o)| o.t_end)
+            .fold(0.0_f64, f64::max);
+        (s.t_start - prev_end).max(0.0)
     }
 
     /// **Which strip is HOLDING at `t`, and how strongly** — the lane's answer for

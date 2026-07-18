@@ -32,7 +32,10 @@ use crate::stack_eval::StackScratch;
 /// loops the timeline (the original `loop_range`); the Keys tab loops the clip's own
 /// clock, independently (Enio, 2026-07-16). Appended; both `None`/`false` behaves
 /// exactly as v4.
-pub const DOC_VERSION: u32 = 5;
+/// v6: a strip's fade-in can reach OUTWARD into the gap before it
+/// (`ClipStrip.lead_in`, appended) — the travel fade (Enio, 2026-07-16). `0.0` is
+/// the old behaviour byte-for-byte.
+pub const DOC_VERSION: u32 = 6;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;

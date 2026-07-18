@@ -425,4 +425,25 @@ pub enum TimelineIntent {
         /// than the strip is not a fade, and a negative one is not a thing.
         seconds: f64,
     },
+    /// **The strip's OUTWARD fade-in — the "lead-in" that lives in the gap before it**
+    /// (Enio, 2026-07-16). What the fade-in corner handle authors when dragged PAST the
+    /// strip's start edge, into the empty time before it.
+    ///
+    /// It is a different blend from [`Self::SetStripEase`]'s fade-in: that one crossfades
+    /// against this clip while it PLAYS; this one crossfades against the clip's FROZEN
+    /// first frame, so the object travels from the previous strip's held pose to this
+    /// clip's start pose during the gap, and the clip then plays from frame 0 untouched
+    /// (`ClipStrip::lead_in`). Clamped to `[0, gap]` on apply — the outward fade lives in
+    /// the gap and cannot overrun the previous strip. Setting it clears the inward
+    /// `ease_in`: the fade-in handle is on one side of the edge or the other, never both.
+    /// Start edge only; the fade-out's outward twin ("release to rest") is a distinct
+    /// operation, deliberately not built here.
+    SetStripLead {
+        /// Index into the stack.
+        lane: usize,
+        /// Stable identity.
+        id: StripId,
+        /// The outward fade-in's length in seconds (into the gap before `t_start`).
+        seconds: f64,
+    },
 }

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 /// How the solver treats a body. **Append-only** (new variants at the END
 /// — postcard encodes the discriminant positionally, so appending keeps
-/// old saves readable). `Kinematic` lands with W2/W3.
+/// old saves readable).
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BodyKind {
     /// Falls under gravity, collides, is pushed — the common case.
@@ -22,6 +22,72 @@ pub enum BodyKind {
     Dynamic,
     /// Immovable (floor, wall). Infinite mass; the solver never moves it.
     Static,
+    /// **Driven by its `Transform`, and it pushes.** The solver never moves
+    /// it; every tick the bridge aims it at wherever the entity's `Transform`
+    /// now says, and rapier derives the velocity it needed to get there — so
+    /// a dynamic body resting on it is carried, and one in its way is shoved.
+    ///
+    /// This is the kind an ANIMATED body has: a platform on a timeline track,
+    /// and — the reason it lands in W4 — a body whose motion has been **baked**
+    /// out of the simulation into curves. Baking is exactly the moment a pose
+    /// stops being an output of the solver and becomes an input to it, and
+    /// that change of direction is what this variant names.
+    ///
+    /// It is NOT `Static`. A static body teleported along a curve arrives with
+    /// zero velocity, so contacts are discovered already overlapping and the
+    /// penetration solver squirts things out sideways; and `readback` skips
+    /// both kinds, so on screen the two would look identical right up to the
+    /// first touch. See `PhysicsWorld::set_next_kinematic_pose`.
+    ///
+    /// Appended — the discriminant is a frozen wire value (`Dynamic` 0,
+    /// `Static` 1, `Kinematic` 2), and `PhysicsFieldEdit::Kind` carries the
+    /// same tags.
+    Kinematic,
+}
+
+impl BodyKind {
+    /// Does the SOLVER own this body's pose, or does the scene?
+    ///
+    /// One door, because two halves of the bridge ask it from opposite sides:
+    /// `readback` writes `Transform` only for a body the solver owns, and the
+    /// kinematic drive writes rapier only for a body it does not. A body that
+    /// both sides claimed would have its pose written twice per tick, and the
+    /// one that landed second would win in silence.
+    #[must_use]
+    pub fn solver_owns_pose(self) -> bool {
+        matches!(self, BodyKind::Dynamic)
+    }
+
+    /// The `u8` this kind travels as across the UI boundary
+    /// (`InspectorPhysicsInfo.kind_tag`, `PhysicsFieldEdit::Kind`), and back.
+    ///
+    /// One door, both directions. The tag was previously produced by a `match`
+    /// in the snapshot builder and consumed by an `if tag == 1 { Static } else
+    /// { Dynamic }` in the edit handler — two spellings of one mapping, and the
+    /// consuming one folded **every** unrecognised tag onto `Dynamic`. With two
+    /// variants that was merely redundant; the moment a third exists it is a
+    /// chip the artist can click that quietly selects a different kind.
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        match self {
+            BodyKind::Dynamic => 0,
+            BodyKind::Static => 1,
+            BodyKind::Kinematic => 2,
+        }
+    }
+
+    /// Recover a kind from its tag. `None` for a tag no variant claims — the
+    /// caller decides what to do about a value it did not expect, rather than
+    /// being handed a plausible one.
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Option<BodyKind> {
+        match tag {
+            0 => Some(BodyKind::Dynamic),
+            1 => Some(BodyKind::Static),
+            2 => Some(BodyKind::Kinematic),
+            _ => None,
+        }
+    }
 }
 
 /// The collider silhouette, in **world units (meters)** — the same unit as

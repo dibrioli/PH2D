@@ -206,6 +206,7 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("INSP_PHYS_REMOVE", ids::INSP_PHYS_REMOVE),
     ("INSP_PHYS_KIND[0]", ids::INSP_PHYS_KIND[0]),
     ("INSP_PHYS_KIND[1]", ids::INSP_PHYS_KIND[1]),
+    ("INSP_PHYS_KIND[2]", ids::INSP_PHYS_KIND[2]),
     ("INSP_PHYS_SHAPE[0]", ids::INSP_PHYS_SHAPE[0]),
     ("INSP_PHYS_SHAPE[1]", ids::INSP_PHYS_SHAPE[1]),
     ("INSP_PHYS_RADIUS", ids::INSP_PHYS_RADIUS),

@@ -273,6 +273,12 @@ impl PhysicsBridge {
             // and it is equally a scrub FORWARD while paused — the sim state
             // is a function of the tick, not of the play button.
             std::cmp::Ordering::Greater => {
+                // Kinematic bodies are INPUTS to this step, so they are aimed
+                // before it runs. Once, not once per owed tick: the scene's
+                // `Transform` is written per FRAME (by a timeline curve or by
+                // hand) and does not change between the ticks one frame owes,
+                // so re-aiming at the same pose would only re-state it.
+                self.drive_kinematic(sim);
                 let mut tick = self.last_stepped;
                 for _ in 0..(target - self.last_stepped) {
                     self.world.step();
@@ -445,14 +451,48 @@ impl PhysicsBridge {
         self.to_spawn.clear();
     }
 
+    /// Aim every kinematic body at the pose its entity's `Transform` now
+    /// holds — the mirror image of [`Self::readback`], and the reason a baked
+    /// body still shoves the sim instead of ghosting through it.
+    ///
+    /// Nothing here decides WHERE the body goes; the scene already did, and
+    /// this stage only tells rapier. That is the whole contract of the kind:
+    /// the pose is an input, so a curve, a gizmo drag and a parent's motion
+    /// all drive it identically, with no branch per author.
+    fn drive_kinematic(&mut self, sim: &SimWorld) {
+        let world = sim.world();
+        for (&e, b) in self.bodies.iter() {
+            // Three kinds, three answers, and `Static` is in NEITHER stage:
+            // the solver does not own its pose (so `readback` skips it) and
+            // the scene does not push it per tick either — a wall that has
+            // been moved by hand is caught by `settle`, while paused, where
+            // zeroing its velocity is the correct thing rather than a bug.
+            if b.kind != BodyKind::Kinematic {
+                continue;
+            }
+            if let Some(t) = world.get::<Transform>(e) {
+                self.world.set_next_kinematic_pose(
+                    b.handle,
+                    t.translation.x,
+                    t.translation.y,
+                    t.rotation,
+                );
+            }
+        }
+    }
+
     /// Read each dynamic body's pose back into its entity's `Transform`
     /// (meters, radians CCW, Y-up — no conversion; ADR-0131 D4). Static
-    /// bodies never move, so they are skipped. Only touches root-level
-    /// bodies' local Transform == world for W1 (child bodies land in W2).
+    /// bodies never move and kinematic ones are DRIVEN by that same
+    /// `Transform` ([`Self::drive_kinematic`]), so both are skipped — asked
+    /// through [`BodyKind::solver_owns_pose`], the one door, because a body
+    /// that both stages claimed would have its pose written twice a tick.
+    /// Only touches root-level bodies' local Transform == world for W1
+    /// (child bodies land in W2).
     fn readback(&self, sim: &mut SimWorld) {
         let world = sim.world_mut();
         for (&e, b) in self.bodies.iter() {
-            if b.kind != BodyKind::Dynamic {
+            if !b.kind.solver_owns_pose() {
                 continue;
             }
             if let Some(pose) = self.world.body_pose(b.handle)
@@ -544,6 +584,11 @@ fn body_desc(rb: &RigidBody, col: &Collider, t: &Transform) -> BodyDesc {
         body_type: match rb.kind {
             BodyKind::Dynamic => RigidBodyType::Dynamic,
             BodyKind::Static => RigidBodyType::Fixed,
+            // POSITION-based, not velocity-based: the scene hands us a POSE
+            // (a `Transform` a curve wrote), never a velocity. rapier derives
+            // the velocity from the pose it was aimed at, which is what makes
+            // an animated body push instead of teleport.
+            BodyKind::Kinematic => RigidBodyType::KinematicPositionBased,
         },
         x: t.translation.x,
         y: t.translation.y,

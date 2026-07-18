@@ -23,7 +23,7 @@ pub(crate) fn build_physics_info(
     entity_bits: u64,
     can_join: bool,
 ) -> Option<InspectorPhysicsInfo> {
-    use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+    use ph2d_physics_ecs::{Collider, ColliderShape, RigidBody};
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     let rb = world.get::<RigidBody>(entity);
@@ -55,10 +55,7 @@ pub(crate) fn build_physics_info(
     Some(InspectorPhysicsInfo {
         entity_bits,
         has_body: true,
-        kind_tag: match rb.kind {
-            BodyKind::Dynamic => 0,
-            BodyKind::Static => 1,
-        },
+        kind_tag: rb.kind.tag(),
         shape_tag,
         radius,
         half_x,
@@ -128,19 +125,15 @@ pub(crate) fn apply_physics_edit(
         return;
     }
     if let PhysicsFieldEdit::Kind(tag) = edit {
-        queue_set(
-            queue,
-            registry,
-            entity_bits,
-            RIGID_BODY,
-            &RigidBody {
-                kind: if tag == 1 {
-                    BodyKind::Static
-                } else {
-                    BodyKind::Dynamic
-                },
-            },
-        );
+        // A tag no variant claims is DROPPED, not folded onto a plausible
+        // neighbour: the chip that sent it is the only thing that mints one,
+        // so an unknown value means the chip list and the enum have drifted,
+        // and silently applying `Dynamic` would hide exactly that.
+        let Some(kind) = BodyKind::from_tag(tag) else {
+            debug_assert!(false, "§11 sent BodyKind tag {tag}, which no variant claims");
+            return;
+        };
+        queue_set(queue, registry, entity_bits, RIGID_BODY, &RigidBody { kind });
         return;
     }
 

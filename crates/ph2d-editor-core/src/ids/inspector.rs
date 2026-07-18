@@ -176,10 +176,14 @@ pub const INSP_LIVE_PHYSICS_COLOR: NodeId = hash_node_id("insp_live_physics_colo
 pub const INSP_PHYS_ADD: NodeId = hash_node_id("insp_phys_add");
 /// §11 Detach both components; the entity goes back to being plain art.
 pub const INSP_PHYS_REMOVE: NodeId = hash_node_id("insp_phys_remove");
-/// §11 Body kind segmented, indexed by `BodyKind` tag: Dynamic / Static.
-pub const INSP_PHYS_KIND: [NodeId; 2] = [
+/// §11 Body kind segmented, indexed by `BodyKind` tag: Dynamic / Static /
+/// Kinematic. The third chip lands with W4 — it is what a **baked** body is,
+/// and offering it only to the bake would leave the artist looking at a state
+/// they can see, cannot author, and cannot leave.
+pub const INSP_PHYS_KIND: [NodeId; 3] = [
     hash_node_id("insp_phys_kind_dynamic"),
     hash_node_id("insp_phys_kind_static"),
+    hash_node_id("insp_phys_kind_kinematic"),
 ];
 /// §11 Collider shape segmented, indexed by `ColliderShape` tag: Ball / Box.
 pub const INSP_PHYS_SHAPE: [NodeId; 2] = [

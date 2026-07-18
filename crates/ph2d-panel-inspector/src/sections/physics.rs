@@ -17,7 +17,7 @@ use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 /// Body-kind labels, indexed by `BodyKind` tag. Hardcoded (not read from
 /// `ph2d-physics-ecs`) so the panel stays loose-coupled — the snapshot
 /// carries only the tag. English per HR-15, like every sibling section.
-const KIND_LABELS: [&str; 2] = ["Dynamic", "Static"];
+const KIND_LABELS: [&str; 3] = ["Dynamic", "Static", "Kinematic"];
 
 /// Collider-shape labels, indexed by `ColliderShape` tag.
 const SHAPE_LABELS: [&str; 2] = ["Ball", "Box"];

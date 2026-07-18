@@ -55,6 +55,12 @@ const STATIC_RGBA: [f32; 4] = [0.36, 0.85, 0.52, 0.85]; // LITERAL-COLOR-OK: ove
 /// amber selection halo: a selected dynamic body must still read as selected.
 const DYNAMIC_RGBA: [f32; 4] = [0.35, 0.80, 1.0, 0.85]; // LITERAL-COLOR-OK: overlay de collider
 
+/// Kinematic bodies — moved by the scene, not by the solver (a baked body, an
+/// animated platform). Violet: it must not read as either neighbour, because
+/// the whole question the overlay answers here is *who is driving this*. Box2D
+/// and Unity both give the kind its own colour for the same reason.
+const KINEMATIC_RGBA: [f32; 4] = [0.72, 0.55, 1.0, 0.85]; // LITERAL-COLOR-OK: overlay de collider
+
 /// The outline of one collider, **in screen pixels**.
 ///
 /// A ball also gets a **spoke** from centre to rim. Without it a rolling
@@ -141,6 +147,7 @@ pub(crate) fn outlines(
             let rgba = match rb.kind {
                 BodyKind::Static => STATIC_RGBA,
                 BodyKind::Dynamic => DYNAMIC_RGBA,
+                BodyKind::Kinematic => KINEMATIC_RGBA,
             };
             (path, rgba)
         })

@@ -14,12 +14,20 @@ foundational, nenhum contrato congelado, nenhuma contagem de registro mexida.
 | | |
 |---|---|
 | **Branch / worktree** | `line/Vector` — `Worktrees/line-Vector/` |
-| **Commit da fatia** | `207d10b9` (`feat(vector): arrastar os cantos da gaiola do Envelope no modo Node`) |
-| **HEAD** | este commit de docs, em cima de `207d10b9` |
+| **Commits da fatia** | `207d10b9` (feature) · `43b918f5` (fix do smoke — ver abaixo) · docs neste arquivo |
 | **Base do fork (merge-base com `main`)** | `cdc3acc1` |
 | **`main` desde a base** | **0 commits** — a linha está em cima da `main` de hoje; **não precisa rebase** |
 | **Contratos congelados encostados** | **NENHUM** (§4) |
-| **Smoke** | **pendente** — `cd Worktrees/line-Vector && PH2D_BUILD_SMOKE=11 cargo run -p ph2d-host-desktop --features panel-vector` (agora entra no NODE e seleciona o envelope; **arraste os 4 cantos** — a forma re-deforma ao vivo; puxar um canto p/ dentro para na fronteira convexa) |
+| **Smoke** | **APROVADO pelo Enio (2026-07-17)** — `cd Worktrees/line-Vector && PH2D_BUILD_SMOKE=11 cargo run -p ph2d-host-desktop --features panel-vector`: a gaiola aparece no NODE com 4 cantos arrastáveis; a forma re-deforma ao vivo; canto puxado p/ dentro para na fronteira convexa. |
+
+> ⚠️ **Fix pós-1º-smoke (`43b918f5`), e é um bug do DRIVER do smoke, não da fatia:** o 1º smoke não
+> mostrava a gaiola. O envelope estava certo (o `recook` achava 1 envelope já deformado), mas o frame
+> vinha em `mode=Build`: o arm `8 =>` do `build_smoke` era **catch-all** e forçava `DrawMode::Build`
+> em TODO nível no frame 8, engolindo o Node que a cena 11 arma no frame 4 (sem Node,
+> `overlay.edit`/`envelope_cage` são falsos e a alça não desenha). Gate `8 if level <= 6` (o arm é do
+> Shape Builder). Corrige de quebra um latente: o **morph (nível 10) era jogado no Build** sem querer.
+> +gate `the_upkeep_path_attaches_and_deforms` (o caminho REAL do app: `upkeep` anexa, não `attach`
+> direto). Nenhum código de produto mudou — só o smoke e um gate novo.
 
 ---
 

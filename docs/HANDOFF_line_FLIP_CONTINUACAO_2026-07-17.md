@@ -71,6 +71,31 @@
   Size/Strength; aceso = segue o pincel, apagado = a borracha tem o seu (mude o Size e veja
   o ANEL mudar, com o pincel de desenho intacto).
 
+- **§4.C.5 — a borracha macia é fato do CAMINHO + cena de boot VAZIA** (`d760c745`,
+  **pendente smoke**). Dois achados do smoke do §4.C.4:
+  - 🔴 *"qualquer nível de strength apaga completamente a linha, nunca deixa
+    semitransparente"* — era **acumulação sequencial**: `ops[i] -= strength·falloff` **por
+    DAB**, e a borracha carimba um dab por EVENTO DE PONTEIRO ⇒ `0,1 × 12 dabs` zera a
+    linha. O resultado era função de **quão fino o motor amostrou o caminho**. É a MESMA
+    doença que o Painter curou 2× (cápsula do depósito · mordida telescópica `2e1806fb`) e
+    a lei vale igual: *o apagado é propriedade do pincel e do CAMINHO, nunca do
+    espaçamento*. **Cura: a mordida tem PISO** (`soft_erased`, porta única) — o Soft leva a
+    opacidade até `1 − strength·falloff` e PARA ⇒ **idempotente ⇒ independente de
+    amostragem por construção**, sem estado de sessão. **Strength É a translucidez que
+    sobra.** O `.min(current)` impede a borracha de DESAPAGAR (empurrar pra cima um ponto já
+    mais claro que o piso). ⚠️ Trade aceito: passadas repetidas não desbotam mais — pra
+    apagar mais, suba a Strength (acumular entre gestos reintroduz o bug dentro do gesto).
+    3 gates, **cada camada com a sua mutação**. ⚠️ O gate antigo
+    `soft_mode_reduces_opacity_then_cleanup_removes_faded` **tinha o bug escrito como
+    premissa** (ficava parado e contava com a acumulação pra zerar as PONTAS, que parado só
+    veem `falloff ≈ 0,8`) — agora VARRE a linha, que é o que o artista faz.
+  - **Cena de boot vazia:** `populate_sim_live` (8 entidades falsas: `group_01/02` +
+    `sprite_001..008`) **REMOVIDO** — existia (M14.4a) só pra Hierarquia ter linhas quando o
+    app não tinha conteúdo real; hoje tem, e o andaime virou ruído na árvore do artista.
+    Removido, **não gateado** (código morto mente). O `populate_sim` (Vogel 1000,
+    `PH2D_M5_DEMO=1`) **FICA** — cerca de Chesterton documentada (frame-budget do HR-4).
+  - LOC: `flip_erase.rs` passou de 600 ⇒ testes pro irmão `flip_erase_tests.rs`.
+
 **§4.C.1 — o PEDAÇO é a unidade visual do modo Segment** (`a5738e98`, **smoke OK 2026-07-17**).
 Duas coisas, um primitivo:
 - **Halo por-peça** (correção de um gap do §4.B): o overlay caía no branch de traço e

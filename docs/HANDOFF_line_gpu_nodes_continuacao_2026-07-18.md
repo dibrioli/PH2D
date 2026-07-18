@@ -94,9 +94,49 @@ atrás de uma env var, e só para grafos montados a partir dos 20 nós cobertos.
 Esse é o gap que o §0.0 cobra agora — não é mais "a GPU é rápida?", é "**quem
 consegue chegar nela?**".
 
-Há **três alavancas**, e elas têm uma ordem:
+Há **três alavancas**, e elas têm uma ordem — **corrigida por medição em
+2026-07-18 (`3428c1fa`); a ordem abaixo NÃO é mais a que este doc recomendava.**
 
-### (B) N fronteiras no shell — **a recomendação**
+> ### ⚠️ A recomendação anterior (B primeiro) foi MEDIDA e REPROVADA
+>
+> O §2 abaixo recomendava **(B) N fronteiras no shell** como *"o multiplicador"*,
+> sobre a frase *"com 52 nós descobertos, qualquer grafo real tem várias
+> [fronteiras]"*. **A frase confunde MUITOS NÓS DESCOBERTOS com MUITAS COSTURAS**,
+> e as duas coisas não são a mesma.
+>
+> A região reivindicada cresce **PARA CIMA** a partir do sink, então as
+> `boundaries` são a **FRONTEIRA** dela — e uma **CADEIA** de nós descobertos
+> apresenta exatamente **um** nó de fronteira: o walk para no primeiro e nunca vê
+> o resto. Para a fronteira **ramificar**, um nó **ESTAGIADO** precisa de 2+
+> entradas cujas fontes estejam ambas descobertas. Hoje só **três** nós com kernel
+> têm 2 portas, e as três declinam essa forma:
+>
+> | nó | 2ª porta | por que não ramifica |
+> |---|---|---|
+> | `motion.integrate` | `forces` | o `pre` vira `GpuSource::Prev`, não boundary; ligado plano+descoberto o nó **recusa** (D3 shape) |
+> | `motion.spring` | `state` | idem (o `out --pre--> state` auto-wired) |
+> | `motion.color_ramp` | `t` (VALUE) | ligar o `t` **recusa o nó inteiro** (o bloqueio do `t` já documentado) |
+>
+> **Medido em 5 formas: TODAS dão exatamente 1 boundary.** ⇒
+> **`plan.boundaries.len() > 1` é INALCANÇÁVEL hoje**, e o arco
+> `_ => GpuRoute::Cpu` do shell é **código morto**. (B) seria maquinaria para um
+> estado que não pode ocorrer.
+>
+> **E o que DE FATO morde é bem pior que N costuras:** a costura só entrega o
+> **SUFIXO** ao dispositivo, então **UM** nó descoberto no caminho do stream
+> derruba a sim inteira de 4,19 M partículas na CPU — a região reivindicada
+> encolhe para o `output` pass-through e despacha **ZERO** (medido:
+> `dispatching 3 → 0`). Não é problema de **costura**; é de **COBERTURA**.
+>
+> ⇒ **A ordem inverte: (C) é o multiplicador, e (B) é CONSEQUÊNCIA de (C)** — o
+> dia em que um kernel multi-input pousar. Isso não é uma nota que apodrece: o
+> gate **`no_plan_can_leave_more_than_one_seam_today`**
+> (`crates/ph2d-gpu-cook/tests/boundary_arity.rs`) é um **TRIPWIRE** que fica
+> vermelho exatamente nesse dia, dizendo *"agora a fatia B é real — construa"*.
+>
+> **Ordem corrigida: (C) em lotes → Fase 4 → (A).** (B) quando o tripwire abrir.
+
+### (B) N fronteiras no shell — ~~a recomendação~~ **MEDIDO COMO INALCANÇÁVEL (ver acima)**
 
 Hoje: *"Several boundaries recuse: the motor plans a DAG with N seams (ADR-0127
 D2), but the pump hands over ONE cooked node per tick"*
@@ -137,18 +177,39 @@ playhead, no mesmo memo**; `boundary_stream: Option<Stream>` →
 `boundaries.len() > 1`. **UMA marcha, N capturas** — o relógio avança uma vez
 porque a chamada é uma.
 
-⚠️ **Isto é uma LEITURA minha, não uma implementação testada.** O que eu não
-verifiquei e você tem de verificar primeiro: (a) que `cook_scoped` de dois nós no
-mesmo playhead realmente reaproveita o memo do prefixo (meça — se re-simular, o
-custo dobra e o desenho muda); (b) o que acontece quando duas fronteiras têm
+⚠️ **Isto é uma LEITURA minha, não uma implementação testada.**
+
+> **(a) foi RESPONDIDA (2026-07-18), e a resposta é SIM** — mas por leitura do
+> código, não por medição (a medição ficou impossível: não há grafo de 2
+> fronteiras pra medir). O `Fingerprint` de `cook.rs` carrega
+> `tick: consumes_pre.then_some(self.tick)`, e `self.tick` **só anda em
+> `advance_tick_scoped`** — que o pump chama **uma vez por frame**, fora do
+> `cook_target_into`. Logo, dois `cook_scoped` no mesmo playhead/tick batem no
+> mesmo `(node, key)` com fingerprint idêntico e **retornam o memo**, inclusive
+> nos nós sequenciais. **Não re-simula.** Se (B) for construído um dia, isto ainda
+> vale — e ainda assim merece um gate que **CONTE** os evals (não que cronometre).
+>
+> **⚠️ E um fato que o mapa não tinha:** `plan.boundaries` pode conter
+> **DUPLICATAS** (`source_of` dá `push` por *porta*, então um nó CPU que alimenta
+> dois nós estagiados entra duas vezes). O lado GPU já tolera (`want`/`got` são
+> `BTreeSet`, e o `uploaded` é um `BTreeMap` — *"a node consumed twice uploads
+> once"*), mas um pump plural **tem de deduplicar** antes de guardar os streams.
+
+O que eu não
+verifiquei e você tem de verificar primeiro: (b) o que acontece quando duas fronteiras têm
 **prefixos disjuntos** com nós sequenciais em cada um; (c) o scrub para trás com
 N fronteiras (o ring é do pump, compartilhado). Um gate red-first que cozinhe um
 grafo de **duas** fronteiras e compare com o CPU puro é o começo certo.
 
-### (C) Mais kernels (os 52 restantes)
+### (C) Mais kernels (os 52 restantes) — **O MULTIPLICADOR (corrigido)**
 
-Moagem linear, cada um independente e barato. **Só compõe depois de (B)** — vide
-acima. Candidatos naturais pro domínio de partículas: `motion.noise`,
+Moagem linear, cada um independente e barato. ~~**Só compõe depois de (B)**~~ —
+**o contrário: (B) só existe depois que (C) trouxer um kernel multi-input.** E o
+payoff de (C) é **não-linear**, não incremental: pela medição acima, um único nó
+descoberto no caminho do stream **forfeita a sim inteira**, então cada kernel
+novo não adiciona uma fatia de velocidade — ele pode **destravar o caminho GPU
+por completo** para a classe de grafos que só esbarrava naquele nó.
+Candidatos naturais pro domínio de partículas: `motion.noise`,
 `motion.trail`, `motion.orbit`, `motion.wave`, `motion.stagger`. Multi-input
 (`look_at`/`combine`) **o motor já suporta** — falta só o kernel de cada.
 
@@ -158,7 +219,9 @@ O objetivo final, e **bloqueado**: os readouts/probe do painel de grafo leem o
 memo da CPU, que o caminho fully-GPU não alimenta (**Fase 4**). Ligar por default
 hoje quebraria o painel. ⇒ **Fase 4 antes.**
 
-**Ordem recomendada: (B) → (C) em lotes → Fase 4 → (A).**
+~~**Ordem recomendada: (B) → (C) em lotes → Fase 4 → (A).**~~
+**Ordem MEDIDA (2026-07-18): (C) em lotes → Fase 4 → (A)** — e (B) quando o
+tripwire `no_plan_can_leave_more_than_one_seam_today` abrir.
 
 Outros abertos (menores): reduções na GPU (destrava `twist`/`bend` — desenhe
 antes) · os 2 bloqueios de motor do `t` do `color_ramp`/`value.*` (nome de coluna

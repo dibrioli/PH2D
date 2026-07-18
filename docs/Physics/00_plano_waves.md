@@ -1,0 +1,239 @@
+# 00 · Plano de waves — o motor de física global (`line/physics`)
+
+> Normativo. Companheiro da [ADR-0130](../architecture/decisions/0130-physics-global-runtime-truth-rapier-ecs-bridge.md)
+> (decide o *quê* e o *porquê*); este plano decide o *como*, wave a wave. Visão:
+> [`01_visao.md`](01_visao.md). Estado vivo: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md).
+>
+> **Plano VIVO:** waves seguintes o refinam. Cada wave fecha com o **gate batched** (nextest-impacted +
+> clippy `--all-targets` + auditoria ≥2 lentes) e um **handoff de tracker**. Sequenciais.
+>
+> **Regra-mãe (DIRETIVA §3–§5):** verde-de-compilação é velocidade; no audit vale **ZERO**. Todo gate
+> nasce **VERMELHO** sobre o bug real, com os **números do PRODUTO**, e morre por uma razão nomeável.
+> Toda costura é **exercitada** (que clica, que dá o tick, que olha), não só compilada. Toda defesa em
+> camadas ganha **gate POR camada** ([[feedback_layered_defenses_need_per_layer_gates]]).
+
+## Mapa das waves
+
+| Wave | Título | Entrega | Bloqueia |
+|---|---|---|---|
+| **W1** | Ponte ECS + tick no Playhead + hash no replay gate | o alicerce: sprite cai e assenta, determinístico | tudo |
+| **W1.5** | Scrub bit-exato (checkpoint ring) | scrub pra trás sem re-sim O(t) | — (opcional; pode ir depois de W2) |
+| **W2** | Painel global + Inspector body | a autoria do artista | joints, bake |
+| **W3** | Joints | pino/mola/motor/distância; pêndulo, corrente, ragdoll | bake de joints |
+| **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |
+
+**Fora de TODAS as waves (D9):** soft-body XPBD (`ph2d-physics-soft`, M13+), fluidos FLIP/PIC
+(`ph2d-fluids`, M13+), collider-gen vetorial + fratura (ADR-0063, aposentada com a 0108).
+
+---
+
+## W1 — Ponte ECS + tick no Playhead + hash no replay gate · *o alicerce*
+
+**Objetivo:** um sprite com `RigidBody{Dynamic}` cai e assenta sobre um `Collider{Static}` no **ECS
+REAL** ao dar play — e o mundo é **determinístico cross-OS**.
+
+### Entregáveis
+- **Crate-ponte nova `ph2d-physics-ecs`** (ou módulo no editor-core; a crate isola melhor — regra B'):
+  - Components `RigidBody`/`Collider` + enums `BodyKind`/`ColliderShape` (append-only, defaults
+    byte-neutros — ADR D3).
+  - `register_physics_components(reg: &mut ComponentRegistry)` — a crate possui, o boot agrega em
+    `shells/desktop/src/init.rs` ao lado de `register_render_components` (mantém a contagem-32 de
+    `ph2d-ecs` intocada). **Registro no MESMO commit que cria os components.**
+  - **A porta única de escala** `to_meters`/`to_pixels` com `PIXELS_PER_METER = 100.0` (ADR D4).
+- **System de sync (o hot path `physics_step`):** components → `PhysicsWorld` (spawn/update do
+  handle-map `Entity ↔ RigidBodyHandle`) → `step()` no tick do `Playhead`
+  (`ticks_owed(last_stepped, target)`: play = `last+1..=target` sequencial, scrub/paused =
+  `target..=target`; `target = round(playhead.time()/fixed_dt)`) → **readback** dos transforms para o
+  `SimWorld`. O `PhysicsWorld` + handle-map vivem shell-side (precedente `MotionCookPump`), **NÃO** no
+  `WorldSnapshot` (o mundo é rebuild das components — ADR D2). Gancho `should_record`/`record` do ring já
+  no laço (W1.5 o usa).
+- **Persistência mínima:** as components viajam no `WorldSnapshot` (já registradas) → bump
+  `PROJECT_SCHEMA` (13 → 14). O `PhysicsWorld` é reconstruído no load (a lição `rebuild_map`).
+- **Gate de determinismo estendido:** um bin/harness gêmeo `physics-ecs-c9` que exercita **a ponte + o
+  caminho do tick** (não o wrapper cru): monta uma `SimWorld` com N entidades carregando
+  `RigidBody`/`Collider`, roda sync + `ticks_owed` por 120 ticks, imprime `physics-ecs-c9 hash: <hex>`.
+  Plugar em `.github/workflows/spike.yml`: etapa de matriz (ubuntu/macos/windows) + artifact
+  `physics-ecs-c9-hash-${os}` + comparação `sort -u | wc -l == 1` no job `determinism-compare`.
+
+### Gates (red-first, mutation-tested)
+1. **e2e no app REAL** — sprite com `RigidBody{Dynamic}` sobre `Collider{Static}` **cai e assenta no
+   chão** dirigindo o `SimWorld` + a ponte + N ticks do `Playhead` (NÃO um unit do wrapper —
+   [[feedback_tool_unit_green_integration_dead]]). Nasce vermelho (sem ponte, o sprite não cai). Assenta
+   a `y ≈ chão + raio` em pixels (converte via a porta, prova a escala de ponta a ponta).
+2. **hash cross-OS estável do mundo ECS-bridged** — `physics-ecs-c9` byte-idêntico nos 3 OSes. **Mutação:
+   trocar a ordem de iteração da ponte (map em vez de sorted) sangra** (o hash muda). Prova o código NOSSO
+   no caminho determinístico.
+3. **zero-alloc no `physics_step`** — dhat **por capacidade**, não contador global
+   ([[feedback_zero_alloc_gate_capacity_not_global_counter]]). Mutação: um `Vec::push` que realoca no laço
+   sangra.
+4. **tick único** — play anda N steps, scrub anda 1. **Gate de emenda com advance FRACIONÁRIO** (taxa 1:1
+   nunca lê o 2º frame — [[feedback_seam_gates_need_fractional_advance]]): um `wall_dt` que deve 2 ticks
+   tem que simular os 2; um scrub tem que rodar `anchor..=target` uma vez. Mutação: `last+1..=target` →
+   `target..=target` (perde ticks no play) sangra; e vice-versa.
+5. **snapshot é ponto fixo** — parado (sem input), **nenhum passo de undo espúrio por frame**
+   ([[feedback_a_snapshot_must_be_a_fixed_point_of_the_systems]]). A captura é DEPOIS de a ponte convergir.
+   Mutação: capturar antes do readback sangra (pose muda entre captura e convergência).
+
+### Smoke
+`PH2D_PHYSICS_SMOKE=1` — cena **auto-play** que dropa 1 sprite sobre um chão (exemplo pronto pra smoke,
+auto-play — [[feedback_ready_to_smoke_example]]). Comando com o `cd <worktree> &&` junto
+([[feedback_run_command_include_cd]]).
+
+### Fora de W1
+Painel, joints, bake, scrub-back (o ring é W1.5; W1 deixa só o gancho).
+
+---
+
+## W1.5 — Scrub bit-exato (checkpoint ring) · *o relógio pra trás*
+
+**Objetivo:** arrastar o playhead pra trás re-simula bit-exato **sem** custo O(t) (ADR D5). Pode vir
+depois de W2 se o Enio priorizar a autoria; é listada aqui por ser a metade que falta do "relógio único".
+
+### Entregáveis
+- **`PhysicsCheckpoint`** = estado cross-frame completo do `PhysicsWorld` (os campos que `step()` muta:
+  `bodies`/`colliders`/`impulse_joints`/`multibody_joints`/`ccd_solver`/`islands`/`broad_phase`/
+  `narrow_phase` + `step_count`).
+- **`PhysicsCheckpointRing`** à imagem do `ph2d-eval-motion::CheckpointRing`: `record(tick, cp)`,
+  `anchor_at_or_before(target) → (tick, cp)` (newest ≤ target, senão seed do tick-0), `clear` no rebuild.
+  **Cadência ESPARSA** (cada K ticks — o estado é maior que outputs de nó), K tunado contra o budget 20 MB.
+- **`advance_or_scrub`** no laço do tick: play = `record` esparso + step forward; scrub-back = `restore` da
+  âncora + re-sim ≤ K steps até `target`.
+
+### ⚠️ kill-check ANTES do build (regra two-strikes, DIRETIVA §5)
+O `PhysicsCheckpoint` precisa **clonar ou serializar** o estado do rapier. **Verificar no repo:** os sets
+do rapier são `Clone`? Senão, ligar `serde-serialize` do rapier (serialização **não é** matemática de sim
+→ **não** afeta determinismo, HR-5) e snapshotar via bincode. **Se o checkpoint > ~X ms ou estourar 20 MB
+com K razoável na 2ª tentativa, o scrub-back não existe nesta forma** — cai pro keyframe esparso + re-sim.
+Medir antes de construir o ring inteiro.
+
+### Gates (red-first, mutation-tested)
+1. **scrub-back é bit-exato** — `restore(anchor) + re-sim até T` produz o **mesmo hash** que `re-sim from
+   t=0 até T` (a definição de correção do ring). Mutação: `anchor_at_or_before` devolvendo a âncora errada
+   (> target) sangra.
+2. **memória do ring medida** — dhat/`size_of`, `tests/measure_physics_checkpoint.rs`, dentro dos 20 MB
+   (HR-13, quem declara MEDE — [[feedback_a_rule_that_never_observes_cannot_fire]]). Mutação: cadência densa
+   (K=1) estoura o teto.
+3. **scrub é O(K), não O(t)** — ratio: scrub num t grande custa o mesmo que num t pequeno (bar é RATIO, não
+   wall-clock — `ci-test` compila `opt-level=1`).
+
+### Smoke
+`PH2D_PHYSICS_SMOKE=1` estendido: dropa corpos, dá play, **arrasta o playhead pra trás e pra frente** — a
+pilha reconstrói bit-exata, sem trava.
+
+### Fora
+Painel, joints, bake.
+
+---
+
+## W2 — Painel global + Inspector body · *a autoria*
+
+**Objetivo:** o artista liga/desliga a física, seta gravidade/escala no painel de mundo, e edita
+massa/restituição/atrito/tipo num sprite selecionado.
+
+### Entregáveis
+- **`ph2d-panel-physics` docado (categoria MUNDO — ADR D8):** gravidade (vetor), substeps/iterações do
+  solver, `PIXELS_PER_METER`, damping global, sleep thresholds, **matriz de camadas de colisão**. Tokens +
+  i18n (zero hex/`f32`/string hardcoded; inglês). Registrado nos **5 sites** (precedente
+  `ph2d-panel-vector`):
+  1. `impl Panel` — `ID="physics"`, `NODE_ID=ids::PHYSICS_PANEL` (próximo IconId/panel-node livre, anotar),
+     `DEFAULT_VISIBLE=false`, `populate`/`paint`/`apply_event`.
+  2. push no `ph2d-panel-registry-init` (GERADO por `cargo run -p ph2d-panel-sync`) + a const
+     `EXPECTED_TYPED` à mão.
+  3. feature Cargo `panel-physics = ["dep:ph2d-panel-physics"]`.
+  4. **a lista de fallback de z-order em `hero/paint.rs`** — sem a entrada, o painel registrado+visível
+     **NUNCA é pintado** (a armadilha "never painted").
+  5. visibilidade dirigida pela ponte (`hero.panel_visibility.insert("physics", ...)` no `render_loop`).
+- **Seção "Physics Body" no Inspector (por-seleção):** type (dynamic/static/kinematic), massa/densidade,
+  restituição, atrito, collider-shape. NÃO no painel global. NumberInput com range/clamp const
+  ([[reference_topic_panel_registration]]).
+
+### Gates (red-first, mutation-tested)
+1. **painel pintado E populado E clicado** — um teste do `ph2d-ui-testkit` que **DIRIGE o clique** em cada
+   row e afirma o efeito ([[feedback_widget_is_done_when_a_test_clicks_it]] +
+   [[feedback_painted_is_not_populated_paint_gate]]). Nasce vermelho (sem `populate`, o WidgetStore está
+   vazio e não há Click).
+2. **toda row de setting muda o mundo** — seam que CLICA: mexer na gravidade **muda a aceleração dos
+   corpos**; mexer no `PIXELS_PER_METER` **re-escala** a entrada do solver. Mutação: um arm que não chama
+   `apply_ui_edit` (fio órfão) sangra. Varre **cada** row (não "o card mais cheio" —
+   [[feedback_the_fullest_card_premise_rots]]).
+3. **sem string hardcoded** — gate i18n; todo label resolve via chave `panel.physics.*`.
+4. **botão dimmed recusa no `event.rs`** — dim é cosmético ([[feedback_disabled_button_still_dispatches]]);
+   editar body sem seleção é no-op explícito (`debug_assert`/`warn`), não corpo vazio.
+
+### Smoke
+`PH2D_PHYSICS_SMOKE=2` — abre o painel, ajusta gravidade + escala, dropa corpos e vê a mudança.
+
+### Fora
+Joints, bake.
+
+---
+
+## W3 — Joints · *as articulações*
+
+**Objetivo:** pino/mola/motor/distância entre corpos; pêndulo, corrente, ragdoll simples.
+
+### Entregáveis
+- Components de joint (registrados no `ComponentRegistry` — append-only), autoria no Inspector/canvas
+  (gizmo de ancoragem), mapeamento para `ImpulseJointSet`/`MultibodyJointSet` do rapier (acesso cru via
+  `bodies_mut`/`colliders_mut` do wrapper). Determinismo preservado (mesma proibição de simd/parallel).
+- Bump `PROJECT_SCHEMA` (14 → 15) — joints persistem.
+
+### Gates (red-first, mutation-tested)
+1. **pêndulo de 2 corpos determinístico** — hash estável cross-OS (estende `physics-ecs-c9` com uma cena de
+   joint, ou um segundo hash). Mutação: trocar a ordem de inserção dos joints sangra.
+2. **joint sobrevive save/load** — schema bump provado por round-trip (grava, carrega, re-simula, mesmo
+   hash). Mutação: joint não-registrado no `ComponentRegistry` some do snapshot (a armadilha D3) — o
+   round-trip sangra.
+3. **mutação de um parâmetro de joint sangra o gate de repro** — mudar stiffness/rest-length muda a
+   trajetória; o oráculo de aparência pega.
+
+### Smoke
+`PH2D_PHYSICS_SMOKE=3` — pêndulo/corrente auto-play.
+
+### Fora
+Bake.
+
+---
+
+## W4 — Bake-to-timeline · *runtime-truth vira animação*
+
+**Objetivo:** o botão "Bake" amostra a sim sobre um range e escreve keys editáveis nas tracks da entidade
+— a metade motion-graphics do framing (ADR D11).
+
+### Entregáveis
+- Amostragem determinística da pose por frame → **`ph2d-anim::fit_fcurve`/Schneider** (colunas alinhadas,
+  pré-filtro passa-baixa se preciso), **1 passo de undo**, via a ponte da timeline/anim. A costura:
+  `sim → amostra por tick → fit_fcurve_at → Track::simplify_range → 1 undo step`. Reusa a máquina do record
+  da timeline (W5), não reinventa.
+- Botão "Bake" no painel/Inspector, range = seleção da timeline.
+
+### Gates (red-first, mutation-tested)
+1. **curva assada reproduz a sim dentro da tolerância** — **oráculo de APARÊNCIA** (posição no tempo certo,
+   não uma fórmula — [[reference_topic_oracle_discipline]]). Nasce vermelho sobre uma curva que não segue a
+   trajetória. Mutação: amostrar no relógio errado (playhead cru vs tick) sangra.
+2. **bake é determinístico** — mesma sim → mesma curva (D7). Mutação: um transcendental sem convenção única
+   no fit sangra o hash da curva.
+3. **1 undo step (não 1 por frame)** — [[feedback_capture_stroke_session_before_pen_up]] análogo: a sessão
+   de bake é UM passo. Mutação: 1 key/frame sem simplify vira 1 undo/frame — o gate conta os passos.
+
+### Smoke
+`PH2D_PHYSICS_SMOKE=4` — dropa corpos, assa, **desliga a física** e dá play na timeline (a curva sozinha
+reproduz o movimento).
+
+### Fora
+Soft-body, fluidos, collider-gen vetorial, fratura (M13+ / linhas próprias).
+
+---
+
+## Convenções do módulo (valem em todas as waves)
+
+- **Inner loop:** `cargo check -p ph2d-physics-ecs` (ou `ph2d-physics`). Teste/clippy/auditoria **1× no
+  fechamento** da wave, sobre o diff acumulado. Workstation voa — rust-analyzer full como oráculo.
+- **LOC cap (HR-18):** shells/foundational = 600 LOC/arquivo; campo/mod novo que estoura → **split em módulo
+  irmão**, não allowlist. `cargo fmt` re-expande → fmt ANTES de medir.
+- **Determinismo:** NUNCA ligar `parallel`/`simd-*` no rapier. Todo transcendental no código NOSSO com
+  convenção única; 1 ulp já é bug.
+- **Ids/consts/variants novos:** próximo livre, **anotados no tracker** (`HANDOFF_line_physics.md`) para o
+  integrador grepar mesmo-símbolo (§1.5.9).
+- **Fechamento de wave = gate batched verde + handoff de tracker atualizado. Então PARE.** Integração e ship
+  só por ordem EXPLÍCITA do Enio, via agente integrador dedicado (regra E/F).

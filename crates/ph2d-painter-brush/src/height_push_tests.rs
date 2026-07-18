@@ -561,3 +561,67 @@ fn the_trench_is_a_fact_of_the_path_not_of_the_dab_spacing() {
         }
     }
 }
+
+/// **The RIM is a fact of the path too — and the "residual" that said otherwise was a ramp.**
+///
+/// `CLAUDE.md` carried an open item for this: *"dar ao BANCO a cura que a mordida ganhou — cada dab ainda
+/// normaliza o próprio aro = um produto sobre a lista de dabs; residual 0,0286"*. Measured, the item does
+/// not exist, and the number came from where it was taken rather than from the bank:
+///
+/// ```text
+///   Sphere lat+12   window 80..110  0,0894   |  MID 82..98  0,0180  |  END 100..118  0,1585
+///   Smooth lat+9    window 80..110  0,0170   |  MID 82..98  0,0017  |  END 100..118  0,1084
+/// ```
+///
+/// The old window straddles the END of the stroke, where the ridge ramps from full height down to
+/// nothing — and `trench_ripple` is peak-to-peak, so across a ramp it reports the ramp. Mid-stroke the rim
+/// is essentially uniform. And the giveaway that it was never a sampling artefact: halving the spacing
+/// does not move it (**ratio 0,91–1,21×**, where a per-dab corrugation would roughly halve).
+///
+/// So the bank already has the property the "cure" was meant to buy, and this gate pins it where it is
+/// honestly true — on the RIM, mid-stroke — rather than leaving a false open item for the next reader to
+/// re-derive. (The sibling above owns the trench; this one owns the pile outside it.)
+///
+/// **Mutation that must bleed:** make the bank composite instead of accumulate in `bank_dab_push`
+/// (`plane[i] = plane[i]*(1.0 - k) + k*scale` in place of `plane[i] += k*scale`). That IS the disease the
+/// open item described — each dab re-weighting what the last one banked — and it makes the ridge a
+/// function of how finely the path was sampled.
+#[test]
+fn the_rim_is_a_fact_of_the_path_not_of_the_dab_spacing() {
+    /// Mid-stroke: far enough from the start for the pile to have built, far enough from the end that
+    /// the ridge's own ramp-down is not in the window. The window IS the measurement here.
+    const X_LO: usize = 82;
+    const X_HI: usize = 98;
+    for falloff in [crate::Falloff::Smooth, crate::Falloff::Sphere] {
+        let (fine, _) = ploughed_at_spacing(falloff, 1.0, 61);
+        let (coarse, _) = ploughed_at_spacing(falloff, 2.0, 31);
+        // Outside the brush (radius 12 ⇒ the pile lives past it), where the banked ridge stands.
+        for lat in [9usize, 12] {
+            let mut h = 0.0f32;
+            for x in X_LO..X_HI {
+                h += coarse[(100 + lat) * 200 + x] / ((X_HI - X_LO) as f32);
+            }
+            assert!(
+                h.abs() > 0.05,
+                "fixture: lat+{lat} holds {h:+.4} loads — there is no pile here to measure, so a \
+                 uniform one is uniformly nothing"
+            );
+            let ripple = trench_ripple(&coarse, lat, X_LO, X_HI);
+            assert!(
+                ripple < 0.030,
+                "{falloff:?} lat+{lat}: the banked ridge ripples {ripple:.4} loads along a STRAIGHT \
+                 stroke over uniform paint (measured 0,0180 worst). The light reads the height's \
+                 gradient, so a corrugation at the dab period is a coil the artist sees."
+            );
+            for x in X_LO..X_HI {
+                let (a, b) = (fine[(100 + lat) * 200 + x], coarse[(100 + lat) * 200 + x]);
+                assert!(
+                    (a - b).abs() < 0.030,
+                    "{falloff:?} lat+{lat} x={x}: the ridge is {a:.4} at 1 px spacing and {b:.4} at \
+                     2 px. The pile the artist gets must not depend on how finely the engine sampled \
+                     their stroke — the same law the trench obeys one gate up."
+                );
+            }
+        }
+    }
+}

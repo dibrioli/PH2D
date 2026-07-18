@@ -476,7 +476,38 @@ byte-intocado (`supply` só é consultado quando `displaced < 0`).
 resíduo conhecido de 0,0286 do §7 da fila. O fosso herda exatamente a mesma imperfeição, pelo mesmo
 motivo, e a cura é a mesma para os dois.
 
-### 9.9 Também sobra
+### 9.9 A cura do BANCO — FECHADA POR MEDIÇÃO (o item não existia)
+
+O último item da fila dizia: *"cada dab ainda normaliza o próprio aro = um produto sobre a lista de dabs;
+residual 0,0286"*. Fui curá-lo e a medição o desmontou em dois passos.
+
+**1. Não é dependência de espaçamento.** A razão da ondulação entre 2 px e 1 px é **~1,0×**
+(0,91–1,21 em todos os `lat`, nos dois falloffs). Uma corrugação por-dab quase dobraria ao dobrar o
+espaçamento. **O aro já é função do caminho** — a propriedade que a "cura" ia comprar já está paga.
+
+**2. O número vinha de ONDE foi medido.** A janela `80..110` atravessa o **fim** do traço (o traço acaba em
+x=120), onde a crista rampa de altura cheia até zero — e `trench_ripple` é **pico-a-pico**, então sobre uma
+rampa ele reporta a rampa, não uma corrugação.
+
+| | janela 80..110 | **meio 82..98** | fim 100..118 |
+|---|---|---|---|
+| Sphere lat+12 | 0,0894 | **0,0180** | 0,1585 |
+| Smooth lat+9 | 0,0170 | **0,0017** | 0,1084 |
+
+No meio do traço o aro é essencialmente uniforme (Smooth: 0,9% da própria crista).
+
+**O que ficou no lugar da cura:** `the_rim_is_a_fact_of_the_path_not_of_the_dab_spacing` — irmão do gate do
+canal, medindo o **aro** (lat 9 e 12, fora do pincel) **mid-stroke**, com guard de presença (*"há pilha
+aqui para medir?"*). Ele pina a propriedade verdadeira no lugar onde ela é honestamente verificável, para
+o próximo leitor não re-derivar o item falso a partir da nota. A mutação que o faz sangrar é **o banco
+compositar em vez de acumular** (`plane[i]*(1−k) + k·scale`) — que É exatamente a doença que o item
+descrevia — e ela quebra a asserção de espaçamento (−0,2417 a 1px contra −0,3843 a 2px).
+
+⚠️ **A lição, e ela é a mesma da §9.5:** um resíduo medido no lugar errado vira trabalho planejado, e ficou
+planejado por um ano. Duas vezes nesta jornada uma nota de trabalho aberto descreveu uma *causa* que os
+próprios números dela desmentiam.
+
+### 9.10 Também sobra
 
 - Nada medido em aberto neste eixo. Os kernels estão todos sob o alvo de 4 e planos na tela; a montagem
   restante é comum a todos os verbos e é o fork do plano.

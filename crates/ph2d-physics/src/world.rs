@@ -29,6 +29,34 @@ pub struct BodySnapshot {
     pub angvel: f32,
 }
 
+/// Collider silhouette for [`PhysicsWorld::spawn_body`]. Kept as plain
+/// data (no rapier types) so the ECS bridge can build one without a
+/// direct `rapier2d` dependency — rapier stays confined to this crate
+/// (SKILL §7 "don't couple public API to external types"). **Append-only:**
+/// new variants go at the END (Capsule/Triangle/… land with W2/W3).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ShapeDesc {
+    /// Circle of `radius` (world units = meters).
+    Ball { radius: f32 },
+    /// Axis-aligned box with HALF-extents (rapier convention).
+    Cuboid { half_x: f32, half_y: f32 },
+}
+
+/// One body + its single collider, described in plain data for the ECS
+/// bridge. All lengths are world units (meters); `rotation` is radians
+/// CCW; `density` feeds rapier's mass computation (ignored for
+/// non-dynamic bodies). **Append-only:** restitution/friction/damping
+/// land as new fields with W2 (defaults preserve today's behavior).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct BodyDesc {
+    pub body_type: RigidBodyType,
+    pub x: f32,
+    pub y: f32,
+    pub rotation: f32,
+    pub density: f32,
+    pub shape: ShapeDesc,
+}
+
 pub struct PhysicsWorld {
     bodies: RigidBodySet,
     colliders: ColliderSet,
@@ -137,6 +165,57 @@ impl PhysicsWorld {
             self.colliders
                 .insert_with_parent(collider, body_handle, &mut self.bodies);
         (body_handle, collider_handle)
+    }
+
+    /// Spawn a body of any [`RigidBodyType`] with one attached collider,
+    /// from a plain [`BodyDesc`]. The general constructor the ECS bridge
+    /// (`ph2d-physics-ecs`) drives — it covers every body×shape combo the
+    /// two convenience helpers above don't (dynamic cuboid, static ball,
+    /// kinematic, …). Returns the body handle; the bridge reads its pose
+    /// back via [`PhysicsWorld::body_pose`].
+    ///
+    /// Additive — the existing helpers, `step`, and the C9 hash are
+    /// untouched, so the cross-OS determinism gate stays byte-identical.
+    pub fn spawn_body(&mut self, desc: BodyDesc) -> RigidBodyHandle {
+        let body = RigidBodyBuilder::new(desc.body_type)
+            .translation(Vector2::new(desc.x, desc.y))
+            .rotation(desc.rotation)
+            .build();
+        let handle = self.bodies.insert(body);
+        let shape = match desc.shape {
+            ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
+            ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),
+        };
+        let collider = shape.density(desc.density).build();
+        self.colliders
+            .insert_with_parent(collider, handle, &mut self.bodies);
+        handle
+    }
+
+    /// Teleport a body to `(x, y, rotation)` (world units, radians) and
+    /// reset its velocity — the "settle to the authored pose" operation
+    /// the bridge uses while paused, so a body sits exactly where the
+    /// artist placed it before play. `wake` requests the body be woken
+    /// (pass `true` when the pose actually changed).
+    pub fn set_body_pose(&mut self, handle: RigidBodyHandle, x: f32, y: f32, rotation: f32, wake: bool) {
+        if let Some(b) = self.bodies.get_mut(handle) {
+            b.set_position(Isometry2::new(Vector2::new(x, y), rotation), wake);
+            b.set_linvel(Vector2::zeros(), wake);
+            b.set_angvel(0.0, wake);
+        }
+    }
+
+    /// Remove a body and its attached colliders (used when the ECS entity
+    /// carrying it is despawned). No-op if the handle is already gone.
+    pub fn remove_body(&mut self, handle: RigidBodyHandle) {
+        self.bodies.remove(
+            handle,
+            &mut self.island_manager,
+            &mut self.colliders,
+            &mut self.impulse_joints,
+            &mut self.multibody_joints,
+            true,
+        );
     }
 
     /// Spawn a body explicitly (advanced — used when you need a

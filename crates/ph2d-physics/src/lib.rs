@@ -26,7 +26,7 @@
 
 pub mod world;
 
-pub use world::PhysicsWorld;
+pub use world::{BodyDesc, PhysicsWorld, ShapeDesc};
 
 // Re-export the few rapier types callers will reach for, so a
 // downstream crate doesn't need a direct rapier2d dep just to

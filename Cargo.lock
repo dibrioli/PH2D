@@ -6700,6 +6700,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-physics-ecs"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "blake3",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-physics",
+ "serde",
+]
+
+[[package]]
 name = "ph2d-physics-soft"
 version = "0.0.0"
 

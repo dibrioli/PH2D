@@ -1,0 +1,42 @@
+[package]
+name = "ph2d-physics-ecs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The ECS-bridged determinism harness. Mirrors `ph2d_physics_c9` but
+# drives the world THROUGH the bridge (components -> sim -> readback),
+# so it exercises our conversion + iteration order, not just rapier.
+# CI compares its hash across Linux/macOS/Windows (spike.yml).
+[[bin]]
+name = "physics_ecs_c9"
+path = "src/bin/physics_ecs_c9.rs"
+
+[dependencies]
+# The ECS this bridge reads components from and writes Transform back to.
+ph2d-ecs = { path = "../ph2d-ecs" }
+# Direct bevy_ecs (same 0.18 as ph2d-ecs) to name + CACHE a `QueryState`
+# in the bridge — building the query fresh every frame allocates; the
+# cached state is the zero-alloc idiom (mirrors `TransformPropagationState`
+# in ph2d-ecs). Not a determinism-risk dep.
+bevy_ecs = "0.18"
+# The rapier2d wrapper — the ONLY crate that touches rapier + owns the
+# `enhanced-determinism` feature pin. This bridge stays rapier-free
+# (holds only the re-exported handle types), so determinism is guarded
+# in exactly one Cargo.toml (HR-5).
+ph2d-physics = { path = "../ph2d-physics" }
+# glam Vec2 (re-exported by ph2d-core) for writing rapier poses back
+# into Transform.translation.
+ph2d-core = { path = "../ph2d-core" }
+# serde derives on RigidBody/Collider so the ComponentRegistry can
+# postcard them into the WorldSnapshot (same pattern as every other
+# SimComponent).
+serde = { version = "1", features = ["derive"] }
+# blake3 for the ECS-bridged determinism hash over the readback poses
+# (same hash family as `PhysicsWorld::deterministic_hash`).
+blake3 = "1"

@@ -2,9 +2,15 @@
 //!
 //! W2.E2 registers the transport row: Play/Pause + Prev/Next-frame buttons, the
 //! seconds + frame number chips, and the Loop / Auto-key / Snap toggles. The
-//! ruler, track list and key lanes (E3+) register their own ids later; the close
-//! (X) button is painted straight on the chrome (hit-index only, not a store
-//! widget).
+//! ruler, track list and key lanes (E3+) register their own ids later.
+//!
+//! **The close (X) is a store widget too** (Enio, 2026-07-16). It used to be painted
+//! straight on the chrome — hit-index only — and that made it a DEAD button: the
+//! chrome painted it, the hit index found it, `event.rs` had the handler written and
+//! waiting, and no `Click` was ever produced to reach it, because `dispatch` only
+//! raises one for a widget the store knows. Registered ≠ dispatched, the same bug the
+//! rail's Undo/Redo had. The sibling panels (`painter-layers`, `audio-mixer`) register
+//! theirs; the timeline was the odd one out.
 
 use crate::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
@@ -56,6 +62,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             orientation: SliderOrientation::Horizontal,
         },
     );
+    // The X. Its handler has always been in `event.rs`; this line is what lets a
+    // click reach it.
+    button(store, ids::TIMELINE_CLOSE);
     button(store, ids::TIMELINE_GO_START);
     button(store, ids::TIMELINE_PREV_FRAME);
     button(store, ids::TIMELINE_PLAY);

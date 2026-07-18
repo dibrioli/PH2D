@@ -36,6 +36,11 @@ pub(crate) struct VecOverlayPlan {
     ///
     /// Sobra o Node — que é exatamente onde o Illustrator e o Affinity a põem.
     pub corner_handles: bool,
+    /// A **gaiola do Envelope** (ADR-0129, Fatia 1) — só no **Node**, como a alça de raio de quina
+    /// e pela mesma razão: no Select manda o gizmo, no Pen/Shape o clique tem outro dono. Este flag
+    /// só diz que a gaiola *pode* aparecer neste modo; se a forma selecionada é de fato um envelope
+    /// é o [`crate::envelope_gesture::view`] que decide (devolve `None` quando não é).
+    pub envelope_cage: bool,
 }
 
 /// A política de visibilidade dos overlays vetoriais deste frame.
@@ -54,6 +59,9 @@ pub(crate) fn vec_overlay_plan(vector_active: bool, mode: DrawMode) -> VecOverla
             ),
         snap_guides: vector_active,
         corner_handles: vector_active && mode == DrawMode::Node,
+        // Node-only, como a alça de raio de quina (mesma razão de modo). Se a seleção é um envelope
+        // é `envelope_gesture::view` que resolve — aqui é só a política de MODO.
+        envelope_cage: vector_active && mode == DrawMode::Node,
     }
 }
 
@@ -129,5 +137,29 @@ mod tests {
                 "{mode:?} NÃO desenha alça de raio de quina"
             );
         }
+    }
+
+    /// **A gaiola do Envelope é do NODE, e só dele** (ADR-0129 Fatia 1) — a mesma política de modo
+    /// da alça de raio de quina. Fora do Node (Select/Pen/Shape/Build/PickBlend) o clique tem outro
+    /// dono e a gaiola não pode existir; tool inativa idem.
+    #[test]
+    fn the_envelope_cage_belongs_to_node_mode_alone() {
+        assert!(vec_overlay_plan(true, DrawMode::Node).envelope_cage);
+        for mode in [
+            DrawMode::Select,
+            DrawMode::Pen,
+            DrawMode::Shape,
+            DrawMode::Build,
+            DrawMode::PickBlend,
+        ] {
+            assert!(
+                !vec_overlay_plan(true, mode).envelope_cage,
+                "{mode:?} NÃO desenha a gaiola do envelope"
+            );
+        }
+        assert!(
+            !vec_overlay_plan(false, DrawMode::Node).envelope_cage,
+            "tool inativa não desenha a gaiola"
+        );
     }
 }

@@ -45,6 +45,12 @@ pub use connector::{HANDLE_R_PX, draw_connector_handles, draw_connector_waypoint
 mod corner;
 pub use corner::draw_corner_handles;
 
+/// A **gaiola do Envelope** (ADR-0129, Fatia 1) — módulo irmão (LOC cap). Os 4 cantos que o modo
+/// Node arrasta para deformar a forma; o raio da bolinha ([`ENVELOPE_HANDLE_R_PX`]) é o mesmo que o
+/// hit-test do host lê.
+mod envelope;
+pub use envelope::{ENVELOPE_HANDLE_R_PX, EnvelopeCageView, draw_envelope_cage};
+
 /// O realce das FACES do Shape Builder — módulo irmão (LOC cap). É a feature: sem ele o
 /// artista arrasta às cegas e só descobre o que pegou depois de soltar.
 mod build_faces;

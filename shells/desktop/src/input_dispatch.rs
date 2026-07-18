@@ -1694,6 +1694,26 @@ impl App {
     ///
     /// O snap é entregue como closure porque o Pen sabe o que é ÂNCORA (encaixa) e
     /// o que é handle (não encaixa); a shell só sabe a posição do cursor.
+    /// Arrasta o canto da gaiola do Envelope agarrado no press (ADR-0129 Fatia 1) para a
+    /// posição do cursor, respeitando a convexidade (o canto para na fronteira, não sai
+    /// dela). No-op (false) sem um arrasto vivo — a mesma disciplina do `vec_pen_drag_move`.
+    fn vec_envelope_corner_move(&mut self, x: f32, y: f32) -> bool {
+        let Some(active) = self.vec_envelope_drag else {
+            return false;
+        };
+        let Some(gfx) = self.gfx.as_mut() else {
+            return false;
+        };
+        let win = gfx.surface.size();
+        let w = gfx.camera.screen_to_world((x, y), win);
+        crate::envelope_gesture::drag(
+            &mut gfx.sim,
+            &self.vec_entities,
+            Some(active),
+            [f64::from(w[0]), f64::from(w[1])],
+        )
+    }
+
     fn vec_pen_drag_move(&mut self, x: f32, y: f32) -> bool {
         if !self.vector_tool_active() || !self.vec_pen.is_dragging() {
             return false;
@@ -2045,6 +2065,11 @@ impl App {
             && let Some(w) = self.vec_world_at(self.last_pointer)
             && self.build_move(w)
         {
+            return;
+        }
+        // ADR-0129 Fatia 1: arrastar um canto da gaiola do Envelope (modo Node).
+        // Mesma disciplina de early-return do pen; no-op sem um canto agarrado.
+        if self.vec_envelope_corner_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // ADR-0108 Fase 1.2: Pen NOVO — arrastar após a âncora puxa os handles
@@ -2663,24 +2688,42 @@ impl App {
                             // Node edita nós e NUNCA cria (ADR-0112). Não encaixa
                             // tampouco: o snap serve a quem POSICIONA um ponto novo.
                             None if node_mode => {
-                                // A alça de raio de quina não existe numa FORMA VIVA (o
-                                // recook dos parâmetros varreria o raio — ver
-                                // `crate::corner_handles`). O render já não a desenha lá;
-                                // aqui o hit-test também não pode agarrá-la, senão o
-                                // clique pegaria um alvo que não está na tela.
-                                let corner_px = (!crate::corner_handles::is_live_shape(
+                                let selected = self.vec_pen.selected();
+                                // ADR-0129 Fatia 1: os cantos da gaiola do Envelope são
+                                // alças PRÓPRIAS no modo Node (§3.3). Hit-testa-os
+                                // PRIMEIRO; um acerto arma o arrasto do canto e PULA o pen
+                                // — que agarraria uma âncora da forma COZIDA, revertida
+                                // pelo recook do frame seguinte. Um erro cai no
+                                // `on_press_node` de sempre (seleção / edição de âncora).
+                                if crate::envelope_gesture::press(
                                     &gfx.sim,
                                     &self.vec_entities,
-                                    self.vec_pen.selected().unwrap_or_default(),
-                                ))
-                                .then_some(px_to_world);
-                                self.vec_pen.on_press_node(
-                                    &mut gfx.vec_scene,
+                                    selected,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
-                                    corner_px,
-                                    alt,
-                                );
+                                    &mut self.vec_envelope_drag,
+                                ) {
+                                    // canto agarrado — o pen fica de fora
+                                } else {
+                                    // A alça de raio de quina não existe numa FORMA VIVA (o
+                                    // recook dos parâmetros varreria o raio — ver
+                                    // `crate::corner_handles`). O render já não a desenha lá;
+                                    // aqui o hit-test também não pode agarrá-la, senão o
+                                    // clique pegaria um alvo que não está na tela.
+                                    let corner_px = (!crate::corner_handles::is_live_shape(
+                                        &gfx.sim,
+                                        &self.vec_entities,
+                                        selected.unwrap_or_default(),
+                                    ))
+                                    .then_some(px_to_world);
+                                    self.vec_pen.on_press_node(
+                                        &mut gfx.vec_scene,
+                                        [w[0] as f64, w[1] as f64],
+                                        px_to_world,
+                                        corner_px,
+                                        alt,
+                                    );
+                                }
                             }
                             None => {
                                 self.vec_pen.on_press(
@@ -2762,6 +2805,15 @@ impl App {
                         if let Some(gfx) = self.gfx.as_ref() {
                             self.vec_history.commit_if_changed(&gfx.vec_scene);
                         }
+                        return;
+                    }
+                    // ADR-0129 Fatia 1: fim de um arrasto de canto da gaiola. O
+                    // `VecEnvelope` alterado vira UM passo no diff global do undo ao
+                    // soltar — o `held_button` suprimiu os frames intermediários
+                    // (`post_frame_undo`), então não há `commit_if_changed` a chamar aqui
+                    // (esse é o histórico do PEN; o envelope viaja no `WorldSnapshot`).
+                    // Consome só quando havia um canto vivo.
+                    if self.vec_envelope_drag.take().is_some() {
                         return;
                     }
                     // Marquee release → box-select the anchors inside the box.

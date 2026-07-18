@@ -53,6 +53,7 @@ mod connector_handles;
 mod connector_live;
 mod corner_handles;
 mod cursor_pos;
+mod envelope_gesture;
 mod envelope_live;
 mod flip_autokey;
 mod flip_demo;
@@ -360,6 +361,7 @@ impl App {
             vec_blend_pending: None,
             vec_morph_pending: None,
             vec_envelope_pending: None,
+            vec_envelope_drag: None,
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),

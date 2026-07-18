@@ -3472,6 +3472,26 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+                // A gaiola do **Envelope** (ADR-0129, Fatia 1): os 4 cantos que o Node
+                // arrasta para deformar a forma que a gaiola contém. Alça PRÓPRIA (não o
+                // gizmo de sprite, §3.3), desenhada só quando a forma selecionada é de
+                // fato um envelope — o flag de modo (`envelope_cage`) diz o MODO, o `view`
+                // devolve `None` quando a seleção não carrega um `VecEnvelope`.
+                if overlay.envelope_cage
+                    && let Some(cage) = crate::envelope_gesture::view(
+                        sim,
+                        &self.vec_entities,
+                        self.vec_pen.selected(),
+                        self.vec_envelope_drag,
+                    )
+                {
+                    ph2d_vec_render::draw_envelope_cage(
+                        &cage,
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                }
                 // Gradient handles (multi-point dots, or linear/radial endpoints)
                 // when the selected path has a gradient fill. A geometria do gradiente
                 // é LOCAL como a do path, então sobe pelo afim dele.

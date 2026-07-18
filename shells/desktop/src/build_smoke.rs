@@ -170,11 +170,17 @@ impl crate::App {
                         "a gaiola do smoke tem de ser convexa (mantém o horizonte fora)"
                     );
                     self.vec_envelope_pending = Some((eid, env));
+                    // Fatia 1 (ADR-0129): seleciona o envelope e entra no NODE — a gaiola
+                    // (4 cantos + moldura) aparece e os cantos ficam arrastáveis. Sem isto
+                    // a cena nasceria no Select (default), sem gaiola visível.
+                    self.vec_pen.select_many(&[eid]);
+                    self.vec_set_draw_mode(ph2d_tool_vector::DrawMode::Node);
                     eprintln!(
-                        "[envelope-smoke] elipse deformada por gaiola de perspectiva. \
+                        "[envelope-smoke] elipse deformada por gaiola de perspectiva (modo NODE). \
                          OLHE O MEIO DOS SEGMENTOS: as laterais curvam LISO — se so os 4 cantos \
                          obedecessem e o meio ficasse reto/quebrado, seria o bug ingenuo. \
-                         Arrastar canto engana; a curva ENTRE eles e a prova."
+                         AGORA ARRASTE OS CANTOS da gaiola: a forma re-deforma ao vivo, e o \
+                         convexo e' obrigatorio (um canto puxado p/ dentro para na fronteira)."
                     );
                 }
             }

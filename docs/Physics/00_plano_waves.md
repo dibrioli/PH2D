@@ -21,7 +21,7 @@
 | **W2a** | Inspector body | a autoria do artista | joints, bake |
 | **W2b** | Painel global de mundo | gravidade/solver/arrasto/sono | — |
 | **W2c** | Camadas de colisão | a matriz + a camada por-corpo | — |  ✅
-| **W3** | Joints | pino/mola/motor/distância; pêndulo, corrente, ragdoll | bake de joints |
+| **W3** | Joints | pino/mola/motor/distância; pêndulo, corrente, ragdoll | bake de joints |  ✅
 | **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |
 
 **Fora de TODAS as waves (D9):** soft-body XPBD (`ph2d-physics-soft`, M13+), fluidos FLIP/PIC
@@ -217,7 +217,8 @@ Duas fricções reais que a wave tem de resolver de propósito, não por acident
 - Components de joint (registrados no `ComponentRegistry` — append-only), autoria no Inspector/canvas
   (gizmo de ancoragem), mapeamento para `ImpulseJointSet`/`MultibodyJointSet` do rapier (acesso cru via
   `bodies_mut`/`colliders_mut` do wrapper). Determinismo preservado (mesma proibição de simd/parallel).
-- Bump `PROJECT_SCHEMA` (**21 → 22** — W1 usou o 16, W2a o 17, a integração RECONTOU para 18 ao somar o bump da `line/FLIP`, o W2b levou o 19 ao persistir as settings de mundo, o 20 ao apendar o `air_drag` pós-smoke, e o W2c o 21 ao apendar camada+matriz) + a tripla-pin — joints persistem.
+- ~~Bump `PROJECT_SCHEMA` (**21 → 22**)~~ — **NÃO acontece, e a contagem é que decide** (*"o valor se CONTA, não se escolhe"*). O blob de um componente no snapshot é chaveado por `stable_type_id = blake3(nome_canônico)[..8]`, derivado do **NOME** e não de uma posição no registry: registrar `ph2d::physics::PhysicsJoint` cunha um id novo e **não move nada**. É o oposto do W2c, que apendou `layer` DENTRO do `Collider`, onde postcard é posicional e o bump era obrigatório.
+  Bumpar assim mesmo não é neutro: um schema divergente **recusa o arquivo inteiro** (`project.rs`), então jogaria fora todo projeto já salvo — para melhorar a mensagem de erro na única direção que não funciona de qualquer jeito (um build ANTIGO lendo um arquivo com joints). O raciocínio está falsificável em `crates/ph2d-physics-ecs/tests/joint_persistence.rs`: se uma mudança futura de fato mover o layout, o 1º gate fica vermelho e o bump passa a ser devido. **`PROJECT_SCHEMA` segue em 21.**
 
 ### Gates (red-first, mutation-tested)
 1. **pêndulo de 2 corpos determinístico** — hash estável cross-OS (estende `physics-ecs-c9` com uma cena de

@@ -635,6 +635,191 @@ redundante com os arch-gates: é a única coisa cobrindo aquele widget.
 
 ---
 
+## ✅ §W3 — joints (2026-07-18, pendente smoke)
+
+### Um joint é uma ENTIDADE, e isso decide o resto
+
+O norte do repo já respondeu o que todo objeto é (**ADR-0110**: no vetor, um
+path *é* uma entidade, árvore única). Um joint-entidade herda de graça a
+Hierarquia, a seleção, o nome, o delete, o undo e o save — apagar um joint é
+apagar um objeto, e não há "remover joint" para inventar.
+
+E tira o teto: um joint guardado **no corpo** só pode ser um por corpo (bevy tem
+um componente de cada tipo por entidade), o que proíbe laço fechado e impede a
+pelve de um ragdoll de receber três.
+
+⚠️ **A âncora sai de graça, e isso não foi sorte:** o snapshot do Inspector diz,
+no próprio código (`snapshots.rs`), que Position *"lands on every entity that
+has a `Transform`, not just sprites"*. A entidade-joint carrega um `Transform`,
+então o pivô é autorável em números no dia um, com **zero widget novo**. Um
+gizmo de **PONTO** no canvas é outra coisa — os três publicadores de `GizmoView`
+são CAIXAS com alças de escala — e **não** é esta wave (§Aberto).
+
+### Os dois corpos são NOMEADOS, nunca apontados
+
+`PhysicsJoint.body_a/body_b` guardam **`ph2d_ecs::stable_name_id`** (hash FNV-1a
+do `Name`), nunca `Entity::to_bits()`. Bits são id de **ALOCAÇÃO**: o undo
+respawna toda entidade com bits novos.
+
+⚠️ E é pior que "a referência solta": bits dentro dos **bytes de um componente**
+envenenam o próprio undo. O `canonicalize` ordena as linhas pelos bytes dos
+componentes e remapeia **só** o campo estrutural `parent` — então dois estados
+logicamente iguais comparariam diferente, que é exatamente o passo espúrio que
+ele existe para matar.
+
+A timeline já tinha essa resposta desde o W4.T6. Duas cópias seriam **duas
+respostas** a *"qual é o id durável deste objeto?"*, então a função subiu para
+`ph2d-ecs` (ao lado do `Name` de onde deriva) e o `timeline_persist` **delega**.
+⚠️ O hash é um **FORMATO DE ARQUIVO** — todo projeto em disco já carrega esses
+números — e o gate o pina contra valores computados **FORA** deste codebase
+(chamar a própria função é o oráculo sempre-verde).
+
+**O preço, pinado num gate:** renomear um corpo **DESACOPLA** os joints dele — e
+os reacopla se o nome voltar. É a mesma exposição de toda binding da timeline;
+o dia em que não servir, o conserto é um `StableId` de verdade migrando os
+**dois** consumidores, não um segundo esquema de identidade para um deles.
+
+### A política de âncora, numa frase
+
+**O `Transform` do joint é a âncora em A. Em B é o MESMO ponto para um pino —
+dois corpos num lugar só *é* o que um pino é — e o CENTRO de B para mola/corda,
+cujas pontas são para estar separadas.**
+
+O motor (`ph2d-physics`) toma **duas** âncoras e não tem opinião sobre quais
+pontos são; a política mora numa função só (`bridge/joints.rs::joint_desc`).
+⚠️ Colapsar o par foi tentado e **medido**: uma corda de 2 m pendurava a bola a
+**2,5 m** sempre que o ponto autorado não era o centro dela — um número que o
+artista digitou, calado, não significando o que diz. Box2D e Unity tomam o par
+pelo mesmo motivo.
+
+### Joints reconciliam DEPOIS dos corpos, e são re-descritos só em repouso
+
+As duas coisas saem do mesmo fato: as âncoras **locais** derivam de onde os
+corpos estão, então têm de derivar de onde o artista os **pôs**. A metade dos
+corpos já tinha essa regra (`at_rest && b.rest != desc`) e os joints a montam em
+vez de inventar uma segunda. ⚠️ E voltam no **MESMO chamado** do
+`rebuild_from_rest`: o rewind replaya os ticks devidos na hora, e um replay sem
+os joints é outra simulação — a corrente cairia aos pedaços e se remontaria um
+frame depois.
+
+### Três números MEDIDOS, e os três primeiros palpites foram REFUTADOS
+
+| o quê | palpite | medido | por quê o palpite errava |
+|---|---|---|---|
+| contato entre corpos unidos | (o default do rapier) | **desligado** | rapier tem `contacts_enabled: **true**` — o OPOSTO de Box2D (`collideConnected`) e Unity (`enableCollision`). O caso canônico é um elo de corrente, que **sobrepõe o vizinho por construção**: ligado, o solver briga com uma interpenetração permanente e o motor mandado girar a 4 rad/s foi medido em **−80** |
+| `MOTOR_TRACKING` | — | **100** | a 10 o motor não ergue o próprio braço (1,39 rad de 20); a 300+ só há retorno decrescente. Em TODO valor um motor capado em 0,1 N·m ainda trava — o teto continua mordendo |
+| mola default | 100 / 5 | **30 / 0,5** | a 100 uma bola de 0,2 kg afundava **1,9 cm** num descanso de 1 m (2% — lê como VARA); a 5 de damping o repique era 2 mm |
+
+⚠️ **Dois fixtures foram trocados porque MEDIAM MAL, não porque o código
+errava.** (a) O pêndulo é **PERIÓDICO**: o gate pedia *"termina embaixo"* e
+falhava sobre um pêndulo perfeito, pego no alto do balanço — toda afirmação
+agora é sobre a **TRAJETÓRIA**, e a rigidez, sendo invariante, é checada a cada
+passo. É a mesma lição que o W1.5 pagou. (b) Uma prancha presa pela **PONTA** é
+um pêndulo **FORÇADO**, caótico (a mesma entrada caindo em −8,5, +9,1 e +2,0
+rad/s): o motor se mede numa **RODA**, presa pelo centro, onde a gravidade não
+faz torque.
+
+### Persistência: `PROJECT_SCHEMA` **NÃO** bumpa (e o plano pedia 21 → 22)
+
+O blob de um componente é chaveado por `stable_type_id = blake3(nome)[..8]` —
+derivado do **NOME**, não de uma posição no registry. Registrar
+`ph2d::physics::PhysicsJoint` cunha um id novo e **não move nada**: o oposto do
+W2c, que apendou `layer` DENTRO do `Collider`, onde postcard é posicional.
+
+E bumpar não é neutro: um schema divergente **recusa o arquivo inteiro**, então
+jogaria fora todo projeto já salvo — para melhorar a mensagem de erro na única
+direção que não funciona de qualquer jeito. **`PROJECT_SCHEMA` segue em 21**, e o
+raciocínio está falsificável (`tests/joint_persistence.rs`): se algo mover o
+layout, o 1º gate fica vermelho e o bump passa a ser devido.
+
+### O gesto de criar mora na §11, não na §12
+
+Um joint **não existe ainda** quando você quer fazer um, então o botão tem de
+estar onde você já está — olhando os dois corpos que selecionou. **"Join
+Selected Bodies"** aparece na seção *Physics Body* quando a seleção é
+exatamente DOIS corpos, um fato que só a shell enxerga (o painel recebe uma
+entidade por vez), perguntado **uma vez** e lido pelos dois lados: o pintor
+decide se **oferece**, o arm decide se **honra**.
+
+⚠️ **Join NÃO pode fan-out.** Todo outro edit da §11 é por-entidade e a
+`render_loop` o espalha pela seleção; Join é um clique sobre um **PAR**, e
+espalhado criaria **dois** joints entre os mesmos dois objetos no clique que
+deveria criar um. Interceptado antes do fan-out, com **arch-gate sobre o fonte**
+(`tests/join_is_one_gesture_not_a_fan_out.rs`) — nenhum unit test alcança aquela
+função.
+
+⚠️ **Corpos sem `Name` são NOMEADOS na criação.** Não é efeito colateral a
+pedir desculpa: um corpo sem nome é um que um joint não consegue apontar, e as
+bindings da timeline têm o mesmo requisito.
+
+### A §12 e o anti-knob-morto
+
+Só os parâmetros do tipo escolhido são pintados — um campo de *stiffness* numa
+corda é um controle que não pode fazer nada, o que é pior que um faltando
+porque parece que deveria funcionar. Quem responde *"este tipo tem motor?"* é
+**`JointKind::is_hinge`**, e a **PONTE pergunta a MESMA função** antes de
+entregar o motor ao solver ⇒ um knob pintado que o solver ignora não existe.
+Ângulos em **GRAUS** na fronteira, **radianos** no componente (a cerca do
+`rotation_rad`). Deletar um joint é deletar um **objeto**: despawn pelo caminho
+de sempre, com o passo de undo de graça.
+
+### O joint na tela
+
+Um collider é invisível; um joint é **menos** que isso — é uma relação, sem
+geometria nenhuma. Segmento entre as duas âncoras + um anel em cada ponta, em
+**âmbar** (terceira coisa, ao lado do verde estático e do ciano dinâmico).
+
+⚠️ **As âncoras vêm do SOLVER, não do `Transform` da entidade-joint.** O
+Transform é a âncora **autorada** e nada o reescreve durante o play, então
+desenhar dele pregaria o marcador onde o artista o largou enquanto a corrente
+que ele segura balança embora — errado exatamente na situação que o artista
+está olhando. O par vivo ainda conta a verdade sobre **tensão**.
+
+⚠️ E é por **coincidirem** que existem os anéis: um pino em repouso tem as duas
+âncoras no MESMO ponto, o segmento tem comprimento zero e **não pinta nada** — o
+joint mais comum do editor seria invisível. Gate próprio.
+
+### Gates: 39 novos, 33 mutações, 33 sangram
+
+| onde | quantos | o que cobrem |
+|---|---|---|
+| `ph2d-physics/tests/joints.rs` | 10 | pino/limites/motor/corda/mola no solver; cada afirmação de restrição **pareada** com a afirmação do movimento que ela deve permitir |
+| `ph2d-physics-ecs/tests/joints.rs` | 11 | undo (respawn REAL via `world_to_snapshot`), Reset, scrub, rename, meio-autorado, corpo re-spawnado, ordem de arquétipo |
+| `ph2d-physics-ecs/tests/joint_persistence.rs` | 3 | o arquivo antigo ainda abre; nenhum id se moveu; round-trip com parâmetros |
+| `ph2d-panel-inspector/tests/seam_joint.rs` | 7 | sweep que **CLICA de verdade** (`click_at`) |
+| `seam_physics.rs` (+1) | 1 | Join oferecido **e** honrado só com dois corpos |
+| shell `inspector_joint_tests.rs` | 7 | bus → ECS → simulação |
+| shell `physics_overlay_joints.rs` | 4 | o desenho, inclusive âncoras coincidentes |
+| shell `join_is_one_gesture_not_a_fan_out.rs` | 2 | arch-gate do fan-out |
+| unit (`joint.rs`, `layers`-style) | 4 | discriminantes postcard pinados em ordem |
+
+⚠️ **A 1ª rodada de mutação da ponte teve UMA sobrevivente:** a ordem
+determinista de inserção — que com **um** joint não pode importar. O gate que
+faltava monta a MESMA corrente com os arquétipos caindo diferente (um joint com
+`Name`, outro sem) e exige o mesmo hash.
+
+### Smoke: `PH2D_PHYSICS_SMOKE=6`
+
+Pêndulo · corrente · ragdoll, lado a lado — **três** porque cada uma responde
+uma pergunta diferente. O pêndulo diz que a âncora é onde o artista a pôs (está
+preso na **PONTA** da prancha, então uma versão que usasse centros a penduraria
+pelo meio). A corrente diz que elos **sobrepostos** nos pinos não brigam. O
+ragdoll diz que os **limites** seguram — joelhos dobram para um lado só.
+
+### Aberto no W3
+
+- **Gizmo de âncora no canvas** — um handle de **PONTO**, e os três publicadores
+  de `GizmoView` são caixas com alças de escala. A âncora É autorável hoje (os
+  campos Position da §12), então isto é refinamento, não buraco.
+- **Re-escolher os corpos de um joint existente** — precisa de um *picker* de
+  entidade, que o Inspector não tem. Hoje: apague o joint e faça outro.
+- **Weld (`FixedJoint`)** — ~4 linhas no motor e um chip, deliberadamente FORA:
+  nada no plano nem no smoke o exercita, e um 4º chip que a wave não fuma é um
+  chip shipado às cegas.
+- **Motor em mola/corda** — rapier expõe; nenhum consumidor pediu.
+
+---
+
 ## Decisões (ADR-0131, condensadas — o *porquê* está lá)
 
 - **D1** runtime-truth + bake opcional (Enio). **D2** `PhysicsWorld` transiente shell-side (precedente
@@ -733,6 +918,35 @@ redundante com os arch-gates: é a única coisa cobrindo aquele widget.
 - **`PROJECT_SCHEMA` = 16** (era 15) + tripla-pin `(16,7,8)` em `project_tests`.
 - ADR **0131** (era 0130 — renumerado na integração de 2026-07-18: a `line/gpu-nodes` reclamou o 0130 no mesmo dia).
 - ~~`PIXELS_PER_METER`~~ **NÃO existe** — D4 corrigido; reusa `ProjectSettings.pixels_per_meter`.
+
+**Alocados e CRIADOS no W3:**
+- `ph2d-ecs` (aditivo): **`stable_name_id`** em `name.rs` (+ re-export no `lib.rs`). O
+  `shells/desktop/src/timeline_persist.rs::wire_id_for_name` passou a **delegar** — mesma FNV-1a,
+  byte a byte, pinada contra valores externos.
+- `ph2d-physics` (aditivo): módulo **`world/joints.rs`** — `JointDesc`/`JointKind{Pin,Spring,Rope}`/
+  `MotorDesc`, `spawn_joint`/`remove_joint`/`joint_count`/`joint_anchors`; re-export de
+  **`ImpulseJointHandle`**. Const privada `MOTOR_TRACKING`.
+- `ph2d-physics-ecs`: component **`PhysicsJoint`** + enum **`JointKind`** (`src/joint.rs`), nome
+  canônico **`ph2d::physics::PhysicsJoint`** (registrado; a contagem do registry foi 2 → **3**).
+  Módulo **`src/bridge/joints.rs`**. Dev-dep **`postcard`**.
+- `ph2d-editor-core`: **`InspectorJointInfo`** + **`JointFieldEdit`** (`inspector_model.rs`), campo
+  **`InspectorPhysicsInfo.can_join`**, variant **`PhysicsFieldEdit::Join`**, variant de ação
+  **`EditorAction::InspectorJointEdit`**. Ids §12 (23 novos, todos na tabela do
+  `node_id_collisions`): `INSP_LIVE_JOINT_SECTION/_COLOR`, `INSP_JOINT_{KIND,LIMITS,MOTOR}_GROUP`,
+  `INSP_JOINT_KIND[3]`, `INSP_JOINT_{LIMITS,MOTOR}[2]`, `INSP_JOINT_LIMIT_{MIN,MAX}`,
+  `INSP_JOINT_MOTOR_{SPEED,FORCE}`, `INSP_JOINT_{REST_LENGTH,STIFFNESS,DAMPING,MAX_LENGTH,REMOVE}`,
+  **`INSP_PHYS_JOIN`**.
+  ⚠️ `any_live_section` foi `[bool; 8]` → **`[bool; 9]`** e o array de slots de nota 10 → **11**
+  (os dois são rígidos DE PROPÓSITO — *"a signature that changes when you forget"*).
+  ⚠️ Allowance de LOC de `paint_inspector` **permanece 424**: a §12 custou ~22 e pagou movendo a
+  família de física inteira para `paint_frame::paint_physics_sections`. **Está na linha.**
+- `ph2d-panel-inspector`: `sections/joint.rs`, `sections/rows.rs` (helpers compartilhados,
+  extraídos de `physics.rs`), `event_joint.rs`, `tests/seam_joint.rs`.
+- Shell: `render_loop/inspector_joint.rs`, `render_loop/inspector_joint_tests.rs`,
+  `render_loop/physics_overlay_joints.rs`, `tests/join_is_one_gesture_not_a_fan_out.rs`;
+  `physics_smoke_joints` (**`PH2D_PHYSICS_SMOKE=6`** — o 6 estava reservado no W1 como "bake",
+  que agora é o **7**).
+- **`PROJECT_SCHEMA` INTOCADO em 21** — ver §W3 (a contagem deu zero).
 
 **Alocados e CRIADOS no W2b:**
 - Crate **`ph2d-panel-physics`** (glob `crates/*`), `Panel::ID = "physics"`, struct

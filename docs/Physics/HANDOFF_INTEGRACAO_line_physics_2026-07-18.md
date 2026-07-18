@@ -11,10 +11,11 @@
 | | |
 |---|---|
 | Branch | `line/physics` |
-| HEAD | `89be6146` |
-| Base do fork (merge-base com `main`) | `cdc3acc1` |
-| Commits | **15** |
-| ⚠️ `main` andou desde o fork? | **NÃO** — `merge-base == main HEAD == cdc3acc1` no momento deste handoff |
+| HEAD | `adfab599` |
+| Base do fork (merge-base com `main`) | `389676f9` |
+| Commits | **21** |
+| Waves cobertas | W0 · W1 · W1.5 · W2a · **W2b** · **W2c** · **W3** |
+| ⚠️ `main` andou desde o fork? | **NÃO** — `merge-base == main HEAD == 389676f9` no momento deste handoff |
 
 **Consequência:** enquanto a `main` não andar, isto é **fast-forward puro** (`--ff-only` passa sem
 Mergiraf). Se outra linha integrar antes, veja o §3 — os pontos de colisão estão todos listados com valor
@@ -54,6 +55,16 @@ Novos: `sections/physics.rs`, `event_physics.rs`, `paint_frame.rs`, `tests/seam_
 saíram para `paint_frame.rs` porque `paint_inspector` estava congelado em 431 LOC e uma seção custa ~18.
 **É o arquivo com maior risco de conflito textual** se outra linha mexeu no Inspector.
 
+### 2.4b W3 — o que a wave de joints acrescentou (tudo **aditivo**)
+| Onde | O quê |
+|---|---|
+| `ph2d-ecs` | **`stable_name_id`** em `name.rs` + re-export. ⚠️ `shells/desktop/src/timeline_persist.rs::wire_id_for_name` passou a **DELEGAR** — mesma FNV-1a byte a byte (pinada contra valores externos), mas é **edição num arquivo da timeline**: num conflito, mantenha a delegação |
+| `ph2d-physics` | módulo `world/joints.rs` + re-export de `ImpulseJointHandle` |
+| `ph2d-physics-ecs` | `src/joint.rs` (component `PhysicsJoint` + enum `JointKind`), `src/bridge/joints.rs`, dev-dep `postcard`. ⚠️ **a contagem do registry foi 2 → 3** (o teste `registers_every_physics_component`) |
+| `ph2d-editor-core` | `InspectorJointInfo`/`JointFieldEdit`; `InspectorPhysicsInfo.can_join`; `PhysicsFieldEdit::Join`; **23 ids §12** na tabela do `node_id_collisions`. ⚠️ `any_live_section` `[bool; 8] → [bool; 9]` e os slots de nota `10 → 11` — **os dois são rígidos DE PROPÓSITO** |
+| `ph2d-panel-inspector` | `sections/joint.rs`, `sections/rows.rs` (helpers **movidos** de `physics.rs`), `event_joint.rs`, `tests/seam_joint.rs`. ⚠️ `paint.rs` perdeu a família de física para `paint_frame::paint_physics_sections` |
+| `shells/desktop` | `render_loop/inspector_joint.rs` (+tests), `render_loop/physics_overlay_joints.rs`, `tests/join_is_one_gesture_not_a_fan_out.rs`, cena de smoke **6** |
+
 ### 2.5 `ph2d-vector` — **1 linha, aditiva**
 `PathEl` acrescentado à lista de re-export do kurbo (`src/lib.rs:58`). **Não é a superfície congelada** —
 o gate `architecture_vector_contract_surface` escaneia só `-doc` e `-traits` (verificado, §4).
@@ -73,18 +84,29 @@ Modificados: `main.rs`/`app_state.rs` (2 campos), `init.rs` (registro + gate do 
 
 ## 3. Símbolos que podem COLIDIR (grep isto — §1.5.5)
 
-### 3.1 ⚠️ `PROJECT_SCHEMA = 17` — **o valor se CONTA, não se escolhe**
-`shells/desktop/src/project.rs:66` e a tripla-pin `(17, 7, 8)` em `project_tests.rs:392`.
+### 3.1 ⚠️ `PROJECT_SCHEMA = 21` — **o valor se CONTA, não se escolhe**
+`shells/desktop/src/project.rs:86` e a tripla-pin `(21, 8, 8)` em `project_tests.rs`.
 
-Fork estava em 15; **esta linha bumpou DUAS vezes** (16 = os componentes de física registrados no
-`WorldSnapshot`; 17 = `restitution`/`friction` **apendados** ao `Collider`). **Se outra linha também
+**Esta linha bumpou CINCO vezes**: 16 (componentes de física no `WorldSnapshot`) · 17
+(`restitution`/`friction` apendados ao `Collider`) · 19 (as settings de mundo do W2b viajam no arquivo;
+o 18 veio da re-contagem que somou o bump da `line/FLIP` na integração anterior) · 20 (`air_drag`
+apendado pós-smoke) · 21 (camada + matriz do W2c).
+
+⚠️ **O W3 NÃO bumpou, de propósito, e isso também é a contagem falando.** Um componente NOVO não move
+layout nenhum: o blob é chaveado por `stable_type_id = blake3(nome_canônico)[..8]`, derivado do **NOME**,
+então registrar `ph2d::physics::PhysicsJoint` cunha um id novo e todo blob já em disco fica onde estava.
+É o oposto do W2c, que apendou um campo **DENTRO** do `Collider`, onde postcard é posicional. E bumpar à
+toa não é neutro: schema divergente **recusa o arquivo inteiro**, jogando fora todo projeto já salvo. O
+raciocínio está falsificável em `crates/ph2d-physics-ecs/tests/joint_persistence.rs` — se algo mover o
+layout, o 1º gate fica vermelho e o bump passa a ser devido. **Se outra linha também
 bumpou, o valor certo não está em nenhum dos dois lados: some os bumps.** Escolher um lado faz os saves
 da outra passarem na checagem de versão e serem lidos com o layout errado — e postcard não tem nome de
 campo para reclamar, ele devolve lixo bem-formado. (É o cenário que a doc do próprio gate descreve, e que
 já aconteceu com QUATRO linhas em 2026-07-13.)
 
-### 3.2 `EditorAction` — 2 variants apendados
-`Transport(TransportCmd)` · `InspectorPhysicsEdit { entity_bits, edit }`.
+### 3.2 `EditorAction` — 3 variants apendados
+`Transport(TransportCmd)` · `InspectorPhysicsEdit { entity_bits, edit }` ·
+**`InspectorJointEdit { entity_bits, edit }`** (W3).
 Enum `#[non_exhaustive]` e **não serializado** (é barramento de frame) ⇒ **a ordem é livre**; num conflito,
 **mantenha os dois lados**. Mesma regra para `TransportCmd` (enum novo no mesmo arquivo).
 
@@ -176,16 +198,31 @@ depende de tudo. **Integre a linha inteira ou nenhuma parte** — não há corte
 3. Se `main` andou: re-medir §3.1 (schema), §3.5 (allowance de LOC) e §3.7 (contagens) — **os três se
    contam, não se escolhem.**
 
-### 6.3 Smoke — **TUDO desta linha foi smokado e APROVADO pelo Enio (2026-07-18)**
+### 6.3 Smoke
+
+Todo comando abaixo é para rodar **de dentro do worktree**, e com `env` porque o shell do Enio é
+**fish** (`VAR=valor comando` não funciona lá — a env var seria ignorada em silêncio e a cena nunca
+montaria):
+
+```
+env PH2D_PHYSICS_SMOKE=<n> cargo run -p ph2d-host-desktop
+```
+
 | Cena | O quê | Estado |
 |---|---|---|
-| `PH2D_PHYSICS_SMOKE=1` | W1: um corpo cai e assenta | ✅ aprovado |
-| `PH2D_PHYSICS_SMOKE=2` | W1.5: pilha + scrub da régua pra trás | ✅ aprovado |
+| `=1` | W1: um corpo cai e assenta | ✅ aprovado |
+| `=2` | W1.5: pilha + scrub da régua pra trás | ✅ aprovado |
 | (mesma cena) | contorno de collider + tecla `B` | ✅ aprovado |
-| `PH2D_PHYSICS_SMOKE=3` | W2: Add Physics Body no Inspector | ✅ aprovado |
+| `=3` | W2a: Add Physics Body no Inspector | ✅ aprovado |
 | (mesma cena) | interpenetração no pouso | ✅ aprovado |
+| `=4` | W2b: o painel de mundo (tecla `W`) | ✅ aprovado |
+| `=5` | W2c: a matriz de camadas | ✅ aprovado |
+| **`=6`** | **W3: pêndulo · corrente · ragdoll** | ⏳ **PENDENTE** |
 
-**Nada fica pendente de smoke nesta linha.**
+⚠️ **A cena 6 é a única pendente**, e é a única coisa desta linha que ainda não passou pelos olhos do
+Enio. O que ela tem de mostrar está no §W3 do tracker; em resumo: o pêndulo pendura pela **PONTA** da
+prancha (não pelo meio), os elos da corrente **sobrepõem** nos pinos sem brigar, e os joelhos do ragdoll
+dobram **para um lado só**. Tecla `B` liga o overlay — os joints são os traços **âmbar**.
 
 ### 6.4 O que NÃO foi construído (para o integrador não procurar)
 - **O painel global de física** (`ph2d-panel-physics`, gravidade/substeps/camadas) — é a **outra metade

@@ -69,6 +69,95 @@ pub enum EnvelopeKind {
     Mesh,
 }
 
+/// **Um preset de gaiola** (ADR-0129 Fatia C): Arc / Flag / Wave / … — cada um GERA a gaiola.
+///
+/// # Por que a TABELA mora aqui e a MATEMÁTICA não
+///
+/// Um preset é 8 números (a barriga de cada lado nos seus 2 controles, ao longo da normal externa) —
+/// **dado**, que é o que esta crate guarda. Transformá-los numa gaiola é geometria, e mora no
+/// `ph2d_vec_envelope::preset_cage`. A alternativa (o enum na crate de geometria) esbarra na mesma
+/// regra que mantém o `VecEnvelopeChild::source` em bytes: **o `ph2d-ecs` é a fundação e não puxa
+/// crate satélite**. A alternativa oposta (um enum em cada lado) seriam duas listas para driftar.
+///
+/// Adicionar um preset é **uma linha em [`EnvelopeWarp::ALL`], uma em [`EnvelopeWarp::bows`] e uma
+/// em [`EnvelopeWarp::label`]** — o painel se popula de `ALL`, então não há sítio de UI a tocar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnvelopeWarp {
+    /// O banana: os dois lados horizontais descem juntos — texto sobre um arco.
+    Arc,
+    /// Só o lado de CIMA incha.
+    ArcUpper,
+    /// Só o lado de BAIXO incha.
+    ArcLower,
+    /// Os dois lados horizontais saem para FORA: o meio engorda.
+    Bulge,
+    /// Onda com os dois lados EM FASE — a forma inteira ondula.
+    Flag,
+    /// Onda com os dois lados em CONTRAFASE — a forma aperta e alarga.
+    Wave,
+    /// Os dois lados VERTICAIS entram: a cintura afina.
+    Squeeze,
+}
+
+impl EnvelopeWarp {
+    /// A força com que um preset é carimbado da primeira vez.
+    ///
+    /// Não é gosto: com `bend = 0` o preset É a gaiola em repouso (gate
+    /// `a_zero_bend_is_the_rest_cage_exactly`), então um envelope que nascesse em zero faria o
+    /// primeiro clique em "Arc" não mover NADA — um botão que parece morto na estreia.
+    pub const DEFAULT_BEND: f64 = 0.5;
+
+    /// Todos os presets, na ordem em que o painel os oferece.
+    pub const ALL: &'static [Self] = &[
+        Self::Arc,
+        Self::ArcUpper,
+        Self::ArcLower,
+        Self::Bulge,
+        Self::Flag,
+        Self::Wave,
+        Self::Squeeze,
+    ];
+
+    /// A barriga de cada lado (`[BL→BR, BR→TR, TR→TL, TL→BL]`), nos 2 controles, em fração do lado,
+    /// **ao longo da normal EXTERNA** — positivo = para fora da gaiola.
+    ///
+    /// A normal (e não `y` de mundo) é o que torna a tabela legível: a assimetria de percurso (o lado
+    /// de cima vai de TR para TL, ao contrário do de baixo) **se cancela** contra o sinal da normal,
+    /// e por isso *Bulge* e *Flag* saem com os dois lados escritos IGUAL. Numa tabela em `y` de mundo
+    /// cada linha teria de lembrar de qual lado ela fala — e alguém erraria uma.
+    #[must_use]
+    pub fn bows(self) -> [[f64; 2]; 4] {
+        // A amplitude é `ph2d_vec_envelope::AMP` aplicada lá; aqui as linhas são a FORMA, em ±1.
+        const O: [f64; 2] = [0.0, 0.0];
+        match self {
+            // baixo para fora (desce) + cima para dentro (desce): o meio inteiro afunda.
+            Self::Arc => [[1.0, 1.0], O, [-1.0, -1.0], O],
+            Self::ArcUpper => [O, O, [1.0, 1.0], O],
+            Self::ArcLower => [[1.0, 1.0], O, O, O],
+            Self::Bulge => [[1.0, 1.0], O, [1.0, 1.0], O],
+            // Em fase: no MESMO x os dois lados vão para o mesmo lado do mundo. A dupla inversão
+            // (percurso × normal) faz as duas linhas serem idênticas — é o cancelamento acima.
+            Self::Flag => [[-1.0, 1.0], O, [-1.0, 1.0], O],
+            Self::Wave => [[-1.0, 1.0], O, [1.0, -1.0], O],
+            Self::Squeeze => [O, [-1.0, -1.0], O, [-1.0, -1.0]],
+        }
+    }
+
+    /// O rótulo do botão (inglês, como toda label deste painel).
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Arc => "Arc",
+            Self::ArcUpper => "Arc Upper",
+            Self::ArcLower => "Arc Lower",
+            Self::Bulge => "Bulge",
+            Self::Flag => "Flag",
+            Self::Wave => "Wave",
+            Self::Squeeze => "Squeeze",
+        }
+    }
+}
+
 /// **O Envelope Object.** Um container que guarda a gaiola (cantos + lados) + a fonte autorada de
 /// cada filho. A geometria que o mundo vê está no `VecPath` de cada filho (a cozida); esta struct é a
 /// **relação** da qual essa geometria é função pura, re-cozida por frame pela shell.
@@ -93,6 +182,24 @@ pub struct VecEnvelope {
     pub edges: [[[f64; 2]; 2]; 4],
     /// Qual dos dois mapas esta gaiola aplica (ver [`EnvelopeKind`] — eles NÃO são o mesmo mapa).
     pub kind: EnvelopeKind,
+    /// O preset que **gerou** esta gaiola, se ela veio de um — e o quanto (`bend ∈ [-1, 1]`).
+    ///
+    /// ⚠️ **Não é um segundo dono da gaiola.** `corners`/`edges` seguem sendo a única verdade sobre a
+    /// forma; isto é a lembrança de *de onde eles vieram*, e existe por um motivo só: o slider **Bend**
+    /// precisa saber o que re-carimbar. A derivação é de **mão única e por evento** (mudou o preset ou
+    /// o bend ⇒ re-escreve a gaiola), nunca por frame — se fosse por frame, o preset e a mão do
+    /// artista disputariam a mesma gaiola em todo `recook`.
+    ///
+    /// Arrastar QUALQUER alça **solta o preset** (`warp = None`): a gaiola passa a ser manual e o
+    /// slider Bend deixa de ser oferecido. É o *"promovível"* que o ADR-0129 §4 pediu — e sem essa
+    /// regra o próximo movimento do slider apagaria o que a mão acabou de fazer.
+    pub warp: Option<EnvelopeWarp>,
+    /// O `bend` do preset, `[-1, 1]`. Sem sentido (e ignorado) quando `warp` é `None`.
+    ///
+    /// Nasce em [`EnvelopeWarp::DEFAULT_BEND`], não em zero: um preset carimbado com força zero é a
+    /// gaiola em repouso ao bit (há gate), então o **primeiro** clique num preset não moveria um
+    /// pixel e pareceria um botão morto.
+    pub bend: f64,
     /// Os filhos deformados por esta gaiola — um para um envelope de forma única (`N=1`), vários para
     /// um *warp group*. Cada um carrega o seu path + a sua fonte (ver [`VecEnvelopeChild`]).
     pub children: Vec<VecEnvelopeChild>,
@@ -120,6 +227,8 @@ impl VecEnvelope {
             corners,
             edges,
             kind: EnvelopeKind::default(),
+            warp: None,
+            bend: EnvelopeWarp::DEFAULT_BEND,
             children,
         }
     }

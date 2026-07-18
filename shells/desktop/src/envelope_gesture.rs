@@ -44,6 +44,19 @@ pub(crate) fn kind_of(sim: &SimWorld, bits: u64) -> EnvelopeKind {
     cage_of(sim, bits).map_or(EnvelopeKind::Perspective, |(_, _, k)| k)
 }
 
+/// O preset que gerou a gaiola do container `bits` (ou `None` se ela é manual) + a força dele.
+/// `None` no todo se `bits` não é um envelope.
+///
+/// O painel pergunta para acender o botão certo e mostrar o Bend; o dispatch pergunta para saber o
+/// que re-carimbar quando só o Bend mudou. **A mesma leitura para os dois** — se o painel dissesse
+/// "Arc ativo" e o dispatch achasse outro, arrastar o slider trocaria o preset debaixo do dedo.
+#[must_use]
+pub(crate) fn warp_of(sim: &SimWorld, bits: u64) -> Option<(Option<ph2d_ecs::EnvelopeWarp>, f64)> {
+    sim.world()
+        .get::<VecEnvelope>(Entity::from_bits(bits))
+        .map(|env| (env.warp, env.bend))
+}
+
 /// Os controles de lado a OFERECER — `Some` só no gesto Mesh.
 ///
 /// **Porta única** de *"esta gaiola tem alça de lado?"*: o hit-test, o arrasto e o desenho perguntam
@@ -145,6 +158,10 @@ pub(crate) fn drag(sim: &mut SimWorld, active: Option<(u64, usize)>, world_pt: [
     {
         env.corners = next.corners;
         env.edges = next.edges;
+        // **A mão promove a gaiola a MANUAL** (ADR-0129 §4, "o preset vira promovível). Sem isto o
+        // próximo toque no slider Bend re-carimbaria o preset por cima do que o artista acabou de
+        // fazer — o preset e a mão seriam dois donos da mesma gaiola.
+        env.warp = None;
     }
     true
 }

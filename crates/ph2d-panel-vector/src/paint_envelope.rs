@@ -52,6 +52,7 @@ impl BodyCtx<'_> {
                 ],
                 y,
             );
+            y = self.envelope_presets(y);
             // Tabela tipada como a do Blend (HR-12): o `action_button` delega ao `paint_button`
             // canônico, que é quem costura o AccessKit — e nomear o `NodeId` aqui é o idioma que o
             // gate `every_widget_file_wires_a11y` reconhece nos irmãos desta pasta.
@@ -62,6 +63,56 @@ impl BodyCtx<'_> {
             for (id, label) in commands {
                 y = self.action_button(id, label, y);
             }
+        }
+        y
+    }
+
+    /// Os **presets de gaiola** (ADR-0129 Fatia C) + o slider **Bend**.
+    ///
+    /// A lista vem PUBLICADA pelo shell (`state::envelope_presets`) — a tabela mora no
+    /// `ph2d_ecs::EnvelopeWarp` e este painel não a vê. É de propósito: acrescentar um preset é uma
+    /// linha lá e **zero mudança aqui**, e uma lista escrita à mão neste arquivo driftaria no
+    /// primeiro preset novo (o mesmo idioma da rack de áudio, que se popula de `KINDS`).
+    ///
+    /// O **Bend** só aparece com um preset ATIVO: sem preset ele não teria o que re-carimbar. E ele
+    /// desaparece sozinho quando a mão arrasta uma alça — o arrasto promove a gaiola a manual, e um
+    /// slider que re-carimbasse por cima do gesto seria um segundo dono da mesma gaiola.
+    fn envelope_presets(&mut self, y: f32) -> f32 {
+        let labels = state::envelope_presets();
+        if labels.is_empty() {
+            return y;
+        }
+        let active = state::envelope_warp();
+        let gap = Spacing::Sm.px();
+        let w = ((self.inner_w - gap) / 2.0).max(1.0);
+        let mut y = y;
+        // Dois por linha; contagem ímpar deixa o último sozinho, largura cheia.
+        let mut i = 0;
+        while i + 1 < labels.len() {
+            let pair: [(ph2d_a11y::NodeId, &str); 2] = [
+                (ids::vector_envelope_preset_id(i), labels[i]),
+                (ids::vector_envelope_preset_id(i + 1), labels[i + 1]),
+            ];
+            y = self.row2(w, gap, pair, y);
+            i += 2;
+        }
+        if i < labels.len() {
+            y = self.action_button(ids::vector_envelope_preset_id(i), labels[i], y);
+        }
+        if active.is_some() {
+            let bend = state::envelope_bend();
+            // O track do slider é `0..1` e o bend é `-1..1` — o mapa é o mesmo dos sliders bipolares
+            // do painel: `track = (bend + 1) / 2`.
+            let track = ((bend + 1.0) / 2.0) as f32;
+            y = self.slider_row(
+                "Bend",
+                ids::VECTOR_ENVELOPE_BEND,
+                ids::VECTOR_ENVELOPE_BEND_NUM,
+                track,
+                bend,
+                &format!("{bend:.2}"),
+                y,
+            );
         }
         y
     }

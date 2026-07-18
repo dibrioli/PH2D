@@ -1367,6 +1367,9 @@ impl crate::App {
             // O GESTO da gaiola (ADR-0129 Fatia D): `Some(true)` = Mesh (lados curvos),
             // `Some(false)` = Perspective (lados retos, mapa projetivo).
             let mut pending_envelope_mesh: Option<bool> = None;
+            // O PRESET de gaiola (ADR-0129 Fatia C): indice em `EnvelopeWarp::ALL`, e o Bend.
+            let mut pending_envelope_preset: Option<usize> = None;
+            let mut pending_envelope_bend: Option<f64> = None;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
@@ -1516,6 +1519,11 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_MESH {
                                 // ADR-0129 Fatia D: o patch de Coons -- os lados DOBRAM.
                                 pending_envelope_mesh = Some(true);
+                            } else if let Some(i) = (0..ph2d_editor::ids::MAX_ENVELOPE_PRESETS)
+                                .find(|&i| *id == ph2d_editor::ids::vector_envelope_preset_id(i))
+                            {
+                                // ADR-0129 Fatia C: carimba o preset `i` na gaiola.
+                                pending_envelope_preset = Some(i);
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -1641,6 +1649,10 @@ impl crate::App {
                                 // ADR-0128: arrastar Steps ajusta o blend selecionado AO VIVO.
                                 pending_blend_steps =
                                     Some(ph2d_tool_vector::params::blend_steps_from_track(*v));
+                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_BEND {
+                                // ADR-0129 Fatia C: o `event.rs` do painel ja converteu o track
+                                // bipolar para o dominio do documento (`-1..1`) -- aqui e' valor.
+                                pending_envelope_bend = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_MORPH_T {
                                 // Arrastar o `t` move a forma pelo caminho AO VIVO — e é assim que
                                 // o artista a estaciona onde ela fica bem, antes do K.
@@ -2531,6 +2543,32 @@ impl crate::App {
                     eprintln!("[ph2d-vec] envelope: gaiola em {kind:?}");
                 }
             }
+            // ADR-0129 Fatia C: o preset carimba a gaiola inteira; o Bend re-carimba o preset ATIVO.
+            // Os dois passam pela MESMA `apply_preset`, entao clicar "Arc" e arrastar o Bend nao
+            // podem produzir gaiolas diferentes para os mesmos numeros.
+            if pending_envelope_preset.is_some() || pending_envelope_bend.is_some() {
+                let sel: Vec<u64> = self
+                    .vec_pen
+                    .selected_paths()
+                    .iter()
+                    .filter_map(|id| self.vec_entities.get(id).copied())
+                    .collect();
+                if let Some(bits) = crate::envelope_live::sole_container(sim, &sel)
+                    && let Some((cur_warp, cur_bend)) = crate::envelope_gesture::warp_of(sim, bits)
+                {
+                    let warp = pending_envelope_preset
+                        .and_then(|i| ph2d_ecs::EnvelopeWarp::ALL.get(i).copied())
+                        .or(cur_warp);
+                    let bend = pending_envelope_bend.unwrap_or(cur_bend);
+                    // Sem preset na mao E sem preset ativo, o Bend nao tem o que re-carimbar --
+                    // e' o caso da gaiola promovida a manual pelo arrasto.
+                    if let Some(warp) = warp
+                        && crate::envelope_live::apply_preset(sim, bits, warp, bend)
+                    {
+                        eprintln!("[ph2d-vec] envelope: preset {warp:?} bend {bend:.2}");
+                    }
+                }
+            }
             // ADR-0128 C2b: Reset Spine — volta o(s) blend(s) selecionado(s) ao spine automático.
             if pending_reset_spine
                 && crate::blend_live::reset_spine(
@@ -3276,6 +3314,23 @@ impl crate::App {
                 ph2d_panel_vector::set_current_envelope_mesh(env_container.is_some_and(|b| {
                     crate::envelope_gesture::kind_of(sim, b) == ph2d_ecs::EnvelopeKind::Mesh
                 }));
+                // Os presets de gaiola: o painel se auto-popula desta lista, entao acrescentar um
+                // preset e' uma linha em `EnvelopeWarp::ALL` e ZERO mudanca de painel.
+                let labels: Vec<&'static str> = ph2d_ecs::EnvelopeWarp::ALL
+                    .iter()
+                    .map(|w| w.label())
+                    .collect();
+                let (active, bend) = env_container
+                    .and_then(|b| crate::envelope_gesture::warp_of(sim, b))
+                    .map_or((None, 0.0), |(w, bend)| {
+                        (
+                            w.and_then(|w| {
+                                ph2d_ecs::EnvelopeWarp::ALL.iter().position(|c| *c == w)
+                            }),
+                            bend,
+                        )
+                    });
+                ph2d_panel_vector::set_current_envelope_presets(&labels, active, bend);
             }
             // Live Shapes: o ALVO dos campos de forma do painel é a forma paramétrica
             // SELECIONADA — os campos DELA aparecem (mesmo na ferramenta Select) e a

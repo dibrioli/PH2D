@@ -24,29 +24,46 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::tool::PanelEvent;
 
+/// Encaminha o track de um slider ao shell como `SetValue`, já **no domínio do documento**.
+///
+/// Os três sliders que passam por aqui (Bend, Morph `t`, Blend Steps) diferiam só no default e na
+/// conversão, e eram três cópias do mesmo corpo — o terceiro (o Bend, bipolar) foi o que estourou o
+/// teto de LOC da função e cobrou o fatoramento.
+///
+/// A conversão mora **nesta fronteira**, de propósito: o shell recebe o número que o documento
+/// guarda e nunca precisa saber que existe um track `0..1`. Um shell que convertesse por conta
+/// própria seria uma segunda porta para a mesma pergunta — e a que esquecesse o mapa bipolar
+/// carimbaria um preset de força zero quando o artista puxou o slider até a esquerda.
+fn forward_track(
+    host: &mut dyn PanelHostInternal,
+    id: ph2d_a11y::NodeId,
+    default: f32,
+    to_doc: fn(f64) -> f64,
+) -> bool {
+    let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(default);
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+            id,
+            to_doc(f64::from(track)),
+        )));
+    true
+}
+
 pub(crate) fn apply_event(
     _state: &mut VectorPanelState,
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
     let consumed = match ev {
+        // O Bend é BIPOLAR: o track `0..1` vira `-1..1` aqui, na fronteira.
+        WidgetEvent::ValueChanged(id) if id == ids::VECTOR_ENVELOPE_BEND => {
+            forward_track(host, id, 0.5, |t| t.mul_add(2.0, -1.0))
+        }
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_MORPH_T => {
-            let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                    id,
-                    f64::from(track),
-                )));
-            true
+            forward_track(host, id, 0.5, |t| t)
         }
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_BLEND_STEPS => {
-            let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-            host.bus_mut()
-                .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
-                    id,
-                    f64::from(track),
-                )));
-            true
+            forward_track(host, id, 0.0, |t| t)
         }
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_WIDTH => {
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
@@ -344,6 +361,7 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_ENVELOPE_RELEASE
         || id == ids::VECTOR_ENVELOPE_PERSPECTIVE
         || id == ids::VECTOR_ENVELOPE_MESH
+        || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
 
         || id == ids::VECTOR_BOOL_UNION
         || id == ids::VECTOR_BOOL_SUBTRACT

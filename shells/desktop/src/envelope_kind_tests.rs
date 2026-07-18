@@ -144,3 +144,151 @@ fn a_side_handle_is_only_grabbable_in_the_mesh_gesture() {
         "pegou a alca errada"
     );
 }
+
+// ── Fatia C: os presets de gaiola ────────────────────────────────────────────────────────────
+
+use ph2d_ecs::EnvelopeWarp;
+
+/// **NENHUM PRESET REAL DOBRA, EM PONTO NENHUM DA FAIXA.** Varre os 7 × `bend ∈ [-1,1]`.
+///
+/// A crate do motor gateia a garantia sobre barrigas escritas à mão; ela **não conhece a tabela**
+/// (que é dado, e mora no componente). Este é o irmão que fecha o circuito: se alguém acrescentar
+/// um preset que enverga os quatro lados de uma vez, é AQUI que sangra — e é justamente o caso que
+/// a primeira `AMP` escolhida não cobria.
+#[test]
+fn no_real_preset_folds_anywhere_in_its_range() {
+    for warp in EnvelopeWarp::ALL {
+        let bows: ph2d_vec_envelope::EdgeBows =
+            warp.bows().map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
+        for step in -20..=20 {
+            let bend = f64::from(step) / 20.0;
+            let (c, e) = ph2d_vec_envelope::preset_cage(&bows, bend);
+            assert!(
+                !ph2d_vec_envelope::cage_folds(&c, &e),
+                "o preset {} dobrou em bend={bend}",
+                warp.label()
+            );
+        }
+    }
+}
+
+/// **CADA PRESET PRODUZ UMA GAIOLA DISTINTA.** Sete botões que fizessem a mesma coisa seriam seis
+/// botões mortos — e nada no resto da suíte notaria.
+#[test]
+fn every_preset_is_a_different_cage() {
+    let cages: Vec<Vec<[f64; 2]>> = EnvelopeWarp::ALL
+        .iter()
+        .map(|w| {
+            let bows: ph2d_vec_envelope::EdgeBows =
+                w.bows().map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
+            let (_, e) = ph2d_vec_envelope::preset_cage(&bows, 1.0);
+            e.iter().flatten().copied().collect()
+        })
+        .collect();
+    for (i, a) in cages.iter().enumerate() {
+        for (j, b) in cages.iter().enumerate().skip(i + 1) {
+            assert_ne!(
+                a,
+                b,
+                "os presets {} e {} produzem a MESMA gaiola",
+                EnvelopeWarp::ALL[i].label(),
+                EnvelopeWarp::ALL[j].label()
+            );
+        }
+    }
+}
+
+/// **O PRESET DEFORMA A ARTE, E O `bend` MANDA.** Carimbar Arc muda a forma; carimbar com `bend = 0`
+/// a devolve ao repouso ao bit.
+///
+/// A 2ª metade é a que impede a 1ª de ficar verde por acidente: se `apply_preset` escrevesse uma
+/// gaiola qualquer, a forma também "mudaria".
+#[test]
+fn a_preset_deforms_the_art_and_zero_bend_returns_it() {
+    let shape = ellipse([5.0, 5.0], 3.0);
+    let (mut sim, mut scene, _map, container, ids) = envelope_over(vec![shape]);
+    let rest = signature(&frame(&mut sim, &mut scene, ids[0]));
+
+    assert!(crate::envelope_live::apply_preset(
+        &mut sim,
+        container,
+        EnvelopeWarp::Arc,
+        1.0
+    ));
+    let arced = signature(&frame(&mut sim, &mut scene, ids[0]));
+    let moved = (rest[0] - arced[0]).hypot(rest[1] - arced[1]);
+    assert!(
+        moved > 1.0,
+        "o preset Arc nao deformou (deslocamento {moved:.3e})"
+    );
+
+    crate::envelope_live::apply_preset(&mut sim, container, EnvelopeWarp::Arc, 0.0);
+    let back = signature(&frame(&mut sim, &mut scene, ids[0]));
+    assert!(
+        (rest[0] - back[0]).abs() < 1e-9 && (rest[1] - back[1]).abs() < 1e-9,
+        "bend=0 nao devolveu a arte ao repouso: {rest:?} -> {back:?}"
+    );
+}
+
+/// **O PRESET PÕE A GAIOLA EM MESH.** Com lados retos não há preset a exprimir — um "Arc" de 4
+/// cantos retos é um trapézio. Sem isto o botão pareceria não fazer nada em Perspective.
+#[test]
+fn a_preset_switches_the_cage_to_mesh() {
+    let (mut sim, _scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    assert_eq!(env_of(&sim, container).kind, EnvelopeKind::Perspective);
+    crate::envelope_live::apply_preset(&mut sim, container, EnvelopeWarp::Flag, 0.5);
+    assert_eq!(env_of(&sim, container).kind, EnvelopeKind::Mesh);
+    assert_eq!(env_of(&sim, container).warp, Some(EnvelopeWarp::Flag));
+}
+
+/// **ARRASTAR UMA ALÇA PROMOVE A GAIOLA A MANUAL** (ADR-0129 §4, *"promovível"*). Depois disso o
+/// slider Bend não é oferecido — e, sobretudo, não re-carimba por cima do que a mão fez.
+///
+/// Sem esta regra o preset e a mão seriam **dois donos da mesma gaiola**, e o próximo toque no
+/// slider apagaria o gesto do artista sem aviso.
+#[test]
+fn dragging_a_handle_releases_the_preset() {
+    let (mut sim, _scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    crate::envelope_live::apply_preset(&mut sim, container, EnvelopeWarp::Bulge, 0.5);
+    assert!(env_of(&sim, container).warp.is_some(), "fixture morto");
+
+    let corner = env_of(&sim, container).corners[2];
+    let moved = [corner[0] + 0.2, corner[1] + 0.2];
+    assert!(crate::envelope_gesture::drag(
+        &mut sim,
+        Some((container, 2)),
+        moved
+    ));
+    assert_eq!(
+        env_of(&sim, container).warp,
+        None,
+        "a mao mexeu na gaiola e o preset continuou dono dela"
+    );
+}
+
+/// **A GAIOLA DO PRESET COBRE O RETÂNGULO-FONTE** — os cantos voltam ao repouso, seja qual for a
+/// gaiola de antes. É o *Reset with Warp*: pedir um arco depois de puxar um canto dá um arco, não
+/// um arco torto.
+#[test]
+fn a_preset_resets_the_corners_to_rest() {
+    let (mut sim, _scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    let rest = env_of(&sim, container).corners;
+    // Puxa um canto para longe.
+    assert!(crate::envelope_gesture::drag(
+        &mut sim,
+        Some((container, 2)),
+        [12.0, 12.0]
+    ));
+    assert_ne!(env_of(&sim, container).corners, rest, "fixture morto");
+
+    crate::envelope_live::apply_preset(&mut sim, container, EnvelopeWarp::Wave, 0.7);
+    let after = env_of(&sim, container).corners;
+    for i in 0..4 {
+        assert!(
+            (after[i][0] - rest[i][0]).abs() < 1e-9 && (after[i][1] - rest[i][1]).abs() < 1e-9,
+            "o preset nao devolveu o canto {i} ao repouso: {:?} != {:?}",
+            after[i],
+            rest[i]
+        );
+    }
+}

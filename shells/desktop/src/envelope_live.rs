@@ -241,6 +241,59 @@ fn cook_children(
     }
 }
 
+/// **Carimba um preset de gaiola** (ADR-0129 Fatia C) no envelope `bits`: Arc / Flag / Wave / …
+/// com força `bend ∈ [-1, 1]`. `true` se algo foi escrito.
+///
+/// **O preset REESCREVE a gaiola inteira** — cantos de volta ao repouso, lados envergados pela
+/// tabela — e põe o gesto em `Mesh` (com lados retos não há preset nenhum a exprimir; ver
+/// `ph2d_vec_envelope::preset` sobre por que "Arc com 4 cantos" é um trapézio). É o *Reset with
+/// Warp* do Illustrator: pedir um arco depois de puxar um canto dá um arco, não um arco torto.
+///
+/// O preset é escrito no **quadrado unitário** e mapeado aqui para o retângulo-fonte por um afim de
+/// escala. ⚠️ A escala é **não-uniforme**, então a barriga deixa de ser exatamente perpendicular ao
+/// lado — e isso é o que se quer: o preset acompanha a proporção da arte, em vez de ficar circular
+/// numa forma achatada.
+pub(crate) fn apply_preset(
+    sim: &mut SimWorld,
+    bits: u64,
+    warp: ph2d_ecs::EnvelopeWarp,
+    bend: f64,
+) -> bool {
+    let entity = Entity::from_bits(bits);
+    let Some((origin, size)) = sim.world().get::<VecEnvelope>(entity).and_then(rest_domain) else {
+        return false;
+    };
+    // A tabela do componente é a FORMA (±1); a amplitude é do motor, e é ela que carrega a garantia
+    // de não-dobra. Multiplicar aqui mantém as duas metades onde elas pertencem.
+    let bows: ph2d_vec_envelope::EdgeBows =
+        warp.bows().map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
+    let (uc, ue) = ph2d_vec_envelope::preset_cage(&bows, bend);
+    let to_rect = |p: [f64; 2]| [origin[0] + p[0] * size[0], origin[1] + p[1] * size[1]];
+
+    let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity) else {
+        return false;
+    };
+    env.corners = std::array::from_fn(|i| to_rect(uc[i]));
+    env.edges = std::array::from_fn(|i| std::array::from_fn(|j| to_rect(ue[i][j])));
+    env.kind = EnvelopeKind::Mesh;
+    env.warp = Some(warp);
+    env.bend = bend.clamp(-1.0, 1.0);
+    true
+}
+
+/// O retângulo-fonte (repouso) de um envelope: a bbox-união de controle das **fontes autoradas**.
+///
+/// Passa pelo MESMO [`union_control_bbox`] que o `create` e o `recook` — é o que garante que um
+/// preset com `bend = 0` devolva exatamente a gaiola em repouso, e não uma quase-igual.
+fn rest_domain(env: &VecEnvelope) -> Option<([f64; 2], [f64; 2])> {
+    let sources: Vec<VecPath> = env
+        .children
+        .iter()
+        .filter_map(|c| postcard::from_bytes(&c.source).ok())
+        .collect();
+    union_control_bbox(sources.iter())
+}
+
 /// Teto de profundidade da caminhada de ancestrais (defesa contra árvore corrompida).
 const MAX_DEPTH: usize = 64;
 

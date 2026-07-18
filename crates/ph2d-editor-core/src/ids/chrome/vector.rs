@@ -499,6 +499,21 @@ pub const VECTOR_ENVELOPE_PERSPECTIVE: NodeId = hash_node_id("vector.envelope.pe
 /// NÃO é o mesmo mapa que o Perspective — com lados retos ele é bilinear, não projetivo, e os dois
 /// só coincidem com a gaiola em repouso (ADR-0129 §4).
 pub const VECTOR_ENVELOPE_MESH: NodeId = hash_node_id("vector.envelope.mesh");
+/// Teto de presets de gaiola que o painel oferece (`ph2d_ecs::EnvelopeWarp::ALL`). O `populate`
+/// registra os `MAX` botões de uma vez e o `paint` desenha só os que o shell PUBLICOU — assim
+/// acrescentar um preset é uma linha na tabela do componente, e nenhum sítio de UI.
+pub const MAX_ENVELOPE_PRESETS: usize = 16;
+/// [`NodeId`] do botão do preset `index`. Runtime `format!` (a lista é dado), gêmeo FNV no mesmo
+/// espaço de ids — espelho das fábricas do catálogo de formas e das pontas de traço.
+#[must_use]
+pub fn vector_envelope_preset_id(index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.envelope.preset.{index}"))
+}
+/// **Bend** — a força do preset, `[-1, 1]`. Só é oferecido com um preset ativo: sem ele o slider
+/// não teria o que re-carimbar, e seria um knob morto.
+pub const VECTOR_ENVELOPE_BEND: NodeId = hash_node_id("vector.envelope.bend");
+/// O campo numérico gêmeo do [`VECTOR_ENVELOPE_BEND`].
+pub const VECTOR_ENVELOPE_BEND_NUM: NodeId = hash_node_id("vector.envelope.bend.num");
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

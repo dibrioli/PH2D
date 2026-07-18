@@ -56,6 +56,13 @@ thread_local! {
     static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_HAS_ENVELOPE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_ENVELOPE_MESH: Cell<bool> = const { Cell::new(false) };
+    /// Os rótulos dos presets de gaiola, PUBLICADOS pelo shell (a tabela mora no
+    /// `ph2d_ecs::EnvelopeWarp`, que este painel não vê). Vazio = nenhum publicado ainda.
+    static CURRENT_ENVELOPE_PRESETS: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
+    /// O índice do preset ATIVO na lista acima; `None` = a gaiola é manual (a mão a promoveu).
+    static CURRENT_ENVELOPE_WARP: Cell<Option<usize>> = const { Cell::new(None) };
+    /// A força do preset ativo, `[-1, 1]`.
+    static CURRENT_ENVELOPE_BEND: Cell<f64> = const { Cell::new(0.0) };
     /// Mostrar a seção Text: modo Text OU um objeto de TEXTO selecionado (as configs
     /// do texto ficam visíveis enquanto ele for texto — não-curva — mesmo no Select).
     static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
@@ -322,6 +329,34 @@ pub fn set_current_envelope_mesh(v: bool) {
 
 pub(crate) fn envelope_mesh() -> bool {
     CURRENT_ENVELOPE_MESH.with(Cell::get)
+}
+
+/// Publica os presets de gaiola: os rótulos (na ordem de `ph2d_ecs::EnvelopeWarp::ALL`), qual está
+/// ativo e a força dele.
+///
+/// **O painel se auto-popula desta lista** — o mesmo idioma da rack de áudio (`set_fx_kind_names`):
+/// acrescentar um preset é uma linha na tabela do componente e **zero mudança de painel**. Uma lista
+/// escrita à mão aqui driftaria da tabela no primeiro preset novo.
+pub fn set_current_envelope_presets(labels: &[&'static str], active: Option<usize>, bend: f64) {
+    CURRENT_ENVELOPE_PRESETS.with(|c| {
+        let mut v = c.borrow_mut();
+        v.clear();
+        v.extend_from_slice(labels);
+    });
+    CURRENT_ENVELOPE_WARP.with(|c| c.set(active));
+    CURRENT_ENVELOPE_BEND.with(|c| c.set(bend));
+}
+
+pub(crate) fn envelope_presets() -> Vec<&'static str> {
+    CURRENT_ENVELOPE_PRESETS.with(|c| c.borrow().clone())
+}
+
+pub(crate) fn envelope_warp() -> Option<usize> {
+    CURRENT_ENVELOPE_WARP.with(Cell::get)
+}
+
+pub(crate) fn envelope_bend() -> f64 {
+    CURRENT_ENVELOPE_BEND.with(Cell::get)
 }
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).

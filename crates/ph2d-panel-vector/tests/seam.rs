@@ -923,12 +923,18 @@ fn every_envelope_command_button_reaches_the_bus_when_clicked() {
     const SEC: u128 = 1_000_000_000;
     // A seleção É um envelope — sem isto o Expand/Release nem chegam à tela.
     ph2d_panel_vector::set_current_has_envelope(true);
+    ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag", "Wave"], Some(0), 0.5);
     for (id, name) in [
         (ids::VECTOR_ENVELOPE_RUN, "Envelope"),
         (ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
         (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
         (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Perspective"),
         (ids::VECTOR_ENVELOPE_MESH, "Mesh"),
+        // Os presets (ADR-0129 Fatia C) — a lista vem PUBLICADA, então o fixture a publica; sem
+        // isso o `paint` não desenha botão nenhum e o gate morre na 1ª asserção, que é a mesma
+        // premissa de ESTADO do `set_current_has_envelope`.
+        (ids::vector_envelope_preset_id(0), "preset 0"),
+        (ids::vector_envelope_preset_id(2), "preset 2"),
     ] {
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut panel_state = VectorPanelState;
@@ -975,6 +981,7 @@ fn the_envelope_controls_are_not_offered_without_an_envelope() {
         h: 900.0,
     };
     ph2d_panel_vector::set_current_has_envelope(false);
+    ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag", "Wave"], Some(0), 0.5);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     for (id, name) in [
@@ -982,6 +989,8 @@ fn the_envelope_controls_are_not_offered_without_an_envelope() {
         (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
         (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Perspective"),
         (ids::VECTOR_ENVELOPE_MESH, "Mesh"),
+        (ids::vector_envelope_preset_id(0), "preset 0"),
+        (ids::VECTOR_ENVELOPE_BEND, "Bend"),
     ] {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
@@ -1057,4 +1066,82 @@ fn every_blend_command_button_reaches_the_bus_when_clicked() {
              (o botao e clicavel e MORTO)"
         );
     }
+}
+
+/// **O slider Bend chega ao bus com o valor NO DOMÍNIO DO DOCUMENTO** (`-1..1`), não com o track
+/// (`0..1`) — a conversão bipolar mora na fronteira do painel, e o shell nunca precisa saber que
+/// existe um track.
+///
+/// É o gate que impede o erro clássico deste seam: o shell recebendo `0.0` e carimbando um preset
+/// de força zero (= a gaiola em repouso) quando o artista arrastou o slider até a ponta ESQUERDA.
+#[test]
+fn the_bend_slider_reaches_the_bus_in_document_units() {
+    ph2d_panel_vector::set_current_has_envelope(true);
+    ph2d_panel_vector::set_current_envelope_presets(&["Arc"], Some(0), 0.5);
+    for (track, want) in [(0.0_f32, -1.0_f64), (0.5, 0.0), (1.0, 1.0)] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        host.set_slider_value(ids::VECTOR_ENVELOPE_BEND, track);
+        let outcome = host.apply_panel_event::<VectorPanel>(
+            &mut panel_state,
+            WidgetEvent::ValueChanged(ids::VECTOR_ENVELOPE_BEND),
+        );
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "o Bend foi ignorado — falta o arm de ValueChanged no `event.rs`"
+        );
+        let got = host.drained_actions().into_iter().find_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(c, v))
+                if c == ids::VECTOR_ENVELOPE_BEND =>
+            {
+                Some(v)
+            }
+            _ => None,
+        });
+        assert_eq!(
+            got,
+            Some(want),
+            "track {track} devia chegar como {want} no bus, chegou {got:?}"
+        );
+    }
+}
+
+/// **Sem preset ATIVO o Bend não existe** — a gaiola pode estar viva e ser MANUAL (a mão a
+/// promoveu), e aí o slider não teria o que re-carimbar. Par de presença do gate acima.
+#[test]
+fn the_bend_slider_is_not_offered_without_an_active_preset() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    ph2d_panel_vector::set_current_has_envelope(true);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+
+    ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag"], None, 0.5);
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_ENVELOPE_BEND)
+            .is_none(),
+        "o Bend foi pintado numa gaiola MANUAL — ele nao tem o que re-carimbar"
+    );
+    // E os botões de preset seguem lá: é por eles que a gaiola volta a ser dirigida.
+    assert!(
+        host.painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ids::vector_envelope_preset_id(0)
+        )
+        .is_some(),
+        "os presets sumiram junto — a gaiola manual ficaria sem porta de volta"
+    );
+
+    ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag"], Some(1), 0.5);
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_ENVELOPE_BEND)
+            .is_some(),
+        "com preset ativo o Bend tem de existir"
+    );
 }

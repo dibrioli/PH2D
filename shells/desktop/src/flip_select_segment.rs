@@ -66,6 +66,13 @@ impl FrameCutters {
         ph2d_flip::piece_of_point(&self.cuts_of(drawing, si), s.len(), s.closed)
     }
 
+    /// **O PEDAÇO sob o cursor** (§4.C — o hover): os pontos do pedaço que o `hit` toca no
+    /// traço `si`. É `piece_points` sem a sonda — o overlay só quer O QUE realçar.
+    #[must_use]
+    pub(crate) fn hover_piece(&self, drawing: &FlipDrawing, si: usize, hit: Where) -> Vec<usize> {
+        self.piece_points(drawing, si, hit).0
+    }
+
     /// Os pontos que um clique em `hit` acende no traço `si`, **e o ponto-sonda** que
     /// representa o pedaço (o alvo do colapso adiado).
     ///
@@ -242,6 +249,60 @@ pub(crate) fn apply_marquee_segments(
         }
     }
     changed
+}
+
+impl crate::App {
+    /// §4.C — recomputa o **PEDAÇO sob o cursor** no modo Segment (o hover). Roda 1×/frame,
+    /// ANTES do render (o overlay o lê). Só recomputa quando o cursor de fato **MOVEU** — a
+    /// guarda barata que evita refazer hit-test + cortes a cada frame com o mouse parado
+    /// ([[feedback_measure_perf_symptom_scale]]: MEDIDO em `--release`, o caminho inteiro
+    /// — `frame_cutters` + `hit_at` + `hover_piece` — custa **122 µs** num quadro de ~2400
+    /// segmentos = 0,7 % de um frame de 60 fps, e só dispara com o cursor em movimento; por
+    /// isso **não há cache de conteúdo**, só esta guarda — construir um resolveria um
+    /// problema que a medição não achou) — e **nunca durante um gesto**
+    /// (aí o usuário está selecionando/movendo, não sondando; um preview competiria com o
+    /// que ele arrasta).
+    ///
+    /// `None` = fora do Segment, gesto ativo, ou cursor no vazio. A cadeia de coordenadas
+    /// (cursor de tela → arte local) é a MESMA do pen-down (`flip_edit_canvas_down`): o pick
+    /// e o clique têm de concordar sobre o que está sob o cursor, senão o hover mostra um
+    /// pedaço e o clique pega outro.
+    pub(crate) fn flip_segment_hover_refresh(&mut self) {
+        let is_segment = matches!(
+            self.flip_style.map(|s| s.edit_domain),
+            Some(ph2d_tool_flip::EditDomain::Segment)
+        );
+        if !self.flip_wants_edit() || !is_segment || self.flip_edit_gesture.is_some() {
+            self.flip_segment_hover = None;
+            self.flip_segment_hover_at = None;
+            return;
+        }
+        // Cursor parado ⇒ pedaço inalterado (o desenho não muda sem um gesto, e o gesto
+        // zera o hover acima). Guarda barata: nada de hit-test/cortes com o mouse quieto.
+        let cursor = self.last_pointer;
+        if self.flip_segment_hover_at == Some(cursor) {
+            return;
+        }
+        self.flip_segment_hover_at = Some(cursor);
+
+        let active_layer = self.flip_active_layer;
+        let playhead = self.playhead;
+        let w2l = self.flip_active_world_to_local();
+        self.flip_segment_hover = self.gfx.as_ref().and_then(|gfx| {
+            let win = gfx.surface.size();
+            let world = gfx.camera.screen_to_world(cursor, win);
+            let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
+            let l = w2l.apply([f64::from(world[0]), f64::from(world[1])]);
+            let local = Vec2::new(l[0] as f32, l[1] as f32);
+            let (oid, lid, did) =
+                crate::flip_select::visible_drawing(&gfx.flip, &playhead, active_layer)?;
+            let obj = gfx.flip.object(oid)?;
+            let cutters = frame_cutters(obj, obj.frame_at(&playhead), lid);
+            let drawing = obj.drawing(did)?;
+            let (si, w) = crate::flip_select_pick::hit_at(drawing, local, px_to_world, &w2l)?;
+            Some((si, cutters.hover_piece(drawing, si, w)))
+        });
+    }
 }
 
 #[cfg(test)]

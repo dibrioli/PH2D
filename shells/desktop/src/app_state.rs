@@ -697,6 +697,15 @@ pub(crate) struct App {
     /// memória, o passe reaplicaria o estilo a cada frame e selecionar um traço vermelho
     /// com o painel em azul o pintaria de azul no ato do clique. Ver `flip_select`.
     pub(crate) flip_edit_style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
+    /// ADR-0114 §4.C: o PEDAÇO sob o cursor no modo Segment — `(traço, pontos do pedaço)`,
+    /// a promessa do que o clique vai pegar. Recomputado pelo passe
+    /// `flip_segment_hover_refresh` **só quando o cursor MOVE** (e nunca durante um gesto),
+    /// e lido pelo overlay. `None` = sem hover (fora do Segment, ou o cursor no vazio).
+    pub(crate) flip_segment_hover: Option<(usize, Vec<usize>)>,
+    /// A posição de cursor com que o `flip_segment_hover` foi computado — a guarda que
+    /// evita refazer o pick (hit-test + cortes) a cada frame com o mouse parado. Ver
+    /// `flip_select_segment::hover_refresh`.
+    pub(crate) flip_segment_hover_at: Option<(f32, f32)>,
     /// ADR-0108 Fase 1: node box-select marquee (screen-space `(start, current)`,
     /// same `(f32, f32)` as `last_pointer`) — Shift+drag on empty canvas while the
     /// Vector tool is active. `None` when idle; on release drives `box_select`.

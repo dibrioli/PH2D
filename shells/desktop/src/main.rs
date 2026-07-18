@@ -336,6 +336,8 @@ impl App {
             flip_live: None,
             flip_reshape: None,
             flip_edit_style: None,
+            flip_segment_hover: None,
+            flip_segment_hover_at: None,
             flip_edit_gesture: None,
             flip_pose_drag: None,
             flip_selection_drag: None,
@@ -463,6 +465,9 @@ impl App {
     /// [`crate::render_loop`] (Wave 3.1 stage C). See its module docs
     /// for the rationale + the split-impl pattern.
     fn render_frame(&mut self) {
+        // §4.C — o PEDAÇO sob o cursor no modo Segment (hover). ANTES do render: o overlay
+        // o lê no mesmo frame. Barato e guardado (só recomputa quando o cursor move).
+        self.flip_segment_hover_refresh();
         self.run_render_frame();
         // **O alvo VIVO** (`flip_live`): se o painel mudou, refaz a última coisa criada —
         // o traço ou o preenchimento. Antes do retrato do undo, para o ajuste e o estado

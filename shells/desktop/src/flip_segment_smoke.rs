@@ -187,6 +187,10 @@ impl crate::App {
                      de baixo E a de cima (um pedaco so, dois trechos).\n  \
                      (4) a CURVA (baixo-dir): densa, cortada 2x -- tres pedacos; clicar no \
                      do meio acende so o meio.\n  \
+                     HOVER (§4.C): passe o mouse SEM clicar -- o pedaco sob o cursor acende \
+                     em ambar FRACO (a promessa do clique); ao clicar, ele fica ambar SOLIDO \
+                     (SO o pedaco, nunca o traco inteiro). Mova entre os pedacos do quadrado \
+                     e da curva e veja o preview seguir o cursor.\n  \
                      Confira ainda: arrastar um pedaco o MOVE; Shift+clique SOMA pedacos; a \
                      caixa de selecao acende o pedaco INTEIRO que tocou (nao recorta na \
                      borda dela); Point<->Segment preserva a selecao (mesmo dado), Stroke \

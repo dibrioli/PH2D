@@ -42,6 +42,14 @@ const MARQUEE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay, espessura de t
 /// Cor do realce (âmbar do editor) — chrome, não arte.
 const HALO_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.95]; // LITERAL-COLOR-OK: overlay de selecao
 
+/// Cor do realce de HOVER no modo Segment (§4.C) — o MESMO âmbar, mais fraco: hover é uma
+/// PROMESSA (o que o clique vai pegar), a seleção é um FATO. Distintos por alpha, não por
+/// matiz, senão pareceriam dois estados sem relação.
+const HOVER_RGBA: [f32; 4] = [1.0, 0.72, 0.2, 0.45]; // LITERAL-COLOR-OK: overlay de hover
+/// Espessura do realce de hover, em px de tela (um pouco mais grossa que a seleção, para
+/// aparecer POR BAIXO dela quando o pedaço já está selecionado).
+const HOVER_PX: f64 = 4.0; // LITERAL-PX-OK: chrome de overlay, espessura de tela
+
 /// Raio do PONTO no domínio Point (W8), em px de tela — a âncora que se clica.
 const POINT_DOT_PX: f64 = 3.0; // LITERAL-PX-OK: chrome de overlay, raio de tela
 /// Raio do ponto NÃO-selecionado (menor: presença, não destaque).
@@ -76,17 +84,34 @@ fn dim_dot_rgba(line: ph2d_flip::Rgba) -> [f32; 4] {
     }
 }
 
-/// Desenha o contorno de realce sobre cada traço selecionado do desenho VISÍVEL.
+/// O DOMÍNIO da seleção, do ponto de vista do overlay (§4.C). O que muda entre eles é a
+/// LINGUAGEM do realce: traços inteiros (halo do traço), âncoras (dots), ou o PEDAÇO entre
+/// dois cruzamentos (halo só do pedaço + preview de hover). Espelha
+/// [`ph2d_tool_flip::EditDomain`] — o caller traduz na fronteira, o overlay não depende da
+/// crate da tool.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum OverlayDomain {
+    Stroke,
+    Point,
+    Segment,
+}
+
+/// Desenha o contorno de realce sobre a seleção do desenho VISÍVEL.
 ///
 /// `l2w` é o afim LOCAL→mundo do objeto (a pose do gizmo). Nada é desenhado fora do modo
 /// Edit: o realce é a linguagem DESSE modo, e deixá-lo aceso nos outros faria a seleção
 /// parecer um estado global que o Draw/Erase respeitam — o que não é verdade (só o Sculpt
 /// e o painel a consultam).
+///
+/// `hover` (§4.C, só no domínio Segment) é `(traço, pontos do pedaço sob o cursor)` — a
+/// PROMESSA do que o clique vai pegar, desenhada mais fraca que a seleção. Vem pronto do
+/// passe `flip_segment_hover_refresh` (o shell não recomputa cortes dentro do overlay).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_flip_selection(
     active: bool,
     editing: bool,
-    point_domain: bool,
+    domain: OverlayDomain,
+    hover: Option<(usize, &[usize])>,
     doc: &FlipDoc,
     playhead: &ph2d_core::Playhead,
     active_layer: Option<ph2d_flip::LayerId>,
@@ -109,9 +134,14 @@ pub(super) fn draw_flip_selection(
         return;
     };
     // No domínio POINT as âncoras aparecem SEMPRE (dim; selecionadas em acento) — é a
-    // linguagem do modo (GP): sem os pontos na tela não há o que mirar. No Stroke, sem
-    // seleção não há nada a realçar.
-    if !point_domain && !drawing.any_selected() {
+    // linguagem do modo (GP): sem os pontos na tela não há o que mirar. No Segment, o hover
+    // aparece sem seleção nenhuma (é a promessa do clique). No Stroke, sem seleção não há
+    // nada a realçar.
+    let has_hover = matches!(domain, OverlayDomain::Segment) && hover.is_some();
+    if matches!(domain, OverlayDomain::Stroke) && !drawing.any_selected() {
+        return;
+    }
+    if matches!(domain, OverlayDomain::Segment) && !drawing.any_selected() && !has_hover {
         return;
     }
 
@@ -126,10 +156,48 @@ pub(super) fn draw_flip_selection(
     });
     let to_screen = art_screen_affine(l2w, pose, camera.world_to_screen_affine(window));
 
+    // ── Domínio SEGMENT (§4.C): o realce é o PEDAÇO, não o traço. Selecionar um pedaço
+    // acende SÓ ele; o traço inteiro seria a linguagem do domínio Stroke, e mentiria sobre
+    // o que o clique pegou. O hover pré-visualiza o pedaço sob o cursor, mais fraco.
+    if matches!(domain, OverlayDomain::Segment) {
+        // Hover PRIMEIRO (por baixo): a seleção, mais fina e opaca, desenha por cima.
+        if let Some((hover_si, pts)) = hover
+            && let Some(s) = drawing.strokes.get(hover_si)
+        {
+            let path = piece_halo_path(s, |i| pts.contains(&i), to_screen);
+            if !path.is_empty() {
+                vector_scene.inner_mut().stroke(
+                    &Stroke::new(HOVER_PX),
+                    Affine::IDENTITY,
+                    &Brush::Solid(Color::new(HOVER_RGBA)),
+                    None,
+                    &path,
+                );
+            }
+        }
+        // A SELEÇÃO: o halo dos segmentos cujos DOIS extremos estão acesos — os pedaços
+        // selecionados, costura inclusa. Um traço com um pedaço aceso NÃO acende inteiro.
+        let color = Color::new(HALO_RGBA);
+        for s in &drawing.strokes {
+            let path = piece_halo_path(s, |i| s.point_selected(i), to_screen);
+            if path.is_empty() {
+                continue;
+            }
+            vector_scene.inner_mut().stroke(
+                &Stroke::new(HALO_PX),
+                Affine::IDENTITY,
+                &Brush::Solid(color),
+                None,
+                &path,
+            );
+        }
+        return;
+    }
+
     // ── Domínio POINT (W8): âncoras como PONTOS — dim nas não-selecionadas, acento nas
     // selecionadas. Sem halo de traço: com um ponto aceso o `any()` acenderia o traço
     // inteiro e o realce mentiria sobre O QUE está selecionado.
-    if point_domain {
+    if matches!(domain, OverlayDomain::Point) {
         let hot = Color::new(HALO_RGBA);
         for s in &drawing.strokes {
             let colors = s.colors();
@@ -220,6 +288,32 @@ fn art_screen_affine(
 ) -> ph2d_vector::Affine {
     let [a, b, c, d, e, f] = crate::flip_transform::art_to_world(l2w, pose).0;
     cam * ph2d_vector::Affine::new([a, b, c, d, e, f])
+}
+
+/// **O halo de um PEDAÇO** (§4.C): desenha só os segmentos cujos DOIS extremos satisfazem
+/// `lit` — o contorno da(s) peça(s) selecionada(s) ou do pedaço sob o cursor, **costura
+/// inclusa** (o segmento `n-1 → 0` de um traço fechado é oferecido por `segments()`, então
+/// um pedaço que enrola na costura é desenhado inteiro).
+///
+/// É o primitivo que faz o modo Segment mostrar o PEDAÇO e não o traço inteiro: a seleção
+/// passa `lit = point_selected`, o hover passa `lit = está no pedaço`. Cada segmento vira um
+/// sub-caminho de 2 pontos (move+line) — disjunto de propósito, para dois pedaços não
+/// selecionados do mesmo traço não serem ligados por uma linha fantasma. Já em px de TELA.
+fn piece_halo_path(
+    s: &ph2d_flip::FlipStroke,
+    lit: impl Fn(usize) -> bool,
+    to_screen: ph2d_vector::Affine,
+) -> BezPath {
+    let n = s.len();
+    let mut path = BezPath::new();
+    for (i, a, b) in s.segments() {
+        // Os extremos do segmento `i` são o ponto `i` e o `(i+1) % n` (a costura fecha em 0).
+        if lit(i) && lit((i + 1) % n) {
+            path.move_to(to_screen * Point::new(f64::from(a.x), f64::from(a.y)));
+            path.line_to(to_screen * Point::new(f64::from(b.x), f64::from(b.y)));
+        }
+    }
+    path
 }
 
 /// A polilinha do realce, **já em px de TELA** (o `to_screen` é aplicado aos PONTOS, não
@@ -341,6 +435,94 @@ mod tests {
         assert_eq!(
             dim_dot_rgba(Rgba::new(just_below, just_below, just_below, 1.0)),
             POINT_DIM_LIGHT
+        );
+    }
+
+    /// Um quadrado FECHADO de 4 pontos (segmentos: 0=base, 1=direita, 2=topo, 3=costura).
+    fn sq_closed() -> ph2d_flip::FlipStroke {
+        let mut s = ph2d_flip::FlipStroke::new();
+        for (x, y) in [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)] {
+            s.push_default(Vec2::new(x, y));
+        }
+        s.closed = true;
+        s
+    }
+
+    /// Quantos segmentos (sub-caminhos de 2 pontos) o halo desenhou. `piece_halo_path`
+    /// emite exatamente um `move_to` + um `line_to` por segmento aceso ⇒ 2 elementos cada.
+    fn drawn_segments(path: &BezPath) -> usize {
+        path.elements().len() / 2
+    }
+
+    /// 🔴 **O halo do modo Segment cobre SÓ o pedaço selecionado, não o traço inteiro**
+    /// (§4.C — o gap que o §4.B deixou: o realce caía no branch de traço e acendia a forma
+    /// toda). Quadrado com os pontos {2,3} acesos ⇒ só o segmento 2→3 tem os DOIS extremos
+    /// acesos ⇒ 1 segmento desenhado.
+    ///
+    /// Mutação que sangra: ignorar o `lit` (desenhar todo segmento) — vira o traço inteiro,
+    /// 4 segmentos, e o realce volta a mentir sobre O QUE está selecionado.
+    #[test]
+    fn the_segment_halo_covers_only_the_selected_piece_not_the_whole_stroke() {
+        let mut s = sq_closed();
+        s.set_point_selected(2, true);
+        s.set_point_selected(3, true);
+        let path = piece_halo_path(&s, |i| s.point_selected(i), Affine::IDENTITY);
+        assert_eq!(
+            drawn_segments(&path),
+            1,
+            "o halo devia cobrir SO o pedaco {{2,3}} (o segmento 2->3), nao o quadrado inteiro"
+        );
+    }
+
+    /// 🔴 **O pedaço que ENROLA na costura é desenhado inteiro** (a costura `3→0` é oferecida
+    /// por `segments()`). Pontos {3,0} acesos ⇒ o segmento 3 (costura) tem os dois extremos
+    /// acesos ⇒ desenhado; os vizinhos não.
+    ///
+    /// Mutação que sangra: iterar `windows(2)` em vez de `segments()` — a costura some, o
+    /// pedaço que enrola fica sem realce (é o BUGS #18 no eixo do overlay).
+    #[test]
+    fn the_wrapping_piece_halo_includes_the_seam() {
+        let mut s = sq_closed();
+        s.set_point_selected(3, true);
+        s.set_point_selected(0, true);
+        let path = piece_halo_path(&s, |i| s.point_selected(i), Affine::IDENTITY);
+        assert_eq!(
+            drawn_segments(&path),
+            1,
+            "so a costura 3->0 tem os dois extremos acesos"
+        );
+        // E o segmento desenhado LIGA (0,10) a (0,0) — a aresta esquerda (a costura).
+        let bbox = path.bounding_box();
+        assert!(
+            bbox.x0.abs() < 1e-6 && bbox.x1.abs() < 1e-6,
+            "a costura desenhada devia ser a aresta esquerda (x=0): {bbox:?}"
+        );
+    }
+
+    /// 🔴 **Dois pedaços selecionados no MESMO traço não são ligados por uma linha
+    /// fantasma** — cada segmento é um sub-caminho próprio (move+line). Pontos {0,1} e {2,3}
+    /// acesos num quadrado ⇒ 2 segmentos desenhados (base e topo), DISJUNTOS.
+    ///
+    /// Mutação que sangra: um único `move_to` no começo + `line_to` contínuo ligaria o topo
+    /// à base por uma diagonal que não existe.
+    #[test]
+    fn disjoint_pieces_are_not_joined_by_a_phantom_line() {
+        // Todos os 4 pontos acesos ⇒ os 4 segmentos desenham, mas cada um é seu PRÓPRIO
+        // sub-caminho (move+line), nunca um polígono contínuo.
+        let mut s = sq_closed();
+        for i in 0..4 {
+            s.set_point_selected(i, true);
+        }
+        let path = piece_halo_path(&s, |i| s.point_selected(i), Affine::IDENTITY);
+        assert_eq!(
+            drawn_segments(&path),
+            4,
+            "4 segmentos acesos = 4 sub-caminhos, nunca 1 poligono continuo"
+        );
+        assert_eq!(
+            path.elements().len(),
+            8,
+            "cada segmento e um move+line disjunto: 4 x 2 = 8 elementos"
         );
     }
 

@@ -34,6 +34,7 @@
 //!
 //! HR-5: zero transcendentais fora de `sqrt` (que é exata em IEEE-754).
 
+mod arrange;
 mod ball;
 mod dilate;
 mod edt;
@@ -41,6 +42,7 @@ mod gap;
 mod raster;
 mod trace;
 
+pub use arrange::{Region, region_at};
 pub use ball::{TrapBall, TrapRegion};
 pub use dilate::{
     FILL_TUCK_FRACTION, contour_widths, contour_widths_with_margin, local_line, mean_line_width,

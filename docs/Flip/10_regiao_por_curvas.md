@@ -114,7 +114,7 @@ fatiamento do §5 manter os dois vivos até a última fatia.
 
 | fatia | entrega | como se vê |
 |---|---|---|
-| **R0** | o **motor** de arranjo sobre polilinhas: interseções + grafo + walk de face. Sem UI, sem integração. Gates de unidade com fixtures de arte real (grade, estrela, donut, vão fechado). | `cargo test` |
+| **R0** ✅ | o **motor** de arranjo sobre polilinhas: interseções + grafo + walk de face. Sem UI, sem integração. | `cargo test -p ph2d-flip-fill arrange` |
 | **R1** | o balde **escolhe** a rota: se o clique cai numa face limitada do arranjo, usa a geometria dela; senão, o caminho de hoje. Sem apagar nada. | preencher a grade do smoke e ver os vértices do fill **em cima** dos da linha |
 | **R2** | a **dilatação recua** onde a rota nova serve (não há erro para compensar) | a franja some estruturalmente, não por constante |
 | **R3** | aposentar o que ficou órfão (o `filled_shape_target` vira caso particular; a família da margem morre) | LOC apagada; gates que perderam o objeto |
@@ -161,3 +161,55 @@ real) e tenta os dois caminhos contra eles. Quem passar primeiro, com menos cód
 - **Perf**: > 100 ms num quadro de 200 traços após a 2ª tentativa ⇒ morre.
 - **R1**: se a rota nova disparar em **< 30 %** dos cliques de um desenho real, ela não
   paga a complexidade de manter dois caminhos ⇒ reverte-se para o de hoje.
+
+---
+
+## §9 — R0: FECHADA (2026-07-18)
+
+`ph2d-flip-fill::arrange` — `region_at(strokes, seed) -> Option<Region>`. **6 gates**, e o
+oráculo de todos é a promessa da wave: *cada vértice do anel ou é um vértice de uma linha,
+ou é um ponto que está em cima de duas* (uma interseção). O contorno vetorizado de hoje não
+passa nisso — é a diferença que o Enio viu, virada asserção.
+
+Fixtures: grade reta · **grade trêmula** (o critério de morte do §8) · vão ⇒ `None` ·
+forma fechada sozinha · **quina aguda** (a que matou a abordagem do BUGS #16) · aninhadas.
+
+### Dois defeitos que só as mutações acharam
+
+1. **O `via` estava sempre vazio** — eu empurrava `0.0` e `1.0` para toda lista de cortes
+   *"por conveniência"*, e com isso **todo vértice virava nó**. O anel saía certo (os
+   vértices entravam como nós em vez de carona), então os 5 gates passavam e a mutação que
+   **apaga o `via`** — o mecanismo que é o coração da wave — sobrevivia. Funcionava por
+   acidente. Hoje: nós só em interseções, e essa mutação mata **4** gates.
+2. **A regra do MÍNIMO nunca era exercida** — em todas as fixtures uma única face continha
+   a semente, então trocar *menor área* por *maior* não derrubava nada. Faltava o
+   fenômeno: formas **aninhadas**, onde o clique no miolo está dentro de dois anéis.
+
+> **Lição (2ª instância nesta linha):** *fixture que não contém o fenômeno não prova a
+> regra que fala dele*, e a mutação é o único jeito de descobrir isso — os gates estavam
+> verdes, corretos e cegos.
+
+Um bug real que um gate pegou: um traço fechado **sem interseção nenhuma** volta ao seu
+único nó, e o guard `prev != ni` engolia a aresta de fechamento ⇒ o círculo sozinho dava
+`None`. Um laço é um trecho legítimo; o que não é aresta é chegar ao mesmo nó **sem ter
+andado** (`via` vazio).
+
+### Perf — passa, com pouca folga
+
+| traços | segmentos | ms |
+|---|---|---|
+| 20 | 580 | 0,5 |
+| 50 | 1450 | 2,8 |
+| 100 | 2900 | 13,3 |
+| **200** | **5800** | **80,8** |
+
+O critério do §8 é 100 ms ⇒ **vive**, mas o passo de interseções é O(segmentos²) e isso se
+vê na tabela. ⚠️ **Não foi otimizado de propósito** — o número está sob a barra, e o
+caminho, se um quadro real for mais denso, já é conhecido: broadphase por grade (o repo já
+tem o padrão, BUGS #5). Otimizar antes de haver o problema é o que o `project_m5_perf_validated`
+proíbe; o que não se pode é *não medir*, e está medido.
+
+### O que a R0 NÃO decide
+
+Ela é motor puro: não toca no balde, não muda um pixel do produto. A R1 é quem escolhe a
+rota — e é lá que a arte muda e o smoke decide.

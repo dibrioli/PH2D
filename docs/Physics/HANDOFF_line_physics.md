@@ -29,6 +29,12 @@
 > as 4 suítes do módulo verdes · seam do Inspector 7/7 · **os dois hashes C9 BYTE-IDÊNTICOS** aos da
 > entrega (`2f7e2d58…` / `54fea296…`) ⇒ a física atravessou o merge sem mover um bit.
 
+> **▶️ QUEM SEGUE DAQUI:** [`HANDOFF_CONTINUACAO_line_physics_2026-07-18.md`](HANDOFF_CONTINUACAO_line_physics_2026-07-18.md)
+> — o W2b (painel global), com o **mapa de fiação de painel já levantado** (os 5 sites, os gates, a
+> armadilha do z-order que não falha alto) para não ser re-pago. Traz também a **tarefa zero**: o
+> `CLAUDE.md` §5 não tem NENHUM ponteiro para `docs/Physics/`, então este módulo é invisível para
+> quem entra pelo roteador.
+
 ## Estado por-wave
 
 | Wave | Estado | Commit | Nota |

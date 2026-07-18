@@ -208,6 +208,51 @@ wall-clock que eu produzi hoje é atribuível com confiança — por isso o gate
 propriedade da aritmética e igual em toda máquina. O `sculpt_perf_kill_criterion` continua marginal e
 flaky; não o reescrevi (não é meu orçamento, e mexer no número seria justamente a armadilha).
 
+## Adendo 2: o HARNESS de perf do sculpt media o que nao afirmava
+
+O `sculpt_perf_kill_criterion` falhava contra codigo que nao tinha mudado (foi assim que este dia comecou).
+A causa nao era ruido de maquina, era **custo unico cobrado como custo por move** — e e reproduzivel.
+
+Tracado por-move (INFLATE @2048, com relevo): move 0 = **0,0 ms** (a sessao do sculpt ainda nao abriu, ele
+nao faz trabalho nenhum), move 1 = **8,8 ms** (a montagem da sessao: buffers alocados e first-touched, pool
+do rayon subindo), moves 2..19 = **5,7-6,5**. O baseline nao paga nada disso (sem relevo o sculpt e no-op
+real, 0,0 em todo move), entao a montagem inteira caia no DELTA e era reportada como o que todo move custa.
+
+**Conserto: a janela de aquecimento e MEDIDA, nao presumida.** Todo move e cronometrado e a separacao entre
+montagem e regime acontece depois. (Presumi uma vez, nesta mesma sessao, e errei por um: o move 0 *parecia*
+o caro e e o gratuito. Por isso o codigo le em vez de adivinhar.) O custo unico **nao e descartado** — ganha
+barra propria (`SETUP_KILL_MS`), porque um engasgo no inicio do traco e coisa que o artista sente, e
+varre-lo da media sem afirma-lo em lugar nenhum seria esconder um custo em vez de classifica-lo.
+
+**A barra do kill NAO foi tocada** (segue 8). Mexer no numero seria a armadilha; isto conserta a medida.
+
+Antes -> depois, tres corridas consecutivas:
+
+| | media | dispersao | worst |
+|---|---|---|---|
+| antes | 5,84 / 9,49 / 6,13 | **3,65 ms** | 8,7 - **45,8** |
+| depois | 5,95 / 5,98 / 5,92 | **0,06 ms** | 6,1 - 6,3 |
+
+O `worst` tambem voltou a significar alguma coisa — antes era sempre o move de aquecimento.
+
+### O fato NOVO que a medida limpa expos
+
+**A montagem escala com a TELA:** 8,8 ms @2048 mas **17,3 @4096** (INFLATE), e 14,3 -> **20,9** no SMOOTH.
+Isso e um engasgo de ~20 ms no inicio de CADA traco numa tela 4K — visivel, e estava diluido na media.
+Nao investiguei (a sessao congela 4 planos por `Arc`, que deveria ser refcount e nao copia, entao ha algo a
+entender ali). **Item novo do backlog, com gatilho: se o Enio reclamar de engasgo ao comecar um traco em
+tela grande, e isto.**
+
+### Panorama, com a medida consertada
+
+| verbo | @2048 | @4096 | worst | montagem |
+|---|---|---|---|---|
+| SMOOTH | 3,33 | 3,35 | 3,9 | 14,3 / 20,9 |
+| SCRAPE | 3,11 | 3,03 | 3,2 | 8,6 / 16,1 |
+| INFLATE | 5,89 | 6,23 | 6,7 | 8,8 / 17,3 |
+
+Todos sob o kill 8. SMOOTH e SCRAPE sob o alvo 4; o INFLATE segue acima do alvo e sob o kill.
+
 ## Aberto
 - **Cache com chave de versão para os planos.** Hoje são materializados a cada frame de preview GPU (que só
   acontece em `take_preview_dirty`). É deliberado: uma versão teria de rastrear TODA entrada do fold

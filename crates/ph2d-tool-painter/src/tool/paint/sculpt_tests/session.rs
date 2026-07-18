@@ -278,8 +278,24 @@ fn sculpt_perf_kill_criterion() {
     use std::time::Instant;
     const MOVES: u32 = 20;
     const KILL_MS: f64 = 8.0;
+    /// Moves excluded from the STEADY-STATE mean, because they are not steady state.
+    ///
+    /// Traced 2026-07-18 (INFLATE @2048, with relief): move 0 costs **0.0 ms** — the sculpt session has
+    /// not opened yet, so it does no work at all — move 1 costs **8.8**, and moves 2..19 cost 5.7-6.5.
+    /// Move 1 is the session's set-up: its buffers allocated and first-touched, the thread pool spun up.
+    ///
+    /// The baseline run does none of that (with no relief the sculpt is a true no-op, 0.0 ms on every
+    /// move), so ALL of it was landing in the delta and being reported as what every move costs. It
+    /// inflated the mean on a quiet machine and, on a loaded one, produced the 40 ms single-move outliers
+    /// that made this gate fail against code that had not changed.
+    const WARMUP_MOVES: usize = 2;
+    /// The one-time cost's own bar. Loose on purpose — it is paid once per STROKE, not once per frame —
+    /// but it is asserted rather than discarded: a hitch at the start of every stroke is a thing the
+    /// artist feels, and sweeping it out of the mean without asserting it anywhere would be hiding a cost
+    /// instead of classifying it. Measured at ~9 ms where steady state is ~6.
+    const SETUP_KILL_MS: f64 = 40.0;
 
-    let run = |size: u32, with_relief: bool, mode: u8| -> (f64, f64, f64) {
+    let run = |size: u32, with_relief: bool, mode: u8| -> (f64, f64, f64, f64) {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         let layer = t.layers.active().expect("a layer");
@@ -310,21 +326,27 @@ fn sculpt_perf_kill_criterion() {
         let mid = (size / 2) as f32;
         t.on_canvas_pointer(cp([200.0, mid], PointerPhase::Down));
         let _ = t.take_preview_arc();
-        let (mut worst, mut total) = (0.0f64, 0.0f64);
+        // Every move is timed; the split into set-up and steady state happens after, so which index pays
+        // what is READ OFF rather than assumed. (It was assumed once, on this very gate, and the guess
+        // was wrong by one: move 0 looked like the expensive one and is in fact the free one.)
+        let mut ms: Vec<f64> = Vec::with_capacity(MOVES as usize);
         for i in 0..MOVES {
             let x = 220.0 + f64::from(i) * 40.0;
             let t0 = Instant::now();
             t.on_canvas_pointer(cp([x as f32, mid], PointerPhase::Move));
             let _ = t.take_preview_arc(); // sculpt + composite + light: what a frame really costs
-            let ms = t0.elapsed().as_secs_f64() * 1000.0;
-            worst = worst.max(ms);
-            total += ms;
+            ms.push(t0.elapsed().as_secs_f64() * 1000.0);
         }
+        let setup = ms[..WARMUP_MOVES].iter().copied().fold(0.0f64, f64::max);
+        let steady = &ms[WARMUP_MOVES..];
+        let worst = steady.iter().copied().fold(0.0f64, f64::max);
+        let total: f64 = steady.iter().sum();
+        let mean = total / steady.len() as f64;
         let t0 = Instant::now();
         t.on_canvas_pointer(cp([1020.0, mid], PointerPhase::Up));
         let _ = t.take_preview_arc();
         let up = t0.elapsed().as_secs_f64() * 1000.0;
-        (total / f64::from(MOVES), worst, up)
+        (mean, worst, up, setup)
     };
 
     // All THREE engines: Smooth (the tile-memoised blur), Scrape (the per-dab plane fit) and Inflate (the
@@ -333,13 +355,22 @@ fn sculpt_perf_kill_criterion() {
     // failure modes, and a budget measured on one of them is a budget for a tool the artist does not have.
     for (label, mode) in [("SMOOTH", 0u8), ("SCRAPE", 3u8), ("INFLATE", 7u8)] {
         for size in [2048u32, 4096] {
-            let (off_mean, off_worst, off_up) = run(size, false, mode);
-            let (on_mean, on_worst, on_up) = run(size, true, mode);
+            let (off_mean, off_worst, off_up, off_setup) = run(size, false, mode);
+            let (on_mean, on_worst, on_up, on_setup) = run(size, true, mode);
             let (mean, worst, up) = (on_mean - off_mean, on_worst - off_worst, on_up - off_up);
+            let setup = on_setup - off_setup;
             println!(
-                ">>> {label} COST @{size}px: mean {mean:.2} ms/move, worst {worst:.2} ms/move \
-             (target <=4, kill {KILL_MS}) | PEN-UP {up:.2} ms \
+                ">>> {label} COST @{size}px: mean {mean:.2} ms/move (steady state, \
+             {WARMUP_MOVES} warm-up moves excluded), worst {worst:.2} ms/move \
+             (target <=4, kill {KILL_MS}) | SET-UP {setup:.2} ms | PEN-UP {up:.2} ms \
              [baseline {off_mean:.2}, with-relief {on_mean:.2}]"
+            );
+            assert!(
+                setup < SETUP_KILL_MS,
+                "{label} @{size}px: the stroke's SET-UP move costs {setup:.2} ms — past the one-time \
+             budget of {SETUP_KILL_MS} ms. Charged once per stroke rather than per move, which is not \
+             licence for it to grow without limit: this is the hitch the artist feels when a stroke \
+             starts."
             );
             assert!(
                 mean < KILL_MS,

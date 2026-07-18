@@ -1335,34 +1335,84 @@ curva de passes **não é monótona** (pior delta entre escalas: 0→75, 2→20,
 alisar demais devolve a compensação para a média, que é o que ela veio substituir. Um número
 escolhido no olho teria pousado em 8 com toda a confiança.
 
-**A margem mudou de EMPREGO, e por isso de valor** (0,5 → **0,25**). Ela não compensa mais a
-vetorização — isso é do termo `2s`. O que sobra para uma constante uniforme é o que é
-genuinamente uniforme: a borda de um pincel MACIO é translúcida, e a cor precisa ir um pouco
-além da silhueta nominal para o fundo não aparecer através dela. Propriedade do **pincel**, não
-do traçado.
+**A margem mudou de EMPREGO** — e depois foi a ZERO (ver #21). Ela deixou de compensar a
+vetorização (isso é do termo `2s`); o que sobraria para uma constante uniforme seria só o que é
+genuinamente uniforme. Acabou não sobrando nada: ver a seção seguinte.
 
-| lei | margem | cobertura (fundo sob a linha) | transbordo (8/16/32 px) |
-|---|---|---|---|
-| uniforme, sem compensação (até hoje) | 0,5 | 158 | 3 / 2 / 0 |
-| com compensação | 0,0 | 224 | 0 / 0 / 0 |
-| **com compensação** | **0,25** | **138** | **4 / 2 / 1** |
-| com compensação | 0,5 | 79 | 8 / 11 / 10 |
+**Mutação (3, todas sangram nos DOIS níveis):** normal externa invertida (2 unit + 2 pixel) ·
+compensação removida, de volta à margem uniforme (1 + 2) · a unidade ignorada (1 + 1). A do
+`|s|` sem sinal sangra só no unit — e a sonda `probe_offsets` explica por quê: no produto ela é
+byte-idêntica, porque o erro de vetorização é **de um lado só**.
 
-**0,25 é o ponto que respeita o smoke:** cobre melhor que a lei antiga com o transbordo parado
-(3→4 é uma amostra em 1792). Subir para 0,5 compraria o dobro de cobertura pagando franja de
-verdade — a troca existe e está medida, mas quem pediu foi o Enio, e ele pediu MENOS franja.
+---
 
-**O ganho maior não está na tabela:** a borda ficou **uniforme**. Antes ela variava de −0,37 a
-+0,49 px conforme o traçado errava mais ou menos naquele ponto; agora a compensação a nivela e o
-que sobra é a margem, igual em todo lugar.
+## #21 — ✅ A franja: um remédio novo tornou o antigo CONTAGEM DUPLA, e ninguém o aposentou
 
-**Mutação (3 novas, todas sangram nos DOIS níveis):** normal externa invertida (2 unit + 2
-pixel) · compensação removida, de volta à margem uniforme (1 + 2) · a unidade ignorada (1 + 1).
-A do `|s|` sem sinal sangra só no unit — e a sonda explica por quê: no produto ela é
-byte-idêntica, porque o erro é de um lado só.
+**Estado:** ✅ **resolvido em 2026-07-18** — *"perfeito! Smoke ok!"* (Enio).
 
-⚠️ **O que continua NÃO reproduzido:** a franja que o Enio vê. Na escala do produto a borda da
-cor pousa a **0,25 px** além da silhueta — sub-pixel, e as duas leis ficam abaixo do que uma
-tela mostra. O que se fez foi melhorar o que É mensurável (cobertura, uniformidade) sem piorar o
-que ele reclamou. Se a franja persistir no re-smoke, faltam as condições dele: **zoom, tamanho e
-dureza do pincel** — com esses três a fixture se monta e o instrumento agora responde.
+**Sintoma (Enio, três smokes seguidos):** *"o fill está extrapolando um pouquinho para fora da
+linha, como se a referência usada não fosse o centro da linha mas a borda externa"* → *"ainda
+extrapolando um pouco da borda externa"* → **e então a pergunta que resolveu tudo**: *"Porque não
+ter como referência o centro da linha? **Já tínhamos resolvido isso.**"*
+
+Tínhamos. É o **#14**, e ele estava certo o tempo todo.
+
+### O INVARIANTE (é isto que não se pode quebrar de novo)
+
+> **A referência do fill é o EIXO da linha.** A dilatação leva a cor do eixo até a **silhueta** —
+> pela espessura da linha que aquele ponto veste — **e PARA ali**. Qualquer termo que empurre a
+> cor além da silhueta é **transbordo por construção**: naquela faixa a linha já tem alpha zero,
+> então a cor cai na tela nua e o artista a vê.
+
+`largura = w + 2s`, e nada mais. `w` = a espessura da linha LOCAL (#20); `s` = o desvio **com
+sinal** do ponto do contorno até o eixo, que corrige o erro de vetorização.
+
+### A causa: duas rodadas gastas calibrando um termo que não devia existir
+
+O #15 introduziu a dilatação por um motivo real (a metade externa de uma linha macia ficava sem
+cor por baixo) e, junto, uma **margem extra** — para cobrir o erro de vetorização do contorno.
+Legítimo naquele dia: não havia outra defesa contra esse erro.
+
+Depois chegou a **compensação por ponto** (`2s`), que cobre exatamente o mesmo erro — melhor,
+porque é por ponto e tem sinal. A partir dali a margem virou **contagem dupla**, e a segunda
+parcela era paga em **pixels visíveis**. Ninguém a aposentou, porque ela não estava *errada*:
+estava obsoleta, que é uma coisa mais difícil de ver.
+
+E o custo do erro foi **duas rodadas inteiras calibrando a constante** — 0,5 → 0,25 → fração de
+0,06 → fração de 0,03 — cada uma com medição honesta e tabela, nenhuma perguntando *se o termo
+devia existir*. A pergunta do Enio (*"já não tínhamos resolvido isso?"*) atravessou as quatro.
+
+### O trade, medido (a constante ficou, em zero, como registro)
+
+| lei | cobertura (fundo sob a linha) | transbordo (8/16/32 px) |
+|---|---|---|
+| sem compensação nem margem (o defeito do #15) | 350 | 0,0 % |
+| **compensação, margem ZERO** | **224** | **0,0 / 0,0 / 0,0 %** |
+| margem FIXA 0,5, sem compensação (até 2026-07-18) | 158 | 0,2 / 0,1 / 0,0 % |
+| compensação + fração 0,03 | 156 | 0,2 / 0,1 / 0,5 % |
+| compensação + fração 0,06 | 116 | 0,2 / 0,3 / **4,6 %** |
+
+A troca é **real**: margem some ⇒ franja some, e a cobertura piora (224 contra 158). A
+compensação paga a maior parte da diferença sozinha (o baseline sem ela é **350**), e o resíduo
+se concentra no zoom BAIXO, onde a linha inteira tem 2-4 px de tela e a métrica pesa mais que o
+olho. **Quem decidiu foi o Enio**, com os dois lados na mesa: ele viu a franja três vezes e nunca
+reclamou de halo.
+
+### Lições
+
+> **1. Um remédio novo pode tornar o antigo CONTAGEM DUPLA — aposente-o no mesmo commit.** Quando
+> um mecanismo novo cobre o caso que um mecanismo velho cobria, o velho não fica *errado*: fica
+> **obsoleto**, e obsoleto não dispara gate nenhum. Ao acrescentar uma defesa, pergunte
+> explicitamente *"o que isto torna desnecessário?"* — e remova, ou escreva por que fica.
+>
+> **2. Calibrar uma constante por várias rodadas é sintoma de que ela não devia existir.** Cada
+> rodada aqui teve medição séria e tabela no doc; nenhuma perguntou se o termo era necessário. É
+> a mesma lei de [[feedback_ergonomics_verdict_is_a_design_bug]] (*"difícil de ajustar" = bug de
+> DESIGN*), e a segunda vez que este projeto a paga. **Ao terceiro ajuste da mesma constante,
+> pare e questione o modelo.**
+>
+> **3. Um invariante já conquistado tem de ser RE-CONFERIDO por quem acrescenta um termo.** O #14
+> deixou uma frase clara (*a referência é o eixo*) e o #15 a violou sem notar, porque a violação
+> vinha embutida num fix correto. Um invariante que vive só na prosa de um bug antigo não
+> sobrevive ao próximo fix — por isso ele agora está **em caixa alta no topo desta seção** e é
+> citado no doc da constante.

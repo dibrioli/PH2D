@@ -91,6 +91,12 @@ const HIT_PARITY_ALLOW: &[(&str, &str)] = &[
     // committed via the Submit/Blur/Cancel arms in `event.rs`. Same shape as
     // `HIER_RENAME_INPUT` — a dynamic rename field, never a static populate widget.
     ("ph2d-panel-timeline", "TIMELINE_MARKER_RENAME_INPUT"),
+    // Inline layer-rename `TextInput` (ADR-0114 §4.C): registered in
+    // `paint_layers.rs` only while a rename is open (double-click a layer name),
+    // seeded + focused there and committed via the Submit/Blur/Cancel arms in
+    // `event.rs`. Same shape as `TIMELINE_MARKER_RENAME_INPUT` — a dynamic rename
+    // field over the row's name strip, never a static populate widget.
+    ("ph2d-panel-flip", "FLIP_LAYER_RENAME_INPUT"),
 ];
 
 /// Editor-core global registration files (hero chrome). Shared ids like panel

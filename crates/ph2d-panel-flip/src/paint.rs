@@ -27,7 +27,7 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
-pub(crate) fn paint(_state: &mut FlipPanelState, ctx: &mut PaintCtx) {
+pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(FlipPanel::ID) {
         // Stale-rect cleanup so `panel_at` stops returning FLIP_PANEL once the
         // tool is deactivated.
@@ -133,7 +133,7 @@ pub(crate) fn paint(_state: &mut FlipPanelState, ctx: &mut PaintCtx) {
         row_gap,
         font,
     };
-    y = paint_layers::layers_section(ctx, theme, &m, &layers, y, &mut pending_blend);
+    y = paint_layers::layers_section(state, ctx, theme, &m, &layers, y, &mut pending_blend);
 
     // Total painted height (independent of scroll — both ends shift with it).
     let content_h = (y - body_top_y + PANEL_HEAD_PAD).max(0.0);

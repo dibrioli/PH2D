@@ -10,11 +10,12 @@
 //!   → assert the tool's state actually changed.
 
 use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::ids::FlipLayerWidget;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::Tool; // brings `handle_panel_event` into scope
 use ph2d_panel_flip::state::FlipPanelState;
-use ph2d_panel_flip::{FlipPanel, ids};
+use ph2d_panel_flip::{FlipLayerRow, FlipLayersSnapshot, FlipPanel, LayerRename, ids};
 use ph2d_tool_flip::{FlipMode, FlipTool, WIDTH_MAX_PX};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -23,7 +24,7 @@ use ph2d_ui_testkit::MockPanelHost;
 #[test]
 fn size_slider_drag_reaches_tool() {
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut panel_state = FlipPanelState;
+    let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
 
     host.set_slider_value(ids::FLIP_SIZE, 1.0);
@@ -60,7 +61,7 @@ fn size_slider_drag_reaches_tool() {
 #[test]
 fn draw_mode_button_switches_the_tool_mode() {
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut panel_state = FlipPanelState;
+    let mut panel_state = FlipPanelState::default();
     let mut tool = FlipTool::default();
     assert_eq!(tool.mode(), FlipMode::Select, "fresh tool starts in Select");
 
@@ -109,7 +110,7 @@ fn viewport() -> ph2d_editor_core::zones::Rect {
 #[test]
 fn every_mode_button_is_painted_and_clickable() {
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut st = FlipPanelState;
+    let mut st = FlipPanelState::default();
     let painted = host.paint::<FlipPanel>(&mut st, viewport());
 
     for (id, name) in [
@@ -139,7 +140,7 @@ fn every_mode_button_is_painted_and_clickable() {
 #[test]
 fn the_bucket_widgets_appear_only_in_fill_mode() {
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut st = FlipPanelState;
+    let mut st = FlipPanelState::default();
     // O **swatch de Fill NÃO está aqui**: ele é compartilhado com o modo Edit (W6), onde
     // recolore o miolo do traço selecionado — a cor da linha e a do miolo são dois
     // atributos, e fundi-las num controle só foi o defeito que o smoke derrubou. O que é
@@ -369,7 +370,7 @@ fn each_mode_shows_only_its_own_attributes() {
     );
     for (mode, expected, forbidden) in cases {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
-        let mut st = FlipPanelState;
+        let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
             ..Default::default()
@@ -419,7 +420,7 @@ fn size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere() {
     );
     for (mode, want) in cases {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
-        let mut st = FlipPanelState;
+        let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
             ..Default::default()
@@ -447,7 +448,7 @@ fn every_sculpt_brush_button_selects_its_own_brush() {
 
     for (id, kind) in ids::FLIP_RESHAPE_KIND_IDS.iter().zip(ReshapeKind::ALL) {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
-        let mut panel_state = FlipPanelState;
+        let mut panel_state = FlipPanelState::default();
         let mut tool = FlipTool::default();
 
         let outcome =
@@ -475,7 +476,7 @@ fn every_sculpt_brush_button_selects_its_own_brush() {
 #[test]
 fn the_eight_sculpt_brushes_are_painted_in_reshape_mode() {
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut st = FlipPanelState;
+    let mut st = FlipPanelState::default();
     ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
         mode: FlipMode::Reshape,
         ..Default::default()
@@ -515,7 +516,7 @@ fn the_eight_sculpt_brushes_are_painted_in_reshape_mode() {
 fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
     // (a) o seam: o clique chega e a tool muda.
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut st = FlipPanelState;
+    let mut st = FlipPanelState::default();
     let mut tool = FlipTool::default();
     assert!(!tool.draw_filled(), "o default e a linha simples");
 
@@ -546,7 +547,7 @@ fn the_shape_row_toggles_the_filled_stroke_and_lives_only_in_draw_mode() {
         (FlipMode::Select, false),
     ] {
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
-        let mut st = FlipPanelState;
+        let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
             ..Default::default()
@@ -589,7 +590,7 @@ fn the_domain_toggles_reach_the_tool_and_live_only_in_edit_mode() {
 
     // (a) o seam: cada clique chega e a tool muda de domínio.
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut st = FlipPanelState;
+    let mut st = FlipPanelState::default();
     let mut tool = FlipTool::default();
     assert_eq!(tool.edit_domain(), EditDomain::Stroke, "o default e Stroke");
     for (id, want) in cases {
@@ -612,7 +613,7 @@ fn the_domain_toggles_reach_the_tool_and_live_only_in_edit_mode() {
     for mode in ph2d_tool_flip::FlipMode::ALL {
         let want = mode == FlipMode::Edit;
         let mut host = MockPanelHost::with_panel::<FlipPanel>();
-        let mut st = FlipPanelState;
+        let mut st = FlipPanelState::default();
         ph2d_panel_flip::set_current_flip_style(Some(ph2d_tool_flip::FlipStyleSnapshot {
             mode,
             ..Default::default()
@@ -639,7 +640,7 @@ fn duplicate_layer_button_forwards_to_the_bus() {
     use ph2d_editor_core::tool::PanelEvent;
 
     let mut host = MockPanelHost::with_panel::<FlipPanel>();
-    let mut st = FlipPanelState;
+    let mut st = FlipPanelState::default();
     let outcome =
         host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Click(ids::FLIP_LAYER_DUPLICATE));
     assert_eq!(
@@ -656,5 +657,137 @@ fn duplicate_layer_button_forwards_to_the_bus() {
     assert!(
         forwarded,
         "o Duplicate nao chegou ao barramento — o shell (flip_layers) nunca duplica"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline layer rename (§4.C) — double-click a name → edit → Enter commits.
+// The commit travels on the layer's Row id via `SelectOption`; the shell drain
+// (`flip_layers`) decodes it and renames. Three halves: OPEN (double-click),
+// COMMIT (Enter forwards the new name), PAINT (the field owns the name strip).
+// ─────────────────────────────────────────────────────────────────────────────
+
+use ph2d_editor_core::tool::PanelEvent;
+
+/// One published layer, named `name`, active.
+fn one_layer(id: u64, name: &str) {
+    ph2d_panel_flip::set_current_flip_layers(FlipLayersSnapshot {
+        rows: vec![FlipLayerRow {
+            id,
+            name: name.to_string(),
+            blend: 0,
+            opacity: 1.0,
+            visible: true,
+            locked: false,
+        }],
+        active: Some(id),
+    });
+}
+
+/// 🔴 **Double-clicking a layer NAME opens the inline rename** (§4.C).
+///
+/// A single click still selects (that seam is covered elsewhere); the SECOND click of
+/// the pair upgrades to `DoubleClick(row_id)` and opens the field on that layer.
+///
+/// Mutação que sangra: apagar o arm `WidgetEvent::DoubleClick` do `event.rs` — o
+/// double-click deixa de ser Consumed e `layer_rename` fica `None`.
+#[test]
+fn double_clicking_a_layer_name_opens_the_rename() {
+    let a = 7u64;
+    one_layer(a, "Rough");
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+
+    let row_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Row);
+    let outcome = host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::DoubleClick(row_id));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o double-click no nome foi IGNORADO — falta o arm em `event.rs`"
+    );
+    assert_eq!(
+        st.layer_rename.map(|lr| lr.layer),
+        Some(a),
+        "o rename nao abriu na camada do double-click"
+    );
+}
+
+/// 🔴 **Enter no campo aberto COMMITA o novo nome pela Row id** (§4.C) — o canal que o
+/// shell (`flip_layers`) decodifica para renomear no doc.
+///
+/// O campo é semeado (via `paint`) com o nome ATUAL da camada; o commit forwarda esse
+/// texto. Mutação que sangra: o commit forwardar um id/nome hardcoded, ou ler o slot
+/// errado do store — o `matches!` de `SelectOption(row_id, "Rough")` cai. E não fechar
+/// o `layer_rename` deixa o `is_none()` vermelho.
+#[test]
+fn committing_the_rename_forwards_the_new_name_on_the_row_id() {
+    let a = 11u64;
+    one_layer(a, "Rough");
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+    let row_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Row);
+
+    // Open + paint (seeds the field with the current name, focused).
+    host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::DoubleClick(row_id));
+    host.paint::<FlipPanel>(&mut st, viewport());
+
+    // Enter → Submit → commit forwards SelectOption(row_id, "Rough").
+    let outcome =
+        host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Submit(ids::FLIP_LAYER_RENAME_INPUT));
+    assert_eq!(outcome, EventOutcome::Consumed, "o Enter no campo foi ignorado");
+    let forwarded = host.drained_actions().into_iter().any(|act| {
+        matches!(
+            act,
+            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(id, name))
+                if id == row_id && name == "Rough"
+        )
+    });
+    assert!(
+        forwarded,
+        "o commit nao forwardou SelectOption(row_id, name) — o shell nunca renomeia"
+    );
+    assert!(st.layer_rename.is_none(), "o campo de rename fica FECHADO apos o commit");
+}
+
+/// 🔴 **O campo de rename OCUPA a faixa do nome — e o hit da row cede a ele** (§4.C).
+///
+/// Enquanto renomeia, um clique na faixa tem de editar texto, não re-selecionar a
+/// camada; então o hit registrado ali é o do CAMPO, não o da Row. Fora do rename é o
+/// contrário. Mutação que sangra: pintar o texto do nome (registrando a Row) em vez do
+/// campo enquanto renomeia — o campo some do painted e a Row reaparece.
+#[test]
+fn the_rename_field_owns_the_name_strip_while_renaming() {
+    let a = 3u64;
+    one_layer(a, "A");
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut st = FlipPanelState::default();
+    let row_id = ids::flip_layer_widget_id(a, FlipLayerWidget::Row);
+
+    // Não renomeando: a faixa do nome é a Row; o campo não existe.
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    assert!(
+        painted.iter().any(|(w, r)| *w == row_id && r.w > 0.0),
+        "a faixa do nome (Row) deveria ser pintada e clicável"
+    );
+    assert!(
+        !painted.iter().any(|(w, _)| *w == ids::FLIP_LAYER_RENAME_INPUT),
+        "nao ha campo de rename sem rename aberto"
+    );
+
+    // Renomeando ESTA row: o campo ocupa a faixa; a Row cede o hit.
+    st.layer_rename = Some(LayerRename {
+        layer: a,
+        opened: false,
+    });
+    let painted = host.paint::<FlipPanel>(&mut st, viewport());
+    assert!(
+        painted
+            .iter()
+            .any(|(w, r)| *w == ids::FLIP_LAYER_RENAME_INPUT && r.w > 0.0),
+        "o campo de rename nao foi pintado sobre a row renomeada"
+    );
+    assert!(
+        !painted.iter().any(|(w, _)| *w == row_id),
+        "o hit da row-select tem de CEDER ao campo enquanto renomeia"
     );
 }

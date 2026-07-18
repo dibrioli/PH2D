@@ -116,6 +116,10 @@ impl App {
             && state == ElementState::Pressed
             && !repeat
             && self.modifiers.is_empty()
+            // Um campo de texto FOCADO (o rename de camada, §4.C) fica com Backspace/Delete
+            // para editar o texto — senão apagar uma letra do nome apagaria os traços
+            // selecionados. Mesma guarda que os atalhos de tecla-única já usam.
+            && !self.vector_text_field_focused()
             && matches!(
                 physical_key,
                 PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)

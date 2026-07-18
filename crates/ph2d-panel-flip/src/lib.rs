@@ -34,8 +34,8 @@ pub mod populate;
 pub mod state;
 
 pub use state::{
-    FlipLayerRow, FlipLayersSnapshot, last_content_h, last_visible_h, set_current_flip_layers,
-    set_current_flip_style,
+    FlipLayerRow, FlipLayersSnapshot, LayerRename, last_content_h, last_visible_h,
+    set_current_flip_layers, set_current_flip_style,
 };
 
 use ph2d_a11y::NodeId;

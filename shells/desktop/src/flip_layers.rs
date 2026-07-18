@@ -175,20 +175,30 @@ pub(crate) fn apply_panel_event(
             }
             _ => false,
         },
-        PanelEvent::SelectOption(id, val) => {
-            // Blend chip → the id is the layer's Blend widget; `val` is the mode.
-            let Some((layer, FlipLayerWidget::Blend)) = decode_widget(flip, *id) else {
-                return false;
-            };
-            let Ok(mode) = val.parse::<u8>() else {
-                return false;
-            };
-            if let Some(l) = flip.object_mut(oid).and_then(|o| o.layer_mut(layer)) {
-                l.blend = BlendMode::from_u8(mode);
-                return true;
+        PanelEvent::SelectOption(id, val) => match decode_widget(flip, *id) {
+            // Inline rename (§4.C): the panel forwards the new name on the layer's Row
+            // id. An empty name is refused here too (the panel already trims + drops
+            // empty, but the recusa lives at the apply, not only in the field).
+            Some((layer, FlipLayerWidget::Row)) => {
+                let name = val.trim();
+                !name.is_empty()
+                    && flip
+                        .object_mut(oid)
+                        .is_some_and(|o| o.rename_layer(layer, name))
             }
-            false
-        }
+            // Blend chip → the id is the layer's Blend widget; `val` is the mode.
+            Some((layer, FlipLayerWidget::Blend)) => {
+                let Ok(mode) = val.parse::<u8>() else {
+                    return false;
+                };
+                if let Some(l) = flip.object_mut(oid).and_then(|o| o.layer_mut(layer)) {
+                    l.blend = BlendMode::from_u8(mode);
+                    return true;
+                }
+                false
+            }
+            _ => false,
+        },
         PanelEvent::Toggle(..) => false,
     }
 }
@@ -358,6 +368,44 @@ mod tests {
             .map(|l| l.id)
             .collect();
         assert_eq!(ids_now, vec![b, a]);
+    }
+
+    /// 🔴 **SelectOption na Row id renomeia a camada** (§4.C) — o consumidor real do
+    /// commit do painel (o campo inline forwarda o nome novo pela Row id).
+    ///
+    /// Mutação que sangra: o braço `SelectOption` não tratar a Row (cair no `_ => false`)
+    /// ou chamar algo que não `rename_layer` — o `assert_eq!` do nome cai.
+    #[test]
+    fn rename_layer_via_select_option_on_the_row_id() {
+        let (mut doc, a, _b) = doc_2layers();
+        let oid = doc.objects().first().unwrap().id;
+        let mut active = None;
+        assert!(apply_panel_event(
+            &PanelEvent::SelectOption(wid(a, FlipLayerWidget::Row), "Rough".to_string()),
+            &mut doc,
+            &mut active,
+            &ph2d_core::Playhead::default(),
+            false,
+        ));
+        assert_eq!(doc.object(oid).unwrap().layer(a).unwrap().name, "Rough");
+    }
+
+    /// Nome vazio (ou só espaços) é NO-OP — a camada mantém o nome antigo. A recusa mora
+    /// no apply, não só no campo (o painel já dropa vazio, mas o drain confirma).
+    #[test]
+    fn rename_to_blank_is_a_noop() {
+        let (mut doc, a, _b) = doc_2layers();
+        let oid = doc.objects().first().unwrap().id;
+        let before = doc.object(oid).unwrap().layer(a).unwrap().name.clone();
+        let mut active = None;
+        assert!(!apply_panel_event(
+            &PanelEvent::SelectOption(wid(a, FlipLayerWidget::Row), "   ".to_string()),
+            &mut doc,
+            &mut active,
+            &ph2d_core::Playhead::default(),
+            false,
+        ));
+        assert_eq!(doc.object(oid).unwrap().layer(a).unwrap().name, before);
     }
 
     #[test]

@@ -14,7 +14,7 @@
 //! - Close (X) → `CancelActiveTool`.
 
 use crate::ids;
-use crate::state::{FlipPanelState, current_layers};
+use crate::state::{FlipPanelState, LayerRename, current_layers};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::FlipLayerWidget;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
@@ -48,11 +48,35 @@ fn decode_blend_option(id: ph2d_a11y::NodeId) -> Option<(u64, u8)> {
 }
 
 pub(crate) fn apply_event(
-    _state: &mut FlipPanelState,
+    state: &mut FlipPanelState,
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
     let consumed = match ev {
+        // ── Inline layer rename (§4.C). Double-clicking a layer NAME opens the field;
+        //    Enter (Submit) / click-away (Blur) commit; Esc (Cancel) abandons. The
+        //    commit forwards the new name on the layer's Row id via `SelectOption`
+        //    (the shell drain decodes the Row id → layer and renames — a DOCUMENT
+        //    edit, like the blend chip). Mirror of the timeline marker rename. ──
+        WidgetEvent::DoubleClick(id) => {
+            if let Some((layer, FlipLayerWidget::Row)) = decode_layer_widget(id) {
+                state.layer_rename = Some(LayerRename {
+                    layer,
+                    opened: false,
+                });
+                true
+            } else {
+                false
+            }
+        }
+        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if id == ids::FLIP_LAYER_RENAME_INPUT => {
+            commit_layer_rename(state, host);
+            true
+        }
+        WidgetEvent::Cancel(id) if id == ids::FLIP_LAYER_RENAME_INPUT => {
+            cancel_layer_rename(state, host);
+            true
+        }
         // ── Brush sliders (track 0..1 → the tool projects the value). ──
         WidgetEvent::ValueChanged(id)
             if id == ids::FLIP_SIZE
@@ -193,4 +217,42 @@ pub(crate) fn apply_event(
         _ => false,
     };
     EventOutcome::from_bool(consumed)
+}
+
+/// Commit the open inline rename (§4.C): read the field's trimmed text and forward it
+/// as `SelectOption(row_id, name)` — the shell drain renames the layer. An empty name
+/// is ignored (the layer keeps its old name). The `take` makes the Enter→Submit+Blur
+/// pair idempotent. Clears focus IF it is still on the field, so the shell's Flip
+/// shortcuts (which auto-suppress while a text field is focused) come back to life.
+fn commit_layer_rename(state: &mut FlipPanelState, host: &mut dyn PanelHostInternal) {
+    let Some(lr) = state.layer_rename.take() else {
+        return;
+    };
+    let name = match host.store().get(ids::FLIP_LAYER_RENAME_INPUT) {
+        Some(InteractiveState::TextInput { text, .. }) => text.trim().to_string(),
+        _ => String::new(),
+    };
+    release_rename_focus(host);
+    if name.is_empty() {
+        return; // empty name ignored — the layer keeps its old name
+    }
+    let row_id = ids::flip_layer_widget_id(lr.layer, FlipLayerWidget::Row);
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+            row_id, name,
+        )));
+}
+
+/// Abandon the open rename (Esc) without committing.
+fn cancel_layer_rename(state: &mut FlipPanelState, host: &mut dyn PanelHostInternal) {
+    state.layer_rename = None;
+    release_rename_focus(host);
+}
+
+/// Drop focus IFF it still rests on the rename field — never steal focus the user
+/// moved elsewhere (a Blur fires because focus already went to the next widget).
+fn release_rename_focus(host: &mut dyn PanelHostInternal) {
+    if host.store().focus_id() == Some(ids::FLIP_LAYER_RENAME_INPUT) {
+        host.store_mut().set_focus(None);
+    }
 }

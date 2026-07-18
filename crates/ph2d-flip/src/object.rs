@@ -177,6 +177,19 @@ impl FlipObject {
         Some(new_lid)
     }
 
+    /// Renomeia a camada `id` (ADR-0114 §4.C). `false` se não existe. O nome entra
+    /// verbatim — a política de vazio/trim mora na fronteira (o painel/shell recusa
+    /// nome vazio); mesmo contrato de [`Self::duplicate_layer`].
+    pub fn rename_layer(&mut self, id: LayerId, name: impl Into<String>) -> bool {
+        match self.layer_mut(id) {
+            Some(l) => {
+                l.name = name.into();
+                true
+            }
+            None => false,
+        }
+    }
+
     #[must_use]
     pub fn layer(&self, id: LayerId) -> Option<&FlipLayer> {
         self.layers.iter().find(|l| l.id == id)

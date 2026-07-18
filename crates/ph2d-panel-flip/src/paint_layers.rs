@@ -13,7 +13,7 @@
 //! the immutable-store reads + hit registration — the painter-layers pattern.
 
 use crate::ids;
-use crate::state::{FlipLayerRow, FlipLayersSnapshot};
+use crate::state::{FlipLayerRow, FlipLayersSnapshot, FlipPanelState, LayerRename};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids::FlipLayerWidget;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -23,8 +23,9 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption,
-    DropdownState, Slider, SliderState, paint_button, paint_dropdown_chip,
-    paint_dropdown_popover_scrolled, paint_slider, scrollbar_is_needed, scrollbar_track_rect,
+    DropdownState, Slider, SliderState, TextInput, TextInputState, paint_button,
+    paint_dropdown_chip, paint_dropdown_popover_scrolled, paint_slider,
+    paint_text_input_with_buffer, scrollbar_is_needed, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_painter_effects::{BlendMode, MAX_BLEND_MODES};
@@ -83,6 +84,7 @@ fn icon_button(ctx: &mut PaintCtx, theme: Theme, id: ph2d_a11y::NodeId, icon: Ic
 /// Returns the advanced `y`. A single open blend dropdown is stashed into
 /// `pending` for the deferred popover pass.
 pub(crate) fn layers_section(
+    state: &mut FlipPanelState,
     ctx: &mut PaintCtx,
     theme: Theme,
     m: &LayerMetrics,
@@ -90,6 +92,37 @@ pub(crate) fn layers_section(
     mut y: f32,
     pending: &mut Option<PendingBlend>,
 ) -> f32 {
+    // Seed + focus the inline rename field ONCE when a rename opens (§4.C) — re-seeding
+    // every frame would stomp the user's typing. If the target layer vanished (deleted /
+    // undo), abandon the rename rather than key a stale id. Mirror of the timeline marker
+    // rename. Done here (not per-row) so the row loop below stays a read-only paint.
+    if let Some(lr) = state.layer_rename
+        && !lr.opened
+    {
+        if let Some(row) = snap.rows.iter().find(|r| r.id == lr.layer) {
+            let name = row.name.clone();
+            let caret = name.len();
+            ctx.host.store_mut().register(
+                ids::FLIP_LAYER_RENAME_INPUT,
+                InteractiveState::TextInput {
+                    state: TextInputState::Focused,
+                    text: name,
+                    caret,
+                    selection_anchor: None,
+                },
+            );
+            ctx.host
+                .store_mut()
+                .set_focus(Some(ids::FLIP_LAYER_RENAME_INPUT));
+            ctx.host
+                .store_mut()
+                .mark_cancel_on_escape(ids::FLIP_LAYER_RENAME_INPUT);
+            state.layer_rename = Some(LayerRename { opened: true, ..lr });
+        } else {
+            state.layer_rename = None;
+        }
+    }
+    let renaming = state.layer_rename.map(|lr| lr.layer);
     // Section label.
     let label_font = TypeToken::Sm.px();
     paint_text(
@@ -151,6 +184,7 @@ pub(crate) fn layers_section(
             idx == 0, // bottom layer = base (no blend chip)
             can_up,
             can_down,
+            renaming == Some(row.id),
             y,
             pending,
         );
@@ -172,6 +206,7 @@ fn paint_layer_block(
     is_base: bool,
     can_up: bool,
     can_down: bool,
+    renaming: bool,
     mut y: f32,
     pending: &mut Option<PendingBlend>,
 ) -> f32 {
@@ -249,29 +284,58 @@ fn paint_layer_block(
         can_down,
     );
 
-    // Name — a click on the name strip selects (activates) the layer.
+    // Name — a click selects the layer; a DOUBLE-click opens the inline rename (§4.C).
     let name_x = m.inner_x + gap + (icon_w + gap) * 2.0;
     let name_w = (up_x - gap - name_x).max(0.0);
+    let name_rect = Rect::new(name_x, y, name_w, m.row_h);
     let row_id = ids::flip_layer_widget_id(row.id, FlipLayerWidget::Row);
-    button_absent(ctx, row_id);
-    let name_color = if row.visible {
-        ColorToken::Text1
+    if renaming {
+        // The inline field OWNS the name strip while renaming: paint the TextInput over
+        // it (its store slot was seeded + focused once in `layers_section`) and register
+        // ITS hit rect — not the row's, so a click here edits text instead of re-selecting.
+        let (ti_state, text, caret, anchor) =
+            match ctx.host.store().get(ids::FLIP_LAYER_RENAME_INPUT) {
+                Some(InteractiveState::TextInput {
+                    state,
+                    text,
+                    caret,
+                    selection_anchor,
+                }) => (*state, text.clone(), *caret, *selection_anchor),
+                _ => (TextInputState::Focused, String::new(), 0, None),
+            };
+        let input = TextInput::new(ids::FLIP_LAYER_RENAME_INPUT, "").state(ti_state);
+        paint_text_input_with_buffer(
+            &input,
+            Some(text.as_str()),
+            Some(caret),
+            anchor,
+            name_rect,
+            ctx.scene,
+            ctx.text_system,
+            theme,
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(ids::FLIP_LAYER_RENAME_INPUT, name_rect);
     } else {
-        ColorToken::Text3
-    };
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        &row.name,
-        name_x,
-        y + (m.row_h - m.font) * 0.5,
-        m.font,
-        name_w,
-        resolve(name_color, theme),
-    );
-    ctx.host
-        .hit_index_mut()
-        .register(row_id, Rect::new(name_x, y, name_w, m.row_h));
+        button_absent(ctx, row_id);
+        let name_color = if row.visible {
+            ColorToken::Text1
+        } else {
+            ColorToken::Text3
+        };
+        paint_text(
+            ctx.text_system,
+            ctx.scene,
+            &row.name,
+            name_x,
+            y + (m.row_h - m.font) * 0.5,
+            m.font,
+            name_w,
+            resolve(name_color, theme),
+        );
+        ctx.host.hit_index_mut().register(row_id, name_rect);
+    }
     y += m.row_h + line_gap;
 
     // ── Line 2: blend-mode dropdown chip (não no fundo — blend contra nada). ──

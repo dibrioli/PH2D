@@ -54,11 +54,27 @@ thread_local! {
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
 }
 
-/// Retained per-instance state slot for `FlipPanel`. Intentionally empty — the
-/// authoritative Style lives on the shell-side `FlipTool`, the layer model on
-/// the shell's `FlipDoc`. `Default` is required by `Panel::State: Default`.
+/// An open inline layer-rename (§4.C): which layer, and whether the field has been
+/// seeded + focused yet. The FIRST paint after opening seeds the `TextInput` ONCE
+/// (re-seeding every frame would stomp the user's typing) and flips `opened`. Mirror
+/// of the timeline `MarkerRename`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LayerRename {
+    /// `LayerId.0` of the layer being renamed.
+    pub layer: u64,
+    /// Has the field been seeded + focused (paint side) yet?
+    pub opened: bool,
+}
+
+/// Retained per-instance state slot for `FlipPanel`. Holds only the open inline
+/// layer-rename (§4.C) — the authoritative Style lives on the shell-side `FlipTool`,
+/// the layer model on the shell's `FlipDoc`. `Default` is required by
+/// `Panel::State: Default`.
 #[derive(Clone, Debug, Default)]
-pub struct FlipPanelState;
+pub struct FlipPanelState {
+    /// The open inline layer rename, if any (double-click a name to open).
+    pub layer_rename: Option<LayerRename>,
+}
 
 /// Publish the current Style snapshot. Called by the shell once per frame while
 /// the `flip` tool is active; pass `None` to clear (tool inactive).

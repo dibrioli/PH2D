@@ -481,3 +481,40 @@ fn duplicate_layer_of_a_missing_id_is_none() {
     assert_eq!(o.duplicate_layer(LayerId(999)), None);
     assert_eq!(o.layers().len(), before, "nada foi criado");
 }
+
+// ── rename_layer (§4.C) ────────────────────────────────────────────────────────
+
+/// Renomear troca SÓ o nome da camada — id, frames e arte intactos.
+///
+/// Mutação que sangra: `rename_layer` não escrever o nome (retornar `true` sem tocar
+/// `l.name`) — o `assert_eq!` do nome cai.
+#[test]
+fn rename_layer_sets_only_the_name() {
+    let (mut o, l, d) = object_with_one_frame();
+    let name_before = o.layer(l).unwrap().name.clone();
+    assert_ne!(name_before, "Rough", "fixture não pode já se chamar Rough");
+    let frames_before = o.layer(l).unwrap().frames().len();
+
+    assert!(o.rename_layer(l, "Rough"));
+    assert_eq!(o.layer(l).unwrap().name, "Rough");
+    assert_eq!(o.layer(l).unwrap().id, l, "o id é estável (máscaras apontam pra cá)");
+    assert_eq!(
+        o.layer(l).unwrap().frames().len(),
+        frames_before,
+        "renomear não toca os frames"
+    );
+    assert_eq!(o.drawing(d).map(|_| ()), Some(()), "a arte segue viva");
+}
+
+/// Id inexistente = `false`, sem efeito colateral (a recusa mora no modelo, não só na UI).
+#[test]
+fn rename_layer_of_a_missing_id_is_false() {
+    let (mut o, l, _d) = object_with_one_frame();
+    let name_before = o.layer(l).unwrap().name.clone();
+    assert!(!o.rename_layer(LayerId(999), "Nope"));
+    assert_eq!(
+        o.layer(l).unwrap().name,
+        name_before,
+        "uma camada real não pode ter sido renomeada por um id fantasma"
+    );
+}

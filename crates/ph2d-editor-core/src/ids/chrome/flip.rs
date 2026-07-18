@@ -134,6 +134,11 @@ pub const FLIP_LAYER_ADD: NodeId = hash_node_id("flip.layer.add");
 pub const FLIP_LAYER_DUPLICATE: NodeId = hash_node_id("flip.layer.duplicate");
 /// Delete the active layer.
 pub const FLIP_LAYER_DELETE: NodeId = hash_node_id("flip.layer.delete");
+/// Inline layer-rename field (ADR-0114 §4.C): double-clicking a layer's name opens
+/// a single-line `TextInput` over the name strip, seeded with the current name.
+/// ONE field, reused across rows (only one rename is open at a time) — mirror of the
+/// timeline's `TIMELINE_MARKER_RENAME_INPUT`.
+pub const FLIP_LAYER_RENAME_INPUT: NodeId = hash_node_id("flip.layer.rename_input");
 
 /// Runtime FNV-1a 64-bit over `s`, byte-identical to the `const fn`
 /// [`hash_node_id`] (which only accepts `&'static str`). Needed because the

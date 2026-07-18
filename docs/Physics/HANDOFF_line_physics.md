@@ -612,7 +612,7 @@ component (`Collider.layer`) e UI do **Inspector**. Matriz sem ela é 1×1.
 **`PROJECT_SCHEMA` 20 → 21** (duas quebras de layout no mesmo bump: `Collider.layer`
 apendado ao component **e** `layer_matrix` apendado às settings).
 
-### Gates: 16 novos (5 bridge + 3 unit + 2 seam-painel + 1 seam-inspector + …), 12 mutações, 12 sangram
+### Gates: 11 novos (5 bridge · 3 unit · 2 seam-painel · 1 seam-inspector), 12 mutações, 12 sangram
 
 ⚠️ **Dois nasceram VERDES sobre o bug que existiam pra pegar** — a mesma família
 das três do W2b:

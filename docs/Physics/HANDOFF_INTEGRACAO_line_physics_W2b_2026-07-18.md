@@ -1,9 +1,9 @@
-# Handoff de INTEGRAÇÃO — `line/physics` W2b (DIRETRIZ §1.5.9)
+# Handoff de INTEGRAÇÃO — `line/physics` **W2b + W2c** (DIRETRIZ §1.5.9)
 
 > Para o **agente integrador**, por ordem explícita do Enio. A linha fechou e PAROU:
 > não integrei, não pushei.
 >
-> Estado técnico completo: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §W2b.
+> Estado técnico completo: [`HANDOFF_line_physics.md`](HANDOFF_line_physics.md) §W2b e §W2c.
 > O *porquê*: [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) D8.
 
 ---
@@ -12,7 +12,7 @@
 
 - Branch **`line/physics`**, worktree `Worktrees/line-physics`, árvore limpa.
 - Base (merge-base com `main`): **`389676f9`**.
-- Commits desta jornada (`git log --oneline 389676f9..HEAD`): **12** (este doc inclusive)
+- Commits desta jornada (`git log --oneline 389676f9..HEAD`): **15** (este doc inclusive)
   - `4062529b` docs(physics): baseline pos-integracao -- o que a integracao MUDOU e o terreno re-verificado
   - `2bf00ba4` docs(physics): handoff de CONTINUACAO -- W2b em janela nova
   - `f53fb928` docs(physics): o roteador passa a saber que a fisica existe (TAREFA ZERO)
@@ -24,6 +24,9 @@
   - `f939255d` style: cargo fmt --all (alfabetizacao do mod/pub use novo + reflow das listas)
   - `1eeb6f16` docs(physics): a contagem de gates estava errada (22/21 -> 24/22) e a identidade do handoff
   - `a4067033` fix(physics): o painel estava INALCANCAVEL e o "Air Drag" nao era ar -- os 2 achados do smoke
+  - `b33ba632` docs(physics): os 2 achados do smoke no tracker, no roteador e no handoff + 2 memorias
+  - `86587171` feat(physics): camadas de colisao -- o motor (W2c, a metade que nao e UI)
+  - `09c9a8bc` feat(physics): a UI das camadas -- a matriz no painel + a camada no Inspector (W2c fecha)
 - A `main` **não** andou desde o fork (`git log HEAD..main` vazio no fechamento).
 
 ## 2. Foundational / compartilhado tocado
@@ -43,7 +46,7 @@
 
 ## 3. Símbolos que podem COLIDIR — grepe
 
-1. ⚠️ **`PROJECT_SCHEMA = 20` + tripla-pin `(20, 8, 8)`.** Se outra linha desta janela também
+1. ⚠️ **`PROJECT_SCHEMA = 21` + tripla-pin `(21, 8, 8)`.** Se outra linha desta janela também
    bumpar o schema, **o valor se CONTA, não se escolhe**
    ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]): some os deltas e atualize a
    tripla. O gate `a_schema_bump_anywhere_must_bump_the_project_schema` fica vermelho até
@@ -97,6 +100,17 @@ ordem que o `eprintln` da cena repete:
 7. **Reset to Defaults** — tudo volta, num clique.
 8. **Ctrl+S, Ctrl+O** — as settings voltam com o projeto.
 
+**E o W2c, cena `PH2D_PHYSICS_SMOKE=5`** (dois grupos, duas camadas, um chão):
+
+1. **Célula (1,0)** — o grupo da DIREITA cai pelo chão, o da esquerda fica, **e o
+   da direita continua empilhando em si mesmo**. Esse último detalhe é o que
+   separa *"camadas funcionam"* de *"colisão quebrou"*.
+2. **Clique de novo** — eles pousam. Tem de funcionar sobre os corpos que JÁ
+   estão na cena, não só sobre novos.
+3. **Célula (1,1)** — o grupo da direita para de colidir consigo mesmo.
+4. **Inspector → Layer** — mova UM corpo de camada e veja-o mudar de grupo.
+5. **Ctrl+S, Ctrl+O** — a matriz volta com o projeto.
+
 E confirme que **o app normal (sem a env) segue igual**: o painel nasce fechado
 (`DEFAULT_VISIBLE = false`) e a ponte é no-op sem corpos.
 
@@ -114,9 +128,9 @@ estava no build. O gate `every_panel_the_shell_drives_is_in_its_registry` agora 
 `ph2d-physics` + `ph2d-physics-ecs` (meus módulos, aditivos, C9 intacto) · `ph2d-editor-core`
 (ids/z-order/scrollbar/dispatch) · `ph2d-i18n` · `ph2d-panel-registry-init` (blocos GERADOS) ·
 shell (consumidor). Crate nova `ph2d-panel-physics`. Contratos congelados: nenhum. Colisões a
-grepar: `PROJECT_SCHEMA=20`+tripla-pin · `EXPECTED_TYPED=19` · `NodeId(836)` · tecla `W` — os
-três primeiros **se CONTAM** se outra linha também bumpar. 30 gates novos, 26 mutações, 25 sangram
+grepar: `PROJECT_SCHEMA=21`+tripla-pin · `EXPECTED_TYPED=19` · `NodeId(836)` · tecla `W` — os
+três primeiros **se CONTAM** se outra linha também bumpar. 41 gates novos, 38 mutações, 37 sangram
 (1 sobrevive POR PROJETO — o early-out de `k<=0` no drag: o contrato é honrado duas
 vezes, pelo ramo e pela aritmética). Gate batched verde: fmt · clippy `--all-targets` · `check --workspace --all-targets` ·
-`nextest-impacted` (**4413 testes, 0 falhas**). Smoke pendente: `PH2D_PHYSICS_SMOKE=4`. Aguardo
-ordem de integração / W2c / W3.*
+`nextest-impacted` (**4424 testes, 0 falhas**). Smoke pendente: `PH2D_PHYSICS_SMOKE=5` (o `=4` do W2b já foi APROVADO). Aguardo
+ordem de integração / W3.*

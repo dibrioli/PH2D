@@ -181,7 +181,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // the tab's** (`RulerClock`): the Arrange tab rules the timeline, the Keys tab
     // rules the clip — and without a stack those are one clock, which is why a
     // document that never touches the feature sees no change at all.
-    let clock = ruler::clock_for(state.tab, &snapshot);
+    let clock = crate::ruler_clock::clock_for(state.tab, &snapshot);
     ruler::paint(
         ctx,
         theme,

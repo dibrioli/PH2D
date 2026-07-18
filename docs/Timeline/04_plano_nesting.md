@@ -168,8 +168,20 @@ criação não pode ficar verde porque o load segurou, e vice-versa. Cada um tem
 > **O cap agora tem recurso:** `TIMELINE_CRUMB` (8) limita a **TRILHA**, não a profundidade — a
 > chrome não cunha id em runtime. A profundidade segue sem teto, como o ADR mediu.
 >
-> ⚠️ **Falta a 3c: as DUAS RÉGUAS** (o mecanismo do AE). Os dois `Playhead` já existem; falta
-> desenhá-los alinhados, com o marcador ligando um ao outro.
+> **✅ 3c — o relógio da régua, e a cena de smoke (2026-07-18).** A 3b tinha introduzido um bug:
+> entrar trocava as lanes para os segundos LOCAIS do container e o playhead seguia marcando o da
+> TIMELINE — com a instância em 5 s, os dois discordavam por 5 s, e a strip sob a marca não era
+> a que ela dizia. `container_playhead` (irmão do `clip_playhead`, mesma lei e mesma recusa) dá
+> o relógio do container; a régua do Arrange passa a medi-lo, e **não desenha playhead nenhum**
+> quando o container não toca exatamente uma vez ali. Gate red-first + mutação.
+>
+> **`PH2D_NEST_SMOKE=1`** — cena pronta: um container "Walk" instanciado DUAS vezes, tocando em
+> loop. Sem ela nada disto era olhável ([[feedback_ready_to_smoke_example]]).
+>
+> ⚠️ **O que a 3c NÃO fez:** desenhar as duas réguas EMPILHADAS (o mecanismo literal do AE, com o
+> marcador ligando uma à outra). Hoje a régua troca de relógio ao entrar — que é a metade que
+> conserta o bug — mas o tempo da timeline deixa de estar visível lá dentro. O snapshot já
+> publica os dois (`time_seconds` e `host_time`); falta só a pintura.
 
 
 1. **Breadcrumb** persistente (Animate/Harmony), com entrar/sair.

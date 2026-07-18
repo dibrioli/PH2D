@@ -102,6 +102,7 @@ mod label_live;
 mod morph_live;
 mod motion_state;
 mod name_unique;
+mod nest_smoke;
 mod palette_persist;
 mod physics_smoke;
 mod physics_smoke_rigs;
@@ -292,6 +293,7 @@ impl App {
             title_dirty: true,
             impasto_smoke_done: false,
             stack_smoke_done: false,
+            nest_smoke_done: false,
             physics_smoke_done: false,
             show_colliders: true,
             gilrs,

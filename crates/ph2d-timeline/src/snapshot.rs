@@ -192,6 +192,16 @@ pub struct TimelineViewSnapshot {
     pub clips: Vec<String>,
     /// Every container's name, index-aligned with `TimelineDoc::containers()` (ADR-0133).
     pub containers: Vec<String>,
+    /// **Where the OPEN container's own playhead stands**, in its own seconds — `None` at the
+    /// scene root (there is no second clock) or when the container is not playing exactly once
+    /// here ([`crate::container_playhead`]).
+    ///
+    /// The panel's lanes are laid out in this clock when a container is open, so the ruler
+    /// must mark it and not [`Self::time_seconds`] — and the two are shown TOGETHER, which is
+    /// the only mitigation for "two clocks on one screen" that any product in the research
+    /// actually shipped (After Effects stacks a second ruler above the first when Time
+    /// Remapping is on, with a marker tying them).
+    pub host_time: Option<f64>,
     /// **Where the animator IS** — the breadcrumb, outermost first.
     ///
     /// Empty means the document's own stack (the trail still paints its root: "Scene"). Each
@@ -289,10 +299,14 @@ impl TimelineViewSnapshot {
         self.containers
             .extend(doc.containers().iter().map(|c| c.name.clone()));
         self.crumbs.clear();
+        self.host_time = None;
         if let crate::StackHost::Container(c) = state.edit_host
             && let Some(named) = doc.containers().get(c)
         {
             self.crumbs.push((c, named.name.clone()));
+            // The scratch was primed above (the `!keys_mode && stacked` branch), which is the
+            // same precondition `clip_playhead` rides.
+            self.host_time = crate::container_playhead(doc, c, playhead.time()).ok();
         }
         let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host).unwrap_or(&[]);
         self.lanes.clear();

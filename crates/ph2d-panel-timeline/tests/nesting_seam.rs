@@ -208,3 +208,90 @@ fn the_trail_costs_nothing_at_the_scene_root() {
         "sem trilha, largura zero"
     );
 }
+
+/// **A régua DENTRO de um container mede o relógio DELE.**
+///
+/// Bug que a Fatia 3b introduziu e este gate nasceu vermelho sobre: entrar troca as lanes para
+/// os segundos LOCAIS do container, e o playhead continuava marcando o segundo da TIMELINE.
+/// Com a instância começando em 5 s, os dois discordavam por exatamente 5 s — a strip debaixo
+/// do cursor não era a que o playhead dizia. É a doutrina "uma régua mede um relógio"
+/// (`tab.rs`) um nível abaixo de onde ela foi escrita.
+#[test]
+fn the_ruler_inside_a_container_measures_the_containers_clock() {
+    let mut doc = TimelineDoc::new();
+    let c = doc.add_container("Walk".into());
+    doc.add_lane_in(StackHost::Container(c), "l".into())
+        .unwrap();
+    doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 4.0)
+        .unwrap();
+    // A instância começa em 5 s na timeline.
+    let lane = doc.add_lane("doc".into()).unwrap();
+    doc.add_strip_to(
+        StackHost::Document,
+        lane,
+        StripSource::Container(c as u16),
+        5.0,
+        9.0,
+    )
+    .unwrap();
+
+    let mut st = ph2d_timeline::TimelineState::new();
+    st.doc = doc;
+    st.edit_host = StackHost::Container(c);
+
+    let mut ph = ph2d_core::Playhead::default();
+    ph.seek(5.5); // meio segundo DENTRO da instância
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, false);
+
+    assert_eq!(
+        snap.host_time,
+        Some(0.5),
+        "dentro do container o playhead está a 0,5 s DELE (a instância começa em 5 s na \
+         timeline); publicar 5,5 poria a marca meio traço fora do que as lanes mostram"
+    );
+    assert!(
+        (snap.time_seconds - 5.5).abs() < 1e-12,
+        "e o tempo da TIMELINE continua sendo o que é — os dois relógios coexistem, é isso \
+         que as duas réguas mostram"
+    );
+}
+
+/// **A régua do Arrange usa o relógio do container quando há um aberto** — e não desenha
+/// playhead nenhum quando o container não toca exatamente uma vez aqui.
+///
+/// O snapshot publicar `host_time` não adianta se ninguém o ler: este gate pergunta à função
+/// que a pintura de fato consulta ([[feedback_painted_is_not_populated_paint_gate]]).
+#[test]
+fn the_arrange_ruler_takes_its_clock_from_the_open_container() {
+    use ph2d_panel_timeline::{ruler_clock_for_tests, tab::Tab};
+
+    let mut snap = TimelineViewSnapshot {
+        time_seconds: 5.5,
+        ..Default::default()
+    };
+
+    // Fora: a régua é a timeline, e ela carrega os markers.
+    let out = ruler_clock_for_tests(Tab::Arrange, &snap);
+    assert_eq!(out.now, Some(5.5));
+    assert!(out.markers, "fora, os markers são desta régua");
+
+    // Dentro: o relógio do container, e os markers saem (são stamped em segundos da timeline).
+    snap.crumbs = vec![(0, "Walk".into())];
+    snap.host_time = Some(0.5);
+    let inside = ruler_clock_for_tests(Tab::Arrange, &snap);
+    assert_eq!(
+        inside.now,
+        Some(0.5),
+        "a régua tem de marcar o segundo DO CONTAINER"
+    );
+    assert!(
+        !inside.markers,
+        "markers em segundos da timeline sentariam no segundo errado aqui"
+    );
+
+    // Dentro, mas o container não toca aqui: nenhum playhead é melhor que um mentiroso.
+    snap.host_time = None;
+    let nowhere = ruler_clock_for_tests(Tab::Arrange, &snap);
+    assert_eq!(nowhere.now, None, "sem um 'agora' único, não se desenha um");
+}

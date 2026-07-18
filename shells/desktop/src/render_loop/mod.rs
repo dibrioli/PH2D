@@ -587,6 +587,7 @@ impl crate::App {
         // arranjo e cada hover voltaria a pagar a booleana.
         self.build_smoke();
         self.stack_smoke();
+        self.nest_smoke();
         self.physics_smoke();
         self.flip_pose_smoke();
         self.flip_edit_smoke();

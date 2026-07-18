@@ -16,6 +16,8 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::SliderState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
+
+use crate::ruler_clock::RulerClock;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, Fill};
 
@@ -44,62 +46,6 @@ const MARKER_W: f32 = 12.0; // LITERAL-PX-OK: marker pennant width
 const MARKER_H: f32 = 8.0; // LITERAL-PX-OK: marker pennant height
 /// Extra grab padding either side of a marker pennant.
 const MARKER_HIT_PAD: f32 = 4.0; // LITERAL-PX-OK: marker grab padding
-
-/// **What this ruler measures — and therefore what it may offer.**
-///
-/// Both tabs SCRUB their own clock (the AE precomp model): Arrange scrubs the
-/// timeline playhead, Keys scrubs the active clip's independent playhead — moving
-/// it drives the soloed scene, which is how you author keys where you can see the
-/// pose. The old "read-only clip ruler under a stack" is gone: it was a workaround
-/// for not having an independent clip clock, and now there is one, so nothing needs
-/// inverting.
-///
-/// **The LOOP is not furniture** — each tab draws its OWN loop (Arrange the
-/// timeline's, Keys the clip's), because [`TimelineViewSnapshot::loop_range`] is
-/// already the view-appropriate one, in this ruler's clock. Only the MARKERS
-/// differ: they are timeline-time, so on the clip's ruler under a stack they would
-/// stand at the wrong second, and the Keys ruler carries none there.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct RulerClock {
-    /// Where the playhead stands **on this ruler**, or `None` when the clock it
-    /// measures has no answer here (an Arrange-side clip that plays zero/two times).
-    pub now: Option<f64>,
-    /// This ruler scrubs — registers the scrub hit and mirrors the playhead into it.
-    /// Both tabs do (the Keys ruler scrubs the clip clock).
-    pub scrub: bool,
-    /// This ruler carries the TIMELINE's markers. Arrange always; Keys only without
-    /// a stack (then the clip IS the timeline). The loop is NOT gated by this — it is
-    /// each view's own, drawn against the very clock this ruler scrubs.
-    pub markers: bool,
-}
-
-/// **Which clock this tab's ruler measures.** Pure, and tested as such.
-///
-/// The playhead is paint, not a widget — no hit index remembers it, so a seam test
-/// can prove the ruler's *hits* and never its *line*. Answering here rather than
-/// inside the paint loop is what gives that line an oracle at all.
-pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> RulerClock {
-    if tab.shows_lanes() {
-        // Arrange IS the timeline: the transport's playhead, and it owns the markers
-        // because they are drawn against the very clock it scrubs.
-        return RulerClock {
-            now: Some(snap.time_seconds),
-            scrub: true,
-            markers: true,
-        };
-    }
-    // Keys scrubs the active clip's own clock (published as `clip_time`). It carries
-    // the markers **only when there is no stack** — then the clip IS the timeline,
-    // one clock, and the Keys ruler is the timeline ruler it has always been. Under a
-    // stack the clip clock ≠ the timeline clock, so timeline markers would sit at the
-    // wrong second and belong on the Arrange ruler only. Its LOOP, however, is the
-    // clip's own and is always drawn.
-    RulerClock {
-        now: snap.clip_time,
-        scrub: true,
-        markers: !snap.stacked(),
-    }
-}
 
 /// Paint the ruler strip (ticks + labels), the playhead line across `region`,
 /// and register the scrub hit. The view (`view_start`, `px_per_s`) is computed
@@ -481,92 +427,6 @@ fn paint_ticks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tab::Tab;
-
-    fn snap(stacked: bool, playhead: f64, clip_time: Option<f64>) -> TimelineViewSnapshot {
-        TimelineViewSnapshot {
-            time_seconds: playhead,
-            clip_time,
-            lanes: if stacked {
-                vec![ph2d_timeline::LaneView {
-                    name: "L".into(),
-                    muted: false,
-                    weight: 1.0,
-                    mode: ph2d_timeline::LaneMode::Override,
-                    strips: Vec::new(),
-                }]
-            } else {
-                Vec::new()
-            },
-            ..TimelineViewSnapshot::default()
-        }
-    }
-
-    /// **Nothing changes without a stack** — the case an animator is in almost all of
-    /// the time. The clip IS the timeline, so both tabs scrub the one clock there is
-    /// AND both carry the markers: the Keys ruler is the timeline ruler it has always
-    /// been.
-    #[test]
-    fn without_a_stack_both_tabs_rule_the_one_clock_there_is() {
-        let s = snap(false, 1.25, Some(1.25));
-        for tab in [Tab::Keys, Tab::Arrange] {
-            assert_eq!(
-                clock_for(tab, &s),
-                RulerClock {
-                    now: Some(1.25),
-                    scrub: true,
-                    markers: true
-                },
-                "{tab:?} lost the ruler it always had"
-            );
-        }
-    }
-
-    /// **The Keys ruler reads the CLIP's clock, the Arrange ruler the TIMELINE's.**
-    /// The snapshot carries the clip playhead (`clip_time`) independently, so under a
-    /// stack the Keys ruler stands at 2.0 (over the clip's keys) while Arrange is at
-    /// 4.0. One ruler cannot be both.
-    #[test]
-    fn each_tab_reads_its_own_clock() {
-        let s = snap(true, 4.0, Some(2.0));
-        assert_eq!(clock_for(Tab::Keys, &s).now, Some(2.0), "the CLIP's clock");
-        assert_eq!(
-            clock_for(Tab::Arrange, &s).now,
-            Some(4.0),
-            "the TIMELINE's clock"
-        );
-    }
-
-    /// **Both tabs SCRUB — the Keys ruler is no longer read-only under a stack.** The
-    /// independent clip playhead is what a Keys scrub moves, so there is nothing to
-    /// invert; the old read-only was a workaround for not having that clock (Enio,
-    /// 2026-07-16: *"a playhead precisa ser movida no modo keys"*).
-    #[test]
-    fn both_tabs_scrub_their_own_clock() {
-        for stacked in [false, true] {
-            assert!(
-                clock_for(Tab::Keys, &snap(stacked, 4.0, Some(2.0))).scrub,
-                "the Keys ruler scrubs the clip clock, stacked={stacked}"
-            );
-            assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).scrub);
-        }
-    }
-
-    /// **The markers follow the TIMELINE clock.** The Arrange ruler always has them.
-    /// The Keys ruler has them ONLY without a stack (then it IS the timeline); under a
-    /// stack the clip clock differs, so timeline markers would sit at the wrong second
-    /// and belong on Arrange alone. The LOOP is NOT gated by this — each view draws its
-    /// own (proven by the snapshot filling `loop_range` from the view's pair).
-    #[test]
-    fn the_markers_follow_the_timeline_clock() {
-        // No stack: the Keys ruler is the timeline ruler, so it keeps the markers.
-        assert!(clock_for(Tab::Keys, &snap(false, 4.0, Some(4.0))).markers);
-        // Under a stack: only Arrange carries them.
-        assert!(!clock_for(Tab::Keys, &snap(true, 4.0, Some(2.0))).markers);
-        for stacked in [false, true] {
-            assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).markers);
-        }
-    }
 
     /// **The loop's MOVE grab is a thin strip at the TOP of the band, not the whole
     /// ruler** — that is what leaves the rest of the band to the scrub, so a click

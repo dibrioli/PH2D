@@ -17,6 +17,19 @@
 #![forbid(unsafe_code)]
 
 mod breadcrumb;
+mod ruler_clock;
+
+/// The ruler's resolved clock, for the seam gate that pins which one it measures.
+///
+/// Exposed rather than re-derived: the paint reads this very function, and a test that
+/// computed its own answer would stop protecting it the day the two drifted.
+#[must_use]
+pub fn ruler_clock_for_tests(
+    tab: tab::Tab,
+    snap: &ph2d_timeline::TimelineViewSnapshot,
+) -> ruler_clock::RulerClock {
+    ruler_clock::clock_for(tab, snap)
+}
 
 /// The breadcrumb's measured width, for the seam gate that pins "zero at the root".
 ///

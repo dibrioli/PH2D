@@ -44,8 +44,8 @@ pub mod state;
 mod strip_edge_edit;
 
 pub use apply::{
-    apply_active_clip, apply_from_doc, apply_from_doc_except, clip_playhead, key_home, key_time,
-    remapped_time,
+    apply_active_clip, apply_from_doc, apply_from_doc_except, clip_playhead, container_playhead,
+    key_home, key_time, remapped_time,
 };
 pub use autokey::{AutokeyPlan, PoseSample, autokey_props, key_value_in_active_clip};
 pub use binding::{TargetBinding, WireId};

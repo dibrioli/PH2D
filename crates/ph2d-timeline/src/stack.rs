@@ -74,13 +74,54 @@ pub enum LaneMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StripId(pub u64);
 
+/// **What a strip plays** — a clip, or a whole nested container (ADR-0133).
+///
+/// This is the ONE field the nesting work changes, and that is the point of the design: a
+/// container instance is not a new mechanism, it is a strip whose source happens to be a
+/// container. Everything else a strip knows — where it plays, which slice, how fast, how it
+/// fades — is exactly the set every product in the research offers as per-instance override
+/// (`speed` is Rive's `speed()`, `src_in` is Animate's `First`, `loop_mode` is its loop mode).
+///
+/// Both variants index their own list on the document (`clips()` / `containers()`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum StripSource {
+    /// A clip: keys that drive bound objects directly.
+    Clip(u16),
+    /// A container: an entire nested stack, with its own clock link (ADR-0133 §1).
+    Container(u16),
+}
+
+impl StripSource {
+    /// The clip index, or `None` when this strip plays a container.
+    #[must_use]
+    pub fn clip_index(self) -> Option<u16> {
+        match self {
+            Self::Clip(i) => Some(i),
+            Self::Container(_) => None,
+        }
+    }
+
+    /// The container index, or `None` when this strip plays a clip.
+    #[must_use]
+    pub fn container_index(self) -> Option<u16> {
+        match self {
+            Self::Container(i) => Some(i),
+            Self::Clip(_) => None,
+        }
+    }
+}
+
 /// One placement of a clip on the timeline.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ClipStrip {
     /// Stable identity (see [`StripId`]). Allocated by the document.
     pub id: StripId,
-    /// Index into the document's clips.
-    pub clip: u16,
+    /// **What this strip plays** — a clip, or a nested container ([`StripSource`]).
+    ///
+    /// Was `clip: u16` through `DOC_VERSION` 7. This is a *replacement*, not an append, so
+    /// v7 blobs are **rejected** by the version gate rather than misread field-for-field —
+    /// the same policy every bump in this document has followed (`DOC_VERSION` 7 -> 8).
+    pub source: StripSource,
     /// Timeline seconds: where the strip starts.
     pub t_start: f64,
     /// Timeline seconds: where it ends (exclusive).
@@ -149,10 +190,10 @@ impl ClipStrip {
     /// allocates one. (Two strips sharing an id would confuse a drag, not corrupt
     /// the document — the evaluator never reads the id.)
     #[must_use]
-    pub fn new(clip: u16, t_start: f64, t_end: f64, src_len: f64) -> Self {
+    pub fn new(source: StripSource, t_start: f64, t_end: f64, src_len: f64) -> Self {
         Self {
             id: StripId(0),
-            clip,
+            source,
             t_start,
             t_end,
             src_in: 0.0,

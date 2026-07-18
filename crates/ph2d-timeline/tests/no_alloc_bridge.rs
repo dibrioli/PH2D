@@ -6,7 +6,9 @@
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Transform, World};
-use ph2d_timeline::{ClipLane, ClipStrip, LaneMode, PropKind, TimelineDoc, apply_from_doc};
+use ph2d_timeline::{
+    ClipLane, ClipStrip, LaneMode, PropKind, StripSource, TimelineDoc, apply_from_doc,
+};
 
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -74,11 +76,11 @@ fn apply_from_doc_is_zero_alloc_steady_state() {
         doc.set_active(0);
     }
     let mut base = ClipLane::new("Base");
-    base.insert(ClipStrip::new(0, 0.0, 2.0, 1.0));
-    base.insert(ClipStrip::new(1, 1.0, 3.0, 1.0)); // overlaps -> crossfade
+    base.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 1.0));
+    base.insert(ClipStrip::new(StripSource::Clip(1), 1.0, 3.0, 1.0)); // overlaps -> crossfade
     let mut add = ClipLane::new("Add");
     add.mode = LaneMode::Additive;
-    add.insert(ClipStrip::new(1, 0.0, 3.0, 1.0));
+    add.insert(ClipStrip::new(StripSource::Clip(1), 0.0, 3.0, 1.0));
     doc.stack_mut().push(base);
     doc.stack_mut().push(add);
 

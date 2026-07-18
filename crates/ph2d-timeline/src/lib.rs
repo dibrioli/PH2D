@@ -29,6 +29,7 @@ pub mod graph;
 pub mod history;
 pub mod intent;
 pub mod intent_apply;
+pub mod nest;
 pub mod persist;
 pub mod prop;
 mod refusal;
@@ -56,12 +57,13 @@ pub use graph::{
 pub use history::{HISTORY_CAP, TimelineHistory};
 pub use intent::TimelineIntent;
 pub use intent_apply::{apply_intent, snap_time, sync_transport_loop};
+pub use nest::{NamedContainer, StackHost};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use prop::{Algebra, PropKind};
-pub use refusal::KeyRefusal;
+pub use refusal::{KeyRefusal, NestRefusal};
 pub use snapshot::{KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};
 pub use speed::{sample_speed, segment_endpoint_speed, speed_extent};
-pub use stack::{ClipLane, ClipStrip, LaneMode, StripId, StripLoop, mark_index};
+pub use stack::{ClipLane, ClipStrip, LaneMode, StripId, StripLoop, StripSource, mark_index};
 pub use stack_edit::MAX_LANES;
 // The anim vocab the public snapshot/doc API names, re-exported so consumers of
 // `KeyView`/`TrackView`/`SelectedKey` don't need a direct `ph2d-anim` dep.

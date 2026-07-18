@@ -17,7 +17,7 @@
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Entity, Transform, World};
 use ph2d_timeline::{
-    ClipLane, ClipStrip, LaneMode, PoseSample, PropKind, TimelineDoc, apply_from_doc,
+    ClipLane, ClipStrip, LaneMode, PoseSample, PropKind, StripSource, TimelineDoc, apply_from_doc,
     autokey_props, key_time, key_value_in_active_clip,
 };
 
@@ -43,7 +43,7 @@ fn lane(clip: u16, mode: LaneMode, weight: f64) -> ClipLane {
     let mut l = ClipLane::new("L");
     l.mode = mode;
     l.weight = weight;
-    l.insert(ClipStrip::new(clip, 0.0, 2.0, 2.0));
+    l.insert(ClipStrip::new(StripSource::Clip(clip), 0.0, 2.0, 2.0));
     l
 }
 
@@ -175,8 +175,8 @@ fn a_clip_playing_twice_at_once_has_no_single_place_to_key() {
     flat(&mut doc, 0, e, PropKind::TranslationX, 100.0);
 
     let mut l = ClipLane::new("Base");
-    l.insert(ClipStrip::new(0, 0.0, 2.0, 2.0));
-    l.insert(ClipStrip::new(0, 1.0, 3.0, 2.0)); // the SAME clip, overlapping itself
+    l.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0));
+    l.insert(ClipStrip::new(StripSource::Clip(0), 1.0, 3.0, 2.0)); // the SAME clip, overlapping itself
     doc.stack_mut().push(l);
 
     apply_from_doc(&mut world, &mut doc, 1.5); // inside the overlap: it plays twice
@@ -243,8 +243,8 @@ fn every_prop_kind_interpolates_and_a_discrete_one_would_break_this() {
         flat(&mut doc, 1, e, prop, 3.0);
 
         let mut l = ClipLane::new("Base");
-        l.insert(ClipStrip::new(0, 0.0, 2.0, 2.0));
-        l.insert(ClipStrip::new(1, 1.0, 3.0, 2.0)); // 1 s overlap
+        l.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0));
+        l.insert(ClipStrip::new(StripSource::Clip(1), 1.0, 3.0, 2.0)); // 1 s overlap
         doc.stack_mut().push(l);
 
         apply_from_doc(&mut world, &mut doc, 1.5); // dead centre of the crossfade
@@ -309,7 +309,7 @@ fn an_additive_key_at_the_strips_first_frame_is_refused_not_lost() {
     );
     let mut l = ClipLane::new("Add");
     l.mode = LaneMode::Additive;
-    l.insert(ClipStrip::new(0, 0.0, 4.0, 2.0));
+    l.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 4.0, 2.0));
     doc.stack_mut().push(l);
 
     // The strip's FIRST frame: the delta is definitionally zero, so the sprite sits
@@ -362,7 +362,7 @@ fn an_additive_key_away_from_the_reference_still_round_trips_exactly() {
     );
     let mut l = ClipLane::new("Add");
     l.mode = LaneMode::Additive;
-    l.insert(ClipStrip::new(0, 0.0, 4.0, 2.0));
+    l.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 4.0, 2.0));
     doc.stack_mut().push(l);
     apply_from_doc(&mut world, &mut doc, 1.0); // mid-strip; the pose is 105
 

@@ -25,6 +25,37 @@ pub enum KeyRefusal {
     Overridden,
 }
 
+/// Why a container could not be placed inside another (ADR-0133 §4).
+///
+/// **Refusing out loud is the whole point, and the research is why.** Every product that
+/// ships nesting checks for cycles at the moment the link is authored — none checks at
+/// runtime — but the two that refuse *silently* (After Effects greys the cursor; Animate just
+/// will not drop) are also the two whose exact error text could not be found anywhere,
+/// because there is none. Godot and Unity name it, and that is the side to be on.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum NestRefusal {
+    /// A container placed **inside itself** — the trivial cycle.
+    SelfNest,
+    /// The link would close a longer loop: the container being placed already reaches the
+    /// host, so playing it would require playing it.
+    WouldCycle,
+    /// The host or the source does not exist.
+    NoSuchContainer,
+}
+
+impl NestRefusal {
+    /// One line, for the animator. English by canon
+    /// ([[feedback_app_ui_english_only]]).
+    #[must_use]
+    pub fn message(self) -> &'static str {
+        match self {
+            Self::SelfNest => "Can't nest: a container cannot contain itself",
+            Self::WouldCycle => "Can't nest: that container already contains this one",
+            Self::NoSuchContainer => "Can't nest: that container no longer exists",
+        }
+    }
+}
+
 impl KeyRefusal {
     /// One line, for the animator. English by canon
     /// ([[feedback_app_ui_english_only]]); each says what happened AND what the

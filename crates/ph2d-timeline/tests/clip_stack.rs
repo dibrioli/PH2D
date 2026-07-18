@@ -4,11 +4,11 @@
 //! present. A strip that stores a `speed` it never applies would pass a
 //! field-shaped test and fail an animator.
 
-use ph2d_timeline::{ClipLane, ClipStrip, LaneMode, StripLoop};
+use ph2d_timeline::{ClipLane, ClipStrip, LaneMode, StripLoop, StripSource};
 
 /// A strip playing 2 s of clip 0 over `[t0, t0 + 2)`.
 fn strip(t0: f64) -> ClipStrip {
-    ClipStrip::new(0, t0, t0 + 2.0, 2.0)
+    ClipStrip::new(StripSource::Clip(0), t0, t0 + 2.0, 2.0)
 }
 
 // ── The time map ────────────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ fn deleting_a_clip_repoints_the_strips_above_it_and_drops_its_own() {
         "the strip that played it goes with it — a dead item paints and cannot evaluate"
     );
     assert_eq!(
-        doc.strip(lane, above).map(|s| s.clip),
+        doc.strip(lane, above).and_then(|s| s.source.clip_index()),
         Some(1),
         "clip C slid from index 2 to 1, and its strip followed"
     );

@@ -149,15 +149,25 @@ impl StackScratch {
                     // frame, so the strip contributes a still pose there — the travel the
                     // lead-in is. `weight_at` above already ramps over the same window, so
                     // the two agree on where the strip is present.
-                    let (Some(t_clip), true) = (
+                    // **A CONTAINER strip is inert here, and deliberately so (ADR-0133,
+                    // Fatia 1).** The recursive clock that evaluates a container's interior
+                    // is Fatia 2; until it lands, the only thing a container strip may do is
+                    // exist and persist. It is skipped EXPLICITLY rather than falling through
+                    // some index check, so it can never be mistaken for a clip index — and
+                    // `a_container_strip_is_inert_until_the_recursive_clock_lands` pins that
+                    // this is a decision, not an accident nobody noticed.
+                    let (Some(t_clip), Some(clip_ix)) = (
                         strip.source_time_with_lead(t),
-                        (strip.clip as usize) < doc.clips().len(),
+                        strip
+                            .source
+                            .clip_index()
+                            .filter(|&c| (c as usize) < doc.clips().len()),
                     ) else {
-                        continue; // outside the strip (+ its lead-in), or a deleted clip
+                        continue; // outside the strip (+ its lead-in), a deleted clip, or a container
                     };
                     self.active.push(ActiveStrip {
                         lane: li,
-                        clip: strip.clip as usize,
+                        clip: clip_ix as usize,
                         w,
                         t_clip,
                         src_in: strip.src_in,
@@ -172,11 +182,14 @@ impl StackScratch {
                 // runs on the timeline's clock: under it the lane is CYCLIC and the
                 // hold at the top wraps to what the loop's end leaves asserting.
                 if let Some((strip, t_clip, w)) = lane.hold_at(t, doc.active_loop_for(false))
-                    && (strip.clip as usize) < doc.clips().len()
+                    && let Some(clip_ix) = strip
+                        .source
+                        .clip_index()
+                        .filter(|&c| (c as usize) < doc.clips().len())
                 {
                     self.active.push(ActiveStrip {
                         lane: li,
-                        clip: strip.clip as usize,
+                        clip: clip_ix as usize,
                         w,
                         t_clip,
                         src_in: strip.src_in,

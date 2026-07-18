@@ -7,7 +7,9 @@
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::{Entity, Transform, World};
-use ph2d_timeline::{ClipLane, ClipStrip, LaneMode, PropKind, TimelineDoc, apply_from_doc};
+use ph2d_timeline::{
+    ClipLane, ClipStrip, LaneMode, PropKind, StripSource, TimelineDoc, apply_from_doc,
+};
 
 fn s(t: f64) -> RationalTime {
     RationalTime::from_seconds(t)
@@ -59,7 +61,7 @@ fn scale_x_of(world: &World, e: u64) -> f32 {
 fn lane_with(clip: u16, t0: f64, t1: f64, mode: LaneMode) -> ClipLane {
     let mut lane = ClipLane::new("L");
     lane.mode = mode;
-    lane.insert(ClipStrip::new(clip, t0, t1, 2.0));
+    lane.insert(ClipStrip::new(StripSource::Clip(clip), t0, t1, 2.0));
     lane
 }
 
@@ -101,8 +103,8 @@ fn overlapping_strips_crossfade_the_scene_with_no_jump_and_no_sag() {
     ramp(&mut doc, 1, e, PropKind::TranslationX, 200.0, 200.0); // "Run":  holds 200
 
     let mut lane = ClipLane::new("Base");
-    lane.insert(ClipStrip::new(0, 0.0, 2.0, 2.0)); // [0, 2)
-    lane.insert(ClipStrip::new(1, 1.0, 3.0, 2.0)); // [1, 3)  -> 1 s overlap
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0)); // [0, 2)
+    lane.insert(ClipStrip::new(StripSource::Clip(1), 1.0, 3.0, 2.0)); // [1, 3)  -> 1 s overlap
     doc.stack_mut().push(lane);
 
     let mut prev = 100.0_f32;
@@ -138,8 +140,8 @@ fn mid_overlap_is_the_exact_mean_of_the_two_clips() {
     flat(&mut doc, 1, e, PropKind::TranslationX, 200.0);
 
     let mut lane = ClipLane::new("Base");
-    lane.insert(ClipStrip::new(0, 0.0, 2.0, 2.0));
-    lane.insert(ClipStrip::new(1, 1.0, 3.0, 2.0));
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0));
+    lane.insert(ClipStrip::new(StripSource::Clip(1), 1.0, 3.0, 2.0));
     doc.stack_mut().push(lane);
 
     apply_from_doc(&mut world, &mut doc, 1.5); // the middle of the overlap
@@ -326,7 +328,7 @@ fn a_lane_fading_in_from_nothing_fades_from_the_captured_rest_pose() {
     flat(&mut doc, 0, e, PropKind::TranslationX, 100.0);
 
     let mut lane = ClipLane::new("Base");
-    let mut strip = ClipStrip::new(0, 0.0, 2.0, 2.0);
+    let mut strip = ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0);
     strip.ease_in = 1.0; // a 1 s fade-in, with nothing underneath
     lane.insert(strip);
     doc.stack_mut().push(lane);
@@ -397,8 +399,8 @@ fn a_strip_dropped_inside_another_never_drains_the_lane() {
     let (mut world, mut doc, e) = scene(100.0); // rest = 100
     flat(&mut doc, 0, e, PropKind::TranslationX, 500.0);
     let mut lane = ClipLane::new("L");
-    lane.insert(ClipStrip::new(0, 0.0, 10.0, 2.0)); // A
-    lane.insert(ClipStrip::new(0, 2.0, 4.0, 2.0)); // B, wholly inside A
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 10.0, 2.0)); // A
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 2.0, 4.0, 2.0)); // B, wholly inside A
     doc.stack_mut().push(lane);
 
     for t in [3.99, 4.0, 5.0, 8.0, 9.5] {
@@ -421,9 +423,9 @@ fn an_overlap_that_is_not_with_the_sort_order_neighbour_still_crossfades() {
     let (mut world, mut doc, e) = scene(100.0);
     flat(&mut doc, 0, e, PropKind::TranslationX, 500.0);
     let mut lane = ClipLane::new("L");
-    lane.insert(ClipStrip::new(0, 0.0, 10.0, 2.0)); // A
-    lane.insert(ClipStrip::new(0, 1.0, 2.0, 2.0)); // B, a blip inside A
-    lane.insert(ClipStrip::new(0, 8.0, 20.0, 2.0)); // C, overlapping A's tail
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 10.0, 2.0)); // A
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 1.0, 2.0, 2.0)); // B, a blip inside A
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 8.0, 20.0, 2.0)); // C, overlapping A's tail
     doc.stack_mut().push(lane);
 
     for t in [3.0, 5.0, 7.0, 7.9, 8.0, 8.1, 12.0] {
@@ -446,8 +448,8 @@ fn the_plain_crossfade_still_sums_to_one_and_never_sags() {
     flat(&mut doc, 0, e, PropKind::TranslationX, 0.0);
     flat(&mut doc, 1, e, PropKind::TranslationX, 100.0);
     let mut lane = ClipLane::new("L");
-    lane.insert(ClipStrip::new(0, 0.0, 2.0, 2.0));
-    lane.insert(ClipStrip::new(1, 1.0, 3.0, 2.0)); // 1 s of overlap
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 0.0, 2.0, 2.0));
+    lane.insert(ClipStrip::new(StripSource::Clip(1), 1.0, 3.0, 2.0)); // 1 s of overlap
     doc.stack_mut().push(lane);
 
     let mut prev = f32::NEG_INFINITY;

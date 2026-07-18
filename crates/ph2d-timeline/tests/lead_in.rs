@@ -14,7 +14,8 @@ use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Playhead;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_timeline::{
-    ClipStrip, PropKind, StripLoop, TimelineIntent, TimelineState, apply_from_doc, apply_intent,
+    ClipStrip, PropKind, StripLoop, StripSource, TimelineIntent, TimelineState, apply_from_doc,
+    apply_intent,
 };
 
 fn key(doc: &mut ph2d_timeline::TimelineDoc, bits: u64, p: PropKind, t: f64, v: f32) {
@@ -155,7 +156,7 @@ fn the_lead_in_is_not_the_inward_fade() {
 /// time would fold to.
 #[test]
 fn the_lead_in_window_reads_the_frozen_first_frame() {
-    let mut s = ClipStrip::new(0, 3.0, 6.0, 3.0); // clip on [3, 6), slice 0..3
+    let mut s = ClipStrip::new(StripSource::Clip(0), 3.0, 6.0, 3.0); // clip on [3, 6), slice 0..3
     s.src_in = 0.0;
     s.lead_in = 1.0; // reaches back to t = 2
     for mode in [StripLoop::Once, StripLoop::Loop, StripLoop::PingPong] {

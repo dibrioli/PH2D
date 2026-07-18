@@ -14,7 +14,8 @@ use ph2d_panel_timeline::TimelinePanel;
 use ph2d_panel_timeline::state::{TimelinePanelState, set_current_timeline};
 use ph2d_panel_timeline::tab::Tab;
 use ph2d_timeline::{
-    ClipLane, ClipStrip, LaneMode, LaneView, StripId, StripLoop, StripView, TimelineViewSnapshot,
+    ClipLane, ClipStrip, LaneMode, LaneView, StripId, StripLoop, StripSource, StripView,
+    TimelineViewSnapshot,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -22,7 +23,7 @@ use ph2d_ui_testkit::MockPanelHost;
 /// fazer fade).
 fn one_lone_strip() -> TimelineViewSnapshot {
     let mut lane = ClipLane::new("Lane 1");
-    lane.insert(ClipStrip::new(0, 1.0, 3.0, 2.0));
+    lane.insert(ClipStrip::new(StripSource::Clip(0), 1.0, 3.0, 2.0));
     TimelineViewSnapshot {
         fps: 60.0,
         lanes: vec![LaneView {

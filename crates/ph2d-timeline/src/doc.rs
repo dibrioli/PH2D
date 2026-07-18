@@ -14,6 +14,7 @@ use ph2d_anim::{AnimTarget, AnimValue, Clip, Interp, KeyId, RationalTime, Track}
 use serde::{Deserialize, Serialize};
 
 use crate::binding::TargetBinding;
+use crate::nest::NamedContainer;
 use crate::prop::PropKind;
 use crate::stack::ClipLane;
 use crate::stack_eval::StackScratch;
@@ -38,7 +39,15 @@ use crate::stack_eval::StackScratch;
 /// v7: each strip remembers **what its four corners last did** (`ClipStrip.marks`,
 /// appended) — the change bars the panel draws over a trim or a stretch (Enio,
 /// 2026-07-16). All-zero is the old behaviour, and zero draws nothing.
-pub const DOC_VERSION: u32 = 7;
+/// v8: **nesting** ([ADR-0133]) — `ClipStrip.clip: u16` became
+/// `ClipStrip.source: StripSource{Clip,Container}`, and the document grew a list of
+/// [`NamedContainer`]s beside its clips. ⚠️ Unlike every bump above, this one **replaces**
+/// a field instead of appending one, so a v7 blob is not merely missing data — its bytes
+/// mean something else from that field on. It is rejected, which is what
+/// [`TimelineDoc::from_bytes`] has always done with a version it does not know.
+///
+/// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
+pub const DOC_VERSION: u32 = 8;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -121,6 +130,11 @@ pub struct TimelineDoc {
     /// before the stack existed, on the same code path and to the same bytes.
     /// Appended field (v4).
     stack: Vec<ClipLane>,
+    /// Reusable nested stacks ([`NamedContainer`], ADR-0133). Appended (v8).
+    ///
+    /// **Empty is the default and is not a degenerate case** — a document with no containers
+    /// behaves exactly as v7 did, on the same code path.
+    containers: Vec<NamedContainer>,
     /// This frame's live strips and their per-entity clocks (`stack_eval.rs`).
     /// Runtime scratch, not document identity: never serialized, always compares
     /// equal, and its buffers are retained frame to frame (zero-alloc, HR-3).
@@ -155,6 +169,7 @@ impl TimelineDoc {
             next_target: 0,
             next_strip: 0,
             stack: Vec::new(),
+            containers: Vec::new(),
             scratch: StackScratch::default(),
         }
     }
@@ -175,6 +190,19 @@ impl TimelineDoc {
     /// The clip stack, for editing.
     pub fn stack_mut(&mut self) -> &mut Vec<ClipLane> {
         &mut self.stack
+    }
+
+    /// Every container, in index order (ADR-0133). Empty until one is authored.
+    #[must_use]
+    pub fn containers(&self) -> &[NamedContainer] {
+        &self.containers
+    }
+
+    /// The containers, for editing. Crate-internal: authoring goes through
+    /// [`crate::nest`], which is where the cycle guard lives — a caller that could push a
+    /// container strip directly would be a door around it.
+    pub(crate) fn containers_mut(&mut self) -> &mut Vec<NamedContainer> {
+        &mut self.containers
     }
 
     /// Move this frame's scratch out for the apply to refill (it needs the
@@ -464,6 +492,18 @@ impl TimelineDoc {
             return Err(format!(
                 "timeline schema version {} != {DOC_VERSION}",
                 doc.version
+            ));
+        }
+        // **The second cycle layer** (ADR-0133 §4). The authoring guard cannot see links that
+        // did not come through it — a file edited by hand, corrupted, or written by a build
+        // whose guard had a hole. We REJECT rather than repair: Blender's load-time
+        // `BKE_collection_cycles_fix` silently zeroes the offending reference, which saves the
+        // file by destroying the artist's link. A cyclic document is our bug to fix, not the
+        // document's to lose.
+        if let Some(c) = doc.find_nest_cycle() {
+            let name = doc.containers().get(c).map_or("?", |n| n.name.as_str());
+            return Err(format!(
+                "timeline document has a container cycle through \"{name}\" (index {c})"
             ));
         }
         Ok(doc)

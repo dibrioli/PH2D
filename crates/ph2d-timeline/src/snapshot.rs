@@ -272,10 +272,19 @@ impl TimelineViewSnapshot {
             for (i, st) in lane.strips.iter().enumerate() {
                 strips.push(StripView {
                     id: st.id,
-                    clip_name: doc
-                        .clips()
-                        .get(st.clip as usize)
-                        .map_or_else(String::new, |c| c.name.clone()),
+                    // The strip's source names itself, whichever list it lives in — a
+                    // container strip that painted a blank label would read as a corrupt
+                    // clip strip rather than as what it is (ADR-0133).
+                    clip_name: match st.source {
+                        crate::StripSource::Clip(i) => doc
+                            .clips()
+                            .get(i as usize)
+                            .map_or_else(String::new, |c| c.name.clone()),
+                        crate::StripSource::Container(i) => doc
+                            .containers()
+                            .get(i as usize)
+                            .map_or_else(String::new, |c| c.name.clone()),
+                    },
                     t_start: st.t_start,
                     t_end: st.t_end,
                     blend_in: lane.blend_in(i),

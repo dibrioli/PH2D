@@ -7,7 +7,7 @@
 //! order) and every strip's `clip` index **points at the clip it names**.
 
 use crate::doc::TimelineDoc;
-use crate::stack::{ClipLane, ClipStrip, StripId};
+use crate::stack::{ClipLane, ClipStrip, StripId, StripSource};
 
 /// How many lanes a stack may hold.
 ///
@@ -70,7 +70,8 @@ impl TimelineDoc {
         );
         let id = self.alloc_strip_id();
         let clip_ix = u16::try_from(clip).ok()?;
-        let mut strip = ClipStrip::new(clip_ix, t_start, t_end, src_len).with_id(id);
+        let mut strip =
+            ClipStrip::new(StripSource::Clip(clip_ix), t_start, t_end, src_len).with_id(id);
         // **`slice == span * speed` is the lane's invariant, and it has to be TRUE
         // at birth, not merely assumed later.** `stretch_strip` re-derives the rate
         // from the span (`speed = slice / span`), so a strip that started out with a
@@ -137,16 +138,34 @@ impl TimelineDoc {
     /// Strips of the deleted clip are removed outright: a strip whose clip does
     /// not exist has nothing to play, and leaving it would be a dead item that
     /// paints and cannot be evaluated.
+    ///
+    /// ⚠️ **Every stack, not just the document's** (ADR-0133): a container's interior is a
+    /// stack too, and its strips index the SAME clip list. Repointing only the document's
+    /// lanes would leave a container quietly playing its deleted clip's neighbour — the exact
+    /// bug this function exists to prevent, hiding one level down where nobody is looking.
+    /// Container strips are untouched: they index the *container* list, which this deletion
+    /// does not move.
     pub(crate) fn repoint_strips_after_clip_removal(&mut self, gone: usize) {
         let Ok(gone_ix) = u16::try_from(gone) else {
             return;
         };
-        for lane in self.stack_mut() {
-            lane.strips.retain(|s| s.clip != gone_ix);
-            for s in &mut lane.strips {
-                if s.clip > gone_ix {
-                    s.clip -= 1;
+        let repoint = |lanes: &mut Vec<ClipLane>| {
+            for lane in lanes.iter_mut() {
+                lane.strips
+                    .retain(|s| s.source != StripSource::Clip(gone_ix));
+                for s in &mut lane.strips {
+                    if let StripSource::Clip(c) = s.source
+                        && c > gone_ix
+                    {
+                        s.source = StripSource::Clip(c - 1);
+                    }
                 }
+            }
+        };
+        repoint(self.stack_mut());
+        for i in 0..self.containers().len() {
+            if let Some(lanes) = self.container_stack_mut(i) {
+                repoint(lanes);
             }
         }
     }

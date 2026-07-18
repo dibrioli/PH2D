@@ -82,6 +82,10 @@ pub mod effect;
 /// num nó um dia (ADR-0132 §4).
 pub mod fx_trim;
 
+/// **Zig Zag / Roughen** — o 2º efeito da pilha, e a prova de que a espinha (ADR-0132) faz o
+/// próximo custar pouco. Módulo irmão de `fx_trim`.
+pub mod fx_zigzag;
+
 /// **Suavização de quina** (o *squircle*): o arco de círculo vira `asa + arco curto + asa`,
 /// e a curvatura sobe em rampa a partir do lado reto em vez de saltar. Motor de
 /// `corners::round_closed_corners_smooth` — módulo irmão de `corners` (LOC cap).

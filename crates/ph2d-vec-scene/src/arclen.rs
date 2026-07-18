@@ -44,6 +44,27 @@ const GL16: [(f64, f64); 8] = [
     (0.989_400_934_991_649_9, 0.027_152_459_411_754_09),
 ];
 
+/// **O ponto da cúbica em `t`** — Bernstein direto, sem de Casteljau (é mais barato e a
+/// precisão basta: os coeficientes são pequenos e o grau é 3).
+#[must_use]
+pub fn point_at(c: &Cubic, t: f64) -> [f64; 2] {
+    let u = 1.0 - t;
+    let (a, b, d, e) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+    [
+        a * c[0][0] + b * c[1][0] + d * c[2][0] + e * c[3][0],
+        a * c[0][1] + b * c[1][1] + d * c[2][1] + e * c[3][1],
+    ]
+}
+
+/// **A tangente UNITÁRIA em `t`**, ou `None` numa cúspide (velocidade zero — ali não há
+/// direção, e inventar uma é o que produz o pico solto que ninguém sabe de onde veio).
+#[must_use]
+pub fn tangent_at(c: &Cubic, t: f64) -> Option<[f64; 2]> {
+    let d = deriv(c, t);
+    let n = (d[0] * d[0] + d[1] * d[1]).sqrt();
+    (n > 1e-12).then(|| [d[0] / n, d[1] / n])
+}
+
 /// `B'(t)` de uma cúbica — a derivada é uma quadrática nos três deltas de controlo.
 #[must_use]
 fn deriv(c: &Cubic, t: f64) -> [f64; 2] {

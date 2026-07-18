@@ -132,3 +132,62 @@ fn the_authored_source_survives_the_cook() {
         "e mesmo assim o cozido tem de ser mais curto"
     );
 }
+
+/// **A ordem de DOIS TIPOS diferentes muda a geometria — e agora isto é o caso real.**
+///
+/// O gate acima usa dois Trims (a ordem importa, mas é a mesma operação). Com o Zig Zag a
+/// pergunta fica concreta: **ondular e depois cortar** dá um pedaço da onda; **cortar e depois
+/// ondular** ondula só o pedaço, e a contagem de cristas é a do caminho CURTO. As duas leituras
+/// são legítimas — é por isso que a ordem é do artista e não nossa.
+#[test]
+fn zigzag_then_trim_is_not_trim_then_zigzag() {
+    let zz = PathEffect::ZigZag(crate::fx_zigzag::ZigZagSpec {
+        amplitude: 6.0,
+        ridges: 8.0,
+        smooth: false,
+        rough_seed: None,
+    });
+    let trim = PathEffect::Trim(crate::fx_trim::TrimSpec {
+        start: 0.0,
+        end: 0.5,
+        offset: 0.0,
+    });
+
+    let mut a = square();
+    a.effects = vec![zz.clone(), trim.clone()];
+    let mut b = square();
+    b.effects = vec![trim, zz];
+
+    let (ca, cb) = (a.cooked().into_owned(), b.cooked().into_owned());
+    assert_ne!(
+        ca.verts, cb.verts,
+        "ondular-depois-cortar e cortar-depois-ondular deram a MESMA geometria — se a pilha \
+         comutasse, oferecer reordenação seria mentira"
+    );
+    // E os dois produzem geometria de verdade: um `assert_ne!` entre dois vazios passaria.
+    assert!(ca.verts.len() > 3 && cb.verts.len() > 3);
+}
+
+/// **Um efeito NEUTRO no meio da pilha não muda nada** — nem a geometria, nem o resultado dos
+/// vizinhos. É o que permite ao artista desarmar um efeito sem o remover.
+#[test]
+fn a_neutral_effect_in_the_middle_of_the_stack_is_transparent() {
+    let zz = PathEffect::ZigZag(crate::fx_zigzag::ZigZagSpec {
+        amplitude: 5.0,
+        ridges: 6.0,
+        smooth: true,
+        rough_seed: None,
+    });
+    let sleeping = PathEffect::Trim(crate::fx_trim::TrimSpec::default()); // neutro
+
+    let mut only = square();
+    only.effects = vec![zz.clone()];
+    let mut sandwiched = square();
+    sandwiched.effects = vec![sleeping.clone(), zz, sleeping];
+
+    assert_eq!(
+        only.cooked().into_owned().verts,
+        sandwiched.cooked().into_owned().verts,
+        "um efeito no ponto neutro tem de ser INVISÍVEL para os vizinhos"
+    );
+}

@@ -36,6 +36,7 @@
 //! é isso que mantém aberto o caminho de um dia embrulhá-la num nó (ADR-0132 §4).
 
 use crate::fx_trim::{self, TrimSpec};
+use crate::fx_zigzag::{self, ZigZagSpec};
 use crate::{Contour, VecPath};
 
 /// **Um efeito da pilha.** Dado de documento — viaja no save e no undo como qualquer
@@ -47,6 +48,9 @@ use crate::{Contour, VecPath};
 pub enum PathEffect {
     /// Revela só um trecho do caminho — o *draw-on*. Ver [`crate::fx_trim`].
     Trim(TrimSpec),
+    /// Ondula o caminho em cristas espaçadas por ARCO — o *Zig Zag* / *Roughen*.
+    /// Ver [`crate::fx_zigzag`]. **Apendado por último**: postcard é posicional.
+    ZigZag(ZigZagSpec),
 }
 
 impl PathEffect {
@@ -58,6 +62,7 @@ impl PathEffect {
     pub fn is_neutral(&self) -> bool {
         match self {
             Self::Trim(t) => t.is_neutral(),
+            Self::ZigZag(z) => z.is_neutral(),
         }
     }
 
@@ -70,6 +75,7 @@ impl PathEffect {
     pub fn as_trim(&self) -> Option<&TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
+            Self::ZigZag(_) => None,
         }
     }
 
@@ -77,6 +83,24 @@ impl PathEffect {
     pub fn as_trim_mut(&mut self) -> Option<&mut TrimSpec> {
         match self {
             Self::Trim(t) => Some(t),
+            Self::ZigZag(_) => None,
+        }
+    }
+
+    /// O Zig Zag deste efeito, se for um — irmão do [`Self::as_trim`].
+    #[must_use]
+    pub fn as_zigzag(&self) -> Option<&ZigZagSpec> {
+        match self {
+            Self::ZigZag(z) => Some(z),
+            Self::Trim(_) => None,
+        }
+    }
+
+    /// O irmão mutável do [`Self::as_zigzag`].
+    pub fn as_zigzag_mut(&mut self) -> Option<&mut ZigZagSpec> {
+        match self {
+            Self::ZigZag(z) => Some(z),
+            Self::Trim(_) => None,
         }
     }
 
@@ -86,6 +110,13 @@ impl PathEffect {
     pub fn label(&self) -> &'static str {
         match self {
             Self::Trim(_) => "Trim Path",
+            Self::ZigZag(z) => {
+                if z.rough_seed.is_some() {
+                    "Roughen"
+                } else {
+                    "Zig Zag"
+                }
+            }
         }
     }
 
@@ -100,24 +131,45 @@ impl PathEffect {
         let mut out = path.clone();
         match self {
             Self::Trim(spec) => {
-                let (verts, closed) = fx_trim::trim_contour(&path.verts, path.closed, spec);
-                out.verts = verts;
-                out.closed = closed;
-                out.subpaths = path
-                    .subpaths
-                    .iter()
-                    .filter_map(|c| {
-                        let (v, cl) = fx_trim::trim_contour(&c.verts, c.closed, spec);
-                        (!v.is_empty()).then_some(Contour {
-                            verts: v,
-                            closed: cl,
-                        })
-                    })
-                    .collect();
+                apply_per_contour(path, &mut out, |v, c| fx_trim::trim_contour(v, c, spec));
+            }
+            Self::ZigZag(spec) => {
+                apply_per_contour(path, &mut out, |v, c| fx_zigzag::zigzag_contour(v, c, spec));
             }
         }
         out
     }
+}
+
+/// Aplica `f` a CADA contorno do caminho — o primário e cada subpath, independentemente (o
+/// modo "Individually" do After Effects).
+///
+/// Um contorno que o efeito esvazie é **descartado** em vez de virar um contorno de zero
+/// vértices: um buraco vazio num compound não é geometria, é ruído para a booleana e para o
+/// preenchimento.
+///
+/// Mora aqui, e não em cada `fx_*`, porque *"o que um efeito faz a um compound"* é uma
+/// pergunta da PILHA — se cada efeito a respondesse por conta própria, o segundo responderia
+/// diferente do primeiro e ninguém veria.
+fn apply_per_contour(
+    path: &VecPath,
+    out: &mut VecPath,
+    mut f: impl FnMut(&[crate::VecVertex], bool) -> (Vec<crate::VecVertex>, bool),
+) {
+    let (verts, closed) = f(&path.verts, path.closed);
+    out.verts = verts;
+    out.closed = closed;
+    out.subpaths = path
+        .subpaths
+        .iter()
+        .filter_map(|c| {
+            let (v, cl) = f(&c.verts, c.closed);
+            (!v.is_empty()).then_some(Contour {
+                verts: v,
+                closed: cl,
+            })
+        })
+        .collect();
 }
 
 /// **Roda a pilha** sobre `path`, na ordem em que ela está.

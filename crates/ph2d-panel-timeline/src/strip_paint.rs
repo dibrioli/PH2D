@@ -19,11 +19,15 @@ use ph2d_vector::{Affine, BezPath, Color, Fill, Stroke};
 
 use crate::graph::TimeView;
 use crate::stack_ease_grip::{EASE_BAR_W, blend_px, strip_grips};
+use crate::stack_lane_paint::EDGE_W;
 
 /// Below this, a rate is real time and the strip says nothing about it.
 const SPEED_EPS: f64 = 1e-6; // LITERAL-PX-OK: not a length — a "is it exactly 1" epsilon
-/// Size of a corner gizmo (the green stretch / red trim tabs).
-const CORNER_SZ: f32 = 6.0; // LITERAL-PX-OK: a pointer-sized corner tab
+/// How far each arm of a corner bracket runs along its edge — the grab region's own width
+/// (`hit_plan` registers `EDGE_W`), so the quina traces what is actually clickable.
+const CORNER_ARM: f32 = EDGE_W;
+/// Thickness of a corner bracket's arms.
+const CORNER_W: f32 = 2.0; // LITERAL-PX-OK: a bracket stroke, like the fade bar's
 /// Spacing between hatch lines (the fade stripes / the cut cross-hatch).
 pub(crate) const HATCH_STEP: f32 = 5.0; // LITERAL-PX-OK: hatch line pitch
 /// Half-size of a fade-handle arrowhead.
@@ -90,13 +94,13 @@ pub(crate) fn paint_strip(
 
     // **The four corner gizmos** — GREEN top = stretch (retime), RED bottom = trim (cut).
     // The colour IS the operation, so the artist never wonders which corner does what.
-    for (rect, color) in [
-        (corner(body, true, true), ColorToken::Success), // top-left  (stretch)
-        (corner(body, false, true), ColorToken::Success), // top-right (stretch)
-        (corner(body, true, false), ColorToken::Danger), // bottom-left  (trim)
-        (corner(body, false, false), ColorToken::Danger), // bottom-right (trim)
+    for (left, top, color) in [
+        (true, true, ColorToken::Success),  // top-left  (stretch)
+        (false, true, ColorToken::Success), // top-right (stretch)
+        (true, false, ColorToken::Danger),  // bottom-left  (trim)
+        (false, false, ColorToken::Danger), // bottom-right (trim)
     ] {
-        fill_rounded_rect(ctx.scene, rect, Radius::Xs.px(), resolve(color, theme));
+        paint_corner(ctx, body, left, top, resolve(color, theme));
     }
 
     // **The fade handle: a traço with two little arrows** (Enio, 2026-07-16) — a vertical
@@ -152,19 +156,39 @@ pub(crate) fn paint_strip(
     );
 }
 
-/// A corner gizmo's rect. `left`/`top` pick which of the four corners; the tab hugs it.
-fn corner(body: Rect, left: bool, top: bool) -> Rect {
-    let x = if left {
-        body.x
+/// A corner gizmo: an **L-shaped bracket** hugging the two edges that meet at this corner —
+/// a QUINA, not a dot (Enio, 2026-07-16). One arm runs along the top/bottom edge, the other
+/// down/up the left/right edge, both from the corner itself, so the mark reads as the corner
+/// you grab rather than a bead sitting near it.
+///
+/// The horizontal arm is the grab region's own width (`EDGE_W`, what `hit_plan` registers),
+/// so what is drawn and what is clickable start at the same pixel.
+fn paint_corner(ctx: &mut PaintCtx, body: Rect, left: bool, top: bool, color: Color) {
+    let arm = CORNER_ARM.min(body.w * 0.5).min(body.h * 0.5);
+    let w = CORNER_W.min(arm);
+    let (x_out, x_edge) = if left {
+        (body.x, body.x)
     } else {
-        body.x + body.w - CORNER_SZ
+        (body.x + body.w - arm, body.x + body.w - w)
     };
-    let y = if top {
-        body.y
+    let (y_edge, y_out) = if top {
+        (body.y, body.y)
     } else {
-        body.y + body.h - CORNER_SZ
+        (body.y + body.h - w, body.y + body.h - arm)
     };
-    Rect::new(x, y, CORNER_SZ, CORNER_SZ.min(body.h))
+    // The arm along the top/bottom edge, then the one down/up the side edge.
+    fill_rounded_rect(
+        ctx.scene,
+        Rect::new(x_out, y_edge, arm, w),
+        Radius::Xs.px(),
+        color,
+    );
+    fill_rounded_rect(
+        ctx.scene,
+        Rect::new(x_edge, y_out, w, arm),
+        Radius::Xs.px(),
+        color,
+    );
 }
 
 /// Paint a fade area: a faint darkening + gray diagonal STRIPES, so it reads as "a fade

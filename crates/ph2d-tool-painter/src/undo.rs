@@ -104,7 +104,7 @@ pub struct ModelSnapshot {
     /// pixels: without it, undoing a deform stroke restored the pixels but dropped the displacement, so
     /// Reconstruct could no longer un-warp the remaining deform (Enio 2026-07-04). Empty `Arc`s + `false`
     /// = no session. `Arc`-shared, so a non-deform snapshot carries an empty (0-byte) map for free.
-    pub(crate) deform: DeformSnap,
+    pub(crate) deform: WarpSnap,
     /// The **Sculpt** session at capture time (`docs/Painter/18…` §10.4).
     ///
     /// Captured for a reason the Deform did NOT have, and it is the reason the plan demanded it: the
@@ -127,7 +127,7 @@ pub struct ModelSnapshot {
 /// un-warp what remains — of the BODY as much as of the colour. Empty when the session's layer carried
 /// no relief.
 #[derive(Clone, Debug)]
-pub(crate) struct DeformSnap {
+pub(crate) struct WarpSnap {
     pub(crate) disp: Arc<Vec<[f32; 2]>>,
     pub(crate) pre: Arc<Vec<u8>>,
     pub(crate) pre_h: Arc<Vec<f32>>,
@@ -477,7 +477,7 @@ mod tests {
             selection_crisp: Arc::new(Vec::new()),
             selection_feather: 0.0,
             selection_shapes: Vec::new(),
-            deform: DeformSnap {
+            deform: WarpSnap {
                 disp: Arc::new(Vec::new()),
                 pre: Arc::new(Vec::new()),
                 pre_h: Arc::new(Vec::new()),

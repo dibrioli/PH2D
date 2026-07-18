@@ -122,7 +122,7 @@ fn the_warp_carries_the_body_with_the_colour() {
     let c0 = covers_of(&t, layer);
     let m0 = mats_of(&t, layer);
     assert!(
-        t.paint.deform.affect_relief,
+        t.paint.warp.affect_relief,
         "fixture: the toggle defaults ON"
     );
 
@@ -163,7 +163,7 @@ fn the_warp_carries_the_body_with_the_colour() {
 fn the_toggle_off_leaves_the_body_byte_identical() {
     let (mut t, layer) = deformable_relief_tool();
     t.toggle_deform_relief();
-    assert!(!t.paint.deform.affect_relief, "fixture: toggled OFF");
+    assert!(!t.paint.warp.affect_relief, "fixture: toggled OFF");
     let h0 = heights_of(&t, layer);
     let c0 = covers_of(&t, layer);
     let m0 = mats_of(&t, layer);
@@ -181,7 +181,7 @@ fn the_toggle_off_leaves_the_body_byte_identical() {
     assert_eq!(c0, covers_of(&t, layer), "…and the coverage moved");
     assert_eq!(m0, mats_of(&t, layer), "…and the material moved");
     // The presence sibling: the PIXELS did move (else the three identities above are vacuous).
-    let pre = (*t.paint.deform.pre).clone();
+    let pre = (*t.paint.warp.pre).clone();
     assert_ne!(
         pre, *t.canvas_rgba,
         "fixture: the warp moved no pixels at all, so the byte-identities above prove nothing"
@@ -299,7 +299,7 @@ fn reconstruct_slides_the_body_back() {
 /// The same lesson `deform_disp` carries (Enio 2026-07-04), one plane over: an undo mid-session must
 /// leave Reconstruct able to un-warp what remains — of the body as much as of the colour. The layer
 /// planes themselves are already in `ModelSnapshot`; what this pins is the SESSION's frozen baselines
-/// (`DeformSnap.pre_h` …) riding beside them.
+/// (`WarpSnap.pre_h` …) riding beside them.
 ///
 /// **Mutation that must bleed:** stop carrying `pre_h` through `deform_for_snapshot`/`restore_deform`
 /// (hand back an empty Arc) — after the undo the session has relief amnesia, and the next Reconstruct
@@ -318,7 +318,7 @@ fn undo_rolls_the_warp_session_back_with_the_body() {
     t.restore_model(mid);
     let after_undo = heights_of(&t, layer);
     assert!(
-        t.paint.deform.pre_h.len() == after_undo.len(),
+        t.paint.warp.pre_h.len() == after_undo.len(),
         "the undo dropped the session's frozen relief baseline — Reconstruct now has relief amnesia"
     );
 
@@ -383,9 +383,9 @@ fn a_bare_layer_gains_no_planes_from_a_warp() {
         "warping a layer with no impasto invented a heights plane for it"
     );
     assert!(
-        t.paint.deform.pre_h.is_empty(),
+        t.paint.warp.pre_h.is_empty(),
         "…and froze a baseline for it"
     );
-    assert!(t.paint.deform.relief_layer.is_none());
+    assert!(t.paint.warp.relief_layer.is_none());
     let _ = Arc::clone(&t.canvas_rgba); // the pixels exist and moved; the body correctly never did
 }

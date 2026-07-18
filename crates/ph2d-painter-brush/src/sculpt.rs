@@ -286,7 +286,7 @@ pub struct PlaneOut<'a> {
 /// Calls `f(index, dx, dy, weight)` for every texel the dab actually touches, where `weight` is the fully
 /// folded contribution (`silhouette × grain × coverage × flow × strength × selection`) and `(dx, dy)` is
 /// the offset from the dab centre. Returns the touched rect, or `None` if nothing was written.
-fn walk_dab(
+pub(crate) fn walk_dab(
     mask: Option<&[u8]>,
     width: u32,
     height: u32,

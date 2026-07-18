@@ -88,19 +88,25 @@ impl PainterTool {
     /// off, when the session froze no relief, or when the frozen planes describe a layer that is no
     /// longer active (bits are recycled; the wrong layer must not wear this body).
     pub(super) fn warp_render_relief(&mut self, bbox: Region) {
-        if !self.paint.deform.affect_relief {
+        if !self.paint.warp.affect_relief {
             return;
         }
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        let Some(layer) = self.paint.deform.relief_layer else {
+        let Some(layer) = self.paint.warp.relief_layer else {
             return;
         };
         if self.layers.active() != Some(layer) {
             return;
         }
-        let pre_h = Arc::clone(&self.paint.deform.pre_h);
-        let disp = Arc::clone(&self.paint.deform.disp);
+        let pre_h = Arc::clone(&self.paint.warp.pre_h);
+        let disp = Arc::clone(&self.paint.warp.disp);
+        // How far the body rides along the pixels' displacement (see `WarpSession::relief_disp_scale`).
+        // `1.0` — the default, and Deform always — makes the two sample the identical coordinate.
+        let ds = self.paint.warp.relief_disp_scale;
+        if ds <= 0.0 {
+            return;
+        }
         if pre_h.len() != n || disp.len() != n {
             return;
         }
@@ -113,13 +119,13 @@ impl PainterTool {
                 for rx in 0..bbox.w {
                     let dx = bbox.x + rx;
                     let gi = (dy * w + dx) as usize;
-                    let d = disp[gi];
+                    let d = [disp[gi][0] * ds, disp[gi][1] * ds];
                     let v = bilinear_f32(&pre_h, w, h, dx as f32 - d[0], dy as f32 - d[1]);
                     dst[gi] = v.clamp(-H_MAX, H_MAX);
                 }
             }
         }
-        let pre_cover = Arc::clone(&self.paint.deform.pre_cover);
+        let pre_cover = Arc::clone(&self.paint.warp.pre_cover);
         if pre_cover.len() == n
             && let Some(entry) = self.covers.get_mut(&layer)
             && entry.len() == n
@@ -130,12 +136,12 @@ impl PainterTool {
                 for rx in 0..bbox.w {
                     let dx = bbox.x + rx;
                     let gi = (dy * w + dx) as usize;
-                    let d = disp[gi];
+                    let d = [disp[gi][0] * ds, disp[gi][1] * ds];
                     dst[gi] = bilinear_u8(&pre_cover, w, h, dx as f32 - d[0], dy as f32 - d[1]);
                 }
             }
         }
-        let pre_mats = Arc::clone(&self.paint.deform.pre_mats);
+        let pre_mats = Arc::clone(&self.paint.warp.pre_mats);
         if pre_mats.len() == n
             && let Some(entry) = self.mats.get_mut(&layer)
             && entry.len() == n
@@ -146,7 +152,7 @@ impl PainterTool {
                 for rx in 0..bbox.w {
                     let dx = bbox.x + rx;
                     let gi = (dy * w + dx) as usize;
-                    let d = disp[gi];
+                    let d = [disp[gi][0] * ds, disp[gi][1] * ds];
                     dst[gi] = bilinear_mat(&pre_mats, w, h, dx as f32 - d[0], dy as f32 - d[1]);
                 }
             }
@@ -165,21 +171,21 @@ impl PainterTool {
     pub(super) fn deform_restore_relief_planes(&mut self) {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        let Some(layer) = self.paint.deform.relief_layer else {
+        let Some(layer) = self.paint.warp.relief_layer else {
             return;
         };
         if self.layers.active() != Some(layer) {
             return;
         }
-        let pre_h = Arc::clone(&self.paint.deform.pre_h);
+        let pre_h = Arc::clone(&self.paint.warp.pre_h);
         if pre_h.len() == n {
             self.heights.insert(layer, pre_h);
         }
-        let pre_cover = Arc::clone(&self.paint.deform.pre_cover);
+        let pre_cover = Arc::clone(&self.paint.warp.pre_cover);
         if pre_cover.len() == n {
             self.covers.insert(layer, pre_cover);
         }
-        let pre_mats = Arc::clone(&self.paint.deform.pre_mats);
+        let pre_mats = Arc::clone(&self.paint.warp.pre_mats);
         if pre_mats.len() == n {
             self.mats.insert(layer, pre_mats);
         }

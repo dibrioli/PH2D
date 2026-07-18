@@ -15,7 +15,7 @@ impl PainterTool {
         let (mask_scratch, mask_scratch_target) = self.mask_scratch_for_snapshot();
         let (selection_mask, selection_active, selection_crisp, selection_feather) =
             self.selection_for_snapshot();
-        let deform = self.deform_for_snapshot();
+        let deform = self.warp_for_snapshot();
         let sculpt = self.sculpt_for_snapshot();
         crate::undo::ModelSnapshot {
             layers: self.layers.clone(),

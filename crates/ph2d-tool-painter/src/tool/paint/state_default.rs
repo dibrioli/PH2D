@@ -100,6 +100,7 @@ impl Default for PaintState {
             clone_aligned: true, // Aligned by default (standard clone-stamp)
             clone_sample_armed: false,
             last_smear_pos: None,
+            smear_scratch: Default::default(),
             tiling: [false, false],
             repeat_image: false,
             symmetry_pick: None,
@@ -211,6 +212,7 @@ impl Default for PaintState {
             dab_groups: Vec::new(),
             shape_color_preview: stamp_color_cache::ShapeColorPreview::default(),
             deform: warp::DeformState::default(),
+            warp: warp::session::WarpSession::default(),
             sculpt: sculpt::SculptState::default(),
         }
     }

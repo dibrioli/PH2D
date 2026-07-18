@@ -13,7 +13,6 @@
 
 use crate::dab::DirtyRect;
 use crate::spec::BrushSpec;
-use crate::stamp::{StampMask, sample_mask};
 
 /// Smear one dab: pull the canvas content from `from` toward `to`, inside the dab footprint centred
 /// at `to`, weighted by the brush falloff (with `spec.hardness`) × `strength`.
@@ -124,97 +123,6 @@ pub fn smear_dab(
         }
     }
 
-    Some(DirtyRect {
-        x: min_x as u32,
-        y: min_y as u32,
-        w: bw as u32,
-        h: bh as u32,
-    })
-}
-
-/// Smear one dab using a pre-rendered [`StampMask`] as the per-pixel weight — so the brush **Shape**
-/// (silhouette), **Grain**, and **dab flatten/rotate** all shape the smear exactly as they shape a
-/// painted dab (the mask bakes silhouette × Grain × flatten/rotate). The lift-and-drag sibling of
-/// [`crate::blit_stamp`]: `radius` is the dab radius (the mask spans the dab square `[-1, 1]²`),
-/// `strength` in `[0, 1]` scales the drag. Snapshots the source region first (no read/write
-/// feedback); channels interpolated straight, like [`smear_dab`].
-#[allow(clippy::too_many_arguments)]
-#[must_use]
-pub fn smear_blit_stamp(
-    buf: &mut [u8],
-    width: u32,
-    height: u32,
-    from: [f32; 2],
-    to: [f32; 2],
-    radius: f32,
-    mask: &StampMask,
-    strength: f32,
-    wrap: [bool; 2],
-) -> Option<DirtyRect> {
-    let strength = strength.clamp(0.0, 1.0);
-    if strength <= 0.0 || radius <= 0.0 {
-        return None;
-    }
-    let step_x = (to[0].round() as i64) - (from[0].round() as i64);
-    let step_y = (to[1].round() as i64) - (from[1].round() as i64);
-    if step_x == 0 && step_y == 0 {
-        return None;
-    }
-    let fw = width as i64;
-    let fh = height as i64;
-    let min_x = (to[0] - radius).floor().max(0.0) as i64;
-    let min_y = (to[1] - radius).floor().max(0.0) as i64;
-    let max_x = ((to[0] + radius).ceil() as i64 + 1).min(fw);
-    let max_y = ((to[1] + radius).ceil() as i64 + 1).min(fh);
-    if max_x <= min_x || max_y <= min_y {
-        return None;
-    }
-    let bw = (max_x - min_x) as usize;
-    let bh = (max_y - min_y) as usize;
-    // Toroidal lift on `wrap` axes (Tiling) — see [`smear_dab`].
-    let mut lifted = vec![[0u8; 4]; bw * bh];
-    for j in 0..bh {
-        let sy = min_y + j as i64 - step_y;
-        let sy = if wrap[1] {
-            sy.rem_euclid(fh)
-        } else if sy < 0 || sy >= fh {
-            continue;
-        } else {
-            sy
-        };
-        for i in 0..bw {
-            let sx = min_x + i as i64 - step_x;
-            let sx = if wrap[0] {
-                sx.rem_euclid(fw)
-            } else if sx < 0 || sx >= fw {
-                continue;
-            } else {
-                sx
-            };
-            let si = ((sy * fw + sx) * 4) as usize;
-            lifted[j * bw + i] = [buf[si], buf[si + 1], buf[si + 2], buf[si + 3]];
-        }
-    }
-    let inv_r = 1.0 / radius;
-    for j in 0..bh {
-        let y = min_y + j as i64;
-        let v = (y as f32 + 0.5 - to[1]) * inv_r;
-        for i in 0..bw {
-            let x = min_x + i as i64;
-            let u = (x as f32 + 0.5 - to[0]) * inv_r;
-            let w = sample_mask(mask, u, v) * strength;
-            if w <= 0.0 {
-                continue;
-            }
-            let src = lifted[j * bw + i];
-            let di = ((y * fw + x) * 4) as usize;
-            for c in 0..4 {
-                let d = buf[di + c] as f32;
-                let s = src[c] as f32;
-                buf[di + c] = (d + (s - d) * w).round().clamp(0.0, 255.0) as u8;
-            }
-        }
-    }
     Some(DirtyRect {
         x: min_x as u32,
         y: min_y as u32,
@@ -360,58 +268,6 @@ mod tests {
                 [-50.0, -50.0],
                 [-47.0, -50.0],
                 &spec,
-                1.0,
-                [false, false]
-            )
-            .is_none()
-        );
-    }
-
-    #[test]
-    fn masked_smear_drags_using_the_stamp_mask() {
-        // A default round brush's StampMask == its falloff, so the mask path drags exactly like the
-        // round path (this is the path that also carries Shape / Grain / flatten via the baked mask).
-        let (w, h) = (32, 16);
-        let mut buf = canvas(w, h);
-        for y in 0..h {
-            for x in 0..8 {
-                set(&mut buf, w, x, y, [255, 255, 255, 255]);
-            }
-        }
-        let spec = BrushSpec {
-            radius_px: 6.0,
-            hardness: 1.0,
-            ..Default::default()
-        };
-        let mask = crate::render_stamp_mask(&spec, None, None, None, 64);
-        let dirty = smear_blit_stamp(
-            &mut buf,
-            w,
-            h,
-            [8.0, 8.0],
-            [11.0, 8.0],
-            6.0,
-            &mask,
-            1.0,
-            [false, false],
-        )
-        .expect("in-bounds moving masked smear paints");
-        let p = px(&buf, w, 9, 8);
-        assert!(
-            p[3] > 0 && p[0] > 0,
-            "white dragged rightward via the mask: {p:?}"
-        );
-        assert!(dirty.w > 0 && dirty.h > 0);
-        // No movement ⇒ no-op, like the round path.
-        assert!(
-            smear_blit_stamp(
-                &mut buf,
-                w,
-                h,
-                [8.0, 8.0],
-                [8.0, 8.0],
-                6.0,
-                &mask,
                 1.0,
                 [false, false]
             )

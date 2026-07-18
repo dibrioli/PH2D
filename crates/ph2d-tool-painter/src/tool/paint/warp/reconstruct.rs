@@ -18,7 +18,7 @@ impl PainterTool {
         };
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        if self.paint.deform.pre.len() != n * 4 || self.paint.deform.disp.len() != n {
+        if self.paint.warp.pre.len() != n * 4 || self.paint.warp.disp.len() != n {
             return; // no session to reconstruct
         }
         let r = radius.max(1.0);
@@ -45,8 +45,8 @@ impl PainterTool {
         }
 
         // Pass 2 (mutable): shrink the displacement toward zero and re-render from `pre`.
-        let src = Arc::clone(&self.paint.deform.pre);
-        let disp = Arc::make_mut(&mut self.paint.deform.disp);
+        let src = Arc::clone(&self.paint.warp.pre);
+        let disp = Arc::make_mut(&mut self.paint.warp.disp);
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;

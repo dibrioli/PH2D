@@ -3,11 +3,10 @@
 //! per-pixel / ramped). Split from `paint.rs` for the workspace LOC cap; the routes themselves live in
 //! `stamp_cache`.
 
+use super::PaintMode;
 use super::ramp_lut::RampLutOwner;
-use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
-use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab, StrokeMethod};
-use std::sync::Arc;
+use ph2d_painter_brush::{BrushBlend, Dab, StrokeMethod};
 
 impl PainterTool {
     /// Whether the active stroke method lets the shell coalesce a burst of raw pointer Moves into ONE
@@ -230,191 +229,21 @@ impl PainterTool {
         std::mem::swap(&mut self.canvas_rgba, &mut self.paint.mask_scratch_rgba);
     }
 
-    /// **Smear** route: drag the canvas content from each dab centre to the next (Blender 2D
-    /// `paint_2d_lift_smear` + INTERPOLATE ≡ Krita Color-Smudge "Smearing"). Consecutive dab centres
-    /// give the lift→stamp displacement; [`PaintState::last_smear_pos`](super::PaintState) chains the
-    /// source across pointer batches within one stroke. Smear amount = brush Strength × per-dab
-    /// coverage (pressure).
+    /// **Smear** route: drag the canvas content along the stroke — as an accumulated **displacement
+    /// field**, not a per-dab lift-and-blend.
     ///
-    /// The per-pixel weight is the brush's full dab coverage — **Shape** silhouette × **Grain** ×
-    /// **flatten/rotate** — routed like the paint path: the cached [`ph2d_painter_brush::StampMask`]
-    /// for a View-static dab; the per-pixel Grain path
-    /// ([`ph2d_painter_brush::smear_blit_grain`]) for a canvas-fixed Grain Mapping (Tiled/Stencil) or
-    /// per-dab rotation (Rake / Random / Jitter Rotate), resolving each dab's own frame; the plain
-    /// round falloff otherwise. **Tiling** wraps each smear across the enabled sprite edges (the same
-    /// offset on lift + stamp, so a wrapped copy keeps its drag). The engine snapshots each source
-    /// region, so overlapping read/write never feeds back.
+    /// The blend version decayed geometrically over a stroke (`h·wⁿ` at ~1 px spacing) and delivered a
+    /// one-texel filament with no mass; the field version transports by a SUM and resolves once from the
+    /// pixels frozen at pen-down. Colour and impasto ride the SAME map through the same door, so the
+    /// pigment and the body cannot disagree about where the paint went — which is what retired the
+    /// separate `plow_dabs` transport. See [`super::smear_warp`] and
+    /// [`ph2d_painter_brush::smear_field`] for the law and the measurement.
+    ///
+    /// The per-pixel weight is still the brush's full dab coverage — **Shape** silhouette × **Grain** ×
+    /// **flatten/rotate** × Selection — because the accumulation rides `walk_dab`, the one place a dab is
+    /// shaped. **Tiling** accumulates the wrapped copies at their own offsets, as the blend did.
     pub(super) fn stamp_dabs_smear(&mut self, dabs: &[Dab], w: u32, h: u32) {
-        if dabs.is_empty() {
-            return;
-        }
-        let base = self.paint.brush;
-        let strength = base.strength.clamp(0.0, 1.0);
-        // **Plow** (the palette knife): the relief is dragged by the SAME dab list, from the SAME
-        // `last_smear_pos` chain — so it must run BEFORE the colour advances that chain, or the body
-        // would lag the pigment by one dab. It is a no-op unless the brush has Plow and the layer has
-        // relief. See `super::impasto::plow_dabs`.
-        self.plow_dabs(dabs, &base, strength * base.effective_impasto_plow());
-        let has_shape_image = self.paint.shape_image.is_some();
-        let textured = base.shape_silhouette_active(has_shape_image)
-            || base.texture.is_active()
-            || base.dab_flatten > 0.0;
-        // A per-dab-rotating Shape / Grain (Rake / Random) or Jitter Rotate isn't scale-invariant, so
-        // it can't ride the cached StampMask — route it (with any canvas-fixed Grain Mapping) through
-        // the per-pixel Grain path, which resolves each dab's own frame. View-static → the fast mask;
-        // untextured → the plain round falloff.
-        let per_dab_rotation =
-            base.has_per_dab_rotation() || base.shape_has_per_dab_rotation(has_shape_image);
-        // Shape / Grain Colour Ramps act here as B&W coverage TONES (Smear/Blur/Clone paint no colour).
-        // The cached mask doesn't carry them, so an active ramp tone forces the per-pixel Grain path.
-        self.ensure_shape_ramp_lut();
-        let grain_tone = self.grain_tone_lut();
-        let ramp_tone_active = self.shape_tone_lut_slice().is_some() || grain_tone.is_some();
-        let want_mask = textured
-            && base.dab_mask_cacheable(has_shape_image)
-            && !per_dab_rotation
-            && !ramp_tone_active;
-        let want_grain = textured && !want_mask;
-        let grain_active = base.texture.is_active();
-        let shape_active = base.shape_silhouette_active(has_shape_image);
-        let tiling = self.paint.tiling;
-        let tiled = tiling[0] || tiling[1];
-        let source_size = self.source_size;
-
-        // Gather the weight source BEFORE the buffer borrow: the cached mask (View), or the Grain/Shape
-        // images for the per-pixel path. The Shape tone LUT is cloned — it borrows `self`, which the
-        // `canvas_rgba` write can't co-hold.
-        if want_mask {
-            let max_r = dabs.iter().map(|d| d.radius_px).fold(0.0_f32, f32::max);
-            self.ensure_stamp_cache(&base, super::stamp_cache::mask_size_for(max_r));
-        }
-        let mask = want_mask
-            .then(|| self.paint.stamp_cache.as_ref().map(|(m, _)| m))
-            .flatten();
-        let grain_img = want_grain
-            .then(|| self.paint.texture_image.as_ref().map(|i| i.as_mask()))
-            .flatten();
-        let shape_img = want_grain
-            .then(|| self.paint.shape_image.as_ref().map(|i| i.as_mask()))
-            .flatten();
-        let shape_lut: Option<Vec<f32>> = if want_grain {
-            self.shape_tone_lut_slice().map(|s| s.to_vec())
-        } else {
-            None
-        };
-
-        let mut from = self.paint.last_smear_pos;
-        let mut tex_rng = self.paint.tex_rng;
-        let buf = Arc::make_mut(&mut self.canvas_rgba);
-        let mut touched: Option<Region> = None;
-        for d in dabs {
-            if let Some(prev) = from {
-                let amount = strength * d.coverage;
-                // Per-dab frame for the Grain path: the Jitter-Rotate footprint + the Rake heading
-                // (`d.dir`) + the Random draw (`tex_rng`) — mirror of the per-pixel paint path, so
-                // Rake / Random / Jitter Rotate rotate the smear per dab. Computed ONCE per dab, so the
-                // wrapped Tiling copies share the same random frame.
-                let fp = base.footprint_deform().rotated_by(d.rotation);
-                let sbasis = (want_grain && shape_active).then(|| {
-                    ph2d_painter_brush::texture::dab_basis(
-                        &base.shape,
-                        d.dir,
-                        &mut tex_rng,
-                        [w as f32, h as f32],
-                        [1.0, 0.0],
-                        fp,
-                    )
-                });
-                let gbasis = (want_grain && grain_active).then(|| {
-                    ph2d_painter_brush::texture::dab_basis(
-                        &base.texture,
-                        d.dir,
-                        &mut tex_rng,
-                        [w as f32, h as f32],
-                        [1.0, 0.0],
-                        fp,
-                    )
-                });
-                // Tiling wrap offsets (same on lift + stamp); stack buffer, no alloc.
-                let mut offs = [[0.0f32; 2]; 9];
-                let n = if tiled {
-                    super::tiling::tiled_offsets_into(
-                        d.center,
-                        d.radius_px,
-                        source_size,
-                        tiling,
-                        &mut offs,
-                    )
-                } else {
-                    1
-                };
-                for &off in &offs[..n] {
-                    let f = [prev[0] + off[0], prev[1] + off[1]];
-                    let t = [d.center[0] + off[0], d.center[1] + off[1]];
-                    let dirty = if let Some(m) = mask {
-                        ph2d_painter_brush::smear_blit_stamp(
-                            buf,
-                            w,
-                            h,
-                            f,
-                            t,
-                            d.radius_px,
-                            m,
-                            amount,
-                            tiling,
-                        )
-                    } else if want_grain {
-                        ph2d_painter_brush::smear_blit_grain(
-                            buf,
-                            w,
-                            h,
-                            f,
-                            t,
-                            d.radius_px,
-                            &base,
-                            fp,
-                            gbasis.as_ref(),
-                            sbasis.as_ref(),
-                            grain_img.as_ref(),
-                            shape_img.as_ref(),
-                            shape_lut.as_deref(),
-                            grain_tone.as_deref(),
-                            amount,
-                            tiling,
-                        )
-                    } else {
-                        ph2d_painter_brush::smear_dab(
-                            buf,
-                            w,
-                            h,
-                            f,
-                            t,
-                            &BrushSpec {
-                                radius_px: d.radius_px,
-                                ..base
-                            },
-                            amount,
-                            tiling,
-                        )
-                    };
-                    if let Some(r) = dirty {
-                        let rect = Region {
-                            x: r.x,
-                            y: r.y,
-                            w: r.w,
-                            h: r.h,
-                        };
-                        touched = Some(touched.map_or(rect, |acc| union_region(acc, rect)));
-                    }
-                }
-            }
-            from = Some(d.center);
-        }
-        self.paint.last_smear_pos = from;
-        self.paint.tex_rng = tex_rng;
-        if let Some(rect) = touched {
-            self.mark_dirty(rect);
-        }
+        let _ = self.smear_dabs_field(dabs, w, h);
     }
 
     /// The actual stamp dispatch (already tiled if needed); [`Self::stamp_dabs`] wraps first.

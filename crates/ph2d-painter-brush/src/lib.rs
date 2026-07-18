@@ -54,7 +54,7 @@ pub mod sampler;
 /// **Sculpt** — the brush as a local operator on the relief (Smooth / Sharpen / Flatten / Scrape / Fill).
 pub mod sculpt;
 pub mod smear;
-pub mod smear_grain;
+pub mod smear_field;
 pub mod spec;
 mod spec_default;
 #[cfg(test)]
@@ -89,8 +89,8 @@ pub use jitter::shift_colors_like;
 pub use mask_ops::{MaskCanvasOp, apply_mask_op};
 pub use ramp_alpha::RampAlphaMode;
 pub use sampler::MAX_INPUT_SAMPLES;
-pub use smear::{smear_blit_stamp, smear_dab};
-pub use smear_grain::smear_blit_grain;
+pub use smear::smear_dab;
+pub use smear_field::{SmearOut, accumulate_dab_smear};
 pub use spec::{AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec};
 pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, render_stamp_mask};
 pub use stamp_color::{

@@ -22,7 +22,7 @@ impl PainterTool {
         };
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
-        if self.paint.deform.pre.len() != n * 4 || self.paint.deform.disp.len() != n {
+        if self.paint.warp.pre.len() != n * 4 || self.paint.warp.disp.len() != n {
             return; // session not set up (unsized canvas)
         }
         // Deform is confined to the SELECTED area (whole sprite when nothing is selected) — the brush only
@@ -50,8 +50,8 @@ impl PainterTool {
         // Pass 2 (mutable): fold the contributions into the SESSION displacement map, then render the bbox
         // from the pristine `pre` using the TOTAL displacement (one resample per texel → sharp, no compound
         // blur, and cross-stroke it still samples the pristine source).
-        let src = Arc::clone(&self.paint.deform.pre);
-        let disp = Arc::make_mut(&mut self.paint.deform.disp);
+        let src = Arc::clone(&self.paint.warp.pre);
+        let disp = Arc::make_mut(&mut self.paint.warp.disp);
         let buf = Arc::make_mut(&mut self.canvas_rgba);
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;

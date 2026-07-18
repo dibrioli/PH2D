@@ -313,6 +313,16 @@ fn probe_push_render_and_look() {
         "[smear-probe] plow of the SMEAR brush the app will use = {}",
         t.brush_plow_for_probe()
     );
+    eprintln!(
+        "[smear-probe] SMEAR brush: r={:.1} hardness={:.2} falloff={:?} strength={:.2} flow={:.2} spacing={:.3} depth={:.2}",
+        t.paint_brush_for_probe().radius_px,
+        t.paint_brush_for_probe().hardness,
+        t.paint_brush_for_probe().falloff,
+        t.paint_brush_for_probe().strength,
+        t.paint_brush_for_probe().flow,
+        t.paint_brush_for_probe().spacing,
+        t.paint_brush_for_probe().impasto_depth,
+    );
     t.on_canvas_pointer(cp([150.0, 200.0], PointerPhase::Down));
     for i in 1u8..=12 {
         t.on_canvas_pointer(cp([150.0 + 14.0 * f32::from(i), 200.0], PointerPhase::Move));
@@ -333,6 +343,17 @@ fn probe_push_render_and_look() {
         for y in (170..232).step_by(6) {
             let (h, c) = at(250, y);
             eprint!("  y{y}:h{h:.2}/c{c}");
+        }
+        eprintln!();
+        // ⚠️ The line above steps by SIX, which cannot tell a one-texel needle from an eleven-texel band —
+        // both read `h0.00 · h<something> · h0.00`. It is what made the filament look total. Measure the
+        // WIDTH instead: the brush is 40 px in radius, so a trail carrying mass is of that order.
+        eprint!("[smear-probe] trail WIDTH (texels with h>0.02, brush radius 40):");
+        for x in (170..330).step_by(20) {
+            let w = (120..280)
+                .filter(|&y| hs[y * size as usize + x] > 0.02)
+                .count();
+            eprint!("  x{x}:{w}");
         }
         eprintln!();
         eprint!("[smear-probe] across x=170 (just outside the ridge):");

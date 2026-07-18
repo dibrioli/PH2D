@@ -11699,12 +11699,9 @@ fn deform_undo_preserves_the_reconstruction_capability() {
     // Undo stroke 2 → pixels roll back to after-stroke-1, and the session (displacement) is preserved.
     assert!(t.undo_last(), "one undo step for stroke 2");
     assert_eq!(*t.canvas_rgba, after1, "undo restored the stroke-1 pixels");
+    assert!(t.paint.warp.active, "the deform session survives the undo");
     assert!(
-        t.paint.deform.active,
-        "the deform session survives the undo"
-    );
-    assert!(
-        !t.paint.deform.disp.is_empty(),
+        !t.paint.warp.disp.is_empty(),
         "the displacement survives the undo"
     );
     // And Reconstruct still un-warps toward the pristine session original.
@@ -19405,16 +19402,27 @@ fn impasto_plow_drags_the_relief_with_the_paint() {
 /// relief stopped at **x = 41**, which is the exact edge of where the stroke had been painted. Paint with
 /// no body, spread over the canvas, and nothing in the tool would tell you why.
 ///
-/// So the gate is a REACH COMPARISON, not a point sample. The existing sibling
-/// (`impasto_plow_drags_the_relief_with_the_paint`) checks one texel a few pixels past the ridge, which
-/// is true at any Plow above zero and says nothing about how far the body travels. This asks the artist's
-/// question: *does the thing I pushed still have thickness where I pushed it to?*
+/// Turning it on was **necessary and not sufficient**, and the first version of this gate could not tell
+/// the difference — it compared REACH along the drag axis, and reach was the one thing that already
+/// worked. Enio, shown the "fix": *"as fronteiras não são vencidas. o relevo não é levado além. **nada
+/// resolvido**"*. The body crossed as a **one-texel filament**: mass nowhere, needle everywhere.
 ///
-/// **Mutation that must bleed:** put `impasto_plow` back to `0.0` in `spec_default` — relief reach
-/// collapses to the original stroke's frontier while pigment reach does not move.
+/// So the verdict is a **CROSS-SECTION**, cut across the trail past the frontier — reach stays only as a
+/// precondition. The older sibling (`impasto_plow_drags_the_relief_with_the_paint`) samples one texel
+/// just past the ridge, which is true at any Plow above zero; between them, two green gates sat beside a
+/// red product. This asks the artist's real question: *is there THICKNESS in what I pushed, or just a
+/// scratch through it?*
+///
+/// **Mutations that must bleed:** (a) put `impasto_plow` back to `0.0` in `spec_default` — the relief
+/// stops dead at the original stroke's frontier (kills the reach precondition); (b) restore the
+/// per-dab lift-and-blend transport in place of the accumulated field — reach survives, the
+/// cross-section collapses to ~1 px (this is the mutation the old gate could not feel).
 #[test]
-fn the_knife_carries_the_body_as_far_as_it_carries_the_pigment() {
-    let size = 120u32;
+fn the_knife_carries_the_body_across_the_frontier_as_mass_not_a_filament() {
+    // Canvas and drag are sized on the PRODUCT's proportions (probe scene 13: the knife travels ~8
+    // brush-radii out of the ridge). A short drag hides this bug — the trail is still full width where
+    // the brush is parked, and the collapse only compounds with distance behind it.
+    let size = 220u32;
     let mut t = impasto_canvas(size);
     let mut b = t.paint.brush;
     b.radius_px = 12.0;
@@ -19424,10 +19432,10 @@ fn the_knife_carries_the_body_as_far_as_it_carries_the_pigment() {
     for slot in &mut t.paint.brush_by_mode {
         *slot = b;
     }
-    // A vertical ridge of thick paint at x = 30.
-    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([30.0, 100.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([30.0, 100.0], PointerPhase::Up));
+    // A vertical ridge of thick paint at x = 40.
+    t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 190.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([40.0, 190.0], PointerPhase::Up));
 
     let active = t.layers.active().expect("a layer");
     let reach = |v: &[f32]| {
@@ -19438,29 +19446,34 @@ fn the_knife_carries_the_body_as_far_as_it_carries_the_pigment() {
     };
     let ridge_edge = reach(&t.heights.get(&active).expect("relief").as_ref().clone());
     assert!(
-        (35..60).contains(&ridge_edge),
+        (45..70).contains(&ridge_edge),
         "precondition: the ridge ends where the brush ended ({ridge_edge}) — if it already spanned the \
          canvas there would be no frontier to cross"
     );
 
-    // Now take the knife straight across it, far past the ridge. The brush keeps its DEFAULT Plow: that
-    // is the thing under test.
-    let mut k = t.paint.brush;
-    k.strength = 1.0;
-    k.hardness = 1.0;
-    t.paint.brush = k;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = k;
+    // Now take the knife straight across it, far past the ridge — through the REAL mode door, and with
+    // the brush the Smear tool brings with it.
+    //
+    // ⚠️ Both halves of that sentence are load-bearing, and the first version of this gate got both
+    // wrong. Poking `paint.paint_mode` skips `switch_brush_slot`, which is what loads the Smear tool's
+    // OWN slot (its spacing, its falloff) — the probe already learned this the expensive way. And on top
+    // of the poke it forced `hardness = 1.0`: a hard disk has `w = 1` across the whole footprint, so the
+    // per-dab product `wⁿ` never decays and the filament CANNOT form. The fixture excluded the exact
+    // phenomenon it existed to catch, and reported 24 px of body under 24 px of pigment — a perfect
+    // score, on a canvas where the bug was unreachable.
+    t.set_paint_tool_mode("smear");
+    t.set_brush_size_px(16.0);
+    let knife_r = t.paint.brush.radius_px;
+    let (knife_y, knife_end) = (110.0f32, 200.0f32);
+    t.on_canvas_pointer(cp([40.0, knife_y], PointerPhase::Down));
+    for x in 1..=160 {
+        t.on_canvas_pointer(cp([40.0 + x as f32, knife_y], PointerPhase::Move));
     }
-    t.paint.paint_mode = PaintMode::Smear;
-    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
-    for x in 1..=60 {
-        t.on_canvas_pointer(cp([30.0 + x as f32, 60.0], PointerPhase::Move));
-    }
-    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+    t.on_canvas_pointer(cp([knife_end, knife_y], PointerPhase::Up));
 
-    // Along the knife's own line, how far did each thing get?
-    let y = 60u32;
+    // Question ONE — reach: how far along the knife's own line did each thing get? This is the half the
+    // old gate asked, and it was already green. Kept as a precondition, never as the verdict.
+    let y = knife_y as u32;
     let heights = t.heights.get(&active).expect("relief").as_ref().clone();
     let rgba = t.canvas_rgba.as_ref().clone();
     let relief_x = (0..size)
@@ -19480,9 +19493,332 @@ fn the_knife_carries_the_body_as_far_as_it_carries_the_pigment() {
     );
     assert!(
         relief_x + 4 >= pigment_x,
-        "the knife pushed pigment to x={pigment_x} but its BODY only to x={relief_x} — paint spread \
-         across the canvas with no thickness in it. The relief must travel with the paint, not stop at \
-         the frontier of the stroke that laid it (ridge edge was x={ridge_edge})"
+        "precondition (reach): the knife pushed pigment to x={pigment_x} but its BODY only to \
+         x={relief_x} (ridge edge was x={ridge_edge})"
+    );
+
+    // Question TWO — MASS, and this is the verdict.
+    //
+    // ⚠️ The oracle is the BRUSH, never the pigment. Measuring the body against the colour was the
+    // second thing this gate got wrong: the colour Smear (`smear_dab`) has the IDENTICAL per-dab
+    // structure, so it collapses by the identical law — measured here, `relief_w == pigment_w` to the
+    // texel at every station along the trail. A ratio between two equally sick quantities is green by
+    // construction. What the artist is owed is absolute: drag a knife this wide and the trail it leaves
+    // is about that wide.
+    //
+    // Nor is one station enough. Where the brush is PARKED the trail is always full width (those dabs
+    // have had no steps applied to them yet); the collapse compounds with distance BEHIND the tip. So
+    // walk the clean trail — past the ridge frontier, before the parked footprint — and take its
+    // NARROWEST point.
+    let trail_from = ridge_edge + knife_r as u32;
+    let trail_to = (knife_end - knife_r) as u32;
+    assert!(
+        trail_to > trail_from + 16,
+        "precondition: the drag must leave a stretch of trail that is neither ridge nor parked brush \
+         (x {trail_from}..{trail_to})"
+    );
+    let width_at =
+        |x: u32, plane: &dyn Fn(u32, u32) -> bool| (0..size).filter(|&yy| plane(x, yy)).count();
+    let has_relief = |x: u32, yy: u32| heights[(yy * size + x) as usize] > 0.02;
+    let has_pigment = |x: u32, yy: u32| rgba[((yy * size + x) * 4) as usize + 1] < 200;
+    let (thin_x, relief_w) = (trail_from..trail_to)
+        .map(|x| (x, width_at(x, &has_relief)))
+        .min_by_key(|&(_, w)| w)
+        .expect("a trail to walk");
+    let pigment_w = width_at(thin_x, &has_pigment);
+
+    // The knife is `2·knife_r` across. Half of that is a generous floor — the falloff means the rim
+    // contributes little, so a healthy trail sits well above it while a filament is nowhere near.
+    let want = knife_r as usize;
+    assert!(
+        relief_w >= want,
+        "at its thinnest the knife's trail carries {relief_w} px of BODY (x={thin_x}), but the knife is \
+         {} px across — the relief crossed the frontier as a FILAMENT, not as mass. Transport that \
+         re-samples the PREVIOUS STEP'S RESULT decays geometrically off the drag axis: dab spacing is \
+         ~1 px, so the trail is a product h·wⁿ over the whole drag — on the axis t=0 ⇒ w=1 exactly and \
+         the needle survives, 6 px off it 0.8¹⁵⁰ ≈ 0. Measured on the product (`push_look_probe` scene \
+         13): across the trail at x=250, `y194 h0.00 · y200 h3.73 · y206 h0.00`. The displacement has \
+         to ACCUMULATE and be applied ONCE to a frozen source — the law `warp/apply.rs` already uses",
+        2.0 * knife_r
+    );
+    assert!(
+        pigment_w >= want,
+        "at its thinnest the knife's trail carries {pigment_w} px of PIGMENT (x={thin_x}) against a \
+         knife {} px across. The colour Smear has the same per-dab structure as the body's, and Enio \
+         chose to fix both from the SAME field — so the colour is held to the same law",
+        2.0 * knife_r
+    );
+}
+
+/// Paint a ridge and drag the knife across it, sampling the drag at `stride` px. Returns the trail's
+/// width at its thinnest, and how far the pigment reached.
+#[cfg(test)]
+fn smear_trail_probe(size: u32, stride: f32) -> (usize, u32) {
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.impasto_depth = 1.0;
+    b.color = [0.8, 0.1, 0.1];
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 190.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([40.0, 190.0], PointerPhase::Up));
+
+    t.set_paint_tool_mode("smear");
+    t.set_brush_size_px(16.0);
+    let (y, end) = (110.0f32, 200.0f32);
+    t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));
+    let mut x = 40.0 + stride;
+    while x < end {
+        t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+        x += stride;
+    }
+    t.on_canvas_pointer(cp([end, y], PointerPhase::Up));
+
+    let rgba = t.canvas_rgba.as_ref().clone();
+    let wide = |x: u32| {
+        (0..size)
+            .filter(|&yy| rgba[((yy * size + x) * 4) as usize + 1] < 200)
+            .count()
+    };
+    let thin = (70..180).map(wide).min().unwrap_or(0);
+    let reach = (0..size)
+        .filter(|&x| rgba[((y as u32 * size + x) * 4) as usize + 1] < 200)
+        .max()
+        .unwrap_or(0);
+    (thin, reach)
+}
+
+/// **The knife's trail is a fact of the PATH, not of how finely the motion was sampled.**
+///
+/// The sibling of `the_trench_is_a_fact_of_the_path_not_of_the_dab_spacing` (the bow wave's bite) and of
+/// the relief capsule's law — the third time this line has met the same disease, and the reason the
+/// Smear's transport had to stop being a per-dab lerp. A sequential accumulation that re-reads its own
+/// output raises the dab count to a power: at ~1 px spacing a long drag is ~170 steps, `wⁿ`, and the
+/// trail dies everywhere except exactly on the axis.
+///
+/// Sampling the SAME 160 px path coarsely must therefore give the same trail — a different mouse, or a
+/// different polling rate, is not a different brush.
+///
+/// **Mutation that must bleed:** make the kernel's sink `disp[i] += step·add` (a sum instead of the map
+/// composition) — the two samplings then disagree about how far the paint reached, because a summed
+/// field's travel is bounded by the brush width rather than by the path.
+#[test]
+fn the_smear_trail_is_a_fact_of_the_path_not_the_dab_spacing() {
+    let size = 220u32;
+    let (fine_w, fine_reach) = smear_trail_probe(size, 1.0);
+    let (coarse_w, coarse_reach) = smear_trail_probe(size, 4.0);
+    assert!(
+        fine_w >= 12,
+        "precondition: the finely-sampled drag must leave a trail with mass ({fine_w} px)"
+    );
+    assert!(
+        coarse_w * 2 >= fine_w && fine_w * 2 >= coarse_w,
+        "the same 160 px path sampled at 1 px and at 4 px left trails {fine_w} px and {coarse_w} px \
+         across. The knife is a property of the path, not of how often the OS delivered a pointer event"
+    );
+    let (lo, hi) = (fine_reach.min(coarse_reach), fine_reach.max(coarse_reach));
+    assert!(
+        hi - lo <= 12,
+        "the same path reached x={fine_reach} sampled finely and x={coarse_reach} sampled coarsely — \
+         transport whose distance depends on the sampling is the product law again"
+    );
+}
+
+/// **The knife's warp session is per STROKE, and leaving the tool ends it.**
+///
+/// Deform's session spans strokes (Reconstruct needs the history); the Smear's must not, because it has
+/// no Apply or Reset to close one and each stroke's result is the next stroke's baseline. A session that
+/// outlived its stroke would hold a frozen `pre` describing a canvas the next stroke has already moved,
+/// and the next stroke would re-warp from it — paint jumping back to where it used to be.
+///
+/// The second half is the invariant `warp::session`'s docs state: at most one tool may own a live
+/// session, so leaving the mode ends it. Without it a `disp` accumulated by the knife would be read by
+/// Reshape as its own.
+///
+/// **Mutations that must bleed:** drop the `end_smear_session()` call from `close_stroke`; drop the
+/// `PaintMode::Smear` arm from `set_paint_tool_mode`'s teardown.
+#[test]
+fn the_knives_warp_session_does_not_outlive_its_stroke() {
+    let size = 120u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 10.0;
+    b.impasto_depth = 1.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 100.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 100.0], PointerPhase::Up));
+
+    t.set_paint_tool_mode("smear");
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    for x in 1..=20 {
+        t.on_canvas_pointer(cp([30.0 + x as f32, 60.0], PointerPhase::Move));
+    }
+    assert!(
+        t.paint.warp.active,
+        "the knife opens a warp session while it is dragging"
+    );
+    t.on_canvas_pointer(cp([50.0, 60.0], PointerPhase::Up));
+    assert!(
+        !t.paint.warp.active,
+        "…and the session dies with the stroke, so the next one starts from what this one left"
+    );
+    assert!(
+        t.paint.warp.disp.is_empty(),
+        "the displacement is freed with the session, not left to be re-applied"
+    );
+
+    // And a session that IS live when the artist changes tool must not survive the change.
+    t.on_canvas_pointer(cp([30.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Move));
+    assert!(t.paint.warp.active, "fixture: a session is live mid-stroke");
+    t.set_paint_tool_mode("brush");
+    assert!(
+        !t.paint.warp.active,
+        "leaving the Smear ends its session — one live session, one owner"
+    );
+}
+
+/// **The knife's kill criterion**, mirroring the sculpt's: canvas 2048² and 4096², brush radius 100, a
+/// dragged stroke over a relief-bearing layer — so the body rides the same map and its three planes are
+/// re-rendered too. Target **≤ 4 ms/move**, **kill at 8**.
+///
+/// The field transport is not obviously cheaper or dearer than the lift-and-blend it replaced, and
+/// "obviously" is not a measurement. Per dab it walks the same footprint once, then snapshots the old map
+/// over that footprint (the composition must not read a texel it has already written) — one extra pass
+/// over a dab-sized window. Per BATCH it resamples the frozen source once over the union of what moved,
+/// which is the work the blend used to do per dab.
+///
+/// Move 0 is excluded for the reason the sculpt's gate documents: the session opens there (canvas-sized
+/// `disp` allocated and first-touched, four planes frozen), and charging a once-per-stroke cost to every
+/// move reports a number no frame actually pays. It is asserted separately rather than discarded — a
+/// hitch at the start of every stroke is something the artist feels.
+#[test]
+#[ignore = "perf measurement — run with --release --ignored"]
+fn smear_perf_kill_criterion() {
+    use std::time::Instant;
+    const MOVES: u32 = 20;
+    const KILL_MS: f64 = 8.0;
+    const SETUP_KILL_MS: f64 = 40.0;
+    const WARMUP_MOVES: usize = 1;
+
+    let run = |size: u32| -> (f64, f64) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        let layer = t.layers.active().expect("a layer");
+        let n = (size * size) as usize;
+        let relief: Vec<f32> = (0..n)
+            .map(|i| {
+                let x = (i as u32 % size) as f32;
+                let y = (i as u32 / size) as f32;
+                0.4 * ((x * 0.031).fract() + (y * 0.017).fract())
+            })
+            .collect();
+        t.heights.insert(layer, Arc::new(relief));
+        t.covers.insert(layer, Arc::new(vec![255u8; n]));
+        t.sync_relief_flags();
+        t.set_paint_tool_mode("smear");
+        let mut b = t.paint.brush;
+        b.radius_px = 100.0;
+        b.strength = 1.0;
+        t.paint.brush = b;
+        t.paint.brush_by_mode[PaintMode::Smear.slot()] = b;
+
+        let mid = (size / 2) as f32;
+        t.on_canvas_pointer(cp([200.0, mid], PointerPhase::Down));
+        let _ = t.take_preview_arc();
+        let mut per_move = Vec::with_capacity(MOVES as usize);
+        for k in 1..=MOVES {
+            let x = 200.0 + 12.0 * k as f32;
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+            let _ = t.take_preview_arc();
+            per_move.push(t0.elapsed().as_secs_f64() * 1000.0);
+        }
+        t.on_canvas_pointer(cp([200.0 + 12.0 * MOVES as f32, mid], PointerPhase::Up));
+        let setup = per_move[..WARMUP_MOVES].iter().cloned().fold(0.0, f64::max);
+        let steady =
+            per_move[WARMUP_MOVES..].iter().sum::<f64>() / (per_move.len() - WARMUP_MOVES) as f64;
+        (setup, steady)
+    };
+
+    let (s2, m2) = run(2048);
+    let (s4, m4) = run(4096);
+    eprintln!(
+        "[smear-perf] 2048²: setup {s2:.2} ms · steady {m2:.2} ms/move │ \
+         4096²: setup {s4:.2} ms · steady {m4:.2} ms/move (kill {KILL_MS})"
+    );
+    assert!(
+        m2 < KILL_MS && m4 < KILL_MS,
+        "the knife costs {m2:.2} ms/move @2048² and {m4:.2} ms/move @4096², against a kill of {KILL_MS}"
+    );
+    assert!(
+        s2 < SETUP_KILL_MS && s4 < SETUP_KILL_MS,
+        "opening the knife's session costs {s2:.2} ms @2048² and {s4:.2} ms @4096² — a hitch at the \
+         start of every stroke, against a bar of {SETUP_KILL_MS}"
+    );
+}
+
+/// **The knife's transport relays ACROSS strokes**: a second drag carries the paint further than the
+/// first left it, rather than starting over from the first stroke's frozen source.
+///
+/// ⚠️ Read the claim narrowly. This does NOT prove the session is per-stroke — a warp map composes, and
+/// composition is associative, so a session wrongly spanning both strokes reconstructs very nearly the
+/// same picture and this gate stays green. That was measured, not assumed: removing the pen-up teardown
+/// leaves this test passing. The session's lifetime is guarded by
+/// `the_knives_warp_session_does_not_outlive_its_stroke`, which asks about the session directly; the two
+/// halves of the teardown (pen-up, and leaving the mode mid-stroke) are separate defences and it kills
+/// the mutation of each. What this gate owns is only the artist-visible relay.
+#[test]
+fn a_second_smear_stroke_builds_on_the_first() {
+    let size = 160u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.impasto_depth = 1.0;
+    b.color = [0.8, 0.1, 0.1];
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 140.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 140.0], PointerPhase::Up));
+
+    t.set_paint_tool_mode("smear");
+    t.set_brush_size_px(14.0);
+    let reach = |t: &PainterTool| {
+        let rgba = t.canvas_rgba.as_ref().clone();
+        (0..size)
+            .filter(|&x| rgba[((80 * size + x) * 4) as usize + 1] < 200)
+            .max()
+            .unwrap_or(0)
+    };
+    let drag = |t: &mut PainterTool, x0: f32, x1: f32| {
+        t.on_canvas_pointer(cp([x0, 80.0], PointerPhase::Down));
+        let mut x = x0 + 1.0;
+        while x < x1 {
+            t.on_canvas_pointer(cp([x, 80.0], PointerPhase::Move));
+            x += 1.0;
+        }
+        t.on_canvas_pointer(cp([x1, 80.0], PointerPhase::Up));
+    };
+    drag(&mut t, 30.0, 80.0);
+    let after_first = reach(&t);
+    drag(&mut t, 60.0, 120.0);
+    let after_second = reach(&t);
+    assert!(
+        after_second > after_first,
+        "the second stroke carried the paint FURTHER (first reached x={after_first}, second \
+         x={after_second}) — if the second re-warped the first stroke's frozen source instead of its \
+         result, the paint would have snapped back to where it started"
     );
 }
 

@@ -15,6 +15,7 @@ mod reconstruct;
 mod relief;
 #[cfg(test)]
 mod relief_tests;
+pub(crate) mod session;
 mod transform;
 mod transform_float;
 mod transform_geom;
@@ -97,43 +98,17 @@ pub(crate) struct DeformState {
     /// patch moved AWAY from are repainted back to `base` (dirty-rect correctness). Transient.
     pub(crate) xform_last_bbox: Option<Region>,
 
-    // ── Session (transient) ──
-    /// Pristine pixels at the session start — Reconstruct fades back to this, Reset restores it wholesale.
-    pub(crate) pre: Arc<Vec<u8>>,
-    /// **Affect Relief** (W4 — the advective family): the warp carries the impasto planes along the SAME
-    /// displacement as the pixels. Paint is a substance — what moves takes its body with it (doc 18 §5's
-    /// exception). Off = warp the colour only. Not snapshotted (a knob, not document state).
-    pub(crate) affect_relief: bool,
-    /// The impasto planes frozen at session start, beside `pre` — the relief's own pristine baseline.
-    /// Frozen for EVERY session on a relief-bearing layer (three `Arc` bumps), whatever the toggle says:
-    /// the artist can flip it mid-session, and Reset must give the body back unconditionally — asking the
-    /// CURRENT toggle what to restore asks the wrong question (the sculpt session learned this rule).
-    /// Empty on a layer with no relief.
-    pub(crate) pre_h: Arc<Vec<f32>>,
-    /// The frozen paint coverage (see [`Self::pre_h`]).
-    pub(crate) pre_cover: Arc<Vec<u8>>,
-    /// The frozen per-pixel material (see [`Self::pre_h`]).
-    pub(crate) pre_mats: Arc<Vec<ph2d_painter_brush::material::MaterialBytes>>,
-    /// The layer the frozen planes describe. The relief lives PER LAYER (unlike `pre`, which shadows the
-    /// active canvas), so a render must refuse to write planes captured from a layer that is no longer
-    /// active — bits recycled across a switch would dress the wrong layer in the old layer's body.
-    pub(crate) relief_layer: Option<crate::tool::RtLayerId>,
-    /// A deform session is live (`pre` captured). Ends on Reset / Apply; Apply & Keep rebases `pre`.
-    pub(crate) active: bool,
+    // ── Per-stroke cursor (transient) ──
+    //
+    // The session itself — the frozen planes and the cumulative displacement — lives in
+    // [`session::WarpSession`] on `PaintState`, because the **Smear** shares it (same law, same render
+    // door). What stays here is only what a Reshape *gesture* needs and nothing else does.
     /// Previous pointer sample within the current stroke — the Push drag delta + momentum source.
     pub(crate) last_pos: Option<[f32; 2]>,
     /// The last dab's effective motion, carried into the next dab scaled by Momentum.
     pub(crate) momentum_vec: [f32; 2],
     /// Per-stroke splitmix seed for the Distortion/Wrinkle noise (bumped each stroke; HR-5 deterministic).
     pub(crate) seed: u64,
-    /// **Session cumulative displacement** (`[dx, dy]` px per texel) — the source of truth for the whole
-    /// deform. Every render is `canvas[dst] = bilinear(pre, dst − disp[dst])`: a single resample from the
-    /// pristine `pre`, so it never compounds blur. Field modes ADD to it; **Reconstruct REDUCES it** toward
-    /// zero (so pixels slide BACK to their original spots — a real un-warp, not a cross-fade); Reset zeroes
-    /// it. Sized `w*h`, allocated at session start; empty when idle. `Arc`-shared so the undo snapshot
-    /// captures it cheaply (CoW) — undo/redo rolls the warp back in lock-step with the pixels, keeping
-    /// Reconstruct available after an undo.
-    pub(crate) disp: Arc<Vec<[f32; 2]>>,
 }
 
 impl Default for DeformState {
@@ -158,17 +133,9 @@ impl Default for DeformState {
             xform_patch: None,
             xform_before: None,
             xform_last_bbox: None,
-            pre: Arc::new(Vec::new()),
-            affect_relief: true, // substance by default: warping paint moves its body too
-            pre_h: Arc::new(Vec::new()),
-            pre_cover: Arc::new(Vec::new()),
-            pre_mats: Arc::new(Vec::new()),
-            relief_layer: None,
-            active: false,
             last_pos: None,
             momentum_vec: [0.0, 0.0],
             seed: 0,
-            disp: Arc::new(Vec::new()),
         }
     }
 }
@@ -202,7 +169,7 @@ impl PainterTool {
     }
     /// Toggle **Affect Relief** (W4): whether the warp advects the impasto planes with the pixels.
     pub fn toggle_deform_relief(&mut self) {
-        self.paint.deform.affect_relief = !self.paint.deform.affect_relief;
+        self.paint.warp.affect_relief = !self.paint.warp.affect_relief;
     }
 
     // ── Session verbs (Card D) ──
@@ -214,11 +181,11 @@ impl PainterTool {
             self.reset_transform();
             return;
         }
-        if !self.paint.deform.active {
+        if !self.paint.warp.active {
             return;
         }
         let before = self.snapshot_model();
-        self.canvas_rgba = Arc::clone(&self.paint.deform.pre);
+        self.canvas_rgba = Arc::clone(&self.paint.warp.pre);
         // The body goes back with the pixels — unconditionally (not gated on the toggle: it may have
         // been flipped mid-session, and a restore that asks the current knob asks the wrong question).
         self.deform_restore_relief_planes();
@@ -246,9 +213,9 @@ impl PainterTool {
             self.begin_transform();
             return;
         }
-        if self.paint.deform.active {
-            self.paint.deform.pre = Arc::clone(&self.canvas_rgba);
-            for d in Arc::make_mut(&mut self.paint.deform.disp) {
+        if self.paint.warp.active {
+            self.paint.warp.pre = Arc::clone(&self.canvas_rgba);
+            for d in Arc::make_mut(&mut self.paint.warp.disp) {
                 *d = [0.0, 0.0];
             }
             // The relief baseline rebases WITH the pixel baseline — the two are one canvas. Leaving the
@@ -256,24 +223,24 @@ impl PainterTool {
             // pixels can no longer reach.
             if let Some(l) = self
                 .paint
-                .deform
+                .warp
                 .relief_layer
                 .filter(|l| self.layers.active() == Some(*l))
             {
                 let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
-                self.paint.deform.pre_h = self
+                self.paint.warp.pre_h = self
                     .heights
                     .get(&l)
                     .filter(|v| v.len() == n)
                     .cloned()
                     .unwrap_or_default();
-                self.paint.deform.pre_cover = self
+                self.paint.warp.pre_cover = self
                     .covers
                     .get(&l)
                     .filter(|v| v.len() == n)
                     .cloned()
                     .unwrap_or_default();
-                self.paint.deform.pre_mats = self
+                self.paint.warp.pre_mats = self
                     .mats
                     .get(&l)
                     .filter(|v| v.len() == n)
@@ -455,80 +422,27 @@ impl PainterTool {
     /// zeroed session displacement map. Every render samples `pre` through that map (single resample →
     /// sharp). No-op if a session is already live (so multi-stroke sessions accumulate into one map).
     fn ensure_deform_session(&mut self) {
-        let (w, h) = self.source_size;
-        let n = (w as usize) * (h as usize);
-        if !self.paint.deform.active || self.paint.deform.pre.len() != n * 4 {
-            self.paint.deform.pre = Arc::clone(&self.canvas_rgba);
-            self.paint.deform.disp = Arc::new(vec![[0.0, 0.0]; n]);
-            // The impasto planes freeze BESIDE the pixels — all of them, at the same instant, whatever
-            // the Affect Relief toggle currently says (three refcount bumps; a layer with no relief pays
-            // nothing). A session that froze the pixels at stroke 1 and the body at stroke 40 would
-            // reconstruct a canvas that never existed — the sculpt session's rule, applied here.
-            let active_layer = self.layers.active();
-            let planes = active_layer.and_then(|l| {
-                let hgt = self.heights.get(&l).filter(|v| v.len() == n)?;
-                Some((
-                    Arc::clone(hgt),
-                    self.covers.get(&l).filter(|v| v.len() == n).cloned(),
-                    self.mats.get(&l).filter(|v| v.len() == n).cloned(),
-                ))
-            });
-            if let Some((hgt, cov, mat)) = planes {
-                self.paint.deform.pre_h = hgt;
-                self.paint.deform.pre_cover = cov.unwrap_or_default();
-                self.paint.deform.pre_mats = mat.unwrap_or_default();
-                self.paint.deform.relief_layer = active_layer;
-            } else {
-                self.paint.deform.pre_h = Arc::new(Vec::new());
-                self.paint.deform.pre_cover = Arc::new(Vec::new());
-                self.paint.deform.pre_mats = Arc::new(Vec::new());
-                self.paint.deform.relief_layer = None;
-            }
-            self.paint.deform.active = true;
-        }
-    }
-
-    /// Snapshot the deform session for the undo model (the buffers are `tool::paint`-private, so the
-    /// general `snapshot_model` reaches them through here — mirror of `sculpt_for_snapshot`). The frozen
-    /// relief planes ride it for the same reason `disp` does (Enio 2026-07-04): undoing a stroke must
-    /// leave Reconstruct able to un-warp the REST — of the body as much as of the colour.
-    pub(crate) fn deform_for_snapshot(&self) -> crate::undo::DeformSnap {
-        crate::undo::DeformSnap {
-            disp: Arc::clone(&self.paint.deform.disp),
-            pre: Arc::clone(&self.paint.deform.pre),
-            pre_h: Arc::clone(&self.paint.deform.pre_h),
-            pre_cover: Arc::clone(&self.paint.deform.pre_cover),
-            pre_mats: Arc::clone(&self.paint.deform.pre_mats),
-            relief_layer: self.paint.deform.relief_layer,
-            active: self.paint.deform.active,
-        }
+        let _ = self.ensure_warp_session();
+        // Reshape moves the body with the pixels or not at all (the **Affect Relief** checkbox); it has
+        // no fractional knob, so the shared scale is pinned open.
+        self.paint.warp.relief_disp_scale = 1.0;
     }
 
     /// Reinstate the deform session from an undo model — rolls the warp back in lock-step with the pixels
     /// so Reconstruct stays usable after an undo. Drops the transient per-stroke cursor state.
-    pub(crate) fn restore_deform(&mut self, s: crate::undo::DeformSnap) {
-        self.paint.deform.disp = s.disp;
-        self.paint.deform.pre = s.pre;
-        self.paint.deform.pre_h = s.pre_h;
-        self.paint.deform.pre_cover = s.pre_cover;
-        self.paint.deform.pre_mats = s.pre_mats;
-        self.paint.deform.relief_layer = s.relief_layer;
-        self.paint.deform.active = s.active;
+    pub(crate) fn restore_deform(&mut self, s: crate::undo::WarpSnap) {
+        self.restore_warp(s);
         self.paint.deform.last_pos = None;
         self.paint.deform.momentum_vec = [0.0, 0.0];
     }
 
-    /// End the deform session and free its buffers. Called by Reset / Apply, on a mode switch away from
-    /// Deform, and on undo/redo (`runtime::restore_model`) — the session displacement is NOT in the undo
-    /// snapshot, so a restore must drop it to avoid re-applying a stale warp.
+    /// End the deform session: drop the shared warp session, then the Reshape-only cursor state. Called by
+    /// Reset / Apply, on a mode switch away from Deform, and on undo/redo (`runtime::restore_model`).
+    ///
+    /// The session half is [`PainterTool::end_warp_session`] — the Smear ends the same session through the
+    /// same function, so *"what a session teardown means"* has exactly one answer.
     pub(crate) fn end_deform_session(&mut self) {
-        self.paint.deform.active = false;
-        self.paint.deform.pre = Arc::new(Vec::new());
-        self.paint.deform.disp = Arc::new(Vec::new());
-        self.paint.deform.pre_h = Arc::new(Vec::new());
-        self.paint.deform.pre_cover = Arc::new(Vec::new());
-        self.paint.deform.pre_mats = Arc::new(Vec::new());
-        self.paint.deform.relief_layer = None;
+        self.end_warp_session();
         self.paint.deform.last_pos = None;
         self.paint.deform.momentum_vec = [0.0, 0.0];
         // NB: the Transform float (`xform`/`xform_patch`/…) has its OWN lifecycle (`begin_transform` /

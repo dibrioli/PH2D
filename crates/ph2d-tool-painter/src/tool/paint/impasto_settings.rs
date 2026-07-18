@@ -270,6 +270,12 @@ impl PainterTool {
         self.paint.brush.impasto_plow
     }
 
+    /// The live brush, for the render-and-look probe to report which knife it actually swung.
+    #[must_use]
+    pub fn paint_brush_for_probe(&self) -> &ph2d_painter_brush::BrushSpec {
+        &self.paint.brush
+    }
+
     pub fn set_brush_impasto_plow(&mut self, v: f32) {
         self.paint.brush.impasto_plow = v.clamp(0.0, 1.0);
     }

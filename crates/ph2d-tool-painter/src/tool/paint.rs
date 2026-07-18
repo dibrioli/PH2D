@@ -40,7 +40,6 @@ pub mod impasto_gpu; // Impasto: the composed relief, materialised for the GPU l
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
 mod impasto_live; // Impasto: the stroke's commit + the Body card's live re-derivation (LOC split)
 mod impasto_material; // Impasto: the paint's MATERIAL on the canvas (deposit + the live re-bake)
-mod impasto_plow; // Impasto: the palette knife (the Smear drags the relief along with the colour)
 mod impasto_settings; // Impasto: section setters + the panel-event route (mirrors watercolor_settings)
 mod impasto_settle; // Impasto: the deposit settling under its own weight + the material constants
 mod impasto_shade; // Impasto: the RIG + how one pixel is shaded (the optics; its sibling is the plumbing)
@@ -168,11 +167,12 @@ pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::too
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;
 mod shape_ramp;
+/// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
+mod smear_warp;
 mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
 mod stamp_cache;
 mod stamp_preview; // interactive drag-preview stamping (restore+re-stamp, dirty-rect); split for the LOC cap
-/// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
 mod stamp_route;
 /// `PaintState::default` body — split out for the workspace file-LOC cap (struct stays in `paint.rs`).
 mod state_default;
@@ -313,6 +313,8 @@ pub(crate) struct PaintState {
     clone_sample_armed: bool,
     /// Previous dab centre during a **Smear** stroke (the source each dab lifts from); `None` at stroke start. [`stamp_route`].
     last_smear_pos: Option<[f32; 2]>,
+    /// Reused per-dab scratch for the Smear's map composition (no allocation in a hot stroke).
+    smear_scratch: ph2d_painter_brush::smear_field::SmearScratch,
     /// **Tiling** `[x, y]`: seamless wrap-around painting — a dab near an edge also stamps the wrapped part on the opposite edge. Off by default.
     tiling: [bool; 2],
     /// **Repeat Image**: the shell draws the sprite in the 8 neighbour directions (3×3); with Tiling on, those tiles are paintable (the shell wraps the pointer back).
@@ -665,6 +667,9 @@ pub(crate) struct PaintState {
     /// **Deform** (Liquify) settings + session state — sub-mode, brush knobs, Freeze, and the pre-deform
     /// buffer Reconstruct/Amount read from. Mode-exclusive; see [`warp`] (Deform Wave 1).
     deform: warp::DeformState,
+    /// The frozen baselines + cumulative displacement shared by Deform and Smear (`warp::session`).
+    /// Mode-exclusive: at most one tool has a live session, and leaving that mode ends it.
+    warp: warp::session::WarpSession,
     /// **Sculpt** settings + per-stroke session — the sub-mode, the kernel Radius, and the frozen relief
     /// plus the accumulated intensity the re-render reads. Unlike Deform this is NOT mode-exclusive: the
     /// sculpt rides the same dab list the colour does, so the brush's own knobs are its knobs. See

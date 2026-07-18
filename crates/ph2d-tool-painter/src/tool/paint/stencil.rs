@@ -369,6 +369,12 @@ impl PainterTool {
         // Leaving Deform bakes any live Transform float (committing it as one undo entry) and ends the
         // Reshape session (drops the `pre`/displacement) so a later mode's edits aren't re-warped from a
         // stale baseline; the Reshape pixels are already committed per-stroke.
+        // Leaving the Smear ends its warp session for the same reason: a `disp` and a frozen `pre`
+        // that belong to one tool must never be read by another, and `pre` describes a canvas that
+        // the next tool's edits will move out from under it.
+        if self.paint.paint_mode == PaintMode::Smear && new_mode != PaintMode::Smear {
+            self.end_warp_session();
+        }
         if self.paint.paint_mode == PaintMode::Deform && new_mode != PaintMode::Deform {
             self.end_transform(true);
             self.end_deform_session();

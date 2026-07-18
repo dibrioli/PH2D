@@ -126,7 +126,7 @@ impl PainterTool {
             deform_momentum: self.paint.deform.momentum,
             deform_strength: self.paint.deform.strength,
             deform_temperament: self.paint.deform.temperament,
-            deform_affect_relief: self.paint.deform.affect_relief,
+            deform_affect_relief: self.paint.warp.affect_relief,
             deform_layer_has_relief: self
                 .layers
                 .active()

@@ -191,3 +191,72 @@ fn a_neutral_effect_in_the_middle_of_the_stack_is_transparent() {
         "um efeito no ponto neutro tem de ser INVISÍVEL para os vizinhos"
     );
 }
+
+/// **A tabela de tipos cobre TODOS os variants** — se alguém acrescentar um efeito e esquecer
+/// a linha em `KINDS`, ele fica inalcançável pelo menu "Add" do painel: existe no motor, e o
+/// artista nunca o vê. É o gate que substitui a rodada de costura que o Zig Zag custou.
+#[test]
+fn every_effect_kind_is_reachable_from_the_add_table() {
+    for (i, name) in PathEffect::KINDS.iter().enumerate() {
+        let fx = PathEffect::from_kind(i)
+            .unwrap_or_else(|| panic!("KINDS[{i}] = {name}, mas `from_kind({i})` devolveu None"));
+        assert_eq!(fx.kind_index(), i, "{name}: o índice não fecha a volta");
+        assert_eq!(fx.label(), *name, "{name}: o rótulo diverge da tabela");
+    }
+    assert!(
+        PathEffect::from_kind(PathEffect::KINDS.len()).is_none(),
+        "um índice fora da tabela tem de devolver None, não o efeito 0"
+    );
+}
+
+/// **Todo efeito nasce NEUTRO** — o clique em "Add" não pode mover um pixel.
+#[test]
+fn every_kind_is_born_neutral() {
+    for i in 0..PathEffect::KINDS.len() {
+        let fx = PathEffect::from_kind(i).expect("kind");
+        assert!(
+            fx.is_neutral(),
+            "{} nasce a fazer alguma coisa — o clique em Add saltaria a forma",
+            fx.label()
+        );
+    }
+}
+
+/// **Os parâmetros cabem no teto que o painel registra**, e cada um faz a volta
+/// `set` → `get`. Sem isto, um parâmetro além do teto fica invisível e um `set` que escreve no
+/// campo errado passa despercebido.
+#[test]
+fn every_parameter_round_trips_within_the_panel_ceiling() {
+    for i in 0..PathEffect::KINDS.len() {
+        let mut fx = PathEffect::from_kind(i).expect("kind");
+        let params = fx.params();
+        assert!(
+            params.len() <= MAX_FX_PARAMS,
+            "{} declara {} params e o painel só registra {MAX_FX_PARAMS}",
+            fx.label(),
+            params.len()
+        );
+        for (j, p) in params.iter().enumerate() {
+            // Um valor que NÃO é o default nem o 0, para um `set` inerte não passar.
+            let v = if p.toggle { 1.0 } else { p.min.midpoint(p.max) };
+            fx.set(j, v);
+            assert!(
+                (fx.get(j) - v).abs() < 1e-12,
+                "{}::{}: escrevi {v}, li {}",
+                fx.label(),
+                p.name,
+                fx.get(j)
+            );
+        }
+    }
+}
+
+/// Um índice de parâmetro fora da faixa é **no-op**, não pânico nem escrita no vizinho.
+#[test]
+fn an_out_of_range_parameter_index_is_inert() {
+    let mut fx = PathEffect::from_kind(0).expect("kind");
+    let before = fx.clone();
+    fx.set(MAX_FX_PARAMS + 3, 0.7);
+    assert_eq!(fx, before);
+    assert_eq!(fx.get(MAX_FX_PARAMS + 3), 0.0);
+}

@@ -1397,9 +1397,13 @@ impl crate::App {
             // O PRESET de gaiola (ADR-0129 Fatia C): indice em `EnvelopeWarp::ALL`, e o Bend.
             let mut pending_envelope_preset: Option<usize> = None;
             let mut pending_envelope_bend: Option<f64> = None;
-            // ADR-0132: o toggle do Trim e o parametro que o slider moveu.
-            let mut pending_toggle_trim = false;
-            let mut pending_trim_param: Option<(crate::fx_bridge::TrimParam, f64)> = None;
+            // ADR-0132: a pilha de efeitos. Um clique num BOTAO (add/remove/up/down/toggle) e
+            // um arrasto num slider -- os dois enderecados por (linha, parametro), sem que este
+            // arquivo saiba que efeitos existem.
+            let mut pending_fx_add: Option<usize> = None;
+            let mut pending_fx_button: Option<(usize, crate::fx_bridge_dispatch::FxRowAction)> =
+                None;
+            let mut pending_fx_param: Option<(usize, usize, f64)> = None;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
@@ -1560,8 +1564,16 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_PINS {
                                 // ADR-0129 Fatia E: o puppet warp (MLS-rigid).
                                 pending_envelope_kind = Some(ph2d_ecs::EnvelopeKind::Pins);
-                            } else if *id == ph2d_editor::ids::VECTOR_FX_TRIM {
-                                pending_toggle_trim = true;
+                            } else if let Some(hit) = crate::fx_bridge_dispatch::classify_click(*id)
+                            {
+                                match hit {
+                                    crate::fx_bridge_dispatch::FxClick::Add(k) => {
+                                        pending_fx_add = Some(k);
+                                    }
+                                    crate::fx_bridge_dispatch::FxClick::Row(r, a) => {
+                                        pending_fx_button = Some((r, a));
+                                    }
+                                }
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_CLEAR_PINS {
                                 pending_clear_pins = true;
                             } else if let Some(i) = (0..ph2d_editor::ids::MAX_ENVELOPE_PRESETS)
@@ -1698,15 +1710,12 @@ impl crate::App {
                                 // ADR-0129 Fatia C: o `event.rs` do painel ja converteu o track
                                 // bipolar para o dominio do documento (`-1..1`) -- aqui e' valor.
                                 pending_envelope_bend = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_FX_TRIM_START {
-                                // O `event.rs` do painel ja entregou em dominio de documento
-                                // (fracao `0..1`) -- aqui e' valor, nao track.
-                                pending_trim_param = Some((crate::fx_bridge::TrimParam::Start, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_FX_TRIM_END {
-                                pending_trim_param = Some((crate::fx_bridge::TrimParam::End, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_FX_TRIM_OFFSET {
-                                pending_trim_param =
-                                    Some((crate::fx_bridge::TrimParam::Offset, *v));
+                            } else if let Some((r, prm)) =
+                                crate::fx_bridge_dispatch::classify_param(*id)
+                            {
+                                // O painel entrega o TRACK normalizado; a faixa real e' do
+                                // efeito e a ponte a aplica.
+                                pending_fx_param = Some((r, prm, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_MORPH_T {
                                 // Arrastar o `t` move a forma pelo caminho AO VIVO — e é assim que
                                 // o artista a estaciona onde ela fica bem, antes do K.
@@ -2655,15 +2664,17 @@ impl crate::App {
             }
             // ADR-0132: a pilha de efeitos do caminho selecionado. Os dois passam pela MESMA
             // `sole_path`, entao o que a secao PINTA e o que o clique ESCREVE nao podem divergir.
-            if pending_toggle_trim || pending_trim_param.is_some() {
+            if pending_fx_add.is_some() || pending_fx_button.is_some() || pending_fx_param.is_some()
+            {
                 let sel = self.vec_pen.selected_paths().to_vec();
                 if let Some(pid) = crate::fx_bridge::sole_path(&sel) {
-                    if pending_toggle_trim {
-                        crate::fx_bridge::toggle_trim(vec_scene, pid);
-                    }
-                    if let Some((which, v)) = pending_trim_param {
-                        crate::fx_bridge::set_trim_param(vec_scene, pid, which, v);
-                    }
+                    crate::fx_bridge_dispatch::apply(
+                        vec_scene,
+                        pid,
+                        pending_fx_add,
+                        pending_fx_button,
+                        pending_fx_param,
+                    );
                 }
             }
             // ADR-0128 C2b: Reset Spine — volta o(s) blend(s) selecionado(s) ao spine automático.
@@ -3429,9 +3440,12 @@ impl crate::App {
                 ph2d_panel_vector::set_current_has_envelope(env_container.is_some());
                 // ADR-0132: o Trim do caminho selecionado. A MESMA `sole_path` do dispatch --
                 // o painel nao pode oferecer controles para um caminho que o clique nao alcanca.
-                ph2d_panel_vector::set_current_trim(
-                    crate::fx_bridge::sole_path(self.vec_pen.selected_paths())
-                        .and_then(|pid| crate::fx_bridge::trim_of(vec_scene, pid)),
+                let fx_target = crate::fx_bridge::sole_path(self.vec_pen.selected_paths());
+                ph2d_panel_vector::set_current_effects(
+                    fx_target.is_some(),
+                    ph2d_vec_scene::effect::PathEffect::KINDS,
+                    fx_target
+                        .map_or_else(Vec::new, |pid| crate::fx_bridge::stack_view(vec_scene, pid)),
                 );
                 // Qual chip de gesto acende. O painel pergunta ao MESMO container que o
                 // dispatch vai escrever, senao a tela mostraria um gesto e o clique mudaria outro.

@@ -1,56 +1,58 @@
-//! O registro dos widgets da seção **EFFECTS** — irmão do [`super`] pelo teto de 600 LOC do
-//! painel, e par natural do `paint_effects` (que os PINTA).
+//! O registro dos widgets da seção **EFFECTS** — irmão do [`super`] pelo teto de 600 LOC, e
+//! par do `paint_effects` (que os PINTA).
 //!
-//! Registrar é o que os torna clicáveis: pintar + hit-rect não basta — sem `InteractiveState`
-//! o Down nunca ativa o widget e o Up nunca emite `Click`, então o botão fica **pintado e
-//! morto**. É a classe de bug que já matou os pills do vetor uma vez.
+//! Registrar é o que os torna clicáveis: sem `InteractiveState` o Down nunca ativa o widget e
+//! o Up nunca emite `Click`, então o botão fica **pintado e morto**.
 //!
-//! Os quatro são registrados **incondicionalmente**, mesmo os três sliders, que só são
-//! PINTADOS quando o caminho selecionado tem um Trim: o store é agnóstico de estado, e quem
-//! decide se o clique é possível é a PINTURA (sem hit-rect não há Click). Mesma regra do
-//! `populate_envelope`.
+//! # Registra-se o TETO, sempre
+//!
+//! A seção é dirigida pela tabela: quantas linhas e quantos parâmetros existem só se sabe no
+//! frame, e o store é montado uma vez. Então registra-se o máximo — `MAX_FX_ROWS` linhas ×
+//! `MAX_FX_ROW_PARAMS` parâmetros, mais `MAX_FX_KINDS` botões de Add. Registrar de MENOS deixa
+//! um controle clicável e morto; registrar de MAIS é inerte, porque quem decide se o clique é
+//! possível é a PINTURA (sem hit-rect não há Click). É o padrão dos presets do Envelope.
 
 use super::{button, slider_chip};
 use crate::ids;
 use ph2d_editor_core::interaction::WidgetStore;
 
-/// O passo dos três campos numéricos, no domínio do documento (fração do comprimento).
+/// O passo dos campos numéricos. As faixas variam (fração, contagem), então o passo é uma
+/// fração da faixa — resolvido no `set_number_range` por parâmetro, com este piso.
 const STEP: f64 = 0.01; // LITERAL-PX-OK: passo no domínio do documento, não medida de design
 
-/// Os três parâmetros do Trim são frações `0..=1`, então o track do slider **é** o valor do
-/// documento: escala 1, deslocamento 0. (O Bend do Envelope é o contra-exemplo — lá o track
-/// `0..1` mapeia para `-1..1`, e é por isso que a conversão mora no `event.rs`.)
+/// O track do slider é NORMALIZADO `0..1` e o valor mostrado é o do documento; a faixa real
+/// vem publicada por frame. Aqui o registro usa a identidade, e o `paint` reposiciona o track a
+/// cada frame a partir do snapshot.
 const IDENTITY_SCALE: f32 = 1.0;
 const IDENTITY_OFFSET: f32 = 0.0;
 
-/// Os widgets da seção Effects: o toggle do Trim e os três parâmetros dele.
+/// Os widgets da seção Effects — o teto de tudo.
 pub(super) fn populate_effects(store: &mut WidgetStore) {
-    button(store, ids::VECTOR_FX_TRIM);
-    for (slider, num, default) in [
-        (
-            ids::VECTOR_FX_TRIM_START,
-            ids::VECTOR_FX_TRIM_START_NUM,
-            0.0,
-        ),
-        (ids::VECTOR_FX_TRIM_END, ids::VECTOR_FX_TRIM_END_NUM, 1.0),
-        (
-            ids::VECTOR_FX_TRIM_OFFSET,
-            ids::VECTOR_FX_TRIM_OFFSET_NUM,
-            0.0,
-        ),
-    ] {
-        // O default do track e o do display coincidem — é o que "identidade" quer dizer.
-        #[allow(clippy::cast_possible_truncation)]
-        slider_chip(
-            store,
-            slider,
-            num,
-            default as f32,
-            default,
-            IDENTITY_SCALE,
-            IDENTITY_OFFSET,
-        );
-        // Sem o range o arrasto do campo numérico escala errado — não é opcional.
-        store.set_number_range(num, 0.0, 1.0, STEP);
+    for kind in 0..ids::MAX_FX_KINDS {
+        button(store, ids::vector_fx_add_id(kind));
+    }
+    for row in 0..ids::MAX_FX_ROWS {
+        button(store, ids::vector_fx_remove_id(row));
+        button(store, ids::vector_fx_up_id(row));
+        button(store, ids::vector_fx_down_id(row));
+        for param in 0..ids::MAX_FX_ROW_PARAMS {
+            let (slider, num) = (
+                ids::vector_fx_param_id(row, param),
+                ids::vector_fx_param_num_id(row, param),
+            );
+            slider_chip(
+                store,
+                slider,
+                num,
+                0.0,
+                0.0,
+                IDENTITY_SCALE,
+                IDENTITY_OFFSET,
+            );
+            // A faixa aqui é a do TRACK (`0..1`); o campo mostra o valor do documento e a
+            // faixa dele é republicada pelo paint. Sem `set_number_range` o arrasto do campo
+            // escala errado — não é opcional.
+            store.set_number_range(num, 0.0, 1.0, STEP);
+        }
     }
 }

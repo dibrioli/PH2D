@@ -39,6 +39,31 @@ use crate::fx_trim::{self, TrimSpec};
 use crate::fx_zigzag::{self, ZigZagSpec};
 use crate::{Contour, VecPath};
 
+/// **Um parâmetro de efeito, como o painel o desenha.**
+///
+/// O efeito DESCREVE os seus parâmetros e o painel os RENDERIZA — é o padrão da rack de áudio
+/// (*"o painel se auto-popula da tabela `KINDS`"*), e é o que faz o próximo efeito custar zero
+/// mudança de painel. Antes disto, acrescentar o Zig Zag custou uma rodada inteira dos 8 sites
+/// de costura, e o gargalo tinha deixado de ser a geometria.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct FxParam {
+    /// O rótulo que o painel mostra.
+    pub name: &'static str,
+    /// A faixa do slider, no domínio do DOCUMENTO.
+    pub min: f64,
+    pub max: f64,
+    /// `true` = caixinha (o valor só é 0 ou 1); `false` = slider.
+    pub toggle: bool,
+}
+
+/// O teto de parâmetros por efeito — o painel registra este número de linhas, sempre, e pinta
+/// só as que o efeito de facto declara. Registrar de menos deixa um controle clicável e morto;
+/// registrar de mais é inerte. É o padrão dos presets do Envelope.
+pub const MAX_FX_PARAMS: usize = 4;
+
+/// O teto de efeitos numa pilha, pela mesma razão.
+pub const MAX_PATH_EFFECTS: usize = 4;
+
 /// **Um efeito da pilha.** Dado de documento — viaja no save e no undo como qualquer
 /// geometria.
 ///
@@ -117,6 +142,108 @@ impl PathEffect {
                     "Zig Zag"
                 }
             }
+        }
+    }
+
+    /// **A tabela de tipos** — o menu "Add" do painel sai daqui, então acrescentar um efeito
+    /// não toca no painel. A ordem é a dos variants.
+    pub const KINDS: &'static [&'static str] = &["Trim Path", "Zig Zag"];
+
+    /// Um efeito novo do tipo `kind`, no ponto NEUTRO. `None` se o índice não existe.
+    ///
+    /// Nascer neutro não é detalhe: é o que faz o clique em "Add" não mover um pixel.
+    #[must_use]
+    pub fn from_kind(kind: usize) -> Option<Self> {
+        match kind {
+            0 => Some(Self::Trim(TrimSpec::default())),
+            1 => Some(Self::ZigZag(ZigZagSpec::default())),
+            _ => None,
+        }
+    }
+
+    /// O índice deste efeito em [`Self::KINDS`].
+    #[must_use]
+    pub fn kind_index(&self) -> usize {
+        match self {
+            Self::Trim(_) => 0,
+            Self::ZigZag(_) => 1,
+        }
+    }
+
+    /// Os parâmetros que este efeito oferece, na ordem em que o painel os desenha.
+    ///
+    /// ⚠️ Nunca mais de [`MAX_FX_PARAMS`] — há gate.
+    #[must_use]
+    pub fn params(&self) -> &'static [FxParam] {
+        /// Um slider de fração `0..=1`, a forma mais comum.
+        const fn frac(name: &'static str) -> FxParam {
+            FxParam {
+                name,
+                min: 0.0,
+                max: 1.0,
+                toggle: false,
+            }
+        }
+        /// Uma caixinha (o valor só é 0 ou 1).
+        const fn flag(name: &'static str) -> FxParam {
+            FxParam {
+                name,
+                min: 0.0,
+                max: 1.0,
+                toggle: true,
+            }
+        }
+        const TRIM: &[FxParam] = &[frac("Start"), frac("End"), frac("Offset")];
+        const ZIGZAG: &[FxParam] = &[
+            FxParam {
+                name: "Size",
+                min: 0.0,
+                max: 100.0,
+                toggle: false,
+            },
+            FxParam {
+                name: "Ridges",
+                min: 1.0,
+                max: 64.0,
+                toggle: false,
+            },
+            flag("Smooth"),
+            flag("Rough"),
+        ];
+        match self {
+            Self::Trim(_) => TRIM,
+            Self::ZigZag(_) => ZIGZAG,
+        }
+    }
+
+    /// O valor do parâmetro `i`, ou `0.0` se ele não existe.
+    #[must_use]
+    pub fn get(&self, i: usize) -> f64 {
+        match (self, i) {
+            (Self::Trim(t), 0) => t.start,
+            (Self::Trim(t), 1) => t.end,
+            (Self::Trim(t), 2) => t.offset,
+            (Self::ZigZag(z), 0) => z.amplitude,
+            (Self::ZigZag(z), 1) => z.ridges,
+            (Self::ZigZag(z), 2) => f64::from(u8::from(z.smooth)),
+            (Self::ZigZag(z), 3) => f64::from(u8::from(z.rough_seed.is_some())),
+            _ => 0.0,
+        }
+    }
+
+    /// Escreve o parâmetro `i`. Índice inexistente é no-op.
+    pub fn set(&mut self, i: usize, v: f64) {
+        match (self, i) {
+            (Self::Trim(t), 0) => t.start = v,
+            (Self::Trim(t), 1) => t.end = v,
+            (Self::Trim(t), 2) => t.offset = v,
+            (Self::ZigZag(z), 0) => z.amplitude = v,
+            (Self::ZigZag(z), 1) => z.ridges = v,
+            (Self::ZigZag(z), 2) => z.smooth = v >= 0.5,
+            // A seed é FIXA por enquanto: o que o artista liga é o *modo* Roughen. Um knob de
+            // seed entra quando alguém quiser duas rugosidades diferentes na mesma cena.
+            (Self::ZigZag(z), 3) => z.rough_seed = (v >= 0.5).then_some(1),
+            _ => {}
         }
     }
 

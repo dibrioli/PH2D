@@ -1209,13 +1209,16 @@ fn the_pins_controls_and_the_cage_controls_are_exclusive() {
     );
 }
 
-/// **O toggle do Trim (ADR-0132) chega ao bus quando o artista CLICA nele** — pelo caminho
-/// inteiro (`paint` → hit-rect → ponteiro real → dispatcher → `event.rs` → bus).
+/// **Os botões da pilha de efeitos chegam ao bus quando o artista CLICA neles** — pelo
+/// caminho inteiro (`paint` → hit-rect → ponteiro real → dispatcher → `event.rs` → bus).
 ///
-/// ⚠️ A seção Effects não tem premissa de estado para o BOTÃO: ele é oferecido sempre (é ele
-/// que PÕE o efeito). Os três sliders, sim — ver o par de presença abaixo.
+/// ⚠️ **`set_current_effects` não é decoração do fixture: é a PREMISSA da seção.** Sem alvo
+/// publicado, o `painted_rect` devolve `None` e o gate morre na 1ª asserção.
+///
+/// O gate varre a tabela PUBLICADA — um tipo de efeito novo é coberto sem que este arquivo
+/// seja reescrito, que é a propriedade inteira do refactor dirigido-por-tabela.
 #[test]
-fn the_trim_toggle_reaches_the_bus_when_clicked() {
+fn every_effect_stack_button_reaches_the_bus_when_clicked() {
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
@@ -1223,80 +1226,91 @@ fn the_trim_toggle_reaches_the_bus_when_clicked() {
         h: 900.0,
     };
     const SEC: u128 = 1_000_000_000;
-    ph2d_panel_vector::set_current_trim(None);
-    let mut host = MockPanelHost::with_panel::<VectorPanel>();
-    let mut panel_state = VectorPanelState;
-    let r = host
-        .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_FX_TRIM)
-        .expect("o toggle do Trim nao foi PINTADO com area clicavel na secao Effects");
-    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
-    let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
-    assert!(
-        evs.iter()
-            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_FX_TRIM)),
-        "o ponteiro sobre o toggle nao virou Click — falta `button()` no `populate_effects`"
-    );
-    for ev in evs {
-        host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+    const KINDS: &[&str] = &["Trim Path", "Zig Zag"];
+
+    // Uma pilha de DUAS linhas: é o que faz o Up e o Down existirem (nas bordas eles não são
+    // oferecidos, de propósito).
+    let row = |label: &'static str| ph2d_panel_vector::FxRowView {
+        label,
+        params: vec![ph2d_panel_vector::FxParamView {
+            name: "Start",
+            min: 0.0,
+            max: 1.0,
+            toggle: false,
+            value: 0.25,
+        }],
+    };
+    let publish = || {
+        ph2d_panel_vector::set_current_effects(true, KINDS, vec![row("Trim Path"), row("Zig Zag")]);
+    };
+
+    let mut targets: Vec<(ph2d_a11y::NodeId, String)> = Vec::new();
+    for (k, name) in KINDS.iter().enumerate() {
+        targets.push((ids::vector_fx_add_id(k), format!("Add {name}")));
     }
-    assert!(
-        host.drained_actions().into_iter().any(
-            |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c))
-                if c == ids::VECTOR_FX_TRIM)
-        ),
-        "o Click no toggle nao chegou ao bus — falta o id em `forwards_plain_click` \
-         (o botao e clicavel e MORTO)"
-    );
+    targets.push((ids::vector_fx_remove_id(0), "rótulo/remove linha 0".into()));
+    targets.push((ids::vector_fx_down_id(0), "Down linha 0".into()));
+    targets.push((ids::vector_fx_up_id(1), "Up linha 1".into()));
+
+    for (id, name) in targets {
+        publish();
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("{name} nao foi PINTADO com area clicavel na secao Effects"));
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} nao virou Click — falta o registro no `populate_effects`"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        assert!(
+            host.drained_actions().into_iter().any(
+                |a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id)
+            ),
+            "o Click em {name} nao chegou ao bus — falta o id em `forwards_plain_click` \
+             (o botao e clicavel e MORTO)"
+        );
+    }
+    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
 }
 
-/// **Sem Trim no caminho, os três parâmetros NÃO existem na tela** — o par de PRESENÇA.
+/// **Sem alvo, a seção NÃO oferece nada** — nem os botões de Add.
 ///
-/// Não são pintados "dimmed": um controle apagado que ainda despacha mente, e um que não
-/// despacha é um botão morto. Eles simplesmente não são oferecidos — e o toggle, que é quem
-/// cria o efeito, continua lá.
+/// A seção é por-caminho: com dois selecionados *"a pilha"* não tem referente, e um Add que
+/// escrevesse num deles em silêncio seria pior que não existir.
 #[test]
-fn the_trim_parameters_are_not_offered_without_a_trim() {
+fn the_effect_section_offers_nothing_without_a_single_target() {
     const VIEWPORT: Rect = Rect {
         x: 0.0,
         y: 0.0,
         w: 1600.0,
         h: 900.0,
     };
-    let params = [
-        (ids::VECTOR_FX_TRIM_START, "Start"),
-        (ids::VECTOR_FX_TRIM_END, "End"),
-        (ids::VECTOR_FX_TRIM_OFFSET, "Offset"),
-    ];
-
-    ph2d_panel_vector::set_current_trim(None);
+    ph2d_panel_vector::set_current_effects(false, &["Trim Path"], Vec::new());
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    for (id, name) in params {
-        assert!(
-            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
-                .is_none(),
-            "{name} foi pintado sem haver Trim no caminho — um slider que edita um efeito \
-             inexistente escreve no vazio"
-        );
-    }
     assert!(
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_FX_TRIM)
-            .is_some(),
-        "o toggle TEM de continuar oferecido — e' ele que cria o efeito"
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_fx_add_id(0))
+            .is_none(),
+        "o Add foi pintado sem caminho unico selecionado"
     );
 
-    // E COM Trim os três aparecem: sem esta metade, "não oferece" ficaria verde com a seção
+    // E COM alvo ele aparece — sem esta metade, "não oferece" ficaria verde com a seção
     // inteira apagada. [[feedback_absence_gate_needs_a_presence_sibling]]
-    ph2d_panel_vector::set_current_trim(Some((0.1, 0.8, 0.2)));
+    ph2d_panel_vector::set_current_effects(true, &["Trim Path"], Vec::new());
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
-    for (id, name) in params {
-        assert!(
-            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
-                .is_some(),
-            "{name} NAO foi pintado com um Trim no caminho — o artista nao consegue ajusta-lo"
-        );
-    }
-    ph2d_panel_vector::set_current_trim(None);
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_fx_add_id(0))
+            .is_some(),
+        "com alvo, o Add TEM de ser oferecido"
+    );
+    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
 }

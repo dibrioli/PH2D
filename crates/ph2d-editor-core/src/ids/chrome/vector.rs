@@ -529,23 +529,53 @@ pub const VECTOR_ENVELOPE_CLEAR_PINS: NodeId = hash_node_id("vector.envelope.cle
 // `PH2D_BUILD_SMOKE=13` — o motor existia e o artista não o alcançava.
 /// Seção **EFFECTS** — os efeitos não-destrutivos e empilháveis do caminho selecionado.
 pub const VECTOR_SECTION_EFFECTS: NodeId = hash_node_id("vector.section.effects");
-/// **Trim Path** — põe (ou tira) o efeito de revelação no caminho selecionado. É um TOGGLE: o
-/// mesmo botão adiciona e remove, porque "Add" sobre um caminho que já tem um seria um 2º Trim,
-/// e a UI só oferece um (o motor aceita N — ADR-0132 §2).
-pub const VECTOR_FX_TRIM: NodeId = hash_node_id("vector.fx.trim");
-/// **Start** do Trim — a fração do comprimento onde o trecho começa.
-pub const VECTOR_FX_TRIM_START: NodeId = hash_node_id("vector.fx.trim.start");
-/// O campo numérico do [`VECTOR_FX_TRIM_START`].
-pub const VECTOR_FX_TRIM_START_NUM: NodeId = hash_node_id("vector.fx.trim.start.num");
-/// **End** do Trim — a fração onde ele acaba. É este que se keyframa para o *draw-on*.
-pub const VECTOR_FX_TRIM_END: NodeId = hash_node_id("vector.fx.trim.end");
-/// O campo numérico do [`VECTOR_FX_TRIM_END`].
-pub const VECTOR_FX_TRIM_END_NUM: NodeId = hash_node_id("vector.fx.trim.end.num");
-/// **Offset** do Trim — gira o ponto de partida ao longo do caminho. Num contorno fechado ele dá
-/// a volta pela emenda; num aberto ele desliza e o que sai do domínio é recortado.
-pub const VECTOR_FX_TRIM_OFFSET: NodeId = hash_node_id("vector.fx.trim.offset");
-/// O campo numérico do [`VECTOR_FX_TRIM_OFFSET`].
-pub const VECTOR_FX_TRIM_OFFSET_NUM: NodeId = hash_node_id("vector.fx.trim.offset.num");
+/// O teto de TIPOS de efeito que o menu "Add" oferece. O painel registra este número de
+/// botões, sempre, e pinta só os que a tabela publicada de facto traz.
+pub const MAX_FX_KINDS: usize = 8;
+/// O teto de efeitos numa pilha.
+pub const MAX_FX_ROWS: usize = 4;
+/// O teto de parâmetros por efeito.
+///
+/// ⚠️ Estes três espelham constantes do motor (`ph2d_vec_scene::effect`), que o painel não
+/// alcança — ele vive de snapshots. Há gate a exigir que os dois lados concordem.
+pub const MAX_FX_ROW_PARAMS: usize = 4;
+
+/// **Add \<tipo\>** — o botão que põe um efeito do tipo `kind` na pilha.
+#[must_use]
+pub fn vector_fx_add_id(kind: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.add.{kind}"))
+}
+
+/// **Remove** o efeito da linha `row`.
+#[must_use]
+pub fn vector_fx_remove_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.remove.{row}"))
+}
+
+/// Sobe o efeito da linha `row` na pilha. A ORDEM muda a geometria (ADR-0132), então
+/// reordenar é feature, não enfeite.
+#[must_use]
+pub fn vector_fx_up_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.up.{row}"))
+}
+
+/// Desce o efeito da linha `row`.
+#[must_use]
+pub fn vector_fx_down_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.down.{row}"))
+}
+
+/// O slider do parâmetro `param` do efeito da linha `row`.
+#[must_use]
+pub fn vector_fx_param_id(row: usize, param: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}"))
+}
+
+/// O campo numérico do [`vector_fx_param_id`].
+#[must_use]
+pub fn vector_fx_param_num_id(row: usize, param: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.p.{row}.{param}.num"))
+}
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

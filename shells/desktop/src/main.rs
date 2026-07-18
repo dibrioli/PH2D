@@ -84,6 +84,7 @@ mod flip_strip;
 mod flip_transform;
 mod forwarding;
 mod fx_bridge;
+mod fx_bridge_dispatch;
 mod fx_smoke;
 mod hero_bridge;
 mod hero_intents;

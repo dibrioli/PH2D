@@ -34,26 +34,27 @@ use ph2d_editor_core::tool::PanelEvent;
 /// guarda e nunca precisa saber que existe um track `0..1`. Um shell que convertesse por conta
 /// própria seria uma segunda porta para a mesma pergunta — e a que esquecesse o mapa bipolar
 /// carimbaria um preset de força zero quando o artista puxou o slider até a esquerda.
-/// Este id é um dos três parâmetros do Trim (ADR-0132)?
-fn is_trim_param(id: ph2d_a11y::NodeId) -> bool {
-    id == ids::VECTOR_FX_TRIM_START
-        || id == ids::VECTOR_FX_TRIM_END
-        || id == ids::VECTOR_FX_TRIM_OFFSET
+/// A linha e o parâmetro que este id endereça, se ele for um slider da pilha de efeitos.
+///
+/// A varredura é sobre os TETOS (`MAX_FX_ROWS` × `MAX_FX_ROW_PARAMS` = 16 comparações): os ids
+/// são hashes de NOME, então não há aritmética que os inverta. É barato, e é o mesmo padrão
+/// que os presets do Envelope já usam.
+fn fx_param_of(id: ph2d_a11y::NodeId) -> Option<(usize, usize)> {
+    (0..ids::MAX_FX_ROWS).find_map(|row| {
+        (0..ids::MAX_FX_ROW_PARAMS)
+            .find(|&p| id == ids::vector_fx_param_id(row, p))
+            .map(|p| (row, p))
+    })
 }
 
-/// Os três do Trim são frações `0..=1`: o track JÁ é o valor do documento, então a conversão
-/// é a **identidade**. Mesmo assim eles passam por [`forward_track`] — é esta a fronteira onde
-/// a pergunta *"em que unidade?"* é respondida, e um atalho os deixaria de fora dela.
-///
-/// O `End` cai em `1.0` quando o store ainda não tem o slider: é o ponto NEUTRO do Trim, e um
-/// default de `0.0` faria o caminho desaparecer no primeiro frame.
-fn forward_trim(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
-    let default = if id == ids::VECTOR_FX_TRIM_END {
-        1.0
-    } else {
-        0.0
-    };
-    forward_track(host, id, default, |t| t)
+/// Este id é um botão da pilha (Add / Remove / Up / Down)?
+fn is_fx_button(id: ph2d_a11y::NodeId) -> bool {
+    (0..ids::MAX_FX_KINDS).any(|k| id == ids::vector_fx_add_id(k))
+        || (0..ids::MAX_FX_ROWS).any(|r| {
+            id == ids::vector_fx_remove_id(r)
+                || id == ids::vector_fx_up_id(r)
+                || id == ids::vector_fx_down_id(r)
+        })
 }
 
 fn forward_track(
@@ -81,7 +82,12 @@ pub(crate) fn apply_event(
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_ENVELOPE_BEND => {
             forward_track(host, id, 0.5, |t| t.mul_add(2.0, -1.0))
         }
-        WidgetEvent::ValueChanged(id) if is_trim_param(id) => forward_trim(host, id),
+        // O track de um parâmetro de efeito é NORMALIZADO `0..1`; a faixa real é do EFEITO e
+        // viaja no snapshot. Quem reconverte é a shell, que a conhece — aqui o que se garante é
+        // que o número que sai é o track, sem fingir ser outra coisa.
+        WidgetEvent::ValueChanged(id) if fx_param_of(id).is_some() => {
+            forward_track(host, id, 0.0, |t| t)
+        }
         WidgetEvent::ValueChanged(id) if id == ids::VECTOR_MORPH_T => {
             forward_track(host, id, 0.5, |t| t)
         }
@@ -379,7 +385,7 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BLEND_EXPAND
         || id == ids::VECTOR_BLEND_RELEASE
         || id == ids::VECTOR_MORPH_RUN
-        || id == ids::VECTOR_FX_TRIM
+        || is_fx_button(id)
         || id == ids::VECTOR_ENVELOPE_RUN
         || id == ids::VECTOR_ENVELOPE_EXPAND
         || id == ids::VECTOR_ENVELOPE_RELEASE

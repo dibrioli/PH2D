@@ -36,7 +36,10 @@
 //! the host bridge sit at `BASE_NODE_ID = 100_000` upward and also
 //! have those bits clear. See `hero_bridge.rs` for the runtime path.
 
-use ph2d_a11y::NodeId;
+/// Re-exportado: este módulo distribui `NodeId`s e as fábricas indexadas devolvem um, então
+/// quem os consome precisa poder NOMEAR o tipo. Sem isto, um chamador fora da árvore do
+/// `ph2d-a11y` só consegue compará-los, nunca guardá-los numa assinatura.
+pub use ph2d_a11y::NodeId;
 use ph2d_tool_registry::hash_node_id;
 
 mod chrome;

@@ -4,7 +4,7 @@
 use super::*;
 use ph2d_tool_flip::FillMode as ToolFillMode;
 
-fn style(mode: ToolFillMode) -> FlipStyleSnapshot {
+pub(crate) fn style(mode: ToolFillMode) -> FlipStyleSnapshot {
     FlipStyleSnapshot {
         fill_mode: mode,
         fill_color: [200, 100, 50, 255],
@@ -16,7 +16,7 @@ fn style(mode: ToolFillMode) -> FlipStyleSnapshot {
 }
 
 /// Um quadrado de line-art no desenho.
-fn boxed_drawing() -> FlipDrawing {
+pub(crate) fn boxed_drawing() -> FlipDrawing {
     let mut d = FlipDrawing::new();
     let mut s = FlipStroke::new();
     for p in [

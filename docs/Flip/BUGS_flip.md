@@ -1061,3 +1061,69 @@ da hipotenusa), ele passou a provar a costura e só ela.
 > usuário podia *ver* estava certo, o que fez o defeito parecer "só" uma linha teimosa. Corolário de
 > assinatura: **um parâmetro que não carrega o suficiente para responder certo é um bug esperando
 > data** — `&[Vec2]` não sabia fechar, e por isso o marquee não tinha como acertar.
+
+
+---
+
+## #19 — ✅ O fill de uma forma que se CRUZA saía fora da linha (e Gap/Trap não ajudavam)
+
+**Sintoma** (smoke do Enio, 2026-07-18, com três screenshots): *"independente do valor de gap
+ou trap o fill se ajusta perfeitamente à linha até o momento em que se sobreponham duas linhas
+e se tente fazer o fill das áreas sobrepostas. Aí o fill fica bizarro e fora da linha."*
+
+Na 2ª foto, uma gota desenhada à mão cujo rabo cruza a própria descida: o preenchimento cobre
+o lobo **e uma cunha triangular** entre as duas pontas, com a borda cortando reto por cima. Na
+3ª, um emaranhado de traços e um blob que não segue linha nenhuma.
+
+### A causa — e por que os dois sliders eram irrelevantes
+
+O `filled_shape_target` (BUGS #16/#17) roda **depois** do solver e, quando dispara, **descarta
+o contorno traçado** e pinta o polígono do PRÓPRIO traço. Num traço que se cruza, esse polígono
+não é a região que o usuário vê: o even-odd o lê como o lobo **mais a cunha** — literalmente o
+triângulo da foto.
+
+E é por isso que **Gap e Trap não mudavam nada**: os dois mudam o contorno TRAÇADO, e o
+contorno traçado é exatamente o que este caminho joga fora. *Quando um parâmetro "não faz
+diferença nenhuma", suspeite de que o resultado dele está sendo descartado a jusante — não de
+que ele está fraco.*
+
+### Área é um proxy FRACO de "é a mesma região"
+
+O critério era `|área_traçada − área_do_traço| ≤ 15%`. Medido com os números do produto
+(régua `measure_which_criterion_separates_the_two_cases`):
+
+| caso | erro de área | dist. máx / ε do RDP |
+|---|---|---|
+| quadrado (legítimo) | 0,1 % | 1,37 |
+| polígono de 64 lados | 0,2 % | 0,76 |
+| polígono de 200 lados | 0,3 % | 1,13 |
+| contorno TREMIDO (a mão) | 0,2 % | 1,22 |
+| **gota que se cruza** | **0,7 %** | **205,36** |
+
+A forma quebrada passa o teste de área com **0,7%** — folgadíssima dentro dos 15%. O shoelace
+de um polígono que se cruza é uma **soma algébrica com sinais que se cancelam**, não a área da
+região pintada: o critério comparava duas grandezas diferentes. *Duas formas bem distintas têm
+a mesma área; foi só uma questão de tempo até uma delas aparecer.*
+
+### O fix — as duas curvas têm de se ABRAÇAR, nos DOIS sentidos
+
+`max_dist_to_ring` em ambas as direções, com tolerância `8 × ε` (o fosso medido é de 150×):
+
+- **traço → contorno**: pega a gota (as pontas ficam a 205 ε do contorno);
+- **contorno → traço**: pega a região fechada por VÁRIOS traços — um traço que acompanha só um
+  *pedaço* da fronteira passa no 1º sentido, e pintar o polígono dele corta onde o vizinho faz
+  barriga (a 3ª foto).
+
+**Cada sentido tem o seu gate, porque a mutação de um só não sangra o outro** — foi medido:
+remover o 2º sentido deixava **tudo verde** até o gate da região-fechada-por-dois existir
+([[feedback_layered_defenses_need_per_layer_gates]]).
+
+O `filled_shape_target` e os gates mudaram-se para os módulos irmãos `flip_fill_target.rs` /
+`flip_fill_target_tests.rs` (o `flip_fill.rs` bateu no teto de LOC do shell).
+
+> **Lição — um critério "conservador" só é conservador contra o que ele MEDE.** O BUGS #16
+> escreveu que a área *"é o que separa preencheu-a-forma de preencheu-um-pedaço"*, e isso era
+> verdade nos casos em que ele foi desenvolvido. A pergunta que faltava era **quem, no app
+> real, satisfaz este critério sem satisfazer a intenção?** — e a resposta (uma forma que se
+> cruza, que é o que a mão desenha o tempo todo ao fechar um contorno) estava a um traço de
+> distância. *É a mesma pergunta que fechou o #17, feita do outro lado.*

@@ -45,6 +45,8 @@ use ph2d_vec_scene::Xform;
 /// `0,5` é o menor valor que zera o vazamento — margem a mais volta a empurrar a cor
 /// para FORA da linha, que é exatamente o defeito que matou o `grow = +2` default
 /// (BUGS #11).
+use crate::flip_fill_target::filled_shape_target;
+
 const FILL_TUCK_PX: f32 = 0.5; // LITERAL-PX-OK: erro de vetorizacao do contorno, MEDIDO
 
 /// As linhas que delimitam o preenchimento: TODOS os traços do desenho que não são,
@@ -54,7 +56,7 @@ const FILL_TUCK_PX: f32 = 0.5; // LITERAL-PX-OK: erro de vetorizacao do contorno
 /// entrar por baixo da 1ª. Mas um fechamento de gap persistente (que também é
 /// `hide_stroke`) **é** — é exatamente para isso que ele existe. Os dois se distinguem
 /// pelo `fill`: o preenchimento tem cor; o fechamento não.
-fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
+pub(crate) fn boundaries(drawing: &FlipDrawing) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
     drawing
         .strokes
         .iter()
@@ -180,7 +182,7 @@ fn fill_contains(s: &FlipStroke, p: Vec2) -> bool {
 }
 
 /// A área (com sinal) de um anel.
-fn ring_area(r: &[Vec2]) -> f32 {
+pub(crate) fn ring_area(r: &[Vec2]) -> f32 {
     let n = r.len();
     (0..n)
         .map(|i| {
@@ -209,63 +211,6 @@ pub(crate) fn ring_contains(ring: &[Vec2], p: Vec2) -> bool {
         }
     }
     c
-}
-
-/// **A região preenchida É o interior de um traço fechado?** Se for, o índice dele.
-///
-/// É a pergunta que muda tudo (smoke do Enio 2026-07-13, com o Suzanne ao lado):
-///
-/// > *"nem todo vertex da linha está conectado ao vertex de fill… isso cria áreas de
-/// > dessincronização e gaps"*
-///
-/// Exato — e a causa é que o contorno do balde sai do **raster** (marching squares +
-/// RDP), então os vértices dele não têm relação com os da linha: nas quinas ele chanfra,
-/// nas retas ele desliza, e como o erro é assado em unidades de DOCUMENTO enquanto a
-/// linha é absoluta em px de TELA, **o zoom o amplia**.
-///
-/// A cura não é aproximar melhor: é **não vetorizar**. Quando a região é o interior de
-/// uma forma fechada, o preenchimento é o **fill do próprio traço** (a triangulação dos
-/// pontos DELE — exatamente o que o Grease Pencil faz num material `stroke + fill`, que
-/// é como o Suzanne é desenhado). Aí não há dois conjuntos de vértices para
-/// dessincronizar: **há um só**. Esculpir a linha move a cor junto, de graça, para
-/// sempre, em qualquer zoom.
-///
-/// **`closed` NÃO entra no critério** — e é aqui que o 1º corte morreu no produto (smoke
-/// do Enio 2026-07-13). Um traço desenhado À MÃO é `closed = false`: o `flip_draw::build_stroke`
-/// só fecha o traço no modo `Shape: Filled`, e a mão que encosta a ponta no começo **não**
-/// muda esse bit. Exigir `closed` fazia o auto-preenchimento **nunca disparar** fora daquele
-/// modo — todo fill do usuário caía no contorno vetorizado, que é justamente o que
-/// dessincroniza. O polígono de um traço aberto fecha **implicitamente** (é o que o GP faz:
-/// a triangulação dos pontos da curva não pergunta se ela é cíclica), e é assim que o
-/// `ring_contains`/`ring_area` já o leem.
-///
-/// O critério é conservador — os três têm de valer:
-/// 1. o traço é **line-art** (não uma região) e tem polígono (≥ 3 pontos);
-/// 2. o **clique** cai dentro dele;
-/// 3. a área do contorno que o solver traçou **bate** com a do traço (≤ `AREA_TOL`) — é
-///    isso que separa "preencheu a forma" de "preencheu um pedaço entre ela e outra".
-///
-/// Quando não bate (uma região delimitada por VÁRIOS traços — colorir entre linhas), não
-/// existe "a curva" para carregar a cor, e o contorno vetorizado é o caminho — que é o
-/// que o balde do GP também faz.
-fn filled_shape_target(drawing: &FlipDrawing, outer: &[Vec2], click: Vec2) -> Option<usize> {
-    /// Quanto a área do contorno traçado pode diferir da do traço (fração).
-    const AREA_TOL: f32 = 0.15; // LITERAL-PX-OK: fracao, nao metrica de design
-    let target_area = ring_area(outer).abs();
-    if target_area <= 0.0 {
-        return None;
-    }
-    drawing
-        .strokes
-        .iter()
-        .enumerate()
-        .filter(|(_, s)| !s.hide_stroke && s.len() >= 3)
-        .filter(|(_, s)| ring_contains(s.positions(), click))
-        .find(|(_, s)| {
-            let a = ring_area(s.positions()).abs();
-            (a - target_area).abs() <= AREA_TOL * a.max(target_area)
-        })
-        .map(|(i, _)| i)
 }
 
 /// **O clique do balde.** `local` é o ponto clicado no espaço do desenho; `px_to_world`
@@ -384,7 +329,22 @@ pub(crate) fn fill_click(
     // **A forma fechada pinta A SI MESMA** (a lição do Suzanne — ver `filled_shape_target`).
     // Sem contorno vetorizado, sem dois conjuntos de vértices, sem dessincronização: a cor
     // é a triangulação dos pontos da própria linha, em qualquer zoom, para sempre.
-    if let Some(i) = filled_shape_target(drawing, &r.outer, local) {
+    // A tolerância do "abraço": múltiplos do erro que a própria vetorização admite.
+    // O `eps` do RDP vive em px de BUFFER, então em unidades de documento ele é
+    // `RDP_EPSILON_PX / precision`.
+    //
+    // **O 8 saiu de uma varredura, não do olho** (`measure_which_criterion_separates_the_two_cases`,
+    // com os números do produto): formas legítimas — quadrado, polígonos de 64 e 200
+    // lados, e um contorno TREMIDO como o da mão — ficam entre **0,76 e 1,37** ε; a gota
+    // que se cruza fica em **205** ε. O fosso é de 150×, e 8 deixa ~6× de folga para a
+    // forma legítima sem chegar perto da quebrada.
+    //
+    // ⚠️ Se a grade tiver cedido resolução ao `MAX_SIDE`, o ε efetivo é MAIOR que este —
+    // então a tolerância fica apertada demais e o critério recusa. Recusar é o lado
+    // seguro: cai no contorno vetorizado, que é o caminho que sempre funcionou.
+    const HUG_TOL_EPS: f32 = 8.0; // LITERAL-PX-OK: multiplo do eps, medido (tabela acima)
+    let hug_tol = HUG_TOL_EPS * ph2d_flip_fill::RDP_EPSILON_PX / precision.max(1e-6);
+    if let Some(i) = filled_shape_target(drawing, &r.outer, local, hug_tol) {
         // Os fechamentos de gap que a solução usou continuam valendo (o twist do Harmony).
         for c in &r.closures {
             drawing.strokes.insert(0, closure_stroke(c.a, c.b));
@@ -549,4 +509,4 @@ impl crate::App {
 
 #[cfg(test)]
 #[path = "flip_fill_tests.rs"]
-mod tests;
+pub(crate) mod tests;

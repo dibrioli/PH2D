@@ -407,6 +407,26 @@ pub enum EditorAction {
     /// same pipeline as Transform / Visibility. Raised by
     /// `TextChanged` on `INSP_ENTITY_NAME`.
     InspectorNameEdit(crate::screens::hero::InspectorNameInfo),
+
+    /// Transport control from the TopBar Play/Pause/Reset chips
+    /// (`chrome::transport`). The shell owns the ONE clock
+    /// (`ph2d_core::Playhead`, W4.T7), so the chrome handler cannot touch it
+    /// directly — it raises this, and the shell drains it into the playhead.
+    /// Physics, Motion, Timeline and Flip all ride the same clock, so these
+    /// three chips drive every time-based subsystem at once.
+    Transport(TransportCmd),
+}
+
+/// The three TopBar transport commands. Kept a small copy enum so the
+/// chrome layer stays free of the `Playhead` type (that lives in the shell).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TransportCmd {
+    /// Start the clock rolling forward (`playhead.play()`).
+    Play,
+    /// Halt the clock where it is (`playhead.pause()`).
+    Pause,
+    /// Rewind the clock to the start and stop (`playhead.rewind()` + pause).
+    Reset,
 }
 
 /// FIFO queue of [`EditorAction`]s. Held on `HeroScreen` as a single

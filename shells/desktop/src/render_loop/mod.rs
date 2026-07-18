@@ -1893,6 +1893,16 @@ impl crate::App {
                             wgpu::PresentMode::Immediate
                         });
                     }
+                    EditorAction::Transport(cmd) => {
+                        // TopBar Play/Pause/Reset drive the ONE clock
+                        // (`Playhead`, W4.T7). Physics, Motion, Timeline and
+                        // Flip all ride it, so one click moves every
+                        // time-based subsystem at once. The single door
+                        // `transport::apply` is unit-tested headless. NOTE:
+                        // physics scrub-back — the ball flying back up — is
+                        // W1.5; here Reset only returns the clock to 0.
+                        crate::transport::apply(cmd, &mut self.playhead);
+                    }
                     // (Bgremoval bake leftover handled inside the
                     // `OneShotImageOp` arm above — defers to the
                     // image_edit drain site so `bgremoval_active` is

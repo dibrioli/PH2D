@@ -26,6 +26,7 @@ fn scene() -> (SimWorld, Vec<Entity>) {
                 half_y: 0.1,
             },
             density: 1.0,
+            ..Collider::default()
         },
         Transform::from_translation(Vec2::new(0.0, 0.0)),
     ));
@@ -42,6 +43,7 @@ fn scene() -> (SimWorld, Vec<Entity>) {
                     Collider {
                         shape: ColliderShape::Ball { radius: 0.25 },
                         density: 1.0,
+                        ..Collider::default()
                     },
                     Transform::from_translation(Vec2::new(col * 0.6 - 0.6, 2.0 + row * 0.7)),
                 ))
@@ -196,6 +198,7 @@ fn adding_a_body_mid_timeline_invalidates_the_cache() {
             Collider {
                 shape: ColliderShape::Ball { radius: 0.25 },
                 density: 1.0,
+                ..Collider::default()
             },
             Transform::from_translation(Vec2::new(3.0, 6.0)),
         ))

@@ -336,6 +336,61 @@ pub enum BlendFieldEdit {
     Blend(u8),
 }
 
+/// §11 Physics Body-section snapshot (ADR-0130 D8). Mirrors the optional
+/// `RigidBody` + `Collider` pair from `ph2d-physics-ecs`; editor-core stays
+/// loose-coupled from both `ph2d-ecs` and the physics crate, so the shell
+/// maps tags ↔ enums at the boundary — the same discipline as §10's
+/// `blend_tag`.
+///
+/// **`has_body` is the whole reason this is `Some` for a plain sprite.** The
+/// other sections describe something that exists; this one also has to offer
+/// the thing that does not yet, or a body could never be authored at all —
+/// physics would be reachable only from a smoke scene.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct InspectorPhysicsInfo {
+    pub entity_bits: u64,
+    /// Does this entity carry `RigidBody` + `Collider` right now?
+    pub has_body: bool,
+    /// `0` Dynamic · `1` Static.
+    pub kind_tag: u8,
+    /// `0` Ball · `1` Box.
+    pub shape_tag: u8,
+    /// Ball radius, meters (meaningless when `shape_tag == 1`).
+    pub radius: f32,
+    /// Box HALF-extents, meters (meaningless when `shape_tag == 0`).
+    pub half_x: f32,
+    pub half_y: f32,
+    pub density: f32,
+    pub restitution: f32,
+    pub friction: f32,
+}
+
+/// A single editable §11 physics field, dispatched as
+/// [`EditorAction::InspectorPhysicsEdit`].
+///
+/// [`PhysicsFieldEdit::Add`] carries no geometry on purpose: the default
+/// collider is derived from the sprite's own bounds **by the shell**, which
+/// is the half that knows how big the art is. A collider that starts as the
+/// sprite's box is the one shape that can never disagree with what is drawn.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum PhysicsFieldEdit {
+    /// Attach `RigidBody{Dynamic}` + a `Collider` boxed to the sprite.
+    Add,
+    /// Detach both components — the entity goes back to being plain art.
+    Remove,
+    /// `BodyKind` tag: `0` Dynamic · `1` Static.
+    Kind(u8),
+    /// `ColliderShape` tag: `0` Ball · `1` Box. Switching preserves the
+    /// footprint (a box becomes the ball that fits it, and back).
+    Shape(u8),
+    Radius(f32),
+    HalfX(f32),
+    HalfY(f32),
+    Density(f32),
+    Restitution(f32),
+    Friction(f32),
+}
+
 /// W3 §8 Visibility-section snapshot (the collapsible section body, NOT
 /// the always-on "Visible" toggle — that stays [`InspectorVisibilityInfo`]).
 /// Mirrors the optional ECS components `VisibilityLayer` / `ClipChildren`

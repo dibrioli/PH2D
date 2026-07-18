@@ -5,6 +5,7 @@
 //! |-----|------|-------|
 //! | `1` | W1   | one **dynamic** sprite dropped above a **static** floor |
 //! | `2` | W1.5 | a **pile** of bodies, for scrubbing the clock backwards |
+//! | `3` | W2   | plain sprites + a floor, for authoring bodies in the Inspector |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -35,6 +36,7 @@ fn spawn_floor(world: &mut bevy_ecs::world::World) {
                 half_y: 0.2,
             },
             density: 1.0,
+            ..Collider::default()
         },
     ));
 }
@@ -55,12 +57,20 @@ impl crate::App {
 
         match which.trim() {
             "2" => self.physics_smoke_pile(),
+            "3" => self.physics_smoke_author(),
             _ => self.physics_smoke_drop(),
         }
 
-        // Play so the bridge steps the world forward.
+        // Play so the bridge steps the world forward — except in the
+        // authoring scene, which must sit STILL until the artist has given
+        // something a body (a scene already running is a scene you cannot
+        // set up).
         self.playhead.rewind();
-        self.playhead.play();
+        if which.trim() != "3" {
+            self.playhead.play();
+        } else {
+            self.playhead.pause();
+        }
     }
 
     /// **Scene 1 (W1).** One falling body, one floor. Approved 2026-07-18.
@@ -89,6 +99,7 @@ impl crate::App {
                     half_y: 0.3,
                 },
                 density: 1.0,
+                ..Collider::default()
             },
         ));
 
@@ -154,6 +165,7 @@ impl crate::App {
                 Collider {
                     shape,
                     density: 1.0,
+                    ..Collider::default()
                 },
             ));
         }
@@ -166,6 +178,37 @@ impl crate::App {
             "[physics-smoke 2] 12 bodies falling onto Floor. Let them settle, then DRAG THE \
              PLAYHEAD BACKWARDS on the timeline ruler: the pile must rebuild exactly as it fell, \
              with no stall. (Timeline panel opened for you; `L` toggles it.)"
+        );
+    }
+
+    /// **Scene 3 (W2).** A floor and three plain sprites with NO physics.
+    ///
+    /// The whole point is the empty state: select a sprite, open **Physics
+    /// Body** in the Inspector, click **Add Physics Body**, press Play. Before
+    /// W2 there was no gesture anywhere in the editor that could do that.
+    fn physics_smoke_author(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+
+        // Three different aspect ratios, because the collider Add derives is
+        // the sprite's own box — a mistake there is invisible on a square.
+        for (i, (w, h)) in [(1.6f32, 0.5f32), (0.5, 1.4), (0.9, 0.9)]
+            .into_iter()
+            .enumerate()
+        {
+            let hue = 0.3 + 0.2 * i as f32;
+            gfx.sim.world_mut().spawn((
+                Transform::from_translation(Vec2::new(i as f32 * 1.8 - 1.8, 2.0 + i as f32 * 0.6)),
+                Sprite::atlas(0, [w, h], [1.0, hue, 0.35, 1.0]),
+                Name::new(format!("Prop{i}")),
+            ));
+        }
+
+        eprintln!(
+            "[physics-smoke 3] Three plain sprites and a floor, clock PAUSED. Select a sprite, \
+             open the Inspector's 'Physics Body' section, click 'Add Physics Body', then press \
+             Play: it should fall and land. The collider is boxed to the sprite, so B (collider \
+             outlines) should trace each sprite exactly."
         );
     }
 }

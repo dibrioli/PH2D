@@ -133,7 +133,7 @@ pub(super) fn build_ordering_info(
 /// `canonical_name` on `entity_bits`. A no-op if the name isn't
 /// registered or the value won't encode (neither happens for the W3
 /// components — registration + serde are gate-asserted).
-pub(super) fn queue_set<T: Serialize>(
+pub(crate) fn queue_set<T: Serialize>(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
     entity_bits: u64,
@@ -153,7 +153,7 @@ pub(super) fn queue_set<T: Serialize>(
 
 /// Queue a `RemoveComponent` (detach) for the registered component
 /// `canonical_name` on `entity_bits`. Idempotent at apply time.
-pub(super) fn queue_remove(
+pub(crate) fn queue_remove(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
     entity_bits: u64,

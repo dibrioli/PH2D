@@ -28,6 +28,7 @@ pub fn populate(store: &mut WidgetStore) {
     populate_sampling(store);
     populate_visibility_section(store);
     populate_blend(store);
+    populate_physics(store);
 }
 
 /// W3 §8 Visibility section: register the segmented + bitmask + toggle ids
@@ -78,6 +79,47 @@ fn register_button_ids(store: &mut WidgetStore, ids: &[ph2d_a11y::NodeId]) {
                 state: ButtonState::Normal,
             },
         );
+    }
+}
+
+/// §11 Physics Body (ADR-0130 D8): the two segmented groups and the two
+/// buttons register as `Button`s (is_focusable → clicks route), the five
+/// dimensions as `NumberInput`s.
+///
+/// **Every one gets a range**, and that is not decoration: `set_number_range`
+/// is what makes drag-scrub proportional to the field's own span, and its
+/// absence is the known gotcha (a `0..1` field dragged at the unbounded rate
+/// crosses its whole domain in a few pixels). Bounce is physically `0..=1`;
+/// friction above 1 is legal (it means "grips harder than it weighs"), so it
+/// gets headroom rather than a false ceiling; density and the extents have no
+/// natural maximum, so their caps are generous rather than meaningful.
+fn populate_physics(store: &mut WidgetStore) {
+    register_button_ids(store, &ids::INSP_PHYS_KIND);
+    register_button_ids(store, &ids::INSP_PHYS_SHAPE);
+    register_button_ids(store, &[ids::INSP_PHYS_ADD, ids::INSP_PHYS_REMOVE]);
+    // Every literal below is a PHYSICAL quantity — meters, kg/m², or a
+    // dimensionless coefficient — not a design measurement, so none of them
+    // has a token to come from.
+    for (id, value, min, max, step) in [
+        (ids::INSP_PHYS_RADIUS, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        (ids::INSP_PHYS_HALF_X, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        (ids::INSP_PHYS_HALF_Y, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        (ids::INSP_PHYS_DENSITY, 1.0, 0.0, 1000.0, 0.01),  // LITERAL-PX-OK: kg/m^2
+        (ids::INSP_PHYS_RESTITUTION, 0.0, 0.0, 1.0, 0.01), // LITERAL-PX-OK: bounciness is 0..=1 by physics
+        (ids::INSP_PHYS_FRICTION, 0.5, 0.0, 10.0, 0.01), // LITERAL-PX-OK: Coulomb coefficient, >1 is legal
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: format_number(value),
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+        store.set_number_range(id, min, max, step);
     }
 }
 

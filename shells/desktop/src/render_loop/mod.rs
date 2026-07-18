@@ -38,6 +38,12 @@ mod hierarchy;
 mod image_edit;
 mod inspector_commits;
 mod inspector_ordering;
+mod inspector_physics;
+/// The §11 Physics Body seam's OTHER half: the Inspector click reached the
+/// ECS and the sprite actually falls (panel-side proof lives in
+/// ).
+#[cfg(test)]
+mod inspector_physics_tests;
 mod inspector_visibility;
 pub(crate) mod motion_bridge;
 mod padding_bridge;
@@ -1379,6 +1385,7 @@ impl crate::App {
             let mut ordering_edits: Vec<(u64, ph2d_editor::OrderingFieldEdit)> = Vec::new();
             let mut sampling_edits: Vec<(u64, ph2d_editor::SamplingFieldEdit)> = Vec::new();
             let mut blend_edits: Vec<(u64, ph2d_editor::BlendFieldEdit)> = Vec::new();
+            let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
                 Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
@@ -1854,6 +1861,18 @@ impl crate::App {
                         } else {
                             for &t in &inspector_selection {
                                 blend_edits.push((t, edit));
+                            }
+                        }
+                    }
+                    // §11 Physics Body. Fans out over a BulkSelect like its
+                    // siblings — "make all of these physical" is the gesture
+                    // an artist actually performs.
+                    EditorAction::InspectorPhysicsEdit { entity_bits, edit } => {
+                        if inspector_selection.is_empty() {
+                            physics_edits.push((entity_bits, edit));
+                        } else {
+                            for &t in &inspector_selection {
+                                physics_edits.push((t, edit));
                             }
                         }
                     }
@@ -3673,6 +3692,7 @@ impl crate::App {
                 &ordering_edits,
                 &sampling_edits,
                 &blend_edits,
+                &physics_edits,
                 &visibility_section_edits,
                 hero,
                 sim,

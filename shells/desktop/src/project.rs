@@ -63,7 +63,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// nas linhas do `WorldSnapshot` — um leitor v15 leria esses bytes na posição
 /// errada. O `PhysicsBridge` em si NÃO é serializado (é derivado das
 /// components no load); só os components viajam.
-const PROJECT_SCHEMA: u32 = 16;
+const PROJECT_SCHEMA: u32 = 17;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

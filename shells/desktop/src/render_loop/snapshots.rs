@@ -661,6 +661,10 @@ pub(super) fn publish(
     let inspector_blend = hero.gizmo.selection.and_then(|b| {
         super::inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
     });
+    let inspector_physics = hero
+        .gizmo
+        .selection
+        .and_then(|b| super::inspector_physics::build_physics_info(sim.world(), b));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -679,6 +683,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
         ph2d_panel_inspector::set_current_inspector_blend(inspector_blend);
+        ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_visibility_section(
             inspector_visibility_section,
         );
@@ -693,6 +698,7 @@ pub(super) fn publish(
     #[cfg(not(feature = "panel-inspector"))]
     {
         let _ = (
+            inspector_physics,
             inspector_sprite,
             inspector_transform,
             inspector_visibility,

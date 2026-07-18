@@ -371,7 +371,10 @@ fn project_file_round_trips_through_postcard() {
 /// `FlipFrame.offset: Vec2` → `pose: Pose([f32; 6])`, FLIP v5→6) · v15 a seleção no
 /// domínio Point do Flip (W8: `FlipStroke.point_sel`, FLIP v6→7) · v16 os corpos de
 /// física (ADR-0130 W1: `RigidBody`/`Collider` registrados → blobs novos nas linhas do
-/// `WorldSnapshot`; nem o FlipDoc nem a VecScene mudaram, mas o layout do arquivo sim).
+/// `WorldSnapshot`; nem o FlipDoc nem a VecScene mudaram, mas o layout do arquivo sim) ·
+/// **v17** os campos `restitution`/`friction` APENDADOS ao `Collider` (ADR-0130 W2, a autoria
+/// no Inspector). Nenhuma constante de esquema mudou, então **nenhum gate podia ver isto** —
+/// postcard é posicional, e um save v16 lido como v17 devolveria lixo bem-formado.
 ///
 /// Na integração de 2026-07-13, QUATRO linhas bumparam este contador ao mesmo tempo, cada uma
 /// a partir do 7, cada uma por um motivo diferente. **O valor certo não existia em nenhum lado
@@ -386,7 +389,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (16, 7, 8),
+        (17, 7, 8),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

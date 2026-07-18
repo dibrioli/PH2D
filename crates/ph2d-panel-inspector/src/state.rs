@@ -12,8 +12,8 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorBlendInfo, InspectorNameInfo, InspectorOrderingInfo, InspectorSamplingInfo,
-    InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorBlendInfo, InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo,
+    InspectorSamplingInfo, InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilitySectionInfo,
 };
 
@@ -76,6 +76,12 @@ thread_local! {
     /// §10: live Material & Blend snapshot for the Blend section.
     pub(crate) static CURRENT_INSPECTOR_BLEND:
         std::cell::Cell<Option<InspectorBlendInfo>> = const { std::cell::Cell::new(None) };
+
+    /// §11: live Physics Body snapshot (ADR-0130 D8). `Some` even for an
+    /// entity with NO body — `has_body: false` is what lets the section
+    /// offer the Add button, which is the only door into physics.
+    pub(crate) static CURRENT_INSPECTOR_PHYSICS:
+        std::cell::Cell<Option<InspectorPhysicsInfo>> = const { std::cell::Cell::new(None) };
 
     /// W3 §8: live visibility-section snapshot (layer mask / clip / mask /
     /// on-screen). Distinct from `CURRENT_INSPECTOR_VISIBILITY` (the Visible
@@ -158,6 +164,14 @@ pub fn set_current_inspector_blend(info: Option<InspectorBlendInfo>) {
 
 pub(crate) fn current_inspector_blend() -> Option<InspectorBlendInfo> {
     CURRENT_INSPECTOR_BLEND.with(|c| c.get())
+}
+
+pub fn set_current_inspector_physics(info: Option<InspectorPhysicsInfo>) {
+    CURRENT_INSPECTOR_PHYSICS.with(|c| c.set(info));
+}
+
+pub(crate) fn current_inspector_physics() -> Option<InspectorPhysicsInfo> {
+    CURRENT_INSPECTOR_PHYSICS.with(|c| c.get())
 }
 
 pub fn set_current_inspector_visibility_section(info: Option<InspectorVisibilitySectionInfo>) {

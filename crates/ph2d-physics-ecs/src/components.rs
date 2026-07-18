@@ -58,8 +58,11 @@ pub struct RigidBody {
 
 impl SimComponent for RigidBody {}
 
-/// The collider attached to a [`RigidBody`]'s entity. W1 wires `shape` and
-/// `density`; restitution / friction / is_sensor append with W2.
+/// The collider attached to a [`RigidBody`]'s entity. W2 adds `restitution`
+/// and `friction` — **appended**, because postcard encodes fields
+/// positionally, and both are read by `body_desc` on the way to rapier in
+/// the same commit (a field with no consumer is an orphan, DIRETIVA §2).
+/// `is_sensor` waits for a consumer of its own.
 #[derive(Component, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Collider {
     pub shape: ColliderShape,
@@ -67,6 +70,22 @@ pub struct Collider {
     /// dynamic bodies; ignored for static. Default `1.0` matches the
     /// wrapper's `add_dynamic_circle` default.
     pub density: f32,
+    /// Bounciness, `0..=1`. `0` = a beanbag (all energy absorbed), `1` = a
+    /// superball that returns to the height it was dropped from. **Default
+    /// `0.0` is rapier's own**, so every body authored before this field
+    /// existed simulates byte-identically.
+    pub restitution: f32,
+    /// Coulomb friction coefficient. `0` = ice, `1` ≈ rubber on concrete;
+    /// values above 1 are legal and mean "grips harder than it weighs".
+    /// **Default `0.5` is rapier's own** — same byte-identity argument.
+    pub friction: f32,
+}
+
+impl Collider {
+    /// rapier's defaults, restated so the neutral point is one named place
+    /// rather than a number repeated at each call site.
+    pub const DEFAULT_RESTITUTION: f32 = 0.0;
+    pub const DEFAULT_FRICTION: f32 = 0.5;
 }
 
 impl Default for Collider {
@@ -74,6 +93,8 @@ impl Default for Collider {
         Collider {
             shape: ColliderShape::default(),
             density: 1.0,
+            restitution: Self::DEFAULT_RESTITUTION,
+            friction: Self::DEFAULT_FRICTION,
         }
     }
 }

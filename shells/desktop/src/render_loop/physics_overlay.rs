@@ -395,6 +395,7 @@ mod tests {
                     half_y: 0.2,
                 },
                 density: 1.0,
+                ..Collider::default()
             },
             Transform::from_translation(Vec2::new(0.0, -1.0)),
         ));
@@ -405,6 +406,7 @@ mod tests {
             Collider {
                 shape: ColliderShape::Ball { radius: 0.3 },
                 density: 1.0,
+                ..Collider::default()
             },
             Transform::from_translation(Vec2::new(0.0, 2.0)),
         ));

@@ -26,8 +26,8 @@ use ph2d_ecs::scene::{
 use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
     BlendFieldEdit, HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    OrderingFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit, Toast,
-    ToastQueue, VisibilityFieldEdit,
+    OrderingFieldEdit, PhysicsFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit,
+    SpriteFieldEdit, Toast, ToastQueue, VisibilityFieldEdit,
 };
 use ph2d_render::{Sprite, SpriteRenderer};
 use std::collections::BTreeMap;
@@ -108,6 +108,7 @@ pub(super) fn dispatch(
     ordering_edits: &[(u64, OrderingFieldEdit)],
     sampling_edits: &[(u64, SamplingFieldEdit)],
     blend_edits: &[(u64, BlendFieldEdit)],
+    physics_edits: &[(u64, PhysicsFieldEdit)],
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
     sim: &mut SimWorld,
@@ -320,6 +321,19 @@ pub(super) fn dispatch(
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Blend commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    for &(entity_bits, edit) in physics_edits {
+        super::inspector_physics::apply_physics_edit(
+            sim,
+            entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        );
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Physics commit failed: {e}")));
             title_dirty = true;
         }
     }

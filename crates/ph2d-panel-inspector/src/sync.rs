@@ -51,6 +51,7 @@ pub(crate) fn sync_inspector_from_snapshots(
         if matches!(host.store().picker_target(), Some(t) if is_sprite_color_swatch(t)) {
             host.store_mut().set_picker_target(None);
         }
+        sync_physics_fields(host);
         if let Some(info) = transform {
             host.store_mut().set_number_value(
                 ids::INSP_TRANSFORM_POS_X,
@@ -512,4 +513,31 @@ fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
             | ids::INSP_SPRITE_CORNER_BL
             | ids::INSP_SPRITE_CORNER_BR
     )
+}
+
+/// §11 Physics Body — mirror the snapshot's dimensions into the number
+/// boxes. Runs under the same `entity_changed` guard as its siblings: a
+/// re-seed on every frame would fight the user's own typing, overwriting the
+/// buffer mid-edit.
+///
+/// Only the dimensions need mirroring — the two segmented groups read their
+/// selection straight off the snapshot at paint time, so there is nothing in
+/// the store for them to fall out of date with.
+fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
+    let Some(info) = state::current_inspector_physics() else {
+        return;
+    };
+    if !info.has_body {
+        return;
+    }
+    for (id, v) in [
+        (ids::INSP_PHYS_RADIUS, info.radius),
+        (ids::INSP_PHYS_HALF_X, info.half_x),
+        (ids::INSP_PHYS_HALF_Y, info.half_y),
+        (ids::INSP_PHYS_DENSITY, info.density),
+        (ids::INSP_PHYS_RESTITUTION, info.restitution),
+        (ids::INSP_PHYS_FRICTION, info.friction),
+    ] {
+        host.store_mut().set_number_value(id, f64::from(v));
+    }
 }

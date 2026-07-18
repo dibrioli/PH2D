@@ -138,6 +138,11 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
             return true;
         }
     }
+    // §11 Physics Body lives in its own module: it is not ordering, and
+    // this dispatcher is already at the LOC cap.
+    if crate::event_physics::apply_physics_event(host, ev) {
+        return true;
+    }
     // §10 Material & Blend — Blend Mode segmented selected (tag 0 = Mix
     // detaches the optional component).
     if let WidgetEvent::Click(id) = ev

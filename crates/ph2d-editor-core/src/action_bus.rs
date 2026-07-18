@@ -379,6 +379,16 @@ pub enum EditorAction {
         edit: crate::screens::hero::BlendFieldEdit,
     },
 
+    /// Inspector → shell channel for a §11 Physics Body field (ADR-0130 D8).
+    /// Optional-component edit like [`Self::InspectorBlendEdit`], but the
+    /// pair it attaches/detaches is `RigidBody` + `Collider`, and `Add`
+    /// deliberately carries no geometry — the shell derives the starting
+    /// collider from the sprite's own bounds.
+    InspectorPhysicsEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::PhysicsFieldEdit,
+    },
+
     /// Config → "Image filter" pick. Payload: the chosen
     /// [`ImageFilterMode`]. The hero already wrote
     /// `project.image_filter` (so the menu checkmark is correct on the

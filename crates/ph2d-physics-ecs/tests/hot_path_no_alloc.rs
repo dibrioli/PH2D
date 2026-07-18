@@ -30,6 +30,7 @@ fn steady_state_dispatch_does_not_grow_the_scratch() {
                 half_y: 0.1,
             },
             density: 1.0,
+            ..Collider::default()
         },
         Transform::from_translation(Vec2::new(0.0, 0.0)),
     ));
@@ -41,6 +42,7 @@ fn steady_state_dispatch_does_not_grow_the_scratch() {
             Collider {
                 shape: ColliderShape::Ball { radius: 0.2 },
                 density: 1.0,
+                ..Collider::default()
             },
             Transform::from_translation(Vec2::new(
                 (i % 6) as f32 * 0.5,

@@ -57,6 +57,10 @@ pub struct BodyDesc {
     pub rotation: f32,
     pub density: f32,
     pub shape: ShapeDesc,
+    /// Bounciness `0..=1`. rapier's own default is `0.0`.
+    pub restitution: f32,
+    /// Coulomb friction. rapier's own default is `0.5`.
+    pub friction: f32,
 }
 
 pub struct PhysicsWorld {
@@ -188,7 +192,11 @@ impl PhysicsWorld {
             ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
             ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),
         };
-        let collider = shape.density(desc.density).build();
+        let collider = shape
+            .density(desc.density)
+            .restitution(desc.restitution)
+            .friction(desc.friction)
+            .build();
         self.colliders
             .insert_with_parent(collider, handle, &mut self.bodies);
         handle

@@ -166,6 +166,38 @@ pub const INSP_SAMPLE_BLEND: [NodeId; 6] = [
     hash_node_id("insp_sample_blend_premult"),
 ];
 
+// ─── §11 Physics Body (ADR-0130 D8) ───────────────────────────────────
+/// §11 Physics Body — collapsible section header.
+pub const INSP_LIVE_PHYSICS_SECTION: NodeId = hash_node_id("insp_live_physics_section");
+/// §11 Physics Body — section accent color dot.
+pub const INSP_LIVE_PHYSICS_COLOR: NodeId = hash_node_id("insp_live_physics_color");
+/// §11 Attach `RigidBody` + a sprite-shaped `Collider`. Shown ONLY when the
+/// entity has no body — it is the door into physics for a plain sprite.
+pub const INSP_PHYS_ADD: NodeId = hash_node_id("insp_phys_add");
+/// §11 Detach both components; the entity goes back to being plain art.
+pub const INSP_PHYS_REMOVE: NodeId = hash_node_id("insp_phys_remove");
+/// §11 Body kind segmented, indexed by `BodyKind` tag: Dynamic / Static.
+pub const INSP_PHYS_KIND: [NodeId; 2] = [
+    hash_node_id("insp_phys_kind_dynamic"),
+    hash_node_id("insp_phys_kind_static"),
+];
+/// §11 Collider shape segmented, indexed by `ColliderShape` tag: Ball / Box.
+pub const INSP_PHYS_SHAPE: [NodeId; 2] = [
+    hash_node_id("insp_phys_shape_ball"),
+    hash_node_id("insp_phys_shape_box"),
+];
+/// §11 Ball radius, meters (shown only for the Ball shape).
+pub const INSP_PHYS_RADIUS: NodeId = hash_node_id("insp_phys_radius");
+/// §11 Box HALF-extents, meters (shown only for the Box shape).
+pub const INSP_PHYS_HALF_X: NodeId = hash_node_id("insp_phys_half_x");
+pub const INSP_PHYS_HALF_Y: NodeId = hash_node_id("insp_phys_half_y");
+/// §11 Mass density (kg/m² in 2D).
+pub const INSP_PHYS_DENSITY: NodeId = hash_node_id("insp_phys_density");
+/// §11 Bounciness, `0..=1`.
+pub const INSP_PHYS_RESTITUTION: NodeId = hash_node_id("insp_phys_restitution");
+/// §11 Coulomb friction.
+pub const INSP_PHYS_FRICTION: NodeId = hash_node_id("insp_phys_friction");
+
 // ─── W3 §8 Visibility-section controls (ClipChildren / Mask / Layer) ───
 /// Clip Children segmented: Disabled / ClipOnly / ClipAndDraw (tags 0/1/2).
 pub const INSP_VIS_CLIP: [NodeId; 3] = [

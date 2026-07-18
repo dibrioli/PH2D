@@ -182,7 +182,7 @@ Joints, bake.
 - Components de joint (registrados no `ComponentRegistry` — append-only), autoria no Inspector/canvas
   (gizmo de ancoragem), mapeamento para `ImpulseJointSet`/`MultibodyJointSet` do rapier (acesso cru via
   `bodies_mut`/`colliders_mut` do wrapper). Determinismo preservado (mesma proibição de simd/parallel).
-- Bump `PROJECT_SCHEMA` (**16 → 17** — W1 já usou o 16) + a tripla-pin — joints persistem.
+- Bump `PROJECT_SCHEMA` (**17 → 18** — W1 usou o 16, W2 o 17) + a tripla-pin — joints persistem.
 
 ### Gates (red-first, mutation-tested)
 1. **pêndulo de 2 corpos determinístico** — hash estável cross-OS (estende `physics-ecs-c9` com uma cena de

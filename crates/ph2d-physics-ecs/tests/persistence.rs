@@ -28,6 +28,7 @@ fn drop_ball(sim: &mut SimWorld) -> ph2d_ecs::Entity {
             Collider {
                 shape: ColliderShape::Ball { radius: 0.25 },
                 density: 1.0,
+                ..Collider::default()
             },
         ))
         .id()
@@ -51,6 +52,7 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
                 half_y: 0.5,
             },
             density: 2.0,
+            ..Collider::default()
         },
     ));
 

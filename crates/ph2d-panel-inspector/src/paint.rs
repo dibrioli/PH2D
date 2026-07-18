@@ -7,34 +7,35 @@
 //! runs the snapshot sync, paints the live Inspector body, and
 //! publishes scroll bounds back to the store.
 
+use crate::paint_frame::{
+    PanelFinish, any_live_section, begin_section, finish_section, publish_and_finish,
+};
 use crate::state::{
     self, current_display_unit, current_inspector_blend, current_inspector_name_is_some,
     current_inspector_ordering, current_inspector_sampling, current_inspector_sprite,
     current_inspector_transform, current_inspector_visibility,
     current_inspector_visibility_section, current_pixels_per_meter, last_inspector_content_h,
-    last_inspector_visible_h, set_last_inspector_content_h, set_last_inspector_visible_h,
+    last_inspector_visible_h,
 };
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, NoteData, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
 use ph2d_editor_core::widget::panel_chrome::{
-    HIGHLIGHTER_RGBA, PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot,
-    paint_panel_surface, paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
+    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
+    paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
-use ph2d_editor_core::widget::showcase::{LAST_BODY_TOP_SCREEN_Y, LAST_SECTION_TOPS_Y};
+use ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y;
 use ph2d_editor_core::widget::showcase::{
-    paint_one_note, paint_section_separator, push_section_top_y, take_pending_dropdown_chip,
+    paint_one_note, paint_section_separator, take_pending_dropdown_chip,
 };
-use ph2d_editor_core::widget::{
-    self, Dropdown, DropdownOption, INSPECTOR_SCROLLBAR_ID, SCROLLBAR_W,
-};
+use ph2d_editor_core::widget::{self, Dropdown, DropdownOption, SCROLLBAR_W};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset
@@ -195,18 +196,25 @@ fn paint_inspector(
     let ordering_info = current_inspector_ordering();
     let sampling_info = current_inspector_sampling();
     let blend_info = current_inspector_blend();
+    let physics_info = crate::state::current_inspector_physics();
     let name_present = current_inspector_name_is_some();
-    let any_section = transform_info.is_some()
-        || sprite_info.is_some()
-        || visibility_info.is_some()
-        || ordering_info.is_some()
-        || sampling_info.is_some()
-        || blend_info.is_some()
-        || name_present;
+    let any_section = any_live_section([
+        transform_info.is_some(),
+        sprite_info.is_some(),
+        visibility_info.is_some(),
+        ordering_info.is_some(),
+        sampling_info.is_some(),
+        blend_info.is_some(),
+        physics_info.is_some(),
+        name_present,
+    ]);
     let mut y = body_top_y + Spacing::Xs.px();
 
     let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 9] = Default::default();
+    // One slot per live section; §11 Physics Body made it ten. Sized wrong,
+    // a note anchored to the last section silently falls into `trailing_notes`
+    // instead of where its author put it.
+    let mut notes_per_section: [Vec<(usize, NoteData)>; 10] = Default::default();
     let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in all_notes.into_iter().enumerate() {
         match note.before_section {
@@ -224,45 +232,29 @@ fn paint_inspector(
     macro_rules! live_section {
         ($section_id:expr, $section_idx:expr, $header_h:expr, $body:block) => {{
             let y_before = y;
-            push_section_top_y(&mut section_tops_y, y_before - body_top_y);
-            hit_index.register(
+            begin_section(
+                &mut section_tops_y,
+                hit_index,
+                inner_x,
+                inner_w,
+                body_top_y,
+                y_before,
                 $section_id,
-                Rect::new(inner_x, y_before, inner_w, $header_h),
+                $header_h,
             );
-            let mut new_y: f32 = $body;
-            if let Some(color_idx) = store.section_outline_color($section_id) {
-                let rgba = HIGHLIGHTER_RGBA[color_idx.min(4) as usize];
-                let pad = Spacing::Xs.px();
-                let block = Rect::new(
-                    inner_x - pad,
-                    y_before - pad,
-                    inner_w + pad * 2.0,
-                    (new_y - y_before + pad * 2.0).max(0.0),
-                );
-                let outline_color =
-                    ph2d_vector::Color::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]); // LITERAL-COLOR-OK: HIGHLIGHTER_RGBA palette
-                stroke_rounded_rect(
-                    scene,
-                    block,
-                    Radius::Md.px(),
-                    StrokeToken::Thick.px(),
-                    outline_color,
-                );
-            }
-            for (slot, note) in &notes_per_section[$section_idx] {
-                paint_one_note(
-                    scene,
-                    text_system,
-                    hit_index,
-                    store,
-                    inner_x,
-                    inner_w,
-                    &mut new_y,
-                    note,
-                    *slot,
-                );
-            }
-            new_y
+            let new_y: f32 = $body;
+            finish_section(
+                scene,
+                text_system,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                $section_id,
+                y_before,
+                new_y,
+                &notes_per_section[$section_idx],
+            )
         }};
     }
 
@@ -420,6 +412,25 @@ fn paint_inspector(
             )
         });
     }
+    // §11 Physics Body — offered for ANY Transform-bearing entity, with or
+    // without a body: the empty state is the Add button, and without it a
+    // sprite could never become physical (ADR-0130 D8).
+    if let Some(phys) = physics_info.as_ref() {
+        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
+        y = live_section!(ids::INSP_LIVE_PHYSICS_SECTION, 9, SECTION_HEAD_H, {
+            sections::paint_physics_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+                phys,
+            )
+        });
+    }
     if any_section {
         for (slot, note) in &trailing_notes {
             paint_one_note(
@@ -435,43 +446,26 @@ fn paint_inspector(
             );
         }
     }
-    if !any_section {
-        let placeholder = if selection.is_some() {
-            "No properties yet for the selected entity."
-        } else {
-            "Select an entity in the Hierarchy to inspect its properties."
-        };
-        let line_h = TypeToken::Sm.px() + Spacing::Xs.px();
-        let center_y = content_top + (content_bottom - content_top) * 0.5 - line_h * 0.5;
-        paint_text(
-            text_system,
-            scene,
-            placeholder,
-            inner_x + Spacing::Md.px(),
-            center_y,
-            TypeToken::Sm.px(),
-            (inner_w - Spacing::Xl.px()).max(80.0), // LITERAL-PX-OK: minimum placeholder text width
-            resolve(ColorToken::Text3, theme),
-        );
-    }
-
-    let content_h = (y - body_top_y).max(0.0);
-    let visible_h = (content_bottom - content_top).max(0.0);
-    set_last_inspector_content_h(content_h);
-    set_last_inspector_visible_h(visible_h);
-    LAST_SECTION_TOPS_Y.with(|t| *t.borrow_mut() = section_tops_y);
-
-    if widget::scrollbar_is_needed(content_h, visible_h) {
-        let body = Rect::new(rect.x, content_top, rect.w, visible_h);
-        let track = widget::scrollbar_track_rect(body);
-        let thumb = widget::scrollbar_thumb_rect(track, scroll_y, content_h, visible_h);
-        let is_active = matches!(store.scrollbar_drag(), Some(d) if d.panel == ids::INSP_PANEL);
-        widget::paint_scrollbar(
-            body, scroll_y, content_h, visible_h, is_active, scene, theme,
-        );
-        hit_index.register(INSPECTOR_SCROLLBAR_ID, thumb);
-    }
-
+    publish_and_finish(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        PanelFinish {
+            any_section,
+            has_selection: selection.is_some(),
+            inner_x,
+            inner_w,
+            content_top,
+            content_bottom,
+            body_top_y,
+            y,
+            scroll_y,
+            rect,
+        },
+        section_tops_y,
+    );
     if let Some((sel_idx, chip)) = take_pending_dropdown_chip() {
         let labels = ["Front", "Side", "Top"];
         let selected_label = labels.get(sel_idx).copied().unwrap_or("Front");

@@ -280,3 +280,80 @@ fn the_ring_evicts_to_stay_inside_its_byte_budget() {
         "eviction must never empty the ring entirely"
     );
 }
+
+/// **The neutral point is rapier's own, and that is measured.**
+///
+/// `Collider` gained `restitution`/`friction` in W2, and `spawn_body` now
+/// calls `.restitution()`/`.friction()` where it previously called neither.
+/// The claim in the component docs — that a body authored before those fields
+/// existed simulates byte-identically — is only true if the defaults are the
+/// values rapier was already using.
+///
+/// So this compares the two paths that must agree: `spawn_body` at its
+/// defaults against `add_dynamic_circle`, which has never set either field and
+/// never will. Same fixture, same hash, or the defaults are wrong and every
+/// existing scene silently changed behaviour on load.
+#[test]
+fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
+    use ph2d_physics::{BodyDesc, ShapeDesc};
+
+    let mut untouched = PhysicsWorld::new();
+    untouched.add_static_cuboid(0.0, 0.0, 50.0, 0.1);
+    for i in 0..12 {
+        untouched.add_dynamic_circle(
+            (i % 4) as f32 * 0.6 - 0.9,
+            1.0 + (i / 4) as f32 * 0.7,
+            0.25,
+            1.0,
+        );
+    }
+
+    let mut described = PhysicsWorld::new();
+    described.spawn_body(BodyDesc {
+        body_type: ph2d_physics::RigidBodyType::Fixed,
+        x: 0.0,
+        y: 0.0,
+        rotation: 0.0,
+        density: 1.0,
+        shape: ShapeDesc::Cuboid {
+            half_x: 50.0,
+            half_y: 0.1,
+        },
+        // NOT `..Default::default()` — the point is to state the constants and
+        // let the gate fail if they stop matching rapier.
+        restitution: ph2d_physics_ecs_defaults::RESTITUTION,
+        friction: ph2d_physics_ecs_defaults::FRICTION,
+    });
+    for i in 0..12 {
+        described.spawn_body(BodyDesc {
+            body_type: ph2d_physics::RigidBodyType::Dynamic,
+            x: (i % 4) as f32 * 0.6 - 0.9,
+            y: 1.0 + (i / 4) as f32 * 0.7,
+            rotation: 0.0,
+            density: 1.0,
+            shape: ShapeDesc::Ball { radius: 0.25 },
+            restitution: ph2d_physics_ecs_defaults::RESTITUTION,
+            friction: ph2d_physics_ecs_defaults::FRICTION,
+        });
+    }
+
+    for _ in 0..240 {
+        untouched.step();
+        described.step();
+        assert_eq!(
+            untouched.deterministic_hash(),
+            described.deterministic_hash(),
+            "spawning at the declared defaults diverged from the path that never set \
+             restitution/friction — the 'byte-identical for existing scenes' claim is false"
+        );
+    }
+}
+
+/// Mirror of `ph2d_physics_ecs::Collider`'s constants. Restated here rather
+/// than imported because `ph2d-physics` must not depend on the bridge crate
+/// (rapier stays below the ECS, never above it) — and if the two ever drift,
+/// the gate above is what notices.
+mod ph2d_physics_ecs_defaults {
+    pub const RESTITUTION: f32 = 0.0;
+    pub const FRICTION: f32 = 0.5;
+}

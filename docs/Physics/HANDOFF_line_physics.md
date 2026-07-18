@@ -17,7 +17,7 @@
 | **W0 — Arquitetura** | ✅ **FECHADO** (2026-07-17) | `456e8b99` | ADR-0130 + plano de waves + tracker + visão. **Zero código.** |
 | **W1 — Ponte ECS + tick + hash** | ✅ **FECHADO** (2026-07-17, pendente smoke) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
 | **W1.5 — Scrub (checkpoint ring)** | ✅ **FECHADO** (2026-07-18, pendente smoke) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
-| **W2 — Painel + Inspector body** | ⏳ pendente | — | categoria de painel NOVA (mundo) |
+| **W2 — Inspector body** | ✅ **METADE FECHADA** (2026-07-18, pendente smoke) | ver §W2 | a autoria; o painel GLOBAL segue pendente |
 | **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll |
 | **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
 
@@ -221,6 +221,62 @@ apertada que o fenômeno.
 superfície congelada — o gate `architecture_vector_contract_surface` escaneia só `-doc` e `-traits`,
 verificado). Campo novo `App.show_colliders`; **W2 põe o checkbox "Show Colliders" no painel lendo ESTE
 flag** — duas portas pra mesma pergunta divergem.
+
+---
+
+## §W2 (metade) — A AUTORIA: a seção "Physics Body" no Inspector (2026-07-18, pendente smoke)
+
+**O que mudou de verdade:** antes disto, um `RigidBody` só podia vir de uma cena de smoke — **não
+existia gesto nenhum no editor que tornasse um sprite físico**. Agora: selecione qualquer sprite → seção
+**Physics Body** → **Add Physics Body** → Play, e ele cai.
+
+**A seção tem DUAS faces, e a vazia é a importante.** Toda outra seção do Inspector descreve algo que a
+entidade já tem; esta também precisa oferecer o que ela ainda **não** tem, senão a física é alcançável só
+onde já há física — ou seja, em lugar nenhum. Por isso `build_physics_info` devolve `Some` para qualquer
+entidade com `Transform`, com `has_body: false`.
+
+**⚠️ O collider nasce da CAIXA DO SPRITE** (`apply_physics_edit`, ramo `Add`) — a única forma inicial que
+**não pode** discordar do que está desenhado. É a lição do smoke de 2026-07-18 virada regra: uma bola
+default sob um sprite 2×1 desenharia retângulo e rolaria como círculo **desde o primeiro clique**. Unity e
+Godot ajustam a box ao renderer pelo mesmo motivo. Gate: `the_added_collider_is_boxed_to_the_sprite`.
+
+**Trocar de forma PRESERVA a pegada** (box → a bola que CABE nela, e volta): o objeto não pode pular de
+tamanho quando o artista só está escolhendo entre caixa e bola.
+
+**`restitution`/`friction` foram APENDADOS ao `Collider`** — e na ordem honesta: campo → `BodyDesc` →
+rapier, **no mesmo commit** (campo sem consumidor é órfão, DIRETIVA §2). Os defaults são **os do próprio
+rapier** (0.0 / 0.5), e isso está **MEDIDO**, não suposto: `the_new_collider_defaults_are_the_ones_rapier_already_used`
+roda 240 steps comparando `spawn_body` nos defaults contra `add_dynamic_circle`, que nunca setou nenhum
+dos dois. Mutação (0.3) sangra. ⚠️ **`PROJECT_SCHEMA` 16→17** — postcard é POSICIONAL, então apendar campo
+muda o layout do arquivo e **nenhum gate podia ver isso** (nenhuma constante de esquema mudou).
+
+**Os dois tetos de LOC brigaram, e o repo diz split, nunca allowlist.** `paint_inspector` estava congelado
+em 431 e uma seção custa ~18 linhas ⇒ extraí o **frame da seção** (o corpo do macro `live_section!`, que
+conta LOC por estar definido DENTRO da função) + a **fase B** (placeholder/publish/scrollbar) para
+`paint_frame.rs`; `paint_inspector` 455 → **424**, e a allowance foi **catracada 431 → 424** (elas só
+encolhem). Idem no lado do evento (`event_physics.rs`) e do shell (`inspector_physics.rs`, porque
+`inspector_ordering.rs` bateu 730/600). ⚠️ **O rustfmt re-expande chamadas compactas** — tentei ganhar
+linhas comprimindo argumentos e o fmt as devolveu MAIORES; a extração tem de ser estrutural.
+
+**Gates (14 novos, 2 famílias que se cobrem):**
+- **`ph2d-panel-inspector/tests/seam_physics.rs` (7)** — o SWEEP: **todo** controle é clicado/comitado e a
+  ação exata afirmada (não "o card mais cheio" — essa premissa já apodreceu duas vezes aqui). Inclui a
+  **recusa no event.rs**: Add numa entidade que JÁ tem corpo, e Remove numa que não tem, não podem chegar
+  ao bus (dim/não-pintado não é recusa). 4 mutações, 4 sangram no gate certo.
+- **`shells/desktop/src/render_loop/inspector_physics_tests.rs` (7)** — a OUTRA metade, a que o repo já
+  pagou caro: seam verde ≠ produto vivo. O oráculo não é "os componentes existem", é **o sprite está
+  deitado no chão um segundo depois**. Mais: Remove tira os DOIS componentes · editar um campo não zera os
+  outros · Static para de cair · o snapshot reflete o que foi escrito.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=3`** — chão + 3 sprites de proporções DIFERENTES (num quadrado, um collider
+que ignora a arte é invisível), **relógio PAUSADO** (cena que já está rodando não se monta). Selecione,
+Add, Play. Com **B** ligado o contorno deve traçar cada sprite exatamente.
+
+**⏳ A OUTRA METADE do W2 segue pendente:** o **painel global** (`ph2d-panel-physics`, categoria MUNDO —
+gravidade, substeps, damping, sleep, camadas de colisão). É a metade menos urgente: os defaults já são
+bons, enquanto sem o Inspector a física era inalcançável. Terreno mapeado (5 sites de registro, o gate do
+z-order que faz um painel registrado+visível **nunca ser pintado**, `PHYSICS_SCROLLBAR_ID = NodeId(836)`
+livre).
 
 ---
 

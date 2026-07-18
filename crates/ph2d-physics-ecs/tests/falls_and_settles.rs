@@ -27,6 +27,7 @@ fn a_dynamic_sprite_falls_onto_a_static_floor_and_settles() {
                 half_y: 0.1,
             },
             density: 1.0,
+            ..Collider::default()
         },
         Transform::from_translation(Vec2::new(0.0, 0.0)),
     ));
@@ -43,6 +44,7 @@ fn a_dynamic_sprite_falls_onto_a_static_floor_and_settles() {
             Collider {
                 shape: ColliderShape::Ball { radius: 0.25 },
                 density: 1.0,
+                ..Collider::default()
             },
             Transform::from_translation(Vec2::new(0.0, spawn_y)),
         ))

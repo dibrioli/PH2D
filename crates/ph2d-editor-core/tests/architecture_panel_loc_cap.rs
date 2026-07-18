@@ -111,8 +111,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/paint.rs",
         "paint_inspector",
-        431,
-        "unmasked by the 2026-07-10 parser fix; §0-§9 section orchestrator, per-section split deferred (needs smoke)",
+        424,
+        "§0-§11 section orchestrator; ratcheted 431->424 when §11 Physics Body forced the honest split (the section frame and phase B now live in paint_frame.rs)",
     ),
     (
         "ph2d-panel-inspector/src/sections/render_source.rs",

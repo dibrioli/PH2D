@@ -17,8 +17,8 @@
 | | |
 |---|---|
 | Branch | `line/Painter`, worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter` |
-| HEAD | `050c2d80` |
-| Ahead of `main` | **6 commits** |
+| HEAD | `d84b32f9` |
+| Ahead of `main` | **11 commits** (3 herdados do takeover + 8 desta jornada) |
 | Árvore | limpa · `check --workspace --all-targets` 0 · `clippy --workspace --all-targets` 0 · `fmt` aplicado |
 | Suítes | **workspace 7658 passed / 0 failed** (tool-painter 724 · painter-brush 256) |
 | Perf | knife **4,57 ms/move @2048² · 5,50 @4096²** (kill 8) — gate novo `smear_perf_kill_criterion` |

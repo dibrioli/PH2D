@@ -177,6 +177,56 @@ fn the_smoke_sequence_deforms_the_shape() {
     );
 }
 
+/// **O caminho REAL do app: `upkeep` drena o pending e ANEXA** (não `attach` direto). Os outros
+/// gates chamam `attach` na mão; o app enfileira em `vec_envelope_pending` e o `upkeep` do frame
+/// seguinte é quem anexa. Se o `upkeep` não anexar (ex.: a forma "some" da cena por um frame, ou o
+/// mapa não tem a entidade), o componente nunca chega, o recook não acha envelope, e a forma fica
+/// **sem deformar e sem gaiola** — exatamente o sintoma de "não vejo canto onde puxar".
+#[test]
+fn the_upkeep_path_attaches_and_deforms() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let id = scene.push_path(ellipse([0.0, 0.0], 2.0));
+
+    // Frame N: sync + settle (o que o app faz antes de o smoke criar o envelope).
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
+
+    // Frame N+1 prólogo (o smoke): create + pull, e ENFILEIRA (não anexa na mão).
+    let xf = crate::vec_transform::build(&sim, &map);
+    let (eid, mut env) = create(&scene, &xf, id).expect("create");
+    let [bl, br, tr, tl] = env.corners;
+    let cx = (tl[0] + tr[0]) * 0.5;
+    env.corners = [
+        bl,
+        br,
+        [cx + (tr[0] - cx) * 0.35, tr[1]],
+        [cx + (tl[0] - cx) * 0.35, tl[1]],
+    ];
+    let mut pending = Some((eid, env));
+
+    // Frame N+1 corpo: sync + upkeep (a porta do app) + recook.
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    assert!(pending.is_none(), "o upkeep não drenou o pending");
+
+    // O componente TEM de estar anexado — senão o recook não acha envelope nenhum.
+    let e = Entity::from_bits(map[&id]);
+    assert!(
+        sim.world().get::<VecEnvelope>(e).is_some(),
+        "o upkeep não anexou o VecEnvelope — nem deforma nem desenha a gaiola"
+    );
+
+    let source = frame(&mut sim, &mut scene, &map, id);
+    // (`frame` roda o recook e devolve o path.) A forma tem de ter deformado.
+    let cooked_src = ellipse([0.0, 0.0], 2.0).cooked().into_owned();
+    assert_ne!(
+        source.verts, cooked_src.verts,
+        "o upkeep anexou mas a forma não deformou"
+    );
+}
+
 /// **O envelope vive na IDENTIDADE.** A geometria é MUNDO; uma pose por cima a deslocaria.
 #[test]
 fn the_envelope_lives_at_identity() {

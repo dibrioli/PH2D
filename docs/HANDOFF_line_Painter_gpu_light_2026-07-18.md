@@ -161,6 +161,53 @@ Isso e uma fragilidade real do gate, **herdada**, e o conserto (aquecer antes de
 honesta) pertence a quem possui o orcamento de perf do sculpt. Reescrever o numero pra ficar verde seria a
 armadilha que a memoria `feedback_frozen_bar_check_the_arithmetic_before_gaming_it` descreve.
 
+## Adendo (mesmo dia): o REACH BOUND do Inflate
+
+O vermelho do sculpt acima me levou a medir a bola, e ela tinha trabalho morto de sobra.
+
+**O achado, contado:** o laço da bola visita todo o disco (~800 offsets a ρ=16) por texel. Mas uma fonte
+só contribui onde `a_p² > dq` — e no fixture do kill, **35% dos texels tinham `A(q) = 0`** (nenhuma fonte
+no disco inteiro podia contribuir) e apenas **32% dos 73M taps** eram úteis.
+
+**O conserto:** percorrer o disco em ordem crescente de `dq` e parar em `dq >= A(q)²`, onde `A(q)` é o
+maior `amount` na caixa do texel. É **exato, não heurística** — todo offset além desse ponto reprova o
+mesmo teste in-ball que o laço antigo rodava. `A(q)` sai de um `box_max` separável O(área) (van
+Herk/Gil-Werman), com caixa QUADRADA de propósito: ela contém o disco, então o limite é conservador e o
+resultado não muda um bit.
+
+**Três detalhes que decidiram:**
+- **A ordenação é ESTÁVEL.** O vencedor em `sbuf` é o PRIMEIRO offset a atingir o máximo, e num platô
+  plano de `amount` uniforme todas as fontes à mesma distância empatam ao float. Ordem instável = matéria
+  vindo de outra fonte = outra COR. (`slice::sort_by` é estável por contrato da stdlib.)
+- **O `box_max` tem de ser varrido POR LINHA.** A versão óbvia (uma coluna por vez, com alocação por
+  linha) custava **0,85 ms dos 4,3 da bola** — um quinto do orçamento que a função existe pra proteger.
+- **Caminho interior separado:** para texels longe da borda o índice da fonte é `qi + off` — sem
+  aritmética de coordenada e sem teste de limite, decidido uma vez por texel em vez de 4 comparações por
+  tap.
+
+**Ganho, medido de forma determinística: o passeio admite 20,4% do disco** num traço com falloff (4,9×
+menos), e **zero** em vizinhança não-tocada. ⚠️ **Gateado por CONTAGEM, não por cronômetro** — ver abaixo.
+
+⚠️ **NÃO ajuda o Filter Layer**, e isso é honesto: ele preenche `amount` uniformemente, `A(q) = 1` em todo
+lugar e o corte nunca dispara. Medido lado a lado que também **não regride** (9,77 ms com a mudança vs
+10,08/10,02 sem).
+
+Gates: `the_reach_bound_is_exact_the_ball_is_byte_identical_without_it` (oráculo = o kernel shipado COM a
+otimização removida; compara altura E argmax, 3 depths, fixture com faixa morta + rampa + saturação +
+platô) · `the_reach_bound_admits_only_the_offsets_that_could_contribute` (a contagem). Mutações: limite
+frouxo (`amount` do próprio texel) RED · `box_max` sempre 1.0 RED. **Uma NÃO sangra e está registrada no
+gate:** trocar por `sort_unstable_by` fica verde — pdqsort coincide neste input; a propriedade repousa na
+garantia da stdlib, não no fixture, e caçar um input onde diverge pinaria o algoritmo de ordenação.
+
+### ⚠️ Por que os gates de perf aqui são CONTADOS e não cronometrados
+
+Esta máquina degradou ~3× ao longo da sessão: o kernel **INALTERADO** mediu **10 ms** onde a doc deste
+mesmo arquivo registra **3 ms**. E o kill criterion tem outliers de 40+ ms num único move (page-faults de
+buffers de 16 MB tocados dentro da janela medida), que sozinhos movem a média em 2 ms. Nenhum número de
+wall-clock que eu produzi hoje é atribuível com confiança — por isso o gate novo conta offsets, que é
+propriedade da aritmética e igual em toda máquina. O `sculpt_perf_kill_criterion` continua marginal e
+flaky; não o reescrevi (não é meu orçamento, e mexer no número seria justamente a armadilha).
+
 ## Aberto
 - **Cache com chave de versão para os planos.** Hoje são materializados a cada frame de preview GPU (que só
   acontece em `take_preview_dirty`). É deliberado: uma versão teria de rastrear TODA entrada do fold

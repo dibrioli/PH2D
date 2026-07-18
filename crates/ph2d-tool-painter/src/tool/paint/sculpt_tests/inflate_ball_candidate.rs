@@ -250,3 +250,254 @@ fn diag_exact_ball_per_move_cost() {
         "\nkill criterion: ≤4 ms/move target, KILL at 8 (this is the kernel alone; the frame adds composite+light)"
     );
 }
+
+/// **The reach bound deletes only DEAD work — the ball is byte-identical without it.**
+///
+/// `blob_ball` walks its disc from the centre outwards and stops at `dq >= A(q)²`, where `A(q)` is the
+/// largest `amount` anywhere in the texel's box. The claim is not "close enough": a source contributes only
+/// where `a_p² > dq`, and no `a_p` in the disc exceeds `A(q)`, so every offset past that point fails the
+/// in-ball test the old loop would have run. It is the same maximum over the same candidate set, with the
+/// non-candidates never loaded.
+///
+/// Measured on the kill fixture before the bound existed: **35% of texels had `A(q) = 0`** — an entire
+/// 804-offset disc walked to find nothing — and only **32% of 73M taps** could ever have contributed.
+///
+/// The oracle here is the shipped kernel **with the optimisation removed**, which is the only oracle that
+/// answers the question being asked. It checks BOTH outputs: the height (a max, so order cannot matter) and
+/// the packed argmax (where the matter comes from — order CAN matter there, on an exact tie, which is why
+/// the disc is sorted stably).
+///
+/// **Mutation that must bleed:** relax `A(q)` to the texel's own `amount` instead of the box max — a bound
+/// that looks reasonable and is wrong, because the source that lifts a texel is a NEIGHBOUR. (Verified
+/// RED.)
+///
+/// **A mutation that does NOT bleed, and why that is recorded rather than fixed:** swapping the disc's
+/// `sort_by` for `sort_unstable_by` leaves this gate green. That is not the fixture being weak about ties
+/// — it has a flat plateau precisely to generate them — it is `sort_unstable_by` happening to produce the
+/// same order here (pdqsort is not adversarial on a nearly-sorted key). The tie-break order rests on
+/// `slice::sort_by` being **stable by the standard library's contract**, which is a guarantee no fixture
+/// can stand in for. Do not "strengthen" this gate by hunting an input where pdqsort differs: that would
+/// pin an implementation detail of the sort, not the property.
+#[test]
+fn the_reach_bound_is_exact_the_ball_is_byte_identical_without_it() {
+    const SIZE: u32 = 96;
+    let n = (SIZE * SIZE) as usize;
+    // `amount` must contain the whole range the bound reasons about, or the gate proves nothing: dead
+    // neighbourhoods (where it fires immediately), partial touches (where it fires part-way through the
+    // disc), and saturation (where it never fires at all).
+    let amount: Vec<f32> = (0..n)
+        .map(|i| {
+            let (x, y) = ((i as u32 % SIZE) as f32, (i as u32 / SIZE) as f32);
+            if x < 20.0 || y < 20.0 {
+                0.0 // untouched: A(q) = 0 over a wide band, the 35% case
+            } else if x > 70.0 {
+                1.0 // saturated: the bound never fires
+            } else {
+                ((x - 20.0) / 50.0).clamp(0.0, 1.0) * ((y - 20.0) / 60.0).clamp(0.0, 1.0)
+            }
+        })
+        .collect();
+    // Varied relief, including a flat plateau — the tie generator. On flat paint with uniform `amount`
+    // every source at the same distance lifts by the identical float, so the argmax is decided purely by
+    // iteration order, and this is where an unstable sort would show.
+    let pre: Vec<f32> = (0..n)
+        .map(|i| {
+            let (x, y) = ((i as u32 % SIZE) as f32, (i as u32 / SIZE) as f32);
+            if (30.0..60.0).contains(&x) && (30.0..60.0).contains(&y) {
+                0.5 // the plateau
+            } else {
+                0.4 * ((x * 0.031).fract() + (y * 0.017).fract())
+            }
+        })
+        .collect();
+
+    for &depth in &[1.0f32, 0.5, -0.75] {
+        let unit = 16.0f32;
+        let rho = depth.abs() * unit;
+        let r = rho.ceil() as i64;
+        let cr = Region {
+            x: 8,
+            y: 8,
+            w: SIZE - 16,
+            h: SIZE - 16,
+        };
+        let (fast_h, fast_s) = super::super::sculpt_offset::blob_ball(
+            &pre,
+            &amount,
+            SIZE,
+            SIZE,
+            cr,
+            depth,
+            unit,
+            depth > 0.0,
+        );
+        let (slow_h, slow_s) = brute_ball(&pre, &amount, SIZE, cr, depth, unit, r);
+        let hdiff = fast_h
+            .iter()
+            .zip(&slow_h)
+            .filter(|(a, b)| a.to_bits() != b.to_bits())
+            .count();
+        assert_eq!(
+            hdiff, 0,
+            "depth {depth}: the bounded walk changed {hdiff} heights — it is supposed to skip only \
+             offsets that fail the in-ball test anyway"
+        );
+        let sdiff = fast_s.iter().zip(&slow_s).filter(|(a, b)| a != b).count();
+        assert_eq!(
+            sdiff, 0,
+            "depth {depth}: the bounded walk moved {sdiff} argmax sources. The matter follows this \
+             pointer, so a different winner is a different COLOUR arriving — the tie-break order has to \
+             survive the sort"
+        );
+    }
+}
+
+/// The shipped kernel with the reach bound removed: every offset in the disc, in raster order. The oracle
+/// for the gate above — deliberately not a re-derivation of the ball's maths, just the same maths without
+/// the skip.
+fn brute_ball(
+    pre: &[f32],
+    amount: &[f32],
+    size: u32,
+    cr: Region,
+    depth: f32,
+    unit: f32,
+    r: i64,
+) -> (Vec<f32>, Vec<u32>) {
+    let rho = depth.abs() * unit;
+    let (mag, inv_rho2) = (depth.abs(), 1.0 / (rho * rho));
+    let sz = i64::from(size);
+    let (cw, ch) = (cr.w as usize, cr.h as usize);
+    let dilate = depth > 0.0;
+    let mut disc: Vec<(i64, i64, f32)> = Vec::new();
+    for dy in -r..=r {
+        for dx in -r..=r {
+            let dq = (dx * dx + dy * dy) as f32 * inv_rho2;
+            if dq <= 1.0 {
+                disc.push((dx, dy, dq));
+            }
+        }
+    }
+    let (mut hbuf, mut sbuf) = (vec![0.0f32; cw * ch], vec![0u32; cw * ch]);
+    for ry in 0..ch {
+        let qy = i64::from(cr.y) + ry as i64;
+        for rx in 0..cw {
+            let qx = i64::from(cr.x) + rx as i64;
+            let (mut best, mut bdx, mut bdy) = (pre[(qy * sz + qx) as usize], 0i64, 0i64);
+            for &(dx, dy, dq) in &disc {
+                let (px, py) = (qx + dx, qy + dy);
+                if px < 0 || px >= sz || py < 0 || py >= sz {
+                    continue;
+                }
+                let pi = (py * sz + px) as usize;
+                let a_p = amount[pi].clamp(0.0, 1.0);
+                let arg = a_p * a_p - dq;
+                if arg <= 0.0 {
+                    continue;
+                }
+                let lift = mag * arg.sqrt();
+                let v = if dilate {
+                    pre[pi] + lift
+                } else {
+                    pre[pi] - lift
+                };
+                if if dilate { v > best } else { v < best } {
+                    best = v;
+                    bdx = dx;
+                    bdy = dy;
+                }
+            }
+            hbuf[ry * cw + rx] = best;
+            sbuf[ry * cw + rx] = super::super::sculpt_offset::pack_src(bdx, bdy);
+        }
+    }
+    (hbuf, sbuf)
+}
+
+/// **The reach bound actually SKIPS work — counted, not timed.**
+///
+/// Its sibling above proves the bound changes no pixel; this one proves it is worth having. Deliberately a
+/// COUNT and not a stopwatch: the shipped wall-clock probes in this file take a min-of-3 and still swing by
+/// 3x on a loaded machine (measured 2026-07-18: the UNCHANGED kernel read 10 ms where this file's own docs
+/// record 3), so a millisecond bar here would pin the state of the box's thermals. How many disc offsets
+/// the walk is allowed to visit is a property of the arithmetic and the same on every machine, forever.
+///
+/// Two facts, and the first is the one that pays:
+///  - an untouched neighbourhood admits **zero** offsets. `A(q) = 0` means no source anywhere in the disc
+///    can satisfy `a_p² > dq`, so the whole 800-offset walk collapses on its first comparison. On the kill
+///    fixture that was **35% of all texels**, each of them previously walked in full to find nothing.
+///  - over a realistic tapering stroke the admitted fraction is well under half — because `amount` falls
+///    off from the stroke's spine, and a source that only half-touched the canvas only reaches half as far.
+///
+/// **Mutation that must bleed:** make `box_max` return `1.0` everywhere (the bound that is always true and
+/// never useful) — the dead neighbourhood then admits the whole disc.
+#[test]
+fn the_reach_bound_admits_only_the_offsets_that_could_contribute() {
+    const SIZE: u32 = 128;
+    let n = (SIZE * SIZE) as usize;
+    let (depth, unit) = (1.0f32, 16.0f32);
+    let rho = depth * unit;
+    let r = rho.ceil() as i64;
+    // A stroke, not a fill: `amount` peaks on the spine and tapers to nothing, which is what a dab's
+    // falloff lays down and what the bound reads. (A uniform fill — Filter Layer — is the case where the
+    // bound never fires at all, and it is measured NOT to regress by `diag_exact_ball_per_move_cost`.)
+    let amount: Vec<f32> = (0..n)
+        .map(|i| {
+            let (x, y) = ((i as u32 % SIZE) as f32, (i as u32 / SIZE) as f32);
+            let d = ((y - 64.0) / 30.0).abs().hypot(((x - 64.0) / 45.0).abs());
+            (1.0 - d).clamp(0.0, 1.0)
+        })
+        .collect();
+    let cr = Region {
+        x: 0,
+        y: 0,
+        w: SIZE,
+        h: SIZE,
+    };
+    let abuf = super::super::sculpt_offset::box_max(&amount, SIZE, SIZE, cr, r);
+
+    // The disc the walk would visit without the bound.
+    let inv_rho2 = 1.0 / (rho * rho);
+    let disc: Vec<f32> = (-r..=r)
+        .flat_map(|dy| (-r..=r).map(move |dx| (dx * dx + dy * dy) as f32 * inv_rho2))
+        .filter(|dq| *dq <= 1.0)
+        .collect();
+    let full = disc.len();
+    assert!(
+        full > 700,
+        "precondition: the widest ball is a wide disc ({full})"
+    );
+
+    let (mut admitted, mut total, mut dead_texels, mut dead_admitted) = (0u64, 0u64, 0u64, 0u64);
+    for (i, a) in abuf.iter().enumerate() {
+        let a2 = a * a;
+        let adm = disc.iter().filter(|dq| **dq < a2).count() as u64;
+        admitted += adm;
+        total += full as u64;
+        if *a == 0.0 {
+            dead_texels += 1;
+            dead_admitted += adm;
+        }
+        let _ = i;
+    }
+    assert!(
+        dead_texels > 1_000,
+        "the fixture must CONTAIN untouched ground for this to mean anything (only {dead_texels})"
+    );
+    assert_eq!(
+        dead_admitted, 0,
+        "an untouched neighbourhood must admit not one offset — that is the 35% of the kill fixture \
+         whose entire disc was being walked to find nothing"
+    );
+    let frac = admitted as f64 / total as f64;
+    assert!(
+        frac < 0.5,
+        "the bound admitted {:.1}% of the disc over a tapering stroke — it is supposed to shrink the \
+         walk with the falloff, and a bound that admits nearly everything is a bound that is not firing",
+        frac * 100.0
+    );
+    println!(
+        "reach bound admits {:.1}% of {full} offsets (dead texels: {dead_texels})",
+        frac * 100.0
+    );
+}

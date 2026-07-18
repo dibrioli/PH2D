@@ -18,7 +18,8 @@
 |---|---|---|---|
 | **W1** | Ponte ECS + tick no Playhead + hash no replay gate | o alicerce: sprite cai e assenta, determinístico | tudo |
 | **W1.5** | Scrub bit-exato (checkpoint ring) | scrub pra trás sem re-sim O(t) | — (opcional; pode ir depois de W2) |
-| **W2** | Painel global + Inspector body | a autoria do artista | joints, bake |
+| **W2a** | Inspector body | a autoria do artista | joints, bake |
+| **W2b** | Painel global de mundo | gravidade/solver/camadas | — |
 | **W3** | Joints | pino/mola/motor/distância; pêndulo, corrente, ragdoll | bake de joints |
 | **W4** | Bake-to-timeline | runtime-truth vira animação editável | — |
 
@@ -182,7 +183,7 @@ Joints, bake.
 - Components de joint (registrados no `ComponentRegistry` — append-only), autoria no Inspector/canvas
   (gizmo de ancoragem), mapeamento para `ImpulseJointSet`/`MultibodyJointSet` do rapier (acesso cru via
   `bodies_mut`/`colliders_mut` do wrapper). Determinismo preservado (mesma proibição de simd/parallel).
-- Bump `PROJECT_SCHEMA` (**17 → 18** — W1 usou o 16, W2 o 17) + a tripla-pin — joints persistem.
+- Bump `PROJECT_SCHEMA` (**18 → 19** — W1 usou o 16, W2 o 17, e a integração RECONTOU para 18 ao somar o bump da `line/FLIP`) + a tripla-pin — joints persistem.
 
 ### Gates (red-first, mutation-tested)
 1. **pêndulo de 2 corpos determinístico** — hash estável cross-OS (estende `physics-ecs-c9` com uma cena de

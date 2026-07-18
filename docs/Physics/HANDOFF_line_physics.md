@@ -10,19 +10,34 @@
 
 ---
 
-> **📦 LINHA FECHADA E PRONTA PARA INTEGRAR (2026-07-18).** Handoff do integrador:
-> [`HANDOFF_INTEGRACAO_line_physics_2026-07-18.md`](HANDOFF_INTEGRACAO_line_physics_2026-07-18.md)
-> (identidade, foundational tocado, símbolos de colisão com valor literal, gates do `ship.sh` já
-> rodados). **Todo o smoke foi aprovado pelo Enio; nada pendente.**
+> **✅ INTEGRADA NA `main` (2026-07-18).** W0 · W1 · W1.5 · metade do W2, com todo o smoke aprovado.
+> Handoff usado: [`HANDOFF_INTEGRACAO_line_physics_2026-07-18.md`](HANDOFF_INTEGRACAO_line_physics_2026-07-18.md)
+> (histórico — os números de identidade dele são do dia da entrega, não do baseline atual).
+>
+> **⚠️ Dois números MUDARAM na integração, e é assim que tinha de ser:**
+> - **`PROJECT_SCHEMA` = 18, não o 17 que a linha entregou.** Recontado: o 17 desta linha + o bump da
+>   `line/FLIP` na mesma janela. É a regra *"o valor se CONTA, não se escolhe"* funcionando —
+>   escolher um dos lados faria os saves do outro passarem na checagem de versão e serem lidos com o
+>   layout errado. A tripla-pin é **`(18, 8, 8)`**. **W3 bumpa 18 → 19.**
+> - **O ADR virou [0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md).**
+>   O 0130 tinha dois donos (a `line/gpu-nodes` também o reivindicou) — 2ª vez que isso acontece no
+>   repo. **Um número de ADR escolhido numa linha paralela é PROVISÓRIO até integrar**, e todas as
+>   referências dele em doc-comment viram custo de rename. Já não há referência órfã ao 0130 nesta
+>   linha (verificado por grep + o gate `architecture_adr_numbers_are_unique`).
+>
+> **Verificado na árvore integrada (não presumido):** `cargo check --workspace --all-targets` limpo ·
+> as 4 suítes do módulo verdes · seam do Inspector 7/7 · **os dois hashes C9 BYTE-IDÊNTICOS** aos da
+> entrega (`2f7e2d58…` / `54fea296…`) ⇒ a física atravessou o merge sem mover um bit.
 
 ## Estado por-wave
 
 | Wave | Estado | Commit | Nota |
 |---|---|---|---|
-| **W0 — Arquitetura** | ✅ **FECHADO** (2026-07-17) | `456e8b99` | ADR-0131 + plano de waves + tracker + visão. **Zero código.** |
-| **W1 — Ponte ECS + tick + hash** | ✅ **FECHADO** (2026-07-17, pendente smoke) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
-| **W1.5 — Scrub (checkpoint ring)** | ✅ **FECHADO** (2026-07-18, pendente smoke) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
-| **W2 — Inspector body** | ✅ **METADE FECHADA** (2026-07-18, pendente smoke) | ver §W2 | a autoria; o painel GLOBAL segue pendente |
+| **W0 — Arquitetura** | ✅ **INTEGRADO** | `456e8b99` | ADR-0131 + plano de waves + tracker + visão. **Zero código.** |
+| **W1 — Ponte ECS + tick + hash** | ✅ **INTEGRADO** (smoke aprovado) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
+| **W1.5 — Scrub (checkpoint ring)** | ✅ **INTEGRADO** (smoke aprovado) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
+| **W2a — Inspector body** | ✅ **INTEGRADO** (smoke aprovado) | ver §W2 | a autoria |
+| **W2b — Painel global de mundo** | ⏭️ **A PRÓXIMA** | — | gravidade/solver/camadas; terreno re-verificado abaixo |
 | **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll |
 | **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
 
@@ -332,6 +347,35 @@ cronômetro. **2 mutações, 2 sangram** — uma por metade, porque as duas cons
 diferentes do mesmo artefato.
 
 ---
+
+---
+
+## ⏭️ W2b — o painel global de mundo: terreno RE-VERIFICADO contra a `main` pós-integração (2026-07-18)
+
+⚠️ **Os números abaixo foram medidos DEPOIS da integração, não copiados do plano.** A `main` recebeu
+Painter, FLIP e GPU na mesma janela, e um "próximo id livre" anotado antes do merge é exatamente o tipo
+de fato que envelhece em silêncio.
+
+| Fato | Valor verificado hoje |
+|---|---|
+| `PHYSICS_SCROLLBAR_ID` | **`NodeId(836)` ainda LIVRE** (o topo ocupado é 835, `FLIP_SCROLLBAR_ID`) |
+| Próximo `z` de chrome livre | **310** (240 · 270 · 271 · 280 · 290 · **300 = o transport desta linha**) |
+| Painéis registrados hoje | **19** (`EXPECTED_TYPED` é à mão e **não** é regenerado pelo `panel-sync` — some 1) |
+| Ponto de inserção no z-order | logo após `ids::TIMELINE_PANEL` (`hero/paint.rs:341`), **antes** da cauda flutuante `INSP_BLENDER_PICKER`/`GAL_PANEL` — o que vem depois pinta por cima |
+| `PROJECT_SCHEMA` atual | **18** — o painel global **não** persiste nada novo por si só (gravidade e afins são settings de mundo; decidir ONDE moram é parte do W2b) |
+
+**O que o W2b entrega** (ADR-0131 D8): crate `ph2d-panel-physics` docada na categoria MUNDO — gravidade
+(vetor), substeps/iterações do solver, damping global, sleep thresholds, matriz de camadas de colisão. A
+escala do mundo é `ProjectSettings.pixels_per_meter` (setting do PROJETO) — **o painel exibe, não duplica**.
+
+**Os 5 sites de registro** (precedente canônico: `ph2d-panel-vector`) e ⚠️ **a armadilha que não falha
+alto**: sem a entrada na lista de fallback de z-order, o painel fica registrado, visível, e **NUNCA é
+pintado** — nada quebra, nada avisa.
+
+**Já existe e o W2b só liga:** os knobs `set_gravity` (na ponte, que já limpa o ring) ·
+`set_substeps`/`set_contact_frequency`/`set_contact_response`/`set_solver_iterations` (no `PhysicsWorld`)
+· e o flag `App.show_colliders`, que o checkbox "Show Colliders" deve LER — **duas portas para a mesma
+pergunta divergem**, então o checkbox e a tecla `B` compartilham o flag, não cada um o seu.
 
 ---
 

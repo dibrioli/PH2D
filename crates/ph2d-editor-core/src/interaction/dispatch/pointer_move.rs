@@ -193,7 +193,18 @@ pub(super) fn dispatch_move<'frame>(
                 Some(InteractiveState::NumberInput { value, .. }) => *value,
                 _ => d.start_value,
             };
-            let raw_value = current_value + delta;
+            // ⚠️ Numa caixa que ARREDONDA, a base do Move seguinte não pode ser o valor já
+            // arredondado: o resíduo seria descartado a cada Move e o scrub travava
+            // (`round(round(v) + d) == round(v)` para todo `d < 0.5`). No eixo VERTICAL, que é
+            // o preciso (`DRAG_RANGE_PX_V` = 2500), um Move típico carrega ~0.15 de uma
+            // contagem — nunca meia unidade. Elas acumulam num contínuo à parte; as caixas
+            // contínuas continuam a ler o valor de volta, byte por byte como antes.
+            let base = if store.linked_slider_snap_integer(d.id) {
+                d.accum
+            } else {
+                current_value
+            };
+            let raw_value = base + delta;
             // When the chip is bounded by a slider, the valid
             // DISPLAY range is the affine projection of the
             // slider's `0..1` storage — for a mapped link with
@@ -231,6 +242,10 @@ pub(super) fn dispatch_move<'frame>(
             // reversal still produces a non-zero step_dx on
             // the very next Move.
             store.advance_number_input_drag_anchor(event.x, event.y);
+            // O acumulador guarda o valor CLAMPADO, não o cru: assim uma inversão depois de
+            // bater no limite move o valor já no Move seguinte — a propriedade que o modelo
+            // incremental existe para garantir.
+            store.set_number_input_drag_accum(new_value);
             // Audit follow-up #7 (MED, 2026-05-28): converge
             // on the shared `apply_chip_value_with_mirror`
             // helper — single source of truth for chip+slider

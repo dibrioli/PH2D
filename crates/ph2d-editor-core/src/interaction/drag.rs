@@ -62,6 +62,25 @@ pub struct NumberInputDragState {
     /// The byte offset at which the deferred caret-place lands if
     /// Up arrives before threshold is crossed (click-to-edit path).
     pub caret_offset_at_down: usize,
+    /// **The CONTINUOUS running value of the scrub** — used only by chips registered via
+    /// [`super::WidgetStore::link_slider_number_mapped_integer`].
+    ///
+    /// Those chips round on every write. The scrub reads the chip's current value back as the
+    /// base for the next Move, so the rounding sat INSIDE the feedback loop and the residue was
+    /// thrown away every Move: `round(round(v) + d) == round(v)` for any `d < 0.5`, forever.
+    ///
+    /// The arithmetic made the vertical axis dead, not merely coarse. `DRAG_RANGE_PX_V` is 2500
+    /// (it is the PRECISE axis on purpose), so a `1..128` count scrubs at 0.05 units per pixel
+    /// and a typical Move carries ~0.15 — never half a unit. Every integer chip in the app was
+    /// affected (Enio reported it on the Zig Zag ridges, 2026-07-18).
+    ///
+    /// So the accumulator is continuous and the snap happens at the WRITE: the chip still shows
+    /// an integer, and the drag still travels. It is clamped exactly like the written value, so
+    /// a reversal after hitting a bound still moves on the very next Move.
+    ///
+    /// ⚠️ **Continuous chips do not read this** — they keep reading the chip back, byte for byte
+    /// as before. The residue only exists where something discards it.
+    pub accum: f64,
 }
 
 /// State of an in-progress continuous-hold on a NumberInput stepper

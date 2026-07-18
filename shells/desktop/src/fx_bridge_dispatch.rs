@@ -111,7 +111,17 @@ pub(crate) fn apply(
         }
     }
     if let Some((row, p, track)) = param {
-        crate::fx_bridge::set_param(scene, id, row, p, track);
+        // ⚠️ **A caixinha e o slider partilham o id**, e o store regista SEMPRE um slider (o
+        // `populate` regista o teto, antes de saber que efeito cai na linha). Então um press
+        // numa caixinha também emite `ValueChanged` do slider, com o track = a posição
+        // HORIZONTAL do cursor dentro do botão — e essa escrita vinha DEPOIS do flip acima.
+        //
+        // O resultado era o reportado (Enio, 2026-07-18): clicar repetidamente no mesmo sítio
+        // dava sempre o mesmo estado, porque quem decidia era o *onde* do clique e não o flip.
+        // Duas escritas para um fato: a do Click é a verdadeira, e esta tem de se recusar.
+        if !crate::fx_bridge::is_toggle(scene, id, row, p) {
+            crate::fx_bridge::set_param(scene, id, row, p, track);
+        }
     }
 }
 

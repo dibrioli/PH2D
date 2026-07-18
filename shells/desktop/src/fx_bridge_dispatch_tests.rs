@@ -5,6 +5,7 @@
 
 use super::*;
 use ph2d_editor::ids as i;
+use ph2d_vec_scene::effect::PathEffect;
 use ph2d_vec_scene::{VecPath, VecVertex};
 
 fn scene_with_square() -> (VecScene, VecPathId) {
@@ -140,4 +141,71 @@ fn remove_and_reorder_reach_the_scene() {
 
     apply(&mut scene, id, None, Some((0, FxRowAction::Remove)), None);
     assert_eq!(crate::fx_bridge::stack_view(&scene, id).len(), 1);
+}
+
+/// **Uma caixinha ALTERNA a cada clique, mesmo clicada sempre no mesmo sítio.**
+///
+/// O id do slider é partilhado com a caixinha, então um press nela emite TAMBÉM o
+/// `ValueChanged` do slider — com o track = a posição horizontal do cursor. Essa escrita corria
+/// depois do flip e ganhava, então quem decidia o estado era o *onde* do clique: apertar
+/// seguidamente no mesmo ponto dava sempre o mesmo resultado (Enio, 2026-07-18).
+///
+/// O oráculo é a ALTERNÂNCIA sob um track FIXO — é isso que o artista faz com o dedo parado.
+#[test]
+fn a_toggle_alternates_even_when_clicked_at_the_same_spot() {
+    let (mut scene, id) = scene_with_square();
+    // O tipo que tem caixinha, achado pela tabela e não por nome.
+    let Some((kind, param)) = (0..PathEffect::KINDS.len()).find_map(|k| {
+        PathEffect::from_kind(k)?
+            .params()
+            .iter()
+            .position(|d| d.toggle)
+            .map(|p| (k, p))
+    }) else {
+        return; // nenhum efeito tem caixinha hoje — o gate dorme, não mente
+    };
+    crate::fx_bridge::add(&mut scene, id, kind);
+
+    let read = |s: &VecScene| crate::fx_bridge::stack_view(s, id)[0].params[param].value >= 0.5;
+    let start = read(&scene);
+    // O MESMO clique, quatro vezes: Click (flip) + ValueChanged (o track do press). Um track
+    // de 0.9 é o canto direito do botão — com o bug, ele fixava o estado em "ligado".
+    for i in 1..=4 {
+        apply(
+            &mut scene,
+            id,
+            None,
+            Some((0, FxRowAction::Toggle(param))),
+            Some((0, param, 0.9)),
+        );
+        assert_eq!(
+            read(&scene),
+            (i % 2 == 1) != start,
+            "clique {i} no mesmo sítio: a caixinha tem de ter alternado {i} vezes"
+        );
+    }
+}
+
+/// E o irmão: um parâmetro CONTÍNUO na mesma linha continua a receber o track. Sem este, a
+/// recusa acima podia ser escrita larga demais e matar todos os sliders em silêncio.
+#[test]
+fn a_continuous_parameter_still_takes_the_track() {
+    let (mut scene, id) = scene_with_square();
+    let Some((kind, param)) = (0..PathEffect::KINDS.len()).find_map(|k| {
+        PathEffect::from_kind(k)?
+            .params()
+            .iter()
+            .position(|d| !d.toggle)
+            .map(|p| (k, p))
+    }) else {
+        return;
+    };
+    crate::fx_bridge::add(&mut scene, id, kind);
+    let before = crate::fx_bridge::stack_view(&scene, id)[0].params[param].value;
+    apply(&mut scene, id, None, None, Some((0, param, 0.75)));
+    let after = crate::fx_bridge::stack_view(&scene, id)[0].params[param].value;
+    assert!(
+        (after - before).abs() > 1e-9,
+        "o slider parou de receber o track ({before} -> {after})"
+    );
 }

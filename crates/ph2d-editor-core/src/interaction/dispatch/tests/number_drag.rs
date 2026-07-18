@@ -879,3 +879,56 @@ fn number_stepper_hold_ends_on_pointer_up() {
     // Value remained at the single Down-increment.
     assert!((read_value(&store, NodeId(77)) - 1.0).abs() < f64::EPSILON);
 }
+
+/// **Uma caixa de CONTAGEM anda no arrasto VERTICAL** — e antes não andava, de todo.
+///
+/// O scrub lê o valor da caixa de volta como base do Move seguinte, e uma caixa registada por
+/// `link_slider_number_mapped_integer` arredonda em toda escrita. O arredondamento ficava assim
+/// DENTRO do laço, e o resíduo era descartado a cada Move:
+/// `round(round(v) + d) == round(v)` para todo `d < 0.5`.
+///
+/// **A aritmética matava o eixo vertical, não o tornava apenas grosso.** `DRAG_RANGE_PX_V` é
+/// 2500 (é o eixo PRECISO, de propósito), então uma contagem de `1..128` corre a 0,05 unidades
+/// por pixel e um Move típico de 3 px carrega 0,15 — nunca meia unidade. Valia para TODA caixa
+/// inteira do app; o Enio bateu nela nas cristas do Zig Zag (2026-07-18).
+///
+/// O fixture usa Moves de 3 px, que é o que um rato entrega — com um salto de 200 px o bug não
+/// aparece, e o gate ficaria verde sobre ele.
+#[test]
+fn an_integer_chip_still_travels_on_the_precise_vertical_axis() {
+    let (mut store, hits, rect) = number_input_setup(8.0);
+    store.link_slider_number_mapped_integer(NodeId(78), NodeId(77), 127.0, 1.0);
+    store.set_number_range(NodeId(77), 1.0, 128.0, 1.0);
+    let arena = Bump::new();
+    let (cx, cy) = (rect.x + 10.0, rect.y + rect.h * 0.5);
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, cx, cy),
+        &arena,
+    );
+    // Cruza o limiar na VERTICAL (o eixo trava no maior delta, e aqui só há dy).
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Move, cx, cy - 5.0),
+        &arena,
+    );
+    let start = read_value(&store, NodeId(77));
+    // 20 Moves de 3 px para CIMA = 60 px ⇒ 60 · (127 / 2500) ≈ 3,05 unidades.
+    for i in 1..=20u8 {
+        let y = cy - 5.0 - 3.0 * f32::from(i);
+        let _ = dispatch_pointer(&mut store, &hits, pointer(PointerKind::Move, cx, y), &arena);
+    }
+    let end = read_value(&store, NodeId(77));
+    assert!(
+        (end - start) >= 2.0,
+        "60 px na vertical deviam valer ~3 contagens; o valor foi de {start} para {end}. \
+         Parado significa que o arredondamento voltou para dentro do laço do scrub."
+    );
+    // E continua INTEIRO: o acumulador é contínuo, a caixa não.
+    assert!(
+        (end - end.round()).abs() < 1e-9,
+        "a caixa mostrou {end}, que não é uma contagem"
+    );
+}

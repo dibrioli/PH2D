@@ -470,6 +470,14 @@ impl WidgetStore {
         }
     }
 
+    /// Guarda o valor CONTÍNUO do scrub (ver [`NumberInputDragState::accum`]). Só as caixas que
+    /// arredondam o leem — nas contínuas o acumulador nunca é consultado.
+    pub fn set_number_input_drag_accum(&mut self, v: f64) {
+        if let Some(drag) = self.number_input_drag.as_mut() {
+            drag.accum = v;
+        }
+    }
+
     pub fn end_number_input_drag(&mut self) -> Option<NumberInputDragState> {
         self.number_input_drag.take()
     }

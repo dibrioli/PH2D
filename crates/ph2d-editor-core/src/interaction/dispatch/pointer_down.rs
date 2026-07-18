@@ -459,6 +459,8 @@ pub(super) fn dispatch_down<'frame>(
                 // future "defer caret-place" refactor has the
                 // data on hand.
                 caret_offset_at_down: 0,
+                // O acumulador contínuo nasce onde o valor está (ver `NumberInputDragState::accum`).
+                accum: *value,
             };
             store.begin_number_input_drag(drag);
         }

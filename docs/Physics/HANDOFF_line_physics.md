@@ -73,6 +73,15 @@ passed, 5 skipped).
 uma bola laranja (dynamic) deve **cair e assentar** sobre a barra cinza (static floor). Ponte morta = bola
 pendurada no ar.
 
+**Transport Play/Pause/Reset (2026-07-18, aprovado o smoke da física):** os 3 chips da TopBar estavam
+**pintados e inertes** (o clique só imprimia o nome). Agora dirigem o **Playhead** (física/motion/timeline/
+flip andam juntos). `EditorAction::Transport(TransportCmd{Play,Pause,Reset})` (editor-core, append,
+non_exhaustive) + `chrome/transport.rs` (handler z=300, regen do `dispatch_all` pelo `ph2d-chrome-sync`) →
+dreno no shell chama a **porta única** `shells/desktop/src/transport.rs::apply(cmd, &mut Playhead)` (Reset =
+`rewind` + `pause`, porque `rewind` sozinho mantém o play state). 2 gates mutation-verified (o clique via
+`dispatch_all` levanta o comando certo; o mapeamento muda o Playhead). ⚠️ Reset **não** rebobina a SIM (a
+bola não volta a subir) — isso é o scrub-back do **W1.5**; aqui só o relógio volta a 0.
+
 **Deferido (por design, não esquecido):** scrub-back re-sim = **W1.5** (o `settle` seta `last_stepped=target`
 no paused; scrub não rebobina o corpo ainda — o ring é a próxima wave, com o **kill-check de serialização
 do rapier ANTES do build**). restituição/atrito/damping/Kinematic/camadas = **W2** (append + wire no painel).
@@ -206,6 +215,11 @@ do rapier ANTES do build**). restituição/atrito/damping/Kinematic/camadas = **
      `physics_smoke.rs` + `render_loop/physics_bridge.rs`.
    - `.github/workflows/spike.yml` (+step/artifact/compare `physics-ecs-c9`). `Cargo.lock`.
    - **`ph2d-ecs` NÃO foi tocado** (só lido; o registro mora na minha crate).
+   - **`ph2d-editor-core` (transport, foundational-shared):** `action_bus.rs` (+`EditorAction::Transport`
+     variant + `TransportCmd` enum, aditivo), `screens/hero/chrome/transport.rs` (**novo** handler z=300),
+     `screens/hero/chrome/mod.rs` (**bloco GERADO** re-sincronizado por `ph2d-chrome-sync`),
+     `screens/hero/topbar/mod.rs` (tooltips). Shell: `transport.rs` (**novo**, a porta única), `main.rs`
+     (`mod transport`), `render_loop/mod.rs` (arm do dreno).
 3. **Símbolos que podem COLIDIR (grep na integração):**
    - **ADR `0130`** — 4 linhas ativas podem reclamá-lo; gate `architecture_adr_numbers_are_unique`. Renomeio
      escopado a `git diff --name-only`, **nunca** `git grep` de árvore ([[feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree]]).
@@ -213,9 +227,14 @@ do rapier ANTES do build**). restituição/atrito/damping/Kinematic/camadas = **
      valor se CONTA, não se escolhe** ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]): some os
      dois deltas (ex.: se outra linha subiu p/ 16 por outro motivo, o combinado é 17) e atualize a tripla.
      O gate `a_schema_bump_anywhere_must_bump_the_project_schema` fica **vermelho** até baterem.
-   - Listas append-only que o Mergiraf funde mas o integrador confere: `mod physics_smoke;`(main.rs),
-     `mod physics_bridge;`(render_loop/mod.rs), o campo `AppGfx.physics` + seu destructure, o bloco
-     `component_registry` de `init.rs`, os `mod`/prólogo do frame.
+   - Listas append-only que o Mergiraf funde mas o integrador confere: `mod physics_smoke;`/`mod transport;`
+     (main.rs), `mod physics_bridge;`(render_loop/mod.rs), o campo `AppGfx.physics` + seu destructure, o bloco
+     `component_registry` de `init.rs`, os `mod`/prólogo do frame, o `match` de `EditorAction` no dreno.
+   - **`EditorAction::Transport` + `TransportCmd`** (append em `action_bus.rs`) — se outra linha também
+     apendar variant no `EditorAction`, Mergiraf funde (variants distintos), mas confira. **`chrome/mod.rs`
+     é GERADO** (bloco `<ph2d-chrome-sync:...>`): conflito ali = **re-rode `cargo run -p ph2d-chrome-sync`**,
+     NUNCA resolva na mão (DIRETRIZ §1.5.5); o gate `architecture_chrome_dispatch_in_sync` confirma. Marcador
+     `z=300` no `chrome/transport.rs` (próximo livre; os outros vão até 290).
    - Nomes de código (únicos, improváveis de colidir): `ph2d::physics::{RigidBody,Collider}`,
      `physics-ecs-c9-hash-*`, `PH2D_PHYSICS_SMOKE`.
 4. **Contratos congelados encostados:** **NENHUM**. O contrato de física é novo e não-congelado.

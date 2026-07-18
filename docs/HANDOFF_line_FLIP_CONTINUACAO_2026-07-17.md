@@ -16,10 +16,21 @@
 
 ---
 
-## 1. Estado da linha — §4.B INTEGROU; **§4.C.1 (halo por-peça + hover) FECHOU, pendente smoke**
+## 1. Estado da linha — §4.B INTEGROU; **§4.C em andamento na branch** (à frente da main)
 
-**§4.C.1 — o PEDAÇO é a unidade visual do modo Segment** (`a5738e98`, sobre a base
-integrada, pendente smoke do Enio). Duas coisas, um primitivo:
+**Fechados nesta rodada (sobre a base integrada, à frente da main — não integrados):**
+- **§4.C.1** (`a5738e98`, **smoke OK**) — o pedaço é a unidade visual do Segment (detalhe abaixo).
+- **§4.C.2 — Duplicate Layer** (`47fd348c`, pendente smoke): capacidade nova (reorder já
+  existia via ↑↓; duplicar não). `FlipObject::duplicate_layer` = cópia INDEPENDENTE acima da
+  original — desenhos próprios (deep-copy; editar a cópia não toca o original), a instância
+  DENTRO da camada preservada (mapa por-desenho ⇒ ciclo continua ciclo), refcount por-quadro
+  (delete independente). Botão "Duplicate" na toolbar (Add | Duplicate | Delete; a toolbar
+  virou loop, largura de `.len()` — o `no_magic_numeric` pega `3.0` solto). Gates: 4 modelo +
+  2 seam (forward do painel + apply do shell) + 2 shell, mutações provadas.
+  **Smoke:** `PH2D_FLIP_DEMO=1` → tool Flip → Layers → selecione FG → Duplicate.
+
+**§4.C.1 — o PEDAÇO é a unidade visual do modo Segment** (`a5738e98`, **smoke OK 2026-07-17**).
+Duas coisas, um primitivo:
 - **Halo por-peça** (correção de um gap do §4.B): o overlay caía no branch de traço e
   acendia a FORMA INTEIRA ao selecionar um pedaço; agora `piece_halo_path` desenha só os
   segmentos com os dois extremos acesos — o pedaço, costura inclusa.
@@ -132,12 +143,17 @@ todos dela.
 
 Qualquer um serve de tarefa curta entre smokes:
 
-- ✅ **realce de HOVER no Segment** — FECHOU em §4.C.1 (`a5738e98`), junto com o halo
-  por-peça da seleção. Pendente smoke.
-- reorder de camada por drag · duplicar/agrupar camada · máscaras de camada na UI
-- raio dedicado da borracha + preview · curva de pressão editável · round caps/bevel joins
-- **write-back do painel** (espelhar o estilo da seleção no swatch — `Flip/08 §6`)
-- cache de tesselação com LRU
+- ✅ **realce de HOVER no Segment** — FECHOU em §4.C.1 (`a5738e98`, smoke OK).
+- ✅ **duplicar camada** — FECHOU em §4.C.2 (`47fd348c`, pendente smoke).
+- reorder de camada por DRAG (o reorder já existe via ↑↓; isto é a affordance de arrastar) ·
+  AGRUPAR camada (precisa de conceito de grupo no modelo do Flip — não existe hoje) ·
+  máscaras de camada na UI (o modelo tem `FlipLayer.masks`, falta a UI)
+- raio dedicado da borracha (o anel de preview JÁ existe em `flip_cursor.rs`; falta só um
+  `erase_px` separado do `width_px`) · curva de pressão editável · round caps/bevel joins
+  (caps já existem no `pack.rs`; **joins** = trabalho de shader/render, mais fundo)
+- **write-back do painel** (espelhar o estilo da seleção no swatch — `Flip/08 §6`; ⚠️ é
+  design-ambíguo: o painel hoje é "aplique este valor", não espelho)
+- cache de tesselação com LRU (perf — só com problema MEDIDO)
 
 ---
 

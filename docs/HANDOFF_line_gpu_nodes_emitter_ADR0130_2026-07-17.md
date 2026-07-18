@@ -155,9 +155,14 @@ Há um agente na timeline (`line/anim-ajustes`, worktree `line-anim`). **Medido:
 
 ## §7.SMOKE — como o Enio confere (a linha inteira LANDOU)
 
-O gate É o audit (parity na RTX + policy headless, todos verdes). O smoke interativo:
-- **O gather** (fatias 3-4): `PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=3 cargo run -p ph2d-host-desktop --release` (a cena de simulação; ou monte `emitter → integrate → output` no editor). As partículas devem nascer, driftar pela velocidade de bico (por-id) e morrer — sem pop de velocidade trocada quando a janela desliza. (Antes da fatia 3, `emitter → integrate` caía na CPU; agora cozinha 100% na GPU.)
-- **Fatia 5** (`forget_state`): com o mesmo `PH2D_GPU_COOK=1` e um emitter, **arraste `rate`/`life`/`max`** no painel de params — a sim re-bakea do começo sob os novos params (limpo, não um mispair parcial). Arraste `speed`/`size` — a sim VIVA continua (só os novos nascem diferentes). ⚠️ Se o re-bake fundo no playback estiver caro (§4.LANDOU, custo O(tick)), é o sinal pro follow-up "re-seed no tick atual".
+O gate É o audit (parity na RTX + policy headless, todos verdes). Há uma **cena ready-to-smoke dedicada** (`PH2D_GPU_COOK_DEMO=5`, a **fonte de emitter** — auto-play, gateada em `the_emitter_fountain_demo_plans_as_a_fully_gpu_id_gather_loop`). **O comando completo, com o `cd` da worktree:**
+
+```bash
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK=1 PH2D_GPU_COOK_DEMO=5 cargo run -p ph2d-host-desktop --release
+```
+
+- **O gather** (fatias 3-4): a fonte lança até 3.000 partículas que arcam e caem, cada uma com sua velocidade de bico (por-id, cone de `spread`) — **os arcos são limpos**; uma janela deslizante mispareada faria a fonte "ferver" (cada sobrevivente herdando a velocidade de um estranho). Antes da fatia 3, `emitter → integrate` caía na CPU; agora cozinha 100% na GPU (`emitter → integrate` reivindicado pela janela densa). *(As cenas `=3`/`=4` são GRID = pareamento posicional; só a `=5` exercita o gather.)*
+- **Fatia 5** (`forget_state`): com a fonte rodando, **arraste `rate`/`life`/`max`** no painel de params → a fonte re-bakea do começo sob os novos params (limpo, não um mispair parcial). Arraste `speed`/`size` → a sim VIVA continua (só os novos nascem diferentes). ⚠️ Se o re-bake fundo no playback estiver caro (§4.LANDOU, custo O(tick)), é o sinal pro follow-up "re-seed no tick atual".
 
 ## §7 — Ao fechar a fatia (o protocolo)
 

@@ -192,8 +192,9 @@ do rapier ANTES do build**). restituição/atrito/damping/Kinematic/camadas = **
 
 > Reportar ao Enio e **PARAR** (regra E/H). NÃO integrar, NÃO pushar.
 
-1. **Identidade:** branch `line/physics`; base (merge-base com main) = `cdc3acc1`; HEAD = **`9f5fee05`**;
-   **5 commits** (W0: `456e8b99`,`bc7a5990` docs · W1: `44e08cf5` core, `018b00e9` wiring, `9f5fee05` gate).
+1. **Identidade:** branch `line/physics`; base (merge-base com main) = `cdc3acc1`; HEAD + nº de commits =
+   `git log --oneline cdc3acc1..HEAD` no momento da integração (W0: docs · W1: `44e08cf5` core,
+   `018b00e9` wiring, `9f5fee05` gate, + docs de correção por cima).
 2. **Foundational/compartilhado tocado:**
    - `crates/ph2d-physics/` — **meu módulo** (regra B), **aditivo**: `spawn_body`/`set_body_pose`/
      `remove_body` + `BodyDesc`/`ShapeDesc`. Helpers existentes + `step` + c9 **byte-idênticos** (hash

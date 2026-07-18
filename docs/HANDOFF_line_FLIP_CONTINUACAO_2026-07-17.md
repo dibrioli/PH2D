@@ -47,19 +47,29 @@
   **Smoke:** `PH2D_FLIP_DEMO=1` → tool Flip → Layers → **double-click no NOME** de uma camada
   → digite → Enter (Esc cancela; Backspace edita o texto, não apaga traços).
 
-**⚠️ DECISÃO PENDENTE DO ENIO — raio dedicado da borracha (NÃO feito, de propósito):** o item
-"`erase_px` separado do `width_px`" da fila ABAIXO **reverteria uma decisão GATEADA**. O
-gate `size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere`
-([`tests/seam.rs`](../../crates/ph2d-panel-flip/tests/seam.rs)) AFIRMA, executavelmente, que
-o Size é **compartilhado** pela borracha, e o `params.rs` documenta o porquê (Reshape/borracha
-compartilham raio+força de propósito: 2º par de sliders = estado duplicado, re-ajuste a cada
-troca de modo). Dar raio próprio à borracha exige MUDAR esse gate — é reverter invariante do
-repo, não "decidir e executar" ([[feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate]] +
-[[feedback_documented_decision_chesterton_fence]]). **Só com ordem do Enio.** (Contra-argumento
-a favor, se ele quiser: apagar é gesto de escala distinta de desenhar — todo tool 2D tem
-borracha com tamanho próprio; o Reshape esculpe as linhas que você desenhou, então lá o
-compartilhamento faz mais sentido que na borracha.) O anel de preview (`flip_cursor.rs`) já
-lê o modo; seria model+painel+seam se aprovado.
+- **§4.C.4 — raio/força PRÓPRIOS da borracha atrás de um LINK** (`27144941`, **pendente
+  smoke**): ordem do Enio — *"como no blender: a opção de linkar ou não as propriedades dos
+  pincéis de pintura e borracha através de um botão de link na linha da propriedade"* (o
+  **Unified Paint Settings**, um toggle POR PROPRIEDADE, na linha dela).
+  **⚠️ Leia isto antes de mexer:** eu havia proposto *"dar raio próprio à borracha"* e me
+  RECUSEI a fazer sozinho, porque **reverteria o gate**
+  `size_is_shared_by_brush_eraser_and_sculpt_and_absent_elsewhere`. O desenho do Enio é
+  melhor e dissolve o conflito: com o toggle, o **default LINKADO preserva o comportamento
+  histórico** (a borracha usa o `FLIP_SIZE` do pincel) ⇒ **o gate continua VERDE e continua
+  verdadeiro**; deslinkar virou opt-in. A cerca de Chesterton foi honrada **emendando o que
+  ela afirma**, não derrubando-a — o padrão a copiar quando um pedido esbarrar num gate.
+  **Escopo: pintura↔borracha.** O **Sculpt segue compartilhando** (decisão dele, no `params.rs`,
+  intocada). **Porta única:** `FlipTool::eraser_size_px()`/`eraser_strength()` resolvem o link
+  UMA vez; o snapshot publica os EFETIVOS (`erase_px`/`erase_strength`) e o anel do cursor +
+  o apply da borracha leem só esses campos. **Dois widgets por propriedade** (um slot de
+  slider guarda UM valor); os próprios nascem nos defaults do pincel (1º deslink não pula) e
+  sobrevivem ao re-link. Gates: 4 tool + 4 seam + 1 anel + **1 arch-gate**
+  (`the_eraser_uses_the_erasers_own_numbers`: `flip_erase_apply` precisa de `gfx`, é
+  inalcançável headless ⇒ o gate lê o arquivo do produto e proíbe `width_px`/`opacity`).
+  LOC: `paint_sections.rs` estourou (681/600) ⇒ primitivas de linha foram pro irmão
+  **`paint_rows.rs`**. **Smoke:** modo **Erase** → ícone de corrente à direita das linhas
+  Size/Strength; aceso = segue o pincel, apagado = a borracha tem o seu (mude o Size e veja
+  o ANEL mudar, com o pincel de desenho intacto).
 
 **§4.C.1 — o PEDAÇO é a unidade visual do modo Segment** (`a5738e98`, **smoke OK 2026-07-17**).
 Duas coisas, um primitivo:
@@ -185,8 +195,9 @@ Qualquer um serve de tarefa curta entre smokes:
   camadas pelo `LayerCompositor` (blend/opacity) e **nunca aplica máscara**. Expor a UI sem o
   render seria um controle morto (o bug nº 1). É feature GRANDE (render de clip/mask + UI),
   não refino — precisa de plano/ordem, não é um "próximo".
-- ⚠️ **raio dedicado da borracha — GATEADO contra** (ver a "DECISÃO PENDENTE DO ENIO" no §1):
-  reverte `size_is_shared_by_brush_eraser_and_sculpt...`. Só com ordem do Enio.
+- ✅ **raio/força próprios da borracha** — FECHOU em §4.C.4 (`27144941`, pendente smoke), como
+  **toggle de LINK** por propriedade (Blender): o default linkado preservou o gate
+  `size_is_shared_...`, então não houve reversão. Ver o §1.
 - curva de pressão editável · round caps/bevel joins (caps já existem no `pack.rs`; **joins**
   = trabalho de shader/render, mais fundo).
 - **write-back do painel** (espelhar o estilo da seleção no swatch — `Flip/08 §6`; ⚠️ é

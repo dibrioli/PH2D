@@ -383,12 +383,13 @@ fn project_file_round_trips_through_postcard() {
 /// `PhysicsSettings` (o smoke do W2b mostrou que o damping uniforme não é ar; o modelo de
 /// arrasto real é campo novo) · **v21** a camada + a matriz de colisão (ADR-0131 W2c) ·
 /// **v22** a PILHA de Live Path Effects (ADR-0132: `VecPath.effects`,
-/// `VEC_SCENE_SCHEMA_VERSION` 8→9).
+/// `VEC_SCENE_SCHEMA_VERSION` 8→9) · **v23** a entrada da pilha virou `FxEntry` (o efeito +
+/// se está LIGADO — o olho desarma sem perder os parâmetros), `VEC_SCENE_SCHEMA_VERSION` 9→10.
 ///
-/// ⚠️ A entrada do Vector nasceu como **v19** na linha dela e foi **renumerada para v22 na
-/// integração de 2026-07-19**: a `line/physics` bumpou três vezes na MESMA jornada, e o
-/// contador se **CONTA** — 18 (base) + 3 (física) + 1 (esta) = 22. Escolher o 19 faria os
-/// saves da física passarem na checagem de versão e serem lidos com o layout errado.
+/// ⚠️ As entradas do Vector nasceram em **v19..v23** na linha dela e foram **renumeradas para
+/// v22..v26 na integração de 2026-07-19**: a `line/physics` bumpou três vezes na MESMA jornada,
+/// e o contador se **CONTA** — 18 (base) + 3 (física) + 5 (Vector) = 26. Escolher um dos lados
+/// faria os saves do outro passarem na checagem de versão e serem lidos com o layout errado.
 ///
 /// Na integração de 2026-07-13, QUATRO linhas bumparam este contador ao mesmo tempo, cada uma
 /// a partir do 7, cada uma por um motivo diferente. **O valor certo não existia em nenhum lado
@@ -415,7 +416,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (22, 8, 9),
+        (23, 8, 10),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

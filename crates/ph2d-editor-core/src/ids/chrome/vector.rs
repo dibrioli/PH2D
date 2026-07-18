@@ -565,6 +565,22 @@ pub fn vector_fx_down_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.fx.down.{row}"))
 }
 
+/// **O card** da linha `row` — a moldura. Id próprio, e não o do ✕: o card e o botão de
+/// apagar são coisas diferentes para a a11y, e partilhar o id faria o leitor de tela anunciar
+/// a moldura inteira como "remover".
+#[must_use]
+pub fn vector_fx_card_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.card.{row}"))
+}
+
+/// **O olho** da linha `row` — desarma o efeito sem o apagar. Desarmar não pode custar os
+/// parâmetros: zerar a amplitude para "desligar" e depois querer o valor de volta é obrigar o
+/// artista a lembrar-se de números.
+#[must_use]
+pub fn vector_fx_hide_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.fx.hide.{row}"))
+}
+
 /// O slider do parâmetro `param` do efeito da linha `row`.
 #[must_use]
 pub fn vector_fx_param_id(row: usize, param: usize) -> NodeId {

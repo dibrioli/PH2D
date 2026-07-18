@@ -50,6 +50,28 @@ fn circle_subdivided() -> Vec<VecVertex> {
         .collect()
 }
 
+/// A referência da forma dos fixtures: o círculo tem caixa de controle ~2R x 2R (as alças
+/// saem um pouco), então a média fica perto de 2R. Os gates a MEDEM em vez de a supor.
+fn ref_of(v: &[VecVertex]) -> f64 {
+    crate::effect::FxCtx::of(&crate::VecPath {
+        verts: v.to_vec(),
+        closed: true,
+        ..crate::VecPath::default()
+    })
+    .ref_size
+}
+
+/// A amplitude em MUNDO que uma percentagem produz nesta forma.
+fn world_amp(v: &[VecVertex], pct: f64) -> f64 {
+    pct / 100.0 * ref_of(v)
+}
+
+/// Roda o efeito com a referência de escala TIRADA DA PRÓPRIA FORMA — que é o que o
+/// `run_stack` faz no produto.
+fn zz(v: &[VecVertex], closed: bool, spec: &ZigZagSpec) -> (Vec<VecVertex>, bool) {
+    zigzag_contour(v, closed, spec, ref_of(v))
+}
+
 fn spec(amplitude: f64) -> ZigZagSpec {
     ZigZagSpec {
         amplitude,
@@ -68,7 +90,7 @@ fn radii(v: &[VecVertex]) -> Vec<f64> {
 #[test]
 fn the_neutral_point_is_a_byte_identical_no_op() {
     let v = circle();
-    let (out, closed) = zigzag_contour(&v, true, &spec(0.0));
+    let (out, closed) = zz(&v, true, &spec(0.0));
     assert_eq!(out, v);
     assert!(closed);
 }
@@ -76,8 +98,9 @@ fn the_neutral_point_is_a_byte_identical_no_op() {
 /// **A onda alterna para os DOIS lados** do caminho, e com a amplitude pedida.
 #[test]
 fn the_ridges_alternate_to_both_sides_by_the_amplitude() {
-    let amp = 8.0;
-    let (out, _) = zigzag_contour(&circle(), true, &spec(amp));
+    let pct = 8.0;
+    let amp = world_amp(&circle(), pct);
+    let (out, _) = zz(&circle(), true, &spec(pct));
     let r = radii(&out);
     let (hi, lo) = (
         r.iter().copied().fold(f64::MIN, f64::max),
@@ -98,10 +121,10 @@ fn the_ridges_alternate_to_both_sides_by_the_amplitude() {
 /// **Ondular não abre nem fecha uma forma.**
 #[test]
 fn the_contour_keeps_its_closedness() {
-    let (_, closed) = zigzag_contour(&circle(), true, &spec(5.0));
+    let (_, closed) = zz(&circle(), true, &spec(5.0));
     assert!(closed);
     let open: Vec<VecVertex> = circle().into_iter().take(3).collect();
-    let (_, still_open) = zigzag_contour(&open, false, &spec(5.0));
+    let (_, still_open) = zz(&open, false, &spec(5.0));
     assert!(!still_open);
 }
 
@@ -112,8 +135,8 @@ fn the_contour_keeps_its_closedness() {
 /// inteiro, por comprimento de ARCO, e a subdivisão é invisível.
 #[test]
 fn subdividing_the_path_does_not_change_the_wave() {
-    let a = zigzag_contour(&circle(), true, &spec(7.0)).0;
-    let b = zigzag_contour(&circle_subdivided(), true, &spec(7.0)).0;
+    let a = zz(&circle(), true, &spec(7.0)).0;
+    let b = zz(&circle_subdivided(), true, &spec(7.0)).0;
     assert_eq!(
         a.len(),
         b.len(),
@@ -134,7 +157,7 @@ fn subdividing_the_path_does_not_change_the_wave() {
 /// **Mais cristas = mais cristas** — o knob faz o que diz.
 #[test]
 fn asking_for_more_ridges_produces_more_ridges() {
-    let few = zigzag_contour(
+    let few = zz(
         &circle(),
         true,
         &ZigZagSpec {
@@ -143,7 +166,7 @@ fn asking_for_more_ridges_produces_more_ridges() {
         },
     )
     .0;
-    let many = zigzag_contour(
+    let many = zz(
         &circle(),
         true,
         &ZigZagSpec {
@@ -163,14 +186,14 @@ fn asking_for_more_ridges_produces_more_ridges() {
 /// **Suave produz alças; quina não.** É o que distingue a onda do serrote.
 #[test]
 fn smooth_gives_the_anchors_arms_and_corner_does_not() {
-    let corner = zigzag_contour(&circle(), true, &spec(6.0)).0;
+    let corner = zz(&circle(), true, &spec(6.0)).0;
     assert!(
         corner
             .iter()
             .all(|v| v.in_handle == v.anchor && v.out_handle == v.anchor),
         "em quina a alça colapsa na âncora"
     );
-    let smooth = zigzag_contour(
+    let smooth = zz(
         &circle(),
         true,
         &ZigZagSpec {
@@ -190,7 +213,7 @@ fn smooth_gives_the_anchors_arms_and_corner_does_not() {
 #[test]
 fn roughen_is_deterministic_in_its_seed() {
     let rough = |seed| {
-        zigzag_contour(
+        zz(
             &circle(),
             true,
             &ZigZagSpec {
@@ -215,13 +238,14 @@ fn roughen_is_deterministic_in_its_seed() {
 /// O Roughen ainda respeita a AMPLITUDE — aleatório não quer dizer sem teto.
 #[test]
 fn roughen_still_respects_the_amplitude() {
-    let amp = 9.0;
-    let out = zigzag_contour(
+    let pct = 9.0;
+    let amp = world_amp(&circle(), pct);
+    let out = zz(
         &circle(),
         true,
         &ZigZagSpec {
             rough_seed: Some(3),
-            ..spec(amp)
+            ..spec(pct)
         },
     )
     .0;
@@ -239,8 +263,9 @@ fn roughen_still_respects_the_amplitude() {
 /// qualquer. É o gate que pega uma normal trocada por uma direção global.
 #[test]
 fn every_ridge_sits_one_amplitude_off_the_original_curve() {
-    let amp = 6.0;
-    let out = zigzag_contour(&circle(), true, &spec(amp)).0;
+    let pct = 6.0;
+    let amp = world_amp(&circle(), pct);
+    let out = zz(&circle(), true, &spec(pct)).0;
     for r in radii(&out) {
         assert!(
             ((r - R).abs() - amp).abs() < 0.5,
@@ -259,7 +284,7 @@ fn the_wave_makes_the_path_longer() {
         let n = v.len();
         (0..n).map(|i| arclen(&segment(&v, i, n))).sum()
     };
-    let waved = zigzag_contour(&circle(), true, &spec(8.0)).0;
+    let waved = zz(&circle(), true, &spec(8.0)).0;
     let n = waved.len();
     let len: f64 = (0..n).map(|i| arclen(&segment(&waved, i, n))).sum();
     // 6 cristas de amplitude 8 num círculo de raio 60 medem ~1,10x o liso (416 vs 377) — o
@@ -269,4 +294,50 @@ fn the_wave_makes_the_path_longer() {
         len > plain * 1.05,
         "onda de {len} vs caminho liso de {plain} — sem crescimento não houve deslocamento"
     );
+}
+
+/// **O MESMO `Size` desenha a MESMA coisa em qualquer escala** — é o ponto inteiro de a
+/// amplitude ser percentagem da forma (Enio, 2026-07-18).
+///
+/// Duas cópias do círculo, uma 5× maior. Com a amplitude em unidades de MUNDO a onda da grande
+/// seria 5× mais discreta; em percentagem, as duas ondulações são semelhantes ao fator de
+/// escala. O oráculo é a RAZÃO entre o desvio e o raio, que é adimensional.
+#[test]
+fn the_same_size_looks_the_same_at_any_scale() {
+    let scaled = |k: f64| -> Vec<VecVertex> {
+        circle()
+            .into_iter()
+            .map(|v| VecVertex {
+                anchor: [v.anchor[0] * k, v.anchor[1] * k],
+                in_handle: [v.in_handle[0] * k, v.in_handle[1] * k],
+                out_handle: [v.out_handle[0] * k, v.out_handle[1] * k],
+                ..v
+            })
+            .collect()
+    };
+    let bulge = |k: f64| -> f64 {
+        let v = scaled(k);
+        let out = zz(&v, true, &spec(12.0)).0;
+        // O desvio máximo relativo ao raio daquela cópia — adimensional.
+        radii(&out)
+            .into_iter()
+            .map(|r| (r - R * k).abs() / (R * k))
+            .fold(0.0_f64, f64::max)
+    };
+    let (small, big) = (bulge(1.0), bulge(5.0));
+    assert!(
+        (small - big).abs() / small < 1e-6,
+        "a mesma percentagem deu {small} na forma pequena e {big} na grande — a amplitude \
+         voltou a ser absoluta, e o slider deixa de significar a mesma coisa em cada forma"
+    );
+    assert!(small > 0.05, "e a onda tem de existir de facto ({small})");
+}
+
+/// Sem referência de tamanho (uma forma degenerada num ponto) o efeito é **inerte**, não um
+/// pânico nem uma divisão que produz `NaN`.
+#[test]
+fn a_degenerate_shape_has_no_scale_and_the_effect_is_inert() {
+    let dot: Vec<VecVertex> = (0..4).map(|_| VecVertex::corner([3.0, 7.0])).collect();
+    let (out, _) = zigzag_contour(&dot, true, &spec(50.0), 0.0);
+    assert_eq!(out, dot);
 }

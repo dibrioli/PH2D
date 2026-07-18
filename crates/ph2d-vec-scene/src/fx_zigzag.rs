@@ -40,9 +40,12 @@ const MAX_SAMPLES: usize = 4096;
 /// **Os parâmetros do Zig Zag.** Neutro em `amplitude == 0`.
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ZigZagSpec {
-    /// Quanto cada crista se afasta do caminho, em unidades de MUNDO (não fração — uma onda é
-    /// uma distância, e escalá-la com o comprimento faria a mesma forma ondular diferente só
-    /// por ser maior).
+    /// Quanto cada crista se afasta do caminho, em **PERCENTAGEM da forma**: `100` = a média
+    /// entre a largura e a altura dela ([`crate::effect::FxCtx`]).
+    ///
+    /// ⚠️ A 1ª versão pôs isto em unidades de MUNDO e o doc argumentava que era o certo. Era o
+    /// contrário: as formas da cena têm ~2-3 unidades, então o slider era inútil (Enio,
+    /// 2026-07-18). Percentagem faz o mesmo número desenhar a mesma coisa em qualquer escala.
     pub amplitude: f64,
     /// Quantas cristas ao longo do caminho INTEIRO.
     pub ridges: f64,
@@ -99,11 +102,15 @@ pub fn zigzag_contour(
     verts: &[VecVertex],
     closed: bool,
     spec: &ZigZagSpec,
+    ref_size: f64,
 ) -> (Vec<VecVertex>, bool) {
     let n = verts.len();
-    if n < 2 || spec.is_neutral() {
+    // Sem referência de tamanho não há distância a construir — e é a mesma resposta do neutro.
+    if n < 2 || spec.is_neutral() || ref_size <= EPS {
         return (verts.to_vec(), closed);
     }
+    // `100` = a média das dimensões da forma. É aqui, e só aqui, que a percentagem vira mundo.
+    let amplitude = spec.amplitude / 100.0 * ref_size;
     let seg_count = if closed { n } else { n - 1 };
     let segs: Vec<Cubic> = (0..seg_count).map(|i| segment(verts, i, n)).collect();
     let lens: Vec<f64> = segs.iter().map(arclen).collect();
@@ -141,7 +148,7 @@ pub fn zigzag_contour(
             1.0
         } else {
             -1.0
-        } * spec.amplitude;
+        } * amplitude;
         let anchor = [
             normal[0].mul_add(lift, point[0]),
             normal[1].mul_add(lift, point[1]),

@@ -16,7 +16,7 @@
 //! escreve-a por código. Ver o handoff — a UI é o passo seguinte, e a costura de painel é a
 //! parte que a DIRETIVA manda não improvisar.
 
-use ph2d_vec_scene::effect::PathEffect;
+use ph2d_vec_scene::effect::{FxEntry, PathEffect};
 use ph2d_vec_scene::fx_trim::TrimSpec;
 use ph2d_vec_scene::{Rgba8, ShapeKind, StrokeSpec, VecPathId};
 
@@ -100,20 +100,20 @@ fn build(app: &mut crate::App) {
             Rgba8::new(rgb[0], rgb[1], rgb[2], 255),
             STROKE_W,
         ));
-        p.effects = vec![PathEffect::Trim(TrimSpec {
+        p.effects = vec![FxEntry::new(PathEffect::Trim(TrimSpec {
             start: 0.0,
             end: 0.0,
             offset: 0.0,
-        })];
+        }))];
         ids.push(scene.push_path(p));
     }
     // A estrela abre já com a janela de um quarto — ela não desenha, ela CORRE.
     if let Some(p) = ids.get(1).and_then(|&i| scene.path_mut(i)) {
-        p.effects = vec![PathEffect::Trim(TrimSpec {
+        p.effects = vec![FxEntry::new(PathEffect::Trim(TrimSpec {
             start: 0.0,
             end: 0.25,
             offset: 0.0,
-        })];
+        }))];
     }
     *IDS.lock().expect("ids") = ids;
 }
@@ -127,18 +127,18 @@ fn animate(app: &mut crate::App, t: u32) {
     let scene = &mut gfx.vec_scene;
 
     if let Some(p) = ids.first().and_then(|&i| scene.path_mut(i)) {
-        p.effects = vec![PathEffect::Trim(TrimSpec {
+        p.effects = vec![FxEntry::new(PathEffect::Trim(TrimSpec {
             start: 0.0,
             end: draw_on_phase(t),
             offset: 0.0,
-        })];
+        }))];
     }
     if let Some(p) = ids.get(1).and_then(|&i| scene.path_mut(i)) {
-        p.effects = vec![PathEffect::Trim(TrimSpec {
+        p.effects = vec![FxEntry::new(PathEffect::Trim(TrimSpec {
             start: 0.0,
             end: 0.25,
             offset: spin_phase(t),
-        })];
+        }))];
     }
 }
 

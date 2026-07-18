@@ -85,11 +85,11 @@ fn the_smoke_ellipse_reveals_progressively() {
     let mut prev = -1.0;
     for step in 0..=10 {
         let phase = f64::from(step) / 10.0;
-        p.effects = vec![PathEffect::Trim(TrimSpec {
+        p.effects = vec![FxEntry::new(PathEffect::Trim(TrimSpec {
             start: 0.0,
             end: phase,
             offset: 0.0,
-        })];
+        }))];
         let got = cooked_len(&p);
         assert!(
             got > prev,

@@ -37,6 +37,9 @@ pub struct FxParamView {
 pub struct FxRowView {
     /// O nome do efeito ("Trim Path", "Zig Zag"…).
     pub label: &'static str,
+    /// O efeito está LIGADO? Desligado, a pilha o salta e o card é desenhado apagado — mas os
+    /// parâmetros continuam lá e editáveis.
+    pub enabled: bool,
     /// Os parâmetros, na ordem em que o painel os desenha.
     pub params: Vec<FxParamView>,
 }

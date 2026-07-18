@@ -159,3 +159,55 @@ fn a_toggle_flips_and_a_slider_is_not_a_toggle() {
     let after = stack_view(&scene, id)[0].params[param].value;
     assert!((before - after).abs() > 0.5, "a caixinha tem de alternar");
 }
+
+/// **O olho desarma sem tocar nos parâmetros** — e é essa a diferença entre desarmar e zerar.
+///
+/// Zerar a amplitude para "desligar" um efeito e depois querer o valor de volta obriga o
+/// artista a lembrar-se de números. O "ligado" mora na ENTRADA, não no efeito.
+#[test]
+fn the_eye_disarms_without_costing_the_parameters() {
+    for kind in 0..PathEffect::KINDS.len() {
+        let (mut scene, id) = scene_with_square();
+        add(&mut scene, id, kind);
+        // Põe um valor distinto em cada parâmetro, para um reset silencioso não passar.
+        let n = stack_view(&scene, id)[0].params.len();
+        for p in 0..n {
+            set_param(&mut scene, id, 0, p, 0.75);
+        }
+        let armed = stack_view(&scene, id);
+        assert!(armed[0].enabled);
+
+        toggle_enabled(&mut scene, id, 0);
+        let off = stack_view(&scene, id);
+        assert!(!off[0].enabled, "o olho desarmou");
+        assert_eq!(
+            off[0].params,
+            armed[0].params,
+            "{} perdeu parâmetros ao ser desarmado",
+            PathEffect::KINDS[kind]
+        );
+
+        toggle_enabled(&mut scene, id, 0);
+        assert_eq!(stack_view(&scene, id), armed, "rearmar devolve tudo");
+    }
+}
+
+/// **Um efeito desarmado não contribui para a geometria** — a pilha o salta como se fosse
+/// neutro. É o gate que dá sentido ao de cima: sem ele, "desarmar" seria só um ícone.
+#[test]
+fn a_disarmed_effect_does_not_reach_the_geometry() {
+    let (mut scene, id) = scene_with_square();
+    let plain = scene.path(id).expect("path").cooked().into_owned();
+
+    add(&mut scene, id, 0);
+    set_param(&mut scene, id, 0, 1, 0.5); // End = 0.5: corta metade
+    let cut = scene.path(id).expect("path").cooked().into_owned();
+    assert_ne!(cut.verts, plain.verts, "armado, o efeito age");
+
+    toggle_enabled(&mut scene, id, 0);
+    let off = scene.path(id).expect("path").cooked().into_owned();
+    assert_eq!(
+        off.verts, plain.verts,
+        "desarmado, a geometria tem de voltar a ser a do caminho cru"
+    );
+}

@@ -1232,6 +1232,7 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
     // oferecidos, de propósito).
     let row = |label: &'static str| ph2d_panel_vector::FxRowView {
         label,
+        enabled: true,
         params: vec![ph2d_panel_vector::FxParamView {
             name: "Start",
             min: 0.0,
@@ -1251,6 +1252,7 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
     targets.push((ids::vector_fx_remove_id(0), "rótulo/remove linha 0".into()));
     targets.push((ids::vector_fx_down_id(0), "Down linha 0".into()));
     targets.push((ids::vector_fx_up_id(1), "Up linha 1".into()));
+    targets.push((ids::vector_fx_hide_id(0), "olho linha 0".into()));
 
     for (id, name) in targets {
         publish();

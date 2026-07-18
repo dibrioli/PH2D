@@ -54,6 +54,7 @@ fn is_fx_button(id: ph2d_a11y::NodeId) -> bool {
             id == ids::vector_fx_remove_id(r)
                 || id == ids::vector_fx_up_id(r)
                 || id == ids::vector_fx_down_id(r)
+                || id == ids::vector_fx_hide_id(r)
         })
 }
 

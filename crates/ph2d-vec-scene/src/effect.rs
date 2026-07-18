@@ -64,6 +64,82 @@ pub const MAX_FX_PARAMS: usize = 4;
 /// O teto de efeitos numa pilha, pela mesma razão.
 pub const MAX_PATH_EFFECTS: usize = 4;
 
+/// **A escala de referência da forma** — o que dá sentido a um parâmetro de DISTÂNCIA.
+///
+/// Uma onda é uma distância, e por isso a 1ª versão pôs a amplitude do Zig Zag em unidades de
+/// MUNDO. Estava errado, e o Enio apanhou-o no smoke: as formas desta cena têm ~2-3 unidades de
+/// largura, então um slider que ia a 100 era absurdo — o efeito destruía a forma no primeiro
+/// centésimo do curso.
+///
+/// A regra (Enio, 2026-07-18): **`100` = a média das dimensões da própria forma**. Assim o
+/// mesmo número desenha a mesma coisa numa forma pequena e numa grande, que é o que o artista
+/// espera de um slider de percentagem.
+///
+/// ⚠️ **A referência é a do caminho AUTORADO**, tirada uma vez antes da pilha correr — não a do
+/// que chega a cada efeito. Se fosse a da entrada, pôr um Trim antes do Zig Zag encolheria a
+/// onda, e o mesmo `Size` significaria coisas diferentes conforme a ORDEM da pilha.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct FxCtx {
+    /// A média entre a largura e a altura da caixa de controle do caminho autorado.
+    pub ref_size: f64,
+}
+
+impl FxCtx {
+    /// A referência de `path` — média das dimensões da caixa dos pontos de CONTROLE (âncoras e
+    /// alças). A caixa de controle, e não a da curva: é mais barata, contém a curva, e a
+    /// diferença entre as duas não muda o que um slider de percentagem significa.
+    #[must_use]
+    pub fn of(path: &VecPath) -> Self {
+        let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
+        let mut seen = false;
+        for v in path.verts_all() {
+            for p in [v.anchor, v.in_handle, v.out_handle] {
+                seen = true;
+                for k in 0..2 {
+                    lo[k] = lo[k].min(p[k]);
+                    hi[k] = hi[k].max(p[k]);
+                }
+            }
+        }
+        Self {
+            ref_size: if seen {
+                ((hi[0] - lo[0]) + (hi[1] - lo[1])) * 0.5
+            } else {
+                0.0
+            },
+        }
+    }
+}
+
+/// **Uma entrada da pilha** — o efeito e se ele está LIGADO.
+///
+/// O "ligado" é propriedade da ENTRADA, não do efeito: desarmar não pode custar os parâmetros.
+/// Zerar a amplitude para "desligar" um Zig Zag e depois querer o valor de volta é a definição
+/// de uma feature que obriga o artista a lembrar-se de números.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct FxEntry {
+    pub effect: PathEffect,
+    /// Desligado = a pilha o SALTA, como se fosse neutro — mas os parâmetros ficam.
+    pub enabled: bool,
+}
+
+impl FxEntry {
+    /// Uma entrada nova, ligada.
+    #[must_use]
+    pub fn new(effect: PathEffect) -> Self {
+        Self {
+            effect,
+            enabled: true,
+        }
+    }
+
+    /// Esta entrada contribui para a geometria?
+    #[must_use]
+    pub fn is_active(&self) -> bool {
+        self.enabled && !self.effect.is_neutral()
+    }
+}
+
 /// **Um efeito da pilha.** Dado de documento — viaja no save e no undo como qualquer
 /// geometria.
 ///
@@ -195,6 +271,8 @@ impl PathEffect {
         }
         const TRIM: &[FxParam] = &[frac("Start"), frac("End"), frac("Offset")];
         const ZIGZAG: &[FxParam] = &[
+            // `Size` é PERCENTAGEM da forma: 100 = a média das dimensões dela. A faixa já era
+            // `0..100`, mas em unidades de MUNDO — e era isso que a tornava inútil.
             FxParam {
                 name: "Size",
                 min: 0.0,
@@ -254,14 +332,16 @@ impl PathEffect {
     /// de zero vértices: um buraco vazio num compound não é geometria, é ruído para a
     /// booleana e para o preenchimento.
     #[must_use]
-    pub fn apply(&self, path: &VecPath) -> VecPath {
+    pub fn apply(&self, path: &VecPath, ctx: &FxCtx) -> VecPath {
         let mut out = path.clone();
         match self {
             Self::Trim(spec) => {
                 apply_per_contour(path, &mut out, |v, c| fx_trim::trim_contour(v, c, spec));
             }
             Self::ZigZag(spec) => {
-                apply_per_contour(path, &mut out, |v, c| fx_zigzag::zigzag_contour(v, c, spec));
+                apply_per_contour(path, &mut out, |v, c| {
+                    fx_zigzag::zigzag_contour(v, c, spec, ctx.ref_size)
+                });
             }
         }
         out
@@ -310,12 +390,15 @@ fn apply_per_contour(
 /// cozido aplicaria a pilha outra vez — e o sintoma seria uma forma que encolhe a cada
 /// passagem, sem erro nenhum.
 #[must_use]
-pub fn run_stack(path: &VecPath, stack: &[PathEffect]) -> Option<VecPath> {
-    let mut active = stack.iter().filter(|e| !e.is_neutral()).peekable();
+pub fn run_stack(path: &VecPath, stack: &[FxEntry]) -> Option<VecPath> {
+    let mut active = stack.iter().filter(|e| e.is_active()).peekable();
     active.peek()?;
+    // UMA vez, do caminho autorado: um parâmetro de distância tem de significar o mesmo
+    // independentemente de onde o efeito está na pilha.
+    let ctx = FxCtx::of(path);
     let mut cur: Option<VecPath> = None;
-    for fx in active {
-        cur = Some(fx.apply(cur.as_ref().unwrap_or(path)));
+    for e in active {
+        cur = Some(e.effect.apply(cur.as_ref().unwrap_or(path), &ctx));
     }
     let mut out = cur?;
     out.effects.clear();

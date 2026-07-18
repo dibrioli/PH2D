@@ -35,6 +35,7 @@ pub(super) fn populate_effects(store: &mut WidgetStore) {
         button(store, ids::vector_fx_remove_id(row));
         button(store, ids::vector_fx_up_id(row));
         button(store, ids::vector_fx_down_id(row));
+        button(store, ids::vector_fx_hide_id(row));
         for param in 0..ids::MAX_FX_ROW_PARAMS {
             let (slider, num) = (
                 ids::vector_fx_param_id(row, param),

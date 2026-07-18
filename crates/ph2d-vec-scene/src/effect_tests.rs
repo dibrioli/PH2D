@@ -48,8 +48,8 @@ fn an_empty_stack_still_borrows_the_source() {
 fn a_stack_of_neutral_effects_still_borrows() {
     let mut p = square();
     p.effects = vec![
-        PathEffect::Trim(crate::fx_trim::TrimSpec::default()),
-        PathEffect::Trim(crate::fx_trim::TrimSpec::default()),
+        FxEntry::new(PathEffect::Trim(crate::fx_trim::TrimSpec::default())),
+        FxEntry::new(PathEffect::Trim(crate::fx_trim::TrimSpec::default())),
     ];
     let c = p.cooked();
     assert!(
@@ -78,9 +78,12 @@ fn the_order_of_the_stack_changes_the_geometry() {
     });
 
     let mut a = square();
-    a.effects = vec![first_half.clone(), second_half.clone()];
+    a.effects = vec![
+        FxEntry::new(first_half.clone()),
+        FxEntry::new(second_half.clone()),
+    ];
     let mut b = square();
-    b.effects = vec![second_half, first_half];
+    b.effects = vec![FxEntry::new(second_half), FxEntry::new(first_half)];
 
     let (ca, cb) = (a.cooked(), b.cooked());
     let (sa, sb) = (ca.verts[0].anchor, cb.verts[0].anchor);
@@ -101,11 +104,11 @@ fn the_order_of_the_stack_changes_the_geometry() {
 #[test]
 fn cooking_the_cooked_path_changes_nothing() {
     let mut p = square();
-    p.effects = vec![PathEffect::Trim(crate::fx_trim::TrimSpec {
+    p.effects = vec![FxEntry::new(PathEffect::Trim(crate::fx_trim::TrimSpec {
         start: 0.1,
         end: 0.6,
         offset: 0.0,
-    })];
+    }))];
     let once = p.cooked().into_owned();
     let twice = once.cooked().into_owned();
     assert_eq!(once, twice, "a 2ª passagem tem de ser a identidade");
@@ -119,11 +122,11 @@ fn cooking_the_cooked_path_changes_nothing() {
 #[test]
 fn the_authored_source_survives_the_cook() {
     let mut p = square();
-    p.effects = vec![PathEffect::Trim(crate::fx_trim::TrimSpec {
+    p.effects = vec![FxEntry::new(PathEffect::Trim(crate::fx_trim::TrimSpec {
         start: 0.0,
         end: 0.25,
         offset: 0.0,
-    })];
+    }))];
     let before = p.verts.clone();
     let cooked = p.cooked().into_owned();
     assert_eq!(p.verts, before, "a fonte autorada não pode ser tocada");
@@ -154,9 +157,9 @@ fn zigzag_then_trim_is_not_trim_then_zigzag() {
     });
 
     let mut a = square();
-    a.effects = vec![zz.clone(), trim.clone()];
+    a.effects = vec![FxEntry::new(zz.clone()), FxEntry::new(trim.clone())];
     let mut b = square();
-    b.effects = vec![trim, zz];
+    b.effects = vec![FxEntry::new(trim), FxEntry::new(zz)];
 
     let (ca, cb) = (a.cooked().into_owned(), b.cooked().into_owned());
     assert_ne!(
@@ -181,9 +184,13 @@ fn a_neutral_effect_in_the_middle_of_the_stack_is_transparent() {
     let sleeping = PathEffect::Trim(crate::fx_trim::TrimSpec::default()); // neutro
 
     let mut only = square();
-    only.effects = vec![zz.clone()];
+    only.effects = vec![FxEntry::new(zz.clone())];
     let mut sandwiched = square();
-    sandwiched.effects = vec![sleeping.clone(), zz, sleeping];
+    sandwiched.effects = vec![
+        FxEntry::new(sleeping.clone()),
+        FxEntry::new(zz),
+        FxEntry::new(sleeping),
+    ];
 
     assert_eq!(
         only.cooked().into_owned().verts,

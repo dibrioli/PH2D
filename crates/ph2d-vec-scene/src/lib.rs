@@ -489,7 +489,7 @@ pub struct VecPath {
     ///
     /// ⚠️ **No FIM da struct de propósito**: o postcard é posicional, então um campo no meio
     /// faria todo save anterior ser relido com os campos trocados.
-    pub effects: Vec<effect::PathEffect>,
+    pub effects: Vec<effect::FxEntry>,
 }
 
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
@@ -498,9 +498,11 @@ pub struct VecPath {
 /// Linear/Radial/MultiPoint). v5: [`GradientPoint`] ganhou `jitter`. v6: `VecPath`
 /// ganhou `subpaths` + `fill_rule` (compound paths). v8: [`VecVertex`] ganhou
 /// `corner_radius` (Live Corners — [`crate::corner_live`]). v9: [`VecPath`] ganhou
-/// `effects`, a pilha de Live Path Effects ([`crate::effect`], ADR-0132). (Migração
+/// `effects`, a pilha de Live Path Effects ([`crate::effect`], ADR-0132). v10: a entrada da
+/// pilha virou [`effect::FxEntry`] (o efeito + se está LIGADO) — desarmar sem perder os
+/// parâmetros. (Migração
 /// robusta = cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 9;
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 10;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

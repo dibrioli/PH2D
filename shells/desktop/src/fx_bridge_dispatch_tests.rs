@@ -43,6 +43,10 @@ fn every_id_the_panel_can_paint_is_classified() {
             classify_click(i::vector_fx_down_id(r)),
             Some(FxClick::Row(r, FxRowAction::Down))
         );
+        assert_eq!(
+            classify_click(i::vector_fx_hide_id(r)),
+            Some(FxClick::Row(r, FxRowAction::Hide))
+        );
         for p in 0..i::MAX_FX_ROW_PARAMS {
             assert_eq!(
                 classify_param(i::vector_fx_param_id(r, p)),
@@ -73,6 +77,8 @@ fn rows_and_kinds_do_not_collide() {
         assert!(seen.insert(i::vector_fx_remove_id(r)));
         assert!(seen.insert(i::vector_fx_up_id(r)));
         assert!(seen.insert(i::vector_fx_down_id(r)));
+        assert!(seen.insert(i::vector_fx_hide_id(r)));
+        assert!(seen.insert(i::vector_fx_card_id(r)));
         for p in 0..i::MAX_FX_ROW_PARAMS {
             assert!(seen.insert(i::vector_fx_param_id(r, p)), "param ({r},{p})");
             assert!(seen.insert(i::vector_fx_param_num_id(r, p)));

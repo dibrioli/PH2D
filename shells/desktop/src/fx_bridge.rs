@@ -9,7 +9,7 @@
 //! arquivo — é a mesma propriedade que o `paint_effects` ganhou, do outro lado da fronteira.
 
 use ph2d_panel_vector::{FxParamView, FxRowView};
-use ph2d_vec_scene::effect::{MAX_PATH_EFFECTS, PathEffect};
+use ph2d_vec_scene::effect::{FxEntry, MAX_PATH_EFFECTS, PathEffect};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 /// **O caminho que a seção Effects governa** — exatamente UM selecionado, ou nada.
@@ -30,9 +30,11 @@ pub(crate) fn stack_view(scene: &VecScene, id: VecPathId) -> Vec<FxRowView> {
     scene.path(id).map_or_else(Vec::new, |p| {
         p.effects
             .iter()
-            .map(|fx| FxRowView {
-                label: fx.label(),
-                params: fx
+            .map(|e| FxRowView {
+                label: e.effect.label(),
+                enabled: e.enabled,
+                params: e
+                    .effect
                     .params()
                     .iter()
                     .enumerate()
@@ -41,7 +43,7 @@ pub(crate) fn stack_view(scene: &VecScene, id: VecPathId) -> Vec<FxRowView> {
                         min: d.min,
                         max: d.max,
                         toggle: d.toggle,
-                        value: fx.get(i),
+                        value: e.effect.get(i),
                     })
                     .collect(),
             })
@@ -60,7 +62,7 @@ pub(crate) fn add(scene: &mut VecScene, id: VecPathId, kind: usize) {
         return;
     }
     if let Some(fx) = PathEffect::from_kind(kind) {
-        p.effects.push(fx);
+        p.effects.push(FxEntry::new(fx));
     }
 }
 
@@ -96,24 +98,25 @@ pub(crate) fn reorder(scene: &mut VecScene, id: VecPathId, row: usize, up: bool)
 /// o painel não a conhece de um lado só, e converter lá seria uma 2ª cópia da faixa.
 pub(crate) fn set_param(scene: &mut VecScene, id: VecPathId, row: usize, param: usize, track: f64) {
     let Some(p) = scene.path_mut(id) else { return };
-    let Some(fx) = p.effects.get_mut(row) else {
+    let Some(e) = p.effects.get_mut(row) else {
         return;
     };
-    let Some(d) = fx.params().get(param).copied() else {
+    let Some(d) = e.effect.params().get(param).copied() else {
         return;
     };
-    fx.set(param, d.min + track.clamp(0.0, 1.0) * (d.max - d.min));
+    e.effect
+        .set(param, d.min + track.clamp(0.0, 1.0) * (d.max - d.min));
 }
 
 /// Alterna um parâmetro de CAIXINHA. O painel desenha um botão (não um slider), então o clique
 /// não traz valor — quem sabe o estado atual é a cena.
 pub(crate) fn toggle_param(scene: &mut VecScene, id: VecPathId, row: usize, param: usize) {
     let Some(p) = scene.path_mut(id) else { return };
-    let Some(fx) = p.effects.get_mut(row) else {
+    let Some(e) = p.effects.get_mut(row) else {
         return;
     };
-    let on = fx.get(param) >= 0.5;
-    fx.set(param, f64::from(u8::from(!on)));
+    let on = e.effect.get(param) >= 0.5;
+    e.effect.set(param, f64::from(u8::from(!on)));
 }
 
 /// Este parâmetro é uma caixinha? O dispatch precisa saber: um clique num slider não existe, e
@@ -123,8 +126,19 @@ pub(crate) fn is_toggle(scene: &VecScene, id: VecPathId, row: usize, param: usiz
     scene
         .path(id)
         .and_then(|p| p.effects.get(row))
-        .and_then(|fx| fx.params().get(param).map(|d| d.toggle))
+        .and_then(|e| e.effect.params().get(param).map(|d| d.toggle))
         .unwrap_or(false)
+}
+
+/// **Desarma (ou rearma) o efeito da linha `row`** — o olho.
+///
+/// Os parâmetros ficam INTACTOS: é essa a diferença entre desarmar e zerar, e é por isso que o
+/// "ligado" mora na ENTRADA e não no efeito.
+pub(crate) fn toggle_enabled(scene: &mut VecScene, id: VecPathId, row: usize) {
+    let Some(p) = scene.path_mut(id) else { return };
+    if let Some(e) = p.effects.get_mut(row) {
+        e.enabled = !e.enabled;
+    }
 }
 
 #[cfg(test)]

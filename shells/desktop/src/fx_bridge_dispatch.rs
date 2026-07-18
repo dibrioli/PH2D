@@ -18,6 +18,8 @@ pub(crate) enum FxRowAction {
     Up,
     /// Desce na pilha.
     Down,
+    /// O olho: desarma (ou rearma) o efeito, sem lhe tocar nos parâmetros.
+    Hide,
     /// Um parâmetro de CAIXINHA: o clique alterna, não traz valor.
     Toggle(usize),
 }
@@ -52,6 +54,9 @@ pub(crate) fn classify_click(id: ph2d_editor::ids::NodeId) -> Option<FxClick> {
         }
         if id == i::vector_fx_down_id(r) {
             return Some(FxClick::Row(r, FxRowAction::Down));
+        }
+        if id == i::vector_fx_hide_id(r) {
+            return Some(FxClick::Row(r, FxRowAction::Hide));
         }
         // Um parâmetro de caixinha é pintado como BOTÃO, então chega como Click e não como
         // ValueChanged — e partilha o id do slider (o painel pinta um OU outro, nunca os dois).
@@ -95,6 +100,7 @@ pub(crate) fn apply(
             FxRowAction::Remove => crate::fx_bridge::remove(scene, id, row),
             FxRowAction::Up => crate::fx_bridge::reorder(scene, id, row, true),
             FxRowAction::Down => crate::fx_bridge::reorder(scene, id, row, false),
+            FxRowAction::Hide => crate::fx_bridge::toggle_enabled(scene, id, row),
             // Só alterna se o parâmetro for MESMO uma caixinha: o id é partilhado com o
             // slider, e um clique perdido num slider não pode virar um toggle silencioso.
             FxRowAction::Toggle(p) => {

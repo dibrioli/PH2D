@@ -120,6 +120,42 @@ operação de CLIQUE, não de frame).
 (o que o W4 já resolveu e como) e escreva o plano da wave em `docs/Flip/` — as waves
 anteriores todas têm o seu, e é ele que impede a fatia 3 redescobrir a decisão da fatia 1.
 
+### 3.1 O que o W4 já te dá em `flip_fill.rs` — e onde ficam as costuras
+
+> Escrito pelo agente do §4.C, que acabou de mexer neste arquivo. É o que **não** salta aos
+> olhos lendo frio, e é exatamente o que o Colorize vai encostar.
+
+- **`boundaries(drawing) -> Vec<(pts, half, closed)>`** é a porta que converte o documento no
+  que o solver entende. ⚠️ **O `half` agora é MUNDO** — o `× px_to_world` que morava ali
+  SUMIU no §4.C.6 (posições e larguras passaram a falar a mesma língua). Se você precisar de
+  meia-espessura, é `w * 0.5` e ponto.
+- **Quem é fronteira, e quem não é** — a distinção mora em dois predicados e ela não é óbvia:
+  um **fill anterior** (`hide_stroke` **+** `fill.is_some()`) **NÃO** barra (senão a 2ª cor
+  não entraria por baixo da 1ª); um **fechamento de gap** (`hide_stroke`, **sem** `fill`)
+  **É** fronteira — é para isso que ele existe. Os dois são `hide_stroke`; o que os separa é
+  a COR.
+- **Fechamentos de gap são traços invisíveis PERSISTENTES** (o twist do Harmony): entram no
+  desenho como qualquer outro traço, com largura ~0. Então o vão fica fechado para sempre —
+  re-preencher com outra cor, preencher o quadro vizinho ou reabrir amanhã não dependem do
+  estado da tool. O Colorize herda isso de graça.
+- **A âncora do solver é o EIXO da linha, nunca a silhueta** (BUGS #14). Foi a cura de um bug
+  em que a cor transbordava `(w/2)·(zoom−1)` px ao aproximar a câmera depois do clique. Não
+  re-ancore na silhueta.
+- **O contorno do fill é a DILATAÇÃO da cor por baixo do line-art**, não um contorno de
+  verdade (`hide_stroke` fica ligado): sem dilatar, a metade externa da linha fica sem cor
+  por baixo e um pincel macio ganha halo escuro. A margem `FILL_TUCK_PX = 0.5` **saiu de uma
+  varredura no pixel**, não do olho (tabela no doc-comment) — 0 vaza fundo, ≥1,5 transborda.
+- **O fill entra ATRÁS** (índice 0 da lista de traços); em `PaintBehind`, por baixo também
+  dos fills que já existem.
+- **`mean_line_width`** dá a espessura média do line-art (ignora regiões e fechamentos) — é
+  ela que veste o contorno do fill.
+- **O autokey do Flip é por-tool:** o balde usa a política `Modify` (`flip_autokey`), que no
+  rabo de um hold trabalha numa DUPLICATA do desenho na tela — nunca num quadro em branco. O
+  Colorize deve entrar pela MESMA porta, senão colorir no meio de um hold pinta o nada.
+- **Para o onion fill (C3), o osso é este:** o solver é por-DESENHO e já roda por-desenho; o
+  que falta é o wiring do RANGE (a multi-seleção de chaves na tira existe desde o W7 e é o
+  canal natural). Está listado como carry-over do W4 — *"fill multiframe"*.
+
 ---
 
 ## 4. O que continua ADIADO (e por quê)

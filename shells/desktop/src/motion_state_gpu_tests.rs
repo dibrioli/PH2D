@@ -320,7 +320,7 @@ fn the_emitter_fountain_demo_is_actually_dense() {
     .expect("cpu cook");
     assert_eq!(
         lowered.len(),
-        12_000,
+        1_200_000,
         "the fountain must run the window it advertises"
     );
 }

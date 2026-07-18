@@ -739,7 +739,7 @@ mod velgen {
     use ph2d_nodegraph::attr::{Column, Stream};
     use ph2d_nodegraph::cook::EvalCtx;
     use ph2d_nodegraph::effect::Effect;
-    use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+    use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, SourceWindow};
     use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
     use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -805,7 +805,7 @@ mod velgen {
             },
         ],
         params: &[],
-        source_count: Some(|_, _| N),
+        source_window: Some(|_, _| SourceWindow::of_count(N)),
         applicable: None,
     };
 
@@ -1325,7 +1325,7 @@ fn emitter_sim_ceiling_probe() {
         ("force.drag", &[("coefficient", 0.12)]),
     ];
     eprintln!("  window │      GPU ms/tick │      CPU ms/tick │ CPU/GPU");
-    for &want in &[4096.0f32, 16384.0, 65536.0, 262144.0] {
+    for &want in &[4096.0f32, 65536.0, 262144.0, 1048576.0, 4194304.0] {
         // `emitter_sim`'s rate is fixed at 400, so in TICKS·FIXED_DT seconds only
         // ~601 particles are ever BORN and every row would report the same window
         // — a perf table that prints one number four times is worse than none.
@@ -1382,4 +1382,102 @@ fn emitter_sim_ceiling_probe() {
         );
     }
     eprintln!("  (the 60 fps budget is 16.7 ms/frame; the sim is one part of it)");
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_emitter_sim_is_exact_past_the_old_id_cliff() {
+    // The gate the whole window rework exists for. Ids are `f32`, so a spawn
+    // index past 2²⁴ used to collapse onto its neighbour and BOTH pairings — the
+    // CPU's `BTreeMap<id,row>` and this engine's `id − prev_first` — silently
+    // handed two particles one prior state. Measured before the fix: rate
+    // 4.000.000 at t = 5 s gave 4096 particles and 2049 distinct ids.
+    //
+    // Now the count law runs once, in `f64`, and the kernel is TOLD its window
+    // (`SourceWindow`) instead of re-deriving `floor(t·rate)` in `f32`. So this
+    // marches a real sim right through the old cliff and demands the two paths
+    // still agree element for element at the far side.
+    //
+    // The fixture is pinned by three constraints that fight each other, which is
+    // why the numbers look odd:
+    //   • particles must SURVIVE a tick (`life > FIXED_DT`), or every element is
+    //     a newborn at the origin and the gather is never exercised at all;
+    //   • the window must fit `MAX_ALIVE`;
+    //   • and the march must actually reach 2²⁴ spawns.
+    // Together those cap the rate and force a long march — so this keeps only
+    // the FINAL frame rather than every frame (2100 × 16384 instances would be
+    // gigabytes).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const RATE: f32 = 163_840.0;
+    const LIFE: f32 = 0.1; // 2× FIXED_DT → half the window survives each tick
+    const TICKS: u64 = 2100; // t = 105 s > 2²⁴ / RATE = 102,4 s
+    let (mut g, _, out) = emitter_sim(&reg, 16_384.0, &[]);
+    let em = emitter_of(&g);
+    g.set_param(em, "rate", RATE);
+    g.set_param(em, "life", LIFE);
+
+    let spawns = TICKS as f64 * FIXED_DT * f64::from(RATE);
+    assert!(
+        spawns > 16_777_216.0,
+        "the march must pass 2²⁴ spawns, got {spawns:.3e}"
+    );
+
+    // CPU, final frame only.
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    for t in 0..=TICKS {
+        let playhead = t as f64 * FIXED_DT;
+        cpu.clear();
+        ph2d_eval_motion::evaluate_motion_into(
+            &mut cook,
+            &g,
+            &reg,
+            out,
+            playhead,
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+            &mut cpu,
+        )
+        .expect("cpu cook");
+        cook.advance_tick(&g, &reg, playhead).expect("cpu tick");
+    }
+
+    // GPU, same march, final frame only.
+    let plan = plan(&g, &reg, &reg, out);
+    assert!(plan.is_fully_gpu() && plan.drives_a_loop());
+    let mut gc = GpuCook::new();
+    for t in 0..=TICKS {
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock {
+                playhead: t as f64 * FIXED_DT,
+                tick: Some(t),
+            },
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+    }
+    let gpu_out = read_instances(&gpu, gc.instances().expect("cooked"));
+
+    // The fixture must contain the phenomenon: a full window, of particles that
+    // have MOVED (a cloud of origins would compare equal and prove nothing).
+    assert_eq!(cpu.len(), 16_384, "the window must be full");
+    let moved = max_from_origin(&cpu, EM_ORIGIN);
+    assert!(moved > MUST_MOVE, "the field must have integrated: {moved}");
+
+    assert_parity("emitter past the 2^24 cliff", &cpu, &gpu_out);
+    eprintln!(
+        "past the cliff: {} particles after {spawns:.3e} spawns, drifted {moved}",
+        cpu.len()
+    );
 }

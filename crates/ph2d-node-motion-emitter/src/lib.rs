@@ -39,7 +39,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, ID_WRAP, SourceWindow};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -52,38 +52,42 @@ use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
-/// Hard ceiling on the alive set, whatever `rate × life` asks for. Guards the
-/// per-frame cook (and a hand-authored `p rate 1e9`) from building a stream
-/// nothing downstream could keep up with.
+/// Hard ceiling on the alive set, whatever `rate × life` asks for.
 ///
-/// **It is bounded by the CPU FALLBACK, not by the renderer and not by the GPU** —
-/// and the original 4096 was picked before either could be measured. Its comment
-/// said the guard was against "a stream no renderer would draw anyway", and that
-/// half is simply false now: the renderer draws 2M instances at 4,02 ms
-/// (`gpu_cook_millions_timing`), and the GPU sim is nearly FLAT in the window —
-/// 64× the particles costs 3,35× (`emitter_sim_ceiling_probe`, RTX):
+/// **It is a MEMORY budget, and nothing else.** Every earlier number here was
+/// something else wearing that name: 4096 guarded "a stream no renderer would
+/// draw anyway" (the renderer draws 2M instances at 4,02 ms), and 16.384 was the
+/// CPU fallback's frame time — which let the SLOWEST path set the ceiling of the
+/// fastest one, in a module whose entire reason to exist is the fastest one.
 ///
-/// | window  | GPU ms/tick | CPU ms/tick |
-/// |---------|-------------|-------------|
-/// | 4.096   | 0,085       | 0,243       |
-/// | 16.384  | 0,105       | 1,044       |
-/// | 65.536  | 0,166       | 2,989       |
-/// | 262.144 | 0,285       | 12,982      |
+/// Measured on the RTX (`emitter_sim_ceiling_probe`, emitter → wind → drag →
+/// integrate, ms per tick):
 ///
-/// The GPU would happily take a million. The CPU is linear, and `PH2D_GPU_COOK`
-/// is **opt-in**, so the CPU is what every default build actually runs — at
-/// 262.144 one emitter would eat 78% of a whole 60 fps frame. Hence 16.384:
-/// 4× the headroom, the fallback still at ~6% of the frame budget and under 1 MB
-/// of per-frame transient (44 B/particle across the eight columns), and the
-/// fence's REAL purpose — bounding a hand-authored `rate 1e9` — kept.
+/// | window    | GPU   | CPU     |
+/// |-----------|-------|---------|
+/// | 262.144   | 0,277 | 13,060  |
+/// | 1.048.576 | 0,984 | 52,608  |
+/// | 4.194.304 | 3,636 | 227,800 |
 ///
-/// ⚠️ **The ceiling can never be made path-dependent**, however tempting: ADR-0130's
-/// parity holds "by construction" because `eval` and `source_count` derive
-/// `newest`/`n`/`first` from ONE shared count law. A GPU-only ceiling would give
-/// the two paths different `n` for the same document, and the scrub, the hybrid
-/// seam and the gather would all be reading a window the other half never had.
-/// Raising it is one number for both; the number is the fallback's to give.
-const MAX_ALIVE: usize = 16384;
+/// **4,19 million particles simulate in 3,6 ms** — 22% of a 60 fps frame. The
+/// CPU cannot follow, and that is the correct division of labour, not a reason
+/// to cap the GPU: the CPU is the canonical REFERENCE (it defines the answer the
+/// parity gates hold the GPU to, and it may take as long as a test needs), while
+/// the product path is the device.
+///
+/// So the number comes from what the device must hold: at `4 × 1024 × 1024`
+/// elements the emitter's eight columns are ~44 B each, double-buffered across
+/// the sim's `pre` loop ⇒ ≈ 370 MB of GPU residency for a maxed-out emitter.
+/// That is a deliberate ceiling on an artist who asks for everything, not an
+/// accident.
+///
+/// ⚠️ **The ceiling stays SHARED between the two paths.** ADR-0130's parity is
+/// by construction from one count law; a GPU-only ceiling would give the two
+/// sides different `n` for the same document, and the scrub, the hybrid seam and
+/// the gather would each be reading a window the other half never had. A CPU too
+/// slow to PLAY a 4M sim is a performance fact; it still computes the same
+/// answer, which is all a reference has to do.
+const MAX_ALIVE: usize = 4 * 1024 * 1024;
 /// Hash lane for the launch angle draw (see [`hash::rand01`]).
 const LANE_ANGLE: u32 = 0;
 
@@ -184,28 +188,55 @@ struct Spec {
     size: f32,
 }
 
-/// The alive set at `t`, as a stream. Pure: same `t` → same particles.
-fn emit(spec: &Spec, t: f32) -> Stream {
-    if spec.rate <= 0.0 || spec.life <= 0.0 || t < 0.0 {
-        return Stream::new(0);
+/// **The count law, and the only copy of it** — in `f64`, because the spawn index
+/// is what has to stay exact.
+///
+/// `emit` and the GPU `source_window` used to compute this independently in
+/// `f32`, and parity held only because both read the same `f32`. Two doors to
+/// one question ([[feedback_two_doors_to_the_same_question_diverge]]), and both
+/// of them wrong at scale: `floor(t·rate)` in `f32` starts skipping integers at
+/// 2²⁴, so a rate in the millions loses the window after four seconds. Now there
+/// is one door, it answers in integers, and the kernel is TOLD the answer.
+fn window(rate: f32, life: f32, max: usize, t: f32) -> SourceWindow {
+    if rate <= 0.0 || life <= 0.0 || t < 0.0 {
+        return SourceWindow::of_count(0);
     }
+    let (t, rate, life) = (f64::from(t), f64::from(rate), f64::from(life));
     // Particle k is born at k/rate. Alive at t iff `0 ≤ t − k/rate < life`.
-    let newest = (t * spec.rate).floor();
-    let oldest = ((t - spec.life) * spec.rate).ceil().max(0.0);
+    let newest = (t * rate).floor();
+    let oldest = ((t - life) * rate).ceil().max(0.0);
     if newest < oldest {
-        return Stream::new(0);
+        return SourceWindow::of_count(0);
     }
     // The cap keeps the NEWEST particles: an emitter whose rate outruns the cap
     // should look like a dense young jet, not a frozen ancient cloud.
-    let span = (newest - oldest) as usize + 1;
-    let n = span.min(spec.max);
-    let first = newest as u32 + 1 - n as u32;
+    let span = (newest - oldest) as u64 + 1;
+    let count = span.min(max as u64);
+    let first = newest as u64 + 1 - count;
+    SourceWindow {
+        count: count as usize,
+        // Wrapped into the exact `f32` integer range. Below 2²⁴ this is the
+        // identity, so every scene that works today is BYTE-identical.
+        first: (first % u64::from(ID_WRAP)) as u32,
+        // The oldest particle's age, from the one place that can compute it
+        // without cancellation.
+        age_first: (t - first as f64 / rate) as f32,
+    }
+}
+
+/// The alive set at `t`, as a stream. Pure: same `t` → same particles.
+fn emit(spec: &Spec, t: f32) -> Stream {
+    let w = window(spec.rate, spec.life, spec.max, t);
+    let n = w.count;
+    if n == 0 {
+        return Stream::new(0);
+    }
 
     let (mut p, mut vel) = (Vec::with_capacity(n), Vec::with_capacity(n));
     let (mut ids, mut ages) = (Vec::with_capacity(n), Vec::with_capacity(n));
     let (mut index, mut count) = (Vec::with_capacity(n), Vec::with_capacity(n));
     for k in 0..n {
-        let id = first + k as u32;
+        let id = (w.first + k as u32) % ID_WRAP;
         // Launch direction: the cone `angle ± spread/2`, drawn from the
         // particle's identity (never from a sequence) — see `hash`.
         let jitter = rand01(spec.seed, id, LANE_ANGLE) - 0.5;
@@ -214,7 +245,10 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         p.push(spec.origin);
         vel.push([cx * spec.speed, sy * spec.speed]);
         ids.push(id as f32);
-        ages.push(t - id as f32 / spec.rate);
+        // The SAME two-step the kernel runs (`age_first − k/rate`), not
+        // `t − id/rate`: the kernel has to mirror this arithmetic exactly, and
+        // the one-step form is the one that cancels.
+        ages.push(w.age_first - k as f32 / spec.rate);
         index.push(k as f32);
         count.push(n as f32);
     }
@@ -250,9 +284,7 @@ fn emit(spec: &Spec, t: f32) -> Stream {
 /// already carries the cap.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        let em_t = params.playhead;\n\
-        let em_first = u32(floor(em_t * params.rate)) + 1u - params.count;\n\
-        let em_id = em_first + i;\n\
+        let em_id = (params.window_first + i) % 16777216u;\n\
         let em_seed = u32(max(params.seed, 0.0));\n\
         let em_jitter = em_rand01(em_seed, em_id, 0u) - 0.5;\n\
         let em_deg = params.angle + em_jitter * params.spread;\n\
@@ -260,7 +292,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         write_P(i, vec2<f32>(params.x, params.y));\n\
         write_vel(i, vec2<f32>(em_cs.x * params.speed, em_cs.y * params.speed));\n\
         write_id(i, f32(em_id));\n\
-        write_age(i, em_t - f32(em_id) / params.rate);\n\
+        write_age(i, params.window_age - f32(i) / params.rate);\n\
         write_life(i, params.life);\n\
         write_Index(i, f32(i));\n\
         write_Count(i, f32(params.count));\n\
@@ -355,21 +387,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "rate", "life", "speed", "angle", "spread", "x", "y", "seed", "size",
     ],
     // Playhead-dependent (ADR-0130): the alive-window length `n(t)`, mirroring `emit`'s count.
-    source_count: Some(|param, playhead| {
-        let t = playhead as f32;
-        let rate = param("rate");
-        let life = param("life");
-        let max = (param("max").max(0.0) as usize).min(MAX_ALIVE);
-        if rate <= 0.0 || life <= 0.0 || t < 0.0 {
-            return 0;
-        }
-        let newest = (t * rate).floor();
-        let oldest = ((t - life) * rate).ceil().max(0.0);
-        if newest < oldest {
-            return 0;
-        }
-        let span = (newest - oldest) as usize + 1;
-        span.min(max)
+    source_window: Some(|param, playhead| {
+        window(
+            param("rate"),
+            param("life"),
+            (param("max").max(0.0) as usize).min(MAX_ALIVE),
+            playhead as f32,
+        )
     }),
     applicable: None,
 };
@@ -395,256 +419,5 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn spec() -> Spec {
-        Spec {
-            rate: 10.0,
-            life: 1.0,
-            speed: 2.0,
-            angle: 90.0,
-            spread: 0.0, // a pencil beam: the launch is exactly `angle`
-            origin: [1.0, -1.0],
-            seed: 0,
-            max: 1024,
-            size: 0.2,
-        }
-    }
-
-    fn ids_of(s: &Stream) -> Vec<f32> {
-        match s.get("id").unwrap() {
-            Column::Scalar(v) => v.clone(),
-            _ => panic!("id"),
-        }
-    }
-
-    /// **The real ceiling is `rate × t`, not `rate`** — and nothing enforces it.
-    ///
-    /// Ids are stored as `f32` (the stream's only scalar type), so spawn indices
-    /// are exact only below 2²⁴ = 16.777.216. Past that, consecutive integers are
-    /// not representable and two particles share an id: the CPU's `BTreeMap<id,
-    /// row>` pairing keeps one of them, and the GPU's `id − prev_first` gather
-    /// hands both the SAME prior row. Silently, and only after enough playback.
-    ///
-    /// The emitter's doc used to file this under "≈ 4,8 days at rate 40, out of
-    /// scope" — which was TRUE while the rate slider stopped at 200 (23 hours).
-    /// It stopped being true when the slider went to 12.000 (23 minutes) and the
-    /// typed box to 4.000.000 (**4,2 seconds**). A note that says "unreachable"
-    /// has to be re-checked by whoever moves the thing that made it unreachable.
-    ///
-    /// This gate does not assert the cliff away — it PINS where it is, so the
-    /// number is measured rather than re-derived, and so that a future fix (exact
-    /// ids: wrapped indices, or a u32/f64 id column) has a red test to turn green.
-    #[test]
-    fn the_id_space_is_exact_only_below_two_to_the_24() {
-        const EXACT: f32 = 16_777_216.0; // 2²⁴
-        let distinct_ids = |rate: f32, t: f32| {
-            let mut sp = spec();
-            sp.rate = rate;
-            sp.life = 1.0;
-            sp.max = 4096;
-            let mut ids = ids_of(&emit(&sp, t));
-            let n = ids.len();
-            ids.dedup();
-            (n, ids.len())
-        };
-        // Below the cliff every particle is its own particle.
-        for (rate, t) in [(200.0f32, 5.0f32), (12_000.0, 5.0), (4_000_000.0, 3.0)] {
-            let (n, distinct) = distinct_ids(rate, t);
-            assert!(t * rate < EXACT, "fixture must stay under the cliff");
-            assert_eq!(distinct, n, "rate {rate} at t={t}: ids must be distinct");
-        }
-        // Above it they are not — half of them collide, and this is the fact the
-        // 4.000.000 typed ceiling walks into after 4,2 seconds of playback.
-        let (burst, late) = (4_000_000.0f32, 5.0f32);
-        let (n, distinct) = distinct_ids(burst, late);
-        assert!(late * burst > EXACT, "fixture must clear the cliff");
-        assert!(
-            distinct < n,
-            "past 2²⁴ the f32 id space must be shown COLLAPSING ({distinct} of {n}) — \
-             if this ever passes with distinct == n, ids became exact and the \
-             ceiling note above is stale"
-        );
-        assert_eq!((n, distinct), (4096, 2049), "the measured collapse");
-    }
-
-    #[test]
-    fn the_alive_set_is_the_id_window_born_within_life() {
-        // rate 10, life 1 → at t = 1.55 the alive ids are those born in
-        // (0.55, 1.55]: k/10 ∈ (0.55, 1.55] → k ∈ 6..=15.
-        let s = emit(&spec(), 1.55);
-        assert_eq!(ids_of(&s).first().copied(), Some(6.0));
-        assert_eq!(ids_of(&s).last().copied(), Some(15.0));
-        assert_eq!(s.count(), 10);
-        // Ids are strictly ascending (oldest first) so Index reads as age order.
-        assert!(ids_of(&s).windows(2).all(|w| w[1] > w[0]));
-    }
-
-    #[test]
-    fn particles_are_born_and_die_on_schedule() {
-        // At t=0 only particle 0 exists; by t just under 1 life later it still
-        // does; a hair past, it is gone (its successors remain).
-        assert_eq!(ids_of(&emit(&spec(), 0.0)), vec![0.0]);
-        assert!(ids_of(&emit(&spec(), 0.99)).contains(&0.0), "still alive");
-        assert!(!ids_of(&emit(&spec(), 1.01)).contains(&0.0), "died at life");
-    }
-
-    #[test]
-    fn scrubbing_backwards_reproduces_the_scene_exactly() {
-        // The reference's stateful emitter could not do this. Ask for a time,
-        // get the same particles — no matter what was asked before.
-        let forward = emit(&spec(), 2.5);
-        for t in [0.3, 7.1, 0.0, 2.5] {
-            let _ = emit(&spec(), t);
-        }
-        let revisited = emit(&spec(), 2.5);
-        assert_eq!(ids_of(&forward), ids_of(&revisited));
-        assert_eq!(forward.get("vel"), revisited.get("vel"));
-    }
-
-    #[test]
-    fn launch_velocity_follows_angle_and_speed() {
-        // Zero spread, angle 90 (up in this Y-up world) → vel = (0, speed).
-        let s = emit(&spec(), 0.5);
-        match s.get("vel").unwrap() {
-            Column::Vec2(v) => {
-                for q in v {
-                    assert!(q[0].abs() < 1e-4, "no lateral component");
-                    assert!((q[1] - 2.0).abs() < 1e-4, "speed straight up");
-                }
-            }
-            _ => panic!("vel"),
-        }
-        // And they all start at the origin — displacement is the integrator's.
-        match s.get("P").unwrap() {
-            Column::Vec2(v) => assert!(v.iter().all(|p| *p == [1.0, -1.0])),
-            _ => panic!("P"),
-        }
-    }
-
-    #[test]
-    fn spread_fans_the_cone_but_never_past_its_half_angle() {
-        let mut sp = spec();
-        sp.spread = 60.0;
-        sp.rate = 200.0; // plenty of samples
-        let s = emit(&sp, 1.0);
-        let Column::Vec2(v) = s.get("vel").unwrap() else {
-            panic!("vel")
-        };
-        // angle 90 ± 30 → the x-component is bounded by speed·sin(30°) = 1.0.
-        let max_lateral = v.iter().map(|q| q[0].abs()).fold(0.0f32, f32::max);
-        assert!(
-            max_lateral <= 1.01,
-            "cone half-angle respected: {max_lateral}"
-        );
-        assert!(max_lateral > 0.5, "the cone actually fans out");
-        // All still flying upward.
-        assert!(v.iter().all(|q| q[1] > 0.0));
-    }
-
-    #[test]
-    fn the_cap_keeps_the_newest_particles() {
-        let mut sp = spec();
-        sp.max = 3;
-        let s = emit(&sp, 1.55); // would be 10 alive
-        assert_eq!(s.count(), 3);
-        assert_eq!(ids_of(&s), vec![13.0, 14.0, 15.0], "the newest three");
-    }
-
-    #[test]
-    fn a_dead_or_absurd_emitter_yields_an_empty_stream_not_a_panic() {
-        let mut sp = spec();
-        sp.rate = 0.0;
-        assert_eq!(emit(&sp, 5.0).count(), 0);
-        let mut sp = spec();
-        sp.life = 0.0;
-        assert_eq!(emit(&sp, 5.0).count(), 0);
-        // A negative playhead (a scrub past zero) emits nothing rather than
-        // hashing negative ids.
-        assert_eq!(emit(&spec(), -1.0).count(), 0);
-        // A rate that outruns MAX_ALIVE is capped by the caller (`eval`), and
-        // `emit` honours whatever cap it is handed.
-        let mut sp = spec();
-        sp.rate = 1e6;
-        sp.max = MAX_ALIVE;
-        assert_eq!(emit(&sp, 10.0).count(), MAX_ALIVE);
-    }
-
-    #[test]
-    fn age_and_index_track_the_stream_order() {
-        let s = emit(&spec(), 1.55);
-        let Column::Scalar(age) = s.get("age").unwrap() else {
-            panic!("age")
-        };
-        // Oldest first: age descends, and every age is within [0, life).
-        assert!(age.windows(2).all(|w| w[1] < w[0]));
-        assert!(age.iter().all(|a| *a >= 0.0 && *a < 1.0));
-        let Column::Scalar(idx) = s.get("Index").unwrap() else {
-            panic!("Index")
-        };
-        assert_eq!(idx.first().copied(), Some(0.0));
-        assert_eq!(idx.last().copied(), Some(9.0));
-    }
-
-    #[test]
-    fn particles_carry_their_own_size() {
-        // Without this column the lowering would fall back to the caller's
-        // default (a grid dot), and a dense jet would read as a poured ribbon.
-        let s = emit(&spec(), 0.5);
-        match s.get("size").unwrap() {
-            Column::Vec2(v) => assert!(v.iter().all(|q| *q == [0.2, 0.2])),
-            _ => panic!("size"),
-        }
-    }
-
-    /// The `eval` seam itself (audit 2026-07-10: every behavioural test above
-    /// drives `emit()` directly, so the ctx.param/ctx.playhead → `Spec` wiring
-    /// was untested): cook the REAL node with overridden params and assert the
-    /// alive set reflects them — rate·window rows, all at the (x, y) origin,
-    /// sized by the `size` param as a Vec2 column.
-    #[test]
-    fn eval_maps_params_and_playhead_into_the_spec() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::Graph;
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                (ty == MANIFEST.id).then_some(&MotionEmitter as &dyn NodeOp)
-            }
-        }
-        let mut g = Graph::new();
-        let em = g.add_node("motion.emitter");
-        for (name, v) in [
-            ("rate", 2.0),
-            ("life", 1.0),
-            ("speed", 0.0),
-            ("x", 3.0),
-            ("y", 4.0),
-            ("size", 0.25),
-        ] {
-            g.set_param(em, name, v);
-        }
-        let mut cook = Cook::new();
-        // t = 0.9, rate 2 → births at 0 and 0.5, both younger than life 1.
-        let out = cook.cook(&g, &Ops, em, 0.9).unwrap();
-        let s = out[0].as_stream();
-        assert_eq!(s.count(), 2, "rate × window alive");
-        match s.get("P").unwrap() {
-            Column::Vec2(v) => assert_eq!(v, &vec![[3.0, 4.0]; 2], "the (x,y) origin"),
-            _ => panic!("P"),
-        }
-        match s.get("size").unwrap() {
-            Column::Vec2(v) => assert_eq!(v, &vec![[0.25, 0.25]; 2], "size param → Vec2 column"),
-            _ => panic!("size"),
-        }
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        use ph2d_nodegraph::cook::OpResolver;
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

@@ -213,6 +213,13 @@ pub fn kernel_module(
     if gather_on {
         src.push_str("    gather_prev_n: u32,\n");
     }
+    // A playhead-dependent generator is TOLD its window instead of re-deriving
+    // it: `floor(t·rate)` recomputed here is `f32`, and past 2²⁴ it skips
+    // integers, so the identity the whole gather rests on would quietly stop
+    // being a bijection. The CPU computes these in `f64` (`SourceWindow`).
+    if kernel.source_window.is_some() {
+        src.push_str("    window_first: u32,\n    window_age: f32,\n");
+    }
     src.push_str("}\n@group(0) @binding(0) var<uniform> params: KernelParams;\n\n");
 
     // Storage bindings: reads first, then writes (stable, replayable order).
@@ -301,7 +308,7 @@ pub fn kernel_module(
                 .unwrap_or_else(|| "0u".to_string());
             src.push_str(&format!(
                 "fn gather_prev_first() -> u32 {{ return {prev_first}; }}\n\
-                 fn gather_row(i: u32) -> u32 {{ return u32(max(read_{cur_id}(i), 0.0)) - gather_prev_first(); }}\n\
+                 fn gather_row(i: u32) -> u32 {{ return (u32(max(read_{cur_id}(i), 0.0)) - gather_prev_first()) % 16777216u; }}\n\
                  fn gather_paired(i: u32) -> bool {{ return gather_row(i) < params.gather_prev_n; }}\n\n"
             ));
         } else {
@@ -350,7 +357,7 @@ mod tests {
             },
         ],
         params: &["dx"],
-        source_count: None,
+        source_window: None,
         applicable: None,
     };
 
@@ -390,7 +397,7 @@ mod tests {
             },
         ],
         params: &[],
-        source_count: None,
+        source_window: None,
         applicable: None,
     };
     const SIM_PORTS: &[&str] = &["rest", "forces"];
@@ -436,7 +443,7 @@ mod tests {
             },
         ],
         params: &[],
-        source_count: None,
+        source_window: None,
         applicable: None,
     };
 
@@ -490,7 +497,7 @@ mod tests {
                 port: 0,
             }],
             params: &["amount"],
-            source_count: None,
+            source_window: None,
             applicable: None,
         };
         assert_ne!(
@@ -580,7 +587,7 @@ mod tests {
             "prev_first is the STATE port's id[0], value-cast"
         );
         assert!(src.contains(
-            "fn gather_row(i: u32) -> u32 { return u32(max(read_rest_id(i), 0.0)) - gather_prev_first(); }"
+            "fn gather_row(i: u32) -> u32 { return (u32(max(read_rest_id(i), 0.0)) - gather_prev_first()) % 16777216u; }"
         ));
         assert!(src.contains(
             "fn gather_paired(i: u32) -> bool { return gather_row(i) < params.gather_prev_n; }"

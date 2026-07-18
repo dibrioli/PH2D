@@ -503,7 +503,7 @@ mod refuser {
             },
         ],
         params: &[],
-        source_count: None,
+        source_window: None,
         applicable: None,
     };
     pub fn register(reg: &mut ph2d_node_registry::NodeRegistry) {
@@ -519,7 +519,7 @@ mod idgen {
     use ph2d_nodegraph::attr::{Column, Stream};
     use ph2d_nodegraph::cook::EvalCtx;
     use ph2d_nodegraph::effect::Effect;
-    use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+    use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, SourceWindow};
     use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
     use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -568,7 +568,7 @@ mod idgen {
         wgsl_lib: "",
         bindings: &[P_BINDING, ID_BINDING],
         params: &[],
-        source_count: Some(|_, _| N),
+        source_window: Some(|_, _| SourceWindow::of_count(N)),
         applicable: None,
     };
     const WITHOUT_ID: GpuKernel = GpuKernel {
@@ -576,7 +576,7 @@ mod idgen {
         wgsl_lib: "",
         bindings: &[P_BINDING],
         params: &[],
-        source_count: Some(|_, _| N),
+        source_window: Some(|_, _| SourceWindow::of_count(N)),
         applicable: None,
     };
 
@@ -635,7 +635,7 @@ mod reorder {
             port: 0,
         }],
         params: &[],
-        source_count: None,
+        source_window: None,
         applicable: None,
     };
     pub fn register(reg: &mut ph2d_node_registry::NodeRegistry) {

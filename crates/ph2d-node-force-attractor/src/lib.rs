@@ -158,7 +158,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     params: &[
         "target_x", "target_y", "strength", "radius", "curve", "repel",
     ],
-    source_count: None,
+    source_window: None,
     applicable: None,
 };
 

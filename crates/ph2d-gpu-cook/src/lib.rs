@@ -50,6 +50,7 @@
 //! passes.
 
 pub mod codegen;
+mod gather;
 pub mod instances;
 pub mod lower;
 pub mod plan;
@@ -61,6 +62,7 @@ pub use plan::{GpuPlan, GpuSource, GpuStage, plan};
 pub use ring::GpuCheckpointRing;
 pub use stream::{BufferPool, GpuColumn, GpuStream};
 
+use crate::gather::{column_present, gather_key_port, gather_prev_n};
 use crate::plan::resolve_param;
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::attr::Stream;
@@ -69,60 +71,6 @@ use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel, KernelResolver};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::{NodeManifest, NodeTypeId};
 use std::collections::{BTreeMap, BTreeSet};
-
-/// The base port of an ACTIVE id-gather (ADR-0130) for this input set, or `None`
-/// when there is none: the kernel declares a [`ColumnBinding`] whose access
-/// [`is_gather_key`](ph2d_nodegraph::gpu::ColumnAccess::is_gather_key) AND that
-/// port's stream carries the key column at the dispatch length (a dense window —
-/// the plan already refused a non-dense one). The state ports (any other) are
-/// then paired by id rather than by position, so their length is decoupled from
-/// the dispatch.
-fn gather_key_port(kernel: &GpuKernel, inputs: &[GpuStream], count: u32) -> Option<usize> {
-    let key = kernel.bindings.iter().find(|b| b.access.is_gather_key())?;
-    let active = inputs
-        .get(key.port)
-        .is_some_and(|s| s.count == count && s.cols.contains_key(key.column));
-    active.then_some(key.port)
-}
-
-/// Is `b`'s column readable off its port for a `count`-element dispatch? A
-/// column is "present" only if its port carries it AND is a length this dispatch
-/// can PAIR with:
-///
-/// - **Positional** (the default): the port must be the DISPATCH length. A state
-///   whose count no longer matches the live set was rebuilt, so pair nothing and
-///   re-seed — the CPU's `pairing` `_ if sn == n` arm, expressed once.
-/// - **Under an active id-gather** (`gather_port`): the STATE ports (any but the
-///   key's) are paired by id, not position, so `prev_n ≠ n` is NORMAL. Presence
-///   is simply "carries the column" (any non-empty length) — the length-decouple
-///   ADR-0130 D4 names. The gather's OWN base-port columns stay dispatch-length.
-fn column_present(
-    gather_port: Option<usize>,
-    count: u32,
-    inputs: &[GpuStream],
-    b: &ColumnBinding,
-) -> bool {
-    match inputs.get(b.port) {
-        None => false,
-        Some(s) if gather_port.is_some_and(|kp| b.port != kp) => {
-            s.count > 0 && s.cols.contains_key(b.column)
-        }
-        Some(s) => s.count == count && s.cols.contains_key(b.column),
-    }
-}
-
-/// The prior state's element count (`prev_n`) an active gather reads through the
-/// `gather_prev_n` uniform: the length of the STATE port (the first input that is
-/// not the gather's base). `0` at tick 0 (the `pre` is Empty), where nothing
-/// pairs and every element seeds.
-fn gather_prev_n(inputs: &[GpuStream], key_port: usize) -> u32 {
-    inputs
-        .iter()
-        .enumerate()
-        .find(|(p, _)| *p != key_port)
-        .map(|(_, s)| s.count)
-        .unwrap_or(0)
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GpuCookError {
@@ -332,10 +280,10 @@ impl GpuCook {
                 .resolve(stage.ty)
                 .expect("planned nodes resolve")
                 .manifest();
-            let count = match kernel.source_count {
+            let count = match kernel.source_window {
                 Some(f) => {
                     let get = |name: &str| resolve_param(graph, stage.node, manifest, name);
-                    f(&get, clock.playhead).min(u32::MAX as usize) as u32
+                    f(&get, clock.playhead).count.min(u32::MAX as usize) as u32
                 }
                 None => base.count,
             };
@@ -554,6 +502,16 @@ impl GpuCook {
         if let Some(key_port) = gather_port {
             let at = 8 + kernel.params.len() * 4;
             uni[at..at + 4].copy_from_slice(&gather_prev_n(inputs, key_port).to_le_bytes());
+        }
+        // The generator's window, in the layout `kernel_module` declared. A node
+        // is never both a gatherer and a generator (a generator has no input to
+        // gather FROM), but the offset accounts for both so the layout is total
+        // rather than true-by-luck.
+        if let Some(win) = kernel.source_window {
+            let w = win(&|name| resolve_param(graph, node, manifest, name), playhead);
+            let at = 8 + kernel.params.len() * 4 + usize::from(gather_port.is_some()) * 4;
+            uni[at..at + 4].copy_from_slice(&w.first.to_le_bytes());
+            uni[at + 4..at + 8].copy_from_slice(&w.age_first.to_le_bytes());
         }
         let uniform = self.uniform_slot(gpu, stage_idx);
         gpu.queue.write_buffer(uniform, 0, &uni);

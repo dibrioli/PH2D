@@ -188,7 +188,7 @@ fn eligible(
         return false;
     }
     // A generator must say how many elements it emits (dispatch is host-sized).
-    if manifest.inputs.is_empty() && kernel.source_count.is_none() && !kernel.is_passthrough() {
+    if manifest.inputs.is_empty() && kernel.source_window.is_none() && !kernel.is_passthrough() {
         return false;
     }
     // Kernel params must be declared manifest params and must not shadow the

@@ -187,7 +187,65 @@ pub struct ColumnBinding {
 /// window `[first, first+n)` whose `n(t)` grows and shrinks as particles are born
 /// and die (ADR-0130). A count that ignored the playhead could only describe a
 /// static generator like `motion.grid` (which takes the argument and drops it).
-pub type SourceCountFn = fn(&dyn Fn(&str) -> f32, f64) -> usize;
+pub type SourceWindowFn = fn(&dyn Fn(&str) -> f32, f64) -> SourceWindow;
+
+/// What a generator emits at a given playhead: how many elements, and — for a
+/// generator whose elements carry an integer IDENTITY — where that identity
+/// window begins.
+///
+/// It is a window and not a count because **the identity arithmetic belongs to
+/// the CPU**. `motion.emitter`'s spawn index passes 2²⁴ (the exactly
+/// representable `f32` integers) after `2²⁴ / rate` seconds — 23 minutes at
+/// 12.000/s, and **four seconds** at the millions-per-second a multi-million
+/// particle sim needs. Past it `floor(t·rate)` recomputed in the kernel starts
+/// skipping integers, two particles land on one id, and the gather hands both
+/// the same prior state. Silently.
+///
+/// So the kernel stops re-deriving the window and is TOLD it, in integers the
+/// CPU computed in `f64`. Parity used to hold "by construction because both
+/// sides read the same `f32`"; it now holds because there is only one number
+/// and it is an integer. That is strictly fewer things that can disagree.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct SourceWindow {
+    /// Element count — what `SourceCountFn` used to be, alone.
+    pub count: usize,
+    /// The first element's spawn index, **wrapped into the exactly representable
+    /// `f32` integer range** (`< 2²⁴`). The wrap is invisible to every consumer
+    /// because identity is only ever read as a DIFFERENCE inside one window, and
+    /// a window is orders of magnitude smaller than the wrap period.
+    ///
+    /// `0` for a generator whose elements have no spawn identity — `motion.grid`
+    /// element `i` simply IS index `i`.
+    pub first: u32,
+    /// The OLDEST element's age, in seconds. Carried rather than recomputed
+    /// because the kernel's version would be `t − first/rate`: a small answer
+    /// asked of two large numbers, which loses its significant digits to
+    /// cancellation well before the ids themselves go inexact.
+    ///
+    /// `0.0` for a generator without ages.
+    pub age_first: f32,
+}
+
+impl SourceWindow {
+    /// The window of a generator whose elements have no spawn identity and no
+    /// age — a static grid. `count` alone, which is all `SourceCountFn` ever
+    /// said.
+    #[must_use]
+    pub const fn of_count(count: usize) -> Self {
+        Self {
+            count,
+            first: 0,
+            age_first: 0.0,
+        }
+    }
+}
+
+/// The spawn-index wrap period: the largest power of two below which every
+/// integer is exactly representable as `f32`. Identity is stored as `f32`
+/// (the stream's only scalar column type), so this is not a policy — it is the
+/// last integer the representation can hold without collapsing two of them
+/// into one.
+pub const ID_WRAP: u32 = 1 << 24;
 
 /// A param-dependent applicability test, evaluated at plan time. A kernel
 /// whose static WGSL body only covers part of a node's param space (e.g. an
@@ -255,7 +313,7 @@ pub struct GpuKernel {
     /// `Some` for a **generator** (no stream input): the element count of the
     /// emitted stream as a function of the resolved params. `None` for a
     /// transformer (count = input count).
-    pub source_count: Option<SourceCountFn>,
+    pub source_window: Option<SourceWindowFn>,
     /// `Some` when the kernel only covers part of the node's param space;
     /// evaluated at plan time. `None` = always applicable.
     pub applicable: Option<ApplicableFn>,
@@ -269,7 +327,7 @@ impl GpuKernel {
         wgsl_lib: "",
         bindings: &[],
         params: &[],
-        source_count: None,
+        source_window: None,
         applicable: None,
     };
 
@@ -323,7 +381,7 @@ mod tests {
                 port: 0,
             }],
             params: &[],
-            source_count: None,
+            source_window: None,
             applicable: None,
         };
         assert!(!real.is_passthrough());

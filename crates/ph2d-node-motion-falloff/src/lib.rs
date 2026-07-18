@@ -185,7 +185,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &["shape", "curve", "center_x", "center_y", "radius", "invert"],
-    source_count: None,
+    source_window: None,
     applicable: None,
 };
 

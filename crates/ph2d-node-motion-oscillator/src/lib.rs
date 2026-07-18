@@ -227,7 +227,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "offset",
         "phase",
     ],
-    source_count: None,
+    source_window: None,
     applicable: Some(|param| {
         // Same rounding the CPU `eval` applies. Only X (0) / Y (1) write `P`;
         // Rotation (2) / Size (3) write other columns → CPU fallback.

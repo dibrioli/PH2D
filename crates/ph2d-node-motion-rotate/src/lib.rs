@@ -80,7 +80,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &["angle"],
-    source_count: None,
+    source_window: None,
     applicable: None,
 };
 

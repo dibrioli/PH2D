@@ -344,20 +344,23 @@ pub(super) fn build_gpu_emitter_demo_document(
     // Capped: rate·life = 4200 > max, so the window binds at `max` and `first`
     // advances every tick — the gather's whole point. A wide cone gives each id a
     // distinct muzzle velocity, so a mispair would be visible as a boiling arc.
-    // 4000/s × 3 s = 12.000 alive, inside the 16.384 ceiling that the CPU
-    // fallback sets (see `MAX_ALIVE`). The old numbers asked for 3.000 but were
-    // really bounded at 4.200 by `rate × life`, under the OLD 4096 ceiling — the
-    // fountain could not be a fountain. On the GPU 12.000 costs ~0,1 ms/tick.
-    g.set_param(em, "rate", 4000.0);
+    // 400.000/s × 3 s = 1,2 MILLION alive. Measured on the RTX: a sim this size
+    // costs ~1 ms/tick — 6% of a 60 fps frame — and the ceiling above it is 4M.
+    // This demo has been 3.000 particles, then 4.200 (silently bounded by
+    // `rate × life`), then 12.000; each of those was a number some CEILING chose,
+    // never the device. This one is what the hardware does.
+    g.set_param(em, "rate", 400_000.0);
     g.set_param(em, "life", 3.0);
-    g.set_param(em, "max", 12000.0);
+    g.set_param(em, "max", 1_200_000.0);
+    // Grains, not blobs: a million quads at 0,18 world units would be one solid
+    // sheet of colour.
+    g.set_param(em, "size", 0.012);
     g.set_param(em, "speed", 22.0);
     g.set_param(em, "angle", 90.0); // up (Y-up world)
     g.set_param(em, "spread", 60.0);
     g.set_param(em, "x", 0.0);
     g.set_param(em, "y", -8.0); // launch from the low centre, up into view
     g.set_param(em, "seed", 7.0);
-    g.set_param(em, "size", 0.18);
     let ig = g.add_node("motion.integrate");
     // Colour by AGE. The emitter's ids ascend oldest-first, so `Index` IS age
     // order and a Gradient Tint paints the jet hot at the muzzle and cold at the

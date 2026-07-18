@@ -19,7 +19,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{
     LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec, RECOMMENDED_MAX_ELEMENTS,
     param_as_count,
@@ -138,10 +138,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     params: &["rows", "cols", "gap_x", "gap_y"],
     // `_playhead`: a grid is static — its element count does not move with time.
     // The argument exists for the stateless emitter (ADR-0130), not for this.
-    source_count: Some(|param, _playhead| {
+    source_window: Some(|param, _playhead| {
         let rows = param_as_count(param("rows"), RECOMMENDED_MAX_ELEMENTS);
         let cols = param_as_count(param("cols"), RECOMMENDED_MAX_ELEMENTS);
-        rows.saturating_mul(cols).min(RECOMMENDED_MAX_ELEMENTS)
+        SourceWindow::of_count(rows.saturating_mul(cols).min(RECOMMENDED_MAX_ELEMENTS))
     }),
     applicable: None,
 };

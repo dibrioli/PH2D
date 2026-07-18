@@ -190,20 +190,14 @@ pub fn accumulate_dab_plane(
             let p = pre[i];
             let a_old = amount[i];
             let a_new = a_old + add;
-            // The render's own expression for how far this texel travels — `k · pass(target − pre)`,
-            // asked of the verb rather than assumed. Differenced across this dab's arrival it telescopes
-            // over the stroke to exactly what the final render moves, which is the whole reason the rim
-            // can put back precisely that much.
-            let moved = |a: f32, ps: f32| -> f32 {
-                if a <= 0.0 {
-                    return 0.0;
-                }
-                a.clamp(0.0, 1.0) * b.travel.pass((ps / a + b.offset) - p)
+            let rem_new = a_new.clamp(0.0, 1.0)
+                * (p - ((plane_sum[i] + add * target) / a_new + b.offset)).max(0.0);
+            let rem_old = if a_old > 0.0 {
+                a_old.clamp(0.0, 1.0) * (p - (plane_sum[i] / a_old + b.offset)).max(0.0)
+            } else {
+                0.0
             };
-            // MINUS: `displaced` is what the rim must account for, which is the negative of what the
-            // surface gained. A remover moves the surface down, so `displaced` goes up and the rim
-            // rises; an adder moves it up, so `displaced` goes negative and the rim sinks into a moat.
-            *b.displaced -= moved(a_new, plane_sum[i] + add * target) - moved(a_old, plane_sum[i]);
+            *b.displaced += rem_new - rem_old;
         }
         amount[i] += add;
         plane_sum[i] += add * target;
@@ -262,40 +256,8 @@ pub struct PlaneBite<'a> {
     /// same target. (A knob edit after the stroke re-renders with the new offset but the bank keeps the
     /// stamp-time volume until the next re-stamp; the shape editors re-stamp on every geometry drag.)
     pub offset: f32,
-    /// Which way this verb lets the surface travel — the render's own clamp, asked rather than assumed.
-    pub travel: Travel,
-    /// Running total of displaced volume, in loads·px², **signed**: positive when the verb took paint
-    /// away (the rim receives a ridge), negative when it added (the rim gives one up — a moat).
+    /// Running total of removed volume, in loads·px² — what the caller hands to `bank_dab_push`.
     pub displaced: &'a mut f32,
-}
-
-/// Which SIGN of the plane travel a verb lets through — the render's `delta` clamp, mirrored here.
-///
-/// This exists because the bite must measure *the volume the render will actually move*, and the three
-/// plane verbs move different halves of the same number. It was hard-coded to [`Travel::Down`] while
-/// Scrape and the Chisel were the only conserving verbs, and hard-coding it is precisely what made
-/// Flatten and Fill un-conservable: their volume was measured by somebody else's expression.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Hash)]
-pub enum Travel {
-    /// Scrape / Chisel — a spatula takes off what stands above the plane and leaves the valleys alone.
-    #[default]
-    Down,
-    /// Fill — the mirror: it raises the hollows and does not touch the peaks.
-    Up,
-    /// Flatten — the plane pulls every texel the whole way, in whichever direction it lies.
-    Both,
-}
-
-impl Travel {
-    /// The verb's clamp on one texel's travel, byte-for-byte the render's own `match`.
-    #[inline]
-    pub fn pass(self, delta: f32) -> f32 {
-        match self {
-            Travel::Down => delta.min(0.0),
-            Travel::Up => delta.max(0.0),
-            Travel::Both => delta,
-        }
-    }
 }
 
 /// What a plane-family dab writes, and what it reads to decide. Grouped because they travel together and

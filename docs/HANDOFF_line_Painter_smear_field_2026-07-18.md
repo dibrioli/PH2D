@@ -419,66 +419,48 @@ pergunta e sangra sozinha:
   percorrer o plano"*);
 - janela crescida 400 px **constantes** ⇒ razão **1,00×, passa**; o **kill** dispara em 47 ms.
 
-### 9.8 Conserve p/ Flatten/Fill — LANDOU (ordem do Enio; era "decisão de design")
+### 9.8 Conserve p/ Flatten/Fill — construído, smokado e REMOVIDO no mesmo dia
 
-**A decisão:** a lei é UMA, e o Scrape sempre foi caso particular dela —
+Fica registrado porque a lei era boa e alguém vai querer reconstruí-la.
 
-> **Conserve = a variação LÍQUIDA de volume do traço é zero; o aro liquida a diferença com o SINAL do
-> ledger.**
+**A lei generalizava:** *Conserve = a variação LÍQUIDA de volume do traço é zero; o aro liquida a diferença
+com o SINAL do ledger* — Scrape sempre foi o caso de ledger negativo (crista); Fill/Clay têm ledger
+positivo e ganhavam **fosso**. O ledger fechava em ±0,0 em todos os casos.
 
-Scrape/Chisel só removem ⇒ ledger sempre negativo ⇒ aro sobe (foi por isso que o 1º corte pôde cravar uma
-crista sem perceber que estava supondo algo). Fill/Clay adicionam ⇒ ledger positivo ⇒ **o aro afunda: um
-fosso**. Encher uma cova arrastando a tinta ao redor deixa fosso, exatamente como raspar um canal deixa
-crista.
+**O smoke reprovou** (Enio): *"Conserve com fosso muito profundo e exagerado"* (Push e Inflate OK). Ele
+perguntou se cabia um slider de intensidade com default 50%.
 
-Custo estrutural: quase nada, e por bons motivos. A mordida parou de codificar *a expressão do Scrape* e
-passou a **perguntar ao verbo** (`Travel::{Down,Up,Both}`, espelho exato do `match` do render);
-`bank_dab_push` **já era transparente ao sinal** (`plane[i] += k·scale`); e o painel **já perguntava ao
-tool** (`sculpt_conserves`) ⇒ **zero mudança de painel**. Estender `conserves()` bastou para o checkbox
-nascer nos cards novos.
+**Medido, o slider não resolve — e é por isso que a remoção foi a resposta:**
 
-#### ⚠️ A medição mudou o que o flag SIGNIFICA no Flatten
+| Offset | o verbo adiciona | fosso mais fundo | slider que igualaria o verbo |
+|---|---|---|---|
+| centro | 63,3 | 0,6× a excursão | **168%** |
+| 0,65 | 405,1 | 2,0× | **49%** |
+| 0,75 | 632,9 | 2,5× | **40%** |
 
-Medido ANTES de construir (volume líquido de um traço, `loads·px²`):
+**O valor certo do slider é função de OUTRO knob.** Um controle que se re-calibra a cada toque no Offset
+não é controle, é calibração de um bug de design.
 
-| | offset 0 | +0,25 | +0,5 | −0,25 |
-|---|---|---|---|---|
-| FLATTEN | **+0,7 (+1,2%)** | +741,7 | +1482,7 | −740,3 |
-| FILL | +59,7 | +741,7 | +1482,7 | +0,0 |
+**A causa, que a medição já nomeara e eu não levei às últimas consequências:** o **Offset é o botão de
+volume**, e Clay é o artista *adicionando massa de propósito*. Conservar isso é a ferramenta desfazendo a
+intenção. E no centro — onde conservar seria inofensivo — o Flatten **já é conservativo por construção**
+(+1,2%; o ajuste LSQ passa pelo centroide). Então o flag é **inerte onde é seguro e nocivo onde é vivo**.
 
-**No centro do Offset o Flatten já é conservativo, e não por sorte:** o ajuste de mínimos quadrados passa
-pelo centroide ponderado, então `Σ w·(plano − h) = 0` **por construção** — o que ele tira dos picos já está
-nos vales. O resíduo é só o descasamento entre os pesos do fit e o `k = min(amount,1)` do render.
+**Se alguém retomar:** o slider não é o caminho. O desenho principiado é **isentar o Offset da mordida** —
+conservar só a redistribuição e tratar a elevação rígida como massa que o artista carregou na espátula.
+Mas isso deixa o flag quase inerte no Offset alto, que é onde ele foi pedido; provavelmente a conclusão
+correta é que **Flatten e Fill simplesmente não querem este flag**.
 
-Logo, no Flatten este flag **não é** *"pare de deletar tinta"*: é **o contrapeso do Offset**. O Offset é o
-botão de volume (fora do centro cria ou destrói **12×** toda a redistribuição) e o Conserve é o que faz o
-botão mover tinta em vez de conjurá-la. É por isso que vale oferecê-lo num verbo neutro em repouso: ele é
-vivo exatamente onde o verbo deixa de ser neutro.
+**O achado do `Supply` vale ser preservado, porque é reutilizável.** O aro **prefere texels não-pintados**
+(`1 − paint`, para a crista não empilhar no próprio canal) e, invertido o sinal, esse mesmo fator guia um
+saque para **fora da tinta**: **83% do saque caía em tela nua** com o ledger lendo ±0,0 — e relevo sob
+cobertura zero **não renderiza**. Ledger verde sobre mentira visível. A cura era pesar o saque por
+`altura × cobertura` (a grandeza que a LUZ integra); relevo sozinho ainda deixava **56%** no invisível
+(o depósito espalha altura num halo mais largo que a tinta). **83% → 56% → 0%.** Qualquer operação futura
+que RETIRE matéria via o aro precisa disso.
 
-#### ⚠️ O bug que nenhum ledger pegaria
-
-Com a lei implementada o ledger fechava em **±0,0 em todos os casos** — e estava mentindo. O aro
-**prefere texels que o traço não trabalhou** (`1 − paint`, para não empilhar a crista no próprio canal), e
-invertido o sinal esse mesmo fator guia o fosso **para fora da tinta**. Medido num depósito real:
-**83% do saque caía em tela nua**, com o ledger em ±0,0. Relevo sob cobertura zero **não renderiza** ⇒
-ledger verde sobre mentira visível, que é pior que ledger desequilibrado, porque nada reclama.
-
-Cura: um saque é pesado pelo que está de fato lá — **`Supply { relief, cover }`**, a grandeza que a LUZ
-integra (`altura × cobertura`). ⚠️ **Relevo sozinho não basta, e isso foi medido**: o depósito espalha
-altura num halo mais largo que a tinta, e pesar por ele ainda deixava **56%** no invisível.
-**83% → 56% → 0%**, com o ledger fechando o tempo todo.
-
-O fixture teve de mudar junto: `sculpt_canvas` põe **cobertura 255 em toda parte**, então nele "fora da
-tinta" não existe e um fosso no vazio é indistinguível de um na tinta — *um fixture que não contém o
-fenômeno não pode gateá-lo*. Os gates novos usam um **depósito REAL** com bordas.
-
-Gates (3 novos, 4 mutações, 4 sangram): ledger do Fill · **o fosso só toma tinta de pé** · o Offset como
-botão de volume e o Conserve como contrapeso. Os 4 gates velhos de Scrape ficam verdes — o depósito é
-byte-intocado (`supply` só é consultado quando `displaced < 0`).
-
-**Aberto, herdado e inalterado:** o banco ainda normaliza por dab (cada dab divide o próprio aro), o
-resíduo conhecido de 0,0286 do §7 da fila. O fosso herda exatamente a mesma imperfeição, pelo mesmo
-motivo, e a cura é a mesma para os dois.
+Revertido junto: `Travel`, `Supply`, os 3 gates e o split `sculpt_conserve.rs`. **Conserve permanece em
+Scrape/Chisel** (smoke aprovado 2026-07-16).
 
 ### 9.9 A cura do BANCO — FECHADA POR MEDIÇÃO (o item não existia)
 

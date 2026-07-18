@@ -177,14 +177,11 @@ impl PainterTool {
         // for physics). The checkbox stays live on an open shape the way the Rake does: its toggle
         // re-stamps the shape (`refill_open_shape`), and the re-stamp accumulates the bank fresh.
         let conserving = plane_family && self.paint.sculpt.conserve_active();
-        // The verb's own clamp on the travel, so the bite measures what the render will move.
-        let bite_travel = self.paint.sculpt.mode_enum().travel();
         let bite_offset = self.paint.sculpt.plane_offset();
         let mut bank = std::mem::take(Arc::make_mut(&mut self.paint.sculpt.bank));
         let mut bank_scratch = std::mem::take(&mut self.paint.sculpt.bank_scratch);
         let mut prev_center = self.paint.sculpt.last_bank_center;
         let pre = Arc::clone(&self.paint.sculpt.pre);
-        let pre_cover = Arc::clone(&self.paint.sculpt.pre_cover);
         // **Rake OFF: the knife enters at the angle the stroke started in, and holds it.** Lock on the first
         // dab of the gesture that HAS a heading — not on the pen-down dab, whose heading is `[0, 0]` until
         // the hand has travelled (the warm-up holds those dabs precisely so this is never `[0, 0]`, but the
@@ -265,7 +262,6 @@ impl PainterTool {
                         scratch: &mut scratch,
                         bite: conserving.then_some(ph2d_painter_brush::sculpt::PlaneBite {
                             offset: bite_offset,
-                            travel: bite_travel,
                             displaced: &mut displaced,
                         }),
                     },
@@ -308,10 +304,7 @@ impl PainterTool {
             // the pile inside the channel the next dab is about to cut — measured on the deposit). The
             // rim's DirtyRect is unioned into `touched`, so the render's window — and the session bbox
             // the restores cover — reach every texel the bank wrote.
-            // `!= 0.0`, not `> 0.0`: the ledger is SIGNED now. A `> 0.0` guard would silently
-            // drop every adder's moat and leave Fill conserving nothing while the checkbox said
-            // otherwise — the flag armed, the bite counted, and the rim never told.
-            if conserving && displaced != 0.0 {
+            if conserving && displaced > 0.0 {
                 let bank_dab = ph2d_painter_brush::height::HeightDab {
                     prev_center: (d.dir != [0.0, 0.0])
                         .then_some([d.center[0] - d.dir[0], d.center[1] - d.dir[1]])
@@ -321,13 +314,6 @@ impl PainterTool {
                 if let (Some(r), _carried) = ph2d_painter_brush::height_push::bank_dab_push(
                     &mut bank,
                     &amount,
-                    // The SUPPLY: a moat may only take paint that is actually standing — height
-                    // AND coverage, because the light weights by coverage and a halo shows nothing.
-                    // Ignored while depositing, so Scrape stays byte-identical.
-                    Some(ph2d_painter_brush::height_push::Supply {
-                        relief: pre.as_slice(),
-                        cover: pre_cover.as_slice(),
-                    }),
                     &mut bank_scratch,
                     w,
                     h,

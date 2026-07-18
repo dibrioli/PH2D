@@ -176,32 +176,6 @@ pub struct PushBite<'a> {
     pub displaced: f32,
 }
 
-/// What a WITHDRAWAL may take from a texel — the paint that is actually standing there.
-///
-/// Two planes, because relief alone is the wrong answer and measurably so. `h` is a load, not a volume:
-/// the deposit feathers relief into a halo a little wider than the paint, and the LIGHT weights by
-/// **coverage** — so a texel with height and no coverage renders nothing and has nothing to give. Using
-/// relief alone left **56% of a moat digging into a halo the artist cannot see** (measured; using neither
-/// left 83%). The honest supply is the quantity the light integrates: `height × coverage`.
-#[derive(Copy, Clone, Debug)]
-pub struct Supply<'a> {
-    /// The frozen relief the stroke started from — the same `pre` every other part of the sculpt reads.
-    pub relief: &'a [f32],
-    /// How much of each texel actually holds paint (`0..=255`).
-    pub cover: &'a [u8],
-}
-
-impl Supply<'_> {
-    /// The material standing at one texel, in loads. Zero where there is no paint — which is the whole
-    /// point: a weight of zero is a moat that cannot form there, rather than one that forms invisibly.
-    #[inline]
-    fn at(&self, i: usize) -> f32 {
-        let h = self.relief.get(i).copied().unwrap_or(0.0).max(0.0);
-        let c = f32::from(self.cover.get(i).copied().unwrap_or(0)) * (1.0 / 255.0);
-        h * c
-    }
-}
-
 /// **Volume conservation, one dab at a time** — the other half of [`PushBite`]: the paint the brush took
 /// has to GO somewhere, and it banks up as a ridge just outside the cut.
 ///
@@ -229,7 +203,6 @@ impl Supply<'_> {
 pub fn bank_dab_push(
     plane: &mut [f32],
     paint: &[f32],
-    supply: Option<Supply<'_>>,
     scratch: &mut Vec<f32>,
     width: u32,
     height: u32,
@@ -309,27 +282,6 @@ pub fn bank_dab_push(
             // The GEOMETRIC weight (profile × how far to the side); the swath factor is one cheap read
             // away, so only this is worth caching.
             let base = k * lateral_weight(dx, dy, dir);
-            // ── A WITHDRAWAL can only take what stands there. ───────────────────────────────────
-            //
-            // Depositing, the rim may land anywhere: bare canvas is a perfectly good place to put a
-            // ridge. Taking is not symmetric — there is no paint in an empty texel to drag into the
-            // hollow, and `h` going negative under zero coverage renders NOTHING, so the volume would
-            // balance on paper while the artist watched paint appear out of nowhere.
-            //
-            // Measured before this factor existed (Fill + Conserve on a real deposited patch):
-            // **82–83% of the withdrawal landed on bare canvas** and the ledger still read ±0.0. Not an
-            // edge case — the *typical* one, and for a reason worth stating: the rim deliberately
-            // prefers texels the stroke has not worked over (`1 − paint`, so a ridge is not banked into
-            // its own channel), and that same preference steers a moat straight off the paint.
-            //
-            // Weighting by the supply makes the moat proportional to what is actually standing, and
-            // exactly zero where nothing is. When the whole rim is bare both totals fall to zero and the
-            // bail below reports it — the honest outcome, and the same one this kernel already gives
-            // when the rim is off-canvas.
-            let base = match supply {
-                Some(s) if displaced < 0.0 => base * s.at(i),
-                _ => base,
-            };
             scratch[by * bw + bx] = base;
             rim_weight += base * (1.0 - paint[i].clamp(0.0, 1.0));
             swath_weight += base;

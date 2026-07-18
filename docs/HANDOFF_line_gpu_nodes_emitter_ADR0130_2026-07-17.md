@@ -197,6 +197,35 @@ Item **#6 do §Aberto da Fase 3**, e ele pertencia a ESTA linha: o doc do própr
 
 **`NodeManifest.lowerings` intocado** (`&[LoweringKind::Cpu]`) — o kernel é side metadata, o contrato congelado não se move.
 
+### §4.TETO — a sim medida, e o `MAX_ALIVE` 4096 → 16384 (`46ae13bd`, 2026-07-17)
+
+Item **#3 do §Aberto da Fase 3** (a sonda de sim). Construí-la achou o que valia achar: **a linha inteira existe pra levar partículas a milhões, e o `motion.emitter` estava capado em 4096.** A `DEMO=5` pedia 3.000 e eu a descrevi como *"até 3.000 partículas"* sem nunca ter lido o teto a que ela encostava.
+
+**Medido (RTX, `emitter_sim_ceiling_probe`, `emitter → wind → drag → integrate`):**
+
+| janela | GPU ms/tick | CPU ms/tick |
+|---:|---:|---:|
+| 4.096 | 0,085 | 0,243 |
+| 16.384 | 0,105 | 1,044 |
+| 65.536 | 0,166 | 2,989 |
+| 262.144 | **0,285** | **12,982** |
+
+A GPU é **plana** (64× as partículas = 3,35× o custo; 262k = **1,7%** de um frame de 60 fps). A CPU é linear e a 262k come **78% do frame inteiro**.
+
+**⇒ O teto é dado pelo FALLBACK da CPU, não pelo renderer nem pela GPU** — e o `PH2D_GPU_COOK` é **opt-in**, então a CPU é o que todo build default de fato roda. O comentário antigo justificava o guard como proteção contra *"a stream no renderer would draw anyway"*, e essa metade é hoje **plainly false**: o renderer desenha 2M instâncias a 4,02 ms. O número foi escolhido antes de qualquer lado ser mensurável; a **cerca** (limitar um `rate 1e9` escrito à mão) continua de pé.
+
+**16.384** = 4× de folga, fallback em ~6% do frame, < 1 MB de transiente por frame (44 B/partícula × 8 colunas). **65.536 é a tentação seguinte** — 3 ms/tick mordidos de um *fallback*, para **um** nó de um grafo: **decisão do Enio**, não default a se enfiar de contrabando. Uma palavra e eu mudo.
+
+⚠️ **O teto NUNCA pode ser dependente de caminho**, por mais tentador: a paridade do ADR-0130 vale *por construção* porque `eval` e `source_count` derivam `newest`/`n`/`first` de **UMA** lei de contagem compartilhada. Um teto só-GPU daria `n` diferente pros dois lados do MESMO documento, e o scrub, a emenda híbrida e o gather passariam a ler uma janela que a outra metade nunca teve.
+
+**Gate:** o teto duro agora tem um (o gate de lei-de-contagem existente só alcançava o **param** `max`). É **determinístico, não cronometrado** — peça um bilhão de partículas e exija que os dois caminhos pousem no MESMO `n`, enunciado como **invariante** pra não precisar de edição quando o número mudar. Mutação (metade do teto só no caminho GPU) → RED nessa asserção (16384 vs 8192). *(A 1ª mutação — remover o teto da GPU — matava o gate por **crash de alocação da wgpu**, não pela asserção: prova fraca, troquei pela regressão realista.)*
+
+⚠️ **Dois fixtures MENTIRAM antes de dizer a verdade, os dois pegos por pré-condição:**
+1. **A sonda imprimiu `601` nas quatro linhas** — o `emitter_sim` fixa `rate 400`, então em `TICKS × FIXED_DT` segundos só 601 partículas chegam a **NASCER**. Tabela de perf que imprime o mesmo número quatro vezes é pior que tabela nenhuma.
+2. **O gate do teto pediu um bilhão, recebeu 401 e PASSOU** (`emitter_graph` fixa `rate 40`). *Um gate de teto tem de superar o teto em NASCIMENTOS, não só em PEDIDO.*
+
+**`DEMO=5` agora roda 4000/s × 3 s = 12.000 vivas.** Os números velhos pediam 3.000 mas estavam de fato limitados em **4.200** por `rate × life`, sob o teto antigo — a fonte não conseguia ser uma fonte. ~0,1 ms/tick na GPU.
+
 ---
 
 ## §5 — Gotchas que a wave adversarial expôs (não re-descubra)
@@ -223,6 +252,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK
 
 - **O gather** (fatias 3-4): a fonte lança até 3.000 partículas que arcam e caem, cada uma com sua velocidade de bico (por-id, cone de `spread`) — **os arcos são limpos**; uma janela deslizante mispareada faria a fonte "ferver" (cada sobrevivente herdando a velocidade de um estranho). Antes da fatia 3, `emitter → integrate` caía na CPU; agora cozinha 100% na GPU (`emitter → integrate` reivindicado pela janela densa). *(As cenas `=3`/`=4` são GRID = pareamento posicional; só a `=5` exercita o gather.)*
 - **Fatia 5** (a invalidação do edit ao vivo): com a fonte rodando, **arraste `rate`** no painel de params → a fonte **REINICIA do tick da tela** e volta a crescer com o novo numeramento — **o arrasto tem de ficar fluido** (é 1 cook por frame, igual playback normal; se travar, é regressão do §4.RESEED). *(O 1º corte usava `forget_state` e re-simulava a história inteira por frame — o "re-bake travado" que o Enio pegou.)*
+- **§4.TETO — a fonte agora é DENSA** (12.000 partículas vivas, era 4.200 na prática): tem de parecer uma fonte, não um chuvisco, e continuar fluida. Custo medido: ~0,1 ms/tick na GPU.
 - **§4.TINT — a fonte agora é COLORIDA por idade** (branco quente no bico → azul nas pontas): é o `motion.tint` em **Gradient** rodando na GPU. O gradiente tem de **varrer ao longo do jato** (as mais velhas, no alto do arco, mais quentes) e a fonte tem de continuar fluida — se ela ficar de uma cor só, ou se o FPS cair, o Gradient recuou pra CPU.
 - **§4.LIVE — o que NÃO reinicia mais:** arraste **`life`** e **`max`** → a fonte **não pisca**: as partículas que continuam vivas seguem exatamente o voo delas (encolher é bit-idêntico; crescer só semeia as que a janela revela). Arraste `speed`/`size`/`angle`/`spread` → idem, a sim viva continua e só os recém-nascidos pegam o novo lançamento. **Se `life`/`max` reiniciarem a fonte, é regressão do §4.LIVE.**
 

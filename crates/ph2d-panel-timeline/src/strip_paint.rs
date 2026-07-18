@@ -33,6 +33,53 @@ pub(crate) const HATCH_STEP: f32 = 5.0; // LITERAL-PX-OK: hatch line pitch
 /// Half-size of a fade-handle arrowhead.
 const ARROW_SZ: f32 = 3.0; // LITERAL-PX-OK: fade arrowhead half-size
 
+/// The four corners as `(stretch, edge)` — GREEN top pair retimes, RED bottom pair
+/// trims; `edge` is the document's `0` = start, `1` = end.
+///
+/// ONE list, walked by both the bracket and its change bar, so a corner cannot be
+/// drawn in one place and forgotten in the other.
+const CORNERS: [(bool, u8); 4] = [(true, 0), (true, 1), (false, 0), (false, 1)];
+
+/// A corner's colour. The operation IS the colour, at the gizmo and at its bar.
+const fn corner_token(stretch: bool) -> ColorToken {
+    if stretch {
+        ColorToken::Success
+    } else {
+        ColorToken::Danger
+    }
+}
+
+/// The bar one corner's **change mark** occupies — `None` where that corner has not
+/// been edited, or where its edit rounds away at this zoom.
+///
+/// The span runs from the edge to `edge + mark`, and **which side of the edge it
+/// lands on is the sign's doing, not a second rule to keep in step**: pull a start
+/// edge outward and the time it gained is now INSIDE the strip; push it inward and
+/// the time it lost is OUTSIDE. One expression, both edges, both operations.
+///
+/// Pure, and separate from the painting, so the geometry can be stated in a test
+/// without a scene — the `hit_plan` pattern.
+pub(crate) fn mark_bar(
+    s: &ph2d_timeline::StripView,
+    view: TimeView,
+    body: Rect,
+    stretch: bool,
+    edge: u8,
+) -> Option<Rect> {
+    let t_edge = if edge == 0 { s.t_start } else { s.t_end };
+    let d = s.marks[ph2d_timeline::mark_index(stretch, edge)];
+    let (a, b) = (view.x(t_edge), view.x(t_edge + d));
+    let (x0, x1) = if a <= b { (a, b) } else { (b, a) };
+    // The bar rides the edge its corner hugs: the top for a stretch, the bottom for
+    // a trim — the same band the bracket's arm runs along.
+    let y = if stretch {
+        body.y
+    } else {
+        body.y + body.h - CORNER_W
+    };
+    (x1 > x0).then(|| Rect::new(x0, y, x1 - x0, CORNER_W))
+}
+
 /// One strip: its box, its name, the fade areas, and the four corner gizmos.
 pub(crate) fn paint_strip(
     ctx: &mut PaintCtx,
@@ -92,15 +139,31 @@ pub(crate) fn paint_strip(
         }
     }
 
+    // **The change bars** — what each corner's last edit DID, still on screen long
+    // after the pointer let go (Enio, 2026-07-16). Drawn under the brackets, in the
+    // corner's own colour and on the corner's own edge, so a bar reads as that
+    // gizmo's arm grown to the length of the change it made.
+    for (stretch, edge) in CORNERS {
+        if let Some(bar) = mark_bar(s, view, body, stretch, edge) {
+            fill_rounded_rect(
+                ctx.scene,
+                bar,
+                Radius::Xs.px(),
+                resolve(corner_token(stretch), theme),
+            );
+        }
+    }
+
     // **The four corner gizmos** — GREEN top = stretch (retime), RED bottom = trim (cut).
     // The colour IS the operation, so the artist never wonders which corner does what.
-    for (left, top, color) in [
-        (true, true, ColorToken::Success),  // top-left  (stretch)
-        (false, true, ColorToken::Success), // top-right (stretch)
-        (true, false, ColorToken::Danger),  // bottom-left  (trim)
-        (false, false, ColorToken::Danger), // bottom-right (trim)
-    ] {
-        paint_corner(ctx, body, left, top, resolve(color, theme));
+    for (stretch, edge) in CORNERS {
+        paint_corner(
+            ctx,
+            body,
+            edge == 0,
+            stretch,
+            resolve(corner_token(stretch), theme),
+        );
     }
 
     // **The fade handle: a traço with two little arrows** (Enio, 2026-07-16) — a vertical
@@ -296,3 +359,7 @@ fn factor_str(speed: f64) -> String {
     let s = s.trim_end_matches('0').trim_end_matches('.');
     format!("{s}x")
 }
+
+#[cfg(test)]
+#[path = "strip_paint_tests.rs"]
+mod tests;

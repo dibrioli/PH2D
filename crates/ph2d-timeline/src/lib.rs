@@ -39,6 +39,7 @@ pub mod stack;
 pub mod stack_edit;
 mod stack_eval;
 pub mod state;
+mod strip_edge_edit;
 
 pub use apply::{
     apply_active_clip, apply_from_doc, apply_from_doc_except, clip_playhead, key_home, key_time,
@@ -60,7 +61,7 @@ pub use prop::{Algebra, PropKind};
 pub use refusal::KeyRefusal;
 pub use snapshot::{KeyView, LaneView, StripView, TimelineViewSnapshot, TrackView};
 pub use speed::{sample_speed, segment_endpoint_speed, speed_extent};
-pub use stack::{ClipLane, ClipStrip, LaneMode, StripId, StripLoop};
+pub use stack::{ClipLane, ClipStrip, LaneMode, StripId, StripLoop, mark_index};
 pub use stack_edit::MAX_LANES;
 // The anim vocab the public snapshot/doc API names, re-exported so consumers of
 // `KeyView`/`TrackView`/`SelectedKey` don't need a direct `ph2d-anim` dep.

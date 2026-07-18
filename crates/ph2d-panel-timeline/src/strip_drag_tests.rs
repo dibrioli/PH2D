@@ -28,6 +28,7 @@ fn snap() -> TimelineViewSnapshot {
                 blend_in: 0.25,
                 blend_out: 0.25,
                 lead_in: 0.0,
+                marks: [0.0; 4],
                 ease_locked_in: false,
                 ease_locked_out: false,
                 loop_mode: StripLoop::Once,
@@ -148,6 +149,75 @@ fn the_green_top_corner_stretches_and_never_trims() {
         !out.iter()
             .any(|i| matches!(i, TimelineIntent::TrimStrip { .. })),
         "and it is NOT a trim: stretch and trim are different corners now"
+    );
+}
+
+/// **Every edge intent carries the ANCHOR its change bar is measured against** — where
+/// the edge sat when the gesture began, not where the previous frame left it. Only the
+/// panel knows that; the document sees a stream of absolute positions and cannot tell
+/// the first frame from the fortieth. Send a per-frame delta instead and a slow drag
+/// accumulates a bar many times the change it made.
+///
+/// The strip runs `[1, 3)`, so the trim-end anchor is `3.0` and the stretch-start
+/// anchor is `1.0` — the two ends of the CAPTURED span, which is what makes the anchor
+/// hold still while the pointer moves.
+#[test]
+fn an_edge_drag_reports_where_the_gesture_started_not_where_the_last_frame_did() {
+    for (code, want_from) in [(1u8, 3.0), (5, 1.0)] {
+        let out = drag(code, 250.0);
+        let from = out.iter().find_map(|i| match i {
+            TimelineIntent::TrimStrip { from, .. } | TimelineIntent::StretchStrip { from, .. } => {
+                Some(*from)
+            }
+            _ => None,
+        });
+        assert_eq!(
+            from,
+            Some(want_from),
+            "grip {code} must anchor on the captured span: {out:?}"
+        );
+    }
+}
+
+/// …and it stays put while the pointer walks. Two Updates at different x must report the
+/// SAME anchor: the moment it starts following the pointer, the bar stops describing the
+/// gesture and starts describing one frame of it.
+#[test]
+fn the_anchor_does_not_move_with_the_pointer() {
+    let _ = state::drain_intents();
+    let mut st = TimelinePanelState::default();
+    let s = snap();
+    apply(
+        &mut st,
+        100.0,
+        &s,
+        0,
+        7,
+        1,
+        gesture(1, GesturePhase::Begin, 200.0),
+    );
+    let anchors: Vec<f64> = [250.0_f32, 300.0, 400.0]
+        .iter()
+        .flat_map(|x| {
+            apply(
+                &mut st,
+                100.0,
+                &s,
+                0,
+                7,
+                1,
+                gesture(1, GesturePhase::Update, *x),
+            );
+            state::drain_intents().into_iter().filter_map(|i| match i {
+                TimelineIntent::TrimStrip { from, .. } => Some(from),
+                _ => None,
+            })
+        })
+        .collect();
+    assert_eq!(anchors.len(), 3, "three frames, three intents");
+    assert!(
+        anchors.iter().all(|a| (a - 3.0).abs() < 1e-9),
+        "the anchor is the gesture's, not the frame's: {anchors:?}"
     );
 }
 
@@ -302,7 +372,7 @@ fn dragging_the_fade_in_grip_into_the_gap_authors_the_outward_lead() {
     });
     assert!(
         lead.is_some_and(|s| (s - 0.25).abs() < 1e-9),
-        "into the gap → SetStripLead(0.25): {out:?}"
+        "into the gap -> SetStripLead(0.25): {out:?}"
     );
     assert!(
         !out.iter()

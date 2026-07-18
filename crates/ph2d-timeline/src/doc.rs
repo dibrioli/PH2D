@@ -35,7 +35,10 @@ use crate::stack_eval::StackScratch;
 /// v6: a strip's fade-in can reach OUTWARD into the gap before it
 /// (`ClipStrip.lead_in`, appended) — the travel fade (Enio, 2026-07-16). `0.0` is
 /// the old behaviour byte-for-byte.
-pub const DOC_VERSION: u32 = 6;
+/// v7: each strip remembers **what its four corners last did** (`ClipStrip.marks`,
+/// appended) — the change bars the panel draws over a trim or a stretch (Enio,
+/// 2026-07-16). All-zero is the old behaviour, and zero draws nothing.
+pub const DOC_VERSION: u32 = 7;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;

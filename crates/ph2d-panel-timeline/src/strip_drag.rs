@@ -95,12 +95,13 @@ fn emit(
         // now each is its own corner — the gizmo you grab IS the operation, no modifier
         // to remember and no NLE-specific convention to learn.
         0 | 1 => {
-            let t = snapped(state, snap, if d.edge == 0 { a0 + dt } else { b0 + dt });
+            let (from, t) = edge_move(state, snap, d, dt, d.edge);
             TimelineIntent::TrimStrip {
                 lane: d.lane,
                 id: d.id,
                 edge: d.edge, // 0 = start, 1 = end — the document's edge vocabulary
                 t,
+                from,
             }
         }
         // **The GREEN top corners STRETCH** — retime: the slice is pinned and the rate
@@ -108,12 +109,13 @@ fn emit(
         // LOOKS; the label carries the new speed factor.
         STRETCH_START | STRETCH_END => {
             let edge = u8::from(d.edge == STRETCH_END); // 0 = start, 1 = end
-            let t = snapped(state, snap, if edge == 0 { a0 + dt } else { b0 + dt });
+            let (from, t) = edge_move(state, snap, d, dt, edge);
             TimelineIntent::StretchStrip {
                 lane: d.lane,
                 id: d.id,
                 edge,
                 t,
+                from,
             }
         }
         // **The fade grips** (B4). The handle rides the tip of the wedge, so the fade
@@ -176,6 +178,24 @@ const EASE_OUT: u8 = 4;
 const STRETCH_START: u8 = 5;
 /// The GREEN top-right corner — stretch the end edge.
 const STRETCH_END: u8 = 6;
+
+/// Where this edge started the gesture, and where the pointer has taken it —
+/// the pair every edge-moving intent carries.
+///
+/// They come from the SAME captured span, which is what makes the change bar honest:
+/// the anchor is the position the drag began at, not the position of the previous
+/// frame, so every frame of the drag reports the same total travel.
+fn edge_move(
+    state: &TimelinePanelState,
+    snap: &TimelineViewSnapshot,
+    d: StripDrag,
+    dt: f64,
+    edge: u8,
+) -> (f64, f64) {
+    let (a0, b0) = d.start_span;
+    let from = if edge == 0 { a0 } else { b0 };
+    (from, snapped(state, snap, from + dt))
+}
 
 /// Frame-snap, when the panel is snapping. Never negative.
 fn snapped(state: &TimelinePanelState, snap: &TimelineViewSnapshot, t: f64) -> f64 {

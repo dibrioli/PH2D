@@ -96,6 +96,11 @@ pub struct StripView {
     /// `1.0` — a retimed strip that looks exactly like a real-time one is a strip
     /// whose speed the animator will rediscover by being surprised.
     pub speed: f64,
+    /// **What each corner's last edit did**, in signed seconds — see
+    /// [`crate::ClipStrip::marks`] and index it with [`crate::mark_index`]. The panel
+    /// paints the span between the edge and `edge + mark` in that corner's colour, so
+    /// a trim or a stretch stays legible long after the pointer let go.
+    pub marks: [f64; 4],
 }
 
 /// One lane of the clip stack.
@@ -273,6 +278,7 @@ impl TimelineViewSnapshot {
                     blend_in: lane.blend_in(i),
                     blend_out: lane.blend_out(i),
                     lead_in: st.lead_in,
+                    marks: st.marks,
                     ease_locked_in: lane.neighbour_reach_in(i) > 0.0,
                     ease_locked_out: lane.neighbour_reach_out(i) > 0.0,
                     loop_mode: st.loop_mode,

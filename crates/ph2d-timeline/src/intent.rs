@@ -351,6 +351,16 @@ pub enum TimelineIntent {
         edge: u8,
         /// Where that edge is being dragged to, in seconds.
         t: f64,
+        /// Where that edge was when the GESTURE began — what the corner's change bar
+        /// is measured against ([`crate::ClipStrip::marks`]).
+        ///
+        /// Only the panel knows where a gesture started; the document sees a stream of
+        /// per-frame absolute positions and cannot tell the first from the fortieth.
+        /// Sending the anchor (rather than accumulating deltas inside the apply) makes
+        /// every frame of the drag **idempotent**: each one recomputes the same total,
+        /// so a dropped or repeated frame cannot leave the mark describing a change
+        /// nobody made.
+        from: f64,
     },
     /// **Stretch a strip** by one edge — the retime that `TrimStrip` refuses to be.
     ///
@@ -372,6 +382,8 @@ pub enum TimelineIntent {
         edge: u8,
         /// Where that edge is being dragged to, in seconds.
         t: f64,
+        /// Where that edge was when the gesture began — see [`Self::TrimStrip::from`].
+        from: f64,
     },
     /// What a strip's source does once it runs past its slice.
     SetStripLoop {

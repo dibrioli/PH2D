@@ -108,6 +108,38 @@ pub struct ClipStrip {
     /// edge or the other). Appended (`DOC_VERSION` 5 -> 6); `0.0` is the old
     /// behaviour byte-for-byte.
     pub lead_in: f64,
+    /// **What each corner's last edit DID, in seconds — the change bar** (Enio,
+    /// 2026-07-16). Index it with [`mark_index`]; the value is signed, and it is
+    /// `edge_before_the_gesture - edge_now`.
+    ///
+    /// The panel draws the interval between the edge and `edge + mark` in the
+    /// corner's own colour, so **which way it points falls out of the sign** rather
+    /// than being a second rule to keep in step: pull a start edge outward and the
+    /// span it gained is now INSIDE the strip; push it inward and the span it lost
+    /// is OUTSIDE. Same formula at both edges, both operations.
+    ///
+    /// It is a **delta, not a time**, which is what lets it survive a slide: move
+    /// the whole strip and the mark travels with the edge it describes, because it
+    /// never referred to an absolute moment in the first place.
+    ///
+    /// It lives in the document (rather than in the panel's drag state) because
+    /// "permanently visible" has to mean *after you let go, after an undo, and
+    /// after a reload* — a mark that evaporates on load would be a mark that lies
+    /// about being permanent. Appended (`DOC_VERSION` 6 -> 7); all-zero is the old
+    /// behaviour, and zero draws nothing.
+    pub marks: [f64; 4],
+}
+
+/// Index into [`ClipStrip::marks`] for one corner: `stretch` picks the GREEN top
+/// pair over the RED bottom pair, `edge` is the document's usual `0` = start,
+/// `1` = end.
+///
+/// One door, because three places ask this question — the trim apply, the stretch
+/// apply, and the painter — and a corner whose mark is written at one index and
+/// read at another is a mark that silently describes the wrong edit.
+#[must_use]
+pub const fn mark_index(stretch: bool, edge: u8) -> usize {
+    (if stretch { 2 } else { 0 }) + (edge != 0) as usize
 }
 
 impl ClipStrip {
@@ -130,6 +162,7 @@ impl ClipStrip {
             ease_in: 0.0,
             ease_out: 0.0,
             lead_in: 0.0,
+            marks: [0.0; 4],
         }
     }
 

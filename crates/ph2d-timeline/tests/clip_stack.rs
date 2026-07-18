@@ -391,6 +391,7 @@ mod intents {
                 id,
                 edge: 0,
                 t: 1.0,
+                from: 0.0,
             },
         );
         let s = st.doc.strip(0, id).unwrap();
@@ -426,6 +427,7 @@ mod intents {
                 id,
                 edge: 0,
                 t: 9.0, // way past the end
+                from: 0.0,
             },
         );
         let s = st.doc.strip(0, id).unwrap();
@@ -591,6 +593,7 @@ mod intents {
                 id,
                 edge: 1,
                 t: 4.0,
+                from: 2.0,
             },
         );
         let s = st.doc.strip(0, id).unwrap();
@@ -614,6 +617,7 @@ mod intents {
                 id,
                 edge: 1,
                 t: 4.0,
+                from: 2.0,
             },
         );
         let s = st.doc.strip(0, id).unwrap();
@@ -644,6 +648,7 @@ mod intents {
                 id,
                 edge: 0,
                 t: 2.0,
+                from: 4.0,
             },
         );
         let s = st.doc.strip(0, id).unwrap();
@@ -667,6 +672,7 @@ mod intents {
                 id,
                 edge: 1,
                 t: 8.0,
+                from: 2.0,
             },
         );
         assert!((st.doc.strip(0, id).unwrap().speed - 0.25).abs() < 1e-12);

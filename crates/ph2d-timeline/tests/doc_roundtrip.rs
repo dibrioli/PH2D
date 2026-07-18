@@ -87,7 +87,7 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_six() {
+fn schema_version_is_seven() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
@@ -99,10 +99,12 @@ fn schema_version_is_six() {
     //      Arrange timeline loop (Enio, 2026-07-16).
     // v6 = a strip's fade-in can reach OUTWARD into the gap before it
     //      (`ClipStrip.lead_in`, appended) — the travel fade (Enio, 2026-07-16).
+    // v7 = each strip remembers what its four corners last DID (`ClipStrip.marks`,
+    //      appended) — the change bars over a trim or a stretch (Enio, 2026-07-16).
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 6);
-    assert_eq!(TimelineDoc::new().version, 6);
+    assert_eq!(DOC_VERSION, 7);
+    assert_eq!(TimelineDoc::new().version, 7);
 }
 
 /// **Both loops survive the trip, and independently.** A clip whose Arrange loop and
@@ -139,6 +141,21 @@ fn a_strips_outward_lead_survives_the_trip() {
         (back.strip(lane, id).unwrap().lead_in - 1.25).abs() < 1e-12,
         "the outward lead-in survives serialization"
     );
+}
+
+/// **The change bars survive the trip** — "permanently visible" has to mean after a
+/// reload too, or the word is a lie. Appended (v7), positional format: a layout slip
+/// would read the four numbers out of the wrong bytes, and each corner is a DIFFERENT
+/// number, so the fixture makes all four distinct and signed.
+#[test]
+fn what_each_corner_last_did_survives_the_trip() {
+    let mut doc = TimelineDoc::new();
+    let lane = doc.add_lane("L".into()).unwrap();
+    let id = doc.add_strip(lane, 0, 3.0, 6.0).unwrap();
+    let authored = [0.25, -0.5, 0.75, -1.0];
+    doc.strip_mut(lane, id).unwrap().marks = authored;
+    let back = roundtrip(&doc);
+    assert_eq!(back.strip(lane, id).unwrap().marks, authored);
 }
 
 #[test]

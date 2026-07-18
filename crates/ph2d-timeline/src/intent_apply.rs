@@ -11,6 +11,9 @@ use ph2d_core::Playhead;
 use crate::doc::TimelineDoc;
 use crate::intent::TimelineIntent;
 use crate::state::{SelectedKey, Selection, TimelineState};
+use crate::strip_edge_edit::{
+    MAX_STRIP_SPEED, MIN_STRIP_SPEED, mark_edge, stretch_strip, trim_strip,
+};
 
 /// Apply one intent to the timeline state + playhead. Document-mutating intents
 /// are grouped as a single undo step.
@@ -338,14 +341,28 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 s.t_end = s.t_start + span; // rigid: the span rides along
             }
         }),
-        I::TrimStrip { lane, id, edge, t } => edit(state, |doc, _| {
+        I::TrimStrip {
+            lane,
+            id,
+            edge,
+            t,
+            from,
+        } => edit(state, |doc, _| {
             if let Some(s) = doc.strip_mut(lane, id) {
                 trim_strip(s, edge, t);
+                mark_edge(s, false, edge, from);
             }
         }),
-        I::StretchStrip { lane, id, edge, t } => edit(state, |doc, _| {
+        I::StretchStrip {
+            lane,
+            id,
+            edge,
+            t,
+            from,
+        } => edit(state, |doc, _| {
             if let Some(s) = doc.strip_mut(lane, id) {
                 stretch_strip(s, edge, t);
+                mark_edge(s, true, edge, from);
             }
         }),
         I::SetStripLoop {
@@ -418,75 +435,16 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 s.speed = speed.clamp(MIN_STRIP_SPEED, MAX_STRIP_SPEED); // CLAMP-OK: const bounds
                 let slice = s.slice();
                 if slice > 0.0 {
+                    // Same edit, same change bar: typing a rate moves the END edge,
+                    // and a mark that only appeared for the DRAG would make the two
+                    // paths to one number look like two different edits.
+                    let before = s.t_end;
                     s.t_end = s.t_start + slice / s.speed;
+                    mark_edge(s, true, 1, before);
                 }
             }
         }),
     }
-}
-
-/// The slowest and fastest a strip may play. Zero would freeze the source on one
-/// frame forever — which `StripLoop::Once` past its end already expresses, and
-/// honestly; a negative speed would run it backwards, which is `PingPong`'s job.
-const MIN_STRIP_SPEED: f64 = 0.01;
-/// Mirror of [`MIN_STRIP_SPEED`].
-const MAX_STRIP_SPEED: f64 = 100.0;
-
-/// Move one edge of a strip, taking the source slice with it.
-///
-/// **A trim is not a stretch.** The frames that stay visible must stay WHERE they
-/// were on the timeline, so the span's edge and the slice's edge travel together
-/// (by `speed`, which is what converts timeline seconds into clip seconds).
-/// Dragging the start edge one second to the right hides the clip's first second
-/// — it does not squeeze the whole clip into a shorter box.
-///
-/// Neither edge may cross the other: a strip of negative span is a strip that
-/// covers no time and paints inside-out.
-fn trim_strip(s: &mut crate::ClipStrip, edge: u8, t: f64) {
-    let min_span = 1.0 / 240.0; // LITERAL-OK: a quarter of a frame at 60 fps
-    if edge == 0 {
-        let t_start = t.max(0.0).min(s.t_end - min_span);
-        s.src_in += (t_start - s.t_start) * s.speed;
-        s.t_start = t_start;
-    } else {
-        let t_end = t.max(s.t_start + min_span);
-        s.src_out += (t_end - s.t_end) * s.speed;
-        s.t_end = t_end;
-    }
-}
-
-/// Move one edge of a strip WITHOUT touching its source slice — the retime.
-///
-/// The mirror image of [`trim_strip`], and the reason the two are separate
-/// functions rather than one with a flag: a trim holds the *rate* and changes
-/// *which frames play*; a stretch holds *which frames play* and changes the
-/// *rate*. Every strip edit is one or the other, and an editor that blurs them is
-/// an editor where an animator lengthens a strip and silently slows the animation
-/// down (or shortens one and loses its tail) — the single most reported confusion
-/// in every NLE that ever conflated them.
-///
-/// `speed = slice / span`, so the span is what actually gets clamped: the rate's
-/// bounds are span bounds in disguise, and clamping the span (rather than the
-/// speed, after the fact) is what keeps `speed` and the drawn box in agreement at
-/// the limit. A zero-length slice is a pose, not a clip — it has no rate to change.
-fn stretch_strip(s: &mut crate::ClipStrip, edge: u8, t: f64) {
-    let slice = s.slice();
-    if slice <= 0.0 {
-        return;
-    }
-    // span = slice / speed, so the speed bounds ARE these span bounds.
-    let (min_span, max_span) = (slice / MAX_STRIP_SPEED, slice / MIN_STRIP_SPEED);
-    if edge == 0 {
-        let span = (s.t_end - t.max(0.0)).clamp(min_span, max_span); // CLAMP-OK: derived bounds
-        s.t_start = (s.t_end - span).max(0.0);
-    } else {
-        let span = (t - s.t_start).clamp(min_span, max_span); // CLAMP-OK: derived bounds
-        s.t_end = s.t_start + span;
-    }
-    // Read back the span that actually landed, so the rate describes the box that
-    // was drawn even where a clamp bit. Deriving it from the *requested* span is
-    // how a strip ends up with a speed its own edges contradict.
-    s.speed = slice / s.span();
 }
 
 /// Restore every invariant an edit may have broken. Idempotent, cheap, and the

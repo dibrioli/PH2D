@@ -10,8 +10,8 @@ use crate::paint_sections::{BodyCtx, LABEL_COL_W};
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{paint_icon, paint_text, resolve};
 use ph2d_editor_core::widget::ButtonState;
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::paint_slider_with_chip_layout_adaptive;
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, TypeToken};
 
@@ -168,4 +168,5 @@ impl BodyCtx<'_> {
             self.hit_index.register(*id, rect);
         }
         y + self.row_h + self.row_gap
-    }}
+    }
+}

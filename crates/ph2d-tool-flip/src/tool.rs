@@ -469,7 +469,11 @@ mod tests {
         assert_eq!(t.eraser_size_px(), crate::params::WIDTH_MAX_PX);
         assert!((t.eraser_strength() - 0.5).abs() < 1e-6);
         assert_eq!(t.width_px(), DEFAULT_WIDTH_PX, "o PINCEL nao se mexeu");
-        assert_eq!(t.opacity(), DEFAULT_OPACITY, "a forca do pincel nao se mexeu");
+        assert_eq!(
+            t.opacity(),
+            DEFAULT_OPACITY,
+            "a forca do pincel nao se mexeu"
+        );
 
         // E o inverso: mexer no pincel não toca a borracha deslinkada.
         t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_SIZE, 0.0));
@@ -510,9 +514,16 @@ mod tests {
         t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
         t.handle_panel_event(PanelEvent::SetValue(ids::FLIP_ERASE_SIZE, 1.0));
         let s = t.ui_snapshot();
-        assert_eq!(s.erase_px, crate::params::WIDTH_MAX_PX, "efetivo = o proprio");
+        assert_eq!(
+            s.erase_px,
+            crate::params::WIDTH_MAX_PX,
+            "efetivo = o proprio"
+        );
         assert!(!s.link_size, "o snapshot carrega o estado do toggle");
-        assert_eq!(s.width_px, DEFAULT_WIDTH_PX, "o Size do pincel vai separado");
+        assert_eq!(
+            s.width_px, DEFAULT_WIDTH_PX,
+            "o Size do pincel vai separado"
+        );
         // Linkado, o efetivo volta a ser o do pincel.
         t.handle_panel_event(PanelEvent::Click(ids::FLIP_LINK_SIZE));
         assert_eq!(t.ui_snapshot().erase_px, DEFAULT_WIDTH_PX);

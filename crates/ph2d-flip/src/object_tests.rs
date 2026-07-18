@@ -497,7 +497,11 @@ fn rename_layer_sets_only_the_name() {
 
     assert!(o.rename_layer(l, "Rough"));
     assert_eq!(o.layer(l).unwrap().name, "Rough");
-    assert_eq!(o.layer(l).unwrap().id, l, "o id é estável (máscaras apontam pra cá)");
+    assert_eq!(
+        o.layer(l).unwrap().id,
+        l,
+        "o id é estável (máscaras apontam pra cá)"
+    );
     assert_eq!(
         o.layer(l).unwrap().frames().len(),
         frames_before,

@@ -42,7 +42,6 @@ pub(crate) struct BodyCtx<'a> {
 }
 
 impl BodyCtx<'_> {
-
     /// Mode row (Select / Draw / Erase · Fill / Sculpt / Edit) — the gizmo is live only
     /// in Select.
     ///
@@ -221,7 +220,11 @@ impl BodyCtx<'_> {
         // O Sculpt segue compartilhando de propósito (a decisão documentada no
         // `params.rs`): você escolheu linkar pintura↔borracha, não pincel↔escultura.
         let (size_id, size_num, size_val) = if eraser && !snap.link_size {
-            (ids::FLIP_ERASE_SIZE, ids::FLIP_ERASE_SIZE_NUM, snap.erase_px)
+            (
+                ids::FLIP_ERASE_SIZE,
+                ids::FLIP_ERASE_SIZE_NUM,
+                snap.erase_px,
+            )
         } else {
             (ids::FLIP_SIZE, ids::FLIP_SIZE_NUM, snap.width_px)
         };

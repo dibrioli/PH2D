@@ -165,7 +165,11 @@ mod tests {
             width_px: 40.0,
             ..Default::default()
         };
-        assert_ring(ring_radius(Some(style), REF_PPW), 20.0, "zoom de referencia");
+        assert_ring(
+            ring_radius(Some(style), REF_PPW),
+            20.0,
+            "zoom de referencia",
+        );
         assert_ring(
             ring_radius(Some(style), REF_PPW * 2.0),
             40.0,

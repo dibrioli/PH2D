@@ -741,9 +741,13 @@ fn committing_the_rename_forwards_the_new_name_on_the_row_id() {
     host.paint::<FlipPanel>(&mut st, viewport());
 
     // Enter → Submit → commit forwards SelectOption(row_id, "Rough").
-    let outcome =
-        host.apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Submit(ids::FLIP_LAYER_RENAME_INPUT));
-    assert_eq!(outcome, EventOutcome::Consumed, "o Enter no campo foi ignorado");
+    let outcome = host
+        .apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::Submit(ids::FLIP_LAYER_RENAME_INPUT));
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o Enter no campo foi ignorado"
+    );
     let forwarded = host.drained_actions().into_iter().any(|act| {
         matches!(
             act,
@@ -755,7 +759,10 @@ fn committing_the_rename_forwards_the_new_name_on_the_row_id() {
         forwarded,
         "o commit nao forwardou SelectOption(row_id, name) — o shell nunca renomeia"
     );
-    assert!(st.layer_rename.is_none(), "o campo de rename fica FECHADO apos o commit");
+    assert!(
+        st.layer_rename.is_none(),
+        "o campo de rename fica FECHADO apos o commit"
+    );
 }
 
 /// 🔴 **O campo de rename OCUPA a faixa do nome — e o hit da row cede a ele** (§4.C).
@@ -779,7 +786,9 @@ fn the_rename_field_owns_the_name_strip_while_renaming() {
         "a faixa do nome (Row) deveria ser pintada e clicável"
     );
     assert!(
-        !painted.iter().any(|(w, _)| *w == ids::FLIP_LAYER_RENAME_INPUT),
+        !painted
+            .iter()
+            .any(|(w, _)| *w == ids::FLIP_LAYER_RENAME_INPUT),
         "nao ha campo de rename sem rename aberto"
     );
 
@@ -853,7 +862,10 @@ fn the_link_toggles_reach_the_tool() {
         if id == ids::FLIP_LINK_SIZE {
             assert!(!size && strength, "o toggle de Size mexeu no flag errado");
         } else {
-            assert!(size && !strength, "o toggle de Strength mexeu no flag errado");
+            assert!(
+                size && !strength,
+                "o toggle de Strength mexeu no flag errado"
+            );
         }
     }
 }
@@ -872,10 +884,8 @@ fn the_unlinked_eraser_slider_reaches_the_tool() {
     )); // deslinka
 
     host.set_slider_value(ids::FLIP_ERASE_SIZE, 1.0);
-    let outcome = host.apply_panel_event::<FlipPanel>(
-        &mut st,
-        WidgetEvent::ValueChanged(ids::FLIP_ERASE_SIZE),
-    );
+    let outcome = host
+        .apply_panel_event::<FlipPanel>(&mut st, WidgetEvent::ValueChanged(ids::FLIP_ERASE_SIZE));
     assert_eq!(
         outcome,
         EventOutcome::Consumed,
@@ -916,7 +926,10 @@ fn an_unlinked_eraser_paints_its_own_slider_and_a_linked_one_paints_the_brushs()
     let on = |p: &Vec<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)>,
               id: ph2d_a11y::NodeId| p.iter().any(|(w, r)| *w == id && r.w > 0.0);
     assert!(on(&painted, ids::FLIP_SIZE), "linkado: o Size do pincel");
-    assert!(on(&painted, ids::FLIP_OPACITY), "linkado: a Strength do pincel");
+    assert!(
+        on(&painted, ids::FLIP_OPACITY),
+        "linkado: a Strength do pincel"
+    );
     assert!(
         !on(&painted, ids::FLIP_ERASE_SIZE) && !on(&painted, ids::FLIP_ERASE_STRENGTH),
         "linkado NAO pode pintar os sliders proprios da borracha"
@@ -966,7 +979,10 @@ fn the_link_toggles_live_only_in_erase_mode() {
             (ids::FLIP_LINK_STRENGTH, "link Strength"),
         ] {
             let shown = painted.iter().any(|(w, r)| *w == id && r.w > 0.0);
-            assert_eq!(shown, want, "modo {mode:?}: o '{name}' deveria aparecer? {want}");
+            assert_eq!(
+                shown, want,
+                "modo {mode:?}: o '{name}' deveria aparecer? {want}"
+            );
         }
     }
 }

@@ -1481,3 +1481,126 @@ fn the_emitter_sim_is_exact_past_the_old_id_cliff() {
         cpu.len()
     );
 }
+
+/// **What would a GPU→CPU tap at the seam cost?** — the number that decides
+/// between grinding 52 kernels and one architectural change.
+///
+/// The 2026-07-18 measurement (`crates/ph2d-gpu-cook/tests/boundary_arity.rs`)
+/// found that the seam only ever hands the GPU the **suffix**, so ONE uncovered
+/// node in a particle graph's stream path forfeits the whole sim to the CPU
+/// (227 ms/tick at 4.19 M). The obvious alternative is the mirror seam: keep the
+/// sim GPU-resident, **read back once** at the boundary, and let the CPU run the
+/// uncovered tail. That would unblock EVERY graph at once instead of one class
+/// per kernel — if the readback is affordable.
+///
+/// So: measure it. This is the §0.0 rule applied to an architecture (*"meça antes
+/// de limitar"*) — the answer is a bandwidth fact about this machine, not a
+/// preference. `read_instances` is the existing readback path (copy to a staging
+/// buffer + map + wait), which is exactly the shape a tap would use.
+///
+/// ## MEASURED (RTX, 2026-07-18) — the tap is REFUTED
+///
+/// `RenderInstance` is **184 B**, so the frame is far heavier than the sim:
+///
+/// | window | cook ms/tick | readback ms | MB | GB/s |
+/// |---:|---:|---:|---:|---:|
+/// | 65 536 | 0,129 | 0,977 | 11,5 | 12,3 |
+/// | 262 144 | 0,275 | 10,538 | 46,0 | 4,6 |
+/// | 1 048 576 | 1,024 | 66,796 | 184,0 | 2,9 |
+/// | **4 194 304** | **3,832** | **268,620** | **736,0** | **2,9** |
+///
+/// At 4,19 M the readback is **70× the cook** — and **268 ms is worse than the
+/// CPU's own 227,8 ms/tick** for the same sim. A GPU-sim + CPU-tail graph would
+/// be SLOWER than never touching the GPU. The tap does not merely fail to pay;
+/// it is negative.
+///
+/// ⚠️ **The verdict survives a better implementation.** This `read_instances` is
+/// a *synchronous* copy+map+wait (2,9 GB/s effective), so these numbers are an
+/// upper bound on cost; a pipelined staging ring would do much better. But the
+/// FLOOR is PCIe bandwidth, and at a generous 25 GB/s the 736 MB still costs
+/// **~29 ms/tick** — above the whole 16,7 ms frame budget, to move data for a sim
+/// that cost 3,8 ms. The ratio is absurd at every window above ~256 k, and no
+/// amount of engineering moves a number that is bandwidth-bound by 184 B/element.
+///
+/// ⇒ **The zero-readback design is not a preference; it is the only viable one**,
+/// and **coverage (more kernels) is the only path to reach**. This probe exists so
+/// the next agent does not re-propose the mirror seam from first principles: it is
+/// an attractive idea, and it is dead.
+///
+///   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity_sim --release -- --ignored --nocapture readback_tap_cost_probe
+#[test]
+#[ignore = "perf probe; requires a GPU adapter"]
+fn readback_tap_cost_probe() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 30;
+    let forces: &[(&str, &[(&str, f32)])] = &[
+        (
+            "force.wind",
+            &[("angle", 270.0), ("strength", 26.0), ("gust", 0.0)],
+        ),
+        ("force.drag", &[("coefficient", 0.12)]),
+    ];
+    let stride = std::mem::size_of::<RenderInstance>();
+    eprintln!("  RenderInstance = {stride} B");
+    eprintln!("  window │ cook ms/tick │ readback ms │    MB │   GB/s │ tap total");
+    for &want in &[65536.0f32, 262144.0, 1048576.0, 4194304.0] {
+        let (mut g, _, out) = emitter_sim(&reg, want, forces);
+        let em = emitter_of(&g);
+        g.set_param(em, "rate", want / (TICKS as f32 * FIXED_DT as f32));
+        let plan = plan(&g, &reg, &reg, out);
+        if !plan.is_fully_gpu() {
+            eprintln!("  {want:>6} │ NOT FULLY GPU — {:?}", plan.boundaries);
+            continue;
+        }
+        let mut gc = GpuCook::new();
+        let march = |gc: &mut GpuCook| {
+            for t in 0..=TICKS {
+                gc.cook(
+                    &gpu,
+                    &g,
+                    &reg,
+                    &reg,
+                    &plan,
+                    &[],
+                    CookClock {
+                        playhead: t as f64 * FIXED_DT,
+                        tick: Some(t),
+                    },
+                    DEFAULT_UV,
+                    DEFAULT_SIZE,
+                )
+                .expect("gpu cook");
+            }
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        };
+        march(&mut gc); // warm
+        let mut gc2 = GpuCook::new();
+        let t0 = std::time::Instant::now();
+        march(&mut gc2);
+        let cook_ms = t0.elapsed().as_secs_f64() * 1000.0 / (TICKS + 1) as f64;
+
+        // The tap: one readback of the cooked frame. Averaged over a few pulls so
+        // a single map-wait hiccup does not become the headline number.
+        let inst = gc2.instances().expect("cooked");
+        let _ = read_instances(&gpu, inst); // warm the staging path
+        const PULLS: u32 = 5;
+        let t1 = std::time::Instant::now();
+        let mut n = 0usize;
+        for _ in 0..PULLS {
+            n = read_instances(&gpu, inst).len();
+        }
+        let rb_ms = t1.elapsed().as_secs_f64() * 1000.0 / f64::from(PULLS);
+        let mb = (n * stride) as f64 / (1024.0 * 1024.0);
+        let gbs = (n * stride) as f64 / (rb_ms / 1000.0) / 1e9;
+        eprintln!(
+            "  {n:>6} │ {cook_ms:>12.3} │ {rb_ms:>11.3} │ {mb:>5.1} │ {gbs:>6.1} │ {:>9.3}",
+            cook_ms + rb_ms
+        );
+    }
+    eprintln!("  (60 fps budget = 16.7 ms/frame. 'tap total' is what a GPU-sim +");
+    eprintln!("   CPU-tail graph would pay per tick BEFORE the CPU tail runs.)");
+}

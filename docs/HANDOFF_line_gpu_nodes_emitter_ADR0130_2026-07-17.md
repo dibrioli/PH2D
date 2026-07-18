@@ -135,7 +135,25 @@ Na fatia 2 registrei só os 9 nós do laço (`register_dense_window`). Os deform
 - **A policy é uma função PURA**, `motion_bridge_gpu::edit_renumbers_emitter(type_name, param)`: só `motion.emitter` × `{rate, life, max}` re-numera (os params do `emit`/`source_count` que definem a janela viva). `speed`/`angle`/`spread`/`seed` e `x`/`y`/`size` **NÃO** re-numeram — o gather ainda pareia id-a-id, então a sim VIVA continua e só os recém-nascidos pegam o novo lançamento (forgetar ali seria um pop à toa). Allowlist minúscula presa à lei-de-contagem de UM nó, não uma regra que apodrece.
 - **Costurado no seam de param** (`motion_bridge_params.rs`, arm `SetParam`): decide ANTES do `set_param` consumir `param`, `forget_state()` depois do edit pousar. E **`install()` (load de projeto) também forgeta** — as colunas `pre` do doc velho são keyed por node id; um grafo novo reusando esses ids leria estado de um estranho (mesma classe do D7, bug latente corrigido; espelha o reset do pump logo acima).
 - **Gates (headless, sem device):** `only_the_emitters_renumbering_params_invalidate_the_gpu_sim` (todo param do emitter + 4 tipos não-emitter) + `a_real_emitter_nodes_type_name_drives_the_policy` (o `type_name` real do nó casa a policy). Mutação: dropar o guard `motion.emitter` → RED. (O EFEITO do `forget_state` é inobservável headless — precisa de estado de device; o mecanismo já é exercido pelos gates de sim/scrub. Gateamos a DECISÃO, que é a parte arriscada/rot-prone.)
-- ⚠️ **CUSTO / semântica (D7), a decidir no smoke:** `rewind_for` ancora uma sim esquecida no **tick 0** (`ring.rs`, `unwrap_or_default`), então o re-bake é **O(tick atual)** — um edit discreto fundo no playback dá UM hitch (um bake, estilo Blender/Houdini), e **segurar um drag re-bakea a cada frame**. Se ficar caro no smoke, o follow-up é um **re-seed no tick atual** (barato, "recomeça de agora") em vez do re-bake-do-0 — é decisão de superfície (uma API nova no `GpuCook` + o call-site), não deste fix. Também há uma **divergência GPU↔CPU** conhecida: a GPU re-bakea (limpo), o pump CPU mantém o `pre` (mispair parcial) — a GPU é o caminho EXIBIDO (preview), o CPU alimenta readouts do painel; os gates de paridade (1-passo-de-seed) não cobrem edit ao vivo. Consistência total (forgetar os dois, ou re-seed nos dois) é follow-up se o Enio quiser.
+- ⚠️ **O 1º corte usava `forget_state` e o smoke REPROVOU: *"re-bake travado"*. CORRIGIDO em `b104d98d`** — ver §4.RESEED.
+- **Divergência GPU↔CPU** conhecida e aceita: a GPU reinicia a sim (limpo), o pump CPU mantém o `pre` (mispair parcial) — a GPU é o caminho EXIBIDO (preview), o CPU alimenta readouts do painel; os gates de paridade (1-passo-de-seed) não cobrem edit ao vivo. Consistência total (reiniciar os dois) é follow-up se o Enio quiser.
+
+### §4.RESEED — o freeze do 1º corte e o fix (`b104d98d`, 2026-07-17)
+
+**O bug era escolher a invalidação errada.** `forget_state` significa *"este estado é inválido, RE-DERIVE"*, e o `rewind_for` honra isso ancorando o ring vazio no **tick 0** (`ring.rs`, `unwrap_or_default`) ⇒ o chamador re-cozinha `0..=target`. Pra uma mudança discreta é **um bake honesto**; pra um param que o artista está **SEGURANDO e arrastando** é **O(tick atual) re-simulado a CADA FRAME** — não é bake, é freeze.
+
+*Um artista arrastando o `rate` do emitter pergunta "como fica com ESTE rate?", não "reproduza os últimos quarenta segundos com ele".* Então agora há **DUAS** invalidações, e o seam escolhe:
+
+| método | significado | custo | quem usa |
+|---|---|---|---|
+| `forget_state()` | re-derive do seed (ancora no tick 0) | O(tick) | load de projeto (`install`, o relógio rebobina junto) |
+| `reseed_from_next_tick()` | **reinicia AO tick da tela** — `rewind_for` devolve o próprio `target`, então a marcha é **UM** cook, e sem estado anterior esse cook É o seed | **O(1)** | o edit ao vivo (D7) |
+
+O seam também só reinicia quando o valor **de fato MUDA** — um slider re-emite o intent todo frame do gesto, e reiniciar num valor inalterado prenderia a sim no seed.
+
+**Gates (headless — `rewind_for` é aritmética de estado pura, então a diferença é observável sem adapter nenhum):** `tests/sim_invalidation.rs` — forget→0 vs reseed→target **no tick 600** (longe de 0, onde as duas concordam por acidente), a flag é consumida UMA vez e não gruda, e um forget cancela um reseed pendente. **Mutação** (`rewind_for` ignora a flag = o freeze pré-fix) → 2 RED, e os gates de forget seguem VERDES (corretamente — não dependem do ramo novo).
+
+⚠️ **`crates/ph2d-gpu-cook/src/lib.rs` está em 691/700** — a próxima adição orça um split.
 
 ---
 
@@ -162,7 +180,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK
 ```
 
 - **O gather** (fatias 3-4): a fonte lança até 3.000 partículas que arcam e caem, cada uma com sua velocidade de bico (por-id, cone de `spread`) — **os arcos são limpos**; uma janela deslizante mispareada faria a fonte "ferver" (cada sobrevivente herdando a velocidade de um estranho). Antes da fatia 3, `emitter → integrate` caía na CPU; agora cozinha 100% na GPU (`emitter → integrate` reivindicado pela janela densa). *(As cenas `=3`/`=4` são GRID = pareamento posicional; só a `=5` exercita o gather.)*
-- **Fatia 5** (`forget_state`): com a fonte rodando, **arraste `rate`/`life`/`max`** no painel de params → a fonte re-bakea do começo sob os novos params (limpo, não um mispair parcial). Arraste `speed`/`size` → a sim VIVA continua (só os novos nascem diferentes). ⚠️ Se o re-bake fundo no playback estiver caro (§4.LANDOU, custo O(tick)), é o sinal pro follow-up "re-seed no tick atual".
+- **Fatia 5** (a invalidação do edit ao vivo): com a fonte rodando, **arraste `rate`/`life`/`max`** no painel de params → a fonte **REINICIA do tick da tela** e volta a crescer com o novo numeramento — **o arrasto tem de ficar fluido** (é 1 cook por frame, igual playback normal; se travar, é regressão do §4.RESEED). Arraste `speed`/`size` → a sim VIVA continua sem reiniciar (só os novos nascem diferentes). *(O 1º corte usava `forget_state` e re-simulava a história inteira por frame — o "re-bake travado" que o Enio pegou.)*
 
 ## §7 — Ao fechar a fatia (o protocolo)
 

@@ -258,6 +258,13 @@ impl App {
                 ph.pause();
                 ph
             },
+            // The Keys view's clip-time clock — paused for the same reason, and its
+            // own so scrubbing/playing a clip's keys never disturbs the timeline.
+            clip_playhead: {
+                let mut ph = Playhead::default();
+                ph.pause();
+                ph
+            },
             timeline: ph2d_timeline::TimelineState::new(),
             timeline_intents: Vec::new(),
             timeline_reveal_after_apply: false,

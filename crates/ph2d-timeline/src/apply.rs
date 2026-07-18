@@ -37,38 +37,7 @@ pub fn apply_from_doc_except(
     t: f64,
     skip: impl Fn(u64) -> bool,
 ) {
-    // Pass 1 — liveness (P6), and the one chance to capture `rest`.
-    //
-    // It precedes the clock pass on purpose: a dead entity's Time Remap track
-    // must not drive anything, and resolving clocks against last frame's flags
-    // would let it. And `rest` is read HERE, before any write this frame — the
-    // world still holds the pose the animator left the object in.
-    let n = doc.bindings().len();
-    for i in 0..n {
-        let (entity_bits, prop) = {
-            let b = &doc.bindings()[i];
-            (b.entity, b.prop)
-        };
-        // **`try_from_bits`, never `from_bits`.** A binding can be DETACHED — `entity = 0`,
-        // which is the sentinel [`crate::resolve_entities`] writes for "this one has no live
-        // object; find it by `wire_id`" (a project just loaded is nothing BUT detached
-        // bindings). And `0` is not a null in bevy: the index is a `NonZero<u32>`, so
-        // `Entity::from_bits(0)` **panics** — it does not return a dead entity.
-        //
-        // Pass 1 is the pass that DECIDES `missing`, so it cannot skip a binding to avoid
-        // decoding it. Decode fallibly instead: undecodable bits are exactly what `missing`
-        // means. (This was a live mine the day the loader started using the sentinel it was
-        // already documented to write.)
-        let entity = Entity::try_from_bits(entity_bits);
-        let alive = entity.is_some_and(|e| world.get_entity(e).is_ok());
-        doc.bindings_mut()[i].missing = !alive;
-        if let Some(entity) = entity.filter(|_| alive)
-            && doc.bindings()[i].rest.is_none()
-            && prop != PropKind::TimeRemap
-        {
-            doc.bindings_mut()[i].rest = read_prop(world, entity, prop);
-        }
-    }
+    refresh_liveness_and_rest(world, doc);
 
     // Pass 2 — the live strips and, inside each, one clock per remapped ENTITY.
     // Never one per binding: that was the quadratic (`clock.rs`).
@@ -126,6 +95,90 @@ pub fn apply_from_doc_except(
     }
 
     doc.put_scratch(scratch); // capacity retained — zero-alloc next frame (HR-3)
+}
+
+/// Pass 1 — liveness (P6), and the one chance to capture `rest`.
+///
+/// It precedes the clock pass on purpose: a dead entity's Time Remap track must
+/// not drive anything, and resolving clocks against last frame's flags would let
+/// it. And `rest` is read HERE, before any write this frame — the world still
+/// holds the pose the animator left the object in.
+///
+/// **One door.** Both the stacked apply and the solo apply
+/// ([`apply_active_clip`]) refresh liveness the exact same way; a second copy
+/// would drift on the next mine (the `try_from_bits` sentinel below was one such
+/// mine already).
+fn refresh_liveness_and_rest(world: &mut World, doc: &mut TimelineDoc) {
+    let n = doc.bindings().len();
+    for i in 0..n {
+        let (entity_bits, prop) = {
+            let b = &doc.bindings()[i];
+            (b.entity, b.prop)
+        };
+        // **`try_from_bits`, never `from_bits`.** A binding can be DETACHED — `entity = 0`,
+        // which is the sentinel [`crate::resolve_entities`] writes for "this one has no live
+        // object; find it by `wire_id`" (a project just loaded is nothing BUT detached
+        // bindings). And `0` is not a null in bevy: the index is a `NonZero<u32>`, so
+        // `Entity::from_bits(0)` **panics** — it does not return a dead entity.
+        //
+        // Pass 1 is the pass that DECIDES `missing`, so it cannot skip a binding to avoid
+        // decoding it. Decode fallibly instead: undecodable bits are exactly what `missing`
+        // means. (This was a live mine the day the loader started using the sentinel it was
+        // already documented to write.)
+        let entity = Entity::try_from_bits(entity_bits);
+        let alive = entity.is_some_and(|e| world.get_entity(e).is_ok());
+        doc.bindings_mut()[i].missing = !alive;
+        if let Some(entity) = entity.filter(|_| alive)
+            && doc.bindings()[i].rest.is_none()
+            && prop != PropKind::TimeRemap
+        {
+            doc.bindings_mut()[i].rest = read_prop(world, entity, prop);
+        }
+    }
+}
+
+/// **Apply the ACTIVE CLIP ALONE at clip time `clip_t`, ignoring the stack** —
+/// the AE precomp / "solo the clip" model the panel's **Keys** tab drives.
+///
+/// This is what makes editing a clip's keys honest: you see and pose exactly the
+/// curves you are editing, so a lane above cannot hide the motion (the ADR-0115
+/// R9 "Overridden" case never arises here — there IS no stack in this view).
+///
+/// The clip's own clock is per-entity ([`remapped_time`], the active clip's Time
+/// Remap), so a Time-Remapped object stays remapped even when soloed. Structurally
+/// it is the empty-stack branch of [`apply_from_doc_except`], reached WITHOUT a
+/// stack present — the scratch is not needed because there is only one clip and no
+/// blend to resolve.
+///
+/// `skip` is honoured identically (the gizmo-dragged entity, the displaced pin).
+pub fn apply_active_clip(
+    world: &mut World,
+    doc: &mut TimelineDoc,
+    clip_t: f64,
+    skip: impl Fn(u64) -> bool,
+) {
+    refresh_liveness_and_rest(world, doc);
+
+    for b in doc.bindings() {
+        if b.missing || skip(b.entity) || b.prop == PropKind::TimeRemap {
+            continue;
+        }
+        // The entity's own clip clock — the same door the stacked/solo apply reads
+        // and the same door K seeds through, so a soloed pose and a keyed one land
+        // at the identical instant.
+        let t_entity = remapped_time(doc, b.entity, clip_t);
+        // Skip empty tracks so a just-created binding never forces a default pose.
+        let sampled = doc.active_clip().track(b.target).and_then(|tr| {
+            if tr.is_empty() {
+                None
+            } else {
+                Some(tr.sample(t_entity))
+            }
+        });
+        if let (Some(v), Some(e)) = (sampled, Entity::try_from_bits(b.entity)) {
+            write_prop(world, e, b.prop, v);
+        }
+    }
 }
 
 /// Read one property back out of an entity — the exact inverse of

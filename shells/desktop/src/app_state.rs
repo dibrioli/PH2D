@@ -374,6 +374,14 @@ pub(crate) struct App {
     /// animatable system samples it for the current frame (the general
     /// timeline's live scalar side). See `render_loop::timeline_bridge`.
     pub(crate) playhead: Playhead,
+    /// **The Keys view's own clip-time playhead** (ADR-0115 R8 amendment, Enio
+    /// 2026-07-16). While the timeline panel is on the Keys tab, the transport
+    /// drives THIS clock instead of [`Self::playhead`], the scene shows the active
+    /// clip SOLOED at it (`apply_active_clip`), and K keys there. It is independent
+    /// of [`Self::playhead`] — the AE precomp model: editing a clip's keys happens in
+    /// the clip's own time, not the timeline's. Advanced alongside `playhead` each
+    /// tick (each only moves when its own transport is playing).
+    pub(crate) clip_playhead: Playhead,
     /// The app-general timeline document + selection/history/flags (W1). The
     /// `render_loop::timeline_bridge` drains `timeline_intents` into it, then
     /// applies it to the scene at the Playhead. Empty until the panel (W2) or a

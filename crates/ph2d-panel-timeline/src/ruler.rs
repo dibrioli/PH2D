@@ -40,48 +40,53 @@ const MARKER_HIT_PAD: f32 = 4.0; // LITERAL-PX-OK: marker grab padding
 
 /// **What this ruler measures — and therefore what it may offer.**
 ///
-/// The Arrange tab rules the TIMELINE: the playhead is the transport's, and every
-/// gesture on the strip (scrub, loop braces, markers) edits the very thing it
-/// points at.
+/// Both tabs SCRUB their own clock (the AE precomp model): Arrange scrubs the
+/// timeline playhead, Keys scrubs the active clip's independent playhead — moving
+/// it drives the soloed scene, which is how you author keys where you can see the
+/// pose. The old "read-only clip ruler under a stack" is gone: it was a workaround
+/// for not having an independent clip clock, and now there is one, so nothing needs
+/// inverting.
 ///
-/// The Keys tab rules the active CLIP. **Without a stack the two are one clock**,
-/// so the Keys ruler is the ruler it has always been and everything works exactly
-/// as before. Under a stack they are two clocks, and the clip's ruler goes
-/// read-only — not out of caution, but because *the inverse does not exist*: a
-/// looping strip maps many timeline instants onto the same clip instant, so
-/// "scrub the clip to 2.0 s" names no single place to put the playhead. The loop
-/// braces and the markers are the timeline's, and drawing them on the clip's ruler
-/// would stand them at the wrong second.
+/// Only the FURNITURE differs. The loop braces and the markers are the timeline's;
+/// drawing them on the clip's ruler would stand them at the wrong second, so the
+/// Keys ruler carries none.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct RulerClock {
     /// Where the playhead stands **on this ruler**, or `None` when the clock it
-    /// measures has no answer here (the clip is not playing, or plays twice).
+    /// measures has no answer here (an Arrange-side clip that plays zero/two times).
     pub now: Option<f64>,
-    /// This ruler measures the timeline, so it scrubs and carries the loop braces
-    /// and the markers. False = a clip ruler under a stack: it reads, never writes.
-    pub live: bool,
+    /// This ruler scrubs — registers the scrub hit and mirrors the playhead into it.
+    /// Both tabs do (the Keys ruler scrubs the clip clock).
+    pub scrub: bool,
+    /// This ruler carries the TIMELINE's furniture — the loop band/braces and the
+    /// markers. Arrange only: on the clip's ruler they would sit at the wrong time.
+    pub furniture: bool,
 }
 
 /// **Which clock this tab's ruler measures.** Pure, and tested as such.
 ///
 /// The playhead is paint, not a widget — no hit index remembers it, so a seam test
 /// can prove the ruler's *hits* and never its *line*. Answering here rather than
-/// inside the paint loop is what gives that line an oracle at all: the same move
-/// the strip's locked-grip refusal already made when it went to `hit_plan`.
+/// inside the paint loop is what gives that line an oracle at all.
 pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> RulerClock {
     if tab.shows_lanes() {
-        // The Arrange tab IS the timeline: the transport's playhead, and every
-        // gesture on the strip edits the thing it points at.
+        // Arrange IS the timeline: the transport's playhead, and it owns the loop +
+        // markers because they are drawn against the very clock it scrubs.
         return RulerClock {
             now: Some(snap.time_seconds),
-            live: true,
+            scrub: true,
+            furniture: true,
         };
     }
+    // Keys scrubs the active clip's own clock (published as `clip_time`). It carries
+    // the loop + markers **only when there is no stack** — then the clip IS the
+    // timeline, one clock, and the Keys ruler is the timeline ruler it has always
+    // been. Under a stack the clip clock ≠ the timeline clock, so the timeline's
+    // furniture would sit at the wrong second and belongs on the Arrange ruler only.
     RulerClock {
-        // The clip's own clock — which without a stack the snapshot publishes as the
-        // playhead itself, so this is the ruler it has always been.
         now: snap.clip_time,
-        live: !snap.stacked(),
+        scrub: true,
+        furniture: !snap.stacked(),
     }
 }
 
@@ -110,9 +115,9 @@ pub(crate) fn paint(
         resolve(ColorToken::TimelineRulerBg, theme),
     );
     // The loop's shaded band goes BEHIND the ticks + labels so it tints the strip
-    // without hiding the time numbers. It is the TIMELINE's loop, so it only
-    // belongs on a ruler that measures the timeline.
-    if clock.live {
+    // without hiding the time numbers. It is the TIMELINE's loop — furniture, so it
+    // only belongs on a ruler that measures the timeline.
+    if clock.furniture {
         paint_loop_band(ctx, theme, region, &time_to_x, snap);
     }
 
@@ -157,36 +162,42 @@ pub(crate) fn paint(
         }
     }
 
-    // Everything below WRITES the timeline: the scrub, the loop braces, the
-    // markers. A clip ruler under a stack registers none of it — not even dimmed.
-    // The inverse map does not exist, so there is nothing honest for a drag here
-    // to do, and a hit that is registered but meaningless is a control that lies
-    // ([[feedback_disabled_button_still_dispatches]]).
-    if !clock.live {
-        return;
+    // A ruler that does not scrub registers nothing — a hit that is meaningless is
+    // a control that lies ([[feedback_disabled_button_still_dispatches]]). Both tabs
+    // scrub today, but the gate stays: it is what a future non-scrubbing ruler would
+    // trip on.
+    if clock.scrub {
+        // Register the scrub hit (the strip) + mirror the playhead into the slider
+        // value when the user isn't dragging, so the drag baseline tracks it. The
+        // baseline is THIS ruler's clock (`clock.now`), not `time_seconds`: on the
+        // Keys ruler those differ only during the one-frame lag after a tab switch,
+        // but reading the wrong one would make the first drag frame jump.
+        ctx.host
+            .hit_index_mut()
+            .register(ids::TIMELINE_RULER, strip);
+        let dragging = matches!(
+            ctx.host.store().slider(ids::TIMELINE_RULER),
+            Some((SliderState::Dragging, _))
+        );
+        if !dragging
+            && span > 0.0
+            && let Some(now) = clock.now
+        {
+            let v = ((now - view_start) / span).clamp(0.0, 1.0) as f32;
+            if let Some(InteractiveState::Slider { value, .. }) =
+                ctx.host.store_mut().get_mut(ids::TIMELINE_RULER)
+            {
+                *value = v;
+            }
+        }
     }
 
-    // Register the scrub hit (the strip) + mirror the playhead into the slider
-    // value when the user isn't dragging, so the drag baseline tracks it.
-    ctx.host
-        .hit_index_mut()
-        .register(ids::TIMELINE_RULER, strip);
-    // The loop braces + markers go on TOP of the scrub strip — registered after
-    // it so their grab targets win the hit where they overlap (`HitIndex::hit`
-    // walks in reverse). Drawn last for the same reason visually.
-    paint_loop_braces(ctx, theme, region, &time_to_x, snap);
-    paint_markers(ctx, theme, region, &time_to_x, snap);
-    let dragging = matches!(
-        ctx.host.store().slider(ids::TIMELINE_RULER),
-        Some((SliderState::Dragging, _))
-    );
-    if !dragging && span > 0.0 {
-        let v = ((snap.time_seconds - view_start) / span).clamp(0.0, 1.0) as f32;
-        if let Some(InteractiveState::Slider { value, .. }) =
-            ctx.host.store_mut().get_mut(ids::TIMELINE_RULER)
-        {
-            *value = v;
-        }
+    // The loop braces + markers are the TIMELINE's furniture — Arrange only. They go
+    // on TOP of the scrub strip so their grab targets win the hit where they overlap
+    // (`HitIndex::hit` walks in reverse); drawn last for the same reason visually.
+    if clock.furniture {
+        paint_loop_braces(ctx, theme, region, &time_to_x, snap);
+        paint_markers(ctx, theme, region, &time_to_x, snap);
     }
 }
 
@@ -457,8 +468,9 @@ mod tests {
     }
 
     /// **Nothing changes without a stack** — the case an animator is in almost all of
-    /// the time. The clip IS the timeline, so the Keys ruler shows the playhead and
-    /// writes it, exactly as it always has.
+    /// the time. The clip IS the timeline, so both tabs scrub the one clock there is
+    /// AND both carry the loop + markers: the Keys ruler is the timeline ruler it has
+    /// always been.
     #[test]
     fn without_a_stack_both_tabs_rule_the_one_clock_there_is() {
         let s = snap(false, 1.25, Some(1.25));
@@ -467,18 +479,20 @@ mod tests {
                 clock_for(tab, &s),
                 RulerClock {
                     now: Some(1.25),
-                    live: true
+                    scrub: true,
+                    furniture: true
                 },
                 "{tab:?} lost the ruler it always had"
             );
         }
     }
 
-    /// **The bug, as a number.** Playhead at timeline 4.0, the active clip reading 2.0.
-    /// The Keys ruler must stand at 2.0 — over the clip's keys — and the Arrange ruler
-    /// at 4.0. One ruler cannot be both.
+    /// **The Keys ruler reads the CLIP's clock, the Arrange ruler the TIMELINE's.**
+    /// The snapshot carries the clip playhead (`clip_time`) independently, so under a
+    /// stack the Keys ruler stands at 2.0 (over the clip's keys) while Arrange is at
+    /// 4.0. One ruler cannot be both.
     #[test]
-    fn under_a_stack_each_tab_reads_its_own_clock() {
+    fn each_tab_reads_its_own_clock() {
         let s = snap(true, 4.0, Some(2.0));
         assert_eq!(clock_for(Tab::Keys, &s).now, Some(2.0), "the CLIP's clock");
         assert_eq!(
@@ -488,30 +502,33 @@ mod tests {
         );
     }
 
-    /// A clip that is not playing (or plays twice) has no instant to point at, and a
-    /// playhead is a claim about where you are. No line is the honest drawing.
+    /// **Both tabs SCRUB — the Keys ruler is no longer read-only under a stack.** The
+    /// independent clip playhead is what a Keys scrub moves, so there is nothing to
+    /// invert; the old read-only was a workaround for not having that clock (Enio,
+    /// 2026-07-16: *"a playhead precisa ser movida no modo keys"*).
     #[test]
-    fn a_clip_with_no_answer_gets_no_playhead() {
-        let s = snap(true, 4.0, None);
-        assert_eq!(clock_for(Tab::Keys, &s).now, None);
-        assert_eq!(
-            clock_for(Tab::Arrange, &s).now,
-            Some(4.0),
-            "the timeline always knows where it is"
-        );
-    }
-
-    /// The clip's ruler under a stack never WRITES: the inverse map does not exist.
-    /// The Arrange ruler always does.
-    #[test]
-    fn only_a_ruler_that_measures_the_timeline_may_write_it() {
-        assert!(!clock_for(Tab::Keys, &snap(true, 4.0, Some(2.0))).live);
-        assert!(clock_for(Tab::Keys, &snap(false, 4.0, Some(4.0))).live);
+    fn both_tabs_scrub_their_own_clock() {
         for stacked in [false, true] {
             assert!(
-                clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).live,
-                "the Arrange tab IS the timeline"
+                clock_for(Tab::Keys, &snap(stacked, 4.0, Some(2.0))).scrub,
+                "the Keys ruler scrubs the clip clock, stacked={stacked}"
             );
+            assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).scrub);
+        }
+    }
+
+    /// **The loop + markers follow the TIMELINE clock.** The Arrange ruler always has
+    /// them. The Keys ruler has them ONLY without a stack (then it IS the timeline);
+    /// under a stack the clip clock differs, so they would sit at the wrong second and
+    /// belong on Arrange alone.
+    #[test]
+    fn the_furniture_follows_the_timeline_clock() {
+        // No stack: the Keys ruler is the timeline ruler, so it keeps the furniture.
+        assert!(clock_for(Tab::Keys, &snap(false, 4.0, Some(4.0))).furniture);
+        // Under a stack: only Arrange carries it.
+        assert!(!clock_for(Tab::Keys, &snap(true, 4.0, Some(2.0))).furniture);
+        for stacked in [false, true] {
+            assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).furniture);
         }
     }
 }

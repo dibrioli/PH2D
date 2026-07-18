@@ -29,6 +29,7 @@ pub(crate) fn run(
     intents: &mut Vec<TimelineIntent>,
     live_entity: Option<u64>,
     ak: &mut super::autokey_pass::AutokeyState,
+    solo: bool,
 ) {
     for intent in intents.drain(..) {
         apply_intent(timeline, playhead, intent);
@@ -40,9 +41,16 @@ pub(crate) fn run(
         ak.displaced_t = playhead.time();
     }
     let displaced = &ak.displaced;
-    apply_from_doc_except(world, &mut timeline.doc, playhead.time(), |bits| {
-        live_entity == Some(bits) || displaced.contains(&bits)
-    });
+    let skip = |bits: u64| live_entity == Some(bits) || displaced.contains(&bits);
+    // **Keys mode solos the active clip** (`apply_active_clip`): you see and pose
+    // exactly the curves you are editing, at the clip's own clock, with the stack
+    // out of the way. Arrange blends the stack at the timeline clock. Both honour
+    // `skip` (the gizmo-dragged entity, the displaced pin).
+    if solo {
+        ph2d_timeline::apply_active_clip(world, &mut timeline.doc, playhead.time(), skip);
+    } else {
+        apply_from_doc_except(world, &mut timeline.doc, playhead.time(), skip);
+    }
     // Identity upkeep: a deleted object's rows leave the view (the apply above
     // just flagged them missing), and an object that comes back under the same
     // name — the global undo respawns entities with FRESH bits — reconnects.
@@ -216,6 +224,41 @@ pub(crate) fn key_insert_time(
         ph2d_timeline::key_time(&timeline.doc, entity, t_secs)?
     };
     Some(ph2d_anim::RationalTime::from_seconds(t))
+}
+
+/// **K in the Keys/solo view** — the `(value, time)` a key captures when the scene
+/// is showing the active clip soloed at clip time `clip_t`.
+///
+/// It never REFUSES (returns `Some` whenever the pose can be read): in solo there is
+/// no stack to override the clip or to play it twice, so "key it here" always names
+/// one place. That is the whole point of editing a clip in isolation.
+///
+/// The VALUE is the live pose stored DIRECTLY — with the clip soloed, the pose you
+/// see IS the clip's value (no blend to invert). The TIME is the entity's own clip
+/// clock (`remapped_time`, the active clip's Time Remap), so a Time-Remapped object
+/// keys where its retime puts it. Both come through the SAME door the solo apply and
+/// the Arrange-side K read, so a soloed pose and the key that captures it agree.
+///
+/// A Time Remap track keys ON its own curve (the retime value at `clip_t`), exactly
+/// as the Arrange-side K does — that half is clock-agnostic.
+pub(crate) fn key_authoring_solo(
+    world: &World,
+    timeline: &TimelineState,
+    entity: u64,
+    prop: PropKind,
+    clip_t: f64,
+) -> Option<(ph2d_anim::AnimValue, ph2d_anim::RationalTime)> {
+    let doc = &timeline.doc;
+    if prop == PropKind::TimeRemap {
+        let source = ph2d_timeline::remapped_time(doc, entity, clip_t);
+        return Some((
+            ph2d_anim::AnimValue::Float(source as f32),
+            ph2d_anim::RationalTime::from_seconds(clip_t),
+        ));
+    }
+    let value = sample_prop_value(world, entity, prop)?; // the raw pose = what you see
+    let t = ph2d_timeline::remapped_time(doc, entity, clip_t);
+    Some((value, ph2d_anim::RationalTime::from_seconds(t)))
 }
 
 /// The default interpolation for a freshly inserted key (a gentle ease).

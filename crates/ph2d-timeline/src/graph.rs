@@ -307,7 +307,7 @@ mod tests {
             .unwrap()
             .target;
         let mut snap = TimelineViewSnapshot::default();
-        snap.rebuild(&mut st, &ph);
+        snap.rebuild(&mut st, &ph, false);
         let track: &Track = st.doc.active_clip().track(target).unwrap();
         let keys = &snap.tracks[0].keys;
 

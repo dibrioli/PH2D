@@ -136,16 +136,25 @@ pub struct TimelineViewSnapshot {
     /// artist never asked for — a 5 s clip crammed into a 1 s box at 5×. Transport's go-to-end
     /// reads `end_seconds` for the very same reason; this field is the panel's copy of that answer.
     pub clip_length_seconds: f64,
-    /// **Where the active clip's own clock stands** — the time the KEYS are ruled
-    /// by. `None` when the clip has no single answer: no strip of it plays here, or
-    /// two do ([`crate::clip_playhead`]).
+    /// **Where the KEYS ruler's playhead stands**, in the active clip's own time.
     ///
     /// The keys in [`Self::tracks`] are stamped in the clip's time and the strips in
-    /// [`Self::lanes`] in the timeline's, so **one ruler cannot serve both**: it is
-    /// the same pixel column meaning two different instants. Without a stack the two
-    /// are the same clock and this is simply `Some(time_seconds)` — which is why a
-    /// document that never touches the feature never notices the distinction.
+    /// [`Self::lanes`] in the timeline's, so **one ruler cannot serve both**.
+    ///
+    /// In the **Keys** view ([`Self::keys_mode`]) this is the INDEPENDENT clip
+    /// playhead the animator scrubs — the AE precomp model, so
+    /// [`Self::time_seconds`] equals it (the whole transport reflects the clip
+    /// clock while you edit its keys). Outside it, it is the derived answer to "is
+    /// the active clip playing here" ([`crate::clip_playhead`]) — informational,
+    /// and `None` when the clip is not under the timeline playhead exactly once.
     pub clip_time: Option<f64>,
+    /// **The panel is showing the Keys view, driven by an independent clip
+    /// playhead.** Set when the active tab is Keys: the scene solos the active clip
+    /// ([`crate::apply_active_clip`]), the ruler scrubs the clip clock, and K keys
+    /// there. It is a mirror of the panel's tab (a frame may lag on a switch), and
+    /// it is what makes [`Self::time_seconds`] a CLIP time rather than a timeline
+    /// one.
+    pub keys_mode: bool,
     /// Track rows, in the **active clip's** own time — see [`Self::clip_time`].
     pub tracks: Vec<TrackView>,
     /// Markers as `(seconds, label)`.
@@ -180,25 +189,28 @@ impl TimelineViewSnapshot {
         !self.lanes.is_empty()
     }
 
-    /// Refill this snapshot from `state` + `playhead`, reusing the existing
-    /// `tracks`/`markers`/`keys` buffers (clear + push, no fresh `Vec`s once the
-    /// capacities are warm).
+    /// Refill this snapshot from `state` + the ACTIVE `playhead`, reusing the
+    /// existing `tracks`/`markers`/`keys` buffers (clear + push, no fresh `Vec`s
+    /// once the capacities are warm).
+    ///
+    /// # `playhead` is the ACTIVE clock, and `keys_mode` says which one it is
+    ///
+    /// In the Keys view the shell passes the **clip** playhead (an independent
+    /// clip-time scrub) and `keys_mode = true`; everything derived here —
+    /// `time_seconds`, `frame`, `playing`, `loop` — is then in clip time, which is
+    /// what makes the whole transport reflect the clip you are editing (the AE
+    /// precomp model). In the Arrange view it is the timeline playhead.
     ///
     /// # Why `&mut state`
     ///
-    /// [`Self::clip_time`] answers "what is the stack doing *now*", and under a stack
-    /// that answer lives in the scratch — so this **primes it** rather than trusting a
-    /// caller to have done so ([`TimelineDoc::prime_stack`]). A view publisher is the
-    /// worst possible place for a hidden ordering contract: the shell's apply happens
-    /// to run first, which is exactly what would make the coupling invisible until some
-    /// future frame reordered and the ruler quietly pointed at the previous instant
-    /// ([[feedback_derived_coordinate_seed_must_match_sample]]).
-    ///
-    /// It costs nothing for a document with no stack (`prime_stack` is skipped, and the
-    /// clip clock is the playhead by definition) — which is every document that never
-    /// touches the feature.
-    pub fn rebuild(&mut self, state: &mut TimelineState, playhead: &Playhead) {
-        if !state.doc.stack().is_empty() {
+    /// Only the Arrange path needs it: the derived [`Self::clip_time`] (is the active
+    /// clip playing here?) lives in the stack's scratch, so this **primes it** rather
+    /// than trust a caller to — a view publisher is the worst place for a hidden
+    /// ordering contract ([[feedback_a_view_publisher_must_not_require_a_primed_cache]]).
+    /// In Keys mode there is no stack in view, so the prime is skipped and the clip
+    /// clock IS the (clip) playhead.
+    pub fn rebuild(&mut self, state: &mut TimelineState, playhead: &Playhead, keys_mode: bool) {
+        if !keys_mode && !state.doc.stack().is_empty() {
             state.doc.prime_stack(playhead.time());
         }
         let doc = &state.doc;
@@ -209,12 +221,17 @@ impl TimelineViewSnapshot {
         self.loop_range = playhead.loop_range();
         self.loop_ping_pong = doc.active_ping_pong();
         self.clip_length_seconds = doc.end_seconds();
-        // The keys below are stamped in the CLIP's time; the strips further below in
-        // the TIMELINE's. Publishing both clocks is what lets the panel rule each
-        // half by its own — and asking `clip_playhead` (rather than working it out
-        // from the strips it is about to publish) is what keeps ONE answer to "is
-        // the clip I am editing playing exactly once right now": the same one K gets.
-        self.clip_time = crate::clip_playhead(doc, playhead.time()).ok();
+        self.keys_mode = keys_mode;
+        // The KEYS ruler's playhead. In Keys mode the active playhead already IS the
+        // clip clock, so publish it verbatim — the transport is the clip's. Outside
+        // it, ask `clip_playhead` where the active clip is playing on the timeline
+        // (the derived, informational answer; the same door K reads on the Arrange
+        // side), which is `None` when it plays zero or two times.
+        self.clip_time = if keys_mode {
+            Some(playhead.time())
+        } else {
+            crate::clip_playhead(doc, playhead.time()).ok()
+        };
         self.auto_key = state.flags.auto_key;
         self.frame_snap = state.flags.frame_snap;
         self.performing = state.flags.performing;
@@ -345,7 +362,7 @@ mod tests {
         apply_intent(&mut st, &mut ph, Ix::Pause);
 
         let mut snap = TimelineViewSnapshot::default();
-        snap.rebuild(&mut st, &ph);
+        snap.rebuild(&mut st, &ph, false);
         assert_eq!(snap.tracks.len(), 1);
         assert_eq!(snap.tracks[0].prop, PropKind::TranslationX);
         assert_eq!(snap.tracks[0].keys.len(), 1);
@@ -354,7 +371,7 @@ mod tests {
 
         // Rebuilding into the same snapshot reuses the buffers (no growth).
         let cap = snap.tracks[0].keys.capacity();
-        snap.rebuild(&mut st, &ph);
+        snap.rebuild(&mut st, &ph, false);
         assert_eq!(snap.tracks[0].keys.capacity(), cap, "key buffer reused");
     }
 
@@ -378,12 +395,12 @@ mod tests {
             );
         }
         let mut snap = TimelineViewSnapshot::default();
-        snap.rebuild(&mut st, &ph);
+        snap.rebuild(&mut st, &ph, false);
         assert_eq!(snap.tracks.len(), 2, "both objects alive: two rows");
 
         // Entity 1's object dies (the apply pass flags it).
         st.doc.bindings_mut()[0].missing = true;
-        snap.rebuild(&mut st, &ph);
+        snap.rebuild(&mut st, &ph, false);
         assert_eq!(snap.tracks.len(), 1, "the dead object's row is gone");
         assert_eq!(snap.tracks[0].entity, 2, "the live row survived");
         assert_eq!(
@@ -394,7 +411,7 @@ mod tests {
 
         // It heals (the object came back) → the row returns.
         st.doc.bindings_mut()[0].missing = false;
-        snap.rebuild(&mut st, &ph);
+        snap.rebuild(&mut st, &ph, false);
         assert_eq!(snap.tracks.len(), 2, "healed: the row is back");
     }
 }

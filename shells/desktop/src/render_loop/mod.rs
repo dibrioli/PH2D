@@ -865,6 +865,10 @@ impl crate::App {
         // frame. Every animatable system samples the Playhead for its current
         // value; while paused it holds. (General timeline, M0 time wire.)
         self.playhead.advance_ticks(report.ticks);
+        // The Keys view's clip clock advances on the same ticks — it only moves
+        // when ITS transport is playing, so advancing both is harmless and keeps
+        // "play a clip's keys" working without a second tick source.
+        self.clip_playhead.advance_ticks(report.ticks);
 
         // Sim tick + extract — extracted to sibling `sim_extract.rs`
         // (Wave 3.2 stage A). Runs the bouncing-motion sim tick and
@@ -988,15 +992,21 @@ impl crate::App {
             .as_ref()
             .and_then(|h| h.gizmo.drag)
             .map(|d| d.entity_bits);
+        // The panel's Keys tab drives a soloed clip on its OWN clock (the AE precomp
+        // model). `keys_mode` is the panel's last-painted tab; it picks which
+        // playhead the transport moves, whether the scene solos, and how K authors.
+        let keys_mode = ph2d_panel_timeline::state::keys_mode();
         if self.timeline_insert_key {
             self.timeline_insert_key = false;
-            // The stack's scratch must describe THIS instant before K asks it where
-            // a key lands or whether the pose is reachable. This runs BEFORE
-            // `timeline_bridge::run` rebuilds it, so without the prime K resolves
-            // against the PREVIOUS frame's strip state — and at speed 100 (which the
-            // clamp allows) one frame of playhead skew is 1.67 s of clip time. It
-            // also refused a K pressed on the very frame a strip became live.
-            self.timeline.doc.prime_stack(self.playhead.time());
+            // The stack's scratch must describe THIS instant before the Arrange-side
+            // K asks it where a key lands or whether the pose is reachable. Skip it
+            // in Keys mode — solo has no stack in view, so K reads the clip directly
+            // (no scratch, no refusal). Without the prime the Arrange path resolves
+            // against the PREVIOUS frame's strip state, and at speed 100 one frame is
+            // 1.67 s of clip skew.
+            if !keys_mode {
+                self.timeline.doc.prime_stack(self.playhead.time());
+            }
             if let Some(entity) = hero_screen
                 .as_ref()
                 .and_then(|h| h.gizmo.iter_selected().next())
@@ -1010,26 +1020,36 @@ impl crate::App {
                     .map(|b| b.prop)
                     .collect();
                 for prop in props {
-                    // `key_value_for`: scene props sample the live pose; a Time
-                    // Remap track keys ON its own curve (identity on an empty
-                    // one), so K can author the retime too. `key_insert_time`:
-                    // scene keys land at the entity's own (remapped) clock.
-                    // Both halves can REFUSE under a clip stack: the value when
-                    // the active clip has no influence on the pose, the time when
-                    // the clip is not playing exactly once right now. Either way
-                    // the key is not written — never written to the wrong place.
-                    if let Some(value) = timeline_bridge::key_value_for(
-                        sim.world(),
-                        &self.timeline,
-                        entity,
-                        prop,
-                        self.playhead.time(),
-                    ) && let Some(t) = timeline_bridge::key_insert_time(
-                        &self.timeline,
-                        entity,
-                        prop,
-                        self.playhead.time(),
-                    ) {
+                    // In KEYS mode the animator sees the active clip soloed, so the
+                    // pose IS the clip's value and the time is the clip playhead's —
+                    // stored directly, and K never refuses (there is no stack to be
+                    // overridden by or to play twice). In ARRANGE mode the pose is a
+                    // blend, so `key_value_for` inverts it and `key_insert_time` can
+                    // REFUSE (the clip has no influence, or plays zero/two times).
+                    let authored = if keys_mode {
+                        timeline_bridge::key_authoring_solo(
+                            sim.world(),
+                            &self.timeline,
+                            entity,
+                            prop,
+                            self.clip_playhead.time(),
+                        )
+                    } else {
+                        timeline_bridge::key_value_for(
+                            sim.world(),
+                            &self.timeline,
+                            entity,
+                            prop,
+                            self.playhead.time(),
+                        )
+                        .zip(timeline_bridge::key_insert_time(
+                            &self.timeline,
+                            entity,
+                            prop,
+                            self.playhead.time(),
+                        ))
+                    };
+                    if let Some((value, t)) = authored {
                         self.timeline_intents
                             .push(ph2d_timeline::TimelineIntent::AddKey {
                                 entity,
@@ -1042,16 +1062,23 @@ impl crate::App {
                 }
             }
         }
-        // General timeline (W1): drain pending panel/K intents into the
-        // app-general document, then apply it to the scene at the same
-        // Playhead — skipping the dragged entity. No-op while empty.
+        // General timeline (W1): drain pending panel/K intents into the app-general
+        // document, then apply it to the scene. Keys mode drives the CLIP playhead
+        // and solos the active clip; Arrange drives the timeline playhead and blends
+        // the stack. Skipping the dragged entity. No-op while empty.
+        let active_playhead = if keys_mode {
+            &mut self.clip_playhead
+        } else {
+            &mut self.playhead
+        };
         timeline_bridge::run(
             sim.world_mut(),
             &mut self.timeline,
-            &mut self.playhead,
+            active_playhead,
             &mut self.timeline_intents,
             dragging_entity,
             &mut self.autokey,
+            keys_mode,
         );
         // The playhead has now moved: a transport jump queued last frame can
         // finally ask the panel to pan to it (the snapshot below carries the
@@ -1059,11 +1086,17 @@ impl crate::App {
         if std::mem::take(&mut self.timeline_reveal_after_apply) {
             ph2d_panel_timeline::request_reveal_playhead();
         }
-        // Publish the view snapshot the docked timeline panel paints
-        // (transport state; tracks/keys from E3+). Rebuilt into a reused
-        // buffer, then handed to the panel's thread-local.
+        // Publish the view snapshot the docked timeline panel paints (transport
+        // state; tracks/keys from E3+). Rebuilt from the ACTIVE playhead (the clip
+        // clock in Keys mode, the timeline clock in Arrange), so the whole transport
+        // reflects the clock the panel is showing.
+        let active_playhead = if keys_mode {
+            &self.clip_playhead
+        } else {
+            &self.playhead
+        };
         self.timeline_view
-            .rebuild(&mut self.timeline, &self.playhead);
+            .rebuild(&mut self.timeline, active_playhead, keys_mode);
         ph2d_panel_timeline::set_current_timeline(Some(self.timeline_view.clone()));
         // Global rigid physics (ADR-0131 W1): step the rapier world at the
         // Playhead tick and read poses back into Transform, BEFORE

@@ -185,11 +185,12 @@ fn each_tab_registers_only_its_own_half() {
     assert!(rect_of(&regs, ids::TIMELINE_ADD_TRACK).is_none());
 }
 
-/// Under a stack the clip's ruler does not SCRUB: the inverse map does not exist (a looping
-/// strip sends many timeline instants to one clip instant), so there is nothing honest for a
-/// drag to do. A hit registered but meaningless is a control that lies.
+/// **Under a stack the Keys ruler SCRUBS the clip clock (that is the whole point of the
+/// fix — Enio 2026-07-16) but carries NO loop or markers.** The playhead is independent
+/// of Arrange, so there is nothing to invert; but the loop and the markers are the
+/// timeline's, and on the clip's ruler they would sit at the wrong second.
 #[test]
-fn the_clip_ruler_under_a_stack_offers_no_scrub_no_loop_and_no_markers() {
+fn the_clip_ruler_under_a_stack_scrubs_but_has_no_timeline_furniture() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     let mut snap = keys_and_a_stack(Some(2.0), 4.0);
@@ -198,9 +199,8 @@ fn the_clip_ruler_under_a_stack_offers_no_scrub_no_loop_and_no_markers() {
 
     let regs = paint(&mut host, &mut state, snap.clone());
     assert!(
-        rect_of(&regs, ids::TIMELINE_RULER).is_none(),
-        "the Keys tab under a stack registered the SCRUB: dragging it would seek the timeline \
-         while the ruler shows the clip"
+        rect_of(&regs, ids::TIMELINE_RULER).is_some(),
+        "the Keys ruler under a stack must scrub the clip clock — that is how you author keys"
     );
     assert!(
         rect_of(&regs, ids::timeline_loop_brace_id(0)).is_none(),
@@ -211,7 +211,7 @@ fn the_clip_ruler_under_a_stack_offers_no_scrub_no_loop_and_no_markers() {
         "the timeline's marker was drawn on the clip's ruler"
     );
 
-    // The Arrange tab rules the timeline, so all three are live there.
+    // The Arrange tab rules the timeline, so it scrubs AND carries the furniture.
     state.tab = Tab::Arrange;
     let regs = paint(&mut host, &mut state, snap);
     assert!(
@@ -332,4 +332,39 @@ fn the_clip_rename_field_opens_over_the_dropdown_it_renames() {
         field.w,
         chip.w
     );
+}
+
+/// **The panel publishes `keys_mode` = Keys tab AND a stack exists.** This is the
+/// shell's trigger to solo the active clip on its own clock. Without a stack there is
+/// nothing to solo (the clip IS the timeline), so a fresh document on the Keys tab —
+/// the DEFAULT — must NOT flip the shell into solo, or a document that never touched
+/// the feature would drive a separate clip playhead and drift from Motion (Enio,
+/// 2026-07-16).
+#[test]
+fn keys_mode_is_published_only_on_the_keys_tab_and_only_under_a_stack() {
+    use ph2d_panel_timeline::state::keys_mode;
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState::default();
+
+    // Keys tab (default) WITHOUT a stack: not solo.
+    let mut no_stack = keys_and_a_stack(Some(1.5), 1.5);
+    no_stack.lanes.clear();
+    paint(&mut host, &mut state, no_stack.clone());
+    assert!(
+        !keys_mode(),
+        "a fresh document on the Keys tab must not solo — there is no stack"
+    );
+
+    // Keys tab WITH a stack: solo.
+    paint(&mut host, &mut state, keys_and_a_stack(Some(1.5), 1.5));
+    assert!(keys_mode(), "Keys tab + a stack = solo the active clip");
+
+    // Arrange tab WITH a stack: not solo (you are arranging strips, not editing keys).
+    state.tab = Tab::Arrange;
+    paint(&mut host, &mut state, keys_and_a_stack(Some(1.5), 1.5));
+    assert!(!keys_mode(), "the Arrange tab is never solo");
+
+    // (The hidden-panel case — keys_mode false when the panel is not visible — is
+    // covered by `paint`'s early `publish_keys_mode(false)` on the not-visible branch;
+    // MockPanelHost forces the panel visible, so it cannot be exercised here.)
 }

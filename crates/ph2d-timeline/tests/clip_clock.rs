@@ -149,7 +149,7 @@ fn the_snapshot_publishes_the_clip_clock_the_keys_are_ruled_by() {
     apply_from_doc(sim.world_mut(), &mut st.doc, playhead.time());
 
     let mut snap = TimelineViewSnapshot::default();
-    snap.rebuild(&mut st, &playhead);
+    snap.rebuild(&mut st, &playhead, false);
     assert_eq!(snap.time_seconds, 4.0, "the TIMELINE's clock");
     let clip_time = snap.clip_time.expect("Right plays once at t=4");
     assert!(
@@ -184,7 +184,7 @@ fn without_a_stack_the_snapshot_publishes_the_playhead_as_the_clip_clock() {
     let mut playhead = Playhead::default();
     playhead.seek(1.25);
     let mut snap = TimelineViewSnapshot::default();
-    snap.rebuild(&mut st, &playhead);
+    snap.rebuild(&mut st, &playhead, false);
     assert_eq!(snap.clip_time, Some(1.25));
     assert_eq!(snap.time_seconds, 1.25);
 }

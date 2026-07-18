@@ -228,6 +228,35 @@ v1 deste ADR era dívida escondida disfarçada de simplificação.
 >
 > **Sem pilha nada muda**: o clip É a timeline, então a aba Keys é o painel que sempre foi.
 
+> **R8 — emenda 2 (2026-07-16): a aba Keys tem PLAYHEAD PRÓPRIO (o precomp do AE). A "régua read-only sob
+> pilha" da emenda 1 foi um ERRO e foi revogada.**
+>
+> O Enio, no smoke: *"a playhead não pode ser movida no modo Keys a partir do momento que criamos uma lane.
+> Mas a playhead é fundamental para criar, duplicar e colar keys. Precisa ser movida no modo Keys e ser
+> **independente do modo Arrange**."* Ele está certo. A régua read-only quebrou o fluxo mais básico:
+> autorar keys exige mover o playhead.
+>
+> O erro da emenda 1 foi **certo sobre o mapa, errado sobre a solução**: o mapa timeline→clip não é
+> inversível sob pilha, verdade — mas a resposta não é travar a régua, é **dar ao modo Keys um relógio de
+> clip INDEPENDENTE** que não inverte nada. É o modelo **precomp do AE**: abrir uma precomp te dá a precomp
+> no relógio dela, separada do relógio mestre. Editar as keys de um clip acontece no tempo do CLIP.
+>
+> **Desenho (dois playheads):** o shell tem `playhead` (timeline) e `clip_playhead` (clip). Sob pilha, na
+> aba Keys (`keys_mode = Keys tab && stacked`, publicado pelo painel), o transporte inteiro dirige o
+> `clip_playhead`, a cena mostra o **clip ativo SOZINHO** (`apply_active_clip` — o caminho sem-pilha
+> forçado, então uma lane acima nunca esconde a pose que você keya: o caso "Overridden" do R9 não pode
+> surgir sem pilha em vista), e o **K keya ali** (`key_authoring_solo`: pose direta, tempo = `remapped_time`
+> do clip, **nunca recusa** — em isolamento sempre há um lugar). A régua Keys **faz scrub** (não mais
+> read-only); a furniture da timeline (loop/markers) fica **só na Arrange** (`RulerClock{scrub, furniture}`,
+> `furniture = !stacked`). O `clip_playhead(doc,t)`/`clip_time` derivados continuam **só** para o playhead
+> informativo da Arrange e o K da Arrange.
+>
+> **Sem pilha `keys_mode` é FALSO** e nada muda — o clip É a timeline, um playhead só, Motion e timeline no
+> mesmo relógio (senão um documento novo, que abre na aba Keys por padrão, dirigiria um `clip_playhead`
+> separado e derivaria do Motion — a regressão que o gate `keys_mode_is_published_only...` trava).
+> Gates: `apply_active_clip` (6, em `solo_apply.rs`) · `run(solo)`+`key_authoring_solo` (bridge) ·
+> `RulerClock` (ruler::tests) · publish (view_tabs_seam). 6 mutações, 6 vermelhos.
+
 **R10 — A LACUNA não é silêncio: é o strip anterior SEGURANDO** (2026-07-16, Enio).
 *"O fade das strips quando não há sobreposição ainda provoca saltos — a sprite não faz a transição a
 partir de onde está mas pula para mais perto da posição inicial da outra strip."* **Medido:** `Left[0,3)`,

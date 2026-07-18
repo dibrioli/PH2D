@@ -36,6 +36,9 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         // marquee to resolve (or repaint) when it comes back — nor an undo
         // bracket open, which would swallow the next atomic edit.
         state::drop_row_gestures(state);
+        // A hidden panel is not editing keys: the timeline runs on its normal
+        // (timeline) clock, not a soloed clip one.
+        state::publish_keys_mode(false);
         set_last_content_h(0.0);
         set_last_visible_h(0.0);
         return;
@@ -43,6 +46,12 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     let theme = ctx.host.theme();
     let snapshot = state::current_snapshot();
+    // Mirror the tab to the shell (the reverse channel of the snapshot): on the Keys
+    // tab AND under a stack, the shell drives the CLIP playhead and solos the active
+    // clip. **Without a stack there is nothing to solo** — the clip IS the timeline —
+    // so keys_mode stays false and a fresh document behaves exactly as it always has
+    // (one playhead, Motion and the timeline on the same clock).
+    state::publish_keys_mode(state.tab.shows_keys() && snapshot.stacked());
     let viewport = ctx.layout.viewport;
     let docked = ctx.layout.timeline;
     if state.px_per_s <= 0.0 {

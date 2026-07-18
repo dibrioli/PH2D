@@ -368,3 +368,148 @@ fn k_past_a_hold_freeze_seeds_the_frozen_clock() {
         "scene keys land at the frozen source time"
     );
 }
+
+// ── Keys / solo view (ADR-0115 R8 amendment, Enio 2026-07-16) ─────────────────
+
+/// Build a doc where a lane plays `Left` (index 0) then `Right`, and `Right` is the
+/// active clip. `Right` ramps X 1 → 5 over its 3 s; `Left` holds X at −3.
+fn solo_doc(bits: u64) -> TimelineState {
+    use ph2d_anim::AnimValue::Float;
+    let mut st = TimelineState::new();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    let mut key = |st: &mut TimelineState, prop, t: f64, v: f32| {
+        ph2d_timeline::apply_intent(
+            st,
+            &mut ph,
+            TimelineIntent::AddKey {
+                entity: bits,
+                prop,
+                t: ph2d_anim::RationalTime::from_seconds(t),
+                value: Float(v),
+                interp: ph2d_anim::Interp::Linear,
+            },
+        );
+    };
+    st.doc.rename_clip(0, "Left".into());
+    key(&mut st, PropKind::TranslationX, 0.0, -3.0);
+    key(&mut st, PropKind::TranslationX, 3.0, -3.0);
+    let right = st.doc.add_clip("Right".into());
+    st.doc.set_active(right);
+    key(&mut st, PropKind::TranslationX, 0.0, 1.0);
+    key(&mut st, PropKind::TranslationX, 3.0, 5.0);
+    st.doc.set_active(0);
+    let lane = st.doc.add_lane("L".into()).unwrap();
+    st.doc.add_strip(lane, 0, 0.0, 3.0);
+    st.doc.add_strip(lane, right, 3.0, 6.0);
+    st.doc.set_active(right); // editing Right
+    st
+}
+
+/// **`run(solo = true)` shows the ACTIVE CLIP soloed, at the clip playhead** — not the
+/// stack. This is the seam the panel's Keys tab drives: the shell passes the clip
+/// playhead + `solo`, and the scene must be the clip you are editing.
+#[test]
+fn run_in_solo_mode_shows_the_active_clip_not_the_stack() {
+    use ph2d_ecs::{SimWorld, Transform};
+    let mut sim = SimWorld::new();
+    let bits = sim
+        .world_mut()
+        .spawn((Transform::default(), ph2d_ecs::Name::new("Solo")))
+        .id()
+        .to_bits();
+    let mut st = solo_doc(bits);
+    let mut ak = crate::render_loop::autokey_pass::AutokeyState::default();
+    let mut clip_ph = Playhead::new(1.0 / 60.0);
+    clip_ph.pause();
+    clip_ph.seek(1.5);
+    let mut intents = Vec::new();
+
+    // Solo: Right at clip 1.5 (ramp 1→5) = 3.
+    super::run(
+        sim.world_mut(),
+        &mut st,
+        &mut clip_ph,
+        &mut intents,
+        None,
+        &mut ak,
+        true,
+    );
+    let x = |sim: &SimWorld| {
+        f64::from(
+            sim.world()
+                .get::<Transform>(ph2d_ecs::Entity::from_bits(bits))
+                .unwrap()
+                .translation
+                .x,
+        )
+    };
+    assert_eq!(
+        x(&sim),
+        3.0,
+        "soloed Right at clip 1.5, not the stack's Left"
+    );
+
+    // The SAME instant, NOT solo (timeline 1.5): the stack plays Left, holding −3.
+    let mut tl_ph = Playhead::new(1.0 / 60.0);
+    tl_ph.pause();
+    tl_ph.seek(1.5);
+    super::run(
+        sim.world_mut(),
+        &mut st,
+        &mut tl_ph,
+        &mut intents,
+        None,
+        &mut ak,
+        false,
+    );
+    assert_eq!(
+        x(&sim),
+        -3.0,
+        "the stack at 1.5 is Left — solo really differs"
+    );
+}
+
+/// **K in the Keys/solo view keys the pose at CLIP time, and never refuses.** Under a
+/// stack the Arrange-side K can refuse (`key_insert_time` → `None`); the solo path
+/// cannot — there is no stack in view to override the clip or play it twice.
+#[test]
+fn solo_k_keys_at_clip_time_and_never_refuses() {
+    use ph2d_anim::AnimValue::Float;
+    use ph2d_core::Vec2;
+    use ph2d_ecs::{SimWorld, Transform};
+    let mut sim = SimWorld::new();
+    let bits = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(Vec2::new(9.0, 0.0)),
+            ph2d_ecs::Name::new("Solo"),
+        ))
+        .id()
+        .to_bits();
+    let st = solo_doc(bits);
+
+    // The object is posed at X = 9 by hand. K at clip time 1.5 must capture 9 THERE.
+    let (value, t) = key_authoring_solo(sim.world(), &st, bits, PropKind::TranslationX, 1.5)
+        .expect("solo K never refuses");
+    assert_eq!(
+        value,
+        Float(9.0),
+        "the live pose, stored directly (no blend to invert)"
+    );
+    assert_eq!(t.to_seconds(), 1.5, "at the clip playhead's time");
+
+    // The Arrange-side K at a timeline instant where Right does NOT play would refuse;
+    // solo at the same clip time still answers. (Right plays timeline [3,6); at
+    // timeline 1.0 it is not playing.)
+    st_doc_active_is_right(&st);
+    assert!(
+        key_authoring_solo(sim.world(), &st, bits, PropKind::TranslationX, 1.0).is_some(),
+        "solo answers at any clip time — there is no 'not playing' in isolation"
+    );
+}
+
+/// Guard: the fixture really leaves `Right` active (so the assertions above are about
+/// the clip the animator is editing).
+fn st_doc_active_is_right(st: &TimelineState) {
+    assert_eq!(st.doc.clips()[st.doc.active_index()].name, "Right");
+}

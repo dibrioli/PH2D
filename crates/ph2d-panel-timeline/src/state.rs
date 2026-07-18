@@ -36,6 +36,14 @@ thread_local! {
     /// (go-to-start/end, a frame step, a typed time). Consumed by `paint`, which
     /// alone knows the visible span.
     static REVEAL_REQUESTED: Cell<bool> = const { Cell::new(false) };
+    /// **The panel is on the Keys tab** — published every paint, read by the shell
+    /// next frame. This is the panel→shell mirror of the tab (the reverse of
+    /// [`CURRENT_SNAPSHOT`]): the shell needs it to drive the CLIP playhead and solo
+    /// the active clip while the animator edits keys (the AE precomp model, Enio
+    /// 2026-07-16). A view bit, not an intent — it names WHICH clock the timeline
+    /// runs on, not a document edit. `false` (Arrange / normal) until the first
+    /// paint, so a hidden panel leaves the timeline on its usual timeline clock.
+    static KEYS_MODE: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
@@ -429,6 +437,20 @@ pub fn set_current_timeline(snapshot: Option<TimelineViewSnapshot>) {
 /// The snapshot the host published this frame, or a default empty one.
 pub(crate) fn current_snapshot() -> TimelineViewSnapshot {
     CURRENT_SNAPSHOT.with(|c| c.borrow().clone().unwrap_or_default())
+}
+
+/// Publish whether the panel is on the Keys tab (called by `paint` each frame).
+pub(crate) fn publish_keys_mode(on: bool) {
+    KEYS_MODE.with(|c| c.set(on));
+}
+
+/// **Is the timeline panel on the Keys tab?** Read by the shell to drive the CLIP
+/// playhead and solo the active clip (the AE precomp model). Reflects the panel's
+/// last paint, so it lags a tab switch by at most one frame — imperceptible, and
+/// the same latency every panel→shell mirror here already has.
+#[must_use]
+pub fn keys_mode() -> bool {
+    KEYS_MODE.with(Cell::get)
 }
 
 /// Raise a dope-sheet edit intent (called by `interact` while draining gestures).

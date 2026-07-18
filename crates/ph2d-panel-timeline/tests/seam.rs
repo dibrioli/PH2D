@@ -201,7 +201,7 @@ fn publish_one_track(entity: u64, prop: ph2d_timeline::PropKind) -> u64 {
     apply_intent(&mut st, &mut ph, TimelineIntent::Bind { entity, prop });
     let target = st.doc.binding_for(entity, prop).unwrap().target.get();
     let mut snap = TimelineViewSnapshot::default();
-    snap.rebuild(&mut st, &ph);
+    snap.rebuild(&mut st, &ph, false);
     ph2d_panel_timeline::set_current_timeline(Some(snap));
     target
 }
@@ -348,7 +348,7 @@ fn publish_clips(names: &[&str], active: usize) {
         TimelineIntent::SetActiveClip { index: active },
     );
     let mut snap = TimelineViewSnapshot::default();
-    snap.rebuild(&mut st, &ph);
+    snap.rebuild(&mut st, &ph, false);
     assert_eq!(snap.clips, names, "the fixture really holds those clips");
     ph2d_panel_timeline::set_current_timeline(Some(snap));
 }
@@ -579,7 +579,7 @@ fn publish_one_strip() -> ph2d_timeline::StripId {
     );
     let id = st.doc.stack()[0].strips[0].id;
     let mut snap = TimelineViewSnapshot::default();
-    snap.rebuild(&mut st, &ph);
+    snap.rebuild(&mut st, &ph, false);
     ph2d_panel_timeline::set_current_timeline(Some(snap));
     id
 }
@@ -704,7 +704,7 @@ fn publish_one_lane() {
     let mut ph = ph2d_core::Playhead::new(1.0 / 60.0);
     apply_intent(&mut st, &mut ph, I::AddLane);
     let mut snap = TimelineViewSnapshot::default();
-    snap.rebuild(&mut st, &ph);
+    snap.rebuild(&mut st, &ph, false);
     ph2d_panel_timeline::set_current_timeline(Some(snap));
 }
 

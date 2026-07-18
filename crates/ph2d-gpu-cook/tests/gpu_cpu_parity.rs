@@ -1098,7 +1098,7 @@ fn the_emitter_generator_matches_the_cpu() {
     //     time), so binding it end-to-end would allocate ~176 MB per path to
     //     learn a number the count law already knows;
     //   • and there is now only ONE count law — `emit` and the GPU
-    //     `source_window` call the same `window()` — so "both paths agree on n"
+    //     `count_law` call the same `window()` — so "both paths agree on n"
     //     stopped being a claim two implementations could falsify and became a
     //     property of having one. Gating it where it can still be contradicted
     //     (the law) beats gating it where it cannot (the seam).
@@ -1305,6 +1305,97 @@ fn a_value_node_emits_a_bare_stream_not_the_instance_base() {
          is `v` and nothing else, never the instance base with `v` bolted on"
     );
     assert_eq!(gpu_cols, vec!["v"], "and that column set is exactly `v`");
+}
+
+/// **An unconnected `value.lfo` is ONE global oscillation — and the engine has
+/// to be TOLD so.**
+///
+/// This is the sibling the gate above never had. That one connects a grid, so
+/// port 0 has a count and the engine's default law ("as wide as port 0") gets
+/// the right answer by accident of the fixture. Unconnected, the CPU computes
+/// `input(0).count().max(1)` = **1** — one value held across every instance by
+/// `motion.drive`'s broadcast rule — while port 0 is empty, so the default law
+/// says `0`, a zero-count stage is SKIPPED, and the node emits nothing at all.
+///
+/// It is not a wrong number: it is the whole `value.*` family being unreachable
+/// on the device the moment a consumer of one gets a kernel. Nothing could
+/// produce a length-1 VALUE field, so a broadcast reader would have nothing to
+/// read — which is exactly how this was found, and why the count law exists.
+///
+/// The params are chosen so the answer is far from zero: a stage that never ran
+/// leaves a zeroed buffer, and a fixture whose right answer is `0.0` cannot tell
+/// the two apart ([[reference_topic_fixture_discipline]]).
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn an_unconnected_value_node_is_one_global_value_not_zero_of_them() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let lfo = g.add_node("value.lfo");
+    // No `connect` — THE point of this gate.
+    g.set_param(lfo, "wave", 1.0); // triangle: a branch, not the default sine
+    g.set_param(lfo, "period", 0.73);
+    g.set_param(lfo, "amplitude", 1.9);
+    g.set_param(lfo, "offset", 0.37);
+    g.set_param(lfo, "phase", 0.21);
+    // `phase_stagger` stays 0: with one element there is nothing to stagger, and
+    // a non-zero value here would be a fixture that quietly tests nothing.
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, lfo);
+    assert!(plan.is_fully_gpu(), "a lone lfo is covered");
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, lfo, PLAYHEAD).expect("cpu cook");
+    let cpu_v = match cpu[0].as_stream().get("v") {
+        Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+        _ => panic!("the CPU emitted no `v`"),
+    };
+    assert_eq!(cpu_v.len(), 1, "the CPU's unconnected lfo is one value");
+    assert!(
+        cpu_v[0].abs() > 0.1,
+        "fixture check: the answer must be far from zero ({}), or a stage that \
+         never ran would pass this gate with an empty buffer",
+        cpu_v[0]
+    );
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true); // gate-only: lets `read_column` see `v`
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+
+    assert_eq!(
+        gc.node_count(lfo),
+        Some(1),
+        "the count law must size the stage at ONE — `Some(0)` is the stage being \
+         skipped, which is the bug this gate exists for"
+    );
+    let gpu_v = gc
+        .read_column(&gpu, lfo, "v")
+        .expect("the `v` column reads back");
+    assert_eq!(gpu_v.len(), 1);
+    let d = (gpu_v[0] - cpu_v[0]).abs();
+    eprintln!(
+        "unconnected lfo: cpu {} gpu {} |dv| {d:e}",
+        cpu_v[0], gpu_v[0]
+    );
+    assert!(
+        d < 1e-5,
+        "value parity on the global oscillation: |dv| = {d:e}"
+    );
 }
 
 /// The rest of the bare-emitter family: `motion.luminance` (instances → VALUE,

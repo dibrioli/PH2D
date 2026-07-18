@@ -127,7 +127,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         port: 0,
     }],
     params: &["in_lo", "in_hi", "out_lo", "out_hi", "clamp"],
-    source_window: None,
+    count_law: None,
     applicable: None,
 };
 

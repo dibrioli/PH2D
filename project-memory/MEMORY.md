@@ -135,6 +135,7 @@
 - [node-sync glob prefix](feedback_node_sync_glob_prefix_gotcha.md) — crate de nó não pode começar com `ph2d-node-`
 - [Hier companion allowlist](feedback_hier_companion_dispatch_allowlist.md) — 2 sites em `pointer.rs` senão click dropa
 - [Condição que ENUMERA seus leitores apodrece](feedback_a_condition_that_enumerates_its_readers_rots.md) — o 3º consumidor degrada em silêncio
+- [Default da maioria ainda é uma LEI](feedback_a_default_that_fits_the_majority_is_still_a_law.md) — sem porta, o 3º caso não tem onde morar e a capacidade não existe (nasce verde: nada a alcança)
 - ["O card mais cheio" apodrece](feedback_the_fullest_card_premise_rots.md) — sweep de UI: pergunte a CADA modo, não arme o superset
 - [Duas portas p/ a mesma pergunta DIVERGEM](feedback_two_doors_to_the_same_question_diverge.md) — botão e atalho: MESMA função
 - [Botão dimmed ainda despacha](feedback_disabled_button_still_dispatches.md) — dim é cosmético; recuse no event.rs

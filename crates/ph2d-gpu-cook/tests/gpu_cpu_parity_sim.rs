@@ -805,7 +805,7 @@ mod velgen {
             },
         ],
         params: &[],
-        source_window: Some(|_, _| SourceWindow::of_count(N)),
+        count_law: Some(|_| SourceWindow::of_count(N)),
         applicable: None,
     };
 

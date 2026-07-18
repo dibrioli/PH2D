@@ -27,7 +27,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -172,9 +172,22 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "phase",
         "phase_stagger",
     ],
-    source_window: None,
+    count_law: Some(lfo_count),
     applicable: None,
 };
+
+/// **How wide is the field?** — the same expression `eval` uses, and the reason
+/// the count law exists at all.
+///
+/// Connected, this is one oscillation per instance (a travelling wave across the
+/// grid); **unconnected it is ONE global value**, held across every instance by
+/// `motion.drive`'s broadcast rule. The engine's default law — "as wide as port
+/// 0" — gets the connected case right and the unconnected one silently wrong:
+/// an empty port is `0`, a zero-count stage is SKIPPED, and the whole `value.*`
+/// family would be unreachable on the device the moment something consumed it.
+fn lfo_count(c: &CountLawCtx<'_>) -> SourceWindow {
+    SourceWindow::of_count(c.inputs.first().copied().unwrap_or(0).max(1) as usize)
+}
 
 struct ValueLfo;
 

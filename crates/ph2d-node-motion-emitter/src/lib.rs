@@ -191,7 +191,7 @@ struct Spec {
 /// **The count law, and the only copy of it** — in `f64`, because the spawn index
 /// is what has to stay exact.
 ///
-/// `emit` and the GPU `source_window` used to compute this independently in
+/// `emit` and the GPU `count_law` used to compute this independently in
 /// `f32`, and parity held only because both read the same `f32`. Two doors to
 /// one question ([[feedback_two_doors_to_the_same_question_diverge]]), and both
 /// of them wrong at scale: `floor(t·rate)` in `f32` starts skipping integers at
@@ -387,12 +387,12 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "rate", "life", "speed", "angle", "spread", "x", "y", "seed", "size",
     ],
     // Playhead-dependent (ADR-0130): the alive-window length `n(t)`, mirroring `emit`'s count.
-    source_window: Some(|param, playhead| {
+    count_law: Some(|c| {
         window(
-            param("rate"),
-            param("life"),
-            (param("max").max(0.0) as usize).min(MAX_ALIVE),
-            playhead as f32,
+            (c.param)("rate"),
+            (c.param)("life"),
+            ((c.param)("max").max(0.0) as usize).min(MAX_ALIVE),
+            c.playhead as f32,
         )
     }),
     applicable: None,

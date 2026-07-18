@@ -266,7 +266,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &[],
-    source_window: None,
+    count_law: None,
     applicable: None,
 };
 

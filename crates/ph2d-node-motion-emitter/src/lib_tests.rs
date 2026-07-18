@@ -4,6 +4,7 @@
 //! pin.
 
 use super::*;
+use ph2d_nodegraph::gpu::CountLawCtx;
 
 fn spec() -> Spec {
     Spec {
@@ -197,7 +198,7 @@ fn a_dead_or_absurd_emitter_yields_an_empty_stream_not_a_panic() {
     // …and the HARD ceiling is asserted on the count law itself rather than
     // by building the stream: at 4M elements that would allocate ~176 MB to
     // learn a number `window` already knows. It is also the only place worth
-    // asserting it, now that `emit` and the GPU `source_window` are the same
+    // asserting it, now that `emit` and the GPU `count_law` are the same
     // function — the two paths cannot disagree about `n` any more, which is
     // the point of unifying them.
     assert_eq!(
@@ -205,11 +206,14 @@ fn a_dead_or_absurd_emitter_yields_an_empty_stream_not_a_panic() {
         MAX_ALIVE,
         "an absurd ask clamps to the ceiling"
     );
-    let gpu_window = GPU_KERNEL
-        .source_window
-        .expect("the emitter is a generator");
+    let gpu_window = GPU_KERNEL.count_law.expect("the emitter is a generator");
     assert_eq!(
-        gpu_window(&|_| 1e9, 10.0).count,
+        gpu_window(&CountLawCtx {
+            inputs: &[],
+            param: &|_| 1e9,
+            playhead: 10.0,
+        })
+        .count,
         MAX_ALIVE,
         "the GPU path reaches the same ceiling through the same law"
     );

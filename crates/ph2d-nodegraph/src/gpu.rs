@@ -176,18 +176,39 @@ pub struct ColumnBinding {
     pub port: usize,
 }
 
-/// A signature for "how many elements does this generator emit", evaluated on
-/// the CPU at cook time from the node's resolved params (the getter applies
-/// override-else-default, exactly like `EvalCtx::param`) **and the playhead**.
-/// Dispatch size must be known host-side; a generator's kernel body then writes
-/// `0..count`.
+/// Everything a node's **count law** may look at. Dispatch size must be known
+/// host-side, so this is evaluated on the CPU at cook time.
 ///
-/// The playhead is the second argument because a **stateless emitter's** live
-/// count is a function of time — `motion.emitter`'s alive set is a contiguous id
-/// window `[first, first+n)` whose `n(t)` grows and shrinks as particles are born
-/// and die (ADR-0130). A count that ignored the playhead could only describe a
-/// static generator like `motion.grid` (which takes the argument and drops it).
-pub type SourceWindowFn = fn(&dyn Fn(&str) -> f32, f64) -> SourceWindow;
+/// The three fields are the three things a count has ever been observed to
+/// depend on in this graph, and each earned its place by a node that needs it:
+/// [`Self::param`] (`motion.grid`: rows × cols), [`Self::playhead`]
+/// (`motion.emitter`: the alive window `n(t)` grows and shrinks as particles are
+/// born and die, ADR-0130), and [`Self::inputs`] (`value.lfo`: unconnected it is
+/// ONE global oscillation, connected it is one per instance).
+pub struct CountLawCtx<'a> {
+    /// The element count of each input port, **in port order** — empty for a
+    /// generator. The counts and not the streams: a law may only ask how WIDE
+    /// its inputs are, never what is in them (that would be a readback, and the
+    /// readback is measured-negative — see `ph2d-gpu-cook`'s `shape` module).
+    pub inputs: &'a [u32],
+    /// Resolved params, override-else-default — exactly like `EvalCtx::param`.
+    pub param: &'a dyn Fn(&str) -> f32,
+    /// The cook's playhead, in seconds.
+    pub playhead: f64,
+}
+
+/// **How many elements does this node emit?** — asked once per stage, answered
+/// in one place.
+///
+/// `None` on [`GpuKernel::count_law`] means *"as many as port 0"*: the output
+/// rides its base input, which is what every instance transformer wants and is
+/// why the overwhelming majority of kernels declare nothing here.
+///
+/// A kernel declares a law when its CPU `eval` computes `n` from something
+/// else — and it must declare **the same expression**, because the count is not
+/// a detail of the dispatch: it is the length of the field the artist sees. Two
+/// laws that disagree do not crash, they render a different number of things.
+pub type CountLawFn = fn(&CountLawCtx<'_>) -> SourceWindow;
 
 /// What a generator emits at a given playhead: how many elements, and — for a
 /// generator whose elements carry an integer IDENTITY — where that identity
@@ -310,10 +331,9 @@ pub struct GpuKernel {
     /// override-else-default at dispatch time. Order defines the uniform
     /// layout; names must be declared `ParamSpec`s of the node.
     pub params: &'static [&'static str],
-    /// `Some` for a **generator** (no stream input): the element count of the
-    /// emitted stream as a function of the resolved params. `None` for a
-    /// transformer (count = input count).
-    pub source_window: Option<SourceWindowFn>,
+    /// How wide this node's output is — see [`CountLawFn`]. `None` (the common
+    /// case) = as wide as port 0.
+    pub count_law: Option<CountLawFn>,
     /// `Some` when the kernel only covers part of the node's param space;
     /// evaluated at plan time. `None` = always applicable.
     pub applicable: Option<ApplicableFn>,
@@ -327,7 +347,7 @@ impl GpuKernel {
         wgsl_lib: "",
         bindings: &[],
         params: &[],
-        source_window: None,
+        count_law: None,
         applicable: None,
     };
 
@@ -381,7 +401,7 @@ mod tests {
                 port: 0,
             }],
             params: &[],
-            source_window: None,
+            count_law: None,
             applicable: None,
         };
         assert!(!real.is_passthrough());

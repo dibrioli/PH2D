@@ -149,7 +149,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &["pivot_x", "pivot_y", "angle", "speed"],
-    source_window: None,
+    count_law: None,
     applicable: None,
 };
 

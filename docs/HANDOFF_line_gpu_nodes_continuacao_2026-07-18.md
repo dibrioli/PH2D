@@ -263,33 +263,88 @@ mutação-testado. **Três bloqueios de MOTOR removidos, e nenhum era sobre kern
   broadcast da CPU. O motor não tem **comprimento por-porta** (o `gather_prev_n` é
   específico do gather).
 
-#### 🔴 BUG LATENTE JÁ NA ÁRVORE — conserte ANTES de portar qualquer consumidor de VALUE
+#### ✅ FECHADO — a LEI DE CONTAGEM (o motor, e o bug latente que a exigiu)
 
-**`value.lfo` desconectado diverge: CPU `count = 1`, GPU `count = 0`.** O `eval`
+**Landou.** `GpuKernel.source_window` (gerador, função só dos params) virou
+**`GpuKernel.count_law`** — UMA porta para *"quantos elementos este nó emite?"*,
+com `None` = **"tão largo quanto a porta 0"** (o default, zero boilerplate, certo
+para os ~25 transformadores). O `Some` agora recebe um **`CountLawCtx`** com os
+três — e só os três — fatos de que uma contagem já dependeu neste grafo, cada um
+com o nó que o exigiu: `param` (`motion.grid`: rows × cols) · `playhead`
+(`motion.emitter`: a janela viva `n(t)`, ADR-0130) · **`inputs`** (os `count` de
+cada porta, em ordem — o que faltava).
+
+⚠️ **`inputs` são os COMPRIMENTOS, nunca os streams.** Uma lei pode perguntar
+quão LARGA é a entrada, jamais o que há dentro dela — isso seria um readback, e o
+readback é medido-**negativo** (§2 A).
+
+Motor: **`ph2d-gpu-cook/src/count.rs`** (módulo novo, porta única `stage_window`).
+A contagem e a janela de identidade viraram **UMA resposta** (`SourceWindow`
+carregado do walk até o encode): perguntar duas vezes deixaria o stage despachar
+`n` elementos e contar ao kernel uma janela de outro tamanho, e **nenhum gate
+notaria — os dois números são plausíveis separadamente**.
+
+E a pergunta *"este módulo declara os uniforms de janela?"* virou
+**`codegen::declares_window(port_names)`**, perguntada pelo codegen que os DECLARA
+e pelo sequenciador que os EMPACOTA. Antes eram duas expressões (`source_window.
+is_some()` nos dois lados); com a lei generalizada elas deixariam de coincidir —
+um transformador com lei declarada não tem janela de spawn. **Um gerador (sem
+portas de entrada) é o único nó que tem janela**: ele CUNHA seus elementos, então
+identidade e idade são fatos que só o host sabe; um transformador HERDA os dele.
+
+**O bug latente que motivou tudo — CONSERTADO e GATEADO.** `value.lfo`
+desconectado: CPU `count = 1`, GPU `count = 0`. O `eval`
 faz `n = ctx.input(0).count().max(1)` (desligado ⇒ **um** valor global), e o motor
 dimensiona pela porta 0 — entrada vazia ⇒ `count = 0` ⇒ o stage é **pulado**
 (`if count == 0 { … continue }`) e o stream sai vazio. **Medido**, não deduzido.
 
-Hoje é **inalcançável** (nenhum consumidor de VALUE tem kernel: o `t` do
+Era **inalcançável** (nenhum consumidor de VALUE tem kernel: o `t` do
 `color_ramp` recusa), e foi por isso que o gate do `value.lfo` não pegou — ele
-liga o lfo a um grid, então nunca visita o caso desligado. Mas é uma divergência
-real esperando o primeiro consumidor.
+liga o lfo a um grid, então **nunca visita o caso desligado**. O nó agora declara
+`count_law: Some(lfo_count)` = `max(port0, 1)`, a MESMA expressão do `eval`.
 
-⇒ É a **LEI DE CONTAGEM** que falta ao motor, e ela é o pré-requisito do broadcast,
-não o contrário. Hoje só existem duas leis: `base.count` (porta 0) e
-`source_window` (gerador, função só dos params). Faltam pelo menos três, todas
-medidas: `max(port0, 1)` (`value.lfo` desligado) · `max(a.len, b.len)`
-(`value.math`, broadcast) · e a que `value.lfo` precisa quando LIGADO.
+**Gate novo: `an_unconnected_value_node_is_one_global_value_not_zero_of_them`**
+(irmão do que existia — o fixture NÃO conecta nada). Contagem **e** número, via
+`read_column`: forma sozinha ficaria verde com o valor errado. E os params foram
+escolhidos para a resposta ficar **longe de zero** (medido: −1,278), porque um
+stage que nunca rodou deixa buffer zerado e um fixture cujo certo é `0.0` não
+distingue os dois. Paridade `|dv| = 4,8e-7`.
 
-#### ⚠️ O PRÓXIMO ITEM, e por que ele vale mais que qualquer kernel isolado
+**3 mutações, 3 mortas:** tirar o `.max(1)` ⇒ RED só neste gate (era o bug) ·
+ignorar toda lei declarada ⇒ **19 de 22** gates RED (a lei sustenta quase todo
+fixture, que passa por um `motion.grid`) · `declares_window → false` ⇒ RED
+exatamente no emitter, *"invalid field accessor `window_first`"*, provando que a
+janela é carga viva. ⚠️ `declares_window → true` **sobrevive por projeto**: as
+duas metades agora perguntam à MESMA função, então o modo de falha que ela existe
+para impedir (elas discordarem) ficou **irrepresentável** — é o padrão
+`feedback_layered_defenses_need_per_layer_gates` visto do outro lado.
 
-**Comprimento por-porta / broadcast.** É o mesmo formato dos três consertos acima —
-uma capacidade que falta ao motor, não um kernel — e destrava **4 nós de uma vez**
-(`look_at`, `value.math`, `value.switch`, `motion.drive`). Forma provável: um
-uniform de comprimento por porta ligada (o host já os conhece: são os `count` dos
-streams de entrada) + um `read_<port>_<col>_bcast(i)` que faz o `target_at` da CPU.
+**Split de LOC junto:** `lib.rs` chegou a **700/700** exatos com a lei. O walk
+(`cook` — quais stages, em que ordem, com que largura) ficou; **tudo que acontece
+DENTRO de um stage saiu para `encode.rs`** (`encode_kernel_stage`: pipeline,
+uniform, bind group, dispatch — 189 LOC). São perguntas diferentes e só a do walk
+é sobre o GRAFO. **535/700** agora — a folga que o broadcast vai gastar.
+
+#### ⚠️ O PRÓXIMO ITEM (a lei de contagem era o pré-requisito dele — agora está lá)
+
+**Comprimento por-porta / broadcast.** Destrava **4 nós de uma vez** (`look_at`,
+`value.math`, `value.switch`, `motion.drive`).
+
+⚠️ **JÁ FOI CONSTRUÍDO E REVERTIDO UMA VEZ — leia antes de repetir.** A plumbing
+estava **correta** (campos `n_<porta>` no uniform só para multi-input, anexados
+por ÚLTIMO para não mover offset nenhum, `UNIFORM_BYTES` 64→128, leitor
+`read_<porta>_<col>_bcast(i)` espelhando o `target_at` da CPU) — **os 27 kernels
+ficaram verdes**. O que falhou foi o `look_at` em cima dela, e a causa era esta
+lei de contagem faltando: nada conseguia produzir um campo VALUE de comprimento 1
+no dispositivo, então o leitor de broadcast não tinha o que ler. **Refazer custa
+~20 min** e agora tem chão.
+
 Faça o gate comparar contra os DOIS casos (comprimento 1 e comprimento n) — um
 fixture só com comprimento n passaria com o broadcast quebrado.
+
+⚠️ **`value.math` vai precisar da 3ª lei** (`max(a.len, b.len)`), e ela **só entra
+junto com o kernel que a consome** — motor sem consumidor foi exatamente o que se
+reverteu aqui.
 
 ⚠️ **`motion.look_at` é MULTI-INPUT**: quando ele pousar, um grafo com 2 entradas
 descobertas passa a deixar **2 fronteiras**, e o tripwire
@@ -387,24 +442,39 @@ pré-condição, nunca por asserção:
 
 ## §4.5 — O que esta sessão fez (2026-07-18, pós-integração)
 
-**Nenhuma linha de produto mudou.** A sessão foi gasta verificando a recomendação
-deste doc antes de construir sobre ela — que era exatamente o que o §2 mandava
-fazer (*"verifique antes de confiar"*) — e a verificação a **derrubou**.
+A sessão começou **verificando a recomendação deste doc antes de construir sobre
+ela** — que era o que o §2 mandava fazer (*"verifique antes de confiar"*) — e a
+verificação a **derrubou**. O resto foi gasto no que a medição apontou:
+**COBERTURA**.
+
+**Cobertura: 20 → 27 kernels.**
 
 | commit | o que |
 |---|---|
 | `3428c1fa` | **medição:** um plano não deixa mais de UMA costura hoje ⇒ (B) é inalcançável. 2 gates, mutação-testados, um deles **tripwire** |
-| `258d80fb` | **doc:** o §2 deste handoff corrigido — a ordem inverte, (C) é o multiplicador |
+| `258d80fb` | **doc:** o §2 corrigido — a ordem inverte, (C) é o multiplicador |
 | `8362d806` | **medição:** a costura-ESPELHO (sim na GPU + readback + cauda na CPU) é **negativa** — 268 ms de readback contra 227 ms da CPU inteira. A alternativa arquitetural está morta, com números |
-| (este) | shortlist ranqueada dos 6 próximos kernels + **2 bloqueios de motor** novos (palavra reservada do WGSL · os `value.*` bloqueiam 6 nós de uma vez) + memória durável |
+| `c2eee051` | shortlist ranqueada + **2 bloqueios de motor** (palavra reservada do WGSL · os `value.*` bloqueiam 6 nós de uma vez) |
+| `49499df2` | **fix:** o probe não cozinha 1,2 M na CPU ao lado de uma GPU que já está desenhando — e o readout fica **honesto** (`—`, nunca o número velho) |
+| `6b1ff654` | o painel volta a saber a massa dos fios num frame GPU-resident (`CookShape`: nomes e contagens, **nunca** buffers) |
+| `75ece09e` | **motor:** param com nome de palavra reservada do WGSL (`wgsl_field`) ⇒ `motion.noise` (21º) |
+| `55a846b4` | **motor:** emitir stream de outra ESPÉCIE (`rides_base` derivado do manifesto) ⇒ destrava a família `value.*` |
+| `0dea633d` | `motion.luminance` + `value.map_range` (22-23º) — e a família `value.*` ganha prova **NUMÉRICA** (`read_column`) |
+| `779d4f30` | `motion.orbit` (25º); e `sim.step` **sai da fila com motivo medido** (`dt ≡ 0` fora da `sim.zone`) |
+| `d51055a4` | `motion.pin_constraint` (26º); um param pode se chamar como um uniform do motor |
+| `02be152a` | `motion.stagger` (27º), com o easing inteiro (8 famílias × 3 direções) |
+| `d6ac6725` | **broadcast tentado e REVERTIDO** — a corrente tem uma etapa antes dela; bug latente medido |
+| (este) | **a LEI DE CONTAGEM** (`count_law`/`CountLawCtx`/`count.rs`) + o bug latente do `value.lfo` fechado e gateado + split `encode.rs` |
 
-**Estado:** tudo verde (contagens acima), `fmt`/`clippy`/`machete`/`typos`/os **2**
-LOC caps limpos. **Nada integrado, nada pushado** (§0.2).
+**Estado:** tudo verde — **40 gates de GPU** (22 paridade + 18 sim) na RTX, 778 no
+shell, `fmt`/`clippy`/`machete`/`typos`/os **2** LOC caps limpos. **Nada
+integrado, nada pushado** (§0.2).
 
-**Onde o próximo agente começa:** §2 (C) — a shortlist. E leia o bloqueio nº 2
-antes de escolher: consertar o *base-discard* dos `value.*` destrava **6 kernels
-PER_ELEMENT de uma vez** e é provavelmente melhor retorno que qualquer kernel
-isolado da lista.
+**Onde o próximo agente começa:** o **broadcast** (§2 C, "O PRÓXIMO ITEM") — o
+pré-requisito dele acabou de pousar, a forma exata já foi provada uma vez, e o
+aviso de "não repita a plumbing antes da lei" agora está satisfeito. Depois
+`motion.look_at`, e então a fatia B vira obrigatória (o tripwire fica vermelho de
+propósito no MESMO commit).
 
 ## §5 — Histórico (não leia salvo arqueologia)
 

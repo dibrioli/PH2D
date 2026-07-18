@@ -181,6 +181,24 @@ pub fn presence_signature(
         })
 }
 
+/// Does this node's generated module carry the `window_first` / `window_age`
+/// uniforms? **Asked here by the codegen that declares them and by the
+/// sequencer that packs them** — two answers to one layout question is a
+/// silently misaligned uniform, which reads as plausible garbage.
+///
+/// A **generator** (no input ports) is the one kind of node that has a window:
+/// its elements are minted, so their spawn identity and age are facts only the
+/// host knows. A transformer INHERITS its elements — it has no window of its own
+/// to be told about, whatever count law it declares.
+///
+/// A playhead-dependent generator is TOLD its window instead of re-deriving it:
+/// `floor(t·rate)` recomputed in WGSL is `f32`, and past 2²⁴ it skips integers,
+/// so the identity the whole gather rests on would quietly stop being a
+/// bijection. The CPU computes these in `f64` (`SourceWindow`).
+pub fn declares_window(port_names: &[&str]) -> bool {
+    port_names.is_empty()
+}
+
 /// Generate the full compute module for `kernel` against a concrete input
 /// column set. `port_names` are the node manifest's input port names (they name
 /// the readers of a multi-input kernel — [`accessor_suffix`]); binding indices
@@ -215,11 +233,7 @@ pub fn kernel_module(
     if gather_on {
         src.push_str("    gather_prev_n: u32,\n");
     }
-    // A playhead-dependent generator is TOLD its window instead of re-deriving
-    // it: `floor(t·rate)` recomputed here is `f32`, and past 2²⁴ it skips
-    // integers, so the identity the whole gather rests on would quietly stop
-    // being a bijection. The CPU computes these in `f64` (`SourceWindow`).
-    if kernel.source_window.is_some() {
+    if declares_window(port_names) {
         src.push_str("    window_first: u32,\n    window_age: f32,\n");
     }
     src.push_str("}\n@group(0) @binding(0) var<uniform> params: KernelParams;\n\n");
@@ -359,7 +373,7 @@ mod tests {
             },
         ],
         params: &["dx"],
-        source_window: None,
+        count_law: None,
         applicable: None,
     };
 
@@ -399,7 +413,7 @@ mod tests {
             },
         ],
         params: &[],
-        source_window: None,
+        count_law: None,
         applicable: None,
     };
     const SIM_PORTS: &[&str] = &["rest", "forces"];
@@ -445,7 +459,7 @@ mod tests {
             },
         ],
         params: &[],
-        source_window: None,
+        count_law: None,
         applicable: None,
     };
 
@@ -499,7 +513,7 @@ mod tests {
                 port: 0,
             }],
             params: &["amount"],
-            source_window: None,
+            count_law: None,
             applicable: None,
         };
         assert_ne!(

@@ -143,7 +143,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &["channel", "amplitude", "frequency", "seed"],
-    source_window: None,
+    count_law: None,
     applicable: Some(|param| {
         // Same rounding the CPU `eval` applies. Only X (0) / Y (1) write `P`.
         let channel = param("channel").round();

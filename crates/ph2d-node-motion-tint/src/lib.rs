@@ -218,7 +218,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &["r", "g", "b", "a", "r2", "g2", "b2", "a2", "mode"],
-    source_window: None,
+    count_law: None,
     applicable: None,
 };
 

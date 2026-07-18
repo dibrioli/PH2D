@@ -1,11 +1,15 @@
-# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope Fatia 1 (arrastar os cantos da gaiola, ADR-0129)
+# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope Fatias 1 + 2 (arrastar cantos + mover no Select, ADR-0129)
 
 **Para:** o **agente integrador** (e o próximo implementador da linha).
 **De:** a sessão de 2026-07-17 que assumiu a linha pelo `HANDOFF_line_vector_continuacao_2026-07-17.md`
-(§4.A item 1 — o 1º gesto vivo do envelope).
-**Estado:** **fechado, pendente de smoke do Enio.** Motor + host live já estavam na `main` (Fatias A+B);
-esta fatia é **só a UI** (a alça própria de canto no modo Node). Integração de **baixo risco**: nenhum
-foundational, nenhum contrato congelado, nenhuma contagem de registro mexida.
+(§4.A itens 1 e 2 do Envelope).
+**Estado:** **Fatias 1 e 2 fechadas e SMOKADAS pelo Enio.** Motor + host live já estavam na `main`
+(Fatias A+B). **Fatia 1** = a alça própria de canto no Node. **Fatia 2** = mover/girar/escalar o
+envelope inteiro no Select, que exigiu tornar o envelope um **objeto de geometria LOCAL + pose no
+`Transform`** (o modelo correto — o antigo forçava identidade + assava em mundo). Integração de
+**baixo risco**: nenhum foundational (só docstrings em `vec_envelope.rs`), nenhum contrato congelado,
+nenhuma contagem de registro mexida, **nenhuma mudança de schema** (mesmos bytes; muda só o FRAME
+semântico da fonte/cantos: mundo → local).
 
 ---
 
@@ -14,11 +18,11 @@ foundational, nenhum contrato congelado, nenhuma contagem de registro mexida.
 | | |
 |---|---|
 | **Branch / worktree** | `line/Vector` — `Worktrees/line-Vector/` |
-| **Commits da fatia** | `207d10b9` (feature) · `43b918f5` (fix do smoke — ver abaixo) · docs neste arquivo |
+| **Commits da fatia** | `207d10b9` (F1 feature) · `43b918f5` (fix do smoke — ver abaixo) · `5bddd9e4` (F2: local+pose) · docs neste arquivo |
 | **Base do fork (merge-base com `main`)** | `cdc3acc1` |
 | **`main` desde a base** | **0 commits** — a linha está em cima da `main` de hoje; **não precisa rebase** |
 | **Contratos congelados encostados** | **NENHUM** (§4) |
-| **Smoke** | **APROVADO pelo Enio (2026-07-17)** — `cd Worktrees/line-Vector && PH2D_BUILD_SMOKE=11 cargo run -p ph2d-host-desktop --features panel-vector`: a gaiola aparece no NODE com 4 cantos arrastáveis; a forma re-deforma ao vivo; canto puxado p/ dentro para na fronteira convexa. |
+| **Smoke** | **APROVADO pelo Enio (2026-07-17), Fatias 1 e 2** — `cd Worktrees/line-Vector && PH2D_BUILD_SMOKE=11 cargo run -p ph2d-host-desktop --features panel-vector`: **NODE** = 4 cantos arrastáveis, re-deforma ao vivo, canto p/ dentro para na fronteira convexa (F1); **SELECT** = o gizmo move/gira/escala o envelope inteiro sem dobrar (F2). |
 
 > ⚠️ **Fix pós-1º-smoke (`43b918f5`), e é um bug do DRIVER do smoke, não da fatia:** o 1º smoke não
 > mostrava a gaiola. O envelope estava certo (o `recook` achava 1 envelope já deformado), mas o frame
@@ -110,24 +114,25 @@ congelado. Nenhum ADR novo (o ADR-0129 já cobre esta fatia — é a "Fatia 1 da
 | **guard de convexidade** | idem (`pulling_a_corner_into_a_reflex_is_refused`, `a_bowtie_is_refused`) | reflexo/bowtie recusados; trocar `is_convex(...).then_some` por `Some(...)` → RED |
 | **fio do host** | `shells/desktop/src/envelope_gesture_tests.rs` (8) | press arma pelo componente certo · drag escreve `corners` (convexo) · **não-convexo congela o canto** · `view` marca só o canto DESTA forma (matar o filtro de dono → RED) · press ignora não-envelope / sem seleção |
 | **política de modo** | `shells/desktop/src/vec_overlay.rs` (`the_envelope_cage_belongs_to_node_mode_alone`) | a gaiola só aparece no Node; tool inativa não desenha |
+| **Fatia 2: pose sobrevive + não vaza** | `envelope_live_tests.rs` (`the_pose_survives_recook_and_stays_out_of_the_local_geometry`) | pose preservada pelo recook (o antigo forçava identidade) E não entra na geometria local |
+| **Fatia 2: cantos atravessam a pose** | `envelope_gesture_tests.rs` (fixture com pose `[100,50]`) | `press`/`drag`/`view` convertem local↔mundo; **`to_world` virar no-op → `press_arms`+`view_draws` RED** |
 
 **Provas de mutação rodadas nesta sessão** (mutei, vi RED sobre visto-verde, restaurei): cerca de raio,
-guard de convexidade, filtro de dono do `view`. Os três sangram.
+guard de convexidade, filtro de dono do `view` (Fatia 1), conversão local↔mundo da pose (Fatia 2). E a
+pose-preservation é **garantia de TIPO** (o `recook` recebe `&SimWorld`, não pode zerar a pose).
 
-**Smoke:** **pendente do Enio.** `PH2D_BUILD_SMOKE=11`. ⚠️ Armadilha do ADR-0129 §Aceitação: **arrastar
-o canto engana** — o ingênuo também acerta o canto. A prova da CORREÇÃO é a curva LISA entre os cantos
-(o gate de invariância à subdivisão já a automatiza). O que a Fatia 1 adiciona ao smoke é: **os cantos
-obedecem ao dedo, e a gaiola recusa ficar não-convexa** (puxe um canto p/ dentro — ele para na fronteira).
+**Smoke:** **APROVADO pelo Enio (2026-07-17), Fatias 1 e 2.** `PH2D_BUILD_SMOKE=11`. NODE: arrasta os
+cantos (Fatia 1) — a prova da correção é a curva LISA ENTRE os cantos (⚠️ o canto obedecer engana; o
+ingênuo também acerta o canto — o gate de invariância à subdivisão automatiza isso). SELECT: o gizmo
+move/gira/escala o envelope inteiro (Fatia 2), sem dobrar.
 
 ---
 
 ## §6 — A FILA (a ordem é do Enio; ADR-0129 §Plano é a fonte)
 
-Fatia 1 fechada. Restam da 4.A (fechar o Envelope):
+Fatias 1 **e 2** fechadas. Restam da 4.A (fechar o Envelope):
 
-2. **Mover o objeto-envelope inteiro** (modo Select) — a fonte está congelada em MUNDO no componente;
-   mover o conjunto aplica um afim aos `corners` + à fonte (ou re-baka).
-3. **O container multi-filho** (1 gaiola p/ N formas; hoje é 1-para-1).
+3. **O container multi-filho** (1 gaiola p/ N formas; hoje é 1-para-1). ← **próximo**
 4. **Release / Expand** — materializar a deformada como forma comum e soltar a gaiola.
 5. **O painel** (seção Envelope docada: Fidelity/`accuracy` + presets + escolha de gesto).
 6. **Os outros gestos** (cada um é um `impl Warp` novo): C presets · D 4-curvas/Coons · E pinos/MLS
@@ -136,17 +141,25 @@ Fatia 1 fechada. Restam da 4.A (fechar o Envelope):
 
 E a 4.B herdada (Live Path Effects como nós, morph vivo, blend em cadeia, etc.).
 
-**Nota p/ quem pegar a Fatia 2:** o `vec_envelope_drag` (runtime, em `app_state`) e o `press`/`drag` do
-`envelope_gesture` são o molde. Mover o objeto inteiro no Select é OUTRO gesto (o gizmo de sprite já
-existe) — mas o envelope força a identidade no recook, então "mover" tem de reescrever `corners` + a
-fonte, não o `Transform`. É a diferença que o §3.3 do ADR nomeia.
+**Como a Fatia 2 foi feita (o molde para quem generalizar):** o envelope virou **objeto normal** —
+geometria LOCAL, pose no `Transform` (ADR-0111). O gizmo de sprite (que já aparece para a entidade —
+`vec_gizmo_view` só suprime `VecConnector`/`VecBlend`) move a pose NATIVAMENTE, sem dobrar, porque no
+Select a geometria local é ESTÁVEL (a do Blend dobrava por depender de fontes que se movem; a do
+envelope é função pura de `corners`+fonte FIXOS — ADR §3.3). O `recook` passou a tomar `&SimWorld`:
+**por tipo** não pode tocar a pose. As alças da Fatia 1 atravessam a pose (`envelope_gesture::
+path_world_xform` = o mesmo afim que `vec_transform::build` publica); as assinaturas e call-sites não
+mudaram. ⚠️ A **nota antiga** ("o envelope força identidade → mover reescreve corners+fonte / re-baka")
+está **SUPERSEDIDA** — não se re-baka nada; a pose é a do `Transform`.
 
 ---
 
 ## §7 — Resumo de fechamento
 
-- **Fatia 1 do Envelope (ADR-0129 §4.A.1) construída e gateada.** Alça própria de canto no Node,
-  convexidade obrigatória, undo de graça.
-- **Sem foundational, sem contrato congelado, sem contagem de registro.** Integração aditiva.
-- **Gates verdes (workspace 7404), 3 mutações provadas.** Smoke pendente do Enio (`PH2D_BUILD_SMOKE=11`).
+- **Fatias 1 e 2 do Envelope (ADR-0129 §4.A.1–2) construídas, gateadas e SMOKADAS.** Fatia 1: alça
+  própria de canto no Node, convexidade obrigatória, undo de graça. Fatia 2: mover/girar/escalar o
+  envelope inteiro no Select via o gizmo de sprite — o envelope virou objeto de geometria LOCAL +
+  pose no `Transform` (o modelo correto), e o `recook` (`&SimWorld`) não pode tocar a pose.
+- **Sem foundational (só docstrings), sem contrato congelado, sem contagem de registro, sem schema.**
+- **Gates verdes (workspace 7405), clippy limpo, mutações provadas.** Smoke Fatias 1+2 aprovado.
+- **Commits (locais, sem push):** `207d10b9` (F1) · `43b918f5` (fix smoke F1) · `5bddd9e4` (F2) + docs.
 - **A linha NÃO integra nem faz push** (§0.7): entrego este handoff e **PARO**.

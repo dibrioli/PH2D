@@ -20,8 +20,9 @@ use ph2d_timeline::{StripId, TimelineIntent, TimelineViewSnapshot};
 
 use crate::state::{self, StripDrag, TimelinePanelState};
 
-/// Interpret one strip gesture. `edge`: `0` = start, `1` = end, `2` = body,
-/// `3` = fade-in grip, `4` = fade-out grip.
+/// Interpret one strip gesture. `edge`: `0`/`1` = trim start/end (red bottom corners),
+/// `2` = body (slide), `3`/`4` = fade-in/out grips, `5`/`6` = stretch start/end (green
+/// top corners).
 pub(crate) fn apply(
     state: &mut TimelinePanelState,
     px_per_s: f64,
@@ -56,7 +57,6 @@ pub(crate) fn apply(
                     EASE_OUT => s.blend_out,
                     _ => 0.0,
                 },
-                stretch: g.mods.cmd,
             });
         }
         GesturePhase::Update | GesturePhase::End => {
@@ -89,36 +89,31 @@ fn emit(
     let dt = f64::from(x - d.start_x) / px_per_s;
     let (a0, b0) = d.start_span;
     let intent = match d.edge {
-        // The two edges TRIM: the span's edge and the source slice's edge travel
-        // together, so the frames that stay visible stay put (`TrimStrip`).
-        //
-        // Held with Cmd/Ctrl the SAME edge STRETCHES instead: the slice is pinned
-        // and the rate falls out of the new span (`StretchStrip`). One gesture,
-        // two meanings, and the modifier picks which — because trim and stretch
-        // are the only two things an edge can mean, and an editor that offers just
-        // one of them makes the other impossible rather than merely awkward.
-        //
-        // No NLE agrees on the modifier (they all make the stretch a separate
-        // TOOL — Premiere's Rate Stretch, Resolve's Change Speed), and a panel has
-        // no tool palette. Cmd is ours; it is free here, and it is the modifier
-        // that already means "the other reading of this gesture" everywhere else
-        // in the editor.
+        // **The RED bottom corners TRIM** (Enio, 2026-07-16): the span's edge and the
+        // source slice's edge travel together, so the frames that stay visible stay put
+        // (`TrimStrip`). Trim and stretch used to share an edge behind a Cmd modifier;
+        // now each is its own corner — the gizmo you grab IS the operation, no modifier
+        // to remember and no NLE-specific convention to learn.
         0 | 1 => {
             let t = snapped(state, snap, if d.edge == 0 { a0 + dt } else { b0 + dt });
-            if d.stretch {
-                TimelineIntent::StretchStrip {
-                    lane: d.lane,
-                    id: d.id,
-                    edge: d.edge,
-                    t,
-                }
-            } else {
-                TimelineIntent::TrimStrip {
-                    lane: d.lane,
-                    id: d.id,
-                    edge: d.edge,
-                    t,
-                }
+            TimelineIntent::TrimStrip {
+                lane: d.lane,
+                id: d.id,
+                edge: d.edge, // 0 = start, 1 = end — the document's edge vocabulary
+                t,
+            }
+        }
+        // **The GREEN top corners STRETCH** — retime: the slice is pinned and the rate
+        // falls out of the new span (`StretchStrip`). The strip does not change how it
+        // LOOKS; the label carries the new speed factor.
+        STRETCH_START | STRETCH_END => {
+            let edge = u8::from(d.edge == STRETCH_END); // 0 = start, 1 = end
+            let t = snapped(state, snap, if edge == 0 { a0 + dt } else { b0 + dt });
+            TimelineIntent::StretchStrip {
+                lane: d.lane,
+                id: d.id,
+                edge,
+                t,
             }
         }
         // **The fade grips** (B4). The handle rides the tip of the wedge, so the fade
@@ -177,6 +172,10 @@ fn emit(
 const EASE_IN: u8 = 3;
 /// …and for its fade-out.
 const EASE_OUT: u8 = 4;
+/// The GREEN top-left corner — stretch the start edge (retime, no cut).
+const STRETCH_START: u8 = 5;
+/// The GREEN top-right corner — stretch the end edge.
+const STRETCH_END: u8 = 6;
 
 /// Frame-snap, when the panel is snapping. Never negative.
 fn snapped(state: &TimelinePanelState, snap: &TimelineViewSnapshot, t: f64) -> f64 {

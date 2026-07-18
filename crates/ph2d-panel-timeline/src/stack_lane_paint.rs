@@ -81,6 +81,7 @@ pub(crate) fn paint(
             theme,
             g,
             view,
+            state,
             snap,
             i,
             Rect::new(region.x, y, region.w, h),
@@ -90,11 +91,13 @@ pub(crate) fn paint(
 
 /// One lane: its label slice, then its strips.
 #[allow(clippy::too_many_lines)] // the row IS the layout: splitting it hides the arithmetic
+#[allow(clippy::too_many_arguments)] // one lane's worth of per-frame context; grouping hides it
 fn paint_lane(
     ctx: &mut PaintCtx,
     theme: Theme,
     g: &geom::Geom,
     view: TimeView,
+    state: &TimelinePanelState,
     snap: &TimelineViewSnapshot,
     index: usize,
     row: Rect,
@@ -252,6 +255,7 @@ fn paint_lane(
         boxes.push((s, body));
     }
     ctx.scene.pop_layer();
+    paint_trim_preview(ctx, theme, state, index, &boxes, view, time_band);
     let spans: Vec<(u64, Rect)> = boxes.iter().map(|(s, b)| (s.id.0, *b)).collect();
     // The ease grips (B4) — only where the strip owns the edge. Where a neighbour
     // overlaps it, the OVERLAP is the fade (Unity's rule): the grip is painted greyed
@@ -276,6 +280,74 @@ fn paint_lane(
     for (strip, edge, rect) in hit_plan(&spans, &eases, time_band) {
         put_strip_hit(ctx, row, rect, index, strip, edge);
     }
+}
+
+/// **The cut area, made evident** (Enio, 2026-07-16): while a TRIM drag shortens a strip,
+/// the region it removes shows red cross-hatched — the frames about to be dropped. A live
+/// preview: when the drag ends the strip is simply shorter and the red is gone. A trim that
+/// REVEALS more (grows the strip) removes nothing, so it paints nothing. Clipped to the
+/// lane's time-band so it never spills over the label column.
+fn paint_trim_preview(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    state: &TimelinePanelState,
+    lane: usize,
+    boxes: &[(&ph2d_timeline::StripView, Rect)],
+    view: TimeView,
+    time_band: Rect,
+) {
+    let Some(cut) = trim_cut_region(state, lane, boxes, view) else {
+        return;
+    };
+    let x0 = cut.x.max(time_band.x);
+    let clipped = Rect::new(
+        x0,
+        cut.y,
+        (cut.x + cut.w).min(time_band.x + time_band.w) - x0,
+        cut.h,
+    );
+    if clipped.w <= 0.0 {
+        return;
+    }
+    ctx.scene.push_clip(&rect_to_vello(time_band));
+    fill_rounded_rect(
+        ctx.scene,
+        clipped,
+        Radius::Xs.px(),
+        resolve(ColorToken::DangerSoft, theme),
+    );
+    crate::strip_paint::paint_hatch(ctx, clipped, resolve(ColorToken::Danger, theme), true);
+    ctx.scene.pop_layer();
+}
+
+/// The red cut region for a live TRIM drag on lane `lane`, or `None` when no trim is in
+/// progress there or the drag REVEALS clip (grows the strip) rather than removing it.
+///
+/// Pure, so the "only when shrinking, only the removed span" rule has an oracle a paint
+/// test cannot give it. The removed span runs from the trimmed edge's position at
+/// drag-start (`start_span`) to where the snapshot now shows it; its `y`/`h` come from the
+/// strip's live box.
+fn trim_cut_region(
+    state: &TimelinePanelState,
+    lane: usize,
+    boxes: &[(&ph2d_timeline::StripView, Rect)],
+    view: TimeView,
+) -> Option<Rect> {
+    let d = state
+        .strip_drag
+        .filter(|d| d.lane == lane && (d.edge == 0 || d.edge == 1))?;
+    let (s, body) = boxes.iter().find(|(s, _)| s.id == d.id)?;
+    let (a0, b0) = d.start_span;
+    // The removed span in TIME — its width is negative (`x1 <= x0` below, since `view.x`
+    // is monotonic) when the drag REVEALS more clip rather than cutting, and then no hatch
+    // is drawn: revealing removes nothing.
+    let (t0, t1) = if d.edge == 0 {
+        (a0, s.t_start) // start edge dragged inward hides [original_start, now]
+    } else {
+        (s.t_end, b0) // end edge dragged inward hides [now, original_end]
+    };
+    let (x0, x1) = (view.x(t0), view.x(t1));
+    (x1 > x0).then(|| Rect::new(x0, body.y, x1 - x0, body.h))
 }
 
 /// **The order the strip hits are registered in — and it is load-bearing.**
@@ -313,9 +385,18 @@ fn hit_plan(
     }
     for &(id, body) in spans {
         let w = EDGE_W.min(body.w * 0.5);
+        let top = body.h * 0.5;
+        // Each strip operation is its own CORNER (Enio, 2026-07-16): the GREEN top
+        // corners STRETCH (retime), the RED bottom corners TRIM (cut). Top-half vs
+        // bottom-half of each edge — disjoint, so a pointer picks one unambiguously.
         for (edge, rect) in [
-            (0, Rect::new(body.x, body.y, w, body.h)),
-            (1, Rect::new(body.x + body.w - w, body.y, w, body.h)),
+            (5, Rect::new(body.x, body.y, w, top)), // stretch-start (top-left)
+            (6, Rect::new(body.x + body.w - w, body.y, w, top)), // stretch-end (top-right)
+            (0, Rect::new(body.x, body.y + top, w, body.h - top)), // trim-start (bottom-left)
+            (
+                1,
+                Rect::new(body.x + body.w - w, body.y + top, w, body.h - top),
+            ), // trim-end (bottom-right)
         ] {
             // The WHOLE grip must be inside the band, not merely overlap it: a
             // sliver of an edge poking into view is not something a pointer can aim
@@ -329,10 +410,11 @@ fn hit_plan(
             }
         }
     }
-    // Every trim grip registered above — a fade handle may not land on ANY of them.
+    // Every CORNER grip registered above — a fade handle may not land on ANY of them
+    // (its own strip's, or a neighbour's it overlaps in a crossfade).
     let trims: Vec<Rect> = out
         .iter()
-        .filter(|(_, e, _)| *e == 0 || *e == 1)
+        .filter(|(_, e, _)| matches!(*e, 0 | 1 | 5 | 6))
         .map(|(_, _, r)| *r)
         .collect();
     for &(id, edge, rect, locked) in eases {

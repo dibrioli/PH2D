@@ -257,8 +257,11 @@ pub struct StripDrag {
     /// The strip's stable identity — NOT its index: the lane re-sorts as the strip
     /// crosses its neighbour, and an index-anchored drag would swap victims mid-air.
     pub id: ph2d_timeline::StripId,
-    /// `0` = start edge (trim), `1` = end edge (trim), `2` = body (slide),
-    /// `3` = fade-in grip, `4` = fade-out grip (B4).
+    /// Which gizmo the drag grabbed: `0` = trim-start (bottom-left, red), `1` =
+    /// trim-end (bottom-right, red), `2` = body (slide), `3` = fade-in, `4` = fade-out,
+    /// `5` = stretch-start (top-left, green), `6` = stretch-end (top-right, green).
+    /// Each strip operation is its own corner now (Enio, 2026-07-16) — trim and stretch
+    /// no longer share an edge behind a Cmd modifier.
     pub edge: u8,
     /// Pointer x (global px) when the drag began.
     pub start_x: f32,
@@ -272,10 +275,6 @@ pub struct StripDrag {
     /// re-reads the value it is writing accumulates its own rounding and drifts
     /// (`arch_no_absolute_drag_pattern`).
     pub start_ease: f64,
-    /// Cmd/Ctrl was held at Begin: the edge RETIMES instead of trimming (a rate
-    /// stretch). Latched at Begin and never re-read — a modifier released mid-drag
-    /// must not change what the gesture means halfway through.
-    pub stretch: bool,
 }
 
 /// An open marker rename. The field text lives in the `WidgetStore` (like every

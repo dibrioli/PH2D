@@ -40,51 +40,30 @@ fn rest_grips(id: u64, body: Rect, locked: (bool, bool)) -> Vec<(u64, u8, Rect, 
     grips(id, body, (0.0, 0.0), locked)
 }
 
-/// **B4: the fade grip is reachable, and it does not eat the trim grip.**
-///
-/// A strip ALONE on a lane could not fade at all before this — `ease_in`/`ease_out`
-/// existed, the evaluator honoured them, and nothing wrote them. The grip that writes
-/// them sits on the strip's top corner, one trim-grip-width in, so both are grabbable:
-/// the fade must not cost the artist the trim.
+/// **Each operation is its OWN corner** (Enio, 2026-07-16): the GREEN top corners STRETCH
+/// (codes 5/6), the RED bottom corners TRIM (codes 0/1). Top-half vs bottom-half of each
+/// edge, and the fade handle rests just inside them, full height, so all three are
+/// grabbable without a modifier.
 #[test]
-fn the_fade_grip_is_reachable_and_the_trim_grip_survives_it() {
-    let body = Rect::new(150.0, 60.0, 100.0, 20.0); // [150, 250)
+fn the_corners_split_stretch_top_from_trim_bottom_and_the_fade_grip_survives() {
+    let body = Rect::new(150.0, 60.0, 100.0, 20.0); // [150, 250), y [60, 80), mid 70
     let plan = hit_plan(&[(1, body)], &rest_grips(1, body, (false, false)), band());
 
+    // Left edge: TOP is stretch-start (green), BOTTOM is trim-start (red).
+    assert_eq!(hit(&plan, 152.0, 62.0), Some((1, 5)), "top-left STRETCHES");
+    assert_eq!(hit(&plan, 152.0, 77.0), Some((1, 0)), "bottom-left TRIMS");
+    // Right edge: TOP stretch-end, BOTTOM trim-end.
+    assert_eq!(hit(&plan, 248.0, 62.0), Some((1, 6)), "top-right STRETCHES");
+    assert_eq!(hit(&plan, 248.0, 77.0), Some((1, 1)), "bottom-right TRIMS");
+    // The fade handle rests just inside the start/end corners, and is grabbable over the
+    // WHOLE height (the smoke rule: a 7×7 tab on a 22 px strip could be seen, not grabbed).
+    assert_eq!(hit(&plan, 159.0, 62.0), Some((1, EASE_IN)), "fade-in, top");
+    assert_eq!(hit(&plan, 159.0, 77.0), Some((1, EASE_IN)), "…and bottom");
+    assert_eq!(hit(&plan, 240.0, 62.0), Some((1, EASE_OUT)), "fade-out");
     assert_eq!(
-        hit(&plan, 152.0, 62.0),
-        Some((1, 0)),
-        "the START corner is still the TRIM grip — the fade handle rests clear of it"
-    );
-    assert_eq!(
-        hit(&plan, 159.0, 62.0),
-        Some((1, EASE_IN)),
-        "…and just inside it, at the top, is the FADE-IN grip"
-    );
-    assert_eq!(
-        hit(&plan, 248.0, 62.0),
-        Some((1, 1)),
-        "mirror at the end: the TRIM grip"
-    );
-    assert_eq!(
-        hit(&plan, 240.0, 62.0),
-        Some((1, EASE_OUT)),
-        "…and the FADE-OUT grip inside it"
-    );
-    assert_eq!(
-        hit(&plan, 200.0, 62.0),
+        hit(&plan, 200.0, 70.0),
         Some((1, 2)),
-        "entre as duas alças, o strip é CORPO: elas são bordas nas quinas, não uma barra \
-         atravessando o clipe"
-    );
-    // A alça vai de cima a baixo, como a borda de aparar — foi o que o smoke exigiu: um alvo de
-    // 7×7 no topo de um clipe de 22 px de altura passava neste gate e NÃO se conseguia agarrar
-    // (o ponteiro caía no corpo e arrastava o clipe). A altura é gateada na pintura real, em
-    // `tests/strip_ease_grip_seam.rs::the_fade_grip_is_as_grabbable_as_the_trim_grip`.
-    assert_eq!(
-        hit(&plan, 159.0, 76.0),
-        Some((1, EASE_IN)),
-        "…e ela é agarrável em TODA a altura do clipe, não só numa faixa no topo"
+        "between the handles the strip is BODY"
     );
 }
 
@@ -117,11 +96,11 @@ fn a_fade_defined_by_a_neighbour_is_painted_but_not_grabbable() {
     );
 }
 
-/// A strip too narrow to hold both trim grips AND both fade grips offers **no fade
-/// grip** — rather than one that lands on top of a trim grip and steals it. A strip you
-/// cannot fade at this zoom is honest; a strip you can no longer TRIM is a bug.
+/// A strip too narrow to hold both corners AND both fade grips offers **no fade grip** —
+/// rather than one that lands on a corner and steals it. A strip you cannot fade at this
+/// zoom is honest; a strip you can no longer TRIM or STRETCH is a bug.
 #[test]
-fn a_strip_too_narrow_for_both_grips_keeps_the_trim_and_drops_the_fade() {
+fn a_strip_too_narrow_for_the_fade_keeps_its_corners() {
     let tiny = Rect::new(150.0, 60.0, 20.0, 20.0); // < 2 * (EASE_REST_X + EASE_W)
     assert!(ease_grips(tiny, 0.0, 0.0).is_none());
     let plan = hit_plan(&[(1, tiny)], &rest_grips(1, tiny, (false, false)), band());
@@ -129,12 +108,11 @@ fn a_strip_too_narrow_for_both_grips_keeps_the_trim_and_drops_the_fade() {
         !plan.iter().any(|(_, e, _)| *e == EASE_IN || *e == EASE_OUT),
         "no fade grips on a strip this small"
     );
-    assert_eq!(hit(&plan, 151.0, 62.0), Some((1, 0)), "the trim grip lives");
-    assert_eq!(
-        hit(&plan, 169.0, 62.0),
-        Some((1, 1)),
-        "…and so does the other"
-    );
+    // Both corners of both edges live: stretch on top (5/6), trim on the bottom (0/1).
+    assert_eq!(hit(&plan, 151.0, 62.0), Some((1, 5)), "top-left stretches");
+    assert_eq!(hit(&plan, 151.0, 77.0), Some((1, 0)), "bottom-left trims");
+    assert_eq!(hit(&plan, 168.0, 62.0), Some((1, 6)), "top-right stretches");
+    assert_eq!(hit(&plan, 168.0, 77.0), Some((1, 1)), "bottom-right trims");
 }
 
 /// **The crossfade's own grip must be reachable.** Two overlapping strips ARE a
@@ -237,14 +215,14 @@ fn the_two_fade_grips_never_land_on_the_same_pixel_or_swap_sides() {
     }
 }
 
-/// **Uma alça de fade não pode roubar o grip de trim do VIZINHO.**
+/// **Uma alça de fade não pode roubar o grip de canto do VIZINHO.**
 ///
 /// Strips se sobrepõem — é isso que é o crossfade. Então a alça de um pode cair em cima do grip
-/// de aparar do outro e, registrada depois de todo trim, ganhar o clique: o artista puxaria a
+/// de canto do outro e, registrada depois de todo canto, ganhar o clique: o artista puxaria a
 /// borda de B e autoraria uma fade em A. O `ease_grips` só protege as bordas do PRÓPRIO strip;
 /// a recusa do vizinho mora aqui, no `hit_plan`, que é quem vê os dois.
 #[test]
-fn a_fade_grip_never_steals_a_neighbours_trim_grip() {
+fn a_fade_grip_never_steals_a_neighbours_corner_grip() {
     // A começa antes; B entra por cima (o overlap É o crossfade).
     let a = Rect::new(150.0, 60.0, 120.0, 20.0); // [150, 270)
     let b = Rect::new(156.0, 60.0, 120.0, 20.0); // [156, 276) — a borda de B cai DENTRO de A
@@ -252,14 +230,99 @@ fn a_fade_grip_never_steals_a_neighbours_trim_grip() {
     eases.extend(rest_grips(2, b, (false, false)));
     let plan = hit_plan(&[(1, a), (2, b)], &eases, band());
 
-    // O grip de trim inicial de B ocupa [156, 162). Nada de A pode estar por cima dele.
+    // Os cantos iniciais de B ocupam [156, 162). Nada de A (nem sua alça de fade) pode
+    // roubá-los: STRETCH no topo, TRIM embaixo.
     for x in [157.0_f32, 159.0, 161.0] {
         assert_eq!(
             hit(&plan, x, 62.0),
+            Some((2, 5)),
+            "x={x}: o canto de cima de B continua sendo STRETCH de B"
+        );
+        assert_eq!(
+            hit(&plan, x, 77.0),
             Some((2, 0)),
-            "x={x}: a borda de B tem de continuar sendo a borda de B"
+            "x={x}: e o de baixo, TRIM de B"
         );
     }
+}
+
+/// **The trim preview marks the REMOVED span, and only while cutting.** A trim drag that
+/// shortens a strip red-hatches the frames it drops (from the edge at drag-start to where
+/// it is now); a trim that REVEALS more clip, or any non-trim gesture, hatches nothing.
+#[test]
+#[allow(clippy::field_reassign_with_default)] // the drag is re-set per case; struct-update hides it
+fn the_trim_preview_marks_only_the_removed_span_and_only_when_cutting() {
+    use crate::state::{StripDrag, TimelinePanelState};
+    use ph2d_timeline::{StripId, StripLoop, StripView};
+    let view = TimeView {
+        time_x: 100.0,
+        right: 500.0,
+        view_start: 0.0,
+        px_per_s: 100.0,
+    };
+    let sv = |t_start: f64, t_end: f64| StripView {
+        id: StripId(7),
+        clip_name: "X".into(),
+        t_start,
+        t_end,
+        blend_in: 0.0,
+        blend_out: 0.0,
+        lead_in: 0.0,
+        ease_locked_in: false,
+        ease_locked_out: false,
+        loop_mode: StripLoop::Once,
+        speed: 1.0,
+    };
+    let drag = |edge: u8| {
+        Some(StripDrag {
+            lane: 0,
+            id: StripId(7),
+            edge,
+            start_x: 0.0,
+            start_span: (1.0, 3.0), // the edges at drag-start
+            start_ease: 0.0,
+        })
+    };
+    let body = Rect::new(view.x(1.5), 60.0, 100.0, 20.0);
+    let mut st = TimelinePanelState::default();
+
+    // Trim-start dragged INWARD (now 1.5 > original 1.0): the cut is the removed [1.0, 1.5].
+    st.strip_drag = drag(0);
+    let cutting = sv(1.5, 3.0);
+    let cut = trim_cut_region(&st, 0, &[(&cutting, body)], view).expect("a cut");
+    assert!(
+        (cut.x - view.x(1.0)).abs() < 1e-4 && (cut.x + cut.w - view.x(1.5)).abs() < 1e-4,
+        "the hatch spans exactly the removed [1.0, 1.5]: {cut:?}"
+    );
+    assert!(
+        (cut.y - body.y).abs() < 1e-4 && (cut.h - body.h).abs() < 1e-4,
+        "…at the strip's own height"
+    );
+
+    // Trim-start dragged OUTWARD (now 0.5 < original 1.0) reveals clip — no cut.
+    let revealing = sv(0.5, 3.0);
+    assert!(
+        trim_cut_region(&st, 0, &[(&revealing, body)], view).is_none(),
+        "revealing more clip removes nothing"
+    );
+
+    // A BODY slide (edge 2) is not a trim — even one that slides the strip LEFT, so its
+    // new end sits before the original: nothing is CUT, the whole clip just moved. (This
+    // is the case that makes the edge filter load-bearing: a moved strip's `else` branch
+    // would otherwise hatch a phantom cut.)
+    st.strip_drag = drag(2);
+    let slid = sv(0.5, 2.5);
+    assert!(
+        trim_cut_region(&st, 0, &[(&slid, body)], view).is_none(),
+        "a body slide is not a cut, even sliding left"
+    );
+
+    // And a fade drag (edge 3) is not a trim either.
+    st.strip_drag = drag(3);
+    assert!(
+        trim_cut_region(&st, 0, &[(&cutting, body)], view).is_none(),
+        "only a trim drag previews a cut"
+    );
 }
 
 /// `blend_px` mede a cunha que o painel desenha — é o que ancora a alça na PONTA dela. Sem isto,

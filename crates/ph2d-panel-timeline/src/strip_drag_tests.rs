@@ -128,50 +128,26 @@ fn dragging_an_edge_trims_and_never_moves() {
     }
 }
 
-/// The SAME edge drag, with Cmd held, is a stretch and not a trim — and the
-/// modifier is latched at Begin: releasing it mid-drag must not turn a retime into
-/// a trim halfway through the gesture (the strip would be half one edit, half the
-/// other, and a single Ctrl+Z would undo an edit nobody made).
+/// **The GREEN top corner STRETCHES, not trims** (Enio, 2026-07-16). Trim and stretch used
+/// to share an edge behind a Cmd modifier; now each is its own corner — grip code `6` is
+/// stretch-end (top-right), and it retimes rather than cutting. No modifier to latch, no
+/// modifier to release mid-drag.
 #[test]
-fn cmd_turns_an_edge_drag_into_a_stretch_and_the_modifier_latches() {
-    let _ = state::drain_intents();
-    let mut st = TimelinePanelState::default();
-    let s = snap();
-    let cmd = GestureMods {
-        cmd: true,
-        ..GestureMods::default()
-    };
-    apply(
-        &mut st,
-        100.0,
-        &s,
-        0,
-        7,
-        1,
-        with_mods(1, GesturePhase::Begin, 100.0, cmd),
-    );
-    // The modifier is RELEASED for the rest of the drag — and the gesture holds.
-    apply(
-        &mut st,
-        100.0,
-        &s,
-        0,
-        7,
-        1,
-        gesture(1, GesturePhase::End, 200.0),
-    );
-    let out = state::drain_intents();
+fn the_green_top_corner_stretches_and_never_trims() {
+    // Code 6 = stretch-end. The strip runs [1, 3); dragging the pointer 100 px right at
+    // 100 px/s stretches the end to 4 s (StretchStrip edge 1).
+    let out = drag(6, 200.0);
     assert!(
         out.iter().any(|i| matches!(
             i,
             TimelineIntent::StretchStrip { edge: 1, t, .. } if (t - 4.0).abs() < 1e-9
         )),
-        "Cmd + end edge must stretch to 4 s: {out:?}"
+        "the green end corner stretches to 4 s: {out:?}"
     );
     assert!(
         !out.iter()
             .any(|i| matches!(i, TimelineIntent::TrimStrip { .. })),
-        "and it is NOT a trim: a released modifier cannot change what the drag means"
+        "and it is NOT a trim: stretch and trim are different corners now"
     );
 }
 

@@ -182,13 +182,23 @@ impl VecPath {
     /// que o mundo CONSOME é isto. Quem edita (caneta, seleção, os overlays de âncora)
     /// continua vendo a fonte — senão o usuário veria dois vértices onde autorou um.
     ///
-    /// **Sem raio nenhum, devolve a própria fonte emprestada** (`Cow::Borrowed`): custo
-    /// zero, byte-idêntico, nem uma alocação. Como todo path nasce sem raio, um
-    /// documento que nunca usou a feature passa por aqui sem sentir.
+    /// **Sem raio nenhum e sem efeito ativo, devolve a própria fonte emprestada**
+    /// (`Cow::Borrowed`): custo zero, byte-idêntico, nem uma alocação. Como todo path nasce
+    /// sem raio e com a pilha vazia, um documento que nunca usou nenhuma das duas features
+    /// passa por aqui sem sentir.
+    ///
+    /// A quina é o **estágio zero** e a pilha de efeitos ([`crate::effect`], ADR-0132) corre
+    /// depois dela — nessa ordem, sempre: o raio é estado do vértice AUTORADO, e todo efeito
+    /// a jusante resampleia.
     #[must_use]
     pub fn cooked(&self) -> std::borrow::Cow<'_, VecPath> {
-        if !self.verts_all().any(|v| v.corner_radius > EPS) {
-            return std::borrow::Cow::Borrowed(self);
+        let rounds = self.verts_all().any(|v| v.corner_radius > EPS);
+        if !rounds {
+            // Sem quina a arredondar: a pilha (se houver) come a fonte diretamente.
+            return match crate::effect::run_stack(self, &self.effects) {
+                Some(p) => std::borrow::Cow::Owned(p),
+                None => std::borrow::Cow::Borrowed(self),
+            };
         }
         let mut out = self.clone();
         if let Some(v) = round_authored_corners(&self.verts, self.closed) {
@@ -198,6 +208,9 @@ impl VecPath {
             if let Some(v) = round_authored_corners(&s.verts, s.closed) {
                 out.subpaths[i].verts = v;
             }
+        }
+        if let Some(p) = crate::effect::run_stack(&out, &self.effects) {
+            out = p;
         }
         std::borrow::Cow::Owned(out)
     }
@@ -385,7 +398,7 @@ fn fillet_handles(
 }
 
 /// A cúbica do segmento `i` (do vértice `i` ao `i + 1`, dando a volta no fechado).
-fn segment(verts: &[VecVertex], i: usize, n: usize) -> Cubic {
+pub(crate) fn segment(verts: &[VecVertex], i: usize, n: usize) -> Cubic {
     let a = &verts[i];
     let b = &verts[(i + 1) % n];
     [a.anchor, a.out_handle, b.in_handle, b.anchor]

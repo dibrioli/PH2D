@@ -83,7 +83,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// component (blob novo nas linhas do `WorldSnapshot`) **e**
 /// `PhysicsSettings.layer_matrix` apendado. Duas quebras de layout no mesmo
 /// bump, nenhuma visível a um gate de constante.
-const PROJECT_SCHEMA: u32 = 21;
+const PROJECT_SCHEMA: u32 = 22;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

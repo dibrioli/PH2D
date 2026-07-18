@@ -67,6 +67,21 @@ pub mod corners;
 /// (`VecPath::cooked`) é derivada dela. Módulo irmão de `corners` (LOC cap).
 pub mod corner_live;
 
+/// **Comprimento de arco de uma cúbica, e o inverso dele** — o motor que a pilha de efeitos
+/// (ADR-0132) precisa e que esta crate não tinha. Mora aqui, e não no `kurbo`, porque o
+/// `cooked()` é avaliado DENTRO desta crate (`inside`, `boundary`, `path_ops`, `space`) e o
+/// modelo de documento é sem-kurbo por decisão declarada no `Cargo.toml`.
+pub mod arclen;
+
+/// **A pilha de Live Path Effects** (ADR-0132): efeitos não-destrutivos e empilháveis,
+/// avaliados pelo `cooked()` logo depois do estágio da quina.
+pub mod effect;
+
+/// **Trim Path** — o primeiro efeito da pilha (o *draw-on*). Módulo irmão de `effect`, e a
+/// matemática dele não conhece a pilha: é isso que mantém aberto o caminho de embrulhá-la
+/// num nó um dia (ADR-0132 §4).
+pub mod fx_trim;
+
 /// **Suavização de quina** (o *squircle*): o arco de círculo vira `asa + arco curto + asa`,
 /// e a curvatura sobe em rampa a partir do lado reto em vez de saltar. Motor de
 /// `corners::round_closed_corners_smooth` — módulo irmão de `corners` (LOC cap).
@@ -465,6 +480,12 @@ pub struct VecPath {
     /// Regra de preenchimento entre os contornos. Irrelevante (as duas coincidem)
     /// quando `subpaths` está vazio.
     pub fill_rule: FillRule,
+    /// **A pilha de Live Path Effects** (ADR-0132), na ordem em que se aplicam. Vazia no
+    /// caminho comum — e vazia é o caso rápido: `cooked()` devolve `Cow::Borrowed`.
+    ///
+    /// ⚠️ **No FIM da struct de propósito**: o postcard é posicional, então um campo no meio
+    /// faria todo save anterior ser relido com os campos trocados.
+    pub effects: Vec<effect::PathEffect>,
 }
 
 /// Versão do wire-format de save (postcard é posicional → bump a cada mudança de
@@ -472,9 +493,10 @@ pub struct VecPath {
 /// [`StrokeSpec`] (cap/join/dash). v4: `fill` virou [`Paint`] (sólido + gradientes
 /// Linear/Radial/MultiPoint). v5: [`GradientPoint`] ganhou `jitter`. v6: `VecPath`
 /// ganhou `subpaths` + `fill_rule` (compound paths). v8: [`VecVertex`] ganhou
-/// `corner_radius` (Live Corners — [`crate::corner_live`]). (Migração robusta =
-/// cutover, Fase R.)
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 8;
+/// `corner_radius` (Live Corners — [`crate::corner_live`]). v9: [`VecPath`] ganhou
+/// `effects`, a pilha de Live Path Effects ([`crate::effect`], ADR-0132). (Migração
+/// robusta = cutover, Fase R.)
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 9;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

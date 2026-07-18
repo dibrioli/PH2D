@@ -376,11 +376,19 @@ fn project_file_round_trips_through_postcard() {
 /// `WorldSnapshot`; nem o FlipDoc nem a VecScene mudaram, mas o layout do arquivo sim) ·
 /// **v17** os campos `restitution`/`friction` APENDADOS ao `Collider` (ADR-0131 W2, a autoria
 /// no Inspector). Nenhuma constante de esquema mudou, então **nenhum gate podia ver isto** —
-/// postcard é posicional, e um save v16 lido como v17 devolveria lixo bem-formado. ·
-/// **v19** as settings de MUNDO da física (ADR-0131 W2b: 6º campo do `ProjectFile`) ·
-/// **v20** o `air_drag` APENDADO ao `PhysicsSettings` (o smoke do W2b mostrou que o
-/// damping uniforme não é ar; o modelo de arrasto real é campo novo).
-/// (O v18 é do Flip, e é o caso do PONTO CEGO abaixo.)
+/// postcard é posicional, e um save v16 lido como v17 devolveria lixo bem-formado. · **v18** a
+/// UNIDADE do `Point.width` do Flip (§4.C.6, `cb42c9a2`) — o caso que o PONTO CEGO abaixo
+/// narra, e que ninguém tinha acrescentado a esta lista · **v19** as settings de MUNDO da
+/// física (ADR-0131 W2b: 6º campo do `ProjectFile`) · **v20** o `air_drag` APENDADO ao
+/// `PhysicsSettings` (o smoke do W2b mostrou que o damping uniforme não é ar; o modelo de
+/// arrasto real é campo novo) · **v21** a camada + a matriz de colisão (ADR-0131 W2c) ·
+/// **v22** a PILHA de Live Path Effects (ADR-0132: `VecPath.effects`,
+/// `VEC_SCENE_SCHEMA_VERSION` 8→9).
+///
+/// ⚠️ A entrada do Vector nasceu como **v19** na linha dela e foi **renumerada para v22 na
+/// integração de 2026-07-19**: a `line/physics` bumpou três vezes na MESMA jornada, e o
+/// contador se **CONTA** — 18 (base) + 3 (física) + 1 (esta) = 22. Escolher o 19 faria os
+/// saves da física passarem na checagem de versão e serem lidos com o layout errado.
 ///
 /// Na integração de 2026-07-13, QUATRO linhas bumparam este contador ao mesmo tempo, cada uma
 /// a partir do 7, cada uma por um motivo diferente. **O valor certo não existia em nenhum lado
@@ -407,7 +415,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (21, 8, 8),
+        (22, 8, 9),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

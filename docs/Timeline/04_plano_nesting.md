@@ -53,6 +53,64 @@ de perf nasce na Fatia 2, contra o número que esta fatia produzir.
 
 ---
 
+### ✅ FATIA 0 FECHADA (2026-07-18) — **(B) confirmada**
+
+Harness: [`crates/ph2d-ecs/tests/nesting_sorts_as_a_block.rs`](../../crates/ph2d-ecs/tests/nesting_sorts_as_a_block.rs).
+
+**Pergunta 1 — o z: já estava respondida, e não por nós.** É o **`SortingGroup`** (o *Sorting
+Group* do Unity, `ph2d-ecs/src/sorting.rs`): *"a sub-árvore inteira ordena como UMA unidade, na
+posição da raiz do grupo"*, com `sort_at_root` num descendente como escape hatch.
+
+**A dor do Spine não é a nossa, e a diferença é de semântica, não de sorte:** o Spine precisava
+**intercalar** draw order entre skeletons e não conseguia; um container **não deve** intercalar —
+ordenar como bloco é o que "conter" significa. O que lá é limitação, aqui é a definição.
+
+Virou **gate**, não opinião — "ordena como um bloco" = os sprites de uma instância ocupam uma faixa
+**contígua** na ordem total:
+
+| Gate | O que pina |
+|---|---|
+| `a_container_instance_sorts_as_one_block` | 4 instâncias com Y sobreposto → 4 blocos contíguos |
+| `without_the_group_the_same_scene_interleaves` | **controle positivo**: a MESMA cena sem `SortingGroup` intercala — sem ele, "contíguo" poderia ser verde por o fixture não conter o fenômeno |
+| `nested_containers_stay_inside_the_outer_block` | profundidade 1/2/3: container dentro de container não vaza |
+
+Mutação (`SortingGroup` nunca inserido): os 2 gates de bloco sangram; o controle segue verde,
+como deve.
+
+**Pergunta 2 — o custo** (release, propagate → sort reais, 32 sprites por instância):
+
+```text
+   inst  depth  sprites   us/frame   us/sprite
+      1      1       32        2.8      0.0868
+      4      1      128       11.2      0.0871
+     16      1      512       43.4      0.0848
+      1      2       32        3.2      0.0997
+      4      2      128       12.7      0.0993
+     16      2      512       50.8      0.0993
+      1      3       32        3.6      0.1128
+      4      3      128       15.1      0.1178
+     16      3      512       59.7      0.1166
+```
+
+- **O custo por sprite é PLANO no número de instâncias** (0,0868 → 0,0848 de 1 para 16). 16×
+  instâncias = 16× o custo, exatamente linear. **Instanciar não tem penalidade de forma.**
+- **Profundidade custa uma constante pequena por nível** (+~15%/nível: 0,087 → 0,099 → 0,117),
+  porque o propagate anda um nível a mais por sprite. Linear em profundidade, não exponencial.
+- 16 instâncias × profundidade 3 = **59,7 µs = 0,36% de um frame de 60 Hz**.
+
+⚠️ **E a armadilha (a) da pesquisa — o raster intermediário por nível — simplesmente NÃO EXISTE
+aqui.** Ela é do modelo de precomp do AE (*"Comp 2 receives only the composited frame… and has no
+history of the layers in the first comp"*); o nosso pipeline achata a árvore inteira numa **única**
+lista ordenada de instâncias. Somos o modelo *graphic symbol* do Animate, que desenha no pai. Por
+isso "compor N containers" **não é uma classe de custo nova** — é a mesma lista de sprites, mais
+longa, e o renderer dela já foi medido em 100k @ 60 Hz
+([memória](../../project-memory/project_m5_perf_validated.md)).
+
+**Decisão: (B) — container instanciável N vezes.** O único argumento contra era custo/draw-order, e
+os dois caíram por medição. As Fatias 1-3 seguem como escritas.
+
+---
+
 ## §3 — Fatia 1 — dados + ciclo (`ph2d-timeline`, headless)
 
 1. `ClipStrip.clip: u16` → `ClipStrip.source: StripSource{Clip(u16), Container(u16)}`.

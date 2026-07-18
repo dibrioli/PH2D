@@ -29,6 +29,26 @@ construído.
 (bit-idêntico ao serial, replay-hash intacto) → count 180 de ~20ms → 3ms em debug. É um aperitivo da Fase 0;
 não muda o `O(count²)` nem toca o contrato.
 
+## 1.5 — O ALVO: extraordinário, medido (CLAUDE.md §0.0)
+
+Este plano não busca "mais rápido que a CPU". Busca **o que a máquina faz**, e o
+número é escrito depois de medido. Estado em 2026-07-17 (RTX, sim de partículas
+`emitter → wind → drag → integrate`, ms por tick):
+
+| janela | GPU | CPU |
+|---:|---:|---:|
+| 262.144 | 0,277 | 13,060 |
+| 1.048.576 | 0,984 | 52,608 |
+| **4.194.304** | **3,636** | 227,800 |
+
+⚠️ **A CPU é a REFERÊNCIA, não a régua.** Ela define a resposta que os gates de
+paridade cobram da GPU, e pode demorar o que um teste aguentar. Quando um teto
+desta engine for escrito, ele diz **de que recurso é** (memória, banda, precisão)
+e traz a medição — nunca "a CPU ficaria lenta". Custou uma correção do Enio
+descobrir isso: o emitter esteve capado em 16.384 partículas por esse exato
+raciocínio, com 4,19 M medidos ao lado. Detalhe:
+[[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]].
+
 ## 2. O norte (target architecture)
 
 Um **pipeline GPU-resident**: as colunas do `Stream` (`P`/`vel`/`tint`/`size`/…) vivem em **buffers de GPU**;

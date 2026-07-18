@@ -1,5 +1,7 @@
 # HANDOFF (briefing de continuação) — `line/gpu-nodes` · ADR-0130 · o emitter na GPU (o gather por `id`)
 
+> ⚠️ **O ALVO DESTA LINHA É O EXTRAORDINÁRIO** (CLAUDE.md §0.0, [[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]]). Medido na RTX: **4,19 M partículas simulam em 3,6 ms**. Se você for escrever um limite — cap, teto, faixa de slider — **meça primeiro** e escreva o número que a medição deu. Nunca deixe a CPU (o caminho de REFERÊNCIA) definir o teto do dispositivo.
+>
 > **Você é o agente que continua esta linha em contexto fresco.** O ADR já está escrito e **TODAS as
 > fatias (1-5) LANDARAM** (fatias 3+4 em `76ae0d52`, fatia 5 em `49829843`, 2026-07-17) e estão gateadas
 > (parity na RTX + policy headless) — ver §1.LANDOU, §3.LANDOU e §4.LANDOU. **Pendente de smoke do Enio**
@@ -11,7 +13,7 @@
 
 1. **Trabalhe SÓ em `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes`. SEMPRE prefixe todo comando com `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes &&`.** A cwd escorrega pro repo primário (aconteceu 4× em jornadas anteriores — um `git` no primário deixa o shell lá). Se um `git log` mostrar `main`/`cdc3acc1`, você escorregou.
 2. **NÃO integre, NÃO pushe, NÃO rode `ship.sh`.** Feche o trabalho, atualize este handoff, e PARE. Integração/ship só por ordem EXPLÍCITA do Enio, via agente integrador dedicado (§0.7 do CLAUDE.md). Esta linha já foi integrada uma vez e re-preparada; ela **acumula** por cima do `main` integrado (fork em `cdc3acc1`).
-3. **Contrato congelado 8/2/1 intocado** (`NodeManifest`/`NodeOp`/`OpResolver`, [ADR-0126](architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md)). Tudo que você mexe é **metadado lateral**: `GpuKernel`, `SourceCountFn`, `KernelResolver`, o `output_shape` do plano, os kernels. Se sentir vontade de bumpar o `NodeManifest`: PARE — a resposta é sempre o canal lateral.
+3. **Contrato congelado 8/2/1 intocado** (`NodeManifest`/`NodeOp`/`OpResolver`, [ADR-0126](architecture/decisions/0126-gpu-node-kernels-are-side-metadata-contract-stays-frozen.md)). Tudo que você mexe é **metadado lateral**: `GpuKernel`, `SourceWindowFn`, `KernelResolver`, o `output_shape` do plano, os kernels. Se sentir vontade de bumpar o `NodeManifest`: PARE — a resposta é sempre o canal lateral.
 4. **O gate É o audit.** Verde-de-compilação vale ZERO. Todo kernel novo tem paridade ε contra a CPU (canônica, ADR-0126) + mutação (mate o código, exija vermelho, restaure com `cp` NUNCA `git checkout`). `git commit --no-verify`; crase em msg de commit = execução → use `git commit -F <arquivo>`; um pipe mascara o exit code; `docs/**/*.md` é excluído do typos (rode `typos` sem argumento).
 5. **Inner loop = `cargo check -p <crate>`.** Gates 1× no fechamento. Meça em `--release` na RTX (os gates de GPU são `#[ignore]` — precisam de `-- --ignored`).
 6. **LOC cap: SPLIT, nunca allowlist.** O de workspace (`crates/*/src`, 700) NÃO roda com `cargo test -p` (mora na `ph2d-editor-core`); o do shell (600) roda. Cheque os dois no fechamento.
@@ -26,6 +28,7 @@ Fork de `main` em `cdc3acc1`. Commits desta fatia (do ADR pra cima):
 |---|---|---|
 | `ff1cc9d1` | **ADR-0130** — o desenho (leia inteiro) | — |
 | `33b0a8c8` | **Fatia 1:** `SourceCountFn` cresce o playhead (mecânico) | zero mudança de comportamento |
+| *(§4.EXTRAORDINÁRIO)* | **`SourceCountFn` → `SourceWindowFn`**, lei de contagem única em `f64`, id com wrap, `MAX_ALIVE` 16.384 → **4.194.304** | paridade além de 1,72e7 spawns + mutação RED |
 | `d29366fc` | **Kernel do `motion.emitter`** — a lei da contagem | `the_emitter_generator_matches_the_cpu`: janela `[15,81,121,121]` + cap 256; 2 mutações |
 | `90e70302` | **Fatia 2:** `dense_window`, a propriedade provável de plano | 5 gates de plano puros; mutação mata 3, deixa o positivo verde |
 | `76ae0d52` | **Fatia 3+4:** o gather aritmético + os gates (§3.LANDOU) | 3 gates de sim de emitter na RTX + 2 de plano; 4 mutações RED |
@@ -226,6 +229,41 @@ A GPU é **plana** (64× as partículas = 3,35× o custo; 262k = **1,7%** de um 
 
 **`DEMO=5` agora roda 4000/s × 3 s = 12.000 vivas.** Os números velhos pediam 3.000 mas estavam de fato limitados em **4.200** por `rate × life`, sob o teto antigo — a fonte não conseguia ser uma fonte. ~0,1 ms/tick na GPU.
 
+### §4.EXTRAORDINÁRIO — a identidade exata, e o teto que virou do hardware (`b4b7…`, 2026-07-17)
+
+**A cobrança do Enio:** *"não estamos levando o motion nodes para o GPU para alcançarmos resultados extraordinários?"* — e estava certo. Medido (RTX, `emitter_sim_ceiling_probe`):
+
+| janela | GPU ms/tick | CPU ms/tick |
+|---:|---:|---:|
+| 262.144 | 0,277 | 13,060 |
+| 1.048.576 | 0,984 | 52,608 |
+| **4.194.304** | **3,636** | 227,800 |
+
+**4,19 M partículas em 3,6 ms** (22% de um frame de 60 fps) — e o teto estava em **16.384**, porque a **CPU** seria lenta. Duas vezes seguidas (4096, depois 16.384) o teto foi um número que outra preocupação escolheu, nunca o dispositivo. Lição durável: [[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]] + **CLAUDE.md §0.0**.
+
+**O bloqueio real era UM, e estava arquivado como nota de rodapé:** ids são `f32`, então índice de spawn acima de 2²⁴ **colide** com o vizinho, e os DOIS pareamentos entregam o mesmo estado a duas partículas (o `BTreeMap<id,row>` da CPU guarda uma; o `id − prev_first` da GPU lê a mesma linha duas vezes). Em silêncio. O §5.4 deste handoff dizia *"≈4,8 dias a rate 40 — fora de escopo"*: verdade a rate 200 (23 h), **4 segundos** a 4e6.
+
+**O conserto deixou o motor MAIS simples:**
+
+| antes | depois |
+|---|---|
+| `SourceCountFn -> usize` | **`SourceWindowFn -> SourceWindow {count, first, age_first}`** — um gerador dependente de playhead emite uma JANELA, não uma contagem |
+| `emit` e `source_window` calculavam a lei de contagem **separadamente em f32** | **UMA** `window()`, em `f64` — as duas portas viraram uma |
+| o kernel re-derivava `floor(t·rate)` em f32 | o kernel é **INFORMADO** da janela; a paridade deixou de valer "porque os dois leem o mesmo f32" e passa a valer porque **há um número e ele é INTEIRO** |
+| id absoluto (estoura 2²⁴) | id com **wrap em `ID_WRAP`** — todo consumidor lê identidade como DIFERENÇA dentro de uma janela, e a janela é ordens de grandeza menor que o período. Abaixo de 2²⁴ é a identidade ⇒ **byte-idêntico** pra toda cena que funciona hoje |
+| `age = t − id/rate` (cancelamento catastrófico) | `age_first − offset`, e a CPU roda os **mesmos dois passos** do kernel |
+| `MAX_ALIVE = 16.384` (frame time da CPU) | **4.194.304**, um orçamento de **MEMÓRIA** (~370 MB de residência GPU) |
+
+⚠️ **O teto continua COMPARTILHADO** entre os caminhos: a paridade do ADR-0130 vale por construção a partir de uma lei só. CPU lenta demais pra TOCAR 4M é fato de performance — referência só precisa computar a mesma resposta.
+
+**Gates:** `identity_is_exact_at_any_rate_because_it_wraps` (escrito RED como o próprio oposto — *"past 2²⁴ o espaço de ids tem de aparecer COLAPSANDO"* — e falhou com essa exata mensagem quando o fix pousou; hoje afirma distinção a rate 4e6 uma HORA adentro, 1,4e10 spawns, ~858 wraps) · **`the_emitter_sim_is_exact_past_the_old_id_cliff`** (sim real marchada por 1,72e7 spawns, CPU vs GPU elemento a elemento; **mutação**: devolver `floor(t·rate)` ao kernel → RED, `cpu 0.3278 vs gpu 0.3362`).
+
+⚠️ **O fixture desse gate levou TRÊS tentativas e cada falha foi a pré-condição trabalhando:** a rate 4e6 uma janela de 4096 é **1 ms** de história (nada se moveu ⇒ comparar dois campos de zeros) **e** ela vira **48× por tick** (nada SOBREVIVE a um tick ⇒ o gather nunca é exercitado). Sobreviventes exigem `life > FIXED_DT`, o que capa a rate, o que força marcha longa — daí guardar só o frame FINAL (2100 × 16.384 instâncias seriam gigabytes).
+
+**O gate de teto duro MUDOU DE LUGAR** (do seam de paridade pra suíte do emitter): com uma lei de contagem só, *"os dois caminhos concordam no n"* deixou de ser afirmação que duas implementações podem falsificar e virou **propriedade de haver uma**. Gateie onde ainda pode ser contradito.
+
+**LOC:** testes do emitter → `lib_tests.rs` (711→423); helpers de identidade do gpu-cook → `gather.rs` (701→649).
+
 ---
 
 ## §5 — Gotchas que a wave adversarial expôs (não re-descubra)
@@ -233,7 +271,7 @@ A GPU é **plana** (64× as partículas = 3,35× o custo; 262k = **1,7%** de um 
 1. **A densidade é do emitter NU, não do stream.** `sort`/`cull`/`combine`/`clone`/`mirror`/`trail` quebram (underflow u32 → velocidade zerada em SILÊNCIO). A fatia 2 (`dense_window`) é o guarda — a recusa condicional (3a) DEPENDE dela. Nunca reivindique o gather sem `output_dense_window == Some(true)`.
 2. **`age` é re-derivado, nunca acumulado** (`emit` carimba `age = t − id/rate` fresco; integrate copia as não-sim ao vivo do `rest`). NÃO faça o gather carregar `age` do estado — double-conta. ⚠️ O **`sim.step`** (o OUTRO integrador) acumula `age`; os dois não se misturam num stream.
 3. **Paridade do playhead:** `params.playhead` no kernel é `clock.playhead as f32` (`lib.rs:456`), o mesmo f32 que a CPU `emit` lê (`ctx.playhead() as f32`). O `source_count` trunca igual. Mantenha isso — é o que faz `newest`/`n`/`first` casarem.
-4. **`id` é `f32`, teto 2²⁴** (~16,7M ids ≈ 4,8 dias a rate 40). Compartilhado com a CPU (o BTreeMap keya no mesmo f32) — não é divergência, é teto comum. Fora de escopo.
+4. ~~**`id` é `f32`, teto 2²⁴** … Fora de escopo.~~ **RESOLVIDO e a nota estava ERRADA** (§4.EXTRAORDINÁRIO): o *"fora de escopo"* valia só enquanto o slider de rate parava em 200. Hoje a identidade **tem wrap em `ID_WRAP`** e é exata em qualquer rate. **Quem move o número que tornava algo inalcançável tem de reconferir a nota.**
 5. **`bitcast<u32>(i32)` == Rust `as u32`; `u32(x)` é cast de VALOR e diverge em negativos.** Use `bitcast` na fronteira de id se precisar.
 
 ## §6 — Convergência com a linha da timeline (sem colisão — medido)
@@ -252,7 +290,7 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-gpu-nodes && PH2D_GPU_COOK
 
 - **O gather** (fatias 3-4): a fonte lança até 3.000 partículas que arcam e caem, cada uma com sua velocidade de bico (por-id, cone de `spread`) — **os arcos são limpos**; uma janela deslizante mispareada faria a fonte "ferver" (cada sobrevivente herdando a velocidade de um estranho). Antes da fatia 3, `emitter → integrate` caía na CPU; agora cozinha 100% na GPU (`emitter → integrate` reivindicado pela janela densa). *(As cenas `=3`/`=4` são GRID = pareamento posicional; só a `=5` exercita o gather.)*
 - **Fatia 5** (a invalidação do edit ao vivo): com a fonte rodando, **arraste `rate`** no painel de params → a fonte **REINICIA do tick da tela** e volta a crescer com o novo numeramento — **o arrasto tem de ficar fluido** (é 1 cook por frame, igual playback normal; se travar, é regressão do §4.RESEED). *(O 1º corte usava `forget_state` e re-simulava a história inteira por frame — o "re-bake travado" que o Enio pegou.)*
-- **§4.TETO — a fonte agora é DENSA** (12.000 partículas vivas, era 4.200 na prática): tem de parecer uma fonte, não um chuvisco, e continuar fluida. Custo medido: ~0,1 ms/tick na GPU.
+- **§4.EXTRAORDINÁRIO — a fonte agora é 1,2 MILHÃO de partículas** (400.000/s × 3 s, grão 0,012; teto 4,19 M). Tem de parecer uma massa de grãos com estrutura, não um borrão, e continuar fluida: ~1 ms/tick medido. *(Foi 3.000 → 4.200 → 12.000 → 1,2 M; cada número anterior era um teto que alguma outra preocupação escolheu.)*
 - **§4.TINT — a fonte agora é COLORIDA por idade** (branco quente no bico → azul nas pontas): é o `motion.tint` em **Gradient** rodando na GPU. O gradiente tem de **varrer ao longo do jato** (as mais velhas, no alto do arco, mais quentes) e a fonte tem de continuar fluida — se ela ficar de uma cor só, ou se o FPS cair, o Gradient recuou pra CPU.
 - **§4.LIVE — o que NÃO reinicia mais:** arraste **`life`** e **`max`** → a fonte **não pisca**: as partículas que continuam vivas seguem exatamente o voo delas (encolher é bit-idêntico; crescer só semeia as que a janela revela). Arraste `speed`/`size`/`angle`/`spread` → idem, a sim viva continua e só os recém-nascidos pegam o novo lançamento. **Se `life`/`max` reiniciarem a fonte, é regressão do §4.LIVE.**
 

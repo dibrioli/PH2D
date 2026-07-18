@@ -19,6 +19,7 @@
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md) — smoke com `cd <worktree> &&` junto
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = exemplo auto-play; não peça montagem
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão
+- [O teto é do HARDWARE, nunca do fallback](feedback_the_ceiling_is_the_hardwares_never_the_fallbacks.md) — meça antes de limitar; "inalcançável" é um número que alguém pode mudar
 - [Wave de pesquisa RECURSA — limite-a](feedback_a_research_fanout_recurses_bound_it.md) — agentes geram filhos; dê prioridade, verifique você o fato decisivo, mate quando decidir
 - [Painter: 4 causas + DIRETIVA](feedback_painter_inefficiency_4_causes.md) — costura não-testada / audit=compilar / órfão
 - [Comentário velho e código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md) — removeu a UI? remova o encanamento

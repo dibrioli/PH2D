@@ -81,6 +81,42 @@ Arrastar `rate`/`life`/`max` no meio da sim muda o mapa `id ↔ partícula` (o `
 
 ---
 
+## Emenda 1 (2026-07-17) — a identidade é EXATA, e o teto é do hardware
+
+O D1 dizia que o gather é aritmético porque a janela é densa. Verdade, e
+insuficiente: a aritmética rodava em `f32` dos dois lados, e o **índice de spawn**
+passa 2²⁴ depois de `2²⁴/rate` segundos — 23 min a 12.000/s, **4 s** aos milhões
+por segundo que uma sim de partículas de verdade quer. Passando disso dois
+elementos compartilham um id e os DOIS pareamentos (o `BTreeMap<id,row>` da CPU e
+o `id − prev_first` daqui) entregam a mesma linha a ambos, **em silêncio**.
+
+Emendas:
+
+- **D3 revisado.** `SourceCountFn` vira **`SourceWindowFn`**, devolvendo
+  `SourceWindow {count, first, age_first}`. Um gerador dependente de playhead não
+  emite uma contagem — emite uma **janela**. O kernel é **INFORMADO** dela em vez
+  de re-derivar `floor(t·rate)`; a paridade deixa de valer *"porque os dois lados
+  leem o mesmo `f32`"* e passa a valer porque **há um número e ele é inteiro**.
+- **Lei de contagem única.** `emit` e o `source_window` a computavam
+  separadamente. Agora ambos chamam `window()`, em `f64`.
+- **`ID_WRAP = 2²⁴`.** A identidade tem wrap. Todo consumidor lê identidade como
+  **diferença dentro de uma janela**, e a janela é ordens de grandeza menor que o
+  período ⇒ o wrap é invisível. Abaixo de 2²⁴ é a identidade, então toda cena que
+  funciona hoje é **byte-idêntica**.
+- **`age`** deixa de ser `t − id/rate` (resposta pequena pedida a dois números
+  grandes) e sai de `age_first` menos o offset do elemento — a CPU roda os
+  **mesmos dois passos** do kernel.
+- **`MAX_ALIVE` = 4.194.304**, e é um orçamento de **MEMÓRIA** (~370 MB de
+  residência GPU). Ele esteve em 4096 ("nenhum renderer desenharia") e em 16.384
+  (o frame time da **CPU**) — as duas vezes um número que outra preocupação
+  escolheu. Medido: **4,19 M partículas em 3,6 ms**. O teto **continua
+  compartilhado** entre os caminhos, porque a paridade vale por construção a
+  partir de uma lei só; CPU lenta demais pra *tocar* 4M é fato de performance, e
+  referência só precisa **computar a mesma resposta**.
+
+Lição durável, promovida a **CLAUDE.md §0.0**:
+[[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]].
+
 ## Consequências
 
 - **+** O regime mais interessante — partículas com nascimento e morte — roda 100% na GPU, e o gather é mais barato que qualquer free-list/sort/prefix-sum.

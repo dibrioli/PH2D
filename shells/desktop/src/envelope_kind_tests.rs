@@ -120,7 +120,7 @@ fn leaving_the_mesh_gesture_straightens_the_stored_sides() {
 /// Sem o 2º ramo o gate ficaria verde num `press` que nunca pega nada.
 #[test]
 fn a_side_handle_is_only_grabbable_in_the_mesh_gesture() {
-    let (mut sim, _scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    let (mut sim, scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
     let on_handle = env_of(&sim, container).edges[0][0];
     let mut drag = None;
     // Escala de zoom que torna o raio da bolinha PEQUENO em unidades de mundo (0,3): o controle
@@ -129,20 +129,26 @@ fn a_side_handle_is_only_grabbable_in_the_mesh_gesture() {
     // outra coisa — [[feedback_test_with_product_numbers_not_convenient_ones]].
     const PX_TO_WORLD: f64 = 0.05;
 
-    assert!(
-        !crate::envelope_gesture::press(
-            &mut sim,
-            Some(container),
-            on_handle,
-            PX_TO_WORLD,
-            &mut drag
-        ),
-        "o Perspective ofereceu uma alca de lado que o mapa dele ignora"
+    // ⚠️ A pergunta é se ele ARMA o controle de lado — não se consome o clique. Sobre a arte do
+    // envelope o `press` consome sempre (o fix do "os pontos travam ao arrastar"), e medir o
+    // retorno mediria a outra regra.
+    let _ = crate::envelope_gesture::press(
+        &mut sim,
+        &scene,
+        Some(container),
+        on_handle,
+        PX_TO_WORLD,
+        &mut drag,
+    );
+    assert_eq!(
+        drag, None,
+        "o Perspective armou uma alca de lado que o mapa dele ignora"
     );
     set_kind(&mut sim, container, EnvelopeKind::Mesh);
     assert!(
         crate::envelope_gesture::press(
             &mut sim,
+            &scene,
             Some(container),
             on_handle,
             PX_TO_WORLD,
@@ -309,3 +315,31 @@ fn a_preset_resets_the_corners_to_rest() {
 /// arquivo por `use super::*`.
 #[path = "envelope_pins_tests.rs"]
 mod pins;
+/// **O RECOOK É O DONO DA GEOMETRIA DOS FILHOS** — uma edição à mão não sobrevive um frame.
+///
+/// É o fato que explica o *"os pontos estão travando ao arrastar"* (Enio, 2026-07-18): a geometria
+/// do filho é COZIDA a partir das fontes e da gaiola, então um ponto arrastado **anda e volta**. O
+/// gate existe para que ninguém "conserte" o sintoma no lugar errado — a resposta não é deixar a
+/// edição sobreviver (ela contradiria a gaiola), é **não oferecer** o ponto: o `press` engole o
+/// clique na arte, e quem quer os pontos de volta usa **Expand**.
+#[test]
+fn the_recook_owns_the_child_geometry() {
+    let (mut sim, mut scene, _map, container, ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    let _ = container;
+    let before = frame(&mut sim, &mut scene, ids[0]).verts[0].anchor;
+
+    // O artista arrasta a âncora 0 da forma COZIDA (é o que o pen faz no modo Node).
+    if let Some(p) = scene.path_mut(ids[0]) {
+        p.verts[0].anchor = [before[0] + 2.0, before[1] + 2.0];
+    }
+    let dragged = scene.paths().iter().find(|p| p.id == ids[0]).unwrap().verts[0].anchor;
+
+    // ...e o frame seguinte cozinha.
+    let after = frame(&mut sim, &mut scene, ids[0]).verts[0].anchor;
+    assert_ne!(dragged, before, "fixture morto: a âncora não foi arrastada");
+    assert!(
+        (after[0] - before[0]).hypot(after[1] - before[1]) < 1e-9,
+        "a edição à mão sobreviveu ao recook ({before:?} -> {after:?}) — ou a gaiola deixou de \
+         mandar na geometria, ou o recook parou de rodar"
+    );
+}

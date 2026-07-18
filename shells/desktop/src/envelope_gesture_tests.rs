@@ -83,11 +83,12 @@ fn add_plain(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap) -
 /// índice 2.
 #[test]
 fn press_arms_on_the_world_corner_under_the_cursor() {
-    let (mut sim, _scene, _map, container) = scene();
+    let (mut sim, vscene, _map, container) = scene();
     let mut drag = None;
     let tr = world_corners()[2];
     assert!(press(
         &mut sim,
+        &vscene,
         Some(container),
         [tr[0] + 0.3, tr[1] + 0.2],
         PX_TO_WORLD,
@@ -102,6 +103,7 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
     let mut miss = None;
     assert!(!press(
         &mut sim,
+        &vscene,
         Some(container),
         rect_corners()[2],
         PX_TO_WORLD,
@@ -113,15 +115,20 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
     );
 }
 
-/// **O raio é uma cerca:** um cursor no meio da gaiola (mundo) não arma nada.
+/// **O raio é uma cerca:** longe de toda alça E fora da arte, o clique é do pen.
+///
+/// ⚠️ O ponto de sonda tem de estar fora da ARTE, não só longe das alças: desde o fix do
+/// *"os pontos travam ao arrastar"*, um clique **sobre** a forma cozida é consumido de propósito
+/// (o gate irmão abaixo). Sondar o centro da gaiola mediria a outra regra.
 #[test]
-fn press_misses_when_far_from_every_corner() {
-    let (mut sim, _scene, _map, container) = scene();
+fn press_misses_when_far_from_every_corner_and_off_the_art() {
+    let (mut sim, vscene, _map, container) = scene();
     let mut drag = None;
     assert!(!press(
         &mut sim,
+        &vscene,
         Some(container),
-        [5.0 + POSE[0], 3.0 + POSE[1]],
+        [50.0 + POSE[0], 50.0 + POSE[1]],
         PX_TO_WORLD,
         &mut drag
     ));
@@ -137,6 +144,7 @@ fn press_ignores_a_non_envelope_entity() {
     let mut drag = None;
     assert!(!press(
         &mut sim,
+        &scene,
         Some(plain),
         [7.0, 5.0],
         PX_TO_WORLD,
@@ -148,10 +156,11 @@ fn press_ignores_a_non_envelope_entity() {
 /// **Sem seleção, nada arma.**
 #[test]
 fn press_with_no_selection_arms_nothing() {
-    let (mut sim, _scene, _map, _container) = scene();
+    let (mut sim, vscene, _map, _container) = scene();
     let mut drag = None;
     assert!(!press(
         &mut sim,
+        &vscene,
         None,
         world_corners()[2],
         PX_TO_WORLD,
@@ -164,7 +173,7 @@ fn press_with_no_selection_arms_nothing() {
 /// local pela pose inversa do container, e é o `VecEnvelope` (que o undo/save capturam) que muda.
 #[test]
 fn drag_writes_the_local_corner_from_a_world_cursor() {
-    let (mut sim, _scene, _map, container) = scene();
+    let (mut sim, _vscene, _map, container) = scene();
     // Cursor no MUNDO em `[108, 57]` → local `[8, 7]` (convexo).
     assert!(drag(
         &mut sim,
@@ -184,7 +193,7 @@ fn drag_writes_the_local_corner_from_a_world_cursor() {
 /// (devolve `true`), só não escreve.
 #[test]
 fn drag_refuses_a_non_convex_move_and_freezes_the_corner() {
-    let (mut sim, _scene, _map, container) = scene();
+    let (mut sim, _vscene, _map, container) = scene();
     let before = cage_of(&sim, container).expect("envelope").0;
     // Cursor MUNDO `[103, 52]` → local `[3, 2]` (perto do centro) → quad reflexo.
     assert!(
@@ -242,4 +251,36 @@ fn view_is_none_without_an_envelope() {
     let plain = add_plain(&mut sim, &mut scene, &mut map);
     assert!(view(&sim, Some(plain), None).is_none());
     assert!(view(&sim, None, None).is_none());
+}
+
+/// **UM CLIQUE NA ARTE DO ENVELOPE É CONSUMIDO — E NÃO ARMA NADA.**
+///
+/// É o fix do *"os pontos estão travando ao arrastar"* (Enio, 2026-07-18). A geometria dos filhos é
+/// **cozida**: o `recook` a reescreve todo frame a partir das fontes e da gaiola. Se o pen agarrasse
+/// uma âncora dela, o artista arrastaria um ponto que **anda e volta** no frame seguinte — medido: a
+/// âncora deslocada 2 unidades reverte ao original ao bit.
+///
+/// Consumir sem armar é a resposta certa: o pen não recebe o clique (nada de ponto teimoso) e o
+/// envelope também não começa gesto nenhum (não havia alça ali). Quem quer os pontos de volta usa
+/// **Expand**. É a mesma regra que já governa a alça de raio numa Live Shape (ADR-0121).
+#[test]
+fn a_press_on_the_cooked_art_is_swallowed_without_arming() {
+    let (mut sim, vscene, _map, container) = scene();
+    let mut drag = None;
+    // O centro da forma: longe de toda alça de gaiola, e em cima da arte.
+    assert!(
+        press(
+            &mut sim,
+            &vscene,
+            Some(container),
+            [5.0 + POSE[0], 3.0 + POSE[1]],
+            PX_TO_WORLD,
+            &mut drag
+        ),
+        "o clique na arte cozida caiu no pen — o ponto vai andar e voltar"
+    );
+    assert_eq!(
+        drag, None,
+        "consumiu E armou um gesto: não havia alça nenhuma ali"
+    );
 }

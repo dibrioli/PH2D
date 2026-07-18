@@ -24,7 +24,7 @@
 use ph2d_ecs::{Entity, EnvelopeKind, SimWorld, VecEnvelope};
 use ph2d_vec_envelope::CageEdges;
 use ph2d_vec_render::{ENVELOPE_HANDLE_R_PX, EnvelopeCageView};
-use ph2d_vec_scene::Xform;
+use ph2d_vec_scene::{VecScene, Xform};
 
 /// A gaiola do container `bits` em coordenadas **LOCAIS do container** (como vive no componente):
 /// cantos, controles de lado e qual dos dois mapas ela aplica. `None` se `bits` não é um envelope (ou
@@ -105,6 +105,7 @@ fn edges_to_world(local: CageEdges, xf: &Xform) -> CageEdges {
 #[must_use]
 pub(crate) fn press(
     sim: &mut SimWorld,
+    scene: &VecScene,
     selected: Option<u64>,
     world_pt: [f64; 2],
     px_to_world: f64,
@@ -123,13 +124,51 @@ pub(crate) fn press(
     }
     let world = to_world(corners, &xf);
     let world_edges = offered_edges(edges, kind).map(|e| edges_to_world(e, &xf));
-    match ph2d_vec_envelope::nearest_handle(&world, world_edges.as_ref(), world_pt, radius) {
-        Some(handle) => {
-            *drag = Some((bits, handle));
-            true
-        }
-        None => false,
+    if let Some(handle) =
+        ph2d_vec_envelope::nearest_handle(&world, world_edges.as_ref(), world_pt, radius)
+    {
+        *drag = Some((bits, handle));
+        return true;
     }
+    // Errou a alça, mas acertou a ARTE do envelope: o clique é consumido **sem armar nada**.
+    //
+    // ⚠️ Não é zelo — é o que impede o *"os pontos travam ao arrastar"* (Enio, 2026-07-18). A
+    // geometria dos filhos é COZIDA: o `recook` a reescreve a cada frame a partir das fontes e da
+    // gaiola. Deixar o pen agarrar uma âncora dela dá ao artista um ponto que **anda e volta** no
+    // frame seguinte — medido: a âncora arrastada 2 unidades reverte ao original ao bit.
+    //
+    // É a MESMA regra que já governa a alça de raio numa Live Shape (ADR-0121): geometria que uma
+    // relação viva possui não é editável à mão. Quem quiser os pontos de volta tem **Expand**.
+    // Clique fora da arte continua a cair no pen — desselecionar segue funcionando.
+    let on_art = hits_child_art(sim, scene, bits, world_pt, px_to_world);
+    if on_art {
+        crate::vec_overlay_diag::refused(
+            "ancora de filho",
+            "a geometria e' COZIDA (o recook a reescreve todo frame) -- use Expand",
+        );
+    }
+    on_art
+}
+
+/// O cursor está sobre a arte de algum filho do envelope `bits`?
+fn hits_child_art(
+    sim: &SimWorld,
+    scene: &VecScene,
+    bits: u64,
+    world_pt: [f64; 2],
+    px_to_world: f64,
+) -> bool {
+    let hit_r = crate::vec_gizmo_view::stroke_hit_r_from(px_to_world);
+    let p = [world_pt[0] as f32, world_pt[1] as f32];
+    let Some(kids) = sim
+        .world()
+        .get::<ph2d_ecs::Children>(Entity::from_bits(bits))
+        .map(|c| c.iter().copied().collect::<Vec<_>>())
+    else {
+        return false;
+    };
+    kids.into_iter()
+        .any(|e| crate::vec_gizmo_view::contains_world(sim, scene, e, p, hit_r))
 }
 
 /// **A pressão no gesto Pinos** — e ela é de outra natureza: aqui o clique no VAZIO *cria*.
@@ -200,7 +239,14 @@ pub(crate) fn drag(sim: &mut SimWorld, active: Option<(u64, usize)>, world_pt: [
         return drag_pin(sim, entity, bits, handle, local_pt);
     }
     let mesh = kind == EnvelopeKind::Mesh;
-    if let Some(next) = ph2d_vec_envelope::move_handle(corners, edges, mesh, handle, local_pt)
+    let moved = ph2d_vec_envelope::move_handle(corners, edges, mesh, handle, local_pt);
+    if moved.is_none() {
+        crate::vec_overlay_diag::refused(
+            "alca da gaiola",
+            &format!("mover a alca {handle} para {local_pt:?} quebraria o guard do gesto"),
+        );
+    }
+    if let Some(next) = moved
         && let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity)
     {
         env.corners = next.corners;
@@ -266,7 +312,13 @@ fn drag_pin(
     let mut next = env.pins.clone();
     next[index][1] = local_pt;
     if ph2d_vec_envelope::pins_fold(&next, domain.0, domain.1) {
-        return true; // o movimento dobraria: o pino fica onde estava
+        // O pino PARA na fronteira. É por construção — e é exatamente o que o artista lê como
+        // "travou", então tem de ser dizível.
+        crate::vec_overlay_diag::refused(
+            "pino",
+            &format!("mover o pino {index} para {local_pt:?} dobraria a arte"),
+        );
+        return true;
     }
     let _ = pin;
     env.pins = next;

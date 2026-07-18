@@ -15,12 +15,19 @@ fn pins_mode(sim: &mut SimWorld, container: u64) {
 /// alça fixa a acertar. E o pino nascer parado é o que impede a arte de saltar só por ser pregada.
 #[test]
 fn pressing_empty_space_in_pins_mode_nails_a_resting_pin() {
-    let (mut sim, _scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    let (mut sim, scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
     pins_mode(&mut sim, container);
     let mut drag = None;
 
     assert!(
-        crate::envelope_gesture::press(&mut sim, Some(container), [4.0, 4.0], 0.05, &mut drag),
+        crate::envelope_gesture::press(
+            &mut sim,
+            &scene,
+            Some(container),
+            [4.0, 4.0],
+            0.05,
+            &mut drag
+        ),
         "o gesto Pinos devia tomar o clique no vazio"
     );
     let pins = env_of(&sim, container).pins;
@@ -37,10 +44,17 @@ fn pressing_empty_space_in_pins_mode_nails_a_resting_pin() {
 /// mover um pino criaria um pino novo empilhado, e a arte ficaria refém de uma pilha invisível.
 #[test]
 fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
-    let (mut sim, _scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
+    let (mut sim, scene, _map, container, _ids) = envelope_over(vec![ellipse([5.0, 5.0], 3.0)]);
     pins_mode(&mut sim, container);
     let mut drag = None;
-    let _ = crate::envelope_gesture::press(&mut sim, Some(container), [4.0, 4.0], 0.05, &mut drag);
+    let _ = crate::envelope_gesture::press(
+        &mut sim,
+        &scene,
+        Some(container),
+        [4.0, 4.0],
+        0.05,
+        &mut drag,
+    );
     assert_eq!(env_of(&sim, container).pins.len(), 1);
 
     // ⚠️ O pino é ARRASTADO antes do 2º clique, e isso não é decoração do fixture: com o pino em
@@ -51,7 +65,8 @@ fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
     assert_ne!(moved, [4.0, 4.0], "fixture morto: o pino não andou");
 
     let mut drag2 = None;
-    let _ = crate::envelope_gesture::press(&mut sim, Some(container), moved, 0.05, &mut drag2);
+    let _ =
+        crate::envelope_gesture::press(&mut sim, &scene, Some(container), moved, 0.05, &mut drag2);
     assert_eq!(
         env_of(&sim, container).pins.len(),
         1,
@@ -62,7 +77,14 @@ fn pressing_an_existing_pin_grabs_it_instead_of_nailing_another() {
 
     // E o lugar de REPOUSO, que o pino já deixou, não pega nada: clicar lá prega um pino novo.
     let mut drag3 = None;
-    let _ = crate::envelope_gesture::press(&mut sim, Some(container), [4.0, 4.0], 0.05, &mut drag3);
+    let _ = crate::envelope_gesture::press(
+        &mut sim,
+        &scene,
+        Some(container),
+        [4.0, 4.0],
+        0.05,
+        &mut drag3,
+    );
     assert_eq!(
         env_of(&sim, container).pins.len(),
         2,

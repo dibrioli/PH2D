@@ -2702,6 +2702,7 @@ impl App {
                                 // `on_press_node` de sempre (seleção / edição de âncora).
                                 if crate::envelope_gesture::press(
                                     &mut gfx.sim,
+                                    &gfx.vec_scene,
                                     env_container,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,

@@ -14,16 +14,39 @@
 //! própria forma mede. Uma alça sã vive perto da curva; uma disparada é a assinatura de uma tangente
 //! inválida a chegar ao fitter.
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use ph2d_ecs::{Entity, SimWorld, VecEnvelope};
 use ph2d_vec_scene::VecScene;
+
+/// O contador de frames é DESTE módulo.
+///
+/// ⚠️ A 1ª versão passava `undo.depth()` como se fosse o frame — o primeiro `u64` que estava à mão.
+/// `depth % 60 == 0` só é verdade em 0, 60, 120…, então o diagnóstico **emudecia para sempre** na
+/// primeira ação desfazível do artista, e o smoke não viu uma linha. Um diagnóstico que mente é pior
+/// que nenhum: ele faz a rodada seguinte concluir "não reproduziu".
+static FRAME: AtomicU64 = AtomicU64::new(0);
+
+/// Grita quando um guard **recusa** um arrasto — a resposta direta a *"o ponto está travando"*, que
+/// pode significar duas coisas MUITO diferentes: o guard a recusar (o ponto para de propósito) ou o
+/// frame a engasgar (o ponto atrasa). Sem distinguir as duas, a investigação começa no lugar errado.
+pub(crate) fn refused(what: &str, detail: &str) {
+    if std::env::var_os("PH2D_VEC_OVERLAY_DIAG").is_some() {
+        eprintln!("[vec-diag] RECUSADO {what}: {detail}");
+    }
+}
 
 /// Quantas vezes a diagonal da própria forma um ponto de controle tem de estar para ser gritado.
 /// Alto de propósito: o alvo é o disparado, não o levemente folgado.
 const SUSPECT_K: f64 = 3.0;
 
 /// Imprime o estado do overlay uma vez por segundo enquanto a env estiver ligada.
-pub(crate) fn dump(scene: &VecScene, sim: &SimWorld, selection: Option<u64>, frame: u64) {
-    if !frame.is_multiple_of(60) || std::env::var_os("PH2D_VEC_OVERLAY_DIAG").is_none() {
+pub(crate) fn dump(scene: &VecScene, sim: &SimWorld, selection: Option<u64>) {
+    if std::env::var_os("PH2D_VEC_OVERLAY_DIAG").is_none() {
+        return;
+    }
+    // Uma vez por segundo a 60 fps — o alvo é ler o log, não afogá-lo.
+    if !FRAME.fetch_add(1, Ordering::Relaxed).is_multiple_of(60) {
         return;
     }
     for path in scene.paths() {

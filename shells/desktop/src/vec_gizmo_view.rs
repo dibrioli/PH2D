@@ -42,7 +42,14 @@ pub(crate) fn stroke_hit_r(camera: &Camera2d, window_size: WindowSize) -> f64 {
     let w0 = camera.screen_to_world((0.0, 0.0), window_size);
     let w1 = camera.screen_to_world((1.0, 0.0), window_size);
     let px = ((f64::from(w1[0] - w0[0])).powi(2) + (f64::from(w1[1] - w0[1])).powi(2)).sqrt();
-    STROKE_HIT_PX * px
+    stroke_hit_r_from(px)
+}
+
+/// O mesmo raio, para quem já tem a escala px→mundo na mão. **Uma porta para a constante** — dois
+/// sítios a multiplicá-la dariam alcances de captura diferentes para a mesma linha na tela.
+#[must_use]
+pub(crate) fn stroke_hit_r_from(px_to_world: f64) -> f64 {
+    STROKE_HIT_PX * px_to_world
 }
 
 /// O `anchor` e o meio-tamanho **intrínsecos** (pré-escala) da forma de `entity`,

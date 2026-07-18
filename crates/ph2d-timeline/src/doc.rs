@@ -475,34 +475,6 @@ impl TimelineDoc {
         &self.clips[self.active_clip].clip
     }
 
-    /// Where "the end" of the active clip is, in seconds: the authored clip
-    /// duration, or the last keyframe if the animation runs past it.
-    ///
-    /// A fresh clip has duration `0` and `insert_key` never extends it, so the
-    /// authored duration alone would pin "go to end" at `t = 0` for every
-    /// hand-keyed animation. Transport (go-to-end, the default loop range) reads
-    /// THIS, not `active_clip().duration()`.
-    #[must_use]
-    pub fn end_seconds(&self) -> f64 {
-        self.clip_end_seconds(self.active_clip)
-    }
-
-    /// [`Self::end_seconds`] for any clip — what a strip placed on it is sized to.
-    #[must_use]
-    pub fn clip_end_seconds(&self, index: usize) -> f64 {
-        let Some(named) = self.clips.get(index) else {
-            return 0.0;
-        };
-        let last_key = named
-            .clip
-            .tracks()
-            .iter()
-            .filter_map(|(_, track)| track.keys().last())
-            .map(|k| k.t.to_seconds())
-            .fold(0.0_f64, f64::max);
-        named.clip.duration().to_seconds().max(last_key)
-    }
-
     /// The clip currently edited, mutably.
     pub fn active_clip_mut(&mut self) -> &mut Clip {
         &mut self.clips[self.active_clip].clip
@@ -665,3 +637,9 @@ impl TimelineDoc {
         }
     }
 }
+
+/// **Where the content ends** — one question, four answers (clip / any clip /
+/// stack / this view). A CHILD module (not a sibling) so it reads the document's
+/// private fields, the idiom `Track`'s `rove` already uses.
+#[path = "doc_extent.rs"]
+mod extent;

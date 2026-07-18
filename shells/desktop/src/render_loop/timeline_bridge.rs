@@ -69,10 +69,15 @@ pub(crate) fn intent_for_transport(
     use TimelineIntent as I;
     use ph2d_editor::ids;
     let fps = timeline.doc.fps_display;
-    // "The end" is the last keyframe when it runs past the authored duration —
-    // a fresh clip's duration is 0, which would pin go-to-end (and the loop
-    // range) at t = 0 for every hand-keyed animation.
-    let duration = || timeline.doc.end_seconds();
+    // **"The end" is the end of what THIS VIEW shows** (`TimelineDoc::view_end_seconds`):
+    // the active clip on Keys, the last strip on Arrange. Both go-to-end and a freshly
+    // armed loop read it, which is the point — they are the same question, and asking
+    // the clip while looking at the stack bracketed one strip out of the set.
+    //
+    // Within a clip it is the last keyframe when that runs past the authored duration:
+    // a fresh clip's duration is 0, which would pin both at t = 0 for every hand-keyed
+    // animation.
+    let duration = || timeline.doc.view_end_seconds(timeline.keys_mode);
     match *ev {
         PanelEvent::Click(id) if id == ids::TIMELINE_PLAY => Some(I::TogglePlay),
         PanelEvent::Click(id) if id == ids::TIMELINE_GO_START => Some(I::Scrub(0.0)),
@@ -288,3 +293,7 @@ pub(crate) fn prop_for_addprop_id(id: ph2d_editor::NodeId) -> Option<PropKind> {
 #[cfg(test)]
 #[path = "timeline_bridge_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "timeline_bridge_k_tests.rs"]
+mod k_tests;

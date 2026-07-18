@@ -115,38 +115,52 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel + ADR-0127):
+/// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel + ADR-0127/0130):
 /// the WGSL port of [`step`], element for element.
 ///
-/// **Pairing is POSITIONAL only** (ADR-0127 D3). The CPU pairs state to elements
-/// by `id` when the stream has identity — a gather this engine does not do — so
-/// the `id` binding below is a [`ColumnAccess::RefuseIfPresent`]: a `rest` that
-/// might carry one keeps the whole node on the CPU. That is exactly the CPU's
-/// own condition, `pairing`'s `(Some(rest_ids), Some(state_ids))` arm: without
-/// `id` on `rest` it falls to the positional arm regardless of the state.
+/// **Pairing matches the CPU's, both arms** (ADR-0130). The CPU pairs state to
+/// elements by `id` when the stream has identity (a gather) and positionally
+/// otherwise:
 ///
-/// The other half of `pairing` — `_ if sn == n`, "a changed count means the set
-/// was rebuilt, so re-seed" — needs no code here: the sequencer only calls a
-/// port's column present when that port's stream is the length being dispatched,
-/// so a stale-length state reads as ABSENT and the seed path below fires.
+/// - **Positional** (a grid): no `id` column, so `gather_row(i) = i` and
+///   `gather_paired(i)` is always true — the sequencer's `count == dispatch`
+///   presence rule is the other half (a stale-length state reads ABSENT →
+///   `HAS_forces_sim_d` false → seed, the `_ if sn == n` arm).
+/// - **Id-gather** (a `motion.emitter`): the `id` binding below is a
+///   [`ColumnAccess::GatherKey`] — a conditional refusal that CLAIMS when `rest`
+///   is a dense ascending id window (ADR-0130 D2). Then `gather_row(i) =
+///   current_id − prev_first` is the prior-state row of this element's id (dense
+///   state ids are `[prev_first, prev_first+prev_n)`, so id-X's row IS `X −
+///   prev_first` — the arithmetic that equals the CPU's `BTreeMap<id,row>`
+///   exactly), and `gather_paired(i)` is whether that row exists. A `rest` whose
+///   id is present but NOT a dense window (a `sort`/`cull` broke it) still
+///   recedes to the CPU.
 ///
-/// **The seed is not a zeroed step.** With no prior state the CPU takes neither
-/// branch of the step: `vel` comes from `rest` (an emitter's muzzle velocity)
-/// and `sim_d` is 0. Stepping from zeroed identities would instead give
-/// `vel = 0` — the same for a grid, different the moment `rest` carries `vel`.
-/// `HAS_forces_sim_d` is what tells the two apart (`read_*` cannot: it answers
-/// the identity either way).
+/// The state port carries `id` too (a plain [`ColumnAccess::Read`]) so the module
+/// can read `prev_first = state.id[0]`.
+///
+/// **`gather_paired(i)` is DISTINCT from `HAS_forces_sim_d`.** Two questions:
+/// "is there ANY prior state?" (the global const, the seed vs step branch) and
+/// "does THIS element have a prior row?" (the per-element gather, a fresh id
+/// stays seeded) — [[feedback_layered_defenses_need_per_layer_gates]].
+///
+/// **The seed is not a zeroed step.** With no prior state (or a freshly-born id)
+/// the CPU takes neither branch of the step: `vel` comes from `rest` (an
+/// emitter's muzzle velocity) and `sim_d` is 0. Stepping from zeroed identities
+/// would instead give `vel = 0` — the same for a grid, different the moment
+/// `rest` carries `vel`.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let ig_w = read_rest_inv_mass(i);\n\
         var ig_vel = read_rest_vel(i) * ig_w;\n\
         var ig_d = vec2<f32>(0.0, 0.0);\n\
-        if (HAS_forces_sim_d) {\n\
+        let ig_row = gather_row(i);\n\
+        if (HAS_forces_sim_d && gather_paired(i)) {\n\
         \x20   let ig_t_prev = select(params.playhead, read_forces_sim_t(0u), HAS_forces_sim_t);\n\
         \x20   let ig_dt = clamp(params.playhead - ig_t_prev, 0.0, INTEGRATE_MAX_DT);\n\
-        \x20   var v = read_forces_vel(i);\n\
-        \x20   var d = read_forces_sim_d(i);\n\
-        \x20   let a = read_forces_accel(i);\n\
+        \x20   var v = read_forces_vel(ig_row);\n\
+        \x20   var d = read_forces_sim_d(ig_row);\n\
+        \x20   let a = read_forces_accel(ig_row);\n\
         \x20   v = v + a * ig_dt * ig_w;\n\
         \x20   d = d + v * ig_dt * ig_w;\n\
         \x20   if (integrate_finite(v) && integrate_finite(d)) {\n\
@@ -231,11 +245,22 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 1,
         },
-        // ── D3: identity means a gather. Recede (see the doc above).
+        // The prior state's id, off the `pre` port — the module reads `id[0]`
+        // for `prev_first`. Absent (tick 0 / a grid) → identity, no buffer.
         ColumnBinding {
             column: "id",
             dim: Dim::Scalar,
-            access: ColumnAccess::RefuseIfPresent,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        // ── ADR-0130: the id-gather key on the base port. Claims a dense id
+        // window (the emitter), recedes a non-dense / unprovable one. Readable:
+        // the current element's id feeds `gather_row`.
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::GatherKey,
             identity: [0.0; 4],
             port: 0,
         },

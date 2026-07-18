@@ -123,6 +123,10 @@ pub fn plan_bindings(
                 // by the time a plan reaches codegen the node was accepted, so
                 // the refused column is provably absent anyway.
                 (ColumnAccess::RefuseIfPresent, _) => None,
+                // The gather key READS the current element's id (so `read`
+                // above binds it) but writes nothing — the id rides through the
+                // base like any unwritten column (ADR-0130).
+                (ColumnAccess::GatherKey, _) => None,
                 (ColumnAccess::ReadWriteExisting, false) => Some(BindingPlan::WriteDropped),
                 _ => Some(BindingPlan::WriteBuffer),
             };
@@ -184,17 +188,30 @@ pub fn presence_signature(
 pub fn kernel_module(
     kernel: &GpuKernel,
     port_names: &[&str],
-    present: impl FnMut(&ColumnBinding) -> bool,
+    mut present: impl FnMut(&ColumnBinding) -> bool,
 ) -> String {
+    // ADR-0130: is this an `id`-gather kernel, and is the gather active for this
+    // input set? A kernel declares a gather with a [`ColumnAccess::GatherKey`]
+    // binding on its base port; the gather is ACTIVE when that port's stream
+    // carries the id (a dense window — the plan already refused a non-dense one).
+    // When inactive (a grid, no id) the helpers below reduce to positional
+    // (`gather_row(i) = i`), so integrate/spring compile ONE body for both cases.
+    let gather_key = kernel.bindings.iter().find(|b| b.access.is_gather_key());
+    let gather_on = gather_key.is_some_and(&mut present);
     let plans = plan_bindings(kernel, present);
     let mut src = String::with_capacity(1024);
 
     // Uniforms: count + playhead + one f32 per declared param. A param named
     // like a builtin would collide in the struct; the sequencer's eligibility
-    // check refuses those kernels up front (`crate::plan`).
+    // check refuses those kernels up front (`crate::plan`). A gather also carries
+    // `gather_prev_n` (the prior state's element count) — CPU-known, so a uniform
+    // rather than `arrayLength` (the pool rounds buffers to a pow2 class).
     src.push_str("struct KernelParams {\n    count: u32,\n    playhead: f32,\n");
     for p in kernel.params {
         src.push_str(&format!("    {p}: f32,\n"));
+    }
+    if gather_on {
+        src.push_str("    gather_prev_n: u32,\n");
     }
     src.push_str("}\n@group(0) @binding(0) var<uniform> params: KernelParams;\n\n");
 
@@ -252,6 +269,49 @@ pub fn kernel_module(
         }
     }
     src.push('\n');
+
+    // ADR-0130: the id-gather helpers (only for a kernel with a GatherKey). They
+    // sit AFTER the read accessors (they call them) and BEFORE the body:
+    //   • `gather_row(i)` — the prior-state row element `i` pairs to. Positional
+    //     `i` when the base is not a dense window; `current_id − prev_first` (an
+    //     UNSIGNED row offset) when it is — the arithmetic that equals the CPU's
+    //     `BTreeMap<id,row>` on a dense window (state ids are `[prev_first,
+    //     prev_first+prev_n)`, so id-X's row IS `X − prev_first`).
+    //   • `gather_paired(i)` — whether that row exists (`< prev_n`). This is the
+    //     PER-ELEMENT seed guard (a fresh id has no prior row), DISTINCT from the
+    //     global `HAS_*` "is there any prior state at all?"
+    //     ([[feedback_layered_defenses_need_per_layer_gates]]).
+    // The casts are VALUE casts (`u32(max(id, 0.0))`), matching the CPU's
+    // `f.max(0.0) as u32` — ids are stored as their numeric value (`f32(em_id)`),
+    // not bit-packed, so a `bitcast` would read the IEEE bits, not the id. An id
+    // below `prev_first` (only off the monotonic path) wraps u32 → `≥ prev_n` →
+    // unpaired → seed, matching the BTreeMap miss (ADR-0130 D5).
+    if let Some(key) = gather_key {
+        if gather_on {
+            let cur_id = accessor_suffix(port_names, key);
+            // `prev_first` is the prior state's min id — the SAME column, bound
+            // on the state port (any port but the key's). Absent (tick 0, the
+            // `pre` is Empty) → 0, and prev_n is 0 too, so nothing pairs: the
+            // seed-everything tick, matching the CPU's `pre = Empty` seed.
+            let prev_first = kernel
+                .bindings
+                .iter()
+                .find(|b| b.column == key.column && b.port != key.port && b.access.reads())
+                .map(|b| format!("u32(max(read_{}(0u), 0.0))", accessor_suffix(port_names, b)))
+                .unwrap_or_else(|| "0u".to_string());
+            src.push_str(&format!(
+                "fn gather_prev_first() -> u32 {{ return {prev_first}; }}\n\
+                 fn gather_row(i: u32) -> u32 {{ return u32(max(read_{cur_id}(i), 0.0)) - gather_prev_first(); }}\n\
+                 fn gather_paired(i: u32) -> bool {{ return gather_row(i) < params.gather_prev_n; }}\n\n"
+            ));
+        } else {
+            src.push_str(
+                "fn gather_row(i: u32) -> u32 { return i; }\n\
+                 fn gather_paired(i: u32) -> bool { _ = i; return true; }\n\n",
+            );
+        }
+    }
+
     src.push_str(kernel.wgsl_lib);
     src.push('\n');
 
@@ -334,6 +394,51 @@ mod tests {
         applicable: None,
     };
     const SIM_PORTS: &[&str] = &["rest", "forces"];
+
+    /// A two-input kernel shaped like the ADR-0130 gather: an `id` GatherKey on
+    /// the base port, the SAME `id` bound `Read` on the state port (for
+    /// `prev_first`), and a state column paired per element.
+    const GATHER: GpuKernel = GpuKernel {
+        wgsl: "\
+            let row = gather_row(i);\n\
+            var v = read_rest_vel(i);\n\
+            if (HAS_forces_vel && gather_paired(i)) { v = read_forces_vel(row); }\n\
+            write_vel(i, v);\n",
+        wgsl_lib: "",
+        bindings: &[
+            ColumnBinding {
+                column: "vel",
+                dim: Dim::Vec2,
+                access: ColumnAccess::Read,
+                identity: [0.0; 4],
+                port: 0,
+            },
+            ColumnBinding {
+                column: "vel",
+                dim: Dim::Vec2,
+                access: ColumnAccess::ReadWrite,
+                identity: [0.0; 4],
+                port: 1,
+            },
+            ColumnBinding {
+                column: "id",
+                dim: Dim::Scalar,
+                access: ColumnAccess::GatherKey,
+                identity: [0.0; 4],
+                port: 0,
+            },
+            ColumnBinding {
+                column: "id",
+                dim: Dim::Scalar,
+                access: ColumnAccess::Read,
+                identity: [0.0; 4],
+                port: 1,
+            },
+        ],
+        params: &[],
+        source_count: None,
+        applicable: None,
+    };
 
     #[test]
     fn present_columns_bind_buffers_absent_read_becomes_identity() {
@@ -436,6 +541,58 @@ mod tests {
         // stream instead (`GpuStream` threading), which is what "transient" means.
         assert!(!src.contains("out_accel"));
         assert!(!src.contains("fn write_accel("));
+    }
+
+    #[test]
+    fn a_gather_key_reads_the_id_and_the_positional_default_is_the_identity() {
+        // ADR-0130: with the base id ABSENT the gather is inactive — the helpers
+        // reduce to positional (`gather_row(i) = i`, everyone paired) and there
+        // is no `gather_prev_n` uniform. This is the grid path, byte-for-byte the
+        // pre-0130 behaviour.
+        let src = kernel_module(&GATHER, SIM_PORTS, |b| b.column != "id");
+        assert!(src.contains("fn gather_row(i: u32) -> u32 { return i; }"));
+        assert!(src.contains("fn gather_paired(i: u32) -> bool { _ = i; return true; }"));
+        assert!(
+            !src.contains("gather_prev_n"),
+            "no gather uniform when positional"
+        );
+        assert!(
+            !src.contains("gather_prev_first"),
+            "no id arithmetic when positional"
+        );
+    }
+
+    #[test]
+    fn a_present_dense_id_activates_the_arithmetic_gather() {
+        // The base id present → gather ON: `gather_row` is `current_id −
+        // prev_first`, `gather_paired` bounds-checks against `prev_n`, and the
+        // prior state's min id is read RAW off element 0 of the STATE port's id
+        // (not the base's). VALUE casts (`u32(max(...))`), never `bitcast`.
+        let src = kernel_module(&GATHER, SIM_PORTS, |_| true);
+        assert!(
+            src.contains("gather_prev_n: u32,"),
+            "the prior-count uniform exists"
+        );
+        assert!(
+            src.contains(
+                "fn gather_prev_first() -> u32 { return u32(max(read_forces_id(0u), 0.0)); }"
+            ),
+            "prev_first is the STATE port's id[0], value-cast"
+        );
+        assert!(src.contains(
+            "fn gather_row(i: u32) -> u32 { return u32(max(read_rest_id(i), 0.0)) - gather_prev_first(); }"
+        ));
+        assert!(src.contains(
+            "fn gather_paired(i: u32) -> bool { return gather_row(i) < params.gather_prev_n; }"
+        ));
+        // The base id is a REAL read now (the current element's id), and the
+        // state id is bound too (for prev_first) — two distinct read buffers.
+        assert!(src.contains("var<storage, read> in_rest_id"));
+        assert!(src.contains("var<storage, read> in_forces_id"));
+        assert!(
+            !src.contains("bitcast"),
+            "ids are value-stored, not bit-packed"
+        );
     }
 
     #[test]

@@ -234,6 +234,32 @@ fn eligible(
             Some(_) => {}
         }
     }
+    // The `id`-gather (ADR-0130 D2): a conditional refusal. The node pairs its
+    // per-element state by the `id` column, which is a plain row offset
+    // (`current_id − prev_first`) ONLY when the port's stream is a dense
+    // ascending id window — the property the bare emitter creates and a
+    // `sort`/`cull` destroys. So:
+    //   • the column is ABSENT  → positional pairing, claim (a grid);
+    //   • present AND the window is provably DENSE → the arithmetic gather, claim;
+    //   • present but NOT dense → the offset would mispair in silence, recede;
+    //   • the shape is UNPROVABLE (a CPU boundary feeds the port) → recede.
+    // Default-recede is the whole point: a future structural node that forgets to
+    // declare `keeps_dense_window` clears the window, so the gather never claims
+    // a stream it cannot pair ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+    for b in kernel.bindings.iter().filter(|b| b.access.is_gather_key()) {
+        let shape = match graph.input_edge(node, b.port) {
+            None => Some((BTreeSet::new(), false)),
+            Some((_, _, true)) => None,
+            Some((src, _, false)) => {
+                output_shape(graph, ops, kernels, src, SHAPE_DEPTH).map(|s| (s.cols, s.dense))
+            }
+        };
+        match shape {
+            None => return false,
+            Some((cols, dense)) if cols.contains(b.column) && !dense => return false,
+            Some(_) => {}
+        }
+    }
     // Param-dependent coverage (e.g. the oscillator's X/Y-only kernel).
     match kernel.applicable {
         Some(f) => f(&|name| resolve_param(graph, node, manifest, name)),

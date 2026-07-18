@@ -219,18 +219,26 @@ fn pairing(input: &Stream, state: &Stream, n: usize) -> Option<Vec<Option<usize>
     }
 }
 
-/// GPU compute kernel (GPU/M5 Fase 3, ADR-0126/0127): **side metadata**, not a
-/// lowering — the manifest is untouched and `eval` above stays canonical. The
-/// second sequential node after `motion.integrate`, and it reuses that node's
-/// whole shape: state on the `pre` port, `sim_t` for the timestep, a NaN guard.
+/// GPU compute kernel (GPU/M5 Fase 3, ADR-0126/0127/0130): **side metadata**,
+/// not a lowering — the manifest is untouched and `eval` above stays canonical.
+/// The second sequential node after `motion.integrate`, and it reuses that
+/// node's whole shape: state on the `pre` port, `sim_t` for the timestep, a NaN
+/// guard, and the id-gather (ADR-0130).
 ///
-/// **`pairing` needs no translation, and that is the load-bearing observation.**
-/// The CPU pairs positionally exactly when the state carries `spring_value` AND
-/// `state.count() == n`; the sequencer's presence rule is *"port has this column
-/// AND its count matches"* — the same predicate. So `HAS_state_spring_value` IS
-/// `pairing().is_some()`, and the seed/step branch is not a re-derivation of the
-/// CPU's condition (two doors to one question drift apart —
-/// [[feedback_two_doors_to_the_same_question_diverge]]).
+/// **The two-part pairing IS the CPU's, and neither part is a re-derivation**
+/// ([[feedback_two_doors_to_the_same_question_diverge]]):
+///
+/// - The global — is there ANY prior state? — is `HAS_state_spring_value`: the
+///   sequencer calls a state column present exactly when the port carries it,
+///   which (positional) is the CPU's `state.get("spring_value")? && sn == n`.
+/// - The per-element — does THIS element have a prior row? — is
+///   `gather_paired(i)`: positionally always true, and under the id-gather (a
+///   `motion.emitter` feeds a dense window) `current_id − prev_first < prev_n`,
+///   the arithmetic form of the CPU's `BTreeMap<id,row>` lookup. A freshly-born
+///   particle (no prior row) stays at its target, exactly like the CPU's
+///   `None => continue`. `gather_row(i)` is the row to read the prior spring
+///   from; the `id` binding on the base port is the [`ColumnAccess::GatherKey`]
+///   that claims a dense window and recedes a non-dense one.
 ///
 /// **Covers the X/Y channels only** (`applicable`, the `motion.wiggle`/
 /// `oscillator` precedent): Rotation writes `rot` and Size writes `size`, and a
@@ -252,9 +260,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         // Seeded AT the target (no snap); only what the state knows then steps.\n\
         var sp_x = sp_target;\n\
         var sp_v = 0.0;\n\
-        if (HAS_state_spring_value) {\n\
-            var x = read_state_spring_value(i);\n\
-            var v = read_state_spring_vel(i);\n\
+        // ADR-0130: pair to the prior-state ROW (positional `i`, or the id-gather\n\
+        // `current_id − prev_first`). `gather_paired(i)` is the per-element seed\n\
+        // guard, distinct from the global `HAS_state_spring_value`.\n\
+        let sp_row = gather_row(i);\n\
+        if (HAS_state_spring_value && gather_paired(i)) {\n\
+            var x = read_state_spring_value(sp_row);\n\
+            var v = read_state_spring_vel(sp_row);\n\
             let sp_t_prev =\n\
         \x20       select(params.playhead, read_state_sim_t(0u), HAS_state_sim_t);\n\
             let sp_dt = clamp(params.playhead - sp_t_prev, 0.0, SPRING_MAX_DT);\n\
@@ -347,13 +359,23 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 1,
         },
-        // Identity pairing is a gather (`BTreeMap<id, row>`), which this engine
-        // does not do yet (ADR-0127 D3). Refuse at plan time rather than pair
-        // positionally and animate the wrong particles in silence.
+        // The prior state's id, off the `pre` port — the module reads `id[0]`
+        // for `prev_first`. Absent (tick 0 / an id-less stream) → identity.
         ColumnBinding {
             column: "id",
             dim: Dim::Scalar,
-            access: ColumnAccess::RefuseIfPresent,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        // ADR-0130: the id-gather key on the base port. Identity pairing is a
+        // gather (`BTreeMap<id, row>`), arithmetic (`current_id − prev_first`)
+        // on a dense window (the emitter) and CLAIMED, but a non-dense/unprovable
+        // id still recedes rather than animate the wrong particles in silence.
+        ColumnBinding {
+            column: "id",
+            dim: Dim::Scalar,
+            access: ColumnAccess::GatherKey,
             identity: [0.0; 4],
             port: 0,
         },

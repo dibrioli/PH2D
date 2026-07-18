@@ -69,6 +69,33 @@ pub enum ColumnAccess {
     /// here (nothing is read): the binding declares only *which column on which
     /// port* is disqualifying.
     RefuseIfPresent,
+    /// **The `id`-gather key** (ADR-0130), the conditional successor to
+    /// [`Self::RefuseIfPresent`] for `motion.integrate`/`motion.spring`. Names
+    /// the column this node pairs its per-element state by — an `id` on the
+    /// **base** port.
+    ///
+    /// It is BOTH a plan-time guard and a real read:
+    ///
+    /// - **Plan:** like [`Self::RefuseIfPresent`], the node recedes when this
+    ///   column is present on its port — **except** when the plan can prove that
+    ///   port's stream is a **dense ascending id window**
+    ///   ([`crate::gpu::KernelResolver::keeps_dense_window`]). A dense window is
+    ///   exactly the case where the gather is arithmetic (`current_id −
+    ///   prev_first`, a row offset) rather than a hash/sort — so the node CLAIMS
+    ///   it. A present-but-not-dense `id` (a `sort`/`cull` broke the window) or
+    ///   an unprovable shape still recedes: the default is to answer right on the
+    ///   CPU, never wrong on the GPU.
+    /// - **Codegen:** it [`reads`](Self::reads) the current element's id (so the
+    ///   generated module can compute the gather row). The column rides through
+    ///   the base like any unwritten column; nothing is written or consumed.
+    ///
+    /// The generated module gives the body `gather_row(i)` (the paired state row
+    /// — `i` when the input is not a dense window, `current_id − prev_first`
+    /// when it is) and `gather_paired(i)` (whether that row exists in the prior
+    /// state, distinct from the global "is there any prior state?" —
+    /// [[feedback_layered_defenses_need_per_layer_gates]]). Reading `prev_first`
+    /// needs the SAME column bound on the state port too (a plain [`Self::Read`]).
+    GatherKey,
 }
 
 impl ColumnAccess {
@@ -80,6 +107,8 @@ impl ColumnAccess {
                 | ColumnAccess::ReadWrite
                 | ColumnAccess::ReadWriteExisting
                 | ColumnAccess::Consume
+                // The gather key reads the current element's id.
+                | ColumnAccess::GatherKey
         )
     }
 
@@ -87,7 +116,10 @@ impl ColumnAccess {
     /// stream carries it)?
     pub const fn writes(self, present_on_input: bool) -> bool {
         match self {
-            ColumnAccess::Read | ColumnAccess::Consume | ColumnAccess::RefuseIfPresent => false,
+            ColumnAccess::Read
+            | ColumnAccess::Consume
+            | ColumnAccess::RefuseIfPresent
+            | ColumnAccess::GatherKey => false,
             ColumnAccess::Write | ColumnAccess::ReadWrite => true,
             ColumnAccess::ReadWriteExisting => present_on_input,
         }
@@ -102,6 +134,12 @@ impl ColumnAccess {
     /// Is this binding a plan-time refusal rather than an access?
     pub const fn refuses(self) -> bool {
         matches!(self, ColumnAccess::RefuseIfPresent)
+    }
+
+    /// Is this binding the [`Self::GatherKey`] — a conditional refusal that
+    /// claims when its port's stream is a dense id window (ADR-0130)?
+    pub const fn is_gather_key(self) -> bool {
+        matches!(self, ColumnAccess::GatherKey)
     }
 }
 
@@ -312,7 +350,14 @@ mod tests {
         assert!(!Consume.writes(true) && !Consume.writes(false));
         assert!(Consume.consumes());
         // Nothing else drops a column: an unmentioned column rides the base.
-        for a in [Read, Write, ReadWrite, ReadWriteExisting, RefuseIfPresent] {
+        for a in [
+            Read,
+            Write,
+            ReadWrite,
+            ReadWriteExisting,
+            RefuseIfPresent,
+            GatherKey,
+        ] {
             assert!(!a.consumes(), "{a:?} must not drop the base's column");
         }
     }
@@ -325,8 +370,42 @@ mod tests {
         assert!(!RefuseIfPresent.reads());
         assert!(!RefuseIfPresent.writes(true) && !RefuseIfPresent.writes(false));
         assert!(RefuseIfPresent.refuses());
-        for a in [Read, Write, ReadWrite, ReadWriteExisting, Consume] {
+        for a in [
+            Read,
+            Write,
+            ReadWrite,
+            ReadWriteExisting,
+            Consume,
+            GatherKey,
+        ] {
             assert!(!a.refuses(), "{a:?} must not refuse the node");
+        }
+    }
+
+    #[test]
+    fn a_gather_key_reads_the_id_but_never_writes_consumes_or_refuses() {
+        use ColumnAccess::*;
+        // ADR-0130: the gather key is a REAL read (the current element's id, so
+        // the module can compute the row) — but it is a conditional refusal, not
+        // a plain refusal, so `refuses()` (the unconditional-recede path) must
+        // NOT catch it (else it would recede on a dense window too).
+        assert!(GatherKey.reads(), "reads the current element's id");
+        assert!(!GatherKey.writes(true) && !GatherKey.writes(false));
+        assert!(!GatherKey.consumes(), "the id rides through the base");
+        assert!(
+            !GatherKey.refuses(),
+            "it CLAIMS a dense window — not a plain refusal"
+        );
+        assert!(GatherKey.is_gather_key());
+        for a in [
+            Read,
+            Write,
+            ReadWrite,
+            ReadWriteExisting,
+            Consume,
+            RefuseIfPresent,
+        ] {
+            assert!(!a.is_gather_key(), "{a:?} is not the gather key");
         }
     }
 }

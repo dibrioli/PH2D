@@ -8,16 +8,18 @@
 //! 1. **The `pre` loop must be claimed WHOLE.** A CPU boundary inside it makes
 //!    the pump cook the loop's other half with its own `prev` — two simulations
 //!    of one state, and the GPU integrating the CPU's divergent `accel`.
-//! 2. **An `id` column means a gather** the kernel does not do (D3), so the
-//!    integrator recedes rather than pair by position.
+//! 2. **An `id` column is an arithmetic gather ONLY on a dense window**
+//!    (ADR-0130): a `motion.emitter`'s contiguous id range CLAIMS the
+//!    integrator (`current_id − prev_first` is a row offset), but a
+//!    present-but-not-dense id (a `sort`/`cull` broke the window) still recedes
+//!    rather than mispair by position.
 //! 3. **An unprovable shape is a refusal**, not an assumption: if a CPU
 //!    boundary feeds `rest`, the plan cannot know whether `id` is there.
 //!
-//! (2) and (3) are separate layers of the same defence: today no registered
-//! generator kernel emits `id`, so only (3) can fire in the product — which is
-//! exactly why (2) is gated against a fixture that makes it reachable (the GPU
-//! emitter this engine will eventually want). Delete either and one test goes
-//! red.
+//! (2) and (3) are separate layers of the same defence, each gated on its own
+//! fixture: the dense emitter (claim) and its reorder sibling (recede) for (2);
+//! a derivable non-dense id (`test.idgen`, recede) between them; and an
+//! unprovable boundary for (3). Delete any one check and one test goes red.
 
 use ph2d_gpu_cook::plan::output_dense_window;
 use ph2d_gpu_cook::{GpuSource, plan};
@@ -217,12 +219,12 @@ fn an_unprovable_shape_refuses_a_kernel_that_names_a_column() {
 }
 
 #[test]
-fn an_emitters_id_stream_keeps_the_integrator_on_the_cpu() {
-    // The product instance of the two layers above: the emitter has no kernel,
-    // so it is a boundary and the plan cannot know what columns cross it — it
-    // happens to stamp `id` (which would need a gather), but the plan never
-    // learns that. Either layer alone is enough to keep this document on the
-    // CPU, which is the point: the default is to recede.
+fn the_emitters_dense_window_claims_the_integrator_gather() {
+    // ADR-0130 slice 3 — the flip. The emitter emits a DENSE id window and has a
+    // kernel, so `emitter → integrate` is claimed WHOLE: the id-gather is
+    // arithmetic (`current_id − prev_first`), not the hash/sort ADR-0127 D3
+    // imagined, so it runs on the GPU. This is the presence half of the sibling
+    // below ([[feedback_absence_gate_needs_a_presence_sibling]]).
     let reg = registry();
     let mut g = Graph::new();
     let em = g.add_node("motion.emitter");
@@ -235,8 +237,49 @@ fn an_emitters_id_stream_keeps_the_integrator_on_the_cpu() {
 
     let p = plan(&g, &reg, &reg, out);
     assert!(
+        p.is_fully_gpu(),
+        "the dense emitter sim runs whole on the GPU: {:?}",
+        p.boundaries
+    );
+    assert!(
+        p.stages.iter().any(|s| s.node == ig),
+        "the integrator gathers the dense id window by arithmetic"
+    );
+    assert!(p.drives_a_loop(), "the state lives on the GPU across ticks");
+    // emitter + integrate dispatch; output is a pass-through.
+    assert_eq!(p.dispatching_stages(&reg), 2);
+    // rest from the emitter, forces from last tick (the self-loop).
+    let st = p.stages.iter().find(|s| s.node == ig).expect("staged");
+    assert_eq!(st.inputs, vec![GpuSource::Stage(em), GpuSource::Prev(ig)]);
+}
+
+#[test]
+fn a_reorder_between_emitter_and_integrate_recedes() {
+    // The absence sibling of the claim above. `test.reorder` HAS a kernel and
+    // passes `id` through, but does NOT declare `register_dense_window` — it
+    // stands for a future GPU `sort`/`cull` whose reordering makes `current_id −
+    // prev_first` mispair. So the emitter's dense window is CLEARED before the
+    // integrator, the id is present-but-not-dense, and the gather recedes to the
+    // CPU (the safe default — never a silent mispair). The mutation that drops
+    // the `!dense` check in `eligible` turns this GREEN with the mispair back.
+    let mut reg = registry();
+    reorder::register(&mut reg);
+    let mut g = Graph::new();
+    let em = g.add_node("motion.emitter");
+    let ro = g.add_node("test.reorder");
+    let ig = g.add_node("motion.integrate");
+    let out = g.add_node("motion.output");
+    edge(&mut g, em, ro, 0, false);
+    edge(&mut g, ro, ig, 0, false);
+    edge(&mut g, ig, ig, 1, true);
+    edge(&mut g, ig, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+
+    let p = plan(&g, &reg, &reg, out);
+    assert!(!p.is_fully_gpu(), "a broken window must recede");
+    assert!(
         !p.stages.iter().any(|s| s.node == ig),
-        "an integrator whose rest shape is unknown must recede"
+        "the integrator must NOT gather a reordered id stream"
     );
     assert_eq!(p.dispatching_stages(&reg), 0, "only the pass-through sink");
 }
@@ -544,5 +587,59 @@ mod idgen {
     pub fn register_without_id(reg: &mut ph2d_node_registry::NodeRegistry) {
         reg.register(Box::new(Op)).unwrap();
         reg.register_gpu_kernel(MAN.id, WITHOUT_ID);
+    }
+}
+
+/// A per-element transformer WITH a kernel that passes `id` through but does NOT
+/// declare `register_dense_window` — the stand-in for a future GPU `sort`/`cull`
+/// that CLEARS the dense window (ADR-0130 D2). Its output shape is provable and
+/// carries `id`, so the integrator downstream sees a present-but-not-dense id
+/// and recedes.
+mod reorder {
+    use ph2d_nodegraph::cook::EvalCtx;
+    use ph2d_nodegraph::effect::Effect;
+    use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+    use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+    use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+
+    const T: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+    static MAN: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("test.reorder"),
+        name: "test.reorder",
+        inputs: &[PortSpec { name: "in", ty: T }],
+        outputs: &[PortSpec { name: "out", ty: T }],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct Op;
+    impl NodeOp for Op {
+        fn manifest(&self) -> &'static NodeManifest {
+            &MAN
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            ctx.emit(ctx.input(0).clone());
+        }
+    }
+    // Touches only P; `id` (and everything else) rides through the base — so the
+    // output shape carries `id`. Crucially it never calls `register_dense_window`.
+    const KERNEL: GpuKernel = GpuKernel {
+        wgsl: "write_P(i, read_P(i));\n",
+        wgsl_lib: "",
+        bindings: &[ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        }],
+        params: &[],
+        source_count: None,
+        applicable: None,
+    };
+    pub fn register(reg: &mut ph2d_node_registry::NodeRegistry) {
+        reg.register(Box::new(Op)).unwrap();
+        reg.register_gpu_kernel(MAN.id, KERNEL);
     }
 }

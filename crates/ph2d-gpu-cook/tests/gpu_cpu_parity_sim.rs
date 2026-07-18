@@ -53,6 +53,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_force_buoyancy::register(&mut reg).unwrap();
     ph2d_node_motion_oscillator::register(&mut reg).unwrap();
     ph2d_node_motion_spring::register(&mut reg).unwrap();
+    ph2d_node_motion_emitter::register(&mut reg).unwrap();
     reg
 }
 
@@ -901,4 +902,270 @@ fn scrubbing_back_reproduces_the_past_state_instead_of_the_marching_future() {
     // continue from, not a dead end.
     let resumed = march(&mut gc, MARCHED);
     assert_parity("re-marched", &cpu[MARCHED as usize], &resumed);
+}
+
+// ── ADR-0130: the emitter sim — the id-gather, end to end ────────────────────
+//
+// THE audit of slice 3. `emitter → [force] → integrate → output` on the GPU, its
+// per-particle state paired by the ARITHMETIC gather (`current_id − prev_first`),
+// against the CPU's `BTreeMap<id,row>`. Every gate here uses a CAPPED emitter so
+// the alive window SLIDES every tick (births outrun the cap → `first` advances,
+// the oldest evict): a static count would pair positionally and stay green with
+// the gather dead ([[feedback_test_with_product_numbers_not_convenient_ones]]).
+
+/// `emitter → [forces] → integrate → output`, the forces wired into the `pre`
+/// loop exactly like [`sim_chain`]. A CAPPED emitter (rate 400, dt 0.05 → 20
+/// births/tick; `max` particles) whose window slides from tick 2 on.
+fn emitter_sim(
+    reg: &NodeRegistry,
+    max: f32,
+    forces: &[(&str, &[(&str, f32)])],
+) -> (Graph, NodeId, NodeId) {
+    let mut g = Graph::new();
+    let em = g.add_node("motion.emitter");
+    g.set_param(em, "rate", 400.0);
+    // Huge life → no deaths; the cap alone slides the window (`first =
+    // newest+1−max` advances as `newest` does). `max` 40 at 20 births/tick means
+    // the cap binds at tick 2 and every later tick is ~half survivors, half
+    // newborns — both the gather AND the per-element seed exercised at once.
+    g.set_param(em, "life", 100.0);
+    g.set_param(em, "max", max);
+    g.set_param(em, "speed", 4.0);
+    g.set_param(em, "angle", 90.0);
+    // A wide cone so the muzzle velocity really DIFFERS per id: a positional
+    // mispair then gives a survivor a stranger's velocity, which parity sees.
+    g.set_param(em, "spread", 120.0);
+    g.set_param(em, "x", 0.5);
+    g.set_param(em, "y", -0.25);
+    g.set_param(em, "seed", 7.0);
+    g.set_param(em, "size", 0.15);
+    let ig = g.add_node("motion.integrate");
+    let out = g.add_node("motion.output");
+    edge(&mut g, em, ig, 0, false);
+    edge(&mut g, ig, out, 0, false);
+    match forces {
+        [] => edge(&mut g, ig, ig, 1, true),
+        _ => {
+            let nodes: Vec<NodeId> = forces
+                .iter()
+                .map(|(ty, params)| {
+                    let n = g.add_node(*ty);
+                    for (k, v) in *params {
+                        g.set_param(n, *k, *v);
+                    }
+                    n
+                })
+                .collect();
+            edge(&mut g, ig, nodes[0], 0, true);
+            for w in nodes.windows(2) {
+                edge(&mut g, w[0], w[1], 0, false);
+            }
+            edge(&mut g, *nodes.last().expect("non-empty"), ig, 1, false);
+        }
+    }
+    g.validate(reg).expect("well-typed");
+    (g, ig, out)
+}
+
+/// Cook the emitter sim tick-by-tick on the GPU, returning EACH tick's lowering
+/// (the count changes per tick, so a single last-tick read would hide a
+/// mispair on an earlier one). Asserts the plan claims the loop and dispatches.
+fn emitter_gpu_ticks(
+    gpu: &GpuContext,
+    g: &Graph,
+    reg: &NodeRegistry,
+    out: NodeId,
+    ticks: u64,
+    want_stages: usize,
+) -> Vec<Vec<RenderInstance>> {
+    let plan = plan(g, reg, reg, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the dense emitter sim must run whole on the GPU: {:?}",
+        plan.boundaries
+    );
+    assert!(plan.drives_a_loop(), "the state must live on the GPU");
+    assert_eq!(
+        plan.dispatching_stages(reg),
+        want_stages,
+        "every sim node must actually dispatch"
+    );
+    let mut gc = GpuCook::new();
+    let mut frames = Vec::new();
+    for t in 0..=ticks {
+        gc.cook(
+            gpu,
+            g,
+            reg,
+            reg,
+            &plan,
+            &[],
+            CookClock {
+                playhead: t as f64 * FIXED_DT,
+                tick: Some(t),
+            },
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+        frames.push(read_instances(gpu, gc.instances().expect("cooked")));
+    }
+    frames
+}
+
+/// The largest distance any instance sits from the emitter origin — how far the
+/// integration has actually carried the field (each particle is BORN at the
+/// origin, so this is `max |sim_d|`).
+fn max_from_origin(frame: &[RenderInstance], origin: [f32; 2]) -> f32 {
+    frame
+        .iter()
+        .flat_map(|r| (0..2).map(move |k| (r.world_pos[k] - origin[k]).abs()))
+        .fold(0.0f32, f32::max)
+}
+
+const EM_ORIGIN: [f32; 2] = [0.5, -0.25];
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_emitter_ballistic_sim_matches_the_cpu() {
+    // The pure gather: `emitter → integrate` on the bare self-loop. No force, so
+    // each particle drifts by its own muzzle velocity (from `hash(seed, id)`) —
+    // which means WHICH prior row each survivor pairs to is exactly what its
+    // displacement is. A positional mispair (element `i` ← prev row `i`, a
+    // different-aged particle) fails parity the first tick the window slides.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const MAX: f32 = 40.0;
+    const TICKS: u64 = 4; // cap binds at tick 2, the window slides at 3 and 4.
+    let (g, _, out) = emitter_sim(&reg, MAX, &[]);
+    let cpu = cpu_ticks(&g, &reg, out, TICKS);
+    // emitter + integrate dispatch; output is a pass-through.
+    let gpu = emitter_gpu_ticks(&gpu, &g, &reg, out, TICKS, 2);
+
+    // The window really slid AND newborns coexist with survivors — otherwise the
+    // gather is either untouched (static count) or trivial (all fresh).
+    let counts: Vec<usize> = cpu.iter().map(Vec::len).collect();
+    assert_eq!(counts.last().copied(), Some(MAX as usize), "the cap binds");
+    assert!(
+        counts[1] < counts[3],
+        "the window grew off zero: {counts:?}"
+    );
+    // The field integrated: the oldest survivors are far from the origin.
+    let moved = max_from_origin(&cpu[TICKS as usize], EM_ORIGIN);
+    assert!(
+        moved > MUST_MOVE,
+        "the muzzle velocities must launch the field ({moved}) — else the gather \
+         pairs zeros and this proves nothing"
+    );
+    eprintln!("emitter sim: counts {counts:?}, drifted {moved}");
+
+    for (t, (c, gp)) in cpu.iter().zip(&gpu).enumerate() {
+        assert_parity(&format!("emitter ballistic tick {t}"), c, gp);
+    }
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_emitter_sim_under_drag_matches_the_cpu() {
+    // The accel gather: `emitter → drag → integrate` in the `pre` loop. `drag`
+    // writes `−k·vel` per state element, and the integrator gathers that `accel`
+    // by the SAME row as `vel`/`sim_d` — so a mispair here also gives a survivor
+    // the wrong deceleration. Drag reads `vel`, which the muzzle seeds, so the
+    // force has something to act on from tick 1.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const MAX: f32 = 40.0;
+    const TICKS: u64 = 4;
+    let (g, _, out) = emitter_sim(&reg, MAX, &[("force.drag", &[("coefficient", 2.75)])]);
+    let cpu = cpu_ticks(&g, &reg, out, TICKS);
+    // emitter + drag + integrate.
+    let gpu = emitter_gpu_ticks(&gpu, &g, &reg, out, TICKS, 3);
+
+    let moved = max_from_origin(&cpu[TICKS as usize], EM_ORIGIN);
+    assert!(moved > MUST_MOVE, "the sim must integrate: {moved}");
+    eprintln!("emitter+drag sim: drifted {moved}");
+    for (t, (c, gp)) in cpu.iter().zip(&gpu).enumerate() {
+        assert_parity(&format!("emitter+drag tick {t}"), c, gp);
+    }
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn scrubbing_the_emitter_sim_reproduces_the_past_window() {
+    // D5 for the emitter: `first` is `pure(t)`, so a re-simulated tick reproduces
+    // exactly the ids of the original march, and the restored `prev` is a genuine
+    // past whose `id[0]` is that tick's `prev_first`. The `id` column travels in
+    // the checkpoint (it rides `rest→out→pre→forces`), so the gather on restore
+    // is the gather going forward. The quiet failure this prevents: showing the
+    // FUTURE's particles at a past tick (the integrator's `dt≤0` clamp hides it).
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const MAX: f32 = 40.0;
+    const BACK_TO: u64 = 4;
+    const MARCHED: u64 = 20;
+    let (g, _, out) = emitter_sim(&reg, MAX, &[("force.drag", &[("coefficient", 1.5)])]);
+
+    let cpu = cpu_ticks(&g, &reg, out, MARCHED);
+    // The past and the marched-to state must be DIFFERENT particles, or
+    // "reproduced the past" and "showed the future" are the same picture. A
+    // capped emitter reaches a steady max-spread, so the tell is not distance
+    // from origin (both ~0.18) but the per-slot diff: tick 4's window is ids
+    // [41,81), tick 20's is [361,401) — wholly disjoint, so element-for-element
+    // they sit far apart (different ids → different muzzle velocities).
+    assert_eq!(
+        cpu[BACK_TO as usize].len(),
+        cpu[MARCHED as usize].len(),
+        "both ticks are capped to the same count"
+    );
+    let travelled = max_move(&cpu[BACK_TO as usize], &cpu[MARCHED as usize]);
+    assert!(
+        travelled > MUST_MOVE,
+        "the alive window must have churned between the two ticks ({travelled})"
+    );
+
+    let plan = plan(&g, &reg, &reg, out);
+    assert!(plan.drives_a_loop());
+    let mut gc = GpuCook::new();
+    let march = |gc: &mut GpuCook, target: u64| {
+        for t in gc.rewind_for(target)..=target {
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[],
+                CookClock {
+                    playhead: t as f64 * FIXED_DT,
+                    tick: Some(t),
+                },
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+        }
+        read_instances(&gpu, gc.instances().expect("cooked"))
+    };
+
+    let _ = march(&mut gc, MARCHED);
+    let (checkpoints, _) = gc.ring_stats();
+    assert!(
+        checkpoints > 1,
+        "the ring must hold a window: {checkpoints}"
+    );
+    let scrubbed = march(&mut gc, BACK_TO);
+    assert_eq!(gc.last_cooked_tick(), Some(BACK_TO));
+    assert_parity("emitter scrub back", &cpu[BACK_TO as usize], &scrubbed);
+    // And forward again — the restore left a continuable state, not a dead end.
+    let resumed = march(&mut gc, MARCHED);
+    assert_parity("emitter re-marched", &cpu[MARCHED as usize], &resumed);
 }

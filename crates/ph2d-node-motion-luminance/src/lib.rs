@@ -17,6 +17,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -58,6 +59,42 @@ fn luminance(tint: &[[f32; 4]], n: usize) -> Vec<f32> {
         .collect()
 }
 
+/// GPU compute kernel (ADR-0126) — Rec. 709 luma per element.
+///
+/// A **bare** emitter: instances in, a VALUE stream out (one `v` column). The
+/// sequencer derives that from the manifest's port types, so nothing is declared
+/// here; riding the base would hand downstream a VALUE stream still carrying
+/// `P`/`size`, which the CPU's does not have.
+///
+/// An absent `tint` reads the `[0,0,0,0]` identity and yields 0 — the same answer
+/// the CPU's `tint.get(i).unwrap_or([0.0; 4])` gives, which is what makes the
+/// column-absent variant of this module honest rather than merely compiling.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let lum_c = read_tint(i);\n\
+        write_v(i, 0.2126 * lum_c.x + 0.7152 * lum_c.y + 0.0722 * lum_c.z);\n",
+    wgsl_lib: "",
+    bindings: &[
+        ColumnBinding {
+            column: "tint",
+            dim: Dim::Vec4,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Write,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: &[],
+    source_window: None,
+    applicable: None,
+};
+
 struct MotionLuminance;
 
 impl NodeOp for MotionLuminance {
@@ -82,6 +119,7 @@ impl NodeOp for MotionLuminance {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionLuminance))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

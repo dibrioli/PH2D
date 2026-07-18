@@ -26,6 +26,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -97,6 +98,39 @@ fn map_one(v: f32, in_lo: f32, in_hi: f32, out_lo: f32, out_hi: f32, clamp: bool
     out_lo + t * (out_hi - out_lo)
 }
 
+/// GPU compute kernel (ADR-0126) — the WGSL port of [`map_one`].
+///
+/// VALUE in, VALUE out: the base DOES ride here, and that is correct — a VALUE
+/// stream carries only `v`, so "base + written `v`" and "a fresh stream with `v`"
+/// are the same stream. (The distinction only bites when the KINDS differ, as in
+/// `motion.luminance`.)
+///
+/// The `MIN_SPAN` guard is ported verbatim, not approximated: a zero input span
+/// is a divide, and the CPU answers `out_lo` there. `clamp` is a boolean-ish
+/// param compared at `> 0.5`, exactly as the CPU reads it.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let mr_span = params.in_hi - params.in_lo;\n\
+        var mr_out = params.out_lo;\n\
+        if (abs(mr_span) >= 1e-9) {\n\
+        \x20   var mr_t = (read_v(i) - params.in_lo) / mr_span;\n\
+        \x20   if (params.clamp > 0.5) { mr_t = clamp(mr_t, 0.0, 1.0); }\n\
+        \x20   mr_out = params.out_lo + mr_t * (params.out_hi - params.out_lo);\n\
+        }\n\
+        write_v(i, mr_out);\n",
+    wgsl_lib: "",
+    bindings: &[ColumnBinding {
+        column: VALUE_COL,
+        dim: Dim::Scalar,
+        access: ColumnAccess::ReadWrite,
+        identity: [0.0; 4],
+        port: 0,
+    }],
+    params: &["in_lo", "in_hi", "out_lo", "out_hi", "clamp"],
+    source_window: None,
+    applicable: None,
+};
+
 struct ValueMapRange;
 
 impl NodeOp for ValueMapRange {
@@ -128,6 +162,7 @@ impl NodeOp for ValueMapRange {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueMapRange))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

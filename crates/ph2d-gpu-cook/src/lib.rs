@@ -50,6 +50,7 @@
 //! passes.
 
 pub mod codegen;
+pub mod debug_read;
 mod gather;
 pub mod instances;
 pub mod lower;
@@ -146,6 +147,10 @@ pub struct GpuCook {
     /// What the host knows about the last cook — element counts and column sets
     /// per staged node, for the graph panel (see [`shape::CookShape`]).
     shape: shape::CookShape,
+    /// Gate-only stream retention ([`debug_read`]); off in production, where it
+    /// would pin every intermediate against [`BufferPool::reclaim`].
+    pub(crate) debug_retain: bool,
+    pub(crate) debug_streams: BTreeMap<NodeId, GpuStream>,
     /// The fixed tick [`Self::prev`] belongs to — the GPU sim's own clock,
     /// mirroring `MotionCookPump::last_cooked_tick`. A sequential cook owes one
     /// step per tick, so the caller needs to know which one it last took; a
@@ -343,6 +348,9 @@ impl GpuCook {
         // host-side element count of every staged node, recorded once the walk is
         // done. Cheap (a map of `u32`) and honest — these ARE the dispatch sizes.
         self.shape.record(&streams);
+        if self.debug_retain {
+            self.debug_streams = streams.clone();
+        }
 
         // The sink is the walk's post-order root, so it is the last stage.
         let sink_stream = plan
@@ -606,15 +614,12 @@ impl GpuCook {
         // threading IS the shared semantic, not a GPU convention.
         //
         // **Unless the node emits a different KIND of stream.** `value.lfo` and
-        // friends take instances and emit a VALUE stream — `Stream::new(n)` with
-        // one `v` column and nothing else. Riding the base there would hand the
-        // downstream a VALUE stream still carrying `P`/`Index`/`size`, which the
-        // CPU's does not have: not an ε, a different shape, and the divergence
-        // would surface as a downstream node reading a column that should have
-        // been gone. The manifest already states the fact — port 0 in vs out —
-        // so no kernel has to declare it, and it is a NO-OP for every kernel
-        // shipped so far (all of them `INST_VEC2 → INST_VEC2`, or generators
-        // whose base is empty anyway).
+        // friends take instances and emit a VALUE stream: one `v` column and
+        // nothing else. Riding the base there would hand downstream a VALUE stream
+        // still carrying `P`/`Index`, which the CPU's does not have — not an ε, a
+        // different shape, surfacing far away as a node reading a column that
+        // should be gone. The manifest already states it (port 0 in vs out), so no
+        // kernel declares anything, and it is a NO-OP for every kernel so far.
         let rides_base = match (manifest.inputs.first(), manifest.outputs.first()) {
             (Some(i), Some(o)) => o.ty == i.ty,
             _ => true,

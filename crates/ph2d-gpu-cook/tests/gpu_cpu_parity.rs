@@ -47,6 +47,8 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     ph2d_node_motion_noise::register(&mut reg).unwrap();
     ph2d_node_value_lfo::register(&mut reg).unwrap();
+    ph2d_node_motion_luminance::register(&mut reg).unwrap();
+    ph2d_node_value_map_range::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -1300,4 +1302,114 @@ fn a_value_node_emits_a_bare_stream_not_the_instance_base() {
          is `v` and nothing else, never the instance base with `v` bolted on"
     );
     assert_eq!(gpu_cols, vec!["v"], "and that column set is exactly `v`");
+}
+
+/// The rest of the bare-emitter family: `motion.luminance` (instances → VALUE,
+/// so the base must NOT ride) chained into `value.map_range` (VALUE → VALUE, so
+/// it must). One chain proves both halves of the rule the engine now derives
+/// from the manifest — and a chain, not two isolated nodes, because the bug this
+/// guards against is a wrong stream SHAPE handed to whatever comes next.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_bare_emitters_match_the_cpu_and_keep_their_stream_shape() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 10.0);
+    // A tint the luma actually varies over. `motion.tint` is SOLID — every element
+    // gets the same colour, so the luma would be constant and this gate would pass
+    // with an index slip in the kernel. `motion.color_ramp` maps index → colour,
+    // so the field varies and a mispair shows. (The fixture check below is what
+    // caught the first draft using a solid tint.)
+    let tint = g.add_node("motion.color_ramp");
+    g.set_param(tint, "a_r", 0.05);
+    g.set_param(tint, "a_g", 0.11);
+    g.set_param(tint, "a_b", 0.83);
+    g.set_param(tint, "b_r", 0.91);
+    g.set_param(tint, "b_g", 0.74);
+    g.set_param(tint, "b_b", 0.07);
+    let lum = g.add_node("motion.luminance");
+    let mr = g.add_node("value.map_range");
+    g.set_param(mr, "in_lo", 0.13);
+    g.set_param(mr, "in_hi", 0.79);
+    g.set_param(mr, "out_lo", -2.3);
+    g.set_param(mr, "out_hi", 5.7);
+    g.set_param(mr, "clamp", 1.0);
+    connect(&mut g, grid, tint);
+    connect(&mut g, tint, lum);
+    connect(&mut g, lum, mr);
+    g.validate(&reg).expect("well-typed");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, mr);
+    assert!(
+        plan.is_fully_gpu(),
+        "grid → tint → luminance → map_range is covered"
+    );
+
+    let mut cook = Cook::new();
+    let cpu = cook.cook(&g, &reg, mr, PLAYHEAD).expect("cpu cook");
+    let cpu_stream = cpu[0].as_stream();
+    let cpu_v = match cpu_stream.get("v") {
+        Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+        _ => panic!("the CPU emitted no `v`"),
+    };
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true); // gate-only: lets `read_column` see `v`
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+
+    // Shape first: both nodes must carry `v` alone. `luminance` gets that by
+    // dropping the base; `map_range` by riding one that only had `v`.
+    for (node, label) in [(lum, "luminance"), (mr, "map_range")] {
+        let cols: Vec<&str> = gc
+            .node_columns(node)
+            .expect("staged")
+            .iter()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(
+            cols,
+            vec!["v"],
+            "{label} emits a VALUE stream: `v` and nothing else"
+        );
+    }
+    assert_eq!(
+        gc.node_count(mr),
+        Some(cpu_v.len() as u32),
+        "same element count"
+    );
+    // And the NUMBERS — shape alone would stay green with the luma weights
+    // transposed or the map's clamp branch inverted.
+    let gpu_v = gc
+        .read_column(&gpu, mr, "v")
+        .expect("the `v` column reads back");
+    assert_eq!(gpu_v.len(), cpu_v.len());
+    let worst = gpu_v
+        .iter()
+        .zip(&cpu_v)
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0_f32, f32::max);
+    eprintln!(
+        "value parity: {} elements, max |dv| = {worst:e}",
+        cpu_v.len()
+    );
+    assert!(worst < 1e-5, "value parity: max |dv| = {worst:e}");
+    assert!(
+        cpu_v.iter().any(|v| (v - cpu_v[0]).abs() > 1e-6),
+        "fixture check: the field must VARY, or this proves nothing"
+    );
 }

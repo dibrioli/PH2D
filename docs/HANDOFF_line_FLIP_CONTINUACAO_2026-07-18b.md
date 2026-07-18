@@ -26,6 +26,24 @@ e a região fechada por dois traços com barriga.
 
 ---
 
+## 0.1 — O que os smokes seguintes derrubaram (leia antes de tocar no balde)
+
+| # | defeito | estado |
+|---|---|---|
+| **#19** | `filled_shape_target` disparava em traço que se CRUZA e pintava o polígono dele (a cunha entre as pontas). Critério era ÁREA, e a forma quebrada passava com 0,7% num teto de 15% | ✅ critério virou **abraço nos dois sentidos**, tolerância medida (fosso de 150×) |
+| **alvo vivo** | o último traço/fill era REESCRITO por qualquer mudança de painel, a partir de uma `base` congelada | ✅ **removido por ordem do Enio** (feature inteira, 177 LOC + 7 sítios) |
+| **#20a** | `FILL_TUCK_PX` (px) somado a `mean_line_width` (MUNDO desde o §4.C.6) = **100× a dilatação pretendida** | ✅ convertido (`fill_tuck_world`) |
+| **#20b** | a dilatação era a **média global** das espessuras, uniforme em todo ponto do contorno ⇒ atravessava a linha fina | ✅ virou **local** (`local_line_width`) |
+
+⚠️ **E o achado de método que vale mais que os três:** OITO gates de pixel do `gpu_fill_fit`
+estavam **verdes** com a cor 100 px fora da linha — porque eles **calculam a própria
+dilatação** (`width_px + 2.0*tuck`, `:233`/`:596`) em vez de consumir a do produto. Dois deles
+se chamam *"a cor nunca transborda a linha"* e *"a linha macia nunca mostra o fundo"*.
+**GAP ABERTO nomeado no BUGS #20:** fazer o `gpu_fill_fit` consumir a dilatação do shell, ou um
+gate que afirme que os dois números coincidem. Sem isso os oito seguem cegos para a classe.
+
+---
+
 ## 1. Estado: a wave COLORIZE começou. **C1 landou, PENDENTE DE SMOKE.**
 
 1 commit novo sobre a base sincronizada. `main` não andou (`HEAD..main` = 0).

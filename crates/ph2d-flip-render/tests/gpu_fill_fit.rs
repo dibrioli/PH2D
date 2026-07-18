@@ -215,6 +215,7 @@ fn scene_t(width_px: f32, hardness: f32, tuck: f32) -> FlipDrawing {
             precision: 1.6,
             gap_reach: 0.0,
             grow: 0,
+            trap_px: 0.0,
             mode: FillMode::Paint,
         },
     )
@@ -582,6 +583,7 @@ fn spiky(width_px: f32) -> FlipDrawing {
             precision: 1.6,
             gap_reach: 0.0,
             grow: 0,
+            trap_px: 0.0,
             mode: FillMode::Paint,
         },
     )

@@ -85,6 +85,7 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_SMOOTHING
                 || id == ids::FLIP_GAP
                 || id == ids::FLIP_GROW
+                || id == ids::FLIP_TRAP
                 || id == ids::FLIP_PRECISION
                 // Os sliders PRÓPRIOS da borracha (§4.C) — só existem na tela com o
                 // link desligado, mas o arm vale sempre (o painel não gateia evento).
@@ -108,6 +109,7 @@ pub(crate) fn apply_event(
                 || id == ids::FLIP_SMOOTHING_NUM
                 || id == ids::FLIP_GAP_NUM
                 || id == ids::FLIP_GROW_NUM
+                || id == ids::FLIP_TRAP_NUM
                 || id == ids::FLIP_PRECISION_NUM
                 || id == ids::FLIP_ERASE_SIZE_NUM
                 || id == ids::FLIP_ERASE_STRENGTH_NUM =>

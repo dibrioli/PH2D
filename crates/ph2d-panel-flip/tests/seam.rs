@@ -151,6 +151,7 @@ fn the_bucket_widgets_appear_only_in_fill_mode() {
         ids::FLIP_FILL_UNPAINT,
         ids::FLIP_GAP,
         ids::FLIP_GROW,
+        ids::FLIP_TRAP,
         ids::FLIP_PRECISION,
     ];
 
@@ -203,6 +204,7 @@ fn every_number_box_has_a_registered_range() {
         ("Opacity", ids::FLIP_OPACITY_NUM),
         ("Smoothing", ids::FLIP_SMOOTHING_NUM),
         ("Gap", ids::FLIP_GAP_NUM),
+        ("Trap", ids::FLIP_TRAP_NUM),
         ("Grow", ids::FLIP_GROW_NUM),
         ("Precision", ids::FLIP_PRECISION_NUM),
         // §4.C — as caixas dos valores PRÓPRIOS da borracha (link desligado).
@@ -248,6 +250,7 @@ fn each_mode_shows_only_its_own_attributes() {
     // compartilhado com o Edit, ver `fill_swatch`.)
     let bucket_only = [
         ("Gap", ids::FLIP_GAP),
+        ("Trap", ids::FLIP_TRAP),
         ("Grow", ids::FLIP_GROW),
         ("Precision", ids::FLIP_PRECISION),
     ];
@@ -256,6 +259,7 @@ fn each_mode_shows_only_its_own_attributes() {
     let bucket_expected = [
         ("Fill color", ids::FLIP_FILL_SWATCH),
         ("Gap", ids::FLIP_GAP),
+        ("Trap", ids::FLIP_TRAP),
         ("Grow", ids::FLIP_GROW),
         ("Precision", ids::FLIP_PRECISION),
     ];
@@ -1037,4 +1041,56 @@ fn the_strength_row_lives_only_in_the_soft_eraser() {
             "borracha {erase:?}: o link do Size sumiu"
         );
     }
+}
+
+/// **A costura do Trap, dirigida de ponta a ponta** (COLORIZE C1).
+///
+/// Arrasta o slider REAL e prova que o valor chega ao tool — exercitando os sete
+/// sítios (`ids` → `populate` → `paint`/hit → `event` → bus → `handle_panel_event` →
+/// snapshot). É o que a DIRETIVA §2 exige: um widget pintado sem arm é um clique
+/// dropado **em silêncio**, e nenhum `cargo check` o pega.
+///
+/// A asserção é o VALOR projetado, não "algo mudou": o mapa `track → px` vive em dois
+/// lugares (o painel desenha, o tool projeta) e um mapa divergente é um slider que
+/// mostra um número e aplica outro.
+#[test]
+fn the_trap_slider_reaches_the_tool() {
+    let mut host = MockPanelHost::with_panel::<FlipPanel>();
+    let mut panel_state = FlipPanelState::default();
+    let mut tool = FlipTool::default();
+
+    assert_eq!(
+        tool.ui_snapshot().trap,
+        0.0,
+        "o Trap TEM de nascer desligado — a wave Colorize e opt-in, e um default \
+         diferente de 0 reescreveria o balde que o Enio ja aprovou"
+    );
+
+    host.set_slider_value(ids::FLIP_TRAP, 1.0);
+    let outcome = host.apply_panel_event::<FlipPanel>(
+        &mut panel_state,
+        WidgetEvent::ValueChanged(ids::FLIP_TRAP),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o painel ignorou uma edicao real do slider — falta o arm de FLIP_TRAP em event.rs"
+    );
+
+    let mut forwarded = false;
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            tool.handle_panel_event(pe);
+            forwarded = true;
+        }
+    }
+    assert!(
+        forwarded,
+        "a edicao do Trap nunca chegou ao bus como ToolPanelEvent — a costura esta morta"
+    );
+    assert_eq!(
+        tool.ui_snapshot().trap,
+        ph2d_tool_flip::TRAP_MAX_PX,
+        "a costura slider→tool entregou o px errado para o Trap"
+    );
 }

@@ -15,7 +15,7 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 use ph2d_tool_flip::{
     DEFAULT_HARDNESS, DEFAULT_OPACITY, DEFAULT_PRECISION, DEFAULT_SMOOTHING, DEFAULT_WIDTH_PX,
     GAP_MAX_PX, GROW_MAX, GROW_MIN, OPACITY_SLIDER_SCALE, PRECISION_MAX, PRECISION_MIN,
-    WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider,
+    TRAP_MAX_PX, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE, px_to_slider,
 };
 
 /// Register a plain action Button in the Normal state.
@@ -170,6 +170,16 @@ pub fn populate(store: &mut WidgetStore) {
         (GROW_MAX - GROW_MIN) as f32,
         GROW_MIN as f32,
         1.0, // step do dominio: unidades inteiras (px / %)
+    );
+    slider_chip(
+        store,
+        ids::FLIP_TRAP,
+        ids::FLIP_TRAP_NUM,
+        0.0, // default 0 = desligado (a bola e opt-in)
+        0.0,
+        TRAP_MAX_PX as f32,
+        0.0,
+        1.0, // step do dominio: unidades inteiras (px)
     );
     slider_chip(
         store,

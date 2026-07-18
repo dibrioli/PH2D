@@ -34,10 +34,14 @@
 //!
 //! HR-5: zero transcendentais fora de `sqrt` (que é exata em IEEE-754).
 
+mod ball;
+mod edt;
 mod gap;
 mod raster;
 mod trace;
 
+pub use ball::{TrapBall, TrapRegion};
+pub use edt::sq_distance_to_set;
 pub use gap::{Boundary, Closure};
 pub use raster::Grid;
 pub use trace::{RDP_EPSILON_PX, signed_area, simplify_ring, trace_contours};
@@ -99,6 +103,20 @@ pub struct FillParams {
     /// O chamador converte de px de tela para px de buffer (multiplicando pela
     /// `precision`) — senão subir a Precision encolheria o Grow em silêncio.
     pub grow: i32,
+    /// **Trap** — o raio da *trapped ball*, em pixels do BUFFER. `0` = desligado.
+    ///
+    /// Com `trap_px > 0` o flood é feito por uma **bola de raio `trap_px`**, que não
+    /// atravessa um vão mais estreito que `2·trap_px` (Zhang et al., TVCG 2009 — ver
+    /// [`crate::TrapBall`]). É a alternativa ao Gap Closure para o caso comum: em vez de
+    /// o artista achar o vão e calibrar um alcance, ele diz "a tinta é grossa assim".
+    ///
+    /// **`0` deixa o pipeline byte a byte como era** (o `Grid::flood` de sempre) — a wave
+    /// Colorize é opt-in inteira (`docs/Flip/09_colorize.md`).
+    ///
+    /// Como o `grow`, o chamador converte de px de TELA para px de buffer multiplicando
+    /// pela `precision` — senão subir a Precision encolheria a bola em silêncio, que é
+    /// exatamente o acoplamento escondido do BUGS #11.
+    pub trap_px: f32,
     /// O modo (Paint / Paint-Behind / Unpaint).
     pub mode: FillMode,
 }
@@ -111,6 +129,10 @@ impl Default for FillParams {
             // **Zero.** Com a âncora no eixo, o default já é exato por construção — em
             // qualquer espessura e em qualquer zoom. O Grow é só o ajuste estilístico.
             grow: 0,
+            // **Zero = o balde de sempre, ao bit.** A bola é opt-in: ela muda o que
+            // conta como região, e mudar isso por default reescreveria o comportamento
+            // que o Enio já aprovou no smoke do W4.
+            trap_px: 0.0,
             mode: FillMode::Paint,
         }
     }
@@ -142,6 +164,12 @@ pub enum FillError {
     Empty,
     /// O contorno resultante é degenerado (área ~zero).
     Degenerate,
+    /// A **bola do Trap não cabe** onde se clicou — o lugar é mais estreito que ela.
+    ///
+    /// Erro próprio, e não um `Leaked` reaproveitado, porque a saída para o usuário é a
+    /// OPOSTA: aqui ele tem de **baixar** o Trap (ou clicar num lugar mais largo), e
+    /// mandá-lo subir o Gap Closure o levaria para longe da solução.
+    BallTooFat,
 }
 
 /// **Preenche** a região que contém `click`, delimitada por `strokes`.
@@ -235,7 +263,27 @@ pub fn fill_at(
     if grid.at(seed.0, seed.1) & raster::BOUNDARY != 0 {
         return Err(FillError::OnBoundary);
     }
-    if !grid.flood(seed, LEAK_PX) {
+    if params.trap_px > 0.0 {
+        // **A bola** (opt-in): inunda com um disco de raio `trap_px`, que não passa por
+        // um vão mais estreito que `2r`. Só a PERGUNTA "quais pixels são a região" muda —
+        // o resto do pipeline (o `expand_under_ink`, o Grow, a vetorização) é o mesmo
+        // código, lendo o mesmo bit `FILLED`. Duas respostas para "onde a região termina"
+        // divergiriam, e é a doença de todo bug desta linha.
+        let ball = TrapBall::new(&grid);
+        let Some(region) = ball.region_from(seed, params.trap_px) else {
+            // A bola não cabe na semente: o vão é mais estreito que ela. É o mesmo
+            // "não deu" do clique em cima da linha — e o toast manda baixar o Trap.
+            return Err(FillError::BallTooFat);
+        };
+        if region.escaped {
+            return Err(FillError::Leaked);
+        }
+        for (i, &m) in region.mask.iter().enumerate() {
+            if m {
+                grid.flags[i] |= raster::FILLED;
+            }
+        }
+    } else if !grid.flood(seed, LEAK_PX) {
         return Err(FillError::Leaked);
     }
 

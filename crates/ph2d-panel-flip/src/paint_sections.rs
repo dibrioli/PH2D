@@ -18,7 +18,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_tool_flip::{
     EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
-    PRECISION_MAX, PRECISION_MIN, ReshapeKind, px_to_slider,
+    PRECISION_MAX, PRECISION_MIN, ReshapeKind, TRAP_MAX_PX, px_to_slider,
 };
 use ph2d_vector::VectorScene;
 
@@ -483,6 +483,24 @@ impl BodyCtx<'_> {
             track,
             gap,
             &format!("{}", gap.round() as i64),
+            y,
+        );
+        // Trap (px de tela; 0 = desligado): o raio da bola que nao passa por um vao
+        // mais estreito que 2r. Fica ao lado do Gap de proposito — os dois resolvem o
+        // line-art aberto, por caminhos diferentes.
+        let track = self
+            .store
+            .slider(ids::FLIP_TRAP)
+            .map(|(_, v)| v)
+            .unwrap_or((snap.trap / TRAP_MAX_PX) as f32);
+        let trap = f64::from(track) * TRAP_MAX_PX;
+        y = self.slider_row(
+            "Trap",
+            ids::FLIP_TRAP,
+            ids::FLIP_TRAP_NUM,
+            track,
+            trap,
+            &format!("{}", trap.round() as i64),
             y,
         );
         // Grow/Shrink (px do buffer): positivo enfia a cor por baixo da linha.

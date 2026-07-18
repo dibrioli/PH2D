@@ -100,6 +100,11 @@ pub const FLIP_GROW_NUM: NodeId = hash_node_id("flip.fill.grow_num");
 /// Precision (bucket buffer resolution) + its chip.
 pub const FLIP_PRECISION: NodeId = hash_node_id("flip.fill.precision");
 pub const FLIP_PRECISION_NUM: NodeId = hash_node_id("flip.fill.precision_num");
+/// Trap — the trapped-ball radius (screen px; `0` = off) + its chip. A ball of radius
+/// `r` cannot cross a gap narrower than `2r`, so the bucket stops leaking through an
+/// unclosed outline without the artist hunting for the gap (COLORIZE C1).
+pub const FLIP_TRAP: NodeId = hash_node_id("flip.fill.trap");
+pub const FLIP_TRAP_NUM: NodeId = hash_node_id("flip.fill.trap_num");
 
 // ── Brush section (size / hardness / opacity / smoothing) ────────────────────
 /// Stroke width slider (track `0..1` → `1..64` px) + its px chip.

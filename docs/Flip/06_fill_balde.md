@@ -214,8 +214,14 @@ dar zoom** para o balde recusar uma forma fechada com "Fill leaked". Gate:
 
 ## §8 — Carry-overs declarados (não são omissões)
 
-- **T4.5 — Fill multiframe** (rodar o balde em N quadros selecionados de uma vez): precisa da
-  multi-seleção de chaves na tira, que é carry-over da W3. O solver já é por-desenho: é wiring.
+- ~~**T4.5 — Fill multiframe**~~ — ✅ **FEITO no W7** (`flip_fill.rs:491-519`): com chaves
+  selecionadas na tira, o mesmo clique preenche todas, via `flip_multiframe::targets`. As duas
+  decisões que faltavam estão tomadas e comentadas no código — **falloff sempre 1.0** (o balde
+  é op discreta; falloff só multiplica influência de PINCEL) e os **quadros vizinhos preenchem
+  em silêncio** (um quadro que não fecha não pode derrubar o clique nos outros; o toast fala
+  pelo quadro ATIVO). *Ficou listado aqui como pendência por três rodadas depois de pronto — e
+  o handoff da wave Colorize repetiu a lista. Uma pendência velha faz a próxima LLM construir o
+  que já existe.*
 - **Ajuste modal ao vivo do Gap Closure** (scroll com os helpers visuais nos vãos pendentes — a
   killer feature de UX do GP): hoje o Gap é um slider. O `closures()` já devolve os segmentos, então
   o overlay é desenhar o que ele devolve.

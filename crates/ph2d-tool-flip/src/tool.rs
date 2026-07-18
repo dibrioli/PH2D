@@ -16,7 +16,7 @@ use ph2d_editor_core::tool::{PanelEvent, Tool};
 
 use crate::params::{
     EditDomain, EraseMode, FillMode, FlipMode, FlipStyleSnapshot, GAP_MAX_PX, GROW_MAX, GROW_MIN,
-    PRECISION_MAX, PRECISION_MIN, ReshapeKind, slider_to_px, slider_to_unit,
+    PRECISION_MAX, PRECISION_MIN, ReshapeKind, TRAP_MAX_PX, slider_to_px, slider_to_unit,
 };
 
 /// Largura default do traço (px de tela) — uma linha média.
@@ -62,6 +62,8 @@ pub struct FlipTool {
     gap_px: f64,
     grow: f64,
     precision: f64,
+    /// Raio da trapped ball em px de tela (`0` = desligado). COLORIZE C1.
+    trap: f64,
     /// O traço nasce preenchido (material stroke+fill do GP) — ver o snapshot.
     draw_filled: bool,
     // ── O Reshape (W5). Sem raio/força próprios: usa o Size + o Strength do
@@ -95,6 +97,7 @@ impl Default for FlipTool {
             // qualquer espessura e zoom — o Grow é só o ajuste estilístico.
             grow: 0.0,
             precision: DEFAULT_PRECISION,
+            trap: 0.0,
             draw_filled: false,
             reshape: ReshapeKind::Smooth,
             edit_domain: EditDomain::Stroke,
@@ -244,6 +247,7 @@ impl FlipTool {
             gap_px: self.gap_px,
             grow: self.grow,
             precision: self.precision,
+            trap: self.trap,
         }
     }
 
@@ -341,6 +345,9 @@ impl Tool for FlipTool {
             PanelEvent::SetValue(id, v) if id == ids::FLIP_PRECISION => {
                 self.precision =
                     PRECISION_MIN + v.clamp(0.0, 1.0) * (PRECISION_MAX - PRECISION_MIN);
+            }
+            PanelEvent::SetValue(id, v) if id == ids::FLIP_TRAP => {
+                self.trap = v.clamp(0.0, 1.0) * TRAP_MAX_PX;
             }
             // Sub-modo da borracha.
             PanelEvent::Click(id) if id == ids::FLIP_ERASE_SOFT => self.erase = EraseMode::Soft,

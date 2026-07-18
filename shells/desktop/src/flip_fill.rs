@@ -329,6 +329,10 @@ pub(crate) fn fill_click(
         // subir a Precision *encolhia* o Grow em silêncio: dois controles independentes
         // que secretamente se multiplicavam.
         grow: (style.grow * style.precision).round() as i32,
+        // O Trap segue a MESMA conversao do Grow (px de tela -> px de buffer): sem
+        // ela, subir a Precision encolheria a bola em silencio — o acoplamento
+        // escondido que o BUGS #11 pagou caro para descobrir.
+        trap_px: (style.trap * style.precision) as f32,
         mode,
     };
     // `PH2D_FLIP_FILL_DEBUG=1` — a régua do balde no app REAL. A auditoria mostrou que um
@@ -550,6 +554,9 @@ impl crate::App {
                     FillError::OnBoundary => "Fill: clicked on a line",
                     FillError::Empty => "Fill: nothing to fill here",
                     FillError::Degenerate => "Fill: no region under the cursor",
+                    // Aponta para o lado CONTRARIO do Leaked: aqui a bola e grande
+                    // demais para o lugar, entao a saida e BAIXAR o Trap.
+                    FillError::BallTooFat => "Fill: Trap is wider than this area — lower it",
                 };
                 gfx.toasts.push(ph2d_editor::Toast::warning(msg));
                 self.title_dirty = true;

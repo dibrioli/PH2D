@@ -152,6 +152,19 @@ pub const GAP_MAX_PX: f64 = 40.0;
 /// isto é só o ajuste estilístico (o "off-register" para +, o vão deliberado para −).
 pub const GROW_MIN: f64 = -8.0;
 pub const GROW_MAX: f64 = 8.0;
+/// Faixa do **Trap** — o raio da *trapped ball*, em px de TELA (`0` = desligado).
+///
+/// Uma bola de raio `r` sela um vão de até `2r`, então o teto de 20 px casa com a
+/// capacidade do controle irmão: o Gap Closure alcança 40 px, e `2 × 20 = 40`. Os dois
+/// resolvem o mesmo problema por caminhos diferentes, e não faria sentido um alcançar
+/// menos que o outro.
+///
+/// **Não é um teto de recurso** (CLAUDE.md §0.0): o custo da bola é a EDT, que é O(área)
+/// e **independe do raio** — subir o Trap não custa mais, e a medição da grade está em
+/// `docs/Flip/09_colorize.md` §7.1. O que limita é o SENTIDO: uma bola de raio `r` não
+/// entra numa região mais estreita que `2r`, então um Trap alto torna as regiões finas
+/// do desenho impreenchíveis (e o balde diz isso, com o erro `BallTooFat`).
+pub const TRAP_MAX_PX: f64 = 20.0;
 /// Faixa do **Precision** (pixels do buffer por px de tela; 1 = resolução da tela).
 pub const PRECISION_MIN: f64 = 0.5;
 pub const PRECISION_MAX: f64 = 4.0;
@@ -304,6 +317,9 @@ pub struct FlipStyleSnapshot {
     pub grow: f64,
     /// Precision: resolução do buffer do balde (pixels por px de tela).
     pub precision: f64,
+    /// **Trap**: raio da trapped ball em px de tela (`0` = desligado — o balde de
+    /// sempre, ao bit). O shell converte para px de buffer via `precision`.
+    pub trap: f64,
 }
 
 impl Default for FlipStyleSnapshot {
@@ -331,6 +347,7 @@ impl Default for FlipStyleSnapshot {
             edit_domain: EditDomain::Stroke,
             gap_px: 0.0,
             grow: 0.0,
+            trap: 0.0,      // opt-in: o default é o balde do W4, sem mudança nenhuma
             precision: 1.6, // = DEFAULT_PRECISION (tool.rs); o teste-espelho cobre
         }
     }

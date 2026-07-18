@@ -355,6 +355,10 @@ deram = "deram"
 # ajuda a FORMAR o resultado (lidos como "prefer"/"former"). São as palavras portuguesas.
 prefere = "prefere"
 formar = "formar"
+# pt-BR do trapped-ball do Flip (`ph2d-flip-fill/src/ball_tests.rs`, wave COLORIZE C1): uma
+# ordem de visita DEPENDENTE de hash quebraria o determinismo do flood. Lida como um
+# "dependence" torto; é a palavra portuguesa.
+dependente = "dependente"
 # Termo cunhado do sculpt Inflate (`ph2d-tool-painter`): fontes que estouram o orçamento são
 # "over-reachers" (alcançam longe demais), não "over-readers".
 reachers = "reachers"

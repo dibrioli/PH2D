@@ -168,6 +168,7 @@ fn the_fill_is_invariant_under_camera_zoom() {
                 precision: 1.0 / px_to_world, // 1 px de buffer por px de tela
                 gap_reach: 0.0,
                 grow: 0,
+                trap_px: 0.0,
                 mode: FillMode::Paint,
             },
         )
@@ -248,6 +249,7 @@ fn circle_fill_edge(px_to_world: f32, width_px: f32, grow: i32) -> f32 {
             precision: 1.0 / px_to_world,
             gap_reach: 0.0,
             grow,
+            trap_px: 0.0,
             mode: FillMode::Paint,
         },
     )
@@ -401,4 +403,106 @@ fn sweep_table() {
             println!("{width_px:>5}px |  {zoom}x | {overflow:+20.1} | {gap:+12.1}");
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trap (a bola) — wave COLORIZE, fatia C1. `docs/Flip/09_colorize.md`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Um quadrado com um **vão** de `gap` unidades no meio do lado de baixo: os dois
+/// pedaços do lado inferior entram como traços ABERTOS separados.
+fn square_with_gap(a: f32, b: f32, gap: f32) -> Vec<(Vec<Vec2>, Vec<f32>, bool)> {
+    let mid = (a + b) * 0.5;
+    let half = gap * 0.5;
+    vec![
+        // U invertido: sobe, atravessa, desce — um traço aberto só.
+        (
+            vec![
+                Vec2::new(a, a),
+                Vec2::new(a, b),
+                Vec2::new(b, b),
+                Vec2::new(b, a),
+            ],
+            vec![0.3; 4],
+            false,
+        ),
+        // Os dois cotocos do lado de baixo, com o vão entre eles.
+        (
+            vec![Vec2::new(a, a), Vec2::new(mid - half, a)],
+            vec![0.3; 2],
+            false,
+        ),
+        (
+            vec![Vec2::new(mid + half, a), Vec2::new(b, a)],
+            vec![0.3; 2],
+            false,
+        ),
+    ]
+}
+
+/// **A promessa da fatia C1, no ponto de entrada do balde** (não só na unidade da
+/// bola): uma forma cujo contorno tem vão **vaza** com o balde de sempre e
+/// **preenche** com o Trap ligado — sem tocar no Gap Closure.
+///
+/// O ramo `trap == 0` é o controle POSITIVO: sem ele o gate ficaria verde numa forma
+/// que nunca teve vão, provando nada ([[feedback_a_negative_search_needs_a_positive_control]]).
+#[test]
+fn the_trap_fills_a_shape_whose_outline_has_a_gap() {
+    let strokes = square_with_gap(0.0, 20.0, 1.2);
+    let click = Vec2::new(10.0, 10.0);
+
+    let plain = fill_at(&strokes, click, FillParams::default());
+    assert_eq!(
+        plain,
+        Err(FillError::Leaked),
+        "premissa do gate: com o Trap desligado esta forma TEM de vazar \
+         (se ela fecha sozinha, a fixture nao contem o fenomeno)"
+    );
+
+    // Precision default = 4 px de buffer por unidade ⇒ o vão de 1,2 unidades tem ~4,8
+    // px de buffer. Uma bola de raio 4 (diâmetro 8) não passa por ele.
+    let trapped = fill_at(
+        &strokes,
+        click,
+        FillParams {
+            trap_px: 4.0,
+            ..Default::default()
+        },
+    )
+    .expect("com a bola, a forma com vao TEM de preencher");
+    let area = signed_area(&trapped.outer).abs();
+    assert!(
+        (200.0..=450.0).contains(&area),
+        "a regiao tem de ser o miolo do quadrado (~400), veio {area} \
+         (uma area minuscula tambem 'nao vaza')"
+    );
+}
+
+/// **A bola grande demais DIZ isso**, com um erro próprio — e não com o `Leaked`, cuja
+/// mensagem manda o artista para o lado errado (subir o Gap Closure, quando o que ele
+/// precisa é BAIXAR o Trap).
+#[test]
+fn a_ball_too_fat_for_the_click_says_so_instead_of_leaking() {
+    let strokes = [square(0.0, 20.0, 0.3)];
+    let err = fill_at(
+        &strokes,
+        Vec2::new(10.0, 10.0),
+        FillParams {
+            // Raio 200 px de buffer num miolo de ~80: não cabe de jeito nenhum.
+            trap_px: 200.0,
+            ..Default::default()
+        },
+    )
+    .unwrap_err();
+    assert_eq!(err, FillError::BallTooFat);
+}
+
+/// **O default é ZERO, e isso é o contrato da wave inteira.**
+///
+/// Todo o resto da suíte roda com `FillParams::default()`; se o default deixasse de ser
+/// 0, os 38 gates do W4 passariam a medir o caminho da bola sem ninguém decidir isso —
+/// e o comportamento que o Enio aprovou no smoke mudaria em silêncio.
+#[test]
+fn the_trap_is_off_by_default() {
+    assert_eq!(FillParams::default().trap_px, 0.0);
 }

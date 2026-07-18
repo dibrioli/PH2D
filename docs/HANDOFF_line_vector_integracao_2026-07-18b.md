@@ -1,7 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/Vector`, sessão de 2026-07-18 (a PILHA de efeitos)
 
 **Para:** o agente integrador (DIRETRIZ §1.5.3–1.5.4), quando o Enio mandar.
-**Estado:** ✅ linha **fechada e verde**, 4 commits sobre a `main`. **NÃO integrei e NÃO pushei** —
+**Estado:** ✅ linha **fechada e verde**, 7 commits sobre a `main`. **NÃO integrei e NÃO pushei** —
 a linha fecha, entrega o handoff e para (CLAUDE.md §0.7).
 
 > ⚠️ **Pendente de SMOKE do Enio** — `PH2D_BUILD_SMOKE=13`. Ver §5.
@@ -16,6 +16,9 @@ a linha fecha, entrega o handoff e para (CLAUDE.md §0.7).
 | `e5e40aa6` | **fix**: a alça de raio pergunta se a geometria é DERIVADA (bug vivo, 3 objetos) |
 | `db50c236` | **feat**: a PILHA + o motor de arco + o **Trim Path** |
 | `6f599cf1` | **feat**: a cena de smoke `PH2D_BUILD_SMOKE=13` |
+| `1d85fddb` | **docs**: este handoff + a fila do handoff de continuação parou de mentir |
+| `b6e66db5` | **fix**: o draw-on da cena RECOMEÇA (o smoke reprovou o TEMPO, não o Trim) |
+| `e5992c4b` | **feat**: a **seção Effects** no painel — o artista alcança a pilha |
 
 **Base:** `02382568` (a linha estava a 2 commits de docs sobre a `main` `389676f9`).
 

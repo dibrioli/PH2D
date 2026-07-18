@@ -24,7 +24,32 @@ use crate::build_smoke::shape;
 
 /// Quantos frames a elipse leva a desenhar-se. ~3 s a 60 fps — devagar o bastante para se
 /// ver a ponta a andar, e não tão devagar que o smoke pareça travado.
-const DRAW_ON_FRAMES: f64 = 180.0;
+const DRAW_ON_FRAMES: u32 = 180;
+
+/// Quantos frames a elipse fica CHEIA antes de recomeçar. ~1 s: tempo de ler "acabou" sem
+/// que a cena pareça parada.
+const HOLD_FRAMES: u32 = 60;
+
+/// O ciclo completo do draw-on.
+const CYCLE: u32 = DRAW_ON_FRAMES + HOLD_FRAMES;
+
+/// **A fração revelada da elipse no frame `t`** — desenha, segura cheia, e RECOMEÇA.
+///
+/// ⚠️ **O laço não é enfeite: é o que torna a cena smokável.** A 1ª versão era one-shot
+/// (subia de 0 a 1 e ficava), e o smoke do Enio devolveu *"na elipse não vejo nada
+/// acontecendo"* — a rampa tinha acabado antes de ele olhar para a janela, e o que restava
+/// era uma elipse inteira e parada. Um exemplo que exige apanhar uma janela de 3 s no
+/// arranque não está pronto para smoke.
+/// [[feedback_ready_to_smoke_example]]
+fn draw_on_phase(t: u32) -> f64 {
+    let k = t % CYCLE;
+    (f64::from(k) / f64::from(DRAW_ON_FRAMES)).min(1.0)
+}
+
+/// **O giro da janela da estrela** — contínuo, sem pausa: ela não desenha, ela CORRE.
+fn spin_phase(t: u32) -> f64 {
+    (f64::from(t) / f64::from(CYCLE)).rem_euclid(1.0)
+}
 
 /// Largura do traço, em unidades de MUNDO (a cena vive numa caixa de ~±3.5).
 const STROKE_W: f64 = 0.06;
@@ -99,13 +124,12 @@ fn animate(app: &mut crate::App, t: u32) {
         return;
     };
     let ids = IDS.lock().expect("ids").clone();
-    let phase = f64::from(t) / DRAW_ON_FRAMES;
     let scene = &mut gfx.vec_scene;
 
     if let Some(p) = ids.first().and_then(|&i| scene.path_mut(i)) {
         p.effects = vec![PathEffect::Trim(TrimSpec {
             start: 0.0,
-            end: phase.clamp(0.0, 1.0),
+            end: draw_on_phase(t),
             offset: 0.0,
         })];
     }
@@ -113,7 +137,11 @@ fn animate(app: &mut crate::App, t: u32) {
         p.effects = vec![PathEffect::Trim(TrimSpec {
             start: 0.0,
             end: 0.25,
-            offset: phase.rem_euclid(1.0),
+            offset: spin_phase(t),
         })];
     }
 }
+
+#[cfg(test)]
+#[path = "fx_smoke_tests.rs"]
+mod tests;

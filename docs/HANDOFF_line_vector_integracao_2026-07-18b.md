@@ -86,9 +86,16 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
   PH2D_BUILD_SMOKE=13 cargo run -p ph2d-host-desktop --release
 ```
 
-- **A elipse desenha-se sozinha** em ~3 s. ⚠️ **O que importa não é que ela apareça — é que a ponta
-  ande a velocidade CONSTANTE.** Se ela acelerar e frear conforme a curvatura, a medida voltou a ser
-  por `t` e o gate da fração ficou para trás.
+- **A elipse desenha-se sozinha** em ~3 s, segura cheia ~1 s, e **RECOMEÇA**. ⚠️ **O que importa não
+  é que ela apareça — é que a ponta ande a velocidade CONSTANTE.** Se ela acelerar e frear conforme a
+  curvatura, a medida voltou a ser por `t` e o gate da fração ficou para trás.
+
+  > ⚠️ **A 1ª versão desta cena foi REPROVADA no smoke** (*"na elipse não vejo nada acontecendo"*) e o
+  > motor estava certo: a rampa era **one-shot** e acabava antes de o Enio olhar para a janela — o que
+  > restava era uma elipse inteira e **parada**. O gate headless
+  > (`the_smoke_ellipse_reveals_progressively`, sobre a `shape()` do PRODUTO) inocentou o Trim, e o
+  > gate novo mora na **política de tempo** (`draw_on_phase`), que era o que estava errado. Um
+  > exemplo que exige apanhar uma janela de 3 s no arranque não está pronto para smoke.
 - **A estrela**: a janela de ¼ do caminho **gira** à volta da forma e atravessa a emenda sem
   tropeçar.
 

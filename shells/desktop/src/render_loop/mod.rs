@@ -1364,9 +1364,10 @@ impl crate::App {
             let mut pending_create_envelope = false;
             let mut pending_expand_envelope = false;
             let mut pending_release_envelope = false;
-            // O GESTO da gaiola (ADR-0129 Fatia D): `Some(true)` = Mesh (lados curvos),
-            // `Some(false)` = Perspective (lados retos, mapa projetivo).
-            let mut pending_envelope_mesh: Option<bool> = None;
+            // O GESTO do envelope (ADR-0129 Fatias D+E): Perspective (projetivo) · Mesh (Coons) ·
+            // Pins (MLS). Um enum e nao um bool desde que o 3o gesto entrou.
+            let mut pending_envelope_kind: Option<ph2d_ecs::EnvelopeKind> = None;
+            let mut pending_clear_pins = false;
             // O PRESET de gaiola (ADR-0129 Fatia C): indice em `EnvelopeWarp::ALL`, e o Bend.
             let mut pending_envelope_preset: Option<usize> = None;
             let mut pending_envelope_bend: Option<f64> = None;
@@ -1515,10 +1516,15 @@ impl crate::App {
                                 pending_release_envelope = true;
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_PERSPECTIVE {
                                 // ADR-0129 Fatia D: a homografia -- lados RETOS.
-                                pending_envelope_mesh = Some(false);
+                                pending_envelope_kind = Some(ph2d_ecs::EnvelopeKind::Perspective);
                             } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_MESH {
                                 // ADR-0129 Fatia D: o patch de Coons -- os lados DOBRAM.
-                                pending_envelope_mesh = Some(true);
+                                pending_envelope_kind = Some(ph2d_ecs::EnvelopeKind::Mesh);
+                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_PINS {
+                                // ADR-0129 Fatia E: o puppet warp (MLS-rigid).
+                                pending_envelope_kind = Some(ph2d_ecs::EnvelopeKind::Pins);
+                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_CLEAR_PINS {
+                                pending_clear_pins = true;
                             } else if let Some(i) = (0..ph2d_editor::ids::MAX_ENVELOPE_PRESETS)
                                 .find(|&i| *id == ph2d_editor::ids::vector_envelope_preset_id(i))
                             {
@@ -2525,22 +2531,22 @@ impl crate::App {
             // decide a selecao e alimenta os chips -- o clique nunca acerta outro envelope que
             // nao o desenhado. Trocar re-cozinha no frame seguinte: em repouso os dois mapas
             // coincidem, entao numa gaiola intocada a troca nao move um pixel.
-            if let Some(mesh) = pending_envelope_mesh {
+            if pending_envelope_kind.is_some() || pending_clear_pins {
                 let sel: Vec<u64> = self
                     .vec_pen
                     .selected_paths()
                     .iter()
                     .filter_map(|id| self.vec_entities.get(id).copied())
                     .collect();
-                let kind = if mesh {
-                    ph2d_ecs::EnvelopeKind::Mesh
-                } else {
-                    ph2d_ecs::EnvelopeKind::Perspective
-                };
-                if let Some(bits) = crate::envelope_live::sole_container(sim, &sel)
-                    && crate::envelope_gesture::set_kind(sim, bits, kind)
-                {
-                    eprintln!("[ph2d-vec] envelope: gaiola em {kind:?}");
+                if let Some(bits) = crate::envelope_live::sole_container(sim, &sel) {
+                    if let Some(kind) = pending_envelope_kind
+                        && crate::envelope_gesture::set_kind(sim, bits, kind)
+                    {
+                        eprintln!("[ph2d-vec] envelope: gesto {kind:?}");
+                    }
+                    if pending_clear_pins && crate::envelope_gesture::clear_pins(sim, bits) {
+                        eprintln!("[ph2d-vec] envelope: pinos apagados");
+                    }
                 }
             }
             // ADR-0129 Fatia C: o preset carimba a gaiola inteira; o Bend re-carimba o preset ATIVO.
@@ -3311,8 +3317,12 @@ impl crate::App {
                 ph2d_panel_vector::set_current_has_envelope(env_container.is_some());
                 // Qual chip de gesto acende. O painel pergunta ao MESMO container que o
                 // dispatch vai escrever, senao a tela mostraria um gesto e o clique mudaria outro.
-                ph2d_panel_vector::set_current_envelope_mesh(env_container.is_some_and(|b| {
-                    crate::envelope_gesture::kind_of(sim, b) == ph2d_ecs::EnvelopeKind::Mesh
+                ph2d_panel_vector::set_current_envelope_mode(env_container.map_or(0, |b| {
+                    match crate::envelope_gesture::kind_of(sim, b) {
+                        ph2d_ecs::EnvelopeKind::Perspective => 0,
+                        ph2d_ecs::EnvelopeKind::Mesh => 1,
+                        ph2d_ecs::EnvelopeKind::Pins => 2,
+                    }
                 }));
                 // Os presets de gaiola: o painel se auto-popula desta lista, entao acrescentar um
                 // preset e' uma linha em `EnvelopeWarp::ALL` e ZERO mudanca de painel.
@@ -3637,6 +3647,22 @@ impl crate::App {
                 {
                     ph2d_vec_render::draw_envelope_cage(
                         &cage,
+                        cam_affine,
+                        hero.theme,
+                        vector_scene,
+                    );
+                }
+                // Os PINOS (Fatia E) — o mesmo gate de modo, outro overlay: no gesto Pins o `view`
+                // devolve `None` (nao ha gaiola) e sao os pinos que se desenham. Nunca os dois.
+                if overlay.envelope_cage
+                    && let Some(bits) = hero.gizmo.selection
+                {
+                    let pins = crate::envelope_gesture::pins_world(sim, bits);
+                    ph2d_vec_render::draw_envelope_pins(
+                        &pins,
+                        self.vec_envelope_drag
+                            .filter(|(d, _)| *d == bits)
+                            .map(|(_, i)| i),
                         cam_affine,
                         hero.theme,
                         vector_scene,

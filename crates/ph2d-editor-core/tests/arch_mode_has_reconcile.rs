@@ -28,6 +28,13 @@ use std::path::{Path, PathBuf};
 /// new tools/panels DO; resist the urge).
 const BENIGN_SET_MODE: &[(&str, &str)] = &[
     (
+        "set_current_envelope_mode",
+        "publica o GESTO do envelope (Perspective/Mesh/Pins) no painel Vector. Não é um dono de \
+         modo: o dono é o `ph2d_ecs::VecEnvelope::kind`, e o shell reescreve esta célula a CADA \
+         frame a partir dele. Não há estado derivado no painel — o `paint` lê a célula e decide o \
+         que desenhar no mesmo frame, então não existe cache a invalidar",
+    ),
+    (
         "set_mode",
         "VectorTool draw-mode: single-field write (`self.mode = mode`), same as the \
          per-mode arms of `handle_panel_event`; the shell mirrors it, nothing derived",

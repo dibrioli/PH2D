@@ -930,6 +930,7 @@ fn every_envelope_command_button_reaches_the_bus_when_clicked() {
         (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
         (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Perspective"),
         (ids::VECTOR_ENVELOPE_MESH, "Mesh"),
+        (ids::VECTOR_ENVELOPE_PINS, "Pins"),
         // Os presets (ADR-0129 Fatia C) — a lista vem PUBLICADA, então o fixture a publica; sem
         // isso o `paint` não desenha botão nenhum e o gate morre na 1ª asserção, que é a mesma
         // premissa de ESTADO do `set_current_has_envelope`.
@@ -989,6 +990,7 @@ fn the_envelope_controls_are_not_offered_without_an_envelope() {
         (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
         (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Perspective"),
         (ids::VECTOR_ENVELOPE_MESH, "Mesh"),
+        (ids::VECTOR_ENVELOPE_PINS, "Pins"),
         (ids::vector_envelope_preset_id(0), "preset 0"),
         (ids::VECTOR_ENVELOPE_BEND, "Bend"),
     ] {
@@ -1143,5 +1145,66 @@ fn the_bend_slider_is_not_offered_without_an_active_preset() {
         host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_ENVELOPE_BEND)
             .is_some(),
         "com preset ativo o Bend tem de existir"
+    );
+}
+
+/// **O `Clear Pins` só existe no gesto PINOS** — e os presets/Bend só existem FORA dele. Os dois
+/// grupos são exclusivos por construção: presets GERAM uma gaiola e o puppet não tem gaiola nenhuma.
+///
+/// Sem este gate a seção mostraria "Arc" e "Clear Pins" ao mesmo tempo, e cada um agiria sobre um
+/// modelo que o outro não usa.
+#[test]
+fn the_pins_controls_and_the_cage_controls_are_exclusive() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    ph2d_panel_vector::set_current_has_envelope(true);
+    ph2d_panel_vector::set_current_envelope_presets(&["Arc", "Flag"], Some(0), 0.5);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+
+    // Gesto de gaiola (Perspective): presets sim, Clear Pins não.
+    ph2d_panel_vector::set_current_envelope_mode(0);
+    assert!(
+        host.painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ids::vector_envelope_preset_id(0)
+        )
+        .is_some(),
+        "os presets sumiram no gesto de gaiola"
+    );
+    assert!(
+        host.painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ids::VECTOR_ENVELOPE_CLEAR_PINS
+        )
+        .is_none(),
+        "Clear Pins apareceu num gesto que nao tem pinos"
+    );
+
+    // Gesto Pinos: o inverso exato.
+    ph2d_panel_vector::set_current_envelope_mode(2);
+    assert!(
+        host.painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ids::VECTOR_ENVELOPE_CLEAR_PINS
+        )
+        .is_some(),
+        "Clear Pins nao foi oferecido no gesto Pinos"
+    );
+    assert!(
+        host.painted_rect::<VectorPanel>(
+            &mut panel_state,
+            VIEWPORT,
+            ids::vector_envelope_preset_id(0)
+        )
+        .is_none(),
+        "um preset de GAIOLA foi oferecido no gesto Pinos"
     );
 }

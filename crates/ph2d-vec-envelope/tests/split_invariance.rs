@@ -386,3 +386,59 @@ fn bent_coons() -> ph2d_vec_envelope::CoonsWarp {
     edges[2][1] = [2.5, 4.6];
     ph2d_vec_envelope::CoonsWarp::new(origin, size, corners, &edges).expect("gaiola válida")
 }
+
+/// **O GATE-MÃE SOBRE O MLS** (ADR-0129 Fatia E) — o mapa mais hostil da família: não-polinomial,
+/// suporte global, e a única jacobiana da crate que não sai de uma regra do quociente curta.
+///
+/// Ele vale duplo aqui: uma jacobiana inconsistente com o `map` **não falha, TRAVA** o
+/// `fit_to_bezpath` (ele subdivide para reconciliar ponto e tangente que não pertencem à mesma
+/// curva, e nunca consegue). Este teste é o único lugar onde a derivação de Wirtinger é exercida
+/// pelo caminho REAL — os unit tests dela comparam com diferença central, que não fita nada.
+#[test]
+fn a_pinned_mls_warp_survives_subdivision() {
+    let w = pinned_mls();
+    let c = curved();
+
+    let whole = to_bez(&warp_path(&path_of(c), &w, ACCURACY));
+    let split = to_bez(&concat(
+        warp_path(&path_of(c.subsegment(0.0..0.5)), &w, ACCURACY),
+        warp_path(&path_of(c.subsegment(0.5..1.0)), &w, ACCURACY),
+    ));
+
+    let d = max_dist(&whole, &split, 128).max(max_dist(&split, &whole, 128));
+    assert!(
+        d < 4.0 * ACCURACY,
+        "MLS: inteira vs partida divergiram {d:.3e} (tol {:.3e})",
+        4.0 * ACCURACY
+    );
+}
+
+/// **E o fixture EXIBE o defeito sob o MLS.** Sem este irmão o gate acima poderia estar verde porque
+/// os pinos escolhidos quase não deformam.
+#[test]
+fn the_naive_warp_fails_split_invariance_under_mls() {
+    let w = pinned_mls();
+    let c = curved();
+
+    let whole = to_bez(&warp_naive(&path_of(c), &w));
+    let split = to_bez(&concat(
+        warp_naive(&path_of(c.subsegment(0.0..0.5)), &w),
+        warp_naive(&path_of(c.subsegment(0.5..1.0)), &w),
+    ));
+
+    let d = max_dist(&whole, &split, 128).max(max_dist(&split, &whole, 128));
+    assert!(
+        d > 10.0 * ACCURACY,
+        "o ingênuo devia divergir de forma grosseira sob o MLS, mas deu {d:.3e}"
+    );
+}
+
+/// Pinos sobre o domínio do fixture `curved()` (0,0)–(8,6): dois ancorados e um puxado.
+fn pinned_mls() -> ph2d_vec_envelope::MlsWarp {
+    ph2d_vec_envelope::MlsWarp::new(&[
+        [[0.0, 0.0], [0.0, 0.0]],
+        [[8.0, 6.0], [8.0, 6.0]],
+        [[4.0, 1.0], [5.2, 2.4]],
+    ])
+    .expect("pinos válidos")
+}

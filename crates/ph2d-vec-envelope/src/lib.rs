@@ -32,6 +32,7 @@ use ph2d_vec_scene::{VecPath, VecVertex, VertexKind};
 mod coons;
 mod fit;
 mod gesture;
+mod mls;
 mod preset;
 mod quad;
 
@@ -41,6 +42,7 @@ pub use gesture::{
     CageMove, MESH_HANDLE_COUNT, edge_handle_index, move_corner_convex, move_handle,
     nearest_corner, nearest_handle,
 };
+pub use mls::{MlsWarp, Pin, pins_fold};
 pub use preset::{AMP, EdgeBows, UNIT_CAGE, preset_cage};
 pub use quad::QuadWarp;
 

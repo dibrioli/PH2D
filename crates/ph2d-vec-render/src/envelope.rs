@@ -141,3 +141,81 @@ pub fn draw_envelope_cage(
         );
     }
 }
+
+/// Desenha os **pinos** do gesto puppet (ADR-0129 Fatia E). `pins` em MUNDO, `[repouso, movido]`.
+///
+/// Função separada da gaiola, e não um campo a mais na [`EnvelopeCageView`], porque um pino **não é
+/// uma alça de gaiola**: no gesto Pins não há moldura nenhuma a desenhar, e amarrar os dois numa
+/// vista só obrigaria cada chamador a passar o que não tem.
+///
+/// A gramática é a mesma do resto do overlay: **vazado** = onde o pino estava, **cheio** = onde ele
+/// está agora, e a haste entre os dois **é o deslocamento** — sem ela, um pino arrastado é
+/// indistinguível de um pino pregado ali.
+pub fn draw_envelope_pins(
+    pins: &[[[f64; 2]; 2]],
+    dragging: Option<usize>,
+    transform: Affine,
+    theme: Theme,
+    target: &mut VectorScene,
+) {
+    if pins.is_empty() {
+        return;
+    }
+    let vello = |t: ColorToken| {
+        let c = t.resolve(theme);
+        VelloColor::from_rgba8(c.r, c.g, c.b, c.a)
+    };
+    let (fill, edge, wire) = (
+        vello(ColorToken::Accent),
+        vello(ColorToken::BorderEmph),
+        vello(ColorToken::AccentSoft),
+    );
+
+    let mut stems = BezPath::new();
+    for [rest, moved] in pins {
+        stems.move_to(transform * Point::new(rest[0], rest[1]));
+        stems.line_to(transform * Point::new(moved[0], moved[1]));
+    }
+    target.inner_mut().stroke(
+        &Stroke::new(LINE_PX),
+        Affine::IDENTITY,
+        &Brush::Solid(wire),
+        None,
+        &stems,
+    );
+
+    for (i, [rest, moved]) in pins.iter().enumerate() {
+        // O de repouso é menor: ele é referência, não alvo — só o movido se agarra.
+        let anchor = Circle::new(
+            transform * Point::new(rest[0], rest[1]),
+            ENVELOPE_HANDLE_R_PX * 0.5,
+        );
+        target.inner_mut().stroke(
+            &Stroke::new(LINE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(wire),
+            None,
+            &anchor,
+        );
+        let dot = Circle::new(
+            transform * Point::new(moved[0], moved[1]),
+            ENVELOPE_HANDLE_R_PX,
+        );
+        // Um pino é preenchido SEMPRE (ao contrário do canto da gaiola): ele é um objeto que o
+        // artista pregou, não uma alça que a gaiola sempre teve. O arrasto troca a cor, não o corpo.
+        target.inner_mut().fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(if dragging == Some(i) { fill } else { wire }),
+            None,
+            &dot,
+        );
+        target.inner_mut().stroke(
+            &Stroke::new(LINE_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(edge),
+            None,
+            &dot,
+        );
+    }
+}

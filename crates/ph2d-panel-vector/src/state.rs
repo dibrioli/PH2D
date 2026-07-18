@@ -55,7 +55,10 @@ thread_local! {
     /// habilita o botão "Convert to Curves". Publicado pela shell.
     static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_HAS_ENVELOPE: Cell<bool> = const { Cell::new(false) };
-    static CURRENT_ENVELOPE_MESH: Cell<bool> = const { Cell::new(false) };
+    /// O GESTO da gaiola: 0 = Perspective · 1 = Mesh · 2 = Pins. Um índice, e não um espelho do
+    /// `ph2d_ecs::EnvelopeKind`: este painel não vê a crate do ECS, e a UI só precisa saber qual
+    /// chip acender.
+    static CURRENT_ENVELOPE_MODE: Cell<u8> = const { Cell::new(0) };
     /// Os rótulos dos presets de gaiola, PUBLICADOS pelo shell (a tabela mora no
     /// `ph2d_ecs::EnvelopeWarp`, que este painel não vê). Vazio = nenhum publicado ainda.
     static CURRENT_ENVELOPE_PRESETS: RefCell<Vec<&'static str>> = const { RefCell::new(Vec::new()) };
@@ -318,17 +321,16 @@ pub(crate) fn has_envelope() -> bool {
     CURRENT_HAS_ENVELOPE.with(Cell::get)
 }
 
-/// Publica se o envelope da seleção está no gesto **Mesh** (lados curvos) e não no **Perspective**.
+/// Publica em que **gesto** está o envelope da seleção: `0` Perspective · `1` Mesh · `2` Pins.
 ///
-/// Só é lido quando [`has_envelope`] é `true` — sem envelope não há gesto a mostrar. Um `bool` e não
-/// um espelho do enum: o painel oferece exatamente dois chips, e um enum aqui obrigaria esta crate a
-/// conhecer o `ph2d_ecs::EnvelopeKind` só para desenhar qual está aceso.
-pub fn set_current_envelope_mesh(v: bool) {
-    CURRENT_ENVELOPE_MESH.with(|c| c.set(v));
+/// Só é lido quando [`has_envelope`] é `true` — sem envelope não há gesto a mostrar. Um índice e não
+/// um espelho do enum: este painel não vê o `ph2d-ecs`, e a UI só precisa saber qual chip acender.
+pub fn set_current_envelope_mode(v: u8) {
+    CURRENT_ENVELOPE_MODE.with(|c| c.set(v));
 }
 
-pub(crate) fn envelope_mesh() -> bool {
-    CURRENT_ENVELOPE_MESH.with(Cell::get)
+pub(crate) fn envelope_mode() -> u8 {
+    CURRENT_ENVELOPE_MODE.with(Cell::get)
 }
 
 /// Publica os presets de gaiola: os rótulos (na ordem de `ph2d_ecs::EnvelopeWarp::ALL`), qual está

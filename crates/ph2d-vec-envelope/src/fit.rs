@@ -46,17 +46,28 @@ impl<W: Warp> ParamCurveFit for WarpedCubic<'_, W> {
     /// ela é a *fronteira* de um segmento, nunca o interior — os segmentos entram aqui um a um), ou
     /// **`J_W` é singular**, isto é, o mapa dobra.
     ///
-    /// Nenhum mapa das fatias A–D dobra: a gaiola do Quad é **convexa por construção** (ADR-0129
-    /// §5), e uma homografia de retângulo para quadrilátero estritamente convexo não põe a linha de
-    /// fuga dentro do retângulo — `J_W` é não-singular em todo o domínio. Coons e presets são
-    /// suaves.
+    /// **Nenhum mapa em escopo dobra — e isso continua verdade depois da Fatia E**, por uma razão
+    /// que vale a pena ler antes de "corrigir" este `None`.
     ///
-    /// ⚠️ **A Fatia E (pinos / MLS) QUEBRA esta premissa.** O MLS-rigid dobra a ~90° de torção de
-    /// pino, medido — `det J` muda de sinal. Quem levar o MLS adiante **tem de** implementar este
-    /// método; deixá-lo em `None` não trava o fit (a doc do kurbo: uma cúspide perdida vira mais
-    /// subdivisão, *"generally not a disaster"*), mas gasta segmentos para aproximar um bico que
-    /// não pode ser aproximado. E, pior, ela produz contorno **auto-interseccionado** — que é a
-    /// saga da lasca da booleana de novo.
+    /// Fatias A–D: a gaiola do Quad é **convexa por construção** (ADR-0129 §5), e uma homografia de
+    /// retângulo para quadrilátero estritamente convexo não põe a linha de fuga dentro do retângulo;
+    /// o patch de Coons é guardado por [`cage_folds`](crate::cage_folds), e a amplitude dos presets é
+    /// **medida** para nunca dobrar.
+    ///
+    /// ⚠️ **A Fatia E (pinos / MLS) era a que ameaçava quebrar a premissa** — o MLS-rigid dobra a
+    /// ~90° de torção de pino, medido, e o ADR-0129 escreveu que quem o levasse adiante teria de
+    /// implementar este método. A Fatia E respondeu **pela outra ponta**, que é a resposta desta
+    /// linha inteira à degenerescência: [`pins_fold`](crate::pins_fold) **recusa o arrasto que
+    /// dobraria**, então o estado dobrado é *inalcançável pela mão* e não há cúspide a partir.
+    ///
+    /// A escolha não é preguiça, é o que a dobra CUSTA em vetor: aproximá-la melhor produziria um
+    /// contorno **auto-interseccionado** — a saga da lasca da booleana de novo — em vez de um bico
+    /// bem fitado. Um fold aproximado com carinho continua a ser um fold.
+    ///
+    /// **Se um dia a premissa cair de verdade** (um mapa novo sem guard, ou o guard removido por
+    /// decisão), este método passa a ser obrigatório: deixá-lo em `None` não trava o fit (a doc do
+    /// kurbo: cúspide perdida vira mais subdivisão, *"generally not a disaster"*), mas gasta
+    /// segmentos a aproximar um bico que não pode ser aproximado.
     fn break_cusp(&self, _range: Range<f64>) -> Option<f64> {
         None
     }

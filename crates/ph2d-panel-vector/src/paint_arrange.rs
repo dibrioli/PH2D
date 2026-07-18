@@ -18,15 +18,16 @@ const FULL_TURN_DEG: f64 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math
 
 impl BodyCtx<'_> {
     /// A labelled 2-across segmented button row (sibling of `segmented3`).
-    pub(crate) fn segmented2(
+    pub(crate) fn segmented(
         &mut self,
         label: &str,
-        opts: [(ph2d_a11y::NodeId, &str, bool); 2],
+        opts: &[(ph2d_a11y::NodeId, &str, bool)],
         mut y: f32,
     ) -> f32 {
         let font = TypeToken::Sm.px();
         let gap = Spacing::Sm.px();
-        let w = ((self.inner_w - gap) / 2.0).max(1.0);
+        let n = opts.len().max(1) as f32;
+        let w = ((self.inner_w - gap * (n - 1.0)) / n).max(1.0);
         paint_text(
             self.text_system,
             self.scene,
@@ -69,9 +70,9 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        self.segmented2(
+        self.segmented(
             "Shapes",
-            [
+            &[
                 (ids::VECTOR_SNAP_OFF, "Off", !on),
                 (ids::VECTOR_SNAP_ON, "On", on),
             ],
@@ -102,9 +103,9 @@ impl BodyCtx<'_> {
         let Some(rule) = state::current_fill_rule() else {
             return y;
         };
-        self.segmented2(
+        self.segmented(
             "Fill Rule",
-            [
+            &[
                 (
                     ids::VECTOR_FILL_RULE_NONZERO,
                     "Non-Zero",

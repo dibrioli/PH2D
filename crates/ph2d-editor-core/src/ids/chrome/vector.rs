@@ -514,6 +514,14 @@ pub fn vector_envelope_preset_id(index: usize) -> NodeId {
 pub const VECTOR_ENVELOPE_BEND: NodeId = hash_node_id("vector.envelope.bend");
 /// O campo numérico gêmeo do [`VECTOR_ENVELOPE_BEND`].
 pub const VECTOR_ENVELOPE_BEND_NUM: NodeId = hash_node_id("vector.envelope.bend.num");
+/// **Pins** — o gesto do *puppet warp* (MLS-rigid, ADR-0129 Fatia E). Não há gaiola: o artista prega
+/// pontos no modo Node e arrasta. ⚠️ Com **2 pinos não se deforma nada** (uma isometria de um par
+/// determina uma rigidez única); é preciso um **3º pino não-colinear**.
+pub const VECTOR_ENVELOPE_PINS: NodeId = hash_node_id("vector.envelope.pins");
+/// **Clear Pins** — apaga todos os pinos. É a única porta de remoção da Fatia E: apagar UM exige um
+/// gesto que compete com "clicar no vazio prega", e sem porta nenhuma um pino mal pregado seria
+/// permanente.
+pub const VECTOR_ENVELOPE_CLEAR_PINS: NodeId = hash_node_id("vector.envelope.clear_pins");
 
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;

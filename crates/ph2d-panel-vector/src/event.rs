@@ -361,6 +361,8 @@ fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_ENVELOPE_RELEASE
         || id == ids::VECTOR_ENVELOPE_PERSPECTIVE
         || id == ids::VECTOR_ENVELOPE_MESH
+        || id == ids::VECTOR_ENVELOPE_PINS
+        || id == ids::VECTOR_ENVELOPE_CLEAR_PINS
         || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
 
         || id == ids::VECTOR_BOOL_UNION

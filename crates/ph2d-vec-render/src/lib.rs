@@ -49,7 +49,9 @@ pub use corner::draw_corner_handles;
 /// Node arrasta para deformar a forma; o raio da bolinha ([`ENVELOPE_HANDLE_R_PX`]) é o mesmo que o
 /// hit-test do host lê.
 mod envelope;
-pub use envelope::{ENVELOPE_HANDLE_R_PX, EnvelopeCageView, draw_envelope_cage};
+pub use envelope::{
+    ENVELOPE_HANDLE_R_PX, EnvelopeCageView, draw_envelope_cage, draw_envelope_pins,
+};
 
 /// O realce das FACES do Shape Builder — módulo irmão (LOC cap). É a feature: sem ele o
 /// artista arrasta às cegas e só descobre o que pegou depois de soltar.

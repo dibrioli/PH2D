@@ -20,6 +20,8 @@ pub(super) fn populate_envelope(store: &mut WidgetStore) {
     button(store, ids::VECTOR_ENVELOPE_RELEASE);
     button(store, ids::VECTOR_ENVELOPE_PERSPECTIVE);
     button(store, ids::VECTOR_ENVELOPE_MESH);
+    button(store, ids::VECTOR_ENVELOPE_PINS);
+    button(store, ids::VECTOR_ENVELOPE_CLEAR_PINS);
     // Os presets: o TETO de botões, sempre. O `paint` desenha só os que o shell publicou, então
     // registrar de menos aqui deixaria um preset novo clicável-e-morto e registrar de mais é
     // inerte. É o padrão do catálogo de formas e das pontas de traço.

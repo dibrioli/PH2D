@@ -83,11 +83,11 @@ fn add_plain(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntityMap) -
 /// índice 2.
 #[test]
 fn press_arms_on_the_world_corner_under_the_cursor() {
-    let (sim, _scene, _map, container) = scene();
+    let (mut sim, _scene, _map, container) = scene();
     let mut drag = None;
     let tr = world_corners()[2];
     assert!(press(
-        &sim,
+        &mut sim,
         Some(container),
         [tr[0] + 0.3, tr[1] + 0.2],
         PX_TO_WORLD,
@@ -101,7 +101,7 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
     // E o cursor no lugar LOCAL do canto (ignorando a pose) NÃO pega: prova que a pose foi aplicada.
     let mut miss = None;
     assert!(!press(
-        &sim,
+        &mut sim,
         Some(container),
         rect_corners()[2],
         PX_TO_WORLD,
@@ -116,10 +116,10 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
 /// **O raio é uma cerca:** um cursor no meio da gaiola (mundo) não arma nada.
 #[test]
 fn press_misses_when_far_from_every_corner() {
-    let (sim, _scene, _map, container) = scene();
+    let (mut sim, _scene, _map, container) = scene();
     let mut drag = None;
     assert!(!press(
-        &sim,
+        &mut sim,
         Some(container),
         [5.0 + POSE[0], 3.0 + POSE[1]],
         PX_TO_WORLD,
@@ -136,7 +136,7 @@ fn press_ignores_a_non_envelope_entity() {
     let plain = add_plain(&mut sim, &mut scene, &mut map);
     let mut drag = None;
     assert!(!press(
-        &sim,
+        &mut sim,
         Some(plain),
         [7.0, 5.0],
         PX_TO_WORLD,
@@ -148,10 +148,10 @@ fn press_ignores_a_non_envelope_entity() {
 /// **Sem seleção, nada arma.**
 #[test]
 fn press_with_no_selection_arms_nothing() {
-    let (sim, _scene, _map, _container) = scene();
+    let (mut sim, _scene, _map, _container) = scene();
     let mut drag = None;
     assert!(!press(
-        &sim,
+        &mut sim,
         None,
         world_corners()[2],
         PX_TO_WORLD,

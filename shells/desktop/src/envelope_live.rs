@@ -35,6 +35,14 @@ use ph2d_ecs::{
     VecEnvelopeChild,
 };
 use ph2d_vec_envelope::{CoonsWarp, QuadWarp, rest_edges, warp_path};
+
+/// O domínio-fonte de um envelope, exposto ao gesto (o guard de dobra dos pinos precisa dele — a
+/// dobra é uma pergunta sobre o pedaço de plano ONDE HÁ ARTE, não sobre o plano todo).
+pub(crate) fn domain_of(sim: &SimWorld, bits: u64) -> Option<([f64; 2], [f64; 2])> {
+    sim.world()
+        .get::<VecEnvelope>(Entity::from_bits(bits))
+        .and_then(rest_domain)
+}
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
@@ -217,6 +225,15 @@ pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene) {
             }
             EnvelopeKind::Mesh => {
                 let Some(warp) = CoonsWarp::new(origin, size, env.corners, &env.edges) else {
+                    continue;
+                };
+                cook_children(scene, sources, &warp, acc);
+            }
+            EnvelopeKind::Pins => {
+                // Sem pino nenhum não há mapa — as formas ficam onde estão (a mesma escolha da
+                // gaiola degenerada). É o estado em que o gesto NASCE, e ele é honesto: o artista
+                // acabou de entrar no modo e ainda não pregou nada.
+                let Some(warp) = ph2d_vec_envelope::MlsWarp::new(&env.pins) else {
                     continue;
                 };
                 cook_children(scene, sources, &warp, acc);

@@ -104,7 +104,7 @@ fn edges_to_world(local: CageEdges, xf: &Xform) -> CageEdges {
 /// dedo e a tela concordarem.
 #[must_use]
 pub(crate) fn press(
-    sim: &SimWorld,
+    sim: &mut SimWorld,
     selected: Option<u64>,
     world_pt: [f64; 2],
     px_to_world: f64,
@@ -117,9 +117,12 @@ pub(crate) fn press(
     let Some(xf) = container_world_xform(sim, bits) else {
         return false;
     };
+    let radius = ENVELOPE_HANDLE_R_PX * px_to_world;
+    if kind == EnvelopeKind::Pins {
+        return press_pin(sim, bits, &xf, world_pt, radius, drag);
+    }
     let world = to_world(corners, &xf);
     let world_edges = offered_edges(edges, kind).map(|e| edges_to_world(e, &xf));
-    let radius = ENVELOPE_HANDLE_R_PX * px_to_world;
     match ph2d_vec_envelope::nearest_handle(&world, world_edges.as_ref(), world_pt, radius) {
         Some(handle) => {
             *drag = Some((bits, handle));
@@ -127,6 +130,47 @@ pub(crate) fn press(
         }
         None => false,
     }
+}
+
+/// **A pressão no gesto Pinos** — e ela é de outra natureza: aqui o clique no VAZIO *cria*.
+///
+/// Nos gestos de gaiola as alças são fixas (4 cantos, 8 controles) e um clique fora delas pertence
+/// ao pen. Um puppet warp não tem alça fixa: **pregar é o gesto**, como no Puppet Warp do Photoshop.
+/// Então, no modo Node com Pinos ativo, o envelope toma o clique inteiro — pega o pino sob o cursor
+/// ou prega um novo ali.
+///
+/// O pino nasce **em repouso** (`estava == foi`): pregar não move nada, e é o arrasto seguinte que
+/// deforma. Um pino que deformasse ao nascer faria o artista perder a arte só por pregá-lo.
+fn press_pin(
+    sim: &mut SimWorld,
+    bits: u64,
+    xf: &Xform,
+    world_pt: [f64; 2],
+    radius: f64,
+    drag: &mut Option<(u64, usize)>,
+) -> bool {
+    let Some(inv) = xf.inverse() else {
+        return false;
+    };
+    let local_pt = inv.apply(world_pt);
+    let entity = Entity::from_bits(bits);
+    let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity) else {
+        return false;
+    };
+    // O hit é contra a posição MOVIDA (é onde a bolinha está desenhada) — perguntar pela de repouso
+    // faria o dedo pegar o pino no lugar onde ele já não está. E é feito em MUNDO, com o mesmo raio
+    // em píxeis que a gaiola usa: sob pose escalada, comparar em local encolheria o alvo.
+    let r2 = radius * radius;
+    let hit = env.pins.iter().position(|p| {
+        let w = xf.apply(p[1]);
+        (w[0] - world_pt[0]).powi(2) + (w[1] - world_pt[1]).powi(2) <= r2
+    });
+    let index = hit.unwrap_or_else(|| {
+        env.pins.push([local_pt, local_pt]);
+        env.pins.len() - 1
+    });
+    *drag = Some((bits, index));
+    true
 }
 
 /// **Move durante o arrasto:** leva a alça agarrada para `world_pt`, mas só se a gaiola sobreviver ao
@@ -152,6 +196,9 @@ pub(crate) fn drag(sim: &mut SimWorld, active: Option<(u64, usize)>, world_pt: [
         return true; // pose degenerada: nada a mover com sentido
     };
     let local_pt = inv.apply(world_pt);
+    if kind == EnvelopeKind::Pins {
+        return drag_pin(sim, entity, bits, handle, local_pt);
+    }
     let mesh = kind == EnvelopeKind::Mesh;
     if let Some(next) = ph2d_vec_envelope::move_handle(corners, edges, mesh, handle, local_pt)
         && let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity)
@@ -178,6 +225,10 @@ pub(crate) fn view(
 ) -> Option<EnvelopeCageView> {
     let bits = selected?;
     let (corners, edges, kind) = cage_of(sim, bits)?;
+    if kind == EnvelopeKind::Pins {
+        // O puppet não tem gaiola. Devolver uma vazia desenharia uma moldura que o mapa ignora.
+        return None;
+    }
     let xf = container_world_xform(sim, bits)?;
     let dragging = active.filter(|(d, _)| *d == bits).map(|(_, c)| c);
     Some(EnvelopeCageView {
@@ -185,6 +236,75 @@ pub(crate) fn view(
         edges: offered_edges(edges, kind).map(|e| edges_to_world(e, &xf)),
         dragging,
     })
+}
+
+/// **Arrasta um pino** para `local_pt`, mas só se a arte não dobrar ([`ph2d_vec_envelope::pins_fold`]).
+///
+/// Recusado ⇒ o pino **para na fronteira**, exatamente como o canto não-convexo e o controle que
+/// dobraria o Coons. É esta recusa que mantém `break_cusp` em `None` honesto: o estado dobrado fica
+/// inalcançável pela mão, então não há cúspide a partir — e um fold em vetor é um contorno
+/// auto-interseccionado, não um bico que se aproxima melhor.
+///
+/// ⚠️ **O preço, registrado:** o artista não torce um pino além de ~90°. É limite do MÉTODO (o ADR-0129
+/// mediu `det J` mudar de sinal aí), não do guard.
+fn drag_pin(
+    sim: &mut SimWorld,
+    entity: Entity,
+    bits: u64,
+    index: usize,
+    local_pt: [f64; 2],
+) -> bool {
+    let Some(domain) = crate::envelope_live::domain_of(sim, bits) else {
+        return true;
+    };
+    let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity) else {
+        return true;
+    };
+    let Some(pin) = env.pins.get(index).copied() else {
+        return true;
+    };
+    let mut next = env.pins.clone();
+    next[index][1] = local_pt;
+    if ph2d_vec_envelope::pins_fold(&next, domain.0, domain.1) {
+        return true; // o movimento dobraria: o pino fica onde estava
+    }
+    let _ = pin;
+    env.pins = next;
+    true
+}
+
+/// **Apaga todos os pinos** do envelope `bits`. `true` se havia algum.
+///
+/// É a única porta de remoção da Fatia E, e é assumido: apagar UM pino exige um gesto próprio
+/// (Alt+clique) que compete com o "clicar no vazio prega", e essa disputa é decisão de UX, não
+/// encanamento. Sem *nenhuma* porta, porém, um pino mal pregado seria permanente.
+pub(crate) fn clear_pins(sim: &mut SimWorld, bits: u64) -> bool {
+    let Some(mut env) = sim
+        .world_mut()
+        .get_mut::<VecEnvelope>(Entity::from_bits(bits))
+    else {
+        return false;
+    };
+    if env.pins.is_empty() {
+        return false;
+    }
+    env.pins.clear();
+    true
+}
+
+/// Os pinos do container `bits` em MUNDO, para o desenho — `[repouso, movido]` por pino.
+#[must_use]
+pub(crate) fn pins_world(sim: &SimWorld, bits: u64) -> Vec<[[f64; 2]; 2]> {
+    let (Some(env), Some(xf)) = (
+        sim.world().get::<VecEnvelope>(Entity::from_bits(bits)),
+        container_world_xform(sim, bits),
+    ) else {
+        return Vec::new();
+    };
+    env.pins
+        .iter()
+        .map(|p| [xf.apply(p[0]), xf.apply(p[1])])
+        .collect()
 }
 
 /// **Troca o gesto** da gaiola do container `bits`. `true` se algo mudou.

@@ -2701,7 +2701,7 @@ impl App {
                                 // pelo recook do frame seguinte. Um erro cai no
                                 // `on_press_node` de sempre (seleção / edição de âncora).
                                 if crate::envelope_gesture::press(
-                                    &gfx.sim,
+                                    &mut gfx.sim,
                                     env_container,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,

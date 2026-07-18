@@ -43,16 +43,25 @@ impl BodyCtx<'_> {
             // bilinear), e o Mesh é o único que oferece as 8 alças de lado. Vem ANTES do
             // Expand/Release porque escolhe como o envelope VIVO se comporta; os outros dois o
             // terminam.
-            let mesh = state::envelope_mesh();
-            y = self.segmented2(
+            let mode = state::envelope_mode();
+            y = self.segmented(
                 "Cage",
-                [
-                    (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Perspective", !mesh),
-                    (ids::VECTOR_ENVELOPE_MESH, "Mesh", mesh),
+                &[
+                    (ids::VECTOR_ENVELOPE_PERSPECTIVE, "Persp", mode == 0),
+                    (ids::VECTOR_ENVELOPE_MESH, "Mesh", mode == 1),
+                    (ids::VECTOR_ENVELOPE_PINS, "Pins", mode == 2),
                 ],
                 y,
             );
-            y = self.envelope_presets(y);
+            if mode == 2 {
+                // O gesto dos PINOS não tem gaiola, logo não tem preset nem Bend (eles GERAM uma
+                // gaiola). O que ele tem é uma saída: sem `Clear Pins` um pino mal pregado seria
+                // permanente — apagar UM exige um gesto que compete com "clicar no vazio prega", e
+                // essa disputa é decisão de UX, não encanamento.
+                y = self.action_button(ids::VECTOR_ENVELOPE_CLEAR_PINS, "Clear Pins", y);
+            } else {
+                y = self.envelope_presets(y);
+            }
             // Tabela tipada como a do Blend (HR-12): o `action_button` delega ao `paint_button`
             // canônico, que é quem costura o AccessKit — e nomear o `NodeId` aqui é o idioma que o
             // gate `every_widget_file_wires_a11y` reconhece nos irmãos desta pasta.

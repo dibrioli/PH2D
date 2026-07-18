@@ -67,6 +67,11 @@ pub enum EnvelopeKind {
     Perspective,
     /// Patch de Coons das 4 curvas de bordo — os lados **dobram**. O *Mesh Warp* do Affinity.
     Mesh,
+    /// **Pinos** (MLS-rigid, Schaefer 2006) — o *puppet warp*. Não há gaiola: o artista prega pontos
+    /// e arrasta. ⚠️ **Duas coisas contra-intuitivas, as duas são o método e não bugs:** o suporte é
+    /// **global** (o container é o escopo, não um raio), e com **2 pinos não se deforma nada** — uma
+    /// isometria de um par determina uma rigidez única, então é preciso um **3º pino não-colinear**.
+    Pins,
 }
 
 /// **Um preset de gaiola** (ADR-0129 Fatia C): Arc / Flag / Wave / … — cada um GERA a gaiola.
@@ -194,6 +199,10 @@ pub struct VecEnvelope {
     /// slider Bend deixa de ser oferecido. É o *"promovível"* que o ADR-0129 §4 pediu — e sem essa
     /// regra o próximo movimento do slider apagaria o que a mão acabou de fazer.
     pub warp: Option<EnvelopeWarp>,
+    /// Os **pinos** do gesto `Pins`: `[onde estava, para onde foi]`, em coordenadas LOCAIS do
+    /// container. Ignorados nos outros dois gestos — e preservados por eles, para trocar de gesto e
+    /// voltar não apagar o que o artista pregou.
+    pub pins: Vec<[[f64; 2]; 2]>,
     /// O `bend` do preset, `[-1, 1]`. Sem sentido (e ignorado) quando `warp` é `None`.
     ///
     /// Nasce em [`EnvelopeWarp::DEFAULT_BEND`], não em zero: um preset carimbado com força zero é a
@@ -228,6 +237,7 @@ impl VecEnvelope {
             edges,
             kind: EnvelopeKind::default(),
             warp: None,
+            pins: Vec::new(),
             bend: EnvelopeWarp::DEFAULT_BEND,
             children,
         }

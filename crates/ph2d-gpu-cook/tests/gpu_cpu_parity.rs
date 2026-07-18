@@ -18,6 +18,7 @@
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
+use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::RenderInstance;
@@ -41,6 +42,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_rotate::register(&mut reg).unwrap();
     ph2d_node_motion_scale::register(&mut reg).unwrap();
     ph2d_node_motion_falloff::register(&mut reg).unwrap();
+    ph2d_node_motion_cull::register(&mut reg).unwrap();
     ph2d_node_motion_tint::register(&mut reg).unwrap();
     ph2d_node_motion_wiggle::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
@@ -470,6 +472,174 @@ fn tint_solid_kernel_matches_the_cpu_within_epsilon() {
     connect(&mut g, foc, tint);
     connect(&mut g, tint, out);
     assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + falloff + tint
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn tint_gradient_kernel_matches_the_cpu_within_epsilon() {
+    // Gradient used to fall back to the CPU: the ramp keys off `Index/(Count−1)`
+    // and `ColumnBinding.identity` is a CONSTANT, so an absent column could not
+    // mean `f32(i)`. The `HAS_<col>` const closes it. Here both columns ARE
+    // present (the grid emits them) — the sibling below is the absent case.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    // Same intermediate-falloff idea as the Solid gate: the gradient target must
+    // still be lerped INTO the existing tint, not written over it. A gate at
+    // f = 1 everywhere would stay green with `mixed_tint` deleted.
+    let foc = g.add_node("motion.falloff");
+    g.set_param(foc, "radius", 27.3);
+    g.set_param(foc, "center_x", 2.9);
+    g.set_param(foc, "center_y", -1.7);
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 1.0); // Gradient
+    // Start and End differ on every channel and none is round, so a swapped
+    // endpoint or a dropped channel cannot hide behind a tidy number.
+    g.set_param(tint, "r", 0.31);
+    g.set_param(tint, "g", 0.72);
+    g.set_param(tint, "b", 0.16);
+    g.set_param(tint, "a", 0.85);
+    g.set_param(tint, "r2", 0.94);
+    g.set_param(tint, "g2", 0.23);
+    g.set_param(tint, "b2", 0.58);
+    g.set_param(tint, "a2", 0.41);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, foc);
+    connect(&mut g, foc, tint);
+    connect(&mut g, tint, out);
+    assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + falloff + tint
+}
+
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_gradient_tint_keys_positionally_when_index_is_absent() {
+    // THE gate for the `HAS_<col>` branch, and it needed a fixture that can
+    // CONTRADICT it: every GPU-rootable generator (grid, emitter) emits
+    // `Index`/`Count`, and every transform node carries the base through, so a
+    // normal chain has `HAS_Index` true ALWAYS and the positional fallback would
+    // be untested code behind a green suite
+    // ([[feedback_a_green_gate_may_be_green_by_accident]]).
+    //
+    // The oracle here is not the CPU — it is the fallback's own DEFINITION.
+    // "Absent Index keys positionally" means precisely: a stream WITHOUT the
+    // columns must colour exactly as the same stream WITH `Index = 0..n−1` and
+    // `Count = n`. So the gate cooks the real boundary twice, once stripped, and
+    // demands the two agree BYTE for byte — no ε, no hand-computed expectation.
+    // The `Index`-present run is in turn pinned to the CPU by the sibling above,
+    // which is what makes this a parity claim and not a self-consistency one.
+    //
+    // `motion.cull` is here only to BE a CPU boundary (it has no kernel), which
+    // is what lets the test hand the GPU suffix a stream of its own choosing.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let cull = g.add_node("motion.cull");
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 1.0); // Gradient
+    g.set_param(tint, "r", 0.31);
+    g.set_param(tint, "g", 0.72);
+    g.set_param(tint, "b", 0.16);
+    g.set_param(tint, "a", 0.85);
+    g.set_param(tint, "r2", 0.94);
+    g.set_param(tint, "g2", 0.23);
+    g.set_param(tint, "b2", 0.58);
+    g.set_param(tint, "a2", 0.41);
+    let out = g.add_node("motion.output");
+    connect(&mut g, grid, cull);
+    connect(&mut g, cull, tint);
+    connect(&mut g, tint, out);
+
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
+    )
+    .expect("cpu cook");
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert_eq!(plan.boundaries, vec![(cull, 0)], "boundary at the cull");
+
+    let mut boundary_cook = Cook::new();
+    let outputs = boundary_cook
+        .cook(&g, &reg, cull, PLAYHEAD)
+        .expect("boundary cpu cook");
+    let boundary = outputs[0].as_stream().clone();
+    let n_el = boundary.count();
+    assert!(
+        n_el > 1,
+        "a single element would key at t = 0 and prove nothing"
+    );
+    // The equality below is only meaningful if the columns being stripped really
+    // ARE the positional ones — otherwise "stripped == present" would be a
+    // coincidence about this stream, not a statement about the fallback.
+    assert!(
+        matches!(boundary.get("Index"), Some(Column::Scalar(v))
+            if v.iter().enumerate().all(|(i, x)| *x == i as f32)),
+        "Index must be 0..n−1 for the positional claim to mean anything"
+    );
+    assert!(
+        matches!(boundary.get("Count"), Some(Column::Scalar(v))
+            if v.iter().all(|x| *x == n_el as f32)),
+        "Count must be n for the positional claim to mean anything"
+    );
+    let mut stripped = Stream::new(n_el);
+    for (name, col) in boundary.columns() {
+        if name != "Index" && name != "Count" {
+            stripped.set(name.clone(), col.clone());
+        }
+    }
+
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    let mut run = |s: &Stream| {
+        let n = gc
+            .cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &[(cull, s)],
+                CookClock::at(PLAYHEAD),
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+        assert_eq!(n as usize, n_el);
+        ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"))
+    };
+    let with_index = run(&boundary);
+    let positional = run(&stripped);
+
+    // The ramp must actually SWEEP — two flat results agree flatly and would keep
+    // this green with the whole Gradient branch deleted.
+    let reds: Vec<f32> = positional.iter().map(|r| r.tint[0]).collect();
+    let spread = reds.iter().copied().fold(f32::NEG_INFINITY, f32::max)
+        - reds.iter().copied().fold(f32::INFINITY, f32::min);
+    assert!(spread > 0.1, "the positional ramp must sweep: {spread}");
+
+    assert_eq!(
+        bytemuck::cast_slice::<_, u8>(&with_index),
+        bytemuck::cast_slice::<_, u8>(&positional),
+        "an absent Index/Count must key EXACTLY as Index = 0..n−1, Count = n"
+    );
+    // …and the `Index`-present run is the one the CPU pins, which is what makes
+    // the equality above a parity claim rather than self-consistency.
+    assert_parity(&cpu, &with_index);
 }
 
 #[test]

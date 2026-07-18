@@ -180,8 +180,8 @@ fn the_emitter_fountain_demo_plans_as_a_fully_gpu_id_gather_loop() {
         plan.drives_a_loop(),
         "the per-particle state must live on the GPU across ticks"
     );
-    // emitter + wind + curl + integrate dispatch; `output` is a pass-through.
-    assert_eq!(plan.dispatching_stages(&registry), 4);
+    // emitter + wind + curl + integrate + tint dispatch; `output` is a pass-through.
+    assert_eq!(plan.dispatching_stages(&registry), 5);
     let node = |ty: &str| {
         doc.graph
             .nodes()
@@ -195,6 +195,15 @@ fn the_emitter_fountain_demo_plans_as_a_fully_gpu_id_gather_loop() {
         node("motion.integrate"),
         node("force.wind"),
         node("force.curl"),
+    );
+    // The Gradient Tint is STAGED, not a boundary. Before it got a kernel it was
+    // `applicable`-refused, so colouring the fountain by age would have split
+    // this chain and pushed the whole sim back to the CPU — the assertion above
+    // (`is_fully_gpu`) would still pass on an UNCOLOURED demo, so the fact has to
+    // be named here or the demo could quietly lose its colour and stay green.
+    assert!(
+        plan.stages.iter().any(|s| s.node == node("motion.tint")),
+        "the age gradient must be claimed, not pushed to a CPU boundary"
     );
     let staged = |n| {
         plan.stages

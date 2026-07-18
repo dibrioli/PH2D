@@ -355,6 +355,22 @@ pub(super) fn build_gpu_emitter_demo_document(
     g.set_param(em, "seed", 7.0);
     g.set_param(em, "size", 0.18);
     let ig = g.add_node("motion.integrate");
+    // Colour by AGE. The emitter's ids ascend oldest-first, so `Index` IS age
+    // order and a Gradient Tint paints the jet hot at the muzzle and cold at the
+    // tips — the affordance the emitter's own doc promises. It is here to be
+    // SEEN: until Gradient got its kernel it would have split this chain at a CPU
+    // boundary, so a coloured fountain that still plans fully-GPU is the visible
+    // form of that fix.
+    let tint = g.add_node("motion.tint");
+    g.set_param(tint, "mode", 1.0); // Gradient
+    g.set_param(tint, "r", 1.0); // oldest → warm white
+    g.set_param(tint, "g", 0.86);
+    g.set_param(tint, "b", 0.45);
+    g.set_param(tint, "a", 1.0);
+    g.set_param(tint, "r2", 0.16); // newest → deep blue
+    g.set_param(tint, "g2", 0.32);
+    g.set_param(tint, "b2", 0.95);
+    g.set_param(tint, "a2", 1.0);
     let out = g.add_node("motion.output");
 
     // Gravity: steady (`gust = 0`), straight down (270° → the `(cos, sin)` pair
@@ -369,7 +385,7 @@ pub(super) fn build_gpu_emitter_demo_document(
     g.set_param(curl, "speed", 0.5);
     g.set_param(curl, "octaves", 2.0);
 
-    for (i, n) in [em, ig, out].into_iter().enumerate() {
+    for (i, n) in [em, ig, tint, out].into_iter().enumerate() {
         g.set_pos(
             n,
             Pos {
@@ -393,7 +409,8 @@ pub(super) fn build_gpu_emitter_demo_document(
         (ig, gravity, 0, true),
         (gravity, curl, 0, false),
         (curl, ig, 1, false),
-        (ig, out, 0, false),
+        (ig, tint, 0, false),
+        (tint, out, 0, false),
     ] {
         g.connect(Edge {
             from: (from, 0),

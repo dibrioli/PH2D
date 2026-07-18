@@ -126,24 +126,65 @@ fn mixed_tint(existing: [f32; 4], target: [f32; 4], f: f32) -> [f32; 4] {
 
 /// GPU compute kernel (GPU/M5 Fase 2, ADR-0126): `tint' = lerp(existing, target,
 /// falloff)` per RGBA channel — the exact `mixed_tint` form, so parity is
-/// bit-exact (no transcendentals). **Solid mode only** (`applicable`): the
-/// Gradient ramp keys off `Index/(Count−1)` with a POSITIONAL fallback (`i`,
-/// `n`) when those columns are absent, which a constant-identity binding cannot
-/// express (`read_Index`'s identity is a constant, not `f32(i)`) — so a Gradient
-/// Tint falls back to the CPU `eval`, the explicit boundary, never a wrong
-/// answer. `ReadWrite` on `tint` mirrors the CPU: an absent `tint` column starts
-/// from opaque white `[1,1,1,1]` and the column is always written.
+/// bit-exact (no transcendentals). `ReadWrite` on `tint` mirrors the CPU: an
+/// absent `tint` column starts from opaque white `[1,1,1,1]` and the column is
+/// always written.
+///
+/// **Gradient runs here too, and the positional key is why it could not before.**
+/// The ramp keys off `Index/(Count−1)`, falling back to `i`/`n` when those
+/// columns are absent — a *positional* identity, and `ColumnBinding.identity` is
+/// a CONSTANT, so `read_Index`'s fallback cannot be `f32(i)`. The generated
+/// `HAS_<col>` const closes it exactly as it did for `motion.color_ramp`: the
+/// body asks whether the column was really there and takes the CPU's other
+/// branch when it was not. This is the gap the Fase 2 handoff logged against
+/// this very node, and it is what lets the emitter's documented affordance
+/// ("ids ascend oldest-first, so Gradient paints the stream by AGE") survive on
+/// the GPU path instead of dropping the whole fountain to the CPU.
+///
+/// **The short-column hazard `motion.color_ramp` recedes over does not exist
+/// here**, and the difference is structural, not luck: its `t` arrives on
+/// ANOTHER port, where a chain rooted at a different generator can be a
+/// different length, and this engine calls a wrong-length column *absent* — which
+/// there would silently mean "use the positional key" while the CPU pads. `Index`
+/// and `Count` ride the SAME port as the base, and [`Stream::set`] asserts
+/// `col.len() == count`, so present ⟺ exists and a present column is exactly `n`
+/// long. The CPU's `unwrap_or(default)` is unreachable for these two — defensive,
+/// not a semantic branch — so `HAS_x ? read_x(i) : positional` *is* `scalar_at`.
+///
+/// **HR-5:** the lerps are written as the CPU writes them (`a·(1−t) + b·t`, the
+/// `lerp4`/`mixed_tint` form), never WGSL's `mix` — same value, different
+/// expression, different rounding. `mode` is rounded half-away-from-zero
+/// (Rust's `f32::round`), not by WGSL's half-even builtin.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let tn_e = read_tint(i);\n\
-        let tn_t = vec4<f32>(params.r, params.g, params.b, params.a);\n\
+        var tn_t = vec4<f32>(params.r, params.g, params.b, params.a);\n\
+        if (i32(tn_round(params.mode)) == 1) {\n\
+        \x20   // Absent Index/Count → the POSITIONAL key, the CPU's own fallback.\n\
+        \x20   var tn_idx = f32(i);\n\
+        \x20   if (HAS_Index) { tn_idx = read_Index(i); }\n\
+        \x20   var tn_cnt = f32(params.count);\n\
+        \x20   if (HAS_Count) { tn_cnt = read_Count(i); }\n\
+        \x20   var tn_g = 0.0;\n\
+        \x20   if (tn_cnt > 1.0) { tn_g = clamp(tn_idx / (tn_cnt - 1.0), 0.0, 1.0); }\n\
+        \x20   let tn_end = vec4<f32>(params.r2, params.g2, params.b2, params.a2);\n\
+        \x20   tn_t = vec4<f32>(\n\
+        \x20       tn_t.x * (1.0 - tn_g) + tn_end.x * tn_g,\n\
+        \x20       tn_t.y * (1.0 - tn_g) + tn_end.y * tn_g,\n\
+        \x20       tn_t.z * (1.0 - tn_g) + tn_end.z * tn_g,\n\
+        \x20       tn_t.w * (1.0 - tn_g) + tn_end.w * tn_g);\n\
+        }\n\
         let tn_f = read_falloff(i);\n\
         write_tint(i, vec4<f32>(\n\
             tn_e.x * (1.0 - tn_f) + tn_t.x * tn_f,\n\
             tn_e.y * (1.0 - tn_f) + tn_t.y * tn_f,\n\
             tn_e.z * (1.0 - tn_f) + tn_t.z * tn_f,\n\
             tn_e.w * (1.0 - tn_f) + tn_t.w * tn_f));\n",
-    wgsl_lib: "",
+    wgsl_lib: "\
+        fn tn_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n",
     bindings: &[
         ColumnBinding {
             column: "tint",
@@ -159,12 +200,26 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [1.0; 4],
             port: 0,
         },
+        // Read for the ramp key only; the `HAS_` const above decides whether the
+        // value or the positional fallback is used, so the identity is inert.
+        ColumnBinding {
+            column: "Index",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "Count",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
     ],
-    params: &["r", "g", "b", "a"],
+    params: &["r", "g", "b", "a", "r2", "g2", "b2", "a2", "mode"],
     source_count: None,
-    // Solid only — Gradient (`mode.round() == 1`) needs the Index/Count
-    // positional fallback and stays on the CPU. Matches the CPU's `gradient`.
-    applicable: Some(|param| param("mode").round() as i32 != 1),
+    applicable: None,
 };
 
 struct MotionTint;

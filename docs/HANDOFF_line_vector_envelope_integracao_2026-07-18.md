@@ -1,4 +1,4 @@
-# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope Fatias 1–5 + D (ADR-0129)
+# HANDOFF de INTEGRAÇÃO — `line/Vector`: Envelope Fatias 1–5 + D + C (ADR-0129)
 
 **Para:** o **agente integrador** (e o próximo implementador da linha).
 **De:** a sessão de 2026-07-17/18 que assumiu a linha pelo `HANDOFF_line_vector_continuacao_2026-07-17.md`
@@ -16,6 +16,8 @@ gateadas, PENDENTES de smoke.** Motor + host live já estavam na `main` (Fatias 
 - **Fatia D** = a gaiola ganha **dois gestos**: **Perspective** (homografia, lados retos — o de sempre,
   e o default) e **Mesh** (patch de **Coons**, os lados DOBRAM: 2 controles por lado, 8 alças novas no
   modo Node). Chips `Cage: Perspective | Mesh` no painel.
+- **Fatia C** = **7 presets que GERAM a gaiola** (Arc · Arc Upper · Arc Lower · Bulge · Flag · Wave ·
+  Squeeze) + slider **Bend** (`-1..1`). O preset é **promovível**: arrastar uma alça o solta.
 
 > ⚠️ **A ordem da fila do ADR foi INVERTIDA de propósito** (ele lista 4=Release, 5=painel). Motivo: o
 > Release é um BOTÃO — sem a seção do painel ele não teria onde morar (ou viraria um atalho de teclado,
@@ -219,8 +221,8 @@ As cenas antigas continuam: `PH2D_BUILD_SMOKE=12` (warp group, 2 elipses) e `=11
 Fatias 1, 2, 3, **4 e 5** fechadas. Resta da 4.A (fechar o Envelope):
 
 6. ~~**D — 4 curvas de lado (Coons)**~~ — **FECHADA** (`5b6f754c`). Ver §8.
-7. **C — presets de gaiola** (Arc/Flag/Wave/…). ← **próximo**, e a ORDEM MUDOU: ver §8.3.
-8. **E — pinos / MLS** (a mais delicada — exige o `break_cusp` que hoje volta `None` de propósito;
+7. ~~**C — presets de gaiola**~~ — **FECHADA** (`3f4e0c91`). Ver §9.
+8. **E — pinos / MLS** ← **próximo, e é a última** (a mais delicada — exige o `break_cusp` que hoje volta `None` de propósito;
    ADR §3.2, e o `folds()` da Fatia D é o precedente do guard que ela vai precisar).
 
 E a 4.B herdada (Live Path Effects como nós, morph vivo, blend em cadeia, etc.).
@@ -331,6 +333,78 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
 
 ---
 
+## §9 — Fatia C: os presets de gaiola (`3f4e0c91`)
+
+### 9.1 — Um preset é uma BARRIGA por lado
+
+Ele **não move canto nenhum**: são 8 números dizendo o quanto os 2 controles de cada lado saem da
+corda, **ao longo da normal EXTERNA**. Escolher a normal (e não `y` de mundo) é o que torna a tabela
+legível — *Bulge* é "todo mundo para fora", *Squeeze* é "os laterais para dentro" — e faz a
+assimetria de percurso (o lado de cima vai de TR para TL, ao contrário do de baixo) **se cancelar**
+contra o sinal da normal: por isso *Flag* e *Bulge* saem com os dois lados escritos IGUAL. Numa
+tabela em `y` de mundo cada linha teria de lembrar de qual lado ela fala, e alguém erraria uma.
+
+**A TABELA mora no `ph2d_ecs::EnvelopeWarp`; a MATEMÁTICA no `ph2d-vec-envelope`.** A tabela é
+*dado* (o que a fundação guarda) e transformar barrigas em gaiola é geometria. O enum na crate de
+geometria esbarraria na mesma regra que mantém o `VecEnvelopeChild::source` em bytes; um enum de cada
+lado seriam duas listas para driftar. **Acrescentar um preset = 3 linhas no componente e ZERO
+mudança de painel** — o painel se popula da lista PUBLICADA (o idioma da rack de áudio).
+
+### 9.2 — ⚠️ A amplitude é MEDIDA, e o primeiro valor estava errado
+
+`AMP` é o teto que garante que **qualquer** combinação de barrigas, em qualquer direção, em toda a
+faixa de `bend`, **não dobra o patch** — e por isso vale para a linha que alguém acrescentar amanhã,
+não só para as sete de hoje.
+
+`0.35` (o primeiro valor tentado) é seguro para as formas da tabela **atual**, que envergam um par
+de lados por vez, e **dobra quando os quatro lados envergam juntos** — um caso que nenhum preset de
+hoje produz, e que por isso teria passado despercebido até o preset que o produzisse. Medido: `0.30`
+é o maior valor que sobrevive ao caso de quatro lados; o preço é 14% de curso, invisível na tela.
+
+É a mesma lei da Fatia D dita ao contrário: a alça do gesto Mesh **para na fronteira** porque a MÃO
+pode pedir o impossível; a faixa de um preset é **desenhada**, então ela nunca pede. Um slider que
+"para de funcionar" no fim do curso é bug de desenho, não guard.
+
+### 9.3 — O preset é PROMOVÍVEL, e é isso que impede dois donos
+
+`warp` + `bend` são a **lembrança de de-onde-a-gaiola-veio**, não um segundo dono dela: a derivação é
+de **mão única e por EVENTO** (mudou o preset ou o bend ⇒ re-escreve a gaiola), **nunca por frame**.
+**Arrastar qualquer alça solta o preset** (`warp = None`) e o Bend deixa de ser oferecido — sem essa
+regra o próximo toque no slider apagaria o gesto do artista sem aviso.
+
+Decisões menores que a próxima fatia vai encostar: o preset **põe a gaiola em Mesh** (com lados retos
+não há preset a exprimir) · ele **reseta os cantos ao repouso** (*Reset with Warp*: pedir um arco
+depois de puxar um canto dá um arco, não um arco torto) · o `bend` nasce em `0.5` e **não em zero**,
+porque `bend = 0` **é** a gaiola em repouso ao bit e o primeiro clique em "Arc" não moveria um pixel
+· a conversão bipolar (track `0..1` → `-1..1`) mora na **fronteira do painel**, então o shell recebe
+o número do documento e nunca sabe que existe um track.
+
+### 9.4 — Dois gates de LOC no caminho, pagos com SPLIT
+
+`apply_event` passou de 200 LOC (o 3º slider bipolar foi a gota) ⇒ `forward_track`, que colapsa as
+**três cópias do mesmo corpo** (Bend, Morph `t`, Blend Steps). E os literais do `populate` viraram
+constantes nomeadas **do domínio do documento** (HR-15, `no_magic_numeric`). Nenhum allowlist.
+
+### 9.5 — Smoke da Fatia C
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
+  cargo run -p ph2d-host-desktop --features panel-vector
+```
+
+1. Envolva uma forma (**Envelope**) → aparecem os **7 botões de preset**.
+2. Clique **Arc** → a forma curva **na hora** (o bend nasce em 0.5; um preset que precisasse de dois
+   cliques para se anunciar seria um botão morto na estreia).
+3. O slider **Bend** aparece. Arraste-o: a forma re-carimba ao vivo, e a ponta **esquerda** é o arco
+   ao contrário (a faixa é bipolar).
+4. Percorra os 7 — cada um tem de dar uma forma **diferente**; nenhum "para de funcionar" no fim do
+   curso do slider.
+5. Modo **Node** → arraste uma alça: **o Bend some** (a gaiola virou manual). Clique um preset de
+   novo e ele volta.
+6. Com **Perspective** aceso, clicar um preset o troca para **Mesh** sozinho.
+
+---
+
 ## §7 — Resumo de fechamento
 
 - **Fatias 1–5 do Envelope (ADR-0129 §4.A.1–5) construídas e gateadas.** F1/F2/F3 SMOKADAS; F4+F5
@@ -354,7 +428,11 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
   produção** (o de invariância à subdivisão rodava só sobre um `Bilinear` escrito à mão) + os 2 de
   seam do painel **estendidos** (as listas de "o que a seção oferece" ganharam os chips — uma lista
   nova driftaria). **9 mutações RED→GREEN.**
-- **Commits (locais, sem push):** `5b6f754c` (Fatia D) · `d5695795` (F4+F5) · `10889f0e` (F3) ·
+- **Fatia C:** 7 presets que GERAM a gaiola + Bend, **promovíveis** — ver §9. A `AMP` foi **medida**,
+  não escolhida: o primeiro valor comprava a garantia só para as formas que eu já tinha escrito.
+- **Gates da C:** 7 no motor + 6 no host (a varredura dos presets REAIS) + 4 de seam. **9 mutações
+  RED→GREEN.** Dois gates de LOC pagos com split, nenhum allowlist.
+- **Commits (locais, sem push):** `3f4e0c91` (Fatia C) · `5b6f754c` (Fatia D) · `d5695795` (F4+F5) · `10889f0e` (F3) ·
   `5bddd9e4`/`43b918f5`/`207d10b9` (F2/F1) + docs.
 - **A linha NÃO integra nem faz push** (§0.7): entrego este handoff e **PARO** — integração e ship só
   por ordem EXPLÍCITA do Enio.

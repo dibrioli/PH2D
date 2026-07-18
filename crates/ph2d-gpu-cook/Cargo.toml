@@ -45,6 +45,8 @@ ph2d-node-force-buoyancy = { path = "../ph2d-node-force-buoyancy" }
 ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
 # The colour ramp: the positional key `HAS_<col>` unblocked.
 ph2d-node-motion-color-ramp = { path = "../ph2d-node-motion-color-ramp" }
+ph2d-node-motion-sort = { path = "../ph2d-node-motion-sort" }
+ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 # A VALUE producer, to gate the color-ramp refusal (its `t` port).
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }
 # The `id` stream the D3 refusal exists for (plan_simulation).

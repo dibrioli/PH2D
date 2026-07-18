@@ -340,6 +340,7 @@ passagens = "passagens"
 colide = "colide"
 Mata = "Mata"
 definitivos = "definitivos"
+definitivo = "definitivo"  # o singular do irmao acima (ADR-0129: o Expand torna a deformacao definitiva)
 convencional = "convencional"
 envolve = "envolve"
 # pt-BR do domínio Segment do Flip (ADR-0114 §4.B): um clique ACENDE o pedaço (lido como

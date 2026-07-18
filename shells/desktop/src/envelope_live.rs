@@ -301,14 +301,14 @@ pub(crate) fn apply_preset(
     // de não-dobra. Multiplicar aqui mantém as duas metades onde elas pertencem.
     let bows: ph2d_vec_envelope::EdgeBows =
         warp.bows().map(|s| s.map(|v| v * ph2d_vec_envelope::AMP));
-    let (uc, ue) = ph2d_vec_envelope::preset_cage(&bows, bend);
+    let (unit_corners, unit_edges) = ph2d_vec_envelope::preset_cage(&bows, bend);
     let to_rect = |p: [f64; 2]| [origin[0] + p[0] * size[0], origin[1] + p[1] * size[1]];
 
     let Some(mut env) = sim.world_mut().get_mut::<VecEnvelope>(entity) else {
         return false;
     };
-    env.corners = std::array::from_fn(|i| to_rect(uc[i]));
-    env.edges = std::array::from_fn(|i| std::array::from_fn(|j| to_rect(ue[i][j])));
+    env.corners = std::array::from_fn(|i| to_rect(unit_corners[i]));
+    env.edges = std::array::from_fn(|i| std::array::from_fn(|j| to_rect(unit_edges[i][j])));
     env.kind = EnvelopeKind::Mesh;
     env.warp = Some(warp);
     env.bend = bend.clamp(-1.0, 1.0);

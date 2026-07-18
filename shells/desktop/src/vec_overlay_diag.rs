@@ -52,8 +52,8 @@ pub(crate) fn dump(scene: &VecScene, sim: &SimWorld, selection: Option<u64>) {
     for path in scene.paths() {
         // A caixa das ÂNCORAS é o tamanho da forma; a das ALÇAS pode passar dela um pouco. Muito
         // além é o defeito.
-        let (mut alo, mut ahi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
-        let (mut hlo, mut hhi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+        let (mut anchor_lo, mut anchor_hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+        let (mut handle_lo, mut handle_hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
         let mut n = 0_usize;
         let mut nonfinite = 0_usize;
         let grow = |p: [f64; 2], lo: &mut [f64; 2], hi: &mut [f64; 2]| -> bool {
@@ -72,20 +72,22 @@ pub(crate) fn dump(scene: &VecScene, sim: &SimWorld, selection: Option<u64>) {
                 (v.out_handle, false),
             ] {
                 let ok = if is_anchor {
-                    grow(p, &mut alo, &mut ahi)
+                    grow(p, &mut anchor_lo, &mut anchor_hi)
                 } else {
-                    grow(p, &mut hlo, &mut hhi)
+                    grow(p, &mut handle_lo, &mut handle_hi)
                 };
                 if !ok {
                     nonfinite += 1;
                 }
             }
         }
-        if n == 0 || !alo[0].is_finite() {
+        if n == 0 || !anchor_lo[0].is_finite() {
             continue;
         }
-        let diag = (ahi[0] - alo[0]).hypot(ahi[1] - alo[1]).max(1e-9);
-        let reach = (hhi[0] - hlo[0]).hypot(hhi[1] - hlo[1]) / diag;
+        let diag = (anchor_hi[0] - anchor_lo[0])
+            .hypot(anchor_hi[1] - anchor_lo[1])
+            .max(1e-9);
+        let reach = (handle_hi[0] - handle_lo[0]).hypot(handle_hi[1] - handle_lo[1]) / diag;
         let flag = if nonfinite > 0 {
             " ⚠ NÃO-FINITO"
         } else if reach > SUSPECT_K {
@@ -96,7 +98,7 @@ pub(crate) fn dump(scene: &VecScene, sim: &SimWorld, selection: Option<u64>) {
         eprintln!(
             "[vec-diag] path {:?} verts={n} ancoras=({:.1},{:.1})..({:.1},{:.1}) \
              alcance_das_alcas={reach:.2}x{flag}",
-            path.id, alo[0], alo[1], ahi[0], ahi[1]
+            path.id, anchor_lo[0], anchor_lo[1], anchor_hi[0], anchor_hi[1]
         );
     }
     let Some(bits) = selection else {

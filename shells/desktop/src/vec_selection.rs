@@ -75,9 +75,31 @@ pub(crate) fn sync_selection(
 ) {
     let w = sim.world();
 
-    // 1. O canvas mandou.
+    // 0. NINGUÉM mandou — as entidades foram **RESPAWNADAS** debaixo de nós.
+    //
+    // O `ProjectState::restore` (undo, e o load de projeto) despawna o mundo editável e re-spawna do
+    // snapshot com **ids NOVOS** — está escrito lá. Os bits que espelhamos morrem nesse instante, e
+    // o ramo 2 lê "os meus bits sumiram do gizmo" como *"a árvore deselecionou"*: ele limpa o pen, e
+    // o gizmo fica para sempre com bits de uma entidade morta.
+    //
+    // O sintoma disso é traiçoeiro e foi como o Enio o descreveu: **a ferramenta continua a
+    // funcionar e fica invisível.** O recook do envelope varre por QUERY, então a arte segue
+    // deformada; mas o overlay (gaiola e pinos) é desenhado a partir dos bits da seleção, e esses
+    // já não nomeiam nada.
+    //
+    // "Sumiram" e "morreram" são fatos DIFERENTES e pedem respostas opostas — e distingui-los é
+    // barato, porque uma entidade deselecionada continua EXISTINDO. A seleção do pen é estável
+    // (`VecPathId` viaja no snapshot), então a resposta certa é **re-derivar dela**, que é
+    // exatamente o que o ramo 1 faz.
+    let respawned = !state.bits.is_empty()
+        && state
+            .bits
+            .iter()
+            .all(|&b| w.get_entity(Entity::from_bits(b)).is_err());
+
+    // 1. O canvas mandou (ou o mundo foi re-spawnado — mesma resposta: publicar a partir do pen).
     let pen_now = pen.selected_paths().to_vec();
-    if vector_active && pen_now != state.paths {
+    if vector_active && (pen_now != state.paths || respawned) {
         let mut bits: Vec<u64> = pen_now
             .iter()
             .filter_map(|id| map.get(id).copied())
@@ -182,6 +204,41 @@ mod tests {
     use crate::vec_entities::{VecEntityMap, group_entities, sync};
     use ph2d_ecs::{Name, Transform};
     use ph2d_vec_scene::rectangle;
+
+    /// **APAGAR UMA de duas formas selecionadas PODA o pen — não re-deriva dele.**
+    ///
+    /// Este é o par do gate `the_pins_survive_an_undo`: os dois falam de bits que morreram, e a
+    /// resposta certa é **oposta**. Se TODOS morreram, o mundo foi re-spawnado e a verdade está no
+    /// pen (re-derivar). Se **algum** morreu, foi um delete — e a verdade está no gizmo, que ainda
+    /// tem os sobreviventes; re-derivar do pen aqui deixaria o id da forma apagada pendurado na
+    /// seleção para sempre.
+    ///
+    /// Foi a mutação `.all()` → `.any()` que sobreviveu e cobrou este teste.
+    #[test]
+    fn deleting_one_of_two_selected_shapes_prunes_the_pen() {
+        let (mut sim, mut scene, mut map) = setup();
+        let a = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+        let b = scene.push_path(rectangle([2.0, 0.0], [3.0, 1.0]));
+        sync(&mut sim, &mut scene, &mut map);
+
+        let mut gizmo = GizmoStateGroup::default();
+        let mut pen = ph2d_vec_edit::PenTool::default();
+        let mut state = VecSelSync::default();
+        pen.select_many(&[a, b]);
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+        assert_eq!(pen.selected_paths().len(), 2, "fixture morto");
+
+        // Apaga a entidade de `b` (o que um Delete faz), deixando a de `a` viva.
+        let dead = Entity::from_bits(*map.get(&b).expect("b tem entidade"));
+        let _ = sim.world_mut().despawn(dead);
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, true);
+
+        assert_eq!(
+            pen.selected_paths(),
+            &[a],
+            "o pen ficou com o id da forma apagada — 'algum bit morreu' foi lido como respawn"
+        );
+    }
 
     fn setup() -> (SimWorld, VecScene, VecEntityMap) {
         (SimWorld::default(), VecScene::new(), VecEntityMap::new())

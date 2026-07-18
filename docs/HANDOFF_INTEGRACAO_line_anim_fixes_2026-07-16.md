@@ -15,7 +15,7 @@
 | Commits | **2** |
 | Contratos congelados | **NENHUM** |
 | Deps novas | **NENHUMA** |
-| `DOC_VERSION` / `PROJECT_SCHEMA` | **NÃO tocados** (segue 7 / 15) |
+| `DOC_VERSION` / `PROJECT_SCHEMA` | **NÃO tocados** (segue 7 / 18) |
 
 ## 2. Arquivos — todos dentro do módulo
 

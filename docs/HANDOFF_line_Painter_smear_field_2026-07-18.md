@@ -1,10 +1,16 @@
 # HANDOFF — o Smear virou um campo (2026-07-18)
 
 > Sucessor do [`HANDOFF_line_Painter_TAKEOVER_2026-07-18.md`](HANDOFF_line_Painter_TAKEOVER_2026-07-18.md).
-> A tarefa #1 dele (o bug do Smear) foi atacada: **a lei do transporte está consertada e gateada**, e
-> **o sintoma que o Enio fotografou ainda aparece no pincel PADRÃO** — por um motivo diferente, medido e
-> renderizado. Leia o §4 antes de tocar em qualquer coisa: é onde está a parte que sobrou, e ela é uma
-> **decisão de produto**, não um bug à espera de conserto.
+> **A fila dele fechou inteira** — as três primeiras tarefas, duas delas por MEDIÇÃO em vez de código:
+>
+> * **#1 o bug do Smear** — a lei do transporte estava errada (produto sobre a lista de dabs) e foi
+>   trocada por composição de mapas (§2). **Smoke aprovado pelo Enio.** A agulha que sobrava no pincel
+>   padrão é o **Hardness**, e fica: dureza É o controle de largura da esfregada (§4).
+> * **#2 o engasgo de montagem** — era o fork SERIAL do plano canvas-inteiro; agora paralelo (§9.3).
+> * **#3 Sculpt na GPU** — **dissolvido por medição**: o número que o justificava era a luz da CPU sendo
+>   cobrada do sculpt por um gate desatualizado. Todo kernel já está sob o alvo (§9).
+>
+> Se você só vai ler uma seção, leia o **§9** — é onde uma ordem virou "não construa isto", e por quê.
 
 ## 1. Estado da linha
 

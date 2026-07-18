@@ -1,7 +1,7 @@
 # HANDOFF de INTEGRAÇÃO — `line/Vector`, sessão de 2026-07-18 (a PILHA de efeitos)
 
 **Para:** o agente integrador (DIRETRIZ §1.5.3–1.5.4), quando o Enio mandar.
-**Estado:** ✅ linha **fechada e verde**, 7 commits sobre a `main`. **NÃO integrei e NÃO pushei** —
+**Estado:** ✅ linha **fechada e verde**, 10 commits sobre a `main`. **NÃO integrei e NÃO pushei** —
 a linha fecha, entrega o handoff e para (CLAUDE.md §0.7).
 
 > ⚠️ **Pendente de SMOKE do Enio** — `PH2D_BUILD_SMOKE=13`. Ver §5.
@@ -19,6 +19,8 @@ a linha fecha, entrega o handoff e para (CLAUDE.md §0.7).
 | `1d85fddb` | **docs**: este handoff + a fila do handoff de continuação parou de mentir |
 | `b6e66db5` | **fix**: o draw-on da cena RECOMEÇA (o smoke reprovou o TEMPO, não o Trim) |
 | `e5992c4b` | **feat**: a **seção Effects** no painel — o artista alcança a pilha |
+| `130cde9e` `ea46a9b9` | **feat**: **Zig Zag / Roughen**, o 2º efeito — e a prova da promessa |
+| `662e1f48` | **refactor**: a seção é **dirigida pela TABELA** — o próximo efeito custa zero painel |
 
 **Base:** `02382568` (a linha estava a 2 commits de docs sobre a `main` `389676f9`).
 
@@ -102,10 +104,15 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
 - **A estrela**: a janela de ¼ do caminho **gira** à volta da forma e atravessa a emenda sem
   tropeçar.
 
-**A seção Effects** (`e5992c4b`) smoka-se à mão, e é o teste mais direto do produto: com a tool
-**Vector**, desenhe uma forma, selecione-a (**um** caminho — a seção é por-caminho), abra **Effects**
-e clique **Add Trim Path**. A forma **não pode mudar** no clique (o efeito nasce neutro); então
-arraste **End** para baixo e ela encurta a partir do fim, **medindo por arco**.
+**A seção Effects** smoka-se à mão, e é o teste mais direto do produto. Com a tool **Vector**,
+desenhe uma forma, selecione-a (**um** caminho — a seção é por-caminho) e abra **Effects**:
+
+1. **Add Trim Path** — a forma **não pode mudar** no clique (todo efeito nasce neutro). Arraste
+   **End** para baixo: ela encurta a partir do fim, **medindo por arco**.
+2. **Add Zig Zag** — suba o **Size**. Ligue **Smooth: Off → On** (ondas em vez de serrote) e
+   **Rough** (o mesmo motor, deslocamento pseudo-aleatório e determinístico).
+3. **Reordene com Up/Down** e olhe: ondular-depois-cortar **não** é cortar-depois-ondular. Se as
+   duas ordens desenharem igual, a pilha não está a compor.
 
 **Também vale conferir o fix da alça de raio** (`e5e40aa6`), que é independente: num **filho de
 envelope** (`PH2D_BUILD_SMOKE=11`), no modo **Node**, as alças de raio **não devem mais aparecer**.
@@ -129,7 +136,46 @@ o **v18** que ninguém tinha acrescentado (a UNIDADE do `width` do Flip, `cb42c9
 
 ---
 
-## §7 — A seção *Effects* — **FEITA** (`e5992c4b`)
+## §7bis — A promessa do ADR foi TESTADA, e valia metade (`130cde9e` → `662e1f48`)
+
+O ADR-0132 alegou que a espinha faria cada efeito futuro custar pouco. **Medi, com o 2º efeito:**
+
+| | Custo real |
+|---|---|
+| **Motor** do Zig Zag | ~170 linhas num módulo irmão + 1 variant + 2 braços de match. ✅ |
+| **UI** do Zig Zag | outra rodada completa dos 8 sites de costura. ❌ |
+
+O gargalo tinha deixado de ser a geometria — e o 3º efeito pagaria o mesmo pedágio. **O remédio já
+existia neste repo**: a rack de áudio, onde *"o painel se auto-popula da tabela `KINDS`"*.
+
+**Agora o motor DESCREVE e o painel RENDERIZA.** `PathEffect` ganhou
+`KINDS`/`from_kind`/`params`/`get`/`set`; um efeito declara os próprios parâmetros (nome, faixa,
+é-caixinha) e a seção desenha linhas genéricas. **Nem `paint_effects.rs` nem `fx_bridge.rs` nomeiam
+um efeito.** O 3º tipo custa: um variant, um braço de `apply`, uma linha em `KINDS`.
+
+⚠️ **Três coisas que quem mexer precisa de saber:**
+
+1. **A fronteira de unidades mudou de lugar.** O painel manda o track **normalizado `0..1`** e não
+   conhece a faixa; quem converte é a **ponte**, que a lê do efeito. Se a conversão vivesse no painel
+   haveria duas cópias da faixa, e elas divergiriam no 1º efeito com faixa diferente — que é
+   exatamente o que o Zig Zag trouxe (`Size` a 100, `Ridges` a 64, contra as frações do Trim).
+2. **Um parâmetro de CAIXINHA partilha o id do slider** (o painel pinta um *ou* outro) e chega como
+   `Click`, não `ValueChanged`. O dispatch consulta a **cena** antes de alternar (`is_toggle`) —
+   sem isso um clique perdido num slider viraria escrita silenciosa. Há gate.
+3. **A pilha agora é pilha de verdade** (N efeitos, teto 4, com Up/Down). Nas bordas os botões **não
+   são oferecidos**: subir a primeira linha não faz nada, e botão inerte ensina o artista a
+   desconfiar dos que funcionam.
+
+**`ph2d_editor_core::ids` passou a re-exportar `NodeId`** — o módulo distribui `NodeId`s e as
+fábricas indexadas devolvem um, mas ninguém de fora conseguia **nomear** o tipo.
+
+**SEM bump de schema no 2º efeito**, e a razão importa: postcard indexa o variant e o novo foi
+**apendado** — um save v9 só com Trim continua a ser lido certo. A regra do gate de acoplamento é
+*"bumpe quando um arquivo antigo passar a ser lido ERRADO"*, não a cada mudança de forma.
+
+---
+
+## §7 — A seção *Effects* — **FEITA** (`e5992c4b`, refatorada em `662e1f48`)
 
 A pilha deixou de ser alcançável só por código: há uma seção no painel vetorial com o **toggle do
 Trim** + **Start/End/Offset**, costurada nos 8 sites.

@@ -783,7 +783,7 @@ está olhando. O par vivo ainda conta a verdade sobre **tensão**.
 âncoras no MESMO ponto, o segmento tem comprimento zero e **não pinta nada** — o
 joint mais comum do editor seria invisível. Gate próprio.
 
-### Gates: 39 novos, 33 mutações, 33 sangram
+### Gates: 51 novos, 35 mutações, 35 sangram
 
 | onde | quantos | o que cobrem |
 |---|---|---|
@@ -795,7 +795,8 @@ joint mais comum do editor seria invisível. Gate próprio.
 | shell `inspector_joint_tests.rs` | 7 | bus → ECS → simulação |
 | shell `physics_overlay_joints.rs` | 4 | o desenho, inclusive âncoras coincidentes |
 | shell `join_is_one_gesture_not_a_fan_out.rs` | 2 | arch-gate do fan-out |
-| unit (`joint.rs`, `layers`-style) | 4 | discriminantes postcard pinados em ordem |
+| unit em `ph2d-physics-ecs/src/joint.rs` | 4 | discriminantes postcard pinados em ordem; joint meio-autorado; qual tipo é dobradiça |
+| unit em `ph2d-ecs/src/name.rs` | 2 | o hash pinado contra valores de fora; nunca zero |
 
 ⚠️ **A 1ª rodada de mutação da ponte teve UMA sobrevivente:** a ordem
 determinista de inserção — que com **um** joint não pode importar. O gate que

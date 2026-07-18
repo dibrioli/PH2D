@@ -1279,3 +1279,69 @@ sub-cobertura medida, mas faz a geometria do fill depender do zoom do CLIQUE —
 queixa do Enio, que é de transbordo. Mudar a lei para consertar algo que a medição não mostrou é
 exatamente o que a rodada anterior fez e teve de reverter. Fica medido, nomeado e à espera do
 próximo smoke.
+
+### A correção: a dilatação passa a ser COMPENSADA por ponto (2026-07-18)
+
+Com o instrumento honesto, a resposta certa apareceu — e ela **desfaz um veredito meu**.
+
+Em 2026-07-18 eu implementei a compensação por ponto (`w + 2d`), **medi, julguei pior que a
+margem uniforme e reverti sem shipar**. O veredito estava errado, e a causa foi a MÉTRICA: eu
+comparei a *mediana da compensação* (0,0178 contra 0,005) — ou seja, **o tamanho do próprio
+remédio** — em vez do defeito visível. Uma compensação maior não é um resultado pior: ela é
+maior porque o erro que ela cobre é maior.
+
+> **Lição — um número que SOBE quando o remédio age não pode ser o critério de o remédio estar
+> funcionando.** Meça o sintoma (o que se vê na tela), nunca a dose. Foi essa confusão que
+> mandou para o lixo, por uma rodada inteira, a correção certa.
+
+**A lei nova:** `largura = w + 2s + margem`, onde `s = (q − p) · n_out` é o desvio **com sinal**
+do ponto do contorno até o eixo (`q` = ponto mais próximo no eixo, `n_out` = normal externa do
+anel, derivada da área com sinal — o y aponta para BAIXO aqui, então a orientação foi medida num
+círculo, não deduzida do livro). Onde o contorno acertou o eixo, `s ≈ 0` e a largura é
+exatamente a da linha.
+
+**E o sinal quase nunca dispara** — o que também foi medido, e é honesto dizer. A sonda
+`probe_offsets` mostra que o erro de vetorização é **de um lado só**: o contorno cai
+sistematicamente *dentro* do eixo (`s` de +0,007 a +0,875; **zero** pontos negativos em 5 das 6
+fixturas, 3 em 99 na sexta). Logo `w + 2s` e `w + 2·|s|` são byte-idênticos no produto — o sinal
+é guarda de correção, e quem melhora o encaixe é a **magnitude por ponto**. Vender o sinal como
+a cura seria vender a parte bonita em vez da parte que trabalha.
+
+**O desvio é ALISADO ao longo do anel antes de virar largura** (binomial [1,2,1] cíclico, 2
+passes). O erro a compensar é de baixa frequência; o tremor do traçado é de alta. Sem separar,
+a largura *segue o ruído* e desenha uma borda serrilhada — trocar um defeito por outro. E a
+curva de passes **não é monótona** (pior delta entre escalas: 0→75, 2→20, 4→20, 8→79, 12→79):
+alisar demais devolve a compensação para a média, que é o que ela veio substituir. Um número
+escolhido no olho teria pousado em 8 com toda a confiança.
+
+**A margem mudou de EMPREGO, e por isso de valor** (0,5 → **0,25**). Ela não compensa mais a
+vetorização — isso é do termo `2s`. O que sobra para uma constante uniforme é o que é
+genuinamente uniforme: a borda de um pincel MACIO é translúcida, e a cor precisa ir um pouco
+além da silhueta nominal para o fundo não aparecer através dela. Propriedade do **pincel**, não
+do traçado.
+
+| lei | margem | cobertura (fundo sob a linha) | transbordo (8/16/32 px) |
+|---|---|---|---|
+| uniforme, sem compensação (até hoje) | 0,5 | 158 | 3 / 2 / 0 |
+| com compensação | 0,0 | 224 | 0 / 0 / 0 |
+| **com compensação** | **0,25** | **138** | **4 / 2 / 1** |
+| com compensação | 0,5 | 79 | 8 / 11 / 10 |
+
+**0,25 é o ponto que respeita o smoke:** cobre melhor que a lei antiga com o transbordo parado
+(3→4 é uma amostra em 1792). Subir para 0,5 compraria o dobro de cobertura pagando franja de
+verdade — a troca existe e está medida, mas quem pediu foi o Enio, e ele pediu MENOS franja.
+
+**O ganho maior não está na tabela:** a borda ficou **uniforme**. Antes ela variava de −0,37 a
++0,49 px conforme o traçado errava mais ou menos naquele ponto; agora a compensação a nivela e o
+que sobra é a margem, igual em todo lugar.
+
+**Mutação (3 novas, todas sangram nos DOIS níveis):** normal externa invertida (2 unit + 2
+pixel) · compensação removida, de volta à margem uniforme (1 + 2) · a unidade ignorada (1 + 1).
+A do `|s|` sem sinal sangra só no unit — e a sonda explica por quê: no produto ela é
+byte-idêntica, porque o erro é de um lado só.
+
+⚠️ **O que continua NÃO reproduzido:** a franja que o Enio vê. Na escala do produto a borda da
+cor pousa a **0,25 px** além da silhueta — sub-pixel, e as duas leis ficam abaixo do que uma
+tela mostra. O que se fez foi melhorar o que É mensurável (cobertura, uniformidade) sem piorar o
+que ele reclamou. Se a franja persistir no re-smoke, faltam as condições dele: **zoom, tamanho e
+dureza do pincel** — com esses três a fixture se monta e o instrumento agora responde.

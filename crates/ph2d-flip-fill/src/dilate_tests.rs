@@ -2,7 +2,10 @@
 //! primeiros são BUGS #20 (a dilatação 100× grande, e a média global), o quarto é a
 //! lição do BUGS #18 (vértice contra segmento).
 
-use super::{FILL_TUCK_PX, contour_widths, local_line, mean_line_width, tuck_world};
+use super::{
+    FILL_TUCK_PX, contour_widths, contour_widths_with_margin, local_line, mean_line_width,
+    tuck_world,
+};
 use crate::Vec2;
 
 /// Uma linha reta horizontal em `y`, com espessura CHEIA `w`, amostrada em `n` pontos
@@ -69,11 +72,18 @@ fn the_contour_wears_the_line_it_hugs_not_the_average() {
 fn the_margin_is_a_screen_measure_that_crosses_into_the_documents_unit() {
     // Num documento cujo mundo JÁ é pixel, a margem é ela mesma (dobrada: é diâmetro).
     assert!((tuck_world(1.0) - 2.0 * FILL_TUCK_PX).abs() < 1e-9);
-    // No produto (100 px por unidade de mundo) ela vale 1 px = 0,01 de mundo.
+
+    // ⚠️ **A afirmação é a RELAÇÃO, não um literal.** A 1ª versão deste gate cravava
+    // `tuck_world(100) == 0,01`, o que embutia em silêncio o valor de `FILL_TUCK_PX` —
+    // e ele morreu na primeira vez que a varredura escolheu outra margem, denunciando um
+    // bug que não existia. Um gate de UNIDADE tem de sobreviver a uma mudança de VALOR:
+    // são perguntas diferentes, e a do valor tem a sua própria tabela no doc da
+    // constante.
     assert!(
-        (tuck_world(100.0) - 0.01).abs() < 1e-9,
-        "1 px de margem em 100 px/unidade tem de ser 0,01 de MUNDO, veio {}",
-        tuck_world(100.0)
+        (tuck_world(100.0) * 100.0 - tuck_world(1.0)).abs() < 1e-9,
+        "a margem tem de ESCALAR com px_per_world: {} a 100 px/unidade contra {} a 1",
+        tuck_world(100.0),
+        tuck_world(1.0)
     );
     // E o teto: a margem NUNCA pode ser da ordem de uma linha de pincel default
     // (~0,06 de mundo). É a asserção que o produto violava por 17×.
@@ -161,5 +171,130 @@ fn a_zero_width_closure_never_dresses_the_contour() {
     assert!(
         (w - 8.0).abs() < 1e-4,
         "o fechamento tem espessura zero e nao veste nada; esperado 8, veio {w}"
+    );
+}
+
+/// **A normal externa aponta para FORA — nas duas orientações do anel.**
+///
+/// O sinal da compensação inteira pende disto. E a constante certa não é a do livro de
+/// geometria: este documento tem o **y para BAIXO**, então "área positiva = anti-horário"
+/// se inverte. É por isso que a orientação é medida num círculo, e não deduzida.
+///
+/// Mutação que ele mata: trocar o sinal do `orient` — a normal passa a apontar para o
+/// centro e a compensação inteira inverte (o defeito vira o dobro dele).
+#[test]
+fn the_outward_normal_points_away_from_the_ring() {
+    let n = 64;
+    let ring: Vec<Vec2> = (0..n)
+        .map(|i| {
+            let a = i as f32 / n as f32 * std::f32::consts::TAU;
+            Vec2::new(50.0 + 20.0 * a.cos(), 50.0 + 20.0 * a.sin())
+        })
+        .collect();
+    for (name, r) in [
+        ("anel numa orientacao", ring.clone()),
+        (
+            "anel na orientacao OPOSTA",
+            ring.iter().rev().copied().collect(),
+        ),
+    ] {
+        let normals = super::outward_normals(&r);
+        for (i, p) in r.iter().enumerate() {
+            // Do centro para o ponto: a normal externa tem de concordar com isso.
+            let radial = Vec2::new(p.x - 50.0, p.y - 50.0);
+            let dot = radial.x * normals[i].x + radial.y * normals[i].y;
+            assert!(
+                dot > 0.0,
+                "{name}: no ponto {i} a normal aponta para DENTRO (dot {dot}) — \
+                 a compensacao inteira sai com o sinal trocado"
+            );
+        }
+    }
+}
+
+/// **O contorno que ficou AQUÉM engorda; o que PASSOU do eixo encolhe.**
+///
+/// É a espinha da lei, e o defeito que ela conserta: a versão anterior (`w + 2d`, sem
+/// sinal) engordava os DOIS — corrigia metade dos pontos e dobrava o erro na outra
+/// metade, e por isso mediu PIOR que uma margem uniforme (0,0178 contra 0,005).
+///
+/// Mutação que ele mata: `s.abs()` em vez de `s`, ou o sinal trocado no `orient`.
+#[test]
+fn a_contour_short_of_the_axis_widens_and_one_past_it_narrows() {
+    // Eixo: um círculo de raio 20 (a "linha"), espessura cheia 4.
+    let n = 96;
+    let axis: Vec<Vec2> = (0..n)
+        .map(|i| {
+            let a = i as f32 / n as f32 * std::f32::consts::TAU;
+            Vec2::new(50.0 + 20.0 * a.cos(), 50.0 + 20.0 * a.sin())
+        })
+        .collect();
+    let strokes = vec![(axis, vec![2.0; n], true)];
+
+    // Três contornos concêntricos: aquém do eixo, EM CIMA dele, e além.
+    let ring_at = |r: f32| -> Vec<Vec2> {
+        (0..n)
+            .map(|i| {
+                let a = i as f32 / n as f32 * std::f32::consts::TAU;
+                Vec2::new(50.0 + r * a.cos(), 50.0 + r * a.sin())
+            })
+            .collect()
+    };
+    let med = |v: &[f32]| {
+        let mut v = v.to_vec();
+        v.sort_by(f32::total_cmp);
+        v[v.len() / 2]
+    };
+
+    // Margem zero: aqui se mede a COMPENSAÇÃO, não a margem. E os valores são EXATOS,
+    // não ordenações frouxas — a lei é `w + 2s`, então cada número é verificável de
+    // cabeça. (O alisamento não os move: binomial de uma constante é a constante.)
+    let short = med(&contour_widths_with_margin(
+        &strokes,
+        &ring_at(17.0),
+        1.0,
+        0.0,
+    ));
+    let on = med(&contour_widths_with_margin(
+        &strokes,
+        &ring_at(20.0),
+        1.0,
+        0.0,
+    ));
+    let past = med(&contour_widths_with_margin(
+        &strokes,
+        &ring_at(21.0),
+        1.0,
+        0.0,
+    ));
+
+    // Em cima do eixo a lei não faz nada: a largura é a da linha, e nem um pixel a mais.
+    assert!(
+        (on - 4.0).abs() < 0.3,
+        "sobre o eixo a dilatacao e a propria linha (4,0); veio {on}"
+    );
+    // Aquém por 3: precisa alcançar 3 a mais, dos DOIS lados => 4 + 6 = 10.
+    assert!(
+        (short - 10.0).abs() < 0.3,
+        "aquem do eixo por 3, a largura tem de ser 4 + 2*3 = 10; veio {short}"
+    );
+    // Além por 1: encolhe 2 => 4 − 2 = 2. É ESTE o ponto que a versão sem sinal errava,
+    // engordando para 6 e empurrando a cor para ainda mais longe da linha.
+    assert!(
+        (past - 2.0).abs() < 0.3,
+        "alem do eixo por 1, a largura tem de ser 4 - 2*1 = 2; veio {past}"
+    );
+
+    // E o piso: um contorno que passou do eixo MAIS do que a linha é grossa não tem cor
+    // nenhuma para pôr ali — largura 0, nunca negativa.
+    let way_past = med(&contour_widths_with_margin(
+        &strokes,
+        &ring_at(23.0),
+        1.0,
+        0.0,
+    ));
+    assert!(
+        way_past == 0.0,
+        "alem do eixo por mais que a meia-espessura, a largura e ZERO; veio {way_past}"
     );
 }

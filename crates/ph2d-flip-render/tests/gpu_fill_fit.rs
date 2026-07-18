@@ -1224,8 +1224,13 @@ fn the_same_art_at_the_products_scale_renders_the_same() {
         // A CONTAGEM é a discriminadora de verdade (fosso de ~2000×); a magnitude só
         // acompanha, com folga, porque na borda de uma silhueta anti-aliasada um pixel
         // isolado pode saltar bastante sem que a geometria tenha se mexido.
+        // ⚠️ **A magnitude é a metade FRACA, e ficou mais fraca de propósito.** Com a
+        // margem em 0,25 a borda da cor pousa exatamente onde o alpha da linha é mais
+        // íngreme, então um pixel de AA na fronteira salta mais entre as duas escalas
+        // (20 → 82) sem que geometria nenhuma tenha se movido — é o preço de encostar a
+        // cor na linha, não um defeito. Quem prova é a CONTAGEM (0,04% contra 43,4%).
         assert!(
-            worst <= 40,
+            worst <= 120,
             "linha {width_px}px: pior delta {worst} — a mesma arte em duas escalas \
              esta sendo pintada DIFERENTE (grandeza que nao atravessa px<->mundo)"
         );
@@ -1237,24 +1242,90 @@ fn the_same_art_at_the_products_scale_renders_the_same() {
     }
 }
 
+/// A sonda do encaixe na escala do produto: quantas amostras mostram **fundo sob a
+/// linha**, quantas mostram **cor além dela**, e quantas caíram **fora do alvo**.
+///
+/// Porta ÚNICA — o diagnóstico (`sweep_zoom`) e o gate
+/// (`the_fill_reaches_under_the_line_at_product_scale`) medem pela MESMA função. Duas
+/// sondas separadas divergem, e aí a tabela que se lê e o número que trava o CI param de
+/// falar da mesma coisa.
+fn probe_fit_at(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    ppw: f32,
+    width_px: f32,
+) -> (usize, usize, usize) {
+    // Círculo LISO: a sonda é um círculo perfeito, então a arte tem de ser um também.
+    // Com o tremor (que vive em MUNDO e cresce em tela com o zoom) a sonda passaria a
+    // cortar a própria linha, e a tendência medida seria a do artefato.
+    let d = scene_world_full(width_px, 0.35, ppw, false);
+    let cam = world_camera_at(ppw, Vec2::new(1.6, 1.6));
+    let px = render_with(device, queue, &d, &cam);
+    let to_screen = |w: Vec2| -> (f32, f32) {
+        (
+            (w.x - 1.6) * ppw + W as f32 * 0.5,
+            (w.y - 1.6) * ppw + H as f32 * 0.5,
+        )
+    };
+    let at = |x: f32, y: f32| -> Option<(u8, u8)> {
+        let (xi, yi) = (x.round() as i32, y.round() as i32);
+        if xi < 0 || yi < 0 || xi >= W as i32 || yi >= H as i32 {
+            return None;
+        }
+        let i = (yi as usize * W as usize + xi as usize) * 4;
+        Some((px[i], px[i + 2]))
+    };
+    let r_world = 110.0 / 100.0;
+    let half_px = width_px * 0.5 * ppw / 100.0;
+    let is_bg = |r_: u8, b: u8| r_ < 60 && b < 60;
+    let is_colour = |r_: u8, b: u8| r_ > 120 && b < 130;
+    let (mut bare, mut spill, mut outside) = (0usize, 0usize, 0usize);
+    for k in 0..256 {
+        let t = k as f32 / 256.0;
+        let (c, s) = unit_circle(t);
+        let mut probe = |off_px: f32, want_colour: bool, hit: &mut usize| {
+            let rr = r_world + off_px / ppw;
+            let (x, y) = to_screen(Vec2::new(1.6 + rr * c, 1.6 + rr * s));
+            match at(x, y) {
+                None => outside += 1,
+                Some((r_, b)) => {
+                    let v = if want_colour {
+                        is_colour(r_, b)
+                    } else {
+                        is_bg(r_, b)
+                    };
+                    if v {
+                        *hit += 1;
+                    }
+                }
+            }
+        };
+        let mut step = -half_px + 1.0;
+        while step <= half_px - 1.0 {
+            probe(step, false, &mut bare);
+            step += 1.0;
+        }
+        let mut step = half_px + 2.0;
+        while step <= half_px + 8.0 {
+            probe(step, true, &mut spill);
+            step += 1.0;
+        }
+    }
+    (bare, spill, outside)
+}
+
 /// **DIAGNÓSTICO: a franja em função do ZOOM** (smoke do Enio, 2026-07-18 — *"o fill está
 /// extrapolando um pouquinho para fora da linha"*).
 ///
-/// A pergunta que o gap dos oráculos impedia de fazer. Duas grandezas se encontram na
-/// margem, e elas são **constantes em unidades DIFERENTES**:
+/// Duas grandezas se encontram na margem e são constantes em unidades DIFERENTES: a
+/// margem é fixa em MUNDO, o erro de vetorização que ela compensa é ~fixo em TELA. A
+/// hipótese era transbordo crescendo com o zoom; a tabela **refutou** (transbordo zero em
+/// todo zoom) e mostrou o defeito OPOSTO — sub-cobertura ao afastar. Foi ela que motivou
+/// a compensação COM SINAL.
 ///
-/// * a **margem** é fixa em unidades de MUNDO (`2·0,5/100 = 0,01`), logo em tela ela vale
-///   `0,005 · px_per_world` — cresce com o zoom;
-/// * o **erro de vetorização** que ela compensa nasce no buffer, cuja resolução acompanha
-///   o zoom (`precision = 1,6 · px_per_world`), logo em tela ele é ~constante.
-///
-/// Se isso estiver certo, o transbordo cresce com a aproximação e some ao afastar — que é
-/// exatamente a forma da queixa. A tabela decide; nada é corrigido no escuro.
-///
-/// ⚠️ **Amostra só o que está NA TELA.** A 1ª versão deste sweep lia fora do alvo e
-/// contava `(0,0)` como *fundo* — a 400 px/unidade o anel inteiro está fora de um alvo de
-/// 320 px, e a tabela "mostrou" 16 105 pixels de vazamento que eram a borda da textura.
-/// A coluna `fora` existe para que uma linha degenerada se denuncie em vez de mentir.
+/// ⚠️ **Amostra só o que está NA TELA.** A 1ª versão lia fora do alvo e contava `(0,0)`
+/// como *fundo* — a 400 px/unidade o anel inteiro está fora de um alvo de 320 px, e ela
+/// "mostrou" 16 105 px de vazamento que eram a borda da textura.
 #[test]
 #[ignore = "GPU"]
 fn sweep_zoom() {
@@ -1264,64 +1335,63 @@ fn sweep_zoom() {
     println!(" ppw | margem tela | linha | fundo sob a linha | transbordo | fora da tela");
     for ppw in [25.0f32, 50.0, 100.0, 140.0] {
         for width_px in [8.0f32, 16.0] {
-            let d = scene_world_full(width_px, 0.35, ppw, false);
-            let cam = world_camera_at(ppw, Vec2::new(1.6, 1.6));
-            let px = render_with(&device, &queue, &d, &cam);
-            // Mundo → tela, pela MESMA câmera que desenhou (nada de re-derivar a mão).
-            let to_screen = |w: Vec2| -> (f32, f32) {
-                (
-                    (w.x - 1.6) * ppw + W as f32 * 0.5,
-                    (w.y - 1.6) * ppw + H as f32 * 0.5,
-                )
-            };
-            let at = |x: f32, y: f32| -> Option<(u8, u8)> {
-                let (xi, yi) = (x.round() as i32, y.round() as i32);
-                if xi < 0 || yi < 0 || xi >= W as i32 || yi >= H as i32 {
-                    return None;
-                }
-                let i = (yi as usize * W as usize + xi as usize) * 4;
-                Some((px[i], px[i + 2]))
-            };
-            let r_world = 110.0 / 100.0;
-            let half_px = width_px * 0.5 * ppw / 100.0;
-            let is_bg = |r_: u8, b: u8| r_ < 60 && b < 60;
-            let is_colour = |r_: u8, b: u8| r_ > 120 && b < 130;
-            let (mut bg_under, mut spill, mut outside) = (0usize, 0usize, 0usize);
-            for k in 0..256 {
-                let t = k as f32 / 256.0;
-                let (c, s) = unit_circle(t);
-                let probe = |off_px: f32, hit: &mut usize, out: &mut usize, want_colour: bool| {
-                    let rr = r_world + off_px / ppw;
-                    let (x, y) = to_screen(Vec2::new(1.6 + rr * c, 1.6 + rr * s));
-                    match at(x, y) {
-                        None => *out += 1,
-                        Some((r_, b)) => {
-                            let v = if want_colour {
-                                is_colour(r_, b)
-                            } else {
-                                is_bg(r_, b)
-                            };
-                            if v {
-                                *hit += 1;
-                            }
-                        }
-                    }
-                };
-                let mut step = -half_px + 1.0;
-                while step <= half_px - 1.0 {
-                    probe(step, &mut bg_under, &mut outside, false);
-                    step += 1.0;
-                }
-                let mut step = half_px + 2.0;
-                while step <= half_px + 8.0 {
-                    probe(step, &mut spill, &mut outside, true);
-                    step += 1.0;
-                }
-            }
+            let (bare, spill, outside) = probe_fit_at(&device, &queue, ppw, width_px);
             println!(
-                "{ppw:>4} | {:>11.2} | {width_px:>4}px | {bg_under:>17} | {spill:>10} | {outside:>12}",
+                "{ppw:>4} | {:>11.2} | {width_px:>4}px | {bare:>17} | {spill:>10} | {outside:>12}",
                 0.005 * ppw
             );
         }
     }
+}
+
+/// **A cor alcança POR BAIXO da linha, na escala do produto.**
+///
+/// O gate que pina o ganho da compensação com sinal — e ele existe porque as mutações
+/// revelaram que os outros dez **não conseguiam vê-lo**: tirar a compensação inteira
+/// (voltar à margem uniforme) deixava a suíte de pixel inteira verde. Eles afirmam a
+/// ausência de defeito GROSSO (`fundo = 0` na fixture trêmula, transbordo < 2%), e uma
+/// margem uniforme também satisfaz isso. O que nenhum deles media era **quão bem** a cor
+/// entra sob a linha.
+///
+/// Somado sobre a faixa de zoom (as 6 linhas do `sweep_zoom` que ficam inteiras na tela):
+///
+/// | lei | margem | amostras de fundo sob a linha |
+/// |---|---|---|
+/// | uniforme, sem compensação (até 2026-07-18) | 0,5 | **158** |
+/// | **com compensação** | **0,25** | **138** |
+/// | com compensação | 0,5 | 79 |
+///
+/// ⚠️ **O fosso é ESTREITO (138 contra 158), e isso é uma escolha, não um acidente.** A
+/// compensação sozinha compraria 79 — metade — mas só com a margem em 0,5, e aí a borda
+/// da cor passa a pousar meio pixel além da silhueta em vez de um quarto. O Enio pediu
+/// MENOS franja; então a margem desceu, e o ganho de cobertura foi gasto nisso. A curva
+/// inteira está no doc do `FILL_TUCK_PX`: quem quiser trocar de ponto tem os números.
+///
+/// O que o número não mostra, e é o ganho maior: a borda ficou **uniforme**. Antes ela
+/// variava de −0,37 a +0,49 px conforme o traçado errava mais ou menos; agora a
+/// compensação a nivela e o que sobra é a margem, igual em todo ponto.
+///
+/// O limite fica em 150, entre 138 e 158.
+#[test]
+#[ignore = "GPU"]
+fn the_fill_reaches_under_the_line_at_product_scale() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let mut total = 0usize;
+    for ppw in [25.0f32, 50.0, 100.0] {
+        for width_px in [8.0f32, 16.0] {
+            let (bare, _, outside) = probe_fit_at(&device, &queue, ppw, width_px);
+            assert_eq!(
+                outside, 0,
+                "premissa: nesta faixa de zoom o anel inteiro esta na tela"
+            );
+            total += bare;
+        }
+    }
+    println!("fundo sob a linha, somado na faixa de zoom: {total}");
+    assert!(
+        total <= 150,
+        "{total} amostras de FUNDO sob a linha — a cor nao esta entrando por baixo do          line-art (158 = o que uma margem uniforme, sem compensacao, deixa)"
+    );
 }

@@ -13,6 +13,11 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
+/// Width of the caret bar. The viewport reserves it on the right so a caret at
+/// the very end of a scrolled line stays inside the clip instead of landing on
+/// its boundary — where it would be trimmed away exactly while you are typing.
+const CARET_W: f32 = 1.0; // LITERAL-PX-OK: a hairline caret
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum TextInputState {
     #[default]
@@ -148,6 +153,29 @@ pub fn paint_text_input_with_buffer(
     let displayed: &str = buffer.unwrap_or(input.value.as_str());
     let displayed_caret = caret.unwrap_or(input.caret_byte);
 
+    // **A text field is one LINE, so it SCROLLS — it does not wrap.** `paint_text`
+    // breaks the run at `max_width`, so a name longer than the box grew a second
+    // line and spilled out of the field, over whatever sat below it (Enio,
+    // 2026-07-16). The line is laid out unbounded (`f32::INFINITY` — the same "do
+    // not wrap" value `prefix_width` itself passes), clipped to the inner box, and
+    // slid left just far enough to keep the caret inside: the viewport every text
+    // field in every toolkit has.
+    //
+    // Only a FOCUSED field scrolls. With no caret to follow there is nothing to
+    // chase, and a reader looking at an unfocused field wants the BEGINNING of the
+    // name — scrolling it to the end would hide the part that identifies it.
+    let focused = input.state == TextInputState::Focused;
+    let caret_w = focused.then(|| {
+        text_system.prefix_width(
+            &displayed[..displayed_caret.min(displayed.len())],
+            font_size,
+        )
+    });
+    let text_x = inner_x - caret_scroll(focused, inner_w, caret_w.unwrap_or(0.0));
+    scene.push_clip(&crate::paint::rect_to_vello(Rect::new(
+        inner_x, rect.y, inner_w, rect.h,
+    )));
+
     if input.state == TextInputState::Focused
         && let Some(anchor) = selection_anchor
         && anchor != displayed_caret
@@ -165,8 +193,10 @@ pub fn paint_text_input_with_buffer(
         } else {
             text_system.prefix_width(&displayed[sel_start..sel_end], font_size)
         };
-        let sel_x = (inner_x + prefix_w).min(inner_x + inner_w);
-        let sel_w = mid_w.min(inner_x + inner_w - sel_x);
+        // The highlight rides the same viewport as the glyphs it covers; the clip
+        // trims whatever runs past the box, so it needs no clamp of its own.
+        let sel_x = text_x + prefix_w;
+        let sel_w = mid_w;
         if sel_w > 0.0 {
             let sel_rect = Rect::new(sel_x, rect.y + pad_y, sel_w, rect.h - pad_y * 2.0);
             fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
@@ -181,7 +211,7 @@ pub fn paint_text_input_with_buffer(
             inner_x,
             inner_y,
             font_size,
-            inner_w,
+            f32::INFINITY,
             resolve(ColorToken::Text3, theme),
         );
     } else if !displayed.is_empty() {
@@ -194,28 +224,41 @@ pub fn paint_text_input_with_buffer(
             text_system,
             scene,
             displayed,
-            inner_x,
+            text_x,
             inner_y,
             font_size,
-            inner_w,
+            f32::INFINITY,
             resolve(color, theme),
         );
     }
 
-    if input.state == TextInputState::Focused {
-        let caret_byte = displayed_caret.min(displayed.len());
-        let prefix = &displayed[..caret_byte];
-        let prefix_w = if prefix.is_empty() {
-            0.0
-        } else {
-            text_system.prefix_width(prefix, font_size)
-        };
-        let caret_x = (inner_x + prefix_w).min(inner_x + inner_w);
-        let caret_rect = Rect::new(caret_x, rect.y + pad_y, 1.0, rect.h - pad_y * 2.0);
+    if let Some(caret_w) = caret_w {
+        let caret_rect = Rect::new(
+            text_x + caret_w,
+            rect.y + pad_y,
+            CARET_W,
+            rect.h - pad_y * 2.0,
+        );
         scene.fill_rect(
             crate::paint::rect_to_vello(caret_rect),
             resolve(ColorToken::Accent, theme),
         );
+    }
+    scene.pop_layer();
+}
+
+/// How far the single line is slid LEFT so the caret stays inside the box.
+///
+/// Pure, so the rule can be stated and tested without a scene. Exactly as far as
+/// the caret overhangs, plus the caret's own width — a caret parked ON the right
+/// boundary is trimmed by the clip precisely while you are typing at the end of
+/// the name, which is the one moment you need to see it. An unfocused field never
+/// scrolls: there is no caret to follow, and the reader wants the name's start.
+fn caret_scroll(focused: bool, inner_w: f32, caret_w: f32) -> f32 {
+    if focused {
+        (caret_w - (inner_w - CARET_W)).max(0.0)
+    } else {
+        0.0
     }
 }
 
@@ -259,6 +302,42 @@ mod tests {
             &mut text,
             theme,
         );
+    }
+
+    /// Enio, 2026-07-16: renaming a clip to a long name drew a SECOND line that ran
+    /// out of the box and over the buttons below it. A single-line field clips —
+    /// and it must CLOSE what it opens, because an unbalanced layer would corrupt
+    /// everything painted after the field, not just the field.
+    #[test]
+    fn a_long_name_is_clipped_to_the_field_instead_of_spilling_out_of_it() {
+        let long = "L2 ldldll ldllld dhdhdhhhhd jjdjjjd jdjfjjd";
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let t = fixture().state(TextInputState::Focused);
+        paint_text_input_with_buffer(
+            &t,
+            Some(long),
+            Some(long.len()),
+            None,
+            Rect::new(0.0, 0.0, 140.0, 32.0),
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+        );
+        let enc = scene.inner().encoding();
+        assert!(enc.n_clips >= 1, "the field must clip its text to its box");
+        assert_eq!(enc.n_open_clips, 0, "the clip must be closed");
+    }
+
+    #[test]
+    fn the_line_scrolls_only_far_enough_to_keep_the_caret_in_view() {
+        // A caret inside the box leaves the line where it is.
+        assert!((caret_scroll(true, 100.0, 40.0)).abs() < f32::EPSILON);
+        // Past the right edge it slides exactly as far as it overhangs, plus the
+        // caret's own width.
+        assert!((caret_scroll(true, 100.0, 140.0) - 41.0).abs() < f32::EPSILON);
+        // Unfocused: no caret to chase, so the name reads from its start.
+        assert!((caret_scroll(false, 100.0, 140.0)).abs() < f32::EPSILON);
     }
 
     #[test]

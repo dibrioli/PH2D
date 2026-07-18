@@ -308,11 +308,13 @@ impl crate::App {
         // resolução por nome existe uma vez só.
         let tracks = timeline.doc.bindings().len();
         self.timeline = timeline;
-        // **O LOOP mora no CLIP** (`NamedClip.loop_range`), e o `Playhead` é só a cópia viva.
-        // Sem publicar aqui, o loop salvo nunca voltava — e, pior, o loop do projeto ANTERIOR
-        // continuava armado no transporte, fazendo o projeto novo repetir sobre um intervalo de
-        // um arquivo que o artista já fechou.
-        ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.playhead);
+        // **O LOOP mora no CLIP** e é POR-VISTA (`NamedClip.loop_range` para a timeline,
+        // `keys_loop_range` para o relógio do clip), e cada `Playhead` é só a cópia viva.
+        // Publicamos OS DOIS: sem isso o loop salvo nunca voltava — e, pior, o loop do projeto
+        // ANTERIOR continuava armado no transporte, fazendo o projeto novo repetir sobre um
+        // intervalo de um arquivo que o artista já fechou. Cada relógio adota o loop da SUA vista.
+        ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.playhead, false);
+        ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.clip_playhead, true);
         // **O baseline do undo fica DESARMADO** — e é o `post_frame_undo` que o arma, depois
         // que o frame assentar.
         //

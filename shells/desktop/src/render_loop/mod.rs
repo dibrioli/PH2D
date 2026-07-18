@@ -996,6 +996,24 @@ impl crate::App {
         // model). `keys_mode` is the panel's last-painted tab; it picks which
         // playhead the transport moves, whether the scene solos, and how K authors.
         let keys_mode = ph2d_panel_timeline::state::keys_mode();
+        // The active clip's loop is per-VIEW now (independent Keys/Arrange loops). The
+        // shell owns both clocks, so it (a) stamps the mode `apply_intent` reads to pick
+        // which loop an edit or a clip-switch targets, and (b) on a TAB switch — which is
+        // NOT an intent — hands the now-active clock its own view's loop, so playback
+        // wraps over the right range without waiting for the next edit.
+        self.timeline.keys_mode = keys_mode;
+        if keys_mode != self.last_timeline_keys_mode {
+            self.last_timeline_keys_mode = keys_mode;
+            if keys_mode {
+                ph2d_timeline::sync_transport_loop(
+                    &self.timeline.doc,
+                    &mut self.clip_playhead,
+                    true,
+                );
+            } else {
+                ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.playhead, false);
+            }
+        }
         if self.timeline_insert_key {
             self.timeline_insert_key = false;
             // The stack's scratch must describe THIS instant before the Arrange-side

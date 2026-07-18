@@ -152,6 +152,12 @@ pub struct TimelineState {
     pub flags: TimelineFlags,
     /// Copied keys (panel state, not undoable, not serialized).
     pub clipboard: TimelineClipboard,
+    /// **The view the panel last painted is the Keys tab** — the shell stamps this
+    /// each frame from `ph2d_panel_timeline::state::keys_mode()`, before draining
+    /// intents. It picks which of the active clip's two loops an edit (or a
+    /// clip-switch sync) targets: the Keys-view clip-clock loop, or the Arrange
+    /// timeline loop. Session state, like [`Self::flags`]; defaults to Arrange.
+    pub keys_mode: bool,
 }
 
 impl TimelineState {

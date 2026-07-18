@@ -218,8 +218,14 @@ impl TimelineViewSnapshot {
         self.time_seconds = playhead.time();
         self.frame = playhead.frame(doc.fps_display);
         self.playing = playhead.is_playing();
-        self.loop_range = playhead.loop_range();
-        self.loop_ping_pong = doc.active_ping_pong();
+        // The loop the panel DRAWS + braces come from the doc's view-appropriate
+        // pair, not from the playhead: the Keys tab shows the clip-clock loop, the
+        // Arrange tab the timeline loop, and they are independent (Enio, 2026-07-16).
+        // The doc is the truth; the playhead is merely the live copy that wraps
+        // playback, and reading display straight from the doc is what lets a tab
+        // switch show the right braces before any sync has run.
+        self.loop_range = doc.active_loop_for(keys_mode);
+        self.loop_ping_pong = doc.active_ping_pong_for(keys_mode);
         self.clip_length_seconds = doc.end_seconds();
         self.keys_mode = keys_mode;
         // The KEYS ruler's playhead. In Keys mode the active playhead already IS the
@@ -413,5 +419,37 @@ mod tests {
         st.doc.bindings_mut()[0].missing = false;
         snap.rebuild(&mut st, &ph, false);
         assert_eq!(snap.tracks.len(), 2, "healed: the row is back");
+    }
+
+    /// **The snapshot shows each VIEW its own loop.** With a different loop parked in
+    /// each pair, rebuilding in `keys_mode` publishes the Keys loop; rebuilding in
+    /// Arrange publishes the timeline loop — the braces the panel draws follow the tab
+    /// (Enio, 2026-07-16). Read from the DOC, not the playhead, so a tab switch shows
+    /// the right loop before any sync runs.
+    #[test]
+    fn the_snapshot_publishes_the_views_own_loop() {
+        let mut st = TimelineState::new();
+        let ph = Playhead::new(1.0 / 60.0);
+        st.doc.set_active_loop_for(false, Some((0.0, 2.0))); // Arrange
+        st.doc.set_active_ping_pong_for(false, false);
+        st.doc.set_active_loop_for(true, Some((1.5, 4.0))); // Keys
+        st.doc.set_active_ping_pong_for(true, true);
+
+        let mut snap = TimelineViewSnapshot::default();
+        snap.rebuild(&mut st, &ph, true);
+        assert_eq!(
+            snap.loop_range,
+            Some((1.5, 4.0)),
+            "Keys tab shows the clip loop"
+        );
+        assert!(snap.loop_ping_pong, "and its ping-pong");
+
+        snap.rebuild(&mut st, &ph, false);
+        assert_eq!(
+            snap.loop_range,
+            Some((0.0, 2.0)),
+            "Arrange tab shows the timeline loop"
+        );
+        assert!(!snap.loop_ping_pong, "which wraps");
     }
 }

@@ -265,6 +265,7 @@ impl App {
                 ph.pause();
                 ph
             },
+            last_timeline_keys_mode: false,
             timeline: ph2d_timeline::TimelineState::new(),
             timeline_intents: Vec::new(),
             timeline_reveal_after_apply: false,

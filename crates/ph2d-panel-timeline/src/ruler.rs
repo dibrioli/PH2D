@@ -31,6 +31,13 @@ const TICK_MINOR_S: f64 = 0.5; // LITERAL-PX-OK: unlabelled tick interval (secon
 const BRACE_W: f32 = 3.0; // LITERAL-PX-OK: loop-brace bar width
 /// Half-width of a brace's grab target — wider than the bar so it is easy to hit.
 const BRACE_HIT_HW: f32 = 6.0; // LITERAL-PX-OK: loop-brace grab half-width
+/// Thickness of the visible move-handle LINE at the top of the loop band.
+const LOOP_MOVE_LINE_H: f32 = 3.0; // LITERAL-PX-OK: loop move-handle line height
+/// Height of the move-handle GRAB strip (top of the band). Grabbing here slides the
+/// loop; a press BELOW it inside the band falls through to the scrub strip and seeks
+/// the playhead — so the loop no longer swallows every click over it (Enio,
+/// 2026-07-16). Kept well under [`RULER_H`] so most of the band scrubs.
+const LOOP_MOVE_GRAB_H: f32 = 8.0; // LITERAL-PX-OK: loop move-handle grab height
 /// Width + height of a marker pennant. Wider than tall so the triangle reads as
 /// a flag pinned to the time, not a thin spike.
 const MARKER_W: f32 = 12.0; // LITERAL-PX-OK: marker pennant width
@@ -47,9 +54,11 @@ const MARKER_HIT_PAD: f32 = 4.0; // LITERAL-PX-OK: marker grab padding
 /// for not having an independent clip clock, and now there is one, so nothing needs
 /// inverting.
 ///
-/// Only the FURNITURE differs. The loop braces and the markers are the timeline's;
-/// drawing them on the clip's ruler would stand them at the wrong second, so the
-/// Keys ruler carries none.
+/// **The LOOP is not furniture** — each tab draws its OWN loop (Arrange the
+/// timeline's, Keys the clip's), because [`TimelineViewSnapshot::loop_range`] is
+/// already the view-appropriate one, in this ruler's clock. Only the MARKERS
+/// differ: they are timeline-time, so on the clip's ruler under a stack they would
+/// stand at the wrong second, and the Keys ruler carries none there.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct RulerClock {
     /// Where the playhead stands **on this ruler**, or `None` when the clock it
@@ -58,9 +67,10 @@ pub(crate) struct RulerClock {
     /// This ruler scrubs — registers the scrub hit and mirrors the playhead into it.
     /// Both tabs do (the Keys ruler scrubs the clip clock).
     pub scrub: bool,
-    /// This ruler carries the TIMELINE's furniture — the loop band/braces and the
-    /// markers. Arrange only: on the clip's ruler they would sit at the wrong time.
-    pub furniture: bool,
+    /// This ruler carries the TIMELINE's markers. Arrange always; Keys only without
+    /// a stack (then the clip IS the timeline). The loop is NOT gated by this — it is
+    /// each view's own, drawn against the very clock this ruler scrubs.
+    pub markers: bool,
 }
 
 /// **Which clock this tab's ruler measures.** Pure, and tested as such.
@@ -70,23 +80,24 @@ pub(crate) struct RulerClock {
 /// inside the paint loop is what gives that line an oracle at all.
 pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> RulerClock {
     if tab.shows_lanes() {
-        // Arrange IS the timeline: the transport's playhead, and it owns the loop +
-        // markers because they are drawn against the very clock it scrubs.
+        // Arrange IS the timeline: the transport's playhead, and it owns the markers
+        // because they are drawn against the very clock it scrubs.
         return RulerClock {
             now: Some(snap.time_seconds),
             scrub: true,
-            furniture: true,
+            markers: true,
         };
     }
     // Keys scrubs the active clip's own clock (published as `clip_time`). It carries
-    // the loop + markers **only when there is no stack** — then the clip IS the
-    // timeline, one clock, and the Keys ruler is the timeline ruler it has always
-    // been. Under a stack the clip clock ≠ the timeline clock, so the timeline's
-    // furniture would sit at the wrong second and belongs on the Arrange ruler only.
+    // the markers **only when there is no stack** — then the clip IS the timeline,
+    // one clock, and the Keys ruler is the timeline ruler it has always been. Under a
+    // stack the clip clock ≠ the timeline clock, so timeline markers would sit at the
+    // wrong second and belong on the Arrange ruler only. Its LOOP, however, is the
+    // clip's own and is always drawn.
     RulerClock {
         now: snap.clip_time,
         scrub: true,
-        furniture: !snap.stacked(),
+        markers: !snap.stacked(),
     }
 }
 
@@ -115,11 +126,10 @@ pub(crate) fn paint(
         resolve(ColorToken::TimelineRulerBg, theme),
     );
     // The loop's shaded band goes BEHIND the ticks + labels so it tints the strip
-    // without hiding the time numbers. It is the TIMELINE's loop — furniture, so it
-    // only belongs on a ruler that measures the timeline.
-    if clock.furniture {
-        paint_loop_band(ctx, theme, region, &time_to_x, snap);
-    }
+    // without hiding the time numbers. Each view draws its OWN loop (`snap.loop_range`
+    // is already the view-appropriate one, in this ruler's clock), so both tabs paint
+    // it; a no-op when this view has no loop.
+    paint_loop_band(ctx, theme, region, &time_to_x, snap);
 
     // Minor + major ticks (+ labels on majors).
     paint_ticks(
@@ -192,11 +202,13 @@ pub(crate) fn paint(
         }
     }
 
-    // The loop braces + markers are the TIMELINE's furniture — Arrange only. They go
-    // on TOP of the scrub strip so their grab targets win the hit where they overlap
-    // (`HitIndex::hit` walks in reverse); drawn last for the same reason visually.
-    if clock.furniture {
-        paint_loop_braces(ctx, theme, region, &time_to_x, snap);
+    // The loop braces are each view's own — drawn on both tabs. They go on TOP of the
+    // scrub strip so their grab targets win the hit where they overlap (`HitIndex::hit`
+    // walks in reverse); drawn last for the same reason visually.
+    paint_loop_braces(ctx, theme, region, &time_to_x, snap);
+    // The markers ARE timeline furniture (timeline-time) — Arrange, or Keys without a
+    // stack. On the clip's ruler under a stack they would stand at the wrong second.
+    if clock.markers {
         paint_markers(ctx, theme, region, &time_to_x, snap);
     }
 }
@@ -226,6 +238,25 @@ fn paint_loop_band(
     }
 }
 
+/// The MOVE-handle grab strip for a loop drawn across `[x0, x1]` at the top of
+/// `region`, or `None` when the band is too narrow to host one between its two edge
+/// grabs. Callers register THIS as the body (`edge 2`) grab.
+///
+/// It is a THIN strip at the top, not the whole band: a press below it inside the
+/// loop finds only the scrub strip and seeks the playhead, which is the whole point
+/// (Enio, 2026-07-16 — the loop used to swallow every click over it). Pure, so the
+/// "top strip, not the full ruler" rule has an oracle a paint test cannot give it.
+fn loop_move_strip(region: Rect, x0: f32, x1: f32) -> Option<Rect> {
+    (x1 - x0 > BRACE_HIT_HW * 2.0).then(|| {
+        Rect::new(
+            x0 + BRACE_HIT_HW,
+            region.y,
+            x1 - x0 - BRACE_HIT_HW * 2.0,
+            LOOP_MOVE_GRAB_H,
+        )
+    })
+}
+
 /// Paint the loop's two braces + register the three grab targets (start · end ·
 /// body). Called AFTER the scrub hit so the braces win the overlap. A no-op when
 /// no loop is set.
@@ -243,15 +274,19 @@ fn paint_loop_braces(
     let x0 = safe_clamp(time_to_x(a), region.x, right);
     let x1 = safe_clamp(time_to_x(b), region.x, right);
     // Body grab (move the whole range) UNDER the edge handles, registered first so
-    // the edges win where they overlap.
-    if x1 - x0 > BRACE_HIT_HW * 2.0 {
-        let body = Rect::new(
-            x0 + BRACE_HIT_HW,
-            region.y,
-            x1 - x0 - BRACE_HIT_HW * 2.0,
-            RULER_H,
-        );
+    // the edges win where they overlap. It is only the TOP strip — the move-handle —
+    // so clicking below it inside the loop scrubs (see `loop_move_strip`).
+    if let Some(body) = loop_move_strip(region, x0, x1) {
         register_brace(ctx, ids::timeline_loop_brace_id(2), 2, body);
+        // The visible move-handle line at the very top, so the grab reads as a handle
+        // to drag rather than dead space. Drawn only where the grab exists — an
+        // affordance you can see but not use is a lie.
+        fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x0, region.y, x1 - x0, LOOP_MOVE_LINE_H),
+            Radius::Xs.px(),
+            resolve(ColorToken::TimelineLoopBrace, theme),
+        );
     }
     // The two brace bars + their grab targets.
     for (edge, x, onscreen) in [
@@ -469,8 +504,8 @@ mod tests {
 
     /// **Nothing changes without a stack** — the case an animator is in almost all of
     /// the time. The clip IS the timeline, so both tabs scrub the one clock there is
-    /// AND both carry the loop + markers: the Keys ruler is the timeline ruler it has
-    /// always been.
+    /// AND both carry the markers: the Keys ruler is the timeline ruler it has always
+    /// been.
     #[test]
     fn without_a_stack_both_tabs_rule_the_one_clock_there_is() {
         let s = snap(false, 1.25, Some(1.25));
@@ -480,7 +515,7 @@ mod tests {
                 RulerClock {
                     now: Some(1.25),
                     scrub: true,
-                    furniture: true
+                    markers: true
                 },
                 "{tab:?} lost the ruler it always had"
             );
@@ -517,18 +552,46 @@ mod tests {
         }
     }
 
-    /// **The loop + markers follow the TIMELINE clock.** The Arrange ruler always has
-    /// them. The Keys ruler has them ONLY without a stack (then it IS the timeline);
-    /// under a stack the clip clock differs, so they would sit at the wrong second and
-    /// belong on Arrange alone.
+    /// **The markers follow the TIMELINE clock.** The Arrange ruler always has them.
+    /// The Keys ruler has them ONLY without a stack (then it IS the timeline); under a
+    /// stack the clip clock differs, so timeline markers would sit at the wrong second
+    /// and belong on Arrange alone. The LOOP is NOT gated by this — each view draws its
+    /// own (proven by the snapshot filling `loop_range` from the view's pair).
     #[test]
-    fn the_furniture_follows_the_timeline_clock() {
-        // No stack: the Keys ruler is the timeline ruler, so it keeps the furniture.
-        assert!(clock_for(Tab::Keys, &snap(false, 4.0, Some(4.0))).furniture);
-        // Under a stack: only Arrange carries it.
-        assert!(!clock_for(Tab::Keys, &snap(true, 4.0, Some(2.0))).furniture);
+    fn the_markers_follow_the_timeline_clock() {
+        // No stack: the Keys ruler is the timeline ruler, so it keeps the markers.
+        assert!(clock_for(Tab::Keys, &snap(false, 4.0, Some(4.0))).markers);
+        // Under a stack: only Arrange carries them.
+        assert!(!clock_for(Tab::Keys, &snap(true, 4.0, Some(2.0))).markers);
         for stacked in [false, true] {
-            assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).furniture);
+            assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).markers);
         }
+    }
+
+    /// **The loop's MOVE grab is a thin strip at the TOP of the band, not the whole
+    /// ruler** — that is what leaves the rest of the band to the scrub, so a click
+    /// below the move-line inside the loop seeks the playhead instead of sliding the
+    /// loop (Enio, 2026-07-16). A band too narrow to host the strip between its edge
+    /// grabs offers no move handle (resize only).
+    #[test]
+    fn the_loop_move_grab_is_a_top_strip_not_the_whole_ruler() {
+        let region = Rect::new(10.0, 0.0, 400.0, RULER_H);
+        // A wide loop: the move strip exists, sits at the top, and is far shorter
+        // than the ruler (so most of the band scrubs).
+        let strip = loop_move_strip(region, 100.0, 300.0).expect("wide loop has a move strip");
+        assert_eq!(strip.y, region.y, "the strip is at the TOP of the band");
+        assert_eq!(strip.h, LOOP_MOVE_GRAB_H, "grab height is the thin strip");
+        assert!(
+            strip.h < RULER_H * 0.5,
+            "the strip leaves most of the band ({RULER_H}px) to the scrub, got {}",
+            strip.h
+        );
+        // Inset from the edges by the edge-grab half-width, so the resize handles win.
+        assert!(strip.x >= 100.0 + BRACE_HIT_HW && strip.w <= 200.0 - BRACE_HIT_HW * 2.0);
+        // A band narrower than the two edge grabs has no room for a move handle.
+        assert!(
+            loop_move_strip(region, 100.0, 100.0 + BRACE_HIT_HW).is_none(),
+            "a too-narrow loop offers resize only, no move strip"
+        );
     }
 }

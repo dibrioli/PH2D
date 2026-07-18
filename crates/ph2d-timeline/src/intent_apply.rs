@@ -28,14 +28,18 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         I::SeekFrame(f) => playhead.seek_frame(f, fps),
         I::SetRate(r) => playhead.set_rate(r),
         // The loop belongs to the CLIP, not the document: "walk" cycles over its
-        // own two seconds and "run" over its own. The `Playhead` owns the LIVE loop
-        // (it is what wraps the transport); the clip is where it is parked, so a
-        // switch swaps it in. Written straight (no undo step) — a loop brace is
-        // transport, not authoring.
+        // own two seconds and "run" over its own. And it belongs to the VIEW: the
+        // Keys tab loops the clip's own clock, the Arrange tab the timeline, each
+        // independently (`state.keys_mode` — set by the shell before the drain — says
+        // which). The `Playhead` passed IS that view's clock (the shell picks
+        // clip_playhead in Keys, playhead in Arrange), so parking the loop in the
+        // matching pair and syncing that playhead cannot cross the two views.
+        // Written straight (no undo step) — a loop brace is transport, not authoring.
         I::SetLoop { range, ping_pong } => {
-            state.doc.set_active_loop(range);
-            state.doc.set_active_ping_pong(ping_pong);
-            sync_loop(&state.doc, playhead);
+            let keys = state.keys_mode;
+            state.doc.set_active_loop_for(keys, range);
+            state.doc.set_active_ping_pong_for(keys, ping_pong);
+            sync_loop(&state.doc, playhead, keys);
         }
 
         // authoring (undoable)
@@ -231,12 +235,12 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             state.history.cancel();
             state.undo();
             // The undo may have put another clip back in front — its loop comes with it.
-            sync_loop(&state.doc, playhead);
+            sync_loop(&state.doc, playhead, state.keys_mode);
         }
         I::Redo => {
             state.history.cancel();
             state.redo();
-            sync_loop(&state.doc, playhead);
+            sync_loop(&state.doc, playhead, state.keys_mode);
         }
 
         // ── clips ───────────────────────────────────────────────────────────
@@ -250,7 +254,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 doc.set_active(index);
                 sel.clear();
             });
-            sync_loop(&state.doc, playhead);
+            sync_loop(&state.doc, playhead, state.keys_mode);
         }
         I::AddClip => {
             edit(state, |doc, sel| {
@@ -259,7 +263,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 doc.set_active(i);
                 sel.clear();
             });
-            sync_loop(&state.doc, playhead);
+            sync_loop(&state.doc, playhead, state.keys_mode);
         }
         I::RenameClip { index, name } => edit(state, |doc, _| {
             doc.rename_clip(index, name);
@@ -270,7 +274,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                     sel.clear();
                 }
             });
-            sync_loop(&state.doc, playhead);
+            sync_loop(&state.doc, playhead, state.keys_mode);
         }
         I::DuplicateClip { index } => {
             edit(state, |doc, sel| {
@@ -280,7 +284,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                     sel.clear(); // the selection names keys of the clip we just left
                 }
             });
-            sync_loop(&state.doc, playhead);
+            sync_loop(&state.doc, playhead, state.keys_mode);
         }
         // The selection SURVIVES: a reversed key is the same key at a new time
         // (`KeyId` names a key, not a position), so what was selected still is.
@@ -505,25 +509,27 @@ fn copy_selection(state: &mut TimelineState) {
 /// only if the document changed.
 /// Mirror the ACTIVE clip's loop into the playhead — the one place a clip switch
 /// (or an undo of one) becomes the live transport loop.
-/// Publish the ACTIVE CLIP's loop onto the transport — the doc is the truth, the `Playhead`
-/// is the copy.
+/// Publish the ACTIVE CLIP's loop for one VIEW onto its transport — the doc is the
+/// truth, the `Playhead` is the copy. `keys` picks the pair: the Keys-view clip-clock
+/// loop (`clip_playhead`) or the Arrange timeline loop (`playhead`).
 ///
 /// Every intent that can change which clip is active (or its range) calls this. **So must
 /// anything that swaps the document under the transport** — loading a project, above all:
-/// the loop lives in the clip (`NamedClip.loop_range`, DOC v3), so without this a saved loop
-/// never comes back, and — worse — the *previous* project's loop stays armed on the
-/// `Playhead` and quietly loops the new project over a range that belongs to a file the
-/// artist already closed.
-pub fn sync_transport_loop(doc: &TimelineDoc, playhead: &mut Playhead) {
-    sync_loop(doc, playhead);
+/// the loop lives in the clip (`NamedClip.loop_range` / `keys_loop_range`, DOC v3/v5), so
+/// without this a saved loop never comes back, and — worse — the *previous* project's loop
+/// stays armed on the `Playhead` and quietly loops the new project over a range that belongs
+/// to a file the artist already closed. The shell also calls it on a TAB switch (which is not
+/// an intent) so the now-active clock adopts its own view's loop.
+pub fn sync_transport_loop(doc: &TimelineDoc, playhead: &mut Playhead, keys: bool) {
+    sync_loop(doc, playhead, keys);
 }
 
-fn sync_loop(doc: &TimelineDoc, playhead: &mut Playhead) {
-    match doc.active_loop() {
+fn sync_loop(doc: &TimelineDoc, playhead: &mut Playhead, keys: bool) {
+    match doc.active_loop_for(keys) {
         Some((a, b)) => playhead.set_loop(a, b),
         None => playhead.clear_loop(),
     }
-    playhead.set_loop_mode(if doc.active_ping_pong() {
+    playhead.set_loop_mode(if doc.active_ping_pong_for(keys) {
         ph2d_core::LoopMode::PingPong
     } else {
         ph2d_core::LoopMode::Wrap

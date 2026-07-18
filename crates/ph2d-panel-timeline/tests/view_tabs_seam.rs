@@ -185,16 +185,17 @@ fn each_tab_registers_only_its_own_half() {
     assert!(rect_of(&regs, ids::TIMELINE_ADD_TRACK).is_none());
 }
 
-/// **Under a stack the Keys ruler SCRUBS the clip clock (that is the whole point of the
-/// fix — Enio 2026-07-16) but carries NO loop or markers.** The playhead is independent
-/// of Arrange, so there is nothing to invert; but the loop and the markers are the
-/// timeline's, and on the clip's ruler they would sit at the wrong second.
+/// **Under a stack the Keys ruler SCRUBS the clip clock AND draws its OWN loop — only the
+/// timeline MARKERS are withheld** (Enio 2026-07-16). The loop is per-view now: the
+/// snapshot's `loop_range` is the clip's own, in the clip clock this ruler scrubs, so its
+/// braces belong here. Markers, however, are timeline-time and would sit at the wrong
+/// second on the clip's ruler, so they stay on Arrange.
 #[test]
-fn the_clip_ruler_under_a_stack_scrubs_but_has_no_timeline_furniture() {
+fn the_clip_ruler_under_a_stack_scrubs_and_draws_its_own_loop_but_no_timeline_markers() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     let mut snap = keys_and_a_stack(Some(2.0), 4.0);
-    snap.loop_range = Some((0.0, 5.0));
+    snap.loop_range = Some((0.0, 5.0)); // the clip's own loop (rebuild fills the keys pair)
     snap.markers = vec![(1.0, "M1".into())];
 
     let regs = paint(&mut host, &mut state, snap.clone());
@@ -203,15 +204,15 @@ fn the_clip_ruler_under_a_stack_scrubs_but_has_no_timeline_furniture() {
         "the Keys ruler under a stack must scrub the clip clock — that is how you author keys"
     );
     assert!(
-        rect_of(&regs, ids::timeline_loop_brace_id(0)).is_none(),
-        "the timeline's loop brace was drawn on the clip's ruler — at the wrong second"
+        rect_of(&regs, ids::timeline_loop_brace_id(0)).is_some(),
+        "the Keys view draws its OWN clip loop — independent of Arrange (Enio, 2026-07-16)"
     );
     assert!(
         rect_of(&regs, ids::timeline_marker_hit_id(0)).is_none(),
-        "the timeline's marker was drawn on the clip's ruler"
+        "the timeline's marker was drawn on the clip's ruler — at the wrong second"
     );
 
-    // The Arrange tab rules the timeline, so it scrubs AND carries the furniture.
+    // The Arrange tab rules the timeline, so it scrubs AND carries its loop + markers.
     state.tab = Tab::Arrange;
     let regs = paint(&mut host, &mut state, snap);
     assert!(

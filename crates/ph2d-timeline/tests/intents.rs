@@ -219,6 +219,66 @@ fn transport_intents_toggle_and_loop() {
     assert_eq!(ph.loop_range(), None);
 }
 
+/// **The loop is per VIEW: a Keys-tab loop and an Arrange-tab loop are independent.**
+/// `state.keys_mode` (stamped by the shell) picks which of the active clip's two loops
+/// a `SetLoop` writes, and the `Playhead` passed IS that view's clock — so editing the
+/// Keys loop never touches the Arrange loop, nor the timeline playhead (Enio,
+/// 2026-07-16). The shell passes `clip_playhead` in Keys mode, `playhead` in Arrange;
+/// here two separate playheads stand in for the two clocks.
+#[test]
+fn the_loop_is_independent_between_the_keys_and_arrange_views() {
+    let mut st = TimelineState::new();
+    let mut timeline_ph = Playhead::new(DT); // the Arrange clock
+    let mut clip_ph = Playhead::new(DT); // the Keys clock
+
+    // Arrange view: set a timeline loop.
+    st.keys_mode = false;
+    apply_intent(
+        &mut st,
+        &mut timeline_ph,
+        I::SetLoop {
+            range: Some((0.0, 2.0)),
+            ping_pong: false,
+        },
+    );
+
+    // Keys view: set a DIFFERENT clip loop (and ping-pong it).
+    st.keys_mode = true;
+    apply_intent(
+        &mut st,
+        &mut clip_ph,
+        I::SetLoop {
+            range: Some((1.5, 4.0)),
+            ping_pong: true,
+        },
+    );
+
+    // Each clock wraps over its OWN view's loop — they did not cross.
+    assert_eq!(timeline_ph.loop_range(), Some((0.0, 2.0)), "Arrange clock");
+    assert_eq!(timeline_ph.loop_mode(), ph2d_core::LoopMode::Wrap);
+    assert_eq!(clip_ph.loop_range(), Some((1.5, 4.0)), "Keys clock");
+    assert_eq!(clip_ph.loop_mode(), ph2d_core::LoopMode::PingPong);
+    // And the document parked both, unmixed.
+    assert_eq!(st.doc.active_loop_for(false), Some((0.0, 2.0)));
+    assert_eq!(st.doc.active_loop_for(true), Some((1.5, 4.0)));
+
+    // Clearing the Keys loop leaves the Arrange loop standing.
+    apply_intent(
+        &mut st,
+        &mut clip_ph,
+        I::SetLoop {
+            range: None,
+            ping_pong: false,
+        },
+    );
+    assert_eq!(clip_ph.loop_range(), None, "Keys loop cleared");
+    assert_eq!(
+        st.doc.active_loop_for(false),
+        Some((0.0, 2.0)),
+        "Arrange loop untouched"
+    );
+}
+
 // ── W2.E7 — clipboard (copy / cut / paste) ───────────────────────────────────
 
 /// Bind entity 1's TranslationX and key it at `0.0` and `0.5`, both selected.

@@ -382,6 +382,10 @@ pub(crate) struct App {
     /// the clip's own time, not the timeline's. Advanced alongside `playhead` each
     /// tick (each only moves when its own transport is playing).
     pub(crate) clip_playhead: Playhead,
+    /// The Keys-tab state the shell saw LAST frame, so it can detect a tab switch and
+    /// hand the now-active clock its own view's loop (a tab switch is not an intent,
+    /// so nothing else would sync it). See `render_loop`.
+    pub(crate) last_timeline_keys_mode: bool,
     /// The app-general timeline document + selection/history/flags (W1). The
     /// `render_loop::timeline_bridge` drains `timeline_intents` into it, then
     /// applies it to the scene at the Playhead. Empty until the panel (W2) or a

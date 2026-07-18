@@ -27,7 +27,12 @@ use crate::stack_eval::StackScratch;
 /// v4: the clip **stack** (`TimelineDoc.stack`) and each binding's captured
 /// `rest` value (ADR-0115). Both appended; a document with an empty stack behaves
 /// byte-for-byte as it did in v3.
-pub const DOC_VERSION: u32 = 4;
+/// v5: each clip carries a SECOND loop — one per view
+/// (`NamedClip.keys_loop_range`/`keys_loop_ping_pong`, appended). The Arrange tab
+/// loops the timeline (the original `loop_range`); the Keys tab loops the clip's own
+/// clock, independently (Enio, 2026-07-16). Appended; both `None`/`false` behaves
+/// exactly as v4.
+pub const DOC_VERSION: u32 = 5;
 
 /// The default display frame rate for a fresh document.
 pub const DEFAULT_FPS: f64 = 24.0;
@@ -75,6 +80,17 @@ pub struct NamedClip {
     /// of wrapping. Rides with the range because it IS part of it: a loop is a
     /// span plus what happens at its end. Appended (v3).
     pub loop_ping_pong: bool,
+    /// The **Keys view's** loop — this clip's own two seconds, in the clip's OWN
+    /// clock, looped independently of the Arrange loop above (Enio, 2026-07-16).
+    ///
+    /// The two are different clocks with different braces: [`Self::loop_range`]
+    /// wraps the TIMELINE playhead (the stack the Arrange tab shows), this one wraps
+    /// the CLIP playhead the Keys tab scrubs while you author keys. Setting one never
+    /// touches the other — the loop area is independent per clip AND per view. Both
+    /// appended (`DOC_VERSION` 4 -> 5).
+    pub keys_loop_range: Option<(f64, f64)>,
+    /// Mirror of [`Self::loop_ping_pong`] for the Keys-view loop. Appended (v5).
+    pub keys_loop_ping_pong: bool,
 }
 
 /// The editable timeline document (see module docs).
@@ -124,6 +140,8 @@ impl TimelineDoc {
                 clip: Clip::new(RationalTime::from_seconds(0.0)),
                 loop_range: None,
                 loop_ping_pong: false,
+                keys_loop_range: None,
+                keys_loop_ping_pong: false,
             }],
             active_clip: 0,
             bindings: Vec::new(),
@@ -231,6 +249,8 @@ impl TimelineDoc {
             clip: Clip::new(RationalTime::from_seconds(0.0)),
             loop_range: None,
             loop_ping_pong: false,
+            keys_loop_range: None,
+            keys_loop_ping_pong: false,
         });
         self.clips.len() - 1
     }
@@ -264,6 +284,10 @@ impl TimelineDoc {
             clip: src.clip.clone(),
             loop_range: src.loop_range,
             loop_ping_pong: src.loop_ping_pong,
+            // Both loops travel — a copy of the animation has the same brackets in
+            // both views.
+            keys_loop_range: src.keys_loop_range,
+            keys_loop_ping_pong: src.keys_loop_ping_pong,
         };
         self.clips.push(copy);
         Some(self.clips.len() - 1)
@@ -331,27 +355,74 @@ impl TimelineDoc {
         true
     }
 
-    /// The active clip's loop range, if it has one.
+    /// The active clip's loop range for one VIEW, if it has one. `keys` picks the
+    /// Keys-view loop (the clip's own clock); `false` picks the Arrange/timeline
+    /// loop. The two are stored and returned independently — the loop area is
+    /// per clip AND per view (Enio, 2026-07-16).
+    #[must_use]
+    pub fn active_loop_for(&self, keys: bool) -> Option<(f64, f64)> {
+        let c = &self.clips[self.active_clip];
+        if keys {
+            c.keys_loop_range
+        } else {
+            c.loop_range
+        }
+    }
+
+    /// Park `range` on the ACTIVE clip's `keys`/Arrange loop. The caller mirrors it
+    /// into the matching `Playhead` (clip clock in Keys, timeline in Arrange), which
+    /// owns the live loop — this is the copy that survives a clip switch.
+    pub fn set_active_loop_for(&mut self, keys: bool, range: Option<(f64, f64)>) {
+        let c = &mut self.clips[self.active_clip];
+        if keys {
+            c.keys_loop_range = range;
+        } else {
+            c.loop_range = range;
+        }
+    }
+
+    /// Whether the active clip's `keys`/Arrange loop ping-pongs.
+    #[must_use]
+    pub fn active_ping_pong_for(&self, keys: bool) -> bool {
+        let c = &self.clips[self.active_clip];
+        if keys {
+            c.keys_loop_ping_pong
+        } else {
+            c.loop_ping_pong
+        }
+    }
+
+    /// Set whether the active clip's `keys`/Arrange loop ping-pongs.
+    pub fn set_active_ping_pong_for(&mut self, keys: bool, on: bool) {
+        let c = &mut self.clips[self.active_clip];
+        if keys {
+            c.keys_loop_ping_pong = on;
+        } else {
+            c.loop_ping_pong = on;
+        }
+    }
+
+    /// The active clip's Arrange (timeline) loop range — [`Self::active_loop_for`]`(false)`.
+    /// The project-load path and older callers read the timeline loop through this.
     #[must_use]
     pub fn active_loop(&self) -> Option<(f64, f64)> {
-        self.clips[self.active_clip].loop_range
+        self.active_loop_for(false)
     }
 
-    /// Park `range` on the ACTIVE clip. The caller mirrors it into the `Playhead`,
-    /// which owns the live loop — this is the copy that survives a clip switch.
+    /// Park `range` on the active clip's Arrange loop.
     pub fn set_active_loop(&mut self, range: Option<(f64, f64)>) {
-        self.clips[self.active_clip].loop_range = range;
+        self.set_active_loop_for(false, range);
     }
 
-    /// Whether the active clip's loop ping-pongs.
+    /// Whether the active clip's Arrange loop ping-pongs.
     #[must_use]
     pub fn active_ping_pong(&self) -> bool {
-        self.clips[self.active_clip].loop_ping_pong
+        self.active_ping_pong_for(false)
     }
 
-    /// Set whether the active clip's loop ping-pongs.
+    /// Set whether the active clip's Arrange loop ping-pongs.
     pub fn set_active_ping_pong(&mut self, on: bool) {
-        self.clips[self.active_clip].loop_ping_pong = on;
+        self.set_active_ping_pong_for(false, on);
     }
 
     /// A name no clip is using yet — `"Clip 2"`, then `"Clip 3"`… Seeds the

@@ -87,17 +87,41 @@ fn allocator_reseats_past_loaded_bindings() {
 }
 
 #[test]
-fn schema_version_is_four() {
+fn schema_version_is_five() {
     // v2 = per-key roving flags appended to the track payload.
     // v3 = each clip carries its OWN loop (`NamedClip.loop_range` +
     //      `loop_ping_pong`, appended) — a loop belongs to the animation it
     //      brackets, not to the document (Enio, 2026-07-12).
     // v4 = the clip STACK (`TimelineDoc.stack`) + each binding's captured `rest`
     //      (ADR-0115). Both appended; an empty stack behaves exactly as v3 did.
+    // v5 = a SECOND loop per clip (`keys_loop_range` + `keys_loop_ping_pong`,
+    //      appended) — the Keys view loops the clip's clock independently of the
+    //      Arrange timeline loop (Enio, 2026-07-16).
     // Postcard is positional: an older blob must be REJECTED by the version gate,
     // not misread field-for-field.
-    assert_eq!(DOC_VERSION, 4);
-    assert_eq!(TimelineDoc::new().version, 4);
+    assert_eq!(DOC_VERSION, 5);
+    assert_eq!(TimelineDoc::new().version, 5);
+}
+
+/// **Both loops survive the trip, and independently.** A clip whose Arrange loop and
+/// Keys loop differ must come back with each intact — the two are separate fields,
+/// not one read twice, and postcard is positional so a layout slip would swap them.
+#[test]
+fn each_clips_two_loops_round_trip_independently() {
+    let mut doc = TimelineDoc::new();
+    doc.set_active_loop_for(false, Some((0.0, 2.0))); // Arrange (timeline) loop
+    doc.set_active_ping_pong_for(false, false);
+    doc.set_active_loop_for(true, Some((1.5, 4.0))); // Keys (clip-clock) loop
+    doc.set_active_ping_pong_for(true, true); // and it ping-pongs; the other does not
+    let back = roundtrip(&doc);
+    assert_eq!(
+        back.active_loop_for(false),
+        Some((0.0, 2.0)),
+        "Arrange loop"
+    );
+    assert!(!back.active_ping_pong_for(false), "Arrange wraps");
+    assert_eq!(back.active_loop_for(true), Some((1.5, 4.0)), "Keys loop");
+    assert!(back.active_ping_pong_for(true), "Keys ping-pongs");
 }
 
 #[test]

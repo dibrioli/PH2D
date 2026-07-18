@@ -117,8 +117,13 @@ pub fn zigzag_contour(
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let ridges = spec.ridges.floor().max(MIN_RIDGES) as usize;
     let count = (ridges * 2).min(MAX_SAMPLES);
+    // Fechado: `count` amostras que dão a volta. Aberto: `count + 1` pontos, porque as duas
+    // pontas são amostras próprias. O PASSO é o mesmo nos dois casos — em ambos há `count`
+    // intervalos —, e escrevê-lo como um `if` de ramos iguais foi resíduo de raciocínio meu
+    // que o clippy apanhou.
     let samples = if closed { count } else { count + 1 };
-    let step = total / if closed { count as f64 } else { count as f64 };
+    #[allow(clippy::cast_precision_loss)]
+    let step = total / count as f64;
 
     let mut state = spec.rough_seed.unwrap_or(0);
     let mut out = Vec::with_capacity(samples);

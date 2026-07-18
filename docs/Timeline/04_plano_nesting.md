@@ -178,20 +178,32 @@ criação não pode ficar verde porque o load segurou, e vice-versa. Cada um tem
 > **`PH2D_NEST_SMOKE=1`** — cena pronta: um container "Walk" instanciado DUAS vezes, tocando em
 > loop. Sem ela nada disto era olhável ([[feedback_ready_to_smoke_example]]).
 >
-> ⚠️ **O que a 3c NÃO fez:** desenhar as duas réguas EMPILHADAS (o mecanismo literal do AE, com o
-> marcador ligando uma à outra). Hoje a régua troca de relógio ao entrar — que é a metade que
-> conserta o bug — mas o tempo da timeline deixa de estar visível lá dentro. O snapshot já
-> publica os dois (`time_seconds` e `host_time`); falta só a pintura.
+> ⚠️ **A nota que ficava aqui estava ERRADA, e foi ela que abriu as fatias 3d/3e.** Ela dizia que
+> faltava desenhar as duas réguas empilhadas porque *"o tempo da timeline deixa de estar visível lá
+> dentro"* — e o `transport.rs:281` mostra `snap.time_seconds` o tempo todo. Nunca ficou invisível.
+> Escrevi a pendência sem conferir o arquivo. Ver a EMENDA no ADR-0133 §5.
+
+**Fatia 3d — FECHADA** (`88ee37aa`): a régua LIA no relógio do container e ESCREVIA no da timeline.
+Com a instância em 4 s, arrastar até o segundo 1 do interior buscava o segundo 1 da CENA. O
+conserto é o objeto que faltava — `container_map` publica a RELAÇÃO (a janela da instância nos dois
+relógios), que serve às duas direções; e onde não há bijeção (toca duas vezes, ou dá a volta) a
+régua **não arrasta**, em duas camadas com gate próprio. 10 gates, 6 mutações.
+
+**Fatia 3e — FECHADA:** o readout ao lado da trilha, em vez das duas réguas (ADR-0133 §5, emendado).
+Diz `plays 4.00 - 12.00` — a janela da instância em segundos da CENA, que é o que torna os dois
+números na tela uma aritmética em vez de uma contradição — e diz **`not playing here`** quando o
+container não toca no segundo atual, que é *por que* a marca do playhead some. 4 gates, 3 mutações.
 
 
 1. **Breadcrumb** persistente (Animate/Harmony), com entrar/sair.
-2. **As duas réguas juntas** (o mecanismo do AE): a de baixo = tempo do pai, a de cima = o da
-   fonte. Nada de rótulo em texto — nenhum produto rotula, e a régua se explica por estar alinhada.
+2. ~~**As duas réguas juntas** (o mecanismo do AE)~~ → **o readout da janela** (3e): a premissa das
+   duas réguas não vale aqui, porque o chip do transporte já mostra o segundo da cena. Ver a emenda
+   no ADR-0133 §5.
 3. `Tab::{Keys, Arrange}` **não muda de significado**; passa a valer no nível em que a breadcrumb
    pôs você.
 
-**Aceitação** (gate 7): seam que **CLICA** — entrar publica breadcrumb + as duas réguas, sair
-restaura ([[feedback_widget_is_done_when_a_test_clicks_it]]). Tokens e i18n, zero string
+**Aceitação** (gate 7): seam que **CLICA** — entrar publica breadcrumb + troca o relógio da régua,
+sair restaura ([[feedback_widget_is_done_when_a_test_clicks_it]]). Tokens e i18n, zero string
 hardcoded (HR-15). Ids novos registrados no `WidgetStore` — o X da timeline já foi esse bug uma
 vez nesta linha (`9a67beb2`).
 

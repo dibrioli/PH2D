@@ -197,10 +197,12 @@ pub struct TimelineViewSnapshot {
     /// here ([`crate::container_playhead`]).
     ///
     /// The panel's lanes are laid out in this clock when a container is open, so the ruler
-    /// must mark it and not [`Self::time_seconds`] — and the two are shown TOGETHER, which is
-    /// the only mitigation for "two clocks on one screen" that any product in the research
-    /// actually shipped (After Effects stacks a second ruler above the first when Time
-    /// Remapping is on, with a marker tying them).
+    /// must mark it and not [`Self::time_seconds`].
+    ///
+    /// ⚠️ Both clocks ARE on screen at once — the transport's seconds chip never stops showing
+    /// `time_seconds`. What ties them together is [`Self::host_map`]'s readout, not a second
+    /// ruler: After Effects stacks one because its Layer panel has nowhere else to show comp
+    /// time, and ours does (ADR-0133 §5, amended).
     pub host_time: Option<f64>,
     /// **How the open container's own seconds relate to the timeline's** — the same fact as
     /// [`Self::host_time`], as a RELATION rather than a sample of it (`crate::nest_map`).

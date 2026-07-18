@@ -152,12 +152,27 @@ responde:
 ⚠️ **Correção ao briefing:** o **Figma não tem breadcrumb** (é deep-select + salto para a fonte),
 então ele não é o precedente que o §2.3 do briefing sugeria. Os precedentes são Animate e Harmony.
 
-**E o relógio do container fica VISÍVEL, pelo único mecanismo que alguém implementou de fato:**
-quando há remap, o AE mostra **duas réguas** — a de baixo é o tempo do pai, a de cima o da fonte,
-com um marcador ligando as duas. Nós já temos os dois relógios reais (`App.playhead` e
-`App.clip_playhead`, avançados pelos mesmos ticks); o que falta é **desenhá-los juntos** em vez de
-alternar. Nenhum produto rotula a régua em texto — e nós também não vamos: a régua se explica por
-estar ali, alinhada.
+**E o relógio do container fica VISÍVEL.** A pesquisa achou um só mecanismo implementado de
+fato: quando há remap, o AE mostra **duas réguas** — a de baixo é o tempo do pai, a de cima o da
+fonte, com um marcador ligando as duas.
+
+⚠️ **EMENDA (2026-07-18, na Fatia 3e): não copiamos as duas réguas, e a razão é que a premissa
+delas não vale aqui.** A régua de cima do AE existe porque o Layer panel **não tem outro lugar
+onde o tempo da comp apareça**. O nosso tem: o chip de segundos da barra de transporte mostra
+`snap.time_seconds` — o tempo da CENA — e ele nunca deixou de estar na tela dentro de um
+container. Uma segunda régua gastaria uma linha permanente de um painel curto para re-exibir um
+número que já está lá. (A nota que dizia o contrário foi escrita sem conferir o `transport.rs`;
+ela é o erro, não o desenho.)
+
+O que de fato falta com dois relógios na tela é a **RELAÇÃO** entre eles: ver `8.00` no chip e a
+marca no `4` da régua é uma contradição até você saber onde a instância começa. Isso é uma linha
+de texto, não uma régua — o readout ao lado da trilha diz `plays 4.00 - 12.00`, e diz **`not
+playing here`** quando o container não toca no segundo atual, que é *por que* a marca some em vez
+de a régua estar quebrada.
+
+E a régua **é** rotulada, de um jeito: a trilha ao lado dela nomeia o container. A pesquisa
+observou que nenhum produto rotula a sua — e é exatamente por isso que *"que relógio é este?"* é
+confusão de pé em todos eles.
 
 ### 6. O que NÃO fazemos, e por quê
 
@@ -226,7 +241,10 @@ Cada item é executável e nasce VERMELHO.
 6. `the_schema_is_eight_and_a_v7_blob_is_refused` — v7 recusado, não mal-lido (ver a correção
    acima; o gate desta linha originalmente prometia migração).
 7. `the_ruler_shows_the_parents_clock_and_the_sources_together` — seam que CLICA: entrar num
-   container publica a breadcrumb e as duas réguas; sair restaura.
+   container publica a breadcrumb e troca o relógio da régua; sair restaura. (Emenda da 3e: **as
+   duas réguas viraram um readout**, ver §5. E o gate que faltava era outro — a régua LIA no
+   relógio do container e ESCREVIA no da timeline: `scrubbing_inside_a_container_seeks_the_
+   timeline_second_not_the_local_one`, Fatia 3d.)
 8. **Perf**: o gate do §Kill.
 
 ---
@@ -300,7 +318,8 @@ bifurcação (B) pode custar mais do que o número acima sugere.
 - **Fatia 1 — dados headless.** `StripSource`, migração `DOC_VERSION` 7→8, DFS de ciclo nas duas
   camadas. Gates 1-6. Zero UI.
 - **Fatia 2 — o relógio recursivo.** Composição e recusa em profundidade; gates 2-3 e o do §Kill.
-- **Fatia 3 — UI.** Breadcrumb, entrar/sair, as duas réguas. Gate 7.
+- **Fatia 3 — UI.** Breadcrumb, entrar/sair, o relógio da régua (3c), o **mapa da instância**
+  nas duas direções (3d) e o readout da janela (3e — que substitui as duas réguas, §5). Gate 7.
 
 ---
 

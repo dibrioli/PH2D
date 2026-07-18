@@ -90,6 +90,15 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.add_lane" => "+ Lane",
         "panel.timeline.add_container" => "+ Container",
         "panel.timeline.crumb_root" => "Scene",
+        // **Where the open container's interior actually plays, in SCENE seconds.**
+        // Inside a container the ruler counts the INTERIOR while the transport chip keeps
+        // showing the scene's second, so two different numbers sit on screen at once. The
+        // research found that no product labels its ruler at all — this readout is what
+        // makes the two legible as one arithmetic instead of a contradiction.
+        "panel.timeline.host_window" => "plays",
+        // ...and when it does not play at the current second, which is WHY the playhead is
+        // absent rather than broken.
+        "panel.timeline.host_not_playing" => "not playing here",
         "panel.timeline.add_marker" => "+M",
         "panel.timeline.time_seconds" => "Time(s)",
         "panel.timeline.frame" => "Frame",

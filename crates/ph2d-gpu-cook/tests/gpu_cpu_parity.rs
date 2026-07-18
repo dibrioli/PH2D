@@ -1082,4 +1082,44 @@ fn the_emitter_generator_matches_the_cpu() {
     assert_eq!(cpu.len(), 256, "the cap holds n at max");
     assert_parity(&cpu, &gpu);
     eprintln!("emitter: window {counts:?}, capped {}", cpu.len());
+
+    // The HARD ceiling (`MAX_ALIVE`), which the `max` param above does not reach.
+    // It is clamped by two SEPARATE expressions — `eval`'s and `source_count`'s —
+    // and ADR-0130's parity is "by construction" only while they agree, so the
+    // ceiling is exactly the kind of number that can be raised on one path and
+    // forgotten on the other. Ask for far more than any ceiling and demand the
+    // two still land on the same `n`: the gate states the INVARIANT, so it does
+    // not have to be edited when the number moves.
+    let (mut gm, outm) = emitter_graph(&reg, 1.0e9, 1.0e9);
+    // `emitter_graph` pins rate at 40, so at t = 10 only 401 particles have been
+    // BORN and no ceiling could bind — the first cut of this gate asked for a
+    // billion, got 401, and passed. A ceiling gate has to out-BIRTH the ceiling,
+    // not merely out-ASK it.
+    const RATE: f64 = 1.0e6;
+    const T: f64 = 10.0;
+    let em = gm
+        .nodes()
+        .iter()
+        .find(|n| n.type_name == "motion.emitter")
+        .expect("the fixture has an emitter")
+        .id;
+    gm.set_param(em, "rate", RATE as f32);
+    let born = (T * RATE) as usize + 1;
+    let cpu = cook_cpu(&gm, outm, T);
+    let gpu = cook_gpu(&gm, outm, T);
+    assert_eq!(
+        cpu.len(),
+        gpu.len(),
+        "both paths must clamp to the SAME hard ceiling"
+    );
+    assert!(
+        cpu.len() * 100 < born,
+        "the ceiling must actually bind — {born} born, {} alive",
+        cpu.len()
+    );
+    assert_parity(&cpu, &gpu);
+    eprintln!(
+        "emitter: hard ceiling {} of {born} born (both paths)",
+        cpu.len()
+    );
 }

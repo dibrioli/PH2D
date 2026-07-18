@@ -344,9 +344,13 @@ pub(super) fn build_gpu_emitter_demo_document(
     // Capped: rate·life = 4200 > max, so the window binds at `max` and `first`
     // advances every tick — the gather's whole point. A wide cone gives each id a
     // distinct muzzle velocity, so a mispair would be visible as a boiling arc.
-    g.set_param(em, "rate", 1400.0);
+    // 4000/s × 3 s = 12.000 alive, inside the 16.384 ceiling that the CPU
+    // fallback sets (see `MAX_ALIVE`). The old numbers asked for 3.000 but were
+    // really bounded at 4.200 by `rate × life`, under the OLD 4096 ceiling — the
+    // fountain could not be a fountain. On the GPU 12.000 costs ~0,1 ms/tick.
+    g.set_param(em, "rate", 4000.0);
     g.set_param(em, "life", 3.0);
-    g.set_param(em, "max", 3000.0);
+    g.set_param(em, "max", 12000.0);
     g.set_param(em, "speed", 22.0);
     g.set_param(em, "angle", 90.0); // up (Y-up world)
     g.set_param(em, "spread", 60.0);

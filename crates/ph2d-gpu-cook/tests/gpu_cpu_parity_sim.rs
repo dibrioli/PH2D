@@ -1292,3 +1292,94 @@ fn shrinking_the_life_of_a_live_emitter_leaves_the_survivors_untouched() {
         );
     }
 }
+
+/// Perf probe, not a gate — the sim number the Fase 3 handoff asked for (§9.3:
+/// *"só tenho o número stateless (2M @ 4,02 ms)"*), pointed at the decision it
+/// unblocks: **`motion.emitter`'s `MAX_ALIVE` ceiling.**
+///
+/// The ceiling is 4096 and it is applied on BOTH paths (`eval` and the GPU
+/// `source_count`) — deliberately, because ADR-0130's parity is "by construction"
+/// from one shared `n`, so the two can never be given different caps. Raising it
+/// therefore costs whatever the CPU costs, and that is what this measures: the
+/// SAME particle sim, tick by tick, down both paths at several window sizes.
+///
+/// Run it before touching the ceiling (`MAX_ALIVE` has to be raised locally to
+/// sample past 4096 — the probe cannot exceed the cap it is measuring):
+///   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity_sim --release -- --ignored --nocapture emitter_sim_ceiling_probe
+#[test]
+#[ignore = "perf probe; requires a GPU adapter"]
+fn emitter_sim_ceiling_probe() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    const TICKS: u64 = 30;
+    // Gravity + drag: the DEMO=5 shape (a force loop, not a bare integrate), so
+    // the number describes a sim someone would actually author.
+    let forces: &[(&str, &[(&str, f32)])] = &[
+        (
+            "force.wind",
+            &[("angle", 270.0), ("strength", 26.0), ("gust", 0.0)],
+        ),
+        ("force.drag", &[("coefficient", 0.12)]),
+    ];
+    eprintln!("  window │      GPU ms/tick │      CPU ms/tick │ CPU/GPU");
+    for &want in &[4096.0f32, 16384.0, 65536.0, 262144.0] {
+        // `emitter_sim`'s rate is fixed at 400, so in TICKS·FIXED_DT seconds only
+        // ~601 particles are ever BORN and every row would report the same window
+        // — a perf table that prints one number four times is worse than none.
+        // The rate has to be chosen so the window is FULL at the sample instant.
+        let (mut g, _, out) = emitter_sim(&reg, want, forces);
+        let em = emitter_of(&g);
+        g.set_param(em, "rate", want / (TICKS as f32 * FIXED_DT as f32));
+        let plan = plan(&g, &reg, &reg, out);
+        if !plan.is_fully_gpu() {
+            eprintln!("  {want:>6} │ NOT FULLY GPU — {:?}", plan.boundaries);
+            continue;
+        }
+        let mut gc = GpuCook::new();
+        let march = |gc: &mut GpuCook| {
+            for t in 0..=TICKS {
+                gc.cook(
+                    &gpu,
+                    &g,
+                    &reg,
+                    &reg,
+                    &plan,
+                    &[],
+                    CookClock {
+                        playhead: t as f64 * FIXED_DT,
+                        tick: Some(t),
+                    },
+                    DEFAULT_UV,
+                    DEFAULT_SIZE,
+                )
+                .expect("gpu cook");
+            }
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        };
+        march(&mut gc); // warm: pipelines + pool
+        let mut gc2 = GpuCook::new();
+        let t0 = std::time::Instant::now();
+        march(&mut gc2);
+        let gpu_ms = t0.elapsed().as_secs_f64() * 1000.0 / (TICKS + 1) as f64;
+
+        let t1 = std::time::Instant::now();
+        let cpu = cpu_ticks(&g, &reg, out, TICKS);
+        let cpu_ms = t1.elapsed().as_secs_f64() * 1000.0 / (TICKS + 1) as f64;
+        let n = cpu.last().map(Vec::len).unwrap_or(0);
+        // The row is only about `want` if the window actually GOT there; the cap
+        // (or too short a march) silently truncating it is the whole subject.
+        let note = if (n as f32) < want * 0.99 {
+            " ← CAPPED (MAX_ALIVE), not the requested window"
+        } else {
+            ""
+        };
+        eprintln!(
+            "  {n:>6} │ {gpu_ms:>16.3} │ {cpu_ms:>16.3} │ {:>6.1}×{note}",
+            cpu_ms / gpu_ms
+        );
+    }
+    eprintln!("  (the 60 fps budget is 16.7 ms/frame; the sim is one part of it)");
+}

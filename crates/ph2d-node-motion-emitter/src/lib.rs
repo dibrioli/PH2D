@@ -51,9 +51,37 @@ use trig::cos_sin_cycles;
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// Hard ceiling on the alive set, whatever `rate × life` asks for. Guards the
-/// per-frame cook (and a hand-authored `p rate 1e9`) from allocating a stream
-/// that no renderer would draw anyway.
-const MAX_ALIVE: usize = 4096;
+/// per-frame cook (and a hand-authored `p rate 1e9`) from building a stream
+/// nothing downstream could keep up with.
+///
+/// **It is bounded by the CPU FALLBACK, not by the renderer and not by the GPU** —
+/// and the original 4096 was picked before either could be measured. Its comment
+/// said the guard was against "a stream no renderer would draw anyway", and that
+/// half is simply false now: the renderer draws 2M instances at 4,02 ms
+/// (`gpu_cook_millions_timing`), and the GPU sim is nearly FLAT in the window —
+/// 64× the particles costs 3,35× (`emitter_sim_ceiling_probe`, RTX):
+///
+/// | window  | GPU ms/tick | CPU ms/tick |
+/// |---------|-------------|-------------|
+/// | 4.096   | 0,085       | 0,243       |
+/// | 16.384  | 0,105       | 1,044       |
+/// | 65.536  | 0,166       | 2,989       |
+/// | 262.144 | 0,285       | 12,982      |
+///
+/// The GPU would happily take a million. The CPU is linear, and `PH2D_GPU_COOK`
+/// is **opt-in**, so the CPU is what every default build actually runs — at
+/// 262.144 one emitter would eat 78% of a whole 60 fps frame. Hence 16.384:
+/// 4× the headroom, the fallback still at ~6% of the frame budget and under 1 MB
+/// of per-frame transient (44 B/particle across the eight columns), and the
+/// fence's REAL purpose — bounding a hand-authored `rate 1e9` — kept.
+///
+/// ⚠️ **The ceiling can never be made path-dependent**, however tempting: ADR-0130's
+/// parity holds "by construction" because `eval` and `source_count` derive
+/// `newest`/`n`/`first` from ONE shared count law. A GPU-only ceiling would give
+/// the two paths different `n` for the same document, and the scrub, the hybrid
+/// seam and the gather would all be reading a window the other half never had.
+/// Raising it is one number for both; the number is the fallback's to give.
+const MAX_ALIVE: usize = 16384;
 /// Hash lane for the launch angle draw (see [`hash::rand01`]).
 const LANE_ANGLE: u32 = 0;
 

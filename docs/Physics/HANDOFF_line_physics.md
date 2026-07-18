@@ -97,7 +97,11 @@ no respawn (kill remoção de stale→RED). **CI:** `physics-ecs-c9` na matriz d
 **Batched gate verde:** fmt · clippy `--all-targets` · `cargo check --workspace` · `nextest-impacted` (723
 passed, 5 skipped).
 
-**⚠️ SMOKE (Enio):** `cd Worktrees/line-physics && PH2D_PHYSICS_SMOKE=1 cargo run -p ph2d-host-desktop` —
+**⚠️ SMOKE (Enio):** `cd Worktrees/line-physics && env PH2D_PHYSICS_SMOKE=1 cargo run -p ph2d-host-desktop`
+
+> ⚠️ **O `env` não é enfeite.** O shell do Enio é **fish**, onde `VAR=valor comando` **não** define a
+> variável — ela é ignorada em silêncio, a cena nunca monta, e o app abre normal como se nada tivesse
+> sido pedido. Um comando de smoke que falha calado é o pior tipo. `env` funciona em fish e em bash. —
 uma bola laranja (dynamic) deve **cair e assentar** sobre a barra cinza (static floor). Ponte morta = bola
 pendurada no ar.
 
@@ -1020,7 +1024,7 @@ ragdoll diz que os **limites** seguram — joelhos dobram para um lado só.
    `bevy_ecs`, já na árvore) · a **matriz cross-OS do `physics-ecs-c9`** (o verdadeiro gate HR-5 — só roda no
    push; localmente só provei repeatability + os guardas estruturais). O `spike.yml` **não** é validável por
    yamllint local (indisponível) — os blocos são mirror exato dos existentes.
-6. **O que smoke-testar (Enio):** `cd Worktrees/line-physics && PH2D_PHYSICS_SMOKE=1 cargo run -p
+6. **O que smoke-testar (Enio):** `cd Worktrees/line-physics && env PH2D_PHYSICS_SMOKE=1 cargo run -p
    ph2d-host-desktop` → a bola cai e assenta. **E confirme que o app normal (sem a env) segue igual** — o
    `physics_bridge::dispatch` roda todo frame, mas é no-op sem entidades de física (query vazia).
 

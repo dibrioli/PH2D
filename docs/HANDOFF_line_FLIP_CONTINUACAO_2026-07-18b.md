@@ -11,6 +11,21 @@
 
 ---
 
+## 0. ⚠️ O 1º smoke JÁ ACONTECEU e derrubou um bug do W4 (BUGS #19) — **RE-SMOKE PEDIDO**
+
+O Enio smokou a C1 e reportou: *"independente do valor de gap ou trap o fill se ajusta
+perfeitamente à linha até o momento em que se sobreponham duas linhas"*. **Não era o Trap**: é
+o `filled_shape_target` (BUGS #16/#17) disparando onde não devia — ele roda depois do solver e
+**descarta o contorno traçado**, que é justamente o que Gap e Trap movem. Daí os dois parecerem
+inertes.
+
+Corrigido no commit seguinte (o critério de área virou um **abraço nos dois sentidos**, com
+tolerância medida). **A C1 continua pendente de smoke, agora junto com o fix do #19** — o
+roteiro do §1.1 vale, mais os dois casos das fotos: a forma cujo rabo cruza a própria descida,
+e a região fechada por dois traços com barriga.
+
+---
+
 ## 1. Estado: a wave COLORIZE começou. **C1 landou, PENDENTE DE SMOKE.**
 
 1 commit novo sobre a base sincronizada. `main` não andou (`HEAD..main` = 0).

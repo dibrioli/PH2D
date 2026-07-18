@@ -17,8 +17,8 @@
 //!
 //! **The Blob does not grow a form. It fills armpits.** A ball of radius 16 moves a plain flank by ZERO.
 //!
-//! [`diag_is_the_winner_out_of_its_own_reach`] prints why, texel by texel. Two gates stand between the ball
-//! and the canvas, and on a flank each one is enough on its own:
+//! The parabola's post-pass printed why, texel by texel (that probe is gone with the parabola). Two fences
+//! stood between the ball and the canvas, and on a flank each one was enough on its own:
 //!
 //! * **`v = pre_cover[si] * t <= pre_cover[gi]`.** The taper's ramp and the deposit's own soft rim decay
 //!   over the SAME few texels (`t` = .76 .54 .35 .19 → `v` = 193 137 88 48, against a rim of 255 251 222
@@ -78,6 +78,9 @@
 //! what it cannot serve, so none of the four remedies has anything to do. That is not a mitigation of this
 //! bug; it is the removal of its cause.
 //!
+//! **LANDED 2026-07-17.** The bounded ball is `super::super::sculpt_offset::blob_ball`; the four fences are
+//! deleted; [`the_inflate_fills_the_junctions_armpit_no_gash`] asserts the cross fills, on the real render.
+//!
 
 use super::inflate_edge::{CX, CY, SIZE, covers_of, inflate_the_whole_layer};
 use super::*;
@@ -105,6 +108,62 @@ fn arm_brush(t: &mut PainterTool, r: f32) {
     }
     t.set_paint_tool_mode("brush");
     t.set_brush_impasto_depth(1.0);
+}
+
+/// **THE product gate for Enio's cross: the Inflate FILLS the junction's armpit — no white gash.**
+///
+/// Two perpendicular strokes. The unbounded parabola left a WHITE GASH in each of the four concave armpits —
+/// coverage that never arrived, framed by opaque paint — because a tall junction *captured* the envelope out
+/// to `√(H/a)` while it could only *serve* out to `ρ√2`, and the boundary of that dead Voronoi cell is a hard
+/// line across otherwise-uniform paint (the root cause, [`super::inflate_junction_probes`] +
+/// [`diag_the_parabola_captures_what_it_cannot_serve`]). The bounded ball has `capture == reach` by
+/// construction, so it fills the armpit and fattens the flanks — the pixels are in
+/// [`super::inflate_ball_candidate::diag_does_the_bounded_ball_fix_the_cross`]; this asserts it on the REAL
+/// render.
+///
+/// **Mutation that must bleed:** give the ball unbounded support (in `blob_ball`, drop the `dq <= 1.0` cap so
+/// every disc offset competes and a far winner is disqualified with nothing to fall back to) — or restore the
+/// conditional advection (a `continue` instead of the frozen-plane restore) — the armpit goes bare again.
+#[test]
+fn the_inflate_fills_the_junctions_armpit_no_gash() {
+    let (mut t, layer) = the_cross();
+    let cov0 = covers_of(&t, layer);
+    inflate_the_whole_layer(&mut t);
+    let cov1 = covers_of(&t, layer);
+
+    // The concave armpit runs OUT of the inside corner along the 45° diagonal: past the overlapping cores
+    // (`k ≤ 14`, opaque both ways) it is bare canvas (`k = 15..30`, `0` before), and it is exactly there the
+    // parabola left its gash. Walk it.
+    let (cx, cy) = (CX as u32, CY as u32);
+    let diag = |cov: &[u8], k: u32| cov[((cy + k) * SIZE + (cx + k)) as usize];
+
+    let before_bare = (15..31).filter(|&k| diag(&cov0, k) >= 40).count();
+    assert!(
+        before_bare == 0,
+        "fixture: the armpit diagonal is not bare before Inflate ({before_bare} covered of 16) — the gash \
+         cannot form here, so this gate proves nothing"
+    );
+    let after_filled = (15..27).filter(|&k| diag(&cov1, k) >= 40).count();
+    assert!(
+        after_filled >= 9,
+        "the junction's armpit stayed bare after Inflate (only {after_filled}/12 of the diagonal filled). \
+         That is the WHITE GASH of Enio's cross (2026-07-16): a tall junction captures the envelope past \
+         where it can serve, and the boundary of its dead Voronoi cell is a hard line across the paint. The \
+         bounded ball has capture == reach and must fill it."
+    );
+
+    // The GASH proper: between the paint at the corner and the paint the ball grew, coverage must not go
+    // BARE — an enclosed `0` framed by paint on both sides is the gash, as a hole rather than a short edge.
+    let d: Vec<u8> = (2..28).map(|k| diag(&cov1, k)).collect();
+    let enclosed_bare = d.iter().position(|&c| c >= 100).is_some_and(|f| {
+        let l = d.iter().rposition(|&c| c >= 100).unwrap();
+        d[f..=l].contains(&0)
+    });
+    assert!(
+        !enclosed_bare,
+        "the armpit diagonal has a BARE gap enclosed by paint ({d:?}) — the gash, as a hole rather than a \
+         short silhouette"
+    );
 }
 
 /// **Enio's junction** (2026-07-16, 3rd smoke): a vertical CAPSULE crossed by a fat round BLOB — the middle
@@ -317,85 +376,6 @@ fn diag_does_the_inflate_un_paint_the_armpit() {
                 .map(|x| glyph(cov[(y * SIZE + x) as usize]))
                 .collect();
             println!("{y:3} |{row}|");
-        }
-    }
-}
-
-/// DIAGNOSTIC — **is the envelope's winner out of its OWN reach?**
-///
-/// The lower envelope returns exactly ONE source per texel: the argmax of `pre[q] - a*d^2`. The post-pass
-/// then judges that winner against its budget (`d^2 < 2*rho^2*amount`) and, if it fails, the texel keeps its
-/// own floor and advects NOTHING. There is no second place to fall back to.
-///
-/// So this prints, for one row across the blob's rim: how far the winner travelled, whether it was legal,
-/// and — brute force over the legal disc — whether a source that WAS in reach existed at that texel.
-#[test]
-#[ignore]
-fn diag_is_the_winner_out_of_its_own_reach() {
-    let (t, layer) = capsule_crossed_by_blob();
-    let pre = heights_of(&t, layer);
-    let cov = covers_of(&t, layer);
-    let depth = 1.0f32;
-    let unit = super::super::impasto_light::DEPTH_UNIT_PX;
-    let rho = (depth * unit).ceil() as i64;
-    // Filter Layer fills `amount` UNIFORMLY at the brush strength — every texel, bare canvas included.
-    let s = 1.0f32;
-    let g: Vec<f32> = pre.iter().map(|p| p + depth * s).collect();
-    let a = 1.0 / (2.0 * depth * unit * unit);
-    let (hbuf, sbuf) = super::super::sculpt_offset::blob_dilate(&g, SIZE, SIZE, a, true);
-    let full_reach2 = (2 * rho * rho) as f32;
-    println!(
-        "rho = {rho} px   reach = sqrt(2*rho^2) = {:.1} texels   a = 1/{:.0}",
-        full_reach2.sqrt(),
-        1.0 / a
-    );
-    println!("  x | pre  cov | d_win |   t   | v=255t vs cov | lift vs floor | VERDICT");
-    for (label, y) in [("ARMPIT row 86", 86u32), ("FLANK  row 110", 110u32)] {
-        println!("--- {label} ---");
-        for x in 118..=145u32 {
-            let i = (y * SIZE + x) as usize;
-            let (dx, dy) = super::super::sculpt_offset::unpack_src(sbuf[i]);
-            let d2 = (dx * dx + dy * dy) as f32;
-            let t = super::super::sculpt_offset::ball_taper(d2, full_reach2);
-            let p0 = pre[i];
-            let lifted = p0 + t * (hbuf[i].max(p0) - p0);
-            let floor = p0 + depth * s;
-            // Brute force: the best source whose travel is INSIDE its own ball.
-            let r = full_reach2.sqrt().floor() as i64;
-            let (mut best, mut bd) = (f32::MIN, 0.0f32);
-            for oy in -r..=r {
-                for ox in -r..=r {
-                    let q2 = (ox * ox + oy * oy) as f32;
-                    if q2 >= full_reach2 {
-                        continue;
-                    }
-                    let (qx, qy) = (x as i64 + ox, y as i64 + oy);
-                    if qx < 0 || qy < 0 || qx >= i64::from(SIZE) || qy >= i64::from(SIZE) {
-                        continue;
-                    }
-                    let v = g[(qy * i64::from(SIZE) + qx) as usize] - a * q2;
-                    if v > best {
-                        best = v;
-                        bd = q2;
-                    }
-                }
-            }
-            let _ = (best, bd);
-            let v = (255.0 * t) as u8;
-            let floor_won = floor >= lifted;
-            let verdict = if floor_won {
-                "floor wins -> sbuf=0, NO MATTER"
-            } else if v <= cov[i] {
-                "ball wins, but v <= cov -> SKIPPED"
-            } else {
-                "GROWS"
-            };
-            println!(
-                "{x:3} | {p0:4.1} {:3} | {:5.1} | {t:.3} | {v:5} vs {:3}   | {lifted:5.2} vs {floor:5.2} | {verdict}",
-                cov[i],
-                d2.sqrt(),
-                cov[i]
-            );
         }
     }
 }

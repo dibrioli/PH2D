@@ -6,16 +6,15 @@
 //!
 //! ## The ball had TWO edges and they disagreed
 //!
-//! The post-pass in [`super::super::sculpt_blur::render_inflate`] fades the ball's **lift** to zero across
-//! the outer 30% of its reach (the taper: a parabola is a sphere only near the apex). It did not fade the
-//! **matter**: the advection copied `pre_cover` at FULL strength out to the last qualifying texel and then
-//! stopped dead. The light weighs by coverage (`impasto_light::paint_body(cover) = cover`), so the
-//! silhouette the artist sees was cut binary at `d² = reach2_s` — a bound read at the winner of a DISCRETE
-//! argmax, which changes texel to texel in a Voronoi-like pattern. The border *was* that pattern,
-//! binarised. That is the staircase in the photographs.
+//! The bounded ball's HEIGHT and MATTER both fade by the ONE law [`super::super::sculpt_offset::ball_fraction`]
+//! (`√(a_p² − d²/ρ²)`). The parabola it replaced faded only the HEIGHT (a squared taper) and copied the
+//! MATTER at FULL strength out to the last qualifying texel and then stopped dead. The light weighs by
+//! coverage (`impasto_light::paint_body(cover) = cover`), so the silhouette the artist saw was cut binary at
+//! the winner of a DISCRETE argmax — a Voronoi-like pattern, binarised. That was the staircase in the
+//! photographs; the bounded ball lands the matter at zero with the height, by construction.
 //!
-//! The law these gates pin: **the height and the matter agree on where the form ends.** One taper, asked
-//! once ([`super::super::sculpt_offset::ball_taper`]), answered the same way by both.
+//! The law these gates pin: **the height and the matter agree on where the form ends.** One fraction, asked
+//! once ([`super::super::sculpt_offset::ball_fraction`]), answered the same way by both.
 //!
 //! ## The fixture is Enio's repro, not the probe's slab
 //!
@@ -131,9 +130,9 @@ pub(super) fn max_step(profile: &[u8]) -> u8 {
 /// Measured: the deposit's rim steps by **114**; the Blob's rim stepped by **255** (255 → 0 in one texel)
 /// and now steps by **62**. The moat is on both sides of the deposit's number.
 ///
-/// **Mutation that must bleed:** drop the taper from the advection — deliver `pre_cover[si]` verbatim
-/// (`let v = pre_cover[si];`) — and the step goes back to 255. Equally: make [`ball_taper`] return `1.0`
-/// whenever it returns non-zero.
+/// **Mutation that must bleed:** drop the ball fraction from the advection — deliver `pre_cover[si]` verbatim
+/// (`let v = pre_cover[si];`) — and the step goes back to 255. Equally: make [`super::super::sculpt_offset::ball_fraction`]
+/// return `1.0` whenever it returns non-zero.
 #[test]
 fn the_inflated_rim_is_feathered_not_cut() {
     let (mut t, layer) = thick_round_blob();
@@ -236,8 +235,12 @@ fn the_matter_fades_where_the_ball_fades() {
 /// never grows, each texel composites exactly once, and the bug hides. (Too light and the ball never beats
 /// its self-floor and nothing advects at all — the window is real but it is a window.)
 ///
-/// **Mutation that must bleed:** compose against `rgba[gi*4+k]` (the live pixel) instead of
-/// `pre_rgba[gi*4+k]` (the frozen plane) in `render_inflate`'s advection.
+/// **Mutations that must bleed:** compose against `rgba[gi*4+k]` (the live pixel) instead of
+/// `pre_rgba[gi*4+k]` (the frozen plane); OR replace the advection's unconditional final assignment (the
+/// `None => restore the frozen plane` arm) with a `continue`, so a batch's stale composite survives when a
+/// later batch's winner brings less coverage — the bounded ball's coverage-winner is not its height-winner,
+/// so a slow mouse and a fast one leave different pictures (this is the bug the ball's advection was
+/// rewritten to kill: the height was already an unconditional `target[gi] = next`; the matter now matches).
 #[test]
 fn a_faster_mouse_does_not_grow_a_different_rim() {
     let run = |samples: u32| -> Vec<u8> {

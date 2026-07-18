@@ -176,29 +176,27 @@ fn on_a_flat_the_inflate_is_a_rounded_dome_not_a_layer_raise() {
     );
 }
 
-/// **The offset reaches ρ√2 and then STOPS — it is a ball, not a runaway rectangle.** (Enio's 3rd smoke,
+/// **The offset reaches ρ and then STOPS — it is a ball, not a runaway rectangle.** (Enio's 3rd smoke,
 /// 2026-07-14: *"funciona mas com um falloff de influência retangular bizarra"*.)
 ///
 /// The Blob dilates the absolute height `pre + lift`, which is right — that is what rolls the ball over the
-/// existing form and pushes its rim out. But the separable engine is a **parabola**, and a parabola has no
-/// support: a source of height `H` lifts everything within `√(H/a)` of it, which for THICK built-up paint is a
-/// hundred texels. Written only inside `kr = brush + 2ρ`, that runaway is clipped to the rectangle — the hard
-/// square Enio saw around the dome.
+/// existing form and pushes its rim out. The engine it once used, a separable **parabola**, had no support:
+/// a source of height `H` lifted everything within `√(H/a)` of it, which for THICK built-up paint is a hundred
+/// texels; clipped to `kr = brush + 2ρ` that runaway became the hard square Enio saw around the dome.
 ///
-/// A true ball of radius ρ reaches ρ, no matter how tall the cliff it rolls against. The fix caps the composed
-/// argmax distance at ρ√2 (`dx² + dy² ≤ 2ρ²`, the radius where the parabola has fallen the full |Depth| and a
-/// real ball ends) and falls the rest back to `pre`. It is **circular** — it bounds `dx²+dy²`, not each axis —
-/// so it can never itself draw a square.
+/// The bounded ball (`super::super::sculpt_offset::blob_ball`) is `√(a_p² − d²/ρ²)`: a source lifts a texel
+/// ONLY inside its own `ρ·a_p` ball, and `arg = a_p² − dq ≤ 0 ⇒ no lift`. No cap to place, no rectangle to
+/// clip — the reach is `ρ` by construction, and the probes below (near probe inside ρ, far probe past it)
+/// read `pre` bit-for-bit outside.
 ///
 /// The fixture is the screenshot: a tall isolated plateau (thick paint) with bare canvas around it, inflated.
-/// The near probe (inside ρ√2) is the **presence sibling** — the form genuinely fattens by the ball's radius,
-/// so the far probe reading `pre` proves the reach is BOUNDED, not that Inflate does nothing. The far probe
-/// (past ρ√2, still inside `kr`) must stay at `pre`: no shelf, no square.
+/// The near probe (inside ρ) is the **presence sibling** — the form genuinely fattens, so the far probe
+/// reading `pre` proves the reach is BOUNDED, not that Inflate does nothing. The far probe (past ρ, still
+/// inside `kr`) must stay at `pre`: no shelf, no square.
 ///
-/// **Mutation that must bleed:** let the clamp never fire (widen `reach2`) — the far probe rises to ~20 loads
-/// (verified: 19.78), the plateau's parabola clipped to `kr`, which is exactly the shelf Enio saw. The erode
-/// sibling below is what proves the *rim re-sample* (rather than a blunt fall-to-`pre`) is the right fall-back:
-/// snapping the argmin to `pre` there would cancel the dig on a thin ridge.
+/// **Mutation that must bleed:** in `blob_ball`, widen the disc cap (`if dq <= 1.0` → `if dq <= 4.0`) with
+/// the loop bound `r` grown to match, so sources compete past their own ball — the far probe rises and the
+/// shelf Enio saw returns. The bounded ball cannot itself draw a square: its support is a disc of radius `ρ`.
 #[test]
 fn the_inflate_offset_reach_is_bounded_not_a_runaway_rectangle() {
     let size = 160u32;
@@ -255,71 +253,5 @@ fn the_inflate_offset_reach_is_bounded_not_a_runaway_rectangle() {
          loads. A ball of radius ρ cannot reach here; this is the unbounded parabola's runaway skirt, and \
          clipped to the rectangular kr it is exactly the *falloff retangular bizarra* Enio reported.",
         at(35)
-    );
-}
-
-/// **The separable parabolic dilation equals the brute-force `O(N²)` one — the fast path is the true one.**
-///
-/// The Blob's engine is Felzenszwalb's `O(N)` lower-envelope sweep, twice (x then y). A subtle sign or
-/// intersection error would give a plausible-but-wrong dome — the first cut inverted the lift sign and
-/// turned a flat top into a peak (the fatten gates caught it, but only on a shaped fixture). This pins the
-/// algorithm itself: for a random field, the swept result must match the naïve `max over all p of
-/// [f(p) − a·|q−p|²]`, to the visible bit.
-///
-/// **Mutation that must bleed:** flip the `out_val` lift sign in `ParabolaScratch::transform` (`sign` →
-/// `−sign`); the dome inverts and this diverges everywhere.
-#[test]
-fn the_parabolic_blob_matches_the_brute_force_dilation() {
-    use super::super::sculpt_offset::{blob_dilate, unpack_src};
-    let (w, h) = (24u32, 18u32);
-    let (wu, hu) = (w as usize, h as usize);
-    // A deterministic, bumpy field (HR-5: no RNG in a gate).
-    let g: Vec<f32> = (0..wu * hu)
-        .map(|i| {
-            let x = (i % wu) as f32;
-            let y = (i / wu) as f32;
-            0.3 * (x * 0.7).fract() + 0.5 * (y * 0.4 + x * 0.1).fract()
-        })
-        .collect();
-    let a = 1.0 / (2.0 * 0.5 * 16.0 * 16.0); // the Blob's curvature at Depth 0.5
-
-    let (fast, src) = blob_dilate(&g, w, h, a, true);
-
-    // The naïve dilation: for each output, the max over EVERY source of the parabola, and its argmax.
-    let mut worst = 0.0f32;
-    let mut src_mismatch = 0u32;
-    for qy in 0..hu {
-        for qx in 0..wu {
-            let mut best = f32::NEG_INFINITY;
-            for py in 0..hu {
-                for px in 0..wu {
-                    let d2 = ((qx as f32 - px as f32).powi(2)) + ((qy as f32 - py as f32).powi(2));
-                    best = best.max(g[py * wu + px] - a * d2);
-                }
-            }
-            let o = qy * wu + qx;
-            worst = worst.max((fast[o] - best).abs());
-            // The argmax can tie; only count a mismatch when the fast pick's VALUE is worse than the
-            // brute pick's (a real error), not when two equal-value sources were chosen differently.
-            let (dx, dy) = unpack_src(src[o]);
-            let (sx, sy) = (qx as i64 + dx, qy as i64 + dy);
-            if sx >= 0 && sy >= 0 && (sx as usize) < wu && (sy as usize) < hu {
-                let picked = g[(sy as usize) * wu + (sx as usize)]
-                    - a * ((qx as f32 - sx as f32).powi(2) + (qy as f32 - sy as f32).powi(2));
-                if picked < best - 1e-4 {
-                    src_mismatch += 1;
-                }
-            }
-        }
-    }
-    assert!(
-        worst < 1e-4,
-        "the separable parabolic dome differs from the brute-force one by {worst:e} — the O(N) sweep is not \
-         the O(N²) truth, so the fast Blob is a different (wrong) shape"
-    );
-    assert_eq!(
-        src_mismatch, 0,
-        "the composed argmax pointed at a source the brute force beats — the paint would follow the wrong \
-         texel and the fattening would carry the wrong colour"
     );
 }

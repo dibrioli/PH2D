@@ -1,17 +1,13 @@
-//! **The bounded-ball workshop.** The gold-standard border is the TRUE BALL (`√(ρ²−d²)`), proven in
-//! [`super::inflate_edge_probes::diag_prove_the_true_ball_model`]; its only open question is SPEED. The
-//! shipped kernel is a separable parabolic dilation — `O(N)`, but the parabola has **unbounded support**,
-//! and that is the whole of the junction bug ([`super::inflate_junction_probes`]): a source captures the
-//! envelope out to `√(H/a)` while it can only serve out to `ρ√2`, so a tall junction hands its Voronoi cell
-//! a dead zone, and the boundary of that cell is the white gash.
-//!
-//! A **bounded** structuring element has `capture == reach` by construction — no dead zone, no gash. The
-//! exact ball is bounded but `O(area·ρ²)`. These probes settle, by measurement and not by assertion, the one
-//! question that decides the shape of the fix: **is the exact ball's real per-move cost inside the kill
-//! criterion?** They mirror the kill harness ([`super::session::sculpt_perf_kill_criterion`]) — 2048²/4096²,
-//! brush 100, the widest ball (Depth 1 ⇒ ρ = 16) — and time the KERNEL over the region a move actually
-//! touches (the footprint grown by the reach), which is a few hundred texels square, NOT the whole canvas.
-//! The "73 ms" this line has quoted was never pinned to a region; this pins it.
+//! **The bounded-ball workshop** — the probes that DECIDED, and then SHIPPED, the TRUE BALL
+//! (`super::super::sculpt_offset::blob_ball`). The parabola it replaced had **unbounded support**: a source
+//! captured the envelope out to `√(H/a)` while it could only serve out to `ρ√2`, so a tall junction handed
+//! its Voronoi cell a dead zone whose boundary is the white gash ([`super::inflate_junction_probes`]). A
+//! **bounded** ball has `capture == reach` by construction — no dead zone, no gash — and these probes settled,
+//! by measurement, the one question that decided the kernel: the exact ball is `O(area·ρ²)` (44 ms/move
+//! serial) but embarrassingly parallel, and the shipped `blob_ball` (parallel over rows + the disc-list
+//! reformulation) lands the widest case UNDER the kill. They mirror the kill harness
+//! ([`super::session::sculpt_perf_kill_criterion`]) — 2048²/4096², brush 100, the widest ball (Depth 1 ⇒
+//! ρ = 16) — and time the KERNEL over the region a move actually touches (the footprint grown by the reach).
 
 use super::super::Region;
 use super::super::region::grow_region;
@@ -202,46 +198,6 @@ fn diag_does_the_bounded_ball_fix_the_cross() {
     }
 }
 
-/// The exact bounded ball over a region, **parallelised over output rows** — disjoint rows, no reduction,
-/// no RNG, byte-identical to the serial version: exactly the property ADR-0109 used to admit rayon for the
-/// watercolor composite. This is the candidate SHIPPABLE kernel; the probe below times it.
-fn exact_ball_region_par(pre: &[f32], size: u32, cr: Region, depth: f32, unit: f32) -> Vec<f32> {
-    use rayon::prelude::*;
-    let rho = depth * unit;
-    let r = rho.ceil() as i64;
-    let sz = size as i64;
-    let (cw, ch) = (cr.w as usize, cr.h as usize);
-    let mut disc: Vec<(i64, i64, f32)> = Vec::new();
-    for dy in -r..=r {
-        for dx in -r..=r {
-            let d2 = (dx * dx + dy * dy) as f32;
-            if d2 <= rho * rho {
-                disc.push((dx, dy, depth * (1.0 - d2 / (rho * rho)).max(0.0).sqrt()));
-            }
-        }
-    }
-    let mut out = vec![0.0f32; cw * ch];
-    out.par_chunks_mut(cw).enumerate().for_each(|(ry, row)| {
-        let qy = cr.y as i64 + ry as i64;
-        for (rx, cell) in row.iter_mut().enumerate() {
-            let qx = cr.x as i64 + rx as i64;
-            let mut best = pre[(qy * sz + qx) as usize];
-            for &(dx, dy, lift) in &disc {
-                let (px, py) = (qx + dx, qy + dy);
-                if px < 0 || py < 0 || px >= sz || py >= sz {
-                    continue;
-                }
-                let v = pre[(py * sz + px) as usize] + lift;
-                if v > best {
-                    best = v;
-                }
-            }
-            *cell = best;
-        }
-    });
-    out
-}
-
 /// DIAGNOSTIC — **the decisive number: exact ball vs separable parabola, per-move, over the real region.**
 ///
 /// If the exact ball clears the kill criterion here, the "algorithm owed" evaporates and the fix is to ship
@@ -254,32 +210,14 @@ fn diag_exact_ball_per_move_cost() {
     let depth = 1.0f32;
     let rho = (depth * unit).ceil() as i64;
     println!("ball radius ρ = {rho} texels   (Depth {depth}, the widest)");
-    println!("             region      | separable O(N) | exact ball O(area·ρ²) | ratio");
+    println!(
+        "             region      | serial exact O(area·ρ²) | SHIPPED (parallel blob_ball) | speedup"
+    );
     for size in [2048u32, 4096] {
         let pre = kill_relief(size);
+        let amount = vec![1.0f32; (size * size) as usize]; // Filter Layer fills `amount` uniformly
         let cr = per_move_region(size, 100.0, rho);
         let texels = (cr.w * cr.h) as f64;
-
-        // Separable: build the peak field and run the shipped engine over `cr`.
-        let a = 1.0 / (2.0 * depth * unit * unit);
-        let g: Vec<f32> = {
-            let mut v = vec![0.0f32; (cr.w * cr.h) as usize];
-            for ry in 0..cr.h {
-                for rx in 0..cr.w {
-                    let gi = ((cr.y + ry) * size + cr.x + rx) as usize;
-                    v[(ry * cr.w + rx) as usize] = pre[gi] + depth;
-                }
-            }
-            v
-        };
-        let sep = |g: &[f32]| {
-            let t0 = Instant::now();
-            let _ = super::super::sculpt_offset::blob_dilate(g, cr.w, cr.h, a, true);
-            t0.elapsed().as_secs_f64() * 1000.0
-        };
-        // Warm + best-of-3 (the region is small; a single run is jittery).
-        let _ = sep(&g);
-        let sep_ms = (0..3).map(|_| sep(&g)).fold(f64::MAX, f64::min);
 
         let ex = || {
             let t0 = Instant::now();
@@ -289,20 +227,23 @@ fn diag_exact_ball_per_move_cost() {
         let _ = ex();
         let exact_ms = (0..3).map(|_| ex()).fold(f64::MAX, f64::min);
 
-        let par = || {
+        // The SHIPPED kernel: `sculpt_offset::blob_ball`, the exact bounded ball parallelised over rows.
+        let ship = || {
             let t0 = Instant::now();
-            let _ = exact_ball_region_par(&pre, size, cr, depth, unit);
+            let _ = super::super::sculpt_offset::blob_ball(
+                &pre, &amount, size, size, cr, depth, unit, true,
+            );
             t0.elapsed().as_secs_f64() * 1000.0
         };
-        let _ = par();
-        let par_ms = (0..3).map(|_| par()).fold(f64::MAX, f64::min);
+        let _ = ship();
+        let ship_ms = (0..3).map(|_| ship()).fold(f64::MAX, f64::min);
 
         println!(
-            "  @{size}: {}×{} ({:.0}k) | sep {sep_ms:6.2} | exact {exact_ms:7.2} ({:.0}×) | PARALLEL {par_ms:6.2} ms",
+            "  @{size}: {}×{} ({:.0}k) | {exact_ms:9.2} ms          | {ship_ms:10.2} ms                 | {:.0}×",
             cr.w,
             cr.h,
             texels / 1000.0,
-            exact_ms / sep_ms
+            exact_ms / ship_ms
         );
     }
     println!(

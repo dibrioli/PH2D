@@ -214,9 +214,18 @@ fn a_negative_depth_erodes_the_form_instead_of_just_lowering_it() {
 /// **invisible**. The buffer is the implementation; the coverage is the appearance
 /// ([[feedback_oracle_must_model_appearance_not_implementation]] — for the third time on this line, and the
 /// first two were mine as well).
+/// The width of the painted SILHOUETTE — the extent the light actually draws, at a low coverage floor.
+///
+/// `> 32` and not `> 128` (half), because the bounded ball **feathers its rim** — the correction that removed
+/// the junction gash (`super::inflate_junction_probes`). Its outer edge is genuine paint at ~12–48% opacity
+/// (measured on this fixture: a `123`-flat tail 5 texels wide before the drop to `0`), which the light weighs
+/// and the eye sees. A half-opacity threshold measures only the OPAQUE core of the growth and so understates
+/// a feathered silhouette by ~3× (the ball grows this fixture `+14` at the silhouette, `+4` at half). The
+/// light shades by coverage, so the silhouette — where coverage clears the noise floor — is what "the form
+/// grew" means. `> 0` would count a single stray texel; `> 32` is "the light can see it".
 fn paint_width(cov: &[u8], size: u32, x: u32) -> usize {
     (MID - BAND..=MID + BAND)
-        .filter(|y| cov[((y * size) + x) as usize] > 128)
+        .filter(|y| cov[((y * size) + x) as usize] > 32)
         .count()
 }
 
@@ -318,9 +327,13 @@ fn the_inflated_rim_carries_the_paints_colour() {
         .filter(|y| cov0[((y * size) + 100) as usize] == 0)
         .filter(|y| {
             let d = i64::from(*y) - 100;
-            // The deposit's brush is 16 px, so the paint reaches |d| ≈ 16. This texel is 4-6 px BEYOND its
-            // rim — bare canvas, and inside the reach of the 16-px ball a full Depth rolls over it.
-            (20..=22).contains(&d.abs())
+            // The deposit's brush is 16 px, so the paint reaches |d| ≈ 16. This texel is 1-2 px BEYOND its
+            // rim — bare canvas, and in the OPAQUE zone of the 16-px ball (near its centre, where the arriving
+            // coverage is high). The bounded ball feathers to nothing at its rim, so a texel further out
+            // wears the ball's faint outer edge (correctly a pale tint) and is the wrong place to read *what
+            // colour the paint is*; the opaque zone is where the light draws substantial paint, and it must
+            // be the paint's own colour, not the canvas's.
+            (17..=18).contains(&d.abs())
         })
         .map(|y| (y * size + 100) as usize)
         .next()

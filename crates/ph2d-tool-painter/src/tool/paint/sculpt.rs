@@ -380,7 +380,7 @@ pub(crate) struct SculptState {
     /// renders exactly nothing. The buffer grew. The screen did not. The gate measured the buffer.
     ///
     /// So the matter travels with the height: what arrives at a texel came from the ball's **argmax** (the
-    /// packed source [`super::sculpt_offset::blob_dilate`] returns, consumed in
+    /// packed source [`super::sculpt_offset::blob_ball`] returns, consumed in
     /// [`super::sculpt_blur::PainterTool::render_inflate`]), and it brings that texel's coverage, its material
     /// and its **colour** — because
     /// paint is a substance, and a substance that moves takes its colour with it. (The same sentence is

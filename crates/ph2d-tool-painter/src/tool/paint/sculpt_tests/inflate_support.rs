@@ -22,6 +22,14 @@
 //!
 //! The law these gates pin: **the Blob's support is the brush's touched set dilated by each toucher's own
 //! ball — never the write window.** Outside it, the canvas is not "close to" `pre`; it is `pre`, bit for bit.
+//!
+//! ⚠️ **2026-07-17 — the four fences are now STRUCTURAL.** The parabola these gates guarded (`g = pre ±
+//! |Depth|·amount`, an UNBOUNDED lower-envelope held in by a sentinel / a per-source budget / a taper / a
+//! self-floor) was replaced by the EXACT bounded ball (`super::super::sculpt_offset::blob_ball`): a source
+//! lifts a texel by `mag·√(a_p² − d²/ρ²)` ONLY inside its own `ρ·a_p` ball, so bounded support, an untouched
+//! source contributing nothing, a per-source radius, and a rim that lands at zero are all TRUE BY
+//! CONSTRUCTION — no fence to keep. These gates remain as regression guards; their mutations below now
+//! break the ball's own arithmetic rather than remove a fence that no longer exists.
 
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
@@ -122,15 +130,10 @@ fn dilate_touched(touched: &[f32], size: u32, reach: i64) -> Vec<bool> {
 /// radius cannot span. Any write at all is the window's edge showing through, and the window is a
 /// rectangle.
 ///
-/// **The red this gate was born with:** the pre-fix `render_inflate` itself — untouched sources rooted at
-/// their own ground AND winners held only to the global ρ√2 — measured **11 830 texels / 7.09 loads** of
-/// shelf on this very fixture. The support is now held by TWO independent layers (the sentinel keeps
-/// untouched sources from contributing; the per-winner budget disqualifies over-reachers), so no single
-/// mutation reopens it — remove BOTH (`g = pre` where `amount = 0`, and `t := 1.0` unconditionally) and
-/// this bleeds exactly the smoke report. Each layer alone is pinned by its own gate: the sentinel by
-/// [`an_untouched_wall_does_not_shadow_the_balls_lift`], the budget by
-/// [`a_weak_dabs_ball_is_small_and_its_reach_shrinks_with_it`] and the taper by
-/// [`the_balls_edge_meets_the_ground_without_a_cliff`].
+/// **Mutation that must bleed:** in `blob_ball`, drop the disc cap (`if dq <= 1.0` → a larger bound) so a
+/// source competes past its own ball — a tall junction reaches across the window and the far shelf returns.
+/// The bounded ball makes the old parabola's ambient shelf (once **11 830 texels / 7.09 loads** on this
+/// fixture) impossible by construction: a source lifts only inside `ρ·a_p`.
 #[test]
 fn the_inflate_writes_nothing_beyond_the_balls_reach_on_thick_paint() {
     let size = 256u32;
@@ -219,9 +222,10 @@ fn the_inflate_writes_nothing_beyond_the_balls_reach_on_thick_paint() {
 /// With the sentinel, untouched texels never enter the race, so the winner is always the best TOUCHED
 /// source and the lift beside a wall is the same as the lift beside nothing.
 ///
-/// **Mutation that must bleed:** root untouched texels at their own ground again (`g = pre` where
-/// `amount = 0` in `render_inflate`'s peak-field build) — the wall wins, is disqualified, and the
-/// receiver's lift vanishes.
+/// **Mutation that must bleed:** let an untouched source compete — in `blob_ball`, replace the per-source
+/// `arg = a_p² − dq` with `1.0 − dq` (ignore `amount`), so the bare 20-load wall grows a full ball and
+/// lifts the receiver to the wall's height instead of the touched source's. With `amount` in the arg an
+/// untouched texel has `a_p = 0 ⇒ arg = −dq < 0 ⇒ no ball`: the sentinel, for free.
 #[test]
 fn an_untouched_wall_does_not_shadow_the_balls_lift() {
     let size = 160u32;
@@ -286,8 +290,10 @@ fn an_untouched_wall_does_not_shadow_the_balls_lift() {
 /// inside the reach) they carry ~2–3 loads. The bar sits in the empty middle, and it also convicts the
 /// half-regression (the LINEAR taper, ~0.6 loads).
 ///
-/// **Mutation that must bleed:** in `render_inflate`'s post-pass, replace the squared taper with `1.0`
-/// inside the reach (delete the fade) — the ring lift jumps an order of magnitude.
+/// **Mutation that must bleed:** in `blob_ball`, clamp `arg` to a floor above zero before the sqrt
+/// (`arg.max(0.2)`) so the ball no longer lands at the ground — the outermost written texel carries a wall
+/// of lift again. The TRUE ball needs no taper: `lift = mag·√(a_p² − dq) → 0` as `dq → a_p²`, so the rim
+/// meets the ground at zero by construction (the parabola's squared taper it replaced is gone).
 #[test]
 fn the_balls_edge_meets_the_ground_without_a_cliff() {
     let size = 256u32;
@@ -352,9 +358,10 @@ fn the_balls_edge_meets_the_ground_without_a_cliff() {
 /// The fixture is a RAMP (slope 0.05 loads/px — well inside what the settle leaves on a thick flank) under
 /// one weak dab, so the uphill subsidy is real and the per-source bound is the only thing standing.
 ///
-/// **Mutation that must bleed:** in `render_inflate`'s post-pass, read the reach from the full Depth
-/// instead of the winner's own `amount` (`reach²_s = 2ρ²` for every source) — the weak dab's lift runs to
-/// the full-strength radius and the far probe moves.
+/// **Mutation that must bleed:** in `blob_ball`, use `1.0 − dq` for the arg instead of `a_p² − dq` — every
+/// source, however weak, gets the full-strength `ρ` ball and the weak dab's lift runs to the full radius.
+/// The falloff sets the ball: `arg = a_p² − dq > 0 ⟺ d² < (ρ·a_p)²`, so a weak dab has a small ball, per
+/// source, by construction.
 #[test]
 fn a_weak_dabs_ball_is_small_and_its_reach_shrinks_with_it() {
     let size = 160u32;

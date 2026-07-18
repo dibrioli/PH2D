@@ -1,12 +1,29 @@
-//! **Inflate — the Blob.** A ball whose radius follows the falloff, done as a separable parabolic dilation
-//! ([`blob_dilate`], Felzenszwalb `O(N)`), plus the `(dx, dy)` source packing its advection carries.
+//! **Inflate — the Blob.** A morphological offset of the relief by a **ball**: at each source the surface is
+//! raised by a hemisphere whose radius follows the falloff, and the envelope (the `max` over sources) is the
+//! grown form. Plus the `(dx, dy)` source packing its matter advection carries.
 //!
-//! It is NOT memoised — its shape rides the live `amount`, which grows across the stroke — so it recomputes
-//! per render in [`super::sculpt_blur::render_inflate`], which builds the peak field and calls the dilation.
+//! ## Why the TRUE ball, and not a separable parabola
+//!
+//! The Blob shipped for a year as a separable parabolic dilation (Felzenszwalb `O(N)`) — fast, but the
+//! parabola has **unbounded support**: a source of height `H` wins a texel's envelope out to `√(H/a)` while
+//! it can only *serve* out to `ρ√2`, and on paint thicker than the Depth (all real impasto) the gap between
+//! the two is a dead zone. At a JUNCTION — the tallest point on the canvas — that dead zone is widest, and
+//! the boundary of its Voronoi cell is a hard line across otherwise-uniform paint: **the white gash** of
+//! Enio's cross (2026-07-16). Four containment layers (a sentinel, a per-source budget, a squared taper, a
+//! self-floor) existed only to fence that unbounded support, and each was a thing the artist could see.
+//!
+//! A **bounded** ball has `capture == reach` by construction: it cannot claim what it cannot serve, so the
+//! four fences have nothing to do and are gone. The exact ball is `O(area·ρ²)` — measured **44 ms/move** on
+//! a big brush, far past the kill — but it is embarrassingly parallel (disjoint output rows, no reduction,
+//! no RNG, byte-identical to the serial version: the same property ADR-0109 used to admit `rayon` for the
+//! watercolor composite), and parallelised it is **3 ms/move** on the workstation. The proof that it removes
+//! the gash on Enio's own cross is [`super::sculpt_tests::inflate_junction_probes`].
+
+use rayon::prelude::*;
 
 /// Pack a source offset `(dx, dy)` — where the matter at a texel came FROM — into one `u32`.
 ///
-/// `(0, 0)` packs to `0`, which is what a texel whose own tap won gets, and which the render reads as
+/// `(0, 0)` packs to `0`, which is what a texel whose own ball won gets, and which the render reads as
 /// *nothing moved here*. The flat interior of every stroke is all zeros, so the advection costs nothing
 /// where nothing happens.
 #[inline]
@@ -23,155 +40,117 @@ pub(super) fn unpack_src(v: u32) -> (i64, i64) {
     )
 }
 
-/// **The ball's TAPER — how much of a source's lift survives at squared distance `d2`, for a ball whose
-/// budget is `reach2` (`2ρ²·amount`, the source's own).** `1` out to the sphere's equator, `0` at the reach.
+/// **How much of a ball of squared radius `rho2` has reached squared distance `d2`** — the hemisphere's own
+/// normalised profile, `√(1 − d²/ρ²)`, `1` at the centre and `0` at the rim. `rho2 <= 0` (an untouched
+/// source: `amount = 0`) returns `0` through the same comparison.
 ///
-/// The parabola equals the sphere only near the apex; past `d² = R²/2` — the equator — the two diverge, and
-/// the outer 30% of the reach is flank fiction (a real sphere's side plunges and lands; the parabola glides
-/// on). So the lift is faded to zero across it, **squared**, which puts the fade C¹: the gradient zeroes
-/// exactly where the lift does, and the support's edge stops being drawable. A linear ramp still reached
-/// the boundary at ~0.6 loads/texel — a softer edition of the very ring this exists to kill.
+/// This is the **single door** the Blob asks TWICE — once for the HEIGHT (the lift a source adds is
+/// `|Depth|·amount·ball_fraction`) and once for the MATTER (the coverage, material and pigment a source
+/// carries arrive at `pre_cover·ball_fraction`). They shipped as one formula and one omission once — the
+/// height tapered, the matter was copied at full strength and cut binary — and the staircase that made was
+/// this line's oldest bug: *two things that must agree about a fact, disagreeing.* One function, one answer.
 ///
-/// ## Why this is a function and not two copies of a formula
-///
-/// It answers **one** question — *how much of the ball got here?* — and the Blob asks it **twice**: once for
-/// the HEIGHT (the post-pass fades the lift) and once for the MATTER (the advection fades the coverage,
-/// material and pigment it carries). They shipped as one formula and one omission: the height tapered, the
-/// matter was copied at full strength to the last qualifying texel and then stopped dead. The light weighs
-/// by coverage, so the artist saw the *matter's* edge — a binary cut at `d² = reach2`, read at the winner of
-/// a discrete argmax, i.e. a Voronoi pattern binarised. That is the staircase of Enio's 2026-07-16 smoke,
-/// and it is this line's oldest bug wearing a new hat: **two things that must agree about a fact,
-/// disagreeing** — here, where the form ends.
-///
-/// `reach2 <= 0` (an untouched source: `amount = 0`) returns `0` through the same comparison, since `d2` is
-/// never negative — the sentinel needs no special case.
+/// Unlike the parabola's `ball_taper` it replaced, the ball needs no fade bolted on: it lands at zero on its
+/// own, so the envelope is a `max` of continuous functions — continuous by construction.
 #[inline]
-pub(super) fn ball_taper(d2: f32, reach2: f32) -> f32 {
-    if d2 >= reach2 {
-        return 0.0; // past its own ball — or never had one
+pub(super) fn ball_fraction(d2: f32, rho2: f32) -> f32 {
+    if rho2 <= 0.0 || d2 >= rho2 {
+        return 0.0;
     }
-    let lin = (2.0 - 2.0 * d2 / reach2).clamp(0.0, 1.0);
-    lin * lin
+    (1.0 - d2 / rho2).sqrt()
 }
 
-/// **The Blob's engine — a separable parabolic dilation.** (Enio 2026-07-14, 3rd smoke.)
+/// **The Blob's engine — an exact bounded-ball dilation, parallelised over output rows.**
 ///
-/// Inflate is a ball whose radius follows the falloff, and the exact spherical version is `O(area·ρ²)`,
-/// which — un-memoisable, because the radius rides the live `amount` — measured **73 ms/move** on a big
-/// brush. A sphere is well approximated near its top by a **parabola**, and dilation by a parabola is
-/// **separable** (a pass along x, then along y) and `O(N)` by Felzenszwalb & Huttenlocher's lower-envelope
-/// algorithm (*Distance Transforms of Sampled Functions*, 2004). Same rounded, fattening dome; a fraction of
-/// the cost.
+/// For every texel `q` in the compute region `cr`, the grown height is
+/// `max` over sources `p` within `p`'s own ball of `pre[p] + |Depth|·amount[p]·ball_fraction(d², ρ_p²)`,
+/// where the per-source radius is `ρ_p = ρ·amount[p]` texels (`ρ = |Depth|·unit`) — so a strong touch grows
+/// a full ball and an untouched texel (`amount = 0`) grows none, which is the sentinel, for free. `dilate`
+/// false mirrors it to a `min` (erosion, for negative Depth). Returns the height and the packed **argmax**
+/// ([`pack_src`]) — where each texel's matter came from — so the paint can follow the relief.
 ///
-/// The peak of the parabola at source `x` is `g(x)` — set by the caller to `pre(x) ± |Depth|·amount(x)`, so
-/// the falloff IS the height budget. The curvature `a = 1/(2·|Depth|·DEPTH_UNIT_PX²)` matches the sphere of
-/// radius `|Depth|·DEPTH_UNIT_PX` at its apex (the two axes reconciled through the light's unit, as every
-/// geometric quantity here is).
+/// The two axes are not the same unit: `d` is texels, the lift is loads, so the ball is an ellipsoid in
+/// (texel, load) space — horizontal radius `ρ` texels, vertical radius `|Depth|` loads. The `√(1 − d²/ρ²)`
+/// profile is dimensionless; the `|Depth|·amount` prefactor carries the load ([`ball_fraction`],
+/// [[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
 ///
-/// Returns, per texel of the `w × h` region, the dilated height and the **packed source offset**
-/// ([`pack_src`]) — the argmax, composed through the two passes, so the paint can follow the relief.
-pub(super) fn blob_dilate(g: &[f32], w: u32, h: u32, a: f32, dilate: bool) -> (Vec<f32>, Vec<u32>) {
-    let (wu, hu) = (w as usize, h as usize);
-    // Pass 1 — along X, per row. `h1[i]` = the dilated value, `argx[i]` = the source COLUMN it came from.
-    let mut h1 = vec![0.0f32; wu * hu];
-    let mut argx = vec![0u32; wu * hu];
-    let mut scratch = ParabolaScratch::new(wu.max(hu));
-    for y in 0..hu {
-        let base = y * wu;
-        scratch.transform(&g[base..base + wu], a, dilate);
-        for x in 0..wu {
-            h1[base + x] = scratch.out_val[x];
-            argx[base + x] = scratch.out_arg[x] as u32;
+/// `pre`/`amount` are the whole-canvas frozen planes; `cr` is the sub-rectangle written. Reads are clamped
+/// to the canvas, and the caller insets its WRITE region inside `cr` by the reach, so no written texel ever
+/// consults a source outside `cr`.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn blob_ball(
+    pre: &[f32],
+    amount: &[f32],
+    w: u32,
+    h: u32,
+    cr: super::Region,
+    depth: f32,
+    unit: f32,
+    dilate: bool,
+) -> (Vec<f32>, Vec<u32>) {
+    let rho = depth.abs() * unit;
+    let r = rho.ceil() as i64;
+    let mag = depth.abs();
+    let inv_rho2 = 1.0 / (rho * rho);
+    let (sw, sh) = (i64::from(w), i64::from(h));
+    let (cw, ch) = (cr.w as usize, cr.h as usize);
+    // Precompute the DISC once: every offset inside the full ball (`d² ≤ ρ²`), carrying `dq = d²/ρ²`. This is
+    // the hot loop's whole geometry — computed here, not per (texel, source). The reformulation folds the
+    // per-source math to one subtract and one sqrt: a source at `dq` with falloff `a_p` lifts a texel by
+    //   `|Depth|·a_p·√(1 − d²/(ρ·a_p)²) = |Depth|·√(a_p² − d²/ρ²) = mag·√(a_p² − dq)`  (in-ball ⟺ `a_p² > dq`),
+    // which is the SAME quantity `ball_fraction` gives the advection (they agree on the support, the one fact
+    // that matters), with no per-pair divide and no int→float. It is what turned 18 ms/move into shippable.
+    let mut disc: Vec<(i64, i64, f32)> = Vec::new();
+    for dy in -r..=r {
+        for dx in -r..=r {
+            let dq = (dx * dx + dy * dy) as f32 * inv_rho2;
+            if dq <= 1.0 {
+                disc.push((dx, dy, dq));
+            }
         }
     }
-    // Pass 2 — along Y, per column. `hf` = final height, `argy` = the source ROW.
-    let mut hf = vec![0.0f32; wu * hu];
-    let mut src = vec![0u32; wu * hu];
-    let mut col: Vec<f32> = vec![0.0; hu];
-    for x in 0..wu {
-        for y in 0..hu {
-            col[y] = h1[y * wu + x];
-        }
-        scratch.transform(&col, a, dilate);
-        for y in 0..hu {
-            let ry = scratch.out_arg[y]; // the source row for output (x, y)
-            let cx = argx[ry * wu + x] as usize; // …and, at that row, the source column
-            hf[y * wu + x] = scratch.out_val[y];
-            src[y * wu + x] = pack_src(cx as i64 - x as i64, ry as i64 - y as i64);
-        }
-    }
-    (hf, src)
-}
-
-/// Reusable buffers for the 1-D parabola lower-envelope, so a whole 2-D pass allocates once.
-struct ParabolaScratch {
-    v: Vec<usize>,       // the parabola locations forming the envelope
-    z: Vec<f32>,         // the boundaries between them
-    out_val: Vec<f32>,   // the dilated 1-D result
-    out_arg: Vec<usize>, // the source index (argmax) per output
-}
-
-impl ParabolaScratch {
-    fn new(n: usize) -> Self {
-        Self {
-            v: vec![0; n + 1],
-            z: vec![0.0; n + 2],
-            out_val: vec![0.0; n],
-            out_arg: vec![0; n],
-        }
-    }
-
-    /// One 1-D parabolic dilation (`dilate = true`) or erosion (`false`) of `f`, curvature `a`.
-    ///
-    /// `dilate`: `H[q] = max_p ( f[p] − a·(q−p)² )`. Via `F = −f/a`, that is `−a·` the standard **min**
-    /// distance transform `min_p ( F[p] + (q−p)² )`, whose lower-envelope sweep is Felzenszwalb's — and its
-    /// winner `v[k]` IS the argmax. Erosion mirrors it with `F = f/a` and `+a·`.
-    fn transform(&mut self, f: &[f32], a: f32, dilate: bool) {
-        let n = f.len();
-        if n == 0 {
-            return;
-        }
-        let sign = if dilate { -1.0 } else { 1.0 };
-        // F[p] = sign · f[p] / a — the values the standard `min` transform runs on.
-        let ff = |p: usize| -> f32 { sign * f[p] / a };
-        let (v, z) = (&mut self.v, &mut self.z);
-        let mut k = 0usize;
-        v[0] = 0;
-        z[0] = f32::NEG_INFINITY;
-        z[1] = f32::INFINITY;
-        for q in 1..n {
-            let fq = ff(q);
-            // Pop parabolas the new one has overtaken, then push it. `z[0] = −∞` and a finite `s` guarantee
-            // the pop stops at `k = 0` before it can underflow, so `q` is ALWAYS pushed (the envelope keeps
-            // every location, only re-ordering their reigns).
-            loop {
-                let p = v[k];
-                // Intersection of the parabolas rooted at `q` and `p`: where `F[p]+(x−p)² = F[q]+(x−q)²`.
-                let s = ((fq + (q * q) as f32) - (ff(p) + (p * p) as f32))
-                    / (2.0 * q as f32 - 2.0 * p as f32);
-                if s <= z[k] && k > 0 {
-                    k -= 1;
-                } else {
-                    k += 1;
-                    v[k] = q;
-                    z[k] = s;
-                    z[k + 1] = f32::INFINITY;
-                    break;
+    let mut hbuf = vec![0.0f32; cw * ch];
+    let mut sbuf = vec![0u32; cw * ch];
+    // Disjoint output rows: the parallelism ADR-0109's property allows. No reduction, no RNG.
+    hbuf.par_chunks_mut(cw)
+        .zip(sbuf.par_chunks_mut(cw))
+        .enumerate()
+        .for_each(|(ry, (hrow, srow))| {
+            let qy = i64::from(cr.y) + ry as i64;
+            for rx in 0..cw {
+                let qx = i64::from(cr.x) + rx as i64;
+                // The own floor is just the `d = 0` term of the same max: if `q` is touched it enters the
+                // race as its own source; if not, `best` stays `pre[q]` and `src = 0` (its matter is its
+                // own). No special case — the representation deleted it.
+                let qi = (qy * sw + qx) as usize;
+                let (mut best, mut bdx, mut bdy) = (pre[qi], 0i64, 0i64);
+                for &(dx, dy, dq) in &disc {
+                    let (px, py) = (qx + dx, qy + dy);
+                    if px < 0 || px >= sw || py < 0 || py >= sh {
+                        continue;
+                    }
+                    let pi = (py * sw + px) as usize;
+                    let a_p = amount[pi].clamp(0.0, 1.0);
+                    let arg = a_p * a_p - dq;
+                    if arg <= 0.0 {
+                        continue; // outside this source's own `ρ·a_p` ball — or the source has none
+                    }
+                    let lift = mag * arg.sqrt();
+                    let v = if dilate {
+                        pre[pi] + lift
+                    } else {
+                        pre[pi] - lift
+                    };
+                    let win = if dilate { v > best } else { v < best };
+                    if win {
+                        best = v;
+                        bdx = dx;
+                        bdy = dy;
+                    }
                 }
+                hrow[rx] = best;
+                srow[rx] = pack_src(bdx, bdy);
             }
-        }
-        let mut k = 0usize;
-        for q in 0..n {
-            while z[k + 1] < q as f32 {
-                k += 1;
-            }
-            let p = v[k];
-            let d = q as f32 - p as f32;
-            let dt = d * d + ff(p); // the min transform's value
-            // Lift back: `H = sign·a·DT`. Dilate (`sign = −1`) gives `−a·DT = max(f − a·d²)`; erode
-            // (`sign = +1`) gives `+a·DT = min(f + a·d²)`. Getting this sign wrong turns the dome inside out.
-            self.out_val[q] = sign * a * dt;
-            self.out_arg[q] = p;
-        }
-    }
+        });
+    (hbuf, sbuf)
 }

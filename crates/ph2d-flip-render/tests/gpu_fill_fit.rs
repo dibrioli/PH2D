@@ -14,12 +14,26 @@
 
 use ph2d_core::Vec2;
 use ph2d_flip::{Fill, FlipDrawing, FlipStroke, Point, Rgba};
-use ph2d_flip_fill::{FillMode, FillParams, fill_at};
+use ph2d_flip_fill::{
+    FILL_TUCK_PX, FillMode, FillParams, contour_widths, contour_widths_with_margin, fill_at,
+};
 use ph2d_flip_render::{CameraRaw, FlipRenderer, pack_drawing};
 
-/// O mesmo valor do produto (`flip_fill::FILL_TUCK_PX`) — o shell não é dependência
-/// desta crate, então o espelho é explícito, e o `sweep_tuck` é quem o justifica.
-const FILL_TUCK_PX: f32 = 0.5;
+/// **A dilatação vem do PRODUTO, não daqui.**
+///
+/// Até 2026-07-18 este arquivo tinha uma cópia da constante e uma cópia da fórmula
+/// (`width_px + 2.0 * tuck`). Os números batiam por acordo tácito — e quando a
+/// dilatação do produto ficou 100× grande demais (BUGS #20), **os oito gates deste
+/// arquivo continuaram verdes**, incluindo o que se chama *"a cor nunca transborda para
+/// fora da linha"*. O defeito foi achado por um humano olhando a tela.
+///
+/// Um oráculo que reconstrói o que deveria verificar só afirma que a própria aritmética
+/// dele é consistente. Agora a lei mora em `ph2d_flip_fill::dilate` e este arquivo a
+/// **pergunta**.
+///
+/// ⚠️ **O mundo desta fixture É o pixel** (câmera de pixel, `pixel_camera_zoom`), então
+/// a conversão px→mundo é 1. No produto ela é `SIZE_PX_PER_WORLD = 100`.
+const PX_PER_WORLD: f32 = 1.0;
 
 const W: u32 = 320;
 const H: u32 = 320;
@@ -73,11 +87,59 @@ fn render(device: &wgpu::Device, queue: &wgpu::Queue, drawing: &FlipDrawing) -> 
     render_zoom(device, queue, drawing, 1.0)
 }
 
+/// **A câmera do PRODUTO**: mundo em unidades de documento, `ppw` pixels por unidade —
+/// e o `px_per_world` do `CameraRaw` acompanha, que é o que o `flip_pass::camera_raw`
+/// faz de verdade (`thickness_px = width · 0.5 · px_per_world` no shader).
+///
+/// A `pixel_camera_zoom` **congela** esse campo em 1.0 de propósito (ela zoomba as
+/// posições e deixa a espessura em px absolutos); esta aqui é o outro regime, e é o do
+/// app. Sem ela, TODA fixture deste arquivo vive em `px_per_world = 1` — o único ponto
+/// da reta onde um erro de UNIDADE na dilatação é invisível.
+fn world_camera(ppw: f32) -> CameraRaw {
+    // Em `ppw = 100` a arte (que vive em [0; 3,2] de mundo) preenche o alvo exatamente,
+    // então centrar nela é a identidade — os gates existentes não se mexem.
+    world_camera_at(ppw, Vec2::new(1.6, 1.6))
+}
+
+/// A câmera do produto, **centrada** em `c` (unidades de mundo) — é o que o artista faz
+/// ao aproximar: ele centraliza no que está olhando.
+fn world_camera_at(ppw: f32, c: Vec2) -> CameraRaw {
+    let (sx, sy) = (2.0 * ppw / W as f32, -2.0 * ppw / H as f32);
+    CameraRaw::new(
+        [
+            [sx, 0.0, 0.0, 0.0],
+            [0.0, sy, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [-c.x * sx, -c.y * sy, 0.0, 1.0],
+        ],
+        [W as f32, H as f32],
+        ppw,
+    )
+}
+
+fn render_with(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    drawing: &FlipDrawing,
+    cam: &CameraRaw,
+) -> Vec<u8> {
+    render_inner(device, queue, drawing, cam)
+}
+
 fn render_zoom(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     drawing: &FlipDrawing,
     zoom: f32,
+) -> Vec<u8> {
+    render_inner(device, queue, drawing, &pixel_camera_zoom(zoom))
+}
+
+fn render_inner(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    drawing: &FlipDrawing,
+    cam: &CameraRaw,
 ) -> Vec<u8> {
     let tex = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("t"),
@@ -95,12 +157,7 @@ fn render_zoom(
     });
     let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
     let mut fr = FlipRenderer::new(device, wgpu::TextureFormat::Rgba8Unorm);
-    fr.upload(
-        device,
-        queue,
-        &pixel_camera_zoom(zoom),
-        &pack_drawing(drawing),
-    );
+    fr.upload(device, queue, cam, &pack_drawing(drawing));
 
     let depth = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("d"),
@@ -208,8 +265,9 @@ fn scene_t(width_px: f32, hardness: f32, tuck: f32) -> FlipDrawing {
 
     // O solver, com os números do produto (o mundo aqui É px de tela, então
     // `px_to_world = 1` e a precision default 1.6 entra direto).
+    let lines = vec![(pts.clone(), vec![width_px * 0.5; n], true)];
     let res = fill_at(
-        &[(pts.clone(), vec![width_px * 0.5; n], true)],
+        &lines,
         Vec2::new(cx, cy),
         FillParams {
             precision: 1.6,
@@ -224,14 +282,13 @@ fn scene_t(width_px: f32, hardness: f32, tuck: f32) -> FlipDrawing {
     let mut d = FlipDrawing::new();
     // 1) o preenchimento (atrás), 2) o line-art (na frente) — a ordem do produto.
     let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
+    // **A dilatação sai da lei do produto**, com a margem que a varredura está testando.
+    let widths = contour_widths_with_margin(&lines, &res.outer, PX_PER_WORLD, tuck);
     let mut f = FlipStroke::new();
-    for p in &res.outer {
+    for (i, p) in res.outer.iter().enumerate() {
         f.push_point(Point {
             pos: *p,
-            // **A dilatação**: o contorno do fill veste a espessura da LINHA + a margem
-            // de vetorização (o que o `flip_fill` faz no produto: `w + 2·FILL_TUCK_PX`).
-            // Sem ela, a metade externa da linha não tem cor por baixo.
-            width: width_px + 2.0 * tuck,
+            width: widths[i],
             opacity: 1.0,
             color: ocre,
         });
@@ -250,6 +307,116 @@ fn scene_t(width_px: f32, hardness: f32, tuck: f32) -> FlipDrawing {
         line.push_point(Point {
             pos: *p,
             width: width_px,
+            opacity: 1.0,
+            color: Rgba::new(0.95, 0.95, 0.96, 1.0),
+        });
+    }
+    line.closed = true;
+    line.hardness = hardness;
+    d.strokes.push(line);
+    d
+}
+
+/// `SIZE_PX_PER_WORLD` do produto — quantos px de tela vale UMA unidade de documento na
+/// escala de referência do Size. (Espelhado e não importado porque `ph2d-tool-flip` não é
+/// dependência desta crate; o gate abaixo é justamente quem o mantém honesto: se o número
+/// divergir, as duas descrições da MESMA arte param de render a mesma imagem.)
+const PRODUCT_PPW: f32 = 100.0;
+
+/// **A MESMA arte, descrita na escala do PRODUTO** — geometria em unidades de documento
+/// (~1,1 de raio, não 110 px) e câmera a 100 px por unidade.
+///
+/// Existe porque toda outra fixture deste arquivo vive num mundo que JÁ é pixel
+/// (`px_per_world = 1`), e esse é **exatamente o ponto da reta onde um erro de unidade na
+/// dilatação some**: `2·0,5/1` e `2·0,5` são o mesmo número. O BUGS #20 (a margem em px
+/// somada a uma largura em unidades de mundo, 100× grande demais) passou por aqui sem
+/// mover um pixel — não porque os gates estivessem mal escritos, mas porque a fixture não
+/// continha o fenômeno.
+fn scene_world(width_px: f32, hardness: f32) -> FlipDrawing {
+    scene_world_at(width_px, hardness, PRODUCT_PPW)
+}
+
+/// A mesma cena com o **zoom da câmera** variável — o produto recomputa a resolução do
+/// buffer a partir dele (`precision = style.precision / doc_per_px`), então os dois têm
+/// de andar juntos ou a fixture descreve um regime que o app não tem.
+fn scene_world_at(width_px: f32, hardness: f32, ppw: f32) -> FlipDrawing {
+    scene_world_full(width_px, hardness, ppw, true)
+}
+
+/// `tremor = false` desenha o círculo **LISO**.
+///
+/// ⚠️ Existe para o `sweep_zoom`, e a razão é uma armadilha que a 1ª versão dele caiu: o
+/// tremor de mão vive em unidades de MUNDO (±0,04), então **na tela ele cresce com o
+/// zoom** — a ±1 px em 25 px/unidade e a ±5,6 px em 140. Uma sonda em círculo perfeito
+/// passa a cortar a própria linha, e o "transbordo" sobe sozinho: a tabela mostraria a
+/// tendência que se quer medir mesmo que a margem estivesse perfeita. Sem tremor, a sonda
+/// e o eixo coincidem em qualquer zoom, e o que sobra é o erro de vetorização — que é o
+/// que a margem existe para compensar.
+fn scene_world_full(width_px: f32, hardness: f32, ppw: f32, tremor: bool) -> FlipDrawing {
+    // A ARTE é a mesma em qualquer zoom (ela vive em unidades de documento); o que muda
+    // é a câmera. A geometria continua ancorada na escala de referência do Size.
+    let k = PRODUCT_PPW;
+    let _ = ppw;
+    let (cx, cy, r) = (160.0f32 / k, 160.0 / k, 110.0 / k);
+    let n = 200;
+    let pts: Vec<Vec2> = (0..n)
+        .map(|i| {
+            let t = i as f32 / n as f32;
+            let (c, s) = unit_circle(t);
+            let h = if tremor {
+                ((i as u64).wrapping_mul(2_654_435_761) % 1000) as f32 / 1000.0 - 0.5
+            } else {
+                0.0
+            };
+            let rr = r + h * 4.0 / k;
+            Vec2::new(cx + rr * c, cy + rr * s)
+        })
+        .collect();
+
+    let lines = vec![(pts.clone(), vec![width_px * 0.5 / k; n], true)];
+    let res = fill_at(
+        &lines,
+        Vec2::new(cx, cy),
+        FillParams {
+            // O produto: `style.precision / doc_per_px`, e `doc_per_px = 1/ppw` — logo a
+            // resolução do buffer ACOMPANHA o zoom da câmera.
+            precision: 1.6 * ppw,
+            gap_reach: 0.0,
+            grow: 0,
+            trap_px: 0.0,
+            mode: FillMode::Paint,
+        },
+    )
+    .expect("preenche na escala do produto");
+
+    let mut d = FlipDrawing::new();
+    let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
+    // A lei do produto, com a conversão do PRODUTO — é este argumento que o BUGS #20
+    // ignorava.
+    let widths = contour_widths(&lines, &res.outer, PRODUCT_PPW);
+    let mut f = FlipStroke::new();
+    for (i, p) in res.outer.iter().enumerate() {
+        f.push_point(Point {
+            pos: *p,
+            width: widths[i],
+            opacity: 1.0,
+            color: ocre,
+        });
+    }
+    f.closed = true;
+    f.hide_stroke = true;
+    f.holes = res.holes;
+    f.fill = Some(Fill {
+        color: ocre,
+        opacity: 1.0,
+    });
+    d.strokes.push(f);
+
+    let mut line = FlipStroke::new();
+    for p in &pts {
+        line.push_point(Point {
+            pos: *p,
+            width: width_px / k,
             opacity: 1.0,
             color: Rgba::new(0.95, 0.95, 0.96, 1.0),
         });
@@ -576,8 +743,9 @@ fn spiky(width_px: f32) -> FlipDrawing {
             Vec2::new(cx + r * c, cy + r * s)
         })
         .collect();
+    let lines = vec![(pts.clone(), vec![width_px * 0.5; n], true)];
     let res = fill_at(
-        &[(pts.clone(), vec![width_px * 0.5; n], true)],
+        &lines,
         Vec2::new(cx, cy),
         FillParams {
             precision: 1.6,
@@ -591,11 +759,12 @@ fn spiky(width_px: f32) -> FlipDrawing {
 
     let mut d = FlipDrawing::new();
     let ocre = Rgba::new(0.78, 0.6, 0.35, 1.0);
+    let widths = contour_widths_with_margin(&lines, &res.outer, PX_PER_WORLD, FILL_TUCK_PX);
     let mut f = FlipStroke::new();
-    for p in &res.outer {
+    for (i, p) in res.outer.iter().enumerate() {
         f.push_point(Point {
             pos: *p,
-            width: width_px + 2.0 * FILL_TUCK_PX,
+            width: widths[i],
             opacity: 1.0,
             color: ocre,
         });
@@ -981,5 +1150,178 @@ fn the_fill_contour_follows_the_line_even_at_sharp_corners() {
             "linha de {width_px}px: {spill} pixels de cor caíram FORA da arte — o contorno \
              do fill nao segue a linha (as quinas dessincronizam)"
         );
+    }
+}
+
+/// **A MESMA arte, descrita em duas escalas 100× distantes, tem de render A MESMA
+/// IMAGEM.**
+///
+/// Este é o gate que faltava, e a razão pela qual o BUGS #20 sobreviveu a oito oráculos
+/// de pixel: todos eles descreviam a arte num mundo que já era pixel, onde a conversão
+/// px→mundo é `1` e **nenhum erro de unidade tem como aparecer**. A dilatação ficou 100×
+/// grande demais, a cor virou um blob que ignorava o line-art, e a suíte inteira ficou
+/// verde — o defeito foi achado por um humano olhando a tela.
+///
+/// A propriedade é a mais forte disponível: a arte não sabe em que unidade foi escrita.
+/// Um círculo de raio 110 a 1 px/unidade e um de raio 1,1 a 100 px/unidade são o MESMO
+/// desenho, e o produto tem de pintá-los igual. Qualquer grandeza que atravesse a
+/// fronteira px↔mundo sem se converter quebra a igualdade — e quebra em proporção ao
+/// fator, que aqui é 100.
+///
+/// Mutação que ele mata: `margin_world` ignorando o `px_per_world` (o BUGS #20 literal).
+/// A margem vira 1,0 unidade de MUNDO = 100 px de dilatação num desenho de 320 px.
+#[test]
+#[ignore = "GPU"]
+fn the_same_art_at_the_products_scale_renders_the_same() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    for (width_px, hardness) in [(8.0f32, 1.0f32), (16.0, 1.0), (16.0, 0.35), (32.0, 0.35)] {
+        let a = render(&device, &queue, &scene_h(width_px, hardness));
+        let b = render_with(
+            &device,
+            &queue,
+            &scene_world(width_px, hardness),
+            &world_camera(PRODUCT_PPW),
+        );
+        assert_eq!(a.len(), b.len(), "mesmo alvo, mesmo tamanho");
+
+        // Quantos pixels diferem, e por quanto. As duas cenas percorrem caminhos de f32
+        // diferentes (as coordenadas são divididas por 100 e remultiplicadas), então a
+        // igualdade EXATA não é a política — mas a diferença tem de ser ruído de
+        // arredondamento, não geometria.
+        let mut differing = 0usize;
+        let mut worst = 0i32;
+        for (pa, pb) in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+            let d = (0..3)
+                .map(|c| (pa[c] as i32 - pb[c] as i32).abs())
+                .max()
+                .unwrap_or(0);
+            if d > 0 {
+                differing += 1;
+            }
+            worst = worst.max(d);
+        }
+        let total = a.len() / 4;
+        let pct = 100.0 * differing as f32 / total as f32;
+        println!(
+            "linha {width_px}px h{hardness}: {differing}/{total} px diferem ({pct:.2}%), \
+             pior delta {worst}"
+        );
+
+        // ⚠️ **Dois limites, porque são duas perguntas** (a lição do passe de luz na GPU):
+        // *quão longe* um pixel foi, e *quantos* foram.
+        //
+        // Os dois números saem do FOSSO MEDIDO entre correto e quebrado, nunca colados
+        // na observação — um limite raspando o valor observado é um limite ajustado para
+        // passar, e ele flaka no primeiro driver diferente:
+        //
+        // |            | pixels diferentes | pior delta |
+        // |---|---|---|
+        // | correto    | 0,01–0,03 %       | 1 (23 na linha fina e dura: um pixel de AA) |
+        // | **BUGS #20** | **43,4 %**      | **153** |
+        //
+        // A CONTAGEM é a discriminadora de verdade (fosso de ~2000×); a magnitude só
+        // acompanha, com folga, porque na borda de uma silhueta anti-aliasada um pixel
+        // isolado pode saltar bastante sem que a geometria tenha se mexido.
+        assert!(
+            worst <= 40,
+            "linha {width_px}px: pior delta {worst} — a mesma arte em duas escalas \
+             esta sendo pintada DIFERENTE (grandeza que nao atravessa px<->mundo)"
+        );
+        assert!(
+            pct <= 1.0,
+            "linha {width_px}px: {pct:.2}% dos pixels diferem — isso e geometria, \
+             nao arredondamento"
+        );
+    }
+}
+
+/// **DIAGNÓSTICO: a franja em função do ZOOM** (smoke do Enio, 2026-07-18 — *"o fill está
+/// extrapolando um pouquinho para fora da linha"*).
+///
+/// A pergunta que o gap dos oráculos impedia de fazer. Duas grandezas se encontram na
+/// margem, e elas são **constantes em unidades DIFERENTES**:
+///
+/// * a **margem** é fixa em unidades de MUNDO (`2·0,5/100 = 0,01`), logo em tela ela vale
+///   `0,005 · px_per_world` — cresce com o zoom;
+/// * o **erro de vetorização** que ela compensa nasce no buffer, cuja resolução acompanha
+///   o zoom (`precision = 1,6 · px_per_world`), logo em tela ele é ~constante.
+///
+/// Se isso estiver certo, o transbordo cresce com a aproximação e some ao afastar — que é
+/// exatamente a forma da queixa. A tabela decide; nada é corrigido no escuro.
+///
+/// ⚠️ **Amostra só o que está NA TELA.** A 1ª versão deste sweep lia fora do alvo e
+/// contava `(0,0)` como *fundo* — a 400 px/unidade o anel inteiro está fora de um alvo de
+/// 320 px, e a tabela "mostrou" 16 105 pixels de vazamento que eram a borda da textura.
+/// A coluna `fora` existe para que uma linha degenerada se denuncie em vez de mentir.
+#[test]
+#[ignore = "GPU"]
+fn sweep_zoom() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    println!(" ppw | margem tela | linha | fundo sob a linha | transbordo | fora da tela");
+    for ppw in [25.0f32, 50.0, 100.0, 140.0] {
+        for width_px in [8.0f32, 16.0] {
+            let d = scene_world_full(width_px, 0.35, ppw, false);
+            let cam = world_camera_at(ppw, Vec2::new(1.6, 1.6));
+            let px = render_with(&device, &queue, &d, &cam);
+            // Mundo → tela, pela MESMA câmera que desenhou (nada de re-derivar a mão).
+            let to_screen = |w: Vec2| -> (f32, f32) {
+                (
+                    (w.x - 1.6) * ppw + W as f32 * 0.5,
+                    (w.y - 1.6) * ppw + H as f32 * 0.5,
+                )
+            };
+            let at = |x: f32, y: f32| -> Option<(u8, u8)> {
+                let (xi, yi) = (x.round() as i32, y.round() as i32);
+                if xi < 0 || yi < 0 || xi >= W as i32 || yi >= H as i32 {
+                    return None;
+                }
+                let i = (yi as usize * W as usize + xi as usize) * 4;
+                Some((px[i], px[i + 2]))
+            };
+            let r_world = 110.0 / 100.0;
+            let half_px = width_px * 0.5 * ppw / 100.0;
+            let is_bg = |r_: u8, b: u8| r_ < 60 && b < 60;
+            let is_colour = |r_: u8, b: u8| r_ > 120 && b < 130;
+            let (mut bg_under, mut spill, mut outside) = (0usize, 0usize, 0usize);
+            for k in 0..256 {
+                let t = k as f32 / 256.0;
+                let (c, s) = unit_circle(t);
+                let probe = |off_px: f32, hit: &mut usize, out: &mut usize, want_colour: bool| {
+                    let rr = r_world + off_px / ppw;
+                    let (x, y) = to_screen(Vec2::new(1.6 + rr * c, 1.6 + rr * s));
+                    match at(x, y) {
+                        None => *out += 1,
+                        Some((r_, b)) => {
+                            let v = if want_colour {
+                                is_colour(r_, b)
+                            } else {
+                                is_bg(r_, b)
+                            };
+                            if v {
+                                *hit += 1;
+                            }
+                        }
+                    }
+                };
+                let mut step = -half_px + 1.0;
+                while step <= half_px - 1.0 {
+                    probe(step, &mut bg_under, &mut outside, false);
+                    step += 1.0;
+                }
+                let mut step = half_px + 2.0;
+                while step <= half_px + 8.0 {
+                    probe(step, &mut spill, &mut outside, true);
+                    step += 1.0;
+                }
+            }
+            println!(
+                "{ppw:>4} | {:>11.2} | {width_px:>4}px | {bg_under:>17} | {spill:>10} | {outside:>12}",
+                0.005 * ppw
+            );
+        }
     }
 }

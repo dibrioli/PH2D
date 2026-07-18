@@ -28,9 +28,7 @@ use ph2d_flip_fill::{FillError, FillMode, FillParams, fill_at};
 use ph2d_tool_flip::FlipStyleSnapshot;
 use ph2d_vec_scene::Xform;
 
-use crate::flip_fill_dilate::{
-    boundaries, fill_stroke, fill_tuck_world, local_line, mean_line_width,
-};
+use crate::flip_fill_dilate::{boundaries, fill_stroke};
 use crate::flip_fill_target::filled_shape_target;
 
 /// O traço invisível que fecha um vão — persistente, sem cor, sem preenchimento.
@@ -271,24 +269,17 @@ pub(crate) fn fill_click(
     // demais e aparecia do outro lado dela (o smoke do Enio, BUGS #20). É a lição do
     // BUGS #12 outra vez: quando nenhuma constante serve, falta um DADO — aqui, QUAL
     // linha cada ponto do contorno está vestindo.
-    let fallback = mean_line_width(drawing);
-    let widths: Vec<f32> = r
-        .outer
-        .iter()
-        .map(|&p| match local_line(drawing, p) {
-            // `d` = o quanto ESTE ponto do contorno caiu para dentro do eixo. A cor
-            // precisa de `w/2 + d` para alcançar a borda externa da linha, logo a
-            // dilatação é `w + 2d` — e onde o contorno acertou o eixo (`d ≈ 0`) ela é
-            // exatamente `w`: **nem um pixel de transbordo**.
-            // ⚠️ Margem FIXA, de propósito — ver o doc do `fill_tuck_world`. Uma
-            // compensação por-ponto (`w + 2d`) foi tentada e **revertida sem shipar**:
-            // ela precisa do SINAL (o contorno caiu para DENTRO ou para FORA do eixo?),
-            // e sem ele dobra o erro metade das vezes. Medido: a compensação adaptativa
-            // dava 0,0178 na mediana contra 0,005 da margem fixa.
-            Some((w, _)) => w + fill_tuck_world(),
-            None => fallback + fill_tuck_world(),
-        })
-        .collect();
+    // A LEI mora em `ph2d-flip-fill` (ver o módulo `dilate` de lá, e por quê): o oráculo
+    // de pixel que a verifica vive na crate de render e **precisa alcançá-la**. Enquanto
+    // ela morava aqui, ele montava a própria cópia e ficou verde durante o BUGS #20.
+    //
+    // ⚠️ **`SIZE_PX_PER_WORLD`, e não o `doc_per_px` do zoom atual.** A margem é uma
+    // medida de tela, mas a geometria do fill é do DOCUMENTO: derivá-la do zoom faria o
+    // contorno depender de quão perto o artista estava quando clicou, que é exatamente o
+    // que a âncora no eixo existe para impedir (BUGS #14). O preço é conhecido — a
+    // margem é uma fração fixa da arte, não do pixel — e está anotado no plano.
+    let widths =
+        ph2d_flip_fill::contour_widths(&strokes, &r.outer, ph2d_tool_flip::SIZE_PX_PER_WORLD);
     let stroke = fill_stroke(&r.outer, r.holes, color, 1.0, &widths);
 
     // Os fechamentos que a solução usou viram traços invisíveis PERSISTENTES.

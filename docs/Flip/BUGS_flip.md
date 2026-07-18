@@ -1186,6 +1186,96 @@ dois eram verdes enquanto o produto fazia as duas coisas.
 > consigo mesmo. *Quando um gate de aparência está verde e a tela está errada, pergunte de onde
 > vem CADA número que ele usa.*
 
-**GAP ABERTO, nomeado:** fazer o `gpu_fill_fit` consumir a dilatação do shell (ou, no mínimo,
-um gate que afirme que os dois números coincidem). Sem isso, os oito oráculos continuam cegos
-para esta classe inteira.
+**GAP FECHADO (2026-07-18).** Duas metades, porque eram dois defeitos:
+
+**(a) A lei MUDOU DE CASA.** A dilatação saiu do shell e virou `ph2d_flip_fill::dilate`
+(`FILL_TUCK_PX` · `tuck_world` · `local_line` · `contour_widths`). O shell não é — e não pode
+ser — dependência da crate de render, então enquanto a lei morasse lá o oráculo **não tinha como
+alcançá-la**; a cópia não era desleixo, era a única saída. Agora ela mora junto de quem produz o
+contorno, e os dois lados a **perguntam**. O `contour_widths_with_margin` existe só para a
+varredura (`sweep_tuck`) poder variar a CONSTANTE sem reescrever a FÓRMULA — se ela reescrevesse,
+estaria de volta medindo a própria aritmética.
+
+Ganho de brinde: o `local_line` passou a receber a **mesma lista de fronteiras** que o `fill_at`
+recebeu. A versão do shell re-derivava o conjunto com um filtro próprio (`!hide_stroke` contra
+`!(hide_stroke && fill.is_some())`), e os dois só concordavam **por acidente** — um fechamento
+de gap tem espessura zero e caía no filtro `w > 0` mais adiante. Acidente enumerado é a forma
+que um bug futuro toma.
+
+**(b) A FIXTURE não continha o fenômeno** — e esta metade é a mais instrutiva. Com a lei
+compartilhada, mutar `margin_world` para ignorar o `px_per_world` (o BUGS #20 *literal*) ainda
+deixava **os oito oráculos verdes**. Motivo: toda fixture do arquivo descreve a arte num mundo
+que já é pixel, ou seja `px_per_world = 1` — o **único ponto da reta onde `2·0,5/1` e `2·0,5`
+são o mesmo número**. O erro de unidade era invisível por construção do fixture, não por
+descuido do gate.
+
+Fixture nova `scene_world` + gate `the_same_art_at_the_products_scale_renders_the_same`: a MESMA
+arte descrita nas duas escalas (raio 110 a 1 px/unidade · raio 1,1 a 100 px/unidade) tem de
+render a MESMA imagem. É a propriedade mais forte disponível, porque *a arte não sabe em que
+unidade foi escrita* — qualquer grandeza que atravesse a fronteira px↔mundo sem se converter
+quebra a igualdade, e quebra **na proporção do fator**. Medido:
+
+| | pixels diferentes | pior delta |
+|---|---|---|
+| correto | 0,01–0,03 % | 1 (23 na linha fina e dura: um pixel de AA) |
+| **BUGS #20** | **43,4 %** | **153** |
+
+Os limites do gate (1 % e 40) saem desse **fosso**, nunca colados na observação — limite raspando
+o valor observado é limite ajustado para passar, e flaka no primeiro driver diferente. A
+CONTAGEM é a discriminadora (fosso de ~2000×); a magnitude acompanha com folga, porque na borda
+de uma silhueta anti-aliasada um pixel isolado salta sem que a geometria tenha se mexido.
+
+> **Lição — mover a lei não basta; a fixture tem de conter o fenômeno.** Fechar (a) e parar
+> teria produzido a sensação de segurança sem a segurança: o oráculo *perguntaria* o número
+> certo e continuaria cego para o erro que motivou tudo. Irmão de
+> [[reference_topic_fixture_discipline]] (*"só prova o que contém"*).
+
+**Prova de mutação (6):** média em vez de local · costura perdida · distância ao vértice ·
+fechamento competindo · meia-espessura como cheia · a unidade ignorada. Todas sangram; a da
+meia-espessura e a da unidade sangram **no pixel** — que é o que este gap existia para consertar.
+
+### E a primeira coisa que o instrumento fez foi DERRUBAR a minha hipótese
+
+Com o gap fechado, a pergunta que ele bloqueava ficou respondível: *de onde vem a franja que o
+Enio vê?* A hipótese era bonita e mecanicamente plausível — **duas grandezas constantes em
+unidades diferentes**. A margem é fixa em MUNDO (`0,01`), logo em tela vale `0,005·ppw` e
+**cresce com o zoom**; o erro de vetorização nasce no buffer, cuja resolução acompanha o zoom
+(`precision = 1,6·ppw`), logo em tela é **~constante**. Previsão: transbordo crescendo com a
+aproximação.
+
+`sweep_zoom`, num círculo LISO, na escala do produto:
+
+| ppw | margem em tela | fundo sob a linha (8px / 16px) | transbordo |
+|---|---|---|---|
+| 25 | 0,12 px | **41 / 55** | 0 |
+| 50 | 0,25 px | 16 / 17 | 0 |
+| 100 | 0,50 px | 18 / 11 | 0 |
+| 140 | 0,70 px | 2 / 0 | 0 |
+
+**Transbordo ZERO em todo zoom.** A previsão estava errada, e o defeito medido é o OPOSTO: o
+fundo aparece sob a linha quando se AFASTA (a margem encolhe para 0,12 px de tela e deixa de
+cobrir o erro de ~1 px), e o quadro melhora ao aproximar. Ou seja: o descasamento de unidade é
+real, mas a consequência dele nos zooms do produto é **sub-cobertura ao afastar**, não
+transbordo ao aproximar.
+
+**Duas armadilhas de fixture no caminho, ambas minhas, ambas pegas antes de virarem conclusão:**
+
+1. A 1ª tabela lia **fora do alvo** e contava `(0,0)` como *fundo* — a 400 px/unidade o anel
+   inteiro está fora de um alvo de 320 px, e ela "mostrou" 16 105 px de vazamento que eram a
+   borda da textura. Daí a coluna `fora da tela`: uma linha degenerada tem de se denunciar.
+2. A 2ª usava a arte **trêmula**, e o tremor vive em unidades de mundo (±0,04) — **na tela ele
+   cresce com o zoom** (±1 px a 25, ±5,6 px a 140). Uma sonda em círculo perfeito passa a cortar
+   a própria linha, e o transbordo sobe sozinho: a tabela teria confirmado a hipótese **mesmo
+   que a margem estivesse perfeita** (0 → 0 → 16 → 43). Foi o círculo liso que separou o sinal
+   do artefato.
+
+> **Lição — um instrumento novo prova o seu valor derrubando a hipótese de quem o construiu.**
+> Se a primeira medição tivesse confirmado a teoria, ela teria confirmado também os dois
+> artefatos, e a "correção" seguinte seria uma lei nova assentada em ruído. *Antes de ler uma
+> tendência, pergunte que outra coisa varia junto com o eixo que você está varrendo.*
+
+**NÃO corrigido, de propósito.** Tornar a margem constante em TELA (`2·0,5/ppw_vivo`) conserta a
+sub-cobertura medida, mas faz a geometria do fill depender do zoom do CLIQUE — e não explica a
+queixa do Enio, que é de transbordo. Mudar a lei para consertar algo que a medição não mostrou é
+exatamente o que a rodada anterior fez e teve de reverter. Fica medido, nomeado e à espera do
+próximo smoke.

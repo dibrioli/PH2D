@@ -129,6 +129,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    // ADR-0130: per-element force: accumulates accel, identity preserved.
+    reg.register_dense_window(MANIFEST.id);
     Ok(())
 }
 

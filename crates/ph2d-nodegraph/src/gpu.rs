@@ -247,6 +247,24 @@ impl GpuKernel {
 /// exactly like the cook engine is.
 pub trait KernelResolver {
     fn gpu_kernel(&self, ty: NodeTypeId) -> Option<&GpuKernel>;
+
+    /// Whether this node type KEEPS the **dense id window** (ADR-0130): a source
+    /// that emits one (`motion.emitter`, whose alive set is a contiguous id
+    /// range) or a per-element transformer that preserves it without reordering,
+    /// filtering, duplicating or rewriting `id` (`motion.integrate`, `spring`,
+    /// the forces). The plan needs this to know when the `id`-gather is
+    /// arithmetic (`current_id − prev_first`) rather than a hash/sort.
+    ///
+    /// **Default false, and that direction is the whole point.** A node keeps the
+    /// window only by DECLARING it (`register_dense_window`) — never by an
+    /// allowlist of the nodes that break it. A new structural node (`sort`,
+    /// `cull`) that forgets to declare defaults to *breaking* the window, so the
+    /// plan safely recedes; the alternative (default-keeps, list the breakers)
+    /// makes a forgotten breaker silently mispair the gather
+    /// ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
+    fn keeps_dense_window(&self, _ty: NodeTypeId) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]

@@ -19,6 +19,7 @@
 //! emitter this engine will eventually want). Delete either and one test goes
 //! red.
 
+use ph2d_gpu_cook::plan::output_dense_window;
 use ph2d_gpu_cook::{GpuSource, plan};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
@@ -281,6 +282,97 @@ fn a_derivable_rest_shape_carrying_id_refuses_the_integrator() {
         p2.stages.iter().any(|s| s.node == ig2),
         "the id column is what refuses — not the fixture"
     );
+}
+
+// ── ADR-0130: the dense id window is a PROVABLE plan property ───────────────
+//
+// The `id`-gather is arithmetic (`current_id − prev_first`) only when the id
+// column is a dense ascending window — a property of the BARE emitter, not of
+// the stream (a structural node breaks it). The plan carries a `dense_window`
+// bit (`output_dense_window`), SET by the emitter, PRESERVED only by a node that
+// declares `register_dense_window`; anything else clears it (default-false, never
+// an allowlist of the breakers). These gate the propagation and the
+// safety-critical clearing on the plan alone — no device.
+//
+// (This slice proves the property. The refusal still recedes on any id stream;
+// the conditional claim lands WITH the arithmetic gather, ADR-0130 slice 3.)
+
+#[test]
+fn the_emitter_emits_a_dense_window() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let em = g.add_node("motion.emitter");
+    let out = g.add_node("motion.output");
+    edge(&mut g, em, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+    assert_eq!(output_dense_window(&g, &reg, &reg, em), Some(true));
+}
+
+#[test]
+fn a_source_that_does_not_declare_it_is_not_dense() {
+    // `test.idgen` stamps an `id` column but is NOT a declared keeper — a future
+    // id-emitting generator that is not the contiguous emitter. Emitting `id` is
+    // not enough; the dense window must be DECLARED.
+    let mut reg = registry();
+    idgen::register(&mut reg);
+    let mut g = Graph::new();
+    let src = g.add_node("test.idgen");
+    let out = g.add_node("motion.output");
+    edge(&mut g, src, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+    assert_eq!(output_dense_window(&g, &reg, &reg, src), Some(false));
+}
+
+#[test]
+fn a_per_element_keeper_preserves_the_window() {
+    // `force.wind` is a per-element endomorphism that declares it keeps the
+    // window, so `emitter → wind` stays dense.
+    let reg = registry();
+    let mut g = Graph::new();
+    let em = g.add_node("motion.emitter");
+    let wind = g.add_node("force.wind");
+    let out = g.add_node("motion.output");
+    edge(&mut g, em, wind, 0, false);
+    edge(&mut g, wind, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+    assert_eq!(output_dense_window(&g, &reg, &reg, wind), Some(true));
+}
+
+#[test]
+fn a_non_keeper_stage_clears_the_window() {
+    // THE safety-critical clearing (ADR-0130 D2). `test.refuser` HAS a kernel —
+    // so the plan can walk its output shape — but does not declare
+    // `register_dense_window`: it stands for the future GPU `sort`/`cull` whose
+    // reordering/filtering makes `id − prev_first` mispair. The window must clear
+    // even though the emitter fed a dense one, or the arithmetic gather would
+    // silently read the wrong prior state. The mutation that drops the
+    // `keeps_dense_window` check turns the second assertion Some(true) → red.
+    let mut reg = registry();
+    refuser::register(&mut reg);
+    let mut g = Graph::new();
+    let em = g.add_node("motion.emitter");
+    let rf = g.add_node("test.refuser");
+    let out = g.add_node("motion.output");
+    edge(&mut g, em, rf, 0, false);
+    edge(&mut g, rf, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+    // Control: the base the non-keeper sits on IS dense …
+    assert_eq!(output_dense_window(&g, &reg, &reg, em), Some(true));
+    // … and the non-keeper clears it.
+    assert_eq!(output_dense_window(&g, &reg, &reg, rf), Some(false));
+}
+
+#[test]
+fn a_bare_grid_carries_no_dense_window() {
+    // A source that is not the emitter: its shape is provable (Some), it simply
+    // is not a dense id window (false) — the default for anything undeclared.
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let out = g.add_node("motion.output");
+    edge(&mut g, grid, out, 0, false);
+    g.validate(&reg).expect("well-typed");
+    assert_eq!(output_dense_window(&g, &reg, &reg, grid), Some(false));
 }
 
 // ── fixtures ──────────────────────────────────────────────────────────────

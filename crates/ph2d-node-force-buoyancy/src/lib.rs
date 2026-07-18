@@ -284,6 +284,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ForceBuoyancy))?;
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    // ADR-0130: per-element force: accumulates accel, identity preserved.
+    reg.register_dense_window(MANIFEST.id);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

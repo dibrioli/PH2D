@@ -378,6 +378,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    // ADR-0130: per-element: accumulates forces, never reorders/rewrites id.
+    reg.register_dense_window(MANIFEST.id);
     // No params → no param hints to register (the panel renders no rows).
     Ok(())
 }

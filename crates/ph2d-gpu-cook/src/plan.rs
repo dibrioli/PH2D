@@ -100,7 +100,7 @@ fn output_shape(
     kernels: &dyn KernelResolver,
     node: NodeId,
     budget: u32,
-) -> Option<BTreeSet<&'static str>> {
+) -> Option<Shape> {
     let budget = budget.checked_sub(1)?;
     let inst = graph.node(node)?;
     let manifest = ops.resolve(inst.type_id())?.manifest();
@@ -109,13 +109,16 @@ fn output_shape(
     // an unconnected input is the empty stream. Note this deliberately does NOT
     // ask `eligible` — a node the plan refuses still emits the columns its
     // kernel declares (that is the parity contract), and asking would recurse.
-    let mut cols = match manifest.inputs.first() {
-        None => BTreeSet::new(),
+    let (mut cols, dense_in) = match manifest.inputs.first() {
+        None => (BTreeSet::new(), false),
         Some(_) => match graph.input_edge(node, 0) {
-            None => BTreeSet::new(),
+            None => (BTreeSet::new(), false),
             // A `pre` stop: last tick's stream, which the walk has not derived.
             Some((_, _, true)) => return None,
-            Some((src, _, false)) => output_shape(graph, ops, kernels, src, budget)?,
+            Some((src, _, false)) => {
+                let s = output_shape(graph, ops, kernels, src, budget)?;
+                (s.cols, s.dense)
+            }
         },
     };
     for b in kernel.bindings {
@@ -126,7 +129,35 @@ fn output_shape(
             cols.insert(b.column);
         }
     }
-    Some(cols)
+    // The dense id window (ADR-0130) flows on the port-0 base: a source that
+    // emits one keeps it unconditionally (`inputs.is_empty()`), a transformer
+    // only if it preserves AND its base already was dense. Anything that does not
+    // declare `keeps_dense_window` clears it — the safe default, so a structural
+    // node (`sort`/`cull`) breaks the window the instant it gains a kernel.
+    let dense =
+        kernels.keeps_dense_window(inst.type_id()) && (manifest.inputs.is_empty() || dense_in);
+    Some(Shape { cols, dense })
+}
+
+/// The proven shape of a node's output stream: which columns it carries, and
+/// whether its `id` column is a dense ascending window (ADR-0130). `None` when
+/// the walk cannot prove it (a `pre` stop, an unkernelled node, budget).
+struct Shape {
+    cols: BTreeSet<&'static str>,
+    dense: bool,
+}
+
+/// Whether `node`'s output is a dense id window (ADR-0130) — `None` when the plan
+/// cannot prove the shape (a `pre` stop, an unkernelled boundary). Public for the
+/// gates that pin the property's propagation through per-element stages and its
+/// clearing by a structural one.
+pub fn output_dense_window(
+    graph: &Graph,
+    ops: &dyn OpResolver,
+    kernels: &dyn KernelResolver,
+    node: NodeId,
+) -> Option<bool> {
+    output_shape(graph, ops, kernels, node, SHAPE_DEPTH).map(|s| s.dense)
 }
 
 /// Can the GPU claim this node? Every reason a node breaks the GPU claim lives
@@ -193,7 +224,9 @@ fn eligible(
         let known = match graph.input_edge(node, b.port) {
             None => Some(BTreeSet::new()),
             Some((_, _, true)) => None,
-            Some((src, _, false)) => output_shape(graph, ops, kernels, src, SHAPE_DEPTH),
+            Some((src, _, false)) => {
+                output_shape(graph, ops, kernels, src, SHAPE_DEPTH).map(|s| s.cols)
+            }
         };
         match known {
             None => return false,

@@ -39,6 +39,11 @@ pub struct NodeRegistry {
     /// path); the GPU sequencer (`ph2d-gpu-cook`) resolves kernels through
     /// [`KernelResolver`].
     gpu_kernels: BTreeMap<NodeTypeId, GpuKernel>,
+    /// Node types that KEEP the dense id window (ADR-0130): the emitter (source)
+    /// and the per-element sim transformers (integrate/spring/forces). Opt-in and
+    /// default-empty, so a node keeps the window only by declaring it — see
+    /// [`KernelResolver::keeps_dense_window`].
+    dense_window_keepers: std::collections::BTreeSet<NodeTypeId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -111,11 +116,23 @@ impl NodeRegistry {
     pub fn register_gpu_kernel(&mut self, id: NodeTypeId, kernel: GpuKernel) {
         self.gpu_kernels.insert(id, kernel);
     }
+
+    /// Declare that a node type KEEPS the dense id window (ADR-0130): a source
+    /// that emits one, or a per-element transformer that preserves it. Additive,
+    /// idempotent; a node NOT declared here breaks the window and the `id`-gather
+    /// recedes (the safe default — see [`KernelResolver::keeps_dense_window`]).
+    pub fn register_dense_window(&mut self, id: NodeTypeId) {
+        self.dense_window_keepers.insert(id);
+    }
 }
 
 impl KernelResolver for NodeRegistry {
     fn gpu_kernel(&self, ty: NodeTypeId) -> Option<&GpuKernel> {
         self.gpu_kernels.get(&ty)
+    }
+
+    fn keeps_dense_window(&self, ty: NodeTypeId) -> bool {
+        self.dense_window_keepers.contains(&ty)
     }
 }
 

@@ -101,6 +101,10 @@ pub(super) fn publish(
     // tool Flip (senão o gizmo comeria o clique do canvas).
     flip: &FlipDoc,
     flip_gizmo_on: bool,
+    // W4: how many seconds the §11 Bake button would cover. Resolved by the
+    // caller (which owns the clock) and shown ON the button — see
+    // `physics_bake::bake_seconds`.
+    bake_seconds: f32,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -697,10 +701,9 @@ pub(super) fn publish(
             sim.world().get::<ph2d_physics_ecs::RigidBody>(e).is_some()
                 && sim.world().get::<ph2d_physics_ecs::Collider>(e).is_some()
         });
-    let inspector_physics = hero
-        .gizmo
-        .selection
-        .and_then(|b| super::inspector_physics::build_physics_info(sim.world(), b, can_join));
+    let inspector_physics = hero.gizmo.selection.and_then(|b| {
+        super::inspector_physics::build_physics_info(sim.world(), b, can_join, bake_seconds)
+    });
     let inspector_joint = hero
         .gizmo
         .selection

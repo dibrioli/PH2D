@@ -86,6 +86,7 @@ mod painter_preview_handoff_tests;
 /// tool's composite across a stroke's whole life — phase D of the impasto smoke.
 #[cfg(test)]
 mod painter_preview_pipeline_tests;
+pub(crate) mod physics_bake;
 pub(crate) mod physics_bridge;
 pub(crate) mod physics_overlay;
 mod physics_overlay_joints;
@@ -93,6 +94,7 @@ pub(crate) mod physics_panel_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
 #[cfg(test)]
 mod push_look_probe;
+pub(crate) mod record_fit;
 mod timeline_bridge;
 mod timeline_presets;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
@@ -1237,6 +1239,10 @@ impl crate::App {
                         self.flip_style.map(|s| s.mode),
                         Some(ph2d_tool_flip::FlipMode::Select)
                     ),
+                // W4: the range the §11 Bake button covers, resolved HERE
+                // because the shell owns both the document and the clock, and
+                // shown on the button so the artist never has to guess it.
+                physics_bake::bake_seconds(&self.timeline.doc, &self.playhead) as f32,
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
@@ -1460,6 +1466,7 @@ impl crate::App {
             let mut joint_edits: Vec<(u64, ph2d_editor::JointFieldEdit)> = Vec::new();
             // The pair to join, at most one per frame — it is a click, not a
             // per-entity edit.
+            let mut bake_request: Option<Vec<u64>> = None;
             let mut join_request: Option<(u64, u64)> = None;
             let mut visibility_section_edits: Vec<(u64, ph2d_editor::VisibilityFieldEdit)> =
                 Vec::new();
@@ -1982,6 +1989,21 @@ impl crate::App {
                             if let [a, b] = inspector_selection[..] {
                                 join_request = Some((a, b));
                             }
+                        } else if matches!(edit, ph2d_editor::PhysicsFieldEdit::Bake) {
+                            // WARNING: **Bake does not fan out either**, and the
+                            // cost of getting it wrong is bigger than Join's:
+                            // ONE bake runs the whole simulation once and writes
+                            // every selected body's curves from that single run.
+                            // Fanned out it would re-simulate the entire scene
+                            // once per selected body - same numbers, N times the
+                            // work - and file a separate undo step for each, so
+                            // undoing "the bake" would take as many Ctrl+Z
+                            // presses as there were objects.
+                            bake_request = Some(if inspector_selection.is_empty() {
+                                vec![entity_bits]
+                            } else {
+                                inspector_selection.clone()
+                            });
                         } else if inspector_selection.is_empty() {
                             physics_edits.push((entity_bits, edit));
                         } else {
@@ -4038,6 +4060,42 @@ impl crate::App {
             }
             if let Some((a, b)) = join_request {
                 inspector_joint::create_joint(sim, a, b);
+            }
+            // W4 - bake the selection's simulated motion into curves. After the
+            // joint work above because a baked body stops being simulated, and
+            // the frame's other physics edits should land on the body as the
+            // artist authored it.
+            if let Some(bits) = bake_request {
+                let entities: Vec<ph2d_ecs::Entity> = bits
+                    .iter()
+                    .map(|&b| ph2d_ecs::Entity::from_bits(b))
+                    .collect();
+                let seconds = physics_bake::bake_seconds(&self.timeline.doc, &self.playhead);
+                let outcome = physics_bake::bake_selection(
+                    &mut self.timeline,
+                    physics,
+                    sim,
+                    &entities,
+                    seconds,
+                    self.fixed_step.fixed_dt(),
+                    editor_queue,
+                    component_registry,
+                );
+                if outcome.is_empty() {
+                    toasts.push(ph2d_editor::Toast::info("Nothing to bake: nothing moved"));
+                } else {
+                    // Back to the top, because that is where the animation the
+                    // artist just made begins - and because the kind change only
+                    // reaches rapier at tick 0 (`reconcile_structure`
+                    // re-describes a body at rest), so this is also what makes
+                    // the hand-over take effect rather than waiting for the next
+                    // rewind.
+                    self.playhead.rewind();
+                    toasts.push(ph2d_editor::Toast::info(format!(
+                        "Baked {seconds:.1}s - {} tracks - bodies are now Kinematic",
+                        outcome.tracks
+                    )));
+                }
             }
             // AutoKey (W4.T1/T2) — the single choke point. Runs HERE, after every
             // UI Transform/opacity write for the frame (gizmo early, Inspector +

@@ -370,6 +370,15 @@ pub struct InspectorPhysicsInfo {
     /// Splitting it this way is the whole point: the rule is authored once,
     /// and a body only says where it belongs.
     pub layer: u8,
+    /// How many seconds a Bake would cover, resolved by the shell (W4): the
+    /// armed loop if there is one, else the document's extent, else the
+    /// measured default.
+    ///
+    /// Shown ON the button, because a button whose effect depends on an
+    /// invisible number is a button you have to experiment with. The shell
+    /// resolves it once and both halves read the same answer — the painter to
+    /// label it, the bake to honour it.
+    pub bake_seconds: f32,
     /// Is the current selection exactly **two** bodies? Then §11 offers the
     /// Join button (W3).
     ///
@@ -412,6 +421,15 @@ pub enum PhysicsFieldEdit {
     /// operands: the shell owns the selection, and a second copy of "which
     /// two" would be a second answer to a question only one half can answer.
     Join,
+    /// Bake the selection's simulated motion into timeline curves (W4).
+    ///
+    /// Carries no range for the same reason `Join` carries no bodies: the
+    /// shell owns the clock, and the panel only shows the number it is told
+    /// ([`InspectorPhysicsInfo::bake_seconds`]). And like `Join`, it must NOT
+    /// fan out over a multi-selection — one bake covers every selected body in
+    /// one run of the simulation, where a fan-out would re-simulate the whole
+    /// scene once per body and file a separate undo step for each.
+    Bake,
 }
 
 /// §12 Physics Joint snapshot (W3) — the selected **joint object**.

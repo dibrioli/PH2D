@@ -229,7 +229,7 @@ fn the_final_slice_is_the_target_itself() {
         world.set_substeps(substeps);
         let h = kinematic_at(&mut world, 0.3, -1.7);
         // Product-ish numbers, none of them a fixed point of the arithmetic.
-        let (x, y, rot) = (1.2339999f32, 5.6780001f32, 0.7331f32);
+        let (x, y, rot) = (1.234f32, 5.678f32, 0.7331f32);
         world.set_next_kinematic_pose(h, x, y, rot);
         world.step();
 

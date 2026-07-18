@@ -176,6 +176,10 @@ pub const INSP_LIVE_PHYSICS_COLOR: NodeId = hash_node_id("insp_live_physics_colo
 pub const INSP_PHYS_ADD: NodeId = hash_node_id("insp_phys_add");
 /// §11 Detach both components; the entity goes back to being plain art.
 pub const INSP_PHYS_REMOVE: NodeId = hash_node_id("insp_phys_remove");
+/// §11 Bake this body's simulated motion into timeline curves (W4). Lives in
+/// the body section because it is a thing you do TO a body, next to the kind it
+/// is about to change.
+pub const INSP_PHYS_BAKE: NodeId = hash_node_id("insp_phys_bake");
 /// §11 Body kind segmented, indexed by `BodyKind` tag: Dynamic / Static /
 /// Kinematic. The third chip lands with W4 — it is what a **baked** body is,
 /// and offering it only to the bake would leave the artist looking at a state

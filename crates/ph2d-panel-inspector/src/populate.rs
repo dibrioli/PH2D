@@ -136,7 +136,14 @@ fn populate_physics(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_KIND);
     register_button_ids(store, &ids::INSP_PHYS_SHAPE);
     register_button_ids(store, &ids::INSP_PHYS_LAYER);
-    register_button_ids(store, &[ids::INSP_PHYS_ADD, ids::INSP_PHYS_REMOVE]);
+    register_button_ids(
+        store,
+        &[
+            ids::INSP_PHYS_ADD,
+            ids::INSP_PHYS_BAKE,
+            ids::INSP_PHYS_REMOVE,
+        ],
+    );
     // Every literal below is a PHYSICAL quantity — meters, kg/m², or a
     // dimensionless coefficient — not a design measurement, so none of them
     // has a token to come from.

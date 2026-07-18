@@ -32,6 +32,11 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
             // only painted for a body, and dim is not a refusal
             // ([[feedback_disabled_button_still_dispatches]]).
             info.has_body.then_some(PhysicsFieldEdit::Layer(i as u8))
+        } else if id == ids::INSP_PHYS_BAKE {
+            // Gated on `has_body` like the field edits: there is no motion to
+            // bake off an entity that is not simulated, and the painter only
+            // offers the button inside the body block.
+            info.has_body.then_some(PhysicsFieldEdit::Bake)
         } else if id == ids::INSP_PHYS_JOIN && info.can_join {
             // Gated on `can_join`, which the SHELL computed — the painter only
             // offers the button when the selection is two bodies, and a

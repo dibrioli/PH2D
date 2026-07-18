@@ -22,6 +22,7 @@ pub(crate) fn build_physics_info(
     world: &World,
     entity_bits: u64,
     can_join: bool,
+    bake_seconds: f32,
 ) -> Option<InspectorPhysicsInfo> {
     use ph2d_physics_ecs::{Collider, ColliderShape, RigidBody};
     let entity = Entity::from_bits(entity_bits);
@@ -34,6 +35,7 @@ pub(crate) fn build_physics_info(
         return Some(InspectorPhysicsInfo {
             entity_bits,
             has_body: false,
+            bake_seconds,
             kind_tag: 0,
             shape_tag: 1,
             radius: 0.5,
@@ -65,6 +67,7 @@ pub(crate) fn build_physics_info(
         friction: col.friction,
         layer: col.layer,
         can_join,
+        bake_seconds,
     })
 }
 
@@ -130,10 +133,19 @@ pub(crate) fn apply_physics_edit(
         // so an unknown value means the chip list and the enum have drifted,
         // and silently applying `Dynamic` would hide exactly that.
         let Some(kind) = BodyKind::from_tag(tag) else {
-            debug_assert!(false, "§11 sent BodyKind tag {tag}, which no variant claims");
+            debug_assert!(
+                false,
+                "§11 sent BodyKind tag {tag}, which no variant claims"
+            );
             return;
         };
-        queue_set(queue, registry, entity_bits, RIGID_BODY, &RigidBody { kind });
+        queue_set(
+            queue,
+            registry,
+            entity_bits,
+            RIGID_BODY,
+            &RigidBody { kind },
+        );
         return;
     }
 
@@ -149,7 +161,13 @@ pub(crate) fn apply_physics_edit(
         // brings us here. Reaching this arm would mean the interception was
         // removed — and the fan-out would then create one joint per selected
         // body instead of one joint.
-        PhysicsFieldEdit::Join => {}
+        // Neither of these is a field edit. Both are one gesture over the
+        // SELECTION, intercepted before the per-entity fan-out that brings us
+        // here — `Join` because fanning out would make one joint per body
+        // instead of one joint, `Bake` because it would re-run the whole
+        // simulation once per body and file a separate undo step each time.
+        // Reaching either arm means an interception was removed.
+        PhysicsFieldEdit::Join | PhysicsFieldEdit::Bake => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.
         PhysicsFieldEdit::Shape(0) => {

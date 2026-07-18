@@ -40,56 +40,8 @@ use ph2d_ecs::World;
 use ph2d_editor::HeroScreen;
 use ph2d_timeline::{PoseSample, PropKind, TimelineState, autokey_props};
 
+use super::record_fit::{REC_SMOOTH_PASSES, RecSpan, simplify_recorded};
 use super::timeline_bridge::{default_interp, sample_prop_value};
-
-/// Value tolerance the record-cleanup fit targets, as a fraction of each track's
-/// recorded value range — 1% is visually lossless while cutting the dense
-/// per-frame keys to a handful ([`ph2d_anim::fit_fcurve`]). Per-channel: the fit
-/// normalises by the range, so this reads the same on a pixel track and a radian
-/// track. (Paired with the low-pass below: together they take a noisy 120-sample
-/// gesture to ~5-6 clean keys; measured in `curve_fit` calibration.)
-const REC_SIMPLIFY_REL: f64 = 0.01;
-/// Absolute value-tolerance floor, so a near-constant track (its range ~0) does
-/// not get an impossibly tight tolerance that keeps every noise sample.
-const REC_SIMPLIFY_FLOOR: f64 = 1e-4;
-/// Low-pass passes applied to the recorded values before the fit — strips the
-/// hand/mouse tremor that otherwise makes the fit over-subdivide (the "reduziu
-/// um pouco" symptom). A binomial `[1,2,1]` kernel ×8 ≈ a ~9-sample window,
-/// which at 60 fps is ~150 ms — removes jitter, keeps the gesture's shape.
-const REC_SMOOTH_PASSES: usize = 8;
-/// Two key times closer than this collapse into ONE dope-sheet column when the
-/// session's tracks are aligned — so a channel that turns a frame or two after
-/// another still shares its column instead of sitting beside it. ~2 frames at
-/// 24 fps: tight enough that genuinely separate beats stay separate.
-const COLUMN_MERGE_S: f64 = 0.08;
-
-/// The recorded time+value span of one `(entity, prop)` track during a performing
-/// session — enough to simplify exactly the recorded range at a proportional
-/// tolerance when the drag ends.
-#[derive(Clone, Copy)]
-pub(crate) struct RecSpan {
-    t_min: f64,
-    t_max: f64,
-    v_min: f64,
-    v_max: f64,
-}
-
-impl RecSpan {
-    fn seed(t: f64, v: f64) -> Self {
-        Self {
-            t_min: t,
-            t_max: t,
-            v_min: v,
-            v_max: v,
-        }
-    }
-    fn extend(&mut self, t: f64, v: f64) {
-        self.t_min = self.t_min.min(t);
-        self.t_max = self.t_max.max(t);
-        self.v_min = self.v_min.min(v);
-        self.v_max = self.v_max.max(v);
-    }
-}
 
 /// The shell-owned state of the auto-key / pose machinery (one per `App`).
 #[derive(Default)]
@@ -357,99 +309,12 @@ pub(crate) fn apply_samples(
         // A performing session just ended: simplify the dense per-frame keys it
         // recorded into clean minimal Bézier curves — WITHIN this same undo step,
         // so one Ctrl+Z reverts the whole record + cleanup.
-        simplify_recorded(timeline, &ak.record);
+        simplify_recorded(timeline, &ak.record, REC_SMOOTH_PASSES);
         ak.record.clear();
         let doc = timeline.doc.clone();
         timeline.history.commit_if_changed(&doc);
     }
     ak.drag_active = drag_now;
-}
-
-/// Clean up everything one performing session recorded, **per entity**: fit each
-/// of its tracks, then re-fit them all at ONE shared set of key times so the dope
-/// sheet reads as aligned columns (Enio: "keys for x and y of translate and scale
-/// created at the same point in time"). Column-aligned keys are what hand-keyed
-/// animation looks like — the animator grabs a column and re-times every channel
-/// of the object together.
-///
-/// The shared times are the union of each track's own extrema, with near-coincident
-/// times merged ([`COLUMN_MERGE_S`]) so two channels that turn at *almost* the same
-/// instant land on one column instead of two a frame apart. `simplify_range_at`
-/// then pins every track's keys to those times (no splitting — a split would land
-/// off the column grid).
-fn simplify_recorded(timeline: &mut TimelineState, record: &BTreeMap<(u64, PropKind), RecSpan>) {
-    // Group the session's tracks by entity — alignment is per OBJECT (two objects
-    // recorded at once keep independent timing).
-    let mut by_entity: BTreeMap<u64, Vec<(PropKind, RecSpan)>> = BTreeMap::new();
-    for (&(entity, prop), &span) in record {
-        by_entity.entry(entity).or_default().push((prop, span));
-    }
-    for (entity, props) in by_entity {
-        // Pass 1 — each track's own fit proposes the times it wants (its extrema).
-        let mut times: Vec<f64> = Vec::new();
-        for &(prop, span) in &props {
-            let Some(target) = timeline.doc.binding_for(entity, prop).map(|b| b.target) else {
-                continue;
-            };
-            let Some(track) = timeline.doc.active_clip().track(target) else {
-                continue;
-            };
-            let channel = prop.fit_channel();
-            let Some(rs) = track.range_samples(span.t_min, span.t_max, channel, REC_SMOOTH_PASSES)
-            else {
-                continue;
-            };
-            // Tolerance off the PREPARED samples, not the raw `RecSpan`: an angle
-            // channel's raw extent is one wrapped turn (~2π) however many times it
-            // actually spun, so a raw-derived tolerance would be far too tight for
-            // the unwrapped curve the fit now sees.
-            let tol = value_tol(&rs.samples);
-            times.extend(
-                ph2d_anim::fit_fcurve(&rs.samples, tol, channel.bounds)
-                    .iter()
-                    .map(|k| k.t),
-            );
-        }
-        if times.is_empty() {
-            continue;
-        }
-        // Pass 2 — merge near-coincident times into single columns.
-        times.sort_by(f64::total_cmp);
-        let mut columns: Vec<f64> = Vec::with_capacity(times.len());
-        for t in times {
-            if columns.last().is_none_or(|&c| t - c > COLUMN_MERGE_S) {
-                columns.push(t);
-            }
-        }
-        // Pass 3 — re-fit every track of this entity AT those columns.
-        for &(prop, span) in &props {
-            let Some(target) = timeline.doc.binding_for(entity, prop).map(|b| b.target) else {
-                continue;
-            };
-            if let Some(track) = timeline.doc.active_clip_mut().track_mut(target) {
-                track.simplify_range_at(
-                    span.t_min,
-                    span.t_max,
-                    &columns,
-                    prop.fit_channel(),
-                    REC_SMOOTH_PASSES,
-                );
-            }
-        }
-    }
-}
-
-/// The fit tolerance for one recorded track: a fraction of ITS value range, with
-/// an absolute floor so a near-constant channel is not held to an impossible bar.
-/// Measured on the PREPARED samples (see the caller) — the range the fit will
-/// actually see, which for an unwrapped spin is every turn, not one.
-fn value_tol(samples: &[(f64, f64)]) -> f64 {
-    let (mut v_min, mut v_max) = (f64::MAX, f64::MIN);
-    for &(_, v) in samples {
-        v_min = v_min.min(v);
-        v_max = v_max.max(v);
-    }
-    (REC_SIMPLIFY_REL * (v_max - v_min)).max(REC_SIMPLIFY_FLOOR)
 }
 
 #[cfg(test)]

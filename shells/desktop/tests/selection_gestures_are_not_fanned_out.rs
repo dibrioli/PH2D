@@ -1,4 +1,9 @@
-//! **Join is one gesture over a PAIR, and must not be fanned out (W3).**
+//! **Two §11 gestures are about the SELECTION, and must not be fanned out.**
+//!
+//! `Join` (W3) is one click about a PAIR. `Bake` (W4) is one click about the
+//! whole selection, satisfied by ONE run of the simulation. Both arrive through
+//! the same `InspectorPhysicsEdit` action as the ordinary per-entity edits, and
+//! both mean the opposite of what fanning out would do.
 //!
 //! Every other §11 physics edit is per-entity, so `render_loop` fans it out
 //! over the selection — "make all of these static" is a gesture an artist
@@ -64,5 +69,51 @@ fn the_join_request_carries_exactly_two_bodies() {
         "the Join interception no longer destructures the selection as exactly \
          two entities. A `.first()`/`.get(1)` pair would silently accept three \
          selected bodies and join an arbitrary two of them"
+    );
+}
+
+/// **Bake is intercepted before the fan-out too (W4).**
+///
+/// The failure is quieter than Join's and more expensive. A fanned-out bake
+/// produces the *right numbers* — the simulation is deterministic, so every run
+/// agrees — while re-simulating the entire scene once per selected body, and
+/// filing a separate undo step for each. Nothing looks wrong: the curves are
+/// correct, the scene is correct, and undoing "the bake" simply takes as many
+/// Ctrl+Z presses as there were objects, which reads as the undo being flaky
+/// rather than the bake being wrong.
+#[test]
+fn bake_is_intercepted_before_the_per_entity_fan_out() {
+    let arm = physics_edit_arm();
+
+    let bake_at = arm.find("PhysicsFieldEdit::Bake").expect(
+        "the physics edit arm does not mention Bake at all — it is being \
+         treated as an ordinary per-entity edit, so baking a selection of N \
+         bodies runs the whole simulation N times and leaves N undo steps",
+    );
+    let fan_out_at = arm.find("for &t in &inspector_selection").expect(
+        "the physics edit arm no longer fans out over the selection — if that \
+         is deliberate this gate should be deleted along with it",
+    );
+    assert!(
+        bake_at < fan_out_at,
+        "Bake is handled AFTER the fan-out over the selection, so it runs once \
+         per selected body: the same simulation, N times over, and N undo steps \
+         for one click"
+    );
+}
+
+/// **A bake with nothing selected still bakes the entity the section is about.**
+///
+/// The fan-out's empty case is the single-selection case, and the interception
+/// has to reproduce it or the button does nothing at all when exactly one body
+/// is selected — which is the commonest way anyone will use it.
+#[test]
+fn the_bake_request_falls_back_to_the_inspected_entity() {
+    let arm = physics_edit_arm();
+    assert!(
+        arm.contains("vec![entity_bits]"),
+        "the Bake interception does not fall back to `entity_bits` when the \
+         selection list is empty — the button would be dead in the ordinary \
+         one-body case"
     );
 }

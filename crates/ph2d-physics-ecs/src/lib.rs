@@ -15,11 +15,13 @@
 //! re-exported handle types, so the `enhanced-determinism` feature pin
 //! lives in exactly one Cargo.toml (HR-5).
 
+pub mod bake;
 mod bridge;
 mod components;
 mod joint;
 pub mod settings;
 
+pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories};
 pub use bridge::PhysicsBridge;
 pub use components::{BodyKind, Collider, ColliderShape, RigidBody};
 pub use joint::{JointKind, PhysicsJoint};

@@ -226,6 +226,23 @@ pub(crate) fn paint_physics_section(
         yy += h + Spacing::Sm.px();
     }
 
+    // Bake (W4): the simulated motion becomes timeline curves, and the body is
+    // handed over to the scene (`BodyKind::Kinematic`). The label carries the
+    // resolved range because the range is otherwise invisible — the artist
+    // would have to press it to find out how much they were baking.
+    let bake_label = format!("Bake {:.1}s to Timeline", info.bake_seconds);
+    let bake_rect = Rect::new(x, yy, w, h);
+    let bake = Button::new(ids::INSP_PHYS_BAKE, &bake_label)
+        .kind(ButtonKind::Default)
+        .state(
+            store
+                .button_state(ids::INSP_PHYS_BAKE)
+                .unwrap_or(ButtonState::Normal),
+        );
+    paint_button(&bake, bake_rect, scene, text_system, theme);
+    hit_index.register(ids::INSP_PHYS_BAKE, bake_rect);
+    yy += h + Spacing::Sm.px();
+
     let btn_rect = Rect::new(x, yy, w, h);
     let btn = Button::new(ids::INSP_PHYS_REMOVE, "Remove Physics Body")
         .kind(ButtonKind::Default)

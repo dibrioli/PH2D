@@ -37,6 +37,7 @@ fn with_body() -> InspectorPhysicsInfo {
         friction: 0.5,
         layer: 0,
         can_join: false,
+        bake_seconds: 5.0,
     }
 }
 
@@ -297,5 +298,47 @@ fn join_is_offered_and_dispatched_only_for_two_selected_bodies() {
         click(with_body(), ids::INSP_PHYS_JOIN).is_empty(),
         "Join fired with can_join=false — the refusal lives only in the paint \
          loop, which is not a refusal"
+    );
+}
+
+/// **The Bake button is painted, registered, and reaches the bus.** (W4.)
+///
+/// The three halves that can each be missing on their own: a rect under the
+/// mouse, a focusable id in the store, and an arm that dispatches. It also
+/// checks the label carries the RANGE — the number is the only thing telling
+/// the artist how much of the timeline they are about to write, and a button
+/// that silently baked five seconds when the document said two would be worse
+/// than one that asked.
+#[test]
+fn the_bake_button_is_painted_and_reaches_the_bus() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_ui_testkit::MockPanelHost as Host;
+
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let mut host = Host::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(with_body()));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+    assert!(
+        rects.iter().any(|(n, _)| *n == ids::INSP_PHYS_BAKE),
+        "the Bake button was never painted, so nothing can be clicked"
+    );
+
+    expect(
+        &click(with_body(), ids::INSP_PHYS_BAKE),
+        PhysicsFieldEdit::Bake,
+        "Bake to Timeline",
+    );
+
+    // The empty face has no motion to bake, and offers nothing.
+    assert!(
+        click(without_body(), ids::INSP_PHYS_BAKE).is_empty(),
+        "Bake fired on an entity with no body — there is no simulation to read"
     );
 }

@@ -2,6 +2,8 @@
 
 > ⚠️ **O ALVO DESTA LINHA É O EXTRAORDINÁRIO** (CLAUDE.md §0.0, [[feedback_the_ceiling_is_the_hardwares_never_the_fallbacks]]). Medido na RTX: **4,19 M partículas simulam em 3,6 ms**. Se você for escrever um limite — cap, teto, faixa de slider — **meça primeiro** e escreva o número que a medição deu. Nunca deixe a CPU (o caminho de REFERÊNCIA) definir o teto do dispositivo.
 >
+> ⚠️ **A LINHA ESTÁ FECHADA E ENTREGUE PARA INTEGRAÇÃO** (2026-07-18, ordem do Enio) — o briefing do integrador é [`HANDOFF_INTEGRACAO_line_gpu_nodes_2026-07-18.md`](HANDOFF_INTEGRACAO_line_gpu_nodes_2026-07-18.md). Este doc segue sendo o ONDE/COMO técnico; o de integração tem os conflitos MEDIDOS e os gates.
+>
 > **Você é o agente que continua esta linha em contexto fresco.** O ADR já está escrito e **TODAS as
 > fatias (1-5) LANDARAM** (fatias 3+4 em `76ae0d52`, fatia 5 em `49829843`, 2026-07-17) e estão gateadas
 > (parity na RTX + policy headless) — ver §1.LANDOU, §3.LANDOU e §4.LANDOU. **Pendente de smoke do Enio**

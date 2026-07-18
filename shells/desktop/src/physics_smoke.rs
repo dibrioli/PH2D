@@ -18,8 +18,8 @@
 //! instead of falling — the honest failure, not a hidden pre-step.
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{Name, Transform};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+use ph2d_ecs::{Name, Transform, stable_name_id};
+use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsJoint, RigidBody};
 use ph2d_render::Sprite;
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
@@ -62,6 +62,7 @@ impl crate::App {
             "3" => self.physics_smoke_author(),
             "4" => self.physics_smoke_world(),
             "5" => self.physics_smoke_layers(),
+            "6" => self.physics_smoke_joints(),
             _ => self.physics_smoke_drop(),
         }
 
@@ -312,6 +313,135 @@ impl crate::App {
                · click cell (1,1) : the right group stops colliding with ITSELF.\n\
                · Inspector > Layer: select one body and move it to another layer.\n\
                · Ctrl+S, Ctrl+O   : the matrix comes back with the project."
+        );
+    }
+
+    /// **Scene 6 (W3).** The three things joints exist for, side by side: a
+    /// **pendulum**, a **chain**, and a **ragdoll**.
+    ///
+    /// Three and not one, because each answers a different question. The
+    /// pendulum says the anchor is where the artist put it (it is pinned at
+    /// the plank's END, so a version that used body centres would hang it from
+    /// its middle). The chain says links that overlap at their pins do not
+    /// fight each other. The ragdoll says limits hold — its knees only bend
+    /// one way.
+    fn physics_smoke_joints(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+        let world = gfx.sim.world_mut();
+
+        // A static anchor body — everything hangs off one of these.
+        let hook = |world: &mut ph2d_ecs::World, name: &str, x: f32, y: f32| {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, y)),
+                Sprite::atlas(0, [0.16, 0.16], [0.75, 0.75, 0.8, 1.0]),
+                Name::new(name.to_string()),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.08 },
+                    ..Collider::default()
+                },
+            ));
+        };
+        let limb = |world: &mut ph2d_ecs::World,
+                    name: &str,
+                    x: f32,
+                    y: f32,
+                    hw: f32,
+                    hh: f32,
+                    hue: [f32; 4]| {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, y)),
+                Sprite::atlas(0, [hw * 2.0, hh * 2.0], hue),
+                Name::new(name.to_string()),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: hw,
+                        half_y: hh,
+                    },
+                    ..Collider::default()
+                },
+            ));
+        };
+        let pin = |world: &mut ph2d_ecs::World, name: &str, a: &str, b: &str, x: f32, y: f32| {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, y)),
+                Name::new(name.to_string()),
+                PhysicsJoint {
+                    body_a: stable_name_id(a),
+                    body_b: stable_name_id(b),
+                    ..PhysicsJoint::default()
+                },
+            ));
+        };
+
+        // --- the pendulum: pinned at the plank's LEFT END, not its centre ---
+        hook(world, "PendHook", -4.0, 4.5);
+        limb(world, "Plank", -3.4, 4.5, 0.6, 0.09, [0.95, 0.6, 0.2, 1.0]);
+        pin(world, "PendPin", "PendHook", "Plank", -4.0, 4.5);
+
+        // --- the chain: links that OVERLAP at their pins ---
+        hook(world, "ChainHook", -0.6, 4.8);
+        let mut prev = "ChainHook".to_string();
+        for i in 0..6u32 {
+            let y = 4.5 - i as f32 * 0.42;
+            let name = format!("Link{i}");
+            limb(world, &name, -0.6, y, 0.1, 0.22, [0.35, 0.75, 0.95, 1.0]);
+            pin(world, &format!("ChainPin{i}"), &prev, &name, -0.6, y + 0.24);
+            prev = name;
+        }
+
+        // --- the ragdoll: a torso on a hook, two arms, two legs with LIMITS ---
+        hook(world, "DollHook", 3.0, 5.0);
+        limb(world, "Torso", 3.0, 4.4, 0.18, 0.42, [0.9, 0.4, 0.5, 1.0]);
+        pin(world, "NeckPin", "DollHook", "Torso", 3.0, 4.82);
+        for (name, dx, hw, hh, limited) in [
+            ("ArmL", -0.3f32, 0.26f32, 0.07f32, false),
+            ("ArmR", 0.3, 0.26, 0.07, false),
+            ("LegL", -0.11, 0.08, 0.32, true),
+            ("LegR", 0.11, 0.08, 0.32, true),
+        ] {
+            let (x, y, px, py) = if limited {
+                (3.0 + dx, 3.7, 3.0 + dx, 4.02)
+            } else {
+                (3.0 + dx * 1.6, 4.6, 3.0 + dx * 0.6, 4.6)
+            };
+            limb(world, name, x, y, hw, hh, [0.9, 0.55, 0.45, 1.0]);
+            world.spawn((
+                Transform::from_translation(Vec2::new(px, py)),
+                Name::new(format!("{name}Pin")),
+                PhysicsJoint {
+                    body_a: stable_name_id("Torso"),
+                    body_b: stable_name_id(name),
+                    // A knee bends one way. Without limits the ragdoll is a
+                    // bag of sticks, which is the difference the eye reads as
+                    // "alive" versus "broken".
+                    limits_enabled: limited,
+                    limit_min: -0.15,
+                    limit_max: 1.4,
+                    ..PhysicsJoint::default()
+                },
+            ));
+        }
+
+        eprintln!(
+            "[physics-smoke 6] Three rigs, playing. Press B for the overlay: joints are the\n\
+             AMBER links (colliders stay green/cyan).\n\
+             Watch:\n  \
+               · PENDULUM (left)  : it hangs from the plank's END, not its middle, and swings.\n  \
+               · CHAIN (middle)   : six links that OVERLAP at their pins and do not fight.\n  \
+               · RAGDOLL (right)  : the legs are limited -- knees bend one way, not both.\n\
+             Then try the authoring:\n  \
+               · select the plank, Inspector > Physics Joint is NOT there (it is a body).\n  \
+               · select 'PendPin' in the Hierarchy -> the Joint section appears. Switch it to\n    \
+                 Spring: the plank starts bouncing on a spring instead of hanging rigid.\n  \
+               · select TWO bodies -> Physics Body grows a 'Join Selected Bodies' button.\n  \
+               · Ctrl+Z after any of it, and Ctrl+S / Ctrl+O: the joints survive both."
         );
     }
 

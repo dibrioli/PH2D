@@ -3160,7 +3160,19 @@ impl crate::App {
             // O contorno dos colliders: um sprite é um QUAD e um collider é
             // invisível, então sem isto "que forma isto tem, fisicamente?"
             // não tem resposta na tela (Enio, 2026-07-18). No-op sem corpos.
-            physics_overlay::draw(self.show_colliders, sim, camera, window_size, vector_scene);
+            // Joints too — a joint is a RELATIONSHIP with no geometry at all,
+            // so two objects pinned together look exactly like two that merely
+            // touch. The anchors come from the solver, not from the joint
+            // entity's Transform (see `physics_overlay::joint_marks`).
+            let joint_anchors: Vec<([f32; 2], [f32; 2])> = physics.joint_anchors().collect();
+            physics_overlay::draw(
+                self.show_colliders,
+                sim,
+                &joint_anchors,
+                camera,
+                window_size,
+                vector_scene,
+            );
             // O realce da seleção (W6): uma seleção que não se VÊ não existe. Overlay
             // (chrome), nunca render de traço — ver o cabeçalho do módulo.
             {

@@ -3,8 +3,10 @@
 **Para:** o **agente integrador** (e o próximo implementador da linha).
 **De:** a sessão de 2026-07-17/18 que assumiu a linha pelo `HANDOFF_line_vector_continuacao_2026-07-17.md`
 (§4.A itens 1–5 do Envelope).
-**Estado:** **Fatias 1, 2 e 3 fechadas e SMOKADAS pelo Enio; Fatias 4+5 e a Fatia D fechadas e
-gateadas, PENDENTES de smoke.** Motor + host live já estavam na `main` (Fatias A+B).
+**Estado:** ✅ **LINHA FECHADA — a fila do ADR-0129 acabou, e TUDO foi smokado e aprovado pelo Enio
+(2026-07-17/18).** Motor + host live já estavam na `main` (Fatias A+B).
+**Ordem do Enio (2026-07-18):** *"vamos integrar ao main"*. Este documento é o briefing do
+**agente integrador** — a linha não integra nem faz push (§0.7 do CLAUDE.md).
 - **Fatia 1** = a alça própria de canto no Node (arrasta os 4 cantos, convexidade obrigatória).
 - **Fatia 2** = mover/girar/escalar o envelope inteiro no Select (geometria LOCAL + pose no `Transform`).
 - **Fatia 3** = o **CONTAINER de N filhos** (*warp group*): o `VecEnvelope` saiu do path e foi para uma
@@ -30,6 +32,11 @@ gateadas, PENDENTES de smoke.** Motor + host live já estavam na `main` (Fatias 
 > A **descrição do modelo da Fatia 2** ("envelope = path com componente") está superada pela Fatia 3
 > ("envelope = container; os paths são FILHOS"). A mecânica de pose/gizmo é a MESMA, um nível acima.
 
+> **Mapa de leitura** (o documento cresceu com a linha; leia SÓ o que a sua tarefa exige):
+> **integrador** → §1 (identidade) · §11 (os fixes pós-smoke e o artefato aberto) · §12 (runbook) ·
+> §3–§4 (riscos e contratos). **Próximo implementador da linha** → §6 (a fila) · §8–§10 (o desenho de
+> cada gesto). §2/§5 são históricos da Fatia 3 e ficam para contexto.
+
 ---
 
 ## §1 — Identidade (DIRETRIZ §1.5.9.1)
@@ -37,11 +44,25 @@ gateadas, PENDENTES de smoke.** Motor + host live já estavam na `main` (Fatias 
 | | |
 |---|---|
 | **Branch / worktree** | `line/Vector` — `Worktrees/line-Vector/` |
-| **Commits da fatia** | `207d10b9` (F1) · `43b918f5` (fix smoke F1) · `5bddd9e4` (F2: local+pose) · `10889f0e` (F3: container) · **`d5695795` (F4+F5: painel + Expand/Release)** · docs |
+| **HEAD da linha** | `73d59ff4` |
 | **Base do fork (merge-base com `main`)** | `cdc3acc1` |
-| **`main` desde a base** | **0 commits** — a linha está sobre a `main` de hoje; **sem rebase** |
+| **`main` desde a base** | **0 commits** — a linha está sobre a `main` de hoje; **`--ff-only` limpo, sem rebase** |
+| **Diff total** | 53 arquivos · +7391 / −878 |
 | **Contratos congelados encostados** | **NENHUM** (§4) |
-| **Smoke** | F1+F2+F3 **APROVADOS (2026-07-17/18)**. **F4+F5 PENDENTES** — ver §5. |
+| **Smoke** | ✅ **TUDO APROVADO** — F1/F2/F3, F4+F5, D, C, E e os 4 fixes pós-smoke (§11) |
+
+**Os 8 commits de FEATURE**, em ordem (os de `docs`/`chore` intercalam e são inertes):
+
+| Commit | O quê |
+|---|---|
+| `207d10b9` | F1 — arrastar os cantos da gaiola no Node |
+| `5bddd9e4` | F2 — mover/girar/escalar o envelope no Select (geometria LOCAL + pose) |
+| `10889f0e` | F3 — o **container** de N filhos (*warp group*) |
+| `d5695795` | F4+F5 — a seção **Envelope** no painel + **Expand**/**Release** |
+| `5b6f754c` | **D** — gaiola de lados CURVOS (patch de Coons) + chips `Cage` |
+| `3f4e0c91` | **C** — 7 presets geradores de gaiola + slider **Bend** |
+| `adc2f228` | **E** — **pinos** (MLS-rigid, o *puppet warp*) |
+| `30d7115c` `f5d59c96` `2e2a951d` | os **fixes pós-smoke** (§11) |
 
 ---
 
@@ -159,6 +180,9 @@ escolha do Enio nesta sessão).
 
 ## §5 — Estado dos gates e do SMOKE (§1.5.9.6)
 
+> ✅ **TODO o smoke desta linha foi aprovado pelo Enio.** A tabela abaixo é da Fatia 3 (histórica); o
+> estado consolidado dos gates está no **§12** e os fixes pós-smoke no **§11**.
+
 **Gates da Fatia 3 (todos mutação-testados):**
 
 | Gate | Onde | Prova |
@@ -226,8 +250,10 @@ Fatias 1, 2, 3, **4 e 5** fechadas. Resta da 4.A (fechar o Envelope):
 7. ~~**C — presets de gaiola**~~ — **FECHADA** (`3f4e0c91`). Ver §9.
 8. ~~**E — pinos / MLS**~~ — **FECHADA** (`adc2f228`). Ver §10.
 
-**A fila do ADR-0129 acabou.** O que resta é a 4.B herdada (Live Path Effects como nós, morph vivo,
-blend em cadeia) e o backlog aberto de propósito do §6. (a mais delicada — exige o `break_cusp` que hoje volta `None` de propósito;
+**A fila do ADR-0129 ACABOU.** Depois da integração, o que a linha `line/Vector` tem pela frente é a
+**4.B herdada**: Live Path Effects como nós (o multiplicador — a costura fonte≠cozido do ADR-0121 já
+é o pré-requisito) · morph vivo (`t` animável) · blend em CADEIA (>2 formas) · tipos de quina · texto
+em caminho · trim path · repeater · largura variável. (a mais delicada — exige o `break_cusp` que hoje volta `None` de propósito;
    ADR §3.2, e o `folds()` da Fatia D é o precedente do guard que ela vai precisar).
 
 E a 4.B herdada (Live Path Effects como nós, morph vivo, blend em cadeia, etc.).
@@ -520,7 +546,130 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
 
 ---
 
-## §7 — Resumo de fechamento
+## §11 — Os fixes PÓS-SMOKE (leia esta seção antes de qualquer outra)
+
+Quatro defeitos que só o smoke do Enio expôs. Estão aqui em primeiro lugar porque **três deles são
+lições transferíveis** — não são detalhes do envelope.
+
+### 11.1 — O undo fazia o overlay SUMIR (`a64a9ced` + `30d7115c`)
+
+*"o undo faz os pins sumirem, embora ainda funcionando"*. O `ProjectState::restore` despawna o mundo
+editável e re-spawna com **ids NOVOS**, e o `apply_project` zerava a seleção inteira por causa disso.
+A defesa está certa quanto aos **bits** — mas levou junto a seleção do **pen**, que não é feita de
+bits (`VecPathId`, e ela **viaja no snapshot**).
+
+Sintoma traiçoeiro, e vale memorizar a forma dele: **a ferramenta funcionando e invisível.** O recook
+varre por QUERY (a arte segue deformada); o overlay é desenhado pela SELEÇÃO (que já não existe).
+
+⚠️ **O 1º fix (`a64a9ced`) estava num caminho que o produto não percorre** — gateei o
+`sync_selection` diretamente e ele ficou verde sobre um mecanismo que o undo nunca alcança. O
+`apply_project` **exige `gfx`** (janela + GPU) e por isso nenhum teste headless chega lá. A resposta
+foi extrair a POLÍTICA para uma função pura (`surviving_selection`, 3 gates) **+ um arch-gate sobre o
+FONTE** provando que o `apply_project` a chama, e que a captura vem ANTES do restore.
+
+> **Para o integrador:** `shells/desktop/tests/the_undo_preserves_the_vector_selection.rs` lê
+> `src/undo.rs` por texto. Se o merge reformatar o `apply_project`, ele fala — é intencional.
+
+### 11.2 — "Os pontos travam ao arrastar" (`f5d59c96`)
+
+**Medido, não deduzido:** arrastar uma âncora de uma forma envolvida move o ponto por um frame e o
+`recook` o **reverte ao bit** no seguinte. O ponto anda e volta.
+
+A geometria de um filho é COZIDA — função pura das fontes + gaiola. Agora um clique sobre a ARTE do
+envelope é **consumido sem armar nada**; clique fora dela continua a cair no pen (desselecionar
+funciona). É a mesma regra da alça de raio numa Live Shape (ADR-0121): **geometria que uma relação
+viva possui não é editável à mão**; quem quer os pontos de volta usa **Expand**.
+
+**Duas gates existentes falharam com este fix, e as duas estavam CERTAS** — foram reescritas para
+afirmar o fato que importa (uma sondava o CENTRO da forma; a outra media o RETORNO do `press` quando
+a pergunta sempre foi se ele *armou*).
+
+### 11.3 — O guard de dobra perguntava pela CAIXA (`2e2a951d`)
+
+O `PH2D_VEC_OVERLAY_DIAG` nomeou: `pinos=13` + `RECUSADO pino: ... dobraria a arte`. Quantificado:
+com 13 pinos o guard recusava qualquer arrasto além de **0,70 unidades num domínio de 2,80**.
+
+A recusa nem sempre estava errada; **a pergunta estava**. O mal que ele impede é um contorno
+**auto-interseccionado**, e um contorno só se auto-intersecta onde HÁ contorno — eu amostrava a
+bbox-união, que tem cantos por onde nenhuma curva passa. Agora as amostras são os pontos da **arte**
+(`envelope_live::art_samples`).
+
+E **Alt+clique remove um pino** (idioma do Puppet Warp): 13 pinos era acúmulo, não autoria — todo
+clique no vazio prega e o `Clear Pins` é tudo-ou-nada. Isto fecha o *"aberto de propósito"* que o §6
+listava; a disputa de UX resolveu-se com a evidência.
+
+### 11.4 — ⚠️ Um artefato visual ABERTO, e o que já está EXCLUÍDO
+
+O Enio fotografou uma **linha reta longa** saindo de uma forma envolvida. **Não reproduziu** no
+re-smoke e **não tem causa conhecida**. O que a investigação já ELIMINOU, por medição — para ninguém
+repetir:
+
+1. **Cancelamento catastrófico na jacobiana do MLS perto de um pino.** Falso: com os pinos em repouso
+   o mapa é a identidade e `J` mede exatamente `[[1,0],[0,1]]` até 1e-13 do pino.
+2. **Haste de comprimento zero no overlay** (pino recém-pregado tem `rest == moved`). Falso: o
+   stroker devolve ZERO elementos.
+3. **Segmento reto/degenerado `(P0,P0,P3,P3)` a chegar ao fitter.** Falso: retângulo, retângulo
+   arredondado e a degenerada explícita atravessam `warp_path` (Quad e MLS) sem ponto disparado.
+4. **Ponto de controle disparado na cena.** Falso, e agora com evidência do PRODUTO: o log real do
+   `PH2D_VEC_OVERLAY_DIAG` mostrou `alcance_das_alcas=1.00x` em toda forma, em todo frame.
+
+A cor da linha na foto é a do **traço da forma**, não a do overlay (azulado) — o que aponta para
+geometria/render, não para o chrome do envelope. **Não é bloqueio de integração** (não reproduz, e
+nada no diff o explica), mas fica registrado com as 4 portas já fechadas.
+
+> `PH2D_VEC_OVERLAY_DIAG=1` fica no código de propósito. ⚠️ A 1ª versão dele **mentia**: passei
+> `undo.depth()` como contador de frames, e `depth % 60 == 0` só é verdade em 0/60/120 — ele
+> emudecia na primeira ação desfazível, e o smoke concluiu "não reproduziu" sem ter sido observado.
+> O contador agora é interno: **não há parâmetro para passar errado**, o que é melhor que um gate.
+
+---
+
+## §12 — RUNBOOK do integrador
+
+Sem rebase: `merge-base == main == cdc3acc1`, **0 commits** de drift.
+
+```
+cd /home/enio/Documentos/Projetos/PH2D
+git merge --ff-only line/Vector
+```
+
+**Depois do merge, rode o gate da árvore combinada** (DIRETRIZ §1.5.3). O que ESTA linha já verificou
+localmente no HEAD `73d59ff4`, e que o integrador deve ver verde de novo:
+
+| Gate | Estado local |
+|---|---|
+| `cargo check --workspace --all-targets` | ✅ |
+| `cargo fmt --all -- --check` | ✅ |
+| clippy `--all-targets` nas 6 crates tocadas | ✅ sem um warning |
+| 33 binários de arch-gate da `ph2d-editor-core` | ✅ |
+| `ph2d-host-desktop` tests + bins (**731**) | ✅ |
+| `ph2d-vec-envelope` (42 unit + 8 do gate-mãe) | ✅ |
+| `ph2d-panel-vector` seam (**25**) | ✅ |
+| `typos` · `cargo machete` | ✅ (drenados em `73d59ff4`) |
+
+⚠️ **Latentes que o ship costuma acordar nesta linha** (2-4 iterações é o normal): `typos` já foi
+drenado, mas ele **varre a árvore combinada** — outra linha pode trazer palavra nova. E o gate de LOC
+do **shell** mora em `shells/desktop/tests/file_loc_caps.rs` e **não roda** com `cargo test -p
+ph2d-editor-core`; esta linha já pagou esse pedágio duas vezes.
+
+### Pontos de atrito prováveis num merge com outra linha
+
+| Arquivo | Por quê |
+|---|---|
+| `crates/ph2d-ecs/src/lib.rs` | 1 linha de `pub use` (append) |
+| `crates/ph2d-editor-core/src/ids/chrome/vector.rs` | bloco **append-only** no fim + `VECTOR_SECTIONS` |
+| `crates/ph2d-editor-core/tests/node_id_collisions.rs` | tabela (append) |
+| `crates/ph2d-editor-core/tests/arch_mode_has_reconcile.rs` | 1 entrada em `BENIGN_SET_MODE` |
+| `.typos.toml` | 1 chave nova — ⚠️ **chave duplicada mata o gate no PARSE**, confira antes de resolver |
+| `shells/desktop/src/render_loop/mod.rs` | drain + publisher + 2 blocos de overlay |
+| `shells/desktop/src/main.rs` | 2 `mod` novos |
+
+**Nenhuma contagem "que soma"**: nenhum componente NOVO foi registrado (o `VecEnvelope` já existia e
+só mudou de forma), então a tríade `ph2d-ecs`/`-render`/`-script` está intacta.
+
+---
+
+## §13 — Resumo de fechamento
 
 - **Fatias 1–5 do Envelope (ADR-0129 §4.A.1–5) construídas e gateadas.** F1/F2/F3 SMOKADAS; F4+F5
   pendentes.
@@ -556,5 +705,14 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
   gate novo** (§10.5). Dois oráculos meus caíram no caminho.
 - **Commits (locais, sem push):** `adc2f228` (Fatia E) · `3f4e0c91` (Fatia C) · `5b6f754c` (Fatia D) · `d5695795` (F4+F5) · `10889f0e` (F3) ·
   `5bddd9e4`/`43b918f5`/`207d10b9` (F2/F1) + docs.
-- **A linha NÃO integra nem faz push** (§0.7): entrego este handoff e **PARO** — integração e ship só
-  por ordem EXPLÍCITA do Enio.
+- **Fixes pós-smoke:** 4, todos gateados (§11) — e três com lição transferível: *a ferramenta
+  funcionando e invisível* (identidade de overlay por bits de entidade, que o undo recicla) · *o
+  recook é o dono da geometria derivada* (não a ofereça à mão) · *o guard deve perguntar pela
+  geometria que EXISTE, não pela caixa em volta dela*.
+- **Um artefato ABERTO** (a linha reta da foto): não reproduz, sem causa, **4 hipóteses eliminadas
+  por medição** (§11.4). Não é bloqueio.
+- **Ship latents drenados** (`73d59ff4`): `typos` limpo, `machete` limpo, fmt e clippy sem um
+  warning, `check --workspace` verde.
+- **Ordem do Enio recebida (2026-07-18): INTEGRAR.** A linha entrega este handoff e **PARA aqui** —
+  quem funde é o **agente integrador** (§0.7 do CLAUDE.md), e o **ship/push continua a ser do Enio**,
+  por ordem separada. Runbook: **§12**.

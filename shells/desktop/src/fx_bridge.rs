@@ -43,6 +43,7 @@ pub(crate) fn stack_view(scene: &VecScene, id: VecPathId) -> Vec<FxRowView> {
                         min: d.min,
                         max: d.max,
                         toggle: d.toggle,
+                        integer: d.integer,
                         value: e.effect.get(i),
                     })
                     .collect(),

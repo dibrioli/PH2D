@@ -1238,6 +1238,7 @@ fn every_effect_stack_button_reaches_the_bus_when_clicked() {
             min: 0.0,
             max: 1.0,
             toggle: false,
+            integer: false,
             value: 0.25,
         }],
     };
@@ -1314,5 +1315,84 @@ fn the_effect_section_offers_nothing_without_a_single_target() {
             .is_some(),
         "com alvo, o Add TEM de ser oferecido"
     );
+    ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
+}
+
+/// **O chip mostra o número do DOCUMENTO durante o arrasto, não o track `0..1`.**
+///
+/// Enio, 2026-07-18: *"o número que aparece ao arrastar a caixa numérica é de 0 a 1, sendo que
+/// os números reais (quando solta o mouse) são outros"*.
+///
+/// O slider guarda `0..1` e o chip está ligado a ele. Registados na IDENTIDADE, o chip repetia
+/// o track durante todo o gesto e só ganhava o valor certo quando o snapshot voltava. O canal é
+/// o `link_slider_number_mapped`, e a faixa de cada parâmetro só se sabe no frame — daí o
+/// `seed_effect_ranges`, que corre no `paint`.
+///
+/// **Este gate afirma a condição, não um proxy:** pergunta ao store a projeção registada e a
+/// faixa do chip, e exige que sejam as do EFEITO. Sem o seed, a projeção é `(1, 0)` e a faixa
+/// `0..1` — exatamente o que se via na tela.
+#[test]
+fn the_effect_chip_carries_the_documents_range_not_the_normalised_track() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    // Faixas do produto: uma percentagem que vai a 100 e uma CONTAGEM que vai a 128. Uma faixa
+    // `0..1` aqui deixaria o gate verde sobre o bug — a identidade e a verdade coincidiriam.
+    let params = vec![
+        ph2d_panel_vector::FxParamView {
+            name: "Size",
+            min: 0.0,
+            max: 100.0,
+            toggle: false,
+            integer: false,
+            value: 12.0,
+        },
+        ph2d_panel_vector::FxParamView {
+            name: "Ridges",
+            min: 1.0,
+            max: 128.0,
+            toggle: false,
+            integer: true,
+            value: 8.0,
+        },
+    ];
+    ph2d_panel_vector::set_current_effects(
+        true,
+        &["Zig Zag"],
+        vec![ph2d_panel_vector::FxRowView {
+            label: "Zig Zag",
+            enabled: true,
+            params,
+        }],
+    );
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    // Pintar é o que republica — o `populate` corre uma vez e não sabe que efeito caiu na linha.
+    let _ = host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::vector_fx_param_num_id(0, 0));
+
+    let store = host.store();
+    for (param, name, min, max) in [
+        (0usize, "Size", 0.0_f64, 100.0_f64),
+        (1, "Ridges", 1.0, 128.0),
+    ] {
+        let chip = ids::vector_fx_param_num_id(0, param);
+        let (scale, offset) = store.linked_slider_mapping(chip);
+        assert!(
+            (f64::from(scale) - (max - min)).abs() < 1e-3 && (f64::from(offset) - min).abs() < 1e-3,
+            "{name}: a projeção registada é ({scale}, {offset}) e devia ser ({}, {min}) — com a \
+             identidade o chip repete o track `0..1` durante o gesto inteiro",
+            max - min
+        );
+        let (rmin, rmax, _) = store
+            .number_range(chip)
+            .unwrap_or_else(|| panic!("{name}: sem `set_number_range` o arrasto escala errado"));
+        assert!(
+            (rmin - min).abs() < 1e-9 && (rmax - max).abs() < 1e-9,
+            "{name}: a faixa do chip é {rmin}..{rmax} e devia ser {min}..{max}"
+        );
+    }
     ph2d_panel_vector::set_current_effects(false, &[], Vec::new());
 }

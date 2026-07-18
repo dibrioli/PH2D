@@ -241,6 +241,54 @@ mod tests {
         }
     }
 
+    /// **Um caminho com efeitos é PONTO FIXO do assentamento de origens.**
+    ///
+    /// O undo global regista por DIFF: qualquer sistema que reescreva a cena depois do estado
+    /// ter assentado produz um passo espúrio, e o 1º Ctrl+Z do artista gasta-se a desfazer o
+    /// lixo — foi assim que o bug do z-order se manifestou (*"o undo só faz uma etapa"*).
+    ///
+    /// A pilha de efeitos (ADR-0132) toca este sistema por um caminho indireto: `path_curve_bbox`
+    /// mede a geometria **cozida**, então a caixa de um caminho aparado é a do pedaço que
+    /// sobrou, e é essa que decide o centro. Convergir continua a ser obrigatório.
+    #[test]
+    fn a_path_with_effects_is_a_fixed_point_of_settling() {
+        use ph2d_vec_scene::effect::{FxEntry, PathEffect};
+        let mut sim = SimWorld::default();
+        let mut map = crate::vec_entities::VecEntityMap::new();
+        let mut scene = ph2d_vec_scene::VecScene::new();
+        // Longe da origem: um caminho já centrado não exercita o assentamento.
+        let mut path = ph2d_vec_scene::VecPath {
+            verts: [[100.0, 60.0], [140.0, 60.0], [140.0, 100.0], [100.0, 100.0]]
+                .map(ph2d_vec_scene::VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            ..ph2d_vec_scene::VecPath::default()
+        };
+        path.effects = vec![FxEntry::new(PathEffect::Trim(
+            ph2d_vec_scene::fx_trim::TrimSpec {
+                start: 0.5,
+                end: 0.9,
+                offset: 0.0,
+            },
+        ))];
+        let id = scene.push_path(path);
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("P"), VecPathRef(id)))
+            .id();
+        map.insert(id, e.to_bits());
+
+        settle_origins(&mut sim, &mut scene, &map, &[]);
+        let after_first = (scene.clone(), *sim.world().get::<Transform>(e).unwrap());
+        settle_origins(&mut sim, &mut scene, &map, &[]);
+        let after_second = (scene.clone(), *sim.world().get::<Transform>(e).unwrap());
+        assert!(
+            after_first == after_second,
+            "assentar duas vezes deu resultados diferentes — cada frame produziria um passo de \
+             undo que o artista não pediu"
+        );
+    }
+
     /// Identidade não entra no mapa: o caminho comum (todo path recém-desenhado)
     /// não paga nada, e `xform_of` já devolve identidade para o ausente.
     #[test]

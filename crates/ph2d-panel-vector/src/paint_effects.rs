@@ -183,7 +183,8 @@ impl BodyCtx<'_> {
             );
         }
         // O track é a posição NORMALIZADA na faixa; o número mostrado é o do documento. A
-        // conversão de volta mora na PONTE, que conhece a faixa do efeito.
+        // projeção entre os dois está registada no store (`seed_effect_ranges`), então o chip
+        // mostra o valor do documento TAMBÉM durante o arrasto.
         let span = p.max - p.min;
         #[allow(clippy::cast_possible_truncation)]
         let track = if span > 0.0 {
@@ -191,14 +192,13 @@ impl BodyCtx<'_> {
         } else {
             0.0
         };
-        self.slider_row(
-            p.name,
-            slider,
-            chip,
-            track,
-            p.value,
-            &format!("{:.DECIMALS$}", p.value),
-            y,
-        )
+        // Uma CONTAGEM não tem casas decimais — o motor guarda o inteiro, e mostrar `8,00`
+        // sugeriria que há meia crista algures.
+        let display = if p.integer {
+            format!("{:.0}", p.value)
+        } else {
+            format!("{:.DECIMALS$}", p.value)
+        };
+        self.slider_row(p.name, slider, chip, track, p.value, &display, y)
     }
 }

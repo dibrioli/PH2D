@@ -132,25 +132,102 @@ fn the_contour_keeps_its_closedness() {
 ///
 /// O Illustrator conta cristas *por segmento*, então picar uma aresta muda o desenho — o efeito
 /// passa a descrever como o caminho foi autorado. Aqui as cristas são contadas no caminho
-/// inteiro, por comprimento de ARCO, e a subdivisão é invisível.
+/// inteiro, por comprimento de ARCO, e a subdivisão não move nada.
+///
+/// ⚠️ **O oráculo mudou de forma quando a união entrou** (2026-07-18). Comparar as listas de
+/// vértices lado a lado deixou de ser possível — o caminho picado tem âncoras a mais, e elas
+/// entram nas amostras (é isso que faz o efeito compor). Comparar contagens teria de escolher
+/// entre *reprovar uma correção* e *afrouxar a distância* até deixar de pegar bug.
+///
+/// A propriedade real, e é mais forte do que a contagem: **cada vértice do caminho magro existe,
+/// no mesmo sítio, no caminho picado.** Subdividir só ACRESCENTA amostras entre as que já havia;
+/// não desloca nenhuma. Se o efeito medisse a parametrização, os pontos partilhados sairiam
+/// diferentes e este gate cairia.
 #[test]
 fn subdividing_the_path_does_not_change_the_wave() {
     let a = zz(&circle(), true, &spec(7.0)).0;
     let b = zz(&circle_subdivided(), true, &spec(7.0)).0;
-    assert_eq!(
-        a.len(),
+    assert!(
+        b.len() > a.len(),
+        "o caminho picado tem de trazer as amostras extra ({} vs {})",
         b.len(),
-        "a contagem de cristas não pode depender da contagem de âncoras"
+        a.len()
     );
-    for (i, (p, q)) in a.iter().zip(b.iter()).enumerate() {
-        let d = (p.anchor[0] - q.anchor[0]).hypot(p.anchor[1] - q.anchor[1]);
+    // Tolerância `1e-6`: o comprimento total sai da SOMA de 4 quadraturas num caso e de 8 no
+    // outro, então a última casa do `f64` difere — medido, o pior desvio real é ~1e-10.
+    for (i, p) in a.iter().enumerate() {
+        let best = b
+            .iter()
+            .map(|q| (p.anchor[0] - q.anchor[0]).hypot(p.anchor[1] - q.anchor[1]))
+            .fold(f64::MAX, f64::min);
         assert!(
-            d < 0.5,
-            "crista {i}: {:?} vs {:?} — {d} de distância. As duas formas são a MESMA curva; \
-             se a onda difere, o efeito está a medir a parametrização e não a geometria.",
-            p.anchor,
-            q.anchor
+            best < 1e-6,
+            "o vértice {i} do caminho magro ({:?}) não tem par no picado — o mais perto está a \
+             {best}. As duas formas são a MESMA curva; se um ponto se move, o efeito está a \
+             medir a parametrização e não a geometria.",
+            p.anchor
         );
+    }
+}
+
+/// **Um 2º Zig Zag tem de ondular SOBRE o 1º, não apagá-lo** (Enio, 2026-07-18).
+///
+/// A 1ª versão reamostrava em `2·ridges` posições e descartava a entrada — sobre um caminho que
+/// já tem onda, isso é amostrar mais grosso do que o sinal que lá está: **aliasing**. Medido no
+/// círculo de raio 60: 16 cristas davam comprimento 718, e um 2º zigzag de 4 cristas deixava
+/// **310 — mais curto do que o próprio círculo (339)**. A onda não compunha mal; desaparecia, e
+/// a forma encolhia.
+///
+/// O oráculo é o COMPRIMENTO, porque é o que se vê: acrescentar uma onda a um caminho ondulado
+/// só o pode fazer crescer. A barra é o comprimento do 1º zigzag sozinho — o mínimo que sobra se
+/// o 1º sobreviver intacto e o 2º não contribuir nada.
+#[test]
+fn a_second_zigzag_rides_on_the_first_instead_of_erasing_it() {
+    let len_of = |v: &[VecVertex]| -> f64 {
+        let n = v.len();
+        (0..n).map(|i| arclen(&segment(v, i, n))).sum::<f64>()
+    };
+    let one = zz(
+        &circle(),
+        true,
+        &ZigZagSpec {
+            ridges: 16.0,
+            ..spec(8.0)
+        },
+    )
+    .0;
+    let first = len_of(&one);
+
+    // As DUAS direções: o 2º mais grosso (o caso que apagava) e o 2º mais fino.
+    for r2 in [4.0, 8.0, 32.0] {
+        let two = zz(
+            &one,
+            true,
+            &ZigZagSpec {
+                ridges: r2,
+                ..spec(4.0)
+            },
+        )
+        .0;
+        let stacked = len_of(&two);
+        assert!(
+            stacked >= first,
+            "o 2º zigzag de {r2} cristas deixou o caminho com {stacked}, e o 1º sozinho media \
+             {first} — encurtar significa que a onda do 1º foi reamostrada para longe"
+        );
+        // E os picos do 1º continuam lá: cada âncora dele tem par no resultado.
+        for p in &one {
+            let best = two
+                .iter()
+                .map(|q| (p.anchor[0] - q.anchor[0]).hypot(p.anchor[1] - q.anchor[1]))
+                .fold(f64::MAX, f64::min);
+            assert!(
+                best < 6.0,
+                "um pico do 1º zigzag ({:?}) ficou a {best} do resultado com {r2} cristas — a \
+                 amplitude do 2º é 4, então mais do que isso é o pico ter sido saltado",
+                p.anchor
+            );
+        }
     }
 }
 

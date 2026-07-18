@@ -375,6 +375,9 @@ mod envelope;
 /// O registro dos widgets dos **Effects** (ADR-0132) — módulo irmão, par do `paint_effects`.
 #[path = "populate_effects.rs"]
 mod effects;
+/// A faixa real de cada parâmetro é republicada POR FRAME (só no frame se sabe que efeito
+/// ocupa cada linha), então o `paint` chama isto no seu passe de sementes.
+pub(crate) use effects::seed_effect_ranges;
 
 fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex

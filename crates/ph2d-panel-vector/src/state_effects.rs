@@ -28,6 +28,9 @@ pub struct FxParamView {
     pub max: f64,
     /// `true` = caixinha (o valor só é 0 ou 1); `false` = slider.
     pub toggle: bool,
+    /// `true` = o valor é uma CONTAGEM: mostra-se sem casas decimais, e o chip arredonda o que
+    /// o utilizador escreve. O motor já guarda o inteiro — isto só evita que a tela o contradiga.
+    pub integer: bool,
     /// O valor ATUAL.
     pub value: f64,
 }

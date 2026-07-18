@@ -471,9 +471,15 @@ impl VecScene {
     ) -> Option<([f64; 2], [f64; 2])> {
         let path = self.paths.iter().find(|p| p.id == id)?;
         let rot = |p: [f64; 2]| [p[0] * c + p[1] * s, -p[0] * s + p[1] * c];
-        let f0 = rot(path.verts.first()?.anchor);
-        let mut lo = f0;
-        let mut hi = f0;
+        // ⚠️ A semente era `path.verts.first()`, a âncora **CRUA** — e o min/max que vem a
+        // seguir corre sobre pontos **COZIDOS**. Duas fontes na mesma caixa: a caixa era
+        // esticada até um ponto que não está desenhado. Com raio de quina vivo isso custava o
+        // canto cortado (pequeno, ninguém viu); com a pilha de efeitos (ADR-0132) a âncora crua
+        // pode cair fora da forma inteira — um caminho aparado passa a ter gizmo maior do que a
+        // arte. Agora só o cozido semeia, e **um caminho sem geometria devolve `None`**, que é
+        // a resposta que o docstring sempre prometeu para "vazio".
+        let mut lo = [f64::INFINITY; 2];
+        let mut hi = [f64::NEG_INFINITY; 2];
         for_each_curve_point(path, |pt| {
             let r = rot(pt);
             lo[0] = lo[0].min(r[0]);
@@ -481,7 +487,7 @@ impl VecScene {
             hi[0] = hi[0].max(r[0]);
             hi[1] = hi[1].max(r[1]);
         });
-        Some((lo, hi))
+        (lo[0] <= hi[0]).then_some((lo, hi))
     }
 
     /// O ponto `p` (world) está DENTRO da região do path `id`? Amostra cada contorno

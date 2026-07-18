@@ -54,6 +54,10 @@ pub struct FxParam {
     pub max: f64,
     /// `true` = caixinha (o valor só é 0 ou 1); `false` = slider.
     pub toggle: bool,
+    /// `true` = o valor é uma CONTAGEM. O motor arredonda no `set`, e o painel mostra-o sem
+    /// casas decimais — os três têm de concordar, senão o chip diz "37,42 cristas" enquanto a
+    /// geometria desenha 37.
+    pub integer: bool,
 }
 
 /// O teto de parâmetros por efeito — o painel registra este número de linhas, sempre, e pinta
@@ -258,6 +262,7 @@ impl PathEffect {
                 min: 0.0,
                 max: 1.0,
                 toggle: false,
+                integer: false,
             }
         }
         /// Uma caixinha (o valor só é 0 ou 1).
@@ -267,6 +272,7 @@ impl PathEffect {
                 min: 0.0,
                 max: 1.0,
                 toggle: true,
+                integer: false,
             }
         }
         const TRIM: &[FxParam] = &[frac("Start"), frac("End"), frac("Offset")];
@@ -278,12 +284,24 @@ impl PathEffect {
                 min: 0.0,
                 max: 100.0,
                 toggle: false,
+                integer: false,
             },
+            // **128, e o número é MEDIDO** (§0 do CLAUDE.md — um teto diz de que recurso é).
+            // O recurso é o tempo de `cooked()`, que é chamado por vários consumidores por
+            // frame; o custo é LINEAR nas cristas. Medido em release, círculo de 4 âncoras:
+            //
+            // | cristas |  8   |  32  |  64  | 128  | 256  |
+            // |---------|------|------|------|------|------|
+            // | ms/cook |0,019 |0,104 |0,219 |0,475 |0,902 |
+            //
+            // Enio pediu 128 (2026-07-18) e 128 custa 0,41 ms. Não há parede física antes de
+            // ~2000 (o `MAX_SAMPLES` de guarda); quem quiser subir só tem de re-medir.
             FxParam {
                 name: "Ridges",
                 min: 1.0,
-                max: 64.0,
+                max: 128.0,
                 toggle: false,
+                integer: true,
             },
             flag("Smooth"),
             flag("Rough"),
@@ -310,7 +328,17 @@ impl PathEffect {
     }
 
     /// Escreve o parâmetro `i`. Índice inexistente é no-op.
+    ///
+    /// Um parâmetro de CONTAGEM é arredondado **aqui**, na porta única de escrita — assim é o
+    /// DOCUMENTO que guarda o inteiro, e o motor, o chip e o slider não podem discordar sobre
+    /// que número está em uso. Arredondar só na exibição deixaria o chip a mostrar `37,42`
+    /// enquanto a geometria desenha `37`.
     pub fn set(&mut self, i: usize, v: f64) {
+        let v = if self.params().get(i).is_some_and(|p| p.integer) {
+            v.round()
+        } else {
+            v
+        };
         match (self, i) {
             (Self::Trim(t), 0) => t.start = v,
             (Self::Trim(t), 1) => t.end = v,

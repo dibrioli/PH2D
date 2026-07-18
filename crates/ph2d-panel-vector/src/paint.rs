@@ -136,6 +136,9 @@ fn seed_and_publish(
     // outro objeto de texto selecionado). Depois o store é a fonte, senão o seed brigaria
     // com o arrasto do slider.
     seed_text_sliders(store);
+    // A faixa REAL de cada parâmetro de efeito — sem isto o chip mostra o track `0..1`
+    // durante o arrasto e o valor do documento só depois de largar (Enio, 2026-07-18).
+    crate::populate::seed_effect_ranges(store);
     // Os campos do CONECTOR nascem no valor EFETIVO (o automático, enquanto ninguém fixou
     // nada) — senão o campo mostraria 0 e SALTARIA no primeiro toque, longe da linha que o
     // olho vê. Semeado TODO frame (e não uma vez, como o texto): o efetivo é derivado do

@@ -20,6 +20,27 @@
 //! `splitmix64` que o Painter já usa para o jitter dos dabs: determinístico a partir de uma
 //! `seed`, então o mesmo documento desenha igual em qualquer máquina (HR-5 — nada de
 //! transcendental nem de `rand`).
+//!
+//! # ⚠️ As âncoras de ENTRADA entram no conjunto de amostras (Enio, 2026-07-18)
+//!
+//! A 1ª versão **descartava** a entrada e reamostrava em `2·ridges` posições. Sobre um caminho
+//! liso isso é exato; sobre um caminho que **já tem uma onda**, é amostrar mais grosso do que a
+//! onda que lá está — **aliasing**. Medido: um zigzag de 16 cristas seguido de outro de 4
+//! deixava **7 âncoras e comprimento 310 num círculo de 339** — o 2º efeito não *compunha* mal
+//! com o 1º, **apagava-o e encolhia a forma abaixo do original**.
+//!
+//! O Illustrator e o After Effects não têm este problema porque contam cristas **por segmento**
+//! — e é exatamente por isso que empilhar lá produz o fractal auto-semelhante que se espera.
+//! Nós contamos por arco (§ acima), e o preço dessa escolha era este.
+//!
+//! A cura é a **UNIÃO**: amostra-se na grade uniforme das cristas **e** nas posições de arco das
+//! âncoras que chegaram. Um pico do 1º zigzag *é* uma âncora de entrada, logo sobrevive
+//! exatamente — a onda fina passa a cavalgar a grossa. É a mesma regra que o `ph2d-vec-blend`
+//! usa para parear duas formas sem arredondar as quinas de nenhuma.
+//!
+//! Consequência aceite: um caminho com mais âncoras produz mais vértices (as extras caem **sobre
+//! a curva deslocada**, aproximando-a melhor). As **cristas** — o que se vê — continuam a ser
+//! função só da geometria, e é isso que o gate afirma.
 
 use crate::arclen::{Cubic, arclen, inv_arclen, point_at, tangent_at};
 use crate::corner_live::segment;
@@ -36,6 +57,11 @@ const MIN_RIDGES: f64 = 1.0;
 /// corrompido virar uma alocação de gigabytes. **Não é o teto do artista**: o slider do painel
 /// para muito antes, e este número só existe para que o pior caso seja feio em vez de fatal.
 const MAX_SAMPLES: usize = 4096;
+
+/// Duas amostras mais próximas do que esta fração do caminho são **o mesmo sítio**, e a segunda
+/// é descartada. Sem isto, uma âncora que calha em cima de um ponto da grade produziria um
+/// segmento de comprimento ~0 — invisível, mas suficiente para envenenar tangentes a jusante.
+const MERGE_FRACTION: f64 = 1e-6;
 
 /// **Os parâmetros do Zig Zag.** Neutro em `amplitude == 0`.
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -94,6 +120,25 @@ fn signed_unit(state: &mut u64) -> f64 {
     u.mul_add(2.0, -1.0)
 }
 
+/// **A onda triangular na posição de arco `s`**, em `[-1, 1]`.
+///
+/// A alternância tem de ser função de `s` e **não do índice da amostra**: assim que a lista de
+/// amostras deixou de ser uniforme (a união com as âncoras de entrada), `k % 2` passou a
+/// atribuir picos a posições arbitrárias. `+1` em `s = 0`, `-1` a meia crista, e como `ridges`
+/// é inteiro a onda fecha exatamente em `s = total` — um contorno fechado não ganha emenda.
+///
+/// Álgebra pura, sem transcendental (HR-5).
+fn ridge_wave(s: f64, total: f64, ridges: usize) -> f64 {
+    #[allow(clippy::cast_precision_loss)]
+    let u = s / total * (ridges as f64) * 2.0;
+    let m = u.rem_euclid(2.0);
+    if m <= 1.0 {
+        2.0f64.mul_add(-m, 1.0)
+    } else {
+        2.0f64.mul_add(m, -3.0)
+    }
+}
+
 /// **Aplica o Zig Zag a UM contorno.** Devolve `(verts, closed)`.
 ///
 /// O contorno **mantém** o seu `closed`: ondular não abre nem fecha uma forma.
@@ -113,59 +158,107 @@ pub fn zigzag_contour(
     let amplitude = spec.amplitude / 100.0 * ref_size;
     let seg_count = if closed { n } else { n - 1 };
     let segs: Vec<Cubic> = (0..seg_count).map(|i| segment(verts, i, n)).collect();
-    let lens: Vec<f64> = segs.iter().map(arclen).collect();
-    let total: f64 = lens.iter().sum();
+    // `starts[i]` = a posição de arco onde o segmento `i` começa; a última entrada é o total.
+    // É prefixo somado (e não uma lista de comprimentos) porque as âncoras de entrada são
+    // exatamente estas posições — e porque localizar `s` vira busca binária.
+    let mut starts = Vec::with_capacity(seg_count + 1);
+    let mut acc = 0.0;
+    for c in &segs {
+        starts.push(acc);
+        acc += arclen(c);
+    }
+    starts.push(acc);
+    let total = acc;
     if total <= EPS {
         return (verts.to_vec(), closed);
     }
 
-    // Uma crista sobe e a seguinte desce: são DUAS amostras por crista. Num contorno aberto as
-    // duas pontas são amostras próprias (o caminho não dá a volta), daí o `+ 1`.
+    // Uma crista sobe e a seguinte desce: são DUAS amostras por crista.
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let ridges = spec.ridges.floor().max(MIN_RIDGES) as usize;
     let count = (ridges * 2).min(MAX_SAMPLES);
-    // Fechado: `count` amostras que dão a volta. Aberto: `count + 1` pontos, porque as duas
-    // pontas são amostras próprias. O PASSO é o mesmo nos dois casos — em ambos há `count`
-    // intervalos —, e escrevê-lo como um `if` de ramos iguais foi resíduo de raciocínio meu
-    // que o clippy apanhou.
-    let samples = if closed { count } else { count + 1 };
     #[allow(clippy::cast_precision_loss)]
     let step = total / count as f64;
 
+    // A GRADE das cristas. Fechado dá a volta (`count` pontos); aberto tem as duas pontas como
+    // amostras próprias, daí o `+ 1`.
+    let grid_n = if closed { count } else { count + 1 };
+    let mut at: Vec<f64> = Vec::with_capacity(grid_n + n + 1);
+    for k in 0..grid_n {
+        #[allow(clippy::cast_precision_loss)]
+        at.push((k as f64 * step).min(total));
+    }
+    // ...e a UNIÃO com as âncoras que chegaram. É esta linha que faz o efeito COMPOR: um pico
+    // do zigzag anterior é uma âncora, logo é amostrado onde está em vez de ser saltado.
+    at.extend_from_slice(&starts[..seg_count]);
+    if !closed {
+        at.push(total);
+    }
+    at.sort_by(f64::total_cmp);
+    let merge = total * MERGE_FRACTION;
+    at.dedup_by(|a, b| (*a - *b).abs() <= merge);
+    at.truncate(MAX_SAMPLES);
+    let m = at.len();
+    if m < 2 {
+        return (verts.to_vec(), closed);
+    }
+
+    // O braço de uma alça é um terço do vão ATÉ o vizinho — na grade uniforme isto é `step/3`
+    // (byte-idêntico ao que era), e numa lista com âncoras extras cada alça encolhe para o vão
+    // que de facto tem. Numa ponta livre o vão espelha o do outro lado.
+    let gap = |k: usize, forward: bool| -> f64 {
+        let wrap = at[0] + total - at[m - 1];
+        if forward {
+            if k + 1 < m {
+                at[k + 1] - at[k]
+            } else if closed {
+                wrap
+            } else {
+                at[k] - at[k - 1]
+            }
+        } else if k > 0 {
+            at[k] - at[k - 1]
+        } else if closed {
+            wrap
+        } else {
+            at[1] - at[0]
+        }
+    };
+
     let mut state = spec.rough_seed.unwrap_or(0);
-    let mut out = Vec::with_capacity(samples);
-    for k in 0..samples {
-        let s = (k as f64 * step).min(total);
-        let Some((point, tangent)) = walk_to(&segs, &lens, s) else {
-            continue;
-        };
+    let mut out = Vec::with_capacity(m);
+    for (k, &s) in at.iter().enumerate() {
+        let (point, tangent) = walk_to(&segs, &starts, s);
         // A normal é a tangente rodada um quarto de volta — troca de eixo e sinal, sem
-        // transcendental (HR-5).
+        // transcendental (HR-5). Numa cúspide não há direção: o ponto entra sem deslocamento,
+        // em vez de ser DESCARTADO — descartar tirava uma crista da conta em silêncio.
         let normal = [-tangent[1], tangent[0]];
         let lift = if spec.rough_seed.is_some() {
             signed_unit(&mut state)
-        } else if k % 2 == 0 {
-            1.0
         } else {
-            -1.0
+            ridge_wave(s, total, ridges)
         } * amplitude;
         let anchor = [
             normal[0].mul_add(lift, point[0]),
             normal[1].mul_add(lift, point[1]),
         ];
-        // Suave: as alças acompanham a TANGENTE do caminho original naquele ponto, com um
-        // terço do passo de cada lado — é a construção que faz uma sequência de amostras
-        // reproduzir uma curva lisa em vez de uma poligonal arredondada a olho.
-        let arm = if spec.smooth { step / 3.0 } else { 0.0 };
+        // Suave: as alças acompanham a TANGENTE do caminho original naquele ponto — é a
+        // construção que faz uma sequência de amostras reproduzir uma curva lisa em vez de
+        // uma poligonal arredondada a olho.
+        let (back, fwd) = if spec.smooth {
+            (gap(k, false) / 3.0, gap(k, true) / 3.0)
+        } else {
+            (0.0, 0.0)
+        };
         out.push(VecVertex {
             anchor,
             in_handle: [
-                tangent[0].mul_add(-arm, anchor[0]),
-                tangent[1].mul_add(-arm, anchor[1]),
+                tangent[0].mul_add(-back, anchor[0]),
+                tangent[1].mul_add(-back, anchor[1]),
             ],
             out_handle: [
-                tangent[0].mul_add(arm, anchor[0]),
-                tangent[1].mul_add(arm, anchor[1]),
+                tangent[0].mul_add(fwd, anchor[0]),
+                tangent[1].mul_add(fwd, anchor[1]),
             ],
             kind: if spec.smooth {
                 VertexKind::Smooth
@@ -175,23 +268,26 @@ pub fn zigzag_contour(
             corner_radius: 0.0,
         });
     }
-    if out.len() < 2 {
-        return (verts.to_vec(), closed);
-    }
     (out, closed)
 }
 
-/// Onde o comprimento `s` cai: o ponto e a tangente unitária ali. `None` numa cúspide.
-fn walk_to(segs: &[Cubic], lens: &[f64], s: f64) -> Option<([f64; 2], [f64; 2])> {
-    let mut walked = 0.0;
-    for (i, &l) in lens.iter().enumerate() {
-        if s <= walked + l || i + 1 == lens.len() {
-            let t = inv_arclen(&segs[i], (s - walked).max(0.0));
-            return Some((point_at(&segs[i], t), tangent_at(&segs[i], t)?));
-        }
-        walked += l;
-    }
-    None
+/// Onde o comprimento `s` cai: o ponto e a tangente unitária ali.
+///
+/// `starts` é o prefixo somado, então o segmento sai por **busca binária** — a varredura linear
+/// que estava aqui fazia o custo ser `O(amostras × segmentos)`, e empilhar zigzags é justamente
+/// o caso em que os dois crescem juntos.
+///
+/// Numa cúspide não há tangente; devolve-se `[0, 0]`, e quem chama desloca por zero.
+fn walk_to(segs: &[Cubic], starts: &[f64], s: f64) -> ([f64; 2], [f64; 2]) {
+    let i = starts
+        .partition_point(|&p| p <= s)
+        .saturating_sub(1)
+        .min(segs.len() - 1);
+    let t = inv_arclen(&segs[i], (s - starts[i]).max(0.0));
+    (
+        point_at(&segs[i], t),
+        tangent_at(&segs[i], t).unwrap_or([0.0, 0.0]),
+    )
 }
 
 #[cfg(test)]

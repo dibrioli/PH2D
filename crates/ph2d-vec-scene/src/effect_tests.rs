@@ -244,8 +244,17 @@ fn every_parameter_round_trips_within_the_panel_ceiling() {
             params.len()
         );
         for (j, p) in params.iter().enumerate() {
-            // Um valor que NÃO é o default nem o 0, para um `set` inerte não passar.
-            let v = if p.toggle { 1.0 } else { p.min.midpoint(p.max) };
+            // Um valor que NÃO é o default nem o 0, para um `set` inerte não passar. Num
+            // parâmetro de CONTAGEM o valor entra já redondo — o `set` arredonda de propósito,
+            // e um meio-termo faria este gate reprovar a regra em vez de a verificar.
+            let mid = p.min.midpoint(p.max);
+            let v = if p.toggle {
+                1.0
+            } else if p.integer {
+                mid.round()
+            } else {
+                mid
+            };
             fx.set(j, v);
             assert!(
                 (fx.get(j) - v).abs() < 1e-12,
@@ -258,6 +267,47 @@ fn every_parameter_round_trips_within_the_panel_ceiling() {
     }
 }
 
+/// **Um parâmetro de CONTAGEM guarda um inteiro no documento.**
+///
+/// O gate acima verifica o round-trip *respeitando* a declaração; este verifica a declaração em
+/// si. Sem ele, marcar `integer: true` seria uma etiqueta que ninguém honra: o slider entregaria
+/// `37,42`, o chip mostraria `37` e a geometria desenharia `37` — três respostas para o mesmo
+/// número, e o artista só veria a discordância ao arrastar.
+#[test]
+fn a_count_parameter_is_stored_rounded() {
+    let mut found = 0;
+    for i in 0..PathEffect::KINDS.len() {
+        let mut fx = PathEffect::from_kind(i).expect("kind");
+        for (j, p) in fx.params().iter().enumerate() {
+            if !p.integer {
+                continue;
+            }
+            found += 1;
+            // Um valor com casas, dentro da faixa e longe da borda.
+            let messy = p.min.midpoint(p.max) + 0.42;
+            fx.set(j, messy);
+            let got = fx.get(j);
+            assert!(
+                (got - got.round()).abs() < 1e-12,
+                "{}::{}: escrevi {messy} e o documento guardou {got}, que não é inteiro",
+                fx.label(),
+                p.name
+            );
+            assert!(
+                (got - messy.round()).abs() < 1e-12,
+                "{}::{}: {messy} devia arredondar para {}, deu {got}",
+                fx.label(),
+                p.name,
+                messy.round()
+            );
+        }
+    }
+    assert!(
+        found > 0,
+        "nenhum parâmetro de contagem — o gate estaria a dormir"
+    );
+}
+
 /// Um índice de parâmetro fora da faixa é **no-op**, não pânico nem escrita no vizinho.
 #[test]
 fn an_out_of_range_parameter_index_is_inert() {
@@ -266,4 +316,58 @@ fn an_out_of_range_parameter_index_is_inert() {
     fx.set(MAX_FX_PARAMS + 3, 0.7);
     assert_eq!(fx, before);
     assert_eq!(fx.get(MAX_FX_PARAMS + 3), 0.0);
+}
+
+/// **A caixa do gizmo segue o EFEITO, e um caminho sem geometria não tem caixa.**
+///
+/// `path_curve_bbox` semeava o min/max com a âncora **crua** e depois varria pontos
+/// **cozidos** — duas fontes na mesma caixa. Com raio de quina vivo o erro era o canto
+/// cortado; com a pilha, a âncora crua pode cair fora da forma inteira, e o gizmo passa a
+/// abraçar espaço vazio. O oráculo é a APARÊNCIA: aparar metade do caminho tem de encolher a
+/// caixa, porque metade do desenho deixou de existir.
+#[test]
+fn the_curve_box_hugs_the_cooked_shape_and_an_empty_one_has_none() {
+    let full = square();
+    let (lo0, hi0) = {
+        let mut s = crate::VecScene::new();
+        let id = s.push_path(full.clone());
+        s.path_curve_bbox(id).expect("a forma cheia tem caixa")
+    };
+    assert!((hi0[0] - lo0[0] - 40.0).abs() < 0.5, "o quadrado mede 40");
+
+    // ⚠️ A fixture tem de conter o fenómeno. A 1ª versão aparava `[0, 0.25]` — a aresta de
+    // BAIXO, que começa exatamente na âncora crua `(0,0)`: a semente errada coincidia com a
+    // geometria certa e o gate ficava verde sobre o bug. O trecho `[0.5, 0.75]` é a aresta de
+    // CIMA, e a âncora crua está a 40 dela — a distância que a caixa esticava.
+    let mut trimmed = square();
+    trimmed.effects = vec![FxEntry::new(PathEffect::Trim(crate::fx_trim::TrimSpec {
+        start: 0.5,
+        end: 0.75,
+        offset: 0.0,
+    }))];
+    let mut s = crate::VecScene::new();
+    let id = s.push_path(trimmed);
+    let (lo, hi) = s.path_curve_bbox(id).expect("um quarto ainda é geometria");
+    assert!(
+        hi[1] - lo[1] < 0.5,
+        "a aresta de cima é horizontal — a caixa dela tem de ser plana, e mede {} de altura. \
+         Com a semente crua ela esticava até y=0 e media os 40 inteiros.",
+        hi[1] - lo[1]
+    );
+
+    // Aparar TUDO: sem ponto desenhado não há caixa. `Some(caixa invertida)` seria pior que
+    // `None` — quem chama compara `lo <= hi` e recebe geometria impossível em silêncio.
+    let mut gone = square();
+    gone.effects = vec![FxEntry::new(PathEffect::Trim(crate::fx_trim::TrimSpec {
+        start: 0.5,
+        end: 0.5,
+        offset: 0.0,
+    }))];
+    let mut s = crate::VecScene::new();
+    let id = s.push_path(gone);
+    assert_eq!(
+        s.path_curve_bbox(id),
+        None,
+        "caminho sem geometria não tem caixa"
+    );
 }

@@ -1,17 +1,14 @@
-//! W1 determinism gate (local proxy for the cross-OS CI gate). The
-//! ECS-bridged hash must be a pure function of the SET of readback poses —
-//! independent of the `HashMap` iteration order of the handle map. Two
-//! fresh runs of the identical fixture must hash identically.
+//! W1 determinism gate (local proxy for the cross-OS CI gate): two fresh
+//! runs of the identical fixture must hash identically.
 //!
-//! The only nondeterminism our code can introduce is `HashMap` iteration
-//! (its `RandomState` seed differs per instance). `deterministic_hash`
-//! sorts the pose rows to neutralise it. Mutation-tested: removing the
-//! `rows.sort_unstable()` in `deterministic_hash` makes the two runs use
-//! different orders → different blake3 → RED. (With 51 bodies the two
-//! random orders coincide with probability ~1/51!, i.e. never.)
-//!
-//! The true cross-OS byte-identity is proven by the `physics-ecs-c9`
-//! harness compared across Linux/macOS/Windows in CI (spike.yml).
+//! Determinism is guaranteed **structurally**, in three layers:
+//!   1. the handle map is a `BTreeMap<Entity, _>` (ordered iteration) — the
+//!      repo's disallowed-`HashMap` clippy lint is the standing guard that
+//!      no randomised-seed container sneaks back in;
+//!   2. the CI `physics-ecs-c9` harness compares the hash byte-for-byte
+//!      across Linux/macOS/Windows (the real HR-5 proof, spike.yml);
+//!   3. this repeatability check catches a sim-level determinism regression
+//!      locally without a brittle pinned golden.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{SimWorld, Transform};

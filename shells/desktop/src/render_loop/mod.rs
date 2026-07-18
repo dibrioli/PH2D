@@ -40,7 +40,6 @@ mod inspector_commits;
 mod inspector_ordering;
 mod inspector_visibility;
 pub(crate) mod motion_bridge;
-pub(crate) mod physics_bridge;
 mod padding_bridge;
 pub(crate) mod painter_bridge;
 /// Brush-image import helpers (Grain/Shape file pickers), split from
@@ -78,6 +77,7 @@ mod painter_preview_handoff_tests;
 /// tool's composite across a stroke's whole life — phase D of the impasto smoke.
 #[cfg(test)]
 mod painter_preview_pipeline_tests;
+pub(crate) mod physics_bridge;
 /// Render-and-look probe for the Push phase (diagnostic, `#[ignore]`d — writes lit PNGs).
 #[cfg(test)]
 mod push_look_probe;

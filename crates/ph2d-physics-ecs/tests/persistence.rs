@@ -11,11 +11,11 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::scene::{
-    register_ecs_components, snapshot_to_world, world_to_snapshot, ComponentRegistry, WorldSnapshot,
+    ComponentRegistry, WorldSnapshot, register_ecs_components, snapshot_to_world, world_to_snapshot,
 };
 use ph2d_ecs::{SimWorld, Transform, TransformPropagationState, WorklistBuf};
 use ph2d_physics_ecs::{
-    register_physics_components, BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody,
+    BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody, register_physics_components,
 };
 
 fn drop_ball(sim: &mut SimWorld) -> ph2d_ecs::Entity {
@@ -96,7 +96,11 @@ fn rebuild_drops_the_derived_world_and_reconcile_re_derives() {
 
     // Next dispatch re-derives from the still-present components.
     bridge.dispatch(&mut sim, false, 0);
-    assert_eq!(bridge.body_count(), 1, "reconcile did not re-derive the body");
+    assert_eq!(
+        bridge.body_count(),
+        1,
+        "reconcile did not re-derive the body"
+    );
 }
 
 #[test]

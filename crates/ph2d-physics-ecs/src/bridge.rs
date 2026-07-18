@@ -13,7 +13,7 @@
 //!
 //! [`dispatch`]: PhysicsBridge::dispatch
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use bevy_ecs::query::QueryState;
 use ph2d_ecs::{Entity, SimWorld, Transform};
@@ -43,7 +43,12 @@ struct BodyRef {
 /// The ECS ↔ rapier bridge. One per document, held on `AppGfx.physics`.
 pub struct PhysicsBridge {
     world: PhysicsWorld,
-    bodies: HashMap<Entity, BodyRef>,
+    /// `BTreeMap`, not `HashMap`, on purpose: iteration is by `Entity`
+    /// order — deterministic per run and cross-OS (entity allocation is
+    /// sequential) — so the sim's body order and the hash never depend on a
+    /// randomised hasher seed (HR-5). The repo's disallowed-`HashMap` lint
+    /// is the standing structural guard for this.
+    bodies: BTreeMap<Entity, BodyRef>,
     /// Last fixed tick the world was stepped **to** — the physics analog
     /// of the Motion pump's `last_cooked_tick`. The play/scrub decision in
     /// [`dispatch`](PhysicsBridge::dispatch) reads it.
@@ -71,7 +76,7 @@ impl PhysicsBridge {
     pub fn new() -> Self {
         Self {
             world: PhysicsWorld::new(),
-            bodies: HashMap::new(),
+            bodies: BTreeMap::new(),
             last_stepped: 0,
             query: None,
             seen: Vec::new(),
@@ -199,12 +204,12 @@ impl PhysicsBridge {
             if b.kind != BodyKind::Dynamic {
                 continue;
             }
-            if let Some(pose) = self.world.body_pose(b.handle) {
-                if let Some(mut t) = world.get_mut::<Transform>(e) {
-                    t.translation.x = pose.translation.x;
-                    t.translation.y = pose.translation.y;
-                    t.rotation = pose.rotation.angle();
-                }
+            if let Some(pose) = self.world.body_pose(b.handle)
+                && let Some(mut t) = world.get_mut::<Transform>(e)
+            {
+                t.translation.x = pose.translation.x;
+                t.translation.y = pose.translation.y;
+                t.rotation = pose.rotation.angle();
             }
         }
     }
@@ -216,39 +221,35 @@ impl PhysicsBridge {
         let world = sim.world();
         for (&e, b) in self.bodies.iter() {
             if let Some(t) = world.get::<Transform>(e) {
-                self.world
-                    .set_body_pose(b.handle, t.translation.x, t.translation.y, t.rotation, false);
+                self.world.set_body_pose(
+                    b.handle,
+                    t.translation.x,
+                    t.translation.y,
+                    t.rotation,
+                    false,
+                );
             }
         }
     }
 
     /// A blake3 digest over the readback poses (the ECS-visible result of
-    /// the whole bridge: sync + step + our conversion + readback), sorted
-    /// so the HashMap iteration order can never leak in. This is what the
-    /// `physics_ecs_c9` harness prints and CI compares cross-OS (ADR-0130
-    /// D7) — it proves OUR code on the deterministic path, not just the
-    /// wrapper's internal `deterministic_hash`.
+    /// the whole bridge: sync + step + our conversion + readback). This is
+    /// what the `physics_ecs_c9` harness prints and CI compares cross-OS
+    /// (ADR-0130 D7) — it proves OUR code on the deterministic path, not
+    /// just the wrapper's internal `deterministic_hash`.
+    ///
+    /// The `bodies` `BTreeMap` iterates in `Entity` order, which is
+    /// deterministic per run and identical cross-OS (sequential entity
+    /// allocation), so no sort is needed to pin the order.
     pub fn deterministic_hash(&self, sim: &SimWorld) -> [u8; 32] {
         let world = sim.world();
-        let mut rows: Vec<[u8; 12]> = self
-            .bodies
-            .keys()
-            .filter_map(|&e| {
-                world.get::<Transform>(e).map(|t| {
-                    let mut b = [0u8; 12];
-                    b[0..4].copy_from_slice(&t.translation.x.to_bits().to_le_bytes());
-                    b[4..8].copy_from_slice(&t.translation.y.to_bits().to_le_bytes());
-                    b[8..12].copy_from_slice(&t.rotation.to_bits().to_le_bytes());
-                    b
-                })
-            })
-            .collect();
-        // Sort by pose bytes: order-independent of HashMap iteration, so
-        // the digest is a pure function of the SET of poses.
-        rows.sort_unstable();
         let mut hasher = blake3::Hasher::new();
-        for b in &rows {
-            hasher.update(b);
+        for &e in self.bodies.keys() {
+            if let Some(t) = world.get::<Transform>(e) {
+                hasher.update(&t.translation.x.to_bits().to_le_bytes());
+                hasher.update(&t.translation.y.to_bits().to_le_bytes());
+                hasher.update(&t.rotation.to_bits().to_le_bytes());
+            }
         }
         *hasher.finalize().as_bytes()
     }

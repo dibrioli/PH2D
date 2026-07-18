@@ -42,7 +42,10 @@ fn steady_state_dispatch_does_not_grow_the_scratch() {
                 shape: ColliderShape::Ball { radius: 0.2 },
                 density: 1.0,
             },
-            Transform::from_translation(Vec2::new((i % 6) as f32 * 0.5, 4.0 + (i / 6) as f32 * 0.5)),
+            Transform::from_translation(Vec2::new(
+                (i % 6) as f32 * 0.5,
+                4.0 + (i / 6) as f32 * 0.5,
+            )),
         ));
     }
 
@@ -54,7 +57,10 @@ fn steady_state_dispatch_does_not_grow_the_scratch() {
         bridge.dispatch(&mut sim, true, tick);
     }
     let warm_cap = bridge.scratch_capacity();
-    assert!(warm_cap >= 31, "scratch never held the 31 bodies: {warm_cap}");
+    assert!(
+        warm_cap >= 31,
+        "scratch never held the 31 bodies: {warm_cap}"
+    );
 
     // Steady state: no entity added or removed. The scratch must not grow.
     for tick in 6..=200u64 {

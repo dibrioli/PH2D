@@ -197,7 +197,14 @@ impl PhysicsWorld {
     /// the bridge uses while paused, so a body sits exactly where the
     /// artist placed it before play. `wake` requests the body be woken
     /// (pass `true` when the pose actually changed).
-    pub fn set_body_pose(&mut self, handle: RigidBodyHandle, x: f32, y: f32, rotation: f32, wake: bool) {
+    pub fn set_body_pose(
+        &mut self,
+        handle: RigidBodyHandle,
+        x: f32,
+        y: f32,
+        rotation: f32,
+        wake: bool,
+    ) {
         if let Some(b) = self.bodies.get_mut(handle) {
             b.set_position(Isometry2::new(Vector2::new(x, y), rotation), wake);
             b.set_linvel(Vector2::zeros(), wake);

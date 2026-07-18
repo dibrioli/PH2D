@@ -12,13 +12,16 @@
 
 - Branch **`line/physics`**, worktree `Worktrees/line-physics`, árvore limpa.
 - Base (merge-base com `main`): **`389676f9`**.
-- Commits desta jornada (`git log --oneline 389676f9..HEAD`): **6**
-  - `f53fb928` docs(physics): o roteador passa a saber que a física existe (TAREFA ZERO)
-  - *(BodyDefaults)* feat(physics): o mundo ganha os defaults de corpo (damping + sleep)
-  - *(PhysicsSettings)* feat(physics): a truth-at-rest para o MUNDO, com todo teto MEDIDO
-  - *(painel)* feat(physics): o painel global de MUNDO — crate `ph2d-panel-physics`
-  - `6e50419b` feat(physics): as settings de mundo VIAJAM no arquivo (SCHEMA 18→19) + smoke 4
-  - *(docs)* docs(physics): W2b fechado — tracker + plano + roteador
+- Commits desta jornada (`git log --oneline 389676f9..HEAD`): **10** (este doc inclusive)
+  - `4062529b` docs(physics): baseline pos-integracao -- o que a integracao MUDOU e o terreno re-verificado
+  - `2bf00ba4` docs(physics): handoff de CONTINUACAO -- W2b em janela nova
+  - `f53fb928` docs(physics): o roteador passa a saber que a fisica existe (TAREFA ZERO)
+  - `156d8650` feat(physics): o mundo ganha os defaults de corpo (damping + sleep) -- W2b, a metade do motor
+  - `94bb8e62` feat(physics): PhysicsSettings -- a truth-at-rest para o MUNDO, com todo teto MEDIDO
+  - `7e51db25` feat(physics): o painel global de MUNDO -- W2b, a autoria (crate ph2d-panel-physics)
+  - `6e50419b` feat(physics): as settings de mundo VIAJAM no arquivo (PROJECT_SCHEMA 18->19) + cena de smoke 4
+  - `75df6697` docs(physics): W2b FECHADO -- tracker, plano, roteador e handoff de integracao
+  - `f939255d` style: cargo fmt --all (alfabetizacao do mod/pub use novo + reflow das listas)
 - A `main` **não** andou desde o fork (`git log HEAD..main` vazio no fechamento).
 
 ## 2. Foundational / compartilhado tocado
@@ -104,7 +107,7 @@ podendo divergir.
 (ids/z-order/scrollbar/dispatch) · `ph2d-i18n` · `ph2d-panel-registry-init` (blocos GERADOS) ·
 shell (consumidor). Crate nova `ph2d-panel-physics`. Contratos congelados: nenhum. Colisões a
 grepar: `PROJECT_SCHEMA=19`+tripla-pin · `EXPECTED_TYPED=19` · `NodeId(836)` · tecla `W` — os
-três primeiros **se CONTAM** se outra linha também bumpar. 22 gates novos, 21 mutações, 21
+três primeiros **se CONTAM** se outra linha também bumpar. 24 gates novos, 22 mutações, 22
 sangram. Gate batched verde: fmt · clippy `--all-targets` · `check --workspace --all-targets` ·
 `nextest-impacted` (**4407 testes, 0 falhas**). Smoke pendente: `PH2D_PHYSICS_SMOKE=4`. Aguardo
 ordem de integração / W2c / W3.*

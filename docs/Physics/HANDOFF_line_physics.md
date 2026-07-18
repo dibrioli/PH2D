@@ -459,10 +459,10 @@ joga fora, e a cena carregaria com a gravidade do documento ANTERIOR, em silênc
 arch-gate sobre o fonte (o fato é uma ORDEM; nenhum teste de unidade a alcança porque `gfx` é
 `None` sem janela).
 
-### Gates: 22 novos, 21 mutações, 21 sangram
+### Gates: 24 novos, 22 mutações, 22 sangram
 
-`ph2d-physics/tests/body_defaults.rs` (5+1 unit) · `ph2d-physics-ecs/tests/settings.rs` (6) ·
-`ph2d-panel-physics/tests/seam.rs` (9) · `project_tests` (2).
+`ph2d-physics/tests/body_defaults.rs` (6 + 1 unit) · `ph2d-physics-ecs/tests/settings.rs` (6) ·
+`ph2d-panel-physics/tests/seam.rs` (9) · `project_tests` (2). Mutações: 7 + 6 + 8 + 1.
 
 **Três gates nasceram VERDES sobre o bug que existiam pra pegar. Vale mais que os 21:**
 

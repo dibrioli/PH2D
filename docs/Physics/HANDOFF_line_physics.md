@@ -79,8 +79,22 @@ flip andam juntos). `EditorAction::Transport(TransportCmd{Play,Pause,Reset})` (e
 non_exhaustive) + `chrome/transport.rs` (handler z=300, regen do `dispatch_all` pelo `ph2d-chrome-sync`) →
 dreno no shell chama a **porta única** `shells/desktop/src/transport.rs::apply(cmd, &mut Playhead)` (Reset =
 `rewind` + `pause`, porque `rewind` sozinho mantém o play state). 2 gates mutation-verified (o clique via
-`dispatch_all` levanta o comando certo; o mapeamento muda o Playhead). ⚠️ Reset **não** rebobina a SIM (a
-bola não volta a subir) — isso é o scrub-back do **W1.5**; aqui só o relógio volta a 0.
+`dispatch_all` levanta o comando certo; o mapeamento muda o Playhead).
+
+**⚠️ E a FÍSICA não obedecia (Enio 2026-07-18: *"funcionou para timeline mas não para a física"*) — 2
+defeitos reais, corrigidos:** (a) o `dispatch` só andava pra FRENTE, então relógio pra trás era ignorado —
+Reset deixava a bola no chão e o transport parecia morto. Agora o `dispatch` é **função do TICK**
+(`target < last` = replay · `>` = step · `==` = hold): rapier não rebobina, então **cada corpo carrega o
+`BodyDesc` do spawn** (`BodyRef.rest`, a pose em tick 0) e `rewind_to` reconstrói um mundo novo a partir
+deles e re-simula `target` passos. **Reset (target 0) custa zero passos; scrub-back passou a funcionar**, a
+O(target) — o ring que torna isso O(1) amortizado segue **W1.5**. (b) o `settle` teleportava em TODO frame
+pausado, e `set_body_pose` **zera a velocidade** ⇒ Pause→Play recomeçava a queda parada; agora só teleporta
+quando o `Transform` autorado de fato **difere** do corpo (o gesto do gizmo — o caso que ele existia pra
+servir). Gates: `resetting_the_clock_returns_the_body_to_its_rest_pose` (matar o ramo de trás → bola fica
+em y=0,35 → RED, o bug exato reportado) · `pausing_mid_fall_does_not_change_the_trajectory` (teleporte
+incondicional → a corrida pausada cai menos → RED). **A cena do smoke é só a SIMULAÇÃO** —
+`PH2D_PHYSICS_SMOKE` pula as 8 entidades demo do boot (`init.rs`), então a Hierarchy mostra só o chão + a
+bola.
 
 **Deferido (por design, não esquecido):** scrub-back re-sim = **W1.5** (o `settle` seta `last_stepped=target`
 no paused; scrub não rebobina o corpo ainda — o ring é a próxima wave, com o **kill-check de serialização

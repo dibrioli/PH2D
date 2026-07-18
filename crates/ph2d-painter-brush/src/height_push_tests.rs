@@ -70,6 +70,7 @@ fn ploughed_plane(share: f32, count: u32) -> (Vec<f32>, f32, f32, f32, f32) {
         let (_, carried) = bank_dab_push(
             &mut plane,
             &paint,
+            None, // these gates all DEPOSIT; the supply only gates a withdrawal
             &mut scratch,
             W,
             W,
@@ -273,6 +274,7 @@ fn isolated_bank_plane(spec: &crate::BrushSpec, t0: f32) -> Vec<f32> {
     let _ = bank_dab_push(
         &mut plane,
         &paint,
+        None, // these gates all DEPOSIT; the supply only gates a withdrawal
         &mut scratch,
         IB_W,
         IB_W,
@@ -464,6 +466,7 @@ fn ploughed_at_spacing(falloff: crate::Falloff, step: f32, count: u32) -> (Vec<f
         let (_, carried) = bank_dab_push(
             &mut plane,
             &paint,
+            None, // these gates all DEPOSIT; the supply only gates a withdrawal
             &mut scratch,
             WD,
             WD,

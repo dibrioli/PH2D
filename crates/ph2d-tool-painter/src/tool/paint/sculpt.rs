@@ -438,16 +438,6 @@ impl Default for SculptState {
     }
 }
 
-impl SculptMode {
-    /// The verbs the **Conserve** flag applies to — the pure REMOVERS, whose taken volume has one honest
-    /// destination (the rim). Flatten moves volume both ways and Fill only adds; conserving those needs a
-    /// design for where the *added* volume comes FROM, which is a decision, not a flag (plan §6 names
-    /// Scrape; the Chisel is Scrape with a folded blade).
-    pub(super) fn conserves(self) -> bool {
-        matches!(self, SculptMode::Scrape | SculptMode::Chisel)
-    }
-}
-
 impl SculptState {
     /// **The one door for "is the bow wave on?"** — the flag AND a verb it governs. Both the dab
     /// accumulation (the bite + bank) and the render (the `+ bank` term) ask HERE: two copies of this

@@ -415,7 +415,68 @@ pergunta e sangra sozinha:
   percorrer o plano"*);
 - janela crescida 400 px **constantes** ⇒ razão **1,00×, passa**; o **kill** dispara em 47 ms.
 
-### 9.8 Também sobra
+### 9.8 Conserve p/ Flatten/Fill — LANDOU (ordem do Enio; era "decisão de design")
+
+**A decisão:** a lei é UMA, e o Scrape sempre foi caso particular dela —
+
+> **Conserve = a variação LÍQUIDA de volume do traço é zero; o aro liquida a diferença com o SINAL do
+> ledger.**
+
+Scrape/Chisel só removem ⇒ ledger sempre negativo ⇒ aro sobe (foi por isso que o 1º corte pôde cravar uma
+crista sem perceber que estava supondo algo). Fill/Clay adicionam ⇒ ledger positivo ⇒ **o aro afunda: um
+fosso**. Encher uma cova arrastando a tinta ao redor deixa fosso, exatamente como raspar um canal deixa
+crista.
+
+Custo estrutural: quase nada, e por bons motivos. A mordida parou de codificar *a expressão do Scrape* e
+passou a **perguntar ao verbo** (`Travel::{Down,Up,Both}`, espelho exato do `match` do render);
+`bank_dab_push` **já era transparente ao sinal** (`plane[i] += k·scale`); e o painel **já perguntava ao
+tool** (`sculpt_conserves`) ⇒ **zero mudança de painel**. Estender `conserves()` bastou para o checkbox
+nascer nos cards novos.
+
+#### ⚠️ A medição mudou o que o flag SIGNIFICA no Flatten
+
+Medido ANTES de construir (volume líquido de um traço, `loads·px²`):
+
+| | offset 0 | +0,25 | +0,5 | −0,25 |
+|---|---|---|---|---|
+| FLATTEN | **+0,7 (+1,2%)** | +741,7 | +1482,7 | −740,3 |
+| FILL | +59,7 | +741,7 | +1482,7 | +0,0 |
+
+**No centro do Offset o Flatten já é conservativo, e não por sorte:** o ajuste de mínimos quadrados passa
+pelo centroide ponderado, então `Σ w·(plano − h) = 0` **por construção** — o que ele tira dos picos já está
+nos vales. O resíduo é só o descasamento entre os pesos do fit e o `k = min(amount,1)` do render.
+
+Logo, no Flatten este flag **não é** *"pare de deletar tinta"*: é **o contrapeso do Offset**. O Offset é o
+botão de volume (fora do centro cria ou destrói **12×** toda a redistribuição) e o Conserve é o que faz o
+botão mover tinta em vez de conjurá-la. É por isso que vale oferecê-lo num verbo neutro em repouso: ele é
+vivo exatamente onde o verbo deixa de ser neutro.
+
+#### ⚠️ O bug que nenhum ledger pegaria
+
+Com a lei implementada o ledger fechava em **±0,0 em todos os casos** — e estava mentindo. O aro
+**prefere texels que o traço não trabalhou** (`1 − paint`, para não empilhar a crista no próprio canal), e
+invertido o sinal esse mesmo fator guia o fosso **para fora da tinta**. Medido num depósito real:
+**83% do saque caía em tela nua**, com o ledger em ±0,0. Relevo sob cobertura zero **não renderiza** ⇒
+ledger verde sobre mentira visível, que é pior que ledger desequilibrado, porque nada reclama.
+
+Cura: um saque é pesado pelo que está de fato lá — **`Supply { relief, cover }`**, a grandeza que a LUZ
+integra (`altura × cobertura`). ⚠️ **Relevo sozinho não basta, e isso foi medido**: o depósito espalha
+altura num halo mais largo que a tinta, e pesar por ele ainda deixava **56%** no invisível.
+**83% → 56% → 0%**, com o ledger fechando o tempo todo.
+
+O fixture teve de mudar junto: `sculpt_canvas` põe **cobertura 255 em toda parte**, então nele "fora da
+tinta" não existe e um fosso no vazio é indistinguível de um na tinta — *um fixture que não contém o
+fenômeno não pode gateá-lo*. Os gates novos usam um **depósito REAL** com bordas.
+
+Gates (3 novos, 4 mutações, 4 sangram): ledger do Fill · **o fosso só toma tinta de pé** · o Offset como
+botão de volume e o Conserve como contrapeso. Os 4 gates velhos de Scrape ficam verdes — o depósito é
+byte-intocado (`supply` só é consultado quando `displaced < 0`).
+
+**Aberto, herdado e inalterado:** o banco ainda normaliza por dab (cada dab divide o próprio aro), o
+resíduo conhecido de 0,0286 do §7 da fila. O fosso herda exatamente a mesma imperfeição, pelo mesmo
+motivo, e a cura é a mesma para os dois.
+
+### 9.9 Também sobra
 
 - Nada medido em aberto neste eixo. Os kernels estão todos sob o alvo de 4 e planos na tela; a montagem
   restante é comum a todos os verbos e é o fork do plano.

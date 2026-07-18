@@ -350,6 +350,7 @@ impl PainterTool {
                     bank_dab_push(
                         &mut push_plane,
                         &paint,
+                        None, // the deposit only ever banks OUTWARD; it never withdraws
                         &mut scratch,
                         w,
                         h,

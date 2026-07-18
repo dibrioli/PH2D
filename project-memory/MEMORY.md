@@ -121,6 +121,7 @@
 - [Gate verde de 1ª pode ser verde por ACIDENTE](feedback_a_green_gate_may_be_green_by_accident.md) — mutação sobreviveu? o suspeito é o fixture (3 em 20, no §4.B)
 - [Provas de mutação (5 regras)](reference_topic_mutation_proofs.md) — mute o código · RED só sobre visto-VERDE · oráculo alcançável · otimização dispara · sobrevivente = gate faltando
 - [Fixture em regime CAÓTICO](feedback_a_fixture_can_land_in_a_chaotic_regime.md) — Δ enorme? compare com uma quantidade física; magnitude limitada + sinal virando = divergência máxima
+- [Fixture de costura pede âncora INCOBRÍVEL](feedback_a_seam_fixture_must_rest_on_something_uncoverable.md) — "sem kernel ainda" é backlog, não propriedade; a própria cobertura apaga o caso negativo
 - [Disciplina de oráculo (5)](reference_topic_oracle_discipline.md) — aparência, não regra · renderize o contradito · taxa de falso-positivo · valor exato
 - [Disciplina de fixture (3)](reference_topic_fixture_discipline.md) — só prova o que contém · zero não falha · gateie as bordas
 - [Protocolo de auditoria (5)](reference_topic_audit_protocol.md) — lentes · escopo · claims verificados · state-grep · claims de commit

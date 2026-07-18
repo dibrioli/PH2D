@@ -53,6 +53,7 @@ ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }
 ph2d-node-motion-pin-constraint = { path = "../ph2d-node-motion-pin-constraint" }
 ph2d-node-motion-stagger = { path = "../ph2d-node-motion-stagger" }
 ph2d-node-motion-look-at = { path = "../ph2d-node-motion-look-at" }
+ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
 ph2d-node-value-lfo = { path = "../ph2d-node-value-lfo" }
 # A VALUE producer, to gate the color-ramp refusal (its `t` port).
 ph2d-node-value-instance-field = { path = "../ph2d-node-value-instance-field" }

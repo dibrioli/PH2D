@@ -31,6 +31,7 @@ use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, SourceWindow};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
@@ -118,6 +119,76 @@ fn field(n: usize, mode: FieldMode, seed: u32) -> Vec<f32> {
         .collect()
 }
 
+/// GPU compute kernel (ADR-0126) — the WGSL port of [`field`], element for
+/// element, including the integer hash.
+///
+/// **The measurement that asked for this.** `two_seam_hybrid_timing` found that
+/// at 2 M elements **71% of a two-seam hybrid's CPU cost was the CPU prefix** —
+/// paid to cook a `grid` plus two of THESE, because they had no kernel. A node
+/// that mints per-element variation sits at the head of a great many chains, so
+/// leaving it uncovered taxed every one of them with a seam.
+///
+/// `if_round` is round-half-away-from-zero to match Rust's `f32::round`: `mode`
+/// picks a BRANCH and `seed` an integer, so WGSL's half-even would choose a
+/// different field at a half-integer
+/// ([[feedback_cpu_gpu_rounding_conventions_diverge]]).
+///
+/// The hash is `hash.rs` transliterated. WGSL `u32` arithmetic wraps and `>>` is
+/// a logical shift, which is exactly what `wrapping_mul` and Rust's `u32 >>` do —
+/// so this is the same integer sequence, not an approximation of it. The
+/// `1 << 24` divisor keeps the draw exactly representable and never 1.0.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let if_mode = i32(if_round(params.mode));\n\
+        var if_v: f32;\n\
+        if (if_mode == 0) {\n\
+        \x20   if_v = f32(i);\n\
+        } else if (if_mode == 2) {\n\
+        \x20   let if_seed = u32(max(if_round(params.seed), 0.0));\n\
+        \x20   if_v = if_rand01(if_seed, i);\n\
+        } else {\n\
+        \x20   // N == 1 has no span: the low end, never a divide by zero.\n\
+        \x20   if (params.count > 1u) {\n\
+        \x20       if_v = f32(i) / f32(params.count - 1u);\n\
+        \x20   } else {\n\
+        \x20       if_v = 0.0;\n\
+        \x20   }\n\
+        }\n\
+        write_v(i, if_v);\n",
+    wgsl_lib: "\
+        fn if_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn if_rand01(seed: u32, index: u32) -> f32 {\n\
+            var h = seed * 0x9e3779b9u + index * 0x85ebca6bu;\n\
+            h = h ^ (h >> 16u);\n\
+            h = h * 0x7feb352du;\n\
+            h = h ^ (h >> 15u);\n\
+            h = h * 0x846ca68bu;\n\
+            h = h ^ (h >> 16u);\n\
+            return f32(h >> 8u) / 16777216.0;\n\
+        }\n",
+    bindings: &[ColumnBinding {
+        column: VALUE_COL,
+        dim: Dim::Scalar,
+        access: ColumnAccess::Write,
+        identity: [0.0; 4],
+        port: 0,
+    }],
+    params: &["mode", "seed"],
+    // Same law as `value.lfo`, and the same expression `eval` uses: connected it
+    // is one value per instance, unconnected it is ONE degenerate value. The
+    // engine's default ("as wide as port 0") would size an unconnected one at 0
+    // and skip the stage.
+    count_law: Some(instance_field_count),
+    applicable: None,
+};
+
+fn instance_field_count(c: &CountLawCtx<'_>) -> SourceWindow {
+    SourceWindow::of_count(c.inputs.first().copied().unwrap_or(0).max(1) as usize)
+}
+
 struct ValueInstanceField;
 
 impl NodeOp for ValueInstanceField {
@@ -139,6 +210,7 @@ impl NodeOp for ValueInstanceField {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueInstanceField))?;
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

@@ -5229,6 +5229,7 @@ dependencies = [
  "ph2d-node-motion-transform",
  "ph2d-node-motion-wiggle",
  "ph2d-node-registry",
+ "ph2d-node-value-attribute",
  "ph2d-node-value-instance-field",
  "ph2d-node-value-lfo",
  "ph2d-node-value-map-range",

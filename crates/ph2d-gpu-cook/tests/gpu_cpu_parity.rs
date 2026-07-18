@@ -54,6 +54,7 @@ fn registry() -> NodeRegistry {
     ph2d_node_motion_stagger::register(&mut reg).unwrap();
     ph2d_node_motion_look_at::register(&mut reg).unwrap();
     ph2d_node_value_instance_field::register(&mut reg).unwrap();
+    ph2d_node_value_attribute::register(&mut reg).unwrap();
     // GPU/M5 Fase 3 — colour.
     ph2d_node_motion_color_ramp::register(&mut reg).unwrap();
     ph2d_node_motion_emitter::register(&mut reg).unwrap();
@@ -913,8 +914,9 @@ fn a_connected_t_keeps_the_color_ramp_on_the_cpu() {
     // The refusal (no device needed). The kernel only claims the positional key;
     // a `t` field is a length this plan cannot prove, and answering with the
     // index instead of the field would be a silently different colour.
-    let mut reg = registry();
-    ph2d_node_value_instance_field::register(&mut reg).unwrap();
+    // `value.instance_field` is in `registry()` now that it has a kernel — it used
+    // to be registered here, locally, because nothing else needed it.
+    let reg = registry();
     let mut g = Graph::new();
     let grid = grid_node(&mut g, 8.0);
     let field = g.add_node("value.instance_field");
@@ -1623,6 +1625,24 @@ fn look_at_broadcasts_a_single_target_and_reads_a_field_per_element() {
     }
 }
 
+/// A VALUE producer the GPU **cannot** claim, for the fixtures that need a CPU
+/// seam to exist at all.
+///
+/// It is `value.attribute` and not merely some node without a kernel yet, and
+/// that distinction is the whole point: covering `value.instance_field` (which
+/// these fixtures used first) deleted their seams and turned two gates red for
+/// the best possible reason. A seam fixture built on "uncovered so far" erodes
+/// every time coverage advances, and the pressure then is to weaken the gate.
+///
+/// `value.attribute` names its column with a **text param**, and
+/// `ColumnBinding.column` is `&'static str` — so it is uncoverable by structure,
+/// not by backlog. If that ever changes, these fixtures should break loudly.
+fn uncoverable_value_node(g: &mut Graph, attr: &str) -> NodeId {
+    let n = g.add_node("value.attribute");
+    g.set_text_param(n, "attr", attr.to_string());
+    n
+}
+
 /// **TWO CPU seams, one march, and the same picture the CPU draws** — slice B,
 /// end to end on the product path.
 ///
@@ -1654,9 +1674,8 @@ fn two_cpu_seams_hand_over_in_one_march_and_match_the_cpu() {
     // the two targets never coincide — equal targets would survive the two
     // streams being swapped or one of them being handed over twice.
     let mut fields = Vec::new();
-    for (port, mode) in [(1u16, 0.0), (2u16, 2.0)] {
-        let f = g.add_node("value.instance_field");
-        g.set_param(f, "mode", mode);
+    for (port, attr) in [(1u16, "Index"), (2u16, "Count")] {
+        let f = uncoverable_value_node(&mut g, attr);
         connect(&mut g, grid, f);
         g.connect(Edge {
             from: (f, 0),
@@ -1740,6 +1759,238 @@ fn two_cpu_seams_hand_over_in_one_march_and_match_the_cpu() {
             .any(|i| (i.basis[0] - cpu[0].basis[0]).abs() > 1e-3),
         "fixture check: the elements must aim in varied directions"
     );
+}
+
+/// **Does a two-seam hybrid actually PAY?** — the number slice B shipped without.
+///
+/// The route now sends a plan with N CPU boundaries to the GPU whenever the
+/// suffix has one dispatching stage. That rule was inherited from the one-seam
+/// case and never re-measured, and the arithmetic is not obviously in its favour:
+/// the CPU still cooks the whole prefix (here `grid` plus TWO
+/// `value.instance_field`s), then **uploads two streams**, so the GPU only earns
+/// back the `look_at` — one `atan2` per element. Upload is bandwidth; `atan2` is
+/// arithmetic. Which wins is a measurement, not an opinion.
+///
+/// **Measured on the RTX (2026-07-18), and the answer is yes — but the obvious
+/// reading of it is wrong.**
+///
+/// ```text
+///   elements | pure CPU | hybrid+sync | hybrid CPU-side | prefix
+///       1024 |   0.006  |    0.058    |     0.017       | 0.001
+///       4096 |   0.022  |    0.060    |     0.020       | 0.002
+///       8100 |   0.043  |    0.066    |     0.023       | 0.004
+///      16384 |   0.082  |    0.089    |     0.034       | 0.008
+///      32761 |   0.174  |    0.131    |     0.052       | 0.019
+///      65536 |   0.268  |    0.205    |     0.089       | 0.038
+///     524176 |   3.727  |    1.387    |     0.544       | 0.266
+///    2002225 |  22.205  |    6.972    |     3.609       | 2.527   (ms)
+/// ```
+///
+/// `hybrid+sync` waits for the device every frame, and read that way the hybrid
+/// looks **3× SLOWER below 16k** — which would argue for a size floor on the
+/// route. It is the wrong column: **the product never waits.** The shell submits
+/// and moves on, so what competes for the frame budget is `hybrid CPU-side`, and
+/// by that measure the hybrid is cheaper from ~4k up (dead even there, 1,5× at
+/// 8k, **5,9× at 2M**) and costs at most **0,012 ms** more below it — 0,07% of a
+/// 60 fps frame.
+///
+/// So **no threshold was added**: a limit written to dodge 0,012 ms is the
+/// "for safety" guess CLAUDE.md §0.0 refuses. The measurement that would justify
+/// one is the sync column, and that column is an artefact of this probe.
+///
+/// **What it does argue for is COVERAGE.** At 2M, 2,527 ms of the hybrid's
+/// 3,609 ms CPU-side is the CPU PREFIX — **70% of the cost is the seam's own
+/// tax**, paid to cook the uncovered nodes feeding the target ports. The first
+/// run of this probe used `value.instance_field` there, and covering that node
+/// (same session) deleted the seams outright: the fixture now uses
+/// `value.attribute`, which is uncoverable by structure. Every kernel shortens
+/// this prefix; enough of them and the plan has no seam left to pay for.
+///
+///   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity --release -- --ignored --nocapture two_seam_hybrid_timing
+#[test]
+#[ignore = "perf probe; requires a GPU adapter"]
+fn two_seam_hybrid_timing() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    eprintln!("  elements |  pure CPU | hybrid+sync | hybrid CPU-side | prefix");
+    for rows in [32.0f32, 64.0, 90.0, 128.0, 181.0, 256.0, 724.0, 1415.0] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, rows);
+        let la = g.add_node("motion.look_at");
+        let out = g.add_node("motion.output");
+        connect(&mut g, grid, la);
+        connect(&mut g, la, out);
+        for (port, attr) in [(1u16, "Index"), (2u16, "Count")] {
+            let f = uncoverable_value_node(&mut g, attr);
+            connect(&mut g, grid, f);
+            g.connect(Edge {
+                from: (f, 0),
+                to: (la, port),
+                delayed: false,
+            })
+            .expect("target port");
+        }
+        g.validate(&reg).expect("well-typed");
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+        assert_eq!(plan.boundaries.len(), 2, "the two-seam shape");
+
+        let n_el = (rows * rows) as usize;
+        let frames = if n_el > 500_000 { 20 } else { 60 };
+
+        // Pure CPU, steady state (a persistent `Cook` — the memo is the product's).
+        let mut cook = Cook::new();
+        let mut cpu = Vec::new();
+        let mut cpu_ms = f64::MAX;
+        for f in 0..frames {
+            let t = 0.5 + f as f64 * 1e-3; // move the playhead: no memo hit
+            let t0 = std::time::Instant::now();
+            ph2d_eval_motion::evaluate_motion_into(
+                &mut cook,
+                &g,
+                &reg,
+                out,
+                t,
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+                &mut cpu,
+            )
+            .expect("cpu cook");
+            cpu_ms = cpu_ms.min(t0.elapsed().as_secs_f64() * 1e3);
+        }
+
+        // The hybrid, on the product path: one march over both boundaries, then
+        // the GPU suffix. Warm up first (pipeline compile + pool).
+        let mut pump = ph2d_eval_motion::MotionCookPump::new();
+        let mut gc = ph2d_gpu_cook::GpuCook::new();
+        let nodes: Vec<_> = plan.boundaries.iter().map(|(n, _)| *n).collect();
+        let scopes = ph2d_nodegraph::cook::TimeScopes::default();
+        let mut hybrid_ms = f64::MAX;
+        let mut march_ms = f64::MAX;
+        let mut cpu_side_ms = f64::MAX;
+        for f in 0..=frames {
+            let t = 0.5 + f as f64 * 1e-3;
+            let t0 = std::time::Instant::now();
+            pump.advance_or_scrub_to_nodes_scoped(&g, &reg, &nodes, f as u64, |_| t, &scopes);
+            let handed: Vec<_> = pump
+                .boundary_streams()
+                .iter()
+                .map(|(n, s)| (*n, s))
+                .collect();
+            let t_march = t0.elapsed().as_secs_f64() * 1e3;
+            gc.cook(
+                &gpu,
+                &g,
+                &reg,
+                &reg,
+                &plan,
+                &handed,
+                CookClock::at(t),
+                DEFAULT_UV,
+                DEFAULT_SIZE,
+            )
+            .expect("gpu cook");
+            // What the frame actually SPENDS: the shell submits and moves on, so
+            // the device wait below is the probe's, not the product's.
+            let submitted = t0.elapsed().as_secs_f64() * 1e3;
+            let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+            let total = t0.elapsed().as_secs_f64() * 1e3;
+            if f > 0 {
+                // Skip frame 0: it compiles pipelines and grows the pool.
+                hybrid_ms = hybrid_ms.min(total);
+                march_ms = march_ms.min(t_march);
+                cpu_side_ms = cpu_side_ms.min(submitted);
+            }
+        }
+        eprintln!(
+            "{n_el:>10} | {cpu_ms:>8.3}ms | {hybrid_ms:>9.3}ms | {cpu_side_ms:>13.3}ms | {march_ms:>6.3}ms",
+        );
+    }
+}
+
+/// **`value.instance_field` — where per-element variation is BORN**, and the node
+/// the two-seam timing probe pointed at: 71% of that hybrid's CPU cost was the
+/// prefix cooked to feed two of these.
+///
+/// All three modes in one gate, because they are three different KINDS of answer:
+/// `Index` is the raw ordinal (an `f32(i)` cast), `Ramp` divides by `N−1` (the
+/// degenerate `N=1` guard), and `Random` is an integer hash — where a `u32` that
+/// wrapped differently, or a logical vs arithmetic shift, would give a completely
+/// different field rather than an ε.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn instance_field_kernel_matches_the_cpu_in_every_mode() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // The last two rows are HALF-INTEGERS, and they are the point of the sweep.
+    // Rust's `f32::round` is half-AWAY-from-zero and WGSL's `round` is half-EVEN,
+    // so `mode 0.5` is Ramp on one side and Index on the other (a different field
+    // entirely), and `seed 6.5` seeds 7 vs 6. A sweep of 0.0/1.0/2.0 proves
+    // nothing about rounding at all: both conventions agree on every integer, and
+    // a mutation swapping them SURVIVED such a fixture here
+    // ([[feedback_a_green_gate_may_be_green_by_accident]]).
+    for (mode, seed, label) in [
+        (0.0, 7.4, "Index"),
+        (1.0, 7.4, "Ramp"),
+        (2.0, 7.4, "Random"),
+        (0.5, 7.4, "mode on a half-integer"),
+        (2.0, 6.5, "seed on a half-integer"),
+    ] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 12.0);
+        let f = g.add_node("value.instance_field");
+        g.set_param(f, "mode", mode);
+        g.set_param(f, "seed", seed);
+        connect(&mut g, grid, f);
+        g.validate(&reg).expect("well-typed");
+
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, f);
+        assert!(plan.is_fully_gpu(), "{label}: covered end to end");
+
+        let mut cook = Cook::new();
+        let cpu = cook.cook(&g, &reg, f, PLAYHEAD).expect("cpu cook");
+        let cpu_v = match cpu[0].as_stream().get("v") {
+            Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.clone(),
+            _ => panic!("{label}: the CPU emitted no `v`"),
+        };
+
+        let mut gc = ph2d_gpu_cook::GpuCook::new();
+        gc.retain_streams_for_debug(true);
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+
+        let gpu_v = gc.read_column(&gpu, f, "v").expect("`v` reads back");
+        assert_eq!(gpu_v.len(), cpu_v.len(), "{label}: same element count");
+        let worst = gpu_v
+            .iter()
+            .zip(&cpu_v)
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0_f32, f32::max);
+        eprintln!("instance_field {label}: max |dv| = {worst:e}");
+        // Random is an INTEGER hash on both sides, so it must be EXACT — an ε bar
+        // there would hide a wrap or a shift that differs.
+        let bar = if mode >= 1.5 { 0.0 } else { 1e-6 };
+        assert!(worst <= bar, "{label}: max |dv| = {worst:e} (bar {bar:e})");
+        assert!(
+            cpu_v.iter().any(|v| (v - cpu_v[0]).abs() > 1e-6),
+            "{label}: fixture check — the field must VARY, or this proves nothing"
+        );
+    }
 }
 
 /// `motion.orbit` — swings each element around a pivot by an angle the playhead

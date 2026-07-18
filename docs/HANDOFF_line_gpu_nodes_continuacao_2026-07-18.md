@@ -191,9 +191,33 @@ scrubar · e as 3 do broadcast).
 para `lower.rs` (a costura já estava lá: `lower.rs` responde *"como um stream fica
 na tela"* e não sabe de tick/memo/`pre`; o `lib.rs` roda o RELÓGIO). 555 + 194.
 
-**Aberto nesta fatia:** ninguém mediu ainda o GANHO de um documento de 2 costuras
-na GPU contra a CPU pura — a paridade está gateada, a **velocidade** não. É a
-próxima medição óbvia, e o handoff §0.0 cobra número, não impressão.
+**✅ MEDIDO (mesmo dia) — e a leitura ingênua estava errada.** Sonda
+`two_seam_hybrid_timing`:
+
+| elementos | CPU pura | híbrido+sync | híbrido CPU-side | prefixo |
+|---:|---:|---:|---:|---:|
+| 1.024 | 0,006 | 0,058 | 0,017 | 0,001 |
+| 4.096 | 0,022 | 0,060 | **0,020** | 0,002 |
+| 16.384 | 0,082 | 0,089 | 0,034 | 0,008 |
+| 65.536 | 0,268 | 0,205 | 0,089 | 0,038 |
+| 524.176 | 3,727 | 1,387 | 0,544 | 0,266 |
+| 2.002.225 | **22,205** | 6,972 | **3,609** | 2,527 |
+
+A coluna `+sync` espera o dispositivo todo frame, e lida assim o híbrido parece
+**3× MAIS LENTO abaixo de 16k** — o que pediria um piso de tamanho na rota. **É a
+coluna errada: o produto nunca espera.** O shell submete e segue, então quem
+disputa o orçamento do frame é o `CPU-side`, e por essa medida o híbrido é mais
+barato **a partir de ~4k** (empate ali, 1,5× em 8k, **5,9× em 2 M**) e custa no
+máximo **0,012 ms** a mais abaixo disso — 0,07% de um frame de 60 fps.
+
+⇒ **Nenhum limiar foi adicionado.** Um limite escrito para desviar de 0,012 ms é
+o palpite "por segurança" que o §0.0 recusa; a medição que o justificaria é a
+coluna que é artefato da sonda.
+
+⇒ **O que ela ARGUMENTA é COBERTURA:** em 2 M, **70% do custo CPU-side do híbrido
+é o PREFIXO** (2,527 de 3,609 ms) — imposto pago para cozinhar os nós sem kernel
+que alimentam as portas. Cada kernel encurta esse prefixo; kernels suficientes e o
+plano não tem costura para pagar.
 
 ### (C) Mais kernels (os 52 restantes) — **O MULTIPLICADOR (corrigido)**
 
@@ -469,7 +493,7 @@ ela** — que era o que o §2 mandava fazer (*"verifique antes de confiar"*) —
 verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 **COBERTURA**.
 
-**Cobertura: 20 → 28 kernels.**
+**Cobertura: 20 → 29 kernels.**
 
 | commit | o que |
 |---|---|
@@ -488,7 +512,8 @@ verificação a **derrubou**. O resto foi gasto no que a medição apontou:
 | `d6ac6725` | **broadcast tentado e REVERTIDO** — a corrente tem uma etapa antes dela; bug latente medido |
 | `8a7ce80d` | **a LEI DE CONTAGEM** (`count_law`/`CountLawCtx`/`count.rs`) + o bug latente do `value.lfo` fechado e gateado + split `encode.rs` |
 | `97c156a9` | **o BROADCAST** (`ColumnAccess::ReadBroadcast` + `bcast_one`) e **`motion.look_at`, o 28º kernel** — e o **tripwire DISPAROU**: 2 costuras são medidas, a fatia B está desbloqueada com o grafo vermelho-primeiro escrito |
-| (este) | **A FATIA B CONSTRUÍDA** — o pump é plural (uma marcha, N entregas), o memo virou MEDIÇÃO (conta evals), (b) e (c) do mapa gateados, split `lower.rs` |
+| `c88f1e9a` | **A FATIA B CONSTRUÍDA** — o pump é plural (uma marcha, N entregas), o memo virou MEDIÇÃO (conta evals), (b) e (c) do mapa gateados, split `lower.rs` |
+| (este) | **a fatia B MEDIDA** (o híbrido paga a partir de ~4k; sem limiar, com a tabela) + **`value.instance_field` na GPU, o 29º kernel** — o nó que a própria medição apontou |
 
 **Estado:** tudo verde — **40 gates de GPU** (22 paridade + 18 sim) na RTX, 778 no
 shell, `fmt`/`clippy`/`machete`/`typos`/os **2** LOC caps limpos. **Nada

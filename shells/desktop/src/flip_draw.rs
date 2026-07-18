@@ -109,7 +109,6 @@ pub(crate) fn bake_stroke(
     strip: &mut crate::flip_strip::FlipStrip,
     points: &[Vec2],
     pressures: &[f32],
-    px_to_world: f32,
     world_to_local: &Xform,
 ) -> Option<(ph2d_flip::FlipObjectId, ph2d_flip::DrawingId, usize)> {
     if points.len() < 2 {
@@ -138,10 +137,56 @@ pub(crate) fn bake_stroke(
         style,
         points,
         pressures,
-        px_to_world,
         world_to_local,
     ));
     Some((oid, did, drawing.strokes.len() - 1))
+}
+
+/// **A tolerância da simplificação: uma FRAÇÃO da espessura do traço.**
+///
+/// O amostrador guarda um ponto a cada `MIN_SAMPLE_PX` (2 px de tela), e antes de
+/// 2026-07-18 a decimação usava `0,05 · px_to_world` — *"só remove colinear puro
+/// (invisível)"*. Era literalmente isso: uma simplificação calibrada para não simplificar.
+/// O resultado é o que o Enio viu no smoke — *"o traço gera muitos pontos muito próximos
+/// e até sobrepostos"* —, e ele fica PIOR quando se desenha com a câmera perto, porque um
+/// limiar em px de TELA vira uma distância minúscula em unidades de MUNDO.
+///
+/// A grandeza certa é adimensional, pela mesma razão do `FILL_TUCK_FRACTION`: **um desvio
+/// muito menor que a própria linha é invisível por definição**, e é a linha que diz o que
+/// é "muito menor". Medido num arco de mão (400 amostras, pincel default):
+///
+/// | fração | pontos | % do cru | desvio máx (da espessura) |
+/// |---|---|---|---|
+/// | 0,0008 (o valor antigo, ≈0,05 px) | 210 | 52,5 % | 0,05 % |
+/// | 0,02 | 173 | 43,2 % | 1,9 % |
+/// | 0,05 | 95 | 23,8 % | 5,0 % |
+/// | **0,10** | **17** | **4,2 %** | **7,4 %** |
+/// | 0,20 | 10 | 2,5 % | 19,5 % |
+///
+/// ⚠️ **O joelho da curva é 0,10 (95 → 17 pontos), e o valor escolhido é 0,05 — de
+/// propósito, por causa de uma CERCA.** Em 2026-07-11 o Enio reportou *"o desenho em
+/// tempo real está mais suave que o traço cosido após mouse up"*, causado por um RDP de
+/// 0,75 px ≈ **12,5 % da espessura** do pincel default. O RDP substitui trechos por
+/// RETAS, então tolerância demais não desloca a arte — ela a deixa **angulosa**, que é
+/// outro defeito e não aparece na coluna de desvio.
+///
+/// 0,05 é **2,5× mais conservador** que o valor que causou a queixa e ainda assim corta
+/// os pontos 4× (400 → 95, espaçamento ~8 px em vez de 2). Subir para 0,10 é um ganho
+/// grande e está medido — mas é o smoke do Enio que decide, porque quem julga
+/// angulosidade é o olho dele.
+///
+/// E o que torna qualquer valor SEGURO agora é a porta única: o preview ao vivo passa
+/// pelo MESMO `stroke_from_samples`, então o traço assado é idêntico ao que ele viu
+/// enquanto desenhava — a cerca de 2026-07-11 virou estrutura em vez de calibração.
+///
+/// Quinas sobrevivem por construção: o RDP mantém sempre o ponto de desvio MÁXIMO, e uma
+/// quina é o desvio máximo do trecho.
+const STROKE_SIMPLIFY_FRACTION: f32 = 0.05; // adimensional: fracao da espessura, MEDIDO
+
+/// A tolerância em unidades de MUNDO (os pontos crus são mundo; a conversão para local é
+/// do `build_stroke`, depois).
+fn simplify_tolerance(style: &FlipStyleSnapshot) -> f32 {
+    STROKE_SIMPLIFY_FRACTION * ph2d_tool_flip::size_to_world(style.width_px)
 }
 
 /// **Das amostras CRUAS ao traço** — smoothing + decimação invisível + estilo.
@@ -153,12 +198,10 @@ pub(crate) fn stroke_from_samples(
     style: &FlipStyleSnapshot,
     points: &[Vec2],
     pressures: &[f32],
-    px_to_world: f32,
     world_to_local: &Xform,
 ) -> FlipStroke {
     let smoothed = crate::flip_smooth::active_smooth(points, style.smoothing);
-    let tol = 0.05 * px_to_world; // ~0.05px — só remove colinear puro (invisível)
-    let keep = crate::flip_smooth::simplify_rdp(&smoothed, tol);
+    let keep = crate::flip_smooth::simplify_rdp(&smoothed, simplify_tolerance(style));
     let pts: Vec<Vec2> = keep.iter().map(|&i| smoothed[i]).collect();
     let prs: Vec<f32> = keep.iter().map(|&i| pressures[i]).collect();
     build_stroke(style, &pts, &prs, world_to_local)
@@ -342,10 +385,17 @@ impl crate::App {
         if pts.len() < 2 {
             return None;
         }
-        // Mesmo active smoothing do bake → o preview mostra o traço FINAL.
-        let smoothed = crate::flip_smooth::active_smooth(pts, style.smoothing);
+        // **A MESMA porta do bake** — não "o mesmo smoothing", a mesma FUNÇÃO.
+        //
+        // Antes o preview repetia só o `active_smooth` e o bake acrescentava um RDP; os
+        // dois só coincidiam porque esse RDP estava calibrado para não fazer nada
+        // (tolerância de 0,05 px). Ou seja: o invariante *"o preview mostra o traço
+        // final"* era mantido **castrando** um dos lados, e qualquer simplificação de
+        // verdade o quebrava em silêncio — foi exatamente o que o Enio reportou em
+        // 2026-07-11 (*"o desenho em tempo real está mais suave que o traço cosido"*).
+        // Compartilhando a função, ele passa a valer por CONSTRUÇÃO.
         let mut d = FlipDrawing::default();
-        d.strokes.push(build_stroke(&style, &smoothed, prs, &w2l));
+        d.strokes.push(stroke_from_samples(&style, pts, prs, &w2l));
         Some(pack_drawing(&d))
     }
 
@@ -368,8 +418,6 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut()
             && let Some(style) = style
         {
-            let win = gfx.surface.size();
-            let px_to_world = gfx.camera.height_world.max(f32::EPSILON) / win.height.max(1) as f32;
             // O traço é assado e ACABOU. (Ele já foi o "alvo vivo" — os controles do
             // painel continuavam reescrevendo o último traço até o usuário fazer outra
             // coisa. O Enio mandou parar com isso em 2026-07-18: um traço desenhado é um
@@ -382,10 +430,13 @@ impl crate::App {
                 strip_ref,
                 &points,
                 &pressures,
-                px_to_world,
                 &w2l,
             );
         }
         true
     }
 }
+
+#[cfg(test)]
+#[path = "flip_draw_tests.rs"]
+mod tests;

@@ -323,7 +323,7 @@ fn a_filled_stroke_is_one_geometry_so_sculpting_the_line_moves_the_colour() {
         Vec2::new(0.0, 4.0),
     ];
     let stroke =
-        crate::flip_draw::stroke_from_samples(&style, &pts, &[1.0; 4], 1.0, &Xform::IDENTITY);
+        crate::flip_draw::stroke_from_samples(&style, &pts, &[1.0; 4], &Xform::IDENTITY);
     assert!(
         stroke.fill.is_some(),
         "o traco Filled tem de carregar o proprio preenchimento (o material stroke+fill do GP)"

@@ -99,6 +99,11 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
 - **A estrela**: a janela de ¼ do caminho **gira** à volta da forma e atravessa a emenda sem
   tropeçar.
 
+**A seção Effects** (`e5992c4b`) smoka-se à mão, e é o teste mais direto do produto: com a tool
+**Vector**, desenhe uma forma, selecione-a (**um** caminho — a seção é por-caminho), abra **Effects**
+e clique **Add Trim Path**. A forma **não pode mudar** no clique (o efeito nasce neutro); então
+arraste **End** para baixo e ela encurta a partir do fim, **medindo por arco**.
+
 **Também vale conferir o fix da alça de raio** (`e5e40aa6`), que é independente: num **filho de
 envelope** (`PH2D_BUILD_SMOKE=11`), no modo **Node**, as alças de raio **não devem mais aparecer**.
 Antes apareciam, funcionavam, e o raio sumia no frame seguinte.
@@ -121,22 +126,34 @@ o **v18** que ninguém tinha acrescentado (a UNIDADE do `width` do Flip, `cb42c9
 
 ---
 
-## §7 — O que fica ABERTO, e por que parei aqui
+## §7 — A seção *Effects* — **FEITA** (`e5992c4b`)
 
-**A seção *Effects* no painel vetorial.** A pilha é dado de documento e hoje só a cena de smoke a
-escreve — não há como o artista adicionar um Trim pela UI.
+A pilha deixou de ser alcançável só por código: há uma seção no painel vetorial com o **toggle do
+Trim** + **Start/End/Offset**, costurada nos 8 sites.
 
-**Parei de propósito, e a razão é a DIRETIVA:** a costura de painel são ~8 arquivos (ids em
-`ph2d-editor-core` · i18n · `populate_effects` · `paint_effects` · registro da seção · `event.rs` ·
-o snapshot em `state.rs` · a ponte no `vector_bridge`) e **costura não-testada é uma das 4 causas
-nomeadas da semana perdida no Painter**. Meio-costurada seria pior que ausente.
+**A UI expõe UM Trim por caminho, e isso é decisão, não limite do motor.** Só existe **um tipo** de
+efeito: empilhar dois Trims idênticos é curiosidade, e reordenar dois iguais não significa nada.
+Quando o 2º tipo chegar, *"em que ordem?"* vira pergunta real e a lista com reordenação nasce com
+ela. Por isso o botão é um **TOGGLE** — "Add" sobre um caminho que já tem Trim criaria o segundo,
+que a tela não sabe mostrar.
 
-O padrão a copiar é o do Envelope: `populate_envelope.rs` (59 linhas) + `paint_envelope.rs`, com o
-gate `architecture_panel_wiring_parity` a cobrar a correspondência entre os dois. **Registrar é o que
-torna clicável** — pintar + hit-rect não basta.
+Três decisões que quem mexer precisa de conhecer:
 
-`PathEffect::label()` já existe e mora **no motor**, de propósito: uma segunda lista dos efeitos no
-painel divergiria da primeira assim que alguém acrescentasse um.
+- **Pôr o Trim não muda o desenho**: ele nasce no ponto **neutro** (no-op byte-idêntico), senão a
+  forma saltaria no instante do clique. Há gate.
+- **Tirar remove TODOS os Trims**, não só o primeiro — a UI expõe um, mas um documento vindo de
+  código pode ter mais, e órfãos invisíveis seriam a pior saída.
+- **A MESMA `sole_path`** responde ao painel (o que PINTAR) e ao dispatch (onde ESCREVER). Duas
+  portas divergiriam e a seção ofereceria controle para um caminho que o clique não alcança.
+
+Os três sliders **não são pintados** sem Trim — nem *dimmed*: um controle apagado que ainda despacha
+mente, e um que não despacha é um botão morto.
+
+⚠️ **Dívida herdada que paguei de passagem** (não é minha, mas o commit a toca): `apply_event`
+passou dos 200 LOC e virou `is_trim_param`/`forward_trim`; `state.rs` estourou 600 e o estado dos
+Effects saiu para `state_effects.rs`. E **o gate de tofu pegou uma seta `U+2192` num `assert!` do
+commit anterior** — ele mora na `ph2d-editor-core` e eu só tinha rodado a suíte do shell: rodar
+`cargo test -p ph2d-host-desktop` **não** é o gate completo.
 
 **Resto da fila** (com §4.2 já corrigido no handoff de continuação — o **morph vivo JÁ ESTÁ FEITO**,
 `244e546e`): chamfer (quase de graça) · texto em caminho (agora barato — o `arclen` existe) ·

@@ -11,6 +11,8 @@
 
 mod apply;
 mod field;
+#[cfg(test)]
+mod perf_tests;
 mod reconstruct;
 mod relief;
 #[cfg(test)]

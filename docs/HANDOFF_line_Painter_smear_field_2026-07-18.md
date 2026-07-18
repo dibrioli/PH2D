@@ -370,7 +370,52 @@ lados do limiar contra o mesmo oráculo (um blur de canvas inteiro, que não sab
 
 `sculpt_tests.rs` estourou o teto de LOC com isso ⇒ split `sculpt_tests/memo.rs` (não allowlist).
 
-### 9.6 Também sobra
+### 9.6 O pen-up do Inflate — MEDIDO DE NOVO E RECUSADO DE NOVO
+
+Re-medido no fim (§9.4 tinha deixado em aberto): pen-up **10,9 / 10,3 ms** para o Inflate contra
+**4,1-4,4** dos outros verbos. A causa é a do §9.4 e ela se confirma — `paint_end` carimba duas vezes
+(`paint_extend`, depois os dabs de `finish`, que **é** só a cauda: `finish` abre com `out.clear()`), e cada
+carimbada termina no seu próprio `render_sculpt`. Achado extra: o **mesmo padrão está no heartbeat** —
+`on_tick` faz `stamp_dabs` e, com o pincel PARADO, `settle` + `stamp_dabs` de novo.
+
+**Continua não valendo, e agora com o número na mão:** o ganho é ~3,7 ms *uma vez por traço*, e 10,9 ms
+**não atravessa um frame de 60 fps** — o artista não sente. O custo do outro lado é construir contador no
+PRODUTO (não há mecanismo de contagem compartilhado nesta crate) e mexer em *agendamento* de render, que é
+onde as regressões deste módulo historicamente se escondem. Medir de novo confirmou a recusa em vez de
+derrubá-la; se alguém retomar, o desenho está no §9.4 (adiar **só** o render — as bateladas de dabs têm de
+continuar duas, pelo `DabRng`, pelo `last_height_center` e pelo `last_smear_pos`).
+
+### 9.7 A perf do WARP — GATEADA (era o buraco do módulo)
+
+`CLAUDE.md` carregava *"⚠️ perf do Deform não é gateada (nunca foi) — 3 amostragens/texel a mais no bbox
+quando há relevo"* desde o W4. Aviso em prosa não é orçamento: nada media, então nada podia notar mudança.
+E a superfície ficou **mais carregada** do que quando a nota foi escrita — o Smear desta linha foi
+reconstruído sobre o mesmo campo e re-renderiza pela mesma porta (`warp_render_relief`), então uma
+regressão ali atinge duas ferramentas.
+
+`warp/perf_tests.rs::warp_perf_kill_criterion` (radius 100, o pior caso):
+
+| | TOTAL @2048 / @4096 | da qual ADVECÇÃO do relevo | tela plana |
+|---|---|---|---|
+| DEFORM | 4,18 / 4,14 ms | **2,52 (60%)** | 1,66 |
+| SMEAR | 3,28 / 3,30 ms | 1,71 (52%) | 1,57 |
+
+Ambos sob o kill 8 do irmão sculpt e **planos na tela**. O número que não existia: **a advecção é a metade
+MAIOR do Deform** — "3 amostragens/texel a mais" *mais que dobra* a ferramenta. Não é regressão, é o preço
+honesto do corpo viajar com os pixels; mas agora é um preço medido.
+
+**Duas barras, e a ORDEM é load-bearing.** Uma razão entre as duas telas (o caminho é limitado pela
+pegada ⇒ quadruplicar a tela não pode mover o custo) e um kill de wall-clock. Escrevi o kill dentro do laço
+de tamanho e a razão depois — e assim **a razão nunca conseguiria ficar vermelha**: qualquer regressão
+canvas-proporcional grande o bastante para dobrar a razão estoura 8 ms na tela MAIOR *por aritmética*, então
+o kill dispararia sempre antes. Verde por construção. Com a razão afirmada primeiro, cada barra tem uma
+pergunta e sangra sozinha:
+
+- plano inteiro em vez da janela ⇒ **razão 4,86×** (dispara, com o diagnóstico certo: *"algo começou a
+  percorrer o plano"*);
+- janela crescida 400 px **constantes** ⇒ razão **1,00×, passa**; o **kill** dispara em 47 ms.
+
+### 9.8 Também sobra
 
 - Nada medido em aberto neste eixo. Os kernels estão todos sob o alvo de 4 e planos na tela; a montagem
   restante é comum a todos os verbos e é o fork do plano.

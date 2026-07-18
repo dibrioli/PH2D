@@ -21,6 +21,7 @@ fn ball(y: f32) -> BodyDesc {
         shape: ShapeDesc::Ball { radius: 0.25 },
         restitution: 0.0,
         friction: 0.5,
+        layer: 0,
     }
 }
 

@@ -44,8 +44,8 @@
 | **W1 — Ponte ECS + tick + hash** | ✅ **INTEGRADO** (smoke aprovado) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
 | **W1.5 — Scrub (checkpoint ring)** | ✅ **INTEGRADO** (smoke aprovado) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
 | **W2a — Inspector body** | ✅ **INTEGRADO** (smoke aprovado) | ver §W2 | a autoria |
-| **W2b — Painel global de mundo** | ✅ **LANDOU** (2 achados do smoke fechados; pendente re-smoke) | ver §W2b | gravidade/solver/arrasto/sono + persistência |
-| **W2c — Camadas de colisão** | ⏳ pendente | — | a matriz É metade: a outra é a camada por-corpo (Inspector) |
+| **W2b — Painel global de mundo** | ✅ **INTEGRÁVEL** — smoke **APROVADO** (2026-07-18) | ver §W2b | gravidade/solver/ar/damping/sono + persistência |
+| **W2c — Camadas de colisão** | 🔨 **EM CURSO** | — | a matriz É metade: a outra é a camada por-corpo (Inspector) |
 | **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll; bumpa o schema **19 → 20** |
 | **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
 
@@ -358,7 +358,7 @@ diferentes do mesmo artefato.
 
 ---
 
-## ✅ §W2b — o painel global de mundo LANDOU (2026-07-18, pendente smoke)
+## ✅ §W2b — o painel global de mundo LANDOU (2026-07-18) · **smoke APROVADO** (re-smoke pós-fixes)
 
 ### O terreno que a wave usou (medido pós-integração, mantido como registro)
 

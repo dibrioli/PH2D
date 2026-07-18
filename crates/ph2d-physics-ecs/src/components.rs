@@ -79,6 +79,15 @@ pub struct Collider {
     /// values above 1 are legal and mean "grips harder than it weighs".
     /// **Default `0.5` is rapier's own** — same byte-identity argument.
     pub friction: f32,
+    /// Which collision layer this body is on (`0..MAX_LAYERS`). **Appended** —
+    /// postcard is positional, so the field goes last and `0` must mean "what
+    /// every body did before layers existed".
+    ///
+    /// Only the layer lives here. Whether two layers actually collide is a
+    /// WORLD rule (`PhysicsSettings::layer_matrix`), authored once instead of
+    /// re-typed on every body — see `ph2d_physics::world::layers` for why this
+    /// engine takes Unity's matrix over Godot's per-body mask pair.
+    pub layer: u8,
 }
 
 impl Collider {
@@ -95,6 +104,7 @@ impl Default for Collider {
             density: 1.0,
             restitution: Self::DEFAULT_RESTITUTION,
             friction: Self::DEFAULT_FRICTION,
+            layer: 0,
         }
     }
 }

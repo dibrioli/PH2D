@@ -7,8 +7,11 @@
 pub mod checkpoint;
 pub mod defaults;
 pub mod drag;
+pub mod layers;
 
 use defaults::BodyDefaults;
+use layers::LayerMatrix;
+use rapier2d::geometry::{Group, InteractionGroups};
 
 use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBody,
@@ -65,6 +68,13 @@ pub struct BodyDesc {
     pub restitution: f32,
     /// Coulomb friction. rapier's own default is `0.5`.
     pub friction: f32,
+    /// Which collision layer this body belongs to (`0..MAX_LAYERS`).
+    ///
+    /// Only the LAYER travels here — never the resulting `InteractionGroups`.
+    /// The filter is a function of `(layer, world matrix)`, and computing it in
+    /// two places is how the two would come to disagree; [`PhysicsWorld`] owns
+    /// the matrix and is the single door (see `layers`).
+    pub layer: u8,
 }
 
 pub struct PhysicsWorld {
@@ -91,6 +101,9 @@ pub struct PhysicsWorld {
     /// [`BodyDefaults`] for why a per-body rapier concept is a world setting
     /// here — and for the one rule that keeps it a single door.
     body_defaults: BodyDefaults,
+    /// Which layers collide with which. See [`layers`] for why this lives on
+    /// the world and why it cannot be asymmetric.
+    layer_matrix: LayerMatrix,
     /// Air-drag coefficient (lumps `½·ρ·Cd`). `0.0` = vacuum, and byte-identical
     /// to a build without the feature. See [`drag`] for why this is a separate
     /// model from `body_defaults.linear_damping` rather than a tuning of it.
@@ -157,6 +170,7 @@ impl PhysicsWorld {
             substeps: Self::DEFAULT_SUBSTEPS,
             base_dt: Self::DEFAULT_DT,
             body_defaults: BodyDefaults::rapier(),
+            layer_matrix: LayerMatrix::all(),
             air_drag: 0.0,
         }
     }
@@ -229,6 +243,29 @@ impl PhysicsWorld {
         d.apply_to_all(&mut self.bodies);
     }
 
+    /// Which layers collide with which.
+    pub fn layer_matrix(&self) -> LayerMatrix {
+        self.layer_matrix
+    }
+
+    /// Replace the collision-layer matrix.
+    ///
+    /// **Applies to the colliders that already exist**, for the same reason
+    /// [`Self::set_body_defaults`] does: the artist is describing the scene in
+    /// front of them, and a rule that only reached the next body spawned would
+    /// look like a dead checkbox.
+    ///
+    /// A collider already carries its own layer — it is `memberships`, a single
+    /// bit — so the layer never has to be stored twice or looked up elsewhere.
+    pub fn set_layer_matrix(&mut self, matrix: LayerMatrix) {
+        self.layer_matrix = matrix;
+        for (_, collider) in self.colliders.iter_mut() {
+            let membership_bits = collider.collision_groups().memberships.bits();
+            let layer = membership_bits.trailing_zeros() as usize;
+            collider.set_collision_groups(groups_for(layer, matrix));
+        }
+    }
+
     /// The air-drag coefficient. `0.0` = vacuum.
     pub fn air_drag(&self) -> f32 {
         self.air_drag
@@ -241,6 +278,17 @@ impl PhysicsWorld {
     /// nothing to stamp and nothing to wake.
     pub fn set_air_drag(&mut self, k: f32) {
         self.air_drag = k.max(0.0);
+    }
+
+    /// Put a freshly inserted collider on its layer — the one place a `(layer,
+    /// matrix)` pair becomes rapier `InteractionGroups`, shared with
+    /// [`Self::set_layer_matrix`] so spawning and re-filtering can never
+    /// disagree about what a layer means.
+    fn stamp_layer(&mut self, handle: ColliderHandle, layer: usize) {
+        let groups = groups_for(layer, self.layer_matrix);
+        if let Some(c) = self.colliders.get_mut(handle) {
+            c.set_collision_groups(groups);
+        }
     }
 
     /// Stamp the world defaults onto a body that was just inserted — the single
@@ -306,6 +354,7 @@ impl PhysicsWorld {
         let collider_handle =
             self.colliders
                 .insert_with_parent(collider, body_handle, &mut self.bodies);
+        self.stamp_layer(collider_handle, 0);
         (body_handle, collider_handle)
     }
 
@@ -327,6 +376,7 @@ impl PhysicsWorld {
         let collider_handle =
             self.colliders
                 .insert_with_parent(collider, body_handle, &mut self.bodies);
+        self.stamp_layer(collider_handle, 0);
         (body_handle, collider_handle)
     }
 
@@ -355,8 +405,10 @@ impl PhysicsWorld {
             .restitution(desc.restitution)
             .friction(desc.friction)
             .build();
-        self.colliders
+        let collider_handle = self
+            .colliders
             .insert_with_parent(collider, handle, &mut self.bodies);
+        self.stamp_layer(collider_handle, desc.layer as usize);
         handle
     }
 
@@ -493,6 +545,19 @@ impl PhysicsWorld {
         }
         *hasher.finalize().as_bytes()
     }
+}
+
+/// `(layer, matrix)` → rapier's `InteractionGroups`. **The single door.**
+///
+/// `memberships` is the body's own layer bit — which is also how a collider
+/// remembers its layer, so nothing else has to store it. `filter` is that
+/// layer's row of the matrix.
+fn groups_for(layer: usize, matrix: LayerMatrix) -> InteractionGroups {
+    let layer = layer.min(layers::MAX_LAYERS - 1);
+    InteractionGroups::new(
+        Group::from_bits_truncate(1 << layer),
+        Group::from_bits_truncate(u32::from(matrix.row(layer))),
+    )
 }
 
 impl Default for PhysicsWorld {

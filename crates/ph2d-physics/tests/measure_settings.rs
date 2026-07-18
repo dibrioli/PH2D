@@ -118,6 +118,7 @@ fn measure_where_damping_stops_meaning_anything() {
             shape: ph2d_physics::ShapeDesc::Ball { radius: 0.25 },
             restitution: 0.0,
             friction: 0.5,
+            layer: 0,
         });
         for _ in 0..60 {
             w.step();

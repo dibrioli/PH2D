@@ -14,7 +14,7 @@
 //!
 //! [`PhysicsBridge::set_settings`]: crate::PhysicsBridge::set_settings
 
-use ph2d_physics::{BodyDefaults, PhysicsWorld};
+use ph2d_physics::{BodyDefaults, LayerMatrix, MAX_LAYERS, PhysicsWorld};
 use serde::{Deserialize, Serialize};
 
 /// Gravity, per axis (m/s²).
@@ -160,6 +160,15 @@ pub struct PhysicsSettings {
     pub sleep_angular_threshold: f32,
     /// Time under both thresholds before a body sleeps, seconds.
     pub time_until_sleep: f32,
+    /// Which layers collide with which — row `i`, bit `j`. **Appended**, and
+    /// stored as raw rows rather than as [`LayerMatrix`] so the file format does
+    /// not depend on a type's private shape.
+    ///
+    /// ⚠️ Read back through [`LayerMatrix::from_rows`], which **symmetrizes**: a
+    /// hand-edited or future-build file must not be able to install a matrix the
+    /// type says cannot exist (rapier ANDs both directions, so a half-set pair
+    /// means "no collision" — a rule nobody wrote).
+    pub layer_matrix: [u8; MAX_LAYERS],
     /// Air-drag coefficient. **Appended** — postcard is positional, so new
     /// fields go at the END and `Default` must keep meaning "what the engine
     /// did before this existed" (here: `0.0`, a vacuum).
@@ -192,6 +201,7 @@ impl Default for PhysicsSettings {
             sleep_linear_threshold: b.sleep_linear_threshold,
             sleep_angular_threshold: b.sleep_angular_threshold,
             time_until_sleep: b.time_until_sleep,
+            layer_matrix: LayerMatrix::all().rows(),
             air_drag: 0.0,
         }
     }
@@ -221,6 +231,8 @@ impl PhysicsSettings {
             sleep_angular_threshold: self.sleep_angular_threshold.clamp(0.0, MAX_SLEEP_THRESHOLD),
             time_until_sleep: self.time_until_sleep.clamp(0.0, MAX_TIME_UNTIL_SLEEP),
             air_drag: self.air_drag.clamp(0.0, MAX_AIR_DRAG),
+            // Symmetrized, not merely copied — see the field docs.
+            layer_matrix: LayerMatrix::from_rows(self.layer_matrix).rows(),
         }
     }
 
@@ -249,5 +261,6 @@ impl PhysicsSettings {
         world.set_contact_frequency(self.contact_hz);
         world.set_body_defaults(self.body_defaults());
         world.set_air_drag(self.air_drag);
+        world.set_layer_matrix(LayerMatrix::from_rows(self.layer_matrix));
     }
 }

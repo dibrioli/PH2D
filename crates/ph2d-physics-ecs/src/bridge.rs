@@ -489,6 +489,7 @@ fn body_desc(rb: &RigidBody, col: &Collider, t: &Transform) -> BodyDesc {
         density: col.density,
         restitution: col.restitution,
         friction: col.friction,
+        layer: col.layer,
         shape: match col.shape {
             ColliderShape::Ball { radius } => ShapeDesc::Ball { radius },
             ColliderShape::Cuboid { half_x, half_y } => ShapeDesc::Cuboid { half_x, half_y },

@@ -323,6 +323,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
         // let the gate fail if they stop matching rapier.
         restitution: ph2d_physics_ecs_defaults::RESTITUTION,
         friction: ph2d_physics_ecs_defaults::FRICTION,
+        layer: 0,
     });
     for i in 0..12 {
         described.spawn_body(BodyDesc {
@@ -334,6 +335,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
             shape: ShapeDesc::Ball { radius: 0.25 },
             restitution: ph2d_physics_ecs_defaults::RESTITUTION,
             friction: ph2d_physics_ecs_defaults::FRICTION,
+            layer: 0,
         });
     }
 

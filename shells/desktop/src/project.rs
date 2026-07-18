@@ -79,7 +79,11 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// o campo entra no layout de `ProjectFile.physics`. Nenhuma constante de esquema
 /// mudou, então **nenhum gate podia ver isto**: postcard é posicional e um save
 /// v19 lido como v20 devolveria lixo bem-formado.
-const PROJECT_SCHEMA: u32 = 20;
+/// v21 (ADR-0131 W2c): camadas de colisão — `Collider.layer` APENDADO ao
+/// component (blob novo nas linhas do `WorldSnapshot`) **e**
+/// `PhysicsSettings.layer_matrix` apendado. Duas quebras de layout no mesmo
+/// bump, nenhuma visível a um gate de constante.
+const PROJECT_SCHEMA: u32 = 21;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

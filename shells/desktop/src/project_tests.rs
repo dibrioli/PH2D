@@ -381,6 +381,18 @@ fn project_file_round_trips_through_postcard() {
 /// do conflito: ele se CONTA.** Escolher um dos lados faria os saves das outras passarem na
 /// checagem de versão e serem lidos com o layout errado — e postcard não tem nome de campo
 /// para reclamar; ele devolve lixo bem-formado.
+/// ⚠️ **PONTO CEGO deste gate — ele já deixou passar um, leia antes de confiar.**
+///
+/// Ele pina CONSTANTES, então só acorda quando alguém mexe numa. Uma mudança de **UNIDADE**
+/// (ou de significado) num campo cujo **layout não muda** atravessa este gate inteira e
+/// VERDE — foi o que o §4.C.6 fez, ao trocar o `Point.width` do Flip de px de TELA para
+/// unidade de MUNDO. O campo continuou um `f32`, o postcard lia o arquivo antigo **com
+/// sucesso**, e a arte saía ~100× mais grossa sem um erro sequer.
+///
+/// **A regra é mais larga do que este gate consegue verificar:** bumpe o schema quando um
+/// arquivo antigo passar a ser lido **ERRADO** — não só quando deixar de ser lido. Quebra
+/// de LAYOUT falha alto e o gate a pega; quebra de SIGNIFICADO falha calada, e só quem faz
+/// a mudança pode pegá-la.
 #[test]
 fn a_schema_bump_anywhere_must_bump_the_project_schema() {
     assert_eq!(
@@ -389,7 +401,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
             ph2d_flip::FLIP_SCHEMA_VERSION,
             ph2d_vec_scene::VEC_SCENE_SCHEMA_VERSION,
         ),
-        (17, 7, 8),
+        (18, 8, 8),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

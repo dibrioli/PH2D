@@ -63,7 +63,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// nas linhas do `WorldSnapshot` — um leitor v15 leria esses bytes na posição
 /// errada. O `PhysicsBridge` em si NÃO é serializado (é derivado das
 /// components no load); só os components viajam.
-const PROJECT_SCHEMA: u32 = 17;
+/// v17 (ADR-0131 W2): o `Collider` ganhou `restitution`/`friction` APENDADOS —
+/// campo novo, layout posicional muda.
+/// v18 (§4.C.6 do Flip): a **UNIDADE** do `Point.width` do Flip mudou (px de tela → MUNDO,
+/// FLIP v7→8). ⚠️ **O layout NÃO mudou** — e é por isso que o bump é obrigatório: postcard lê
+/// o `f32` antigo com sucesso e o interpreta na unidade nova, ~100× mais grosso, sem um
+/// erro sequer. Todos os bumps anteriores quebravam LAYOUT (falham alto); este quebra
+/// SIGNIFICADO (falharia calado). Arquivo v17 é recusado — ver o `load`.
+const PROJECT_SCHEMA: u32 = 18;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

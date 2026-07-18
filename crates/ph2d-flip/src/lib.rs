@@ -82,7 +82,13 @@ pub use ph2d_painter_effects::BlendMode;
 /// v6 (W7.5): a pose virou AFIM (`Pose([f32; 6])`, era `Vec2`) — rotate/escala por chave.
 /// v7 (W8): o traço ganhou `point_sel` — o `.selection` do GP no domínio **Point**
 /// (vetor paralelo aos pontos; vazio = a seleção vive no Curve).
-pub const FLIP_SCHEMA_VERSION: u32 = 7;
+/// v8 (§4.C.6): **a UNIDADE do `Point.width` mudou** — era px de TELA (brush absoluto,
+/// 2026-07-11), virou unidade de MUNDO (`size_to_world`, `SIZE_PX_PER_WORLD = 100`).
+/// ⚠️ O layout NÃO mudou (segue um `f32`), e é justamente por isso que este bump é
+/// obrigatório: sem ele o postcard lê um `width: 6.0` antigo **com sucesso** e o
+/// interpreta como 6 unidades de mundo — ~100× a espessura pretendida, arte destruída
+/// em SILÊNCIO. Um quebra de layout falha alto; uma troca de unidade, não.
+pub const FLIP_SCHEMA_VERSION: u32 = 8;
 
 #[cfg(test)]
 mod tests {

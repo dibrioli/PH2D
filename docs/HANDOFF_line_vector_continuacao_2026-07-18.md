@@ -109,7 +109,18 @@ diferentes de "travou".
 O ADR-0129 acabou. O que resta é a **4.B herdada** — e ela tem um item que é multiplicador e o resto
 que são features.
 
-### 4.1 — **Live Path Effects como NÓS** ← o próximo, e é o multiplicador
+### 4.1 — ~~**Live Path Effects como NÓS**~~ — **DECIDIDO E CONSTRUÍDO** ([ADR-0132](architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md), 2026-07-18)
+
+> **A resposta foi: pilha por-path no `cooked()`, NÃO um grafo de nós.** O contrato congelado foi
+> medido e **não bloqueia** (`CookValue::Opaque` + `Domain::Vector` + `input_any`/`emit_any` já
+> carregam geometria em aresta; param não-`f32` tem o canal de TEXT PARAM e o discriminante `f32`) —
+> a escolha era livre, e por isso teve de se defender pelo desenho. Leia o ADR antes de reabrir.
+>
+> **Feito:** a pilha (`VecPath.effects` + `effect::run_stack`, avaliada no `cooked()` logo depois do
+> estágio da quina) · o motor de arco (`arclen.rs`) · o **Trim Path** (`fx_trim.rs`) · a cena
+> `PH2D_BUILD_SMOKE=13`. **Aberto:** a seção *Effects* no painel (§7 abaixo).
+
+O texto abaixo é o BRIEFING ORIGINAL, mantido como histórico do que se sabia antes da decisão.
 
 O item #1 da pesquisa `docs/Vector Module/20_*`. **O pré-requisito já existe e está pago:** a costura
 **fonte ≠ cozido** do ADR-0121 (`VecPath::cooked()` com `Cow::Borrowed` quando não há efeito — mesmo
@@ -141,10 +152,17 @@ A pesquisa está em [`docs/Vector Module/20_pesquisa_ferramentas_de_artista.md`]
 > (Live Corners, Blend, Envelope) são **componentes ECS** com recook por frame, não nós — e é o
 > desenho que funcionou três vezes. "Como nós" é a palavra da pesquisa, não uma decisão tomada.
 
-### 4.2 — Morph vivo (`t` animável)
+### 4.2 — ~~Morph vivo (`t` animável)~~ — **JÁ ESTÁ FEITO** (corrigido 2026-07-18)
 
-O desenho é o do **CONECTOR**: uma entidade cuja geometria é função pura da relação, re-cozida por
-frame. `ph2d-vec-blend` já expõe `steps()` e `morph(t)` — os dois servem o mesmo motor (ADR-0128).
+⚠️ **Esta entrada estava MENTINDO.** O morph vivo landou em `244e546e` (2026-07-16) e está na
+`main` — a própria mensagem do commit diz *"fila #1"*. `shells/desktop/src/morph_live.rs` +
+`ph2d_ecs::VecMorph` + a cena `PH2D_BUILD_SMOKE=10`.
+
+Uma lista de pendências velha não é ruído: ela faz a próxima LLM propor construir o que existe — e
+quase fez. (É a mesma lição que o módulo de áudio pagou; ver CLAUDE.md §5, *"Esta lista estava
+MENTINDO"*.) **Varrido junto:** chamfer, texto em caminho, repeater e largura variável estão
+genuinamente abertos; o `trim_path` que existe em `marker.rs` é **recuo de marcador** (poligonal das
+âncoras, devolve o fechado intocado), não o efeito — o nome colide e o comportamento não.
 
 ### 4.3 — Blend em CADEIA (>2 formas)
 

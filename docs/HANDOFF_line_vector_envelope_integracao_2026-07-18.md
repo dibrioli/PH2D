@@ -315,7 +315,7 @@ testes de hit). As duas cenas foram **verificadas vivas** depois do split.
 Sem env nenhuma:
 
 ```
-\
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector && \
   cargo run -p ph2d-host-desktop --features panel-vector
 ```
 

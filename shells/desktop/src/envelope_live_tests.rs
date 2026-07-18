@@ -77,8 +77,14 @@ fn at_rest_the_envelope_leaves_the_child_unchanged() {
     let out = frame(&mut sim, &mut scene, ids[0]);
     assert!(!out.verts.is_empty(), "a forma sumiu em repouso");
     let (o2, s2) = super::union_control_bbox([&out]).expect("bbox");
-    let d = (o2[0] - b0[0]).abs() + (o2[1] - b0[1]).abs() + (s2[0] - b1[0]).abs() + (s2[1] - b1[1]).abs();
-    assert!(d < 1e-6, "repouso deslocou o bbox em {d:.3e} (devia ser identidade)");
+    let d = (o2[0] - b0[0]).abs()
+        + (o2[1] - b0[1]).abs()
+        + (s2[0] - b1[0]).abs()
+        + (s2[1] - b1[1]).abs();
+    assert!(
+        d < 1e-6,
+        "repouso deslocou o bbox em {d:.3e} (devia ser identidade)"
+    );
 }
 
 /// **A GAIOLA PUXADA DEFORMA — e escreve a saída do MOTOR, não a ingênua.** A forma **mudou**, e o
@@ -88,10 +94,8 @@ fn at_rest_the_envelope_leaves_the_child_unchanged() {
 fn a_pulled_cage_deforms_the_child_through_the_engine() {
     let src = ellipse([5.0, 3.0], 2.0);
     let (mut sim, mut scene, _map, container, ids) = envelope_over(vec![src]);
-    let (origin, size) = super::union_control_bbox(
-        [&source_of(&env_of(&sim, container).children[0])],
-    )
-    .unwrap();
+    let (origin, size) =
+        super::union_control_bbox([&source_of(&env_of(&sim, container).children[0])]).unwrap();
     // Topo estreitado: trapézio convexo forte (perspectiva).
     let [bl, br, ..] = bbox_corners(origin, size);
     let pulled = [
@@ -105,7 +109,10 @@ fn a_pulled_cage_deforms_the_child_through_the_engine() {
 
     let source = source_of(&env_of(&sim, container).children[0]);
     let out = frame(&mut sim, &mut scene, ids[0]);
-    assert_ne!(out.verts, source.verts, "a gaiola foi puxada e a forma não mudou");
+    assert_ne!(
+        out.verts, source.verts,
+        "a gaiola foi puxada e a forma não mudou"
+    );
 
     let warp = QuadWarp::new(origin, size, pulled).unwrap();
     let expected = warp_path(&source, &warp, accuracy(size));
@@ -127,7 +134,10 @@ fn a_two_shape_envelope_deforms_both_by_the_one_cage() {
     let sources: Vec<VecPath> = env.children.iter().map(source_of).collect();
     // A bbox-união abrange as DUAS (de x≈-4.5 a x≈4.5).
     let (origin, size) = super::union_control_bbox(sources.iter()).unwrap();
-    assert!(origin[0] < -4.0 && origin[0] + size[0] > 4.0, "a união devia abranger ambas");
+    assert!(
+        origin[0] < -4.0 && origin[0] + size[0] > 4.0,
+        "a união devia abranger ambas"
+    );
 
     // Puxa o topo — uma gaiola só.
     let [bl, br, ..] = bbox_corners(origin, size);
@@ -151,7 +161,11 @@ fn a_two_shape_envelope_deforms_both_by_the_one_cage() {
             "o filho {} não passou pela gaiola-união (ou passou por outra)",
             child.path
         );
-        assert_ne!(out.verts, src.verts, "o filho {} ficou em repouso", child.path);
+        assert_ne!(
+            out.verts, src.verts,
+            "o filho {} ficou em repouso",
+            child.path
+        );
     }
 }
 
@@ -164,8 +178,14 @@ fn create_reparents_children_at_identity_under_the_container() {
     let (sim, _scene, map, container, ids) =
         envelope_over(vec![ellipse([-3.0, 0.0], 1.5), ellipse([3.0, 0.0], 1.5)]);
     let ce = Entity::from_bits(container);
-    assert!(sim.world().get::<VecEnvelope>(ce).is_some(), "container sem VecEnvelope");
-    assert!(sim.world().get::<VecPathRef>(ce).is_none(), "o container não é um path");
+    assert!(
+        sim.world().get::<VecEnvelope>(ce).is_some(),
+        "container sem VecEnvelope"
+    );
+    assert!(
+        sim.world().get::<VecPathRef>(ce).is_none(),
+        "o container não é um path"
+    );
     for id in &ids {
         let child = Entity::from_bits(map[id]);
         assert_eq!(
@@ -196,7 +216,10 @@ fn create_bakes_the_child_world_pose_into_the_source() {
     crate::vec_transform::settle_origins(&mut sim, &mut scene, &map, &[]);
     // A geometria local já está centrada perto da origem (o settle a moveu).
     let local_bbox = scene.path_curve_bbox(id).unwrap();
-    assert!(local_bbox.0[0].abs() < 5.0, "o settle devia ter centrado a geometria local");
+    assert!(
+        local_bbox.0[0].abs() < 5.0,
+        "o settle devia ter centrado a geometria local"
+    );
 
     let container = create(&mut sim, &mut scene, &map, &[id]).expect("create");
     // A fonte do filho volta a estar em MUNDO (≈40,20): a pose foi assada.
@@ -209,7 +232,10 @@ fn create_bakes_the_child_world_pose_into_the_source() {
     );
     // E a geometria do path na cena também (container na identidade ⇒ local == mundo).
     let (wo, _) = scene.path_curve_bbox(id).unwrap();
-    assert!(wo[0] > 35.0, "o path da cena devia render em MUNDO após o create");
+    assert!(
+        wo[0] > 35.0,
+        "o path da cena devia render em MUNDO após o create"
+    );
 }
 
 /// **A POSE vive no CONTAINER e não vaza para a geometria dos filhos (Fatia 2).** Mover o `Transform`
@@ -221,12 +247,18 @@ fn the_pose_lives_on_the_container_and_stays_out_of_child_geometry() {
     let (mut sim, mut scene, _map, container, ids) = envelope_over(vec![ellipse([5.0, 3.0], 2.0)]);
     let ce = Entity::from_bits(container);
     let pose = ph2d_core::Vec2::new(100.0, -50.0);
-    sim.world_mut().get_mut::<Transform>(ce).expect("Transform").translation = pose;
+    sim.world_mut()
+        .get_mut::<Transform>(ce)
+        .expect("Transform")
+        .translation = pose;
 
     let out = frame(&mut sim, &mut scene, ids[0]);
 
     assert_eq!(
-        sim.world().get::<Transform>(ce).expect("Transform").translation,
+        sim.world()
+            .get::<Transform>(ce)
+            .expect("Transform")
+            .translation,
         pose,
         "o recook apagou a pose do container — o gizmo do Select seria inócuo"
     );
@@ -245,9 +277,14 @@ fn the_pose_lives_on_the_container_and_stays_out_of_child_geometry() {
 fn the_authored_source_survives_in_each_child() {
     let src = ellipse([5.0, 3.0], 2.0);
     let (mut sim, mut scene, _map, container, _ids) = envelope_over(vec![src.clone()]);
-    let (origin, size) = super::union_control_bbox([&source_of(&env_of(&sim, container).children[0])]).unwrap();
+    let (origin, size) =
+        super::union_control_bbox([&source_of(&env_of(&sim, container).children[0])]).unwrap();
     let [bl, br, tr, tl] = bbox_corners(origin, size);
-    set_corners(&mut sim, container, [bl, br, [tr[0] - size[0] * 0.3, tr[1]], tl]);
+    set_corners(
+        &mut sim,
+        container,
+        [bl, br, [tr[0] - size[0] * 0.3, tr[1]], tl],
+    );
 
     recook(&mut sim, &mut scene);
 
@@ -265,7 +302,8 @@ fn the_authored_source_survives_in_each_child() {
 #[test]
 fn a_degenerate_cage_freezes_the_shapes() {
     let (mut sim, mut scene, _map, container, ids) = envelope_over(vec![ellipse([5.0, 3.0], 2.0)]);
-    let (origin, size) = super::union_control_bbox([&source_of(&env_of(&sim, container).children[0])]).unwrap();
+    let (origin, size) =
+        super::union_control_bbox([&source_of(&env_of(&sim, container).children[0])]).unwrap();
     // Cantos 1,2,3 (BR/TR/TL) colineares — a singularidade da homografia de Heckbert.
     let degenerate = [
         [origin[0], origin[1]],
@@ -273,15 +311,221 @@ fn a_degenerate_cage_freezes_the_shapes() {
         [origin[0] + size[0], origin[1] + size[1] * 0.5],
         [origin[0] + size[0], origin[1] + size[1]],
     ];
-    assert!(QuadWarp::new(origin, size, degenerate).is_none(), "o fixture devia ser degenerado");
+    assert!(
+        QuadWarp::new(origin, size, degenerate).is_none(),
+        "o fixture devia ser degenerado"
+    );
     set_corners(&mut sim, container, degenerate);
 
-    let before = scene.paths().iter().find(|p| p.id == ids[0]).unwrap().clone();
+    let before = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == ids[0])
+        .unwrap()
+        .clone();
     let after = frame(&mut sim, &mut scene, ids[0]);
     assert_eq!(
         after.verts, before.verts,
         "gaiola degenerada mexeu na forma — ela tinha de CONGELAR onde estava"
     );
+}
+
+/// Um pen com `paths` selecionados — o que o `dissolve` lê para achar os envelopes tocados.
+fn pen_with(paths: &[VecPathId]) -> ph2d_vec_edit::PenTool {
+    let mut pen = ph2d_vec_edit::PenTool::default();
+    pen.select_many(paths);
+    pen
+}
+
+/// Deforma a gaiola do container num trapézio (o que o artista faz no Node).
+fn pull_cage(sim: &mut SimWorld, container: u64) {
+    let env = env_of(sim, container);
+    let (origin, size) = super::union_control_bbox(
+        env.children
+            .iter()
+            .map(source_of)
+            .collect::<Vec<_>>()
+            .iter(),
+    )
+    .expect("domínio");
+    let [bl, br, ..] = bbox_corners(origin, size);
+    set_corners(
+        sim,
+        container,
+        [
+            bl,
+            br,
+            [origin[0] + size[0] * 0.7, origin[1] + size[1]],
+            [origin[0] + size[0] * 0.3, origin[1] + size[1]],
+        ],
+    );
+}
+
+/// **RELEASE ressuscita a fonte autorada e LIBERTA os filhos.** A deformação é desfeita, o filho
+/// volta a ser RAIZ (sem pai, com ordem própria, na identidade — o estado de uma forma
+/// recém-desenhada) e o container morre. Sem isto, envolver seria porta de mão única.
+#[test]
+fn release_restores_the_authored_source_and_frees_the_children() {
+    let (mut sim, mut scene, map, container, ids) = envelope_over(vec![ellipse([5.0, 3.0], 2.0)]);
+    pull_cage(&mut sim, container);
+    recook(&mut sim, &mut scene);
+    let source = source_of(&env_of(&sim, container).children[0]);
+    let deformed = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == ids[0])
+        .unwrap()
+        .clone();
+    assert_ne!(
+        deformed.verts, source.verts,
+        "o fixture devia estar deformado"
+    );
+
+    let mut pen = pen_with(&ids);
+    assert!(dissolve(
+        &mut sim,
+        &mut scene,
+        &map,
+        &mut pen,
+        Keep::Authored
+    ));
+
+    // (1) a geometria voltou a ser a AUTORADA.
+    let after = scene.paths().iter().find(|p| p.id == ids[0]).unwrap();
+    assert_eq!(
+        after.verts, source.verts,
+        "o Release não ressuscitou a fonte autorada"
+    );
+    // (2) o filho é RAIZ de novo, na identidade.
+    let child = Entity::from_bits(map[&ids[0]]);
+    assert!(
+        sim.world().get::<ChildOf>(child).is_none(),
+        "o filho continuou pendurado no container"
+    );
+    assert!(
+        sim.world().get::<ph2d_ecs::RootOrder>(child).is_some(),
+        "sem RootOrder = empate"
+    );
+    assert_eq!(
+        sim.world().get::<Transform>(child).copied(),
+        Some(Transform::IDENTITY)
+    );
+    // (3) o container morreu, e a seleção passou às formas libertadas.
+    assert!(
+        sim.world()
+            .get_entity(Entity::from_bits(container))
+            .is_err(),
+        "o container sobreviveu ao dissolve"
+    );
+    assert_eq!(pen.selected_paths(), ids.as_slice());
+}
+
+/// **EXPAND materializa a deformada** — o oposto do Release: a geometria que está na tela vira o
+/// desenho definitivo. Mesma dissolução, outra resposta a *"qual geometria fica?"*.
+#[test]
+fn expand_keeps_the_deformed_geometry() {
+    let (mut sim, mut scene, map, container, ids) = envelope_over(vec![ellipse([5.0, 3.0], 2.0)]);
+    pull_cage(&mut sim, container);
+    recook(&mut sim, &mut scene);
+    let source = source_of(&env_of(&sim, container).children[0]);
+    let deformed = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == ids[0])
+        .unwrap()
+        .clone();
+
+    let mut pen = pen_with(&ids);
+    assert!(dissolve(
+        &mut sim,
+        &mut scene,
+        &map,
+        &mut pen,
+        Keep::Deformed
+    ));
+
+    let after = scene.paths().iter().find(|p| p.id == ids[0]).unwrap();
+    assert_eq!(after.verts, deformed.verts, "o Expand perdeu a deformação");
+    assert_ne!(
+        after.verts, source.verts,
+        "o Expand devolveu a fonte (é o Release)"
+    );
+    assert!(
+        sim.world()
+            .get_entity(Entity::from_bits(container))
+            .is_err()
+    );
+}
+
+/// **A POSE do container é ASSADA na geometria — a arte NÃO se move ao dissolver.** É o inverso
+/// exato do que o `create` fez na entrada. Sem isto, mover o envelope pelo gizmo e depois expandir
+/// teleportaria a arte de volta para onde ela estava antes de ser movida.
+#[test]
+fn dissolving_bakes_the_container_pose_so_the_art_does_not_move() {
+    let (mut sim, mut scene, map, container, ids) = envelope_over(vec![ellipse([5.0, 3.0], 2.0)]);
+    // O gizmo do Select move/escala o envelope (translação + escala uniforme: assim bbox e afim
+    // comutam e o oráculo é exato).
+    let ce = Entity::from_bits(container);
+    {
+        let mut t = sim.world_mut().get_mut::<Transform>(ce).expect("Transform");
+        t.translation = ph2d_core::Vec2::new(100.0, -50.0);
+        t.scale = ph2d_core::Vec2::new(2.0, 2.0);
+    }
+    // Onde a arte está no MUNDO antes de dissolver (geometria local × pose do container).
+    let xf =
+        crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(&sim, ce));
+    let (lo, hi) = scene.path_curve_bbox(ids[0]).unwrap();
+    let (want_lo, want_hi) = (xf.apply(lo), xf.apply(hi));
+
+    let mut pen = pen_with(&ids);
+    assert!(dissolve(
+        &mut sim,
+        &mut scene,
+        &map,
+        &mut pen,
+        Keep::Deformed
+    ));
+
+    // Depois: o filho está na identidade, então a bbox da CENA já é a de MUNDO.
+    let (got_lo, got_hi) = scene.path_curve_bbox(ids[0]).unwrap();
+    let d = (got_lo[0] - want_lo[0]).abs()
+        + (got_lo[1] - want_lo[1]).abs()
+        + (got_hi[0] - want_hi[0]).abs()
+        + (got_hi[1] - want_hi[1]).abs();
+    assert!(
+        d < 1e-6,
+        "a arte se moveu ao dissolver ({d:.3e}): a pose do container não foi assada na geometria"
+    );
+}
+
+/// **Sem envelope na seleção o dissolve é no-op** — uma forma comum não é dissolvida, e o `false`
+/// é o que impede o shell de imprimir que fez algo.
+#[test]
+fn dissolve_without_an_envelope_is_a_no_op() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let id = scene.push_path(ellipse([0.0, 0.0], 2.0));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let before = scene.paths().iter().find(|p| p.id == id).unwrap().clone();
+
+    let mut pen = pen_with(&[id]);
+    assert!(!dissolve(
+        &mut sim,
+        &mut scene,
+        &map,
+        &mut pen,
+        Keep::Authored
+    ));
+    assert!(!dissolve(
+        &mut sim,
+        &mut scene,
+        &map,
+        &mut pen,
+        Keep::Deformed
+    ));
+    let after = scene.paths().iter().find(|p| p.id == id).unwrap();
+    assert_eq!(after.verts, before.verts, "uma forma comum foi mexida");
 }
 
 /// **`create` sobre nada dá `None`** — ids que não resolvem (formas inexistentes) não criam um
@@ -296,5 +540,9 @@ fn create_over_no_live_shapes_is_none() {
     assert!(create(&mut sim, &mut scene, &map, &[]).is_none());
     // E nenhum container foi deixado para trás.
     let mut q = sim.world_mut().query::<&VecEnvelope>();
-    assert_eq!(q.iter(sim.world()).count(), 0, "create deixou um container órfão");
+    assert_eq!(
+        q.iter(sim.world()).count(),
+        0,
+        "create deixou um container órfão"
+    );
 }

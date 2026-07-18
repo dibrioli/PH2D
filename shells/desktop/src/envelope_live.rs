@@ -45,7 +45,9 @@ use crate::vec_entities::VecEntityMap;
 /// **Porta única:** o `create` (para semear os cantos em repouso) e o `recook` (para montar o mapa)
 /// chamam a MESMA função — se as duas computassem o domínio de formas diferentes, o repouso deixaria
 /// de ser a identidade. `None` se as fontes são vazias/degeneradas.
-fn union_control_bbox<'a>(paths: impl IntoIterator<Item = &'a VecPath>) -> Option<([f64; 2], [f64; 2])> {
+fn union_control_bbox<'a>(
+    paths: impl IntoIterator<Item = &'a VecPath>,
+) -> Option<([f64; 2], [f64; 2])> {
     let mut lo = [f64::INFINITY; 2];
     let mut hi = [f64::NEG_INFINITY; 2];
     for path in paths {
@@ -109,9 +111,9 @@ pub(crate) fn create(
         };
         // A aparência COZIDA em LOCAL do filho (raio de quina resolvido), assada pela pose de MUNDO
         // do filho → geometria de MUNDO. Sem raio, `cooked()` empresta a fonte (custo zero).
-        let world_xf = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
-            sim, entity,
-        ));
+        let world_xf = crate::vec_transform::xform_of_transform(
+            crate::vec_transform::world_transform(sim, entity),
+        );
         let mut world_path = src.cooked().into_owned();
         ph2d_vec_scene::bake_xform(&mut world_path, &world_xf);
         baked.push((id, entity, world_path));
@@ -128,7 +130,11 @@ pub(crate) fn create(
     let order = crate::vec_entities::next_root_order(sim);
     let container = sim
         .world_mut()
-        .spawn((Transform::default(), Name::new("Envelope"), RootOrder(order)))
+        .spawn((
+            Transform::default(),
+            Name::new("Envelope"),
+            RootOrder(order),
+        ))
         .id();
 
     // 4. Para cada filho: escreve a geometria de MUNDO no path agora (o frame fica correto ANTES do
@@ -145,7 +151,10 @@ pub(crate) fn create(
             ce.insert(ChildOf(container));
             ce.insert(Transform::IDENTITY);
         }
-        children.push(VecEnvelopeChild { path: id, source: bytes });
+        children.push(VecEnvelopeChild {
+            path: id,
+            source: bytes,
+        });
     }
     if children.is_empty() {
         // Nenhuma fonte serializou: desfaz o container órfão e desiste.
@@ -200,6 +209,130 @@ pub(crate) fn recook(sim: &mut SimWorld, scene: &mut VecScene) {
             write_shape(scene, id, cooked);
         }
     }
+}
+
+/// Teto de profundidade da caminhada de ancestrais (defesa contra árvore corrompida).
+const MAX_DEPTH: usize = 64;
+
+/// **O container de Envelope que governa `bits`** — ele mesmo, ou o ancestral mais próximo que
+/// carrega um [`VecEnvelope`]. `None` se nada na cadeia é um envelope.
+///
+/// **Porta única** da pergunta *"de quem é este envelope?"*: a seleção
+/// ([`crate::vec_selection`], que decide selecionar-só-o-container) e o [`dissolve`] a fazem por
+/// AQUI. Duas cópias divergiriam — e a que esquecesse de aninhar deixaria um envelope inalcançável.
+#[must_use]
+pub(crate) fn container_of(sim: &SimWorld, bits: u64) -> Option<u64> {
+    let w = sim.world();
+    let mut cur = Entity::from_bits(bits);
+    for _ in 0..MAX_DEPTH {
+        if w.get::<VecEnvelope>(cur).is_some() {
+            return Some(cur.to_bits());
+        }
+        cur = w.get::<ph2d_ecs::ChildOf>(cur)?.parent();
+    }
+    None
+}
+
+/// O container que **todos** os bits compartilham, ou `None` — se a lista está vazia, se algum bit
+/// não vive sob um envelope, ou se há dois envelopes diferentes (a seleção não é "um envelope").
+#[must_use]
+pub(crate) fn sole_container(sim: &SimWorld, selected: &[u64]) -> Option<u64> {
+    let mut found: Option<u64> = None;
+    for &b in selected {
+        let c = container_of(sim, b)?;
+        match found {
+            None => found = Some(c),
+            Some(f) if f == c => {}
+            Some(_) => return None,
+        }
+    }
+    found
+}
+
+/// O que sobra no path de cada filho quando a gaiola se dissolve ([`dissolve`]).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Keep {
+    /// **Expand:** a geometria DEFORMADA (a que está na tela) vira a forma definitiva. A deformação
+    /// deixa de ser uma relação viva e passa a ser o desenho.
+    Deformed,
+    /// **Release:** a fonte AUTORADA volta — a deformação é desfeita e o artista recupera o original.
+    Authored,
+}
+
+/// **Dissolve** os envelopes tocados pela seleção: cada filho vira uma forma comum de novo e o
+/// container morre. `Keep` decide QUAL geometria fica (Expand = a deformada · Release = a autorada).
+///
+/// **A pose do container é ASSADA na geometria de cada filho** — o inverso exato do que o [`create`]
+/// fez na entrada. É o que mantém a arte onde ela está quando o envelope foi movido/girado/escalado
+/// pelo gizmo: o filho volta a ser raiz **em MUNDO, na identidade**, que é o estado de uma forma
+/// recém-desenhada — e o `settle_origins` do frame seguinte lhe dá o pivô no centro, de graça.
+/// (Transferir a pose do container para cada filho seria a alternativa; ela só é limpa com UM filho,
+/// e teria de decidir o que fazer com a rotação/escala compartilhada de N.)
+///
+/// A seleção passa às formas libertadas — o artista fica com o material na mão e a seleção não
+/// aponta para um container morto. `true` se algum envelope foi dissolvido.
+pub(crate) fn dissolve(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &VecEntityMap,
+    pen: &mut ph2d_vec_edit::PenTool,
+    keep: Keep,
+) -> bool {
+    // Os containers tocados pela seleção (dedup — vários filhos do mesmo envelope dão UM container).
+    let mut containers: Vec<u64> = Vec::new();
+    for id in pen.selected_paths() {
+        if let Some(&bits) = map.get(id)
+            && let Some(c) = container_of(sim, bits)
+            && !containers.contains(&c)
+        {
+            containers.push(c);
+        }
+    }
+    if containers.is_empty() {
+        return false;
+    }
+
+    let mut freed: Vec<VecPathId> = Vec::new();
+    for c in containers {
+        let entity = Entity::from_bits(c);
+        let Some(env) = sim.world().get::<VecEnvelope>(entity).cloned() else {
+            continue;
+        };
+        // A pose do container, a assar na geometria de cada filho.
+        let world_xf = crate::vec_transform::xform_of_transform(
+            crate::vec_transform::world_transform(sim, entity),
+        );
+        for child in &env.children {
+            // Expand fica com o que está no path (o deformado que o recook escreveu); Release
+            // ressuscita a fonte autorada. Nos dois casos a pose do container entra na geometria.
+            let geom = match keep {
+                Keep::Deformed => scene.paths().iter().find(|p| p.id == child.path).cloned(),
+                Keep::Authored => postcard::from_bytes::<VecPath>(&child.source).ok(),
+            };
+            let Some(mut geom) = geom else { continue };
+            ph2d_vec_scene::bake_xform(&mut geom, &world_xf);
+            write_shape(scene, child.path, geom);
+            // O filho volta a ser RAIZ: sem pai, com ordem própria, na identidade (a geometria já é
+            // mundo). É o estado de uma forma recém-desenhada — o `settle` lhe dá o pivô depois.
+            if let Some(&bits) = map.get(&child.path) {
+                let order = crate::vec_entities::next_root_order(sim);
+                if let Ok(mut ce) = sim.world_mut().get_entity_mut(Entity::from_bits(bits)) {
+                    ce.remove::<ph2d_ecs::ChildOf>();
+                    ce.insert(RootOrder(order));
+                    ce.insert(Transform::IDENTITY);
+                }
+            }
+            freed.push(child.path);
+        }
+        // O container morre com a gaiola. Sem filhos e sem path, ele não é nada.
+        if let Ok(ce) = sim.world_mut().get_entity_mut(entity) {
+            ce.despawn();
+        }
+    }
+    if !freed.is_empty() {
+        pen.select_many(&freed);
+    }
+    !freed.is_empty()
 }
 
 /// Escreve a forma deformada no path `id`, **em lugar** — o estilo (fill/stroke) vem da fonte, que o

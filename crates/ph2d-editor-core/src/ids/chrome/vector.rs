@@ -477,6 +477,22 @@ pub const VECTOR_MORPH_T_NUM: NodeId = hash_node_id("vector.morph.t_num");
 /// Connect (que pega a forma sob o cursor) — a ORDEM da cadeia é escolhida a dedo, não a de z.
 pub const VECTOR_MODE_PICKBLEND: NodeId = hash_node_id("vector.mode.pickblend");
 
+// ── Envelope: a deformação por gaiola (bloco APPEND-ONLY, ADR-0129) ──────────
+// O envelope é um CONTAINER (Fatia 3): a gaiola vive num componente da entidade-container e as
+// formas envolvidas são FILHAS dela. Até esta seção existir, a única porta para criar um envelope
+// era a env `PH2D_BUILD_SMOKE` — a feature não existia no produto.
+/// Seção **ENVELOPE** — a deformação das formas selecionadas por uma gaiola de 4 cantos.
+pub const VECTOR_SECTION_ENVELOPE: NodeId = hash_node_id("vector.section.envelope");
+/// **Envelope** — envolve as formas selecionadas (1..N) num container com gaiola em repouso. Os
+/// cantos são arrastáveis no modo Node; no Select o gizmo move o envelope inteiro.
+pub const VECTOR_ENVELOPE_RUN: NodeId = hash_node_id("vector.envelope.run");
+/// **Expand** — materializa a deformação: a geometria DEFORMADA vira o desenho definitivo e a
+/// gaiola morre. Espelho do `VECTOR_BLEND_EXPAND`.
+pub const VECTOR_ENVELOPE_EXPAND: NodeId = hash_node_id("vector.envelope.expand");
+/// **Release** — desfaz o envelope: a fonte AUTORADA volta (a deformação é descartada) e a gaiola
+/// morre. Sem ele, envolver seria porta de mão única. NÃO confundir com `VECTOR_BLEND_RELEASE`.
+pub const VECTOR_ENVELOPE_RELEASE: NodeId = hash_node_id("vector.envelope.release");
+
 /// Todos os cabeçalhos de seção do painel Vector — o `populate` os marca como
 /// colapsáveis por esta lista (uma seção nova entra aqui e ganha o collapse de graça;
 /// esquecer a marca faz o header virar um título MORTO, que não dobra).
@@ -493,6 +509,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_BOOLEAN,
     VECTOR_SECTION_BLEND,
     VECTOR_SECTION_MORPH,
+    VECTOR_SECTION_ENVELOPE,
     VECTOR_SECTION_ALIGN,
     VECTOR_SECTION_ARRANGE,
     VECTOR_SECTION_PATH,

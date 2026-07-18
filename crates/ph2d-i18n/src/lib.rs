@@ -118,6 +118,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.shape" => "Shape",
         "panel.vector.section.blend" => "Blend",
         "panel.vector.section.morph" => "Morph",
+        "panel.vector.section.envelope" => "Envelope",
         "panel.vector.section.stroke" => "Stroke",
         "panel.vector.section.fill" => "Fill",
         "panel.vector.section.fill_type" => "Fill Type",

@@ -8,7 +8,7 @@
 //! A ponte de identidade (path ⟺ entidade) é o módulo irmão [`crate::vec_entities`].
 
 use crate::vec_entities::{VecEntityMap, subtree_paths};
-use ph2d_ecs::{ChildOf, Entity, SimWorld, VecEnvelope, VecPathRef};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
 use ph2d_editor::screens::hero::GizmoStateGroup;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -86,8 +86,9 @@ pub(crate) fn sync_selection(
         // CONTAINER SOZINHO — mover/girar/escalar o container move o envelope inteiro, e pôr os
         // filhos junto os CISALHARIA (eles têm geometria de mundo + `Transform` identidade, então
         // o gizmo os moveria uma vez pelo próprio `Transform` e outra pelo do pai). O pen fica com
-        // os filhos (a gaiola do Node os alcança pelo container no gizmo).
-        if let Some(container) = sole_envelope_container(sim, &bits) {
+        // os filhos (a gaiola do Node os alcança pelo container no gizmo). A pergunta "de quem é
+        // este envelope?" é do `envelope_live` — porta única, partilhada com o `dissolve`.
+        if let Some(container) = crate::envelope_live::sole_container(sim, &bits) {
             gizmo.replace_selection(Some(container));
             state.bits = vec![container];
             state.paths = pen_now;
@@ -143,35 +144,6 @@ pub(crate) fn sync_selection(
     pen.select_many(&ordered);
     state.bits = mine;
     state.paths = pen.selected_paths().to_vec();
-}
-
-/// O ancestral mais próximo de `e` que carrega um [`VecEnvelope`] (ele mesmo inclusive), ou `None`.
-fn envelope_ancestor(w: &ph2d_ecs::World, e: Entity) -> Option<u64> {
-    let mut cur = e;
-    for _ in 0..MAX_DEPTH {
-        if w.get::<VecEnvelope>(cur).is_some() {
-            return Some(cur.to_bits());
-        }
-        cur = w.get::<ChildOf>(cur)?.parent();
-    }
-    None
-}
-
-/// O container de Envelope que **todos** os bits selecionados compartilham, ou `None`. `None` se a
-/// seleção está vazia, se algum bit não vive sob um envelope, ou se há dois envelopes diferentes —
-/// nesses casos a seleção não é "um envelope" e o caminho comum vale.
-fn sole_envelope_container(sim: &SimWorld, selected: &[u64]) -> Option<u64> {
-    let w = sim.world();
-    let mut found: Option<u64> = None;
-    for &b in selected {
-        let container = envelope_ancestor(w, Entity::from_bits(b))?;
-        match found {
-            None => found = Some(container),
-            Some(f) if f == container => {}
-            Some(_) => return None, // dois envelopes distintos: não é "um envelope"
-        }
-    }
-    found
 }
 
 /// Os ancestrais cuja sub-árvore vetorial está INTEIRAMENTE selecionada. Sem eles a
@@ -317,7 +289,11 @@ mod tests {
             vec![container],
             "o gizmo tem SÓ o container — nem o filho, nem os dois"
         );
-        assert_eq!(gizmo.selection, Some(container), "e o container é o primário");
+        assert_eq!(
+            gizmo.selection,
+            Some(container),
+            "e o container é o primário"
+        );
     }
 
     /// A árvore manda quando é o subconjunto VETORIAL do gizmo que muda: clicar a

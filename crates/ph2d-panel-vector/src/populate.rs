@@ -367,6 +367,11 @@ fn populate_shape(store: &mut WidgetStore) {
 #[path = "populate_blend.rs"]
 mod blend;
 
+/// O registro dos widgets do **Envelope** — módulo irmão (teto de 600 LOC), par do
+/// `paint_envelope` que os pinta.
+#[path = "populate_envelope.rs"]
+mod envelope;
+
 fn populate_ops(store: &mut WidgetStore) {
     // Vertex-type buttons (retype the selected vertex; shown only when a vertex
     // is selected, but registered unconditionally — the store is mode-agnostic)
@@ -378,6 +383,7 @@ fn populate_ops(store: &mut WidgetStore) {
 
     // Boolean op buttons (N-ary over the SELECTED closed regions) + compound row.
     blend::populate_blend(store);
+    envelope::populate_envelope(store);
     button(store, ids::VECTOR_BOOL_UNION);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);

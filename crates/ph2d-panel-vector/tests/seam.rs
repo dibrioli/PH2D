@@ -547,7 +547,7 @@ fn every_section_header_is_registered_as_collapsible() {
     let host = MockPanelHost::with_panel::<VectorPanel>();
     assert_eq!(
         ids::VECTOR_SECTIONS.len(),
-        20,
+        21, // +1: ENVELOPE (ADR-0129 Fatia 5)
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {
@@ -902,6 +902,93 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
         button: PointerButton::Primary,
         timestamp_ns: t,
     }
+}
+
+/// Os botões de COMANDO da seção **Envelope** (ADR-0129) chegam ao bus quando o artista CLICA
+/// NELES — os três, pelo caminho inteiro (`paint` → hit-rect → ponteiro real → dispatcher →
+/// `event.rs` → bus). Irmão do gate do Blend abaixo, e pela MESMA razão.
+///
+/// ⚠️ **O `set_current_has_envelope(true)` não é decoração do fixture: é a PREMISSA da seção.**
+/// Expand/Release só são PINTADOS quando a seleção é de fato um envelope — sem publicar isso, o
+/// `painted_rect` devolve `None` e o gate morre na 1ª asserção. É o mesmo tipo de premissa de ESTADO
+/// que o sweep do Painter perdeu (Filter Stroke só existe depois de um traço).
+#[test]
+fn every_envelope_command_button_reaches_the_bus_when_clicked() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    const SEC: u128 = 1_000_000_000;
+    // A seleção É um envelope — sem isto o Expand/Release nem chegam à tela.
+    ph2d_panel_vector::set_current_has_envelope(true);
+    for (id, name) in [
+        (ids::VECTOR_ENVELOPE_RUN, "Envelope"),
+        (ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
+        (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| {
+                panic!("o botao {name} nao foi PINTADO com area clicavel na secao Envelope")
+            });
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {name} nao virou Click — falta `button()` no `populate` \
+             (o botao esta desenhado, mas nao existe para o dispatcher)"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        let reached = host
+            .drained_actions()
+            .into_iter()
+            .any(|a| matches!(a, EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == id));
+        assert!(
+            reached,
+            "o Click em {name} nao chegou ao bus — falta o id na allowlist do `event.rs` \
+             (o botao e clicavel e MORTO)"
+        );
+    }
+}
+
+/// **Sem envelope selecionado, Expand/Release NÃO existem na tela** — o par de PRESENÇA do gate
+/// acima. Um botão que não faz nada é pior que um botão que falta: sobre uma seleção que não é
+/// envelope, os dois dissolveriam o nada e o artista aprenderia que "às vezes não funciona".
+/// O **Envelope** (criar) continua lá: ele age sobre a seleção e recusa no shell com mensagem.
+#[test]
+fn expand_and_release_are_not_offered_without_an_envelope() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    ph2d_panel_vector::set_current_has_envelope(false);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    for (id, name) in [
+        (ids::VECTOR_ENVELOPE_EXPAND, "Expand"),
+        (ids::VECTOR_ENVELOPE_RELEASE, "Release"),
+    ] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+                .is_none(),
+            "o botao {name} foi pintado SEM envelope na selecao — ele dissolveria o nada"
+        );
+    }
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_ENVELOPE_RUN)
+            .is_some(),
+        "o botao de CRIAR tem de existir sempre — e' a porta de entrada da feature"
+    );
 }
 
 /// Os botões de COMANDO da seção Blend chegam ao bus quando o artista CLICA NELES — todos os

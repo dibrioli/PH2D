@@ -54,6 +54,7 @@ thread_local! {
     /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
     /// habilita o botão "Convert to Curves". Publicado pela shell.
     static CURRENT_CONVERTIBLE: Cell<bool> = const { Cell::new(false) };
+    static CURRENT_HAS_ENVELOPE: Cell<bool> = const { Cell::new(false) };
     /// Mostrar a seção Text: modo Text OU um objeto de TEXTO selecionado (as configs
     /// do texto ficam visíveis enquanto ele for texto — não-curva — mesmo no Select).
     static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
@@ -296,6 +297,17 @@ pub fn set_current_convertible(v: bool) {
 
 pub(crate) fn convertible() -> bool {
     CURRENT_CONVERTIBLE.with(Cell::get)
+}
+
+/// Publica se a seleção vive sob UM container de Envelope (ADR-0129) — habilita **Expand**/
+/// **Release**, que só fazem sentido sobre um envelope existente. Quem responde no shell é o
+/// `envelope_live::sole_container`, a MESMA porta que a seleção e o `dissolve` usam.
+pub fn set_current_has_envelope(v: bool) {
+    CURRENT_HAS_ENVELOPE.with(|c| c.set(v));
+}
+
+pub(crate) fn has_envelope() -> bool {
+    CURRENT_HAS_ENVELOPE.with(Cell::get)
 }
 
 /// Publica se a seção Text deve aparecer (modo Text OU objeto de texto selecionado).

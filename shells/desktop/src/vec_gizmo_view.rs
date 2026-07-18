@@ -184,8 +184,14 @@ pub(crate) fn container_view(
     if !(lo[0].is_finite() && hi[0] >= lo[0] && hi[1] >= lo[1]) {
         return None;
     }
-    let anchor = [((lo[0] + hi[0]) * 0.5) as f32, ((lo[1] + hi[1]) * 0.5) as f32];
-    let half_intrinsic = [((hi[0] - lo[0]) * 0.5) as f32, ((hi[1] - lo[1]) * 0.5) as f32];
+    let anchor = [
+        ((lo[0] + hi[0]) * 0.5) as f32,
+        ((lo[1] + hi[1]) * 0.5) as f32,
+    ];
+    let half_intrinsic = [
+        ((hi[0] - lo[0]) * 0.5) as f32,
+        ((hi[1] - lo[1]) * 0.5) as f32,
+    ];
     let wt = world_transform(sim, entity);
     Some(gizmo_view_from(
         anchor,

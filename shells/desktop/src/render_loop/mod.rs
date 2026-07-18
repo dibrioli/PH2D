@@ -1359,6 +1359,11 @@ impl crate::App {
             let mut pending_blend_steps: Option<u32> = None;
             let mut pending_create_morph = false;
             let mut pending_morph_t: Option<f32> = None;
+            // ADR-0129: o botão "Envelope" envolve a seleção numa gaiola (container); Expand
+            // materializa a deformada e Release ressuscita a fonte autorada — os dois dissolvem.
+            let mut pending_create_envelope = false;
+            let mut pending_expand_envelope = false;
+            let mut pending_release_envelope = false;
             // ADR-0108 Fase 1: a Vertex button (Corner/Smooth/Symmetric) retypes
             // the selected vertex — a document edit, applied after the drain.
             let mut pending_vec_vertex_kind: Option<ph2d_vec_scene::VertexKind> = None;
@@ -1493,6 +1498,15 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_MORPH_RUN {
                                 // O irmão animável do blend: UMA forma, com o `t` keyável.
                                 pending_create_morph = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_RUN {
+                                // ADR-0129: envolve a seleção (1..N) num container com gaiola.
+                                pending_create_envelope = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_EXPAND {
+                                // ADR-0129: a deformada vira o desenho; a gaiola morre.
+                                pending_expand_envelope = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_ENVELOPE_RELEASE {
+                                // ADR-0129: a fonte autorada volta; a gaiola morre.
+                                pending_release_envelope = true;
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -2449,6 +2463,43 @@ impl crate::App {
             {
                 eprintln!("[ph2d-vec] blend: solto (as formas-fonte ficam)");
             }
+            // ADR-0129: **Envelope** — envolve a seleção (1..N formas) num container com a gaiola em
+            // repouso. Síncrono (as formas já existem; o container não tem path), então age já.
+            if pending_create_envelope {
+                let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                match crate::envelope_live::create(sim, vec_scene, &self.vec_entities, &ids) {
+                    Some(_) => eprintln!(
+                        "[ph2d-vec] envelope: {} forma(s) envolvida(s) -- va' para o modo Node e \
+                         arraste os CANTOS da gaiola",
+                        ids.len()
+                    ),
+                    None => eprintln!("[ph2d-vec] envelope: selecione ao menos UMA forma"),
+                }
+            }
+            // ADR-0129: **Expand** (a deformada vira o desenho) e **Release** (a fonte autorada
+            // volta). O MESMO `dissolve` — muda só QUAL geometria fica.
+            if pending_expand_envelope
+                && crate::envelope_live::dissolve(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &mut self.vec_pen,
+                    crate::envelope_live::Keep::Deformed,
+                )
+            {
+                eprintln!("[ph2d-vec] envelope: expandido (a deformacao virou o desenho)");
+            }
+            if pending_release_envelope
+                && crate::envelope_live::dissolve(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &mut self.vec_pen,
+                    crate::envelope_live::Keep::Authored,
+                )
+            {
+                eprintln!("[ph2d-vec] envelope: solto (a forma original voltou)");
+            }
             // ADR-0128 C2b: Reset Spine — volta o(s) blend(s) selecionado(s) ao spine automático.
             if pending_reset_spine
                 && crate::blend_live::reset_spine(
@@ -3178,6 +3229,18 @@ impl crate::App {
                     })
                 });
                 ph2d_panel_vector::set_current_convertible(convertible);
+                // ADR-0129: Expand/Release só são OFERECIDOS quando a seleção é de fato um
+                // envelope. A pergunta é a MESMA porta que decide a seleção (selecionar-só-o-
+                // container) e executa o dissolve — três consumidores, uma resposta.
+                let sel_bits: Vec<u64> = self
+                    .vec_pen
+                    .selected_paths()
+                    .iter()
+                    .filter_map(|id| self.vec_entities.get(id).copied())
+                    .collect();
+                ph2d_panel_vector::set_current_has_envelope(
+                    crate::envelope_live::sole_container(sim, &sel_bits).is_some(),
+                );
             }
             // Live Shapes: o ALVO dos campos de forma do painel é a forma paramétrica
             // SELECIONADA — os campos DELA aparecem (mesmo na ferramenta Select) e a

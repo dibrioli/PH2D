@@ -48,12 +48,12 @@ pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{
     FillKind, FontPreview, PathFillRule, TextAxisSlot, VectorPanelState, last_content_h,
     last_visible_h, set_current_convertible, set_current_fill, set_current_fill_rule,
-    set_current_grad_influence, set_current_grad_jitter, set_current_path_closed,
-    set_current_pivot_edit, set_current_selection_count, set_current_shape_focus, set_current_snap,
-    set_current_text, set_current_text_align, set_current_text_axes, set_current_text_font,
-    set_current_text_font_previews, set_current_text_seed, set_current_text_visible,
-    set_current_transform, set_current_vector_style, set_selected_vertex_type,
-    take_want_font_previews,
+    set_current_grad_influence, set_current_grad_jitter, set_current_has_envelope,
+    set_current_path_closed, set_current_pivot_edit, set_current_selection_count,
+    set_current_shape_focus, set_current_snap, set_current_text, set_current_text_align,
+    set_current_text_axes, set_current_text_font, set_current_text_font_previews,
+    set_current_text_seed, set_current_text_visible, set_current_transform,
+    set_current_vector_style, set_selected_vertex_type, take_want_font_previews,
 };
 
 use ph2d_a11y::NodeId;

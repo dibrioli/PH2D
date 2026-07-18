@@ -52,6 +52,10 @@ pub(crate) struct BodyCtx<'a> {
 #[path = "paint_blend.rs"]
 mod blend;
 
+/// A seção **Envelope** — módulo irmão (teto de 600 LOC).
+#[path = "paint_envelope.rs"]
+mod envelope;
+
 impl BodyCtx<'_> {
     /// A full-width slider + linked value chip row; returns the advanced `y`.
     #[allow(clippy::too_many_arguments)]
@@ -179,6 +183,9 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::boolean_section);
         y = self.step(y, |b, y| b.blend_section(snap, y));
         y = self.step(y, |b, y| b.morph_section(y));
+        // O Envelope fica junto dos outros deformadores não-destrutivos (Blend/Morph): os três
+        // produzem geometria DERIVADA de uma relação viva, e o artista os procura no mesmo lugar.
+        y = self.step(y, Self::envelope_section);
         y = self.step(y, Self::align_section);
         y = self.step(y, Self::arrange_section);
         self.path_section(y)

@@ -295,7 +295,7 @@ fn sculpt_perf_kill_criterion() {
     /// instead of classifying it. Measured at ~9 ms where steady state is ~6.
     const SETUP_KILL_MS: f64 = 40.0;
 
-    let run = |size: u32, with_relief: bool, mode: u8| -> (f64, f64, f64, f64) {
+    let run = |size: u32, with_relief: bool, mode: u8| -> (f64, f64, f64, f64, f64) {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         let layer = t.layers.active().expect("a layer");
@@ -329,24 +329,42 @@ fn sculpt_perf_kill_criterion() {
         // Every move is timed; the split into set-up and steady state happens after, so which index pays
         // what is READ OFF rather than assumed. (It was assumed once, on this very gate, and the guess
         // was wrong by one: move 0 looked like the expensive one and is in fact the free one.)
+        // ⚠️ The KERNEL and the PREVIEW are timed apart, and the bar below is on the kernel.
+        //
+        // This used to be one `Instant` around both, commented *"sculpt + composite + light: what a frame
+        // really costs"*. That was true when it was written and stopped being true on 2026-07-18, when the
+        // light moved to the GPU: in this headless harness there is no device, so `take_preview_arc`
+        // composites AND lights on the CPU — **a path the product no longer runs**. Measured (2026-07-18,
+        // brush radius 100): SMOOTH's own kernel is 1.19 ms/move while the frame reads 3.55, so two thirds
+        // of what this gate called "the sculpt" was a CPU light the artist does not pay for.
+        //
+        // Charging it to the sculpt is not merely generous, it is the wrong direction: it silently spent
+        // most of the budget on someone else's work, so a real kernel regression had ~2 ms less room than
+        // the number says. The preview is still measured and reported — it is a real cost on a machine
+        // with no GPU, and a regression there should be visible — but the verb's budget is the verb's.
         let mut ms: Vec<f64> = Vec::with_capacity(MOVES as usize);
+        let mut prev_ms: Vec<f64> = Vec::with_capacity(MOVES as usize);
         for i in 0..MOVES {
             let x = 220.0 + f64::from(i) * 40.0;
             let t0 = Instant::now();
             t.on_canvas_pointer(cp([x as f32, mid], PointerPhase::Move));
-            let _ = t.take_preview_arc(); // sculpt + composite + light: what a frame really costs
             ms.push(t0.elapsed().as_secs_f64() * 1000.0);
+            let t1 = Instant::now();
+            let _ = t.take_preview_arc();
+            prev_ms.push(t1.elapsed().as_secs_f64() * 1000.0);
         }
         let setup = ms[..WARMUP_MOVES].iter().copied().fold(0.0f64, f64::max);
         let steady = &ms[WARMUP_MOVES..];
         let worst = steady.iter().copied().fold(0.0f64, f64::max);
         let total: f64 = steady.iter().sum();
         let mean = total / steady.len() as f64;
+        let prev =
+            prev_ms[WARMUP_MOVES..].iter().sum::<f64>() / (prev_ms.len() - WARMUP_MOVES) as f64;
         let t0 = Instant::now();
         t.on_canvas_pointer(cp([1020.0, mid], PointerPhase::Up));
         let _ = t.take_preview_arc();
         let up = t0.elapsed().as_secs_f64() * 1000.0;
-        (mean, worst, up, setup)
+        (mean, worst, up, setup, prev)
     };
 
     // All THREE engines: Smooth (the tile-memoised blur), Scrape (the per-dab plane fit) and Inflate (the
@@ -355,14 +373,16 @@ fn sculpt_perf_kill_criterion() {
     // failure modes, and a budget measured on one of them is a budget for a tool the artist does not have.
     for (label, mode) in [("SMOOTH", 0u8), ("SCRAPE", 3u8), ("INFLATE", 7u8)] {
         for size in [2048u32, 4096] {
-            let (off_mean, off_worst, off_up, off_setup) = run(size, false, mode);
-            let (on_mean, on_worst, on_up, on_setup) = run(size, true, mode);
+            let (off_mean, off_worst, off_up, off_setup, off_prev) = run(size, false, mode);
+            let (on_mean, on_worst, on_up, on_setup, on_prev) = run(size, true, mode);
             let (mean, worst, up) = (on_mean - off_mean, on_worst - off_worst, on_up - off_up);
             let setup = on_setup - off_setup;
+            let prev = on_prev - off_prev;
             println!(
-                ">>> {label} COST @{size}px: mean {mean:.2} ms/move (steady state, \
+                ">>> {label} COST @{size}px: KERNEL mean {mean:.2} ms/move (steady state, \
              {WARMUP_MOVES} warm-up moves excluded), worst {worst:.2} ms/move \
-             (target <=4, kill {KILL_MS}) | SET-UP {setup:.2} ms | PEN-UP {up:.2} ms \
+             (target <=4, kill {KILL_MS}) | PREVIEW (CPU composite+light, GPU in the product) \
+             {prev:.2} ms/move | SET-UP {setup:.2} ms | PEN-UP {up:.2} ms \
              [baseline {off_mean:.2}, with-relief {on_mean:.2}]"
             );
             assert!(

@@ -16,12 +16,25 @@
 
 ---
 
-## 1. Estado da linha — **o §4.B INTEGROU (smoke OK)**; a branch está SINCRONIZADA com a main
+## 1. Estado da linha — §4.B INTEGROU; **§4.C.1 (halo por-peça + hover) FECHOU, pendente smoke**
 
-**Enio, 2026-07-17: *"smoke ok"* → integração realizada.** O §4.B (Segment mode) está na
-`main` (o `segment.rs` = `8775a027`), e a branch `line/FLIP` foi **fast-forwardada** para a
-main integrada — **base limpa `cdc3acc1`, 0 à frente / 0 atrás**, worktree limpo, o shell
-compila. **A próxima rodada começa daqui, no §4.C.**
+**§4.C.1 — o PEDAÇO é a unidade visual do modo Segment** (`a5738e98`, sobre a base
+integrada, pendente smoke do Enio). Duas coisas, um primitivo:
+- **Halo por-peça** (correção de um gap do §4.B): o overlay caía no branch de traço e
+  acendia a FORMA INTEIRA ao selecionar um pedaço; agora `piece_halo_path` desenha só os
+  segmentos com os dois extremos acesos — o pedaço, costura inclusa.
+- **Hover** (o refino nº 1 do §4.C): `flip_segment_hover_refresh` computa o pedaço sob o
+  cursor (mesma cadeia do pen-down) e o overlay o desenha em âmbar FRACO. Custo MEDIDO:
+  **122 µs/frame** @2400 seg (0,7 %), só com cursor em movimento, nunca em gesto — sem cache.
+- Gates: 3 no overlay + 3 de guarda (isolados via `flip_segment_hover_at`, não
+  `flip_segment_hover` — sem gfx o pick é None e um gate sobre o hover ficaria verde COM a
+  mutação; a armadilha [[feedback_a_green_gate_may_be_green_by_accident]] pega ao vivo).
+- **Smoke:** `PH2D_FLIP_SEGMENT_SMOKE=1` (passe o mouse → âmbar fraco segue; clique → sólido,
+  só o pedaço). O resto do §4.C segue aberto (§4 abaixo).
+
+**Base:** §4.B (Segment mode) está na `main` (`segment.rs` = `8775a027`); a branch foi
+fast-forwardada para a main integrada `cdc3acc1`. **§4.C.1 está À FRENTE da main** (não
+integrado — fecha, handoff, PARA).
 
 **Integrado desde a última rodada:** §4.B (Segment mode) · §4.A (gizmo da seleção) · W8
 (domínio Point) · W7.5 (pose afim + gizmo da pose) · W7.4/W7.3/W7.2. Todos com smoke OK.
@@ -119,22 +132,23 @@ todos dela.
 
 Qualquer um serve de tarefa curta entre smokes:
 
+- ✅ **realce de HOVER no Segment** — FECHOU em §4.C.1 (`a5738e98`), junto com o halo
+  por-peça da seleção. Pendente smoke.
 - reorder de camada por drag · duplicar/agrupar camada · máscaras de camada na UI
 - raio dedicado da borracha + preview · curva de pressão editável · round caps/bevel joins
 - **write-back do painel** (espelhar o estilo da seleção no swatch — `Flip/08 §6`)
 - cache de tesselação com LRU
-- **🆕 realce de HOVER no Segment** (ver §5) — o refino que mais muda a sensação do modo
 
 ---
 
 ## 5. A fila / o que o §4.B deixou aberto (com o porquê)
 
-- **Hover no Segment.** Hoje o pedaço só aparece ao CLICAR. O Illustrator/GP realçam o
-  trecho sob o cursor antes do clique, e o motor já serve isso (`piece_map` + `probe_point`,
-  211 µs por consulta). **Mas hover é POR FRAME**, e 211 µs × 60 = 1,3% de um frame só para
-  isto — meça antes ([[feedback_measure_perf_symptom_scale]]) e memoize por
-  `(geometria, pose, seleção)` como a sessão do Build do Vector faz, senão cada mexida de
-  mouse recomputa o quadro inteiro.
+- ✅ **Hover no Segment — FECHOU (§4.C.1, `a5738e98`).** A previsão de custo do §4.B
+  (211 µs) foi revista na prática: o caminho INTEIRO (`frame_cutters` + `hit_at` +
+  `hover_piece`) mede **122 µs/frame** @2400 seg (0,7 %) e só dispara com o cursor em
+  movimento — então **não** houve cache de conteúdo, só a guarda "cursor-movido". O primitivo
+  de render (`piece_halo_path`) também curou um gap do §4.B: a seleção de um pedaço acendia o
+  traço INTEIRO (caía no branch de traço); agora acende só o pedaço, costura inclusa.
 - **Um corte por segmento de polilinha** (limitação HERDADA da referência, gateada em
   `only_the_nearest_cut_of_a_segment_is_kept`). Dois traços cruzando o MESMO segmento
   produzem UM corte. Invisível numa polilinha densa (a caneta); visível num retângulo de 4

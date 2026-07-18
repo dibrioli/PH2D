@@ -37,10 +37,15 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
         // Scrubbing stays on the TIMELINE playhead (the transport owns it, and a container has
         // no playhead of its own to move) and the markers stay off: they are stamped in
         // timeline seconds and would sit at the wrong second in here.
+        //
+        // ⚠️ E o SCRUB é o mapa, não o relógio: arrastar tem de chegar como um tempo da
+        // TIMELINE (o único playhead que existe), então a régua só arrasta onde a instância
+        // tem inverso (`host_map`). Sem ele nem hit se registra — um controle que não pode
+        // honrar o gesto não deve aceitá-lo.
         if let Some(now) = snap.host_time {
             return RulerClock {
                 now: Some(now),
-                scrub: true,
+                scrub: snap.host_map.is_some(),
                 markers: false,
             };
         }
@@ -50,7 +55,7 @@ pub(crate) fn clock_for(tab: crate::tab::Tab, snap: &TimelineViewSnapshot) -> Ru
             // the same refusal `clip_playhead` makes, for the same reason.
             return RulerClock {
                 now: None,
-                scrub: true,
+                scrub: snap.host_map.is_some(),
                 markers: false,
             };
         }
@@ -133,6 +138,33 @@ mod tests {
             assert!(clock_for(Tab::Arrange, &snap(stacked, 4.0, Some(2.0))).scrub);
         }
     }
+    /// **Sem inverso a régua do container NÃO arrasta.**
+    ///
+    /// É a primeira vez que `scrub: false` acontece de verdade — o campo existe desde que a
+    /// régua ganhou dois relógios, com o docstring que diz exatamente isto. A camada de
+    /// baixo (o `event.rs`) recusa por conta própria; esta aqui nem oferece o controle, e
+    /// cada camada precisa do seu gate ([[feedback_layered_defenses_need_per_layer_gates]]).
+    #[test]
+    fn a_container_without_an_inverse_offers_no_scrub() {
+        let mut s = snap(true, 4.0, Some(2.0));
+        s.crumbs = vec![(0, "Walk".into())];
+        s.host_time = Some(1.0);
+        s.host_map = None; // toca duas vezes, ou dá a volta
+        assert!(
+            !clock_for(Tab::Arrange, &s).scrub,
+            "arrastar não teria para onde buscar — o hit não pode nem existir"
+        );
+        // Controle POSITIVO: o MESMO snapshot com mapa arrasta. Sem ele, `scrub: false`
+        // para tudo deixaria este gate verde e a régua morta na cena inteira.
+        s.host_map = Some(ph2d_timeline::ContainerMap {
+            t0: 4.0,
+            t1: 12.0,
+            u0: 0.0,
+            u1: 8.0,
+        });
+        assert!(clock_for(Tab::Arrange, &s).scrub);
+    }
+
     #[test]
     fn the_markers_follow_the_timeline_clock() {
         // No stack: the Keys ruler is the timeline ruler, so it keeps the markers.

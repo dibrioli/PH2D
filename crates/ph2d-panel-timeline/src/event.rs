@@ -82,7 +82,22 @@ pub(crate) fn apply_event(
                 .slider(id)
                 .map(|(_, v)| f64::from(v))
                 .unwrap_or(0.0);
-            let time = state.view_start_s + v * state.view_span_s;
+            let local = state.view_start_s + v * state.view_span_s;
+            // **A régua lê num relógio e escreve noutro, e a conversão mora aqui.**
+            // Dentro de um container o eixo é o INTERIOR (é como as lanes estão dispostas),
+            // mas o playhead que o arrasto busca é o da TIMELINE — o único que existe
+            // (ADR-0133 §1). Sem converter, com a instância em 4 s, arrastar até o segundo 1
+            // do interior buscava o segundo 1 da CENA: três segundos fora do container.
+            let snap = crate::state::current_snapshot();
+            let time = match (snap.crumbs.is_empty(), snap.host_map) {
+                (true, _) => local, // na cena o eixo JÁ é a timeline
+                (false, Some(m)) => m.host_time(local),
+                // Sem inverso não há para onde buscar. `clock_for` já nem registra o hit
+                // neste caso; a recusa está repetida aqui porque as duas camadas protegem
+                // coisas diferentes — a de lá não OFERECE o controle, a daqui não INVENTA
+                // um segundo se alguém voltar a oferecê-lo ([[feedback_layered_defenses_need_per_layer_gates]]).
+                (false, None) => return EventOutcome::Consumed,
+            };
             host.bus_mut()
                 .push(EditorAction::TimelinePanelEvent(PanelEvent::SetValue(
                     id, time,

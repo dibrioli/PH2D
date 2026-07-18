@@ -11,6 +11,17 @@ use ph2d_panel_timeline::{TimelinePanel, ids};
 use ph2d_timeline::{StackHost, StripSource, TimelineDoc, TimelineViewSnapshot};
 use ph2d_ui_testkit::MockPanelHost;
 
+/// The panel events the bus carries — the same door `seam.rs` reads through.
+fn timeline_events(host: &mut MockPanelHost) -> Vec<ph2d_editor_core::tool::PanelEvent> {
+    host.drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            ph2d_editor_core::action_bus::EditorAction::TimelinePanelEvent(pe) => Some(pe),
+            _ => None,
+        })
+        .collect()
+}
+
 /// Drive one Click at `id` through the panel's real event path, and return the intents it
 /// raised. Same harness the transport seam uses — a second one would drift.
 fn click(id: ph2d_editor_core::NodeId) -> Vec<ph2d_timeline::TimelineIntent> {
@@ -294,4 +305,126 @@ fn the_arrange_ruler_takes_its_clock_from_the_open_container() {
     snap.host_time = None;
     let nowhere = ruler_clock_for_tests(Tab::Arrange, &snap);
     assert_eq!(nowhere.now, None, "sem um 'agora' único, não se desenha um");
+}
+
+/// Publica um snapshot com o container ABERTO e uma única instância começando em `start`,
+/// com o playhead dentro dela. É a armação exata do bug: lanes em segundos do interior,
+/// playhead em segundos da timeline.
+fn open_container_at(start: f64, playhead: f64) -> ph2d_timeline::TimelineViewSnapshot {
+    let mut doc = TimelineDoc::new();
+    let c = doc.add_container("Walk".into());
+    doc.add_lane_in(StackHost::Container(c), "in".into())
+        .unwrap();
+    doc.add_strip_to(StackHost::Container(c), 0, StripSource::Clip(0), 0.0, 8.0)
+        .unwrap();
+    let lane = doc.add_lane("L".into()).unwrap();
+    doc.add_strip_to(
+        StackHost::Document,
+        lane,
+        StripSource::Container(u16::try_from(c).unwrap()),
+        start,
+        start + 8.0,
+    )
+    .unwrap();
+    let mut st = ph2d_timeline::TimelineState::new();
+    st.doc = doc;
+    st.edit_host = StackHost::Container(c);
+    let mut ph = ph2d_core::Playhead::default();
+    ph.seek(playhead);
+    st.doc.prime_stack(playhead);
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, false);
+    snap
+}
+
+/// **O arrasto da régua DENTRO de um container busca o segundo da TIMELINE, não o local.**
+///
+/// Este gate nasceu VERMELHO sobre o bug que a 3b deixou: o eixo virou o do interior e o
+/// arrasto continuou mandando o número cru. Com a instância em 4 s, largar no meio de uma
+/// janela de 8 s é o segundo 4 do INTERIOR — que é o segundo **8** da cena, não o 4.
+#[test]
+fn scrubbing_inside_a_container_seeks_the_timeline_second_not_the_local_one() {
+    ph2d_panel_timeline::state::set_current_timeline(Some(open_container_at(4.0, 5.0)));
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState {
+        view_start_s: 0.0,
+        view_span_s: 8.0, // a régua mostra os 8 s do INTERIOR
+        ..TimelinePanelState::default()
+    };
+    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    let _ = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+    );
+    let events = timeline_events(&mut host);
+    ph2d_panel_timeline::state::set_current_timeline(None);
+    assert_eq!(
+        events,
+        vec![ph2d_editor_core::tool::PanelEvent::SetValue(
+            ids::TIMELINE_RULER,
+            8.0
+        )],
+        "o segundo 4 do interior de uma instância que começa em 4 s é o segundo 8 da cena"
+    );
+}
+
+/// **Na CENA nada mudou** — o controle positivo do gate acima.
+///
+/// Sem ele, `host_time` devolvendo o número cru para tudo deixaria os dois verdes, e a
+/// conversão seria código morto.
+#[test]
+fn scrubbing_at_the_scene_root_still_seeks_the_raw_second() {
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState {
+        view_start_s: 0.0,
+        view_span_s: 8.0,
+        ..TimelinePanelState::default()
+    };
+    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    let _ = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+    );
+    let events = timeline_events(&mut host);
+    assert_eq!(
+        events,
+        vec![ph2d_editor_core::tool::PanelEvent::SetValue(
+            ids::TIMELINE_RULER,
+            4.0
+        )]
+    );
+}
+
+/// **Sem inverso, o arrasto não busca nada** — a segunda camada da recusa.
+///
+/// `clock_for` já não registra o hit neste caso, então em produção o evento nem chega. O gate
+/// existe porque a camada de baixo protege outra coisa: se alguém voltar a oferecer o
+/// controle, o `event.rs` ainda não pode INVENTAR um segundo
+/// ([[feedback_layered_defenses_need_per_layer_gates]]).
+#[test]
+fn without_an_inverse_the_scrub_seeks_nowhere() {
+    let mut snap = open_container_at(4.0, 5.0);
+    assert!(
+        snap.host_map.is_some(),
+        "a fixture tem de PARTIR de um mapa"
+    );
+    snap.host_map = None; // toca duas vezes, ou dá a volta
+    ph2d_panel_timeline::state::set_current_timeline(Some(snap));
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut state = TimelinePanelState {
+        view_start_s: 0.0,
+        view_span_s: 8.0,
+        ..TimelinePanelState::default()
+    };
+    host.set_slider_value(ids::TIMELINE_RULER, 0.5);
+    let _ = host.apply_panel_event::<TimelinePanel>(
+        &mut state,
+        WidgetEvent::ValueChanged(ids::TIMELINE_RULER),
+    );
+    let events = timeline_events(&mut host);
+    ph2d_panel_timeline::state::set_current_timeline(None);
+    assert!(
+        events.is_empty(),
+        "sem mapa não há segundo honesto para buscar, veio {events:?}"
+    );
 }

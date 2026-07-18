@@ -202,6 +202,15 @@ pub struct TimelineViewSnapshot {
     /// actually shipped (After Effects stacks a second ruler above the first when Time
     /// Remapping is on, with a marker tying them).
     pub host_time: Option<f64>,
+    /// **How the open container's own seconds relate to the timeline's** — the same fact as
+    /// [`Self::host_time`], as a RELATION rather than a sample of it (`crate::nest_map`).
+    ///
+    /// The panel needs it in both directions: the ruler reads it to label the timeline's
+    /// seconds over the interior's axis, and a scrub of that ruler writes through it, because
+    /// the drag has to arrive as a time on the TIMELINE — the only playhead there is. `None`
+    /// where the instance is not a bijection (not playing exactly once, or wrapping), and the
+    /// ruler then does not scrub at all rather than seeking to a second it invented.
+    pub host_map: Option<crate::ContainerMap>,
     /// **Where the animator IS** — the breadcrumb, outermost first.
     ///
     /// Empty means the document's own stack (the trail still paints its root: "Scene"). Each
@@ -300,6 +309,7 @@ impl TimelineViewSnapshot {
             .extend(doc.containers().iter().map(|c| c.name.clone()));
         self.crumbs.clear();
         self.host_time = None;
+        self.host_map = None;
         if let crate::StackHost::Container(c) = state.edit_host
             && let Some(named) = doc.containers().get(c)
         {
@@ -307,6 +317,7 @@ impl TimelineViewSnapshot {
             // The scratch was primed above (the `!keys_mode && stacked` branch), which is the
             // same precondition `clip_playhead` rides.
             self.host_time = crate::container_playhead(doc, c, playhead.time()).ok();
+            self.host_map = crate::container_map(doc, c);
         }
         let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host).unwrap_or(&[]);
         self.lanes.clear();

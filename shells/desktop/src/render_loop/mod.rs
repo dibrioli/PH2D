@@ -3652,6 +3652,12 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+                crate::vec_overlay_diag::dump(
+                    vec_scene,
+                    sim,
+                    hero.gizmo.selection,
+                    self.undo.depth() as u64,
+                );
                 // Os PINOS (Fatia E) — o mesmo gate de modo, outro overlay: no gesto Pins o `view`
                 // devolve `None` (nao ha gaiola) e sao os pinos que se desenham. Nunca os dois.
                 if overlay.envelope_cage

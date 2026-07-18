@@ -380,6 +380,13 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 let v = seconds.clamp(0.0, room); // CLAMP-OK: 0..what the other fade left
                 if edge == 0 {
                     s.ease_in = v;
+                    // The inward fade-in and the OUTWARD one (`lead_in`) are the same
+                    // handle on two sides of the start edge — authoring one clears the
+                    // other. Without this, dragging the fade back in from the gap left a
+                    // sliver of `lead_in`, and the grip (drawn outward whenever `lead_in`
+                    // is non-zero) stuck at the strip's tip and would not come inside
+                    // (Enio, 2026-07-16).
+                    s.lead_in = 0.0;
                 } else {
                     s.ease_out = v;
                 }

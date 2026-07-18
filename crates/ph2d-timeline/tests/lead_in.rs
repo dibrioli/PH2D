@@ -207,3 +207,39 @@ fn set_strip_lead_clamps_to_the_gap_and_clears_the_inward_fade() {
     );
     assert_eq!(s.ease_in, 0.0, "the inward fade was cleared");
 }
+
+/// **Bringing the fade back INSIDE clears the outward lead.** The fade-in handle is one
+/// handle on two sides of the start edge, so the inward `SetStripEase` must clear
+/// `lead_in` just as `SetStripLead` clears `ease_in`. Without this a sliver of lead
+/// survived and the grip — drawn outward whenever `lead_in` is non-zero — stuck at the
+/// strip's tip (Enio, 2026-07-16).
+#[test]
+fn dragging_the_fade_back_inside_clears_the_outward_lead() {
+    let (_sim, mut st, _bits, lane, b) = scene();
+    let mut ph = Playhead::new(1.0 / 60.0);
+    // Outward first.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripLead {
+            lane,
+            id: b,
+            seconds: 1.0,
+        },
+    );
+    assert!(st.doc.strip(lane, b).unwrap().lead_in > 0.0, "lead is set");
+    // Now an inward fade at the same edge — the lead must vanish.
+    apply_intent(
+        &mut st,
+        &mut ph,
+        TimelineIntent::SetStripEase {
+            lane,
+            id: b,
+            edge: 0,
+            seconds: 0.4,
+        },
+    );
+    let s = st.doc.strip(lane, b).unwrap();
+    assert_eq!(s.lead_in, 0.0, "the outward lead was cleared");
+    assert!((s.ease_in - 0.4).abs() < 1e-9, "the inward fade took over");
+}

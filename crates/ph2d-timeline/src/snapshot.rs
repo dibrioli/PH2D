@@ -304,7 +304,7 @@ impl TimelineViewSnapshot {
         // evaluator WEIGHTS by, and the two cannot drift apart.
         // **The lanes are the OPEN host's** (ADR-0133 §5): inside a container the panel shows
         // its interior, and the edits it raises are routed to the same host by
-        // `TimelineState::edit_host`. One answer to "which stack am I looking at", read here
+        // `TimelineState::edit_host()`. One answer to "which stack am I looking at", read here
         // and honoured there — two would drift the first time somebody entered a container.
         self.containers.clear();
         self.containers
@@ -312,16 +312,20 @@ impl TimelineViewSnapshot {
         self.crumbs.clear();
         self.host_time = None;
         self.host_map = None;
-        if let crate::StackHost::Container(c) = state.edit_host
-            && let Some(named) = doc.containers().get(c)
-        {
-            self.crumbs.push((c, named.name.clone()));
+        // The WHOLE path, outermost first — the trail has to say where you are, and where
+        // you are is every level you walked through, not just the last one.
+        for &c in &state.edit_path {
+            if let Some(named) = doc.containers().get(c) {
+                self.crumbs.push((c, named.name.clone()));
+            }
+        }
+        if let crate::StackHost::Container(c) = state.edit_host() {
             // The scratch was primed above (the `!keys_mode && stacked` branch), which is the
             // same precondition `clip_playhead` rides.
             self.host_time = crate::container_playhead(doc, c, playhead.time()).ok();
             self.host_map = crate::container_map(doc, c);
         }
-        let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host).unwrap_or(&[]);
+        let host_lanes: &[crate::ClipLane] = doc.host_stack(state.edit_host()).unwrap_or(&[]);
         self.lanes.clear();
         for lane in host_lanes {
             let mut strips = Vec::with_capacity(lane.strips.len());

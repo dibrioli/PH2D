@@ -23,7 +23,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
     // **Where a stack edit lands** — the document's own stack, or the interior of the
     // container the animator has entered. Read ONCE, here, so every arm below routes through
     // the same answer (ADR-0133 §5).
-    let host = state.edit_host;
+    let host = state.edit_host();
     match intent {
         // transport
         I::Play => playhead.play(),

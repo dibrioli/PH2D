@@ -371,7 +371,7 @@ fn strip_menu_click(
             .and_then(|l| l.strips.iter().find(|s| s.id == id_))
             .and_then(|s| s.container)
         {
-            state::set_open_container(Some(c));
+            state::enter_container(c);
         }
         host.store_mut().close_context_menu();
         host.store_mut().consume_last_context_menu();
@@ -428,12 +428,13 @@ fn stack_click(id: ph2d_editor_core::NodeId) -> Option<EventOutcome> {
     // the container at that depth. Popping to where you already are is a no-op, which is what
     // makes the trailing segment safe to paint as part of the trail rather than special-cased.
     if let Some(depth) = ids::TIMELINE_CRUMB.iter().position(|&b| b == id) {
-        let crumbs = crate::state::current_snapshot().crumbs;
-        crate::state::set_open_container(
-            depth
-                .checked_sub(1)
-                .and_then(|i| crumbs.get(i).map(|c| c.0)),
-        );
+        // The button's POSITION is not the depth once the trail is longer than the id array
+        // (it elides from the outside, so you always see where you are). `trail` answers both
+        // "what does this segment say" and "what depth is it" — the paint and the click read
+        // the same list, so a segment can never pop somewhere other than what it shows.
+        if let Some(d) = crate::breadcrumb::depth_of_slot(depth, crate::state::edit_path().len()) {
+            crate::state::pop_to_depth(d);
+        }
         return Some(EventOutcome::Consumed);
     }
     if let Some(lane) = ids::TIMELINE_LANE_MUTE.iter().position(|&b| b == id) {

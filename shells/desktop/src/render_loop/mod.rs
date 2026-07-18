@@ -1017,7 +1017,7 @@ impl crate::App {
         // **Where a stack edit lands** (ADR-0133 §5) — the same mirror, one line later: the
         // panel knows which container the animator entered, and the intents about to drain
         // have to land there. Read BEFORE the drain, exactly like `keys_mode`.
-        self.timeline.edit_host = ph2d_panel_timeline::state::edit_host();
+        self.timeline.edit_path = ph2d_panel_timeline::state::edit_path();
         if keys_mode != self.last_timeline_keys_mode {
             self.last_timeline_keys_mode = keys_mode;
             if keys_mode {

@@ -19,10 +19,23 @@
 //!   começa em 0. É por isso que a marca do playhead cai sobre o conteúdo, em vez de meio
 //!   traço fora dele. Passe o playhead pelas duas instâncias e repare que o interior é o
 //!   MESMO nos dois lugares.
+//! - **DOIS relógios na tela ao mesmo tempo, e o texto que os liga:** o chip de segundos da
+//!   barra segue mostrando o tempo da CENA (ele nunca some), a régua mostra o do interior, e
+//!   ao lado da trilha o readout diz **`plays 0.00 - 2.00`** / **`plays 4.00 - 6.00`** — a
+//!   janela da instância em segundos da cena. É a diferença entre os dois números.
+//! - ⚠️ **Arraste a régua lá dentro.** Ela busca o segundo certo da CENA (era este o bug:
+//!   arrastar até o segundo 1 do interior buscava o segundo 1 da timeline, fora da instância).
+//!   Arraste até as pontas: o mapa GRUDA nas bordas da instância em vez de sair dela.
+//! - **Leve o playhead para fora das duas instâncias** (entre 2 s e 4 s): a marca some da
+//!   régua — porque o container não toca ali — e o readout **diz** `not playing here`. As
+//!   lanes seguem editáveis: você está autorando a peça, não a cena.
 //! - **Sair:** clique **Scene** na trilha.
-//! - **Aninhar de novo:** dentro do Walk, o botão **+ Container** faz outro, um nível abaixo.
-//!   A trilha cresce. (Não há teto de profundidade — o ADR mediu e não achou recurso que o
-//!   justificasse; o que tem teto é a TRILHA, em 8 segmentos.)
+//! - **Aninhar de novo:** dentro do Walk, o botão **+ Container** faz outro container JÁ
+//!   instanciado ali dentro. Botão direito nele → Enter Container: a trilha fica
+//!   `[ Scene ][ Walk ][ Container 2 ]`, e clicar **Walk** volta UM nível (não salta para a
+//!   cena). (Não há teto de profundidade — o ADR mediu e não achou recurso que o
+//!   justificasse; o que tem teto é a TRILHA, em 8 segmentos, e ela elide por FORA: a raiz e
+//!   onde você está nunca somem.)
 //! - **Ciclo:** não há gesto que o crie — `try_nest` recusa antes de aceitar o link.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};

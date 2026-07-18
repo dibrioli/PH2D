@@ -47,7 +47,7 @@ thread_local! {
     /// Which container the animator has ENTERED, if any (ADR-0133 §5). Panel-local view
     /// state, published to the shell like `KEYS_MODE`: a document does not remember which
     /// container was open, exactly as Animate's does not.
-    static OPEN_CONTAINER: Cell<Option<usize>> = const { Cell::new(None) };
+    static OPEN_CONTAINER: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the
@@ -460,19 +460,38 @@ pub fn keys_mode() -> bool {
 ///
 /// Panel-local, and taking effect on the next frame's publish: the shell reads
 /// [`edit_host`] before draining intents, so the edit that follows a click lands in the
-/// stack the click just opened.
-pub(crate) fn set_open_container(c: Option<usize>) {
-    OPEN_CONTAINER.with(|x| x.set(c));
+/// stack the animator is looking at.
+pub(crate) fn enter_container(c: usize) {
+    OPEN_CONTAINER.with(|p| p.borrow_mut().push(c));
 }
 
-/// **Which stack the panel is editing** — read by the shell each frame and stamped onto
-/// `TimelineState::edit_host` before intents drain, the same channel [`keys_mode`] rides.
+/// Pop the trail back to `depth` levels (0 = the scene root). Clicking where you already are
+/// truncates to the length it already has, which is why the trailing segment is safe to paint
+/// as part of the trail rather than special-cased.
+pub(crate) fn pop_to_depth(depth: usize) {
+    OPEN_CONTAINER.with(|p| p.borrow_mut().truncate(depth));
+}
+
+/// **How deep the animator has walked**, outermost first — read by the shell each frame and
+/// stamped onto `TimelineState::edit_path` before intents drain, the same channel
+/// [`keys_mode`] rides.
+#[must_use]
+pub fn edit_path() -> Vec<usize> {
+    OPEN_CONTAINER.with(|p| p.borrow().clone())
+}
+
+/// **Which stack an edit lands in** — the innermost of [`edit_path`]. Derived, never stored
+/// beside it: two answers to "where is the animator" would drift the first time one of them
+/// was updated alone.
 #[must_use]
 pub fn edit_host() -> ph2d_timeline::StackHost {
-    match OPEN_CONTAINER.with(Cell::get) {
-        Some(c) => ph2d_timeline::StackHost::Container(c),
-        None => ph2d_timeline::StackHost::Document,
-    }
+    OPEN_CONTAINER.with(|p| {
+        p.borrow()
+            .last()
+            .map_or(ph2d_timeline::StackHost::Document, |&c| {
+                ph2d_timeline::StackHost::Container(c)
+            })
+    })
 }
 
 /// Raise a dope-sheet edit intent (called by `interact` while draining gestures).

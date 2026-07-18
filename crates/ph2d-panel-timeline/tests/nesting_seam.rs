@@ -171,12 +171,12 @@ fn entering_a_container_swaps_which_lanes_the_panel_sees() {
     st.doc = doc;
     let mut snap = TimelineViewSnapshot::default();
 
-    st.edit_host = StackHost::Document;
+    st.edit_path = Vec::new();
     snap.rebuild(&mut st, &ph2d_core::Playhead::default(), false);
     assert_eq!(snap.lanes.len(), 1, "fora: as lanes do documento");
     assert!(snap.crumbs.is_empty(), "fora: não há trilha a mostrar");
 
-    st.edit_host = StackHost::Container(c);
+    st.edit_path = vec![c];
     snap.rebuild(&mut st, &ph2d_core::Playhead::default(), false);
     assert_eq!(snap.lanes.len(), 2, "dentro: as lanes do container");
     assert_eq!(
@@ -248,7 +248,7 @@ fn the_ruler_inside_a_container_measures_the_containers_clock() {
 
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
-    st.edit_host = StackHost::Container(c);
+    st.edit_path = vec![c];
 
     let mut ph = ph2d_core::Playhead::default();
     ph.seek(5.5); // meio segundo DENTRO da instância
@@ -328,7 +328,7 @@ fn open_container_at(start: f64, playhead: f64) -> ph2d_timeline::TimelineViewSn
     .unwrap();
     let mut st = ph2d_timeline::TimelineState::new();
     st.doc = doc;
-    st.edit_host = StackHost::Container(c);
+    st.edit_path = vec![c];
     let mut ph = ph2d_core::Playhead::default();
     ph.seek(playhead);
     st.doc.prime_stack(playhead);
@@ -427,4 +427,94 @@ fn without_an_inverse_the_scrub_seeks_nowhere() {
         events.is_empty(),
         "sem mapa não há segundo honesto para buscar, veio {events:?}"
     );
+}
+
+/// **Entrar DOIS níveis mantém o caminho de volta ao do meio.**
+///
+/// Enquanto a trilha guardava um único container, entrar em B por dentro de A publicava
+/// `Scene > B` — uma afirmação ERRADA sobre onde você está — e o único jeito de sair era pular
+/// para a cena. O caminho é o que faz a trilha dizer a verdade e o que dá o degrau do meio.
+///
+/// ⚠️ O gate segue o gesto REAL nos dois níveis (menu de strip → "Enter Container"), porque é a
+/// costura que pode morrer; e o oráculo é o HOST, que é o que o shell lê antes de drenar.
+#[test]
+fn entering_two_deep_keeps_the_way_back_to_the_middle() {
+    // Um documento com A dentro do documento, e B dentro de A.
+    let mut doc = TimelineDoc::new();
+    let a = doc.add_container("A".into());
+    let b = doc.add_container("B".into());
+    doc.add_lane_in(StackHost::Container(a), "inA".into())
+        .unwrap();
+    let inner = doc
+        .add_strip_to(
+            StackHost::Container(a),
+            0,
+            StripSource::Container(u16::try_from(b).unwrap()),
+            0.0,
+            2.0,
+        )
+        .unwrap();
+    let lane = doc.add_lane("L".into()).unwrap();
+    let outer = doc
+        .add_strip_to(
+            StackHost::Document,
+            lane,
+            StripSource::Container(u16::try_from(a).unwrap()),
+            0.0,
+            2.0,
+        )
+        .unwrap();
+    let mut st = ph2d_timeline::TimelineState::new();
+    st.doc = doc;
+
+    let publish = |st: &mut ph2d_timeline::TimelineState, path: Vec<usize>| {
+        st.edit_path = path;
+        let mut snap = TimelineViewSnapshot::default();
+        snap.rebuild(st, &ph2d_core::Playhead::default(), false);
+        set_current_timeline(Some(snap.clone()));
+        snap
+    };
+    let enter = |host: &mut MockPanelHost, strip: ph2d_timeline::StripId| {
+        let mut state = TimelinePanelState::default();
+        park_strip_menu(host, strip);
+        let _ = host.apply_panel_event::<TimelinePanel>(
+            &mut state,
+            WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_TL_STRIP_ENTER),
+        );
+    };
+
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let _ = publish(&mut st, Vec::new());
+    enter(&mut host, outer);
+    assert_eq!(
+        ph2d_panel_timeline::state::edit_host(),
+        StackHost::Container(a)
+    );
+
+    let _ = publish(&mut st, ph2d_panel_timeline::state::edit_path());
+    enter(&mut host, inner);
+    assert_eq!(
+        ph2d_panel_timeline::state::edit_host(),
+        StackHost::Container(b),
+        "dois níveis: o de dentro"
+    );
+    let snap = publish(&mut st, ph2d_panel_timeline::state::edit_path());
+    assert_eq!(
+        snap.crumbs.iter().map(|c| c.0).collect::<Vec<_>>(),
+        vec![a, b],
+        "a trilha tem de publicar o CAMINHO inteiro, não só onde você parou"
+    );
+
+    // O degrau do meio: o segmento 1 é A.
+    let mut state = TimelinePanelState::default();
+    let _ = host
+        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::TIMELINE_CRUMB[1]));
+    assert_eq!(
+        ph2d_panel_timeline::state::edit_host(),
+        StackHost::Container(a),
+        "clicar o segmento do meio tem de voltar UM nível, não saltar para a cena"
+    );
+    let _ = host
+        .apply_panel_event::<TimelinePanel>(&mut state, WidgetEvent::Click(ids::TIMELINE_CRUMB[0]));
+    assert_eq!(ph2d_panel_timeline::state::edit_host(), StackHost::Document);
 }

@@ -182,18 +182,38 @@ pub struct TimelineState {
     /// clip-switch sync) targets: the Keys-view clip-clock loop, or the Arrange
     /// timeline loop. Session state, like [`Self::flags`]; defaults to Arrange.
     pub keys_mode: bool,
-    /// **Which stack the panel is editing** — the document's own, or the interior of a
-    /// container the animator has ENTERED (ADR-0133 §5).
+    /// **How deep into the nesting the animator has walked** — outermost first, empty at the
+    /// scene root (ADR-0133 §5).
     ///
-    /// Stamped by the shell each frame from `ph2d_panel_timeline::state::edit_host()`, before
+    /// A PATH and not a single container, because the trail has to answer two things that a
+    /// single index cannot: *where you came from* (entering B from inside A must still offer
+    /// the way back to A) and *where you are* (the trail would otherwise read `Scene > B`
+    /// while you stand in `A > B`, which is a wrong statement, not a terse one).
+    ///
+    /// Routing only ever needs the innermost — that is [`Self::edit_host`], DERIVED here
+    /// rather than stamped beside the path, so the two can never disagree about where the
+    /// animator is.
+    ///
+    /// Stamped by the shell each frame from `ph2d_panel_timeline::state::edit_path()`, before
     /// intents drain — the same channel [`Self::keys_mode`] rides, for the same reason: the
     /// panel knows where the animator is looking, and an edit has to land where they are
     /// looking. Session state; a document does not remember which container was open, exactly
     /// as Animate does not.
-    pub edit_host: crate::nest::StackHost,
+    pub edit_path: Vec<usize>,
 }
 
 impl TimelineState {
+    /// **Which stack an edit lands in** — the innermost container of [`Self::edit_path`], or
+    /// the document's own stack at the root.
+    #[must_use]
+    pub fn edit_host(&self) -> crate::nest::StackHost {
+        self.edit_path
+            .last()
+            .map_or(crate::nest::StackHost::Document, |&c| {
+                crate::nest::StackHost::Container(c)
+            })
+    }
+
     /// A fresh state around an empty document.
     #[must_use]
     pub fn new() -> Self {

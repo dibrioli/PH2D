@@ -41,17 +41,54 @@ const SEG_W: f32 = 74.0; // LITERAL-PX-OK: breadcrumb segment width
 /// reflow the whole bar every time the playhead crossed into or out of the instance.
 const STATUS_W: f32 = 132.0; // LITERAL-PX-OK: host-window readout width
 
-/// How many segments the trail paints — the root plus the containers entered.
+/// **Which depth the segment in slot `slot` pops to**, for a path `len` containers deep — the
+/// elision rule, as a function of a LENGTH and nothing else.
 ///
-/// Capped by the id array ([`ids::TIMELINE_CRUMB`]), which is the honest resource: the chrome
-/// cannot mint a hit id at runtime, so a deeper trail would paint a segment nothing could
-/// click. ⚠️ This is a cap on the **trail**, not on nesting depth — the ADR measured that and
-/// found no resource to justify limiting it.
-fn segments(snap: &TimelineViewSnapshot) -> usize {
-    if snap.crumbs.is_empty() {
-        return 0;
+/// Slot 0 is always the scene root (depth 0). When the path is deeper than
+/// [`ids::TIMELINE_CRUMB`] can host, the trail elides from the **outside**: the root and the
+/// innermost levels survive. The cap is the id array — chrome cannot mint a hit id at runtime,
+/// so a longer trail would paint a segment nothing could click — and it is a cap on the TRAIL,
+/// never on nesting depth, which the ADR measured and found no resource to limit. Dropping the
+/// outer levels rather than the inner ones is the only honest choice: a trail that shows every
+/// level EXCEPT where you are is worse than a short one.
+///
+/// ⚠️ It takes a length rather than the snapshot because **the click must not need the
+/// snapshot**. The panel's own path moves the instant you enter a container; the published
+/// crumbs only catch up next frame. Deriving the depth from the panel's path keeps the two
+/// from ever disagreeing about what a segment means — the paint asks with the snapshot's
+/// length, the click with the panel's own, and the rule between them is this one function.
+pub(crate) fn depth_of_slot(slot: usize, len: usize) -> Option<usize> {
+    if len == 0 {
+        return None; // the root paints no trail at all
     }
-    (snap.crumbs.len() + 1).min(ids::TIMELINE_CRUMB.len())
+    let keep = ids::TIMELINE_CRUMB.len().saturating_sub(1);
+    let skip = len.saturating_sub(keep);
+    match slot {
+        0 => Some(0),
+        k if k <= len.min(keep) => Some(skip + k),
+        _ => None,
+    }
+}
+
+/// **The trail, as `(depth, label)`** — what the paint walks.
+///
+/// Depths come from [`depth_of_slot`], so a segment can never pop somewhere other than what it
+/// shows. Empty at the root, where there is nothing to go back to: a document that never
+/// touches containers paints nothing and measures zero.
+pub(crate) fn trail(snap: &TimelineViewSnapshot) -> Vec<(usize, String)> {
+    let len = snap.crumbs.len();
+    (0..=len.min(ids::TIMELINE_CRUMB.len().saturating_sub(1)))
+        .filter_map(|slot| {
+            let d = depth_of_slot(slot, len)?;
+            let label = if d == 0 {
+                ph2d_i18n::tr("panel.timeline.crumb_root").to_owned()
+            } else {
+                // `d - 1`: depth 1 is `crumbs[0]` — segment 0 is the root.
+                snap.crumbs.get(d - 1)?.1.clone()
+            };
+            Some((d, label))
+        })
+        .collect()
 }
 
 /// **What the open container is doing at this instant**, in SCENE seconds — or `None` at the
@@ -109,7 +146,7 @@ impl Status {
 
 /// How wide the trail paints — the single source the transport flow measures against.
 pub(crate) fn width(snap: &TimelineViewSnapshot) -> f32 {
-    let n = segments(snap);
+    let n = trail(snap).len();
     if n == 0 {
         return 0.0;
     }
@@ -134,22 +171,14 @@ pub(crate) fn width(snap: &TimelineViewSnapshot) -> f32 {
 /// part of the trail rather than special-cased, because a trail whose current position is
 /// missing reads as "you are nowhere".
 pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &TimelineViewSnapshot) {
-    let n = segments(snap);
-    if n == 0 {
+    let entries = trail(snap);
+    if entries.is_empty() {
         return;
     }
     let gap = Spacing::Sm.px() * 0.5;
     let mut x = x;
-    for depth in 0..n {
-        let id = ids::TIMELINE_CRUMB[depth];
-        let label: String = if depth == 0 {
-            ph2d_i18n::tr("panel.timeline.crumb_root").into()
-        } else {
-            // `depth - 1`: segment 0 is the root, so container `i` lives at segment `i + 1`.
-            snap.crumbs
-                .get(depth - 1)
-                .map_or_else(String::new, |c| c.1.clone())
-        };
+    for (slot, (_, label)) in entries.iter().enumerate() {
+        let id = ids::TIMELINE_CRUMB[slot];
         let rect = Rect::new(x, y, SEG_W, ROW_H_PX);
         let st = ctx
             .host
@@ -157,7 +186,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &Tim
             .button_state(id)
             .unwrap_or(ButtonState::Normal);
         paint_button(
-            &Button::new(id, label).state(st),
+            &Button::new(id, label.clone()).state(st),
             rect,
             ctx.scene,
             ctx.text_system,
@@ -248,6 +277,71 @@ mod tests {
             Status::Plays(4.0, 12.0).text(),
             "the two states must not read the same"
         );
+    }
+
+    /// **A trilha mais funda que a régua de ids elide POR FORA** — a raiz e os níveis de
+    /// dentro sobrevivem.
+    ///
+    /// Uma trilha que mostrasse todos os níveis MENOS onde você está é pior que uma curta: o
+    /// segmento que importa é o último. O teto é a régua de ids (o chrome não cunha id em
+    /// runtime), nunca a profundidade do aninhamento.
+    #[test]
+    fn a_deeper_trail_elides_from_the_outside_never_from_where_you_are() {
+        let cap = ids::TIMELINE_CRUMB.len();
+        // Rasa: cada slot é a sua própria profundidade, sem elisão.
+        for len in 1..cap {
+            for slot in 0..=len {
+                assert_eq!(
+                    depth_of_slot(slot, len),
+                    Some(slot),
+                    "len={len} slot={slot}"
+                );
+            }
+            assert_eq!(depth_of_slot(len + 1, len), None, "não há slot além do fim");
+        }
+        // Funda: a raiz continua na 0, e o ÚLTIMO slot é o nível mais interno.
+        let len = cap + 5;
+        assert_eq!(depth_of_slot(0, len), Some(0), "a raiz nunca some");
+        assert_eq!(
+            depth_of_slot(cap - 1, len),
+            Some(len),
+            "o último slot tem de ser onde você ESTÁ, não um ancestral"
+        );
+        assert_eq!(depth_of_slot(cap, len), None, "a régua de ids é o teto");
+        // E os níveis de fora são os que caem.
+        assert!(
+            depth_of_slot(1, len).unwrap() > 1,
+            "com a trilha estourada o segundo segmento já pula os de fora"
+        );
+    }
+
+    /// **A raiz não tem trilha nenhuma** — nem slot 0.
+    #[test]
+    fn the_scene_root_has_no_segments_at_all() {
+        assert_eq!(depth_of_slot(0, 0), None);
+        assert!(trail(&snap(false, None)).is_empty());
+    }
+
+    /// **O que a trilha PINTA é o que ela POPA.**
+    ///
+    /// Rótulo e profundidade saem da mesma lista, então um segmento não pode dizer "A" e
+    /// levar para B ([[feedback_two_doors_to_the_same_question_diverge]]).
+    #[test]
+    fn every_segment_pops_to_the_depth_it_shows() {
+        let mut s = snap(true, None);
+        s.crumbs = vec![(7, "A".into()), (9, "B".into())];
+        let t = trail(&s);
+        assert_eq!(t.len(), 3, "raiz + dois níveis, veio {t:?}");
+        assert_eq!(t[0].0, 0);
+        assert_eq!((t[1].0, t[1].1.as_str()), (1, "A"));
+        assert_eq!((t[2].0, t[2].1.as_str()), (2, "B"));
+        for (slot, (d, _)) in t.iter().enumerate() {
+            assert_eq!(
+                depth_of_slot(slot, s.crumbs.len()),
+                Some(*d),
+                "o slot {slot} pinta a profundidade {d} e popa para outra"
+            );
+        }
     }
 
     /// **The flow layout reserves the readout's room.**

@@ -1127,3 +1127,65 @@ O `filled_shape_target` e os gates mudaram-se para os módulos irmãos `flip_fil
 > real, satisfaz este critério sem satisfazer a intenção?** — e a resposta (uma forma que se
 > cruza, que é o que a mão desenha o tempo todo ao fechar um contorno) estava a um traço de
 > distância. *É a mesma pergunta que fechou o #17, feita do outro lado.*
+
+
+---
+
+## #20 — ✅ A dilatação do fill era 100× grande demais (unidade) **e** uma MÉDIA (smoke, 2026-07-18)
+
+**Sintoma** (Enio, com screenshot e três setas): a cor atravessa uma linha FINA e aparece do
+outro lado dela. E o histórico: *"independente do valor de gap ou trap"*, com o fill saindo
+como um blob arredondado que ignora o line-art.
+
+São **dois defeitos empilhados**, os dois no mesmo lugar — a dilatação com que o contorno do
+fill é rasterizado (BUGS #15, "a cor entra por baixo da linha").
+
+### (a) O erro de UNIDADE — e ele dominava tudo
+
+```rust
+let dilate = mean_line_width(drawing) + 2.0 * FILL_TUCK_PX;  // ← px somado a MUNDO
+```
+
+`FILL_TUCK_PX = 0,5` é medido **em pixels** (a tabela do sweep está em px). Desde o **§4.C.6**
+(*"o Size mede o MUNDO"*, `SIZE_PX_PER_WORLD = 100`), o `mean_line_width` devolve **unidades de
+mundo**. Então `2 × 0,5 = 1,0` **unidade de mundo = 100 px** de dilatação espúria, onde se
+queria 1 px. Com o pincel default (~0,06 de mundo) a margem ficava **17× mais larga que a
+própria linha**.
+
+**É regressão do §4.C.6**: a lei nova foi aplicada ao `boundaries()` (de onde o `× px_to_world`
+sumiu, e o handoff registra isso) e esta constante ficou para trás. O handoff do §4.C.6 até
+avisava — *"se você precisar de uma medida de tela, ela é a exceção e tem de se justificar"* —
+e esta é exatamente uma delas, sobrevivendo numa fronteira que passou a falar mundo
+([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
+
+### (b) A dilatação era uma MÉDIA GLOBAL
+
+`mean_line_width` é a média das espessuras do desenho **inteiro**, aplicada uniformemente a
+TODO ponto do contorno. Num desenho com um traço grosso e um fino a média fica entre os dois:
+onde o contorno abraça a linha fina, a cor é desenhada larga demais e **transborda**. Medido no
+repro (grosso 0,40 · fino 0,04): a cor vestia **1,220** onde a linha local tem **0,040**.
+
+A dilatação é uma propriedade **LOCAL** — a espessura da linha que o contorno está vestindo
+*naquele ponto* — e estava sendo respondida por um escalar. É o BUGS #12 outra vez: *quando
+nenhuma constante serve, falta um DADO, não um número.* O dado é `local_line_width`: o
+line-art mais próximo, que por construção é a linha que aquele ponto veste (o contorno termina
+no EIXO, BUGS #14).
+
+### ⚠️ Por que OITO gates de pixel ficaram verdes com a cor 100 px fora da linha
+
+Porque o `gpu_fill_fit.rs` **calcula a própria dilatação** (`width: width_px + 2.0 * tuck`,
+`:233` e `:596`) em vez de consumir a do produto. Ele mede a geometria do KERNEL com um número
+que ele mesmo monta — então o número que o shell de fato usa **nunca passa por ele**. Os gates
+se chamam *"a cor nunca transborda a linha"* e *"a linha macia nunca mostra o fundo"*, e os
+dois eram verdes enquanto o produto fazia as duas coisas.
+
+> **Lição — um oráculo de aparência que recalcula a entrada não observa o produto.** É a
+> segunda porta de sempre ([[feedback_two_doors_to_the_same_question_diverge]]), na sua forma
+> mais cara: aqui ela não fez dois caminhos divergirem em runtime, fez **o gate divergir do
+> produto** — e um gate que monta a própria entrada só pode provar que o kernel é consistente
+> consigo mesmo. *Quando um gate de aparência está verde e a tela está errada, pergunte de onde
+> vem CADA número que ele usa.*
+
+**GAP ABERTO, nomeado:** fazer o `gpu_fill_fit` consumir a dilatação do shell (ou, no mínimo,
+um gate que afirme que os dois números coincidem). Sem isso, os oito oráculos continuam cegos
+para esta classe inteira.

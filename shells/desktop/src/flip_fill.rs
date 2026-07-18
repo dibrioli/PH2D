@@ -49,6 +49,25 @@ use crate::flip_fill_target::filled_shape_target;
 
 const FILL_TUCK_PX: f32 = 0.5; // LITERAL-PX-OK: erro de vetorizacao do contorno, MEDIDO
 
+/// A margem acima, **em unidades de MUNDO** — que é a unidade em que a espessura vive
+/// desde o §4.C.6 ("o Size mede o MUNDO", `SIZE_PX_PER_WORLD = 100`).
+///
+/// ⚠️ **Isto era um bug de UNIDADE, e ele dominava tudo.** O `FILL_TUCK_PX` é medido em
+/// PIXELS (a tabela do sweep acima está em px), e estava sendo somado direto a uma
+/// largura em unidades de mundo: `2 × 0,5 = 1,0` **unidade de mundo = 100 px** de
+/// dilatação espúria, onde se queria 1 px. Num desenho com pincel default (~0,06 de
+/// mundo) a margem ficava **17× mais larga que a própria linha** — a cor virava um blob
+/// arredondado que ignorava o line-art, e nenhum valor de Gap ou Trap mexia nisso
+/// (os dois movem a GEOMETRIA; isto é a dilatação do RENDER).
+///
+/// Regressão do §4.C.6: a lei nova foi aplicada ao `boundaries()` (de onde o
+/// `× px_to_world` sumiu) e esta constante ficou para trás. É o preço documentado de
+/// uma medida de TELA sobreviver numa fronteira que passou a falar MUNDO
+/// ([[feedback_geometry_over_mixed_units_needs_the_consumers_conversion]]).
+fn fill_tuck_world() -> f32 {
+    2.0 * FILL_TUCK_PX / ph2d_tool_flip::SIZE_PX_PER_WORLD
+}
+
 /// As linhas que delimitam o preenchimento: TODOS os traços do desenho que não são,
 /// eles próprios, um preenchimento sem contorno.
 ///
@@ -104,13 +123,15 @@ fn fill_stroke(
     holes: Vec<Vec<Vec2>>,
     color: Rgba,
     opacity: f32,
-    line_width_world: f32,
+    widths: &[f32],
 ) -> FlipStroke {
     let mut s = FlipStroke::new();
-    for &p in outer {
+    for (i, &p) in outer.iter().enumerate() {
         s.push_point(Point {
             pos: p,
-            width: line_width_world, // a dilatação: a cor entra por baixo da linha
+            // A dilatação (a cor entra por baixo da linha), **por ponto**: ela veste a
+            // linha LOCAL, não a média do desenho.
+            width: widths.get(i).copied().unwrap_or(0.0),
             opacity: 1.0,
             color,
         });
@@ -120,6 +141,31 @@ fn fill_stroke(
     s.holes = holes;
     s.fill = Some(Fill { color, opacity });
     s
+}
+
+/// **A espessura da linha que este ponto do contorno está abraçando** (unidades de
+/// mundo) — o dado que a média global não tinha.
+///
+/// O contorno do balde termina no EIXO da linha (BUGS #14), então o line-art mais
+/// próximo de um ponto do contorno é, por construção, a linha que ele veste.
+fn local_line_width(drawing: &FlipDrawing, p: Vec2) -> Option<f32> {
+    drawing
+        .strokes
+        .iter()
+        .filter(|s| !s.hide_stroke)
+        .flat_map(|s| {
+            s.positions()
+                .iter()
+                .copied()
+                .zip(s.widths().iter().copied())
+        })
+        .filter(|(_, w)| *w > 0.0)
+        .min_by(|(a, _), (b, _)| {
+            let da = (a.x - p.x).powi(2) + (a.y - p.y).powi(2);
+            let db = (b.x - p.x).powi(2) + (b.y - p.y).powi(2);
+            da.total_cmp(&db)
+        })
+        .map(|(_, w)| w)
 }
 
 /// A espessura MÉDIA do line-art que delimita a região (unidades de MUNDO) — a dilatação que
@@ -368,8 +414,19 @@ pub(crate) fn fill_click(
     // com pincel macio esse fio deixa o fundo aparecer. A margem custa um transbordo de
     // no máximo ~1 px sob o anti-aliasing da linha (invisível), e é o mesmo remédio do
     // GP, cujo Grow default é +2 px pela MESMA razão.
-    let dilate = mean_line_width(drawing) + 2.0 * FILL_TUCK_PX;
-    let stroke = fill_stroke(&r.outer, r.holes, color, 1.0, dilate);
+    // **A dilatação é LOCAL, não uma média.** Ela veste a linha que o contorno está
+    // abraçando NAQUELE ponto — e num desenho com espessuras diferentes a média fica
+    // entre elas, então onde o contorno abraça a linha FINA a cor era desenhada larga
+    // demais e aparecia do outro lado dela (o smoke do Enio, BUGS #20). É a lição do
+    // BUGS #12 outra vez: quando nenhuma constante serve, falta um DADO — aqui, QUAL
+    // linha cada ponto do contorno está vestindo.
+    let fallback = mean_line_width(drawing);
+    let widths: Vec<f32> = r
+        .outer
+        .iter()
+        .map(|&p| local_line_width(drawing, p).unwrap_or(fallback) + fill_tuck_world())
+        .collect();
+    let stroke = fill_stroke(&r.outer, r.holes, color, 1.0, &widths);
 
     // Os fechamentos que a solução usou viram traços invisíveis PERSISTENTES.
     for c in &r.closures {

@@ -304,3 +304,106 @@ fn a_region_closed_by_another_stroke_is_not_filled_by_the_first_ones_polygon() {
         "a cor nao alcancou a barriga do arco — o preenchimento parou na corda reta"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUGS #20 — a dilatação era uma MÉDIA GLOBAL (smoke do Enio, 2026-07-18)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Uma região fechada por dois traços de espessuras MUITO diferentes: o grosso em cima
+/// e à direita, o **fino** embaixo e à esquerda.
+fn region_bounded_by_a_thick_and_a_thin_line() -> FlipDrawing {
+    let mut d = FlipDrawing::new();
+    let mut thick = FlipStroke::new();
+    for p in [
+        Vec2::new(-2.0, 2.0),
+        Vec2::new(2.0, 2.0),
+        Vec2::new(2.0, -2.0),
+    ] {
+        thick.push_point(Point {
+            pos: p,
+            width: 0.40, // GROSSO (unidades de mundo)
+            opacity: 1.0,
+            color: Rgba::BLACK,
+        });
+    }
+    d.strokes.push(thick);
+
+    let mut thin = FlipStroke::new();
+    for p in [
+        Vec2::new(2.0, -2.0),
+        Vec2::new(-2.0, -2.0),
+        Vec2::new(-2.0, 2.0),
+    ] {
+        thin.push_point(Point {
+            pos: p,
+            width: 0.04, // FINO — 10× mais fino que o outro
+            opacity: 1.0,
+            color: Rgba::BLACK,
+        });
+    }
+    d.strokes.push(thin);
+    d
+}
+
+/// **REPRO do smoke: a cor atravessa a linha FINA.**
+///
+/// O contorno do fill é rasterizado com uma dilatação para entrar por baixo do line-art
+/// (BUGS #15) — e essa dilatação era a **média das espessuras do desenho inteiro**,
+/// aplicada uniformemente a TODO ponto do contorno. Num desenho com um traço grosso e
+/// um fino, a média fica entre os dois: onde o contorno abraça a linha fina, a cor é
+/// desenhada larga demais e **aparece do outro lado dela**.
+///
+/// A dilatação é uma propriedade **LOCAL** (a espessura da linha que o contorno está
+/// abraçando NAQUELE ponto), e estava sendo respondida por um escalar global. É a
+/// mesma doença do BUGS #12: *quando nenhuma constante serve, falta um DADO, não um
+/// número.*
+#[test]
+fn the_colour_does_not_cross_a_thin_line_in_a_mixed_width_drawing() {
+    let mut d = region_bounded_by_a_thick_and_a_thin_line();
+    fill_click(
+        &mut d,
+        &style(ToolFillMode::Paint),
+        Vec2::new(0.0, 0.0),
+        10.0 / 1080.0,
+        &Xform::IDENTITY,
+    )
+    .expect("a regiao esta fechada — tem de preencher");
+
+    let region = d
+        .strokes
+        .iter()
+        .find(|s| s.hide_stroke && s.fill.is_some())
+        .expect("tem de haver uma regiao preenchida");
+
+    // Para cada ponto do contorno, a dilatação tem de caber na linha que ele abraça —
+    // e é a linha LOCAL, não a média do desenho.
+    for (p, w) in region.positions().iter().zip(region.widths()) {
+        // Que traço este ponto do contorno está abraçando?
+        let local = d
+            .strokes
+            .iter()
+            .filter(|s| !s.hide_stroke)
+            .flat_map(|s| {
+                s.positions()
+                    .iter()
+                    .copied()
+                    .zip(s.widths().iter().copied())
+            })
+            .min_by(|(a, _), (b, _)| {
+                let da = (a.x - p.x).powi(2) + (a.y - p.y).powi(2);
+                let db = (b.x - p.x).powi(2) + (b.y - p.y).powi(2);
+                da.total_cmp(&db)
+            })
+            .map(|(_, w)| w)
+            .expect("ha line-art");
+        // Folga generosa (o tuck do BUGS #15 + a quantizacao do contorno): o que o gate
+        // recusa e a cor ficar VARIAS vezes mais larga que a linha que ela veste.
+        assert!(
+            *w <= local * 3.0 + 0.05,
+            "a cor veste {w:.3} onde a linha local tem {local:.3} — ela transborda \
+             {:.3} unidades para o outro lado da linha fina (a dilatacao esta usando a \
+             MEDIA do desenho, nao a espessura local)",
+            (*w - local) * 0.5
+        );
+    }
+}

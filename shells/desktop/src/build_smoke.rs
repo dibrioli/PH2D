@@ -6,6 +6,9 @@
 //! **pentágono + estrela + retângulo arredondado, sobrepostos** —, seleciona as três e entra
 //! no modo Build. O canvas já abre como mesa de trabalho.
 //!
+//! - `PH2D_BUILD_SMOKE=13` — a cena da **PILHA DE EFEITOS** (ADR-0132): uma elipse que se
+//!   DESENHA sozinha (o `end` do Trim sobe de 0 a 1) e uma estrela em que a janela do Trim
+//!   GIRA à volta da forma. A ponta anda a velocidade constante — é a medida por ARCO.
 //! - `PH2D_BUILD_SMOKE=12` — a cena do **WARP GROUP** (ADR-0129 Fatia 3): DUAS elipses sob UMA
 //!   gaiola. As duas curvam pela mesma perspectiva (NODE), e o gizmo do Select abraça e move as
 //!   duas juntas (SELECT). É o que separa um container de dois envelopes soltos.
@@ -74,6 +77,12 @@ impl crate::App {
         // 11/12 nunca chegavam aos genéricos (os específicos vinham primeiro).
         if matches!(level, 11 | 12) {
             crate::envelope_smoke::frame(self, f, level);
+            return;
+        }
+        // A cena da PILHA de efeitos (ADR-0132), no módulo irmão `fx_smoke` — mesma razão de
+        // LOC, e mesma disciplina: o nível 13 nunca toca um braço genérico abaixo.
+        if level == 13 {
+            crate::fx_smoke::frame(self, f, level);
             return;
         }
         match f {

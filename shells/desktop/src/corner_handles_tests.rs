@@ -68,7 +68,11 @@ fn handles(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPathId) 
 fn a_drawn_path_gets_a_radius_handle_on_every_corner() {
     let (sim, scene, map, id) = square_with(|_, _| {});
     assert!(!has_derived_verts(&sim, &map, id));
-    assert_eq!(handles(&sim, &scene, &map, id), 4, "as 4 quinas do quadrado");
+    assert_eq!(
+        handles(&sim, &scene, &map, id),
+        4,
+        "as 4 quinas do quadrado"
+    );
 }
 
 /// **Uma FORMA VIVA não tem nenhuma.**
@@ -88,7 +92,10 @@ fn a_live_shape_has_no_radius_handles_because_the_recook_would_erase_them() {
             values: [0.0; ph2d_ecs::MAX_SHAPE_VALUES],
         });
     });
-    assert!(has_derived_verts(&sim, &map, id), "a receita está pendurada");
+    assert!(
+        has_derived_verts(&sim, &map, id),
+        "a receita está pendurada"
+    );
     assert_eq!(handles(&sim, &scene, &map, id), 0);
 }
 
@@ -98,7 +105,9 @@ fn a_live_shape_has_no_radius_handles_because_the_recook_would_erase_them() {
 #[test]
 fn a_connector_has_no_radius_handles() {
     let (sim, scene, map, id) = square_with(|sim, e| {
-        sim.world_mut().entity_mut(e).insert(VecConnector::between(1, 2));
+        sim.world_mut()
+            .entity_mut(e)
+            .insert(VecConnector::between(1, 2));
     });
     assert!(has_derived_verts(&sim, &map, id));
     assert_eq!(handles(&sim, &scene, &map, id), 0);
@@ -170,13 +179,11 @@ fn an_envelope_child_has_no_radius_handles() {
 #[test]
 fn a_blend_spine_keeps_its_radius_handles_because_authoring_one_stops_the_rewrite() {
     let (sim, scene, map, id) = square_with(|sim, e| {
-        sim.world_mut()
-            .entity_mut(e)
-            .insert(ph2d_ecs::VecBlend {
-                sources: vec![1, 2],
-                steps: 3,
-                spine_authored: false,
-            });
+        sim.world_mut().entity_mut(e).insert(ph2d_ecs::VecBlend {
+            sources: vec![1, 2],
+            steps: 3,
+            spine_authored: false,
+        });
     });
     assert!(
         !has_derived_verts(&sim, &map, id),

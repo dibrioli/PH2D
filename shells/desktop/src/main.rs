@@ -83,6 +83,7 @@ mod flip_smooth;
 mod flip_strip;
 mod flip_transform;
 mod forwarding;
+mod fx_smoke;
 mod hero_bridge;
 mod hero_intents;
 mod image_import;

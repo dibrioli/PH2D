@@ -141,7 +141,10 @@ fn the_offset_rotates_the_window_around_the_seam_without_resizing_it() {
         "girar a janela não pode mudar o tamanho dela"
     );
     let apart = (a[0].anchor[0] - b[0].anchor[0]).hypot(a[0].anchor[1] - b[0].anchor[1]);
-    assert!(apart > 1.0, "mas tem de mudar ONDE ela começa (moveu {apart})");
+    assert!(
+        apart > 1.0,
+        "mas tem de mudar ONDE ela começa (moveu {apart})"
+    );
 }
 
 /// **Num contorno ABERTO o offset desliza e recorta** — não dá a volta, porque não há volta.

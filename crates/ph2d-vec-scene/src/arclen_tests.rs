@@ -51,12 +51,7 @@ fn a_straight_line_has_its_closed_form_length() {
     let (a, b) = ([11.0, -4.0], [11.0 + 3.0 * S, -4.0 + 4.0 * S]);
     let third = |k: usize| a[k] + (b[k] - a[k]) / 3.0;
     let two_thirds = |k: usize| a[k] + (b[k] - a[k]) * 2.0 / 3.0;
-    let line: Cubic = [
-        a,
-        [third(0), third(1)],
-        [two_thirds(0), two_thirds(1)],
-        b,
-    ];
+    let line: Cubic = [a, [third(0), third(1)], [two_thirds(0), two_thirds(1)], b];
     // 3-4-5: o comprimento é exatamente 5·S.
     assert!(
         (arclen(&line) - 5.0 * S).abs() < 1e-9,

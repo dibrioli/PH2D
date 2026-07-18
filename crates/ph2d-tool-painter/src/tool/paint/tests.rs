@@ -19396,6 +19396,96 @@ fn impasto_plow_drags_the_relief_with_the_paint() {
     );
 }
 
+/// **The knife carries the BODY as far as it carries the PIGMENT** (Enio, 2026-07-18:
+/// *"operações como smear não conseguem levar o relevo para além das fronteiras do traço original"*).
+///
+/// The mechanism was never broken — it was switched OFF. `impasto_plow` defaulted to `0.0` on the
+/// rationale that *"the Smear drags the COLOUR and leaves the body where it is"*, and the measured price
+/// of that sentence is this: a knife dragged across a thick stroke pushed pigment to **x = 99** while the
+/// relief stopped at **x = 41**, which is the exact edge of where the stroke had been painted. Paint with
+/// no body, spread over the canvas, and nothing in the tool would tell you why.
+///
+/// So the gate is a REACH COMPARISON, not a point sample. The existing sibling
+/// (`impasto_plow_drags_the_relief_with_the_paint`) checks one texel a few pixels past the ridge, which
+/// is true at any Plow above zero and says nothing about how far the body travels. This asks the artist's
+/// question: *does the thing I pushed still have thickness where I pushed it to?*
+///
+/// **Mutation that must bleed:** put `impasto_plow` back to `0.0` in `spec_default` — relief reach
+/// collapses to the original stroke's frontier while pigment reach does not move.
+#[test]
+fn the_knife_carries_the_body_as_far_as_it_carries_the_pigment() {
+    let size = 120u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.impasto_depth = 1.0;
+    b.color = [0.8, 0.1, 0.1];
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    // A vertical ridge of thick paint at x = 30.
+    t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([30.0, 100.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([30.0, 100.0], PointerPhase::Up));
+
+    let active = t.layers.active().expect("a layer");
+    let reach = |v: &[f32]| {
+        (0..size)
+            .filter(|x| (0..size).any(|y| v[(y * size + x) as usize] > 0.02))
+            .max()
+            .unwrap_or(0)
+    };
+    let ridge_edge = reach(&t.heights.get(&active).expect("relief").as_ref().clone());
+    assert!(
+        (35..60).contains(&ridge_edge),
+        "precondition: the ridge ends where the brush ended ({ridge_edge}) — if it already spanned the \
+         canvas there would be no frontier to cross"
+    );
+
+    // Now take the knife straight across it, far past the ridge. The brush keeps its DEFAULT Plow: that
+    // is the thing under test.
+    let mut k = t.paint.brush;
+    k.strength = 1.0;
+    k.hardness = 1.0;
+    t.paint.brush = k;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = k;
+    }
+    t.paint.paint_mode = PaintMode::Smear;
+    t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
+    for x in 1..=60 {
+        t.on_canvas_pointer(cp([30.0 + x as f32, 60.0], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Up));
+
+    // Along the knife's own line, how far did each thing get?
+    let y = 60u32;
+    let heights = t.heights.get(&active).expect("relief").as_ref().clone();
+    let rgba = t.canvas_rgba.as_ref().clone();
+    let relief_x = (0..size)
+        .filter(|x| heights[(y * size + x) as usize] > 0.02)
+        .max()
+        .unwrap_or(0);
+    // The pigment is red on white paper, so the GREEN channel falling is the ink arriving.
+    let pigment_x = (0..size)
+        .filter(|x| rgba[((y * size + x) * 4) as usize + 1] < 200)
+        .max()
+        .unwrap_or(0);
+
+    assert!(
+        pigment_x > ridge_edge + 20,
+        "precondition: the knife must actually have pushed pigment past the ridge \
+         (pigment {pigment_x}, ridge edge {ridge_edge})"
+    );
+    assert!(
+        relief_x + 4 >= pigment_x,
+        "the knife pushed pigment to x={pigment_x} but its BODY only to x={relief_x} — paint spread \
+         across the canvas with no thickness in it. The relief must travel with the paint, not stop at \
+         the frontier of the stroke that laid it (ridge edge was x={ridge_edge})"
+    );
+}
+
 // ── Impasto (#16) — the relief as a per-LAYER composite (plan §10.8) ───────────────────────────────
 
 #[test]

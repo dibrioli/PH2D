@@ -98,7 +98,12 @@ impl Default for BrushSpec {
             impasto_draw_to: DrawTo::ColorAndDepth,
             impasto_smoothing: 1.0,
             impasto_body: 0.0,
-            impasto_plow: 0.0, // o padrão do Smear é arrastar a COR e deixar o corpo onde está
+            // **1.0 — a faca leva a MASSA junto** (Enio, 2026-07-18). Era `0.0`, com o racional "o Smear
+            // arrasta a COR e deixa o corpo onde está" — e o preço disso, medido, é que o pigmento viaja e
+            // o relevo **para na fronteira exata do traço original**: numa faca cruzando um traço grosso,
+            // pigmento alcança x=99 e relevo x=41, que é a borda de onde o traço foi pintado. O artista vê
+            // tinta empurrada que não tem corpo. Tinta tem massa; empurrar tinta move as duas coisas.
+            impasto_plow: 1.0,
             impasto_push: 0.0, // sem deslocamento: um traço empilha sobre o que já estava (byte-idêntico)
             // O material NEUTRO — o passe de luz de antes deste módulo, à risca. `roughness: 0.5` cai
             // EXATAMENTE no expoente 24 que estava cravado (a média geométrica de 6 e 96), então um

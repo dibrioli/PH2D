@@ -608,10 +608,49 @@ mod w3;
 /// lifecycles and never reach here at all; they are in the list anyway, because "never reaches here" is a
 /// fact about today's routing.)
 ///
+/// ## The oracle had to be split from the claim (2026-07-18)
+///
+/// This used to prove its point by asserting that **no relief texel moved** in any non-Sculpt mode — and
+/// that was the right assertion only while the Smear's Plow defaulted to `0.0`. Now that a knife carries
+/// the paint's body by default, the Smear moves relief legitimately, and the old assertion would have to
+/// be either deleted (losing the Mask side-door guard) or the default reverted (losing the fix).
+///
+/// Neither: *"did the SCULPT fire"* and *"did any relief move"* are different questions that happened to
+/// have the same answer. The claim is the first one, so it is asked directly — `sculpt.layer.is_none()`,
+/// for every mode, always. The Smear then gets BOTH halves, which is strictly more than the sweep could
+/// say before: with the Plow off not one texel may move (so nothing is reaching the relief through that
+/// route except the knife), and with the Plow on relief MUST move while the session stays closed (so what
+/// moved it was the knife and not the spatula).
+///
 /// **Mutation that must bleed:** hoist the sculpt call out of the `matches!(…, PaintMode::Sculpt)` guard
 /// — or move it up into `stamp_dabs`, above the Mask route's scratch swap.
 #[test]
 fn no_other_paint_mode_touches_the_relief() {
+    /// One mode, dragged across the ridge. Returns how many relief texels moved and whether a SCULPT
+    /// session was opened — the two questions this gate keeps apart.
+    fn sweep(mode: &str, plow: Option<f32>) -> (usize, bool) {
+        let size = 100u32;
+        let (mut t, layer, before) = sculpt_canvas(size);
+        t.set_paint_tool_mode(mode);
+        let mut b = t.paint.brush;
+        b.strength = 1.0;
+        if let Some(p) = plow {
+            b.impasto_plow = p;
+        }
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        drag(&mut t, &[[30.0, 50.0], [50.0, 50.0], [70.0, 50.0]]);
+        let after = heights_of(&t, layer);
+        let moved = before
+            .iter()
+            .zip(&after)
+            .filter(|(x, y)| x.to_bits() != y.to_bits())
+            .count();
+        (moved, t.paint.sculpt.layer.is_some())
+    }
+
     for mode in [
         "brush",
         "eraser",
@@ -624,32 +663,28 @@ fn no_other_paint_mode_touches_the_relief() {
         "selection",
         "deform",
     ] {
-        let size = 100u32;
-        let (mut t, layer, before) = sculpt_canvas(size);
-        t.set_paint_tool_mode(mode);
-        let mut b = t.paint.brush;
-        b.strength = 1.0;
-        t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
-        drag(&mut t, &[[30.0, 50.0], [50.0, 50.0], [70.0, 50.0]]);
-
-        let after = heights_of(&t, layer);
-        let moved = before
-            .iter()
-            .zip(&after)
-            .filter(|(x, y)| x.to_bits() != y.to_bits())
-            .count();
+        // The Smear is the one mode with a LEGITIMATE claim on the relief — the Plow, the palette knife.
+        // Disarm it and the sweep asks its real question of that route too.
+        let (moved, session) = sweep(mode, (mode == "smear").then_some(0.0));
         assert_eq!(
             moved, 0,
-            "the `{mode}` tool reshaped {moved} texels of RELIEF. Only Sculpt may — and the Mask route is \
-             the one to suspect first: it swaps the canvas for a scratch and re-enters the same choke \
-             point the sculpt hangs off."
+            "the `{mode}` tool reshaped {moved} texels of RELIEF. Only Sculpt may (and the Smear's Plow, \
+             which is disarmed here) — the Mask route is the one to suspect first: it swaps the canvas \
+             for a scratch and re-enters the same choke point the sculpt hangs off."
         );
-        assert!(
-            t.paint.sculpt.layer.is_none(),
-            "the `{mode}` tool opened a sculpt session"
-        );
+        assert!(!session, "the `{mode}` tool opened a sculpt session");
     }
+
+    // …and the half the old sweep could not say: with the Plow at its DEFAULT the knife moves relief, and
+    // it is still not the sculpt doing it. Without this, reverting the default to `0.0` would leave every
+    // assertion above green.
+    let (moved, session) = sweep("smear", None);
+    assert!(
+        moved > 100,
+        "with the Plow at its default the knife must carry the paint's BODY — it moved {moved} texels"
+    );
+    assert!(
+        !session,
+        "…and it must do that through the Plow, not by opening a sculpt session"
+    );
 }

@@ -17,7 +17,9 @@ use std::collections::BTreeMap;
 
 use bevy_ecs::query::QueryState;
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_physics::{BodyDesc, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc};
+use ph2d_physics::{
+    BodyDesc, PhysicsCheckpointRing, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc,
+};
 
 use crate::components::{BodyKind, Collider, ColliderShape, RigidBody};
 
@@ -74,6 +76,17 @@ pub struct PhysicsBridge {
     /// Kept so a rewind can rebuild a fresh world with the same gravity
     /// (`PhysicsWorld::new` would silently reset it to the default).
     gravity: (f32, f32),
+    /// Sparse cache of past states, so scrubbing backwards replays at most
+    /// `STRIDE` steps instead of `target` of them (W1.5). Purely an
+    /// accelerator: on a miss the rest-pose rebuild below runs, which is the
+    /// path that shipped in W1.
+    ring: PhysicsCheckpointRing,
+    /// Every `world.step()` this bridge has ever run. The scrub gate is a
+    /// COUNT, not a stopwatch: the claim being defended is "a scrub replays
+    /// at most `STRIDE` steps regardless of how far in it lands", and steps
+    /// are exactly that quantity — deterministic, and immune to the machine
+    /// the test happens to run on.
+    steps_taken: u64,
 }
 
 impl Default for PhysicsBridge {
@@ -93,7 +106,23 @@ impl PhysicsBridge {
             to_spawn: Vec::new(),
             to_remove: Vec::new(),
             gravity: (0.0, ph2d_physics::PhysicsWorld::DEFAULT_GRAVITY_Y),
+            ring: PhysicsCheckpointRing::new(),
+            steps_taken: 0,
         }
+    }
+
+    /// Total `step()` calls since this bridge was created — the ruler the
+    /// scrub gate reads (see [`PhysicsBridge::steps_taken`]'s field docs).
+    #[doc(hidden)]
+    pub fn steps_taken(&self) -> u64 {
+        self.steps_taken
+    }
+
+    /// How many past states the scrub cache is holding, and what they cost
+    /// (for the memory gate and diagnostics).
+    #[doc(hidden)]
+    pub fn ring_stats(&self) -> (usize, usize) {
+        (self.ring.len(), self.ring.approx_bytes())
     }
 
     /// The last fixed tick the world has been stepped to (for the shell's
@@ -111,6 +140,10 @@ impl PhysicsBridge {
     pub fn set_gravity(&mut self, x: f32, y: f32) {
         self.gravity = (x, y);
         self.world.set_gravity(x, y);
+        // Every cached state was simulated under the OLD gravity. Replaying
+        // from one would mix two worlds — the same "an edit invalidates the
+        // cache" rule Motion applies on `mark_dirty`.
+        self.ring.clear();
     }
 
     /// Throw away the derived world. Call on project load / undo restore —
@@ -122,6 +155,7 @@ impl PhysicsBridge {
         self.bodies.clear();
         self.last_stepped = 0;
         self.query = None; // re-bind to the (possibly fresh) world
+        self.ring.clear(); // cached states belong to the document being left
     }
 
     /// The per-frame entry point (mirrors `motion_bridge::dispatch`).
@@ -145,9 +179,16 @@ impl PhysicsBridge {
             // and it is equally a scrub FORWARD while paused — the sim state
             // is a function of the tick, not of the play button.
             std::cmp::Ordering::Greater => {
-                let owed = target - self.last_stepped;
-                for _ in 0..owed {
+                let mut tick = self.last_stepped;
+                for _ in 0..(target - self.last_stepped) {
                     self.world.step();
+                    self.steps_taken += 1;
+                    tick += 1;
+                    // Asking is free; capturing costs about one step, which
+                    // is why the ring is sparse (see `PhysicsCheckpointRing`).
+                    if self.ring.should_record(tick) {
+                        self.ring.record(tick, self.world.checkpoint());
+                    }
                 }
                 self.readback(sim);
                 self.last_stepped = target;
@@ -174,9 +215,46 @@ impl PhysicsBridge {
     /// deterministic). `target == 0` is the common case — Reset — and costs
     /// no steps at all.
     ///
-    /// O(target). The checkpoint ring that makes this O(1)-amortised is
-    /// W1.5; at W1 scene sizes the replay is instant.
+    /// **W1.5:** the checkpoint ring makes this `O(STRIDE)` instead of
+    /// `O(target)`. The ring seeds the world from the newest cached state at
+    /// or before `target` and only the remainder is replayed; on a miss (a
+    /// target older than the cached window, and Reset, which is `target = 0`)
+    /// the world is rebuilt from the bodies' rest descriptions — the path
+    /// that shipped in W1, still the only correctness-critical one.
     fn rewind_to(&mut self, sim: &mut SimWorld, target: u64) {
+        let anchor = self.ring.seed(&mut self.world, target);
+        let replayed = match anchor {
+            Some(tick) => target - tick,
+            None => {
+                self.rebuild_from_rest();
+                target
+            }
+        };
+        for _ in 0..replayed {
+            self.world.step();
+            self.steps_taken += 1;
+        }
+        self.readback(sim);
+        self.last_stepped = target;
+    }
+
+    /// Put the world back at tick 0 from the descriptions the bodies were
+    /// spawned with.
+    ///
+    /// The live `Transform` is no help here — the readback has already
+    /// overwritten it with the simulated pose — which is why every body
+    /// carries its [`BodyRef::rest`].
+    ///
+    /// **Clears the ring**, because this hands out fresh rapier handles: a
+    /// checkpoint captured before the rebuild indexes bodies through the old
+    /// arena, and restoring it would leave the bridge's handles addressing
+    /// nothing. The pose published would then be stale, in silence — the
+    /// worst kind of wrong. (The handles very likely come back identical,
+    /// insertion order being the same; "very likely" is not a thing to build
+    /// a cache on, and clearing here costs nothing since the ring already
+    /// missed.)
+    fn rebuild_from_rest(&mut self) {
+        self.ring.clear();
         self.world = PhysicsWorld::new();
         self.world.set_gravity(self.gravity.0, self.gravity.1);
         // BTreeMap → entity order, so the fresh handles are assigned in the
@@ -184,11 +262,6 @@ impl PhysicsBridge {
         for b in self.bodies.values_mut() {
             b.handle = self.world.spawn_body(b.rest);
         }
-        for _ in 0..target {
-            self.world.step();
-        }
-        self.readback(sim);
-        self.last_stepped = target;
     }
 
     /// Spawn bodies for new physics entities, remove bodies for despawned
@@ -206,10 +279,24 @@ impl PhysicsBridge {
         // Take the cached query out so the loop body can push into the
         // other scratch fields without a borrow clash.
         let mut q = self.query.take().expect("query built in dispatch");
+        let at_rest = self.last_stepped == 0;
         for (e, rb, col, t) in q.iter(world) {
             self.seen.push(e);
-            if !self.bodies.contains_key(&e) {
-                self.to_spawn.push((e, body_desc(rb, col, t), rb.kind));
+            let desc = body_desc(rb, col, t);
+            match self.bodies.get(&e) {
+                None => self.to_spawn.push((e, desc, rb.kind)),
+                // **The rest pose is the authored pose at tick 0** — read, not
+                // remembered. Without this, `rest` froze at the pose the body
+                // happened to be spawned with, so moving an object and pressing
+                // Reset threw the artist's placement away and jumped it back to
+                // where it first appeared. It also covers a shape or density
+                // edited at tick 0 (the Inspector, W2): re-describing the body
+                // is one rule instead of a growing list of fields to watch.
+                Some(b) if at_rest && b.rest != desc => {
+                    self.to_spawn.push((e, desc, rb.kind));
+                    self.to_remove.push(e);
+                }
+                Some(_) => {}
             }
         }
         self.query = Some(q);
@@ -222,6 +309,15 @@ impl PhysicsBridge {
                 self.to_remove.push(e);
             }
         }
+        // Any structural change makes every cached state a snapshot of a
+        // DIFFERENT world: restoring one would hand back rapier handles that
+        // no longer address the entities this bridge is holding, and the
+        // wrong pose would be published without anything looking broken.
+        // Asked once, for both directions.
+        if !self.to_spawn.is_empty() || !self.to_remove.is_empty() {
+            self.ring.clear();
+        }
+
         self.to_remove.sort_unstable_by_key(|e| e.to_bits());
         for i in 0..self.to_remove.len() {
             let e = self.to_remove[i];
@@ -274,6 +370,16 @@ impl PhysicsBridge {
     /// While paused: make every body track the authored `Transform` (and
     /// zero its velocity), so play starts from exactly where the artist
     /// left it. No stepping.
+    /// **A drag past tick 0 is transient, and that is a decision.** The
+    /// simulation is a function of `(tick, authored rest state)`, so any
+    /// rewind — through the ring or through the rest rebuild — reproduces the
+    /// timeline as authored and drops a mid-sim nudge. Both paths discard it
+    /// identically, which is why there is no cache invalidation here: a
+    /// `ring.clear()` on a hand-move would be a defensive line protecting
+    /// nothing, and its comment would be claiming otherwise. (Unity and Godot
+    /// discard play-mode edits on stop for the same reason. Making a
+    /// mid-timeline pose *stick* is authoring a keyframe, which is what W4's
+    /// bake is for.)
     fn settle(&mut self, sim: &SimWorld) {
         let world = sim.world();
         for (&e, b) in self.bodies.iter() {

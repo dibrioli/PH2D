@@ -4,6 +4,8 @@
 //! add bodies + colliders, then call [`PhysicsWorld::step`] once per
 //! fixed-step tick (see [`ph2d_core::FixedStep`]).
 
+pub mod checkpoint;
+
 use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBody,
     RigidBodyBuilder, RigidBodyHandle, RigidBodySet, RigidBodyType,

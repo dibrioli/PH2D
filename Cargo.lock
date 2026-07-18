@@ -6697,6 +6697,7 @@ name = "ph2d-physics"
 version = "0.0.0"
 dependencies = [
  "blake3",
+ "dhat",
  "rapier2d",
 ]
 

@@ -102,12 +102,13 @@ depois de W2 se o Enio priorizar a autoria; é listada aqui por ser a metade que
 - **`advance_or_scrub`** no laço do tick: play = `record` esparso + step forward; scrub-back = `restore` da
   âncora + re-sim ≤ K steps até `target`.
 
-### ⚠️ kill-check ANTES do build (regra two-strikes, DIRETIVA §5)
-O `PhysicsCheckpoint` precisa **clonar ou serializar** o estado do rapier. **Verificar no repo:** os sets
-do rapier são `Clone`? Senão, ligar `serde-serialize` do rapier (serialização **não é** matemática de sim
-→ **não** afeta determinismo, HR-5) e snapshotar via bincode. **Se o checkpoint > ~X ms ou estourar 20 MB
-com K razoável na 2ª tentativa, o scrub-back não existe nesta forma** — cai pro keyframe esparso + re-sim.
-Medir antes de construir o ring inteiro.
+### ✅ kill-check RESOLVIDO (2026-07-18) — passou de primeira
+Os 8 tipos cross-frame do rapier **são `Clone`** ⇒ sem `serde-serialize`, sem bincode. O `PhysicsPipeline`
+não é `Clone` porque é *workspace*, não estado (confirmado pelo gate de bit-exatidão, não por prosa).
+**Cadência decidida por MEDIÇÃO** (`measure_checkpoint.rs`): um checkpoint custa ~**um step** (11,2 µs vs
+7,3 µs a 50 corpos), então denso dobraria o custo do play e comeria 17,4 dos 20 MB ⇒ **`STRIDE = 10`**
+(1,74 MB de janela, pior caso 10 steps). **Cap em BYTES** (8 MB), nunca em contagem — contagem é
+multiplicador (ADR-0117). Detalhe e números: tracker §W1.5.
 
 ### Gates (red-first, mutation-tested)
 1. **scrub-back é bit-exato** — `restore(anchor) + re-sim até T` produz o **mesmo hash** que `re-sim from
@@ -120,8 +121,9 @@ Medir antes de construir o ring inteiro.
    wall-clock — `ci-test` compila `opt-level=1`).
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=1` estendido: dropa corpos, dá play, **arrasta o playhead pra trás e pra frente** — a
-pilha reconstrói bit-exata, sem trava.
+**`PH2D_PHYSICS_SMOKE=2`** (cena própria, não a 1 — a do W1 foi aprovada pelo Enio e não se mexe no que já
+foi validado): 12 corpos caem numa **pilha**, o playhead se arrasta pra trás e pra frente, a pilha
+reconstrói bit-exata sem trava. As cenas seguintes deslocam em 1: **W2 = 3 · W3 = 4 · W4 = 5.**
 
 ### Fora
 Painel, joints, bake.
@@ -165,7 +167,7 @@ massa/restituição/atrito/tipo num sprite selecionado.
    editar body sem seleção é no-op explícito (`debug_assert`/`warn`), não corpo vazio.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=2` — abre o painel, ajusta gravidade + escala, dropa corpos e vê a mudança.
+`PH2D_PHYSICS_SMOKE=3` — abre o painel, ajusta gravidade + escala, dropa corpos e vê a mudança.
 
 ### Fora
 Joints, bake.
@@ -192,7 +194,7 @@ Joints, bake.
    trajetória; o oráculo de aparência pega.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=3` — pêndulo/corrente auto-play.
+`PH2D_PHYSICS_SMOKE=4` — pêndulo/corrente auto-play.
 
 ### Fora
 Bake.
@@ -221,7 +223,7 @@ Bake.
    de bake é UM passo. Mutação: 1 key/frame sem simplify vira 1 undo/frame — o gate conta os passos.
 
 ### Smoke
-`PH2D_PHYSICS_SMOKE=4` — dropa corpos, assa, **desliga a física** e dá play na timeline (a curva sozinha
+`PH2D_PHYSICS_SMOKE=5` — dropa corpos, assa, **desliga a física** e dá play na timeline (a curva sozinha
 reproduz o movimento).
 
 ### Fora

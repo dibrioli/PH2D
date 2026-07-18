@@ -26,7 +26,20 @@
 
 pub mod world;
 
+pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
 pub use world::{BodyDesc, PhysicsWorld, ShapeDesc};
+
+/// The checkpoint ring's stride, in ticks — the bound on how many steps a
+/// backwards scrub ever replays. See [`world::checkpoint::PhysicsCheckpointRing`]
+/// for why it is 10 and not 1.
+pub fn checkpoint_stride() -> u64 {
+    world::checkpoint::STRIDE
+}
+
+/// The ring's byte ceiling (its slice of the HR-13 physics budget).
+pub fn checkpoint_budget_bytes() -> usize {
+    world::checkpoint::DEFAULT_BUDGET_BYTES
+}
 
 // Re-export the few rapier types callers will reach for, so a
 // downstream crate doesn't need a direct rapier2d dep just to

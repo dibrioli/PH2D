@@ -23,3 +23,9 @@ rapier2d = { version = "0.28", default-features = false, features = ["dim2", "f3
 # blake3 for hashing the deterministic state — same hash family as
 # C9 cross-OS replay (HR-5 alignment).
 blake3 = "1"
+
+[dev-dependencies]
+# HR-13 declares a 20 MB physics budget; its ADR-0117 amendment says whoever
+# declares a budget owns a gate that MEASURES it. `measure_checkpoint` is that
+# gate — it decides the checkpoint ring's stride from real heap bytes.
+dhat = "0.3"

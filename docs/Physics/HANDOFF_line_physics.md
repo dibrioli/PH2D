@@ -16,7 +16,7 @@
 |---|---|---|---|
 | **W0 — Arquitetura** | ✅ **FECHADO** (2026-07-17) | `456e8b99` | ADR-0130 + plano de waves + tracker + visão. **Zero código.** |
 | **W1 — Ponte ECS + tick + hash** | ✅ **FECHADO** (2026-07-17, pendente smoke) | `44e08cf5`→`9f5fee05` | o alicerce — ver §W1 abaixo |
-| **W1.5 — Scrub (checkpoint ring)** | ⏳ pendente | — | kill-check de serialização ANTES do build |
+| **W1.5 — Scrub (checkpoint ring)** | ✅ **FECHADO** (2026-07-18, pendente smoke) | ver §W1.5 | kill-check passou de primeira; stride MEDIDO |
 | **W2 — Painel + Inspector body** | ⏳ pendente | — | categoria de painel NOVA (mundo) |
 | **W3 — Joints** | ⏳ pendente | — | pêndulo/corrente/ragdoll |
 | **W4 — Bake-to-timeline** | ⏳ pendente | — | acopla `ph2d-anim` (outra linha) |
@@ -101,6 +101,84 @@ no paused; scrub não rebobina o corpo ainda — o ring é a próxima wave, com 
 do rapier ANTES do build**). restituição/atrito/damping/Kinematic/camadas = **W2** (append + wire no painel).
 `readback` só trata corpo root (Transform local = mundo); corpo filho = W2 (via `parent_world_transform`).
 `reconcile` stale é O(N²) (trivial nos counts de W1).
+
+---
+
+## §W1.5 — O relógio pra trás LANDOU (2026-07-18, pendente smoke)
+
+Arrastar o playhead pra trás re-simula **bit-exato** sem custo O(t). rapier não anda pra trás (**nenhum**
+motor anda — resolução de contato não é invertível), então é GGPO save/load/advance, o mesmo desenho do
+`Cook::checkpoint`/`CheckpointRing` do Motion.
+
+**O kill-check passou de primeira, e a 2ª metade dele decidiu o desenho.** Os 8 tipos cross-frame do
+rapier são `Clone` ⇒ **sem `serde-serialize`, sem bincode**. O `PhysicsPipeline` — o único campo que o
+`step()` muta e que **não** é `Clone` — é *workspace* (buffers de manifold/constraint + counters), e é por
+isso que os snapshots do próprio rapier serializam os SETS e reconstroem o pipeline. Isso não foi
+acreditado: o gate de bit-exatidão ficaria vermelho em todo tick de âncora se houvesse estado real ali.
+
+**O stride é MEDIDO, não chutado** (`tests/measure_checkpoint.rs`, dhat + timing):
+
+| | 50 corpos | 200 corpos |
+|---|---|---|
+| checkpoint | **59,4 KB** · 11,2 µs | 229,6 KB · 40,0 µs |
+| um `step()` | 7,3 µs | 46,3 µs |
+
+⚠️ **Um checkpoint custa ~UM step.** A regra do GGRS (*denso a menos que a cópia domine `K × re-sim`*) leva
+o Motion a **denso** — estado pequeno, cook barato — e leva a física ao **oposto**: denso **dobraria o custo
+do play** (contra os 1,5 ms de HR-4) e gastaria **17,4 MB dos 20 MB** de HR-13 em 5 s de janela.
+**`STRIDE = 10`**: play +10%, janela 1,74 MB, pior caso do scrub = 10 steps (~0,07 ms, abaixo da percepção
+— a única coisa que um scrub deve a alguém).
+
+**O cap é em BYTES, não em contagem** (`DEFAULT_BUDGET_BYTES = 8 MB`) — a lição do ADR-0117: contagem é
+**multiplicador**, não teto (uma cena de 5000 corpos estouraria um ring de 30 checkpoints com o número
+parecendo tranquilo). Cena pesada ganha janela mais CURTA, não conta maior. Medido: 10 min de sim →
+595 checkpoints, **7,99 MB**.
+
+**O fallback É o produto, não uma 2ª implementação:** miss devolve `None` e o chamador cai no
+`rebuild_from_rest` — o caminho que já shipou no W1 e já tinha gate. **Apague o ring e o produto ainda
+scrubba, só mais devagar.** Nada pra divergir (mesma forma do fallback de splice do ADR-0124).
+
+**Invalidação (cada camada com gate PRÓPRIO):** spawn/remove de corpo (`reconcile_structure`) · `set_gravity`
+· `rebuild` (load/undo) · `rebuild_from_rest` (handles novos). Restaurar um checkpoint de um body-set
+diferente devolveria handles que não endereçam mais as entidades que a ponte segura — e a pose publicada
+seria **stale em silêncio**, o pior tipo de errado.
+
+### 2 bugs de autoria fechados junto (achados construindo os gates)
+
+1. **`rest` era a pose do SPAWN, congelada** ⇒ mover um objeto e apertar **Reset** jogava fora o
+   posicionamento do artista e pulava de volta pro lugar original. **A regra que fecha: a pose de repouso é
+   a pose AUTORADA no tick 0** — lida todo frame, não lembrada (cobre de graça shape/densidade editados no
+   Inspector, W2: re-descrever o corpo é UMA regra em vez de uma lista crescente de campos a vigiar). Tem
+   gate irmão provando que a regra **não** dispara com o relógio andando (senão o `Transform`, que ali é a
+   SAÍDA da sim, seria realimentado e o corpo renasceria a cada frame, perdendo a velocidade).
+2. **Uma linha defensiva que eu quase shipei e REMOVI:** um `ring.clear()` no `settle` quando o artista
+   arrasta um corpo pausado. Construindo o gate, não achei o caso em que ela muda o resultado: com o ring
+   sujo o scrub restaura um checkpoint pré-arrasto; com o ring limpo o fallback re-simula do repouso — **os
+   dois descartam o arrasto igualmente**. Defesa que não se observa é comentário que mente. No lugar dela,
+   a semântica está DOCUMENTADA: **a sim é função de `(tick, repouso autorado)`, então um empurrão no meio
+   é transiente e qualquer rewind o descarta** (Unity/Godot descartam edições de play-mode pelo mesmo
+   motivo; fazer uma pose do meio GRUDAR é autorar keyframe = o bake do W4).
+
+### O oráculo que quase passou (a lição desta wave)
+
+O gate 1 nasceu comparando **o endpoint** e ficou **VERDE** sob uma mutação real (`restore` sem o
+narrow_phase). Motivo: uma pilha assentando é um sistema **amortecido** — ele **esquece** a perturbação e
+re-converge pro mesmo repouso, então o tick 137 concordava e os ticks do meio não. **O scrub que o artista
+assiste é o CAMINHO, não o destino** ⇒ o oráculo virou a trajetória inteira, e aí a mutação sangra.
+Corolário: tirar o `broad_phase` do restore **sobreviveu** a 2 fixtures independentes (pilha + cena de
+espalhamento a 9 m/s, onde um índice espacial obsoleto daria pares errados) ⇒ o BVH é **derivado**, não
+autoritativo. Fica no checkpoint (um snapshot deve ser completo, e a memória já está orçada), mas isso
+agora está **medido**, e ninguém precisa re-litigar por prosa.
+
+**Gates (11 novos):** `ph2d-physics/tests/checkpoint.rs` (6) + `measure_checkpoint.rs` (1, dhat) ·
+`ph2d-physics-ecs/tests/scrub.rs` (5) + `authoring.rs` (2). **8 mutações, 8 sangram no gate certo**
+(a 9ª — `broad_phase` — é nula e está documentada acima). O gate de O(K) **CONTA steps**, não cronometra
+(`PhysicsBridge::steps_taken`): a alegação é sobre quanta simulação um scrub re-roda, e step é exatamente
+essa grandeza — sem skew do perfil `ci-test`, sem flake.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=2`** — 12 corpos caem numa pilha (⚠️ a cena é uma PILHA de propósito: é onde um
+scrub errado é *visível* — no meio da queda os corpos estão espalhados no ar, assentados são um monte). Abre
+o painel de timeline sozinho. Deixe assentar e **arraste a régua pra trás**.
 
 ---
 

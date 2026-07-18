@@ -8,6 +8,8 @@
 //! | `3` | W2a  | plain sprites + a floor, for authoring bodies in the Inspector |
 //! | `4` | W2b  | a world panel scene: bodies of mixed size to feel every knob |
 //! | `5` | W2c  | two groups on DIFFERENT layers, for the collision matrix |
+//! | `6` | W3   | pendulum + chain + ragdoll, for the joints |
+//! | `7` | W4   | a drop to BAKE into timeline curves, then replay without physics |
 //!
 //! The sprites are plain ECS entities carrying `RigidBody` + `Collider`.
 //! **Nothing here touches the rapier world** — the bridge
@@ -63,18 +65,21 @@ impl crate::App {
             "4" => self.physics_smoke_world(),
             "5" => self.physics_smoke_layers(),
             "6" => self.physics_smoke_joints(),
+            "7" => self.physics_smoke_bake(),
             _ => self.physics_smoke_drop(),
         }
 
-        // Play so the bridge steps the world forward — except in the
-        // authoring scene, which must sit STILL until the artist has given
-        // something a body (a scene already running is a scene you cannot
-        // set up).
+        // Play so the bridge steps the world forward — except in the scenes
+        // that must sit STILL until the artist has done something. Scene 3
+        // waits for a body to be added; scene 7 waits for a Bake, and a bake
+        // taken while the clock runs would be a bake of a scene that has
+        // already half-fallen. (A `match`, not another `!=`: with two of them
+        // the next scene to want a paused clock would have to notice both.)
         self.playhead.rewind();
-        if which.trim() != "3" {
-            self.playhead.play();
-        } else {
+        if matches!(which.trim(), "3" | "7") {
             self.playhead.pause();
+        } else {
+            self.playhead.play();
         }
     }
 
@@ -442,6 +447,106 @@ impl crate::App {
                  Spring: the plank starts bouncing on a spring instead of hanging rigid.\n  \
                · select TWO bodies -> Physics Body grows a 'Join Selected Bodies' button.\n  \
                · Ctrl+Z after any of it, and Ctrl+S / Ctrl+O: the joints survive both."
+        );
+    }
+
+    /// **Scene 7 (W4).** A drop worth baking, with the clock PAUSED.
+    ///
+    /// The whole gesture is: select, Bake, watch the curve replay. So the
+    /// scene is built to make the bake VISIBLE rather than merely correct —
+    /// bodies whose motion has shape (a bounce, a roll, a spin), because a
+    /// curve that only says "went down" proves nothing about the fit.
+    ///
+    /// Paused on purpose: the sim starts at the pose the artist sees, and
+    /// baking a scene that has already been running would bake from tick 0
+    /// anyway — the picture and the curve would disagree about where the
+    /// motion began, which is the confusing kind of correct.
+    fn physics_smoke_bake(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        spawn_floor(gfx.sim.world_mut());
+        let world = gfx.sim.world_mut();
+
+        // A ramp: a static box tilted so what lands on it ROLLS. Rotation is
+        // the third baked channel and the easiest one to get wrong in silence.
+        world.spawn((
+            Transform {
+                rotation: -0.32,
+                ..Transform::from_translation(Vec2::new(-2.2, 1.1))
+            },
+            Sprite::atlas(0, [3.2, 0.24], [0.40, 0.42, 0.48, 1.0]),
+            Name::new("Ramp".to_string()),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 1.6,
+                    half_y: 0.12,
+                },
+                ..Collider::default()
+            },
+        ));
+
+        // The ball rolls down the ramp: X, Y and rotation all move, so all
+        // three tracks are written and any one of them being wrong shows.
+        world.spawn((
+            Transform::from_translation(Vec2::new(-3.2, 2.4)),
+            Sprite::atlas(0, [0.5, 0.5], [0.95, 0.6, 0.2, 1.0]),
+            Name::new("Roller".to_string()),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                restitution: 0.2,
+                friction: 0.7,
+                ..Collider::default()
+            },
+        ));
+
+        // Two boxes that bounce and topple — a second body to bake at the same
+        // time, which is the case where a fan-out would have shown up as three
+        // undo steps for one click.
+        for (i, x) in [1.4f32, 2.1].into_iter().enumerate() {
+            world.spawn((
+                Transform::from_translation(Vec2::new(x, 3.4 + i as f32 * 1.1)),
+                Sprite::atlas(0, [0.6, 0.6], [0.35, 0.75, 0.95, 1.0]),
+                Name::new(format!("Box{i}")),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.3,
+                        half_y: 0.3,
+                    },
+                    restitution: 0.45,
+                    ..Collider::default()
+                },
+            ));
+        }
+
+        if let Some(hero) = gfx.hero_screen.as_mut() {
+            hero.panel_visibility.insert("timeline", true);
+        }
+
+        eprintln!(
+            "[physics-smoke 7] A roller, a ramp and two boxes. Clock PAUSED, timeline open.
+             Press Play once to SEE the motion, then Ctrl+Z nothing -- just rewind and:
+                 1. select Roller + both boxes (marquee or Ctrl-click).
+                 2. Inspector > Physics Body > 'Bake 5.0s to Timeline'.
+             What must happen:
+                 · the timeline fills with a FEW keys per channel, in aligned columns --
+                     not one key per frame (that would be unusable, and is the bug).
+                 · the Body chip flips to KINEMATIC and the toast says so. Press B: the
+                     outlines turn VIOLET (they were cyan -- the solver no longer owns them).
+                 · press Play: the objects replay the SAME motion, now driven by the curves.
+                 · ONE Ctrl+Z removes the whole bake (all the keys, one press).
+             Then the two things the bake is FOR:
+                 · grab a key in the timeline and drag it -- the motion is yours to edit now.
+                 · the baked bodies still SHOVE: they are kinematic, not ghosts.
+             Range: it says 5.0s because nothing is animated yet. Arm a loop in the
+             transport and the button follows it."
         );
     }
 

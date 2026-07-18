@@ -315,6 +315,13 @@ fn a_baked_body_is_handed_over_to_the_scene() {
 ///
 /// The empty case has to be empty all the way down: no tracks, and no bracket
 /// left on the stack for the artist to press Ctrl+Z through.
+///
+/// ⚠️ Two layers hold this up and only one of them is the early-out. Deleting
+/// the `work.is_empty()` branch leaves this gate GREEN, because
+/// `commit_if_changed` compares the document and refuses to push a step for a
+/// bake that changed nothing. That is not a hole — it is which claim belongs to
+/// which layer: the branch's claim is about cost, the step count's is about
+/// correctness, and this gate asks the second one.
 #[test]
 fn baking_a_body_that_never_moves_writes_nothing() {
     let mut sim = SimWorld::new();
@@ -429,5 +436,144 @@ fn the_default_range_outlasts_a_drop() {
         "the fixture is not a drop: it starts at {:.2} and ends at {:.2}",
         ys[0],
         ys[ys.len() - 1]
+    );
+}
+
+/// **The bake produces a CURVE, not one key per frame.**
+///
+/// The wave's actual deliverable, and the one every other gate here is blind
+/// to: with the fit removed, the tracks hold one key per tick, which reproduces
+/// the simulation *exactly* (so the fidelity gate is greener than ever), costs
+/// one undo step (so that gate passes), and is completely useless — nobody
+/// edits ninety keyframes per second. "Runtime truth becomes animation" means
+/// animation somebody can grab.
+///
+/// The bar is generous on purpose: the point is orders of magnitude, not a
+/// pinned count that a tolerance tweak would have to chase. A bounce over 1.5 s
+/// is a handful of keys; 90 is the un-fitted signal.
+#[test]
+fn the_bake_writes_a_curve_not_a_key_per_frame() {
+    let (timeline, _sim, ball, outcome) = baked();
+    let ticks = ticks_for(BAKE_SECONDS, DT) as usize;
+    assert!(
+        outcome.tracks >= 2,
+        "the fixture baked {} tracks",
+        outcome.tracks
+    );
+
+    for prop in PropKind::ALL {
+        let Some(track) = timeline
+            .doc
+            .binding_for(ball.to_bits(), prop)
+            .and_then(|b| timeline.doc.active_clip().track(b.target))
+        else {
+            continue;
+        };
+        let n = track.keys().len();
+        assert!(
+            n > 1,
+            "{prop:?} collapsed to {n} key(s) — the fit ate the motion"
+        );
+        assert!(
+            n * 4 < ticks,
+            "{prop:?} holds {n} keys for {ticks} ticks — that is the dense \
+             per-frame recording, not a curve. The fit did not run."
+        );
+    }
+}
+
+/// **Every channel of one body keys at the SAME times.**
+///
+/// Column alignment: the animator grabs a column in the dope sheet and re-times
+/// the whole object. It is the reason `simplify_recorded` does three passes
+/// instead of fitting each track independently, and it was ungated — a mutation
+/// that stopped merging near-coincident times into shared columns left every
+/// gate green.
+#[test]
+fn a_bodys_channels_key_on_shared_columns() {
+    let (timeline, _sim, ball, _) = baked();
+    let mut columns: Option<Vec<f64>> = None;
+    let mut checked = 0;
+    for prop in PropKind::ALL {
+        let Some(track) = timeline
+            .doc
+            .binding_for(ball.to_bits(), prop)
+            .and_then(|b| timeline.doc.active_clip().track(b.target))
+        else {
+            continue;
+        };
+        let times: Vec<f64> = track.keys().iter().map(|k| k.t.to_seconds()).collect();
+        match &columns {
+            None => columns = Some(times),
+            Some(first) => {
+                assert_eq!(
+                    &times, first,
+                    "{prop:?} keys at different times than the body's first \
+                     channel — the dope sheet shows ragged keys instead of \
+                     columns, and re-timing the object means dragging each \
+                     channel separately"
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert!(
+        checked > 0,
+        "only one channel was baked, so this gate compared nothing"
+    );
+
+    // ⚠️ No crowding assertion here, and that is a MEASUREMENT rather than an
+    // omission. `record_fit`'s near-coincident-time merge (`COLUMN_MERGE_S`) is
+    // inert for a bake: a hand crosses each axis's extremum a few milliseconds
+    // apart, which is what the merge exists for, but a bake samples every
+    // channel on ONE tick grid, so the extrema land on exactly the same times.
+    // Measured on this fixture — columns are `[0.0, 0.583, 1.5]` with the merge
+    // and `[0.0, 0.583, 1.5]` without it. A gate on the merge would be a gate
+    // that cannot fail here; the constant belongs to the record and is the
+    // record's to prove.
+    let _ = columns;
+}
+
+/// **The range comes from the loop, then the document, then the default.**
+///
+/// Each step of the chain, because the ones that never fire are the ones that
+/// rot: with no gate, ignoring the armed loop entirely left everything green
+/// and the artist's chosen range silently unused.
+#[test]
+fn the_bake_range_prefers_the_armed_loop_then_the_document() {
+    use super::bake_seconds;
+    use ph2d_core::Playhead;
+
+    let mut doc = ph2d_timeline::TimelineDoc::default();
+    let mut playhead = Playhead::new(DT);
+
+    assert_eq!(
+        bake_seconds(&doc, &playhead),
+        DEFAULT_BAKE_SECONDS,
+        "a fresh scene says nothing, so the measured default is what a bake \
+         covers"
+    );
+
+    // A document with content bakes to its own length.
+    doc.upsert_key(
+        1,
+        PropKind::TranslationX,
+        ph2d_anim::RationalTime::from_seconds(3.0),
+        ph2d_anim::AnimValue::Float(1.0),
+        ph2d_anim::Interp::Linear,
+    );
+    assert!(
+        (bake_seconds(&doc, &playhead) - 3.0).abs() < 1e-6,
+        "an animated document baked {} s instead of its own 3 s extent",
+        bake_seconds(&doc, &playhead)
+    );
+
+    // An armed loop outranks it: it is the control the artist reached for.
+    playhead.set_loop(0.5, 2.0);
+    assert!(
+        (bake_seconds(&doc, &playhead) - 2.0).abs() < 1e-6,
+        "the armed loop was ignored ({} s) — the artist's own range control \
+         does nothing and there is no other way to ask for one",
+        bake_seconds(&doc, &playhead)
     );
 }

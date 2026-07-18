@@ -207,51 +207,58 @@ pub(crate) fn paint_physics_section(
         info.layer,
     );
 
+    paint_body_actions(scene, text_system, theme, hit_index, store, x, w, yy, info)
+}
+
+/// The three things you can DO to a body, under its fields: join it to another,
+/// bake its motion into curves, or take the body away.
+///
+/// Its own function because the section is at the panel crate's 200-LOC cap and
+/// these are the part that is a list rather than a form — each is one button,
+/// offered or not, and none of them reads a field above.
+#[allow(clippy::too_many_arguments)]
+fn paint_body_actions(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorPhysicsInfo,
+) -> f32 {
+    let h = ROW_H_PX;
+    let mut yy = y;
+    let mut action = |id, label: &str, yy: &mut f32| {
+        let rect = Rect::new(x, *yy, w, h);
+        let btn = Button::new(id, label)
+            .kind(ButtonKind::Default)
+            .state(store.button_state(id).unwrap_or(ButtonState::Normal));
+        paint_button(&btn, rect, scene, text_system, theme);
+        hit_index.register(id, rect);
+        *yy += h + Spacing::Sm.px();
+    };
+
     // The creation gesture for a joint (W3). It lives HERE, in the body
     // section, because a joint does not exist yet when you want to make one —
     // the button has to be somewhere you already are, looking at the two
     // bodies you have selected. Offered only when the selection is exactly two
     // bodies, which is a fact only the shell can know.
     if info.can_join {
-        let join_rect = Rect::new(x, yy, w, h);
-        let join = Button::new(ids::INSP_PHYS_JOIN, "Join Selected Bodies")
-            .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PHYS_JOIN)
-                    .unwrap_or(ButtonState::Normal),
-            );
-        paint_button(&join, join_rect, scene, text_system, theme);
-        hit_index.register(ids::INSP_PHYS_JOIN, join_rect);
-        yy += h + Spacing::Sm.px();
+        action(ids::INSP_PHYS_JOIN, "Join Selected Bodies", &mut yy);
     }
 
     // Bake (W4): the simulated motion becomes timeline curves, and the body is
     // handed over to the scene (`BodyKind::Kinematic`). The label carries the
     // resolved range because the range is otherwise invisible — the artist
     // would have to press it to find out how much they were baking.
-    let bake_label = format!("Bake {:.1}s to Timeline", info.bake_seconds);
-    let bake_rect = Rect::new(x, yy, w, h);
-    let bake = Button::new(ids::INSP_PHYS_BAKE, &bake_label)
-        .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_PHYS_BAKE)
-                .unwrap_or(ButtonState::Normal),
-        );
-    paint_button(&bake, bake_rect, scene, text_system, theme);
-    hit_index.register(ids::INSP_PHYS_BAKE, bake_rect);
-    yy += h + Spacing::Sm.px();
+    action(
+        ids::INSP_PHYS_BAKE,
+        &format!("Bake {:.1}s to Timeline", info.bake_seconds),
+        &mut yy,
+    );
 
-    let btn_rect = Rect::new(x, yy, w, h);
-    let btn = Button::new(ids::INSP_PHYS_REMOVE, "Remove Physics Body")
-        .kind(ButtonKind::Default)
-        .state(
-            store
-                .button_state(ids::INSP_PHYS_REMOVE)
-                .unwrap_or(ButtonState::Normal),
-        );
-    paint_button(&btn, btn_rect, scene, text_system, theme);
-    hit_index.register(ids::INSP_PHYS_REMOVE, btn_rect);
-    yy + h + SECTION_BOTTOM_PAD_PX
+    action(ids::INSP_PHYS_REMOVE, "Remove Physics Body", &mut yy);
+    yy - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
 }
